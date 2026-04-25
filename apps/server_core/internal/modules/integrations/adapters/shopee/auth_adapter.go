@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	integrationsproviders "marketplace-central/apps/server_core/internal/modules/integrations/adapters/providers"
 	"marketplace-central/apps/server_core/internal/modules/integrations/application"
 	"marketplace-central/apps/server_core/internal/modules/integrations/domain"
 )
@@ -11,6 +12,34 @@ import (
 type Config struct{}
 
 type Adapter struct{}
+
+func init() {
+	integrationsproviders.RegisterDefinition(domain.ProviderDefinition{
+		ProviderCode: "shopee",
+		TenantID:     "system",
+		Family:       domain.IntegrationFamilyMarketplace,
+		DisplayName:  "Shopee",
+		AuthStrategy: domain.AuthStrategyAPIKey,
+		InstallMode:  domain.InstallModeManual,
+		Metadata: map[string]any{
+			"country":       "BR",
+			"release_stage": "limited",
+			"fee_source":    "seed",
+		},
+		DeclaredCapabilities: []string{
+			"catalog_publish",
+			"pricing_fee_sync",
+			"inventory_sync",
+			"order_read",
+			"message_read",
+			"shipment_tracking",
+		},
+		IsActive: true,
+	})
+	integrationsproviders.RegisterAuthFactory(func() application.MarketplaceAuthAdapter {
+		return NewAdapter(Config{})
+	})
+}
 
 func NewAdapter(Config) *Adapter {
 	return &Adapter{}

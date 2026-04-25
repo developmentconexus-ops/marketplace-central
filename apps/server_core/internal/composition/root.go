@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
-	"strings"
 	"time"
 
 	catalogmetalshopping "marketplace-central/apps/server_core/internal/modules/catalog/adapters/metalshopping"
@@ -16,28 +14,27 @@ import (
 	classpostgres "marketplace-central/apps/server_core/internal/modules/classifications/adapters/postgres"
 	classapp "marketplace-central/apps/server_core/internal/modules/classifications/application"
 	classtransport "marketplace-central/apps/server_core/internal/modules/classifications/transport"
-	connmagalu "marketplace-central/apps/server_core/internal/modules/connectors/adapters/magalu"
+	_ "marketplace-central/apps/server_core/internal/modules/connectors/adapters/magalu"
 	melhorenvio "marketplace-central/apps/server_core/internal/modules/connectors/adapters/melhorenvio"
-	connml "marketplace-central/apps/server_core/internal/modules/connectors/adapters/mercado_livre"
+	_ "marketplace-central/apps/server_core/internal/modules/connectors/adapters/mercado_livre"
 	connectorspostgres "marketplace-central/apps/server_core/internal/modules/connectors/adapters/postgres"
-	connshopee "marketplace-central/apps/server_core/internal/modules/connectors/adapters/shopee"
+	_ "marketplace-central/apps/server_core/internal/modules/connectors/adapters/shopee"
 	connectorshttp "marketplace-central/apps/server_core/internal/modules/connectors/adapters/vtex/http"
 	connectorsapp "marketplace-central/apps/server_core/internal/modules/connectors/application"
 	connectorstransport "marketplace-central/apps/server_core/internal/modules/connectors/transport"
 	integrationscrypto "marketplace-central/apps/server_core/internal/modules/integrations/adapters/crypto"
 	integrationsfeesync "marketplace-central/apps/server_core/internal/modules/integrations/adapters/feesync"
-	integrationsmagalu "marketplace-central/apps/server_core/internal/modules/integrations/adapters/magalu"
-	integrationsml "marketplace-central/apps/server_core/internal/modules/integrations/adapters/mercadolivre"
+	_ "marketplace-central/apps/server_core/internal/modules/integrations/adapters/magalu"
+	_ "marketplace-central/apps/server_core/internal/modules/integrations/adapters/mercadolivre"
 	integrationspostgres "marketplace-central/apps/server_core/internal/modules/integrations/adapters/postgres"
 	integrationsproviders "marketplace-central/apps/server_core/internal/modules/integrations/adapters/providers"
-	integrationsshopee "marketplace-central/apps/server_core/internal/modules/integrations/adapters/shopee"
+	_ "marketplace-central/apps/server_core/internal/modules/integrations/adapters/shopee"
 	integrationsapp "marketplace-central/apps/server_core/internal/modules/integrations/application"
 	integrationsbg "marketplace-central/apps/server_core/internal/modules/integrations/background"
 	integrationsdomain "marketplace-central/apps/server_core/internal/modules/integrations/domain"
 	integrationstransport "marketplace-central/apps/server_core/internal/modules/integrations/transport"
 	marketplacespostgres "marketplace-central/apps/server_core/internal/modules/marketplaces/adapters/postgres"
 	marketplacesapp "marketplace-central/apps/server_core/internal/modules/marketplaces/application"
-	marketplacesports "marketplace-central/apps/server_core/internal/modules/marketplaces/ports"
 	marketplacesregistry "marketplace-central/apps/server_core/internal/modules/marketplaces/registry"
 	marketplacestransport "marketplace-central/apps/server_core/internal/modules/marketplaces/transport"
 	pricingcatalog "marketplace-central/apps/server_core/internal/modules/pricing/adapters/catalog"
@@ -112,6 +109,9 @@ func NewRootRouter(pool *pgxpool.Pool, msPool *pgxpool.Pool, cfg pgdb.Config) (h
 	providerRepo := integrationspostgres.NewProviderDefinitionRepository(pool)
 	providerSvc := integrationsapp.NewProviderService(providerRepo)
 	providerRegistry := integrationsproviders.NewRegistry()
+	if err := providerRegistry.Validate(); err != nil {
+		return nil, fmt.Errorf("integration provider registry: %w", err)
+	}
 
 	if pool != nil {
 		if err := providerSvc.SeedProviderDefinitions(context.Background(), providerRegistry.All()); err != nil {
@@ -131,11 +131,8 @@ func NewRootRouter(pool *pgxpool.Pool, msPool *pgxpool.Pool, cfg pgdb.Config) (h
 	operationSvc := integrationsapp.NewOperationService(operationRunRepo, cfg.DefaultTenantID)
 	oauthStateRepo := integrationspostgres.NewOAuthStateRepository(pool, cfg.DefaultTenantID)
 	feeRepo := marketplacespostgres.NewFeeScheduleRepository(pool)
-	feeSyncExecutor := integrationsfeesync.NewMarketplaceExecutor(feeRepo, []marketplacesports.FeeScheduleSyncer{
-		connml.NewFeeSyncer(),
-		connshopee.NewFeeSyncer(),
-		connmagalu.NewFeeSyncer(),
-	})
+	registeredFeeSyncers := integrationsproviders.BuildFeeSyncers()
+	feeSyncExecutor := integrationsfeesync.NewMarketplaceExecutor(feeRepo, registeredFeeSyncers)
 	feeSyncSvc := integrationsapp.NewFeeSyncService(integrationsapp.FeeSyncServiceConfig{
 		Installations: installationSvc,
 		Providers:     providerSvc,
@@ -153,20 +150,6 @@ func NewRootRouter(pool *pgxpool.Pool, msPool *pgxpool.Pool, cfg pgdb.Config) (h
 		return nil, fmt.Errorf("oauth state codec: %w", err)
 	}
 
-	mlAuth := integrationsml.NewAdapter(integrationsml.Config{
-		ClientID:     strings.TrimSpace(os.Getenv("MPC_PROVIDER_MERCADOLIVRE_CLIENT_ID")),
-		ClientSecret: strings.TrimSpace(os.Getenv("MPC_PROVIDER_MERCADOLIVRE_CLIENT_SECRET")),
-		AuthorizeURL: "https://auth.mercadolivre.com.br/authorization",
-		TokenURL:     "https://api.mercadolibre.com/oauth/token",
-	})
-	magaluAuth := integrationsmagalu.NewAdapter(integrationsmagalu.Config{
-		ClientID:     strings.TrimSpace(os.Getenv("MPC_PROVIDER_MAGALU_CLIENT_ID")),
-		ClientSecret: strings.TrimSpace(os.Getenv("MPC_PROVIDER_MAGALU_CLIENT_SECRET")),
-		AuthorizeURL: "https://id.magalu.com/login",
-		TokenURL:     "https://id.magalu.com/oauth/token",
-	})
-	shopeeAuth := integrationsshopee.NewAdapter(integrationsshopee.Config{})
-
 	authFlowSvc, err := integrationsapp.NewAuthFlowService(integrationsapp.AuthFlowConfig{
 		TenantID:        cfg.DefaultTenantID,
 		Installations:   installationSvc,
@@ -175,11 +158,7 @@ func NewRootRouter(pool *pgxpool.Pool, msPool *pgxpool.Pool, cfg pgdb.Config) (h
 		OAuthStates:     oauthStateRepo,
 		OAuthStateCodec: oauthStateCodec,
 		Encryptor:       encryptionSvc,
-		Adapters: []integrationsapp.MarketplaceAuthAdapter{
-			mlAuth,
-			magaluAuth,
-			shopeeAuth,
-		},
+		Adapters:        integrationsproviders.BuildAuthAdapters(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("auth flow service: %w", err)
@@ -209,11 +188,7 @@ func NewRootRouter(pool *pgxpool.Pool, msPool *pgxpool.Pool, cfg pgdb.Config) (h
 		}
 	}
 
-	connectorsFeeSyncSvc := connectorsapp.NewFeeSyncService(feeRepo,
-		connml.NewFeeSyncer(),
-		connshopee.NewFeeSyncer(),
-		connmagalu.NewFeeSyncer(),
-	)
+	connectorsFeeSyncSvc := connectorsapp.NewFeeSyncService(feeRepo, registeredFeeSyncers...)
 
 	if pool != nil {
 		go func() {

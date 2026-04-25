@@ -5,12 +5,19 @@ import (
 	"fmt"
 	"log/slog"
 
+	integrationsproviders "marketplace-central/apps/server_core/internal/modules/integrations/adapters/providers"
 	"marketplace-central/apps/server_core/internal/modules/marketplaces/domain"
 	"marketplace-central/apps/server_core/internal/modules/marketplaces/ports"
 )
 
 // FeeSyncer seeds Shopee Brazil static commission rates.
 type FeeSyncer struct{}
+
+func init() {
+	integrationsproviders.RegisterFeeSyncerFactory(func() ports.FeeScheduleSyncer {
+		return NewFeeSyncer()
+	})
+}
 
 func NewFeeSyncer() *FeeSyncer { return &FeeSyncer{} }
 

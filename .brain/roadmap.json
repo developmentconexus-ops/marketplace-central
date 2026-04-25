@@ -1,11 +1,11 @@
 {
     "project":  "marketplace-central",
-    "last_updated":  "2026-04-16T20:31:12Z",
+    "last_updated":  "2026-04-25T16:30:00Z",
     "current_phase_id":  "phase-7",
     "summary":  {
                     "completed_phases":  3,
                     "completed_tasks":  17,
-                    "total_tasks":  26
+                    "total_tasks":  27
                 },
     "phases":  [
                    {
@@ -272,8 +272,27 @@
                                                           "Define smoke scenarios and expected evidence",
                                                           "Execute backend+sdk+ui flow validation",
                                                           "Document runbook and known limits"
-                                                      ]
-                                     }
+                                                     ]
+                                    },
+                                    {
+                                        "id":  "T-030",
+                                        "title":  "Integration catalog plugin framework",
+                                        "description":  "Refactor provider definitions, auth adapters, and fee syncers into self-registration patterns so new integrations can be added with minimal central wiring.",
+                                        "status":  "planned",
+                                        "priority":  "high",
+                                        "depends_on":  [
+                                                           "T-027"
+                                                       ],
+                                        "started_at":  null,
+                                        "completed_at":  null,
+                                        "notes":  null,
+                                        "subtasks":  [
+                                                         "Add provider definition and auth factory registration",
+                                                         "Register existing ML/Magalu/Shopee providers",
+                                                         "Register existing fee syncers",
+                                                         "Update composition root and documentation"
+                                                     ]
+                                    }
                                  ]
                    }
                ]

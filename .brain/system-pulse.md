@@ -1,5 +1,5 @@
 # System Pulse - Marketplace Central
-> Last updated: 2026-04-13 | Session: #16
+> Last updated: 2026-04-25 | Session: #17
 
 ## Project Identity
 
@@ -33,6 +33,7 @@
 - ADR-001: MPC reads products directly from MetalShopping Postgres
 - ADR-002: MPC own tables live in `mpc` schema on MetalShopping cluster
 - ADR-003: Split integrations delivery into operational specs after foundation (OAuth -> Fee Sync -> UX)
+- ADR-004: Integration catalog plugin framework (provider/auth/sync self-registration)
 
 ---
 
@@ -105,6 +106,8 @@ Next in sequence:
 
 ## Recent Changes
 
+- 2026-04-25: Replaced manual integration wiring with registration-backed provider definitions, auth factories, and fee syncer factories; `root.go` now consumes registries
+- 2026-04-25: Added ADR-004 and roadmap task `T-030` to track and document the integration catalog plugin framework
 - 2026-04-13: Closed `T-029` as `DONE_WITH_CONCERNS` with consolidated API/UI/log/SQL evidence and new runtime screenshots
 - 2026-04-13: Re-ran the full backend+frontend verification workflow after power interruption; all gates passed with only known non-blocking third-party build warnings
 - 2026-04-13: Applied migration `0018_marketplaces_tenant_isolation.sql` via `cmd/migrate` and confirmed idempotent re-run (`applied 1`, then `applied 0`)
@@ -123,8 +126,9 @@ Next in sequence:
 | `contracts/api/marketplace-central.openapi.yaml` | API source of truth |
 | `apps/server_core/internal/composition/root.go` | DI and module wiring |
 | `apps/server_core/internal/modules/integrations/` | Integrations platform module |
+| `apps/server_core/internal/modules/integrations/adapters/providers/registry.go` | Integration plugin registration and adapter/syncer assembly |
 | `packages/sdk-runtime/src/index.ts` | Typed client methods |
-| `.brain/decisions/003-integration-spec-split-and-sequencing.md` | Latest integrations sequencing ADR |
+| `.brain/decisions/004-integration-catalog-plugin-framework.md` | Integration plugin framework ADR |
 
 ---
 

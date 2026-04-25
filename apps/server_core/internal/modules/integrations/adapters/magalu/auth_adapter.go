@@ -9,10 +9,12 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	integrationsproviders "marketplace-central/apps/server_core/internal/modules/integrations/adapters/providers"
 	"marketplace-central/apps/server_core/internal/modules/integrations/application"
 	"marketplace-central/apps/server_core/internal/modules/integrations/domain"
 )
@@ -27,6 +29,40 @@ type Config struct {
 
 type Adapter struct {
 	cfg Config
+}
+
+func init() {
+	integrationsproviders.RegisterDefinition(domain.ProviderDefinition{
+		ProviderCode: "magalu",
+		TenantID:     "system",
+		Family:       domain.IntegrationFamilyMarketplace,
+		DisplayName:  "Magalu",
+		AuthStrategy: domain.AuthStrategyOAuth2,
+		InstallMode:  domain.InstallModeInteractive,
+		Metadata: map[string]any{
+			"country":       "BR",
+			"release_stage": "stable",
+			"fee_source":    "api_sync",
+		},
+		DeclaredCapabilities: []string{
+			"catalog_publish",
+			"pricing_fee_sync",
+			"inventory_sync",
+			"order_read",
+			"message_read",
+			"shipment_tracking",
+			"webhook_receive",
+		},
+		IsActive: true,
+	})
+	integrationsproviders.RegisterAuthFactory(func() application.MarketplaceAuthAdapter {
+		return NewAdapter(Config{
+			ClientID:     strings.TrimSpace(os.Getenv("MPC_PROVIDER_MAGALU_CLIENT_ID")),
+			ClientSecret: strings.TrimSpace(os.Getenv("MPC_PROVIDER_MAGALU_CLIENT_SECRET")),
+			AuthorizeURL: "https://id.magalu.com/login",
+			TokenURL:     "https://id.magalu.com/oauth/token",
+		})
+	})
 }
 
 func NewAdapter(cfg Config) *Adapter {
