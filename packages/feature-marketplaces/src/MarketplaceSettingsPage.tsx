@@ -1,203 +1,264 @@
-// packages/feature-marketplaces/src/MarketplaceSettingsPage.tsx
-import { useEffect, useState, useCallback } from "react";
-import { Plus } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
+  CreateIntegrationInstallationRequest,
+  IntegrationInstallation,
+  IntegrationProviderDefinition,
   MarketplaceAccount,
-  MarketplaceDefinition,
   MarketplacePolicy,
-  CreateMarketplaceAccountRequest,
-  CreateMarketplacePolicyRequest,
+  SubmitIntegrationCredentialsRequest,
 } from "@marketplace-central/sdk-runtime";
-import { AccountCard } from "./AccountCard";
-import { AddAccountCard } from "./AddAccountCard";
-import { EmptyState } from "./EmptyState";
-import { SkeletonCard } from "./SkeletonCard";
-import { AccountPanel } from "./AccountPanel";
+import { ProviderCatalogCard } from "./ProviderCatalogCard";
+import { ProviderCatalogPanel } from "./ProviderCatalogPanel";
 
 interface MarketplaceClient {
+  listIntegrationProviders: () => Promise<{ items: IntegrationProviderDefinition[] }>;
+  listIntegrationInstallations: () => Promise<{ items: IntegrationInstallation[] }>;
+  createIntegrationInstallation: (req: CreateIntegrationInstallationRequest) => Promise<IntegrationInstallation>;
+  startIntegrationAuthorization: (installationId: string) => Promise<{ auth_url: string }>;
+  startIntegrationReauthorization: (installationId: string) => Promise<{ auth_url: string }>;
+  submitIntegrationCredentials: (
+    installationId: string,
+    req: SubmitIntegrationCredentialsRequest,
+  ) => Promise<unknown>;
+  disconnectIntegrationInstallation: (installationId: string) => Promise<unknown>;
+  startIntegrationFeeSync: (installationId: string) => Promise<unknown>;
   listMarketplaceAccounts: () => Promise<{ items: MarketplaceAccount[] }>;
-  createMarketplaceAccount: (req: CreateMarketplaceAccountRequest) => Promise<MarketplaceAccount>;
   listMarketplacePolicies: () => Promise<{ items: MarketplacePolicy[] }>;
-  createMarketplacePolicy: (req: CreateMarketplacePolicyRequest) => Promise<MarketplacePolicy>;
-  listMarketplaceDefinitions: () => Promise<{ items: MarketplaceDefinition[] }>;
 }
 
 interface MarketplaceSettingsPageProps {
   client: MarketplaceClient;
+  navigateToAuthUrl?: (url: string) => void;
 }
 
-type PanelState =
-  | { open: false }
-  | { open: true; mode: "create" }
-  | { open: true; mode: "view"; account: MarketplaceAccount };
+function createInstallationID(providerCode: string): string {
+  return `inst-${providerCode}-${crypto.randomUUID()}`;
+}
 
-export function MarketplaceSettingsPage({ client }: MarketplaceSettingsPageProps) {
+function defaultNavigateToAuthUrl(url: string) {
+  window.location.assign(url);
+}
+
+export function MarketplaceSettingsPage({
+  client,
+  navigateToAuthUrl = defaultNavigateToAuthUrl,
+}: MarketplaceSettingsPageProps) {
+  const [providers, setProviders] = useState<IntegrationProviderDefinition[]>([]);
+  const [installations, setInstallations] = useState<IntegrationInstallation[]>([]);
   const [accounts, setAccounts] = useState<MarketplaceAccount[]>([]);
   const [policies, setPolicies] = useState<MarketplacePolicy[]>([]);
-  const [definitions, setDefinitions] = useState<MarketplaceDefinition[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [panel, setPanel] = useState<PanelState>({ open: false });
+  const [selectedProviderCode, setSelectedProviderCode] = useState<string | null>(null);
+  const [actionPending, setActionPending] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     try {
-      const [accsRes, polsRes, defsRes] = await Promise.all([
+      const [providersRes, installationsRes, accountsRes, policiesRes] = await Promise.all([
+        client.listIntegrationProviders(),
+        client.listIntegrationInstallations(),
         client.listMarketplaceAccounts(),
         client.listMarketplacePolicies(),
-        client.listMarketplaceDefinitions(),
       ]);
-      setAccounts(accsRes.items);
-      setPolicies(polsRes.items);
-      setDefinitions(defsRes.items);
-    } catch (err: unknown) {
-      const e = err as { error?: { message?: string } };
-      setLoadError(e?.error?.message ?? "Failed to load marketplace data.");
+      setProviders(providersRes.items);
+      setInstallations(installationsRes.items);
+      setAccounts(accountsRes.items);
+      setPolicies(policiesRes.items);
+    } catch (error) {
+      const detail = error as { error?: { message?: string } };
+      setLoadError(detail?.error?.message ?? "Failed to load provider catalog.");
     } finally {
       setLoading(false);
     }
   }, [client]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-  function openCreate() {
-    setPanel({ open: true, mode: "create" });
-  }
+  const selectedProvider = useMemo(
+    () => providers.find((provider) => provider.provider_code === selectedProviderCode) ?? null,
+    [providers, selectedProviderCode],
+  );
 
-  function openView(account: MarketplaceAccount) {
-    setPanel({ open: true, mode: "view", account });
-  }
+  const selectedInstallation = useMemo(() => {
+    if (!selectedProvider) {
+      return null;
+    }
+    return installations.find((item) => item.provider_code === selectedProvider.provider_code) ?? null;
+  }, [selectedProvider, installations]);
 
-  function closePanel() {
-    setPanel({ open: false });
-  }
+  const policyCount = policies.length;
+  const accountCount = accounts.length;
 
-  async function handleCreateAccount(req: CreateMarketplaceAccountRequest) {
-    const created = await client.createMarketplaceAccount(req);
-    await load();
+  async function ensureInstallation(provider: IntegrationProviderDefinition): Promise<IntegrationInstallation> {
+    const existing = installations.find((item) => item.provider_code === provider.provider_code);
+    if (existing) {
+      return existing;
+    }
+    const created = await client.createIntegrationInstallation({
+      installation_id: createInstallationID(provider.provider_code),
+      provider_code: provider.provider_code,
+      family: "marketplace",
+      display_name: provider.display_name,
+    });
+    setInstallations((current) => [...current, created]);
     return created;
   }
 
-  async function handleCreatePolicy(req: CreateMarketplacePolicyRequest) {
-    const created = await client.createMarketplacePolicy(req);
-    await load();
-    return created;
+  async function executeWithPending(action: () => Promise<void>) {
+    setActionPending(true);
+    try {
+      await action();
+      await load();
+    } finally {
+      setActionPending(false);
+    }
   }
 
-  const panelOpen = panel.open;
+  async function handleConnect() {
+    if (!selectedProvider) {
+      return;
+    }
+    await executeWithPending(async () => {
+      const created = await ensureInstallation(selectedProvider);
+      const interactive = selectedProvider.install_mode === "interactive";
+      if (interactive) {
+        const result = await client.startIntegrationAuthorization(created.installation_id);
+        if (result.auth_url) {
+          navigateToAuthUrl(result.auth_url);
+        }
+      }
+    });
+  }
 
-  // Resolve panel props
-  const panelAccount = panel.open && panel.mode === "view" ? panel.account : null;
-  const panelPolicy = panelAccount
-    ? (policies.find((p) => p.account_id === panelAccount.account_id) ?? null)
-    : null;
-  const panelDefinition = panelAccount
-    ? (definitions.find((d) => {
-        const raw = d as unknown as Record<string, unknown>;
-        const code = (raw.marketplace_code ?? raw.code ?? "") as string;
-        return code === panelAccount.channel_code;
-      }) ?? null)
-    : null;
+  async function handleAuthorize() {
+    if (!selectedInstallation) {
+      return;
+    }
+    await executeWithPending(async () => {
+      const result = await client.startIntegrationAuthorization(selectedInstallation.installation_id);
+      if (result.auth_url) {
+        navigateToAuthUrl(result.auth_url);
+      }
+    });
+  }
+
+  async function handleReauthorize() {
+    if (!selectedInstallation) {
+      return;
+    }
+    await executeWithPending(async () => {
+      const result = await client.startIntegrationReauthorization(selectedInstallation.installation_id);
+      if (result.auth_url) {
+        navigateToAuthUrl(result.auth_url);
+      }
+    });
+  }
+
+  async function handleSubmitCredentials(credentials: Record<string, string>) {
+    if (!selectedProvider) {
+      return;
+    }
+    await executeWithPending(async () => {
+      const installation = await ensureInstallation(selectedProvider);
+      const request: SubmitIntegrationCredentialsRequest = {
+        credentials,
+      };
+      if (credentials.api_key) {
+        request.api_key = credentials.api_key;
+      }
+      await client.submitIntegrationCredentials(installation.installation_id, request);
+    });
+  }
+
+  async function handleDisconnect() {
+    if (!selectedInstallation) {
+      return;
+    }
+    await executeWithPending(async () => {
+      await client.disconnectIntegrationInstallation(selectedInstallation.installation_id);
+    });
+  }
+
+  async function handleFeeSync() {
+    if (!selectedInstallation) {
+      return;
+    }
+    await executeWithPending(async () => {
+      await client.startIntegrationFeeSync(selectedInstallation.installation_id);
+    });
+  }
 
   return (
     <div className="min-h-full bg-slate-50">
-      {/* Page header */}
-      <div className="flex items-center justify-between px-6 pt-6 pb-4">
+      <div className="flex items-center justify-between px-6 pb-4 pt-6">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Marketplaces</h1>
           <p className="mt-0.5 text-sm text-slate-500">
-            Manage your channels and pricing policies
+            Provider catalog with integration lifecycle and setup status
           </p>
         </div>
-        <button
-          type="button"
-          onClick={openCreate}
-          aria-label="Connect Marketplace"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-lg shadow-sm transition-all duration-150 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          Connect Marketplace
-        </button>
+        <div className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600">
+          Accounts: <span className="font-semibold text-slate-900">{accountCount}</span> · Policies:{" "}
+          <span className="font-semibold text-slate-900">{policyCount}</span>
+        </div>
       </div>
 
-      {/* Error banner */}
       {loadError && (
-        <div className="mx-6 mb-4 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+        <div className="mx-6 mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {loadError}{" "}
-          <button type="button" onClick={load} className="underline ml-1 cursor-pointer">
+          <button type="button" className="ml-1 underline" onClick={() => void load()}>
             Retry
           </button>
         </div>
       )}
 
-      {/* Grid */}
       <div
         className="px-6 pb-6 transition-all duration-200"
-        style={{ paddingRight: panelOpen ? "432px" : "24px" }}
+        style={{ paddingRight: selectedProvider ? "432px" : "24px" }}
       >
         {loading ? (
-          /* Skeleton */
-          <div
-            className="grid gap-5"
-            style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}
-            aria-busy="true"
-          >
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
+          <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }} aria-busy="true">
+            <div className="h-36 animate-pulse rounded-lg border border-slate-200 bg-white" />
+            <div className="h-36 animate-pulse rounded-lg border border-slate-200 bg-white" />
+            <div className="h-36 animate-pulse rounded-lg border border-slate-200 bg-white" />
           </div>
-        ) : accounts.length === 0 ? (
-          /* Empty state */
-          <EmptyState onAdd={openCreate} />
+        ) : providers.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-slate-300 bg-white px-6 py-8 text-sm text-slate-500">
+            No providers available yet.
+          </div>
         ) : (
-          /* Account cards */
-          <div
-            className="grid gap-5"
-            style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}
-          >
-            {accounts.map((account) => {
-              const policy = policies.find((p) => p.account_id === account.account_id) ?? null;
-              const selected =
-                panel.open && panel.mode === "view" && panel.account.account_id === account.account_id;
+          <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
+            {providers.map((provider) => {
+              const installation = installations.find((item) => item.provider_code === provider.provider_code) ?? null;
               return (
-                <AccountCard
-                  key={account.account_id}
-                  account={account}
-                  policy={policy}
-                  selected={selected}
-                  onSelect={openView}
+                <ProviderCatalogCard
+                  key={provider.provider_code}
+                  provider={provider}
+                  installation={installation}
+                  onSelect={(selected) => setSelectedProviderCode(selected.provider_code)}
                 />
               );
             })}
-            <AddAccountCard onAdd={openCreate} />
           </div>
         )}
       </div>
 
-      {/* Slide-in panel */}
-      {panelOpen && panel.mode === "create" && (
-        <AccountPanel
-          mode="create"
-          account={null}
-          policy={null}
-          definition={null}
-          definitions={definitions}
-          onClose={closePanel}
-          onCreateAccount={handleCreateAccount}
-          onCreatePolicy={handleCreatePolicy}
-        />
-      )}
-      {panelOpen && panel.mode === "view" && panelAccount && (
-        <AccountPanel
-          mode="view"
-          account={panelAccount}
-          policy={panelPolicy}
-          definition={panelDefinition}
-          definitions={definitions}
-          onClose={closePanel}
-          onCreateAccount={handleCreateAccount}
-          onCreatePolicy={handleCreatePolicy}
+      {selectedProvider && (
+        <ProviderCatalogPanel
+          provider={selectedProvider}
+          installation={selectedInstallation}
+          pending={actionPending}
+          onClose={() => setSelectedProviderCode(null)}
+          onConnect={handleConnect}
+          onAuthorize={handleAuthorize}
+          onReauthorize={handleReauthorize}
+          onSubmitCredentials={handleSubmitCredentials}
+          onDisconnect={handleDisconnect}
+          onFeeSync={handleFeeSync}
         />
       )}
     </div>

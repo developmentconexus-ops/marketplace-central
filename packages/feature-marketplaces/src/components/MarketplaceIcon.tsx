@@ -3,6 +3,9 @@ const BRAND: Record<string, { bg: string; text: string }> = {
   mercado_livre: { bg: "#FFE600", text: "#1A1A1A" },
   magalu:        { bg: "#0086FF", text: "#FFFFFF" },
   shopee:        { bg: "#EE4D2D", text: "#FFFFFF" },
+  amazon:        { bg: "#111827", text: "#FFFFFF" },
+  leroy_merlin:  { bg: "#32A852", text: "#FFFFFF" },
+  madeira_madeira: { bg: "#8B5A2B", text: "#FFFFFF" },
   americanas:    { bg: "#E30613", text: "#FFFFFF" },
 };
 

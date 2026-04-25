@@ -29,4 +29,16 @@ describe("StatusBadge", () => {
     const { container } = render(<StatusBadge status="pending" />);
     expect(container.firstChild).toHaveClass("bg-slate-100");
   });
+
+  it("uses amber classes for requires_reauth", () => {
+    const { container } = render(<StatusBadge status="requires_reauth" />);
+    expect(container.firstChild).toHaveClass("bg-amber-100");
+    expect(container.firstChild).toHaveClass("text-amber-700");
+  });
+
+  it("uses red classes for blocked", () => {
+    const { container } = render(<StatusBadge status="blocked" />);
+    expect(container.firstChild).toHaveClass("bg-red-100");
+    expect(container.firstChild).toHaveClass("text-red-700");
+  });
 });

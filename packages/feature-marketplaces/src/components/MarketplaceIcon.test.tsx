@@ -14,6 +14,13 @@ describe("MarketplaceIcon", () => {
     expect(el.style.backgroundColor).toBe("rgb(255, 51, 102)"); // #FF3366
   });
 
+  it("applies amazon brand color as background", () => {
+    const { container } = render(<MarketplaceIcon code="amazon" />);
+    const el = container.firstChild as HTMLElement;
+    expect(el.style.backgroundColor).toBe("rgb(17, 24, 39)");
+    expect(screen.getByText("A")).toBeInTheDocument();
+  });
+
   it("renders unknown code with default color and correct initial", () => {
     const { container } = render(<MarketplaceIcon code="unknown_mp" />);
     const el = container.firstChild as HTMLElement;
