@@ -54,3 +54,4 @@ POST /admin/fee-schedules/seed
 - Definitions are plugin-based in `modules/marketplaces/registry/*` and auto-registered via `init()`.
 - Startup sync seeds definitions and optional stub fee rows.
 - Frontend marketplace forms are definition-driven from API payloads.
+- Marketplace catalog UX in `feature-marketplaces` is provider-first and reads operational connection state from integrations (`/integrations/providers` + `/integrations/installations`), while marketplace accounts/policies stay focused on pricing setup.

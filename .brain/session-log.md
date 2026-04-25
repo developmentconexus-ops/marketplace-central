@@ -1,21 +1,25 @@
 # Last Session - Marketplace Central
-> Date: 2026-04-13 | Session: #16
+> Date: 2026-04-25 | Session: #18
 
 ## What Was Accomplished
-- Closed `T-029` as `DONE_WITH_CONCERNS` with consolidated evidence in `docs/superpowers/evidence/2026-04-13-t-029-validation-evidence.md`
-- Captured fresh UI evidence for integrations runtime (`mercado_livre`, `magalu`, `shopee`) in `docs/superpowers/evidence/screenshots/`
-- Re-validated API flows and logs for auth status parity, reauth start, disconnect idempotency, fee-sync queue/timeline, and tenant isolation checks
-- Added tenant-scoped SQL verification output to the evidence ledger and synced `roadmap.json` task state for `T-029`
+- Completed six-provider integration catalog coverage and registration tests (`mercado_livre`, `magalu`, `shopee`, `amazon`, `leroy_merlin`, `madeira_madeira`)
+- Added Amazon/Leroy Merlin/MadeiraMadeira provider auth adapters and wired provider side-effect imports in composition
+- Aligned OpenAPI + `sdk-runtime` provider metadata contract for catalog UX (including `auth_strategy: "lwa"`)
+- Redesigned `feature-marketplaces` page to a provider-first integration-backed catalog with detail panel/actions
+- Ran verification: backend `go test ./...`, frontend `npm test -- --runInBand`, frontend `npm run build`
+- Wrote rollout evidence in `docs/superpowers/evidence/2026-04-25-marketplace-catalog-ux-data-foundation.md`
 
 ## What Changed in the System
-- No architectural or module-structure changes in this session
-- Evidence artifacts expanded with screenshot files under `docs/superpowers/evidence/screenshots/`
+- Marketplace UX now treats integrations provider/installations as the canonical operational catalog source
+- Integrations catalog now exposes six-provider baseline metadata used directly by frontend via `sdk-runtime`
+- New provider catalog UI components were added: `ProviderCatalogCard` and `ProviderCatalogPanel`
 
 ## Decisions Made This Session
-- Marked `T-029` complete as `DONE_WITH_CONCERNS` instead of full `DONE`, because interactive OAuth sandbox callback success still depends on external provider consent execution
+- Keep Shopee visible in catalog but operationally blocked through provider metadata (`execution_mode=blocked`) instead of hiding it
+- Introduce `navigateToAuthUrl` injection in marketplace page for deterministic auth-flow testing without direct `window.location` coupling
 
 ## What's Immediately Next
-- Execute `T-028` (frontend connection/sync UX) and then run a final OAuth callback success pass to remove the remaining `DONE_WITH_CONCERNS` note
+- Start phase-4 VTEX connector work (connector infrastructure first), using the new provider catalog foundation as baseline
 
 ## Open Questions
-- None
+- Whether to enforce stricter React test hygiene for the marketplace loading-state `act(...)` warnings now or defer to a dedicated test-cleanup pass

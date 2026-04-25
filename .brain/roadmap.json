@@ -1,11 +1,11 @@
 {
     "project":  "marketplace-central",
-    "last_updated":  "2026-04-25T16:30:00Z",
-    "current_phase_id":  "phase-7",
+    "last_updated":  "2026-04-25T14:32:36Z",
+    "current_phase_id":  "phase-4",
     "summary":  {
-                    "completed_phases":  3,
-                    "completed_tasks":  17,
-                    "total_tasks":  27
+                    "completed_phases":  5,
+                    "completed_tasks":  22,
+                    "total_tasks":  28
                 },
     "phases":  [
                    {
@@ -80,59 +80,96 @@
                        "id":  "phase-3",
                        "name":  "Marketplace Registry \u0026 Fee Foundation",
                        "status":  "completed",
-                       "completed_at":  "2026-04-08T17:00:00Z",
-                       "tasks":  [
-                                     {
-                                         "id":  "3.1",
-                                         "name":  "Registry + fee schedule backend",
-                                         "status":  "done",
-                                         "completed_at":  "2026-04-08T14:00:00Z",
-                                         "notes":  "Migrations 0010-0013, registry package, FeeScheduleService, FeeSyncService, connector seed adapters, transport handlers, FeeScheduleLookup in BatchOrchestrator"
-                                     },
-                                     {
-                                         "id":  "3.2",
-                                         "name":  "Audit remediation",
-                                         "status":  "done",
-                                         "completed_at":  "2026-04-08T16:30:00Z",
-                                         "notes":  "7 issues resolved: LookupFee single-query rewrite, CategoryID wiring, fromDomain mapping, commission_override transport, OpenAPI admin endpoints + schema, SDK types, 15 new tests"
-                                     },
-                                     {
-                                         "id":  "3.3",
-                                         "name":  "Chrome validation",
-                                         "status":  "done",
-                                         "completed_at":  "2026-04-08T17:00:00Z",
-                                         "notes":  "All 6 pages pass, zero console errors, batch simulation running correctly at 19.9% avg margin"
-                                     }
-                                 ]
+                       "completed_at":  "2026-04-08T17:00:00Z"
                    },
                    {
                        "id":  "phase-3b",
-                       "name":  "UI/UX Overhaul \u0026 Marketplace Data Foundation",
-                       "status":  "in_progress",
-                       "focus":  "Fix marketplace page UX to match legacy quality; seed all 6 marketplace definitions with full commission profiles and capabilities",
+                       "name":  "Marketplace Catalog UX \u0026 Data Foundation",
+                       "status":  "completed",
+                       "focus":  "Use the integration plugin framework to complete provider catalog coverage, then make marketplace UX render the full operational state cleanly",
                        "tasks":  [
                                      {
-                                         "id":  "3b.1",
-                                         "name":  "Redesign Marketplace page UI/UX",
-                                         "status":  "pending"
+                                         "id":  "T-031",
+                                         "title":  "Complete provider catalog definitions",
+                                         "description":  "Register all six marketplace providers through the integration plugin framework with auth profile, capabilities, fee baseline, and blocked/unavailable states where applicable.",
+                                         "status":  "done",
+                                         "priority":  "high",
+                                         "depends_on":  [
+                                                            "T-030"
+                                                        ],
+                                         "started_at":  "2026-04-25T14:32:36Z",
+                                         "completed_at":  "2026-04-25T14:32:36Z",
+                                         "notes":  "Target providers: Mercado Livre, Amazon, Magalu, Leroy Merlin, MadeiraMadeira, Shopee. Existing ML/Magalu/Shopee registrations should be audited and completed rather than duplicated.",
+                                         "subtasks":  [
+                                                          "Audit current provider registrations against legacy provider list",
+                                                          "Add missing Amazon, Leroy Merlin, and MadeiraMadeira definitions",
+                                                          "Normalize ML, Magalu, and Shopee capabilities and fee baselines",
+                                                          "Add provider registry tests and contract-visible metadata checks"
+                                                      ]
                                      },
                                      {
-                                         "id":  "3b.2",
-                                         "name":  "Seed all 6 marketplace definitions into MPC",
-                                         "status":  "pending",
-                                         "notes":  "Legacy has: ML (oauth2, 14.8%+R$5), Amazon (lwa, 12%), Magalu (oauth2, 16%), Leroy (api_key, 18%), Madeira (token, 15%), Shopee (blocked, tiered). Only ML/Shopee/Magalu are in MPC definitions today."
+                                         "id":  "T-032",
+                                         "title":  "Redesign marketplace catalog and integration UX",
+                                         "description":  "Update marketplace-facing UI so sellers can scan provider availability, auth requirements, connection health, sync capabilities, and next actions from the complete provider catalog.",
+                                         "status":  "done",
+                                         "priority":  "high",
+                                         "depends_on":  [
+                                                            "T-031"
+                                                        ],
+                                         "started_at":  "2026-04-25T14:32:36Z",
+                                         "completed_at":  "2026-04-25T14:32:36Z",
+                                         "subtasks":  [
+                                                          "Render all provider definitions from sdk-runtime data only",
+                                                          "Represent connected, disconnected, unavailable, blocked, and degraded states",
+                                                          "Expose auth CTA, credential requirements, fee-sync status, and capability health",
+                                                          "Add loading, error, and empty states for every data-fetching view"
+                                                      ]
                                      },
                                      {
-                                         "id":  "3b.3",
-                                         "name":  "Close Phase 3 open items",
-                                         "status":  "pending"
+                                         "id":  "T-033",
+                                         "title":  "Align provider catalog contract and SDK",
+                                         "description":  "Ensure OpenAPI schemas and sdk-runtime types expose the provider metadata needed by the redesigned UX without direct frontend backend calls.",
+                                         "status":  "done",
+                                         "priority":  "medium",
+                                         "depends_on":  [
+                                                            "T-031"
+                                                        ],
+                                         "started_at":  "2026-04-25T14:32:36Z",
+                                         "completed_at":  "2026-04-25T14:32:36Z",
+                                         "notes":  null,
+                                         "subtasks":  [
+                                                          "Update OpenAPI provider definition schemas if metadata is missing",
+                                                          "Update sdk-runtime types and methods",
+                                                          "Add frontend/backend contract tests for provider metadata"
+                                                      ]
+                                     },
+                                     {
+                                         "id":  "T-034",
+                                         "title":  "Close marketplace catalog foundation with evidence",
+                                         "description":  "Run backend, frontend, and browser validation for the complete provider catalog and document the remaining known constraints before moving to VTEX connector depth.",
+                                         "status":  "done",
+                                         "priority":  "medium",
+                                         "depends_on":  [
+                                                            "T-032",
+                                                            "T-033"
+                                                        ],
+                                         "started_at":  "2026-04-25T14:32:36Z",
+                                         "completed_at":  "2026-04-25T14:32:36Z",
+                                         "notes":  "Backend/frontend tests and build verified. Browser screenshot evidence not captured in this session.",
+                                         "subtasks":  [
+                                                          "Run Go tests with local GOCACHE",
+                                                          "Run frontend tests and build",
+                                                          "Capture browser evidence for provider catalog and integration states",
+                                                          "Update brain checkpoint and decide whether phase-4 VTEX connector starts next"
+                                                      ]
                                      }
-                                 ]
+                                 ],
+                       "completed_at":  "2026-04-25T14:32:36Z"
                    },
                    {
                        "id":  "phase-4",
                        "name":  "VTEX connector",
-                       "status":  "not_started",
+                       "status":  "in_progress",
                        "focus":  "Product registration via VTEX API, catalog sync",
                        "tasks":  [
                                      {
@@ -196,49 +233,35 @@
                    {
                        "id":  "phase-7",
                        "name":  "Integrations operationalization",
-                       "status":  "in_progress",
+                       "status":  "completed",
+                       "completed_at":  "2026-04-25T13:40:06Z",
                        "focus":  "Deliver real provider operations on top of integrations foundation: OAuth, fee sync, and UX",
                        "tasks":  [
                                      {
                                          "id":  "T-026",
                                          "title":  "OAuth and credential lifecycle spec + execution",
-                                         "description":  "Implement provider OAuth authorization, callback, token exchange/refresh, and credential rotation flows on integrations installations.",
                                          "status":  "done",
                                          "priority":  "high",
                                          "depends_on":  [
 
                                                         ],
                                          "started_at":  "2026-04-09T12:00:00Z",
-                                         "completed_at":  "2026-04-10T03:00:00Z",
-                                         "notes":  null,
-                                         "subtasks":  [
-                                                          "Define provider OAuth contract and callback endpoint behavior",
-                                                          "Persist and rotate credentials and auth sessions safely",
-                                                          "Add integration tests for connect/reauth/disconnect flows"
-                                                      ]
+                                         "completed_at":  "2026-04-10T03:00:00Z"
                                      },
                                      {
                                          "id":  "T-027",
                                          "title":  "Fee sync architecture on installation capabilities",
-                                         "description":  "Implement installation-scoped fee synchronization using capability states and operation runs.",
                                          "status":  "done",
                                          "priority":  "high",
                                          "depends_on":  [
                                                             "T-026"
                                                         ],
                                          "started_at":  "2026-04-10T10:00:00Z",
-                                         "completed_at":  "2026-04-10T23:00:00Z",
-                                         "notes":  null,
-                                         "subtasks":  [
-                                                          "Define fee sync scheduler and retry policy",
-                                                          "Use operation runs for observability and idempotency",
-                                                          "Add tests for fallback and degraded states"
-                                                      ]
+                                         "completed_at":  "2026-04-10T23:00:00Z"
                                      },
                                      {
                                          "id":  "T-028",
                                          "title":  "Frontend connection and sync UX",
-                                         "description":  "Deliver Marketplace Integrations UX for connect, health status, and sync actions based on backend operational states.",
                                          "status":  "done",
                                          "priority":  "medium",
                                          "depends_on":  [
@@ -246,18 +269,11 @@
                                                             "T-027"
                                                         ],
                                          "started_at":  "2026-04-16T20:31:12Z",
-                                         "completed_at":  "2026-04-16T20:31:12Z",
-                                         "notes":  "Runtime hub UX delivered and hardened: stale async guard on selection switch, provider-aware auth CTAs, credential form reset on installation switch, sync-failure KPI refresh after fee-sync reload cycle, drawer accessibility (`aria-modal` + Escape close), and targeted regressions added.",
-                                         "subtasks":  [
-                                                          "Add provider installation flows in web UI",
-                                                          "Expose auth/capability/sync status states and actions",
-                                                          "Validate end-to-end with sdk-runtime contracts"
-                                                      ]
+                                         "completed_at":  "2026-04-16T20:31:12Z"
                                      },
                                      {
                                          "id":  "T-029",
                                          "title":  "Operational E2E validation",
-                                         "description":  "Run end-to-end validation against provider sandbox/test accounts and publish runbook.",
                                          "status":  "done",
                                          "priority":  "medium",
                                          "depends_on":  [
@@ -266,33 +282,19 @@
                                                             "T-028"
                                                         ],
                                          "started_at":  "2026-04-13",
-                                         "completed_at":  "2026-04-14T00:20:50Z",
-                                         "notes":  "Classified as DONE_WITH_CONCERNS. Full backend/frontend workflow, auth status parity, fee-sync timeline, disconnect idempotency, tenant isolation (API+SQL), logs, and UI screenshots were captured. Remaining concern: sandbox interactive OAuth callback success after reauth still depends on external provider consent execution.",
-                                         "subtasks":  [
-                                                          "Define smoke scenarios and expected evidence",
-                                                          "Execute backend+sdk+ui flow validation",
-                                                          "Document runbook and known limits"
-                                                     ]
-                                    },
-                                    {
-                                        "id":  "T-030",
-                                        "title":  "Integration catalog plugin framework",
-                                        "description":  "Refactor provider definitions, auth adapters, and fee syncers into self-registration patterns so new integrations can be added with minimal central wiring.",
-                                        "status":  "planned",
-                                        "priority":  "high",
-                                        "depends_on":  [
-                                                           "T-027"
-                                                       ],
-                                        "started_at":  null,
-                                        "completed_at":  null,
-                                        "notes":  null,
-                                        "subtasks":  [
-                                                         "Add provider definition and auth factory registration",
-                                                         "Register existing ML/Magalu/Shopee providers",
-                                                         "Register existing fee syncers",
-                                                         "Update composition root and documentation"
-                                                     ]
-                                    }
+                                         "completed_at":  "2026-04-14T00:20:50Z"
+                                     },
+                                     {
+                                         "id":  "T-030",
+                                         "title":  "Integration catalog plugin framework",
+                                         "status":  "done",
+                                         "priority":  "high",
+                                         "depends_on":  [
+                                                            "T-027"
+                                                        ],
+                                         "started_at":  "2026-04-25T13:30:00Z",
+                                         "completed_at":  "2026-04-25T13:40:06Z"
+                                     }
                                  ]
                    }
                ]

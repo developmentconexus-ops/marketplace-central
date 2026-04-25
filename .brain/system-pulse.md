@@ -1,5 +1,5 @@
 # System Pulse - Marketplace Central
-> Last updated: 2026-04-25 | Session: #17
+> Last updated: 2026-04-25 | Session: #18
 
 ## Project Identity
 
@@ -92,27 +92,28 @@ contracts/api/
 
 ## Current Phase
 
-**Phase 7 - Integrations operationalization** (in progress)
+**Phase 4 - VTEX connector** (in progress)
 
-Completed in this phase:
-1. OAuth + credential lifecycle (provider operational)
-2. Fee sync architecture (installation-scoped) with audit remediation
-3. Operational E2E validation (`T-029`) closed as `DONE_WITH_CONCERNS`
+Recently completed phase:
+1. `T-031` Complete provider catalog definitions
+2. `T-032` Redesign marketplace catalog and integration UX
+3. `T-033` Align OpenAPI + `sdk-runtime` provider metadata contract
+4. `T-034` Close catalog foundation with backend/frontend verification and evidence ledger
 
 Next in sequence:
-4. Frontend connection/sync UX (T-028)
+1. Start VTEX connector infrastructure (`4.1`)
+2. Continue catalog enhancement for VTEX operational flows (`4.2`)
+3. Expose VTEX connector UX in frontend (`4.3`)
 
 ---
 
 ## Recent Changes
 
+- 2026-04-25: Completed `T-031` through `T-034` with commits `b922940`, `1540a8a`, and `d915806`; added six-provider catalog baseline and provider-first marketplace UX
+- 2026-04-25: Added rollout evidence ledger at `docs/superpowers/evidence/2026-04-25-marketplace-catalog-ux-data-foundation.md` with passing backend/frontend/build verification
+- 2026-04-25: Restructured `phase-3b` into plugin-framework-driven tasks `T-031` through `T-034`
 - 2026-04-25: Replaced manual integration wiring with registration-backed provider definitions, auth factories, and fee syncer factories; `root.go` now consumes registries
-- 2026-04-25: Added ADR-004 and roadmap task `T-030` to track and document the integration catalog plugin framework
-- 2026-04-13: Closed `T-029` as `DONE_WITH_CONCERNS` with consolidated API/UI/log/SQL evidence and new runtime screenshots
-- 2026-04-13: Re-ran the full backend+frontend verification workflow after power interruption; all gates passed with only known non-blocking third-party build warnings
-- 2026-04-13: Applied migration `0018_marketplaces_tenant_isolation.sql` via `cmd/migrate` and confirmed idempotent re-run (`applied 1`, then `applied 0`)
-- 2026-04-13: Re-verified impacted backend/frontend flows for the new implementation (`go test ./...`, `npm test -- --runInBand`, `npm run build`)
-- 2026-04-11: Aligned integrations lifecycle and `sdk-runtime` auth methods with OpenAPI contract (authorize + auth status)
+- 2026-04-25: Completed roadmap task `T-030` and added ADR-004 to document the integration catalog plugin framework
 
 ---
 
@@ -135,7 +136,8 @@ Next in sequence:
 ## Known Risks
 
 - `.brain/` remains gitignored by default (project memory can diverge across machines)
+- `.agents/skills/nexus-*` are currently untracked local project tooling
 - Migration runner `cmd/migrate/main.go` still needs production-hardening workflow
-- Frontend operational UX (`T-028`) is not delivered yet for new fee-sync/auth backend states
 - OAuth callback success evidence for external provider consent remains dependent on sandbox availability (tracked as `DONE_WITH_CONCERNS` in `T-029`)
 - Windows environments may require local absolute `GOCACHE` for stable test runs
+- Frontend tests include non-blocking React `act(...)` warnings for marketplace loading-state test setup

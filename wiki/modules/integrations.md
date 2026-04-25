@@ -26,6 +26,19 @@ Frontend: `packages/feature-integrations/`
 - Composition root reads registries to build runtime dependencies.
 - Providers appear in catalog (`/integrations/providers`) even when tenant has no installation yet.
 
+## Provider Catalog Baseline
+
+Current marketplace providers in the integrations catalog:
+
+- `mercado_livre` - `oauth2`, interactive
+- `magalu` - `oauth2`, interactive
+- `amazon` - `lwa`, interactive
+- `leroy_merlin` - `api_key`, manual
+- `madeira_madeira` - `token`, manual
+- `shopee` - `api_key`, manual, blocked via metadata (`execution_mode=blocked`)
+
+Catalog metadata is the source for rollout and UX semantics (`rollout_stage`, `execution_mode`, `unavailable_reason`, baseline fee hints, credential schema).
+
 ## Database Focus
 
 ```sql
