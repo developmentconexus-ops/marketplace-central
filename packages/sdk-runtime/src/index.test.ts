@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { createMarketplaceCentralClient } from "./index";
 
 describe("sdk runtime", () => {
-  it("listIntegrationProviders calls /integrations/providers and parses items", async () => {
+  it("listIntegrationProviders calls /integrations/providers and parses Amazon LWA and blocked Shopee metadata", async () => {
     const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
     const client = createMarketplaceCentralClient({
       baseUrl: "http://localhost:8080",
@@ -12,15 +12,52 @@ describe("sdk runtime", () => {
           JSON.stringify({
             items: [
               {
-                provider_code: "mercado_livre",
+                provider_code: "amazon",
                 tenant_id: "system",
                 family: "marketplace",
-                display_name: "Mercado Livre",
-                auth_strategy: "oauth2",
+                display_name: "Amazon",
+                auth_strategy: "lwa",
                 install_mode: "interactive",
-                metadata: { country: "BR" },
-                declared_capabilities: ["catalog_publish"],
+                metadata: {
+                  country: "BR",
+                  rollout_stage: "wave_2",
+                  execution_mode: "available",
+                  fee_source: "api_sync",
+                  baseline_commission_percent: 16.0,
+                  baseline_fixed_fee_amount: 0,
+                  credential_schema: [
+                    { key: "lwa_client_id", label: "LWA Client ID", secret: false },
+                    { key: "lwa_client_secret", label: "LWA Client Secret", secret: true },
+                  ],
+                  docs_url: "https://developer-docs.amazon.com/sp-api",
+                },
+                declared_capabilities: ["orders_sync", "catalog_publish"],
                 is_active: true,
+                created_at: "2026-04-09T00:00:00Z",
+                updated_at: "2026-04-09T00:00:00Z",
+              },
+              {
+                provider_code: "shopee",
+                tenant_id: "system",
+                family: "marketplace",
+                display_name: "Shopee",
+                auth_strategy: "token",
+                install_mode: "manual",
+                metadata: {
+                  country: "BR",
+                  rollout_stage: "blocked",
+                  execution_mode: "blocked",
+                  unavailable_reason: "Provider blocked for this region",
+                  fee_source: "seed",
+                  baseline_commission_percent: 14.5,
+                  baseline_fixed_fee_amount: 2.5,
+                  credential_schema: [
+                    { key: "partner_id", label: "Partner ID", secret: false },
+                    { key: "access_token", label: "Access Token", secret: true },
+                  ],
+                },
+                declared_capabilities: ["orders_sync"],
+                is_active: false,
                 created_at: "2026-04-09T00:00:00Z",
                 updated_at: "2026-04-09T00:00:00Z",
               },
@@ -35,8 +72,25 @@ describe("sdk runtime", () => {
 
     expect(String(requests[0].input)).toBe("http://localhost:8080/integrations/providers");
     expect(requests[0].init?.method).toBe("GET");
-    expect(result.items).toHaveLength(1);
-    expect(result.items[0].provider_code).toBe("mercado_livre");
+    expect(result.items).toHaveLength(2);
+
+    const amazon = result.items.find((item) => item.provider_code === "amazon");
+    const shopee = result.items.find((item) => item.provider_code === "shopee");
+
+    expect(amazon).toBeDefined();
+    expect(amazon?.auth_strategy).toBe("lwa");
+    expect(amazon?.metadata?.execution_mode).toBe("available");
+    expect(amazon?.metadata?.rollout_stage).toBe("wave_2");
+    expect(amazon?.metadata?.baseline_commission_percent).toBe(16.0);
+    expect(amazon?.metadata?.credential_schema?.[0]).toMatchObject({
+      key: "lwa_client_id",
+      secret: false,
+    });
+
+    expect(shopee).toBeDefined();
+    expect(shopee?.metadata?.execution_mode).toBe("blocked");
+    expect(shopee?.metadata?.rollout_stage).toBe("blocked");
+    expect(shopee?.metadata?.unavailable_reason).toBe("Provider blocked for this region");
   });
 
   it("starts integration authorize flow with auth_url and expires_in", async () => {

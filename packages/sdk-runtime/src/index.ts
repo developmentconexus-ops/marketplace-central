@@ -99,14 +99,26 @@ export interface MarketplaceDefinition {
   metadata: PluginMetadata
 }
 
+export interface IntegrationProviderMetadata {
+  country?: string;
+  rollout_stage?: "v1" | "wave_2" | "blocked";
+  execution_mode?: "available" | "blocked" | "planned";
+  unavailable_reason?: string;
+  fee_source?: "api_sync" | "seed" | "manual";
+  baseline_commission_percent?: number;
+  baseline_fixed_fee_amount?: number;
+  credential_schema?: CredentialField[];
+  docs_url?: string;
+}
+
 export interface IntegrationProviderDefinition {
   provider_code: string;
   tenant_id: string;
   family: "marketplace";
   display_name: string;
-  auth_strategy: "oauth2" | "api_key" | "token" | "none" | "unknown";
+  auth_strategy: "oauth2" | "lwa" | "api_key" | "token" | "none" | "unknown";
   install_mode: "interactive" | "manual" | "hybrid";
-  metadata?: Record<string, unknown>;
+  metadata?: IntegrationProviderMetadata & Record<string, unknown>;
   declared_capabilities: string[];
   is_active: boolean;
   created_at: string;

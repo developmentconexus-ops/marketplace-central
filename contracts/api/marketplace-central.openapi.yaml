@@ -1634,12 +1634,13 @@ components:
           type: string
         auth_strategy:
           type: string
-          enum: [oauth2, api_key, token, none, unknown]
+          enum: [oauth2, lwa, api_key, token, none, unknown]
         install_mode:
           type: string
           enum: [interactive, manual, hybrid]
         metadata:
           type: object
+          description: Provider UI metadata. Stable keys include country, rollout_stage, execution_mode, unavailable_reason, fee_source, baseline_commission_percent, baseline_fixed_fee_amount, credential_schema, docs_url.
           additionalProperties: true
         declared_capabilities:
           type: array
