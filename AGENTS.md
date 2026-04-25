@@ -2,10 +2,21 @@
 
 ## On every session start
 
-1. Read `IMPLEMENTATION_PLAN.md` — know current phase and scope
-2. Read `ARCHITECTURE.md` — know frozen decisions before touching code
-3. Read `wiki/README.md` — wiki index for module docs, architecture notes, and operational references
-4. After any correction: document the lesson in commit message or PR description
+1. Read `ARCHITECTURE.md` — canonical architecture contract and frozen decisions
+2. Read `wiki/README.md` — index for module docs, architecture notes, and operational references
+3. Read `.brain/system-pulse.md` and `.brain/roadmap.json` — current project state and execution plan
+4. Read `IMPLEMENTATION_PLAN.md` only when validating historical phase scope or reconciling older roadmap notes
+5. After any correction: document the lesson in commit message or PR description
+
+## Source of truth
+
+- `ARCHITECTURE.md` is the stable architecture source of truth
+- `.brain/` is Nexus working memory: current status, roadmap, session continuity, and ADR index
+- `wiki/README.md` is the human knowledge index for modules, operations, and implementation context
+- `contracts/api/marketplace-central.openapi.yaml` is the HTTP API contract
+- `IMPLEMENTATION_PLAN.md` is legacy/top-level phase history, not the primary day-to-day plan
+
+When architecture changes, update `ARCHITECTURE.md`, the relevant wiki page, and Nexus/ADR records in the same task.
 
 ## Behavioral guardrails (LLM)
 
@@ -55,22 +66,24 @@ Every decision passes this filter:
 - Errors carry structured codes: `MODULE_ENTITY_REASON` (e.g. `PRICING_SIMULATION_INVALID`)
 - Every handler logs `action`, `result`, `duration_ms`
 - Every write is idempotent and retry-safe
-- All business tables carry `tenant_id`
+- Tenant-owned business tables carry `tenant_id`; global/system reference tables must be explicitly documented
 
 ## Absolute rules — violation = stop and fix immediately
 
 ### Go
 
-- Every Postgres query must include `tenant_id` in the WHERE clause — no exceptions
+- Every tenant-owned Postgres query must scope by `tenant_id`
+- Global/system reference queries are allowed only when the table is intentionally shared, documented, and protected by schema or service rules
 - Every HTTP handler validates request method and returns structured JSON errors
-- Every new module registered in `composition/root.go` with dependency injection
+- Every new module is registered in `composition/root.go` with dependency injection
+- Integration providers self-register definitions/auth/sync factories; composition imports provider packages only to activate registration
 - Transport layer never contains business logic — delegate to application service
 - Application service never imports `net/http` or database packages — use ports
 - Domain entities are pure Go structs with no external dependencies
 - Adapters implement port interfaces — one adapter per external dependency
 - `pgxpool.Pool` is the only database access mechanism — no raw `sql.DB`
 - No `panic()` in production code — return errors
-- All monetary values use `float64` in domain, `numeric(14,2)` in Postgres
+- All monetary values use `float64` in domain, `numeric(14,2)` in Postgres until an ADR changes this convention
 - Use local Go cache for test/build commands: `GOCACHE=.gocache`
 
 ### Frontend
@@ -84,7 +97,8 @@ Every decision passes this filter:
 
 ### Process
 
-- No task marked done without: build passes + tests pass + commit made
+- No code task marked done without appropriate verification, passing impacted tests/builds, and a commit
+- Docs-only tasks require at least a diff review/proofread and a commit
 - One commit per completed task — no uncommitted work at session end
 - Legacy files from the old Next.js monolith must not be reintroduced
 - Every new endpoint must exist in `contracts/api/marketplace-central.openapi.yaml`
@@ -105,9 +119,26 @@ events/        — event types for async communication (future)
 readmodel/     — query-optimized views (future)
 ```
 
-## Connector pattern (for marketplace integrations)
+## Marketplace and integration plugin patterns
 
-Each marketplace adapter implements a common port interface:
+There are two related layers:
+
+- `marketplaces`: business configuration, account/policy links, marketplace definitions, and fee schedules
+- `integrations`: technical operations, provider catalog, installations, credentials, auth state, capability state, and operation runs
+
+Integration providers use self-registration:
+
+```go
+func init() {
+    providers.RegisterDefinition(definition)
+    providers.RegisterAuthFactory(providerCode, factory)
+    providers.RegisterFeeSyncerFactory(providerCode, factory)
+}
+```
+
+Adding a provider should normally mean adding a provider package, plus one composition side-effect import if the package is not already imported.
+
+Runtime marketplace operations live behind connector/capability ports. A marketplace connector may implement only the capabilities it supports:
 
 ```go
 type MarketplaceConnector interface {
@@ -117,9 +148,7 @@ type MarketplaceConnector interface {
 }
 ```
 
-One adapter per marketplace (vtex, mercado_livre, magalu, etc.). The connector
-module owns the port; each marketplace adapter lives in its own package under
-`adapters/`.
+One adapter per marketplace/provider (`vtex`, `mercado_livre`, `magalu`, etc.). The owning module defines the port; adapters live under `adapters/` and must not own tenant business state directly.
 
 ## Commit format
 
@@ -134,12 +163,13 @@ Examples:
 
 | Task | Reference |
 |---|---|
-| Any Go implementation | This file + `ARCHITECTURE.md` |
+| Any Go implementation | This file + `ARCHITECTURE.md` + relevant wiki page |
 | Code/module knowledge | `wiki/README.md` (index to architecture, modules, operations) |
 | Database changes | `apps/server_core/migrations/` |
 | API contract changes | `contracts/api/marketplace-central.openapi.yaml` |
 | Frontend feature | `packages/feature-*/` + `packages/sdk-runtime/` |
-| Phase planning | `IMPLEMENTATION_PLAN.md` |
+| Current planning/status | `.brain/roadmap.json` + `.brain/system-pulse.md` |
+| Historical phase context | `IMPLEMENTATION_PLAN.md` |
 
 ## Integration with MetalShopping
 
