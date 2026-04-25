@@ -4,7 +4,47 @@
 
 1. Read `IMPLEMENTATION_PLAN.md` — know current phase and scope
 2. Read `ARCHITECTURE.md` — know frozen decisions before touching code
-3. After any correction: document the lesson in commit message or PR description
+3. Read `wiki/README.md` — wiki index for module docs, architecture notes, and operational references
+4. After any correction: document the lesson in commit message or PR description
+
+## Behavioral guardrails (LLM)
+
+These guidelines reduce common coding mistakes. They favor caution over speed; for trivial tasks, use judgment.
+
+### 1) Think before coding
+
+- State assumptions explicitly before implementation
+- If uncertain, ask instead of guessing
+- If multiple interpretations exist, present options explicitly
+- Call out simpler approaches when they exist
+- If scope or intent is unclear, pause and clarify
+
+### 2) Simplicity first
+
+- Implement the minimum code that solves the requested problem
+- Do not add features, configurability, or abstractions that were not requested
+- Avoid defensive handling for impossible scenarios
+- If a solution can be much smaller, rewrite it smaller
+- Sanity check: if a senior reviewer would call it overcomplicated, simplify
+
+### 3) Surgical changes
+
+- Touch only what is needed for the request
+- Do not refactor or reformat adjacent unrelated code
+- Match existing local style and patterns
+- If unrelated dead code is found, mention it but do not remove it unless asked
+- Remove only unused code/imports created by your own change
+- Every changed line must trace directly to the user request
+
+### 4) Goal-driven execution
+
+- Turn requests into verifiable outcomes
+- For bug fixes: reproduce first (test or clear check), then fix, then verify
+- For validations: write failing checks/tests first when practical, then make them pass
+- For refactors: verify behavior parity before and after
+- For multi-step work, define concise step → verification pairs before coding
+
+These guidelines are working when diffs are smaller, rewrites are fewer, and clarifications happen before implementation.
 
 ## Engineering bar
 
@@ -95,6 +135,7 @@ Examples:
 | Task | Reference |
 |---|---|
 | Any Go implementation | This file + `ARCHITECTURE.md` |
+| Code/module knowledge | `wiki/README.md` (index to architecture, modules, operations) |
 | Database changes | `apps/server_core/migrations/` |
 | API contract changes | `contracts/api/marketplace-central.openapi.yaml` |
 | Frontend feature | `packages/feature-*/` + `packages/sdk-runtime/` |
