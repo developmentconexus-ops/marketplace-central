@@ -13,6 +13,7 @@ const (
 	IntegrationFamilyMarketplace IntegrationFamily = "marketplace"
 
 	AuthStrategyOAuth2  AuthStrategy = "oauth2"
+	AuthStrategyLWA     AuthStrategy = "lwa"
 	AuthStrategyAPIKey  AuthStrategy = "api_key"
 	AuthStrategyToken   AuthStrategy = "token"
 	AuthStrategyNone    AuthStrategy = "none"

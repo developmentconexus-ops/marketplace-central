@@ -40,9 +40,16 @@ func init() {
 		AuthStrategy: domain.AuthStrategyOAuth2,
 		InstallMode:  domain.InstallModeInteractive,
 		Metadata: map[string]any{
-			"country":       "BR",
-			"release_stage": "stable",
-			"fee_source":    "api_sync",
+			"country":                     "BR",
+			"rollout_stage":               "v1",
+			"execution_mode":              "available",
+			"fee_source":                  "api_sync",
+			"baseline_commission_percent": 0.16,
+			"baseline_fixed_fee_amount":   0.0,
+			"credential_schema": []map[string]any{
+				{"key": "client_id", "label": "Client ID", "secret": false},
+				{"key": "client_secret", "label": "Client Secret", "secret": true},
+			},
 		},
 		DeclaredCapabilities: []string{
 			"catalog_publish",
