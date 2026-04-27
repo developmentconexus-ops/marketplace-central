@@ -39,6 +39,27 @@ Current marketplace providers in the integrations catalog:
 
 Catalog metadata is the source for rollout and UX semantics (`rollout_stage`, `execution_mode`, `unavailable_reason`, baseline fee hints, credential schema).
 
+## Amazon SP-API Auth Notes
+
+Amazon identifiers are easy to mix up. Keep this mapping straight:
+
+| Pattern | Meaning | Used as |
+|---------|---------|---------|
+| `amzn1.sellerapps.app.*` | SP-API application ID | Consent `application_id` parameter |
+| `amzn1.application-oa2-client.*` | LWA client ID | Token exchange `client_id` |
+| `amzn1.oa2-cs.*` | LWA client secret | Client secret for token exchange |
+| `amzn1.sp.solution.*` | Solution identifier | Not the consent `application_id` |
+
+Draft/testing consent flows should use `version=beta` in the authorize URL.
+
+### Troubleshooting `INTEGRATIONS_AUTH_CONFIGURATION_INVALID`
+
+- Confirm the consent URL uses the SP-API application ID from `amzn1.sellerapps.app.*`
+- Confirm token exchange uses the LWA client ID from `amzn1.application-oa2-client.*`
+- Confirm the client secret comes from `amzn1.oa2-cs.*`
+- Do not substitute the solution identifier (`amzn1.sp.solution.*`) for consent setup
+- Recheck the authorize URL parameters before retrying the install flow
+
 ## Database Focus
 
 ```sql
