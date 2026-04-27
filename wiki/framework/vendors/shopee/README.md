@@ -11,6 +11,13 @@ It complements (does not replace) `wiki/framework/shopee-fit-analysis.md`.
 
 - Auth model: signed partner authorization flow (`/api/v2/shop/auth_partner`, token exchange and refresh)
 - Integration shape: `integrations` owns install/auth/credential lifecycle, `connectors` owns API execution
+- Current provider runtime status:
+  - `auth_strategy`: `shopee_partner`
+  - `install_mode`: `interactive`
+  - `rollout_stage`: `v1`
+  - `execution_mode`: `available`
+- Current declared capability baseline:
+  - `pricing_fee_sync`
 - Initial capability priority:
   - auth + installation lifecycle
   - product + stock/price flows

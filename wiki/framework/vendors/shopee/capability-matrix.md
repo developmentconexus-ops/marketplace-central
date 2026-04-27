@@ -19,3 +19,9 @@ Last verified: 2026-04-27
 
 - ID references map to `https://open.shopee.com/developer-guide/<ID>`.
 - Full source map: `wiki/framework/vendors/shopee/sources.md`.
+
+## Runtime rollout note (current)
+
+- Provider is interactive and available for signed auth lifecycle.
+- Declared runtime capability is intentionally conservative: `pricing_fee_sync`.
+- Other capability rows above remain implementation targets and must be enabled only when connector execution exists.

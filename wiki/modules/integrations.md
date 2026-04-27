@@ -35,7 +35,7 @@ Current marketplace providers in the integrations catalog:
 - `amazon` - `lwa`, interactive
 - `leroy_merlin` - `api_key`, manual
 - `madeira_madeira` - `token`, manual
-- `shopee` - `api_key`, manual, blocked via metadata (`execution_mode=blocked`)
+- `shopee` - `shopee_partner`, interactive, available (`execution_mode=available`, rollout `v1`)
 
 Catalog metadata is the source for rollout and UX semantics (`rollout_stage`, `execution_mode`, `unavailable_reason`, baseline fee hints, credential schema).
 

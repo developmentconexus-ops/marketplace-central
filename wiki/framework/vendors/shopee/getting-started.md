@@ -43,7 +43,12 @@ The following documents were reviewed and mapped:
 ## MPC implementation notes
 
 - Keep partner credentials server-side only.
+- Current backend configuration keys:
+  - `MPC_PROVIDER_SHOPEE_PARTNER_ID`
+  - `MPC_PROVIDER_SHOPEE_PARTNER_KEY`
+  - `MPC_PROVIDER_SHOPEE_BASE_URL`
 - Normalize Shopee statuses into MPC internal enums at the connector boundary.
 - Treat push events as eventually consistent: reconcile with pull APIs for critical workflows.
 - Store authorization context (`shop_id`/merchant context) with token material for deterministic refresh.
 - Keep signature generation deterministic and testable with fixed timestamps.
+- Callback mapping currently accepts `shop_id`, `merchant_id`, or `selling_partner_id` as provider account identity input.
