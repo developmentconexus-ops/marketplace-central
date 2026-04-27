@@ -206,4 +206,25 @@ describe("MarketplaceSettingsPage", () => {
     await waitFor(() => expect(mockStartAuthorization).toHaveBeenCalledWith("inst-ml"));
     expect(mockNavigateToAuthUrl).toHaveBeenCalledWith("https://auth.test");
   });
+
+  it("starts auth again for disconnected interactive provider", async () => {
+    const disconnectedInstallation: IntegrationInstallation = {
+      ...connectedInstallation,
+      status: "disconnected",
+      health_status: "warning",
+      external_account_id: "",
+      external_account_name: "",
+    };
+    mockListInstallations.mockResolvedValue({ items: [disconnectedInstallation] });
+    mockStartAuthorization.mockResolvedValue({ auth_url: "https://auth.test/again" });
+
+    render(<MarketplaceSettingsPage client={mockClient as never} navigateToAuthUrl={mockNavigateToAuthUrl} />);
+    await waitFor(() => expect(screen.getByText("Amazon Brasil")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Open Amazon Brasil" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Authorize" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Authorize" }));
+
+    await waitFor(() => expect(mockStartAuthorization).toHaveBeenCalledWith("inst-amz"));
+    expect(mockNavigateToAuthUrl).toHaveBeenCalledWith("https://auth.test/again");
+  });
 });

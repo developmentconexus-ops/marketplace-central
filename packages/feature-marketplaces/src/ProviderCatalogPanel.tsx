@@ -64,7 +64,7 @@ export function ProviderCatalogPanel({
       await onConnect();
       return;
     }
-    if (installation.status === "pending_connection") {
+    if (installation.status === "pending_connection" || installation.status === "disconnected") {
       await onAuthorize();
       return;
     }
@@ -78,7 +78,7 @@ export function ProviderCatalogPanel({
     ? "Unavailable"
     : noInstallation
       ? "Create installation"
-      : installation.status === "pending_connection"
+      : installation.status === "pending_connection" || installation.status === "disconnected"
         ? "Authorize"
         : installation.status === "requires_reauth"
           ? "Reauthorize"
