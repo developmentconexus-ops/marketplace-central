@@ -337,6 +337,24 @@ paths:
           required: true
           schema:
             type: string
+        - name: shop_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Optional Shopee shop identifier used when mapping the provider account ID.
+        - name: merchant_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Optional merchant identifier used when mapping the provider account ID.
+        - name: selling_partner_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Optional provider account identifier fallback used by SP-API callbacks.
       responses:
         "302":
           description: Redirects to frontend connection status page
@@ -1601,7 +1619,7 @@ components:
           example: Mercado Livre
         auth_strategy:
           type: string
-          enum: [oauth2, lwa, api_key, token, unknown]
+          enum: [oauth2, lwa, shopee_partner, api_key, token, unknown]
         is_active:
           type: boolean
         capability_profile:
@@ -1634,7 +1652,7 @@ components:
           type: string
         auth_strategy:
           type: string
-          enum: [oauth2, lwa, api_key, token, none, unknown]
+          enum: [oauth2, lwa, shopee_partner, api_key, token, none, unknown]
         install_mode:
           type: string
           enum: [interactive, manual, hybrid]

@@ -219,6 +219,24 @@ func TestAuthHandlerCallbackAcceptsAmazonSPAPICode(t *testing.T) {
 	}
 }
 
+func TestAuthHandlerCallbackPrefersShopeeShopID(t *testing.T) {
+	t.Parallel()
+
+	flow := &stubAuthFlow{}
+	handler := NewAuthHandler(flow)
+	req := httptest.NewRequest(http.MethodGet, "/integrations/auth/callback?code=provider-code&state=signed-state&shop_id=shop-1&merchant_id=merchant-1&selling_partner_id=seller-1", nil)
+	rr := httptest.NewRecorder()
+
+	handler.handleCallback(rr, req)
+
+	if rr.Code != http.StatusFound {
+		t.Fatalf("status = %d, want 302; body=%s", rr.Code, rr.Body.String())
+	}
+	if flow.callbackInput.ProviderAccountID != "shop-1" {
+		t.Fatalf("provider account id = %q, want shop id", flow.callbackInput.ProviderAccountID)
+	}
+}
+
 func TestAuthHandlerCallbackRedirectsToWebOriginWhenConfigured(t *testing.T) {
 	t.Setenv("MPC_WEB_ORIGIN", "https://app.example")
 

@@ -61,7 +61,7 @@ func (h AuthHandler) handleCallback(w http.ResponseWriter, r *http.Request) {
 		Code:              code,
 		State:             state,
 		RedirectURI:       redirectURI,
-		ProviderAccountID: strings.TrimSpace(r.URL.Query().Get("selling_partner_id")),
+		ProviderAccountID: firstNonEmptyQuery(r.URL.Query(), "shop_id", "merchant_id", "selling_partner_id"),
 	})
 	if err != nil {
 		slog.Warn("integrations.auth.callback", "action", "handle_callback", "result", "302", "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
