@@ -96,13 +96,26 @@ func (a *Adapter) StartAuthorize(_ context.Context, input application.StartAutho
 
 func (a *Adapter) BuildAuthorizeURL(state, redirectURI, codeChallenge string, scopes []string) (string, error) {
 	applicationID := strings.TrimSpace(a.cfg.ApplicationID)
-	if !strings.HasPrefix(applicationID, "amzn1.sellerapps.app.") {
-		return "", domain.ErrAuthConfigurationInvalid
+	clientID := strings.TrimSpace(a.cfg.ClientID)
+	isSellerAppsID := strings.HasPrefix(applicationID, "amzn1.sellerapps.app.")
+	if !isSellerAppsID {
+		return "", fmt.Errorf(
+			"%w: MPC_PROVIDER_AMAZON_APPLICATION_ID must start with amzn1.sellerapps.app. (detected %s). MPC_PROVIDER_AMAZON_CLIENT_ID must start with amzn1.application-oa2-client.",
+			domain.ErrAuthConfigurationInvalid,
+			describeAmazonIdentifier(applicationID),
+		)
+	}
+	if !strings.HasPrefix(clientID, "amzn1.application-oa2-client.") {
+		return "", fmt.Errorf(
+			"%w: MPC_PROVIDER_AMAZON_CLIENT_ID must start with amzn1.application-oa2-client. (detected %s).",
+			domain.ErrAuthConfigurationInvalid,
+			describeAmazonIdentifier(clientID),
+		)
 	}
 
 	base, err := url.Parse(strings.TrimSpace(a.cfg.AuthorizeURL))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("%w: invalid amazon authorize url", domain.ErrAuthConfigurationInvalid)
 	}
 
 	query := base.Query()
@@ -127,13 +140,17 @@ func (a *Adapter) BuildAuthorizeURL(state, redirectURI, codeChallenge string, sc
 }
 
 func (a *Adapter) ExchangeCallback(ctx context.Context, input application.HandleCallbackAdapterInput) (application.CredentialPayload, error) {
-	result, err := a.exchangeToken(ctx, url.Values{
+	form := url.Values{
 		"grant_type":    {"authorization_code"},
 		"code":          {strings.TrimSpace(input.Code)},
 		"redirect_uri":  {strings.TrimSpace(input.RedirectURI)},
 		"client_id":     {strings.TrimSpace(a.cfg.ClientID)},
 		"client_secret": {strings.TrimSpace(a.cfg.ClientSecret)},
-	})
+	}
+	if codeVerifier := strings.TrimSpace(input.CodeVerifier); codeVerifier != "" {
+		form.Set("code_verifier", codeVerifier)
+	}
+	result, err := a.exchangeToken(ctx, form)
 	if err != nil {
 		return application.CredentialPayload{}, err
 	}
@@ -209,7 +226,26 @@ func joinScopes(scopes []string) string {
 }
 
 func (a *Adapter) exchangeToken(ctx context.Context, form url.Values) (*domain.TokenResult, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimSpace(a.cfg.TokenURL), strings.NewReader(form.Encode()))
+	tokenURL := strings.TrimSpace(a.cfg.TokenURL)
+	if tokenURL == "" {
+		return nil, fmt.Errorf("%w: missing amazon token url", domain.ErrAuthConfigurationInvalid)
+	}
+	if _, err := url.ParseRequestURI(tokenURL); err != nil {
+		return nil, fmt.Errorf("%w: invalid amazon token url", domain.ErrAuthConfigurationInvalid)
+	}
+	clientID := strings.TrimSpace(a.cfg.ClientID)
+	if !strings.HasPrefix(clientID, "amzn1.application-oa2-client.") {
+		return nil, fmt.Errorf(
+			"%w: MPC_PROVIDER_AMAZON_CLIENT_ID must start with amzn1.application-oa2-client. (detected %s).",
+			domain.ErrAuthConfigurationInvalid,
+			describeAmazonIdentifier(clientID),
+		)
+	}
+	if strings.TrimSpace(a.cfg.ClientSecret) == "" {
+		return nil, fmt.Errorf("%w: missing MPC_PROVIDER_AMAZON_CLIENT_SECRET", domain.ErrAuthConfigurationInvalid)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL, strings.NewReader(form.Encode()))
 	if err != nil {
 		return nil, err
 	}
@@ -262,4 +298,20 @@ func readProviderErrorBody(resp *http.Response) string {
 		return "empty"
 	}
 	return text
+}
+
+func describeAmazonIdentifier(value string) string {
+	trimmed := strings.TrimSpace(value)
+	switch {
+	case trimmed == "":
+		return "empty"
+	case strings.HasPrefix(trimmed, "amzn1.sellerapps.app."):
+		return "sp_api_application_id"
+	case strings.HasPrefix(trimmed, "amzn1.application-oa2-client."):
+		return "lwa_client_id"
+	case strings.HasPrefix(trimmed, "amzn1.sp.solution."):
+		return "solution_provider_solution_id"
+	default:
+		return "unknown_format"
+	}
 }

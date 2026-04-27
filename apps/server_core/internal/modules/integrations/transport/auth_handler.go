@@ -78,6 +78,7 @@ func (h AuthHandler) handleInstallationAuth(w http.ResponseWriter, r *http.Reque
 	path := strings.TrimPrefix(r.URL.Path, "/integrations/installations/")
 	segments := strings.Split(path, "/")
 	if len(segments) < 2 {
+		slog.Info("integrations.auth.installation", "action", "route_not_found", "result", "404", "duration_ms", time.Since(start).Milliseconds())
 		http.NotFound(w, r)
 		return
 	}
@@ -89,6 +90,7 @@ func (h AuthHandler) handleInstallationAuth(w http.ResponseWriter, r *http.Reque
 		if r.Method != http.MethodPost {
 			w.Header().Set("Allow", http.MethodPost)
 			writeIntegrationError(w, http.StatusMethodNotAllowed, "INTEGRATIONS_AUTH_METHOD_NOT_ALLOWED", "method not allowed")
+			slog.Info("integrations.auth.start", "action", "start_authorize", "result", "405", "duration_ms", time.Since(start).Milliseconds())
 			return
 		}
 		var body struct {
@@ -108,6 +110,7 @@ func (h AuthHandler) handleInstallationAuth(w http.ResponseWriter, r *http.Reque
 		if err != nil {
 			status, code, message := mapIntegrationError(err)
 			writeIntegrationError(w, status, code, message)
+			slog.Error("integrations.auth.start", "action", "start_authorize", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
 			return
 		}
 		slog.Info("integrations.auth.start", "action", "start_authorize", "result", "200", "duration_ms", time.Since(start).Milliseconds())
@@ -116,6 +119,7 @@ func (h AuthHandler) handleInstallationAuth(w http.ResponseWriter, r *http.Reque
 		if r.Method != http.MethodPost {
 			w.Header().Set("Allow", http.MethodPost)
 			writeIntegrationError(w, http.StatusMethodNotAllowed, "INTEGRATIONS_AUTH_METHOD_NOT_ALLOWED", "method not allowed")
+			slog.Info("integrations.auth.credentials", "action", "submit_credentials", "result", "405", "duration_ms", time.Since(start).Milliseconds())
 			return
 		}
 		var body struct {
@@ -125,6 +129,7 @@ func (h AuthHandler) handleInstallationAuth(w http.ResponseWriter, r *http.Reque
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			writeIntegrationError(w, http.StatusBadRequest, "INTEGRATIONS_APIKEY_MISSING_FIELDS", "malformed request body")
+			slog.Info("integrations.auth.credentials", "action", "submit_credentials", "result", "400", "duration_ms", time.Since(start).Milliseconds())
 			return
 		}
 		apiKey := body.APIKey
@@ -143,6 +148,7 @@ func (h AuthHandler) handleInstallationAuth(w http.ResponseWriter, r *http.Reque
 		if err != nil {
 			status, code, message := mapIntegrationError(err)
 			writeIntegrationError(w, status, code, message)
+			slog.Error("integrations.auth.credentials", "action", "submit_credentials", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
 			return
 		}
 		slog.Info("integrations.auth.credentials", "action", "submit_credentials", "result", "200", "duration_ms", time.Since(start).Milliseconds())
@@ -151,12 +157,14 @@ func (h AuthHandler) handleInstallationAuth(w http.ResponseWriter, r *http.Reque
 		if r.Method != http.MethodPost {
 			w.Header().Set("Allow", http.MethodPost)
 			writeIntegrationError(w, http.StatusMethodNotAllowed, "INTEGRATIONS_AUTH_METHOD_NOT_ALLOWED", "method not allowed")
+			slog.Info("integrations.auth.disconnect", "action", "disconnect", "result", "405", "duration_ms", time.Since(start).Milliseconds())
 			return
 		}
 		result, err := h.flow.Disconnect(r.Context(), application.DisconnectInput{InstallationID: installationID})
 		if err != nil {
 			status, code, message := mapIntegrationError(err)
 			writeIntegrationError(w, status, code, message)
+			slog.Error("integrations.auth.disconnect", "action", "disconnect", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
 			return
 		}
 		slog.Info("integrations.auth.disconnect", "action", "disconnect", "result", "200", "duration_ms", time.Since(start).Milliseconds())
@@ -165,6 +173,7 @@ func (h AuthHandler) handleInstallationAuth(w http.ResponseWriter, r *http.Reque
 		if r.Method != http.MethodPost {
 			w.Header().Set("Allow", http.MethodPost)
 			writeIntegrationError(w, http.StatusMethodNotAllowed, "INTEGRATIONS_AUTH_METHOD_NOT_ALLOWED", "method not allowed")
+			slog.Info("integrations.auth.reauth", "action", "start_reauth", "result", "405", "duration_ms", time.Since(start).Milliseconds())
 			return
 		}
 		var body struct {
@@ -184,6 +193,7 @@ func (h AuthHandler) handleInstallationAuth(w http.ResponseWriter, r *http.Reque
 		if err != nil {
 			status, code, message := mapIntegrationError(err)
 			writeIntegrationError(w, status, code, message)
+			slog.Error("integrations.auth.reauth", "action", "start_reauth", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
 			return
 		}
 		slog.Info("integrations.auth.reauth", "action", "start_reauth", "result", "200", "duration_ms", time.Since(start).Milliseconds())
@@ -192,6 +202,7 @@ func (h AuthHandler) handleInstallationAuth(w http.ResponseWriter, r *http.Reque
 		if r.Method != http.MethodGet {
 			w.Header().Set("Allow", http.MethodGet)
 			writeIntegrationError(w, http.StatusMethodNotAllowed, "INTEGRATIONS_AUTH_METHOD_NOT_ALLOWED", "method not allowed")
+			slog.Info("integrations.auth.status", "action", "get_status", "result", "405", "duration_ms", time.Since(start).Milliseconds())
 			return
 		}
 		result, err := h.flow.GetAuthStatus(r.Context(), application.GetAuthStatusInput{
@@ -200,6 +211,7 @@ func (h AuthHandler) handleInstallationAuth(w http.ResponseWriter, r *http.Reque
 		if err != nil {
 			status, code, message := mapIntegrationError(err)
 			writeIntegrationError(w, status, code, message)
+			slog.Error("integrations.auth.status", "action", "get_status", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
 			return
 		}
 		slog.Info("integrations.auth.status", "action", "get_status", "result", "200", "duration_ms", time.Since(start).Milliseconds())
@@ -208,6 +220,7 @@ func (h AuthHandler) handleInstallationAuth(w http.ResponseWriter, r *http.Reque
 		if r.Method != http.MethodPost {
 			w.Header().Set("Allow", http.MethodPost)
 			writeIntegrationError(w, http.StatusMethodNotAllowed, "INTEGRATIONS_AUTH_METHOD_NOT_ALLOWED", "method not allowed")
+			slog.Info("integrations.fee_sync.start", "action", "start_sync", "result", "405", "duration_ms", time.Since(start).Milliseconds())
 			return
 		}
 		result, err := h.flow.StartSync(r.Context(), application.StartFeeSyncInput{
@@ -217,6 +230,7 @@ func (h AuthHandler) handleInstallationAuth(w http.ResponseWriter, r *http.Reque
 		if err != nil {
 			status, code, message := mapIntegrationError(err)
 			writeIntegrationError(w, status, code, message)
+			slog.Error("integrations.fee_sync.start", "action", "start_sync", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
 			return
 		}
 		slog.Info("integrations.fee_sync.start", "action", "start_sync", "result", "202", "duration_ms", time.Since(start).Milliseconds())
@@ -225,17 +239,20 @@ func (h AuthHandler) handleInstallationAuth(w http.ResponseWriter, r *http.Reque
 		if r.Method != http.MethodGet {
 			w.Header().Set("Allow", http.MethodGet)
 			writeIntegrationError(w, http.StatusMethodNotAllowed, "INTEGRATIONS_AUTH_METHOD_NOT_ALLOWED", "method not allowed")
+			slog.Info("integrations.operations.list", "action", "list_operation_runs", "result", "405", "duration_ms", time.Since(start).Milliseconds())
 			return
 		}
 		items, err := h.flow.ListOperationRuns(r.Context(), installationID)
 		if err != nil {
 			status, code, message := mapIntegrationError(err)
 			writeIntegrationError(w, status, code, message)
+			slog.Error("integrations.operations.list", "action", "list_operation_runs", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
 			return
 		}
 		slog.Info("integrations.operations.list", "action", "list_operation_runs", "result", "200", "duration_ms", time.Since(start).Milliseconds())
 		httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": items})
 	default:
+		slog.Info("integrations.auth.installation", "action", "route_not_found", "result", "404", "duration_ms", time.Since(start).Milliseconds())
 		http.NotFound(w, r)
 	}
 }

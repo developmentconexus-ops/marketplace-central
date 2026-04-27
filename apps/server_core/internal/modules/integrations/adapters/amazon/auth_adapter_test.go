@@ -3,6 +3,7 @@ package amazon
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -30,7 +31,7 @@ func TestAdapterBuildsAuthorizeURL(t *testing.T) {
 
 	adapter := NewAdapter(Config{
 		ApplicationID: "amzn1.sellerapps.app.2eca283f-9f5a-4d13-b16c-474EXAMPLE57",
-		ClientID:      "amazon-client-id",
+		ClientID:      "amzn1.application-oa2-client.example",
 		AuthorizeURL:  "https://sellercentral.amazon.com.br/apps/authorize/consent",
 		AuthVersion:   "beta",
 	})
@@ -79,6 +80,7 @@ func TestAdapterRejectsNonSellerAppsApplicationID(t *testing.T) {
 
 	adapter := NewAdapter(Config{
 		ApplicationID: "amzn1.sp.solution.ad37445f-32c7-42a3-bab6-7d75597b5a9c",
+		ClientID:      "amzn1.application-oa2-client.example",
 		AuthorizeURL:  "https://sellercentral.amazon.com.br/apps/authorize/consent",
 	})
 
@@ -86,8 +88,51 @@ func TestAdapterRejectsNonSellerAppsApplicationID(t *testing.T) {
 		State:       "state-amazon",
 		RedirectURI: "https://app.test/integrations/callback",
 	})
-	if err != domain.ErrAuthConfigurationInvalid {
-		t.Fatalf("StartAuthorize() error = %v, want %v", err, domain.ErrAuthConfigurationInvalid)
+	if !errors.Is(err, domain.ErrAuthConfigurationInvalid) {
+		t.Fatalf("StartAuthorize() error = %v, want wrapped %v", err, domain.ErrAuthConfigurationInvalid)
+	}
+	if !strings.Contains(err.Error(), "solution_provider_solution_id") {
+		t.Fatalf("StartAuthorize() error = %q, want detected id kind", err.Error())
+	}
+}
+
+func TestAdapterRejectsSolutionIDInDraftMode(t *testing.T) {
+	t.Parallel()
+
+	adapter := NewAdapter(Config{
+		ApplicationID: "amzn1.sp.solution.ad37445f-32c7-42a3-bab6-7d75597b5a9c",
+		ClientID:      "amzn1.application-oa2-client.example",
+		AuthorizeURL:  "https://sellercentral.amazon.com.br/apps/authorize/consent",
+		AuthVersion:   "beta",
+	})
+
+	_, err := adapter.StartAuthorize(context.Background(), application.StartAuthorizeAdapterInput{
+		State:       "state-amazon",
+		RedirectURI: "https://app.test/integrations/callback",
+	})
+	if !errors.Is(err, domain.ErrAuthConfigurationInvalid) {
+		t.Fatalf("StartAuthorize() error = %v, want wrapped %v", err, domain.ErrAuthConfigurationInvalid)
+	}
+}
+
+func TestAdapterRejectsInvalidLWAClientID(t *testing.T) {
+	t.Parallel()
+
+	adapter := NewAdapter(Config{
+		ApplicationID: "amzn1.sellerapps.app.2eca283f-9f5a-4d13-b16c-474EXAMPLE57",
+		ClientID:      "invalid-client-id",
+		AuthorizeURL:  "https://sellercentral.amazon.com.br/apps/authorize/consent",
+	})
+
+	_, err := adapter.StartAuthorize(context.Background(), application.StartAuthorizeAdapterInput{
+		State:       "state-amazon",
+		RedirectURI: "https://app.test/integrations/callback",
+	})
+	if !errors.Is(err, domain.ErrAuthConfigurationInvalid) {
+		t.Fatalf("StartAuthorize() error = %v, want wrapped %v", err, domain.ErrAuthConfigurationInvalid)
+	}
+	if !strings.Contains(err.Error(), "MPC_PROVIDER_AMAZON_CLIENT_ID") {
+		t.Fatalf("StartAuthorize() error = %q, want client id hint", err.Error())
 	}
 }
 
@@ -109,8 +154,9 @@ func TestAdapterExchangeCallbackUsesLWATokenEndpoint(t *testing.T) {
 		assertFormValue(t, r.Form, "grant_type", "authorization_code")
 		assertFormValue(t, r.Form, "code", "spapi-code")
 		assertFormValue(t, r.Form, "redirect_uri", "https://app.test/integrations/auth/callback")
-		assertFormValue(t, r.Form, "client_id", "lwa-client-id")
+		assertFormValue(t, r.Form, "client_id", "amzn1.application-oa2-client.example")
 		assertFormValue(t, r.Form, "client_secret", "lwa-client-secret")
+		assertFormValue(t, r.Form, "code_verifier", "pkce-verifier")
 
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
@@ -122,7 +168,7 @@ func TestAdapterExchangeCallbackUsesLWATokenEndpoint(t *testing.T) {
 	defer server.Close()
 
 	adapter := NewAdapter(Config{
-		ClientID:     "lwa-client-id",
+		ClientID:     "amzn1.application-oa2-client.example",
 		ClientSecret: "lwa-client-secret",
 		TokenURL:     server.URL,
 	})
@@ -130,6 +176,7 @@ func TestAdapterExchangeCallbackUsesLWATokenEndpoint(t *testing.T) {
 	payload, err := adapter.ExchangeCallback(context.Background(), application.HandleCallbackAdapterInput{
 		Code:              "spapi-code",
 		RedirectURI:       "https://app.test/integrations/auth/callback",
+		CodeVerifier:      "pkce-verifier",
 		ProviderAccountID: "A1SELLER",
 	})
 	if err != nil {
