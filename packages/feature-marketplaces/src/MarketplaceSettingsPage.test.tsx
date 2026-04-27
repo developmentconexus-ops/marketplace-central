@@ -60,9 +60,9 @@ const baseProviders: IntegrationProviderDefinition[] = [
     tenant_id: "system",
     family: "marketplace",
     display_name: "Shopee",
-    auth_strategy: "api_key",
-    install_mode: "manual",
-    metadata: { execution_mode: "blocked", rollout_stage: "blocked", unavailable_reason: "Blocked by partner review" },
+    auth_strategy: "shopee_partner",
+    install_mode: "interactive",
+    metadata: { execution_mode: "available", rollout_stage: "v1", fee_source: "seed" },
     declared_capabilities: ["pricing_fee_sync"],
     is_active: true,
     created_at: "2026-04-25T00:00:00Z",
@@ -171,12 +171,32 @@ describe("MarketplaceSettingsPage", () => {
     expect(screen.getByLabelText("Status: connected")).toBeInTheDocument();
   });
 
-  it("disables blocked provider action in panel", async () => {
-    render(<MarketplaceSettingsPage client={mockClient as never} />);
+  it("starts interactive authorize flow for Shopee", async () => {
+    const shopeeInstallation: IntegrationInstallation = {
+      installation_id: "inst-shopee",
+      tenant_id: "t1",
+      provider_code: "shopee",
+      family: "marketplace",
+      display_name: "Shopee",
+      status: "disconnected",
+      health_status: "warning",
+      external_account_id: "",
+      external_account_name: "",
+      created_at: "2026-04-25T00:00:00Z",
+      updated_at: "2026-04-25T00:00:00Z",
+    };
+    mockListInstallations.mockResolvedValue({ items: [shopeeInstallation] });
+    mockStartAuthorization.mockResolvedValue({ auth_url: "https://auth.test/shopee" });
+
+    render(<MarketplaceSettingsPage client={mockClient as never} navigateToAuthUrl={mockNavigateToAuthUrl} />);
     await waitFor(() => expect(screen.getByText("Shopee")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: "Open Shopee" }));
-    await waitFor(() => expect(screen.getByRole("dialog", { name: /provider details/i })).toBeInTheDocument());
-    expect(screen.getByRole("button", { name: "Unavailable" })).toBeDisabled();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Authorize" })).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: "Submit credentials" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Authorize" }));
+
+    await waitFor(() => expect(mockStartAuthorization).toHaveBeenCalledWith("inst-shopee"));
+    expect(mockNavigateToAuthUrl).toHaveBeenCalledWith("https://auth.test/shopee");
   });
 
   it("creates installation and starts auth for interactive provider", async () => {
@@ -226,5 +246,62 @@ describe("MarketplaceSettingsPage", () => {
 
     await waitFor(() => expect(mockStartAuthorization).toHaveBeenCalledWith("inst-amz"));
     expect(mockNavigateToAuthUrl).toHaveBeenCalledWith("https://auth.test/again");
+  });
+
+  it("disables fee sync when installation is pending connection", async () => {
+    const pendingInstallation: IntegrationInstallation = {
+      ...connectedInstallation,
+      status: "pending_connection",
+      health_status: "warning",
+      external_account_id: "",
+      external_account_name: "",
+    };
+    mockListInstallations.mockResolvedValue({ items: [pendingInstallation] });
+
+    render(<MarketplaceSettingsPage client={mockClient as never} />);
+    await waitFor(() => expect(screen.getByText("Amazon Brasil")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Open Amazon Brasil" }));
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Run fee sync" })).toBeDisabled());
+  });
+
+  it("enables fee sync when installation is connected", async () => {
+    mockListInstallations.mockResolvedValue({ items: [connectedInstallation] });
+
+    render(<MarketplaceSettingsPage client={mockClient as never} />);
+    await waitFor(() => expect(screen.getByText("Amazon Brasil")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Open Amazon Brasil" }));
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Run fee sync" })).toBeEnabled());
+  });
+
+  it("shows action error banner when authorize fails", async () => {
+    const pendingInstallation: IntegrationInstallation = {
+      ...connectedInstallation,
+      status: "pending_connection",
+      health_status: "warning",
+      external_account_id: "",
+      external_account_name: "",
+    };
+    mockListInstallations.mockResolvedValue({ items: [pendingInstallation] });
+    mockStartAuthorization.mockRejectedValue({
+      status: 400,
+      error: {
+        code: "INTEGRATIONS_AUTH_CONFIGURATION_INVALID",
+        message: "INTEGRATIONS_AUTH_CONFIGURATION_INVALID",
+      },
+    });
+
+    render(<MarketplaceSettingsPage client={mockClient as never} />);
+    await waitFor(() => expect(screen.getByText("Amazon Brasil")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Open Amazon Brasil" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Authorize" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Authorize" }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Amazon authorization config is invalid/i),
+      ).toBeInTheDocument(),
+    );
   });
 });

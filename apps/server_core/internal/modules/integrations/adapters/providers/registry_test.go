@@ -8,12 +8,12 @@ import (
 	_ "marketplace-central/apps/server_core/internal/modules/connectors/adapters/shopee"
 	_ "marketplace-central/apps/server_core/internal/modules/integrations/adapters/amazon"
 	_ "marketplace-central/apps/server_core/internal/modules/integrations/adapters/leroymerlin"
-	_ "marketplace-central/apps/server_core/internal/modules/integrations/adapters/magalu"
 	_ "marketplace-central/apps/server_core/internal/modules/integrations/adapters/madeiramadeira"
+	_ "marketplace-central/apps/server_core/internal/modules/integrations/adapters/magalu"
 	_ "marketplace-central/apps/server_core/internal/modules/integrations/adapters/mercadolivre"
 	"marketplace-central/apps/server_core/internal/modules/integrations/adapters/providers"
-	"marketplace-central/apps/server_core/internal/modules/integrations/domain"
 	_ "marketplace-central/apps/server_core/internal/modules/integrations/adapters/shopee"
+	"marketplace-central/apps/server_core/internal/modules/integrations/domain"
 )
 
 func TestRegistryIncludesCoreProviders(t *testing.T) {
@@ -32,7 +32,7 @@ func TestRegistryIncludesCoreProviders(t *testing.T) {
 	wantCodes := map[string]domain.AuthStrategy{
 		"mercado_livre":   domain.AuthStrategyOAuth2,
 		"magalu":          domain.AuthStrategyOAuth2,
-		"shopee":          domain.AuthStrategyAPIKey,
+		"shopee":          domain.AuthStrategyShopeePartner,
 		"amazon":          domain.AuthStrategyLWA,
 		"leroy_merlin":    domain.AuthStrategyAPIKey,
 		"madeira_madeira": domain.AuthStrategyToken,
@@ -164,10 +164,19 @@ func TestRegistryProviderMetadataCoverage(t *testing.T) {
 	}
 
 	shopee := byCode["shopee"]
-	if got := shopee.Metadata["execution_mode"]; got != "blocked" {
-		t.Fatalf("shopee execution_mode = %v, want blocked", got)
+	if got := shopee.InstallMode; got != domain.InstallModeInteractive {
+		t.Fatalf("shopee InstallMode = %v, want interactive", got)
 	}
-	if got := shopee.Metadata["unavailable_reason"]; got == nil || got == "" {
-		t.Fatalf("shopee unavailable_reason must be present when execution_mode is blocked")
+	if got := shopee.Metadata["rollout_stage"]; got != "v1" {
+		t.Fatalf("shopee rollout_stage = %v, want v1", got)
+	}
+	if got := shopee.Metadata["execution_mode"]; got != "available" {
+		t.Fatalf("shopee execution_mode = %v, want available", got)
+	}
+	if _, ok := shopee.Metadata["unavailable_reason"]; ok {
+		t.Fatalf("shopee unavailable_reason should not be present")
+	}
+	if want := []string{"pricing_fee_sync"}; len(shopee.DeclaredCapabilities) != len(want) || shopee.DeclaredCapabilities[0] != want[0] {
+		t.Fatalf("shopee DeclaredCapabilities = %#v, want %#v", shopee.DeclaredCapabilities, want)
 	}
 }
