@@ -24,6 +24,7 @@ Planning ownership:
 ### Modules
 - [Marketplaces](modules/marketplaces.md)
 - [Integrations](modules/integrations.md)
+- [Pricing Simulator](modules/pricing.md)
 
 ### Operations
 - [Environment and Database Access](operations/environment-and-db.md)
