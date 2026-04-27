@@ -258,6 +258,45 @@ func TestAuthFlowStartAuthorizeAllowsDisconnectedInstallation(t *testing.T) {
 	}
 }
 
+func TestAuthFlowStartAuthorizeMarksShopeePendingConnection(t *testing.T) {
+	t.Parallel()
+
+	installations := &flowInstallationStore{installations: map[string]domain.Installation{
+		"inst-shopee": {InstallationID: "inst-shopee", ProviderCode: "shopee", Status: domain.InstallationStatusDraft, HealthStatus: domain.HealthStatusHealthy},
+	}}
+	adapter := &flowAdapter{providerCode: "shopee"}
+	oauthStates := &securityOAuthStateStore{}
+	svc := mustNewAuthFlowService(t, AuthFlowConfig{
+		TenantID:        "tenant_default",
+		Installations:   installations,
+		Credentials:     &flowCredentialRotator{},
+		AuthSessions:    &flowAuthWriter{},
+		OAuthStates:     oauthStates,
+		OAuthStateCodec: roundTripSecurityStateCodec{payloadsByState: map[string]OAuthStatePayload{}},
+		Encryptor:       &flowEncryptor{},
+		Clock:           fixedAuthFlowClock{now: time.Unix(1000, 0).UTC()},
+		Adapters:        []MarketplaceAuthAdapter{adapter},
+	})
+
+	start, err := svc.StartAuthorize(context.Background(), StartAuthorizeInput{
+		InstallationID: "inst-shopee",
+		RedirectURI:    "https://app.test/callback",
+		Scopes:         []string{"read"},
+	})
+	if err != nil {
+		t.Fatalf("StartAuthorize() error = %v", err)
+	}
+	if start.InstallationID != "inst-shopee" || start.ProviderCode != "shopee" || start.State == "" {
+		t.Fatalf("start = %#v, want shopee installation, provider, and generated state", start)
+	}
+	if adapter.startInput.State != start.State {
+		t.Fatalf("adapter state = %q, want %q", adapter.startInput.State, start.State)
+	}
+	if got, want := installations.statuses, []domain.InstallationStatus{domain.InstallationStatusPendingConnection}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("statuses = %#v, want %#v", got, want)
+	}
+}
+
 func TestAuthFlowHandleCallbackRotatesCredentialAndMarksConnected(t *testing.T) {
 	t.Parallel()
 
@@ -331,6 +370,86 @@ func TestAuthFlowHandleCallbackRotatesCredentialAndMarksConnected(t *testing.T) 
 	}
 	if len(encryptor.payloads) != 1 || encryptor.payloads[0]["access_token"] != "access" || encryptor.payloads[0]["refresh_token"] != "refresh" {
 		t.Fatalf("encrypted payloads = %#v, want token payload", encryptor.payloads)
+	}
+}
+
+func TestAuthFlowHandleCallbackRotatesShopeeCredentialAndStoresShopID(t *testing.T) {
+	t.Parallel()
+
+	now := time.Unix(1500, 0).UTC()
+	expiresAt := time.Unix(2000, 0).UTC()
+	installations := &flowInstallationStore{installations: map[string]domain.Installation{
+		"inst-shopee": {InstallationID: "inst-shopee", ProviderCode: "shopee", Status: domain.InstallationStatusPendingConnection, HealthStatus: domain.HealthStatusHealthy},
+	}}
+	credentials := &flowCredentialRotator{}
+	authSessions := &flowAuthWriter{}
+	encryptor := &flowEncryptor{}
+	adapter := &flowAdapter{
+		providerCode: "shopee",
+		callback: CredentialPayload{
+			SecretType:          "oauth2",
+			AccessToken:         "access",
+			RefreshToken:        "refresh",
+			ProviderAccountID:   "shop-1",
+			ProviderAccountName: "Shopee Loja",
+			ExpiresAt:           &expiresAt,
+		},
+	}
+	oauthStates := &securityOAuthStateStore{
+		state: domain.OAuthState{
+			TenantID:       "tenant_default",
+			ID:             "oauth-state-1",
+			InstallationID: "inst-shopee",
+			Nonce:          "nonce-1",
+			CodeVerifier:   "verifier-1",
+			HMACSignature:  "signed_state",
+			ExpiresAt:      now.Add(time.Minute),
+		},
+		found:         true,
+		consumeResult: true,
+	}
+	svc := mustNewAuthFlowService(t, AuthFlowConfig{
+		TenantID:        "tenant_default",
+		Installations:   installations,
+		Credentials:     credentials,
+		AuthSessions:    authSessions,
+		OAuthStates:     oauthStates,
+		OAuthStateCodec: securityStateCodec{
+			payload: OAuthStatePayload{
+				TenantID:       "tenant_default",
+				Nonce:          "nonce-1",
+				InstallationID: "inst-shopee",
+			},
+		},
+		Encryptor:       encryptor,
+		Clock:           fixedAuthFlowClock{now: now},
+		Adapters:        []MarketplaceAuthAdapter{adapter},
+	})
+
+	result, err := svc.HandleCallback(context.Background(), HandleCallbackInput{
+		InstallationID:    "inst-shopee",
+		State:             "signed_state",
+		Code:              "code-1",
+		RedirectURI:       "https://app.test/callback",
+		ProviderAccountID: "shop-1",
+	})
+	if err != nil {
+		t.Fatalf("HandleCallback() error = %v", err)
+	}
+	if result.Status != domain.InstallationStatusConnected || result.ExternalAccount != "shop-1" {
+		t.Fatalf("result = %#v, want connected shop-1", result)
+	}
+	if len(credentials.inputs) != 1 || credentials.inputs[0].InstallationID != "inst-shopee" || credentials.inputs[0].SecretType != "oauth2" {
+		t.Fatalf("credential rotation inputs = %#v, want shopee oauth2 credential", credentials.inputs)
+	}
+	if adapter.callbackInput.ProviderAccountID != "shop-1" {
+		t.Fatalf("adapter provider account id = %q, want shop-1", adapter.callbackInput.ProviderAccountID)
+	}
+	if len(authSessions.inputs) != 1 || authSessions.inputs[0].ProviderAccountID != "shop-1" || authSessions.inputs[0].State != domain.AuthStateValid {
+		t.Fatalf("auth session inputs = %#v, want stored shop-1 session", authSessions.inputs)
+	}
+	if len(encryptor.payloads) != 1 || encryptor.payloads[0]["provider_account_id"] != "shop-1" {
+		t.Fatalf("encrypted payloads = %#v, want stored shop-1 provider account", encryptor.payloads)
 	}
 }
 
@@ -615,6 +734,103 @@ func TestRefreshCredentialRotatesAndResetsFailures(t *testing.T) {
 		t.Fatalf("reset session = %#v, want valid session with refreshed expiry", resetSession)
 	}
 	if got := installations.installations["inst-ml"]; got.Status != domain.InstallationStatusConnected || got.HealthStatus != domain.HealthStatusHealthy {
+		t.Fatalf("installation = %#v, want connected healthy", got)
+	}
+}
+
+func TestRefreshCredentialPassesShopeeProviderAccountContextAndPreservesLinkage(t *testing.T) {
+	t.Parallel()
+
+	now := time.Unix(1700, 0).UTC()
+	expiresAt := time.Unix(2600, 0).UTC()
+	installations := &flowInstallationStore{installations: map[string]domain.Installation{
+		"inst-shopee": {
+			InstallationID:     "inst-shopee",
+			ProviderCode:       "shopee",
+			Status:             domain.InstallationStatusDegraded,
+			HealthStatus:       domain.HealthStatusWarning,
+			ExternalAccountID:  "shop-1",
+			ActiveCredentialID: "cred-active",
+		},
+	}}
+	credentials := &flowCredentialRotator{
+		activeFound: true,
+		activeCredential: domain.Credential{
+			CredentialID:     "cred-active",
+			InstallationID:   "inst-shopee",
+			SecretType:       "oauth2",
+			EncryptedPayload: []byte("active-ciphertext"),
+			EncryptionKeyID:  "key-1",
+			IsActive:         true,
+		},
+	}
+	authSessions := &flowAuthWriter{
+		sessionFound: true,
+		session: domain.AuthSession{
+			AuthSessionID:        "auth_inst-shopee",
+			InstallationID:       "inst-shopee",
+			ProviderAccountID:    "shop-1",
+			State:                domain.AuthStateRefreshFailed,
+			RefreshFailureCode:   domain.ErrRefreshProviderError.Error(),
+			ConsecutiveFailures:  2,
+			NextRetryAt:          ptrTime(now.Add(5 * time.Minute)),
+			AccessTokenExpiresAt: ptrTime(now.Add(time.Minute)),
+		},
+	}
+	encryptor := &flowEncryptor{
+		decryptedPayload: map[string]any{
+			"type":                "oauth2",
+			"access_token":        "old-access",
+			"refresh_token":       "old-refresh",
+			"provider_account_id": "shop-1",
+		},
+		decryptKeyID: "key-1",
+	}
+	adapter := &flowAdapter{
+		providerCode: "shopee",
+		refresh: CredentialPayload{
+			SecretType:  "oauth2",
+			AccessToken: "new-access",
+			RefreshToken: "",
+			ExpiresAt:   &expiresAt,
+		},
+	}
+	svc := mustNewAuthFlowService(t, AuthFlowConfig{
+		TenantID:        "tenant_default",
+		Installations:   installations,
+		Credentials:     credentials,
+		AuthSessions:    authSessions,
+		OAuthStates:     &securityOAuthStateStore{},
+		OAuthStateCodec: roundTripSecurityStateCodec{payloadsByState: map[string]OAuthStatePayload{}},
+		Encryptor:       encryptor,
+		Clock:           fixedAuthFlowClock{now: now},
+		Adapters:        []MarketplaceAuthAdapter{adapter},
+	})
+
+	status, err := svc.RefreshCredential(context.Background(), RefreshCredentialInput{InstallationID: "inst-shopee"})
+	if err != nil {
+		t.Fatalf("RefreshCredential() error = %v", err)
+	}
+
+	if status.Status != domain.InstallationStatusConnected || status.ExternalAccount != "shop-1" {
+		t.Fatalf("status = %#v, want connected shop-1", status)
+	}
+	if adapter.refreshCalls != 1 || adapter.refreshInput.ProviderAccountID != "shop-1" || adapter.refreshInput.RefreshToken != "old-refresh" {
+		t.Fatalf("refresh input = %#v calls=%d, want shop-1 context and old refresh token", adapter.refreshInput, adapter.refreshCalls)
+	}
+	if len(credentials.inputs) != 1 {
+		t.Fatalf("rotated credentials = %d, want 1", len(credentials.inputs))
+	}
+	if rotatedCredential := credentials.inputs[0]; rotatedCredential.InstallationID != "inst-shopee" || rotatedCredential.SecretType != "oauth2" || string(rotatedCredential.EncryptedPayload) != "ciphertext" {
+		t.Fatalf("rotated credential = %#v, want persisted shopee oauth2 credential", rotatedCredential)
+	}
+	if len(authSessions.inputs) != 1 || authSessions.inputs[0].ProviderAccountID != "shop-1" || authSessions.inputs[0].State != domain.AuthStateValid {
+		t.Fatalf("auth sessions = %#v, want preserved shop-1 linkage", authSessions.inputs)
+	}
+	if len(encryptor.payloads) != 1 || encryptor.payloads[0]["provider_account_id"] != "shop-1" || encryptor.payloads[0]["refresh_token"] != "old-refresh" {
+		t.Fatalf("encrypted payloads = %#v, want refreshed payload to preserve shop-1 linkage", encryptor.payloads)
+	}
+	if got := installations.installations["inst-shopee"]; got.Status != domain.InstallationStatusConnected || got.HealthStatus != domain.HealthStatusHealthy {
 		t.Fatalf("installation = %#v, want connected healthy", got)
 	}
 }

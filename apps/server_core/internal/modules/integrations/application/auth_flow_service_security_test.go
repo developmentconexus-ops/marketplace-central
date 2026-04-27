@@ -234,6 +234,73 @@ func TestStartAuthorizeHandleCallbackAcceptsPersistedSignedState(t *testing.T) {
 	}
 }
 
+func TestStartAuthorizeHandleCallbackAcceptsShopeeShopIDState(t *testing.T) {
+	t.Parallel()
+
+	now := time.Unix(1000, 0).UTC()
+	installations := &flowInstallationStore{installations: map[string]domain.Installation{
+		"inst-shopee": {
+			InstallationID: "inst-shopee",
+			ProviderCode:   "shopee",
+			Status:         domain.InstallationStatusDraft,
+			HealthStatus:   domain.HealthStatusHealthy,
+		},
+	}}
+	oauthStates := &securityOAuthStateStore{consumedByState: map[string]bool{}}
+	codec := roundTripSecurityStateCodec{payloadsByState: map[string]OAuthStatePayload{}}
+	authSessions := &flowAuthWriter{}
+	adapter := &flowAdapter{
+		providerCode: "shopee",
+		callback: CredentialPayload{
+			SecretType:          "oauth2",
+			AccessToken:         "access",
+			RefreshToken:        "refresh",
+			ProviderAccountID:   "shop-1",
+			ProviderAccountName: "Shopee Loja",
+		},
+	}
+	svc := mustNewAuthFlowService(t, AuthFlowConfig{
+		TenantID:        "tenant_default",
+		Installations:   installations,
+		Credentials:     &flowCredentialRotator{},
+		AuthSessions:    authSessions,
+		OAuthStates:     oauthStates,
+		OAuthStateCodec: codec,
+		Encryptor:       &flowEncryptor{},
+		Clock:           fixedAuthFlowClock{now: now},
+		Adapters:        []MarketplaceAuthAdapter{adapter},
+	})
+
+	start, err := svc.StartAuthorize(context.Background(), StartAuthorizeInput{
+		InstallationID: "inst-shopee",
+		RedirectURI:    "https://app.test/callback",
+		Scopes:         []string{"read"},
+	})
+	if err != nil {
+		t.Fatalf("StartAuthorize() error = %v", err)
+	}
+
+	status, err := svc.HandleCallback(context.Background(), HandleCallbackInput{
+		InstallationID:    "inst-shopee",
+		Code:              "code-1",
+		State:             start.State,
+		RedirectURI:       "https://app.test/callback",
+		ProviderAccountID: "shop-1",
+	})
+	if err != nil {
+		t.Fatalf("HandleCallback() error = %v", err)
+	}
+	if status.InstallationID != "inst-shopee" || status.Status != domain.InstallationStatusConnected || status.ExternalAccount != "shop-1" {
+		t.Fatalf("status = %#v, want connected shopee shop-1", status)
+	}
+	if adapter.callbackInput.ProviderAccountID != "shop-1" {
+		t.Fatalf("adapter provider account id = %q, want shop-1", adapter.callbackInput.ProviderAccountID)
+	}
+	if len(authSessions.inputs) != 1 || authSessions.inputs[0].ProviderAccountID != "shop-1" {
+		t.Fatalf("auth session inputs = %#v, want stored shop-1 linkage", authSessions.inputs)
+	}
+}
+
 func TestHandleCallbackRejectsSignedStateStringThatDoesNotMatchPersistedState(t *testing.T) {
 	t.Parallel()
 
