@@ -29,9 +29,10 @@ func TestAdapterBuildsAuthorizeURL(t *testing.T) {
 	t.Parallel()
 
 	adapter := NewAdapter(Config{
-		ApplicationID: "amazon-application-id",
+		ApplicationID: "amzn1.sellerapps.app.2eca283f-9f5a-4d13-b16c-474EXAMPLE57",
 		ClientID:      "amazon-client-id",
 		AuthorizeURL:  "https://sellercentral.amazon.com.br/apps/authorize/consent",
+		AuthVersion:   "beta",
 	})
 
 	start, err := adapter.StartAuthorize(context.Background(), application.StartAuthorizeAdapterInput{
@@ -50,8 +51,11 @@ func TestAdapterBuildsAuthorizeURL(t *testing.T) {
 		t.Fatalf("parse auth URL: %v", err)
 	}
 	query := parsed.Query()
-	if got, want := query.Get("application_id"), "amazon-application-id"; got != want {
+	if got, want := query.Get("application_id"), "amzn1.sellerapps.app.2eca283f-9f5a-4d13-b16c-474EXAMPLE57"; got != want {
 		t.Fatalf("application_id = %q, want %q", got, want)
+	}
+	if got, want := query.Get("version"), "beta"; got != want {
+		t.Fatalf("version = %q, want %q", got, want)
 	}
 	if got := query.Get("client_id"); got != "" {
 		t.Fatalf("client_id = %q, want empty for Amazon consent URL", got)
@@ -67,6 +71,23 @@ func TestAdapterBuildsAuthorizeURL(t *testing.T) {
 	}
 	if got, want := query.Get("scope"), "sellingpartnerapi::notifications sellingpartnerapi::orders"; got != want {
 		t.Fatalf("scope = %q, want %q", got, want)
+	}
+}
+
+func TestAdapterRejectsNonSellerAppsApplicationID(t *testing.T) {
+	t.Parallel()
+
+	adapter := NewAdapter(Config{
+		ApplicationID: "amzn1.sp.solution.ad37445f-32c7-42a3-bab6-7d75597b5a9c",
+		AuthorizeURL:  "https://sellercentral.amazon.com.br/apps/authorize/consent",
+	})
+
+	_, err := adapter.StartAuthorize(context.Background(), application.StartAuthorizeAdapterInput{
+		State:       "state-amazon",
+		RedirectURI: "https://app.test/integrations/callback",
+	})
+	if err != domain.ErrAuthConfigurationInvalid {
+		t.Fatalf("StartAuthorize() error = %v, want %v", err, domain.ErrAuthConfigurationInvalid)
 	}
 }
 

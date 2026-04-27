@@ -101,6 +101,8 @@ const signedRequest = await signer.sign(request)
 ```env
 AMAZON_LWA_CLIENT_ID=
 AMAZON_LWA_CLIENT_SECRET=
+AMAZON_SP_API_APPLICATION_ID=amzn1.sellerapps.app.<application-id>
+AMAZON_AUTH_VERSION=beta   # use while the SP-API application is in Draft
 AMAZON_REDIRECT_URI=https://yourdomain.com/api/marketplace-connections/amazon/callback
 AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
@@ -108,6 +110,17 @@ AWS_SECRET_ACCESS_KEY=
 AMAZON_SELLER_ID=
 AMAZON_MARKETPLACE_ID=A2Q3Y263D00KWC   # Brazil marketplace ID
 ```
+
+For Marketplace Central runtime configuration, map those values to:
+
+```bash
+MPC_PROVIDER_AMAZON_APPLICATION_ID=amzn1.sellerapps.app.<application-id>
+MPC_PROVIDER_AMAZON_AUTH_VERSION=beta
+MPC_PROVIDER_AMAZON_CLIENT_ID=amzn1.application-oa2-client.<lwa-client-id>
+MPC_PROVIDER_AMAZON_CLIENT_SECRET=<lwa-client-secret>
+```
+
+Do not use the Solution Provider Portal solution ID (`amzn1.sp.solution...`) as the consent `application_id`; Seller Central authorization expects the SP-API application ID (`amzn1.sellerapps.app...`).
 
 ---
 

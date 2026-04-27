@@ -3,13 +3,14 @@ package domain
 import "errors"
 
 var (
-	ErrAuthProviderNotOAuth    = errors.New("INTEGRATIONS_AUTH_PROVIDER_NOT_OAUTH")
-	ErrAuthStateInvalid        = errors.New("INTEGRATIONS_AUTH_STATE_INVALID")
-	ErrAuthStateExpired        = errors.New("INTEGRATIONS_AUTH_STATE_EXPIRED")
-	ErrAuthStateConsumed       = errors.New("INTEGRATIONS_AUTH_STATE_CONSUMED")
-	ErrAuthCodeExchangeFailed  = errors.New("INTEGRATIONS_AUTH_CODE_EXCHANGE_FAILED")
-	ErrAuthProviderUnreachable = errors.New("INTEGRATIONS_AUTH_PROVIDER_UNREACHABLE")
-	ErrAuthScopesInsufficient  = errors.New("INTEGRATIONS_AUTH_SCOPES_INSUFFICIENT")
+	ErrAuthProviderNotOAuth     = errors.New("INTEGRATIONS_AUTH_PROVIDER_NOT_OAUTH")
+	ErrAuthStateInvalid         = errors.New("INTEGRATIONS_AUTH_STATE_INVALID")
+	ErrAuthStateExpired         = errors.New("INTEGRATIONS_AUTH_STATE_EXPIRED")
+	ErrAuthStateConsumed        = errors.New("INTEGRATIONS_AUTH_STATE_CONSUMED")
+	ErrAuthCodeExchangeFailed   = errors.New("INTEGRATIONS_AUTH_CODE_EXCHANGE_FAILED")
+	ErrAuthProviderUnreachable  = errors.New("INTEGRATIONS_AUTH_PROVIDER_UNREACHABLE")
+	ErrAuthScopesInsufficient   = errors.New("INTEGRATIONS_AUTH_SCOPES_INSUFFICIENT")
+	ErrAuthConfigurationInvalid = errors.New("INTEGRATIONS_AUTH_CONFIGURATION_INVALID")
 )
 
 var (

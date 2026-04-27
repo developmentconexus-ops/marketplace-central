@@ -22,6 +22,7 @@ type Config struct {
 	ClientSecret  string
 	AuthorizeURL  string
 	TokenURL      string
+	AuthVersion   string
 	HTTPClient    *http.Client
 }
 
@@ -69,6 +70,7 @@ func init() {
 			ClientSecret:  strings.TrimSpace(os.Getenv("MPC_PROVIDER_AMAZON_CLIENT_SECRET")),
 			AuthorizeURL:  "https://sellercentral.amazon.com.br/apps/authorize/consent",
 			TokenURL:      "https://api.amazon.com/auth/o2/token",
+			AuthVersion:   strings.TrimSpace(os.Getenv("MPC_PROVIDER_AMAZON_AUTH_VERSION")),
 		})
 	})
 }
@@ -93,6 +95,11 @@ func (a *Adapter) StartAuthorize(_ context.Context, input application.StartAutho
 }
 
 func (a *Adapter) BuildAuthorizeURL(state, redirectURI, codeChallenge string, scopes []string) (string, error) {
+	applicationID := strings.TrimSpace(a.cfg.ApplicationID)
+	if !strings.HasPrefix(applicationID, "amzn1.sellerapps.app.") {
+		return "", domain.ErrAuthConfigurationInvalid
+	}
+
 	base, err := url.Parse(strings.TrimSpace(a.cfg.AuthorizeURL))
 	if err != nil {
 		return "", err
@@ -100,10 +107,13 @@ func (a *Adapter) BuildAuthorizeURL(state, redirectURI, codeChallenge string, sc
 
 	query := base.Query()
 	query.Set("response_type", "code")
-	query.Set("application_id", strings.TrimSpace(a.cfg.ApplicationID))
+	query.Set("application_id", applicationID)
 	query.Set("redirect_uri", strings.TrimSpace(redirectURI))
 	query.Set("state", strings.TrimSpace(state))
 
+	if version := strings.TrimSpace(a.cfg.AuthVersion); version != "" {
+		query.Set("version", version)
+	}
 	if scope := joinScopes(scopes); scope != "" {
 		query.Set("scope", scope)
 	}
