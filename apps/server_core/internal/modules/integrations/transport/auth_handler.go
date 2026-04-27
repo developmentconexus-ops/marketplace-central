@@ -49,7 +49,7 @@ func (h AuthHandler) handleCallback(w http.ResponseWriter, r *http.Request) {
 		slog.Info("integrations.auth.callback", "action", "handle_callback", "result", "405", "duration_ms", time.Since(start).Milliseconds())
 		return
 	}
-	code := r.URL.Query().Get("code")
+	code := firstNonEmptyQuery(r.URL.Query(), "code", "spapi_oauth_code")
 	state := r.URL.Query().Get("state")
 	if code == "" || state == "" {
 		writeIntegrationError(w, http.StatusBadRequest, "INTEGRATIONS_AUTH_STATE_INVALID", "missing callback params")
@@ -58,9 +58,10 @@ func (h AuthHandler) handleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 	redirectURI := strings.TrimSpace(os.Getenv("MPC_OAUTH_REDIRECT_URI"))
 	result, err := h.flow.HandleCallback(r.Context(), application.HandleCallbackInput{
-		Code:        code,
-		State:       state,
-		RedirectURI: redirectURI,
+		Code:              code,
+		State:             state,
+		RedirectURI:       redirectURI,
+		ProviderAccountID: strings.TrimSpace(r.URL.Query().Get("selling_partner_id")),
 	})
 	if err != nil {
 		slog.Warn("integrations.auth.callback", "action", "handle_callback", "result", "302", "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
@@ -245,6 +246,15 @@ func buildWebRedirectURL(path string) string {
 		return path
 	}
 	return strings.TrimRight(webOrigin, "/") + path
+}
+
+func firstNonEmptyQuery(values url.Values, keys ...string) string {
+	for _, key := range keys {
+		if value := strings.TrimSpace(values.Get(key)); value != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func buildIntegrationsRedirectPath(authStatus, installationID string) string {

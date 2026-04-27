@@ -29,10 +29,11 @@ type StartReauthInput struct {
 }
 
 type HandleCallbackInput struct {
-	InstallationID string
-	State          string
-	Code           string
-	RedirectURI    string
+	InstallationID    string
+	State             string
+	Code              string
+	RedirectURI       string
+	ProviderAccountID string
 }
 
 type SubmitAPIKeyInput struct {
@@ -78,10 +79,11 @@ type StartAuthorizeAdapterInput struct {
 }
 
 type HandleCallbackAdapterInput struct {
-	InstallationID string
-	Code           string
-	RedirectURI    string
-	CodeVerifier   string
+	InstallationID    string
+	Code              string
+	RedirectURI       string
+	CodeVerifier      string
+	ProviderAccountID string
 }
 
 type OAuthStatePayload struct {
@@ -323,10 +325,11 @@ func (s *AuthFlowService) HandleCallback(ctx context.Context, input HandleCallba
 	}
 
 	payload, err := adapter.ExchangeCallback(ctx, HandleCallbackAdapterInput{
-		InstallationID: statePayload.InstallationID,
-		Code:           input.Code,
-		RedirectURI:    input.RedirectURI,
-		CodeVerifier:   codeVerifier,
+		InstallationID:    statePayload.InstallationID,
+		Code:              input.Code,
+		RedirectURI:       input.RedirectURI,
+		CodeVerifier:      codeVerifier,
+		ProviderAccountID: input.ProviderAccountID,
 	})
 	if err != nil {
 		return AuthStatus{}, err

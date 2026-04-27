@@ -2,9 +2,14 @@ package amazon
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	integrationsproviders "marketplace-central/apps/server_core/internal/modules/integrations/adapters/providers"
 	"marketplace-central/apps/server_core/internal/modules/integrations/application"
@@ -12,10 +17,12 @@ import (
 )
 
 type Config struct {
-	ClientID     string
-	ClientSecret string
-	AuthorizeURL string
-	TokenURL     string
+	ApplicationID string
+	ClientID      string
+	ClientSecret  string
+	AuthorizeURL  string
+	TokenURL      string
+	HTTPClient    *http.Client
 }
 
 type Adapter struct {
@@ -57,15 +64,19 @@ func init() {
 	})
 	integrationsproviders.RegisterAuthFactory(func() application.MarketplaceAuthAdapter {
 		return NewAdapter(Config{
-			ClientID:     strings.TrimSpace(os.Getenv("MPC_PROVIDER_AMAZON_CLIENT_ID")),
-			ClientSecret: strings.TrimSpace(os.Getenv("MPC_PROVIDER_AMAZON_CLIENT_SECRET")),
-			AuthorizeURL: "https://sellercentral.amazon.com.br/apps/authorize/consent",
-			TokenURL:     "https://api.amazon.com/auth/o2/token",
+			ApplicationID: strings.TrimSpace(os.Getenv("MPC_PROVIDER_AMAZON_APPLICATION_ID")),
+			ClientID:      strings.TrimSpace(os.Getenv("MPC_PROVIDER_AMAZON_CLIENT_ID")),
+			ClientSecret:  strings.TrimSpace(os.Getenv("MPC_PROVIDER_AMAZON_CLIENT_SECRET")),
+			AuthorizeURL:  "https://sellercentral.amazon.com.br/apps/authorize/consent",
+			TokenURL:      "https://api.amazon.com/auth/o2/token",
 		})
 	})
 }
 
 func NewAdapter(cfg Config) *Adapter {
+	if cfg.HTTPClient == nil {
+		cfg.HTTPClient = &http.Client{Timeout: 15 * time.Second}
+	}
 	return &Adapter{cfg: cfg}
 }
 
@@ -89,7 +100,7 @@ func (a *Adapter) BuildAuthorizeURL(state, redirectURI, codeChallenge string, sc
 
 	query := base.Query()
 	query.Set("response_type", "code")
-	query.Set("client_id", strings.TrimSpace(a.cfg.ClientID))
+	query.Set("application_id", strings.TrimSpace(a.cfg.ApplicationID))
 	query.Set("redirect_uri", strings.TrimSpace(redirectURI))
 	query.Set("state", strings.TrimSpace(state))
 
@@ -105,16 +116,74 @@ func (a *Adapter) BuildAuthorizeURL(state, redirectURI, codeChallenge string, sc
 	return base.String(), nil
 }
 
-func (a *Adapter) ExchangeCallback(context.Context, application.HandleCallbackAdapterInput) (application.CredentialPayload, error) {
-	return application.CredentialPayload{}, domain.ErrNotSupported
+func (a *Adapter) ExchangeCallback(ctx context.Context, input application.HandleCallbackAdapterInput) (application.CredentialPayload, error) {
+	result, err := a.exchangeToken(ctx, url.Values{
+		"grant_type":    {"authorization_code"},
+		"code":          {strings.TrimSpace(input.Code)},
+		"redirect_uri":  {strings.TrimSpace(input.RedirectURI)},
+		"client_id":     {strings.TrimSpace(a.cfg.ClientID)},
+		"client_secret": {strings.TrimSpace(a.cfg.ClientSecret)},
+	})
+	if err != nil {
+		return application.CredentialPayload{}, err
+	}
+
+	var expiresAt *time.Time
+	if result.ExpiresIn > 0 {
+		ts := time.Now().UTC().Add(time.Duration(result.ExpiresIn) * time.Second)
+		expiresAt = &ts
+	}
+
+	providerAccountID := strings.TrimSpace(input.ProviderAccountID)
+	extra := result.RawExtras
+	if extra == nil {
+		extra = map[string]any{}
+	}
+	if providerAccountID != "" {
+		extra["selling_partner_id"] = providerAccountID
+	}
+
+	return application.CredentialPayload{
+		SecretType:        "lwa",
+		AccessToken:       result.AccessToken,
+		RefreshToken:      result.RefreshToken,
+		ProviderAccountID: providerAccountID,
+		ExpiresAt:         expiresAt,
+		Extra:             extra,
+	}, nil
 }
 
 func (a *Adapter) VerifyAPIKey(context.Context, application.SubmitAPIKeyAdapterInput) (application.CredentialPayload, error) {
 	return application.CredentialPayload{}, domain.ErrNotSupported
 }
 
-func (a *Adapter) Refresh(context.Context, application.RefreshCredentialAdapterInput) (application.CredentialPayload, error) {
-	return application.CredentialPayload{}, domain.ErrNotSupported
+func (a *Adapter) Refresh(ctx context.Context, input application.RefreshCredentialAdapterInput) (application.CredentialPayload, error) {
+	result, err := a.exchangeToken(ctx, url.Values{
+		"grant_type":    {"refresh_token"},
+		"refresh_token": {strings.TrimSpace(input.RefreshToken)},
+		"client_id":     {strings.TrimSpace(a.cfg.ClientID)},
+		"client_secret": {strings.TrimSpace(a.cfg.ClientSecret)},
+	})
+	if err != nil {
+		return application.CredentialPayload{}, err
+	}
+
+	var expiresAt *time.Time
+	if result.ExpiresIn > 0 {
+		ts := time.Now().UTC().Add(time.Duration(result.ExpiresIn) * time.Second)
+		expiresAt = &ts
+	}
+	refreshToken := strings.TrimSpace(result.RefreshToken)
+	if refreshToken == "" {
+		refreshToken = input.RefreshToken
+	}
+	return application.CredentialPayload{
+		SecretType:   "lwa",
+		AccessToken:  result.AccessToken,
+		RefreshToken: refreshToken,
+		ExpiresAt:    expiresAt,
+		Extra:        result.RawExtras,
+	}, nil
 }
 
 func joinScopes(scopes []string) string {
@@ -127,4 +196,60 @@ func joinScopes(scopes []string) string {
 		filtered = append(filtered, scope)
 	}
 	return strings.Join(filtered, " ")
+}
+
+func (a *Adapter) exchangeToken(ctx context.Context, form url.Values) (*domain.TokenResult, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimSpace(a.cfg.TokenURL), strings.NewReader(form.Encode()))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := a.cfg.HTTPClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("%w: status=%d body=%s", domain.ErrAuthCodeExchangeFailed, resp.StatusCode, readProviderErrorBody(resp))
+	}
+
+	var payload struct {
+		AccessToken  string         `json:"access_token"`
+		RefreshToken string         `json:"refresh_token"`
+		ExpiresIn    int            `json:"expires_in"`
+		TokenType    string         `json:"token_type"`
+		Raw          map[string]any `json:"-"`
+	}
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return nil, err
+	}
+	rawExtras := map[string]any{}
+	_ = json.Unmarshal(raw, &rawExtras)
+
+	return &domain.TokenResult{
+		AccessToken:  payload.AccessToken,
+		RefreshToken: payload.RefreshToken,
+		ExpiresIn:    payload.ExpiresIn,
+		TokenType:    payload.TokenType,
+		RawExtras:    rawExtras,
+	}, nil
+}
+
+func readProviderErrorBody(resp *http.Response) string {
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1024))
+	if err != nil {
+		return "unavailable"
+	}
+	text := strings.TrimSpace(string(raw))
+	if text == "" {
+		return "empty"
+	}
+	return text
 }

@@ -198,6 +198,27 @@ func TestAuthHandlerCallbackUsesEnvRedirectURI(t *testing.T) {
 	}
 }
 
+func TestAuthHandlerCallbackAcceptsAmazonSPAPICode(t *testing.T) {
+	t.Setenv("MPC_OAUTH_REDIRECT_URI", "https://public.example/integrations/auth/callback")
+
+	flow := &stubAuthFlow{}
+	handler := NewAuthHandler(flow)
+	req := httptest.NewRequest(http.MethodGet, "/integrations/auth/callback?spapi_oauth_code=spapi-code&selling_partner_id=A1SELLER&state=signed-state", nil)
+	rr := httptest.NewRecorder()
+
+	handler.handleCallback(rr, req)
+
+	if rr.Code != http.StatusFound {
+		t.Fatalf("status = %d, want 302; body=%s", rr.Code, rr.Body.String())
+	}
+	if flow.callbackInput.Code != "spapi-code" || flow.callbackInput.State != "signed-state" {
+		t.Fatalf("callback input = %#v, want SP-API code and state", flow.callbackInput)
+	}
+	if flow.callbackInput.ProviderAccountID != "A1SELLER" {
+		t.Fatalf("provider account id = %q, want selling partner id", flow.callbackInput.ProviderAccountID)
+	}
+}
+
 func TestAuthHandlerCallbackRedirectsToWebOriginWhenConfigured(t *testing.T) {
 	t.Setenv("MPC_WEB_ORIGIN", "https://app.example")
 
