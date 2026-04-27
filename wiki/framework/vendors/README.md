@@ -18,17 +18,22 @@ Each vendor folder must include:
    - account/app setup, auth bootstrap, sandbox, and first-call flow
 3. `api-best-practices.md`
    - product, price, stock, order, logistics, returns, push, and sensitive-data constraints
-4. `sources.md`
+4. `capability-matrix.md`
+   - capability to API-area mapping, module ownership, and rollout notes
+5. `sources.md`
    - source links, document IDs, and last verification date
 
 Optional files:
 
+- `section-index.md` and `sections/*.md` for large vendor docsets (100+ pages)
 - `operations.md` for runbooks and incident handling
 - `gaps-and-risks.md` for known platform limitations
+- `implementation-sync.md` for docs-to-code change tracking during active implementation
 
 ## Vendor Index
 
 - [Shopee](shopee/README.md)
+- [Amazon SP-API](amazon/README.md)
 
 ## Template
 

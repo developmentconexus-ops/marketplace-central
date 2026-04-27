@@ -32,6 +32,7 @@ Planning ownership:
 - [Shopee Fit Analysis](framework/shopee-fit-analysis.md)
 - [Vendors Hub](framework/vendors/README.md)
 - [Shopee Vendor Playbook](framework/vendors/shopee/README.md)
+- [Amazon Vendor Playbook](framework/vendors/amazon/README.md)
 
 ### Modules
 - [Marketplaces](modules/marketplaces.md)

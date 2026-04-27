@@ -48,3 +48,8 @@ Last verified: YYYY-MM-DD
 - List source endpoint:
 - Document detail endpoint:
 - Primary docs:
+
+## 7. Optional Large-Docset Index
+
+- `section-index.md` for domain navigation
+- `sections/*.md` for deep pages (onboarding, catalog, orders, reports, etc.)
