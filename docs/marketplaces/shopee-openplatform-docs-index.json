@@ -1,0 +1,1194 @@
+﻿[
+    {
+        "id":  4,
+        "title":  "Introduction",
+        "category_id":  50,
+        "language_code":  "en",
+        "release_time":  1660708257,
+        "update_time":  1731296802,
+        "headings":  [
+                         "What is Shopee Open Platform?",
+                         "Benefits of using Shopee Open API?",
+                         "Who can access Shopee Open Platform?",
+                         "API integration overview"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  3087,
+        "url":  "https://open.shopee.com/developer-guide/4"
+    },
+    {
+        "id":  12,
+        "title":  "Developer account registration",
+        "category_id":  50,
+        "language_code":  "en",
+        "release_time":  1660803491,
+        "update_time":  1761733037,
+        "headings":  [
+                         "1. Signing up",
+                         "2. Understanding Shopee Open Platform account types",
+                         "3. Shopee Open Platform Eligibility Criteria",
+                         "3.1 Shopee Sellers",
+                         "3.2 Third-party Partner Platforms",
+                         "4.Submitting profile details for approval",
+                         "4.1 Log in to Shopee Open Platform \u003e Console \u003e App Management \u003e App List \u003e choose an account type depending on which description suits your business profile better.",
+                         "4.2 Fill in the details according to your account type",
+                         "4.2.1 Shopee Seller \u003e Individual Seller",
+                         "4.2.2 Shopee Seller \u003e Registered Business Seller",
+                         "4.2.3 Third-party Partner Platform",
+                         "4.3 Wait for your profile to be approved by Shopee"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  17006,
+        "url":  "https://open.shopee.com/developer-guide/12"
+    },
+    {
+        "id":  14,
+        "title":  "App management",
+        "category_id":  50,
+        "language_code":  "en",
+        "release_time":  1660803567,
+        "update_time":  1745482754,
+        "headings":  [
+                         "App types",
+                         "Creating an App",
+                         "Submitting your App to Go Live",
+                         "Switching to the production environment",
+                         "Viewing your App status",
+                         "Resetting your App keys",
+                         "Deleting an App",
+                         "FAQs"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  18504,
+        "url":  "https://open.shopee.com/developer-guide/14"
+    },
+    {
+        "id":  16,
+        "title":  "API calls",
+        "category_id":  50,
+        "language_code":  "en",
+        "release_time":  1660803658,
+        "update_time":  1763712830,
+        "headings":  [
+                         "API domains",
+                         "API request methods",
+                         "API Protocol",
+                         "API request parameters",
+                         "Types of Open API",
+                         "Signature calculation",
+                         "API request sample",
+                         "API response parameters",
+                         "API functions",
+                         "Problems with API"
+                     ],
+        "endpoint_count":  12,
+        "endpoints":  [
+                          "/api/v2/auth",
+                          "/api/v2/auth/token/get",
+                          "/api/v2/example/merchant_level/get",
+                          "/api/v2/example/shop",
+                          "/api/v2/global_product/get_category",
+                          "/api/v2/global_product/get_category165571443109777174636962737266615546704c6d1000000",
+                          "/api/v2/product/get_category",
+                          "/api/v2/public/get_shops_by_partner",
+                          "/api/v2/public/get_shops_by_partner1655714431",
+                          "/api/v2/shop/get_shop_info",
+                          "/api/v2/shop/get_shop_info165571443159777174636562737266615546704c6d14701711",
+                          "/api/v2/shop/update_profile"
+                      ],
+        "content_length":  30104,
+        "url":  "https://open.shopee.com/developer-guide/16"
+    },
+    {
+        "id":  18,
+        "title":  "Push Mechanism notifications",
+        "category_id":  50,
+        "language_code":  "en",
+        "release_time":  1660803686,
+        "update_time":  1673858279,
+        "headings":  [
+                         "Push Mechanism notifications",
+                         "Understanding Push Mechanism notifications",
+                         "Shopee Push",
+                         "Order Push",
+                         "Marketing Push",
+                         "Product Push",
+                         "Chat Push",
+                         "Subscribing to Push Mechanism",
+                         "Push Authorization",
+                         "Triggering Push Mechanism notifications",
+                         "Push Mechanism Retry Logic",
+                         "Push Mechanism Warning/Disable Logic"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  24874,
+        "url":  "https://open.shopee.com/developer-guide/18"
+    },
+    {
+        "id":  20,
+        "title":  "Authorization and Authentication",
+        "category_id":  50,
+        "language_code":  "en",
+        "release_time":  1660804210,
+        "update_time":  1760688052,
+        "headings":  [
+                         "The authorization process",
+                         "Generating the authorization link",
+                         "Acquiring authorizations from shop(s)",
+                         "Authorizing from a shop account",
+                         "Authorizing from a main account",
+                         "Using the authorization code",
+                         "Getting and refreshing the access_token",
+                         "GetAccesstoken",
+                         "RefreshAccessToken",
+                         "Refreshing the access_token and refresh_token on a shop account",
+                         "Refreshing the access_token and refresh_token on a main account",
+                         "Canceling authorization",
+                         "Canceling authorization by changing the authorization URL",
+                         "Canceling authorization on Seller Center",
+                         "FAQs on authorization and authentication"
+                     ],
+        "endpoint_count":  4,
+        "endpoints":  [
+                          "/api/v2/auth/access_token/get",
+                          "/api/v2/auth/token/get",
+                          "/api/v2/shop/auth_partner",
+                          "/api/v2/shop/cancel_auth_partner"
+                      ],
+        "content_length":  63643,
+        "url":  "https://open.shopee.com/developer-guide/20"
+    },
+    {
+        "id":  24,
+        "title":  "Service Partner Program",
+        "category_id":  50,
+        "language_code":  "en",
+        "release_time":  1660804630,
+        "update_time":  1766572230,
+        "headings":  [
+                         "About Service Partner Program",
+                         "Eligibility",
+                         "Scoring",
+                         "Benefits and penalties",
+                         "Frequently Asked Questions (FAQ)",
+                         "General",
+                         "Scoring",
+                         "Benefits and Penalties",
+                         "Miscellaneous"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  15379,
+        "url":  "https://open.shopee.com/developer-guide/24"
+    },
+    {
+        "id":  27,
+        "title":  "V2.0 API Call Flow",
+        "category_id":  50,
+        "language_code":  "en",
+        "release_time":  1660804570,
+        "update_time":  1750405637,
+        "headings":  [
+                         "Create item",
+                         "Order Status Flow",
+                         "Package Fulfillment Status Flow",
+                         "Arrange Shipment \u0026 Get TrackingNo \u0026 Print AirwayBill",
+                         "[CrossBorder] Seller Ship Out Tracking",
+                         "[CrossBorder-CNSC]Global Product Flow",
+                         "[CrossBorder-KRSC]Global Product Flow"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  3212,
+        "url":  "https://open.shopee.com/developer-guide/27"
+    },
+    {
+        "id":  28,
+        "title":  "CNSC API Integration Guide",
+        "category_id":  50,
+        "language_code":  "en",
+        "release_time":  1660804601,
+        "update_time":  1698402750,
+        "headings":  [
+                         "1. What is CNSC",
+                         "2. How to integrate CNSC API",
+                         "2.1 Register as a developer（If you already have a developer account, you can skip this step）",
+                         "2.2 Complete account information （If you already have an approved developer account, you can skip this step）",
+                         "2.3 Create an app",
+                         "2.4 Go live app",
+                         "2.5 Start API testing",
+                         "2.6 Merchant \u0026 Shop Authorization",
+                         "3. Summary",
+                         "If you have any technical connection problems that are not covered by this document, please contact Shopee Open Platform through the ticket system."
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  16519,
+        "url":  "https://open.shopee.com/developer-guide/28"
+    },
+    {
+        "id":  29,
+        "title":  "KRSC API Integration Guide",
+        "category_id":  50,
+        "language_code":  "en",
+        "release_time":  1660804618,
+        "update_time":  1698402580,
+        "headings":  [
+                         "1. What is KRSC",
+                         "2. How to integrate KRSC API",
+                         "2.1 Register as a developer（If you already have a developer account, you can skip this step）",
+                         "2.2 Complete account information （If you already have an approved developer account, you can skip this step）",
+                         "2.3 Create an app",
+                         "2.4 Go live app",
+                         "2.5 Start API testing",
+                         "2.6 Merchant \u0026 Shop Authorization",
+                         "3. Summary",
+                         "If you have any technical connection problems that are not covered by this document, please contact Shopee Open Platform through the ticket system."
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  16213,
+        "url":  "https://open.shopee.com/developer-guide/29"
+    },
+    {
+        "id":  31,
+        "title":  "V2.0 Data Definition",
+        "category_id":  50,
+        "language_code":  "en",
+        "release_time":  1660805026,
+        "update_time":  1773802335,
+        "headings":  [
+                         "Basic Data Type",
+                         "OrderStatus",
+                         "ReturnStatus",
+                         "ReturnSolution",
+                         "ReturnReason",
+                         "LogisticsStatus",
+                         "PackageFulfillmentStatus",
+                         "ReturnDisputeReasonId",
+                         "AttributeType",
+                         "AttributeInputTypeEdit",
+                         "CancelReason（Seller）",
+                         "FeeType",
+                         "PaymentMethod",
+                         "CancelReason",
+                         "ShippingDocumentType",
+                         "ItemStatus",
+                         "StockType",
+                         "Language",
+                         "PromotionType",
+                         "BuyerCancelReason",
+                         "TrackingLogisticsStatus",
+                         "SellerProofStatus",
+                         "TransactionType",
+                         "SellerCompensationStatus",
+                         "NegotiationStatus",
+                         "Return Refund Request Type",
+                         "Validation Type",
+                         "Reverse Logistics Status",
+                         "[Normal Return]",
+                         "[In-transit RR]",
+                         "[Return-on-the-Spot]",
+                         "Post Return Logistics Status"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  35233,
+        "url":  "https://open.shopee.com/developer-guide/31"
+    },
+    {
+        "id":  209,
+        "title":  "Product creation preparation",
+        "category_id":  2058,
+        "language_code":  "en",
+        "release_time":  1667208258,
+        "update_time":  1758279838,
+        "headings":  [
+                         "1. Category",
+                         "1.1 Global category data",
+                         "1.2 Category tree",
+                         "1.3 Recommend categories",
+                         "2. Attribute",
+                         "2.1 Required and optional Attributes",
+                         "2.2 Type of attributes",
+                         "2.3 Data types of attribute values",
+                         "2.4 Attribute value units",
+                         "2.5 Parent attribute and parent brand",
+                         "2.6 Recommend attributes",
+                         "3. Brand",
+                         "4. Days to ship",
+                         "5. Size chart",
+                         "6. Product restrictions",
+                         "7. Product logistics"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  29361,
+        "url":  "https://open.shopee.com/developer-guide/209"
+    },
+    {
+        "id":  211,
+        "title":  "Creating product",
+        "category_id":  2058,
+        "language_code":  "en",
+        "release_time":  1667210538,
+        "update_time":  1758278394,
+        "headings":  [
+                         "1. Uploading media files",
+                         "1.1 Uploading image",
+                         "1.2 Uploading video",
+                         "2. Uploading category and attributes",
+                         "2.1 Uploading category",
+                         "2.2 Uploading attributes",
+                         "3. Uploading description",
+                         "4. Uploading price",
+                         "5. Uploading stock",
+                         "6. Uploading shipment channels and shipping fee",
+                         "7. Creating Variants"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  33214,
+        "url":  "https://open.shopee.com/developer-guide/211"
+    },
+    {
+        "id":  213,
+        "title":  "Creating global product",
+        "category_id":  2058,
+        "language_code":  "en",
+        "release_time":  1667218486,
+        "update_time":  1758277990,
+        "headings":  [
+                         "What is the global product?",
+                         "CNSC/KRSC account system",
+                         "Global products and shop products",
+                         "Changes in product management process",
+                         "1. Product creation",
+                         "2. Field management restrictions",
+                         "3. Product basic data differences",
+                         "3.1 Getting categories",
+                         "3.2 Getting recommended categories",
+                         "3.3 Getting attributes",
+                         "3.4 Getting recommendation attribute",
+                         "3.5 Getting the available brand list",
+                         "3.6 Getting days to ship",
+                         "3.7 Getting information about whether the category supports size chart",
+                         "3.8 Getting  global product restrictions",
+                         "4. Creating global product",
+                         "4.1 Completing CNSC/KRSC basic configuration",
+                         "4.2 Completing the main account authorization",
+                         "4.3 Getting the merchant id list and shop id list under the main account",
+                         "4.4 Setting product information synchronization",
+                         "4.5 Uploading global product",
+                         "4.6 Creating variants"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  35814,
+        "url":  "https://open.shopee.com/developer-guide/213"
+    },
+    {
+        "id":  215,
+        "title":  "Publishing global product",
+        "category_id":  2058,
+        "language_code":  "en",
+        "release_time":  1667219085,
+        "update_time":  1667289970,
+        "headings":  [
+                         "Step 1: Getting the list of publishable shops",
+                         "Step 2: Getting the shop channel",
+                         "Step 3: Publishing global product",
+                         "Step 4: Getting the list of published shop products"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  5021,
+        "url":  "https://open.shopee.com/developer-guide/215"
+    },
+    {
+        "id":  217,
+        "title":  "Guidelines for Creating Product",
+        "category_id":  2058,
+        "language_code":  "en",
+        "release_time":  1667219335,
+        "update_time":  1667288148,
+        "headings":  [
+                         "API call flow overview",
+                         "1. Creating Product",
+                         "2. Creating global product",
+                         "3. Publishing global product",
+                         "Data Definition",
+                         "Attribute value data type",
+                         "Attribute input type",
+                         "Logistics type",
+                         "Item status type",
+                         "Translation language",
+                         "Stock type",
+                         "Product promotion type",
+                         "Market Code"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  3658,
+        "url":  "https://open.shopee.com/developer-guide/217"
+    },
+    {
+        "id":  219,
+        "title":  "Variant management",
+        "category_id":  2058,
+        "language_code":  "en",
+        "release_time":  1667219991,
+        "update_time":  1716887374,
+        "headings":  [
+                         "1. Adding variants with same tier structure",
+                         "2.Adding variants that change tier structure",
+                         "3.Deleting variants with same tier structure",
+                         "4.Deleting variants that change tier structure",
+                         "5.Changing the order of variants",
+                         "6.Changing the option name of the variant",
+                         "Summary"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  26439,
+        "url":  "https://open.shopee.com/developer-guide/219"
+    },
+    {
+        "id":  221,
+        "title":  "Product base info management",
+        "category_id":  2058,
+        "language_code":  "en",
+        "release_time":  1667220832,
+        "update_time":  1667291828,
+        "headings":  [
+                         "1. Getting product list",
+                         "1.1 Getting all shop products",
+                         "1.2 Searching for item_id",
+                         "2. Getting product information",
+                         "3. Getting the data of product",
+                         "4. Getting product promotion information",
+                         "5. Updating product information",
+                         "6. Unlisting or deleting product",
+                         "7. Updating size chart image",
+                         "8. Registering Brand",
+                         "9. Getting global product list",
+                         "10. Getting a global product ID",
+                         "11. Getting global product information",
+                         "12. Updating global products",
+                         "13. Deleting global product",
+                         "14. Updating the size chart image"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  12754,
+        "url":  "https://open.shopee.com/developer-guide/221"
+    },
+    {
+        "id":  223,
+        "title":  "Stock \u0026 Price Management",
+        "category_id":  2058,
+        "language_code":  "en",
+        "release_time":  1667220906,
+        "update_time":  1710732234,
+        "headings":  [
+                         "1. Getting product price",
+                         "2. Updating product price",
+                         "3. Updating global product price",
+                         "4. Getting product stock",
+                         "5. Updating product stock",
+                         "6. Updating global product stock"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  13886,
+        "url":  "https://open.shopee.com/developer-guide/223"
+    },
+    {
+        "id":  225,
+        "title":  "First Mile Binding",
+        "category_id":  2058,
+        "language_code":  "en",
+        "release_time":  1667293328,
+        "update_time":  1724752025,
+        "headings":  [
+                         "Terminology",
+                         "Best Practise",
+                         "For pick up mode:",
+                         "For drop off mode:",
+                         "For self deliver mode:",
+                         "FAQ",
+                         "Data definition"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  8103,
+        "url":  "https://open.shopee.com/developer-guide/225"
+    },
+    {
+        "id":  227,
+        "title":  "Return Refund Management",
+        "category_id":  2058,
+        "language_code":  "en",
+        "release_time":  1667294763,
+        "update_time":  1766126000,
+        "headings":  [
+                         "1.Return Status Flow",
+                         "2.Return API Call Flow",
+                         "2.1 Getting the list of return orders and details",
+                         "2.2 Refund Only",
+                         "2.3 Return \u0026 Refund (No Dispute)",
+                         "2.4 Return \u0026 Refund (Dispute)",
+                         "2.4.1 Dispute",
+                         "3.Data Definition",
+                         "ReturnStatus",
+                         "ReturnReason and Reassessed Request Reason",
+                         "ReturnDisputeReason",
+                         "ReturnSolution",
+                         "NegotiationStatus",
+                         "SellerProofStatus",
+                         "SellerCompensationStatus",
+                         "Return Refund Request Type",
+                         "Validation Type",
+                         "Reverse Logistics Status",
+                         "[Normal Return]",
+                         "[In-transit RR]",
+                         "[Return-on-the-Spot]",
+                         "Post Return Logistics Status"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  14561,
+        "url":  "https://open.shopee.com/developer-guide/227"
+    },
+    {
+        "id":  229,
+        "title":  "Order Management",
+        "category_id":  2058,
+        "language_code":  "en",
+        "release_time":  1667362876,
+        "update_time":  1758717606,
+        "headings":  [
+                         "1. Entity",
+                         "2. Order Status Flow",
+                         "3. Package Fulfillment Status",
+                         "4. Getting order list and details",
+                         "5. Canceling Order",
+                         "6. Splitting Order",
+                         "6.1 Splitting",
+                         "6.2 Cancel Splitting",
+                         "7. Getting package list and details for shipment",
+                         "8. Shipment API Call Flow",
+                         "8.1 Basic Shipping Logic",
+                         "8.2 Related APIs for order shipment",
+                         "8.3 API request example",
+                         "8.3.1 v2.logistics.get_shipping_parameter",
+                         "8.3.2. v2.logistics.ship_order",
+                         "8.3.3 v2.logistics.update_shipping_order",
+                         "9. FAQ",
+                         "Order related",
+                         "Shipping related",
+                         "Airway Bill related",
+                         "10. Data Definition",
+                         "Order Status",
+                         "Package Status",
+                         "Package Fulfillment Status / Logistics Status",
+                         "Order cancellation reason",
+                         "Cancel reason",
+                         "Buyer cancel reason",
+                         "Shipping document type",
+                         "Package logistics track status"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  42606,
+        "url":  "https://open.shopee.com/developer-guide/229"
+    },
+    {
+        "id":  261,
+        "title":  "SIP best practices",
+        "category_id":  2058,
+        "language_code":  "en",
+        "release_time":  1673591545,
+        "update_time":  1744272498,
+        "headings":  [
+                         "What is SIP?",
+                         "Terminology:",
+                         "1.SIP Shop Authorization",
+                         "1.1 non CNSC Seller",
+                         "1.1.1 Authorization process",
+                         "1.1.2 Getting code",
+                         "1.1.3 Getting P shop token",
+                         "1.1.5 Refresh Access token",
+                         "1.2 CNSC Seller",
+                         "1.2.1 Authorization process",
+                         "1.2.2 Getting code",
+                         "1.2.3 Getting token",
+                         "1.2.4 Getting shop relationship",
+                         "1.2.5 Refresh Access Token",
+                         "2. Product Management",
+                         "2.1 Product information logic",
+                         "2.2 Price logic",
+                         "3. Order management",
+                         "3.1 Order synchronization logic",
+                         "3.1.1 CB SIP",
+                         "3.1.2 Local SIP",
+                         "4. Order income",
+                         "5. API permission"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  20626,
+        "url":  "https://open.shopee.com/developer-guide/261"
+    },
+    {
+        "id":  277,
+        "title":  "Shopee On-Platform Ads API Guide",
+        "category_id":  2058,
+        "language_code":  "en",
+        "release_time":  1700726784,
+        "update_time":  1769621616,
+        "headings":  [
+                         "What is Shopee Ads",
+                         "Ads Open API Usage Rules",
+                         "Ads Open API Instruction",
+                         "1. Retrieve Ad Balance and Shop Settings",
+                         "2.Obtain real-time performance overview data of product ads (shop dimension)",
+                         "3. Retrieve Recommended Keywords and Product Data",
+                         "4. Retrieve Campaign-Level Data",
+                         "5. GMV Max Ads Overview",
+                         "6. Item GMV Max Ads (Item-level Full-site Promotion)",
+                         "7. Shop GMV Max Ads",
+                         "8. Manual Product Ads",
+                         "9. (coming offline soon) Auto Product Ads"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  17469,
+        "url":  "https://open.shopee.com/developer-guide/277"
+    },
+    {
+        "id":  286,
+        "title":  "API de Cotação (Logística do Vendedor)",
+        "category_id":  2058,
+        "language_code":  "en",
+        "release_time":  1712808240,
+        "update_time":  1724639243,
+        "headings":  [
+                         "O que é o canal Logística do vendedor",
+                         "URL Cotação de frete",
+                         "Requisitos para homologação/Integração",
+                         "Criar APP Seller Logistics e autorizar sellers",
+                         "Payload padrão da requisição e resposta de cotação",
+                         "Parâmetros da requisição (query)",
+                         "Exemplo de requisição",
+                         "Exemplo de retorno (sucesso)",
+                         "Exemplo de retorno (erro)",
+                         "Retorno padrão para erros não mapeados na tabela de erros",
+                         "Códigos de retorno esperados",
+                         "Validação dos responses (com URL da Shopee)",
+                         "Tempo de resposta limite (da cotação)",
+                         "Tabela de contingência",
+                         "Configurações de valor de frete para contingência",
+                         "Preenchimento do valor de frete de contingência",
+                         "Valor de frete único por estado",
+                         "Valor de frete único por cidade",
+                         "Habilitação do canal Logística do vendedor",
+                         "Prazo de entrega para valor de frete de contingência",
+                         "Status dos pedidos e rastreamento",
+                         "Desenvolvimento API de atualização de status:",
+                         "Fluxo e status de pedidos do canal",
+                         "Regras de comissão e frete para o canal",
+                         "FAQ:"
+                     ],
+        "endpoint_count":  1,
+        "endpoints":  "/api/v2/logistics/update_tracking_status",
+        "content_length":  34222,
+        "url":  "https://open.shopee.com/developer-guide/286"
+    },
+    {
+        "id":  290,
+        "title":  "Shopee Entrega Direta",
+        "category_id":  2058,
+        "language_code":  "en",
+        "release_time":  1716863465,
+        "update_time":  1717555955,
+        "headings":  [
+                         "What is the Shopee Direct Delivery channel?",
+                         "OpenAPI changes",
+                         "Logistic HUBs",
+                         "FAQ:"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  5949,
+        "url":  "https://open.shopee.com/developer-guide/290"
+    },
+    {
+        "id":  292,
+        "title":  "Passo a Passo Logistica API",
+        "category_id":  2067,
+        "language_code":  "en",
+        "release_time":  1716883564,
+        "update_time":  1721793153,
+        "headings":  [
+                         "FAQ"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  9438,
+        "url":  "https://open.shopee.com/developer-guide/292"
+    },
+    {
+        "id":  378,
+        "title":  "AUTO PARTS: COMPATIBILIDADE DE AUTOPEÇAS",
+        "category_id":  2058,
+        "language_code":  "en",
+        "release_time":  1719800710,
+        "update_time":  1719800710,
+        "headings":  [
+                         "Vantagens no uso da feature de compatibilidade",
+                         "Estrutura dos dados",
+                         "Novos endpoints:",
+                         "Mudanças em endpoints existentes"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  13871,
+        "url":  "https://open.shopee.com/developer-guide/378"
+    },
+    {
+        "id":  381,
+        "title":  "Ferramenta de Log da Open Platform",
+        "category_id":  2067,
+        "language_code":  "en",
+        "release_time":  1721793280,
+        "update_time":  1721793280,
+        "headings":  [
+                         "Acesso aos Logs da API",
+                         "Abertura de chamado através da ferramenta de log da API",
+                         "Acesso aos Logs de Push"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  9065,
+        "url":  "https://open.shopee.com/developer-guide/381"
+    },
+    {
+        "id":  382,
+        "title":  "Passo a passo para subir a NF-e através da OpenAPI",
+        "category_id":  2067,
+        "language_code":  "en",
+        "release_time":  1721793320,
+        "update_time":  1721793320,
+        "headings":  [
+                         "Dados Necessários do Comprador para Emissão de NF-e",
+                         "Cálculo para Emissão de NF-e",
+                         "Verificando pedidos que precisam da NF-e",
+                         "Adicionando o Invoice",
+                         "Entenda os erros que podem ser retornados pela api de upload de NF"
+                     ],
+        "endpoint_count":  3,
+        "endpoints":  [
+                          "/api/v2/order/get_order_detail",
+                          "/api/v2/order/get_order_list",
+                          "/api/v2/order/upload_invoice_doc"
+                      ],
+        "content_length":  19242,
+        "url":  "https://open.shopee.com/developer-guide/382"
+    },
+    {
+        "id":  383,
+        "title":  "APIs de orders",
+        "category_id":  2067,
+        "language_code":  "en",
+        "release_time":  1721793664,
+        "update_time":  1721793664,
+        "headings":  [
+                         "Fluxo de order",
+                         "Identificando uma nova order",
+                         "Status das orders na OpenAPI",
+                         "Cancelamento de pedidos",
+                         "Dúvidas frequentes (FAQ)"
+                     ],
+        "endpoint_count":  1,
+        "endpoints":  "/api/v2/order/get_order_list",
+        "content_length":  13300,
+        "url":  "https://open.shopee.com/developer-guide/383"
+    },
+    {
+        "id":  384,
+        "title":  "Shopee Open API Platform | Passo a Passo de Solicitação",
+        "category_id":  2067,
+        "language_code":  "en",
+        "release_time":  1721793714,
+        "update_time":  1776652833,
+        "headings":  [
+
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  22694,
+        "url":  "https://open.shopee.com/developer-guide/384"
+    },
+    {
+        "id":  385,
+        "title":  "Open API auth call | Fluxo autorização ",
+        "category_id":  2067,
+        "language_code":  "en",
+        "release_time":  1721793950,
+        "update_time":  1721793950,
+        "headings":  [
+                         "Autorização de loja",
+                         "1.1) Como criar a URL de autorização de loja?",
+                         "1.2) Como gerar o sign de autorização de loja?",
+                         "1.3) Fazendo a autorização de loja",
+                         "2)GetAccessToken",
+                         "3.1)RefreshAccessToken",
+                         "Entenda os erros mais comuns retornados na chamada ao GetAccessToken",
+                         "Erros mais comuns retornados na chamada ao RefreshAccessToken"
+                     ],
+        "endpoint_count":  6,
+        "endpoints":  [
+                          "/api/v2/auth/access_token/get",
+                          "/api/v2/auth/access_token/get1659992253",
+                          "/api/v2/auth/token/get",
+                          "/api/v2/auth/token/get1659992253",
+                          "/api/v2/shop/auth_partner",
+                          "/api/v2/shop/auth_partner1659992253"
+                      ],
+        "content_length":  19285,
+        "url":  "https://open.shopee.com/developer-guide/385"
+    },
+    {
+        "id":  568,
+        "title":  "Fulfilled by Shopee (BR)",
+        "category_id":  2067,
+        "language_code":  "en",
+        "release_time":  1731933885,
+        "update_time":  1731933885,
+        "headings":  [
+                         "Changes to OpenAPI for Sellers with \"Fulfilled by Shopee\"",
+                         "Workflows through Seller Center",
+                         "Workflows via OpenAPI",
+                         "1 - Identification of Active Sellers for \"Fulfilled by Shopee\"When a seller is active in Fulfilled by Shopee, the API v2.shop.get_shop_info will return the parameter shop_fulfillment_flag with the value \"PFF - FBS Shopee.\"",
+                         "2 - Inventory and Warehouse Management for \"Fulfilled by Shopee\"Once the seller’s products arrive at Shopee, the parameter shopee_stock will appear in the API v2.product.get_item_base_info. This includes:",
+                         "3 - Identification of Orders under \"Fulfilled by Shopee\"Orders associated with Fulfilled by Shopee can be identified by the fulfillment_flag parameter in the response_optional_fields of the API v2.order.get_order_detail. Possible values include:",
+                         "Workflow Changes for \"Fulfilled by Shopee\" Orders",
+                         "Uploading of Tax Data via OpenAPI",
+                         "FAQ"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  5114,
+        "url":  "https://open.shopee.com/developer-guide/568"
+    },
+    {
+        "id":  643,
+        "title":  "Instant Mart Integration Guide",
+        "category_id":  2058,
+        "language_code":  "en",
+        "release_time":  1745483266,
+        "update_time":  1770970559,
+        "headings":  [
+                         "Instruction of the Instant Mart Project",
+                         "Background:",
+                         "1. Sandbox Test Account Setup",
+                         "1.1 Create Sandbox Test Account",
+                         "2. Grant authorization",
+                         "2.1 Shop Authorization",
+                         "3. Testing Process",
+                         "3.1 Open API Testing",
+                         "3.2 Key Open API Functions",
+                         "3.2.1 Mart\u0026Outlet shop relationship",
+                         "3.2.2 Product Management",
+                         "3.2.3 Instant Channel Dependency In ID",
+                         "3.2.4 Instant Channel Dependency In TH",
+                         "3.2.5 Instant Channel Dependency In VN",
+                         "3.2.6 Order Management",
+                         "3.2.7 Return \u0026 Refund Management",
+                         "3.2.8 Finance: Get Income and wallet transactions",
+                         "3.2.9 Shop Setting",
+                         "4. Push Mechanism",
+                         "5. FAQ \u0026 Raise for Help"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  49358,
+        "url":  "https://open.shopee.com/developer-guide/643"
+    },
+    {
+        "id":  644,
+        "title":  "Sandbox Testing V2",
+        "category_id":  50,
+        "language_code":  "en",
+        "release_time":  1746029227,
+        "update_time":  1757988830,
+        "headings":  [
+                         "Overall Introduction",
+                         "1. Create a test account",
+                         "1.1 Local and cross-border test stores",
+                         "1.2 Merchant",
+                         "2.Authorize the test account to the test Partner_id",
+                         "2.1Preliminary steps:",
+                         "2.2 Shop authorization document",
+                         "2.3 Merchant authorization document",
+                         "3. Sandbox testing process",
+                         "3.1 Shop account",
+                         "3.1.1 Log in to the Seller Center",
+                         "3.1.2 Create test products",
+                         "3.1.3 Create test order",
+                         "3.1.4 View created orders",
+                         "3.1.5 Shipping",
+                         "3.1.6 Print the form",
+                         "3.1.7 Order status transfer",
+                         "3.2 Merchant account",
+                         "3.2.1 Basic settings",
+                         "3.2.3 Global products and store products",
+                         "3.2.5 CNSC testable interface",
+                         "3.3 Push Mechanism"
+                     ],
+        "endpoint_count":  1,
+        "endpoints":  "/api/v2/logistics/ship_order",
+        "content_length":  38817,
+        "url":  "https://open.shopee.com/developer-guide/644"
+    },
+    {
+        "id":  669,
+        "title":  "Livestream API Integration Guide",
+        "category_id":  2058,
+        "language_code":  "en",
+        "release_time":  1752130584,
+        "update_time":  1767947211,
+        "headings":  [
+                         "1. Introduction to Shopee Livestream",
+                         "2. App Management",
+                         "3. Authorization \u0026 Authentication",
+                         "3.1 Authorization",
+                         "3.1.1 Generate Authorization Link",
+                         "3.1.2 Login for Authorization",
+                         "3.1.3 Retrieve Authorization Code",
+                         "3.1.4 Retrieve access_token",
+                         "3.1.5 Refresh access_token",
+                         "3.2 Cancel Authorization",
+                         "3.2.1 Via Cancel Authorization Link",
+                         "3.2.2 Via Livestream PC Backend",
+                         "3.3 API Authentication",
+                         "4. API Categories \u0026 Capabilities",
+                         "5. API Call Flow"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  22106,
+        "url":  "https://open.shopee.com/developer-guide/669"
+    },
+    {
+        "id":  677,
+        "title":  "Shopee Xpress - Package-free Integration Guide",
+        "category_id":  2058,
+        "language_code":  "en",
+        "release_time":  1756967614,
+        "update_time":  1770777116,
+        "headings":  [
+                         "1.Terminology",
+                         "2.Business Operation Logic",
+                         "3.Query item’s Unpackaged SKU ID",
+                         "4.Obtain order information and detail",
+                         "5.Basic Shipping Logic",
+                         "6.Other Process",
+                         "7.Recommended API Call Flow",
+                         "8.FAQ",
+                         "9.Data Definition"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  11227,
+        "url":  "https://open.shopee.com/developer-guide/677"
+    },
+    {
+        "id":  697,
+        "title":  "Quotation API (Entrega Expressa) Developer Guide",
+        "category_id":  2067,
+        "language_code":  "en",
+        "release_time":  1758528744,
+        "update_time":  1758528744,
+        "headings":  [
+                         "What is the Entrega Expressa Channel?",
+                         "Shipping Quote URL",
+                         "Requirements for approval/integration",
+                         "Quotation API Request and Response Flow",
+                         "Quotation API Request and Response (Default)",
+                         "Request parameters (query)",
+                         "Default response for errors not mapped in the error table",
+                         "Quotation API Request and Response (Fallback)",
+                         "Response validation (with Shopee URL)",
+                         "Response Time Limit (of the quotation)",
+                         "Contingency Table",
+                         "Shipping Value Settings for Contingency",
+                         "Filling in the contingency freight value",
+                         "Serviceable Area Settings",
+                         "Arrange Shipment",
+                         "Order Status and Tracking",
+                         "Channel Order Flow and Status"
+                     ],
+        "endpoint_count":  6,
+        "endpoints":  [
+                          "/api/v2/logistics/check_polygon_update_status",
+                          "/api/v2/logistics/ship_order",
+                          "/api/v2/logistics/update_tracking_status",
+                          "/api/v2/logistics/upload_polygon",
+                          "/api/v2/order/get_order_detail",
+                          "/api/v2/order/get_package_detail"
+                      ],
+        "content_length":  32263,
+        "url":  "https://open.shopee.com/developer-guide/697"
+    },
+    {
+        "id":  702,
+        "title":  "Shopee AMS API Integration Guide",
+        "category_id":  2058,
+        "language_code":  "en",
+        "release_time":  1761106343,
+        "update_time":  1761106343,
+        "headings":  [
+                         "1. Introduction to Shopee AMS",
+                         "2. API Categories Overview",
+                         "3. Open Campaign Management APIs",
+                         "3.1 Retrieve added / not added products under Open Campaign",
+                         "3.2 Add products to Open Campaign",
+                         "3.3 Edit product settings in Open Campaign",
+                         "3.4 Remove products from Open Campaign",
+                         "3.5 Get product recommendation suggestions for Open Campaign",
+                         "3.6 Get product’s suggested commission rate",
+                         "4. Targeted Campaign Management APIs",
+                         "4.1 Create new Targeted Campaign",
+                         "4.2 View \u0026 Edit Targeted Campaign",
+                         "5. Performance \u0026 Analytics APIs",
+                         "5.1 Key Analytics",
+                         "5.2 Product Analytics",
+                         "5.3 Affiliate Analytics",
+                         "5.4 Content Analytics",
+                         "5.5 Campaign Analytics",
+                         "6. Conversion \u0026 Validation Report APIs",
+                         "6.1 Conversion Report",
+                         "6.2 Validation Bills",
+                         "7. Developer Integration Notes",
+                         "8. Next Steps"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  24522,
+        "url":  "https://open.shopee.com/developer-guide/702"
+    },
+    {
+        "id":  706,
+        "title":  "Shopee Video API Integration Guide",
+        "category_id":  2058,
+        "language_code":  "en",
+        "release_time":  1762513305,
+        "update_time":  1766125512,
+        "headings":  [
+                         "1. Introduction to Shopee Video",
+                         "2. Integration Overview",
+                         "3. Public Video Upload APIs",
+                         "4. Shopee Video APIs",
+                         "4.1 Video Management",
+                         "4.2 Performance Analytics",
+                         "5. Authorization \u0026 Authentication (User-type APIs)",
+                         "6. Developer Integration Notes"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  12502,
+        "url":  "https://open.shopee.com/developer-guide/706"
+    },
+    {
+        "id":  718,
+        "title":  "Requesting Access to Sensitive Data",
+        "category_id":  50,
+        "language_code":  "en",
+        "release_time":  1766908262,
+        "update_time":  1766908465,
+        "headings":  [
+                         "Eligibility Requirements",
+                         "How to Submit a Penetration Test Report",
+                         "How to Enable IP Address Whitelisting",
+                         "Good Practices for Penetration Test Report Submission"
+                     ],
+        "endpoint_count":  0,
+        "endpoints":  {
+
+                      },
+        "content_length":  5924,
+        "url":  "https://open.shopee.com/developer-guide/718"
+    }
+]

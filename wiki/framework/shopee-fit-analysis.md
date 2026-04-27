@@ -1,5 +1,10 @@
 # Shopee Fit Analysis
 
+Related vendor playbook docs:
+- `wiki/framework/vendors/shopee/README.md`
+- `wiki/framework/vendors/shopee/getting-started.md`
+- `wiki/framework/vendors/shopee/api-best-practices.md`
+
 ## Question
 
 Can Shopee fit the Marketplace Central marketplace integration framework?

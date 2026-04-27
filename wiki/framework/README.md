@@ -12,6 +12,8 @@ Use these pages when adding a new marketplace, changing provider metadata, or de
 - [Provider Metadata Contract](provider-metadata-contract.md)
 - [Capability Model](capability-model.md)
 - [Shopee Fit Analysis](shopee-fit-analysis.md)
+- [Vendors Hub](vendors/README.md)
+- [Shopee Vendor Playbook](vendors/shopee/README.md)
 
 ## Fast Rule
 

@@ -30,6 +30,8 @@ Planning ownership:
 - [Provider Metadata Contract](framework/provider-metadata-contract.md)
 - [Capability Model](framework/capability-model.md)
 - [Shopee Fit Analysis](framework/shopee-fit-analysis.md)
+- [Vendors Hub](framework/vendors/README.md)
+- [Shopee Vendor Playbook](framework/vendors/shopee/README.md)
 
 ### Modules
 - [Marketplaces](modules/marketplaces.md)
