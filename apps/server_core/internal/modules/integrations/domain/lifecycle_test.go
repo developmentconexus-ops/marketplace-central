@@ -67,3 +67,29 @@ func TestCanTransitionInstallationStatusMatrix(t *testing.T) {
 		})
 	}
 }
+
+func TestAuthStrategyValuesIncludeShopeePartner(t *testing.T) {
+	t.Parallel()
+
+	strategies := []AuthStrategy{
+		AuthStrategyOAuth2,
+		AuthStrategyLWA,
+		AuthStrategyShopeePartner,
+		AuthStrategyAPIKey,
+		AuthStrategyToken,
+		AuthStrategyNone,
+		AuthStrategyUnknown,
+	}
+
+	found := false
+	for _, strategy := range strategies {
+		if strategy == AuthStrategyShopeePartner {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		t.Fatalf("AuthStrategyShopeePartner not present in auth strategy list")
+	}
+}

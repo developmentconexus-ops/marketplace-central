@@ -1,70 +1,69 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createMarketplaceCentralClient } from "./index";
+import type { IntegrationProviderDefinition } from "./index";
 
 describe("sdk runtime", () => {
-  it("listIntegrationProviders calls /integrations/providers and parses Amazon LWA and blocked Shopee metadata", async () => {
+  it("listIntegrationProviders calls /integrations/providers and parses Amazon LWA and interactive Shopee metadata", async () => {
     const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const response = {
+      items: [
+        {
+          provider_code: "amazon",
+          tenant_id: "system",
+          family: "marketplace",
+          display_name: "Amazon",
+          auth_strategy: "lwa",
+          install_mode: "interactive",
+          metadata: {
+            country: "BR",
+            rollout_stage: "wave_2",
+            execution_mode: "available",
+            fee_source: "api_sync",
+            baseline_commission_percent: 16.0,
+            baseline_fixed_fee_amount: 0,
+            credential_schema: [
+              { key: "lwa_client_id", label: "LWA Client ID", secret: false },
+              { key: "lwa_client_secret", label: "LWA Client Secret", secret: true },
+            ],
+            docs_url: "https://developer-docs.amazon.com/sp-api",
+          },
+          declared_capabilities: ["orders_sync", "catalog_publish"],
+          is_active: true,
+          created_at: "2026-04-09T00:00:00Z",
+          updated_at: "2026-04-09T00:00:00Z",
+        },
+        {
+          provider_code: "shopee",
+          tenant_id: "system",
+          family: "marketplace",
+          display_name: "Shopee",
+          auth_strategy: "shopee_partner",
+          install_mode: "interactive",
+          metadata: {
+            country: "BR",
+            rollout_stage: "v1",
+            execution_mode: "available",
+            fee_source: "seed",
+            baseline_commission_percent: 14.5,
+            baseline_fixed_fee_amount: 2.5,
+            credential_schema: [
+              { key: "partner_id", label: "Partner ID", secret: false },
+              { key: "partner_key", label: "Partner Key", secret: true },
+              { key: "shop_id", label: "Shop ID", secret: false },
+            ],
+          },
+          declared_capabilities: ["pricing_fee_sync"],
+          is_active: true,
+          created_at: "2026-04-09T00:00:00Z",
+          updated_at: "2026-04-09T00:00:00Z",
+        },
+      ],
+    } satisfies { items: IntegrationProviderDefinition[] };
     const client = createMarketplaceCentralClient({
       baseUrl: "http://localhost:8080",
       fetchImpl: async (input, init) => {
         requests.push({ input, init });
-        return new Response(
-          JSON.stringify({
-            items: [
-              {
-                provider_code: "amazon",
-                tenant_id: "system",
-                family: "marketplace",
-                display_name: "Amazon",
-                auth_strategy: "lwa",
-                install_mode: "interactive",
-                metadata: {
-                  country: "BR",
-                  rollout_stage: "wave_2",
-                  execution_mode: "available",
-                  fee_source: "api_sync",
-                  baseline_commission_percent: 16.0,
-                  baseline_fixed_fee_amount: 0,
-                  credential_schema: [
-                    { key: "lwa_client_id", label: "LWA Client ID", secret: false },
-                    { key: "lwa_client_secret", label: "LWA Client Secret", secret: true },
-                  ],
-                  docs_url: "https://developer-docs.amazon.com/sp-api",
-                },
-                declared_capabilities: ["orders_sync", "catalog_publish"],
-                is_active: true,
-                created_at: "2026-04-09T00:00:00Z",
-                updated_at: "2026-04-09T00:00:00Z",
-              },
-              {
-                provider_code: "shopee",
-                tenant_id: "system",
-                family: "marketplace",
-                display_name: "Shopee",
-                auth_strategy: "token",
-                install_mode: "manual",
-                metadata: {
-                  country: "BR",
-                  rollout_stage: "blocked",
-                  execution_mode: "blocked",
-                  unavailable_reason: "Provider blocked for this region",
-                  fee_source: "seed",
-                  baseline_commission_percent: 14.5,
-                  baseline_fixed_fee_amount: 2.5,
-                  credential_schema: [
-                    { key: "partner_id", label: "Partner ID", secret: false },
-                    { key: "access_token", label: "Access Token", secret: true },
-                  ],
-                },
-                declared_capabilities: ["orders_sync"],
-                is_active: false,
-                created_at: "2026-04-09T00:00:00Z",
-                updated_at: "2026-04-09T00:00:00Z",
-              },
-            ],
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        );
+        return new Response(JSON.stringify(response), { status: 200, headers: { "Content-Type": "application/json" } });
       },
     });
 
@@ -88,9 +87,8 @@ describe("sdk runtime", () => {
     });
 
     expect(shopee).toBeDefined();
-    expect(shopee?.metadata?.execution_mode).toBe("blocked");
-    expect(shopee?.metadata?.rollout_stage).toBe("blocked");
-    expect(shopee?.metadata?.unavailable_reason).toBe("Provider blocked for this region");
+    expect(shopee?.metadata?.execution_mode).toBe("available");
+    expect(shopee?.metadata?.rollout_stage).toBe("v1");
   });
 
   it("starts integration authorize flow with auth_url and expires_in", async () => {

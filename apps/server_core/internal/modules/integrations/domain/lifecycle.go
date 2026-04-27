@@ -12,12 +12,13 @@ type OperationRunStatus string
 const (
 	IntegrationFamilyMarketplace IntegrationFamily = "marketplace"
 
-	AuthStrategyOAuth2  AuthStrategy = "oauth2"
-	AuthStrategyLWA     AuthStrategy = "lwa"
-	AuthStrategyAPIKey  AuthStrategy = "api_key"
-	AuthStrategyToken   AuthStrategy = "token"
-	AuthStrategyNone    AuthStrategy = "none"
-	AuthStrategyUnknown AuthStrategy = "unknown"
+	AuthStrategyOAuth2        AuthStrategy = "oauth2"
+	AuthStrategyLWA           AuthStrategy = "lwa"
+	AuthStrategyShopeePartner AuthStrategy = "shopee_partner"
+	AuthStrategyAPIKey        AuthStrategy = "api_key"
+	AuthStrategyToken         AuthStrategy = "token"
+	AuthStrategyNone          AuthStrategy = "none"
+	AuthStrategyUnknown       AuthStrategy = "unknown"
 
 	InstallModeInteractive InstallMode = "interactive"
 	InstallModeManual      InstallMode = "manual"

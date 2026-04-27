@@ -99,8 +99,9 @@ type SubmitAPIKeyAdapterInput struct {
 }
 
 type RefreshCredentialAdapterInput struct {
-	InstallationID string
-	RefreshToken   string
+	InstallationID    string
+	RefreshToken      string
+	ProviderAccountID string
 }
 
 type CredentialPayload struct {
@@ -434,8 +435,9 @@ func (s *AuthFlowService) RefreshCredential(ctx context.Context, input RefreshCr
 	}
 
 	payload, err := adapter.Refresh(ctx, RefreshCredentialAdapterInput{
-		InstallationID: input.InstallationID,
-		RefreshToken:   refreshToken,
+		InstallationID:    input.InstallationID,
+		RefreshToken:      refreshToken,
+		ProviderAccountID: firstNonEmpty(session.ProviderAccountID, inst.ExternalAccountID),
 	})
 	if err != nil {
 		return AuthStatus{}, err

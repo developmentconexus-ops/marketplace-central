@@ -93,7 +93,7 @@ export interface PluginMetadata {
 export interface MarketplaceDefinition {
   code: string
   display_name: string
-  auth_strategy: 'oauth2' | 'lwa' | 'api_key' | 'token' | 'unknown'
+  auth_strategy: 'oauth2' | 'lwa' | 'shopee_partner' | 'api_key' | 'token' | 'unknown'
   is_active: boolean
   capability_profile: CapabilityProfile
   metadata: PluginMetadata
@@ -116,7 +116,7 @@ export interface IntegrationProviderDefinition {
   tenant_id: string;
   family: "marketplace";
   display_name: string;
-  auth_strategy: "oauth2" | "lwa" | "api_key" | "token" | "none" | "unknown";
+  auth_strategy: "oauth2" | "lwa" | "shopee_partner" | "api_key" | "token" | "none" | "unknown";
   install_mode: "interactive" | "manual" | "hybrid";
   metadata?: IntegrationProviderMetadata & Record<string, unknown>;
   declared_capabilities: string[];
