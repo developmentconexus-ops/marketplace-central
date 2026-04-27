@@ -11,6 +11,7 @@ Planning ownership:
 | Folder | Content |
 |--------|---------|
 | `architecture/` | Linkage rules and extensibility model |
+| `framework/` | Marketplace integration framework and provider plugin runbooks |
 | `modules/` | Module-focused behavior, entities, routes |
 | `operations/` | Runtime environment and database access |
 | `vision/` | Product intent and scope framing |
@@ -20,6 +21,15 @@ Planning ownership:
 ### Architecture
 - [Module Linkage: Marketplaces <-> Integrations](architecture/module-linkage.md)
 - [Marketplace Extensibility](architecture/marketplace-extensibility.md)
+
+### Framework
+- [Marketplace Framework Index](framework/README.md)
+- [Marketplace Integration Framework](framework/marketplace-integration-framework.md)
+- [Adding a Marketplace Provider](framework/adding-a-marketplace-provider.md)
+- [Auth Strategies](framework/auth-strategies.md)
+- [Provider Metadata Contract](framework/provider-metadata-contract.md)
+- [Capability Model](framework/capability-model.md)
+- [Shopee Fit Analysis](framework/shopee-fit-analysis.md)
 
 ### Modules
 - [Marketplaces](modules/marketplaces.md)

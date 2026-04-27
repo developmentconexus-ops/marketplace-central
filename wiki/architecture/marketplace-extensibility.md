@@ -1,5 +1,9 @@
 # Integration Extensibility
 
+> Detailed framework docs now live in `wiki/framework/`. Start with
+> [Marketplace Integration Framework](../framework/marketplace-integration-framework.md)
+> and [Adding a Marketplace Provider](../framework/adding-a-marketplace-provider.md).
+
 ## Goal
 
 Adding a provider should be predictable, with provider-owned packages and minimal central wiring.

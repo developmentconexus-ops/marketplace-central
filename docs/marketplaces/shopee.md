@@ -1,48 +1,94 @@
-# Shopee — API Integration Reference
+# Shopee - API Integration Reference
 
 **Channel ID:** `shopee`
-**Auth strategy:** `unknown` (likely HMAC signature — pending confirmation)
+**Current auth strategy:** `api_key` placeholder in MPC, blocked
+**Target auth strategy:** signed partner auth (`shopee_partner` or `signed_partner`)
 **Rollout stage:** `blocked` / **Execution mode:** `blocked`
-**Status: BLOCKED** — pending official Open Platform documentation and partner validation
+**Status: BLOCKED** - pending partner credentials and signed auth implementation
 
 ---
 
 ## Current Status
 
-> **All capabilities are blocked.** Do not attempt any API integration until the readiness checklist below is complete.
+Shopee is visible in the integration provider catalog but cannot be connected yet. This is intentional.
+
+Use the framework notes before implementing:
+
+- [Marketplace Integration Framework](../../wiki/framework/marketplace-integration-framework.md)
+- [Adding a Marketplace Provider](../../wiki/framework/adding-a-marketplace-provider.md)
+- [Shopee Fit Analysis](../../wiki/framework/shopee-fit-analysis.md)
 
 | Capability | Status | Reason |
 |---|---|---|
-| publish | blocked | Awaiting docs |
-| priceSync | blocked | Awaiting docs |
-| stockSync | blocked | Awaiting docs |
-| orders | blocked | Awaiting docs |
-| messages | blocked | Awaiting docs |
-| questions | blocked | Awaiting docs |
-| freightQuotes | blocked | Awaiting docs |
-| webhooks | blocked | Awaiting docs |
-| sandbox | blocked | Awaiting partner onboarding |
+| publish | blocked | Connector not implemented |
+| priceSync | seeded | Static fee seeder exists; API sync not implemented |
+| stockSync | blocked | Connector not implemented |
+| orders | blocked | Connector not implemented |
+| messages | blocked | Connector not implemented |
+| questions | blocked | Connector not implemented |
+| freightQuotes | blocked | Connector not implemented |
+| webhooks | blocked | Webhook behavior not confirmed |
+| sandbox | blocked | Partner credentials needed |
 
 ---
 
-## What We Know (Preliminary)
+## Platform
 
-### Platform
+Shopee uses Shopee Open Platform for third-party seller integrations. Access requires:
 
-Shopee uses the **Shopee Open Platform** for third-party seller integrations in Brazil. Access requires:
+1. Applying as a developer or partner through Shopee Open Platform
+2. Receiving a `partner_id` and `partner_key` from Shopee
+3. Completing seller/shop authorization
+4. Exchanging the returned code for access and refresh tokens
+5. Signing subsequent API calls
 
-1. Applying as a developer via the Shopee Open Platform portal
-2. Receiving a `partner_id` + `partner_key` from Shopee
-3. Completing seller authorization (seller OAuth flow)
+Official reference used for the current framework decision:
 
-### Likely Auth Mechanism
-
-Based on the Shopee Open Platform pattern used in other markets:
-
+```text
+https://cdngarenanow-a.akamaihd.net/shopee/seller/seller_cms/c575929f948611337e1249564c2b8ff6/%5BTW%5D%5BOpen%20API%5DAPI%20v1_v2%E6%8E%88%E6%AC%8A%E6%96%B9%E6%B3%95%20%282020_09%29_newnew.pdf
 ```
-// Every request must include a signed URL:
-// Signature = HMAC-SHA256(partner_key, "{partner_id}{api_path}{timestamp}{access_token}{shop_id}")
 
+## Auth Mechanism
+
+Shopee Open Platform v2 is an interactive signed partner flow, not plain OAuth2.
+
+Authorize:
+
+```text
+GET /api/v2/shop/auth_partner
+  ?partner_id={partner_id}
+  &redirect={redirect_url}
+  &timestamp={unix_timestamp}
+  &sign={signature}
+```
+
+Callback:
+
+```text
+{redirect_url}?code={code}&shop_id={shop_id}
+```
+
+Token exchange:
+
+```text
+POST /api/v2/auth/token/get
+```
+
+Refresh:
+
+```text
+POST /api/v2/auth/access_token/get
+```
+
+API requests use signed parameters. The common v2 signing base is:
+
+```text
+partner_id + api_path + timestamp + access_token + shop_id
+```
+
+Example shape:
+
+```text
 GET /api/v2/item/get_item_list
   ?partner_id={SHOPEE_PARTNER_ID}
   &timestamp={unix_timestamp}
@@ -51,56 +97,61 @@ GET /api/v2/item/get_item_list
   &sign={hmac_signature}
 ```
 
-> **This is unconfirmed.** The Brazilian Shopee Open Platform may use a different version or additional parameters. Do not implement until we have official documentation.
+The Brazil account may still require partner approval, sandbox/UAT configuration, and app-specific endpoint confirmation before implementation.
 
-### Likely API Capabilities (once unblocked)
+## Likely API Capabilities
 
-Based on Shopee Open Platform v2 documentation from other markets:
+These capabilities are candidates only. Add them to `DeclaredCapabilities` only when connector execution exists or the capability is intentionally documented as planned.
 
 | Operation | Likely endpoint | Notes |
 |---|---|---|
-| Create product | POST /api/v2/product/add_item | With title, description, images, price, stock |
-| Update stock | POST /api/v2/product/update_stock | By item_id + model_id |
-| Update price | POST /api/v2/product/update_price | By item_id + model_id |
-| Get orders | GET /api/v2/order/get_order_list | Order status filter |
-| Order detail | GET /api/v2/order/get_order_detail | Full order + items |
-| Ship order | POST /api/v2/logistics/ship_order | Mark as shipped, add tracking |
-| Messages | GET /api/v2/message/get_message | Buyer-seller chat |
-| Reply message | POST /api/v2/message/send_message | Send to buyer |
-| Webhooks | Register via Open Platform portal | Push events on order/product changes |
+| Create product | `POST /api/v2/product/add_item` | With title, description, images, price, stock |
+| Update stock | `POST /api/v2/product/update_stock` | By item/model identifiers |
+| Update price | `POST /api/v2/product/update_price` | By item/model identifiers |
+| Get orders | `GET /api/v2/order/get_order_list` | Order status filter |
+| Order detail | `GET /api/v2/order/get_order_detail` | Full order and items |
+| Ship order | `POST /api/v2/logistics/ship_order` | Mark as shipped / logistics flow |
+| Messages | provider-specific | Confirm before implementing |
+| Webhooks | portal/config driven | Confirm before implementing |
 
 ---
 
 ## Readiness Checklist
 
-Complete all items before implementing Shopee integration:
+Complete all items before promoting Shopee from blocked to available:
 
-- [ ] Apply for Shopee Open Platform Brazil developer account
-- [ ] Receive `partner_id` + `partner_key` from Shopee
-- [ ] Confirm API version (v2 vs custom Brazil build)
-- [ ] Confirm auth mechanism (HMAC signature details, required params)
-- [ ] Download and review official API documentation for Brazil
-- [ ] Receive sandbox credentials
+- [ ] Apply for Shopee Open Platform Brazil developer/partner access
+- [ ] Receive `partner_id` and `partner_key`
+- [ ] Confirm production and sandbox/UAT base URLs
+- [ ] Confirm callback URL registration requirements
+- [ ] Confirm app permissions and seller tier limits
 - [ ] Validate which capabilities are available to our seller tier
 - [ ] Confirm webhook event types and registration mechanism
-- [ ] Test auth signature in sandbox
-- [ ] Complete Shopee seller account linkage flow
+- [ ] Implement signed authorize URL generation in Go
+- [ ] Implement token exchange and refresh in Go
+- [ ] Test signatures with deterministic timestamp fixtures
+- [ ] Complete seller shop authorization flow
 
 ---
 
 ## When Unblocked: Implementation Steps
 
-Once all readiness items are complete:
+Implement through the framework:
 
-1. Update `marketplace-seed.ts`: change `executionMode` to `planned`, `authStrategy` to `hmac` (or confirmed value), update capabilities
-2. Implement auth: `encryptSecretPayload({ partnerId, partnerKey, accessToken, shopId })`
-3. Create HMAC signing utility in `lib/marketplace-shopee-auth.ts`
-4. Implement product mapper: `mapToShopeeItem()` in `lib/product-mapper.ts`
-5. Add Shopee cases to API route handlers
-6. Update this document with confirmed endpoints and auth details
+1. Add `shopee_partner` or `signed_partner` auth strategy if accepted.
+2. Update `apps/server_core/internal/modules/integrations/adapters/shopee/auth_adapter.go`.
+3. Read env vars:
+   - `MPC_PROVIDER_SHOPEE_PARTNER_ID`
+   - `MPC_PROVIDER_SHOPEE_PARTNER_KEY`
+   - `MPC_PROVIDER_SHOPEE_BASE_URL`
+4. Implement `StartAuthorize`, `ExchangeCallback`, and `Refresh`.
+5. Store `shop_id` as provider account identity and encrypted credential extra.
+6. Keep `fee_source=seed` until API fee sync is confirmed.
+7. Update OpenAPI, SDK, frontend auth labels, and framework docs.
+8. Run backend tests, frontend tests, and browser validation on `/marketplaces`.
 
 ---
 
-## Contact
+## Current Decision
 
-To unblock: contact Shopee Brazil seller support or apply at https://open.shopee.com (check for a Brazil-specific portal).
+Shopee fits the Marketplace Central framework. It should remain blocked until the signed partner auth adapter is implemented and validated.
