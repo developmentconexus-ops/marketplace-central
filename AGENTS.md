@@ -29,8 +29,6 @@ When these disagree, classify the mismatch before coding. Stop on architecture, 
 - Industry-grade boundaries: domain, application, ports, adapters, and transport stay separate.
 - Maintainability is a feature: clarity, naming, auditability, and safe change velocity matter.
 
-ADR-005 makes VTEX legacy. Do not add new VTEX behavior. Mercado Livre is the first operational control plane; Sankhya/MetalShopping remains the internal source of truth.
-
 ## Senior Code Style
 
 Write code that makes the domain obvious and repetition hard to reintroduce:
