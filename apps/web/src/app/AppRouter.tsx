@@ -3,7 +3,6 @@ import { ClassificationsPage } from "@marketplace-central/feature-classification
 import { MarketplaceSettingsPage } from "@marketplace-central/feature-marketplaces";
 import { PricingSimulatorPage } from "@marketplace-central/feature-simulator";
 import { ProductsPage } from "@marketplace-central/feature-products";
-import { VTEXPublishPage, BatchDetailPage } from "@marketplace-central/feature-connectors";
 import { IntegrationsHubPage } from "@marketplace-central/feature-integrations";
 import { Layout } from "./Layout";
 import { DashboardPage } from "../pages/DashboardPage";
@@ -17,16 +16,6 @@ function ProductsPageWrapper() {
 function ClassificationsPageWrapper() {
   const client = useClient();
   return <ClassificationsPage client={client} />;
-}
-
-function VTEXPublishPageWrapper() {
-  const client = useClient();
-  return <VTEXPublishPage client={client} />;
-}
-
-function BatchDetailPageWrapper() {
-  const client = useClient();
-  return <BatchDetailPage client={client} />;
 }
 
 function MarketplaceSettingsPageWrapper() {
@@ -52,8 +41,6 @@ export function AppRouter() {
           <Route index element={<DashboardPage />} />
           <Route path="/products" element={<ProductsPageWrapper />} />
           <Route path="/classifications" element={<ClassificationsPageWrapper />} />
-          <Route path="/connectors/vtex" element={<VTEXPublishPageWrapper />} />
-          <Route path="/connectors/vtex/batch/:batchId" element={<BatchDetailPageWrapper />} />
           <Route path="/marketplaces" element={<MarketplaceSettingsPageWrapper />} />
           <Route path="/integrations" element={<IntegrationsHubPageWrapper />} />
           <Route path="/simulator" element={<PricingSimulatorPageWrapper />} />

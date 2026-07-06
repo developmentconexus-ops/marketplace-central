@@ -9,22 +9,20 @@ import (
 	"marketplace-central/apps/server_core/internal/platform/pgdb"
 )
 
-func TestNewRootRouterRequiresVTEXCredentials(t *testing.T) {
-	t.Setenv("VTEX_APP_KEY", "")
-	t.Setenv("VTEX_APP_TOKEN", "")
+func TestNewRootRouterBuildsWithoutLegacyConnectorCredentials(t *testing.T) {
+	t.Setenv("ME_CLIENT_ID", "")
+	t.Setenv("ME_CLIENT_SECRET", "")
 
 	_, err := composition.NewRootRouter(nil, nil, pgdb.Config{
 		DefaultTenantID: "tenant_default",
 		EncryptionKey:   "0123456789abcdef0123456789abcdef",
 	})
-	if err == nil {
-		t.Fatal("expected NewRootRouter to return error when VTEX credentials are missing")
+	if err != nil {
+		t.Fatalf("expected NewRootRouter to build without legacy connector credentials, got %v", err)
 	}
 }
 
-func TestNewRootRouterBuildsWhenVTEXCredentialsArePresent(t *testing.T) {
-	t.Setenv("VTEX_APP_KEY", "test-key")
-	t.Setenv("VTEX_APP_TOKEN", "test-token")
+func TestNewRootRouterBuildsWhenMelhorEnvioCredentialsArePresent(t *testing.T) {
 	t.Setenv("ME_CLIENT_ID", "test-client")
 	t.Setenv("ME_CLIENT_SECRET", "test-secret")
 

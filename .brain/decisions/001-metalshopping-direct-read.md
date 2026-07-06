@@ -5,7 +5,7 @@
 
 ## Context
 MPC needs product catalog data (name, SKU, EAN, cost, price, stock, taxonomy) for pricing simulation,
-VTEX publishing, and classification. MetalShopping already maintains this catalog in Postgres.
+marketplace operations, and classification. MetalShopping already maintains this catalog in Postgres.
 
 ## Decision
 MPC reads product data directly from MetalShopping's Postgres via a second read-only pgxpool (`msdb`).

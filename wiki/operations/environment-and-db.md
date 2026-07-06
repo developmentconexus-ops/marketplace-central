@@ -35,7 +35,7 @@ Legacy VTEX keys:
 - `VTEX_APP_TOKEN`
 - `VTEX_ACCOUNT`
 
-These are legacy only after ADR-005. Do not add new VTEX-dependent workflows.
+These are legacy only after ADR-005. They are not required for current Marketplace Central startup, validation, or Mercado Livre operations. Do not add new VTEX-dependent workflows.
 
 ## Starting Local Services
 

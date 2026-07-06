@@ -49,6 +49,7 @@ export function MarketplaceSettingsPage({
   const [policies, setPolicies] = useState<MarketplacePolicy[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [selectedProviderCode, setSelectedProviderCode] = useState<string | null>(null);
   const [actionPending, setActionPending] = useState(false);
 
@@ -110,9 +111,17 @@ export function MarketplaceSettingsPage({
 
   async function executeWithPending(action: () => Promise<void>) {
     setActionPending(true);
+    setActionError(null);
     try {
       await action();
       await load();
+    } catch (error) {
+      const detail = error as { error?: { code?: string; message?: string } };
+      if (detail?.error?.code === "INTEGRATIONS_AUTH_CONFIGURATION_INVALID" && selectedProvider) {
+        setActionError(`${selectedProvider.display_name} authorization config is invalid.`);
+      } else {
+        setActionError(detail?.error?.message ?? "Failed to complete provider action.");
+      }
     } finally {
       setActionPending(false);
     }
@@ -213,6 +222,12 @@ export function MarketplaceSettingsPage({
           <button type="button" className="ml-1 underline" onClick={() => void load()}>
             Retry
           </button>
+        </div>
+      )}
+
+      {actionError && (
+        <div className="mx-6 mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {actionError}
         </div>
       )}
 

@@ -748,60 +748,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /connectors/vtex/validate-connection:
-    post:
-      summary: Validate VTEX API credentials
-      operationId: validateVTEXConnection
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - vtex_account
-              properties:
-                vtex_account:
-                  type: string
-                  description: VTEX account name
-      responses:
-        "200":
-          description: Connection successful
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    enum: [connected]
-                  vtex_account:
-                    type: string
-        "400":
-          description: Missing vtex_account
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        "401":
-          description: Invalid VTEX credentials
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        "405":
-          description: Method not allowed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        "502":
-          description: VTEX API unreachable
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
   /connectors/melhor-envio/auth/start:
     get:
       summary: Start Melhor Envio OAuth flow
@@ -887,85 +833,6 @@ paths:
                 $ref: '#/components/schemas/ConnectorErrorResponse'
         "500":
           description: Failed to read token state
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ConnectorErrorResponse'
-
-  /connectors/vtex/publish:
-    post:
-      operationId: publishToVTEX
-      summary: Trigger batch publication to VTEX
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PublishToVTEXRequest'
-      responses:
-        '201':
-          description: Batch created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PublishToVTEXResponse'
-        '400':
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ConnectorErrorResponse'
-
-  /connectors/vtex/publish/batch/{batch_id}:
-    get:
-      operationId: getVTEXBatchStatus
-      summary: Get batch publication status
-      parameters:
-        - name: batch_id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Batch status
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/BatchStatusResponse'
-        '404':
-          description: Batch not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ConnectorErrorResponse'
-
-  /connectors/vtex/publish/batch/{batch_id}/retry:
-    post:
-      operationId: retryVTEXBatch
-      summary: Retry failed operations in a batch
-      description: Only failed operations are retried. `supplemental_products` must include data for every failed product (by `product_id`). If any failed product is missing from `supplemental_products`, the entire retry request is rejected with `CONNECTORS_RETRY_MISSING_PRODUCT`.
-      parameters:
-        - name: batch_id
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RetryVTEXBatchRequest'
-      responses:
-        '200':
-          description: Retry initiated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PublishToVTEXResponse'
-        '404':
-          description: Batch not found
           content:
             application/json:
               schema:
@@ -1481,32 +1348,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/IntegrationInstallation'
-    PublishToVTEXRequest:
-      type: object
-      required:
-        - vtex_account
-        - products
-      properties:
-        vtex_account:
-          type: string
-        products:
-          type: array
-          items:
-            $ref: '#/components/schemas/ProductForPublish'
-
-    RetryVTEXBatchRequest:
-      type: object
-      required:
-        - supplemental_products
-      properties:
-        supplemental_products:
-          type: array
-          items:
-            $ref: '#/components/schemas/ProductForPublish'
-        vtex_account:
-          type: string
-          description: Optional; ignored if present (persisted batch account is used).
-
     ProductForPublish:
       type: object
       required:
@@ -1552,60 +1393,6 @@ components:
           type: string
         trade_policy_id:
           type: string
-
-    PublishToVTEXResponse:
-      type: object
-      properties:
-        batch_id:
-          type: string
-        total_products:
-          type: integer
-        validated:
-          type: integer
-        rejected:
-          type: integer
-        rejections:
-          type: array
-          items:
-            type: object
-            properties:
-              product_id:
-                type: string
-              error_code:
-                type: string
-
-    BatchStatusResponse:
-      type: object
-      properties:
-        batch_id:
-          type: string
-        vtex_account:
-          type: string
-        status:
-          type: string
-          enum: [pending, in_progress, completed, failed]
-        total:
-          type: integer
-        succeeded:
-          type: integer
-        failed:
-          type: integer
-        in_progress:
-          type: integer
-        operations:
-          type: array
-          items:
-            type: object
-            properties:
-              product_id:
-                type: string
-              status:
-                type: string
-              current_step:
-                type: string
-              error_code:
-                type: string
-                nullable: true
 
     MarketplaceDefinition:
       type: object
@@ -1977,10 +1764,6 @@ components:
                     - CONNECTORS_PUBLISH_MISSING_STOCK
                     - CONNECTORS_PUBLISH_ALREADY_IN_PROGRESS
                     - CONNECTORS_PUBLISH_DEPENDENCY_FAILED
-                    - CONNECTORS_VTEX_VALIDATION
-                    - CONNECTORS_VTEX_NOT_FOUND
-                    - CONNECTORS_VTEX_TRANSIENT
-                    - CONNECTORS_VTEX_AUTH
                     - CONNECTORS_METHOD_NOT_ALLOWED
                     - CONNECTORS_ME_METHOD_NOT_ALLOWED
                     - CONNECTORS_ME_STATE_GENERATION_FAILED

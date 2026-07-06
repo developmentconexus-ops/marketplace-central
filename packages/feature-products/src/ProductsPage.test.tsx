@@ -32,7 +32,7 @@ const taxonomyNodes: TaxonomyNode[] = [
 const classifications: Classification[] = [
   {
     classification_id: "cls1",
-    name: "VTEX Ready",
+    name: "Mercado Livre Ready",
     ai_context: "",
     product_ids: ["p0", "p1"],
     product_count: 2,
@@ -83,7 +83,7 @@ describe("ProductsPage", () => {
     render(<ProductsPage client={client} />);
     await waitFor(() => expect(screen.getByText("Product 0")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: /edit product 0/i }));
-    expect(screen.getByText("VTEX Ready")).toBeInTheDocument();
+    expect(screen.getByText("Mercado Livre Ready")).toBeInTheDocument();
   });
 
   it("closes detail panel on Escape", async () => {
@@ -92,8 +92,8 @@ describe("ProductsPage", () => {
     await waitFor(() => expect(screen.getByText("Product 0")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: /edit product 0/i }));
     fireEvent.keyDown(document, { key: "Escape" });
-    // Panel is closed — the classification checkbox label "VTEX Ready" should not be in the panel context
-    // Note: "VTEX Ready" may still be visible in the classification filter dropdown
+    // Panel is closed — the classification checkbox label "Mercado Livre Ready" should not be in the panel context
+    // Note: "Mercado Livre Ready" may still be visible in the classification filter dropdown
     // Check that the panel-specific content (enrichment section) is gone
     expect(screen.queryByLabelText(/height/i)).not.toBeInTheDocument();
   });
@@ -103,8 +103,8 @@ describe("ProductsPage", () => {
     render(<ProductsPage client={client} />);
     await waitFor(() => expect(screen.getByText("Product 0")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: /edit product 0/i }));
-    const vtexReadyCheckbox = await screen.findByRole("checkbox", { name: /vtex ready/i });
-    fireEvent.click(vtexReadyCheckbox);
+    const mercadoLivreReadyCheckbox = await screen.findByRole("checkbox", { name: /mercado livre ready/i });
+    fireEvent.click(mercadoLivreReadyCheckbox);
     await waitFor(() =>
       expect(client.updateClassification).toHaveBeenCalledWith("cls1", expect.objectContaining({
         product_ids: expect.not.arrayContaining(["p0"]),
@@ -154,3 +154,4 @@ describe("ProductsPage", () => {
     );
   });
 });
+

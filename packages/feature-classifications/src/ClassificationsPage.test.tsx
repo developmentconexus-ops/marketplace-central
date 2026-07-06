@@ -36,8 +36,8 @@ const taxonomyNodes: TaxonomyNode[] = [
 const existingClassifications: Classification[] = [
   {
     classification_id: "cls1",
-    name: "VTEX Ready",
-    ai_context: "Products ready for VTEX",
+    name: "Mercado Livre Ready",
+    ai_context: "Products ready for Mercado Livre",
     product_ids: ["p0", "p1", "p2"],
     product_count: 3,
     created_at: "2026-04-01T00:00:00Z",
@@ -77,20 +77,20 @@ function makeClient(overrides = {}) {
 describe("ClassificationsPage", () => {
   it("renders classification list after loading", async () => {
     render(<ClassificationsPage client={makeClient()} />);
-    await waitFor(() => expect(screen.getByText("VTEX Ready")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Mercado Livre Ready")).toBeInTheDocument());
     expect(screen.getByText("Clearance")).toBeInTheDocument();
   });
 
   it("shows empty state when no classification is selected", async () => {
     render(<ClassificationsPage client={makeClient()} />);
-    await waitFor(() => expect(screen.getByText("VTEX Ready")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Mercado Livre Ready")).toBeInTheDocument());
     expect(screen.getByText(/select a classification/i)).toBeInTheDocument();
   });
 
   it("shows product table when classification is selected", async () => {
     render(<ClassificationsPage client={makeClient()} />);
-    await waitFor(() => expect(screen.getByText("VTEX Ready")).toBeInTheDocument());
-    fireEvent.click(screen.getByText("VTEX Ready"));
+    await waitFor(() => expect(screen.getByText("Mercado Livre Ready")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("Mercado Livre Ready"));
     await waitFor(() => expect(screen.getByText("Product 0")).toBeInTheDocument());
     expect(screen.getByRole("checkbox", { name: /^select product 0$/i })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: /^select product 1$/i })).toBeChecked();
@@ -99,8 +99,8 @@ describe("ClassificationsPage", () => {
 
   it("paginates products at 25 per page", async () => {
     render(<ClassificationsPage client={makeClient()} />);
-    await waitFor(() => expect(screen.getByText("VTEX Ready")).toBeInTheDocument());
-    fireEvent.click(screen.getByText("VTEX Ready"));
+    await waitFor(() => expect(screen.getByText("Mercado Livre Ready")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("Mercado Livre Ready"));
     await waitFor(() => expect(screen.getByText("Product 0")).toBeInTheDocument());
     expect(screen.getByText("Product 24")).toBeInTheDocument();
     expect(screen.queryByText("Product 25")).not.toBeInTheDocument();
@@ -109,8 +109,8 @@ describe("ClassificationsPage", () => {
   it("calls updateClassification when product checkbox toggled", async () => {
     const client = makeClient();
     render(<ClassificationsPage client={client} />);
-    await waitFor(() => expect(screen.getByText("VTEX Ready")).toBeInTheDocument());
-    fireEvent.click(screen.getByText("VTEX Ready"));
+    await waitFor(() => expect(screen.getByText("Mercado Livre Ready")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("Mercado Livre Ready"));
     await waitFor(() => expect(screen.getByText("Product 0")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("checkbox", { name: /select product 3/i }));
     await waitFor(() =>
@@ -123,8 +123,8 @@ describe("ClassificationsPage", () => {
   it("calls updateClassification when product unchecked", async () => {
     const client = makeClient();
     render(<ClassificationsPage client={client} />);
-    await waitFor(() => expect(screen.getByText("VTEX Ready")).toBeInTheDocument());
-    fireEvent.click(screen.getByText("VTEX Ready"));
+    await waitFor(() => expect(screen.getByText("Mercado Livre Ready")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("Mercado Livre Ready"));
     await waitFor(() => expect(screen.getByText("Product 0")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("checkbox", { name: /select product 0/i }));
     await waitFor(() =>
@@ -137,7 +137,7 @@ describe("ClassificationsPage", () => {
   it("creates new classification on first product check", async () => {
     const client = makeClient();
     render(<ClassificationsPage client={client} />);
-    await waitFor(() => expect(screen.getByText("VTEX Ready")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Mercado Livre Ready")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: /new classification/i }));
     const nameInput = await screen.findByLabelText(/classification name/i);
     fireEvent.change(nameInput, { target: { value: "New One" } });
@@ -153,20 +153,20 @@ describe("ClassificationsPage", () => {
     const client = makeClient();
     vi.spyOn(window, "confirm").mockReturnValue(true);
     render(<ClassificationsPage client={client} />);
-    await waitFor(() => expect(screen.getByText("VTEX Ready")).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: /delete vtex ready/i }));
+    await waitFor(() => expect(screen.getByText("Mercado Livre Ready")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /delete mercado livre ready/i }));
     await waitFor(() =>
       expect(client.deleteClassification).toHaveBeenCalledWith("cls1")
     );
-    expect(screen.queryByText("VTEX Ready")).not.toBeInTheDocument();
+    expect(screen.queryByText("Mercado Livre Ready")).not.toBeInTheDocument();
     vi.restoreAllMocks();
   });
 
   it("select all filtered adds all filtered products to classification", async () => {
     const client = makeClient();
     render(<ClassificationsPage client={client} />);
-    await waitFor(() => expect(screen.getByText("VTEX Ready")).toBeInTheDocument());
-    fireEvent.click(screen.getByText("VTEX Ready"));
+    await waitFor(() => expect(screen.getByText("Mercado Livre Ready")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("Mercado Livre Ready"));
     await waitFor(() => expect(screen.getByText("Product 0")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: /select all filtered/i }));
     await waitFor(() =>
@@ -179,8 +179,8 @@ describe("ClassificationsPage", () => {
   it("clear all removes all products from classification", async () => {
     const client = makeClient();
     render(<ClassificationsPage client={client} />);
-    await waitFor(() => expect(screen.getByText("VTEX Ready")).toBeInTheDocument());
-    fireEvent.click(screen.getByText("VTEX Ready"));
+    await waitFor(() => expect(screen.getByText("Mercado Livre Ready")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("Mercado Livre Ready"));
     await waitFor(() => expect(screen.getByText("Product 0")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: /clear all/i }));
     await waitFor(() =>
@@ -193,14 +193,14 @@ describe("ClassificationsPage", () => {
   it("saves name on blur", async () => {
     const client = makeClient();
     render(<ClassificationsPage client={client} />);
-    await waitFor(() => expect(screen.getByText("VTEX Ready")).toBeInTheDocument());
-    fireEvent.click(screen.getByText("VTEX Ready"));
+    await waitFor(() => expect(screen.getByText("Mercado Livre Ready")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("Mercado Livre Ready"));
     const nameInput = await screen.findByLabelText(/classification name/i);
-    fireEvent.change(nameInput, { target: { value: "VTEX Premium" } });
+    fireEvent.change(nameInput, { target: { value: "Mercado Livre Premium" } });
     fireEvent.blur(nameInput);
     await waitFor(() =>
       expect(client.updateClassification).toHaveBeenCalledWith("cls1", expect.objectContaining({
-        name: "VTEX Premium",
+        name: "Mercado Livre Premium",
       }))
     );
   });
@@ -208,8 +208,8 @@ describe("ClassificationsPage", () => {
   it("saves ai_context on blur", async () => {
     const client = makeClient();
     render(<ClassificationsPage client={client} />);
-    await waitFor(() => expect(screen.getByText("VTEX Ready")).toBeInTheDocument());
-    fireEvent.click(screen.getByText("VTEX Ready"));
+    await waitFor(() => expect(screen.getByText("Mercado Livre Ready")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("Mercado Livre Ready"));
     const contextInput = await screen.findByLabelText(/ai context/i);
     fireEvent.change(contextInput, { target: { value: "Updated context" } });
     fireEvent.blur(contextInput);
@@ -231,7 +231,7 @@ describe("ClassificationsPage", () => {
 
   it("discards unsaved draft when selecting existing classification", async () => {
     render(<ClassificationsPage client={makeClient()} />);
-    await waitFor(() => expect(screen.getByText("VTEX Ready")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Mercado Livre Ready")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: /new classification/i }));
     expect(screen.getByText("Untitled")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Clearance"));
@@ -240,11 +240,12 @@ describe("ClassificationsPage", () => {
 
   it("filters products by search text", async () => {
     render(<ClassificationsPage client={makeClient()} />);
-    await waitFor(() => expect(screen.getByText("VTEX Ready")).toBeInTheDocument());
-    fireEvent.click(screen.getByText("VTEX Ready"));
+    await waitFor(() => expect(screen.getByText("Mercado Livre Ready")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("Mercado Livre Ready"));
     await waitFor(() => expect(screen.getByText("Product 0")).toBeInTheDocument());
     fireEvent.change(screen.getByPlaceholderText(/search products/i), { target: { value: "Product 5" } });
     expect(screen.queryByText("Product 0")).not.toBeInTheDocument();
     expect(screen.getByText("Product 5")).toBeInTheDocument();
   });
 });
+

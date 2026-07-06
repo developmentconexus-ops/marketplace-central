@@ -330,7 +330,7 @@ export function AccountPanel(props: AccountPanelProps) {
                   <Field
                     id="display_name"
                     label="Display Name"
-                    placeholder="My VTEX Store"
+                    placeholder="Minha Loja Mercado Livre"
                     value={displayName}
                     onChange={setDisplayName}
                     required

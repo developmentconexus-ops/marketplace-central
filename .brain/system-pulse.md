@@ -80,7 +80,7 @@ contracts/api/
 | `marketplaces` | active consumer | Accounts/policies and bridge to integrations |
 | `integrations` | foundation complete | Provider catalog, installations, credentials, auth sessions, capability states, operation runs, base APIs/SDK |
 | `pricing` | active | Simulation engine and batch orchestration |
-| `connectors` | partial | Provider-specific integration surfaces; Mercado Livre first, VTEX legacy |
+| `connectors` | active foundation | Provider-specific integration surfaces; Mercado Livre first, Melhor Envio auth active, VTEX removed from runtime |
 | `product_links` | planned | Internal product/SKU to Mercado Livre listing/variation mapping |
 | `inventory` | planned | Sankhya stock reconciliation and safe Mercado Livre stock actions |
 | `orders` | planned | Mercado Livre order ingestion, shipment/status tracking, cancellation reasons |
@@ -104,7 +104,7 @@ contracts/api/
 
 ## Current Phase
 
-**Phase 4 - Mercado Livre operating cockpit reset** (planning)
+**Phase 4 - Mercado Livre operating cockpit reset** (execution)
 
 Recently completed phase:
 1. `T-031` Complete provider catalog definitions
@@ -113,7 +113,7 @@ Recently completed phase:
 4. `T-034` Close catalog foundation with backend/frontend verification and evidence ledger
 
 Next in sequence:
-1. Inventory and quarantine legacy VTEX surfaces before deletion
+1. Close M-01 milestone validation and handoff after VTEX active-surface removal
 2. Define Mercado Livre product link and stock reconciliation mission
 3. Research Mercado Livre orders/fees/shipments/questions capabilities against official docs
 4. Draft milestone plan: Stock Seguro -> Orders + Margin -> Pricing Strategy -> Commercial Intelligence
@@ -128,6 +128,7 @@ Next in sequence:
 - 2026-04-25: Completed `T-031` through `T-034` with commits `b922940`, `1540a8a`, and `d915806`; added six-provider catalog baseline and provider-first marketplace UX
 - 2026-04-25: Added rollout evidence ledger at `docs/superpowers/evidence/2026-04-25-marketplace-catalog-ux-data-foundation.md` with passing backend/frontend/build verification
 - 2026-07-06: Accepted ADR-005 to remove VTEX from the target architecture and pivot Marketplace Central to a Mercado Livre first internal cockpit backed by Sankhya/MetalShopping data
+- 2026-07-06: Completed M-01/F-01 VTEX surface inventory and M-01/F-02 active-surface removal; `/connectors/vtex/*`, VTEX SDK/runtime/frontend surfaces, and VTEX route wiring were removed from active code
 
 ---
 
@@ -159,5 +160,5 @@ Next in sequence:
 - Windows environments may require local absolute `GOCACHE` for stable test runs
 - Frontend tests include non-blocking React `act(...)` warnings for marketplace loading-state test setup
 - Amazon production consent still blocked until real `amzn1.sellerapps.app.*` application ID is available; current `beta` fallback is temporary and should not be kept for production release
-- Legacy VTEX code/docs/routes may still exist and must be inventoried before deletion
+- Legacy VTEX residue is now limited to forward-only migrations and historical docs that still need explicit closeout classification in M-01/F-03
 - Mercado Livre stock writes can create oversell/undersell risk unless guarded by product links, safety buffers, idempotency, and audit

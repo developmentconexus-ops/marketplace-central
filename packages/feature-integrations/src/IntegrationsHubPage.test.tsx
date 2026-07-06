@@ -36,10 +36,10 @@ const mockDisconnectIntegrationInstallation = vi.fn();
 const mockStartIntegrationFeeSync = vi.fn();
 
 const sampleProvider: IntegrationProviderDefinition = {
-  provider_code: "vtex",
+  provider_code: "mercado_livre",
   tenant_id: "tenant-1",
   family: "marketplace",
-  display_name: "VTEX",
+  display_name: "Mercado Livre",
   auth_strategy: "oauth2",
   install_mode: "interactive",
   metadata: {},
@@ -80,9 +80,9 @@ const sampleProviderAPIKey: IntegrationProviderDefinition = {
 const sampleInstallation: IntegrationInstallation = {
   installation_id: "inst-1",
   tenant_id: "tenant-1",
-  provider_code: "vtex",
+  provider_code: "mercado_livre",
   family: "marketplace",
-  display_name: "VTEX Main Store",
+  display_name: "Mercado Livre Main Store",
   status: "connected",
   health_status: "healthy",
   external_account_id: "acc-1",
@@ -120,13 +120,13 @@ const sampleInstallationNeedsAction: IntegrationInstallation = {
 const sampleInstallationDraft: IntegrationInstallation = {
   installation_id: "inst-5",
   tenant_id: "tenant-1",
-  provider_code: "vtex",
+  provider_code: "mercado_livre",
   family: "marketplace",
-  display_name: "VTEX Draft",
+  display_name: "Mercado Livre Draft",
   status: "draft",
   health_status: "warning",
   external_account_id: "acc-5",
-  external_account_name: "VTEX Draft Account",
+  external_account_name: "Mercado Livre Draft Account",
   active_credential_id: undefined,
   last_verified_at: "2026-04-11T12:05:00Z",
   created_at: "2026-04-11T12:00:00Z",
@@ -135,13 +135,13 @@ const sampleInstallationDraft: IntegrationInstallation = {
 const sampleInstallationPendingConnection: IntegrationInstallation = {
   installation_id: "inst-4",
   tenant_id: "tenant-1",
-  provider_code: "vtex",
+  provider_code: "mercado_livre",
   family: "marketplace",
-  display_name: "VTEX Pending",
+  display_name: "Mercado Livre Pending",
   status: "pending_connection",
   health_status: "warning",
   external_account_id: "acc-4",
-  external_account_name: "VTEX Pending Account",
+  external_account_name: "Mercado Livre Pending Account",
   active_credential_id: undefined,
   last_verified_at: "2026-04-11T12:05:00Z",
   created_at: "2026-04-11T12:00:00Z",
@@ -167,13 +167,13 @@ const sampleInstallationPendingAPIKey: IntegrationInstallation = {
 const sampleInstallationDisconnectedActionable: IntegrationInstallation = {
   installation_id: "inst-7",
   tenant_id: "tenant-1",
-  provider_code: "vtex",
+  provider_code: "mercado_livre",
   family: "marketplace",
-  display_name: "VTEX Disconnected",
+  display_name: "Mercado Livre Disconnected",
   status: "disconnected",
   health_status: "warning",
   external_account_id: "acc-7",
-  external_account_name: "VTEX Disconnected Account",
+  external_account_name: "Mercado Livre Disconnected Account",
   active_credential_id: undefined,
   last_verified_at: "2026-04-11T12:05:00Z",
   created_at: "2026-04-11T12:00:00Z",
@@ -348,7 +348,7 @@ describe("IntegrationsHubPage", () => {
 
     renderPage();
 
-    const card = await screen.findByText("VTEX Main Store");
+    const card = await screen.findByText("Mercado Livre Main Store");
     expect(card).toBeInTheDocument();
 
     const cardButton = card.closest("button");
@@ -357,7 +357,7 @@ describe("IntegrationsHubPage", () => {
       return;
     }
 
-    expect(within(cardButton).getByText("VTEX")).toBeInTheDocument();
+    expect(within(cardButton).getByText("Mercado Livre")).toBeInTheDocument();
     expect(within(cardButton).getByText(/healthy/i)).toBeInTheDocument();
   });
 
@@ -373,42 +373,42 @@ describe("IntegrationsHubPage", () => {
 
     renderPage();
 
-    expect(await screen.findByText("VTEX Main Store")).toBeInTheDocument();
-    expect(screen.getByText("vtex")).toBeInTheDocument();
+    expect(await screen.findByText("Mercado Livre Main Store")).toBeInTheDocument();
+    expect(screen.getByText("mercado_livre")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("filters installations by provider and needs action", async () => {
     renderPage();
 
-    expect(await screen.findByText("VTEX Main Store")).toBeInTheDocument();
+    expect(await screen.findByText("Mercado Livre Main Store")).toBeInTheDocument();
     expect(screen.getByText("Bling Store")).toBeInTheDocument();
     expect(screen.getByText("Shopee Store")).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText(/provider/i), { target: { value: "bling" } });
 
-    expect(screen.queryByText("VTEX Main Store")).not.toBeInTheDocument();
+    expect(screen.queryByText("Mercado Livre Main Store")).not.toBeInTheDocument();
     expect(screen.getByText("Bling Store")).toBeInTheDocument();
     expect(screen.queryByText("Shopee Store")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /^needs action$/i }));
 
     expect(screen.getByText("Bling Store")).toBeInTheDocument();
-    expect(screen.queryByText("VTEX Main Store")).not.toBeInTheDocument();
+    expect(screen.queryByText("Mercado Livre Main Store")).not.toBeInTheDocument();
     expect(screen.queryByText("Shopee Store")).not.toBeInTheDocument();
   });
 
   it("filters installations by status and health", async () => {
     renderPage();
 
-    expect(await screen.findByText("VTEX Main Store")).toBeInTheDocument();
+    expect(await screen.findByText("Mercado Livre Main Store")).toBeInTheDocument();
     expect(screen.getByText("Bling Store")).toBeInTheDocument();
     expect(screen.getByText("Shopee Store")).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText(/status/i), { target: { value: "requires_reauth" } });
     fireEvent.change(screen.getByLabelText(/health/i), { target: { value: "warning" } });
 
-    expect(screen.queryByText("VTEX Main Store")).not.toBeInTheDocument();
+    expect(screen.queryByText("Mercado Livre Main Store")).not.toBeInTheDocument();
     expect(screen.getByText("Bling Store")).toBeInTheDocument();
     expect(screen.queryByText("Shopee Store")).not.toBeInTheDocument();
   });
@@ -416,13 +416,13 @@ describe("IntegrationsHubPage", () => {
   it("filters installations by search text", async () => {
     renderPage();
 
-    expect(await screen.findByText("VTEX Main Store")).toBeInTheDocument();
+    expect(await screen.findByText("Mercado Livre Main Store")).toBeInTheDocument();
     expect(screen.getByText("Bling Store")).toBeInTheDocument();
     expect(screen.getByText("Shopee Store")).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText(/search/i), { target: { value: "shopee" } });
 
-    expect(screen.queryByText("VTEX Main Store")).not.toBeInTheDocument();
+    expect(screen.queryByText("Mercado Livre Main Store")).not.toBeInTheDocument();
     expect(screen.queryByText("Bling Store")).not.toBeInTheDocument();
     expect(screen.getByText("Shopee Store")).toBeInTheDocument();
   });
@@ -443,7 +443,7 @@ describe("IntegrationsHubPage", () => {
       installation_id: "inst-1",
       status: "connected",
       health_status: "healthy",
-      provider_code: "vtex",
+      provider_code: "mercado_livre",
       external_account_id: "acc-1",
     });
 
@@ -489,14 +489,14 @@ describe("IntegrationsHubPage", () => {
 
     renderPage();
 
-    expect(await screen.findByText("VTEX Main Store")).toBeInTheDocument();
+    expect(await screen.findByText("Mercado Livre Main Store")).toBeInTheDocument();
     expect(screen.getByText("Bling Store")).toBeInTheDocument();
     expect(screen.getByText("Shopee Store")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /sync failures \(24h\)/i }));
 
     await waitFor(() => expect(screen.getByText("Bling Store")).toBeInTheDocument());
-    expect(screen.queryByText("VTEX Main Store")).not.toBeInTheDocument();
+    expect(screen.queryByText("Mercado Livre Main Store")).not.toBeInTheDocument();
     expect(screen.queryByText("Shopee Store")).not.toBeInTheDocument();
   });
 
@@ -513,7 +513,7 @@ describe("IntegrationsHubPage", () => {
     });
     mockStartIntegrationAuthorization.mockResolvedValue({
       installation_id: "inst-5",
-      provider_code: "vtex",
+      provider_code: "mercado_livre",
       state: "draft-state",
       auth_url: authUrl,
       expires_in: 300,
@@ -521,7 +521,7 @@ describe("IntegrationsHubPage", () => {
 
     renderPage(["/integrations?installation=inst-5"], {}, redirectToAuthUrl);
 
-    const dialog = await screen.findByRole("dialog", { name: /vtex draft details/i });
+    const dialog = await screen.findByRole("dialog", { name: /mercado livre draft details/i });
     fireEvent.click(within(dialog).getByRole("button", { name: /authorize/i }));
 
     await waitFor(() => expect(mockStartIntegrationAuthorization).toHaveBeenCalledWith("inst-5"));
@@ -537,11 +537,11 @@ describe("IntegrationsHubPage", () => {
       installation_id: "inst-4",
       status: "pending_connection",
       health_status: "warning",
-      provider_code: "vtex",
+      provider_code: "mercado_livre",
     });
     mockStartIntegrationAuthorization.mockResolvedValue({
       installation_id: "inst-4",
-      provider_code: "vtex",
+      provider_code: "mercado_livre",
       state: "opaque-state",
       auth_url: authUrl,
       expires_in: 300,
@@ -549,7 +549,7 @@ describe("IntegrationsHubPage", () => {
 
     renderPage(["/integrations?installation=inst-4"], {}, redirectToAuthUrl);
 
-    const dialog = await screen.findByRole("dialog", { name: /vtex pending details/i });
+    const dialog = await screen.findByRole("dialog", { name: /mercado livre pending details/i });
     fireEvent.click(within(dialog).getByRole("button", { name: /authorize/i }));
 
     await waitFor(() => expect(mockStartIntegrationAuthorization).toHaveBeenCalledWith("inst-4"));
@@ -565,11 +565,11 @@ describe("IntegrationsHubPage", () => {
       installation_id: "inst-7",
       status: "disconnected",
       health_status: "warning",
-      provider_code: "vtex",
+      provider_code: "mercado_livre",
     });
     mockStartIntegrationAuthorization.mockResolvedValue({
       installation_id: "inst-7",
-      provider_code: "vtex",
+      provider_code: "mercado_livre",
       state: "reconnect-state",
       auth_url: authUrl,
       expires_in: 300,
@@ -577,7 +577,7 @@ describe("IntegrationsHubPage", () => {
 
     renderPage(["/integrations?installation=inst-7"], {}, redirectToAuthUrl);
 
-    const dialog = await screen.findByRole("dialog", { name: /vtex disconnected details/i });
+    const dialog = await screen.findByRole("dialog", { name: /mercado livre disconnected details/i });
     fireEvent.click(within(dialog).getByRole("button", { name: /authorize/i }));
 
     await waitFor(() => expect(mockStartIntegrationAuthorization).toHaveBeenCalledWith("inst-7"));
@@ -594,32 +594,32 @@ describe("IntegrationsHubPage", () => {
         installation_id: "inst-1",
         status: "connected",
         health_status: "healthy",
-        provider_code: "vtex",
+        provider_code: "mercado_livre",
       })
       .mockResolvedValueOnce({
         installation_id: "inst-1",
         status: "disconnected",
         health_status: "critical",
-        provider_code: "vtex",
+        provider_code: "mercado_livre",
       });
     mockDisconnectIntegrationInstallation.mockResolvedValue({
       installation_id: "inst-1",
       status: "disconnected",
       health_status: "critical",
-      provider_code: "vtex",
+      provider_code: "mercado_livre",
       external_account_id: "acc-1",
     });
 
     renderPage(["/integrations?installation=inst-1"]);
 
-    const dialog = await screen.findByRole("dialog", { name: /vtex main store details/i });
+    const dialog = await screen.findByRole("dialog", { name: /mercado livre main store details/i });
     const connectedMetric = screen.getByText("Healthy and ready for sync").closest("button");
     expect(connectedMetric).not.toBeNull();
     if (!connectedMetric) {
       return;
     }
 
-    const installationCardLabel = screen.getAllByText("VTEX Main Store")
+    const installationCardLabel = screen.getAllByText("Mercado Livre Main Store")
       .find((node) => node.closest("button") !== null);
     const installationCard = installationCardLabel?.closest("button") ?? null;
     expect(installationCard).not.toBeNull();
@@ -642,7 +642,7 @@ describe("IntegrationsHubPage", () => {
 
     await waitFor(() => expect(mockListInstallations).toHaveBeenCalledTimes(2));
     await waitFor(() => {
-      const refreshedCardLabel = screen.getAllByText("VTEX Main Store")
+      const refreshedCardLabel = screen.getAllByText("Mercado Livre Main Store")
         .find((node) => node.closest("button") !== null);
       const refreshedCard = refreshedCardLabel?.closest("button");
       expect(refreshedCard).not.toBeNull();
@@ -712,7 +712,7 @@ describe("IntegrationsHubPage", () => {
         installation_id: "inst-1",
         status: "connected",
         health_status: "healthy",
-        provider_code: "vtex",
+        provider_code: "mercado_livre",
         external_account_id: "acc-1",
       };
     });
@@ -757,7 +757,7 @@ describe("IntegrationsHubPage", () => {
 
     renderPage(["/integrations?installation=inst-1"]);
 
-    const firstDialog = await screen.findByRole("dialog", { name: /vtex main store details/i });
+    const firstDialog = await screen.findByRole("dialog", { name: /mercado livre main store details/i });
     expect(await within(firstDialog).findByText("run-inst-1")).toBeInTheDocument();
 
     fireEvent.click(within(firstDialog).getByRole("button", { name: /sync fees/i }));
@@ -934,3 +934,4 @@ describe("IntegrationsHubPage", () => {
     );
   });
 });
+

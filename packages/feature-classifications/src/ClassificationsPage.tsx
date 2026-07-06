@@ -463,7 +463,7 @@ export function ClassificationsPage({ client }: ClassificationsPageProps) {
                     id="cls-name"
                     type="text"
                     autoFocus
-                    placeholder="e.g. VTEX Ready"
+                    placeholder="e.g. Mercado Livre Ready"
                     value={draftName}
                     onChange={(e) => setDraftName(e.target.value)}
                     className="w-full max-w-sm px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"

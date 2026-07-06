@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	connectorsdomain "marketplace-central/apps/server_core/internal/modules/connectors/domain"
 	integrationsdomain "marketplace-central/apps/server_core/internal/modules/integrations/domain"
 	integrationports "marketplace-central/apps/server_core/internal/modules/integrations/ports"
 	marketplacesdomain "marketplace-central/apps/server_core/internal/modules/marketplaces/domain"
@@ -218,7 +217,7 @@ func classifyFeeSyncError(err error) (requiresReauth bool, transient bool) {
 	if err == nil {
 		return false, false
 	}
-	if errors.Is(err, connectorsdomain.ErrVTEXAuth) || errors.Is(err, integrationsdomain.ErrReauthAccountMismatch) {
+	if errors.Is(err, integrationsdomain.ErrReauthAccountMismatch) {
 		return true, false
 	}
 	return false, true

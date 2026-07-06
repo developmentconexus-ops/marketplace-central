@@ -37,7 +37,7 @@ func TestMarketplacesRepositoryTenantIsolationForSameIDs(t *testing.T) {
 	accountA := domain.Account{
 		TenantID:       tenantA,
 		AccountID:      accountID,
-		ChannelCode:    "vtex",
+		ChannelCode:    "mercado_livre",
 		DisplayName:    "Tenant A",
 		Status:         "active",
 		ConnectionMode: "api",
@@ -45,7 +45,7 @@ func TestMarketplacesRepositoryTenantIsolationForSameIDs(t *testing.T) {
 	accountB := domain.Account{
 		TenantID:       tenantB,
 		AccountID:      accountID,
-		ChannelCode:    "vtex",
+		ChannelCode:    "mercado_livre",
 		DisplayName:    "Tenant B",
 		Status:         "active",
 		ConnectionMode: "api",
@@ -162,8 +162,8 @@ func TestMarketplacesRepositorySaveAndList(t *testing.T) {
 	account := domain.Account{
 		TenantID:       cfg.DefaultTenantID,
 		AccountID:      "acct-test",
-		ChannelCode:    "vtex",
-		DisplayName:    "VTEX",
+		ChannelCode:    "mercado_livre",
+		DisplayName:    "Mercado Livre",
 		Status:         "active",
 		ConnectionMode: "api",
 	}
@@ -202,8 +202,8 @@ func TestMarketplacesRepositorySaveAndListPoliciesIncludeShippingProvider(t *tes
 	account := domain.Account{
 		TenantID:       cfg.DefaultTenantID,
 		AccountID:      "acct-policy-test",
-		ChannelCode:    "vtex",
-		DisplayName:    "VTEX Policy Test",
+		ChannelCode:    "mercado_livre",
+		DisplayName:    "Mercado Livre Policy Test",
 		Status:         "active",
 		ConnectionMode: "api",
 	}
@@ -268,8 +268,8 @@ func TestMarketplacesRepositorySavePolicyUpsertUpdatesShippingProvider(t *testin
 	account := domain.Account{
 		TenantID:       cfg.DefaultTenantID,
 		AccountID:      "acct-policy-upsert-test",
-		ChannelCode:    "vtex",
-		DisplayName:    "VTEX Policy Upsert Test",
+		ChannelCode:    "mercado_livre",
+		DisplayName:    "Mercado Livre Policy Upsert Test",
 		Status:         "active",
 		ConnectionMode: "api",
 	}
@@ -317,3 +317,4 @@ func TestMarketplacesRepositorySavePolicyUpsertUpdatesShippingProvider(t *testin
 
 	t.Fatalf("expected to find policy %s", policy.PolicyID)
 }
+

@@ -6,8 +6,8 @@ import type { MarketplaceAccount, MarketplaceDefinition, MarketplacePolicy } fro
 const account: MarketplaceAccount = {
   account_id: "acc-1",
   tenant_id: "t1",
-  channel_code: "vtex",
-  display_name: "My VTEX Store",
+  channel_code: "mercado_livre",
+  display_name: "Minha Loja Mercado Livre",
   status: "active",
   connection_mode: "api",
 };
@@ -26,8 +26,8 @@ const policy: MarketplacePolicy = {
 };
 
 const definition: MarketplaceDefinition = {
-  marketplace_code: "vtex",
-  display_name: "VTEX",
+  marketplace_code: "mercado_livre",
+  display_name: "Mercado Livre",
   fee_source: "api_sync",
   capabilities: [],
   credential_schema: [{ key: "api_key", label: "API Key", secret: true }],
@@ -50,7 +50,7 @@ describe("AccountPanel — view mode", () => {
         onCreatePolicy={noop}
       />
     );
-    expect(screen.getByText("My VTEX Store")).toBeInTheDocument();
+    expect(screen.getByText("Minha Loja Mercado Livre")).toBeInTheDocument();
   });
 
   it("renders account_id in header", () => {
@@ -152,7 +152,7 @@ describe("AccountPanel — create mode", () => {
       />
     );
     fireEvent.change(screen.getByRole("combobox", { name: /marketplace/i }), {
-      target: { value: "vtex" },
+      target: { value: "mercado_livre" },
     });
     await waitFor(() => expect(screen.getByLabelText(/api key/i)).toBeInTheDocument());
   });
@@ -179,7 +179,7 @@ describe("AccountPanel — create mode", () => {
 
     fireEvent.change(screen.getByLabelText(/display name/i), { target: { value: "My Store" } });
     fireEvent.change(screen.getByRole("combobox", { name: /marketplace/i }), {
-      target: { value: "vtex" },
+      target: { value: "mercado_livre" },
     });
     await waitFor(() => screen.getByLabelText(/api key/i));
     fireEvent.change(screen.getByLabelText(/api key/i), { target: { value: "secret" } });
@@ -192,8 +192,8 @@ describe("AccountPanel — create mode", () => {
     await waitFor(() => expect(onCreateAccount).toHaveBeenCalledWith(
       expect.objectContaining({
         display_name: "My Store",
-        channel_code: "vtex",
-        marketplace_code: "vtex",
+        channel_code: "mercado_livre",
+        marketplace_code: "mercado_livre",
         credentials_json: { api_key: "secret" },
       })
     ));
@@ -205,3 +205,4 @@ describe("AccountPanel — create mode", () => {
     ));
   });
 });
+

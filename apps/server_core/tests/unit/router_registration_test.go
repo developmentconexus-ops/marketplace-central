@@ -12,9 +12,6 @@ import (
 	classapp "marketplace-central/apps/server_core/internal/modules/classifications/application"
 	classdomain "marketplace-central/apps/server_core/internal/modules/classifications/domain"
 	classtransport "marketplace-central/apps/server_core/internal/modules/classifications/transport"
-	connectorsapp "marketplace-central/apps/server_core/internal/modules/connectors/application"
-	connectorsdomain "marketplace-central/apps/server_core/internal/modules/connectors/domain"
-	connectorports "marketplace-central/apps/server_core/internal/modules/connectors/ports"
 	connectorstransport "marketplace-central/apps/server_core/internal/modules/connectors/transport"
 	marketplacesapp "marketplace-central/apps/server_core/internal/modules/marketplaces/application"
 	marketplacesdomain "marketplace-central/apps/server_core/internal/modules/marketplaces/domain"
@@ -128,101 +125,10 @@ func (r stubClassificationsRepo) Delete(_ context.Context, _ string) error {
 	return nil
 }
 
-// stubConnectorsRepo satisfies connectors ports.Repository with in-memory no-ops.
-type stubConnectorsRepo struct{}
-
-func (r stubConnectorsRepo) WithTx(_ context.Context, fn func(connectorports.Repository) error) error {
-	return fn(r)
-}
-func (r stubConnectorsRepo) SaveBatch(_ context.Context, _ connectorsdomain.PublicationBatch) error {
-	return nil
-}
-func (r stubConnectorsRepo) GetBatch(_ context.Context, _ string) (connectorsdomain.PublicationBatch, error) {
-	return connectorsdomain.PublicationBatch{}, nil
-}
-func (r stubConnectorsRepo) UpdateBatchStatus(_ context.Context, _, _ string, _, _ int) error {
-	return nil
-}
-func (r stubConnectorsRepo) SaveOperation(_ context.Context, _ connectorsdomain.PublicationOperation) error {
-	return nil
-}
-func (r stubConnectorsRepo) ListOperationsByBatch(_ context.Context, _ string) ([]connectorsdomain.PublicationOperation, error) {
-	return nil, nil
-}
-func (r stubConnectorsRepo) UpdateOperationStatus(_ context.Context, _, _, _, _, _ string) error {
-	return nil
-}
-func (r stubConnectorsRepo) HasActiveOperation(_ context.Context, _, _ string) (bool, error) {
-	return false, nil
-}
-func (r stubConnectorsRepo) SaveStepResult(_ context.Context, _ connectorsdomain.PipelineStepResult) error {
-	return nil
-}
-func (r stubConnectorsRepo) UpdateStepResult(_ context.Context, _, _ string, _ *string, _, _ string) error {
-	return nil
-}
-func (r stubConnectorsRepo) ListStepResultsByOperation(_ context.Context, _ string) ([]connectorsdomain.PipelineStepResult, error) {
-	return nil, nil
-}
-func (r stubConnectorsRepo) FindMapping(_ context.Context, _, _, _ string) (*connectorsdomain.VTEXEntityMapping, error) {
-	return nil, nil
-}
-func (r stubConnectorsRepo) SaveMapping(_ context.Context, _ connectorsdomain.VTEXEntityMapping) error {
-	return nil
-}
-
-// stubVTEXAdapter satisfies connectors ports.VTEXCatalogPort with in-memory no-ops.
-type stubVTEXAdapter struct{}
-
-func (a stubVTEXAdapter) FindOrCreateCategory(_ context.Context, _ connectorports.CategoryParams) (string, error) {
-	return "cat_1", nil
-}
-func (a stubVTEXAdapter) FindOrCreateBrand(_ context.Context, _ connectorports.BrandParams) (string, error) {
-	return "brand_1", nil
-}
-func (a stubVTEXAdapter) CreateProduct(_ context.Context, _ connectorports.ProductParams) (string, error) {
-	return "prod_1", nil
-}
-func (a stubVTEXAdapter) CreateSKU(_ context.Context, _ connectorports.SKUParams) (string, error) {
-	return "sku_1", nil
-}
-func (a stubVTEXAdapter) AttachSpecsAndImages(_ context.Context, _ connectorports.SpecsImagesParams) error {
-	return nil
-}
-func (a stubVTEXAdapter) AssociateTradePolicy(_ context.Context, _ connectorports.TradePolicyParams) error {
-	return nil
-}
-func (a stubVTEXAdapter) SetPrice(_ context.Context, _ connectorports.PriceParams) error {
-	return nil
-}
-func (a stubVTEXAdapter) SetStock(_ context.Context, _ connectorports.StockParams) error {
-	return nil
-}
-func (a stubVTEXAdapter) ActivateProduct(_ context.Context, _ connectorports.ActivateParams) error {
-	return nil
-}
-func (a stubVTEXAdapter) GetProduct(_ context.Context, _, _ string) (connectorports.ProductData, error) {
-	return connectorports.ProductData{}, nil
-}
-func (a stubVTEXAdapter) GetSKU(_ context.Context, _, _ string) (connectorports.SKUData, error) {
-	return connectorports.SKUData{}, nil
-}
-func (a stubVTEXAdapter) GetCategory(_ context.Context, _, _ string) (connectorports.CategoryData, error) {
-	return connectorports.CategoryData{}, nil
-}
-func (a stubVTEXAdapter) GetBrand(_ context.Context, _, _ string) (connectorports.BrandData, error) {
-	return connectorports.BrandData{}, nil
-}
-func (a stubVTEXAdapter) ValidateConnection(_ context.Context, _ string) error {
-	return nil
-}
-
 // TestRouterRegistersAllFoundationEndpoints verifies that every expected route
 // is registered and returns a non-404 response. It builds a minimal mux with
 // stub repository adapters so that no real database connection is required.
 func TestRouterRegistersAllFoundationEndpoints(t *testing.T) {
-	t.Setenv("VTEX_APP_KEY", "test-key")
-	t.Setenv("VTEX_APP_TOKEN", "test-token")
 	t.Setenv("ME_CLIENT_ID", "test-client")
 	t.Setenv("ME_CLIENT_SECRET", "test-secret")
 
@@ -248,9 +154,7 @@ func TestRouterRegistersAllFoundationEndpoints(t *testing.T) {
 	pricingSvc := pricingapp.NewService(stubPricingRepo{}, "tenant_default")
 	pricingtransport.NewHandler(pricingSvc, nil).Register(mux)
 
-	// /connectors/vtex/publish, /connectors/vtex/publish/batch/...
-	connectorsOrch := connectorsapp.NewBatchOrchestrator(stubConnectorsRepo{}, stubVTEXAdapter{}, "tenant_default")
-	connectorstransport.NewHandler(connectorsOrch, nil).Register(mux)
+	connectorstransport.NewHandler(nil).Register(mux)
 
 	cases := []string{
 		"/healthz",
@@ -260,9 +164,6 @@ func TestRouterRegistersAllFoundationEndpoints(t *testing.T) {
 		"/marketplaces/policies",
 		"/pricing/simulations",
 		"/pricing/simulations/batch",
-		"/connectors/vtex/publish",
-		"/connectors/vtex/publish/batch/test_batch_123",
-		"/connectors/vtex/validate-connection",
 		"/connectors/melhor-envio/auth/start",
 		"/connectors/melhor-envio/auth/callback",
 		"/connectors/melhor-envio/status",

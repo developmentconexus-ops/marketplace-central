@@ -19,7 +19,7 @@
 - Introduce `navigateToAuthUrl` injection in marketplace page for deterministic auth-flow testing without direct `window.location` coupling
 
 ## What's Immediately Next
-- Start phase-4 VTEX connector work (connector infrastructure first), using the new provider catalog foundation as baseline
+- Close M-01 VTEX retirement alignment and start the Mercado Livre product-link and stock-reconciliation mission
 
 ## Open Questions
 - Whether to enforce stricter React test hygiene for the marketplace loading-state `act(...)` warnings now or defer to a dedicated test-cleanup pass

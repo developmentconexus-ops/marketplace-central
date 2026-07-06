@@ -7,8 +7,8 @@ import type { MarketplaceAccount, MarketplacePolicy } from "@marketplace-central
 const account: MarketplaceAccount = {
   account_id: "acc-1",
   tenant_id: "t1",
-  channel_code: "vtex",
-  display_name: "My VTEX Store",
+  channel_code: "mercado_livre",
+  display_name: "Minha Loja Mercado Livre",
   status: "active",
   connection_mode: "api",
 };
@@ -29,7 +29,7 @@ const policy: MarketplacePolicy = {
 describe("AccountCard", () => {
   it("renders display name and account id", () => {
     render(<AccountCard account={account} policy={null} selected={false} onSelect={vi.fn()} />);
-    expect(screen.getByText("My VTEX Store")).toBeInTheDocument();
+    expect(screen.getByText("Minha Loja Mercado Livre")).toBeInTheDocument();
     expect(screen.getByText(/acc-1/)).toBeInTheDocument();
   });
 
@@ -47,7 +47,7 @@ describe("AccountCard", () => {
   it("calls onSelect when clicked", () => {
     const onSelect = vi.fn();
     render(<AccountCard account={account} policy={null} selected={false} onSelect={onSelect} />);
-    fireEvent.click(screen.getByText("My VTEX Store").closest("div")!);
+    fireEvent.click(screen.getByText("Minha Loja Mercado Livre").closest("div")!);
     expect(onSelect).toHaveBeenCalledWith(account);
   });
 
@@ -58,3 +58,4 @@ describe("AccountCard", () => {
     expect(container.firstChild).toHaveClass("border-blue-500");
   });
 });
+

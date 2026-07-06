@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"testing"
 
-	connectorsdomain "marketplace-central/apps/server_core/internal/modules/connectors/domain"
 	integrationsdomain "marketplace-central/apps/server_core/internal/modules/integrations/domain"
 	marketplacesdomain "marketplace-central/apps/server_core/internal/modules/marketplaces/domain"
 	marketplacesports "marketplace-central/apps/server_core/internal/modules/marketplaces/ports"
@@ -150,7 +149,7 @@ func TestMarketplaceExecutorClassifiesProviderErrors(t *testing.T) {
 		repo := &stubFeeScheduleRepo{}
 		syncer := &stubFeeScheduleSyncer{
 			marketplaceCode: "mercado_livre",
-			err:             fmt.Errorf("wrapped: %w", connectorsdomain.ErrVTEXAuth),
+			err:             fmt.Errorf("wrapped: %w", integrationsdomain.ErrReauthAccountMismatch),
 		}
 		executor := NewMarketplaceExecutor(repo, []marketplacesports.FeeScheduleSyncer{syncer})
 
@@ -173,7 +172,7 @@ func TestMarketplaceExecutorClassifiesProviderErrors(t *testing.T) {
 		if result.Transient {
 			t.Fatal("Transient = true, want false")
 		}
-		if !errors.Is(err, connectorsdomain.ErrVTEXAuth) {
+		if !errors.Is(err, integrationsdomain.ErrReauthAccountMismatch) {
 			t.Fatalf("Execute() error = %v, want wrapped auth error", err)
 		}
 	})

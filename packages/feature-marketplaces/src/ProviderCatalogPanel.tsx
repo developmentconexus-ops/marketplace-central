@@ -55,6 +55,7 @@ export function ProviderCatalogPanel({
   const blocked = provider.metadata?.execution_mode === "blocked";
   const installMode = provider.install_mode;
   const noInstallation = installation === null;
+  const feeSyncEnabled = installation?.status === "connected" || installation?.status === "degraded";
 
   async function handlePrimaryAction() {
     if (blocked) {
@@ -152,7 +153,7 @@ export function ProviderCatalogPanel({
         <button
           type="button"
           onClick={onFeeSync}
-          disabled={pending || noInstallation}
+          disabled={pending || !feeSyncEnabled}
           className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-40"
         >
           Run fee sync

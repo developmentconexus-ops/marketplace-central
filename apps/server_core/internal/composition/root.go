@@ -17,9 +17,7 @@ import (
 	_ "marketplace-central/apps/server_core/internal/modules/connectors/adapters/magalu"
 	melhorenvio "marketplace-central/apps/server_core/internal/modules/connectors/adapters/melhorenvio"
 	_ "marketplace-central/apps/server_core/internal/modules/connectors/adapters/mercado_livre"
-	connectorspostgres "marketplace-central/apps/server_core/internal/modules/connectors/adapters/postgres"
 	_ "marketplace-central/apps/server_core/internal/modules/connectors/adapters/shopee"
-	connectorshttp "marketplace-central/apps/server_core/internal/modules/connectors/adapters/vtex/http"
 	connectorsapp "marketplace-central/apps/server_core/internal/modules/connectors/application"
 	connectorstransport "marketplace-central/apps/server_core/internal/modules/connectors/transport"
 	_ "marketplace-central/apps/server_core/internal/modules/integrations/adapters/amazon"
@@ -230,15 +228,8 @@ func NewRootRouter(pool *pgxpool.Pool, msPool *pgxpool.Pool, cfg pgdb.Config) (h
 	batchOrch := pricingapp.NewBatchOrchestrator(prodReader, polReader, meClient, feeAdapter, cfg.DefaultTenantID)
 	pricingtransport.NewHandler(pricingSvc, batchOrch).Register(mux)
 
-	// Connectors (VTEX + ME auth)
-	vtexCredentials, err := connectorshttp.NewEnvCredentialProvider()
-	if err != nil {
-		return nil, fmt.Errorf("vtex credentials: %w", err)
-	}
-	connectorsRepo := connectorspostgres.NewRepository(pool, cfg.DefaultTenantID)
-	vtexAdapter := connectorshttp.NewAdapter(vtexCredentials)
-	connectorsOrch := connectorsapp.NewBatchOrchestrator(connectorsRepo, vtexAdapter, cfg.DefaultTenantID)
-	connectorstransport.NewHandler(connectorsOrch, meOAuth).Register(mux)
+	// Connectors (Melhor Envio auth + fee seeding foundations)
+	connectorstransport.NewHandler(meOAuth).Register(mux)
 
 	return httpx.CORSMiddleware(mux), nil
 }

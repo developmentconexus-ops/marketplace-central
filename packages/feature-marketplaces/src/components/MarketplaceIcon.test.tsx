@@ -4,14 +4,14 @@ import { MarketplaceIcon } from "./MarketplaceIcon";
 
 describe("MarketplaceIcon", () => {
   it("renders correct initial for known marketplace code", () => {
-    render(<MarketplaceIcon code="vtex" />);
-    expect(screen.getByText("V")).toBeInTheDocument();
+    render(<MarketplaceIcon code="mercado_livre" />);
+    expect(screen.getByText("M")).toBeInTheDocument();
   });
 
-  it("applies VTEX brand color as background", () => {
-    const { container } = render(<MarketplaceIcon code="vtex" />);
+  it("applies Mercado Livre brand color as background", () => {
+    const { container } = render(<MarketplaceIcon code="mercado_livre" />);
     const el = container.firstChild as HTMLElement;
-    expect(el.style.backgroundColor).toBe("rgb(255, 51, 102)"); // #FF3366
+    expect(el.style.backgroundColor).toBe("rgb(255, 230, 0)"); // #FFE600
   });
 
   it("applies amazon brand color as background", () => {
@@ -29,9 +29,10 @@ describe("MarketplaceIcon", () => {
   });
 
   it("uses provided size", () => {
-    const { container } = render(<MarketplaceIcon code="vtex" size={48} />);
+    const { container } = render(<MarketplaceIcon code="mercado_livre" size={48} />);
     const el = container.firstChild as HTMLElement;
     expect(el.style.width).toBe("48px");
     expect(el.style.height).toBe("48px");
   });
 });
+

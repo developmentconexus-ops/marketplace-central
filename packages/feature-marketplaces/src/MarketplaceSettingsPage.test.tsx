@@ -300,7 +300,7 @@ describe("MarketplaceSettingsPage", () => {
 
     await waitFor(() =>
       expect(
-        screen.getByText(/Amazon authorization config is invalid/i),
+        screen.getByText(/Amazon Brasil authorization config is invalid/i),
       ).toBeInTheDocument(),
     );
   });

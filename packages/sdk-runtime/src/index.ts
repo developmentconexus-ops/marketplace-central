@@ -332,59 +332,6 @@ export interface MarketplaceCentralClientError {
   error: ErrorResponse["error"];
 }
 
-export interface VTEXProduct {
-  product_id: string;
-  name: string;
-  description: string;
-  sku_name: string;
-  ean: string;
-  category: string;
-  brand: string;
-  cost: number;
-  base_price: number;
-  image_urls: string[];
-  specs: Record<string, string>;
-  stock_qty: number;
-  warehouse_id: string;
-  trade_policy_id: string;
-}
-
-export interface PublishBatchRequest {
-  vtex_account: string;
-  products: VTEXProduct[];
-}
-
-export interface BatchRejection {
-  product_id: string;
-  error_code: string;
-}
-
-export interface PublishBatchResponse {
-  batch_id: string;
-  total_products: number;
-  validated: number;
-  rejected: number;
-  rejections: BatchRejection[];
-}
-
-export interface BatchOperation {
-  product_id: string;
-  status: "pending" | "in_progress" | "succeeded" | "failed";
-  current_step: string;
-  error_code: string | null;
-}
-
-export interface BatchStatus {
-  batch_id: string;
-  vtex_account: string;
-  status: "pending" | "in_progress" | "completed" | "failed";
-  total: number;
-  succeeded: number;
-  failed: number;
-  in_progress: number;
-  operations: BatchOperation[];
-}
-
 export function createMarketplaceCentralClient(options: {
   baseUrl: string;
   fetchImpl?: typeof fetch;
@@ -470,12 +417,6 @@ export function createMarketplaceCentralClient(options: {
       postJson<{ items: BatchSimulationItem[] }>("/pricing/simulations/batch", req),
     getMelhorEnvioStatus: () =>
       getJson<{ connected: boolean }>("/connectors/melhor-envio/status"),
-    publishToVTEX: (req: PublishBatchRequest) =>
-      postJson<PublishBatchResponse>("/connectors/vtex/publish", req),
-    getBatchStatus: (batchId: string) =>
-      getJson<BatchStatus>(`/connectors/vtex/publish/batch/${batchId}`),
-    retryBatch: (batchId: string, products: VTEXProduct[]) =>
-      postJson<PublishBatchResponse>(`/connectors/vtex/publish/batch/${batchId}/retry`, { supplemental_products: products }),
 
     // Catalog
     searchCatalogProducts: (query: string) =>

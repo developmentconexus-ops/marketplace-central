@@ -469,7 +469,7 @@ export function ProductsPage({ client }: ProductsPageProps) {
                     <input
                       id="new-class-name"
                       type="text"
-                      placeholder="e.g. VTEX Ready"
+                      placeholder="e.g. Mercado Livre Ready"
                       value={newClassName}
                       onChange={(e) => setNewClassName(e.target.value)}
                       className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"

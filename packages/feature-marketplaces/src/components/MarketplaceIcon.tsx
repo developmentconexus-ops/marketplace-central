@@ -1,5 +1,4 @@
 const BRAND: Record<string, { bg: string; text: string }> = {
-  vtex:          { bg: "#FF3366", text: "#FFFFFF" },
   mercado_livre: { bg: "#FFE600", text: "#1A1A1A" },
   magalu:        { bg: "#0086FF", text: "#FFFFFF" },
   shopee:        { bg: "#EE4D2D", text: "#FFFFFF" },

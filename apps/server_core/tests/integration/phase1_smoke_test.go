@@ -38,8 +38,8 @@ func TestPhase1SmokeFlow(t *testing.T) {
 	// Create account
 	account, err := marketSvc.CreateAccount(context.Background(), marketplacesapp.CreateAccountInput{
 		AccountID:      "smoke-acct-1",
-		ChannelCode:    "vtex",
-		DisplayName:    "VTEX Smoke",
+		ChannelCode:    "mercado_livre",
+		DisplayName:    "Mercado Livre Smoke",
 		ConnectionMode: "api",
 	})
 	if err != nil {
@@ -117,3 +117,4 @@ func TestPhase1SmokeFlow(t *testing.T) {
 		account.AccountID, policy.PolicyID, sim.SimulationID, sim.Status,
 		len(accounts), len(policies), len(sims))
 }
+

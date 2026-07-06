@@ -61,7 +61,7 @@ func TestMarketplacesAccountsHandlerPostReturnsAccount(t *testing.T) {
 	mux := http.NewServeMux()
 	newMarketplacesHandler().Register(mux)
 
-	body := `{"account_id":"acct-1","channel_code":"vtex","display_name":"VTEX","connection_mode":"api"}`
+	body := `{"account_id":"acct-1","channel_code":"mercado_livre","display_name":"Mercado Livre","connection_mode":"api"}`
 	req := httptest.NewRequest(http.MethodPost, "/marketplaces/accounts", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -86,7 +86,7 @@ func TestMarketplacesAccountsHandlerPostReturns400OnInvalidInput(t *testing.T) {
 	mux := http.NewServeMux()
 	newMarketplacesHandler().Register(mux)
 
-	body := `{"account_id":"","channel_code":"vtex","display_name":"VTEX","connection_mode":"api"}`
+	body := `{"account_id":"","channel_code":"mercado_livre","display_name":"Mercado Livre","connection_mode":"api"}`
 	req := httptest.NewRequest(http.MethodPost, "/marketplaces/accounts", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -209,3 +209,4 @@ func TestMarketplacesPoliciesHandlerRejectsOtherMethods(t *testing.T) {
 		t.Fatalf("expected Allow: GET, POST, got %q", allow)
 	}
 }
+

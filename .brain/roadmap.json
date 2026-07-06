@@ -4,7 +4,7 @@
     "current_phase_id":  "phase-4",
     "summary":  {
                     "completed_phases":  5,
-                    "completed_tasks":  22,
+                    "completed_tasks":  23,
                     "total_tasks":  28
                 },
     "phases":  [
@@ -52,7 +52,7 @@
                                      },
                                      {
                                          "id":  "1.6",
-                                         "name":  "VTEX credential validation endpoint",
+                                         "name":  "Legacy VTEX credential validation endpoint",
                                          "status":  "done",
                                          "completed_at":  "2026-04-04T17:00:00Z"
                                      },
@@ -146,7 +146,7 @@
                                      {
                                          "id":  "T-034",
                                          "title":  "Close marketplace catalog foundation with evidence",
-                                         "description":  "Run backend, frontend, and browser validation for the complete provider catalog and document the remaining known constraints before moving to VTEX connector depth.",
+                                         "description":  "Run backend, frontend, and browser validation for the complete provider catalog and document the remaining known constraints before moving into the phase-4 cockpit reset.",
                                          "status":  "done",
                                          "priority":  "medium",
                                          "depends_on":  [
@@ -160,7 +160,7 @@
                                                           "Run Go tests with local GOCACHE",
                                                           "Run frontend tests and build",
                                                           "Capture browser evidence for provider catalog and integration states",
-                                                          "Update brain checkpoint and decide whether phase-4 VTEX connector starts next"
+                                                          "Update brain checkpoint and decide whether the phase-4 cockpit reset starts next"
                                                       ]
                                      }
                                  ],
@@ -170,7 +170,7 @@
                        "id":  "phase-4",
                        "name":  "Mercado Livre operating cockpit reset",
                        "status":  "in_progress",
-                       "focus":  "Retire VTEX direction, define Mercado Livre product links, stock reconciliation, orders, and profitability",
+                       "focus":  "Close VTEX retirement cleanup and define Mercado Livre product links, stock reconciliation, orders, and profitability",
                        "tasks":  [
                                      {
                                          "id":  "4.1",
@@ -181,7 +181,9 @@
                                      {
                                          "id":  "4.2",
                                          "name":  "Inventory legacy VTEX code, routes, tests, docs, env keys, and migrations",
-                                         "status":  "pending"
+                                         "status":  "done",
+                                         "completed_at":  "2026-07-06T00:00:00Z",
+                                         "notes":  "F-01 inventoried all active VTEX surfaces and F-02 removed runtime/contract/SDK/UI usage; remaining residue is limited to forward-only migrations and historical docs."
                                      },
                                      {
                                          "id":  "4.3",
