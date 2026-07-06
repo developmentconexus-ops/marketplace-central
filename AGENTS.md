@@ -105,6 +105,10 @@ Unknown cost, freight, fee, tax, or product linkage is a data-quality state, not
 ## Workflow
 
 - For new work, name the owning module, contract surface, data source, side effects, and verification path.
+- Substantial planning and implementation follows the Claude MNFS workflow in `.claude/plugins/mnfs-workflow`: Mission -> Milestone -> Feature, with `.mnfs/` artifacts as execution truth.
+- Use MNFS commands/roles for large work: `mission-init`, `milestone-start`, `feature-context`, `feature-accept`, `milestone-validate`, `mission-validate`, `correction-create`, `mission-closeout`, and `status`.
+- MNFS is dry-run first. Write `.mnfs/` artifacts only with explicit apply/write/create approval.
+- A feature is not accepted without `spec.md`, `plan.md`, changed paths, and `validation.md` evidence. A milestone is not passed without `validation-result.md` and the integrity gate.
 - For API changes, update OpenAPI and `sdk-runtime` together.
 - For architecture changes, update `ARCHITECTURE.md`, ADRs, relevant wiki pages, and `.brain/`.
 - For code changes, run impacted tests/builds before claiming done.

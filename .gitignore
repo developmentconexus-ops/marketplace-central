@@ -15,5 +15,8 @@ next-env.d.ts
 .worktrees/
 data/
 certificates/
-.claude/
+.claude/*
+!.claude/plugins/
+!.claude/plugins/mnfs-workflow/
+!.claude/plugins/mnfs-workflow/**
 .trello-agent/project.json
