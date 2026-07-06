@@ -1,223 +1,127 @@
-# AGENTS — Marketplace Central
+# AGENTS - Marketplace Central
 
-## On every session start
+## Start Here
 
-1. Read `ARCHITECTURE.md` — canonical architecture contract and frozen decisions
-2. Read `wiki/README.md` — index for module docs, architecture notes, and operational references
-3. Read `.brain/system-pulse.md` and `.brain/roadmap.json` — current project state and execution plan
-4. Read `IMPLEMENTATION_PLAN.md` only when validating historical phase scope or reconciling older roadmap notes
-5. After any correction: document the lesson in commit message or PR description
+On every session start, read:
 
-## Source of truth
+1. `ARCHITECTURE.md`
+2. `wiki/README.md`
+3. `.brain/system-pulse.md`
+4. `.brain/roadmap.json`
 
-- `ARCHITECTURE.md` is the stable architecture source of truth
-- `.brain/` is Nexus working memory: current status, roadmap, session continuity, and ADR index
-- `wiki/README.md` is the human knowledge index for modules, operations, and implementation context
-- `contracts/api/marketplace-central.openapi.yaml` is the HTTP API contract
-- `IMPLEMENTATION_PLAN.md` is legacy/top-level phase history, not the primary day-to-day plan
+Use `IMPLEMENTATION_PLAN.md` only for historical reconciliation. Current planning lives in `.brain/`.
 
-When architecture changes, update `ARCHITECTURE.md`, the relevant wiki page, and Nexus/ADR records in the same task.
+## Truth Order
 
-## Operating model
+- Architecture truth: `ARCHITECTURE.md` and ADRs in `.brain/decisions/`
+- Contract truth: `contracts/api/marketplace-central.openapi.yaml`
+- Wiki truth: `wiki/README.md` and module/quality pages
+- Execution truth: tests, builds, QA evidence, commits
+- Historical truth: `IMPLEMENTATION_PLAN.md`
 
-Marketplace Central follows a MetalDocs-style operating model for non-trivial work:
+When these disagree, classify the mismatch before coding. Stop on architecture, contract, runtime, module ownership, or verification contradictions.
 
-- Runtime truth: what actually runs now
-- Contract truth: OpenAPI, SDK runtime, generated types when present
-- Wiki truth: architecture, module docs, ADRs, roadmap, operating references
-- Execution truth: tests, scripts, verification evidence, QA outcomes
+## Project Principles
 
-When these disagree:
+- YAGNI: build the smallest durable solution that solves the real problem.
+- Global maximum: do not optimize legacy paths, workarounds, or wrong abstractions.
+- Evidence first: decisions and close-out claims need facts, verification, and references.
+- Industry-grade boundaries: domain, application, ports, adapters, and transport stay separate.
+- Maintainability is a feature: clarity, naming, auditability, and safe change velocity matter.
 
-1. Detect the mismatch.
-2. Classify it as runtime prerequisite, shared contract prerequisite, module-local implementation, screen-local implementation, wiki-memory drift, workflow/tooling gap, architecture contradiction, or defer.
-3. Continue only if the mismatch is local to the current task boundary.
-4. Stop and surface prerequisite work when the mismatch affects module ownership, API contract expectations, startup/runtime truth, roadmap status, or verification expectations.
+ADR-005 makes VTEX legacy. Do not add new VTEX behavior. Mercado Livre is the first operational control plane; Sankhya/MetalShopping remains the internal source of truth.
 
-Evidence before closure is mandatory. `done`, `fixed`, `implemented`, or `looks good` are not closure states without verification commands, review/QA disposition, and explicit bounded defers.
+## Senior Code Style
 
-## Global maximum, not local maximum
+Write code that makes the domain obvious and repetition hard to reintroduce:
 
-Before improving or extending a path, judge whether the foundation is still the right one.
+- Prefer meaningful structs/value objects over loose parameter lists or map-shaped data.
+- Name concepts from the business: `StockPolicy`, `ProductLink`, `MarginQuality`, `SafeStockAction`.
+- Keep functions small and semantic: validate, normalize, calculate, map, persist, dispatch.
+- Extract shared helpers only when they remove real duplication or clarify a repeated pattern.
+- Keep business rules in application/domain code, never in React, transport handlers, or provider adapters.
+- Keep provider payloads at the adapter boundary; translate them into domain types before use.
+- Use typed enums/constants for statuses, modes, provider codes, and error reasons.
+- Avoid magic strings, magic numbers, boolean flag soup, and functions with many related parameters.
+- Prefer module-owned policies/services for repeated rules such as stock safety, margin quality, and link resolution.
+- Match existing local patterns before inventing a new abstraction.
 
-- Do not optimize a legacy path, workaround, or dead platform integration.
-- ADR-005 makes VTEX legacy. Do not add new VTEX behavior; inventory and remove it through planned cleanup only.
-- Prefer the global-maximum structure for the actual problem: Mercado Livre operations backed by Sankhya/MetalShopping truth.
-- If the correct answer crosses the current task boundary, stop and plan the prerequisite instead of patching the symptom.
+Good code should read like a careful model of the operation, not a sequence of patches that happen to pass.
 
-## Behavioral guardrails (LLM)
+## Module Boundaries
 
-These guidelines reduce common coding mistakes. They favor caution over speed; for trivial tasks, use judgment.
+Every backend module under `apps/server_core/internal/modules/*` follows:
 
-### 1) Think before coding
-
-- State assumptions explicitly before implementation
-- If uncertain, ask instead of guessing
-- If multiple interpretations exist, present options explicitly
-- Call out simpler approaches when they exist
-- If scope or intent is unclear, pause and clarify
-
-### 2) Simplicity first
-
-- Implement the minimum code that solves the requested problem
-- Do not add features, configurability, or abstractions that were not requested
-- Avoid defensive handling for impossible scenarios
-- If a solution can be much smaller, rewrite it smaller
-- Sanity check: if a senior reviewer would call it overcomplicated, simplify
-
-### 3) Surgical changes
-
-- Touch only what is needed for the request
-- Do not refactor or reformat adjacent unrelated code
-- Match existing local style and patterns
-- If unrelated dead code is found, mention it but do not remove it unless asked
-- Remove only unused code/imports created by your own change
-- Every changed line must trace directly to the user request
-
-### 4) Goal-driven execution
-
-- Turn requests into verifiable outcomes
-- For bug fixes: reproduce first (test or clear check), then fix, then verify
-- For validations: write failing checks/tests first when practical, then make them pass
-- For refactors: verify behavior parity before and after
-- For multi-step work, define concise step → verification pairs before coding
-
-These guidelines are working when diffs are smaller, rewrites are fewer, and clarifications happen before implementation.
-
-### 5) System-impact orientation
-
-Before planning any new module, feature, connector capability, or workflow:
-
-- Name the owning module(s)
-- Name the invariants involved: tenant scope, port boundaries, contract-first API, idempotent writes, connector side effects, data-quality states
-- Read the owning wiki page or create/update it if the module is new
-- Classify the work as mission, milestone, or feature before implementation
-- Define evidence required for acceptance before coding starts
-
-## Engineering bar
-
-Every decision passes this filter:
-*"Would a Stripe or Google senior engineer approve this in code review?"*
-
-- Names are self-documenting — no comment needed to understand them
-- Errors carry structured codes: `MODULE_ENTITY_REASON` (e.g. `PRICING_SIMULATION_INVALID`)
-- Every handler logs `action`, `result`, `duration_ms`
-- Every write is idempotent and retry-safe
-- Tenant-owned business tables carry `tenant_id`; global/system reference tables must be explicitly documented
-
-## Absolute rules — violation = stop and fix immediately
-
-### Go
-
-- Every tenant-owned Postgres query must scope by `tenant_id`
-- Global/system reference queries are allowed only when the table is intentionally shared, documented, and protected by schema or service rules
-- Every HTTP handler validates request method and returns structured JSON errors
-- Every new module is registered in `composition/root.go` with dependency injection
-- Integration providers self-register definitions/auth/sync factories; composition imports provider packages only to activate registration
-- Transport layer never contains business logic — delegate to application service
-- Application service never imports `net/http` or database packages — use ports
-- Domain entities are pure Go structs with no external dependencies
-- Adapters implement port interfaces — one adapter per external dependency
-- `pgxpool.Pool` is the only database access mechanism — no raw `sql.DB`
-- No `panic()` in production code — return errors
-- All monetary values use `float64` in domain, `numeric(14,2)` in Postgres until an ADR changes this convention
-- Use local Go cache for test/build commands: `GOCACHE=.gocache`
-
-### Frontend
-
-- Data only via `sdk-runtime` methods — no direct `fetch()` to backend
-- No business logic in React components — pricing, margin, commission calculations belong in Go
-- No local persistence (localStorage, SQLite) as source of truth — Postgres is canonical
-- Loading + error + empty state on every data-fetching component
-- Feature packages (`packages/feature-*`) own page-level UI
-- Shared primitives live in `packages/ui`
-
-### Process
-
-- No code task marked done without appropriate verification, passing impacted tests/builds, and a commit
-- Docs-only tasks require at least a diff review/proofread and a commit
-- One commit per completed task — no uncommitted work at session end
-- Legacy files from the old Next.js monolith must not be reintroduced
-- Legacy VTEX work must not be extended; removal requires an inventory and contract-aware cleanup plan
-- Every new endpoint must exist in `contracts/api/marketplace-central.openapi.yaml`
-- Every new migration file is sequential: `NNNN_description.sql`
-- `packages/generated/` never edited manually (when SDK generation is added)
-
-## Module structure
-
-Every module in `apps/server_core/internal/modules/*` must follow:
-
-```
-domain/        — entities and value objects (pure Go, no imports)
-application/   — use cases and service layer (imports domain + ports)
-ports/         — interfaces for external dependencies
-adapters/      — implementations of ports (postgres, http clients, etc.)
-transport/     — HTTP handlers (imports application + platform/httpx)
-events/        — event types for async communication (future)
-readmodel/     — query-optimized views (future)
+```text
+domain/       pure entities, value objects, enums
+application/  use cases and orchestration
+ports/        interfaces owned by the module
+adapters/     Postgres, provider clients, external dependencies
+transport/    HTTP decode/encode only
+events/       async contracts when needed
+readmodel/    query-optimized projections when needed
 ```
 
-## Marketplace and integration plugin patterns
+Rules:
 
-There are two related layers:
+- Transport delegates to application services.
+- Application code does not import `net/http`, `pgx`, provider SDKs, or another module's internals.
+- Adapters implement ports; connectors do not own tenant business state.
+- New modules must be registered in `composition/root.go`.
+- Cross-module access goes through ports/application APIs, not repositories or SQL from another module.
 
-- `marketplaces`: business configuration, account/policy links, marketplace definitions, and fee schedules
-- `integrations`: technical operations, provider catalog, installations, credentials, auth state, capability state, and operation runs
+## Backend Rules
 
-Integration providers use self-registration:
+- Every tenant-owned query scopes by `tenant_id`.
+- Shared/global tables must be explicit, documented, and protected.
+- Every handler validates method/input and returns structured JSON errors.
+- Error codes use `MODULE_ENTITY_REASON`.
+- Every handler logs `action`, `result`, and `duration_ms`.
+- Every write is idempotent or explicitly protected against duplicate execution.
+- Use `pgxpool.Pool`; do not introduce raw `sql.DB`.
+- No `panic()` in production code.
+- Money stays `float64` in domain and `numeric(14,2)` in Postgres until an ADR changes it.
+- Use `GOCACHE=.gocache` for local Go test/build commands.
 
-```go
-func init() {
-    providers.RegisterDefinition(definition)
-    providers.RegisterAuthFactory(providerCode, factory)
-    providers.RegisterFeeSyncerFactory(providerCode, factory)
-}
-```
+## Frontend Rules
 
-Adding a provider should normally mean adding a provider package, plus one composition side-effect import if the package is not already imported.
+- Data comes only through `packages/sdk-runtime`.
+- React components render state; business math stays in Go.
+- No direct backend `fetch()` from feature packages.
+- No localStorage/SQLite/browser persistence as source of truth.
+- Every data-fetching surface has loading, error, and empty states.
+- Page-level UI lives in `packages/feature-*`; shared primitives live in `packages/ui`.
 
-Runtime marketplace operations live behind connector/capability ports. A marketplace connector may implement only the capabilities it supports:
+## Mercado Livre Safety
 
-```go
-type MarketplaceConnector interface {
-    FetchMessages(ctx context.Context) ([]Message, error)
-    FetchOrders(ctx context.Context) ([]Order, error)
-    ReplyToMessage(ctx context.Context, messageID string, body string) error
-}
-```
+Any provider write that can affect stock, price, order handling, or customer communication must prove:
 
-One adapter per marketplace/provider (`mercado_livre`, `magalu`, etc.). The owning module defines the port; adapters live under `adapters/` and must not own tenant business state directly. VTEX is legacy after ADR-005 and must not be used as a template for Mercado Livre if its abstractions do not fit.
+- the internal product link is resolved and unambiguous
+- the source data and timestamp are visible
+- the policy/rule used for the action is explicit
+- the write is idempotent or duplicate-safe
+- the audit record stores before/after values and provider response
 
-## Commit format
+Unknown cost, freight, fee, tax, or product linkage is a data-quality state, not a zero/default value.
 
-`<type>(<scope>): <what>` — feat | fix | docs | chore | refactor | test
+## Workflow
+
+- For new work, name the owning module, contract surface, data source, side effects, and verification path.
+- For API changes, update OpenAPI and `sdk-runtime` together.
+- For architecture changes, update `ARCHITECTURE.md`, ADRs, relevant wiki pages, and `.brain/`.
+- For code changes, run impacted tests/builds before claiming done.
+- For docs-only changes, proofread/diff-review before commit.
+- One completed task should end with one intentional commit.
+- Do not leave uncommitted work at session end unless the user explicitly asks.
+
+## Commit Format
+
+`<type>(<scope>): <what>`
+
+Types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`
 
 Examples:
-- `feat(pricing): add margin threshold alerts`
-- `fix(connectors): handle mercado livre token refresh on 401`
-- `docs(architecture): freeze messaging module scope`
 
-## Skill map
-
-| Task | Reference |
-|---|---|
-| Any Go implementation | This file + `ARCHITECTURE.md` + relevant wiki page |
-| Code/module knowledge | `wiki/README.md` (index to architecture, modules, operations) |
-| Database changes | `apps/server_core/migrations/` |
-| API contract changes | `contracts/api/marketplace-central.openapi.yaml` |
-| Frontend feature | `packages/feature-*/` + `packages/sdk-runtime/` |
-| Current planning/status | `.brain/roadmap.json` + `.brain/system-pulse.md` |
-| Historical phase context | `IMPLEMENTATION_PLAN.md` |
-| Architecture decision | `.brain/decisions/` + `ARCHITECTURE.md` + relevant wiki page |
-| Mercado Livre API facts | Context7 official Mercado Livre docs first, then cited vendor docs if needed |
-| Mission/milestone execution | `docs/superpowers/missions/` and `docs/superpowers/milestones/` when introduced |
-
-## Integration with MetalShopping
-
-This repository is designed as a future module of MetalShopping. Key compatibility rules:
-
-- Module structure mirrors `MetalShopping_Final/apps/server_core/internal/modules/*`
-- Platform packages mirror `MetalShopping_Final/apps/server_core/internal/platform/*`
-- Database schema uses prefix `mpc_` or dedicated tables (no collision with MS tables)
-- When the merge happens, modules move to MetalShopping's monorepo with minimal rewrite
-- The same Postgres cluster can be shared (different schema or same schema with table prefixes)
+- `feat(inventory): add stock divergence policy`
+- `fix(connectors): refresh mercado livre token on 401`
+- `docs(architecture): record mercado livre first scope`
