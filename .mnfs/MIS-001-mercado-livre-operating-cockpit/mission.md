@@ -3,7 +3,7 @@
 ```yaml
 id: MIS-001
 type: mission
-status: needs_revision
+status: in_progress
 owner: Mission Strategist
 parent: none
 created: 2026-07-06
@@ -197,10 +197,10 @@ Evidence path convention:
 
 ## Handoff
 
-- Current status: Planning artifacts written; independent readiness review pending.
-- Current owner: Mission Strategist.
-- Next owner: Mission reviewer, then Milestone Orchestrator for M-01.
-- Next action: Run MNFS readiness review; if accepted, start M-01.
+- Current status: In progress; M-01 has passed and M-02 is starting.
+- Current owner: Milestone Orchestrator.
+- Next owner: Feature Implementer for M-02/F-01.
+- Next action: Execute M-02/F-01 capability port contract, then route returned `spec.md`, `plan.md`, changed paths, and `validation.md` through milestone acceptance review.
 - Required artifact paths:
   - `.mnfs/MIS-001-mercado-livre-operating-cockpit/mission.md`
   - `.mnfs/MIS-001-mercado-livre-operating-cockpit/validation-contract.md`
@@ -209,4 +209,4 @@ Evidence path convention:
 - Required evidence paths:
   - `.mnfs/MIS-001-mercado-livre-operating-cockpit/validation-result.md`
   - `.mnfs/MIS-001-mercado-livre-operating-cockpit/M-*/validation-result.md`
-- Blocked decisions: None for M-01 through M-03; product exclusion rules and margin threshold require business examples before M-05/M-07 execution.
+- Blocked decisions: None for M-02/F-01; product exclusion rules and margin threshold require business examples before M-05/M-07 execution.

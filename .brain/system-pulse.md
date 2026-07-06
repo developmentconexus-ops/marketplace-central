@@ -113,10 +113,10 @@ Recently completed phase:
 4. `T-034` Close catalog foundation with backend/frontend verification and evidence ledger
 
 Next in sequence:
-1. Close M-01 milestone validation and handoff after VTEX active-surface removal
-2. Define Mercado Livre product link and stock reconciliation mission
-3. Research Mercado Livre orders/fees/shipments/questions capabilities against official docs
-4. Draft milestone plan: Stock Seguro -> Orders + Margin -> Pricing Strategy -> Commercial Intelligence
+1. Execute M-02/F-01 capability port contract for listing, stock, and order capability seams
+2. Execute M-02/F-02 provider capability registration and M-02/F-03 Mercado Livre adapter spine
+3. Continue toward M-03/M-04 before Stock Seguro implementation
+4. Research Mercado Livre orders/fees/shipments/questions capabilities against official docs before M-06
 
 ---
 
@@ -129,6 +129,7 @@ Next in sequence:
 - 2026-04-25: Added rollout evidence ledger at `docs/superpowers/evidence/2026-04-25-marketplace-catalog-ux-data-foundation.md` with passing backend/frontend/build verification
 - 2026-07-06: Accepted ADR-005 to remove VTEX from the target architecture and pivot Marketplace Central to a Mercado Livre first internal cockpit backed by Sankhya/MetalShopping data
 - 2026-07-06: Completed M-01/F-01 VTEX surface inventory and M-01/F-02 active-surface removal; `/connectors/vtex/*`, VTEX SDK/runtime/frontend surfaces, and VTEX route wiring were removed from active code
+- 2026-07-06: M-01 validation passed; MIS-001 and M-02 moved into execution with an M-02 execution guide dispatching F-01 capability port contract first
 
 ---
 
