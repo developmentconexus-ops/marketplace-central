@@ -30,10 +30,12 @@ Databases:
 - `MS_DATABASE_URL` (MetalShopping DB, catalog source)
 - `MS_TENANT_ID`
 
-Optional VTEX connector keys:
+Legacy VTEX keys:
 - `VTEX_APP_KEY`
 - `VTEX_APP_TOKEN`
 - `VTEX_ACCOUNT`
+
+These are legacy only after ADR-005. Do not add new VTEX-dependent workflows.
 
 ## Starting Local Services
 

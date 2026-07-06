@@ -1,6 +1,6 @@
 {
     "project":  "marketplace-central",
-    "last_updated":  "2026-04-25T14:32:36Z",
+    "last_updated":  "2026-07-06T00:00:00Z",
     "current_phase_id":  "phase-4",
     "summary":  {
                     "completed_phases":  5,
@@ -168,64 +168,98 @@
                    },
                    {
                        "id":  "phase-4",
-                       "name":  "VTEX connector",
+                       "name":  "Mercado Livre operating cockpit reset",
                        "status":  "in_progress",
-                       "focus":  "Product registration via VTEX API, catalog sync",
+                       "focus":  "Retire VTEX direction, define Mercado Livre product links, stock reconciliation, orders, and profitability",
                        "tasks":  [
                                      {
                                          "id":  "4.1",
-                                         "name":  "Connector infrastructure",
-                                         "status":  "pending"
+                                         "name":  "Record ADR-005 and update architecture truth",
+                                         "status":  "done",
+                                         "completed_at":  "2026-07-06T00:00:00Z"
                                      },
                                      {
                                          "id":  "4.2",
-                                         "name":  "Catalog enhancement",
+                                         "name":  "Inventory legacy VTEX code, routes, tests, docs, env keys, and migrations",
                                          "status":  "pending"
                                      },
                                      {
                                          "id":  "4.3",
-                                         "name":  "Frontend",
+                                         "name":  "Define Mercado Livre Stock Seguro mission and milestone specs",
+                                         "status":  "pending"
+                                     },
+                                     {
+                                         "id":  "4.4",
+                                         "name":  "Create module wiki ownership for product_links, inventory, orders, and profitability",
                                          "status":  "pending"
                                      }
                                  ]
                    },
                    {
                        "id":  "phase-5",
-                       "name":  "Messaging + Orders + Alerts",
+                       "name":  "Stock Seguro ML",
                        "status":  "not_started",
-                       "focus":  "Message centralization, order monitoring, SLA alerts",
+                       "focus":  "Prevent overselling by reconciling Sankhya stock with Mercado Livre announced stock",
                        "tasks":  [
                                      {
                                          "id":  "5.1",
-                                         "name":  "Messaging module",
+                                         "name":  "Product-to-listing link map",
                                          "status":  "pending"
                                      },
                                      {
                                          "id":  "5.2",
-                                         "name":  "Orders module",
+                                         "name":  "Stock divergence dashboard",
                                          "status":  "pending"
                                      },
                                      {
                                          "id":  "5.3",
-                                         "name":  "Alerts module",
+                                         "name":  "Audited safe stock actions",
                                          "status":  "pending"
                                      }
                                  ]
                    },
                    {
                        "id":  "phase-6",
-                       "name":  "Multi-marketplace",
+                       "name":  "Orders + Margin ML",
                        "status":  "not_started",
-                       "focus":  "Additional connectors (ML, Magalu), unified inbox",
+                       "focus":  "Ingest Mercado Livre orders and calculate per-sale profitability",
                        "tasks":  [
                                      {
                                          "id":  "6.1",
-                                         "name":  "Additional connectors",
+                                         "name":  "Order ingestion and status tracking",
                                          "status":  "pending"
                                      },
                                      {
                                          "id":  "6.2",
-                                         "name":  "Unified features",
+                                         "name":  "Fee, freight, cost, and tax reconciliation",
+                                         "status":  "pending"
+                                     },
+                                     {
+                                         "id":  "6.3",
+                                         "name":  "Profitability data-quality flags and alerts",
+                                         "status":  "pending"
+                                     }
+                                 ]
+                   },
+                   {
+                       "id":  "phase-8",
+                       "name":  "Pricing + Strategy ML",
+                       "status":  "not_started",
+                       "focus":  "Recommended prices, kits, promotions, and commercial intelligence",
+                       "tasks":  [
+                                     {
+                                         "id":  "8.1",
+                                         "name":  "Margin band pricing recommendations",
+                                         "status":  "pending"
+                                     },
+                                     {
+                                         "id":  "8.2",
+                                         "name":  "Stock aging and promotion candidates",
+                                         "status":  "pending"
+                                     },
+                                     {
+                                         "id":  "8.3",
+                                         "name":  "Kit and bundle opportunity engine",
                                          "status":  "pending"
                                      }
                                  ]

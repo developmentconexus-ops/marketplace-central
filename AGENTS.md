@@ -18,6 +18,33 @@
 
 When architecture changes, update `ARCHITECTURE.md`, the relevant wiki page, and Nexus/ADR records in the same task.
 
+## Operating model
+
+Marketplace Central follows a MetalDocs-style operating model for non-trivial work:
+
+- Runtime truth: what actually runs now
+- Contract truth: OpenAPI, SDK runtime, generated types when present
+- Wiki truth: architecture, module docs, ADRs, roadmap, operating references
+- Execution truth: tests, scripts, verification evidence, QA outcomes
+
+When these disagree:
+
+1. Detect the mismatch.
+2. Classify it as runtime prerequisite, shared contract prerequisite, module-local implementation, screen-local implementation, wiki-memory drift, workflow/tooling gap, architecture contradiction, or defer.
+3. Continue only if the mismatch is local to the current task boundary.
+4. Stop and surface prerequisite work when the mismatch affects module ownership, API contract expectations, startup/runtime truth, roadmap status, or verification expectations.
+
+Evidence before closure is mandatory. `done`, `fixed`, `implemented`, or `looks good` are not closure states without verification commands, review/QA disposition, and explicit bounded defers.
+
+## Global maximum, not local maximum
+
+Before improving or extending a path, judge whether the foundation is still the right one.
+
+- Do not optimize a legacy path, workaround, or dead platform integration.
+- ADR-005 makes VTEX legacy. Do not add new VTEX behavior; inventory and remove it through planned cleanup only.
+- Prefer the global-maximum structure for the actual problem: Mercado Livre operations backed by Sankhya/MetalShopping truth.
+- If the correct answer crosses the current task boundary, stop and plan the prerequisite instead of patching the symptom.
+
 ## Behavioral guardrails (LLM)
 
 These guidelines reduce common coding mistakes. They favor caution over speed; for trivial tasks, use judgment.
@@ -56,6 +83,16 @@ These guidelines reduce common coding mistakes. They favor caution over speed; f
 - For multi-step work, define concise step → verification pairs before coding
 
 These guidelines are working when diffs are smaller, rewrites are fewer, and clarifications happen before implementation.
+
+### 5) System-impact orientation
+
+Before planning any new module, feature, connector capability, or workflow:
+
+- Name the owning module(s)
+- Name the invariants involved: tenant scope, port boundaries, contract-first API, idempotent writes, connector side effects, data-quality states
+- Read the owning wiki page or create/update it if the module is new
+- Classify the work as mission, milestone, or feature before implementation
+- Define evidence required for acceptance before coding starts
 
 ## Engineering bar
 
@@ -101,6 +138,7 @@ Every decision passes this filter:
 - Docs-only tasks require at least a diff review/proofread and a commit
 - One commit per completed task — no uncommitted work at session end
 - Legacy files from the old Next.js monolith must not be reintroduced
+- Legacy VTEX work must not be extended; removal requires an inventory and contract-aware cleanup plan
 - Every new endpoint must exist in `contracts/api/marketplace-central.openapi.yaml`
 - Every new migration file is sequential: `NNNN_description.sql`
 - `packages/generated/` never edited manually (when SDK generation is added)
@@ -148,7 +186,7 @@ type MarketplaceConnector interface {
 }
 ```
 
-One adapter per marketplace/provider (`vtex`, `mercado_livre`, `magalu`, etc.). The owning module defines the port; adapters live under `adapters/` and must not own tenant business state directly.
+One adapter per marketplace/provider (`mercado_livre`, `magalu`, etc.). The owning module defines the port; adapters live under `adapters/` and must not own tenant business state directly. VTEX is legacy after ADR-005 and must not be used as a template for Mercado Livre if its abstractions do not fit.
 
 ## Commit format
 
@@ -156,7 +194,7 @@ One adapter per marketplace/provider (`vtex`, `mercado_livre`, `magalu`, etc.). 
 
 Examples:
 - `feat(pricing): add margin threshold alerts`
-- `fix(connectors): handle VTEX token refresh on 401`
+- `fix(connectors): handle mercado livre token refresh on 401`
 - `docs(architecture): freeze messaging module scope`
 
 ## Skill map
@@ -170,6 +208,9 @@ Examples:
 | Frontend feature | `packages/feature-*/` + `packages/sdk-runtime/` |
 | Current planning/status | `.brain/roadmap.json` + `.brain/system-pulse.md` |
 | Historical phase context | `IMPLEMENTATION_PLAN.md` |
+| Architecture decision | `.brain/decisions/` + `ARCHITECTURE.md` + relevant wiki page |
+| Mercado Livre API facts | Context7 official Mercado Livre docs first, then cited vendor docs if needed |
+| Mission/milestone execution | `docs/superpowers/missions/` and `docs/superpowers/milestones/` when introduced |
 
 ## Integration with MetalShopping
 

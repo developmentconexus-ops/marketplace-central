@@ -2,7 +2,7 @@
 
 ## Status
 
-Active. Core foundation, pricing simulator, marketplace registry, integrations auth, and fee sync foundations are implemented. Current focus: hardening, contract alignment, and VTEX connector depth (catalog sync and production-grade operations).
+Active but legacy. Core foundation, pricing simulator, marketplace registry, integrations auth, and fee sync foundations are implemented. ADR-005 supersedes the old VTEX connector direction: current focus is Mercado Livre-first operations backed by Sankhya/MetalShopping data.
 
 ## Phase overview
 
@@ -12,9 +12,10 @@ Active. Core foundation, pricing simulator, marketplace registry, integrations a
 | 1 | Foundation wiring | Connect handlers to Postgres, real CRUD, SDK methods | done |
 | 2 | Pricing simulator | Full simulation engine with frontend UI | done |
 | 3 | Marketplace Registry & Fee Foundation | Registry plugin, fee schedules, tenant accounts, BatchOrchestrator | done |
-| 4 | VTEX connector | Product registration via VTEX API, catalog sync | in_progress |
-| 5 | Messaging + Orders | Message centralization, order monitoring, SLA alerts | planned |
-| 6 | Multi-marketplace | Additional connectors (ML, Magalu), unified inbox | planned |
+| 4 | Mercado Livre operating cockpit reset | Retire VTEX direction, define ML product links, stock reconciliation, orders, and margin | planning |
+| 5 | Stock Seguro ML | Product link map, stock divergence, safe available_quantity actions | planned |
+| 6 | Orders + Margin ML | Order ingestion, fee/freight/cost reconciliation, per-sale profitability | planned |
+| 7 | Pricing + Strategy ML | Recommended prices, kits, promotions, alerts, commercial intelligence | planned |
 
 ---
 
@@ -128,7 +129,15 @@ Deliverables: migrations 0010–0013, registry package, FeeScheduleService, FeeS
 
 ---
 
-## Phase 4 — VTEX connector (planned)
+## Superseded — VTEX connector
+
+Status: superseded by ADR-005.
+
+Do not implement new VTEX behavior. Existing VTEX docs/code/config references are legacy and require an inventory before deletion so contracts, migrations, and tests are not broken accidentally.
+
+Historical plan retained below only for context.
+
+## Phase 4 — VTEX connector (superseded)
 
 Goal: Register products on VTEX via API. Sync catalog data.
 
@@ -152,14 +161,60 @@ Goal: Register products on VTEX via API. Sync catalog data.
 
 ---
 
-## Phase 4 — Messaging + Orders + Alerts (planned)
+## New Phase 4 — Mercado Livre Operating Cockpit Reset (planning)
+
+Goal: Rebaseline the roadmap around Mercado Livre operations and Sankhya/MetalShopping truth before implementation.
+
+### 4.1 Architecture reset
+
+- [x] Record ADR-005: Mercado Livre first, VTEX legacy
+- [ ] Inventory VTEX code, routes, tests, docs, env keys, and migrations
+- [ ] Decide remove vs archive for each VTEX surface
+- [ ] Update wiki/module ownership for Mercado Livre-first modules
+
+### 4.2 Mission definition
+
+- [ ] Define mission: Stock Seguro Mercado Livre
+- [ ] Define module boundaries: `product_links`, `inventory`, `orders`, `profitability`, connector capabilities
+- [ ] Define acceptance evidence before coding
+- [ ] Create milestone/feature specs before implementation
+
+## Phase 5 — Stock Seguro ML (planned)
+
+Goal: prevent overselling by reconciling internal stock with Mercado Livre announced stock.
+
+- [ ] Link internal product/SKU to Mercado Livre item/variation
+- [ ] Read Sankhya/MetalShopping stock through explicit ports
+- [ ] Read Mercado Livre listing stock
+- [ ] Show divergence, risk level, and recommended action
+- [ ] Apply stock changes only through audited, idempotent, policy-checked actions
+
+## Phase 6 — Orders + Margin ML (planned)
+
+Goal: show what each Mercado Livre sale generated in real margin.
+
+- [ ] Import Mercado Livre orders, items, payments, fees, shipment references, cancellation details
+- [ ] Resolve each item to internal product/cost
+- [ ] Capture manual freight/extra cost inputs when provider data is incomplete
+- [ ] Produce per-order and per-item profitability with data-quality flags
+
+## Phase 7 — Pricing + Strategy ML (planned)
+
+Goal: convert stock, cost, fee, freight, and sales history into better pricing and product actions.
+
+- [ ] Recommended price and minimum viable price
+- [ ] Products to pause, reprice, promote, or bundle
+- [ ] Kit candidates based on stock, margin, and complementary demand
+- [ ] Alerts for negative margin, stale stock, missing links, and risky listings
+
+## Legacy Phase 4 — Messaging + Orders + Alerts (superseded)
 
 Goal: Centralized customer communication and order monitoring with SLA guardrails.
 
 ### 4.1 Messaging module
 
 - [ ] Message entity: id, marketplace, thread_id, customer, content, status, received_at, responded_at
-- [ ] Polling job: fetch messages from VTEX (and later other marketplaces)
+- [ ] Polling job: fetch messages from legacy primary marketplace (superseded)
 - [ ] Unified inbox API: list messages, filter by status/marketplace
 - [ ] Reply dispatch: send reply through connector adapter
 - [ ] SLA tracking: 1-hour response time target
@@ -167,7 +222,7 @@ Goal: Centralized customer communication and order monitoring with SLA guardrail
 ### 4.2 Orders module
 
 - [ ] Order entity: id, marketplace, order_number, status, items, created_at, dispatched_at
-- [ ] Polling job: fetch orders from VTEX
+- [ ] Polling job: fetch orders from legacy primary marketplace (superseded)
 - [ ] Order timeline API: list orders with status history
 - [ ] SLA tracking: 24-hour dispatch target
 
@@ -186,7 +241,7 @@ Goal: Centralized customer communication and order monitoring with SLA guardrail
 
 ---
 
-## Phase 5 — Multi-marketplace (planned)
+## Legacy Phase 5 — Multi-marketplace (deferred)
 
 Goal: Extend connectors to Mercado Livre, Magalu, Amazon. Unified experience.
 
@@ -214,7 +269,8 @@ Goal: Extend connectors to Mercado Livre, Magalu, Amazon. Unified experience.
 | Handler DI | Phase 1 | Inject services into handlers (currently empty structs) |
 | Error middleware | Phase 1 | Structured error responses with codes |
 | Request validation | Phase 1 | Validate incoming JSON before processing |
-| Auth | Phase 3+ | Add authentication when VTEX connector requires it |
+| Auth | Phase 3+ | Add authentication when Mercado Livre connector capabilities require it |
+| VTEX inventory | Phase 4 reset | Inventory legacy VTEX code/docs/config before planned removal |
 | SDK generation | Phase 3+ | Generate TypeScript SDK from OpenAPI (currently hand-written) |
 | CI/CD | Phase 2 | GitHub Actions: Go tests, frontend build, migration check |
 
@@ -222,6 +278,7 @@ Goal: Extend connectors to Mercado Livre, Magalu, Amazon. Unified experience.
 
 - **Phase 1**: `curl POST /catalog/products` creates a real row in Postgres. Pricing simulation returns calculated margin. Frontend form submits and displays result.
 - **Phase 2**: User can simulate pricing for 50+ products across 3 marketplaces in one view. Export works.
-- **Phase 3**: Product registered in MPC appears in VTEX. Catalog sync pulls VTEX data.
-- **Phase 4**: Messages from VTEX appear in MPC inbox. Reply from MPC reaches customer. SLA alerts fire before deadline.
-- **Phase 5**: Messages from ML + Magalu appear in same inbox. One reply interface for all marketplaces.
+- **Phase 4**: ADR, docs, roadmap, and legacy VTEX inventory are aligned around Mercado Livre first.
+- **Phase 5**: Mercado Livre stock divergence is visible, actionable, audited, and guarded against unsafe writes.
+- **Phase 6**: Each Mercado Livre sale shows revenue, fees, freight/cost assumptions, internal cost, and margin quality.
+- **Phase 7**: Operator receives price, kit, promotion, and alert recommendations with traceable inputs.

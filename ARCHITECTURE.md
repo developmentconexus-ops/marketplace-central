@@ -6,23 +6,25 @@ This architecture is approved as the official foundation of the repository. Froz
 
 ## Reference baseline
 
-This repository mirrors the structural rules of MetalShopping Final:
+This repository mirrors the structural discipline of MetalShopping Final and adopts the operating rigor proven in MetalDocs:
 
 - GitHub: https://github.com/leandrotcawork/MetalShopping_Final
 - The engineering bar, module pattern, and platform conventions are inherited from MetalShopping
+- Runtime truth, contract truth, wiki truth, and verification truth must stay aligned
+- Architecture contradictions stop local feature work until classified and resolved
 
 ## North Star
 
-Marketplace Central is an intelligence and control surface for marketplace operations:
+Marketplace Central is an internal Mercado Livre operations and intelligence cockpit:
 
 - Independent monorepo, architecturally compatible with future MetalShopping integration
 - Server-first: all business logic lives in Go
 - Modular monolith core with explicit module boundaries
 - PostgreSQL as the only canonical state
 - Thin web client consuming SDK-generated methods
-- VTEX handles operational marketplace flows (publishing, stock sync)
-- MPC handles intelligence: pricing simulation, message centralization, order monitoring, SLA guardrails
-- Read-heavy from external APIs, write-light (only message replies and product registration via VTEX)
+- Sankhya/MetalShopping data is the internal source of truth for products, stock, price, cost, taxes, and sales history
+- Mercado Livre is the first operational marketplace control plane for listings, stock, price, orders, fees, and questions
+- MPC handles intelligence and guardrails: stock reconciliation, price simulation, order profitability, alerts, and action audit
 
 ## Frozen decisions
 
@@ -33,9 +35,10 @@ Marketplace Central is an intelligence and control surface for marketplace opera
 5. Single-tenant operation, but every business table carries `tenant_id` (tenant-ready by design)
 6. Stable API routes without `/v1` prefix in URLs — versioning is in the OpenAPI document
 7. External marketplace integrations enter only through the `connectors` module via port interfaces
-8. VTEX is the primary operational platform — MPC does not own publishing flows directly
-9. Scheduler-based polling for marketplace data sync (messages, orders) — not real-time webhooks initially
+8. Mercado Livre is the first operational control plane; VTEX is legacy and must not receive new feature work
+9. Scheduler-based polling is acceptable initially; webhook/notification support may be added where Mercado Livre provides reliable event topics
 10. Frontend consumes only `packages/sdk-runtime` — never calls backend directly
+11. Global-maximum design beats local patches: do not extend legacy VTEX abstractions to solve Mercado Livre problems
 
 ## Layout
 
@@ -54,7 +57,7 @@ apps/
         messaging/      # [planned] Centralized customer messages from all marketplaces
         orders/         # [planned] Order tracking with SLA monitoring
         alerts/         # [planned] SLA guardrails and notifications
-        connectors/     # Marketplace API adapters (VTEX implemented; others incremental)
+        connectors/     # Marketplace API adapters (Mercado Livre first; legacy adapters inventoried before deletion)
         integrations/   # Integration lifecycle (install/auth/credential/fee-sync operations)
       platform/
         config/         # Environment configuration
@@ -90,7 +93,7 @@ docs/
 
 ### `catalog` (implemented — foundation)
 
-Product entities used by the pricing simulator. Supports manual creation and future import from VTEX.
+Product entities used by pricing, product linking, and future Mercado Livre listing operations.
 
 Scope: product CRUD, SKU/EAN management, cost tracking.
 
@@ -106,22 +109,43 @@ Price simulation engine. Calculates margin, commission impact, freight cost, and
 
 Scope: simulation execution, snapshot persistence, manual price overrides, margin alerts.
 
-### `messaging` (planned — phase 2)
+### `product_links` (planned — Mercado Livre first)
 
-Centralizes customer messages from all connected marketplaces. Provides a unified inbox with SLA tracking (1-hour response target).
+Maps internal products/SKUs to Mercado Livre listing and variation identifiers.
+
+Scope: link creation, confidence/state tracking, duplicate detection, audit trail.
+
+### `inventory` (planned — Mercado Livre first)
+
+Compares Sankhya/MetalShopping stock with Mercado Livre announced stock and proposes or applies safe stock actions.
+
+Scope: stock snapshots, safety buffers, divergence detection, manual approval, action audit.
+
+Reads from: internal stock views via ports.
+Writes to: Mercado Livre only through connector capabilities after policy checks.
+
+### `orders` (planned — Mercado Livre first)
+
+Order monitoring and reconciliation for Mercado Livre. Tracks order lifecycle, items, fees, shipping, cancellation reasons, and internal product links.
+
+Scope: order polling/notifications, status tracking, cancellation analysis, dispatch guardrails.
+
+Reads from: Mercado Livre APIs via `connectors` adapters and internal product/cost providers.
+
+### `profitability` (planned — Mercado Livre first)
+
+Calculates per-order and per-item contribution using Mercado Livre revenue/fees/freight and Sankhya/MetalShopping cost/tax inputs.
+
+Scope: margin snapshots, manual cost adjustments, data quality flags, profitability alerts.
+
+### `messaging` (planned)
+
+Centralizes Mercado Livre questions/messages first. Multi-marketplace inbox is deferred until the Mercado Livre workflow is stable.
 
 Scope: message polling from marketplace APIs, unified thread view, reply dispatch, response time tracking.
 
 Read from: marketplace APIs via `connectors` adapters.
 Write to: marketplace APIs (reply only) via `connectors` adapters.
-
-### `orders` (planned — phase 2)
-
-Order monitoring across all marketplaces. Tracks order lifecycle with SLA enforcement (24-hour dispatch target).
-
-Scope: order polling, status tracking, dispatch deadline monitoring, order history.
-
-Read from: marketplace APIs via `connectors` adapters. Also reads from VTEX if VTEX is the order source.
 
 ### `alerts` (planned — phase 2)
 
@@ -133,14 +157,14 @@ Reads from: `messaging` and `orders` modules for SLA data.
 
 ### `connectors` (implemented foundation)
 
-Marketplace API adapters. VTEX publish/validation and Melhor Envio auth/status are implemented.
-Other marketplaces (Mercado Livre, Magalu, Amazon) are integrated incrementally by capability.
+Marketplace API adapters. Mercado Livre is the first target for live operations. Legacy VTEX surfaces are not part of the target architecture.
+Other marketplaces (Magalu, Amazon, Shopee, etc.) are future, capability-driven additions only after Mercado Livre operations are reliable.
 
 Scope: authentication management, API request/response mapping, rate limiting, error handling.
 
 Pattern: one adapter package per marketplace under `connectors/adapters/`. The module owns the port interfaces; adapters implement them.
 
-Current connector baseline: VTEX operations + integration hooks. Other marketplaces are capability-driven additions.
+Current connector baseline: integrations framework + Mercado Livre OAuth and seeded fee baseline. Live Mercado Livre listing, stock, order, shipment, and question capabilities are the next target.
 
 ### `integrations` (implemented foundation)
 
@@ -174,11 +198,11 @@ web → sdk-runtime → server_core HTTP handlers → application services → p
 ```
 web → sdk-runtime → server_core HTTP handlers → application services → postgres
                                                        ↓
-                                              scheduler jobs (polling)
+                                              scheduler jobs / webhooks
                                                        ↓
-                                              connectors adapters → marketplace APIs
+                                              connectors adapters → Mercado Livre APIs
                                                        ↓
-                                              messaging/orders modules → postgres
+                                              inventory/orders/profitability/messaging modules → postgres
                                                        ↓
                                               alerts module → notifications
 ```
@@ -187,7 +211,7 @@ web → sdk-runtime → server_core HTTP handlers → application services → p
 
 - Web client never calls marketplace APIs directly
 - Connectors never own business state — they fetch and deliver to domain modules
-- Scheduler runs polling jobs at configured intervals (e.g., every 5 min for messages, every 15 min for orders)
+- Scheduler runs polling jobs at configured intervals; Mercado Livre notifications may later reduce polling where reliable
 - Synchronous HTTP requests from web never depend on connector availability
 
 ## Database

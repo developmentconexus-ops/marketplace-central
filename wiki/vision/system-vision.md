@@ -2,13 +2,14 @@
 
 ## What MPC Is
 
-Marketplace Central is an intelligence and control surface for sellers operating in multiple marketplaces through VTEX.
+Marketplace Central is an internal operations and intelligence cockpit for selling through Mercado Livre, backed by Sankhya/MetalShopping data.
 
 MPC centralizes:
-- pricing strategy by channel
-- integration auth and health status
-- fee schedule visibility for simulation
-- operational traceability (sync/auth runs)
+- product and listing linkage between internal products and Mercado Livre announcements
+- stock reconciliation between internal stock and Mercado Livre available quantity
+- pricing and profitability strategy using cost, fees, freight, and tax inputs
+- order monitoring, cancellation analysis, and operational traceability
+- integration auth, health status, and sync/action audit
 
 ## Scope of This Wiki
 
@@ -20,10 +21,12 @@ Planning note:
 
 ## Product Direction
 
-- Keep business policy in Marketplaces module.
-- Keep credential/auth lifecycle in Integrations module.
-- Keep coupling explicit and minimal.
-- Keep frontend data-driven from backend definitions.
+- Mercado Livre first; other marketplaces remain deferred catalog entries until the Mercado Livre operating loop is reliable.
+- Keep business policy in Marketplaces and future operational modules.
+- Keep credential/auth lifecycle in Integrations.
+- Keep Sankhya/MetalShopping reads behind explicit ports and adapters.
+- Keep frontend data-driven from backend definitions and SDK methods.
+- Treat unknown cost, freight, fees, taxes, and product links as explicit data-quality states, never optimistic defaults.
 
 ## MetalShopping Compatibility
 

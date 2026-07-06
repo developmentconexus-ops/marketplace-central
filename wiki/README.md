@@ -14,6 +14,7 @@ Planning ownership:
 | `framework/` | Marketplace integration framework and provider plugin runbooks |
 | `modules/` | Module-focused behavior, entities, routes |
 | `operations/` | Runtime environment and database access |
+| `quality/` | QA operating system, stop gates, and closure rules |
 | `vision/` | Product intent and scope framing |
 
 ## Index
@@ -38,9 +39,16 @@ Planning ownership:
 - [Marketplaces](modules/marketplaces.md)
 - [Integrations](modules/integrations.md)
 - [Pricing Simulator](modules/pricing.md)
+- [Product Links](modules/product-links.md)
+- [Inventory](modules/inventory.md)
+- [Orders](modules/orders.md)
+- [Profitability](modules/profitability.md)
 
 ### Operations
 - [Environment and Database Access](operations/environment-and-db.md)
+
+### Quality
+- [QA Operating System](quality/qa-operating-system.md)
 
 ### Vision
 - [System Vision](vision/system-vision.md)
