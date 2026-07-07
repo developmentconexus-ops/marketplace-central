@@ -81,6 +81,18 @@ Rules:
 - Money stays `float64` in domain and `numeric(14,2)` in Postgres until an ADR changes it.
 - Use `GOCACHE=.gocache` for local Go test/build commands.
 
+## Validation Policy
+
+- Never declare an external integration, internal read source, or environment-dependent flow "validated" using only mocks, fakes, seams, fixtures, or compile-only coverage.
+- Mocks/fakes/seams are allowed to validate contract shape, deterministic business rules, and failure handling, but they do not prove real runtime integration.
+- Any work that touches real providers, real databases, real credentials, real queues, or real environment configuration must distinguish clearly between:
+  - contract validation
+  - integration validation
+  - production-like/live validation
+- A milestone or feature that depends on real integration behavior is not `passed` unless the validation artifact records real-environment evidence or explicitly stays in a non-passed status.
+- If real validation is impossible in the current session, record the exact blocker, the missing environment/prerequisite, and the remaining validation step. Do not silently substitute mock evidence for live evidence.
+- Validation artifacts must say whether each command ran against fake/test doubles or against a real target system.
+
 ## Frontend Rules
 
 - Data comes only through `packages/sdk-runtime`.
@@ -109,6 +121,8 @@ Unknown cost, freight, fee, tax, or product linkage is a data-quality state, not
 - Use MNFS commands/roles for large work: `mission-init`, `milestone-start`, `feature-context`, `feature-accept`, `milestone-validate`, `mission-validate`, `correction-create`, `mission-closeout`, and `status`.
 - MNFS is dry-run first. Write `.mnfs/` artifacts only with explicit apply/write/create approval.
 - A feature is not accepted without `spec.md`, `plan.md`, changed paths, and `validation.md` evidence. A milestone is not passed without `validation-result.md` and the integrity gate.
+- For any integration-facing work, `validation.md` and `validation-result.md` must explicitly separate fake/mock evidence from real-environment evidence.
+- For Sankhya, Mercado Livre, OAuth, DB, queue, or network-dependent behavior, fake-only validation can at most prove contract/business logic readiness; it cannot prove end-to-end readiness.
 - For API changes, update OpenAPI and `sdk-runtime` together.
 - For architecture changes, update `ARCHITECTURE.md`, ADRs, relevant wiki pages, and `.brain/`.
 - For code changes, run impacted tests/builds before claiming done.

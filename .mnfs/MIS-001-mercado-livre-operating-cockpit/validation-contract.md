@@ -158,6 +158,9 @@ Owner: QA Validator
 - API changes must include OpenAPI and `packages/sdk-runtime` evidence together.
 - UI changes must include frontend tests and at least one browser validation pass before claiming user workflow complete.
 - Provider behavior claims must cite official Mercado Livre docs or local adapter tests using documented shapes.
+- Fake/mock/seam evidence may prove contract and business-rule readiness only; it does not prove real dependency integration.
+- Any feature or milestone that claims Sankhya, Mercado Livre, OAuth, DB, or other external/runtime-dependent behavior works must include real-environment validation evidence or stay blocked/not passed for that scope.
+- Validation artifacts must label whether evidence is fake/local or real-environment.
 
 ## Blocking Failures
 

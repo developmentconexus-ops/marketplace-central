@@ -34,6 +34,22 @@ When truth layers disagree, classify the mismatch before continuing.
 - QA gate: happy, error, empty, persistence, idempotency, and async paths are checked when relevant.
 - Evidence gate: commands, outcomes, artifacts, and bounded defers are recorded before closure.
 
+## Real Validation Rule
+
+Fake, mock, seam, and fixture validation is not enough to claim real integration success.
+
+- Use fakes/mocks/seams to prove contract shape, local business logic, and deterministic edge cases.
+- Use real-environment validation to prove that credentials, network, DB/provider behavior, query semantics, and runtime configuration actually work.
+- Never collapse these into one verdict.
+
+Required wording in validation artifacts for integration-facing work:
+
+- `contract_validated`: rules and typed behavior proven with local tests/fakes
+- `integration_validated`: behavior proven against the real dependency
+- `blocked_for_real_validation`: exact reason real validation could not run
+
+If only `contract_validated` is true, the work is not approved as real end-to-end integration.
+
 ## Mercado Livre Safety Gates
 
 Stock, price, and order actions can affect real revenue. Any Mercado Livre write must prove:
@@ -53,3 +69,4 @@ Every completed non-trivial task should report:
 - QA/review findings and disposition
 - explicit bounded defers
 - commit or reason no commit was created
+- whether evidence came from fake/test doubles or a real dependency

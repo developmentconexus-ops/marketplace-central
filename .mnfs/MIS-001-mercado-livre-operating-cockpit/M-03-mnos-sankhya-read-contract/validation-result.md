@@ -20,6 +20,14 @@ M-03-mnos-sankhya-read-contract
 
 Pass
 
+## Validation Scope Declaration
+
+- contract_validated: Yes
+- integration_validated: No
+- blocked_for_real_validation: live Sankhya/Oracle environment access and query implementation were not part of this milestone's delivered scope
+
+This pass covers contract/seam/business-rule readiness only. It does not claim that live Sankhya/Oracle reads have been executed successfully in a real environment.
+
 ## Scope Reviewed
 
 - `F-01-sankhya-read-contract-import`

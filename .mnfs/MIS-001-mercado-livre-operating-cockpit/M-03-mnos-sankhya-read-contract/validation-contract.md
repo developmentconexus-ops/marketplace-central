@@ -60,6 +60,10 @@ Owner: QA Validator
 
 - Tests cite MNOS source semantics in `spec.md`.
 - Secret-safety tests cover Oracle/Sankhya connection error messages.
+- Fake adapter tests may prove contract preservation and quality-flag behavior, but they do not prove live Sankhya/Oracle reads.
+- M-03 may be marked fully passed only when either:
+  - its scope is explicitly limited to contract/seam readiness in the milestone brief and validation result, or
+  - real Sankhya/Oracle validation evidence is present for the claimed runtime behavior.
 
 ## Blocking Failures
 
