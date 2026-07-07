@@ -22,8 +22,8 @@ type SellableStockInput struct {
 
 type CurrentPriceInput struct {
 	Codprod  int
-	Codtab   int
-	Codlocal int
+	Codtab   *int
+	Codlocal *int
 	Now      time.Time
 }
 
@@ -34,9 +34,10 @@ type CostAsOfInput struct {
 }
 
 type SalesHistoryInput struct {
-	Codprod   *int
-	StartDate string
-	EndDate   string
+	Codprod      *int
+	CodgrupoProd *int
+	StartDate    string
+	EndDate      string
 }
 
 type TaxInput struct {

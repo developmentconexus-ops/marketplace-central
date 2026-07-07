@@ -16,6 +16,15 @@ lifecycle_scope: feature
 
 F-01-sankhya-read-contract-import
 
+## MNOS Evidence
+
+- `C:\Users\leandro.theodoro\Documents\MNOS\semantic\views\vw_estoque_saldo.sql`
+- `C:\Users\leandro.theodoro\Documents\MNOS\semantic\views\vw_preco_tabela.sql`
+- `C:\Users\leandro.theodoro\Documents\MNOS\semantic\views\vw_fat_venda_item.sql`
+- `C:\Users\leandro.theodoro\Documents\MNOS\semantic\views\vw_imposto_item.sql`
+- `C:\Users\leandro.theodoro\Documents\MNOS\semantic\governance\tgfcus.yml`
+- `C:\Users\leandro.theodoro\Documents\MNOS\semantic\governance\tgfpro.yml`
+
 ## Problem
 
 Marketplace Central needs an MPC-owned read contract for internal product, stock, price, cost, sales, and tax facts before `product_links`, `inventory`, and `profitability` can depend on Sankhya/MNOS semantics safely. Without this seam, future features will drift into ad hoc SQL, silent zero defaults, or Sankhya-coupled write paths.

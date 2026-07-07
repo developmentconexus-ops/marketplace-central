@@ -53,6 +53,23 @@ func TestRequiredQualityFlagsRemainExplicit(t *testing.T) {
 	}
 }
 
+func TestProductCandidateUsesTaskContractFields(t *testing.T) {
+	candidate := ProductCandidate{
+		Codprod:      42664,
+		Produto:      "Produto teste",
+		EAN:          "7890000000000",
+		Reference:    "SKU-42664",
+		QualityFlags: []QualityFlag{QualityComplete},
+	}
+
+	if candidate.EAN == "" || candidate.Reference == "" {
+		t.Fatalf("expected product candidate EAN and reference to use explicit task contract strings")
+	}
+	if !reflect.DeepEqual(candidate.QualityFlags, []QualityFlag{QualityComplete}) {
+		t.Fatalf("expected complete quality flag, got %v", candidate.QualityFlags)
+	}
+}
+
 func TestMissingCostStaysNilWithQualityFlag(t *testing.T) {
 	cost := CostAsOf{
 		Codprod:      42664,
