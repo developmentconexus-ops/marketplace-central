@@ -26,19 +26,3 @@ Changed paths:
 
 Concerns:
 - None for Task 1 scope.
-
-Fix cycle after task review:
-- Updated `CurrentPriceInput` so `Codtab` and `Codlocal` are optional pointers, preserving IC-002 default lookup semantics.
-- Updated `SalesHistoryInput` so the seam supports product or group queries via `Codprod` or `CodgrupoProd`.
-- Re-ran focused validation after the contract-shape fix.
-
-Fix validation:
-- `cd apps/server_core; $env:GOCACHE=(Join-Path (Get-Location) '.gocache'); go test ./internal/modules/internal_read/...`
-- Result: pass
-
----
-
-Follow-up fix:
-- Narrowed `CurrentPriceInput` so `Codtab` and `Codlocal` are optional pointers, allowing implicit defaults for `CODTAB=0` and `CODLOCAL=10101`.
-- Expanded `SalesHistoryInput` with `CodgrupoProd` alongside `Codprod`, so the read port can express product-or-group sales windows per IC-002.
-- Verified with `cd apps/server_core; $env:GOCACHE=(Resolve-Path .gocache); go test ./internal/modules/internal_read/...`.
