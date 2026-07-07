@@ -3,8 +3,8 @@
 ```yaml
 id: M-02
 type: milestone
-status: in_progress
-owner: Milestone Orchestrator
+status: passed
+owner: QA Validator
 parent: MIS-001
 created: 2026-07-06
 updated: 2026-07-06
@@ -50,11 +50,11 @@ Mercado Livre is first, but the platform must remain a marketplace hub. Capabili
 
 ## Handoff
 
-- Current status: in_progress.
-- Next owner: Feature Implementer for F-01.
-- Next action: Create F-01 `spec.md`, then `plan.md`, implement capability port contracts, and return changed paths plus `validation.md`.
-- Required files/evidence: F-01/F-02/F-03 `spec.md`, `plan.md`, `validation.md`, changed paths, and M-02/validation-result.md after milestone gate.
-- Blockers or open decisions: None for F-01. F-03 live provider writes remain blocked without operator-controlled credentials/listings and explicit approval.
+- Current status: passed.
+- Next owner: Mission Strategist.
+- Next action: Continue mission execution using M-02 capability contracts, provider declarations, and Mercado Livre adapter spine as execution truth.
+- Required files/evidence: `validation-result.md` plus accepted F-01/F-02/F-03 artifacts.
+- Blockers or open decisions: Live provider writes remain blocked without operator-controlled credentials/listings and explicit approval, but this does not block M-02.
 
 ## Correction Handoff
 

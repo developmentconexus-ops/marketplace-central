@@ -93,7 +93,7 @@ func TestGetProviderDefinitionReturnsRequestedProvider(t *testing.T) {
 				domain.AuthStrategyOAuth2,
 				domain.InstallModeInteractive,
 				[]byte(`{"region":"br"}`),
-				[]byte(`["messages","orders"]`),
+				[]byte(`["listing_read","order_read"]`),
 				true,
 				now,
 				now,
@@ -124,7 +124,7 @@ func TestGetProviderDefinitionReturnsRequestedProvider(t *testing.T) {
 	if !reflect.DeepEqual(got.Metadata, map[string]any{"region": "br"}) {
 		t.Fatalf("unexpected metadata: %#v", got.Metadata)
 	}
-	if !reflect.DeepEqual(got.DeclaredCapabilities, []string{"messages", "orders"}) {
+	if !reflect.DeepEqual(got.DeclaredCapabilities, []string{"listing_read", "order_read"}) {
 		t.Fatalf("unexpected capabilities: %#v", got.DeclaredCapabilities)
 	}
 	if got.IsActive != true {

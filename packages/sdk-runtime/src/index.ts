@@ -68,13 +68,13 @@ export interface CredentialField {
   secret: boolean;
 }
 
-export type CapabilityStatus = 'supported' | 'partial' | 'planned' | 'blocked'
+export type CapabilityStatus = 'supported' | 'unsupported' | 'degraded' | 'blocked'
 
 export interface CapabilityProfile {
-  publish: CapabilityStatus
-  price_sync: CapabilityStatus
-  stock_sync: CapabilityStatus
-  orders: CapabilityStatus
+  listing_read: CapabilityStatus
+  stock_read: CapabilityStatus
+  stock_write: CapabilityStatus
+  order_read: CapabilityStatus
   messages: CapabilityStatus
   questions: CapabilityStatus
   freight_quotes: CapabilityStatus

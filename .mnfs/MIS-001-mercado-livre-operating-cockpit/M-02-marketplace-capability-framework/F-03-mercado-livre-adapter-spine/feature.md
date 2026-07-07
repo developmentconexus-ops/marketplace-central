@@ -3,8 +3,8 @@
 ```yaml
 id: F-03
 type: feature-brief
-status: briefed
-owner: Mission Strategist
+status: accepted
+owner: Milestone Orchestrator
 parent: M-02
 created: 2026-07-06
 updated: 2026-07-06
@@ -60,8 +60,8 @@ Create the Mercado Livre adapter spine using direct HTTP seams/stubs and officia
 
 ## Handoff
 
-- Current status: briefed.
-- Next owner: Feature Implementer.
-- Next action: Create `spec.md`.
-- Required files/evidence: F-03/validation.md.
-- Blockers or open decisions: Real live write validation needs operator approval.
+- Current status: accepted.
+- Next owner: Milestone Orchestrator.
+- Next action: Include F-03 evidence in `M-02/validation-result.md`.
+- Required files/evidence: `spec.md`, `plan.md`, `validation.md`, adapter changed paths.
+- Blockers or open decisions: Real live write validation remains intentionally out of scope without operator approval.

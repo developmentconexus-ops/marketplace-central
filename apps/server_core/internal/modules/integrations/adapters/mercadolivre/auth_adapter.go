@@ -52,9 +52,10 @@ func init() {
 			},
 		},
 		DeclaredCapabilities: []string{
-			"catalog_publish",
+			"listing_read",
 			"pricing_fee_sync",
-			"inventory_sync",
+			"stock_read",
+			"stock_write",
 			"order_read",
 			"message_read",
 			"message_reply",

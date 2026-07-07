@@ -1656,33 +1656,33 @@ components:
     CapabilityProfile:
       type: object
       properties:
-        publish:
+        listing_read:
           type: string
-          enum: [supported, partial, planned, blocked]
-        price_sync:
+          enum: [supported, unsupported, degraded, blocked]
+        stock_read:
           type: string
-          enum: [supported, partial, planned, blocked]
-        stock_sync:
+          enum: [supported, unsupported, degraded, blocked]
+        stock_write:
           type: string
-          enum: [supported, partial, planned, blocked]
-        orders:
+          enum: [supported, unsupported, degraded, blocked]
+        order_read:
           type: string
-          enum: [supported, partial, planned, blocked]
+          enum: [supported, unsupported, degraded, blocked]
         messages:
           type: string
-          enum: [supported, partial, planned, blocked]
+          enum: [supported, unsupported, degraded, blocked]
         questions:
           type: string
-          enum: [supported, partial, planned, blocked]
+          enum: [supported, unsupported, degraded, blocked]
         freight_quotes:
           type: string
-          enum: [supported, partial, planned, blocked]
+          enum: [supported, unsupported, degraded, blocked]
         webhooks:
           type: string
-          enum: [supported, partial, planned, blocked]
+          enum: [supported, unsupported, degraded, blocked]
         sandbox:
           type: string
-          enum: [supported, partial, planned, blocked]
+          enum: [supported, unsupported, degraded, blocked]
 
     PluginMetadata:
       type: object

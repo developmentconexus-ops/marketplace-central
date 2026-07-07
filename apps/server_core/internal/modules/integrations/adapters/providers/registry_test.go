@@ -61,19 +61,30 @@ func TestRegistryAllReturnsDefensiveCopy(t *testing.T) {
 		t.Fatal("All() returned no provider definitions")
 	}
 
-	first[0].ProviderCode = "mutated"
-	first[0].DeclaredCapabilities[0] = "mutated_capability"
-	first[0].Metadata["rollout_stage"] = "mutated"
-	first = append(first, first[0])
+	mutableIndex := -1
+	for i, def := range first {
+		if len(def.DeclaredCapabilities) > 0 {
+			mutableIndex = i
+			break
+		}
+	}
+	if mutableIndex == -1 {
+		t.Fatal("All() returned no provider with declared capabilities")
+	}
+
+	first[mutableIndex].ProviderCode = "mutated"
+	first[mutableIndex].DeclaredCapabilities[0] = "mutated_capability"
+	first[mutableIndex].Metadata["rollout_stage"] = "mutated"
+	first = append(first, first[mutableIndex])
 
 	second := registry.All()
-	if second[0].ProviderCode == "mutated" {
+	if second[mutableIndex].ProviderCode == "mutated" {
 		t.Fatalf("ProviderCode mutation leaked back into registry")
 	}
-	if second[0].DeclaredCapabilities[0] == "mutated_capability" {
+	if second[mutableIndex].DeclaredCapabilities[0] == "mutated_capability" {
 		t.Fatalf("DeclaredCapabilities mutation leaked back into registry")
 	}
-	if got := second[0].Metadata["rollout_stage"]; got == "mutated" {
+	if got := second[mutableIndex].Metadata["rollout_stage"]; got == "mutated" {
 		t.Fatalf("Metadata mutation leaked back into registry")
 	}
 	if got, want := len(second), 6; got != want {
@@ -178,5 +189,32 @@ func TestRegistryProviderMetadataCoverage(t *testing.T) {
 	}
 	if want := []string{"pricing_fee_sync"}; len(shopee.DeclaredCapabilities) != len(want) || shopee.DeclaredCapabilities[0] != want[0] {
 		t.Fatalf("shopee DeclaredCapabilities = %#v, want %#v", shopee.DeclaredCapabilities, want)
+	}
+
+	mercadoLivre := byCode["mercado_livre"]
+	wantMercadoLivre := []string{
+		"listing_read",
+		"pricing_fee_sync",
+		"stock_read",
+		"stock_write",
+		"order_read",
+		"message_read",
+		"message_reply",
+		"shipment_tracking",
+		"webhook_receive",
+	}
+	if len(mercadoLivre.DeclaredCapabilities) != len(wantMercadoLivre) {
+		t.Fatalf("mercado_livre DeclaredCapabilities len = %d, want %d", len(mercadoLivre.DeclaredCapabilities), len(wantMercadoLivre))
+	}
+	for i, want := range wantMercadoLivre {
+		if got := mercadoLivre.DeclaredCapabilities[i]; got != want {
+			t.Fatalf("mercado_livre DeclaredCapabilities[%d] = %q, want %q", i, got, want)
+		}
+	}
+
+	for _, code := range []string{"amazon", "leroy_merlin", "madeira_madeira"} {
+		if got := len(byCode[code].DeclaredCapabilities); got != 0 {
+			t.Fatalf("%s DeclaredCapabilities len = %d, want 0", code, got)
+		}
 	}
 }

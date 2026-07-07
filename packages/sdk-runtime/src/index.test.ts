@@ -27,7 +27,7 @@ describe("sdk runtime", () => {
             ],
             docs_url: "https://developer-docs.amazon.com/sp-api",
           },
-          declared_capabilities: ["orders_sync", "catalog_publish"],
+          declared_capabilities: [],
           is_active: true,
           created_at: "2026-04-09T00:00:00Z",
           updated_at: "2026-04-09T00:00:00Z",

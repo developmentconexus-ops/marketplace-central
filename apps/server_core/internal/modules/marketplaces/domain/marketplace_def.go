@@ -4,18 +4,18 @@ package domain
 type CapabilityStatus string
 
 const (
-	CapabilitySupported CapabilityStatus = "supported"
-	CapabilityPartial   CapabilityStatus = "partial"
-	CapabilityPlanned   CapabilityStatus = "planned"
-	CapabilityBlocked   CapabilityStatus = "blocked"
+	CapabilitySupported   CapabilityStatus = "supported"
+	CapabilityUnsupported CapabilityStatus = "unsupported"
+	CapabilityDegraded    CapabilityStatus = "degraded"
+	CapabilityBlocked     CapabilityStatus = "blocked"
 )
 
 // CapabilityProfile declares what a marketplace API supports.
 type CapabilityProfile struct {
-	Publish       CapabilityStatus `json:"publish"`
-	PriceSync     CapabilityStatus `json:"price_sync"`
-	StockSync     CapabilityStatus `json:"stock_sync"`
-	Orders        CapabilityStatus `json:"orders"`
+	ListingRead   CapabilityStatus `json:"listing_read"`
+	StockRead     CapabilityStatus `json:"stock_read"`
+	StockWrite    CapabilityStatus `json:"stock_write"`
+	OrderRead     CapabilityStatus `json:"order_read"`
 	Messages      CapabilityStatus `json:"messages"`
 	Questions     CapabilityStatus `json:"questions"`
 	FreightQuotes CapabilityStatus `json:"freight_quotes"`
@@ -44,7 +44,7 @@ type CredentialField struct {
 type MarketplaceDefinition struct {
 	MarketplaceCode   string            `json:"marketplace_code"`
 	DisplayName       string            `json:"display_name"`
-	FeeSource         string            `json:"fee_source"` // "api_sync" | "seed"
+	FeeSource         string            `json:"fee_source"`    // "api_sync" | "seed"
 	AuthStrategy      string            `json:"auth_strategy"` // oauth2 | lwa | api_key | token | unknown
 	CapabilityProfile CapabilityProfile `json:"capability_profile"`
 	Metadata          PluginMetadata    `json:"metadata"`

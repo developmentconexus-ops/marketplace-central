@@ -3,8 +3,8 @@
 ```yaml
 id: F-02
 type: feature-brief
-status: briefed
-owner: Mission Strategist
+status: accepted
+owner: Milestone Orchestrator
 parent: M-02
 created: 2026-07-06
 updated: 2026-07-06
@@ -50,8 +50,8 @@ Align provider definitions and capability health with business capability names 
 
 ## Handoff
 
-- Current status: briefed.
-- Next owner: Feature Implementer.
-- Next action: Create `spec.md`.
-- Required files/evidence: F-02/validation.md.
+- Current status: accepted.
+- Next owner: Milestone Orchestrator.
+- Next action: Dispatch F-03 using the accepted business capability vocabulary from F-01 and F-02.
+- Required files/evidence: `spec.md`, `plan.md`, `validation.md`, and the updated contract/provider registration paths.
 - Blockers or open decisions: None.

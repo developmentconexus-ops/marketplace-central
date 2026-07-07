@@ -32,12 +32,8 @@ func init() {
 				{"key": "api_token", "label": "API Token", "secret": true},
 			},
 		},
-		DeclaredCapabilities: []string{
-			"pricing_fee_sync",
-			"order_read",
-			"shipment_tracking",
-		},
-		IsActive: true,
+		DeclaredCapabilities: []string{},
+		IsActive:             true,
 	})
 	integrationsproviders.RegisterAuthFactory(func() application.MarketplaceAuthAdapter {
 		return NewAdapter(Config{})

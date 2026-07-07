@@ -87,8 +87,10 @@ func TestDefinitionsHandler_GetReturnsItems(t *testing.T) {
 			AuthStrategy:    "api_key",
 			FeeSource:       "seed",
 			CapabilityProfile: domain.CapabilityProfile{
-				Publish:   domain.CapabilitySupported,
-				PriceSync: domain.CapabilityPlanned,
+				ListingRead: domain.CapabilitySupported,
+				StockRead:   domain.CapabilityBlocked,
+				StockWrite:  domain.CapabilityBlocked,
+				OrderRead:   domain.CapabilityBlocked,
 			},
 			Metadata: domain.PluginMetadata{
 				RolloutStage:  "v1",
@@ -159,8 +161,8 @@ func TestDefinitionsHandler_GetReturnsItems(t *testing.T) {
 	}
 
 	// capability_profile must be present
-	if item.CapabilityProfile.Publish != domain.CapabilitySupported {
-		t.Errorf("capability_profile.publish = %q, want %q", item.CapabilityProfile.Publish, domain.CapabilitySupported)
+	if item.CapabilityProfile.ListingRead != domain.CapabilitySupported {
+		t.Errorf("capability_profile.listing_read = %q, want %q", item.CapabilityProfile.ListingRead, domain.CapabilitySupported)
 	}
 
 	// metadata must be present

@@ -32,10 +32,10 @@ func TestResolveCapabilitiesMergesDeclaredAndEffectiveState(t *testing.T) {
 	store := &stubCapabilityStateStore{
 		states: []domain.CapabilityState{
 			{
-				CapabilityStateID: "cap_orders",
+				CapabilityStateID: "cap_order_read",
 				TenantID:          "tenant-default",
 				InstallationID:    "inst_001",
-				CapabilityCode:    "orders",
+				CapabilityCode:    "order_read",
 				Status:            domain.CapabilityStatusEnabled,
 				ReasonCode:        "CONNECTED",
 				LastEvaluatedAt:   &now,
@@ -58,7 +58,7 @@ func TestResolveCapabilitiesMergesDeclaredAndEffectiveState(t *testing.T) {
 
 	svc := NewCapabilityService(store, "tenant-default")
 
-	resolved, err := svc.Resolve(context.Background(), "inst_001", ports.MarketplaceCapabilities{"publish", "orders"})
+	resolved, err := svc.Resolve(context.Background(), "inst_001", ports.MarketplaceCapabilities{"listing_read", "order_read"})
 	if err != nil {
 		t.Fatalf("Resolve() error = %v", err)
 	}
@@ -67,7 +67,7 @@ func TestResolveCapabilitiesMergesDeclaredAndEffectiveState(t *testing.T) {
 		{
 			TenantID:        "tenant-default",
 			InstallationID:  "inst_001",
-			CapabilityCode:  "publish",
+			CapabilityCode:  "listing_read",
 			Status:          domain.CapabilityStatusDisabled,
 			ReasonCode:      "",
 			LastEvaluatedAt: nil,
@@ -75,10 +75,10 @@ func TestResolveCapabilitiesMergesDeclaredAndEffectiveState(t *testing.T) {
 			UpdatedAt:       time.Time{},
 		},
 		{
-			CapabilityStateID: "cap_orders",
+			CapabilityStateID: "cap_order_read",
 			TenantID:          "tenant-default",
 			InstallationID:    "inst_001",
-			CapabilityCode:    "orders",
+			CapabilityCode:    "order_read",
 			Status:            domain.CapabilityStatusEnabled,
 			ReasonCode:        "CONNECTED",
 			LastEvaluatedAt:   &now,
@@ -97,7 +97,7 @@ func TestResolveCapabilitiesRejectsEmptyInstallationID(t *testing.T) {
 
 	svc := NewCapabilityService(&stubCapabilityStateStore{}, "tenant-default")
 
-	_, err := svc.Resolve(context.Background(), " ", ports.MarketplaceCapabilities{"publish"})
+	_, err := svc.Resolve(context.Background(), " ", ports.MarketplaceCapabilities{"listing_read"})
 	if err == nil {
 		t.Fatal("Resolve() error = nil, want invalid input error")
 	}

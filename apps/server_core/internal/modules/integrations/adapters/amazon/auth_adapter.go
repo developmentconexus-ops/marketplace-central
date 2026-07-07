@@ -52,16 +52,8 @@ func init() {
 				{"key": "refresh_token", "label": "Refresh Token", "secret": true},
 			},
 		},
-		DeclaredCapabilities: []string{
-			"catalog_publish",
-			"pricing_fee_sync",
-			"inventory_sync",
-			"order_read",
-			"message_read",
-			"shipment_tracking",
-			"webhook_receive",
-		},
-		IsActive: true,
+		DeclaredCapabilities: []string{},
+		IsActive:             true,
 	})
 	integrationsproviders.RegisterAuthFactory(func() application.MarketplaceAuthAdapter {
 		return NewAdapter(Config{

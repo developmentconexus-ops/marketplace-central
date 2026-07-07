@@ -3,8 +3,8 @@
 ```yaml
 id: F-01
 type: feature-brief
-status: briefed
-owner: Mission Strategist
+status: accepted
+owner: Milestone Orchestrator
 parent: M-02
 created: 2026-07-06
 updated: 2026-07-06
@@ -60,8 +60,8 @@ Define business-facing capability ports matching IC-001 for listing read, stock 
 
 ## Handoff
 
-- Current status: briefed.
-- Next owner: Feature Implementer.
-- Next action: Create `spec.md`.
-- Required files/evidence: F-01/validation.md.
+- Current status: accepted.
+- Next owner: Milestone Orchestrator.
+- Next action: Dispatch F-02 using the accepted capability contracts from F-01.
+- Required files/evidence: `spec.md`, `plan.md`, `validation.md`, and connector capability changed paths.
 - Blockers or open decisions: None.

@@ -33,14 +33,8 @@ func init() {
 				{"key": "shop_id", "label": "Shop ID", "secret": false},
 			},
 		},
-		DeclaredCapabilities: []string{
-			"catalog_publish",
-			"pricing_fee_sync",
-			"inventory_sync",
-			"order_read",
-			"message_read",
-		},
-		IsActive: true,
+		DeclaredCapabilities: []string{},
+		IsActive:             true,
 	})
 	integrationsproviders.RegisterAuthFactory(func() application.MarketplaceAuthAdapter {
 		return NewAdapter(Config{})
