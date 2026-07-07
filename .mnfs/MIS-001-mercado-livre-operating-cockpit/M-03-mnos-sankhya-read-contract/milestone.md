@@ -3,11 +3,11 @@
 ```yaml
 id: M-03
 type: milestone
-status: planned
+status: passed
 owner: Mission Strategist
 parent: MIS-001
 created: 2026-07-06
-updated: 2026-07-06
+updated: 2026-07-07
 validation_level: QA-0
 lifecycle_scope: milestone
 ```
@@ -51,11 +51,11 @@ Stock Seguro and margin quality depend on correct internal facts. MNOS already m
 
 ## Handoff
 
-- Current status: planned.
+- Current status: passed.
 - Next owner: Milestone Orchestrator.
-- Next action: Start F-01 after M-01 or in parallel with M-02 if reviewer approves.
+- Next action: hand off `internal_read` seam to M-04/M-05/M-06 consumers and keep Oracle live access scoped to future implementation work.
 - Required files/evidence: F-*/validation.md and M-03/validation-result.md.
-- Blockers or open decisions: Real Oracle credential usage requires environment confirmation during implementation.
+- Blockers or open decisions: Real Oracle credential usage still requires environment confirmation when live queries are introduced.
 
 ## Correction Handoff
 
