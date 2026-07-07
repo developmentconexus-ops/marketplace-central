@@ -54,7 +54,7 @@ Mercado Livre is first, but the platform must remain a marketplace hub. Capabili
 - Next owner: Mission Strategist.
 - Next action: Continue mission execution using M-02 capability contracts, provider declarations, and Mercado Livre adapter spine as execution truth.
 - Required files/evidence: `validation-result.md` plus accepted F-01/F-02/F-03 artifacts.
-- Blockers or open decisions: Live provider writes remain blocked without operator-controlled credentials/listings and explicit approval, but this does not block M-02.
+- Blockers or open decisions: Live Mercado Livre runtime validation still requires operator-controlled credentials/listings and explicit approval; M-02 pass covers adapter-spine readiness, not live-provider proof.
 
 ## Correction Handoff
 

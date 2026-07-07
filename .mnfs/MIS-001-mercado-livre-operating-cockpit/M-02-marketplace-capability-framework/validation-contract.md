@@ -60,6 +60,10 @@ Owner: QA Validator
 
 - Adapter tests use documented Mercado Livre item/order/variation shapes.
 - Boundary checks prove no provider-specific business imports.
+- Adapter/documentation tests may prove contract and mapping readiness, but they do not prove live Mercado Livre runtime integration.
+- M-02 may be marked fully passed only when either:
+  - its scope is explicitly limited to capability-contract and adapter-spine readiness in the milestone brief and validation result, or
+  - real Mercado Livre environment validation evidence is present for the claimed runtime behavior.
 
 ## Blocking Failures
 

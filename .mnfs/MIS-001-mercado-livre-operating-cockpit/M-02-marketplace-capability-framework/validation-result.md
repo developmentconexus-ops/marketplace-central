@@ -22,6 +22,14 @@ M-02-marketplace-capability-framework
 - Blocking failures: none
 - Summary: Marketplace Central now exposes provider-agnostic marketplace capability contracts, public/provider capability registration aligned to those business capabilities, and a first Mercado Livre adapter spine that maps official listing, stock, and order shapes with explicit unsupported/rate-limit behavior.
 
+## Validation Scope Declaration
+
+- contract_validated: Yes
+- integration_validated: No
+- blocked_for_real_validation: live Mercado Livre credentials, listings, orders, and operator-approved runtime validation were not part of the milestone's delivered scope
+
+This pass covers capability-contract and adapter-spine readiness only. It does not claim that live Mercado Livre runtime behavior has been executed successfully in a real environment.
+
 ## Feature Evidence
 
 - F-01 capability port contract: `.mnfs/MIS-001-mercado-livre-operating-cockpit/M-02-marketplace-capability-framework/F-01-capability-port-contract/validation.md`
