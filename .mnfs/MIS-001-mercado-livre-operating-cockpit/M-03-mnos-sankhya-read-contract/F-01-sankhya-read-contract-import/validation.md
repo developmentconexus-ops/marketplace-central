@@ -35,7 +35,7 @@ Quick validation passed for the scoped domain and read-port contract. The featur
 
 ## Quick Validation State
 
-- fixup_attempts: 0
+- fixup_attempts: 1
 - max_fixup_attempts: 1
 - last_feature_validation_result: Pass
 
@@ -88,6 +88,21 @@ Quick validation passed for the scoped domain and read-port contract. The featur
   - Actual: `ok marketplace-central/apps/server_core/internal/modules/internal_read/domain 1.349s`; `ok marketplace-central/apps/server_core/internal/modules/internal_read/ports (cached)`.
   - Artifact: Pasted output in Codex terminal session.
   - Blocking condition: None.
+- Command: `cd apps/server_core; $env:GOCACHE=(Join-Path (Get-Location) '.gocache'); go test ./internal/modules/internal_read/...`
+  - Status: Pass
+  - Evidence type: ran
+  - Owner: Feature Implementer
+  - Expected: Focused tests remain green after the review-loop fix that made `CurrentPriceInput` optional for table/local defaults and added group-aware `SalesHistoryInput`.
+  - Actual: `ok marketplace-central/apps/server_core/internal/modules/internal_read/domain (cached)`; `ok marketplace-central/apps/server_core/internal/modules/internal_read/ports (cached)`.
+  - Artifact: Pasted output in Codex terminal session.
+  - Blocking condition: None.
+
+## Same-Session Fixup Attempts
+
+- Attempt 1
+  - Trigger: Task review found the F-01 port surface too narrow for IC-002 because `CurrentPriceInput` made `CODTAB`/`CODLOCAL` mandatory and `SalesHistoryInput` could not express group-level queries.
+  - Change made: relaxed `CurrentPriceInput` to optional `Codtab`/`Codlocal` pointers; added `CodgrupoProd` to `SalesHistoryInput`; extended contract tests to cover the contract shape.
+  - Result: focused `go test ./internal/modules/internal_read/...` rerun passed.
 
 ## Manual QA
 
