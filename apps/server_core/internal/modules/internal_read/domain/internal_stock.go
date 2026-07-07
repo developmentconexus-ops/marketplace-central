@@ -26,7 +26,7 @@ func DefaultSellableStockScope() StockScope {
 
 type SellableStock struct {
 	Codprod         int
-	Quantity        float64
+	Quantity        *float64
 	Scope           StockScope
 	QualityFlags    []QualityFlag
 	SourceFetchedAt time.Time

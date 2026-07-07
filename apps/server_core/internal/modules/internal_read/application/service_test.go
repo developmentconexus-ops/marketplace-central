@@ -15,7 +15,7 @@ func TestServiceDelegatesSellableStock(t *testing.T) {
 		Stocks: map[int]domain.SellableStock{
 			42664: {
 				Codprod:         42664,
-				Quantity:        3,
+				Quantity:        float64ptr(3),
 				Scope:           domain.DefaultSellableStockScope(),
 				SourceFetchedAt: time.Date(2026, 7, 7, 12, 0, 0, 0, time.UTC),
 			},
@@ -27,7 +27,11 @@ func TestServiceDelegatesSellableStock(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got.Quantity != 3 {
+	if got.Quantity == nil || *got.Quantity != 3 {
 		t.Fatalf("expected 3, got %v", got.Quantity)
 	}
+}
+
+func float64ptr(v float64) *float64 {
+	return &v
 }

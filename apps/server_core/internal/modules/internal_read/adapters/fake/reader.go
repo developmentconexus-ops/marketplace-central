@@ -42,7 +42,9 @@ func (r *Reader) FindProductsForLinking(_ context.Context, input ports.FindProdu
 			return products, nil
 		}
 	}
-	return []domain.ProductCandidate{}, nil
+	return []domain.ProductCandidate{{
+		QualityFlags: []domain.QualityFlag{domain.QualityMissingProduct},
+	}}, nil
 }
 
 func (r *Reader) GetSellableStock(_ context.Context, input ports.SellableStockInput) (domain.SellableStock, error) {
@@ -51,7 +53,7 @@ func (r *Reader) GetSellableStock(_ context.Context, input ports.SellableStockIn
 	}
 	return domain.SellableStock{
 		Codprod:         input.Codprod,
-		Quantity:        0,
+		Quantity:        nil,
 		Scope:           domain.DefaultSellableStockScope(),
 		QualityFlags:    []domain.QualityFlag{domain.QualityMissingStock},
 		SourceFetchedAt: time.Time{},
@@ -77,7 +79,7 @@ func (r *Reader) GetCurrentPrice(_ context.Context, input ports.CurrentPriceInpu
 		Codtab:       codtab,
 		Codlocal:     codlocal,
 		Price:        nil,
-		QualityFlags: []domain.QualityFlag{domain.QualityMissingCost},
+		QualityFlags: nil,
 	}, nil
 }
 

@@ -21,6 +21,7 @@ Path: `apps/server_core/internal/modules/product_links/` (planned)
 - Ambiguous links must remain unresolved; downstream modules must surface data-quality flags instead of guessing.
 - Provider identifiers are strings, even when the provider returns numeric-looking IDs.
 - The module owns mapping state; connectors only fetch provider identifiers.
+- `internal_read` missing or ambiguous product candidates map to unresolved link states, not fallback guesses.
 
 ## Initial Mercado Livre Scope
 

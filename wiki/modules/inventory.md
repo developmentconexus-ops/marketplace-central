@@ -21,6 +21,7 @@ Path: `apps/server_core/internal/modules/inventory/` (planned)
 - Mercado Livre writes require a resolved product link, current provider state, safety policy, and audit record.
 - Unknown stock, stale stock, ambiguous link, or provider read failure must block automatic writes.
 - `available_quantity` updates must be idempotent and record before/after values.
+- `internal_read` returning `missing_stock` means stock quantity stays nil and the workflow is blocked rather than defaulted to `0`.
 
 ## Initial Mercado Livre Scope
 

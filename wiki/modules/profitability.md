@@ -21,6 +21,7 @@ Path: `apps/server_core/internal/modules/profitability/` (planned)
 - Unknown values are explicit data-quality states, not zero defaults.
 - Cost must use the internal cost provider and the sale date when available.
 - Manual freight/fee/tax adjustments require audit notes.
+- `internal_read` missing cost or tax inputs must remain nil with `missing_cost` / `missing_tax` flags so margin quality is incomplete, not silently zeroed.
 
 ## Initial Mercado Livre Scope
 
