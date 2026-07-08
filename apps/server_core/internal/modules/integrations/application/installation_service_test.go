@@ -10,16 +10,23 @@ import (
 )
 
 type stubInstallationRepo struct {
-	saved    []domain.Installation
-	list     []domain.Installation
-	updated  []installationStatusUpdate
-	getByID  map[string]domain.Installation
+	saved            []domain.Installation
+	list             []domain.Installation
+	updated          []installationStatusUpdate
+	appliedSnapshots []appliedConnectionSnapshot
+	getByID          map[string]domain.Installation
 }
 
 type installationStatusUpdate struct {
 	installationID string
 	status         domain.InstallationStatus
 	health         domain.HealthStatus
+}
+
+type appliedConnectionSnapshot struct {
+	installationID     string
+	snapshot           domain.ConnectionSnapshot
+	activeCredentialID string
 }
 
 func (s *stubInstallationRepo) CreateInstallation(_ context.Context, inst domain.Installation) error {
@@ -55,11 +62,12 @@ func (s *stubInstallationRepo) UpdateInstallationStatus(_ context.Context, insta
 	return nil
 }
 
-func (s *stubInstallationRepo) UpdateActiveCredentialID(_ context.Context, _, _ string) error {
-	return nil
-}
-
-func (s *stubInstallationRepo) SetProviderAccountID(_ context.Context, _, _, _ string) error {
+func (s *stubInstallationRepo) ApplyConnectionSnapshot(_ context.Context, installationID string, snapshot domain.ConnectionSnapshot, activeCredentialID string) error {
+	s.appliedSnapshots = append(s.appliedSnapshots, appliedConnectionSnapshot{
+		installationID:     installationID,
+		snapshot:           snapshot,
+		activeCredentialID: activeCredentialID,
+	})
 	return nil
 }
 
@@ -177,5 +185,53 @@ func TestInstallationServiceRejectsInvalidUpdateStatus(t *testing.T) {
 	}
 	if got, want := err.Error(), "INTEGRATIONS_INSTALLATION_INVALID"; got != want {
 		t.Fatalf("UpdateStatus() error = %q, want %q", err.Error(), "INTEGRATIONS_INSTALLATION_INVALID")
+	}
+}
+
+func TestInstallationServiceApplyConnectionSnapshotRejectsEmptyInstallation(t *testing.T) {
+	t.Parallel()
+
+	svc := NewInstallationService(&stubInstallationRepo{}, "tenant-default")
+
+	err := svc.ApplyConnectionSnapshot(context.Background(), "", domain.ConnectionSnapshot{}, "cred-1")
+	if err == nil {
+		t.Fatal("ApplyConnectionSnapshot() error = nil, want invalid input error")
+	}
+	if got, want := err.Error(), "INTEGRATIONS_INSTALLATION_INVALID"; got != want {
+		t.Fatalf("ApplyConnectionSnapshot() error = %q, want %q", got, want)
+	}
+}
+
+func TestInstallationServiceApplyConnectionSnapshotDelegatesToRepository(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubInstallationRepo{}
+	svc := NewInstallationService(repo, "tenant-default")
+	verifiedAt := time.Unix(100, 0).UTC()
+	expiresAt := verifiedAt.Add(time.Hour)
+	snapshot := domain.ConnectionSnapshot{
+		State:               domain.ConnectionStateConnected,
+		Health:              domain.HealthStatusHealthy,
+		ProviderCode:        "mercado_livre",
+		ExternalAccountID:   "seller-1",
+		ExternalAccountName: "Seller One",
+		AuthStrategy:        domain.AuthStrategyOAuth2,
+		LastVerifiedAt:      &verifiedAt,
+		ExpiresAt:           &expiresAt,
+		NextAction:          domain.ConnectionNextActionNone,
+	}
+
+	err := svc.ApplyConnectionSnapshot(context.Background(), "inst-1", snapshot, "cred-1")
+	if err != nil {
+		t.Fatalf("ApplyConnectionSnapshot() error = %v", err)
+	}
+
+	want := []appliedConnectionSnapshot{{
+		installationID:     "inst-1",
+		snapshot:           snapshot,
+		activeCredentialID: "cred-1",
+	}}
+	if !reflect.DeepEqual(repo.appliedSnapshots, want) {
+		t.Fatalf("ApplyConnectionSnapshot() calls = %#v, want %#v", repo.appliedSnapshots, want)
 	}
 }

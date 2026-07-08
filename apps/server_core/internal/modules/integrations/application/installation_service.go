@@ -75,6 +75,15 @@ func (s *InstallationService) UpdateStatus(ctx context.Context, installationID s
 	return s.repo.UpdateInstallationStatus(ctx, installationID, status, health)
 }
 
+func (s *InstallationService) ApplyConnectionSnapshot(ctx context.Context, installationID string, snapshot domain.ConnectionSnapshot, activeCredentialID string) error {
+	installationID = strings.TrimSpace(installationID)
+	if installationID == "" || !isValidConnectionState(snapshot.State) || !isValidHealthStatus(snapshot.Health) {
+		return errors.New("INTEGRATIONS_INSTALLATION_INVALID")
+	}
+
+	return s.repo.ApplyConnectionSnapshot(ctx, installationID, snapshot, strings.TrimSpace(activeCredentialID))
+}
+
 func isValidInstallationStatus(status domain.InstallationStatus) bool {
 	switch status {
 	case domain.InstallationStatusDraft,
@@ -96,6 +105,20 @@ func isValidHealthStatus(status domain.HealthStatus) bool {
 	case domain.HealthStatusHealthy,
 		domain.HealthStatusWarning,
 		domain.HealthStatusCritical:
+		return true
+	default:
+		return false
+	}
+}
+
+func isValidConnectionState(state domain.ConnectionState) bool {
+	switch state {
+	case domain.ConnectionStateDraft,
+		domain.ConnectionStatePending,
+		domain.ConnectionStateConnected,
+		domain.ConnectionStateDegraded,
+		domain.ConnectionStateNeedsReauth,
+		domain.ConnectionStateDisconnected:
 		return true
 	default:
 		return false

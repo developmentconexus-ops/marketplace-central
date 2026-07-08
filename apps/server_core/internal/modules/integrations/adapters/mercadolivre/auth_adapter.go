@@ -23,6 +23,7 @@ type Config struct {
 	ClientSecret string
 	AuthorizeURL string
 	TokenURL     string
+	APIBaseURL   string
 	HTTPClient   *http.Client
 }
 
@@ -70,11 +71,15 @@ func init() {
 			ClientSecret: strings.TrimSpace(os.Getenv("MPC_PROVIDER_MERCADOLIVRE_CLIENT_SECRET")),
 			AuthorizeURL: "https://auth.mercadolivre.com.br/authorization",
 			TokenURL:     "https://api.mercadolibre.com/oauth/token",
+			APIBaseURL:   "https://api.mercadolibre.com",
 		})
 	})
 }
 
 func NewAdapter(cfg Config) *Adapter {
+	if strings.TrimSpace(cfg.APIBaseURL) == "" {
+		cfg.APIBaseURL = "https://api.mercadolibre.com"
+	}
 	if cfg.HTTPClient == nil {
 		cfg.HTTPClient = &http.Client{Timeout: 15 * time.Second}
 	}
@@ -120,6 +125,10 @@ func (a *Adapter) ExchangeCallback(ctx context.Context, input application.Handle
 	if err != nil {
 		return application.CredentialPayload{}, err
 	}
+	profile, err := a.lookupAccount(ctx, result.AccessToken, result.ProviderAccountID)
+	if err != nil {
+		return application.CredentialPayload{}, err
+	}
 
 	var expiresAt *time.Time
 	if result.ExpiresIn > 0 {
@@ -128,12 +137,13 @@ func (a *Adapter) ExchangeCallback(ctx context.Context, input application.Handle
 	}
 
 	return application.CredentialPayload{
-		SecretType:        "oauth2",
-		AccessToken:       result.AccessToken,
-		RefreshToken:      result.RefreshToken,
-		ProviderAccountID: result.ProviderAccountID,
-		ExpiresAt:         expiresAt,
-		Extra:             result.RawExtras,
+		SecretType:          "oauth2",
+		AccessToken:         result.AccessToken,
+		RefreshToken:        result.RefreshToken,
+		ProviderAccountID:   profile.ProviderAccountID,
+		ProviderAccountName: profile.ProviderAccountName,
+		ExpiresAt:           expiresAt,
+		Extra:               result.RawExtras,
 	}, nil
 }
 
@@ -188,6 +198,10 @@ func (a *Adapter) Refresh(ctx context.Context, input application.RefreshCredenti
 	if err != nil {
 		return application.CredentialPayload{}, err
 	}
+	profile, err := a.lookupAccount(ctx, result.AccessToken, firstNonEmpty(result.ProviderAccountID, input.ProviderAccountID))
+	if err != nil {
+		return application.CredentialPayload{}, err
+	}
 
 	var expiresAt *time.Time
 	if result.ExpiresIn > 0 {
@@ -196,12 +210,13 @@ func (a *Adapter) Refresh(ctx context.Context, input application.RefreshCredenti
 	}
 
 	return application.CredentialPayload{
-		SecretType:        "oauth2",
-		AccessToken:       result.AccessToken,
-		RefreshToken:      result.RefreshToken,
-		ProviderAccountID: result.ProviderAccountID,
-		ExpiresAt:         expiresAt,
-		Extra:             result.RawExtras,
+		SecretType:          "oauth2",
+		AccessToken:         result.AccessToken,
+		RefreshToken:        result.RefreshToken,
+		ProviderAccountID:   profile.ProviderAccountID,
+		ProviderAccountName: profile.ProviderAccountName,
+		ExpiresAt:           expiresAt,
+		Extra:               result.RawExtras,
 	}, nil
 }
 
@@ -289,4 +304,62 @@ func readProviderErrorBody(resp *http.Response) string {
 		return "empty"
 	}
 	return text
+}
+
+type accountProfile struct {
+	ProviderAccountID   string
+	ProviderAccountName string
+}
+
+func (a *Adapter) lookupAccount(ctx context.Context, accessToken string, fallbackAccountID string) (accountProfile, error) {
+	accountID := strings.TrimSpace(fallbackAccountID)
+	if strings.TrimSpace(accessToken) == "" {
+		return accountProfile{ProviderAccountID: accountID}, nil
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(a.cfg.APIBaseURL, "/")+"/users/me", nil)
+	if err != nil {
+		return accountProfile{}, err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+
+	resp, err := a.cfg.HTTPClient.Do(req)
+	if err != nil {
+		return accountProfile{}, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return accountProfile{}, fmt.Errorf("%w: status=%d body=%s", domain.ErrAuthCodeExchangeFailed, resp.StatusCode, readProviderErrorBody(resp))
+	}
+
+	var payload struct {
+		ID        any    `json:"id"`
+		Nickname  string `json:"nickname"`
+		FirstName string `json:"first_name"`
+		LastName  string `json:"last_name"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return accountProfile{}, err
+	}
+
+	name := strings.TrimSpace(payload.Nickname)
+	if name == "" {
+		name = strings.TrimSpace(strings.TrimSpace(payload.FirstName) + " " + strings.TrimSpace(payload.LastName))
+	}
+
+	return accountProfile{
+		ProviderAccountID:   firstNonEmpty(normalizeAnyString(payload.ID), accountID),
+		ProviderAccountName: name,
+	}, nil
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value != "" {
+			return value
+		}
+	}
+	return ""
 }

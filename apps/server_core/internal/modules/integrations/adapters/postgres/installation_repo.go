@@ -2,6 +2,8 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -22,15 +24,20 @@ func NewInstallationRepository(pool *pgxpool.Pool, tenantID string) *Installatio
 }
 
 func (r *InstallationRepository) CreateInstallation(ctx context.Context, inst domain.Installation) error {
-	_, err := r.pool.Exec(ctx, `
+	connectionJSON, err := marshalConnectionSnapshot(inst.ConnectionSnapshot)
+	if err != nil {
+		return err
+	}
+
+	_, err = r.pool.Exec(ctx, `
 		INSERT INTO integration_installations (
 			installation_id, tenant_id, provider_code, family, display_name,
 			status, health_status, external_account_id, external_account_name,
-			active_credential_id, last_verified_at, created_at, updated_at
+			active_credential_id, last_verified_at, connection_snapshot_json, created_at, updated_at
 		) VALUES (
 			$1, $2, $3, $4, $5,
 			$6, $7, $8, $9,
-			NULLIF($10, ''), $11, $12, $13
+			NULLIF($10, ''), $11, $12, $13, $14
 		)
 		ON CONFLICT (tenant_id, installation_id) DO UPDATE SET
 			provider_code = EXCLUDED.provider_code,
@@ -42,11 +49,12 @@ func (r *InstallationRepository) CreateInstallation(ctx context.Context, inst do
 			external_account_name = EXCLUDED.external_account_name,
 			active_credential_id = EXCLUDED.active_credential_id,
 			last_verified_at = EXCLUDED.last_verified_at,
+			connection_snapshot_json = EXCLUDED.connection_snapshot_json,
 			created_at = EXCLUDED.created_at,
 			updated_at = EXCLUDED.updated_at
 	`, inst.InstallationID, r.tenantID, inst.ProviderCode, inst.Family, inst.DisplayName,
 		inst.Status, inst.HealthStatus, inst.ExternalAccountID, inst.ExternalAccountName,
-		inst.ActiveCredentialID, inst.LastVerifiedAt, inst.CreatedAt, inst.UpdatedAt)
+		inst.ActiveCredentialID, inst.LastVerifiedAt, connectionJSON, inst.CreatedAt, inst.UpdatedAt)
 	return err
 }
 
@@ -55,7 +63,7 @@ func (r *InstallationRepository) GetInstallation(ctx context.Context, installati
 		SELECT
 			installation_id, tenant_id, provider_code, family, display_name,
 			status, health_status, external_account_id, external_account_name,
-			active_credential_id, last_verified_at, created_at, updated_at
+			active_credential_id, last_verified_at, connection_snapshot_json, created_at, updated_at
 		FROM integration_installations
 		WHERE tenant_id = $1 AND installation_id = $2
 	`, r.tenantID, installationID)
@@ -75,7 +83,7 @@ func (r *InstallationRepository) ListInstallations(ctx context.Context) ([]domai
 		SELECT
 			installation_id, tenant_id, provider_code, family, display_name,
 			status, health_status, external_account_id, external_account_name,
-			active_credential_id, last_verified_at, created_at, updated_at
+			active_credential_id, last_verified_at, connection_snapshot_json, created_at, updated_at
 		FROM integration_installations
 		WHERE tenant_id = $1
 		ORDER BY created_at DESC, installation_id DESC
@@ -107,26 +115,33 @@ func (r *InstallationRepository) UpdateInstallationStatus(ctx context.Context, i
 	return err
 }
 
-func (r *InstallationRepository) UpdateActiveCredentialID(ctx context.Context, installationID string, credentialID string) error {
-	_, err := r.pool.Exec(ctx, `
-		UPDATE integration_installations
-		SET active_credential_id = NULLIF($3, ''),
-		    updated_at = now()
-		WHERE tenant_id = $1
-		  AND installation_id = $2
-	`, r.tenantID, installationID, credentialID)
-	return err
-}
+func (r *InstallationRepository) ApplyConnectionSnapshot(ctx context.Context, installationID string, snapshot domain.ConnectionSnapshot, activeCredentialID string) error {
+	connectionJSON, err := marshalConnectionSnapshot(snapshot)
+	if err != nil {
+		return err
+	}
 
-func (r *InstallationRepository) SetProviderAccountID(ctx context.Context, installationID, providerAccountID, providerAccountName string) error {
-	_, err := r.pool.Exec(ctx, `
+	_, err = r.pool.Exec(ctx, `
 		UPDATE integration_installations
-		SET external_account_id = $3,
-		    external_account_name = $4,
+		SET status = $3,
+		    health_status = $4,
+		    external_account_id = $5,
+		    external_account_name = $6,
+		    active_credential_id = NULLIF($7, ''),
+		    last_verified_at = $8,
+		    connection_snapshot_json = $9,
 		    updated_at = now()
 		WHERE tenant_id = $1
 		  AND installation_id = $2
-	`, r.tenantID, installationID, providerAccountID, providerAccountName)
+	`, r.tenantID, installationID,
+		installationStatusFromConnectionState(snapshot.State),
+		snapshot.Health,
+		strings.TrimSpace(snapshot.ExternalAccountID),
+		strings.TrimSpace(snapshot.ExternalAccountName),
+		activeCredentialID,
+		snapshot.LastVerifiedAt,
+		connectionJSON,
+	)
 	return err
 }
 
@@ -136,6 +151,7 @@ func scanInstallation(scanner interface {
 	var inst domain.Installation
 	var activeCredential pgtype.Text
 	var lastVerified pgtype.Timestamptz
+	var connectionSnapshotRaw []byte
 
 	err := scanner.Scan(
 		&inst.InstallationID,
@@ -149,6 +165,7 @@ func scanInstallation(scanner interface {
 		&inst.ExternalAccountName,
 		&activeCredential,
 		&lastVerified,
+		&connectionSnapshotRaw,
 		&inst.CreatedAt,
 		&inst.UpdatedAt,
 	)
@@ -164,7 +181,34 @@ func scanInstallation(scanner interface {
 		inst.LastVerifiedAt = &ts
 	}
 	inst.ConnectionSnapshot = domain.ProjectConnectionSnapshot(inst, domain.AuthStrategyUnknown, nil, "")
+	if len(connectionSnapshotRaw) > 0 {
+		var snapshot domain.ConnectionSnapshot
+		if err := json.Unmarshal(connectionSnapshotRaw, &snapshot); err == nil && strings.TrimSpace(string(snapshot.State)) != "" {
+			inst.ConnectionSnapshot = snapshot
+		}
+	}
 	inst.RuntimeCapabilities = []domain.RuntimeCapability{}
 
 	return inst, true, nil
+}
+
+func installationStatusFromConnectionState(state domain.ConnectionState) domain.InstallationStatus {
+	switch state {
+	case domain.ConnectionStateDraft:
+		return domain.InstallationStatusDraft
+	case domain.ConnectionStatePending:
+		return domain.InstallationStatusPendingConnection
+	case domain.ConnectionStateConnected:
+		return domain.InstallationStatusConnected
+	case domain.ConnectionStateDegraded:
+		return domain.InstallationStatusDegraded
+	case domain.ConnectionStateNeedsReauth:
+		return domain.InstallationStatusRequiresReauth
+	default:
+		return domain.InstallationStatusDisconnected
+	}
+}
+
+func marshalConnectionSnapshot(snapshot domain.ConnectionSnapshot) ([]byte, error) {
+	return json.Marshal(snapshot)
 }

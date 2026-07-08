@@ -26,6 +26,14 @@ func TestAdapterBuildsAuthorizeURLAndExchangesCallback(t *testing.T) {
 				"expires_in":    3600,
 				"user_id":       12345,
 			})
+		case "/users/me":
+			if got, want := r.Header.Get("Authorization"), "Bearer ml-access"; got != want {
+				t.Fatalf("Authorization header = %q, want %q", got, want)
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"id":       12345,
+				"nickname": "METALNOBREACABAMENTOS",
+			})
 		default:
 			http.NotFound(w, r)
 		}
@@ -37,6 +45,7 @@ func TestAdapterBuildsAuthorizeURLAndExchangesCallback(t *testing.T) {
 		ClientSecret: "client-secret",
 		AuthorizeURL: server.URL + "/authorization",
 		TokenURL:     server.URL + "/oauth/token",
+		APIBaseURL:   server.URL,
 		HTTPClient:   server.Client(),
 	})
 
@@ -68,6 +77,9 @@ func TestAdapterBuildsAuthorizeURLAndExchangesCallback(t *testing.T) {
 	}
 	if credential.ProviderAccountID != "12345" {
 		t.Fatalf("provider account ID = %q, want 12345", credential.ProviderAccountID)
+	}
+	if credential.ProviderAccountName != "METALNOBREACABAMENTOS" {
+		t.Fatalf("provider account name = %q, want METALNOBREACABAMENTOS", credential.ProviderAccountName)
 	}
 	if !strings.Contains(tokenRequestBody, "grant_type=authorization_code") || !strings.Contains(tokenRequestBody, "code=code-1") || !strings.Contains(tokenRequestBody, "code_verifier=verifier-1") {
 		t.Fatalf("token request body = %q, want auth code grant with code and PKCE verifier", tokenRequestBody)

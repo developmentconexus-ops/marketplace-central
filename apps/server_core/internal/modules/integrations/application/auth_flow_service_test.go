@@ -17,6 +17,7 @@ type flowInstallationStore struct {
 	activeCredentialIDs  []string
 	providerAccountIDs   []string
 	providerAccountNames []string
+	connectionSnapshots  []domain.ConnectionSnapshot
 }
 
 func (s *flowInstallationStore) Get(ctx context.Context, installationID string) (domain.Installation, bool, error) {
@@ -32,31 +33,22 @@ func (s *flowInstallationStore) List(ctx context.Context) ([]domain.Installation
 	return items, nil
 }
 
-func (s *flowInstallationStore) UpdateStatus(ctx context.Context, installationID string, status domain.InstallationStatus, health domain.HealthStatus) error {
+func (s *flowInstallationStore) ApplyConnectionSnapshot(ctx context.Context, installationID string, snapshot domain.ConnectionSnapshot, activeCredentialID string) error {
 	inst := s.installations[installationID]
-	inst.Status = status
-	inst.HealthStatus = health
+	inst.Status = installationStatusForTest(snapshot.State)
+	inst.HealthStatus = snapshot.Health
+	inst.ExternalAccountID = snapshot.ExternalAccountID
+	inst.ExternalAccountName = snapshot.ExternalAccountName
+	inst.ActiveCredentialID = activeCredentialID
+	inst.LastVerifiedAt = snapshot.LastVerifiedAt
+	inst.ConnectionSnapshot = snapshot
 	s.installations[installationID] = inst
-	s.statuses = append(s.statuses, status)
-	s.healths = append(s.healths, health)
-	return nil
-}
-
-func (s *flowInstallationStore) UpdateActiveCredentialID(ctx context.Context, installationID string, credentialID string) error {
-	inst := s.installations[installationID]
-	inst.ActiveCredentialID = credentialID
-	s.installations[installationID] = inst
-	s.activeCredentialIDs = append(s.activeCredentialIDs, credentialID)
-	return nil
-}
-
-func (s *flowInstallationStore) SetProviderAccountID(ctx context.Context, installationID, providerAccountID, providerAccountName string) error {
-	inst := s.installations[installationID]
-	inst.ExternalAccountID = providerAccountID
-	inst.ExternalAccountName = providerAccountName
-	s.installations[installationID] = inst
-	s.providerAccountIDs = append(s.providerAccountIDs, providerAccountID)
-	s.providerAccountNames = append(s.providerAccountNames, providerAccountName)
+	s.statuses = append(s.statuses, inst.Status)
+	s.healths = append(s.healths, inst.HealthStatus)
+	s.activeCredentialIDs = append(s.activeCredentialIDs, activeCredentialID)
+	s.providerAccountIDs = append(s.providerAccountIDs, snapshot.ExternalAccountID)
+	s.providerAccountNames = append(s.providerAccountNames, snapshot.ExternalAccountName)
+	s.connectionSnapshots = append(s.connectionSnapshots, snapshot)
 	return nil
 }
 
@@ -1006,4 +998,21 @@ func mustNewAuthFlowService(t *testing.T, cfg AuthFlowConfig) *AuthFlowService {
 		t.Fatalf("NewAuthFlowService() error = %v", err)
 	}
 	return svc
+}
+
+func installationStatusForTest(state domain.ConnectionState) domain.InstallationStatus {
+	switch state {
+	case domain.ConnectionStateDraft:
+		return domain.InstallationStatusDraft
+	case domain.ConnectionStatePending:
+		return domain.InstallationStatusPendingConnection
+	case domain.ConnectionStateConnected:
+		return domain.InstallationStatusConnected
+	case domain.ConnectionStateDegraded:
+		return domain.InstallationStatusDegraded
+	case domain.ConnectionStateNeedsReauth:
+		return domain.InstallationStatusRequiresReauth
+	default:
+		return domain.InstallationStatusDisconnected
+	}
 }

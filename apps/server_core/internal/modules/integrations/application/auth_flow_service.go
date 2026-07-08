@@ -128,9 +128,7 @@ type MarketplaceAuthAdapter interface {
 type authFlowInstallationStore interface {
 	Get(ctx context.Context, installationID string) (domain.Installation, bool, error)
 	List(ctx context.Context) ([]domain.Installation, error)
-	UpdateStatus(ctx context.Context, installationID string, status domain.InstallationStatus, health domain.HealthStatus) error
-	UpdateActiveCredentialID(ctx context.Context, installationID string, credentialID string) error
-	SetProviderAccountID(ctx context.Context, installationID, providerAccountID, providerAccountName string) error
+	ApplyConnectionSnapshot(ctx context.Context, installationID string, snapshot domain.ConnectionSnapshot, activeCredentialID string) error
 }
 
 type authFlowCredentialRotator interface {
@@ -304,7 +302,22 @@ func (s *AuthFlowService) StartAuthorize(ctx context.Context, input StartAuthori
 		return AuthorizeStart{}, err
 	}
 
-	if err := s.installations.UpdateStatus(ctx, inst.InstallationID, domain.InstallationStatusPendingConnection, inst.HealthStatus); err != nil {
+	pendingSnapshot := domain.ProjectConnectionSnapshot(domain.Installation{
+		InstallationID:      inst.InstallationID,
+		TenantID:            inst.TenantID,
+		ProviderCode:        inst.ProviderCode,
+		Family:              inst.Family,
+		DisplayName:         inst.DisplayName,
+		Status:              domain.InstallationStatusPendingConnection,
+		HealthStatus:        inst.HealthStatus,
+		ExternalAccountID:   inst.ExternalAccountID,
+		ExternalAccountName: inst.ExternalAccountName,
+		ActiveCredentialID:  inst.ActiveCredentialID,
+		LastVerifiedAt:      inst.LastVerifiedAt,
+		CreatedAt:           inst.CreatedAt,
+		UpdatedAt:           s.clock.Now().UTC(),
+	}, inferConnectionAuthStrategy(inst.ConnectionSnapshot), inst.ConnectionSnapshot.ExpiresAt, inst.ConnectionSnapshot.ReauthReason)
+	if err := s.installations.ApplyConnectionSnapshot(ctx, inst.InstallationID, pendingSnapshot, inst.ActiveCredentialID); err != nil {
 		return AuthorizeStart{}, err
 	}
 
@@ -359,11 +372,7 @@ func (s *AuthFlowService) HandleCallback(ctx context.Context, input HandleCallba
 		return AuthStatus{}, err
 	}
 
-	if err := s.installations.UpdateStatus(ctx, inst.InstallationID, domain.InstallationStatusConnected, domain.HealthStatusHealthy); err != nil {
-		return AuthStatus{}, err
-	}
-
-	return buildAuthStatus(inst, domain.InstallationStatusConnected, domain.HealthStatusHealthy, payload, credential), nil
+	return s.applyAuthResult(ctx, inst, payload, credential, domain.InstallationStatusConnected, domain.HealthStatusHealthy)
 }
 
 func (s *AuthFlowService) SubmitAPIKey(ctx context.Context, input SubmitAPIKeyInput) (AuthStatus, error) {
@@ -386,11 +395,7 @@ func (s *AuthFlowService) SubmitAPIKey(ctx context.Context, input SubmitAPIKeyIn
 		return AuthStatus{}, err
 	}
 
-	if err := s.installations.UpdateStatus(ctx, inst.InstallationID, domain.InstallationStatusConnected, domain.HealthStatusHealthy); err != nil {
-		return AuthStatus{}, err
-	}
-
-	return buildAuthStatus(inst, domain.InstallationStatusConnected, domain.HealthStatusHealthy, payload, credential), nil
+	return s.applyAuthResult(ctx, inst, payload, credential, domain.InstallationStatusConnected, domain.HealthStatusHealthy)
 }
 
 func (s *AuthFlowService) RefreshCredential(ctx context.Context, input RefreshCredentialInput) (AuthStatus, error) {
@@ -462,11 +467,7 @@ func (s *AuthFlowService) RefreshCredential(ctx context.Context, input RefreshCr
 		return AuthStatus{}, err
 	}
 
-	if err := s.installations.UpdateStatus(ctx, input.InstallationID, domain.InstallationStatusConnected, domain.HealthStatusHealthy); err != nil {
-		return AuthStatus{}, err
-	}
-
-	return buildAuthStatus(inst, domain.InstallationStatusConnected, domain.HealthStatusHealthy, payload, credential), nil
+	return s.applyAuthResult(ctx, inst, payload, credential, domain.InstallationStatusConnected, domain.HealthStatusHealthy)
 }
 
 func (s *AuthFlowService) Disconnect(ctx context.Context, input DisconnectInput) (AuthStatus, error) {
@@ -488,35 +489,32 @@ func (s *AuthFlowService) Disconnect(ctx context.Context, input DisconnectInput)
 	if err := s.credentials.DeactivateAllForInstallation(ctx, inst.InstallationID); err != nil {
 		return AuthStatus{}, err
 	}
-	if err := s.installations.UpdateActiveCredentialID(ctx, inst.InstallationID, ""); err != nil {
-		return AuthStatus{}, err
+	disconnectedInstallation := domain.Installation{
+		InstallationID:      inst.InstallationID,
+		TenantID:            inst.TenantID,
+		ProviderCode:        inst.ProviderCode,
+		Family:              inst.Family,
+		DisplayName:         inst.DisplayName,
+		Status:              domain.InstallationStatusDisconnected,
+		HealthStatus:        domain.HealthStatusWarning,
+		ExternalAccountID:   inst.ExternalAccountID,
+		ExternalAccountName: inst.ExternalAccountName,
+		LastVerifiedAt:      inst.LastVerifiedAt,
+		CreatedAt:           inst.CreatedAt,
+		UpdatedAt:           s.clock.Now().UTC(),
 	}
-	if err := s.installations.UpdateStatus(ctx, inst.InstallationID, domain.InstallationStatusDisconnected, domain.HealthStatusWarning); err != nil {
+	disconnectedSnapshot := domain.ProjectConnectionSnapshot(
+		disconnectedInstallation,
+		inferConnectionAuthStrategy(inst.ConnectionSnapshot),
+		inst.ConnectionSnapshot.ExpiresAt,
+		inst.ConnectionSnapshot.ReauthReason,
+	)
+	if err := s.installations.ApplyConnectionSnapshot(ctx, inst.InstallationID, disconnectedSnapshot, ""); err != nil {
 		return AuthStatus{}, err
 	}
 
-	return AuthStatus{
-		InstallationID:      inst.InstallationID,
-		Status:              domain.InstallationStatusDisconnected,
-		HealthStatus:        domain.HealthStatusWarning,
-		ProviderCode:        inst.ProviderCode,
-		ExternalAccount:     inst.ExternalAccountID,
-		ExternalAccountName: inst.ExternalAccountName,
-		Connection: domain.ProjectConnectionSnapshot(domain.Installation{
-			InstallationID:      inst.InstallationID,
-			TenantID:            inst.TenantID,
-			ProviderCode:        inst.ProviderCode,
-			Family:              inst.Family,
-			DisplayName:         inst.DisplayName,
-			Status:              domain.InstallationStatusDisconnected,
-			HealthStatus:        domain.HealthStatusWarning,
-			ExternalAccountID:   inst.ExternalAccountID,
-			ExternalAccountName: inst.ExternalAccountName,
-			LastVerifiedAt:      inst.LastVerifiedAt,
-			CreatedAt:           inst.CreatedAt,
-			UpdatedAt:           inst.UpdatedAt,
-		}, domain.AuthStrategyUnknown, nil, ""),
-	}, nil
+	disconnectedInstallation.ConnectionSnapshot = disconnectedSnapshot
+	return authStatusFromInstallation(disconnectedInstallation), nil
 }
 
 func (s *AuthFlowService) StartReauth(ctx context.Context, input StartReauthInput) (AuthorizeStart, error) {
@@ -557,14 +555,6 @@ func (s *CredentialService) DeactivateAllForInstallation(ctx context.Context, in
 		return errors.New("INTEGRATIONS_CREDENTIAL_INVALID")
 	}
 	return s.store.DeactivateAllForInstallation(ctx, installationID)
-}
-
-func (s *InstallationService) UpdateActiveCredentialID(ctx context.Context, installationID string, credentialID string) error {
-	installationID = strings.TrimSpace(installationID)
-	if installationID == "" {
-		return errors.New("INTEGRATIONS_INSTALLATION_INVALID")
-	}
-	return s.repo.UpdateActiveCredentialID(ctx, installationID, strings.TrimSpace(credentialID))
 }
 
 func (s *AuthService) GetAuthSession(ctx context.Context, installationID string) (domain.AuthSession, bool, error) {
@@ -677,17 +667,19 @@ func (s *AuthFlowService) saveCredential(ctx context.Context, installationID str
 	if err != nil {
 		return domain.Credential{}, err
 	}
-	if err := s.installations.UpdateActiveCredentialID(ctx, installationID, credential.CredentialID); err != nil {
-		return domain.Credential{}, err
-	}
-	if err := s.installations.SetProviderAccountID(ctx, installationID, payload.ProviderAccountID, payload.ProviderAccountName); err != nil {
-		return domain.Credential{}, err
-	}
 	return credential, nil
 }
 
-func buildAuthStatus(inst domain.Installation, status domain.InstallationStatus, health domain.HealthStatus, payload CredentialPayload, credential domain.Credential) AuthStatus {
-	lastVerified := ptrTime(time.Now().UTC())
+func (s *AuthFlowService) applyAuthResult(ctx context.Context, inst domain.Installation, payload CredentialPayload, credential domain.Credential, status domain.InstallationStatus, health domain.HealthStatus) (AuthStatus, error) {
+	statusInstallation := buildAuthInstallation(inst, payload, credential, status, health, s.clock.Now().UTC())
+	if err := s.installations.ApplyConnectionSnapshot(ctx, inst.InstallationID, statusInstallation.ConnectionSnapshot, credential.CredentialID); err != nil {
+		return AuthStatus{}, err
+	}
+	return authStatusFromInstallation(statusInstallation), nil
+}
+
+func buildAuthInstallation(inst domain.Installation, payload CredentialPayload, credential domain.Credential, status domain.InstallationStatus, health domain.HealthStatus, now time.Time) domain.Installation {
+	lastVerified := ptrTime(now)
 	statusInstallation := domain.Installation{
 		InstallationID:      inst.InstallationID,
 		TenantID:            inst.TenantID,
@@ -701,22 +693,26 @@ func buildAuthStatus(inst domain.Installation, status domain.InstallationStatus,
 		ActiveCredentialID:  credential.CredentialID,
 		LastVerifiedAt:      lastVerified,
 		CreatedAt:           inst.CreatedAt,
-		UpdatedAt:           time.Now().UTC(),
+		UpdatedAt:           now.UTC(),
 	}
+	statusInstallation.ConnectionSnapshot = domain.ProjectConnectionSnapshot(
+		statusInstallation,
+		inferAuthStrategy(payload),
+		payload.ExpiresAt,
+		"",
+	)
+	return statusInstallation
+}
 
+func authStatusFromInstallation(inst domain.Installation) AuthStatus {
 	return AuthStatus{
-		InstallationID:      statusInstallation.InstallationID,
-		Status:              statusInstallation.Status,
-		HealthStatus:        statusInstallation.HealthStatus,
-		ProviderCode:        statusInstallation.ProviderCode,
-		ExternalAccount:     statusInstallation.ExternalAccountID,
-		ExternalAccountName: statusInstallation.ExternalAccountName,
-		Connection: domain.ProjectConnectionSnapshot(
-			statusInstallation,
-			inferAuthStrategy(payload),
-			payload.ExpiresAt,
-			"",
-		),
+		InstallationID:      inst.InstallationID,
+		Status:              inst.Status,
+		HealthStatus:        inst.HealthStatus,
+		ProviderCode:        inst.ProviderCode,
+		ExternalAccount:     inst.ExternalAccountID,
+		ExternalAccountName: inst.ExternalAccountName,
+		Connection:          inst.ConnectionSnapshot,
 	}
 }
 
@@ -729,6 +725,13 @@ func inferAuthStrategy(payload CredentialPayload) domain.AuthStrategy {
 	default:
 		return domain.AuthStrategyUnknown
 	}
+}
+
+func inferConnectionAuthStrategy(snapshot domain.ConnectionSnapshot) domain.AuthStrategy {
+	if snapshot.AuthStrategy == "" {
+		return domain.AuthStrategyUnknown
+	}
+	return snapshot.AuthStrategy
 }
 
 func credentialPayloadString(payload map[string]any, key string) (string, bool) {
