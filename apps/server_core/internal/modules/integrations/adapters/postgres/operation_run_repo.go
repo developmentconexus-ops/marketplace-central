@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -24,14 +25,14 @@ func (r *OperationRunRepository) SaveOperationRun(ctx context.Context, run domai
 	_, err := r.pool.Exec(ctx, `
 		INSERT INTO integration_operation_runs (
 			tenant_id, operation_run_id, installation_id, operation_type,
-			status, result_code, failure_code, attempt_count,
-			actor_type, actor_id, started_at, completed_at,
+			status, result_code, failure_code, translated_error_code, attempt_count,
+			actor_type, actor_id, provider_evidence_json, duration_ms, started_at, completed_at,
 			created_at, updated_at
 		) VALUES (
 			$1, $2, $3, $4,
-			$5, $6, $7, $8,
-			$9, $10, $11, $12,
-			$13, $14
+			$5, $6, $7, $8, $9,
+			$10, $11, $12, $13, $14, $15,
+			$16, $17
 		)
 		ON CONFLICT (tenant_id, operation_run_id) DO UPDATE SET
 			installation_id = EXCLUDED.installation_id,
@@ -39,16 +40,19 @@ func (r *OperationRunRepository) SaveOperationRun(ctx context.Context, run domai
 			status = EXCLUDED.status,
 			result_code = EXCLUDED.result_code,
 			failure_code = EXCLUDED.failure_code,
+			translated_error_code = EXCLUDED.translated_error_code,
 			attempt_count = EXCLUDED.attempt_count,
 			actor_type = EXCLUDED.actor_type,
 			actor_id = EXCLUDED.actor_id,
+			provider_evidence_json = EXCLUDED.provider_evidence_json,
+			duration_ms = EXCLUDED.duration_ms,
 			started_at = EXCLUDED.started_at,
 			completed_at = EXCLUDED.completed_at,
 			created_at = EXCLUDED.created_at,
 			updated_at = EXCLUDED.updated_at
 	`, r.tenantID, run.OperationRunID, run.InstallationID, run.OperationType, run.Status,
-		run.ResultCode, run.FailureCode, run.AttemptCount, run.ActorType, run.ActorID,
-		timestamptzArg(run.StartedAt), timestamptzArg(run.CompletedAt), run.CreatedAt, run.UpdatedAt)
+		run.ResultCode, run.FailureCode, run.TranslatedErrorCode, run.AttemptCount, run.ActorType, run.ActorID,
+		marshalJSONObject(run.ProviderEvidence), run.DurationMs, timestamptzArg(run.StartedAt), timestamptzArg(run.CompletedAt), run.CreatedAt, run.UpdatedAt)
 	return err
 }
 
@@ -56,7 +60,8 @@ func (r *OperationRunRepository) ListByInstallation(ctx context.Context, install
 	rows, err := r.pool.Query(ctx, `
 		SELECT
 			operation_run_id, tenant_id, installation_id, operation_type, status,
-			result_code, failure_code, attempt_count, actor_type, actor_id,
+			result_code, failure_code, translated_error_code, attempt_count, actor_type, actor_id,
+			provider_evidence_json, duration_ms,
 			started_at, completed_at, created_at, updated_at
 		FROM integration_operation_runs
 		WHERE tenant_id = $1
@@ -85,6 +90,7 @@ func scanOperationRun(scanner interface {
 	var run domain.OperationRun
 	var startedAt pgtype.Timestamptz
 	var completedAt pgtype.Timestamptz
+	var providerEvidenceRaw []byte
 
 	err := scanner.Scan(
 		&run.OperationRunID,
@@ -94,9 +100,12 @@ func scanOperationRun(scanner interface {
 		&run.Status,
 		&run.ResultCode,
 		&run.FailureCode,
+		&run.TranslatedErrorCode,
 		&run.AttemptCount,
 		&run.ActorType,
 		&run.ActorID,
+		&providerEvidenceRaw,
+		&run.DurationMs,
 		&startedAt,
 		&completedAt,
 		&run.CreatedAt,
@@ -108,6 +117,20 @@ func scanOperationRun(scanner interface {
 
 	run.StartedAt = scanTimestamptz(startedAt)
 	run.CompletedAt = scanTimestamptz(completedAt)
+	if len(providerEvidenceRaw) > 0 {
+		_ = json.Unmarshal(providerEvidenceRaw, &run.ProviderEvidence)
+	}
 
 	return run, true, nil
+}
+
+func marshalJSONObject(value map[string]any) []byte {
+	if len(value) == 0 {
+		return []byte(`{}`)
+	}
+	raw, err := json.Marshal(value)
+	if err != nil {
+		return []byte(`{}`)
+	}
+	return raw
 }

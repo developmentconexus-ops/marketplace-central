@@ -11,17 +11,20 @@ import (
 )
 
 type RecordOperationInput struct {
-	OperationRunID string
-	InstallationID string
-	OperationType  string
-	Status         domain.OperationRunStatus
-	ResultCode     string
-	FailureCode    string
-	AttemptCount   int
-	ActorType      string
-	ActorID        string
-	StartedAt      *time.Time
-	CompletedAt    *time.Time
+	OperationRunID      string
+	InstallationID      string
+	OperationType       string
+	Status              domain.OperationRunStatus
+	ResultCode          string
+	FailureCode         string
+	TranslatedErrorCode string
+	AttemptCount        int
+	ActorType           string
+	ActorID             string
+	ProviderEvidence    map[string]any
+	DurationMs          int64
+	StartedAt           *time.Time
+	CompletedAt         *time.Time
 }
 
 type OperationService struct {
@@ -40,20 +43,23 @@ func (s *OperationService) Record(ctx context.Context, input RecordOperationInpu
 
 	now := time.Now().UTC()
 	run := domain.OperationRun{
-		OperationRunID: input.OperationRunID,
-		TenantID:       s.tenantID,
-		InstallationID: input.InstallationID,
-		OperationType:  input.OperationType,
-		Status:         input.Status,
-		ResultCode:     input.ResultCode,
-		FailureCode:    input.FailureCode,
-		AttemptCount:   input.AttemptCount,
-		ActorType:      input.ActorType,
-		ActorID:        input.ActorID,
-		StartedAt:      cloneTimePtr(input.StartedAt),
-		CompletedAt:    cloneTimePtr(input.CompletedAt),
-		CreatedAt:      now,
-		UpdatedAt:      now,
+		OperationRunID:      input.OperationRunID,
+		TenantID:            s.tenantID,
+		InstallationID:      input.InstallationID,
+		OperationType:       input.OperationType,
+		Status:              input.Status,
+		ResultCode:          input.ResultCode,
+		FailureCode:         input.FailureCode,
+		TranslatedErrorCode: input.TranslatedErrorCode,
+		AttemptCount:        input.AttemptCount,
+		ActorType:           input.ActorType,
+		ActorID:             input.ActorID,
+		ProviderEvidence:    cloneMap(input.ProviderEvidence),
+		DurationMs:          input.DurationMs,
+		StartedAt:           cloneTimePtr(input.StartedAt),
+		CompletedAt:         cloneTimePtr(input.CompletedAt),
+		CreatedAt:           now,
+		UpdatedAt:           now,
 	}
 
 	return run, s.store.SaveOperationRun(ctx, run)
@@ -79,4 +85,15 @@ func isValidOperationRunStatus(status domain.OperationRunStatus) bool {
 	default:
 		return false
 	}
+}
+
+func cloneMap(input map[string]any) map[string]any {
+	if len(input) == 0 {
+		return nil
+	}
+	cloned := make(map[string]any, len(input))
+	for key, value := range input {
+		cloned[key] = value
+	}
+	return cloned
 }

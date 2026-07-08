@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"reflect"
 	"testing"
 	"time"
 
@@ -78,17 +79,22 @@ func TestOperationServiceRecordMapsRichFields(t *testing.T) {
 	svc := NewOperationService(store, "tenant-default")
 
 	run, err := svc.Record(context.Background(), RecordOperationInput{
-		OperationRunID: "run_002",
-		InstallationID: "inst_002",
-		OperationType:  "pricing_fee_sync",
-		Status:         domain.OperationRunStatusRunning,
-		ResultCode:     "INTEGRATIONS_OPERATION_RUNNING",
-		FailureCode:    "INTEGRATIONS_OPERATION_TIMEOUT",
-		AttemptCount:   3,
-		ActorType:      "system",
-		ActorID:        "scheduler",
-		StartedAt:      &startedAt,
-		CompletedAt:    &completedAt,
+		OperationRunID:      "run_002",
+		InstallationID:      "inst_002",
+		OperationType:       "pricing_fee_sync",
+		Status:              domain.OperationRunStatusRunning,
+		ResultCode:          "INTEGRATIONS_OPERATION_RUNNING",
+		FailureCode:         "INTEGRATIONS_OPERATION_TIMEOUT",
+		TranslatedErrorCode: "CONNECTORS_PROVIDER_TIMEOUT",
+		AttemptCount:        3,
+		ActorType:           "system",
+		ActorID:             "scheduler",
+		ProviderEvidence: map[string]any{
+			"provider_status": "timeout",
+		},
+		DurationMs:  3210,
+		StartedAt:   &startedAt,
+		CompletedAt: &completedAt,
 	})
 	if err != nil {
 		t.Fatalf("Record() error = %v", err)
@@ -103,6 +109,15 @@ func TestOperationServiceRecordMapsRichFields(t *testing.T) {
 	if got, want := run.ActorID, "scheduler"; got != want {
 		t.Fatalf("actor_id = %q, want %q", got, want)
 	}
+	if got, want := run.TranslatedErrorCode, "CONNECTORS_PROVIDER_TIMEOUT"; got != want {
+		t.Fatalf("translated_error_code = %q, want %q", got, want)
+	}
+	if got, want := run.DurationMs, int64(3210); got != want {
+		t.Fatalf("duration_ms = %d, want %d", got, want)
+	}
+	if got := run.ProviderEvidence["provider_status"]; got != "timeout" {
+		t.Fatalf("provider_evidence = %#v", run.ProviderEvidence)
+	}
 	if run.StartedAt == nil || !run.StartedAt.Equal(startedAt) {
 		t.Fatalf("started_at = %v, want %v", run.StartedAt, startedAt)
 	}
@@ -112,7 +127,7 @@ func TestOperationServiceRecordMapsRichFields(t *testing.T) {
 	if len(store.runs) != 1 {
 		t.Fatalf("saved runs = %d, want 1", len(store.runs))
 	}
-	if got, want := store.runs[0], run; got != want {
+	if got, want := store.runs[0], run; !reflect.DeepEqual(got, want) {
 		t.Fatalf("saved run = %#v, want %#v", got, want)
 	}
 }

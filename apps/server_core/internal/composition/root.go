@@ -16,16 +16,17 @@ import (
 	classtransport "marketplace-central/apps/server_core/internal/modules/classifications/transport"
 	_ "marketplace-central/apps/server_core/internal/modules/connectors/adapters/magalu"
 	melhorenvio "marketplace-central/apps/server_core/internal/modules/connectors/adapters/melhorenvio"
-	_ "marketplace-central/apps/server_core/internal/modules/connectors/adapters/mercado_livre"
+	mercadolivreconnector "marketplace-central/apps/server_core/internal/modules/connectors/adapters/mercado_livre"
 	_ "marketplace-central/apps/server_core/internal/modules/connectors/adapters/shopee"
 	connectorsapp "marketplace-central/apps/server_core/internal/modules/connectors/application"
+	connectorsdomain "marketplace-central/apps/server_core/internal/modules/connectors/domain"
 	connectorstransport "marketplace-central/apps/server_core/internal/modules/connectors/transport"
 	_ "marketplace-central/apps/server_core/internal/modules/integrations/adapters/amazon"
 	integrationscrypto "marketplace-central/apps/server_core/internal/modules/integrations/adapters/crypto"
 	integrationsfeesync "marketplace-central/apps/server_core/internal/modules/integrations/adapters/feesync"
 	_ "marketplace-central/apps/server_core/internal/modules/integrations/adapters/leroymerlin"
-	_ "marketplace-central/apps/server_core/internal/modules/integrations/adapters/magalu"
 	_ "marketplace-central/apps/server_core/internal/modules/integrations/adapters/madeiramadeira"
+	_ "marketplace-central/apps/server_core/internal/modules/integrations/adapters/magalu"
 	_ "marketplace-central/apps/server_core/internal/modules/integrations/adapters/mercadolivre"
 	integrationspostgres "marketplace-central/apps/server_core/internal/modules/integrations/adapters/postgres"
 	integrationsproviders "marketplace-central/apps/server_core/internal/modules/integrations/adapters/providers"
@@ -51,9 +52,10 @@ import (
 )
 
 type authFlowFacade struct {
-	flow       *integrationsapp.AuthFlowService
-	feeSync    *integrationsapp.FeeSyncService
-	operations *integrationsapp.OperationService
+	flow        *integrationsapp.AuthFlowService
+	feeSync     *integrationsapp.FeeSyncService
+	operations  *integrationsapp.OperationService
+	providerOps *integrationsapp.ProviderOperationService
 }
 
 func (f authFlowFacade) StartAuthorize(ctx context.Context, input integrationsapp.StartAuthorizeInput) (integrationsapp.AuthorizeStart, error) {
@@ -165,10 +167,36 @@ func NewRootRouter(pool *pgxpool.Pool, msPool *pgxpool.Pool, cfg pgdb.Config) (h
 		return nil, fmt.Errorf("auth flow service: %w", err)
 	}
 
+	credentialResolver := integrationsapp.NewCredentialResolver(credentialSvc, encryptionSvc)
+	mercadoLivreCapabilities := mercadolivreconnector.NewCapabilityAdapter(mercadolivreconnector.CapabilityAdapterConfig{
+		AccessTokenResolver: func(ctx context.Context, ref connectorsdomain.ProviderAccountRef) (string, error) {
+			resolved, err := credentialResolver.ResolveAccessToken(ctx, integrationsapp.CredentialResolutionRef{
+				TenantID:          ref.TenantID,
+				InstallationID:    ref.InstallationID,
+				ProviderCode:      ref.ProviderCode,
+				ProviderAccountID: ref.ProviderAccountID,
+			})
+			if err != nil {
+				return "", err
+			}
+			return resolved.AccessToken, nil
+		},
+	})
+	marketplaceCapabilities := connectorsapp.NewMarketplaceCapabilityService([]connectorsapp.ProviderCapabilitySet{
+		mercadoLivreCapabilities.ProviderCapabilitySet(),
+	})
+	providerOperationSvc := integrationsapp.NewProviderOperationService(integrationsapp.ProviderOperationServiceConfig{
+		TenantID:      cfg.DefaultTenantID,
+		Installations: installationSvc,
+		Capabilities:  marketplaceCapabilities,
+		Operations:    operationSvc,
+	})
+
 	flowFacade := authFlowFacade{
-		flow:       authFlowSvc,
-		feeSync:    feeSyncSvc,
-		operations: operationSvc,
+		flow:        authFlowSvc,
+		feeSync:     feeSyncSvc,
+		operations:  operationSvc,
+		providerOps: providerOperationSvc,
 	}
 
 	integrationstransport.NewHandler(providerSvc, installationSvc).Register(mux)
