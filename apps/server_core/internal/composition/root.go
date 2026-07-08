@@ -185,6 +185,7 @@ func NewRootRouter(pool *pgxpool.Pool, msPool *pgxpool.Pool, cfg pgdb.Config) (h
 	marketplaceCapabilities := connectorsapp.NewMarketplaceCapabilityService([]connectorsapp.ProviderCapabilitySet{
 		mercadoLivreCapabilities.ProviderCapabilitySet(),
 	})
+	installationSvc.SetRuntimeCapabilitySource(integrationsapp.NewRuntimeCapabilityProjector(marketplaceCapabilities))
 	providerOperationSvc := integrationsapp.NewProviderOperationService(integrationsapp.ProviderOperationServiceConfig{
 		TenantID:      cfg.DefaultTenantID,
 		Installations: installationSvc,

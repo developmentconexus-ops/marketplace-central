@@ -29,6 +29,14 @@ type appliedConnectionSnapshot struct {
 	activeCredentialID string
 }
 
+type stubRuntimeCapabilitySource struct {
+	items []domain.RuntimeCapability
+}
+
+func (s stubRuntimeCapabilitySource) Project(inst domain.Installation) []domain.RuntimeCapability {
+	return append([]domain.RuntimeCapability(nil), s.items...)
+}
+
 func (s *stubInstallationRepo) CreateInstallation(_ context.Context, inst domain.Installation) error {
 	s.saved = append(s.saved, inst)
 	return nil
@@ -233,5 +241,42 @@ func TestInstallationServiceApplyConnectionSnapshotDelegatesToRepository(t *test
 	}}
 	if !reflect.DeepEqual(repo.appliedSnapshots, want) {
 		t.Fatalf("ApplyConnectionSnapshot() calls = %#v, want %#v", repo.appliedSnapshots, want)
+	}
+}
+
+func TestInstallationServiceProjectsRuntimeCapabilitiesOnRead(t *testing.T) {
+	t.Parallel()
+
+	now := time.Unix(100, 0).UTC()
+	repo := &stubInstallationRepo{
+		getByID: map[string]domain.Installation{
+			"inst_001": {
+				InstallationID: "inst_001",
+				TenantID:       "tenant-default",
+				ProviderCode:   "mercado_livre",
+				Family:         domain.IntegrationFamilyMarketplace,
+				DisplayName:    "ML Primary",
+				Status:         domain.InstallationStatusConnected,
+				HealthStatus:   domain.HealthStatusHealthy,
+				CreatedAt:      now,
+				UpdatedAt:      now,
+			},
+		},
+	}
+	svc := NewInstallationService(repo, "tenant-default")
+	svc.SetRuntimeCapabilitySource(stubRuntimeCapabilitySource{
+		items: []domain.RuntimeCapability{{
+			Code:       domain.RuntimeCapabilityAccountProbe,
+			State:      domain.RuntimeCapabilityStateAvailable,
+			Executable: true,
+		}},
+	})
+
+	inst, found, err := svc.Get(context.Background(), "inst_001")
+	if err != nil || !found {
+		t.Fatalf("Get() = (%#v, %v, %v), want installation, true, nil", inst, found, err)
+	}
+	if len(inst.RuntimeCapabilities) != 1 || inst.RuntimeCapabilities[0].Code != domain.RuntimeCapabilityAccountProbe {
+		t.Fatalf("runtime capabilities = %#v", inst.RuntimeCapabilities)
 	}
 }

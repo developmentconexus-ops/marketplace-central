@@ -18,12 +18,21 @@ type CreateInstallationInput struct {
 }
 
 type InstallationService struct {
-	repo     ports.InstallationRepository
-	tenantID string
+	repo                    ports.InstallationRepository
+	tenantID                string
+	runtimeCapabilitySource installationRuntimeCapabilitySource
 }
 
 func NewInstallationService(repo ports.InstallationRepository, tenantID string) *InstallationService {
 	return &InstallationService{repo: repo, tenantID: tenantID}
+}
+
+type installationRuntimeCapabilitySource interface {
+	Project(inst domain.Installation) []domain.RuntimeCapability
+}
+
+func (s *InstallationService) SetRuntimeCapabilitySource(source installationRuntimeCapabilitySource) {
+	s.runtimeCapabilitySource = source
 }
 
 func (s *InstallationService) CreateDraft(ctx context.Context, input CreateInstallationInput) (domain.Installation, error) {
@@ -59,11 +68,22 @@ func (s *InstallationService) Get(ctx context.Context, installationID string) (d
 		return domain.Installation{}, false, errors.New("INTEGRATIONS_INSTALLATION_INVALID")
 	}
 
-	return s.repo.GetInstallation(ctx, installationID)
+	inst, found, err := s.repo.GetInstallation(ctx, installationID)
+	if err != nil || !found {
+		return inst, found, err
+	}
+	return s.projectRuntimeCapabilities(inst), true, nil
 }
 
 func (s *InstallationService) List(ctx context.Context) ([]domain.Installation, error) {
-	return s.repo.ListInstallations(ctx)
+	items, err := s.repo.ListInstallations(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for i := range items {
+		items[i] = s.projectRuntimeCapabilities(items[i])
+	}
+	return items, nil
 }
 
 func (s *InstallationService) UpdateStatus(ctx context.Context, installationID string, status domain.InstallationStatus, health domain.HealthStatus) error {
@@ -123,4 +143,12 @@ func isValidConnectionState(state domain.ConnectionState) bool {
 	default:
 		return false
 	}
+}
+
+func (s *InstallationService) projectRuntimeCapabilities(inst domain.Installation) domain.Installation {
+	if s.runtimeCapabilitySource == nil {
+		return inst
+	}
+	inst.RuntimeCapabilities = s.runtimeCapabilitySource.Project(inst)
+	return inst
 }
