@@ -145,8 +145,33 @@ export interface IntegrationInstallation {
   external_account_name: string;
   active_credential_id?: string;
   last_verified_at?: string;
+  connection: IntegrationConnectionSnapshot;
+  runtime_capabilities: IntegrationRuntimeCapability[];
   created_at: string;
   updated_at: string;
+}
+
+export interface IntegrationConnectionSnapshot {
+  state: "draft" | "pending_connection" | "connected" | "degraded" | "needs_reauth" | "disconnected";
+  health: "healthy" | "warning" | "critical";
+  provider_code: string;
+  external_account_id: string;
+  external_account_name: string;
+  auth_strategy: "oauth2" | "lwa" | "shopee_partner" | "api_key" | "token" | "none" | "unknown";
+  last_verified_at?: string | null;
+  expires_at?: string | null;
+  next_action: "none" | "authorize" | "reauth" | "configure" | "retry";
+  reauth_reason?: string;
+}
+
+export interface IntegrationRuntimeCapability {
+  code: string;
+  state: "available" | "unavailable" | "needs_auth" | "degraded" | "not_configured";
+  executable: boolean;
+  live_validated: boolean;
+  local_validated: boolean;
+  unavailable_reason?: string;
+  last_validated_at?: string | null;
 }
 
 export interface IntegrationOperationRun {
@@ -193,6 +218,8 @@ export interface IntegrationAuthStatusResponse {
   health_status: "healthy" | "warning" | "critical";
   provider_code?: string;
   external_account_id?: string;
+  external_account_name?: string;
+  connection: IntegrationConnectionSnapshot;
 }
 
 export type SubmitIntegrationCredentialsRequest =

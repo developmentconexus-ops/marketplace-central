@@ -63,11 +63,13 @@ type AuthorizeStart struct {
 }
 
 type AuthStatus struct {
-	InstallationID  string                    `json:"installation_id"`
-	Status          domain.InstallationStatus `json:"status"`
-	HealthStatus    domain.HealthStatus       `json:"health_status"`
-	ProviderCode    string                    `json:"provider_code,omitempty"`
-	ExternalAccount string                    `json:"external_account_id,omitempty"`
+	InstallationID      string                    `json:"installation_id"`
+	Status              domain.InstallationStatus `json:"status"`
+	HealthStatus        domain.HealthStatus       `json:"health_status"`
+	ProviderCode        string                    `json:"provider_code,omitempty"`
+	ExternalAccount     string                    `json:"external_account_id,omitempty"`
+	ExternalAccountName string                    `json:"external_account_name,omitempty"`
+	Connection          domain.ConnectionSnapshot `json:"connection"`
 }
 
 type StartAuthorizeAdapterInput struct {
@@ -128,6 +130,7 @@ type authFlowInstallationStore interface {
 	List(ctx context.Context) ([]domain.Installation, error)
 	UpdateStatus(ctx context.Context, installationID string, status domain.InstallationStatus, health domain.HealthStatus) error
 	UpdateActiveCredentialID(ctx context.Context, installationID string, credentialID string) error
+	SetProviderAccountID(ctx context.Context, installationID, providerAccountID, providerAccountName string) error
 }
 
 type authFlowCredentialRotator interface {
@@ -340,7 +343,8 @@ func (s *AuthFlowService) HandleCallback(ctx context.Context, input HandleCallba
 		return AuthStatus{}, domain.ErrReauthAccountMismatch
 	}
 
-	if err := s.saveCredential(ctx, statePayload.InstallationID, payload); err != nil {
+	credential, err := s.saveCredential(ctx, statePayload.InstallationID, payload)
+	if err != nil {
 		return AuthStatus{}, err
 	}
 
@@ -359,13 +363,7 @@ func (s *AuthFlowService) HandleCallback(ctx context.Context, input HandleCallba
 		return AuthStatus{}, err
 	}
 
-	return AuthStatus{
-		InstallationID:  statePayload.InstallationID,
-		Status:          domain.InstallationStatusConnected,
-		HealthStatus:    domain.HealthStatusHealthy,
-		ProviderCode:    inst.ProviderCode,
-		ExternalAccount: payload.ProviderAccountID,
-	}, nil
+	return buildAuthStatus(inst, domain.InstallationStatusConnected, domain.HealthStatusHealthy, payload, credential), nil
 }
 
 func (s *AuthFlowService) SubmitAPIKey(ctx context.Context, input SubmitAPIKeyInput) (AuthStatus, error) {
@@ -383,7 +381,8 @@ func (s *AuthFlowService) SubmitAPIKey(ctx context.Context, input SubmitAPIKeyIn
 		return AuthStatus{}, err
 	}
 
-	if err := s.saveCredential(ctx, input.InstallationID, payload); err != nil {
+	credential, err := s.saveCredential(ctx, input.InstallationID, payload)
+	if err != nil {
 		return AuthStatus{}, err
 	}
 
@@ -391,13 +390,7 @@ func (s *AuthFlowService) SubmitAPIKey(ctx context.Context, input SubmitAPIKeyIn
 		return AuthStatus{}, err
 	}
 
-	return AuthStatus{
-		InstallationID:  input.InstallationID,
-		Status:          domain.InstallationStatusConnected,
-		HealthStatus:    domain.HealthStatusHealthy,
-		ProviderCode:    inst.ProviderCode,
-		ExternalAccount: payload.ProviderAccountID,
-	}, nil
+	return buildAuthStatus(inst, domain.InstallationStatusConnected, domain.HealthStatusHealthy, payload, credential), nil
 }
 
 func (s *AuthFlowService) RefreshCredential(ctx context.Context, input RefreshCredentialInput) (AuthStatus, error) {
@@ -449,7 +442,8 @@ func (s *AuthFlowService) RefreshCredential(ctx context.Context, input RefreshCr
 		payload.ProviderAccountID = firstNonEmpty(session.ProviderAccountID, inst.ExternalAccountID)
 	}
 
-	if err := s.saveCredential(ctx, input.InstallationID, payload); err != nil {
+	credential, err := s.saveCredential(ctx, input.InstallationID, payload)
+	if err != nil {
 		return AuthStatus{}, err
 	}
 
@@ -472,13 +466,7 @@ func (s *AuthFlowService) RefreshCredential(ctx context.Context, input RefreshCr
 		return AuthStatus{}, err
 	}
 
-	return AuthStatus{
-		InstallationID:  input.InstallationID,
-		Status:          domain.InstallationStatusConnected,
-		HealthStatus:    domain.HealthStatusHealthy,
-		ProviderCode:    inst.ProviderCode,
-		ExternalAccount: payload.ProviderAccountID,
-	}, nil
+	return buildAuthStatus(inst, domain.InstallationStatusConnected, domain.HealthStatusHealthy, payload, credential), nil
 }
 
 func (s *AuthFlowService) Disconnect(ctx context.Context, input DisconnectInput) (AuthStatus, error) {
@@ -493,6 +481,7 @@ func (s *AuthFlowService) Disconnect(ctx context.Context, input DisconnectInput)
 			Status:         domain.InstallationStatusDisconnected,
 			HealthStatus:   inst.HealthStatus,
 			ProviderCode:   inst.ProviderCode,
+			Connection:     domain.ProjectConnectionSnapshot(inst, domain.AuthStrategyUnknown, nil, ""),
 		}, nil
 	}
 
@@ -507,10 +496,26 @@ func (s *AuthFlowService) Disconnect(ctx context.Context, input DisconnectInput)
 	}
 
 	return AuthStatus{
-		InstallationID: inst.InstallationID,
-		Status:         domain.InstallationStatusDisconnected,
-		HealthStatus:   domain.HealthStatusWarning,
-		ProviderCode:   inst.ProviderCode,
+		InstallationID:      inst.InstallationID,
+		Status:              domain.InstallationStatusDisconnected,
+		HealthStatus:        domain.HealthStatusWarning,
+		ProviderCode:        inst.ProviderCode,
+		ExternalAccount:     inst.ExternalAccountID,
+		ExternalAccountName: inst.ExternalAccountName,
+		Connection: domain.ProjectConnectionSnapshot(domain.Installation{
+			InstallationID:      inst.InstallationID,
+			TenantID:            inst.TenantID,
+			ProviderCode:        inst.ProviderCode,
+			Family:              inst.Family,
+			DisplayName:         inst.DisplayName,
+			Status:              domain.InstallationStatusDisconnected,
+			HealthStatus:        domain.HealthStatusWarning,
+			ExternalAccountID:   inst.ExternalAccountID,
+			ExternalAccountName: inst.ExternalAccountName,
+			LastVerifiedAt:      inst.LastVerifiedAt,
+			CreatedAt:           inst.CreatedAt,
+			UpdatedAt:           inst.UpdatedAt,
+		}, domain.AuthStrategyUnknown, nil, ""),
 	}, nil
 }
 
@@ -532,11 +537,13 @@ func (s *AuthFlowService) GetAuthStatus(ctx context.Context, input GetAuthStatus
 	}
 
 	return AuthStatus{
-		InstallationID:  input.InstallationID,
-		Status:          inst.Status,
-		HealthStatus:    inst.HealthStatus,
-		ProviderCode:    inst.ProviderCode,
-		ExternalAccount: inst.ExternalAccountID,
+		InstallationID:      input.InstallationID,
+		Status:              inst.Status,
+		HealthStatus:        inst.HealthStatus,
+		ProviderCode:        inst.ProviderCode,
+		ExternalAccount:     inst.ExternalAccountID,
+		ExternalAccountName: inst.ExternalAccountName,
+		Connection:          inst.ConnectionSnapshot,
 	}, nil
 }
 
@@ -640,7 +647,7 @@ func (s *AuthFlowService) verifyAndConsumeCallbackState(ctx context.Context, sta
 	return payload, stored.CodeVerifier, nil
 }
 
-func (s *AuthFlowService) saveCredential(ctx context.Context, installationID string, payload CredentialPayload) error {
+func (s *AuthFlowService) saveCredential(ctx context.Context, installationID string, payload CredentialPayload) (domain.Credential, error) {
 	secret := map[string]any{
 		"type":                payload.SecretType,
 		"access_token":        payload.AccessToken,
@@ -657,17 +664,71 @@ func (s *AuthFlowService) saveCredential(ctx context.Context, installationID str
 
 	ciphertext, keyID, err := s.encryptor.EncryptJSON(secret)
 	if err != nil {
-		return err
+		return domain.Credential{}, err
 	}
 
-	_, err = s.credentials.Rotate(ctx, RotateCredentialInput{
+	credential, err := s.credentials.Rotate(ctx, RotateCredentialInput{
 		CredentialID:     fmt.Sprintf("cred_%d", time.Now().UTC().UnixNano()),
 		InstallationID:   installationID,
 		SecretType:       payload.SecretType,
 		EncryptedPayload: ciphertext,
 		EncryptionKeyID:  keyID,
 	})
-	return err
+	if err != nil {
+		return domain.Credential{}, err
+	}
+	if err := s.installations.UpdateActiveCredentialID(ctx, installationID, credential.CredentialID); err != nil {
+		return domain.Credential{}, err
+	}
+	if err := s.installations.SetProviderAccountID(ctx, installationID, payload.ProviderAccountID, payload.ProviderAccountName); err != nil {
+		return domain.Credential{}, err
+	}
+	return credential, nil
+}
+
+func buildAuthStatus(inst domain.Installation, status domain.InstallationStatus, health domain.HealthStatus, payload CredentialPayload, credential domain.Credential) AuthStatus {
+	lastVerified := ptrTime(time.Now().UTC())
+	statusInstallation := domain.Installation{
+		InstallationID:      inst.InstallationID,
+		TenantID:            inst.TenantID,
+		ProviderCode:        inst.ProviderCode,
+		Family:              inst.Family,
+		DisplayName:         inst.DisplayName,
+		Status:              status,
+		HealthStatus:        health,
+		ExternalAccountID:   firstNonEmpty(payload.ProviderAccountID, inst.ExternalAccountID),
+		ExternalAccountName: firstNonEmpty(payload.ProviderAccountName, inst.ExternalAccountName),
+		ActiveCredentialID:  credential.CredentialID,
+		LastVerifiedAt:      lastVerified,
+		CreatedAt:           inst.CreatedAt,
+		UpdatedAt:           time.Now().UTC(),
+	}
+
+	return AuthStatus{
+		InstallationID:      statusInstallation.InstallationID,
+		Status:              statusInstallation.Status,
+		HealthStatus:        statusInstallation.HealthStatus,
+		ProviderCode:        statusInstallation.ProviderCode,
+		ExternalAccount:     statusInstallation.ExternalAccountID,
+		ExternalAccountName: statusInstallation.ExternalAccountName,
+		Connection: domain.ProjectConnectionSnapshot(
+			statusInstallation,
+			inferAuthStrategy(payload),
+			payload.ExpiresAt,
+			"",
+		),
+	}
+}
+
+func inferAuthStrategy(payload CredentialPayload) domain.AuthStrategy {
+	switch {
+	case strings.TrimSpace(payload.APIKey) != "":
+		return domain.AuthStrategyAPIKey
+	case strings.TrimSpace(payload.RefreshToken) != "" || strings.TrimSpace(payload.AccessToken) != "":
+		return domain.AuthStrategyOAuth2
+	default:
+		return domain.AuthStrategyUnknown
+	}
 }
 
 func credentialPayloadString(payload map[string]any, key string) (string, bool) {

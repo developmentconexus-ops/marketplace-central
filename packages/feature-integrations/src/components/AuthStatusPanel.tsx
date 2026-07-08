@@ -51,6 +51,10 @@ export function AuthStatusPanel({
   const [apiKey, setApiKey] = useState("");
   const status = authStatus?.status ?? installationStatus;
   const resolvedHealth = authStatus?.health_status ?? healthStatus;
+  const connection = authStatus?.connection;
+  const authSourceLabel =
+    connection?.external_account_name || connection?.external_account_id || "Not verified yet";
+  const nextActionLabel = connection?.next_action ?? "authorize";
 
   async function handleCredentialSubmit(event: FormEvent) {
     event.preventDefault();
@@ -76,9 +80,11 @@ export function AuthStatusPanel({
         </div>
         <div className="col-span-2">
           <dt className="text-xs uppercase tracking-wide text-slate-400">Auth source</dt>
-          <dd className="mt-1 text-slate-700">
-            {authStatus?.external_account_id ? authStatus.external_account_id : "No active credential"}
-          </dd>
+          <dd className="mt-1 text-slate-700">{authSourceLabel}</dd>
+        </div>
+        <div className="col-span-2">
+          <dt className="text-xs uppercase tracking-wide text-slate-400">Next action</dt>
+          <dd className="mt-1 text-slate-700">{nextActionLabel}</dd>
         </div>
       </dl>
 

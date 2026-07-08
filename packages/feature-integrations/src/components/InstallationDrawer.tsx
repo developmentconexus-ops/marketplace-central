@@ -38,6 +38,8 @@ export function InstallationDrawer({
   onSubmitCredentials,
   onClose,
 }: InstallationDrawerProps) {
+  const connection = installation.connection;
+
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -91,13 +93,17 @@ export function InstallationDrawer({
             </div>
             <div>
               <dt className="text-xs uppercase tracking-wide text-slate-400">External account</dt>
-              <dd className="mt-1 text-slate-700">{installation.external_account_name}</dd>
+              <dd className="mt-1 text-slate-700">
+                {connection.external_account_name || connection.external_account_id || "Account not verified"}
+              </dd>
             </div>
             <div>
-              <dt className="text-xs uppercase tracking-wide text-slate-400">Credential</dt>
-              <dd className="mt-1 text-slate-700">
-                {installation.active_credential_id ?? "Not connected"}
-              </dd>
+              <dt className="text-xs uppercase tracking-wide text-slate-400">Next action</dt>
+              <dd className="mt-1 text-slate-700">{connection.next_action}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-slate-400">Auth</dt>
+              <dd className="mt-1 text-slate-700">{connection.auth_strategy}</dd>
             </div>
           </dl>
         </section>
@@ -124,9 +130,28 @@ export function InstallationDrawer({
             </div>
             <div>
               <dt className="text-xs uppercase tracking-wide text-slate-400">Last verified</dt>
-              <dd className="mt-1 text-slate-700">{installation.last_verified_at ?? "Not yet verified"}</dd>
+              <dd className="mt-1 text-slate-700">{connection.last_verified_at ?? "Not yet verified"}</dd>
             </div>
           </dl>
+        </section>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Runtime capabilities</p>
+          {installation.runtime_capabilities.length === 0 ? (
+            <p className="mt-3 text-sm text-slate-500">No runtime capabilities available yet.</p>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {installation.runtime_capabilities.map((capability) => (
+                <li
+                  key={capability.code}
+                  className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-sm"
+                >
+                  <span className="font-medium text-slate-700">{capability.code}</span>
+                  <span className="text-xs text-slate-500">{capability.state}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
         <OperationsTimeline

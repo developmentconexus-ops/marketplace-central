@@ -163,6 +163,8 @@ func scanInstallation(scanner interface {
 		ts := lastVerified.Time.UTC()
 		inst.LastVerifiedAt = &ts
 	}
+	inst.ConnectionSnapshot = domain.ProjectConnectionSnapshot(inst, domain.AuthStrategyUnknown, nil, "")
+	inst.RuntimeCapabilities = []domain.RuntimeCapability{}
 
 	return inst, true, nil
 }

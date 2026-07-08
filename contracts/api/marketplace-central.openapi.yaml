@@ -1472,6 +1472,8 @@ components:
         - health_status
         - external_account_id
         - external_account_name
+        - connection
+        - runtime_capabilities
         - created_at
         - updated_at
       properties:
@@ -1501,12 +1503,85 @@ components:
         last_verified_at:
           type: string
           format: date-time
+        connection:
+          $ref: '#/components/schemas/IntegrationConnectionSnapshot'
+        runtime_capabilities:
+          type: array
+          items:
+            $ref: '#/components/schemas/IntegrationRuntimeCapability'
         created_at:
           type: string
           format: date-time
         updated_at:
           type: string
           format: date-time
+
+    IntegrationConnectionSnapshot:
+      type: object
+      required:
+        - state
+        - health
+        - provider_code
+        - external_account_id
+        - external_account_name
+        - auth_strategy
+        - next_action
+      properties:
+        state:
+          type: string
+          enum: [draft, pending_connection, connected, degraded, needs_reauth, disconnected]
+        health:
+          type: string
+          enum: [healthy, warning, critical]
+        provider_code:
+          type: string
+        external_account_id:
+          type: string
+        external_account_name:
+          type: string
+        auth_strategy:
+          type: string
+          enum: [oauth2, lwa, shopee_partner, api_key, token, none, unknown]
+        last_verified_at:
+          type: string
+          format: date-time
+          nullable: true
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        next_action:
+          type: string
+          enum: [none, authorize, reauth, configure, retry]
+        reauth_reason:
+          type: string
+
+    IntegrationRuntimeCapability:
+      type: object
+      required:
+        - code
+        - state
+        - executable
+        - live_validated
+        - local_validated
+      properties:
+        code:
+          type: string
+        state:
+          type: string
+          enum: [available, unavailable, needs_auth, degraded, not_configured]
+        executable:
+          type: boolean
+        live_validated:
+          type: boolean
+        local_validated:
+          type: boolean
+        unavailable_reason:
+          type: string
+        last_validated_at:
+          type: string
+          format: date-time
+          nullable: true
 
     CreateIntegrationInstallationRequest:
       type: object
@@ -1567,6 +1642,7 @@ components:
         - installation_id
         - status
         - health_status
+        - connection
       properties:
         installation_id:
           type: string
@@ -1580,6 +1656,10 @@ components:
           type: string
         external_account_id:
           type: string
+        external_account_name:
+          type: string
+        connection:
+          $ref: '#/components/schemas/IntegrationConnectionSnapshot'
 
     IntegrationFeeSyncAccepted:
       type: object

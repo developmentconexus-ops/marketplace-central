@@ -11,10 +11,12 @@ import (
 )
 
 type flowInstallationStore struct {
-	installations       map[string]domain.Installation
-	statuses            []domain.InstallationStatus
-	healths             []domain.HealthStatus
-	activeCredentialIDs []string
+	installations        map[string]domain.Installation
+	statuses             []domain.InstallationStatus
+	healths              []domain.HealthStatus
+	activeCredentialIDs  []string
+	providerAccountIDs   []string
+	providerAccountNames []string
 }
 
 func (s *flowInstallationStore) Get(ctx context.Context, installationID string) (domain.Installation, bool, error) {
@@ -45,6 +47,16 @@ func (s *flowInstallationStore) UpdateActiveCredentialID(ctx context.Context, in
 	inst.ActiveCredentialID = credentialID
 	s.installations[installationID] = inst
 	s.activeCredentialIDs = append(s.activeCredentialIDs, credentialID)
+	return nil
+}
+
+func (s *flowInstallationStore) SetProviderAccountID(ctx context.Context, installationID, providerAccountID, providerAccountName string) error {
+	inst := s.installations[installationID]
+	inst.ExternalAccountID = providerAccountID
+	inst.ExternalAccountName = providerAccountName
+	s.installations[installationID] = inst
+	s.providerAccountIDs = append(s.providerAccountIDs, providerAccountID)
+	s.providerAccountNames = append(s.providerAccountNames, providerAccountName)
 	return nil
 }
 
@@ -409,11 +421,11 @@ func TestAuthFlowHandleCallbackRotatesShopeeCredentialAndStoresShopID(t *testing
 		consumeResult: true,
 	}
 	svc := mustNewAuthFlowService(t, AuthFlowConfig{
-		TenantID:        "tenant_default",
-		Installations:   installations,
-		Credentials:     credentials,
-		AuthSessions:    authSessions,
-		OAuthStates:     oauthStates,
+		TenantID:      "tenant_default",
+		Installations: installations,
+		Credentials:   credentials,
+		AuthSessions:  authSessions,
+		OAuthStates:   oauthStates,
 		OAuthStateCodec: securityStateCodec{
 			payload: OAuthStatePayload{
 				TenantID:       "tenant_default",
@@ -421,9 +433,9 @@ func TestAuthFlowHandleCallbackRotatesShopeeCredentialAndStoresShopID(t *testing
 				InstallationID: "inst-shopee",
 			},
 		},
-		Encryptor:       encryptor,
-		Clock:           fixedAuthFlowClock{now: now},
-		Adapters:        []MarketplaceAuthAdapter{adapter},
+		Encryptor: encryptor,
+		Clock:     fixedAuthFlowClock{now: now},
+		Adapters:  []MarketplaceAuthAdapter{adapter},
 	})
 
 	result, err := svc.HandleCallback(context.Background(), HandleCallbackInput{
@@ -789,10 +801,10 @@ func TestRefreshCredentialPassesShopeeProviderAccountContextAndPreservesLinkage(
 	adapter := &flowAdapter{
 		providerCode: "shopee",
 		refresh: CredentialPayload{
-			SecretType:  "oauth2",
-			AccessToken: "new-access",
+			SecretType:   "oauth2",
+			AccessToken:  "new-access",
 			RefreshToken: "",
-			ExpiresAt:   &expiresAt,
+			ExpiresAt:    &expiresAt,
 		},
 	}
 	svc := mustNewAuthFlowService(t, AuthFlowConfig{

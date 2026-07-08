@@ -37,16 +37,18 @@ func (s *InstallationService) CreateDraft(ctx context.Context, input CreateInsta
 
 	now := time.Now().UTC()
 	inst := domain.Installation{
-		InstallationID: installationID,
-		TenantID:       s.tenantID,
-		ProviderCode:   providerCode,
-		Family:         domain.IntegrationFamily(family),
-		DisplayName:    displayName,
-		Status:         domain.InstallationStatusDraft,
-		HealthStatus:   domain.HealthStatusHealthy,
-		CreatedAt:      now,
-		UpdatedAt:      now,
+		InstallationID:      installationID,
+		TenantID:            s.tenantID,
+		ProviderCode:        providerCode,
+		Family:              domain.IntegrationFamily(family),
+		DisplayName:         displayName,
+		Status:              domain.InstallationStatusDraft,
+		HealthStatus:        domain.HealthStatusHealthy,
+		CreatedAt:           now,
+		UpdatedAt:           now,
+		RuntimeCapabilities: []domain.RuntimeCapability{},
 	}
+	inst.ConnectionSnapshot = domain.ProjectConnectionSnapshot(inst, domain.AuthStrategyUnknown, nil, "")
 
 	return inst, s.repo.CreateInstallation(ctx, inst)
 }

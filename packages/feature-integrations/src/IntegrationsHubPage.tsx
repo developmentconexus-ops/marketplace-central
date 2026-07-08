@@ -110,11 +110,11 @@ function matchesSearch(installation: IntegrationInstallation, query: string, pro
     installation.display_name,
     installation.provider_code,
     providerName,
-    installation.external_account_name,
-    installation.external_account_id,
+    installation.connection.external_account_name,
+    installation.connection.external_account_id,
     installation.status,
     installation.health_status,
-    installation.active_credential_id ?? "",
+    installation.connection.next_action,
   ];
 
   return fields.some((field) => field.toLowerCase().includes(searchValue));
@@ -287,11 +287,17 @@ export function IntegrationsHubPage({ client, onAuthRedirect }: IntegrationsHubP
         if (installation.installation_id !== authStatus.installation_id) {
           return installation;
         }
-        const nextExternalAccountID = authStatus.external_account_id ?? installation.external_account_id;
+        const nextConnection = authStatus.connection ?? installation.connection;
+        const nextExternalAccountID = nextConnection.external_account_id || installation.external_account_id;
+        const nextExternalAccountName = nextConnection.external_account_name || installation.external_account_name;
         if (
           installation.status === authStatus.status &&
           installation.health_status === authStatus.health_status &&
-          installation.external_account_id === nextExternalAccountID
+          installation.external_account_id === nextExternalAccountID &&
+          installation.external_account_name === nextExternalAccountName &&
+          installation.connection.state === nextConnection.state &&
+          installation.connection.health === nextConnection.health &&
+          installation.connection.next_action === nextConnection.next_action
         ) {
           return installation;
         }
@@ -300,6 +306,8 @@ export function IntegrationsHubPage({ client, onAuthRedirect }: IntegrationsHubP
           status: authStatus.status,
           health_status: authStatus.health_status,
           external_account_id: nextExternalAccountID,
+          external_account_name: nextExternalAccountName,
+          connection: nextConnection,
         };
       })
     );

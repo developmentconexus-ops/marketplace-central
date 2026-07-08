@@ -118,6 +118,65 @@ describe("sdk runtime", () => {
     expect(result.expires_in).toBe(300);
   });
 
+  it("lists integration installations with connection snapshot", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                installation_id: "inst-1",
+                tenant_id: "tenant_default",
+                provider_code: "mercado_livre",
+                family: "marketplace",
+                display_name: "Mercado Livre",
+                status: "connected",
+                health_status: "healthy",
+                external_account_id: "691607102",
+                external_account_name: "METALNOBREACABAMENTOS",
+                active_credential_id: "cred-1",
+                last_verified_at: "2026-07-08T12:00:00Z",
+                connection: {
+                  state: "connected",
+                  health: "healthy",
+                  provider_code: "mercado_livre",
+                  external_account_id: "691607102",
+                  external_account_name: "METALNOBREACABAMENTOS",
+                  auth_strategy: "oauth2",
+                  last_verified_at: "2026-07-08T12:00:00Z",
+                  expires_at: "2026-07-08T18:00:00Z",
+                  next_action: "none",
+                },
+                runtime_capabilities: [
+                  {
+                    code: "account_probe",
+                    state: "available",
+                    executable: true,
+                    live_validated: true,
+                    local_validated: true,
+                  },
+                ],
+                created_at: "2026-07-08T12:00:00Z",
+                updated_at: "2026-07-08T12:00:00Z",
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      },
+    });
+
+    const result = await client.listIntegrationInstallations();
+
+    expect(String(requests[0].input)).toBe("http://localhost:8080/integrations/installations");
+    expect(requests[0].init?.method).toBe("GET");
+    expect(result.items[0].connection.external_account_name).toBe("METALNOBREACABAMENTOS");
+    expect(result.items[0].runtime_capabilities[0].code).toBe("account_probe");
+  });
+
   it("starts integration reauthorization flow with auth_url and expires_in", async () => {
     const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
     const client = createMarketplaceCentralClient({
@@ -177,6 +236,16 @@ describe("sdk runtime", () => {
             health_status: "warning",
             provider_code: "mercado_livre",
             external_account_id: "acct-1",
+            external_account_name: "Acct 1",
+            connection: {
+              state: "connected",
+              health: "warning",
+              provider_code: "mercado_livre",
+              external_account_id: "acct-1",
+              external_account_name: "Acct 1",
+              auth_strategy: "api_key",
+              next_action: "none",
+            },
           }),
           { status: 200, headers: { "Content-Type": "application/json" } },
         );
@@ -201,6 +270,7 @@ describe("sdk runtime", () => {
     );
     expect(result.status).toBe("connected");
     expect(result.health_status).toBe("warning");
+    expect(result.connection.external_account_name).toBe("Acct 1");
   });
 
   it("throws structured error for integration credential submission failures", async () => {
@@ -236,6 +306,15 @@ describe("sdk runtime", () => {
             installation_id: "inst-1",
             status: "disconnected",
             health_status: "critical",
+            connection: {
+              state: "disconnected",
+              health: "critical",
+              provider_code: "mercado_livre",
+              external_account_id: "",
+              external_account_name: "",
+              auth_strategy: "unknown",
+              next_action: "authorize",
+            },
           }),
           { status: 200, headers: { "Content-Type": "application/json" } },
         );
@@ -248,6 +327,7 @@ describe("sdk runtime", () => {
     expect(requests[0].init?.method).toBe("POST");
     expect(result.status).toBe("disconnected");
     expect(result.health_status).toBe("critical");
+    expect(result.connection.next_action).toBe("authorize");
   });
 
   it("throws structured error for disconnect failures", async () => {
@@ -281,6 +361,16 @@ describe("sdk runtime", () => {
             health_status: "healthy",
             provider_code: "mercado_livre",
             external_account_id: "acct-1",
+            external_account_name: "Acct 1",
+            connection: {
+              state: "connected",
+              health: "healthy",
+              provider_code: "mercado_livre",
+              external_account_id: "acct-1",
+              external_account_name: "Acct 1",
+              auth_strategy: "oauth2",
+              next_action: "none",
+            },
           }),
           { status: 200, headers: { "Content-Type": "application/json" } },
         );
@@ -293,6 +383,7 @@ describe("sdk runtime", () => {
     expect(requests[0].init?.method).toBe("GET");
     expect(result.status).toBe("connected");
     expect(result.health_status).toBe("healthy");
+    expect(result.connection.auth_strategy).toBe("oauth2");
   });
 
   it("builds canonical pricing simulation requests", async () => {

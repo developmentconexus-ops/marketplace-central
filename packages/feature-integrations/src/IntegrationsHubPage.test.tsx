@@ -4,9 +4,11 @@ import { MemoryRouter } from "react-router-dom";
 import { IntegrationsHubPage, type IntegrationsHubClient } from "./IntegrationsHubPage";
 import type {
   IntegrationAuthStatusResponse,
+  IntegrationConnectionSnapshot,
   IntegrationInstallation,
   IntegrationOperationRun,
   IntegrationProviderDefinition,
+  IntegrationRuntimeCapability,
 } from "@marketplace-central/sdk-runtime";
 
 function isoHoursAgo(hoursAgo: number): string {
@@ -77,6 +79,53 @@ const sampleProviderAPIKey: IntegrationProviderDefinition = {
   updated_at: "2026-04-11T12:00:00Z",
 };
 
+function connectedSnapshot(
+  overrides: Partial<IntegrationConnectionSnapshot> = {},
+): IntegrationConnectionSnapshot {
+  return {
+    state: "connected",
+    health: "healthy",
+    provider_code: "mercado_livre",
+    external_account_id: "acc-1",
+    external_account_name: "Main Store",
+    auth_strategy: "oauth2",
+    last_verified_at: "2026-04-11T12:30:00Z",
+    expires_at: "2026-04-11T18:30:00Z",
+    next_action: "none",
+    ...overrides,
+  };
+}
+
+function runtimeCapabilities(
+  overrides: Partial<IntegrationRuntimeCapability>[] = [],
+): IntegrationRuntimeCapability[] {
+  const defaults: IntegrationRuntimeCapability[] = [
+    {
+      code: "account_probe",
+      state: "available",
+      executable: true,
+      live_validated: true,
+      local_validated: true,
+    },
+    {
+      code: "listing_read",
+      state: "available",
+      executable: true,
+      live_validated: false,
+      local_validated: true,
+    },
+    {
+      code: "order_read",
+      state: "available",
+      executable: true,
+      live_validated: false,
+      local_validated: true,
+    },
+  ];
+
+  return defaults.map((item, index) => ({ ...item, ...(overrides[index] ?? {}) }));
+}
+
 const sampleInstallation: IntegrationInstallation = {
   installation_id: "inst-1",
   tenant_id: "tenant-1",
@@ -89,6 +138,8 @@ const sampleInstallation: IntegrationInstallation = {
   external_account_name: "Main Store",
   active_credential_id: "cred-1",
   last_verified_at: "2026-04-11T12:30:00Z",
+  connection: connectedSnapshot(),
+  runtime_capabilities: runtimeCapabilities(),
   created_at: "2026-04-11T12:00:00Z",
   updated_at: "2026-04-11T12:30:00Z",
 };
@@ -98,6 +149,11 @@ const sampleInstallationDisconnected: IntegrationInstallation = {
   status: "disconnected",
   health_status: "critical",
   active_credential_id: undefined,
+  connection: connectedSnapshot({
+    state: "disconnected",
+    health: "critical",
+    next_action: "authorize",
+  }),
   updated_at: "2026-04-11T12:45:00Z",
 };
 
@@ -113,6 +169,17 @@ const sampleInstallationNeedsAction: IntegrationInstallation = {
   external_account_name: "Bling Account",
   active_credential_id: "cred-2",
   last_verified_at: "2026-04-11T12:10:00Z",
+  connection: connectedSnapshot({
+    state: "needs_reauth",
+    health: "warning",
+    provider_code: "bling",
+    external_account_id: "acc-2",
+    external_account_name: "Bling Account",
+    auth_strategy: "token",
+    next_action: "reauth",
+    reauth_reason: "token expired",
+  }),
+  runtime_capabilities: runtimeCapabilities([{ code: "account_probe" }, { code: "listing_read", state: "needs_auth" }, { code: "order_read", state: "needs_auth" }]),
   created_at: "2026-04-11T12:00:00Z",
   updated_at: "2026-04-11T12:30:00Z",
 };
@@ -129,6 +196,16 @@ const sampleInstallationDraft: IntegrationInstallation = {
   external_account_name: "Mercado Livre Draft Account",
   active_credential_id: undefined,
   last_verified_at: "2026-04-11T12:05:00Z",
+  connection: connectedSnapshot({
+    state: "draft",
+    health: "warning",
+    external_account_id: "acc-5",
+    external_account_name: "Mercado Livre Draft Account",
+    auth_strategy: "oauth2",
+    last_verified_at: "2026-04-11T12:05:00Z",
+    next_action: "configure",
+  }),
+  runtime_capabilities: [],
   created_at: "2026-04-11T12:00:00Z",
   updated_at: "2026-04-11T12:30:00Z",
 };
@@ -144,6 +221,16 @@ const sampleInstallationPendingConnection: IntegrationInstallation = {
   external_account_name: "Mercado Livre Pending Account",
   active_credential_id: undefined,
   last_verified_at: "2026-04-11T12:05:00Z",
+  connection: connectedSnapshot({
+    state: "pending_connection",
+    health: "warning",
+    external_account_id: "acc-4",
+    external_account_name: "Mercado Livre Pending Account",
+    auth_strategy: "oauth2",
+    last_verified_at: "2026-04-11T12:05:00Z",
+    next_action: "none",
+  }),
+  runtime_capabilities: [],
   created_at: "2026-04-11T12:00:00Z",
   updated_at: "2026-04-11T12:30:00Z",
 };
@@ -160,6 +247,17 @@ const sampleInstallationPendingAPIKey: IntegrationInstallation = {
   external_account_name: "Shopee Pending Account",
   active_credential_id: undefined,
   last_verified_at: "2026-04-11T12:05:00Z",
+  connection: connectedSnapshot({
+    state: "pending_connection",
+    health: "warning",
+    provider_code: "shopee",
+    external_account_id: "acc-6",
+    external_account_name: "Shopee Pending Account",
+    auth_strategy: "api_key",
+    last_verified_at: "2026-04-11T12:05:00Z",
+    next_action: "configure",
+  }),
+  runtime_capabilities: [],
   created_at: "2026-04-11T12:00:00Z",
   updated_at: "2026-04-11T12:30:00Z",
 };
@@ -176,6 +274,16 @@ const sampleInstallationDisconnectedActionable: IntegrationInstallation = {
   external_account_name: "Mercado Livre Disconnected Account",
   active_credential_id: undefined,
   last_verified_at: "2026-04-11T12:05:00Z",
+  connection: connectedSnapshot({
+    state: "disconnected",
+    health: "warning",
+    external_account_id: "acc-7",
+    external_account_name: "Mercado Livre Disconnected Account",
+    auth_strategy: "oauth2",
+    last_verified_at: "2026-04-11T12:05:00Z",
+    next_action: "authorize",
+  }),
+  runtime_capabilities: [],
   created_at: "2026-04-11T12:00:00Z",
   updated_at: "2026-04-11T12:30:00Z",
 };
@@ -192,6 +300,14 @@ const sampleInstallationOtherProvider: IntegrationInstallation = {
   external_account_name: "Shopee Account",
   active_credential_id: "cred-3",
   last_verified_at: "2026-04-11T12:15:00Z",
+  connection: connectedSnapshot({
+    provider_code: "shopee",
+    external_account_id: "acc-3",
+    external_account_name: "Shopee Account",
+    auth_strategy: "api_key",
+    last_verified_at: "2026-04-11T12:15:00Z",
+  }),
+  runtime_capabilities: runtimeCapabilities([{ code: "account_probe" }]),
   created_at: "2026-04-11T12:00:00Z",
   updated_at: "2026-04-11T12:30:00Z",
 };
@@ -208,6 +324,17 @@ const sampleInstallationPendingAPIKeySecond: IntegrationInstallation = {
   external_account_name: "Shopee Backup Account",
   active_credential_id: undefined,
   last_verified_at: "2026-04-11T12:05:00Z",
+  connection: connectedSnapshot({
+    state: "pending_connection",
+    health: "warning",
+    provider_code: "shopee",
+    external_account_id: "acc-8",
+    external_account_name: "Shopee Backup Account",
+    auth_strategy: "api_key",
+    last_verified_at: "2026-04-11T12:05:00Z",
+    next_action: "configure",
+  }),
+  runtime_capabilities: [],
   created_at: "2026-04-11T12:00:00Z",
   updated_at: "2026-04-11T12:30:00Z",
 };
@@ -218,6 +345,17 @@ const sampleAuthStatus: IntegrationAuthStatusResponse = {
   health_status: "warning",
   provider_code: "bling",
   external_account_id: "acc-2",
+  external_account_name: "Bling Account",
+  connection: connectedSnapshot({
+    state: "needs_reauth",
+    health: "warning",
+    provider_code: "bling",
+    external_account_id: "acc-2",
+    external_account_name: "Bling Account",
+    auth_strategy: "token",
+    next_action: "reauth",
+    reauth_reason: "token expired",
+  }),
 };
 
 const sampleOperationRuns: IntegrationOperationRun[] = [
@@ -361,6 +499,24 @@ describe("IntegrationsHubPage", () => {
     expect(within(cardButton).getByText(/healthy/i)).toBeInTheDocument();
   });
 
+  it("does not render missing credential as disconnected when connection is healthy", async () => {
+    mockListInstallations.mockResolvedValue({
+      items: [{ ...sampleInstallation, active_credential_id: undefined }],
+    });
+
+    renderPage();
+
+    const card = await screen.findByText("Mercado Livre Main Store");
+    const cardButton = card.closest("button");
+    expect(cardButton).not.toBeNull();
+    if (!cardButton) {
+      return;
+    }
+
+    expect(within(cardButton).getByText("Main Store")).toBeInTheDocument();
+    expect(within(cardButton).queryByText("Not connected")).not.toBeInTheDocument();
+  });
+
   it("still renders installations when provider metadata fails to load", async () => {
     mockListProviders.mockRejectedValue({
       status: 503,
@@ -433,7 +589,7 @@ describe("IntegrationsHubPage", () => {
     const dialog = await screen.findByRole("dialog", { name: /bling store details/i });
     expect(dialog).toBeInTheDocument();
     expect(within(dialog).getByText("Bling Store")).toBeInTheDocument();
-    expect(within(dialog).getByText("Bling Account")).toBeInTheDocument();
+    expect(within(dialog).getAllByText("Bling Account").length).toBeGreaterThanOrEqual(1);
     expect(within(dialog).getByText("Bling")).toBeInTheDocument();
   });
 

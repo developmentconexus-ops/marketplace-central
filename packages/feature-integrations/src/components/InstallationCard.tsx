@@ -21,6 +21,9 @@ export function InstallationCard({
   onSelect,
 }: InstallationCardProps) {
   const needsAction = isNeedsAction(installation);
+  const connection = installation.connection;
+  const externalAccountLabel =
+    connection.external_account_name || connection.external_account_id || "Account not verified";
 
   return (
     <button
@@ -54,19 +57,17 @@ export function InstallationCard({
         <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
           <div>
             <dt className="text-xs uppercase tracking-wide text-slate-400">External account</dt>
-            <dd className="mt-1 text-slate-700">{installation.external_account_name}</dd>
+            <dd className="mt-1 text-slate-700">{externalAccountLabel}</dd>
           </div>
           <div>
-            <dt className="text-xs uppercase tracking-wide text-slate-400">Credential</dt>
-            <dd className="mt-1 text-slate-700">
-              {installation.active_credential_id ?? "Not connected"}
-            </dd>
+            <dt className="text-xs uppercase tracking-wide text-slate-400">Next action</dt>
+            <dd className="mt-1 text-slate-700">{connection.next_action}</dd>
           </div>
         </dl>
 
         <div className="mt-4 flex items-center justify-between gap-3">
           <p className="text-xs text-slate-500">
-            Last verified {installation.last_verified_at ?? "unknown"}
+            Last verified {connection.last_verified_at ?? "not yet verified"}
           </p>
           {needsAction ? (
             <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800">
