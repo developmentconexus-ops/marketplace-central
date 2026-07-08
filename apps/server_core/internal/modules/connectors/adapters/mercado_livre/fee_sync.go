@@ -10,8 +10,8 @@ import (
 	"marketplace-central/apps/server_core/internal/modules/marketplaces/ports"
 )
 
-// FeeSyncer seeds Mercado Livre fee schedules.
-// Phase 3 seeds static defaults only. Live ML Fees API integration deferred to Phase 3.1.
+// FeeSyncer seeds Mercado Livre fee schedules with static defaults only.
+// Slice 1 runtime fee evidence comes from live ReadFeeQuote, not this seeder.
 type FeeSyncer struct{}
 
 func init() {
@@ -25,7 +25,7 @@ func NewFeeSyncer() *FeeSyncer { return &FeeSyncer{} }
 func (f *FeeSyncer) MarketplaceCode() string { return "mercado_livre" }
 
 // Sync seeds ML default commission rates (Clássico 16%, Premium 22%).
-// Replace with actual ML API calls once OAuth is wired.
+// This is bootstrap data, not live provider-backed fee synchronization.
 func (f *FeeSyncer) Sync(ctx context.Context, repo ports.FeeScheduleRepository) (int, error) {
 	schedules := []domain.FeeSchedule{
 		{

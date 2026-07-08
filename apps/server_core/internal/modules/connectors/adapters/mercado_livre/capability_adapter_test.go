@@ -66,6 +66,99 @@ func TestCapabilityAdapterReadListingMapsItemWithoutVariation(t *testing.T) {
 	}
 }
 
+func TestCapabilityAdapterProbeAccountReadsUsersMe(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/users/me" {
+			t.Fatalf("path = %s", r.URL.Path)
+		}
+		if got := r.Header.Get("Authorization"); got != "Bearer token-1" {
+			t.Fatalf("authorization = %q", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":691607102,"nickname":"METALNOBREACABAMENTOS","site_id":"MLB","status":{"site_status":"active"}}`))
+	}))
+	defer server.Close()
+
+	adapter := NewCapabilityAdapter(CapabilityAdapterConfig{
+		BaseURL:    server.URL,
+		HTTPClient: server.Client(),
+		AccessTokenResolver: func(context.Context, domain.ProviderAccountRef) (string, error) {
+			return "token-1", nil
+		},
+		Now: func() time.Time { return time.Date(2026, 7, 8, 12, 0, 0, 0, time.UTC) },
+	})
+
+	snapshot, err := adapter.ProbeAccount(context.Background(), domain.ProviderAccountRef{
+		TenantID:          "tenant_default",
+		InstallationID:    "inst-1",
+		ProviderCode:      "mercado_livre",
+		ProviderAccountID: "691607102",
+	})
+	if err != nil {
+		t.Fatalf("ProbeAccount() error = %v", err)
+	}
+	if snapshot.ProviderAccountID != "691607102" {
+		t.Fatalf("account id = %q", snapshot.ProviderAccountID)
+	}
+	if snapshot.ProviderAccountName != "METALNOBREACABAMENTOS" {
+		t.Fatalf("account name = %q", snapshot.ProviderAccountName)
+	}
+	if snapshot.Status != "active" {
+		t.Fatalf("status = %q", snapshot.Status)
+	}
+}
+
+func TestCapabilityAdapterReadFeeQuoteReadsListingPrices(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/sites/MLB/listing_prices" {
+			t.Fatalf("path = %s", r.URL.Path)
+		}
+		query := r.URL.Query()
+		if query.Get("price") != "100" || query.Get("listing_type_id") != "gold_special" {
+			t.Fatalf("query = %s", r.URL.RawQuery)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`[{"listing_type_id":"gold_special","sale_fee_details":{"percentage_fee":11,"fixed_fee":6}}]`))
+	}))
+	defer server.Close()
+
+	adapter := NewCapabilityAdapter(CapabilityAdapterConfig{
+		BaseURL:    server.URL,
+		SiteID:     "MLB",
+		HTTPClient: server.Client(),
+		AccessTokenResolver: func(context.Context, domain.ProviderAccountRef) (string, error) {
+			return "token-1", nil
+		},
+		Now: func() time.Time { return time.Date(2026, 7, 8, 12, 0, 0, 0, time.UTC) },
+	})
+
+	quote, err := adapter.ReadFeeQuote(context.Background(), domain.FeeQuoteInput{
+		AccountRef: domain.ProviderAccountRef{
+			TenantID:          "tenant_default",
+			InstallationID:    "inst-1",
+			ProviderCode:      "mercado_livre",
+			ProviderAccountID: "691607102",
+		},
+		SiteID:        "MLB",
+		ListingTypeID: "gold_special",
+		PriceAmount:   100,
+		CurrencyID:    "BRL",
+	})
+	if err != nil {
+		t.Fatalf("ReadFeeQuote() error = %v", err)
+	}
+	if quote.CommissionPercent == nil || *quote.CommissionPercent != 11 {
+		t.Fatalf("commission percent = %v", quote.CommissionPercent)
+	}
+	if quote.FixedFeeAmount == nil || *quote.FixedFeeAmount != 6 {
+		t.Fatalf("fixed fee = %v", quote.FixedFeeAmount)
+	}
+}
+
 func TestCapabilityAdapterReadStockMapsVariation(t *testing.T) {
 	t.Parallel()
 

@@ -8,11 +8,13 @@ import (
 )
 
 type ProviderCapabilitySet struct {
-	ProviderCode string
-	Listings     ports.ListingReader
-	StockReads   ports.StockReader
-	StockWrites  ports.StockWriter
-	Orders       ports.OrderReader
+	ProviderCode  string
+	AccountProbes ports.AccountProber
+	Listings      ports.ListingReader
+	FeeQuotes     ports.FeeQuoteReader
+	StockReads    ports.StockReader
+	StockWrites   ports.StockWriter
+	Orders        ports.OrderReader
 }
 
 type MarketplaceCapabilityService struct {
@@ -42,6 +44,28 @@ func (s *MarketplaceCapabilityService) ListingReader(providerCode string) (ports
 		return nil, unsupported(providerCode, ports.CapabilityListingRead)
 	}
 	return capability.Listings, nil
+}
+
+func (s *MarketplaceCapabilityService) AccountProber(providerCode string) (ports.AccountProber, error) {
+	capability, err := s.provider(providerCode)
+	if err != nil {
+		return nil, err
+	}
+	if capability.AccountProbes == nil {
+		return nil, unsupported(providerCode, ports.CapabilityAccountProbe)
+	}
+	return capability.AccountProbes, nil
+}
+
+func (s *MarketplaceCapabilityService) FeeQuoteReader(providerCode string) (ports.FeeQuoteReader, error) {
+	capability, err := s.provider(providerCode)
+	if err != nil {
+		return nil, err
+	}
+	if capability.FeeQuotes == nil {
+		return nil, unsupported(providerCode, ports.CapabilityFeeQuoteRead)
+	}
+	return capability.FeeQuotes, nil
 }
 
 func (s *MarketplaceCapabilityService) StockReader(providerCode string) (ports.StockReader, error) {

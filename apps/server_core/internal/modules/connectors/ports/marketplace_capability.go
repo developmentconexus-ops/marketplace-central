@@ -7,13 +7,19 @@ import (
 )
 
 const (
+	CapabilityAccountProbe        = "account_probe"
 	CapabilityListingRead         = "listing_read"
+	CapabilityFeeQuoteRead        = "fee_quote_read"
 	CapabilityStockRead           = "stock_read"
 	CapabilityStockWrite          = "stock_write"
 	CapabilityOrderRead           = "order_read"
 	CapabilityShipmentPlaceholder = "shipment_read"
 	CapabilityQuestionPlaceholder = "question_read"
 )
+
+type AccountProber interface {
+	ProbeAccount(ctx context.Context, ref domain.ProviderAccountRef) (domain.AccountSnapshot, error)
+}
 
 type ListingReader interface {
 	ListListings(ctx context.Context, input domain.ListListingsInput) ([]domain.ListingSnapshot, error)
@@ -31,4 +37,8 @@ type StockWriter interface {
 type OrderReader interface {
 	ListOrders(ctx context.Context, input domain.ListOrdersInput) ([]domain.OrderSnapshot, error)
 	ReadOrder(ctx context.Context, ref domain.ProviderOrderRef) (domain.OrderSnapshot, error)
+}
+
+type FeeQuoteReader interface {
+	ReadFeeQuote(ctx context.Context, input domain.FeeQuoteInput) (domain.FeeQuoteSnapshot, error)
 }

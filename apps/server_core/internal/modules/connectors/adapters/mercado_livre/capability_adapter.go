@@ -69,12 +69,39 @@ func NewCapabilityAdapter(cfg CapabilityAdapterConfig) *CapabilityAdapter {
 
 func (a *CapabilityAdapter) ProviderCapabilitySet() connectorsapp.ProviderCapabilitySet {
 	return connectorsapp.ProviderCapabilitySet{
-		ProviderCode: "mercado_livre",
-		Listings:     a,
-		StockReads:   a,
-		StockWrites:  a,
-		Orders:       a,
+		ProviderCode:  "mercado_livre",
+		AccountProbes: a,
+		Listings:      a,
+		FeeQuotes:     a,
+		StockReads:    a,
+		Orders:        a,
 	}
+}
+
+func (a *CapabilityAdapter) ProbeAccount(ctx context.Context, ref domain.ProviderAccountRef) (domain.AccountSnapshot, error) {
+	accountRef, err := normalizeAccountRef(ref)
+	if err != nil {
+		return domain.AccountSnapshot{}, err
+	}
+	token, err := a.accessToken(ctx, accountRef)
+	if err != nil {
+		return domain.AccountSnapshot{}, err
+	}
+
+	var response mlAccountResponse
+	if err := a.doJSON(ctx, accountRef, token, http.MethodGet, "/users/me", nil, &response); err != nil {
+		return domain.AccountSnapshot{}, err
+	}
+
+	return domain.AccountSnapshot{
+		ProviderCode:        "mercado_livre",
+		ProviderAccountID:   firstNonEmpty(normalizeAnyID(response.ID), accountRef.ProviderAccountID),
+		ProviderAccountName: firstNonEmpty(response.Nickname, strings.TrimSpace(response.FirstName+" "+response.LastName)),
+		SiteID:              strings.TrimSpace(response.SiteID),
+		Status:              firstNonEmpty(response.Status.SiteStatus, response.Status.List.Status),
+		FetchedAt:           a.now(),
+		RawProviderRef:      "/users/me",
+	}, nil
 }
 
 func (a *CapabilityAdapter) ListListings(ctx context.Context, input domain.ListListingsInput) ([]domain.ListingSnapshot, error) {
@@ -354,6 +381,54 @@ func (a *CapabilityAdapter) ReadOrder(ctx context.Context, ref domain.ProviderOr
 	return a.mapOrder(order), nil
 }
 
+func (a *CapabilityAdapter) ReadFeeQuote(ctx context.Context, input domain.FeeQuoteInput) (domain.FeeQuoteSnapshot, error) {
+	accountRef, err := normalizeAccountRef(input.AccountRef)
+	if err != nil {
+		return domain.FeeQuoteSnapshot{}, err
+	}
+	token, err := a.accessToken(ctx, accountRef)
+	if err != nil {
+		return domain.FeeQuoteSnapshot{}, err
+	}
+	if input.PriceAmount <= 0 {
+		return domain.FeeQuoteSnapshot{}, domain.NewCapabilityError(domain.ErrCodeProviderValidation, "price amount must be positive")
+	}
+	listingTypeID := strings.TrimSpace(input.ListingTypeID)
+	if listingTypeID == "" {
+		return domain.FeeQuoteSnapshot{}, domain.NewCapabilityError(domain.ErrCodeProviderInvalidReference, "listing type id is required")
+	}
+	siteID := firstNonEmpty(input.SiteID, a.siteID)
+
+	query := url.Values{}
+	query.Set("price", strconv.FormatFloat(input.PriceAmount, 'f', -1, 64))
+	query.Set("listing_type_id", listingTypeID)
+	if categoryID := strings.TrimSpace(input.CategoryID); categoryID != "" {
+		query.Set("category_id", categoryID)
+	}
+
+	var response []mlListingPriceResponse
+	if err := a.doJSON(ctx, accountRef, token, http.MethodGet, "/sites/"+url.PathEscape(siteID)+"/listing_prices?"+query.Encode(), nil, &response); err != nil {
+		return domain.FeeQuoteSnapshot{}, err
+	}
+	if len(response) == 0 {
+		return domain.FeeQuoteSnapshot{}, domain.NewCapabilityError(domain.ErrCodeProviderInvalidReference, "provider returned no fee quote")
+	}
+
+	price := response[0]
+	return domain.FeeQuoteSnapshot{
+		ProviderCode:      "mercado_livre",
+		SiteID:            siteID,
+		CategoryID:        strings.TrimSpace(input.CategoryID),
+		ListingTypeID:     firstNonEmpty(price.ListingTypeID, listingTypeID),
+		PriceAmount:       input.PriceAmount,
+		CurrencyID:        firstNonEmpty(strings.TrimSpace(input.CurrencyID), "BRL"),
+		CommissionPercent: price.SaleFeeDetails.PercentageFee,
+		FixedFeeAmount:    price.SaleFeeDetails.FixedFee,
+		FetchedAt:         a.now(),
+		RawProviderRef:    "/sites/" + siteID + "/listing_prices",
+	}, nil
+}
+
 func (a *CapabilityAdapter) accessToken(ctx context.Context, accountRef domain.ProviderAccountRef) (string, error) {
 	if a.accessTokenResolver == nil {
 		return "", domain.NewCapabilityError(domain.ErrCodeProviderInvalidReference, "access token resolver is not configured")
@@ -625,6 +700,28 @@ type mlItemResponse struct {
 	Variations        []mlVariation `json:"variations"`
 }
 
+type mlAccountResponse struct {
+	ID        any    `json:"id"`
+	Nickname  string `json:"nickname"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	SiteID    string `json:"site_id"`
+	Status    struct {
+		SiteStatus string `json:"site_status"`
+		List       struct {
+			Status string `json:"status"`
+		} `json:"list"`
+	} `json:"status"`
+}
+
+type mlListingPriceResponse struct {
+	ListingTypeID  string `json:"listing_type_id"`
+	SaleFeeDetails struct {
+		PercentageFee *float64 `json:"percentage_fee"`
+		FixedFee      *float64 `json:"fixed_fee"`
+	} `json:"sale_fee_details"`
+}
+
 type mlVariation struct {
 	ID                any           `json:"id"`
 	AvailableQuantity *int          `json:"available_quantity"`
@@ -676,8 +773,10 @@ type mlPayment struct {
 }
 
 var (
-	_ ports.ListingReader = (*CapabilityAdapter)(nil)
-	_ ports.StockReader   = (*CapabilityAdapter)(nil)
-	_ ports.StockWriter   = (*CapabilityAdapter)(nil)
-	_ ports.OrderReader   = (*CapabilityAdapter)(nil)
+	_ ports.AccountProber  = (*CapabilityAdapter)(nil)
+	_ ports.FeeQuoteReader = (*CapabilityAdapter)(nil)
+	_ ports.ListingReader  = (*CapabilityAdapter)(nil)
+	_ ports.StockReader    = (*CapabilityAdapter)(nil)
+	_ ports.StockWriter    = (*CapabilityAdapter)(nil)
+	_ ports.OrderReader    = (*CapabilityAdapter)(nil)
 )

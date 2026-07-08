@@ -23,6 +23,28 @@ func (f fakeListingReader) ReadListing(_ context.Context, _ domain.ProviderListi
 
 type fakeStockManager struct{}
 
+type fakeAccountProber struct{}
+
+func (fakeAccountProber) ProbeAccount(_ context.Context, ref domain.ProviderAccountRef) (domain.AccountSnapshot, error) {
+	return domain.AccountSnapshot{
+		ProviderCode:      ref.ProviderCode,
+		ProviderAccountID: ref.ProviderAccountID,
+		FetchedAt:         time.Unix(400, 0).UTC(),
+	}, nil
+}
+
+type fakeFeeQuoteReader struct{}
+
+func (fakeFeeQuoteReader) ReadFeeQuote(_ context.Context, input domain.FeeQuoteInput) (domain.FeeQuoteSnapshot, error) {
+	return domain.FeeQuoteSnapshot{
+		ProviderCode:  input.AccountRef.ProviderCode,
+		ListingTypeID: input.ListingTypeID,
+		PriceAmount:   input.PriceAmount,
+		CurrencyID:    input.CurrencyID,
+		FetchedAt:     time.Unix(500, 0).UTC(),
+	}, nil
+}
+
 func (fakeStockManager) ReadStock(_ context.Context, ref domain.ProviderListingRef) (domain.StockSnapshot, error) {
 	return domain.StockSnapshot{
 		ProviderCode:        ref.AccountRef.ProviderCode,
@@ -147,10 +169,40 @@ func TestMarketplaceCapabilityServiceReturnsStockManagerWhenRegistered(t *testin
 	}
 }
 
+func TestMarketplaceCapabilityServiceAccountProber(t *testing.T) {
+	t.Parallel()
+
+	svc := NewMarketplaceCapabilityService([]ProviderCapabilitySet{{
+		ProviderCode:  "mercado_livre",
+		AccountProbes: fakeAccountProber{},
+	}})
+
+	got, err := svc.AccountProber("mercado_livre")
+	if err != nil {
+		t.Fatalf("AccountProber() error = %v", err)
+	}
+	if got == nil {
+		t.Fatalf("expected account prober")
+	}
+}
+
+func TestMarketplaceCapabilityServiceFeeQuoteReaderUnsupported(t *testing.T) {
+	t.Parallel()
+
+	svc := NewMarketplaceCapabilityService([]ProviderCapabilitySet{{ProviderCode: "mercado_livre"}})
+
+	_, err := svc.FeeQuoteReader("mercado_livre")
+	if err == nil {
+		t.Fatalf("expected unsupported fee quote reader")
+	}
+}
+
 func intPtr(value int) *int {
 	return &value
 }
 
 var _ ports.ListingReader = fakeListingReader{}
+var _ ports.AccountProber = fakeAccountProber{}
+var _ ports.FeeQuoteReader = fakeFeeQuoteReader{}
 var _ ports.StockReader = fakeStockManager{}
 var _ ports.StockWriter = fakeStockManager{}

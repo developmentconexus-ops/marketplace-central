@@ -130,6 +130,16 @@ type ListingSnapshot struct {
 	Variations          []ListingVariationSnapshot
 }
 
+type AccountSnapshot struct {
+	ProviderCode        string
+	ProviderAccountID   string
+	ProviderAccountName string
+	SiteID              string
+	Status              string
+	FetchedAt           time.Time
+	RawProviderRef      any
+}
+
 type ListingVariationSnapshot struct {
 	ProviderVariationID string
 	SellerSKU           string
@@ -202,4 +212,27 @@ type OrderPaymentSnapshot struct {
 	PaymentID string
 	Status    string
 	Amount    *float64
+}
+
+type FeeQuoteInput struct {
+	AccountRef    ProviderAccountRef
+	SiteID        string
+	CategoryID    string
+	ListingTypeID string
+	PriceAmount   float64
+	CurrencyID    string
+}
+
+type FeeQuoteSnapshot struct {
+	ProviderCode      string
+	SiteID            string
+	CategoryID        string
+	ListingTypeID     string
+	PriceAmount       float64
+	CurrencyID        string
+	CommissionPercent *float64
+	FixedFeeAmount    *float64
+	SourceUpdatedAt   *time.Time
+	FetchedAt         time.Time
+	RawProviderRef    any
 }
