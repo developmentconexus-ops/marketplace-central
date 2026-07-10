@@ -108,18 +108,16 @@ foreach ($path in $ledgerByPath.Keys) {
 }
 
 $retained = @($ledgerRows | Where-Object { $_.disposition -ne 'committed' })
-$requiresCleanStatus = -not $AllowRetainedState -or $RequireCleanStatus
-if ($requiresCleanStatus) {
-    if ($retained.Count -gt 0) {
-        $errors.Add("Clean baseline is blocked by $($retained.Count) retained-state record(s).")
-    }
-    $status = @(git status --porcelain=v1 --untracked-files=all)
-    if ($LASTEXITCODE -ne 0) {
-        $errors.Add('git status failed while checking the candidate baseline.')
-    }
-    elseif ($status.Count -gt 0) {
-        $errors.Add("Candidate baseline has $($status.Count) dirty path(s).")
-    }
+if (-not $AllowRetainedState -and $retained.Count -gt 0) {
+    $errors.Add("Clean baseline is blocked by $($retained.Count) retained-state record(s).")
+}
+
+$status = @(git status --porcelain=v1 --untracked-files=all)
+if ($LASTEXITCODE -ne 0) {
+    $errors.Add('git status failed while checking the candidate baseline.')
+}
+elseif ($status.Count -gt 0) {
+    $errors.Add("Candidate baseline has $($status.Count) dirty path(s).")
 }
 
 if ($errors.Count -gt 0) {

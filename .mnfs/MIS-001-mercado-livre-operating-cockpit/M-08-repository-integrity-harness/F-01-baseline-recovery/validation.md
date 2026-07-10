@@ -48,10 +48,36 @@ staged, removed, or altered.
   - Artifact: ignored `runs/20260710T-baseline-harness-correction/red-retained-default.log`.
 - GREEN command: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-verify-baseline.ps1`
   - Actual: exit 0; default mode rejects retained ledger state and the dirty
-    worktree, while `-AllowRetainedState` permits intentional fixture diagnostics.
+    worktree. The historical `-AllowRetainedState` diagnostic claim is
+    superseded by the correction below.
   - Artifact: ignored `runs/20260710T-baseline-harness-correction/green-test-verify-baseline.log`.
 - Remaining blocker: 312 original paths remain retained pending confirmed owner
   attribution and scoped validation; feature status remains `blocked`.
+
+## Correction — Diagnostic Opt-In Does Not Waive Git Cleanliness
+
+- Status: current semantics; this correction supersedes the earlier historical
+  claim that `-AllowRetainedState` could accept a dirty diagnostic fixture.
+- Root cause: the verifier used the retained-state opt-in to skip both the
+  retained-disposition rejection and the Git dirty-worktree check; the former
+  is waivable, the latter is not.
+- Test isolation: `scripts/test-verify-baseline.ps1` now creates its own
+  temporary Git repository, commits its fixtures, and introduces/removes only
+  its controlled `controlled-dirty.txt` path. It does not use the ambient
+  primary worktree as a test condition.
+- Target: fake (temporary Git repository and deterministic TSV fixtures).
+- RED command: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-verify-baseline.ps1`
+  - Actual: exit 1; `dirty retained diagnostic baseline` expected exit 1 but
+    received exit 0 before the verifier change.
+  - Artifact: ignored `runs/20260710T-baseline-harness-correction/red-allow-retained-dirty-temp-repo.log`.
+- GREEN command: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-verify-baseline.ps1`
+  - Actual: exit 0; clean committed passes, dirty committed fails, dirty
+    retained with `-AllowRetainedState` fails, and clean retained with
+    `-AllowRetainedState` passes.
+  - Artifact: ignored `runs/20260710T-baseline-harness-correction/green-allow-retained-dirty-temp-repo.log`.
+- Remaining blocker: this fake-only correction does not establish a clean
+  candidate baseline or resolve ownership/scoped validation for the 312
+  retained original paths. F-01 remains `blocked`.
 
 ## Spec Adherence
 
