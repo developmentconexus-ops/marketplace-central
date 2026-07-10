@@ -1,7 +1,7 @@
 # Module: Product Links
 
 Layer: operational mapping
-Path: `apps/server_core/internal/modules/product_links/` (planned)
+Path: `apps/server_core/internal/modules/product_links/` (active)
 
 ## Main Question It Answers
 
@@ -28,3 +28,4 @@ Path: `apps/server_core/internal/modules/product_links/` (planned)
 - Map internal `CODPROD`/SKU/EAN to Mercado Livre `item_id` and variation ID when present.
 - Track link confidence: manual, exact SKU/EAN, title match, unresolved, conflict.
 - Block write actions when link state is unresolved or conflict.
+- Expose operator workflow endpoints and UI for approve, reject, and manual resolve with persisted audit evidence.

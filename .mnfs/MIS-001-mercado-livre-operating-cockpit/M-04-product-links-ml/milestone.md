@@ -3,11 +3,11 @@
 ```yaml
 id: M-04
 type: milestone
-status: planned
+status: passed
 owner: Mission Strategist
 parent: MIS-001
 created: 2026-07-06
-updated: 2026-07-06
+updated: 2026-07-09
 validation_level: QA-0
 lifecycle_scope: milestone
 ```
@@ -50,11 +50,11 @@ Stock writes, margin, and repricing are unsafe unless the listing/product relati
 
 ## Handoff
 
-- Current status: planned.
+- Current status: passed.
 - Next owner: Milestone Orchestrator.
-- Next action: Start after M-02 and M-03 relevant features are ready.
+- Next action: start M-05 Stock Seguro using explicit `product_links` states as downstream safety gates.
 - Required files/evidence: F-*/validation.md and M-04/validation-result.md.
-- Blockers or open decisions: None.
+- Blockers or open decisions: None at milestone scope.
 
 ## Correction Handoff
 

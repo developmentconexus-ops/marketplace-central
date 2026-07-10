@@ -48,11 +48,11 @@ Type: Functional
 Required: Yes
 Status: Pending
 Evidence:
-- Command: integration tests with inventory policy fake
-- Expected: `unresolved`, `conflict`, and `rejected` links block stock action proposal/apply; `resolved` allows downstream risk calculation.
+- Command: product-links workflow tests, workflow API responses, and persisted state inspection
+- Expected: `unresolved`, `conflict`, and `rejected` link states remain explicit and distinguishable from `resolved`, so downstream stock-action milestones can block unsafe proposals/apply paths instead of guessing.
 - Actual:
 - Artifact: `.mnfs/MIS-001-mercado-livre-operating-cockpit/M-04-product-links-ml/validation-result.md`
-Blocking failure: Stock action can be applied with unresolved or conflict link.
+Blocking failure: Product-link workflow collapses unresolved/conflict/rejected into an implicitly usable resolved-like state.
 Blocking failure observed: No
 Owner: QA Validator
 
