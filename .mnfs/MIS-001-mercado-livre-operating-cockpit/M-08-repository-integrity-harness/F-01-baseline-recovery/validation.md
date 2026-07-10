@@ -271,3 +271,24 @@ by F-01 finalization.
   ledger, raw run artifacts, and each cohort's future scoped validation.
 - Blockers or open decisions: M-06 remains functionally blocked; the 16 named
   local raw artifacts remain owned by its local-runtime evidence flow.
+
+## Milestone Orchestrator Acceptance Review
+
+- Decision: `blocked`
+- Return point: `quick_validation_passed`
+- Review evidence: final independent SPEC and QUALITY reviews, followed by one
+  focused revalidation of the correction batch.
+- Confirmed: the final C01 mechanical gate maps 312 original paths (296
+  committed, 16 explicit retained local raw artifacts), validates commit
+  provenance for committed rows, and reports a clean visible checkout.
+- Blocking finding: the focused revalidation requires a TDD fixture that
+  commits and then deletes a tracked path, proving the deletion-only
+  `diff-tree` provenance branch. The real `.vscode/tasks.json` deletion is
+  proven by the ledger gate, but the dedicated regression fixture is absent.
+- Constraint: Lean Risk-Gated Harness permits one normal correction batch and
+  one focused revalidation. That correction budget is exhausted; do not open
+  another micro-correction without an explicit orchestrator/owner decision.
+- Next owner: Milestone Orchestrator / human owner.
+- Next action: decide whether the existing real deletion evidence is sufficient
+  for F-01 acceptance or authorize one exception correction for the missing
+  fixture.
