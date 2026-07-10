@@ -3,11 +3,11 @@
 ```yaml
 id: M-05
 type: milestone
-status: planned
-owner: Mission Strategist
+status: passed
+owner: QA Validator
 parent: MIS-001
 created: 2026-07-06
-updated: 2026-07-06
+updated: 2026-07-09
 validation_level: QA-0
 lifecycle_scope: milestone
 ```
@@ -54,11 +54,11 @@ This is the first direct business value: prevent overselling and avoid cancellat
 
 ## Handoff
 
-- Current status: planned.
-- Next owner: Milestone Orchestrator.
-- Next action: Start after M-02, M-03, and M-04 pass.
+- Current status: passed.
+- Next owner: Mission Strategist.
+- Next action: Continue mission execution beyond the first Stock Seguro milestone.
 - Required files/evidence: F-*/validation.md and M-05/validation-result.md.
-- Blockers or open decisions: Product exclusion groups/weight/size examples should be reviewed during F-01.
+- Blockers or open decisions: none in M-05 scope; live provider mutation remains optional and requires explicit operator approval if ever attempted.
 
 ## Correction Handoff
 

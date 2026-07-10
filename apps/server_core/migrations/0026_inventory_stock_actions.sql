@@ -1,0 +1,37 @@
+CREATE TABLE IF NOT EXISTS inventory_stock_actions (
+  tenant_id text NOT NULL,
+  stock_action_id text NOT NULL,
+  installation_id text NOT NULL,
+  provider_code text NOT NULL,
+  provider_account_id text NOT NULL,
+  provider_item_id text NOT NULL,
+  provider_variation_id text NOT NULL DEFAULT '',
+  state text NOT NULL,
+  trigger text NOT NULL,
+  before_quantity integer,
+  requested_quantity integer NOT NULL,
+  recommended_quantity integer,
+  policy_id text NOT NULL,
+  internal_observed_at timestamptz,
+  provider_observed_at timestamptz,
+  operator_actor_type text NOT NULL,
+  operator_actor_id text NOT NULL,
+  operator_actor_name text NOT NULL DEFAULT '',
+  reason text NOT NULL DEFAULT '',
+  idempotency_key text NOT NULL,
+  blocking_code text NOT NULL DEFAULT '',
+  blocking_message text NOT NULL DEFAULT '',
+  failure_code text NOT NULL DEFAULT '',
+  failure_message text NOT NULL DEFAULT '',
+  provider_result_status text NOT NULL DEFAULT '',
+  provider_result_code text NOT NULL DEFAULT '',
+  provider_result_message text NOT NULL DEFAULT '',
+  provider_response_summary text NOT NULL DEFAULT '',
+  audit_events_json jsonb NOT NULL DEFAULT '[]'::jsonb,
+  created_at timestamptz NOT NULL,
+  updated_at timestamptz NOT NULL,
+  PRIMARY KEY (tenant_id, stock_action_id)
+);
+
+CREATE INDEX IF NOT EXISTS inventory_stock_actions_installation_idx
+  ON inventory_stock_actions (tenant_id, installation_id, updated_at DESC);

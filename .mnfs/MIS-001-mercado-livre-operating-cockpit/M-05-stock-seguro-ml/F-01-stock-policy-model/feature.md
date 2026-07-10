@@ -3,11 +3,11 @@
 ```yaml
 id: F-01
 type: feature-brief
-status: briefed
-owner: Mission Strategist
+status: quick_validation_passed
+owner: Feature Implementer
 parent: M-05
 created: 2026-07-06
-updated: 2026-07-06
+updated: 2026-07-09
 validation_level: QA-0
 lifecycle_scope: feature
 ```
@@ -42,8 +42,8 @@ Define `StockPolicy` for sellable scope, default buffer, source freshness, and p
 
 ## Handoff
 
-- Current status: briefed.
-- Next owner: Feature Implementer.
-- Next action: Create `spec.md`.
-- Required files/evidence: F-01/validation.md.
-- Blockers or open decisions: exact product group/weight/size exclusion examples.
+- Current status: quick_validation_passed.
+- Next owner: Milestone Orchestrator.
+- Next action: Accept F-01 into M-05 sequencing and start F-02 risk engine on top of the inventory-owned policy model.
+- Required files/evidence: `spec.md`, `plan.md`, `implementation-report.md`, and `validation.md`.
+- Blockers or open decisions: exact product group/weight/size/margin exclusion examples remain deferred to later owner refinement.

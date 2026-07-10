@@ -3,11 +3,11 @@
 ```yaml
 id: F-02
 type: feature-brief
-status: briefed
-owner: Mission Strategist
+status: quick_validation_passed
+owner: Feature Implementer
 parent: M-05
 created: 2026-07-06
-updated: 2026-07-06
+updated: 2026-07-09
 validation_level: QA-0
 lifecycle_scope: feature
 ```
@@ -53,8 +53,8 @@ Compare internal sellable stock and Mercado Livre announced stock for resolved l
 
 ## Handoff
 
-- Current status: briefed.
-- Next owner: Feature Implementer.
-- Next action: Create `spec.md`.
-- Required files/evidence: F-02/validation.md.
-- Blockers or open decisions: source freshness threshold default.
+- Current status: quick_validation_passed.
+- Next owner: Milestone Orchestrator.
+- Next action: Accept F-02 into M-05 sequencing and start F-03 manual stock action audit.
+- Required files/evidence: `spec.md`, `plan.md`, `implementation-report.md`, and `validation.md`.
+- Blockers or open decisions: live provider write validation remains deferred until explicit operator approval in F-03.

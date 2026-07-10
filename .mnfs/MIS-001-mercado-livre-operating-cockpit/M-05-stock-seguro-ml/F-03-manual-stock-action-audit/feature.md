@@ -3,11 +3,11 @@
 ```yaml
 id: F-03
 type: feature-brief
-status: briefed
-owner: Mission Strategist
+status: quick_validation_passed
+owner: Feature Implementer
 parent: M-05
 created: 2026-07-06
-updated: 2026-07-06
+updated: 2026-07-09
 validation_level: QA-0
 lifecycle_scope: feature
 ```
@@ -51,8 +51,8 @@ Create proposed manual stock actions and apply them through the capability `Stoc
 
 ## Handoff
 
-- Current status: briefed.
-- Next owner: Feature Implementer.
-- Next action: Create `spec.md`.
-- Required files/evidence: F-03/validation.md.
-- Blockers or open decisions: live provider write needs explicit operator approval.
+- Current status: quick_validation_passed.
+- Next owner: Milestone Orchestrator.
+- Next action: Accept F-03 into M-05 sequencing and start F-04 Stock Seguro dashboard/API work.
+- Required files/evidence: `spec.md`, `plan.md`, `implementation-report.md`, and `validation.md`.
+- Blockers or open decisions: live provider write validation still requires explicit operator approval.
