@@ -1,33 +1,34 @@
 package domain
 
-import "time"
-
 const (
-	StockScopeCodeRevenda          = "revenda"
-	StockScopeCodeShowroomExcluded = "showroom_excluded"
-	StockScopeCodeCustomPolicy     = "custom_policy"
+	SellableStockScopeResale StockScope = "resale"
+	SellableStockScopeCustom StockScope = "custom"
 )
 
-type StockScope struct {
-	Companies []int
-	Locations []int
-	Formula   string
-	ScopeCode string
+type StockScope string
+
+type SellableStockPolicy struct {
+	CompanyIDs          []int
+	LocationIDs         []int
+	ExcludedLocationIDs []int
+	Formula             string
+	Scope               StockScope
 }
 
-func DefaultSellableStockScope() StockScope {
-	return StockScope{
-		Companies: []int{1, 2},
-		Locations: []int{10101},
-		Formula:   "SUM(ESTOQUE - RESERVADO)",
-		ScopeCode: StockScopeCodeRevenda,
+func DefaultSellableStockPolicy() SellableStockPolicy {
+	return SellableStockPolicy{
+		CompanyIDs:          []int{1, 2},
+		LocationIDs:         []int{10101},
+		ExcludedLocationIDs: []int{10108},
+		Formula:             "SUM(ESTOQUE - RESERVADO)",
+		Scope:               SellableStockScopeResale,
 	}
 }
 
 type SellableStock struct {
-	Codprod         int
-	Quantity        *float64
-	Scope           StockScope
-	QualityFlags    []QualityFlag
-	SourceFetchedAt time.Time
+	ProductID    int
+	Quantity     *float64
+	Policy       SellableStockPolicy
+	Source       SourceMetadata
+	QualityFlags []QualityFlag
 }

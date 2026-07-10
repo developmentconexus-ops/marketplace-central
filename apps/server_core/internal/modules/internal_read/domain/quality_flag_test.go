@@ -1,21 +1,44 @@
 package domain
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
-func TestAllQualityFlagsAreNonEmpty(t *testing.T) {
+func TestQualityFlagsAreStable(t *testing.T) {
 	flags := []QualityFlag{
 		QualityComplete,
 		QualityMissingProduct,
 		QualityMissingStock,
+		QualityMissingPrice,
 		QualityMissingCost,
 		QualityMissingTax,
 		QualityAmbiguousProduct,
 		QualityStaleSource,
 	}
 
-	for _, flag := range flags {
-		if flag == "" {
-			t.Fatal("expected every quality flag to have a stable string value")
-		}
+	want := []QualityFlag{
+		"complete",
+		"missing_product",
+		"missing_stock",
+		"missing_price",
+		"missing_cost",
+		"missing_tax",
+		"ambiguous_product",
+		"stale_source",
+	}
+
+	if !reflect.DeepEqual(flags, want) {
+		t.Fatalf("expected stable quality flags %v, got %v", want, flags)
+	}
+}
+
+func TestReadErrorsRemainTyped(t *testing.T) {
+	err := NewReadError(ReadErrorUnsupportedQuery, "unsupported query shape", nil)
+	if !IsReadErrorCode(err, ReadErrorUnsupportedQuery) {
+		t.Fatalf("expected read error code %q", ReadErrorUnsupportedQuery)
+	}
+	if IsReadErrorCode(err, ReadErrorSourceUnavailable) {
+		t.Fatalf("did not expect read error code %q", ReadErrorSourceUnavailable)
 	}
 }

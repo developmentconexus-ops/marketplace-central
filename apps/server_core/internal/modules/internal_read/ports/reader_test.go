@@ -4,6 +4,7 @@ import (
 	"context"
 	"reflect"
 	"testing"
+	"time"
 
 	"marketplace-central/apps/server_core/internal/modules/internal_read/domain"
 )
@@ -14,33 +15,36 @@ func TestReaderContractCompiles(t *testing.T) {
 	var _ Reader = (*stubReader)(nil)
 }
 
-func TestCurrentPriceInputAllowsImplicitDefaults(t *testing.T) {
-	input := CurrentPriceInput{Codprod: 42664}
-
-	if input.Codtab != nil {
-		t.Fatalf("expected CODTAB to be optional, got %v", *input.Codtab)
+func TestCurrentPriceInputUsesTypedPolicy(t *testing.T) {
+	now := time.Date(2026, 7, 7, 10, 0, 0, 0, time.UTC)
+	input := CurrentPriceInput{
+		ProductID: 42664,
+		Policy:    domain.DefaultCurrentPricePolicy(now),
 	}
-	if input.Codlocal != nil {
-		t.Fatalf("expected CODLOCAL to be optional, got %v", *input.Codlocal)
+
+	if input.Policy.PriceTableID != domain.DefaultPriceTableID {
+		t.Fatalf("expected default price table %d, got %d", domain.DefaultPriceTableID, input.Policy.PriceTableID)
+	}
+	if input.Policy.LocationID != domain.DefaultPriceLocalID {
+		t.Fatalf("expected default price local %d, got %d", domain.DefaultPriceLocalID, input.Policy.LocationID)
 	}
 
 	typ := reflect.TypeOf(CurrentPriceInput{})
-	if field, ok := typ.FieldByName("Codtab"); !ok || field.Type.Kind() != reflect.Ptr {
-		t.Fatalf("expected Codtab to be a pointer field, got %v", field.Type)
-	}
-	if field, ok := typ.FieldByName("Codlocal"); !ok || field.Type.Kind() != reflect.Ptr {
-		t.Fatalf("expected Codlocal to be a pointer field, got %v", field.Type)
+	if field, ok := typ.FieldByName("Policy"); !ok || field.Type != reflect.TypeOf(domain.CurrentPricePolicy{}) {
+		t.Fatalf("expected Policy field of type CurrentPricePolicy, got %v", field.Type)
 	}
 }
 
 func TestSalesHistoryInputSupportsProductOrGroup(t *testing.T) {
-	productOnly := SalesHistoryInput{Codprod: intPtr(42664), StartDate: "2026-07-01", EndDate: "2026-07-31"}
-	groupOnly := SalesHistoryInput{CodgrupoProd: intPtr(12), StartDate: "2026-07-01", EndDate: "2026-07-31"}
+	start := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2026, 7, 31, 0, 0, 0, 0, time.UTC)
+	productOnly := SalesHistoryInput{ProductID: intPtr(42664), Window: domain.SalesHistoryWindow{Start: start, End: end}}
+	groupOnly := SalesHistoryInput{ProductGroupID: intPtr(12), Window: domain.SalesHistoryWindow{Start: start, End: end}}
 
-	if productOnly.Codprod == nil || productOnly.CodgrupoProd != nil {
+	if productOnly.ProductID == nil || productOnly.ProductGroupID != nil {
 		t.Fatalf("expected product-only history input to keep group nil, got %+v", productOnly)
 	}
-	if groupOnly.CodgrupoProd == nil || groupOnly.Codprod != nil {
+	if groupOnly.ProductGroupID == nil || groupOnly.ProductID != nil {
 		t.Fatalf("expected group-only history input to keep product nil, got %+v", groupOnly)
 	}
 }

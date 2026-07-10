@@ -43,84 +43,116 @@ func (r *Reader) FindProductsForLinking(_ context.Context, input ports.FindProdu
 		}
 	}
 	return []domain.ProductCandidate{{
+		Source:       domain.SourceMetadata{System: "fake"},
 		QualityFlags: []domain.QualityFlag{domain.QualityMissingProduct},
 	}}, nil
 }
 
 func (r *Reader) GetSellableStock(_ context.Context, input ports.SellableStockInput) (domain.SellableStock, error) {
-	if stock, ok := r.fixtures.Stocks[input.Codprod]; ok {
+	if stock, ok := r.fixtures.Stocks[input.ProductID]; ok {
 		return stock, nil
 	}
 	return domain.SellableStock{
-		Codprod:         input.Codprod,
-		Quantity:        nil,
-		Scope:           domain.DefaultSellableStockScope(),
-		QualityFlags:    []domain.QualityFlag{domain.QualityMissingStock},
-		SourceFetchedAt: time.Time{},
+		ProductID: input.ProductID,
+		Quantity:  nil,
+		Policy:    fallbackStockPolicy(input.Policy),
+		Source: domain.SourceMetadata{
+			System:    "fake",
+			FetchedAt: time.Time{},
+		},
+		QualityFlags: []domain.QualityFlag{domain.QualityMissingStock},
 	}, nil
 }
 
 func (r *Reader) GetCurrentPrice(_ context.Context, input ports.CurrentPriceInput) (domain.CurrentPrice, error) {
-	if price, ok := r.fixtures.Prices[input.Codprod]; ok {
+	if price, ok := r.fixtures.Prices[input.ProductID]; ok {
 		return price, nil
 	}
-
-	codtab := 0
-	if input.Codtab != nil {
-		codtab = *input.Codtab
-	}
-	codlocal := 10101
-	if input.Codlocal != nil {
-		codlocal = *input.Codlocal
-	}
+	policy := fallbackPricePolicy(input.Policy)
 
 	return domain.CurrentPrice{
-		Codprod:      input.Codprod,
-		Codtab:       codtab,
-		Codlocal:     codlocal,
-		Price:        nil,
-		QualityFlags: nil,
+		ProductID:    input.ProductID,
+		PriceTableID: policy.PriceTableID,
+		LocationID:   policy.LocationID,
+		Amount:       nil,
+		Source:       domain.SourceMetadata{System: "fake"},
+		QualityFlags: []domain.QualityFlag{domain.QualityMissingPrice},
 	}, nil
 }
 
 func (r *Reader) GetCostAsOf(_ context.Context, input ports.CostAsOfInput) (domain.CostAsOf, error) {
-	key := fmt.Sprintf("%d:%d:%s", input.Codprod, input.Codemp, input.SaleDate)
+	policy := fallbackCostPolicy(input.Policy)
+	key := fmt.Sprintf("%d:%d:%s", input.ProductID, policy.CompanyID, policy.EffectiveAt.Format(time.DateOnly))
 	if cost, ok := r.fixtures.Costs[key]; ok {
 		return cost, nil
 	}
 	return domain.CostAsOf{
-		Codprod:      input.Codprod,
-		Codemp:       input.Codemp,
-		SaleDate:     input.SaleDate,
-		CUSSEMICM:    nil,
-		QualityFlags: []domain.QualityFlag{domain.QualityMissingCost},
+		ProductID:   input.ProductID,
+		CompanyID:   policy.CompanyID,
+		Basis:       policy.Basis,
+		EffectiveAt: policy.EffectiveAt,
+		Amount:      nil,
+		Source:      domain.SourceMetadata{System: "fake"},
+		QualityFlags: []domain.QualityFlag{
+			domain.QualityMissingCost,
+		},
 	}, nil
 }
 
 func (r *Reader) GetSalesHistory(_ context.Context, input ports.SalesHistoryInput) (domain.SalesHistory, error) {
 	productKey := "product:nil"
-	if input.Codprod != nil {
-		productKey = fmt.Sprintf("product:%d", *input.Codprod)
+	if input.ProductID != nil {
+		productKey = fmt.Sprintf("product:%d", *input.ProductID)
 	}
 	groupKey := "group:nil"
-	if input.CodgrupoProd != nil {
-		groupKey = fmt.Sprintf("group:%d", *input.CodgrupoProd)
+	if input.ProductGroupID != nil {
+		groupKey = fmt.Sprintf("group:%d", *input.ProductGroupID)
 	}
-	key := fmt.Sprintf("%s|%s|%s|%s", productKey, groupKey, input.StartDate, input.EndDate)
+	key := fmt.Sprintf("%s|%s|%s|%s", productKey, groupKey, input.Window.Start.Format(time.DateOnly), input.Window.End.Format(time.DateOnly))
 	if sales, ok := r.fixtures.Sales[key]; ok {
 		return sales, nil
 	}
-	return domain.SalesHistory{}, nil
+	return domain.SalesHistory{
+		Source: domain.SourceMetadata{System: "fake"},
+	}, nil
 }
 
 func (r *Reader) GetTaxInputs(_ context.Context, input ports.TaxInput) (domain.TaxInputs, error) {
-	key := fmt.Sprintf("%d:%s", input.Codprod, input.SaleDate)
+	policy := fallbackTaxPolicy(input.Policy)
+	key := fmt.Sprintf("%d:%s:%d", input.ProductID, policy.EffectiveAt.Format(time.DateOnly), policy.IncidenceCode)
 	if taxes, ok := r.fixtures.Taxes[key]; ok {
 		return taxes, nil
 	}
 	return domain.TaxInputs{
-		Codprod:      input.Codprod,
-		SaleDate:     input.SaleDate,
-		QualityFlags: []domain.QualityFlag{domain.QualityMissingTax},
+		ProductID:     input.ProductID,
+		EffectiveAt:   policy.EffectiveAt,
+		IncidenceCode: policy.IncidenceCode,
+		Source:        domain.SourceMetadata{System: "fake"},
+		QualityFlags:  []domain.QualityFlag{domain.QualityMissingTax},
 	}, nil
+}
+
+func fallbackStockPolicy(policy domain.SellableStockPolicy) domain.SellableStockPolicy {
+	if len(policy.CompanyIDs) == 0 && len(policy.LocationIDs) == 0 && len(policy.ExcludedLocationIDs) == 0 && policy.Formula == "" && policy.Scope == "" {
+		return domain.DefaultSellableStockPolicy()
+	}
+	return policy
+}
+
+func fallbackPricePolicy(policy domain.CurrentPricePolicy) domain.CurrentPricePolicy {
+	if policy.PriceTableID == 0 && policy.LocationID == 0 && policy.EffectiveAt.IsZero() {
+		return domain.DefaultCurrentPricePolicy(time.Time{})
+	}
+	return policy
+}
+
+func fallbackCostPolicy(policy domain.CostAsOfPolicy) domain.CostAsOfPolicy {
+	if policy.Basis == "" {
+		policy.Basis = domain.CostBasisCUSSEMICM
+	}
+	return policy
+}
+
+func fallbackTaxPolicy(policy domain.TaxPolicy) domain.TaxPolicy {
+	return policy
 }

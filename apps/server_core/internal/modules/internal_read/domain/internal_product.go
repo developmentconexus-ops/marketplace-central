@@ -1,9 +1,16 @@
 package domain
 
 type ProductCandidate struct {
-	Codprod      int
-	Produto      string
-	EAN          string
-	Reference    string
-	QualityFlags []QualityFlag
+	ProductID        int
+	Name             string
+	EAN              *string
+	ReferenceCode    *string
+	ProductGroupID   *int
+	ProductGroupName *string
+	BrandID          *int
+	BrandName        *string
+	IsActive         bool
+	UsageType        *string
+	Source           SourceMetadata
+	QualityFlags     []QualityFlag
 }

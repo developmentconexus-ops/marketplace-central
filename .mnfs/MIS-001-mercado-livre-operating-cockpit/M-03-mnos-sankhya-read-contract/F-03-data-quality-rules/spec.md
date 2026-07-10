@@ -18,16 +18,32 @@ F-03-data-quality-rules
 
 ## Problem
 
-The internal read seam must make missing and ambiguous facts explicit so future modules block or degrade visibly instead of accepting silent zero defaults.
+The Oracle-first read boundary must make data quality explicit enough that downstream modules never confuse missing, ambiguous, stale, unsupported, or unavailable facts with valid operational data.
 
 ## Requirements
 
-- Prove all required quality flags exist and stay stable.
-- Prove missing product, stock, cost, and tax remain explicit quality states.
-- Prove no missing numeric in the fake seam becomes `0`.
-- Update downstream module docs to consume these flags intentionally.
+- Keep shared quality flags stable and intentionally named.
+- Prove missing product, stock, cost, tax, and source freshness remain explicit quality states.
+- Prove missing numerics remain `nil`, not `0`.
+- Support unsupported-query and source-unavailable states explicitly where the Oracle boundary cannot answer safely.
+- Keep validation wording honest about which states are proven by fake/unit tests versus real Oracle evidence.
+
+## Non-Goals
+
+- Writing UI text.
+- Deciding business approval policy for each downstream module.
+- Replacing live Oracle validation with fake-only evidence.
 
 ## Acceptance Criteria
 
-- `go test ./internal/modules/internal_read/...` proves `M-03-C01` and `M-03-C02`.
-- Fake seam returns `missing_product`, `missing_stock`, `missing_cost`, and `missing_tax` without zero-filling.
+- Quality-state tests prove stability and nil-preserving behavior for required internal-read outputs.
+- Fake seam and Oracle adapter tests both honor the same quality-state contract.
+- Validation artifacts explicitly avoid claiming real integration proof from mock/fake-only evidence.
+
+## Handoff
+
+- Current status: `spec_ready`
+- Next owner: Feature Implementer
+- Next action: write the execution plan and harden the quality-state implementation/tests
+- Required files/evidence: feature brief, spec, milestone contract, validation expectations
+- Blockers or open decisions: freshness thresholds may stay configurable if downstream modules need different tolerances

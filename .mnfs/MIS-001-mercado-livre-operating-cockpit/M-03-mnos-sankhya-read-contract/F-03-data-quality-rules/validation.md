@@ -3,7 +3,7 @@
 ```yaml
 id: F-03
 type: feature-validation
-status: quick_validation_passed
+status: passed
 owner: Feature Implementer
 parent: F-03
 created: 2026-07-07
@@ -16,23 +16,40 @@ lifecycle_scope: feature
 
 F-03-data-quality-rules
 
-## Quick Validation
-
-- Command: `cd apps/server_core; $env:GOCACHE=(Join-Path (Get-Location) '.gocache'); go test ./internal/modules/internal_read/...`
-  - Evidence type: ran
-  - Expected: fake seam proves missing facts stay flagged and missing numerics stay nil.
-  - Actual: `ok .../adapters/fake`; `ok .../adapters/oracle`; `ok .../application`; `ok .../domain`; `ok .../ports`
-
-- Command: `rg -n "CUSVARIAVEL|INSERT|UPDATE|DELETE" apps/server_core/internal/modules/internal_read`
-  - Evidence type: ran
-  - Expected: no `CUSVARIAVEL`; no write-path SQL in the internal read seam.
-  - Actual: no matches
-
-- Command: `rg -n "SANKHYA_DSN|SANKHYA_PASSWORD|password=" .mnfs apps/server_core/internal/modules/internal_read`
-  - Evidence type: ran
-  - Expected: no secret values leaked in artifacts or module errors.
-  - Actual: only environment-variable names in `adapters/oracle/config.go` and `config_test.go`; no secret values leaked.
-
 ## Summary
 
-Quick validation passed for reusable quality-flag semantics. The fake seam now keeps missing product, stock, cost, and tax as explicit quality states, and missing numerics remain `nil` rather than `0`.
+The Oracle-first rewrite preserves and extends the quality-state guardrails. Missing values stay nil, ambiguity stays explicit, and local proof does not overclaim live Oracle integration.
+
+## Current Validation State
+
+- Result: Passed for local contract/adapter behavior
+- Result owner: Feature Implementer
+- Decision date: 2026-07-07
+- Final feature state for handoff: ready_for_downstream_consumers
+
+## Evidence
+
+- Command: `cd apps/server_core; $env:GOCACHE=(Join-Path (Get-Location) '.gocache'); go test ./internal/modules/internal_read/...`
+  - Result: Pass
+- Command: `rg -n "INSERT|UPDATE|DELETE|MERGE" apps/server_core/internal/modules/internal_read/adapters/oracle`
+  - Result: Pass (no matches)
+
+## Observed
+
+- `missing_product`, `ambiguous_product`, `missing_stock`, `missing_price`, `missing_cost`, `missing_tax`, and `stale_source` remain stable quality flags.
+- Fake adapter behavior now mirrors the same nil-preserving contract as the Oracle adapter surface.
+- Validation wording now distinguishes local fake/unit proof from blocked live Oracle proof.
+
+## Scope Declaration
+
+- contract_validated: Yes
+- integration_validated: No
+- blocked_for_real_validation: F-03 itself is locally proven; milestone live Oracle proof still belongs to M-03/F-02
+
+## Handoff
+
+- Current status: `passed`
+- Next owner: Feature Implementer
+- Next action: keep these states unchanged while exercising real Oracle reads
+- Required files/evidence: milestone live-validation evidence
+- Blockers or open decisions: none for local contract behavior

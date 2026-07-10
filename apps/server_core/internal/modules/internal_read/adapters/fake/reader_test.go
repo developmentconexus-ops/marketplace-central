@@ -14,26 +14,33 @@ func TestFakeReaderSellableStockExcludesShowroomByDefault(t *testing.T) {
 	reader := NewReader(Fixtures{
 		Stocks: map[int]domain.SellableStock{
 			42664: {
-				Codprod:         42664,
-				Quantity:        float64ptr(3),
-				Scope:           domain.DefaultSellableStockScope(),
-				SourceFetchedAt: time.Date(2026, 7, 7, 12, 0, 0, 0, time.UTC),
+				ProductID: 42664,
+				Quantity:  float64ptr(3),
+				Policy:    domain.DefaultSellableStockPolicy(),
+				Source: domain.SourceMetadata{
+					System:    "fake",
+					FetchedAt: time.Date(2026, 7, 7, 12, 0, 0, 0, time.UTC),
+				},
 			},
 		},
 	})
 
-	got, err := reader.GetSellableStock(context.Background(), ports.SellableStockInput{Codprod: 42664})
+	got, err := reader.GetSellableStock(context.Background(), ports.SellableStockInput{
+		ProductID: 42664,
+		Policy:    domain.DefaultSellableStockPolicy(),
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if got.Quantity == nil || *got.Quantity != 3 {
 		t.Fatalf("expected revenda stock only, got %v", got.Quantity)
 	}
-	for _, location := range got.Scope.Locations {
+	for _, location := range got.Policy.ExcludedLocationIDs {
 		if location == 10108 {
-			t.Fatal("expected showroom location 10108 to stay excluded")
+			return
 		}
 	}
+	t.Fatal("expected showroom location 10108 to stay excluded")
 }
 
 func TestFakeReaderMissingProductReturnsUnresolvedCandidate(t *testing.T) {
@@ -55,7 +62,7 @@ func TestFakeReaderMissingProductReturnsUnresolvedCandidate(t *testing.T) {
 func TestFakeReaderMissingStockStaysNilWithQualityFlag(t *testing.T) {
 	reader := NewReader(Fixtures{})
 
-	got, err := reader.GetSellableStock(context.Background(), ports.SellableStockInput{Codprod: 42664})
+	got, err := reader.GetSellableStock(context.Background(), ports.SellableStockInput{ProductID: 42664})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -70,12 +77,19 @@ func TestFakeReaderMissingStockStaysNilWithQualityFlag(t *testing.T) {
 func TestFakeReaderMissingCostRemainsFlagged(t *testing.T) {
 	reader := NewReader(Fixtures{})
 
-	got, err := reader.GetCostAsOf(context.Background(), ports.CostAsOfInput{Codprod: 42664, Codemp: 1, SaleDate: "2026-07-06"})
+	got, err := reader.GetCostAsOf(context.Background(), ports.CostAsOfInput{
+		ProductID: 42664,
+		Policy: domain.CostAsOfPolicy{
+			CompanyID:   1,
+			EffectiveAt: time.Date(2026, 7, 6, 0, 0, 0, 0, time.UTC),
+			Basis:       domain.CostBasisCUSSEMICM,
+		},
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got.CUSSEMICM != nil {
-		t.Fatalf("expected nil cost, got %v", *got.CUSSEMICM)
+	if got.Amount != nil {
+		t.Fatalf("expected nil cost, got %v", *got.Amount)
 	}
 	if !slices.Contains(got.QualityFlags, domain.QualityMissingCost) {
 		t.Fatalf("expected missing_cost flag, got %v", got.QualityFlags)
@@ -85,7 +99,10 @@ func TestFakeReaderMissingCostRemainsFlagged(t *testing.T) {
 func TestFakeReaderMissingTaxRemainsFlagged(t *testing.T) {
 	reader := NewReader(Fixtures{})
 
-	got, err := reader.GetTaxInputs(context.Background(), ports.TaxInput{Codprod: 42664, SaleDate: "2026-07-06"})
+	got, err := reader.GetTaxInputs(context.Background(), ports.TaxInput{
+		ProductID: 42664,
+		Policy:    domain.DefaultTaxPolicy(time.Date(2026, 7, 6, 0, 0, 0, 0, time.UTC)),
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -94,6 +111,24 @@ func TestFakeReaderMissingTaxRemainsFlagged(t *testing.T) {
 	}
 	if !slices.Contains(got.QualityFlags, domain.QualityMissingTax) {
 		t.Fatalf("expected missing_tax flag, got %v", got.QualityFlags)
+	}
+}
+
+func TestFakeReaderMissingPriceRemainsFlagged(t *testing.T) {
+	reader := NewReader(Fixtures{})
+
+	got, err := reader.GetCurrentPrice(context.Background(), ports.CurrentPriceInput{
+		ProductID: 42664,
+		Policy:    domain.DefaultCurrentPricePolicy(time.Date(2026, 7, 6, 0, 0, 0, 0, time.UTC)),
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.Amount != nil {
+		t.Fatalf("expected nil price, got %v", *got.Amount)
+	}
+	if !slices.Contains(got.QualityFlags, domain.QualityMissingPrice) {
+		t.Fatalf("expected missing_price flag, got %v", got.QualityFlags)
 	}
 }
 

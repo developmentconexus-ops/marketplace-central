@@ -8,10 +8,12 @@ import (
 func TestLoadConfigFromEnvDoesNotLeakSecretValues(t *testing.T) {
 	_, err := LoadConfigFromEnv(func(key string) string {
 		switch key {
-		case "SANKHYA_DSN":
+		case "MPC_ORACLE_USERNAME":
 			return ""
-		case "SANKHYA_PASSWORD":
+		case "MPC_ORACLE_PASSWORD":
 			return "super-secret"
+		case "MPC_ORACLE_CONNECT_STRING":
+			return ""
 		default:
 			return ""
 		}

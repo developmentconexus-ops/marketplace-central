@@ -7,7 +7,7 @@ status: briefed
 owner: Mission Strategist
 parent: M-03
 created: 2026-07-06
-updated: 2026-07-06
+updated: 2026-07-07
 validation_level: QA-0
 lifecycle_scope: feature
 ```
@@ -18,30 +18,33 @@ MIS-001 Mercado Livre Operating Cockpit.
 
 ## Milestone
 
-M-03 MNOS/Sankhya read contract.
+M-03 Oracle internal-read contract.
 
 ## Brief
 
-Define reusable data-quality flags for internal inputs so missing/ambiguous/stale facts block or degrade downstream workflows visibly.
+Preserve and harden reusable data-quality rules so Oracle-backed internal facts degrade visibly and truthfully across `product_links`, `inventory`, `orders`, and `profitability`.
 
 ## Inputs
 
-- IC-002 quality enum.
-- Product Links, Inventory, Profitability planned states.
+- Rewritten F-01 contract.
+- Rewritten F-02 adapter behavior.
+- Planned downstream blocked/incomplete states.
 
 ## Expected Output
 
-- Shared value objects/enums for `missing_product`, `missing_stock`, `missing_cost`, `missing_tax`, `ambiguous_product`, `stale_source`.
-- Tests prove missing values do not become zero.
+- Shared value objects/enums for missing, ambiguous, stale, unsupported, and source-unavailable states.
+- Tests prove missing values never become business-safe defaults by accident.
+- Module docs and validation language reflect real evidence boundaries.
 
 ## Constraints
 
-- Do not add UI copy here beyond enum naming.
-- Do not decide product exclusion policy here.
+- Do not put UI copy or workflow policy here.
+- Do not hide unsupported Oracle query shapes behind fake success values.
 
 ## Validation Expectations
 
-- Unit tests cover every quality enum and at least one blocked stock case and one incomplete margin case.
+- Unit tests cover quality-state stability and nil-preserving semantics.
+- Validation artifacts explicitly separate fake-seam proof from live Oracle proof.
 
 ## Execution Artifact Rules
 
@@ -51,6 +54,6 @@ Define reusable data-quality flags for internal inputs so missing/ambiguous/stal
 
 - Current status: briefed.
 - Next owner: Feature Implementer.
-- Next action: Create `spec.md`.
+- Next action: Rewrite `spec.md` with the Oracle-first quality-state model.
 - Required files/evidence: F-03/validation.md.
-- Blockers or open decisions: None.
+- Blockers or open decisions: exact stale/freshness thresholds may depend on module-specific consumers.

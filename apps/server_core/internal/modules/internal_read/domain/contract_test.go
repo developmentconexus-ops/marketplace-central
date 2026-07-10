@@ -3,27 +3,26 @@ package domain
 import (
 	"reflect"
 	"testing"
+	"time"
 )
 
-func TestDefaultSellableStockScopePreservesMissionDefaults(t *testing.T) {
-	scope := DefaultSellableStockScope()
+func TestDefaultSellableStockPolicyPreservesMissionDefaults(t *testing.T) {
+	policy := DefaultSellableStockPolicy()
 
-	if scope.Formula != "SUM(ESTOQUE - RESERVADO)" {
-		t.Fatalf("expected stock formula to stay unchanged, got %q", scope.Formula)
+	if policy.Formula != "SUM(ESTOQUE - RESERVADO)" {
+		t.Fatalf("expected stock formula to stay unchanged, got %q", policy.Formula)
 	}
-	if scope.ScopeCode != StockScopeCodeRevenda {
-		t.Fatalf("expected scope code %q, got %q", StockScopeCodeRevenda, scope.ScopeCode)
+	if policy.Scope != SellableStockScopeResale {
+		t.Fatalf("expected scope %q, got %q", SellableStockScopeResale, policy.Scope)
 	}
-	if !reflect.DeepEqual(scope.Companies, []int{1, 2}) {
-		t.Fatalf("expected default companies [1 2], got %v", scope.Companies)
+	if !reflect.DeepEqual(policy.CompanyIDs, []int{1, 2}) {
+		t.Fatalf("expected default companies [1 2], got %v", policy.CompanyIDs)
 	}
-	if !reflect.DeepEqual(scope.Locations, []int{10101}) {
-		t.Fatalf("expected default locations [10101], got %v", scope.Locations)
+	if !reflect.DeepEqual(policy.LocationIDs, []int{10101}) {
+		t.Fatalf("expected default locations [10101], got %v", policy.LocationIDs)
 	}
-	for _, location := range scope.Locations {
-		if location == 10108 {
-			t.Fatalf("expected showroom location 10108 to stay excluded from default scope")
-		}
+	if !reflect.DeepEqual(policy.ExcludedLocationIDs, []int{10108}) {
+		t.Fatalf("expected excluded showroom location [10108], got %v", policy.ExcludedLocationIDs)
 	}
 }
 
@@ -32,6 +31,7 @@ func TestRequiredQualityFlagsRemainExplicit(t *testing.T) {
 		QualityComplete,
 		QualityMissingProduct,
 		QualityMissingStock,
+		QualityMissingPrice,
 		QualityMissingCost,
 		QualityMissingTax,
 		QualityAmbiguousProduct,
@@ -42,6 +42,7 @@ func TestRequiredQualityFlagsRemainExplicit(t *testing.T) {
 		"complete",
 		"missing_product",
 		"missing_stock",
+		"missing_price",
 		"missing_cost",
 		"missing_tax",
 		"ambiguous_product",
@@ -53,17 +54,20 @@ func TestRequiredQualityFlagsRemainExplicit(t *testing.T) {
 	}
 }
 
-func TestProductCandidateUsesTaskContractFields(t *testing.T) {
+func TestProductCandidateUsesOracleFirstFields(t *testing.T) {
+	ean := "7890000000000"
+	reference := "SKU-42664"
 	candidate := ProductCandidate{
-		Codprod:      42664,
-		Produto:      "Produto teste",
-		EAN:          "7890000000000",
-		Reference:    "SKU-42664",
-		QualityFlags: []QualityFlag{QualityComplete},
+		ProductID:     42664,
+		Name:          "Produto teste",
+		EAN:           &ean,
+		ReferenceCode: &reference,
+		IsActive:      true,
+		QualityFlags:  []QualityFlag{QualityComplete},
 	}
 
-	if candidate.EAN == "" || candidate.Reference == "" {
-		t.Fatalf("expected product candidate EAN and reference to use explicit task contract strings")
+	if candidate.EAN == nil || candidate.ReferenceCode == nil {
+		t.Fatal("expected product candidate to preserve EAN/reference pointers")
 	}
 	if !reflect.DeepEqual(candidate.QualityFlags, []QualityFlag{QualityComplete}) {
 		t.Fatalf("expected complete quality flag, got %v", candidate.QualityFlags)
@@ -71,16 +75,18 @@ func TestProductCandidateUsesTaskContractFields(t *testing.T) {
 }
 
 func TestMissingCostStaysNilWithQualityFlag(t *testing.T) {
+	now := time.Date(2026, 7, 6, 0, 0, 0, 0, time.UTC)
 	cost := CostAsOf{
-		Codprod:      42664,
-		Codemp:       1,
-		SaleDate:     "2026-07-06",
-		CUSSEMICM:    nil,
+		ProductID:    42664,
+		CompanyID:    1,
+		Basis:        CostBasisCUSSEMICM,
+		EffectiveAt:  now,
+		Amount:       nil,
 		QualityFlags: []QualityFlag{QualityMissingCost},
 	}
 
-	if cost.CUSSEMICM != nil {
-		t.Fatalf("expected missing CUSSEMICM to stay nil, got %v", *cost.CUSSEMICM)
+	if cost.Amount != nil {
+		t.Fatalf("expected missing CUSSEMICM cost to stay nil, got %v", *cost.Amount)
 	}
 	if !reflect.DeepEqual(cost.QualityFlags, []QualityFlag{QualityMissingCost}) {
 		t.Fatalf("expected missing cost quality flag, got %v", cost.QualityFlags)

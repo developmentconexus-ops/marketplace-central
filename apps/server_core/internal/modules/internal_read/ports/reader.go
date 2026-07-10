@@ -2,47 +2,46 @@ package ports
 
 import (
 	"context"
-	"time"
 
 	"marketplace-central/apps/server_core/internal/modules/internal_read/domain"
 )
 
 type FindProductsInput struct {
-	EAN       *string
-	SellerSKU *string
-	Title     *string
+	EAN             *string
+	SellerSKU       *string
+	Title           *string
+	IncludeInactive bool
 }
 
 type SellableStockInput struct {
-	Codprod   int
-	Companies []int
-	Locations []int
-	Now       time.Time
+	ProductID int
+	Policy    domain.SellableStockPolicy
+	Freshness domain.FreshnessPolicy
 }
 
 type CurrentPriceInput struct {
-	Codprod  int
-	Codtab   *int
-	Codlocal *int
-	Now      time.Time
+	ProductID int
+	Policy    domain.CurrentPricePolicy
+	Freshness domain.FreshnessPolicy
 }
 
 type CostAsOfInput struct {
-	Codprod  int
-	Codemp   int
-	SaleDate string
+	ProductID int
+	Policy    domain.CostAsOfPolicy
+	Freshness domain.FreshnessPolicy
 }
 
 type SalesHistoryInput struct {
-	Codprod      *int
-	CodgrupoProd *int
-	StartDate    string
-	EndDate      string
+	ProductID      *int
+	ProductGroupID *int
+	Window         domain.SalesHistoryWindow
+	Freshness      domain.FreshnessPolicy
 }
 
 type TaxInput struct {
-	Codprod  int
-	SaleDate string
+	ProductID int
+	Policy    domain.TaxPolicy
+	Freshness domain.FreshnessPolicy
 }
 
 type Reader interface {

@@ -5,9 +5,19 @@ type QualityFlag string
 const (
 	QualityComplete         QualityFlag = "complete"
 	QualityMissingProduct   QualityFlag = "missing_product"
+	QualityAmbiguousProduct QualityFlag = "ambiguous_product"
 	QualityMissingStock     QualityFlag = "missing_stock"
+	QualityMissingPrice     QualityFlag = "missing_price"
 	QualityMissingCost      QualityFlag = "missing_cost"
 	QualityMissingTax       QualityFlag = "missing_tax"
-	QualityAmbiguousProduct QualityFlag = "ambiguous_product"
 	QualityStaleSource      QualityFlag = "stale_source"
 )
+
+func HasQualityFlag(flags []QualityFlag, target QualityFlag) bool {
+	for _, flag := range flags {
+		if flag == target {
+			return true
+		}
+	}
+	return false
+}

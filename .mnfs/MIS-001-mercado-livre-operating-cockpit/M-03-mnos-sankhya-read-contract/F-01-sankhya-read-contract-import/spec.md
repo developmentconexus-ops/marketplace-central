@@ -14,70 +14,69 @@ lifecycle_scope: feature
 
 ## Feature ID
 
-F-01-sankhya-read-contract-import
+F-01-oracle-read-contract-redesign
 
-## MNOS Evidence
+## Reference Evidence
 
-- `C:\Users\leandro.theodoro\Documents\MNOS\semantic\views\vw_estoque_saldo.sql`
-- `C:\Users\leandro.theodoro\Documents\MNOS\semantic\views\vw_preco_tabela.sql`
-- `C:\Users\leandro.theodoro\Documents\MNOS\semantic\views\vw_fat_venda_item.sql`
-- `C:\Users\leandro.theodoro\Documents\MNOS\semantic\views\vw_imposto_item.sql`
-- `C:\Users\leandro.theodoro\Documents\MNOS\semantic\governance\tgfcus.yml`
-- `C:\Users\leandro.theodoro\Documents\MNOS\semantic\governance\tgfpro.yml`
+- ADR-006 in `.brain/decisions/006-oracle-internal-read-owned-by-mpc.md`
+- Legacy Oracle mapping material from `C:\Users\leandro.theodoro\Documents\MNOS\...` as reference-only evidence
+- Current `internal_read` module shapes in `apps/server_core/internal/modules/internal_read`
 
 ## Problem
 
-Marketplace Central needs an MPC-owned read contract for internal product, stock, price, cost, sales, and tax facts before `product_links`, `inventory`, and `profitability` can depend on Sankhya/MNOS semantics safely. Without this seam, future features will drift into ad hoc SQL, silent zero defaults, or Sankhya-coupled write paths.
+Marketplace Central already has an `internal_read` seam, but it was briefed against a superseded architecture. The project now needs an MPC-owned Oracle read contract that expresses internal facts in business-safe types and policies without relying on `MS_DATABASE_URL`, imported legacy assumptions, or scattered hardcoded semantics.
 
 ## Requirements
 
-- Requirement: Import IC-002 into MPC-owned domain and port types for product linking, sellable stock, current price, cost-as-of, sales history, and tax inputs.
-  - Acceptance evidence: `apps/server_core/internal/modules/internal_read/domain/*.go` and `apps/server_core/internal/modules/internal_read/ports/reader.go` compile under focused Go tests.
-- Requirement: Preserve the default stock semantics exactly as `SUM(ESTOQUE - RESERVADO)` with `CODEMP IN (1,2)` and `CODLOCAL=10101`.
-  - Acceptance evidence: contract tests assert the default `StockScope` values and scope code.
-- Requirement: Keep `CODLOCAL=10108` excluded from the default sellable stock scope.
-  - Acceptance evidence: only location `10101` appears in the default stock scope contract.
-- Requirement: Model missing values as explicit quality flags, never as zero defaults.
-  - Acceptance evidence: contract tests assert the required quality flags and pointer-based nullable cost/price/tax fields.
-- Requirement: Name `CUSSEMICM` as the initial cost basis for margin inputs.
-  - Acceptance evidence: `domain.CostAsOf` exposes `CUSSEMICM *float64`.
-- Requirement: Keep the seam read-only and do not introduce Sankhya write paths or ERP mirroring.
-  - Acceptance evidence: changed paths are limited to feature artifacts, domain contract files, and the read port.
+- Requirement: define MPC-owned domain and port contracts for product lookup, sellable stock, current price, cost-as-of, tax inputs, and sales history.
+  - Acceptance evidence: `internal_read/domain` and `internal_read/ports` compile and are consumed without Oracle-specific imports outside the adapter boundary.
+- Requirement: separate source semantics from operator policy.
+  - Acceptance evidence: stock scope, company/location filters, cost basis selection, and freshness expectations are modeled explicitly as policy/value objects or typed config inputs, not hidden constants inside downstream modules.
+- Requirement: preserve quality-state semantics for missing, ambiguous, stale, or unsupported facts.
+  - Acceptance evidence: domain tests prove missing facts remain explicit quality states and nullable fields remain `nil`.
+- Requirement: identify which Oracle-backed semantics are provisional reference evidence versus which become MPC-owned contract truth.
+  - Acceptance evidence: spec and contract docs explicitly label reference evidence and MPC-owned decisions.
+- Requirement: keep the contract read-only and MPC-owned.
+  - Acceptance evidence: no ERP write path, no mirror tables, and no downstream SQL reach-through are introduced by this feature.
 
 ## Non-Goals
 
-- Implement the real Oracle/Sankhya adapter.
-- Add business logic for link resolution, stock reconciliation, or profitability math.
-- Introduce HTTP routes, persistence, or MPC snapshot tables.
-- Mirror MNOS/Sankhya tables inside MPC.
+- Implement live Oracle queries.
+- Finalize every SQL object name or performance optimization.
+- Introduce HTTP routes, scheduler jobs, or module business workflows.
+- Preserve the old `SANKHYA_*` error taxonomy as-is if a better MPC-owned naming scheme is needed.
 
 ## Design
 
-This feature adds a new `internal_read` module surface with pure domain structs and a single application-facing `Reader` port. The domain layer defines the quality flags, stock scope, and typed read models for product candidates, sellable stock, current price, cost-as-of, tax inputs, and sales history. Nullable source values use pointers so missing data remains explicit and can later feed quality rules instead of becoming zero.
+This feature redefines `internal_read` as a first-class MPC boundary. The domain layer owns the canonical read models and quality flags. The ports layer owns the read operations and typed policy inputs. The contract explicitly distinguishes:
 
-The stock contract encodes the mission defaults directly in the domain surface: companies `1` and `2`, location `10101`, formula `SUM(ESTOQUE - RESERVADO)`, and a `revenda` scope code. Showroom stock stays outside the default simply by not appearing in the location list. The port layer exposes the six IC-002 operations with strongly typed inputs and outputs, giving future adapters and modules one seam to depend on without reaching for module-local SQL.
+- source facts: product identity, stock rows, price rows, cost rows, tax rows, sales rows, source timestamps;
+- MPC policy: default sellable-stock scope, supported stock modes, preferred cost basis, freshness thresholds, ambiguity behavior;
+- consumer-facing outcomes: resolved values, quality flags, unsupported-query errors, and source metadata.
+
+The contract must support future changes in Oracle object names or query strategy without forcing `inventory`, `product_links`, `orders`, or `profitability` to change their imports or business logic.
 
 ## Edge Cases
 
-- Product linking may find no candidate: return an empty candidate set or candidates flagged `missing_product`, not synthetic placeholder products.
-- Product linking may find more than one exact candidate: consumers must receive `ambiguous_product`, not an arbitrary winner.
-- Stock may be negative when reservations exceed stock: the contract must allow negative sellable quantities.
-- Cost, price, or tax values may be missing: fields stay `nil` and quality flags carry the missing state.
-- Source freshness matters for future consumers: stock/price/tax/sales models keep `SourceFetchedAt`.
+- A product may exist but not be uniquely linkable by EAN/SKU/title.
+- Stock semantics may require multiple companies/locations and explicit exclusions.
+- Cost and tax may be partially available for a product/date combination.
+- Some inputs may need product-level queries while others need group-level or date-window queries.
+- Oracle evidence may reveal unsupported query shapes; these must become explicit contract errors, not silent best-effort behavior.
 
 ## Acceptance Criteria
 
-- Criterion: The internal read contract preserves the default sellable stock rule with mission company and location scope.
+- Criterion: MPC owns the read contract independently of legacy Postgres/MNOS runtime assumptions.
   - Traces to milestone criterion ID: M-03-C01
-  - Proven by (verification command or QA step): `cd apps/server_core; $env:GOCACHE=(Resolve-Path .gocache); go test ./internal/modules/internal_read/...`
-- Criterion: The contract exposes explicit missing-value quality flags and `CUSSEMICM` as the nullable cost basis without zero-filling.
+  - Proven by: focused `go test` on `internal_read/domain` and `internal_read/ports`, plus import-boundary inspection.
+- Criterion: contract semantics distinguish explicit policy, source facts, and quality states.
   - Traces to milestone criterion ID: M-03-C02
-  - Proven by (verification command or QA step): `cd apps/server_core; $env:GOCACHE=(Resolve-Path .gocache); go test ./internal/modules/internal_read/...`
+  - Proven by: contract tests covering nullable fields, quality flags, and typed policy inputs.
 
 ## Handoff
 
 - Current status: `spec_ready`
 - Next owner: Feature Implementer
-- Next action: Write `plan.md` and implement the scoped feature.
+- Next action: write the execution plan and update the domain/ports contract accordingly
 - Required files/evidence: feature brief, spec, milestone contract, validation expectations
-- Blockers or open decisions: None.
+- Blockers or open decisions: exact default stock and cost policy values must be confirmed against real Oracle evidence during execution

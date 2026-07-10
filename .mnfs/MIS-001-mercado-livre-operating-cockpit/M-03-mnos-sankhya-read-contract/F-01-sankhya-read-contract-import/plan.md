@@ -14,67 +14,48 @@ lifecycle_scope: feature
 
 ## Feature ID
 
-F-01-sankhya-read-contract-import
+F-01-oracle-read-contract-redesign
 
 ## Steps
 
-1. Write failing contract tests for the `internal_read` domain defaults and `Reader` port compilation.
-2. Add the minimal `internal_read/domain` value objects and quality-flag constants required by IC-002.
-3. Add the `internal_read/ports.Reader` interface and typed inputs aligned with the domain contract.
-4. Run focused `go test` for `./internal/modules/internal_read/...` and record the evidence in `validation.md`.
+1. Add failing contract tests that expose the superseded assumptions and assert MPC-owned policy/value-object boundaries.
+2. Rewrite `internal_read/domain` types so they model source facts, quality states, and policy inputs explicitly.
+3. Rewrite `internal_read/ports.Reader` and its typed inputs/outputs to match the Oracle-first contract.
+4. Run focused `go test` for `./internal/modules/internal_read/...` and record the rewritten contract evidence.
 
 ## Files Expected To Change
 
-- Path: `.mnfs/MIS-001-mercado-livre-operating-cockpit/M-03-mnos-sankhya-read-contract/F-01-sankhya-read-contract-import/spec.md`
-  - Reason: record the scoped feature contract and MNOS evidence.
-- Path: `.mnfs/MIS-001-mercado-livre-operating-cockpit/M-03-mnos-sankhya-read-contract/F-01-sankhya-read-contract-import/plan.md`
-  - Reason: record ordered implementation and verification steps.
-- Path: `.mnfs/MIS-001-mercado-livre-operating-cockpit/M-03-mnos-sankhya-read-contract/F-01-sankhya-read-contract-import/validation.md`
-  - Reason: capture focused validation evidence and handoff state.
-- Path: `apps/server_core/internal/modules/internal_read/domain/quality_flag.go`
-  - Reason: define shared quality flags for missing and stale inputs.
-- Path: `apps/server_core/internal/modules/internal_read/domain/internal_product.go`
-  - Reason: define product-link candidate read models.
-- Path: `apps/server_core/internal/modules/internal_read/domain/internal_stock.go`
-  - Reason: define stock scope defaults and sellable stock model.
-- Path: `apps/server_core/internal/modules/internal_read/domain/internal_price.go`
-  - Reason: define current price contract with nullable source value.
-- Path: `apps/server_core/internal/modules/internal_read/domain/internal_cost.go`
-  - Reason: define `CUSSEMICM` cost-as-of contract.
-- Path: `apps/server_core/internal/modules/internal_read/domain/internal_tax.go`
-  - Reason: define nullable tax inputs and quality flags.
-- Path: `apps/server_core/internal/modules/internal_read/domain/internal_sales.go`
-  - Reason: define sales history contract with source timestamp.
-- Path: `apps/server_core/internal/modules/internal_read/domain/contract_test.go`
-  - Reason: assert default scope and required flags.
-- Path: `apps/server_core/internal/modules/internal_read/ports/reader.go`
-  - Reason: define the application-facing read interface and typed inputs.
-- Path: `apps/server_core/internal/modules/internal_read/ports/reader_test.go`
-  - Reason: assert the port surface compiles from the consumer boundary.
+- `.mnfs/MIS-001-mercado-livre-operating-cockpit/M-03-mnos-sankhya-read-contract/F-01-sankhya-read-contract-import/spec.md`
+- `.mnfs/MIS-001-mercado-livre-operating-cockpit/M-03-mnos-sankhya-read-contract/F-01-sankhya-read-contract-import/plan.md`
+- `.mnfs/MIS-001-mercado-livre-operating-cockpit/M-03-mnos-sankhya-read-contract/F-01-sankhya-read-contract-import/validation.md`
+- `apps/server_core/internal/modules/internal_read/domain/*.go`
+- `apps/server_core/internal/modules/internal_read/domain/*_test.go`
+- `apps/server_core/internal/modules/internal_read/ports/reader.go`
+- `apps/server_core/internal/modules/internal_read/ports/reader_test.go`
 
 ## Verification Commands
 
-- Command: `cd apps/server_core; $env:GOCACHE=(Resolve-Path .gocache); go test ./internal/modules/internal_read/...`
+- Command: `cd apps/server_core; $env:GOCACHE=(Join-Path (Get-Location) '.gocache'); go test ./internal/modules/internal_read/...`
   - Satisfies criterion ID: M-03-C01
-  - Expected result: Pass. Domain tests confirm formula `SUM(ESTOQUE - RESERVADO)`, companies `[1, 2]`, locations `[10101]`, and scope code `revenda`.
-- Command: `cd apps/server_core; $env:GOCACHE=(Resolve-Path .gocache); go test ./internal/modules/internal_read/...`
-  - Satisfies criterion ID: M-03-C02
-  - Expected result: Pass. Contract tests confirm the explicit quality flags and the nullable `CUSSEMICM` cost basis.
+  - Expected result: Pass. Domain and port tests prove the contract is MPC-owned and adapter-agnostic.
+- Command: `rg -n "MS_DATABASE_URL|MS_TENANT_ID|SANKHYA_" apps/server_core/internal/modules/internal_read`
+  - Satisfies criterion ID: M-03-C01
+  - Expected result: Pass with only intentional historical compatibility references, not active contract dependence.
 
 ## QA Steps
 
-- Step: Review the changed paths for scope discipline.
-  - Expected result: only feature artifacts, `internal_read/domain`, and `internal_read/ports` change; no Sankhya write path or SQL adapter is introduced.
+- Step: Review changed paths for boundary discipline.
+  - Expected result: only feature artifacts, `internal_read/domain`, and `internal_read/ports` change; no live Oracle query implementation or downstream-module business logic is introduced.
 
 ## Rollback/Risk Notes
 
-- Risk: Over-modeling the future adapter surface would expand Task 1 beyond the contract seam.
-- Recovery: keep the module limited to pure types and interface signatures; defer adapters, SQL, and application services to later features.
+- Risk: preserving old field names and assumptions can freeze the wrong contract again.
+- Recovery: prefer MPC-owned terminology and typed policy objects wherever the old seam was too coupled to the superseded source model.
 
 ## Handoff
 
 - Current status: `planned`
 - Next owner: Feature Implementer
-- Next action: Implement and record validation evidence.
+- Next action: implement and record rewritten contract evidence
 - Required files/evidence: spec, changed paths, verification commands, QA steps
-- Blockers or open decisions: None.
+- Blockers or open decisions: exact real-source policy defaults still need confirmation from Oracle evidence
