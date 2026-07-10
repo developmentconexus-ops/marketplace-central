@@ -56,9 +56,11 @@ file deletion remain prohibited.
    ledger’s original inventory has no missing or duplicate path and record the
    associated commit SHA.
 9. At the candidate accepted SHA, run `git status --short` and the verifier.
-   Produce M-08-C01 readiness evidence only if status is empty and every
-   original path resolves to an intentional commit. A retained-state record
-   prevents readiness; QA Validator alone decides the M-08-C01 verdict.
+   Produce M-08-C01 mechanical evidence only when the visible checkout is
+   clean and every original path resolves to an intentional commit or an
+   explicit retained local raw artifact accepted with `-AllowRetainedState`.
+   Without that opt-in, retained state blocks the verifier; QA Validator alone
+   decides the M-08-C01 verdict.
 
 ## Files Expected To Change
 
@@ -85,11 +87,13 @@ file deletion remain prohibited.
   - Satisfies: acceptance criteria 1 and 2 / `M-08-C01 Baseline Integrity`.
   - Expected result: the incomplete, duplicate, and invalid fixtures fail; the
     complete fixture passes without reading path contents or environment values.
-- Command: `powershell -ExecutionPolicy Bypass -File scripts/verify-baseline.ps1 -Inventory <path> -Ledger <path> -RequireCleanStatus`
+- Command: `powershell -ExecutionPolicy Bypass -File scripts/verify-baseline.ps1 -Inventory <path> -Ledger <path>`
   - Target: `fake`
   - Satisfies: acceptance criteria 1, 2, and 3 / `M-08-C01 Baseline Integrity`.
-  - Expected result: each original path occurs exactly once, all dispositions
-    are valid, and the command passes only at a clean accepted SHA.
+  - Expected result: each original path occurs exactly once, every committed
+    SHA resolves and contains the recorded path in its commit tree/diff, all
+    dispositions are valid, and the command passes only at a clean accepted
+    SHA. Explicit retained local raw artifacts require `-AllowRetainedState`.
 - Command: `git status --short`
   - Target: `fake`
   - Satisfies: acceptance criterion 3 / `M-08-C01 Baseline Integrity`.

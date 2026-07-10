@@ -4,7 +4,6 @@ param(
     [string]$Inventory,
     [Parameter(Mandatory)]
     [string]$Ledger,
-    [switch]$RequireCleanStatus,
     [switch]$AllowRetainedState
 )
 
@@ -79,6 +78,21 @@ foreach ($row in $ledgerRows) {
     }
     if ($row.disposition -eq 'committed' -and [string]::IsNullOrWhiteSpace($row.commit_sha)) {
         $errors.Add("Committed ledger path is missing commit_sha: $($row.path)")
+    }
+    if ($row.disposition -eq 'committed' -and -not [string]::IsNullOrWhiteSpace($row.commit_sha)) {
+        $resolvedOutput = @(& git rev-parse --verify "$($row.commit_sha)^{commit}" 2>$null)
+        if ($LASTEXITCODE -ne 0 -or $resolvedOutput.Count -eq 0) {
+            $errors.Add("Committed ledger path has an unresolved commit_sha: $($row.path)")
+        }
+        else {
+            $resolvedSha = ([string]$resolvedOutput[0]).Trim()
+            $treePaths = @(& git ls-tree -r --name-only $resolvedSha -- $row.path 2>$null)
+            $diffPaths = @(& git diff-tree --no-commit-id --name-only -r --root $resolvedSha -- $row.path 2>$null)
+            $pathInCommit = (@($treePaths + $diffPaths | Where-Object { ([string]$_).Trim() -eq $row.path }).Count -gt 0)
+            if (-not $pathInCommit) {
+                $errors.Add("Committed ledger path is absent from commit diff/tree: $($row.path)")
+            }
+        }
     }
     if (-not $ledgerByPath.ContainsKey($row.path)) {
         $ledgerByPath[$row.path] = [Collections.Generic.List[object]]::new()

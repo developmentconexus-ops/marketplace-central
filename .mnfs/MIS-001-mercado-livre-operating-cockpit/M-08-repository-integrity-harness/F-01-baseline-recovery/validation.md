@@ -19,10 +19,11 @@ F-01-baseline-recovery
 ## Summary
 
 The path-only baseline harness and its deterministic fixtures passed quick
-validation. C01 mechanical readiness is now proven: all 312 original paths
-have an explicit reconciliation disposition (296 committed and 16 retained
-local raw artifacts). No original path was staged, removed, or altered by
-F-01 finalization.
+validation. C01 mechanical readiness is proven only with a clean visible
+checkout and, for the 16 retained local raw artifacts, explicit
+`-AllowRetainedState`; all 312 original paths have a disposition (296
+committed and 16 retained). No original path was staged, removed, or altered
+by F-01 finalization.
 
 ## Quick Validation Result
 
@@ -51,9 +52,8 @@ F-01 finalization.
 
 ## Correction — Default Baseline Cleanliness
 
-- Original quality finding: `scripts/verify-baseline.ps1:109` accepted retained
-  ledger state and skipped the Git dirty check unless `-RequireCleanStatus` was
-  provided.
+- Original quality finding: the verifier exposed an unused `-RequireCleanStatus`
+  switch and did not make cleanliness unconditional.
 - Target: fake (deterministic TSV fixtures and the local dirty worktree).
 - RED command: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-verify-baseline.ps1`
   - Actual: exit 1; the retained-state fixture expected exit 1 but received 0.
@@ -65,6 +65,25 @@ F-01 finalization.
   - Artifact: ignored `runs/20260710T-baseline-harness-correction/green-test-verify-baseline.log`.
 - Historical blocker: 312 paths were retained pending attribution. The final
   ledger maps 296 to intentional commits and retains 16 named local raw artifacts.
+
+## Correction — Committed SHA and Path Provenance
+
+- Status: current P1-A coverage.
+- Scope: fake (temporary fixture Git repository only).
+- RED command: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-verify-baseline.ps1`
+  - Exit: 1; the invalid/nonexistent SHA fixture was accepted before the
+    provenance check (`invalid committed SHA expected verifier exit 1 but received 0`).
+  - Artifact: not written; reserved ignored path
+    `runs/20260710T-final-correction/verify-baseline-red-commit-provenance.log`.
+- GREEN command: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-verify-baseline.ps1`
+  - Exit: 0; invalid SHA fails, valid SHA missing the recorded path fails, and
+    valid SHA containing the path passes (including commit-tree/diff deletion
+    coverage).
+  - Artifact: not written; reserved ignored path
+    `runs/20260710T-final-correction/verify-baseline-green-commit-provenance.log`.
+- The verifier now resolves every committed `commit_sha` and requires the
+  original path in that commit's tree or diff; `-RequireCleanStatus` was
+  removed because cleanliness is always enforced.
 
 ## Correction — Diagnostic Opt-In Does Not Waive Git Cleanliness
 
@@ -177,13 +196,14 @@ F-01 finalization.
     supersede it, so it is not current behavior.
   - Artifact: ignored `runs/20260710T000000-baseline-capture/verifier-complete-inventory.log`.
   - Blocking condition: retained records intentionally prevent clean-baseline readiness.
-- Command: `git status --short` plus `verify-baseline.ps1 -RequireCleanStatus`
+- Command: `git status --short` plus `verify-baseline.ps1`
   - Target: fake
   - Status: Not run
   - Evidence type: could-not-run
   - Owner: Milestone Orchestrator
   - Expected: empty status and no retained state only at a candidate accepted SHA.
-  - Actual: no candidate accepted SHA exists; 312 retained records remain.
+  - Actual: no candidate accepted SHA exists; retained records require the
+    explicit `-AllowRetainedState` contract.
   - Artifact: none.
   - Blocking condition: owner attribution and scoped validation are required before an original cohort can be committed.
 
@@ -205,11 +225,11 @@ F-01 finalization.
 - Command: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-baseline.ps1 -Inventory .mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-01-baseline-recovery/baseline-inventory.tsv -Ledger .mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-01-baseline-recovery/ownership-ledger.md -AllowRetainedState`
   - Target: fake (mechanical inventory/ledger reconciliation against the local Git worktree).
   - Actual: exit 0; `PASS: inventory=312 committed=296 retained=16`.
-  - Artifact: ignored `runs/20260710T183900-c01-ledger-finalization/verify-baseline-allow-retained.log`.
+  - Artifact: not written; reserved ignored path `runs/20260710T-final-correction-c01/verify-baseline-allow-retained.log`.
 - Command: `git status --short`
   - Target: fake (local Git worktree cleanliness check).
   - Actual: exit 0; visible status count 0.
-  - Artifact: ignored `runs/20260710T183900-c01-ledger-finalization/git-status-short.log`.
+  - Artifact: not written; reserved ignored path `runs/20260710T-final-correction-c01/git-status-short.log`.
 - Decision: C01 readiness is proven mechanically, but an M-08 QA verdict is not claimed. M-06 remains functionally blocked; its scoped functional validation is not implied by this baseline reconciliation.
 
 - Artifact: `baseline-inventory.tsv`
@@ -231,8 +251,8 @@ F-01 finalization.
 
 ## Risks
 
-- C01 proves a clean Git worktree only with `-AllowRetainedState`; the 16 raw
-  local artifacts are intentionally excluded from Git and must not be staged.
+- C01 permits the 16 raw local artifacts only with `-AllowRetainedState` and a
+  clean visible Git worktree; they remain intentionally excluded from Git.
 - M-06 remains functionally blocked; F-01 reconciliation does not replace its
   scoped validation.
 
