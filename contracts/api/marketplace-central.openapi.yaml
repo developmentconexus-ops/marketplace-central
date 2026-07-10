@@ -472,6 +472,494 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListIntegrationOperationRunsResponse'
+  /integrations/installations/{id}/probes/account:
+    post:
+      summary: Probe installation account snapshot
+      operationId: probeIntegrationAccount
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Installation account probe snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationAccountProbe'
+  /integrations/installations/{id}/probes/listings:
+    get:
+      summary: Probe installation listing snapshots
+      operationId: probeIntegrationListings
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 20
+      responses:
+        "200":
+          description: Installation listing probe snapshots
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListIntegrationListingProbesResponse'
+  /integrations/installations/{id}/probes/orders:
+    get:
+      summary: Probe installation order snapshots
+      operationId: probeIntegrationOrders
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 20
+      responses:
+        "200":
+          description: Installation order probe snapshots
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListIntegrationOrderProbesResponse'
+  /integrations/installations/{id}/probes/fee-quote:
+    get:
+      summary: Probe installation fee quote snapshot
+      operationId: probeIntegrationFeeQuote
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: listing_type_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: price
+          in: query
+          required: true
+          schema:
+            type: number
+            format: double
+            exclusiveMinimum: 0
+        - name: site_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: category_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: currency_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Installation fee quote probe snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationFeeQuoteSnapshot'
+  /integrations/installations/{id}/probes/stock:
+    get:
+      summary: Probe installation stock snapshot
+      operationId: probeIntegrationStock
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: provider_item_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: provider_variation_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Installation stock probe snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationStockProbe'
+  /product-links/listing-snapshots/imports:
+    post:
+      summary: Import normalized listing snapshots for product linking
+      operationId: importProductLinkListingSnapshots
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportProductLinkListingSnapshotsRequest'
+      responses:
+        "200":
+          description: Listing snapshots imported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductLinkListingSnapshotImportResult'
+  /product-links/link-candidates/generations:
+    post:
+      summary: Generate product link candidates
+      operationId: generateProductLinkCandidates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateProductLinkCandidatesRequest'
+      responses:
+        "200":
+          description: Product link candidates generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductLinkCandidateGenerationResult'
+  /product-links/link-candidates:
+    get:
+      summary: List product link candidates
+      operationId: listProductLinkCandidates
+      parameters:
+        - name: installation_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 20
+      responses:
+        "200":
+          description: Product link candidates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListProductLinkCandidatesResponse'
+  /product-links/link-workflows:
+    get:
+      summary: List product link workflows
+      operationId: listProductLinkWorkflows
+      parameters:
+        - name: installation_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 20
+      responses:
+        "200":
+          description: Product link workflows
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListProductLinkWorkflowsResponse'
+  /product-links/link-resolutions/approve-candidate:
+    post:
+      summary: Approve a product link candidate
+      operationId: approveProductLinkCandidate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApproveProductLinkCandidateRequest'
+      responses:
+        "200":
+          description: Product link resolved from candidate
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductLinkResolutionResult'
+  /product-links/link-resolutions/reject-listing:
+    post:
+      summary: Reject a listing identity for product linking
+      operationId: rejectProductLinkListing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectProductLinkListingRequest'
+      responses:
+        "200":
+          description: Product link listing rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductLinkResolutionResult'
+  /product-links/link-resolutions/manual-resolve:
+    post:
+      summary: Manually resolve a listing identity to an internal product
+      operationId: manualResolveProductLink
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ManualResolveProductLinkRequest'
+      responses:
+        "200":
+          description: Product link manually resolved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductLinkResolutionResult'
+  /inventory/stock-risks:
+    get:
+      summary: List persisted Stock Seguro risk rows
+      operationId: listInventoryStockRisks
+      parameters:
+        - name: installation_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/StockRiskState'
+        - name: link_state
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ProductLinkState'
+        - name: actionability
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/StockRiskActionability'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 50
+      responses:
+        "200":
+          description: Stock Seguro rows
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListInventoryStockRisksResponse'
+  /inventory/stock-actions/manual-apply:
+    post:
+      summary: Apply a confirmatory manual Stock Seguro action
+      operationId: applyInventoryManualStockAction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplyInventoryManualStockActionRequest'
+      responses:
+        "200":
+          description: Manual stock action accepted and audited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplyInventoryManualStockActionResponse'
+  /orders/import:
+    post:
+      summary: Import normalized marketplace orders for an installation
+      operationId: importMarketplaceOrders
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportMarketplaceOrdersRequest'
+      responses:
+        "200":
+          description: Orders imported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportMarketplaceOrdersResponse'
+  /orders:
+    get:
+      summary: List persisted marketplace order snapshots
+      operationId: listMarketplaceOrders
+      parameters:
+        - name: installation_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 20
+      responses:
+        "200":
+          description: Persisted marketplace orders
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMarketplaceOrdersResponse'
+  /profitability/margin-inputs/import:
+    post:
+      summary: Import profitability margin inputs from persisted orders
+      operationId: importProfitabilityMarginInputs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportProfitabilityMarginInputsRequest'
+      responses:
+        "200":
+          description: Profitability inputs imported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportProfitabilityMarginInputsResponse'
+  /profitability/margin-inputs:
+    get:
+      summary: List persisted profitability margin inputs
+      operationId: listProfitabilityMarginInputs
+      parameters:
+        - name: installation_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 50
+      responses:
+        "200":
+          description: Persisted profitability inputs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListProfitabilityMarginInputsResponse'
+  /profitability/manual-adjustments:
+    get:
+      summary: List profitability manual adjustments
+      operationId: listProfitabilityManualAdjustments
+      parameters:
+        - name: installation_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 50
+      responses:
+        "200":
+          description: Manual adjustments
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListProfitabilityManualAdjustmentsResponse'
+    post:
+      summary: Append a profitability manual adjustment
+      operationId: createProfitabilityManualAdjustment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProfitabilityManualAdjustmentRequest'
+      responses:
+        "200":
+          description: Manual adjustment appended
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfitabilityManualAdjustment'
+  /profitability/profit-snapshots/calculate:
+    post:
+      summary: Calculate profitability profit snapshots from margin inputs
+      operationId: calculateProfitabilityProfitSnapshots
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalculateProfitabilityProfitSnapshotsRequest'
+      responses:
+        "200":
+          description: Profit snapshots calculated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalculateProfitabilityProfitSnapshotsResponse'
+  /profitability/profit-snapshots:
+    get:
+      summary: List calculated profitability profit snapshots
+      operationId: listProfitabilityProfitSnapshots
+      parameters:
+        - name: installation_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 50
+      responses:
+        "200":
+          description: Profit snapshots
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListProfitabilityProfitSnapshotsResponse'
   /marketplaces/definitions:
     get:
       operationId: listMarketplaceDefinitions
@@ -1704,12 +2192,20 @@ components:
           type: string
         failure_code:
           type: string
+        translated_error_code:
+          type: string
         attempt_count:
           type: integer
         actor_type:
           type: string
         actor_id:
           type: string
+        provider_evidence:
+          type: object
+          additionalProperties: true
+        duration_ms:
+          type: integer
+          format: int64
         started_at:
           type: string
           format: date-time
@@ -1723,6 +2219,1329 @@ components:
           type: string
           format: date-time
 
+    IntegrationAccountProbe:
+      type: object
+      required:
+        - provider_code
+        - provider_account_id
+        - provider_account_name
+        - site_id
+        - status
+        - fetched_at
+      properties:
+        provider_code:
+          type: string
+        provider_account_id:
+          type: string
+        provider_account_name:
+          type: string
+        site_id:
+          type: string
+        status:
+          type: string
+        fetched_at:
+          type: string
+          format: date-time
+        raw_provider_ref:
+          nullable: true
+
+    IntegrationListingVariationProbe:
+      type: object
+      required:
+        - provider_variation_id
+      properties:
+        provider_variation_id:
+          type: string
+        seller_sku:
+          type: string
+        ean:
+          type: string
+        available_quantity:
+          type: integer
+          nullable: true
+
+    IntegrationListingProbe:
+      type: object
+      required:
+        - provider_code
+        - provider_item_id
+        - fetched_at
+      properties:
+        provider_code:
+          type: string
+        provider_item_id:
+          type: string
+        provider_variation_id:
+          type: string
+        provider_status:
+          type: string
+        seller_sku:
+          type: string
+        ean:
+          type: string
+        title:
+          type: string
+        available_quantity:
+          type: integer
+          nullable: true
+        source_updated_at:
+          type: string
+          format: date-time
+          nullable: true
+        fetched_at:
+          type: string
+          format: date-time
+        raw_provider_ref:
+          nullable: true
+        variations:
+          type: array
+          items:
+            $ref: '#/components/schemas/IntegrationListingVariationProbe'
+
+    IntegrationOrderItemProbe:
+      type: object
+      required:
+        - provider_item_id
+        - quantity
+      properties:
+        provider_item_id:
+          type: string
+        provider_variation_id:
+          type: string
+        seller_sku:
+          type: string
+        ean:
+          type: string
+        title:
+          type: string
+        quantity:
+          type: integer
+        unit_price:
+          type: number
+          format: double
+          nullable: true
+        sale_fee_amount:
+          type: number
+          format: double
+          nullable: true
+
+    IntegrationOrderPaymentProbe:
+      type: object
+      required:
+        - payment_id
+      properties:
+        payment_id:
+          type: string
+        status:
+          type: string
+        amount:
+          type: number
+          format: double
+          nullable: true
+        transaction_amount:
+          type: number
+          format: double
+          nullable: true
+        total_paid_amount:
+          type: number
+          format: double
+          nullable: true
+
+    IntegrationOrderProbe:
+      type: object
+      required:
+        - provider_code
+        - provider_order_id
+        - fetched_at
+        - items
+        - payments
+      properties:
+        provider_code:
+          type: string
+        provider_order_id:
+          type: string
+        provider_status:
+          type: string
+        provider_status_detail:
+          type: string
+        provider_created_at:
+          type: string
+          format: date-time
+          nullable: true
+        provider_closed_at:
+          type: string
+          format: date-time
+          nullable: true
+        provider_updated_at:
+          type: string
+          format: date-time
+          nullable: true
+        fetched_at:
+          type: string
+          format: date-time
+        raw_provider_ref:
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/IntegrationOrderItemProbe'
+        sale_fee_amount:
+          type: number
+          format: double
+          nullable: true
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/IntegrationOrderPaymentProbe'
+        shipping_id:
+          type: string
+        cancellation_detail:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+
+    OrderLinkQuality:
+      type: string
+      enum: [resolved, rejected, conflict, unresolved, missing]
+
+    MarketplaceOrderItem:
+      type: object
+      required:
+        - provider_item_id
+        - quantity
+        - link_quality
+      properties:
+        provider_item_id:
+          type: string
+        provider_variation_id:
+          type: string
+        seller_sku:
+          type: string
+        title:
+          type: string
+        quantity:
+          type: integer
+        unit_price:
+          type: number
+          format: double
+          nullable: true
+        sale_fee_amount:
+          type: number
+          format: double
+          nullable: true
+        link_quality:
+          $ref: '#/components/schemas/OrderLinkQuality'
+        internal_product_id:
+          type: integer
+          nullable: true
+
+    MarketplaceOrderPayment:
+      type: object
+      required:
+        - provider_payment_id
+      properties:
+        provider_payment_id:
+          type: string
+        provider_status:
+          type: string
+        transaction_amount:
+          type: number
+          format: double
+          nullable: true
+        total_paid_amount:
+          type: number
+          format: double
+          nullable: true
+
+    MarketplaceOrder:
+      type: object
+      required:
+        - installation_id
+        - provider_code
+        - provider_order_id
+        - fetched_at
+        - items
+        - payments
+      properties:
+        installation_id:
+          type: string
+        provider_code:
+          type: string
+        provider_order_id:
+          type: string
+        provider_status:
+          type: string
+        provider_status_detail:
+          type: string
+        provider_created_at:
+          type: string
+          format: date-time
+          nullable: true
+        provider_closed_at:
+          type: string
+          format: date-time
+          nullable: true
+        provider_updated_at:
+          type: string
+          format: date-time
+          nullable: true
+        fetched_at:
+          type: string
+          format: date-time
+        shipping_id:
+          type: string
+        cancellation_detail:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        raw_provider_ref:
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarketplaceOrderItem'
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarketplaceOrderPayment'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ImportMarketplaceOrdersRequest:
+      type: object
+      required:
+        - installation_id
+      properties:
+        installation_id:
+          type: string
+        limit:
+          type: integer
+          minimum: 1
+
+    ImportMarketplaceOrdersResponse:
+      type: object
+      required:
+        - installation_id
+        - imported_count
+        - skipped_count
+        - items
+      properties:
+        installation_id:
+          type: string
+        imported_count:
+          type: integer
+        skipped_count:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarketplaceOrder'
+
+    ProfitabilityInputScope:
+      type: string
+      enum: [order, item]
+
+    ProfitabilityInputKind:
+      type: string
+      enum: [revenue, sale_fee, cost, tax_icms, tax_ipi, tax_pis, tax_cofins, freight, commission]
+
+    ProfitabilityInputQuality:
+      type: string
+      enum: [complete, missing, unresolved_link, rejected_link, conflict_link, stale, manual, partial]
+
+    ProfitabilityManualAdjustmentCategory:
+      type: string
+      enum: [freight, commission, cost, generic_adjustment]
+
+    ProfitabilityActor:
+      type: object
+      required: [actor_type, actor_id]
+      properties:
+        actor_type:
+          type: string
+        actor_id:
+          type: string
+        actor_name:
+          type: string
+
+    ProfitabilityMarginInput:
+      type: object
+      required:
+        - installation_id
+        - provider_order_id
+        - scope
+        - kind
+        - currency
+        - source_system
+        - quality
+        - created_at
+        - updated_at
+      properties:
+        installation_id:
+          type: string
+        provider_order_id:
+          type: string
+        provider_item_id:
+          type: string
+        provider_variation_id:
+          type: string
+        scope:
+          $ref: '#/components/schemas/ProfitabilityInputScope'
+        kind:
+          $ref: '#/components/schemas/ProfitabilityInputKind'
+        amount:
+          type: number
+          format: double
+          nullable: true
+        currency:
+          type: string
+        source_system:
+          type: string
+        source_reference:
+          type: string
+        observed_at:
+          type: string
+          format: date-time
+          nullable: true
+        quality:
+          $ref: '#/components/schemas/ProfitabilityInputQuality'
+        quality_reason:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ProfitabilityManualAdjustment:
+      type: object
+      required:
+        - adjustment_id
+        - idempotency_key
+        - installation_id
+        - provider_order_id
+        - scope
+        - category
+        - amount
+        - currency
+        - reason
+        - actor
+        - created_at
+      properties:
+        adjustment_id:
+          type: string
+        idempotency_key:
+          type: string
+        installation_id:
+          type: string
+        provider_order_id:
+          type: string
+        provider_item_id:
+          type: string
+        provider_variation_id:
+          type: string
+        scope:
+          $ref: '#/components/schemas/ProfitabilityInputScope'
+        category:
+          $ref: '#/components/schemas/ProfitabilityManualAdjustmentCategory'
+        amount:
+          type: number
+          format: double
+        currency:
+          type: string
+        reason:
+          type: string
+        actor:
+          $ref: '#/components/schemas/ProfitabilityActor'
+        created_at:
+          type: string
+          format: date-time
+
+    OrderRealizationState:
+      type: string
+      enum: [realized, not_realized, unknown]
+
+    ProfitSnapshotQuality:
+      type: string
+      enum: [complete, incomplete, negative_margin, not_realized]
+
+    ProfitSnapshotFlag:
+      type: string
+      enum: [missing_revenue, missing_sale_fee, missing_cost, missing_tax, missing_freight, missing_commission, missing_link, negative_margin, order_cancelled, order_state_unknown]
+
+    ProfitabilityProfitSnapshot:
+      type: object
+      required:
+        - installation_id
+        - provider_order_id
+        - scope
+        - currency
+        - realization_state
+        - quality
+        - created_at
+        - updated_at
+      properties:
+        installation_id:
+          type: string
+        provider_order_id:
+          type: string
+        provider_item_id:
+          type: string
+        provider_variation_id:
+          type: string
+        scope:
+          $ref: '#/components/schemas/ProfitabilityInputScope'
+        currency:
+          type: string
+        realization_state:
+          $ref: '#/components/schemas/OrderRealizationState'
+        revenue_amount:
+          type: number
+          format: double
+          nullable: true
+        sale_fee_amount:
+          type: number
+          format: double
+          nullable: true
+        cost_amount:
+          type: number
+          format: double
+          nullable: true
+        tax_amount:
+          type: number
+          format: double
+          nullable: true
+        freight_amount:
+          type: number
+          format: double
+          nullable: true
+        commission_amount:
+          type: number
+          format: double
+          nullable: true
+        adjustment_amount:
+          type: number
+          format: double
+          nullable: true
+        contribution_amount:
+          type: number
+          format: double
+          nullable: true
+        margin_percent:
+          type: number
+          format: double
+          nullable: true
+        quality:
+          $ref: '#/components/schemas/ProfitSnapshotQuality'
+        flags:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProfitSnapshotFlag'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ImportProfitabilityMarginInputsRequest:
+      type: object
+      required: [installation_id]
+      properties:
+        installation_id:
+          type: string
+        limit:
+          type: integer
+          minimum: 1
+
+    ImportProfitabilityMarginInputsResponse:
+      type: object
+      required: [installation_id, imported_count, items]
+      properties:
+        installation_id:
+          type: string
+        imported_count:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProfitabilityMarginInput'
+
+    CreateProfitabilityManualAdjustmentRequest:
+      type: object
+      required: [installation_id, provider_order_id, idempotency_key, amount, reason, actor]
+      properties:
+        installation_id:
+          type: string
+        idempotency_key:
+          type: string
+          minLength: 1
+        provider_order_id:
+          type: string
+        provider_item_id:
+          type: string
+        provider_variation_id:
+          type: string
+        scope:
+          $ref: '#/components/schemas/ProfitabilityInputScope'
+        category:
+          $ref: '#/components/schemas/ProfitabilityManualAdjustmentCategory'
+        amount:
+          type: number
+          format: double
+        currency:
+          type: string
+        reason:
+          type: string
+        actor:
+          $ref: '#/components/schemas/ProfitabilityActor'
+
+    CalculateProfitabilityProfitSnapshotsRequest:
+      type: object
+      required: [installation_id]
+      properties:
+        installation_id:
+          type: string
+        limit:
+          type: integer
+          minimum: 1
+
+    CalculateProfitabilityProfitSnapshotsResponse:
+      type: object
+      required: [installation_id, calculated_count, items]
+      properties:
+        installation_id:
+          type: string
+        calculated_count:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProfitabilityProfitSnapshot'
+
+    IntegrationFeeQuoteSnapshot:
+      type: object
+      required:
+        - provider_code
+        - site_id
+        - category_id
+        - listing_type_id
+        - price_amount
+        - currency_id
+        - fetched_at
+      properties:
+        provider_code:
+          type: string
+        site_id:
+          type: string
+        category_id:
+          type: string
+        listing_type_id:
+          type: string
+        price_amount:
+          type: number
+          format: double
+        currency_id:
+          type: string
+        commission_percent:
+          type: number
+          format: double
+          nullable: true
+        fixed_fee_amount:
+          type: number
+          format: double
+          nullable: true
+        source_updated_at:
+          type: string
+          format: date-time
+          nullable: true
+        fetched_at:
+          type: string
+          format: date-time
+        raw_provider_ref:
+          nullable: true
+
+    IntegrationStockProbe:
+      type: object
+      required:
+        - provider_code
+        - provider_item_id
+        - available_quantity
+        - fetched_at
+        - scope
+      properties:
+        provider_code:
+          type: string
+        provider_item_id:
+          type: string
+        provider_variation_id:
+          type: string
+        available_quantity:
+          type: integer
+        provider_status:
+          type: string
+        seller_sku:
+          type: string
+        ean:
+          type: string
+        title:
+          type: string
+        source_updated_at:
+          type: string
+          format: date-time
+          nullable: true
+        fetched_at:
+          type: string
+          format: date-time
+        raw_provider_ref:
+          nullable: true
+        scope:
+          type: string
+          enum: [item, variation]
+
+    ProductLinkListingSnapshot:
+      type: object
+      required:
+        - installation_id
+        - provider_code
+        - provider_item_id
+        - fetched_at
+      properties:
+        installation_id:
+          type: string
+        provider_code:
+          type: string
+        provider_item_id:
+          type: string
+        provider_variation_id:
+          type: string
+        provider_status:
+          type: string
+        seller_sku:
+          type: string
+        ean:
+          type: string
+        title:
+          type: string
+        available_quantity:
+          type: integer
+          nullable: true
+        source_updated_at:
+          type: string
+          format: date-time
+          nullable: true
+        fetched_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ImportProductLinkListingSnapshotsRequest:
+      type: object
+      required:
+        - installation_id
+      properties:
+        installation_id:
+          type: string
+        limit:
+          type: integer
+          minimum: 1
+          default: 20
+
+    ProductLinkListingSnapshotImportResult:
+      type: object
+      required:
+        - installation_id
+        - imported_count
+        - items
+      properties:
+        installation_id:
+          type: string
+        imported_count:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductLinkListingSnapshot'
+
+    ProductLinkCandidate:
+      type: object
+      required:
+        - candidate_id
+        - installation_id
+        - provider_code
+        - provider_item_id
+        - state
+        - match_input
+        - created_at
+        - updated_at
+      properties:
+        candidate_id:
+          type: string
+        installation_id:
+          type: string
+        provider_code:
+          type: string
+        provider_item_id:
+          type: string
+        provider_variation_id:
+          type: string
+        internal_product_id:
+          type: integer
+        internal_product_name:
+          type: string
+        internal_reference_code:
+          type: string
+        state:
+          type: string
+          enum: [manual, exact_sku, exact_ean, title_match, unresolved, conflict]
+        match_input:
+          type: string
+          enum: [manual, seller_sku, ean, title, none]
+        match_value:
+          type: string
+        source_snapshot_fetched_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    GenerateProductLinkCandidatesRequest:
+      type: object
+      required:
+        - installation_id
+      properties:
+        installation_id:
+          type: string
+        limit:
+          type: integer
+          minimum: 1
+          default: 20
+
+    ProductLinkCandidateGenerationResult:
+      type: object
+      required:
+        - installation_id
+        - generated_count
+        - items
+      properties:
+        installation_id:
+          type: string
+        generated_count:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductLinkCandidate'
+
+    ListProductLinkCandidatesResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductLinkCandidate'
+
+    ProductLinkState:
+      type: string
+      enum: [none, unresolved, conflict, resolved, rejected]
+
+    ProductLinkAction:
+      type: string
+      enum: [approve_candidate, reject_listing, manual_resolve]
+
+    ProductLinkActor:
+      type: object
+      required:
+        - actor_type
+        - actor_id
+      properties:
+        actor_type:
+          type: string
+        actor_id:
+          type: string
+        actor_name:
+          type: string
+
+    ProductLinkListingIdentity:
+      type: object
+      required:
+        - installation_id
+        - provider_item_id
+      properties:
+        installation_id:
+          type: string
+        provider_item_id:
+          type: string
+        provider_variation_id:
+          type: string
+
+    ProductLink:
+      type: object
+      required:
+        - installation_id
+        - provider_code
+        - provider_item_id
+        - state
+        - created_at
+        - updated_at
+      properties:
+        installation_id:
+          type: string
+        provider_code:
+          type: string
+        provider_item_id:
+          type: string
+        provider_variation_id:
+          type: string
+        state:
+          $ref: '#/components/schemas/ProductLinkState'
+        source_candidate_id:
+          type: string
+        internal_product_id:
+          type: integer
+        internal_product_name:
+          type: string
+        internal_reference_code:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ProductLinkAuditEntry:
+      type: object
+      required:
+        - audit_id
+        - installation_id
+        - provider_code
+        - provider_item_id
+        - action
+        - actor
+        - previous_state
+        - next_state
+        - created_at
+      properties:
+        audit_id:
+          type: string
+        installation_id:
+          type: string
+        provider_code:
+          type: string
+        provider_item_id:
+          type: string
+        provider_variation_id:
+          type: string
+        action:
+          $ref: '#/components/schemas/ProductLinkAction'
+        reason:
+          type: string
+        source_candidate_id:
+          type: string
+        actor:
+          $ref: '#/components/schemas/ProductLinkActor'
+        previous_state:
+          $ref: '#/components/schemas/ProductLinkState'
+        next_state:
+          $ref: '#/components/schemas/ProductLinkState'
+        previous_internal_product_id:
+          type: integer
+        next_internal_product_id:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    ProductLinkWorkflowItem:
+      type: object
+      required:
+        - identity
+        - candidates
+        - audit
+      properties:
+        identity:
+          $ref: '#/components/schemas/ProductLinkListingIdentity'
+        current_link:
+          $ref: '#/components/schemas/ProductLink'
+        candidates:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductLinkCandidate'
+        audit:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductLinkAuditEntry'
+
+    ListProductLinkWorkflowsResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductLinkWorkflowItem'
+
+    ProductLinkResolutionResult:
+      type: object
+      required:
+        - link
+        - audit
+      properties:
+        link:
+          $ref: '#/components/schemas/ProductLink'
+        audit:
+          $ref: '#/components/schemas/ProductLinkAuditEntry'
+
+    StockRiskState:
+      type: string
+      enum: [healthy, oversell, undersell, stale, unresolved, conflict, ineligible, unsupported]
+
+    StockRiskActionability:
+      type: string
+      enum: [actionable, blocked]
+
+    InventoryBlockingReason:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+
+    InventoryStockRiskItem:
+      type: object
+      required:
+        - identity
+        - provider_code
+        - link_state
+        - state
+        - actionability
+        - actionable
+        - policy_id
+      properties:
+        identity:
+          $ref: '#/components/schemas/ProductLinkListingIdentity'
+        provider_code:
+          type: string
+        provider_status:
+          type: string
+        seller_sku:
+          type: string
+        ean:
+          type: string
+        title:
+          type: string
+        link_state:
+          $ref: '#/components/schemas/ProductLinkState'
+        internal_product_id:
+          type: integer
+        internal_product_name:
+          type: string
+        internal_reference_code:
+          type: string
+        state:
+          $ref: '#/components/schemas/StockRiskState'
+        actionability:
+          $ref: '#/components/schemas/StockRiskActionability'
+        actionable:
+          type: boolean
+        internal_quantity:
+          type: integer
+        provider_quantity:
+          type: integer
+        recommended_quantity:
+          type: integer
+        policy_id:
+          type: string
+        internal_observed_at:
+          type: string
+          format: date-time
+        provider_observed_at:
+          type: string
+          format: date-time
+        blocking_reason:
+          $ref: '#/components/schemas/InventoryBlockingReason'
+
+    ListInventoryStockRisksResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InventoryStockRiskItem'
+
+    InventoryStockActionOperator:
+      type: object
+      required:
+        - actor_type
+        - actor_id
+      properties:
+        actor_type:
+          type: string
+        actor_id:
+          type: string
+        actor_name:
+          type: string
+
+    InventoryManualApproval:
+      type: object
+      required:
+        - approved
+        - approved_at
+        - operator
+      properties:
+        approved:
+          type: boolean
+        approved_at:
+          type: string
+          format: date-time
+        operator:
+          $ref: '#/components/schemas/InventoryStockActionOperator'
+
+    InventoryStockActionAuditEvent:
+      type: object
+      required:
+        - state
+        - reason
+        - occurred_at
+      properties:
+        state:
+          type: string
+          enum: [proposed, blocked, approved, applied, failed, skipped]
+        reason:
+          type: string
+        provider_status:
+          type: string
+          enum: [applied, rejected, transient_failure, unsupported_shape]
+        occurred_at:
+          type: string
+          format: date-time
+
+    InventoryStockWriteResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [applied, rejected, transient_failure, unsupported_shape]
+        idempotency_key:
+          type: string
+        provider_code:
+          type: string
+        provider_item_id:
+          type: string
+        provider_variation_id:
+          type: string
+        message:
+          type: string
+        response_summary:
+          type: string
+
+    InventoryStockActionRecord:
+      type: object
+      required:
+        - action_id
+        - state
+        - trigger
+        - provider_ref
+        - requested_quantity
+        - policy_id
+        - operator
+        - idempotency_key
+        - audit_events
+        - created_at
+        - updated_at
+      properties:
+        action_id:
+          type: string
+        state:
+          type: string
+          enum: [proposed, blocked, approved, applied, failed, skipped]
+        trigger:
+          type: string
+          enum: [manual]
+        provider_ref:
+          type: object
+          required:
+            - tenant_id
+            - installation_id
+            - provider_code
+            - provider_account_id
+            - provider_item_id
+          properties:
+            tenant_id:
+              type: string
+            installation_id:
+              type: string
+            provider_code:
+              type: string
+            provider_account_id:
+              type: string
+            provider_item_id:
+              type: string
+            provider_variation_id:
+              type: string
+        before_quantity:
+          type: integer
+        requested_quantity:
+          type: integer
+        recommended_quantity:
+          type: integer
+        policy_id:
+          type: string
+        internal_observed_at:
+          type: string
+          format: date-time
+        provider_observed_at:
+          type: string
+          format: date-time
+        operator:
+          $ref: '#/components/schemas/InventoryStockActionOperator'
+        reason:
+          type: string
+        idempotency_key:
+          type: string
+        blocking_reason:
+          $ref: '#/components/schemas/InventoryBlockingReason'
+        failure_reason:
+          $ref: '#/components/schemas/InventoryBlockingReason'
+        provider_result:
+          $ref: '#/components/schemas/InventoryStockWriteResult'
+        audit_events:
+          type: array
+          items:
+            $ref: '#/components/schemas/InventoryStockActionAuditEvent'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ApplyInventoryManualStockActionRequest:
+      type: object
+      required:
+        - stock_action_id
+        - installation_id
+        - provider_item_id
+        - requested_quantity
+        - approval
+      properties:
+        stock_action_id:
+          type: string
+        installation_id:
+          type: string
+        provider_item_id:
+          type: string
+        provider_variation_id:
+          type: string
+        requested_quantity:
+          type: integer
+        reason:
+          type: string
+        approval:
+          $ref: '#/components/schemas/InventoryManualApproval'
+
+    ApplyInventoryManualStockActionResponse:
+      type: object
+      required:
+        - action
+        - risk
+      properties:
+        action:
+          $ref: '#/components/schemas/InventoryStockActionRecord'
+        risk:
+          $ref: '#/components/schemas/InventoryStockRiskItem'
+
+    ApproveProductLinkCandidateRequest:
+      type: object
+      required:
+        - candidate_id
+        - actor
+      properties:
+        candidate_id:
+          type: string
+        reason:
+          type: string
+        actor:
+          $ref: '#/components/schemas/ProductLinkActor'
+
+    RejectProductLinkListingRequest:
+      type: object
+      required:
+        - installation_id
+        - provider_code
+        - provider_item_id
+        - actor
+      properties:
+        installation_id:
+          type: string
+        provider_code:
+          type: string
+        provider_item_id:
+          type: string
+        provider_variation_id:
+          type: string
+        reason:
+          type: string
+        actor:
+          $ref: '#/components/schemas/ProductLinkActor'
+
+    ManualResolveProductLinkRequest:
+      type: object
+      required:
+        - installation_id
+        - provider_code
+        - provider_item_id
+        - internal_product_id
+        - actor
+      properties:
+        installation_id:
+          type: string
+        provider_code:
+          type: string
+        provider_item_id:
+          type: string
+        provider_variation_id:
+          type: string
+        internal_product_id:
+          type: integer
+        internal_product_name:
+          type: string
+        internal_reference_code:
+          type: string
+        reason:
+          type: string
+        actor:
+          $ref: '#/components/schemas/ProductLinkActor'
+
     ListIntegrationOperationRunsResponse:
       type: object
       required:
@@ -1732,6 +3551,63 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/IntegrationOperationRun'
+
+    ListIntegrationListingProbesResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/IntegrationListingProbe'
+
+    ListIntegrationOrderProbesResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/IntegrationOrderProbe'
+
+    ListMarketplaceOrdersResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarketplaceOrder'
+
+    ListProfitabilityMarginInputsResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProfitabilityMarginInput'
+
+    ListProfitabilityManualAdjustmentsResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProfitabilityManualAdjustment'
+
+    ListProfitabilityProfitSnapshotsResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProfitabilityProfitSnapshot'
 
     CapabilityProfile:
       type: object

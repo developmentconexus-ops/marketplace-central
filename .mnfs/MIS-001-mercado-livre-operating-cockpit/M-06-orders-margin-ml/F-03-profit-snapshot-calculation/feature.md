@@ -3,11 +3,11 @@
 ```yaml
 id: F-03
 type: feature-brief
-status: briefed
+status: quick_validation_passed
 owner: Mission Strategist
 parent: M-06
 created: 2026-07-06
-updated: 2026-07-06
+updated: 2026-07-09
 validation_level: QA-0
 lifecycle_scope: feature
 ```
@@ -41,8 +41,8 @@ Calculate profit snapshots per order and item using revenue, Mercado Livre sale 
 
 ## Handoff
 
-- Current status: briefed.
-- Next owner: Feature Implementer.
-- Next action: Create `spec.md`.
+- Current status: quick_validation_passed.
+- Next owner: Milestone Orchestrator.
+- Next action: Proceed to F-04 orders and margin UI over the validated snapshots and quality flags.
 - Required files/evidence: F-03/validation.md.
 - Blockers or open decisions: None.

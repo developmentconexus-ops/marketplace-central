@@ -3,11 +3,11 @@
 ```yaml
 id: F-02
 type: feature-brief
-status: briefed
+status: quick_validation_passed
 owner: Mission Strategist
 parent: M-06
 created: 2026-07-06
-updated: 2026-07-06
+updated: 2026-07-09
 validation_level: QA-0
 lifecycle_scope: feature
 ```
@@ -42,8 +42,8 @@ Define margin input entities for revenue, sale fee, cost, tax, freight, commissi
 
 ## Handoff
 
-- Current status: briefed.
-- Next owner: Feature Implementer.
-- Next action: Create `spec.md`.
+- Current status: quick_validation_passed.
+- Next owner: Milestone Orchestrator.
+- Next action: Proceed to F-03 profit snapshot calculation on top of the persisted margin input model from F-02.
 - Required files/evidence: F-02/validation.md.
 - Blockers or open decisions: exact default manual adjustment categories can be refined in spec.

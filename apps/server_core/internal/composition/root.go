@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"time"
 
 	catalogmetalshopping "marketplace-central/apps/server_core/internal/modules/catalog/adapters/metalshopping"
@@ -35,16 +36,41 @@ import (
 	integrationsbg "marketplace-central/apps/server_core/internal/modules/integrations/background"
 	integrationsdomain "marketplace-central/apps/server_core/internal/modules/integrations/domain"
 	integrationstransport "marketplace-central/apps/server_core/internal/modules/integrations/transport"
+	internalreadoracle "marketplace-central/apps/server_core/internal/modules/internal_read/adapters/oracle"
+	internalreadapp "marketplace-central/apps/server_core/internal/modules/internal_read/application"
+	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
+	internalreadports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
+	inventoryconnectors "marketplace-central/apps/server_core/internal/modules/inventory/adapters/connectors"
+	inventoryintegrations "marketplace-central/apps/server_core/internal/modules/inventory/adapters/integrations"
+	inventoryinternalread "marketplace-central/apps/server_core/internal/modules/inventory/adapters/internalread"
+	inventorypostgres "marketplace-central/apps/server_core/internal/modules/inventory/adapters/postgres"
+	inventoryproductlinks "marketplace-central/apps/server_core/internal/modules/inventory/adapters/productlinks"
+	inventoryapp "marketplace-central/apps/server_core/internal/modules/inventory/application"
+	inventoryports "marketplace-central/apps/server_core/internal/modules/inventory/ports"
+	inventorytransport "marketplace-central/apps/server_core/internal/modules/inventory/transport"
 	marketplacespostgres "marketplace-central/apps/server_core/internal/modules/marketplaces/adapters/postgres"
 	marketplacesapp "marketplace-central/apps/server_core/internal/modules/marketplaces/application"
 	marketplacesregistry "marketplace-central/apps/server_core/internal/modules/marketplaces/registry"
 	marketplacestransport "marketplace-central/apps/server_core/internal/modules/marketplaces/transport"
+	ordersintegrations "marketplace-central/apps/server_core/internal/modules/orders/adapters/integrations"
+	orderspostgres "marketplace-central/apps/server_core/internal/modules/orders/adapters/postgres"
+	ordersproductlinks "marketplace-central/apps/server_core/internal/modules/orders/adapters/productlinks"
+	ordersapp "marketplace-central/apps/server_core/internal/modules/orders/application"
+	orderstransport "marketplace-central/apps/server_core/internal/modules/orders/transport"
+	profitabilityinternalread "marketplace-central/apps/server_core/internal/modules/profitability/adapters/internalread"
+	profitabilityorders "marketplace-central/apps/server_core/internal/modules/profitability/adapters/orders"
+	profitabilitypostgres "marketplace-central/apps/server_core/internal/modules/profitability/adapters/postgres"
+	profitabilityapp "marketplace-central/apps/server_core/internal/modules/profitability/application"
+	profitabilitytransport "marketplace-central/apps/server_core/internal/modules/profitability/transport"
 	pricingcatalog "marketplace-central/apps/server_core/internal/modules/pricing/adapters/catalog"
 	pricingfee "marketplace-central/apps/server_core/internal/modules/pricing/adapters/feeschedule"
 	pricingmarket "marketplace-central/apps/server_core/internal/modules/pricing/adapters/marketplace"
 	pricingpostgres "marketplace-central/apps/server_core/internal/modules/pricing/adapters/postgres"
 	pricingapp "marketplace-central/apps/server_core/internal/modules/pricing/application"
 	pricingtransport "marketplace-central/apps/server_core/internal/modules/pricing/transport"
+	productlinkspostgres "marketplace-central/apps/server_core/internal/modules/product_links/adapters/postgres"
+	productlinksapp "marketplace-central/apps/server_core/internal/modules/product_links/application"
+	productlinkstransport "marketplace-central/apps/server_core/internal/modules/product_links/transport"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 	"marketplace-central/apps/server_core/internal/platform/pgdb"
 
@@ -56,6 +82,14 @@ type authFlowFacade struct {
 	feeSync     *integrationsapp.FeeSyncService
 	operations  *integrationsapp.OperationService
 	providerOps *integrationsapp.ProviderOperationService
+}
+
+type unavailableProductMatcher struct {
+	err error
+}
+
+func (m unavailableProductMatcher) FindProductsForLinking(context.Context, internalreadports.FindProductsInput) ([]internalreaddomain.ProductCandidate, error) {
+	return nil, m.err
 }
 
 func (f authFlowFacade) StartAuthorize(ctx context.Context, input integrationsapp.StartAuthorizeInput) (integrationsapp.AuthorizeStart, error) {
@@ -92,6 +126,26 @@ func (f authFlowFacade) StartSync(ctx context.Context, input integrationsapp.Sta
 
 func (f authFlowFacade) ListOperationRuns(ctx context.Context, installationID string) ([]integrationsdomain.OperationRun, error) {
 	return f.operations.ListByInstallation(ctx, installationID)
+}
+
+func (f authFlowFacade) ProbeAccount(ctx context.Context, installationID string) (connectorsdomain.AccountSnapshot, error) {
+	return f.providerOps.ProbeAccount(ctx, installationID)
+}
+
+func (f authFlowFacade) ListListings(ctx context.Context, installationID string, limit int) ([]connectorsdomain.ListingSnapshot, error) {
+	return f.providerOps.ListListings(ctx, installationID, limit)
+}
+
+func (f authFlowFacade) ListOrders(ctx context.Context, installationID string, limit int) ([]connectorsdomain.OrderSnapshot, error) {
+	return f.providerOps.ListOrders(ctx, installationID, limit)
+}
+
+func (f authFlowFacade) ReadFeeQuote(ctx context.Context, installationID string, input connectorsdomain.FeeQuoteInput) (connectorsdomain.FeeQuoteSnapshot, error) {
+	return f.providerOps.ReadFeeQuote(ctx, installationID, input)
+}
+
+func (f authFlowFacade) ReadStock(ctx context.Context, installationID string, ref connectorsdomain.ProviderListingRef) (connectorsdomain.StockSnapshot, error) {
+	return f.providerOps.ReadStock(ctx, installationID, ref)
 }
 
 func NewRootRouter(pool *pgxpool.Pool, msPool *pgxpool.Pool, cfg pgdb.Config) (http.Handler, error) {
@@ -185,12 +239,22 @@ func NewRootRouter(pool *pgxpool.Pool, msPool *pgxpool.Pool, cfg pgdb.Config) (h
 	marketplaceCapabilities := connectorsapp.NewMarketplaceCapabilityService([]connectorsapp.ProviderCapabilitySet{
 		mercadoLivreCapabilities.ProviderCapabilitySet(),
 	})
-	installationSvc.SetRuntimeCapabilitySource(integrationsapp.NewRuntimeCapabilityProjector(marketplaceCapabilities))
-	providerOperationSvc := integrationsapp.NewProviderOperationService(integrationsapp.ProviderOperationServiceConfig{
+	installationSvc.SetStateReconciler(integrationsapp.NewInstallationStateReconciler(integrationsapp.InstallationStateReconcilerConfig{
 		TenantID:      cfg.DefaultTenantID,
 		Installations: installationSvc,
+		AuthSessions:  authSvc,
+		Credentials:   credentialSvc,
+		Decryptor:     encryptionSvc,
 		Capabilities:  marketplaceCapabilities,
-		Operations:    operationSvc,
+	}))
+	installationSvc.SetRuntimeCapabilitySource(integrationsapp.NewRuntimeCapabilityProjector(marketplaceCapabilities))
+	installationSvc.SetCapabilityStateResolver(capabilitySvc)
+	providerOperationSvc := integrationsapp.NewProviderOperationService(integrationsapp.ProviderOperationServiceConfig{
+		TenantID:         cfg.DefaultTenantID,
+		Installations:    installationSvc,
+		Capabilities:     marketplaceCapabilities,
+		CapabilityStates: capabilitySvc,
+		Operations:       operationSvc,
 	})
 
 	flowFacade := authFlowFacade{
@@ -202,6 +266,83 @@ func NewRootRouter(pool *pgxpool.Pool, msPool *pgxpool.Pool, cfg pgdb.Config) (h
 
 	integrationstransport.NewHandler(providerSvc, installationSvc).Register(mux)
 	integrationstransport.NewAuthHandler(flowFacade).Register(mux)
+
+	productLinkSnapshotRepo := productlinkspostgres.NewListingSnapshotRepository(pool, cfg.DefaultTenantID)
+	productLinkCandidateRepo := productlinkspostgres.NewLinkCandidateRepository(pool, cfg.DefaultTenantID)
+	productLinkImportSvc := productlinksapp.NewImportService(productlinksapp.ImportServiceConfig{
+		Source: providerOperationSvc,
+		Store:  productLinkSnapshotRepo,
+	})
+
+	productMatcher := productlinksapp.ProductMatcher(unavailableProductMatcher{
+		err: internalreaddomain.NewReadError(internalreaddomain.ReadErrorSourceUnavailable, "oracle product linking reader is unavailable", nil),
+	})
+	var inventoryStockReader inventoryports.InternalStockReader = inventoryinternalread.UnavailableStockReader{
+		Err: internalreaddomain.NewReadError(internalreaddomain.ReadErrorSourceUnavailable, "oracle inventory stock reader is unavailable", nil),
+	}
+	var internalReadSvc internalreadapp.Service
+	var internalReadAvailable bool
+	if oracleCfg, err := internalreadoracle.LoadConfigFromEnv(os.Getenv); err != nil {
+		slog.Warn("product links oracle reader unavailable", "err", err)
+	} else if oracleDB, err := internalreadoracle.OpenDB(context.Background(), oracleCfg); err != nil {
+		slog.Warn("product links oracle connection failed", "err", err)
+	} else {
+		internalReadSvc = internalreadapp.NewService(internalreadoracle.NewReader(oracleDB))
+		internalReadAvailable = true
+		productMatcher = internalReadSvc
+		inventoryStockReader = inventoryinternalread.NewStockReader(internalReadSvc)
+	}
+
+	productLinkGenerationSvc := productlinksapp.NewGenerationService(productlinksapp.GenerationServiceConfig{
+		Snapshots: productLinkSnapshotRepo,
+		Matcher:   productMatcher,
+		Store:     productLinkCandidateRepo,
+	})
+	productLinkResolutionSvc := productlinksapp.NewResolutionService(productlinksapp.ResolutionServiceConfig{
+		Candidates: productLinkCandidateRepo,
+		Workflows:  productLinkCandidateRepo,
+	})
+	productlinkstransport.NewHandler(productLinkImportSvc, productLinkGenerationSvc, productLinkGenerationSvc, productLinkResolutionSvc, productLinkResolutionSvc).Register(mux)
+
+	inventoryActionRepo := inventorypostgres.NewStockActionRepository(pool, cfg.DefaultTenantID)
+	inventoryRiskSvc := inventoryapp.NewStockRiskService(
+		inventoryproductlinks.NewSnapshotReader(productLinkSnapshotRepo),
+		inventoryproductlinks.NewLinkReader(productLinkCandidateRepo, productLinkCandidateRepo),
+		inventoryStockReader,
+	)
+	inventoryActionSvc := inventoryapp.NewStockActionService(
+		inventoryActionRepo,
+		inventoryconnectors.NewStockWriter(marketplaceCapabilities),
+	)
+	inventoryManualAction := inventoryapp.NewManualActionFacade(
+		inventoryRiskSvc,
+		inventoryActionSvc,
+		inventoryintegrations.NewInstallationReader(installationSvc),
+		inventoryproductlinks.NewSnapshotStore(productLinkSnapshotRepo),
+	)
+	inventorytransport.NewHandler(inventoryRiskSvc, inventoryManualAction).Register(mux)
+
+	ordersRepo := orderspostgres.NewOrderRepository(pool, cfg.DefaultTenantID)
+	ordersImportSvc := ordersapp.NewImportService(ordersapp.ImportServiceConfig{
+		Source: ordersintegrations.NewOrderSource(providerOperationSvc),
+		Links:  ordersproductlinks.NewLinkReader(productLinkCandidateRepo, productLinkCandidateRepo),
+		Store:  ordersRepo,
+	})
+	ordersListSvc := ordersapp.NewListService(ordersRepo)
+	orderstransport.NewHandler(ordersImportSvc, ordersListSvc).Register(mux)
+
+	profitabilityStore := profitabilitypostgres.NewStore(pool, cfg.DefaultTenantID)
+	profitabilityCfg := profitabilityapp.ServiceConfig{
+		Orders:      profitabilityorders.NewOrderReader(ordersListSvc),
+		Inputs:      profitabilityStore,
+		Adjustments: profitabilityStore,
+		Snapshots:   profitabilityStore,
+	}
+	if internalReadAvailable {
+		profitabilityCfg.Internal = profitabilityinternalread.NewFactReader(internalReadSvc)
+	}
+	profitabilitySvc := profitabilityapp.NewService(profitabilityCfg)
+	profitabilitytransport.NewHandler(profitabilitySvc).Register(mux)
 
 	go integrationsbg.NewRefreshTicker(authSessionRepo, authFlowSvc, 5*time.Minute).Start(context.Background())
 	go integrationsbg.NewStateCleanup(oauthStateRepo, time.Hour).Start(context.Background())

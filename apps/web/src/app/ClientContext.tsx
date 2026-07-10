@@ -5,8 +5,18 @@ type Client = ReturnType<typeof createMarketplaceCentralClient>;
 
 const ClientContext = createContext<Client | null>(null);
 
+export function resolveApiBaseUrl(envBaseUrl: string | undefined, isDev: boolean): string {
+  if (envBaseUrl && envBaseUrl.trim()) {
+    return envBaseUrl;
+  }
+  if (isDev) {
+    return "http://localhost:8080";
+  }
+  return "";
+}
+
 export function ClientProvider({ children }: { children: ReactNode }) {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
+  const baseUrl = resolveApiBaseUrl(import.meta.env.VITE_API_BASE_URL, import.meta.env.DEV);
   const client = useMemo(
     () => createMarketplaceCentralClient({ baseUrl }),
     [baseUrl]

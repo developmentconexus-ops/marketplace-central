@@ -386,6 +386,807 @@ describe("sdk runtime", () => {
     expect(result.connection.auth_strategy).toBe("oauth2");
   });
 
+  it("probes integration account", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(
+          JSON.stringify({
+            provider_code: "mercado_livre",
+            provider_account_id: "691607102",
+            provider_account_name: "METALNOBREACABAMENTOS",
+            site_id: "MLB",
+            status: "active",
+            fetched_at: "2026-07-08T12:00:00Z",
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      },
+    });
+
+    const result = await client.probeIntegrationAccount("inst-1");
+
+    expect(String(requests[0].input)).toBe("http://localhost:8080/integrations/installations/inst-1/probes/account");
+    expect(requests[0].init?.method).toBe("POST");
+    expect(result.provider_account_name).toBe("METALNOBREACABAMENTOS");
+  });
+
+  it("reads integration listings probe", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                provider_code: "mercado_livre",
+                provider_item_id: "MLB123",
+                title: "Produto teste",
+                fetched_at: "2026-07-08T12:00:00Z",
+                variations: [
+                  {
+                    provider_variation_id: "VAR-1",
+                    available_quantity: 5,
+                  },
+                ],
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      },
+    });
+
+    const result = await client.probeIntegrationListings("inst-1", 3);
+
+    expect(String(requests[0].input)).toBe("http://localhost:8080/integrations/installations/inst-1/probes/listings?limit=3");
+    expect(requests[0].init?.method).toBe("GET");
+    expect(result.items[0].variations?.[0].provider_variation_id).toBe("VAR-1");
+  });
+
+  it("reads integration orders probe", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                provider_code: "mercado_livre",
+                provider_order_id: "ORDER-1",
+                fetched_at: "2026-07-08T12:00:00Z",
+                items: [
+                  {
+                    provider_item_id: "MLB123",
+                    quantity: 2,
+                  },
+                ],
+                payments: [
+                  {
+                    payment_id: "PAY-1",
+                    amount: 120.5,
+                  },
+                ],
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      },
+    });
+
+    const result = await client.probeIntegrationOrders("inst-1", 1);
+
+    expect(String(requests[0].input)).toBe("http://localhost:8080/integrations/installations/inst-1/probes/orders?limit=1");
+    expect(requests[0].init?.method).toBe("GET");
+    expect(result.items[0].payments[0].payment_id).toBe("PAY-1");
+  });
+
+  it("reads integration fee quote probe", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(
+          JSON.stringify({
+            provider_code: "mercado_livre",
+            site_id: "MLB",
+            category_id: "",
+            listing_type_id: "gold_special",
+            price_amount: 100,
+            currency_id: "BRL",
+            commission_percent: 11,
+            fixed_fee_amount: 6,
+            fetched_at: "2026-07-08T12:00:00Z",
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      },
+    });
+
+    const result = await client.probeIntegrationFeeQuote("inst-1", {
+      listing_type_id: "gold_special",
+      price: 100,
+      currency_id: "BRL",
+    });
+
+    expect(String(requests[0].input)).toBe("http://localhost:8080/integrations/installations/inst-1/probes/fee-quote?listing_type_id=gold_special&price=100&currency_id=BRL");
+    expect(requests[0].init?.method).toBe("GET");
+    expect(result.fixed_fee_amount).toBe(6);
+  });
+
+  it("imports product link listing snapshots", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(
+          JSON.stringify({
+            installation_id: "inst-1",
+            imported_count: 2,
+            items: [
+              {
+                installation_id: "inst-1",
+                provider_code: "mercado_livre",
+                provider_item_id: "MLB123",
+                provider_variation_id: "VAR-1",
+                seller_sku: "SKU-1",
+                fetched_at: "2026-07-08T12:00:00Z",
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      },
+    });
+
+    const result = await client.importProductLinkListingSnapshots({
+      installation_id: "inst-1",
+      limit: 5,
+    });
+
+    expect(String(requests[0].input)).toBe("http://localhost:8080/product-links/listing-snapshots/imports");
+    expect(requests[0].init?.method).toBe("POST");
+    expect(requests[0].init?.headers).toEqual({ "Content-Type": "application/json" });
+    expect(requests[0].init?.body).toBe(JSON.stringify({ installation_id: "inst-1", limit: 5 }));
+    expect(result.imported_count).toBe(2);
+    expect(result.items[0].provider_variation_id).toBe("VAR-1");
+  });
+
+  it("generates product link candidates as json", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(
+          JSON.stringify({
+            installation_id: "inst-1",
+            generated_count: 1,
+            items: [
+              {
+                candidate_id: "cand-1",
+                installation_id: "inst-1",
+                provider_code: "mercado_livre",
+                provider_item_id: "MLB123",
+                provider_variation_id: "VAR-1",
+                internal_product_id: 101,
+                internal_product_name: "Produto teste",
+                internal_reference_code: "SKU-1",
+                state: "exact_sku",
+                match_input: "seller_sku",
+                match_value: "SKU-1",
+                source_snapshot_fetched_at: "2026-07-08T11:59:00Z",
+                created_at: "2026-07-08T12:00:00Z",
+                updated_at: "2026-07-08T12:00:00Z",
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      },
+    });
+
+    const result = await client.generateProductLinkCandidates({
+      installation_id: "inst-1",
+      limit: 10,
+    });
+
+    expect(String(requests[0].input)).toBe("http://localhost:8080/product-links/link-candidates/generations");
+    expect(requests[0].init?.method).toBe("POST");
+    expect(requests[0].init?.headers).toEqual({ "Content-Type": "application/json" });
+    expect(requests[0].init?.body).toBe(JSON.stringify({ installation_id: "inst-1", limit: 10 }));
+    expect(result.generated_count).toBe(1);
+    expect(result.items[0].state).toBe("exact_sku");
+    expect(result.items[0].match_input).toBe("seller_sku");
+  });
+
+  it("lists product link candidates with installation filter", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                candidate_id: "cand-1",
+                installation_id: "inst-1",
+                provider_code: "mercado_livre",
+                provider_item_id: "MLB123",
+                state: "unresolved",
+                match_input: "none",
+                created_at: "2026-07-08T12:00:00Z",
+                updated_at: "2026-07-08T12:00:00Z",
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      },
+    });
+
+    const result = await client.listProductLinkCandidates("inst-1", 25);
+
+    expect(String(requests[0].input)).toBe(
+      "http://localhost:8080/product-links/link-candidates?installation_id=inst-1&limit=25",
+    );
+    expect(requests[0].init?.method).toBe("GET");
+    expect(result.items[0].candidate_id).toBe("cand-1");
+    expect(result.items[0].state).toBe("unresolved");
+  });
+
+  it("lists product link workflows with installation filter", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                identity: {
+                  installation_id: "inst-1",
+                  provider_item_id: "MLB123",
+                  provider_variation_id: "VAR-1",
+                },
+                current_link: {
+                  installation_id: "inst-1",
+                  provider_code: "mercado_livre",
+                  provider_item_id: "MLB123",
+                  provider_variation_id: "VAR-1",
+                  state: "resolved",
+                  internal_product_id: 101,
+                  internal_product_name: "Produto teste",
+                  internal_reference_code: "SKU-1",
+                  created_at: "2026-07-08T12:00:00Z",
+                  updated_at: "2026-07-08T12:10:00Z",
+                },
+                candidates: [],
+                audit: [],
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      },
+    });
+
+    const result = await client.listProductLinkWorkflows("inst-1", 10);
+
+    expect(String(requests[0].input)).toBe(
+      "http://localhost:8080/product-links/link-workflows?installation_id=inst-1&limit=10",
+    );
+    expect(requests[0].init?.method).toBe("GET");
+    expect(result.items[0].identity.provider_item_id).toBe("MLB123");
+    expect(result.items[0].current_link?.state).toBe("resolved");
+  });
+
+  it("approves product link candidates as json", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(
+          JSON.stringify({
+            link: {
+              installation_id: "inst-1",
+              provider_code: "mercado_livre",
+              provider_item_id: "MLB123",
+              state: "resolved",
+              source_candidate_id: "cand-1",
+              internal_product_id: 101,
+              internal_product_name: "Produto teste",
+              internal_reference_code: "SKU-1",
+              created_at: "2026-07-08T12:00:00Z",
+              updated_at: "2026-07-08T12:10:00Z",
+            },
+            audit: {
+              audit_id: "audit-1",
+              installation_id: "inst-1",
+              provider_code: "mercado_livre",
+              provider_item_id: "MLB123",
+              action: "approve_candidate",
+              actor: {
+                actor_type: "operator",
+                actor_id: "leandro",
+                actor_name: "Leandro",
+              },
+              previous_state: "unresolved",
+              next_state: "resolved",
+              next_internal_product_id: 101,
+              created_at: "2026-07-08T12:10:00Z",
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      },
+    });
+
+    const result = await client.approveProductLinkCandidate({
+      candidate_id: "cand-1",
+      reason: "Exact EAN match",
+      actor: { actor_type: "operator", actor_id: "leandro", actor_name: "Leandro" },
+    });
+
+    expect(String(requests[0].input)).toBe("http://localhost:8080/product-links/link-resolutions/approve-candidate");
+    expect(requests[0].init?.method).toBe("POST");
+    expect(requests[0].init?.body).toBe(
+      JSON.stringify({
+        candidate_id: "cand-1",
+        reason: "Exact EAN match",
+        actor: { actor_type: "operator", actor_id: "leandro", actor_name: "Leandro" },
+      }),
+    );
+    expect(result.link.internal_product_id).toBe(101);
+    expect(result.audit.action).toBe("approve_candidate");
+  });
+
+  it("lists inventory stock risks with filters", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                identity: {
+                  installation_id: "inst-1",
+                  provider_item_id: "MLB123",
+                },
+                provider_code: "mercado_livre",
+                link_state: "resolved",
+                state: "oversell",
+                actionability: "actionable",
+                actionable: true,
+                provider_quantity: 9,
+                recommended_quantity: 7,
+                policy_id: "stock-seguro-default",
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      },
+    });
+
+    const result = await client.listInventoryStockRisks({
+      installation_id: "inst-1",
+      state: "oversell",
+      actionability: "actionable",
+      limit: 20,
+    });
+
+    expect(String(requests[0].input)).toBe(
+      "http://localhost:8080/inventory/stock-risks?installation_id=inst-1&state=oversell&actionability=actionable&limit=20",
+    );
+    expect(requests[0].init?.method).toBe("GET");
+    expect(result.items[0].state).toBe("oversell");
+    expect(result.items[0].recommended_quantity).toBe(7);
+  });
+
+  it("applies inventory manual stock action as json", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(
+          JSON.stringify({
+            action: {
+              action_id: "act-1",
+              state: "applied",
+              trigger: "manual",
+              provider_ref: {
+                tenant_id: "tenant_default",
+                installation_id: "inst-1",
+                provider_code: "mercado_livre",
+                provider_account_id: "acct-1",
+                provider_item_id: "MLB123",
+              },
+              requested_quantity: 7,
+              recommended_quantity: 7,
+              policy_id: "stock-seguro-default",
+              operator: {
+                actor_type: "operator",
+                actor_id: "leandro",
+                actor_name: "Leandro",
+              },
+              idempotency_key: "act-1",
+              audit_events: [],
+              created_at: "2026-07-09T12:00:00Z",
+              updated_at: "2026-07-09T12:00:00Z",
+            },
+            risk: {
+              identity: {
+                installation_id: "inst-1",
+                provider_item_id: "MLB123",
+              },
+              provider_code: "mercado_livre",
+              link_state: "resolved",
+              state: "healthy",
+              actionability: "blocked",
+              actionable: false,
+              provider_quantity: 7,
+              recommended_quantity: 7,
+              policy_id: "stock-seguro-default",
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      },
+    });
+
+    const result = await client.applyInventoryManualStockAction({
+      stock_action_id: "act-1",
+      installation_id: "inst-1",
+      provider_item_id: "MLB123",
+      requested_quantity: 7,
+      reason: "Operator apply",
+      approval: {
+        approved: true,
+        approved_at: "2026-07-09T12:00:00Z",
+        operator: {
+          actor_type: "operator",
+          actor_id: "leandro",
+          actor_name: "Leandro",
+        },
+      },
+    });
+
+    expect(String(requests[0].input)).toBe("http://localhost:8080/inventory/stock-actions/manual-apply");
+    expect(requests[0].init?.method).toBe("POST");
+    expect(requests[0].init?.body).toBe(
+      JSON.stringify({
+        stock_action_id: "act-1",
+        installation_id: "inst-1",
+        provider_item_id: "MLB123",
+        requested_quantity: 7,
+        reason: "Operator apply",
+        approval: {
+          approved: true,
+          approved_at: "2026-07-09T12:00:00Z",
+          operator: {
+            actor_type: "operator",
+            actor_id: "leandro",
+            actor_name: "Leandro",
+          },
+        },
+      }),
+    );
+    expect(result.action.state).toBe("applied");
+    expect(result.risk.state).toBe("healthy");
+  });
+
+  it("imports marketplace orders as json", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(
+          JSON.stringify({
+            installation_id: "inst-1",
+            imported_count: 1,
+            skipped_count: 0,
+            items: [
+              {
+                installation_id: "inst-1",
+                provider_code: "mercado_livre",
+                provider_order_id: "2001",
+                provider_status: "paid",
+                provider_updated_at: "2026-07-09T12:00:00Z",
+                fetched_at: "2026-07-09T12:00:00Z",
+                items: [
+                  {
+                    provider_item_id: "MLB123",
+                    quantity: 1,
+                    link_quality: "resolved",
+                  },
+                ],
+                payments: [],
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      },
+    });
+
+    const result = await client.importMarketplaceOrders({ installation_id: "inst-1", limit: 1 });
+
+    expect(String(requests[0].input)).toBe("http://localhost:8080/orders/import");
+    expect(requests[0].init?.method).toBe("POST");
+    expect(requests[0].init?.body).toBe(JSON.stringify({ installation_id: "inst-1", limit: 1 }));
+    expect(result.imported_count).toBe(1);
+    expect(result.items[0].provider_order_id).toBe("2001");
+  });
+
+  it("lists marketplace orders with normalized snapshots", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                installation_id: "inst-1",
+                provider_code: "mercado_livre",
+                provider_order_id: "2001",
+                provider_status: "paid",
+                provider_updated_at: "2026-07-09T12:00:00Z",
+                fetched_at: "2026-07-09T12:00:00Z",
+                items: [
+                  {
+                    provider_item_id: "MLB123",
+                    quantity: 1,
+                    link_quality: "resolved",
+                    internal_product_id: 321,
+                  },
+                ],
+                payments: [
+                  {
+                    provider_payment_id: "pay-1",
+                    total_paid_amount: 125.92,
+                  },
+                ],
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      },
+    });
+
+    const result = await client.listMarketplaceOrders("inst-1", 5);
+
+    expect(String(requests[0].input)).toBe("http://localhost:8080/orders?installation_id=inst-1&limit=5");
+    expect(requests[0].init?.method).toBe("GET");
+    expect(result.items[0].items[0].link_quality).toBe("resolved");
+    expect(result.items[0].payments[0].total_paid_amount).toBe(125.92);
+  });
+
+  it("imports profitability margin inputs as json", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(
+          JSON.stringify({
+            installation_id: "inst-1",
+            imported_count: 2,
+            items: [
+              {
+                installation_id: "inst-1",
+                provider_order_id: "2001",
+                scope: "item",
+                kind: "revenue",
+                amount: 19.9,
+                currency: "BRL",
+                source_system: "orders",
+                quality: "complete",
+                created_at: "2026-07-09T12:00:00Z",
+                updated_at: "2026-07-09T12:00:00Z",
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      },
+    });
+
+    const result = await client.importProfitabilityMarginInputs({ installation_id: "inst-1", limit: 1 });
+
+    expect(String(requests[0].input)).toBe("http://localhost:8080/profitability/margin-inputs/import");
+    expect(requests[0].init?.method).toBe("POST");
+    expect(result.imported_count).toBe(2);
+    expect(result.items[0].kind).toBe("revenue");
+  });
+
+  it("lists profitability margin inputs", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                installation_id: "inst-1",
+                provider_order_id: "2001",
+                scope: "item",
+                kind: "cost",
+                currency: "BRL",
+                source_system: "internal_read",
+                quality: "missing",
+                quality_reason: "missing_cost",
+                created_at: "2026-07-09T12:00:00Z",
+                updated_at: "2026-07-09T12:00:00Z",
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      },
+    });
+
+    const result = await client.listProfitabilityMarginInputs("inst-1", 5);
+
+    expect(String(requests[0].input)).toBe("http://localhost:8080/profitability/margin-inputs?installation_id=inst-1&limit=5");
+    expect(result.items[0].quality).toBe("missing");
+  });
+
+  it("creates profitability manual adjustment as json", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(
+          JSON.stringify({
+            adjustment_id: "adj-1",
+			idempotency_key: "manual-adjustment-1",
+            installation_id: "inst-1",
+            provider_order_id: "2001",
+            scope: "order",
+            category: "freight",
+            amount: 12.5,
+            currency: "BRL",
+            reason: "manual freight",
+            actor: { actor_type: "operator", actor_id: "leandro" },
+            created_at: "2026-07-09T12:00:00Z",
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      },
+    });
+
+    const result = await client.createProfitabilityManualAdjustment({
+      installation_id: "inst-1",
+		idempotency_key: "manual-adjustment-1",
+      provider_order_id: "2001",
+      scope: "order",
+      category: "freight",
+      amount: 12.5,
+      reason: "manual freight",
+      actor: { actor_type: "operator", actor_id: "leandro" },
+    });
+
+    expect(String(requests[0].input)).toBe("http://localhost:8080/profitability/manual-adjustments");
+    expect(requests[0].init?.method).toBe("POST");
+    expect(JSON.parse(String(requests[0].init?.body))).toEqual({
+      installation_id: "inst-1",
+		idempotency_key: "manual-adjustment-1",
+      provider_order_id: "2001",
+      scope: "order",
+      category: "freight",
+      amount: 12.5,
+      reason: "manual freight",
+      actor: { actor_type: "operator", actor_id: "leandro" },
+    });
+    expect(result.category).toBe("freight");
+  });
+
+  it("calculates profitability profit snapshots as json", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(
+          JSON.stringify({
+            installation_id: "inst-1",
+            calculated_count: 1,
+            items: [
+              {
+                installation_id: "inst-1",
+                provider_order_id: "2001",
+                scope: "item",
+                currency: "BRL",
+                realization_state: "realized",
+                revenue_amount: 20,
+                sale_fee_amount: 2,
+                cost_amount: 10,
+                tax_amount: 1,
+                adjustment_amount: 1,
+                contribution_amount: 8,
+                margin_percent: 40,
+                quality: "complete",
+                flags: [],
+                created_at: "2026-07-09T12:00:00Z",
+                updated_at: "2026-07-09T12:00:00Z",
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      },
+    });
+
+    const result = await client.calculateProfitabilityProfitSnapshots({ installation_id: "inst-1", limit: 1 });
+
+    expect(String(requests[0].input)).toBe("http://localhost:8080/profitability/profit-snapshots/calculate");
+    expect(requests[0].init?.method).toBe("POST");
+    expect(result.items[0].realization_state).toBe("realized");
+    expect(result.items[0].contribution_amount).toBe(8);
+  });
+
+  it("lists profitability profit snapshots", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                installation_id: "inst-1",
+                provider_order_id: "2001",
+                scope: "item",
+                currency: "BRL",
+                realization_state: "not_realized",
+                contribution_amount: null,
+                margin_percent: null,
+                quality: "not_realized",
+                flags: ["order_cancelled"],
+                created_at: "2026-07-09T12:00:00Z",
+                updated_at: "2026-07-09T12:00:00Z",
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      },
+    });
+
+    const result = await client.listProfitabilityProfitSnapshots("inst-1", 5);
+
+    expect(String(requests[0].input)).toBe("http://localhost:8080/profitability/profit-snapshots?installation_id=inst-1&limit=5");
+    expect(result.items[0].realization_state).toBe("not_realized");
+    expect(result.items[0].quality).toBe("not_realized");
+    expect(result.items[0].flags).toContain("order_cancelled");
+    expect(result.items[0].contribution_amount).toBeNull();
+    expect(result.items[0].margin_percent).toBeNull();
+  });
+
   it("builds canonical pricing simulation requests", async () => {
     const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
     const client = createMarketplaceCentralClient({

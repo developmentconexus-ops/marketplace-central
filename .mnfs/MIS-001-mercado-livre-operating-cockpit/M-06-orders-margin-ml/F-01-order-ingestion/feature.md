@@ -3,11 +3,11 @@
 ```yaml
 id: F-01
 type: feature-brief
-status: briefed
+status: quick_validation_passed
 owner: Mission Strategist
 parent: M-06
 created: 2026-07-06
-updated: 2026-07-06
+updated: 2026-07-09
 validation_level: QA-0
 lifecycle_scope: feature
 ```
@@ -51,8 +51,8 @@ Ingest Mercado Livre orders, items, payments, shipment ids, tags, and cancellati
 
 ## Handoff
 
-- Current status: briefed.
-- Next owner: Feature Implementer.
-- Next action: Create `spec.md`.
+- Current status: quick_validation_passed.
+- Next owner: Milestone Orchestrator.
+- Next action: Proceed to F-02 margin input model on top of the persisted order snapshot truth from F-01.
 - Required files/evidence: F-01/validation.md.
 - Blockers or open decisions: None.

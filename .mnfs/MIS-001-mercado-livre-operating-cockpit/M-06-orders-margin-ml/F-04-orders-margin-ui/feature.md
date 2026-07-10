@@ -3,11 +3,11 @@
 ```yaml
 id: F-04
 type: feature-brief
-status: briefed
+status: quick_validation_passed
 owner: Mission Strategist
 parent: M-06
 created: 2026-07-06
-updated: 2026-07-06
+updated: 2026-07-09
 validation_level: QA-0
 lifecycle_scope: feature
 ```
@@ -46,8 +46,8 @@ Build orders and margin UI so operators can inspect sale profitability, missing 
 
 ## Handoff
 
-- Current status: briefed.
-- Next owner: Feature Implementer.
-- Next action: Create `spec.md`.
+- Current status: quick_validation_passed.
+- Next owner: Milestone Orchestrator.
+- Next action: Validate M-06 milestone end-to-end over the now-verified backend + UI slices.
 - Required files/evidence: F-04/validation.md.
-- Blockers or open decisions: final route path can be set during spec.
+- Blockers or open decisions: None.

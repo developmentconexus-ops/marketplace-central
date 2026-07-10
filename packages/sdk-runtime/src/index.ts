@@ -181,13 +181,498 @@ export interface IntegrationOperationRun {
   status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
   result_code: string;
   failure_code: string;
+  translated_error_code?: string;
   attempt_count: number;
   actor_type: string;
   actor_id: string;
+  provider_evidence?: Record<string, unknown>;
+  duration_ms?: number;
   started_at?: string;
   completed_at?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface IntegrationAccountProbe {
+  provider_code: string;
+  provider_account_id: string;
+  provider_account_name: string;
+  site_id: string;
+  status: string;
+  fetched_at: string;
+  raw_provider_ref?: unknown;
+}
+
+export interface IntegrationListingVariationProbe {
+  provider_variation_id: string;
+  seller_sku?: string;
+  ean?: string;
+  available_quantity?: number | null;
+}
+
+export interface IntegrationListingProbe {
+  provider_code: string;
+  provider_item_id: string;
+  provider_variation_id?: string;
+  provider_status?: string;
+  seller_sku?: string;
+  ean?: string;
+  title?: string;
+  available_quantity?: number | null;
+  source_updated_at?: string | null;
+  fetched_at: string;
+  raw_provider_ref?: unknown;
+  variations?: IntegrationListingVariationProbe[];
+}
+
+export interface IntegrationOrderItemProbe {
+  provider_item_id: string;
+  provider_variation_id?: string;
+  seller_sku?: string;
+  ean?: string;
+  title?: string;
+  quantity: number;
+  unit_price?: number | null;
+  sale_fee_amount?: number | null;
+}
+
+export interface IntegrationOrderPaymentProbe {
+  payment_id: string;
+  status?: string;
+  amount?: number | null;
+  transaction_amount?: number | null;
+  total_paid_amount?: number | null;
+}
+
+export interface IntegrationOrderProbe {
+  provider_code: string;
+  provider_order_id: string;
+  provider_status?: string;
+  provider_status_detail?: string;
+  provider_created_at?: string | null;
+  provider_closed_at?: string | null;
+  provider_updated_at?: string | null;
+  fetched_at: string;
+  raw_provider_ref?: unknown;
+  items: IntegrationOrderItemProbe[];
+  sale_fee_amount?: number | null;
+  payments: IntegrationOrderPaymentProbe[];
+  shipping_id?: string;
+  cancellation_detail?: string;
+  tags?: string[];
+}
+
+export type OrderLinkQuality = "resolved" | "rejected" | "conflict" | "unresolved" | "missing";
+
+export interface MarketplaceOrderItem {
+  provider_item_id: string;
+  provider_variation_id?: string;
+  seller_sku?: string;
+  title?: string;
+  quantity: number;
+  unit_price?: number | null;
+  sale_fee_amount?: number | null;
+  link_quality: OrderLinkQuality;
+  internal_product_id?: number | null;
+}
+
+export interface MarketplaceOrderPayment {
+  provider_payment_id: string;
+  provider_status?: string;
+  transaction_amount?: number | null;
+  total_paid_amount?: number | null;
+}
+
+export interface MarketplaceOrder {
+  installation_id: string;
+  provider_code: string;
+  provider_order_id: string;
+  provider_status?: string;
+  provider_status_detail?: string;
+  provider_created_at?: string | null;
+  provider_closed_at?: string | null;
+  provider_updated_at?: string | null;
+  fetched_at: string;
+  shipping_id?: string;
+  cancellation_detail?: string;
+  tags?: string[];
+  raw_provider_ref?: unknown;
+  items: MarketplaceOrderItem[];
+  payments: MarketplaceOrderPayment[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ImportMarketplaceOrdersResponse {
+  installation_id: string;
+  imported_count: number;
+  skipped_count: number;
+  items: MarketplaceOrder[];
+}
+
+export type ProfitabilityInputScope = "order" | "item";
+export type ProfitabilityInputKind =
+  | "revenue"
+  | "sale_fee"
+  | "cost"
+  | "tax_icms"
+  | "tax_ipi"
+  | "tax_pis"
+  | "tax_cofins"
+  | "freight"
+  | "commission";
+export type ProfitabilityInputQuality =
+  | "complete"
+  | "missing"
+  | "unresolved_link"
+  | "rejected_link"
+  | "conflict_link"
+  | "stale"
+  | "manual"
+  | "partial";
+export type ProfitabilityManualAdjustmentCategory = "freight" | "commission" | "cost" | "generic_adjustment";
+
+export interface ProfitabilityActor {
+  actor_type: string;
+  actor_id: string;
+  actor_name?: string;
+}
+
+export interface ProfitabilityMarginInput {
+  installation_id: string;
+  provider_order_id: string;
+  provider_item_id?: string;
+  provider_variation_id?: string;
+  scope: ProfitabilityInputScope;
+  kind: ProfitabilityInputKind;
+  amount?: number | null;
+  currency: string;
+  source_system: string;
+  source_reference?: string;
+  observed_at?: string | null;
+  quality: ProfitabilityInputQuality;
+  quality_reason?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProfitabilityManualAdjustment {
+  adjustment_id: string;
+  idempotency_key: string;
+  installation_id: string;
+  provider_order_id: string;
+  provider_item_id?: string;
+  provider_variation_id?: string;
+  scope: ProfitabilityInputScope;
+  category: ProfitabilityManualAdjustmentCategory;
+  amount: number;
+  currency: string;
+  reason: string;
+  actor: ProfitabilityActor;
+  created_at: string;
+}
+
+export interface ImportProfitabilityMarginInputsResponse {
+  installation_id: string;
+  imported_count: number;
+  items: ProfitabilityMarginInput[];
+}
+
+export type OrderRealizationState = "realized" | "not_realized" | "unknown";
+export type ProfitSnapshotQuality = "complete" | "incomplete" | "negative_margin" | "not_realized";
+export type ProfitSnapshotFlag =
+  | "missing_revenue"
+  | "missing_sale_fee"
+  | "missing_cost"
+  | "missing_tax"
+  | "missing_freight"
+  | "missing_commission"
+  | "missing_link"
+  | "negative_margin"
+  | "order_cancelled"
+  | "order_state_unknown";
+
+export interface ProfitabilityProfitSnapshot {
+  installation_id: string;
+  provider_order_id: string;
+  provider_item_id?: string;
+  provider_variation_id?: string;
+  scope: ProfitabilityInputScope;
+  currency: string;
+  realization_state: OrderRealizationState;
+  revenue_amount?: number | null;
+  sale_fee_amount?: number | null;
+  cost_amount?: number | null;
+  tax_amount?: number | null;
+  freight_amount?: number | null;
+  commission_amount?: number | null;
+  adjustment_amount?: number | null;
+  contribution_amount?: number | null;
+  margin_percent?: number | null;
+  quality: ProfitSnapshotQuality;
+  flags?: ProfitSnapshotFlag[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CalculateProfitabilityProfitSnapshotsResponse {
+  installation_id: string;
+  calculated_count: number;
+  items: ProfitabilityProfitSnapshot[];
+}
+
+export interface IntegrationFeeQuoteSnapshot {
+  provider_code: string;
+  site_id: string;
+  category_id: string;
+  listing_type_id: string;
+  price_amount: number;
+  currency_id: string;
+  commission_percent?: number | null;
+  fixed_fee_amount?: number | null;
+  source_updated_at?: string | null;
+  fetched_at: string;
+  raw_provider_ref?: unknown;
+}
+
+export interface IntegrationStockProbe {
+  provider_code: string;
+  provider_item_id: string;
+  provider_variation_id?: string;
+  available_quantity: number;
+  provider_status?: string;
+  seller_sku?: string;
+  ean?: string;
+  title?: string;
+  source_updated_at?: string | null;
+  fetched_at: string;
+  raw_provider_ref?: unknown;
+  scope: "item" | "variation";
+}
+
+export interface ProductLinkListingSnapshot {
+  installation_id: string;
+  provider_code: string;
+  provider_item_id: string;
+  provider_variation_id?: string;
+  provider_status?: string;
+  seller_sku?: string;
+  ean?: string;
+  title?: string;
+  available_quantity?: number | null;
+  source_updated_at?: string | null;
+  fetched_at: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ProductLinkListingSnapshotImportResult {
+  installation_id: string;
+  imported_count: number;
+  items: ProductLinkListingSnapshot[];
+}
+
+export type ProductLinkCandidateState =
+  | "manual"
+  | "exact_sku"
+  | "exact_ean"
+  | "title_match"
+  | "unresolved"
+  | "conflict";
+
+export type ProductLinkCandidateMatchInput = "manual" | "seller_sku" | "ean" | "title" | "none";
+
+export interface ProductLinkCandidateItem {
+  candidate_id: string;
+  installation_id: string;
+  provider_code: string;
+  provider_item_id: string;
+  provider_variation_id?: string;
+  internal_product_id?: number;
+  internal_product_name?: string;
+  internal_reference_code?: string;
+  state: ProductLinkCandidateState;
+  match_input: ProductLinkCandidateMatchInput;
+  match_value?: string;
+  source_snapshot_fetched_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductLinkCandidateGenerationResult {
+  installation_id: string;
+  generated_count: number;
+  items: ProductLinkCandidateItem[];
+}
+
+export type ProductLinkState = "none" | "unresolved" | "conflict" | "resolved" | "rejected";
+
+export type ProductLinkAction = "approve_candidate" | "reject_listing" | "manual_resolve";
+
+export interface ProductLinkActor {
+  actor_type: string;
+  actor_id: string;
+  actor_name?: string;
+}
+
+export interface ProductLinkListingIdentity {
+  installation_id: string;
+  provider_item_id: string;
+  provider_variation_id?: string;
+}
+
+export interface ProductLink {
+  installation_id: string;
+  provider_code: string;
+  provider_item_id: string;
+  provider_variation_id?: string;
+  state: ProductLinkState;
+  source_candidate_id?: string;
+  internal_product_id?: number;
+  internal_product_name?: string;
+  internal_reference_code?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductLinkAuditEntry {
+  audit_id: string;
+  installation_id: string;
+  provider_code: string;
+  provider_item_id: string;
+  provider_variation_id?: string;
+  action: ProductLinkAction;
+  reason?: string;
+  source_candidate_id?: string;
+  actor: ProductLinkActor;
+  previous_state: ProductLinkState;
+  next_state: ProductLinkState;
+  previous_internal_product_id?: number;
+  next_internal_product_id?: number;
+  created_at: string;
+}
+
+export interface ProductLinkWorkflowItem {
+  identity: ProductLinkListingIdentity;
+  current_link?: ProductLink;
+  candidates: ProductLinkCandidateItem[];
+  audit: ProductLinkAuditEntry[];
+}
+
+export interface ProductLinkResolutionResult {
+  link: ProductLink;
+  audit: ProductLinkAuditEntry;
+}
+
+export type StockRiskState =
+  | "healthy"
+  | "oversell"
+  | "undersell"
+  | "stale"
+  | "unresolved"
+  | "conflict"
+  | "ineligible"
+  | "unsupported";
+
+export type StockRiskActionability = "actionable" | "blocked";
+
+export interface InventoryListingIdentity {
+  installation_id: string;
+  provider_item_id: string;
+  provider_variation_id?: string;
+}
+
+export interface InventoryBlockingReason {
+  code: string;
+  message: string;
+}
+
+export interface InventoryStockRiskItem {
+  identity: InventoryListingIdentity;
+  provider_code: string;
+  provider_status?: string;
+  seller_sku?: string;
+  ean?: string;
+  title?: string;
+  link_state: ProductLinkState;
+  internal_product_id?: number;
+  internal_product_name?: string;
+  internal_reference_code?: string;
+  state: StockRiskState;
+  actionability: StockRiskActionability;
+  actionable: boolean;
+  internal_quantity?: number | null;
+  provider_quantity?: number | null;
+  recommended_quantity?: number | null;
+  policy_id: string;
+  internal_observed_at?: string | null;
+  provider_observed_at?: string | null;
+  blocking_reason?: InventoryBlockingReason;
+}
+
+export type InventoryStockActionState = "proposed" | "blocked" | "approved" | "applied" | "failed" | "skipped";
+
+export interface InventoryStockActionOperator {
+  actor_type: string;
+  actor_id: string;
+  actor_name?: string;
+}
+
+export interface InventoryManualApproval {
+  approved: boolean;
+  approved_at: string;
+  operator: InventoryStockActionOperator;
+}
+
+export interface InventoryStockActionAuditEvent {
+  state: InventoryStockActionState;
+  reason: string;
+  provider_status?: "applied" | "rejected" | "transient_failure" | "unsupported_shape";
+  occurred_at: string;
+}
+
+export interface InventoryStockWriteResult {
+  status?: "applied" | "rejected" | "transient_failure" | "unsupported_shape";
+  idempotency_key?: string;
+  provider_code?: string;
+  provider_item_id?: string;
+  provider_variation_id?: string;
+  message?: string;
+  response_summary?: string;
+}
+
+export interface InventoryStockActionRecord {
+  action_id: string;
+  state: InventoryStockActionState;
+  trigger: "manual";
+  provider_ref: {
+    tenant_id: string;
+    installation_id: string;
+    provider_code: string;
+    provider_account_id: string;
+    provider_item_id: string;
+    provider_variation_id?: string;
+  };
+  before_quantity?: number | null;
+  requested_quantity: number;
+  recommended_quantity?: number | null;
+  policy_id: string;
+  internal_observed_at?: string | null;
+  provider_observed_at?: string | null;
+  operator: InventoryStockActionOperator;
+  reason?: string;
+  idempotency_key: string;
+  blocking_reason?: InventoryBlockingReason;
+  failure_reason?: InventoryBlockingReason;
+  provider_result?: InventoryStockWriteResult;
+  audit_events: InventoryStockActionAuditEvent[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ApplyInventoryStockActionResponse {
+  action: InventoryStockActionRecord;
+  risk: InventoryStockRiskItem;
 }
 
 export interface IntegrationFeeSyncAccepted {
@@ -429,6 +914,117 @@ export function createMarketplaceCentralClient(options: {
       getJson<IntegrationAuthStatusResponse>(`/integrations/installations/${installationId}/auth/status`),
     startIntegrationFeeSync: (installationId: string) =>
       postJson<IntegrationFeeSyncAccepted>(`/integrations/installations/${installationId}/fee-sync`, {}),
+    probeIntegrationAccount: (installationId: string) =>
+      postJson<IntegrationAccountProbe>(`/integrations/installations/${installationId}/probes/account`, {}),
+    probeIntegrationListings: (installationId: string, limit = 20) =>
+      getJson<ListResponse<IntegrationListingProbe>>(
+        `/integrations/installations/${installationId}/probes/listings?limit=${encodeURIComponent(String(limit))}`,
+      ),
+    probeIntegrationOrders: (installationId: string, limit = 20) =>
+      getJson<ListResponse<IntegrationOrderProbe>>(
+        `/integrations/installations/${installationId}/probes/orders?limit=${encodeURIComponent(String(limit))}`,
+      ),
+    probeIntegrationFeeQuote: (
+      installationId: string,
+      input: { listing_type_id: string; price: number; site_id?: string; category_id?: string; currency_id?: string },
+    ) =>
+      getJson<IntegrationFeeQuoteSnapshot>(
+        `/integrations/installations/${installationId}/probes/fee-quote?listing_type_id=${encodeURIComponent(input.listing_type_id)}&price=${encodeURIComponent(String(input.price))}${input.site_id ? `&site_id=${encodeURIComponent(input.site_id)}` : ""}${input.category_id ? `&category_id=${encodeURIComponent(input.category_id)}` : ""}${input.currency_id ? `&currency_id=${encodeURIComponent(input.currency_id)}` : ""}`,
+      ),
+    probeIntegrationStock: (
+      installationId: string,
+      input: { provider_item_id: string; provider_variation_id?: string },
+    ) =>
+      getJson<IntegrationStockProbe>(
+        `/integrations/installations/${installationId}/probes/stock?provider_item_id=${encodeURIComponent(input.provider_item_id)}${input.provider_variation_id ? `&provider_variation_id=${encodeURIComponent(input.provider_variation_id)}` : ""}`,
+      ),
+    importProductLinkListingSnapshots: (req: { installation_id: string; limit?: number }) =>
+      postJson<ProductLinkListingSnapshotImportResult>("/product-links/listing-snapshots/imports", req),
+    generateProductLinkCandidates: (req: { installation_id: string; limit?: number }) =>
+      postJson<ProductLinkCandidateGenerationResult>("/product-links/link-candidates/generations", req),
+    listProductLinkCandidates: (installationId: string, limit = 20) =>
+      getJson<ListResponse<ProductLinkCandidateItem>>(
+        `/product-links/link-candidates?installation_id=${encodeURIComponent(installationId)}&limit=${encodeURIComponent(String(limit))}`,
+      ),
+    listProductLinkWorkflows: (installationId: string, limit = 20) =>
+      getJson<ListResponse<ProductLinkWorkflowItem>>(
+        `/product-links/link-workflows?installation_id=${encodeURIComponent(installationId)}&limit=${encodeURIComponent(String(limit))}`,
+      ),
+    approveProductLinkCandidate: (req: { candidate_id: string; reason?: string; actor: ProductLinkActor }) =>
+      postJson<ProductLinkResolutionResult>("/product-links/link-resolutions/approve-candidate", req),
+    rejectProductLinkListing: (req: {
+      installation_id: string;
+      provider_code: string;
+      provider_item_id: string;
+      provider_variation_id?: string;
+      reason?: string;
+      actor: ProductLinkActor;
+    }) => postJson<ProductLinkResolutionResult>("/product-links/link-resolutions/reject-listing", req),
+    manualResolveProductLink: (req: {
+      installation_id: string;
+      provider_code: string;
+      provider_item_id: string;
+      provider_variation_id?: string;
+      internal_product_id: number;
+      internal_product_name?: string;
+      internal_reference_code?: string;
+      reason?: string;
+      actor: ProductLinkActor;
+    }) => postJson<ProductLinkResolutionResult>("/product-links/link-resolutions/manual-resolve", req),
+    listInventoryStockRisks: (input: {
+      installation_id: string;
+      state?: StockRiskState;
+      link_state?: ProductLinkState;
+      actionability?: StockRiskActionability;
+      limit?: number;
+    }) =>
+      getJson<ListResponse<InventoryStockRiskItem>>(
+        `/inventory/stock-risks?installation_id=${encodeURIComponent(input.installation_id)}${input.state ? `&state=${encodeURIComponent(input.state)}` : ""}${input.link_state ? `&link_state=${encodeURIComponent(input.link_state)}` : ""}${input.actionability ? `&actionability=${encodeURIComponent(input.actionability)}` : ""}${input.limit ? `&limit=${encodeURIComponent(String(input.limit))}` : ""}`,
+      ),
+    applyInventoryManualStockAction: (req: {
+      stock_action_id: string;
+      installation_id: string;
+      provider_item_id: string;
+      provider_variation_id?: string;
+      requested_quantity: number;
+      reason?: string;
+      approval: InventoryManualApproval;
+    }) => postJson<ApplyInventoryStockActionResponse>("/inventory/stock-actions/manual-apply", req),
+    importMarketplaceOrders: (req: { installation_id: string; limit?: number }) =>
+      postJson<ImportMarketplaceOrdersResponse>("/orders/import", req),
+    listMarketplaceOrders: (installationId: string, limit = 20) =>
+      getJson<ListResponse<MarketplaceOrder>>(
+        `/orders?installation_id=${encodeURIComponent(installationId)}&limit=${encodeURIComponent(String(limit))}`,
+      ),
+    importProfitabilityMarginInputs: (req: { installation_id: string; limit?: number }) =>
+      postJson<ImportProfitabilityMarginInputsResponse>("/profitability/margin-inputs/import", req),
+    listProfitabilityMarginInputs: (installationId: string, limit = 50) =>
+      getJson<ListResponse<ProfitabilityMarginInput>>(
+        `/profitability/margin-inputs?installation_id=${encodeURIComponent(installationId)}&limit=${encodeURIComponent(String(limit))}`,
+      ),
+    createProfitabilityManualAdjustment: (req: {
+      installation_id: string;
+      idempotency_key: string;
+      provider_order_id: string;
+      provider_item_id?: string;
+      provider_variation_id?: string;
+      scope?: ProfitabilityInputScope;
+      category?: ProfitabilityManualAdjustmentCategory;
+      amount: number;
+      currency?: string;
+      reason: string;
+      actor: ProfitabilityActor;
+    }) => postJson<ProfitabilityManualAdjustment>("/profitability/manual-adjustments", req),
+    listProfitabilityManualAdjustments: (installationId: string, limit = 50) =>
+      getJson<ListResponse<ProfitabilityManualAdjustment>>(
+        `/profitability/manual-adjustments?installation_id=${encodeURIComponent(installationId)}&limit=${encodeURIComponent(String(limit))}`,
+      ),
+    calculateProfitabilityProfitSnapshots: (req: { installation_id: string; limit?: number }) =>
+      postJson<CalculateProfitabilityProfitSnapshotsResponse>("/profitability/profit-snapshots/calculate", req),
+    listProfitabilityProfitSnapshots: (installationId: string, limit = 50) =>
+      getJson<ListResponse<ProfitabilityProfitSnapshot>>(
+        `/profitability/profit-snapshots?installation_id=${encodeURIComponent(installationId)}&limit=${encodeURIComponent(String(limit))}`,
+      ),
     listMarketplaceFeeSchedules: (marketplaceCode: string) =>
       getJson<ListResponse<MarketplaceFeeSchedule>>(`/marketplaces/fee-schedules?marketplace_code=${encodeURIComponent(marketplaceCode)}`),
     listPricingSimulations: () => getJson<ListResponse<PricingSimulation>>("/pricing/simulations"),
