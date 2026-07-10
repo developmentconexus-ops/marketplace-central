@@ -12,6 +12,14 @@
     "start": "npm run start --workspace @marketplace-central/web",
     "test": "npm run test --workspace @marketplace-central/web",
     "test:run": "npm run test --workspace @marketplace-central/web",
+    "local:up": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/dev-local.ps1 -Command up",
+    "local:status": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/dev-local.ps1 -Command status",
+    "local:build": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/dev-local.ps1 -Command build",
+    "local:test": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/dev-local.ps1 -Command test",
+    "local:stop": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/dev-local.ps1 -Command stop",
+    "docker:dev": "docker compose up --build postgres backend frontend",
+    "docker:oauth": "docker compose --profile oauth up --build",
+    "docker:down": "docker compose down",
     "web:dev": "npm run dev --workspace @marketplace-central/web",
     "web:test": "npm run test --workspace @marketplace-central/web",
     "web:build": "npm run build --workspace @marketplace-central/web"
@@ -20,5 +28,8 @@
   "devDependencies": {
     "jsdom": "^26.1.0",
     "typescript": "^5"
+  },
+  "allowScripts": {
+    "esbuild@0.27.4": true
   }
 }

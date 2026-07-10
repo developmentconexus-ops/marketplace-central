@@ -1,0 +1,95 @@
+services:
+  postgres:
+    image: postgres:16-bookworm
+    environment:
+      POSTGRES_DB: marketplace_central
+      POSTGRES_USER: marketplace
+      POSTGRES_PASSWORD: marketplace
+    ports:
+      - "5435:5432"
+    volumes:
+      - mpc_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marketplace -d marketplace_central"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/dev/backend.Dockerfile
+    env_file:
+      - .env
+    environment:
+      API_PORT: "8080"
+      SERVER_ADDR: ":8080"
+      MC_DATABASE_URL: postgres://marketplace:marketplace@postgres:5432/marketplace_central?sslmode=disable
+      MS_DATABASE_URL: postgres://marketplace:marketplace@postgres:5432/marketplace_central?sslmode=disable
+      MS_TENANT_ID: tenant_default
+      MPC_ORACLE_LIB_DIR: /opt/oracle/instantclient
+      MC_MIGRATIONS_DIR: apps/server_core/migrations
+      RUN_MIGRATIONS: "1"
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - go_mod_cache:/go/pkg/mod
+      - go_build_cache:/root/.cache/go-build
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["bash", "./docker/dev/backend-entrypoint.sh", "server"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/healthz >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/dev/frontend.Dockerfile
+    env_file:
+      - .env
+    environment:
+      VITE_API_BASE_URL: ""
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - node_modules:/workspace/node_modules
+      - web_node_modules:/workspace/apps/web/node_modules
+    ports:
+      - "5174:5174"
+    depends_on:
+      - backend
+    command: ["bash", "./docker/dev/frontend-entrypoint.sh"]
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    profiles:
+      - oauth
+    env_file:
+      - .env
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN:-}
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+    entrypoint:
+      - /bin/sh
+      - ./docker/dev/ngrok-entrypoint.sh
+    ports:
+      - "4040:4040"
+    depends_on:
+      frontend:
+        condition: service_started
+
+volumes:
+  mpc_postgres_data:
+  go_mod_cache:
+  go_build_cache:
+  node_modules:
+  web_node_modules:

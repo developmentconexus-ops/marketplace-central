@@ -1,0 +1,15 @@
+.git
+.gocache
+.worktrees
+node_modules
+apps/web/node_modules
+packages/*/node_modules
+dist
+coverage
+.vite
+data
+certificates
+.env
+.env.*
+*.log
+*.exe

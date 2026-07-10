@@ -21,3 +21,21 @@ certificates/
 !.claude/plugins/mnfs-workflow/**
 .trello-agent/project.json
 .mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-01-baseline-recovery/runs/
+
+# Retained F-01 local evidence and runtime log (kept on disk, not versioned)
+.superpowers/sdd/evidence/m06-f03-orders-desktop-docker.png
+.superpowers/sdd/evidence/m06-f03-orders-mobile-docker.png
+.superpowers/sdd/evidence/m06-f03-total-validation-desktop.png
+.superpowers/sdd/evidence/m06-f03-total-validation-mobile.png
+.superpowers/sdd/local-runtime-docker-path-correction-brief.md
+.superpowers/sdd/local-runtime-task-1-brief.md
+.superpowers/sdd/local-runtime-task-1-report.md
+.superpowers/sdd/local-runtime-task-1-review-package.md
+.superpowers/sdd/local-runtime-task-2-brief.md
+.superpowers/sdd/local-runtime-task-2-report.md
+.superpowers/sdd/local-runtime-task-2-review-package.md
+.superpowers/sdd/progress.md
+.superpowers/sdd/review-bee1054..49a3362.diff
+.superpowers/sdd/task-2-brief.md
+.superpowers/sdd/task-2-report.md
+.tmp-web-4174.log
