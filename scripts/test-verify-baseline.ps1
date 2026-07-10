@@ -23,12 +23,23 @@ function Assert-VerifierExit {
     param(
         [string]$CaseName,
         [hashtable]$Fixture,
-        [int]$ExpectedExit
+        [int]$ExpectedExit,
+        [switch]$AllowRetainedState
     )
 
     $previousPreference = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
-    & powershell -NoProfile -ExecutionPolicy Bypass -File $verifier -Inventory $Fixture.Inventory -Ledger $Fixture.Ledger *> $null
+    $verifierArguments = @(
+        '-NoProfile',
+        '-ExecutionPolicy', 'Bypass',
+        '-File', $verifier,
+        '-Inventory', $Fixture.Inventory,
+        '-Ledger', $Fixture.Ledger
+    )
+    if ($AllowRetainedState) {
+        $verifierArguments += '-AllowRetainedState'
+    }
+    & powershell @verifierArguments *> $null
     $actualExit = $LASTEXITCODE
     $ErrorActionPreference = $previousPreference
     if ($actualExit -ne $ExpectedExit) {
@@ -53,12 +64,19 @@ try {
     )
     Assert-VerifierExit -CaseName 'invalid disposition' -Fixture $invalid -ExpectedExit 1
 
+    $retained = Write-Fixture -Name 'retained' -InventoryRows @(" M`talpha.txt") -LedgerRows @(
+        "alpha.txt`t M`tretained-owner-needed`tM-08`t`towner`tawaiting ownership`tscoped validation needed`tgit status"
+    )
+    Assert-VerifierExit -CaseName 'retained state requires explicit opt-in' -Fixture $retained -ExpectedExit 1
+    Assert-VerifierExit -CaseName 'retained state diagnostic opt-in' -Fixture $retained -ExpectedExit 0 -AllowRetainedState
+
     $complete = Write-Fixture -Name 'complete' -InventoryRows @(" M`talpha.txt", "??`tbeta.txt") -LedgerRows @(
         "alpha.txt`t M`tcommitted`tM-03`tdeadbeef`towner`tverified`tnone`tgit status",
         "beta.txt`t??`tcommitted`tM-04	cafebabe`towner`tverified`tnone`tgit status"
     )
-    Assert-VerifierExit -CaseName 'complete ledger' -Fixture $complete -ExpectedExit 0
-    Write-Output 'PASS: missing, duplicate, and invalid fixtures were rejected; complete fixture was accepted.'
+    Assert-VerifierExit -CaseName 'dirty worktree requires explicit opt-in' -Fixture $complete -ExpectedExit 1
+    Assert-VerifierExit -CaseName 'complete ledger diagnostic opt-in' -Fixture $complete -ExpectedExit 0 -AllowRetainedState
+    Write-Output 'PASS: invalid fixtures and default retained/dirty state were rejected; explicit diagnostic opt-in was accepted.'
 }
 finally {
     Remove-Item -LiteralPath $fixtureRoot -Recurse -Force -ErrorAction SilentlyContinue

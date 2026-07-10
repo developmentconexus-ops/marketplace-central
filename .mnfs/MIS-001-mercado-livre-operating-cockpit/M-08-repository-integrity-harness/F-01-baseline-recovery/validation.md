@@ -37,6 +37,22 @@ staged, removed, or altered.
 - max_fixup_attempts: 1
 - last_feature_validation_result: blocked by retained original state, not by a verifier defect
 
+## Correction — Default Baseline Cleanliness
+
+- Original quality finding: `scripts/verify-baseline.ps1:109` accepted retained
+  ledger state and skipped the Git dirty check unless `-RequireCleanStatus` was
+  provided.
+- Target: fake (deterministic TSV fixtures and the local dirty worktree).
+- RED command: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-verify-baseline.ps1`
+  - Actual: exit 1; the retained-state fixture expected exit 1 but received 0.
+  - Artifact: ignored `runs/20260710T-baseline-harness-correction/red-retained-default.log`.
+- GREEN command: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-verify-baseline.ps1`
+  - Actual: exit 0; default mode rejects retained ledger state and the dirty
+    worktree, while `-AllowRetainedState` permits intentional fixture diagnostics.
+  - Artifact: ignored `runs/20260710T-baseline-harness-correction/green-test-verify-baseline.log`.
+- Remaining blocker: 312 original paths remain retained pending confirmed owner
+  attribution and scoped validation; feature status remains `blocked`.
+
 ## Spec Adherence
 
 - Spec satisfied: Blocked

@@ -4,7 +4,8 @@ param(
     [string]$Inventory,
     [Parameter(Mandatory)]
     [string]$Ledger,
-    [switch]$RequireCleanStatus
+    [switch]$RequireCleanStatus,
+    [switch]$AllowRetainedState
 )
 
 $ErrorActionPreference = 'Stop'
@@ -107,7 +108,8 @@ foreach ($path in $ledgerByPath.Keys) {
 }
 
 $retained = @($ledgerRows | Where-Object { $_.disposition -ne 'committed' })
-if ($RequireCleanStatus) {
+$requiresCleanStatus = -not $AllowRetainedState -or $RequireCleanStatus
+if ($requiresCleanStatus) {
     if ($retained.Count -gt 0) {
         $errors.Add("Clean baseline is blocked by $($retained.Count) retained-state record(s).")
     }
