@@ -7,7 +7,7 @@ status: in_progress
 owner: Mission Strategist
 parent: none
 created: 2026-07-06
-updated: 2026-07-06
+updated: 2026-07-07
 validation_level: QA-0
 lifecycle_scope: mission
 planning_phase: ready
@@ -19,15 +19,15 @@ Turn Marketplace Central into an internal Mercado Livre operating cockpit that p
 
 ## Outcome
 
-Operators can link existing Mercado Livre listings to internal Sankhya products, compare Mercado Livre announced stock with internal sellable stock, see blocked/unsafe cases before they cause cancellations, and apply audited manual stock corrections through Mercado Livre capabilities. The same business modules and capability ports remain usable by future marketplace adapters.
+Operators can link existing Mercado Livre listings to internal ERP products, compare Mercado Livre announced stock with internal sellable stock, see blocked/unsafe cases before they cause cancellations, and apply audited manual stock corrections through Mercado Livre capabilities. The same business modules and capability ports remain usable by future marketplace adapters.
 
 ## Scope
 
 - Remove VTEX target surfaces from code, contract, SDK, UI, tests, and docs.
 - Define marketplace capability ports owned by MPC business modules, with Mercado Livre as the first real adapter.
-- Define the MNOS/Sankhya read contract needed by MPC without copying the whole MNOS system.
+- Define the Oracle internal-read contract needed by MPC without copying or mirroring the ERP.
 - Build Product Links for existing Mercado Livre listings using EAN and `seller_sku` first, then title heuristics with operator approval for ambiguity.
-- Build Stock Seguro using internal sellable stock = `SUM(ESTOQUE - RESERVADO)` for `CODEMP IN (1,2)` and `CODLOCAL = 10101`.
+- Build Stock Seguro using internal sellable stock semantics defined by the Oracle-backed read contracts owned by MPC.
 - Keep `CODLOCAL = 10108` showroom inventory excluded from sellable marketplace stock.
 - Start with assisted/manual stock actions only; no automatic provider writes.
 - Prepare Orders + Margin and Commercial Intelligence as later milestones under the same mission.
@@ -41,7 +41,7 @@ Operators can link existing Mercado Livre listings to internal Sankhya products,
 - Audit and history: every provider write candidate and applied write records before/after, policy, source timestamps, provider response, operator.
 - Search, filter, reporting: dashboard filters for risk, link state, product group, stock divergence, listing status, margin quality.
 - Admin and config: sellable stock policy, buffer rules, ineligible product groups, marketplace capability status.
-- Integration and external: Mercado Livre OAuth/installations, Mercado Livre item/order APIs, MNOS/Sankhya read-only Oracle access through explicit ports.
+- Integration and external: Mercado Livre OAuth/installations, Mercado Livre item/order APIs, Oracle ERP read-only access through explicit MPC-owned ports.
 
 ## Non-Scope
 
@@ -49,16 +49,18 @@ Operators can link existing Mercado Livre listings to internal Sankhya products,
 - Automatic stock write decisions; all initial writes are assisted/manual and audit-first.
 - Full webhooks as the first ingestion path; polling/scheduler comes first, notifications can refresh later.
 - Full multi-marketplace operations before Mercado Livre is reliable; future providers must implement the capability contracts later.
-- Copying all Sankhya data into MPC Postgres; MPC stores only its own state and snapshots needed for audit/operation.
+- Copying all ERP data into MPC Postgres; MPC stores only its own state and snapshots needed for audit/operation.
 
 ## Current State
 
 - `integrations` foundation, provider catalog, OAuth, OpenAPI, SDK runtime, and frontend packages exist.
 - Mercado Livre provider registration and OAuth adapter exist.
 - Mercado Livre fee sync adapter exists at foundation depth.
-- Product links, inventory, orders, and profitability modules are planned, not implemented.
+- `product_links` now has live-validated snapshot import, candidate generation, and operator resolution workflow with persisted audit.
+- `inventory` now has passed M-05 scope with policy, risk, audit, API, SDK, and dashboard slices validated.
+- `orders` and `profitability` remain planned downstream modules.
 - VTEX routes, SDK methods, frontend pages, adapters, tests, and docs still exist and contradict ADR-005.
-- MNOS contains the read-only Sankhya/Oracle knowledge needed for stock, product, price, cost, tax, and sales views.
+- The existing Oracle-mapping knowledge from MNOS is reference evidence, but MPC now owns its own read contracts and adapters inside `apps/server_core`.
 
 ## Clarified Decisions
 
@@ -66,7 +68,7 @@ Operators can link existing Mercado Livre listings to internal Sankhya products,
   - Existing Mercado Livre listings are the first operational target.
   - Polling/scheduler is acceptable before webhooks.
   - Stock writes start manual/assisted only.
-  - Internal stock source comes from MNOS/Sankhya contracts, not from a generic MetalShopping Postgres assumption.
+  - Internal stock source comes from MPC-owned Oracle contracts/adapters, not from a generic MetalShopping Postgres assumption.
   - VTEX can be removed.
   - Orders + Margin follows Stock Seguro instead of blocking it.
   - Official Mercado Livre docs via Context7 are required for provider semantics.
@@ -85,7 +87,7 @@ Operators can link existing Mercado Livre listings to internal Sankhya products,
 | --- | --- | --- | --- | --- |
 | 1 | actor model | Who applies stock writes initially? | Internal operator approves every write | Manual only; no auto-write |
 | 2 | lifecycle/transitions | Should webhooks be required before stock/order sync? | Polling first, webhook later | Polling first is acceptable |
-| 3 | persistence/reset | Should MPC mirror Sankhya? | No, read Sankhya live through MNOS-derived contracts | Use MNOS/Sankhya direct access, bring only what MPC needs |
+| 3 | persistence/reset | Should MPC mirror internal ERP data? | No, read Oracle live through MPC-owned contracts | Use direct Oracle access, bring only what MPC needs |
 | 4 | UI convergence | Should first UI target stock or full margin cockpit? | Stock Seguro first, margin next | Stock Seguro first |
 | 5 | validation expectations | Which evidence sources are required? | Official Mercado Livre docs + local MNOS evidence + tests | Use Context7 docs and ask operator where needed |
 | 6 | build/runtime conventions | Can VTEX be removed? | Quarantine then remove safely | Remove everything VTEX |
@@ -101,7 +103,7 @@ MPC business modules own marketplace-independent operations. Provider adapters i
 - Browser: `apps/web`, feature packages under `packages/feature-*`, shared UI under `packages/ui`.
 - API server: Go `apps/server_core`, modular monolith.
 - MPC store: PostgreSQL for MPC-owned links, policies, snapshots, action audit, orders, margin snapshots.
-- Internal data source: Sankhya Oracle through MNOS-derived read contracts; read-only, no Sankhya writes.
+- Internal data source: Oracle through MPC-owned read contracts/adapters; read-only, no ERP writes.
 - Provider source: Mercado Livre REST APIs through `connectors/adapters/mercado_livre`.
 - Scheduler: initial polling jobs call application services, which call ports; synchronous UI reads use MPC read models and never block on provider availability.
 
@@ -119,7 +121,7 @@ MPC business modules own marketplace-independent operations. Provider adapters i
 | Decision | Status | Prevents | Must preserve | Validation impact |
 | --- | --- | --- | --- | --- |
 | Business modules own native operations; adapters implement provider capabilities | accepted | Mercado Livre rules leaking into the whole app | Future providers can implement the same ports with provider-specific mapping | Interface contract and module import checks |
-| Stock Seguro uses `SUM(ESTOQUE - RESERVADO)` over `CODEMP IN (1,2)` and `CODLOCAL=10101` | accepted | Showroom or reserved stock being announced | Policy remains configurable and auditable | Unit tests for policy math and SQL contract tests |
+| Stock Seguro uses explicit Oracle-backed sellable-stock policy contracts owned by MPC | accepted | Wrong stock source semantics leaking into business rules | Policy remains configurable and auditable | Unit tests for policy math and adapter contract tests |
 | Initial buffer default is 1 unit | accepted | Race between store sale and ML listing stock | Override by product/group; policy visible in UI | Stock recommendation criteria |
 | VTEX is removed, not extended | accepted | Optimizing a dead control plane | Provider catalog can still show future providers | Contract/SDK/router tests have no VTEX routes |
 | Polling first, webhooks later | accepted | Blocking useful Stock Seguro on notification setup | Ingestion remains idempotent so webhooks can refresh later | Scheduler and idempotency tests |
@@ -135,7 +137,7 @@ Accepted trade-offs:
 | Contract | Boundary | Path | Why it exists |
 | --- | --- | --- | --- |
 | Marketplace capability interface | Business modules <-> connectors/adapters | `research/marketplace-capability-interface-contract.md` | Prevents provider endpoint shapes from becoming business rules |
-| MNOS/Sankhya read interface | MPC application <-> Sankhya read edge | `research/mnos-sankhya-read-interface-contract.md` | Fixes stock, product, price, cost, and sales input semantics |
+| Oracle internal-read interface | MPC application <-> Oracle read edge | `research/mnos-sankhya-read-interface-contract.md` | Fixes stock, product, price, cost, and sales input semantics while MPC re-owns the contract |
 
 ## Milestone Strategy
 
@@ -143,23 +145,28 @@ Accepted trade-offs:
 | --- | --- | --- | --- | --- |
 | M-01 | VTEX removal and architecture reset | Remove dead VTEX surfaces and align docs/contracts | Clears contradictions before new work | `M-01-vtex-removal-architecture-reset/` |
 | M-02 | Marketplace capability framework | Add provider capability ports and Mercado Livre adapter spine | Prevents Mercado Livre hardcoding | `M-02-marketplace-capability-framework/` |
-| M-03 | MNOS/Sankhya read contract | Bring required internal data semantics into MPC | Stock Seguro needs trusted internal stock/product data | `M-03-mnos-sankhya-read-contract/` |
+| M-03 | Oracle internal-read contract | Replan internal data semantics into MPC-owned Oracle adapters/contracts | Stock Seguro needs trusted internal stock/product data | `M-03-mnos-sankhya-read-contract/` |
 | M-04 | Product Links ML | Resolve existing ML listing/variation to internal product | Stock write safety depends on unambiguous links | `M-04-product-links-ml/` |
 | M-05 | Stock Seguro ML | Show divergence, risk, recommendation, and manual audited action | First business value: prevent cancellation/oversell | `M-05-stock-seguro-ml/` |
 | M-06 | Orders + Margin ML | Ingest orders and calculate sale margin quality | Adds revenue/margin visibility after stock is safe | `M-06-orders-margin-ml/` |
 | M-07 | Commercial Intelligence | Margin guardrails, aging stock, kits, promotions | Uses stock/link/order/margin foundation | `M-07-commercial-intelligence/` |
+| M-08 | Repository Integrity and Deterministic Harness | Reconcile current implementation truth and isolate deterministic/live execution before parallel worktrees | Blocks every new parallel implementation milestone | `M-08-repository-integrity-harness/` |
+| M-09 | Canonical Product Identity and Oracle Cutover | Separate internal SKU (`CODPROD`), manufacturer reference, GTIN, and provider-observed seller SKU; remove the legacy MSDB path | Prevents writing manufacturer codes as internal SKU | planned after M-08 |
+| M-10 | Provider Runtime Consolidation | Establish one provider/capability truth across integrations/connectors and retire duplicate registry runtime | Required before adding new provider-neutral writes | planned after M-09 |
+| M-11 | Durable External Write Execution | Add atomic intent claim, idempotency, audit, unknown-result reconciliation, and actor controls | Required before SKU/listing writes | planned after M-10 |
+| M-12 | Listing Identity/SKU Synchronization | Preview and approve provider-neutral listing metadata sync; Mercado Livre adapter writes `InternalSKU` and confirms readback | Enables deterministic future order links without marketplace-specific business code | planned after M-11 |
 
 ## Quality Attributes
 
 | Attribute | Target (concrete) | Owner (ADR/seam) | Validation criterion |
 | --- | --- | --- | --- |
 | Performance | Stock dashboard API returns 100 linked listings with risk fields in p95 < 500ms using seeded repository tests | Inventory read model | MIS-001-C07 |
-| Security | No access/refresh tokens or Sankhya secrets appear in logs, audit payloads, UI responses, or validation artifacts | Integrations + Sankhya read seam | MIS-001-C05 |
+| Security | No access/refresh tokens or Oracle/ERP secrets appear in logs, audit payloads, UI responses, or validation artifacts | Integrations + internal-read seam | MIS-001-C05 |
 | Reliability | Listing, stock, and order ingestion are idempotent by provider id and provider updated timestamp/resource | Capability framework + module repositories | MIS-001-C03 |
 | Observability | Every provider action logs `action`, `result`, `duration_ms` and persists audit before/after/policy/provider response | Inventory action audit | MIS-001-C04 |
 | Usability | Operator-facing stock/link/margin screens have loading, error, empty, blocked, conflict, and stale states | Feature packages | MIS-001-C06 |
 | Maintainability | Business modules cannot import provider HTTP packages, `net/http`, or another module's internals | Module boundary checks | MIS-001-C02 |
-| Compatibility | Go uses `pgxpool.Pool`, React uses SDK runtime only, and Sankhya access remains read-only | Project conventions | MIS-001-C01 |
+| Compatibility | Go uses SDK/runtime-only frontend boundaries and Oracle access remains isolated behind read-only adapters | Project conventions | MIS-001-C01 |
 
 ## Non-Functional Scope
 
@@ -182,11 +189,11 @@ Evidence path convention:
 | id | risk | likelihood (L/M/H) | impact (L/M/H) | mitigation | trigger | owner |
 | --- | --- | --- | --- | --- | --- | --- |
 | R-001 | Ambiguous EAN/SKU/title links could map ML listing to wrong product | M | H | Link states include conflict/unresolved and block writes until approved | Candidate maps multiple products/listings | Product Links owner |
-| R-002 | Sankhya stock rules may miss real sellable exceptions | M | H | Policy is explicit, visible, and configurable by company/location/group/product | Operator identifies stock mismatch with real item | Inventory owner |
+| R-002 | Oracle stock rules may miss real sellable exceptions | M | H | Policy is explicit, visible, and configurable by company/location/group/product | Operator identifies stock mismatch with real item | Inventory owner |
 | R-003 | Mercado Livre API semantics differ by variation or distributed stock setup | M | H | Use official docs, adapter tests, and source timestamps; block unsupported write modes | Adapter sees unknown item shape | Connectors owner |
 | R-004 | Removing VTEX may break old tests/routes unexpectedly | M | M | Inventory first, remove with OpenAPI/SDK/router test evidence | Contract or router test fails | Architecture reset owner |
 | R-005 | Margin quality can be overstated if freight/manual adjustments are missing | H | M | Missing freight/fee/tax/manual input creates `missing_*` quality states | Profit snapshot lacks required input | Profitability owner |
-| R-006 | Context drift between MNOS and MPC data meanings | M | H | Copy only contract semantics and cite MNOS source files; no ad hoc SQL | New query bypasses contract | Sankhya read owner |
+| R-006 | Context drift between legacy MNOS evidence and MPC-owned Oracle contract meanings | M | H | Re-own the contract in MPC and cite source evidence; no ad hoc SQL | New query bypasses contract | Internal-read owner |
 
 ## Research Links
 
@@ -197,10 +204,10 @@ Evidence path convention:
 
 ## Handoff
 
-- Current status: In progress; M-01 has passed and M-02 is starting.
-- Current owner: Milestone Orchestrator.
-- Next owner: Feature Implementer for M-02/F-01.
-- Next action: Execute M-02/F-01 capability port contract, then route returned `spec.md`, `plan.md`, changed paths, and `validation.md` through milestone acceptance review.
+- Current status: In progress; M-01 through M-05 passed, M-06 is blocked on a paid resolved-link live scenario and broad cold gate, and M-08 is the approved serial prerequisite for safe continuation.
+- Current owner: Mission Strategist.
+- Next owner: Milestone Orchestrator for M-08.
+- Next action: Recover an intentional clean baseline and deterministic harness; then plan/execute M-09 through M-12, resume M-06 validation, and only then start M-07.
 - Required artifact paths:
   - `.mnfs/MIS-001-mercado-livre-operating-cockpit/mission.md`
   - `.mnfs/MIS-001-mercado-livre-operating-cockpit/validation-contract.md`
@@ -209,4 +216,4 @@ Evidence path convention:
 - Required evidence paths:
   - `.mnfs/MIS-001-mercado-livre-operating-cockpit/validation-result.md`
   - `.mnfs/MIS-001-mercado-livre-operating-cockpit/M-*/validation-result.md`
-- Blocked decisions: None for M-02/F-01; product exclusion rules and margin threshold require business examples before M-05/M-07 execution.
+- Blocked decisions: Product exclusion rules and margin threshold still require business examples during M-05/M-07 execution, but there is no blocker on mission continuation.

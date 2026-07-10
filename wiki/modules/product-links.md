@@ -22,6 +22,7 @@ Path: `apps/server_core/internal/modules/product_links/` (active)
 - Provider identifiers are strings, even when the provider returns numeric-looking IDs.
 - The module owns mapping state; connectors only fetch provider identifiers.
 - `internal_read` missing or ambiguous product candidates map to unresolved link states, not fallback guesses.
+- Internal product facts arrive through MPC-owned `internal_read` ports; provider payloads never select an internal identity.
 
 ## Initial Mercado Livre Scope
 

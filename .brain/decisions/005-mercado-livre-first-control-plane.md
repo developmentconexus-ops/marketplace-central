@@ -9,7 +9,7 @@ The business no longer uses VTEX as the ecommerce platform and the urgent operat
 
 ## Decision
 Marketplace Central will remove VTEX from the target architecture and treat Mercado Livre as the first operational marketplace control plane.
-Sankhya/MetalShopping remains the source of truth for internal product, stock, price, cost, tax, and sales data.
+Oracle-backed ERP data remains the source of truth for internal product, stock, price, cost, tax, and sales data, consumed through MPC-owned adapters/contracts.
 
 ## Rationale
 Continuing VTEX work would optimize a dead path and preserve a local maximum.

@@ -1,7 +1,7 @@
 # ADR-002: MPC own tables live in `mpc` schema on MetalShopping's Postgres cluster
 
 **Date:** 2026-04-04
-**Status:** accepted
+**Status:** superseded on 2026-07-07
 
 ## Context
 MPC needs its own tables (product_enrichments, classifications, marketplace_accounts, pricing_simulations, etc.)
@@ -25,3 +25,12 @@ Migration runner must always SET search_path = mpc before executing MPC migratio
 ## Alternatives Considered
 - Separate Postgres instance: rejected — over-engineered for local dev/early stage
 - Same schema as MetalShopping (public): rejected — table name collision risk
+
+## Superseded By
+
+This ADR is no longer execution truth.
+
+Reason:
+- it depended on the same-cluster `MC_DATABASE_URL` + `MS_DATABASE_URL` split;
+- the internal read path is moving to Oracle adapters owned by MPC;
+- MPC Postgres remains for MPC-owned state only, without the old MetalShopping direct-read assumption.

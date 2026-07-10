@@ -1,10 +1,10 @@
 {
     "project":  "marketplace-central",
-    "last_updated":  "2026-07-06T00:00:00Z",
-    "current_phase_id":  "phase-4",
+    "last_updated":  "2026-07-09T00:00:00Z",
+    "current_phase_id":  "phase-6",
     "summary":  {
-                    "completed_phases":  5,
-                    "completed_tasks":  23,
+                    "completed_phases":  6,
+                    "completed_tasks":  28,
                     "total_tasks":  28
                 },
     "phases":  [
@@ -170,7 +170,7 @@
                        "id":  "phase-4",
                        "name":  "Mercado Livre operating cockpit reset",
                        "status":  "in_progress",
-                       "focus":  "Close VTEX retirement cleanup and define Mercado Livre product links, stock reconciliation, orders, and profitability",
+                       "focus":  "Close product-links execution and hand off into Stock Seguro safety-gate implementation",
                        "tasks":  [
                                      {
                                          "id":  "4.1",
@@ -188,42 +188,47 @@
                                      {
                                          "id":  "4.3",
                                          "name":  "Define Mercado Livre Stock Seguro mission and milestone specs",
-                                         "status":  "pending"
+                                         "status":  "done",
+                                         "completed_at":  "2026-07-06T00:00:00Z",
+                                         "notes":  "M-05 Stock Seguro milestone and feature briefs are present under .mnfs."
                                      },
                                      {
                                          "id":  "4.4",
                                          "name":  "Create module wiki ownership for product_links, inventory, orders, and profitability",
-                                         "status":  "pending"
+                                         "status":  "done",
+                                         "completed_at":  "2026-07-06T00:00:00Z",
+                                         "notes":  "Module wiki pages now exist for product-links, inventory, orders, and profitability."
                                      }
                                  ]
                    },
                    {
                        "id":  "phase-5",
                        "name":  "Stock Seguro ML",
-                       "status":  "not_started",
-                       "focus":  "Prevent overselling by reconciling Sankhya stock with Mercado Livre announced stock",
+                       "status":  "completed",
+                       "focus":  "Prevent overselling by reconciling internal ERP stock with Mercado Livre announced stock through MPC-owned Oracle adapters",
                        "tasks":  [
                                      {
                                          "id":  "5.1",
                                          "name":  "Product-to-listing link map",
-                                         "status":  "pending"
+                                         "status":  "done"
                                      },
                                      {
                                          "id":  "5.2",
                                          "name":  "Stock divergence dashboard",
-                                         "status":  "pending"
+                                         "status":  "done"
                                      },
                                      {
                                          "id":  "5.3",
                                          "name":  "Audited safe stock actions",
-                                         "status":  "pending"
+                                         "status":  "done"
                                      }
-                                 ]
+                                 ],
+                       "completed_at":  "2026-07-09T00:00:00Z"
                    },
                    {
                        "id":  "phase-6",
                        "name":  "Orders + Margin ML",
-                       "status":  "not_started",
+                       "status":  "in_progress",
                        "focus":  "Ingest Mercado Livre orders and calculate per-sale profitability",
                        "tasks":  [
                                      {

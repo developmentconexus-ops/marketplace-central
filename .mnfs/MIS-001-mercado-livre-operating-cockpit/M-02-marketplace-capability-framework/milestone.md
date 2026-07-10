@@ -7,7 +7,7 @@ status: passed
 owner: QA Validator
 parent: MIS-001
 created: 2026-07-06
-updated: 2026-07-06
+updated: 2026-07-08
 validation_level: QA-0
 lifecycle_scope: milestone
 ```
@@ -18,7 +18,7 @@ MIS-001 Mercado Livre Operating Cockpit.
 
 ## Outcome
 
-MPC exposes marketplace capability ports that business modules can use without provider-specific coupling, and Mercado Livre has the first adapter spine for listing, stock, and order capabilities.
+MPC exposes marketplace capability ports that business modules can use without provider-specific coupling, and Mercado Livre now has a live-validated read/probe foundation for account, listing, order, fee-quote, and stock-read runtime capabilities through the platform installation surface.
 
 ## Why This Milestone Exists
 
@@ -47,14 +47,15 @@ Mercado Livre is first, but the platform must remain a marketplace hub. Capabili
 - Business modules can depend on capability ports.
 - Mercado Livre adapter maps documented provider fields to normalized snapshots.
 - Tests prove unsupported capabilities are explicit.
+- Live read/probe validation exists at the platform level without exposing provider writes as runtime-complete.
 
 ## Handoff
 
 - Current status: passed.
 - Next owner: Mission Strategist.
-- Next action: Continue mission execution using M-02 capability contracts, provider declarations, and Mercado Livre adapter spine as execution truth.
+- Next action: Continue mission execution using M-02 capability contracts, provider declarations, and the live-validated Mercado Livre read/probe foundation as execution truth.
 - Required files/evidence: `validation-result.md` plus accepted F-01/F-02/F-03 artifacts.
-- Blockers or open decisions: Live Mercado Livre runtime validation still requires operator-controlled credentials/listings and explicit approval; M-02 pass covers adapter-spine readiness, not live-provider proof.
+- Blockers or open decisions: Provider writes remain intentionally unvalidated and must not be inferred from the read/probe evidence recorded in `validation-result.md`.
 
 ## Correction Handoff
 

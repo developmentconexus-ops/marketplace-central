@@ -1,7 +1,7 @@
 # ADR-001: MPC reads products directly from MetalShopping Postgres
 
 **Date:** 2026-04-04
-**Status:** accepted
+**Status:** superseded on 2026-07-07
 
 ## Context
 MPC needs product catalog data (name, SKU, EAN, cost, price, stock, taxonomy) for pricing simulation,
@@ -24,3 +24,12 @@ Backend cost resolution deferred — frontend sends cost_amount from MS product 
 ## Alternatives Considered
 - Sync job (copy products to MPC): rejected — sync lag, duplication, extra complexity
 - REST API call to MetalShopping: rejected — latency, coupling to MS API availability
+
+## Superseded By
+
+This ADR is no longer execution truth.
+
+Reason:
+- the MetalShopping/Postgres read model is now considered structurally wrong for the target cockpit;
+- `MS_DATABASE_URL` is removed from the target architecture;
+- internal-source reads must be rebuilt as MPC-owned Oracle adapters/contracts inside `apps/server_core`.

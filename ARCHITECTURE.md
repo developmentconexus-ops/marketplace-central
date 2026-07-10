@@ -22,7 +22,7 @@ Marketplace Central is an internal Mercado Livre operations and intelligence coc
 - Modular monolith core with explicit module boundaries
 - PostgreSQL as the only canonical state
 - Thin web client consuming SDK-generated methods
-- Sankhya/MetalShopping data is the internal source of truth for products, stock, price, cost, taxes, and sales history
+- Oracle-backed ERP data is the internal source of truth for products, stock, price, cost, taxes, and sales history
 - Mercado Livre is the first operational marketplace control plane for listings, stock, price, orders, fees, and questions
 - MPC handles intelligence and guardrails: stock reconciliation, price simulation, order profitability, alerts, and action audit
 
@@ -39,6 +39,7 @@ Marketplace Central is an internal Mercado Livre operations and intelligence coc
 9. Scheduler-based polling is acceptable initially; webhook/notification support may be added where Mercado Livre provides reliable event topics
 10. Frontend consumes only `packages/sdk-runtime` — never calls backend directly
 11. Global-maximum design beats local patches: do not extend legacy VTEX abstractions to solve Mercado Livre problems
+12. Internal ERP reads happen through MPC-owned ports implemented by Oracle adapters inside `apps/server_core`; no legacy `MS_DATABASE_URL` read path remains in the target architecture
 
 ## Layout
 
@@ -115,9 +116,21 @@ Maps internal products/SKUs to Mercado Livre listing and variation identifiers.
 
 Scope: link creation, confidence/state tracking, duplicate detection, audit trail.
 
+### `internal_read` (active foundation — Oracle first)
+
+Owns MPC's read contracts and Oracle adapters for internal ERP facts.
+
+Scope: product, stock, price, cost, tax, and sales-history reads through MPC-owned ports and typed domain models.
+
+Rules:
+- Application/domain code depends on MPC-owned read contracts, never on Oracle SQL or driver types.
+- Oracle mapping and query semantics live only in `adapters/oracle`.
+- Missing or ambiguous source facts surface as explicit quality states, never silent zero/default values.
+- Read access is global-maximum and contract-first: no ad hoc SQL from downstream modules.
+
 ### `inventory` (planned — Mercado Livre first)
 
-Compares Sankhya/MetalShopping stock with Mercado Livre announced stock and proposes or applies safe stock actions.
+Compares internal ERP stock with Mercado Livre announced stock and proposes or applies safe stock actions.
 
 Scope: stock snapshots, safety buffers, divergence detection, manual approval, action audit.
 
@@ -134,7 +147,7 @@ Reads from: Mercado Livre APIs via `connectors` adapters and internal product/co
 
 ### `profitability` (planned — Mercado Livre first)
 
-Calculates per-order and per-item contribution using Mercado Livre revenue/fees/freight and Sankhya/MetalShopping cost/tax inputs.
+Calculates per-order and per-item contribution using Mercado Livre revenue/fees/freight and internal ERP cost/tax inputs.
 
 Scope: margin snapshots, manual cost adjustments, data quality flags, profitability alerts.
 
@@ -173,6 +186,18 @@ credential lifecycle, and fee-sync operation tracking.
 
 Scope: provider registry, installation draft/connection states, OAuth/API-key auth flow,
 credential rotation, operation runs, capability state transitions, and scheduled refresh/cleanup jobs.
+
+## Internal ERP Access
+
+Marketplace Central reads internal operational facts directly from Oracle through adapters inside `apps/server_core`.
+
+Design rules:
+
+- Oracle is an external dependency behind module-owned ports, not a second business store.
+- `internal_read` owns the read contracts used by `product_links`, `inventory`, `orders`, and `profitability`.
+- SQL/query knowledge stays inside Oracle adapters and helper packages owned by that boundary.
+- PostgreSQL stores only MPC-owned operational state, audit, projections, and snapshots.
+- Removing or changing an Oracle query shape must not force business-module rewrites; only adapter implementations should move.
 
 ## Platform packages
 
@@ -216,11 +241,19 @@ web → sdk-runtime → server_core HTTP handlers → application services → p
 
 ## Database
 
-- Engine: PostgreSQL (same cluster as MetalShopping, separate tables or schema)
+- Engine: PostgreSQL for MPC-owned state
 - All business tables carry `tenant_id` as part of the primary key or with NOT NULL constraint
 - Migrations are sequential files in `apps/server_core/migrations/`
 - Naming: `NNNN_description.sql`
 - No down migrations — forward-only
+
+## External Data Sources
+
+- Oracle ERP: source of truth for internal product, stock, price, cost, tax, and sales inputs, consumed through `internal_read` ports/adapters
+- Mercado Livre APIs: source of truth for marketplace listing, order, fee, and question state, consumed through `connectors` adapters
+
+Legacy note:
+- `MS_DATABASE_URL` and direct MetalShopping/Postgres internal-read assumptions are no longer part of the target architecture.
 
 ## Future MetalShopping integration
 
