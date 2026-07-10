@@ -222,8 +222,13 @@ by F-01 finalization.
 
 ## C01 Final Mechanical Gate
 
+- Pre-commit correction gate (target: fake, visible checkout): verifier exit
+  1 because the five scoped correction files were dirty; `git status --short`
+  returned exit 0 with 5 visible paths. This was not terminal evidence.
+  Artifact: not written; reserved ignored path
+  `runs/20260710T-final-correction-c01/precommit-gate.log`.
 - Command: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-baseline.ps1 -Inventory .mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-01-baseline-recovery/baseline-inventory.tsv -Ledger .mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-01-baseline-recovery/ownership-ledger.md -AllowRetainedState`
-  - Target: fake (mechanical inventory/ledger reconciliation against the local Git worktree).
+  - Target: fake (mechanical inventory/ledger reconciliation against the local Git worktree; terminal clean rerun after the evidence commit).
   - Actual: exit 0; `PASS: inventory=312 committed=296 retained=16`.
   - Artifact: not written; reserved ignored path `runs/20260710T-final-correction-c01/verify-baseline-allow-retained.log`.
 - Command: `git status --short`
