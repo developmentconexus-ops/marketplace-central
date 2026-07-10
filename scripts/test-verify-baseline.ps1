@@ -3,6 +3,11 @@ $ErrorActionPreference = 'Stop'
 $verifier = Join-Path $PSScriptRoot 'verify-baseline.ps1'
 $fixtureRoot = Join-Path $env:TEMP ("verify-baseline-" + [guid]::NewGuid().ToString('N'))
 $repositoryRoot = Join-Path $fixtureRoot 'repository'
+$fixtureOwnershipMarker = Join-Path $fixtureRoot '.verify-baseline-fixture-owner'
+$fixtureTemplateDirectory = Join-Path $fixtureRoot 'git-template'
+$fixtureHooksDirectory = Join-Path $fixtureRoot 'hooks'
+$fixtureRootCreated = $false
+$fixtureOwnershipMarkerCreated = $false
 
 function Write-Fixture {
     param(
@@ -25,6 +30,26 @@ function Invoke-Git {
     & git -C $repositoryRoot @Arguments *> $null
     if ($LASTEXITCODE -ne 0) {
         throw "git $($Arguments -join ' ') failed with exit $LASTEXITCODE."
+    }
+}
+
+function Assert-FixtureGitIsolation {
+    $hooksPath = (& git -C $repositoryRoot config --local --get core.hooksPath)
+    $expectedHooksPath = Join-Path $fixtureRoot 'hooks'
+    if (
+        [string]::IsNullOrWhiteSpace($hooksPath) -or
+        [IO.Path]::GetFullPath($hooksPath) -ne [IO.Path]::GetFullPath($expectedHooksPath)
+    ) {
+        throw 'temporary fixture repository must set a local fixture-owned core.hooksPath.'
+    }
+
+    if (-not (Test-Path -LiteralPath $expectedHooksPath -PathType Container) -or @(Get-ChildItem -LiteralPath $expectedHooksPath).Count -ne 0) {
+        throw 'temporary fixture repository hooks directory must exist and be empty.'
+    }
+
+    $commitSigning = (& git -C $repositoryRoot config --local --get commit.gpgSign)
+    if ($commitSigning -ne 'false') {
+        throw 'temporary fixture repository must disable local commit signing.'
     }
 }
 
@@ -63,10 +88,23 @@ function Assert-VerifierExit {
 }
 
 try {
+    New-Item -ItemType Directory -Path $fixtureRoot | Out-Null
+    $fixtureRootCreated = $true
+    New-Item -ItemType File -Path $fixtureOwnershipMarker -Value 'test-verify-baseline fixture owner' | Out-Null
+    $fixtureOwnershipMarkerCreated = Test-Path -LiteralPath $fixtureOwnershipMarker -PathType Leaf
+    if (-not $fixtureOwnershipMarkerCreated) {
+        throw 'temporary fixture ownership marker was not created.'
+    }
+
     New-Item -ItemType Directory -Path $repositoryRoot | Out-Null
-    Invoke-Git -Arguments @('init')
+    New-Item -ItemType Directory -Path $fixtureTemplateDirectory | Out-Null
+    New-Item -ItemType Directory -Path $fixtureHooksDirectory | Out-Null
+    Invoke-Git -Arguments @('init', "--template=$fixtureTemplateDirectory")
     Invoke-Git -Arguments @('config', 'user.email', 'verify-baseline@example.test')
     Invoke-Git -Arguments @('config', 'user.name', 'Verify Baseline Test')
+    Invoke-Git -Arguments @('config', 'core.hooksPath', $fixtureHooksDirectory)
+    Invoke-Git -Arguments @('config', 'commit.gpgSign', 'false')
+    Assert-FixtureGitIsolation
 
     $missing = Write-Fixture -Name 'missing' -InventoryRows @(" M`talpha.txt", "??`tbeta.txt") -LedgerRows @(
         "alpha.txt`t M`tcommitted`tM-03`tdeadbeef`towner`tverified`tnone`tgit status"
@@ -103,5 +141,11 @@ try {
     Write-Output 'PASS: temporary repository rejects dirty baselines in every mode and accepts only explicit clean retained diagnostics.'
 }
 finally {
-    Remove-Item -LiteralPath $fixtureRoot -Recurse -Force -ErrorAction SilentlyContinue
+    if (
+        $fixtureRootCreated -and
+        $fixtureOwnershipMarkerCreated -and
+        (Test-Path -LiteralPath $fixtureOwnershipMarker -PathType Leaf)
+    ) {
+        Remove-Item -LiteralPath $fixtureRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
 }

@@ -37,6 +37,18 @@ staged, removed, or altered.
 - max_fixup_attempts: 1
 - last_feature_validation_result: blocked by retained original state, not by a verifier defect
 
+## Superseded Historical Evidence
+
+- The pre-correction command
+  `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-baseline.ps1 -Inventory .mnfs/.../baseline-inventory.tsv -Ledger .mnfs/.../ownership-ledger.md`
+  ran **without** `-AllowRetainedState` and recorded exit 0 with
+  `inventory=312 committed=0 retained=312`. It is preserved only as historical
+  evidence.
+- That result is superseded by `f56a9ee` and `a021455`; it must not be read as
+  current verifier behavior. Current controlled fake-fixture evidence is the
+  explicit default-retained rejection and dirty-worktree coverage recorded in
+  the two corrections below.
+
 ## Correction — Default Baseline Cleanliness
 
 - Original quality finding: `scripts/verify-baseline.ps1:109` accepted retained
@@ -78,6 +90,30 @@ staged, removed, or altered.
 - Remaining blocker: this fake-only correction does not establish a clean
   candidate baseline or resolve ownership/scoped validation for the 312
   retained original paths. F-01 remains `blocked`.
+
+## Correction — Isolated Fixture Git and Guarded Cleanup
+
+- Status: current controlled fixture evidence.
+- Root cause: the temporary fixture repository inherited ambient Git template,
+  hook, and commit-signing configuration; cleanup also recursively targeted a
+  generated path without proving fixture ownership first.
+- RED command: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-verify-baseline.ps1`
+  - Target: fake (fixture-owned temporary Git repository and deterministic TSV fixtures).
+  - Actual: exit 1; the new local configuration assertion failed with
+    `temporary fixture repository must set a local fixture-owned core.hooksPath.`
+  - Artifact: ignored
+    `runs/20260710T-baseline-harness-correction/red-fixture-git-isolation.log`.
+- GREEN command: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-verify-baseline.ps1`
+  - Target: fake (fixture-owned temporary Git repository and deterministic TSV fixtures).
+  - Actual: exit 0; the fixture root is created before use, receives an
+    ownership marker, initializes Git with its own empty template, configures
+    local `core.hooksPath` to its empty fixture directory, and sets local
+    `commit.gpgSign=false`. Recursive cleanup runs only while that created root
+    and marker still exist.
+  - Artifact: ignored
+    `runs/20260710T-baseline-harness-correction/green-fixture-git-isolation.log`.
+- Remaining blocker: 312 original paths remain `retained-owner-needed` pending
+  confirmed ownership and scoped validation; F-01 remains `blocked`.
 
 ## Spec Adherence
 
@@ -129,13 +165,16 @@ staged, removed, or altered.
   - Actual: exit 1 as expected.
   - Artifact: ignored `runs/20260710T000000-baseline-capture/verifier-incomplete.log`.
   - Blocking condition: none.
-- Command: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-baseline.ps1 -Inventory .mnfs/.../baseline-inventory.tsv -Ledger .mnfs/.../ownership-ledger.md`
+- Command: `[Historical — superseded] powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-baseline.ps1 -Inventory .mnfs/.../baseline-inventory.tsv -Ledger .mnfs/.../ownership-ledger.md`
   - Target: fake
-  - Status: Pass
+  - Status: Superseded
   - Evidence type: ran
   - Owner: Feature Implementer
-  - Expected: exactly one valid ledger row for each original path.
-  - Actual: exit 0; `inventory=312 committed=0 retained=312`.
+  - Expected: historical pre-correction check of exactly one valid ledger row
+    for each original path.
+  - Actual: historical pre-correction exit 0; `inventory=312 committed=0 retained=312`.
+    This command omitted `-AllowRetainedState`; `f56a9ee` and `a021455`
+    supersede it, so it is not current behavior.
   - Artifact: ignored `runs/20260710T000000-baseline-capture/verifier-complete-inventory.log`.
   - Blocking condition: retained records intentionally prevent clean-baseline readiness.
 - Command: `git status --short` plus `verify-baseline.ps1 -RequireCleanStatus`
