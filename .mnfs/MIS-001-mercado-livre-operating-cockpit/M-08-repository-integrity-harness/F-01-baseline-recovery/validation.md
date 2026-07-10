@@ -3,7 +3,7 @@
 ```yaml
 id: F-01
 type: feature-validation
-status: blocked
+status: quick_validation_passed
 owner: Feature Implementer
 parent: M-08
 created: 2026-07-10
@@ -19,23 +19,23 @@ F-01-baseline-recovery
 ## Summary
 
 The path-only baseline harness and its deterministic fixtures passed quick
-validation. The feature remains blocked: all 312 original paths are retained
-as `retained-owner-needed` because this fresh build session cannot safely
-infer ownership or run a cohort's scoped validation. No original path was
-staged, removed, or altered.
+validation. C01 mechanical readiness is now proven: all 312 original paths
+have an explicit reconciliation disposition (296 committed and 16 retained
+local raw artifacts). No original path was staged, removed, or altered by
+F-01 finalization.
 
 ## Quick Validation Result
 
-- Result: Blocked
+- Result: Passed (C01 mechanical readiness)
 - Result owner: Feature Implementer
 - Decision date: 2026-07-10
-- Final feature state for handoff: blocked
+- Final feature state for handoff: quick_validation_passed
 
 ## Quick Validation State
 
 - fixup_attempts: 1 (PowerShell 5 compatibility correction in the new verifier)
 - max_fixup_attempts: 1
-- last_feature_validation_result: blocked by retained original state, not by a verifier defect
+- last_feature_validation_result: quick_validation_passed by C01 mechanical gate; M-08 QA verdict remains unclaimed
 
 ## Superseded Historical Evidence
 
@@ -63,8 +63,8 @@ staged, removed, or altered.
     worktree. The historical `-AllowRetainedState` diagnostic claim is
     superseded by the correction below.
   - Artifact: ignored `runs/20260710T-baseline-harness-correction/green-test-verify-baseline.log`.
-- Remaining blocker: 312 original paths remain retained pending confirmed owner
-  attribution and scoped validation; feature status remains `blocked`.
+- Historical blocker: 312 paths were retained pending attribution. The final
+  ledger maps 296 to intentional commits and retains 16 named local raw artifacts.
 
 ## Correction — Diagnostic Opt-In Does Not Waive Git Cleanliness
 
@@ -87,9 +87,9 @@ staged, removed, or altered.
     retained with `-AllowRetainedState` fails, and clean retained with
     `-AllowRetainedState` passes.
   - Artifact: ignored `runs/20260710T-baseline-harness-correction/green-allow-retained-dirty-temp-repo.log`.
-- Remaining blocker: this fake-only correction does not establish a clean
-  candidate baseline or resolve ownership/scoped validation for the 312
-  retained original paths. F-01 remains `blocked`.
+- Historical limitation: this fake-only correction did not establish a clean
+  candidate baseline. C01 now provides that separate mechanical gate; it does
+  not claim functional validation for M-06.
 
 ## Correction — Isolated Fixture Git and Guarded Cleanup
 
@@ -112,16 +112,15 @@ staged, removed, or altered.
     and marker still exist.
   - Artifact: ignored
     `runs/20260710T-baseline-harness-correction/green-fixture-git-isolation.log`.
-- Remaining blocker: 312 original paths remain `retained-owner-needed` pending
-  confirmed ownership and scoped validation; F-01 remains `blocked`.
+- Historical blocker: the prior ledger retained all 312 paths. The final ledger
+  resolves every row to a commit or an explicit retained local raw artifact.
 
 ## Spec Adherence
 
-- Spec satisfied: Blocked
-- Deviations: No original cohort was committed.
-- Reason: Ownership and scoped validation were not independently confirmed for
-  any original path. The ledger preserves the exact 312-path inventory with an
-  explicit retained-state record instead of guessing.
+- Spec satisfied: Passed for C01 mechanical readiness
+- Deviations: 16 explicit local raw artifacts remain intentionally uncommitted.
+- Reason: The ledger maps each inventory path exactly once: 296 to intentional
+  reconciliation commits and 16 to their source-to-local M-06 evidence owner.
 
 ## Changes Made
 
@@ -134,7 +133,8 @@ staged, removed, or altered.
 - File: `baseline-inventory.tsv`
   - Change: content-free original 312-path snapshot.
 - File: `ownership-ledger.md`
-  - Change: one retained-owner-needed row for every original path.
+  - Change: exact 312-row reconciliation map: 296 committed and 16 explicit
+    retained-owner-needed local raw artifacts.
 
 ## Commands Run
 
@@ -200,6 +200,18 @@ staged, removed, or altered.
 
 ## Evidence
 
+## C01 Final Mechanical Gate
+
+- Command: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-baseline.ps1 -Inventory .mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-01-baseline-recovery/baseline-inventory.tsv -Ledger .mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-01-baseline-recovery/ownership-ledger.md -AllowRetainedState`
+  - Target: fake (mechanical inventory/ledger reconciliation against the local Git worktree).
+  - Actual: exit 0; `PASS: inventory=312 committed=296 retained=16`.
+  - Artifact: ignored `runs/20260710T183900-c01-ledger-finalization/verify-baseline-allow-retained.log`.
+- Command: `git status --short`
+  - Target: fake (local Git worktree cleanliness check).
+  - Actual: exit 0; visible status count 0.
+  - Artifact: ignored `runs/20260710T183900-c01-ledger-finalization/git-status-short.log`.
+- Decision: C01 readiness is proven mechanically, but an M-08 QA verdict is not claimed. M-06 remains functionally blocked; its scoped functional validation is not implied by this baseline reconciliation.
+
 - Artifact: `baseline-inventory.tsv`
   - Status: Pass
   - Evidence type: ran
@@ -209,7 +221,8 @@ staged, removed, or altered.
   - Status: Pass
   - Evidence type: ran
   - Owner: Feature Implementer
-  - Blocking condition: all original paths retained pending ownership.
+  - Blocking condition: none for C01 mechanical reconciliation; M-06 functional
+    validation remains separately blocked.
 - Artifact: ignored raw run directory
   - Status: Pass
   - Evidence type: ran
@@ -218,17 +231,18 @@ staged, removed, or altered.
 
 ## Risks
 
-- The baseline is not clean and must not seed a worktree.
-- `retained-owner-needed` rows must be resolved by a confirmed owner; committing
-  or deleting them without scoped validation would violate F-01 constraints.
+- C01 proves a clean Git worktree only with `-AllowRetainedState`; the 16 raw
+  local artifacts are intentionally excluded from Git and must not be staged.
+- M-06 remains functionally blocked; F-01 reconciliation does not replace its
+  scoped validation.
 
 ## Handoff
 
-- Current status: `blocked`
-- Next owner: Milestone Orchestrator
-- Next action: assign ownership and validation commands to retained cohorts,
-  then dispatch a fresh scoped reconciler for each confirmed cohort.
+- Current status: `quick_validation_passed`
+- Next owner: final F-01 SPEC+QUALITY reviewers
+- Next action: review the reconciliation ledger and C01 mechanical evidence;
+  do not infer an M-08 QA verdict or M-06 functional completion.
 - Required files/evidence: feature brief, spec, plan, baseline inventory,
   ledger, raw run artifacts, and each cohort's future scoped validation.
-- Blockers or open decisions: 312 retained original paths; no original path has
-  a confirmed owner, completed scoped validation, or intentional commit SHA.
+- Blockers or open decisions: M-06 remains functionally blocked; the 16 named
+  local raw artifacts remain owned by its local-runtime evidence flow.
