@@ -41,6 +41,19 @@ func (c RuntimeCapability) Available() bool {
 	return c.Code != "" && c.State == RuntimeCapabilityStateAvailable && c.Executable
 }
 
+func (c RuntimeCapability) Runnable() bool {
+	if c.Code == "" || !c.Executable {
+		return false
+	}
+
+	switch c.State {
+	case RuntimeCapabilityStateAvailable, RuntimeCapabilityStateDegraded:
+		return true
+	default:
+		return false
+	}
+}
+
 func ValidateRuntimeCapability(capability RuntimeCapability) error {
 	if strings.TrimSpace(string(capability.Code)) == "" {
 		return errors.New("INTEGRATIONS_CAPABILITY_INVALID")

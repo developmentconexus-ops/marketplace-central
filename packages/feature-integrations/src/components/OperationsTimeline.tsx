@@ -10,6 +10,23 @@ function formatTimestamp(value?: string) {
   return value ?? "Not available";
 }
 
+function formatEvidence(evidence?: Record<string, unknown>) {
+  if (!evidence || Object.keys(evidence).length === 0) {
+    return null;
+  }
+  return Object.entries(evidence)
+    .map(([key, value]) => {
+      if (value === null || value === undefined) {
+        return `${key}: -`;
+      }
+      if (typeof value === "object") {
+        return `${key}: ${JSON.stringify(value)}`;
+      }
+      return `${key}: ${String(value)}`;
+    })
+    .join(" | ");
+}
+
 export function OperationsTimeline({ operations, loading, errorMessage }: OperationsTimelineProps) {
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -51,6 +68,10 @@ export function OperationsTimeline({ operations, loading, errorMessage }: Operat
                   <dd className="mt-1">{operation.failure_code || "-"}</dd>
                 </div>
                 <div>
+                  <dt className="uppercase tracking-wide text-slate-400">Translated error</dt>
+                  <dd className="mt-1">{operation.translated_error_code || "-"}</dd>
+                </div>
+                <div>
                   <dt className="uppercase tracking-wide text-slate-400">Attempt count</dt>
                   <dd className="mt-1">{operation.attempt_count}</dd>
                 </div>
@@ -65,6 +86,14 @@ export function OperationsTimeline({ operations, loading, errorMessage }: Operat
                 <div>
                   <dt className="uppercase tracking-wide text-slate-400">Completed</dt>
                   <dd className="mt-1">{formatTimestamp(operation.completed_at)}</dd>
+                </div>
+                <div>
+                  <dt className="uppercase tracking-wide text-slate-400">Duration</dt>
+                  <dd className="mt-1">{operation.duration_ms != null ? `${operation.duration_ms} ms` : "-"}</dd>
+                </div>
+                <div className="col-span-2">
+                  <dt className="uppercase tracking-wide text-slate-400">Evidence</dt>
+                  <dd className="mt-1 break-words">{formatEvidence(operation.provider_evidence) ?? "-"}</dd>
                 </div>
               </dl>
             </li>

@@ -6,7 +6,10 @@ import (
 	"testing"
 	"time"
 
+	connectorsapp "marketplace-central/apps/server_core/internal/modules/connectors/application"
+	connectorsdomain "marketplace-central/apps/server_core/internal/modules/connectors/domain"
 	"marketplace-central/apps/server_core/internal/modules/integrations/domain"
+	"marketplace-central/apps/server_core/internal/modules/integrations/ports"
 )
 
 type stubInstallationRepo struct {
@@ -33,8 +36,60 @@ type stubRuntimeCapabilitySource struct {
 	items []domain.RuntimeCapability
 }
 
+type stubInstallationCapabilityStateResolver struct {
+	states []domain.CapabilityState
+}
+
+type stubAuthSessionLookup struct {
+	session domain.AuthSession
+	found   bool
+}
+
+func (s stubAuthSessionLookup) GetAuthSession(_ context.Context, installationID string) (domain.AuthSession, bool, error) {
+	if !s.found || s.session.InstallationID != installationID {
+		return domain.AuthSession{}, false, nil
+	}
+	return s.session, true, nil
+}
+
+type stubCredentialLookup struct {
+	credential domain.Credential
+	found      bool
+}
+
+func (s stubCredentialLookup) GetActiveCredential(_ context.Context, installationID string) (domain.Credential, bool, error) {
+	if !s.found || s.credential.InstallationID != installationID {
+		return domain.Credential{}, false, nil
+	}
+	return s.credential, true, nil
+}
+
+type stubPayloadDecryptor struct {
+	payload map[string]any
+}
+
+func (s stubPayloadDecryptor) DecryptJSON(encoded []byte) (map[string]any, string, error) {
+	return s.payload, "key-1", nil
+}
+
+type stubAccountProber struct {
+	snapshot connectorsdomain.AccountSnapshot
+}
+
+func (s stubAccountProber) ProbeAccount(_ context.Context, ref connectorsdomain.ProviderAccountRef) (connectorsdomain.AccountSnapshot, error) {
+	result := s.snapshot
+	if result.ProviderAccountID == "" {
+		result.ProviderAccountID = ref.ProviderAccountID
+	}
+	return result, nil
+}
+
 func (s stubRuntimeCapabilitySource) Project(inst domain.Installation) []domain.RuntimeCapability {
 	return append([]domain.RuntimeCapability(nil), s.items...)
+}
+
+func (s stubInstallationCapabilityStateResolver) Resolve(_ context.Context, _ string, _ ports.MarketplaceCapabilities) ([]domain.CapabilityState, error) {
+	return append([]domain.CapabilityState(nil), s.states...), nil
 }
 
 func (s *stubInstallationRepo) CreateInstallation(_ context.Context, inst domain.Installation) error {
@@ -278,5 +333,212 @@ func TestInstallationServiceProjectsRuntimeCapabilitiesOnRead(t *testing.T) {
 	}
 	if len(inst.RuntimeCapabilities) != 1 || inst.RuntimeCapabilities[0].Code != domain.RuntimeCapabilityAccountProbe {
 		t.Fatalf("runtime capabilities = %#v", inst.RuntimeCapabilities)
+	}
+}
+
+func TestInstallationServiceOverlaysPersistedCapabilityStateOnRead(t *testing.T) {
+	t.Parallel()
+
+	now := time.Unix(100, 0).UTC()
+	validatedAt := now.Add(10 * time.Minute)
+	repo := &stubInstallationRepo{
+		getByID: map[string]domain.Installation{
+			"inst_001": {
+				InstallationID:    "inst_001",
+				TenantID:          "tenant-default",
+				ProviderCode:      "mercado_livre",
+				Family:            domain.IntegrationFamilyMarketplace,
+				DisplayName:       "ML Primary",
+				Status:            domain.InstallationStatusConnected,
+				HealthStatus:      domain.HealthStatusHealthy,
+				ExternalAccountID: "691607102",
+				CreatedAt:         now,
+				UpdatedAt:         now,
+			},
+		},
+	}
+	svc := NewInstallationService(repo, "tenant-default")
+	svc.SetRuntimeCapabilitySource(stubRuntimeCapabilitySource{
+		items: []domain.RuntimeCapability{{
+			Code:       domain.RuntimeCapabilityListingRead,
+			State:      domain.RuntimeCapabilityStateAvailable,
+			Executable: true,
+		}},
+	})
+	svc.SetCapabilityStateResolver(stubInstallationCapabilityStateResolver{
+		states: []domain.CapabilityState{{
+			CapabilityStateID: "cap_listing_read",
+			InstallationID:    "inst_001",
+			CapabilityCode:    "listing_read",
+			Status:            domain.CapabilityStatusEnabled,
+			ReasonCode:        "INTEGRATIONS_OPERATION_SUCCEEDED",
+			LastEvaluatedAt:   &validatedAt,
+		}},
+	})
+
+	inst, found, err := svc.Get(context.Background(), "inst_001")
+	if err != nil || !found {
+		t.Fatalf("Get() = (%#v, %v, %v), want installation, true, nil", inst, found, err)
+	}
+	if len(inst.RuntimeCapabilities) != 1 {
+		t.Fatalf("runtime capabilities = %#v, want one item", inst.RuntimeCapabilities)
+	}
+	if !inst.RuntimeCapabilities[0].LiveValidated {
+		t.Fatalf("live_validated = false, want true")
+	}
+	if inst.RuntimeCapabilities[0].LastValidatedAt == nil || !inst.RuntimeCapabilities[0].LastValidatedAt.Equal(validatedAt) {
+		t.Fatalf("last_validated_at = %v, want %v", inst.RuntimeCapabilities[0].LastValidatedAt, validatedAt)
+	}
+}
+
+func TestInstallationServiceKeepsDegradedCapabilityExecutableWhenBasePathExists(t *testing.T) {
+	t.Parallel()
+
+	now := time.Unix(100, 0).UTC()
+	validatedAt := now.Add(10 * time.Minute)
+	repo := &stubInstallationRepo{
+		getByID: map[string]domain.Installation{
+			"inst_001": {
+				InstallationID:    "inst_001",
+				TenantID:          "tenant-default",
+				ProviderCode:      "mercado_livre",
+				Family:            domain.IntegrationFamilyMarketplace,
+				DisplayName:       "ML Primary",
+				Status:            domain.InstallationStatusConnected,
+				HealthStatus:      domain.HealthStatusHealthy,
+				ExternalAccountID: "691607102",
+				CreatedAt:         now,
+				UpdatedAt:         now,
+			},
+		},
+	}
+	svc := NewInstallationService(repo, "tenant-default")
+	svc.SetRuntimeCapabilitySource(stubRuntimeCapabilitySource{
+		items: []domain.RuntimeCapability{{
+			Code:       domain.RuntimeCapabilityFeeQuoteRead,
+			State:      domain.RuntimeCapabilityStateAvailable,
+			Executable: true,
+		}},
+	})
+	svc.SetCapabilityStateResolver(stubInstallationCapabilityStateResolver{
+		states: []domain.CapabilityState{{
+			CapabilityStateID: "cap_fee_quote_read",
+			InstallationID:    "inst_001",
+			CapabilityCode:    "fee_quote_read",
+			Status:            domain.CapabilityStatusDegraded,
+			ReasonCode:        "CONNECTORS_PROVIDER_PAYLOAD_INVALID",
+			LastEvaluatedAt:   &validatedAt,
+		}},
+	})
+
+	inst, found, err := svc.Get(context.Background(), "inst_001")
+	if err != nil || !found {
+		t.Fatalf("Get() = (%#v, %v, %v), want installation, true, nil", inst, found, err)
+	}
+	if len(inst.RuntimeCapabilities) != 1 {
+		t.Fatalf("runtime capabilities = %#v, want one item", inst.RuntimeCapabilities)
+	}
+	if inst.RuntimeCapabilities[0].State != domain.RuntimeCapabilityStateDegraded {
+		t.Fatalf("state = %q, want degraded", inst.RuntimeCapabilities[0].State)
+	}
+	if !inst.RuntimeCapabilities[0].Executable {
+		t.Fatal("executable = false, want true for degraded revalidation path")
+	}
+}
+
+func TestInstallationServiceReconcilesConnectedSnapshotFromAuthSession(t *testing.T) {
+	t.Parallel()
+
+	now := time.Unix(100, 0).UTC()
+	verifiedAt := now.Add(5 * time.Minute)
+	expiresAt := now.Add(time.Hour)
+	repo := &stubInstallationRepo{
+		getByID: map[string]domain.Installation{
+			"inst_001": {
+				InstallationID:     "inst_001",
+				TenantID:           "tenant-default",
+				ProviderCode:       "mercado_livre",
+				Family:             domain.IntegrationFamilyMarketplace,
+				DisplayName:        "ML Primary",
+				Status:             domain.InstallationStatusConnected,
+				HealthStatus:       domain.HealthStatusHealthy,
+				ActiveCredentialID: "cred-1",
+				ConnectionSnapshot: domain.ConnectionSnapshot{
+					State:        domain.ConnectionStateConnected,
+					Health:       domain.HealthStatusHealthy,
+					ProviderCode: "mercado_livre",
+					AuthStrategy: domain.AuthStrategyUnknown,
+					NextAction:   domain.ConnectionNextActionNone,
+				},
+				CreatedAt: now,
+				UpdatedAt: now,
+			},
+		},
+	}
+	svc := NewInstallationService(repo, "tenant-default")
+	svc.SetStateReconciler(NewInstallationStateReconciler(InstallationStateReconcilerConfig{
+		TenantID:      "tenant-default",
+		Installations: svc,
+		AuthSessions: stubAuthSessionLookup{
+			session: domain.AuthSession{
+				InstallationID:       "inst_001",
+				ProviderAccountID:    "691607102",
+				State:                domain.AuthStateValid,
+				AccessTokenExpiresAt: &expiresAt,
+				LastVerifiedAt:       &verifiedAt,
+			},
+			found: true,
+		},
+		Credentials: stubCredentialLookup{
+			credential: domain.Credential{
+				CredentialID:   "cred-1",
+				InstallationID: "inst_001",
+			},
+			found: true,
+		},
+		Decryptor: stubPayloadDecryptor{
+			payload: map[string]any{
+				"access_token":  "token-1",
+				"refresh_token": "refresh-1",
+			},
+		},
+		Capabilities: connectorsapp.NewMarketplaceCapabilityService([]connectorsapp.ProviderCapabilitySet{{
+			ProviderCode: "mercado_livre",
+			AccountProbes: stubAccountProber{snapshot: connectorsdomain.AccountSnapshot{
+				ProviderCode:        "mercado_livre",
+				ProviderAccountID:   "691607102",
+				ProviderAccountName: "METALNOBREACABAMENTOS",
+				SiteID:              "MLB",
+				Status:              "active",
+				FetchedAt:           verifiedAt,
+			}},
+		}}),
+	}))
+	svc.SetRuntimeCapabilitySource(NewRuntimeCapabilityProjector(connectorsapp.NewMarketplaceCapabilityService([]connectorsapp.ProviderCapabilitySet{{
+		ProviderCode:  "mercado_livre",
+		AccountProbes: stubAccountProber{},
+	}})))
+
+	inst, found, err := svc.Get(context.Background(), "inst_001")
+	if err != nil || !found {
+		t.Fatalf("Get() = (%#v, %v, %v), want reconciled installation, true, nil", inst, found, err)
+	}
+	if inst.ExternalAccountID != "691607102" {
+		t.Fatalf("external_account_id = %q, want reconciled provider account id", inst.ExternalAccountID)
+	}
+	if inst.ExternalAccountName != "METALNOBREACABAMENTOS" {
+		t.Fatalf("external_account_name = %q, want reconciled provider account name", inst.ExternalAccountName)
+	}
+	if inst.ConnectionSnapshot.AuthStrategy != domain.AuthStrategyOAuth2 {
+		t.Fatalf("auth_strategy = %q, want oauth2", inst.ConnectionSnapshot.AuthStrategy)
+	}
+	if len(inst.RuntimeCapabilities) != 1 || !inst.RuntimeCapabilities[0].Executable {
+		t.Fatalf("runtime capabilities = %#v, want executable capability after reconciliation", inst.RuntimeCapabilities)
+	}
+	if len(repo.appliedSnapshots) != 1 {
+		t.Fatalf("applied snapshots = %d, want 1 persisted repair", len(repo.appliedSnapshots))
+	}
+	if got := repo.appliedSnapshots[0].snapshot; got.ExternalAccountID != "691607102" || got.ExternalAccountName != "METALNOBREACABAMENTOS" || got.AuthStrategy != domain.AuthStrategyOAuth2 {
+		t.Fatalf("applied snapshot = %#v", got)
 	}
 }

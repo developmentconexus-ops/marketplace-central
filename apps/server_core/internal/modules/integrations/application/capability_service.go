@@ -3,7 +3,9 @@ package application
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
+	"time"
 
 	"marketplace-central/apps/server_core/internal/modules/integrations/domain"
 	"marketplace-central/apps/server_core/internal/modules/integrations/ports"
@@ -22,12 +24,20 @@ func NewCapabilityService(store ports.CapabilityStateStore, tenantID string) *Ca
 
 func (s *CapabilityService) Upsert(ctx context.Context, states []domain.CapabilityState) error {
 	copied := make([]domain.CapabilityState, len(states))
+	now := time.Now().UTC()
 	for i, state := range states {
 		if strings.TrimSpace(state.InstallationID) == "" || strings.TrimSpace(state.CapabilityCode) == "" || !isValidCapabilityStatus(state.Status) {
 			return errors.New(capabilityInvalidErrorCode)
 		}
 
 		state.TenantID = s.tenantID
+		if strings.TrimSpace(state.CapabilityStateID) == "" {
+			state.CapabilityStateID = capabilityStateID(state.InstallationID, state.CapabilityCode, now, i)
+		}
+		if state.CreatedAt.IsZero() {
+			state.CreatedAt = now
+		}
+		state.UpdatedAt = now
 		copied[i] = state
 	}
 
@@ -101,4 +111,14 @@ func isValidCapabilityStatus(status domain.CapabilityStatus) bool {
 	default:
 		return false
 	}
+}
+
+func capabilityStateID(installationID, capabilityCode string, now time.Time, index int) string {
+	return fmt.Sprintf(
+		"cap_%s_%s_%d_%d",
+		strings.TrimSpace(installationID),
+		strings.TrimSpace(capabilityCode),
+		now.UTC().UnixNano(),
+		index,
+	)
 }

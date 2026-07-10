@@ -205,3 +205,96 @@ func TestCredentialRepositoryConcurrentActiveRotationDoesNotViolateUniqueIndex(t
 		t.Fatalf("active credential count = %d, want 1", activeCount)
 	}
 }
+
+func TestCredentialRepositorySaveCredentialVersionAllowsReferencedCredentialRotation(t *testing.T) {
+	if os.Getenv("MC_DATABASE_URL") == "" {
+		t.Skip("MC_DATABASE_URL not set")
+	}
+
+	cfg, err := pgdb.LoadConfig()
+	if err != nil {
+		t.Fatalf("config error: %v", err)
+	}
+
+	pool, err := pgdb.NewPool(context.Background(), cfg)
+	if err != nil {
+		t.Fatalf("pool error: %v", err)
+	}
+	defer pool.Close()
+
+	installationRepo := integrationspostgres.NewInstallationRepository(pool, cfg.DefaultTenantID)
+	credentialRepo := integrationspostgres.NewCredentialRepository(pool, cfg.DefaultTenantID)
+
+	installationID := fmt.Sprintf("inst-cred-referenced-%d", time.Now().UTC().UnixNano())
+	now := time.Now().UTC()
+	if err := installationRepo.CreateInstallation(context.Background(), integrationsdomain.Installation{
+		InstallationID: installationID,
+		TenantID:       cfg.DefaultTenantID,
+		ProviderCode:   "mercado_livre",
+		Family:         integrationsdomain.IntegrationFamilyMarketplace,
+		DisplayName:    "Mercado Livre Rotation Test",
+		Status:         integrationsdomain.InstallationStatusDraft,
+		HealthStatus:   integrationsdomain.HealthStatusHealthy,
+		CreatedAt:      now,
+		UpdatedAt:      now,
+	}); err != nil {
+		t.Fatalf("create installation error: %v", err)
+	}
+
+	cred1 := integrationsdomain.Credential{
+		CredentialID:     fmt.Sprintf("cred-ref-1-%d", now.UnixNano()),
+		TenantID:         cfg.DefaultTenantID,
+		InstallationID:   installationID,
+		Version:          1,
+		SecretType:       "oauth2",
+		EncryptedPayload: []byte(`{"access_token":"a1"}`),
+		EncryptionKeyID:  "local-key-v1",
+		IsActive:         true,
+		CreatedAt:        now,
+		UpdatedAt:        now,
+	}
+	if err := credentialRepo.SaveCredentialVersion(context.Background(), cred1); err != nil {
+		t.Fatalf("save credential 1 error: %v", err)
+	}
+
+	snapshot := integrationsdomain.ProjectConnectionSnapshot(integrationsdomain.Installation{
+		InstallationID:      installationID,
+		TenantID:            cfg.DefaultTenantID,
+		ProviderCode:        "mercado_livre",
+		ExternalAccountID:   "seller-1",
+		ExternalAccountName: "Seller 1",
+		Status:              integrationsdomain.InstallationStatusConnected,
+		HealthStatus:        integrationsdomain.HealthStatusHealthy,
+		LastVerifiedAt:      &now,
+	}, integrationsdomain.AuthStrategyOAuth2, nil, "")
+	if err := installationRepo.ApplyConnectionSnapshot(context.Background(), installationID, snapshot, cred1.CredentialID); err != nil {
+		t.Fatalf("apply connection snapshot error: %v", err)
+	}
+
+	cred2 := integrationsdomain.Credential{
+		CredentialID:     fmt.Sprintf("cred-ref-2-%d", now.UnixNano()),
+		TenantID:         cfg.DefaultTenantID,
+		InstallationID:   installationID,
+		Version:          2,
+		SecretType:       "oauth2",
+		EncryptedPayload: []byte(`{"access_token":"a2"}`),
+		EncryptionKeyID:  "local-key-v1",
+		IsActive:         true,
+		CreatedAt:        now.Add(time.Second),
+		UpdatedAt:        now.Add(time.Second),
+	}
+	if err := credentialRepo.SaveCredentialVersion(context.Background(), cred2); err != nil {
+		t.Fatalf("save credential 2 with referenced predecessor error: %v", err)
+	}
+
+	active, found, err := credentialRepo.GetActiveCredential(context.Background(), installationID)
+	if err != nil {
+		t.Fatalf("GetActiveCredential error: %v", err)
+	}
+	if !found {
+		t.Fatal("expected active credential")
+	}
+	if active.CredentialID != cred2.CredentialID {
+		t.Fatalf("active credential = %q, want %q", active.CredentialID, cred2.CredentialID)
+	}
+}

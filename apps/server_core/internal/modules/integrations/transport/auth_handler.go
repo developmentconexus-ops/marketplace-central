@@ -7,9 +7,11 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
+	connectorsdomain "marketplace-central/apps/server_core/internal/modules/connectors/domain"
 	"marketplace-central/apps/server_core/internal/modules/integrations/application"
 	"marketplace-central/apps/server_core/internal/modules/integrations/domain"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
@@ -25,6 +27,11 @@ type AuthFlowReader interface {
 	GetAuthStatus(ctx context.Context, input application.GetAuthStatusInput) (application.AuthStatus, error)
 	StartSync(ctx context.Context, input application.StartFeeSyncInput) (application.FeeSyncAccepted, error)
 	ListOperationRuns(ctx context.Context, installationID string) ([]domain.OperationRun, error)
+	ProbeAccount(ctx context.Context, installationID string) (connectorsdomain.AccountSnapshot, error)
+	ListListings(ctx context.Context, installationID string, limit int) ([]connectorsdomain.ListingSnapshot, error)
+	ListOrders(ctx context.Context, installationID string, limit int) ([]connectorsdomain.OrderSnapshot, error)
+	ReadFeeQuote(ctx context.Context, installationID string, input connectorsdomain.FeeQuoteInput) (connectorsdomain.FeeQuoteSnapshot, error)
+	ReadStock(ctx context.Context, installationID string, ref connectorsdomain.ProviderListingRef) (connectorsdomain.StockSnapshot, error)
 }
 
 type AuthHandler struct {
@@ -65,11 +72,11 @@ func (h AuthHandler) handleCallback(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		slog.Warn("integrations.auth.callback", "action", "handle_callback", "result", "302", "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
-		http.Redirect(w, r, buildWebRedirectURL(buildIntegrationsRedirectPath("failed", "")), http.StatusFound)
+		http.Redirect(w, r, buildOAuthCallbackRedirectURL(buildIntegrationsRedirectPath("failed", "")), http.StatusFound)
 		return
 	}
 	slog.Info("integrations.auth.callback", "action", "handle_callback", "result", "302", "duration_ms", time.Since(start).Milliseconds())
-	http.Redirect(w, r, buildWebRedirectURL(buildIntegrationsRedirectPath("connected", result.InstallationID)), http.StatusFound)
+	http.Redirect(w, r, buildOAuthCallbackRedirectURL(buildIntegrationsRedirectPath("connected", result.InstallationID)), http.StatusFound)
 }
 
 func (h AuthHandler) handleInstallationAuth(w http.ResponseWriter, r *http.Request) {
@@ -251,6 +258,107 @@ func (h AuthHandler) handleInstallationAuth(w http.ResponseWriter, r *http.Reque
 		}
 		slog.Info("integrations.operations.list", "action", "list_operation_runs", "result", "200", "duration_ms", time.Since(start).Milliseconds())
 		httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": items})
+	case "probes/account":
+		if r.Method != http.MethodPost {
+			w.Header().Set("Allow", http.MethodPost)
+			writeIntegrationError(w, http.StatusMethodNotAllowed, "INTEGRATIONS_AUTH_METHOD_NOT_ALLOWED", "method not allowed")
+			slog.Info("integrations.probes.account", "action", "probe_account", "result", "405", "duration_ms", time.Since(start).Milliseconds())
+			return
+		}
+		result, err := h.flow.ProbeAccount(r.Context(), installationID)
+		if err != nil {
+			status, code, message := mapIntegrationError(err)
+			writeIntegrationError(w, status, code, message)
+			slog.Error("integrations.probes.account", "action", "probe_account", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
+			return
+		}
+		slog.Info("integrations.probes.account", "action", "probe_account", "result", "200", "duration_ms", time.Since(start).Milliseconds())
+		httpx.WriteJSON(w, http.StatusOK, result)
+	case "probes/listings":
+		if r.Method != http.MethodGet {
+			w.Header().Set("Allow", http.MethodGet)
+			writeIntegrationError(w, http.StatusMethodNotAllowed, "INTEGRATIONS_AUTH_METHOD_NOT_ALLOWED", "method not allowed")
+			slog.Info("integrations.probes.listings", "action", "list_listings", "result", "405", "duration_ms", time.Since(start).Milliseconds())
+			return
+		}
+		result, err := h.flow.ListListings(r.Context(), installationID, parsePositiveInt(r.URL.Query().Get("limit"), 20))
+		if err != nil {
+			status, code, message := mapIntegrationError(err)
+			writeIntegrationError(w, status, code, message)
+			slog.Error("integrations.probes.listings", "action", "list_listings", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
+			return
+		}
+		slog.Info("integrations.probes.listings", "action", "list_listings", "result", "200", "count", len(result), "duration_ms", time.Since(start).Milliseconds())
+		httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": result})
+	case "probes/orders":
+		if r.Method != http.MethodGet {
+			w.Header().Set("Allow", http.MethodGet)
+			writeIntegrationError(w, http.StatusMethodNotAllowed, "INTEGRATIONS_AUTH_METHOD_NOT_ALLOWED", "method not allowed")
+			slog.Info("integrations.probes.orders", "action", "list_orders", "result", "405", "duration_ms", time.Since(start).Milliseconds())
+			return
+		}
+		result, err := h.flow.ListOrders(r.Context(), installationID, parsePositiveInt(r.URL.Query().Get("limit"), 20))
+		if err != nil {
+			status, code, message := mapIntegrationError(err)
+			writeIntegrationError(w, status, code, message)
+			slog.Error("integrations.probes.orders", "action", "list_orders", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
+			return
+		}
+		slog.Info("integrations.probes.orders", "action", "list_orders", "result", "200", "count", len(result), "duration_ms", time.Since(start).Milliseconds())
+		httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": result})
+	case "probes/fee-quote":
+		if r.Method != http.MethodGet {
+			w.Header().Set("Allow", http.MethodGet)
+			writeIntegrationError(w, http.StatusMethodNotAllowed, "INTEGRATIONS_AUTH_METHOD_NOT_ALLOWED", "method not allowed")
+			slog.Info("integrations.probes.fee_quote", "action", "read_fee_quote", "result", "405", "duration_ms", time.Since(start).Milliseconds())
+			return
+		}
+		priceAmount, err := parseRequiredFloat(r.URL.Query().Get("price"))
+		if err != nil {
+			writeIntegrationError(w, http.StatusBadRequest, "INTEGRATIONS_OPERATION_INVALID", "price query parameter must be a positive number")
+			slog.Info("integrations.probes.fee_quote", "action", "read_fee_quote", "result", "400", "duration_ms", time.Since(start).Milliseconds())
+			return
+		}
+		result, err := h.flow.ReadFeeQuote(r.Context(), installationID, connectorsdomain.FeeQuoteInput{
+			SiteID:        strings.TrimSpace(r.URL.Query().Get("site_id")),
+			CategoryID:    strings.TrimSpace(r.URL.Query().Get("category_id")),
+			ListingTypeID: strings.TrimSpace(r.URL.Query().Get("listing_type_id")),
+			PriceAmount:   priceAmount,
+			CurrencyID:    strings.TrimSpace(r.URL.Query().Get("currency_id")),
+		})
+		if err != nil {
+			status, code, message := mapIntegrationError(err)
+			writeIntegrationError(w, status, code, message)
+			slog.Error("integrations.probes.fee_quote", "action", "read_fee_quote", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
+			return
+		}
+		slog.Info("integrations.probes.fee_quote", "action", "read_fee_quote", "result", "200", "duration_ms", time.Since(start).Milliseconds())
+		httpx.WriteJSON(w, http.StatusOK, result)
+	case "probes/stock":
+		if r.Method != http.MethodGet {
+			w.Header().Set("Allow", http.MethodGet)
+			writeIntegrationError(w, http.StatusMethodNotAllowed, "INTEGRATIONS_AUTH_METHOD_NOT_ALLOWED", "method not allowed")
+			slog.Info("integrations.probes.stock", "action", "read_stock", "result", "405", "duration_ms", time.Since(start).Milliseconds())
+			return
+		}
+		providerItemID := strings.TrimSpace(r.URL.Query().Get("provider_item_id"))
+		if providerItemID == "" {
+			writeIntegrationError(w, http.StatusBadRequest, "INTEGRATIONS_OPERATION_INVALID", "provider_item_id query parameter is required")
+			slog.Info("integrations.probes.stock", "action", "read_stock", "result", "400", "duration_ms", time.Since(start).Milliseconds())
+			return
+		}
+		result, err := h.flow.ReadStock(r.Context(), installationID, connectorsdomain.ProviderListingRef{
+			ProviderItemID:      providerItemID,
+			ProviderVariationID: strings.TrimSpace(r.URL.Query().Get("provider_variation_id")),
+		})
+		if err != nil {
+			status, code, message := mapIntegrationError(err)
+			writeIntegrationError(w, status, code, message)
+			slog.Error("integrations.probes.stock", "action", "read_stock", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
+			return
+		}
+		slog.Info("integrations.probes.stock", "action", "read_stock", "result", "200", "duration_ms", time.Since(start).Milliseconds())
+		httpx.WriteJSON(w, http.StatusOK, result)
 	default:
 		slog.Info("integrations.auth.installation", "action", "route_not_found", "result", "404", "duration_ms", time.Since(start).Milliseconds())
 		http.NotFound(w, r)
@@ -263,6 +371,16 @@ func buildWebRedirectURL(path string) string {
 		return path
 	}
 	return strings.TrimRight(webOrigin, "/") + path
+}
+
+func buildOAuthCallbackRedirectURL(path string) string {
+	redirectURI := strings.TrimSpace(os.Getenv("MPC_OAUTH_REDIRECT_URI"))
+	if redirectURI != "" {
+		if parsed, err := url.Parse(redirectURI); err == nil && parsed.Scheme != "" && parsed.Host != "" {
+			return parsed.Scheme + "://" + parsed.Host + path
+		}
+	}
+	return buildWebRedirectURL(path)
 }
 
 func firstNonEmptyQuery(values url.Values, keys ...string) string {
@@ -282,3 +400,21 @@ func buildIntegrationsRedirectPath(authStatus, installationID string) string {
 	}
 	return "/integrations?" + query.Encode()
 }
+
+func parsePositiveInt(raw string, fallback int) int {
+	value, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil || value <= 0 {
+		return fallback
+	}
+	return value
+}
+
+func parseRequiredFloat(raw string) (float64, error) {
+	value, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
+	if err != nil || value <= 0 {
+		return 0, errInvalidFloat
+	}
+	return value, nil
+}
+
+var errInvalidFloat = strconv.ErrSyntax

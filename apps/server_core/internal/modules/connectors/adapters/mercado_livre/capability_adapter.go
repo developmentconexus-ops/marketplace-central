@@ -55,7 +55,7 @@ func NewCapabilityAdapter(cfg CapabilityAdapterConfig) *CapabilityAdapter {
 	}
 	now := cfg.Now
 	if now == nil {
-		now = time.Now().UTC
+		now = func() time.Time { return time.Now().UTC() }
 	}
 
 	return &CapabilityAdapter{
@@ -406,8 +406,25 @@ func (a *CapabilityAdapter) ReadFeeQuote(ctx context.Context, input domain.FeeQu
 		query.Set("category_id", categoryID)
 	}
 
-	var response []mlListingPriceResponse
-	if err := a.doJSON(ctx, accountRef, token, http.MethodGet, "/sites/"+url.PathEscape(siteID)+"/listing_prices?"+query.Encode(), nil, &response); err != nil {
+	resp, rawBody, err := a.doRaw(ctx, accountRef, token, http.MethodGet, "/sites/"+url.PathEscape(siteID)+"/listing_prices?"+query.Encode(), nil)
+	if err != nil {
+		return domain.FeeQuoteSnapshot{}, err
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return domain.FeeQuoteSnapshot{}, domain.NewCapabilityError(domain.ErrCodeProviderInvalidReference, "provider resource was not found")
+	}
+	if resp.StatusCode == http.StatusTooManyRequests {
+		return domain.FeeQuoteSnapshot{}, domain.NewCapabilityError(domain.ErrCodeProviderRateLimited, "provider rate limit reached")
+	}
+	if resp.StatusCode >= 500 {
+		return domain.FeeQuoteSnapshot{}, domain.NewCapabilityError(domain.ErrCodeProviderTransient, "provider temporarily unavailable")
+	}
+	if resp.StatusCode >= 400 {
+		return domain.FeeQuoteSnapshot{}, domain.NewCapabilityError(domain.ErrCodeProviderValidation, strings.TrimSpace(string(rawBody)))
+	}
+
+	response, err := decodeListingPriceResponses(rawBody)
+	if err != nil {
 		return domain.FeeQuoteSnapshot{}, err
 	}
 	if len(response) == 0 {
@@ -478,6 +495,20 @@ func (a *CapabilityAdapter) doJSON(ctx context.Context, accountRef domain.Provid
 	return nil
 }
 
+func decodeListingPriceResponses(rawBody []byte) ([]mlListingPriceResponse, error) {
+	var batch []mlListingPriceResponse
+	if err := json.Unmarshal(rawBody, &batch); err == nil {
+		return batch, nil
+	}
+
+	var single mlListingPriceResponse
+	if err := json.Unmarshal(rawBody, &single); err == nil {
+		return []mlListingPriceResponse{single}, nil
+	}
+
+	return nil, domain.NewCapabilityError(domain.ErrCodeProviderPayloadInvalid, "provider payload decode failed")
+}
+
 func (a *CapabilityAdapter) doRaw(ctx context.Context, accountRef domain.ProviderAccountRef, token, method, path string, body io.Reader) (*http.Response, []byte, error) {
 	req, err := http.NewRequestWithContext(ctx, method, a.baseURL+path, body)
 	if err != nil {
@@ -537,14 +568,18 @@ func (a *CapabilityAdapter) mapListing(item mlItemResponse) domain.ListingSnapsh
 
 func (a *CapabilityAdapter) mapOrder(order mlOrderResponse) domain.OrderSnapshot {
 	snapshot := domain.OrderSnapshot{
-		ProviderCode:       "mercado_livre",
-		ProviderOrderID:    normalizeAnyID(order.ID),
-		ProviderStatus:     order.Status,
-		SourceUpdatedAt:    parseTimePtr(order.LastUpdated),
-		FetchedAt:          a.now(),
-		RawProviderRef:     "/orders/" + normalizeAnyID(order.ID),
-		ShippingID:         normalizeAnyID(order.Shipping.ID),
-		CancellationDetail: order.StatusDetail,
+		ProviderCode:         "mercado_livre",
+		ProviderOrderID:      normalizeAnyID(order.ID),
+		ProviderStatus:       order.Status,
+		ProviderStatusDetail: order.StatusDetail,
+		ProviderCreatedAt:    parseTimePtr(order.DateCreated),
+		ProviderClosedAt:     parseTimePtr(order.DateClosed),
+		ProviderUpdatedAt:    parseTimePtr(firstNonEmpty(order.LastUpdated, order.DateLastUpdated)),
+		FetchedAt:            a.now(),
+		RawProviderRef:       "/orders/" + normalizeAnyID(order.ID),
+		ShippingID:           normalizeAnyID(order.Shipping.ID),
+		CancellationDetail:   order.StatusDetail,
+		Tags:                 trimStrings(order.Tags),
 	}
 
 	var saleFeeSum float64
@@ -562,6 +597,7 @@ func (a *CapabilityAdapter) mapOrder(order mlOrderResponse) domain.OrderSnapshot
 			Title:               item.Item.Title,
 			Quantity:            item.Quantity,
 			UnitPrice:           item.UnitPrice,
+			SaleFeeAmount:       item.SaleFee,
 		})
 	}
 	if hasSaleFee {
@@ -570,9 +606,11 @@ func (a *CapabilityAdapter) mapOrder(order mlOrderResponse) domain.OrderSnapshot
 
 	for _, payment := range order.Payments {
 		snapshot.Payments = append(snapshot.Payments, domain.OrderPaymentSnapshot{
-			PaymentID: normalizeAnyID(payment.ID),
-			Status:    payment.Status,
-			Amount:    firstFloatPtr(payment.TotalPaidAmount, payment.TransactionAmount),
+			PaymentID:         normalizeAnyID(payment.ID),
+			Status:            payment.Status,
+			Amount:            firstFloatPtr(payment.TotalPaidAmount, payment.TransactionAmount),
+			TransactionAmount: payment.TransactionAmount,
+			TotalPaidAmount:   payment.TotalPaidAmount,
 		})
 	}
 
@@ -632,6 +670,8 @@ func findVariation(variations []mlVariation, variationID string) (mlVariation, b
 
 func normalizeAnyID(value any) string {
 	switch typed := value.(type) {
+	case nil:
+		return ""
 	case string:
 		return strings.TrimSpace(typed)
 	case float64:
@@ -671,6 +711,17 @@ func firstFloatPtr(values ...*float64) *float64 {
 		}
 	}
 	return nil
+}
+
+func trimStrings(values []string) []string {
+	trimmed := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value != "" {
+			trimmed = append(trimmed, value)
+		}
+	}
+	return trimmed
 }
 
 func limitOrDefault(limit int, fallback int) int {
@@ -737,13 +788,17 @@ type mlAttribute struct {
 }
 
 type mlOrderResponse struct {
-	ID           any             `json:"id"`
-	Status       string          `json:"status"`
-	StatusDetail string          `json:"status_detail"`
-	LastUpdated  string          `json:"last_updated"`
-	OrderItems   []mlOrderItem   `json:"order_items"`
-	Payments     []mlPayment     `json:"payments"`
-	Shipping     mlOrderShipping `json:"shipping"`
+	ID              any             `json:"id"`
+	Status          string          `json:"status"`
+	StatusDetail    string          `json:"status_detail"`
+	DateCreated     string          `json:"date_created"`
+	DateClosed      string          `json:"date_closed"`
+	LastUpdated     string          `json:"last_updated"`
+	DateLastUpdated string          `json:"date_last_updated"`
+	OrderItems      []mlOrderItem   `json:"order_items"`
+	Payments        []mlPayment     `json:"payments"`
+	Shipping        mlOrderShipping `json:"shipping"`
+	Tags            []string        `json:"tags"`
 }
 
 type mlOrderShipping struct {

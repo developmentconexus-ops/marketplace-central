@@ -21,6 +21,8 @@ type InstallationService struct {
 	repo                    ports.InstallationRepository
 	tenantID                string
 	runtimeCapabilitySource installationRuntimeCapabilitySource
+	capabilityStates        installationCapabilityStateResolver
+	stateReconciler         installationStateReconciler
 }
 
 func NewInstallationService(repo ports.InstallationRepository, tenantID string) *InstallationService {
@@ -31,8 +33,24 @@ type installationRuntimeCapabilitySource interface {
 	Project(inst domain.Installation) []domain.RuntimeCapability
 }
 
+type installationCapabilityStateResolver interface {
+	Resolve(ctx context.Context, installationID string, declared ports.MarketplaceCapabilities) ([]domain.CapabilityState, error)
+}
+
+type installationStateReconciler interface {
+	Reconcile(ctx context.Context, inst domain.Installation) (domain.Installation, error)
+}
+
 func (s *InstallationService) SetRuntimeCapabilitySource(source installationRuntimeCapabilitySource) {
 	s.runtimeCapabilitySource = source
+}
+
+func (s *InstallationService) SetCapabilityStateResolver(resolver installationCapabilityStateResolver) {
+	s.capabilityStates = resolver
+}
+
+func (s *InstallationService) SetStateReconciler(reconciler installationStateReconciler) {
+	s.stateReconciler = reconciler
 }
 
 func (s *InstallationService) CreateDraft(ctx context.Context, input CreateInstallationInput) (domain.Installation, error) {
@@ -72,7 +90,15 @@ func (s *InstallationService) Get(ctx context.Context, installationID string) (d
 	if err != nil || !found {
 		return inst, found, err
 	}
-	return s.projectRuntimeCapabilities(inst), true, nil
+	inst, err = s.reconcileState(ctx, inst)
+	if err != nil {
+		return domain.Installation{}, false, err
+	}
+	inst, err = s.projectRuntimeCapabilities(ctx, inst)
+	if err != nil {
+		return domain.Installation{}, false, err
+	}
+	return inst, true, nil
 }
 
 func (s *InstallationService) List(ctx context.Context) ([]domain.Installation, error) {
@@ -81,7 +107,14 @@ func (s *InstallationService) List(ctx context.Context) ([]domain.Installation, 
 		return nil, err
 	}
 	for i := range items {
-		items[i] = s.projectRuntimeCapabilities(items[i])
+		items[i], err = s.reconcileState(ctx, items[i])
+		if err != nil {
+			return nil, err
+		}
+		items[i], err = s.projectRuntimeCapabilities(ctx, items[i])
+		if err != nil {
+			return nil, err
+		}
 	}
 	return items, nil
 }
@@ -145,10 +178,31 @@ func isValidConnectionState(state domain.ConnectionState) bool {
 	}
 }
 
-func (s *InstallationService) projectRuntimeCapabilities(inst domain.Installation) domain.Installation {
+func (s *InstallationService) projectRuntimeCapabilities(ctx context.Context, inst domain.Installation) (domain.Installation, error) {
 	if s.runtimeCapabilitySource == nil {
-		return inst
+		return inst, nil
 	}
 	inst.RuntimeCapabilities = s.runtimeCapabilitySource.Project(inst)
-	return inst
+	if s.capabilityStates == nil || len(inst.RuntimeCapabilities) == 0 {
+		return inst, nil
+	}
+
+	declared := make(ports.MarketplaceCapabilities, 0, len(inst.RuntimeCapabilities))
+	for _, capability := range inst.RuntimeCapabilities {
+		declared = append(declared, string(capability.Code))
+	}
+
+	resolved, err := s.capabilityStates.Resolve(ctx, inst.InstallationID, declared)
+	if err != nil {
+		return domain.Installation{}, err
+	}
+	inst.RuntimeCapabilities = overlayRuntimeCapabilityStates(inst.RuntimeCapabilities, resolved)
+	return inst, nil
+}
+
+func (s *InstallationService) reconcileState(ctx context.Context, inst domain.Installation) (domain.Installation, error) {
+	if s.stateReconciler == nil {
+		return inst, nil
+	}
+	return s.stateReconciler.Reconcile(ctx, inst)
 }

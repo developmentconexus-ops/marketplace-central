@@ -138,4 +138,13 @@ func TestUpsertCapabilityStatesPersistsInput(t *testing.T) {
 	if got, want := store.states[0].Status, domain.CapabilityStatusEnabled; got != want {
 		t.Fatalf("status = %q, want %q", got, want)
 	}
+	if store.states[0].CapabilityStateID == "" {
+		t.Fatal("capability_state_id = empty, want generated id")
+	}
+	if store.states[0].CreatedAt.IsZero() {
+		t.Fatal("created_at = zero, want populated timestamp")
+	}
+	if store.states[0].UpdatedAt.IsZero() {
+		t.Fatal("updated_at = zero, want populated timestamp")
+	}
 }

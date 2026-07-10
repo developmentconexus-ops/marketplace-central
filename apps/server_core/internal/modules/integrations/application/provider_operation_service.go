@@ -17,6 +17,7 @@ const (
 	providerOperationTypeListingRead  = "listing_read"
 	providerOperationTypeOrderRead    = "order_read"
 	providerOperationTypeFeeQuoteRead = "fee_quote_read"
+	providerOperationTypeStockRead    = "stock_read"
 )
 
 type providerOperationInstallationReader interface {
@@ -27,16 +28,22 @@ type ProviderOperationService struct {
 	tenantID      string
 	installations providerOperationInstallationReader
 	capabilities  *connectorsapp.MarketplaceCapabilityService
+	stateWriter   providerOperationCapabilityStateWriter
 	operations    *OperationService
 	now           func() time.Time
 }
 
+type providerOperationCapabilityStateWriter interface {
+	Upsert(ctx context.Context, states []domain.CapabilityState) error
+}
+
 type ProviderOperationServiceConfig struct {
-	TenantID      string
-	Installations providerOperationInstallationReader
-	Capabilities  *connectorsapp.MarketplaceCapabilityService
-	Operations    *OperationService
-	Now           func() time.Time
+	TenantID         string
+	Installations    providerOperationInstallationReader
+	Capabilities     *connectorsapp.MarketplaceCapabilityService
+	CapabilityStates providerOperationCapabilityStateWriter
+	Operations       *OperationService
+	Now              func() time.Time
 }
 
 func NewProviderOperationService(cfg ProviderOperationServiceConfig) *ProviderOperationService {
@@ -46,12 +53,13 @@ func NewProviderOperationService(cfg ProviderOperationServiceConfig) *ProviderOp
 	}
 	now := cfg.Now
 	if now == nil {
-		now = time.Now().UTC
+		now = func() time.Time { return time.Now().UTC() }
 	}
 	return &ProviderOperationService{
 		tenantID:      tenantID,
 		installations: cfg.Installations,
 		capabilities:  cfg.Capabilities,
+		stateWriter:   cfg.CapabilityStates,
 		operations:    cfg.Operations,
 		now:           now,
 	}
@@ -69,7 +77,7 @@ func (s *ProviderOperationService) ProbeAccount(ctx context.Context, installatio
 	ref := s.accountRef(inst)
 	startedAt := s.now()
 	result, execErr := prober.ProbeAccount(ctx, ref)
-	s.recordOperation(ctx, inst.InstallationID, providerOperationTypeAccountProbe, startedAt, execErr, map[string]any{
+	recordErr := s.recordOperation(ctx, inst.InstallationID, providerOperationTypeAccountProbe, startedAt, execErr, map[string]any{
 		"provider_account_id":   result.ProviderAccountID,
 		"provider_account_name": result.ProviderAccountName,
 		"site_id":               result.SiteID,
@@ -77,6 +85,9 @@ func (s *ProviderOperationService) ProbeAccount(ctx context.Context, installatio
 	})
 	if execErr != nil {
 		return connectorsdomain.AccountSnapshot{}, execErr
+	}
+	if recordErr != nil {
+		return connectorsdomain.AccountSnapshot{}, recordErr
 	}
 	return result, nil
 }
@@ -95,12 +106,15 @@ func (s *ProviderOperationService) ListListings(ctx context.Context, installatio
 		AccountRef: s.accountRef(inst),
 		Limit:      limit,
 	})
-	s.recordOperation(ctx, inst.InstallationID, providerOperationTypeListingRead, startedAt, execErr, map[string]any{
+	recordErr := s.recordOperation(ctx, inst.InstallationID, providerOperationTypeListingRead, startedAt, execErr, map[string]any{
 		"listing_count": len(result),
 		"limit":         limit,
 	})
 	if execErr != nil {
 		return nil, execErr
+	}
+	if recordErr != nil {
+		return nil, recordErr
 	}
 	return result, nil
 }
@@ -119,12 +133,15 @@ func (s *ProviderOperationService) ListOrders(ctx context.Context, installationI
 		AccountRef: s.accountRef(inst),
 		Limit:      limit,
 	})
-	s.recordOperation(ctx, inst.InstallationID, providerOperationTypeOrderRead, startedAt, execErr, map[string]any{
+	recordErr := s.recordOperation(ctx, inst.InstallationID, providerOperationTypeOrderRead, startedAt, execErr, map[string]any{
 		"order_count": len(result),
 		"limit":       limit,
 	})
 	if execErr != nil {
 		return nil, execErr
+	}
+	if recordErr != nil {
+		return nil, recordErr
 	}
 	return result, nil
 }
@@ -141,7 +158,7 @@ func (s *ProviderOperationService) ReadFeeQuote(ctx context.Context, installatio
 	input.AccountRef = s.accountRef(inst)
 	startedAt := s.now()
 	result, execErr := reader.ReadFeeQuote(ctx, input)
-	s.recordOperation(ctx, inst.InstallationID, providerOperationTypeFeeQuoteRead, startedAt, execErr, map[string]any{
+	recordErr := s.recordOperation(ctx, inst.InstallationID, providerOperationTypeFeeQuoteRead, startedAt, execErr, map[string]any{
 		"site_id":         result.SiteID,
 		"category_id":     result.CategoryID,
 		"listing_type_id": result.ListingTypeID,
@@ -150,6 +167,37 @@ func (s *ProviderOperationService) ReadFeeQuote(ctx context.Context, installatio
 	})
 	if execErr != nil {
 		return connectorsdomain.FeeQuoteSnapshot{}, execErr
+	}
+	if recordErr != nil {
+		return connectorsdomain.FeeQuoteSnapshot{}, recordErr
+	}
+	return result, nil
+}
+
+func (s *ProviderOperationService) ReadStock(ctx context.Context, installationID string, ref connectorsdomain.ProviderListingRef) (connectorsdomain.StockSnapshot, error) {
+	inst, err := s.loadExecutableInstallation(ctx, installationID, domain.RuntimeCapabilityStockRead)
+	if err != nil {
+		return connectorsdomain.StockSnapshot{}, err
+	}
+	reader, err := s.capabilities.StockReader(inst.ProviderCode)
+	if err != nil {
+		return connectorsdomain.StockSnapshot{}, err
+	}
+	ref.AccountRef = s.accountRef(inst)
+	startedAt := s.now()
+	result, execErr := reader.ReadStock(ctx, ref)
+	recordErr := s.recordOperation(ctx, inst.InstallationID, providerOperationTypeStockRead, startedAt, execErr, map[string]any{
+		"provider_item_id":      result.ProviderItemID,
+		"provider_variation_id": result.ProviderVariationID,
+		"available_quantity":    result.AvailableQuantity,
+		"provider_status":       result.ProviderStatus,
+		"scope":                 result.Scope,
+	})
+	if execErr != nil {
+		return connectorsdomain.StockSnapshot{}, execErr
+	}
+	if recordErr != nil {
+		return connectorsdomain.StockSnapshot{}, recordErr
 	}
 	return result, nil
 }
@@ -175,16 +223,16 @@ func (s *ProviderOperationService) loadExecutableInstallation(ctx context.Contex
 		return domain.Installation{}, domain.ErrInstallationNotFound
 	}
 	for _, runtimeCapability := range inst.RuntimeCapabilities {
-		if runtimeCapability.Code == capability && runtimeCapability.Available() {
+		if runtimeCapability.Code == capability && runtimeCapability.Runnable() {
 			return inst, nil
 		}
 	}
 	return domain.Installation{}, errors.New("INTEGRATIONS_CAPABILITY_UNAVAILABLE")
 }
 
-func (s *ProviderOperationService) recordOperation(ctx context.Context, installationID, operationType string, startedAt time.Time, execErr error, evidence map[string]any) {
+func (s *ProviderOperationService) recordOperation(ctx context.Context, installationID, operationType string, startedAt time.Time, execErr error, evidence map[string]any) error {
 	if s.operations == nil {
-		return
+		return nil
 	}
 	completedAt := s.now()
 	record := RecordOperationInput{
@@ -207,9 +255,67 @@ func (s *ProviderOperationService) recordOperation(ctx context.Context, installa
 		record.FailureCode = execErr.Error()
 		record.TranslatedErrorCode = string(connectorsdomain.ErrorCodeOf(execErr))
 	}
-	_, _ = s.operations.Record(ctx, record)
+	if _, err := s.operations.Record(ctx, record); err != nil {
+		return err
+	}
+	return s.persistCapabilityState(ctx, installationID, runtimeCapabilityCodeForOperation(operationType), completedAt, execErr)
 }
 
 func operationRunID(prefix string, now time.Time) string {
 	return fmt.Sprintf("%s_%d", strings.TrimSpace(prefix), now.UTC().UnixNano())
+}
+
+func (s *ProviderOperationService) persistCapabilityState(ctx context.Context, installationID string, capability domain.RuntimeCapabilityCode, evaluatedAt time.Time, execErr error) error {
+	if s.stateWriter == nil || strings.TrimSpace(installationID) == "" || capability == "" {
+		return nil
+	}
+
+	state := domain.CapabilityState{
+		InstallationID:  installationID,
+		CapabilityCode:  string(capability),
+		Status:          domain.CapabilityStatusEnabled,
+		ReasonCode:      "INTEGRATIONS_OPERATION_SUCCEEDED",
+		LastEvaluatedAt: ptrTime(evaluatedAt.UTC()),
+	}
+
+	if execErr != nil {
+		state = domain.CapabilityState{
+			InstallationID:  installationID,
+			CapabilityCode:  string(capability),
+			Status:          capabilityStatusFromError(execErr),
+			ReasonCode:      firstNonEmpty(string(connectorsdomain.ErrorCodeOf(execErr)), execErr.Error(), "INTEGRATIONS_OPERATION_FAILED"),
+			LastEvaluatedAt: ptrTime(evaluatedAt.UTC()),
+		}
+	}
+
+	return s.stateWriter.Upsert(ctx, []domain.CapabilityState{state})
+}
+
+func runtimeCapabilityCodeForOperation(operationType string) domain.RuntimeCapabilityCode {
+	switch strings.TrimSpace(operationType) {
+	case providerOperationTypeAccountProbe:
+		return domain.RuntimeCapabilityAccountProbe
+	case providerOperationTypeListingRead:
+		return domain.RuntimeCapabilityListingRead
+	case providerOperationTypeOrderRead:
+		return domain.RuntimeCapabilityOrderRead
+	case providerOperationTypeFeeQuoteRead:
+		return domain.RuntimeCapabilityFeeQuoteRead
+	case providerOperationTypeStockRead:
+		return domain.RuntimeCapabilityStockRead
+	default:
+		return ""
+	}
+}
+
+func capabilityStatusFromError(err error) domain.CapabilityStatus {
+	switch {
+	case errors.Is(err, domain.ErrReauthAccountMismatch),
+		errors.Is(err, domain.ErrRefreshTokenInvalid):
+		return domain.CapabilityStatusRequiresReauth
+	case connectorsdomain.ErrorCodeOf(err) == connectorsdomain.ErrCodeProviderUnsupportedShape:
+		return domain.CapabilityStatusUnsupported
+	default:
+		return domain.CapabilityStatusDegraded
+	}
 }

@@ -32,3 +32,15 @@ func TestRuntimeCapabilityRejectsEmptyCode(t *testing.T) {
 		t.Fatalf("expected empty capability code to be invalid")
 	}
 }
+
+func TestRuntimeCapabilityRunnableWhenDegradedButExecutable(t *testing.T) {
+	capability := RuntimeCapability{
+		Code:       RuntimeCapabilityFeeQuoteRead,
+		State:      RuntimeCapabilityStateDegraded,
+		Executable: true,
+	}
+
+	if !capability.Runnable() {
+		t.Fatalf("expected degraded executable capability to remain runnable")
+	}
+}

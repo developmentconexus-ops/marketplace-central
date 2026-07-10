@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	connectorsdomain "marketplace-central/apps/server_core/internal/modules/connectors/domain"
 	"marketplace-central/apps/server_core/internal/modules/integrations/application"
 	"marketplace-central/apps/server_core/internal/modules/integrations/domain"
 )
@@ -20,6 +21,15 @@ type stubAuthFlow struct {
 	feeSyncInput  application.StartFeeSyncInput
 	feeSyncAccept application.FeeSyncAccepted
 	operations    []domain.OperationRun
+	probeAccount  connectorsdomain.AccountSnapshot
+	listings      []connectorsdomain.ListingSnapshot
+	orders        []connectorsdomain.OrderSnapshot
+	feeQuote      connectorsdomain.FeeQuoteSnapshot
+	stock         connectorsdomain.StockSnapshot
+	listingsLimit int
+	ordersLimit   int
+	feeQuoteInput connectorsdomain.FeeQuoteInput
+	stockInput    connectorsdomain.ProviderListingRef
 }
 
 var _ AuthFlowReader = (*stubAuthFlow)(nil)
@@ -83,6 +93,75 @@ func (s *stubAuthFlow) ListOperationRuns(ctx context.Context, installationID str
 		}, nil
 	}
 	return s.operations, nil
+}
+
+func (s *stubAuthFlow) ProbeAccount(ctx context.Context, installationID string) (connectorsdomain.AccountSnapshot, error) {
+	if s.probeAccount.ProviderAccountID == "" {
+		s.probeAccount = connectorsdomain.AccountSnapshot{
+			ProviderCode:        "mercado_livre",
+			ProviderAccountID:   "691607102",
+			ProviderAccountName: "METALNOBREACABAMENTOS",
+			SiteID:              "MLB",
+			Status:              "active",
+		}
+	}
+	return s.probeAccount, nil
+}
+
+func (s *stubAuthFlow) ListListings(ctx context.Context, installationID string, limit int) ([]connectorsdomain.ListingSnapshot, error) {
+	s.listingsLimit = limit
+	if len(s.listings) == 0 {
+		s.listings = []connectorsdomain.ListingSnapshot{{
+			ProviderCode:   "mercado_livre",
+			ProviderItemID: "MLB123",
+			Title:          "Produto teste",
+		}}
+	}
+	return s.listings, nil
+}
+
+func (s *stubAuthFlow) ListOrders(ctx context.Context, installationID string, limit int) ([]connectorsdomain.OrderSnapshot, error) {
+	s.ordersLimit = limit
+	if len(s.orders) == 0 {
+		s.orders = []connectorsdomain.OrderSnapshot{{
+			ProviderCode:    "mercado_livre",
+			ProviderOrderID: "2001",
+			ProviderStatus:  "paid",
+		}}
+	}
+	return s.orders, nil
+}
+
+func (s *stubAuthFlow) ReadFeeQuote(ctx context.Context, installationID string, input connectorsdomain.FeeQuoteInput) (connectorsdomain.FeeQuoteSnapshot, error) {
+	s.feeQuoteInput = input
+	if s.feeQuote.ListingTypeID == "" {
+		percent := 11.0
+		fixed := 6.0
+		s.feeQuote = connectorsdomain.FeeQuoteSnapshot{
+			ProviderCode:      "mercado_livre",
+			SiteID:            "MLB",
+			ListingTypeID:     "gold_special",
+			PriceAmount:       100,
+			CurrencyID:        "BRL",
+			CommissionPercent: &percent,
+			FixedFeeAmount:    &fixed,
+		}
+	}
+	return s.feeQuote, nil
+}
+
+func (s *stubAuthFlow) ReadStock(ctx context.Context, installationID string, input connectorsdomain.ProviderListingRef) (connectorsdomain.StockSnapshot, error) {
+	s.stockInput = input
+	if s.stock.ProviderItemID == "" {
+		s.stock = connectorsdomain.StockSnapshot{
+			ProviderCode:      "mercado_livre",
+			ProviderItemID:    input.ProviderItemID,
+			AvailableQuantity: 11,
+			ProviderStatus:    "active",
+			Scope:             connectorsdomain.StockScopeItem,
+		}
+	}
+	return s.stock, nil
 }
 
 func TestAuthHandlerCompileTimeFeeSyncContract(t *testing.T) {
@@ -196,6 +275,9 @@ func TestAuthHandlerCallbackUsesEnvRedirectURI(t *testing.T) {
 	if flow.callbackInput.RedirectURI != "https://public.example/integrations/auth/callback" {
 		t.Fatalf("callback redirect_uri = %q, want env fallback redirect", flow.callbackInput.RedirectURI)
 	}
+	if location := rr.Header().Get("Location"); location != "https://public.example/integrations?auth=connected&installation=inst-from-state" {
+		t.Fatalf("Location = %q, want callback origin redirect", location)
+	}
 }
 
 func TestAuthHandlerCallbackAcceptsAmazonSPAPICode(t *testing.T) {
@@ -252,6 +334,25 @@ func TestAuthHandlerCallbackRedirectsToWebOriginWhenConfigured(t *testing.T) {
 	}
 	if location := rr.Header().Get("Location"); location != "https://app.example/integrations?auth=connected&installation=inst-from-state" {
 		t.Fatalf("Location = %q, want frontend origin redirect", location)
+	}
+}
+
+func TestAuthHandlerCallbackPrefersCallbackOriginOverWebOrigin(t *testing.T) {
+	t.Setenv("MPC_WEB_ORIGIN", "http://localhost:5174")
+	t.Setenv("MPC_OAUTH_REDIRECT_URI", "https://public.example/integrations/auth/callback")
+
+	flow := &stubAuthFlow{}
+	handler := NewAuthHandler(flow)
+	req := httptest.NewRequest(http.MethodGet, "/integrations/auth/callback?code=provider-code&state=signed-state", nil)
+	rr := httptest.NewRecorder()
+
+	handler.handleCallback(rr, req)
+
+	if rr.Code != http.StatusFound {
+		t.Fatalf("status = %d, want 302; body=%s", rr.Code, rr.Body.String())
+	}
+	if location := rr.Header().Get("Location"); location != "https://public.example/integrations?auth=connected&installation=inst-from-state" {
+		t.Fatalf("Location = %q, want callback origin to win over localhost web origin", location)
 	}
 }
 
@@ -318,5 +419,228 @@ func TestHandleInstallationOperationsReturnsItems(t *testing.T) {
 	}
 	if len(payload.Items) != 1 || payload.Items[0].InstallationID != "inst_001" {
 		t.Fatalf("items=%#v", payload.Items)
+	}
+}
+
+func TestHandleInstallationAccountProbeReturnsSnapshot(t *testing.T) {
+	t.Parallel()
+
+	flow := &stubAuthFlow{}
+	h := NewAuthHandler(flow)
+	req := httptest.NewRequest(http.MethodPost, "/integrations/installations/inst_001/probes/account", bytes.NewReader([]byte(`{}`)))
+	rr := httptest.NewRecorder()
+
+	h.handleInstallationAuth(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	var payload connectorsdomain.AccountSnapshot
+	if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode account probe response: %v", err)
+	}
+	if payload.ProviderAccountName != "METALNOBREACABAMENTOS" {
+		t.Fatalf("payload=%#v", payload)
+	}
+}
+
+func TestHandleInstallationAccountProbeUsesSnakeCaseJSON(t *testing.T) {
+	t.Parallel()
+
+	flow := &stubAuthFlow{}
+	h := NewAuthHandler(flow)
+	req := httptest.NewRequest(http.MethodPost, "/integrations/installations/inst_001/probes/account", bytes.NewReader([]byte(`{}`)))
+	rr := httptest.NewRecorder()
+
+	h.handleInstallationAuth(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode account probe response: %v", err)
+	}
+	if _, ok := payload["provider_code"]; !ok {
+		t.Fatalf("payload=%v, want snake_case provider_code", payload)
+	}
+	if _, ok := payload["ProviderCode"]; ok {
+		t.Fatalf("payload=%v, want no PascalCase ProviderCode", payload)
+	}
+}
+
+func TestHandleInstallationListingsProbeReturnsItems(t *testing.T) {
+	t.Parallel()
+
+	flow := &stubAuthFlow{}
+	h := NewAuthHandler(flow)
+	req := httptest.NewRequest(http.MethodGet, "/integrations/installations/inst_001/probes/listings?limit=3", nil)
+	rr := httptest.NewRecorder()
+
+	h.handleInstallationAuth(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if flow.listingsLimit != 3 {
+		t.Fatalf("limit=%d", flow.listingsLimit)
+	}
+}
+
+func TestHandleInstallationListingsProbeUsesSnakeCaseJSON(t *testing.T) {
+	t.Parallel()
+
+	flow := &stubAuthFlow{}
+	h := NewAuthHandler(flow)
+	req := httptest.NewRequest(http.MethodGet, "/integrations/installations/inst_001/probes/listings?limit=1", nil)
+	rr := httptest.NewRecorder()
+
+	h.handleInstallationAuth(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	var payload struct {
+		Items []map[string]any `json:"items"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode listings probe response: %v", err)
+	}
+	if len(payload.Items) != 1 {
+		t.Fatalf("items=%v", payload.Items)
+	}
+	if _, ok := payload.Items[0]["provider_item_id"]; !ok {
+		t.Fatalf("payload=%v, want snake_case provider_item_id", payload.Items[0])
+	}
+	if _, ok := payload.Items[0]["ProviderItemID"]; ok {
+		t.Fatalf("payload=%v, want no PascalCase ProviderItemID", payload.Items[0])
+	}
+}
+
+func TestHandleInstallationOrdersProbeReturnsItems(t *testing.T) {
+	t.Parallel()
+
+	flow := &stubAuthFlow{}
+	h := NewAuthHandler(flow)
+	req := httptest.NewRequest(http.MethodGet, "/integrations/installations/inst_001/probes/orders?limit=1", nil)
+	rr := httptest.NewRecorder()
+
+	h.handleInstallationAuth(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if flow.ordersLimit != 1 {
+		t.Fatalf("limit=%d", flow.ordersLimit)
+	}
+}
+
+func TestHandleInstallationFeeQuoteProbeReturnsSnapshot(t *testing.T) {
+	t.Parallel()
+
+	flow := &stubAuthFlow{}
+	h := NewAuthHandler(flow)
+	req := httptest.NewRequest(http.MethodGet, "/integrations/installations/inst_001/probes/fee-quote?listing_type_id=gold_special&price=100&currency_id=BRL&site_id=MLB", nil)
+	rr := httptest.NewRecorder()
+
+	h.handleInstallationAuth(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if flow.feeQuoteInput.ListingTypeID != "gold_special" || flow.feeQuoteInput.PriceAmount != 100 {
+		t.Fatalf("fee quote input=%#v", flow.feeQuoteInput)
+	}
+}
+
+func TestHandleInstallationFeeQuoteProbeUsesSnakeCaseJSON(t *testing.T) {
+	t.Parallel()
+
+	flow := &stubAuthFlow{}
+	h := NewAuthHandler(flow)
+	req := httptest.NewRequest(http.MethodGet, "/integrations/installations/inst_001/probes/fee-quote?listing_type_id=gold_special&price=100&currency_id=BRL&site_id=MLB", nil)
+	rr := httptest.NewRecorder()
+
+	h.handleInstallationAuth(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode fee quote response: %v", err)
+	}
+	if _, ok := payload["listing_type_id"]; !ok {
+		t.Fatalf("payload=%v, want snake_case listing_type_id", payload)
+	}
+	if _, ok := payload["ListingTypeID"]; ok {
+		t.Fatalf("payload=%v, want no PascalCase ListingTypeID", payload)
+	}
+}
+
+func TestHandleInstallationStockProbeReturnsSnapshot(t *testing.T) {
+	t.Parallel()
+
+	flow := &stubAuthFlow{}
+	h := NewAuthHandler(flow)
+	req := httptest.NewRequest(http.MethodGet, "/integrations/installations/inst_001/probes/stock?provider_item_id=MLB123&provider_variation_id=VAR1", nil)
+	rr := httptest.NewRecorder()
+
+	h.handleInstallationAuth(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if flow.stockInput.ProviderItemID != "MLB123" || flow.stockInput.ProviderVariationID != "VAR1" {
+		t.Fatalf("stock input=%#v", flow.stockInput)
+	}
+	var payload connectorsdomain.StockSnapshot
+	if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode stock response: %v", err)
+	}
+	if payload.AvailableQuantity != 11 {
+		t.Fatalf("payload=%#v", payload)
+	}
+}
+
+func TestHandleInstallationStockProbeRequiresProviderItemID(t *testing.T) {
+	t.Parallel()
+
+	h := NewAuthHandler(&stubAuthFlow{})
+	req := httptest.NewRequest(http.MethodGet, "/integrations/installations/inst_001/probes/stock", nil)
+	rr := httptest.NewRecorder()
+
+	h.handleInstallationAuth(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestHandleInstallationStockProbeUsesSnakeCaseJSON(t *testing.T) {
+	t.Parallel()
+
+	flow := &stubAuthFlow{}
+	h := NewAuthHandler(flow)
+	req := httptest.NewRequest(http.MethodGet, "/integrations/installations/inst_001/probes/stock?provider_item_id=MLB123", nil)
+	rr := httptest.NewRecorder()
+
+	h.handleInstallationAuth(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode stock response: %v", err)
+	}
+	if _, ok := payload["provider_item_id"]; !ok {
+		t.Fatalf("payload=%v, want snake_case provider_item_id", payload)
+	}
+	if _, ok := payload["available_quantity"]; !ok {
+		t.Fatalf("payload=%v, want snake_case available_quantity", payload)
+	}
+	if _, ok := payload["ProviderItemID"]; ok {
+		t.Fatalf("payload=%v, want no PascalCase ProviderItemID", payload)
 	}
 }

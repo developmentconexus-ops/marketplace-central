@@ -280,6 +280,36 @@ func (r *memoryInstallationRepository) UpdateInstallationStatus(_ context.Contex
 	return nil
 }
 
+func (r *memoryInstallationRepository) ApplyConnectionSnapshot(_ context.Context, installationID string, snapshot domain.ConnectionSnapshot, activeCredentialID string) error {
+	inst, ok := r.byID[installationID]
+	if !ok {
+		return domain.ErrInstallationNotFound
+	}
+	switch snapshot.State {
+	case domain.ConnectionStateDraft:
+		inst.Status = domain.InstallationStatusDraft
+	case domain.ConnectionStatePending:
+		inst.Status = domain.InstallationStatusPendingConnection
+	case domain.ConnectionStateConnected:
+		inst.Status = domain.InstallationStatusConnected
+	case domain.ConnectionStateDegraded:
+		inst.Status = domain.InstallationStatusDegraded
+	case domain.ConnectionStateNeedsReauth:
+		inst.Status = domain.InstallationStatusRequiresReauth
+	default:
+		inst.Status = domain.InstallationStatusDisconnected
+	}
+	inst.HealthStatus = snapshot.Health
+	inst.ExternalAccountID = snapshot.ExternalAccountID
+	inst.ExternalAccountName = snapshot.ExternalAccountName
+	inst.ActiveCredentialID = activeCredentialID
+	inst.LastVerifiedAt = snapshot.LastVerifiedAt
+	inst.ConnectionSnapshot = snapshot
+	inst.UpdatedAt = time.Now().UTC()
+	r.byID[installationID] = inst
+	return nil
+}
+
 func (r *memoryInstallationRepository) UpdateActiveCredentialID(_ context.Context, installationID string, credentialID string) error {
 	inst, ok := r.byID[installationID]
 	if !ok {

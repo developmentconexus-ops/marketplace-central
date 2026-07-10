@@ -56,7 +56,6 @@ func appendCapability(items []domain.RuntimeCapability, code domain.RuntimeCapab
 		capability.UnavailableReason = "connection_degraded"
 	}
 
-	capability.LastValidatedAt = inst.LastVerifiedAt
 	return append(items, capability)
 }
 
