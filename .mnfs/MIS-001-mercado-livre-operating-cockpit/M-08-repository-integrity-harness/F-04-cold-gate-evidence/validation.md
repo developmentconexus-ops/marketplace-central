@@ -61,3 +61,29 @@ context_pack: scripts/.runs/f52c2e54ac864dd1b6c7dbfcfbda9ec0/context-pack.json
 - Real acceptance is blocked: F-03 `godror` dependency provisioning in the isolated snapshot cache did not complete, so `32/0` migration and zero-resource evidence are unavailable.
 
 Milestone Orchestrator must perform final SPEC/SAFETY and QUALITY reviews on a fixed candidate after the provisioning blocker is resolved. F-04 and M-08 are not passed.
+
+## Phase 4 Revalidation and Stop Checkpoint
+
+- F-03 prerequisite revalidated after the correction batch on candidate
+  `02aa06dea031c163e108c9c6f993aec72574923e`:
+  `f03-regression.tests.ps1 -BaseSha <candidate>` exited `0` with terminal
+  `PASS F-03 regression gate target=fake contamination=blocked`. This is
+  hermetic fake evidence only; it does not prove an ephemeral database run.
+- The first authorized Phase 4 cold run used the same candidate and wrote the
+  schema-valid, redacted artifact
+  `scripts/.runs/9dc5b6a0363045dd90e761f3259e2942/outcome.json`.
+  Preflight and detached snapshot records passed as `fake/contract`; the
+  top-level cold gate exited `1` with `COLD_UNEXPECTED_BLOCK` before any
+  Go, npm, Docker, provisioning, or F-03 execution record.
+- Stop decision: no second cold run, retry, or new correction was made. The
+  Lean Risk-Gated Harness correction budget was already consumed, and the
+  unexpected aggregate block lacks a safe classified root cause.
+- Caller invariance remained true: visible Git status and candidate SHA stayed
+  unchanged; caller node_modules and Go/npm cache inventories were unchanged.
+  The observed PostgreSQL identity stayed
+  `sha256:da788743d2060767375896de4d646f7576f5911461444b372616f19ea61db2ec`;
+  zero `mpc-pg-*` or run-labelled Docker resources remained.
+- No provisioning, registry download, image pull, F-03 `32/0` migration,
+  Oracle, provider, browser, or dev database action is claimed for this run.
+- Current blocker: diagnose and classify `COLD_UNEXPECTED_BLOCK` in a newly
+  authorized correction scope before rerunning the two-run Phase 4 proof.
