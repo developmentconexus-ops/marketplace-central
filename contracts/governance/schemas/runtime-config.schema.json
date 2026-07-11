@@ -3,10 +3,11 @@
   "$id": "https://marketplace-central.local/governance/runtime-config.schema.json",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "registry_id", "keys", "temporary_exceptions"],
+  "required": ["schema_version", "registry_id", "exception_rules", "keys", "temporary_exceptions"],
   "properties": {
     "schema_version": { "const": "1.0" },
     "registry_id": { "const": "runtime-config" },
+    "exception_rules": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "const": "runtime-direct-reader" } },
     "keys": {
       "type": "array",
       "minItems": 1,
@@ -29,11 +30,17 @@
             "items": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["path", "kind"],
+              "required": ["path", "kind", "status"],
               "properties": {
                 "path": { "$ref": "#/$defs/path" },
-                "kind": { "enum": ["typed", "direct", "edge", "harness", "test"] }
-              }
+                "kind": { "enum": ["typed", "direct", "edge", "harness", "test"] },
+                "status": { "enum": ["approved", "temporary_exception"] },
+                "exception_id": { "$ref": "#/$defs/id" }
+              },
+              "allOf": [
+                { "if": { "properties": { "status": { "const": "temporary_exception" } }, "required": ["status"] }, "then": { "required": ["exception_id"] } },
+                { "if": { "properties": { "status": { "const": "approved" } }, "required": ["status"] }, "then": { "not": { "required": ["exception_id"] } } }
+              ]
             }
           }
         },
@@ -52,7 +59,7 @@
         "required": ["id", "rule_id", "key", "path", "reason", "removal_owner"],
         "properties": {
           "id": { "$ref": "#/$defs/id" },
-          "rule_id": { "$ref": "#/$defs/id" },
+          "rule_id": { "const": "runtime-direct-reader" },
           "key": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
           "path": { "$ref": "#/$defs/path" },
           "reason": { "type": "string", "minLength": 1 },

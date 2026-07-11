@@ -29,7 +29,7 @@
       "inherit_parent": false,
       "network": "live",
       "database": "live-oracle",
-      "side_effects": ["provider-read"],
+      "side_effects": ["database-read"],
       "target_label": "live-oracle",
       "allowed_runtime_keys": ["MPC_ORACLE_CONNECT_STRING", "MPC_ORACLE_LIB_DIR", "MPC_ORACLE_LIVE_TEST", "MPC_ORACLE_PASSWORD", "MPC_ORACLE_USERNAME", "SANKHYA_ORACLE_CONNECT_STRING", "SANKHYA_ORACLE_HOST", "SANKHYA_ORACLE_PASSWORD", "SANKHYA_ORACLE_PORT", "SANKHYA_ORACLE_SERVICE_NAME", "SANKHYA_ORACLE_USER"],
       "gates": [{ "id": "explicit-target", "required": true }, { "id": "read-only", "required": true }],

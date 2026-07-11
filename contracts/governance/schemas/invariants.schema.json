@@ -20,7 +20,7 @@
           "check": { "enum": ["module-coverage", "module-dependency", "module-target-layer", "composition-import", "application-import", "postgres-driver", "production-panic", "api-sdk-atomicity", "frontend-fetch", "migration-prefix"] },
           "scope_paths": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/path" } },
           "reason_code": { "type": "string", "pattern": "^GOV_[A-Z0-9_]+$" },
-          "exception_mode": { "enum": ["none", "exact-path", "exact-edge", "exact-path-set"] }
+          "exception_mode": { "enum": ["none", "exact-path", "exact-edge", "exact-path-set", "exact-occurrence"] }
         }
       }
     },
@@ -30,11 +30,26 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "rule_id", "paths", "reason", "removal_owner"],
+        "required": ["id", "rule_id", "paths", "occurrences", "reason", "removal_owner"],
         "properties": {
           "id": { "$ref": "#/$defs/id" },
           "rule_id": { "$ref": "#/$defs/id" },
           "paths": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/path" } },
+          "occurrences": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path", "symbol", "fingerprint", "count"],
+              "properties": {
+                "path": { "$ref": "#/$defs/path" },
+                "symbol": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_.]*$" },
+                "fingerprint": { "type": "string", "minLength": 1 },
+                "count": { "type": "integer", "minimum": 1 }
+              }
+            }
+          },
           "reason": { "type": "string", "minLength": 1 },
           "removal_owner": { "type": "string", "pattern": "^(?:M-[0-9]{2}|F-[0-9]{2}|M-[0-9]{2}/F-[0-9]{2})$" }
         }
