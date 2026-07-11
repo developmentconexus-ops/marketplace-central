@@ -17,9 +17,10 @@ The five registries own deterministic facts only:
   current exceptions.
 - `shared-seams.json`: narrow path sets that require exclusive ownership.
 
-`schemas/context-pack.schema.json` defines the compiled worker-context shape;
-it intentionally has no registry document. F-04, F-05, and F-09 respectively
-own evidence, run-state/lease, and evaluation-result contracts.
+`schemas/context-pack.schema.json` defines the compiled Feature execution
+context shape; it intentionally has no registry document. F-05 owns knowledge
+routes, run-state/lease, checkpoints, and Portfolio/Milestone/Feature handoffs.
+The preserved F-09 synthetic evaluation is not an active governance surface.
 
 Validate the Phase 1 contracts with PowerShell 7.6 or later:
 

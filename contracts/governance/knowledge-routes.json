@@ -20,7 +20,31 @@
       "concerns": ["bootstrap"],
       "selectors": [
         {"path": "AGENTS.md", "selector": "Harness Bootstrap", "reason": "durable entry policy", "estimated_tokens": 220},
-        {"path": ".agents/skills/mpc-goal-harness/SKILL.md", "selector": "workflow", "reason": "progressive orchestration procedure", "estimated_tokens": 260}
+        {"path": ".agents/skills/mpc-goal-harness/SKILL.md", "selector": "Portfolio -> Milestone packet; Milestone -> Feature packet; Context and token constraints", "reason": "session packets, callbacks, context discipline, and handoff procedure", "estimated_tokens": 900}
+      ]
+    },
+    {
+      "id": "portfolio-core",
+      "module_id": "repository",
+      "concerns": ["portfolio", "architecture", "mission"],
+      "selectors": [
+        {"path": "ARCHITECTURE.md", "selector": "Current Architecture and module boundaries", "reason": "repository architecture authority", "estimated_tokens": 420},
+        {"path": "wiki/README.md", "selector": "knowledge routes", "reason": "module and operating knowledge index", "estimated_tokens": 180},
+        {"path": ".mnfs/MIS-001-mercado-livre-operating-cockpit/mission.md", "selector": "Current State, Milestone Strategy, Handoff", "reason": "portfolio outcome, priority, and durable next action", "estimated_tokens": 480}
+      ]
+    },
+    {
+      "id": "orders-margin",
+      "module_id": "profitability",
+      "concerns": ["orders", "profitability", "product-links"],
+      "selectors": [
+        {"path": "wiki/modules/orders.md", "selector": "module contract", "reason": "orders ownership and operating semantics", "estimated_tokens": 220},
+        {"path": "wiki/modules/profitability.md", "selector": "module contract", "reason": "margin ownership and unknown-state semantics", "estimated_tokens": 240},
+        {"path": "apps/server_core/internal/modules/orders/ports/link_reader.go", "selector": "interfaces", "reason": "orders to product-link boundary", "estimated_tokens": 100},
+        {"path": "apps/server_core/internal/modules/profitability/ports/order_reader.go", "selector": "interfaces", "reason": "profitability-owned order facts boundary", "estimated_tokens": 120},
+        {"path": "apps/server_core/internal/modules/profitability/ports/internal_read.go", "selector": "interfaces", "reason": "Oracle-backed cost and tax boundary", "estimated_tokens": 120},
+        {"path": "contracts/api/marketplace-central.openapi.yaml", "selector": "orders and profitability paths/schemas", "reason": "HTTP contract authority paired with SDK", "estimated_tokens": 420},
+        {"path": "packages/sdk-runtime/src/index.ts", "selector": "orders and profitability methods/types", "reason": "frontend runtime contract paired with OpenAPI", "estimated_tokens": 300}
       ]
     }
   ]

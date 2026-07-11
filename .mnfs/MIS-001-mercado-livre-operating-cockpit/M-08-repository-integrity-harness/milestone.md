@@ -48,18 +48,17 @@ orchestration, state, risk-selected gates, QA, and dogfood.
 | F-06 | Knowledge authority cutover | Accepted one-owner truth topology and `.brain` retirement. |
 | F-07 | Governance registry and context compiler | Accepted schemas, drift checks, hash-current context packs, paths, seams, and risk metadata. |
 | F-08 | Safe child runtime and harness modules | Accepted allowlisted environments, subprocess execution, redaction, and stable command surface. |
-| F-10 | Pragmatic harness cutover | Remove cold-only runtime and replace it with a current-checkout, task-declared impact/evidence gate. |
-| F-05 | Goal and orchestration control plane | Add knowledge routes, state/leases/resume, goal skill, native task workflow, bounded built-in subagents, and optional worktree dispatch. |
-| F-09 | Harness eval and dogfood closure | Prove context efficiency, deterministic guards, fresh-task orchestration, steering, review, QA routing, and artifact-only resume. |
+| F-10 | Pragmatic harness cutover | Accepted current-checkout, task-declared impact/evidence gate with cold execution removed. |
+| F-05 | Simple session orchestration | Accepted knowledge/context/state foundations; final protocol defines Portfolio ↔ Milestone checkpoints and Milestone → Feature plan/execution. |
+| F-09 | Synthetic eval WIP | Rejected from V1. Preserved as WIP evidence only; it is not active or required for completion. |
 
 ## Dependencies
 
 - F-01, F-03, F-06, F-07, and F-08 are accepted foundations.
 - F-02 and F-04 are historical superseded experiments and do not gate V1.
-- F-10 precedes F-05 so no new control plane depends on cold-only vocabulary.
-- F-05 precedes F-09.
-- Parallel product milestones require accepted F-05 lease/worktree behavior;
-  read-only planning and research may already run in parallel.
+- F-10 precedes F-05 so no active workflow depends on cold-only vocabulary.
+- F-09 is outside the active dependency graph.
+- Product work may resume after final review/QA of the simple F-10/F-05 flow.
 
 ## Risks
 
@@ -91,20 +90,20 @@ orchestration, state, risk-selected gates, QA, and dogfood.
   ephemeral; Oracle/provider/browser/provider-write evidence remains explicit.
 - The old cold command, cold-provision lane, cold-only tests, and cold acceptance
   criteria are absent from the active harness.
-- Deterministic evals reject known architecture, context, evidence, and safety
-  failures.
-- A fresh task completes one dogfood flow and another session resumes it using
-  MNFS, Git, context pack, and validation artifacts only.
+- Portfolio and Milestone exchange the defined packets and compact checkpoints;
+  Milestone dispatches Feature Plan + Execution and receives one commit/evidence
+  handoff without transcript replay.
+- A fresh Portfolio task can resume product development from mission, Git,
+  knowledge routes, and the milestone handoff.
 - Architecture, governance, wiki, MNFS, code, and evidence agree at the accepted SHA.
 
 ## Handoff
 
-- Current status: Replanned in progress; accepted foundations preserved, cold model superseded.
-- Next owner: Milestone Orchestrator (request `gpt-5.6-terra`/high when the
-  visible-task surface supports it; record the actual capability).
-- Next action: Dispatch F-10 pragmatic harness cutover as the sole writer.
-- Required files/evidence: F-10, F-05, and F-09 execution artifacts plus `validation-result.md`.
-- Blockers or open decisions: None; do not reopen cold-clone diagnosis.
+- Current status: Final simple-protocol candidate; F-10/F-05 accepted and F-09 rejected from active scope.
+- Next owner: independent Reviewer, then QA Validator.
+- Next action: Review and validate the fixed simple-protocol commit, record `validation-result.md`, then open a fresh Portfolio session for M-06.
+- Required files/evidence: repo skill, execution guide, knowledge routes, focused governance/context/orchestration checks, and native Portfolio task creation.
+- Blockers or open decisions: None; do not reopen cold or synthetic-eval scope.
 
 ## Correction Handoff
 

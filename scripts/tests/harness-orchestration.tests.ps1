@@ -70,7 +70,7 @@ try {
   }
 
   $skill = Get-Content -Raw -LiteralPath $skillPath
-  foreach ($required in @('depth-one', 'operator-observed', 'checkpoint ID', 'fresh-session fallback', 'registered command IDs')) {
+  foreach ($required in @('Portfolio -> Milestone packet', 'Milestone -> Feature packet', 'Feature Plan', 'Feature Execution', 'portfolio_task_id', 'milestone_task_id', 'context_files', 'knowledge_routes', 'constraints', 'operator-observed', 'fresh-session fallback', 'registered command IDs')) {
     Assert-True ($skill -match [regex]::Escape($required)) "skill lacks capability boundary: $required"
   }
 

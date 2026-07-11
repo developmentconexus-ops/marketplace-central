@@ -1,24 +1,29 @@
-# M-08 Execution Guide — Pragmatic Harness V1
+# M-08 Execution Guide — Simple Development Sessions
 
-Start with the compact root bootstrap, then a validated hash-current context
-pack. Its selectors are the initial read set and its measurement includes the
-bootstrap. L2/L3 overflow records an `overflow_reason` for every source. A
-named route gap is the only reason for targeted discovery.
+Portfolio starts one visible Milestone session using the packet in the repo
+skill. The packet includes Portfolio task ID, objective, base SHA, mission and
+milestone files, knowledge routes, constraints, and QA contract. Milestone
+acknowledges it and reports compact checkpoints back to Portfolio.
 
-Portfolio owns goal/integration; one visible milestone task owns its checkout
-lease. Built-in subagents are depth one and bounded. Worktrees are optional Git
-coordination, never a VM. One writer owns a seam; use normal dependencies and
-caches.
+Milestone orders Features and dispatches one bounded Feature worker per eligible
+slice. Feature Plan and Feature Execution stay in the same session by default.
+After `plan.md`, compile and validate the context file; a new worker receives
+the file path, knowledge route IDs, paths, seams, side effects, proof commands,
+and stop conditions. Feature returns one commit and impacted evidence.
 
-The risk router chooses registered current-checkout impact commands: L0
-self-review, L1 combined final review, L2 fixed-commit review, L3 independent
-safety/quality plus the named real target. One correction batch maximum. Native
-task controls are operator-observed capability evidence; checkpoint IDs and
-repository artifacts are canonical.
+One writer owns a seam. Parallelize only disjoint Features in worktrees;
+investigation may be read-only. Prompts pass paths/selectors, not copied docs or
+transcripts. A named route gap permits targeted discovery.
 
-Active serial order: F-10 accepted, F-05 control plane, F-09 dogfood. Never
-restore superseded cold execution. No resets, secret exposure, custom app
-server/agents/hooks/automation, or unlabelled fake-as-live evidence.
+After all Feature commits integrate, Milestone freezes one SHA and requests one
+final review plus the QA targets required by the milestone contract. Low-risk
+work receives focused checks; real Oracle/provider/database/browser QA runs only
+when the contract names it. Only QA passes the milestone.
+
+F-10 and F-05 are the accepted implementation. F-09 remains preserved WIP but
+is rejected from the active workflow and is not a completion requirement.
+Never restore cold execution or add a custom agent runtime, second CI, hooks,
+app server, or token benchmark.
 
 ```text
 status:

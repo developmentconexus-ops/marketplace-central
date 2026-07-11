@@ -150,7 +150,7 @@ Accepted trade-offs:
 | M-05 | Stock Seguro ML | Show divergence, risk, recommendation, and manual audited action | First business value: prevent cancellation/oversell | `M-05-stock-seguro-ml/` |
 | M-06 | Orders + Margin ML | Ingest orders and calculate sale margin quality | Adds revenue/margin visibility after stock is safe | `M-06-orders-margin-ml/` |
 | M-07 | Commercial Intelligence | Margin guardrails, aging stock, kits, promotions | Uses stock/link/order/margin foundation | `M-07-commercial-intelligence/` |
-| M-08 | Repository Integrity and Deterministic Harness | Reconcile current implementation truth and isolate deterministic/live execution before parallel worktrees | Blocks every new parallel implementation milestone | `M-08-repository-integrity-harness/` |
+| M-08 | Simple Development Session Harness | Portfolio ↔ Milestone checkpoints, Feature plan/execution context, focused gates, and final review/QA | Finite support milestone; does not remain a product program | `M-08-repository-integrity-harness/` |
 | M-09 | Canonical Product Identity and Oracle Cutover | Separate internal SKU (`CODPROD`), manufacturer reference, GTIN, and provider-observed seller SKU; remove the legacy MSDB path | Prevents writing manufacturer codes as internal SKU | planned after M-08 |
 | M-10 | Provider Runtime Consolidation | Establish one provider/capability truth across integrations/connectors and retire duplicate registry runtime | Required before adding new provider-neutral writes | planned after M-09 |
 | M-11 | Durable External Write Execution | Add atomic intent claim, idempotency, audit, unknown-result reconciliation, and actor controls | Required before SKU/listing writes | planned after M-10 |
@@ -204,10 +204,10 @@ Evidence path convention:
 
 ## Handoff
 
-- Current status: In progress; M-01 through M-05 passed, M-06 is blocked on a paid resolved-link live Oracle + Mercado Livre profitability scenario and its proportional impacted gates, and M-08 is the approved serial prerequisite for reliable Codex development orchestration.
+- Current status: M-01 through M-05 passed; M-06 is blocked only on a paid resolved-link live Oracle + Mercado Livre profitability scenario; M-08 is at final simple-protocol review/QA and is no longer an open-ended product prerequisite.
 - Current owner: Mission Strategist.
-- Next owner: Milestone Orchestrator for M-08.
-- Next action: Complete the pragmatic M-08 goal/context/orchestration harness; then plan/execute M-09 through M-12, resume M-06 with focused code gates plus required real Oracle/Mercado Livre and browser QA, and only then start M-07.
+- Next owner: independent M-08 Reviewer/QA, then a fresh Portfolio session.
+- Next action: Close the finite M-08 protocol, open the fresh Portfolio session, and resume M-06 with its exact paid resolved-link evidence gap; do not start more harness features.
 - Required artifact paths:
   - `.mnfs/MIS-001-mercado-livre-operating-cockpit/mission.md`
   - `.mnfs/MIS-001-mercado-livre-operating-cockpit/validation-contract.md`

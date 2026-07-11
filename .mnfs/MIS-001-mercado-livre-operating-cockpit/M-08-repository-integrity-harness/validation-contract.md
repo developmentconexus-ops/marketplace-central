@@ -36,7 +36,9 @@ without cold-cloning the repository or simulating a clean machine locally.
 | M-08-C05 | Excluded after the operator rejected local clean-machine simulation; the original definition is preserved below. | 2026-07-11 | M-08-C15 and M-08-C17 |
 | M-08-C12 | Excluded because its original proof depended on the cold gate; its deterministic-regression intent continues. | 2026-07-11 | M-08-C16 and M-08-C17 |
 
-The active required set is C01-C04, C06-C11, and C13-C17. Superseded IDs are
+The final simple-protocol required set is C01, C07, C09, C10, C14, C15, and
+C17. C02-C04, C06, C08, C11, C13, and C16 remain supporting or historical
+evidence but do not block return to product development. Superseded IDs are
 audited for historical honesty and absence from active execution; they are not
 counted as passed requirements.
 
@@ -59,8 +61,8 @@ Owner: QA Validator
 ID: M-08-C02
 Level: Milestone
 Type: Reliability
-Required: Yes
-Status: Pending
+Required: No
+Status: Supporting
 Evidence:
 - Command: versioned harness unit command.
 - Expected: exit 0 from a child process containing only safe tool keys and declared unit values; no PostgreSQL, Oracle, OAuth, provider, tenant, proxy, migration, or tunnel value reaches tests.
@@ -74,8 +76,8 @@ Owner: QA Validator
 ID: M-08-C03
 Level: Milestone
 Type: Reliability
-Required: Yes
-Status: Pending
+Required: No
+Status: Supporting
 Evidence:
 - Command: versioned integration command followed by database/resource inventory.
 - Expected: generated `mpc_test_*` database, first migration apply count `32`, second apply count `0`, cleanup in `finally`, and unchanged development digest.
@@ -89,8 +91,8 @@ Owner: QA Validator
 ID: M-08-C04
 Level: Milestone
 Type: Security
-Required: Yes
-Status: Pending
+Required: No
+Status: Supporting
 Evidence:
 - Command: lane preflights plus selected real Oracle/provider/browser checks required by dogfood; no provider write.
 - Expected: each result names exactly one of `fake`, `ephemeral-postgres`, `live-oracle`, `live-provider`, or `browser`; no secret/buyer PII is persisted; fake cannot satisfy a real criterion.
@@ -121,8 +123,8 @@ Owner: QA Validator
 ID: M-08-C06
 Level: Milestone
 Type: Compatibility
-Required: Yes
-Status: Pending
+Required: No
+Status: Supporting
 Evidence:
 - Command: native worktree task fixture plus lease/path checks.
 - Expected: worktree starts from named accepted SHA, uses a separate branch/detached task state, reuses normal developer dependencies, and leaves primary checkout unchanged.
@@ -151,8 +153,8 @@ Owner: QA Validator
 ID: M-08-C08
 Level: Milestone
 Type: Architecture
-Required: Yes
-Status: Pending
+Required: No
+Status: Supporting
 Evidence:
 - Command: tracked-file and active-reference audit.
 - Expected: `.brain` has zero tracked paths; architecture, execution, machine facts, wiki, contracts, and code each have one declared owner.
@@ -201,8 +203,8 @@ Owner: QA Validator
 ID: M-08-C11
 Level: Milestone
 Type: Compatibility
-Required: Yes
-Status: Pending
+Required: No
+Status: Supporting
 Evidence:
 - Command: fresh task invokes repo skill; supported task/subagent/read/steer/interrupt/worktree controls are exercised; unsupported controls use labelled fallback.
 - Expected: goal reconciles to MNFS, context compiles, one milestone task and bounded subagent are observable, and no acceptance depends on experimental app-server methods.
@@ -233,8 +235,8 @@ Owner: QA Validator
 ID: M-08-C13
 Level: Milestone
 Type: Architecture
-Required: Yes
-Status: Pending
+Required: No
+Status: Supporting
 Evidence:
 - Command: fixtures for one-module, cross-module, API/SDK, database, and real-provider goals.
 - Expected: every fixture selects one owner, current interfaces/consumers, wrong-legacy decision, smallest durable abstraction, risk level, and exact proof commands; unknown cost/linkage remains explicit.
@@ -269,8 +271,12 @@ Type: QA
 Required: Yes
 Status: Pending
 Evidence:
-- Command: L0-L3 routing fixtures plus current-checkout impact gate.
-- Expected: L0 runs deterministic checks; L1 focused tests plus one review; L2 contract gate plus one fixed-commit review; L3 uses one serial writer followed by parallel independent SPEC/SAFETY and QUALITY reviews on the same fixed commit and the named real target; impact gate executes exactly registered commands selected by the pack.
+- Command: current-checkout impact gate for the selected context file, followed
+  by one final review on the fixed milestone SHA and QA only for named targets.
+- Expected: Feature workers run focused declared checks; Milestone integrates
+  their commits, freezes one SHA, requests one review, and runs only the real
+  database/Oracle/provider/browser target explicitly required by its contract.
+  The impact gate executes exactly registered commands selected by the pack.
 - Actual:
 - Artifact: `.mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/validation-result.md`
 Blocking failure: Low-risk work receives universal ceremony, high-risk work skips required evidence, or undeclared commands execute.
@@ -281,18 +287,14 @@ Owner: QA Validator
 ID: M-08-C16
 Level: Milestone
 Type: Performance
-Required: Yes
-Status: Pending
+Required: No
+Status: Superseded
 Evidence:
-- Command: versioned eval corpus plus fresh-task dogfood and resume.
-- Expected: every case emits pinned verdict/reason/target; the representative
-  bootstrap-plus-selector read set meets the 2,000-token target or carries a
-  justified L2/L3 overflow; unrelated module sources count `0`; every route
-  miss is recorded and resolved or explicitly blocked; no more than one
-  correction batch.
+- Command: none; preserved F-09 artifacts are historical WIP.
+- Expected: not evaluated for V1 completion.
 - Actual:
 - Artifact: `.mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/validation-result.md`
-Blocking failure: Known regression is accepted, context is unrelated or unjustifiably large, or dogfood depends on hidden history.
+Blocking failure: None; synthetic eval dogfood was rejected from active V1 by the operator's simplicity decision.
 Blocking failure observed: No
 Owner: QA Validator
 
@@ -339,8 +341,8 @@ Owner: QA Validator
 
 ## Handoff
 
-- Current status: Replanned and pending F-10, F-05, and F-09 execution.
-- Next owner: Milestone Orchestrator, then independent QA Validator.
-- Next action: Execute F-10 pragmatic cutover.
-- Required files/evidence: accepted feature validations and `validation-result.md` covering required criteria.
+- Current status: Final simple-protocol candidate; F-10/F-05 accepted and F-09 excluded.
+- Next owner: independent Reviewer, then QA Validator.
+- Next action: Validate only the final required set and native Portfolio task creation.
+- Required files/evidence: fixed commit, focused harness checks, session packets, and `validation-result.md` covering the final required criteria.
 - Blockers or open decisions: None.

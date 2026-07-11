@@ -1,13 +1,40 @@
 # Repository-Native Development Harness — Pragmatic V1
 
 ```yaml
-status: approved_replan_v2
+status: approved_final_simple_v1
 owner: Portfolio Orchestrator
 approved_by: operator
 approved_on: 2026-07-11
 supersedes: cold-clone and clean-machine requirements from the 2026-07-10 design
 research: .mnfs/MIS-001-mercado-livre-operating-cockpit/research/R-08-codex-development-harness.md
 ```
+
+## Final Authority — Simple Session Protocol
+
+This section supersedes any later text that implies F-09, a synthetic eval
+corpus, a long state machine, per-feature final review, or M-08 as a permanent
+product blocker.
+
+The active topology is:
+
+```text
+Portfolio -> visible Milestone -> bounded Feature Plan + Execution workers
+Portfolio <- milestone checkpoints <- feature commit/evidence handoffs
+Milestone complete -> one fixed-SHA review -> proportional QA
+```
+
+Portfolio and Milestone communicate through native Codex task messages using
+the packet and checkpoint schemas in `.agents/skills/mpc-goal-harness/SKILL.md`.
+Each dispatch passes file paths, knowledge route IDs, constraints, base SHA,
+proof targets, and callback task ID. It never copies broad documents or relies
+on transcript history. The context file is compiled after Feature Plan and is
+the read authority for Feature Execution.
+
+F-10 provides the optional current-checkout impact gate. F-05 provides context,
+knowledge routes, checkpoints, handoff validation, and optional seam/worktree
+coordination. F-09 remains preserved WIP and is not part of V1 acceptance.
+The next operational proof is creation of a fresh Portfolio task that resumes
+Marketplace Central product development.
 
 ## Objective
 
@@ -261,8 +288,8 @@ M-08 is complete when:
 - the impact gate selects and runs only required deterministic checks;
 - database, Oracle, provider, browser, and provider-write evidence remain
   distinct and real targets are exercised only when required;
-- a fresh task completes the dogfood flow without portfolio transcript;
-- the eval corpus rejects known architecture, evidence, and safety failures;
+- a fresh Portfolio task resumes product development from mission, Git,
+  knowledge routes, and the milestone handoff without transcript replay;
 - no active command or criterion depends on cold clone, clean caches, or local
   clean-machine simulation;
 - architecture, governance, wiki, MNFS, code, and accepted evidence agree.
