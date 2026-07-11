@@ -3,11 +3,11 @@
 ```yaml
 id: F-08
 type: feature-brief
-status: briefed
-owner: Mission Strategist
+status: quick_validation_passed
+owner: Feature Implementer
 parent: M-08
 created: 2026-07-10
-updated: 2026-07-10
+updated: 2026-07-11
 validation_level: QA-3
 lifecycle_scope: feature
 ```
@@ -59,21 +59,25 @@ typed PowerShell modules without changing public command aliases.
 
 - Sentinel external variables, including arbitrary previously unknown names,
   are absent inside the unit child process.
-- Required safe tool variables and repository-local `GOCACHE` are present only
-  in the child; parent values remain unchanged.
+- Required safe tool variables, repository-local `GOCACHE`/`GOMODCACHE`, and
+  network-off Go settings are present only in the child; parent values remain
+  unchanged.
 - Existing lane tests and all root aliases exercise behavior, not name presence,
   and report expected target classes.
 
 ## Execution Artifact Rules
 
-`spec.md`, `plan.md`, and `validation.md` are created during feature execution.
+`spec.md`, `plan.md`, and `validation.md` record the completed feature execution
+and focused fake/contract evidence.
 
 ## Handoff
 
-- Current status: Briefed.
-- Next owner: Feature Implementer after F-07.
-- Next action: Create `spec.md` and `plan.md`, beginning with child-environment
-  isolation RED fixtures.
-- Required files/evidence: process environment fixtures, alias execution,
-  CWD/redaction/GOCACHE tests, and F-02 regression proof.
-- Blockers or open decisions: F-07 execution-lane contract.
+- Current status: `quick_validation_passed`.
+- Next owner: Milestone Orchestrator.
+- Next action: Review fixed F-08 commits and `validation.md`, then accept,
+  reject, or block the feature before F-03/F-04/F-05 use shared harness seams.
+- Required files/evidence: `spec.md`, `plan.md`, `validation.md`, commits
+  `4beb9d7` through the Phase 4 evidence commit, focused suites, normal unit run,
+  and final current-base context pack.
+- Blockers or open decisions: No feature quick-validation blocker. Independent
+  acceptance and F-04 cold dependency provisioning remain downstream.
