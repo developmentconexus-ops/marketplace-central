@@ -3,7 +3,7 @@
 ```yaml
 id: M-08
 type: milestone-validation-contract
-status: planned
+status: in_progress
 owner: Mission Strategist
 parent: MIS-001
 created: 2026-07-10
@@ -22,8 +22,9 @@ QA-3: repository integrity, deterministic integration, and operational harness.
 
 ## Required Outcome
 
-A clean accepted baseline and isolated execution lanes make subsequent
-milestone worktrees reproducible without contaminating dev/live state.
+A clean accepted baseline plus canonical knowledge, compiled context, isolated
+execution, and risk-aware orchestration make subsequent work reproducible
+without hidden history, duplicated truth, or dev/live contamination.
 
 ## Criteria
 
@@ -50,10 +51,85 @@ Required: Yes
 Status: Pending
 Evidence:
 - Command: versioned harness unit command.
-- Expected: exit 0 with `.env`, PostgreSQL, Oracle, provider network, and migration execution disabled.
+- Expected: exit 0 from a child process whose environment contains only the declared unit allowlist; no configured PostgreSQL, Oracle, OAuth, provider, proxy, migration, live, tenant, or tunnel key reaches test subprocesses.
 - Actual:
 - Artifact: `.mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/validation-result.md`
 Blocking failure: Unit execution reads live configuration or external state.
+Blocking failure observed: No
+Owner: QA Validator
+
+## Criterion: Knowledge Authority Cutover
+ID: M-08-C08
+Level: Milestone
+Type: Architecture
+Required: Yes
+Status: Pending
+Evidence:
+- Command: tracked-file and active-reference audit after the authority migration.
+- Expected: `git ls-files -- .brain` returns zero paths; active guidance resolves ADRs to `docs/architecture/decisions/`, execution status to `.mnfs`, and machine-owned facts to `contracts/governance`; historical evidence remains available through Git history.
+- Actual:
+- Artifact: `.mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/validation-result.md`
+Blocking failure: `.brain` remains active, a current unique decision is lost, or two writable sources own the same status/configuration/invariant fact.
+Blocking failure observed: No
+Owner: QA Validator
+
+## Criterion: Governance and Context Contract
+ID: M-08-C09
+Level: Milestone
+Type: Engineering
+Required: Yes
+Status: Pending
+Evidence:
+- Command: governance schema/drift suite plus context compilation from a pinned MNFS feature and base SHA.
+- Expected: every registry validates; semantic drift exits 0; context pack records source hashes, risk, criterion mapping, allowed/forbidden paths, side effects, commands, evidence types, and stop conditions; base/source mutation makes validation exit non-zero.
+- Actual:
+- Artifact: `.mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/validation-result.md`
+Blocking failure: A pack starts from stale, incomplete, contradictory, or unowned context.
+Blocking failure observed: No
+Owner: QA Validator
+
+## Criterion: Allowed Paths and Shared-Seam Leases
+ID: M-08-C10
+Level: Milestone
+Type: Reliability
+Required: Yes
+Status: Pending
+Evidence:
+- Command: isolated lease/path fixture with two competing run IDs plus recovery check.
+- Expected: first run acquires its declared seam; second run exits non-zero without writing; an out-of-scope changed path exits non-zero; stale recovery preserves worktree/files and requires an explicit disposition.
+- Actual:
+- Artifact: `.mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/validation-result.md`
+Blocking failure: Two writers can own one seam, an undeclared path is accepted, or recovery deletes/resets work.
+Blocking failure observed: No
+Owner: QA Validator
+
+## Criterion: Goal and Codex Capability Contract
+ID: M-08-C11
+Level: Milestone
+Type: Compatibility
+Required: Yes
+Status: Pending
+Evidence:
+- Command: fresh-task capability spike followed by repo-skill dry run against a pinned feature.
+- Expected: installed host reports supported project agent, hook, model, reasoning, and permission surfaces; supported controls execute with recorded output; unsupported controls are advisory and the script fallback blocks the same unsafe case; repo skill reconciles active `/goal` into MNFS and emits a schema-valid, hash-current, criterion-complete context pack without hidden transcript.
+- Actual:
+- Artifact: `.mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/validation-result.md`
+Blocking failure: Completion depends on an unsupported Codex surface or hidden conversation state.
+Blocking failure observed: No
+Owner: QA Validator
+
+## Criterion: Harness Regression Corpus
+ID: M-08-C12
+Level: Milestone
+Type: QA
+Required: Yes
+Status: Pending
+Evidence:
+- Command: versioned agent-harness eval suite followed by cold gate from a clean worktree.
+- Expected: all declared positive and negative cases receive the expected deterministic verdict; result records case ID, duration, target type, exit code, and artifact path; no case promotes fake evidence to live.
+- Actual:
+- Artifact: `.mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/validation-result.md`
+Blocking failure: A known architecture, environment, evidence, path, seam, or provider-write regression is accepted.
 Blocking failure observed: No
 Owner: QA Validator
 
@@ -147,6 +223,8 @@ Owner: QA Validator
 - Secret or buyer PII exposure.
 - Worktree created from an unaccepted baseline.
 - Gate that excludes an active Go or npm workspace.
+- Competing knowledge owners, stale context acceptance, or shared-seam conflict.
+- Mandatory reliance on an unsupported Codex capability.
 
 ## Retry Policy
 
@@ -156,9 +234,8 @@ Owner: QA Validator
 
 ## Handoff
 
-- Current status: Pending execution.
+- Current status: In progress; contract expanded after approved harness replan.
 - Next owner: QA Validator after milestone implementation.
-- Next action: Validate M-08-C01 through M-08-C07 against current-state evidence.
+- Next action: Validate M-08-C01 through M-08-C12 against current-state evidence.
 - Required files/evidence: F-*/validation.md and `validation-result.md`.
 - Blockers or open decisions: None during planning.
-
