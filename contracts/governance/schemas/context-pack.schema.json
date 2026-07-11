@@ -49,7 +49,7 @@
       }
     },
     "shared_seams": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" } },
-    "side_effects": { "type": "array", "uniqueItems": true, "items": { "enum": ["none", "repository-write", "database-write", "provider-read", "provider-write", "browser"] } },
+    "side_effects": { "type": "array", "uniqueItems": true, "items": { "enum": ["none", "repository-write", "database-write", "provider-read", "provider-write", "browser", "isolated-cache-write"] } },
     "commands": {
       "type": "array", "minItems": 1, "uniqueItems": true,
       "items": {
@@ -58,8 +58,8 @@
         "properties": {
           "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
           "command": { "type": "string", "minLength": 1 },
-          "target_label": { "enum": ["fake", "ephemeral-postgres", "dev-invariance", "live-oracle", "live-provider", "browser", "provider-write"] },
-          "evidence_type": { "enum": ["ran", "assumed", "could-not-run"] }
+          "target_label": { "enum": ["fake", "external-dependency-registry", "ephemeral-postgres", "dev-invariance", "live-oracle", "live-provider", "browser", "provider-write", "cold-gate"] },
+          "evidence_type": { "enum": ["ran", "assumed", "could-not-run", "provisioning"] }
         }
       }
     },

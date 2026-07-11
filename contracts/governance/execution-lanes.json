@@ -3,6 +3,17 @@
   "registry_id": "execution-lanes",
   "lanes": [
     {
+      "id": "cold-provision",
+      "inherit_parent": false,
+      "network": "live",
+      "database": "disabled",
+      "side_effects": ["isolated-cache-write"],
+      "target_label": "external-dependency-registry",
+      "allowed_runtime_keys": [],
+      "gates": [{ "id": "secret-free", "required": true }, { "id": "isolated-cache", "required": true }],
+      "evidence_class": "provisioning"
+    },
+    {
       "id": "unit",
       "inherit_parent": false,
       "network": "disabled",

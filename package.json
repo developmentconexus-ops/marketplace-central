@@ -31,6 +31,7 @@
     "harness:governance": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command governance",
     "harness:context:compile": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command context-compile",
     "harness:context:validate": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command context-validate"
+    ,"harness:cold": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command cold"
   },
   "dependencies": {},
   "devDependencies": {

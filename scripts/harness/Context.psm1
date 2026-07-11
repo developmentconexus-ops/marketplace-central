@@ -113,8 +113,8 @@ function Import-FeatureWorkContract {
 function Expand-ContextCommandTemplate {
   param([string]$Template, [string]$BaseSha, [string]$ContextPath, [string]$FeaturePath)
   $variables = @([regex]::Matches($Template, '\{(?<name>[a-z_]+)\}') | ForEach-Object { $_.Groups['name'].Value } | Sort-Object -Unique)
-  if (@($variables | Where-Object { $_ -notin @('base_sha', 'context_path', 'feature_path') }).Count -gt 0) { return $null }
-  $expanded = $Template.Replace('{base_sha}', $BaseSha).Replace('{context_path}', $ContextPath).Replace('{feature_path}', $FeaturePath)
+  if (@($variables | Where-Object { $_ -notin @('base_sha', 'candidate_sha', 'context_path', 'feature_path') }).Count -gt 0) { return $null }
+  $expanded = $Template.Replace('{base_sha}', $BaseSha).Replace('{candidate_sha}', $BaseSha).Replace('{context_path}', $ContextPath).Replace('{feature_path}', $FeaturePath)
   if ($expanded -match '\{[^{}]+\}') { return $null }
   $expanded
 }
@@ -218,7 +218,8 @@ function New-CanonicalContextPack {
     if ($null -eq $expanded) { return New-ContextResult $false 'CTX_FEATURE_INVALID' ([string]$command.id) }
     $lane = $laneById[[string]$command.lane_id]
     $usedLanes.Add($lane)
-    $commands.Add([ordered]@{ id = [string]$command.id; command = $expanded; target_label = [string]$lane.target_label; evidence_type = 'assumed' })
+    $targetLabel = if ([string]$command.id -like 'cold-real-*') { 'cold-gate' } else { [string]$lane.target_label }
+    $commands.Add([ordered]@{ id = [string]$command.id; command = $expanded; target_label = $targetLabel; evidence_type = 'assumed' })
   }
   $forbiddenEffects = @($contract.side_effects.forbidden)
   if ('external-network' -in $forbiddenEffects -and @($usedLanes | Where-Object network -eq 'live').Count -gt 0) { return New-ContextResult $false 'CTX_SIDE_EFFECT_CONFLICT' 'external-network' }

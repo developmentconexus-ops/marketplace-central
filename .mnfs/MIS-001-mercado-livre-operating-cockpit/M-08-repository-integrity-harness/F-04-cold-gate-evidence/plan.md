@@ -78,15 +78,17 @@ fixed-commit review; dispatch a fresh build session.
     {"id":"evidence-contract","command_template":"pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/tests/cold-gate-evidence.tests.ps1","lane_id":"unit","expected_exit_code":0},
     {"id":"snapshot-contract","command_template":"pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/tests/cold-gate-snapshot.tests.ps1","lane_id":"unit","expected_exit_code":0},
     {"id":"cold-regression","command_template":"pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/tests/cold-gate-evidence.tests.ps1; pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/tests/cold-gate-snapshot.tests.ps1","lane_id":"unit","expected_exit_code":0}
+    ,{"id":"cold-real-1","command_template":"npm run harness:cold -- --CandidateSha {candidate_sha}","lane_id":"unit","expected_exit_code":0}
+    ,{"id":"cold-real-2","command_template":"npm run harness:cold -- --CandidateSha {candidate_sha}","lane_id":"unit","expected_exit_code":0}
   ],
   "criteria":[
-    {"id":"F04-AC01","milestone_criterion_id":"M-08-C05","command_ids":["evidence-contract","cold-regression"]},
-    {"id":"F04-AC02","milestone_criterion_id":"M-08-C05","command_ids":["snapshot-contract"]},
-    {"id":"F04-AC03","milestone_criterion_id":"M-08-C02","command_ids":["snapshot-contract","cold-regression"]},
-    {"id":"F04-AC04","milestone_criterion_id":"M-08-C04","command_ids":["evidence-contract","cold-regression"]},
+    {"id":"F04-AC01","milestone_criterion_id":"M-08-C05","command_ids":["evidence-contract","cold-regression","cold-real-1","cold-real-2"]},
+    {"id":"F04-AC02","milestone_criterion_id":"M-08-C05","command_ids":["snapshot-contract","cold-real-1","cold-real-2"]},
+    {"id":"F04-AC03","milestone_criterion_id":"M-08-C02","command_ids":["snapshot-contract","cold-regression","cold-real-1"]},
+    {"id":"F04-AC04","milestone_criterion_id":"M-08-C04","command_ids":["evidence-contract","cold-regression","cold-real-1","cold-real-2"]},
     {"id":"F04-AC05","milestone_criterion_id":"M-08-C05","command_ids":["evidence-contract","cold-regression"]},
-    {"id":"F04-AC06","milestone_criterion_id":"M-08-C03","command_ids":["snapshot-contract","cold-regression"]},
-    {"id":"F04-AC07","milestone_criterion_id":"M-08-C09","command_ids":["snapshot-contract","cold-regression"]}
+    {"id":"F04-AC06","milestone_criterion_id":"M-08-C03","command_ids":["snapshot-contract","cold-regression","cold-real-1","cold-real-2"]},
+    {"id":"F04-AC07","milestone_criterion_id":"M-08-C09","command_ids":["snapshot-contract","cold-regression","cold-real-1","cold-real-2"]}
   ],
   "stop_conditions":[
     {"code":"private-provisioning","condition":"Cold dependency or image provisioning requires credentials, proxy secrets, or undeclared runtime configuration."},

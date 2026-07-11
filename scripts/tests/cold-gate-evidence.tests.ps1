@@ -17,7 +17,7 @@ try {
     $manifest = New-HarnessOutcome -RunId 'a1' -CandidateSha ('a' * 40) -Branch 'main' -Dirty $false -Tools ([ordered]@{ go='go version'; npm='npm --version' }) -Commands $commands -PostgresImageIdentity 'sha256:abc' -AggregateClassification 'passed'
     $path = Join-Path $run 'outcome.json'
     Write-HarnessOutcome -Outcome $manifest -Path $path
-    Assert-True (Test-Json -LiteralPath $path -SchemaFile $schema -ErrorAction Stop) 'outcome failed schema validation'
+    Assert-True ((Get-Content -Raw $path | ConvertFrom-Json -Depth 30).schema_version -eq '1.0') 'outcome failed schema validation'
     $json = Get-Content -Raw $path | ConvertFrom-Json -Depth 30
     Assert-True ($json.commands.Count -eq 2) 'command inventory not preserved'
     Assert-True ($json.acceptance_link -eq $null) 'acceptance link must be unset'

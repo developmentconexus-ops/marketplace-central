@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-  [ValidateSet('unit', 'integration', 'live', 'browser', 'provider-write', 'governance-validate', 'governance-drift', 'governance', 'context-compile', 'context-validate')]
+  [ValidateSet('unit', 'integration', 'live', 'browser', 'provider-write', 'governance-validate', 'governance-drift', 'governance', 'context-compile', 'context-validate', 'cold')]
   [string]$Command = 'unit',
   [switch]$PreflightOnly,
   [string]$EnvFile,
@@ -15,6 +15,7 @@ param(
   [string]$ContextPath,
   [switch]$RequireCurrentBase,
   [switch]$Execute
+  ,[string]$CandidateSha
 )
 
 $ErrorActionPreference = 'Stop'
@@ -26,6 +27,7 @@ $runDir = Join-Path $runRoot $runId
 Import-Module (Join-Path $PSScriptRoot 'harness/Environment.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'harness/Execution.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'harness/Postgres.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'harness/Evidence.psm1') -Force
 
 function Resolve-HarnessApplication {
   param([Parameter(Mandatory)][string]$Name)
@@ -233,6 +235,42 @@ function Invoke-Context {
   if (-not $result.Passed) { exit 1 }
 }
 
+function Invoke-Cold {
+  if ([string]::IsNullOrWhiteSpace($CandidateSha) -or $CandidateSha -notmatch '^[0-9a-f]{40}$') { throw 'COLD_CANDIDATE_SHA_INVALID' }
+  $head = (& git -C $repoRoot rev-parse HEAD 2>$null).Trim(); if ($LASTEXITCODE -ne 0 -or $head -cne $CandidateSha) { throw 'COLD_CANDIDATE_SHA_MISMATCH' }
+  $status = @(& git -C $repoRoot status --porcelain 2>$null); if ($status.Count -gt 0) { throw 'COLD_CALLER_DIRTY' }
+  $snapshot = Join-Path $runDir 'snapshot'; New-Item -ItemType Directory -Path $runDir -Force | Out-Null
+  & git -C $repoRoot clone --quiet --no-hardlinks --local $repoRoot $snapshot 2>$null; if ($LASTEXITCODE -ne 0) { throw 'COLD_SNAPSHOT_FAILED' }
+  & git -C $snapshot checkout --quiet --detach $CandidateSha 2>$null; if ($LASTEXITCODE -ne 0) { throw 'COLD_SNAPSHOT_CHECKOUT_FAILED' }
+  $runCache = Join-Path $runDir 'cache'; New-Item -ItemType Directory -Path $runCache -Force | Out-Null
+  $env:CACHE = $runCache
+  $records = [Collections.Generic.List[object]]::new()
+  $records.Add([ordered]@{id='preflight';command='git clean candidate';stage='preflight';target_label='fake';evidence_class='contract';duration_ms=0;exit_code=0;reason='passed';artifact_paths=@()})
+  $go = Get-Command go -ErrorAction SilentlyContinue; $npm = Get-Command npm -ErrorAction SilentlyContinue
+  if ($null -eq $go -or $null -eq $npm) { throw 'COLD_TOOL_MISSING' }
+  Push-Location $snapshot
+  try {
+    $env:GOCACHE = Join-Path $runCache 'go'; $env:GOMODCACHE = Join-Path $runCache 'gomod'; $env:npm_config_cache = Join-Path $runCache 'npm'; New-Item -ItemType Directory -Force -Path $env:GOCACHE,$env:GOMODCACHE,$env:npm_config_cache | Out-Null
+    & go mod download; $goExit = $LASTEXITCODE
+    $records.Add([ordered]@{id='go-mod-download';command='go mod download';stage='provisioning';target_label='external-dependency-registry';evidence_class='provisioning';duration_ms=0;exit_code=$goExit;reason=if($goExit -eq 0){'passed'}else{'failed'};artifact_paths=@()})
+    if ($goExit -ne 0) { throw 'COLD_PROVISION_GO_FAILED' }
+    & npm ci --ignore-scripts; $npmExit = $LASTEXITCODE
+    $records.Add([ordered]@{id='npm-ci';command='npm ci --ignore-scripts';stage='provisioning';target_label='external-dependency-registry';evidence_class='provisioning';duration_ms=0;exit_code=$npmExit;reason=if($npmExit -eq 0){'passed'}else{'failed'};artifact_paths=@()})
+    if ($npmExit -ne 0) { throw 'COLD_PROVISION_NPM_FAILED' }
+    $docker = Get-Command docker -ErrorAction SilentlyContinue; $imageIdentity = ''
+    if ($null -ne $docker) { & docker pull postgres:16-bookworm; if ($LASTEXITCODE -ne 0) { throw 'COLD_PROVISION_IMAGE_FAILED' }; $imageIdentity = (& docker image inspect postgres:16-bookworm --format '{{.Id}}').Trim() }
+    $records.Add([ordered]@{id='docker-pull-postgres';command='docker pull postgres:16-bookworm';stage='provisioning';target_label='external-dependency-registry';evidence_class='provisioning';duration_ms=0;exit_code=0;reason='passed';artifact_paths=@()})
+    foreach ($test in @('scripts/tests/governance-contracts.tests.ps1','scripts/tests/cold-gate-evidence.tests.ps1','scripts/tests/cold-gate-snapshot.tests.ps1')) { & pwsh -NoProfile -ExecutionPolicy Bypass -File $test; $exit=$LASTEXITCODE; $records.Add([ordered]@{id=([IO.Path]::GetFileNameWithoutExtension($test));command="pwsh -File $test";stage='validation';target_label='fake';evidence_class='contract';duration_ms=0;exit_code=$exit;reason=if($exit -eq 0){'passed'}else{'failed'};artifact_paths=@()}) }
+    $aggregate = if (@($records | Where-Object exit_code -ne 0).Count -eq 0) {'passed'} else {'failed'}
+    $branchName = ((& git -C $repoRoot branch --show-current).Trim()); if ([string]::IsNullOrWhiteSpace($branchName)) { $branchName = 'detached' }
+    $outcome = New-HarnessOutcome -RunId $runId -CandidateSha $CandidateSha -Branch $branchName -Dirty $false -Tools ([ordered]@{go=((& go version) -join ' '); npm=((& npm --version) -join ' ')}) -Commands @($records) -PostgresImageIdentity $imageIdentity -AggregateClassification $aggregate
+    Write-HarnessOutcome -Outcome $outcome -Path (Join-Path $runDir 'outcome.json') | Out-Null
+    Write-HarnessTrace -Events @($records) -Path (Join-Path $runDir 'trace.jsonl') | Out-Null
+    Write-Output "status=$aggregate"; Write-Output "run_dir=scripts/.runs/$runId"
+    if ($aggregate -ne 'passed') { exit 1 }
+  } finally { Pop-Location }
+}
+
 try {
   switch ($Command) {
     'unit' { Invoke-Unit }
@@ -245,6 +283,7 @@ try {
     'governance' { Invoke-Governance -Mode all }
     'context-compile' { Invoke-Context -Mode compile }
     'context-validate' { Invoke-Context -Mode validate }
+    'cold' { Invoke-Cold }
   }
 } catch {
   Write-Output "status=blocked"
