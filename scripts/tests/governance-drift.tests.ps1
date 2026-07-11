@@ -44,7 +44,25 @@ function New-PositiveFixture {
   }
   foreach ($readerPath in $readerKeys.Keys) {
     $keys = @($readerKeys[$readerPath] | Sort-Object -Unique)
-    if ($readerPath -like '*.go') {
+    if ($readerPath -eq 'scripts/harness/Environment.psm1') {
+      Write-FixtureFile $root $readerPath @'
+$script:SafeToolKeys = @('PATH')
+function Get-HarnessRegistry { param($RepositoryRoot, $Name) @{} }
+function Get-ProcessRuntimeValues {
+  param($Lane)
+  foreach ($allowedKey in @($Lane.allowed_runtime_keys)) {
+    $name = [string]$allowedKey
+    $value = [Environment]::GetEnvironmentVariable($name, 'Process')
+  }
+}
+function New-HarnessChildEnvironment {
+  $runtime = Get-HarnessRegistry -RepositoryRoot $root -Name 'runtime-config'
+  foreach ($key in $script:SafeToolKeys) {
+    $value = [Environment]::GetEnvironmentVariable($key, 'Process')
+  }
+}
+'@
+    } elseif ($readerPath -like '*.go') {
       $reads = ($keys | ForEach-Object { "var _ = os.Getenv(`"$_`")" }) -join "`n"
       Write-FixtureFile $root $readerPath "package fixture`nimport `"os`"`n$reads`n"
     } elseif ($readerPath -like '*.ts' -or $readerPath -like '*.tsx') {
@@ -116,6 +134,17 @@ try {
   $dynamicReader = New-PositiveFixture; $fixtures.Add($dynamicReader)
   Write-FixtureFile $dynamicReader 'apps/server_core/internal/platform/config/dynamic.go' 'package config; import "os"; func read(key string) string { return os.Getenv(key) }'
   Assert-FailureCode $dynamicReader 'RCFG_DYNAMIC_READER_UNBOUNDED'
+
+  $staleRegistryReader = New-PositiveFixture; $fixtures.Add($staleRegistryReader)
+  $registryReaderPath = Join-Path $staleRegistryReader 'scripts/harness/Environment.psm1'
+  $registryReader = Get-Content -Raw -LiteralPath $registryReaderPath
+  $registryReader = $registryReader.Replace("    `$value = [Environment]::GetEnvironmentVariable(`$name, 'Process')", "    `$value = ''")
+  Set-Content -LiteralPath $registryReaderPath -Value $registryReader -Encoding utf8NoBOM
+  Assert-FailureCode $staleRegistryReader 'RCFG_DYNAMIC_READER_UNBOUNDED'
+
+  $extraRegistryReader = New-PositiveFixture; $fixtures.Add($extraRegistryReader)
+  Add-Content -LiteralPath (Join-Path $extraRegistryReader 'scripts/harness/Environment.psm1') -Value "[Environment]::GetEnvironmentVariable(`$evil, 'Process') | Out-Null" -Encoding utf8NoBOM
+  Assert-FailureCode $extraRegistryReader 'RCFG_DYNAMIC_READER_UNBOUNDED'
 
   $aliasCollision = New-PositiveFixture; $fixtures.Add($aliasCollision)
   $runtimePath = Join-Path $aliasCollision 'contracts/governance/runtime-config.json'

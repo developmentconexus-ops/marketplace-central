@@ -37,10 +37,15 @@ function Resolve-HarnessApplication {
 }
 
 function Get-HarnessNpmInvocation {
-  $nodePath = Resolve-HarnessApplication -Name 'node.exe'
-  $npmCliPath = Join-Path (Split-Path -Parent $nodePath) 'node_modules/npm/bin/npm-cli.js'
+  $npmPath = Resolve-HarnessApplication -Name 'npm'
+  if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) {
+    return [pscustomobject]@{ FilePath = $npmPath; ArgumentPrefix = @() }
+  }
+
+  $nodePath = Resolve-HarnessApplication -Name 'node'
+  $npmCliPath = Join-Path (Split-Path -Parent $npmPath) 'node_modules/npm/bin/npm-cli.js'
   if (-not (Test-Path -LiteralPath $npmCliPath -PathType Leaf)) { throw 'HEXEC_FILE_NOT_FOUND tool=npm' }
-  return [pscustomobject]@{ FilePath = $nodePath; CliPath = [IO.Path]::GetFullPath($npmCliPath) }
+  return [pscustomobject]@{ FilePath = $nodePath; ArgumentPrefix = @([IO.Path]::GetFullPath($npmCliPath)) }
 }
 
 function Write-HarnessProcessResult {
@@ -60,7 +65,7 @@ function Write-Summary {
 }
 
 function Invoke-Unit {
-  $goPath = Resolve-HarnessApplication -Name 'go.exe'
+  $goPath = Resolve-HarnessApplication -Name 'go'
   $npm = Get-HarnessNpmInvocation
   $childEnvironment = New-HarnessChildEnvironment -RepositoryRoot $repoRoot -LaneId 'unit'
   $goWorkingDirectory = [IO.Path]::GetFullPath((Join-Path $repoRoot 'apps/server_core'))
@@ -78,7 +83,7 @@ function Invoke-Unit {
   Write-HarnessProcessResult $go
   if ($go.ExitCode -ne 0) { throw "unit Go tests failed reason=$($go.ReasonCode) exit_code=$($go.ExitCode)" }
 
-  $webArguments = @($npm.CliPath, 'run', 'test', '--workspace', '@marketplace-central/web', '--', '--run')
+  $webArguments = @($npm.ArgumentPrefix) + @('run', 'test', '--workspace', '@marketplace-central/web', '--', '--run')
   $webRequest = New-HarnessProcessRequest -FilePath $npm.FilePath -ArgumentList $webArguments -WorkingDirectory $repoRoot -Environment $childEnvironment -TimeoutSeconds 1200
   $web = Invoke-HarnessProcess -Request $webRequest
   Write-HarnessProcessResult $web
@@ -100,7 +105,11 @@ function Invoke-Integration {
 }
 
 function Invoke-Live {
-  if ($EnvFile) { $path = $EnvFile } else { $path = Join-Path $repoRoot '.env' }
+  if ($EnvFile) {
+    $path = if ([IO.Path]::IsPathFullyQualified($EnvFile)) { [IO.Path]::GetFullPath($EnvFile) } else { [IO.Path]::GetFullPath((Join-Path $repoRoot $EnvFile)) }
+  } else {
+    $path = Join-Path $repoRoot '.env'
+  }
   if ($Target -notin @('oracle', 'provider')) { throw 'live target must be oracle or provider' }
   $laneId = if ($Target -eq 'oracle') { 'live-oracle' } else { 'live-provider-read' }
   $childEnvironment = New-HarnessChildEnvironment -RepositoryRoot $repoRoot -LaneId $laneId -EnvFile $path

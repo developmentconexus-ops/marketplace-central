@@ -1,5 +1,9 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$script:NonSensitiveEnvironmentKeys = @(
+  'SystemRoot', 'WINDIR', 'ComSpec', 'PATH', 'PATHEXT', 'TEMP', 'TMP',
+  'GOCACHE', 'GOMODCACHE', 'GOPROXY', 'GOSUMDB'
+)
 
 class HarnessProcessRequest {
   [string]$FilePath
@@ -71,7 +75,16 @@ function New-HarnessProcessRequest {
   $request.Environment = [System.Collections.Generic.Dictionary[string,string]]::new([StringComparer]::OrdinalIgnoreCase)
   foreach ($key in $Environment.Keys) { $request.Environment[[string]$key] = [string]$Environment[$key] }
   $request.TimeoutSeconds = $TimeoutSeconds
-  $request.RedactionCandidates = @($RedactionCandidates | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+  $candidates = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+  foreach ($candidate in @($RedactionCandidates)) {
+    if (-not [string]::IsNullOrWhiteSpace($candidate)) { [void]$candidates.Add([string]$candidate) }
+  }
+  foreach ($key in $request.Environment.Keys) {
+    if ($key -in $script:NonSensitiveEnvironmentKeys) { continue }
+    $value = [string]$request.Environment[$key]
+    if (-not [string]::IsNullOrWhiteSpace($value)) { [void]$candidates.Add($value) }
+  }
+  $request.RedactionCandidates = @($candidates)
   return $request
 }
 

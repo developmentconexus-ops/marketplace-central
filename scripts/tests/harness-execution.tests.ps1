@@ -64,6 +64,15 @@ Assert-True (($redacted.Stdout + $redacted.Stderr) -notmatch [regex]::Escape($ca
 Assert-True (($redacted.Stdout + $redacted.Stderr) -notmatch [regex]::Escape([uri]::EscapeDataString($candidate))) 'URI-encoded credential escaped redaction'
 Assert-True (($redacted.Stdout + $redacted.Stderr) -match '\[redacted\]') 'redaction marker missing'
 
+$implicitCandidate = 'implicit:@/' + [guid]::NewGuid().ToString('N')
+$implicitEnvironment = [System.Collections.Generic.Dictionary[string,string]]::new($baseEnvironment, [StringComparer]::OrdinalIgnoreCase)
+$implicitEnvironment['HARNESS_TEST_CANDIDATE'] = $implicitCandidate
+$implicitRequest = New-HarnessProcessRequest -FilePath $node -ArgumentList @($probe, 'redact') -WorkingDirectory $repoRoot -Environment $implicitEnvironment -TimeoutSeconds 10
+$implicitRedacted = Invoke-HarnessProcess -Request $implicitRequest
+Assert-True ($implicitRedacted.Stdout -notmatch [regex]::Escape($implicitCandidate)) 'standalone stdout leaked an implicit environment candidate'
+Assert-True ($implicitRedacted.Stderr -notmatch [regex]::Escape($implicitCandidate)) 'standalone stderr leaked an implicit environment candidate'
+Assert-True (($implicitRedacted.Stdout + $implicitRedacted.Stderr) -match '\[redacted\]') 'implicit environment redaction marker missing'
+
 $marker = Join-Path ([IO.Path]::GetTempPath()) ('harness-tree-' + [guid]::NewGuid().ToString('N'))
 $timeoutRequest = New-HarnessProcessRequest -FilePath $node -ArgumentList @($probe, 'tree', $marker) -WorkingDirectory $repoRoot -Environment $baseEnvironment -TimeoutSeconds 1
 $timedOut = Invoke-HarnessProcess -Request $timeoutRequest

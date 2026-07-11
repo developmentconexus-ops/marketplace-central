@@ -145,6 +145,21 @@ function Test-GovernanceContracts {
       }
     }
   }
+  $laneRuntimeKeys = @($lanes.allowed_runtime_keys | ForEach-Object { [string]$_ } | Sort-Object -Unique)
+  $registryRuntimeKeys = @(
+    $runtimeKeys |
+      Where-Object { @($_.readers | Where-Object kind -eq 'registry').Count -gt 0 } |
+      ForEach-Object { [string]$_.key } |
+      Sort-Object -Unique
+  )
+  if (($laneRuntimeKeys -join '|') -ne ($registryRuntimeKeys -join '|')) {
+    $issues.Add((New-PolicyIssue 'RCFG_REGISTRY_READER_COVERAGE' 'lane-runtime-keys' 'contracts/governance/runtime-config.json'))
+  }
+  foreach ($key in @($runtimeKeys | Where-Object { $_.key -in $laneRuntimeKeys })) {
+    if (@($key.readers | Where-Object { $_.kind -eq 'registry' -and $_.status -eq 'approved' }).Count -ne 1) {
+      $issues.Add((New-PolicyIssue 'RCFG_REGISTRY_READER_COVERAGE' ([string]$key.key) 'contracts/governance/runtime-config.json'))
+    }
+  }
 
   $invariants = @($documents.invariants.invariants)
   if (-not (Test-UniqueIds $invariants) -or -not (Test-UniqueIds @($documents.invariants.temporary_exceptions))) {
@@ -216,12 +231,53 @@ function Get-EnvironmentReads {
 function Test-RegistryDrivenEnvironmentReader {
   param([Parameter(Mandatory)][string]$Content)
 
-  return (
-    $Content -match 'Get-HarnessRegistry' -and
-    $Content -match 'runtime-config' -and
-    $Content -match '\.allowed_runtime_keys' -and
-    $Content -match 'GetEnvironmentVariable\(\s*\$[A-Za-z_][A-Za-z0-9_]*\s*,\s*[''\"]Process[''\"]\s*\)'
-  )
+  $tokens = $null
+  $parseErrors = $null
+  $ast = [System.Management.Automation.Language.Parser]::ParseInput($Content, [ref]$tokens, [ref]$parseErrors)
+  if (@($parseErrors).Count -gt 0) { return $false }
+
+  $functions = @($ast.FindAll({
+    param($node)
+    $node -is [System.Management.Automation.Language.FunctionDefinitionAst]
+  }, $true))
+  $runtimeFunctions = @($functions | Where-Object Name -eq 'Get-ProcessRuntimeValues')
+  $childFunctions = @($functions | Where-Object Name -eq 'New-HarnessChildEnvironment')
+  if ($runtimeFunctions.Count -ne 1 -or $childFunctions.Count -ne 1) { return $false }
+  $runtimeFunction = $runtimeFunctions[0]
+  $childFunction = $childFunctions[0]
+
+  $dynamicLookups = @($ast.FindAll({
+    param($node)
+    $node -is [System.Management.Automation.Language.InvokeMemberExpressionAst] -and
+      [string]$node.Member.Value -eq 'GetEnvironmentVariable' -and
+      $node.Extent.Text -match '\(\s*\$[A-Za-z_][A-Za-z0-9_]*\s*,'
+  }, $true))
+  $runtimeLookups = @($dynamicLookups | Where-Object {
+    $_.Extent.StartOffset -ge $runtimeFunction.Extent.StartOffset -and $_.Extent.EndOffset -le $runtimeFunction.Extent.EndOffset
+  })
+  $childLookups = @($dynamicLookups | Where-Object {
+    $_.Extent.StartOffset -ge $childFunction.Extent.StartOffset -and $_.Extent.EndOffset -le $childFunction.Extent.EndOffset
+  })
+  if ($dynamicLookups.Count -ne 2 -or $runtimeLookups.Count -ne 1 -or $childLookups.Count -ne 1) { return $false }
+  if ($runtimeLookups[0].Extent.Text -notmatch '^\[Environment\]::GetEnvironmentVariable\(\s*\$name\s*,\s*[''\"]Process[''\"]\s*\)$') { return $false }
+  if ($childLookups[0].Extent.Text -notmatch '^\[Environment\]::GetEnvironmentVariable\(\s*\$key\s*,\s*[''\"]Process[''\"]\s*\)$') { return $false }
+
+  $runtimeLoops = @($runtimeFunction.FindAll({
+    param($node)
+    $node -is [System.Management.Automation.Language.ForEachStatementAst] -and
+      $node.Variable.VariablePath.UserPath -eq 'allowedKey' -and
+      ($node.Condition.Extent.Text -replace '\s', '') -eq '@($Lane.allowed_runtime_keys)'
+  }, $true))
+  $safeToolLoops = @($childFunction.FindAll({
+    param($node)
+    $node -is [System.Management.Automation.Language.ForEachStatementAst] -and
+      $node.Variable.VariablePath.UserPath -eq 'key' -and
+      ($node.Condition.Extent.Text -replace '\s', '') -eq '$script:SafeToolKeys'
+  }, $true))
+  if ($runtimeLoops.Count -ne 1 -or $safeToolLoops.Count -ne 1) { return $false }
+  if ($runtimeFunction.Extent.Text -notmatch '\$name\s*=\s*\[string\]\s*\$allowedKey') { return $false }
+  if ($childFunction.Extent.Text -notmatch 'Get-HarnessRegistry\s+-RepositoryRoot\s+\$root\s+-Name\s+[''"]runtime-config[''"]') { return $false }
+  return $true
 }
 
 function Test-GovernanceDrift {
@@ -349,8 +405,7 @@ function Test-GovernanceDrift {
         $issues.Add((New-PolicyIssue 'RCFG_READER_MISSING' ([string]$key.key) ([string]$reader.path))); continue
       }
       $content = Get-Content -Raw -LiteralPath $fullPath
-      $hasDynamicLookup = $content -match 'os\.(?:Getenv|LookupEnv)\(\s*(?!["''])[^)]+\)' -or $content -match 'GetEnvironmentVariable\(\s*\$[A-Za-z_]'
-      if ($reader.kind -eq 'registry' -and ($reader.status -ne 'approved' -or ($hasDynamicLookup -and -not (Test-RegistryDrivenEnvironmentReader -Content $content)))) {
+      if ($reader.kind -eq 'registry' -and ($reader.status -ne 'approved' -or -not (Test-RegistryDrivenEnvironmentReader -Content $content))) {
         $issues.Add((New-PolicyIssue 'RCFG_DYNAMIC_READER_UNBOUNDED' ([string]$key.key) ([string]$reader.path)))
       } elseif ($reader.kind -ne 'registry' -and $content -notmatch "(?<![A-Z0-9_])$([regex]::Escape([string]$key.key))(?![A-Z0-9_])") {
         $issues.Add((New-PolicyIssue 'RCFG_READER_MISSING' ([string]$key.key) ([string]$reader.path)))

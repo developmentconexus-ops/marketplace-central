@@ -135,7 +135,6 @@ try {
 
   $registryDrivenKeys = @(
     $lanes.lanes |
-      Where-Object { $_.id -in @('live-oracle', 'live-provider-read') } |
       ForEach-Object allowed_runtime_keys |
       Sort-Object -Unique
   )
@@ -146,6 +145,13 @@ try {
     })
     Assert-True ($reader.Count -eq 1) "registry-driven environment reader missing: $keyName"
   }
+  $declaredRegistryKeys = @(
+    $runtime.keys |
+      Where-Object { @($_.readers | Where-Object kind -eq 'registry').Count -gt 0 } |
+      ForEach-Object key |
+      Sort-Object -Unique
+  )
+  Assert-True (($declaredRegistryKeys -join '|') -eq ($registryDrivenKeys -join '|')) 'registry readers do not exactly cover all lane runtime keys'
 
   $invalidRegistryReader = $runtime | ConvertTo-Json -Depth 30 | ConvertFrom-Json -AsHashtable
   $invalidReader = @($invalidRegistryReader.keys | ForEach-Object readers | Where-Object kind -eq 'registry')[0]

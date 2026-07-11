@@ -19,12 +19,23 @@ function Assert-Result($Result, [int]$ExitCode, [string]$Needle, [string]$Name) 
 
 New-Item -ItemType Directory -Path $foreign -Force | Out-Null
 $unknownKey = 'HARNESS_UNKNOWN_' + [guid]::NewGuid().ToString('N')
-$contaminatedKeys = @($unknownKey, 'MC_DATABASE_URL')
+$lanes = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'contracts/governance/execution-lanes.json') | ConvertFrom-Json
+$liveOracleKeys = @((@($lanes.lanes | Where-Object id -eq 'live-oracle')[0].allowed_runtime_keys) | Sort-Object -Unique)
+$contaminatedKeys = @(@($unknownKey, 'MC_DATABASE_URL') + $liveOracleKeys | Sort-Object -Unique)
 $before = @{}
+$relativeEnvDirectory = Join-Path $repoRoot ('scripts/.runs/alias-env-' + [guid]::NewGuid().ToString('N'))
+$relativeEnvPath = [IO.Path]::GetRelativePath($repoRoot, (Join-Path $relativeEnvDirectory 'oracle.env')).Replace('\', '/')
 try {
   foreach ($key in $contaminatedKeys) { $before[$key] = [Environment]::GetEnvironmentVariable($key, 'Process') }
   [Environment]::SetEnvironmentVariable($unknownKey, 'fixture-contamination', 'Process')
   [Environment]::SetEnvironmentVariable('MC_DATABASE_URL', 'fixture-contamination', 'Process')
+  foreach ($key in $liveOracleKeys) { [Environment]::SetEnvironmentVariable($key, $null, 'Process') }
+  New-Item -ItemType Directory -Path $relativeEnvDirectory -Force | Out-Null
+  @(
+    'MPC_ORACLE_USERNAME=relative-user',
+    'MPC_ORACLE_PASSWORD=relative-password',
+    'MPC_ORACLE_CONNECT_STRING=relative-connect'
+  ) | Set-Content -LiteralPath (Join-Path $relativeEnvDirectory 'oracle.env') -Encoding utf8
   Assert-Result (Invoke-FromForeign 'harness:unit' @('-PreflightOnly')) 0 'target=fake' 'unit alias'
   Assert-Result (Invoke-FromForeign 'harness:integration' @('-PreflightOnly')) 1 'F-03' 'integration alias'
   Assert-Result (Invoke-FromForeign 'harness:live' @('-PreflightOnly', '-EnvFile', (Join-Path $foreign 'missing.env'))) 1 'target=live-oracle' 'live alias'
@@ -40,10 +51,17 @@ try {
   try {
     $direct = & pwsh -NoProfile -ExecutionPolicy Bypass -File $harness -Command unit -PreflightOnly 2>&1
     if ($LASTEXITCODE -ne 0 -or ($direct -join "`n") -notmatch 'target=fake') { throw 'absolute dispatcher invocation failed from foreign CWD' }
+    $directLive = & pwsh -NoProfile -ExecutionPolicy Bypass -File $harness -Command live -Target oracle -PreflightOnly -EnvFile $relativeEnvPath 2>&1
+    if ($LASTEXITCODE -ne 0 -or ($directLive -join "`n") -notmatch 'target=live-oracle') { throw 'relative EnvFile did not resolve from repository root' }
   } finally { Pop-Location }
 } finally {
   foreach ($key in $before.Keys) { [Environment]::SetEnvironmentVariable($key, $before[$key], 'Process') }
+  Remove-Item -LiteralPath $relativeEnvDirectory -Recurse -Force -ErrorAction SilentlyContinue
   Remove-Item -LiteralPath $foreign -Recurse -Force -ErrorAction SilentlyContinue
 }
+
+$dispatcherSource = Get-Content -Raw -LiteralPath $harness
+if ($dispatcherSource -match 'Resolve-HarnessApplication\s+-Name\s+[''"](?:go|node)\.exe[''"]') { throw 'dispatcher tool discovery is Windows-only' }
+if ($dispatcherSource -notmatch 'Split-Path\s+-Parent\s+\$npmPath') { throw 'Windows npm CLI is not derived from the npm launcher location' }
 
 Write-Output 'PASS harness alias tests'
