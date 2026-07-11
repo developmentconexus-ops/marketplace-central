@@ -110,7 +110,9 @@ function Invoke-Integration {
   Write-Output "migrations_first=$($result.MigrationsAppliedFirst)"
   Write-Output "migrations_second=$($result.MigrationsAppliedSecond)"
   Write-Output "resource_count=$(@($result.ResourceInventory).Count)"
+  Write-Output "port=$($result.HostPort)"
   if ($result.ExitCode -ne 0) {
+    if (-not [string]::IsNullOrWhiteSpace([string]$result.FailureDiagnostic)) { Write-Output $result.FailureDiagnostic }
     $reasons = @($result.PrimaryReasonCode) + @($result.CleanupReasonCodes) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
     throw "postgres lifecycle failed reasons=$($reasons -join ',') exit_code=$($result.ExitCode)"
   }

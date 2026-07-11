@@ -1,15 +1,16 @@
+//go:build integration
+
 package postgres
 
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	ordersdomain "marketplace-central/apps/server_core/internal/modules/orders/domain"
+	testpostgres "marketplace-central/apps/server_core/internal/testsupport/postgres"
 )
 
 func TestOrderRepositoryLowLevelUpsertDoesNotRegressNewerSnapshot(t *testing.T) {
@@ -101,21 +102,12 @@ func TestOrderRepositoryUpsertOrdersAppliesFreshnessAndReplacesChildren(t *testi
 
 func newOrderRepositoryForTest(t *testing.T, ctx context.Context) (*OrderRepository, func()) {
 	t.Helper()
-	pgURL := os.Getenv("MC_DATABASE_URL")
-	if pgURL == "" {
-		t.Skip("set MC_DATABASE_URL to run Postgres order repository tests")
-	}
-
-	pool, err := pgxpool.New(ctx, pgURL)
-	if err != nil {
-		t.Fatalf("open Postgres pool: %v", err)
-	}
+	pool, _ := testpostgres.OpenPool(t, "tenant_harness_orders")
 	tenantID := fmt.Sprintf("f01-order-repo-%d", time.Now().UnixNano())
 	repo := NewOrderRepository(pool, tenantID)
 	installationID := tenantID + "-installation"
 	orderIDs := []string{tenantID + "-atomic", tenantID + "-known", tenantID + "-unknown"}
 	return repo, func() {
-		defer pool.Close()
 		for _, orderID := range orderIDs {
 			if _, err := pool.Exec(ctx, `DELETE FROM orders_marketplace_order_items WHERE tenant_id = $1 AND installation_id = $2 AND provider_order_id = $3`, tenantID, installationID, orderID); err != nil {
 				t.Errorf("cleanup order items %q: %v", orderID, err)

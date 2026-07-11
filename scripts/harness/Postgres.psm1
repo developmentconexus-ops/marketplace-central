@@ -55,14 +55,14 @@ function New-HarnessPostgresRunSpec {
 function Invoke-HarnessPostgresProcess {
   param(
     [Parameter(Mandatory)][string]$FilePath,
-    [Parameter(Mandatory)][string[]]$ArgumentPrefix,
+    [Parameter(Mandatory)][AllowEmptyCollection()][string[]]$ArgumentPrefix,
     [Parameter(Mandatory)][string[]]$Arguments,
     [Parameter(Mandatory)][string]$WorkingDirectory,
     [Parameter(Mandatory)][System.Collections.IDictionary]$Environment,
     [Parameter(Mandatory)][int]$TimeoutSeconds,
     [string[]]$RedactionCandidates = @()
   )
-  $request = New-HarnessProcessRequest -FilePath $FilePath -ArgumentList (@($ArgumentPrefix) + @($Arguments)) -WorkingDirectory $WorkingDirectory -Environment $Environment -TimeoutSeconds $TimeoutSeconds -RedactionCandidates $RedactionCandidates
+  $request = New-HarnessProcessRequest -FilePath $FilePath -ArgumentList (@($ArgumentPrefix) + @($Arguments)) -WorkingDirectory $WorkingDirectory -Environment $Environment -TimeoutSeconds $TimeoutSeconds -RedactionCandidates (@($RedactionCandidates) + @($WorkingDirectory))
   return Invoke-HarnessProcess -Request $request
 }
 
@@ -82,7 +82,9 @@ function Invoke-HarnessPostgresLifecycle {
     [ValidateRange(1, 3600)][int]$TimeoutSeconds = 600,
     [ValidateRange(1, 600)][int]$ReadyMaxAttempts = 60,
     [ValidateRange(0, 60000)][int]$ReadyRetryDelayMilliseconds = 1000,
-    [ValidateRange(1, 600000)][int]$ReadyTimeoutMilliseconds = 60000
+    [ValidateRange(1, 600000)][int]$ReadyTimeoutMilliseconds = 60000,
+    [string[]]$TestArguments = @('test', '-tags=integration', './tests/integration', './internal/modules/orders/adapters/postgres', './internal/modules/profitability/adapters/postgres', './internal/modules/product_links/application', '-count=1'),
+    [switch]$HoldConnectionDuringCleanupTest
   )
 
   $dockerEnvironment = Copy-HarnessEnvironment $BaseEnvironment
@@ -96,17 +98,19 @@ function Invoke-HarnessPostgresLifecycle {
   $containerOwned = $false
   $firstCount = -1
   $secondCount = -1
+  $hostPort = 0
   $targetURL = ''
+  $failureDiagnostic = ''
 
   function Invoke-Docker {
     param(
       [Parameter(Mandatory)][string[]]$Arguments,
       [ValidateRange(1, 3600)][int]$ProcessTimeoutSeconds = $TimeoutSeconds
     )
-    return Invoke-HarnessPostgresProcess -FilePath $RunSpec.DockerFilePath -ArgumentPrefix @($RunSpec.DockerArgumentPrefix) -Arguments $Arguments -WorkingDirectory $RunSpec.RepositoryRoot -Environment $dockerEnvironment -TimeoutSeconds $ProcessTimeoutSeconds -RedactionCandidates @($RunSpec.Password, $targetURL)
+    return Invoke-HarnessPostgresProcess -FilePath $RunSpec.DockerFilePath -ArgumentPrefix @($RunSpec.DockerArgumentPrefix) -Arguments $Arguments -WorkingDirectory $RunSpec.RepositoryRoot -Environment $dockerEnvironment -TimeoutSeconds $ProcessTimeoutSeconds -RedactionCandidates @($RunSpec.Password, $targetURL, $RunSpec.RepositoryRoot)
   }
   function Invoke-Go([string[]]$Arguments) {
-    return Invoke-HarnessPostgresProcess -FilePath $GoFilePath -ArgumentPrefix @($GoArgumentPrefix) -Arguments $Arguments -WorkingDirectory (Join-Path $RunSpec.RepositoryRoot 'apps/server_core') -Environment $goEnvironment -TimeoutSeconds $TimeoutSeconds -RedactionCandidates @($RunSpec.Password, $targetURL)
+    return Invoke-HarnessPostgresProcess -FilePath $GoFilePath -ArgumentPrefix @($GoArgumentPrefix) -Arguments $Arguments -WorkingDirectory (Join-Path $RunSpec.RepositoryRoot 'apps/server_core') -Environment $goEnvironment -TimeoutSeconds $TimeoutSeconds -RedactionCandidates @($RunSpec.Password, $targetURL, $RunSpec.RepositoryRoot)
   }
   function Set-Primary([string]$Code, [int]$ExitCode) {
     if ([string]::IsNullOrWhiteSpace([string]$state.PrimaryCode)) {
@@ -192,8 +196,17 @@ function Invoke-HarnessPostgresLifecycle {
     $secondCount = Get-HarnessMigrationCount $migration2.Stdout
     if ($firstCount -ne 32 -or $secondCount -ne 0) { Set-Primary 'HPG_MIGRATION_NOT_IDEMPOTENT' 1; break }
 
-    $tests = Invoke-Go @('test', '-tags=integration', './tests/integration', './internal/modules/orders/adapters/postgres', './internal/modules/profitability/adapters/postgres', './internal/modules/product_links/application', '-count=1')
-    if ($tests.ExitCode -ne 0) { Set-Primary 'HPG_TEST_FAILED' $tests.ExitCode; break }
+    if ($HoldConnectionDuringCleanupTest) {
+      $heldConnection = Invoke-Docker @('exec', '--detach', $RunSpec.ContainerName, 'psql', '--username', 'postgres', '--dbname', $RunSpec.DatabaseName, '--command', 'SELECT pg_sleep(300)')
+      if ($heldConnection.ExitCode -ne 0) { Set-Primary 'HPG_TEST_FAILED' $heldConnection.ExitCode; break }
+    }
+    $tests = Invoke-Go @($TestArguments)
+    if ($tests.ExitCode -ne 0) {
+      $failureDiagnostic = (@($tests.Stdout, $tests.Stderr) -join "`n").Trim()
+      if ($failureDiagnostic.Length -gt 8192) { $failureDiagnostic = $failureDiagnostic.Substring(0, 8192) }
+      Set-Primary 'HPG_TEST_FAILED' $tests.ExitCode
+      break
+    }
     } while ($false)
   } finally {
     if ($databaseCreated -and $containerOwned) {
@@ -231,6 +244,8 @@ function Invoke-HarnessPostgresLifecycle {
     RunId = $RunSpec.RunId
     ContainerName = $RunSpec.ContainerName
     DatabaseName = $RunSpec.DatabaseName
+    HostPort = $hostPort
+    FailureDiagnostic = $failureDiagnostic
   }
 }
 

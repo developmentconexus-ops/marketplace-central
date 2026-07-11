@@ -19,7 +19,6 @@ strip_quotes() {
 
 export API_PORT="${API_PORT:-8080}"
 export SERVER_ADDR="${SERVER_ADDR:-:${API_PORT}}"
-export MC_MIGRATIONS_DIR="${MC_MIGRATIONS_DIR:-apps/server_core/migrations}"
 export GOCACHE="${GOCACHE:-/root/.cache/go-build}"
 export MPC_ORACLE_LIB_DIR="${MPC_ORACLE_LIB_DIR:-/opt/oracle/instantclient}"
 

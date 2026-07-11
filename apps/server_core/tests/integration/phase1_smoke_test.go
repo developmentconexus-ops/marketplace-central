@@ -1,33 +1,24 @@
+//go:build integration
+
 package integration
 
 import (
 	"context"
-	"os"
 	"testing"
 
-	marketplacesapp "marketplace-central/apps/server_core/internal/modules/marketplaces/application"
 	marketplacespostgres "marketplace-central/apps/server_core/internal/modules/marketplaces/adapters/postgres"
-	pricingapp "marketplace-central/apps/server_core/internal/modules/pricing/application"
+	marketplacesapp "marketplace-central/apps/server_core/internal/modules/marketplaces/application"
 	pricingpostgres "marketplace-central/apps/server_core/internal/modules/pricing/adapters/postgres"
-	"marketplace-central/apps/server_core/internal/platform/pgdb"
+	pricingapp "marketplace-central/apps/server_core/internal/modules/pricing/application"
+	testpostgres "marketplace-central/apps/server_core/internal/testsupport/postgres"
 )
 
 // TestPhase1SmokeFlow exercises the full Phase 1 application service layer:
 // create account → create policy → run simulation → list accounts → list policies → list simulations.
 func TestPhase1SmokeFlow(t *testing.T) {
-	if os.Getenv("MC_DATABASE_URL") == "" {
-		t.Skip("MC_DATABASE_URL not set")
-	}
-
-	cfg, err := pgdb.LoadConfig()
-	if err != nil {
-		t.Fatalf("config error: %v", err)
-	}
-	pool, err := pgdb.NewPool(context.Background(), cfg)
-	if err != nil {
-		t.Fatalf("pool error: %v", err)
-	}
-	defer pool.Close()
+	pool, cfg := testpostgres.OpenPool(t, "tenant_harness_phase1")
+	testpostgres.SeedMarketplaceDefinition(t, pool, testpostgres.MarketplaceDefinitionFixture{Code: "mercado_livre", DisplayName: "Mercado Livre", FeeSource: "api_sync"})
+	testpostgres.CleanupMarketplaceAccounts(t, pool, cfg.DefaultTenantID, "smoke-acct-1")
 
 	marketRepo := marketplacespostgres.NewRepository(pool, cfg.DefaultTenantID)
 	marketSvc := marketplacesapp.NewService(marketRepo, cfg.DefaultTenantID)
@@ -37,10 +28,11 @@ func TestPhase1SmokeFlow(t *testing.T) {
 
 	// Create account
 	account, err := marketSvc.CreateAccount(context.Background(), marketplacesapp.CreateAccountInput{
-		AccountID:      "smoke-acct-1",
-		ChannelCode:    "mercado_livre",
-		DisplayName:    "Mercado Livre Smoke",
-		ConnectionMode: "api",
+		AccountID:       "smoke-acct-1",
+		MarketplaceCode: "mercado_livre",
+		ChannelCode:     "mercado_livre",
+		DisplayName:     "Mercado Livre Smoke",
+		ConnectionMode:  "api",
 	})
 	if err != nil {
 		t.Fatalf("create account error: %v", err)
@@ -117,4 +109,3 @@ func TestPhase1SmokeFlow(t *testing.T) {
 		account.AccountID, policy.PolicyID, sim.SimulationID, sim.Status,
 		len(accounts), len(policies), len(sims))
 }
-

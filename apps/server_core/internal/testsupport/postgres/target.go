@@ -1,12 +1,16 @@
 package postgres
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
+	"testing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"marketplace-central/apps/server_core/internal/platform/pgdb"
 )
 
@@ -36,4 +40,20 @@ func LoadConfig(getenv func(string) string, tenantID, encryptionKey string) (pgd
 		DefaultTenantID: tenantID,
 		EncryptionKey:   encryptionKey,
 	}, nil
+}
+
+// OpenPool fails closed when the harness-owned target is absent or unsafe.
+// Integration tests must use this boundary instead of application ambient config.
+func OpenPool(t testing.TB, tenantID string) (*pgxpool.Pool, pgdb.Config) {
+	t.Helper()
+	cfg, err := LoadConfig(os.Getenv, tenantID, "harness-test-key")
+	if err != nil {
+		t.Fatalf("load harness PostgreSQL target: %v", err)
+	}
+	pool, err := pgdb.NewPool(context.Background(), cfg)
+	if err != nil {
+		t.Fatalf("open harness PostgreSQL target: %v", err)
+	}
+	t.Cleanup(pool.Close)
+	return pool, cfg
 }

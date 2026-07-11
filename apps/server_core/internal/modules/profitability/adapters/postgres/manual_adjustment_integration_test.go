@@ -1,31 +1,23 @@
+//go:build integration
+
 package postgres_test
 
 import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"os"
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	profitabilitypostgres "marketplace-central/apps/server_core/internal/modules/profitability/adapters/postgres"
 	profitabilityapp "marketplace-central/apps/server_core/internal/modules/profitability/application"
 	profitabilitydomain "marketplace-central/apps/server_core/internal/modules/profitability/domain"
+	testpostgres "marketplace-central/apps/server_core/internal/testsupport/postgres"
 )
 
 func TestManualAdjustmentsAppendOnlyReadbackAndConstraints(t *testing.T) {
-	databaseURL := os.Getenv("MC_DATABASE_URL")
-	if databaseURL == "" {
-		t.Skip("MC_DATABASE_URL not set; real PostgreSQL append-only validation pending")
-	}
-
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, databaseURL)
-	if err != nil {
-		t.Fatalf("connect PostgreSQL: %v", err)
-	}
-	defer pool.Close()
+	pool, _ := testpostgres.OpenPool(t, "tenant_harness_manual_adjustments")
 
 	testID := integrationRandomToken(t)
 	tenantID := "profitability-test-" + testID

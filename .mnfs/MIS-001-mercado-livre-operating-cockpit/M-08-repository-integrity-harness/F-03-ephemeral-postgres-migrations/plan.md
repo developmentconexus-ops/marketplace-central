@@ -58,6 +58,7 @@ only during final validation.
     "apps/server_core/tests/integration/migrate_runner_test.go",
     "apps/server_core/tests/integration/marketplaces_repository_test.go",
     "apps/server_core/tests/integration/integrations_credential_repo_test.go",
+    "apps/server_core/internal/modules/marketplaces/adapters/postgres/repository.go",
     "apps/server_core/internal/modules/orders/adapters/postgres/order_repo_test.go",
     "apps/server_core/internal/modules/profitability/adapters/postgres/profit_snapshot_integration_test.go",
     "apps/server_core/internal/modules/profitability/adapters/postgres/manual_adjustment_integration_test.go",

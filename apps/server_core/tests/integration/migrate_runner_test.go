@@ -1,30 +1,18 @@
+//go:build integration
+
 package integration
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"marketplace-central/apps/server_core/internal/platform/migrate"
-	"marketplace-central/apps/server_core/internal/platform/pgdb"
+	testpostgres "marketplace-central/apps/server_core/internal/testsupport/postgres"
 	canonical "marketplace-central/apps/server_core/migrations"
 )
 
 func TestMigrationRunnerIsIdempotent(t *testing.T) {
-	if os.Getenv("MC_DATABASE_URL") == "" {
-		t.Skip("MC_DATABASE_URL not set")
-	}
-
-	cfg, err := pgdb.LoadConfig()
-	if err != nil {
-		t.Fatalf("config error: %v", err)
-	}
-
-	pool, err := pgdb.NewPool(context.Background(), cfg)
-	if err != nil {
-		t.Fatalf("pool error: %v", err)
-	}
-	defer pool.Close()
+	pool, _ := testpostgres.OpenPool(t, "tenant_harness_migrate")
 
 	// First run: apply pending migrations
 	applied, err := migrate.Run(context.Background(), pool, canonical.Source())

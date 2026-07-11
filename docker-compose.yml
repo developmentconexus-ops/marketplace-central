@@ -28,7 +28,6 @@ services:
       MS_DATABASE_URL: postgres://marketplace:marketplace@postgres:5432/marketplace_central?sslmode=disable
       MS_TENANT_ID: tenant_default
       MPC_ORACLE_LIB_DIR: /opt/oracle/instantclient
-      MC_MIGRATIONS_DIR: apps/server_core/migrations
       RUN_MIGRATIONS: "1"
     working_dir: /workspace
     volumes:

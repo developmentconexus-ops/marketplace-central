@@ -1,28 +1,20 @@
+//go:build integration
+
 package postgres_test
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	profitabilitypostgres "marketplace-central/apps/server_core/internal/modules/profitability/adapters/postgres"
 	profitabilitydomain "marketplace-central/apps/server_core/internal/modules/profitability/domain"
+	testpostgres "marketplace-central/apps/server_core/internal/testsupport/postgres"
 )
 
 func TestProfitSnapshotRealizationPersistence(t *testing.T) {
-	databaseURL := os.Getenv("MC_DATABASE_URL")
-	if databaseURL == "" {
-		t.Skip("MC_DATABASE_URL not set; real PostgreSQL profit snapshot realization validation pending")
-	}
-
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, databaseURL)
-	if err != nil {
-		t.Fatalf("connect PostgreSQL: %v", err)
-	}
-	defer pool.Close()
+	pool, _ := testpostgres.OpenPool(t, "tenant_harness_profit_snapshots")
 
 	testID := integrationRandomToken(t)
 	tenantID := "profit-snapshot-test-" + testID

@@ -13,6 +13,8 @@ if (-not (Test-Path -LiteralPath $module -PathType Leaf)) {
   throw 'RED: Postgres.psm1 missing; ephemeral PostgreSQL contract is not implemented'
 }
 Import-Module $module -Force
+$moduleSource = Get-Content -Raw -LiteralPath $module
+Assert-True ($moduleSource -match '\[AllowEmptyCollection\(\)\]\[string\[\]\]\$ArgumentPrefix') 'real executable path cannot bind an empty argument prefix'
 
 $node = [IO.Path]::GetFullPath((Get-Command node -CommandType Application -ErrorAction Stop).Source)
 $runId = '0123456789abcdef0123456789abcdef'

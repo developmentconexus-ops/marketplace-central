@@ -28,7 +28,7 @@ func (r *Repository) SaveAccount(ctx context.Context, account domain.Account) er
 	_, err = r.pool.Exec(ctx, `
         INSERT INTO marketplace_accounts (
             tenant_id, account_id, marketplace_code, channel_code, display_name, status, connection_mode, credentials_json, integration_installation_id
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULLIF($9::text, ''))
         ON CONFLICT (tenant_id, account_id) DO UPDATE SET
             marketplace_code = EXCLUDED.marketplace_code,
             channel_code = EXCLUDED.channel_code,

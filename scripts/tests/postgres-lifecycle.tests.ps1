@@ -120,6 +120,11 @@ try {
   $runs += $testsFail
   Assert-True ($testsFail.Result.ExitCode -eq 17) 'child exit 17 was not preserved'
   Assert-True ($testsFail.Result.PrimaryReasonCode -eq 'HPG_TEST_FAILED') 'test failure reason changed'
+  Assert-True ($testsFail.Result.FailureDiagnostic -match 'HPG_TEST_FAILED_SENTINEL') 'safe child failure diagnostic was hidden'
+  Assert-True ($testsFail.Result.FailureDiagnostic.Length -le 8192) 'child failure diagnostic exceeded bound'
+  Assert-True ($testsFail.Result.FailureDiagnostic -notmatch [regex]::Escape($testsFail.Password)) 'password leaked in child failure diagnostic'
+  Assert-True ($testsFail.Result.FailureDiagnostic -notmatch [regex]::Escape($repoRoot)) 'repository root leaked in child failure diagnostic'
+  Assert-True ($testsFail.Result.FailureDiagnostic -notmatch 'postgres(?:ql)?://[^\s]+') 'database target leaked in child failure diagnostic'
   Assert-True (@($testsFail.Calls.operation) -contains 'drop' -and @($testsFail.Calls.operation) -contains 'remove') 'test failure skipped cleanup'
 
   foreach ($case in @(

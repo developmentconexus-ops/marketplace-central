@@ -169,7 +169,6 @@ try {
   $expectedReaders = @(
     @{ key='SERVER_ADDR'; path='docker/dev/backend-entrypoint.sh'; kind='edge'; status='approved' },
     @{ key='API_PORT'; path='docker/dev/backend-entrypoint.sh'; kind='edge'; status='approved' },
-    @{ key='MC_MIGRATIONS_DIR'; path='docker/dev/backend-entrypoint.sh'; kind='edge'; status='approved' },
     @{ key='MPC_ORACLE_LIB_DIR'; path='docker/dev/backend-entrypoint.sh'; kind='edge'; status='approved' },
     @{ key='MPC_ORACLE_USERNAME'; path='docker/dev/backend-entrypoint.sh'; kind='edge'; status='approved' },
     @{ key='MPC_ORACLE_PASSWORD'; path='docker/dev/backend-entrypoint.sh'; kind='edge'; status='approved' },
@@ -180,13 +179,7 @@ try {
     @{ key='SANKHYA_ORACLE_PORT'; path='docker/dev/backend-entrypoint.sh'; kind='edge'; status='approved' },
     @{ key='SANKHYA_ORACLE_SERVICE_NAME'; path='docker/dev/backend-entrypoint.sh'; kind='edge'; status='approved' },
     @{ key='MPC_OAUTH_REDIRECT_URI'; path='docker/dev/ngrok-entrypoint.sh'; kind='edge'; status='approved' },
-    @{ key='MC_DATABASE_URL'; path='apps/server_core/tests/integration/phase1_smoke_test.go'; kind='test'; status='temporary_exception'; owner='M-08/F-03' },
-    @{ key='MC_DATABASE_URL'; path='apps/server_core/tests/integration/migrate_runner_test.go'; kind='test'; status='temporary_exception'; owner='M-08/F-03' },
-    @{ key='MC_DATABASE_URL'; path='apps/server_core/tests/integration/marketplaces_repository_test.go'; kind='test'; status='temporary_exception'; owner='M-08/F-03' },
-    @{ key='MC_DATABASE_URL'; path='apps/server_core/tests/integration/integrations_credential_repo_test.go'; kind='test'; status='temporary_exception'; owner='M-08/F-03' },
-    @{ key='MC_DATABASE_URL'; path='apps/server_core/internal/modules/orders/adapters/postgres/order_repo_test.go'; kind='test'; status='temporary_exception'; owner='M-08/F-03' },
-    @{ key='MC_DATABASE_URL'; path='apps/server_core/internal/modules/profitability/adapters/postgres/profit_snapshot_integration_test.go'; kind='test'; status='temporary_exception'; owner='M-08/F-03' },
-    @{ key='MC_DATABASE_URL'; path='apps/server_core/internal/modules/profitability/adapters/postgres/manual_adjustment_integration_test.go'; kind='test'; status='temporary_exception'; owner='M-08/F-03' },
+    @{ key='MPC_TEST_DATABASE_URL'; path='apps/server_core/internal/testsupport/postgres/target.go'; kind='typed'; status='approved' },
     @{ key='MPC_ORACLE_LIVE_TEST'; path='apps/server_core/internal/modules/internal_read/adapters/oracle/reader_live_test.go'; kind='test'; status='temporary_exception'; owner='M-08/F-04' }
   )
   foreach ($expected in $expectedReaders) {

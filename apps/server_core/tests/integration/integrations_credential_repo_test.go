@@ -1,33 +1,22 @@
+//go:build integration
+
 package integration
 
 import (
 	"context"
 	"fmt"
-	"os"
 	"sync"
 	"testing"
 	"time"
 
 	integrationspostgres "marketplace-central/apps/server_core/internal/modules/integrations/adapters/postgres"
 	integrationsdomain "marketplace-central/apps/server_core/internal/modules/integrations/domain"
-	"marketplace-central/apps/server_core/internal/platform/pgdb"
+	testpostgres "marketplace-central/apps/server_core/internal/testsupport/postgres"
 )
 
 func TestCredentialRepositorySaveCredentialVersionMaintainsSingleActiveCredential(t *testing.T) {
-	if os.Getenv("MC_DATABASE_URL") == "" {
-		t.Skip("MC_DATABASE_URL not set")
-	}
-
-	cfg, err := pgdb.LoadConfig()
-	if err != nil {
-		t.Fatalf("config error: %v", err)
-	}
-
-	pool, err := pgdb.NewPool(context.Background(), cfg)
-	if err != nil {
-		t.Fatalf("pool error: %v", err)
-	}
-	defer pool.Close()
+	pool, cfg := testpostgres.OpenPool(t, "tenant_harness_credentials_rotate")
+	testpostgres.SeedProvider(t, pool, testpostgres.ProviderFixture{Code: "magalu", DisplayName: "Magalu"})
 
 	installationRepo := integrationspostgres.NewInstallationRepository(pool, cfg.DefaultTenantID)
 	credentialRepo := integrationspostgres.NewCredentialRepository(pool, cfg.DefaultTenantID)
@@ -107,20 +96,8 @@ func TestCredentialRepositorySaveCredentialVersionMaintainsSingleActiveCredentia
 }
 
 func TestCredentialRepositoryConcurrentActiveRotationDoesNotViolateUniqueIndex(t *testing.T) {
-	if os.Getenv("MC_DATABASE_URL") == "" {
-		t.Skip("MC_DATABASE_URL not set")
-	}
-
-	cfg, err := pgdb.LoadConfig()
-	if err != nil {
-		t.Fatalf("config error: %v", err)
-	}
-
-	pool, err := pgdb.NewPool(context.Background(), cfg)
-	if err != nil {
-		t.Fatalf("pool error: %v", err)
-	}
-	defer pool.Close()
+	pool, cfg := testpostgres.OpenPool(t, "tenant_harness_credentials_concurrent")
+	testpostgres.SeedProvider(t, pool, testpostgres.ProviderFixture{Code: "magalu", DisplayName: "Magalu"})
 
 	installationRepo := integrationspostgres.NewInstallationRepository(pool, cfg.DefaultTenantID)
 	credentialRepo := integrationspostgres.NewCredentialRepository(pool, cfg.DefaultTenantID)
@@ -207,20 +184,8 @@ func TestCredentialRepositoryConcurrentActiveRotationDoesNotViolateUniqueIndex(t
 }
 
 func TestCredentialRepositorySaveCredentialVersionAllowsReferencedCredentialRotation(t *testing.T) {
-	if os.Getenv("MC_DATABASE_URL") == "" {
-		t.Skip("MC_DATABASE_URL not set")
-	}
-
-	cfg, err := pgdb.LoadConfig()
-	if err != nil {
-		t.Fatalf("config error: %v", err)
-	}
-
-	pool, err := pgdb.NewPool(context.Background(), cfg)
-	if err != nil {
-		t.Fatalf("pool error: %v", err)
-	}
-	defer pool.Close()
+	pool, cfg := testpostgres.OpenPool(t, "tenant_harness_credentials_reference")
+	testpostgres.SeedProvider(t, pool, testpostgres.ProviderFixture{Code: "mercado_livre", DisplayName: "Mercado Livre"})
 
 	installationRepo := integrationspostgres.NewInstallationRepository(pool, cfg.DefaultTenantID)
 	credentialRepo := integrationspostgres.NewCredentialRepository(pool, cfg.DefaultTenantID)

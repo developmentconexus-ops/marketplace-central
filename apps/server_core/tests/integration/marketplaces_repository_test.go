@@ -1,54 +1,55 @@
+//go:build integration
+
 package integration
 
 import (
 	"context"
-	"os"
+	"errors"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"marketplace-central/apps/server_core/internal/modules/marketplaces/adapters/postgres"
 	"marketplace-central/apps/server_core/internal/modules/marketplaces/domain"
-	"marketplace-central/apps/server_core/internal/platform/pgdb"
+	testpostgres "marketplace-central/apps/server_core/internal/testsupport/postgres"
 )
 
 func TestMarketplacesRepositoryTenantIsolationForSameIDs(t *testing.T) {
-	if os.Getenv("MC_DATABASE_URL") == "" {
-		t.Skip("MC_DATABASE_URL not set")
-	}
-
-	cfg, err := pgdb.LoadConfig()
-	if err != nil {
-		t.Fatalf("config error: %v", err)
-	}
-
-	pool, err := pgdb.NewPool(context.Background(), cfg)
-	if err != nil {
-		t.Fatalf("pool error: %v", err)
-	}
-	defer pool.Close()
+	pool, _ := testpostgres.OpenPool(t, "tenant_harness_marketplaces_isolation")
+	testpostgres.SeedMarketplaceDefinition(t, pool, testpostgres.MarketplaceDefinitionFixture{Code: "mercado_livre", DisplayName: "Mercado Livre", FeeSource: "api_sync"})
 
 	tenantA := "tenant_iso_a"
 	tenantB := "tenant_iso_b"
 	accountID := "acct-isolation-shared"
 	policyID := "policy-isolation-shared"
+	installationA := "installation-isolation-a"
+	installationB := "installation-isolation-b"
+	testpostgres.SeedInstallation(t, pool, testpostgres.InstallationFixture{TenantID: tenantA, InstallationID: installationA, Provider: testpostgres.ProviderFixture{Code: "mercado_livre", DisplayName: "Mercado Livre"}})
+	testpostgres.SeedInstallation(t, pool, testpostgres.InstallationFixture{TenantID: tenantB, InstallationID: installationB, Provider: testpostgres.ProviderFixture{Code: "mercado_livre", DisplayName: "Mercado Livre"}})
+	testpostgres.CleanupMarketplaceAccounts(t, pool, tenantA, accountID)
+	testpostgres.CleanupMarketplaceAccounts(t, pool, tenantB, accountID)
 
 	repoA := postgres.NewRepository(pool, tenantA)
 	repoB := postgres.NewRepository(pool, tenantB)
 
 	accountA := domain.Account{
-		TenantID:       tenantA,
-		AccountID:      accountID,
-		ChannelCode:    "mercado_livre",
-		DisplayName:    "Tenant A",
-		Status:         "active",
-		ConnectionMode: "api",
+		TenantID:                  tenantA,
+		AccountID:                 accountID,
+		IntegrationInstallationID: installationA,
+		MarketplaceCode:           "mercado_livre",
+		ChannelCode:               "mercado_livre",
+		DisplayName:               "Tenant A",
+		Status:                    "active",
+		ConnectionMode:            "api",
 	}
 	accountB := domain.Account{
-		TenantID:       tenantB,
-		AccountID:      accountID,
-		ChannelCode:    "mercado_livre",
-		DisplayName:    "Tenant B",
-		Status:         "active",
-		ConnectionMode: "api",
+		TenantID:                  tenantB,
+		AccountID:                 accountID,
+		IntegrationInstallationID: installationB,
+		MarketplaceCode:           "mercado_livre",
+		ChannelCode:               "mercado_livre",
+		DisplayName:               "Tenant B",
+		Status:                    "active",
+		ConnectionMode:            "api",
 	}
 
 	if err := repoA.SaveAccount(context.Background(), accountA); err != nil {
@@ -141,31 +142,36 @@ func TestMarketplacesRepositoryTenantIsolationForSameIDs(t *testing.T) {
 	}
 }
 
-func TestMarketplacesRepositorySaveAndList(t *testing.T) {
-	if os.Getenv("MC_DATABASE_URL") == "" {
-		t.Skip("MC_DATABASE_URL not set")
+func TestMarketplacesRepositoryRejectsMissingInstallationParent(t *testing.T) {
+	pool, cfg := testpostgres.OpenPool(t, "tenant_harness_marketplaces_missing_parent")
+	testpostgres.SeedMarketplaceDefinition(t, pool, testpostgres.MarketplaceDefinitionFixture{Code: "mercado_livre", DisplayName: "Mercado Livre", FeeSource: "api_sync"})
+	repo := postgres.NewRepository(pool, cfg.DefaultTenantID)
+	err := repo.SaveAccount(context.Background(), domain.Account{
+		TenantID: cfg.DefaultTenantID, AccountID: "acct-missing-installation", MarketplaceCode: "mercado_livre",
+		ChannelCode: "mercado_livre", DisplayName: "Missing parent", Status: "active", ConnectionMode: "api",
+		IntegrationInstallationID: "installation-does-not-exist",
+	})
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.Code != "23503" {
+		t.Fatalf("missing installation parent error = %v, want SQLSTATE 23503", err)
 	}
+}
 
-	cfg, err := pgdb.LoadConfig()
-	if err != nil {
-		t.Fatalf("config error: %v", err)
-	}
-
-	pool, err := pgdb.NewPool(context.Background(), cfg)
-	if err != nil {
-		t.Fatalf("pool error: %v", err)
-	}
-	defer pool.Close()
+func TestMarketplacesRepositorySaveAndListAllowsOptionalInstallation(t *testing.T) {
+	pool, cfg := testpostgres.OpenPool(t, "tenant_harness_marketplaces_save")
+	testpostgres.SeedMarketplaceDefinition(t, pool, testpostgres.MarketplaceDefinitionFixture{Code: "mercado_livre", DisplayName: "Mercado Livre", FeeSource: "api_sync"})
+	testpostgres.CleanupMarketplaceAccounts(t, pool, cfg.DefaultTenantID, "acct-test")
 
 	repo := postgres.NewRepository(pool, cfg.DefaultTenantID)
 
 	account := domain.Account{
-		TenantID:       cfg.DefaultTenantID,
-		AccountID:      "acct-test",
-		ChannelCode:    "mercado_livre",
-		DisplayName:    "Mercado Livre",
-		Status:         "active",
-		ConnectionMode: "api",
+		TenantID:        cfg.DefaultTenantID,
+		AccountID:       "acct-test",
+		MarketplaceCode: "mercado_livre",
+		ChannelCode:     "mercado_livre",
+		DisplayName:     "Mercado Livre",
+		Status:          "active",
+		ConnectionMode:  "api",
 	}
 
 	if err := repo.SaveAccount(context.Background(), account); err != nil {
@@ -179,33 +185,31 @@ func TestMarketplacesRepositorySaveAndList(t *testing.T) {
 	if len(accounts) == 0 {
 		t.Fatalf("expected accounts")
 	}
+	for _, listed := range accounts {
+		if listed.AccountID == account.AccountID && listed.IntegrationInstallationID != "" {
+			t.Fatalf("optional installation readback = %q, want empty", listed.IntegrationInstallationID)
+		}
+	}
 }
 
 func TestMarketplacesRepositorySaveAndListPoliciesIncludeShippingProvider(t *testing.T) {
-	if os.Getenv("MC_DATABASE_URL") == "" {
-		t.Skip("MC_DATABASE_URL not set")
-	}
-
-	cfg, err := pgdb.LoadConfig()
-	if err != nil {
-		t.Fatalf("config error: %v", err)
-	}
-
-	pool, err := pgdb.NewPool(context.Background(), cfg)
-	if err != nil {
-		t.Fatalf("pool error: %v", err)
-	}
-	defer pool.Close()
+	pool, cfg := testpostgres.OpenPool(t, "tenant_harness_marketplaces_policy")
+	testpostgres.SeedMarketplaceDefinition(t, pool, testpostgres.MarketplaceDefinitionFixture{Code: "mercado_livre", DisplayName: "Mercado Livre", FeeSource: "api_sync"})
+	installationID := "installation-marketplace-policy"
+	testpostgres.SeedInstallation(t, pool, testpostgres.InstallationFixture{TenantID: cfg.DefaultTenantID, InstallationID: installationID, Provider: testpostgres.ProviderFixture{Code: "mercado_livre", DisplayName: "Mercado Livre"}})
+	testpostgres.CleanupMarketplaceAccounts(t, pool, cfg.DefaultTenantID, "acct-policy-test")
 
 	repo := postgres.NewRepository(pool, cfg.DefaultTenantID)
 
 	account := domain.Account{
-		TenantID:       cfg.DefaultTenantID,
-		AccountID:      "acct-policy-test",
-		ChannelCode:    "mercado_livre",
-		DisplayName:    "Mercado Livre Policy Test",
-		Status:         "active",
-		ConnectionMode: "api",
+		TenantID:                  cfg.DefaultTenantID,
+		AccountID:                 "acct-policy-test",
+		IntegrationInstallationID: installationID,
+		MarketplaceCode:           "mercado_livre",
+		ChannelCode:               "mercado_livre",
+		DisplayName:               "Mercado Livre Policy Test",
+		Status:                    "active",
+		ConnectionMode:            "api",
 	}
 
 	if err := repo.SaveAccount(context.Background(), account); err != nil {
@@ -248,30 +252,23 @@ func TestMarketplacesRepositorySaveAndListPoliciesIncludeShippingProvider(t *tes
 }
 
 func TestMarketplacesRepositorySavePolicyUpsertUpdatesShippingProvider(t *testing.T) {
-	if os.Getenv("MC_DATABASE_URL") == "" {
-		t.Skip("MC_DATABASE_URL not set")
-	}
-
-	cfg, err := pgdb.LoadConfig()
-	if err != nil {
-		t.Fatalf("config error: %v", err)
-	}
-
-	pool, err := pgdb.NewPool(context.Background(), cfg)
-	if err != nil {
-		t.Fatalf("pool error: %v", err)
-	}
-	defer pool.Close()
+	pool, cfg := testpostgres.OpenPool(t, "tenant_harness_marketplaces_upsert")
+	testpostgres.SeedMarketplaceDefinition(t, pool, testpostgres.MarketplaceDefinitionFixture{Code: "mercado_livre", DisplayName: "Mercado Livre", FeeSource: "api_sync"})
+	installationID := "installation-marketplace-upsert"
+	testpostgres.SeedInstallation(t, pool, testpostgres.InstallationFixture{TenantID: cfg.DefaultTenantID, InstallationID: installationID, Provider: testpostgres.ProviderFixture{Code: "mercado_livre", DisplayName: "Mercado Livre"}})
+	testpostgres.CleanupMarketplaceAccounts(t, pool, cfg.DefaultTenantID, "acct-policy-upsert-test")
 
 	repo := postgres.NewRepository(pool, cfg.DefaultTenantID)
 
 	account := domain.Account{
-		TenantID:       cfg.DefaultTenantID,
-		AccountID:      "acct-policy-upsert-test",
-		ChannelCode:    "mercado_livre",
-		DisplayName:    "Mercado Livre Policy Upsert Test",
-		Status:         "active",
-		ConnectionMode: "api",
+		TenantID:                  cfg.DefaultTenantID,
+		AccountID:                 "acct-policy-upsert-test",
+		IntegrationInstallationID: installationID,
+		MarketplaceCode:           "mercado_livre",
+		ChannelCode:               "mercado_livre",
+		DisplayName:               "Mercado Livre Policy Upsert Test",
+		Status:                    "active",
+		ConnectionMode:            "api",
 	}
 
 	if err := repo.SaveAccount(context.Background(), account); err != nil {
@@ -317,4 +314,3 @@ func TestMarketplacesRepositorySavePolicyUpsertUpdatesShippingProvider(t *testin
 
 	t.Fatalf("expected to find policy %s", policy.PolicyID)
 }
-

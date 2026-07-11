@@ -1,7 +1,16 @@
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 
 const [kind, ...args] = process.argv.slice(2);
 const logPath = process.env.HARNESS_POSTGRES_PROBE_LOG;
+
+if (kind === "real-go") {
+  const goPath = process.env.HARNESS_REAL_GO;
+  if (!goPath) process.exit(64);
+  if (args.includes("test")) process.exit(17);
+  const result = spawnSync(goPath, args, { cwd: process.cwd(), env: process.env, stdio: "inherit" });
+  process.exit(result.status ?? 1);
+}
 
 if (!logPath || !["docker", "go"].includes(kind)) {
   process.stderr.write("probe configuration invalid");
@@ -81,7 +90,7 @@ if (operation === "ready") {
   }
 }
 if (failures.includes(operation)) {
-  process.stderr.write(`probe failure operation=${operation}`);
+  process.stderr.write(operation === "tests" ? "probe failure reason=HPG_TEST_FAILED_SENTINEL" : `probe failure operation=${operation}`);
   process.exit(operation === "tests" ? 17 : 29);
 }
 

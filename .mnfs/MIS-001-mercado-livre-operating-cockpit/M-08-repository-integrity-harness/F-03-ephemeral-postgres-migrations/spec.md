@@ -87,6 +87,11 @@ unchanged without letting the ordinary integration lane contact it.
   definitions before installations/credentials. Set required marketplace codes
   explicitly. Missing-parent negative fixtures must observe the real FK error;
   never weaken, defer, or bypass production constraints.
+- `marketplace_accounts.integration_installation_id` remains optional. The
+  PostgreSQL adapter must persist an empty domain installation ID as SQL
+  `NULL`, matching the nullable schema and its existing empty-on-read contract;
+  tests must not invent an installation for application flows that do not own
+  one.
 - Replace the mixed product-links Oracle/PostgreSQL live test with deterministic
   ephemeral-PostgreSQL coverage. F-04 owns later Oracle live proof; F-03 cannot
   promote deterministic matcher evidence to live Oracle.
