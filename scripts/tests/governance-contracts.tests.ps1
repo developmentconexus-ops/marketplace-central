@@ -73,6 +73,24 @@ try {
 
   $contextSchema = Join-Path $schemaRoot 'context-pack.schema.json'
   Assert-True (Test-Path -LiteralPath $contextSchema -PathType Leaf) 'missing schema: contracts/governance/schemas/context-pack.schema.json'
+  $workContractSchema = Join-Path $schemaRoot 'feature-work-contract.schema.json'
+  Assert-True (Test-Path -LiteralPath $workContractSchema -PathType Leaf) 'missing schema: contracts/governance/schemas/feature-work-contract.schema.json'
+  $f07PlanPath = Join-Path $repositoryRoot '.mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-07-governance-context-compiler/plan.md'
+  $f07Plan = Get-Content -Raw -LiteralPath $f07PlanPath
+  $workContractBlocks = @([regex]::Matches($f07Plan, '(?ms)^## Machine Work Contract\s*\r?\n\s*```json\s*\r?\n(?<json>.*?)\r?\n```\s*$'))
+  Assert-True ($workContractBlocks.Count -eq 1) 'F-07 plan must contain exactly one machine work contract JSON block'
+  $workContractPath = Join-Path ([IO.Path]::GetTempPath()) "feature-work-contract-$([guid]::NewGuid().ToString('N')).json"
+  try {
+    Set-Content -LiteralPath $workContractPath -Value $workContractBlocks[0].Groups['json'].Value -Encoding utf8
+    Assert-True (Test-Json -LiteralPath $workContractPath -SchemaFile $workContractSchema -ErrorAction Stop) 'F-07 machine work contract failed schema validation'
+    $invalidWorkContract = Get-Content -Raw -LiteralPath $workContractPath | ConvertFrom-Json -AsHashtable
+    $invalidWorkContract.unknown_contract_property = $true
+    $invalidWorkContract | ConvertTo-Json -Depth 30 | Set-Content -LiteralPath $workContractPath -Encoding utf8
+    Assert-True (-not (Test-Json -LiteralPath $workContractPath -SchemaFile $workContractSchema -ErrorAction SilentlyContinue)) 'work contract schema accepted an unknown root property'
+  }
+  finally {
+    Remove-Item -LiteralPath $workContractPath -Force -ErrorAction SilentlyContinue
+  }
 
   Assert-True ($modules.modules.Count -eq 11) 'modules registry must contain exactly 11 modules'
   Assert-Unique @($modules.modules.id) 'modules'
