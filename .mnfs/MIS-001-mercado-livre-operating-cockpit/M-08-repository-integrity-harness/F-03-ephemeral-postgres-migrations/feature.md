@@ -3,11 +3,11 @@
 ```yaml
 id: F-03
 type: feature-brief
-status: briefed
-owner: Mission Strategist
+status: quick_validation_passed
+owner: Feature Implementer
 parent: M-08
 created: 2026-07-10
-updated: 2026-07-10
+updated: 2026-07-11
 validation_level: QA-3
 lifecycle_scope: feature
 ```
@@ -48,8 +48,14 @@ Run PostgreSQL tests against isolated run-scoped databases with canonical migrat
 `spec.md`, `plan.md`, and `validation.md` are created during feature execution.
 
 ## Handoff
-- Current status: Briefed.
-- Next owner: Feature Implementer after accepted F-08.
-- Next action: Execute the RED contract from the accepted F-03 spec/plan.
-- Required files/evidence: migration/idempotence/cleanup transcripts.
-- Blockers or open decisions: Exact command names frozen by F-02.
+
+- Current status: `quick_validation_passed`.
+- Next owner: Milestone Orchestrator.
+- Next action: Review the spec, plan, changed paths, `validation.md`, real
+  PostgreSQL evidence, dev-invariance digest, governance/current context gates,
+  and independent fixed-commit review result for feature acceptance.
+- Required files/evidence: `spec.md`, `plan.md`, `validation.md`, commits through
+  `7ea94672`, real run summaries/transcripts, digest/count inventory, and zero
+  resource inventory.
+- Blockers or open decisions: None for F-03 acceptance. M-08 remains in
+  progress; F-04 owns cold provisioning and Oracle/provider evidence.
