@@ -7,6 +7,18 @@ try {
   $modulePath = Join-Path $root 'scripts/harness/Evidence.psm1'
   Assert-True (Test-Path -LiteralPath $modulePath -PathType Leaf) 'missing evidence module'
   Import-Module $modulePath -Force
+  $processException = [OperationCanceledException]::new('cancelled https://example.test/token C:\\secret token=super-secret')
+  $simulatedRecord = $null
+  try { throw $processException } catch { $simulatedRecord = [ordered]@{ id='go-mod-download'; exit_code=1; reason=(Get-HarnessProcessFailureReason -CommandId 'go-mod-download' -Exception $_.Exception) } }
+  Assert-True ($simulatedRecord.reason -eq 'COLD_PROCESS_AWAIT_EXCEPTION_GO_MOD_DOWNLOAD') 'simulated process-await cancellation was not recorded'
+  $safeReason = Get-HarnessProcessFailureReason -CommandId 'go-mod-download' -Exception $processException
+  Assert-True ($safeReason -eq 'COLD_PROCESS_AWAIT_EXCEPTION_GO_MOD_DOWNLOAD') 'go-mod-download await exceptions need a stable safe reason'
+  Assert-True (Test-SafeEvidenceText $safeReason) 'classified process exception reason must be safe evidence text'
+  Assert-True ($safeReason -notmatch '(?i)(https?://|[A-Za-z]:[\\/]|token|secret|cancelled)') 'process exception text leaked into classified reason'
+  $unknownReason = Get-HarnessProcessFailureReason -CommandId 'unregistered-process' -Exception ([Exception]::new('sensitive https://example.test/value'))
+  Assert-True ($unknownReason -eq 'COLD_PROCESS_AWAIT_EXCEPTION_UNKNOWN') 'unknown process-await exceptions must remain fail-closed'
+  $harnessText = Get-Content -Raw (Join-Path $root 'scripts/harness.ps1')
+  Assert-True ($harnessText -match 'Invoke-HarnessProcess[\s\S]*Get-HarnessProcessFailureReason[\s\S]*throw') 'cold process await exception path is not classified before outer catch'
   $run = Join-Path $root ('scripts/.runs/test-' + [guid]::NewGuid().ToString('N'))
   New-Item -ItemType Directory -Path $run -Force | Out-Null
   try {

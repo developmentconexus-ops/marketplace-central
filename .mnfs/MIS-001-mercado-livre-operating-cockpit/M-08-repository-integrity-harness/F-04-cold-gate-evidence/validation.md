@@ -87,3 +87,30 @@ Milestone Orchestrator must perform final SPEC/SAFETY and QUALITY reviews on a f
   Oracle, provider, browser, or dev database action is claimed for this run.
 - Current blocker: diagnose and classify `COLD_UNEXPECTED_BLOCK` in a newly
   authorized correction scope before rerunning the two-run Phase 4 proof.
+
+## Authorized correction — process-await exception classification
+
+- Scope: exact `COLD_UNEXPECTED_BLOCK` root cause only. No governance,
+  Context/Execution/Environment/Policy/Postgres seam, application, lockfile,
+  Docker, network, or Phase 4 changes.
+- RED: after adding the focused cancellation/exception fixture,
+  `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/tests/cold-gate-evidence.tests.ps1`
+  exited `1` because no safe process-await classifier existed.
+- GREEN: the same focused suite exits `0` and verifies a synthetic
+  `OperationCanceledException` carrying URL/path/secret-like text is reduced to
+  the stable safe reason `COLD_PROCESS_AWAIT_EXCEPTION_GO_MOD_DOWNLOAD`.
+  Unknown command IDs remain fail-closed as
+  `COLD_PROCESS_AWAIT_EXCEPTION_UNKNOWN`; exception text is never serialized.
+- The cold process wrapper now records this classified command failure before
+  rethrowing to the existing outer catch, preserving blocked aggregate status,
+  trace, and outcome evidence while retaining `COLD_UNEXPECTED_BLOCK` as the
+  generic unknown orchestration fallback.
+- Targeted regression exits (all `0`, fake/contract evidence only):
+  - `scripts/tests/cold-gate-evidence.tests.ps1`
+  - `scripts/tests/cold-gate-snapshot.tests.ps1`
+  - `scripts/tests/cold-gate.integration.tests.ps1`
+  - `scripts/tests/governance-contracts.tests.ps1`
+  - `scripts/tests/context-compiler.tests.ps1`
+- Phase 4 remains intentionally unrun. Handoff: recompile/current-validate
+  the context pack at the correction commit, then execute the authorized
+  Phase 4 two-run pair once the Milestone Orchestrator confirms readiness.

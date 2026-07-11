@@ -244,9 +244,17 @@ function Invoke-Cold {
     $records.Add([ordered]@{id=$Id;command=$Command;stage=$Stage;target_label=$Target;evidence_class=$Class;duration_ms=$Duration;exit_code=$Exit;reason=$Reason;artifact_paths=@()})
   }
   function Invoke-ColdProcess([string]$Id,[string]$CommandText,[string]$Stage,[string]$Target,[string]$Class,[string]$File,[string[]]$Arguments,[string]$Working,[System.Collections.IDictionary]$Environment) {
-    $timer=[Diagnostics.Stopwatch]::StartNew(); $result=Invoke-HarnessProcess -Request (New-HarnessProcessRequest -FilePath $File -ArgumentList $Arguments -WorkingDirectory $Working -Environment $Environment -TimeoutSeconds 1200 -RedactionCandidates @($repoRoot)); $timer.Stop()
-    Add-ColdRecord $Id $CommandText $Stage $Target $Class $result.ExitCode $(if($result.ExitCode -eq 0){'passed'}elseif($result.TimedOut){'HEXEC_TIMEOUT'}else{$result.ReasonCode}) $timer.ElapsedMilliseconds
-    return $result
+    $timer=[Diagnostics.Stopwatch]::StartNew()
+    try {
+      $result=Invoke-HarnessProcess -Request (New-HarnessProcessRequest -FilePath $File -ArgumentList $Arguments -WorkingDirectory $Working -Environment $Environment -TimeoutSeconds 1200 -RedactionCandidates @($repoRoot))
+      $timer.Stop()
+      Add-ColdRecord $Id $CommandText $Stage $Target $Class $result.ExitCode $(if($result.ExitCode -eq 0){'passed'}elseif($result.TimedOut){'HEXEC_TIMEOUT'}else{$result.ReasonCode}) $timer.ElapsedMilliseconds
+      return $result
+    } catch {
+      $timer.Stop()
+      Add-ColdRecord $Id $CommandText $Stage $Target $Class 1 (Get-HarnessProcessFailureReason -CommandId $Id -Exception $_.Exception) $timer.ElapsedMilliseconds
+      throw
+    }
   }
   try {
     if ([string]::IsNullOrWhiteSpace($CandidateSha) -or $CandidateSha -notmatch '^[0-9a-f]{40}$') { Add-ColdRecord 'preflight' 'git clean candidate' 'preflight' 'fake' 'contract' 1 'COLD_CANDIDATE_SHA_INVALID'; $blocked=$true; return }

@@ -39,6 +39,21 @@ function Test-HarnessImageIdentity {
   return [string]::IsNullOrEmpty($Value) -or $Value -match '^sha256:[0-9a-f]{64}$'
 }
 
+function Get-HarnessProcessFailureReason {
+  param(
+    [Parameter(Mandatory)][string]$CommandId,
+    [AllowNull()][object]$Exception
+  )
+
+  # Process-await exceptions can contain provider URLs, absolute paths, or
+  # credentials. Classify by the declared command only; never persist the
+  # exception object or message. Unknown commands remain fail-closed.
+  if ($CommandId -eq 'go-mod-download') {
+    return 'COLD_PROCESS_AWAIT_EXCEPTION_GO_MOD_DOWNLOAD'
+  }
+  return 'COLD_PROCESS_AWAIT_EXCEPTION_UNKNOWN'
+}
+
 function New-HarnessOutcome {
   [CmdletBinding()]
   param(
@@ -91,4 +106,4 @@ function Write-HarnessTrace {
   return $Path
 }
 
-Export-ModuleMember -Function Test-SafeEvidenceText, New-HarnessOutcome, Get-HarnessOutcomeProjection, Compare-HarnessOutcomeProjection, Write-HarnessOutcome, Write-HarnessTrace
+Export-ModuleMember -Function Test-SafeEvidenceText, Get-HarnessProcessFailureReason, New-HarnessOutcome, Get-HarnessOutcomeProjection, Compare-HarnessOutcomeProjection, Write-HarnessOutcome, Write-HarnessTrace
