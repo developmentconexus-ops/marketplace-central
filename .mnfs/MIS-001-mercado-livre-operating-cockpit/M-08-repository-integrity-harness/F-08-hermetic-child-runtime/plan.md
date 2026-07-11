@@ -49,6 +49,7 @@ F-04, and F-05 remain blocked from these seams until F-08 acceptance.
     "scripts/tests/harness-aliases.tests.ps1",
     "scripts/tests/fixtures/harness/**",
     "contracts/governance/runtime-config.json",
+    "contracts/governance/schemas/runtime-config.schema.json",
     "scripts/tests/governance-contracts.tests.ps1",
     "package.json",
     ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-08-hermetic-child-runtime/**"
@@ -171,6 +172,14 @@ minimal run summaries, F-03 integration blocker, live/browser preflight, and
 provider-write pre-network guards. Validate inputs before starting a child or
 creating a run directory. Every path derives from `$PSScriptRoot` or explicit
 repository root.
+
+If migration exposes the generic registry-driven environment boundary, amend
+the runtime-config schema, registry, Policy semantic checks, and governance
+fixtures atomically. Represent that boundary with an explicit reader kind;
+Policy must validate its declared path and bounded registry use without key
+literals. Do not remove reader traceability, duplicate registry keys in code,
+or add a scanner exemption. Process environment precedence is allowed only for
+the selected lane's `allowed_runtime_keys`; unit still reads none.
 
 Run all F-08 suites plus governance/context regressions. Commit:
 
