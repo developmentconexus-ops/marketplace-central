@@ -1,0 +1,16 @@
+[
+  {
+    "id": "orders-read-only-round-2",
+    "criterion": "M-06-C02 / F-04",
+    "expected": "Drive /orders in the in-app browser and verify the live order, quality, flags, and responsive interaction state.",
+    "observed": "http://localhost:5174/orders returned HTTP 200, but the in-app browser runtime exposed no discoverable browser binding, so no DOM, visual, console, trace, or interaction assertion was executed.",
+    "outcome": "could-not-drive",
+    "artifacts": {
+      "screenshot": null,
+      "trace": null,
+      "network": null,
+      "console": null,
+      "drive_log": "drive-log.txt"
+    }
+  }
+]

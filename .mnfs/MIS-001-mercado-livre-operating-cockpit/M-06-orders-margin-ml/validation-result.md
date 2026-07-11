@@ -1,14 +1,18 @@
-# M-06 validation result — 2026-07-10
+# M-06 validation result
 
 ```yaml
 milestone: M-06
-status: blocked
+status: correction_needed
 validator: QA Validator
-validated_at: 2026-07-10
+validated_at: 2026-07-11
+validation_round: 2
+verdict: Fail
+reviewed_sha: 5548ae406cb26d0703c111236d703281bb227d3e
+tested_head: 2e8c9250303c9e9300055dc8030e9ae7fb62093c
 scope: Orders + Margin
 ```
 
-## Verdict
+## Historical round-1 verdict — 2026-07-10
 
 **BLOCKED — do not mark M-06 passed.** The required idempotence, honest-quality,
 and adjustment-audit criteria have supporting evidence below. The mandatory
@@ -16,7 +20,7 @@ real resolved-product-link realization scenario remains unproven: a candidate
 must be explicitly approved with a truthful audit actor, then re-imported and
 calculated against live Oracle inputs.
 
-## Criterion evidence
+## Historical round-1 criterion evidence
 
 | ID | Result | Evidence | Target type |
 | --- | --- | --- | --- |
@@ -112,3 +116,68 @@ failures.
 - `.superpowers/sdd/m06-unapproved-link-correction-report.md`
 - `docs/superpowers/specs/2026-07-09-m06-f03-order-realization-design.md`
 - `docs/superpowers/plans/2026-07-09-m06-f03-order-realization.md`
+
+## Round-2 formal gate — 2026-07-11
+
+- Verdict: **Fail** (formal QA verdict; exact value: `Fail`)
+- Reviewer: QA Validator, folding the independent round-2 cold review with execution QA.
+- Contract checked: `.mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/validation-contract.md`.
+- Reviewed freeze: `5548ae406cb26d0703c111236d703281bb227d3e`.
+- Tested HEAD: `2e8c9250303c9e9300055dc8030e9ae7fb62093c`; the only freeze-to-HEAD change was the persisted `milestone-review.md` artifact.
+- Execution evidence: `_gate-evidence/round-2/gate-results.md`, `_gate-evidence/round-2/ui/drive-log.txt`, and `_gate-evidence/round-2/ui/flows.json`.
+
+### Crew review fold
+
+| Criterion | Folded result | Blocking reason |
+| --- | --- | --- |
+| ★1 Criteria coverage | Pass | None. |
+| ★2 Evidence honesty | Fail | The cold review found the load-bearing historical PASS rows were not bound to concrete `ran` artifacts; new QA evidence cannot downgrade that independent failure. |
+| ★3 Verifiability | Fail | Contract commands remain generic, and required live visual/interactive UI evidence is `could-not-drive`. |
+| ★4 Integration/composition | Fail | Quantity-extended revenue composes with unextended CUSSEMICM cost. |
+| ★5 Traceability | Pass | Feature-to-criterion and criterion-to-evidence closure remains intact. |
+| ★6 Correction integrity | Fail | Correction-attempt and prior-result fields remain blank and no append-only authorized correction ledger closes the history. |
+| ★7 Security posture | Fail | The manual-adjustment actor is caller-supplied, only checked for non-empty fields, and not bound to an authenticated/authorized principal. |
+
+`must_meet_pass: 2 / 7`; any must-meet failure computes **Fail**. The fold never upgrades a cold-review failure. The browser `could-not-drive` condition is an additional evidence limitation and a blocker for any future Pass, but concrete defects already establish **Fail**, so the formal verdict is not changed to Blocked.
+
+### Re-run corroboration sample
+
+| Sample | Observed result | Gate effect |
+| --- | --- | --- |
+| Exact Go orders plus composition suite; targeted C01 tests | Pass | Corroborates C01. |
+| Exact Go profitability plus composition suite with `GOCACHE=.gocache`; targeted C02 tests | Pass | Unknown propagation is reproduced, but cannot override the quantity-scoped live defect. |
+| Targeted C03 tests, including `TestManualAdjustmentsAppendOnlyReadbackAndConstraints` | Pass | Append-only persistence/constraints are reproduced, but cannot prove trusted actor provenance or authorization. |
+| SDK runtime suite | Pass, 35 tests | Supplementary contract corroboration. |
+| Orders UI suite | Pass, 13 tests | Supplementary component corroboration; not live visual evidence. |
+| Web route/context/proxy tests | Pass | Supplementary route corroboration. |
+| Web build | Pass | Build corroboration only. |
+
+No import, calculation, adjustment, approval, POST, or provider call was issued by this finalization pass.
+
+### Live runtime validation
+
+- Read-only GETs returned HTTP 200 for `/healthz`, `/orders`, `/profitability/margin-inputs`, `/profitability/profit-snapshots`, and `/profitability/manual-adjustments`.
+- Persisted readback contained 30 unique orders, 30 unique items, 30 unique payments, and 60 snapshots; `missing_tax_with_math=0`.
+- Six Candidate A orders are paid, approved, and resolved. The quantity-two and quantity-seven live rows retain cost `91.57` while revenue is `339.98` and `1189.93`; expected quantity-extended costs are `183.14` and `640.99`. This confirms the blocking ★4 quantity-cost defect.
+- The quantity-one evidence truthfully closes the old paid/resolved-link evidence gap, but remains incomplete because tax is missing.
+- The manual-adjustment actor remains caller-supplied and is validated only as nonempty. No POST was issued. This confirms the blocking ★7 security defect.
+- In-app browser discovery found no controllable browser, so UI live drive is `could-not-drive`.
+- The finalizer's single permitted reachability check of `http://localhost:5174/orders` returned HTTP 200. This is reachability only and is not visual or interactive evidence.
+
+### Round-2 criteria results
+
+| Criterion | Status | Evidence and blocking disposition |
+| --- | --- | --- |
+| M-06-C01 Idempotent Order Ingestion | **Pass** | Exact integrated/targeted tests passed and readback contains 30 unique orders/items/payments. |
+| M-06-C02 Margin Quality Honesty | **Fail** | Unknown propagation tests and `missing_tax_with_math=0` pass, but quantity-extended revenue composes with unextended `91.57` cost for quantity two/seven rows. |
+| M-06-C03 Manual Adjustment Audit | **Fail** | Append-only persistence tests pass, but caller-controlled actor identity is neither derived from a verified principal nor shown authorized for installation/order/item scope. |
+
+### Exact correction scope
+
+1. First reconcile `correction_attempts`, `last_validation_result`, the append-only correction log, and authority to proceed under `max_correction_attempts: 2`; do not rewrite round-1 or round-2 history.
+2. If authorized, apply a bounded correction for quantity extension, with quantity-one/two/seven plus nil-cost tests and explicit unit-versus-line CUSSEMICM, fee, and tax semantics.
+3. Obtain the architecture/owner decision for the trusted-principal boundary, then apply a bounded authorization correction that derives actor identity from a verified principal and authorizes installation/order/item scope. Update OpenAPI and `sdk-runtime` together if the request contract changes.
+4. Bind every load-bearing claim to the exact command or interaction output artifact marked `Evidence type: ran`, and replace generic contract command labels with exact executable commands and observables.
+5. Refresh live evidence after authorized corrections, then request a complete new fixed-SHA cold review and execution QA, including in-app visual/interactive `/orders` validation.
+
+No correction was implemented, no prior approval was reissued, and QA performed no provider write or runtime-data mutation. Next owner: Milestone Orchestrator for correction-history/cap reconciliation, owner decisions, bounded correction authorization, and a later fresh fixed-SHA gate.

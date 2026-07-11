@@ -1,0 +1,9 @@
+M-06 round-2 in-app browser preflight
+Evidence type: ran
+
+1. Browser runtime setup completed.
+2. Requested in-app browser binding: unavailable (`Browser is not available: iab`).
+3. Required troubleshooting inspection: available browser list was empty (`[]`).
+4. Read-only HTTP reachability check: `http://localhost:5174/orders` returned HTTP 200.
+5. Outcome: could-not-drive. HTTP reachability was not substituted for visual or interactive validation.
+6. No browser page was opened and no screenshot, trace, network, console, or DOM artifact could be captured.
