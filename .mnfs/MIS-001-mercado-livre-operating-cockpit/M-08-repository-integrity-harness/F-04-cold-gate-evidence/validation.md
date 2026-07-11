@@ -136,3 +136,54 @@ Milestone Orchestrator must perform final SPEC/SAFETY and QUALITY reviews on a f
 - Phase 4 remains intentionally unrun. Handoff: recompile/current-validate
   the context pack at the correction commit, then execute the authorized
   Phase 4 two-run pair once the Milestone Orchestrator confirms readiness.
+
+## Authorized correction — scoped Git trust for canonical snapshot source
+
+- Scope: F-04 snapshot ownership seam only. No Docker/network/Phase 4,
+  application, lockfile, schema, governance, Context/Execution/Environment/
+  Policy/Postgres seam, global/system/local Git config, HOME, hook, or
+  `--no-local` fallback changes.
+- RED reproduction: the prior unscoped local clone fails with Git's dubious
+  ownership error (`exit 128`) before the child environment is created. The
+  focused snapshot contract now exercises the same seam and fails closed for
+  divergent/ancestor roots, reparse-sensitive roots, wildcard/suffixed roots,
+  and multiple `safe.directory` values.
+- GREEN implementation: parent canonicalizes and resolves the source and
+  expected checkout roots, rejects reparse ambiguity, then checks clean
+  candidate `HEAD` before building a structured argv clone request. The clone
+  request contains exactly one process-scoped
+  `-c safe.directory=<canonical-exact-gitdir>` override, `clone --local`, and
+  no shell string or `--no-local` fallback. Trust is confined to that clone
+  process and descendants; projected command/evidence remains the detached
+  snapshot label and never persists the absolute source.
+- Executable scope proof: the focused snapshot suite creates a temporary
+  non-bare fixture checkout, invokes the exact structured argv clone with one
+  direct-child-gitdir trust value, and asserts exit 0. A root-only trust clone
+  against the real workspace remains the RED dubious-ownership reproduction
+  (`exit 128`); the implementation now uses the validated `<root>/.git` child,
+  while rejecting gitfiles/reparse/external/ancestor gitdirs as
+  `GITDIR_UNTRUSTED`.
+- Stable safe reason codes: `COLD_SOURCE_ROOT_INVALID`,
+  `COLD_SOURCE_ROOT_MISSING`, `COLD_SOURCE_REPARSE_UNSAFE`,
+  `COLD_SOURCE_ROOT_MISMATCH`, `COLD_SOURCE_ROOT_UNSAFE`,
+  `COLD_GIT_TRUST_SCOPE_INVALID`, `GITDIR_UNTRUSTED`, `COLD_SNAPSHOT_PATH_INVALID`,
+  `COLD_CANDIDATE_SHA_MISMATCH`, and `COLD_SNAPSHOT_FAILED`.
+- Focused GREEN evidence (fake/contract only):
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/tests/cold-gate-snapshot.tests.ps1` — exit 0.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/tests/cold-gate-evidence.tests.ps1` — exit 0.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/tests/governance-contracts.tests.ps1` — exit 0.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/tests/context-compiler.tests.ps1` — exit 0.
+- Config invariance: focused snapshot evidence hashes the pre/post outputs of
+  `git config --global/--system/--local --get-all safe.directory`; they are
+  byte-identical. No Git config file or HOME state was written. The projected
+  command contains no absolute path or `safe.directory` token.
+- F-03 fake regression was attempted with `-BaseSha <HEAD>` and reached the
+  hermetic lanes, but its existing `harness-aliases.tests.ps1` direct
+  `git rev-parse` fails with the same external dubious-ownership condition
+  (`exit 1`). No F-03 path was changed and no process-scoped workaround was
+  introduced; this remains an external regression blocker to report.
+- Context artifact: existing current-valid pack remains
+  `scripts/.runs/f52c2e54ac864dd1b6c7dbfcfbda9ec0/context-pack.json` at the
+  prior candidate; it must be recompiled and current-validated at the fixed
+  correction SHA before any Phase 4 attempt. Phase 4 remains intentionally
+  unrun.

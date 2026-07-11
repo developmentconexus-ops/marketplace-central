@@ -54,6 +54,71 @@ function Get-HarnessProcessFailureReason {
   return 'COLD_PROCESS_AWAIT_EXCEPTION_UNKNOWN'
 }
 
+function Resolve-HarnessCanonicalCheckoutRoot {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory)][string]$SourceRoot,
+    [Parameter(Mandatory)][string]$ExpectedRoot
+  )
+
+  # Git trust is intentionally scoped to one exact, physical checkout.  Do
+  # not accept wildcard/ancestor paths or a reparse-point alias that could
+  # resolve to a different repository between validation and clone.
+  foreach ($candidate in @($SourceRoot, $ExpectedRoot)) {
+    if ([string]::IsNullOrWhiteSpace($candidate) -or -not [IO.Path]::IsPathFullyQualified($candidate) -or $candidate -match '[*?]') {
+      throw 'COLD_SOURCE_ROOT_INVALID'
+    }
+    if (-not (Test-Path -LiteralPath $candidate -PathType Container)) { throw 'COLD_SOURCE_ROOT_MISSING' }
+    $item = Get-Item -LiteralPath $candidate -Force
+    if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'COLD_SOURCE_REPARSE_UNSAFE' }
+    $parent = $item.Parent
+    while ($null -ne $parent) {
+      if (($parent.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'COLD_SOURCE_REPARSE_UNSAFE' }
+      if ($null -eq $parent.Parent -or $parent.FullName -eq $parent.Parent.FullName) { break }
+      $parent = $parent.Parent
+    }
+  }
+
+  $source = (Get-Item -LiteralPath $SourceRoot -Force).FullName.TrimEnd('\', '/')
+  $expected = (Get-Item -LiteralPath $ExpectedRoot -Force).FullName.TrimEnd('\', '/')
+  if (-not [string]::Equals($source, $expected, [StringComparison]::OrdinalIgnoreCase)) {
+    throw 'COLD_SOURCE_ROOT_MISMATCH'
+  }
+  return $source
+}
+
+function New-HarnessScopedGitCloneArguments {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory)][string]$CanonicalSourceRoot,
+    [Parameter(Mandatory)][string]$SnapshotPath
+  )
+
+  if ([string]::IsNullOrWhiteSpace($CanonicalSourceRoot) -or
+      -not [IO.Path]::IsPathFullyQualified($CanonicalSourceRoot) -or
+      $CanonicalSourceRoot -match '[*?]' -or
+      $CanonicalSourceRoot -match '(?i)[\\/]\.git$' -or
+      $CanonicalSourceRoot -match ';' -or
+      $CanonicalSourceRoot -match '(?i)(?:^|[;\s])safe\.directory\s*=') {
+    throw 'COLD_GIT_TRUST_SCOPE_INVALID'
+  }
+  if ([string]::IsNullOrWhiteSpace($SnapshotPath) -or -not [IO.Path]::IsPathFullyQualified($SnapshotPath) -or $SnapshotPath -match '[*?]') {
+    throw 'COLD_SNAPSHOT_PATH_INVALID'
+  }
+
+  $gitTrustPath = Join-Path $CanonicalSourceRoot '.git'
+  $gitItem = Get-Item -LiteralPath $gitTrustPath -Force -ErrorAction SilentlyContinue
+  if ($null -eq $gitItem -or -not ($gitItem.PSIsContainer) -or (($gitItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) -or
+      -not [string]::Equals($gitItem.Parent.FullName.TrimEnd('\', '/'), $CanonicalSourceRoot.TrimEnd('\', '/'), [StringComparison]::OrdinalIgnoreCase) -or
+      -not [string]::Equals($gitItem.Name, '.git', [StringComparison]::OrdinalIgnoreCase)) {
+    throw 'GITDIR_UNTRUSTED'
+  }
+
+  # Keep this as an argv array.  The absolute source is process-local only;
+  # projected command/evidence uses the detached snapshot label.
+  return @('-c', "safe.directory=$($gitItem.FullName)", 'clone', '--quiet', '--no-hardlinks', '--local', $CanonicalSourceRoot, $SnapshotPath)
+}
+
 function New-HarnessOutcome {
   [CmdletBinding()]
   param(
@@ -106,4 +171,4 @@ function Write-HarnessTrace {
   return $Path
 }
 
-Export-ModuleMember -Function Test-SafeEvidenceText, Get-HarnessProcessFailureReason, New-HarnessOutcome, Get-HarnessOutcomeProjection, Compare-HarnessOutcomeProjection, Write-HarnessOutcome, Write-HarnessTrace
+Export-ModuleMember -Function Test-SafeEvidenceText, Get-HarnessProcessFailureReason, Resolve-HarnessCanonicalCheckoutRoot, New-HarnessScopedGitCloneArguments, New-HarnessOutcome, Get-HarnessOutcomeProjection, Compare-HarnessOutcomeProjection, Write-HarnessOutcome, Write-HarnessTrace

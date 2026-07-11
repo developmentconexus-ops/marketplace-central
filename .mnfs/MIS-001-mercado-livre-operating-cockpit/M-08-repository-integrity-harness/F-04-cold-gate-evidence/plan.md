@@ -112,6 +112,12 @@ primary checkout writes, caller dependency/cache writes, and unowned Docker
 resources. Phase 3 extends governance vocabulary atomically so the amended
 contract expresses these exact scopes directly before Phase 4.
 
+Snapshot trust correction: source validation must resolve the canonical expected
+checkout root and prove that its direct child `.git` is a normal directory.
+Gitfiles, reparse-point gitdirs, external/ancestor gitdirs, and non-exact paths
+fail closed as `GITDIR_UNTRUSTED`; the child clone receives exactly one
+structured `-c safe.directory=<canonical-exact-gitdir>` override.
+
 ## Phase 1 — Schema and Manifest RED
 
 1. Add adversarial tests for the outcome schema and JSONL writer: required

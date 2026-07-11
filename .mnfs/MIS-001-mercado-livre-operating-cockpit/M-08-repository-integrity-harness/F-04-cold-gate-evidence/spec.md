@@ -31,6 +31,10 @@ classification, and reproducibility across cold runs.
   worktree metadata or write the primary checkout. It clones committed Git
   objects only, checks out that exact candidate detached, then verifies clone
   `HEAD`, clean status, and absence of mutable source-worktree content.
+  Before cloning, the parent resolves the canonical expected checkout root and
+  requires its direct child `.git` to be a normal directory. Gitfiles,
+  reparse-point gitdirs, external/ancestor gitdirs, and any non-exact gitdir
+  fail closed as `GITDIR_UNTRUSTED`.
 - All snapshot `node_modules`, npm cache, `GOCACHE`, and `GOMODCACHE` paths live
   under that run. Caller dependencies/caches are neither read nor changed.
 - A registry-defined `cold-provision` lane receives only safe tool variables,

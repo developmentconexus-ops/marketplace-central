@@ -238,7 +238,7 @@ function Invoke-Context {
 function Invoke-Cold {
   New-Item -ItemType Directory -Path $runDir -Force | Out-Null
   $records = [Collections.Generic.List[object]]::new(); $imageIdentity = ''; $blocked = $false; $callerDirty = $false
-  $head = (& git -C $repoRoot rev-parse HEAD 2>$null).Trim(); $safeCandidate = if ($CandidateSha -match '^[0-9a-f]{40}$') { $CandidateSha } elseif ($head -match '^[0-9a-f]{40}$') { $head } else { '0000000000000000000000000000000000000000' }
+  $head = ''; $safeCandidate = if ($CandidateSha -match '^[0-9a-f]{40}$') { $CandidateSha } else { '0000000000000000000000000000000000000000' }
   $branchName = ((& git -C $repoRoot branch --show-current).Trim()); if ([string]::IsNullOrWhiteSpace($branchName)) { $branchName = 'detached' }
   function Add-ColdRecord([string]$Id,[string]$Command,[string]$Stage,[string]$Target,[string]$Class,[int]$Exit,[string]$Reason,[long]$Duration = 0) {
     $records.Add([ordered]@{id=$Id;command=$Command;stage=$Stage;target_label=$Target;evidence_class=$Class;duration_ms=$Duration;exit_code=$Exit;reason=$Reason;artifact_paths=@()})
@@ -258,10 +258,29 @@ function Invoke-Cold {
   }
   try {
     if ([string]::IsNullOrWhiteSpace($CandidateSha) -or $CandidateSha -notmatch '^[0-9a-f]{40}$') { Add-ColdRecord 'preflight' 'git clean candidate' 'preflight' 'fake' 'contract' 1 'COLD_CANDIDATE_SHA_INVALID'; $blocked=$true; return }
-    if ($LASTEXITCODE -ne 0 -or $head -cne $CandidateSha) { Add-ColdRecord 'preflight' 'git clean candidate' 'preflight' 'fake' 'contract' 1 'COLD_CANDIDATE_SHA_MISMATCH'; $blocked=$true; return }
+    try {
+      $expectedCheckoutRoot = (Get-Item -LiteralPath (Join-Path $PSScriptRoot '..') -Force).FullName
+      $canonicalSource = Resolve-HarnessCanonicalCheckoutRoot -SourceRoot $repoRoot -ExpectedRoot $expectedCheckoutRoot
+    } catch {
+      $sourceReason = [string]$_.Exception.Message
+      if ($sourceReason -notmatch '^COLD_SOURCE_(?:ROOT_INVALID|ROOT_MISSING|REPARSE_UNSAFE|ROOT_MISMATCH)$') { $sourceReason = 'COLD_SOURCE_ROOT_UNSAFE' }
+      Add-ColdRecord 'preflight' 'git canonical checkout source' 'preflight' 'fake' 'contract' 1 $sourceReason; $blocked=$true; return
+    }
+    $headExit = 0; $head = (& git -C $canonicalSource rev-parse HEAD 2>$null).Trim(); $headExit = $LASTEXITCODE
+    if ($headExit -ne 0 -or $head -cne $CandidateSha) { Add-ColdRecord 'preflight' 'git clean candidate' 'preflight' 'fake' 'contract' 1 'COLD_CANDIDATE_SHA_MISMATCH'; $blocked=$true; return }
     $status = @(& git -C $repoRoot status --porcelain 2>$null); if ($status.Count -gt 0) { $callerDirty = $true; Add-ColdRecord 'preflight' 'git clean candidate' 'preflight' 'fake' 'contract' 1 'COLD_CALLER_DIRTY'; $blocked=$true; return }
     Add-ColdRecord 'preflight' 'git clean candidate' 'preflight' 'fake' 'contract' 0 'passed'
-    $snapshot = Join-Path $runDir 'snapshot'; & git -C $repoRoot clone --quiet --no-hardlinks --local $repoRoot $snapshot 2>$null; if ($LASTEXITCODE -ne 0) { Add-ColdRecord 'snapshot' 'git clone detached snapshot' 'preflight' 'fake' 'contract' 1 'COLD_SNAPSHOT_FAILED'; $blocked=$true; return }
+    $snapshot = Join-Path $runDir 'snapshot'
+    try {
+      $gitPath = Resolve-HarnessApplication 'git'
+      $cloneArguments = New-HarnessScopedGitCloneArguments -CanonicalSourceRoot $canonicalSource -SnapshotPath $snapshot
+      $cloneResult = Invoke-HarnessProcess -Request (New-HarnessProcessRequest -FilePath $gitPath -ArgumentList $cloneArguments -WorkingDirectory $canonicalSource -Environment @{} -TimeoutSeconds 120 -RedactionCandidates @($repoRoot))
+    } catch {
+      $snapshotReason = [string]$_.Exception.Message
+      if ($snapshotReason -notmatch '^(?:GITDIR_UNTRUSTED|COLD_GIT_TRUST_SCOPE_INVALID|COLD_SNAPSHOT_PATH_INVALID)$') { $snapshotReason = 'COLD_SNAPSHOT_FAILED' }
+      Add-ColdRecord 'snapshot' 'git clone detached snapshot' 'preflight' 'fake' 'contract' 1 $snapshotReason; $blocked=$true; return
+    }
+    if ($cloneResult.ExitCode -ne 0) { Add-ColdRecord 'snapshot' 'git clone detached snapshot' 'preflight' 'fake' 'contract' 1 'COLD_SNAPSHOT_FAILED'; $blocked=$true; return }
     & git -C $snapshot checkout --quiet --detach $CandidateSha 2>$null; $snapshotHead=(& git -C $snapshot rev-parse HEAD 2>$null).Trim(); $snapshotStatus=@(& git -C $snapshot status --porcelain 2>$null)
     if ($LASTEXITCODE -ne 0 -or $snapshotHead -cne $CandidateSha -or $snapshotStatus.Count -gt 0) { Add-ColdRecord 'snapshot' 'git clone detached snapshot' 'preflight' 'fake' 'contract' 1 'COLD_SNAPSHOT_INVARIANT_FAILED'; $blocked=$true; return }
     Add-ColdRecord 'snapshot' 'git clone detached snapshot' 'preflight' 'fake' 'contract' 0 'passed'
