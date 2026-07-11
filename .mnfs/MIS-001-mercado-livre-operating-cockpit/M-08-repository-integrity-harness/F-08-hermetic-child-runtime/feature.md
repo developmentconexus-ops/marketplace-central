@@ -34,10 +34,10 @@ typed PowerShell modules without changing public command aliases.
 ## Expected Output
 
 - Thin stable `scripts/harness.ps1` dispatcher.
-- Policy, environment, execution, context, evidence, and state modules under
-  `scripts/harness/`.
+- Focused policy, environment, execution, and context modules under
+  `scripts/harness/`; evidence and state remain owned by F-04 and F-05.
 - Unit child environment built from a small safe OS/tool allowlist.
-- Existing npm harness aliases remain compatible.
+- Existing npm harness aliases remain compatible and are behavior-tested.
 
 ## Constraints
 

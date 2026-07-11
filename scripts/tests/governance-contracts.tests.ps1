@@ -155,7 +155,7 @@ try {
     @{ key='MC_DATABASE_URL'; path='apps/server_core/internal/modules/orders/adapters/postgres/order_repo_test.go'; kind='test'; status='temporary_exception'; owner='M-08/F-03' },
     @{ key='MC_DATABASE_URL'; path='apps/server_core/internal/modules/profitability/adapters/postgres/profit_snapshot_integration_test.go'; kind='test'; status='temporary_exception'; owner='M-08/F-03' },
     @{ key='MC_DATABASE_URL'; path='apps/server_core/internal/modules/profitability/adapters/postgres/manual_adjustment_integration_test.go'; kind='test'; status='temporary_exception'; owner='M-08/F-03' },
-    @{ key='MPC_ORACLE_LIVE_TEST'; path='apps/server_core/internal/modules/internal_read/adapters/oracle/reader_live_test.go'; kind='test'; status='temporary_exception'; owner='M-08/F-08' }
+    @{ key='MPC_ORACLE_LIVE_TEST'; path='apps/server_core/internal/modules/internal_read/adapters/oracle/reader_live_test.go'; kind='test'; status='temporary_exception'; owner='M-08/F-04' }
   )
   foreach ($expected in $expectedReaders) {
     $keyRecord = @($runtime.keys | Where-Object key -eq $expected.key)[0]
