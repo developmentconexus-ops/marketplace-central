@@ -36,6 +36,7 @@ F-04, and F-05 remain blocked from these seams until F-08 acceptance.
     "scripts/harness/Policy.psm1",
     "scripts/tests/harness-aliases.tests.ps1",
     "scripts/tests/harness-environment.tests.ps1",
+    "scripts/tests/harness-execution.tests.ps1",
     "scripts/tests/hermetic-lanes.tests.ps1",
     "scripts/tests/governance-contracts.tests.ps1",
     ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-02-hermetic-execution-lanes/validation.md",
@@ -175,6 +176,12 @@ minimal run summaries, F-03 integration blocker, live/browser preflight, and
 provider-write pre-network guards. Validate inputs before starting a child or
 creating a run directory. Every path derives from `$PSScriptRoot` or explicit
 repository root.
+
+Relative public paths, including `-EnvFile`, resolve from the repository root.
+Tool discovery uses platform-neutral command names; Windows npm launchers are
+resolved from the npm command location rather than assumed adjacent to Node.
+Execution derives redaction candidates from every non-tool child value so a
+caller cannot accidentally omit credential redaction.
 
 The unit child must set `GOMODCACHE` to an ignored repository-local directory
 and force `GOPROXY=off` plus `GOSUMDB=off`. F-08 validation may seed that cache
