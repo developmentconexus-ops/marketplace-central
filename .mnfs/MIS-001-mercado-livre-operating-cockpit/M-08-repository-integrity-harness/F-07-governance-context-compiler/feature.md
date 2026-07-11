@@ -3,11 +3,11 @@
 ```yaml
 id: F-07
 type: feature-brief
-status: briefed
-owner: Mission Strategist
+status: quick_validation_passed
+owner: Feature Implementer
 parent: M-08
 created: 2026-07-10
-updated: 2026-07-10
+updated: 2026-07-11
 validation_level: QA-3
 lifecycle_scope: feature
 ```
@@ -71,10 +71,13 @@ worker context from the active MNFS feature and repository truth.
 
 ## Handoff
 
-- Current status: Briefed.
-- Next owner: Feature Implementer after F-06.
-- Next action: Create `spec.md` and `plan.md` with exact registry fields and
-  compiler interfaces.
-- Required files/evidence: schema fixtures, semantic drift cases, positive and
-  stale context packs.
-- Blockers or open decisions: F-06 truth-order acceptance.
+- Current status: `quick_validation_passed`.
+- Next owner: Milestone Orchestrator.
+- Next action: Review the fixed F-07 output, Phase 1-3 commits, and
+  `validation.md`; accept, reject, or block the feature during milestone
+  integration review.
+- Required files/evidence: `spec.md`, `plan.md`, `validation.md`, governance
+  registries and schemas, focused fixture suites, current drift output, and the
+  ignored current context pack recorded in `validation.md`.
+- Blockers or open decisions: None for quick validation. Feature acceptance and
+  M-08 validation remain with the Milestone Orchestrator and QA Validator.
