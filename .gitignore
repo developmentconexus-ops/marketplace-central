@@ -9,6 +9,7 @@ apps/server_core/.gocache/
 .gocache/
 *.exe
 .env*
+scripts/.runs/
 .next/
 next-env.d.ts
 *.tsbuildinfo

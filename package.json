@@ -22,7 +22,12 @@
     "docker:down": "docker compose down",
     "web:dev": "npm run dev --workspace @marketplace-central/web",
     "web:test": "npm run test --workspace @marketplace-central/web",
-    "web:build": "npm run build --workspace @marketplace-central/web"
+    "web:build": "npm run build --workspace @marketplace-central/web",
+    "harness:unit": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command unit",
+    "harness:integration": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command integration",
+    "harness:live": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command live",
+    "harness:browser": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command browser",
+    "harness:provider-write": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command provider-write"
   },
   "dependencies": {},
   "devDependencies": {
