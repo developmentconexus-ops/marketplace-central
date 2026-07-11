@@ -25,12 +25,14 @@ Run PostgreSQL tests against isolated run-scoped databases with canonical migrat
 - Migration runner, PostgreSQL repositories/tests, registry seeds, Compose runtime, and lane contract from F-02.
 
 ## Expected Output
-- Generated `mpc_test_<run-id>` database/project namespace.
+- Generated `mpc_test_<run-id>` database plus run-labelled disposable Docker
+  container, loopback random port, and `tmpfs` data directory.
 - CWD-independent migration source, idempotence check, FK-complete fixture builders, and teardown in `finally`.
 
 ## Constraints
 - Guard must reject database names outside `mpc_test_*`.
-- Tests cannot use persistent dev volume or fixed container name.
+- Tests cannot use persistent dev volume, Compose dev project, caller database
+  URL, fixed container name, or fixed host port.
 - No production schema weakening to accommodate fixtures.
 
 ## Negative Scenarios
@@ -47,8 +49,7 @@ Run PostgreSQL tests against isolated run-scoped databases with canonical migrat
 
 ## Handoff
 - Current status: Briefed.
-- Next owner: Feature Implementer after F-02.
-- Next action: Create `spec.md` and `plan.md` for ephemeral DB lifecycle.
+- Next owner: Feature Implementer after accepted F-08.
+- Next action: Execute the RED contract from the accepted F-03 spec/plan.
 - Required files/evidence: migration/idempotence/cleanup transcripts.
 - Blockers or open decisions: Exact command names frozen by F-02.
-
