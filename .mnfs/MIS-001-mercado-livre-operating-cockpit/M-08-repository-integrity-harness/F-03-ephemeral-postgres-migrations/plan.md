@@ -26,13 +26,13 @@ only during final validation.
   "schema_version":"1.0",
   "feature_id":"F-03",
   "required_sources":[
-    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-08-hermetic-child-runtime/validation.md",
+    "scripts/tests/hermetic-lanes.tests.ps1",
+    "scripts/tests/harness-aliases.tests.ps1",
     "contracts/governance/execution-lanes.json",
     "contracts/governance/runtime-config.json",
     "scripts/harness.ps1",
     "apps/server_core/internal/platform/migrate/runner.go",
-    "apps/server_core/tests/integration/migrate_runner_test.go",
-    "docker-compose.yml"
+    "apps/server_core/tests/integration/migrate_runner_test.go"
   ],
   "allowed_paths":[
     "scripts/harness.ps1",
@@ -44,6 +44,8 @@ only during final validation.
     "scripts/tests/postgres-docker.integration.tests.ps1",
     "scripts/tests/postgres-dev-invariance.integration.tests.ps1",
     "scripts/tests/f03-regression.tests.ps1",
+    "scripts/tests/hermetic-lanes.tests.ps1",
+    "scripts/tests/harness-aliases.tests.ps1",
     "scripts/tests/fixtures/harness/postgres-docker-probe.mjs",
     "apps/server_core/migrations/source.go",
     "apps/server_core/internal/platform/migrate/runner.go",
@@ -140,6 +142,9 @@ test(harness): define ephemeral postgres contract
 - Create the central typed test target/helper.
 - Route normal integration through generated Docker lifecycle in `try/finally`.
   Keep preflight contact-free; reject any caller `-DatabaseUrl`.
+- Update inherited F-08 integration preflight fixtures to `ready`/exit `0` and
+  migrate the runner integration test directly to the embedded `fs.FS` API;
+  do not retain a string/`any` compatibility bridge.
 - Extend the integration child with repo-local offline Go caches and generated
   explicit `MPC_TEST_DATABASE_URL`; do not read reserved targets ambiently.
 
