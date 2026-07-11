@@ -15,7 +15,7 @@ Use `IMPLEMENTATION_PLAN.md` only for historical reconciliation. Current plannin
 
 - Architecture truth: `ARCHITECTURE.md` and ADRs in `docs/architecture/decisions/`
 - Contract truth: `contracts/api/marketplace-central.openapi.yaml`
-- Machine-governance boundary: `contracts/governance/`; it becomes authoritative only when M-08/F-07 accepts its schemas and registries
+- Machine-governance boundary: `contracts/governance/`; authoritative when the current `governance-validate` and `governance-drift` commands both pass
 - Wiki truth: `wiki/README.md` and module/quality pages
 - Execution truth: tests, builds, QA evidence, commits
 - Historical truth: `IMPLEMENTATION_PLAN.md`

@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-  [ValidateSet('unit', 'integration', 'live', 'browser', 'provider-write')]
+  [ValidateSet('unit', 'integration', 'live', 'browser', 'provider-write', 'governance-validate', 'governance-drift', 'governance')]
   [string]$Command = 'unit',
   [switch]$PreflightOnly,
   [string]$EnvFile,
@@ -9,6 +9,7 @@ param(
   [string]$Provider,
   [string]$Actor,
   [string]$IdempotencyKey,
+  [string]$BaseSha,
   [switch]$Execute
 )
 
@@ -196,6 +197,47 @@ function Invoke-ProviderWrite {
   throw 'provider write adapter is intentionally outside F-02; no network was invoked'
 }
 
+function Write-GovernanceResult {
+  param([object]$Result)
+  if ($Result.Passed) {
+    Write-Output 'status=passed'
+  } else {
+    Write-Output 'status=failed'
+    foreach ($violation in @($Result.Violations)) {
+      Write-Output "error_code=$($violation.ErrorCode)"
+      Write-Output "id=$($violation.Id)"
+      if (-not [string]::IsNullOrWhiteSpace([string]$violation.Path)) { Write-Output "path=$($violation.Path)" }
+    }
+  }
+  foreach ($exception in @($Result.BaselineExceptions)) {
+    Write-Output "baseline_exception=$($exception.Id)"
+  }
+  Write-Output 'artifact_path=contracts/governance'
+}
+
+function Invoke-Governance {
+  param([ValidateSet('validate', 'drift', 'all')][string]$Mode)
+  Import-Module (Join-Path $PSScriptRoot 'harness/Policy.psm1') -Force
+  if ($Mode -eq 'validate') {
+    $result = Test-GovernanceContracts -RepositoryRoot $repoRoot
+  } else {
+    if ([string]::IsNullOrWhiteSpace($BaseSha) -or $BaseSha -notmatch '^[0-9a-f]{40}$') {
+      Write-Output 'status=failed'
+      Write-Output 'error_code=GOV_SEMANTIC_DRIFT'
+      Write-Output 'id=base-sha-invalid'
+      Write-Output 'artifact_path=contracts/governance'
+      exit 1
+    }
+    if ($Mode -eq 'all') {
+      $contracts = Test-GovernanceContracts -RepositoryRoot $repoRoot
+      if (-not $contracts.Passed) { Write-GovernanceResult $contracts; exit 1 }
+    }
+    $result = Test-GovernanceDrift -RepositoryRoot $repoRoot -BaseSha $BaseSha
+  }
+  Write-GovernanceResult $result
+  if (-not $result.Passed) { exit 1 }
+}
+
 try {
   switch ($Command) {
     'unit' { Invoke-Unit }
@@ -203,6 +245,9 @@ try {
     'live' { Invoke-Live }
     'browser' { Invoke-Browser }
     'provider-write' { Invoke-ProviderWrite }
+    'governance-validate' { Invoke-Governance -Mode validate }
+    'governance-drift' { Invoke-Governance -Mode drift }
+    'governance' { Invoke-Governance -Mode all }
   }
 } catch {
   Write-Output "status=blocked"

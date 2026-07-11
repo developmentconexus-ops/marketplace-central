@@ -27,7 +27,8 @@
     "harness:integration": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command integration",
     "harness:live": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command live",
     "harness:browser": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command browser",
-    "harness:provider-write": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command provider-write"
+    "harness:provider-write": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command provider-write",
+    "harness:governance": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command governance"
   },
   "dependencies": {},
   "devDependencies": {
