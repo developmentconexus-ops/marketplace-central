@@ -3,7 +3,7 @@
 ```yaml
 id: F-08
 type: feature-brief
-status: quick_validation_passed
+status: accepted
 owner: Feature Implementer
 parent: M-08
 created: 2026-07-10
@@ -72,12 +72,12 @@ and focused fake/contract evidence.
 
 ## Handoff
 
-- Current status: `quick_validation_passed`.
-- Next owner: Milestone Orchestrator.
-- Next action: Review fixed F-08 commits and `validation.md`, then accept,
-  reject, or block the feature before F-03/F-04/F-05 use shared harness seams.
+- Current status: `accepted`.
+- Next owner: F-03 Feature Implementer.
+- Next action: Implement the explicit ephemeral PostgreSQL lifecycle on the
+  accepted typed environment/process boundary.
 - Required files/evidence: `spec.md`, `plan.md`, `validation.md`, commits
   `4beb9d7` through the Phase 4 evidence commit, focused suites, normal unit run,
   and final current-base context pack.
-- Blockers or open decisions: No feature quick-validation blocker. Independent
-  acceptance and F-04 cold dependency provisioning remain downstream.
+- Blockers or open decisions: No F-08 blocker. F-04 still owns cold dependency
+  provisioning and rich evidence; M-08 remains in progress.

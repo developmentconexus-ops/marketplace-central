@@ -229,5 +229,31 @@ Every passing entry has evidence type `ran`, owner Feature Implementer, target
 - Required evidence: commits `4beb9d7` through the Phase 4 evidence commit,
   this file, eight focused suites, current governance output, normal unit
   summary, and final context pack.
-- Blockers: no feature quick-validation blocker. Feature acceptance, F-04 cold
-  provisioning, and M-08 formal validation remain outstanding.
+- Blockers: no F-08 blocker. F-04 cold provisioning and M-08 formal validation
+  remain outstanding.
+
+## Milestone Orchestrator Acceptance
+
+- Decision: `accepted`.
+- Accepted implementation/evidence HEAD:
+  `43f59173009c3c908232129e029ef057158f159d`.
+- Fresh acceptance commands from that clean HEAD:
+  - environment, execution, lane, alias, governance-contract, governance-drift,
+    and context-compiler suites: exit `0`, `PASS`;
+  - current `harness:governance`: exit `0`, `status=passed`, exactly 35
+    declared baseline exceptions and no unknown drift;
+  - post-evidence F-08 context compile/current-base validation: exit `0`,
+    artifact
+    `scripts/.runs/10f604a8e016408b921454e94b79d50d/context-pack.json`;
+  - normal offline `harness:unit`: exit `0`, Go unit passed, Vitest 20 files / 185
+    tests passed, summary
+    `scripts/.runs/ceb994d242594df7a1cb5894b22feb2a/summary.txt`;
+  - `git diff --check` and visible status: clean before this acceptance update.
+- Independent review: Phase 2 and Phase 3 each used one fixed-commit combined
+  SPEC/QUALITY review, one consolidated correction batch, and one focused
+  revalidation. Both final verdicts were `Pass`.
+- Evidence class: `fake`/local contract only. No PostgreSQL, Oracle, Mercado
+  Livre, browser, network, migration, or provider write was run or claimed.
+- Accepted limitation: the repo-local Go cache proves the focused unit graph;
+  F-04 must still prove cold dependency provisioning and the complete cold gate.
+- Next owner: F-03 Feature Implementer.
