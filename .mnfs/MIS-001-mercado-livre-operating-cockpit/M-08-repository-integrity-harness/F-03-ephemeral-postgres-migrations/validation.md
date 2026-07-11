@@ -264,3 +264,24 @@ M-08 passed and does not prove Oracle or marketplace-provider readiness.
   governance/current context evidence, and independent review result.
 - Blockers or open decisions: None for F-03 acceptance. M-08 remains in
   progress and must not be marked passed from this feature alone.
+
+## Milestone Orchestrator Acceptance
+
+- Decision: `accepted`.
+- Accepted implementation HEAD:
+  `7ea94672de4a8fad43511a87abad31c52e301c50`.
+- Accepted evidence HEAD:
+  `d76bc814ee4d5b3adfbacfd71ebab5e1b1673d23`.
+- Contract result: F-03 spec, plan, changed paths, real PostgreSQL evidence,
+  dev-invariance proof, governance/current context gates, and cleanup inventory
+  satisfy the feature acceptance criteria.
+- Independent review: final SPEC/SAFETY and QUALITY reviews ran on fixed
+  commits. Their P1/P2 findings were consolidated into `dac207c6` and
+  `7ea94672`; focused revalidation returned `PASS` with no unresolved material
+  finding.
+- Evidence classes accepted: fake contract, real local ephemeral PostgreSQL,
+  and read-only dev observer. These do not constitute Oracle, marketplace
+  provider, browser, external-network, or cold-machine evidence.
+- Accepted limitation: F-04 must still prove cold dependency/image
+  provisioning and all remaining environment-dependent gates.
+- Next owner: F-04 Feature Implementer.

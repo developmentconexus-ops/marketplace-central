@@ -3,8 +3,8 @@
 ```yaml
 id: F-03
 type: feature-brief
-status: quick_validation_passed
-owner: Feature Implementer
+status: accepted
+owner: Milestone Orchestrator
 parent: M-08
 created: 2026-07-10
 updated: 2026-07-11
@@ -49,13 +49,12 @@ Run PostgreSQL tests against isolated run-scoped databases with canonical migrat
 
 ## Handoff
 
-- Current status: `quick_validation_passed`.
-- Next owner: Milestone Orchestrator.
-- Next action: Review the spec, plan, changed paths, `validation.md`, real
-  PostgreSQL evidence, dev-invariance digest, governance/current context gates,
-  and independent fixed-commit review result for feature acceptance.
+- Current status: `accepted`.
+- Next owner: F-04 Feature Implementer.
+- Next action: Prove cold provisioning, cold execution, and the remaining
+  environment-dependent evidence without weakening the accepted F-03 lanes.
 - Required files/evidence: `spec.md`, `plan.md`, `validation.md`, commits through
   `7ea94672`, real run summaries/transcripts, digest/count inventory, and zero
   resource inventory.
-- Blockers or open decisions: None for F-03 acceptance. M-08 remains in
-  progress; F-04 owns cold provisioning and Oracle/provider evidence.
+- Blockers or open decisions: None for F-03. M-08 remains in progress; F-04
+  owns cold provisioning and Oracle/provider evidence.
