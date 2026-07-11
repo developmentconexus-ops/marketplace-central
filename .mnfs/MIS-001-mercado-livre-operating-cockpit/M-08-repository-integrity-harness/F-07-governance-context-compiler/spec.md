@@ -51,7 +51,9 @@ legacy violations without blessing them and must reject any undeclared growth.
 
 - Compile from a pinned MNFS feature path and full 40-character base SHA.
 - Derive objective, observable done state, criterion IDs, and proof commands
-  from `feature.md`, `spec.md`, `plan.md`, and the parent validation contract.
+  from `feature.md`, `spec.md`, a schema-valid machine work-contract block in
+  `plan.md`, and the parent validation contract. Do not infer command mappings
+  from free-form prose.
 - Record ordered source paths with SHA-256 hashes; never copy entire source
   documents into the pack.
 - Record deterministic risk classification, review policy, advisory model,
@@ -63,6 +65,9 @@ legacy violations without blessing them and must reject any undeclared growth.
 - A currentness check must reject base-SHA mismatch, missing source, source-hash
   mismatch, path overlap/out-of-scope, undeclared seam, dangling criterion
   proof, side-effect conflict, and target/evidence inflation.
+- Validation must recompile expected objective, done state, sources, criteria,
+  commands, risk, seams, side effects, and estimate from canonical files. Pack
+  fields are output, never trusted validation inputs.
 
 ### Public surface
 
@@ -105,6 +110,15 @@ legacy violations without blessing them and must reject any undeclared growth.
 `AGENTS.md` and `ARCHITECTURE.md` retain rationale and link to registry IDs.
 Every registry has `schema_version: "1.0"`, strict schema, unique IDs, and a
 semantic validator.
+
+`feature-work-contract.schema.json` owns the structured block embedded under
+`## Machine Work Contract` in each executable feature plan. The block declares
+required extra sources, allowed/forbidden paths, side effects, lane-bound
+command templates, criterion-to-command mappings, stop conditions, retry budget, and
+handoff fields. Objective/done, source hashes, target/evidence labels, seams,
+risk, review, model advice, and token estimate are derived by the compiler.
+Only `{base_sha}`, `{context_path}`, and `{feature_path}` template variables are
+supported; compilation expands all variables so emitted commands are exact.
 
 `modules.json` records current roots, code owner path, composition requirement,
 OpenAPI prefixes, and declared module dependencies. Target layer rules live in
@@ -183,6 +197,11 @@ Context uses `CTX_SCHEMA_INVALID`, `CTX_FEATURE_INVALID`,
 - Vite built-in `import.meta.env.DEV` is not a repository-owned key.
 - Context validation with `-RequireCurrentBase` is a pre-dispatch check; a
   worker commit intentionally changes HEAD afterward.
+- A requested allowed path must be equal to or narrower than a declared work
+  contract path. Mentioning one descendant never authorizes its ancestor.
+- Token estimate uses UTF-8 byte count, not .NET UTF-16 string length.
+- Dispatcher output converts absolute internal paths to safe repo-relative
+  paths or omits them.
 
 ## Acceptance Criteria
 

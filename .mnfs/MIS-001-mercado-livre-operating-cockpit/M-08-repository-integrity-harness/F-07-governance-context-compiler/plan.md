@@ -31,6 +31,89 @@ F-07-governance-context-compiler
   `.mnfs/MIS-001-mercado-livre-operating-cockpit/research/m08-governance-runtime-inventory.md`;
   any mismatch with active source blocks the phase instead of inventing a value.
 
+## Machine Work Contract
+
+```json
+{
+  "schema_version": "1.0",
+  "feature_id": "F-07",
+  "required_sources": [
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/research/m08-governance-runtime-inventory.md",
+    "docs/superpowers/specs/2026-07-10-repository-native-agent-harness-design.md"
+  ],
+  "allowed_paths": [
+    "AGENTS.md",
+    "package.json",
+    "contracts/governance/**",
+    "scripts/harness.ps1",
+    "scripts/harness/**",
+    "scripts/tests/governance-contracts.tests.ps1",
+    "scripts/tests/governance-drift.tests.ps1",
+    "scripts/tests/context-compiler.tests.ps1",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-07-governance-context-compiler/**"
+  ],
+  "forbidden_paths": [
+    "apps/server_core/internal/modules/**",
+    "apps/server_core/migrations/**",
+    "apps/web/src/**",
+    "packages/sdk-runtime/**",
+    "contracts/api/**",
+    "docker/**",
+    "docker-compose.yml"
+  ],
+  "side_effects": {
+    "allowed": [],
+    "forbidden": ["database-mutation", "external-network", "provider-write"]
+  },
+  "commands": [
+    {
+      "id": "governance-contracts",
+      "command_template": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/tests/governance-contracts.tests.ps1",
+      "lane_id": "unit",
+      "expected_exit_code": 0
+    },
+    {
+      "id": "governance-drift-fixtures",
+      "command_template": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/tests/governance-drift.tests.ps1",
+      "lane_id": "unit",
+      "expected_exit_code": 0
+    },
+    {
+      "id": "context-fixtures",
+      "command_template": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/tests/context-compiler.tests.ps1",
+      "lane_id": "unit",
+      "expected_exit_code": 0
+    },
+    {
+      "id": "governance-current",
+      "command_template": "npm run harness:governance -- -BaseSha {base_sha}",
+      "lane_id": "unit",
+      "expected_exit_code": 0
+    },
+    {
+      "id": "context-current",
+      "command_template": "npm run harness:context:validate -- -ContextPath {context_path} -RequireCurrentBase",
+      "lane_id": "unit",
+      "expected_exit_code": 0
+    }
+  ],
+  "criteria": [
+    {"id": "F07-AC01", "milestone_criterion_id": "M-08-C09", "command_ids": ["governance-contracts", "governance-current"]},
+    {"id": "F07-AC02", "milestone_criterion_id": "M-08-C09", "command_ids": ["governance-drift-fixtures", "governance-current"]},
+    {"id": "F07-AC03", "milestone_criterion_id": "M-08-C09", "command_ids": ["context-fixtures", "context-current"]},
+    {"id": "F07-AC04", "milestone_criterion_id": "M-08-C09", "command_ids": ["context-fixtures"]},
+    {"id": "F07-AC05", "milestone_criterion_id": "M-08-C09", "command_ids": ["context-fixtures"]}
+  ],
+  "stop_conditions": [
+    {"code": "scope-conflict", "condition": "A requested write path is not allowed or intersects a forbidden path."},
+    {"code": "contract-drift", "condition": "A schema, registry, source hash, criterion proof, or lane reference is inconsistent."},
+    {"code": "external-side-effect", "condition": "Execution would access a real database, external network, or provider write."}
+  ],
+  "retry_budget": {"max_correction_attempts": 1},
+  "handoff_fields": ["status", "done", "evidence", "blockers", "next"]
+}
+```
+
 ## Phase 1 — Schemas, Registries, and Contract Tests
 
 ### Files
@@ -47,6 +130,7 @@ F-07-governance-context-compiler
 - Create: `contracts/governance/schemas/invariants.schema.json`
 - Create: `contracts/governance/schemas/shared-seams.schema.json`
 - Create: `contracts/governance/schemas/context-pack.schema.json`
+- Create during Phase 3 correction: `contracts/governance/schemas/feature-work-contract.schema.json`
 - Create: `scripts/tests/governance-contracts.tests.ps1`
 
 ### Required registry content
@@ -163,24 +247,32 @@ feat(harness): enforce governance drift
 ### Context behavior
 
 - Parse the active feature/spec/plan plus parent milestone/validation contract.
-- Resolve each spec acceptance criterion to a milestone ID and one or more plan
-  verification commands; missing/dangling proof fails.
+- Parse and schema-validate exactly one `## Machine Work Contract` JSON block
+  from the plan. Resolve its criteria and commands against spec acceptance IDs,
+  parent milestone IDs, and execution-lane IDs; missing/dangling proof fails.
+- Always include canonical feature/spec/plan, parent milestone/validation,
+  mission, root guidance, and declared extra sources. Validation recompiles all
+  derived fields and requires exact equality; it never trusts pack-declared
+  sources, objective, commands, labels, criteria, or risk.
 - Compute source SHA-256, Git base SHA, paths/seams, deterministic risk/review
   policy, side effects, commands/targets, stop conditions, retry budget, and
   handoff fields.
 - Risk rules: external/live/provider-write => L3; exclusive seam or cross-module
   scope => L2; one module => L1; docs/mechanical and no seam => L0.
 - Estimate serialized input size excluding the estimate field and reject above
-  2,000.
+  2,000 using `[Text.Encoding]::UTF8.GetByteCount(...)`.
 - `context-validate -RequireCurrentBase` recomputes Git SHA and every source
   hash before dispatch.
 
 ### RED/GREEN
 
-1. Write positive fixture and negative tests for invalid SHA, stale HEAD,
+1. Write two feature-agnostic positive fixtures and negative tests for missing/
+   duplicate/invalid machine work contract, invalid SHA, stale HEAD,
    missing/mutated source, missing criterion proof, dangling command proof,
+   pack-field tampering, ancestor scope escalation, rooted/traversal path,
    allowed/forbidden overlap, out-of-scope path, undeclared seam, side-effect
-   conflict, fake-to-live inflation, and 2,001 estimate.
+   conflict, fake-to-live inflation, UTF-8 multibyte estimate overflow, and
+   2,001 estimate.
 2. Run:
 
 ```powershell
@@ -189,13 +281,14 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/tests/context-compiler.tes
 
 Expected RED: exit 1 because `Context.psm1` functions do not exist.
 
-3. Implement compiler/validator, add dispatcher commands and npm aliases
+3. Add `feature-work-contract.schema.json`; implement generic compiler/
+   validator, add dispatcher commands and npm aliases
    `harness:context:compile` and `harness:context:validate`.
 4. Rerun focused tests, then compile F-07 from current HEAD:
 
 ```powershell
 $sha = git rev-parse HEAD
-& ./scripts/harness.ps1 -Command context-compile -FeaturePath '.mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-07-governance-context-compiler' -BaseSha $sha -AllowedPath 'contracts/governance/**' 'scripts/harness/**' 'scripts/tests/**' 'scripts/harness.ps1' 'package.json' 'AGENTS.md'
+& ./scripts/harness.ps1 -Command context-compile -FeaturePath '.mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-07-governance-context-compiler' -BaseSha $sha -AllowedPath 'contracts/governance/**' 'scripts/harness/**' 'scripts/tests/governance-contracts.tests.ps1' 'scripts/tests/governance-drift.tests.ps1' 'scripts/tests/context-compiler.tests.ps1' 'scripts/harness.ps1' 'package.json' 'AGENTS.md' '.mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-07-governance-context-compiler/**'
 npm run harness:context:validate -- -ContextPath '<reported context-pack path>' -RequireCurrentBase
 ```
 
