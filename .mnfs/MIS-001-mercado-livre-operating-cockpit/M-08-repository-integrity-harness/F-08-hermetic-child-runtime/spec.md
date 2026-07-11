@@ -34,8 +34,10 @@ provider behavior to their owning features/modules.
   `inherit_parent: false`. Runtime values may enter only when the key is allowed
   by that lane and consistently declared in `runtime-config.json`.
 - Unit inherits only the fixed host/tool keys `SystemRoot`, `WINDIR`, `ComSpec`,
-  `PATH`, `PATHEXT`, `TEMP`, and `TMP` when present, plus a generated canonical
-  repository-local `GOCACHE`. It receives no application runtime key.
+  `PATH`, `PATHEXT`, `TEMP`, and `TMP` when present. It generates canonical
+  repository-local `GOCACHE` and `GOMODCACHE`, plus `GOPROXY=off` and
+  `GOSUMDB=off`; missing modules fail deterministically instead of reaching the
+  network. It receives no application runtime key.
 - Do not inherit `HOME`, `USERPROFILE`, `APPDATA`, `LOCALAPPDATA`,
   `PSModulePath`, tool caches, proxy/certificate/cloud/CI variables, or unknown
   future variables. They are hidden inputs, not required unit configuration.
@@ -105,7 +107,8 @@ provider behavior to their owning features/modules.
 - A contaminated parent containing known runtime keys and an arbitrary future
   sentinel does not block unit; a child probe proves none reached the child.
 - The observed child key set is a subset of the fixed safe set plus generated
-  `GOCACHE`; parent values remain unchanged.
+  `GOCACHE`, `GOMODCACHE`, `GOPROXY`, and `GOSUMDB`; both caches are
+  repository-local and parent values remain unchanged.
 
 ### F08-AC02 — Execution is shell-free, CWD-stable, and lossless
 

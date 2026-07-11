@@ -49,6 +49,7 @@ F-04, and F-05 remain blocked from these seams until F-08 acceptance.
     "scripts/tests/harness-execution.tests.ps1",
     "scripts/tests/harness-aliases.tests.ps1",
     "scripts/tests/fixtures/harness/**",
+    ".gitignore",
     "contracts/governance/runtime-config.json",
     "contracts/governance/schemas/runtime-config.schema.json",
     "scripts/tests/governance-contracts.tests.ps1",
@@ -114,8 +115,9 @@ Required RED cases:
    and a GUID-suffixed unknown sentinel. Unit must eventually succeed while the
    child sees none of them.
 2. Unit ignores an EnvFile containing those keys and legacy Oracle aliases.
-3. Child sees only fixed safe host/tool keys plus canonical `GOCACHE`; parent
-   environment and CWD remain unchanged on success and forced failure.
+3. Child sees only fixed safe host/tool keys plus canonical repo-local
+   `GOCACHE`/`GOMODCACHE` and network-off Go settings; parent environment and
+   CWD remain unchanged on success and forced failure.
 4. Arguments containing spaces, quotes, `&`, `$()`, and semicolons round-trip
    literally; no shell evaluation occurs.
 5. Concurrent stdout/stderr greater than 2 MiB completes; exit `17` remains
@@ -173,6 +175,12 @@ minimal run summaries, F-03 integration blocker, live/browser preflight, and
 provider-write pre-network guards. Validate inputs before starting a child or
 creating a run directory. Every path derives from `$PSScriptRoot` or explicit
 repository root.
+
+The unit child must set `GOMODCACHE` to an ignored repository-local directory
+and force `GOPROXY=off` plus `GOSUMDB=off`. F-08 validation may seed that cache
+only from an already-present local Go download cache; it must not download over
+the network. A missing module is a deterministic prerequisite failure. F-04
+owns durable cold dependency provisioning/evidence.
 
 If migration exposes the generic registry-driven environment boundary, amend
 the runtime-config schema, registry, Policy semantic checks, and governance
