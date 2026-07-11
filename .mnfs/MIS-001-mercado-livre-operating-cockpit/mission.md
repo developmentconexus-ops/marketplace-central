@@ -204,10 +204,10 @@ Evidence path convention:
 
 ## Handoff
 
-- Current status: M-01 through M-05 passed; M-06 is blocked only on a paid resolved-link live Oracle + Mercado Livre profitability scenario; M-08 is at final simple-protocol review/QA and is no longer an open-ended product prerequisite.
+- Current status: M-01 through M-05 and M-08 passed; M-06 is blocked only on a paid resolved-link live Oracle + Mercado Livre profitability scenario.
 - Current owner: Mission Strategist.
-- Next owner: independent M-08 Reviewer/QA, then a fresh Portfolio session.
-- Next action: Close the finite M-08 protocol, open the fresh Portfolio session, and resume M-06 with its exact paid resolved-link evidence gap; do not start more harness features.
+- Next owner: fresh Portfolio session.
+- Next action: Resume M-06 with its exact paid resolved-link evidence gap; do not start more harness features.
 - Required artifact paths:
   - `.mnfs/MIS-001-mercado-livre-operating-cockpit/mission.md`
   - `.mnfs/MIS-001-mercado-livre-operating-cockpit/validation-contract.md`

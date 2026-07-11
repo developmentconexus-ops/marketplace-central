@@ -3,7 +3,7 @@
 ```yaml
 id: M-08
 type: milestone
-status: in_progress
+status: passed
 owner: Mission Strategist
 parent: MIS-001
 created: 2026-07-10
@@ -99,11 +99,11 @@ orchestration, state, risk-selected gates, QA, and dogfood.
 
 ## Handoff
 
-- Current status: Final simple-protocol candidate; F-10/F-05 accepted and F-09 rejected from active scope.
-- Next owner: independent Reviewer, then QA Validator.
-- Next action: Review and validate the fixed simple-protocol commit, record `validation-result.md`, then open a fresh Portfolio session for M-06.
-- Required files/evidence: repo skill, execution guide, knowledge routes, focused governance/context/orchestration checks, and native Portfolio task creation.
-- Blockers or open decisions: None; do not reopen cold or synthetic-eval scope.
+- Current status: Passed on fixed commit `0adae4d8203718a3a6a0058314b2a3d61b363bea`; F-10/F-05 active and F-09 rejected from V1.
+- Next owner: fresh Portfolio session.
+- Next action: Resume M-06 at its paid resolved-link Oracle + Mercado Livre evidence gap.
+- Required files/evidence: `validation-result.md` and the simple session packets in the repo skill.
+- Blockers or open decisions: None; harness work is closed.
 
 ## Correction Handoff
 
