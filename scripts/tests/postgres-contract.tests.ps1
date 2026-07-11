@@ -33,6 +33,10 @@ try {
   Assert-True ($spec.Label -ceq "marketplace-central.harness.run=$runId") 'run label is not tied to run ID'
   Assert-True ([IO.Path]::IsPathFullyQualified($spec.RepositoryRoot)) 'repository root is not absolute'
 
+  $missingDocker = ''
+  try { Resolve-HarnessPostgresDockerApplication -Name ('missing-docker-' + [guid]::NewGuid().ToString('N')) | Out-Null } catch { $missingDocker = $_.Exception.Message }
+  Assert-True ($missingDocker -match 'HPG_DOCKER_MISSING') 'missing Docker executable lacks stable reason'
+
   foreach ($invalid in @('', 'ABCDEF0123456789abcdef0123456789', '0123456789abcdef', '../0123456789abcdef0123456789abcdef')) {
     $before = Test-Path -LiteralPath $log
     $message = ''

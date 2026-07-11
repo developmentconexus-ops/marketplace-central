@@ -10,6 +10,17 @@ function Copy-HarnessEnvironment {
   return $copy
 }
 
+function Resolve-HarnessPostgresDockerApplication {
+  [CmdletBinding()]
+  param([string]$Name = 'docker')
+
+  $application = Get-Command $Name -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+  if ($null -eq $application -or [string]::IsNullOrWhiteSpace([string]$application.Source)) {
+    throw 'HPG_DOCKER_MISSING'
+  }
+  return [IO.Path]::GetFullPath([string]$application.Source)
+}
+
 function New-HarnessPostgresRunSpec {
   [CmdletBinding()]
   param(
@@ -68,7 +79,10 @@ function Invoke-HarnessPostgresLifecycle {
     [Parameter(Mandatory)][System.Collections.IDictionary]$BaseEnvironment,
     [Parameter(Mandatory)][string]$GoFilePath,
     [string[]]$GoArgumentPrefix = @(),
-    [ValidateRange(1, 3600)][int]$TimeoutSeconds = 600
+    [ValidateRange(1, 3600)][int]$TimeoutSeconds = 600,
+    [ValidateRange(1, 600)][int]$ReadyMaxAttempts = 60,
+    [ValidateRange(0, 60000)][int]$ReadyRetryDelayMilliseconds = 1000,
+    [ValidateRange(1, 600000)][int]$ReadyTimeoutMilliseconds = 60000
   )
 
   $dockerEnvironment = Copy-HarnessEnvironment $BaseEnvironment
@@ -79,6 +93,7 @@ function Invoke-HarnessPostgresLifecycle {
   $state = @{ PrimaryCode = ''; PrimaryExit = 0 }
   $databaseCreated = $false
   $containerStartAttempted = $false
+  $containerOwned = $false
   $firstCount = -1
   $secondCount = -1
   $targetURL = ''
@@ -95,9 +110,29 @@ function Invoke-HarnessPostgresLifecycle {
       $state.PrimaryExit = if ($ExitCode -ne 0) { $ExitCode } else { 1 }
     }
   }
+  function Add-CleanupCode([string]$Code) {
+    if (-not $cleanupCodes.Contains($Code)) { [void]$cleanupCodes.Add($Code) }
+  }
+  function Get-ResourceNames([string]$Filter) {
+    $query = Invoke-Docker @('ps', '--all', '--filter', $Filter, '--format', '{{.Names}}')
+    if ($query.ExitCode -ne 0) { return [pscustomobject]@{ Passed = $false; Names = @() } }
+    $names = @($query.Stdout -split '\r?\n' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    return [pscustomobject]@{ Passed = $true; Names = $names }
+  }
 
   try {
     do {
+    $daemon = Invoke-Docker @('version', '--format', '{{.Server.Version}}')
+    if ($daemon.ExitCode -ne 0) { Set-Primary 'HPG_DOCKER_UNAVAILABLE' $daemon.ExitCode; break }
+
+    $image = Invoke-Docker @('image', 'inspect', 'postgres:16-bookworm', '--format', '{{.Id}}')
+    if ($image.ExitCode -ne 0) { Set-Primary 'HPG_IMAGE_MISSING' $image.ExitCode; break }
+
+    $nameBefore = Get-ResourceNames "name=^/$([regex]::Escape($RunSpec.ContainerName))$"
+    $labelBefore = Get-ResourceNames "label=$($RunSpec.Label)"
+    if (-not $nameBefore.Passed -or -not $labelBefore.Passed) { Set-Primary 'HPG_DOCKER_UNAVAILABLE' 1; break }
+    if (@($nameBefore.Names).Count -gt 0 -or @($labelBefore.Names).Count -gt 0) { Set-Primary 'HPG_RESOURCE_CONFLICT' 1; break }
+
     $containerStartAttempted = $true
     $start = Invoke-Docker @(
       'run', '--detach', '--rm', '--pull=never',
@@ -111,8 +146,24 @@ function Invoke-HarnessPostgresLifecycle {
     )
     if ($start.ExitCode -ne 0) { Set-Primary 'HPG_CONTAINER_START_FAILED' $start.ExitCode; break }
 
-    $ready = Invoke-Docker @('exec', $RunSpec.ContainerName, 'pg_isready', '--username', 'postgres', '--dbname', 'postgres')
-    if ($ready.ExitCode -ne 0) { Set-Primary 'HPG_READY_TIMEOUT' $ready.ExitCode; break }
+    $ownership = Invoke-Docker @('inspect', '--format', '{{.Name}}|{{ index .Config.Labels "marketplace-central.harness.run" }}', $RunSpec.ContainerName)
+    $expectedOwnership = "/$($RunSpec.ContainerName)|$($RunSpec.RunId)"
+    if ($ownership.ExitCode -ne 0 -or $ownership.Stdout.Trim() -cne $expectedOwnership) {
+      Set-Primary 'HPG_CONTAINER_START_FAILED' $ownership.ExitCode
+      break
+    }
+    $containerOwned = $true
+
+    $ready = $null
+    $readyWatch = [Diagnostics.Stopwatch]::StartNew()
+    for ($attempt = 1; $attempt -le $ReadyMaxAttempts; $attempt++) {
+      $ready = Invoke-Docker @('exec', $RunSpec.ContainerName, 'pg_isready', '--username', 'postgres', '--dbname', 'postgres')
+      if ($ready.ExitCode -eq 0) { break }
+      if ($attempt -ge $ReadyMaxAttempts -or $readyWatch.ElapsedMilliseconds -ge $ReadyTimeoutMilliseconds) { break }
+      if ($ReadyRetryDelayMilliseconds -gt 0) { Start-Sleep -Milliseconds $ReadyRetryDelayMilliseconds }
+    }
+    $readyWatch.Stop()
+    if ($null -eq $ready -or $ready.ExitCode -ne 0) { Set-Primary 'HPG_READY_TIMEOUT' $(if ($null -eq $ready) { 1 } else { $ready.ExitCode }); break }
 
     $port = Invoke-Docker @('port', $RunSpec.ContainerName, '5432/tcp')
     if ($port.ExitCode -ne 0 -or $port.Stdout -notmatch '(?m)^127\.0\.0\.1:(\d+)\s*$') { Set-Primary 'HPG_PORT_UNAVAILABLE' $port.ExitCode; break }
@@ -139,19 +190,24 @@ function Invoke-HarnessPostgresLifecycle {
     if ($tests.ExitCode -ne 0) { Set-Primary 'HPG_TEST_FAILED' $tests.ExitCode; break }
     } while ($false)
   } finally {
-    if ($databaseCreated) {
+    if ($databaseCreated -and $containerOwned) {
       $drop = Invoke-Docker @('exec', $RunSpec.ContainerName, 'psql', '--username', 'postgres', '--dbname', 'postgres', '--set', 'ON_ERROR_STOP=1', '--command', "DROP DATABASE $($RunSpec.DatabaseName) WITH (FORCE)")
-      if ($drop.ExitCode -ne 0) { [void]$cleanupCodes.Add('HPG_DATABASE_DROP_FAILED') }
+      if ($drop.ExitCode -ne 0) { Add-CleanupCode 'HPG_DATABASE_DROP_FAILED' }
+      $dropVerify = Invoke-Docker @('exec', $RunSpec.ContainerName, 'psql', '--username', 'postgres', '--dbname', 'postgres', '--tuples-only', '--no-align', '--set', 'ON_ERROR_STOP=1', '--command', "SELECT datname FROM pg_database WHERE datname = '$($RunSpec.DatabaseName)'")
+      if ($dropVerify.ExitCode -ne 0 -or -not [string]::IsNullOrWhiteSpace($dropVerify.Stdout)) { Add-CleanupCode 'HPG_DATABASE_DROP_FAILED' }
+    }
+    if ($containerOwned) {
+      $remove = Invoke-Docker @('rm', '--force', $RunSpec.ContainerName)
+      if ($remove.ExitCode -ne 0) { Add-CleanupCode 'HPG_CONTAINER_REMOVE_FAILED' }
     }
     if ($containerStartAttempted) {
-      $remove = Invoke-Docker @('rm', '--force', $RunSpec.ContainerName)
-      if ($remove.ExitCode -ne 0) { [void]$cleanupCodes.Add('HPG_CONTAINER_REMOVE_FAILED') }
-      $check = Invoke-Docker @('ps', '--all', '--filter', "label=$($RunSpec.Label)", '--filter', "name=^/$([regex]::Escape($RunSpec.ContainerName))$", '--format', '{{.Names}}')
-      if ($check.ExitCode -ne 0) {
-        [void]$cleanupCodes.Add('HPG_RESOURCE_LEAK')
+      $labelAfter = Get-ResourceNames "label=$($RunSpec.Label)"
+      $nameAfter = Get-ResourceNames "name=^/$([regex]::Escape($RunSpec.ContainerName))$"
+      if (-not $labelAfter.Passed -or -not $nameAfter.Passed) {
+        Add-CleanupCode 'HPG_RESOURCE_LEAK'
       } else {
-        $inventory = @($check.Stdout -split '\r?\n' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-        if ($inventory.Count -gt 0) { [void]$cleanupCodes.Add('HPG_RESOURCE_LEAK') }
+        $inventory = @(@($labelAfter.Names) + @($nameAfter.Names) | Sort-Object -Unique)
+        if ($inventory.Count -gt 0) { Add-CleanupCode 'HPG_RESOURCE_LEAK' }
       }
     }
   }
@@ -172,4 +228,4 @@ function Invoke-HarnessPostgresLifecycle {
   }
 }
 
-Export-ModuleMember -Function New-HarnessPostgresRunSpec, Invoke-HarnessPostgresLifecycle
+Export-ModuleMember -Function Resolve-HarnessPostgresDockerApplication, New-HarnessPostgresRunSpec, Invoke-HarnessPostgresLifecycle

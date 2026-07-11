@@ -99,7 +99,7 @@ function Invoke-Integration {
   Write-Output 'migrations=embedded'
   if ($PreflightOnly) { Write-Output 'status=ready'; return }
 
-  $dockerPath = Resolve-HarnessApplication -Name 'docker'
+  $dockerPath = Resolve-HarnessPostgresDockerApplication
   $goPath = Resolve-HarnessApplication -Name 'go'
   $childEnvironment = New-HarnessChildEnvironment -RepositoryRoot $repoRoot -LaneId 'integration'
   $passwordBytes = [byte[]]::new(24)
