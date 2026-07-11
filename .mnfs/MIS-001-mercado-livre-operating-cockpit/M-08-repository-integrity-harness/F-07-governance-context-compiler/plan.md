@@ -288,7 +288,18 @@ Expected RED: exit 1 because `Context.psm1` functions do not exist.
 
 ```powershell
 $sha = git rev-parse HEAD
-& ./scripts/harness.ps1 -Command context-compile -FeaturePath '.mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-07-governance-context-compiler' -BaseSha $sha -AllowedPath 'contracts/governance/**' 'scripts/harness/**' 'scripts/tests/governance-contracts.tests.ps1' 'scripts/tests/governance-drift.tests.ps1' 'scripts/tests/context-compiler.tests.ps1' 'scripts/harness.ps1' 'package.json' 'AGENTS.md' '.mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-07-governance-context-compiler/**'
+$allowed = @(
+  'contracts/governance/**'
+  'scripts/harness/**'
+  'scripts/tests/governance-contracts.tests.ps1'
+  'scripts/tests/governance-drift.tests.ps1'
+  'scripts/tests/context-compiler.tests.ps1'
+  'scripts/harness.ps1'
+  'package.json'
+  'AGENTS.md'
+  '.mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-07-governance-context-compiler/**'
+)
+& ./scripts/harness.ps1 -Command context-compile -FeaturePath '.mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-07-governance-context-compiler' -BaseSha $sha -AllowedPath $allowed
 npm run harness:context:validate -- -ContextPath '<reported context-pack path>' -RequireCurrentBase
 ```
 
