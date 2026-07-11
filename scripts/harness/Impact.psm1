@@ -17,6 +17,7 @@ function Get-HarnessImpactCommand {
     'harness-aliases' { return [pscustomobject]@{ FilePath=$pwsh; Arguments=@('-NoProfile','-File',(Join-Path $RepositoryRoot 'scripts/tests/harness-aliases.tests.ps1')); Command='harness-aliases'; Target='fake'; EvidenceClass='contract' } }
     'context-compiler-tests' { return [pscustomobject]@{ FilePath=$pwsh; Arguments=@('-NoProfile','-File',(Join-Path $RepositoryRoot 'scripts/tests/context-compiler.tests.ps1')); Command='context-compiler-tests'; Target='fake'; EvidenceClass='contract' } }
     'orchestration-tests' { return [pscustomobject]@{ FilePath=$pwsh; Arguments=@('-NoProfile','-File',(Join-Path $RepositoryRoot 'scripts/tests/harness-orchestration.tests.ps1')); Command='orchestration-tests'; Target='fake'; EvidenceClass='contract' } }
+    'harness-evals' { return [pscustomobject]@{ FilePath=$pwsh; Arguments=@('-NoProfile','-File',(Join-Path $RepositoryRoot 'scripts/tests/harness-eval.tests.ps1')); Command='harness-evals'; Target='fake'; EvidenceClass='contract' } }
     default { return $null }
   }
 }
