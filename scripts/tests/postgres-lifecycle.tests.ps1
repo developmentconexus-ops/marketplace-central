@@ -73,6 +73,15 @@ try {
   Assert-True ($readyDeadline.Result.PrimaryReasonCode -eq 'HPG_READY_TIMEOUT') 'readiness deadline lacks stable reason'
   Assert-True ($deadlineAttempts -ge 1 -and $deadlineAttempts -lt 99) 'readiness ignored its deadline bound'
 
+  $hangingReadyWatch = [Diagnostics.Stopwatch]::StartNew()
+  $hangingReady = Invoke-ProbeLifecycle '' @{ HARNESS_POSTGRES_PROBE_READY_HANG_MILLISECONDS = '10000' } 99 1
+  $hangingReadyWatch.Stop()
+  $runs += $hangingReady
+  Assert-True ($hangingReady.Result.PrimaryReasonCode -eq 'HPG_READY_TIMEOUT') 'hanging readiness lacks stable timeout reason'
+  Assert-True ($hangingReadyWatch.Elapsed.TotalSeconds -lt 4) 'hanging pg_isready exceeded bounded subprocess deadline'
+  $hangingCall = @($hangingReady.Calls | Where-Object operation -eq 'ready')[0]
+  Assert-True (@($hangingCall.args) -contains '--timeout') 'pg_isready lacks its own bounded timeout'
+
   foreach ($conflict in @('HARNESS_POSTGRES_PROBE_NAME_CONFLICT', 'HARNESS_POSTGRES_PROBE_LABEL_CONFLICT')) {
     $run = Invoke-ProbeLifecycle '' @{ $conflict = '1' }
     $runs += $run

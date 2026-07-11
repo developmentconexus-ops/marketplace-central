@@ -73,6 +73,8 @@ const readyFailures = Number.parseInt(process.env.HARNESS_POSTGRES_PROBE_READY_F
 if (operation === "ready") {
   state.readyCalls += 1;
   writeFileSync(statePath, JSON.stringify(state));
+  const hangMilliseconds = Number.parseInt(process.env.HARNESS_POSTGRES_PROBE_READY_HANG_MILLISECONDS ?? "0", 10);
+  if (hangMilliseconds > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, hangMilliseconds);
   if (state.readyCalls <= readyFailures) {
     process.stderr.write(`probe readiness pending attempt=${state.readyCalls}`);
     process.exit(29);

@@ -98,8 +98,12 @@ function Invoke-HarnessPostgresLifecycle {
   $secondCount = -1
   $targetURL = ''
 
-  function Invoke-Docker([string[]]$Arguments) {
-    return Invoke-HarnessPostgresProcess -FilePath $RunSpec.DockerFilePath -ArgumentPrefix @($RunSpec.DockerArgumentPrefix) -Arguments $Arguments -WorkingDirectory $RunSpec.RepositoryRoot -Environment $dockerEnvironment -TimeoutSeconds $TimeoutSeconds -RedactionCandidates @($RunSpec.Password, $targetURL)
+  function Invoke-Docker {
+    param(
+      [Parameter(Mandatory)][string[]]$Arguments,
+      [ValidateRange(1, 3600)][int]$ProcessTimeoutSeconds = $TimeoutSeconds
+    )
+    return Invoke-HarnessPostgresProcess -FilePath $RunSpec.DockerFilePath -ArgumentPrefix @($RunSpec.DockerArgumentPrefix) -Arguments $Arguments -WorkingDirectory $RunSpec.RepositoryRoot -Environment $dockerEnvironment -TimeoutSeconds $ProcessTimeoutSeconds -RedactionCandidates @($RunSpec.Password, $targetURL)
   }
   function Invoke-Go([string[]]$Arguments) {
     return Invoke-HarnessPostgresProcess -FilePath $GoFilePath -ArgumentPrefix @($GoArgumentPrefix) -Arguments $Arguments -WorkingDirectory (Join-Path $RunSpec.RepositoryRoot 'apps/server_core') -Environment $goEnvironment -TimeoutSeconds $TimeoutSeconds -RedactionCandidates @($RunSpec.Password, $targetURL)
@@ -157,7 +161,9 @@ function Invoke-HarnessPostgresLifecycle {
     $ready = $null
     $readyWatch = [Diagnostics.Stopwatch]::StartNew()
     for ($attempt = 1; $attempt -le $ReadyMaxAttempts; $attempt++) {
-      $ready = Invoke-Docker @('exec', $RunSpec.ContainerName, 'pg_isready', '--username', 'postgres', '--dbname', 'postgres')
+      $remainingMilliseconds = [Math]::Max(1, $ReadyTimeoutMilliseconds - $readyWatch.ElapsedMilliseconds)
+      $readyProcessTimeoutSeconds = [Math]::Min($TimeoutSeconds, [Math]::Max(1, [Math]::Ceiling($remainingMilliseconds / 1000.0)))
+      $ready = Invoke-Docker -ProcessTimeoutSeconds $readyProcessTimeoutSeconds -Arguments @('exec', $RunSpec.ContainerName, 'pg_isready', '--username', 'postgres', '--dbname', 'postgres', '--timeout', [string]$readyProcessTimeoutSeconds)
       if ($ready.ExitCode -eq 0) { break }
       if ($attempt -ge $ReadyMaxAttempts -or $readyWatch.ElapsedMilliseconds -ge $ReadyTimeoutMilliseconds) { break }
       if ($ReadyRetryDelayMilliseconds -gt 0) { Start-Sleep -Milliseconds $ReadyRetryDelayMilliseconds }
