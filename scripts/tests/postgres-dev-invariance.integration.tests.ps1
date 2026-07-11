@@ -29,14 +29,26 @@ function Get-DevDigest {
   $ownership = Invoke-Typed $docker @('inspect', '--format', '{{ index .Config.Labels "com.docker.compose.project" }}|{{ index .Config.Labels "com.docker.compose.service" }}', $containerID) 30
   if ($ownership.ExitCode -ne 0 -or $ownership.Stdout.Trim() -cne 'marketplace-central|postgres') { throw 'dev observer target ownership mismatch' }
 
-  $sql = @'
-CREATE TEMP TABLE harness_table_counts(table_name text PRIMARY KEY, row_count bigint NOT NULL);
-DO $$ DECLARE r record; BEGIN FOR r IN SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' ORDER BY table_name LOOP EXECUTE format('INSERT INTO harness_table_counts SELECT %L, count(*) FROM %I.%I', r.table_name, 'public', r.table_name); END LOOP; END $$;
-SELECT table_name || '|' || row_count FROM harness_table_counts ORDER BY table_name;
-'@
-  $counts = Invoke-Typed $docker @('exec', $containerID, 'psql', '--username', 'marketplace', '--dbname', 'marketplace_central', '--quiet', '--tuples-only', '--no-align', '--set', 'ON_ERROR_STOP=1', '--command', $sql) 120
-  if ($counts.ExitCode -ne 0) { throw 'dev observer unavailable: read-only count query failed' }
-  $lines = @($counts.Stdout -split '\r?\n' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+  function Invoke-ReadOnlyPsql([string]$Query) {
+    Invoke-Typed $docker @(
+      'exec', '--env', 'PGOPTIONS=-cdefault_transaction_read_only=on', $containerID,
+      'psql', '--username', 'marketplace', '--dbname', 'marketplace_central',
+      '--quiet', '--tuples-only', '--no-align', '--set', 'ON_ERROR_STOP=1', '--command', $Query
+    ) 120
+  }
+
+  $readOnly = Invoke-ReadOnlyPsql 'SHOW default_transaction_read_only'
+  if ($readOnly.ExitCode -ne 0 -or $readOnly.Stdout.Trim() -cne 'on') { throw 'dev observer unavailable: session is not read-only' }
+  $tables = Invoke-ReadOnlyPsql "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' ORDER BY table_name"
+  if ($tables.ExitCode -ne 0) { throw 'dev observer unavailable: table inventory query failed' }
+  $tableNames = @($tables.Stdout -split '\r?\n' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+  $lines = [System.Collections.Generic.List[string]]::new()
+  foreach ($tableName in $tableNames) {
+    if ($tableName -cnotmatch '^[a-z_][a-z0-9_]*$') { throw 'dev observer unavailable: unsafe table identifier' }
+    $count = Invoke-ReadOnlyPsql "SELECT count(*) FROM public.`"$tableName`""
+    if ($count.ExitCode -ne 0 -or $count.Stdout.Trim() -notmatch '^\d+$') { throw 'dev observer unavailable: table count query failed' }
+    $lines.Add("$tableName|$($count.Stdout.Trim())")
+  }
   if ($lines.Count -eq 0) { throw 'dev observer unavailable: no public tables found' }
   $bytes = [Text.Encoding]::UTF8.GetBytes(($lines -join "`n"))
   $digest = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
@@ -49,8 +61,7 @@ $after = Get-DevDigest
 if ($before.Digest -cne $after.Digest -or $before.TableCount -ne $after.TableCount) { throw 'dev-state-change: persistent dev table-count digest changed' }
 if ($nested.ExitCode -ne 0) {
   $safeDiagnostics = @((@($nested.Stdout, $nested.Stderr) -join "`n") -split '\r?\n' | Where-Object {
-    $_ -match '(?:^status=|HPG_|failed|exit_code=|migrations_|resource_count=)' -and
-    $_ -notmatch '(?i)(?:[a-z]:\\|postgres(?:ql)?://)'
+    $_ -match '^(?:status=(?:blocked|failed)|child_diagnostic=(?:hpg=[A-Z0-9_]+|sqlstate=[0-9A-Z]{5}|package=marketplace-central/[A-Za-z0-9_./-]+|test=Test[A-Za-z0-9_]+|HPG_CHILD_OUTPUT_REDACTED)|migrations_(?:first|second)=-?\d+|resource_count=\d+)$'
   })
   foreach ($line in $safeDiagnostics) { Write-Output "nested_diagnostic=$line" }
   throw 'nested ephemeral PostgreSQL integration failed'

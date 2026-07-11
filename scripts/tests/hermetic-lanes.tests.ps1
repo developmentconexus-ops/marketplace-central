@@ -14,7 +14,7 @@ function Assert-NotContains([string]$Value, [string]$Needle, [string]$Name) {
 
 $unknownKey = 'HARNESS_UNKNOWN_' + [guid]::NewGuid().ToString('N')
 $keys = @(
-  'MC_DATABASE_URL', 'MPC_TEST_DATABASE_URL', 'MPC_PRODUCT_LINKS_POSTGRES_URL',
+  'MC_DATABASE_URL', 'MPC_TEST_DATABASE_URL', 'MPC_UNKNOWN_DATABASE_TARGET',
   'MPC_PROVIDER_FOO', 'MPC_ORACLE_PASSWORD', 'SANKHYA_ORACLE_USER',
   'ME_CLIENT_ID', 'ME_CLIENT_SECRET', 'ME_REDIRECT_URI', 'HTTP_PROXY', 'GOCACHE', $unknownKey
 )
@@ -26,7 +26,7 @@ try {
     [Environment]::SetEnvironmentVariable($key, "fixture-$key", 'Process')
   }
   @(
-    'MPC_PRODUCT_LINKS_POSTGRES_URL=fixture-file-db',
+    'MPC_UNKNOWN_DATABASE_TARGET=fixture-file-db',
     'ME_CLIENT_SECRET=fixture-file-provider',
     'SANKHYA_ORACLE_PASSWORD=fixture-file-oracle'
   ) | Set-Content -LiteralPath $envFile -Encoding utf8

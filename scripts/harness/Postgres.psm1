@@ -72,6 +72,19 @@ function Get-HarnessMigrationCount {
   return -1
 }
 
+function Get-HarnessPostgresFailureTokens {
+  param([AllowNull()][string]$Text)
+
+  $tokens = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+  foreach ($match in [regex]::Matches([string]$Text, '\bHPG_[A-Z0-9_]{1,64}\b')) { [void]$tokens.Add("hpg=$($match.Value)") }
+  foreach ($match in [regex]::Matches([string]$Text, '\bSQLSTATE\s+(?<code>[0-9A-Z]{5})\b')) { [void]$tokens.Add("sqlstate=$($match.Groups['code'].Value)") }
+  foreach ($match in [regex]::Matches([string]$Text, '(?m)^FAIL\s+(?<package>marketplace-central/[A-Za-z0-9_./-]{1,240})(?:\s|$)')) { [void]$tokens.Add("package=$($match.Groups['package'].Value)") }
+  foreach ($match in [regex]::Matches([string]$Text, '(?m)^--- FAIL: (?<test>Test[A-Za-z0-9_]{1,160})(?:\s|$)')) { [void]$tokens.Add("test=$($match.Groups['test'].Value)") }
+  $safe = @($tokens | Sort-Object | Select-Object -First 24)
+  if ($safe.Count -eq 0) { return @('HPG_CHILD_OUTPUT_REDACTED') }
+  return $safe
+}
+
 function Invoke-HarnessPostgresLifecycle {
   [CmdletBinding()]
   param(
@@ -100,7 +113,8 @@ function Invoke-HarnessPostgresLifecycle {
   $secondCount = -1
   $hostPort = 0
   $targetURL = ''
-  $failureDiagnostic = ''
+  $failureDiagnosticTokens = @()
+  $heldConnectionConfirmed = $false
 
   function Invoke-Docker {
     param(
@@ -199,11 +213,16 @@ function Invoke-HarnessPostgresLifecycle {
     if ($HoldConnectionDuringCleanupTest) {
       $heldConnection = Invoke-Docker @('exec', '--detach', $RunSpec.ContainerName, 'psql', '--username', 'postgres', '--dbname', $RunSpec.DatabaseName, '--command', 'SELECT pg_sleep(300)')
       if ($heldConnection.ExitCode -ne 0) { Set-Primary 'HPG_TEST_FAILED' $heldConnection.ExitCode; break }
+      for ($heldAttempt = 1; $heldAttempt -le 20; $heldAttempt++) {
+        $heldCheck = Invoke-Docker @('exec', $RunSpec.ContainerName, 'psql', '--username', 'postgres', '--dbname', 'postgres', '--quiet', '--tuples-only', '--no-align', '--set', 'ON_ERROR_STOP=1', '--command', "SELECT count(*) FROM pg_stat_activity WHERE datname = '$($RunSpec.DatabaseName)' AND state = 'active' AND query LIKE 'SELECT pg_sleep(300)%'")
+        if ($heldCheck.ExitCode -eq 0 -and $heldCheck.Stdout.Trim() -match '^[1-9][0-9]*$') { $heldConnectionConfirmed = $true; break }
+        Start-Sleep -Milliseconds 100
+      }
+      if (-not $heldConnectionConfirmed) { Set-Primary 'HPG_TEST_FAILED' 1; break }
     }
     $tests = Invoke-Go @($TestArguments)
     if ($tests.ExitCode -ne 0) {
-      $failureDiagnostic = (@($tests.Stdout, $tests.Stderr) -join "`n").Trim()
-      if ($failureDiagnostic.Length -gt 8192) { $failureDiagnostic = $failureDiagnostic.Substring(0, 8192) }
+      $failureDiagnosticTokens = @(Get-HarnessPostgresFailureTokens (@($tests.Stdout, $tests.Stderr) -join "`n"))
       Set-Primary 'HPG_TEST_FAILED' $tests.ExitCode
       break
     }
@@ -245,7 +264,8 @@ function Invoke-HarnessPostgresLifecycle {
     ContainerName = $RunSpec.ContainerName
     DatabaseName = $RunSpec.DatabaseName
     HostPort = $hostPort
-    FailureDiagnostic = $failureDiagnostic
+    FailureDiagnosticTokens = @($failureDiagnosticTokens)
+    HeldConnectionConfirmed = $heldConnectionConfirmed
   }
 }
 

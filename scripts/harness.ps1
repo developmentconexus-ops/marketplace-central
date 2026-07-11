@@ -112,7 +112,7 @@ function Invoke-Integration {
   Write-Output "resource_count=$(@($result.ResourceInventory).Count)"
   Write-Output "port=$($result.HostPort)"
   if ($result.ExitCode -ne 0) {
-    if (-not [string]::IsNullOrWhiteSpace([string]$result.FailureDiagnostic)) { Write-Output $result.FailureDiagnostic }
+    foreach ($token in @($result.FailureDiagnosticTokens)) { Write-Output "child_diagnostic=$token" }
     $reasons = @($result.PrimaryReasonCode) + @($result.CleanupReasonCodes) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
     throw "postgres lifecycle failed reasons=$($reasons -join ',') exit_code=$($result.ExitCode)"
   }

@@ -9,6 +9,17 @@ function Assert-True {
   if (-not $Condition) { throw $Message }
 }
 
+$retiredRuntimeKeys = @(
+  ('MC_' + 'MIGRATIONS_DIR'),
+  ('MPC_' + 'PRODUCT_LINKS_' + 'LIVE_TEST'),
+  ('MPC_' + 'PRODUCT_LINKS_' + 'POSTGRES_URL'),
+  ('MPC_' + 'PRODUCT_LINKS_' + 'INSTALLATION_ID')
+)
+foreach ($retiredKey in $retiredRuntimeKeys) {
+  $references = @(& rg --fixed-strings --glob '!scripts/.runs/**' --glob '!*.md' -- $retiredKey apps/server_core scripts docker contracts/governance docker-compose.yml 2>$null)
+  Assert-True ($references.Count -eq 0) "retired runtime key still referenced: $retiredKey"
+}
+
 function Assert-Unique {
   param([object[]]$Values, [string]$Label)
   $duplicates = @($Values | Group-Object | Where-Object Count -gt 1 | ForEach-Object Name)

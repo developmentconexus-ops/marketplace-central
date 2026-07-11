@@ -14,11 +14,11 @@ Import-Module $module -Force
 
 $safeKeys = @('SystemRoot', 'WINDIR', 'ComSpec', 'PATH', 'PATHEXT', 'TEMP', 'TMP', 'GOCACHE', 'GOMODCACHE', 'GOPROXY', 'GOSUMDB')
 $contaminatedKeys = @(
-  'MC_DATABASE_URL', 'MS_DATABASE_URL', 'MPC_TEST_DATABASE_URL', 'MPC_PRODUCT_LINKS_POSTGRES_URL',
+  'MC_DATABASE_URL', 'MS_DATABASE_URL', 'MPC_TEST_DATABASE_URL', 'MPC_UNKNOWN_DATABASE_TARGET',
   'DATABASE_URL', 'PGHOST', 'MS_TENANT_ID', 'MPC_PROVIDER_FOO', 'MPC_ORACLE_PASSWORD',
   'SANKHYA_ORACLE_USER', 'MPC_OAUTH_REDIRECT_URI', 'MPC_WEB_PROXY_TARGET',
   'ME_CLIENT_ID', 'ME_CLIENT_SECRET', 'ME_REDIRECT_URI', 'HTTP_PROXY', 'HTTPS_PROXY',
-  'NGROK_AUTHTOKEN', 'RUN_MIGRATIONS', 'MC_MIGRATIONS_DIR', 'GOCACHE', 'GOMODCACHE', 'GOPROXY', 'GOSUMDB',
+  'NGROK_AUTHTOKEN', 'RUN_MIGRATIONS', 'MPC_UNKNOWN_MIGRATION_PATH', 'GOCACHE', 'GOMODCACHE', 'GOPROXY', 'GOSUMDB',
   ('HARNESS_UNKNOWN_' + [guid]::NewGuid().ToString('N'))
 )
 $before = @{}
@@ -31,7 +31,7 @@ foreach ($key in $contaminatedKeys) {
 $envFile = Join-Path ([IO.Path]::GetTempPath()) ('harness-unit-' + [guid]::NewGuid().ToString('N') + '.env')
 try {
   @(
-    'MPC_PRODUCT_LINKS_POSTGRES_URL=fixture-db',
+    'MPC_UNKNOWN_DATABASE_TARGET=fixture-db',
     'ME_CLIENT_SECRET=fixture-provider',
     'SANKHYA_ORACLE_USER=fixture-oracle-user',
     'SANKHYA_ORACLE_PASSWORD=fixture-oracle-password',
@@ -93,7 +93,7 @@ try {
     $processWins = New-HarnessChildEnvironment -RepositoryRoot $repoRoot -LaneId 'live-oracle' -EnvFile $envFile
     Assert-True ($processWins['MPC_ORACLE_USERNAME'] -eq 'process-user') 'process runtime value did not override EnvFile'
     Assert-True ($processWins['MPC_ORACLE_CONNECT_STRING'] -eq 'process-connect') 'process canonical value did not override EnvFile alias'
-    Assert-True (-not $processWins.ContainsKey('MPC_PRODUCT_LINKS_POSTGRES_URL')) 'lane-forbidden process value entered live Oracle child'
+    Assert-True (-not $processWins.ContainsKey('MPC_UNKNOWN_DATABASE_TARGET')) 'lane-forbidden process value entered live Oracle child'
 
     $explicitWins = New-HarnessChildEnvironment -RepositoryRoot $repoRoot -LaneId 'live-oracle' -EnvFile $envFile -RuntimeValues @{
       MPC_ORACLE_USERNAME = 'explicit-user'
@@ -108,7 +108,7 @@ try {
 
   $fromTolerantFile = New-HarnessChildEnvironment -RepositoryRoot $repoRoot -LaneId 'live-oracle' -EnvFile $envFile
   Assert-True ($fromTolerantFile['MPC_ORACLE_CONNECT_STRING'] -eq 'fixture-oracle-connect') 'EnvFile aliases did not normalize'
-  Assert-True (-not $fromTolerantFile.ContainsKey('MPC_PRODUCT_LINKS_POSTGRES_URL')) 'EnvFile lane-forbidden key entered child'
+  Assert-True (-not $fromTolerantFile.ContainsKey('MPC_UNKNOWN_DATABASE_TARGET')) 'EnvFile lane-forbidden key entered child'
 
   $canonicalWins = New-HarnessChildEnvironment -RepositoryRoot $repoRoot -LaneId 'live-oracle' -RuntimeValues @{
     MPC_ORACLE_CONNECT_STRING = 'canonical-connect'

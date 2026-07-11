@@ -35,6 +35,7 @@ function operationForDocker(argv) {
   if (text.includes("CREATE DATABASE")) return "create";
   if (text.includes("DROP DATABASE")) return "drop";
   if (text.includes("FROM pg_database")) return "drop-verify";
+  if (text.includes("FROM pg_stat_activity")) return "held-check";
   return "docker-unknown";
 }
 
@@ -90,7 +91,10 @@ if (operation === "ready") {
   }
 }
 if (failures.includes(operation)) {
-  process.stderr.write(operation === "tests" ? "probe failure reason=HPG_TEST_FAILED_SENTINEL" : `probe failure operation=${operation}`);
+  const arbitraryOnly = process.env.HARNESS_POSTGRES_PROBE_ARBITRARY_TEST_FAILURE === "1";
+  process.stderr.write(operation === "tests"
+    ? (arbitraryOnly ? "C:\\private\\customer.txt person@example.test" : "probe failure reason=HPG_TEST_FAILED_SENTINEL C:\\private\\customer.txt person@example.test")
+    : `probe failure operation=${operation}`);
   process.exit(operation === "tests" ? 17 : 29);
 }
 
@@ -124,4 +128,5 @@ if (operation === "migrate") {
   process.stdout.write(`applied ${applied} migration(s)\n`);
 }
 if (operation === "port") process.stdout.write("127.0.0.1:49152\n");
+if (operation === "held-check") process.stdout.write("1\n");
 if (["inventory-name", "inventory-label"].includes(operation) && state.running) process.stdout.write(`${state.container}\n`);

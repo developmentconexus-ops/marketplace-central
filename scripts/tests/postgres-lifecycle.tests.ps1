@@ -24,7 +24,8 @@ function Invoke-ProbeLifecycle(
   [string]$FailureOperations,
   [hashtable]$ProbeOptions = @{},
   [int]$ReadyMaxAttempts = 3,
-  [int]$ReadyTimeoutMilliseconds = 10000
+  [int]$ReadyTimeoutMilliseconds = 10000,
+  [bool]$HoldConnection = $false
 ) {
   $runId = [guid]::NewGuid().ToString('N')
   $password = 'fixture-' + [guid]::NewGuid().ToString('N')
@@ -34,7 +35,7 @@ function Invoke-ProbeLifecycle(
   if (-not [string]::IsNullOrWhiteSpace($FailureOperations)) { $environment['HARNESS_POSTGRES_PROBE_FAIL_OPERATIONS'] = $FailureOperations }
   foreach ($key in $ProbeOptions.Keys) { $environment[$key] = [string]$ProbeOptions[$key] }
   $spec = New-HarnessPostgresRunSpec -RepositoryRoot $repoRoot -RunId $runId -Password $password -DockerFilePath $node -DockerArgumentPrefix @($probe, 'docker')
-  $result = Invoke-HarnessPostgresLifecycle -RunSpec $spec -BaseEnvironment $environment -GoFilePath $node -GoArgumentPrefix @($probe, 'go') -TimeoutSeconds 10 -ReadyMaxAttempts $ReadyMaxAttempts -ReadyRetryDelayMilliseconds 0 -ReadyTimeoutMilliseconds $ReadyTimeoutMilliseconds
+  $result = Invoke-HarnessPostgresLifecycle -RunSpec $spec -BaseEnvironment $environment -GoFilePath $node -GoArgumentPrefix @($probe, 'go') -TimeoutSeconds 10 -ReadyMaxAttempts $ReadyMaxAttempts -ReadyRetryDelayMilliseconds 0 -ReadyTimeoutMilliseconds $ReadyTimeoutMilliseconds -HoldConnectionDuringCleanupTest:$HoldConnection
   $calls = if (Test-Path -LiteralPath $log) { @(Get-Content -LiteralPath $log | ForEach-Object { $_ | ConvertFrom-Json }) } else { @() }
   [pscustomobject]@{ Result = $result; Calls = $calls; Log = $log; Password = $password }
 }
@@ -120,12 +121,23 @@ try {
   $runs += $testsFail
   Assert-True ($testsFail.Result.ExitCode -eq 17) 'child exit 17 was not preserved'
   Assert-True ($testsFail.Result.PrimaryReasonCode -eq 'HPG_TEST_FAILED') 'test failure reason changed'
-  Assert-True ($testsFail.Result.FailureDiagnostic -match 'HPG_TEST_FAILED_SENTINEL') 'safe child failure diagnostic was hidden'
-  Assert-True ($testsFail.Result.FailureDiagnostic.Length -le 8192) 'child failure diagnostic exceeded bound'
-  Assert-True ($testsFail.Result.FailureDiagnostic -notmatch [regex]::Escape($testsFail.Password)) 'password leaked in child failure diagnostic'
-  Assert-True ($testsFail.Result.FailureDiagnostic -notmatch [regex]::Escape($repoRoot)) 'repository root leaked in child failure diagnostic'
-  Assert-True ($testsFail.Result.FailureDiagnostic -notmatch 'postgres(?:ql)?://[^\s]+') 'database target leaked in child failure diagnostic'
+  $failureTokens = @($testsFail.Result.FailureDiagnosticTokens)
+  Assert-True ($failureTokens -contains 'hpg=HPG_TEST_FAILED_SENTINEL') 'safe child failure token was hidden'
+  Assert-True (($failureTokens -join "`n").Length -le 8192) 'child failure tokens exceeded bound'
+  Assert-True (($failureTokens -join "`n") -notmatch '(?i)(?:private|person@|customer|[a-z]:\\)') 'arbitrary child output entered structured diagnostics'
+  Assert-True (($failureTokens -join "`n") -notmatch [regex]::Escape($testsFail.Password)) 'password leaked in child failure tokens'
+  Assert-True (($failureTokens -join "`n") -notmatch [regex]::Escape($repoRoot)) 'repository root leaked in child failure tokens'
+  Assert-True (($failureTokens -join "`n") -notmatch 'postgres(?:ql)?://[^\s]+') 'database target leaked in child failure tokens'
   Assert-True (@($testsFail.Calls.operation) -contains 'drop' -and @($testsFail.Calls.operation) -contains 'remove') 'test failure skipped cleanup'
+
+  $arbitraryFailure = Invoke-ProbeLifecycle 'tests' @{ HARNESS_POSTGRES_PROBE_ARBITRARY_TEST_FAILURE = '1' }
+  $runs += $arbitraryFailure
+  Assert-True ((@($arbitraryFailure.Result.FailureDiagnosticTokens) -join ',') -ceq 'HPG_CHILD_OUTPUT_REDACTED') 'arbitrary child output did not collapse to safe fallback'
+
+  $heldConnection = Invoke-ProbeLifecycle 'tests' @{} 3 10000 $true
+  $runs += $heldConnection
+  Assert-True ($heldConnection.Result.HeldConnectionConfirmed) 'held connection was not confirmed through pg_stat_activity'
+  Assert-True (@($heldConnection.Calls.operation) -contains 'held-check') 'held connection confirmation query did not run'
 
   foreach ($case in @(
     @{ Fail = 'ready'; Reason = 'HPG_READY_TIMEOUT' },

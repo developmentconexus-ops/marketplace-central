@@ -28,5 +28,6 @@ if (@($result.CleanupReasonCodes).Count -ne 0) { throw "real forced cleanup fail
 if (@($result.ResourceInventory).Count -ne 0) { throw 'real forced cleanup leaked labelled resources' }
 if ($result.MigrationsAppliedFirst -ne 32 -or $result.MigrationsAppliedSecond -ne 0) { throw 'real forced cleanup migration counts changed' }
 if ($result.HostPort -lt 1) { throw 'real forced cleanup lacked dynamic loopback port' }
+if (-not $result.HeldConnectionConfirmed) { throw 'real forced cleanup did not confirm active held connection' }
 
-Write-Output "PASS postgres Docker failure cleanup target=ephemeral-postgres run_id=$runId port=$($result.HostPort) resource_count=0 child_exit=17 held_connection=force-dropped"
+Write-Output "PASS postgres Docker failure cleanup target=ephemeral-postgres run_id=$runId port=$($result.HostPort) resource_count=0 child_exit=17 held_connection=confirmed-and-force-dropped"

@@ -15,6 +15,13 @@ if (-not (Test-Path -LiteralPath $module -PathType Leaf)) {
 Import-Module $module -Force
 $moduleSource = Get-Content -Raw -LiteralPath $module
 Assert-True ($moduleSource -match '\[AllowEmptyCollection\(\)\]\[string\[\]\]\$ArgumentPrefix') 'real executable path cannot bind an empty argument prefix'
+$observerSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'scripts/tests/postgres-dev-invariance.integration.tests.ps1')
+Assert-True ($observerSource -match 'PGOPTIONS=-cdefault_transaction_read_only=on') 'dev observer does not force read-only PostgreSQL sessions'
+Assert-True ($observerSource -match 'SHOW default_transaction_read_only') 'dev observer does not prove read-only session state'
+foreach ($writePattern in @(('CRE' + 'ATE\s'), ('INS' + 'ERT\s'), ('UPD' + 'ATE\s'), ('DEL' + 'ETE\s'), ('TRUN' + 'CATE\s'), ('DR' + 'OP\s'))) {
+  Assert-True ($observerSource -notmatch $writePattern) "dev observer source contains write SQL pattern: $writePattern"
+}
+Assert-True ($moduleSource -match 'HeldConnectionConfirmed') 'held connection confirmation is absent from lifecycle result'
 
 $node = [IO.Path]::GetFullPath((Get-Command node -CommandType Application -ErrorAction Stop).Source)
 $runId = '0123456789abcdef0123456789abcdef'
