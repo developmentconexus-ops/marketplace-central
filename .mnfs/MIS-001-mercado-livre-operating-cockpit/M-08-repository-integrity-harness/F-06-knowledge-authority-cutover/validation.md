@@ -90,7 +90,16 @@ evidence_type: ran
 
 ## Handoff
 
-- Current status: `quick_validation_passed`.
-- Next owner: Milestone Orchestrator / independent QA-3 review.
-- Next action: review the fixed cutover commit against F06-AC01 through F06-AC04 and accept or return one scoped correction batch.
+- Milestone Orchestrator decision: `accepted`.
+- Reviewed snapshot: implementation commit `9954010` plus focused correction
+  commit `38d4a90`.
+- Independent combined review: one P1 required the conditional
+  `contracts/governance/` boundary in active guidance; no other P0/P1/P2
+  finding was reported.
+- Focused revalidation: `PASS`; the sole yes-if is satisfied without promoting
+  F-07 registries before acceptance.
+- Current status: `accepted`.
+- Next owner: F-07 Feature Implementer.
+- Next action: compile governance contracts and context from the accepted truth
+  order.
 - Blockers: none.

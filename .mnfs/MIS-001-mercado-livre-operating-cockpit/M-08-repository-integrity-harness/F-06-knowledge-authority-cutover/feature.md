@@ -3,7 +3,7 @@
 ```yaml
 id: F-06
 type: feature-brief
-status: quick_validation_passed
+status: accepted
 owner: Mission Strategist
 parent: M-08
 created: 2026-07-10
@@ -66,11 +66,12 @@ runbooks, and execution state; migrate only current unique ADRs and remove
 
 ## Handoff
 
-- Current status: `quick_validation_passed`.
-- Next owner: Milestone Orchestrator / independent QA-3 reviewer.
-- Next action: Review the fixed F-06 cutover commit against the specification and
-  accept it or return one scoped correction batch.
+- Current status: `accepted`.
+- Next owner: F-07 Feature Implementer.
+- Next action: Create F-07 `spec.md` and `plan.md` from the accepted knowledge
+  authority and machine-governance boundary.
 - Required files/evidence: `spec.md`, `plan.md`, `validation.md`, migrated ADR
   index/files, active-reference scan, tracked-file scan, history proof, and
   staged diff review.
-- Blockers or open decisions: None.
+- Blockers or open decisions: None; focused revalidation approved correction
+  commit `38d4a90`.
