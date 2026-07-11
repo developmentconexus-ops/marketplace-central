@@ -257,6 +257,11 @@ function Invoke-Cold {
     & npm ci --ignore-scripts; $npmExit = $LASTEXITCODE
     $records.Add([ordered]@{id='npm-ci';command='npm ci --ignore-scripts';stage='provisioning';target_label='external-dependency-registry';evidence_class='provisioning';duration_ms=0;exit_code=$npmExit;reason=if($npmExit -eq 0){'passed'}else{'failed'};artifact_paths=@()})
     if ($npmExit -ne 0) { throw 'COLD_PROVISION_NPM_FAILED' }
+    $env:GOCACHE = Join-Path $snapshot 'apps/server_core/.gocache'
+    $env:GOMODCACHE = Join-Path $snapshot 'apps/server_core/.gomodcache'
+    New-Item -ItemType Directory -Force -Path $env:GOCACHE,$env:GOMODCACHE | Out-Null
+    Push-Location (Join-Path $snapshot 'apps/server_core'); & go mod download; $goWorkspaceExit = $LASTEXITCODE; Pop-Location
+    if ($goWorkspaceExit -ne 0) { throw 'COLD_PROVISION_GO_WORKSPACE_FAILED' }
     $docker = Get-Command docker -ErrorAction SilentlyContinue; $imageIdentity = ''
     if ($null -ne $docker) { & docker pull postgres:16-bookworm; if ($LASTEXITCODE -ne 0) { throw 'COLD_PROVISION_IMAGE_FAILED' }; $imageIdentity = (& docker image inspect postgres:16-bookworm --format '{{.Id}}').Trim() }
     $records.Add([ordered]@{id='docker-pull-postgres';command='docker pull postgres:16-bookworm';stage='provisioning';target_label='external-dependency-registry';evidence_class='provisioning';duration_ms=0;exit_code=0;reason='passed';artifact_paths=@()})
