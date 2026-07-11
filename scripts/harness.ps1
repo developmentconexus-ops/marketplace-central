@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-  [ValidateSet('unit', 'integration', 'live', 'browser', 'provider-write', 'governance-validate', 'governance-drift', 'governance')]
+  [ValidateSet('unit', 'integration', 'live', 'browser', 'provider-write', 'governance-validate', 'governance-drift', 'governance', 'context-compile', 'context-validate')]
   [string]$Command = 'unit',
   [switch]$PreflightOnly,
   [string]$EnvFile,
@@ -10,6 +10,10 @@ param(
   [string]$Actor,
   [string]$IdempotencyKey,
   [string]$BaseSha,
+  [string]$FeaturePath,
+  [string[]]$AllowedPath,
+  [string]$ContextPath,
+  [switch]$RequireCurrentBase,
   [switch]$Execute
 )
 
@@ -238,6 +242,41 @@ function Invoke-Governance {
   if (-not $result.Passed) { exit 1 }
 }
 
+function Write-ContextResult {
+  param([object]$Result, [string]$ArtifactPath)
+  Write-Output "status=$($Result.Status)"
+  if (-not $Result.Passed) {
+    Write-Output "error_code=$($Result.ErrorCode)"
+    if (-not [string]::IsNullOrWhiteSpace([string]$Result.Id)) { Write-Output "id=$($Result.Id)" }
+    if (-not [string]::IsNullOrWhiteSpace([string]$Result.Path)) { Write-Output "path=$($Result.Path)" }
+  }
+  Write-Output "artifact_path=$ArtifactPath"
+}
+
+function Invoke-Context {
+  param([ValidateSet('compile', 'validate')][string]$Mode)
+  Import-Module (Join-Path $PSScriptRoot 'harness/Context.psm1') -Force
+  if ($Mode -eq 'compile') {
+    $artifactPath = "scripts/.runs/$runId/context-pack.json"
+    if ([string]::IsNullOrWhiteSpace($FeaturePath) -or @($AllowedPath).Count -eq 0) {
+      $result = [pscustomobject]@{ Passed = $false; Status = 'failed'; ErrorCode = 'CTX_FEATURE_INVALID'; Id = 'compile-input'; Path = '' }
+    } else {
+      $result = New-HarnessContextPack -FeaturePath $FeaturePath -BaseSha $BaseSha -AllowedPath $AllowedPath -OutputPath (Join-Path $repoRoot $artifactPath)
+    }
+  } else {
+    $artifactPath = 'context-pack.json'
+    if ([string]::IsNullOrWhiteSpace($ContextPath)) {
+      $result = [pscustomobject]@{ Passed = $false; Status = 'failed'; ErrorCode = 'CTX_SOURCE_MISSING'; Id = 'context-pack'; Path = '' }
+    } else {
+      $resolvedContextPath = if ([IO.Path]::IsPathRooted($ContextPath)) { $ContextPath } else { Join-Path $repoRoot $ContextPath }
+      $artifactPath = if ([IO.Path]::GetFullPath($resolvedContextPath).StartsWith([IO.Path]::GetFullPath($repoRoot), [StringComparison]::OrdinalIgnoreCase)) { [IO.Path]::GetRelativePath($repoRoot, $resolvedContextPath).Replace('\', '/') } else { 'context-pack.json' }
+      $result = Test-HarnessContextPack -Path $resolvedContextPath -RepositoryRoot $repoRoot -RequireCurrentBase:$RequireCurrentBase
+    }
+  }
+  Write-ContextResult $result $artifactPath
+  if (-not $result.Passed) { exit 1 }
+}
+
 try {
   switch ($Command) {
     'unit' { Invoke-Unit }
@@ -248,6 +287,8 @@ try {
     'governance-validate' { Invoke-Governance -Mode validate }
     'governance-drift' { Invoke-Governance -Mode drift }
     'governance' { Invoke-Governance -Mode all }
+    'context-compile' { Invoke-Context -Mode compile }
+    'context-validate' { Invoke-Context -Mode validate }
   }
 } catch {
   Write-Output "status=blocked"
