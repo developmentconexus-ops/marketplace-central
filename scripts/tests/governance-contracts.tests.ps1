@@ -85,6 +85,14 @@ try {
   $contextSchema = Join-Path $schemaRoot 'context-pack.schema.json'
   Assert-True (Test-Path -LiteralPath $contextSchema -PathType Leaf) 'missing schema: contracts/governance/schemas/context-pack.schema.json'
   $workContractSchema = Join-Path $schemaRoot 'feature-work-contract.schema.json'
+  $coldWorkContract = @{
+    schema_version='1.0'; feature_id='F-04'; required_sources=@('scripts/harness.ps1'); allowed_paths=@('scripts/harness.ps1'); forbidden_paths=@('apps/**')
+    side_effects=@{allowed=@('isolated-cache-write');forbidden=@('provider-write')}; commands=@(@{id='cold-real';command_template='npm run harness:cold';lane_id='unit';expected_exit_code=0})
+    criteria=@(@{id='F04-AC01';milestone_criterion_id='M-08-C05';command_ids=@('cold-real')}); stop_conditions=@(@{code='cold-stop';condition='stop'}) ; retry_budget=@{max_correction_attempts=1}; handoff_fields=@('status')
+  }
+  $coldWorkContractPath = Join-Path ([IO.Path]::GetTempPath()) "feature-work-contract-cold-$([guid]::NewGuid().ToString('N')).json"
+  try { $coldWorkContract | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $coldWorkContractPath -Encoding utf8; Assert-True (Test-Json -LiteralPath $coldWorkContractPath -SchemaFile $workContractSchema -ErrorAction Stop) 'work contract schema rejected isolated-cache-write' }
+  finally { Remove-Item -LiteralPath $coldWorkContractPath -Force -ErrorAction SilentlyContinue }
   Assert-True (Test-Path -LiteralPath $workContractSchema -PathType Leaf) 'missing schema: contracts/governance/schemas/feature-work-contract.schema.json'
   $f07PlanPath = Join-Path $repositoryRoot '.mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-07-governance-context-compiler/plan.md'
   $f07Plan = Get-Content -Raw -LiteralPath $f07PlanPath

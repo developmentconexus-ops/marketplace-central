@@ -15,7 +15,7 @@
       "additionalProperties": false,
       "required": ["allowed", "forbidden"],
       "properties": {
-        "allowed": { "type": "array", "uniqueItems": true, "items": { "enum": ["none", "repository-write", "database-write", "provider-read", "provider-write", "browser"] } },
+        "allowed": { "type": "array", "uniqueItems": true, "items": { "enum": ["none", "repository-write", "database-write", "provider-read", "provider-write", "browser", "isolated-cache-write"] } },
         "forbidden": { "type": "array", "uniqueItems": true, "items": { "enum": ["database-mutation", "external-network", "provider-write"] } }
       }
     },
