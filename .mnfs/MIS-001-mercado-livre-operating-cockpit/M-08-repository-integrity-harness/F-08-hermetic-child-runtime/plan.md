@@ -39,6 +39,7 @@ F-04, and F-05 remain blocked from these seams until F-08 acceptance.
     "scripts/tests/harness-execution.tests.ps1",
     "scripts/tests/hermetic-lanes.tests.ps1",
     "scripts/tests/governance-contracts.tests.ps1",
+    "scripts/tests/governance-drift.tests.ps1",
     ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-02-hermetic-execution-lanes/validation.md",
     ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-07-governance-context-compiler/validation.md"
   ],
@@ -54,6 +55,7 @@ F-04, and F-05 remain blocked from these seams until F-08 acceptance.
     "contracts/governance/runtime-config.json",
     "contracts/governance/schemas/runtime-config.schema.json",
     "scripts/tests/governance-contracts.tests.ps1",
+    "scripts/tests/governance-drift.tests.ps1",
     "package.json",
     ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-08-hermetic-child-runtime/**"
   ],
