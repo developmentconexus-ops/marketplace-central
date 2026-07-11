@@ -40,10 +40,15 @@ appendFileSync(logPath, `${JSON.stringify({
 const statePath = `${logPath}.state.json`;
 let state = existsSync(statePath)
   ? JSON.parse(readFileSync(statePath, "utf8"))
-  : { running: false, container: "" };
+  : { running: false, container: "", migrateCalls: 0 };
 
 if (operation === "start") {
-  state = { running: true, container: args.at(-1) ?? "probe-container" };
+  const nameIndex = args.indexOf("--name");
+  state = {
+    running: true,
+    container: nameIndex >= 0 ? args[nameIndex + 1] : "probe-container",
+    migrateCalls: 0,
+  };
   writeFileSync(statePath, JSON.stringify(state));
 }
 
@@ -59,6 +64,12 @@ if (failures.includes(operation)) {
 if (operation === "remove") {
   state.running = false;
   writeFileSync(statePath, JSON.stringify(state));
+}
+if (operation === "migrate") {
+  const applied = state.migrateCalls === 0 ? 32 : 0;
+  state.migrateCalls += 1;
+  writeFileSync(statePath, JSON.stringify(state));
+  process.stdout.write(`applied ${applied} migration(s)\n`);
 }
 if (operation === "port") process.stdout.write("127.0.0.1:49152\n");
 if (operation === "inventory" && state.running) process.stdout.write(`${state.container}\n`);

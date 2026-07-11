@@ -45,6 +45,8 @@ try {
   $expected = @('start', 'ready', 'port', 'create', 'migrate', 'migrate', 'tests', 'drop', 'remove', 'inventory')
   Assert-True (($operations -join ',') -ceq ($expected -join ',')) "lifecycle order mismatch: $($operations -join ',')"
   Assert-True ($happy.Result.ExitCode -eq 0) 'happy lifecycle returned nonzero'
+  Assert-True ($happy.Result.MigrationsAppliedFirst -eq 32) 'first migration count is not exact canonical inventory'
+  Assert-True ($happy.Result.MigrationsAppliedSecond -eq 0) 'second migration run is not idempotent'
   Assert-True (@($happy.Result.ResourceInventory).Count -eq 0) 'happy lifecycle reported leaked resources'
   $drop = @($happy.Calls | Where-Object operation -eq 'drop')[0]
   Assert-True (($drop.args -join ' ') -match 'DROP DATABASE' -and ($drop.args -join ' ') -match 'WITH \(FORCE\)') 'cleanup does not force-drop active connections'
@@ -57,6 +59,7 @@ try {
 
   foreach ($case in @(
     @{ Fail = 'ready'; Reason = 'HPG_READY_TIMEOUT' },
+    @{ Fail = 'port'; Reason = 'HPG_PORT_UNAVAILABLE' },
     @{ Fail = 'create'; Reason = 'HPG_DATABASE_CREATE_FAILED' },
     @{ Fail = 'drop'; Reason = 'HPG_DATABASE_DROP_FAILED' },
     @{ Fail = 'remove'; Reason = 'HPG_CONTAINER_REMOVE_FAILED' }
@@ -66,6 +69,10 @@ try {
     Assert-True ($run.Result.ExitCode -ne 0) "$($case.Fail) failure returned zero"
     Assert-True (($run.Result.PrimaryReasonCode -eq $case.Reason) -or (@($run.Result.CleanupReasonCodes) -contains $case.Reason)) "$($case.Fail) lacks $($case.Reason)"
     Assert-True (@($run.Calls.operation) -contains 'remove') "$($case.Fail) failure skipped container removal attempt"
+    if ($case.Fail -eq 'remove') {
+      Assert-True (@($run.Result.CleanupReasonCodes) -contains 'HPG_RESOURCE_LEAK') 'nonempty inventory lacks HPG_RESOURCE_LEAK'
+      Assert-True (@($run.Result.ResourceInventory).Count -gt 0) 'remove failure hid leaked inventory'
+    }
   }
 
   $combined = Invoke-ProbeLifecycle 'tests,drop'
