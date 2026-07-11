@@ -3,7 +3,7 @@
 ```yaml
 id: F-07
 type: feature-brief
-status: quick_validation_passed
+status: accepted
 owner: Feature Implementer
 parent: M-08
 created: 2026-07-10
@@ -71,13 +71,12 @@ worker context from the active MNFS feature and repository truth.
 
 ## Handoff
 
-- Current status: `quick_validation_passed`.
-- Next owner: Milestone Orchestrator.
-- Next action: Review the fixed F-07 output, Phase 1-3 commits, and
-  `validation.md`; accept, reject, or block the feature during milestone
-  integration review.
+- Current status: `accepted`.
+- Next owner: F-08 Feature Implementer.
+- Next action: Create F-08 `spec.md`, structured machine work contract, and
+  `plan.md` from the accepted governance/context interfaces.
 - Required files/evidence: `spec.md`, `plan.md`, `validation.md`, governance
   registries and schemas, focused fixture suites, current drift output, and the
   ignored current context pack recorded in `validation.md`.
-- Blockers or open decisions: None for quick validation. Feature acceptance and
-  M-08 validation remain with the Milestone Orchestrator and QA Validator.
+- Blockers or open decisions: None; `M-08-C09` has fresh acceptance evidence at
+  implementation HEAD `8a57678d1670a32e1aec0e10f210d51ea4f5155a`.

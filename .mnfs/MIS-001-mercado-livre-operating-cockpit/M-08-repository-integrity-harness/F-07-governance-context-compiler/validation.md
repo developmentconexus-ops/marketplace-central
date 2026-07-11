@@ -292,3 +292,27 @@ artifact outside F-07 changed in the accepted F-07 sequence.
   recorded above.
 - Blockers or open decisions: No quick-validation blocker. Feature acceptance,
   independent L2 review, and M-08 QA remain outstanding.
+
+## Milestone Orchestrator Acceptance
+
+- Decision: `accepted`.
+- Accepted implementation/evidence HEAD:
+  `8a57678d1670a32e1aec0e10f210d51ea4f5155a`.
+- Fresh acceptance commands:
+  - governance contract fixtures: exit `0`, `PASS`;
+  - governance drift fixtures: exit `0`, `PASS`;
+  - context compiler/adversarial fixtures: exit `0`, `PASS`;
+  - current `harness:governance`: exit `0`, `status=passed`, exactly 35
+    declared baseline exceptions and no unknown drift code;
+  - current F-07 context compile: exit `0`;
+  - current-base context validation: exit `0`;
+  - `git diff --check` and visible status: clean.
+- Fresh acceptance context:
+  `scripts/.runs/d13ec27f22bf4d95a3044bc256622c2a/context-pack.json`.
+- Review history: each Phase 1-3 contract gate used one fixed-commit review;
+  findings were reproduced, corrected in one batch, and focused revalidation
+  passed. Phase 3 architecture was explicitly replanned to use a strict machine
+  work contract instead of preserving an F-07-specific Markdown heuristic.
+- Evidence class: `fake`; no database, Oracle, provider, browser, or external
+  network target was used or claimed.
+- Next owner: F-08 Feature Implementer.
