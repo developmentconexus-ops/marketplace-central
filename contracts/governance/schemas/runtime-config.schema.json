@@ -33,13 +33,14 @@
               "required": ["path", "kind", "status"],
               "properties": {
                 "path": { "$ref": "#/$defs/path" },
-                "kind": { "enum": ["typed", "direct", "edge", "harness", "test"] },
+                "kind": { "enum": ["typed", "direct", "edge", "harness", "registry", "test"] },
                 "status": { "enum": ["approved", "temporary_exception"] },
                 "exception_id": { "$ref": "#/$defs/id" }
               },
               "allOf": [
                 { "if": { "properties": { "status": { "const": "temporary_exception" } }, "required": ["status"] }, "then": { "required": ["exception_id"] } },
-                { "if": { "properties": { "status": { "const": "approved" } }, "required": ["status"] }, "then": { "not": { "required": ["exception_id"] } } }
+                { "if": { "properties": { "status": { "const": "approved" } }, "required": ["status"] }, "then": { "not": { "required": ["exception_id"] } } },
+                { "if": { "properties": { "kind": { "const": "registry" } }, "required": ["kind"] }, "then": { "properties": { "status": { "const": "approved" } } } }
               ]
             }
           }

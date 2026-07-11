@@ -177,10 +177,10 @@ function Add-BaselineException {
 
 function Get-SourceFiles {
   param([string]$RepositoryRoot)
-  $extensions = @('.go', '.ps1', '.sh', '.ts', '.tsx', '.js', '.mjs', '.yml', '.yaml')
+  $extensions = @('.go', '.ps1', '.psm1', '.sh', '.ts', '.tsx', '.js', '.mjs', '.yml', '.yaml')
   @(Get-ChildItem -LiteralPath $RepositoryRoot -Recurse -File -Force | Where-Object {
     $relative = ConvertTo-NormalizedPath $RepositoryRoot $_.FullName
-    $relative -notmatch '^(?:\.git|\.mnfs|node_modules|scripts/\.runs|scripts/tests|contracts/governance)/' -and
+    $relative -notmatch '^(?:\.git|\.mnfs|node_modules|apps/server_core/\.gomodcache|scripts/\.runs|scripts/tests|contracts/governance)/' -and
       ($_.Extension -in $extensions -or $relative -eq 'docker-compose.yml')
   })
 }
@@ -211,6 +211,17 @@ function Get-EnvironmentReads {
     }
   }
   @($reads | Sort-Object Key, Path -Unique)
+}
+
+function Test-RegistryDrivenEnvironmentReader {
+  param([Parameter(Mandatory)][string]$Content)
+
+  return (
+    $Content -match 'Get-HarnessRegistry' -and
+    $Content -match 'runtime-config' -and
+    $Content -match '\.allowed_runtime_keys' -and
+    $Content -match 'GetEnvironmentVariable\(\s*\$[A-Za-z_][A-Za-z0-9_]*\s*,\s*[''\"]Process[''\"]\s*\)'
+  )
 }
 
 function Test-GovernanceDrift {
@@ -305,12 +316,19 @@ function Test-GovernanceDrift {
 
   $runtime = $documents.'runtime-config'
   $reads = Get-EnvironmentReads $RepositoryRoot $files
+  $registryReaderPaths = @(
+    $runtime.keys.readers |
+      Where-Object { $_.kind -eq 'registry' -and $_.status -eq 'approved' } |
+      ForEach-Object { [string]$_.path } |
+      Sort-Object -Unique
+  )
   foreach ($file in $files) {
     $path = ConvertTo-NormalizedPath $RepositoryRoot $file.FullName
-    if ($path -eq 'scripts/harness.ps1') { continue }
     $content = Get-Content -Raw -LiteralPath $file.FullName
     if ($content -match 'os\.(?:Getenv|LookupEnv)\(\s*(?!["''])[^)]+\)' -or $content -match 'GetEnvironmentVariable\(\s*\$[A-Za-z_]') {
-      $issues.Add((New-PolicyIssue 'RCFG_DYNAMIC_READER_UNBOUNDED' 'dynamic-reader' $path))
+      if ($path -notin $registryReaderPaths -or -not (Test-RegistryDrivenEnvironmentReader -Content $content)) {
+        $issues.Add((New-PolicyIssue 'RCFG_DYNAMIC_READER_UNBOUNDED' 'dynamic-reader' $path))
+      }
     }
   }
   $keysByName = @{}; foreach ($key in @($runtime.keys)) { if (-not $keysByName.ContainsKey([string]$key.key)) { $keysByName[[string]$key.key] = $key } }
@@ -331,7 +349,10 @@ function Test-GovernanceDrift {
         $issues.Add((New-PolicyIssue 'RCFG_READER_MISSING' ([string]$key.key) ([string]$reader.path))); continue
       }
       $content = Get-Content -Raw -LiteralPath $fullPath
-      if ($content -notmatch "(?<![A-Z0-9_])$([regex]::Escape([string]$key.key))(?![A-Z0-9_])") {
+      $hasDynamicLookup = $content -match 'os\.(?:Getenv|LookupEnv)\(\s*(?!["''])[^)]+\)' -or $content -match 'GetEnvironmentVariable\(\s*\$[A-Za-z_]'
+      if ($reader.kind -eq 'registry' -and ($reader.status -ne 'approved' -or ($hasDynamicLookup -and -not (Test-RegistryDrivenEnvironmentReader -Content $content)))) {
+        $issues.Add((New-PolicyIssue 'RCFG_DYNAMIC_READER_UNBOUNDED' ([string]$key.key) ([string]$reader.path)))
+      } elseif ($reader.kind -ne 'registry' -and $content -notmatch "(?<![A-Z0-9_])$([regex]::Escape([string]$key.key))(?![A-Z0-9_])") {
         $issues.Add((New-PolicyIssue 'RCFG_READER_MISSING' ([string]$key.key) ([string]$reader.path)))
       } elseif ($reader.status -eq 'temporary_exception' -and -not $observedReaderPairs.ContainsKey("$($key.key)|$($reader.path)")) {
         $issues.Add((New-PolicyIssue 'RCFG_READER_MISSING' ([string]$key.key) ([string]$reader.path)))

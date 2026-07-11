@@ -23,97 +23,31 @@ $runRoot = Join-Path $PSScriptRoot '.runs'
 $runId = [guid]::NewGuid().ToString('N')
 $runDir = Join-Path $runRoot $runId
 
-function Get-EnvFileMap {
-  param([string]$Path)
-  $result = @{}
-  if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $result }
-  foreach ($line in Get-Content -LiteralPath $Path) {
-    if ($line -match '^\s*#' -or $line -notmatch '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=') { continue }
-    $key = $Matches[1]
-    $value = ($line -split '=', 2)[1].Trim()
-    if ($value.Length -ge 2 -and (($value.StartsWith('"') -and $value.EndsWith('"')) -or ($value.StartsWith("'") -and $value.EndsWith("'")))) {
-      $value = $value.Substring(1, $value.Length - 2)
-    }
-    $result[$key] = $value
+Import-Module (Join-Path $PSScriptRoot 'harness/Environment.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'harness/Execution.psm1') -Force
+
+function Resolve-HarnessApplication {
+  param([Parameter(Mandatory)][string]$Name)
+
+  $application = Get-Command $Name -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+  if ($null -eq $application -or [string]::IsNullOrWhiteSpace([string]$application.Source)) {
+    throw "HEXEC_FILE_NOT_FOUND tool=$Name"
   }
-  return $result
+  return [IO.Path]::GetFullPath([string]$application.Source)
 }
 
-function Get-ConfiguredValue {
-  param([hashtable]$FileValues, [string]$Key)
-  $processValue = [Environment]::GetEnvironmentVariable($Key)
-  if (-not [string]::IsNullOrWhiteSpace($processValue)) { return $processValue }
-  if ($FileValues.ContainsKey($Key)) { return [string]$FileValues[$Key] }
-  $legacy = @{
-    MPC_ORACLE_USERNAME = 'SANKHYA_ORACLE_USER'
-    MPC_ORACLE_PASSWORD = 'SANKHYA_ORACLE_PASSWORD'
-    MPC_ORACLE_CONNECT_STRING = 'SANKHYA_ORACLE_CONNECT_STRING'
-  }
-  if ($legacy.ContainsKey($Key)) {
-    $legacyKey = $legacy[$Key]
-    $legacyProcessValue = [Environment]::GetEnvironmentVariable($legacyKey)
-    if (-not [string]::IsNullOrWhiteSpace($legacyProcessValue)) { return $legacyProcessValue }
-    if ($FileValues.ContainsKey($legacyKey)) { return [string]$FileValues[$legacyKey] }
-  }
-  if ($Key -eq 'MPC_ORACLE_CONNECT_STRING') {
-    $oracleHost = [Environment]::GetEnvironmentVariable('SANKHYA_ORACLE_HOST')
-    $oraclePort = [Environment]::GetEnvironmentVariable('SANKHYA_ORACLE_PORT')
-    $oracleService = [Environment]::GetEnvironmentVariable('SANKHYA_ORACLE_SERVICE_NAME')
-    if ([string]::IsNullOrWhiteSpace($oracleHost)) { $oracleHost = [string]$FileValues['SANKHYA_ORACLE_HOST'] }
-    if ([string]::IsNullOrWhiteSpace($oraclePort)) { $oraclePort = [string]$FileValues['SANKHYA_ORACLE_PORT'] }
-    if ([string]::IsNullOrWhiteSpace($oracleService)) { $oracleService = [string]$FileValues['SANKHYA_ORACLE_SERVICE_NAME'] }
-    if (-not [string]::IsNullOrWhiteSpace($oracleHost) -and -not [string]::IsNullOrWhiteSpace($oraclePort) -and -not [string]::IsNullOrWhiteSpace($oracleService)) {
-      return "$oracleHost`:$oraclePort/$oracleService"
-    }
-  }
-  return ''
+function Get-HarnessNpmInvocation {
+  $nodePath = Resolve-HarnessApplication -Name 'node.exe'
+  $npmCliPath = Join-Path (Split-Path -Parent $nodePath) 'node_modules/npm/bin/npm-cli.js'
+  if (-not (Test-Path -LiteralPath $npmCliPath -PathType Leaf)) { throw 'HEXEC_FILE_NOT_FOUND tool=npm' }
+  return [pscustomobject]@{ FilePath = $nodePath; CliPath = [IO.Path]::GetFullPath($npmCliPath) }
 }
 
-function Get-ForbiddenUnitEnvironmentKeys {
-  $patterns = @(
-    '^(?:MC|MS|MPC|MPC_TEST)_DATABASE_URL$',
-    '^(?:DATABASE_URL|POSTGRES(?:QL)?_URL|REDIS_URL|MYSQL_URL)$',
-    '^PG(?:HOST|PORT|DATABASE|USER|PASSWORD|SERVICE|SSLMODE)$',
-    '^(?:MC|MS|MPC)_TENANT_ID$',
-    '^MPC_PROVIDER_.+',
-    '^MPC_ORACLE_.+',
-    '^SANKHYA_ORACLE_.+',
-    '^MPC_OAUTH_.+',
-    '^(?:HTTP|HTTPS|ALL|NO)_PROXY$',
-    '^MPC_WEB_(?:ORIGIN|PROXY_TARGET)$',
-    '^(?:MPC|SANKHYA|NGROK|TUNNEL|CLOUDFLARE)_.*(?:PROXY|TUNNEL|AUTHTOKEN|LIVE|PROD|PRODUCTION|TARGET).*',
-    '^(?:RUN_MIGRATIONS|MC_MIGRATIONS_DIR)$',
-    '^MPC_.*MIGRATIONS?.*'
-  )
-  $present = @()
-  foreach ($entry in [Environment]::GetEnvironmentVariables().GetEnumerator()) {
-    $name = [string]$entry.Key
-    $value = [string]$entry.Value
-    if ([string]::IsNullOrWhiteSpace($value)) { continue }
-    if ($patterns | Where-Object { $name -match $_ }) { $present += $name }
-  }
-  return @($present | Sort-Object -Unique)
-}
+function Write-HarnessProcessResult {
+  param([Parameter(Mandatory)][object]$Result)
 
-function Assert-UnitEnvironment {
-  $present = Get-ForbiddenUnitEnvironmentKeys
-  if ($present.Count -gt 0) { throw "unit environment rejected; forbidden_keys=$($present -join ',')" }
-}
-
-function Protect-OutputLine {
-  param([object]$Line)
-  $safe = [string]$Line
-  $safe = [regex]::Replace($safe, '(?i)(\b(?:MPC|SANKHYA|MC|MS)_[A-Z0-9_]*(?:PASSWORD|SECRET|TOKEN|CREDENTIAL|CONNECT_STRING)\b\s*=\s*)[^,;\s]+', '$1[redacted]')
-  $safe = [regex]::Replace($safe, '(?i)(\b(?:postgres(?:ql)?|mysql|oracle)://)[^\s,;]+', '$1[redacted]')
-  return $safe
-}
-
-function Invoke-CapturedProcess {
-  param([string]$FilePath, [string[]]$Arguments)
-  $captured = @(& $FilePath @Arguments 2>&1)
-  $exitCode = $LASTEXITCODE
-  $safe = @($captured | ForEach-Object { Protect-OutputLine $_ })
-  return [pscustomobject]@{ ExitCode = $exitCode; Output = $safe }
+  if (-not [string]::IsNullOrEmpty([string]$Result.Stdout)) { Write-Output ([string]$Result.Stdout).TrimEnd("`r", "`n") }
+  if (-not [string]::IsNullOrEmpty([string]$Result.Stderr)) { Write-Output ([string]$Result.Stderr).TrimEnd("`r", "`n") }
 }
 
 function Write-Summary {
@@ -126,7 +60,11 @@ function Write-Summary {
 }
 
 function Invoke-Unit {
-  Assert-UnitEnvironment
+  $goPath = Resolve-HarnessApplication -Name 'go.exe'
+  $npm = Get-HarnessNpmInvocation
+  $childEnvironment = New-HarnessChildEnvironment -RepositoryRoot $repoRoot -LaneId 'unit'
+  $goWorkingDirectory = [IO.Path]::GetFullPath((Join-Path $repoRoot 'apps/server_core'))
+
   Write-Output 'target=fake'
   Write-Output 'env=ignored'
   Write-Output 'postgres=disabled'
@@ -135,19 +73,16 @@ function Invoke-Unit {
   Write-Output 'migrations=disabled'
   if ($PreflightOnly) { Write-Summary -TargetType 'fake' -Status 'ready'; return }
 
-  Push-Location (Join-Path $repoRoot 'apps/server_core')
-  try {
-    $previousGoCache = [Environment]::GetEnvironmentVariable('GOCACHE', 'Process')
-    [Environment]::SetEnvironmentVariable('GOCACHE', (Join-Path (Get-Location) '.gocache'), 'Process')
-    $go = Invoke-CapturedProcess -FilePath 'go' -Arguments @('test', './tests/unit/...', '-count=1')
-    [Environment]::SetEnvironmentVariable('GOCACHE', $previousGoCache, 'Process')
-    $go.Output | ForEach-Object { Write-Output $_ }
-    if ($go.ExitCode -ne 0) { throw 'unit Go tests failed' }
-  }
-  finally { Pop-Location }
-  $web = Invoke-CapturedProcess -FilePath 'npm' -Arguments @('run', 'test', '--workspace', '@marketplace-central/web', '--', '--run')
-  $web.Output | ForEach-Object { Write-Output $_ }
-  if ($web.ExitCode -ne 0) { throw 'unit web tests failed' }
+  $goRequest = New-HarnessProcessRequest -FilePath $goPath -ArgumentList @('test', './tests/unit/...', '-count=1') -WorkingDirectory $goWorkingDirectory -Environment $childEnvironment -TimeoutSeconds 1200
+  $go = Invoke-HarnessProcess -Request $goRequest
+  Write-HarnessProcessResult $go
+  if ($go.ExitCode -ne 0) { throw "unit Go tests failed reason=$($go.ReasonCode) exit_code=$($go.ExitCode)" }
+
+  $webArguments = @($npm.CliPath, 'run', 'test', '--workspace', '@marketplace-central/web', '--', '--run')
+  $webRequest = New-HarnessProcessRequest -FilePath $npm.FilePath -ArgumentList $webArguments -WorkingDirectory $repoRoot -Environment $childEnvironment -TimeoutSeconds 1200
+  $web = Invoke-HarnessProcess -Request $webRequest
+  Write-HarnessProcessResult $web
+  if ($web.ExitCode -ne 0) { throw "unit web tests failed reason=$($web.ReasonCode) exit_code=$($web.ExitCode)" }
   Write-Summary -TargetType 'fake' -Status 'passed'
 }
 
@@ -166,17 +101,14 @@ function Invoke-Integration {
 
 function Invoke-Live {
   if ($EnvFile) { $path = $EnvFile } else { $path = Join-Path $repoRoot '.env' }
-  $values = Get-EnvFileMap -Path $path
-  $allowlist = @{
-    oracle = @('MPC_ORACLE_USERNAME', 'MPC_ORACLE_PASSWORD', 'MPC_ORACLE_CONNECT_STRING', 'MPC_ORACLE_LIB_DIR', 'MPC_ORACLE_LIVE_TEST', 'SANKHYA_ORACLE_HOST', 'SANKHYA_ORACLE_PORT', 'SANKHYA_ORACLE_SERVICE_NAME', 'SANKHYA_ORACLE_USER', 'SANKHYA_ORACLE_PASSWORD')
-    provider = @('MPC_PROVIDER_MERCADOLIVRE_CLIENT_ID', 'MPC_PROVIDER_MERCADOLIVRE_CLIENT_SECRET', 'MPC_PROVIDER_MERCADOLIVRE_ACCESS_TOKEN', 'MPC_PROVIDER_MERCADOLIVRE_LIVE_TEST')
-  }
-  if (-not $allowlist.ContainsKey($Target)) { throw 'live target must be oracle or provider' }
+  if ($Target -notin @('oracle', 'provider')) { throw 'live target must be oracle or provider' }
+  $laneId = if ($Target -eq 'oracle') { 'live-oracle' } else { 'live-provider-read' }
+  $childEnvironment = New-HarnessChildEnvironment -RepositoryRoot $repoRoot -LaneId $laneId -EnvFile $path
   $required = if ($Target -eq 'oracle') { @('MPC_ORACLE_USERNAME', 'MPC_ORACLE_PASSWORD', 'MPC_ORACLE_CONNECT_STRING') } else { @('MPC_PROVIDER_MERCADOLIVRE_CLIENT_ID', 'MPC_PROVIDER_MERCADOLIVRE_CLIENT_SECRET') }
-  $missing = @($required | Where-Object { [string]::IsNullOrWhiteSpace((Get-ConfiguredValue -FileValues $values -Key $_)) })
+  $missing = @($required | Where-Object { -not $childEnvironment.ContainsKey($_) -or [string]::IsNullOrWhiteSpace($childEnvironment[$_]) })
   Write-Output "target=live-$Target"
-  foreach ($key in $allowlist[$Target]) {
-    if (-not [string]::IsNullOrWhiteSpace((Get-ConfiguredValue -FileValues $values -Key $key))) { Write-Output "key=$key" }
+  foreach ($key in @($childEnvironment.Keys | Sort-Object)) {
+    if ($key -notin @('SystemRoot', 'WINDIR', 'ComSpec', 'PATH', 'PATHEXT', 'TEMP', 'TMP', 'GOCACHE')) { Write-Output "key=$key" }
   }
   if ($missing.Count -gt 0) { throw "live preflight missing_keys=$($missing -join ',')" }
   Write-Output 'provider_write=disabled'
@@ -292,6 +224,6 @@ try {
   }
 } catch {
   Write-Output "status=blocked"
-  Write-Output (Protect-OutputLine $_.Exception.Message)
+  Write-Output $_.Exception.Message
   exit 1
 }

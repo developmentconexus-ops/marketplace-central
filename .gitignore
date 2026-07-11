@@ -6,6 +6,7 @@ apps/web/node_modules/
 packages/*/node_modules/
 apps/server_core/bin/
 apps/server_core/.gocache/
+apps/server_core/.gomodcache/
 .gocache/
 *.exe
 .env*

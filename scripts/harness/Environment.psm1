@@ -43,15 +43,14 @@ function Get-HarnessRegistry {
   catch { throw "HENV_RUNTIME_CONTRACT_DRIFT registry_invalid=$Name" }
 }
 
-function Get-ConfiguredRuntimeValues {
+function Get-ExplicitRuntimeValues {
   param(
-    [string]$EnvFile,
     [System.Collections.IDictionary]$RuntimeValues,
     [Parameter(Mandatory)][object]$Lane,
     [Parameter(Mandatory)][object[]]$RuntimeKeys
   )
 
-  $values = Read-HarnessEnvironmentFile -Path $EnvFile
+  $values = New-CaseInsensitiveStringDictionary
   $knownKeys = @{}
   foreach ($entry in $RuntimeKeys) { $knownKeys[[string]$entry.key] = $entry }
   if ($null -ne $RuntimeValues) {
@@ -63,6 +62,18 @@ function Get-ConfiguredRuntimeValues {
       $value = [string]$RuntimeValues[$key]
       if (-not [string]::IsNullOrWhiteSpace($value)) { $values[$name] = $value }
     }
+  }
+  return $values
+}
+
+function Get-ProcessRuntimeValues {
+  param([Parameter(Mandatory)][object]$Lane)
+
+  $values = New-CaseInsensitiveStringDictionary
+  foreach ($allowedKey in @($Lane.allowed_runtime_keys)) {
+    $name = [string]$allowedKey
+    $value = [Environment]::GetEnvironmentVariable($name, 'Process')
+    if (-not [string]::IsNullOrWhiteSpace($value)) { $values[$name] = $value }
   }
   return $values
 }
@@ -147,17 +158,29 @@ function New-HarnessChildEnvironment {
     if (-not [string]::IsNullOrWhiteSpace($value)) { $child[$key] = $value }
   }
   if (-not $child.ContainsKey('PATH')) { throw 'HENV_TOOL_KEY_MISSING key=PATH' }
-  $child['GOCACHE'] = [IO.Path]::GetFullPath((Join-Path $root 'apps/server_core/.gocache'))
+  if ($LaneId -eq 'unit') {
+    $child['GOCACHE'] = [IO.Path]::GetFullPath((Join-Path $root 'apps/server_core/.gocache'))
+    $child['GOMODCACHE'] = [IO.Path]::GetFullPath((Join-Path $root 'apps/server_core/.gomodcache'))
+    $child['GOPROXY'] = 'off'
+    $child['GOSUMDB'] = 'off'
+  }
 
-  $effectiveEnvFile = if ($LaneId -eq 'unit') { '' } else { $EnvFile }
-  $configured = Get-ConfiguredRuntimeValues -EnvFile $effectiveEnvFile -RuntimeValues $RuntimeValues -Lane $lane -RuntimeKeys @($runtime.keys)
+  $explicitValues = Get-ExplicitRuntimeValues -RuntimeValues $RuntimeValues -Lane $lane -RuntimeKeys @($runtime.keys)
   if ($LaneId -eq 'unit') { return $child }
-  $resolved = Resolve-HarnessRuntimeValues -Lane $lane -RuntimeKeys @($runtime.keys) -Configured $configured
-  foreach ($key in $resolved.Keys) {
-    if (@($lane.allowed_runtime_keys) -notcontains $key) {
-      throw "HENV_RUNTIME_KEY_FORBIDDEN lane=$LaneId key=$key"
+
+  $sources = @(
+    (Read-HarnessEnvironmentFile -Path $EnvFile),
+    (Get-ProcessRuntimeValues -Lane $lane),
+    $explicitValues
+  )
+  foreach ($configured in $sources) {
+    $resolved = Resolve-HarnessRuntimeValues -Lane $lane -RuntimeKeys @($runtime.keys) -Configured $configured
+    foreach ($key in $resolved.Keys) {
+      if (@($lane.allowed_runtime_keys) -notcontains $key) {
+        throw "HENV_RUNTIME_KEY_FORBIDDEN lane=$LaneId key=$key"
+      }
+      $child[$key] = $resolved[$key]
     }
-    $child[$key] = $resolved[$key]
   }
   return $child
 }

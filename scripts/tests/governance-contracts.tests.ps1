@@ -133,6 +133,33 @@ try {
     Assert-True (@($referencedRuntimeExceptions | Where-Object { $_ -eq $exception.id }).Count -eq 1) "runtime exception is not referenced exactly once: $($exception.id)"
   }
 
+  $registryDrivenKeys = @(
+    $lanes.lanes |
+      Where-Object { $_.id -in @('live-oracle', 'live-provider-read') } |
+      ForEach-Object allowed_runtime_keys |
+      Sort-Object -Unique
+  )
+  foreach ($keyName in $registryDrivenKeys) {
+    $keyRecord = @($runtime.keys | Where-Object key -eq $keyName)[0]
+    $reader = @($keyRecord.readers | Where-Object {
+      $_.path -eq 'scripts/harness/Environment.psm1' -and $_.kind -eq 'registry' -and $_.status -eq 'approved'
+    })
+    Assert-True ($reader.Count -eq 1) "registry-driven environment reader missing: $keyName"
+  }
+
+  $invalidRegistryReader = $runtime | ConvertTo-Json -Depth 30 | ConvertFrom-Json -AsHashtable
+  $invalidReader = @($invalidRegistryReader.keys | ForEach-Object readers | Where-Object kind -eq 'registry')[0]
+  $invalidReader.status = 'temporary_exception'
+  $invalidReader.exception_id = 'invalid-registry-reader'
+  $invalidRegistryPath = Join-Path ([IO.Path]::GetTempPath()) "runtime-registry-reader-$([guid]::NewGuid().ToString('N')).json"
+  try {
+    $invalidRegistryReader | ConvertTo-Json -Depth 30 | Set-Content -LiteralPath $invalidRegistryPath -Encoding utf8
+    Assert-True (-not (Test-Json -LiteralPath $invalidRegistryPath -SchemaFile (Join-Path $schemaRoot 'runtime-config.schema.json') -ErrorAction SilentlyContinue)) 'runtime schema accepted a non-approved registry reader'
+  }
+  finally {
+    Remove-Item -LiteralPath $invalidRegistryPath -Force -ErrorAction SilentlyContinue
+  }
+
   $expectedReaders = @(
     @{ key='SERVER_ADDR'; path='docker/dev/backend-entrypoint.sh'; kind='edge'; status='approved' },
     @{ key='API_PORT'; path='docker/dev/backend-entrypoint.sh'; kind='edge'; status='approved' },
