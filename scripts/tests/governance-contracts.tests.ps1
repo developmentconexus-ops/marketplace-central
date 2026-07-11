@@ -118,7 +118,12 @@ try {
   }
 
   $laneIds = @($lanes.lanes.id)
-  Assert-True ((($laneIds | Sort-Object) -join '|') -eq (('browser','dev-invariance','integration','live-oracle','live-provider-read','provider-write','unit' | Sort-Object) -join '|')) 'execution lane set is not exact'
+  Assert-True ((($laneIds | Sort-Object) -join '|') -eq (('browser','cold-provision','dev-invariance','integration','live-oracle','live-provider-read','provider-write','unit' | Sort-Object) -join '|')) 'execution lane set is not exact'
+  $coldProvision = @($lanes.lanes | Where-Object id -eq 'cold-provision')[0]
+  Assert-True ($null -ne $coldProvision) 'cold-provision lane missing'
+  Assert-True ($coldProvision.network -eq 'live' -and $coldProvision.database -eq 'disabled') 'cold-provision must use registry network and no database'
+  Assert-True ($coldProvision.target_label -eq 'external-dependency-registry' -and $coldProvision.evidence_class -eq 'provisioning') 'cold-provision target/evidence mismatch'
+  Assert-True (@($coldProvision.allowed_runtime_keys).Count -eq 0 -and @($coldProvision.side_effects).Count -eq 1 -and $coldProvision.side_effects[0] -eq 'isolated-cache-write') 'cold-provision must be secret-free and isolated'
   foreach ($key in $runtime.keys) {
     foreach ($lane in $key.allowed_lanes) {
       Assert-True ($lane -in $laneIds) "runtime key $($key.key) references unknown lane $lane"
