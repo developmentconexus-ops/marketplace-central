@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://marketplace-central.local/governance/context-pack.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "context_id", "feature_path", "base_sha", "objective", "observable_done", "criteria", "sources", "risk", "paths", "shared_seams", "side_effects", "commands", "stop_conditions", "retry_budget", "handoff", "estimated_input_tokens"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "context_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "feature_path": { "$ref": "#/$defs/path" },
+    "base_sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "objective": { "type": "string", "minLength": 1 },
+    "observable_done": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+    "criteria": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "milestone_id", "proof_commands"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^F[0-9]{2}-AC[0-9]{2}$" },
+          "milestone_id": { "type": "string", "pattern": "^M-[0-9]{2}-C[0-9]{2}$" },
+          "proof_commands": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }
+        }
+      }
+    },
+    "sources": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["path", "sha256"],
+        "properties": { "path": { "$ref": "#/$defs/path" }, "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" } }
+      }
+    },
+    "risk": {
+      "type": "object", "additionalProperties": false,
+      "required": ["level", "review_policy", "advisory_model"],
+      "properties": {
+        "level": { "enum": ["L0", "L1", "L2", "L3"] },
+        "review_policy": { "type": "string", "minLength": 1 },
+        "advisory_model": { "type": "string", "minLength": 1 }
+      }
+    },
+    "paths": {
+      "type": "object", "additionalProperties": false,
+      "required": ["allowed", "forbidden"],
+      "properties": {
+        "allowed": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/path" } },
+        "forbidden": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/path" } }
+      }
+    },
+    "shared_seams": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" } },
+    "side_effects": { "type": "array", "uniqueItems": true, "items": { "enum": ["none", "repository-write", "database-write", "provider-read", "provider-write", "browser"] } },
+    "commands": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "command", "target_label", "evidence_type"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+          "command": { "type": "string", "minLength": 1 },
+          "target_label": { "enum": ["fake", "ephemeral-postgres", "live-oracle", "live-provider", "browser", "provider-write"] },
+          "evidence_type": { "enum": ["ran", "assumed", "could-not-run"] }
+        }
+      }
+    },
+    "stop_conditions": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+    "retry_budget": { "type": "integer", "minimum": 0, "maximum": 3 },
+    "handoff": {
+      "type": "object", "additionalProperties": false,
+      "required": ["target", "reason"],
+      "properties": { "target": { "type": "string", "minLength": 1 }, "reason": { "type": "string", "minLength": 1 } }
+    },
+    "estimated_input_tokens": { "type": "integer", "minimum": 1, "maximum": 2000 }
+  },
+  "$defs": {
+    "path": { "type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._/-]+$" }
+  }
+}

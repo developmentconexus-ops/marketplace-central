@@ -1,0 +1,63 @@
+{
+  "schema_version": "1.0",
+  "registry_id": "modules",
+  "modules": [
+    { "id": "catalog", "root": "apps/server_core/internal/modules/catalog", "code_owner_path": "apps/server_core/internal/modules/catalog", "composition_required": true, "openapi_prefixes": ["/catalog"], "dependencies": [] },
+    { "id": "classifications", "root": "apps/server_core/internal/modules/classifications", "code_owner_path": "apps/server_core/internal/modules/classifications", "composition_required": true, "openapi_prefixes": ["/classifications"], "dependencies": [] },
+    { "id": "connectors", "root": "apps/server_core/internal/modules/connectors", "code_owner_path": "apps/server_core/internal/modules/connectors", "composition_required": true, "openapi_prefixes": ["/connectors"], "dependencies": ["integrations", "marketplaces", "pricing"] },
+    { "id": "integrations", "root": "apps/server_core/internal/modules/integrations", "code_owner_path": "apps/server_core/internal/modules/integrations", "composition_required": true, "openapi_prefixes": ["/integrations"], "dependencies": ["connectors", "marketplaces"] },
+    { "id": "internal_read", "root": "apps/server_core/internal/modules/internal_read", "code_owner_path": "apps/server_core/internal/modules/internal_read", "composition_required": true, "openapi_prefixes": [], "dependencies": [] },
+    { "id": "inventory", "root": "apps/server_core/internal/modules/inventory", "code_owner_path": "apps/server_core/internal/modules/inventory", "composition_required": true, "openapi_prefixes": ["/inventory"], "dependencies": ["connectors", "integrations", "internal_read", "product_links"] },
+    { "id": "marketplaces", "root": "apps/server_core/internal/modules/marketplaces", "code_owner_path": "apps/server_core/internal/modules/marketplaces", "composition_required": true, "openapi_prefixes": ["/admin/fee-schedules", "/marketplaces"], "dependencies": [] },
+    { "id": "orders", "root": "apps/server_core/internal/modules/orders", "code_owner_path": "apps/server_core/internal/modules/orders", "composition_required": true, "openapi_prefixes": ["/orders"], "dependencies": ["connectors", "product_links"] },
+    { "id": "pricing", "root": "apps/server_core/internal/modules/pricing", "code_owner_path": "apps/server_core/internal/modules/pricing", "composition_required": true, "openapi_prefixes": ["/pricing"], "dependencies": ["catalog", "marketplaces"] },
+    { "id": "product_links", "root": "apps/server_core/internal/modules/product_links", "code_owner_path": "apps/server_core/internal/modules/product_links", "composition_required": true, "openapi_prefixes": ["/product-links"], "dependencies": ["connectors", "internal_read"] },
+    { "id": "profitability", "root": "apps/server_core/internal/modules/profitability", "code_owner_path": "apps/server_core/internal/modules/profitability", "composition_required": true, "openapi_prefixes": ["/profitability"], "dependencies": ["internal_read", "orders"] }
+  ],
+  "temporary_exceptions": [
+    {
+      "id": "module-edge-connectors-magalu-integrations-adapter",
+      "rule_id": "module-target-layer",
+      "source_module": "connectors",
+      "target_module": "integrations",
+      "target_layer": "adapters",
+      "path": "apps/server_core/internal/modules/connectors/adapters/magalu/fee_seed.go",
+      "import_path": "marketplace-central/apps/server_core/internal/modules/integrations/adapters/providers",
+      "reason": "Current connector fee seed imports the integration provider adapter registry.",
+      "removal_owner": "M-10"
+    },
+    {
+      "id": "module-edge-connectors-mercado-livre-integrations-adapter",
+      "rule_id": "module-target-layer",
+      "source_module": "connectors",
+      "target_module": "integrations",
+      "target_layer": "adapters",
+      "path": "apps/server_core/internal/modules/connectors/adapters/mercado_livre/fee_sync.go",
+      "import_path": "marketplace-central/apps/server_core/internal/modules/integrations/adapters/providers",
+      "reason": "Current connector fee sync imports the integration provider adapter registry.",
+      "removal_owner": "M-10"
+    },
+    {
+      "id": "module-edge-connectors-shopee-integrations-adapter",
+      "rule_id": "module-target-layer",
+      "source_module": "connectors",
+      "target_module": "integrations",
+      "target_layer": "adapters",
+      "path": "apps/server_core/internal/modules/connectors/adapters/shopee/fee_seed.go",
+      "import_path": "marketplace-central/apps/server_core/internal/modules/integrations/adapters/providers",
+      "reason": "Current connector fee seed imports the integration provider adapter registry.",
+      "removal_owner": "M-10"
+    },
+    {
+      "id": "module-edge-integrations-feesync-marketplaces-registry",
+      "rule_id": "module-target-layer",
+      "source_module": "integrations",
+      "target_module": "marketplaces",
+      "target_layer": "registry",
+      "path": "apps/server_core/internal/modules/integrations/adapters/feesync/marketplace_executor.go",
+      "import_path": "marketplace-central/apps/server_core/internal/modules/marketplaces/registry",
+      "reason": "Current fee-sync adapter imports the marketplace registry implementation.",
+      "removal_owner": "M-10"
+    }
+  ]
+}

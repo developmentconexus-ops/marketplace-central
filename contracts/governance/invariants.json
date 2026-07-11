@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "registry_id": "invariants",
+  "invariants": [
+    { "id": "module-coverage", "check": "module-coverage", "scope_paths": ["apps/server_core/internal/modules"], "reason_code": "GOV_MODULE_COVERAGE", "exception_mode": "none" },
+    { "id": "module-dependency", "check": "module-dependency", "scope_paths": ["apps/server_core/internal/modules"], "reason_code": "GOV_MODULE_DEPENDENCY", "exception_mode": "exact-edge" },
+    { "id": "module-target-layer", "check": "module-target-layer", "scope_paths": ["apps/server_core/internal/modules"], "reason_code": "GOV_MODULE_LAYER", "exception_mode": "exact-edge" },
+    { "id": "composition-import", "check": "composition-import", "scope_paths": ["apps/server_core/internal/composition/root.go"], "reason_code": "GOV_COMPOSITION_MISSING", "exception_mode": "none" },
+    { "id": "application-import", "check": "application-import", "scope_paths": ["apps/server_core/internal/modules"], "reason_code": "GOV_APPLICATION_IMPORT", "exception_mode": "exact-edge" },
+    { "id": "postgres-driver", "check": "postgres-driver", "scope_paths": ["apps/server_core/internal/modules"], "reason_code": "GOV_POSTGRES_DRIVER", "exception_mode": "exact-path" },
+    { "id": "production-panic", "check": "production-panic", "scope_paths": ["apps/server_core"], "reason_code": "GOV_PRODUCTION_PANIC", "exception_mode": "exact-path" },
+    { "id": "api-sdk-atomicity", "check": "api-sdk-atomicity", "scope_paths": ["contracts/api/marketplace-central.openapi.yaml", "packages/sdk-runtime"], "reason_code": "GOV_API_SDK_SPLIT", "exception_mode": "none" },
+    { "id": "frontend-fetch", "check": "frontend-fetch", "scope_paths": ["apps/web/src", "packages"], "reason_code": "GOV_FRONTEND_FETCH", "exception_mode": "exact-path" },
+    { "id": "migration-prefix", "check": "migration-prefix", "scope_paths": ["apps/server_core/migrations"], "reason_code": "GOV_MIGRATION_PREFIX", "exception_mode": "exact-path-set" }
+  ],
+  "temporary_exceptions": [
+    {
+      "id": "production-panic-product-link-transition",
+      "rule_id": "production-panic",
+      "paths": ["apps/server_core/internal/modules/product_links/application/resolution_service.go"],
+      "reason": "Current product-link transition guard uses panic for an unsupported input.",
+      "removal_owner": "M-09"
+    },
+    {
+      "id": "migration-prefix-0021-duplicate",
+      "rule_id": "migration-prefix",
+      "paths": ["apps/server_core/migrations/0021_integration_operation_run_evidence.sql", "apps/server_core/migrations/0021_integrations_provider_auth_strategy_shopee_partner.sql"],
+      "reason": "Two current migrations use numeric prefix 0021.",
+      "removal_owner": "M-08/F-03"
+    }
+  ]
+}

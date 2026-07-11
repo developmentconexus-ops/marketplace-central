@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://marketplace-central.local/governance/execution-lanes.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "registry_id", "lanes"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "registry_id": { "const": "execution-lanes" },
+    "lanes": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "inherit_parent", "network", "database", "side_effects", "target_label", "allowed_runtime_keys", "gates", "evidence_class"],
+        "properties": {
+          "id": { "enum": ["unit", "integration", "live-oracle", "live-provider-read", "browser", "provider-write"] },
+          "inherit_parent": { "type": "boolean" },
+          "network": { "enum": ["disabled", "localhost", "live"] },
+          "database": { "enum": ["disabled", "ephemeral-postgres", "live-oracle", "application"] },
+          "side_effects": { "type": "array", "uniqueItems": true, "items": { "enum": ["none", "browser-read", "provider-read", "provider-write"] } },
+          "target_label": { "enum": ["fake", "ephemeral-postgres", "live-oracle", "live-provider", "browser", "provider-write"] },
+          "allowed_runtime_keys": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" } },
+          "gates": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "required"],
+              "properties": { "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" }, "required": { "type": "boolean" } }
+            }
+          },
+          "evidence_class": { "enum": ["contract", "integration", "live", "production-like"] }
+        }
+      }
+    }
+  }
+}

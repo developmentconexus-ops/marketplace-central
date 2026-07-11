@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "registry_id": "shared-seams",
+  "seams": [
+    { "id": "api-sdk", "exclusive_paths": ["contracts/api/marketplace-central.openapi.yaml", "packages/sdk-runtime/src/index.ts"] },
+    { "id": "migration-sequence", "exclusive_paths": ["apps/server_core/migrations"] },
+    { "id": "composition-root", "exclusive_paths": ["apps/server_core/internal/composition/root.go"] },
+    { "id": "dependency-graph", "exclusive_paths": ["apps/server_core/go.mod", "package-lock.json", "package.json"] },
+    { "id": "architecture-decisions", "exclusive_paths": ["docs/architecture/decisions"] },
+    {
+      "id": "provider-capability-contract",
+      "exclusive_paths": [
+        "apps/server_core/internal/modules/connectors/application/marketplace_capability_service.go",
+        "apps/server_core/internal/modules/connectors/domain/capability.go",
+        "apps/server_core/internal/modules/connectors/ports/marketplace_capability.go",
+        "apps/server_core/internal/modules/integrations/ports/marketplace_capabilities.go",
+        "apps/server_core/internal/modules/integrations/ports/provider_registry.go"
+      ]
+    }
+  ]
+}
