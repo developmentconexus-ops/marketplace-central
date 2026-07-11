@@ -7,6 +7,7 @@ try {
   Assert-True ($harness -match "'cold'") 'cold command missing'
   Assert-True ($harness -match 'CandidateSha') 'candidate SHA argument missing'
   Assert-True (Test-Path (Join-Path $root 'contracts/governance/schemas/harness-outcome.schema.json')) 'outcome schema missing'
+  Assert-True ($harness -match 'snapshot' -and $harness -match 'GOMODCACHE') 'isolated snapshot/cache contract missing'
   Write-Output 'PASS cold gate snapshot contract'
   exit 0
 } catch { Write-Output "FAIL cold gate snapshot contract: $($_.Exception.Message)"; exit 1 }
