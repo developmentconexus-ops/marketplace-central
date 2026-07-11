@@ -40,6 +40,21 @@ try {
   $scopeBefore = @(& git config --global --get-all safe.directory 2>$null; & git config --system --get-all safe.directory 2>$null; & git config --local --get-all safe.directory 2>$null)
   $scopeAfter = @(& git config --global --get-all safe.directory 2>$null; & git config --system --get-all safe.directory 2>$null; & git config --local --get-all safe.directory 2>$null)
   Assert-True ((($scopeBefore -join "`n") -ceq ($scopeAfter -join "`n"))) 'Git global/system/local config changed during scoped trust preparation'
+  Import-Module (Join-Path $root 'scripts/harness/Execution.psm1') -Force
+  $node = (Get-Command node -CommandType Application | Select-Object -First 1).Source
+  $probe = Join-Path $root 'scripts/tests/fixtures/harness/child-probe.mjs'
+  $spaceGitdir = 'C:\fixture root with spaces\.git'
+  $launcherArgs = @($probe, 'inspect', '-c', "safe.directory=$spaceGitdir", 'clone', '--local', 'C:\fixture root with spaces', 'C:\run snapshot')
+  $launcherEnv = @{}
+  foreach ($name in @('SystemRoot', 'WINDIR', 'ComSpec', 'PATH', 'PATHEXT', 'TEMP', 'TMP')) {
+    $value = [Environment]::GetEnvironmentVariable($name, 'Process')
+    if (-not [string]::IsNullOrWhiteSpace($value)) { $launcherEnv[$name] = $value }
+  }
+  $launcherResult = Invoke-HarnessProcess -Request (New-HarnessProcessRequest -FilePath $node -ArgumentList $launcherArgs -WorkingDirectory $root -Environment $launcherEnv -TimeoutSeconds 10)
+  Assert-True ($launcherResult.ExitCode -eq 0) 'launcher argv probe failed'
+  $launcherObserved = $launcherResult.Stdout | ConvertFrom-Json
+  $expectedLauncherArgs = @($launcherArgs | Select-Object -Skip 2)
+  Assert-True (($launcherObserved.args -join "`n") -eq ($expectedLauncherArgs -join "`n")) 'launcher changed scoped clone argv boundaries'
   $rootOnlyTarget = Join-Path $env:TEMP ('mpc-root-only-' + [guid]::NewGuid().ToString('N'))
   try {
     & git -c "safe.directory=$canonical" clone --quiet --no-hardlinks --local $canonical $rootOnlyTarget 2>$null

@@ -187,3 +187,16 @@ Milestone Orchestrator must perform final SPEC/SAFETY and QUALITY reviews on a f
   prior candidate; it must be recompiled and current-validated at the fixed
   correction SHA before any Phase 4 attempt. Phase 4 remains intentionally
   unrun.
+
+## Authorized correction — argv propagation trace
+
+- Read-only chain trace used the same `New-HarnessProcessRequest` →
+  `Invoke-HarnessProcess` launcher as cold snapshot cloning. A controlled child
+  probe received `-c` and `safe.directory=<gitdir>` as separate argv entries,
+  preserving spaces and metacharacters exactly; no shell concatenation or
+  `Start-Process` boundary was involved.
+- The focused test now fails if launcher argv boundaries change. It also proves
+  root-only trust reproduces dubious ownership while the validated direct-child
+  gitdir trust succeeds. A real pre-Docker snapshot check through the harness
+  launcher and an equivalent direct Git invocation both exited 0. No raw argv,
+  absolute source, or secrets were persisted.
