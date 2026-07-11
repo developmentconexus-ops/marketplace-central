@@ -17,7 +17,6 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 $runRoot = Join-Path $PSScriptRoot '.runs'
 $runId = [guid]::NewGuid().ToString('N')
 $runDir = Join-Path $runRoot $runId
-New-Item -ItemType Directory -Path $runDir -Force | Out-Null
 
 function Get-EnvFileMap {
   param([string]$Path)
@@ -47,28 +46,74 @@ function Get-ConfiguredValue {
   }
   if ($legacy.ContainsKey($Key)) {
     $legacyKey = $legacy[$Key]
+    $legacyProcessValue = [Environment]::GetEnvironmentVariable($legacyKey)
+    if (-not [string]::IsNullOrWhiteSpace($legacyProcessValue)) { return $legacyProcessValue }
     if ($FileValues.ContainsKey($legacyKey)) { return [string]$FileValues[$legacyKey] }
   }
-  if ($Key -eq 'MPC_ORACLE_CONNECT_STRING' -and $FileValues.ContainsKey('SANKHYA_ORACLE_HOST') -and $FileValues.ContainsKey('SANKHYA_ORACLE_PORT') -and $FileValues.ContainsKey('SANKHYA_ORACLE_SERVICE_NAME')) {
-    return "$($FileValues['SANKHYA_ORACLE_HOST']):$($FileValues['SANKHYA_ORACLE_PORT'])/$($FileValues['SANKHYA_ORACLE_SERVICE_NAME'])"
+  if ($Key -eq 'MPC_ORACLE_CONNECT_STRING') {
+    $oracleHost = [Environment]::GetEnvironmentVariable('SANKHYA_ORACLE_HOST')
+    $oraclePort = [Environment]::GetEnvironmentVariable('SANKHYA_ORACLE_PORT')
+    $oracleService = [Environment]::GetEnvironmentVariable('SANKHYA_ORACLE_SERVICE_NAME')
+    if ([string]::IsNullOrWhiteSpace($oracleHost)) { $oracleHost = [string]$FileValues['SANKHYA_ORACLE_HOST'] }
+    if ([string]::IsNullOrWhiteSpace($oraclePort)) { $oraclePort = [string]$FileValues['SANKHYA_ORACLE_PORT'] }
+    if ([string]::IsNullOrWhiteSpace($oracleService)) { $oracleService = [string]$FileValues['SANKHYA_ORACLE_SERVICE_NAME'] }
+    if (-not [string]::IsNullOrWhiteSpace($oracleHost) -and -not [string]::IsNullOrWhiteSpace($oraclePort) -and -not [string]::IsNullOrWhiteSpace($oracleService)) {
+      return "$oracleHost`:$oraclePort/$oracleService"
+    }
   }
   return ''
 }
 
-function Assert-UnitEnvironment {
-  $forbidden = @(
-    'MC_DATABASE_URL', 'MS_DATABASE_URL', 'MS_TENANT_ID', 'MC_MIGRATIONS_DIR', 'RUN_MIGRATIONS',
-    'MPC_ORACLE_USERNAME', 'MPC_ORACLE_PASSWORD', 'MPC_ORACLE_CONNECT_STRING', 'MPC_ORACLE_LIB_DIR', 'MPC_ORACLE_LIVE_TEST',
-    'SANKHYA_ORACLE_HOST', 'SANKHYA_ORACLE_PORT', 'SANKHYA_ORACLE_SERVICE_NAME', 'SANKHYA_ORACLE_USER', 'SANKHYA_ORACLE_PASSWORD',
-    'MPC_PROVIDER_MERCADOLIVRE_CLIENT_ID', 'MPC_PROVIDER_MERCADOLIVRE_CLIENT_SECRET', 'MPC_PROVIDER_MERCADOLIVRE_ACCESS_TOKEN', 'MPC_PROVIDER_MERCADOLIVRE_LIVE_TEST',
-    'MPC_OAUTH_HMAC_SECRET', 'MPC_OAUTH_REDIRECT_URI', 'MPC_WEB_ORIGIN', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY'
+function Get-ForbiddenUnitEnvironmentKeys {
+  $patterns = @(
+    '^(?:MC|MS|MPC|MPC_TEST)_DATABASE_URL$',
+    '^(?:DATABASE_URL|POSTGRES(?:QL)?_URL|REDIS_URL|MYSQL_URL)$',
+    '^PG(?:HOST|PORT|DATABASE|USER|PASSWORD|SERVICE|SSLMODE)$',
+    '^(?:MC|MS|MPC)_TENANT_ID$',
+    '^MPC_PROVIDER_.+',
+    '^MPC_ORACLE_.+',
+    '^SANKHYA_ORACLE_.+',
+    '^MPC_OAUTH_.+',
+    '^(?:HTTP|HTTPS|ALL|NO)_PROXY$',
+    '^MPC_WEB_(?:ORIGIN|PROXY_TARGET)$',
+    '^(?:MPC|SANKHYA|NGROK|TUNNEL|CLOUDFLARE)_.*(?:PROXY|TUNNEL|AUTHTOKEN|LIVE|PROD|PRODUCTION|TARGET).*',
+    '^(?:RUN_MIGRATIONS|MC_MIGRATIONS_DIR)$',
+    '^MPC_.*MIGRATIONS?.*'
   )
-  $present = @($forbidden | Where-Object { -not [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_)) })
+  $present = @()
+  foreach ($entry in [Environment]::GetEnvironmentVariables().GetEnumerator()) {
+    $name = [string]$entry.Key
+    $value = [string]$entry.Value
+    if ([string]::IsNullOrWhiteSpace($value)) { continue }
+    if ($patterns | Where-Object { $name -match $_ }) { $present += $name }
+  }
+  return @($present | Sort-Object -Unique)
+}
+
+function Assert-UnitEnvironment {
+  $present = Get-ForbiddenUnitEnvironmentKeys
   if ($present.Count -gt 0) { throw "unit environment rejected; forbidden_keys=$($present -join ',')" }
+}
+
+function Protect-OutputLine {
+  param([object]$Line)
+  $safe = [string]$Line
+  $safe = [regex]::Replace($safe, '(?i)(\b(?:MPC|SANKHYA|MC|MS)_[A-Z0-9_]*(?:PASSWORD|SECRET|TOKEN|CREDENTIAL|CONNECT_STRING)\b\s*=\s*)[^,;\s]+', '$1[redacted]')
+  $safe = [regex]::Replace($safe, '(?i)(\b(?:postgres(?:ql)?|mysql|oracle)://)[^\s,;]+', '$1[redacted]')
+  return $safe
+}
+
+function Invoke-CapturedProcess {
+  param([string]$FilePath, [string[]]$Arguments)
+  $captured = @(& $FilePath @Arguments 2>&1)
+  $exitCode = $LASTEXITCODE
+  $safe = @($captured | ForEach-Object { Protect-OutputLine $_ })
+  return [pscustomobject]@{ ExitCode = $exitCode; Output = $safe }
 }
 
 function Write-Summary {
   param([string]$TargetType, [string]$Status)
+  New-Item -ItemType Directory -Path $runDir -Force | Out-Null
   $summary = @("target=$TargetType", "status=$Status", "run_id=$runId")
   $summary | Set-Content -LiteralPath (Join-Path $runDir 'summary.txt') -Encoding utf8
   $summary | ForEach-Object { Write-Output $_ }
@@ -86,31 +131,32 @@ function Invoke-Unit {
   if ($PreflightOnly) { Write-Summary -TargetType 'fake' -Status 'ready'; return }
 
   Push-Location (Join-Path $repoRoot 'apps/server_core')
-  try { & go test ./tests/unit/... -count=1; if ($LASTEXITCODE -ne 0) { throw 'unit Go tests failed' } }
+  try {
+    $previousGoCache = [Environment]::GetEnvironmentVariable('GOCACHE', 'Process')
+    [Environment]::SetEnvironmentVariable('GOCACHE', (Join-Path (Get-Location) '.gocache'), 'Process')
+    $go = Invoke-CapturedProcess -FilePath 'go' -Arguments @('test', './tests/unit/...', '-count=1')
+    [Environment]::SetEnvironmentVariable('GOCACHE', $previousGoCache, 'Process')
+    $go.Output | ForEach-Object { Write-Output $_ }
+    if ($go.ExitCode -ne 0) { throw 'unit Go tests failed' }
+  }
   finally { Pop-Location }
-  & npm run test --workspace @marketplace-central/web -- --run
-  if ($LASTEXITCODE -ne 0) { throw 'unit web tests failed' }
+  $web = Invoke-CapturedProcess -FilePath 'npm' -Arguments @('run', 'test', '--workspace', '@marketplace-central/web', '--', '--run')
+  $web.Output | ForEach-Object { Write-Output $_ }
+  if ($web.ExitCode -ne 0) { throw 'unit web tests failed' }
   Write-Summary -TargetType 'fake' -Status 'passed'
 }
 
 function Invoke-Integration {
-  $url = if ($DatabaseUrl) { $DatabaseUrl } else { [Environment]::GetEnvironmentVariable('MPC_TEST_DATABASE_URL') }
-  if ([string]::IsNullOrWhiteSpace($url)) { throw 'integration requires MPC_TEST_DATABASE_URL (ephemeral-postgres)' }
+  $url = $DatabaseUrl
+  if ([string]::IsNullOrWhiteSpace($url)) { throw 'integration requires explicit -DatabaseUrl (MPC_TEST_DATABASE_URL); ambient configuration is ignored until F-03' }
   try { $uri = [Uri]$url } catch { throw 'integration database target is invalid' }
   if ($uri.Scheme -notin @('postgres', 'postgresql') -or $uri.AbsolutePath -notmatch '/mpc_test_[A-Za-z0-9_-]+$') {
     throw 'integration database must be an mpc_test_* PostgreSQL target'
   }
   Write-Output 'target=ephemeral-postgres'
+  Write-Output 'key=MPC_TEST_DATABASE_URL'
   Write-Output 'migrations=delegated'
-  if ($PreflightOnly) { Write-Summary -TargetType 'ephemeral-postgres' -Status 'ready'; return }
-  $old = [Environment]::GetEnvironmentVariable('MC_DATABASE_URL')
-  try {
-    [Environment]::SetEnvironmentVariable('MC_DATABASE_URL', $url, 'Process')
-    Push-Location (Join-Path $repoRoot 'apps/server_core')
-    try { & go test ./tests/integration/... -count=1; if ($LASTEXITCODE -ne 0) { throw 'integration tests failed' } }
-    finally { Pop-Location }
-  } finally { [Environment]::SetEnvironmentVariable('MC_DATABASE_URL', $old, 'Process') }
-  Write-Summary -TargetType 'ephemeral-postgres' -Status 'passed'
+  throw 'integration blocked until F-03 supplies explicit ephemeral-postgres lifecycle; no database was contacted'
 }
 
 function Invoke-Live {
@@ -160,6 +206,6 @@ try {
   }
 } catch {
   Write-Output "status=blocked"
-  Write-Output (($_.Exception.Message -replace '(?i)(secret|password|token|credential)[^,; ]*', '$1 [redacted]'))
+  Write-Output (Protect-OutputLine $_.Exception.Message)
   exit 1
 }

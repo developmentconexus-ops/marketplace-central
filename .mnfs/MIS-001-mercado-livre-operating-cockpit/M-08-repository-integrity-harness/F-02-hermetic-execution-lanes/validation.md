@@ -89,3 +89,53 @@ committed evidence contains no environment values, secrets, or buyer PII.
   or preflight evidence.
 - Blockers: none for F-02 scoped harness behavior; live and ephemeral database
   validation remain later-lane responsibilities.
+
+## Correction Batch — Final Review Findings
+
+### RED/GREEN
+
+- RED — focused test after adding final-review cases:
+  `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/tests/hermetic-lanes.tests.ps1`
+  - Target: fake.
+  - Actual: exit 1; inherited `MPC_TEST_DATABASE_URL`, `MPC_PROVIDER_*`,
+    `MPC_ORACLE_*`, legacy Oracle, proxy, and tunnel cases were not all
+    rejected and the prior catch path mutated key identifiers.
+- GREEN — same focused command after correction:
+  - Target: fake.
+  - Actual: exit 0, `PASS hermetic lane tests`.
+  - Coverage: anchored/prefix unit guard with key-only reporting; exact
+    required/missing/forbidden names; process and EnvFile legacy
+    `SANKHYA_ORACLE_*`; integration ambient-config rejection and F-03
+    fail-closed boundary; subprocess redaction; npm alias execution; and
+    provider-write no-network guards with and without `-Execute`.
+
+### Required commands
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command unit -PreflightOnly`
+  - Target: fake; exit 0; `.env` ignored and PostgreSQL, Oracle, provider
+    network, and migrations disabled.
+- `npm run harness:unit -- -PreflightOnly`
+  - Target: fake; exit 0 through the root alias; same disabled-target output.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command unit`
+  - Target: fake; exit 0; Go unit package passed with `GOCACHE=.gocache`, and
+    web Vitest passed (20 files, 185 tests). Existing React `act(...)` and
+    Node deprecation warnings remain non-fatal baseline output.
+- Integration preflight with no explicit `-DatabaseUrl` exits 1 and reports
+  only the required key name; ambient Oracle/provider/OAuth/proxy/database
+  values are ignored. With an explicit `mpc_test_*` URL it emits
+  `target=ephemeral-postgres` and `key=MPC_TEST_DATABASE_URL`, then exits 1
+  with the F-03 lifecycle blocker before any DB/network attempt.
+- Provider-write with valid actor/idempotency exits 1 before network without
+  `-Execute`; `-Execute` is also rejected as outside F-02. No provider adapter
+  or HTTP request was invoked.
+
+### Scope limitations
+
+- This correction batch proves deterministic fake/preflight behavior only.
+  It does not validate a real PostgreSQL, Oracle, OAuth, provider, browser,
+  proxy/tunnel, migration, or network target. F-03 owns the ephemeral
+  PostgreSQL lifecycle and migration evidence.
+- Subprocess output is captured and structurally redacted before forwarding;
+  key identifiers in required/missing/forbidden messages remain exact.
+- Run summaries are created only when a lane reaches `Write-Summary`; blocked
+  lanes do not create new empty `scripts/.runs` directories.
