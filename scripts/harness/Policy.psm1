@@ -192,8 +192,10 @@ function Get-EnvironmentReads {
   $ownedPattern = '^(?:MC_|MS_|MPC_|MPC_TEST_|SANKHYA_|ME_|NGROK_|VITE_|SERVER_ADDR$|API_PORT$|RUN_MIGRATIONS$)'
   $patterns = @(
     'os\.(?:Getenv|LookupEnv)\(\s*["''](?<key>[A-Z][A-Z0-9_]*)["'']',
+    '(?i)(?<![A-Za-z0-9_.])(?:getenv|lookupenv)\(\s*["''](?<key>[A-Z][A-Z0-9_]*)["'']',
     '(?:process|import\.meta)\.env\.(?<key>[A-Z][A-Z0-9_]*)',
     'GetEnvironmentVariable\(\s*["''](?<key>[A-Z][A-Z0-9_]*)["'']',
+    '\$env:(?<key>[A-Z][A-Z0-9_]*)',
     '\$\{(?<key>[A-Z][A-Z0-9_]*)'
   )
   foreach ($file in $Files) {
@@ -288,7 +290,7 @@ function Test-GovernanceDrift {
   foreach ($file in @($files | Where-Object { (ConvertTo-NormalizedPath $RepositoryRoot $_.FullName) -match '^apps/server_core/(?!.*_test\.go$).+\.go$' })) {
     $path = ConvertTo-NormalizedPath $RepositoryRoot $file.FullName
     $content = Get-Content -Raw -LiteralPath $file.FullName
-    $panicMatches = @([regex]::Matches($content, 'panic\s*\([^\r\n]+\)'))
+    $panicMatches = @([regex]::Matches($content, 'panic\s*\((?s:.*?)\)'))
     if ($panicMatches.Count -eq 0) { continue }
     $exceptions = @($documents.invariants.temporary_exceptions | Where-Object { $_.rule_id -eq 'production-panic' -and $path -in @($_.paths) })
     $covered = 0
@@ -361,8 +363,12 @@ function Test-GovernanceDrift {
     if ($BaseSha -notmatch '^[0-9a-f]{40}$') {
       $issues.Add((New-PolicyIssue 'GOV_SEMANTIC_DRIFT' 'base-sha-invalid'))
     } else {
-      $changed = @(& git -C $RepositoryRoot diff --name-only $BaseSha -- 2>$null | ForEach-Object { ([string]$_).Replace('\', '/') })
-      if ($LASTEXITCODE -ne 0) { $issues.Add((New-PolicyIssue 'GOV_SEMANTIC_DRIFT' 'base-sha-unavailable')) }
+      $trackedChanged = @(& git -C $RepositoryRoot diff --name-only $BaseSha -- 2>$null | ForEach-Object { ([string]$_).Replace('\', '/') })
+      $trackedStatus = $LASTEXITCODE
+      $untrackedChanged = @(& git -C $RepositoryRoot ls-files --others --exclude-standard 2>$null | ForEach-Object { ([string]$_).Replace('\', '/') })
+      $untrackedStatus = $LASTEXITCODE
+      $changed = @($trackedChanged + $untrackedChanged | Sort-Object -Unique)
+      if ($trackedStatus -ne 0 -or $untrackedStatus -ne 0) { $issues.Add((New-PolicyIssue 'GOV_SEMANTIC_DRIFT' 'base-sha-unavailable')) }
       else {
         $apiChanged = 'contracts/api/marketplace-central.openapi.yaml' -in $changed
         $sdkChanged = @($changed | Where-Object { $_ -eq 'packages/sdk-runtime' -or $_ -like 'packages/sdk-runtime/*' }).Count -gt 0

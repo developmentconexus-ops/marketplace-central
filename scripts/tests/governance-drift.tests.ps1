@@ -78,8 +78,19 @@ function Assert-FailureCode {
   Assert-True ($ExpectedCode -in @($result.Violations.ErrorCode)) "missing reason code $ExpectedCode; actual=$(@($result.Violations.ErrorCode) -join ',')"
 }
 
+function Test-ReviewFailureCode {
+  param([Collections.Generic.List[string]]$Failures, [string]$Root, [string]$ExpectedCode, [string]$Case, [string]$BaseSha = '')
+  $result = Test-GovernanceDrift -RepositoryRoot $Root -BaseSha $BaseSha
+  if ($result.Passed) {
+    $Failures.Add("$Case false negative: drift passed; expected $ExpectedCode")
+  } elseif ($ExpectedCode -notin @($result.Violations.ErrorCode)) {
+    $Failures.Add("$Case wrong code: expected $ExpectedCode; actual=$(@($result.Violations.ErrorCode) -join ',')")
+  }
+}
+
 $fixtures = [Collections.Generic.List[string]]::new()
 try {
+  $reviewFailures = [Collections.Generic.List[string]]::new()
   $positive = New-PositiveFixture; $fixtures.Add($positive)
   $positiveResult = Test-GovernanceDrift -RepositoryRoot $positive
   Assert-True $positiveResult.Passed "positive fixture failed: $(@($positiveResult.Violations.ErrorCode) -join ',')"
@@ -145,6 +156,38 @@ try {
   $baseSha = (& git -C $atomicFixture rev-parse HEAD).Trim()
   Add-Content -LiteralPath (Join-Path $atomicFixture 'contracts/api/marketplace-central.openapi.yaml') -Value '# changed'
   Assert-FailureCode $atomicFixture 'GOV_API_SDK_SPLIT' $baseSha
+
+  $powerShellEnvFixture = New-PositiveFixture; $fixtures.Add($powerShellEnvFixture)
+  Write-FixtureFile $powerShellEnvFixture 'scripts/review-reader.ps1' '$value = $env:MPC_REVIEW_ROGUE_SECRET'
+  Test-ReviewFailureCode $reviewFailures $powerShellEnvFixture 'RCFG_UNDECLARED_READ' 'PowerShell env literal'
+
+  $injectedGetterFixture = New-PositiveFixture; $fixtures.Add($injectedGetterFixture)
+  Write-FixtureFile $injectedGetterFixture 'apps/server_core/internal/platform/config/review_getter.go' 'package config; func read(getenv func(string) string) string { return getenv("MPC_REVIEW_GETTER_SECRET") }'
+  Test-ReviewFailureCode $reviewFailures $injectedGetterFixture 'RCFG_UNDECLARED_READ' 'injected Go getter literal'
+
+  $untrackedSdkFixture = New-PositiveFixture; $fixtures.Add($untrackedSdkFixture)
+  & git -C $untrackedSdkFixture init --quiet
+  & git -C $untrackedSdkFixture config core.autocrlf false
+  & git -C $untrackedSdkFixture config user.email 'fixture@example.invalid'
+  & git -C $untrackedSdkFixture config user.name 'Fixture'
+  & git -C $untrackedSdkFixture add .
+  & git -C $untrackedSdkFixture commit --quiet -m baseline
+  $untrackedBaseSha = (& git -C $untrackedSdkFixture rev-parse HEAD).Trim()
+  Write-FixtureFile $untrackedSdkFixture 'packages/sdk-runtime/src/review-bypass.ts' 'export const reviewBypass = true'
+  Test-ReviewFailureCode $reviewFailures $untrackedSdkFixture 'GOV_API_SDK_SPLIT' 'untracked SDK-only change' $untrackedBaseSha
+
+  $multilinePanicFixture = New-PositiveFixture; $fixtures.Add($multilinePanicFixture)
+  Write-FixtureFile $multilinePanicFixture 'apps/server_core/internal/modules/catalog/domain/review_panic.go' @'
+package domain
+func bad() {
+  panic(
+    "review"
+  )
+}
+'@
+  Test-ReviewFailureCode $reviewFailures $multilinePanicFixture 'GOV_PRODUCTION_PANIC' 'multiline production panic'
+
+  Assert-True ($reviewFailures.Count -eq 0) ($reviewFailures -join '; ')
 
   $invariants = Get-Content -Raw (Join-Path $positive 'contracts/governance/invariants.json') | ConvertFrom-Json
   Assert-True ('frontend-fetch' -in @((Get-ApplicableInvariants -Registry $invariants -Paths @('apps/web/src/rogue.ts')).id)) 'applicable invariant lookup missed frontend path'
