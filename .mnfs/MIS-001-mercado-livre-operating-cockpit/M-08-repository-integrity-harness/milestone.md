@@ -94,14 +94,14 @@ shared-seam ownership are enforced globally.
 
 ## Handoff
 
-- Current status: In progress; F-01 accepted, F-02 retained as blocked baseline,
-  F-06 is next.
+- Current status: In progress; F-01, F-03, F-06, F-07, and F-08 are accepted;
+  F-02 remains the superseded blocked baseline.
 - Next owner: Milestone Orchestrator (`gpt-5.6-terra`, reasoning `high`).
-- Next action: Execute F-06 knowledge-authority cutover before any new harness
-  implementation.
+- Next action: Dispatch F-04 deterministic cold gate from the accepted F-03
+  PostgreSQL and F-08 hermetic execution seams.
 - Required files/evidence: F-*/validation.md and M-08/validation-result.md.
-- Blockers or open decisions: No parallel writer until F-05 worktree isolation
-  proof; F-02 cannot be accepted by another denylist patch.
+- Blockers or open decisions: No parallel implementation writer until F-05
+  proves worktree isolation; F-02 cannot be accepted by another denylist patch.
 
 ## Correction Handoff
 
