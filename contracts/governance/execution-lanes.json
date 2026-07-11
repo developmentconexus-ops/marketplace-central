@@ -25,6 +25,17 @@
       "evidence_class": "integration"
     },
     {
+      "id": "dev-invariance",
+      "inherit_parent": false,
+      "network": "localhost",
+      "database": "ephemeral-postgres",
+      "side_effects": ["database-read"],
+      "target_label": "dev-invariance",
+      "allowed_runtime_keys": [],
+      "gates": [{ "id": "generated-target", "required": true }, { "id": "read-only-observer", "required": true }],
+      "evidence_class": "integration"
+    },
+    {
       "id": "live-oracle",
       "inherit_parent": false,
       "network": "live",

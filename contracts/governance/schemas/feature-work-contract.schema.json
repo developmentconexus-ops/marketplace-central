@@ -30,7 +30,7 @@
         "properties": {
           "id": { "$ref": "#/$defs/id" },
           "command_template": { "type": "string", "minLength": 1 },
-          "lane_id": { "enum": ["unit", "integration", "live-oracle", "live-provider-read", "browser", "provider-write"] },
+          "lane_id": { "enum": ["unit", "integration", "dev-invariance", "live-oracle", "live-provider-read", "browser", "provider-write"] },
           "expected_exit_code": { "type": "integer", "minimum": 0, "maximum": 255 }
         }
       }

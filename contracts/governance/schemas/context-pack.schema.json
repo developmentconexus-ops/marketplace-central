@@ -58,7 +58,7 @@
         "properties": {
           "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
           "command": { "type": "string", "minLength": 1 },
-          "target_label": { "enum": ["fake", "ephemeral-postgres", "live-oracle", "live-provider", "browser", "provider-write"] },
+          "target_label": { "enum": ["fake", "ephemeral-postgres", "dev-invariance", "live-oracle", "live-provider", "browser", "provider-write"] },
           "evidence_type": { "enum": ["ran", "assumed", "could-not-run"] }
         }
       }

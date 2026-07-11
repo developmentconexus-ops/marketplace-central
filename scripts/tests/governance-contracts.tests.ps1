@@ -107,7 +107,7 @@ try {
   }
 
   $laneIds = @($lanes.lanes.id)
-  Assert-True ((($laneIds | Sort-Object) -join '|') -eq (('browser','integration','live-oracle','live-provider-read','provider-write','unit' | Sort-Object) -join '|')) 'execution lane set is not exact'
+  Assert-True ((($laneIds | Sort-Object) -join '|') -eq (('browser','dev-invariance','integration','live-oracle','live-provider-read','provider-write','unit' | Sort-Object) -join '|')) 'execution lane set is not exact'
   foreach ($key in $runtime.keys) {
     foreach ($lane in $key.allowed_lanes) {
       Assert-True ($lane -in $laneIds) "runtime key $($key.key) references unknown lane $lane"
@@ -221,6 +221,11 @@ try {
   $requiredWriteGates = @('actor','idempotency','execute','resolved-link','policy','source-timestamp','before-after-audit')
   Assert-True ((($providerWrite.gates.id | Sort-Object) -join '|') -eq (($requiredWriteGates | Sort-Object) -join '|')) 'provider-write gates are incomplete'
   Assert-True (@($providerWrite.gates | Where-Object { -not $_.required }).Count -eq 0) 'every provider-write gate must be required'
+
+  $devInvariance = @($lanes.lanes | Where-Object id -eq 'dev-invariance')[0]
+  Assert-True ($devInvariance.database -eq 'ephemeral-postgres' -and $devInvariance.target_label -eq 'dev-invariance') 'dev invariance target is misclassified'
+  Assert-True (($devInvariance.side_effects -join '|') -eq 'database-read') 'dev invariance must be read-only against dev'
+  Assert-True (@($devInvariance.allowed_runtime_keys).Count -eq 0) 'dev invariance cannot inherit a database target'
 
   $invariantIds = @($invariants.invariants.id)
   foreach ($exception in @($modules.temporary_exceptions)) {
