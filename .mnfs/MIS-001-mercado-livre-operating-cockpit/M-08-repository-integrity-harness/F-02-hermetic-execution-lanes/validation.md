@@ -139,3 +139,26 @@ committed evidence contains no environment values, secrets, or buyer PII.
   key identifiers in required/missing/forbidden messages remain exact.
 - Run summaries are created only when a lane reaches `Write-Summary`; blocked
   lanes do not create new empty `scripts/.runs` directories.
+
+## Milestone Orchestrator Acceptance Review
+
+- Decision: `blocked`
+- Return point: `quick_validation_passed`
+- Review evidence: final independent SPEC and QUALITY reviews, followed by the
+  one allowed focused revalidation of correction `a0ffbd2`.
+- Confirmed: the implemented lanes do not invoke a real database, Oracle,
+  provider, browser, or network target; integration remains fail-closed for
+  F-03 and provider writes remain rejected.
+- Blocking finding: the unit guard does not reject the active external keys
+  `MPC_PRODUCT_LINKS_POSTGRES_URL` and `ME_CLIENT_ID` / `ME_CLIENT_SECRET` /
+  `ME_REDIRECT_URI`. An inherited process environment can therefore cross the
+  C02 database/provider boundary.
+- Nonblocking evidence gaps: legacy EnvFile alias fixture, subprocess/redaction
+  and run-directory behavioral assertions, and execution of the four
+  non-unit npm aliases.
+- Constraint: Lean Risk-Gated Harness permits one normal correction batch and
+  one focused revalidation. That correction budget is exhausted; do not open
+  another micro-correction without an explicit orchestrator/owner decision.
+- Next owner: Milestone Orchestrator / human owner.
+- Next action: authorize one exception correction for the two external-key
+  guards, or accept the remaining unit-lane risk explicitly.
