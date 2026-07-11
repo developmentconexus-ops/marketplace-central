@@ -57,6 +57,62 @@ try {
   $expectedCache = [IO.Path]::GetFullPath((Join-Path $repoRoot 'apps/server_core/.gocache'))
   Assert-True ([IO.Path]::GetFullPath([string]$child['GOCACHE']) -eq $expectedCache) 'unit child GOCACHE is not canonical and repository-local'
 
+  $relativeRootError = ''
+  try { New-HarnessChildEnvironment -RepositoryRoot '.' -LaneId 'unit' | Out-Null }
+  catch { $relativeRootError = $_.Exception.Message }
+  Assert-True ($relativeRootError -match 'HENV_REPOSITORY_ROOT_INVALID') 'relative repository root was accepted'
+
+  $foreignLocation = [IO.Path]::GetTempPath()
+  Set-Location -LiteralPath $foreignLocation
+  try {
+    $foreignChild = New-HarnessChildEnvironment -RepositoryRoot $repoRoot -LaneId 'unit'
+    Assert-True ($foreignChild['GOCACHE'] -eq $expectedCache) 'absolute repository root depends on caller CWD'
+  } finally { Set-Location -LiteralPath $originalLocation }
+
+  foreach ($runtimeCase in @(
+    @{ Values = @{ HARNESS_UNKNOWN_EXPLICIT = 'value' }; Label = 'unknown' },
+    @{ Values = @{ MPC_PROVIDER_MERCADOLIVRE_CLIENT_ID = 'value' }; Label = 'lane-forbidden' }
+  )) {
+    $runtimeError = ''
+    try { New-HarnessChildEnvironment -RepositoryRoot $repoRoot -LaneId 'unit' -RuntimeValues $runtimeCase.Values | Out-Null }
+    catch { $runtimeError = $_.Exception.Message }
+    Assert-True ($runtimeError -match 'HENV_RUNTIME_KEY_FORBIDDEN') "explicit $($runtimeCase.Label) runtime value was not rejected"
+  }
+
+  $fromTolerantFile = New-HarnessChildEnvironment -RepositoryRoot $repoRoot -LaneId 'live-oracle' -EnvFile $envFile
+  Assert-True ($fromTolerantFile['MPC_ORACLE_CONNECT_STRING'] -eq 'fixture-oracle-connect') 'EnvFile aliases did not normalize'
+  Assert-True (-not $fromTolerantFile.ContainsKey('MPC_PRODUCT_LINKS_POSTGRES_URL')) 'EnvFile lane-forbidden key entered child'
+
+  $canonicalWins = New-HarnessChildEnvironment -RepositoryRoot $repoRoot -LaneId 'live-oracle' -RuntimeValues @{
+    MPC_ORACLE_CONNECT_STRING = 'canonical-connect'
+    SANKHYA_ORACLE_CONNECT_STRING = 'legacy-connect'
+    SANKHYA_ORACLE_HOST = 'legacy-host'
+    SANKHYA_ORACLE_PORT = '1521'
+    SANKHYA_ORACLE_SERVICE_NAME = 'legacy-service'
+  }
+  Assert-True ($canonicalWins['MPC_ORACLE_CONNECT_STRING'] -eq 'canonical-connect') 'canonical Oracle connect string lost precedence'
+
+  $legacyConnect = New-HarnessChildEnvironment -RepositoryRoot $repoRoot -LaneId 'live-oracle' -RuntimeValues @{
+    SANKHYA_ORACLE_CONNECT_STRING = 'legacy-connect'
+    SANKHYA_ORACLE_HOST = 'legacy-host'
+    SANKHYA_ORACLE_PORT = '1521'
+    SANKHYA_ORACLE_SERVICE_NAME = 'legacy-service'
+  }
+  Assert-True ($legacyConnect['MPC_ORACLE_CONNECT_STRING'] -eq 'legacy-connect') 'direct legacy Oracle connect string lost precedence'
+  Assert-True (-not $legacyConnect.ContainsKey('SANKHYA_ORACLE_CONNECT_STRING')) 'legacy Oracle alias leaked into child'
+
+  $tupleConnect = New-HarnessChildEnvironment -RepositoryRoot $repoRoot -LaneId 'live-oracle' -RuntimeValues @{
+    SANKHYA_ORACLE_HOST = 'tuple-host'
+    SANKHYA_ORACLE_PORT = '1522'
+    SANKHYA_ORACLE_SERVICE_NAME = 'tuple-service'
+  }
+  Assert-True ($tupleConnect['MPC_ORACLE_CONNECT_STRING'] -eq 'tuple-host:1522/tuple-service') 'complete Oracle tuple did not normalize'
+
+  $incompleteTuple = New-HarnessChildEnvironment -RepositoryRoot $repoRoot -LaneId 'live-oracle' -RuntimeValues @{
+    SANKHYA_ORACLE_HOST = 'host-only'
+  }
+  Assert-True (-not $incompleteTuple.ContainsKey('MPC_ORACLE_CONNECT_STRING')) 'incomplete Oracle tuple fabricated a connect string'
+
   foreach ($key in $contaminatedKeys) {
     Assert-True ([Environment]::GetEnvironmentVariable($key, 'Process') -eq "fixture-$key") "parent environment mutated for $key"
   }

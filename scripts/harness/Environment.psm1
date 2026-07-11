@@ -43,17 +43,25 @@ function Get-HarnessRegistry {
   catch { throw "HENV_RUNTIME_CONTRACT_DRIFT registry_invalid=$Name" }
 }
 
-function Get-ExplicitRuntimeValues {
+function Get-ConfiguredRuntimeValues {
   param(
     [string]$EnvFile,
-    [System.Collections.IDictionary]$RuntimeValues
+    [System.Collections.IDictionary]$RuntimeValues,
+    [Parameter(Mandatory)][object]$Lane,
+    [Parameter(Mandatory)][object[]]$RuntimeKeys
   )
 
   $values = Read-HarnessEnvironmentFile -Path $EnvFile
+  $knownKeys = @{}
+  foreach ($entry in $RuntimeKeys) { $knownKeys[[string]$entry.key] = $entry }
   if ($null -ne $RuntimeValues) {
     foreach ($key in $RuntimeValues.Keys) {
+      $name = [string]$key
+      if (-not $knownKeys.ContainsKey($name) -or @($Lane.allowed_runtime_keys) -notcontains $name) {
+        throw "HENV_RUNTIME_KEY_FORBIDDEN lane=$($Lane.id) key=$name"
+      }
       $value = [string]$RuntimeValues[$key]
-      if (-not [string]::IsNullOrWhiteSpace($value)) { $values[[string]$key] = $value }
+      if (-not [string]::IsNullOrWhiteSpace($value)) { $values[$name] = $value }
     }
   }
   return $values
@@ -90,9 +98,11 @@ function Resolve-HarnessRuntimeValues {
     }
   }
 
+  $tupleAliases = @('SANKHYA_ORACLE_HOST', 'SANKHYA_ORACLE_PORT', 'SANKHYA_ORACLE_SERVICE_NAME')
   foreach ($entry in $RuntimeKeys | Where-Object { [string]$_.lifecycle -eq 'legacy_alias' }) {
     $alias = [string]$entry.key
     $canonical = [string]$entry.alias_for
+    if ($tupleAliases -contains $alias) { continue }
     if (@($Lane.allowed_runtime_keys) -notcontains $alias) { continue }
     if ($resolved.ContainsKey($canonical) -or -not $Configured.ContainsKey($alias)) { continue }
     $value = $Configured[$alias]
@@ -101,7 +111,7 @@ function Resolve-HarnessRuntimeValues {
 
   if (-not $resolved.ContainsKey('MPC_ORACLE_CONNECT_STRING')) {
     $parts = @('SANKHYA_ORACLE_HOST', 'SANKHYA_ORACLE_PORT', 'SANKHYA_ORACLE_SERVICE_NAME')
-    if (($parts | Where-Object { -not $Configured.ContainsKey($_) -or [string]::IsNullOrWhiteSpace($Configured[$_]) }).Count -eq 0) {
+    if (@($parts | Where-Object { -not $Configured.ContainsKey($_) -or [string]::IsNullOrWhiteSpace($Configured[$_]) }).Count -eq 0) {
       $resolved['MPC_ORACLE_CONNECT_STRING'] = "$($Configured[$parts[0]]):$($Configured[$parts[1]])/$($Configured[$parts[2]])"
     }
   }
@@ -118,10 +128,12 @@ function New-HarnessChildEnvironment {
     [System.Collections.IDictionary]$RuntimeValues
   )
 
-  if (-not (Test-Path -LiteralPath $RepositoryRoot -PathType Container)) {
+  if (-not [IO.Path]::IsPathFullyQualified($RepositoryRoot)) {
     throw 'HENV_REPOSITORY_ROOT_INVALID'
   }
-  $root = [IO.Path]::GetFullPath($RepositoryRoot)
+  try { $root = [IO.Path]::GetFullPath($RepositoryRoot) }
+  catch { throw 'HENV_REPOSITORY_ROOT_INVALID' }
+  if (-not (Test-Path -LiteralPath $root -PathType Container)) { throw 'HENV_REPOSITORY_ROOT_INVALID' }
   $lanes = Get-HarnessRegistry -RepositoryRoot $root -Name 'execution-lanes'
   $runtime = Get-HarnessRegistry -RepositoryRoot $root -Name 'runtime-config'
   $lane = @($lanes.lanes | Where-Object { [string]$_.id -eq $LaneId })
@@ -137,9 +149,9 @@ function New-HarnessChildEnvironment {
   if (-not $child.ContainsKey('PATH')) { throw 'HENV_TOOL_KEY_MISSING key=PATH' }
   $child['GOCACHE'] = [IO.Path]::GetFullPath((Join-Path $root 'apps/server_core/.gocache'))
 
+  $effectiveEnvFile = if ($LaneId -eq 'unit') { '' } else { $EnvFile }
+  $configured = Get-ConfiguredRuntimeValues -EnvFile $effectiveEnvFile -RuntimeValues $RuntimeValues -Lane $lane -RuntimeKeys @($runtime.keys)
   if ($LaneId -eq 'unit') { return $child }
-
-  $configured = Get-ExplicitRuntimeValues -EnvFile $EnvFile -RuntimeValues $RuntimeValues
   $resolved = Resolve-HarnessRuntimeValues -Lane $lane -RuntimeKeys @($runtime.keys) -Configured $configured
   foreach ($key in $resolved.Keys) {
     if (@($lane.allowed_runtime_keys) -notcontains $key) {

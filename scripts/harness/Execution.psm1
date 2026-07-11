@@ -47,7 +47,7 @@ function New-HarnessProcessRequest {
   [CmdletBinding()]
   param(
     [Parameter(Mandatory)][string]$FilePath,
-    [Parameter(Mandatory)][string[]]$ArgumentList,
+    [Parameter(Mandatory)][AllowEmptyCollection()][string[]]$ArgumentList,
     [Parameter(Mandatory)][string]$WorkingDirectory,
     [Parameter(Mandatory)][System.Collections.IDictionary]$Environment,
     [ValidateRange(1, 86400)][int]$TimeoutSeconds = 600,
@@ -57,14 +57,17 @@ function New-HarnessProcessRequest {
   if (-not [IO.Path]::IsPathFullyQualified($FilePath) -or -not (Test-Path -LiteralPath $FilePath -PathType Leaf)) {
     throw 'HEXEC_FILE_NOT_FOUND'
   }
-  if (-not (Test-Path -LiteralPath $WorkingDirectory -PathType Container)) {
+  if (-not [IO.Path]::IsPathFullyQualified($WorkingDirectory)) {
     throw 'HEXEC_WORKING_DIRECTORY_INVALID'
   }
+  try { $canonicalWorkingDirectory = [IO.Path]::GetFullPath($WorkingDirectory) }
+  catch { throw 'HEXEC_WORKING_DIRECTORY_INVALID' }
+  if (-not (Test-Path -LiteralPath $canonicalWorkingDirectory -PathType Container)) { throw 'HEXEC_WORKING_DIRECTORY_INVALID' }
 
   $request = [HarnessProcessRequest]::new()
   $request.FilePath = [IO.Path]::GetFullPath($FilePath)
   $request.ArgumentList = @($ArgumentList | ForEach-Object { [string]$_ })
-  $request.WorkingDirectory = [IO.Path]::GetFullPath($WorkingDirectory)
+  $request.WorkingDirectory = $canonicalWorkingDirectory
   $request.Environment = [System.Collections.Generic.Dictionary[string,string]]::new([StringComparer]::OrdinalIgnoreCase)
   foreach ($key in $Environment.Keys) { $request.Environment[[string]$key] = [string]$Environment[$key] }
   $request.TimeoutSeconds = $TimeoutSeconds
@@ -89,6 +92,19 @@ function New-HarnessProcessResult {
   $result.ReasonCode = $ReasonCode
   $result.TimedOut = $TimedOut
   return $result
+}
+
+function Read-CompletedHarnessStream {
+  param(
+    [Parameter(Mandatory)][System.Threading.Tasks.Task[string]]$Task,
+    [ValidateRange(0, 10000)][int]$WaitMilliseconds
+  )
+
+  if (-not $Task.IsCompleted -and $WaitMilliseconds -gt 0) {
+    try { [void]$Task.Wait($WaitMilliseconds) } catch { return '' }
+  }
+  if (-not $Task.IsCompletedSuccessfully) { return '' }
+  return [string]$Task.Result
 }
 
 function Invoke-HarnessProcess {
@@ -123,10 +139,11 @@ function Invoke-HarnessProcess {
     $completed = $process.WaitForExit($Request.TimeoutSeconds * 1000)
     if (-not $completed) {
       try { $process.Kill($true) } catch { }
-      $process.WaitForExit()
+      [void]$process.WaitForExit(2000)
     }
-    $stdout = $stdoutTask.GetAwaiter().GetResult()
-    $stderr = $stderrTask.GetAwaiter().GetResult()
+    $drainWait = if ($completed) { 5000 } else { 2000 }
+    $stdout = Read-CompletedHarnessStream -Task $stdoutTask -WaitMilliseconds $drainWait
+    $stderr = Read-CompletedHarnessStream -Task $stderrTask -WaitMilliseconds $drainWait
     if (-not $completed) {
       return New-HarnessProcessResult -ExitCode -1 -Stdout $stdout -Stderr $stderr -ReasonCode 'HEXEC_TIMEOUT' -TimedOut $true -Candidates $Request.RedactionCandidates
     }

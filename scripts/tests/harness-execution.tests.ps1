@@ -33,6 +33,20 @@ $observedKeys = @($observed.env.PSObject.Properties.Name | Sort-Object)
 $expectedKeys = @($baseEnvironment.Keys | Sort-Object)
 Assert-True (($observedKeys -join "`n") -eq ($expectedKeys -join "`n")) 'child process environment was not exact'
 
+$relativeWorkingDirectoryError = ''
+try {
+  New-HarnessProcessRequest -FilePath $node -ArgumentList @($probe, 'inspect') -WorkingDirectory '.' -Environment $baseEnvironment -TimeoutSeconds 10 | Out-Null
+} catch { $relativeWorkingDirectoryError = $_.Exception.Message }
+Assert-True ($relativeWorkingDirectoryError -match 'HEXEC_WORKING_DIRECTORY_INVALID') 'relative working directory was accepted'
+
+Set-Location -LiteralPath ([IO.Path]::GetTempPath())
+try {
+  $foreignRequest = New-HarnessProcessRequest -FilePath $node -ArgumentList @($probe, 'inspect') -WorkingDirectory $repoRoot -Environment $baseEnvironment -TimeoutSeconds 10
+  $foreignResult = Invoke-HarnessProcess -Request $foreignRequest
+  $foreignObserved = $foreignResult.Stdout | ConvertFrom-Json
+  Assert-True ([IO.Path]::GetFullPath($foreignObserved.cwd) -eq [IO.Path]::GetFullPath($repoRoot)) 'absolute working directory depends on caller CWD'
+} finally { Set-Location -LiteralPath $originalLocation }
+
 $streamRequest = New-HarnessProcessRequest -FilePath $node -ArgumentList @($probe, 'streams', '2200000') -WorkingDirectory $repoRoot -Environment $baseEnvironment -TimeoutSeconds 20
 $streams = Invoke-HarnessProcess -Request $streamRequest
 Assert-True ($streams.ExitCode -eq 0 -and $streams.Stdout.Length -eq 2200000 -and $streams.Stderr.Length -eq 2200000) 'concurrent large streams were truncated or deadlocked'
@@ -56,6 +70,10 @@ $timedOut = Invoke-HarnessProcess -Request $timeoutRequest
 Assert-True ($timedOut.ReasonCode -eq 'HEXEC_TIMEOUT') 'timeout lacks stable reason code'
 Start-Sleep -Seconds 3
 Assert-True (-not (Test-Path -LiteralPath $marker)) 'timeout did not kill process tree'
+
+$executionSource = Get-Content -Raw -LiteralPath $module
+Assert-True ($executionSource -notmatch '\.WaitForExit\(\s*\)') 'timeout path contains unbounded WaitForExit'
+Assert-True ($executionSource -notmatch 'GetAwaiter\(\)\.GetResult\(\)') 'stream drain contains an unbounded task wait'
 
 Assert-True ((Get-Location).Path -eq $originalLocation) 'parent location mutated'
 Assert-True ([Environment]::GetEnvironmentVariable('GOCACHE', 'Process') -eq $originalCache) 'parent environment mutated'
