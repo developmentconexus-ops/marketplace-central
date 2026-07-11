@@ -251,7 +251,7 @@ function Invoke-Cold {
   Push-Location $snapshot
   try {
     $env:GOCACHE = Join-Path $runCache 'go'; $env:GOMODCACHE = Join-Path $runCache 'gomod'; $env:npm_config_cache = Join-Path $runCache 'npm'; New-Item -ItemType Directory -Force -Path $env:GOCACHE,$env:GOMODCACHE,$env:npm_config_cache | Out-Null
-    & go mod download; $goExit = $LASTEXITCODE
+    Push-Location (Join-Path $snapshot 'apps/server_core'); & go mod download; $goExit = $LASTEXITCODE; Pop-Location
     $records.Add([ordered]@{id='go-mod-download';command='go mod download';stage='provisioning';target_label='external-dependency-registry';evidence_class='provisioning';duration_ms=0;exit_code=$goExit;reason=if($goExit -eq 0){'passed'}else{'failed'};artifact_paths=@()})
     if ($goExit -ne 0) { throw 'COLD_PROVISION_GO_FAILED' }
     & npm ci --ignore-scripts; $npmExit = $LASTEXITCODE
