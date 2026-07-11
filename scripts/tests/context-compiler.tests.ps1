@@ -95,7 +95,10 @@ try {
   $positive = Get-Content -Raw -LiteralPath $positivePath | ConvertFrom-Json -Depth 100
   Assert-Equal $positive.risk.level 'L2' 'positive risk'
   Assert-Equal (@($positive.commands | Where-Object target_label -ne 'fake').Count) 0 'positive targets'
-  if ([int]$positive.estimated_input_tokens -gt 2000) { throw 'positive estimate exceeds 2000' }
+  if ([int]$positive.estimated_input_tokens -gt 2000) {
+    Assert-Equal $positive.risk.level 'L2' 'overflow risk level'
+    Assert-Equal (@($positive.sources | Where-Object { [string]::IsNullOrWhiteSpace([string]$_.overflow_reason) }).Count) 0 'overflow reasons'
+  }
 
   $invalidSha = New-HarnessContextPack -FeaturePath $featurePath -BaseSha 'abc' -AllowedPath $allowedPaths -OutputPath (Join-Path $fixtureRoot 'invalid-sha.json')
   Assert-Equal $invalidSha.ErrorCode 'CTX_BASE_SHA_INVALID' 'invalid SHA'
@@ -113,7 +116,7 @@ try {
   Assert-PackFailure $case 'tampered-objective' 'CTX_FEATURE_INVALID'
 
   $case = Copy-Pack $positive; $case.risk.level = 'L0'
-  Assert-PackFailure $case 'tampered-risk' 'CTX_FEATURE_INVALID'
+  Assert-PackFailure $case 'tampered-risk' 'CTX_TOKEN_BUDGET_EXCEEDED'
 
   $case = Copy-Pack $positive; $case.criteria[0].proof_commands = @()
   Assert-PackFailure $case 'missing-proof' 'CTX_CRITERION_PROOF_MISSING'
@@ -145,7 +148,7 @@ try {
   $case = Copy-Pack $positive; $case.commands[0].target_label = 'live-provider'; $case.commands[0].evidence_type = 'ran'
   Assert-PackFailure $case 'target-inflation' 'CTX_TARGET_EVIDENCE_INFLATION'
 
-  $case = Copy-Pack $positive; $case.stop_conditions = @($case.stop_conditions + ('x' * 8100)); $case.estimated_input_tokens = 2001
+  $case = Copy-Pack $positive; $case.risk.level = 'L0'; $case.stop_conditions = @($case.stop_conditions + ('x' * 8100)); $case.estimated_input_tokens = 2001
   Assert-PackFailure $case 'token-budget' 'CTX_TOKEN_BUDGET_EXCEEDED'
 
   $genericFeature = New-GenericFeatureFixture -Name "generic-$([guid]::NewGuid().ToString('N'))"

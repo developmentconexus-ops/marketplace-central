@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "registry_id": "knowledge-routes",
+  "routes": [
+    {
+      "id": "harness-control-plane",
+      "module_id": "harness",
+      "concerns": ["context", "orchestration", "validation"],
+      "selectors": [
+        {"path": "scripts/harness/Context.psm1", "selector": "New-CanonicalContextPack", "reason": "compiles canonical pack sources and gates", "estimated_tokens": 260},
+        {"path": "scripts/harness/State.psm1", "selector": "exports", "reason": "owns ignored leases, checkpoints, resume, and handoffs", "estimated_tokens": 260},
+        {"path": "scripts/harness/Impact.psm1", "selector": "Get-HarnessImpactCommand", "reason": "resolves registered argv only", "estimated_tokens": 140},
+        {"path": "scripts/harness.ps1", "selector": "Invoke-Impact", "reason": "stable current-checkout entrypoint", "estimated_tokens": 130},
+        {"path": "scripts/tests/harness-orchestration.tests.ps1", "selector": "fixtures", "reason": "deterministic ownership and resume proof", "estimated_tokens": 180}
+      ]
+    },
+    {
+      "id": "root-bootstrap",
+      "module_id": "repository",
+      "concerns": ["bootstrap"],
+      "selectors": [
+        {"path": "AGENTS.md", "selector": "Harness Bootstrap", "reason": "durable entry policy", "estimated_tokens": 220},
+        {"path": ".agents/skills/mpc-goal-harness/SKILL.md", "selector": "workflow", "reason": "progressive orchestration procedure", "estimated_tokens": 260}
+      ]
+    }
+  ]
+}

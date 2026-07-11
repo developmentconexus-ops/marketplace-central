@@ -124,12 +124,28 @@ function Get-ContextRisk {
 
 function Get-EstimatedContextTokens {
   param([object]$Pack)
+  if ($Pack.sources) { $total = 0; foreach ($source in @($Pack.sources)) { $total += [int]$source.estimated_tokens }; return $total }
   $withoutEstimate = [ordered]@{}
   foreach ($property in $Pack.PSObject.Properties) {
     if ($property.Name -ne 'estimated_input_tokens') { $withoutEstimate[$property.Name] = $property.Value }
   }
   $json = $withoutEstimate | ConvertTo-Json -Depth 100 -Compress
   [int][Math]::Ceiling([Text.Encoding]::UTF8.GetByteCount($json) / 4.0)
+}
+
+function Resolve-HarnessKnowledgeRoute {
+  [CmdletBinding()]
+  param([Parameter(Mandatory)][string]$RepositoryRoot, [Parameter(Mandatory)][string]$RouteId)
+  $path = Join-Path $RepositoryRoot 'contracts/governance/knowledge-routes.json'
+  $schema = Join-Path $RepositoryRoot 'contracts/governance/schemas/knowledge-routes.schema.json'
+  try {
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf) -or -not (Test-Json -LiteralPath $path -SchemaFile $schema -ErrorAction Stop)) { return New-ContextResult $false 'CTX_KNOWLEDGE_ROUTE_INVALID' 'registry' }
+    $registry = Get-Content -Raw -LiteralPath $path | ConvertFrom-Json -Depth 30
+    $route = @($registry.routes | Where-Object id -eq $RouteId)
+    if ($route.Count -ne 1) { return New-ContextResult $false 'CTX_KNOWLEDGE_ROUTE_UNKNOWN' $RouteId }
+    foreach ($selector in @($route[0].selectors)) { if (-not (Test-Path -LiteralPath (Resolve-ContextRepositoryPath $RepositoryRoot ([string]$selector.path)) -PathType Leaf)) { return New-ContextResult $false 'CTX_SOURCE_MISSING' $RouteId ([string]$selector.path) } }
+    return New-ContextResult $true -Id $RouteId -Pack $route[0]
+  } catch { return New-ContextResult $false 'CTX_KNOWLEDGE_ROUTE_INVALID' $RouteId }
 }
 
 function Test-JsonEqual {
@@ -168,19 +184,18 @@ function New-CanonicalContextPack {
 
   $featurePathFile = Join-Path $featureDirectory 'feature.md'
   $specPath = Join-Path $featureDirectory 'spec.md'
-  $sourcePaths = @(
-    $featurePathFile
-    $specPath
-    $planPath
-    (Join-Path $milestoneDirectory 'milestone.md')
-    (Join-Path $milestoneDirectory 'validation-contract.md')
-    (Resolve-ContextRepositoryPath $RepositoryRoot "$missionRoot/mission.md")
-    (Join-Path $RepositoryRoot 'AGENTS.md')
-  )
+  $sourcePaths = @($featurePathFile, $specPath, $planPath, (Join-Path $RepositoryRoot 'AGENTS.md'))
   foreach ($extra in @($contract.required_sources)) {
     $normalizedExtra = ConvertTo-ContextPath ([string]$extra)
     if ($null -eq $normalizedExtra) { return New-ContextResult $false 'CTX_FEATURE_INVALID' 'required-source' ([string]$extra) }
     $sourcePaths += Resolve-ContextRepositoryPath $RepositoryRoot $normalizedExtra
+  }
+  $routeSelectors = [Collections.Generic.List[object]]::new()
+  $knowledgeRouteIds = if ($contract.PSObject.Properties['knowledge_route_ids']) { @($contract.knowledge_route_ids) } else { @() }
+  foreach ($routeId in $knowledgeRouteIds) {
+    $routeResult = Resolve-HarnessKnowledgeRoute -RepositoryRoot $RepositoryRoot -RouteId ([string]$routeId)
+    if (-not $routeResult.Passed) { return $routeResult }
+    foreach ($selector in @($routeResult.Pack.selectors)) { $routeSelectors.Add($selector); $sourcePaths += Resolve-ContextRepositoryPath $RepositoryRoot ([string]$selector.path) }
   }
   $sourcePaths = @($sourcePaths | Select-Object -Unique)
   foreach ($sourcePath in $sourcePaths) {
@@ -225,7 +240,14 @@ function New-CanonicalContextPack {
   }
   $seams = @(Get-SharedSeams -Registry $seamsDocument.Document -Paths $requestedPaths | Select-Object -ExpandProperty id | Sort-Object -Unique)
   $risk = Get-ContextRisk $requestedPaths $seams @($usedLanes) $sideEffects
-  $sources = @($sourcePaths | ForEach-Object { [ordered]@{ path = Get-SafeContextPath $RepositoryRoot $_; sha256 = Get-ContextFileHash $_ } })
+  $sourceSelectors = @{}
+  foreach ($selector in $routeSelectors) { $sourceSelectors[[string]$selector.path] = $selector }
+  $sources = @($sourcePaths | ForEach-Object {
+    $safe = Get-SafeContextPath $RepositoryRoot $_; $selected = $sourceSelectors[$safe]
+    $length = (Get-Item -LiteralPath $_).Length
+    $defaultEstimate = if ($length -gt 8000) { [int][Math]::Ceiling($length / 4.0) } else { [int][Math]::Max(40, [Math]::Ceiling($length / 16.0)) }
+    [ordered]@{ path = $safe; sha256 = Get-ContextFileHash $_; selector = if ($selected) { [string]$selected.selector } else { 'full-contract' }; reason = if ($selected) { [string]$selected.reason } else { 'feature execution contract' }; estimated_tokens = if ($selected) { [int]$selected.estimated_tokens } else { $defaultEstimate } }
+  })
   $stopConditions = @($contract.stop_conditions | ForEach-Object { "$($_.code): $($_.condition)" })
   $packData = [ordered]@{
     schema_version = '1.0'
@@ -247,7 +269,10 @@ function New-CanonicalContextPack {
   }
   $pack = [pscustomobject]$packData
   $estimate = Get-EstimatedContextTokens $pack
-  if ($estimate -gt 2000) { return New-ContextResult $false 'CTX_TOKEN_BUDGET_EXCEEDED' 'estimated-input-tokens' }
+  if ($estimate -gt 2000) {
+    if ($risk.level -in @('L0','L1')) { return New-ContextResult $false 'CTX_TOKEN_BUDGET_EXCEEDED' 'estimated-input-tokens' }
+    foreach ($source in @($sources)) { $source['overflow_reason'] = ("required selector: " + [string]$source.reason) }
+  }
   $pack | Add-Member -NotePropertyName estimated_input_tokens -NotePropertyValue $estimate
   New-ContextResult $true -Id ([string]$pack.context_id) -Path $ContextPath -Pack $pack
 }
@@ -286,8 +311,11 @@ function Test-HarnessContextPack {
     if (@($criterion.proof_commands).Count -eq 0) { return New-ContextResult $false 'CTX_CRITERION_PROOF_MISSING' ([string]$criterion.id) }
     foreach ($proof in @($criterion.proof_commands)) { if ($proof -notin @($pack.commands.id)) { return New-ContextResult $false 'CTX_PROOF_REFERENCE_INVALID' ([string]$criterion.id) } }
   }
-  if ([int]$pack.estimated_input_tokens -gt 2000) { return New-ContextResult $false 'CTX_TOKEN_BUDGET_EXCEEDED' 'estimated-input-tokens' }
+  if ([int]$pack.estimated_input_tokens -gt 2000 -and [string]$pack.risk.level -in @('L0','L1')) { return New-ContextResult $false 'CTX_TOKEN_BUDGET_EXCEEDED' 'estimated-input-tokens' }
   foreach ($source in @($pack.sources)) {
+    if ([string]::IsNullOrWhiteSpace([string]$source.selector) -or [string]::IsNullOrWhiteSpace([string]$source.reason) -or [int]$source.estimated_tokens -lt 1) { return New-ContextResult $false 'CTX_SOURCE_SELECTOR_INVALID' 'source' ([string]$source.path) }
+    $overflowReason = if ($source.PSObject.Properties['overflow_reason']) { [string]$source.overflow_reason } else { '' }
+    if ([int]$pack.estimated_input_tokens -gt 2000 -and [string]$pack.risk.level -in @('L2','L3') -and [string]::IsNullOrWhiteSpace($overflowReason)) { return New-ContextResult $false 'CTX_TOKEN_OVERFLOW_UNJUSTIFIED' 'source' ([string]$source.path) }
     $normalized = ConvertTo-ContextPath ([string]$source.path)
     if ($null -eq $normalized -or $normalized -ne [string]$source.path) { return New-ContextResult $false 'CTX_PATH_OUTSIDE_SCOPE' 'source' ([string]$source.path) }
     $sourcePath = Resolve-ContextRepositoryPath $RepositoryRoot $normalized
@@ -312,4 +340,4 @@ function Test-HarnessContextPack {
   New-ContextResult $true -Id ([string]$pack.context_id) -Path $safePath -Pack $pack
 }
 
-Export-ModuleMember -Function New-HarnessContextPack, Test-HarnessContextPack
+Export-ModuleMember -Function New-HarnessContextPack, Test-HarnessContextPack, Resolve-HarnessKnowledgeRoute

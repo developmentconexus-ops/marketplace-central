@@ -16,7 +16,7 @@
         "additionalProperties": false,
         "required": ["id", "exclusive_paths"],
         "properties": {
-          "id": { "enum": ["api-sdk", "migration-sequence", "composition-root", "dependency-graph", "architecture-decisions", "provider-capability-contract"] },
+          "id": { "enum": ["api-sdk", "migration-sequence", "composition-root", "dependency-graph", "architecture-decisions", "provider-capability-contract", "harness-control"] },
           "exclusive_paths": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/path" } }
         }
       }

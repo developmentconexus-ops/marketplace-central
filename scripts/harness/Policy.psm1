@@ -66,7 +66,7 @@ function Test-GovernanceContracts {
 
   $documents = @{}
   $issues = [Collections.Generic.List[object]]::new()
-  $registryNames = @('modules', 'runtime-config', 'execution-lanes', 'invariants', 'shared-seams')
+  $registryNames = @('modules', 'runtime-config', 'execution-lanes', 'invariants', 'shared-seams', 'knowledge-routes')
   foreach ($name in $registryNames) {
     $path = Resolve-RepositoryPath $RepositoryRoot "contracts/governance/$name.json"
     $schemaPath = Resolve-RepositoryPath $RepositoryRoot "contracts/governance/schemas/$name.schema.json"

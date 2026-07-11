@@ -15,6 +15,8 @@ function Get-HarnessImpactCommand {
     'impact-probe-two' { return [pscustomobject]@{ FilePath=$pwsh; Arguments=@('-NoProfile','-File',$fixture,'-Name','two'); Command='impact-probe-two'; Target='fake'; EvidenceClass='contract' } }
     'governance-contracts' { return [pscustomobject]@{ FilePath=$pwsh; Arguments=@('-NoProfile','-File',(Join-Path $RepositoryRoot 'scripts/tests/governance-contracts.tests.ps1')); Command='governance-contracts'; Target='fake'; EvidenceClass='contract' } }
     'harness-aliases' { return [pscustomobject]@{ FilePath=$pwsh; Arguments=@('-NoProfile','-File',(Join-Path $RepositoryRoot 'scripts/tests/harness-aliases.tests.ps1')); Command='harness-aliases'; Target='fake'; EvidenceClass='contract' } }
+    'context-compiler-tests' { return [pscustomobject]@{ FilePath=$pwsh; Arguments=@('-NoProfile','-File',(Join-Path $RepositoryRoot 'scripts/tests/context-compiler.tests.ps1')); Command='context-compiler-tests'; Target='fake'; EvidenceClass='contract' } }
+    'orchestration-tests' { return [pscustomobject]@{ FilePath=$pwsh; Arguments=@('-NoProfile','-File',(Join-Path $RepositoryRoot 'scripts/tests/harness-orchestration.tests.ps1')); Command='orchestration-tests'; Target='fake'; EvidenceClass='contract' } }
     default { return $null }
   }
 }
@@ -52,6 +54,7 @@ function Invoke-HarnessImpactGate {
   $baseSha = if ($packResult.Pack -and [string]$packResult.Pack.base_sha -match '^[0-9a-f]{40}$') { [string]$packResult.Pack.base_sha } else { '0000000000000000000000000000000000000000' }
   $risk = if ($packResult.Pack -and [string]$packResult.Pack.risk.level -in @('L0','L1','L2','L3')) { [string]$packResult.Pack.risk.level } else { 'L0' }
   $records = [Collections.Generic.List[object]]::new(); $changedPaths=@(); $seams=@(); $failure=''; $environment = New-HarnessChildEnvironment -RepositoryRoot $RepositoryRoot -LaneId 'unit'
+  $environment['GIT_CONFIG_COUNT'] = '1'; $environment['GIT_CONFIG_KEY_0'] = 'safe.directory'; $environment['GIT_CONFIG_VALUE_0'] = [IO.Path]::GetFullPath($RepositoryRoot)
   if (-not $packResult.Passed) { $failure = [string]$packResult.ErrorCode } else {
     $changedPaths = Get-HarnessChangedPaths -RepositoryRoot $RepositoryRoot -BaseSha $baseSha
     $outside = @($changedPaths | Where-Object { -not (Test-HarnessImpactPath -Path $_ -Allowed @($packResult.Pack.paths.allowed)) })

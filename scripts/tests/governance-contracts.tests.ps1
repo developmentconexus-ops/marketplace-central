@@ -81,6 +81,7 @@ try {
   $lanes = Read-GovernanceDocument 'execution-lanes'
   $invariants = Read-GovernanceDocument 'invariants'
   $seams = Read-GovernanceDocument 'shared-seams'
+  $knowledgeRoutes = Read-GovernanceDocument 'knowledge-routes'
 
   $contextSchema = Join-Path $schemaRoot 'context-pack.schema.json'
   Assert-True (Test-Path -LiteralPath $contextSchema -PathType Leaf) 'missing schema: contracts/governance/schemas/context-pack.schema.json'
@@ -117,6 +118,7 @@ try {
   Assert-Unique @($lanes.lanes.id) 'execution lanes'
   Assert-Unique @($invariants.invariants.id) 'invariants'
   Assert-Unique @($seams.seams.id) 'shared seams'
+  Assert-Unique @($knowledgeRoutes.routes.id) 'knowledge routes'
 
   $moduleIds = @($modules.modules.id)
   foreach ($module in $modules.modules) {
@@ -278,7 +280,7 @@ try {
     objective = 'Create executable governance contracts.'
     observable_done = @('Registries validate.')
     criteria = @(@{ id = 'F07-AC01'; milestone_id = 'M-08-C09'; proof_commands = @('pwsh governance-contracts.tests.ps1') })
-    sources = @(@{ path = 'contracts/governance/README.md'; sha256 = ('b' * 64) })
+    sources = @(@{ path = 'contracts/governance/README.md'; sha256 = ('b' * 64); selector = 'governance overview'; reason = 'fixture source'; estimated_tokens = 120 })
     risk = @{ level = 'L2'; review_policy = 'exclusive-seam-review'; advisory_model = 'none' }
     paths = @{ allowed = @('contracts/governance'); forbidden = @('apps/server_core/internal/modules') }
     shared_seams = @('api-sdk')

@@ -3,7 +3,7 @@
 ```yaml
 id: F-05
 type: feature-brief
-status: briefed
+status: accepted
 owner: Mission Strategist
 parent: M-08
 created: 2026-07-10
@@ -123,9 +123,9 @@ agent runtime.
 
 ## Handoff
 
-- Current status: Briefed after pragmatic replan.
-- Next owner: Feature Implementer after F-10 acceptance.
-- Next action: Create spec/plan from the native control-plane contract.
-- Required files/evidence: capability matrix, knowledge routes, state/lease tests,
-  repo-skill validation, operator-observed native-task proof, and resume proof.
+- Current status: Accepted after L2 fixed-commit review and one consolidated correction.
+- Next owner: Milestone Orchestrator.
+- Next action: Await Portfolio authorization before dispatching F-09.
+- Required files/evidence: F-05 spec, plan, validation, native worktree proof,
+  checkpoint/resume proof, and current-checkout impact outcome.
 - Blockers or open decisions: None; app-server remains future optional scope.
