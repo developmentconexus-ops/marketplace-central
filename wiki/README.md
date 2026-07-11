@@ -3,8 +3,8 @@
 This wiki is the operational knowledge base for Marketplace + Integrations.
 
 Planning ownership:
-- Execution roadmap now lives in Nexus Brain.
-- `IMPLEMENTATION_PLAN.md` is not the primary planning source for day-to-day work.
+- Mission, milestone, and feature sequencing live in `.mnfs/` as execution truth.
+- `IMPLEMENTATION_PLAN.md` is historical reconciliation only, not the day-to-day planning source.
 
 ## Structure
 

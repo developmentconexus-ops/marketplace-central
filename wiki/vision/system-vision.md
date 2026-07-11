@@ -16,7 +16,7 @@ MPC centralizes:
 This wiki focuses on architecture and operations for Marketplace + Integrations.
 
 Planning note:
-- Task sequencing and progress tracking are maintained in Nexus Brain.
+- Task sequencing and progress tracking are maintained in `.mnfs/`.
 - This wiki is not the execution roadmap.
 
 ## Product Direction

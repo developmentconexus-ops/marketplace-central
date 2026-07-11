@@ -6,6 +6,8 @@ Status: Implementation in progress; F-01/F-02 corrections accepted, F-03 Task 1 
 Owner plan: `docs/superpowers/plans/2026-07-09-m06-f03-order-realization.md`
 Mission: `.mnfs/MIS-001-mercado-livre-operating-cockpit`
 
+> Superseded for portfolio sequencing on 2026-07-11. This dated handoff preserves the historical M-06 RED and live-evidence record; current sequencing and verdicts live in `.mnfs/MIS-001-mercado-livre-operating-cockpit/`, where M-06 remains blocked.
+
 ## Goal
 
 Continue the full marketplace operating-cockpit plan using `superpowers:subagent-driven-development`, optimizing for the durable global maximum rather than existing legacy abstractions. Completion requires code review plus real PostgreSQL, Mercado Livre, Oracle, and built-in-browser QA; mocks and tests alone cannot produce a pass.
@@ -61,7 +63,7 @@ After Task 1 review is clean:
 ## Guardrails
 
 - Read `C:\Users\leandro.theodoro\.codex\attachments\2a1a5352-6aee-406c-bf04-2d066266687f\goal-objective.md` before continuing.
-- Read `AGENTS.md`, `ARCHITECTURE.md`, `wiki/README.md`, `.brain/system-pulse.md`, and `.brain/roadmap.json` at session start.
+- Read `AGENTS.md`, `ARCHITECTURE.md`, `wiki/README.md`, the mission artifact, and the active milestone execution guide under `.mnfs/` at session start.
 - User explicitly approved working on `main`; do not create a worktree unless the user changes that decision.
 - The worktree is heavily dirty with prior M-03/M-04/M-05/M-06 work. Never revert, clean, reset, or overwrite unrelated changes.
 - Existing/legacy implementation is not architectural truth. Follow current spec/design/plan and module boundaries.

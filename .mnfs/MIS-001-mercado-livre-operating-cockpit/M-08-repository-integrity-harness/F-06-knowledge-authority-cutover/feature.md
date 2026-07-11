@@ -3,11 +3,11 @@
 ```yaml
 id: F-06
 type: feature-brief
-status: briefed
+status: quick_validation_passed
 owner: Mission Strategist
 parent: M-08
 created: 2026-07-10
-updated: 2026-07-10
+updated: 2026-07-11
 validation_level: QA-3
 lifecycle_scope: feature
 ```
@@ -66,9 +66,11 @@ runbooks, and execution state; migrate only current unique ADRs and remove
 
 ## Handoff
 
-- Current status: Briefed.
-- Next owner: Feature Implementer.
-- Next action: Create `spec.md` and `plan.md` for the atomic authority cutover.
-- Required files/evidence: migration ledger, active-reference scan, tracked-file
-  scan, and diff review.
-- Blockers or open decisions: None; operator approved `.brain` removal.
+- Current status: `quick_validation_passed`.
+- Next owner: Milestone Orchestrator / independent QA-3 reviewer.
+- Next action: Review the fixed F-06 cutover commit against the specification and
+  accept it or return one scoped correction batch.
+- Required files/evidence: `spec.md`, `plan.md`, `validation.md`, migrated ADR
+  index/files, active-reference scan, tracked-file scan, history proof, and
+  staged diff review.
+- Blockers or open decisions: None.

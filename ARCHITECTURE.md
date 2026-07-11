@@ -4,6 +4,8 @@
 
 This architecture is approved as the official foundation of the repository. Frozen decisions below must not be rediscussed without an explicit ADR.
 
+Accepted architecture decisions are indexed in [`docs/architecture/decisions/`](docs/architecture/decisions/README.md).
+
 ## Reference baseline
 
 This repository mirrors the structural discipline of MetalShopping Final and adopts the operating rigor proven in MetalDocs:
@@ -56,7 +58,7 @@ apps/
         marketplaces/   # Marketplace accounts and pricing policies
         pricing/        # Price simulation engine
         messaging/      # [planned] Centralized customer messages from all marketplaces
-        orders/         # [planned] Order tracking with SLA monitoring
+        orders/         # [implemented; M-06 milestone blocked] Order tracking with SLA monitoring
         alerts/         # [planned] SLA guardrails and notifications
         connectors/     # Marketplace API adapters (Mercado Livre first; legacy adapters inventoried before deletion)
         integrations/   # Integration lifecycle (install/auth/credential/fee-sync operations)
@@ -110,7 +112,7 @@ Price simulation engine. Calculates margin, commission impact, freight cost, and
 
 Scope: simulation execution, snapshot persistence, manual price overrides, margin alerts.
 
-### `product_links` (planned — Mercado Livre first)
+### `product_links` (active validated foundation — Mercado Livre first)
 
 Maps internal products/SKUs to Mercado Livre listing and variation identifiers.
 
@@ -128,7 +130,7 @@ Rules:
 - Missing or ambiguous source facts surface as explicit quality states, never silent zero/default values.
 - Read access is global-maximum and contract-first: no ad hoc SQL from downstream modules.
 
-### `inventory` (planned — Mercado Livre first)
+### `inventory` (active validated foundation — Mercado Livre first)
 
 Compares internal ERP stock with Mercado Livre announced stock and proposes or applies safe stock actions.
 
@@ -137,7 +139,7 @@ Scope: stock snapshots, safety buffers, divergence detection, manual approval, a
 Reads from: internal stock views via ports.
 Writes to: Mercado Livre only through connector capabilities after policy checks.
 
-### `orders` (planned — Mercado Livre first)
+### `orders` (implemented — M-06 milestone blocked)
 
 Order monitoring and reconciliation for Mercado Livre. Tracks order lifecycle, items, fees, shipping, cancellation reasons, and internal product links.
 
@@ -145,7 +147,7 @@ Scope: order polling/notifications, status tracking, cancellation analysis, disp
 
 Reads from: Mercado Livre APIs via `connectors` adapters and internal product/cost providers.
 
-### `profitability` (planned — Mercado Livre first)
+### `profitability` (implemented — M-06 milestone blocked)
 
 Calculates per-order and per-item contribution using Mercado Livre revenue/fees/freight and internal ERP cost/tax inputs.
 
@@ -177,7 +179,7 @@ Scope: authentication management, API request/response mapping, rate limiting, e
 
 Pattern: one adapter package per marketplace under `connectors/adapters/`. The module owns the port interfaces; adapters implement them.
 
-Current connector baseline: integrations framework + Mercado Livre OAuth and seeded fee baseline. Live Mercado Livre listing, stock, order, shipment, and question capabilities are the next target.
+Current connector baseline: integrations framework, Mercado Livre OAuth, seeded fee baseline, and live listing/order read capabilities used by validated product-link, inventory, and M-06 evidence. No live provider stock mutation is claimed; stock writes remain policy-gated and were validated without executing a real mutation.
 
 ### `integrations` (implemented foundation)
 
@@ -270,7 +272,9 @@ The merge should be a module migration, not a rewrite. This is why structure com
 ## Related documents
 
 - `AGENTS.md` — daily operational rules
-- `IMPLEMENTATION_PLAN.md` — phased execution plan
+- `docs/architecture/decisions/README.md` — accepted architecture decisions
+- `.mnfs/MIS-001-mercado-livre-operating-cockpit/mission.md` — current execution truth
+- `IMPLEMENTATION_PLAN.md` — historical reconciliation only
 - `contracts/api/marketplace-central.openapi.yaml` — API source of truth
 - `docs/marketplaces/*.md` — per-marketplace API reference
 

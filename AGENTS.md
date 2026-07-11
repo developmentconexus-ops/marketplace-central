@@ -6,14 +6,14 @@ On every session start, read:
 
 1. `ARCHITECTURE.md`
 2. `wiki/README.md`
-3. `.brain/system-pulse.md`
-4. `.brain/roadmap.json`
+3. `.mnfs/MIS-001-mercado-livre-operating-cockpit/mission.md`
+4. The active milestone `execution-guide.md` named by the current goal, when applicable
 
-Use `IMPLEMENTATION_PLAN.md` only for historical reconciliation. Current planning lives in `.brain/`.
+Use `IMPLEMENTATION_PLAN.md` only for historical reconciliation. Current planning and execution truth live in `.mnfs/`.
 
 ## Truth Order
 
-- Architecture truth: `ARCHITECTURE.md` and ADRs in `.brain/decisions/`
+- Architecture truth: `ARCHITECTURE.md` and ADRs in `docs/architecture/decisions/`
 - Contract truth: `contracts/api/marketplace-central.openapi.yaml`
 - Wiki truth: `wiki/README.md` and module/quality pages
 - Execution truth: tests, builds, QA evidence, commits
@@ -124,7 +124,7 @@ Unknown cost, freight, fee, tax, or product linkage is a data-quality state, not
 - For any integration-facing work, `validation.md` and `validation-result.md` must explicitly separate fake/mock evidence from real-environment evidence.
 - For Sankhya, Mercado Livre, OAuth, DB, queue, or network-dependent behavior, fake-only validation can at most prove contract/business logic readiness; it cannot prove end-to-end readiness.
 - For API changes, update OpenAPI and `sdk-runtime` together.
-- For architecture changes, update `ARCHITECTURE.md`, ADRs, relevant wiki pages, and `.brain/`.
+- For architecture changes, update `ARCHITECTURE.md`, ADRs in `docs/architecture/decisions/`, relevant wiki pages, and `.mnfs/` execution artifacts when scope or sequencing changes.
 - For code changes, run impacted tests/builds before claiming done.
 - For docs-only changes, proofread/diff-review before commit.
 - One completed task should end with one intentional commit.
