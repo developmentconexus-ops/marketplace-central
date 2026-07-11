@@ -3,17 +3,15 @@ Set-StrictMode -Version Latest
 
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $modulePath = Join-Path $repoRoot 'scripts/harness/Context.psm1'
-$featurePath = '.mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-07-governance-context-compiler'
+$featurePath = '.mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-10-pragmatic-harness-cutover'
 $allowedPaths = @(
   'contracts/governance/**',
   'scripts/harness/**',
-  'scripts/tests/governance-contracts.tests.ps1',
-  'scripts/tests/governance-drift.tests.ps1',
-  'scripts/tests/context-compiler.tests.ps1',
+  'scripts/tests/**',
   'scripts/harness.ps1',
   'package.json',
   'AGENTS.md',
-  '.mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-07-governance-context-compiler/**'
+  '.mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-10-pragmatic-harness-cutover/**'
 )
 $fixtureRoot = Join-Path ([IO.Path]::GetTempPath()) ("mpc-context-fixtures-{0}" -f [guid]::NewGuid().ToString('N'))
 
@@ -70,7 +68,7 @@ function New-GenericFeatureFixture {
     allowed_paths = @("$featureRelative/**")
     forbidden_paths = @('apps/**')
     side_effects = [ordered]@{ allowed = @(); forbidden = @('database-mutation', 'external-network', 'provider-write') }
-    commands = @([ordered]@{ id = 'generic-proof'; command_template = 'pwsh -NoProfile -Command "Write-Output {feature_path}"'; lane_id = 'unit'; expected_exit_code = 0 })
+    commands = @([ordered]@{ id = 'generic-proof'; command_id = 'impact-probe-one'; lane_id = 'unit'; expected_exit_code = 0 })
     criteria = @([ordered]@{ id = 'F42-AC01'; milestone_criterion_id = 'M-99-C01'; command_ids = @('generic-proof') })
     stop_conditions = @([ordered]@{ code = 'generic-stop'; condition = 'Stop on generic contract drift.' })
     retry_budget = [ordered]@{ max_correction_attempts = 1 }
@@ -157,7 +155,7 @@ try {
   $genericPack = Get-Content -Raw -LiteralPath $genericPath | ConvertFrom-Json -Depth 100
   Assert-Equal $genericPack.criteria[0].id 'F42-AC01' 'generic criterion'
   Assert-Equal $genericPack.commands[0].id 'generic-proof' 'generic command'
-  Assert-Equal ($genericPack.commands[0].command -like "*$genericFeature*") $true 'generic feature template expansion'
+  Assert-Equal $genericPack.commands[0].command_id 'impact-probe-one' 'generic command registry ID'
 
   $utf8Feature = New-GenericFeatureFixture -Name "utf8-$([guid]::NewGuid().ToString('N'))" -Objective ([string]::new([char]0x00E9, 8100))
   $utf8 = New-HarnessContextPack -FeaturePath $utf8Feature -BaseSha $baseSha -AllowedPath @("$utf8Feature/**") -OutputPath (Join-Path $fixtureRoot 'utf8.json')

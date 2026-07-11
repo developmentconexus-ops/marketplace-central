@@ -110,15 +110,6 @@ function Import-FeatureWorkContract {
   }
 }
 
-function Expand-ContextCommandTemplate {
-  param([string]$Template, [string]$BaseSha, [string]$ContextPath, [string]$FeaturePath)
-  $variables = @([regex]::Matches($Template, '\{(?<name>[a-z_]+)\}') | ForEach-Object { $_.Groups['name'].Value } | Sort-Object -Unique)
-  if (@($variables | Where-Object { $_ -notin @('base_sha', 'candidate_sha', 'context_path', 'feature_path') }).Count -gt 0) { return $null }
-  $expanded = $Template.Replace('{base_sha}', $BaseSha).Replace('{candidate_sha}', $BaseSha).Replace('{context_path}', $ContextPath).Replace('{feature_path}', $FeaturePath)
-  if ($expanded -match '\{[^{}]+\}') { return $null }
-  $expanded
-}
-
 function Get-ContextRisk {
   param([string[]]$AllowedPaths, [object[]]$SharedSeams, [object[]]$Lanes, [string[]]$SideEffects)
   $moduleScopes = @($AllowedPaths | ForEach-Object { if ($_ -match '^apps/server_core/internal/modules/(?<module>[^/]+)') { $Matches.module } } | Sort-Object -Unique)
@@ -214,12 +205,9 @@ function New-CanonicalContextPack {
   $usedLanes = [Collections.Generic.List[object]]::new()
   foreach ($command in @($contract.commands)) {
     if (-not $laneById.ContainsKey([string]$command.lane_id)) { return New-ContextResult $false 'CTX_PROOF_REFERENCE_INVALID' ([string]$command.id) }
-    $expanded = Expand-ContextCommandTemplate ([string]$command.command_template) $BaseSha $ContextPath $normalizedFeature
-    if ($null -eq $expanded) { return New-ContextResult $false 'CTX_FEATURE_INVALID' ([string]$command.id) }
     $lane = $laneById[[string]$command.lane_id]
     $usedLanes.Add($lane)
-    $targetLabel = if ([string]$command.id -like 'cold-real-*') { 'cold-gate' } else { [string]$lane.target_label }
-    $commands.Add([ordered]@{ id = [string]$command.id; command = $expanded; target_label = $targetLabel; evidence_type = 'assumed' })
+    $commands.Add([ordered]@{ id = [string]$command.id; command_id = [string]$command.command_id; target_label = [string]$lane.target_label; evidence_type = 'assumed' })
   }
   $forbiddenEffects = @($contract.side_effects.forbidden)
   if ('external-network' -in $forbiddenEffects -and @($usedLanes | Where-Object network -eq 'live').Count -gt 0) { return New-ContextResult $false 'CTX_SIDE_EFFECT_CONFLICT' 'external-network' }

@@ -54,11 +54,11 @@
       "type": "array", "minItems": 1, "uniqueItems": true,
       "items": {
         "type": "object", "additionalProperties": false,
-        "required": ["id", "command", "target_label", "evidence_type"],
+        "required": ["id", "command_id", "target_label", "evidence_type"],
         "properties": {
           "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
-          "command": { "type": "string", "minLength": 1 },
-          "target_label": { "enum": ["fake", "external-dependency-registry", "ephemeral-postgres", "dev-invariance", "live-oracle", "live-provider", "browser", "provider-write", "cold-gate"] },
+          "command_id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "target_label": { "enum": ["fake", "ephemeral-postgres", "dev-invariance", "live-oracle", "live-provider", "browser", "provider-write"] },
           "evidence_type": { "enum": ["ran", "assumed", "could-not-run", "provisioning"] }
         }
       }

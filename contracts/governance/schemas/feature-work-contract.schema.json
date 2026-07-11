@@ -26,11 +26,11 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "command_template", "lane_id", "expected_exit_code"],
+        "required": ["id", "command_id", "lane_id", "expected_exit_code"],
         "properties": {
           "id": { "$ref": "#/$defs/id" },
-          "command_template": { "type": "string", "minLength": 1 },
-          "lane_id": { "enum": ["unit", "cold-provision", "integration", "dev-invariance", "live-oracle", "live-provider-read", "browser", "provider-write"] },
+          "command_id": { "$ref": "#/$defs/id" },
+          "lane_id": { "enum": ["unit", "integration", "dev-invariance", "live-oracle", "live-provider-read", "browser", "provider-write"] },
           "expected_exit_code": { "type": "integer", "minimum": 0, "maximum": 255 }
         }
       }

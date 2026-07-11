@@ -85,23 +85,23 @@ try {
   $contextSchema = Join-Path $schemaRoot 'context-pack.schema.json'
   Assert-True (Test-Path -LiteralPath $contextSchema -PathType Leaf) 'missing schema: contracts/governance/schemas/context-pack.schema.json'
   $workContractSchema = Join-Path $schemaRoot 'feature-work-contract.schema.json'
-  $coldWorkContract = @{
-    schema_version='1.0'; feature_id='F-04'; required_sources=@('scripts/harness.ps1'); allowed_paths=@('scripts/harness.ps1'); forbidden_paths=@('apps/**')
-    side_effects=@{allowed=@('isolated-cache-write');forbidden=@('provider-write')}; commands=@(@{id='cold-real';command_template='npm run harness:cold';lane_id='unit';expected_exit_code=0})
-    criteria=@(@{id='F04-AC01';milestone_criterion_id='M-08-C05';command_ids=@('cold-real')}); stop_conditions=@(@{code='cold-stop';condition='stop'}) ; retry_budget=@{max_correction_attempts=1}; handoff_fields=@('status')
+  $currentWorkContract = @{
+    schema_version='1.0'; feature_id='F-10'; required_sources=@('scripts/harness.ps1'); allowed_paths=@('scripts/harness.ps1'); forbidden_paths=@('apps/**')
+    side_effects=@{allowed=@('repository-write');forbidden=@('provider-write')}; commands=@(@{id='impact-probe-one';command_id='impact-probe-one';lane_id='unit';expected_exit_code=0})
+    criteria=@(@{id='F10-AC01';milestone_criterion_id='M-08-C17';command_ids=@('impact-probe-one')}); stop_conditions=@(@{code='impact-stop';condition='stop'}) ; retry_budget=@{max_correction_attempts=1}; handoff_fields=@('status')
   }
-  $coldWorkContractPath = Join-Path ([IO.Path]::GetTempPath()) "feature-work-contract-cold-$([guid]::NewGuid().ToString('N')).json"
-  try { $coldWorkContract | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $coldWorkContractPath -Encoding utf8; Assert-True (Test-Json -LiteralPath $coldWorkContractPath -SchemaFile $workContractSchema -ErrorAction Stop) 'work contract schema rejected isolated-cache-write' }
-  finally { Remove-Item -LiteralPath $coldWorkContractPath -Force -ErrorAction SilentlyContinue }
+  $currentWorkContractPath = Join-Path ([IO.Path]::GetTempPath()) "feature-work-contract-current-$([guid]::NewGuid().ToString('N')).json"
+  try { $currentWorkContract | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $currentWorkContractPath -Encoding utf8; Assert-True (Test-Json -LiteralPath $currentWorkContractPath -SchemaFile $workContractSchema -ErrorAction Stop) 'work contract schema rejected registered command ID' }
+  finally { Remove-Item -LiteralPath $currentWorkContractPath -Force -ErrorAction SilentlyContinue }
   Assert-True (Test-Path -LiteralPath $workContractSchema -PathType Leaf) 'missing schema: contracts/governance/schemas/feature-work-contract.schema.json'
-  $f07PlanPath = Join-Path $repositoryRoot '.mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-07-governance-context-compiler/plan.md'
-  $f07Plan = Get-Content -Raw -LiteralPath $f07PlanPath
-  $workContractBlocks = @([regex]::Matches($f07Plan, '(?ms)^## Machine Work Contract\s*\r?\n\s*```json\s*\r?\n(?<json>.*?)\r?\n```\s*$'))
-  Assert-True ($workContractBlocks.Count -eq 1) 'F-07 plan must contain exactly one machine work contract JSON block'
+  $f10PlanPath = Join-Path $repositoryRoot '.mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-10-pragmatic-harness-cutover/plan.md'
+  $f10Plan = Get-Content -Raw -LiteralPath $f10PlanPath
+  $workContractBlocks = @([regex]::Matches($f10Plan, '(?ms)^## Machine Work Contract\s*\r?\n\s*```json\s*\r?\n(?<json>.*?)\r?\n```\s*$'))
+  Assert-True ($workContractBlocks.Count -eq 1) 'F-10 plan must contain exactly one machine work contract JSON block'
   $workContractPath = Join-Path ([IO.Path]::GetTempPath()) "feature-work-contract-$([guid]::NewGuid().ToString('N')).json"
   try {
     Set-Content -LiteralPath $workContractPath -Value $workContractBlocks[0].Groups['json'].Value -Encoding utf8
-    Assert-True (Test-Json -LiteralPath $workContractPath -SchemaFile $workContractSchema -ErrorAction Stop) 'F-07 machine work contract failed schema validation'
+    Assert-True (Test-Json -LiteralPath $workContractPath -SchemaFile $workContractSchema -ErrorAction Stop) 'F-10 machine work contract failed schema validation'
     $invalidWorkContract = Get-Content -Raw -LiteralPath $workContractPath | ConvertFrom-Json -AsHashtable
     $invalidWorkContract.unknown_contract_property = $true
     $invalidWorkContract | ConvertTo-Json -Depth 30 | Set-Content -LiteralPath $workContractPath -Encoding utf8
@@ -126,12 +126,7 @@ try {
   }
 
   $laneIds = @($lanes.lanes.id)
-  Assert-True ((($laneIds | Sort-Object) -join '|') -eq (('browser','cold-provision','dev-invariance','integration','live-oracle','live-provider-read','provider-write','unit' | Sort-Object) -join '|')) 'execution lane set is not exact'
-  $coldProvision = @($lanes.lanes | Where-Object id -eq 'cold-provision')[0]
-  Assert-True ($null -ne $coldProvision) 'cold-provision lane missing'
-  Assert-True ($coldProvision.network -eq 'live' -and $coldProvision.database -eq 'disabled') 'cold-provision must use registry network and no database'
-  Assert-True ($coldProvision.target_label -eq 'external-dependency-registry' -and $coldProvision.evidence_class -eq 'provisioning') 'cold-provision target/evidence mismatch'
-  Assert-True (@($coldProvision.allowed_runtime_keys).Count -eq 0 -and @($coldProvision.side_effects).Count -eq 1 -and $coldProvision.side_effects[0] -eq 'isolated-cache-write') 'cold-provision must be secret-free and isolated'
+  Assert-True ((($laneIds | Sort-Object) -join '|') -eq (('browser','dev-invariance','integration','live-oracle','live-provider-read','provider-write','unit' | Sort-Object) -join '|')) 'execution lane set is not exact'
   foreach ($key in $runtime.keys) {
     foreach ($lane in $key.allowed_lanes) {
       Assert-True ($lane -in $laneIds) "runtime key $($key.key) references unknown lane $lane"
@@ -288,7 +283,7 @@ try {
     paths = @{ allowed = @('contracts/governance'); forbidden = @('apps/server_core/internal/modules') }
     shared_seams = @('api-sdk')
     side_effects = @('repository-write')
-    commands = @(@{ id = 'governance-contracts'; command = 'pwsh governance-contracts.tests.ps1'; target_label = 'fake'; evidence_type = 'ran' })
+    commands = @(@{ id = 'governance-contracts'; command_id = 'governance-contracts'; target_label = 'fake'; evidence_type = 'ran' })
     stop_conditions = @('source-hash-mismatch')
     retry_budget = 1
     handoff = @{ target = 'Milestone Orchestrator'; reason = 'Phase complete.' }

@@ -3,7 +3,7 @@
 ```yaml
 id: F-10
 type: feature-brief
-status: briefed
+status: accepted
 owner: Mission Strategist
 parent: M-08
 created: 2026-07-11
@@ -93,8 +93,8 @@ pack and whose redacted outcome records what actually ran.
 
 ## Handoff
 
-- Current status: Briefed and next executable feature.
-- Next owner: Fresh F-10 Feature Implementer.
-- Next action: Create spec/plan, identify reusable evidence primitives, then TDD the cutover.
-- Required files/evidence: RED/GREEN, changed paths, boundary search, outcome fixtures, fixed-commit review.
-- Blockers or open decisions: None; do not reopen cold behavior.
+- Current status: Accepted after fixed-commit L2 review.
+- Next owner: Milestone Orchestrator.
+- Next action: Select the serial successor F-05; do not reopen cold behavior.
+- Required files/evidence: `spec.md`, `plan.md`, `validation.md`, current-checkout outcome, and fixed-commit review.
+- Blockers or open decisions: None.

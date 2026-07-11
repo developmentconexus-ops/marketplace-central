@@ -2,8 +2,8 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $script:Pairs = @{
-  'fake'='contract'; 'external-dependency-registry'='provisioning'; 'ephemeral-postgres'='integration'; 'dev-invariance'='integration';
-  'live-oracle'='live'; 'live-provider'='live'; 'browser'='integration'; 'provider-write'='production-like'; 'cold-gate'='contract'
+  'fake'='contract'; 'ephemeral-postgres'='integration'; 'dev-invariance'='integration';
+  'live-oracle'='live'; 'live-provider'='live'; 'browser'='integration'; 'provider-write'='production-like'
 }
 
 function Test-SafeEvidenceText {
@@ -34,102 +34,17 @@ function New-HarnessCommandRecord {
   }
 }
 
-function Test-HarnessImageIdentity {
-  param([AllowEmptyString()][string]$Value)
-  return [string]::IsNullOrEmpty($Value) -or $Value -match '^sha256:[0-9a-f]{64}$'
-}
-
-function Get-HarnessProcessFailureReason {
-  param(
-    [Parameter(Mandatory)][string]$CommandId,
-    [AllowNull()][object]$Exception
-  )
-
-  # Process-await exceptions can contain provider URLs, absolute paths, or
-  # credentials. Classify by the declared command only; never persist the
-  # exception object or message. Unknown commands remain fail-closed.
-  if ($CommandId -eq 'go-mod-download') {
-    return 'COLD_PROCESS_AWAIT_EXCEPTION_GO_MOD_DOWNLOAD'
-  }
-  return 'COLD_PROCESS_AWAIT_EXCEPTION_UNKNOWN'
-}
-
-function Resolve-HarnessCanonicalCheckoutRoot {
-  [CmdletBinding()]
-  param(
-    [Parameter(Mandatory)][string]$SourceRoot,
-    [Parameter(Mandatory)][string]$ExpectedRoot
-  )
-
-  # Git trust is intentionally scoped to one exact, physical checkout.  Do
-  # not accept wildcard/ancestor paths or a reparse-point alias that could
-  # resolve to a different repository between validation and clone.
-  foreach ($candidate in @($SourceRoot, $ExpectedRoot)) {
-    if ([string]::IsNullOrWhiteSpace($candidate) -or -not [IO.Path]::IsPathFullyQualified($candidate) -or $candidate -match '[*?]') {
-      throw 'COLD_SOURCE_ROOT_INVALID'
-    }
-    if (-not (Test-Path -LiteralPath $candidate -PathType Container)) { throw 'COLD_SOURCE_ROOT_MISSING' }
-    $item = Get-Item -LiteralPath $candidate -Force
-    if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'COLD_SOURCE_REPARSE_UNSAFE' }
-    $parent = $item.Parent
-    while ($null -ne $parent) {
-      if (($parent.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'COLD_SOURCE_REPARSE_UNSAFE' }
-      if ($null -eq $parent.Parent -or $parent.FullName -eq $parent.Parent.FullName) { break }
-      $parent = $parent.Parent
-    }
-  }
-
-  $source = (Get-Item -LiteralPath $SourceRoot -Force).FullName.TrimEnd('\', '/')
-  $expected = (Get-Item -LiteralPath $ExpectedRoot -Force).FullName.TrimEnd('\', '/')
-  if (-not [string]::Equals($source, $expected, [StringComparison]::OrdinalIgnoreCase)) {
-    throw 'COLD_SOURCE_ROOT_MISMATCH'
-  }
-  return $source
-}
-
-function New-HarnessScopedGitCloneArguments {
-  [CmdletBinding()]
-  param(
-    [Parameter(Mandatory)][string]$CanonicalSourceRoot,
-    [Parameter(Mandatory)][string]$SnapshotPath
-  )
-
-  if ([string]::IsNullOrWhiteSpace($CanonicalSourceRoot) -or
-      -not [IO.Path]::IsPathFullyQualified($CanonicalSourceRoot) -or
-      $CanonicalSourceRoot -match '[*?]' -or
-      $CanonicalSourceRoot -match '(?i)[\\/]\.git$' -or
-      $CanonicalSourceRoot -match ';' -or
-      $CanonicalSourceRoot -match '(?i)(?:^|[;\s])safe\.directory\s*=') {
-    throw 'COLD_GIT_TRUST_SCOPE_INVALID'
-  }
-  if ([string]::IsNullOrWhiteSpace($SnapshotPath) -or -not [IO.Path]::IsPathFullyQualified($SnapshotPath) -or $SnapshotPath -match '[*?]') {
-    throw 'COLD_SNAPSHOT_PATH_INVALID'
-  }
-
-  $gitTrustPath = Join-Path $CanonicalSourceRoot '.git'
-  $gitItem = Get-Item -LiteralPath $gitTrustPath -Force -ErrorAction SilentlyContinue
-  if ($null -eq $gitItem -or -not ($gitItem.PSIsContainer) -or (($gitItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) -or
-      -not [string]::Equals($gitItem.Parent.FullName.TrimEnd('\', '/'), $CanonicalSourceRoot.TrimEnd('\', '/'), [StringComparison]::OrdinalIgnoreCase) -or
-      -not [string]::Equals($gitItem.Name, '.git', [StringComparison]::OrdinalIgnoreCase)) {
-    throw 'GITDIR_UNTRUSTED'
-  }
-
-  # Keep this as an argv array.  The absolute source is process-local only;
-  # projected command/evidence uses the detached snapshot label.
-  return @('-c', "safe.directory=$($gitItem.FullName)", 'clone', '--quiet', '--no-hardlinks', '--local', $CanonicalSourceRoot, $SnapshotPath)
-}
-
 function New-HarnessOutcome {
   [CmdletBinding()]
   param(
-    [Parameter(Mandatory)][string]$RunId,[Parameter(Mandatory)][string]$CandidateSha,[Parameter(Mandatory)][string]$Branch,
+    [Parameter(Mandatory)][string]$RunId,[Parameter(Mandatory)][string]$BaseSha,[Parameter(Mandatory)][string]$CommitSha,[Parameter(Mandatory)][string]$Branch,
     [Parameter(Mandatory)][bool]$Dirty,[Parameter(Mandatory)][object]$Tools,[Parameter(Mandatory)][object[]]$Commands,
-    [AllowEmptyString()][string]$PostgresImageIdentity='',[ValidateSet('passed','failed','blocked')][string]$AggregateClassification='passed',
+    [ValidateSet('L0','L1','L2','L3')][string]$Risk,[string[]]$ChangedPaths=@(),[string[]]$RemainingRisks=@(),[ValidateSet('passed','failed','blocked')][string]$AggregateClassification='passed',
     [AllowNull()][object]$AcceptanceLink=$null
   )
-  if ($CandidateSha -notmatch '^[0-9a-f]{40}$') { throw 'EVIDENCE_CANDIDATE_SHA_INVALID' }
+  if ($BaseSha -notmatch '^[0-9a-f]{40}$' -or $CommitSha -notmatch '^[0-9a-f]{40}$') { throw 'EVIDENCE_SHA_INVALID' }
   if ($RunId -notmatch '^[a-z0-9][a-z0-9-]*$' -or -not (Test-SafeEvidenceText $RunId)) { throw 'EVIDENCE_RUN_ID_INVALID' }
-  if (-not (Test-SafeEvidenceText $Branch) -or -not (Test-HarnessImageIdentity $PostgresImageIdentity)) { throw 'EVIDENCE_REDACTION_FAILED' }
+  if (-not (Test-SafeEvidenceText $Branch)) { throw 'EVIDENCE_REDACTION_FAILED' }
   if ($null -eq $AcceptanceLink) { $AcceptanceLink = 'unaccepted' }
   if ([string]$AcceptanceLink -notmatch '^(?:unaccepted|F-[0-9]{2}@[0-9a-f]{40})$' -or -not (Test-SafeEvidenceText ([string]$AcceptanceLink))) { throw 'EVIDENCE_ACCEPTANCE_LINK_INVALID' }
   $safeCommands = [Collections.Generic.List[object]]::new()
@@ -141,12 +56,14 @@ function New-HarnessOutcome {
     if (-not (Test-SafeEvidenceText ([string]$property.Name)) -or -not (Test-SafeEvidenceText ([string]$property.Value))) { throw 'EVIDENCE_REDACTION_FAILED' }
     $toolMap[[string]$property.Name] = [string]$property.Value
   }
-  return [pscustomobject][ordered]@{ schema_version='1.0'; run_id=$RunId; candidate_sha=$CandidateSha; branch=$Branch; dirty=$Dirty; acceptance_link=$AcceptanceLink; tools=$toolMap; commands=@($safeCommands); postgres_image_identity=$PostgresImageIdentity; aggregate_classification=$AggregateClassification }
+  $safePaths = @($ChangedPaths | ForEach-Object { ConvertTo-SafeArtifactPath ([string]$_) } | Sort-Object -Unique)
+  $safeRisks = @($RemainingRisks | ForEach-Object { if (-not (Test-SafeEvidenceText ([string]$_))) { throw 'EVIDENCE_REDACTION_FAILED' }; [string]$_ } | Sort-Object -Unique)
+  return [pscustomobject][ordered]@{ schema_version='1.0'; run_id=$RunId; base_sha=$BaseSha; commit_sha=$CommitSha; branch=$Branch; dirty=$Dirty; acceptance_link=$AcceptanceLink; risk=$Risk; changed_paths=$safePaths; tools=$toolMap; commands=@($safeCommands); remaining_risks=$safeRisks; aggregate_classification=$AggregateClassification }
 }
 
 function Get-HarnessOutcomeProjection {
   param([Parameter(Mandatory)][object]$Outcome)
-  return [pscustomobject][ordered]@{candidate_sha=$Outcome.candidate_sha; commands=@($Outcome.commands | ForEach-Object {[ordered]@{id=$_.id;command=$_.command;target_label=$_.target_label;evidence_class=$_.evidence_class;exit_code=$_.exit_code;reason=$_.reason}});postgres_image_identity=$Outcome.postgres_image_identity;aggregate_classification=$Outcome.aggregate_classification}
+  return [pscustomobject][ordered]@{base_sha=$Outcome.base_sha;commit_sha=$Outcome.commit_sha;commands=@($Outcome.commands | ForEach-Object {[ordered]@{id=$_.id;command=$_.command;target_label=$_.target_label;evidence_class=$_.evidence_class;exit_code=$_.exit_code;reason=$_.reason}});aggregate_classification=$Outcome.aggregate_classification}
 }
 
 function Compare-HarnessOutcomeProjection {
@@ -171,4 +88,4 @@ function Write-HarnessTrace {
   return $Path
 }
 
-Export-ModuleMember -Function Test-SafeEvidenceText, Get-HarnessProcessFailureReason, Resolve-HarnessCanonicalCheckoutRoot, New-HarnessScopedGitCloneArguments, New-HarnessOutcome, Get-HarnessOutcomeProjection, Compare-HarnessOutcomeProjection, Write-HarnessOutcome, Write-HarnessTrace
+Export-ModuleMember -Function Test-SafeEvidenceText, New-HarnessOutcome, Get-HarnessOutcomeProjection, Compare-HarnessOutcomeProjection, Write-HarnessOutcome, Write-HarnessTrace
