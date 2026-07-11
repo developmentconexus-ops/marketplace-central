@@ -25,6 +25,7 @@ $runDir = Join-Path $runRoot $runId
 
 Import-Module (Join-Path $PSScriptRoot 'harness/Environment.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'harness/Execution.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'harness/Postgres.psm1') -Force
 
 function Resolve-HarnessApplication {
   param([Parameter(Mandatory)][string]$Name)
@@ -92,16 +93,28 @@ function Invoke-Unit {
 }
 
 function Invoke-Integration {
-  $url = $DatabaseUrl
-  if ([string]::IsNullOrWhiteSpace($url)) { throw 'integration requires explicit -DatabaseUrl (MPC_TEST_DATABASE_URL); ambient configuration is ignored until F-03' }
-  try { $uri = [Uri]$url } catch { throw 'integration database target is invalid' }
-  if ($uri.Scheme -notin @('postgres', 'postgresql') -or $uri.AbsolutePath -notmatch '/mpc_test_[A-Za-z0-9_-]+$') {
-    throw 'integration database must be an mpc_test_* PostgreSQL target'
-  }
+  if (-not [string]::IsNullOrWhiteSpace($DatabaseUrl)) { throw 'HPG_EXTERNAL_TARGET_FORBIDDEN' }
   Write-Output 'target=ephemeral-postgres'
   Write-Output 'key=MPC_TEST_DATABASE_URL'
-  Write-Output 'migrations=delegated'
-  throw 'integration blocked until F-03 supplies explicit ephemeral-postgres lifecycle; no database was contacted'
+  Write-Output 'migrations=embedded'
+  if ($PreflightOnly) { Write-Output 'status=ready'; return }
+
+  $dockerPath = Resolve-HarnessApplication -Name 'docker'
+  $goPath = Resolve-HarnessApplication -Name 'go'
+  $childEnvironment = New-HarnessChildEnvironment -RepositoryRoot $repoRoot -LaneId 'integration'
+  $passwordBytes = [byte[]]::new(24)
+  [Security.Cryptography.RandomNumberGenerator]::Fill($passwordBytes)
+  $password = [Convert]::ToHexString($passwordBytes).ToLowerInvariant()
+  $spec = New-HarnessPostgresRunSpec -RepositoryRoot $repoRoot -RunId $runId -Password $password -DockerFilePath $dockerPath
+  $result = Invoke-HarnessPostgresLifecycle -RunSpec $spec -BaseEnvironment $childEnvironment -GoFilePath $goPath -TimeoutSeconds 1200
+  Write-Output "migrations_first=$($result.MigrationsAppliedFirst)"
+  Write-Output "migrations_second=$($result.MigrationsAppliedSecond)"
+  Write-Output "resource_count=$(@($result.ResourceInventory).Count)"
+  if ($result.ExitCode -ne 0) {
+    $reasons = @($result.PrimaryReasonCode) + @($result.CleanupReasonCodes) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    throw "postgres lifecycle failed reasons=$($reasons -join ',') exit_code=$($result.ExitCode)"
+  }
+  Write-Summary -TargetType 'ephemeral-postgres' -Status 'passed'
 }
 
 function Invoke-Live {

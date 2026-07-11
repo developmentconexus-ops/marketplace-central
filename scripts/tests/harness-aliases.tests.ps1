@@ -37,7 +37,7 @@ try {
     'MPC_ORACLE_CONNECT_STRING=relative-connect'
   ) | Set-Content -LiteralPath (Join-Path $relativeEnvDirectory 'oracle.env') -Encoding utf8
   Assert-Result (Invoke-FromForeign 'harness:unit' @('-PreflightOnly')) 0 'target=fake' 'unit alias'
-  Assert-Result (Invoke-FromForeign 'harness:integration' @('-PreflightOnly')) 1 'F-03' 'integration alias'
+  Assert-Result (Invoke-FromForeign 'harness:integration' @('-PreflightOnly')) 0 'status=ready' 'integration alias'
   Assert-Result (Invoke-FromForeign 'harness:live' @('-PreflightOnly', '-EnvFile', (Join-Path $foreign 'missing.env'))) 1 'target=live-oracle' 'live alias'
   Assert-Result (Invoke-FromForeign 'harness:browser' @('-PreflightOnly')) 0 'target=browser' 'browser alias'
   Assert-Result (Invoke-FromForeign 'harness:provider-write' @()) 1 'provider is required' 'provider-write alias'

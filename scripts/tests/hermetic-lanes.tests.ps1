@@ -47,7 +47,7 @@ try {
   }
 
   $integration = Invoke-Harness @('-Command', 'integration', '-PreflightOnly')
-  if ($integration.ExitCode -eq 0 -or $integration.Output -notmatch 'F-03') { throw 'integration must retain F-03 fail-closed blocker' }
+  if ($integration.ExitCode -ne 0 -or $integration.Output -notmatch 'target=ephemeral-postgres' -or $integration.Output -notmatch 'status=ready') { throw 'integration preflight must be contact-free and ready' }
   $browser = Invoke-Harness @('-Command', 'browser', '-PreflightOnly')
   if ($browser.ExitCode -ne 0 -or $browser.Output -notmatch 'target=browser') { throw 'browser preflight classification changed' }
   $provider = Invoke-Harness @('-Command', 'provider-write', '-Provider', 'mercado_livre')

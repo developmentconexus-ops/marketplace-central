@@ -3,18 +3,34 @@ package migrate
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
+	"io/fs"
 	"sort"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Run applies all pending SQL migrations from migrationsDir to the database.
+// Filenames returns the sorted, full filenames in a migration source.
+func Filenames(source fs.FS) ([]string, error) {
+	entries, err := fs.ReadDir(source, ".")
+	if err != nil {
+		return nil, fmt.Errorf("read migration source: %w", err)
+	}
+
+	filenames := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if !entry.IsDir() && len(entry.Name()) > 4 && entry.Name()[len(entry.Name())-4:] == ".sql" {
+			filenames = append(filenames, entry.Name())
+		}
+	}
+	sort.Strings(filenames)
+	return filenames, nil
+}
+
+// Run applies all pending SQL migrations from source to the database.
 // It returns the number of migrations applied and any error encountered.
 // Migrations are applied in lexicographic filename order and tracked in
 // schema_migrations to guarantee idempotency.
-func Run(ctx context.Context, pool *pgxpool.Pool, migrationsDir string) (int, error) {
+func Run(ctx context.Context, pool *pgxpool.Pool, source fs.FS) (int, error) {
 	// Ensure schema_migrations table exists
 	_, err := pool.Exec(ctx, `
 		CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -26,19 +42,10 @@ func Run(ctx context.Context, pool *pgxpool.Pool, migrationsDir string) (int, er
 		return 0, fmt.Errorf("ensure schema_migrations: %w", err)
 	}
 
-	// Read all .sql files from migrationsDir
-	entries, err := os.ReadDir(migrationsDir)
+	filenames, err := Filenames(source)
 	if err != nil {
-		return 0, fmt.Errorf("read migrations dir %s: %w", migrationsDir, err)
+		return 0, err
 	}
-
-	var filenames []string
-	for _, e := range entries {
-		if !e.IsDir() && filepath.Ext(e.Name()) == ".sql" {
-			filenames = append(filenames, e.Name())
-		}
-	}
-	sort.Strings(filenames)
 
 	// Query already-applied filenames
 	rows, err := pool.Query(ctx, `SELECT filename FROM schema_migrations`)
@@ -65,28 +72,34 @@ func Run(ctx context.Context, pool *pgxpool.Pool, migrationsDir string) (int, er
 			continue
 		}
 
-		content, err := os.ReadFile(filepath.Join(migrationsDir, filename))
+		content, err := fs.ReadFile(source, filename)
 		if err != nil {
 			return count, fmt.Errorf("read migration file %s: %w", filename, err)
 		}
-
-		tx, err := pool.Begin(ctx)
-		if err != nil {
-			return count, err
-		}
-		defer tx.Rollback(ctx) //nolint:errcheck // noop after commit
-
-		if _, err := tx.Exec(ctx, string(content)); err != nil {
-			return count, fmt.Errorf("migration %s: %w", filename, err)
-		}
-		if _, err := tx.Exec(ctx, `INSERT INTO schema_migrations (filename) VALUES ($1)`, filename); err != nil {
-			return count, fmt.Errorf("record migration %s: %w", filename, err)
-		}
-		if err := tx.Commit(ctx); err != nil {
+		if err := applyFile(ctx, pool, filename, content); err != nil {
 			return count, err
 		}
 		count++
 	}
 
 	return count, nil
+}
+
+func applyFile(ctx context.Context, pool *pgxpool.Pool, filename string, content []byte) error {
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin migration %s: %w", filename, err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if _, err := tx.Exec(ctx, string(content)); err != nil {
+		return fmt.Errorf("migration %s: %w", filename, err)
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO schema_migrations (filename) VALUES ($1)`, filename); err != nil {
+		return fmt.Errorf("record migration %s: %w", filename, err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit migration %s: %w", filename, err)
+	}
+	return nil
 }

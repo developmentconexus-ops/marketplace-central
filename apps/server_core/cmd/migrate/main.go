@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 
 	"marketplace-central/apps/server_core/internal/platform/migrate"
 	"marketplace-central/apps/server_core/internal/platform/pgdb"
+	canonical "marketplace-central/apps/server_core/migrations"
 )
 
 func main() {
@@ -28,13 +28,7 @@ func run(ctx context.Context) error {
 	}
 	defer pool.Close()
 
-	// migrationsDir: resolve relative to binary location or use env override
-	migrationsDir := os.Getenv("MC_MIGRATIONS_DIR")
-	if migrationsDir == "" {
-		migrationsDir = "apps/server_core/migrations"
-	}
-
-	applied, err := migrate.Run(ctx, pool, migrationsDir)
+	applied, err := migrate.Run(ctx, pool, canonical.Source())
 	if err != nil {
 		return err
 	}

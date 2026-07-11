@@ -67,11 +67,17 @@ function Get-ExplicitRuntimeValues {
 }
 
 function Get-ProcessRuntimeValues {
-  param([Parameter(Mandatory)][object]$Lane)
+  param(
+    [Parameter(Mandatory)][object]$Lane,
+    [Parameter(Mandatory)][object[]]$RuntimeKeys
+  )
 
   $values = New-CaseInsensitiveStringDictionary
+  $keysByName = @{}
+  foreach ($entry in $RuntimeKeys) { $keysByName[[string]$entry.key] = $entry }
   foreach ($allowedKey in @($Lane.allowed_runtime_keys)) {
     $name = [string]$allowedKey
+    if ($keysByName.ContainsKey($name) -and [string]$keysByName[$name].lifecycle -eq 'reserved_not_ambient') { continue }
     $value = [Environment]::GetEnvironmentVariable($name, 'Process')
     if (-not [string]::IsNullOrWhiteSpace($value)) { $values[$name] = $value }
   }
@@ -130,6 +136,19 @@ function Resolve-HarnessRuntimeValues {
   return $resolved
 }
 
+function Remove-HarnessReservedAmbientValues {
+  param(
+    [Parameter(Mandatory)][System.Collections.Generic.Dictionary[string,string]]$Configured,
+    [Parameter(Mandatory)][object[]]$RuntimeKeys
+  )
+  foreach ($entry in $RuntimeKeys) {
+    if ([string]$entry.lifecycle -eq 'reserved_not_ambient') {
+      [void]$Configured.Remove([string]$entry.key)
+    }
+  }
+  return $Configured
+}
+
 function New-HarnessChildEnvironment {
   [CmdletBinding()]
   param(
@@ -158,7 +177,7 @@ function New-HarnessChildEnvironment {
     if (-not [string]::IsNullOrWhiteSpace($value)) { $child[$key] = $value }
   }
   if (-not $child.ContainsKey('PATH')) { throw 'HENV_TOOL_KEY_MISSING key=PATH' }
-  if ($LaneId -eq 'unit') {
+  if ($LaneId -in @('unit', 'integration')) {
     $child['GOCACHE'] = [IO.Path]::GetFullPath((Join-Path $root 'apps/server_core/.gocache'))
     $child['GOMODCACHE'] = [IO.Path]::GetFullPath((Join-Path $root 'apps/server_core/.gomodcache'))
     $child['GOPROXY'] = 'off'
@@ -168,9 +187,11 @@ function New-HarnessChildEnvironment {
   $explicitValues = Get-ExplicitRuntimeValues -RuntimeValues $RuntimeValues -Lane $lane -RuntimeKeys @($runtime.keys)
   if ($LaneId -eq 'unit') { return $child }
 
+  $envValues = Read-HarnessEnvironmentFile -Path $EnvFile
+  $envValues = Remove-HarnessReservedAmbientValues -Configured $envValues -RuntimeKeys @($runtime.keys)
   $sources = @(
-    (Read-HarnessEnvironmentFile -Path $EnvFile),
-    (Get-ProcessRuntimeValues -Lane $lane),
+    $envValues,
+    (Get-ProcessRuntimeValues -Lane $lane -RuntimeKeys @($runtime.keys)),
     $explicitValues
   )
   foreach ($configured in $sources) {

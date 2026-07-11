@@ -182,7 +182,6 @@ try {
     @{ key='MPC_OAUTH_REDIRECT_URI'; path='docker/dev/ngrok-entrypoint.sh'; kind='edge'; status='approved' },
     @{ key='MC_DATABASE_URL'; path='apps/server_core/tests/integration/phase1_smoke_test.go'; kind='test'; status='temporary_exception'; owner='M-08/F-03' },
     @{ key='MC_DATABASE_URL'; path='apps/server_core/tests/integration/migrate_runner_test.go'; kind='test'; status='temporary_exception'; owner='M-08/F-03' },
-    @{ key='MC_MIGRATIONS_DIR'; path='apps/server_core/tests/integration/migrate_runner_test.go'; kind='test'; status='temporary_exception'; owner='M-08/F-03' },
     @{ key='MC_DATABASE_URL'; path='apps/server_core/tests/integration/marketplaces_repository_test.go'; kind='test'; status='temporary_exception'; owner='M-08/F-03' },
     @{ key='MC_DATABASE_URL'; path='apps/server_core/tests/integration/integrations_credential_repo_test.go'; kind='test'; status='temporary_exception'; owner='M-08/F-03' },
     @{ key='MC_DATABASE_URL'; path='apps/server_core/internal/modules/orders/adapters/postgres/order_repo_test.go'; kind='test'; status='temporary_exception'; owner='M-08/F-03' },

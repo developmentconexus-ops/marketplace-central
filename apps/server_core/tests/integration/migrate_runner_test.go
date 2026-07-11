@@ -7,6 +7,7 @@ import (
 
 	"marketplace-central/apps/server_core/internal/platform/migrate"
 	"marketplace-central/apps/server_core/internal/platform/pgdb"
+	canonical "marketplace-central/apps/server_core/migrations"
 )
 
 func TestMigrationRunnerIsIdempotent(t *testing.T) {
@@ -25,20 +26,15 @@ func TestMigrationRunnerIsIdempotent(t *testing.T) {
 	}
 	defer pool.Close()
 
-	migrationsDir := os.Getenv("MC_MIGRATIONS_DIR")
-	if migrationsDir == "" {
-		migrationsDir = "../../../../migrations" // relative from tests/integration/ to apps/server_core/migrations/
-	}
-
 	// First run: apply pending migrations
-	applied, err := migrate.Run(context.Background(), pool, migrationsDir)
+	applied, err := migrate.Run(context.Background(), pool, canonical.Source())
 	if err != nil {
 		t.Fatalf("first run error: %v", err)
 	}
 	t.Logf("first run applied %d migrations", applied)
 
 	// Second run: must apply zero (idempotent)
-	applied2, err := migrate.Run(context.Background(), pool, migrationsDir)
+	applied2, err := migrate.Run(context.Background(), pool, canonical.Source())
 	if err != nil {
 		t.Fatalf("second run error: %v", err)
 	}
