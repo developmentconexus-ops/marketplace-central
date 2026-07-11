@@ -204,10 +204,10 @@ Evidence path convention:
 
 ## Handoff
 
-- Current status: In progress; M-01 through M-05 passed, M-06 is blocked on a paid resolved-link live scenario and broad cold gate, and M-08 is the approved serial prerequisite for safe continuation.
+- Current status: In progress; M-01 through M-05 passed, M-06 is blocked on a paid resolved-link live Oracle + Mercado Livre profitability scenario and its proportional impacted gates, and M-08 is the approved serial prerequisite for reliable Codex development orchestration.
 - Current owner: Mission Strategist.
 - Next owner: Milestone Orchestrator for M-08.
-- Next action: Recover an intentional clean baseline and deterministic harness; then plan/execute M-09 through M-12, resume M-06 validation, and only then start M-07.
+- Next action: Complete the pragmatic M-08 goal/context/orchestration harness; then plan/execute M-09 through M-12, resume M-06 with focused code gates plus required real Oracle/Mercado Livre and browser QA, and only then start M-07.
 - Required artifact paths:
   - `.mnfs/MIS-001-mercado-livre-operating-cockpit/mission.md`
   - `.mnfs/MIS-001-mercado-livre-operating-cockpit/validation-contract.md`

@@ -3,11 +3,11 @@
 ```yaml
 id: F-02
 type: feature-brief
-status: briefed
+status: superseded
 owner: Mission Strategist
 parent: M-08
 created: 2026-07-10
-updated: 2026-07-10
+updated: 2026-07-11
 validation_level: QA-3
 lifecycle_scope: feature
 ```
@@ -19,7 +19,8 @@ MIS-001 Mercado Livre Operating Cockpit.
 M-08 Repository Integrity and Deterministic Harness.
 
 ## Brief
-Create explicit unit, integration, live, browser, and provider-write lanes with environment allowlists and no implicit side effects.
+Historical denylist-based lane spike. Its blocked validation remains evidence;
+the accepted allowlisted child runtime is owned by F-08.
 
 ## Inputs
 - Current scripts, Compose files, backend entrypoint, Go tests, npm workspaces, and `.env` consumers.
@@ -46,9 +47,8 @@ Create explicit unit, integration, live, browser, and provider-write lanes with 
 `spec.md`, `plan.md`, and `validation.md` are created during feature execution.
 
 ## Handoff
-- Current status: Briefed.
-- Next owner: Feature Implementer after F-01.
-- Next action: Create `spec.md` and `plan.md` with exact command names.
-- Required files/evidence: lane tests and environment-redaction evidence.
-- Blockers or open decisions: F-01 baseline SHA.
-
+- Current status: Superseded, not accepted; blocked validation is unchanged.
+- Next owner: None; F-08 owns the replacement architecture.
+- Next action: Do not reopen the denylist implementation.
+- Required files/evidence: Existing F-02 spec, plan, and validation as history.
+- Blockers or open decisions: None.

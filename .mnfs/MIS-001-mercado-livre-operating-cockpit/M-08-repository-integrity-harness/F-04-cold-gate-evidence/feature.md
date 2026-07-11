@@ -3,52 +3,52 @@
 ```yaml
 id: F-04
 type: feature-brief
-status: briefed
+status: superseded
 owner: Mission Strategist
 parent: M-08
 created: 2026-07-10
-updated: 2026-07-10
+updated: 2026-07-11
 validation_level: QA-3
 lifecycle_scope: feature
 ```
 
 ## Mission
+
 MIS-001 Mercado Livre Operating Cockpit.
 
 ## Milestone
-M-08 Repository Integrity and Deterministic Harness.
+
+M-08 Repository Integrity Harness.
 
 ## Brief
-Aggregate deterministic Go, JS, build, static, boundary, and integration checks into one cold gate with a redacted evidence manifest.
 
-## Inputs
-- F-02 command taxonomy, F-03 ephemeral integration lane, active Go/npm workspaces, architecture boundary rules.
+Historical experiment that attempted to prove a candidate through a detached
+local clone, empty caches, dependency provisioning, Docker image preparation,
+and two identical runs.
 
-## Expected Output
-- One cold-gate command shared by local and future CI.
-- Run-ID manifest with SHA, branch, dirty state, tools, commands, targets, exit codes, and artifact paths.
+## Supersession Decision
+
+The experiment is not accepted and is no longer a V1 requirement. It repeatedly
+blocked before product validation on host-specific Git/sandbox behavior while
+the accepted unit environment and ephemeral PostgreSQL lanes already protected
+the meaningful safety boundaries. The operator explicitly rejected local
+clean-machine simulation as contrary to the harness objective.
+
+Its spec, plan, validation, commits, and ignored run artifacts remain historical
+evidence. They must not be rewritten to imply success. F-10 removes active
+cold-only code and preserves reusable evidence/redaction primitives.
 
 ## Constraints
-- Live Oracle/provider/browser evidence is separate and never required for deterministic CI.
-- Gate cannot skip an active workspace silently.
-- Raw logs stay ignored; MNFS stores summaries and paths.
 
-## Negative Scenarios
-- Dirty or wrong SHA when clean required: fail preflight.
-- Unknown target type or secret-like output: fail evidence validation.
-- One lane fails: aggregate result fails while preserving other lane evidence.
-
-## Validation Expectations
-- Two runs from same SHA produce same command inventory and result classification.
-- Manifest differentiates fake, ephemeral PostgreSQL, live, and browser evidence.
-
-## Execution Artifact Rules
-`spec.md`, `plan.md`, and `validation.md` are created during feature execution.
+- Do not resume, repair, retry, or accept the cold pair.
+- Do not delete historical evidence or hide the blocked result.
+- No future criterion may depend on cold clone, clean caches, or local dependency reprovisioning.
 
 ## Handoff
-- Current status: Briefed.
-- Next owner: Feature Implementer after F-02/F-03.
-- Next action: Create `spec.md` and `plan.md` for gate and manifest schema.
-- Required files/evidence: two cold-run manifests and boundary checks.
-- Blockers or open decisions: F-02/F-03 accepted interfaces.
+
+- Current status: Superseded, not passed.
+- Next owner: F-10 Feature Implementer.
+- Next action: Retire active cold-only surfaces and introduce the impact gate.
+- Required files/evidence: Existing F-04 artifacts plus F-10 cutover validation.
+- Blockers or open decisions: None; cold diagnosis is closed.
 

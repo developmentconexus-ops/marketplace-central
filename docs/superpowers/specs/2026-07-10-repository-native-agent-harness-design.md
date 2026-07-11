@@ -1,425 +1,268 @@
-# Repository-Native Agent Harness Design
+# Repository-Native Development Harness — Pragmatic V1
 
 ```yaml
-status: approved_transition_design
+status: approved_replan_v2
 owner: Portfolio Orchestrator
 approved_by: operator
-approved_on: 2026-07-10
-transitions_from: docs/superpowers/specs/2026-07-10-codex-portfolio-orchestration-design.md
-supersedes_on: M-08 knowledge-authority cutover acceptance
+approved_on: 2026-07-11
+supersedes: cold-clone and clean-machine requirements from the 2026-07-10 design
+research: .mnfs/MIS-001-mercado-livre-operating-cockpit/research/R-08-codex-development-harness.md
 ```
 
 ## Objective
 
-Build a repository-native development control plane that turns a Codex `/goal`
-objective into bounded, restartable, evidence-backed engineering work. The
-harness must maximize autonomy, implementation quality, speed, and token
-efficiency without sacrificing Marketplace Central architecture, safety, or
-live-evidence honesty.
+Turn a Codex goal into long-running, restartable, high-quality engineering work
+inside Marketplace Central. The harness must give each agent the smallest
+sufficient repository context, enforce project architecture and safety, route
+work to the right task or subagent, validate in proportion to risk, and persist
+enough state that another session can resume without hidden chat history.
 
-The harness is part of the repository's engineering platform. It is not a set
-of prompts and it is not a second application architecture.
+The harness accelerates product development. It is not a clean-machine
+simulator, a virtual machine, a second CI system, or a generic multi-agent
+platform.
 
-## Design Principles
+## Product Outcome
 
-1. **One fact, one owner.** Status, contracts, runtime configuration, and
-   architecture rules must not have competing writable sources.
-2. **Context is compiled, not remembered.** Workers receive only goal-relevant
-   facts selected from canonical sources and current code.
-3. **Deterministic controls precede model judgment.** Scripts and tests enforce
-   objective rules; agents handle ambiguity, design, and implementation.
-4. **Risk determines ceremony.** Review depth, model choice, serial execution,
-   and live evidence scale with blast radius.
-5. **Outcome beats transcript.** Commits, diffs, tests, target-labelled
-   evidence, and runtime state prove completion. Conversation history does not.
-6. **Global maximum with YAGNI.** Remove wrong legacy surfaces and redundant
-   abstractions, but do not build a generic orchestration product before this
-   repository proves the need.
+An operator can give the portfolio task a goal. The task reconciles it with
+MNFS, compiles an exact context pack, opens or resumes the appropriate milestone
+task, delegates bounded feature work, monitors and steers it, runs the required
+gates, requests real QA only when the feature needs it, and returns accepted
+commits plus durable evidence. Subsequent sessions resume from repository
+artifacts rather than rediscovering the codebase.
+
+## Principles
+
+1. **Context is compiled, not accumulated.** Objective, interfaces, invariants,
+   paths, commands, and stop conditions are selected from canonical sources.
+2. **One coherent outcome per visible task.** Portfolio and milestone tasks keep
+   decisions; feature exploration, implementation, tests, and review use bounded
+   subagents.
+3. **The repository is memory.** MNFS owns execution state, Git owns code state,
+   governance owns machine facts, and validation artifacts own evidence.
+4. **Global maximum before implementation.** Planning identifies the owning
+   domain, interfaces, consumers, source of truth, wrong legacy surface, and
+   smallest durable abstraction before code changes begin.
+5. **Risk determines ceremony.** Low-risk work flows quickly; money, tenant,
+   credentials, external systems, provider writes, and irreversible actions get
+   stronger gates and real evidence.
+6. **Parallelize information, serialize collisions.** Read-heavy investigation,
+   tests, and reviews may run in parallel. A shared seam has one writer.
+7. **Native Codex first.** Use tasks, subagents, skills, goals, worktrees, browser,
+   and thread steering already supplied by Codex. Do not build an app-server
+   client for V1.
+8. **No ceremonial proof.** A gate must catch a real failure mode or it does not
+   block product development.
 
 ## Explicit Non-Goals
 
-- Do not add AutoGen or another multi-agent runtime.
-- Do not replace Codex's native task, subagent, worktree, goal, skill, or hook
-  capabilities.
-- Do not make natural-language specs the only truth when code, OpenAPI, or
-  runtime evidence owns the behavior.
-- Do not create a knowledge graph, vector database, or RAG service.
-- Do not permit parallel writes to shared seams.
-- Do not preserve `.brain` as a compatibility layer.
-- Do not claim mocks, fakes, compile-only checks, or preflight output as live
-  integration evidence.
+- No cold clone of the current repository.
+- No dependency-cache purge or repeated Go/npm/Docker provisioning per feature.
+- No local simulation of a new machine or CI runner.
+- No AutoGen, vector database, knowledge graph, or custom agent runtime.
+- No task per micro-step and no recursive agent swarm.
+- No parallel writers in one checkout or shared seam.
+- No fake, mock, compile-only, or preflight evidence promoted to live.
+- No automatic provider write without the existing actor, policy, linkage,
+  idempotency, timestamp, and audit requirements.
 
-## Source-of-Truth Topology
+## Four-Plane Architecture
 
-### Durable layers
+### 1. Knowledge plane
 
-| Layer | Canonical owner | Purpose |
+Canonical inputs remain:
+
+- `AGENTS.md` and rare nested `AGENTS.md` files for durable operating rules;
+- `ARCHITECTURE.md` and ADRs for rationale and frozen decisions;
+- `contracts/governance/` for modules, invariants, runtime keys, lanes, shared
+  seams, and knowledge routes;
+- OpenAPI plus `packages/sdk-runtime` for HTTP contract truth;
+- `.mnfs/` for mission, milestone, feature, status, and evidence ownership;
+- code and tests for executable truth.
+
+The context compiler resolves a feature's owning module and change concerns,
+then emits selectors rather than copying entire documents. A selector names a
+path, business reason, and either a Markdown heading, symbol, interface file, or
+full-contract read. Source hashes and base SHA make stale packs fail closed.
+
+The total harness-requested initial read set—short bootstrap plus pack
+selectors—targets at most 2,000 estimated tokens. F-05 shortens the root
+bootstrap and routes detailed workflow through the repo skill. An L2/L3
+overflow is allowed only when the pack records why each additional source is required.
+Required code reads are ordered and bounded. Broad search is allowed when a
+named uncertainty or missing route blocks planning; the discovered stable route
+is then added to the registry instead of rediscovered forever.
+
+### 2. Control plane
+
+- One persistent portfolio task owns the active goal, dependency order,
+  milestone dispatch, integration order, and final mission audit.
+- One visible Codex task owns each active long-running milestone.
+- A milestone task delegates bounded work to depth-one subagents and sends
+  checkpoints back to the portfolio task.
+- Thread tools start, read, steer, interrupt, title, pin, and archive tasks when
+  available. Repository scripts never treat thread history as canonical state.
+- A repo skill under `.agents/skills/mpc-goal-harness/` implements the workflow
+  through progressive disclosure.
+- V1 uses Codex's built-in depth-one subagents with bounded prompts. Project
+  custom agents are deferred until dogfood proves a repeated role-specific gap.
+
+The app-server API is documented but the local CLI marks it experimental. V1
+does not depend on it. `codex exec --json --output-schema` is the deterministic
+fallback for a fresh bounded session or future CI.
+
+### 3. Execution plane
+
+Agents edit the normal checkout or a native Codex worktree. Worktrees exist for
+parallel Git ownership, not machine isolation. They reuse the normal developer
+toolchain and caches. Only genuinely mutable runtime identities—such as an
+active Compose project, port, or database—need distinct namespaces when two
+runtimes actually run concurrently.
+
+The stable harness entrypoint routes commands but does not contain business
+logic. Focused modules own policy, context, state/leases, execution, environment,
+PostgreSQL lifecycle, and evidence.
+
+### 4. Validation and QA plane
+
+Every feature declares the proof required by each acceptance criterion. The
+risk router selects the minimum sufficient gate:
+
+| Risk | Typical work | Execution and review |
 | --- | --- | --- |
-| Repository policy | `AGENTS.md` plus nested `AGENTS.md` files | Stable rules, truth order, commands, safety |
-| Architecture | `ARCHITECTURE.md`, `contracts/governance/modules.json`, `contracts/governance/invariants.json`, and ADRs under `docs/architecture/decisions/` | Narrative rationale plus machine-owned module boundaries and invariants |
-| HTTP contract | `contracts/api/marketplace-central.openapi.yaml` | API behavior; SDK changes remain atomic with it |
-| Governance registry | `contracts/governance/*.json` | Machine-readable modules, invariants, runtime configuration, lanes, shared seams |
-| Human operating knowledge | `wiki/` | Explanations and runbooks rendered from or linked to canonical contracts |
-| Execution ledger | `.mnfs/` | Mission, milestone, feature status, blockers, accepted SHA, and evidence paths |
-| Executable truth | code, tests, harness output, live validation artifacts | Actual behavior and completion proof |
+| L0 | docs, generated or mechanical change | deterministic check + self-review |
+| L1 | one module, no shared seam or live target | TDD + impacted tests + one combined final review |
+| L2 | cross-module, API/SDK, migration, composition | contract gate before build + one fixed-commit final review |
+| L3 | money, tenant, credentials, real DB/provider, external write | serial owner + independent SPEC/SAFETY and QUALITY once + real QA where applicable |
 
-### `.brain` retirement
+The impact gate runs in the current checkout with existing dependencies. It
+executes governance, formatting, boundary checks, and task-declared tests/builds.
+It does not install dependencies, pull images, or invent a full-suite requirement
+for every feature.
 
-`.brain` is removed after a migration audit. Current, unique architecture
-decisions move to `docs/architecture/decisions/`; current execution state moves
-to `.mnfs`; current human guidance moves to the wiki. Historical plans remain
-available through Git history and are not copied forward merely for
-compatibility.
+Target labels stay explicit: `fake`, `ephemeral-postgres`, `live-oracle`,
+`live-provider`, `browser`, and `provider-write`.
 
-`AGENTS.md`, handoffs, plans, and runbooks must stop instructing workers to
-read or update `.brain`. Historical documents may mention it only when clearly
-labelled as superseded history.
-
-## Governance Registry
-
-Use JSON because PowerShell can read it natively, JSON Schema can validate it,
-and no new runtime dependency is required. Knowledge-authority cutover is
-atomic: an ADR and `AGENTS.md` truth order assign each registry its facts;
-duplicated status, configuration lists, and invariant definitions are removed
-from narrative documents in the same slice. Semantic drift checks then enforce
-the declared one-way ownership instead of mediating two writable truths.
-
-### `contracts/governance/modules.json`
-
-Owns each active module's owner, lifecycle status, allowed dependencies,
-ports, source systems, owned state, external side effects, contract paths, and
-validation commands. `ARCHITECTURE.md` keeps rationale and topology and links
-to this registry instead of repeating volatile status. It distinguishes:
-
-- `owned_state`: PostgreSQL state owned by Marketplace Central;
-- `external_fact_source`: Oracle or marketplace facts read through ports;
-- `external_side_effect`: provider or customer-facing writes.
-
-### `contracts/governance/runtime-config.json`
-
-Owns canonical environment keys, legacy aliases, owner, sensitivity class,
-allowed execution lanes, approved readers, and removal status. Runtime code
-must converge on typed configuration owners; new direct environment reads
-outside approved configuration boundaries fail governance validation. Wiki
-runbooks link to this contract and do not maintain a second key list.
-
-### `contracts/governance/execution-lanes.json`
-
-Defines unit, integration, live, browser, and provider-write commands,
-permissions, required inputs, network policy, database policy, evidence type,
-and side-effect gates.
-
-Unit execution uses a newly constructed child-process environment with a small
-safe allowlist. It never relies on a growing denylist of known external keys.
-
-### `contracts/governance/invariants.json`
-
-Owns stable machine-verifiable invariant IDs with scope, severity, rationale,
-and deterministic verifier. `AGENTS.md` retains short human operating rules and
-links to these IDs rather than duplicating their full definitions. Initial
-invariants include module boundaries,
-tenant scope, OpenAPI/SDK atomicity, explicit unknown data quality, provider
-write safety, evidence honesty, and `pgxpool.Pool` ownership.
-
-### `contracts/governance/shared-seams.json`
-
-Defines paths that require a single active writer: OpenAPI/SDK, migration
-sequence, composition root, dependency locks, architecture/ADRs, and provider
-capability contracts.
-
-Every registry file has a JSON Schema under
-`contracts/governance/schemas/`. Schema validation is necessary but not
-sufficient; semantic checkers compare registry declarations with the current
-repository.
-
-## Context Compiler
-
-The context compiler is a deterministic PowerShell module invoked through the
-versioned root harness. It accepts an MNFS feature path and base SHA, reads the
-governance registry, inspects only relevant repository paths, and emits an
-ignored run artifact.
-
-### Input
-
-- active goal-derived MNFS mission, milestone, or feature;
-- base commit SHA;
-- requested changed paths or owning module;
-- risk classification;
-- optional explicit external targets for validation.
-
-### Output contract
-
-`scripts/.runs/<run-id>/context-pack.json` contains:
-
-- objective and observable done state;
-- base SHA and working environment;
-- owning module and risk level;
-- ordered required reads;
-- applicable invariant IDs;
-- allowed and forbidden paths;
-- shared-seam leases;
-- allowed and forbidden side effects;
-- acceptance criterion to test/evidence mapping;
-- exact validation commands and target labels;
-- model/reasoning recommendation;
-- stop conditions, retry budget, and handoff schema;
-- source paths and content hashes used to compile the pack.
-
-The pack targets at most 2,000 model-input tokens before a worker opens its
-required sources. Large documents are linked, not copied. A stale source hash,
-changed base SHA, or missing criterion mapping invalidates the pack before
-implementation.
-
-## `/goal` Lifecycle
-
-Codex owns the active thread goal. Repository scripts must not depend on an
-undocumented local goal store.
-
-The repo skill bridges the surfaces:
-
-1. Read the active goal already supplied to the Codex task.
-2. Classify it as portfolio, milestone, feature, or bounded task.
-3. Reconcile the objective into the appropriate `.mnfs` artifact.
-4. Run eligibility and risk classification.
-5. Invoke the context compiler for the active feature or task.
-6. Dispatch bounded workers using the compiled pack.
-7. Persist status and evidence in `.mnfs`, not in conversation memory.
-8. Audit the original goal requirement-by-requirement before completion.
-
-The skill orchestrates; manifests and scripts own deterministic behavior.
-
-## Orchestration Model
-
-Use a risk-adaptive hybrid rather than a permanent three-level hierarchy.
-
-- The portfolio task is the persistent control plane.
-- A milestone is always a durable MNFS boundary, but needs a resident Codex
-  task only for complex, long-running, or independently owned execution.
-- Feature workers receive fresh bounded context and no portfolio transcript.
-- Read-heavy research, test analysis, and review may run in parallel.
-- Write-heavy work runs in parallel only from the same accepted base SHA, in
-  separate worktrees, with disjoint paths and no shared seam.
-
-### State machine
+## Long-Running State Machine
 
 ```text
-BACKLOG
-  -> ELIGIBILITY_GATE
-  -> RISK_CLASSIFIED
-  -> CONTRACT_FROZEN
+GOAL_CAPTURED
+  -> MISSION_RECONCILED
+  -> MILESTONE_SELECTED
+  -> FEATURE_ELIGIBLE
   -> CONTEXT_COMPILED
-  -> READY_SERIAL | READY_PARALLEL
+  -> GLOBAL_MAXIMUM_PLAN_GATE
+  -> LEASED
   -> IMPLEMENTING
-  -> QUICK_VALIDATED
-  -> REVIEW_GATE
+  -> IMPACT_VALIDATED
+  -> REVIEWED
        -> ACCEPTED
-       -> CORRECTION_BATCH
-            -> FOCUSED_REVALIDATION
-                 -> ACCEPTED
-                 -> REPLAN_OR_BLOCK
-  -> SEAM_INTEGRATION_QUEUE
+       -> ONE_CORRECTION_BATCH -> FOCUSED_REVALIDATION -> ACCEPTED | REPLAN_OR_BLOCK
   -> INTEGRATED
-  -> COLD_GATE
+  -> GOAL_AUDITED
   -> DONE
 ```
 
-No new micro-correction loop follows `FOCUSED_REVALIDATION`. A new material
-finding means contract/context failure and returns to `REPLAN_OR_BLOCK`.
+Each transition is reconstructible from a harness checkpoint ID, base SHA,
+feature path, allowed paths, shared seams, commands, evidence paths, commit SHA,
+and next action. Native task/thread IDs are optional correlation metadata, not
+canonical state. A stale lease never deletes, resets, restores, or overwrites work.
 
-## Risk and Model Routing
+## Global-Maximum Plan Gate
 
-| Level | Typical scope | Execution | Review | Default model |
-| --- | --- | --- | --- | --- |
-| L0 | docs, generated files, mechanical check | parallel when paths are disjoint | deterministic checks; sampled owner review | Luna/medium |
-| L1 | local behavior inside one module | bounded worker | one combined final review | Luna/high |
-| L2 | cross-module, API/SDK, migration, composition | one writer per seam | contract gate plus final owner review | Terra/high or Luna/high when fully bounded |
-| L3 | credentials, real DB/provider, money, tenant, external write, recovery | serial | independent safety/spec review plus live evidence where applicable | Terra/high |
+Before implementation, the planner must answer:
 
-The portfolio orchestrator remains Terra/high. Ultra is never automatic. Sol
-or higher reasoning is an explicit escalation for unresolved architecture, not
-a default worker setting. These selections remain advisory until the Codex
-capability spike proves the installed host accepts the project agent schema,
-model aliases, reasoning values, and sandbox declarations.
+- Which module owns the business rule and state?
+- Which ports/interfaces isolate external systems and other modules?
+- Which existing consumers and tests constrain the change?
+- Which canonical source owns each fact?
+- Is a legacy path being extended when it should be removed or bypassed?
+- What provider-neutral abstraction is justified by a current consumer?
+- What smaller abstraction would be a patch or duplicate an existing policy?
+- Which unknown states must remain explicit instead of becoming zero/default?
+- Which contract, migration, SDK, UI, runtime, and QA surfaces are actually
+  affected?
 
-With four concurrency slots, one remains available for review or recovery.
-The control plane must not fill every slot with writers.
+L2/L3 work receives a bounded architecture investigation before the plan is
+frozen. Model review cannot override deterministic boundary failures.
 
-## Review Policy
+## Token-Efficiency Contract
 
-- L0: no mandatory independent reviewer.
-- L1: one combined correctness/maintainability reviewer after quick validation.
-- L2: contract completeness checked before implementation; one final review on
-  a fixed commit.
-- L3: independent spec/safety and quality reviews may run in parallel, once,
-  against the same fixed commit.
-- Findings are consolidated into `spec_gap`, `implementation_defect`, or
-  `evidence_gap` before returning to the builder.
-- One correction batch and one focused revalidation are allowed.
-- A documentation-only correction does not reopen code quality review.
-- An evidence gap does not authorize production-code churn unless it proves a
-  behavior defect.
+- Harness-requested initial-context target, including bootstrap and selectors:
+  at most 2,000 estimated tokens; a necessary L2/L3 overflow names each
+  additional source and its `overflow_reason`.
+- Main task retains decisions and summaries, not raw logs or broad scans.
+- Subagent prompts include exact objective, read set, allowed/forbidden paths,
+  output schema, and stop conditions.
+- Subagent returns are concise and file-referenced.
+- Only the active feature is loaded; prior history is linked by artifact path.
+- New stable knowledge discovered during work updates a canonical route or
+  runbook in the same accepted slice when ownership is clear.
+- Handoffs contain commit, changed paths, commands, evidence target, blockers,
+  and next action—never a transcript replay.
 
-## Work and Shared-Seam Leases
+Prospective metrics are pack size, required-read count, route misses, unrelated
+reads, elapsed time, first-pass review result, correction batches, and
+target-labelled evidence. Actual model-token telemetry is recorded only when
+the active Codex surface exposes it reliably.
 
-Every dispatched writer records:
+## Parallelism and Leases
 
-- owner task/thread;
-- base SHA;
-- branch/worktree;
-- allowed paths;
-- shared seams;
-- dependent tasks;
-- lease status and expiry/recovery action.
+Read-only investigations, independent tests, and independent final reviews can
+run in parallel. Write work can run in parallel only when it starts from the
+same accepted base, uses separate worktrees, has disjoint allowed paths, and
+owns no common shared seam. OpenAPI/SDK, migrations, composition root,
+dependency locks, architecture/ADRs, and provider capability contracts stay
+single-writer.
 
-Leases live in ignored run state during execution and their accepted outcome is
-recorded in the MNFS feature validation artifact. A stale lease never permits
-automatic deletion or reset of a worktree.
+One concurrency slot remains available for orchestration, review, or recovery.
+Depth stays one unless the operator explicitly changes it.
 
-## Harness Components
+## Codex Surface Roles
 
-Keep `scripts/harness.ps1` as the stable entrypoint and split behavior into
-focused modules under `scripts/harness/`:
+- `AGENTS.md`: short durable rules and truth routing.
+- Repo skill: reusable goal-to-MNFS orchestration method.
+- Custom agents: optional follow-up only after a repeated dogfood gap.
+- Hooks: optional fast advisory/preflight checks only after a deterministic
+  script exists; versioned scripts own mandatory enforcement.
+- Tasks/threads: visible milestone control and steering.
+- Worktrees/handoff: parallel Git ownership and foreground/background movement.
+- Browser: UI QA against the running product.
+- `codex exec`: fresh-session and CI-style structured fallback.
+- Automations: heartbeat or maintenance only after the workflow is stable; no
+  acceptance decision or provider write.
 
-- `Policy.psm1`: load and validate governance contracts;
-- `Context.psm1`: compile and verify context packs;
-- `Environment.psm1`: build lane-specific child environments;
-- `Execution.psm1`: invoke lanes and capture subprocess results;
-- `Evidence.psm1`: write redacted trace and outcome manifests;
-- `State.psm1`: eligibility, leases, resume, and recovery state.
+## V1 Implementation Sequence
 
-Root npm aliases remain thin delegates to the PowerShell entrypoint. Business
-rules remain in Go modules, never in the harness.
-
-## Codex Surfaces
-
-### Nested repository instructions
-
-Add short `AGENTS.md` files only where rules differ materially:
-
-- `apps/server_core/AGENTS.md`;
-- `apps/web/AGENTS.md`;
-- `contracts/AGENTS.md`;
-- module-local instructions only for high-risk ownership boundaries.
-
-### Custom agents
-
-Project-scoped `.codex/agents/*.toml` definitions provide narrow roles:
-
-- explorer: read-only, Luna/medium;
-- feature-worker: workspace-write, Luna/high;
-- cross-module-worker: workspace-write, Terra/high;
-- reviewer: read-only, Luna/high;
-- live-validator: least privilege, Terra/high, no provider write by default.
-
-Depth remains one. Workers do not recursively fan out.
-
-### Hooks
-
-Project hooks enforce fast deterministic checks such as context-pack presence,
-allowed-path boundaries, secret scanning, and stop-time evidence completeness.
-Hooks complement rather than replace sandboxing and final validation. A fresh
-task capability spike must prove hook discovery, supported lifecycle events,
-Windows command resolution, exit semantics, and JSON output. Until that proof
-passes, mandatory controls remain in the versioned harness and final gate.
-
-### Repo skill
-
-`.agents/skills/mpc-goal-harness/` contains one focused workflow skill with
-progressive references and scripts. It activates for Marketplace Central goal,
-mission, milestone, feature, orchestration, and harness requests. It does not
-duplicate architecture or registry content.
-
-## Evidence Model
-
-Separate trace from outcome:
-
-- trace: tool calls, commands, exit codes, timings, and decisions, stored as
-  ignored redacted JSONL;
-- outcome: base/commit SHA, changed paths, tests, target-labelled evidence,
-  remaining risks, and acceptance, persisted in MNFS validation artifacts.
-
-Supported target labels remain explicit: `fake`, `ephemeral-postgres`,
-`live-oracle`, `live-provider`, and `browser`. Provider-write evidence adds
-actor, idempotency record, resolved link, policy, source timestamp, before/after
-values, and provider response without secret or buyer PII.
-
-## Harness Evaluation
-
-The harness ships with an eval corpus built from real repository failures.
-Each case runs in an isolated fixture and has deterministic graders where
-possible.
-
-Initial suites:
-
-1. instruction and context selection;
-2. architecture/module boundary safety;
-3. runtime environment and side-effect isolation;
-4. contract atomicity and tenant safety;
-5. validation/evidence honesty;
-6. worktree/shared-seam coordination;
-7. recovery and resume;
-8. token and latency efficiency.
-
-Initial regression cases include missed external environment aliases,
-OpenAPI-without-SDK changes, forbidden cross-module imports, unknown-to-zero,
-mock-as-live claims, unsafe provider writes, migration conflicts, stale context
-packs, writes outside allowed paths, and competing shared-seam writers.
-
-M08 completion requires the deterministic eval corpus to pass and emit timing,
-command, and target-classification metrics. Comparative efficiency is a
-prospective operational KPI, not an M08 pass condition, because F01/F02 did not
-capture a reproducible model-input-token baseline.
-
-After M08, measure at least six representative features:
-
-- at least 20% lower median lead time and model-input tokens versus the M08
-  F01/F02 baseline;
-- no more than one correction batch per accepted feature;
-- higher first-pass acceptance without weaker cold-gate results;
-- zero unapproved provider writes, worktree loss, secret/PII leakage, or
-  evidence-class inflation;
-- no status divergence between `.mnfs`, generated views, and accepted commits.
-
-## Migration Strategy
-
-1. Replan M08 before implementation: add feature briefs and validation criteria
-   mapping every new completion requirement; record F02 as blocked baseline
-   superseded by the allowlist architecture rather than spending another
-   denylist correction.
-2. Audit current truth, create the new ADR location, migrate only current unique
-   decisions, atomically update `AGENTS.md`, `ARCHITECTURE.md`, wiki, MNFS, and
-   the active execution guide, then delete `.brain`. This accepts the
-   knowledge-authority cutover and activates this design as successor.
-3. Add governance schemas and registries under the newly accepted truth order;
-   remove duplicated facts from narrative owners in the same slice.
-4. Add semantic drift checks and context compilation.
-5. Refactor the unit lane to a child-process allowlist and modularize the
-   harness entrypoint.
-6. Add MNFS state/lease/evidence integration.
-7. Run a Codex capability spike, then add only supported repo-scoped agents,
-   hooks, nested instructions, and goal skill. Unsupported model routing stays
-   advisory; unsupported enforcement remains in scripts.
-8. Complete ephemeral PostgreSQL, cold-gate, and runtime namespace work; then
-   run the eval corpus and dogfood the harness on remaining M08 work.
-9. Run the full cold gate in a clean worktree and record M08 milestone QA.
-
-Each step is independently testable and ends in an intentional commit. A later
-step may not claim success from an earlier step's fake or preflight evidence.
+1. Preserve F-04 evidence and mark its cold design superseded.
+2. Remove the cold command, cold-provision lane, snapshot/provisioning code, and
+   cold-only tests while retaining reusable redaction/outcome primitives.
+3. Add an impact gate whose inventory comes from the active context pack.
+4. Add knowledge routes and context selectors for module interfaces, contracts,
+   consumers, and validation commands.
+5. Add ignored state, leases, resume/recovery, compact handoffs, and the repo
+   goal skill using built-in subagents.
+6. Add custom agents, nested guidance, hooks, or automation only if dogfood
+   produces a concrete repeated gap and an owner-approved follow-up.
+7. Dogfood one milestone task and bounded feature flow, including steering,
+   review, PostgreSQL or browser/live QA only when its contract requires it.
+8. Run deterministic evals built from real repository failures and close M-08.
 
 ## Completion Contract
 
-The harness is complete only when:
+M-08 is complete when:
 
-- `/goal` can be reconciled into MNFS and produce a valid context pack;
-- risk classification selects bounded execution/review policy;
-- unit, integration, live, browser, and provider-write lanes enforce their
-  declared boundaries;
-- registry/schema/code drift checks pass;
-- allowed-path and shared-seam conflicts fail closed;
-- trace and outcome evidence are redacted and correctly labelled;
-- supported custom agents, hooks, and repo skill operate from a fresh Codex
-  task, while unsupported surfaces have an explicit script-based fallback;
-- eval corpus passes with recorded deterministic timing and outcome metrics;
-- a clean worktree reproduces the cold gate;
-- `.brain` and active references to it are removed;
-- architecture, wiki, MNFS, OpenAPI/SDK, code, and runtime evidence agree.
+- a goal routes to the correct MNFS milestone and feature;
+- a hash-current pack names exact context, paths, seams, commands, risk, and
+  stop conditions; the total harness-requested bootstrap-plus-selector set
+  meets the 2,000-token target or carries justified L2/L3 overflow;
+- a visible milestone task can dispatch, monitor, steer, and resume bounded
+  subagents from repository artifacts;
+- a competing seam or out-of-scope write fails before acceptance;
+- the impact gate selects and runs only required deterministic checks;
+- database, Oracle, provider, browser, and provider-write evidence remain
+  distinct and real targets are exercised only when required;
+- a fresh task completes the dogfood flow without portfolio transcript;
+- the eval corpus rejects known architecture, evidence, and safety failures;
+- no active command or criterion depends on cold clone, clean caches, or local
+  clean-machine simulation;
+- architecture, governance, wiki, MNFS, code, and accepted evidence agree.

@@ -7,7 +7,7 @@ status: in_progress
 owner: Mission Strategist
 parent: MIS-001
 created: 2026-07-10
-updated: 2026-07-10
+updated: 2026-07-11
 validation_level: QA-3
 lifecycle_scope: milestone
 ```
@@ -18,95 +18,98 @@ MIS-001 Mercado Livre Operating Cockpit.
 
 ## Outcome
 
-Marketplace Central has a reconciled baseline and a repository-native
-development control plane that compiles bounded context from canonical truth,
-routes work by risk, isolates deterministic and live execution, and produces
-evidence-backed `/goal` completion. A clean validated SHA can seed independent
-Codex worktrees without hidden chat history or mutable runtime collisions.
+Marketplace Central has a repository-native development control plane that
+turns a goal into bounded, restartable, architecture-aware implementation. It
+routes exact context, milestone tasks, subagents, leases, tests, reviews, and
+real QA without relying on hidden transcript history or VM-like local
+reproducibility gates.
 
 ## Why This Milestone Exists
 
-F-01 recovered the former dirty checkout into intentional commits. F-02 proved
-the command taxonomy but also proved that hand-maintained environment denylists
-and post-build requirement discovery are not durable. Execution truth remains
-duplicated across `.brain`, `.mnfs`, architecture, and wiki. Parallel work is
-unsafe until knowledge authority, context compilation, runtime isolation, and
-shared-seam ownership are enforced globally.
+Long-running Codex work previously depended on broad rediscovery, duplicated
+knowledge, unbounded review loops, and conversation memory. Accepted M-08 work
+has already established a clean baseline, canonical knowledge, governance,
+hash-current context packs, safe child processes, and ephemeral PostgreSQL.
+
+The F-04 cold-clone experiment demonstrated that simulating a clean machine
+inside the Windows checkout costs more than it protects and blocks the product
+on host-specific Git behavior. The operator explicitly superseded that model.
+The remaining milestone builds the actual development workflow: context,
+orchestration, state, risk-selected gates, QA, and dogfood.
 
 ## Features
 
 | ID | Name | Brief |
 | --- | --- | --- |
-| F-01 | Baseline recovery and truth reconciliation | Classify every dirty path, supersede stale artifacts, and create intentional commits without reset, revert, stash, or loss. |
-| F-02 | Hermetic execution lanes baseline | Preserve the blocked denylist-based spike as evidence; F-08 replaces its incomplete isolation architecture. |
-| F-03 | Ephemeral PostgreSQL and canonical migrations | Give each integration run an isolated database, canonical migrations/seeds, cleanup, and guards against dev/live DB mutation. |
-| F-04 | Deterministic cold gate and evidence manifest | Aggregate Go/JS/build/boundary checks and record target-aware redacted evidence by run ID. |
-| F-05 | Goal, worktree, and Codex lifecycle | Prove supported project agents/hooks, parameterize runtime identity, and bridge `/goal` through a repo skill without hidden state. |
-| F-06 | Knowledge authority cutover | Rehome current ADRs, establish one truth owner per fact, update active guidance, and remove `.brain` without a compatibility layer. |
-| F-07 | Governance registry and context compiler | Define validated machine contracts and compile hash-bound, criterion-complete context packs from MNFS and repository truth. |
-| F-08 | Hermetic child environment and harness modules | Replace F-02 denylist isolation with fresh allowlisted child environments and a typed modular runner while preserving command compatibility. |
-| F-09 | Harness eval and dogfood closure | Run deterministic regression cases, fresh-task/worktree proof, cold gate, and milestone evidence before portfolio reuse. |
+| F-01 | Baseline recovery and truth reconciliation | Accepted clean, intentional baseline without losing user work. |
+| F-02 | Hermetic execution lanes baseline | Superseded denylist spike retained as evidence; F-08 owns the accepted process model. |
+| F-03 | Ephemeral PostgreSQL and canonical migrations | Accepted disposable integration database, canonical migrations, cleanup, and dev invariance. |
+| F-04 | Cold gate experiment | Superseded blocked experiment; evidence is retained and no acceptance depends on it. |
+| F-06 | Knowledge authority cutover | Accepted one-owner truth topology and `.brain` retirement. |
+| F-07 | Governance registry and context compiler | Accepted schemas, drift checks, hash-current context packs, paths, seams, and risk metadata. |
+| F-08 | Safe child runtime and harness modules | Accepted allowlisted environments, subprocess execution, redaction, and stable command surface. |
+| F-10 | Pragmatic harness cutover | Remove cold-only runtime and replace it with a current-checkout, task-declared impact/evidence gate. |
+| F-05 | Goal and orchestration control plane | Add knowledge routes, state/leases/resume, goal skill, native task workflow, bounded built-in subagents, and optional worktree dispatch. |
+| F-09 | Harness eval and dogfood closure | Prove context efficiency, deterministic guards, fresh-task orchestration, steering, review, QA routing, and artifact-only resume. |
 
 ## Dependencies
 
-- Existing dirty checkout on `main`; its contents are evidence, not disposable
-  state.
-- Passed M-01 through M-05 artifacts and blocked M-06 evidence.
-- No parallel implementation worktree may start before F-05 proves accepted
-  isolation; M-08 shared seams remain single-writer.
+- F-01, F-03, F-06, F-07, and F-08 are accepted foundations.
+- F-02 and F-04 are historical superseded experiments and do not gate V1.
+- F-10 precedes F-05 so no new control plane depends on cold-only vocabulary.
+- F-05 precedes F-09.
+- Parallel product milestones require accepted F-05 lease/worktree behavior;
+  read-only planning and research may already run in parallel.
 
 ## Risks
 
-- Accidental loss or mixing of user-owned changes during baseline recovery.
-- A harness-only patch could hide real inventory or contract failures.
-- Live credentials could leak into deterministic tests or evidence.
-- Fixed Compose names/ports could make later worktrees interfere.
-- A registry could become a second writable truth unless authority cutover is
-  atomic.
-- Codex agent/hook/model assumptions may differ on the installed host; scripts
-  remain mandatory fallback until a capability spike passes.
+- Overloading `AGENTS.md` or context packs could recreate context bloat.
+- Automatically opening too many tasks/subagents could increase tokens and
+  coordination cost instead of reducing them.
+- Narrative knowledge routes could drift unless paths and selectors are
+  mechanically validated.
+- Hooks or experimental app-server methods could become accidental hard
+  dependencies.
+- Parallel writers could collide on OpenAPI/SDK, migrations, composition,
+  dependency locks, ADRs, or provider capability contracts.
+- A convenient fake/preflight could be misreported as live QA.
 
 ## Done Means
 
-- Every pre-M-08 dirty path is assigned to an intentional commit or explicitly
-  retained with owner/reason; no reset/revert/stash is used.
-- `git status --short` is empty at the accepted baseline SHA.
-- Unit tests run with no `.env`, network, PostgreSQL, Oracle, or provider access.
-- PostgreSQL integration tests use a generated `mpc_test_*` database and leave
-  the development database unchanged.
-- Live Oracle/provider commands are explicit opt-ins and emit target-labelled,
-  secret-redacted evidence.
-- Cold gate uses the same commands intended for CI and produces a run manifest.
-- A native Codex worktree can start from the accepted SHA with an independent
-  project/port/database namespace and a passing baseline.
-- `.brain` is absent; current ADRs live under `docs/architecture/decisions/`,
-  execution status lives only in `.mnfs`, and active guidance names the new
-  truth order.
-- A valid MNFS feature produces a source-hashed context pack with risk,
-  criteria, paths, side effects, commands, evidence types, and stop conditions;
-  stale or incomplete packs fail closed.
-- Allowed-path and shared-seam conflicts fail before writes; accepted outcomes
-  retain base/commit SHA and target-labelled evidence.
-- A fresh Codex task can use the repo skill to reconcile `/goal`, dispatch a
-  bounded worker, and resume from files without portfolio transcript.
-- Deterministic harness eval cases pass; unsupported Codex surfaces have an
-  explicit script-based fallback rather than an unproved control.
+- A goal is reconciled to one MNFS mission, milestone, and next eligible feature.
+- The total harness-requested initial read set—bootstrap plus pack selectors—
+  targets at most 2,000 estimated tokens and names exact interfaces, paths,
+  seams, criteria, commands, risk, and stop conditions. Necessary L2/L3 overflow
+  is source-justified; stale packs fail.
+- A visible milestone task can dispatch bounded depth-one subagents, receive
+  compact results, steer or interrupt them, and resume from repository state.
+- One writer owns each checkout and shared seam; competing or out-of-scope
+  writes fail before acceptance.
+- L0-L3 risk selects proportional planning, testing, review, and QA without a
+  universal full/cold gate.
+- Unit execution does not inherit credentials; PostgreSQL integration is
+  ephemeral; Oracle/provider/browser/provider-write evidence remains explicit.
+- The old cold command, cold-provision lane, cold-only tests, and cold acceptance
+  criteria are absent from the active harness.
+- Deterministic evals reject known architecture, context, evidence, and safety
+  failures.
+- A fresh task completes one dogfood flow and another session resumes it using
+  MNFS, Git, context pack, and validation artifacts only.
+- Architecture, governance, wiki, MNFS, code, and evidence agree at the accepted SHA.
 
 ## Handoff
 
-- Current status: In progress; F-01, F-03, F-06, F-07, and F-08 are accepted;
-  F-02 remains the superseded blocked baseline.
-- Next owner: Milestone Orchestrator (`gpt-5.6-terra`, reasoning `high`).
-- Next action: Dispatch F-04 deterministic cold gate from the accepted F-03
-  PostgreSQL and F-08 hermetic execution seams.
-- Required files/evidence: F-*/validation.md and M-08/validation-result.md.
-- Blockers or open decisions: No parallel implementation writer until F-05
-  proves worktree isolation; F-02 cannot be accepted by another denylist patch.
+- Current status: Replanned in progress; accepted foundations preserved, cold model superseded.
+- Next owner: Milestone Orchestrator (request `gpt-5.6-terra`/high when the
+  visible-task surface supports it; record the actual capability).
+- Next action: Dispatch F-10 pragmatic harness cutover as the sole writer.
+- Required files/evidence: F-10, F-05, and F-09 execution artifacts plus `validation-result.md`.
+- Blockers or open decisions: None; do not reopen cold-clone diagnosis.
 
 ## Correction Handoff
 
-- QA failure summary: Not applicable during planning.
-- Correction scope: Not applicable.
-- Attempts used/remaining: 0/2.
-- Next artifact: `validation-result.md` after execution.
-- Revalidation evidence required: Criteria M-08-C01 through M-08-C12.
+- QA failure summary: Not applicable; this is an operator-approved scope replan.
+- Correction scope: Not applicable until the next formal milestone gate.
+- Attempts used/remaining: 0/2 after replan.
+- Next artifact: F-10 `spec.md`, `plan.md`, and `validation.md`.
+- Revalidation evidence required: M-08 required criteria excluding superseded C05/C12.
