@@ -43,7 +43,14 @@ evidence_type: ran
 - Command: `rg -n --hidden --glob '!.git/**' --glob '!**/.env*' --glob '!**/secrets/**' '(\.brain[/\\]|Nexus Brain)' AGENTS.md ARCHITECTURE.md wiki docs/superpowers/handoffs/2026-07-09-m06-orders-margin-session-handoff.md .mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/execution-guide.md`
 - Expected: exit `1`, no matches.
 - Actual: exit `1`, no matches; the verification wrapper emitted `NO_ACTIVE_MATCHES` and exited `0`.
-- Ownership: architecture truth is `ARCHITECTURE.md` plus `docs/architecture/decisions/`; human operating knowledge is the wiki; execution truth is `.mnfs/`; `contracts/governance/` remains reserved for F-07.
+- Ownership: architecture truth is `ARCHITECTURE.md` plus `docs/architecture/decisions/`; human operating knowledge is the wiki; execution truth is `.mnfs/`; active guidance reserves `contracts/governance/` for F-07 and explicitly defers its authority until those schemas and registries are accepted.
+
+### Focused review correction
+
+- Evidence type: `ran`
+- Finding: C08 required active guidance to name the reserved machine-governance boundary without promoting it before F-07.
+- Change: added the conditional `contracts/governance/` boundary to the root truth order; no runtime or registry claim was added.
+- Revalidation: the active-reference scan still exits `1` with no `.brain`/`Nexus Brain` match, and `rg -n 'Machine-governance boundary|contracts/governance' AGENTS.md` exits `0` with the F-07 acceptance condition visible.
 
 ### F06-AC03 — Stale brain tree retired without knowledge loss
 
