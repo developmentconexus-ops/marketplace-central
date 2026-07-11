@@ -88,6 +88,28 @@ Milestone Orchestrator must perform final SPEC/SAFETY and QUALITY reviews on a f
 - Current blocker: diagnose and classify `COLD_UNEXPECTED_BLOCK` in a newly
   authorized correction scope before rerunning the two-run Phase 4 proof.
 
+## Phase 4 Retry — Environment Ownership Block
+
+- Candidate `dad78a906973f8b4dbbd89b47dd599c922de19cf` used a freshly
+  compiled/current-valid F-04 context pack and the exact versioned cold
+  command. The first run wrote schema-valid blocked `outcome.json` and
+  `trace.jsonl` under
+  `scripts/.runs/9fedd36e0fc54d0ca447471e1ac1d054/`.
+- Preflight passed. Snapshot then stopped with `COLD_SNAPSHOT_FAILED` before
+  provisioning, Docker, F-03, cache mutation, resource creation, or the
+  second cold run.
+- The safe external reproduction is the local Git clone used by the harness:
+  Git rejects the repository as dubious ownership because the checkout owner
+  (`METALNOBRE/Leandro.theodoro`) differs from the current sandbox identity
+  (`CodexSandboxOffline`). No `safe.directory` setting, global Git
+  configuration, caller change, or code change was made.
+- Caller visible worktree remained clean. There is no valid Phase 4 pair,
+  PostgreSQL identity/provisioning evidence, F-03 `32/0`, resource inventory,
+  or manifest comparison from this retry.
+- Current blocker: rerun Phase 4 in an environment where the checkout Git
+  ownership is trusted, or authorize a narrowly reviewed non-persistent Git
+  trust mechanism. F-04 and M-08 remain unpassed.
+
 ## Authorized correction — process-await exception classification
 
 - Scope: exact `COLD_UNEXPECTED_BLOCK` root cause only. No governance,
