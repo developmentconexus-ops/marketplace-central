@@ -18,7 +18,9 @@ split_decision: split
 F-04 is an L3 serial change to the harness/evidence and execution-lane
 governance seams. The build session may extend the registry with one
 non-validation provisioning lane, but must consume F-03 and the accepted
-Execution/Environment/Policy/Context modules without rewriting them. Split is
+Execution/Environment/Policy modules without rewriting them. Context remains
+consume-only except for the minimal `{candidate_sha}` template/aggregate-lane
+contract extension required by the staged post-GREEN amendment. Split is
 required because the plan has five TDD/real-evidence phases and an independent
 fixed-commit review; dispatch a fresh build session.
 
@@ -44,6 +46,7 @@ fixed-commit review; dispatch a fresh build session.
   "allowed_paths":[
     "scripts/harness.ps1",
     "scripts/harness/Evidence.psm1",
+    "scripts/harness/Context.psm1",
     "scripts/tests/cold-gate-evidence.tests.ps1",
     "scripts/tests/cold-gate-snapshot.tests.ps1",
     "scripts/tests/cold-gate.integration.tests.ps1",
@@ -51,6 +54,7 @@ fixed-commit review; dispatch a fresh build session.
     "contracts/governance/execution-lanes.json",
     "contracts/governance/schemas/execution-lanes.schema.json",
     "contracts/governance/schemas/feature-work-contract.schema.json",
+    "contracts/governance/schemas/context-pack.schema.json",
     "contracts/governance/schemas/harness-outcome.schema.json",
     "package.json",
     ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-04-cold-gate-evidence/**"
@@ -59,7 +63,6 @@ fixed-commit review; dispatch a fresh build session.
     "scripts/harness/Execution.psm1",
     "scripts/harness/Environment.psm1",
     "scripts/harness/Policy.psm1",
-    "scripts/harness/Context.psm1",
     "scripts/harness/Postgres.psm1",
     "package-lock.json",
     "apps/server_core/**",
@@ -70,7 +73,7 @@ fixed-commit review; dispatch a fresh build session.
     "docker/**",
     ".env"
   ],
-  "side_effects":{"allowed":["repository-write"],"forbidden":["database-mutation","provider-write"]},
+  "side_effects":{"allowed":["repository-write","database-write"],"forbidden":["provider-write"]},
   "commands":[
     {"id":"evidence-contract","command_template":"pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/tests/cold-gate-evidence.tests.ps1","lane_id":"unit","expected_exit_code":0},
     {"id":"snapshot-contract","command_template":"pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/tests/cold-gate-snapshot.tests.ps1","lane_id":"unit","expected_exit_code":0},
@@ -90,12 +93,22 @@ fixed-commit review; dispatch a fresh build session.
     {"code":"caller-mutation","condition":"The primary checkout, caller node_modules, Go/npm caches, or lockfiles would change."},
     {"code":"image-identity","condition":"postgres:16-bookworm cannot resolve to a stable recorded identity or validation attempts a pull."},
     {"code":"evidence-unsafe","condition":"A secret, PII, URL, absolute path, unknown target, or evidence-class promotion reaches persisted evidence."},
-    {"code":"scope-conflict","condition":"An accepted consume-only seam needs rewriting or a competing shared-seam writer appears."}
+    {"code":"scope-conflict","condition":"An accepted consume-only seam beyond the declared Context template extension needs rewriting or a competing shared-seam writer appears."}
   ],
   "retry_budget":{"max_correction_attempts":1},
   "handoff_fields":["commit-sha","changed-paths","red-evidence","green-evidence","cold-manifests","inventory-comparison","target-classes","caller-invariance","resource-inventory","remaining-risks"]
 }
 ```
+
+The current schema uses coarse `repository-write`/`database-write` tokens. Their
+exact authorized scope is only: ignored run/snapshot/npm/Go cache writes, public
+dependency-registry network reads, global Docker image-cache write for
+`postgres:16-bookworm`, and generated `mpc_test_*` ephemeral PostgreSQL writes.
+Forbidden regardless of coarse vocabulary: dev/live database mutation,
+Oracle/provider/browser access, provider write, private registry credentials,
+primary checkout writes, caller dependency/cache writes, and unowned Docker
+resources. Phase 3 extends governance vocabulary atomically so the amended
+contract expresses these exact scopes directly before Phase 4.
 
 ## Phase 1 — Schema and Manifest RED
 
@@ -113,7 +126,7 @@ Commit RED tests only: `test(harness): define cold evidence contract`.
 
 ## Phase 2 — Cold Snapshot and Provision RED
 
-3. Add fake executable/repository fixtures proving clean accepted-SHA preflight,
+3. Add fake executable/repository fixtures proving clean candidate-SHA preflight,
    ignored detached clone/run layout, unchanged caller state/caches, secret-free
    Environment-derived provisioning, frozen Go/npm/image order, recorded image
    identity, no validation on failed prerequisites, and stable reason codes.
@@ -131,17 +144,32 @@ this phase. Commit: `test(harness): define cold snapshot contract`.
 5. Continue safe independent commands after failures, aggregate all results,
    validate/redact before persistence, and add a thin `harness:cold` npm alias.
    Do not change lockfiles or accepted consume-only modules.
+6. Atomically add `cold-provision` subprocess classification and distinct
+   top-level `cold-gate` aggregate target/classification to execution-lane,
+   work-contract, context-pack, and outcome schemas. Subprocess records retain
+   `cold-provision`, `fake`, and `ephemeral-postgres`; the mixed top-level run is
+   never labelled fake, provisioning, integration, or live. Amend this plan's
+   machine contract with two load-bearing commands:
+
+   - `cold-real-1`: `npm run harness:cold -- --CandidateSha {candidate_sha}`
+   - `cold-real-2`: `npm run harness:cold -- --CandidateSha {candidate_sha}`
+
+   Map both commands to F04-AC01/02/03/04/06/07 and at least one to F04-AC05.
+   Extend Context only enough to bind `{candidate_sha}` to the clean fixed
+   candidate `HEAD`. Recompile and current-validate the amended pack before any
+   Phase 4 execution; failure blocks real execution.
 
 Run Phase 1/2 suites plus current governance, environment, execution, alias,
 and F-03 contract regressions. Commit: `feat(harness): add deterministic cold gate`.
 
 ## Phase 4 — Two Real Cold Runs
 
-6. From one clean fixed SHA, inventory caller status, dependency/cache paths,
+7. From one clean fixed candidate implementation SHA equal to `HEAD`, inventory
+   caller status, dependency/cache paths,
    Docker resources, and current image identity; run the versioned cold command
    twice. This is the only phase authorized for package-registry/image network
    and ephemeral PostgreSQL execution.
-7. Require both manifests to have identical ordered command inventory, target/
+8. Require both manifests to have identical ordered command inventory, target/
    evidence pairs, resolved image identity, exit classifications, and aggregate
    classification. Require distinct run IDs, relative artifact paths, unchanged
    caller inventory, F-03 migration `32/0`, and zero run-labelled resources.
@@ -149,21 +177,24 @@ and F-03 contract regressions. Commit: `feat(harness): add deterministic cold ga
 
 ## Phase 5 — Independent Final Review and Handoff
 
-8. Run full planned regression on the fixed implementation commit. Dispatch
+9. Run full planned regression on the fixed candidate implementation commit. Dispatch
    independent SPEC/SAFETY and QUALITY review against that same commit.
-9. Consolidate findings into at most one correction batch, rerun the complete
+10. Consolidate findings into at most one correction batch, rerun the complete
    regression and both cold runs once, then create `validation.md`. A new
    material architecture/scope finding blocks or replans instead of opening a
-   review loop. F-09, not F-04, later consumes this gate for `M-08-C12`.
+   review loop. Only then may the Milestone Orchestrator accept F-04 and link
+   the accepted SHA in evidence. F-09 later reruns the gate on the accepted M-08
+   SHA for `M-08-C12`.
 
 ## Verification Mapping
 
 - `evidence-contract` proves F04-AC01, F04-AC04, and F04-AC05.
 - `snapshot-contract` proves F04-AC02 and the M-08-C02 portion of F04-AC03.
-- The Phase 4 QA command `npm run harness:cold -- --AcceptedSha <fixed-sha>` run
-  twice proves F04-AC01 through F04-AC04, F04-AC06, and F04-AC07. It is kept
-  outside the pre-build machine contract because `cold-provision` does not
-  exist until Phase 3; after GREEN it must be registry-classified provisioning.
+- The Phase 3 atomic contract amendment adds `cold-real-1` and `cold-real-2`
+  using exact command `npm run harness:cold -- --CandidateSha {candidate_sha}`;
+  these become the load-bearing proofs for F04-AC01 through F04-AC04, F04-AC06,
+  and F04-AC07 before Phase 4. The current pre-build contract remains valid
+  until the registry/Context vocabulary exists.
 - `cold-regression` proves failure aggregation and contract stability for
   F04-AC05. Independent review checks every criterion on the fixed commit.
 
@@ -171,8 +202,9 @@ and F-03 contract regressions. Commit: `feat(harness): add deterministic cold ga
 
 - Mutable `postgres:16-bookworm` can resolve differently; record the resolved
   identity and block a same-SHA comparison mismatch rather than normalizing it.
-- A local detached clone depends on source Git objects but preserves governance
-  semantics without registering a worktree or touching the caller checkout.
+- A local detached clone reads exact committed candidate objects, never mutable
+  source-worktree files, and preserves governance semantics without registering
+  a worktree or touching the caller checkout.
 - Network success proves dependency provisioning only; it is never validation
   or live-provider/Oracle evidence.
 - Remove only new ignored run state when cleanup ownership is exact. Never reset,

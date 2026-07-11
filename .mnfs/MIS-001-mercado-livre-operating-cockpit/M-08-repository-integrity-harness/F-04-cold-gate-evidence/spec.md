@@ -15,7 +15,7 @@ lifecycle_scope: feature
 ## Problem
 
 The accepted harness has hermetic unit and ephemeral-PostgreSQL lanes, but no
-single command proves a clean accepted SHA can provision its dependencies,
+single command proves a clean candidate implementation SHA can provision its dependencies,
 exercise every deterministic workspace, and leave a target-labelled redacted
 outcome. Existing summaries omit command order, tool identity, aggregate
 classification, and reproducibility across cold runs.
@@ -24,11 +24,13 @@ classification, and reproducibility across cold runs.
 
 ### Clean isolated source and provisioning
 
-- A versioned local/future-CI command requires an accepted 40-hex SHA and a
-  clean caller checkout at that SHA, then creates a detached local clone under
+- A versioned local/future-CI command requires a candidate 40-hex SHA equal to
+  clean caller `HEAD`, then creates a detached local clone under
   ignored `scripts/.runs/<run-id>/snapshot`. A local clone is chosen over
   `git archive` because governance drift needs Git metadata. It must not create
-  worktree metadata or write the primary checkout.
+  worktree metadata or write the primary checkout. It clones committed Git
+  objects only, checks out that exact candidate detached, then verifies clone
+  `HEAD`, clean status, and absence of mutable source-worktree content.
 - All snapshot `node_modules`, npm cache, `GOCACHE`, and `GOMODCACHE` paths live
   under that run. Caller dependencies/caches are neither read nor changed.
 - A registry-defined `cold-provision` lane receives only safe tool variables,
@@ -60,7 +62,8 @@ classification, and reproducibility across cold runs.
 - `Evidence.psm1` writes an ignored, redacted JSONL trace and a JSON outcome
   manifest validated by a committed schema. Raw subprocess logs remain ignored
   and are not copied into MNFS.
-- The manifest records schema version, run ID, accepted SHA, branch, dirty flag,
+- The manifest records schema version, run ID, candidate SHA, source branch,
+  dirty flag, later acceptance-link field (unset during candidate execution),
   sorted tool versions, exact ordered command inventory, stage, target label,
   evidence class, duration, exit code/reason, repository-relative artifact
   paths, PostgreSQL image identity, and aggregate classification.
@@ -71,7 +74,7 @@ classification, and reproducibility across cold runs.
 - Redaction rejects secret-like values, buyer PII, database URLs, credentials,
   and absolute paths before persistence. Committed validation stores only safe
   summaries and repository-relative ignored artifact paths.
-- Two successful runs from the same accepted SHA may differ in run ID and
+- Two successful runs from the same candidate SHA may differ in run ID and
   duration, but their projected ordered inventory, target/evidence classes,
   image identity, per-command exit classifications, and aggregate
   classification must be identical.
@@ -106,7 +109,9 @@ classification, and reproducibility across cold runs.
   and exit classifications; each produces a run ID, SHA, branch, dirty flag,
   tool versions, target types, exit codes, and redacted artifact paths.**
 - Proven by the schema/manifest contract suite and two real cold runs from one
-  clean accepted SHA.
+  clean fixed candidate implementation SHA equal to `HEAD`. F-04 acceptance
+  occurs only after these runs and independent review; F-09 later reruns the
+  cold gate from the accepted M-08 SHA.
 
 ### F04-AC02 — Cold dependencies and caller state are isolated
 
@@ -150,7 +155,7 @@ classification, and reproducibility across cold runs.
 ### F04-AC07 — Governance remains current in the snapshot
 
 - Traces to `M-08-C09`.
-- Governance schema/drift executes from the detached accepted-SHA clone and
+- Governance schema/drift executes from the detached candidate-SHA clone and
   records a passing target-labelled result without stale context.
 - Proven by both real cold manifests and current-context validation.
 
