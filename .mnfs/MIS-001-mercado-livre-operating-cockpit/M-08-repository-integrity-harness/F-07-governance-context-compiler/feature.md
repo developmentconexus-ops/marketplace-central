@@ -29,12 +29,15 @@ worker context from the active MNFS feature and repository truth.
 
 - Accepted F-06 truth order, module/config/runtime code, OpenAPI/SDK boundary,
   M08 criteria, shared seams, and current harness command taxonomy.
+- Verified inventory:
+  `.mnfs/MIS-001-mercado-livre-operating-cockpit/research/m08-governance-runtime-inventory.md`.
 
 ## Expected Output
 
 - Canonical JSON registries and JSON Schemas for modules, runtime config,
-  execution lanes, invariants, shared seams, context packs, evidence, state,
-  and eval cases.
+  execution lanes, enforceable invariants, shared seams, and context packs.
+  F-04, F-05, and F-09 respectively own evidence, run-state/lease, and eval-case
+  schemas after these interfaces are accepted.
 - Semantic drift checker and context compiler available through the stable
   harness entrypoint.
 - Ignored context pack containing base SHA, hashes, risk, criteria, paths,
