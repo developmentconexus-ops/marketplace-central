@@ -77,6 +77,18 @@ Describe 'Docker live Oracle runner' {
     } finally { Remove-Item -LiteralPath $fixture -Force }
   }
 
+  It 'rejects an invalid local file before requesting Docker from the runner' {
+    $fixture = New-CredentialFixtureFile -Lines @('MPC_SANKHYA_ORACLE_USERNAME=u', 'MPC_SANKHYA_ORACLE_PASSWORD=p', 'MPC_SANKHYA_ORACLE_CONNECT_STRING=c', 'MPC_ORACLE_USERNAME=x')
+    try {
+      Mock -CommandName Test-LiveOracleDockerAvailable -MockWith { throw 'Docker preflight must not run for an invalid local file' }
+      $errorMessage = ''
+      try { Invoke-WithoutSankhyaCallerCredentials { Invoke-LiveOracleDockerRunner -EnvFilePath $fixture } | Out-Null } catch { $errorMessage = $_.Exception.Message }
+
+      Assert-RunnerCondition ($errorMessage -eq 'live Oracle .env unsupported_key=MPC_ORACLE_USERNAME') 'runner did not reject the invalid local file first'
+      Assert-MockCalled -CommandName Test-LiveOracleDockerAvailable -Times 0 -Exactly
+    } finally { Remove-Item -LiteralPath $fixture -Force }
+  }
+
   It 'gives only the same exact caller-process keys precedence over the local file' {
     $fixture = New-CredentialFixtureFile -Lines @('MPC_SANKHYA_ORACLE_USERNAME=u', 'MPC_SANKHYA_ORACLE_PASSWORD=p', 'MPC_SANKHYA_ORACLE_CONNECT_STRING=c')
     $original = [ordered]@{}

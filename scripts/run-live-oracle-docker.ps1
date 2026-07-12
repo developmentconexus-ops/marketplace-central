@@ -163,10 +163,13 @@ function Invoke-LiveOracleDockerCommand {
 }
 
 function Invoke-LiveOracleDockerRunner {
-  param([switch]$PreflightOnly)
+  param(
+    [switch]$PreflightOnly,
+    [string]$EnvFilePath = $script:LocalEnvPath
+  )
 
+  $plan = New-LiveOracleDockerPlan -EnvFilePath $EnvFilePath
   $dockerPath = Test-LiveOracleDockerAvailable
-  $plan = New-LiveOracleDockerPlan
   if ($PreflightOnly) { Write-Output 'status=ready'; Write-Output 'target=live-oracle'; Write-Output 'runner=docker'; return }
 
   Invoke-LiveOracleDockerCommand -DockerPath $dockerPath -Arguments $plan.BuildArguments -Environment @{} -Phase 'build'

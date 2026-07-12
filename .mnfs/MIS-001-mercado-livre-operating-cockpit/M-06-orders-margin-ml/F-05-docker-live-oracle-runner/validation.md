@@ -96,3 +96,27 @@ dispatch requires a separate read-only live-validation session after review.
   future read-only live validation result.
 - Blockers or open decisions: None for this bounded correction; live evidence
   is intentionally deferred.
+
+## Correction M06-F05-preflight-order-retry-1
+
+- Retry: 1 of 2.
+- Original fixed-SHA review failure trace preserved: at
+  `19022d6ee3153f325778ede1b85f0d7f281e5213`,
+  `Invoke-LiveOracleDockerRunner` called
+  `Test-LiveOracleDockerAvailable` (`docker version`) before
+  `New-LiveOracleDockerPlan` parsed the local `.env`. This did not prove that
+  invalid, non-whitelisted, duplicate, or malformed local-file input fails
+  before any Docker request.
+- Smallest correction: resolve the runner's credentials plan before its Docker
+  availability check. The runner now accepts an optional test-only local-file
+  path parameter while retaining the canonical ignored `.env` default.
+- Targeted proof: the runner-level Pester case provides a non-whitelisted,
+  opaque fixture key, mocks Docker availability, asserts the narrow parser's
+  rejection, and asserts the Docker availability command was invoked zero
+  times. No Docker, Oracle, provider, migration, or application command is
+  run by this correction.
+- Command evidence (ran): `Invoke-Pester -Path
+  scripts/tests/live-oracle-docker-runner.tests.ps1` passed 8, failed 0,
+  skipped 0, pending 0, inconclusive 0. This includes the runner-order
+  regression test.
+- Command evidence (ran): `git diff --check` passed with no whitespace errors.
