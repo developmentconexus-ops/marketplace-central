@@ -27,7 +27,7 @@ Describe 'Docker live Oracle runner' {
 
   It 'forwards only the canonical keys by Docker key reference' {
     $plan = New-LiveOracleDockerPlan -Username 'fixture-user' -Password 'fixture-password' -ConnectString 'fixture-connect'
-    $expected = @('MPC_ORACLE_USERNAME', 'MPC_ORACLE_PASSWORD', 'MPC_ORACLE_CONNECT_STRING', 'MPC_ORACLE_LIVE_TEST', 'MPC_ORACLE_LIB_DIR')
+    $expected = @('MPC_SANKHYA_ORACLE_USERNAME', 'MPC_SANKHYA_ORACLE_PASSWORD', 'MPC_SANKHYA_ORACLE_CONNECT_STRING', 'MPC_ORACLE_LIVE_TEST', 'MPC_ORACLE_LIB_DIR')
 
     Assert-RunnerCondition ((@($plan.ContainerEnvironment.Keys) -join ',') -eq ($expected -join ',')) 'container environment key set changed'
     $envReferences = @($plan.RunArguments | Where-Object { $_ -like 'MPC_*' })
@@ -35,24 +35,38 @@ Describe 'Docker live Oracle runner' {
     Assert-RunnerCondition (($plan.RunArguments -join ' ') -notmatch 'fixture-user|fixture-password|fixture-connect') 'credential value entered Docker arguments'
   }
 
-  It 'rejects incomplete canonical credentials before a Docker invocation plan exists' {
+  It 'rejects incomplete explicit Sankhya credentials before a Docker invocation plan exists' {
     $errorMessage = ''
     try { New-LiveOracleDockerPlan -Username 'fixture-user' -Password '' -ConnectString 'fixture-connect' | Out-Null } catch { $errorMessage = $_.Exception.Message }
-    Assert-RunnerCondition ($errorMessage -like '*missing_keys=MPC_ORACLE_PASSWORD*') 'missing canonical credential was not rejected'
+    Assert-RunnerCondition ($errorMessage -like '*missing_keys=MPC_SANKHYA_ORACLE_PASSWORD*') 'missing explicit Sankhya credential was not rejected'
   }
 
-  It 'keeps explicit values ahead of ambient canonical values without consulting aliases' {
-    $oldCanonical = [Environment]::GetEnvironmentVariable('MPC_ORACLE_USERNAME', 'Process')
-    $oldAlias = [Environment]::GetEnvironmentVariable('SANKHYA_ORACLE_USER', 'Process')
+  It 'rejects generic and ambient credential aliases when explicit Sankhya keys are absent' {
+    $rejectedKeys = @(
+      'MPC_SANKHYA_ORACLE_USERNAME', 'MPC_SANKHYA_ORACLE_PASSWORD', 'MPC_SANKHYA_ORACLE_CONNECT_STRING',
+      'MPC_ORACLE_USERNAME', 'MPC_ORACLE_PASSWORD', 'MPC_ORACLE_CONNECT_STRING',
+      'SANKHYA_ORACLE_USER', 'ORACLE_USERNAME'
+    )
+    $original = @{}
     try {
-      [Environment]::SetEnvironmentVariable('MPC_ORACLE_USERNAME', 'ambient-user', 'Process')
+      foreach ($key in $rejectedKeys) {
+        $original[$key] = [Environment]::GetEnvironmentVariable($key, 'Process')
+        [Environment]::SetEnvironmentVariable($key, $null, 'Process')
+      }
+      [Environment]::SetEnvironmentVariable('MPC_ORACLE_USERNAME', 'generic-user', 'Process')
+      [Environment]::SetEnvironmentVariable('MPC_ORACLE_PASSWORD', 'generic-password', 'Process')
+      [Environment]::SetEnvironmentVariable('MPC_ORACLE_CONNECT_STRING', 'generic-connect', 'Process')
       [Environment]::SetEnvironmentVariable('SANKHYA_ORACLE_USER', 'alias-user', 'Process')
-      $values = Get-LiveOracleCredentialValues -Username 'explicit-user' -Password 'explicit-password' -ConnectString 'explicit-connect'
-      Assert-RunnerCondition ($values.MPC_ORACLE_USERNAME -eq 'explicit-user') 'explicit canonical value did not win'
-      Assert-RunnerCondition (-not $values.Contains('SANKHYA_ORACLE_USER')) 'legacy alias entered credential values'
+      [Environment]::SetEnvironmentVariable('ORACLE_USERNAME', 'ambient-user', 'Process')
+      $errorMessage = ''
+      try { Get-LiveOracleCredentialValues | Out-Null } catch { $errorMessage = $_.Exception.Message }
+      Assert-RunnerCondition ($errorMessage -like '*MPC_SANKHYA_ORACLE_USERNAME*') 'generic credentials were accepted as an explicit Sankhya username'
+      Assert-RunnerCondition ($errorMessage -like '*MPC_SANKHYA_ORACLE_PASSWORD*') 'generic credentials were accepted as an explicit Sankhya password'
+      Assert-RunnerCondition ($errorMessage -like '*MPC_SANKHYA_ORACLE_CONNECT_STRING*') 'generic credentials were accepted as an explicit Sankhya connect string'
     } finally {
-      [Environment]::SetEnvironmentVariable('MPC_ORACLE_USERNAME', $oldCanonical, 'Process')
-      [Environment]::SetEnvironmentVariable('SANKHYA_ORACLE_USER', $oldAlias, 'Process')
+      foreach ($key in $rejectedKeys) {
+        [Environment]::SetEnvironmentVariable($key, $original[$key], 'Process')
+      }
     }
   }
 
@@ -72,7 +86,7 @@ Describe 'Docker live Oracle runner' {
       }
       $plan = New-LiveOracleDockerPlan -Username 'fixture-user' -Password 'fixture-password' -ConnectString 'fixture-connect'
       $startInfo = New-LiveOracleDockerProcessStartInfo -DockerPath 'C:\fixture\docker.exe' -Arguments $plan.RunArguments -Environment $plan.ContainerEnvironment
-      $expectedRuntime = @('MPC_ORACLE_USERNAME', 'MPC_ORACLE_PASSWORD', 'MPC_ORACLE_CONNECT_STRING', 'MPC_ORACLE_LIVE_TEST', 'MPC_ORACLE_LIB_DIR')
+      $expectedRuntime = @('MPC_SANKHYA_ORACLE_USERNAME', 'MPC_SANKHYA_ORACLE_PASSWORD', 'MPC_SANKHYA_ORACLE_CONNECT_STRING', 'MPC_ORACLE_LIVE_TEST', 'MPC_ORACLE_LIB_DIR')
       $expectedKeys = @($script:DockerExecutionEnvironmentKeys | Where-Object { -not [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_, 'Process')) }) + $expectedRuntime
       $actualKeys = @($startInfo.Environment.Keys)
       $actualRuntime = @($actualKeys | Where-Object { $_ -like 'MPC_*' })
@@ -82,7 +96,7 @@ Describe 'Docker live Oracle runner' {
       foreach ($key in $ambient.Keys) {
         Assert-RunnerCondition (-not ($actualKeys -contains $key)) "ambient key entered Docker child: $key"
       }
-      Assert-RunnerCondition ($startInfo.Environment['MPC_ORACLE_USERNAME'] -eq 'fixture-user') 'Docker child did not use the explicit canonical credential'
+      Assert-RunnerCondition ($startInfo.Environment['MPC_SANKHYA_ORACLE_USERNAME'] -eq 'fixture-user') 'Docker child did not use the explicit Sankhya credential'
     } finally {
       foreach ($key in $ambient.Keys) {
         [Environment]::SetEnvironmentVariable($key, $original[$key], 'Process')
@@ -93,7 +107,7 @@ Describe 'Docker live Oracle runner' {
   It 'preflights Docker through an execution-only child with no ambient or runtime keys' {
     $ambient = [ordered]@{
       MPC_UNRELATED_SETTING = 'ambient-mpc'
-      MPC_ORACLE_USERNAME = 'ambient-runtime'
+      MPC_SANKHYA_ORACLE_USERNAME = 'ambient-runtime'
       MPC_DATABASE_URL = 'ambient-database'
       ORACLE_HOME = 'ambient-oracle'
       MELI_ACCESS_TOKEN = 'ambient-provider'

@@ -11,7 +11,7 @@ $ErrorActionPreference = 'Stop'
 
 $script:RepositoryRoot = Split-Path -Parent $PSScriptRoot
 $script:ProfilePath = Join-Path $script:RepositoryRoot 'docker/live-oracle/profile.json'
-$script:CredentialKeys = @('MPC_ORACLE_USERNAME', 'MPC_ORACLE_PASSWORD', 'MPC_ORACLE_CONNECT_STRING')
+$script:CredentialKeys = @('MPC_SANKHYA_ORACLE_USERNAME', 'MPC_SANKHYA_ORACLE_PASSWORD', 'MPC_SANKHYA_ORACLE_CONNECT_STRING')
 $script:ContainerKeys = @($script:CredentialKeys + @('MPC_ORACLE_LIVE_TEST', 'MPC_ORACLE_LIB_DIR'))
 $script:DockerExecutionEnvironmentKeys = @(
   'SystemRoot', 'WINDIR', 'ComSpec', 'PATH', 'PATHEXT',
@@ -25,7 +25,11 @@ function Get-LiveOracleDockerProfile {
 function Get-LiveOracleCredentialValues {
   param([string]$Username, [string]$Password, [string]$ConnectString)
 
-  $explicit = @{ MPC_ORACLE_USERNAME=$Username; MPC_ORACLE_PASSWORD=$Password; MPC_ORACLE_CONNECT_STRING=$ConnectString }
+  $explicit = @{
+    MPC_SANKHYA_ORACLE_USERNAME = $Username
+    MPC_SANKHYA_ORACLE_PASSWORD = $Password
+    MPC_SANKHYA_ORACLE_CONNECT_STRING = $ConnectString
+  }
   $values = [ordered]@{}
   $missing = [Collections.Generic.List[string]]::new()
   foreach ($key in $script:CredentialKeys) {
@@ -43,9 +47,9 @@ function New-LiveOracleDockerPlan {
   $profile = Get-LiveOracleDockerProfile
   $credentials = Get-LiveOracleCredentialValues -Username $Username -Password $Password -ConnectString $ConnectString
   $containerEnvironment = [ordered]@{
-    MPC_ORACLE_USERNAME = $credentials.MPC_ORACLE_USERNAME
-    MPC_ORACLE_PASSWORD = $credentials.MPC_ORACLE_PASSWORD
-    MPC_ORACLE_CONNECT_STRING = $credentials.MPC_ORACLE_CONNECT_STRING
+    MPC_SANKHYA_ORACLE_USERNAME = $credentials.MPC_SANKHYA_ORACLE_USERNAME
+    MPC_SANKHYA_ORACLE_PASSWORD = $credentials.MPC_SANKHYA_ORACLE_PASSWORD
+    MPC_SANKHYA_ORACLE_CONNECT_STRING = $credentials.MPC_SANKHYA_ORACLE_CONNECT_STRING
     MPC_ORACLE_LIVE_TEST = '1'
     MPC_ORACLE_LIB_DIR = [string]$profile.oracle_lib_dir
   }

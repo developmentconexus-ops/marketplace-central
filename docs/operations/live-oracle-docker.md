@@ -9,11 +9,12 @@ compatible fallback and is not configured or invoked here.
 Docker must be available and these canonical values must be nonempty in the
 calling process, or supplied as PowerShell parameters:
 
-- `MPC_ORACLE_USERNAME`
-- `MPC_ORACLE_PASSWORD`
-- `MPC_ORACLE_CONNECT_STRING`
+- `MPC_SANKHYA_ORACLE_USERNAME`
+- `MPC_SANKHYA_ORACLE_PASSWORD`
+- `MPC_SANKHYA_ORACLE_CONNECT_STRING`
 
-No `.env` file, Compose service, or `SANKHYA_*` alias is read. Do not place
+No `.env` file, Compose service, generic `MPC_ORACLE_*` credential name, or
+ambient alias is read. Do not place
 credentials in shell history, a command transcript, or a file. Supplying the
 values via the caller process is preferred; the runner forwards them to Docker
 by environment-key reference rather than as Docker command arguments.
@@ -48,9 +49,10 @@ read-only, and executes only:
 go test ./internal/modules/internal_read/adapters/oracle -run ^TestOracleLiveSmoke$ -count=1
 ```
 
-Inside the container it injects exactly `MPC_ORACLE_USERNAME`,
-`MPC_ORACLE_PASSWORD`, `MPC_ORACLE_CONNECT_STRING`, `MPC_ORACLE_LIVE_TEST=1`,
-and `MPC_ORACLE_LIB_DIR=/opt/oracle/instantclient`. It starts no application
+Inside the container it injects exactly `MPC_SANKHYA_ORACLE_USERNAME`,
+`MPC_SANKHYA_ORACLE_PASSWORD`, `MPC_SANKHYA_ORACLE_CONNECT_STRING`,
+`MPC_ORACLE_LIVE_TEST=1`, and `MPC_ORACLE_LIB_DIR=/opt/oracle/instantclient`.
+It starts no application
 entrypoint, migration, Compose service, provider operation, or database write.
 
 Docker command output is suppressed to avoid accidental secret disclosure. A

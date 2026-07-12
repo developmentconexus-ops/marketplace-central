@@ -22,16 +22,16 @@ F-05-docker-live-oracle-runner
 
 1. Compile and validate this feature's context pack against the base SHA and
    exclusive write scope.
-2. Add the PowerShell runner and a narrow Docker profile/entrypoint which use
-   the existing backend Dockerfile and execute only `TestOracleLiveSmoke`.
-3. Add Pester fixtures for the generated Docker invocation, preflight, and
-   secret-safe environment forwarding.
-4. Document the canonical invocation, prerequisites, and truthful blocked/live
-   result handling; run deterministic validation and record evidence.
+2. Replace the runner credential contract with only the explicit caller-process
+   `MPC_SANKHYA_ORACLE_*` namespace while retaining the existing Docker profile
+   and read-only smoke-test target.
+3. Add Pester fixtures proving generic `MPC_ORACLE_*` and ambient aliases cannot
+   satisfy credential preflight, while preserving secret-safe Docker forwarding.
+4. Document the explicit Sankhya prerequisites; run deterministic contract tests
+   before any Docker or Oracle activity and record evidence.
 
 ## Files Expected To Change
 
-- `docker/live-oracle/**`: isolated image execution profile.
 - `scripts/run-live-oracle-docker.ps1`: canonical Docker preflight and launch.
 - `scripts/tests/live-oracle-docker-runner.tests.ps1`: deterministic runner
   contract tests.
@@ -44,19 +44,13 @@ F-05-docker-live-oracle-runner
 - Command: `Invoke-Pester scripts/tests/live-oracle-docker-runner.tests.ps1`
   Satisfies criterion IDs: `F05-AC01`, `F05-AC02`.
   Expected result: fixtures prove the exact build/run argv, key-only Docker
-  environment forwarding, and prerequisite stops without live credentials.
-- Command: `scripts/run-live-oracle-docker.ps1 -PreflightOnly`
-  Satisfies criterion ID: `F05-AC02`.
-  Expected result: checks Docker and canonical process/parameter inputs without
-  building or running a container; outcome is recorded truthfully.
-- Command: `scripts/run-live-oracle-docker.ps1`
-  Satisfies criterion IDs: `F05-AC01`, `F05-AC02`.
-  Expected result: executed only after safe preflight; otherwise recorded as
-  could-not-run, never as a pass.
+  environment forwarding, explicit Sankhya credential requirements, generic and
+  ambient-alias rejection, and prerequisite stops without live credentials.
 
 ## QA Steps
 
-- Inspect the runner's generated invocation to confirm the only test target is
+- Inspect the runner's generated invocation to confirm the only credential names
+  accepted or forwarded are `MPC_SANKHYA_ORACLE_*`, the only test target is
   `TestOracleLiveSmoke`, there is no `docker compose`, `.env`, migration, or
   application command, and no secret appears in argv/output.
 
@@ -82,7 +76,6 @@ must remain visible in `validation.md`.
   ],
   "knowledge_route_ids": ["portfolio-core", "orders-margin"],
   "allowed_paths": [
-    "docker/live-oracle/**",
     "scripts/run-live-oracle-docker.ps1",
     "scripts/tests/live-oracle-docker-runner.tests.ps1",
     "docs/operations/live-oracle-docker.md",
