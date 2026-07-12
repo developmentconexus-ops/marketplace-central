@@ -203,4 +203,44 @@ Describe 'Docker live Oracle runner' {
       foreach ($key in $ambient.Keys) { [Environment]::SetEnvironmentVariable($key, $original[$key], 'Process') }
     }
   }
+
+  It 'emits exact values-free ready telemetry from the entrypoint' {
+    $exitCode = -1
+    Mock -CommandName Invoke-LiveOracleDockerRunner -MockWith { }
+
+    $telemetry = @(Invoke-LiveOracleDockerEntrypoint -PreflightOnly -ExitCode ([ref]$exitCode))
+
+    Assert-RunnerCondition (($telemetry -join ',') -eq 'status=ready,phase=preflight,exit_code=0') 'ready telemetry schema changed'
+    Assert-RunnerCondition ($exitCode -eq 0) 'ready telemetry exit status changed'
+  }
+
+  It 'emits exact values-free completion telemetry from the entrypoint' {
+    $exitCode = -1
+    Mock -CommandName Invoke-LiveOracleDockerRunner -MockWith { }
+
+    $telemetry = @(Invoke-LiveOracleDockerEntrypoint -ExitCode ([ref]$exitCode))
+
+    Assert-RunnerCondition (($telemetry -join ',') -eq 'status=passed,phase=complete,exit_code=0') 'completion telemetry schema changed'
+    Assert-RunnerCondition ($exitCode -eq 0) 'completion telemetry exit status changed'
+  }
+
+  It 'emits sanitized failure telemetry and a nonzero entrypoint exit status' {
+    $exitCode = -1
+    Mock -CommandName Invoke-LiveOracleDockerRunner -MockWith { throw 'live Oracle Docker run failed exit_code=17; output suppressed' }
+
+    $telemetry = @(Invoke-LiveOracleDockerEntrypoint -ExitCode ([ref]$exitCode))
+
+    Assert-RunnerCondition (($telemetry -join ',') -eq 'status=blocked,phase=failed,exit_code=1,reason=live Oracle Docker run failed exit_code=17; output suppressed') 'sanitized failure telemetry schema changed'
+    Assert-RunnerCondition ($exitCode -eq 1) 'failure telemetry exit status changed'
+  }
+
+  It 'omits an unsafe failure reason from entrypoint telemetry' {
+    $exitCode = -1
+    Mock -CommandName Invoke-LiveOracleDockerRunner -MockWith { throw 'untrusted failure includes fixture-secret' }
+
+    $telemetry = @(Invoke-LiveOracleDockerEntrypoint -ExitCode ([ref]$exitCode))
+
+    Assert-RunnerCondition (($telemetry -join ',') -eq 'status=blocked,phase=failed,exit_code=1') 'unsafe failure reason entered telemetry'
+    Assert-RunnerCondition ($exitCode -eq 1) 'unsafe failure exit status changed'
+  }
 }

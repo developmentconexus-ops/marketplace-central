@@ -67,6 +67,17 @@ When it returns `status=ready`, run the target:
 pwsh -NoProfile -File scripts/run-live-oracle-docker.ps1
 ```
 
+Capture either invocation directly with `pwsh -NoProfile -File`; do not pipe or
+redirect its output. The runner intentionally emits only a small
+machine-readable terminal record: `status`, `phase`, and `exit_code`. A
+successful preflight ends with `status=ready`, `phase=preflight`, and
+`exit_code=0`; a completed smoke test ends with `status=passed`,
+`phase=complete`, and `exit_code=0`. A caught failure ends with
+`status=blocked`, `phase=failed`, and `exit_code=1`. When the existing failure
+reason matches the runner's safe fixed grammar, it is emitted as `reason`; any
+other error text is omitted. Docker command output, command arguments,
+environment values, and credentials remain suppressed.
+
 The runner builds `docker/dev/backend.Dockerfile`, mounts the checkout
 read-only, and executes only:
 

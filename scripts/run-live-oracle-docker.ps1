@@ -189,19 +189,65 @@ function Invoke-LiveOracleDockerRunner {
 
   $plan = New-LiveOracleDockerPlan -EnvFilePath $EnvFilePath
   $dockerPath = Test-LiveOracleDockerAvailable
-  if ($PreflightOnly) { Write-Output 'status=ready'; Write-Output 'target=live-oracle'; Write-Output 'runner=docker'; return }
+  if ($PreflightOnly) { return }
 
   Invoke-LiveOracleDockerCommand -DockerPath $dockerPath -Arguments $plan.BuildArguments -Environment @{} -Phase 'build'
   Invoke-LiveOracleDockerCommand -DockerPath $dockerPath -Arguments $plan.RunArguments -Environment $plan.ContainerEnvironment -Phase 'run'
-  Write-Output 'status=passed'; Write-Output 'target=live-oracle'; Write-Output 'runner=docker'
+}
+
+function Write-LiveOracleDockerTelemetry {
+  param(
+    [Parameter(Mandatory)][ValidateSet('ready', 'passed', 'blocked')][string]$Status,
+    [Parameter(Mandatory)][ValidateSet('preflight', 'complete', 'failed')][string]$Phase,
+    [Parameter(Mandatory)][int]$ExitCode,
+    [string]$Reason
+  )
+
+  Write-Output "status=$Status"
+  Write-Output "phase=$Phase"
+  Write-Output "exit_code=$ExitCode"
+  if (-not [string]::IsNullOrWhiteSpace($Reason)) { Write-Output "reason=$Reason" }
+}
+
+function Get-LiveOracleDockerSafeReason {
+  param([Parameter(Mandatory)][System.Management.Automation.ErrorRecord]$ErrorRecord)
+
+  $message = $ErrorRecord.Exception.Message
+  $safePatterns = @(
+    '^live Oracle \.env invalid_line=\d+$',
+    '^live Oracle \.env unsupported_key=[A-Za-z_][A-Za-z0-9_]*$',
+    '^live Oracle preflight missing_keys=[A-Za-z0-9_,]+$',
+    '^live Oracle preflight docker_unavailable$',
+    '^live Oracle Docker (preflight|build|run) failed exit_code=\d+; output suppressed$'
+  )
+  if (@($safePatterns | Where-Object { $message -match $_ }).Count -gt 0) { return $message }
+  return $null
+}
+
+function Invoke-LiveOracleDockerEntrypoint {
+  param(
+    [switch]$PreflightOnly,
+    [string]$EnvFilePath = $script:LocalEnvPath,
+    [Parameter(Mandatory)][ref]$ExitCode
+  )
+
+  try {
+    Invoke-LiveOracleDockerRunner -PreflightOnly:$PreflightOnly -EnvFilePath $EnvFilePath
+    if ($PreflightOnly) {
+      Write-LiveOracleDockerTelemetry -Status 'ready' -Phase 'preflight' -ExitCode 0
+    } else {
+      Write-LiveOracleDockerTelemetry -Status 'passed' -Phase 'complete' -ExitCode 0
+    }
+    $ExitCode.Value = 0
+  } catch {
+    $reason = Get-LiveOracleDockerSafeReason -ErrorRecord $_
+    Write-LiveOracleDockerTelemetry -Status 'blocked' -Phase 'failed' -ExitCode 1 -Reason $reason
+    $ExitCode.Value = 1
+  }
 }
 
 if ($MyInvocation.InvocationName -ne '.') {
-  try {
-    Invoke-LiveOracleDockerRunner -PreflightOnly:$PreflightOnly
-  } catch {
-    Write-Output 'status=blocked'
-    Write-Output $_.Exception.Message
-    exit 1
-  }
+  $exitCode = 0
+  Invoke-LiveOracleDockerEntrypoint -PreflightOnly:$PreflightOnly -ExitCode ([ref]$exitCode)
+  exit $exitCode
 }

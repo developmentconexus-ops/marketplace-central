@@ -34,7 +34,11 @@ F-05-docker-live-oracle-runner
    caller-process precedence, schema isolation, unrelated-key isolation,
    generic `MPC_ORACLE_*` and ambient-alias rejection, exact mapping to the
    governed container names, and secret-safe Docker forwarding.
-4. Document the narrow local `.env` contract and precedence; run deterministic
+4. Emit and document values-free entrypoint telemetry (`status`, `phase`, and
+   `exit_code`) for ready, completed, and caught-failure paths while preserving
+   suppressed Docker output and secret safety; add deterministic entrypoint
+   tests without Docker or Oracle activity.
+5. Document the narrow local `.env` contract and precedence; run deterministic
    contract tests before any Docker or Oracle activity and record evidence.
 
 ## Files Expected To Change

@@ -180,3 +180,42 @@ dispatch requires a separate read-only live-validation session after review.
   migration, or provider command was invoked.
 - Original blocking failure resolved: Yes, deterministically. A separate
   read-only host Docker validation remains required for live evidence.
+
+## Correction M06-F05-runtime-telemetry-retry-1
+
+- Retry: 1 of 2.
+- Original blocking failure trace preserved: at current HEAD
+  `03d7389975e9d77bbbe31f3017611c5db6a5efe1`, host Docker preflight reported
+  `status=ready` and the canonical runner was invoked once under escalation,
+  but its suppressed Docker output provided no observable final runner
+  status, error classification, or exit code. This is not live pass/fail
+  evidence.
+- Assigned failure addressed: the entrypoint now emits a fixed values-free
+  terminal schema on all observable terminal paths: ready preflight
+  (`status=ready`, `phase=preflight`, `exit_code=0`), completed smoke-test
+  success (`status=passed`, `phase=complete`, `exit_code=0`), and caught
+  failure (`status=blocked`, `phase=failed`, `exit_code=1`). The pre-existing
+  reason is emitted only when it matches a fixed safe grammar; arbitrary
+  error text is omitted. Docker output, argv, environment values, and
+  credentials remain suppressed.
+- Smallest correction: move terminal reporting into a testable script
+  entrypoint wrapper; retain Docker command construction, output suppression,
+  credential mapping, and runtime semantics unchanged.
+- Files changed: `scripts/run-live-oracle-docker.ps1`,
+  `scripts/tests/live-oracle-docker-runner.tests.ps1`,
+  `docs/operations/live-oracle-docker.md`, and this F-05 `spec.md`, `plan.md`,
+  and `validation.md`.
+- Targeted validation evidence (ran): `Invoke-Pester -Path
+  scripts/tests/live-oracle-docker-runner.tests.ps1` passed 14, failed 0,
+  skipped 0, pending 0, inconclusive 0. It includes exact ready, completion,
+  safe-failure, and unsafe-reason-omission telemetry checks without Docker or
+  Oracle.
+- Targeted validation evidence (ran): `git diff --check` passed with no
+  whitespace errors in the scoped correction.
+- Runtime: not run by this correction scope. The host preflight/runner trace
+  remains blocked for revalidation; no Docker, Oracle, application, migration,
+  or provider command was invoked by this correction.
+- Original blocking failure resolved: Yes, deterministically. A separate
+  read-only host Docker validation must capture the documented plain
+  `pwsh -NoProfile -File` invocation result before making any live pass/fail
+  claim.

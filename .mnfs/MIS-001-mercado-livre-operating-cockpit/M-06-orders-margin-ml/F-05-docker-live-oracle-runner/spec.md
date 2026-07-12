@@ -52,6 +52,10 @@ an application runtime.
   migrations, or an application entrypoint.
 - Preflight Docker and nonblank canonical credentials before build/run. A
   missing prerequisite is a truthful non-success result.
+- Emit a fixed values-free entrypoint record with `status`, `phase`, and
+  `exit_code` for ready preflight, completed smoke-test success, and caught
+  failure. A failure reason is emitted only when it matches the runner's
+  existing safe grammar.
 - Add deterministic Pester coverage for command shape, exact environment
   allowlist, and secret-safe argument handling, plus operator instructions.
 
@@ -77,6 +81,9 @@ Docker with key-only `--env` switches. This one-way boundary mapping is not a
 generic input fallback. It builds an ephemeral tagged image from the existing backend Dockerfile and uses `go test` with the exact package and `-run
 ^TestOracleLiveSmoke$`. A test seam returns the constructed invocation without
 launching Docker so Pester fixtures never require credentials or Docker.
+The script entrypoint reports only fixed `status`, `phase`, and `exit_code`
+fields; it retains an existing sanitized reason only when the error grammar is
+known safe, never Docker output, argv, environment values, or credentials.
 
 ## Edge Cases
 
