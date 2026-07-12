@@ -134,6 +134,29 @@ COFINS remain 1/2/3/4 for every quantity. Unknown cost remains `nil` with
 - Existing unrelated worktree changes were preserved and are not part of this
   feature commit.
 
+## Milestone Acceptance Review
+
+- Decision: accepted.
+- Reviewer: Milestone Orchestrator.
+- Reviewed commit: `2284c1d3bfcfa359a66777baad6c339083973538`.
+- Scope: accepted. The eight committed paths are the F-06 execution artifacts,
+  CUSSEMICM amount-scope metadata, Oracle read metadata, and the profitability
+  composition/test seam. No API, SDK, provider, Oracle-write, Candidate A,
+  manual-adjustment, or principal-boundary path changed.
+- Evidence: accepted. The Feature records `ran` evidence for the registered
+  profitability/internal-read suite and focused quantity 1/2/7 plus
+  nil-cost tests. The Orchestrator independently reran both commands on the
+  reviewed commit with exit 0 on 2026-07-12.
+- Constraint review: accepted. The focused test proves line cost `10/20/70`
+  from unit cost `10`, unchanged sale fee `3`, unchanged tax components
+  `1/2/3/4`, and nil cost remaining nil with `missing_cost`; no zero default
+  is introduced.
+- QA routing: no formal feature QA invoked. This is a bounded deterministic
+  cost-composition correction without an auth, PII, secret, multi-role, or
+  live-runtime change. Formal milestone review and proportional QA remain
+  required after all correction seams integrate.
+- Next owner: Milestone Orchestrator.
+
 ## Handoff
 
 - Current status: `quick_validation_passed`

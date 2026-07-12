@@ -3,7 +3,7 @@
 ```yaml
 id: F-06
 type: feature-brief
-status: briefed
+status: accepted
 owner: Milestone Orchestrator
 parent: M-06
 created: 2026-07-12
@@ -66,8 +66,8 @@ not mission planning.
 
 ## Handoff
 
-- Current status: briefed.
-- Next owner: Feature Implementer.
-- Next action: Create `spec.md`, then `plan.md`, then implement the bounded correction and record `validation.md`.
-- Required files/evidence: `spec.md`, `plan.md`, `validation.md`, and targeted Go test output.
-- Blockers or open decisions: None; the 2026-07-12 signed owner decision fixes all quantity semantics for this feature.
+- Current status: accepted.
+- Next owner: Milestone Orchestrator.
+- Next action: Retain F-06 as integrated correction evidence; resolve the separate trusted-principal boundary before a new fixed-SHA review and QA.
+- Required files/evidence: `spec.md`, `plan.md`, `validation.md`, commit `2284c1d3bfcfa359a66777baad6c339083973538`, and targeted Go test output.
+- Blockers or open decisions: No F-06 blocker; the signed 2026-07-12 owner decision fixes its quantity semantics.
