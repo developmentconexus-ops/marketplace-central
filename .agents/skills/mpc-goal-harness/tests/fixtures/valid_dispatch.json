@@ -1,0 +1,36 @@
+{
+  "role": "Feature Implementer",
+  "milestone_task_id": "milestone-task",
+  "base_sha": "b37a3da4e054579d6c220712300eaed0b86fd8cc",
+  "accepted_base_sha": "b37a3da4e054579d6c220712300eaed0b86fd8cc",
+  "dispatch_id": "dispatch-f01",
+  "feature_id": "F-01",
+  "work_item_id": "F-01",
+  "source_task_id": "feature-task",
+  "parent_task_id": "milestone-task",
+  "callback_task_id": "milestone-task",
+  "feature_file": ".agents/skills/mpc-goal-harness/tests/fixtures/feature.md",
+  "context_files": [
+    ".agents/skills/mpc-goal-harness/SKILL.md",
+    ".agents/skills/mpc-goal-harness/tests/fixtures/feature.md"
+  ],
+  "knowledge_routes": ["harness-bootstrap"],
+  "required_files": [".agents/skills/mpc-goal-harness/SKILL.md"],
+  "allowed_paths": [".agents/skills/mpc-goal-harness"],
+  "forbidden_paths": ["docs/research"],
+  "shared_seams": [".agents/skills/mpc-goal-harness"],
+  "side_effects": {
+    "allowed": [],
+    "forbidden": ["external writes"]
+  },
+  "proof": {
+    "command_ids": ["harness-controls-tests"],
+    "evidence_targets": [".agents/skills/mpc-goal-harness/tests"]
+  },
+  "stop_conditions": ["architecture or ownership conflict"],
+  "dirty_paths": [],
+  "one_writer": {
+    "owner_task_id": "feature-task",
+    "owned_paths": [".agents/skills/mpc-goal-harness"]
+  }
+}

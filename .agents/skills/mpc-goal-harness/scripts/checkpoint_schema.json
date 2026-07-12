@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Marketplace Central harness checkpoint",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "milestone_id", "source_task_id", "parent_task_id",
+    "event_id", "sequence", "event_type", "dispatch_id", "work_item_id",
+    "base_sha", "commit_or_frozen_sha", "emitted_at", "callback_due_at",
+    "status", "checkpoint_id", "commit", "changed_paths", "evidence",
+    "review", "blockers", "next"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "milestone_id": {"type": "string", "minLength": 1},
+    "source_task_id": {"type": "string", "minLength": 1},
+    "parent_task_id": {"type": "string", "minLength": 1},
+    "event_id": {"type": "string", "minLength": 1},
+    "sequence": {"type": "integer", "minimum": 1},
+    "event_type": {
+      "enum": ["packet_accepted", "feature_accepted", "blocker", "fixed_sha_frozen", "review_verdict", "qa_verdict", "terminal_handoff", "heartbeat"]
+    },
+    "dispatch_id": {"type": "string", "minLength": 1},
+    "work_item_id": {"type": "string", "minLength": 1},
+    "base_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "commit_or_frozen_sha": {"type": ["string", "null"], "pattern": "^[0-9a-f]{40}$"},
+    "emitted_at": {"type": "string", "format": "date-time"},
+    "callback_due_at": {"type": "string", "format": "date-time"},
+    "status": {"type": "string", "minLength": 1},
+    "checkpoint_id": {"type": "string", "minLength": 1},
+    "commit": {"type": ["string", "null"], "pattern": "^[0-9a-f]{40}$"},
+    "changed_paths": {"type": "array", "items": {"type": "string"}},
+    "evidence": {"type": "array", "items": {"type": "string"}},
+    "review": {"type": ["object", "null"]},
+    "blockers": {"type": "array", "items": {"type": "string"}},
+    "next": {"type": "string", "minLength": 1}
+  }
+}

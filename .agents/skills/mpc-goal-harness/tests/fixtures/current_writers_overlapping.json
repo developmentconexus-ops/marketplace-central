@@ -1,0 +1,6 @@
+{
+  "authoritative": true,
+  "writers": [
+    {"owner_task_id": "other-task", "paths": [".agents/skills"]}
+  ]
+}
