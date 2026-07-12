@@ -137,6 +137,93 @@ func TestImportMarginInputsCompleteAndMissingLink(t *testing.T) {
 	}
 }
 
+func TestImportMarginInputsExtendsOnlyUnitCostByQuantity(t *testing.T) {
+	now := time.Date(2026, 7, 12, 12, 0, 0, 0, time.UTC)
+	unitCost := 10.0
+	saleFee := 3.0
+	icms, ipi, pis, cofins := 1.0, 2.0, 3.0, 4.0
+	service := NewService(ServiceConfig{
+		Orders: stubOrderReader{orders: []profitabilitydomain.OrderFact{{
+			InstallationID: "inst-1", ProviderOrderID: "order-1", ProviderUpdatedAt: &now, FetchedAt: now,
+			Items: []profitabilitydomain.OrderItemFact{
+				{ProviderItemID: "quantity-1", Quantity: 1, UnitPrice: floatPtr(100), SaleFeeAmount: &saleFee, LinkQuality: profitabilitydomain.OrderLinkResolved, InternalProductID: intPtr(1)},
+				{ProviderItemID: "quantity-2", Quantity: 2, UnitPrice: floatPtr(100), SaleFeeAmount: &saleFee, LinkQuality: profitabilitydomain.OrderLinkResolved, InternalProductID: intPtr(2)},
+				{ProviderItemID: "quantity-7", Quantity: 7, UnitPrice: floatPtr(100), SaleFeeAmount: &saleFee, LinkQuality: profitabilitydomain.OrderLinkResolved, InternalProductID: intPtr(7)},
+			},
+		}}},
+		Internal: stubInternalFactReader{
+			cost: internalreaddomain.CostAsOf{Amount: &unitCost, AmountScope: internalreaddomain.CostAmountScopePerUnit, Source: internalreaddomain.SourceMetadata{System: "oracle"}, QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}},
+			tax:  internalreaddomain.TaxInputs{ICMSAmount: &icms, IPIAmount: &ipi, PISAmount: &pis, COFINSAmount: &cofins, Source: internalreaddomain.SourceMetadata{System: "oracle"}, QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}},
+		},
+		Inputs: &stubInputStore{},
+		Now:    func() time.Time { return now },
+	})
+
+	result, err := service.ImportMarginInputs(context.Background(), ImportMarginInputsInput{InstallationID: "inst-1"})
+	if err != nil {
+		t.Fatalf("ImportMarginInputs() error = %v", err)
+	}
+	wantCosts := map[string]float64{"quantity-1": 10, "quantity-2": 20, "quantity-7": 70}
+	wantTaxes := map[profitabilitydomain.InputKind]float64{
+		profitabilitydomain.InputKindTaxICMS: 1, profitabilitydomain.InputKindTaxIPI: 2,
+		profitabilitydomain.InputKindTaxPIS: 3, profitabilitydomain.InputKindTaxCOFINS: 4,
+	}
+	for providerItemID, wantCost := range wantCosts {
+		seenCost, seenSaleFee := false, false
+		seenTaxes := map[profitabilitydomain.InputKind]bool{}
+		for _, input := range result.Items {
+			if input.ProviderItemID != providerItemID {
+				continue
+			}
+			switch input.Kind {
+			case profitabilitydomain.InputKindCost:
+				seenCost = amountEquals(input.Amount, wantCost) && input.SourceReference == costSourceReference
+			case profitabilitydomain.InputKindSaleFee:
+				seenSaleFee = amountEquals(input.Amount, saleFee) && input.SourceReference == "order-1"+saleFeeLineTotalSuffix
+			case profitabilitydomain.InputKindTaxICMS, profitabilitydomain.InputKindTaxIPI, profitabilitydomain.InputKindTaxPIS, profitabilitydomain.InputKindTaxCOFINS:
+				seenTaxes[input.Kind] = amountEquals(input.Amount, wantTaxes[input.Kind]) && input.SourceReference == string(input.Kind[4:])+taxLineTotalSuffix
+			}
+		}
+		if !seenCost || !seenSaleFee {
+			t.Fatalf("item %s cost/sale_fee scopes = cost:%v sale_fee:%v", providerItemID, seenCost, seenSaleFee)
+		}
+		for kind := range wantTaxes {
+			if !seenTaxes[kind] {
+				t.Fatalf("item %s tax %s was not preserved as a line total", providerItemID, kind)
+			}
+		}
+	}
+}
+
+func TestImportMarginInputsPreservesUnknownCost(t *testing.T) {
+	now := time.Date(2026, 7, 12, 12, 0, 0, 0, time.UTC)
+	service := NewService(ServiceConfig{
+		Orders: stubOrderReader{orders: []profitabilitydomain.OrderFact{{
+			InstallationID: "inst-1", ProviderOrderID: "order-1", ProviderUpdatedAt: &now, FetchedAt: now,
+			Items: []profitabilitydomain.OrderItemFact{{ProviderItemID: "quantity-7", Quantity: 7, LinkQuality: profitabilitydomain.OrderLinkResolved, InternalProductID: intPtr(7)}},
+		}}},
+		Internal: stubInternalFactReader{
+			cost: internalreaddomain.CostAsOf{AmountScope: internalreaddomain.CostAmountScopePerUnit, QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityMissingCost}},
+		},
+		Inputs: &stubInputStore{},
+		Now:    func() time.Time { return now },
+	})
+
+	result, err := service.ImportMarginInputs(context.Background(), ImportMarginInputsInput{InstallationID: "inst-1"})
+	if err != nil {
+		t.Fatalf("ImportMarginInputs() error = %v", err)
+	}
+	for _, input := range result.Items {
+		if input.Kind == profitabilitydomain.InputKindCost {
+			if input.Amount != nil || input.Quality != profitabilitydomain.InputQualityMissing || input.QualityReason != "missing_cost" || input.SourceReference != costSourceReference {
+				t.Fatalf("unknown cost = amount:%v quality:%s reason:%q reference:%q", input.Amount, input.Quality, input.QualityReason, input.SourceReference)
+			}
+			return
+		}
+	}
+	t.Fatal("expected a cost input")
+}
+
 func TestImportMarginInputsDoesNotReadInternalFactsForNonResolvedLinkWithProductID(t *testing.T) {
 	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
 	productID := 20303

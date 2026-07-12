@@ -232,6 +232,7 @@ FETCH FIRST 1 ROW ONLY`
 				Basis:       policy.Basis,
 				EffectiveAt: policy.EffectiveAt,
 				Amount:      nil,
+				AmountScope: domain.CostAmountScopePerUnit,
 				Source:      domain.SourceMetadata{System: "oracle", FetchedAt: r.now().UTC()},
 				QualityFlags: []domain.QualityFlag{
 					domain.QualityMissingCost,
@@ -247,6 +248,7 @@ FETCH FIRST 1 ROW ONLY`
 		Basis:       policy.Basis,
 		EffectiveAt: policy.EffectiveAt,
 		Amount:      nullableFloat(amount),
+		AmountScope: domain.CostAmountScopePerUnit,
 		Source: domain.SourceMetadata{
 			System:     "oracle",
 			FetchedAt:  r.now().UTC(),

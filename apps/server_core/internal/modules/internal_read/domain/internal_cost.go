@@ -3,9 +3,11 @@ package domain
 import "time"
 
 type CostBasis string
+type CostAmountScope string
 
 const (
-	CostBasisCUSSEMICM CostBasis = "cussemicm"
+	CostBasisCUSSEMICM     CostBasis       = "cussemicm"
+	CostAmountScopePerUnit CostAmountScope = "per_unit"
 )
 
 type CostAsOfPolicy struct {
@@ -20,6 +22,7 @@ type CostAsOf struct {
 	Basis        CostBasis
 	EffectiveAt  time.Time
 	Amount       *float64
+	AmountScope  CostAmountScope
 	Source       SourceMetadata
 	QualityFlags []QualityFlag
 }

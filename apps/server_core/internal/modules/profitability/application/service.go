@@ -53,6 +53,12 @@ type ServiceConfig struct {
 	NewAdjustmentID func() (string, error)
 }
 
+const (
+	costSourceReference    = "CUSSEMICM#per_unit_to_item_line_total"
+	saleFeeLineTotalSuffix = "#sale_fee_line_total"
+	taxLineTotalSuffix     = "#line_total"
+)
+
 func NewService(cfg ServiceConfig) *Service {
 	now := cfg.Now
 	if now == nil {
@@ -199,7 +205,7 @@ func (s *Service) buildItemInputs(ctx context.Context, order profitabilitydomain
 			Amount:              item.SaleFeeAmount,
 			Currency:            base.Currency,
 			SourceSystem:        "orders",
-			SourceReference:     order.ProviderOrderID,
+			SourceReference:     order.ProviderOrderID + saleFeeLineTotalSuffix,
 			ObservedAt:          base.ObservedAt,
 			Quality:             qualityForKnownAmount(item.SaleFeeAmount),
 			QualityReason:       qualityReasonForKnownAmount(item.SaleFeeAmount, "sale fee is missing from order snapshot"),
@@ -227,7 +233,7 @@ func (s *Service) buildItemInputs(ctx context.Context, order profitabilitydomain
 	}
 
 	cost, costErr := s.internal.GetCostAsOf(ctx, *item.InternalProductID, effectiveAt(order))
-	inputs = append(inputs, mapCostInput(base, cost, costErr))
+	inputs = append(inputs, mapCostInput(base, cost, item.Quantity, costErr))
 
 	tax, taxErr := s.internal.GetTaxInputs(ctx, *item.InternalProductID, effectiveAt(order))
 	inputs = append(inputs,
@@ -480,7 +486,7 @@ func missingInput(base profitabilitydomain.MarginInput, kind profitabilitydomain
 	}
 }
 
-func mapCostInput(base profitabilitydomain.MarginInput, cost internalreaddomain.CostAsOf, err error) profitabilitydomain.MarginInput {
+func mapCostInput(base profitabilitydomain.MarginInput, cost internalreaddomain.CostAsOf, quantity int, err error) profitabilitydomain.MarginInput {
 	if err != nil {
 		return profitabilitydomain.MarginInput{
 			InstallationID:      base.InstallationID,
@@ -491,6 +497,7 @@ func mapCostInput(base profitabilitydomain.MarginInput, cost internalreaddomain.
 			Kind:                profitabilitydomain.InputKindCost,
 			Currency:            base.Currency,
 			SourceSystem:        "internal_read",
+			SourceReference:     costSourceReference,
 			ObservedAt:          base.ObservedAt,
 			Quality:             profitabilitydomain.InputQualityMissing,
 			QualityReason:       err.Error(),
@@ -505,15 +512,24 @@ func mapCostInput(base profitabilitydomain.MarginInput, cost internalreaddomain.
 		ProviderVariationID: base.ProviderVariationID,
 		Scope:               base.Scope,
 		Kind:                profitabilitydomain.InputKindCost,
-		Amount:              cost.Amount,
+		Amount:              extendUnitCost(cost.Amount, quantity),
 		Currency:            base.Currency,
 		SourceSystem:        firstNonEmpty(cost.Source.System, "internal_read"),
+		SourceReference:     costSourceReference,
 		ObservedAt:          firstTime(cost.Source.ObservedAt, &cost.EffectiveAt),
 		Quality:             mapInternalQuality(cost.Amount, cost.QualityFlags),
 		QualityReason:       qualityReason(cost.QualityFlags),
 		CreatedAt:           base.CreatedAt,
 		UpdatedAt:           base.UpdatedAt,
 	}
+}
+
+func extendUnitCost(amount *float64, quantity int) *float64 {
+	if amount == nil {
+		return nil
+	}
+	lineTotal := *amount * float64(quantity)
+	return &lineTotal
 }
 
 func mapTaxInput(base profitabilitydomain.MarginInput, kind profitabilitydomain.InputKind, amount *float64, source internalreaddomain.SourceMetadata, flags []internalreaddomain.QualityFlag, err error, ref string) profitabilitydomain.MarginInput {
@@ -527,7 +543,7 @@ func mapTaxInput(base profitabilitydomain.MarginInput, kind profitabilitydomain.
 			Kind:                kind,
 			Currency:            base.Currency,
 			SourceSystem:        "internal_read",
-			SourceReference:     ref,
+			SourceReference:     ref + taxLineTotalSuffix,
 			ObservedAt:          base.ObservedAt,
 			Quality:             profitabilitydomain.InputQualityMissing,
 			QualityReason:       err.Error(),
@@ -545,7 +561,7 @@ func mapTaxInput(base profitabilitydomain.MarginInput, kind profitabilitydomain.
 		Amount:              amount,
 		Currency:            base.Currency,
 		SourceSystem:        firstNonEmpty(source.System, "internal_read"),
-		SourceReference:     ref,
+		SourceReference:     ref + taxLineTotalSuffix,
 		ObservedAt:          source.ObservedAt,
 		Quality:             mapInternalQuality(amount, flags),
 		QualityReason:       qualityReason(flags),
