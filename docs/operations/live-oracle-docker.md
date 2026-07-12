@@ -16,8 +16,13 @@ calling process, or supplied as PowerShell parameters:
 No `.env` file, Compose service, generic `MPC_ORACLE_*` credential name, or
 ambient alias is read. Do not place
 credentials in shell history, a command transcript, or a file. Supplying the
-values via the caller process is preferred; the runner forwards them to Docker
-by environment-key reference rather than as Docker command arguments.
+values via the caller process is preferred. The runner resolves only those
+three caller-process keys, then maps their resolved values to the pre-existing
+governed container keys `MPC_ORACLE_USERNAME`, `MPC_ORACLE_PASSWORD`, and
+`MPC_ORACLE_CONNECT_STRING` used by the Oracle configuration. Those generic
+names are a container boundary contract, never accepted caller input aliases.
+Docker receives key references rather than credential values as command
+arguments.
 
 Before Docker preflight, build, or run, the runner clears the Docker child process
 environment. It restores only a small Windows execution allowlist (`SystemRoot`,
@@ -49,10 +54,9 @@ read-only, and executes only:
 go test ./internal/modules/internal_read/adapters/oracle -run ^TestOracleLiveSmoke$ -count=1
 ```
 
-Inside the container it injects exactly `MPC_SANKHYA_ORACLE_USERNAME`,
-`MPC_SANKHYA_ORACLE_PASSWORD`, `MPC_SANKHYA_ORACLE_CONNECT_STRING`,
-`MPC_ORACLE_LIVE_TEST=1`, and `MPC_ORACLE_LIB_DIR=/opt/oracle/instantclient`.
-It starts no application
+Inside the container it injects exactly `MPC_ORACLE_USERNAME`,
+`MPC_ORACLE_PASSWORD`, `MPC_ORACLE_CONNECT_STRING`, `MPC_ORACLE_LIVE_TEST=1`,
+and `MPC_ORACLE_LIB_DIR=/opt/oracle/instantclient`. It starts no application
 entrypoint, migration, Compose service, provider operation, or database write.
 
 Docker command output is suppressed to avoid accidental secret disclosure. A

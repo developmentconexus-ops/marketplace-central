@@ -22,11 +22,13 @@ F-05-docker-live-oracle-runner
 
 1. Compile and validate this feature's context pack against the base SHA and
    exclusive write scope.
-2. Replace the runner credential contract with only the explicit caller-process
-   `MPC_SANKHYA_ORACLE_*` namespace while retaining the existing Docker profile
-   and read-only smoke-test target.
+2. Resolve only the explicit caller-process `MPC_SANKHYA_ORACLE_*` namespace,
+   then map the resolved values only to the pre-existing governed
+   `MPC_ORACLE_*` container credential names while retaining the existing Docker
+   profile and read-only smoke-test target.
 3. Add Pester fixtures proving generic `MPC_ORACLE_*` and ambient aliases cannot
-   satisfy credential preflight, while preserving secret-safe Docker forwarding.
+   satisfy credential preflight, that resolved Sankhya inputs map exactly to the
+   governed container names, and that Docker forwarding remains secret-safe.
 4. Document the explicit Sankhya prerequisites; run deterministic contract tests
    before any Docker or Oracle activity and record evidence.
 
@@ -50,9 +52,11 @@ F-05-docker-live-oracle-runner
 ## QA Steps
 
 - Inspect the runner's generated invocation to confirm the only credential names
-  accepted or forwarded are `MPC_SANKHYA_ORACLE_*`, the only test target is
-  `TestOracleLiveSmoke`, there is no `docker compose`, `.env`, migration, or
-  application command, and no secret appears in argv/output.
+  accepted are `MPC_SANKHYA_ORACLE_*`, forwarding uses only the governed
+  container names `MPC_ORACLE_USERNAME`, `MPC_ORACLE_PASSWORD`, and
+  `MPC_ORACLE_CONNECT_STRING`, the only test target is `TestOracleLiveSmoke`,
+  there is no `docker compose`, `.env`, migration, or application command, and
+  no secret appears in argv/output.
 
 ## Rollback/Risk Notes
 

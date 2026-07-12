@@ -11,8 +11,9 @@ $ErrorActionPreference = 'Stop'
 
 $script:RepositoryRoot = Split-Path -Parent $PSScriptRoot
 $script:ProfilePath = Join-Path $script:RepositoryRoot 'docker/live-oracle/profile.json'
-$script:CredentialKeys = @('MPC_SANKHYA_ORACLE_USERNAME', 'MPC_SANKHYA_ORACLE_PASSWORD', 'MPC_SANKHYA_ORACLE_CONNECT_STRING')
-$script:ContainerKeys = @($script:CredentialKeys + @('MPC_ORACLE_LIVE_TEST', 'MPC_ORACLE_LIB_DIR'))
+$script:CallerCredentialKeys = @('MPC_SANKHYA_ORACLE_USERNAME', 'MPC_SANKHYA_ORACLE_PASSWORD', 'MPC_SANKHYA_ORACLE_CONNECT_STRING')
+$script:ContainerCredentialKeys = @('MPC_ORACLE_USERNAME', 'MPC_ORACLE_PASSWORD', 'MPC_ORACLE_CONNECT_STRING')
+$script:ContainerKeys = @($script:ContainerCredentialKeys + @('MPC_ORACLE_LIVE_TEST', 'MPC_ORACLE_LIB_DIR'))
 $script:DockerExecutionEnvironmentKeys = @(
   'SystemRoot', 'WINDIR', 'ComSpec', 'PATH', 'PATHEXT',
   'TEMP', 'TMP', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA'
@@ -32,7 +33,7 @@ function Get-LiveOracleCredentialValues {
   }
   $values = [ordered]@{}
   $missing = [Collections.Generic.List[string]]::new()
-  foreach ($key in $script:CredentialKeys) {
+  foreach ($key in $script:CallerCredentialKeys) {
     $value = if (-not [string]::IsNullOrWhiteSpace($explicit[$key])) { $explicit[$key] } else { [Environment]::GetEnvironmentVariable($key, 'Process') }
     if ([string]::IsNullOrWhiteSpace($value)) { $missing.Add($key); continue }
     $values[$key] = $value
@@ -47,9 +48,9 @@ function New-LiveOracleDockerPlan {
   $profile = Get-LiveOracleDockerProfile
   $credentials = Get-LiveOracleCredentialValues -Username $Username -Password $Password -ConnectString $ConnectString
   $containerEnvironment = [ordered]@{
-    MPC_SANKHYA_ORACLE_USERNAME = $credentials.MPC_SANKHYA_ORACLE_USERNAME
-    MPC_SANKHYA_ORACLE_PASSWORD = $credentials.MPC_SANKHYA_ORACLE_PASSWORD
-    MPC_SANKHYA_ORACLE_CONNECT_STRING = $credentials.MPC_SANKHYA_ORACLE_CONNECT_STRING
+    MPC_ORACLE_USERNAME = $credentials.MPC_SANKHYA_ORACLE_USERNAME
+    MPC_ORACLE_PASSWORD = $credentials.MPC_SANKHYA_ORACLE_PASSWORD
+    MPC_ORACLE_CONNECT_STRING = $credentials.MPC_SANKHYA_ORACLE_CONNECT_STRING
     MPC_ORACLE_LIVE_TEST = '1'
     MPC_ORACLE_LIB_DIR = [string]$profile.oracle_lib_dir
   }

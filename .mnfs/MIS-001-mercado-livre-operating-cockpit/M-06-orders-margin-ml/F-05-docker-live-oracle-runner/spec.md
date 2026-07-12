@@ -31,8 +31,10 @@ configuration or invoke an application runtime.
 - Accept only `MPC_SANKHYA_ORACLE_USERNAME`,
   `MPC_SANKHYA_ORACLE_PASSWORD`, and `MPC_SANKHYA_ORACLE_CONNECT_STRING` from
   explicit parameters or the caller process. Reject generic `MPC_ORACLE_*` and
-  ambient aliases; inject accepted values into Docker by key, never as Docker
-  argument values or persisted content.
+  ambient aliases. Map only the resolved caller values to the pre-existing
+  governed container names `MPC_ORACLE_USERNAME`, `MPC_ORACLE_PASSWORD`, and
+  `MPC_ORACLE_CONNECT_STRING`; inject by key, never as Docker argument values
+  or persisted content.
 - Set `MPC_ORACLE_LIVE_TEST=1` and the image's `/opt/oracle/instantclient` as
   `MPC_ORACLE_LIB_DIR`; do not load `.env`, aliases, Compose, migrations, or an
   application entrypoint.
@@ -51,10 +53,11 @@ configuration or invoke an application runtime.
 
 ## Design
 
-`scripts/run-live-oracle-docker.ps1` creates a fresh child process environment
-containing only the explicit Sankhya credential keys, then calls Docker with key-only
-`--env` switches. It builds an ephemeral tagged image from the existing backend
-Dockerfile and uses `go test` with the exact package and `-run
+`scripts/run-live-oracle-docker.ps1` resolves only the explicit Sankhya caller
+credential keys and creates a fresh child process environment containing their
+values under the governed Oracle container keys. It then calls Docker with
+key-only `--env` switches. This one-way boundary mapping is not a generic input
+fallback. It builds an ephemeral tagged image from the existing backend Dockerfile and uses `go test` with the exact package and `-run
 ^TestOracleLiveSmoke$`. A test seam returns the constructed invocation without
 launching Docker so Pester fixtures never require credentials or Docker.
 

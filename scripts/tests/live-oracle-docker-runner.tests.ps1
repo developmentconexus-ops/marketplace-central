@@ -25,13 +25,16 @@ Describe 'Docker live Oracle runner' {
     Assert-RunnerCondition (($plan.RunArguments -join ' ') -match 'readonly') 'workspace mount is not read-only'
   }
 
-  It 'forwards only the canonical keys by Docker key reference' {
+  It 'maps the explicit Sankhya caller keys to the governed container keys by Docker key reference' {
     $plan = New-LiveOracleDockerPlan -Username 'fixture-user' -Password 'fixture-password' -ConnectString 'fixture-connect'
-    $expected = @('MPC_SANKHYA_ORACLE_USERNAME', 'MPC_SANKHYA_ORACLE_PASSWORD', 'MPC_SANKHYA_ORACLE_CONNECT_STRING', 'MPC_ORACLE_LIVE_TEST', 'MPC_ORACLE_LIB_DIR')
+    $expected = @('MPC_ORACLE_USERNAME', 'MPC_ORACLE_PASSWORD', 'MPC_ORACLE_CONNECT_STRING', 'MPC_ORACLE_LIVE_TEST', 'MPC_ORACLE_LIB_DIR')
 
     Assert-RunnerCondition ((@($plan.ContainerEnvironment.Keys) -join ',') -eq ($expected -join ',')) 'container environment key set changed'
     $envReferences = @($plan.RunArguments | Where-Object { $_ -like 'MPC_*' })
     Assert-RunnerCondition (($envReferences -join ',') -eq ($expected -join ',')) 'Docker environment forwarding changed'
+    Assert-RunnerCondition ($plan.ContainerEnvironment['MPC_ORACLE_USERNAME'] -eq 'fixture-user') 'Sankhya username was not mapped to the governed container key'
+    Assert-RunnerCondition ($plan.ContainerEnvironment['MPC_ORACLE_PASSWORD'] -eq 'fixture-password') 'Sankhya password was not mapped to the governed container key'
+    Assert-RunnerCondition ($plan.ContainerEnvironment['MPC_ORACLE_CONNECT_STRING'] -eq 'fixture-connect') 'Sankhya connect string was not mapped to the governed container key'
     Assert-RunnerCondition (($plan.RunArguments -join ' ') -notmatch 'fixture-user|fixture-password|fixture-connect') 'credential value entered Docker arguments'
   }
 
@@ -70,7 +73,7 @@ Describe 'Docker live Oracle runner' {
     }
   }
 
-  It 'strips ambient configuration from the Docker child and keeps exactly five runtime keys' {
+  It 'strips ambient configuration from the Docker child and keeps exactly five governed runtime keys' {
     $ambient = [ordered]@{
       MPC_UNRELATED_SETTING = 'ambient-mpc'
       MPC_DATABASE_URL = 'ambient-database'
@@ -86,7 +89,7 @@ Describe 'Docker live Oracle runner' {
       }
       $plan = New-LiveOracleDockerPlan -Username 'fixture-user' -Password 'fixture-password' -ConnectString 'fixture-connect'
       $startInfo = New-LiveOracleDockerProcessStartInfo -DockerPath 'C:\fixture\docker.exe' -Arguments $plan.RunArguments -Environment $plan.ContainerEnvironment
-      $expectedRuntime = @('MPC_SANKHYA_ORACLE_USERNAME', 'MPC_SANKHYA_ORACLE_PASSWORD', 'MPC_SANKHYA_ORACLE_CONNECT_STRING', 'MPC_ORACLE_LIVE_TEST', 'MPC_ORACLE_LIB_DIR')
+      $expectedRuntime = @('MPC_ORACLE_USERNAME', 'MPC_ORACLE_PASSWORD', 'MPC_ORACLE_CONNECT_STRING', 'MPC_ORACLE_LIVE_TEST', 'MPC_ORACLE_LIB_DIR')
       $expectedKeys = @($script:DockerExecutionEnvironmentKeys | Where-Object { -not [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_, 'Process')) }) + $expectedRuntime
       $actualKeys = @($startInfo.Environment.Keys)
       $actualRuntime = @($actualKeys | Where-Object { $_ -like 'MPC_*' })
@@ -96,7 +99,7 @@ Describe 'Docker live Oracle runner' {
       foreach ($key in $ambient.Keys) {
         Assert-RunnerCondition (-not ($actualKeys -contains $key)) "ambient key entered Docker child: $key"
       }
-      Assert-RunnerCondition ($startInfo.Environment['MPC_SANKHYA_ORACLE_USERNAME'] -eq 'fixture-user') 'Docker child did not use the explicit Sankhya credential'
+      Assert-RunnerCondition ($startInfo.Environment['MPC_ORACLE_USERNAME'] -eq 'fixture-user') 'Docker child did not receive the governed username key'
     } finally {
       foreach ($key in $ambient.Keys) {
         [Environment]::SetEnvironmentVariable($key, $original[$key], 'Process')
