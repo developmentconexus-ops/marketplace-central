@@ -32,6 +32,7 @@ After stock risk is controlled, operators need to understand whether Mercado Liv
 | F-02 | Margin input model | Define revenue, sale fee, cost, tax, freight, commission/manual adjustment inputs and quality states. |
 | F-03 | Profit snapshot calculation | Calculate per-order/per-item margin with `CUSSEMICM` as cost basis and explicit missing flags. |
 | F-04 | Orders and margin UI | Build sale detail and margin-quality views for operators. |
+| F-05 | Docker live-Oracle validation runner | Run only the registered Oracle SELECT validation target in the canonical Linux/CGO/Instant Client image with explicitly injected lane variables. |
 
 ## Dependencies
 

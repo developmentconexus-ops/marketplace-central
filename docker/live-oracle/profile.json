@@ -1,0 +1,9 @@
+{
+  "schema_version": "1.0",
+  "image_tag": "marketplace-central/live-oracle:local",
+  "dockerfile": "docker/dev/backend.Dockerfile",
+  "workspace": "/workspace",
+  "oracle_lib_dir": "/opt/oracle/instantclient",
+  "go_package": "./internal/modules/internal_read/adapters/oracle",
+  "go_test_regex": "^TestOracleLiveSmoke$"
+}
