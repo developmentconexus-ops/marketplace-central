@@ -22,15 +22,17 @@ F-05-docker-live-oracle-runner
 
 1. Compile and validate this feature's context pack against the base SHA and
    exclusive write scope.
-2. Resolve only the explicit caller-process `MPC_SANKHYA_ORACLE_*` namespace,
-   then map the resolved values only to the pre-existing governed
+2. Add a narrow ignored-local-`.env` parser which accepts exactly the three
+   `MPC_SANKHYA_ORACLE_*` credentials, rejects any other `.env` key, and gives
+   matching caller-process values documented precedence; then map resolved
+   values only to the pre-existing governed
    `MPC_ORACLE_*` container credential names while retaining the existing Docker
    profile and read-only smoke-test target.
-3. Add Pester fixtures proving generic `MPC_ORACLE_*` and ambient aliases cannot
-   satisfy credential preflight, that resolved Sankhya inputs map exactly to the
-   governed container names, and that Docker forwarding remains secret-safe.
-4. Document the explicit Sankhya prerequisites; run deterministic contract tests
-   before any Docker or Oracle activity and record evidence.
+3. Add Pester fixtures proving the `.env` whitelist, caller-process precedence,
+   generic `MPC_ORACLE_*` and ambient-alias rejection, exact mapping to the
+   governed container names, and secret-safe Docker forwarding.
+4. Document the narrow local `.env` contract and precedence; run deterministic
+   contract tests before any Docker or Oracle activity and record evidence.
 
 ## Files Expected To Change
 
@@ -46,17 +48,19 @@ F-05-docker-live-oracle-runner
 - Command: `Invoke-Pester scripts/tests/live-oracle-docker-runner.tests.ps1`
   Satisfies criterion IDs: `F05-AC01`, `F05-AC02`.
   Expected result: fixtures prove the exact build/run argv, key-only Docker
-  environment forwarding, explicit Sankhya credential requirements, generic and
-  ambient-alias rejection, and prerequisite stops without live credentials.
+  environment forwarding, narrow `.env` allowlist, caller-process precedence,
+  generic and ambient-alias rejection, and prerequisite stops without live
+  credentials.
 
 ## QA Steps
 
 - Inspect the runner's generated invocation to confirm the only credential names
-  accepted are `MPC_SANKHYA_ORACLE_*`, forwarding uses only the governed
+  accepted from local `.env` or caller process are `MPC_SANKHYA_ORACLE_*`,
+  caller process precedence is explicit, forwarding uses only the governed
   container names `MPC_ORACLE_USERNAME`, `MPC_ORACLE_PASSWORD`, and
   `MPC_ORACLE_CONNECT_STRING`, the only test target is `TestOracleLiveSmoke`,
-  there is no `docker compose`, `.env`, migration, or application command, and
-  no secret appears in argv/output.
+  there is no `docker compose`, Compose-wide `.env` inheritance, migration, or
+  application command, and no secret appears in argv/output.
 
 ## Rollback/Risk Notes
 

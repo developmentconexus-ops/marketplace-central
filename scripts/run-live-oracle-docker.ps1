@@ -1,8 +1,5 @@
 [CmdletBinding()]
 param(
-  [string]$Username,
-  [string]$Password,
-  [string]$ConnectString,
   [switch]$PreflightOnly
 )
 
@@ -11,6 +8,7 @@ $ErrorActionPreference = 'Stop'
 
 $script:RepositoryRoot = Split-Path -Parent $PSScriptRoot
 $script:ProfilePath = Join-Path $script:RepositoryRoot 'docker/live-oracle/profile.json'
+$script:LocalEnvPath = Join-Path $script:RepositoryRoot '.env'
 $script:CallerCredentialKeys = @('MPC_SANKHYA_ORACLE_USERNAME', 'MPC_SANKHYA_ORACLE_PASSWORD', 'MPC_SANKHYA_ORACLE_CONNECT_STRING')
 $script:ContainerCredentialKeys = @('MPC_ORACLE_USERNAME', 'MPC_ORACLE_PASSWORD', 'MPC_ORACLE_CONNECT_STRING')
 $script:ContainerKeys = @($script:ContainerCredentialKeys + @('MPC_ORACLE_LIVE_TEST', 'MPC_ORACLE_LIB_DIR'))
@@ -23,18 +21,43 @@ function Get-LiveOracleDockerProfile {
   Get-Content -Raw -LiteralPath $script:ProfilePath | ConvertFrom-Json -Depth 10
 }
 
-function Get-LiveOracleCredentialValues {
-  param([string]$Username, [string]$Password, [string]$ConnectString)
+function Get-LiveOracleLocalEnvValues {
+  param([string]$EnvFilePath = $script:LocalEnvPath)
 
-  $explicit = @{
-    MPC_SANKHYA_ORACLE_USERNAME = $Username
-    MPC_SANKHYA_ORACLE_PASSWORD = $Password
-    MPC_SANKHYA_ORACLE_CONNECT_STRING = $ConnectString
+  $values = [ordered]@{}
+  if (-not (Test-Path -LiteralPath $EnvFilePath -PathType Leaf)) { return $values }
+
+  $lineNumber = 0
+  foreach ($line in Get-Content -LiteralPath $EnvFilePath) {
+    $lineNumber += 1
+    $trimmed = $line.Trim()
+    if ([string]::IsNullOrWhiteSpace($trimmed) -or $trimmed.StartsWith('#')) { continue }
+    if ($trimmed -notmatch '^(?<key>[A-Za-z_][A-Za-z0-9_]*)=(?<value>.*)$') {
+      throw "live Oracle .env invalid_line=$lineNumber"
+    }
+
+    $key = $Matches.key
+    if ($key -notin $script:CallerCredentialKeys) { throw "live Oracle .env unsupported_key=$key" }
+    if ($values.Contains($key)) { throw "live Oracle .env duplicate_key=$key" }
+
+    $value = $Matches.value.Trim()
+    if ($value.Length -ge 2 -and (($value.StartsWith('"') -and $value.EndsWith('"')) -or ($value.StartsWith("'") -and $value.EndsWith("'")))) {
+      $value = $value.Substring(1, $value.Length - 2)
+    }
+    $values[$key] = $value
   }
+  $values
+}
+
+function Get-LiveOracleCredentialValues {
+  param([string]$EnvFilePath = $script:LocalEnvPath)
+
+  $localValues = Get-LiveOracleLocalEnvValues -EnvFilePath $EnvFilePath
   $values = [ordered]@{}
   $missing = [Collections.Generic.List[string]]::new()
   foreach ($key in $script:CallerCredentialKeys) {
-    $value = if (-not [string]::IsNullOrWhiteSpace($explicit[$key])) { $explicit[$key] } else { [Environment]::GetEnvironmentVariable($key, 'Process') }
+    $processValue = [Environment]::GetEnvironmentVariable($key, 'Process')
+    $value = if (-not [string]::IsNullOrWhiteSpace($processValue)) { $processValue } else { $localValues[$key] }
     if ([string]::IsNullOrWhiteSpace($value)) { $missing.Add($key); continue }
     $values[$key] = $value
   }
@@ -43,10 +66,10 @@ function Get-LiveOracleCredentialValues {
 }
 
 function New-LiveOracleDockerPlan {
-  param([string]$Username, [string]$Password, [string]$ConnectString)
+  param([string]$EnvFilePath = $script:LocalEnvPath)
 
   $profile = Get-LiveOracleDockerProfile
-  $credentials = Get-LiveOracleCredentialValues -Username $Username -Password $Password -ConnectString $ConnectString
+  $credentials = Get-LiveOracleCredentialValues -EnvFilePath $EnvFilePath
   $containerEnvironment = [ordered]@{
     MPC_ORACLE_USERNAME = $credentials.MPC_SANKHYA_ORACLE_USERNAME
     MPC_ORACLE_PASSWORD = $credentials.MPC_SANKHYA_ORACLE_PASSWORD
@@ -140,10 +163,10 @@ function Invoke-LiveOracleDockerCommand {
 }
 
 function Invoke-LiveOracleDockerRunner {
-  param([string]$Username, [string]$Password, [string]$ConnectString, [switch]$PreflightOnly)
+  param([switch]$PreflightOnly)
 
   $dockerPath = Test-LiveOracleDockerAvailable
-  $plan = New-LiveOracleDockerPlan -Username $Username -Password $Password -ConnectString $ConnectString
+  $plan = New-LiveOracleDockerPlan
   if ($PreflightOnly) { Write-Output 'status=ready'; Write-Output 'target=live-oracle'; Write-Output 'runner=docker'; return }
 
   Invoke-LiveOracleDockerCommand -DockerPath $dockerPath -Arguments $plan.BuildArguments -Environment @{} -Phase 'build'
@@ -153,7 +176,7 @@ function Invoke-LiveOracleDockerRunner {
 
 if ($MyInvocation.InvocationName -ne '.') {
   try {
-    Invoke-LiveOracleDockerRunner -Username $Username -Password $Password -ConnectString $ConnectString -PreflightOnly:$PreflightOnly
+    Invoke-LiveOracleDockerRunner -PreflightOnly:$PreflightOnly
   } catch {
     Write-Output 'status=blocked'
     Write-Output $_.Exception.Message
