@@ -19,24 +19,30 @@ F-05-docker-live-oracle-runner
 ## Problem
 
 The Docker live-Oracle runner needs a secure local credential handoff without
-Compose-wide `.env` inheritance. The correction must accept only the three
-explicit `MPC_SANKHYA_ORACLE_*` inputs from an ignored local `.env` or the
-same exact caller-process keys, map them one way to the governed container
-`MPC_ORACLE_*` names, and remain a canonical Linux/CGO/Instant Client execution
-path that cannot invoke an application runtime.
+Compose-wide `.env` inheritance. DBeaver connection evidence establishes that
+`MPC_SANKHYA_ORACLE_CONNECT_STRING` is an Oracle service name paired with host
+and port. The correction must accept only the five explicit
+`MPC_SANKHYA_ORACLE_*` inputs from an ignored local `.env` or the same exact
+caller-process keys, construct the governed container connect string, and
+remain a canonical Linux/CGO/Instant Client execution path that cannot invoke
+an application runtime.
 
 ## Requirements
 
 - Build the existing `docker/dev/backend.Dockerfile` and run only
   `TestOracleLiveSmoke` in an isolated Docker container.
 - Load an ignored local `.env` using a narrow parser that accepts exactly
-  `MPC_SANKHYA_ORACLE_USERNAME`, `MPC_SANKHYA_ORACLE_PASSWORD`, and
-  `MPC_SANKHYA_ORACLE_CONNECT_STRING`; reject every other `.env` key. Caller
-  process values may be used only for those same exact three keys and take
-  precedence over the corresponding local `.env` values. Reject generic
-  `MPC_ORACLE_*` and every ambient alias for container handoff. Map only the
-  resolved values to the pre-existing
-  governed container names `MPC_ORACLE_USERNAME`, `MPC_ORACLE_PASSWORD`, and
+  `MPC_SANKHYA_ORACLE_USERNAME`, `MPC_SANKHYA_ORACLE_PASSWORD`,
+  `MPC_SANKHYA_ORACLE_HOST`, `MPC_SANKHYA_ORACLE_PORT`, and
+  `MPC_SANKHYA_ORACLE_CONNECT_STRING` (service name). It also permits
+  `MPC_SANKHYA_ORACLE_SCHEMA` as unrelated local configuration, but never
+  consumes, forwards, logs, or uses it to route a connection; reject every
+  other `.env` key. Caller process values may be used only for the same exact
+  five required keys and take precedence over their corresponding local `.env`
+  values. Reject generic `MPC_ORACLE_*` and every ambient alias for container
+  handoff. Construct `MPC_ORACLE_CONNECT_STRING` as `host:port/service` and
+  map only the resolved values to the pre-existing governed container names
+  `MPC_ORACLE_USERNAME`, `MPC_ORACLE_PASSWORD`, and
   `MPC_ORACLE_CONNECT_STRING`; inject by key, never as Docker argument values
   or persisted content.
 - Set `MPC_ORACLE_LIVE_TEST=1` and the image's `/opt/oracle/instantclient` as
@@ -58,24 +64,25 @@ path that cannot invoke an application runtime.
 ## Design
 
 `scripts/run-live-oracle-docker.ps1` parses the ignored local `.env` narrowly:
-it accepts precisely the three Sankhya credential assignments and fails closed
-on any other key. The same exact caller-process keys override their local
-counterparts. It creates a fresh child process environment containing resolved
-values under the governed Oracle container keys, then calls Docker with key-only
-`--env` switches. This one-way boundary mapping is not a generic input
-fallback. It builds an ephemeral tagged image from the existing backend Dockerfile and uses `go test` with the exact package and `-run
+it accepts precisely the five Sankhya connection assignments, allows but ignores
+the local schema assignment, and fails closed on any other key. The same exact
+caller-process keys override their local counterparts. It constructs the Oracle
+service DSN as `host:port/service`, creates a fresh child process environment
+containing resolved values under the governed Oracle container keys, then calls
+Docker with key-only `--env` switches. This one-way boundary mapping is not a
+generic input fallback. It builds an ephemeral tagged image from the existing backend Dockerfile and uses `go test` with the exact package and `-run
 ^TestOracleLiveSmoke$`. A test seam returns the constructed invocation without
 launching Docker so Pester fixtures never require credentials or Docker.
 
 ## Edge Cases
 
-- Missing or whitespace credentials: stop before Docker build or run and list
+- Missing or whitespace connection inputs: stop before Docker build or run and list
   only missing key names.
 - Missing Docker: stop before credentials are used for a container launch.
 - Caller-process values take precedence over matching local `.env` values;
   generic names and ambient aliases are rejected and can never satisfy the
-  credential preflight. Any non-whitelisted `.env` key stops before Docker is
-  launched.
+  connection preflight. The local schema is ignored. Any other non-whitelisted
+  `.env` key stops before Docker is launched.
 - A live test failure is surfaced as a failed execution, never rewritten as a
   success.
 
@@ -90,8 +97,9 @@ Proven by: `docker-live-oracle-runner-tests`.
 
 ### F05-AC02
 
-The runner preflights Docker and resolved Sankhya credentials, and deterministic
-fixtures prove the `.env` whitelist, caller-process precedence, generic and
+The runner preflights Docker and resolved Sankhya connection inputs, and
+deterministic fixtures prove service-name DSN construction, the `.env`
+whitelist, caller-process precedence, schema isolation, generic and
 ambient-alias rejection, and that values are absent from Docker arguments and
 test output.
 Traces to milestone criterion ID: `M-06-C02`. Proven by:

@@ -9,7 +9,15 @@ $ErrorActionPreference = 'Stop'
 $script:RepositoryRoot = Split-Path -Parent $PSScriptRoot
 $script:ProfilePath = Join-Path $script:RepositoryRoot 'docker/live-oracle/profile.json'
 $script:LocalEnvPath = Join-Path $script:RepositoryRoot '.env'
-$script:CallerCredentialKeys = @('MPC_SANKHYA_ORACLE_USERNAME', 'MPC_SANKHYA_ORACLE_PASSWORD', 'MPC_SANKHYA_ORACLE_CONNECT_STRING')
+$script:CallerConnectionKeys = @(
+  'MPC_SANKHYA_ORACLE_USERNAME',
+  'MPC_SANKHYA_ORACLE_PASSWORD',
+  'MPC_SANKHYA_ORACLE_HOST',
+  'MPC_SANKHYA_ORACLE_PORT',
+  'MPC_SANKHYA_ORACLE_CONNECT_STRING'
+)
+$script:IgnoredLocalEnvKeys = @('MPC_SANKHYA_ORACLE_SCHEMA')
+$script:AllowedLocalEnvKeys = @($script:CallerConnectionKeys + $script:IgnoredLocalEnvKeys)
 $script:ContainerCredentialKeys = @('MPC_ORACLE_USERNAME', 'MPC_ORACLE_PASSWORD', 'MPC_ORACLE_CONNECT_STRING')
 $script:ContainerKeys = @($script:ContainerCredentialKeys + @('MPC_ORACLE_LIVE_TEST', 'MPC_ORACLE_LIB_DIR'))
 $script:DockerExecutionEnvironmentKeys = @(
@@ -25,6 +33,7 @@ function Get-LiveOracleLocalEnvValues {
   param([string]$EnvFilePath = $script:LocalEnvPath)
 
   $values = [ordered]@{}
+  $seenKeys = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
   if (-not (Test-Path -LiteralPath $EnvFilePath -PathType Leaf)) { return $values }
 
   $lineNumber = 0
@@ -37,14 +46,14 @@ function Get-LiveOracleLocalEnvValues {
     }
 
     $key = $Matches.key
-    if ($key -notin $script:CallerCredentialKeys) { throw "live Oracle .env unsupported_key=$key" }
-    if ($values.Contains($key)) { throw "live Oracle .env duplicate_key=$key" }
+    if ($key -notin $script:AllowedLocalEnvKeys) { throw "live Oracle .env unsupported_key=$key" }
+    if (-not $seenKeys.Add($key)) { throw "live Oracle .env duplicate_key=$key" }
 
     $value = $Matches.value.Trim()
     if ($value.Length -ge 2 -and (($value.StartsWith('"') -and $value.EndsWith('"')) -or ($value.StartsWith("'") -and $value.EndsWith("'")))) {
       $value = $value.Substring(1, $value.Length - 2)
     }
-    $values[$key] = $value
+    if ($key -in $script:CallerConnectionKeys) { $values[$key] = $value }
   }
   $values
 }
@@ -55,9 +64,9 @@ function Get-LiveOracleCredentialValues {
   $localValues = Get-LiveOracleLocalEnvValues -EnvFilePath $EnvFilePath
   $values = [ordered]@{}
   $missing = [Collections.Generic.List[string]]::new()
-  foreach ($key in $script:CallerCredentialKeys) {
+  foreach ($key in $script:CallerConnectionKeys) {
     $processValue = [Environment]::GetEnvironmentVariable($key, 'Process')
-    $value = if (-not [string]::IsNullOrWhiteSpace($processValue)) { $processValue } else { $localValues[$key] }
+    $value = if (-not [string]::IsNullOrWhiteSpace($processValue)) { $processValue.Trim() } else { $localValues[$key] }
     if ([string]::IsNullOrWhiteSpace($value)) { $missing.Add($key); continue }
     $values[$key] = $value
   }
@@ -69,11 +78,11 @@ function New-LiveOracleDockerPlan {
   param([string]$EnvFilePath = $script:LocalEnvPath)
 
   $profile = Get-LiveOracleDockerProfile
-  $credentials = Get-LiveOracleCredentialValues -EnvFilePath $EnvFilePath
+  $connection = Get-LiveOracleCredentialValues -EnvFilePath $EnvFilePath
   $containerEnvironment = [ordered]@{
-    MPC_ORACLE_USERNAME = $credentials.MPC_SANKHYA_ORACLE_USERNAME
-    MPC_ORACLE_PASSWORD = $credentials.MPC_SANKHYA_ORACLE_PASSWORD
-    MPC_ORACLE_CONNECT_STRING = $credentials.MPC_SANKHYA_ORACLE_CONNECT_STRING
+    MPC_ORACLE_USERNAME = $connection.MPC_SANKHYA_ORACLE_USERNAME
+    MPC_ORACLE_PASSWORD = $connection.MPC_SANKHYA_ORACLE_PASSWORD
+    MPC_ORACLE_CONNECT_STRING = "$($connection.MPC_SANKHYA_ORACLE_HOST):$($connection.MPC_SANKHYA_ORACLE_PORT)/$($connection.MPC_SANKHYA_ORACLE_CONNECT_STRING)"
     MPC_ORACLE_LIVE_TEST = '1'
     MPC_ORACLE_LIB_DIR = [string]$profile.oracle_lib_dir
   }

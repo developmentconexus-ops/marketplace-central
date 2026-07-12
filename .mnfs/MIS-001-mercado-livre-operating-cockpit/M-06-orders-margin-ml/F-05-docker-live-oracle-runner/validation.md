@@ -19,17 +19,22 @@ F-05-docker-live-oracle-runner
 ## Summary
 
 This correction makes the canonical runner usable with the ignored local
-secure `.env` without Compose-wide inheritance. Its narrow parser accepts only
-`MPC_SANKHYA_ORACLE_USERNAME`, `MPC_SANKHYA_ORACLE_PASSWORD`, and
-`MPC_SANKHYA_ORACLE_CONNECT_STRING`; any other assignment, duplicate, or
-malformed line stops before Docker. A nonempty caller-process value with the
+secure `.env` without Compose-wide inheritance. DBeaver connection evidence
+establishes that the supplied `MPC_SANKHYA_ORACLE_CONNECT_STRING` is a service
+name. Its narrow parser accepts the five connection inputs
+`MPC_SANKHYA_ORACLE_USERNAME`, `MPC_SANKHYA_ORACLE_PASSWORD`,
+`MPC_SANKHYA_ORACLE_HOST`, `MPC_SANKHYA_ORACLE_PORT`, and
+`MPC_SANKHYA_ORACLE_CONNECT_STRING`; `MPC_SANKHYA_ORACLE_SCHEMA` is permitted
+but ignored as unrelated local configuration. Any other assignment, duplicate,
+or malformed line stops before Docker. A nonempty caller-process value with the
 same exact name overrides its corresponding local value. Generic
 `MPC_ORACLE_*` credentials and ambient aliases cannot satisfy preflight. After
-resolution, the runner maps only those values to the pre-existing governed container names
-`MPC_ORACLE_USERNAME`, `MPC_ORACLE_PASSWORD`, and
-`MPC_ORACLE_CONNECT_STRING` consumed by the Oracle configuration. Docker
-arguments remain key-only, and the existing read-only smoke-test target and
-fail-closed child environment are unchanged.
+resolution, the runner constructs the governed `host:port/service` connect
+string and maps only it plus the resolved username and password to the
+pre-existing governed container names `MPC_ORACLE_USERNAME`,
+`MPC_ORACLE_PASSWORD`, and `MPC_ORACLE_CONNECT_STRING` consumed by the Oracle
+configuration. Docker arguments remain key-only, and the existing read-only
+smoke-test target and fail-closed child environment are unchanged.
 
 The correction changes no runtime governance. It preserves the permitted
 runner boundary mapping to the existing governed container names and does not
@@ -50,8 +55,8 @@ dispatch requires a separate read-only live-validation session after review.
 | Check | Evidence type | Result | Actual result / artifact |
 | --- | --- | --- | --- |
 | Spec and plan correction | ran | Pass | `spec.md` and `plan.md` define the exact local-file whitelist, documented caller-process precedence, existing governed container mapping, and deterministic proof. |
-| `Invoke-Pester -Path scripts/tests/live-oracle-docker-runner.tests.ps1` | ran | Pass | 7 passed, 0 failed. Covers the narrow local-file whitelist, exact caller-process precedence, generic/ambient alias rejection, one-way governed mapping, key-only Docker argv, isolated child environment, and fixed smoke-test target. |
-| Static credential-boundary inspection | ran | Pass | The runner reads only the three explicit caller names; the parser rejects any other local assignment; Docker receives the five governed runtime keys by reference only. |
+| `Invoke-Pester scripts/tests/live-oracle-docker-runner.tests.ps1` | ran | Pass | 9 passed, 0 failed. Covers service-name DSN construction, the narrow local-file whitelist, ignored schema isolation, exact caller-process precedence, generic/ambient alias rejection, one-way governed mapping, key-only Docker argv, isolated child environment, and fixed smoke-test target. |
+| Static connection-boundary inspection | ran | Pass | The runner reads only the five explicit caller connection names; the parser permits but does not retain the schema assignment, rejects any other local assignment, and Docker receives the five governed runtime keys by reference only. |
 | `git diff --check` | ran | Pass | No whitespace errors in the scoped correction. |
 | Docker preflight or live smoke test | assumed | Not run | Deliberately deferred: this bounded correction prohibits Docker/Oracle activity before contract tests and delegates live validation to a separate read-only session after acceptance. |
 
@@ -60,9 +65,10 @@ dispatch requires a separate read-only live-validation session after review.
 - F05-AC01: Pass. Deterministic coverage preserves the existing Dockerfile,
   read-only mount, exact `TestOracleLiveSmoke` target, key-only forwarding, and
   the exact governed container keys consumed by Oracle configuration.
-- F05-AC02: Pass. Deterministic coverage proves the local-file whitelist,
-  documented caller-process precedence, generic/ambient rejection, and that
-  the one-way mapping does not place credential values in Docker argv/output.
+- F05-AC02: Pass. Deterministic coverage proves service-name construction, the
+  local-file whitelist, schema isolation, documented caller-process precedence,
+  generic/ambient rejection, and that the one-way mapping does not place
+  connection values in Docker argv/output.
 - Scope: only the assigned runner, its deterministic tests, operator document,
   and F-05 correction artifacts changed. No runner profile change was needed.
 
@@ -120,3 +126,22 @@ dispatch requires a separate read-only live-validation session after review.
   skipped 0, pending 0, inconclusive 0. This includes the runner-order
   regression test.
 - Command evidence (ran): `git diff --check` passed with no whitespace errors.
+
+## Correction M06-F05-structured-service-contract
+
+- Authority: owner-supplied DBeaver evidence selects `ORCL` as **Service Name**
+  for the supplied host and port.
+- Runtime route gap resolved: the governed Oracle configuration receives
+  `MPC_ORACLE_CONNECT_STRING`, and the adapter test establishes the expected
+  `host:1521/service` value form. No governance, adapter, or profile change was
+  required.
+- Smallest correction: require host, port, and service name together with the
+  existing username and password; construct `host:port/service` only inside the
+  child environment. Permit `MPC_SANKHYA_ORACLE_SCHEMA` only as ignored local
+  configuration. It is neither retained by the parser nor forwarded, logged, or
+  used for routing.
+- Targeted proof: deterministic Pester tests pass 9/9, including service-name
+  construction, exact caller precedence, schema ignored/non-forwarded,
+  unknown/alias rejection, key-only Docker forwarding, and isolated child
+  environment. `git diff --check` passed. No Docker, Oracle, migration,
+  application, or provider command was run.

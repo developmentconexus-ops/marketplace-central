@@ -19,18 +19,18 @@ function New-CredentialFixtureFile {
   $path
 }
 
-function Invoke-WithoutSankhyaCallerCredentials {
+function Invoke-WithoutSankhyaCallerConnectionValues {
   param([Parameter(Mandatory)][scriptblock]$Action)
 
   $original = [ordered]@{}
   try {
-    foreach ($key in $script:CallerCredentialKeys) {
+    foreach ($key in $script:CallerConnectionKeys) {
       $original[$key] = [Environment]::GetEnvironmentVariable($key, 'Process')
       [Environment]::SetEnvironmentVariable($key, $null, 'Process')
     }
     & $Action
   } finally {
-    foreach ($key in $script:CallerCredentialKeys) {
+    foreach ($key in $script:CallerConnectionKeys) {
       [Environment]::SetEnvironmentVariable($key, $original[$key], 'Process')
     }
   }
@@ -38,9 +38,9 @@ function Invoke-WithoutSankhyaCallerCredentials {
 
 Describe 'Docker live Oracle runner' {
   It 'uses the existing backend image and exactly the read-only smoke test' {
-    $fixture = New-CredentialFixtureFile -Lines @('MPC_SANKHYA_ORACLE_USERNAME=u', 'MPC_SANKHYA_ORACLE_PASSWORD=p', 'MPC_SANKHYA_ORACLE_CONNECT_STRING=c')
+    $fixture = New-CredentialFixtureFile -Lines @('MPC_SANKHYA_ORACLE_USERNAME=u', 'MPC_SANKHYA_ORACLE_PASSWORD=p', 'MPC_SANKHYA_ORACLE_HOST=fixture-host', 'MPC_SANKHYA_ORACLE_PORT=1521', 'MPC_SANKHYA_ORACLE_CONNECT_STRING=fixture-service')
     try {
-      $plan = Invoke-WithoutSankhyaCallerCredentials { New-LiveOracleDockerPlan -EnvFilePath $fixture }
+      $plan = Invoke-WithoutSankhyaCallerConnectionValues { New-LiveOracleDockerPlan -EnvFilePath $fixture }
 
       Assert-RunnerCondition ($plan.BuildArguments -contains (Join-Path $repoRoot 'docker/dev/backend.Dockerfile')) 'backend Dockerfile missing'
       Assert-RunnerCondition ($plan.RunArguments -contains 'go') 'Go command missing'
@@ -53,36 +53,47 @@ Describe 'Docker live Oracle runner' {
     } finally { Remove-Item -LiteralPath $fixture -Force }
   }
 
-  It 'accepts only the three Sankhya keys from the local file and maps them to governed Docker keys by reference' {
-    $fixture = New-CredentialFixtureFile -Lines @('MPC_SANKHYA_ORACLE_USERNAME=u', 'MPC_SANKHYA_ORACLE_PASSWORD=p', 'MPC_SANKHYA_ORACLE_CONNECT_STRING=c')
+  It 'constructs the governed connect string from the five Sankhya service-name inputs' {
+    $fixture = New-CredentialFixtureFile -Lines @('MPC_SANKHYA_ORACLE_USERNAME=u', 'MPC_SANKHYA_ORACLE_PASSWORD=p', 'MPC_SANKHYA_ORACLE_HOST=fixture-host', 'MPC_SANKHYA_ORACLE_PORT=1521', 'MPC_SANKHYA_ORACLE_CONNECT_STRING=fixture-service')
     try {
-      $plan = Invoke-WithoutSankhyaCallerCredentials { New-LiveOracleDockerPlan -EnvFilePath $fixture }
+      $plan = Invoke-WithoutSankhyaCallerConnectionValues { New-LiveOracleDockerPlan -EnvFilePath $fixture }
       $expected = @('MPC_ORACLE_USERNAME', 'MPC_ORACLE_PASSWORD', 'MPC_ORACLE_CONNECT_STRING', 'MPC_ORACLE_LIVE_TEST', 'MPC_ORACLE_LIB_DIR')
 
       Assert-RunnerCondition ((@($plan.ContainerEnvironment.Keys) -join ',') -eq ($expected -join ',')) 'container environment key set changed'
       Assert-RunnerCondition ((@($plan.RunArguments | Where-Object { $_ -like 'MPC_*' }) -join ',') -eq ($expected -join ',')) 'Docker environment forwarding changed'
       Assert-RunnerCondition ($plan.ContainerEnvironment['MPC_ORACLE_USERNAME'] -eq 'u') 'local username was not mapped to the governed container key'
       Assert-RunnerCondition ($plan.ContainerEnvironment['MPC_ORACLE_PASSWORD'] -eq 'p') 'local password was not mapped to the governed container key'
-      Assert-RunnerCondition ($plan.ContainerEnvironment['MPC_ORACLE_CONNECT_STRING'] -eq 'c') 'local connect string was not mapped to the governed container key'
-      Assert-RunnerCondition (($plan.RunArguments -join ' ') -notmatch '(^|\s)[upc](\s|$)') 'credential value entered Docker arguments'
+      Assert-RunnerCondition ($plan.ContainerEnvironment['MPC_ORACLE_CONNECT_STRING'] -eq 'fixture-host:1521/fixture-service') 'service-name inputs were not constructed as the governed connect string'
+      Assert-RunnerCondition (($plan.RunArguments -join ' ') -notmatch '(^|\s)(u|p|fixture-host|1521|fixture-service)(\s|$)') 'connection value entered Docker arguments'
     } finally { Remove-Item -LiteralPath $fixture -Force }
   }
 
-  It 'rejects every local file key outside the three-key allowlist before a Docker plan exists' {
-    $fixture = New-CredentialFixtureFile -Lines @('MPC_SANKHYA_ORACLE_USERNAME=u', 'MPC_SANKHYA_ORACLE_PASSWORD=p', 'MPC_SANKHYA_ORACLE_CONNECT_STRING=c', 'MPC_ORACLE_USERNAME=x')
+  It 'permits but does not consume or forward the unrelated local schema' {
+    $fixture = New-CredentialFixtureFile -Lines @('MPC_SANKHYA_ORACLE_USERNAME=u', 'MPC_SANKHYA_ORACLE_PASSWORD=p', 'MPC_SANKHYA_ORACLE_HOST=fixture-host', 'MPC_SANKHYA_ORACLE_PORT=1521', 'MPC_SANKHYA_ORACLE_CONNECT_STRING=fixture-service', 'MPC_SANKHYA_ORACLE_SCHEMA=fixture-schema')
+    try {
+      $localValues = Invoke-WithoutSankhyaCallerConnectionValues { Get-LiveOracleLocalEnvValues -EnvFilePath $fixture }
+      $plan = Invoke-WithoutSankhyaCallerConnectionValues { New-LiveOracleDockerPlan -EnvFilePath $fixture }
+      Assert-RunnerCondition (-not $localValues.Contains('MPC_SANKHYA_ORACLE_SCHEMA')) 'local schema was consumed'
+      Assert-RunnerCondition (-not (@($plan.ContainerEnvironment.Keys) -contains 'MPC_SANKHYA_ORACLE_SCHEMA')) 'local schema was forwarded'
+      Assert-RunnerCondition (($plan.ContainerEnvironment['MPC_ORACLE_CONNECT_STRING']) -eq 'fixture-host:1521/fixture-service') 'local schema influenced routing'
+    } finally { Remove-Item -LiteralPath $fixture -Force }
+  }
+
+  It 'rejects every local file key outside the service connection and ignored-schema allowlist before a Docker plan exists' {
+    $fixture = New-CredentialFixtureFile -Lines @('MPC_SANKHYA_ORACLE_USERNAME=u', 'MPC_SANKHYA_ORACLE_PASSWORD=p', 'MPC_SANKHYA_ORACLE_HOST=fixture-host', 'MPC_SANKHYA_ORACLE_PORT=1521', 'MPC_SANKHYA_ORACLE_CONNECT_STRING=fixture-service', 'MPC_ORACLE_USERNAME=x')
     try {
       $errorMessage = ''
-      try { Invoke-WithoutSankhyaCallerCredentials { New-LiveOracleDockerPlan -EnvFilePath $fixture } | Out-Null } catch { $errorMessage = $_.Exception.Message }
+      try { Invoke-WithoutSankhyaCallerConnectionValues { New-LiveOracleDockerPlan -EnvFilePath $fixture } | Out-Null } catch { $errorMessage = $_.Exception.Message }
       Assert-RunnerCondition ($errorMessage -eq 'live Oracle .env unsupported_key=MPC_ORACLE_USERNAME') 'non-whitelisted local file key was accepted'
     } finally { Remove-Item -LiteralPath $fixture -Force }
   }
 
   It 'rejects an invalid local file before requesting Docker from the runner' {
-    $fixture = New-CredentialFixtureFile -Lines @('MPC_SANKHYA_ORACLE_USERNAME=u', 'MPC_SANKHYA_ORACLE_PASSWORD=p', 'MPC_SANKHYA_ORACLE_CONNECT_STRING=c', 'MPC_ORACLE_USERNAME=x')
+    $fixture = New-CredentialFixtureFile -Lines @('MPC_SANKHYA_ORACLE_USERNAME=u', 'MPC_SANKHYA_ORACLE_PASSWORD=p', 'MPC_SANKHYA_ORACLE_HOST=fixture-host', 'MPC_SANKHYA_ORACLE_PORT=1521', 'MPC_SANKHYA_ORACLE_CONNECT_STRING=fixture-service', 'MPC_ORACLE_USERNAME=x')
     try {
       Mock -CommandName Test-LiveOracleDockerAvailable -MockWith { throw 'Docker preflight must not run for an invalid local file' }
       $errorMessage = ''
-      try { Invoke-WithoutSankhyaCallerCredentials { Invoke-LiveOracleDockerRunner -EnvFilePath $fixture } | Out-Null } catch { $errorMessage = $_.Exception.Message }
+      try { Invoke-WithoutSankhyaCallerConnectionValues { Invoke-LiveOracleDockerRunner -EnvFilePath $fixture } | Out-Null } catch { $errorMessage = $_.Exception.Message }
 
       Assert-RunnerCondition ($errorMessage -eq 'live Oracle .env unsupported_key=MPC_ORACLE_USERNAME') 'runner did not reject the invalid local file first'
       Assert-MockCalled -CommandName Test-LiveOracleDockerAvailable -Times 0 -Exactly
@@ -90,19 +101,26 @@ Describe 'Docker live Oracle runner' {
   }
 
   It 'gives only the same exact caller-process keys precedence over the local file' {
-    $fixture = New-CredentialFixtureFile -Lines @('MPC_SANKHYA_ORACLE_USERNAME=u', 'MPC_SANKHYA_ORACLE_PASSWORD=p', 'MPC_SANKHYA_ORACLE_CONNECT_STRING=c')
+    $fixture = New-CredentialFixtureFile -Lines @('MPC_SANKHYA_ORACLE_USERNAME=u', 'MPC_SANKHYA_ORACLE_PASSWORD=p', 'MPC_SANKHYA_ORACLE_HOST=fixture-host', 'MPC_SANKHYA_ORACLE_PORT=1521', 'MPC_SANKHYA_ORACLE_CONNECT_STRING=fixture-service')
     $original = [ordered]@{}
     try {
-      foreach ($key in $script:CallerCredentialKeys) {
+      $callerValues = [ordered]@{
+        MPC_SANKHYA_ORACLE_USERNAME = 'caller-user'
+        MPC_SANKHYA_ORACLE_PASSWORD = 'caller-password'
+        MPC_SANKHYA_ORACLE_HOST = 'caller-host'
+        MPC_SANKHYA_ORACLE_PORT = '1522'
+        MPC_SANKHYA_ORACLE_CONNECT_STRING = 'caller-service'
+      }
+      foreach ($key in $script:CallerConnectionKeys) {
         $original[$key] = [Environment]::GetEnvironmentVariable($key, 'Process')
-        [Environment]::SetEnvironmentVariable($key, 'z', 'Process')
+        [Environment]::SetEnvironmentVariable($key, $callerValues[$key], 'Process')
       }
       $plan = New-LiveOracleDockerPlan -EnvFilePath $fixture
-      Assert-RunnerCondition ($plan.ContainerEnvironment['MPC_ORACLE_USERNAME'] -eq 'z') 'caller username did not override local value'
-      Assert-RunnerCondition ($plan.ContainerEnvironment['MPC_ORACLE_PASSWORD'] -eq 'z') 'caller password did not override local value'
-      Assert-RunnerCondition ($plan.ContainerEnvironment['MPC_ORACLE_CONNECT_STRING'] -eq 'z') 'caller connect string did not override local value'
+      Assert-RunnerCondition ($plan.ContainerEnvironment['MPC_ORACLE_USERNAME'] -eq 'caller-user') 'caller username did not override local value'
+      Assert-RunnerCondition ($plan.ContainerEnvironment['MPC_ORACLE_PASSWORD'] -eq 'caller-password') 'caller password did not override local value'
+      Assert-RunnerCondition ($plan.ContainerEnvironment['MPC_ORACLE_CONNECT_STRING'] -eq 'caller-host:1522/caller-service') 'caller service inputs did not override local values'
     } finally {
-      foreach ($key in $script:CallerCredentialKeys) { [Environment]::SetEnvironmentVariable($key, $original[$key], 'Process') }
+      foreach ($key in $script:CallerConnectionKeys) { [Environment]::SetEnvironmentVariable($key, $original[$key], 'Process') }
       Remove-Item -LiteralPath $fixture -Force
     }
   }
@@ -117,8 +135,8 @@ Describe 'Docker live Oracle runner' {
         [Environment]::SetEnvironmentVariable($key, 'x', 'Process')
       }
       $errorMessage = ''
-      try { Invoke-WithoutSankhyaCallerCredentials { Get-LiveOracleCredentialValues -EnvFilePath $fixture } | Out-Null } catch { $errorMessage = $_.Exception.Message }
-      foreach ($key in $script:CallerCredentialKeys) {
+      try { Invoke-WithoutSankhyaCallerConnectionValues { Get-LiveOracleCredentialValues -EnvFilePath $fixture } | Out-Null } catch { $errorMessage = $_.Exception.Message }
+      foreach ($key in $script:CallerConnectionKeys) {
         Assert-RunnerCondition ($errorMessage -like "*${key}*") "ambient alias satisfied $key"
       }
     } finally {
@@ -128,7 +146,7 @@ Describe 'Docker live Oracle runner' {
   }
 
   It 'strips ambient configuration from the Docker child and keeps exactly five governed runtime keys' {
-    $fixture = New-CredentialFixtureFile -Lines @('MPC_SANKHYA_ORACLE_USERNAME=u', 'MPC_SANKHYA_ORACLE_PASSWORD=p', 'MPC_SANKHYA_ORACLE_CONNECT_STRING=c')
+    $fixture = New-CredentialFixtureFile -Lines @('MPC_SANKHYA_ORACLE_USERNAME=u', 'MPC_SANKHYA_ORACLE_PASSWORD=p', 'MPC_SANKHYA_ORACLE_HOST=fixture-host', 'MPC_SANKHYA_ORACLE_PORT=1521', 'MPC_SANKHYA_ORACLE_CONNECT_STRING=fixture-service')
     $ambient = [ordered]@{ MPC_UNRELATED_SETTING = 'x'; MPC_DATABASE_URL = 'x'; ORACLE_HOME = 'x'; MELI_ACCESS_TOKEN = 'x'; SANKHYA_ORACLE_USER = 'x' }
     $original = [ordered]@{}
     try {
@@ -136,7 +154,7 @@ Describe 'Docker live Oracle runner' {
         $original[$key] = [Environment]::GetEnvironmentVariable($key, 'Process')
         [Environment]::SetEnvironmentVariable($key, [string]$ambient[$key], 'Process')
       }
-      $plan = Invoke-WithoutSankhyaCallerCredentials { New-LiveOracleDockerPlan -EnvFilePath $fixture }
+      $plan = Invoke-WithoutSankhyaCallerConnectionValues { New-LiveOracleDockerPlan -EnvFilePath $fixture }
       $startInfo = New-LiveOracleDockerProcessStartInfo -DockerPath 'C:\fixture\docker.exe' -Arguments $plan.RunArguments -Environment $plan.ContainerEnvironment
       $expectedRuntime = @('MPC_ORACLE_USERNAME', 'MPC_ORACLE_PASSWORD', 'MPC_ORACLE_CONNECT_STRING', 'MPC_ORACLE_LIVE_TEST', 'MPC_ORACLE_LIB_DIR')
       $expectedKeys = @($script:DockerExecutionEnvironmentKeys | Where-Object { -not [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_, 'Process')) }) + $expectedRuntime
