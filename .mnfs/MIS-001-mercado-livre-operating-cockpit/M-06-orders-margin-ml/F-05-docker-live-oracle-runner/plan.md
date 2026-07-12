@@ -24,15 +24,16 @@ F-05-docker-live-oracle-runner
    exclusive write scope.
 2. Add a narrow ignored-local-`.env` parser which accepts exactly the five
    `MPC_SANKHYA_ORACLE_*` connection inputs, permits but ignores the local
-   schema assignment, rejects any other `.env` key, and gives matching
+   schema assignment, ignores unrelated non-reserved `.env` keys, rejects
+   unknown reserved keys and credential aliases, and gives matching
    caller-process values documented precedence; construct the governed
    `host:port/service` connect string, then map resolved values only to the pre-existing governed
    `MPC_ORACLE_*` container credential names while retaining the existing Docker
    profile and read-only smoke-test target.
 3. Add Pester fixtures proving service-name construction, the `.env` whitelist,
-   caller-process precedence, schema isolation, generic `MPC_ORACLE_*` and
-   ambient-alias rejection, exact mapping to the governed container names, and
-   secret-safe Docker forwarding.
+   caller-process precedence, schema isolation, unrelated-key isolation,
+   generic `MPC_ORACLE_*` and ambient-alias rejection, exact mapping to the
+   governed container names, and secret-safe Docker forwarding.
 4. Document the narrow local `.env` contract and precedence; run deterministic
    contract tests before any Docker or Oracle activity and record evidence.
 

@@ -79,23 +79,37 @@ Describe 'Docker live Oracle runner' {
     } finally { Remove-Item -LiteralPath $fixture -Force }
   }
 
-  It 'rejects every local file key outside the service connection and ignored-schema allowlist before a Docker plan exists' {
-    $fixture = New-CredentialFixtureFile -Lines @('MPC_SANKHYA_ORACLE_USERNAME=u', 'MPC_SANKHYA_ORACLE_PASSWORD=p', 'MPC_SANKHYA_ORACLE_HOST=fixture-host', 'MPC_SANKHYA_ORACLE_PORT=1521', 'MPC_SANKHYA_ORACLE_CONNECT_STRING=fixture-service', 'MPC_ORACLE_USERNAME=x')
+  It 'ignores unrelated non-reserved local assignments without consuming or forwarding them' {
+    $fixture = New-CredentialFixtureFile -Lines @('MPC_SANKHYA_ORACLE_USERNAME=u', 'MPC_SANKHYA_ORACLE_PASSWORD=p', 'MPC_SANKHYA_ORACLE_HOST=fixture-host', 'MPC_SANKHYA_ORACLE_PORT=1521', 'MPC_SANKHYA_ORACLE_CONNECT_STRING=fixture-service', 'MC_DATABASE_URL=unrelated-fixture-value')
     try {
-      $errorMessage = ''
-      try { Invoke-WithoutSankhyaCallerConnectionValues { New-LiveOracleDockerPlan -EnvFilePath $fixture } | Out-Null } catch { $errorMessage = $_.Exception.Message }
-      Assert-RunnerCondition ($errorMessage -eq 'live Oracle .env unsupported_key=MPC_ORACLE_USERNAME') 'non-whitelisted local file key was accepted'
+      $localValues = Invoke-WithoutSankhyaCallerConnectionValues { Get-LiveOracleLocalEnvValues -EnvFilePath $fixture }
+      $plan = Invoke-WithoutSankhyaCallerConnectionValues { New-LiveOracleDockerPlan -EnvFilePath $fixture }
+      Assert-RunnerCondition (-not $localValues.Contains('MC_DATABASE_URL')) 'unrelated local assignment was consumed'
+      Assert-RunnerCondition (-not (@($plan.ContainerEnvironment.Keys) -contains 'MC_DATABASE_URL')) 'unrelated local assignment was forwarded'
+      Assert-RunnerCondition (($plan.ContainerEnvironment['MPC_ORACLE_CONNECT_STRING']) -eq 'fixture-host:1521/fixture-service') 'unrelated local assignment influenced routing'
     } finally { Remove-Item -LiteralPath $fixture -Force }
   }
 
-  It 'rejects an invalid local file before requesting Docker from the runner' {
+  It 'rejects an unknown reserved local key before requesting Docker from the runner' {
+    $fixture = New-CredentialFixtureFile -Lines @('MPC_SANKHYA_ORACLE_USERNAME=u', 'MPC_SANKHYA_ORACLE_PASSWORD=p', 'MPC_SANKHYA_ORACLE_HOST=fixture-host', 'MPC_SANKHYA_ORACLE_PORT=1521', 'MPC_SANKHYA_ORACLE_CONNECT_STRING=fixture-service', 'MPC_SANKHYA_ORACLE_TNS_ADMIN=x')
+    try {
+      Mock -CommandName Test-LiveOracleDockerAvailable -MockWith { throw 'Docker preflight must not run for an invalid local file' }
+      $errorMessage = ''
+      try { Invoke-WithoutSankhyaCallerConnectionValues { Invoke-LiveOracleDockerRunner -EnvFilePath $fixture } | Out-Null } catch { $errorMessage = $_.Exception.Message }
+
+      Assert-RunnerCondition ($errorMessage -eq 'live Oracle .env unsupported_key=MPC_SANKHYA_ORACLE_TNS_ADMIN') 'runner did not reject the unknown reserved local key first'
+      Assert-MockCalled -CommandName Test-LiveOracleDockerAvailable -Times 0 -Exactly
+    } finally { Remove-Item -LiteralPath $fixture -Force }
+  }
+
+  It 'rejects generic local aliases before requesting Docker from the runner' {
     $fixture = New-CredentialFixtureFile -Lines @('MPC_SANKHYA_ORACLE_USERNAME=u', 'MPC_SANKHYA_ORACLE_PASSWORD=p', 'MPC_SANKHYA_ORACLE_HOST=fixture-host', 'MPC_SANKHYA_ORACLE_PORT=1521', 'MPC_SANKHYA_ORACLE_CONNECT_STRING=fixture-service', 'MPC_ORACLE_USERNAME=x')
     try {
       Mock -CommandName Test-LiveOracleDockerAvailable -MockWith { throw 'Docker preflight must not run for an invalid local file' }
       $errorMessage = ''
       try { Invoke-WithoutSankhyaCallerConnectionValues { Invoke-LiveOracleDockerRunner -EnvFilePath $fixture } | Out-Null } catch { $errorMessage = $_.Exception.Message }
 
-      Assert-RunnerCondition ($errorMessage -eq 'live Oracle .env unsupported_key=MPC_ORACLE_USERNAME') 'runner did not reject the invalid local file first'
+      Assert-RunnerCondition ($errorMessage -eq 'live Oracle .env unsupported_key=MPC_ORACLE_USERNAME') 'runner did not reject the generic local alias first'
       Assert-MockCalled -CommandName Test-LiveOracleDockerAvailable -Times 0 -Exactly
     } finally { Remove-Item -LiteralPath $fixture -Force }
   }

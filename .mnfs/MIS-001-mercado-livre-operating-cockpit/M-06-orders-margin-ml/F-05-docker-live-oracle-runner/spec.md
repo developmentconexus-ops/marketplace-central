@@ -36,8 +36,10 @@ an application runtime.
   `MPC_SANKHYA_ORACLE_HOST`, `MPC_SANKHYA_ORACLE_PORT`, and
   `MPC_SANKHYA_ORACLE_CONNECT_STRING` (service name). It also permits
   `MPC_SANKHYA_ORACLE_SCHEMA` as unrelated local configuration, but never
-  consumes, forwards, logs, or uses it to route a connection; reject every
-  other `.env` key. Caller process values may be used only for the same exact
+  consumes, forwards, logs, or uses it to route a connection. Ignore unrelated
+  non-reserved `.env` assignments entirely; reject unknown reserved
+  `MPC_SANKHYA_ORACLE_*` keys and generic/ambient credential aliases before
+  Docker. Caller process values may be used only for the same exact
   five required keys and take precedence over their corresponding local `.env`
   values. Reject generic `MPC_ORACLE_*` and every ambient alias for container
   handoff. Construct `MPC_ORACLE_CONNECT_STRING` as `host:port/service` and
@@ -65,7 +67,9 @@ an application runtime.
 
 `scripts/run-live-oracle-docker.ps1` parses the ignored local `.env` narrowly:
 it accepts precisely the five Sankhya connection assignments, allows but ignores
-the local schema assignment, and fails closed on any other key. The same exact
+the local schema assignment, and ignores unrelated non-reserved assignments
+without reading their values. It fails closed on unknown reserved keys and
+credential aliases. The same exact
 caller-process keys override their local counterparts. It constructs the Oracle
 service DSN as `host:port/service`, creates a fresh child process environment
 containing resolved values under the governed Oracle container keys, then calls
@@ -81,8 +85,9 @@ launching Docker so Pester fixtures never require credentials or Docker.
 - Missing Docker: stop before credentials are used for a container launch.
 - Caller-process values take precedence over matching local `.env` values;
   generic names and ambient aliases are rejected and can never satisfy the
-  connection preflight. The local schema is ignored. Any other non-whitelisted
-  `.env` key stops before Docker is launched.
+  connection preflight. The local schema is ignored. Unrelated non-reserved
+  `.env` keys are ignored; unknown reserved keys and credential aliases stop
+  before Docker is launched.
 - A live test failure is surfaced as a failed execution, never rewritten as a
   success.
 

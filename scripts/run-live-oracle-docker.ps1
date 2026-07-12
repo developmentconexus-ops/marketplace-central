@@ -18,6 +18,8 @@ $script:CallerConnectionKeys = @(
 )
 $script:IgnoredLocalEnvKeys = @('MPC_SANKHYA_ORACLE_SCHEMA')
 $script:AllowedLocalEnvKeys = @($script:CallerConnectionKeys + $script:IgnoredLocalEnvKeys)
+$script:ReservedLocalEnvPrefix = 'MPC_SANKHYA_ORACLE_'
+$script:RejectedLocalEnvAliasPrefixes = @('MPC_ORACLE_', 'SANKHYA_ORACLE_', 'ORACLE_')
 $script:ContainerCredentialKeys = @('MPC_ORACLE_USERNAME', 'MPC_ORACLE_PASSWORD', 'MPC_ORACLE_CONNECT_STRING')
 $script:ContainerKeys = @($script:ContainerCredentialKeys + @('MPC_ORACLE_LIVE_TEST', 'MPC_ORACLE_LIB_DIR'))
 $script:DockerExecutionEnvironmentKeys = @(
@@ -41,19 +43,27 @@ function Get-LiveOracleLocalEnvValues {
     $lineNumber += 1
     $trimmed = $line.Trim()
     if ([string]::IsNullOrWhiteSpace($trimmed) -or $trimmed.StartsWith('#')) { continue }
-    if ($trimmed -notmatch '^(?<key>[A-Za-z_][A-Za-z0-9_]*)=(?<value>.*)$') {
+    if ($trimmed -notmatch '^(?<key>[A-Za-z_][A-Za-z0-9_]*)=') {
       throw "live Oracle .env invalid_line=$lineNumber"
     }
 
     $key = $Matches.key
+    if (-not $key.StartsWith($script:ReservedLocalEnvPrefix, [StringComparison]::Ordinal)) {
+      if (@($script:RejectedLocalEnvAliasPrefixes | Where-Object { $key.StartsWith($_, [StringComparison]::Ordinal) }).Count -gt 0) {
+        throw "live Oracle .env unsupported_key=$key"
+      }
+      continue
+    }
     if ($key -notin $script:AllowedLocalEnvKeys) { throw "live Oracle .env unsupported_key=$key" }
     if (-not $seenKeys.Add($key)) { throw "live Oracle .env duplicate_key=$key" }
 
-    $value = $Matches.value.Trim()
+    if ($key -in $script:IgnoredLocalEnvKeys) { continue }
+
+    $value = $trimmed.Substring($key.Length + 1).Trim()
     if ($value.Length -ge 2 -and (($value.StartsWith('"') -and $value.EndsWith('"')) -or ($value.StartsWith("'") -and $value.EndsWith("'")))) {
       $value = $value.Substring(1, $value.Length - 2)
     }
-    if ($key -in $script:CallerConnectionKeys) { $values[$key] = $value }
+    $values[$key] = $value
   }
   $values
 }

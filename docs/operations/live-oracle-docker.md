@@ -21,11 +21,16 @@ format consumed by the Oracle adapter. `MPC_SANKHYA_ORACLE_SCHEMA` is permitted
 as unrelated local configuration: the runner does not consume, forward, log, or
 use it to infer the connection route.
 
-The local `.env` parser accepts only those five connection assignments plus the
-ignored schema assignment (blank lines and comments are permitted). Any other
-assignment, duplicate key, or malformed line stops the runner before Docker is
-invoked. It does not load Compose or inherit a Compose-wide `.env`. Do not
-place credentials in shell history or a command transcript.
+The local `.env` parser treats the file as a source only for this reserved
+namespace. It accepts the five connection assignments plus the ignored schema
+assignment (blank lines and comments are permitted). Unrelated non-reserved
+assignments, such as `MC_DATABASE_URL`, are ignored entirely: they are not
+loaded, forwarded, logged, or persisted. Unknown
+`MPC_SANKHYA_ORACLE_*` keys and generic/ambient credential aliases (including
+`MPC_ORACLE_*`) stop the runner before Docker is invoked; duplicate reserved
+keys or malformed lines do likewise. It does not load Compose or inherit a
+Compose-wide `.env`. Do not place credentials in shell history or a command
+transcript.
 
 For an approved secure handoff, a nonempty caller-process value with the same
 exact name overrides its corresponding local `.env` value. This precedence is

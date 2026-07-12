@@ -25,9 +25,11 @@ name. Its narrow parser accepts the five connection inputs
 `MPC_SANKHYA_ORACLE_USERNAME`, `MPC_SANKHYA_ORACLE_PASSWORD`,
 `MPC_SANKHYA_ORACLE_HOST`, `MPC_SANKHYA_ORACLE_PORT`, and
 `MPC_SANKHYA_ORACLE_CONNECT_STRING`; `MPC_SANKHYA_ORACLE_SCHEMA` is permitted
-but ignored as unrelated local configuration. Any other assignment, duplicate,
-or malformed line stops before Docker. A nonempty caller-process value with the
-same exact name overrides its corresponding local value. Generic
+but ignored as unrelated local configuration. Unrelated non-reserved
+assignments are ignored without reading their values; unknown reserved keys,
+generic/ambient aliases, duplicate reserved keys, or malformed lines stop
+before Docker. A nonempty caller-process value with the same exact name
+overrides its corresponding local value. Generic
 `MPC_ORACLE_*` credentials and ambient aliases cannot satisfy preflight. After
 resolution, the runner constructs the governed `host:port/service` connect
 string and maps only it plus the resolved username and password to the
@@ -55,8 +57,8 @@ dispatch requires a separate read-only live-validation session after review.
 | Check | Evidence type | Result | Actual result / artifact |
 | --- | --- | --- | --- |
 | Spec and plan correction | ran | Pass | `spec.md` and `plan.md` define the exact local-file whitelist, documented caller-process precedence, existing governed container mapping, and deterministic proof. |
-| `Invoke-Pester scripts/tests/live-oracle-docker-runner.tests.ps1` | ran | Pass | 9 passed, 0 failed. Covers service-name DSN construction, the narrow local-file whitelist, ignored schema isolation, exact caller-process precedence, generic/ambient alias rejection, one-way governed mapping, key-only Docker argv, isolated child environment, and fixed smoke-test target. |
-| Static connection-boundary inspection | ran | Pass | The runner reads only the five explicit caller connection names; the parser permits but does not retain the schema assignment, rejects any other local assignment, and Docker receives the five governed runtime keys by reference only. |
+| `Invoke-Pester scripts/tests/live-oracle-docker-runner.tests.ps1` | ran | Pass | 10 passed, 0 failed. Covers service-name DSN construction, ignored unrelated-local and schema isolation, unknown reserved-key and alias rejection before Docker, exact caller-process precedence, one-way governed mapping, key-only Docker argv, isolated child environment, and fixed smoke-test target. |
+| Static connection-boundary inspection | ran | Pass | The runner reads only the five explicit caller connection names; the parser permits but does not retain schema or unrelated non-reserved assignments, rejects unknown reserved keys and aliases, and Docker receives the five governed runtime keys by reference only. |
 | `git diff --check` | ran | Pass | No whitespace errors in the scoped correction. |
 | Docker preflight or live smoke test | assumed | Not run | Deliberately deferred: this bounded correction prohibits Docker/Oracle activity before contract tests and delegates live validation to a separate read-only session after acceptance. |
 
@@ -66,9 +68,9 @@ dispatch requires a separate read-only live-validation session after review.
   read-only mount, exact `TestOracleLiveSmoke` target, key-only forwarding, and
   the exact governed container keys consumed by Oracle configuration.
 - F05-AC02: Pass. Deterministic coverage proves service-name construction, the
-  local-file whitelist, schema isolation, documented caller-process precedence,
-  generic/ambient rejection, and that the one-way mapping does not place
-  connection values in Docker argv/output.
+  reserved local-file allowlist, unrelated-key and schema isolation,
+  documented caller-process precedence, generic/ambient rejection, and that
+  the one-way mapping does not place connection values in Docker argv/output.
 - Scope: only the assigned runner, its deterministic tests, operator document,
   and F-05 correction artifacts changed. No runner profile change was needed.
 
@@ -145,3 +147,36 @@ dispatch requires a separate read-only live-validation session after review.
   unknown/alias rejection, key-only Docker forwarding, and isolated child
   environment. `git diff --check` passed. No Docker, Oracle, migration,
   application, or provider command was run.
+
+## Correction M06-F05-unrelated-env-policy-retry-1
+
+- Retry: 1 of 2.
+- Original failure trace preserved: host validation at
+  `755c9cf6bbf5b54521aea6dd403211b0b20087c9` stopped before Docker because
+  the strict parser rejected the unrelated local assignment category
+  `MC_DATABASE_URL`. No values were observed or output, and the canonical
+  runner was not invoked.
+- Assigned failure addressed: a local ignored `.env` was incorrectly treated
+  as entirely owned by the runner rather than as a source for its exact
+  reserved inputs.
+- Smallest correction: ignore non-reserved assignments without reading or
+  retaining their values. Within `MPC_SANKHYA_ORACLE_*`, permit only the five
+  connection inputs and local-only `SCHEMA`; reject unknown reserved keys.
+  Reject generic and ambient credential aliases, including `MPC_ORACLE_*`,
+  before Docker. Exact caller-process precedence and the one-way governed
+  container mapping are unchanged.
+- Files changed: `scripts/run-live-oracle-docker.ps1`,
+  `scripts/tests/live-oracle-docker-runner.tests.ps1`,
+  `docs/operations/live-oracle-docker.md`, and this F-05 `spec.md`, `plan.md`,
+  and `validation.md`.
+- Targeted validation evidence (ran): `Invoke-Pester -Path
+  scripts/tests/live-oracle-docker-runner.tests.ps1` passed 10, failed 0,
+  skipped 0, pending 0, inconclusive 0. Fixtures prove unrelated
+  `MC_DATABASE_URL` isolation plus unknown-reserved and generic-alias
+  rejection with Docker availability mocked and asserted at zero calls.
+- Targeted validation evidence (ran): `git diff --check` passed with no
+  whitespace errors in the scoped correction.
+- Runtime: not run by correction scope. No Docker, Oracle, application,
+  migration, or provider command was invoked.
+- Original blocking failure resolved: Yes, deterministically. A separate
+  read-only host Docker validation remains required for live evidence.
