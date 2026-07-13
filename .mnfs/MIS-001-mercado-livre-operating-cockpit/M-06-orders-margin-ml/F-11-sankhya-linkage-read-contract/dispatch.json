@@ -1,0 +1,89 @@
+{
+  "role": "Feature Implementer",
+  "accepted_base_sha": "011cb2d3f53135e72911eac773483c954436cd04",
+  "dispatch_id": "m06-f11-oracle-read-20260713-01",
+  "feature_id": "F-11-sankhya-linkage-read-contract",
+  "work_item_id": "F-11-sankhya-linkage-read-contract",
+  "source_task_id": "/root/m06_assisted_sankhya_linkage/f11_sankhya_read",
+  "parent_task_id": "/root/m06_assisted_sankhya_linkage",
+  "callback_task_id": "/root/m06_assisted_sankhya_linkage",
+  "milestone_task_id": "/root/m06_assisted_sankhya_linkage",
+  "feature_file": ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-11-sankhya-linkage-read-contract/feature.md",
+  "required_files": [
+    "AGENTS.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-11-sankhya-linkage-read-contract/feature.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-08-assisted-sankhya-linkage-discovery/implementation-contract.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-08-assisted-sankhya-linkage-discovery/sankhya-admin-spec.md"
+  ],
+  "context_files": [
+    "AGENTS.md",
+    "ARCHITECTURE.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/mission.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/validation-contract.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-08-assisted-sankhya-linkage-discovery/implementation-contract.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-08-assisted-sankhya-linkage-discovery/sankhya-admin-spec.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-09-order-line-identity-linkage-ledger/spec.md",
+    "contracts/governance/knowledge-routes.json",
+    "contracts/governance/execution-lanes.json",
+    "wiki/modules/orders.md",
+    "wiki/modules/profitability.md"
+  ],
+  "knowledge_routes": ["portfolio-core", "orders-margin"],
+  "base_sha": "011cb2d3f53135e72911eac773483c954436cd04",
+  "allowed_paths": [
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-11-sankhya-linkage-read-contract",
+    "apps/server_core/internal/modules/internal_read/domain/sankhya_linkage.go",
+    "apps/server_core/internal/modules/internal_read/domain/sankhya_linkage_test.go",
+    "apps/server_core/internal/modules/internal_read/ports/sankhya_linkage.go",
+    "apps/server_core/internal/modules/internal_read/application/sankhya_linkage_service.go",
+    "apps/server_core/internal/modules/internal_read/application/sankhya_linkage_service_test.go",
+    "apps/server_core/internal/modules/internal_read/adapters/oracle/sankhya_linkage_reader.go",
+    "apps/server_core/internal/modules/internal_read/adapters/oracle/sankhya_linkage_reader_test.go"
+  ],
+  "dirty_paths": [
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-11-sankhya-linkage-read-contract"
+  ],
+  "dirty_owner_task_id": "/root/m06_assisted_sankhya_linkage/f11_sankhya_read",
+  "one_writer": {
+    "owner_task_id": "/root/m06_assisted_sankhya_linkage/f11_sankhya_read",
+    "owned_paths": [
+      ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-11-sankhya-linkage-read-contract",
+      "apps/server_core/internal/modules/internal_read/domain/sankhya_linkage.go",
+      "apps/server_core/internal/modules/internal_read/domain/sankhya_linkage_test.go",
+      "apps/server_core/internal/modules/internal_read/ports/sankhya_linkage.go",
+      "apps/server_core/internal/modules/internal_read/application/sankhya_linkage_service.go",
+      "apps/server_core/internal/modules/internal_read/application/sankhya_linkage_service_test.go",
+      "apps/server_core/internal/modules/internal_read/adapters/oracle/sankhya_linkage_reader.go",
+      "apps/server_core/internal/modules/internal_read/adapters/oracle/sankhya_linkage_reader_test.go"
+    ]
+  },
+  "forbidden_paths": [
+    "apps/server_core/internal/modules/orders",
+    "apps/server_core/internal/modules/profitability",
+    "apps/server_core/internal/composition",
+    "apps/server_core/migrations",
+    "contracts/api",
+    "packages",
+    "contracts/governance",
+    "scripts",
+    "docs/research"
+  ],
+  "shared_seams": [],
+  "side_effects": {
+    "allowed": ["repository-read", "feature-artifact-write", "source-write", "fake-test", "git-commit"],
+    "forbidden": ["oracle-read", "oracle-write", "postgres-read", "postgres-write", "provider-read", "provider-write", "production-data-write", "dependency-install", "secret-output", "pii-output"]
+  },
+  "proof": {
+    "command_ids": ["go-sankhya-linkage-read", "git-diff-check"],
+    "evidence_targets": [
+      ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-11-sankhya-linkage-read-contract/validation.md"
+    ]
+  },
+  "stop_conditions": [
+    "Exact metadata/TOP/TGFVAR semantics cannot be represented without inventing an unproved Oracle column or table fact.",
+    "The adapter would interpolate an unvalidated identifier or a request value.",
+    "An Oracle DTO/raw row would leak into domain/application/public contracts.",
+    "A change outside the bounded internal_read files is required.",
+    "Any live Oracle/provider/Postgres operation, dependency install, secret, or PII output would occur."
+  ]
+}
