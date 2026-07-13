@@ -13,6 +13,8 @@ SKILL_ROOT = Path(__file__).resolve().parents[1]
 PROJECT_ROOT = SKILL_ROOT.parents[2]
 CODEX_CONFIG = PROJECT_ROOT / ".codex" / "config.toml"
 MILESTONE_AGENT = PROJECT_ROOT / ".codex" / "agents" / "mpc-milestone.toml"
+IMPLEMENTER_AGENT = PROJECT_ROOT / ".codex" / "agents" / "mpc-implementer.toml"
+VERIFIER_AGENT = PROJECT_ROOT / ".codex" / "agents" / "mpc-verifier.toml"
 FIXTURES = Path(__file__).with_name("fixtures")
 
 
@@ -150,27 +152,36 @@ class MilestoneAgentConfigurationTests(unittest.TestCase):
     def setUpClass(cls):
         cls.config = tomllib.loads(CODEX_CONFIG.read_text(encoding="utf-8"))
         cls.agent = tomllib.loads(MILESTONE_AGENT.read_text(encoding="utf-8"))
+        cls.implementer = tomllib.loads(IMPLEMENTER_AGENT.read_text(encoding="utf-8"))
+        cls.verifier = tomllib.loads(VERIFIER_AGENT.read_text(encoding="utf-8"))
         cls.skill = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
 
-    def test_native_tree_is_bounded_to_portfolio_milestone_and_children(self):
+    def test_standalone_milestone_tree_is_bounded_to_direct_children(self):
         self.assertTrue(self.config["features"]["multi_agent"])
-        self.assertEqual(2, self.config["agents"]["max_depth"])
-        self.assertEqual(4, self.config["agents"]["max_threads"])
+        self.assertEqual(1, self.config["agents"]["max_depth"])
+        self.assertEqual(3, self.config["agents"]["max_threads"])
 
-    def test_only_mpc_milestone_custom_role_is_registered(self):
+    def test_bounded_custom_roles_are_registered(self):
         registered = {
             key for key, value in self.config["agents"].items() if isinstance(value, dict)
         }
-        self.assertEqual({"mpc-milestone"}, registered)
-        role = self.config["agents"]["mpc-milestone"]
-        self.assertEqual("agents/mpc-milestone.toml", role["config_file"])
+        self.assertEqual({"mpc-milestone", "mpc-implementer", "mpc-verifier"}, registered)
+        self.assertEqual("agents/mpc-milestone.toml", self.config["agents"]["mpc-milestone"]["config_file"])
+        self.assertEqual("agents/mpc-implementer.toml", self.config["agents"]["mpc-implementer"]["config_file"])
+        self.assertEqual("agents/mpc-verifier.toml", self.config["agents"]["mpc-verifier"]["config_file"])
 
     def test_custom_agent_has_required_official_fields(self):
         self.assertEqual("mpc-milestone", self.agent["name"])
         self.assertTrue(self.agent["description"].strip())
         self.assertTrue(self.agent["developer_instructions"].strip())
         self.assertEqual("gpt-5.6-terra", self.agent["model"])
-        self.assertEqual("high", self.agent["model_reasoning_effort"])
+        self.assertEqual("medium", self.agent["model_reasoning_effort"])
+        self.assertEqual("gpt-5.6-luna", self.implementer["model"])
+        self.assertEqual("high", self.implementer["model_reasoning_effort"])
+        self.assertIn("never delegate", self.implementer["developer_instructions"])
+        self.assertEqual("gpt-5.6-luna", self.verifier["model"])
+        self.assertEqual("high", self.verifier["model_reasoning_effort"])
+        self.assertIn("Never delegate", self.verifier["developer_instructions"])
 
     def test_parent_channel_is_compact_and_outcome_only(self):
         prompt = self.agent["developer_instructions"]
@@ -185,30 +196,25 @@ class MilestoneAgentConfigurationTests(unittest.TestCase):
         self.assertIn("needs_input", self.skill)
         self.assertIn("terminal", self.skill)
 
-    def test_outlasting_dispatch_requires_native_heartbeat(self):
-        self.assertIn(
-            "Whenever a dispatched Milestone may outlast the current Portfolio turn",
-            self.skill,
-        )
-        self.assertIn("must create one native Codex heartbeat", self.skill)
-        self.assertIn("before ending\n  that turn", self.skill)
-        self.assertIn("single active Milestone's native\n  summary/status", self.skill)
-        self.assertIn("requests exactly one compact", self.skill)
-        self.assertIn("it never reads child logs", self.skill)
+    def test_default_child_budget_prevents_microfeature_fanout(self):
+        self.assertIn("one Implementer run, one final review", self.skill)
+        self.assertIn("one proportional QA run", self.skill)
+        self.assertIn("human\n  cost checkpoint", self.skill)
+        self.assertIn("Keep broad\nintegrated tests for QA", self.agent["developer_instructions"])
 
-    def test_heartbeat_has_mandatory_terminal_delete_lifecycle(self):
-        self.assertIn("deletes the heartbeat immediately", self.skill)
-        self.assertIn("`needs_input` or `terminal` result", self.skill)
-        self.assertIn("stopped or\n  replaced", self.skill)
-        self.assertIn("At most one heartbeat exists", self.skill)
+    def test_normal_control_plane_forbids_heartbeat_and_polling(self):
+        self.assertIn("No heartbeat, callback guard, cron, hook, polling loop", self.skill)
+        self.assertIn("legacy `heartbeat` event", self.skill)
+        self.assertIn("New dispatches must not create it", self.skill)
+        self.assertNotIn("must create one native Codex heartbeat", self.skill)
 
     def test_wakeup_wording_does_not_claim_completion_is_sufficient(self):
         self.assertIn(
-            "Native completion\n  delivery alone does not guarantee that a dormant Portfolio task wakes",
+            "Native completion delivery does not reliably wake a different\n  dormant task",
             self.skill,
         )
         self.assertNotIn("returns automatically to Portfolio", self.skill)
-        self.assertNotIn("Portfolio may create one native", self.skill)
+        self.assertIn("explicitly resume Portfolio", self.skill)
 
     def test_config_adds_no_hooks_or_external_capabilities(self):
         forbidden = {
