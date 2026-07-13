@@ -12,6 +12,7 @@ from pathlib import Path
 SKILL_ROOT = Path(__file__).resolve().parents[1]
 PROJECT_ROOT = SKILL_ROOT.parents[2]
 CODEX_CONFIG = PROJECT_ROOT / ".codex" / "config.toml"
+CODEX_AGENTS = PROJECT_ROOT / ".codex" / "agents"
 FIXTURES = Path(__file__).with_name("fixtures")
 
 
@@ -176,112 +177,66 @@ class MilestoneRuntimeConfigurationTests(unittest.TestCase):
     def setUpClass(cls):
         cls.config = tomllib.loads(CODEX_CONFIG.read_text(encoding="utf-8"))
         cls.skill = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
+        cls.implementer = tomllib.loads(
+            (CODEX_AGENTS / "mpc-implementer.toml").read_text(encoding="utf-8")
+        )
+        cls.verifier = tomllib.loads(
+            (CODEX_AGENTS / "mpc-verifier.toml").read_text(encoding="utf-8")
+        )
 
     def test_standalone_milestone_tree_is_bounded_to_direct_children(self):
         self.assertTrue(self.config["features"]["multi_agent"])
         self.assertEqual(1, self.config["agents"]["max_depth"])
         self.assertEqual(3, self.config["agents"]["max_threads"])
 
-    def test_no_unselectable_custom_roles_are_registered(self):
-        registered = {
-            key
-            for key, value in self.config["agents"].items()
-            if isinstance(value, dict)
-        }
-        self.assertEqual(set(), registered)
-        self.assertIn(
-            "no agent_type, model, or reasoning selector",
-            self.skill,
-        )
-        self.assertIn(
-            "never use task_name as evidence",
-            self.skill,
-        )
+    def test_named_workers_are_project_scoped_luna_high_profiles(self):
+        self.assertEqual("mpc-implementer", self.implementer["name"])
+        self.assertEqual("gpt-5.6-luna", self.implementer["model"])
+        self.assertEqual("high", self.implementer["model_reasoning_effort"])
+        self.assertEqual("mpc-verifier", self.verifier["name"])
+        self.assertEqual("gpt-5.6-luna", self.verifier["model"])
+        self.assertEqual("high", self.verifier["model_reasoning_effort"])
+        self.assertIn("Never delegate", self.implementer["developer_instructions"])
+        self.assertIn("Never delegate", self.verifier["developer_instructions"])
 
-    def test_manual_root_and_generic_children_are_explicit(self):
-        self.assertIn(
-            "session_type: manually_created_standalone_visible_root",
-            self.skill,
-        )
-        self.assertIn("role: Milestone Orchestrator", self.skill)
-        self.assertIn("model_to_select: gpt-5.6-terra", self.skill)
-        self.assertIn("reasoning_effort_to_select: medium", self.skill)
-        self.assertIn(
-            "harness_skill: .agents/skills/mpc-goal-harness/SKILL.md",
-            self.skill,
-        )
-        self.assertIn("runtime_agent_type: generic", self.skill)
-        self.assertIn("runtime_model_policy: runtime_managed", self.skill)
-        self.assertIn(
-            "task_name is a correlation label, not an agent",
-            self.skill,
-        )
-        self.assertNotIn("agent_type: mpc-milestone", self.skill)
-        self.assertNotIn("agent_type: mpc-implementer", self.skill)
-        self.assertNotIn("agent_type: mpc-verifier", self.skill)
+    def test_goal_root_and_named_children_are_explicit(self):
+        self.assertIn("/goal Execute <milestone_id>", self.skill)
+        self.assertIn("user chooses the Milestone root model", self.skill)
+        self.assertIn("agent_type: mpc-implementer", self.skill)
+        self.assertIn("agent_type: mpc-verifier", self.skill)
+        self.assertIn("requests\n`mpc-implementer` or `mpc-verifier` directly by name", self.skill)
+        self.assertIn("no separate capability\nprobe", self.skill)
+        self.assertNotIn("runtime_agent_type: generic", self.skill)
 
     def test_parent_channel_is_compact_and_outcome_only(self):
-        self.assertIn("needs_input", self.skill)
-        self.assertIn("terminal", self.skill)
-        self.assertIn(
-            "For terminal, persist and validate it before messaging",
-            self.skill,
-        )
-        self.assertIn("under 2,000 characters", self.skill)
+        self.assertIn("needs_input_local", self.skill)
+        self.assertIn("escalation_requested", self.skill)
+        self.assertIn("terminal_handoff", self.skill)
+        self.assertIn("only after the user explicitly asks to escalate", self.skill)
         self.assertIn("blockers:", self.skill)
         self.assertIn("next:", self.skill)
-        self.assertIn("No transcript replay", self.skill)
+        self.assertIn("not a progress update or polling", self.skill)
 
     def test_default_child_budget_prevents_microfeature_fanout(self):
-        self.assertIn(
-            "one coherent Feature Implementer run, one final fixed-SHA",
-            self.skill,
-        )
-        self.assertIn(
-            "review, and one proportional QA run",
-            self.skill,
-        )
-        self.assertIn("compact human cost decision", self.skill)
+        self.assertIn("one coherent vertical unit", self.skill)
+        self.assertIn("Do not create an\n   agent per function or plan step", self.skill)
+        self.assertIn("fixed_sha_review", self.skill)
+        self.assertIn("proportional_qa", self.skill)
 
     def test_normal_control_plane_forbids_heartbeat_and_polling(self):
-        self.assertIn(
-            "No heartbeat, callback guard, cron, hook, polling loop",
-            self.skill,
-        )
-        self.assertIn(
-            "Legacy heartbeat remains schema-valid",
-            self.skill,
-        )
-        self.assertIn("new dispatches must not create it", self.skill)
-        self.assertNotIn("must create one native Codex heartbeat", self.skill)
+        self.assertIn("No heartbeat, polling loop, hook, scheduler", self.skill)
+        self.assertIn("New Milestones do not create\nheartbeats", self.skill)
 
     def test_terminal_callback_is_explicit_and_durable_first(self):
-        self.assertIn(
-            "persist and validate one compact checkpoint, then explicitly call",
-            self.skill,
-        )
-        self.assertIn(
-            "send_message_to_thread with portfolio_task_id",
-            self.skill,
-        )
-        self.assertIn("Native completion is not a callback", self.skill)
-        self.assertIn(
-            "checkpoint: <repository-relative checkpoint path>",
-            self.skill,
-        )
-        self.assertIn("return a pasteable callback", self.skill)
+        self.assertIn("Persist the compact terminal checkpoint", self.skill)
+        self.assertIn("exact `hub_task_id` with `send_message_to_thread`", self.skill)
+        self.assertIn("A final response alone is not a\ncallback", self.skill)
+        self.assertIn("checkpoint: <repository-relative path>", self.skill)
 
     def test_portfolio_handoff_is_manual(self):
-        self.assertIn("Portfolio never creates that task", self.skill)
-        self.assertIn(
-            "user, not Portfolio, creates the new task",
-            self.skill,
-        )
-        self.assertIn("After emitting the prompt, Portfolio stops", self.skill)
-        self.assertIn(
-            "It does not poll or create the\nMilestone",
-            self.skill,
-        )
+        self.assertIn("The user\ncreates the task manually", self.skill)
+        self.assertIn("The Hub never calls `create_thread`", self.skill)
+        self.assertIn("The Hub does not create or poll the Milestone", self.skill)
 
     def test_config_adds_no_hooks_or_external_capabilities(self):
         forbidden = {

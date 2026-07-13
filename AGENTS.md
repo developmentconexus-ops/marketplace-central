@@ -4,12 +4,13 @@ Repository truth is ordered: `ARCHITECTURE.md`/ADRs, OpenAPI plus SDK,
 `contracts/governance/`, wiki, `.mnfs/`, then tests/builds/commits. Stop and
 classify architecture, contract, runtime, ownership, or verification conflicts.
 
-Portfolio prepares one copyable packet, then the user starts one clean visible
-standalone Milestone session manually with the requested model/effort. The
-Milestone role comes from `.agents/skills/mpc-goal-harness/` plus that packet.
-Current native child dispatch has no `agent_type`, model, or reasoning selector;
-bounded direct children therefore receive explicit Implementer or Verifier role
-packets and must never be represented as custom agents. Portfolio passes
+Portfolio prepares one copyable `/goal` handoff, then the user starts one clean
+visible standalone Milestone session manually with the desired root
+model/effort. The Milestone role comes from
+`.agents/skills/mpc-goal-harness/` plus that handoff. Milestone dispatches the
+project custom agents `mpc-implementer` and `mpc-verifier`, both pinned to
+`gpt-5.6-luna` with high reasoning. Milestone requests those agents directly
+by their configured names and gives each one the bounded role packet. Portfolio passes
 mission/milestone paths, the accepted base SHA, knowledge routes, constraints,
 QA contract, and its task ID for the terminal callback. Milestone owns feature
 order and starts bounded workers. A Feature plans and executes in one session
@@ -29,7 +30,9 @@ delete unknown state, use WSL, expose secrets/PII, cold-clone, purge caches, or
 install dependencies as a feature ritual. Use `GOCACHE=.gocache` for Go tests.
 Each Feature returns one intentional commit and impacted evidence to Milestone.
 After all Features integrate, Milestone requests one fixed-SHA review and
-proportional QA. Only QA may pass a milestone. On terminal, Milestone persists a
-compact checkpoint first, then explicitly sends its path and verdict to the
-Portfolio task with native cross-task messaging; final response alone is not a
-callback.
+proportional QA. Ordinary ambiguities are asked directly in the visible
+Milestone. Cross-task messages go to Portfolio only when the user explicitly
+requests escalation or on terminal. Only QA may pass a milestone. On terminal,
+Milestone persists a compact checkpoint first, then explicitly sends its path
+and verdict to the Portfolio task with native cross-task messaging; final
+response alone is not a callback.
