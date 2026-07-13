@@ -31,8 +31,8 @@ describe("sdk runtime", () => {
 
     expect(factSchema).toContain("required: [source, value, quality, observed_at, quality_reason]");
     expect(factSchema).toMatch(/quality_reason:\s*\n\s*type: string\s*\n\s*nullable: true/);
-    expect(productSchema).toContain("required: [internal_product_id, name, ean, manufacturer_reference, seller_sku, cost_amount, price_amount, stock_quantity]");
-    for (const field of ["ean", "manufacturer_reference", "seller_sku"]) {
+    expect(productSchema).toContain("required: [internal_product_id, name, ean, manufacturer_reference, seller_sku, brand_name, product_group_name, cost_amount, price_amount, stock_quantity]");
+    for (const field of ["ean", "manufacturer_reference", "seller_sku", "brand_name", "product_group_name"]) {
       expect(productSchema).toMatch(new RegExp(`${field}:\\s*\\n\\s*type: string\\s*\\n\\s*nullable: true`));
       expect(sdk).toMatch(new RegExp(`\\n  ${field}: string \\| null;`));
     }

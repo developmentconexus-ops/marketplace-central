@@ -26,6 +26,11 @@ type stubProductMatcher struct {
 	results map[string][]internalreaddomain.ProductCandidate
 }
 
+func canonicalIDPtr(id int) *internalreaddomain.InternalProductID {
+	canonicalID := internalreaddomain.InternalProductID(id)
+	return &canonicalID
+}
+
 func (s *stubProductMatcher) FindProductsForLinking(_ context.Context, input internalreadports.FindProductsInput) ([]internalreaddomain.ProductCandidate, error) {
 	switch {
 	case input.SellerSKU != nil:
@@ -79,8 +84,8 @@ func TestGenerateLinkCandidatesUsesExactSKUFirst(t *testing.T) {
 		FetchedAt:      now.Add(-time.Minute),
 	}}}
 	matcher := &stubProductMatcher{results: map[string][]internalreaddomain.ProductCandidate{
-		"sku:SKU-1": {{ProductID: 101, Name: "Produto Interno", QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}}},
-		"ean:789":   {{ProductID: 101, Name: "Produto Interno", QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}}},
+		"sku:SKU-1": {{InternalProductID: canonicalIDPtr(101), ProductID: 9001, Name: "Produto Interno", QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}}},
+		"ean:789":   {{InternalProductID: canonicalIDPtr(101), ProductID: 9002, Name: "Produto Interno", QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}}},
 	}}
 	store := &stubCandidateStore{}
 	svc := NewGenerationService(GenerationServiceConfig{Snapshots: snapshots, Matcher: matcher, Store: store, Now: func() time.Time { return now }})
@@ -99,6 +104,9 @@ func TestGenerateLinkCandidatesUsesExactSKUFirst(t *testing.T) {
 	if got := store.candidates[0].State; got != productlinksdomain.LinkCandidateStateExactSKU {
 		t.Fatalf("state=%s, want exact_sku", got)
 	}
+	if got := store.candidates[0].InternalProductID; got == nil || *got != 101 {
+		t.Fatalf("internal product id=%v, want canonical 101", got)
+	}
 }
 
 func TestGenerateLinkCandidatesFallsBackToExactEAN(t *testing.T) {
@@ -115,7 +123,7 @@ func TestGenerateLinkCandidatesFallsBackToExactEAN(t *testing.T) {
 			FetchedAt:      now.Add(-time.Minute),
 		}}},
 		Matcher: &stubProductMatcher{results: map[string][]internalreaddomain.ProductCandidate{
-			"ean:999": {{ProductID: 202, Name: "Produto EAN", QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}}},
+			"ean:999": {{InternalProductID: canonicalIDPtr(202), ProductID: 9202, Name: "Produto EAN", QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}}},
 		}},
 		Store: &stubCandidateStore{},
 		Now:   func() time.Time { return now },
@@ -146,8 +154,8 @@ func TestGenerateLinkCandidatesProducesConflictWhenExactSignalsDisagree(t *testi
 			FetchedAt:      now.Add(-time.Minute),
 		}}},
 		Matcher: &stubProductMatcher{results: map[string][]internalreaddomain.ProductCandidate{
-			"sku:SKU-X": {{ProductID: 301, Name: "Produto SKU", QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}}},
-			"ean:EAN-X": {{ProductID: 302, Name: "Produto EAN", QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}}},
+			"sku:SKU-X": {{InternalProductID: canonicalIDPtr(301), ProductID: 999, Name: "Produto SKU", QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}}},
+			"ean:EAN-X": {{InternalProductID: canonicalIDPtr(302), ProductID: 999, Name: "Produto EAN", QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}}},
 		}},
 		Store: store,
 		Now:   func() time.Time { return now },
@@ -163,6 +171,9 @@ func TestGenerateLinkCandidatesProducesConflictWhenExactSignalsDisagree(t *testi
 	for _, candidate := range store.candidates {
 		if candidate.State != productlinksdomain.LinkCandidateStateConflict {
 			t.Fatalf("candidate=%#v, want conflict", candidate)
+		}
+		if candidate.InternalProductID == nil || (*candidate.InternalProductID != 301 && *candidate.InternalProductID != 302) {
+			t.Fatalf("candidate=%#v, want canonical conflict identity", candidate)
 		}
 	}
 }
@@ -181,8 +192,8 @@ func TestGenerateLinkCandidatesFallsBackToTitleMatches(t *testing.T) {
 		}}},
 		Matcher: &stubProductMatcher{results: map[string][]internalreaddomain.ProductCandidate{
 			"title:Produto D": {
-				{ProductID: 401, Name: "Produto D 1", QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}},
-				{ProductID: 402, Name: "Produto D 2", QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}},
+				{InternalProductID: canonicalIDPtr(401), ProductID: 9401, Name: "Produto D 1", QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}},
+				{InternalProductID: canonicalIDPtr(402), ProductID: 9402, Name: "Produto D 2", QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}},
 			},
 		}},
 		Store: &stubCandidateStore{},
@@ -226,5 +237,67 @@ func TestGenerateLinkCandidatesProducesUnresolvedWhenNothingMatches(t *testing.T
 	}
 	if result.GeneratedCount != 1 || result.Items[0].State != productlinksdomain.LinkCandidateStateUnresolved {
 		t.Fatalf("result=%#v, want one unresolved candidate", result)
+	}
+}
+
+func TestGenerateLinkCandidatesRejectsLegacyOnlyAndInvalidCanonicalIDs(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name        string
+		canonicalID *internalreaddomain.InternalProductID
+	}{
+		{name: "nil canonical ID"},
+		{name: "zero canonical ID", canonicalID: canonicalIDPtr(0)},
+		{name: "negative canonical ID", canonicalID: canonicalIDPtr(-1)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			now := time.Date(2026, 7, 13, 12, 0, 0, 0, time.UTC)
+			store := &stubCandidateStore{}
+			svc := NewGenerationService(GenerationServiceConfig{
+				Snapshots: &stubSnapshotReader{snapshots: []productlinksdomain.ListingSnapshot{{
+					InstallationID: "inst-legacy", ProviderCode: "mercado_livre", ProviderItemID: "MLB-LEGACY",
+					SellerSKU: "LEGACY-ONLY", Title: "Legacy only", FetchedAt: now,
+				}}},
+				Matcher: &stubProductMatcher{results: map[string][]internalreaddomain.ProductCandidate{
+					"sku:LEGACY-ONLY": {{InternalProductID: tc.canonicalID, ProductID: 777, Name: "Legacy product", QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}}},
+				}},
+				Store: store,
+				Now:   func() time.Time { return now },
+			})
+
+			result, err := svc.GenerateLinkCandidates(context.Background(), GenerateLinkCandidatesInput{InstallationID: "inst-legacy"})
+			if err != nil {
+				t.Fatalf("GenerateLinkCandidates() error = %v", err)
+			}
+			if result.GeneratedCount != 1 || len(store.candidates) != 1 {
+				t.Fatalf("generated=%d stored=%d, want one unresolved candidate", result.GeneratedCount, len(store.candidates))
+			}
+			candidate := store.candidates[0]
+			if candidate.State != productlinksdomain.LinkCandidateStateUnresolved || candidate.InternalProductID != nil {
+				t.Fatalf("candidate=%#v, want unresolved without canonical identity", candidate)
+			}
+		})
+	}
+}
+
+func TestCanonicalIdentityControlsDeduplicationAndCandidateID(t *testing.T) {
+	t.Parallel()
+
+	snapshot := productlinksdomain.ListingSnapshot{InstallationID: "inst-1", ProviderItemID: "MLB-STABLE"}
+	now := time.Date(2026, 7, 13, 12, 30, 0, 0, time.UTC)
+	products := []internalreaddomain.ProductCandidate{
+		{InternalProductID: canonicalIDPtr(501), ProductID: 1, Name: "First"},
+		{InternalProductID: canonicalIDPtr(501), ProductID: 2, Name: "Duplicate canonical identity"},
+	}
+
+	candidates := buildCandidatesFromProducts(snapshot, products, productlinksdomain.LinkCandidateStateTitleMatch, productlinksdomain.LinkCandidateMatchInputTitle, "stable", now)
+	if len(candidates) != 1 || candidates[0].InternalProductID == nil || *candidates[0].InternalProductID != 501 {
+		t.Fatalf("candidates=%#v, want one canonical candidate 501", candidates)
+	}
+	firstID := newCandidate(snapshot, productlinksdomain.LinkCandidateStateExactSKU, productlinksdomain.LinkCandidateMatchInputSellerSKU, "SKU", products[0], now).CandidateID
+	secondID := newCandidate(snapshot, productlinksdomain.LinkCandidateStateExactSKU, productlinksdomain.LinkCandidateMatchInputSellerSKU, "SKU", products[1], now).CandidateID
+	if firstID != secondID {
+		t.Fatalf("candidate IDs differ by legacy metadata: %q != %q", firstID, secondID)
 	}
 }

@@ -27,3 +27,11 @@ reject non-positive or noncanonical string inputs.
 - Embedded migration contract and application resolver tests — PASS.
 - Active MSDB residue scan — PASS.
 - SDK runtime — PASS (39/39); OpenAPI/SDK parity — PASS.
+
+## M-09-CORR-03 Contract Parity
+
+`CanonicalCatalogProduct.required` now includes nullable `brand_name` and
+`product_group_name`, matching Go's always-emitted keys and the existing SDK
+required `string | null` fields. The scoped SDK suite passed 40/40, including
+the expanded static OpenAPI/SDK required-nullable parity assertion. No SDK
+runtime production file changed.

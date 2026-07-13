@@ -176,7 +176,7 @@ func (s *GenerationService) findProducts(ctx context.Context, value string, matc
 
 	filtered := make([]internalreaddomain.ProductCandidate, 0, len(products))
 	for _, product := range products {
-		if product.ProductID == 0 || internalreaddomain.HasQualityFlag(product.QualityFlags, internalreaddomain.QualityMissingProduct) {
+		if _, ok := canonicalProductID(product); !ok || internalreaddomain.HasQualityFlag(product.QualityFlags, internalreaddomain.QualityMissingProduct) {
 			continue
 		}
 		filtered = append(filtered, product)
@@ -190,9 +190,13 @@ func (s *GenerationService) findProducts(ctx context.Context, value string, matc
 }
 
 func buildExactCandidates(snapshot domain.ListingSnapshot, skuMatches, eanMatches productMatchResult, now time.Time) []domain.LinkCandidate {
-	if len(skuMatches.Products) == 1 && len(eanMatches.Products) == 1 && skuMatches.Products[0].ProductID != eanMatches.Products[0].ProductID {
-		conflictProducts := uniqueProducts(append(slices.Clone(skuMatches.Products), eanMatches.Products...))
-		return buildConflictCandidates(snapshot, conflictProducts, skuMatches, eanMatches, now)
+	if len(skuMatches.Products) == 1 && len(eanMatches.Products) == 1 {
+		skuProductID, _ := canonicalProductID(skuMatches.Products[0])
+		eanProductID, _ := canonicalProductID(eanMatches.Products[0])
+		if skuProductID != eanProductID {
+			conflictProducts := uniqueProducts(append(slices.Clone(skuMatches.Products), eanMatches.Products...))
+			return buildConflictCandidates(snapshot, conflictProducts, skuMatches, eanMatches, now)
+		}
 	}
 
 	if len(skuMatches.Products) > 1 || len(eanMatches.Products) > 1 {
@@ -212,9 +216,10 @@ func buildExactCandidates(snapshot domain.ListingSnapshot, skuMatches, eanMatche
 func buildConflictCandidates(snapshot domain.ListingSnapshot, products []internalreaddomain.ProductCandidate, skuMatches, eanMatches productMatchResult, now time.Time) []domain.LinkCandidate {
 	candidates := make([]domain.LinkCandidate, 0, len(products))
 	for _, product := range products {
+		productID, _ := canonicalProductID(product)
 		matchInput := domain.LinkCandidateMatchInputSellerSKU
 		matchValue := skuMatches.InputValue
-		if !containsProduct(skuMatches.Products, product.ProductID) {
+		if !containsProduct(skuMatches.Products, productID) {
 			matchInput = domain.LinkCandidateMatchInputEAN
 			matchValue = eanMatches.InputValue
 		}
@@ -236,15 +241,16 @@ func buildCandidatesFromProducts(snapshot domain.ListingSnapshot, products []int
 
 func newCandidate(snapshot domain.ListingSnapshot, state domain.LinkCandidateState, matchInput domain.LinkCandidateMatchInput, matchValue string, product internalreaddomain.ProductCandidate, now time.Time) domain.LinkCandidate {
 	var productID *int
-	if product.ProductID > 0 {
-		productID = &product.ProductID
+	canonicalID, hasCanonicalID := canonicalProductID(product)
+	if hasCanonicalID {
+		productID = &canonicalID
 	}
 	referenceCode := ""
 	if product.ReferenceCode != nil {
 		referenceCode = strings.TrimSpace(*product.ReferenceCode)
 	}
 	fetchedAt := snapshot.FetchedAt.UTC()
-	candidateID := buildCandidateID(snapshot, state, matchInput, product.ProductID)
+	candidateID := buildCandidateID(snapshot, state, matchInput, canonicalID)
 	return domain.LinkCandidate{
 		CandidateID:             candidateID,
 		InstallationID:          snapshot.InstallationID,
@@ -278,13 +284,14 @@ func uniqueProducts(products []internalreaddomain.ProductCandidate) []internalre
 	seen := make(map[int]struct{}, len(products))
 	unique := make([]internalreaddomain.ProductCandidate, 0, len(products))
 	for _, product := range products {
-		if product.ProductID == 0 {
+		productID, ok := canonicalProductID(product)
+		if !ok {
 			continue
 		}
-		if _, ok := seen[product.ProductID]; ok {
+		if _, ok := seen[productID]; ok {
 			continue
 		}
-		seen[product.ProductID] = struct{}{}
+		seen[productID] = struct{}{}
 		unique = append(unique, product)
 	}
 	return unique
@@ -292,11 +299,19 @@ func uniqueProducts(products []internalreaddomain.ProductCandidate) []internalre
 
 func containsProduct(products []internalreaddomain.ProductCandidate, productID int) bool {
 	for _, product := range products {
-		if product.ProductID == productID {
+		canonicalID, ok := canonicalProductID(product)
+		if ok && canonicalID == productID {
 			return true
 		}
 	}
 	return false
+}
+
+func canonicalProductID(product internalreaddomain.ProductCandidate) (int, bool) {
+	if product.InternalProductID == nil || *product.InternalProductID <= 0 {
+		return 0, false
+	}
+	return int(*product.InternalProductID), true
 }
 
 func classifyMatcherError(err error) error {

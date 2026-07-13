@@ -56,3 +56,26 @@ dependency installation occurred.
   from `apps/server_core` — PASS.
 - `npm test --workspace @marketplace-central/sdk-runtime` — PASS (40/40),
   including static OpenAPI/SDK required-nullable parity.
+
+## M-09-CORR-03 Final C01 Correction
+
+- Product-link generation now filters, compares, deduplicates, constructs
+  candidate IDs, and persists identity only from a non-nil positive canonical
+  `ProductCandidate.InternalProductID`. Legacy `ProductID` remains metadata and
+  is never promoted.
+- Unit proof covers nil, zero, and negative canonical IDs paired with positive
+  legacy IDs; each produces only an unresolved candidate with no persistable
+  canonical identity. Conflict, deduplication, and candidate-ID stability use
+  deliberately divergent legacy metadata and positive canonical IDs.
+- `CanonicalCatalogProduct.required` now includes nullable `brand_name` and
+  `product_group_name`, matching the existing required SDK `string | null`
+  fields.
+- `GOCACHE=C:\Users\leandro.theodoro\Documents\marketplace-central\.gocache; go test ./internal/modules/product_links/... -count=1`
+  from `apps/server_core` — PASS.
+- `GOCACHE=C:\Users\leandro.theodoro\Documents\marketplace-central\.gocache; go test -tags integration ./internal/modules/product_links/application -run '^$' -count=1`
+  from `apps/server_core` — PASS (integration fixture compiles with canonical
+  ID; it was not executed because this correction forbids database writes).
+- `npm test --workspace @marketplace-central/sdk-runtime -- --run` — PASS
+  (40/40).
+- No Oracle, provider, network, or database action occurred. Independent
+  fixed-SHA review and proportional QA remain Milestone-owned.

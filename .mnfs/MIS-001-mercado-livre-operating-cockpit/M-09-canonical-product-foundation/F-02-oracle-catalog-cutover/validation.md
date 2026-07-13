@@ -45,3 +45,15 @@ The nullable-field contract correction after base
 M-09-C05 external evidence remains valid only for that base; the Milestone must
 rerun the governed read-only Oracle lane at the new frozen SHA. This correction
 did not run Oracle or perform any runtime/network/database side effect.
+
+## M-09-CORR-03 Identity Consumer Proof
+
+Product-link generation now consumes only positive canonical
+`InternalProductID` values from the Oracle/internal-read contract; positive
+legacy `ProductID` metadata cannot create a resolvable or persistable canonical
+candidate. The full product-links unit suite passed with the absolute repository
+`.gocache`, and the integration-tag fixture compiled with canonical ID `4242`
+while deliberately carrying unrelated legacy metadata. The integration test was
+not executed because this correction forbids database writes. No Oracle or live
+source action occurred; prior external Oracle evidence is unchanged and remains
+subject to fixed-SHA review.

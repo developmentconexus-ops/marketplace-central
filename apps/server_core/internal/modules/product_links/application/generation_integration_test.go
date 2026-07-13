@@ -47,10 +47,11 @@ func TestGenerateLinkCandidatesPersistsDeterministicPostgresResult(t *testing.T)
 	}
 
 	reference := "FAB-2020.C.FLX"
+	canonicalProductID := internalreaddomain.InternalProductID(4242)
 	svc := NewGenerationService(GenerationServiceConfig{
 		Snapshots: snapshotRepo,
 		Matcher: deterministicProductMatcher{product: internalreaddomain.ProductCandidate{
-			ProductID: 4242, Name: "Deterministic product", ReferenceCode: &reference, IsActive: true,
+			InternalProductID: &canonicalProductID, ProductID: 99, Name: "Deterministic product", ReferenceCode: &reference, IsActive: true,
 		}},
 		Store: candidateRepo,
 		Now:   func() time.Time { return now },
