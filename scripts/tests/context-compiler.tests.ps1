@@ -48,7 +48,11 @@ function Set-FixtureContent {
 }
 
 function New-GenericFeatureFixture {
-  param([string]$Name, [string]$Objective = 'Compile a generic bounded context.')
+  param(
+    [string]$Name,
+    [string]$Objective = 'Compile a generic bounded context.',
+    [string]$ValidationContent = "# Validation`n`n## Criterion: Generic`nID: M-99-C01`n"
+  )
   $missionRoot = Join-Path $repoRoot "scripts/.runs/$Name/MIS-999-generic"
   $milestoneRoot = Join-Path $missionRoot 'M-99-generic'
   $featureRoot = Join-Path $milestoneRoot 'F-42-generic-context'
@@ -57,7 +61,7 @@ function New-GenericFeatureFixture {
   $noteRelative = [IO.Path]::GetRelativePath($repoRoot, $notePath).Replace('\', '/')
   Set-FixtureContent (Join-Path $missionRoot 'mission.md') "# Generic Mission`n"
   Set-FixtureContent (Join-Path $milestoneRoot 'milestone.md') "# Generic Milestone`n"
-  Set-FixtureContent (Join-Path $milestoneRoot 'validation-contract.md') "# Validation`n`n## Criterion: Generic`nID: M-99-C01`n"
+  Set-FixtureContent (Join-Path $milestoneRoot 'validation-contract.md') $ValidationContent
   Set-FixtureContent $notePath "generic source`n"
   Set-FixtureContent (Join-Path $featureRoot 'feature.md') "# F-42`n`n## Brief`n`n$Objective`n`n## Expected Output`n`n- A generic pack validates.`n"
   Set-FixtureContent (Join-Path $featureRoot 'spec.md') "# Generic Spec`n`n## Acceptance Criteria`n`n### F42-AC01 — Generic proof`n`n- Traces to milestone criterion ID: ``M-99-C01``.`n"
@@ -160,6 +164,14 @@ try {
   Assert-Equal $genericPack.commands[0].id 'generic-proof' 'generic command'
   Assert-Equal $genericPack.commands[0].command_id 'impact-probe-one' 'generic command registry ID'
 
+  $headingFeature = New-GenericFeatureFixture -Name "heading-$([guid]::NewGuid().ToString('N'))" -ValidationContent "# Validation`n`n### M-99-C01 — Generic criterion`n"
+  $heading = New-HarnessContextPack -FeaturePath $headingFeature -BaseSha $baseSha -AllowedPath @("$headingFeature/**") -OutputPath (Join-Path $fixtureRoot 'heading.json')
+  Assert-Equal $heading.Passed $true 'heading criterion compile'
+
+  $inlineFeature = New-GenericFeatureFixture -Name "inline-$([guid]::NewGuid().ToString('N'))" -ValidationContent "# Validation`n`nThe criterion M-99-C01 appears only in inline prose.`n"
+  $inline = New-HarnessContextPack -FeaturePath $inlineFeature -BaseSha $baseSha -AllowedPath @("$inlineFeature/**") -OutputPath (Join-Path $fixtureRoot 'inline.json')
+  Assert-Equal $inline.ErrorCode 'CTX_PROOF_REFERENCE_INVALID' 'inline criterion rejected'
+
   $utf8Feature = New-GenericFeatureFixture -Name "utf8-$([guid]::NewGuid().ToString('N'))" -Objective ([string]::new([char]0x00E9, 8100))
   $utf8 = New-HarnessContextPack -FeaturePath $utf8Feature -BaseSha $baseSha -AllowedPath @("$utf8Feature/**") -OutputPath (Join-Path $fixtureRoot 'utf8.json')
   Assert-Equal $utf8.ErrorCode 'CTX_TOKEN_BUDGET_EXCEEDED' 'UTF-8 multibyte estimate'
@@ -173,7 +185,7 @@ try {
   Write-Output 'PASS context compiler tests'
 } finally {
   Get-ChildItem -LiteralPath (Join-Path $repoRoot 'scripts/.runs') -Directory -ErrorAction SilentlyContinue |
-    Where-Object Name -match '^(?:generic|utf8)-' |
+    Where-Object Name -match '^(?:generic|heading|inline|utf8)-' |
     ForEach-Object { Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction SilentlyContinue }
   Remove-Item -LiteralPath $fixtureRoot -Recurse -Force -ErrorAction SilentlyContinue
 }

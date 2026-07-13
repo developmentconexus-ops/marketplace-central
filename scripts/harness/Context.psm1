@@ -68,6 +68,14 @@ function Get-ObservableDone {
   $items
 }
 
+function Test-MilestoneCriterionDeclared {
+  param([string]$ValidationContent, [string]$CriterionID)
+  $escaped = [regex]::Escape($CriterionID)
+  $standaloneID = "(?m)^ID:\s*$escaped\s*$"
+  $criterionHeading = "(?m)^#{1,6}\s+$escaped(?=\s*(?:[-–—:])\s*\S)"
+  ($ValidationContent -match $standaloneID) -or ($ValidationContent -match $criterionHeading)
+}
+
 function Test-PathIntersection {
   param([string]$Left, [string]$Right)
   $leftPath = $Left.TrimEnd('/'); $rightPath = $Right.TrimEnd('/')
@@ -233,7 +241,7 @@ function New-CanonicalContextPack {
   $criteria = [Collections.Generic.List[object]]::new()
   foreach ($criterion in @($contract.criteria)) {
     if ($specContent -notmatch "(?m)^### $([regex]::Escape([string]$criterion.id))(?:\s|$)") { return New-ContextResult $false 'CTX_CRITERION_PROOF_MISSING' ([string]$criterion.id) }
-    if ($validationContent -notmatch "(?m)^ID:\s*$([regex]::Escape([string]$criterion.milestone_criterion_id))\s*$") { return New-ContextResult $false 'CTX_PROOF_REFERENCE_INVALID' ([string]$criterion.id) }
+    if (-not (Test-MilestoneCriterionDeclared -ValidationContent $validationContent -CriterionID ([string]$criterion.milestone_criterion_id))) { return New-ContextResult $false 'CTX_PROOF_REFERENCE_INVALID' ([string]$criterion.id) }
     if (@($criterion.command_ids).Count -eq 0) { return New-ContextResult $false 'CTX_CRITERION_PROOF_MISSING' ([string]$criterion.id) }
     foreach ($proof in @($criterion.command_ids)) { if ($proof -notin $commandIds) { return New-ContextResult $false 'CTX_PROOF_REFERENCE_INVALID' ([string]$criterion.id) } }
     $criteria.Add([ordered]@{ id = [string]$criterion.id; milestone_id = [string]$criterion.milestone_criterion_id; proof_commands = @($criterion.command_ids) })

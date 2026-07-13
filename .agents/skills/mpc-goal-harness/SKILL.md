@@ -73,6 +73,9 @@ and pastes the handoff. The Hub never calls `create_thread` for this flow.
 2. If a product, authority, contract, or irreversible choice is genuinely
    ambiguous, ask the user directly in the visible Milestone and pause. Do not
    route ordinary questions through the Hub.
+   Formatting-only normalization or bounded parser compatibility that preserves
+   the same contract meaning is an autonomous remediation, not a user-input
+   stop; record the deterministic proof with the implementing change.
 3. Maintain a visible plan at major gates only: accepted, coherent unit done,
    SHA frozen, review, QA, terminal.
 4. Dispatch `mpc-implementer` for one coherent vertical unit. Do not create an
