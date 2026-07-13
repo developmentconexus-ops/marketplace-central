@@ -7,7 +7,7 @@ status: planned
 owner: Mission Strategist
 parent: MIS-001
 created: 2026-07-06
-updated: 2026-07-06
+updated: 2026-07-13
 validation_level: QA-0
 lifecycle_scope: milestone
 ```
@@ -38,6 +38,7 @@ After operational safety and margin visibility, the platform can help sell bette
 - M-05 Stock Seguro.
 - M-06 Orders + Margin.
 - Sales history and product grouping from M-03.
+- M-14 Real Vertical MVP Validation; this is now the execution gate.
 
 ## Risks
 
@@ -53,10 +54,15 @@ After operational safety and margin visibility, the platform can help sell bette
 ## Handoff
 
 - Current status: planned.
-- Next owner: Milestone Orchestrator after M-06.
-- Next action: Reconfirm business priority before execution.
+- Next owner: Mission Strategist after M-14.
+- Next action: Reconfirm commercial-intelligence scope from the real M-14 product/listing/sale dataset; do not dispatch before then.
 - Required files/evidence: F-*/validation.md and M-07/validation-result.md.
-- Blockers or open decisions: Margin minimum thresholds and kit rules require operator decision before F-01/F-04.
+- Blockers or open decisions: Competitor monitoring, margin thresholds, kits, promotions, and recommendation breadth require a new operator scope decision after M-14.
+
+## MVP Replan Disposition
+
+M-07 remains post-MVP. None of its recommendations, competitor monitoring, kits,
+promotions, or price writes are required to pass MIS-001's MVP validation.
 
 ## Correction Handoff
 

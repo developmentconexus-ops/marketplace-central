@@ -1,4 +1,4 @@
-# Architecture Map
+# Architecture Map — MVP Replan
 
 ```yaml
 id: AM-001
@@ -7,92 +7,76 @@ status: planned
 owner: Mission Strategist
 parent: MIS-001
 created: 2026-07-06
-updated: 2026-07-06
+updated: 2026-07-13
 validation_level: QA-0
 lifecycle_scope: support
 ```
 
-## Topology
+This file visualizes `mission.md` and IC-003. Those artifacts remain authoritative.
+
+## Runtime topology
 
 ```mermaid
 graph TD
-  web["apps/web React"] -->|SDK runtime only| api["apps/server_core Go API"]
-  api --> modules["MPC business modules"]
-  modules --> pg[("Postgres MPC-owned state")]
-  modules --> caps["Marketplace capability ports"]
-  caps --> ml["Mercado Livre adapter"]
-  ml --> mlapi["Mercado Livre REST APIs"]
-  modules --> sankhyaPort["Sankhya read ports"]
-  sankhyaPort --> mnos["MNOS-derived read edge"]
-  mnos --> oracle[("Sankhya Oracle read-only")]
-  api --> integrations["integrations auth and capability health"]
-  integrations --> pg
+  operator["Trusted local operator"] --> web["apps/web operator workspaces"]
+  web -->|"packages/sdk-runtime only"| api["apps/server_core Go API"]
+  api --> catalog["catalog / product_links / inventory / orders / profitability / integrations"]
+  catalog --> pg[("PostgreSQL MPC state")]
+  catalog --> oraclePort["internal_read ports"]
+  oraclePort --> oracle[("Sankhya Oracle read-only")]
+  catalog --> providerPorts["marketplace capability ports"]
+  providerPorts --> ml["Mercado Livre REST read adapters"]
+  web -. "stock preview only" .-> preview["No provider mutation"]
 ```
 
-## Stock Seguro Flow
+## Operator journey
 
 ```mermaid
 sequenceDiagram
   actor Operator
-  Operator->>Web: open Stock Seguro
-  Web->>API: GET /inventory/stock-risks
-  API->>Inventory: list risk read model
-  Inventory->>Postgres: read links, snapshots, policies
-  Inventory-->>API: risk rows
-  API-->>Web: linked listing risk view
-  Operator->>Web: approve manual stock action
-  Web->>API: POST /inventory/stock-actions/{id}/apply
-  API->>Inventory: apply assisted action
-  Inventory->>ProductLinks: verify resolved link
-  Inventory->>Connectors: StockWriter.UpdateAvailableQuantity
-  Connectors->>MercadoLivre: PUT /items/{item_id}
-  MercadoLivre-->>Connectors: provider response
-  Inventory->>Postgres: persist audit before/after/policy/response
-  API-->>Web: applied or failed result
+  participant Overview
+  participant Product as Product 360
+  participant Listing
+  participant Sale
+  participant API
+  participant Sources as PostgreSQL + ML + Oracle
+  Operator->>Overview: open attention queue
+  Overview->>API: existing SDK list operations
+  API->>Sources: read persisted and external-source facts
+  Sources-->>API: values + quality + observed_at
+  API-->>Overview: attention items
+  Operator->>Listing: open stock-attention deep link
+  Listing->>Product: inspect canonical product
+  Product->>Listing: return to linked listing
+  Listing->>Sale: open related sale
+  Sale-->>Operator: revenue, inputs, margin, provenance
+  Operator->>Listing: review stock simulation
+  Listing-->>Operator: current + proposed + rule + preview payload, executed=false
 ```
 
-## Link Lifecycle
+## Shared state vocabulary
 
 ```mermaid
 stateDiagram-v2
-  [*] --> candidate
-  candidate --> resolved: exact EAN/seller_sku or operator approve
-  candidate --> conflict: multiple plausible matches
-  candidate --> unresolved: no plausible match
-  conflict --> resolved: operator selects one product
-  unresolved --> resolved: operator links manually
-  resolved --> rejected: operator rejects incorrect link
-  rejected --> candidate: new listing snapshot changes evidence
+  [*] --> current
+  current --> stale: freshness threshold exceeded
+  current --> unknown: required source absent
+  current --> conflict: identities or facts disagree
+  stale --> current: successful refresh
+  unknown --> current: source becomes known
+  conflict --> current: operator resolves evidence
 ```
 
-## Stock Action Lifecycle
-
-```mermaid
-stateDiagram-v2
-  [*] --> proposed
-  proposed --> blocked: unresolved link, stale source, unsupported provider shape, ineligible product
-  proposed --> approved: operator confirms
-  approved --> applied: provider accepted update and audit persisted
-  approved --> failed: provider rejected or request failed
-  failed --> proposed: refreshed snapshot creates new recommendation
-  applied --> [*]
-  blocked --> [*]
-```
-
-## Build Order
+## Build order
 
 ```mermaid
 graph LR
-  M01["M-01 VTEX removal"] --> M02["M-02 capability framework"]
-  M02 --> M03["M-03 MNOS/Sankhya read contract"]
-  M02 --> M04["M-04 Product Links ML"]
-  M03 --> M05["M-05 Stock Seguro ML"]
-  M04 --> M05
-  M05 --> M06["M-06 Orders + Margin ML"]
-  M06 --> M07["M-07 Commercial Intelligence"]
+  accepted["Passed M-01..M-05 + M-08"] --> M09["M-09 Canonical Product Foundation"]
+  M06["M-06 failed historical gate; reusable order/margin evidence"] -.-> M13
+  M09 --> M13["M-13 Integrated Operator Workspaces"]
+  M13 --> M14["M-14 Real Vertical MVP Validation"]
+  M14 --> M07["M-07 Commercial Intelligence reassessment"]
+  M14 -. "post-MVP" .-> M10["M-10 Runtime consolidation"]
+  M10 -.-> M11["M-11 Production write execution/auth"]
+  M11 -.-> M12["M-12 Listing/SKU mutation"]
 ```
-
-## Truth Notes
-
-- Interface contracts own field names, route namespaces, error codes, and capability semantics.
-- This map visualizes mission contracts only; feature execution must preserve the referenced contracts.
