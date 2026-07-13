@@ -54,7 +54,7 @@ Authoritative result: `../validation-result.md` and `../milestone-review.md`
 | Round | Attempt | Scope dispatched | Defect locus | Correction result | New `ran` evidence path | Re-gate verdict |
 | --- | --- | --- | --- | --- | --- | --- |
 | Historical | — | Earlier unnumbered fixes and live-evidence reconciliation | See round-2 review trail | Historical context retained; owner says these do not consume attempts | `../orchestrator-reconciliation-2026-07-11.md` | Round 2 Fail is the baseline |
-| 2 | 1 | F-06 quantity/cost amount-scope correction | `apps/server_core/internal/modules/profitability/application/service.go` (`mapCostInput` composition) | Accepted at `2284c1d3bfcfa359a66777baad6c339083973538` | `../F-06-quantity-cost-semantics/validation.md` | Pending full fixed-SHA gate |
+| 2 | 1 | F-06 quantity/cost amount-scope correction | `apps/server_core/internal/modules/profitability/application/service.go` (`mapCostInput` composition) | Accepted at `2284c1d3bfcfa359a66777baad6c339083973538` | `../F-06-quantity-cost-semantics/validation.md` | Round 3 Fail at `81b8a4b12c3fe32c011f3d362ede393dd7484381`; C02 integration passed, ★2/★3/★7 remain failing |
 
 ## Required Commands Or QA
 
@@ -64,9 +64,11 @@ Authoritative result: `../validation-result.md` and `../milestone-review.md`
 
 ## Handoff
 
-- Current status: attempt 1 accepted; next product-evidence feature pending.
+- Current status: round-3 re-gate failed after accepted attempt 1 and F-07.
 - Next owner: Milestone Orchestrator.
-- Next action: dispatch the smallest bounded feature for real order-specific
-  Oracle tax provenance and resolved-order margin evidence.
+- Next action: obtain owner-approved Oracle `NUNOTA`/`SEQUENCIA` mapping for
+  each ML order item before any further real-margin evidence work. A later
+  separately authorized correction may address the deferred trusted-principal
+  boundary and durable evidence bindings.
 - Blocker retained: M-06-C03 trusted-principal boundary is deliberately
   deferred, not passed or silently weakened.
