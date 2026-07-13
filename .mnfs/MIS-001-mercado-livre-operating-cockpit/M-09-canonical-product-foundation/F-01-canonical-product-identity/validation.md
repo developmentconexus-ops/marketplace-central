@@ -40,3 +40,19 @@ string identity nor an EAN/reference/seller SKU is coerced to CODPROD. F-02
 must populate the canonical contract from Oracle/internal_read; F-03 owns any
 deterministic compatibility removal. No Oracle/provider calls, writes, auth, or
 dependency installation occurred.
+
+## Required Nullable-Field Correction
+
+- Removed Go `omitempty` from `quality_reason`; canonical nullable identifiers
+  already used non-omitting JSON tags at correction base
+  `954b88c7fc97fe3063ccec8a68f12caf12732b55`.
+- OpenAPI now requires `ean`, `manufacturer_reference`, `seller_sku`, and
+  `quality_reason` while retaining `nullable: true`; SDK fields remain required
+  `T | null`.
+- Go serialization proof covers absent identifiers and current
+  `quality_reason` emitted as explicit `null`; unknown/stale blank reasons are
+  rejected.
+- `GOCACHE=C:\Users\leandro.theodoro\Documents\marketplace-central\.gocache; go test ./internal/modules/catalog/domain ./internal/modules/catalog/adapters/internalread`
+  from `apps/server_core` — PASS.
+- `npm test --workspace @marketplace-central/sdk-runtime` — PASS (40/40),
+  including static OpenAPI/SDK required-nullable parity.

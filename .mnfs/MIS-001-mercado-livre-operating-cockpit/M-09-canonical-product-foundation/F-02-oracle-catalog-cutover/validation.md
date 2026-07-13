@@ -39,3 +39,9 @@ Catalog read unavailability returns `source_unavailable` without an MSDB fallbac
 The named Oracle evidence is intentionally refreshed by the Milestone after
 this runner correction commit so its `frozen_sha` equals the reviewed
 implementation SHA; it is external, uncommitted execution evidence.
+
+The nullable-field contract correction after base
+`954b88c7fc97fe3063ccec8a68f12caf12732b55` changes the frozen SHA. Existing
+M-09-C05 external evidence remains valid only for that base; the Milestone must
+rerun the governed read-only Oracle lane at the new frozen SHA. This correction
+did not run Oracle or perform any runtime/network/database side effect.

@@ -1486,7 +1486,7 @@ components:
   schemas:
     CanonicalNumericSourceFact:
       type: object
-      required: [source, value, quality, observed_at]
+      required: [source, value, quality, observed_at, quality_reason]
       properties:
         source:
           type: string
@@ -1505,7 +1505,7 @@ components:
           nullable: true
     CanonicalCatalogProduct:
       type: object
-      required: [internal_product_id, name, cost_amount, price_amount, stock_quantity]
+      required: [internal_product_id, name, ean, manufacturer_reference, seller_sku, cost_amount, price_amount, stock_quantity]
       properties:
         internal_product_id:
           type: integer

@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { createMarketplaceCentralClient } from "./index";
 import type { CanonicalCatalogProduct, IntegrationProviderDefinition } from "./index";
 
@@ -19,6 +21,22 @@ describe("sdk runtime", () => {
     expect(unknown.internal_product_id).toBe(1001);
     expect(unknown.cost_amount.value).toBeNull();
     expect(unknown.price_amount.value).toBe(0);
+  });
+
+  it("keeps canonical nullable fields required across OpenAPI and SDK", () => {
+    const openapi = readFileSync(resolve(process.cwd(), "../../contracts/api/marketplace-central.openapi.yaml"), "utf8");
+    const sdk = readFileSync(resolve(process.cwd(), "src/index.ts"), "utf8");
+    const factSchema = openapi.slice(openapi.indexOf("    CanonicalNumericSourceFact:"), openapi.indexOf("    CanonicalCatalogProduct:"));
+    const productSchema = openapi.slice(openapi.indexOf("    CanonicalCatalogProduct:"), openapi.indexOf("    CatalogProduct:"));
+
+    expect(factSchema).toContain("required: [source, value, quality, observed_at, quality_reason]");
+    expect(factSchema).toMatch(/quality_reason:\s*\n\s*type: string\s*\n\s*nullable: true/);
+    expect(productSchema).toContain("required: [internal_product_id, name, ean, manufacturer_reference, seller_sku, cost_amount, price_amount, stock_quantity]");
+    for (const field of ["ean", "manufacturer_reference", "seller_sku"]) {
+      expect(productSchema).toMatch(new RegExp(`${field}:\\s*\\n\\s*type: string\\s*\\n\\s*nullable: true`));
+      expect(sdk).toMatch(new RegExp(`\\n  ${field}: string \\| null;`));
+    }
+    expect(sdk).toMatch(/\n  quality_reason: string \| null;/);
   });
 
   it("rejects non-positive product-link CODPROD before transport", () => {

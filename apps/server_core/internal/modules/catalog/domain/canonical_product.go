@@ -35,7 +35,7 @@ type NumericSourceFact struct {
 	Value         *float64          `json:"value"`
 	Quality       SourceFactQuality `json:"quality"`
 	ObservedAt    *time.Time        `json:"observed_at"`
-	QualityReason *string           `json:"quality_reason,omitempty"`
+	QualityReason *string           `json:"quality_reason"`
 }
 
 func NewNumericSourceFact(source string, value *float64, quality SourceFactQuality, observedAt *time.Time, qualityReason *string) (NumericSourceFact, error) {

@@ -40,12 +40,28 @@ func TestNumericSourceFactDistinguishesUnknownFromKnownZero(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	jsonText := string(body)
-	if !strings.Contains(jsonText, `"value":0`) || !strings.Contains(jsonText, `"value":null`) {
-		t.Fatalf("expected distinct zero and null: %s", jsonText)
+	var payload map[string]map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload["current"]["value"] != float64(0) || payload["unknown"]["value"] != nil {
+		t.Fatalf("expected distinct zero and null: %s", body)
+	}
+	if reason, exists := payload["current"]["quality_reason"]; !exists || reason != nil {
+		t.Fatalf("expected current quality_reason:null: %s", body)
+	}
+	if payload["unknown"]["quality_reason"] != reason {
+		t.Fatalf("expected nonblank unknown reason: %s", body)
 	}
 	if _, err := NewNumericSourceFact("sankhya", nil, SourceFactQualityUnknown, nil, nil); !errors.Is(err, ErrInvalidSourceFact) {
 		t.Fatalf("missing unknown reason error = %v", err)
+	}
+	blankReason := "  "
+	if _, err := NewNumericSourceFact("sankhya", nil, SourceFactQualityUnknown, nil, &blankReason); !errors.Is(err, ErrInvalidSourceFact) {
+		t.Fatalf("blank unknown reason error = %v", err)
+	}
+	if _, err := NewNumericSourceFact("sankhya", &zero, SourceFactQualityStale, &observedAt, &blankReason); !errors.Is(err, ErrInvalidSourceFact) {
+		t.Fatalf("blank stale reason error = %v", err)
 	}
 	if _, err := NewNumericSourceFact("sankhya", nil, SourceFactQualityCurrent, &observedAt, nil); !errors.Is(err, ErrInvalidSourceFact) {
 		t.Fatalf("missing current value error = %v", err)
@@ -66,6 +82,26 @@ func TestCanonicalProductKeepsCODPRODSeparateFromIdentifiers(t *testing.T) {
 	for _, fragment := range []string{`"internal_product_id":1001`, `"ean":"7890000000000"`, `"manufacturer_reference":"REF-1001"`, `"seller_sku":"SELLER-1001"`} {
 		if !strings.Contains(string(body), fragment) {
 			t.Fatalf("missing %s in %s", fragment, body)
+		}
+	}
+}
+
+func TestCanonicalProductEmitsAbsentIdentifiersAsNull(t *testing.T) {
+	id, _ := NewInternalProductID(1001)
+	zero := 0.0
+	observedAt := time.Date(2026, 7, 13, 12, 0, 0, 0, time.UTC)
+	fact, _ := NewNumericSourceFact("sankhya", &zero, SourceFactQualityCurrent, &observedAt, nil)
+	body, err := json.Marshal(CanonicalProduct{InternalProductID: id, Name: "Produto", CostAmount: fact, PriceAmount: fact, StockQuantity: fact})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		t.Fatal(err)
+	}
+	for _, field := range []string{"ean", "manufacturer_reference", "seller_sku"} {
+		if value, exists := payload[field]; !exists || value != nil {
+			t.Fatalf("expected %s:null: %s", field, body)
 		}
 	}
 }
