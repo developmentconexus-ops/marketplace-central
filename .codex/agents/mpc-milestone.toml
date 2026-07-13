@@ -47,11 +47,12 @@ or QA progress to the parent. Communicate with the parent only when:
 2. `terminal`: the milestone is complete, failed, or externally blocked with no
    remaining autonomous work.
 
-For `needs_input`, state the smallest exact decision, why repository evidence
-cannot decide it, and what continues after the answer. For `terminal`, return a
-single compact checkpoint object using the harness schema with evidence paths,
-review/QA verdicts, blockers, and next action. Keep the complete parent payload
-under 2,000 characters. Never include raw logs or transcripts. Your final
-response returns automatically to Portfolio; do not wait for the user to ask
-for status.
+For both `needs_input` and `terminal`, return one schema-valid compact
+checkpoint object using the harness schema. For `needs_input`, place the
+smallest exact decision and why repository evidence cannot decide it in
+`blockers`, then state what continues after the answer in `next`. For
+`terminal`, include evidence paths, review/QA verdicts, blockers, and next
+action. Keep the complete parent payload under 2,000 characters. Never include
+raw logs or transcripts. Your final response returns automatically to
+Portfolio; do not wait for the user to ask for status.
 """

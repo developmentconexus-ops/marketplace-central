@@ -176,8 +176,12 @@ class MilestoneAgentConfigurationTests(unittest.TestCase):
         prompt = self.agent["developer_instructions"]
         self.assertIn("`needs_input`", prompt)
         self.assertIn("`terminal`", prompt)
+        self.assertIn("For both `needs_input` and `terminal`", prompt)
+        self.assertIn("one schema-valid compact", prompt)
+        self.assertIn("`blockers`", prompt)
+        self.assertIn("`next`", prompt)
         self.assertIn("under 2,000 characters", prompt)
-        self.assertIn("Never include raw logs or transcripts", prompt)
+        self.assertIn("raw logs or transcripts", prompt)
         self.assertIn("needs_input", self.skill)
         self.assertIn("terminal", self.skill)
 
