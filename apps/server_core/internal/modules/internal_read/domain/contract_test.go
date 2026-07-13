@@ -74,6 +74,17 @@ func TestProductCandidateUsesOracleFirstFields(t *testing.T) {
 	}
 }
 
+func TestProductCandidateKeepsCanonicalIdentitySeparateFromLegacyID(t *testing.T) {
+	canonical := InternalProductID(1001)
+	candidate := ProductCandidate{InternalProductID: &canonical, ProductID: 77}
+	if candidate.InternalProductID == nil || *candidate.InternalProductID != 1001 {
+		t.Fatalf("canonical identity = %#v", candidate.InternalProductID)
+	}
+	if candidate.ProductID != 77 {
+		t.Fatalf("legacy id = %d", candidate.ProductID)
+	}
+}
+
 func TestMissingCostStaysNilWithQualityFlag(t *testing.T) {
 	now := time.Date(2026, 7, 6, 0, 0, 0, 0, time.UTC)
 	cost := CostAsOf{

@@ -1,8 +1,25 @@
 import { describe, expect, it, vi } from "vitest";
 import { createMarketplaceCentralClient } from "./index";
-import type { IntegrationProviderDefinition } from "./index";
+import type { CanonicalCatalogProduct, IntegrationProviderDefinition } from "./index";
 
 describe("sdk runtime", () => {
+  it("models canonical CODPROD products with nullable source facts", () => {
+    const unknown: CanonicalCatalogProduct = {
+      internal_product_id: 1001,
+      name: "Produto teste",
+      ean: "7890000000000",
+      manufacturer_reference: "REF-1001",
+      seller_sku: "SELLER-1001",
+      brand_name: null,
+      product_group_name: null,
+      cost_amount: { source: "sankhya", value: null, quality: "unknown", observed_at: null, quality_reason: "missing_cost" },
+      price_amount: { source: "sankhya", value: 0, quality: "current", observed_at: "2026-07-13T12:00:00Z", quality_reason: null },
+      stock_quantity: { source: "sankhya", value: 0, quality: "current", observed_at: "2026-07-13T12:00:00Z", quality_reason: null },
+    };
+    expect(unknown.internal_product_id).toBe(1001);
+    expect(unknown.cost_amount.value).toBeNull();
+    expect(unknown.price_amount.value).toBe(0);
+  });
   it("listIntegrationProviders calls /integrations/providers and parses Amazon LWA and interactive Shopee metadata", async () => {
     const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
     const response = {

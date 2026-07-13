@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0",
+  "context_id": "f-01-canonical-product-identity",
+  "feature_path": ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-09-canonical-product-foundation/F-01-canonical-product-identity",
+  "base_sha": "d69490a0aef4ba2c3198e3e39fb20477e811e276",
+  "objective": "Define one product identity contract in catalog/domain/OpenAPI/SDK where positive internal_product_id equals Sankhya CODPROD and all other identifiers remain separate.",
+  "observable_done": ["All product consumers share one typed positive integer identity and can distinguish unknown from known zero without provider/manufacturer identifiers leaking into it."],
+  "criteria": [
+    {"id":"F01-AC01","milestone_id":"M-09-C01","proof_commands":["targeted-go-tests"]},
+    {"id":"F01-AC02","milestone_id":"M-09-C02","proof_commands":["targeted-go-tests","sdk-runtime-tests"]},
+    {"id":"F01-AC03","milestone_id":"M-09-C01","proof_commands":["sdk-runtime-tests","openapi-sdk-parity"]}
+  ],
+  "sources": [
+    {"path":".mnfs/MIS-001-mercado-livre-operating-cockpit/M-09-canonical-product-foundation/F-01-canonical-product-identity/feature.md","sha256":"c0fcb7e8e23ad4ccc26de26dc27f786748d34fb5d34350d6582a1010ba52f73d","selector":"full-contract","reason":"feature execution contract","estimated_tokens":168},
+    {"path":".mnfs/MIS-001-mercado-livre-operating-cockpit/M-09-canonical-product-foundation/F-01-canonical-product-identity/spec.md","sha256":"460f23e855d8eecf84840e4aef0fe1bdce0e7ea146972f0aa5b9b4c38b511954","selector":"full-contract","reason":"feature execution contract","estimated_tokens":146},
+    {"path":".mnfs/MIS-001-mercado-livre-operating-cockpit/M-09-canonical-product-foundation/F-01-canonical-product-identity/plan.md","sha256":"350c0c5ddee4ef62638b5f228f0e37ffe9d114e5e0b4b99e0eefa3c12019734e","selector":"full-contract","reason":"feature execution contract","estimated_tokens":249},
+    {"path":"AGENTS.md","sha256":"9a1ffdbbee3fbf837bdd96799101036d9322fb4d212d07cfc67d6bfc54f6b6b0","selector":"full-contract","reason":"feature execution contract","estimated_tokens":153},
+    {"path":"ARCHITECTURE.md","sha256":"07b6fe2b96192690a50fb738a795f7b2f6a725af7f112759ceff92dbca9b233a","selector":"Current Architecture and module boundaries","reason":"repository architecture authority","estimated_tokens":420},
+    {"path":"wiki/README.md","sha256":"456c073e057f1e9c97e855484226c7103c637ea771fab6a76d2ee350ad0d9bf0","selector":"knowledge routes","reason":"module and operating knowledge index","estimated_tokens":180},
+    {"path":".mnfs/MIS-001-mercado-livre-operating-cockpit/mission.md","sha256":"499d67b7365a66837adbe3cf390cea18e30e6273bc25eacba6114bfb33c81979","selector":"Current State, Milestone Strategy, Handoff","reason":"portfolio outcome, priority, and durable next action","estimated_tokens":480}
+  ],
+  "risk":{"level":"L2","review_policy":"independent-review","advisory_model":"strong-reasoning-model"},
+  "paths":{"allowed":[".mnfs/MIS-001-mercado-livre-operating-cockpit/M-09-canonical-product-foundation/F-01-canonical-product-identity","apps/server_core/internal/modules/catalog","apps/server_core/internal/modules/internal_read/domain","apps/server_core/internal/modules/internal_read/ports","contracts/api/marketplace-central.openapi.yaml","packages/sdk-runtime"],"forbidden":[".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml","apps/server_core/cmd","apps/server_core/internal/platform/msdb","apps/web"]},
+  "shared_seams":["api-sdk"],
+  "side_effects":["repository-write","isolated-cache-write"],
+  "commands":[
+    {"id":"targeted-go-tests","command_id":"targeted-go-tests","target_label":"fake","evidence_type":"assumed"},
+    {"id":"sdk-runtime-tests","command_id":"sdk-runtime-tests","target_label":"fake","evidence_type":"assumed"},
+    {"id":"openapi-sdk-parity","command_id":"openapi-sdk-parity","target_label":"fake","evidence_type":"assumed"}
+  ],
+  "stop_conditions":["legacy-identity-unproved: A legacy string identity would be mapped to CODPROD without deterministic proof.","zero-default: An unknown numeric source fact would be represented as zero or another default.","boundary-leak: An Oracle or provider type would cross into catalog or internal-read domain/application.","api-sdk-drift: OpenAPI and sdk-runtime cannot be updated atomically.","path-outside-scope: A required change falls outside the dispatched paths."],
+  "retry_budget":2,
+  "handoff":{"target":"Milestone Orchestrator","reason":"return fields: status, commit, changed-paths, evidence, blockers, next"},
+  "estimated_input_tokens":1796
+}

@@ -1484,6 +1484,55 @@ paths:
 
 components:
   schemas:
+    CanonicalNumericSourceFact:
+      type: object
+      required: [source, value, quality, observed_at]
+      properties:
+        source:
+          type: string
+        value:
+          type: number
+          nullable: true
+        quality:
+          type: string
+          enum: [current, stale, unknown, conflict]
+        observed_at:
+          type: string
+          format: date-time
+          nullable: true
+        quality_reason:
+          type: string
+          nullable: true
+    CanonicalCatalogProduct:
+      type: object
+      required: [internal_product_id, name, cost_amount, price_amount, stock_quantity]
+      properties:
+        internal_product_id:
+          type: integer
+          minimum: 1
+        name:
+          type: string
+        ean:
+          type: string
+          nullable: true
+        manufacturer_reference:
+          type: string
+          nullable: true
+        seller_sku:
+          type: string
+          nullable: true
+        brand_name:
+          type: string
+          nullable: true
+        product_group_name:
+          type: string
+          nullable: true
+        cost_amount:
+          $ref: '#/components/schemas/CanonicalNumericSourceFact'
+        price_amount:
+          $ref: '#/components/schemas/CanonicalNumericSourceFact'
+        stock_quantity:
+          $ref: '#/components/schemas/CanonicalNumericSourceFact'
     CatalogProduct:
       type: object
       properties:

@@ -151,6 +151,29 @@ export interface IntegrationInstallation {
   updated_at: string;
 }
 
+export type CanonicalSourceFactQuality = "current" | "stale" | "unknown" | "conflict";
+
+export interface CanonicalNumericSourceFact {
+  source: string;
+  value: number | null;
+  quality: CanonicalSourceFactQuality;
+  observed_at: string | null;
+  quality_reason: string | null;
+}
+
+export interface CanonicalCatalogProduct {
+  internal_product_id: number;
+  name: string;
+  ean: string | null;
+  manufacturer_reference: string | null;
+  seller_sku: string | null;
+  brand_name: string | null;
+  product_group_name: string | null;
+  cost_amount: CanonicalNumericSourceFact;
+  price_amount: CanonicalNumericSourceFact;
+  stock_quantity: CanonicalNumericSourceFact;
+}
+
 export interface IntegrationConnectionSnapshot {
   state: "draft" | "pending_connection" | "connected" | "degraded" | "needs_reauth" | "disconnected";
   health: "healthy" | "warning" | "critical";
