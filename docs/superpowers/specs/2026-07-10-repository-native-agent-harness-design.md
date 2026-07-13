@@ -122,16 +122,21 @@ is then added to the registry instead of rediscovered forever.
 ### 2. Control plane
 
 - One persistent portfolio task owns the active goal, dependency order,
-  milestone dispatch, integration order, and final mission audit.
-- One visible Codex task owns each active long-running milestone.
-- A milestone task delegates bounded work to depth-one subagents and sends
-  checkpoints back to the portfolio task.
-- Thread tools start, read, steer, interrupt, title, pin, and archive tasks when
-  available. Repository scripts never treat thread history as canonical state.
+  milestone prompt, integration order, and final mission audit.
+- The user starts one clean visible Codex task manually for each active
+  long-running milestone and selects its documented model and effort.
+- A milestone delegates bounded work to generic depth-one subagents whose role
+  comes from explicit packets; task names never prove a custom agent identity.
+- After persisting and validating terminal state, the milestone explicitly
+  sends the checkpoint path and verdict to the portfolio task. Task completion
+  alone is not a callback.
+- Thread tools read, message, steer, interrupt, title, pin, and archive tasks
+  when available. Repository scripts never treat thread history as canonical.
 - A repo skill under `.agents/skills/mpc-goal-harness/` implements the workflow
   through progressive disclosure.
-- V1 uses Codex's built-in depth-one subagents with bounded prompts. Project
-  custom agents are deferred until dogfood proves a repeated role-specific gap.
+- V1 uses Codex's generic depth-one subagents with bounded role packets. Project
+  custom agents remain deferred until native dispatch exposes an independently
+  revalidated custom-agent selector.
 
 The app-server API is documented but the local CLI marks it experimental. V1
 does not depend on it. `codex exec --json --output-schema` is the deterministic
@@ -248,10 +253,12 @@ Depth stays one unless the operator explicitly changes it.
 
 - `AGENTS.md`: short durable rules and truth routing.
 - Repo skill: reusable goal-to-MNFS orchestration method.
-- Custom agents: optional follow-up only after a repeated dogfood gap.
+- Custom agents: disabled until native dispatch exposes and validates an
+  explicit agent-type selector.
 - Hooks: optional fast advisory/preflight checks only after a deterministic
   script exists; versioned scripts own mandatory enforcement.
-- Tasks/threads: visible milestone control and steering.
+- Tasks/threads: manually started visible Milestones, cross-task terminal
+  callback, control, and steering.
 - Worktrees/handoff: parallel Git ownership and foreground/background movement.
 - Browser: UI QA against the running product.
 - `codex exec`: fresh-session and CI-style structured fallback.
@@ -282,8 +289,10 @@ M-08 is complete when:
 - a hash-current pack names exact context, paths, seams, commands, risk, and
   stop conditions; the total harness-requested bootstrap-plus-selector set
   meets the 2,000-token target or carries justified L2/L3 overflow;
-- a visible milestone task can dispatch, monitor, steer, and resume bounded
-  subagents from repository artifacts;
+- a manually started visible milestone task can dispatch, monitor, steer, and
+  resume bounded generic subagents from repository artifacts;
+- a terminal milestone persists a valid checkpoint before explicitly waking
+  Portfolio with its path and compact verdict;
 - a competing seam or out-of-scope write fails before acceptance;
 - the impact gate selects and runs only required deterministic checks;
 - database, Oracle, provider, browser, and provider-write evidence remain

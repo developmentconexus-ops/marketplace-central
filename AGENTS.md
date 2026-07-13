@@ -4,13 +4,18 @@ Repository truth is ordered: `ARCHITECTURE.md`/ADRs, OpenAPI plus SDK,
 `contracts/governance/`, wiki, `.mnfs/`, then tests/builds/commits. Stop and
 classify architecture, contract, runtime, ownership, or verification conflicts.
 
-Portfolio starts one visible Milestone session and passes mission/milestone
-paths, the accepted base SHA, knowledge routes, constraints, QA contract, and
-its task ID for checkpoints. Milestone owns feature order and starts bounded
-Feature workers. A Feature plans and executes in one session by default; after
-`plan.md`, compile/validate its context file and read only its selectors. Use
-`.agents/skills/mpc-goal-harness/` for the exact session packets and handoffs.
-Do not replay transcripts or load broad documents without a named route gap.
+Portfolio prepares one copyable packet, then the user starts one clean visible
+standalone Milestone session manually with the requested model/effort. The
+Milestone role comes from `.agents/skills/mpc-goal-harness/` plus that packet.
+Current native child dispatch has no `agent_type`, model, or reasoning selector;
+bounded direct children therefore receive explicit Implementer or Verifier role
+packets and must never be represented as custom agents. Portfolio passes
+mission/milestone paths, the accepted base SHA, knowledge routes, constraints,
+QA contract, and its task ID for the terminal callback. Milestone owns feature
+order and starts bounded workers. A Feature plans and executes in one session
+by default; after `plan.md`, compile/validate its context file and read only its
+selectors. Use the harness skill for exact packets and handoffs. Do not replay
+transcripts or load broad documents without a named route gap.
 
 Keep domain/application/ports/adapters/transport boundaries; tenant queries
 scope `tenant_id`; provider payloads remain at adapters; unknown operational
@@ -23,6 +28,8 @@ One writer owns a checkout/shared seam. Do not reset, revert, stash, clean,
 delete unknown state, use WSL, expose secrets/PII, cold-clone, purge caches, or
 install dependencies as a feature ritual. Use `GOCACHE=.gocache` for Go tests.
 Each Feature returns one intentional commit and impacted evidence to Milestone.
-Milestone sends compact checkpoints to Portfolio, then requests one fixed-SHA
-review and proportional QA after all Features integrate. Only QA may pass a
-milestone.
+After all Features integrate, Milestone requests one fixed-SHA review and
+proportional QA. Only QA may pass a milestone. On terminal, Milestone persists a
+compact checkpoint first, then explicitly sends its path and verdict to the
+Portfolio task with native cross-task messaging; final response alone is not a
+callback.

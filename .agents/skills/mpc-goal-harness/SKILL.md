@@ -1,6 +1,6 @@
 ---
 name: mpc-goal-harness
-description: Run Marketplace Central development through a visible Portfolio session, one Milestone session, bounded Feature plan/execution workers, compact context files, checkpoints, final review, and proportional QA.
+description: Run Marketplace Central through a visible Portfolio hub, one manually started Milestone session, bounded generic workers, compact context, terminal callbacks, final review, and proportional QA.
 ---
 
 # Marketplace Central Development Harness
@@ -8,95 +8,102 @@ description: Run Marketplace Central development through a visible Portfolio ses
 The harness is a session protocol. Native Codex tasks carry conversation;
 MNFS, Git, context files, and validation artifacts carry durable truth.
 
+## Validated runtime boundary
+
+The current Codex app can send a message from one visible task to another and
+wake the destination. A manual-session probe on 2026-07-13 also established
+that native child dispatch exposes task_name, message, and context forking, but
+no agent_type, model, or reasoning selector.
+
+Therefore:
+
+- never claim that a child is mpc-implementer or mpc-verifier;
+- never use task_name as evidence of a custom agent type;
+- never claim a child model or effort that the runtime did not report;
+- dispatch only generic direct children with complete role packets;
+- keep child count bounded because per-child cost cannot be pinned;
+- stop and revalidate this boundary before restoring custom-agent config.
+
 ## Session topology
 
-```text
+~~~text
 Portfolio hub (visible, normally dormant)
-  -> one standalone visible `mpc-milestone` task
-       -> `mpc-implementer` subagent for a coherent vertical unit
-       -> `mpc-verifier` subagent for final fixed-SHA review
-       -> `mpc-verifier` subagent for proportional QA
-  <- user resumes Portfolio from a compact terminal checkpoint
-```
+  -> prepares one copyable Milestone prompt and stops
+  -> user manually starts one clean visible Milestone task at Terra/medium
+       -> generic direct Feature Implementer child
+       -> generic direct fixed-SHA Reviewer child
+       -> generic direct proportional QA child
+  <- Milestone persists terminal checkpoint, then calls send_message_to_thread
+~~~
 
 One active milestone outcome owns exactly one standalone visible Milestone
-task. Start the project agent type `mpc-milestone` with clean context and pass
-only the Portfolio packet. Human questions stay in that visible Milestone;
-Portfolio does not relay them. The Milestone dispatches bounded children and
-remains the sole outcome owner through terminal evidence.
+task. Portfolio never creates that task. It prepares the exact prompt, shows it
+to the user, and stops. The user creates a clean project task manually, selects
+gpt-5.6-terra with medium, and pastes the prompt. The prompt points to this
+skill and assigns the Milestone Orchestrator role; the root is generic.
 
-The Milestone task is the root of its own native tree. Project config limits
-that tree to depth 1: its implementation, review, and QA children never
-delegate. Portfolio is a roadmap hub, not the parent runtime of a nested agent
-tree, and stays dormant while the Milestone works.
+The Milestone is the root of its native child tree. Project configuration
+limits that tree to depth 1 and three concurrent threads. Children never
+delegate. Human questions stay in the visible Milestone. Portfolio stays
+dormant while it works and never edits Milestone-owned paths.
 
-## Dispatch model policy
+## Dispatch and cost policy
 
-Choose an explicit model and reasoning effort when creating every visible
-Milestone or bounded Feature task; never inherit an expensive user default.
+- Visible Milestone: user selects gpt-5.6-terra with medium.
+- Direct children: runtime-managed model and reasoning; record
+  runtime_managed, not Luna, Terra, or an inferred value.
+- Default budget: one coherent Feature Implementer run, one final fixed-SHA
+  review, and one proportional QA run.
+- Discovery stays inside the Implementer unless a separate read-only child
+  materially reduces context or latency.
+- A correction run is allowed only for a named failed criterion and inside the
+  validation contract retry cap.
+- Any extra implementation split, discovery child, or repeated broad
+  verification requires a compact human cost decision in the Milestone.
+- If exact child model, effort, or custom-agent identity becomes required,
+  stop with a runtime capability conflict.
 
-- Milestone orchestration: `gpt-5.6-terra` with `medium`.
-- Coherent vertical implementation unit: `gpt-5.6-luna` with `high`.
-- Simple read-only discovery: `gpt-5.6-luna` with `medium`.
-- Fixed-SHA review: `gpt-5.6-luna` with `high`.
-- Proportional deterministic QA: `gpt-5.6-luna` with `medium` when the caller
-  can select it; the registered verifier remains Luna/high when native custom
-  agent selection cannot vary effort per run.
-- Escalate the Milestone to Terra/high only for a recorded cross-cutting,
-  irreversible, security-sensitive, or repeatedly unresolved decision. Never
-  escalate silently.
-
-Pass the chosen values to the native visible-task creation call and include
-them in the packet checkpoint. A task that needs a higher tier returns a
-compact escalation request; it does not silently consume it.
-
-- Portfolio owns product priority, dependencies, milestone start/stop, and the
-  final mission view. It does not ingest feature logs.
-- Milestone owns its checkout, feature order, integration, and communication
-  with Portfolio. Only Milestone dispatches Feature, review, and QA subagents.
-- An Implementer plans and executes one coherent vertical unit in the same
-  session by default. Small plan slices and adjacent microfeatures stay inside
-  that session. It never spawns another writer.
-- Review and QA run after all Feature commits are integrated. An early review
-  is allowed only for an irreversible or cross-cutting decision.
+Portfolio owns priority, dependencies, milestone start/stop, and the final
+mission view. Milestone owns feature order, child dispatch, integration,
+review, QA, and Portfolio communication. An Implementer plans and executes one
+coherent vertical unit; small plan slices remain inside that run.
 
 ## Event-driven control plane
 
-The parent channel is outcome-based, not a progress feed:
-
-- The Milestone asks `needs_input` directly in its own visible task for a
-  genuine human/authority decision and records `terminal` when no autonomous
-  work remains. Native completion delivery does not reliably wake a different
-  dormant task, so the protocol does not pretend that Portfolio receives an
-  automatic callback.
-- Feature acceptance, SHA freeze, review, and QA progress stay in the
-  Milestone plan and durable evidence artifacts. They are not injected into
-  Portfolio context.
-- Feature, review, and QA tasks report only to Milestone. Portfolio reads no
-  child transcript or raw log and sends no messages to child tasks.
-- The user answers human questions in the same Milestone task. Portfolio steers
-  only priority, pause, replacement, or explicit stop; it does not poll normal
-  progress or create another Milestone for a follow-up question.
+- needs_input: ask the human directly in the visible Milestone. Do not relay
+  the question through Portfolio.
+- terminal: persist and validate one compact checkpoint, then explicitly call
+  send_message_to_thread with portfolio_task_id.
+- Native completion is not a callback. A final Milestone response without the
+  cross-task message does not wake Portfolio.
+- If cross-task messaging is unavailable or fails, retain the checkpoint and
+  return a pasteable callback so the user can resume Portfolio manually.
+- Portfolio validates the referenced checkpoint before acting and never
+  reconstructs truth from the Milestone transcript.
+- Feature, freeze, review, and QA progress stay in the Milestone plan and
+  durable evidence. Only the terminal outcome reaches Portfolio.
 - No heartbeat, callback guard, cron, hook, polling loop, app server, or custom
-  scheduler is part of the normal harness. When the Milestone is terminal, its
-  durable checkpoint lets the user explicitly resume Portfolio without replay.
+  scheduler is part of the normal harness.
 
-## Visible Milestone plan
+## Visible plans
 
-The Milestone calls native `update_plan` when accepting the Portfolio packet
-and after every state transition. Its plan is the visible progress mirror for
-internal Feature, review, and QA work, not durable orchestration truth. The
-Portfolio plan tracks milestone outcomes only. Resume from packets, MNFS, Git,
-validation artifacts, and context files.
+Milestone calls native update_plan when accepting the packet and after each
+state transition. Its plan mirrors Feature, review, and QA work; it is not
+durable truth. Portfolio plan tracks milestone outcomes only. Resume from
+packets, MNFS, Git, validation artifacts, context files, and checkpoints.
 
-## Portfolio -> Milestone packet
+## Portfolio to manually created Milestone
 
-Start a visible task with these fields:
+Portfolio resolves its exact native task ID through app task controls. It must
+not guess. It emits one copyable prompt with:
 
-```text
-agent_type: mpc-milestone
+~~~text
+session_type: manually_created_standalone_visible_root
 role: Milestone Orchestrator
-portfolio_task_id: <Portfolio task/thread ID for correlation only>
+model_to_select: gpt-5.6-terra
+reasoning_effort_to_select: medium
+harness_skill: .agents/skills/mpc-goal-harness/SKILL.md
+portfolio_task_id: <exact Portfolio task/thread ID>
 objective: <one milestone outcome>
 base_sha: <accepted 40-char SHA>
 mission_file: <mission.md>
@@ -106,24 +113,35 @@ knowledge_routes: <route IDs>
 constraints: <paths, seams, side effects, stop conditions>
 qa_contract: <validation-contract.md>
 next: reconcile repository truth and proceed until needs_input or terminal
-```
+~~~
 
-Start a standalone visible task with the named custom agent and no inherited
-conversation turns. The
-Milestone validates the packet, updates its visible plan, and proceeds without
-a routine acknowledgment message. Before every child dispatch, run the
-read-only preflight below. Portfolio may steer, resume, or interrupt the
-Milestone; it never edits Milestone-owned paths concurrently.
+The prompt also says:
 
-## Milestone -> Implementer packet
+1. user, not Portfolio, creates the new task;
+2. user selects Terra/medium before sending it;
+3. generic root reads AGENTS.md, this skill, packet files, and only named
+   knowledge selectors;
+4. terminal requires checkpoint validation followed by
+   send_message_to_thread(portfolio_task_id, compact_payload);
+5. Milestone must not use create_thread or emulate a custom root.
 
-```text
-agent_type: mpc-implementer
+After emitting the prompt, Portfolio stops. It does not poll or create the
+Milestone.
+
+## Milestone to generic Feature Implementer
+
+Run read-only dispatch preflight, then spawn one direct generic child with no
+inherited conversation turns. task_name is a correlation label, not an agent
+type. The message contains:
+
+~~~text
+runtime_agent_type: generic
 role: Feature Implementer
-milestone_task_id: <native task/thread ID used for the return>
+runtime_model_policy: runtime_managed
+milestone_task_id: <native Milestone task/thread ID>
 feature_id: <feature/work-item identity>
 feature_file: <repository-relative feature.md>
-context_files: [<repository-relative mission/milestone/guide and knowledge files>]
+context_files: [<mission/milestone/guide and selected knowledge files>]
 knowledge_routes: [<route IDs>]
 base_sha: <accepted milestone SHA>
 allowed_paths: [<exact repository-relative paths>]
@@ -131,58 +149,64 @@ forbidden_paths: [<exact repository-relative paths>]
 shared_seams: [<exclusive repository-relative seams>]
 side_effects: {allowed: [<effects>], forbidden: [<effects>]}
 proof: {command_ids: [<registered IDs>], evidence_targets: [<paths>]}
-stop_conditions: [<architecture, contract, ownership, runtime, or QA conflicts>]
-```
+stop_conditions: [<architecture, contract, ownership, runtime, QA conflicts>]
+~~~
 
-### Implementer Plan
+The child reads only supplied files and selectors; writes spec.md and plan.md
+when no accepted contract exists; compiles and validates context after
+planning; implements inside allowed paths; runs targeted proof; writes
+validation.md; creates one intentional commit; and returns a compact handoff.
+It never delegates or sends messages to Portfolio.
 
-Read the brief and only the supplied knowledge. Write `spec.md` and `plan.md`.
-The plan fixes owner, ports/interfaces, consumers, legacy decision, explicit
-unknown states, paths, commands, and proof. Stop only when a cross-worker or
-irreversible decision is unresolved.
+## Milestone to generic Verifier
 
-### Implementer Execution
+Review and QA are separate generic direct-child runs after accepted Feature
+commits integrate:
 
-After `plan.md`, compile and validate the context file. Pass its path, not its
-contents, when a fresh worker/session is used. Read only selectors, implement,
-run impacted commands, write `validation.md`, create one intentional commit,
-and return the compact handoff to Milestone.
+~~~text
+runtime_agent_type: generic
+role: Milestone Verifier
+mode: fixed_sha_review | proportional_qa
+runtime_model_policy: runtime_managed
+milestone_task_id: <native Milestone task/thread ID>
+frozen_sha: <40-char integrated SHA>
+contract_files: [<milestone and validation contract paths>]
+evidence_files: [<named validation evidence paths>]
+allowed_write_paths: [] | [<QA validation/evidence paths>]
+registered_commands: [<command IDs allowed for this mode>]
+stop_conditions: [<verification conflicts>]
+~~~
 
-## Context and token constraints
+In fixed_sha_review the child is read-only and returns Pass/Fail with
+actionable findings. In proportional_qa it runs only registered commands and
+writes only explicitly allowed validation/evidence paths. Only QA may pass the
+milestone. Neither verifier delegates.
 
-- Default child budget per Milestone is one Implementer run, one final review,
-  and one proportional QA run. A correction run is allowed only after a named
-  failed criterion and within the validation contract's retry cap. Any extra
-  implementation split or repeated broad verification requires a compact human
-  cost checkpoint before dispatch.
-- Implementers run targeted proof. The integrated broad ladder runs once in
-  proportional QA; do not repeat the same full suite in every small slice.
-- Prompts pass file paths and selectors, not copied document bodies.
-- Initial reads are bootstrap + packet files + selected knowledge only.
+## Context and ownership constraints
+
+- Prompts pass paths and selectors, never copied document bodies.
+- Initial reads are bootstrap, packet files, and selected knowledge only.
 - No transcript replay, repository-wide scan, raw logs, unrelated milestone
-  history, repeated reads, or full implementation tree without a named gap.
+  history, or full tree without a named route gap.
 - A route gap permits one targeted search. Stable discoveries update the
   canonical knowledge route in the accepted slice.
 - The 2,000-token estimate is a dispatch budget: L0/L1 must fit; necessary
-  L2/L3 overflow names the reason per source.
+  L2/L3 overflow names the reason.
 - Checkpoints contain decisions and evidence paths, never logs.
-
-## Ownership and validation
-
-One writer owns a checkout/shared seam. Worktrees coordinate disjoint writers;
-they are not VMs. Use registered command IDs only. Fake evidence proves only
-deterministic behavior. Oracle, provider, database, browser, and provider-write
-targets remain distinct and run only when the milestone contract requires them.
+- One writer owns a checkout and shared seam. Never edit concurrently with a
+  child writer.
+- Worktrees coordinate truly disjoint writers; they are not VMs.
+- Mocks prove deterministic contract behavior, never live integration.
 
 Milestone integrates Feature commits, freezes one SHA, then requests one review
-and proportional QA. Only QA writes/passes `validation-result.md`.
+and one proportional QA. Only QA writes or passes validation-result.md.
 
-## Checkpoint and handoff
+## Checkpoint and terminal callback
 
-Every persisted `needs_input` or terminal handoff between Portfolio and
-Milestone, and every Implementer return inside the Milestone, uses:
+Every persisted needs_input or terminal handoff, and every Implementer return,
+uses this schema. For terminal, persist and validate it before messaging.
 
-```text
+~~~text
 schema_version:
 milestone_id:
 source_task_id:
@@ -204,46 +228,58 @@ evidence:
 review:
 blockers:
 next:
-```
+~~~
 
-From the repository root, validate checkpoint JSON with:
+Validate from repository root:
 
-```text
+~~~powershell
 python .agents/skills/mpc-goal-harness/scripts/validate_checkpoint.py --checkpoint <checkpoint.json>
-```
+~~~
 
-The schema is `.agents/skills/mpc-goal-harness/scripts/checkpoint_schema.json`;
-a prior-state JSON input makes duplicate event IDs and non-monotonic sequence
-invalid. Do not manufacture unknown SHA, commit, review, or operational facts:
-use explicit `null` where the schema allows it.
+For terminal only, send a payload under 2,000 characters to portfolio_task_id
+using native send_message_to_thread. Do not override Hub model or effort:
 
-From the repository root, run before a child dispatch:
+~~~text
+event_type: terminal_handoff
+milestone_id: <id>
+source_task_id: <Milestone task/thread ID>
+checkpoint: <repository-relative checkpoint path>
+status: <passed | failed | externally_blocked>
+commit_or_frozen_sha: <SHA or null>
+evidence: [<paths only>]
+blockers: [<compact items>]
+next: <exact Portfolio action>
+~~~
 
-```text
+Receiving Portfolio validates the checkpoint, reconciles repository truth,
+updates its plan, then closes the outcome or prepares the next manual
+Milestone prompt. It does not read child transcripts.
+
+The checkpoint schema is
+.agents/skills/mpc-goal-harness/scripts/checkpoint_schema.json. Unknown facts
+remain explicit null where allowed. Legacy heartbeat remains schema-valid only
+for historical compatibility; new dispatches must not create it.
+
+## Child dispatch preflight
+
+Before a Feature child:
+
+~~~powershell
 python .agents/skills/mpc-goal-harness/scripts/dispatch_preflight.py --packet <packet.json> --accepted-base-sha <Milestone-accepted-SHA> --current-writers <snapshot.json>
-```
+~~~
 
-The SHA and `{"authoritative": true, "writers": []}`
-snapshot are read-only Milestone inputs, not packet claims or a persistent
-ledger. Preflight fails closed for a wrong/nonexistent accepted SHA, missing
-packet field/file or feature/work-item identity, duplicate/completed/stale work
-marker, absent authoritative one-writer state, writer-path overlap, or callback
-that is not the parent task. It does not create, mutate, or resume a task. A
-The legacy `heartbeat` event remains schema-valid only for historical artifact
-compatibility. New dispatches must not create it.
-
-Keep parent messages below 2,000 characters and reference evidence paths rather
-than copying output. Resume from checkpoints, MNFS, Git, validation artifacts,
-and context files. Native task IDs are correlation metadata. If native agent
-controls are unavailable, stop and tell the user which visible-task capability
-is missing; do not silently replace the Milestone with a nested Portfolio child.
+The SHA and {"authoritative": true, "writers": []} snapshot are read-only
+Milestone inputs. Preflight fails closed for wrong/nonexistent SHA, missing
+packet field/file or identity, stale/duplicate markers, absent authoritative
+one-writer state, writer overlap, or callback target not equal to parent. It
+does not create, mutate, or resume tasks.
 
 ## Boundary
 
-The three project agents (`mpc-milestone`, `mpc-implementer`, and
-`mpc-verifier`) plus the depth/thread limits in `.codex/config.toml` are the
-only persistent orchestration runtime configuration. Tasks, subagents,
-read/steer/interrupt, and worktrees remain operator-observed native
-capabilities. Do not add hooks, app servers, VMs, custom schedulers, synthetic
-eval products, cold clones, or a second CI without a separately reviewed
-failure that requires them.
+Root and child roles are defined by this skill plus packets.
+.codex/config.toml contains only multi-agent enablement and bounded
+depth/thread limits; there are no project custom-agent registrations. Tasks,
+generic subagents, cross-task messaging, read/steer/interrupt, and worktrees
+remain operator-observed native capabilities. Do not add hooks, app servers,
+VMs, custom schedulers, synthetic eval products, cold clones, or a second CI
+without a separately reviewed failure that requires them.
