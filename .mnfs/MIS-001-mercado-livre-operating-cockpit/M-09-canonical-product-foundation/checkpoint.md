@@ -1,4 +1,4 @@
-# M-09 Final C01 Correction Checkpoint
+# M-09 Inventory Clock QA-Unblock Checkpoint
 
 - status: `correction_complete_pending_fixed_sha_review`
 - milestone task: `019f5d00-0b82-7b61-9920-32c7bd490333`
@@ -15,13 +15,7 @@
   source `oracle/sankhya`, `read_only=true`, and
   `positive_codprod_observed=true` at the frozen SHA.
 - limitations: no guessed mapping or provider/Oracle write occurred.
-- final fixed-SHA review:
-  - M-09-C02 through M-09-C05 pass.
-  - M-09-C01 fails because product-link candidate generation can still promote
-    legacy `ProductCandidate.ProductID` instead of requiring positive canonical
-    `InternalProductID`.
-  - OpenAPI does not require nullable `brand_name` and `product_group_name`
-    although Go always emits them and SDK requires them.
+- prior C01 review findings were resolved by the final authorized correction.
 - final correction outcome:
   - generation requires non-nil positive canonical `InternalProductID` for
     filtering, conflict comparison, deduplication, candidate IDs, and persisted
@@ -38,5 +32,33 @@
 - side effects: no network, database, provider, or Oracle action; no dependency
   installation.
 - retry usage: final Portfolio-authorized exception consumed; no retry remains.
-- next: freeze the correction commit SHA, run `mpc-verifier` fixed-SHA review,
-  then proportional QA only if review passes.
+- frozen final SHA: `97fd4b58d55a7d14a2b45f0c3bae15b2e374822a`.
+- fixed-SHA review: PASS with no findings; C02-C05 reuse was accepted as not
+  invalidated by the final C01 correction.
+- proportional QA: FAIL. The targeted Go lane passed, but registered full Go
+  command `go test ./... -count=1` failed in
+  `TestStockRiskServiceClassifiesOversellAndFilters` with `len(items)=0, want 1`.
+- QA stop: SDK, residue scan, runner-contract, and frozen-SHA Oracle lanes were
+  not run after the deterministic failure. C03 and C05 therefore remain not
+  completed for this QA SHA.
+- QA evidence:
+  - `_fixed-sha-qa/deterministic-qa.md`
+  - `validation-result.md`
+- retry: none authorized by `M-09-CORR-03`.
+- Portfolio subsequently authorized test-only correction `M-09-QA-CORR-01` at
+  dispatch base `ee71d7ab2a66f1a55bcc5dc2e9928c34dab78eb2`.
+- inventory clock correction:
+  - only `TestStockRiskServiceClassifiesOversellAndFilters` changed;
+  - its shared observation now uses fresh runtime UTC time within the existing
+    30-minute policy;
+  - production freshness behavior, risk classification, quantities, filter,
+    and assertions are unchanged.
+- correction proof with absolute repository `.gocache` and `-count=1`:
+  - exact inventory test — PASS;
+  - inventory application package — PASS;
+  - full `apps/server_core` `go test ./...` lane, run once — PASS.
+- correction evidence: `qa-inventory-clock/validation.md`.
+- side effects: no production, database, network, provider, or Oracle changes
+  or writes; no dependency installation.
+- next: freeze the containing correction commit, request fixed-SHA review, then
+  restart proportional QA from the beginning only after review passes.

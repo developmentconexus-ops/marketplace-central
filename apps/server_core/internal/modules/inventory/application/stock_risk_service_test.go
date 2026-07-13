@@ -34,7 +34,7 @@ func (s stubInternalStockReader) GetSellableStock(context.Context, int, domain.S
 }
 
 func TestStockRiskServiceClassifiesOversellAndFilters(t *testing.T) {
-	now := time.Date(2026, 7, 9, 12, 0, 0, 0, time.UTC)
+	now := time.Now().UTC()
 	service := NewStockRiskService(
 		stubSnapshotReader{items: []domain.ListingSnapshot{{
 			Identity: domain.ListingIdentity{
