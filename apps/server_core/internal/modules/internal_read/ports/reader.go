@@ -7,6 +7,7 @@ import (
 )
 
 type FindProductsInput struct {
+	ProductID       *int
 	EAN             *string
 	SellerSKU       *string
 	Title           *string

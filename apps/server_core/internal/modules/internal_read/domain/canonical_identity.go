@@ -6,3 +6,7 @@ import catalogdomain "marketplace-central/apps/server_core/internal/modules/cata
 // same positive-integer value object. Legacy ProductID remains separate until
 // the deterministic cutover feature removes it.
 type InternalProductID = catalogdomain.InternalProductID
+
+func NewInternalProductID(codprod int) (InternalProductID, error) {
+	return catalogdomain.NewInternalProductID(codprod)
+}

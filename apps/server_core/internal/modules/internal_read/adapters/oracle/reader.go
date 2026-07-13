@@ -63,15 +63,16 @@ func (r *Reader) FindProductsForLinking(ctx context.Context, input ports.FindPro
 		}
 
 		candidate := domain.ProductCandidate{
-			ProductID:      productID,
-			Name:           name,
-			EAN:            nullableString(referenceValue),
-			ReferenceCode:  nullableString(referenceValue),
-			BrandID:        nullableInt(brandID),
-			BrandName:      nullableString(brandName),
-			ProductGroupID: nullableInt(productGroupID),
-			IsActive:       strings.EqualFold(activeValue, "S"),
-			UsageType:      nullableString(usageType),
+			InternalProductID: canonicalProductID(productID),
+			ProductID:         productID,
+			Name:              name,
+			EAN:               nullableString(referenceValue),
+			ReferenceCode:     nullableString(referenceValue),
+			BrandID:           nullableInt(brandID),
+			BrandName:         nullableString(brandName),
+			ProductGroupID:    nullableInt(productGroupID),
+			IsActive:          strings.EqualFold(activeValue, "S"),
+			UsageType:         nullableString(usageType),
 			Source: domain.SourceMetadata{
 				System:    "oracle",
 				FetchedAt: r.now().UTC(),
@@ -417,6 +418,10 @@ WHERE 1 = 1`
 	}
 
 	var matchClauses []string
+	if input.ProductID != nil && *input.ProductID > 0 {
+		args = append(args, *input.ProductID)
+		matchClauses = append(matchClauses, fmt.Sprintf("p.CODPROD = :%d", len(args)))
+	}
 	if value := trimmedPointer(input.EAN); value != nil {
 		args = append(args, *value)
 		matchClauses = append(matchClauses, fmt.Sprintf("p.REFERENCIA = :%d", len(args)))
@@ -429,12 +434,19 @@ WHERE 1 = 1`
 		args = append(args, "%"+strings.ToUpper(*value)+"%")
 		matchClauses = append(matchClauses, fmt.Sprintf("UPPER(p.DESCRPROD) LIKE :%d", len(args)))
 	}
-	if len(matchClauses) == 0 {
-		return "", nil, domain.NewReadError(domain.ReadErrorUnsupportedQuery, "oracle product lookup requires at least one linking key", nil)
+	if len(matchClauses) > 0 {
+		query += " AND (" + strings.Join(matchClauses, " OR ") + ")"
 	}
-
-	query += " AND (" + strings.Join(matchClauses, " OR ") + ") ORDER BY p.ATIVO DESC, p.CODPROD"
+	query += " ORDER BY p.DESCRPROD, p.CODPROD"
 	return query, args, nil
+}
+
+func canonicalProductID(productID int) *domain.InternalProductID {
+	id, err := domain.NewInternalProductID(productID)
+	if err != nil {
+		return nil
+	}
+	return &id
 }
 
 func buildSellableStockQuery(productID int, policy domain.SellableStockPolicy) (string, []any, error) {

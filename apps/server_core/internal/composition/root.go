@@ -9,9 +9,10 @@ import (
 	"os"
 	"time"
 
-	catalogmetalshopping "marketplace-central/apps/server_core/internal/modules/catalog/adapters/metalshopping"
+	cataloginternalread "marketplace-central/apps/server_core/internal/modules/catalog/adapters/internalread"
 	catalogpostgres "marketplace-central/apps/server_core/internal/modules/catalog/adapters/postgres"
 	catalogapp "marketplace-central/apps/server_core/internal/modules/catalog/application"
+	catalogports "marketplace-central/apps/server_core/internal/modules/catalog/ports"
 	catalogtransport "marketplace-central/apps/server_core/internal/modules/catalog/transport"
 	classpostgres "marketplace-central/apps/server_core/internal/modules/classifications/adapters/postgres"
 	classapp "marketplace-central/apps/server_core/internal/modules/classifications/application"
@@ -150,16 +151,11 @@ func (f authFlowFacade) ReadStock(ctx context.Context, installationID string, re
 	return f.providerOps.ReadStock(ctx, installationID, ref)
 }
 
-func NewRootRouter(pool *pgxpool.Pool, msPool *pgxpool.Pool, cfg pgdb.Config) (http.Handler, error) {
+func NewRootRouter(pool *pgxpool.Pool, cfg pgdb.Config) (http.Handler, error) {
 	mux := http.NewServeMux()
 
 	base := httpx.NewRouter()
 	mux.Handle("/healthz", base)
-
-	catalogReader := catalogmetalshopping.NewRepository(msPool)
-	catalogEnrichments := catalogpostgres.NewEnrichmentRepository(pool, cfg.DefaultTenantID)
-	catalogSvc := catalogapp.NewService(catalogReader, catalogEnrichments, cfg.DefaultTenantID)
-	catalogtransport.Handler{Service: catalogSvc}.Register(mux)
 
 	classRepo := classpostgres.NewRepository(pool, cfg.DefaultTenantID)
 	classSvc := classapp.NewService(classRepo, cfg.DefaultTenantID)
@@ -296,6 +292,14 @@ func NewRootRouter(pool *pgxpool.Pool, msPool *pgxpool.Pool, cfg pgdb.Config) (h
 		productMatcher = internalReadSvc
 		inventoryStockReader = inventoryinternalread.NewStockReader(internalReadSvc)
 	}
+	var canonicalCatalogReader catalogports.CanonicalProductReader = cataloginternalread.UnavailableReader{Err: internalreaddomain.NewReadError(internalreaddomain.ReadErrorSourceUnavailable, "oracle catalog reader is unavailable", nil)}
+	if internalReadAvailable {
+		canonicalCatalogReader = cataloginternalread.NewReader(internalReadSvc)
+	}
+	catalogEnrichments := catalogpostgres.NewEnrichmentRepository(pool, cfg.DefaultTenantID)
+	legacyReader := canonicalCatalogReader.(catalogports.ProductReader)
+	catalogSvc := catalogapp.NewService(legacyReader, catalogEnrichments, cfg.DefaultTenantID)
+	catalogtransport.Handler{Service: catalogapp.NewCanonicalService(canonicalCatalogReader), CompatibilityService: catalogSvc}.Register(mux)
 
 	productLinkGenerationSvc := productlinksapp.NewGenerationService(productlinksapp.GenerationServiceConfig{
 		Snapshots: productLinkSnapshotRepo,

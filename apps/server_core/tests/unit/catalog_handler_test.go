@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	catalogapp "marketplace-central/apps/server_core/internal/modules/catalog/application"
 	catalogdomain "marketplace-central/apps/server_core/internal/modules/catalog/domain"
@@ -62,6 +63,37 @@ func (r *catalogHandlerReaderStub) ListProductsByIDs(_ context.Context, productI
 	return result, nil
 }
 
+func (r *catalogHandlerReaderStub) ListCanonicalProducts(_ context.Context) ([]catalogdomain.CanonicalProduct, error) {
+	return canonicalCatalogProducts(r.products), nil
+}
+func (r *catalogHandlerReaderStub) SearchCanonicalProducts(_ context.Context, q string) ([]catalogdomain.CanonicalProduct, error) {
+	var products []catalogdomain.Product
+	for _, p := range r.products {
+		if strings.Contains(strings.ToLower(p.Name), strings.ToLower(q)) {
+			products = append(products, p)
+		}
+	}
+	return canonicalCatalogProducts(products), nil
+}
+func (r *catalogHandlerReaderStub) GetCanonicalProduct(_ context.Context, id catalogdomain.InternalProductID) (catalogdomain.CanonicalProduct, error) {
+	for _, p := range canonicalCatalogProducts(r.products) {
+		if p.InternalProductID == id {
+			return p, nil
+		}
+	}
+	return catalogdomain.CanonicalProduct{}, nil
+}
+func canonicalCatalogProducts(products []catalogdomain.Product) []catalogdomain.CanonicalProduct {
+	zero := 0.0
+	now := time.Now().UTC()
+	fact, _ := catalogdomain.NewNumericSourceFact("fake", &zero, catalogdomain.SourceFactQualityCurrent, &now, nil)
+	result := make([]catalogdomain.CanonicalProduct, 0, len(products))
+	for i, p := range products {
+		result = append(result, catalogdomain.CanonicalProduct{InternalProductID: catalogdomain.InternalProductID(i + 1), Name: p.Name, CostAmount: fact, PriceAmount: fact, StockQuantity: fact})
+	}
+	return result
+}
+
 type catalogHandlerEnrichmentStub struct{}
 
 func (s catalogHandlerEnrichmentStub) GetEnrichment(_ context.Context, productID string) (catalogdomain.ProductEnrichment, error) {
@@ -79,7 +111,7 @@ func (s catalogHandlerEnrichmentStub) ListEnrichments(_ context.Context, _ []str
 func newCatalogHandler(products []catalogdomain.Product) catalogtransport.Handler {
 	reader := &catalogHandlerReaderStub{products: products}
 	svc := catalogapp.NewService(reader, catalogHandlerEnrichmentStub{}, "tnt_test")
-	return catalogtransport.Handler{Service: svc}
+	return catalogtransport.Handler{Service: catalogapp.NewCanonicalService(reader), CompatibilityService: svc}
 }
 
 func TestCatalogHandlerGetReturnsProducts(t *testing.T) {
@@ -184,7 +216,7 @@ func TestCatalogGetProductEndpoint(t *testing.T) {
 	mux := http.NewServeMux()
 	newCatalogHandler(seeded).Register(mux)
 
-	req := httptest.NewRequest(http.MethodGet, "/catalog/products/prd_1", nil)
+	req := httptest.NewRequest(http.MethodGet, "/catalog/products/1", nil)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
@@ -195,8 +227,8 @@ func TestCatalogGetProductEndpoint(t *testing.T) {
 	if err := json.NewDecoder(rec.Body).Decode(&result); err != nil {
 		t.Fatalf("decode error: %v", err)
 	}
-	if result["product_id"] != "prd_1" {
-		t.Fatalf("expected product_id prd_1, got %v", result["product_id"])
+	if result["internal_product_id"] != float64(1) {
+		t.Fatalf("expected canonical product id 1, got %v", result["internal_product_id"])
 	}
 }
 

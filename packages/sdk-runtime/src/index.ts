@@ -1002,7 +1002,7 @@ export function createMarketplaceCentralClient(options: {
   }
 
   return {
-    listCatalogProducts: () => getJson<ListResponse<CatalogProduct>>("/catalog/products"),
+    listCatalogProducts: () => getJson<ListResponse<CanonicalCatalogProduct>>("/catalog/products"),
     listMarketplaceAccounts: () => getJson<ListResponse<MarketplaceAccount>>("/marketplaces/accounts"),
     listMarketplacePolicies: () => getJson<ListResponse<MarketplacePolicy>>("/marketplaces/policies"),
     listMarketplaceDefinitions: () => getJson<ListResponse<MarketplaceDefinition>>("/marketplaces/definitions"),
@@ -1168,9 +1168,9 @@ export function createMarketplaceCentralClient(options: {
 
     // Catalog
     searchCatalogProducts: (query: string) =>
-      getJson<ListResponse<CatalogProduct>>(`/catalog/products/search?q=${encodeURIComponent(query)}`),
-    getCatalogProduct: (productId: string) =>
-      getJson<CatalogProduct>(`/catalog/products/${productId}`),
+      getJson<ListResponse<CanonicalCatalogProduct>>(`/catalog/products/search?q=${encodeURIComponent(query)}`),
+	getCatalogProduct: (productId: number) =>
+	  getJson<CanonicalCatalogProduct>(`/catalog/products/${productId}`),
     listTaxonomyNodes: () =>
       getJson<ListResponse<TaxonomyNode>>("/catalog/taxonomy"),
     getProductEnrichment: (productId: string) =>

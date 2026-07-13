@@ -30,7 +30,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CatalogProduct'
+                $ref: '#/components/schemas/CanonicalCatalogProduct'
         "404":
           description: Product not found
           content:
@@ -1977,7 +1977,7 @@ components:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/CatalogProduct'
+            $ref: '#/components/schemas/CanonicalCatalogProduct'
     ListTaxonomyNodesResponse:
       type: object
       required:

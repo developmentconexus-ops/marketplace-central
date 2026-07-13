@@ -25,8 +25,6 @@ services:
       API_PORT: "8080"
       SERVER_ADDR: ":8080"
       MC_DATABASE_URL: postgres://marketplace:marketplace@postgres:5432/marketplace_central?sslmode=disable
-      MS_DATABASE_URL: postgres://marketplace:marketplace@postgres:5432/marketplace_central?sslmode=disable
-      MS_TENANT_ID: tenant_default
       MPC_ORACLE_LIB_DIR: /opt/oracle/instantclient
       RUN_MIGRATIONS: "1"
     working_dir: /workspace

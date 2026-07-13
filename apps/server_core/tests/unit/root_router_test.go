@@ -13,7 +13,7 @@ func TestNewRootRouterBuildsWithoutLegacyConnectorCredentials(t *testing.T) {
 	t.Setenv("ME_CLIENT_ID", "")
 	t.Setenv("ME_CLIENT_SECRET", "")
 
-	_, err := composition.NewRootRouter(nil, nil, pgdb.Config{
+	_, err := composition.NewRootRouter(nil, pgdb.Config{
 		DefaultTenantID: "tenant_default",
 		EncryptionKey:   "0123456789abcdef0123456789abcdef",
 	})
@@ -26,7 +26,7 @@ func TestNewRootRouterBuildsWhenMelhorEnvioCredentialsArePresent(t *testing.T) {
 	t.Setenv("ME_CLIENT_ID", "test-client")
 	t.Setenv("ME_CLIENT_SECRET", "test-secret")
 
-	router, err := composition.NewRootRouter(nil, nil, pgdb.Config{
+	router, err := composition.NewRootRouter(nil, pgdb.Config{
 		DefaultTenantID: "tenant_default",
 		EncryptionKey:   "0123456789abcdef0123456789abcdef",
 	})

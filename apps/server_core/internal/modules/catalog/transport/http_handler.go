@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,7 +14,8 @@ import (
 )
 
 type Handler struct {
-	Service application.Service
+	Service              application.CanonicalService
+	CompatibilityService application.Service
 }
 
 func writeError(w http.ResponseWriter, status int, code, message string) {
@@ -42,7 +44,7 @@ func (h Handler) handleProducts(w http.ResponseWriter, r *http.Request) {
 	products, err := h.Service.ListProducts(r.Context())
 	if err != nil {
 		slog.Error("catalog.products", "action", "list", "result", "500", "duration_ms", time.Since(start).Milliseconds())
-		writeError(w, http.StatusInternalServerError, "CATALOG_INTERNAL_ERROR", "internal error")
+		writeCatalogReadError(w, err)
 		return
 	}
 	slog.Info("catalog.products", "action", "list", "result", "200", "duration_ms", time.Since(start).Milliseconds())
@@ -60,7 +62,7 @@ func (h Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
 	products, err := h.Service.SearchProducts(r.Context(), q)
 	if err != nil {
 		slog.Error("catalog.search", "action", "search", "result", "500", "duration_ms", time.Since(start).Milliseconds())
-		writeError(w, http.StatusInternalServerError, "CATALOG_INTERNAL_ERROR", "internal error")
+		writeCatalogReadError(w, err)
 		return
 	}
 	slog.Info("catalog.search", "action", "search", "result", "200", "duration_ms", time.Since(start).Milliseconds())
@@ -70,7 +72,12 @@ func (h Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
 func (h Handler) handleGetProduct(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	productID := r.PathValue("id")
-	product, err := h.Service.GetProduct(r.Context(), productID)
+	id, parseErr := strconv.Atoi(productID)
+	if parseErr != nil || id <= 0 {
+		writeError(w, http.StatusBadRequest, "invalid_identity", "productId must be a positive integer")
+		return
+	}
+	product, err := h.Service.GetProduct(r.Context(), domain.InternalProductID(id))
 	if err != nil {
 		if strings.Contains(err.Error(), "NOT_FOUND") {
 			slog.Error("catalog.product", "action", "get", "result", "404", "product_id", productID, "duration_ms", time.Since(start).Milliseconds())
@@ -78,11 +85,19 @@ func (h Handler) handleGetProduct(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		slog.Error("catalog.product", "action", "get", "result", "500", "product_id", productID, "duration_ms", time.Since(start).Milliseconds())
-		writeError(w, http.StatusInternalServerError, "CATALOG_INTERNAL_ERROR", "internal error")
+		writeCatalogReadError(w, err)
 		return
 	}
 	slog.Info("catalog.product", "action", "get", "result", "200", "product_id", productID, "duration_ms", time.Since(start).Milliseconds())
 	httpx.WriteJSON(w, http.StatusOK, product)
+}
+
+func writeCatalogReadError(w http.ResponseWriter, err error) {
+	if strings.Contains(err.Error(), "source_unavailable") {
+		writeError(w, http.StatusServiceUnavailable, "source_unavailable", "catalog source unavailable")
+		return
+	}
+	writeError(w, http.StatusInternalServerError, "CATALOG_INTERNAL_ERROR", "internal error")
 }
 
 func (h Handler) handleTaxonomy(w http.ResponseWriter, r *http.Request) {
@@ -93,7 +108,7 @@ func (h Handler) handleTaxonomy(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusMethodNotAllowed, "CATALOG_METHOD_NOT_ALLOWED", "method not allowed")
 		return
 	}
-	nodes, err := h.Service.ListTaxonomyNodes(r.Context())
+	nodes, err := h.CompatibilityService.ListTaxonomyNodes(r.Context())
 	if err != nil {
 		slog.Error("catalog.taxonomy", "action", "list", "result", "500", "duration_ms", time.Since(start).Milliseconds())
 		writeError(w, http.StatusInternalServerError, "CATALOG_INTERNAL_ERROR", "internal error")
@@ -106,7 +121,7 @@ func (h Handler) handleTaxonomy(w http.ResponseWriter, r *http.Request) {
 func (h Handler) handleGetEnrichment(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	productID := r.PathValue("id")
-	enrichment, err := h.Service.GetEnrichment(r.Context(), productID)
+	enrichment, err := h.CompatibilityService.GetEnrichment(r.Context(), productID)
 	if err != nil {
 		slog.Error("catalog.enrichment", "action", "get", "result", "500", "product_id", productID, "duration_ms", time.Since(start).Milliseconds())
 		writeError(w, http.StatusInternalServerError, "CATALOG_INTERNAL_ERROR", "internal error")
@@ -139,7 +154,7 @@ func (h Handler) handleUpsertEnrichment(w http.ResponseWriter, r *http.Request) 
 		WeightG:              req.WeightG,
 		SuggestedPriceAmount: req.SuggestedPriceAmount,
 	}
-	if err := h.Service.UpsertEnrichment(r.Context(), enrichment); err != nil {
+	if err := h.CompatibilityService.UpsertEnrichment(r.Context(), enrichment); err != nil {
 		slog.Error("catalog.enrichment", "action", "upsert", "result", "500", "product_id", productID, "duration_ms", time.Since(start).Milliseconds())
 		writeError(w, http.StatusInternalServerError, "CATALOG_INTERNAL_ERROR", "internal error")
 		return

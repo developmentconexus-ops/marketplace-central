@@ -34,9 +34,6 @@ if [[ -z "${MPC_ORACLE_CONNECT_STRING:-}" && -n "${SANKHYA_ORACLE_HOST:-}" && -n
   export MPC_ORACLE_CONNECT_STRING="$(strip_quotes "$SANKHYA_ORACLE_HOST"):$(strip_quotes "$SANKHYA_ORACLE_PORT")/$(strip_quotes "$SANKHYA_ORACLE_SERVICE_NAME")"
 fi
 
-# Temporary boot compatibility for older composition code that still opens msdb.
-export MS_DATABASE_URL="${MS_DATABASE_URL:-${MC_DATABASE_URL:-}}"
-export MS_TENANT_ID="${MS_TENANT_ID:-${MC_DEFAULT_TENANT_ID:-tenant_default}}"
 
 if [[ "${RUN_MIGRATIONS:-1}" == "1" ]]; then
   go run ./apps/server_core/cmd/migrate
