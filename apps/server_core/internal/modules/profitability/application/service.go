@@ -235,7 +235,10 @@ func (s *Service) buildItemInputs(ctx context.Context, order profitabilitydomain
 	cost, costErr := s.internal.GetCostAsOf(ctx, *item.InternalProductID, effectiveAt(order))
 	inputs = append(inputs, mapCostInput(base, cost, item.Quantity, costErr))
 
-	tax, taxErr := s.internal.GetTaxInputs(ctx, *item.InternalProductID, effectiveAt(order))
+	// Orders do not yet carry an owner-verified Oracle NUNOTA/SEQUENCIA mapping.
+	// An empty identity deliberately keeps tax missing instead of guessing by
+	// product and date.
+	tax, taxErr := s.internal.GetTaxInputs(ctx, *item.InternalProductID, effectiveAt(order), internalreaddomain.TaxSourceIdentity{})
 	inputs = append(inputs,
 		mapTaxInput(base, profitabilitydomain.InputKindTaxICMS, tax.ICMSAmount, tax.Source, tax.QualityFlags, taxErr, "icms"),
 		mapTaxInput(base, profitabilitydomain.InputKindTaxIPI, tax.IPIAmount, tax.Source, tax.QualityFlags, taxErr, "ipi"),

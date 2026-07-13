@@ -313,11 +313,48 @@ func (r *Reader) GetSalesHistory(ctx context.Context, input ports.SalesHistoryIn
 }
 
 func (r *Reader) GetTaxInputs(ctx context.Context, input ports.TaxInput) (domain.TaxInputs, error) {
+	policy := input.Policy
+	if !policy.Source.Verified() {
+		return domain.TaxInputs{
+			ProductID: input.ProductID, EffectiveAt: policy.EffectiveAt,
+			IncidenceCode: policy.IncidenceCode,
+			QualityFlags:  []domain.QualityFlag{domain.QualityMissingTax},
+		}, nil
+	}
 	if err := r.ensureAvailable(ctx); err != nil {
 		return domain.TaxInputs{}, err
 	}
 
-	policy := input.Policy
+	query, args := buildTaxInputsQuery(input.ProductID, policy)
+
+	var (
+		icms   sql.NullFloat64
+		ipi    sql.NullFloat64
+		pis    sql.NullFloat64
+		cofins sql.NullFloat64
+	)
+	if err := r.db.QueryRowContext(ctx, query, args...).Scan(&icms, &ipi, &pis, &cofins); err != nil {
+		return domain.TaxInputs{}, wrapOracleError("read tax inputs", err)
+	}
+
+	result := domain.TaxInputs{
+		ProductID:      input.ProductID,
+		EffectiveAt:    policy.EffectiveAt,
+		IncidenceCode:  policy.IncidenceCode,
+		SourceIdentity: policy.Source,
+		ICMSAmount:     nullableFloat(icms),
+		IPIAmount:      nullableFloat(ipi),
+		PISAmount:      nullableFloat(pis),
+		COFINSAmount:   nullableFloat(cofins),
+		Source:         domain.SourceMetadata{System: "oracle", FetchedAt: r.now().UTC()},
+	}
+	if result.ICMSAmount == nil && result.IPIAmount == nil && result.PISAmount == nil && result.COFINSAmount == nil {
+		result.QualityFlags = []domain.QualityFlag{domain.QualityMissingTax}
+	}
+	return result, nil
+}
+
+func buildTaxInputsQuery(productID int, policy domain.TaxPolicy) (string, []any) {
 	query := `
 SELECT
 	SUM(CASE WHEN d.IMPOSTO = 'ICMS' THEN d.VALOR END) AS ICMS_AMOUNT,
@@ -328,34 +365,11 @@ FROM LEANDRO.VW_IMPOSTO_ITEM d
 JOIN METALPRD.TGFITE i
   ON i.NUNOTA = d.NUNOTA
  AND i.SEQUENCIA = d.SEQUENCIA
-WHERE i.CODPROD = :1
-  AND d.CODINC = :2
-  AND TRUNC(d.DTNEG) = TRUNC(:3)`
-
-	var (
-		icms   sql.NullFloat64
-		ipi    sql.NullFloat64
-		pis    sql.NullFloat64
-		cofins sql.NullFloat64
-	)
-	if err := r.db.QueryRowContext(ctx, query, input.ProductID, policy.IncidenceCode, policy.EffectiveAt).Scan(&icms, &ipi, &pis, &cofins); err != nil {
-		return domain.TaxInputs{}, wrapOracleError("read tax inputs", err)
-	}
-
-	result := domain.TaxInputs{
-		ProductID:     input.ProductID,
-		EffectiveAt:   policy.EffectiveAt,
-		IncidenceCode: policy.IncidenceCode,
-		ICMSAmount:    nullableFloat(icms),
-		IPIAmount:     nullableFloat(ipi),
-		PISAmount:     nullableFloat(pis),
-		COFINSAmount:  nullableFloat(cofins),
-		Source:        domain.SourceMetadata{System: "oracle", FetchedAt: r.now().UTC()},
-	}
-	if result.ICMSAmount == nil && result.IPIAmount == nil && result.PISAmount == nil && result.COFINSAmount == nil {
-		result.QualityFlags = []domain.QualityFlag{domain.QualityMissingTax}
-	}
-	return result, nil
+WHERE d.NUNOTA = :1
+  AND d.SEQUENCIA = :2
+  AND i.CODPROD = :3
+  AND d.CODINC = :4`
+	return query, []any{policy.Source.DocumentID, policy.Source.LineNumber, productID, policy.IncidenceCode}
 }
 
 func (r *Reader) ensureAvailable(ctx context.Context) error {

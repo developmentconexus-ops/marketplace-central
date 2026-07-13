@@ -26,13 +26,28 @@ type stubInternalFactReader struct {
 func (s stubInternalFactReader) GetCostAsOf(context.Context, int, time.Time) (internalreaddomain.CostAsOf, error) {
 	return s.cost, nil
 }
-func (s stubInternalFactReader) GetTaxInputs(context.Context, int, time.Time) (internalreaddomain.TaxInputs, error) {
+func (s stubInternalFactReader) GetTaxInputs(context.Context, int, time.Time, internalreaddomain.TaxSourceIdentity) (internalreaddomain.TaxInputs, error) {
 	return s.tax, nil
 }
 
 type recordingInternalFactReader struct {
 	costCalls int
 	taxCalls  int
+	taxSource internalreaddomain.TaxSourceIdentity
+}
+
+type provenanceAwareInternalFactReader struct {
+	taxSource internalreaddomain.TaxSourceIdentity
+}
+
+func (s *provenanceAwareInternalFactReader) GetCostAsOf(context.Context, int, time.Time) (internalreaddomain.CostAsOf, error) {
+	amount := 10.0
+	return internalreaddomain.CostAsOf{Amount: &amount}, nil
+}
+
+func (s *provenanceAwareInternalFactReader) GetTaxInputs(_ context.Context, _ int, _ time.Time, source internalreaddomain.TaxSourceIdentity) (internalreaddomain.TaxInputs, error) {
+	s.taxSource = source
+	return internalreaddomain.TaxInputs{QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityMissingTax}}, nil
 }
 
 func (s *recordingInternalFactReader) GetCostAsOf(context.Context, int, time.Time) (internalreaddomain.CostAsOf, error) {
@@ -41,8 +56,9 @@ func (s *recordingInternalFactReader) GetCostAsOf(context.Context, int, time.Tim
 	return internalreaddomain.CostAsOf{Amount: &amount}, nil
 }
 
-func (s *recordingInternalFactReader) GetTaxInputs(context.Context, int, time.Time) (internalreaddomain.TaxInputs, error) {
+func (s *recordingInternalFactReader) GetTaxInputs(_ context.Context, _ int, _ time.Time, source internalreaddomain.TaxSourceIdentity) (internalreaddomain.TaxInputs, error) {
 	s.taxCalls++
+	s.taxSource = source
 	amount := 11.0
 	return internalreaddomain.TaxInputs{ICMSAmount: &amount, IPIAmount: &amount, PISAmount: &amount, COFINSAmount: &amount}, nil
 }
@@ -286,6 +302,40 @@ func TestImportMarginInputsDoesNotReadInternalFactsForNonResolvedLinkWithProduct
 				}
 			}
 		})
+	}
+}
+
+func TestImportMarginInputsDoesNotGuessTaxProvenanceForResolvedProduct(t *testing.T) {
+	now := time.Date(2026, 7, 12, 12, 0, 0, 0, time.UTC)
+	productID := 42664
+	internal := &provenanceAwareInternalFactReader{}
+	service := NewService(ServiceConfig{
+		Orders: stubOrderReader{orders: []profitabilitydomain.OrderFact{{
+			InstallationID: "inst-1", ProviderOrderID: "order-1", FetchedAt: now,
+			Items: []profitabilitydomain.OrderItemFact{{ProviderItemID: "item-1", InternalProductID: &productID, LinkQuality: profitabilitydomain.OrderLinkResolved}},
+		}}},
+		Internal: internal, Inputs: &stubInputStore{}, Now: func() time.Time { return now },
+	})
+
+	result, err := service.ImportMarginInputs(context.Background(), ImportMarginInputsInput{InstallationID: "inst-1"})
+	if err != nil {
+		t.Fatalf("ImportMarginInputs() error = %v", err)
+	}
+	if internal.taxSource.Verified() {
+		t.Fatalf("tax source = %+v, want no guessed Oracle identity", internal.taxSource)
+	}
+	missing := 0
+	for _, input := range result.Items {
+		switch input.Kind {
+		case profitabilitydomain.InputKindTaxICMS, profitabilitydomain.InputKindTaxIPI, profitabilitydomain.InputKindTaxPIS, profitabilitydomain.InputKindTaxCOFINS:
+			if input.Amount != nil || input.Quality != profitabilitydomain.InputQualityMissing {
+				t.Fatalf("tax input = %+v, want explicit missing tax", input)
+			}
+			missing++
+		}
+	}
+	if missing != 4 {
+		t.Fatalf("missing tax inputs = %d, want 4", missing)
 	}
 }
 

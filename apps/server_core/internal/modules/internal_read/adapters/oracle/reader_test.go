@@ -35,6 +35,35 @@ func TestReaderReturnsTypedUnavailableWhenDBMissing(t *testing.T) {
 	}
 }
 
+func TestTaxInputsRequireExactSaleLineIdentityBeforeOracleAccess(t *testing.T) {
+	reader := NewReader(nil)
+	got, err := reader.GetTaxInputs(context.Background(), ports.TaxInput{
+		ProductID: 42664,
+		Policy:    domain.DefaultTaxPolicy(time.Date(2026, 7, 6, 0, 0, 0, 0, time.UTC)),
+	})
+	if err != nil {
+		t.Fatalf("GetTaxInputs() error = %v, want missing tax without Oracle access", err)
+	}
+	if got.ICMSAmount != nil || len(got.QualityFlags) != 1 || got.QualityFlags[0] != domain.QualityMissingTax {
+		t.Fatalf("GetTaxInputs() = %+v, want nil amounts with missing_tax", got)
+	}
+}
+
+func TestBuildTaxInputsQueryUsesExactSaleLinePredicates(t *testing.T) {
+	policy := domain.DefaultTaxPolicy(time.Date(2026, 7, 6, 0, 0, 0, 0, time.UTC))
+	policy.Source = domain.TaxSourceIdentity{DocumentID: 98765, LineNumber: 3}
+	query, args := buildTaxInputsQuery(42664, policy)
+
+	for _, predicate := range []string{"d.NUNOTA = :1", "d.SEQUENCIA = :2", "i.CODPROD = :3", "d.CODINC = :4"} {
+		if !strings.Contains(query, predicate) {
+			t.Fatalf("tax query missing exact predicate %q: %s", predicate, query)
+		}
+	}
+	if strings.Contains(query, "DTNEG") || len(args) != 4 || args[0] != 98765 || args[1] != 3 || args[2] != 42664 {
+		t.Fatalf("tax query args/query = %#v / %s, want exact document-line-product identity", args, query)
+	}
+}
+
 func TestBuildDSNIncludesOnlyConfigKeys(t *testing.T) {
 	dsn := buildDSN(Config{
 		Username:        "user",

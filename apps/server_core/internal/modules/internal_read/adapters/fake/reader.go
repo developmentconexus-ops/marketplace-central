@@ -119,16 +119,20 @@ func (r *Reader) GetSalesHistory(_ context.Context, input ports.SalesHistoryInpu
 
 func (r *Reader) GetTaxInputs(_ context.Context, input ports.TaxInput) (domain.TaxInputs, error) {
 	policy := fallbackTaxPolicy(input.Policy)
-	key := fmt.Sprintf("%d:%s:%d", input.ProductID, policy.EffectiveAt.Format(time.DateOnly), policy.IncidenceCode)
+	if !policy.Source.Verified() {
+		return domain.TaxInputs{ProductID: input.ProductID, EffectiveAt: policy.EffectiveAt, IncidenceCode: policy.IncidenceCode, Source: domain.SourceMetadata{System: "fake"}, QualityFlags: []domain.QualityFlag{domain.QualityMissingTax}}, nil
+	}
+	key := fmt.Sprintf("%d:%d:%d:%d", input.ProductID, policy.Source.DocumentID, policy.Source.LineNumber, policy.IncidenceCode)
 	if taxes, ok := r.fixtures.Taxes[key]; ok {
 		return taxes, nil
 	}
 	return domain.TaxInputs{
-		ProductID:     input.ProductID,
-		EffectiveAt:   policy.EffectiveAt,
-		IncidenceCode: policy.IncidenceCode,
-		Source:        domain.SourceMetadata{System: "fake"},
-		QualityFlags:  []domain.QualityFlag{domain.QualityMissingTax},
+		ProductID:      input.ProductID,
+		EffectiveAt:    policy.EffectiveAt,
+		IncidenceCode:  policy.IncidenceCode,
+		SourceIdentity: policy.Source,
+		Source:         domain.SourceMetadata{System: "fake"},
+		QualityFlags:   []domain.QualityFlag{domain.QualityMissingTax},
 	}, nil
 }
 

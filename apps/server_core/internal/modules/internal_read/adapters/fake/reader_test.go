@@ -114,6 +114,24 @@ func TestFakeReaderMissingTaxRemainsFlagged(t *testing.T) {
 	}
 }
 
+func TestFakeReaderSelectsTaxByExactSourceAndReturnsProvenance(t *testing.T) {
+	icms := 7.5
+	identity := domain.TaxSourceIdentity{DocumentID: 98765, LineNumber: 3}
+	reader := NewReader(Fixtures{Taxes: map[string]domain.TaxInputs{
+		"42664:98765:3:0": {ProductID: 42664, SourceIdentity: identity, ICMSAmount: &icms, Source: domain.SourceMetadata{System: "fake"}},
+	}})
+	policy := domain.DefaultTaxPolicy(time.Date(2026, 7, 6, 0, 0, 0, 0, time.UTC))
+	policy.Source = identity
+
+	got, err := reader.GetTaxInputs(context.Background(), ports.TaxInput{ProductID: 42664, Policy: policy})
+	if err != nil {
+		t.Fatalf("GetTaxInputs() error = %v", err)
+	}
+	if got.SourceIdentity != identity || got.ICMSAmount == nil || *got.ICMSAmount != icms || got.IPIAmount != nil {
+		t.Fatalf("GetTaxInputs() = %+v, want exact provenance with partial tax preserved", got)
+	}
+}
+
 func TestFakeReaderMissingPriceRemainsFlagged(t *testing.T) {
 	reader := NewReader(Fixtures{})
 

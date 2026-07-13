@@ -29,10 +29,12 @@ func (r FactReader) GetCostAsOf(ctx context.Context, productID int, effectiveAt 
 	})
 }
 
-func (r FactReader) GetTaxInputs(ctx context.Context, productID int, effectiveAt time.Time) (internalreaddomain.TaxInputs, error) {
+func (r FactReader) GetTaxInputs(ctx context.Context, productID int, effectiveAt time.Time, source internalreaddomain.TaxSourceIdentity) (internalreaddomain.TaxInputs, error) {
+	policy := internalreaddomain.DefaultTaxPolicy(effectiveAt)
+	policy.Source = source
 	return r.service.GetTaxInputs(ctx, internalreadports.TaxInput{
 		ProductID: productID,
-		Policy:    internalreaddomain.DefaultTaxPolicy(effectiveAt),
+		Policy:    policy,
 		Freshness: internalreaddomain.FreshnessPolicy{},
 	})
 }

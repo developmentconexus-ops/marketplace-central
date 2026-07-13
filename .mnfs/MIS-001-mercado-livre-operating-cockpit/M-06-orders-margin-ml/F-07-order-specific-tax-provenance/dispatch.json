@@ -1,0 +1,60 @@
+{
+  "role": "Feature Implementer",
+  "base_sha": "cbdce9794715721d8bfd43702115c6528a59aa19",
+  "accepted_base_sha": "cbdce9794715721d8bfd43702115c6528a59aa19",
+  "dispatch_id": "M06-F07-D01",
+  "feature_id": "F-07",
+  "work_item_id": "M06-F07-order-specific-tax-provenance",
+  "source_task_id": "/root/m06_resume_real_margin/f07_tax_provenance",
+  "parent_task_id": "/root/m06_resume_real_margin",
+  "callback_task_id": "/root/m06_resume_real_margin",
+  "milestone_task_id": "/root/m06_resume_real_margin",
+  "required_files": [
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-07-order-specific-tax-provenance/feature.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/validation-contract.md"
+  ],
+  "feature_file": ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-07-order-specific-tax-provenance/feature.md",
+  "context_files": [
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/mission.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/milestone.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/validation-contract.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/research/mnos-sankhya-read-interface-contract.md"
+  ],
+  "knowledge_routes": ["portfolio-core", "orders-margin"],
+  "allowed_paths": [
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-07-order-specific-tax-provenance",
+    "apps/server_core/internal/modules/internal_read/domain/internal_tax.go",
+    "apps/server_core/internal/modules/internal_read/ports/reader.go",
+    "apps/server_core/internal/modules/internal_read/adapters/oracle/reader.go",
+    "apps/server_core/internal/modules/internal_read/adapters/oracle/reader_test.go",
+    "apps/server_core/internal/modules/internal_read/adapters/fake/reader.go",
+    "apps/server_core/internal/modules/internal_read/adapters/fake/reader_test.go",
+    "apps/server_core/internal/modules/profitability/ports/internal_read.go",
+    "apps/server_core/internal/modules/profitability/adapters/internalread/fact_reader.go",
+    "apps/server_core/internal/modules/profitability/application/service.go",
+    "apps/server_core/internal/modules/profitability/application/service_test.go"
+  ],
+  "dirty_paths": [
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-07-order-specific-tax-provenance"
+  ],
+  "one_writer": {
+    "owner_task_id": "/root/m06_resume_real_margin/f07_tax_provenance",
+    "owned_paths": [
+      ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-07-order-specific-tax-provenance",
+      "apps/server_core/internal/modules/internal_read",
+      "apps/server_core/internal/modules/profitability"
+    ]
+  },
+  "forbidden_paths": ["docs/research", "packages/sdk-runtime", "apps/server_core/openapi"],
+  "shared_seams": ["apps/server_core/internal/modules/internal_read", "apps/server_core/internal/modules/profitability"],
+  "side_effects": {
+    "allowed": ["read-only local tests", "registered read-only Oracle validation if available"],
+    "forbidden": ["Oracle writes", "provider writes", "database mutation outside test fixtures", "secret or PII capture", "Candidate A approval"]
+  },
+  "proof": {
+    "command_ids": ["go-profitability-internal-read", "go-tax-provenance-focused", "git-diff-check"],
+    "evidence_targets": [".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-07-order-specific-tax-provenance/validation.md"]
+  },
+  "stop_conditions": ["architecture or contract conflict", "verified Oracle sale-line linkage is absent and cannot be represented truthfully", "path ownership overlap", "validation evidence cannot run"],
+  "dispatch_state": "ready"
+}
