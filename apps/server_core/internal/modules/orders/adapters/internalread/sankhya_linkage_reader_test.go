@@ -39,7 +39,7 @@ func TestSankhyaLinkageReaderConvertsGenericCandidatesAndNullableFacts(t *testin
 			Identity: internaldomain.InternalDocumentLine{DocumentID: 31301, LineNumber: 7}, ProductID: &productID, Quantity: &quantity, Amount: &amount,
 		}},
 	}}}
-	reader, err := NewSankhyaLinkageReader(source, "cfg-runtime-1")
+	reader, err := NewSankhyaLinkageReader(source, "cfg-runtime-1", "evidence-safe-1")
 	if err != nil {
 		t.Fatalf("NewSankhyaLinkageReader() error = %v", err)
 	}
@@ -62,7 +62,7 @@ func TestSankhyaLinkageReaderConvertsExactLineageStateAndInput(t *testing.T) {
 		Origin: internaldomain.InternalDocumentLine{DocumentID: 31301, LineNumber: 2}, State: internaldomain.SankhyaLineagePartial,
 		Descendants: []internaldomain.SankhyaDescendant{{Identity: internaldomain.InternalDocumentLine{DocumentID: 30601, LineNumber: 4}, AttendedQuantity: &attended}},
 	}}
-	reader, err := NewSankhyaLinkageReader(source, "cfg-runtime-1")
+	reader, err := NewSankhyaLinkageReader(source, "cfg-runtime-1", "evidence-safe-1")
 	if err != nil {
 		t.Fatalf("NewSankhyaLinkageReader() error = %v", err)
 	}
@@ -82,7 +82,7 @@ func TestSankhyaLinkageReaderConvertsExactLineageStateAndInput(t *testing.T) {
 
 func TestSankhyaLinkageReaderTranslatesInternalErrors(t *testing.T) {
 	source := &fakeSankhyaLinkageSource{err: internaldomain.NewReadError(internaldomain.ReadErrorCandidateAmbiguous, "internal detail", errors.New("driver detail"))}
-	reader, constructorErr := NewSankhyaLinkageReader(source, "cfg-runtime-1")
+	reader, constructorErr := NewSankhyaLinkageReader(source, "cfg-runtime-1", "evidence-safe-1")
 	if constructorErr != nil {
 		t.Fatalf("NewSankhyaLinkageReader() error = %v", constructorErr)
 	}
@@ -98,14 +98,20 @@ func TestSankhyaLinkageReaderTranslatesInternalErrors(t *testing.T) {
 }
 
 func TestSankhyaLinkageReaderRequiresAndExposesRuntimeRevision(t *testing.T) {
-	if _, err := NewSankhyaLinkageReader(&fakeSankhyaLinkageSource{}, "  "); err == nil {
+	if _, err := NewSankhyaLinkageReader(&fakeSankhyaLinkageSource{}, "  ", "evidence-safe-1"); err == nil {
 		t.Fatal("NewSankhyaLinkageReader() error = nil, want empty revision rejected")
 	}
-	reader, err := NewSankhyaLinkageReader(&fakeSankhyaLinkageSource{}, " cfg-runtime-7 ")
+	if _, err := NewSankhyaLinkageReader(&fakeSankhyaLinkageSource{}, "cfg-runtime-7", "  "); err == nil {
+		t.Fatal("NewSankhyaLinkageReader() error = nil, want empty evidence rejected")
+	}
+	reader, err := NewSankhyaLinkageReader(&fakeSankhyaLinkageSource{}, " cfg-runtime-7 ", " evidence-safe-7 ")
 	if err != nil {
 		t.Fatalf("NewSankhyaLinkageReader() error = %v", err)
 	}
 	if got := reader.ConfigurationRevision(); got != "cfg-runtime-7" {
 		t.Fatalf("ConfigurationRevision() = %q", got)
+	}
+	if got := reader.EvidenceReference(); got != "evidence-safe-7" {
+		t.Fatalf("EvidenceReference() = %q", got)
 	}
 }

@@ -2,6 +2,7 @@ package composition
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -53,15 +54,11 @@ import (
 	marketplacesregistry "marketplace-central/apps/server_core/internal/modules/marketplaces/registry"
 	marketplacestransport "marketplace-central/apps/server_core/internal/modules/marketplaces/transport"
 	ordersintegrations "marketplace-central/apps/server_core/internal/modules/orders/adapters/integrations"
+	ordersinternalread "marketplace-central/apps/server_core/internal/modules/orders/adapters/internalread"
 	orderspostgres "marketplace-central/apps/server_core/internal/modules/orders/adapters/postgres"
 	ordersproductlinks "marketplace-central/apps/server_core/internal/modules/orders/adapters/productlinks"
 	ordersapp "marketplace-central/apps/server_core/internal/modules/orders/application"
 	orderstransport "marketplace-central/apps/server_core/internal/modules/orders/transport"
-	profitabilityinternalread "marketplace-central/apps/server_core/internal/modules/profitability/adapters/internalread"
-	profitabilityorders "marketplace-central/apps/server_core/internal/modules/profitability/adapters/orders"
-	profitabilitypostgres "marketplace-central/apps/server_core/internal/modules/profitability/adapters/postgres"
-	profitabilityapp "marketplace-central/apps/server_core/internal/modules/profitability/application"
-	profitabilitytransport "marketplace-central/apps/server_core/internal/modules/profitability/transport"
 	pricingcatalog "marketplace-central/apps/server_core/internal/modules/pricing/adapters/catalog"
 	pricingfee "marketplace-central/apps/server_core/internal/modules/pricing/adapters/feeschedule"
 	pricingmarket "marketplace-central/apps/server_core/internal/modules/pricing/adapters/marketplace"
@@ -71,6 +68,11 @@ import (
 	productlinkspostgres "marketplace-central/apps/server_core/internal/modules/product_links/adapters/postgres"
 	productlinksapp "marketplace-central/apps/server_core/internal/modules/product_links/application"
 	productlinkstransport "marketplace-central/apps/server_core/internal/modules/product_links/transport"
+	profitabilityinternalread "marketplace-central/apps/server_core/internal/modules/profitability/adapters/internalread"
+	profitabilityorders "marketplace-central/apps/server_core/internal/modules/profitability/adapters/orders"
+	profitabilitypostgres "marketplace-central/apps/server_core/internal/modules/profitability/adapters/postgres"
+	profitabilityapp "marketplace-central/apps/server_core/internal/modules/profitability/application"
+	profitabilitytransport "marketplace-central/apps/server_core/internal/modules/profitability/transport"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 	"marketplace-central/apps/server_core/internal/platform/pgdb"
 
@@ -282,11 +284,13 @@ func NewRootRouter(pool *pgxpool.Pool, msPool *pgxpool.Pool, cfg pgdb.Config) (h
 	}
 	var internalReadSvc internalreadapp.Service
 	var internalReadAvailable bool
+	var oracleDB *sql.DB
 	if oracleCfg, err := internalreadoracle.LoadConfigFromEnv(os.Getenv); err != nil {
 		slog.Warn("product links oracle reader unavailable", "err", err)
-	} else if oracleDB, err := internalreadoracle.OpenDB(context.Background(), oracleCfg); err != nil {
+	} else if db, err := internalreadoracle.OpenDB(context.Background(), oracleCfg); err != nil {
 		slog.Warn("product links oracle connection failed", "err", err)
 	} else {
+		oracleDB = db
 		internalReadSvc = internalreadapp.NewService(internalreadoracle.NewReader(oracleDB))
 		internalReadAvailable = true
 		productMatcher = internalReadSvc
@@ -330,6 +334,29 @@ func NewRootRouter(pool *pgxpool.Pool, msPool *pgxpool.Pool, cfg pgdb.Config) (h
 	})
 	ordersListSvc := ordersapp.NewListService(ordersRepo)
 	orderstransport.NewHandler(ordersImportSvc, ordersListSvc).Register(mux)
+
+	linkageRepo := orderspostgres.NewSankhyaLinkageRepository(pool, cfg.DefaultTenantID)
+	var assistedLinkageApp orderstransport.AssistedSankhyaLinkageApplication
+	if runtimeConfig, err := internalreadoracle.LoadSankhyaLinkageRuntimeConfigFromEnv(os.Getenv); err != nil {
+		slog.Warn("assisted Sankhya linkage unavailable", "err", err)
+	} else if !internalReadAvailable || oracleDB == nil {
+		slog.Warn("assisted Sankhya linkage unavailable", "err", "Oracle reader is unavailable")
+	} else {
+		source := internalreadoracle.NewSankhyaLinkageReader(oracleDB, runtimeConfig.ReaderConfig)
+		reader, err := ordersinternalread.NewSankhyaLinkageReader(
+			source,
+			runtimeConfig.ReaderConfig.ConfigurationRevision,
+			runtimeConfig.EvidenceReference,
+		)
+		if err != nil {
+			slog.Warn("assisted Sankhya linkage unavailable", "err", err)
+		} else {
+			assistedLinkageApp = ordersapp.NewAssistedSankhyaLinkageService(ordersapp.AssistedSankhyaLinkageServiceConfig{
+				Orders: ordersRepo, Reader: reader, Linkages: linkageRepo,
+			})
+		}
+	}
+	orderstransport.NewSankhyaLinkageHandler(assistedLinkageApp, cfg.DefaultTenantID).Register(mux)
 
 	profitabilityStore := profitabilitypostgres.NewStore(pool, cfg.DefaultTenantID)
 	profitabilityCfg := profitabilityapp.ServiceConfig{

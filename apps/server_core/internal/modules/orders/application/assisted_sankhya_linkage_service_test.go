@@ -34,6 +34,7 @@ type descendantCall struct {
 type fakeAssistedReader struct {
 	configurationErr      error
 	configurationRevision string
+	evidenceReference     string
 	candidates            []domain.AssistedSankhyaCandidate
 	candidateErr          error
 	keys                  []string
@@ -49,6 +50,7 @@ func (f *fakeAssistedReader) ValidateConfiguration(context.Context) error {
 }
 
 func (f *fakeAssistedReader) ConfigurationRevision() string { return f.configurationRevision }
+func (f *fakeAssistedReader) EvidenceReference() string     { return f.evidenceReference }
 
 func (f *fakeAssistedReader) FindCandidates(_ context.Context, key string) ([]domain.AssistedSankhyaCandidate, error) {
 	f.keys = append(f.keys, key)
@@ -68,12 +70,16 @@ func (f *fakeAssistedReader) ListDescendants(_ context.Context, origin domain.In
 
 type fakeAssistedLinkageRepository struct {
 	appended []domain.SankhyaLinkage
+	current  domain.SankhyaLinkage
+	found    bool
 	result   domain.SankhyaLinkage
 	err      error
+	scope    domain.LinkageScope
 }
 
-func (f *fakeAssistedLinkageRepository) LoadCurrent(context.Context, domain.LinkageScope) (domain.SankhyaLinkage, bool, error) {
-	return domain.SankhyaLinkage{}, false, nil
+func (f *fakeAssistedLinkageRepository) LoadCurrent(_ context.Context, scope domain.LinkageScope) (domain.SankhyaLinkage, bool, error) {
+	f.scope = scope
+	return f.current, f.found, f.err
 }
 
 func (f *fakeAssistedLinkageRepository) AppendConfirmation(_ context.Context, linkage domain.SankhyaLinkage) (domain.SankhyaLinkage, error) {
@@ -104,6 +110,36 @@ func TestAssistedSankhyaListCandidatesUsesOnlyPersistedExactMLKey(t *testing.T) 
 	}
 	if reader.validateCalls != 1 || len(repo.appended) != 0 || len(got.Candidates) != 1 {
 		t.Fatalf("validation=%d appends=%d candidates=%d", reader.validateCalls, len(repo.appended), len(got.Candidates))
+	}
+}
+
+func TestAssistedSankhyaGetCurrentUsesExactScopeAndServerRuntimeFacts(t *testing.T) {
+	service, orders, reader, repo, input, recordedAt := assistedServiceFixture()
+	repo.current = expectedLinkage(input, reader.candidates[0], recordedAt, "persisted-event", "cfg-runtime-1")
+	repo.found = true
+
+	got, err := service.GetCurrent(context.Background(), GetAssistedSankhyaLinkageInput{
+		TenantID: " tenant-1 ", InstallationID: " install-1 ", ProviderOrderID: " order-1 ",
+	})
+	if err != nil {
+		t.Fatalf("GetCurrent() error = %v", err)
+	}
+	wantScope := domain.LinkageScope{TenantID: "tenant-1", InstallationID: "install-1", ProviderOrderID: "order-1"}
+	if orders.scope != wantScope || repo.scope != wantScope || got.Audit.EvidenceReference != reader.evidenceReference {
+		t.Fatalf("scopes/order=%#v repo=%#v evidence=%q", orders.scope, repo.scope, got.Audit.EvidenceReference)
+	}
+}
+
+func TestAssistedSankhyaGetCurrentFailsClosedForMissingOrMalformedLinkage(t *testing.T) {
+	service, _, reader, repo, input, recordedAt := assistedServiceFixture()
+	if _, err := service.GetCurrent(context.Background(), GetAssistedSankhyaLinkageInput{TenantID: input.TenantID, InstallationID: input.InstallationID, ProviderOrderID: input.ProviderOrderID}); !errors.Is(err, domain.ErrSankhyaLinkageNotFound) {
+		t.Fatalf("missing current error = %v", err)
+	}
+	repo.current = expectedLinkage(input, reader.candidates[0], recordedAt, "persisted-event", "cfg-runtime-1")
+	repo.current.Scope.ProviderOrderID = "wrong-order"
+	repo.found = true
+	if _, err := service.GetCurrent(context.Background(), GetAssistedSankhyaLinkageInput{TenantID: input.TenantID, InstallationID: input.InstallationID, ProviderOrderID: input.ProviderOrderID}); !errors.Is(err, domain.ErrSankhyaLinkageConflict) {
+		t.Fatalf("malformed current error = %v", err)
 	}
 }
 
@@ -305,6 +341,7 @@ func assistedServiceFixture() (*AssistedSankhyaLinkageService, *fakeAssistedOrde
 	}}
 	reader := &fakeAssistedReader{
 		configurationRevision: "cfg-runtime-1",
+		evidenceReference:     "sankhya-linkage:v1:safe-evidence-1",
 		candidates:            []domain.AssistedSankhyaCandidate{candidate},
 		descendants:           make(map[domain.InternalDocumentLineIdentity]domain.AssistedSankhyaLineage),
 		descendantErrors:      make(map[domain.InternalDocumentLineIdentity]error),
@@ -340,6 +377,7 @@ func expectedLinkage(input ConfirmAssistedSankhyaLinkageInput, candidate domain.
 			ActorType: domain.AssistedSankhyaActorOperatorSuppliedUnverified, ActorID: "operator-7", Reason: "exact operator selection",
 			IdempotencyKey: input.IdempotencyKey, SourceAt: input.SourceAt, RecordedAt: recordedAt,
 			ConfigurationRevision: configurationRevision, EvidenceState: domain.LinkageEvidenceExact,
+			EvidenceReference: "sankhya-linkage:v1:safe-evidence-1",
 		},
 	}
 }

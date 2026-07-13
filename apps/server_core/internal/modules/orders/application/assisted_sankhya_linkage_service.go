@@ -20,6 +20,12 @@ type ListAssistedSankhyaCandidatesInput struct {
 	ProviderOrderID string
 }
 
+type GetAssistedSankhyaLinkageInput struct {
+	TenantID        string
+	InstallationID  string
+	ProviderOrderID string
+}
+
 type ConfirmAssistedSankhyaLinkageInput struct {
 	TenantID           string
 	InstallationID     string
@@ -62,6 +68,30 @@ func NewAssistedSankhyaLinkageService(config AssistedSankhyaLinkageServiceConfig
 	return &AssistedSankhyaLinkageService{orders: config.Orders, reader: config.Reader, linkages: config.Linkages, now: now, newEventID: newEventID}
 }
 
+func (s *AssistedSankhyaLinkageService) GetCurrent(ctx context.Context, input GetAssistedSankhyaLinkageInput) (domain.SankhyaLinkage, error) {
+	scope := normalizedLinkageScope(input.TenantID, input.InstallationID, input.ProviderOrderID)
+	if _, err := s.loadExactOrder(ctx, scope); err != nil {
+		return domain.SankhyaLinkage{}, err
+	}
+	if s.linkages == nil || s.reader == nil || strings.TrimSpace(s.reader.ConfigurationRevision()) == "" || strings.TrimSpace(s.reader.EvidenceReference()) == "" {
+		return domain.SankhyaLinkage{}, &domain.AssistedSankhyaReadError{Kind: domain.AssistedSankhyaReadConfigurationInvalid}
+	}
+	linkage, found, err := s.linkages.LoadCurrent(ctx, scope)
+	if err != nil {
+		return domain.SankhyaLinkage{}, err
+	}
+	if !found {
+		return domain.SankhyaLinkage{}, domain.ErrSankhyaLinkageNotFound
+	}
+	if linkage.Scope != scope {
+		return domain.SankhyaLinkage{}, domain.ErrSankhyaLinkageConflict
+	}
+	if err := linkage.Validate(); err != nil {
+		return domain.SankhyaLinkage{}, domain.ErrSankhyaLinkageConflict
+	}
+	return linkage, nil
+}
+
 func (s *AssistedSankhyaLinkageService) ListCandidates(ctx context.Context, input ListAssistedSankhyaCandidatesInput) (domain.AssistedSankhyaCandidateResult, error) {
 	scope := normalizedLinkageScope(input.TenantID, input.InstallationID, input.ProviderOrderID)
 	if _, err := s.loadExactOrder(ctx, scope); err != nil {
@@ -97,7 +127,8 @@ func (s *AssistedSankhyaLinkageService) Confirm(ctx context.Context, input Confi
 		return domain.AssistedSankhyaConfirmationResult{}, err
 	}
 	configurationRevision := strings.TrimSpace(s.reader.ConfigurationRevision())
-	if configurationRevision == "" {
+	evidenceReference := strings.TrimSpace(s.reader.EvidenceReference())
+	if configurationRevision == "" || evidenceReference == "" {
 		return domain.AssistedSankhyaConfirmationResult{}, &domain.AssistedSankhyaReadError{Kind: domain.AssistedSankhyaReadConfigurationInvalid}
 	}
 	externalKey := domain.ExternalOrderKeyFor(scope)
@@ -138,6 +169,7 @@ func (s *AssistedSankhyaLinkageService) Confirm(ctx context.Context, input Confi
 			RecordedAt:            s.now().UTC(),
 			ConfigurationRevision: configurationRevision,
 			EvidenceState:         domain.LinkageEvidenceExact,
+			EvidenceReference:     evidenceReference,
 		},
 	}
 	if err := linkage.Validate(); err != nil {

@@ -9,6 +9,7 @@ import (
 type SankhyaLinkageReader interface {
 	ValidateConfiguration(ctx context.Context) error
 	ConfigurationRevision() string
+	EvidenceReference() string
 	FindCandidates(ctx context.Context, externalOrderKey string) ([]domain.AssistedSankhyaCandidate, error)
 	ListDescendants(ctx context.Context, origin domain.InternalDocumentLineIdentity, expectedOriginQuantity *float64) (domain.AssistedSankhyaLineage, error)
 }

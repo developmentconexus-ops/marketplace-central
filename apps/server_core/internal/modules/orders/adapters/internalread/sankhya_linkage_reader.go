@@ -20,21 +20,30 @@ type sankhyaLinkageSource interface {
 type SankhyaLinkageReader struct {
 	source                sankhyaLinkageSource
 	configurationRevision string
+	evidenceReference     string
 }
 
-func NewSankhyaLinkageReader(source sankhyaLinkageSource, configurationRevision string) (*SankhyaLinkageReader, error) {
+func NewSankhyaLinkageReader(source sankhyaLinkageSource, configurationRevision, evidenceReference string) (*SankhyaLinkageReader, error) {
 	configurationRevision = strings.TrimSpace(configurationRevision)
-	if configurationRevision == "" {
+	evidenceReference = strings.TrimSpace(evidenceReference)
+	if configurationRevision == "" || evidenceReference == "" {
 		return nil, &ordersdomain.AssistedSankhyaReadError{Kind: ordersdomain.AssistedSankhyaReadConfigurationInvalid}
 	}
-	return &SankhyaLinkageReader{source: source, configurationRevision: configurationRevision}, nil
+	return &SankhyaLinkageReader{source: source, configurationRevision: configurationRevision, evidenceReference: evidenceReference}, nil
 }
 
 func (r *SankhyaLinkageReader) ValidateConfiguration(ctx context.Context) error {
-	if r == nil || r.source == nil || r.configurationRevision == "" {
+	if r == nil || r.source == nil || r.configurationRevision == "" || r.evidenceReference == "" {
 		return &ordersdomain.AssistedSankhyaReadError{Kind: ordersdomain.AssistedSankhyaReadConfigurationInvalid}
 	}
 	return translateReadError(r.source.ValidateConfiguration(ctx))
+}
+
+func (r *SankhyaLinkageReader) EvidenceReference() string {
+	if r == nil {
+		return ""
+	}
+	return r.evidenceReference
 }
 
 func (r *SankhyaLinkageReader) ConfigurationRevision() string {

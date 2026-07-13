@@ -310,6 +310,91 @@ export interface ImportMarketplaceOrdersResponse {
   items: MarketplaceOrder[];
 }
 
+export interface AssistedSankhyaCandidateLine {
+  internal_document_id: number;
+  internal_line_number: number;
+  product_id: number | null;
+  quantity: number | null;
+  amount: number | null;
+}
+
+export interface AssistedSankhyaCandidate {
+  internal_document_id: number;
+  document_number: number | null;
+  operation_code: 313;
+  negotiated_at: string | null;
+  amount: number | null;
+  lines: AssistedSankhyaCandidateLine[];
+}
+
+export interface AssistedSankhyaCandidateListResponse {
+  installation_id: string;
+  provider_order_id: string;
+  candidates: AssistedSankhyaCandidate[];
+}
+
+export interface AssistedSankhyaMappingLine {
+  mpc_line_id: string;
+  internal_document_id: number;
+  internal_line_number: number;
+}
+
+export interface AssistedSankhyaAudit {
+  readonly event_id: string;
+  readonly event_type: "confirmed";
+  readonly actor_type: "operator_supplied_unverified";
+  actor_id: string;
+  reason: string;
+  source_at: string;
+  readonly recorded_at: string;
+  readonly configuration_revision: string;
+  readonly evidence_state: "unknown" | "exact";
+  readonly evidence_reference: string;
+}
+
+export interface AssistedSankhyaLinkageResponse {
+  installation_id: string;
+  provider_order_id: string;
+  internal_document_id: number;
+  lines: AssistedSankhyaMappingLine[];
+  audit: AssistedSankhyaAudit;
+}
+
+export interface ConfirmAssistedSankhyaLineSelection {
+  mpc_line_id: string;
+  internal_document_id: number;
+  internal_line_number: number;
+}
+
+export interface ConfirmAssistedSankhyaLinkageRequest {
+  selected_document_id: number;
+  selections: ConfirmAssistedSankhyaLineSelection[];
+  actor_id: string;
+  reason: string;
+  source_at: string;
+  idempotency_key: string;
+}
+
+export type AssistedSankhyaLineageState = "none" | "partial" | "complete" | "conflict" | "unavailable";
+
+export interface AssistedSankhyaDescendant {
+  internal_document_id: number;
+  internal_line_number: number;
+  attended_quantity: number | null;
+}
+
+export interface AssistedSankhyaLineage {
+  mpc_line_id: string;
+  internal_document_id: number;
+  internal_line_number: number;
+  state: AssistedSankhyaLineageState;
+  descendants: AssistedSankhyaDescendant[];
+}
+
+export interface ConfirmAssistedSankhyaLinkageResponse extends AssistedSankhyaLinkageResponse {
+  lineage: AssistedSankhyaLineage[];
+}
+
 export type ProfitabilityInputScope = "order" | "item";
 export type ProfitabilityInputKind =
   | "revenue"
@@ -995,6 +1080,23 @@ export function createMarketplaceCentralClient(options: {
     listMarketplaceOrders: (installationId: string, limit = 20) =>
       getJson<ListResponse<MarketplaceOrder>>(
         `/orders?installation_id=${encodeURIComponent(installationId)}&limit=${encodeURIComponent(String(limit))}`,
+      ),
+    getAssistedSankhyaLinkage: (installationId: string, providerOrderId: string) =>
+      getJson<AssistedSankhyaLinkageResponse>(
+        `/orders/${encodeURIComponent(providerOrderId)}/sankhya-linkage?installation_id=${encodeURIComponent(installationId)}`,
+      ),
+    listAssistedSankhyaLinkageCandidates: (installationId: string, providerOrderId: string) =>
+      getJson<AssistedSankhyaCandidateListResponse>(
+        `/orders/${encodeURIComponent(providerOrderId)}/sankhya-linkage/candidates?installation_id=${encodeURIComponent(installationId)}`,
+      ),
+    confirmAssistedSankhyaLinkage: (
+      installationId: string,
+      providerOrderId: string,
+      req: ConfirmAssistedSankhyaLinkageRequest,
+    ) =>
+      postJson<ConfirmAssistedSankhyaLinkageResponse>(
+        `/orders/${encodeURIComponent(providerOrderId)}/sankhya-linkage/confirm?installation_id=${encodeURIComponent(installationId)}`,
+        req,
       ),
     importProfitabilityMarginInputs: (req: { installation_id: string; limit?: number }) =>
       postJson<ImportProfitabilityMarginInputsResponse>("/profitability/margin-inputs/import", req),

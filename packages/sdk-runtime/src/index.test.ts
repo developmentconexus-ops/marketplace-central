@@ -1380,5 +1380,111 @@ describe("sdk runtime", () => {
       error: { code: "not_found", message: "no products found" },
     });
   });
+
+  it("uses exact encoded scope for assisted Sankhya current and candidate reads", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        const candidates = String(input).endsWith("/candidates?installation_id=install%2F1");
+        return new Response(
+          JSON.stringify(
+            candidates
+              ? { installation_id: "install/1", provider_order_id: "order/1", candidates: [] }
+              : {
+                  installation_id: "install/1",
+                  provider_order_id: "order/1",
+                  internal_document_id: 31301,
+                  lines: [],
+                  audit: {
+                    event_id: "event-1",
+                    event_type: "confirmed",
+                    actor_type: "operator_supplied_unverified",
+                    actor_id: "operator-1",
+                    reason: "exact",
+                    source_at: "2026-07-13T17:00:00Z",
+                    recorded_at: "2026-07-13T17:01:00Z",
+                    configuration_revision: "cfg-1",
+                    evidence_state: "exact",
+                    evidence_reference: "sankhya-linkage:v1:safe",
+                  },
+                },
+          ),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      },
+    });
+
+    const current = await client.getAssistedSankhyaLinkage("install/1", "order/1");
+    const candidates = await client.listAssistedSankhyaLinkageCandidates("install/1", "order/1");
+
+    expect(String(requests[0].input)).toBe(
+      "http://localhost:8080/orders/order%2F1/sankhya-linkage?installation_id=install%2F1",
+    );
+    expect(String(requests[1].input)).toBe(
+      "http://localhost:8080/orders/order%2F1/sankhya-linkage/candidates?installation_id=install%2F1",
+    );
+    expect(current.audit.evidence_reference).toBe("sankhya-linkage:v1:safe");
+    expect(candidates.candidates).toEqual([]);
+  });
+
+  it("confirms assisted Sankhya linkage with operator facts only", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(
+          JSON.stringify({
+            installation_id: "install-1",
+            provider_order_id: "order-1",
+            internal_document_id: 31301,
+            lines: [],
+            audit: {
+              event_id: "server-event-1",
+              event_type: "confirmed",
+              actor_type: "operator_supplied_unverified",
+              actor_id: "operator-7",
+              reason: "exact selection",
+              source_at: "2026-07-13T17:00:00Z",
+              recorded_at: "2026-07-13T17:01:00Z",
+              configuration_revision: "cfg-runtime-1",
+              evidence_state: "exact",
+              evidence_reference: "sankhya-linkage:v1:safe",
+            },
+            lineage: [{ mpc_line_id: "mpl_1", internal_document_id: 31301, internal_line_number: 1, state: "none", descendants: [] }],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      },
+    });
+    const request = {
+      selected_document_id: 31301,
+      selections: [{ mpc_line_id: "mpl_1", internal_document_id: 31301, internal_line_number: 1 }],
+      actor_id: "operator-7",
+      reason: "exact selection",
+      source_at: "2026-07-13T17:00:00Z",
+      idempotency_key: "idem-1",
+    };
+
+    const result = await client.confirmAssistedSankhyaLinkage("install-1", "order-1", request);
+    const sent = JSON.parse(String(requests[0].init?.body));
+
+    expect(String(requests[0].input)).toBe(
+      "http://localhost:8080/orders/order-1/sankhya-linkage/confirm?installation_id=install-1",
+    );
+    expect(Object.keys(sent).sort()).toEqual(
+      ["actor_id", "idempotency_key", "reason", "selected_document_id", "selections", "source_at"].sort(),
+    );
+    expect(sent).not.toHaveProperty("tenant_id");
+    expect(sent).not.toHaveProperty("event_id");
+    expect(sent).not.toHaveProperty("configuration_revision");
+    expect(sent).not.toHaveProperty("evidence_reference");
+    expect(sent).not.toHaveProperty("actor_type");
+    expect(sent).not.toHaveProperty("external_order_key");
+    expect(result.audit.event_id).toBe("server-event-1");
+    expect(result.lineage[0].state).toBe("none");
+  });
 });
 
