@@ -3,6 +3,8 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -25,7 +27,7 @@ func (r *Repository) List(ctx context.Context) ([]domain.Classification, error) 
 	rows, err := r.pool.Query(ctx, `
 		SELECT c.classification_id, c.tenant_id, c.name, c.ai_context,
 		       c.created_at, c.updated_at,
-		       COALESCE(array_agg(cp.product_id) FILTER (WHERE cp.product_id IS NOT NULL), '{}')
+		       COALESCE(array_agg(cp.internal_product_id::text) FILTER (WHERE cp.resolution_status = 'mapped'), '{}')
 		FROM classifications c
 		LEFT JOIN classification_products cp
 			ON cp.classification_id = c.classification_id AND cp.tenant_id = c.tenant_id
@@ -71,8 +73,8 @@ func (r *Repository) GetByID(ctx context.Context, id string) (domain.Classificat
 	}
 
 	productRows, err := r.pool.Query(ctx, `
-		SELECT product_id FROM classification_products
-		WHERE classification_id = $1 AND tenant_id = $2
+		SELECT internal_product_id::text FROM classification_products
+		WHERE classification_id = $1 AND tenant_id = $2 AND resolution_status = 'mapped'
 	`, id, r.tenantID)
 	if err != nil {
 		return domain.Classification{}, fmt.Errorf("get classification products: %w", err)
@@ -112,10 +114,14 @@ func (r *Repository) Create(ctx context.Context, c domain.Classification) error 
 	}
 
 	for _, pid := range c.ProductIDs {
+		canonicalID, err := positiveProductID(pid)
+		if err != nil {
+			return err
+		}
 		_, err = tx.Exec(ctx, `
-			INSERT INTO classification_products (classification_id, tenant_id, product_id)
-			VALUES ($1, $2, $3)
-		`, c.ClassificationID, r.tenantID, pid)
+			INSERT INTO classification_products (classification_id, tenant_id, product_id, internal_product_id, resolution_status)
+			VALUES ($1, $2, $3, $4, 'mapped')
+		`, c.ClassificationID, r.tenantID, strconv.Itoa(canonicalID), canonicalID)
 		if err != nil {
 			return fmt.Errorf("insert classification product: %w", err)
 		}
@@ -152,16 +158,29 @@ func (r *Repository) Update(ctx context.Context, c domain.Classification) error 
 	}
 
 	for _, pid := range c.ProductIDs {
+		canonicalID, err := positiveProductID(pid)
+		if err != nil {
+			return err
+		}
 		_, err = tx.Exec(ctx, `
-			INSERT INTO classification_products (classification_id, tenant_id, product_id)
-			VALUES ($1, $2, $3)
-		`, c.ClassificationID, r.tenantID, pid)
+			INSERT INTO classification_products (classification_id, tenant_id, product_id, internal_product_id, resolution_status)
+			VALUES ($1, $2, $3, $4, 'mapped')
+		`, c.ClassificationID, r.tenantID, strconv.Itoa(canonicalID), canonicalID)
 		if err != nil {
 			return fmt.Errorf("insert classification product: %w", err)
 		}
 	}
 
 	return tx.Commit(ctx)
+}
+
+func positiveProductID(raw string) (int, error) {
+	trimmed := strings.TrimSpace(raw)
+	id, err := strconv.Atoi(trimmed)
+	if err != nil || id <= 0 || strconv.Itoa(id) != trimmed {
+		return 0, fmt.Errorf("CLASSIFICATIONS_INVALID_PRODUCT_ID")
+	}
+	return id, nil
 }
 
 func (r *Repository) Delete(ctx context.Context, id string) error {

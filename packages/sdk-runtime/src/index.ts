@@ -1078,7 +1078,12 @@ export function createMarketplaceCentralClient(options: {
       internal_reference_code?: string;
       reason?: string;
       actor: ProductLinkActor;
-    }) => postJson<ProductLinkResolutionResult>("/product-links/link-resolutions/manual-resolve", req),
+    }) => {
+      if (!Number.isInteger(req.internal_product_id) || req.internal_product_id <= 0) {
+        throw new Error("invalid_identity: internal_product_id must be a positive integer");
+      }
+      return postJson<ProductLinkResolutionResult>("/product-links/link-resolutions/manual-resolve", req);
+    },
     listInventoryStockRisks: (input: {
       installation_id: string;
       state?: StockRiskState;

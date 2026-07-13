@@ -96,10 +96,23 @@ func (r *Reader) product(ctx context.Context, c readdomain.ProductCandidate) (ca
 	if err != nil {
 		return catalogdomain.CanonicalProduct{}, err
 	}
-	return catalogdomain.CanonicalProduct{InternalProductID: *c.InternalProductID, Name: c.Name, EAN: c.EAN, ManufacturerReference: c.ReferenceCode, BrandName: c.BrandName, ProductGroupName: c.ProductGroupName, CostAmount: fact(cost.Amount, cost.Source, cost.QualityFlags, "cost unavailable"), PriceAmount: fact(price.Amount, price.Source, price.QualityFlags, "price unavailable"), StockQuantity: fact(stock.Quantity, stock.Source, stock.QualityFlags, "stock unavailable")}, nil
+	costFact, err := fact(cost.Amount, cost.Source, cost.QualityFlags, readdomain.QualityMissingCost, "cost unavailable")
+	if err != nil {
+		return catalogdomain.CanonicalProduct{}, fmt.Errorf("catalog cost projection: %w", err)
+	}
+	priceFact, err := fact(price.Amount, price.Source, price.QualityFlags, readdomain.QualityMissingPrice, "price unavailable")
+	if err != nil {
+		return catalogdomain.CanonicalProduct{}, fmt.Errorf("catalog price projection: %w", err)
+	}
+	stockFact, err := fact(stock.Quantity, stock.Source, stock.QualityFlags, readdomain.QualityMissingStock, "stock unavailable")
+	if err != nil {
+		return catalogdomain.CanonicalProduct{}, fmt.Errorf("catalog stock projection: %w", err)
+	}
+	return catalogdomain.CanonicalProduct{InternalProductID: *c.InternalProductID, Name: c.Name, EAN: c.EAN, ManufacturerReference: c.ReferenceCode, BrandName: c.BrandName, ProductGroupName: c.ProductGroupName, CostAmount: costFact, PriceAmount: priceFact, StockQuantity: stockFact}, nil
 }
-func fact(value *float64, source readdomain.SourceMetadata, flags []readdomain.QualityFlag, reason string) catalogdomain.NumericSourceFact {
+func fact(value *float64, source readdomain.SourceMetadata, flags []readdomain.QualityFlag, missingFlag readdomain.QualityFlag, fallbackReason string) (catalogdomain.NumericSourceFact, error) {
 	q := catalogdomain.SourceFactQualityCurrent
+	reason := (*string)(nil)
 	var observed *time.Time
 	if source.ObservedAt != nil {
 		observed = source.ObservedAt
@@ -107,15 +120,39 @@ func fact(value *float64, source readdomain.SourceMetadata, flags []readdomain.Q
 		t := source.FetchedAt
 		observed = &t
 	}
-	if value == nil {
+	if containsFlag(flags, readdomain.QualityAmbiguousProduct) {
+		q = catalogdomain.SourceFactQualityConflict
+		value = nil
+	} else if containsFlag(flags, readdomain.QualityStaleSource) && value != nil && observed != nil {
+		q = catalogdomain.SourceFactQualityStale
+		r := "stale_source"
+		reason = &r
+	} else if value == nil || containsFlag(flags, missingFlag) || containsFlag(flags, readdomain.QualityMissingProduct) || containsFlag(flags, readdomain.QualityStaleSource) {
 		q = catalogdomain.SourceFactQualityUnknown
+		value = nil
 		observed = nil
-		rr := reason
-		f, _ := catalogdomain.NewNumericSourceFact("oracle", nil, q, nil, &rr)
-		return f
+		r := fallbackReason
+		for _, flag := range flags {
+			if flag != readdomain.QualityComplete {
+				r = string(flag)
+				break
+			}
+		}
+		reason = &r
 	}
-	f, _ := catalogdomain.NewNumericSourceFact("oracle", value, q, observed, nil)
-	return f
+	system := strings.TrimSpace(source.System)
+	if system == "" {
+		system = "oracle"
+	}
+	return catalogdomain.NewNumericSourceFact(system, value, q, observed, reason)
+}
+func containsFlag(flags []readdomain.QualityFlag, target readdomain.QualityFlag) bool {
+	for _, flag := range flags {
+		if flag == target {
+			return true
+		}
+	}
+	return false
 }
 func (r *Reader) ListProducts(ctx context.Context) ([]catalogdomain.Product, error) {
 	ps, e := r.ListCanonicalProducts(ctx)

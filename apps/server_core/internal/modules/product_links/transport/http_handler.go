@@ -37,19 +37,19 @@ type LinkWorkflowResolver interface {
 }
 
 type Handler struct {
-	importer        ListingSnapshotImporter
-	candidateMaker  LinkCandidateGenerator
-	candidateReader LinkCandidateReader
-	workflowReader  LinkWorkflowReader
+	importer         ListingSnapshotImporter
+	candidateMaker   LinkCandidateGenerator
+	candidateReader  LinkCandidateReader
+	workflowReader   LinkWorkflowReader
 	workflowResolver LinkWorkflowResolver
 }
 
 func NewHandler(importer ListingSnapshotImporter, candidateMaker LinkCandidateGenerator, candidateReader LinkCandidateReader, workflowReader LinkWorkflowReader, workflowResolver LinkWorkflowResolver) Handler {
 	return Handler{
-		importer:        importer,
-		candidateMaker:  candidateMaker,
-		candidateReader: candidateReader,
-		workflowReader:  workflowReader,
+		importer:         importer,
+		candidateMaker:   candidateMaker,
+		candidateReader:  candidateReader,
+		workflowReader:   workflowReader,
 		workflowResolver: workflowResolver,
 	}
 }
@@ -229,8 +229,8 @@ func (h Handler) handleApproveCandidate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	var req struct {
-		CandidateID string             `json:"candidate_id"`
-		Reason      string             `json:"reason"`
+		CandidateID string               `json:"candidate_id"`
+		Reason      string               `json:"reason"`
 		Actor       domain.ActorMetadata `json:"actor"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -309,6 +309,10 @@ func (h Handler) handleManualResolve(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeProductLinksError(w, http.StatusBadRequest, "PRODUCT_LINKS_INVALID_REQUEST", "malformed request body")
+		return
+	}
+	if err := domain.ValidateInternalProductID(req.InternalProductID); err != nil {
+		writeProductLinksError(w, http.StatusBadRequest, "invalid_identity", "internal_product_id must be a positive integer")
 		return
 	}
 	result, err := h.workflowResolver.ManualResolve(r.Context(), application.ManualResolveInput{

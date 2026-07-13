@@ -81,3 +81,19 @@ func TestBuildDSNIncludesOnlyConfigKeys(t *testing.T) {
 		t.Fatalf("did not expect legacy msdb keys in dsn %q", dsn)
 	}
 }
+
+func TestFindProductsQueryKeepsEANSeparateFromTGFPROReference(t *testing.T) {
+	ean := "7890000000000"
+	query, args, err := buildFindProductsQuery(ports.FindProductsInput{EAN: &ean})
+	if !domain.IsReadErrorCode(err, domain.ReadErrorUnsupportedQuery) {
+		t.Fatalf("EAN-only query error = %v, want unsupported query", err)
+	}
+	if strings.Contains(query, "p.REFERENCIA =") || len(args) != 0 {
+		t.Fatalf("EAN was incorrectly mapped to TGFPRO.REFERENCIA: query=%q args=%v", query, args)
+	}
+	title := "produto"
+	query, _, err = buildFindProductsQuery(ports.FindProductsInput{EAN: &ean, Title: &title})
+	if err != nil || !strings.Contains(query, "p.REFERENCIA,") || strings.Contains(query, "p.REFERENCIA =") {
+		t.Fatalf("governed reference selection/search separation failed: query=%q err=%v", query, err)
+	}
+}

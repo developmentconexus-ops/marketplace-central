@@ -3467,6 +3467,7 @@ components:
           type: string
         internal_product_id:
           type: integer
+          minimum: 1
         internal_product_name:
           type: string
         internal_reference_code:
@@ -3586,6 +3587,7 @@ components:
           type: string
         internal_product_id:
           type: integer
+          minimum: 1
         internal_product_name:
           type: string
         internal_reference_code:
@@ -3634,8 +3636,10 @@ components:
           $ref: '#/components/schemas/ProductLinkState'
         previous_internal_product_id:
           type: integer
+          minimum: 1
         next_internal_product_id:
           type: integer
+          minimum: 1
         created_at:
           type: string
           format: date-time
@@ -3727,6 +3731,7 @@ components:
           $ref: '#/components/schemas/ProductLinkState'
         internal_product_id:
           type: integer
+          minimum: 1
         internal_product_name:
           type: string
         internal_reference_code:
@@ -3999,6 +4004,7 @@ components:
           type: string
         internal_product_id:
           type: integer
+          minimum: 1
         internal_product_name:
           type: string
         internal_reference_code:

@@ -92,6 +92,9 @@ func (s *ResolutionService) ApproveCandidate(ctx context.Context, input ApproveC
 	if candidate.InternalProductID == nil {
 		return domain.ProductLinkResolutionResult{}, errors.New("PRODUCT_LINKS_CANDIDATE_NOT_RESOLVABLE")
 	}
+	if err := domain.ValidateInternalProductID(*candidate.InternalProductID); err != nil {
+		return domain.ProductLinkResolutionResult{}, err
+	}
 	identity := domain.ListingIdentity{
 		InstallationID:      candidate.InstallationID,
 		ProviderItemID:      candidate.ProviderItemID,
@@ -155,8 +158,8 @@ func (s *ResolutionService) ManualResolve(ctx context.Context, input ManualResol
 	if s.workflows == nil {
 		return domain.ProductLinkResolutionResult{}, errors.New("PRODUCT_LINKS_RESOLUTION_NOT_CONFIGURED")
 	}
-	if input.InternalProductID == 0 {
-		return domain.ProductLinkResolutionResult{}, errors.New("PRODUCT_LINKS_INTERNAL_PRODUCT_REQUIRED")
+	if err := domain.ValidateInternalProductID(input.InternalProductID); err != nil {
+		return domain.ProductLinkResolutionResult{}, err
 	}
 	identity, providerCode, err := normalizeIdentity(input.InstallationID, input.ProviderCode, input.ProviderItemID, input.ProviderVariationID)
 	if err != nil {
@@ -310,20 +313,20 @@ func (s *ResolutionService) buildTransition(current domain.ProductLink, found bo
 		return domain.ProductLinkTransition{
 			Link: link,
 			Audit: domain.ProductLinkAuditEntry{
-				AuditID:                s.newAuditID(),
-				InstallationID:         typed.InstallationID,
-				ProviderCode:           typed.ProviderCode,
-				ProviderItemID:         typed.ProviderItemID,
-				ProviderVariationID:    typed.ProviderVariationID,
-				Action:                 typed.Action,
-				Reason:                 strings.TrimSpace(typed.Reason),
-				SourceCandidateID:      typed.SourceCandidateID,
-				Actor:                  typed.Actor,
-				PreviousState:          prevState,
-				NextState:              domain.ProductLinkStateResolved,
+				AuditID:                   s.newAuditID(),
+				InstallationID:            typed.InstallationID,
+				ProviderCode:              typed.ProviderCode,
+				ProviderItemID:            typed.ProviderItemID,
+				ProviderVariationID:       typed.ProviderVariationID,
+				Action:                    typed.Action,
+				Reason:                    strings.TrimSpace(typed.Reason),
+				SourceCandidateID:         typed.SourceCandidateID,
+				Actor:                     typed.Actor,
+				PreviousState:             prevState,
+				NextState:                 domain.ProductLinkStateResolved,
 				PreviousInternalProductID: prevProductID,
-				NextInternalProductID:  typed.InternalProductID,
-				CreatedAt:              now,
+				NextInternalProductID:     typed.InternalProductID,
+				CreatedAt:                 now,
 			},
 		}
 	case buildRejectedLinkInput:
@@ -339,18 +342,18 @@ func (s *ResolutionService) buildTransition(current domain.ProductLink, found bo
 		return domain.ProductLinkTransition{
 			Link: link,
 			Audit: domain.ProductLinkAuditEntry{
-				AuditID:                s.newAuditID(),
-				InstallationID:         typed.InstallationID,
-				ProviderCode:           typed.ProviderCode,
-				ProviderItemID:         typed.ProviderItemID,
-				ProviderVariationID:    typed.ProviderVariationID,
-				Action:                 typed.Action,
-				Reason:                 strings.TrimSpace(typed.Reason),
-				Actor:                  typed.Actor,
-				PreviousState:          prevState,
-				NextState:              domain.ProductLinkStateRejected,
+				AuditID:                   s.newAuditID(),
+				InstallationID:            typed.InstallationID,
+				ProviderCode:              typed.ProviderCode,
+				ProviderItemID:            typed.ProviderItemID,
+				ProviderVariationID:       typed.ProviderVariationID,
+				Action:                    typed.Action,
+				Reason:                    strings.TrimSpace(typed.Reason),
+				Actor:                     typed.Actor,
+				PreviousState:             prevState,
+				NextState:                 domain.ProductLinkStateRejected,
 				PreviousInternalProductID: prevProductID,
-				CreatedAt:              now,
+				CreatedAt:                 now,
 			},
 		}
 	default:

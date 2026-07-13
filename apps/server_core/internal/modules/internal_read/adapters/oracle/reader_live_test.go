@@ -5,6 +5,7 @@ package oracle
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -49,6 +50,7 @@ func TestOracleLiveSmoke(t *testing.T) {
 		if got[0].Source.FetchedAt.IsZero() {
 			t.Fatal("expected source fetched timestamp")
 		}
+		fmt.Println("MPC_C05_POSITIVE_CODPROD_OBSERVED=true")
 	})
 
 	t.Run("sellable stock", func(t *testing.T) {
@@ -157,17 +159,17 @@ func TestOracleLiveSmoke(t *testing.T) {
 func discoverProductLookupInput(t *testing.T, ctx context.Context, db *sql.DB) ports.FindProductsInput {
 	t.Helper()
 
-	var reference string
+	var productID int
 	err := db.QueryRowContext(ctx, `
-SELECT p.REFERENCIA
+SELECT p.CODPROD
 FROM METALPRD.TGFPRO p
 WHERE p.ATIVO = 'S'
-  AND LENGTH(TRIM(p.REFERENCIA)) > 0
-FETCH FIRST 1 ROW ONLY`).Scan(&reference)
+  AND p.CODPROD > 0
+FETCH FIRST 1 ROW ONLY`).Scan(&productID)
 	if err != nil {
 		t.Fatalf("discover product lookup input: %v", err)
 	}
-	return ports.FindProductsInput{EAN: &reference}
+	return ports.FindProductsInput{ProductID: &productID}
 }
 
 func discoverStockProductID(t *testing.T, ctx context.Context, db *sql.DB) int {

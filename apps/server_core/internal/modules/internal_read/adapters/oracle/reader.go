@@ -66,13 +66,16 @@ func (r *Reader) FindProductsForLinking(ctx context.Context, input ports.FindPro
 			InternalProductID: canonicalProductID(productID),
 			ProductID:         productID,
 			Name:              name,
-			EAN:               nullableString(referenceValue),
-			ReferenceCode:     nullableString(referenceValue),
-			BrandID:           nullableInt(brandID),
-			BrandName:         nullableString(brandName),
-			ProductGroupID:    nullableInt(productGroupID),
-			IsActive:          strings.EqualFold(activeValue, "S"),
-			UsageType:         nullableString(usageType),
+			// TGFPRO.REFERENCIA is the governed manufacturer/reference value.
+			// No governed barcode column is selected here, so EAN must remain
+			// unknown instead of duplicating REFERENCIA into both identifiers.
+			EAN:            nil,
+			ReferenceCode:  nullableString(referenceValue),
+			BrandID:        nullableInt(brandID),
+			BrandName:      nullableString(brandName),
+			ProductGroupID: nullableInt(productGroupID),
+			IsActive:       strings.EqualFold(activeValue, "S"),
+			UsageType:      nullableString(usageType),
 			Source: domain.SourceMetadata{
 				System:    "oracle",
 				FetchedAt: r.now().UTC(),
@@ -422,10 +425,8 @@ WHERE 1 = 1`
 		args = append(args, *input.ProductID)
 		matchClauses = append(matchClauses, fmt.Sprintf("p.CODPROD = :%d", len(args)))
 	}
-	if value := trimmedPointer(input.EAN); value != nil {
-		args = append(args, *value)
-		matchClauses = append(matchClauses, fmt.Sprintf("p.REFERENCIA = :%d", len(args)))
-	}
+	// EAN is intentionally not matched against TGFPRO.REFERENCIA. Until a
+	// governed barcode source is added, EAN-only linking remains unproved.
 	if value := trimmedPointer(input.SellerSKU); value != nil {
 		args = append(args, *value)
 		matchClauses = append(matchClauses, fmt.Sprintf("p.REFFORN = :%d", len(args)))
@@ -433,6 +434,9 @@ WHERE 1 = 1`
 	if value := trimmedPointer(input.Title); value != nil {
 		args = append(args, "%"+strings.ToUpper(*value)+"%")
 		matchClauses = append(matchClauses, fmt.Sprintf("UPPER(p.DESCRPROD) LIKE :%d", len(args)))
+	}
+	if trimmedPointer(input.EAN) != nil && len(matchClauses) == 0 {
+		return "", nil, domain.NewReadError(domain.ReadErrorUnsupportedQuery, "oracle product lookup has no governed EAN source", nil)
 	}
 	if len(matchClauses) > 0 {
 		query += " AND (" + strings.Join(matchClauses, " OR ") + ")"

@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -215,6 +216,16 @@ func TestManualResolveCreatesResolvedLinkAndAuditWithoutCandidateSource(t *testi
 	}
 }
 
+func TestManualResolveRejectsNonPositiveInternalProductID(t *testing.T) {
+	svc := NewResolutionService(ResolutionServiceConfig{Workflows: &stubWorkflowStore{}})
+	for _, id := range []int{-1, 0} {
+		_, err := svc.ManualResolve(context.Background(), ManualResolveInput{InternalProductID: id})
+		if !errors.Is(err, productlinksdomain.ErrInvalidInternalProductID) {
+			t.Fatalf("ManualResolve(%d) error = %v", id, err)
+		}
+	}
+}
+
 func TestListLinkWorkflowsMergesCandidatesWithCurrentLinkAndAudit(t *testing.T) {
 	t.Parallel()
 
@@ -246,15 +257,15 @@ func TestListLinkWorkflowsMergesCandidatesWithCurrentLinkAndAudit(t *testing.T) 
 			UpdatedAt:         now.Add(-30 * time.Minute),
 		}},
 		audits: []productlinksdomain.ProductLinkAuditEntry{{
-			AuditID:           "audit-4",
-			InstallationID:    "inst-1",
-			ProviderCode:      "mercado_livre",
-			ProviderItemID:    "MLB404",
-			Action:            productlinksdomain.ProductLinkActionApproveCandidate,
-			PreviousState:     productlinksdomain.ProductLinkStateConflict,
-			NextState:         productlinksdomain.ProductLinkStateResolved,
+			AuditID:               "audit-4",
+			InstallationID:        "inst-1",
+			ProviderCode:          "mercado_livre",
+			ProviderItemID:        "MLB404",
+			Action:                productlinksdomain.ProductLinkActionApproveCandidate,
+			PreviousState:         productlinksdomain.ProductLinkStateConflict,
+			NextState:             productlinksdomain.ProductLinkStateResolved,
 			NextInternalProductID: &productID,
-			CreatedAt:         now.Add(-20 * time.Minute),
+			CreatedAt:             now.Add(-20 * time.Minute),
 		}},
 	}
 	svc := NewResolutionService(ResolutionServiceConfig{

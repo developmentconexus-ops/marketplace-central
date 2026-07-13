@@ -20,6 +20,21 @@ describe("sdk runtime", () => {
     expect(unknown.cost_amount.value).toBeNull();
     expect(unknown.price_amount.value).toBe(0);
   });
+
+  it("rejects non-positive product-link CODPROD before transport", () => {
+    const fetchImpl = vi.fn();
+    const client = createMarketplaceCentralClient({ baseUrl: "http://localhost:8080", fetchImpl });
+    const base = {
+      installation_id: "inst-1",
+      provider_code: "mercado_livre",
+      provider_item_id: "MLB1",
+      actor: { actor_type: "operator", actor_id: "op-1" },
+    };
+    for (const internal_product_id of [-1, 0]) {
+      expect(() => client.manualResolveProductLink({ ...base, internal_product_id })).toThrow("invalid_identity");
+    }
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
   it("listIntegrationProviders calls /integrations/providers and parses Amazon LWA and interactive Shopee metadata", async () => {
     const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
     const response = {

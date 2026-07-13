@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -39,12 +41,12 @@ func (s *stubImporter) ImportListingSnapshots(_ context.Context, input applicati
 }
 
 type stubCandidateEngine struct {
-	generateInput application.GenerateLinkCandidatesInput
-	listInput     application.ListLinkCandidatesInput
-	workflowInput application.ListLinkWorkflowsInput
-	result        domain.LinkCandidateGenerationResult
-	items         []domain.LinkCandidate
-	workflowItems []domain.ProductLinkWorkflowItem
+	generateInput    application.GenerateLinkCandidatesInput
+	listInput        application.ListLinkCandidatesInput
+	workflowInput    application.ListLinkWorkflowsInput
+	result           domain.LinkCandidateGenerationResult
+	items            []domain.LinkCandidate
+	workflowItems    []domain.ProductLinkWorkflowItem
 	resolutionResult domain.ProductLinkResolutionResult
 }
 
@@ -135,7 +137,7 @@ func (s *stubCandidateEngine) ApproveCandidate(_ context.Context, input applicat
 
 func (s *stubCandidateEngine) RejectListing(_ context.Context, _ application.RejectListingInput) (domain.ProductLinkResolutionResult, error) {
 	return domain.ProductLinkResolutionResult{
-		Link: domain.ProductLink{InstallationID: "inst-1", ProviderCode: "mercado_livre", ProviderItemID: "MLB123", State: domain.ProductLinkStateRejected},
+		Link:  domain.ProductLink{InstallationID: "inst-1", ProviderCode: "mercado_livre", ProviderItemID: "MLB123", State: domain.ProductLinkStateRejected},
 		Audit: domain.ProductLinkAuditEntry{AuditID: "audit-2", Action: domain.ProductLinkActionRejectListing, PreviousState: domain.ProductLinkStateResolved, NextState: domain.ProductLinkStateRejected},
 	}, nil
 }
@@ -143,7 +145,7 @@ func (s *stubCandidateEngine) RejectListing(_ context.Context, _ application.Rej
 func (s *stubCandidateEngine) ManualResolve(_ context.Context, input application.ManualResolveInput) (domain.ProductLinkResolutionResult, error) {
 	productID := input.InternalProductID
 	return domain.ProductLinkResolutionResult{
-		Link: domain.ProductLink{InstallationID: input.InstallationID, ProviderCode: input.ProviderCode, ProviderItemID: input.ProviderItemID, ProviderVariationID: input.ProviderVariationID, State: domain.ProductLinkStateResolved, InternalProductID: &productID},
+		Link:  domain.ProductLink{InstallationID: input.InstallationID, ProviderCode: input.ProviderCode, ProviderItemID: input.ProviderItemID, ProviderVariationID: input.ProviderVariationID, State: domain.ProductLinkStateResolved, InternalProductID: &productID},
 		Audit: domain.ProductLinkAuditEntry{AuditID: "audit-3", Action: domain.ProductLinkActionManualResolve, PreviousState: domain.ProductLinkStateNone, NextState: domain.ProductLinkStateResolved},
 	}, nil
 }
@@ -329,5 +331,23 @@ func TestHandleApproveCandidateUsesSnakeCaseJSON(t *testing.T) {
 	}
 	if _, ok := payload["audit"]; !ok {
 		t.Fatalf("payload=%v", payload)
+	}
+}
+
+func TestHandleManualResolveRejectsNonPositiveInternalProductID(t *testing.T) {
+	t.Parallel()
+
+	for _, id := range []int{-1, 0} {
+		engine := &stubCandidateEngine{}
+		handler := NewHandler(&stubImporter{}, engine, engine, engine, engine)
+		body := fmt.Sprintf(`{"installation_id":"inst-1","provider_code":"mercado_livre","provider_item_id":"MLB1","internal_product_id":%d,"actor":{"actor_type":"operator","actor_id":"u1"}}`, id)
+		req := httptest.NewRequest(http.MethodPost, "/product-links/link-resolutions/manual-resolve", bytes.NewReader([]byte(body)))
+		rr := httptest.NewRecorder()
+
+		handler.handleManualResolve(rr, req)
+
+		if rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), "invalid_identity") {
+			t.Fatalf("id=%d status=%d body=%s", id, rr.Code, rr.Body.String())
+		}
 	}
 }

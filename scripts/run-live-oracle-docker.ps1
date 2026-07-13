@@ -105,7 +105,7 @@ function New-LiveOracleDockerPlan {
       '--workdir', "$($profile.workspace)/apps/server_core"
     ) + @($script:ContainerKeys | ForEach-Object { @('--env', $_) }) + @(
       [string]$profile.image_tag, 'go', 'test', [string]$profile.go_package,
-      '-run', [string]$profile.go_test_regex, '-count=1'
+      '-run', [string]$profile.go_test_regex, '-count=1', '-v'
     )
   }
 }
@@ -114,7 +114,7 @@ function Test-LiveOracleDockerAvailable {
   $docker = Get-Command docker -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
   if ($null -eq $docker) { throw 'live Oracle preflight docker_unavailable' }
   $preflight = New-LiveOracleDockerPreflightPlan -DockerPath ([string]$docker.Source)
-  Invoke-LiveOracleDockerProcess -StartInfo $preflight.StartInfo -Phase 'preflight'
+  [void](Invoke-LiveOracleDockerProcess -StartInfo $preflight.StartInfo -Phase 'preflight')
   [string]$docker.Source
 }
 
@@ -163,10 +163,13 @@ function Invoke-LiveOracleDockerProcess {
   $process = [Diagnostics.Process]::new()
   $process.StartInfo = $StartInfo
   [void]$process.Start()
-  [void]$process.StandardOutput.ReadToEnd()
+
+  $standardOutput = $process.StandardOutput.ReadToEnd()
   [void]$process.StandardError.ReadToEnd()
   $process.WaitForExit()
   if ($process.ExitCode -ne 0) { throw "live Oracle Docker $Phase failed exit_code=$($process.ExitCode); output suppressed" }
+
+  return $standardOutput
 }
 
 function Invoke-LiveOracleDockerCommand {
@@ -191,8 +194,11 @@ function Invoke-LiveOracleDockerRunner {
   $dockerPath = Test-LiveOracleDockerAvailable
   if ($PreflightOnly) { return }
 
-  Invoke-LiveOracleDockerCommand -DockerPath $dockerPath -Arguments $plan.BuildArguments -Environment @{} -Phase 'build'
-  Invoke-LiveOracleDockerCommand -DockerPath $dockerPath -Arguments $plan.RunArguments -Environment $plan.ContainerEnvironment -Phase 'run'
+  [void](Invoke-LiveOracleDockerCommand -DockerPath $dockerPath -Arguments $plan.BuildArguments -Environment @{} -Phase 'build')
+  $runOutput = Invoke-LiveOracleDockerCommand -DockerPath $dockerPath -Arguments $plan.RunArguments -Environment $plan.ContainerEnvironment -Phase 'run'
+  if ($runOutput -notmatch '(?m)^MPC_C05_POSITIVE_CODPROD_OBSERVED=true\s*$') {
+    throw 'live Oracle Docker run failed exit_code=1; output suppressed'
+  }
 }
 
 function Write-LiveOracleDockerTelemetry {
@@ -227,6 +233,7 @@ function Get-LiveOracleDockerSafeReason {
 function Invoke-LiveOracleDockerEntrypoint {
   param(
     [switch]$PreflightOnly,
+    [switch]$EmitC05Evidence,
     [string]$EnvFilePath = $script:LocalEnvPath,
     [Parameter(Mandatory)][ref]$ExitCode
   )
@@ -237,6 +244,13 @@ function Invoke-LiveOracleDockerEntrypoint {
       Write-LiveOracleDockerTelemetry -Status 'ready' -Phase 'preflight' -ExitCode 0
     } else {
       Write-LiveOracleDockerTelemetry -Status 'passed' -Phase 'complete' -ExitCode 0
+      if ($EmitC05Evidence) {
+        Write-Output "frozen_sha=$(git -C $script:RepositoryRoot rev-parse HEAD)"
+        Write-Output 'source=oracle/sankhya'
+        Write-Output "observed_at=$([DateTimeOffset]::UtcNow.ToString('o'))"
+        Write-Output 'read_only=true'
+        Write-Output 'positive_codprod_observed=true'
+      }
     }
     $ExitCode.Value = 0
   } catch {
@@ -248,6 +262,6 @@ function Invoke-LiveOracleDockerEntrypoint {
 
 if ($MyInvocation.InvocationName -ne '.') {
   $exitCode = 0
-  Invoke-LiveOracleDockerEntrypoint -PreflightOnly:$PreflightOnly -ExitCode ([ref]$exitCode)
+  Invoke-LiveOracleDockerEntrypoint -PreflightOnly:$PreflightOnly -EmitC05Evidence -ExitCode ([ref]$exitCode)
   exit $exitCode
 }
