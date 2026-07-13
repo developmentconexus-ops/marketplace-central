@@ -143,6 +143,166 @@ func TestAssistedSankhyaGetCurrentFailsClosedForMissingOrMalformedLinkage(t *tes
 	}
 }
 
+func TestAssistedSankhyaResolveCurrentLineageUsesExactCandidateQuantityAndCanComplete(t *testing.T) {
+	service, orders, reader, repo, input, recordedAt := assistedServiceFixture()
+	origin := reader.candidates[0].Lines[0].Identity
+	repo.current = expectedLinkage(input, reader.candidates[0], recordedAt, "persisted-event", "cfg-runtime-1")
+	repo.found = true
+	attended := 1.0
+	reader.descendants[origin] = domain.AssistedSankhyaLineage{
+		Origin: origin, State: domain.AssistedSankhyaLineageComplete,
+		Descendants: []domain.AssistedSankhyaDescendant{{Identity: domain.InternalDocumentLineIdentity{DocumentID: 30601, LineNumber: 7}, AttendedQuantity: &attended}},
+	}
+
+	got, err := service.ResolveCurrentLineage(context.Background(), ResolveCurrentSankhyaLineageInput{
+		TenantID: " tenant-1 ", InstallationID: " install-1 ", ProviderOrderID: " order-1 ", MPCLineID: serviceLineOne,
+	})
+	if err != nil {
+		t.Fatalf("ResolveCurrentLineage() error = %v", err)
+	}
+	wantScope := domain.LinkageScope{TenantID: "tenant-1", InstallationID: "install-1", ProviderOrderID: "order-1"}
+	if orders.scope != wantScope || repo.scope != wantScope || reader.validateCalls != 1 {
+		t.Fatalf("exact scope/validation = order:%#v repo:%#v validations:%d", orders.scope, repo.scope, reader.validateCalls)
+	}
+	if got.MPCLineID != serviceLineOne || got.Origin != origin || got.State != domain.AssistedSankhyaLineageComplete || len(got.Descendants) != 1 {
+		t.Fatalf("lineage = %#v, want exact complete descendant", got)
+	}
+	if len(reader.keys) != 1 || reader.keys[0] != repo.current.ExternalOrderKey {
+		t.Fatalf("candidate keys = %#v, want exact persisted key %q", reader.keys, repo.current.ExternalOrderKey)
+	}
+	if len(reader.descendantCalls) != 1 || reader.descendantCalls[0].origin != origin || reader.descendantCalls[0].expected == nil || *reader.descendantCalls[0].expected != 1 {
+		t.Fatalf("descendant calls = %#v, want exact origin with expected quantity 1", reader.descendantCalls)
+	}
+	if len(repo.appended) != 0 {
+		t.Fatalf("appends = %d, want read-only resolution", len(repo.appended))
+	}
+}
+
+func TestAssistedSankhyaResolveCurrentLineagePreservesUnknownCandidateQuantityAsPartial(t *testing.T) {
+	service, _, reader, repo, input, recordedAt := assistedServiceFixture()
+	origin := reader.candidates[0].Lines[0].Identity
+	reader.candidates[0].Lines[0].Quantity = nil
+	repo.current = expectedLinkage(input, reader.candidates[0], recordedAt, "persisted-event", "cfg-runtime-1")
+	repo.found = true
+	reader.descendants[origin] = domain.AssistedSankhyaLineage{
+		Origin: origin, State: domain.AssistedSankhyaLineagePartial,
+		Descendants: []domain.AssistedSankhyaDescendant{{Identity: domain.InternalDocumentLineIdentity{DocumentID: 30601, LineNumber: 7}}},
+	}
+
+	got, err := service.ResolveCurrentLineage(context.Background(), ResolveCurrentSankhyaLineageInput{
+		TenantID: input.TenantID, InstallationID: input.InstallationID, ProviderOrderID: input.ProviderOrderID, MPCLineID: serviceLineOne,
+	})
+	if err != nil {
+		t.Fatalf("ResolveCurrentLineage() error = %v", err)
+	}
+	if got.State != domain.AssistedSankhyaLineagePartial || len(reader.descendantCalls) != 1 || reader.descendantCalls[0].expected != nil {
+		t.Fatalf("lineage/calls = %#v/%#v, want partial with nil expected quantity", got, reader.descendantCalls)
+	}
+}
+
+func TestAssistedSankhyaResolveCurrentLineageConflictsOnCurrentCandidateOrOriginDrift(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(*fakeAssistedReader, domain.InternalDocumentLineIdentity)
+	}{
+		{name: "missing persisted candidate", mutate: func(reader *fakeAssistedReader, _ domain.InternalDocumentLineIdentity) {
+			reader.candidates = nil
+		}},
+		{name: "duplicate persisted candidate", mutate: func(reader *fakeAssistedReader, _ domain.InternalDocumentLineIdentity) {
+			reader.candidates = append(reader.candidates, reader.candidates[0])
+		}},
+		{name: "missing exact origin", mutate: func(reader *fakeAssistedReader, origin domain.InternalDocumentLineIdentity) {
+			for index := range reader.candidates[0].Lines {
+				if reader.candidates[0].Lines[index].Identity == origin {
+					reader.candidates[0].Lines[index].Identity.LineNumber = 99
+				}
+			}
+		}},
+		{name: "mismatched candidate line document", mutate: func(reader *fakeAssistedReader, _ domain.InternalDocumentLineIdentity) {
+			reader.candidates[0].Lines[1].Identity.DocumentID = 999
+		}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			service, _, reader, repo, input, recordedAt := assistedServiceFixture()
+			repo.current = expectedLinkage(input, reader.candidates[0], recordedAt, "persisted-event", "cfg-runtime-1")
+			repo.found = true
+			origin := repo.current.Lines[0].Origin
+			test.mutate(reader, origin)
+
+			got, err := service.ResolveCurrentLineage(context.Background(), ResolveCurrentSankhyaLineageInput{
+				TenantID: input.TenantID, InstallationID: input.InstallationID, ProviderOrderID: input.ProviderOrderID, MPCLineID: serviceLineOne,
+			})
+			if err != nil {
+				t.Fatalf("ResolveCurrentLineage() error = %v", err)
+			}
+			if got.State != domain.AssistedSankhyaLineageConflict || len(reader.descendantCalls) != 0 || len(repo.appended) != 0 {
+				t.Fatalf("lineage/reads/appends = %#v/%d/%d, want conflict/0/0", got, len(reader.descendantCalls), len(repo.appended))
+			}
+		})
+	}
+}
+
+func TestAssistedSankhyaResolveCurrentLineagePreservesMissingConflictAndUnavailable(t *testing.T) {
+	tests := []struct {
+		name      string
+		configure func(*fakeAssistedOrderLookup, *fakeAssistedReader, *fakeAssistedLinkageRepository, ConfirmAssistedSankhyaLinkageInput, time.Time)
+		want      domain.AssistedSankhyaLineageState
+		wantReads int
+	}{
+		{name: "no confirmation", want: domain.AssistedSankhyaLineageNone},
+		{name: "no line mapping", configure: func(_ *fakeAssistedOrderLookup, reader *fakeAssistedReader, repo *fakeAssistedLinkageRepository, input ConfirmAssistedSankhyaLinkageInput, recordedAt time.Time) {
+			repo.current = expectedLinkage(input, reader.candidates[0], recordedAt, "event", "cfg-runtime-1")
+			repo.current.Lines = repo.current.Lines[1:]
+			repo.found = true
+		}, want: domain.AssistedSankhyaLineageNone},
+		{name: "legacy line", configure: func(orders *fakeAssistedOrderLookup, _ *fakeAssistedReader, _ *fakeAssistedLinkageRepository, _ ConfirmAssistedSankhyaLinkageInput, _ time.Time) {
+			orders.order.Items[0].ReconciliationState = domain.LineReconciliationLegacyUnresolved
+		}, want: domain.AssistedSankhyaLineageNone},
+		{name: "reader none", configure: func(_ *fakeAssistedOrderLookup, reader *fakeAssistedReader, repo *fakeAssistedLinkageRepository, input ConfirmAssistedSankhyaLinkageInput, recordedAt time.Time) {
+			repo.current = expectedLinkage(input, reader.candidates[0], recordedAt, "event", "cfg-runtime-1")
+			repo.found = true
+		}, want: domain.AssistedSankhyaLineageNone, wantReads: 1},
+		{name: "reader complete", configure: func(_ *fakeAssistedOrderLookup, reader *fakeAssistedReader, repo *fakeAssistedLinkageRepository, input ConfirmAssistedSankhyaLinkageInput, recordedAt time.Time) {
+			repo.current = expectedLinkage(input, reader.candidates[0], recordedAt, "event", "cfg-runtime-1")
+			repo.found = true
+			origin := repo.current.Lines[0].Origin
+			attended := 1.0
+			reader.descendants[origin] = domain.AssistedSankhyaLineage{Origin: origin, State: domain.AssistedSankhyaLineageComplete, Descendants: []domain.AssistedSankhyaDescendant{{Identity: domain.InternalDocumentLineIdentity{DocumentID: 30601, LineNumber: 1}, AttendedQuantity: &attended}}}
+		}, want: domain.AssistedSankhyaLineageComplete, wantReads: 1},
+		{name: "malformed persisted linkage", configure: func(_ *fakeAssistedOrderLookup, reader *fakeAssistedReader, repo *fakeAssistedLinkageRepository, input ConfirmAssistedSankhyaLinkageInput, recordedAt time.Time) {
+			repo.current = expectedLinkage(input, reader.candidates[0], recordedAt, "event", "cfg-runtime-1")
+			repo.current.Lines[0].Origin.LineNumber = 0
+			repo.found = true
+		}, want: domain.AssistedSankhyaLineageConflict},
+		{name: "source unavailable", configure: func(_ *fakeAssistedOrderLookup, reader *fakeAssistedReader, repo *fakeAssistedLinkageRepository, input ConfirmAssistedSankhyaLinkageInput, recordedAt time.Time) {
+			repo.current = expectedLinkage(input, reader.candidates[0], recordedAt, "event", "cfg-runtime-1")
+			repo.found = true
+			reader.configurationErr = &domain.AssistedSankhyaReadError{Kind: domain.AssistedSankhyaReadUnavailable}
+		}, want: domain.AssistedSankhyaLineageUnavailable},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			service, orders, reader, repo, input, recordedAt := assistedServiceFixture()
+			if test.configure != nil {
+				test.configure(orders, reader, repo, input, recordedAt)
+			}
+			got, err := service.ResolveCurrentLineage(context.Background(), ResolveCurrentSankhyaLineageInput{
+				TenantID: input.TenantID, InstallationID: input.InstallationID, ProviderOrderID: input.ProviderOrderID, MPCLineID: serviceLineOne,
+			})
+			if err != nil {
+				t.Fatalf("ResolveCurrentLineage() error = %v", err)
+			}
+			if got.State != test.want {
+				t.Fatalf("state = %q, want %q", got.State, test.want)
+			}
+			if len(reader.descendantCalls) != test.wantReads || len(repo.appended) != 0 {
+				t.Fatalf("reads/appends = %d/%d, want %d/0", len(reader.descendantCalls), len(repo.appended), test.wantReads)
+			}
+		})
+	}
+}
+
 func TestAssistedSankhyaConfirmAppendsExactAuditThenReadsEveryPersistedOrigin(t *testing.T) {
 	service, _, reader, repo, input, recordedAt := assistedServiceFixture()
 	originOne := reader.candidates[0].Lines[0].Identity

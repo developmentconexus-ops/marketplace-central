@@ -38,6 +38,8 @@ func TestOrderReaderMapsOrderFacts(t *testing.T) {
 		ProviderUpdatedAt: &updatedAt,
 		FetchedAt:         fetchedAt,
 		Items: []ordersdomain.MarketplaceOrderItem{{
+			MPCLineID:           "mpl_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			ReconciliationState: ordersdomain.LineReconciliationStable,
 			ProviderItemID:      "MLB123",
 			ProviderVariationID: "V-1",
 			Quantity:            2,
@@ -61,6 +63,8 @@ func TestOrderReaderMapsOrderFacts(t *testing.T) {
 		ProviderUpdatedAt: &updatedAt,
 		FetchedAt:         fetchedAt,
 		Items: []profitabilitydomain.OrderItemFact{{
+			MPCLineID:           "mpl_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			ReconciliationState: profitabilitydomain.OrderLineStable,
 			ProviderItemID:      "MLB123",
 			ProviderVariationID: "V-1",
 			Quantity:            2,

@@ -11,6 +11,7 @@ const (
 )
 
 type OrderLinkQuality string
+type OrderLineReconciliationState string
 
 const (
 	OrderLinkResolved   OrderLinkQuality = "resolved"
@@ -18,6 +19,10 @@ const (
 	OrderLinkConflict   OrderLinkQuality = "conflict"
 	OrderLinkUnresolved OrderLinkQuality = "unresolved"
 	OrderLinkMissing    OrderLinkQuality = "missing"
+
+	OrderLineStable           OrderLineReconciliationState = "stable"
+	OrderLineLegacyUnresolved OrderLineReconciliationState = "legacy_unresolved"
+	OrderLineAmbiguous        OrderLineReconciliationState = "ambiguous"
 )
 
 type OrderFact struct {
@@ -32,6 +37,8 @@ type OrderFact struct {
 }
 
 type OrderItemFact struct {
+	MPCLineID           string
+	ReconciliationState OrderLineReconciliationState
 	ProviderItemID      string
 	ProviderVariationID string
 	Quantity            int

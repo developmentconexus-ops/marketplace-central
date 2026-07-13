@@ -3,11 +3,13 @@ package application
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 
 	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
 	profitabilitydomain "marketplace-central/apps/server_core/internal/modules/profitability/domain"
+	"marketplace-central/apps/server_core/internal/modules/profitability/ports"
 )
 
 type stubOrderReader struct {
@@ -26,8 +28,38 @@ type stubInternalFactReader struct {
 func (s stubInternalFactReader) GetCostAsOf(context.Context, int, time.Time) (internalreaddomain.CostAsOf, error) {
 	return s.cost, nil
 }
-func (s stubInternalFactReader) GetTaxInputs(context.Context, int, time.Time, internalreaddomain.TaxSourceIdentity) (internalreaddomain.TaxInputs, error) {
-	return s.tax, nil
+func (s stubInternalFactReader) GetTaxInputs(_ context.Context, _ int, _ time.Time, source internalreaddomain.TaxSourceIdentity) (internalreaddomain.TaxInputs, error) {
+	value := s.tax
+	value.SourceIdentity = source
+	return value, nil
+}
+
+type stubSankhyaLineageReader struct {
+	lineage ports.SankhyaLineage
+	err     error
+	calls   []string
+}
+
+func (s *stubSankhyaLineageReader) ResolveCurrentLineage(_ context.Context, installationID, providerOrderID, mpcLineID string) (ports.SankhyaLineage, error) {
+	s.calls = append(s.calls, installationID+"/"+providerOrderID+"/"+mpcLineID)
+	return s.lineage, s.err
+}
+
+type exactTaxFactReader struct {
+	taxes map[internalreaddomain.TaxSourceIdentity]internalreaddomain.TaxInputs
+	calls []internalreaddomain.TaxSourceIdentity
+}
+
+func (s *exactTaxFactReader) GetCostAsOf(context.Context, int, time.Time) (internalreaddomain.CostAsOf, error) {
+	amount := 10.0
+	return internalreaddomain.CostAsOf{Amount: &amount, QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}}, nil
+}
+
+func (s *exactTaxFactReader) GetTaxInputs(_ context.Context, _ int, _ time.Time, source internalreaddomain.TaxSourceIdentity) (internalreaddomain.TaxInputs, error) {
+	s.calls = append(s.calls, source)
+	value := s.taxes[source]
+	value.SourceIdentity = source
+	return value, nil
 }
 
 type recordingInternalFactReader struct {
@@ -162,17 +194,18 @@ func TestImportMarginInputsExtendsOnlyUnitCostByQuantity(t *testing.T) {
 		Orders: stubOrderReader{orders: []profitabilitydomain.OrderFact{{
 			InstallationID: "inst-1", ProviderOrderID: "order-1", ProviderUpdatedAt: &now, FetchedAt: now,
 			Items: []profitabilitydomain.OrderItemFact{
-				{ProviderItemID: "quantity-1", Quantity: 1, UnitPrice: floatPtr(100), SaleFeeAmount: &saleFee, LinkQuality: profitabilitydomain.OrderLinkResolved, InternalProductID: intPtr(1)},
-				{ProviderItemID: "quantity-2", Quantity: 2, UnitPrice: floatPtr(100), SaleFeeAmount: &saleFee, LinkQuality: profitabilitydomain.OrderLinkResolved, InternalProductID: intPtr(2)},
-				{ProviderItemID: "quantity-7", Quantity: 7, UnitPrice: floatPtr(100), SaleFeeAmount: &saleFee, LinkQuality: profitabilitydomain.OrderLinkResolved, InternalProductID: intPtr(7)},
+				{MPCLineID: "mpl_11111111111111111111111111111111", ReconciliationState: profitabilitydomain.OrderLineStable, ProviderItemID: "quantity-1", Quantity: 1, UnitPrice: floatPtr(100), SaleFeeAmount: &saleFee, LinkQuality: profitabilitydomain.OrderLinkResolved, InternalProductID: intPtr(1)},
+				{MPCLineID: "mpl_22222222222222222222222222222222", ReconciliationState: profitabilitydomain.OrderLineStable, ProviderItemID: "quantity-2", Quantity: 2, UnitPrice: floatPtr(100), SaleFeeAmount: &saleFee, LinkQuality: profitabilitydomain.OrderLinkResolved, InternalProductID: intPtr(2)},
+				{MPCLineID: "mpl_77777777777777777777777777777777", ReconciliationState: profitabilitydomain.OrderLineStable, ProviderItemID: "quantity-7", Quantity: 7, UnitPrice: floatPtr(100), SaleFeeAmount: &saleFee, LinkQuality: profitabilitydomain.OrderLinkResolved, InternalProductID: intPtr(7)},
 			},
 		}}},
 		Internal: stubInternalFactReader{
 			cost: internalreaddomain.CostAsOf{Amount: &unitCost, AmountScope: internalreaddomain.CostAmountScopePerUnit, Source: internalreaddomain.SourceMetadata{System: "oracle"}, QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}},
 			tax:  internalreaddomain.TaxInputs{ICMSAmount: &icms, IPIAmount: &ipi, PISAmount: &pis, COFINSAmount: &cofins, Source: internalreaddomain.SourceMetadata{System: "oracle"}, QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}},
 		},
-		Inputs: &stubInputStore{},
-		Now:    func() time.Time { return now },
+		Lineage: &stubSankhyaLineageReader{lineage: ports.SankhyaLineage{State: ports.SankhyaLineageComplete, Descendants: []ports.SankhyaTaxSource{{DocumentID: 30601, LineNumber: 1}}}},
+		Inputs:  &stubInputStore{},
+		Now:     func() time.Time { return now },
 	})
 
 	result, err := service.ImportMarginInputs(context.Background(), ImportMarginInputsInput{InstallationID: "inst-1"})
@@ -197,7 +230,7 @@ func TestImportMarginInputsExtendsOnlyUnitCostByQuantity(t *testing.T) {
 			case profitabilitydomain.InputKindSaleFee:
 				seenSaleFee = amountEquals(input.Amount, saleFee) && input.SourceReference == "order-1"+saleFeeLineTotalSuffix
 			case profitabilitydomain.InputKindTaxICMS, profitabilitydomain.InputKindTaxIPI, profitabilitydomain.InputKindTaxPIS, profitabilitydomain.InputKindTaxCOFINS:
-				seenTaxes[input.Kind] = amountEquals(input.Amount, wantTaxes[input.Kind]) && input.SourceReference == string(input.Kind[4:])+taxLineTotalSuffix
+				seenTaxes[input.Kind] = amountEquals(input.Amount, wantTaxes[input.Kind]) && input.SourceReference == "sankhya:top306:30601/1:"+string(input.Kind[4:])+taxLineTotalSuffix
 			}
 		}
 		if !seenCost || !seenSaleFee {
@@ -208,6 +241,141 @@ func TestImportMarginInputsExtendsOnlyUnitCostByQuantity(t *testing.T) {
 				t.Fatalf("item %s tax %s was not preserved as a line total", providerItemID, kind)
 			}
 		}
+	}
+}
+
+func TestImportMarginInputsAggregatesOnlyKnownComponentsAcrossExactTOP306Descendants(t *testing.T) {
+	now := time.Date(2026, 7, 13, 18, 0, 0, 0, time.UTC)
+	sourceOne := internalreaddomain.TaxSourceIdentity{DocumentID: 30601, LineNumber: 1}
+	sourceTwo := internalreaddomain.TaxSourceIdentity{DocumentID: 30602, LineNumber: 2}
+	icmsOne, pisOne, cofinsOne := 1.0, 2.0, 3.0
+	icmsTwo, ipiTwo, pisTwo, cofinsTwo := 4.0, 5.0, 6.0, 7.0
+	internal := &exactTaxFactReader{taxes: map[internalreaddomain.TaxSourceIdentity]internalreaddomain.TaxInputs{
+		sourceOne: {ICMSAmount: &icmsOne, PISAmount: &pisOne, COFINSAmount: &cofinsOne, QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}},
+		sourceTwo: {ICMSAmount: &icmsTwo, IPIAmount: &ipiTwo, PISAmount: &pisTwo, COFINSAmount: &cofinsTwo, QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}},
+	}}
+	lineage := &stubSankhyaLineageReader{lineage: ports.SankhyaLineage{
+		State: ports.SankhyaLineageComplete,
+		Descendants: []ports.SankhyaTaxSource{
+			{DocumentID: 30602, LineNumber: 2},
+			{DocumentID: 30601, LineNumber: 1},
+		},
+	}}
+	service := NewService(ServiceConfig{
+		Orders: stubOrderReader{orders: []profitabilitydomain.OrderFact{{
+			InstallationID: "inst-1", ProviderOrderID: "order-1", FetchedAt: now,
+			Items: []profitabilitydomain.OrderItemFact{{
+				MPCLineID: "mpl_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", ReconciliationState: profitabilitydomain.OrderLineStable,
+				ProviderItemID: "item-1", Quantity: 1, LinkQuality: profitabilitydomain.OrderLinkResolved, InternalProductID: intPtr(42),
+			}},
+		}}},
+		Internal: internal, Lineage: lineage, Inputs: &stubInputStore{}, Now: func() time.Time { return now },
+	})
+
+	result, err := service.ImportMarginInputs(context.Background(), ImportMarginInputsInput{InstallationID: "inst-1"})
+	if err != nil {
+		t.Fatalf("ImportMarginInputs() error = %v", err)
+	}
+	if !reflect.DeepEqual(internal.calls, []internalreaddomain.TaxSourceIdentity{sourceOne, sourceTwo}) {
+		t.Fatalf("tax calls = %#v, want sorted exact TOP 306 identities", internal.calls)
+	}
+	wantAmounts := map[profitabilitydomain.InputKind]*float64{
+		profitabilitydomain.InputKindTaxICMS: floatPtr(5), profitabilitydomain.InputKindTaxIPI: nil,
+		profitabilitydomain.InputKindTaxPIS: floatPtr(8), profitabilitydomain.InputKindTaxCOFINS: floatPtr(10),
+	}
+	seen := 0
+	for _, input := range result.Items {
+		want, tax := wantAmounts[input.Kind]
+		if !tax {
+			continue
+		}
+		seen++
+		if want == nil {
+			if input.Amount != nil || input.Quality != profitabilitydomain.InputQualityMissing {
+				t.Fatalf("unknown IPI aggregate = %#v, want nil/missing", input)
+			}
+		} else if !amountEquals(input.Amount, *want) || input.Quality != profitabilitydomain.InputQualityComplete {
+			t.Fatalf("known aggregate %s = %#v, want %v/complete", input.Kind, input, *want)
+		}
+		if input.SourceReference != "sankhya:top306:30601/1,30602/2:"+string(input.Kind[4:])+taxLineTotalSuffix {
+			t.Fatalf("provenance = %q, want deterministic exact descendants", input.SourceReference)
+		}
+	}
+	if seen != 4 {
+		t.Fatalf("tax inputs = %d, want 4", seen)
+	}
+}
+
+func TestImportMarginInputsKeepsKnownPartialLineageTaxIncomplete(t *testing.T) {
+	now := time.Date(2026, 7, 13, 18, 0, 0, 0, time.UTC)
+	source := internalreaddomain.TaxSourceIdentity{DocumentID: 30601, LineNumber: 1}
+	amount := 2.0
+	internal := &exactTaxFactReader{taxes: map[internalreaddomain.TaxSourceIdentity]internalreaddomain.TaxInputs{
+		source: {ICMSAmount: &amount, IPIAmount: &amount, PISAmount: &amount, COFINSAmount: &amount, QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}},
+	}}
+	service := NewService(ServiceConfig{
+		Orders: stubOrderReader{orders: []profitabilitydomain.OrderFact{{
+			InstallationID: "inst-1", ProviderOrderID: "order-1", FetchedAt: now,
+			Items: []profitabilitydomain.OrderItemFact{{MPCLineID: "mpl_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", ReconciliationState: profitabilitydomain.OrderLineStable, ProviderItemID: "item-1", LinkQuality: profitabilitydomain.OrderLinkResolved, InternalProductID: intPtr(42)}},
+		}}},
+		Internal: internal,
+		Lineage:  &stubSankhyaLineageReader{lineage: ports.SankhyaLineage{State: ports.SankhyaLineagePartial, Descendants: []ports.SankhyaTaxSource{{DocumentID: 30601, LineNumber: 1}}}},
+		Inputs:   &stubInputStore{}, Now: func() time.Time { return now },
+	})
+
+	result, err := service.ImportMarginInputs(context.Background(), ImportMarginInputsInput{InstallationID: "inst-1"})
+	if err != nil {
+		t.Fatalf("ImportMarginInputs() error = %v", err)
+	}
+	for _, input := range result.Items {
+		switch input.Kind {
+		case profitabilitydomain.InputKindTaxICMS, profitabilitydomain.InputKindTaxIPI, profitabilitydomain.InputKindTaxPIS, profitabilitydomain.InputKindTaxCOFINS:
+			if !amountEquals(input.Amount, amount) || input.Quality != profitabilitydomain.InputQualityPartial || input.QualityReason != "confirmed Sankhya lineage is partial" {
+				t.Fatalf("partial tax input = %#v, want known amount with partial quality", input)
+			}
+		}
+	}
+}
+
+func TestImportMarginInputsFailsClosedBeforeTaxReadForInvalidLineage(t *testing.T) {
+	now := time.Date(2026, 7, 13, 18, 0, 0, 0, time.UTC)
+	tests := []struct {
+		name      string
+		lineState profitabilitydomain.OrderLineReconciliationState
+		lineage   ports.SankhyaLineage
+	}{
+		{name: "ambiguous MPC line", lineState: profitabilitydomain.OrderLineAmbiguous},
+		{name: "lineage conflict", lineState: profitabilitydomain.OrderLineStable, lineage: ports.SankhyaLineage{State: ports.SankhyaLineageConflict}},
+		{name: "lineage unavailable", lineState: profitabilitydomain.OrderLineStable, lineage: ports.SankhyaLineage{State: ports.SankhyaLineageUnavailable}},
+		{name: "duplicate descendant", lineState: profitabilitydomain.OrderLineStable, lineage: ports.SankhyaLineage{State: ports.SankhyaLineageComplete, Descendants: []ports.SankhyaTaxSource{{DocumentID: 30601, LineNumber: 1}, {DocumentID: 30601, LineNumber: 1}}}},
+		{name: "invalid descendant", lineState: profitabilitydomain.OrderLineStable, lineage: ports.SankhyaLineage{State: ports.SankhyaLineageComplete, Descendants: []ports.SankhyaTaxSource{{DocumentID: 31301, LineNumber: 0}}}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			internal := &exactTaxFactReader{taxes: map[internalreaddomain.TaxSourceIdentity]internalreaddomain.TaxInputs{}}
+			lineage := &stubSankhyaLineageReader{lineage: test.lineage}
+			service := NewService(ServiceConfig{
+				Orders: stubOrderReader{orders: []profitabilitydomain.OrderFact{{InstallationID: "inst-1", ProviderOrderID: "order-1", FetchedAt: now, Items: []profitabilitydomain.OrderItemFact{{
+					MPCLineID: "mpl_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", ReconciliationState: test.lineState, ProviderItemID: "item-1", LinkQuality: profitabilitydomain.OrderLinkResolved, InternalProductID: intPtr(42),
+				}}}}},
+				Internal: internal, Lineage: lineage, Inputs: &stubInputStore{}, Now: func() time.Time { return now },
+			})
+			result, err := service.ImportMarginInputs(context.Background(), ImportMarginInputsInput{InstallationID: "inst-1"})
+			if err != nil {
+				t.Fatalf("ImportMarginInputs() error = %v", err)
+			}
+			if len(internal.calls) != 0 {
+				t.Fatalf("tax calls = %#v, want none", internal.calls)
+			}
+			for _, input := range result.Items {
+				switch input.Kind {
+				case profitabilitydomain.InputKindTaxICMS, profitabilitydomain.InputKindTaxIPI, profitabilitydomain.InputKindTaxPIS, profitabilitydomain.InputKindTaxCOFINS:
+					if input.Amount != nil || input.Quality != profitabilitydomain.InputQualityMissing {
+						t.Fatalf("tax input = %#v, want nil/missing", input)
+					}
+				}
+			}
+		})
 	}
 }
 

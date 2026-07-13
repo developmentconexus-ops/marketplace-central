@@ -337,6 +337,7 @@ func NewRootRouter(pool *pgxpool.Pool, msPool *pgxpool.Pool, cfg pgdb.Config) (h
 
 	linkageRepo := orderspostgres.NewSankhyaLinkageRepository(pool, cfg.DefaultTenantID)
 	var assistedLinkageApp orderstransport.AssistedSankhyaLinkageApplication
+	var assistedLinkageService *ordersapp.AssistedSankhyaLinkageService
 	if runtimeConfig, err := internalreadoracle.LoadSankhyaLinkageRuntimeConfigFromEnv(os.Getenv); err != nil {
 		slog.Warn("assisted Sankhya linkage unavailable", "err", err)
 	} else if !internalReadAvailable || oracleDB == nil {
@@ -351,9 +352,10 @@ func NewRootRouter(pool *pgxpool.Pool, msPool *pgxpool.Pool, cfg pgdb.Config) (h
 		if err != nil {
 			slog.Warn("assisted Sankhya linkage unavailable", "err", err)
 		} else {
-			assistedLinkageApp = ordersapp.NewAssistedSankhyaLinkageService(ordersapp.AssistedSankhyaLinkageServiceConfig{
+			assistedLinkageService = ordersapp.NewAssistedSankhyaLinkageService(ordersapp.AssistedSankhyaLinkageServiceConfig{
 				Orders: ordersRepo, Reader: reader, Linkages: linkageRepo,
 			})
+			assistedLinkageApp = assistedLinkageService
 		}
 	}
 	orderstransport.NewSankhyaLinkageHandler(assistedLinkageApp, cfg.DefaultTenantID).Register(mux)
@@ -367,6 +369,9 @@ func NewRootRouter(pool *pgxpool.Pool, msPool *pgxpool.Pool, cfg pgdb.Config) (h
 	}
 	if internalReadAvailable {
 		profitabilityCfg.Internal = profitabilityinternalread.NewFactReader(internalReadSvc)
+	}
+	if assistedLinkageService != nil {
+		profitabilityCfg.Lineage = profitabilityorders.NewSankhyaLineageReader(assistedLinkageService, cfg.DefaultTenantID)
 	}
 	profitabilitySvc := profitabilityapp.NewService(profitabilityCfg)
 	profitabilitytransport.NewHandler(profitabilitySvc).Register(mux)

@@ -26,6 +26,13 @@ type GetAssistedSankhyaLinkageInput struct {
 	ProviderOrderID string
 }
 
+type ResolveCurrentSankhyaLineageInput struct {
+	TenantID        string
+	InstallationID  string
+	ProviderOrderID string
+	MPCLineID       domain.MPCLineID
+}
+
 type ConfirmAssistedSankhyaLinkageInput struct {
 	TenantID           string
 	InstallationID     string
@@ -90,6 +97,71 @@ func (s *AssistedSankhyaLinkageService) GetCurrent(ctx context.Context, input Ge
 		return domain.SankhyaLinkage{}, domain.ErrSankhyaLinkageConflict
 	}
 	return linkage, nil
+}
+
+// ResolveCurrentLineage reads the current confirmed mapping for one stable MPC
+// line and refreshes only that exact TOP 313 origin's TOP 306 descendants. It
+// never appends or rewrites linkage state.
+func (s *AssistedSankhyaLinkageService) ResolveCurrentLineage(ctx context.Context, input ResolveCurrentSankhyaLineageInput) (domain.AssistedSankhyaLineage, error) {
+	scope := normalizedLinkageScope(input.TenantID, input.InstallationID, input.ProviderOrderID)
+	result := domain.AssistedSankhyaLineage{MPCLineID: input.MPCLineID, State: domain.AssistedSankhyaLineageNone}
+	order, err := s.loadExactOrder(ctx, scope)
+	if err != nil {
+		return domain.AssistedSankhyaLineage{}, err
+	}
+	if !stableLineOccursExactlyOnce(order, input.MPCLineID) {
+		return result, nil
+	}
+	if s.linkages == nil {
+		result.State = domain.AssistedSankhyaLineageUnavailable
+		return result, nil
+	}
+	linkage, found, err := s.linkages.LoadCurrent(ctx, scope)
+	if err != nil {
+		return domain.AssistedSankhyaLineage{}, err
+	}
+	if !found {
+		return result, nil
+	}
+	if linkage.Scope != scope || linkage.Validate() != nil || linkage.Audit.EvidenceState != domain.LinkageEvidenceExact || strings.TrimSpace(linkage.Audit.EvidenceReference) == "" {
+		result.State = domain.AssistedSankhyaLineageConflict
+		return result, nil
+	}
+	mapping, state := exactLineMapping(linkage, input.MPCLineID)
+	if state != domain.AssistedSankhyaLineageComplete {
+		result.State = state
+		return result, nil
+	}
+	result.Origin = mapping.Origin
+	if s.reader == nil {
+		result.State = domain.AssistedSankhyaLineageUnavailable
+		return result, nil
+	}
+	if err := s.reader.ValidateConfiguration(ctx); err != nil {
+		result.State = lineageErrorState(err)
+		return result, nil
+	}
+	candidates, err := s.reader.FindCandidates(ctx, linkage.ExternalOrderKey)
+	if err != nil {
+		result.State = lineageErrorState(err)
+		return result, nil
+	}
+	expectedQuantity, found := exactCurrentCandidateQuantity(candidates, linkage.Header.DocumentID, mapping.Origin)
+	if !found {
+		result.State = domain.AssistedSankhyaLineageConflict
+		return result, nil
+	}
+	lineage, err := s.reader.ListDescendants(ctx, mapping.Origin, expectedQuantity)
+	if err != nil {
+		result.State = lineageErrorState(err)
+		return result, nil
+	}
+	if !validLineageForOrigin(lineage, mapping.Origin) {
+		result.State = domain.AssistedSankhyaLineageConflict
+		return result, nil
+	}
+	lineage.MPCLineID = input.MPCLineID
+	return lineage, nil
 }
 
 func (s *AssistedSankhyaLinkageService) ListCandidates(ctx context.Context, input ListAssistedSankhyaCandidatesInput) (domain.AssistedSankhyaCandidateResult, error) {
@@ -303,6 +375,65 @@ func validLineageForOrigin(lineage domain.AssistedSankhyaLineage, origin domain.
 		}
 	}
 	return true
+}
+
+func stableLineOccursExactlyOnce(order domain.MarketplaceOrder, lineID domain.MPCLineID) bool {
+	if !lineID.Valid() {
+		return false
+	}
+	matches := 0
+	for _, item := range order.Items {
+		if item.MPCLineID != lineID {
+			continue
+		}
+		if item.ReconciliationState != domain.LineReconciliationStable {
+			return false
+		}
+		matches++
+	}
+	return matches == 1
+}
+
+func exactLineMapping(linkage domain.SankhyaLinkage, lineID domain.MPCLineID) (domain.SankhyaLineMapping, domain.AssistedSankhyaLineageState) {
+	var mapping domain.SankhyaLineMapping
+	matches := 0
+	for _, candidate := range linkage.Lines {
+		if candidate.MPCLineID == lineID {
+			mapping = candidate
+			matches++
+		}
+	}
+	if matches == 0 {
+		return domain.SankhyaLineMapping{}, domain.AssistedSankhyaLineageNone
+	}
+	if matches != 1 || mapping.Origin.DocumentID != linkage.Header.DocumentID || mapping.Origin.DocumentID <= 0 || mapping.Origin.LineNumber <= 0 {
+		return domain.SankhyaLineMapping{}, domain.AssistedSankhyaLineageConflict
+	}
+	return mapping, domain.AssistedSankhyaLineageComplete
+}
+
+func exactCurrentCandidateQuantity(candidates []domain.AssistedSankhyaCandidate, documentID int64, origin domain.InternalDocumentLineIdentity) (*float64, bool) {
+	selected, err := selectExactCandidate(candidates, documentID)
+	if err != nil || selected.Header.DocumentID != origin.DocumentID {
+		return nil, false
+	}
+	seen := make(map[domain.InternalDocumentLineIdentity]struct{}, len(selected.Lines))
+	var quantity *float64
+	matches := 0
+	for _, line := range selected.Lines {
+		if line.Identity.DocumentID != selected.Header.DocumentID || line.Identity.LineNumber <= 0 {
+			return nil, false
+		}
+		if _, duplicate := seen[line.Identity]; duplicate {
+			return nil, false
+		}
+		seen[line.Identity] = struct{}{}
+		if line.Identity == origin {
+			quantity = line.Quantity
+			matches++
+		}
+	}
+	return quantity, matches == 1
 }
 
 func newAssistedSankhyaEventID() (string, error) {

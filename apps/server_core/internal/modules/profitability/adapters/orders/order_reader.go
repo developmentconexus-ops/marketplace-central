@@ -31,6 +31,8 @@ func (r OrderReader) ListOrders(ctx context.Context, installationID string, limi
 		items := make([]profitabilitydomain.OrderItemFact, len(order.Items))
 		for itemIndex, item := range order.Items {
 			items[itemIndex] = profitabilitydomain.OrderItemFact{
+				MPCLineID:           string(item.MPCLineID),
+				ReconciliationState: mapReconciliationState(item.ReconciliationState),
 				ProviderItemID:      item.ProviderItemID,
 				ProviderVariationID: item.ProviderVariationID,
 				Quantity:            item.Quantity,
@@ -52,6 +54,19 @@ func (r OrderReader) ListOrders(ctx context.Context, installationID string, limi
 		}
 	}
 	return facts, nil
+}
+
+func mapReconciliationState(state ordersdomain.LineReconciliationState) profitabilitydomain.OrderLineReconciliationState {
+	switch state {
+	case ordersdomain.LineReconciliationStable:
+		return profitabilitydomain.OrderLineStable
+	case ordersdomain.LineReconciliationLegacyUnresolved:
+		return profitabilitydomain.OrderLineLegacyUnresolved
+	case ordersdomain.LineReconciliationAmbiguous:
+		return profitabilitydomain.OrderLineAmbiguous
+	default:
+		return ""
+	}
 }
 
 func mapRealizationState(providerCode, providerStatus string) profitabilitydomain.OrderRealizationState {

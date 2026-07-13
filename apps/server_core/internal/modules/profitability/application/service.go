@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -36,6 +37,7 @@ type CreateManualAdjustmentInput struct {
 type Service struct {
 	orders          ports.OrderReader
 	internal        ports.InternalFactReader
+	lineage         ports.SankhyaLineageReader
 	inputs          ports.MarginInputStore
 	adjustments     ports.ManualAdjustmentStore
 	snapshots       ports.ProfitSnapshotStore
@@ -46,6 +48,7 @@ type Service struct {
 type ServiceConfig struct {
 	Orders          ports.OrderReader
 	Internal        ports.InternalFactReader
+	Lineage         ports.SankhyaLineageReader
 	Inputs          ports.MarginInputStore
 	Adjustments     ports.ManualAdjustmentStore
 	Snapshots       ports.ProfitSnapshotStore
@@ -71,6 +74,7 @@ func NewService(cfg ServiceConfig) *Service {
 	return &Service{
 		orders:          cfg.Orders,
 		internal:        cfg.Internal,
+		lineage:         cfg.Lineage,
 		inputs:          cfg.Inputs,
 		adjustments:     cfg.Adjustments,
 		snapshots:       cfg.Snapshots,
@@ -235,17 +239,151 @@ func (s *Service) buildItemInputs(ctx context.Context, order profitabilitydomain
 	cost, costErr := s.internal.GetCostAsOf(ctx, *item.InternalProductID, effectiveAt(order))
 	inputs = append(inputs, mapCostInput(base, cost, item.Quantity, costErr))
 
-	// Orders do not yet carry an owner-verified Oracle NUNOTA/SEQUENCIA mapping.
-	// An empty identity deliberately keeps tax missing instead of guessing by
-	// product and date.
-	tax, taxErr := s.internal.GetTaxInputs(ctx, *item.InternalProductID, effectiveAt(order), internalreaddomain.TaxSourceIdentity{})
-	inputs = append(inputs,
-		mapTaxInput(base, profitabilitydomain.InputKindTaxICMS, tax.ICMSAmount, tax.Source, tax.QualityFlags, taxErr, "icms"),
-		mapTaxInput(base, profitabilitydomain.InputKindTaxIPI, tax.IPIAmount, tax.Source, tax.QualityFlags, taxErr, "ipi"),
-		mapTaxInput(base, profitabilitydomain.InputKindTaxPIS, tax.PISAmount, tax.Source, tax.QualityFlags, taxErr, "pis"),
-		mapTaxInput(base, profitabilitydomain.InputKindTaxCOFINS, tax.COFINSAmount, tax.Source, tax.QualityFlags, taxErr, "cofins"),
-	)
+	inputs = append(inputs, s.buildExactLineageTaxInputs(ctx, order, item, base)...)
 	return inputs
+}
+
+type exactTaxRead struct {
+	source internalreaddomain.TaxSourceIdentity
+	value  internalreaddomain.TaxInputs
+	valid  bool
+}
+
+func (s *Service) buildExactLineageTaxInputs(ctx context.Context, order profitabilitydomain.OrderFact, item profitabilitydomain.OrderItemFact, base profitabilitydomain.MarginInput) []profitabilitydomain.MarginInput {
+	if !hasUniqueStableMPCLine(order, item) {
+		return missingTaxInputs(base, "stable MPC line identity is unavailable")
+	}
+	if s.lineage == nil {
+		return missingTaxInputs(base, "confirmed Sankhya lineage is unavailable")
+	}
+	lineage, err := s.lineage.ResolveCurrentLineage(ctx, order.InstallationID, order.ProviderOrderID, item.MPCLineID)
+	if err != nil {
+		return missingTaxInputs(base, "confirmed Sankhya lineage could not be read")
+	}
+	if lineage.State != ports.SankhyaLineagePartial && lineage.State != ports.SankhyaLineageComplete {
+		return missingTaxInputs(base, "confirmed Sankhya lineage is "+firstNonEmpty(string(lineage.State), "unknown"))
+	}
+	sources, valid := canonicalTaxSources(lineage.Descendants)
+	if !valid || len(sources) == 0 {
+		return missingTaxInputs(base, "confirmed Sankhya descendants are missing or invalid")
+	}
+
+	reads := make([]exactTaxRead, 0, len(sources))
+	for _, source := range sources {
+		value, readErr := s.internal.GetTaxInputs(ctx, *item.InternalProductID, effectiveAt(order), source)
+		reads = append(reads, exactTaxRead{
+			source: source,
+			value:  value,
+			valid:  readErr == nil && value.SourceIdentity == source,
+		})
+	}
+	reference := exactTaxReference(sources)
+	return []profitabilitydomain.MarginInput{
+		aggregateExactTaxInput(base, profitabilitydomain.InputKindTaxICMS, reference+":icms"+taxLineTotalSuffix, lineage.State, reads, func(value internalreaddomain.TaxInputs) *float64 { return value.ICMSAmount }),
+		aggregateExactTaxInput(base, profitabilitydomain.InputKindTaxIPI, reference+":ipi"+taxLineTotalSuffix, lineage.State, reads, func(value internalreaddomain.TaxInputs) *float64 { return value.IPIAmount }),
+		aggregateExactTaxInput(base, profitabilitydomain.InputKindTaxPIS, reference+":pis"+taxLineTotalSuffix, lineage.State, reads, func(value internalreaddomain.TaxInputs) *float64 { return value.PISAmount }),
+		aggregateExactTaxInput(base, profitabilitydomain.InputKindTaxCOFINS, reference+":cofins"+taxLineTotalSuffix, lineage.State, reads, func(value internalreaddomain.TaxInputs) *float64 { return value.COFINSAmount }),
+	}
+}
+
+func hasUniqueStableMPCLine(order profitabilitydomain.OrderFact, item profitabilitydomain.OrderItemFact) bool {
+	if item.ReconciliationState != profitabilitydomain.OrderLineStable || !validMPCLineID(item.MPCLineID) {
+		return false
+	}
+	matches := 0
+	for _, candidate := range order.Items {
+		if candidate.MPCLineID == item.MPCLineID {
+			matches++
+		}
+	}
+	return matches == 1
+}
+
+func validMPCLineID(value string) bool {
+	if value != strings.TrimSpace(value) || len(value) != 36 || !strings.HasPrefix(value, "mpl_") {
+		return false
+	}
+	_, err := hex.DecodeString(value[4:])
+	return err == nil
+}
+
+func canonicalTaxSources(descendants []ports.SankhyaTaxSource) ([]internalreaddomain.TaxSourceIdentity, bool) {
+	sources := make([]internalreaddomain.TaxSourceIdentity, 0, len(descendants))
+	seen := make(map[internalreaddomain.TaxSourceIdentity]struct{}, len(descendants))
+	for _, descendant := range descendants {
+		documentID := int(descendant.DocumentID)
+		if descendant.DocumentID <= 0 || int64(documentID) != descendant.DocumentID || descendant.LineNumber <= 0 {
+			return nil, false
+		}
+		source := internalreaddomain.TaxSourceIdentity{DocumentID: documentID, LineNumber: descendant.LineNumber}
+		if _, duplicate := seen[source]; duplicate {
+			return nil, false
+		}
+		seen[source] = struct{}{}
+		sources = append(sources, source)
+	}
+	sort.Slice(sources, func(left, right int) bool {
+		if sources[left].DocumentID != sources[right].DocumentID {
+			return sources[left].DocumentID < sources[right].DocumentID
+		}
+		return sources[left].LineNumber < sources[right].LineNumber
+	})
+	return sources, true
+}
+
+func exactTaxReference(sources []internalreaddomain.TaxSourceIdentity) string {
+	parts := make([]string, len(sources))
+	for index, source := range sources {
+		parts[index] = fmt.Sprintf("%d/%d", source.DocumentID, source.LineNumber)
+	}
+	return "sankhya:top306:" + strings.Join(parts, ",")
+}
+
+func aggregateExactTaxInput(base profitabilitydomain.MarginInput, kind profitabilitydomain.InputKind, reference string, lineageState ports.SankhyaLineageState, reads []exactTaxRead, amountOf func(internalreaddomain.TaxInputs) *float64) profitabilitydomain.MarginInput {
+	result := missingInput(base, kind, "tax component is unknown for at least one exact TOP 306 descendant")
+	result.SourceReference = reference
+	known := len(reads) > 0
+	completeFacts := true
+	total := 0.0
+	for _, read := range reads {
+		amount := amountOf(read.value)
+		if !read.valid || amount == nil {
+			known = false
+			completeFacts = false
+			continue
+		}
+		total += *amount
+		if mapInternalQuality(amount, read.value.QualityFlags) != profitabilitydomain.InputQualityComplete {
+			completeFacts = false
+		}
+		result.SourceSystem = firstNonEmpty(result.SourceSystem, read.value.Source.System, "internal_read")
+		result.ObservedAt = firstTime(result.ObservedAt, read.value.Source.ObservedAt)
+	}
+	if !known {
+		return result
+	}
+	result.Amount = &total
+	if lineageState == ports.SankhyaLineageComplete && completeFacts {
+		result.Quality = profitabilitydomain.InputQualityComplete
+		result.QualityReason = ""
+		return result
+	}
+	result.Quality = profitabilitydomain.InputQualityPartial
+	if lineageState == ports.SankhyaLineagePartial {
+		result.QualityReason = "confirmed Sankhya lineage is partial"
+	} else {
+		result.QualityReason = "one or more exact TOP 306 tax facts are incomplete"
+	}
+	return result
+}
+
+func missingTaxInputs(base profitabilitydomain.MarginInput, reason string) []profitabilitydomain.MarginInput {
+	return []profitabilitydomain.MarginInput{
+		missingInput(base, profitabilitydomain.InputKindTaxICMS, reason),
+		missingInput(base, profitabilitydomain.InputKindTaxIPI, reason),
+		missingInput(base, profitabilitydomain.InputKindTaxPIS, reason),
+		missingInput(base, profitabilitydomain.InputKindTaxCOFINS, reason),
+	}
 }
 
 func (s *Service) ListInputs(ctx context.Context, installationID string, limit int) ([]profitabilitydomain.MarginInput, error) {
@@ -533,44 +671,6 @@ func extendUnitCost(amount *float64, quantity int) *float64 {
 	}
 	lineTotal := *amount * float64(quantity)
 	return &lineTotal
-}
-
-func mapTaxInput(base profitabilitydomain.MarginInput, kind profitabilitydomain.InputKind, amount *float64, source internalreaddomain.SourceMetadata, flags []internalreaddomain.QualityFlag, err error, ref string) profitabilitydomain.MarginInput {
-	if err != nil {
-		return profitabilitydomain.MarginInput{
-			InstallationID:      base.InstallationID,
-			ProviderOrderID:     base.ProviderOrderID,
-			ProviderItemID:      base.ProviderItemID,
-			ProviderVariationID: base.ProviderVariationID,
-			Scope:               base.Scope,
-			Kind:                kind,
-			Currency:            base.Currency,
-			SourceSystem:        "internal_read",
-			SourceReference:     ref + taxLineTotalSuffix,
-			ObservedAt:          base.ObservedAt,
-			Quality:             profitabilitydomain.InputQualityMissing,
-			QualityReason:       err.Error(),
-			CreatedAt:           base.CreatedAt,
-			UpdatedAt:           base.UpdatedAt,
-		}
-	}
-	return profitabilitydomain.MarginInput{
-		InstallationID:      base.InstallationID,
-		ProviderOrderID:     base.ProviderOrderID,
-		ProviderItemID:      base.ProviderItemID,
-		ProviderVariationID: base.ProviderVariationID,
-		Scope:               base.Scope,
-		Kind:                kind,
-		Amount:              amount,
-		Currency:            base.Currency,
-		SourceSystem:        firstNonEmpty(source.System, "internal_read"),
-		SourceReference:     ref + taxLineTotalSuffix,
-		ObservedAt:          source.ObservedAt,
-		Quality:             mapInternalQuality(amount, flags),
-		QualityReason:       qualityReason(flags),
-		CreatedAt:           base.CreatedAt,
-		UpdatedAt:           base.UpdatedAt,
-	}
 }
 
 func effectiveAt(order profitabilitydomain.OrderFact) time.Time {
