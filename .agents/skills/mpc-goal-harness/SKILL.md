@@ -62,9 +62,9 @@ compact escalation request; it does not silently consume it.
 The parent channel is outcome-based, not a progress feed:
 
 - The Milestone reports only `needs_input` for a genuine human/authority
-  decision and `terminal` when no autonomous work remains. Its final response
-  returns automatically to Portfolio; it never waits for the user to request
-  status.
+  decision and `terminal` when no autonomous work remains. Native completion
+  delivery alone does not guarantee that a dormant Portfolio task wakes, so
+  the Portfolio must not rely on delivery as its wake-up mechanism.
 - Feature acceptance, SHA freeze, review, and QA progress stay in the
   Milestone plan and durable evidence artifacts. They are not injected into
   Portfolio context.
@@ -73,10 +73,20 @@ The parent channel is outcome-based, not a progress feed:
 - Portfolio resumes the same Milestone after a human answer and otherwise
   steers it only for priority or an explicit stop. It does not poll during
   normal progress or create a second Milestone to ask a question.
-- For work expected to outlast a normal turn, Portfolio may create one native
-  Codex heartbeat on itself as a fallback. The heartbeat checks only whether a
-  required callback is overdue, then requests one compact status from the
-  Milestone. Never build a custom agent, hook, cron loop, or status service.
+- Whenever a dispatched Milestone may outlast the current Portfolio turn,
+  Portfolio must create one native Codex heartbeat on itself before ending
+  that turn. The heartbeat inspects only the single active Milestone's native
+  summary/status; it never reads child logs, transcripts, Feature tasks, review
+  tasks, or QA tasks. If that Milestone is completed or its required callback
+  is overdue, the heartbeat wakes Portfolio and requests exactly one compact
+  `needs_input` or `terminal` result from the same Milestone. Otherwise it does
+  nothing and waits for its next native invocation.
+- Portfolio deletes the heartbeat immediately after consuming the Milestone's
+  `needs_input` or `terminal` result, or when that Milestone is stopped or
+  replaced. At most one heartbeat exists for the single active Milestone; a
+  replacement dispatch creates its own heartbeat only if it may outlast the
+  current turn. Never build a custom agent, hook, cron loop, app server,
+  scheduler, or status service.
 
 ## Visible Milestone plan
 

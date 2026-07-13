@@ -185,6 +185,31 @@ class MilestoneAgentConfigurationTests(unittest.TestCase):
         self.assertIn("needs_input", self.skill)
         self.assertIn("terminal", self.skill)
 
+    def test_outlasting_dispatch_requires_native_heartbeat(self):
+        self.assertIn(
+            "Whenever a dispatched Milestone may outlast the current Portfolio turn",
+            self.skill,
+        )
+        self.assertIn("must create one native Codex heartbeat", self.skill)
+        self.assertIn("before ending\n  that turn", self.skill)
+        self.assertIn("single active Milestone's native\n  summary/status", self.skill)
+        self.assertIn("requests exactly one compact", self.skill)
+        self.assertIn("it never reads child logs", self.skill)
+
+    def test_heartbeat_has_mandatory_terminal_delete_lifecycle(self):
+        self.assertIn("deletes the heartbeat immediately", self.skill)
+        self.assertIn("`needs_input` or `terminal` result", self.skill)
+        self.assertIn("stopped or\n  replaced", self.skill)
+        self.assertIn("At most one heartbeat exists", self.skill)
+
+    def test_wakeup_wording_does_not_claim_completion_is_sufficient(self):
+        self.assertIn(
+            "Native completion\n  delivery alone does not guarantee that a dormant Portfolio task wakes",
+            self.skill,
+        )
+        self.assertNotIn("returns automatically to Portfolio", self.skill)
+        self.assertNotIn("Portfolio may create one native", self.skill)
+
     def test_config_adds_no_hooks_or_external_capabilities(self):
         forbidden = {
             "hooks", "mcp_servers", "model_provider", "model_providers",
