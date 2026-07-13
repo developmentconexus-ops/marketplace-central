@@ -125,3 +125,20 @@ identity and records all four tax inputs as missing.
 - Required files/evidence: feature, spec, plan, context, validation, commit.
 - Blockers or open decisions: No implementation blocker. Real linkage remains
   a named upstream owner decision/input before resolved-order tax can complete.
+
+## Milestone Acceptance Review
+
+- Decision: accepted.
+- Reviewer: Milestone Orchestrator.
+- Reviewed commit: `16aad86eb8ef3e4cf9f0ebf52b6df16736991741`.
+- Scope: accepted; exact Oracle tax provenance and the profitability unknown
+  boundary only. No authentication, manual adjustment, OpenAPI/SDK, provider
+  write, Oracle write, or Candidate A approval path changed.
+- Evidence: accepted. The feature records `ran` focused Oracle/fake and full
+  profitability package tests plus diff checking.
+- Constraint review: accepted. Exact positive `NUNOTA`/`SEQUENCIA` is now
+  required; absent verified linkage produces nil/missing tax rather than
+  product/date aggregation, heuristics, estimates, or zero.
+- QA routing: fixed-SHA independent review and proportional milestone QA are
+  required. The real cross-system sale-line linkage gap remains explicit.
+- Next owner: Milestone Orchestrator.

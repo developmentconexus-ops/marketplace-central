@@ -84,9 +84,14 @@ Owner: QA Validator
 
 ## Retry Policy
 
-- correction_attempts:
+- correction_attempts: 1
 - max_correction_attempts: 2
-- last_validation_result:
+- last_validation_result: Fail (round 2, reviewed SHA 5548ae406cb26d0703c111236d703281bb227d3e)
+
+Correction authority is recorded append-only in
+`corrections/correction-task.md`. The owner-designated baseline is round-2
+Fail; F-06 is attempt 1 of 2. Earlier unnumbered fixes remain historical
+context and do not consume attempts.
 
 ## Handoff
 
