@@ -21,7 +21,9 @@ Corrected after fixed-SHA review; pending independent review/QA.
 - Absolute `GOCACHE=C:\Users\leandro.theodoro\Documents\marketplace-central\.gocache` targeted and broader Go suites over catalog, internal_read, product_links, classifications, pricing, composition, unit tests, migrations, and migration runner — PASS.
 - `npm test --workspace @marketplace-central/sdk-runtime` — PASS (39 tests).
 - OpenAPI/SDK positive-product-ID parity assertion — PASS.
-- Governed runner Pester contract — PASS (14/14).
+- Governed runner Pester contract — PASS (14/14); the governed Go selector is
+  limited to `^TestOracleLiveSmoke$/^product_lookup$` so unrelated live
+  subtests cannot determine M-09-C05.
 - Active runtime residue scan for `platform/msdb`, `MS_DATABASE_URL`,
   `MS_TENANT_ID`, and MetalShopping — PASS (no matches).
 - Post-commit governed command: `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-live-oracle-docker.ps1`.
@@ -34,6 +36,6 @@ Corrected after fixed-SHA review; pending independent review/QA.
 ## Limitations
 
 Catalog read unavailability returns `source_unavailable` without an MSDB fallback.
-The named Oracle evidence is intentionally produced after the correction commit
-so its `frozen_sha` equals the reviewed implementation SHA; it is external,
-uncommitted execution evidence.
+The named Oracle evidence is intentionally refreshed by the Milestone after
+this runner correction commit so its `frozen_sha` equals the reviewed
+implementation SHA; it is external, uncommitted execution evidence.

@@ -1,16 +1,17 @@
-# M-09 Correction Checkpoint
+# M-09 C05 Runner Correction Checkpoint
 
-- status: `correction_complete_post_commit_oracle_proof_pending`
+- status: `runner_correction_complete_post_commit_oracle_proof_pending`
 - milestone task: `019f5d00-0b82-7b61-9920-32c7bd490333`
-- correction base: `d70b0960bec39b7fc1ea4082f42fabbf37ed817a`
-- correction scope: all five actionable fixed-SHA findings.
-- proof: targeted and broader Go PASS; SDK 39/39; OpenAPI/SDK parity
-  PASS; 35-migration idempotency PASS; SQL mapped/not_found/identity_conflict
-  readback PASS for classification/enrichment/pricing; active MSDB residue PASS;
-  runner contract 14/14 PASS.
-- post-commit evidence target:
-  `F-02-oracle-catalog-cutover/_fixed-sha-oracle-evidence.md` (sanitized,
-  intentionally external/uncommitted so `frozen_sha` equals the correction commit).
+- runner correction base: `5da9e774bd3acb0ebc6a72b6741a52c5570c7847`
+- correction scope: narrow the governed Oracle runner from the full live smoke
+  test to the exact product lookup subtest required by M-09-C05.
+- selector: `^TestOracleLiveSmoke$/^product_lookup$`.
+- proof: governed runner Pester contract 14/14 PASS.
+- post-commit governed Oracle evidence target:
+  `F-02-oracle-catalog-cutover/_fixed-sha-oracle-evidence.md`; the Milestone
+  refreshes this sanitized external/uncommitted file after freezing the runner
+  correction SHA.
 - limitations: no guessed mapping or provider/Oracle write occurred.
-- next: create the intentional correction commit, run the governed read-only
-  Oracle proof at that exact SHA, then request fixed-SHA review.
+- next: commit this runner correction, freeze that exact SHA, then let the
+  Milestone run the governed read-only Oracle lane once and refresh the named
+  evidence before fixed-SHA review and proportional QA.

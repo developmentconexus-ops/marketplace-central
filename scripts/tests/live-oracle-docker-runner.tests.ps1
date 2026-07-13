@@ -46,7 +46,7 @@ Describe 'Docker live Oracle runner' {
       Assert-RunnerCondition ($plan.RunArguments -contains 'go') 'Go command missing'
       Assert-RunnerCondition ($plan.RunArguments -contains 'test') 'Go test command missing'
       Assert-RunnerCondition ($plan.RunArguments -contains './internal/modules/internal_read/adapters/oracle') 'Oracle package missing'
-      Assert-RunnerCondition ($plan.RunArguments -contains '^TestOracleLiveSmoke$') 'smoke test regex missing'
+      Assert-RunnerCondition ($plan.RunArguments -contains '^TestOracleLiveSmoke$/^product_lookup$') 'product lookup subtest regex missing'
       Assert-RunnerCondition (($plan.RunArguments -join ' ') -notmatch 'docker\s+compose|\.env|migrations?|(^|\s)(air|serve|start)(\s|$)|entrypoint') 'forbidden command fragment present'
       Assert-RunnerCondition (@($plan.RunArguments | Where-Object { $_ -eq '--mount' }).Count -eq 1) 'read-only workspace mount missing'
       Assert-RunnerCondition (($plan.RunArguments -join ' ') -match 'readonly') 'workspace mount is not read-only'
