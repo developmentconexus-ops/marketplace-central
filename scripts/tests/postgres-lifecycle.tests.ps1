@@ -37,7 +37,7 @@ function Invoke-ProbeLifecycle(
   $spec = New-HarnessPostgresRunSpec -RepositoryRoot $repoRoot -RunId $runId -Password $password -DockerFilePath $node -DockerArgumentPrefix @($probe, 'docker')
   $result = Invoke-HarnessPostgresLifecycle -RunSpec $spec -BaseEnvironment $environment -GoFilePath $node -GoArgumentPrefix @($probe, 'go') -TimeoutSeconds 10 -ReadyMaxAttempts $ReadyMaxAttempts -ReadyRetryDelayMilliseconds 0 -ReadyTimeoutMilliseconds $ReadyTimeoutMilliseconds -HoldConnectionDuringCleanupTest:$HoldConnection
   $calls = if (Test-Path -LiteralPath $log) { @(Get-Content -LiteralPath $log | ForEach-Object { $_ | ConvertFrom-Json }) } else { @() }
-  [pscustomobject]@{ Result = $result; Calls = $calls; Log = $log; Password = $password }
+  [pscustomobject]@{ Result = $result; Calls = $calls; Log = $log; Password = $password; ExpectedMigrationCount = $spec.ExpectedMigrationCount }
 }
 
 function Remove-ProbeRun([object]$Run) {
@@ -46,13 +46,32 @@ function Remove-ProbeRun([object]$Run) {
 
 $runs = @()
 try {
+  foreach ($inventoryState in @('missing', 'empty')) {
+    $invalidRoot = Join-Path ([IO.Path]::GetTempPath()) ("postgres-inventory-$inventoryState-$([guid]::NewGuid().ToString('N'))")
+    try {
+      New-Item -ItemType Directory -Path $invalidRoot -Force | Out-Null
+      if ($inventoryState -eq 'empty') { New-Item -ItemType Directory -Path (Join-Path $invalidRoot 'apps/server_core/migrations') -Force | Out-Null }
+      $threw = $false
+      try {
+        New-HarnessPostgresRunSpec -RepositoryRoot $invalidRoot -RunId ([guid]::NewGuid().ToString('N')) -Password 'fixture-invalid-inventory' -DockerFilePath $node | Out-Null
+      } catch {
+        $threw = $true
+        Assert-True ($_.Exception.Message -eq 'HPG_MIGRATION_INVENTORY_INVALID') "$inventoryState inventory lacks stable failure reason"
+      }
+      Assert-True $threw "$inventoryState migration inventory did not fail closed"
+    } finally {
+      Remove-Item -LiteralPath $invalidRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
+
   $happy = Invoke-ProbeLifecycle ''
   $runs += $happy
   $operations = @($happy.Calls.operation)
   $expected = @('daemon', 'image', 'preflight-name', 'preflight-label', 'start', 'ownership', 'ready', 'port', 'create', 'migrate', 'migrate', 'tests', 'drop', 'drop-verify', 'remove', 'inventory-label', 'inventory-name')
   Assert-True (($operations -join ',') -ceq ($expected -join ',')) "lifecycle order mismatch: $($operations -join ',')"
   Assert-True ($happy.Result.ExitCode -eq 0) 'happy lifecycle returned nonzero'
-  Assert-True ($happy.Result.MigrationsAppliedFirst -eq 32) 'first migration count is not exact canonical inventory'
+  Assert-True ($happy.ExpectedMigrationCount -gt 0) 'canonical migration inventory is empty'
+  Assert-True ($happy.Result.MigrationsAppliedFirst -eq $happy.ExpectedMigrationCount) 'first migration count is not exact canonical inventory'
   Assert-True ($happy.Result.MigrationsAppliedSecond -eq 0) 'second migration run is not idempotent'
   Assert-True (@($happy.Result.ResourceInventory).Count -eq 0) 'happy lifecycle reported leaked resources'
   $drop = @($happy.Calls | Where-Object operation -eq 'drop')[0]

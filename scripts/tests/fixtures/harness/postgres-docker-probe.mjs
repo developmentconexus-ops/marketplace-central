@@ -1,4 +1,5 @@
-import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 
 const [kind, ...args] = process.argv.slice(2);
@@ -43,6 +44,19 @@ function operationForGo(argv) {
   if (argv.includes("test")) return "tests";
   if (argv.includes("run")) return "migrate";
   return "go-unknown";
+}
+
+function canonicalMigrationCount() {
+  try {
+    const count = readdirSync(join(process.cwd(), "migrations"), { withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name.endsWith(".sql"))
+      .length;
+    if (count > 0) return count;
+  } catch {
+    // The harness must fail rather than manufacture a migration inventory.
+  }
+  process.stderr.write("HPG_MIGRATION_INVENTORY_INVALID");
+  process.exit(64);
 }
 
 const statePath = `${logPath}.state.json`;
@@ -122,7 +136,7 @@ if (operation === "remove") {
   writeFileSync(statePath, JSON.stringify(state));
 }
 if (operation === "migrate") {
-  const applied = state.migrateCalls === 0 ? 32 : 0;
+  const applied = state.migrateCalls === 0 ? canonicalMigrationCount() : 0;
   state.migrateCalls += 1;
   writeFileSync(statePath, JSON.stringify(state));
   process.stdout.write(`applied ${applied} migration(s)\n`);

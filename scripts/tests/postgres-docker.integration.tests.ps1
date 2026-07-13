@@ -26,7 +26,7 @@ $result = Invoke-HarnessPostgresLifecycle -RunSpec $spec -BaseEnvironment $envir
 if ($result.ExitCode -ne 17 -or $result.PrimaryReasonCode -ne 'HPG_TEST_FAILED') { throw 'real forced child exit was not preserved' }
 if (@($result.CleanupReasonCodes).Count -ne 0) { throw "real forced cleanup failed reasons=$($result.CleanupReasonCodes -join ',')" }
 if (@($result.ResourceInventory).Count -ne 0) { throw 'real forced cleanup leaked labelled resources' }
-if ($result.MigrationsAppliedFirst -ne 32 -or $result.MigrationsAppliedSecond -ne 0) { throw 'real forced cleanup migration counts changed' }
+if ($result.MigrationsAppliedFirst -ne $spec.ExpectedMigrationCount -or $result.MigrationsAppliedSecond -ne 0) { throw 'real forced cleanup migration counts changed' }
 if ($result.HostPort -lt 1) { throw 'real forced cleanup lacked dynamic loopback port' }
 if (-not $result.HeldConnectionConfirmed) { throw 'real forced cleanup did not confirm active held connection' }
 

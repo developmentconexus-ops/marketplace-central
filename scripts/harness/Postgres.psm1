@@ -21,6 +21,24 @@ function Resolve-HarnessPostgresDockerApplication {
   return [IO.Path]::GetFullPath([string]$application.Source)
 }
 
+function Get-HarnessCanonicalMigrationCount {
+  param([Parameter(Mandatory)][string]$RepositoryRoot)
+
+  $migrationDirectory = Join-Path $RepositoryRoot 'apps/server_core/migrations'
+  if (-not (Test-Path -LiteralPath $migrationDirectory -PathType Container)) {
+    throw 'HPG_MIGRATION_INVENTORY_INVALID'
+  }
+  try {
+    $migrations = @(Get-ChildItem -LiteralPath $migrationDirectory -File -ErrorAction Stop | Where-Object {
+      $_.Name.EndsWith('.sql', [StringComparison]::Ordinal)
+    })
+  } catch {
+    throw 'HPG_MIGRATION_INVENTORY_INVALID'
+  }
+  if ($migrations.Count -lt 1) { throw 'HPG_MIGRATION_INVENTORY_INVALID' }
+  return [int]$migrations.Count
+}
+
 function New-HarnessPostgresRunSpec {
   [CmdletBinding()]
   param(
@@ -35,6 +53,7 @@ function New-HarnessPostgresRunSpec {
   if (-not [IO.Path]::IsPathFullyQualified($RepositoryRoot)) { throw 'HPG_RUN_ID_INVALID repository_root' }
   $root = [IO.Path]::GetFullPath($RepositoryRoot)
   if (-not (Test-Path -LiteralPath $root -PathType Container)) { throw 'HPG_RUN_ID_INVALID repository_root' }
+  $expectedMigrationCount = Get-HarnessCanonicalMigrationCount -RepositoryRoot $root
   if (-not [IO.Path]::IsPathFullyQualified($DockerFilePath) -or -not (Test-Path -LiteralPath $DockerFilePath -PathType Leaf)) {
     throw 'HPG_DOCKER_MISSING'
   }
@@ -49,6 +68,7 @@ function New-HarnessPostgresRunSpec {
     Password = $Password
     DockerFilePath = [IO.Path]::GetFullPath($DockerFilePath)
     DockerArgumentPrefix = @($DockerArgumentPrefix)
+    ExpectedMigrationCount = $expectedMigrationCount
   }
 }
 
@@ -100,6 +120,10 @@ function Invoke-HarnessPostgresLifecycle {
     [switch]$HoldConnectionDuringCleanupTest
   )
 
+  if (-not $RunSpec.PSObject.Properties['ExpectedMigrationCount'] -or $RunSpec.ExpectedMigrationCount -isnot [int] -or $RunSpec.ExpectedMigrationCount -lt 1) {
+    throw 'HPG_MIGRATION_INVENTORY_INVALID'
+  }
+  $expectedMigrationCount = [int]$RunSpec.ExpectedMigrationCount
   $dockerEnvironment = Copy-HarnessEnvironment $BaseEnvironment
   $dockerEnvironment['POSTGRES_PASSWORD'] = [string]$RunSpec.Password
   $goEnvironment = Copy-HarnessEnvironment $BaseEnvironment
@@ -208,7 +232,7 @@ function Invoke-HarnessPostgresLifecycle {
     $migration2 = Invoke-Go $migrationArgs
     if ($migration2.ExitCode -ne 0) { Set-Primary 'HPG_MIGRATION_FAILED' $migration2.ExitCode; break }
     $secondCount = Get-HarnessMigrationCount $migration2.Stdout
-    if ($firstCount -ne 32 -or $secondCount -ne 0) { Set-Primary 'HPG_MIGRATION_NOT_IDEMPOTENT' 1; break }
+    if ($firstCount -ne $expectedMigrationCount -or $secondCount -ne 0) { Set-Primary 'HPG_MIGRATION_NOT_IDEMPOTENT' 1; break }
 
     if ($HoldConnectionDuringCleanupTest) {
       $heldConnection = Invoke-Docker @('exec', '--detach', $RunSpec.ContainerName, 'psql', '--username', 'postgres', '--dbname', $RunSpec.DatabaseName, '--command', 'SELECT pg_sleep(300)')
