@@ -11,24 +11,27 @@ MNFS, Git, context files, and validation artifacts carry durable truth.
 ## Session topology
 
 ```text
-Portfolio session
-  -> one visible Milestone session
+Portfolio hub
+  -> one clean native `mpc-milestone` subagent
        -> native bounded Feature subagents (plan + execution)
        -> native final fixed-SHA review subagent
        -> native proportional QA subagent
-  <- compact checkpoints and final handoff
+  <- `needs_input` or compact terminal handoff only
 ```
 
-One active milestone outcome owns exactly one visible Milestone task. Portfolio
-does not open another Milestone task for investigation, review, QA, or a
-follow-up question inside that same outcome. The existing Milestone dispatches
-its bounded Feature, review, and QA tasks and remains the sole callback owner
-until it returns a terminal handoff or Portfolio explicitly replaces it.
+One active milestone outcome owns exactly one visible native Milestone
+subagent. Spawn the project agent type `mpc-milestone` with clean context and
+pass only the Portfolio packet. Portfolio does not open another Milestone for
+investigation, review, QA, or a follow-up question inside that outcome. The
+Milestone dispatches its bounded Feature, review, and QA children and remains
+the sole outcome owner until its automatic terminal return or explicit
+replacement.
 
-Use native Milestone-owned subagents for Feature, review, and QA work. Create a
-standalone child task only when native child controls are unavailable or when
-the user needs independently owned follow-up work; label that packet
-`fresh-session fallback`. Never make the fallback the normal topology.
+Project config limits the native tree to Portfolio depth 0, Milestone depth 1,
+and Feature/review/QA depth 2. Milestone children never delegate. Create a
+standalone task only when native controls are unavailable or the user requires
+independent ownership; label it `fresh-session fallback`. Never make that
+fallback the normal topology.
 
 ## Dispatch model policy
 
@@ -56,20 +59,20 @@ compact escalation request; it does not silently consume it.
 
 ## Event-driven control plane
 
-Callbacks are push-based, not user-driven polling:
+The parent channel is outcome-based, not a progress feed:
 
-- Milestone sends its checkpoint to `portfolio_task_id` using the native
-  thread-message capability before it waits, ends a turn, or starts a new
-  bounded child task. It never waits for the user to request a status update.
-- Required callback moments: packet accepted; accepted Feature; external or
-  owner blocker; fixed SHA frozen; review verdict; QA verdict; terminal
-  handoff. Each callback uses the standard checkpoint fields below.
+- The Milestone reports only `needs_input` for a genuine human/authority
+  decision and `terminal` when no autonomous work remains. Its final response
+  returns automatically to Portfolio; it never waits for the user to request
+  status.
+- Feature acceptance, SHA freeze, review, and QA progress stay in the
+  Milestone plan and durable evidence artifacts. They are not injected into
+  Portfolio context.
 - Feature, review, and QA tasks report only to Milestone. Portfolio reads no
   child transcript or raw log and sends no messages to child tasks.
-- Portfolio consumes pushed checkpoints and only steers the one Milestone for
-  priority, a true blocker, or an explicit stop. It does not poll with
-  `read_thread` during normal progress and does not create a second Milestone
-  merely to ask a question within the active outcome.
+- Portfolio resumes the same Milestone after a human answer and otherwise
+  steers it only for priority or an explicit stop. It does not poll during
+  normal progress or create a second Milestone to ask a question.
 - For work expected to outlast a normal turn, Portfolio may create one native
   Codex heartbeat on itself as a fallback. The heartbeat checks only whether a
   required callback is overdue, then requests one compact status from the
@@ -77,18 +80,20 @@ Callbacks are push-based, not user-driven polling:
 
 ## Visible Milestone plan
 
-Call native `update_plan` when accepting the Portfolio packet and after every
-state transition: dispatch, Feature acceptance, blocker, SHA freeze, review,
-QA, and handoff. The plan is a visible progress mirror for the task UI, not
-durable orchestration truth; resume from packets, MNFS files, Git, and context.
+The Milestone calls native `update_plan` when accepting the Portfolio packet
+and after every state transition. Its plan is the visible progress mirror for
+internal Feature, review, and QA work, not durable orchestration truth. The
+Portfolio plan tracks milestone outcomes only. Resume from packets, MNFS, Git,
+validation artifacts, and context files.
 
 ## Portfolio -> Milestone packet
 
 Start a visible task with these fields:
 
 ```text
+agent_type: mpc-milestone
 role: Milestone Orchestrator
-portfolio_task_id: <native task/thread ID used for checkpoint replies>
+parent_task_id: <Portfolio task/thread ID>
 objective: <one milestone outcome>
 base_sha: <accepted 40-char SHA>
 mission_file: <mission.md>
@@ -97,14 +102,14 @@ execution_guide: <execution-guide.md>
 knowledge_routes: <route IDs>
 constraints: <paths, seams, side effects, stop conditions>
 qa_contract: <validation-contract.md>
-next: reconcile features and send the first checkpoint
+next: reconcile repository truth and proceed until needs_input or terminal
 ```
 
-Milestone acknowledges the packet, sends a checkpoint to `portfolio_task_id`,
-updates the visible plan, and sends another after each accepted Feature, on a
-blocker, and after QA. Before dispatching, run the read-only preflight below.
-Portfolio may steer or interrupt Milestone; it never edits Milestone-owned
-paths concurrently.
+Spawn the named custom agent with no inherited conversation turns. The
+Milestone validates the packet, updates its visible plan, and proceeds without
+a routine acknowledgment message. Before every child dispatch, run the
+read-only preflight below. Portfolio may steer, resume, or interrupt the
+Milestone; it never edits Milestone-owned paths concurrently.
 
 ## Milestone -> Feature packet
 
@@ -162,7 +167,8 @@ and proportional QA. Only QA writes/passes `validation-result.md`.
 
 ## Checkpoint and handoff
 
-Every message between Portfolio and Milestone, and every Feature return, uses:
+Every `needs_input` or terminal message between Portfolio and Milestone, and
+every Feature return inside the Milestone, uses:
 
 ```text
 schema_version:
@@ -214,12 +220,17 @@ that is not the parent task. It does not create, mutate, or resume a task. A
 `heartbeat` checkpoint is valid only after `callback_due_at`; it is an overdue
 fallback, never normal progress control.
 
-Resume from the checkpoint, MNFS files, Git, and context file. Native task IDs
-are correlation metadata. If task controls are unavailable, use a labelled
-**fresh-session fallback** and pass the same packet; do not claim native parity.
+Keep parent messages below 2,000 characters and reference evidence paths rather
+than copying output. Resume from checkpoints, MNFS, Git, validation artifacts,
+and context files. Native task IDs are correlation metadata. If native agent
+controls are unavailable, use a labelled **fresh-session fallback** and pass
+the same packet; do not claim native parity.
 
 ## Boundary
 
-Tasks, subagents, read/steer/interrupt, and worktrees are **operator-observed**
-native capabilities. Do not build custom agents, hooks, app servers, VMs,
-automation, synthetic eval products, cold clones, or a second CI for this flow.
+The single project custom agent `.codex/agents/mpc-milestone.toml` and depth
+limit in `.codex/config.toml` are the only persistent orchestration runtime
+configuration. Tasks, subagents, read/steer/interrupt, and worktrees remain
+operator-observed native capabilities. Do not add more custom agents, hooks,
+app servers, VMs, custom schedulers, synthetic eval products, cold clones, or a
+second CI without a separately reviewed failure that requires them.

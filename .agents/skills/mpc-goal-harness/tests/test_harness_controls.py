@@ -4,11 +4,15 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import tomllib
 import unittest
 from pathlib import Path
 
 
 SKILL_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = SKILL_ROOT.parents[2]
+CODEX_CONFIG = PROJECT_ROOT / ".codex" / "config.toml"
+MILESTONE_AGENT = PROJECT_ROOT / ".codex" / "agents" / "mpc-milestone.toml"
 FIXTURES = Path(__file__).with_name("fixtures")
 
 
@@ -139,6 +143,51 @@ class DispatchPreflightTests(unittest.TestCase):
         packet = fixture("valid_dispatch.json")
         packet["dispatch_state"] = "dispatched"
         self.assertIn("duplicate_active_dispatch", codes(preflight(packet)))
+
+
+class MilestoneAgentConfigurationTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.config = tomllib.loads(CODEX_CONFIG.read_text(encoding="utf-8"))
+        cls.agent = tomllib.loads(MILESTONE_AGENT.read_text(encoding="utf-8"))
+        cls.skill = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
+
+    def test_native_tree_is_bounded_to_portfolio_milestone_and_children(self):
+        self.assertTrue(self.config["features"]["multi_agent"])
+        self.assertEqual(2, self.config["agents"]["max_depth"])
+        self.assertEqual(4, self.config["agents"]["max_threads"])
+
+    def test_only_mpc_milestone_custom_role_is_registered(self):
+        registered = {
+            key for key, value in self.config["agents"].items() if isinstance(value, dict)
+        }
+        self.assertEqual({"mpc-milestone"}, registered)
+        role = self.config["agents"]["mpc-milestone"]
+        self.assertEqual("agents/mpc-milestone.toml", role["config_file"])
+
+    def test_custom_agent_has_required_official_fields(self):
+        self.assertEqual("mpc-milestone", self.agent["name"])
+        self.assertTrue(self.agent["description"].strip())
+        self.assertTrue(self.agent["developer_instructions"].strip())
+        self.assertEqual("gpt-5.6-terra", self.agent["model"])
+        self.assertEqual("high", self.agent["model_reasoning_effort"])
+
+    def test_parent_channel_is_compact_and_outcome_only(self):
+        prompt = self.agent["developer_instructions"]
+        self.assertIn("`needs_input`", prompt)
+        self.assertIn("`terminal`", prompt)
+        self.assertIn("under 2,000 characters", prompt)
+        self.assertIn("Never include raw logs or transcripts", prompt)
+        self.assertIn("needs_input", self.skill)
+        self.assertIn("terminal", self.skill)
+
+    def test_config_adds_no_hooks_or_external_capabilities(self):
+        forbidden = {
+            "hooks", "mcp_servers", "model_provider", "model_providers",
+            "approval_policy", "sandbox_mode", "sandbox_workspace_write",
+            "network_access", "otel", "notify",
+        }
+        self.assertTrue(forbidden.isdisjoint(self.config))
 
 
 if __name__ == "__main__":

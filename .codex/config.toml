@@ -1,0 +1,13 @@
+#:schema https://developers.openai.com/codex/config-schema.json
+
+[features]
+multi_agent = true
+
+[agents]
+max_threads = 4
+max_depth = 2
+
+[agents."mpc-milestone"]
+description = "Own one Marketplace Central milestone and coordinate bounded implementation, review, and QA subagents."
+config_file = "agents/mpc-milestone.toml"
+nickname_candidates = ["MPC Milestone"]
