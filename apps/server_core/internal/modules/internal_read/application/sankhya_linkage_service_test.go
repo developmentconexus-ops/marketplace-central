@@ -37,7 +37,7 @@ func TestSankhyaLinkageServiceUsesSeparateReaderContract(t *testing.T) {
 	if err := service.ValidateConfiguration(ctx); err != nil {
 		t.Fatalf("ValidateConfiguration() error = %v", err)
 	}
-	if _, err := service.FindCandidates(ctx, ports.SankhyaCandidateInput{ExternalOrderKey: "ml:v1:account:order"}); err != nil {
+	if _, err := service.FindCandidates(ctx, ports.SankhyaCandidateInput{ExternalOrderKey: "123456"}); err != nil {
 		t.Fatalf("FindCandidates() error = %v", err)
 	}
 	if _, err := service.ListDescendants(ctx, ports.SankhyaDescendantInput{Origin: domain.InternalDocumentLine{DocumentID: 31301, LineNumber: 1}}); err != nil {
@@ -50,7 +50,7 @@ func TestSankhyaLinkageServiceUsesSeparateReaderContract(t *testing.T) {
 
 func TestSankhyaLinkageServiceFailsClosedWithoutReader(t *testing.T) {
 	service := NewSankhyaLinkageService(nil)
-	_, err := service.FindCandidates(context.Background(), ports.SankhyaCandidateInput{ExternalOrderKey: "ml:v1:account:order"})
+	_, err := service.FindCandidates(context.Background(), ports.SankhyaCandidateInput{ExternalOrderKey: "123456"})
 	if !domain.IsReadErrorCode(err, domain.ReadErrorConfigurationInvalid) {
 		t.Fatalf("error = %v, want configuration_invalid", err)
 	}

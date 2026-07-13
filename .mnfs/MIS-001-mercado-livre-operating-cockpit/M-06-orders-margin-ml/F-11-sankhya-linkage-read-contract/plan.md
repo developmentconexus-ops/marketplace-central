@@ -14,11 +14,12 @@
   quantity, and optional expected origin quantity remain nil. No zero/default
   identity or tax fact is derived.
 - Activation: validate complete explicit configuration, Oracle availability,
-  exact metadata, compatible text capacity, nonblank uniqueness attestation,
+  exact nullable-CLOB metadata, nonblank uniqueness attestation,
   and duplicate-free nonblank values before every data read.
 - Identifier/value safety: only already-uppercase Oracle-safe schema/field
   identifiers are quoted; every lookup value, TOP, document/line identity,
-  external key, and limit is bound.
+  digits-only external key, and limit is bound; CLOB equality is exact via
+  `DBMS_LOB.COMPARE(..., TO_CLOB(:bind))`.
 - Candidate bounds: fetch header and per-header line limits plus one and fail
   ambiguous on either overflow; read exact lines only for retained TOP 313
   headers.

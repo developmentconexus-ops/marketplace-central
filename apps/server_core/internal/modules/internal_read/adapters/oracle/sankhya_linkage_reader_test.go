@@ -118,7 +118,7 @@ func TestSankhyaLinkageInvalidIdentifierFailsBeforeDatabaseAccess(t *testing.T) 
 	config.HeaderFieldName = `AD_BAD" OR 1=1`
 	reader := NewSankhyaLinkageReader(db, config)
 
-	_, err := reader.FindCandidates(context.Background(), ports.SankhyaCandidateInput{ExternalOrderKey: "ml:v1:account:order"})
+	_, err := reader.FindCandidates(context.Background(), ports.SankhyaCandidateInput{ExternalOrderKey: "123456"})
 	if !domain.IsReadErrorCode(err, domain.ReadErrorConfigurationInvalid) {
 		t.Fatalf("error = %v, want configuration_invalid", err)
 	}
@@ -171,13 +171,13 @@ func TestSankhyaLinkageLineAndLineageLimitsAreExplicitAndBounded(t *testing.T) {
 func TestSankhyaLinkageMissingMetadataStopsBeforeCandidateQuery(t *testing.T) {
 	script := &scriptedSankhyaDB{respond: func(query string, _ []driver.NamedValue) ([]string, [][]driver.Value, error) {
 		if strings.Contains(query, "ALL_TAB_COLUMNS") {
-			return []string{"DATA_TYPE", "CHAR_LENGTH", "CHAR_USED"}, nil, nil
+			return []string{"DATA_TYPE", "NULLABLE"}, nil, nil
 		}
 		return nil, nil, fmt.Errorf("unexpected query after missing metadata: %s", query)
 	}}
 	reader := NewSankhyaLinkageReader(openScriptedSankhyaDB(t, script), validSankhyaLinkageConfig())
 
-	_, err := reader.FindCandidates(context.Background(), ports.SankhyaCandidateInput{ExternalOrderKey: "ml:v1:account:order"})
+	_, err := reader.FindCandidates(context.Background(), ports.SankhyaCandidateInput{ExternalOrderKey: "123456"})
 	if !domain.IsReadErrorCode(err, domain.ReadErrorMetadataMismatch) {
 		t.Fatalf("error = %v, want field_metadata_mismatch", err)
 	}
@@ -190,8 +190,8 @@ func TestSankhyaLinkageDuplicateProbeStopsBeforeCandidateQuery(t *testing.T) {
 	script := &scriptedSankhyaDB{respond: func(query string, _ []driver.NamedValue) ([]string, [][]driver.Value, error) {
 		switch {
 		case strings.Contains(query, "ALL_TAB_COLUMNS"):
-			return []string{"DATA_TYPE", "CHAR_LENGTH", "CHAR_USED"}, [][]driver.Value{{"VARCHAR2", int64(160), "C"}}, nil
-		case strings.Contains(query, "HAVING COUNT(*) > 1"):
+			return []string{"DATA_TYPE", "NULLABLE"}, [][]driver.Value{{"CLOB", "Y"}}, nil
+		case strings.Contains(query, "other.ROWID <> c.ROWID"):
 			return []string{"DUPLICATE_GROUPS"}, [][]driver.Value{{int64(1)}}, nil
 		default:
 			return nil, nil, fmt.Errorf("unexpected query after duplicate probe: %s", query)
@@ -199,12 +199,23 @@ func TestSankhyaLinkageDuplicateProbeStopsBeforeCandidateQuery(t *testing.T) {
 	}}
 	reader := NewSankhyaLinkageReader(openScriptedSankhyaDB(t, script), validSankhyaLinkageConfig())
 
-	_, err := reader.FindCandidates(context.Background(), ports.SankhyaCandidateInput{ExternalOrderKey: "ml:v1:account:order"})
+	_, err := reader.FindCandidates(context.Background(), ports.SankhyaCandidateInput{ExternalOrderKey: "123456"})
 	if !domain.IsReadErrorCode(err, domain.ReadErrorUniquenessUnproved) {
 		t.Fatalf("error = %v, want uniqueness_unproved", err)
 	}
-	if len(script.queries) != 2 || !strings.Contains(script.queries[1], "HAVING COUNT(*) > 1") {
+	if len(script.queries) != 2 || !strings.Contains(script.queries[1], "DBMS_LOB.COMPARE") {
 		t.Fatalf("queries = %#v, want metadata then duplicate probe", script.queries)
+	}
+}
+
+func TestSankhyaLinkageExternalOrderKeyMustBeDigitsOnly(t *testing.T) {
+	for _, key := range []string{"", " 123", "123 ", "ml:v1:123", "123-456"} {
+		if sankhyaExternalOrderKey.MatchString(key) {
+			t.Fatalf("external key %q was accepted", key)
+		}
+	}
+	if !sankhyaExternalOrderKey.MatchString("123456") {
+		t.Fatal("digits-only external key was rejected")
 	}
 }
 
@@ -212,8 +223,8 @@ func TestSankhyaLinkageReaderPreservesOneToManyNullableDescendants(t *testing.T)
 	script := &scriptedSankhyaDB{respond: func(query string, _ []driver.NamedValue) ([]string, [][]driver.Value, error) {
 		switch {
 		case strings.Contains(query, "ALL_TAB_COLUMNS"):
-			return []string{"DATA_TYPE", "CHAR_LENGTH", "CHAR_USED"}, [][]driver.Value{{"VARCHAR2", int64(160), "C"}}, nil
-		case strings.Contains(query, "HAVING COUNT(*) > 1"):
+			return []string{"DATA_TYPE", "NULLABLE"}, [][]driver.Value{{"CLOB", "Y"}}, nil
+		case strings.Contains(query, "other.ROWID <> c.ROWID"):
 			return []string{"DUPLICATE_GROUPS"}, [][]driver.Value{{int64(0)}}, nil
 		case strings.Contains(query, "TGFVAR v"):
 			return []string{"NUNOTA", "SEQUENCIA", "CODTIPOPER", "QTDATENDIDA"}, [][]driver.Value{
@@ -241,8 +252,8 @@ func TestSankhyaLinkageCandidateLineOverflowFailsAmbiguous(t *testing.T) {
 	script := &scriptedSankhyaDB{respond: func(query string, _ []driver.NamedValue) ([]string, [][]driver.Value, error) {
 		switch {
 		case strings.Contains(query, "ALL_TAB_COLUMNS"):
-			return []string{"DATA_TYPE", "CHAR_LENGTH", "CHAR_USED"}, [][]driver.Value{{"VARCHAR2", int64(160), "C"}}, nil
-		case strings.Contains(query, "HAVING COUNT(*) > 1"):
+			return []string{"DATA_TYPE", "NULLABLE"}, [][]driver.Value{{"CLOB", "Y"}}, nil
+		case strings.Contains(query, "other.ROWID <> c.ROWID"):
 			return []string{"DUPLICATE_GROUPS"}, [][]driver.Value{{int64(0)}}, nil
 		case strings.Contains(query, "SELECT c.NUNOTA"):
 			return []string{"NUNOTA", "NUMNOTA", "CODTIPOPER", "DTNEG", "VLRNOTA"}, [][]driver.Value{{int64(31301), nil, int64(313), nil, nil}}, nil
@@ -259,7 +270,7 @@ func TestSankhyaLinkageCandidateLineOverflowFailsAmbiguous(t *testing.T) {
 	config.CandidateLineLimit = 1
 	reader := NewSankhyaLinkageReader(openScriptedSankhyaDB(t, script), config)
 
-	_, err := reader.FindCandidates(context.Background(), ports.SankhyaCandidateInput{ExternalOrderKey: "ml:v1:account:order"})
+	_, err := reader.FindCandidates(context.Background(), ports.SankhyaCandidateInput{ExternalOrderKey: "123456"})
 	if !domain.IsReadErrorCode(err, domain.ReadErrorCandidateAmbiguous) {
 		t.Fatalf("error = %v, want candidate_ambiguous", err)
 	}
@@ -269,8 +280,8 @@ func TestSankhyaLinkageDescendantOverflowFailsConflict(t *testing.T) {
 	script := &scriptedSankhyaDB{respond: func(query string, _ []driver.NamedValue) ([]string, [][]driver.Value, error) {
 		switch {
 		case strings.Contains(query, "ALL_TAB_COLUMNS"):
-			return []string{"DATA_TYPE", "CHAR_LENGTH", "CHAR_USED"}, [][]driver.Value{{"VARCHAR2", int64(160), "C"}}, nil
-		case strings.Contains(query, "HAVING COUNT(*) > 1"):
+			return []string{"DATA_TYPE", "NULLABLE"}, [][]driver.Value{{"CLOB", "Y"}}, nil
+		case strings.Contains(query, "other.ROWID <> c.ROWID"):
 			return []string{"DUPLICATE_GROUPS"}, [][]driver.Value{{int64(0)}}, nil
 		case strings.Contains(query, "TGFVAR v"):
 			return []string{"NUNOTA", "SEQUENCIA", "CODTIPOPER", "QTDATENDIDA"}, [][]driver.Value{
@@ -311,13 +322,13 @@ func TestSankhyaLinkageMetadataQueryUsesOnlyBinds(t *testing.T) {
 
 func TestSankhyaLinkageCandidateQueryQuotesIdentifierAndBindsValues(t *testing.T) {
 	config := validSankhyaLinkageConfig()
-	externalKey := "ml:v1:account:order-123"
+	externalKey := "123456"
 	query, args, err := buildSankhyaCandidateQuery(config, externalKey)
 	if err != nil {
 		t.Fatalf("buildSankhyaCandidateQuery() error = %v", err)
 	}
 
-	for _, fragment := range []string{`FROM "METALPRD".TGFCAB`, `c."AD_MPC_ORDER_KEY" = :1`, "c.CODTIPOPER = :2", "FETCH FIRST :3 ROWS ONLY"} {
+	for _, fragment := range []string{`FROM "METALPRD".TGFCAB`, `DBMS_LOB.COMPARE(c."AD_MPC_ORDER_KEY", TO_CLOB(:1)) = 0`, "c.CODTIPOPER = :2", "FETCH FIRST :3 ROWS ONLY"} {
 		if !strings.Contains(query, fragment) {
 			t.Fatalf("candidate query missing %q: %s", fragment, query)
 		}
@@ -333,7 +344,7 @@ func TestSankhyaLinkageDuplicateProbeUsesValidatedQuotedIdentifier(t *testing.T)
 	if err != nil {
 		t.Fatalf("buildSankhyaDuplicateQuery() error = %v", err)
 	}
-	if len(args) != 0 || !strings.Contains(query, `c."AD_MPC_ORDER_KEY" IS NOT NULL`) || !strings.Contains(query, `GROUP BY c."AD_MPC_ORDER_KEY"`) || !strings.Contains(query, "HAVING COUNT(*) > 1") {
+	if len(args) != 0 || !strings.Contains(query, `c."AD_MPC_ORDER_KEY" IS NOT NULL`) || !strings.Contains(query, `other.ROWID <> c.ROWID`) || !strings.Contains(query, `DBMS_LOB.COMPARE(other."AD_MPC_ORDER_KEY", c."AD_MPC_ORDER_KEY") = 0`) {
 		t.Fatalf("duplicate query/args = %s / %#v", query, args)
 	}
 }
@@ -368,7 +379,7 @@ func TestSankhyaLinkageBuildersReturnTypedErrorsWithoutPanic(t *testing.T) {
 	config.Schema = `BAD"SCHEMA`
 	builders := []func() error{
 		func() error { _, _, err := buildSankhyaDuplicateQuery(config); return err },
-		func() error { _, _, err := buildSankhyaCandidateQuery(config, "ml:v1:a:o"); return err },
+		func() error { _, _, err := buildSankhyaCandidateQuery(config, "123456"); return err },
 		func() error { _, _, err := buildSankhyaCandidateLinesQuery(config, 1); return err },
 		func() error {
 			_, _, err := buildSankhyaDescendantQuery(config, domain.InternalDocumentLine{DocumentID: 1, LineNumber: 1})
@@ -418,11 +429,10 @@ func TestSankhyaLinkageIdentifierAndMetadataCompatibilityAreStrict(t *testing.T)
 			t.Fatalf("invalid identifier %q accepted", invalid)
 		}
 	}
-	if !compatibleSankhyaHeaderField("VARCHAR2", sql.NullInt64{Int64: 160, Valid: true}, sql.NullString{String: "C", Valid: true}) {
-		t.Fatal("VARCHAR2(160 CHAR) should be compatible")
+	if !compatibleSankhyaHeaderField("CLOB", "Y") {
+		t.Fatal("nullable CLOB should be compatible")
 	}
-	if compatibleSankhyaHeaderField("VARCHAR2", sql.NullInt64{Int64: 159, Valid: true}, sql.NullString{String: "C", Valid: true}) ||
-		compatibleSankhyaHeaderField("NUMBER", sql.NullInt64{Int64: 160, Valid: true}, sql.NullString{String: "C", Valid: true}) {
+	if compatibleSankhyaHeaderField("CLOB", "N") || compatibleSankhyaHeaderField("VARCHAR2", "Y") {
 		t.Fatal("incompatible metadata accepted")
 	}
 }

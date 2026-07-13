@@ -20,7 +20,10 @@ const (
 	maxLineageLimit             = 500
 )
 
-var oracleLinkageIdentifier = regexp.MustCompile(`^[A-Z][A-Z0-9_$#]{0,29}$`)
+var (
+	oracleLinkageIdentifier = regexp.MustCompile(`^[A-Z][A-Z0-9_$#]{0,29}$`)
+	sankhyaExternalOrderKey = regexp.MustCompile(`^[0-9]+$`)
+)
 
 type SankhyaLinkageConfig struct {
 	Schema                  string
@@ -68,12 +71,11 @@ func (r *SankhyaLinkageReader) ValidateConfiguration(ctx context.Context) error 
 	for rows.Next() {
 		rowCount++
 		var dataType string
-		var charLength sql.NullInt64
-		var charUsed sql.NullString
-		if err := rows.Scan(&dataType, &charLength, &charUsed); err != nil {
+		var nullable string
+		if err := rows.Scan(&dataType, &nullable); err != nil {
 			return sankhyaOracleError("scan header field metadata", err)
 		}
-		if !compatibleSankhyaHeaderField(dataType, charLength, charUsed) {
+		if !compatibleSankhyaHeaderField(dataType, nullable) {
 			return domain.NewReadError(domain.ReadErrorMetadataMismatch, "sankhya header field metadata is incompatible", nil)
 		}
 	}
@@ -102,8 +104,8 @@ func (r *SankhyaLinkageReader) FindCandidates(ctx context.Context, input ports.S
 	if err := r.ValidateConfiguration(ctx); err != nil {
 		return nil, err
 	}
-	if input.ExternalOrderKey == "" || input.ExternalOrderKey != strings.TrimSpace(input.ExternalOrderKey) || !strings.HasPrefix(input.ExternalOrderKey, "ml:v1:") {
-		return nil, domain.NewReadError(domain.ReadErrorConfigurationInvalid, "sankhya candidate lookup requires an exact account-scoped external key", nil)
+	if !sankhyaExternalOrderKey.MatchString(input.ExternalOrderKey) {
+		return nil, domain.NewReadError(domain.ReadErrorConfigurationInvalid, "sankhya candidate lookup requires a nonblank digits-only external key", nil)
 	}
 
 	query, args, err := buildSankhyaCandidateQuery(r.config, input.ExternalOrderKey)
@@ -264,9 +266,8 @@ func validateSankhyaLinkageConfig(config SankhyaLinkageConfig) error {
 	return nil
 }
 
-func compatibleSankhyaHeaderField(dataType string, charLength sql.NullInt64, charUsed sql.NullString) bool {
-	typeName := strings.ToUpper(strings.TrimSpace(dataType))
-	return (typeName == "VARCHAR2" || typeName == "NVARCHAR2") && charLength.Valid && charLength.Int64 >= 160 && charUsed.Valid && strings.EqualFold(charUsed.String, "C")
+func compatibleSankhyaHeaderField(dataType, nullable string) bool {
+	return strings.EqualFold(strings.TrimSpace(dataType), "CLOB") && strings.EqualFold(strings.TrimSpace(nullable), "Y")
 }
 
 func quoteSankhyaIdentifier(identifier string) (string, error) {
@@ -278,7 +279,7 @@ func quoteSankhyaIdentifier(identifier string) (string, error) {
 
 func buildSankhyaMetadataQuery(config SankhyaLinkageConfig) (string, []any) {
 	return `
-SELECT c.DATA_TYPE, c.CHAR_LENGTH, c.CHAR_USED
+SELECT c.DATA_TYPE, c.NULLABLE
 FROM ALL_TAB_COLUMNS c
 WHERE c.OWNER = :1
   AND c.TABLE_NAME = :2
@@ -298,13 +299,17 @@ func buildSankhyaDuplicateQuery(config SankhyaLinkageConfig) (string, []any, err
 	query := fmt.Sprintf(`
 SELECT COUNT(*)
 FROM (
-  SELECT c.%s
+  SELECT 1
   FROM %s.TGFCAB c
   WHERE c.%s IS NOT NULL
-  GROUP BY c.%s
-  HAVING COUNT(*) > 1
+    AND EXISTS (
+      SELECT 1
+      FROM %s.TGFCAB other
+      WHERE other.ROWID <> c.ROWID
+        AND DBMS_LOB.COMPARE(other.%s, c.%s) = 0
+    )
   FETCH FIRST 1 ROW ONLY
-)`, field, schema, field, field)
+)`, schema, field, schema, field, field)
 	return query, nil, nil
 }
 
@@ -320,7 +325,7 @@ func buildSankhyaCandidateQuery(config SankhyaLinkageConfig, externalKey string)
 	query := fmt.Sprintf(`
 SELECT c.NUNOTA, c.NUMNOTA, c.CODTIPOPER, c.DTNEG, c.VLRNOTA
 FROM %s.TGFCAB c
-WHERE c.%s = :1
+WHERE DBMS_LOB.COMPARE(c.%s, TO_CLOB(:1)) = 0
   AND c.CODTIPOPER = :2
 ORDER BY c.NUNOTA
 FETCH FIRST :3 ROWS ONLY`, schema, field)

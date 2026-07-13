@@ -29,9 +29,8 @@ Before any candidate or lineage read, validation must prove:
   carries a nonblank revision/attestation, and has positive bounded header,
   line, and lineage limits;
 - an exact `ALL_TAB_COLUMNS` lookup for the configured owner, `TGFCAB`, and field
-  returns exactly one compatible text column with at least 160 character
-  capacity; and
-- a bounded aggregate probe finds no duplicate nonblank field value.
+  returns exactly one nullable `CLOB`; and
+- a bounded exact-CLOB probe finds no duplicate nonblank field value.
 
 Missing or incompatible metadata, absent attestation, duplicate values, invalid
 identifier/configuration, or unavailable Oracle returns a stable fail-closed
@@ -55,8 +54,9 @@ validation call.
 
 ## Candidate semantics
 
-Candidate lookup requires a nonblank exact external key, binds that value and
-expected TOP 313, orders deterministically, and fetches at most the configured
+Candidate lookup requires a nonblank digits-only exact external key, compares the
+configured `CLOB` with `DBMS_LOB.COMPARE(..., TO_CLOB(:bind))`, binds that value
+and expected TOP 313, orders deterministically, and fetches at most the configured
 limit plus one. More than the configured limit fails as ambiguous instead of
 silently truncating. For every retained header, a second bound query reads exact
 `TGFITE` lines by `NUNOTA`, fetches the candidate-line limit plus one, and

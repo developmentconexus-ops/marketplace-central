@@ -1,8 +1,8 @@
-{
+ {
   "schema_version": "1.0",
   "context_id": "f-11-sankhya-linkage-read-contract",
   "feature_path": ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-11-sankhya-linkage-read-contract",
-  "base_sha": "011cb2d3f53135e72911eac773483c954436cd04",
+  "base_sha": "0cfa801b7f9cfe57c0cd81f7c953e81a8a706cbf",
   "objective": "Add a separate MPC-owned internal_read contract and Oracle adapter for the assisted linkage flow: validate an explicit configured TOP 313 header field, read bounded exact candidates and lines, and follow exact TGFVAR origins to TOP 306 descendants with attended quantity.",
   "observable_done": [
     "Invalid configuration, metadata, uniqueness, or Oracle availability fails closed before candidate or lineage SQL executes.",
@@ -51,31 +51,31 @@
   "sources": [
     {
       "path": ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-11-sankhya-linkage-read-contract/feature.md",
-      "sha256": "49a4966fb4d81534225c76caeaabee480dc8f1ee969fb93e49fd0dfdcbe204a5",
+      "sha256": "39fa7655564b5c532b3697b68c37bda1d2e344d3cea072f46757a8479321cda5",
       "selector": "full-contract",
       "reason": "feature execution contract",
       "estimated_tokens": 187
     },
     {
       "path": ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-11-sankhya-linkage-read-contract/spec.md",
-      "sha256": "edd02d10d15f04eb6f1f47472c4dbe42dc80fd91197aa1006ff36c0460502dc1",
+      "sha256": "3ce46cbe8b0ae6f89d57648c8adec9e235b870fcd51d64e286bd465d2198f14a",
       "selector": "full-contract",
       "reason": "feature execution contract",
-      "estimated_tokens": 404
+      "estimated_tokens": 407
     },
     {
       "path": ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-11-sankhya-linkage-read-contract/plan.md",
-      "sha256": "314464f8d3fb2c17a8350f892b9315fd27497d76f46f6d3496521e264df333b5",
+      "sha256": "110ce67a860f0ff86d02c909e1c3c3b519ba0fa37f0db8665cf42bde9bb0329b",
       "selector": "full-contract",
       "reason": "feature execution contract",
-      "estimated_tokens": 455
+      "estimated_tokens": 459
     },
     {
       "path": "AGENTS.md",
-      "sha256": "24a8b7d28780bce213ce90278ea73eee9a08b6a9c6d0684821cd4c7c89354fd2",
+      "sha256": "56724ae4757367049a1b51e812ec86bb8d7b947d0a244a78aa99c941e47001be",
       "selector": "full-contract",
       "reason": "feature execution contract",
-      "estimated_tokens": 107
+      "estimated_tokens": 140
     },
     {
       "path": ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-08-assisted-sankhya-linkage-discovery/implementation-contract.md",
@@ -151,5 +151,5 @@
     "target": "Milestone Orchestrator",
     "reason": "return fields: status, commit, changed-paths, evidence, blockers, next"
   },
-  "estimated_input_tokens": 1865
+  "estimated_input_tokens": 1905
 }

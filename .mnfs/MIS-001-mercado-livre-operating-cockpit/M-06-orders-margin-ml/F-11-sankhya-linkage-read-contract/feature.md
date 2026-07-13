@@ -38,7 +38,7 @@ TOP 306 descendants with attended quantity.
   lookup. Values always use binds. Missing metadata, incompatible field type or
   capacity, duplicate nonblank values, missing attestation, or unavailable DB
   fails closed.
-- Candidate query matches the exact account-scoped external key and TOP 313,
+- Candidate query matches the exact nonblank digits-only external key and TOP 313,
   is bounded, and returns generic document ID/number/TOP plus exact item lines.
   Product/date/value are returned only as consistency evidence, never proof.
 - Descendant query uses exact origin document/line binds through `TGFVAR`,
