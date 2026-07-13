@@ -28,6 +28,8 @@ Authoritative result: `../validation-result.md` and `../milestone-review.md`
 
 - Attempt 1: F-06 only, correcting quantity/cost amount scope without changing
   fee or tax line-amount semantics.
+- Attempt 2: F-15 only, propagating non-complete tax input quality into item
+  and order snapshot incompleteness while retaining known tax amounts.
 - Production authentication/manual adjustments are deliberately deferred by
   owner priority. This ledger does not waive M-06-C03, claim authentication,
   or authorize caller-supplied identity. C03 remains pending/failing for the
@@ -41,13 +43,16 @@ Authoritative result: `../validation-result.md` and `../milestone-review.md`
 
 - Attempt 1 paths are exactly those recorded in
   `../F-06-quantity-cost-semantics/validation.md`.
-- Later work requires a separate bounded Feature brief and dispatch packet.
+- Attempt 2 paths are exactly those recorded in
+  `../F-15-partial-tax-snapshot-quality/validation.md`.
+- Any later correction work requires new owner authority because the recorded
+  two-attempt budget is exhausted.
 
 ## Retry Fields
 
-- correction_attempts: 1
+- correction_attempts: 2
 - max_correction_attempts: 2
-- last_validation_result: Fail (round 2)
+- last_validation_result: Fail (round 3; attempt 2 awaits replacement re-gate)
 
 ## Correction Log (append-only)
 
@@ -55,6 +60,7 @@ Authoritative result: `../validation-result.md` and `../milestone-review.md`
 | --- | --- | --- | --- | --- | --- | --- |
 | Historical | — | Earlier unnumbered fixes and live-evidence reconciliation | See round-2 review trail | Historical context retained; owner says these do not consume attempts | `../orchestrator-reconciliation-2026-07-11.md` | Round 2 Fail is the baseline |
 | 2 | 1 | F-06 quantity/cost amount-scope correction | `apps/server_core/internal/modules/profitability/application/service.go` (`mapCostInput` composition) | Accepted at `2284c1d3bfcfa359a66777baad6c339083973538` | `../F-06-quantity-cost-semantics/validation.md` | Round 3 Fail at `81b8a4b12c3fe32c011f3d362ede393dd7484381`; C02 integration passed, ★2/★3/★7 remain failing |
+| 3 | 2 | F-15 partial-tax snapshot-quality correction | `apps/server_core/internal/modules/profitability/application/service.go` (`applyInput` tax completeness) | Known non-complete tax amounts retained; item/order missing-tax propagation implemented; replacement review pending | `../F-15-partial-tax-snapshot-quality/validation.md` | Pending replacement fixed-SHA review and proportional QA; C03 remains deferred/failing |
 
 ## Required Commands Or QA
 
@@ -64,11 +70,10 @@ Authoritative result: `../validation-result.md` and `../milestone-review.md`
 
 ## Handoff
 
-- Current status: round-3 re-gate failed after accepted attempt 1 and F-07.
+- Current status: correction attempt 2 implemented; replacement fixed-SHA
+  review and proportional QA are pending.
 - Next owner: Milestone Orchestrator.
-- Next action: obtain owner-approved Oracle `NUNOTA`/`SEQUENCIA` mapping for
-  each ML order item before any further real-margin evidence work. A later
-  separately authorized correction may address the deferred trusted-principal
-  boundary and durable evidence bindings.
+- Next action: freeze the returned F-15 commit, request independent review,
+  then proportional QA. Any later correction requires new owner authority.
 - Blocker retained: M-06-C03 trusted-principal boundary is deliberately
   deferred, not passed or silently weakened.

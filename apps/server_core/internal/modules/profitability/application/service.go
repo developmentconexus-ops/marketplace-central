@@ -857,7 +857,7 @@ func applyInput(acc *snapshotAccumulator, input profitabilitydomain.MarginInput)
 		acc.snapshot.CommissionAmount = input.Amount
 	case profitabilitydomain.InputKindTaxICMS, profitabilitydomain.InputKindTaxIPI, profitabilitydomain.InputKindTaxPIS, profitabilitydomain.InputKindTaxCOFINS:
 		acc.snapshot.TaxAmount = addOptional(acc.snapshot.TaxAmount, input.Amount)
-		if input.Amount == nil {
+		if input.Amount == nil || input.Quality != profitabilitydomain.InputQualityComplete {
 			acc.flags[profitabilitydomain.ProfitFlagMissingTax] = struct{}{}
 		}
 	}

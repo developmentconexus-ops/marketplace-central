@@ -1,0 +1,143 @@
+{
+  "schema_version": "1.0",
+  "context_id": "f-15-partial-tax-snapshot-quality",
+  "feature_path": ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-15-partial-tax-snapshot-quality",
+  "base_sha": "ef4b08c78d30a5e2269e79b051a432c9dc12b58d",
+  "objective": "Retain known partial tax amounts while making every non-complete tax input quality keep item and order snapshots incomplete and contribution/margin nil.",
+  "observable_done": [
+    "Snapshot aggregation records missing tax for every nil amount or non-complete tax quality while retaining all known amounts.",
+    "Import-to-snapshot regressions prove partial-lineage/all-known components, complete-lineage/incomplete-source, and fully complete control behavior.",
+    "F-14 evidence is corrected truthfully and correction attempt 2 is appended without weakening the explicitly deferred/failing C03 constraint.",
+    "Focused and repository-wide fake Go proof, scoped diff evidence, and one intentional Feature commit establish the bounded correction."
+  ],
+  "criteria": [
+    {
+      "id": "F15-AC01",
+      "milestone_id": "M-06-C02",
+      "proof_commands": [
+        "go-profitability-partial-tax"
+      ]
+    },
+    {
+      "id": "F15-AC02",
+      "milestone_id": "M-06-C02",
+      "proof_commands": [
+        "go-profitability-partial-tax"
+      ]
+    },
+    {
+      "id": "F15-AC03",
+      "milestone_id": "M-06-C02",
+      "proof_commands": [
+        "go-profitability-partial-tax",
+        "go-repository"
+      ]
+    },
+    {
+      "id": "F15-AC04",
+      "milestone_id": "M-06-C02",
+      "proof_commands": [
+        "git-diff-check"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "path": ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-15-partial-tax-snapshot-quality/feature.md",
+      "sha256": "da4b46ef5532d0ee95ec0bb51cfcc5cd73eda93a4ab18f52d6878f408d51d68b",
+      "selector": "full-contract",
+      "reason": "feature execution contract",
+      "estimated_tokens": 182
+    },
+    {
+      "path": ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-15-partial-tax-snapshot-quality/spec.md",
+      "sha256": "89660cd4394305de7b6ca1c6460b09f20b5e08a585ce01c26f35d1bacc68d0a5",
+      "selector": "full-contract",
+      "reason": "feature execution contract",
+      "estimated_tokens": 185
+    },
+    {
+      "path": ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-15-partial-tax-snapshot-quality/plan.md",
+      "sha256": "1069506d4a98873b2566af8b1214a1071840f709e9dae965809b2164493ebfd1",
+      "selector": "full-contract",
+      "reason": "feature execution contract",
+      "estimated_tokens": 326
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "24a8b7d28780bce213ce90278ea73eee9a08b6a9c6d0684821cd4c7c89354fd2",
+      "selector": "full-contract",
+      "reason": "feature execution contract",
+      "estimated_tokens": 107
+    },
+    {
+      "path": ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-14-profitability-sankhya-lineage/spec.md",
+      "sha256": "39f9e4074be7ea600d7889fff5d6fe4524b1166a6155bc5340691f1fac25f48e",
+      "selector": "full-contract",
+      "reason": "feature execution contract",
+      "estimated_tokens": 338
+    }
+  ],
+  "risk": {
+    "level": "L1",
+    "review_policy": "standard-review",
+    "advisory_model": "general-reasoning-model"
+  },
+  "paths": {
+    "allowed": [
+      ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/corrections/correction-task.md",
+      ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-14-profitability-sankhya-lineage/validation.md",
+      ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-15-partial-tax-snapshot-quality",
+      "apps/server_core/internal/modules/profitability/application/service_test.go",
+      "apps/server_core/internal/modules/profitability/application/service.go"
+    ],
+    "forbidden": [
+      "apps/server_core/internal/modules/internal_read",
+      "apps/server_core/internal/modules/orders",
+      "apps/server_core/migrations",
+      "apps/web",
+      "contracts",
+      "docker",
+      "docs/research",
+      "packages",
+      "scripts"
+    ]
+  },
+  "shared_seams": [],
+  "side_effects": [
+    "repository-write",
+    "isolated-cache-write"
+  ],
+  "commands": [
+    {
+      "id": "go-profitability-partial-tax",
+      "command_id": "go-profitability-partial-tax",
+      "target_label": "fake",
+      "evidence_type": "assumed"
+    },
+    {
+      "id": "go-repository",
+      "command_id": "go-repository",
+      "target_label": "fake",
+      "evidence_type": "assumed"
+    },
+    {
+      "id": "git-diff-check",
+      "command_id": "git-diff-check",
+      "target_label": "fake",
+      "evidence_type": "assumed"
+    }
+  ],
+  "stop_conditions": [
+    "discard-known-tax: A known partial tax amount would be discarded instead of retained.",
+    "incomplete-margin: A non-complete tax quality could still produce contribution or margin.",
+    "c03-scope: The correction would expand into C03 authentication, authorization, or manual adjustments.",
+    "forbidden-scope: A lineage, Oracle, API, SDK, migration, UI, live-system, dependency, secret, or PII change would be required."
+  ],
+  "retry_budget": 2,
+  "handoff": {
+    "target": "Milestone Orchestrator",
+    "reason": "return fields: status, commit, changed-paths, evidence, blockers, next"
+  },
+  "estimated_input_tokens": 1138
+}

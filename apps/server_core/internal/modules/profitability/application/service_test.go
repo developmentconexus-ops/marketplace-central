@@ -783,7 +783,7 @@ func TestCalculateSnapshotsHandlesCompleteIncompleteAndNegative(t *testing.T) {
 			{InstallationID: "inst-1", ProviderOrderID: "o1", ProviderItemID: "item-1", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindRevenue, Amount: floatPtr(20), Currency: "BRL"},
 			{InstallationID: "inst-1", ProviderOrderID: "o1", ProviderItemID: "item-1", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindSaleFee, Amount: floatPtr(2), Currency: "BRL"},
 			{InstallationID: "inst-1", ProviderOrderID: "o1", ProviderItemID: "item-1", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindCost, Amount: floatPtr(10), Currency: "BRL"},
-			{InstallationID: "inst-1", ProviderOrderID: "o1", ProviderItemID: "item-1", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindTaxICMS, Amount: floatPtr(1), Currency: "BRL"},
+			{InstallationID: "inst-1", ProviderOrderID: "o1", ProviderItemID: "item-1", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindTaxICMS, Amount: floatPtr(1), Currency: "BRL", Quality: profitabilitydomain.InputQualityComplete},
 			{InstallationID: "inst-1", ProviderOrderID: "o2", ProviderItemID: "item-2", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindRevenue, Amount: floatPtr(10), Currency: "BRL"},
 			{InstallationID: "inst-1", ProviderOrderID: "o2", ProviderItemID: "item-2", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindSaleFee, Amount: floatPtr(2), Currency: "BRL"},
 			{InstallationID: "inst-1", ProviderOrderID: "o2", ProviderItemID: "item-2", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindCost, Currency: "BRL", QualityReason: "internal product link is not resolved"},
@@ -791,23 +791,23 @@ func TestCalculateSnapshotsHandlesCompleteIncompleteAndNegative(t *testing.T) {
 			{InstallationID: "inst-1", ProviderOrderID: "o3", ProviderItemID: "item-3", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindRevenue, Amount: floatPtr(5), Currency: "BRL"},
 			{InstallationID: "inst-1", ProviderOrderID: "o3", ProviderItemID: "item-3", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindSaleFee, Amount: floatPtr(2), Currency: "BRL"},
 			{InstallationID: "inst-1", ProviderOrderID: "o3", ProviderItemID: "item-3", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindCost, Amount: floatPtr(6), Currency: "BRL"},
-			{InstallationID: "inst-1", ProviderOrderID: "o3", ProviderItemID: "item-3", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindTaxICMS, Amount: floatPtr(1), Currency: "BRL"},
+			{InstallationID: "inst-1", ProviderOrderID: "o3", ProviderItemID: "item-3", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindTaxICMS, Amount: floatPtr(1), Currency: "BRL", Quality: profitabilitydomain.InputQualityComplete},
 			{InstallationID: "inst-1", ProviderOrderID: "o4", Scope: profitabilitydomain.InputScopeOrder, Kind: profitabilitydomain.InputKindFreight, Amount: floatPtr(1), Currency: "BRL"},
 			{InstallationID: "inst-1", ProviderOrderID: "o4", Scope: profitabilitydomain.InputScopeOrder, Kind: profitabilitydomain.InputKindCommission, Amount: floatPtr(2), Currency: "BRL"},
 			{InstallationID: "inst-1", ProviderOrderID: "o4", ProviderItemID: "item-4", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindRevenue, Amount: floatPtr(20), Currency: "BRL"},
 			{InstallationID: "inst-1", ProviderOrderID: "o4", ProviderItemID: "item-4", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindSaleFee, Amount: floatPtr(3), Currency: "BRL"},
 			{InstallationID: "inst-1", ProviderOrderID: "o4", ProviderItemID: "item-4", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindCost, Amount: floatPtr(10), Currency: "BRL"},
-			{InstallationID: "inst-1", ProviderOrderID: "o4", ProviderItemID: "item-4", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindTaxICMS, Amount: floatPtr(4), Currency: "BRL"},
+			{InstallationID: "inst-1", ProviderOrderID: "o4", ProviderItemID: "item-4", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindTaxICMS, Amount: floatPtr(4), Currency: "BRL", Quality: profitabilitydomain.InputQualityComplete},
 			{InstallationID: "inst-1", ProviderOrderID: "o5", Scope: profitabilitydomain.InputScopeOrder, Kind: profitabilitydomain.InputKindFreight, Amount: floatPtr(5), Currency: "BRL"},
 			{InstallationID: "inst-1", ProviderOrderID: "o5", Scope: profitabilitydomain.InputScopeOrder, Kind: profitabilitydomain.InputKindCommission, Amount: floatPtr(6), Currency: "BRL"},
 			{InstallationID: "inst-1", ProviderOrderID: "o5", ProviderItemID: "item-5", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindRevenue, Amount: floatPtr(30), Currency: "BRL"},
 			{InstallationID: "inst-1", ProviderOrderID: "o5", ProviderItemID: "item-5", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindSaleFee, Amount: floatPtr(7), Currency: "BRL"},
 			{InstallationID: "inst-1", ProviderOrderID: "o5", ProviderItemID: "item-5", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindCost, Amount: floatPtr(8), Currency: "BRL"},
-			{InstallationID: "inst-1", ProviderOrderID: "o5", ProviderItemID: "item-5", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindTaxICMS, Amount: floatPtr(9), Currency: "BRL"},
+			{InstallationID: "inst-1", ProviderOrderID: "o5", ProviderItemID: "item-5", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindTaxICMS, Amount: floatPtr(9), Currency: "BRL", Quality: profitabilitydomain.InputQualityComplete},
 			{InstallationID: "inst-1", ProviderOrderID: "o6", ProviderItemID: "item-6", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindRevenue, Amount: floatPtr(11), Currency: "BRL"},
 			{InstallationID: "inst-1", ProviderOrderID: "o6", ProviderItemID: "item-6", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindSaleFee, Amount: floatPtr(1), Currency: "BRL"},
 			{InstallationID: "inst-1", ProviderOrderID: "o6", ProviderItemID: "item-6", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindCost, Amount: floatPtr(2), Currency: "BRL"},
-			{InstallationID: "inst-1", ProviderOrderID: "o6", ProviderItemID: "item-6", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindTaxICMS, Amount: floatPtr(3), Currency: "BRL"},
+			{InstallationID: "inst-1", ProviderOrderID: "o6", ProviderItemID: "item-6", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindTaxICMS, Amount: floatPtr(3), Currency: "BRL", Quality: profitabilitydomain.InputQualityComplete},
 		}},
 		Adjustments: &stubAdjustmentStore{items: []profitabilitydomain.ManualAdjustment{
 			{InstallationID: "inst-1", ProviderOrderID: "o1", Scope: profitabilitydomain.InputScopeItem, ProviderItemID: "item-1", Category: profitabilitydomain.ManualAdjustmentGeneric, Amount: 1},
@@ -918,32 +918,101 @@ func TestCalculateSnapshotsLimitsOnlyResponseAndReplacesCompleteDeterministicSet
 	}
 }
 
-func TestBuildProfitSnapshotsKeepsPartialTaxIncompleteAtItemAndOrder(t *testing.T) {
-	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
-	snapshots := buildProfitSnapshots([]profitabilitydomain.MarginInput{
-		{InstallationID: "inst-1", ProviderOrderID: "order-1", ProviderItemID: "item-1", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindRevenue, Amount: floatPtr(100), Currency: "BRL"},
-		{InstallationID: "inst-1", ProviderOrderID: "order-1", ProviderItemID: "item-1", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindSaleFee, Amount: floatPtr(10), Currency: "BRL"},
-		{InstallationID: "inst-1", ProviderOrderID: "order-1", ProviderItemID: "item-1", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindCost, Amount: floatPtr(40), Currency: "BRL"},
-		{InstallationID: "inst-1", ProviderOrderID: "order-1", ProviderItemID: "item-1", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindTaxICMS, Amount: floatPtr(8), Currency: "BRL", Quality: profitabilitydomain.InputQualityComplete},
-		{InstallationID: "inst-1", ProviderOrderID: "order-1", ProviderItemID: "item-1", Scope: profitabilitydomain.InputScopeItem, Kind: profitabilitydomain.InputKindTaxPIS, Currency: "BRL", Quality: profitabilitydomain.InputQualityMissing},
-	}, nil, map[string]profitabilitydomain.OrderRealizationState{"order-1": profitabilitydomain.OrderRealizationRealized}, now)
+func TestImportMarginInputsPropagatesTaxQualityIntoSnapshots(t *testing.T) {
+	now := time.Date(2026, 7, 13, 18, 30, 0, 0, time.UTC)
+	tests := []struct {
+		name             string
+		lineageState     ports.SankhyaLineageState
+		sourceQuality    []internalreaddomain.QualityFlag
+		wantInputQuality profitabilitydomain.InputQuality
+		wantComplete     bool
+	}{
+		{name: "partial lineage with all components known", lineageState: ports.SankhyaLineagePartial, sourceQuality: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}, wantInputQuality: profitabilitydomain.InputQualityPartial},
+		{name: "complete lineage with incomplete source", lineageState: ports.SankhyaLineageComplete, sourceQuality: []internalreaddomain.QualityFlag{internalreaddomain.QualityStaleSource}, wantInputQuality: profitabilitydomain.InputQualityPartial},
+		{name: "complete lineage and source", lineageState: ports.SankhyaLineageComplete, sourceQuality: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}, wantInputQuality: profitabilitydomain.InputQualityComplete, wantComplete: true},
+	}
 
-	var item, order *profitabilitydomain.ProfitSnapshot
-	for index := range snapshots {
-		snapshot := &snapshots[index]
-		if snapshot.Scope == profitabilitydomain.InputScopeItem {
-			item = snapshot
-		} else {
-			order = snapshot
-		}
-	}
-	for _, snapshot := range []*profitabilitydomain.ProfitSnapshot{item, order} {
-		if snapshot == nil || snapshot.Quality != profitabilitydomain.ProfitSnapshotIncomplete || snapshot.ContributionAmount != nil || snapshot.MarginPercent != nil || !hasSnapshotFlag(snapshot.Flags, profitabilitydomain.ProfitFlagMissingTax) {
-			t.Fatalf("partial-tax snapshot = %+v, want incomplete missing_tax with no realized math", snapshot)
-		}
-	}
-	if !amountEquals(item.TaxAmount, 8) || !amountEquals(order.TaxAmount, 8) {
-		t.Fatalf("known tax component was not retained: item=%v order=%v", item.TaxAmount, order.TaxAmount)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			taxAmount := 2.0
+			unitPrice := 100.0
+			saleFee := 10.0
+			source := internalreaddomain.TaxSourceIdentity{DocumentID: 30601, LineNumber: 1}
+			internal := &exactTaxFactReader{taxes: map[internalreaddomain.TaxSourceIdentity]internalreaddomain.TaxInputs{
+				source: {
+					ICMSAmount: &taxAmount, IPIAmount: &taxAmount, PISAmount: &taxAmount, COFINSAmount: &taxAmount,
+					QualityFlags: test.sourceQuality,
+				},
+			}}
+			service := NewService(ServiceConfig{
+				Orders: stubOrderReader{orders: []profitabilitydomain.OrderFact{{
+					InstallationID: "inst-1", ProviderOrderID: "order-1", FetchedAt: now,
+					Items: []profitabilitydomain.OrderItemFact{{
+						MPCLineID: "mpl_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", ReconciliationState: profitabilitydomain.OrderLineStable,
+						ProviderItemID: "item-1", Quantity: 1, UnitPrice: &unitPrice, SaleFeeAmount: &saleFee,
+						LinkQuality: profitabilitydomain.OrderLinkResolved, InternalProductID: intPtr(42),
+					}},
+				}}},
+				Internal: internal,
+				Lineage: &stubSankhyaLineageReader{lineage: ports.SankhyaLineage{
+					State: test.lineageState, Descendants: []ports.SankhyaTaxSource{{DocumentID: 30601, LineNumber: 1}},
+				}},
+				Inputs: &stubInputStore{}, Now: func() time.Time { return now },
+			})
+
+			imported, err := service.ImportMarginInputs(context.Background(), ImportMarginInputsInput{InstallationID: "inst-1"})
+			if err != nil {
+				t.Fatalf("ImportMarginInputs() error = %v", err)
+			}
+			taxInputs := 0
+			for index := range imported.Items {
+				input := &imported.Items[index]
+				switch input.Kind {
+				case profitabilitydomain.InputKindTaxICMS, profitabilitydomain.InputKindTaxIPI, profitabilitydomain.InputKindTaxPIS, profitabilitydomain.InputKindTaxCOFINS:
+					taxInputs++
+					if !amountEquals(input.Amount, taxAmount) || input.Quality != test.wantInputQuality {
+						t.Fatalf("tax input = %#v, want retained amount %v and quality %s", input, taxAmount, test.wantInputQuality)
+					}
+				case profitabilitydomain.InputKindFreight:
+					input.Amount = floatPtr(3)
+					input.Quality = profitabilitydomain.InputQualityComplete
+				case profitabilitydomain.InputKindCommission:
+					input.Amount = floatPtr(2)
+					input.Quality = profitabilitydomain.InputQualityComplete
+				}
+			}
+			if taxInputs != 4 {
+				t.Fatalf("tax input count = %d, want 4", taxInputs)
+			}
+
+			snapshots := buildProfitSnapshots(imported.Items, nil, map[string]profitabilitydomain.OrderRealizationState{"order-1": profitabilitydomain.OrderRealizationRealized}, now)
+			var item, order *profitabilitydomain.ProfitSnapshot
+			for index := range snapshots {
+				snapshot := &snapshots[index]
+				if snapshot.Scope == profitabilitydomain.InputScopeItem {
+					item = snapshot
+				} else {
+					order = snapshot
+				}
+			}
+			if item == nil || order == nil || !amountEquals(item.TaxAmount, 8) || !amountEquals(order.TaxAmount, 8) {
+				t.Fatalf("known tax total was not retained: item=%+v order=%+v", item, order)
+			}
+			for _, snapshot := range []*profitabilitydomain.ProfitSnapshot{item, order} {
+				if !test.wantComplete {
+					if snapshot.Quality != profitabilitydomain.ProfitSnapshotIncomplete || snapshot.ContributionAmount != nil || snapshot.MarginPercent != nil || !hasSnapshotFlag(snapshot.Flags, profitabilitydomain.ProfitFlagMissingTax) {
+						t.Fatalf("incomplete tax snapshot = %+v, want missing_tax with no contribution or margin", snapshot)
+					}
+					continue
+				}
+				if snapshot.Quality != profitabilitydomain.ProfitSnapshotComplete || snapshot.ContributionAmount == nil || snapshot.MarginPercent == nil || hasSnapshotFlag(snapshot.Flags, profitabilitydomain.ProfitFlagMissingTax) {
+					t.Fatalf("complete tax snapshot = %+v, want complete contribution and margin", snapshot)
+				}
+			}
+			if test.wantComplete && (!amountEquals(item.ContributionAmount, 72) || !amountEquals(item.MarginPercent, 72) || !amountEquals(order.ContributionAmount, 67) || !amountEquals(order.MarginPercent, 67)) {
+				t.Fatalf("complete control math = item(%v,%v) order(%v,%v), want item(72,72) order(67,67)", item.ContributionAmount, item.MarginPercent, order.ContributionAmount, order.MarginPercent)
+			}
+		})
 	}
 }
 

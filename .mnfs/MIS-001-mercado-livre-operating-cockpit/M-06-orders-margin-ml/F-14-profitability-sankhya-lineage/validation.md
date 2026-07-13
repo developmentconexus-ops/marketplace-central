@@ -134,3 +134,19 @@ tests passed without a live integration target.
   under exact destination TOP 306 predicates.
 - Milestone review should inspect the fixed Feature commit, then proportional
   QA must decide milestone status. This Feature does not pass the milestone.
+
+## F-15 evidence correction (append-only, 2026-07-13)
+
+The independent fixed-SHA review at
+`ef4b08c78d30a5e2269e79b051a432c9dc12b58d` invalidated the F-14 claims above
+that known partial-lineage sums already kept item and order margin incomplete.
+`TestImportMarginInputsKeepsKnownPartialLineageTaxIncomplete` proved only the
+imported input quality, while
+`TestBuildProfitSnapshotsKeepsPartialTaxIncompleteAtItemAndOrder` used a nil
+PIS amount and did not exercise the all-four-components-known counterexample.
+
+Those earlier statements must not be used as snapshot-quality proof. The
+replacement proof is the F-15 import-to-snapshot regression and fresh command
+evidence recorded in
+`../F-15-partial-tax-snapshot-quality/validation.md`; milestone status remains
+for replacement fixed-SHA review and QA, and C03 remains deferred/failing.

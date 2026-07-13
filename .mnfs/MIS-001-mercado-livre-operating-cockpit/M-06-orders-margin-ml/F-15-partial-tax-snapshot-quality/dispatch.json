@@ -1,0 +1,79 @@
+{
+  "role": "Feature Implementer",
+  "base_sha": "ef4b08c78d30a5e2269e79b051a432c9dc12b58d",
+  "accepted_base_sha": "ef4b08c78d30a5e2269e79b051a432c9dc12b58d",
+  "dispatch_id": "m06-f15-partial-tax-quality-20260713-01",
+  "feature_id": "F-15-partial-tax-snapshot-quality",
+  "work_item_id": "F-15-partial-tax-snapshot-quality",
+  "source_task_id": "/root/m06_assisted_sankhya_linkage/f15_partial_tax_quality",
+  "parent_task_id": "/root/m06_assisted_sankhya_linkage",
+  "callback_task_id": "/root/m06_assisted_sankhya_linkage",
+  "milestone_task_id": "/root/m06_assisted_sankhya_linkage",
+  "feature_file": ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-15-partial-tax-snapshot-quality/feature.md",
+  "required_files": [
+    "AGENTS.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-15-partial-tax-snapshot-quality/feature.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/milestone-review.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-14-profitability-sankhya-lineage/spec.md"
+  ],
+  "context_files": [
+    "AGENTS.md",
+    "ARCHITECTURE.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/validation-contract.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/corrections/correction-task.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/milestone-review.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-14-profitability-sankhya-lineage/spec.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-14-profitability-sankhya-lineage/validation.md",
+    "wiki/modules/profitability.md"
+  ],
+  "knowledge_routes": ["portfolio-core", "orders-margin"],
+  "allowed_paths": [
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-15-partial-tax-snapshot-quality",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-14-profitability-sankhya-lineage/validation.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/corrections/correction-task.md",
+    "apps/server_core/internal/modules/profitability/application/service.go",
+    "apps/server_core/internal/modules/profitability/application/service_test.go"
+  ],
+  "dirty_paths": [
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-15-partial-tax-snapshot-quality"
+  ],
+  "dirty_owner_task_id": "/root/m06_assisted_sankhya_linkage/f15_partial_tax_quality",
+  "one_writer": {
+    "owner_task_id": "/root/m06_assisted_sankhya_linkage/f15_partial_tax_quality",
+    "owned_paths": [
+      ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-15-partial-tax-snapshot-quality",
+      ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-14-profitability-sankhya-lineage/validation.md",
+      ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/corrections/correction-task.md",
+      "apps/server_core/internal/modules/profitability/application/service.go",
+      "apps/server_core/internal/modules/profitability/application/service_test.go"
+    ]
+  },
+  "forbidden_paths": [
+    "apps/server_core/migrations",
+    "apps/server_core/internal/modules/orders",
+    "apps/server_core/internal/modules/internal_read",
+    "contracts",
+    "packages",
+    "apps/web",
+    "scripts",
+    "docs/research",
+    "docker"
+  ],
+  "shared_seams": ["profitability-snapshot-quality", "correction-ledger"],
+  "side_effects": {
+    "allowed": ["repository-read", "feature-artifact-write", "source-write", "fake-test", "build-cache-write", "git-commit"],
+    "forbidden": ["oracle-read", "oracle-write", "postgres-read", "postgres-write", "provider-read", "provider-write", "production-data-write", "dependency-install", "secret-output", "pii-output"]
+  },
+  "proof": {
+    "command_ids": ["go-profitability-partial-tax", "go-repository", "git-diff-check"],
+    "evidence_targets": [
+      ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-15-partial-tax-snapshot-quality/validation.md"
+    ]
+  },
+  "stop_conditions": [
+    "A known partial amount would be discarded instead of retained.",
+    "A non-complete tax quality could still produce contribution or margin.",
+    "The correction would expand into C03 authentication/authorization or any other deferred scope.",
+    "A lineage/Oracle/API/migration/UI/live-system/dependency/secret/PII change would be required."
+  ]
+}
