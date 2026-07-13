@@ -5,6 +5,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"sort"
 	"testing"
 	"time"
 
@@ -98,6 +99,105 @@ func TestOrderRepositoryUpsertOrdersAppliesFreshnessAndReplacesChildren(t *testi
 	unknownReplacement := testOrderForIdentity(installationID, unknownOrderID, "unknown-replacement", nil, "unknown-replacement-item", "unknown-replacement-payment")
 	assertUpsertCounts(t, ctx, repo, unknownReplacement, 1, 0)
 	assertOrderRows(t, ctx, repo, unknownReplacement, 1, 1, 1)
+}
+
+func TestOrderRepositoryRefreshPreservesStableIdentityAcrossReorderAndMutableFields(t *testing.T) {
+	ctx := context.Background()
+	repo, cleanup := newOrderRepositoryForTest(t, ctx)
+	defer cleanup()
+
+	base := time.Date(2026, 7, 9, 10, 0, 0, 0, time.UTC)
+	newer := base.Add(time.Hour)
+	order := testOrder(repo, "known", "paid", &base, "MLB1", "payment")
+	order.Items = []ordersdomain.MarketplaceOrderItem{
+		{ProviderItemID: "MLB1", ProviderVariationID: "v1", SellerSKU: "sku-1", Quantity: 1, UnitPrice: float64Pointer(10), LinkQuality: ordersdomain.LinkQualityMissing},
+		{ProviderItemID: "MLB2", ProviderVariationID: "v2", SellerSKU: "sku-2", Quantity: 2, UnitPrice: float64Pointer(20), LinkQuality: ordersdomain.LinkQualityMissing},
+	}
+	assertUpsertCounts(t, ctx, repo, order, 1, 0)
+	first := readOrderForTest(t, ctx, repo, order.InstallationID, order.ProviderOrderID)
+	firstIDs := lineIDsByProviderIdentity(first.Items)
+
+	order.ProviderUpdatedAt = &newer
+	order.UpdatedAt = newer
+	order.Items = []ordersdomain.MarketplaceOrderItem{
+		{ProviderItemID: "MLB2", ProviderVariationID: "v2", SellerSKU: "sku-2", Quantity: 7, UnitPrice: float64Pointer(99), LinkQuality: ordersdomain.LinkQualityMissing},
+		{ProviderItemID: "MLB1", ProviderVariationID: "v1", SellerSKU: "sku-1", Quantity: 4, UnitPrice: float64Pointer(35), LinkQuality: ordersdomain.LinkQualityMissing},
+	}
+	assertUpsertCounts(t, ctx, repo, order, 1, 0)
+	refreshed := readOrderForTest(t, ctx, repo, order.InstallationID, order.ProviderOrderID)
+	if got := lineIDsByProviderIdentity(refreshed.Items); !sameLineIDMap(got, firstIDs) {
+		t.Fatalf("refreshed line IDs = %#v, want %#v", got, firstIDs)
+	}
+	for _, item := range refreshed.Items {
+		if item.ReconciliationState != ordersdomain.LineReconciliationStable {
+			t.Fatalf("item state = %q, want stable", item.ReconciliationState)
+		}
+	}
+}
+
+func TestOrderRepositoryDuplicateIdentityGroupPreservesIDSetAndRemainsAmbiguous(t *testing.T) {
+	ctx := context.Background()
+	repo, cleanup := newOrderRepositoryForTest(t, ctx)
+	defer cleanup()
+
+	base := time.Date(2026, 7, 9, 10, 0, 0, 0, time.UTC)
+	order := testOrder(repo, "known", "paid", &base, "MLB1", "payment")
+	duplicate := func(quantity int) ordersdomain.MarketplaceOrderItem {
+		return ordersdomain.MarketplaceOrderItem{ProviderItemID: "MLB1", ProviderVariationID: "v1", SellerSKU: "sku", Quantity: quantity, LinkQuality: ordersdomain.LinkQualityMissing}
+	}
+	order.Items = []ordersdomain.MarketplaceOrderItem{duplicate(1), duplicate(2)}
+	assertUpsertCounts(t, ctx, repo, order, 1, 0)
+	first := readOrderForTest(t, ctx, repo, order.InstallationID, order.ProviderOrderID)
+	firstIDs := sortedLineIDs(first.Items)
+	assertReconciliationState(t, first.Items, ordersdomain.LineReconciliationAmbiguous)
+
+	secondAt := base.Add(time.Hour)
+	order.ProviderUpdatedAt = &secondAt
+	order.Items = []ordersdomain.MarketplaceOrderItem{duplicate(8), duplicate(3), duplicate(5)}
+	assertUpsertCounts(t, ctx, repo, order, 1, 0)
+	second := readOrderForTest(t, ctx, repo, order.InstallationID, order.ProviderOrderID)
+	secondIDs := sortedLineIDs(second.Items)
+	assertReconciliationState(t, second.Items, ordersdomain.LineReconciliationAmbiguous)
+	if len(secondIDs) != 3 || secondIDs[0] != firstIDs[0] || secondIDs[1] != firstIDs[1] {
+		t.Fatalf("expanded duplicate IDs = %v, want preserved %v plus one", secondIDs, firstIDs)
+	}
+
+	thirdAt := secondAt.Add(time.Hour)
+	order.ProviderUpdatedAt = &thirdAt
+	order.Items = []ordersdomain.MarketplaceOrderItem{duplicate(13), duplicate(21), duplicate(34)}
+	assertUpsertCounts(t, ctx, repo, order, 1, 0)
+	third := readOrderForTest(t, ctx, repo, order.InstallationID, order.ProviderOrderID)
+	if got := sortedLineIDs(third.Items); fmt.Sprint(got) != fmt.Sprint(secondIDs) {
+		t.Fatalf("duplicate ID set changed without excess rows: got %v want %v", got, secondIDs)
+	}
+	assertReconciliationState(t, third.Items, ordersdomain.LineReconciliationAmbiguous)
+}
+
+func TestOrderRepositoryRefreshKeepsMigratedLegacyIdentityUnresolved(t *testing.T) {
+	ctx := context.Background()
+	repo, cleanup := newOrderRepositoryForTest(t, ctx)
+	defer cleanup()
+
+	base := time.Date(2026, 7, 9, 10, 0, 0, 0, time.UTC)
+	order := testOrder(repo, "known", "paid", &base, "MLB1", "payment")
+	assertUpsertCounts(t, ctx, repo, order, 1, 0)
+	first := readOrderForTest(t, ctx, repo, order.InstallationID, order.ProviderOrderID)
+	if _, err := repo.pool.Exec(ctx, `
+		UPDATE orders_marketplace_order_items
+		SET reconciliation_state = 'legacy_unresolved'
+		WHERE tenant_id = $1 AND installation_id = $2 AND provider_order_id = $3
+	`, repo.tenantID, order.InstallationID, order.ProviderOrderID); err != nil {
+		t.Fatalf("mark legacy fixture: %v", err)
+	}
+
+	newer := base.Add(time.Hour)
+	order.ProviderUpdatedAt = &newer
+	order.Items[0].Quantity = 9
+	assertUpsertCounts(t, ctx, repo, order, 1, 0)
+	refreshed := readOrderForTest(t, ctx, repo, order.InstallationID, order.ProviderOrderID)
+	if refreshed.Items[0].MPCLineID != first.Items[0].MPCLineID || refreshed.Items[0].ReconciliationState != ordersdomain.LineReconciliationLegacyUnresolved {
+		t.Fatalf("refreshed legacy item = %#v, want retained unresolved identity %q", refreshed.Items[0], first.Items[0].MPCLineID)
+	}
 }
 
 func newOrderRepositoryForTest(t *testing.T, ctx context.Context) (*OrderRepository, func()) {
@@ -217,4 +317,45 @@ func sameTime(left, right *time.Time) bool {
 		return left == nil && right == nil
 	}
 	return left.Equal(*right)
+}
+
+func float64Pointer(value float64) *float64 { return &value }
+
+func lineIDsByProviderIdentity(items []ordersdomain.MarketplaceOrderItem) map[string]ordersdomain.MPCLineID {
+	result := make(map[string]ordersdomain.MPCLineID, len(items))
+	for _, item := range items {
+		key := item.ProviderItemID + "\x00" + item.ProviderVariationID + "\x00" + item.SellerSKU
+		result[key] = item.MPCLineID
+	}
+	return result
+}
+
+func sameLineIDMap(left, right map[string]ordersdomain.MPCLineID) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for key, value := range left {
+		if right[key] != value {
+			return false
+		}
+	}
+	return true
+}
+
+func sortedLineIDs(items []ordersdomain.MarketplaceOrderItem) []ordersdomain.MPCLineID {
+	result := make([]ordersdomain.MPCLineID, 0, len(items))
+	for _, item := range items {
+		result = append(result, item.MPCLineID)
+	}
+	sort.Slice(result, func(left, right int) bool { return result[left] < result[right] })
+	return result
+}
+
+func assertReconciliationState(t *testing.T, items []ordersdomain.MarketplaceOrderItem, want ordersdomain.LineReconciliationState) {
+	t.Helper()
+	for _, item := range items {
+		if item.ReconciliationState != want {
+			t.Fatalf("item state = %q, want %q", item.ReconciliationState, want)
+		}
+	}
 }

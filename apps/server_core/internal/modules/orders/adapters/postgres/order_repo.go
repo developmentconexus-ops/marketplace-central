@@ -149,31 +149,121 @@ func (r *OrderRepository) upsertOrder(ctx context.Context, tx pgx.Tx, order orde
 }
 
 func (r *OrderRepository) replaceItems(ctx context.Context, tx pgx.Tx, order ordersdomain.MarketplaceOrder) error {
+	existing, err := r.loadItemsForReconciliation(ctx, tx, order.InstallationID, order.ProviderOrderID)
+	if err != nil {
+		return err
+	}
+	reconciled, err := ordersdomain.ReconcileOrderLineIdentities(existing, order.Items, ordersdomain.NewMPCLineID)
+	if err != nil {
+		return err
+	}
+	retained := make(map[ordersdomain.MPCLineID]struct{}, len(reconciled))
+	for _, item := range reconciled {
+		retained[item.MPCLineID] = struct{}{}
+	}
+	for _, item := range existing {
+		if _, found := retained[item.MPCLineID]; found {
+			continue
+		}
+		linked, err := r.isLineLinked(ctx, tx, order.InstallationID, order.ProviderOrderID, item.MPCLineID)
+		if err != nil {
+			return err
+		}
+		if linked {
+			return ordersdomain.ErrOrderLineIdentityConflict
+		}
+	}
+
+	// Move current positions out of the positive storage range so reordered
+	// identities can be updated without transient primary-key collisions.
 	if _, err := tx.Exec(ctx, `
-		DELETE FROM orders_marketplace_order_items
+		UPDATE orders_marketplace_order_items
+		SET line_no = -line_no
 		WHERE tenant_id = $1 AND installation_id = $2 AND provider_order_id = $3
 	`, r.tenantID, order.InstallationID, order.ProviderOrderID); err != nil {
 		return err
 	}
-	for index, item := range order.Items {
+	for index, item := range reconciled {
 		_, err := tx.Exec(ctx, `
 			INSERT INTO orders_marketplace_order_items (
-				tenant_id, installation_id, provider_order_id, line_no,
+				tenant_id, installation_id, provider_order_id, line_no, mpc_line_id, reconciliation_state,
 				provider_item_id, provider_variation_id, seller_sku, title, quantity,
 				unit_price, sale_fee_amount, link_quality, internal_product_id, created_at, updated_at
 			) VALUES (
-				$1, $2, $3, $4,
-				$5, $6, $7, $8, $9,
-				$10, $11, $12, $13, $14, $15
+				$1, $2, $3, $4, $5, $6,
+				$7, $8, $9, $10, $11,
+				$12, $13, $14, $15, $16, $17
 			)
+			ON CONFLICT (tenant_id, installation_id, provider_order_id, mpc_line_id) DO UPDATE SET
+				line_no = EXCLUDED.line_no,
+				reconciliation_state = EXCLUDED.reconciliation_state,
+				provider_item_id = EXCLUDED.provider_item_id,
+				provider_variation_id = EXCLUDED.provider_variation_id,
+				seller_sku = EXCLUDED.seller_sku,
+				title = EXCLUDED.title,
+				quantity = EXCLUDED.quantity,
+				unit_price = EXCLUDED.unit_price,
+				sale_fee_amount = EXCLUDED.sale_fee_amount,
+				link_quality = EXCLUDED.link_quality,
+				internal_product_id = EXCLUDED.internal_product_id,
+				updated_at = EXCLUDED.updated_at
 		`, r.tenantID, order.InstallationID, order.ProviderOrderID, index+1,
+			item.MPCLineID, item.ReconciliationState,
 			item.ProviderItemID, item.ProviderVariationID, item.SellerSKU, item.Title, item.Quantity,
 			nullableFloat8(item.UnitPrice), nullableFloat8(item.SaleFeeAmount), item.LinkQuality, nullableInt4(item.InternalProductID), order.CreatedAt, order.UpdatedAt)
 		if err != nil {
 			return err
 		}
 	}
-	return nil
+	_, err = tx.Exec(ctx, `
+		DELETE FROM orders_marketplace_order_items
+		WHERE tenant_id = $1 AND installation_id = $2 AND provider_order_id = $3
+		  AND line_no < 0
+	`, r.tenantID, order.InstallationID, order.ProviderOrderID)
+	return err
+}
+
+func (r *OrderRepository) isLineLinked(ctx context.Context, tx pgx.Tx, installationID, providerOrderID string, mpcLineID ordersdomain.MPCLineID) (bool, error) {
+	var linked bool
+	err := tx.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM orders_sankhya_linkage_lines
+			WHERE tenant_id = $1 AND installation_id = $2
+			  AND provider_order_id = $3 AND mpc_line_id = $4
+		)
+	`, r.tenantID, installationID, providerOrderID, mpcLineID).Scan(&linked)
+	return linked, err
+}
+
+func (r *OrderRepository) loadItemsForReconciliation(ctx context.Context, tx pgx.Tx, installationID, providerOrderID string) ([]ordersdomain.MarketplaceOrderItem, error) {
+	rows, err := tx.Query(ctx, `
+		SELECT mpc_line_id, reconciliation_state, provider_item_id, provider_variation_id, seller_sku
+		FROM orders_marketplace_order_items
+		WHERE tenant_id = $1 AND installation_id = $2 AND provider_order_id = $3
+		ORDER BY line_no ASC
+		FOR UPDATE
+	`, r.tenantID, installationID, providerOrderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := make([]ordersdomain.MarketplaceOrderItem, 0)
+	for rows.Next() {
+		var item ordersdomain.MarketplaceOrderItem
+		if err := rows.Scan(
+			&item.MPCLineID,
+			&item.ReconciliationState,
+			&item.ProviderItemID,
+			&item.ProviderVariationID,
+			&item.SellerSKU,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
 }
 
 func (r *OrderRepository) replacePayments(ctx context.Context, tx pgx.Tx, order ordersdomain.MarketplaceOrder) error {
@@ -206,7 +296,7 @@ func (r *OrderRepository) replacePayments(ctx context.Context, tx pgx.Tx, order 
 
 func (r *OrderRepository) listItems(ctx context.Context, installationID, providerOrderID string) ([]ordersdomain.MarketplaceOrderItem, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT provider_item_id, provider_variation_id, seller_sku, title, quantity, unit_price, sale_fee_amount, link_quality, internal_product_id
+		SELECT mpc_line_id, reconciliation_state, provider_item_id, provider_variation_id, seller_sku, title, quantity, unit_price, sale_fee_amount, link_quality, internal_product_id
 		FROM orders_marketplace_order_items
 		WHERE tenant_id = $1 AND installation_id = $2 AND provider_order_id = $3
 		ORDER BY line_no ASC
@@ -223,6 +313,8 @@ func (r *OrderRepository) listItems(ctx context.Context, installationID, provide
 		var saleFeeAmount pgtype.Float8
 		var internalProductID pgtype.Int4
 		if err := rows.Scan(
+			&item.MPCLineID,
+			&item.ReconciliationState,
 			&item.ProviderItemID,
 			&item.ProviderVariationID,
 			&item.SellerSKU,

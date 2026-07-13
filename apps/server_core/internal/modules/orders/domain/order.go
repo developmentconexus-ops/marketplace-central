@@ -1,6 +1,28 @@
 package domain
 
-import "time"
+import (
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
+	"sort"
+	"strings"
+	"time"
+)
+
+var (
+	ErrInvalidLineIdentity       = errors.New("invalid order line identity")
+	ErrOrderLineIdentityConflict = errors.New("order line identity conflict")
+)
+
+type MPCLineID string
+
+type LineReconciliationState string
+
+const (
+	LineReconciliationStable           LineReconciliationState = "stable"
+	LineReconciliationLegacyUnresolved LineReconciliationState = "legacy_unresolved"
+	LineReconciliationAmbiguous        LineReconciliationState = "ambiguous"
+)
 
 type LinkQuality string
 
@@ -19,35 +41,37 @@ type ListingIdentity struct {
 }
 
 type MarketplaceOrder struct {
-	InstallationID      string                  `json:"installation_id"`
-	ProviderCode        string                  `json:"provider_code"`
-	ProviderOrderID     string                  `json:"provider_order_id"`
-	ProviderStatus      string                  `json:"provider_status,omitempty"`
-	ProviderStatusDetail string                 `json:"provider_status_detail,omitempty"`
-	ProviderCreatedAt   *time.Time              `json:"provider_created_at,omitempty"`
-	ProviderClosedAt    *time.Time              `json:"provider_closed_at,omitempty"`
-	ProviderUpdatedAt   *time.Time              `json:"provider_updated_at,omitempty"`
-	FetchedAt           time.Time               `json:"fetched_at"`
-	ShippingID          string                  `json:"shipping_id,omitempty"`
-	CancellationDetail  string                  `json:"cancellation_detail,omitempty"`
-	Tags                []string                `json:"tags,omitempty"`
-	RawProviderRef      string                  `json:"raw_provider_ref,omitempty"`
-	Items               []MarketplaceOrderItem  `json:"items"`
-	Payments            []MarketplaceOrderPayment `json:"payments"`
-	CreatedAt           time.Time               `json:"created_at"`
-	UpdatedAt           time.Time               `json:"updated_at"`
+	InstallationID       string                    `json:"installation_id"`
+	ProviderCode         string                    `json:"provider_code"`
+	ProviderOrderID      string                    `json:"provider_order_id"`
+	ProviderStatus       string                    `json:"provider_status,omitempty"`
+	ProviderStatusDetail string                    `json:"provider_status_detail,omitempty"`
+	ProviderCreatedAt    *time.Time                `json:"provider_created_at,omitempty"`
+	ProviderClosedAt     *time.Time                `json:"provider_closed_at,omitempty"`
+	ProviderUpdatedAt    *time.Time                `json:"provider_updated_at,omitempty"`
+	FetchedAt            time.Time                 `json:"fetched_at"`
+	ShippingID           string                    `json:"shipping_id,omitempty"`
+	CancellationDetail   string                    `json:"cancellation_detail,omitempty"`
+	Tags                 []string                  `json:"tags,omitempty"`
+	RawProviderRef       string                    `json:"raw_provider_ref,omitempty"`
+	Items                []MarketplaceOrderItem    `json:"items"`
+	Payments             []MarketplaceOrderPayment `json:"payments"`
+	CreatedAt            time.Time                 `json:"created_at"`
+	UpdatedAt            time.Time                 `json:"updated_at"`
 }
 
 type MarketplaceOrderItem struct {
-	ProviderItemID      string      `json:"provider_item_id"`
-	ProviderVariationID string      `json:"provider_variation_id,omitempty"`
-	SellerSKU           string      `json:"seller_sku,omitempty"`
-	Title               string      `json:"title,omitempty"`
-	Quantity            int         `json:"quantity"`
-	UnitPrice           *float64    `json:"unit_price,omitempty"`
-	SaleFeeAmount       *float64    `json:"sale_fee_amount,omitempty"`
-	LinkQuality         LinkQuality `json:"link_quality"`
-	InternalProductID   *int        `json:"internal_product_id,omitempty"`
+	MPCLineID           MPCLineID               `json:"-"`
+	ReconciliationState LineReconciliationState `json:"-"`
+	ProviderItemID      string                  `json:"provider_item_id"`
+	ProviderVariationID string                  `json:"provider_variation_id,omitempty"`
+	SellerSKU           string                  `json:"seller_sku,omitempty"`
+	Title               string                  `json:"title,omitempty"`
+	Quantity            int                     `json:"quantity"`
+	UnitPrice           *float64                `json:"unit_price,omitempty"`
+	SaleFeeAmount       *float64                `json:"sale_fee_amount,omitempty"`
+	LinkQuality         LinkQuality             `json:"link_quality"`
+	InternalProductID   *int                    `json:"internal_product_id,omitempty"`
 }
 
 type MarketplaceOrderPayment struct {
@@ -68,4 +92,110 @@ type ItemLink struct {
 	Identity          ListingIdentity
 	Quality           LinkQuality
 	InternalProductID *int
+}
+
+// NewMPCLineID creates an opaque, MPC-owned identity. Provider attributes and
+// positional line numbers are deliberately absent from the value.
+func NewMPCLineID() (MPCLineID, error) {
+	var value [16]byte
+	if _, err := rand.Read(value[:]); err != nil {
+		return "", err
+	}
+	return MPCLineID("mpl_" + hex.EncodeToString(value[:])), nil
+}
+
+func (id MPCLineID) Valid() bool {
+	value := string(id)
+	if len(value) != 36 || !strings.HasPrefix(value, "mpl_") {
+		return false
+	}
+	_, err := hex.DecodeString(value[4:])
+	return err == nil
+}
+
+func (state LineReconciliationState) Valid() bool {
+	switch state {
+	case LineReconciliationStable, LineReconciliationLegacyUnresolved, LineReconciliationAmbiguous:
+		return true
+	default:
+		return false
+	}
+}
+
+type LineIDAllocator func() (MPCLineID, error)
+
+type providerLineIdentity struct {
+	itemID      string
+	variationID string
+	sellerSKU   string
+}
+
+// ReconcileOrderLineIdentities carries stable identities across a refresh.
+// Only provider item, variation, and seller SKU identify a group. Quantity,
+// price, and incoming position are mutable snapshot evidence. Duplicate groups
+// retain the old ID multiset but remain ambiguous, so assigning that set in
+// deterministic storage order does not claim an individual match.
+func ReconcileOrderLineIdentities(existing, incoming []MarketplaceOrderItem, allocate LineIDAllocator) ([]MarketplaceOrderItem, error) {
+	if allocate == nil {
+		return nil, ErrInvalidLineIdentity
+	}
+
+	result := append([]MarketplaceOrderItem(nil), incoming...)
+	existingGroups := make(map[providerLineIdentity][]MarketplaceOrderItem)
+	for _, item := range existing {
+		key := lineIdentityKey(item)
+		existingGroups[key] = append(existingGroups[key], item)
+	}
+	incomingGroups := make(map[providerLineIdentity][]int)
+	for index, item := range result {
+		key := lineIdentityKey(item)
+		incomingGroups[key] = append(incomingGroups[key], index)
+	}
+
+	for key, indexes := range incomingGroups {
+		previous := append([]MarketplaceOrderItem(nil), existingGroups[key]...)
+		sort.Slice(previous, func(left, right int) bool {
+			return previous[left].MPCLineID < previous[right].MPCLineID
+		})
+
+		state := LineReconciliationStable
+		if len(previous) > 1 || len(indexes) > 1 || containsReconciliationState(previous, LineReconciliationAmbiguous) {
+			state = LineReconciliationAmbiguous
+		} else if containsReconciliationState(previous, LineReconciliationLegacyUnresolved) {
+			state = LineReconciliationLegacyUnresolved
+		}
+
+		for position, index := range indexes {
+			var id MPCLineID
+			if position < len(previous) && previous[position].MPCLineID.Valid() {
+				id = previous[position].MPCLineID
+			} else {
+				var err error
+				id, err = allocate()
+				if err != nil || !id.Valid() {
+					return nil, ErrInvalidLineIdentity
+				}
+			}
+			result[index].MPCLineID = id
+			result[index].ReconciliationState = state
+		}
+	}
+	return result, nil
+}
+
+func lineIdentityKey(item MarketplaceOrderItem) providerLineIdentity {
+	return providerLineIdentity{
+		itemID:      item.ProviderItemID,
+		variationID: item.ProviderVariationID,
+		sellerSKU:   item.SellerSKU,
+	}
+}
+
+func containsReconciliationState(items []MarketplaceOrderItem, state LineReconciliationState) bool {
+	for _, item := range items {
+		if item.ReconciliationState == state {
+			return true
+		}
+	}
+	return false
 }
