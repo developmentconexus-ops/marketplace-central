@@ -4,6 +4,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"testing"
@@ -60,6 +61,16 @@ func TestOrderRepositoryLowLevelUpsertDoesNotRegressNewerSnapshot(t *testing.T) 
 	}
 	if stored.ProviderUpdatedAt == nil || !stored.ProviderUpdatedAt.Equal(newer) {
 		t.Fatalf("stored provider updated at = %v, want %v", stored.ProviderUpdatedAt, newer)
+	}
+}
+
+func TestOrderRepositoryFindExactOrderRejectsUnscopedLookupWithoutDatabase(t *testing.T) {
+	repo := NewOrderRepository(nil, "tenant-1")
+	_, found, err := repo.FindExactOrder(context.Background(), ordersdomain.LinkageScope{
+		TenantID: "other-tenant", InstallationID: "install-1", ProviderOrderID: "order-1",
+	})
+	if !errors.Is(err, ordersdomain.ErrInvalidAssistedSankhyaLinkage) || found {
+		t.Fatalf("FindExactOrder() = found %v, error %v; want scoped invalid without DB access", found, err)
 	}
 }
 

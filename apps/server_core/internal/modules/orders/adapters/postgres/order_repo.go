@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"time"
 
@@ -13,7 +14,10 @@ import (
 	"marketplace-central/apps/server_core/internal/modules/orders/ports"
 )
 
-var _ ports.OrderStore = (*OrderRepository)(nil)
+var (
+	_ ports.OrderStore  = (*OrderRepository)(nil)
+	_ ports.OrderLookup = (*OrderRepository)(nil)
+)
 
 type OrderRepository struct {
 	pool     *pgxpool.Pool
@@ -22,6 +26,34 @@ type OrderRepository struct {
 
 func NewOrderRepository(pool *pgxpool.Pool, tenantID string) *OrderRepository {
 	return &OrderRepository{pool: pool, tenantID: tenantID}
+}
+
+func (r *OrderRepository) FindExactOrder(ctx context.Context, scope ordersdomain.LinkageScope) (ordersdomain.MarketplaceOrder, bool, error) {
+	if r.pool == nil || strings.TrimSpace(scope.TenantID) == "" || scope.TenantID != r.tenantID ||
+		strings.TrimSpace(scope.InstallationID) == "" || strings.TrimSpace(scope.ProviderOrderID) == "" {
+		return ordersdomain.MarketplaceOrder{}, false, ordersdomain.ErrInvalidAssistedSankhyaLinkage
+	}
+	row := r.pool.QueryRow(ctx, `
+		SELECT
+			installation_id, provider_code, provider_order_id, provider_status, provider_status_detail,
+			provider_created_at, provider_closed_at, provider_updated_at, fetched_at,
+			shipping_id, cancellation_detail, tags_json, raw_provider_ref, created_at, updated_at
+		FROM orders_marketplace_orders
+		WHERE tenant_id = $1 AND installation_id = $2 AND provider_order_id = $3
+		  AND provider_code = 'mercado_livre'
+	`, scope.TenantID, scope.InstallationID, scope.ProviderOrderID)
+	order, err := scanOrder(row)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ordersdomain.MarketplaceOrder{}, false, nil
+	}
+	if err != nil {
+		return ordersdomain.MarketplaceOrder{}, false, err
+	}
+	order.Items, err = r.listItems(ctx, scope.InstallationID, scope.ProviderOrderID)
+	if err != nil {
+		return ordersdomain.MarketplaceOrder{}, false, err
+	}
+	return order, true, nil
 }
 
 func (r *OrderRepository) UpsertOrders(ctx context.Context, orders []ordersdomain.MarketplaceOrder) (int, int, error) {

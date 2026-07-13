@@ -1,0 +1,146 @@
+{
+  "schema_version": "1.0",
+  "context_id": "f-12-assisted-linkage-service",
+  "feature_path": ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-12-assisted-linkage-service",
+  "base_sha": "50ac8baee6c658bc987ab13941e47137a37c17a5",
+  "objective": "Add the bounded orders-owned application seam that converts an operator's explicit exact TOP 313 selection into one F-09 append-only mapping and then reads exact per-line TOP 306 descendants through F-11 without leaking Oracle types or claiming production authentication.",
+  "observable_done": [
+    "Exact-key candidate listing for one persisted Mercado Livre order with no automatic selection or persistence.",
+    "Fail-closed confirmation that validates one selected candidate and a full stable-MPC-line-to-candidate-line bijection before an exact-evidence append.",
+    "Idempotent mapping return plus explicit per-line descendant states, including exact conflict versus unavailable, without undoing or manufacturing the confirmed mapping.",
+    "Focused fake/unit evidence and one intentional Feature commit limited to the dispatched orders service, ports, bridge, order lookup, and Feature artifacts."
+  ],
+  "criteria": [
+    {
+      "id": "F12-AC01",
+      "milestone_id": "M-06-C01",
+      "proof_commands": [
+        "go-assisted-linkage-service"
+      ]
+    },
+    {
+      "id": "F12-AC02",
+      "milestone_id": "M-06-C01",
+      "proof_commands": [
+        "go-assisted-linkage-service"
+      ]
+    },
+    {
+      "id": "F12-AC03",
+      "milestone_id": "M-06-C01",
+      "proof_commands": [
+        "go-assisted-linkage-service"
+      ]
+    },
+    {
+      "id": "F12-AC04",
+      "milestone_id": "M-06-C01",
+      "proof_commands": [
+        "go-assisted-linkage-service"
+      ]
+    },
+    {
+      "id": "F12-AC05",
+      "milestone_id": "M-06-C01",
+      "proof_commands": [
+        "go-assisted-linkage-service",
+        "git-diff-check"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "path": ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-12-assisted-linkage-service/feature.md",
+      "sha256": "eae7dab4f0f478272d1aaa5e8350df3d4645a6807429814b3b6c545551d0ce81",
+      "selector": "full-contract",
+      "reason": "feature execution contract",
+      "estimated_tokens": 232
+    },
+    {
+      "path": ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-12-assisted-linkage-service/spec.md",
+      "sha256": "3f08fc1baf70db68e93d48ddc35010264a83a923fbd177539b78b4491ef78094",
+      "selector": "full-contract",
+      "reason": "feature execution contract",
+      "estimated_tokens": 435
+    },
+    {
+      "path": ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-12-assisted-linkage-service/plan.md",
+      "sha256": "4432ea919fd03f8f5b46feb77fe120e7643087f034426b630a02d0e656a0e230",
+      "selector": "full-contract",
+      "reason": "feature execution contract",
+      "estimated_tokens": 472
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "24a8b7d28780bce213ce90278ea73eee9a08b6a9c6d0684821cd4c7c89354fd2",
+      "selector": "full-contract",
+      "reason": "feature execution contract",
+      "estimated_tokens": 107
+    }
+  ],
+  "risk": {
+    "level": "L1",
+    "review_policy": "standard-review",
+    "advisory_model": "general-reasoning-model"
+  },
+  "paths": {
+    "allowed": [
+      ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-12-assisted-linkage-service",
+      "apps/server_core/internal/modules/orders/adapters/internalread/sankhya_linkage_reader_test.go",
+      "apps/server_core/internal/modules/orders/adapters/internalread/sankhya_linkage_reader.go",
+      "apps/server_core/internal/modules/orders/adapters/postgres/order_repo_test.go",
+      "apps/server_core/internal/modules/orders/adapters/postgres/order_repo.go",
+      "apps/server_core/internal/modules/orders/application/assisted_sankhya_linkage_service_test.go",
+      "apps/server_core/internal/modules/orders/application/assisted_sankhya_linkage_service.go",
+      "apps/server_core/internal/modules/orders/domain/assisted_sankhya_linkage_test.go",
+      "apps/server_core/internal/modules/orders/domain/assisted_sankhya_linkage.go",
+      "apps/server_core/internal/modules/orders/ports/order_lookup.go",
+      "apps/server_core/internal/modules/orders/ports/sankhya_linkage_reader.go"
+    ],
+    "forbidden": [
+      "apps/server_core/internal/composition",
+      "apps/server_core/internal/modules/internal_read",
+      "apps/server_core/internal/modules/orders/transport",
+      "apps/server_core/internal/modules/profitability",
+      "apps/server_core/migrations",
+      "contracts/api",
+      "contracts/governance",
+      "docs/research",
+      "packages",
+      "scripts"
+    ]
+  },
+  "shared_seams": [],
+  "side_effects": [
+    "repository-write",
+    "isolated-cache-write"
+  ],
+  "commands": [
+    {
+      "id": "go-assisted-linkage-service",
+      "command_id": "go-assisted-linkage-service",
+      "target_label": "fake",
+      "evidence_type": "assumed"
+    },
+    {
+      "id": "git-diff-check",
+      "command_id": "git-diff-check",
+      "target_label": "fake",
+      "evidence_type": "assumed"
+    }
+  ],
+  "stop_conditions": [
+    "proof-not-explicit: A candidate or filter would become proof without one explicitly selected exact TOP 313 document.",
+    "bijection-incomplete: Every stable persisted MPC line and every exact selected candidate line cannot be covered exactly once.",
+    "boundary-leak: An Oracle or internal-read type would cross the orders adapter boundary.",
+    "authentication-claim: The implementation would claim or infer production authentication or manual-adjustment authorization.",
+    "path-outside-scope: A required edit falls outside the dispatched paths.",
+    "forbidden-side-effect: Validation would access a live database/provider, install dependencies, or expose secrets/PII."
+  ],
+  "retry_budget": 1,
+  "handoff": {
+    "target": "Milestone Orchestrator",
+    "reason": "return fields: status, commit, changed-paths, evidence, blockers, next"
+  },
+  "estimated_input_tokens": 1246
+}
