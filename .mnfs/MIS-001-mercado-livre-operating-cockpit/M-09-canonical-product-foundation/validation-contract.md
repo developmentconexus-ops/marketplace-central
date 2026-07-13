@@ -90,6 +90,12 @@ additional attempt under `correction-contract-c01-final.md`, limited to the two
 remaining M-09-C01 findings. That contract does not reset the ordinary budget and
 permits no further retry or scope expansion.
 
+After C01 review passed, proportional QA at
+`97fd4b58d55a7d14a2b45f0c3bae15b2e374822a` exposed a historical test-clock defect
+outside the M-09 implementation diff. Portfolio separately authorizes one test-only
+QA unblock under `correction-contract-qa-inventory-clock.md`. It does not reopen any
+M-09 criterion, implementation path, or retry budget.
+
 ## Handoff
 
 - Current status: Ready.
