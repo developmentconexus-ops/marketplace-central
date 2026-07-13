@@ -84,6 +84,12 @@ per-command atomic wrappers are not required.
 Maximum two scoped correction attempts. Stop immediately on an architecture,
 contract, ownership, live-write, or nondeterministic identity conflict.
 
+The ordinary budget was consumed at SHA
+`230dc78306d3775894a00b5424238529382cc9b0`. Portfolio authorizes exactly one
+additional attempt under `correction-contract-c01-final.md`, limited to the two
+remaining M-09-C01 findings. That contract does not reset the ordinary budget and
+permits no further retry or scope expansion.
+
 ## Handoff
 
 - Current status: Ready.
