@@ -6,7 +6,7 @@ import (
 	"marketplace-central/apps/server_core/internal/modules/catalog/domain"
 )
 
-// ProductReader reads product data from MetalShopping (read-only).
+// ProductReader reads product data from the active canonical source adapter (read-only).
 type ProductReader interface {
 	ListProducts(ctx context.Context) ([]domain.Product, error)
 	ListProductsByIDs(ctx context.Context, productIDs []string) ([]domain.Product, error)

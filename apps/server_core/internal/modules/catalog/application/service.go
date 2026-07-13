@@ -69,8 +69,8 @@ func (s Service) UpsertEnrichment(ctx context.Context, enrichment domain.Product
 	return s.enrichments.UpsertEnrichment(ctx, enrichment)
 }
 
-// applyEnrichments overlays MPC enrichment data onto MetalShopping products.
-// Priority: manual enrichment > MetalShopping shopping snapshot > nil.
+// applyEnrichments overlays MPC manual enrichment onto canonical source products.
+// Priority: MPC manual enrichment > retained canonical source value > nil.
 func (s Service) applyEnrichments(ctx context.Context, products []domain.Product) ([]domain.Product, error) {
 	if len(products) == 0 {
 		return products, nil

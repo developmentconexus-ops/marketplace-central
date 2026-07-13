@@ -58,5 +58,5 @@ docker compose run --rm backend bash ./docker/dev/backend-entrypoint.sh test ./a
 ## Notes
 
 - Compose overrides `MC_DATABASE_URL` inside the backend container to use the `postgres` service.
-- The current server still opens `MS_DATABASE_URL` during boot for legacy catalog composition. The container maps it to the dev Postgres URL only so the current binary starts; this is not the Oracle-first internal-read target path.
+- M-09 removed the legacy catalog database variable from active server composition. `MC_DATABASE_URL` remains the MPC-owned PostgreSQL connection, while governed Oracle configuration owns internal reads.
 - Oracle live validation inside Linux containers uses the Instant Client installed in the backend image at `/opt/oracle/instantclient`.
