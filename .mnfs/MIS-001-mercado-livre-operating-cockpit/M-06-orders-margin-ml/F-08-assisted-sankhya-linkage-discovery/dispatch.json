@@ -1,0 +1,74 @@
+{
+  "role": "Feature Implementer",
+  "accepted_base_sha": "6fe6e2a056c0397d7c5ad45555581ab1175c7cef",
+  "dispatch_id": "m06-f08-discovery-20260713-01",
+  "work_item_id": "F-08-assisted-sankhya-linkage-discovery",
+  "source_task_id": "/root/m06_assisted_sankhya_linkage/f08_sankhya_discovery",
+  "parent_task_id": "/root/m06_assisted_sankhya_linkage",
+  "callback_task_id": "/root/m06_assisted_sankhya_linkage",
+  "milestone_task_id": "/root/m06_assisted_sankhya_linkage",
+  "feature_id": "F-08-assisted-sankhya-linkage-discovery",
+  "feature_file": ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-08-assisted-sankhya-linkage-discovery/feature.md",
+  "context_files": [
+    "AGENTS.md",
+    "ARCHITECTURE.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/mission.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/milestone.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/validation-contract.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/research/order-sankhya-linkage-architecture-2026-07-12.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-05-docker-live-oracle-runner/validation.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-07-order-specific-tax-provenance/validation.md",
+    "contracts/governance/knowledge-routes.json",
+    "contracts/governance/execution-lanes.json",
+    "wiki/modules/orders.md",
+    "wiki/modules/profitability.md"
+  ],
+  "required_files": [
+    "AGENTS.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-08-assisted-sankhya-linkage-discovery/feature.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/validation-contract.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/research/order-sankhya-linkage-architecture-2026-07-12.md"
+  ],
+  "knowledge_routes": ["portfolio-core", "orders-margin"],
+  "base_sha": "6fe6e2a056c0397d7c5ad45555581ab1175c7cef",
+  "allowed_paths": [
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-08-assisted-sankhya-linkage-discovery"
+  ],
+  "dirty_paths": [
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-08-assisted-sankhya-linkage-discovery"
+  ],
+  "dirty_owner_task_id": "/root/m06_assisted_sankhya_linkage/f08_sankhya_discovery",
+  "one_writer": {
+    "owner_task_id": "/root/m06_assisted_sankhya_linkage/f08_sankhya_discovery",
+    "owned_paths": [
+      ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-08-assisted-sankhya-linkage-discovery"
+    ]
+  },
+  "forbidden_paths": [
+    "apps",
+    "contracts/api",
+    "packages",
+    "docs/research",
+    "contracts/governance"
+  ],
+  "shared_seams": [],
+  "side_effects": {
+    "allowed": ["repository-read", "database-read", "feature-artifact-write", "git-commit"],
+    "forbidden": ["ddl", "oracle-write", "provider-write", "application-data-write", "secret-output", "pii-output", "dependency-install"]
+  },
+  "proof": {
+    "command_ids": ["live-oracle-linkage-discovery", "go-tax-provenance-focused", "git-diff-check"],
+    "evidence_targets": [
+      ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-08-assisted-sankhya-linkage-discovery/discovery.md",
+      ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-08-assisted-sankhya-linkage-discovery/sankhya-admin-spec.md",
+      ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-08-assisted-sankhya-linkage-discovery/implementation-contract.md",
+      ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-08-assisted-sankhya-linkage-discovery/validation.md"
+    ]
+  },
+  "stop_conditions": [
+    "Any command would perform DDL or an Oracle/provider/application write.",
+    "A live custom-field name or TOP lineage fact cannot be proved; record it as unknown and continue with the fail-closed admin specification.",
+    "Repository and runtime truth conflict on architecture, contract, ownership, or verification.",
+    "Any output would expose a secret, credential, buyer PII, or unbounded operational rows."
+  ]
+}
