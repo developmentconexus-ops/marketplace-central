@@ -1,6 +1,7 @@
 package oracle
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"database/sql/driver"
@@ -10,11 +11,15 @@ import (
 	"go/parser"
 	"go/token"
 	"io"
+	"log/slog"
+	"os"
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"marketplace-central/apps/server_core/internal/modules/internal_read/domain"
+	"marketplace-central/apps/server_core/internal/modules/internal_read/observability"
 	"marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 )
 
@@ -22,6 +27,7 @@ var sankhyaDriverSequence uint64
 
 type scriptedSankhyaDB struct {
 	queries []string
+	pings   int
 	respond func(string, []driver.NamedValue) ([]string, [][]driver.Value, error)
 }
 
@@ -45,7 +51,10 @@ func (c *scriptedSankhyaConn) Close() error { return nil }
 func (c *scriptedSankhyaConn) Begin() (driver.Tx, error) {
 	return nil, errors.New("transactions are not supported")
 }
-func (c *scriptedSankhyaConn) Ping(context.Context) error { return nil }
+func (c *scriptedSankhyaConn) Ping(context.Context) error {
+	c.script.pings++
+	return nil
+}
 
 func (c *scriptedSankhyaConn) QueryContext(_ context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
 	c.script.queries = append(c.script.queries, query)
@@ -118,7 +127,7 @@ func TestSankhyaLinkageInvalidIdentifierFailsBeforeDatabaseAccess(t *testing.T) 
 	config.HeaderFieldName = `AD_BAD" OR 1=1`
 	reader := NewSankhyaLinkageReader(db, config)
 
-	_, err := reader.FindCandidates(context.Background(), ports.SankhyaCandidateInput{ExternalOrderKey: "123456"})
+	err := reader.ValidateConfiguration(context.Background())
 	if !domain.IsReadErrorCode(err, domain.ReadErrorConfigurationInvalid) {
 		t.Fatalf("error = %v, want configuration_invalid", err)
 	}
@@ -177,7 +186,7 @@ func TestSankhyaLinkageMissingMetadataStopsBeforeCandidateQuery(t *testing.T) {
 	}}
 	reader := NewSankhyaLinkageReader(openScriptedSankhyaDB(t, script), validSankhyaLinkageConfig())
 
-	_, err := reader.FindCandidates(context.Background(), ports.SankhyaCandidateInput{ExternalOrderKey: "123456"})
+	err := reader.ValidateConfiguration(context.Background())
 	if !domain.IsReadErrorCode(err, domain.ReadErrorMetadataMismatch) {
 		t.Fatalf("error = %v, want field_metadata_mismatch", err)
 	}
@@ -199,7 +208,7 @@ func TestSankhyaLinkageDuplicateProbeStopsBeforeCandidateQuery(t *testing.T) {
 	}}
 	reader := NewSankhyaLinkageReader(openScriptedSankhyaDB(t, script), validSankhyaLinkageConfig())
 
-	_, err := reader.FindCandidates(context.Background(), ports.SankhyaCandidateInput{ExternalOrderKey: "123456"})
+	err := reader.ValidateConfiguration(context.Background())
 	if !domain.IsReadErrorCode(err, domain.ReadErrorUniquenessUnproved) {
 		t.Fatalf("error = %v, want uniqueness_unproved", err)
 	}
@@ -236,6 +245,9 @@ func TestSankhyaLinkageReaderPreservesOneToManyNullableDescendants(t *testing.T)
 		}
 	}}
 	reader := NewSankhyaLinkageReader(openScriptedSankhyaDB(t, script), validSankhyaLinkageConfig())
+	if err := reader.ValidateConfiguration(context.Background()); err != nil {
+		t.Fatalf("ValidateConfiguration() error = %v", err)
+	}
 
 	got, err := reader.ListDescendants(context.Background(), ports.SankhyaDescendantInput{
 		Origin: domain.InternalDocumentLine{DocumentID: 31301, LineNumber: 7},
@@ -245,6 +257,95 @@ func TestSankhyaLinkageReaderPreservesOneToManyNullableDescendants(t *testing.T)
 	}
 	if got.State != domain.SankhyaLineagePartial || len(got.Descendants) != 2 || got.Descendants[1].AttendedQuantity != nil {
 		t.Fatalf("ListDescendants() = %+v, want two partial descendants with nullable quantity", got)
+	}
+}
+
+func TestSankhyaLinkageCandidateReadsChunkLinesWithoutRequestValidation(t *testing.T) {
+	for _, candidateCount := range []int{1, 700} {
+		t.Run(fmt.Sprintf("candidates-%d", candidateCount), func(t *testing.T) {
+			candidateRows := make([][]driver.Value, 0, candidateCount)
+			for index := 0; index < candidateCount; index++ {
+				candidateRows = append(candidateRows, []driver.Value{int64(313000 + index), nil, int64(313), nil, nil})
+			}
+			script := &scriptedSankhyaDB{respond: func(query string, _ []driver.NamedValue) ([]string, [][]driver.Value, error) {
+				switch {
+				case strings.Contains(query, "SELECT c.NUNOTA"):
+					return []string{"NUNOTA", "NUMNOTA", "CODTIPOPER", "DTNEG", "VLRNOTA"}, candidateRows, nil
+				case strings.Contains(query, "TGFITE i"):
+					return []string{"NUNOTA", "SEQUENCIA", "CODPROD", "QTDNEG", "VLRTOT"}, nil, nil
+				default:
+					return nil, nil, fmt.Errorf("unexpected request-path query: %s", query)
+				}
+			}}
+			config := validSankhyaLinkageConfig()
+			config.CandidateLimit = candidateCount
+			reader := NewSankhyaLinkageReader(openScriptedSankhyaDB(t, script), config)
+
+			candidates, err := reader.FindCandidates(context.Background(), ports.SankhyaCandidateInput{ExternalOrderKey: "123456"})
+			if err != nil {
+				t.Fatalf("FindCandidates() error = %v", err)
+			}
+			wantLineQueries := (candidateCount + sankhyaLineChunkSize - 1) / sankhyaLineChunkSize
+			if len(candidates) != candidateCount || len(script.queries) != 1+wantLineQueries || script.pings != 0 {
+				t.Fatalf("candidates=%d queries=%d pings=%d, want candidates=%d queries=%d pings=0", len(candidates), len(script.queries), script.pings, candidateCount, 1+wantLineQueries)
+			}
+			for _, query := range script.queries {
+				if strings.Contains(query, "ALL_TAB_COLUMNS") || strings.Contains(query, "other.ROWID") {
+					t.Fatalf("request path reached startup validation query: %s", query)
+				}
+			}
+		})
+	}
+}
+
+type codedSankhyaDriverError struct{}
+
+func (codedSankhyaDriverError) Error() string {
+	return "ORA-00942 user=sankhya_reader host=oracle.internal service=SANKHYA password=secret"
+}
+
+func (codedSankhyaDriverError) Code() int { return 942 }
+
+type failingSankhyaLinkageReader struct{}
+
+func (failingSankhyaLinkageReader) ValidateConfiguration(context.Context) error { return nil }
+func (failingSankhyaLinkageReader) FindCandidates(context.Context, ports.SankhyaCandidateInput) ([]domain.SankhyaDocumentCandidate, error) {
+	return nil, sankhyaOracleError("read candidate lines", codedSankhyaDriverError{})
+}
+func (failingSankhyaLinkageReader) ListDescendants(context.Context, ports.SankhyaDescendantInput) (domain.SankhyaLineage, error) {
+	return domain.SankhyaLineage{}, sankhyaOracleError("read linkage descendants", codedSankhyaDriverError{})
+}
+
+func TestSankhyaLinkageOracleErrorsRedactDSNCauseAndLogs(t *testing.T) {
+	var output bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&output, nil))
+	timed := observability.NewTimingSankhyaLinkageReader(failingSankhyaLinkageReader{}, logger, time.Second)
+
+	_, err := timed.FindCandidates(context.Background(), ports.SankhyaCandidateInput{ExternalOrderKey: "123456"})
+	if !domain.IsReadErrorCode(err, domain.ReadErrorSourceUnavailable) {
+		t.Fatalf("error = %v, want source_unavailable", err)
+	}
+	for _, forbidden := range []string{"sankhya_reader", "oracle.internal", "SANKHYA", "password", "secret", "ORA-00942"} {
+		if strings.Contains(err.Error(), forbidden) || strings.Contains(output.String(), forbidden) {
+			t.Fatalf("raw driver text %q leaked: err=%q logs=%q", forbidden, err, output.String())
+		}
+	}
+	if !strings.Contains(output.String(), "oracle_code=942") {
+		t.Fatalf("numeric Oracle code missing from logs: %q", output.String())
+	}
+	var readErr *domain.ReadError
+	if !errors.As(err, &readErr) || readErr.Cause == nil || readErr.Cause.Error() != "oracle error code=942" {
+		t.Fatalf("safe cause = %#v, want oracle error code=942", readErr)
+	}
+}
+
+func TestSankhyaLinkageReaderHasNoFreshnessPolicyOrCachePath(t *testing.T) {
+	source, err := os.ReadFile("sankhya_linkage_reader.go")
+	if err != nil {
+		t.Fatalf("read linkage reader source: %v", err)
+	}
+	if strings.Contains(string(source), "FreshnessPolicy") || strings.Contains(string(source), "cache") {
+		t.Fatal("linkage reader contains a freshness or cache path")
 	}
 }
 
@@ -269,6 +370,9 @@ func TestSankhyaLinkageCandidateLineOverflowFailsAmbiguous(t *testing.T) {
 	config := validSankhyaLinkageConfig()
 	config.CandidateLineLimit = 1
 	reader := NewSankhyaLinkageReader(openScriptedSankhyaDB(t, script), config)
+	if err := reader.ValidateConfiguration(context.Background()); err != nil {
+		t.Fatalf("ValidateConfiguration() error = %v", err)
+	}
 
 	_, err := reader.FindCandidates(context.Background(), ports.SankhyaCandidateInput{ExternalOrderKey: "123456"})
 	if !domain.IsReadErrorCode(err, domain.ReadErrorCandidateAmbiguous) {
@@ -295,6 +399,9 @@ func TestSankhyaLinkageDescendantOverflowFailsConflict(t *testing.T) {
 	config := validSankhyaLinkageConfig()
 	config.LineageLimit = 1
 	reader := NewSankhyaLinkageReader(openScriptedSankhyaDB(t, script), config)
+	if err := reader.ValidateConfiguration(context.Background()); err != nil {
+		t.Fatalf("ValidateConfiguration() error = %v", err)
+	}
 
 	got, err := reader.ListDescendants(context.Background(), ports.SankhyaDescendantInput{
 		Origin: domain.InternalDocumentLine{DocumentID: 31301, LineNumber: 7},
@@ -351,11 +458,11 @@ func TestSankhyaLinkageDuplicateProbeUsesValidatedQuotedIdentifier(t *testing.T)
 
 func TestSankhyaLinkageLineAndDescendantQueriesUseExactIdentity(t *testing.T) {
 	config := validSankhyaLinkageConfig()
-	lineQuery, lineArgs, err := buildSankhyaCandidateLinesQuery(config, 31301)
+	lineQuery, lineArgs, err := buildSankhyaCandidateLinesQuery(config, []int64{31301})
 	if err != nil {
 		t.Fatalf("buildSankhyaCandidateLinesQuery() error = %v", err)
 	}
-	if !strings.Contains(lineQuery, "i.NUNOTA = :1") || !strings.Contains(lineQuery, "FETCH FIRST :2 ROWS ONLY") || len(lineArgs) != 2 || lineArgs[0] != int64(31301) || lineArgs[1] != 101 {
+	if !strings.Contains(lineQuery, "i.NUNOTA IN (:1)") || !strings.Contains(lineQuery, "ROW_NUMBER() OVER") || !strings.Contains(lineQuery, "MPC_LINE_NUMBER <= :2") || len(lineArgs) != 2 || lineArgs[0] != int64(31301) || lineArgs[1] != 101 {
 		t.Fatalf("line query/args = %s / %#v", lineQuery, lineArgs)
 	}
 
@@ -380,7 +487,7 @@ func TestSankhyaLinkageBuildersReturnTypedErrorsWithoutPanic(t *testing.T) {
 	builders := []func() error{
 		func() error { _, _, err := buildSankhyaDuplicateQuery(config); return err },
 		func() error { _, _, err := buildSankhyaCandidateQuery(config, "123456"); return err },
-		func() error { _, _, err := buildSankhyaCandidateLinesQuery(config, 1); return err },
+		func() error { _, _, err := buildSankhyaCandidateLinesQuery(config, []int64{1}); return err },
 		func() error {
 			_, _, err := buildSankhyaDescendantQuery(config, domain.InternalDocumentLine{DocumentID: 1, LineNumber: 1})
 			return err

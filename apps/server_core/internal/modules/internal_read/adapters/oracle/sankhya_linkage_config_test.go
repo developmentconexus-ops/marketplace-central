@@ -40,7 +40,7 @@ func TestLoadSankhyaLinkageRuntimeConfigRejectsDisabledMalformedAndOutOfRangeVal
 		{sankhyaLinkageHeaderFieldEnv, " AD_MPC_ORDER_KEY"},
 		{sankhyaLinkageConfigurationRevisionEnv, " "},
 		{sankhyaLinkageCandidateLimitEnv, "0"},
-		{sankhyaLinkageCandidateLimitEnv, "51"},
+		{sankhyaLinkageCandidateLimitEnv, "1001"},
 		{sankhyaLinkageCandidateLineLimitEnv, "501"},
 		{sankhyaLinkageLineageLimitEnv, "501"},
 		{sankhyaLinkageLineageLimitEnv, "1.5"},
