@@ -40,18 +40,118 @@ func (r UnavailableReader) SearchProducts(context.Context, string) ([]catalogdom
 func (r UnavailableReader) ListTaxonomyNodes(context.Context) ([]catalogdomain.TaxonomyNode, error) {
 	return nil, r.Err
 }
+func (r UnavailableReader) ListCatalogProductFacts(context.Context, readports.Cursor, int) (readports.CatalogFactPage, error) {
+	return readports.CatalogFactPage{}, r.Err
+}
+func (r UnavailableReader) SearchCatalogProductFacts(context.Context, string, int) (readports.CatalogFactPage, error) {
+	return readports.CatalogFactPage{}, r.Err
+}
 
 func NewReader(reader readports.Reader) *Reader { return &Reader{reader: reader} }
 
 var _ catalogports.CanonicalProductReader = (*Reader)(nil)
 var _ catalogports.CanonicalProductReader = UnavailableReader{}
 var _ catalogports.ProductReader = UnavailableReader{}
+var _ readports.CatalogPageReader = UnavailableReader{}
 
 func (r *Reader) ListCanonicalProducts(ctx context.Context) ([]catalogdomain.CanonicalProduct, error) {
-	return r.products(ctx, readports.FindProductsInput{})
+	var (
+		cursor readports.Cursor
+		out    []catalogdomain.CanonicalProduct
+	)
+	for {
+		page, err := r.ListCatalogProductFacts(ctx, cursor, 100)
+		if err != nil {
+			return nil, err
+		}
+		products, err := canonicalProductsFromPage(page)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, products...)
+		if page.NextCursor == nil {
+			return out, nil
+		}
+		cursor = *page.NextCursor
+	}
 }
 func (r *Reader) SearchCanonicalProducts(ctx context.Context, q string) ([]catalogdomain.CanonicalProduct, error) {
-	return r.products(ctx, readports.FindProductsInput{Title: &q})
+	page, err := r.SearchCatalogProductFacts(ctx, q, 50)
+	if err != nil {
+		return nil, err
+	}
+	return canonicalProductsFromPage(page)
+}
+
+func (r *Reader) ListCatalogProductFacts(ctx context.Context, cursor readports.Cursor, limit int) (readports.CatalogFactPage, error) {
+	reader, ok := r.reader.(readports.CatalogPageReader)
+	if !ok {
+		return readports.CatalogFactPage{}, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, "oracle catalog page reader is unavailable", nil)
+	}
+	return reader.ListCatalogProductFacts(ctx, cursor, limit)
+}
+
+func (r *Reader) SearchCatalogProductFacts(ctx context.Context, q string, limit int) (readports.CatalogFactPage, error) {
+	reader, ok := r.reader.(readports.CatalogPageReader)
+	if !ok {
+		return readports.CatalogFactPage{}, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, "oracle catalog page reader is unavailable", nil)
+	}
+	return reader.SearchCatalogProductFacts(ctx, q, limit)
+}
+
+func canonicalProductsFromPage(page readports.CatalogFactPage) ([]catalogdomain.CanonicalProduct, error) {
+	out := make([]catalogdomain.CanonicalProduct, 0, len(page.Items))
+	for _, item := range page.Items {
+		stock, err := catalogNumericFact(item.SellableStock.Quantity, item.SellableStock.Quality, page.AsOf, readdomain.QualityMissingStock, "stock unavailable")
+		if err != nil {
+			return nil, fmt.Errorf("catalog stock projection: %w", err)
+		}
+		priceValue, err := decimalFloat(item.CurrentPrice.Amount)
+		if err != nil {
+			return nil, fmt.Errorf("catalog price projection: %w", err)
+		}
+		price, err := catalogNumericFact(priceValue, item.CurrentPrice.Quality, page.AsOf, readdomain.QualityMissingPrice, "price unavailable")
+		if err != nil {
+			return nil, fmt.Errorf("catalog price projection: %w", err)
+		}
+		costValue, err := decimalFloat(item.Cost.Amount)
+		if err != nil {
+			return nil, fmt.Errorf("catalog cost projection: %w", err)
+		}
+		cost, err := catalogNumericFact(costValue, item.Cost.Quality, page.AsOf, readdomain.QualityMissingCost, "cost unavailable")
+		if err != nil {
+			return nil, fmt.Errorf("catalog cost projection: %w", err)
+		}
+		out = append(out, catalogdomain.CanonicalProduct{
+			InternalProductID:     catalogdomain.InternalProductID(item.InternalProductID),
+			Name:                  ptr(item.Description),
+			EAN:                   item.EAN,
+			ManufacturerReference: item.Reference,
+			PriceAmount:           price,
+			CostAmount:            cost,
+			StockQuantity:         stock,
+		})
+	}
+	return out, nil
+}
+
+func catalogNumericFact(value *float64, flags []string, asOf time.Time, missingFlag readdomain.QualityFlag, fallbackReason string) (catalogdomain.NumericSourceFact, error) {
+	domainFlags := make([]readdomain.QualityFlag, 0, len(flags))
+	for _, flag := range flags {
+		domainFlags = append(domainFlags, readdomain.QualityFlag(flag))
+	}
+	return fact(value, readdomain.SourceMetadata{System: "oracle", FetchedAt: asOf}, domainFlags, missingFlag, fallbackReason)
+}
+
+func decimalFloat(value *string) (*float64, error) {
+	if value == nil {
+		return nil, nil
+	}
+	parsed, err := strconv.ParseFloat(strings.TrimSpace(*value), 64)
+	if err != nil {
+		return nil, err
+	}
+	return &parsed, nil
 }
 func (r *Reader) GetCanonicalProduct(ctx context.Context, id catalogdomain.InternalProductID) (catalogdomain.CanonicalProduct, error) {
 	n := int(id)

@@ -91,6 +91,36 @@ func (r *TimingReader) GetTaxInputs(ctx context.Context, input ports.TaxInput) (
 	return result, err
 }
 
+func (r *TimingReader) ListCatalogProductFacts(ctx context.Context, cursor ports.Cursor, limit int) (ports.CatalogFactPage, error) {
+	var result ports.CatalogFactPage
+	err := r.observe("ListCatalogProductFacts", func() error {
+		reader, ok := r.next.(ports.CatalogPageReader)
+		if !ok {
+			return domain.NewReadError(domain.ReadErrorSourceUnavailable, "oracle catalog page reader is unavailable", nil)
+		}
+		var err error
+		result, err = reader.ListCatalogProductFacts(ctx, cursor, limit)
+		return err
+	})
+	return result, err
+}
+
+func (r *TimingReader) SearchCatalogProductFacts(ctx context.Context, q string, limit int) (ports.CatalogFactPage, error) {
+	var result ports.CatalogFactPage
+	err := r.observe("SearchCatalogProductFacts", func() error {
+		reader, ok := r.next.(ports.CatalogPageReader)
+		if !ok {
+			return domain.NewReadError(domain.ReadErrorSourceUnavailable, "oracle catalog page reader is unavailable", nil)
+		}
+		var err error
+		result, err = reader.SearchCatalogProductFacts(ctx, q, limit)
+		return err
+	})
+	return result, err
+}
+
+var _ ports.CatalogPageReader = (*TimingReader)(nil)
+
 func (r *TimingReader) observe(method string, call func() error) error {
 	started := time.Now()
 	err := call()

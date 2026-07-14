@@ -1,0 +1,202 @@
+package transport
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"reflect"
+	"strings"
+	"testing"
+	"time"
+
+	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
+	"marketplace-central/apps/server_core/internal/modules/internal_read/ports"
+	"marketplace-central/apps/server_core/internal/platform/httpx"
+)
+
+type fakeCatalogPageReader struct {
+	listPages       map[int64]ports.CatalogFactPage
+	searchPage      ports.CatalogFactPage
+	listCursors     []ports.Cursor
+	searchQueries   []string
+	searchLimits    []int
+	freshnessPolicy []internalreaddomain.FreshnessPolicy
+	err             error
+}
+
+func (f *fakeCatalogPageReader) ListCatalogProductFacts(ctx context.Context, cursor ports.Cursor, _ int) (ports.CatalogFactPage, error) {
+	f.listCursors = append(f.listCursors, cursor)
+	if policy, ok := FreshnessPolicyFromContext(ctx); ok {
+		f.freshnessPolicy = append(f.freshnessPolicy, policy)
+	}
+	if f.err != nil {
+		return ports.CatalogFactPage{}, f.err
+	}
+	return f.listPages[cursor.InternalProductID], nil
+}
+
+func (f *fakeCatalogPageReader) SearchCatalogProductFacts(ctx context.Context, q string, limit int) (ports.CatalogFactPage, error) {
+	f.searchQueries = append(f.searchQueries, q)
+	f.searchLimits = append(f.searchLimits, limit)
+	if policy, ok := FreshnessPolicyFromContext(ctx); ok {
+		f.freshnessPolicy = append(f.freshnessPolicy, policy)
+	}
+	if f.err != nil {
+		return ports.CatalogFactPage{}, f.err
+	}
+	return f.searchPage, nil
+}
+
+func TestCatalogPageRoutesFollowThreePageCursorChain(t *testing.T) {
+	page1Cursor := ports.Cursor{InternalProductID: 1}
+	page2Cursor := ports.Cursor{InternalProductID: 2}
+	fake := &fakeCatalogPageReader{listPages: map[int64]ports.CatalogFactPage{
+		0: {Items: []ports.CatalogProductFact{catalogFact(1)}, NextCursor: &page1Cursor, AsOf: time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)},
+		1: {Items: []ports.CatalogProductFact{catalogFact(2)}, NextCursor: &page2Cursor, AsOf: time.Date(2026, 7, 14, 12, 1, 0, 0, time.UTC)},
+		2: {Items: []ports.CatalogProductFact{catalogFact(3)}, AsOf: time.Date(2026, 7, 14, 12, 2, 0, 0, time.UTC)},
+	}}
+	mux := httpx.NewRouteClassMux()
+	(Handler{PageReader: fake}).Register(mux)
+
+	var nextCursor *string
+	for pageNumber := 0; pageNumber < 3; pageNumber++ {
+		path := "/catalog/products?limit=1"
+		if nextCursor != nil {
+			path += "&cursor=" + *nextCursor
+		}
+		recorder := httptest.NewRecorder()
+		mux.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))
+		if recorder.Code != http.StatusOK {
+			t.Fatalf("page %d status = %d, body = %s", pageNumber+1, recorder.Code, recorder.Body.String())
+		}
+		var response catalogPageEnvelope
+		if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+			t.Fatalf("page %d decode: %v", pageNumber+1, err)
+		}
+		t.Logf("GET %s -> %d %s", path, recorder.Code, trimJSON(recorder.Body.String()))
+		if response.PageSize != 1 || len(response.Items) != 1 || response.Items[0].InternalProductID != pageNumber+1 {
+			t.Fatalf("page %d response = %+v", pageNumber+1, response)
+		}
+		nextCursor = response.NextCursor
+	}
+	if nextCursor != nil {
+		t.Fatalf("last page next_cursor = %q, want null", *nextCursor)
+	}
+	if !reflect.DeepEqual(fake.listCursors, []ports.Cursor{{}, {InternalProductID: 1}, {InternalProductID: 2}}) {
+		t.Fatalf("list cursors = %+v", fake.listCursors)
+	}
+}
+
+func TestCatalogPageRoutesValidateBeforePortCall(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		path string
+		body string
+	}{
+		{name: "garbage cursor", path: "/catalog/products?cursor=%25%25%25garbage", body: `{"error":"invalid_cursor"}`},
+		{name: "zero limit", path: "/catalog/products?limit=0", body: `{"error":"invalid_limit","allowed_range":"1..100"}`},
+		{name: "over limit", path: "/catalog/products?limit=101", body: `{"error":"invalid_limit","allowed_range":"1..100"}`},
+		{name: "search over limit", path: "/catalog/products/search?q=PARAFUSO&limit=51", body: `{"error":"invalid_limit","allowed_range":"1..50"}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fake := &fakeCatalogPageReader{}
+			mux := httpx.NewRouteClassMux()
+			(Handler{PageReader: fake}).Register(mux)
+			recorder := httptest.NewRecorder()
+			mux.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, tc.path, nil))
+			if recorder.Code != http.StatusBadRequest || trimJSON(recorder.Body.String()) != trimJSON(tc.body) {
+				t.Fatalf("status/body = %d/%q, want 400/%q", recorder.Code, trimJSON(recorder.Body.String()), tc.body)
+			}
+			t.Logf("GET %s -> %d %s", tc.path, recorder.Code, trimJSON(recorder.Body.String()))
+			if len(fake.listCursors) != 0 || len(fake.searchQueries) != 0 {
+				t.Fatal("invalid request reached page port")
+			}
+		})
+	}
+}
+
+func TestCatalogSearchPageEnvelopeAndNoCachePolicy(t *testing.T) {
+	fake := &fakeCatalogPageReader{searchPage: ports.CatalogFactPage{
+		Items:      []ports.CatalogProductFact{catalogFact(10)},
+		NextCursor: &ports.Cursor{InternalProductID: 11},
+		AsOf:       time.Date(2026, 7, 14, 13, 0, 0, 0, time.UTC),
+	}}
+	mux := httpx.NewRouteClassMux()
+	(Handler{PageReader: fake}).Register(mux)
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/catalog/products/search?q=PARAFUSO&limit=50", nil)
+	request.Header.Set("Cache-Control", "max-age=0, no-cache")
+	mux.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", recorder.Code, recorder.Body.String())
+	}
+	t.Logf("GET %s -> %d %s", request.URL.String(), recorder.Code, trimJSON(recorder.Body.String()))
+	var response catalogPageEnvelope
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.NextCursor != nil || response.PageSize != 1 || response.AsOf.IsZero() {
+		t.Fatalf("response = %+v", response)
+	}
+	if !reflect.DeepEqual(fake.searchQueries, []string{"PARAFUSO"}) || !reflect.DeepEqual(fake.searchLimits, []int{50}) {
+		t.Fatalf("search calls = %v/%v", fake.searchQueries, fake.searchLimits)
+	}
+	if !reflect.DeepEqual(fake.freshnessPolicy, []internalreaddomain.FreshnessPolicy{{MaxAge: 0}}) {
+		t.Fatalf("freshness policy = %+v", fake.freshnessPolicy)
+	}
+}
+
+func TestCatalogPageRoutesMapSourceAndDeadlineErrors(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		err        error
+		wantStatus int
+		wantBody   string
+	}{
+		{name: "source unavailable", err: internalreaddomain.NewReadError(internalreaddomain.ReadErrorSourceUnavailable, "driver: password=secret", errors.New("driver detail")), wantStatus: http.StatusServiceUnavailable, wantBody: `{"error":"source_unavailable"}`},
+		{name: "deadline exceeded", err: context.DeadlineExceeded, wantStatus: http.StatusGatewayTimeout, wantBody: `{"error":"deadline_exceeded"}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fake := &fakeCatalogPageReader{err: tc.err}
+			mux := httpx.NewRouteClassMux()
+			(Handler{PageReader: fake}).Register(mux)
+			recorder := httptest.NewRecorder()
+			mux.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/catalog/products", nil))
+			if recorder.Code != tc.wantStatus || trimJSON(recorder.Body.String()) != tc.wantBody {
+				t.Fatalf("status/body = %d/%q, want %d/%q", recorder.Code, trimJSON(recorder.Body.String()), tc.wantStatus, tc.wantBody)
+			}
+			t.Logf("GET /catalog/products -> %d %s", recorder.Code, trimJSON(recorder.Body.String()))
+			if strings.Contains(recorder.Body.String(), "secret") || strings.Contains(recorder.Body.String(), "driver") {
+				t.Fatal("driver detail leaked into response")
+			}
+		})
+	}
+}
+
+func catalogFact(id int64) ports.CatalogProductFact {
+	quantity := 41.0
+	amount := "12.90"
+	reference := "ABC-123"
+	description := "PARAFUSO SEXTAVADO M8"
+	return ports.CatalogProductFact{
+		InternalProductID: id,
+		Reference:         &reference,
+		Description:       &description,
+		Active:            true,
+		SellableStock:     ports.CatalogQuantityFact{Quantity: &quantity, Quality: []string{}},
+		CurrentPrice:      ports.CatalogMoneyFact{Amount: &amount, Currency: "BRL", Quality: []string{}},
+		Cost:              ports.CatalogMoneyFact{Amount: nil, Currency: "BRL", Quality: []string{"missing_cost"}},
+	}
+}
+
+func trimJSON(body string) string {
+	var value any
+	if err := json.Unmarshal([]byte(body), &value); err != nil {
+		return body
+	}
+	encoded, _ := json.Marshal(value)
+	return string(encoded)
+}
