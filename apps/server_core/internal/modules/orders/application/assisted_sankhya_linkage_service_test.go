@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	internalreadports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 	"marketplace-central/apps/server_core/internal/modules/orders/domain"
 )
 
@@ -392,6 +393,25 @@ func TestAssistedSankhyaConfirmPreservesRepositoryConflict(t *testing.T) {
 	repo.err = domain.ErrSankhyaLinkageConflict
 	if _, err := service.Confirm(context.Background(), input); !errors.Is(err, domain.ErrSankhyaLinkageConflict) {
 		t.Fatalf("Confirm() error = %v, want linkage conflict", err)
+	}
+}
+
+type recordingCacheInvalidator struct{ classes []string }
+
+func (r *recordingCacheInvalidator) InvalidateClass(class string) { r.classes = append(r.classes, class) }
+
+var _ internalreadports.CacheInvalidator = (*recordingCacheInvalidator)(nil)
+
+func TestAssistedSankhyaConfirmDoesNotInvalidateFailedPersistence(t *testing.T) {
+	service, _, _, repo, input, _ := assistedServiceFixture()
+	invalidator := &recordingCacheInvalidator{}
+	service.invalidator = invalidator
+	repo.err = errors.New("rolled back")
+	if _, err := service.Confirm(context.Background(), input); !errors.Is(err, repo.err) {
+		t.Fatalf("Confirm() error=%v, want persistence failure", err)
+	}
+	if len(invalidator.classes) != 0 {
+		t.Fatalf("invalidations=%v after persistence failure, want none", invalidator.classes)
 	}
 }
 

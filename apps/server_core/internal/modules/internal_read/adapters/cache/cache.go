@@ -97,6 +97,7 @@ type Cache struct {
 	entries    map[string]*list.Element
 	lru        *list.List
 	group      singleflight.Group
+	generations map[string]uint64
 	policies   map[string]domain.FreshnessPolicy
 	maxEntries int
 	clock      Clock
@@ -129,6 +130,7 @@ func New(config Config) *Cache {
 	return &Cache{
 		entries:    make(map[string]*list.Element),
 		lru:        list.New(),
+		generations: make(map[string]uint64),
 		policies:   policies,
 		maxEntries: maxEntries,
 		clock:      clock,
@@ -144,6 +146,7 @@ func (c *Cache) Size() int {
 func (c *Cache) InvalidateClass(factClass string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	c.generations[factClass]++
 	for key, element := range c.entries {
 		if element.Value.(*entry).class == factClass {
 			delete(c.entries, key)
@@ -168,7 +171,12 @@ func (c *Cache) load(ctx context.Context, class, key string, loader func() (any,
 		cacheLog("bypass", class)
 	}
 
-	value, err, _ := c.group.Do(key, func() (any, error) {
+	groupKey := key
+	if bypass {
+		groupKey = "bypass:" + key
+	}
+	done := c.group.DoChan(groupKey, func() (any, error) {
+		generation := c.classGeneration(class)
 		if !bypass {
 			if cached, ok := c.lookup(class, key, policy.MaxAge); ok {
 				return cached, nil
@@ -178,10 +186,21 @@ func (c *Cache) load(ctx context.Context, class, key string, loader func() (any,
 		if err != nil {
 			return nil, err
 		}
-		c.store(class, key, loaded, snapshot)
+		c.storeIfCurrent(class, key, loaded, snapshot, generation)
 		return loaded, nil
 	})
-	return value, err
+	select {
+	case result := <-done:
+		return result.Val, result.Err
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+func (c *Cache) classGeneration(class string) uint64 {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.generations[class]
 }
 
 func (c *Cache) lookup(class, key string, ttl time.Duration) (any, bool) {
@@ -198,12 +217,16 @@ func (c *Cache) lookup(class, key string, ttl time.Duration) (any, bool) {
 		return nil, false
 	}
 	c.lru.MoveToFront(element)
-	return item.value, true
+	return cloneCachedValue(item.value), true
 }
 
-func (c *Cache) store(class, key string, value any, snapshot time.Time) {
+func (c *Cache) storeIfCurrent(class, key string, value any, snapshot time.Time, generation uint64) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if c.generations[class] != generation {
+		return
+	}
+	value = cloneCachedValue(value)
 	if existing, ok := c.entries[key]; ok {
 		existing.Value.(*entry).value = value
 		existing.Value.(*entry).created = c.clock.Now()
@@ -368,11 +391,20 @@ func (r StockBatchReader) GetStockFactsByIDs(ctx context.Context, ids []int64) (
 
 func cloneCatalogPage(page internalreadports.CatalogFactPage) internalreadports.CatalogFactPage {
 	if page.Items != nil {
-		page.Items = append([]internalreadports.CatalogProductFact(nil), page.Items...)
+		items := make([]internalreadports.CatalogProductFact, len(page.Items))
+		copy(items, page.Items)
+		page.Items = items
 		for i := range page.Items {
-			page.Items[i].SellableStock.Quality = append([]string(nil), page.Items[i].SellableStock.Quality...)
-			page.Items[i].CurrentPrice.Quality = append([]string(nil), page.Items[i].CurrentPrice.Quality...)
-			page.Items[i].Cost.Quality = append([]string(nil), page.Items[i].Cost.Quality...)
+			item := &page.Items[i]
+			item.Reference = cloneString(item.Reference)
+			item.Description = cloneString(item.Description)
+			item.EAN = cloneString(item.EAN)
+			item.SellableStock.Quantity = cloneFloat64(item.SellableStock.Quantity)
+			item.SellableStock.Quality = cloneStrings(item.SellableStock.Quality)
+			item.CurrentPrice.Amount = cloneString(item.CurrentPrice.Amount)
+			item.CurrentPrice.Quality = cloneStrings(item.CurrentPrice.Quality)
+			item.Cost.Amount = cloneString(item.Cost.Amount)
+			item.Cost.Quality = cloneStrings(item.Cost.Quality)
 		}
 	}
 	if page.NextCursor != nil {
@@ -393,6 +425,9 @@ func cloneCostFacts(source map[int64]*domain.CostAsOf) map[int64]*domain.CostAsO
 			continue
 		}
 		copy := *fact
+		copy.Amount = cloneFloat64(fact.Amount)
+		copy.Source = cloneSourceMetadata(fact.Source)
+		copy.QualityFlags = cloneQualityFlags(fact.QualityFlags)
 		target[id] = &copy
 	}
 	return target
@@ -409,6 +444,12 @@ func cloneTaxFacts(source map[int64]*domain.TaxInputs) map[int64]*domain.TaxInpu
 			continue
 		}
 		copy := *fact
+		copy.ICMSAmount = cloneFloat64(fact.ICMSAmount)
+		copy.IPIAmount = cloneFloat64(fact.IPIAmount)
+		copy.PISAmount = cloneFloat64(fact.PISAmount)
+		copy.COFINSAmount = cloneFloat64(fact.COFINSAmount)
+		copy.Source = cloneSourceMetadata(fact.Source)
+		copy.QualityFlags = cloneQualityFlags(fact.QualityFlags)
 		target[id] = &copy
 	}
 	return target
@@ -425,7 +466,72 @@ func cloneStockFacts(source map[int64]*domain.StockFact) map[int64]*domain.Stock
 			continue
 		}
 		copy := *fact
+		copy.Quantity = cloneFloat64(fact.Quantity)
+		copy.Source = cloneSourceMetadata(fact.Source)
+		copy.QualityFlags = cloneQualityFlags(fact.QualityFlags)
 		target[id] = &copy
 	}
 	return target
+}
+
+func cloneCachedValue(value any) any {
+	switch value := value.(type) {
+	case internalreadports.CatalogFactPage:
+		return cloneCatalogPage(value)
+	case map[int64]*domain.CostAsOf:
+		return cloneCostFacts(value)
+	case map[int64]*domain.TaxInputs:
+		return cloneTaxFacts(value)
+	case map[int64]*domain.StockFact:
+		return cloneStockFacts(value)
+	default:
+		return value
+	}
+}
+
+func cloneString(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	copy := *value
+	return &copy
+}
+
+func cloneFloat64(value *float64) *float64 {
+	if value == nil {
+		return nil
+	}
+	copy := *value
+	return &copy
+}
+
+func cloneStrings(source []string) []string {
+	if source == nil {
+		return nil
+	}
+	target := make([]string, len(source))
+	copy(target, source)
+	return target
+}
+
+func cloneQualityFlags(source []domain.QualityFlag) []domain.QualityFlag {
+	if source == nil {
+		return nil
+	}
+	target := make([]domain.QualityFlag, len(source))
+	copy(target, source)
+	return target
+}
+
+func cloneSourceMetadata(source domain.SourceMetadata) domain.SourceMetadata {
+	source.ObservedAt = cloneTime(source.ObservedAt)
+	return source
+}
+
+func cloneTime(value *time.Time) *time.Time {
+	if value == nil {
+		return nil
+	}
+	copy := *value
+	return &copy
 }

@@ -117,6 +117,55 @@ func (r *fakeStockReader) GetStockFactsByIDs(context.Context, []int64) (map[int6
 	return map[int64]*internalreaddomain.StockFact{1: nil}, nil
 }
 
+type stagedCatalogReader struct {
+	clock       Clock
+	calls       atomic.Int64
+	firstStart  chan struct{}
+	firstRelease chan struct{}
+}
+
+type staticCatalogReader struct{ page internalreadports.CatalogFactPage }
+
+func (r *staticCatalogReader) ListCatalogProductFacts(context.Context, internalreadports.Cursor, int) (internalreadports.CatalogFactPage, error) {
+	return r.page, nil
+}
+
+func (r *staticCatalogReader) SearchCatalogProductFacts(context.Context, string, int) (internalreadports.CatalogFactPage, error) {
+	return r.page, nil
+}
+
+func (r *stagedCatalogReader) ListCatalogProductFacts(context.Context, internalreadports.Cursor, int) (internalreadports.CatalogFactPage, error) {
+	call := r.calls.Add(1)
+	if call == 1 {
+		close(r.firstStart)
+		<-r.firstRelease
+	}
+	return internalreadports.CatalogFactPage{AsOf: r.clock.Now().Add(time.Duration(call) * time.Nanosecond)}, nil
+}
+
+func (r *stagedCatalogReader) SearchCatalogProductFacts(context.Context, string, int) (internalreadports.CatalogFactPage, error) {
+	return internalreadports.CatalogFactPage{AsOf: r.clock.Now()}, nil
+}
+
+type mutableBatchReader struct {
+	cost map[int64]*internalreaddomain.CostAsOf
+	tax  map[int64]*internalreaddomain.TaxInputs
+}
+
+func (r *mutableBatchReader) GetCostFactsByIDs(context.Context, []int64) (map[int64]*internalreaddomain.CostAsOf, error) {
+	return r.cost, nil
+}
+
+func (r *mutableBatchReader) GetTaxFactsByIDs(context.Context, []int64) (map[int64]*internalreaddomain.TaxInputs, error) {
+	return r.tax, nil
+}
+
+type mutableStockReader struct{ facts map[int64]*internalreaddomain.StockFact }
+
+func (r *mutableStockReader) GetStockFactsByIDs(context.Context, []int64) (map[int64]*internalreaddomain.StockFact, error) {
+	return r.facts, nil
+}
+
 func testCache(clock Clock, maxEntries int, policies map[string]internalreaddomain.FreshnessPolicy) *Cache {
 	return New(Config{Clock: clock, MaxEntries: maxEntries, Policies: policies})
 }
@@ -210,6 +259,169 @@ func TestFreshnessCacheSingleflight(t *testing.T) {
 		if errs[i] != nil || !results[i].AsOf.Equal(results[0].AsOf) {
 			t.Fatalf("waiter %d result=%+v err=%v", i, results[i], errs[i])
 		}
+	}
+}
+
+func TestFreshnessCacheFencesInFlightLoadAfterInvalidation(t *testing.T) {
+	clock := &fakeClock{now: time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)}
+	c := testCache(clock, 10, nil)
+	downstream := &fakeReader{clock: clock, blockStart: make(chan struct{}, 1), blockRelease: make(chan struct{})}
+	catalog := NewCatalogPageReader(downstream, c)
+	firstResult := make(chan internalreadports.CatalogFactPage, 1)
+	go func() {
+		page, _ := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50)
+		firstResult <- page
+	}()
+	select {
+	case <-downstream.blockStart:
+	case <-time.After(time.Second):
+		t.Fatal("downstream was not entered")
+	}
+
+	c.InvalidateClass(ClassCatalog)
+	clock.Advance(time.Second)
+	close(downstream.blockRelease)
+	first := <-firstResult
+	clock.Advance(time.Second)
+	second, err := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !second.AsOf.After(first.AsOf) || downstream.listCalls.Load() != 2 {
+		t.Fatalf("stale in-flight load was cached: calls=%d first=%s second=%s", downstream.listCalls.Load(), first.AsOf, second.AsOf)
+	}
+}
+
+func TestFreshnessCacheBypassUsesSeparateSingleflightNamespace(t *testing.T) {
+	clock := &fakeClock{now: time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)}
+	downstream := &stagedCatalogReader{clock: clock, firstStart: make(chan struct{}), firstRelease: make(chan struct{})}
+	catalog := NewCatalogPageReader(downstream, testCache(clock, 10, nil))
+	normalResult := make(chan internalreadports.CatalogFactPage, 1)
+	go func() {
+		page, _ := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50)
+		normalResult <- page
+	}()
+	select {
+	case <-downstream.firstStart:
+	case <-time.After(time.Second):
+		t.Fatal("normal leader was not entered")
+	}
+
+	bypass := internalreaddomain.WithFreshnessPolicy(context.Background(), internalreaddomain.FreshnessPolicy{MaxAge: 0})
+	fresh, err := catalog.ListCatalogProductFacts(bypass, internalreadports.Cursor{}, 50)
+	if err != nil {
+		t.Fatal(err)
+	}
+	close(downstream.firstRelease)
+	<-normalResult
+	if downstream.calls.Load() != 2 || !fresh.AsOf.After(clock.Now()) {
+		t.Fatalf("bypass joined cached leader: calls=%d fresh=%s", downstream.calls.Load(), fresh.AsOf)
+	}
+}
+
+func TestFreshnessCacheWaiterContextCancellation(t *testing.T) {
+	clock := &fakeClock{now: time.Now().UTC()}
+	downstream := &fakeReader{clock: clock, blockStart: make(chan struct{}, 1), blockRelease: make(chan struct{})}
+	catalog := NewCatalogPageReader(downstream, testCache(clock, 10, nil))
+	leaderDone := make(chan struct{})
+	go func() {
+		_, _ = catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50)
+		close(leaderDone)
+	}()
+	select {
+	case <-downstream.blockStart:
+	case <-time.After(time.Second):
+		t.Fatal("leader was not entered")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	canceled := make(chan error, 1)
+	go func() {
+		_, err := catalog.ListCatalogProductFacts(ctx, internalreadports.Cursor{}, 50)
+		canceled <- err
+	}()
+	cancel()
+	select {
+	case err := <-canceled:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("waiter error=%v, want context canceled", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("canceled waiter did not return")
+	}
+	close(downstream.blockRelease)
+	<-leaderDone
+	if downstream.listCalls.Load() != 1 {
+		t.Fatalf("waiter cancellation changed singleflight: calls=%d", downstream.listCalls.Load())
+	}
+}
+
+func TestFreshnessCacheDeepCopiesCachedFacts(t *testing.T) {
+	clock := &fakeClock{now: time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)}
+	reference, description, ean := "REF-1", "Product", "EAN-1"
+	quantity, amount := 4.0, "12.50"
+	page := internalreadports.CatalogFactPage{
+		Items: []internalreadports.CatalogProductFact{{
+			InternalProductID: 1, Reference: &reference, Description: &description, EAN: &ean, Active: true,
+			SellableStock: internalreadports.CatalogQuantityFact{Quantity: &quantity, Quality: make([]string, 1, 2)},
+			CurrentPrice:  internalreadports.CatalogMoneyFact{Amount: &amount, Currency: "BRL", Quality: make([]string, 1, 2)},
+			Cost:          internalreadports.CatalogMoneyFact{Amount: &amount, Currency: "BRL", Quality: make([]string, 1, 2)},
+		}},
+		NextCursor: &internalreadports.Cursor{InternalProductID: 7},
+		AsOf:       clock.Now(),
+	}
+	page.Items[0].SellableStock.Quality[0] = "known"
+	page.Items[0].CurrentPrice.Quality[0] = "known"
+	page.Items[0].Cost.Quality[0] = "known"
+	catalog := NewCatalogPageReader(&staticCatalogReader{page: page}, testCache(clock, 10, nil))
+	got, err := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50)
+	if err != nil {
+		t.Fatal(err)
+	}
+	*got.Items[0].Reference = "mutated"
+	*got.Items[0].Description = "mutated"
+	*got.Items[0].EAN = "mutated"
+	*got.Items[0].SellableStock.Quantity = 99
+	got.Items[0].SellableStock.Quality[0] = "mutated"
+	got.Items[0].SellableStock.Quality = append(got.Items[0].SellableStock.Quality, "mutated")
+	*got.Items[0].CurrentPrice.Amount = "mutated"
+	got.Items[0].CurrentPrice.Quality[0] = "mutated"
+	got.Items[0].CurrentPrice.Quality = append(got.Items[0].CurrentPrice.Quality, "mutated")
+	*got.Items[0].Cost.Amount = "mutated"
+	got.Items[0].Cost.Quality[0] = "mutated"
+	got.Items[0].Cost.Quality = append(got.Items[0].Cost.Quality, "mutated")
+	got.NextCursor.InternalProductID = 99
+	got, err = catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50)
+	if err != nil {
+		t.Fatal(err)
+	}
+	item := got.Items[0]
+	if *item.Reference != reference || *item.Description != description || *item.EAN != ean || *item.SellableStock.Quantity != quantity || item.SellableStock.Quality[0] != "known" || len(item.SellableStock.Quality) != 1 || *item.CurrentPrice.Amount != amount || item.CurrentPrice.Quality[0] != "known" || len(item.CurrentPrice.Quality) != 1 || *item.Cost.Amount != amount || item.Cost.Quality[0] != "known" || len(item.Cost.Quality) != 1 || got.NextCursor.InternalProductID != 7 {
+		t.Fatalf("catalog cache was aliased: %+v", got)
+	}
+
+	observed := clock.Now()
+	costAmount, taxICMS, taxIPI, taxPIS, taxCOFINS, stockQuantity := 1.0, 2.0, 3.0, 4.0, 5.0, 6.0
+	cost := &internalreaddomain.CostAsOf{Amount: &costAmount, Source: internalreaddomain.SourceMetadata{System: "oracle", ObservedAt: &observed}, QualityFlags: make([]internalreaddomain.QualityFlag, 1, 2)}
+	tax := &internalreaddomain.TaxInputs{ICMSAmount: &taxICMS, IPIAmount: &taxIPI, PISAmount: &taxPIS, COFINSAmount: &taxCOFINS, Source: internalreaddomain.SourceMetadata{System: "oracle", ObservedAt: &observed}, QualityFlags: make([]internalreaddomain.QualityFlag, 1, 2)}
+	stock := &internalreaddomain.StockFact{Quantity: &stockQuantity, Source: internalreaddomain.SourceMetadata{System: "oracle", ObservedAt: &observed}, QualityFlags: make([]internalreaddomain.QualityFlag, 1, 2)}
+	cost.QualityFlags[0], tax.QualityFlags[0], stock.QualityFlags[0] = internalreaddomain.QualityComplete, internalreaddomain.QualityComplete, internalreaddomain.QualityComplete
+	batch := NewBatchReader(&mutableBatchReader{cost: map[int64]*internalreaddomain.CostAsOf{1: cost}, tax: map[int64]*internalreaddomain.TaxInputs{1: tax}}, testCache(clock, 10, nil))
+	stockReader := NewStockBatchReader(&mutableStockReader{facts: map[int64]*internalreaddomain.StockFact{1: stock}}, batch.cache)
+	costResult, _ := batch.GetCostFactsByIDs(context.Background(), []int64{1})
+	taxResult, _ := batch.GetTaxFactsByIDs(context.Background(), []int64{1})
+	stockResult, _ := stockReader.GetStockFactsByIDs(context.Background(), []int64{1})
+	*costResult[1].Amount, *taxResult[1].ICMSAmount, *taxResult[1].IPIAmount, *taxResult[1].PISAmount, *taxResult[1].COFINSAmount, *stockResult[1].Quantity = 99, 99, 99, 99, 99, 99
+	costResult[1].Source.System, taxResult[1].Source.System, stockResult[1].Source.System = "mutated", "mutated", "mutated"
+	*costResult[1].Source.ObservedAt, *taxResult[1].Source.ObservedAt, *stockResult[1].Source.ObservedAt = time.Time{}, time.Time{}, time.Time{}
+	costResult[1].QualityFlags[0], taxResult[1].QualityFlags[0], stockResult[1].QualityFlags[0] = "mutated", "mutated", "mutated"
+	costResult[1].QualityFlags = append(costResult[1].QualityFlags, "mutated")
+	taxResult[1].QualityFlags = append(taxResult[1].QualityFlags, "mutated")
+	stockResult[1].QualityFlags = append(stockResult[1].QualityFlags, "mutated")
+	costResult, _ = batch.GetCostFactsByIDs(context.Background(), []int64{1})
+	taxResult, _ = batch.GetTaxFactsByIDs(context.Background(), []int64{1})
+	stockResult, _ = stockReader.GetStockFactsByIDs(context.Background(), []int64{1})
+	if *costResult[1].Amount != costAmount || costResult[1].Source.System != "oracle" || !costResult[1].Source.ObservedAt.Equal(observed) || costResult[1].QualityFlags[0] != internalreaddomain.QualityComplete || len(costResult[1].QualityFlags) != 1 || *taxResult[1].ICMSAmount != taxICMS || *taxResult[1].IPIAmount != taxIPI || *taxResult[1].PISAmount != taxPIS || *taxResult[1].COFINSAmount != taxCOFINS || taxResult[1].Source.System != "oracle" || taxResult[1].QualityFlags[0] != internalreaddomain.QualityComplete || len(taxResult[1].QualityFlags) != 1 || *stockResult[1].Quantity != stockQuantity || stockResult[1].Source.System != "oracle" || stockResult[1].QualityFlags[0] != internalreaddomain.QualityComplete || len(stockResult[1].QualityFlags) != 1 {
+		t.Fatalf("batch cache was aliased: cost=%+v tax=%+v stock=%+v", costResult[1], taxResult[1], stockResult[1])
 	}
 }
 
