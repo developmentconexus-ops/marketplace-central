@@ -14,33 +14,58 @@ lifecycle_scope: feature
 
 ## Summary
 
-The second and final correction round is implemented on top of `0e1c2469`.
-The three returned defects have focused regression tests and pass the targeted
-and full non-race validation below. This document records feature evidence;
-it is not a milestone or formal QA verdict.
+The third correction round is test-only and addresses a validation defect in
+the prior evidence. The R1 post-invalidation singleflight regression test was
+initially hollow: it could pass after the generation component was removed
+from the normal-path group key. The test now deterministically observes
+downstream entry for both readers before releasing the first load. The
+mutation test below proves the rewritten test fails when the guarded behavior
+is removed and passes after the committed production code is restored. This
+document records feature evidence; it is not a milestone or formal QA verdict.
 
 ## Corrections
 
 ### This round
 
-1. M-04-C05 stale delivery after invalidation: `Cache.load` captures the class
-   generation once before lookup and includes `(class, generation, namespace,
-   key)` in the singleflight key. The same captured generation is passed to
-   `storeIfCurrent`, so post-invalidation readers start a fresh downstream
-   load while the existing generation fence still drops stale stores.
-   `TestFreshnessCachePostInvalidationDoesNotJoinInFlightLoad` verifies two
-   downstream calls and a strictly newer `AsOf` for the post-mutation reader.
-2. M-04-C03 older-load repopulation: `storeIfCurrent` now drops an incoming
-   snapshot only when the existing snapshot is strictly newer, while holding
-   the same mutex as the generation check. Dropped writes do not clone, renew
-   `created`, or move the LRU entry; equal snapshots still replace normally.
-   `TestFreshnessCacheOlderLoadCannotOverwriteBypassRefresh` verifies that a
-   slower normal load cannot overwrite a newer MaxAge=0 refresh.
-3. M-04-C05 inventory evidence: the `memoryActionStore` test fake now fails
-   only Save #2. The persistence subtest reaches the approved Save, performs
-   an Applied provider write, reaches the final Applied Save, and fails there;
-   it asserts one provider call, two saves, and no invalidation. The sibling
-   provider-rejection subtest remains genuine and unchanged in intent.
+1. R1 test correction: `stagedCatalogReader` now reports every catalog
+   downstream entry through a buffered `entered` channel. The regression test
+   confirms call #1 is in flight, invalidates the class, advances the fake
+   clock, starts reader B, and requires call #2 to be observed before releasing
+   call #1. It then verifies two downstream calls and strictly increasing
+   `AsOf` values. The R2 snapshot-guard and R3 invalidation-guard tests were
+   left unchanged.
+
+#### R1 regression-test mutation proof
+
+The normal-path group key in `cache.go` was temporarily changed from
+`strconv.FormatUint(generation, 10)` to the literal `"0"`. The required
+command was:
+
+```powershell
+go test ./internal/modules/internal_read/adapters/cache/ -run PostInvalidationDoesNotJoinInFlightLoad -count=1
+```
+
+It then failed at the second-entry detector:
+
+```text
+2026/07/14 14:35:37 INFO internal_read.cache cache=miss key_class=catalog
+2026/07/14 14:35:37 INFO internal_read.cache cache=miss key_class=catalog
+--- FAIL: TestFreshnessCachePostInvalidationDoesNotJoinInFlightLoad (2.01s)
+    cache_test.go:330: post-invalidation reader joined the pre-invalidation in-flight load
+FAIL
+FAIL	marketplace-central/apps/server_core/internal/modules/internal_read/adapters/cache	3.171s
+FAIL
+```
+
+The production line was restored exactly to
+`strconv.FormatUint(generation, 10)`. `git diff --
+apps/server_core/internal/modules/internal_read/adapters/cache/cache.go` was
+empty, and the same focused command, with the required absolute `GOCACHE`,
+passed:
+
+```text
+ok  	marketplace-central/apps/server_core/internal/modules/internal_read/adapters/cache	1.388s
+```
 
 ### Prior round, retained and not regressed
 
@@ -59,10 +84,13 @@ it is not a milestone or formal QA verdict.
 
 ## Changed Paths
 
-- `apps/server_core/internal/modules/internal_read/adapters/cache/cache.go`
+This correction round permanently changes only:
+
 - `apps/server_core/internal/modules/internal_read/adapters/cache/cache_test.go`
-- `apps/server_core/internal/modules/inventory/application/stock_action_service_test.go`
 - `.mnfs/MIS-002-oracle-read-rearchitecture/M-04-server-cache/F-01-freshness-cache/validation.md`
+
+`cache.go` was changed only temporarily for the mutation proof and was
+restored with an empty diff.
 
 ## Commands Run
 
@@ -73,7 +101,7 @@ $env:GOCACHE='C:\Users\leandro.theodoro\Documents\marketplace-central\.claude\wo
 ```
 
 - `go test ./internal/modules/internal_read/adapters/cache/ -count=1 -v`
-  - Pass. Excerpts:
+  - Pass. The complete cache package passed, including:
 
     ```text
     --- PASS: TestFreshnessCachePostInvalidationDoesNotJoinInFlightLoad
@@ -81,46 +109,19 @@ $env:GOCACHE='C:\Users\leandro.theodoro\Documents\marketplace-central\.claude\wo
     --- PASS: TestFreshnessCacheSingleflight
     --- PASS: TestFreshnessCacheWaiterContextCancellation
     PASS
-    ok   marketplace-central/apps/server_core/internal/modules/internal_read/adapters/cache 0.908s
-    ```
-
-- `go test ./... -run FreshnessCache -count=1 -v`
-  - Pass. The cache package passed the TTL, singleflight, invalidation,
-    older-load, bypass, cancellation, deep-copy, error, linkage, and LRU/log
-    FreshnessCache tests.
-
-- `go test ./... -run EvictOnMutation -count=1 -v`
-  - Pass. Excerpts:
-
-    ```text
-    --- PASS: TestEvictOnMutationFailedWriteDoesNotInvalidate
-    --- PASS: TestEvictOnMutation
-    PASS
-    ```
-
-- `go test ./internal/modules/inventory/... -count=1 -v`
-  - Pass. Excerpts:
-
-    ```text
-    --- PASS: TestApplyManualStockActionDoesNotInvalidateFailedOrRejectedWrites/persistence_failure
-    --- PASS: TestApplyManualStockActionDoesNotInvalidateFailedOrRejectedWrites/provider_rejection
-    PASS
-    ok   marketplace-central/apps/server_core/internal/modules/inventory/application 9.483s
+    ok  	marketplace-central/apps/server_core/internal/modules/internal_read/adapters/cache	1.613s
     ```
 
 - `go test ./... -count=1`
   - Pass. All packages reported `ok` or `[no test files]`, including cache,
-    inventory, orders, profitability, integration, and unit packages.
+    inventory, orders, profitability, integration, and unit packages; command
+    runtime was 59.1s.
 
 - `go vet ./...`
   - Pass. No output or diagnostics.
 
-- `go test ./internal/modules/internal_read/adapters/cache/ -race -count=1`
-  - Not runnable in this worktree environment. First attempt reported
-    `-race requires cgo; enable cgo by setting CGO_ENABLED=1`; the retry with
-    `CGO_ENABLED=1` reported `C compiler "gcc" not found`. No C compiler was
-    available as `gcc`, `clang`, or `cl`, and no dependency/toolchain install
-    was performed.
+- Race validation: not run. This environment has `CGO_ENABLED=0` and no C
+  compiler, so `-race` is unavailable. No race coverage is claimed.
 
 ## Evidence Mapped to M-04 Criteria
 
@@ -130,13 +131,13 @@ $env:GOCACHE='C:\Users\leandro.theodoro\Documents\marketplace-central\.claude\wo
 | M-04-C02 | `TestFreshnessCacheSingleflight` (20 live waiters, one downstream call), `TestFreshnessCacheErrorNotCached`, and `TestFreshnessCacheWaiterContextCancellation` | Pass |
 | M-04-C03 | `TestFreshnessCacheOlderLoadCannotOverwriteBypassRefresh`, existing bypass namespace/repopulation tests, and `TestFreshnessCacheTTLPerClass` | Pass |
 | M-04-C04 | `TestFreshnessCacheLRUAndLogs`, `TestFreshnessCacheDeepCopiesCachedFacts`, and full cache suite | Pass |
-| M-04-C05 | `TestFreshnessCacheFencesInFlightLoadAfterInvalidation`, `TestFreshnessCachePostInvalidationDoesNotJoinInFlightLoad`, `TestEvictOnMutation`, inventory final-Save failure, inventory provider rejection, and full suite | Pass for runnable validation; race evidence unavailable due host toolchain |
+| M-04-C05 / R1 | `TestFreshnessCacheFencesInFlightLoadAfterInvalidation`, the deterministic `TestFreshnessCachePostInvalidationDoesNotJoinInFlightLoad`, `TestEvictOnMutation`, inventory final-Save failure, inventory provider rejection, and full suite | Pass for runnable validation; the R1 mutation failed as expected and the restored test passed; race evidence unavailable |
 
 ## Risks and Remaining Blockers
 
-- The required cache race command could not execute because the environment
-  has no C compiler. This is an external validation blocker, not a reported
-  test failure or a code change.
+- Race validation remains unavailable because the environment has no C
+  compiler. This is an external validation limitation, not a reported test
+  failure or a production code change in this round.
 - Cache invalidation remains intentionally per-process; no cross-process bus
   was added in this correction.
 - Fixed-SHA re-review and milestone QA remain the Milestone Orchestrator's
@@ -145,6 +146,6 @@ $env:GOCACHE='C:\Users\leandro.theodoro\Documents\marketplace-central\.claude\wo
 ## Handoff
 
 - Status: `correction_validation_evidence_collected`
-- Three correction tests and all runnable required validation: passed
+- R1 correction test and all runnable required validation: passed
 - Remaining blocker: cache `-race` requires a C compiler unavailable in this environment
 - Next owner: Milestone Orchestrator / fixed-SHA review and QA

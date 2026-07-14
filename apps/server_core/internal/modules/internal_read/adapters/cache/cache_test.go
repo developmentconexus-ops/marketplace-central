@@ -120,6 +120,7 @@ func (r *fakeStockReader) GetStockFactsByIDs(context.Context, []int64) (map[int6
 type stagedCatalogReader struct {
 	clock        Clock
 	calls        atomic.Int64
+	entered      chan int64
 	firstStart   chan struct{}
 	firstRelease chan struct{}
 }
@@ -138,6 +139,9 @@ func (r *staticCatalogReader) SearchCatalogProductFacts(context.Context, string,
 
 func (r *stagedCatalogReader) ListCatalogProductFacts(context.Context, internalreadports.Cursor, int) (internalreadports.CatalogFactPage, error) {
 	call := r.calls.Add(1)
+	if r.entered != nil {
+		r.entered <- call
+	}
 	if call == 1 {
 		close(r.firstStart)
 		<-r.firstRelease
@@ -299,17 +303,15 @@ func TestFreshnessCacheFencesInFlightLoadAfterInvalidation(t *testing.T) {
 func TestFreshnessCachePostInvalidationDoesNotJoinInFlightLoad(t *testing.T) {
 	clock := &fakeClock{now: time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)}
 	c := testCache(clock, 10, nil)
-	downstream := &stagedCatalogReader{clock: clock, firstStart: make(chan struct{}), firstRelease: make(chan struct{})}
+	downstream := &stagedCatalogReader{clock: clock, entered: make(chan int64, 4), firstStart: make(chan struct{}), firstRelease: make(chan struct{})}
 	catalog := NewCatalogPageReader(downstream, c)
 	firstResult := make(chan internalreadports.CatalogFactPage, 1)
 	go func() {
 		page, _ := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50)
 		firstResult <- page
 	}()
-	select {
-	case <-downstream.firstStart:
-	case <-time.After(time.Second):
-		t.Fatal("first downstream load was not entered")
+	if call := <-downstream.entered; call != 1 {
+		t.Fatalf("first downstream call=%d, want 1", call)
 	}
 
 	c.InvalidateClass(ClassCatalog)
@@ -319,6 +321,14 @@ func TestFreshnessCachePostInvalidationDoesNotJoinInFlightLoad(t *testing.T) {
 		page, _ := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50)
 		secondResult <- page
 	}()
+	select {
+	case call := <-downstream.entered:
+		if call != 2 {
+			t.Fatalf("post-invalidation downstream call=%d, want 2", call)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("post-invalidation reader joined the pre-invalidation in-flight load")
+	}
 	close(downstream.firstRelease)
 	first := <-firstResult
 	second := <-secondResult
