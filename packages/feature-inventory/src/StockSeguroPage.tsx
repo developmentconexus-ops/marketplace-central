@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, SurfaceCard } from "@marketplace-central/ui";
 import type {
   ApplyInventoryStockActionResponse,
@@ -10,6 +10,7 @@ import type {
 import {
   FreshnessIndicator,
   inventoryQueryKeys,
+  queryKeyNamespaces,
   QUERY_STALE_TIME,
   type RefreshableClient,
 } from "@marketplace-central/web-query";
@@ -147,6 +148,11 @@ export function StockSeguroPage({ client }: StockSeguroPageProps) {
     staleTime: QUERY_STALE_TIME.stock,
     enabled: Boolean(selectedInstallationID),
   });
+  const stockActionMutation = useMutation({
+    mutationFn: (req: Parameters<StockSeguroClient["applyInventoryManualStockAction"]>[0]) =>
+      client.applyInventoryManualStockAction(req),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeyNamespaces.inventory }),
+  });
   useEffect(() => {
     if (riskQuery.data) {
       setItems(riskQuery.data.items);
@@ -223,7 +229,7 @@ export function StockSeguroPage({ client }: StockSeguroPageProps) {
     setActionError(null);
     setActionMessage(null);
     try {
-      const result = await client.applyInventoryManualStockAction({
+      const result = await stockActionMutation.mutateAsync({
         stock_action_id: `ssa-${Date.now()}`,
         installation_id: item.identity.installation_id,
         provider_item_id: item.identity.provider_item_id,
@@ -242,18 +248,6 @@ export function StockSeguroPage({ client }: StockSeguroPageProps) {
       });
       setActionMessage(`Action ${result.action.state} for ${item.identity.provider_item_id}.`);
       setOpenConfirmKey(null);
-      const refreshed = await client.listInventoryStockRisks({
-        installation_id: selectedInstallationID,
-        state: selectedState || undefined,
-        link_state: selectedLinkState || undefined,
-        actionability: selectedActionability || undefined,
-        limit: 50,
-      });
-      setItems(refreshed.items);
-      queryClient.setQueryData(inventoryQueryKeys.risks(selectedInstallationID, riskFilters), (current: { items: InventoryStockRiskItem[]; as_of?: string } | undefined) => ({
-        ...current,
-        items: refreshed.items,
-      }));
     } catch (runError) {
       setActionError(normalizeError(runError, "Failed to apply stock action."));
     } finally {

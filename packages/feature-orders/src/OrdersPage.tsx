@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, StatCard, SurfaceCard } from "@marketplace-central/ui";
 import type {
   IntegrationInstallation,
@@ -19,6 +19,7 @@ import type {
 import {
   FreshnessIndicator,
   profitabilityQueryKeys,
+  queryKeyNamespaces,
   QUERY_STALE_TIME,
   type RefreshableClient,
 } from "@marketplace-central/web-query";
@@ -297,6 +298,17 @@ export function OrdersPage({ client, operator }: OrdersPageProps) {
     queryFn: () => client.listProfitabilityMarginInputs(selectedInstallationID, 200),
     staleTime: QUERY_STALE_TIME.pricecost,
     enabled: Boolean(selectedInstallationID),
+  });
+
+  const marginInputImportMutation = useMutation({
+    mutationFn: (req: Parameters<OrdersClient["importProfitabilityMarginInputs"]>[0]) =>
+      client.importProfitabilityMarginInputs(req),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeyNamespaces.catalog }),
+        queryClient.invalidateQueries({ queryKey: queryKeyNamespaces.profitability }),
+      ]);
+    },
   });
 
   useEffect(() => {
@@ -612,8 +624,7 @@ export function OrdersPage({ client, operator }: OrdersPageProps) {
               void runWorkspaceAction(
                 "import-inputs",
                 async () => {
-                  await client.importProfitabilityMarginInputs({ installation_id: selectedInstallationID, limit: 50 });
-                  await refreshCurrentInstallation();
+                  await marginInputImportMutation.mutateAsync({ installation_id: selectedInstallationID, limit: 50 });
                 },
                 "Margin inputs imported.",
               )

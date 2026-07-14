@@ -2,11 +2,12 @@ import { fireEvent, render as testingRender, screen, waitFor } from "@testing-li
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
+import { queryKeyNamespaces } from "@marketplace-central/web-query";
 import { StockSeguroPage, type StockSeguroClient } from "./StockSeguroPage";
 
 const baseRender = testingRender;
-function render(ui: React.ReactNode) {
-  return baseRender(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: 0 } } })}>{ui}</QueryClientProvider>);
+function render(ui: React.ReactNode, queryClient = new QueryClient({ defaultOptions: { queries: { retry: 0 } } })) {
+  return baseRender(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
 }
 
 function makeClient(items: any[], overrides?: Partial<StockSeguroClient>): StockSeguroClient {
@@ -203,10 +204,13 @@ describe("StockSeguroPage", () => {
       },
       risk: { ...oversellItem, state: "healthy", actionable: false, actionability: "blocked", provider_quantity: 7 },
     }));
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 0 } } });
+    const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
     render(
       <MemoryRouter initialEntries={["/inventory/stock-seguro?installation=inst-1"]}>
         <StockSeguroPage client={makeClient([oversellItem], { applyInventoryManualStockAction })} />
       </MemoryRouter>,
+      queryClient,
     );
 
     expect((await screen.findAllByText("Oversell")).length).toBeGreaterThan(0);
@@ -216,5 +220,23 @@ describe("StockSeguroPage", () => {
 
     await waitFor(() => expect(applyInventoryManualStockAction).toHaveBeenCalled());
     expect(await screen.findByText("Action applied for MLB123.")).toBeInTheDocument();
+    expect(invalidateQueries).toHaveBeenCalledTimes(1);
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: queryKeyNamespaces.inventory });
+  });
+
+  it("does not invalidate inventory after a failed stock action", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 0 } } });
+    const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
+    render(
+      <MemoryRouter initialEntries={["/inventory/stock-seguro?installation=inst-1"]}>
+        <StockSeguroPage client={makeClient([oversellItem], { applyInventoryManualStockAction: vi.fn().mockRejectedValue(new Error("stock action failed")) })} />
+      </MemoryRouter>,
+      queryClient,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Apply recommended quantity" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Confirm apply" }));
+    await waitFor(() => expect(screen.getByText("stock action failed")).toBeInTheDocument());
+    expect(invalidateQueries).not.toHaveBeenCalled();
   });
 });

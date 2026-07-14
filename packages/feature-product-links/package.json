@@ -10,6 +10,8 @@
   "dependencies": {
     "@marketplace-central/sdk-runtime": "*",
     "@marketplace-central/ui": "*",
+    "@marketplace-central/web-query": "*",
+    "@tanstack/react-query": "^5.101.2",
     "react": "*",
     "react-router-dom": "*"
   },

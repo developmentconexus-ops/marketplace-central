@@ -7,6 +7,13 @@ export const QUERY_STALE_TIME = {
   pricecost: 120_000,
 } as const;
 
+export const queryKeyNamespaces = {
+  catalog: ["catalog"] as const,
+  inventory: ["inventory"] as const,
+  linkage: ["linkage"] as const,
+  profitability: ["profitability"] as const,
+} as const;
+
 export const catalogQueryKeys = {
   facts: (params: Record<string, unknown> = {}) => ["catalog", "facts", { params }] as const,
   search: (q: string) => ["catalog", "search", q] as const,
@@ -15,6 +22,10 @@ export const catalogQueryKeys = {
 export const inventoryQueryKeys = {
   risks: (installation_id: string, filters: Record<string, unknown>) =>
     ["inventory", { installation_id, filters }] as const,
+};
+
+export const linkageQueryKeys = {
+  workflows: (installation_id: string) => ["linkage", { installation_id }] as const,
 };
 
 export const profitabilityQueryKeys = {

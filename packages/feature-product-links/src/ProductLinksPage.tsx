@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, SurfaceCard } from "@marketplace-central/ui";
 import type {
   IntegrationInstallation,
@@ -8,6 +9,7 @@ import type {
   ProductLinkState,
   ProductLinkWorkflowItem,
 } from "@marketplace-central/sdk-runtime";
+import { linkageQueryKeys, queryKeyNamespaces } from "@marketplace-central/web-query";
 
 export interface ProductLinksClient {
   listIntegrationInstallations: () => Promise<{ items: IntegrationInstallation[] }>;
@@ -127,10 +129,10 @@ function getWorkflowTitle(item: ProductLinkWorkflowItem): string {
 }
 
 export function ProductLinksPage({ client }: ProductLinksPageProps) {
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedInstallationId = searchParams.get("installation") ?? "";
   const [installations, setInstallations] = useState<IntegrationInstallation[]>([]);
-  const [items, setItems] = useState<ProductLinkWorkflowItem[]>([]);
   const [state, setState] = useState<LoadState>("loading");
   const [error, setError] = useState<string | null>(null);
   const [operatorName, setOperatorName] = useState("Leandro");
@@ -138,6 +140,39 @@ export function ProductLinksPage({ client }: ProductLinksPageProps) {
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [openManualKey, setOpenManualKey] = useState<string | null>(null);
   const [manualForms, setManualForms] = useState<Record<string, ManualFormState>>({});
+
+  const workflowQuery = useQuery({
+    queryKey: linkageQueryKeys.workflows(selectedInstallationId),
+    queryFn: () => client.listProductLinkWorkflows(selectedInstallationId, 50),
+    staleTime: 0,
+    gcTime: 0,
+    enabled: Boolean(selectedInstallationId),
+  });
+
+  const invalidateLinkageAndCatalog = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeyNamespaces.linkage }),
+      queryClient.invalidateQueries({ queryKey: queryKeyNamespaces.catalog }),
+    ]);
+  };
+
+  const approveMutation = useMutation({
+    mutationFn: (req: Parameters<ProductLinksClient["approveProductLinkCandidate"]>[0]) =>
+      client.approveProductLinkCandidate(req),
+    onSuccess: invalidateLinkageAndCatalog,
+  });
+  const rejectMutation = useMutation({
+    mutationFn: (req: Parameters<ProductLinksClient["rejectProductLinkListing"]>[0]) =>
+      client.rejectProductLinkListing(req),
+    onSuccess: invalidateLinkageAndCatalog,
+  });
+  const manualResolveMutation = useMutation({
+    mutationFn: (req: Parameters<ProductLinksClient["manualResolveProductLink"]>[0]) =>
+      client.manualResolveProductLink(req),
+    onSuccess: invalidateLinkageAndCatalog,
+  });
+
+  const items = workflowQuery.data?.items ?? [];
 
   useEffect(() => {
     let cancelled = false;
@@ -172,42 +207,18 @@ export function ProductLinksPage({ client }: ProductLinksPageProps) {
   }, [client, selectedInstallationId, setSearchParams]);
 
   useEffect(() => {
-    if (!selectedInstallationId) {
-      setItems([]);
+    if (!workflowQuery.data) {
       return;
     }
-
-    let cancelled = false;
-
-    async function loadWorkflows() {
-      setState("loading");
-      setError(null);
-      try {
-        const result = await client.listProductLinkWorkflows(selectedInstallationId, 50);
-        if (cancelled) {
-          return;
-        }
-        setItems(result.items);
-        setManualForms(
-          Object.fromEntries(
-            result.items.map((item) => [getWorkflowTitle(item), makeDefaultManualForm(item)]),
-          ),
-        );
-        setState("ready");
-      } catch (loadError) {
-        if (cancelled) {
-          return;
-        }
-        setError(normalizeError(loadError, "Failed to load product link workflows."));
-        setState("error");
-      }
-    }
-
-    void loadWorkflows();
-    return () => {
-      cancelled = true;
-    };
-  }, [client, selectedInstallationId]);
+    setManualForms((current) =>
+      Object.fromEntries(
+        workflowQuery.data.items.map((item) => [
+          getWorkflowTitle(item),
+          current[getWorkflowTitle(item)] ?? makeDefaultManualForm(item),
+        ]),
+      ),
+    );
+  }, [workflowQuery.data]);
 
   const summary = useMemo(() => {
     return items.reduce(
@@ -221,25 +232,11 @@ export function ProductLinksPage({ client }: ProductLinksPageProps) {
     );
   }, [items]);
 
-  async function refreshWorkflows() {
-    if (!selectedInstallationId) {
-      return;
-    }
-    const result = await client.listProductLinkWorkflows(selectedInstallationId, 50);
-    setItems(result.items);
-    setManualForms(
-      Object.fromEntries(
-        result.items.map((item) => [getWorkflowTitle(item), manualForms[getWorkflowTitle(item)] ?? makeDefaultManualForm(item)]),
-      ),
-    );
-  }
-
   async function runAction(actionKey: string, action: () => Promise<unknown>) {
     setPendingKey(actionKey);
     setActionError(null);
     try {
       await action();
-      await refreshWorkflows();
     } catch (runError) {
       setActionError(normalizeError(runError, "Failed to persist link decision."));
     } finally {
@@ -259,6 +256,16 @@ export function ProductLinksPage({ client }: ProductLinksPageProps) {
 
   const selectedInstallation = installations.find((item) => item.installation_id === selectedInstallationId);
   const actor = buildActor(operatorName);
+  const displayedState: LoadState = selectedInstallationId
+    ? workflowQuery.isPending
+      ? "loading"
+      : workflowQuery.isError
+        ? "error"
+        : "ready"
+    : state;
+  const displayedError = workflowQuery.error
+    ? normalizeError(workflowQuery.error, "Failed to load product link workflows.")
+    : error;
 
   return (
     <div className="space-y-6">
@@ -321,26 +328,26 @@ export function ProductLinksPage({ client }: ProductLinksPageProps) {
         </SurfaceCard>
       ) : null}
 
-      {state === "loading" ? (
+      {displayedState === "loading" ? (
         <SurfaceCard>
           <p className="text-sm text-slate-600">Loading product link workflows...</p>
         </SurfaceCard>
       ) : null}
 
-      {state === "error" && error ? (
+      {displayedState === "error" && displayedError ? (
         <SurfaceCard className="border-rose-200 bg-rose-50">
-          <p className="text-sm font-medium text-rose-900">{error}</p>
+          <p className="text-sm font-medium text-rose-900">{displayedError}</p>
         </SurfaceCard>
       ) : null}
 
-      {state === "ready" && installations.length === 0 ? (
+      {displayedState === "ready" && installations.length === 0 ? (
         <SurfaceCard>
           <h2 className="text-lg font-semibold text-slate-900">No installations available</h2>
           <p className="mt-2 text-sm text-slate-600">Connect a marketplace installation first so we can load live listing identities and candidate evidence.</p>
         </SurfaceCard>
       ) : null}
 
-      {state === "ready" && selectedInstallation && items.length === 0 ? (
+      {displayedState === "ready" && selectedInstallation && items.length === 0 ? (
         <SurfaceCard>
           <h2 className="text-lg font-semibold text-slate-900">No workflows yet</h2>
           <p className="mt-2 text-sm text-slate-600">
@@ -349,7 +356,7 @@ export function ProductLinksPage({ client }: ProductLinksPageProps) {
         </SurfaceCard>
       ) : null}
 
-      {state === "ready" && items.length > 0 ? (
+      {displayedState === "ready" && items.length > 0 ? (
         <div className="grid gap-4">
           {items.map((item) => {
             const workflowState = inferWorkflowState(item);
@@ -396,7 +403,7 @@ export function ProductLinksPage({ client }: ProductLinksPageProps) {
                         loading={pendingKey === `approve:${candidate.candidate_id}`}
                         onClick={() =>
                           runAction(`approve:${candidate.candidate_id}`, () =>
-                            client.approveProductLinkCandidate({
+                            approveMutation.mutateAsync({
                               candidate_id: candidate.candidate_id,
                               reason: candidate.match_value ? `Approved from ${candidate.match_input}: ${candidate.match_value}` : "Approved from generated candidate",
                               actor,
@@ -418,7 +425,7 @@ export function ProductLinksPage({ client }: ProductLinksPageProps) {
                       loading={pendingKey === `reject:${workflowKey}`}
                       onClick={() =>
                         runAction(`reject:${workflowKey}`, () =>
-                          client.rejectProductLinkListing({
+                          rejectMutation.mutateAsync({
                             installation_id: item.identity.installation_id,
                             provider_code: providerCode,
                             provider_item_id: item.identity.provider_item_id,
@@ -536,7 +543,7 @@ export function ProductLinksPage({ client }: ProductLinksPageProps) {
                             if (!Number.isInteger(internalProductID) || internalProductID <= 0) {
                               throw new Error("Internal product ID must be a positive integer.");
                             }
-                            await client.manualResolveProductLink({
+                            await manualResolveMutation.mutateAsync({
                               installation_id: item.identity.installation_id,
                               provider_code: providerCode,
                               provider_item_id: item.identity.provider_item_id,
