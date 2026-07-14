@@ -4,8 +4,11 @@ package oracle
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"os"
+	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -153,6 +156,107 @@ func TestOracleLiveSmoke(t *testing.T) {
 			t.Fatal("expected at least one tax amount")
 		}
 	})
+}
+
+func TestOracleLiveBaseline(t *testing.T) {
+	if os.Getenv("MPC_ORACLE_LIVE_TEST") != "1" {
+		t.Skip("set MPC_ORACLE_LIVE_TEST=1 to run live Oracle validation")
+	}
+
+	cfg, err := LoadConfigFromEnv(os.Getenv)
+	if err != nil {
+		t.Fatalf("load live Oracle config: %v", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+	db, err := OpenDB(ctx, cfg)
+	if err != nil {
+		t.Fatalf("open live Oracle db: %v", err)
+	}
+	defer db.Close()
+
+	var activeCount int
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM METALPRD.TGFPRO WHERE ATIVO='S'`).Scan(&activeCount); err != nil {
+		t.Fatalf("baseline active product count: %v", err)
+	}
+	fmt.Printf("MPC_BASELINE_TGFPRO_ACTIVE_COUNT=%d\n", activeCount)
+
+	const rttSamples = 5
+	rtt := make([]int64, 0, rttSamples)
+	for i := 0; i < rttSamples; i++ {
+		started := time.Now()
+		var one int
+		if err := db.QueryRowContext(ctx, `SELECT 1 FROM DUAL`).Scan(&one); err != nil {
+			t.Fatalf("baseline one-row RTT sample %d: %v", i+1, err)
+		}
+		rtt = append(rtt, time.Since(started).Milliseconds())
+	}
+	sort.Slice(rtt, func(i, j int) bool { return rtt[i] < rtt[j] })
+	fmt.Printf("MPC_BASELINE_RTT_MS=%d\n", rtt[len(rtt)/2])
+
+	const ic01CatalogPageQuery = `
+SELECT
+    p.CODPROD AS internal_product_id,
+    p.DESCRPROD,
+    stock.sellable_qty,
+    price.PRECO,
+    cost.CUSSEMICM
+FROM METALPRD.TGFPRO p
+LEFT JOIN (
+    SELECT est.CODPROD,
+           SUM(CASE WHEN est.CODPARC = 0 THEN NVL(est.ESTOQUE, 0) - NVL(est.RESERVADO, 0) ELSE 0 END) AS sellable_qty
+    FROM METALPRD.TGFEST est
+    WHERE est.CODEMP IN (1, 2)
+      AND est.CODLOCAL = 10101
+    GROUP BY est.CODPROD
+) stock ON stock.CODPROD = p.CODPROD
+LEFT JOIN LEANDRO.VW_PRECO_TABELA price
+    ON price.CODPROD = p.CODPROD
+   AND price.VIGENTE_HOJE = 'S'
+LEFT JOIN METALPRD.TGFCUS cost
+    ON cost.CODPROD = p.CODPROD
+   AND cost.CODEMP = 1
+WHERE p.ATIVO = 'S'
+  AND p.CODPROD > 0
+ORDER BY p.CODPROD
+FETCH FIRST 50 ROWS ONLY`
+
+	executor, ok := db.(interface {
+		ExecContext(context.Context, string, ...any) (sql.Result, error)
+	})
+	if !ok {
+		t.Fatalf("baseline page plan blocked: database does not expose ExecContext")
+	}
+	if _, err := executor.ExecContext(ctx, "EXPLAIN PLAN FOR "+ic01CatalogPageQuery); err != nil {
+		t.Fatalf("baseline page plan blocked: EXPLAIN PLAN FOR failed: %v", err)
+	}
+	rows, err := db.QueryContext(ctx, `SELECT PLAN_TABLE_OUTPUT FROM TABLE(DBMS_XPLAN.DISPLAY(NULL, NULL, 'BASIC +PREDICATE'))`)
+	if err != nil {
+		t.Fatalf("baseline page plan blocked: DBMS_XPLAN.DISPLAY failed: %v", err)
+	}
+	defer rows.Close()
+	var plan strings.Builder
+	for rows.Next() {
+		var line string
+		if err := rows.Scan(&line); err != nil {
+			t.Fatalf("baseline page plan blocked: scan failed: %v", err)
+		}
+		plan.WriteString(line)
+		plan.WriteByte('\n')
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("baseline page plan blocked: read failed: %v", err)
+	}
+	planText := strings.ToUpper(plan.String())
+	verdict := ""
+	if strings.Contains(planText, "TABLE ACCESS FULL") {
+		verdict = "FULL_SCAN"
+	} else if strings.Contains(planText, "INDEX") {
+		verdict = "INDEX"
+	} else {
+		t.Fatalf("baseline page plan blocked: unclassified plan output")
+	}
+	fmt.Printf("MPC_BASELINE_PAGE_PLAN=%s\n", verdict)
 }
 
 func discoverProductLookupInput(t *testing.T, ctx context.Context, db queryer) ports.FindProductsInput {

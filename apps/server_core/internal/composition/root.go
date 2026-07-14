@@ -40,6 +40,7 @@ import (
 	internalreadoracle "marketplace-central/apps/server_core/internal/modules/internal_read/adapters/oracle"
 	internalreadapp "marketplace-central/apps/server_core/internal/modules/internal_read/application"
 	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
+	internalreadobservability "marketplace-central/apps/server_core/internal/modules/internal_read/observability"
 	internalreadports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 	inventoryconnectors "marketplace-central/apps/server_core/internal/modules/inventory/adapters/connectors"
 	inventoryintegrations "marketplace-central/apps/server_core/internal/modules/inventory/adapters/integrations"
@@ -150,7 +151,25 @@ func (f authFlowFacade) ReadStock(ctx context.Context, installationID string, re
 	return f.providerOps.ReadStock(ctx, installationID, ref)
 }
 
+type RootRuntime struct {
+	Handler   http.Handler
+	PoolStats *internalreadobservability.PoolStatsLoop
+}
+
 func NewRootRouter(pool *pgxpool.Pool, cfg pgdb.Config) (http.Handler, error) {
+	runtime, err := NewRootRuntime(pool, cfg)
+	if err != nil {
+		return nil, err
+	}
+	return runtime.Handler, nil
+}
+
+func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
+	observabilityCfg, err := internalreadobservability.LoadConfig(os.Getenv)
+	if err != nil {
+		return nil, fmt.Errorf("observability config: %w", err)
+	}
+
 	mux := httpx.NewRouteClassMux()
 	for _, pattern := range []string{
 		"/profitability/margin-inputs/import",
@@ -291,13 +310,20 @@ func NewRootRouter(pool *pgxpool.Pool, cfg pgdb.Config) (http.Handler, error) {
 	var internalReadSvc internalreadapp.Service
 	var internalReadAvailable bool
 	var oracleDB internalreadoracle.Database
+	var poolStats *internalreadobservability.PoolStatsLoop
 	if oracleCfg, err := internalreadoracle.LoadConfigFromEnv(os.Getenv); err != nil {
 		slog.Warn("product links oracle reader unavailable", "err", err)
 	} else if db, err := internalreadoracle.OpenDB(context.Background(), oracleCfg); err != nil {
 		slog.Warn("product links oracle connection failed", "err", err)
 	} else {
 		oracleDB = db
-		internalReadSvc = internalreadapp.NewService(internalreadoracle.NewReader(oracleDB))
+		reader := internalreadobservability.NewTimingReader(
+			internalreadoracle.NewReader(oracleDB),
+			slog.Default(),
+			observabilityCfg.SlowQueryThreshold,
+		)
+		internalReadSvc = internalreadapp.NewService(reader)
+		poolStats = internalreadobservability.NewPoolStatsLoop(oracleDB, slog.Default(), observabilityCfg.PoolStatsInterval)
 		internalReadAvailable = true
 		productMatcher = internalReadSvc
 		inventoryStockReader = inventoryinternalread.NewStockReader(internalReadSvc)
@@ -357,7 +383,11 @@ func NewRootRouter(pool *pgxpool.Pool, cfg pgdb.Config) (http.Handler, error) {
 	} else if !internalReadAvailable || oracleDB == nil {
 		slog.Warn("assisted Sankhya linkage unavailable", "err", "Oracle reader is unavailable")
 	} else {
-		source := internalreadoracle.NewSankhyaLinkageReader(oracleDB, runtimeConfig.ReaderConfig)
+		source := internalreadobservability.NewTimingSankhyaLinkageReader(
+			internalreadoracle.NewSankhyaLinkageReader(oracleDB, runtimeConfig.ReaderConfig),
+			slog.Default(),
+			observabilityCfg.SlowQueryThreshold,
+		)
 		reader, err := ordersinternalread.NewSankhyaLinkageReader(
 			source,
 			runtimeConfig.ReaderConfig.ConfigurationRevision,
@@ -447,5 +477,5 @@ func NewRootRouter(pool *pgxpool.Pool, cfg pgdb.Config) (http.Handler, error) {
 	// Connectors (Melhor Envio auth + fee seeding foundations)
 	connectorstransport.NewHandler(meOAuth).Register(mux)
 
-	return httpx.CORSMiddleware(mux), nil
+	return &RootRuntime{Handler: httpx.CORSMiddleware(mux), PoolStats: poolStats}, nil
 }

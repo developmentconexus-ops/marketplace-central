@@ -26,16 +26,25 @@ func main() {
 		log.Fatalf("db pool: %v", err)
 	}
 	logger.Printf("server starting on %s", cfg.Addr)
-	router, err := composition.NewRootRouter(pool, dbCfg)
+	runtime, err := composition.NewRootRuntime(pool, dbCfg)
 	if err != nil {
 		log.Fatalf("root router: %v", err)
 	}
+	if runtime.PoolStats != nil {
+		runtime.PoolStats.Start(ctx)
+	}
 	server := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           router,
+		Handler:           runtime.Handler,
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      60 * time.Second,
 	}
-	log.Fatal(server.ListenAndServe())
+	serveErr := server.ListenAndServe()
+	if runtime.PoolStats != nil {
+		runtime.PoolStats.Stop()
+	}
+	if serveErr != nil {
+		log.Fatal(serveErr)
+	}
 }
