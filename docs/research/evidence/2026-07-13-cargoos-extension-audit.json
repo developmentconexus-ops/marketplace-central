@@ -1,0 +1,76 @@
+{
+  "captured_at": "2026-07-13",
+  "artifact": {
+    "provider": "Cargoos",
+    "chrome_extension_id": "hhpmjdebejnbpidgokkeikoainkcmlgi",
+    "download_source": "Chrome Web Store update service",
+    "crx_format": 3,
+    "manifest_version": 3,
+    "extension_version": "1.0.15",
+    "crx_bytes": 1266510,
+    "crx_sha256": "2F0AC889F52F323F44FE87B8D13F91ED2C5DF027449BB3F94BA83D9F18D84AB0"
+  },
+  "manifest": {
+    "content_script_matches": [
+      "*://*.mercadolivre.com.br/*"
+    ],
+    "permissions": [
+      "storage",
+      "sidePanel",
+      "tabs",
+      "webNavigation",
+      "alarms",
+      "cookies",
+      "identity"
+    ],
+    "host_permissions": [
+      "https://*.cargooscorp.com.br/*",
+      "https://*.cargoos.com.br/*",
+      "https://cargoos.com.br/*"
+    ]
+  },
+  "observed_backend": {
+    "base_url": "https://prod.cargooscorp.com.br/api/v1",
+    "unauthenticated_checks": [
+      {
+        "method": "GET",
+        "path": "/ean-credits/balance",
+        "status": 401,
+        "message": "Invalid or expired session"
+      },
+      {
+        "method": "GET",
+        "path": "/ean-analyses",
+        "status": 401,
+        "message": "Invalid or expired session"
+      }
+    ],
+    "observed_paths": [
+      "/ean-credits/balance",
+      "/ean-analyses",
+      "/ean-analyses/{id}",
+      "/mercadolivre/api",
+      "/mercadolivre/catalog/{catalog_product_id}/stats",
+      "/mercadolivre/catalog/{catalog_product_id}/costs",
+      "/mercadolivre/items/{item_id}/costs",
+      "/mercadolivre/catalog/sellers-scan",
+      "/mercadolivre/catalog/opportunity-scan"
+    ]
+  },
+  "batch_ean_static_analysis": {
+    "input_lengths_accepted": [8, 13],
+    "duplicate_removal_present": true,
+    "credit_balance_ui_present": true,
+    "analysis_history_api_present": true,
+    "json_import_export_present": true,
+    "resolver_function_behavior": "returns an empty object unconditionally",
+    "analysis_function_behavior": "returns a synthetic success object with dailyVisits=0, estimatedDailySales=0, totalSellers=1 and no network request",
+    "orchestrator_behavior": "calls the empty resolver without passing the current EAN batch; every row is therefore marked not_found",
+    "real_batch_ean_network_endpoint_observed": false
+  },
+  "technical_verdict": "no_go_current_public_extension",
+  "reason": "The advertised batch-EAN workflow is present in the UI but its current published implementation cannot resolve any EAN and does not call a real analysis endpoint.",
+  "external_data_transmitted": false,
+  "account_created": false,
+  "extension_installed": false
+}

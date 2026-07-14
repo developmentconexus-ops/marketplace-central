@@ -1,0 +1,84 @@
+{
+  "captured_at": "2026-07-13",
+  "scope": "Professional scraping infrastructure for Mercado Livre Brazil prelisting price discovery",
+  "external_product_data_transmitted": false,
+  "decisive_source_rule": {
+    "source": "https://developers.mercadolivre.com.br/pt_br/termos-e-condicoes",
+    "clause": "7.6",
+    "finding": "Mercado Livre Developer Program terms prohibit robots, harvesters, spiders and scraping of the Site to obtain information outside the Program.",
+    "effect": "A scraping provider does not make the collection professionally authorized; written source authorization remains required."
+  },
+  "providers": [
+    {
+      "provider": "Bright Data",
+      "technical_rank": 1,
+      "confirmed": [
+        "Dedicated mercadolivre.com.br products scraper",
+        "Structured product ID, URL, title, current and original price",
+        "API, webhook, batch and scheduled delivery",
+        "Enterprise SLA options"
+      ],
+      "matching": "EAN can be used as a search input, but exact EAN matching is not a documented native contract and remains our responsibility.",
+      "contract": "Standard license is internal-use and does not grant sublicensing or OEM redistribution.",
+      "verdict": "best_technical_no_go_without_ml_and_oem_written_authorization"
+    },
+    {
+      "provider": "Oxylabs",
+      "technical_rank": 2,
+      "confirmed": [
+        "Server-to-server scraper API, JavaScript rendering, batch and scheduler",
+        "Trial and paid plans",
+        "DPA and ISO 27001 claims"
+      ],
+      "matching": "Requires Mercado Livre search/PDP requests and our identity gate; no dedicated GTIN contract proved.",
+      "contract": "Target-site terms remain the customer's responsibility; resale requires an authorized statement of work.",
+      "verdict": "no_go_under_standard_terms"
+    },
+    {
+      "provider": "Zyte",
+      "technical_rank": 3,
+      "confirmed": [
+        "URL extraction API",
+        "Product and product-list schemas can include URL, price, GTIN and MPN",
+        "DPA and high-throughput options"
+      ],
+      "matching": "No Mercado Livre-specific extractor was proved.",
+      "contract": "Standard terms focus on internal intelligence, restrict third-party processing and allow suspension for source-term violations.",
+      "verdict": "no_go_oem_and_source_terms"
+    },
+    {
+      "provider": "Apify",
+      "technical_rank": 4,
+      "confirmed": [
+        "Community Mercado Livre actors accept keyword searches",
+        "API/OpenAPI and JSON/CSV datasets",
+        "Some actors return price, URL and seller"
+      ],
+      "matching": "EAN can be a keyword but precision is not guaranteed.",
+      "contract": "Community actor developers may access inputs/outputs and users retain responsibility for rights and source compliance.",
+      "verdict": "poc_only_not_professional_base"
+    }
+  ],
+  "production_gate": [
+    "Written Mercado Livre authorization or verifiable provider authorization for automated collection",
+    "Provider statement of work allowing server-to-server use, cache, normalization, multi-tenant display and cross-tenant reuse",
+    "DPA, at least 99.9 percent SLA, parser change policy and responsibility for source/data licensing",
+    "Five-product canary with the known collision EAN, zero false accepts and repeatability across two runs",
+    "Fifty-product validation only after the legal and five-product gates pass"
+  ],
+  "sources": [
+    "https://developers.mercadolivre.com.br/pt_br/termos-e-condicoes",
+    "https://brightdata.com/pricing/web-scraper",
+    "https://brightdata.com/license",
+    "https://oxylabs.io/products/scraper-api/web/pricings",
+    "https://oxylabs.io/legal/oxylabs-terms-of-service",
+    "https://oxylabs.io/legal/acceptable-use-terms",
+    "https://oxylabs.io/legal/data-processing-terms",
+    "https://docs.zyte.com/zyte-api/usage/reference.html",
+    "https://www.zyte.com/terms-and-services/",
+    "https://www.zyte.com/terms-policies/dpa/",
+    "https://apify.com/gio21/mercado-livre-scraper/api/openapi",
+    "https://docs.apify.com/legal/actor-terms-and-conditions",
+    "https://apify.com/pricing"
+  ]
+}

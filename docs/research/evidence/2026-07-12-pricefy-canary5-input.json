@@ -1,0 +1,62 @@
+{
+  "purpose": "pricefy_technical_canary_only",
+  "external_transfer_authorized": true,
+  "products": [
+    {
+      "sku": "39352",
+      "ean": "7892162167027",
+      "title": "COIFA ILHA LINEA TOUCH 90CM 220V",
+      "brand": "FRANKE",
+      "manufacturer_reference": "16702",
+      "stratum": "known_semantically_compatible_catalog_match"
+    },
+    {
+      "sku": "45477",
+      "ean": "7890013123284",
+      "title": "TOALHEIRO INOX P/BANCADA CHROME",
+      "brand": "DOKA",
+      "manufacturer_reference": "DK5108CR",
+      "stratum": "known_false_gtin_collision"
+    },
+    {
+      "sku": "34006",
+      "ean": "7892162145681",
+      "title": "COIFA ILHA CRYSTAL FCR925 90CM",
+      "brand": "FRANKE",
+      "manufacturer_reference": "14568",
+      "stratum": "official_no_match_strong_brand_reference"
+    },
+    {
+      "sku": "42314",
+      "ean": "7891461390075",
+      "title": "ACAB.MON.CHUV E DUCHA NEW EDGE OURO ESC",
+      "brand": "DOCOL",
+      "manufacturer_reference": "90010032072",
+      "stratum": "variant_sensitive_finish"
+    },
+    {
+      "sku": "34463",
+      "ean": "751320451033",
+      "title": "COBOGO 27X27 JASMIN DE FIL.VERDE VITORIA",
+      "brand": "AGNES.T",
+      "manufacturer_reference": "KBJ191#04",
+      "stratum": "obscure_long_tail"
+    }
+  ],
+  "automatic_acceptance": {
+    "required": [
+      "competitor.code_normalized_equals_erp.ean_normalized",
+      "mercadolivre.com.br_candidate",
+      "semantic_domain_brand_reference_variant_compatible",
+      "no_contradiction"
+    ],
+    "missing_competitor_code": "review_or_reject_never_accept"
+  },
+  "technical_go_gate": {
+    "false_automatic_accepts": 0,
+    "minimum_correct_matches": 3,
+    "prices_readable_via_api": true,
+    "discovery_latency_recorded": true,
+    "manual_steps_recorded": true
+  }
+}

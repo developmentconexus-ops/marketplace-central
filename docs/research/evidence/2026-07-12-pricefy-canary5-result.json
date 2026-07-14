@@ -1,0 +1,76 @@
+{
+  "captured_at": "2026-07-12",
+  "provider": "Pricefy",
+  "plan": "Free",
+  "input_products": 5,
+  "internal_skus_transmitted": false,
+  "synthetic_ids": ["PF-CANARY-1", "PF-CANARY-2", "PF-CANARY-3", "PF-CANARY-4", "PF-CANARY-5"],
+  "catalog": {
+    "created": 5,
+    "api_verified": 5,
+    "valid_codes_reported_by_ui": "5/5 (100%)",
+    "price_placeholder": 1,
+    "currency_corrected_to": "BRL"
+  },
+  "api_write_test": {
+    "account_get_status": 200,
+    "bulk_put_status": 400,
+    "created_by_api": 0,
+    "message": "Your platform allows catalog readonly access via API."
+  },
+  "discovery": {
+    "type": "Differential",
+    "charged": false,
+    "matching_method": "Title + Code",
+    "estimated_seconds": 35,
+    "observed_still_searching_after_seconds": 110,
+    "domains_found": [
+      "melbourneit.au",
+      "registry.gov.in",
+      "stcu.org",
+      "videomagazine.io",
+      "expolingua.com"
+    ],
+    "mercado_livre_domains": 0,
+    "relevant_retail_domains": 0,
+    "suggestions_per_product": [0, 0, 0, 0, 0],
+    "monitored_urls": 0,
+    "prices": 0,
+    "automatch_domains_selected": 0,
+    "automatch_requests_consumed": 0
+  },
+  "revalidation_2026_07_13": {
+    "dashboard_session_authenticated": true,
+    "api_key_same_dashboard_email": true,
+    "dashboard_catalog_products": 0,
+    "dashboard_last_import": "Never",
+    "api_product_usage": 5,
+    "api_product_detail_http_200": 5,
+    "api_products_with_mercado_livre_url": 0,
+    "api_products_with_exact_observed_code": 0,
+    "finding": "Same-account dashboard/API catalog inconsistency; no Mercado Livre price coverage after revalidation"
+  },
+  "final_async_revalidation_2026_07_13": {
+    "dashboard_session_authenticated": true,
+    "dashboard_catalog_products": 5,
+    "dashboard_last_import": "Never",
+    "auto_discovery_status": "complete",
+    "new_competitor_suggestions_reported": 14,
+    "competitor_domains_visible": 5,
+    "competitor_domains": [
+      "melbourneit.au",
+      "registry.gov.in",
+      "stcu.org",
+      "videomagazine.io",
+      "expolingua.com"
+    ],
+    "mercado_livre_domains": 0,
+    "monitored_urls": 0,
+    "prices": 0,
+    "competitor_status": "Pending Approval",
+    "automatch_domains_selected": 0,
+    "finding": "The earlier zero-product dashboard state was transient/eventually consistent. Final discovery completed, but all visible competitors were irrelevant non-retail domains and no Mercado Livre URL or price was produced."
+  },
+  "technical_verdict": "no_go_current_discovery_flow",
+  "reason": "zero Mercado Livre coverage and entirely irrelevant competitor-domain discovery"
+}

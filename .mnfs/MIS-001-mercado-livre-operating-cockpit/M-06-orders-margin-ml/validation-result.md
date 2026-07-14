@@ -181,3 +181,29 @@ No import, calculation, adjustment, approval, POST, or provider call was issued 
 5. Refresh live evidence after authorized corrections, then request a complete new fixed-SHA cold review and execution QA, including in-app visual/interactive `/orders` validation.
 
 No correction was implemented, no prior approval was reissued, and QA performed no provider write or runtime-data mutation. Next owner: Milestone Orchestrator for correction-history/cap reconciliation, owner decisions, bounded correction authorization, and a later fresh fixed-SHA gate.
+
+
+## Proportional fixed-SHA QA — 2026-07-13
+
+- Frozen SHA: `1eb8831fb1d0d1b84f4d1325978bbc4f76c9ed0f`
+- Verdict: **failed**
+- QA mode: proportional fixed-SHA review
+
+### Criterion dispositions
+
+| Criterion | Disposition | Evidence / reason |
+| --- | --- | --- |
+| M-06-C01 | not independently re-verified | F-11 validation evidence may support linkage-read contract safety, but QA was restricted to the registered commands and that evidence does not waive requirements outside F-11's scope. |
+| M-06-C02 | not independently re-verified | The supplied F-07 and F-15 evidence remains scoped feature evidence; no registered command established this milestone criterion. |
+| M-06-C03 | failed / deliberately deferred | No trusted-principal and authorization boundary is proven. Production writes must not be described as authenticated. This explicitly prevents an M-06 pass. |
+
+### Registered command evidence
+
+1. `git rev-parse HEAD` exited `0` and returned `1eb8831fb1d0d1b84f4d1325978bbc4f76c9ed0f`.
+2. `git diff --check 0cfa801b7f9cfe57c0cd81f7c953e81a8a706cbf..1eb8831fb1d0d1b84f4d1325978bbc4f76c9ed0f` exited `0` with no output.
+3. `GOCACHE=.gocache go test ./internal/modules/internal_read/domain ./internal/modules/internal_read/application ./internal/modules/internal_read/adapters/oracle -count=1` exited `1` in the required Windows PowerShell execution environment. Go reported that the three paths do not exist and that `GOCACHE` must be absolute.
+
+### Blockers and next
+
+M-06-C03 is the milestone blocker: establish and prove a trusted-principal plus authorization boundary before representing production writes as authenticated, then rerun proportional QA at a new frozen SHA. Correct the registered Go-test invocation/package routes as part of the validation contract before using it as passing evidence.
+

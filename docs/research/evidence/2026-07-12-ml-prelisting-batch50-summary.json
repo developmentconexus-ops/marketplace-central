@@ -1,0 +1,179 @@
+{
+  "captured_at": "2026-07-12",
+  "scope": "prelisting_real_erp_products",
+  "method": {
+    "provider": "mercado_livre_official_api",
+    "http_methods": ["GET"],
+    "external_fields_sent": ["EAN"],
+    "business_writes": 0,
+    "already_active_in_final_batch": 0
+  },
+  "input": {
+    "final_products": 50,
+    "reserve_products": 60,
+    "valid_unique_gtin": true,
+    "sha256": "3BFE157AF20FCBBE8552B63D193ED1B61423BF5312B96056007BCEA5D611FB3B"
+  },
+  "raw_result": {
+    "sha256": "6314818BAECADB2CA7C505C17D1FB9C5557F76325BB8B44ABA55DB09F651F27F",
+    "search_http_200": 50,
+    "exact_gtin_candidates": 22,
+    "no_exact_gtin_match": 28,
+    "priced_candidates": 18,
+    "catalog_candidates_without_offers": 4,
+    "offers_declared": 132,
+    "offers_materialized": 132,
+    "seller_counts_summed_by_catalog": 103,
+    "candidate_coverage_percent": 44.0,
+    "price_coverage_percent": 36.0
+  },
+  "semantic_audit": {
+    "status": "superseded_by_structured_attribute_reaudit",
+    "likely_correct": 18,
+    "ambiguous": 2,
+    "contradictory": 2,
+    "likely_correct_with_price": 15,
+    "likely_correct_with_price_and_at_least_5_sellers": 10,
+    "likely_correct_coverage_percent": 36.0,
+    "likely_correct_price_coverage_percent": 30.0,
+    "stronger_market_evidence_coverage_percent": 20.0,
+    "contradictory_skus": ["45477", "44812"],
+    "ambiguous_skus": ["34602", "30585"]
+  },
+  "structured_attribute_reaudit": {
+    "catalog_detail_200": 22,
+    "attribute_coverage": {
+      "brand": 22,
+      "model": 20,
+      "color": 15,
+      "finish": 9,
+      "voltage": 3,
+      "units_per_pack": 3,
+      "part_number": 1
+    },
+    "accept": 12,
+    "review": 8,
+    "reject": 2,
+    "accept_with_price": 11,
+    "accept_with_price_and_at_least_5_sellers": 7,
+    "accept_coverage_percent": 24.0,
+    "accept_price_coverage_percent": 22.0,
+    "stronger_market_evidence_coverage_percent": 14.0,
+    "review_skus": ["39352", "17530", "41937", "34602", "30585", "39957", "39197", "17284"],
+    "reject_skus": ["45477", "44812"],
+    "raw_attributes_sha256": "46CBD2F34F5BDEB550BC45A85FE124DDF2C9F8622AE0DD2F6A962570F26E2401",
+    "probe_sha256": "13763FBA0D258E6A16A932A4930DF370708364FF82FA296764E57BEDA88B4B92",
+    "wrapper_sha256": "797E2BEA7150726F2BBEC836F30C6FE033B8F32BEC10547B6DDE262CE4E61AE3"
+  },
+  "endpoint_results": {
+    "products_search_200": 50,
+    "product_detail_200": 22,
+    "pricing_automation_product_rules_200": 22,
+    "catalog_items_200": 18,
+    "catalog_items_404": 4
+  },
+  "fallback_ean_routes": {
+    "input_no_match_products": 28,
+    "identifier_validator_200": 28,
+    "products_search_q_200": 28,
+    "products_search_q_exact_ean_matches": 0,
+    "sites_search_403": 28,
+    "additional_coverage": 0,
+    "result_sha256": "B4D8751170A47C4BB7D85DF88BC37EE271EE6FD7650E1C98CCECF04AB86267FA",
+    "probe_sha256": "4800532A3809C8BE6398AE84EBA04190981DB5C4550170CEAC08BA24DBC29A9C",
+    "wrapper_sha256": "1A4A4933F21BD43D2D1E8BFD0EFFD4FB13C8BDF7239A7EA57B21C78F2BF871C3"
+  },
+  "advanced_official_canary": {
+    "products": 3,
+    "reference_search_http_200": 3,
+    "reference_search_quality": "high_noise_not_authoritative",
+    "domain_discovery": {
+      "correct": 1,
+      "none": 1,
+      "generic_or_plausible": 1
+    },
+    "attribute_post_searches": 3,
+    "attribute_post_http_200": 3,
+    "attribute_post_candidates": 0,
+    "business_resources_created_or_updated": 0,
+    "get_result_sha256": "652F407DF33B5BF0DF50D09B4E20B716A886C5EFC8DFCF42922B66A9BC67D2B5",
+    "get_executed_probe_sha256": "FDB20F311650A1619AA7CD4CC377B9E716A528C97D1C7CF86DF8E5B1F2393E75",
+    "post_result_sha256": "73F359F2248BBEF7BD1238659CB42E2143DA70FEF41D28D954C8E659B66ADC90",
+    "post_probe_sha256": "B3FF6700D9C8D12C05B7E24D5D0260992D09EE87CAD17B8266B697B9979CE364"
+  },
+  "advanced_official_batch28": {
+    "input": 28,
+    "domain_discovery_with_results": 18,
+    "exact_reference_search_with_results": 6,
+    "domain_constrained_search_with_results": 5,
+    "accept": 0,
+    "review": 0,
+    "reject": 10,
+    "no_candidate": 18,
+    "additional_coverage": 0,
+    "result_sha256": "5736049D3C4B915A5EED018C115392A6358CF51021B3E6BF8FF565F46BC8B6EF",
+    "probe_sha256": "A302566023603A60EBA810CB525DE443901F08B1ED6A7470D73F7B8C700C5D9E"
+  },
+  "semantic_gate_candidate": {
+    "classes": ["accept", "review", "reject"],
+    "accept_requirements": ["exact_gtin", "compatible_domain", "no_contradiction", "at_least_two_semantic_anchors"],
+    "retrospective_accept": 18,
+    "retrospective_review": 2,
+    "retrospective_reject": 2,
+    "validated_for_production": false,
+    "reason": "derived_and_evaluated_on_same_small_sample"
+  },
+  "local_executable_gate_poc": {
+    "accept": 8,
+    "review": 12,
+    "reject": 2,
+    "accepted_adjudicated_accept": 8,
+    "accepted_adjudicated_review": 0,
+    "accepted_adjudicated_reject": 0,
+    "adjudicated_accept_sent_to_review": 4,
+    "accept_with_price": 7,
+    "accept_with_price_and_at_least_5_sellers": 5,
+    "automatic_candidate_coverage_percent": 16.0,
+    "automatic_price_coverage_percent": 14.0,
+    "automatic_stronger_market_evidence_coverage_percent": 10.0,
+    "validated_for_production": false,
+    "limitations": ["same_cohort_used_for_rule_development_and_evaluation", "domain_allowlist_incomplete", "no_independent_gold_set"],
+    "script_sha256": "C3BD9B5716B7E5428F9218D4ECEC32ECD2E5E5759B8B510425BBF4B4E2A0CA16"
+  },
+  "external_benchmark_geckoapi": {
+    "provider": "GeckoAPI",
+    "role": "trial_benchmark_only",
+    "live_executed": true,
+    "requests": 50,
+    "http_200": 49,
+    "http_502": 1,
+    "automatic_retries": 0,
+    "rows_with_source_results": 49,
+    "source_total_results_min": 8,
+    "source_total_results_max": 53,
+    "source_total_results_average": 43.69387755102041,
+    "exact_ean_matches": 0,
+    "accepted_price_coverage": 0,
+    "dry_run_valid_gtins": 50,
+    "sanitization_fixture": "pass",
+    "exact_ean_required": true,
+    "seller_name_persisted": false,
+    "probe_sha256": "34EC2A82AB3824825EFE2CD24B4FF371743170AA2CDFF87A9CCBE5A300851D55",
+    "wrapper_sha256": "821AA757EC63F8F005DF2ECFCC421E97B345C44535CBA24F6890F0324D680495",
+    "sanitized_output_sha256": "9FC64B9857CBD3ABE4D6416E949F029B842D16BAB47D8D53FED1FE83FC27CC05",
+    "production_verdict": "reject_current_plp_ean_flow",
+    "reason": "textual_results_without_verifiable_exact_ean_cannot_support_safe_automatic_matching"
+  },
+  "price_evidence": {
+    "priced_with_at_least_5_sellers_raw": 11,
+    "priced_with_3_to_4_sellers_raw": 1,
+    "priced_with_at_most_2_sellers_raw": 6,
+    "statistics": ["min", "p25", "median", "mean", "trimmed_mean_10_percent", "p75", "max"],
+    "levels": ["offer", "seller_minimum"]
+  },
+  "artifacts": {
+    "probe_sha256": "901060BF8B7900478DBA491998147A1C43BE5A03AF6F13E5889F8A80AA2AD77D",
+    "wrapper_sha256": "F7CF309362B126BDBE65CF6D1683DE4E2AA6314A8595288429AFB369EAB164A7"
+  },
+  "verdict": "partial_prelisting_viability_gtin_alone_is_not_safe_for_automatic_matching"
+}

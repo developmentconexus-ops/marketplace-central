@@ -3,11 +3,11 @@
 ```yaml
 id: M-06
 type: milestone
-status: planned
+status: correction_needed
 owner: Mission Strategist
 parent: MIS-001
 created: 2026-07-06
-updated: 2026-07-06
+updated: 2026-07-13
 validation_level: QA-0
 lifecycle_scope: milestone
 ```
@@ -56,16 +56,22 @@ After stock risk is controlled, operators need to understand whether Mercado Liv
 
 ## Handoff
 
-- Current status: planned.
-- Next owner: Milestone Orchestrator.
-- Next action: Start after Stock Seguro is usable or when operator prioritizes margin.
-- Required files/evidence: F-*/validation.md and M-06/validation-result.md.
-- Blockers or open decisions: Manual adjustment UX details can be refined during F-02/F-04.
+- Current status: Historical fixed-SHA review passed at `1eb8831fb1d0d1b84f4d1325978bbc4f76c9ed0f`; proportional QA failed.
+- Next owner: Mission Strategist/Portfolio for historical preservation only.
+- Next action: Reuse accepted order/margin capabilities in M-13 and M-14; do not dispatch another M-06 correction under the MVP scope.
+- Required files/evidence: existing F-*/validation.md, terminal checkpoint, fixed-SHA review, and `validation-result.md`.
+- Blockers or open decisions: C03 trusted-principal/authorization remains unproved and is intentionally deferred to post-MVP M-11.
 
 ## Correction Handoff
 
-- QA failure summary: Not applicable during planning.
-- Correction scope: Not applicable.
-- Attempts used/remaining: 0/2.
-- Next artifact: M-06/validation-result.md.
-- Revalidation evidence required: order ingestion, margin, quality flag, and UI tests.
+- QA failure summary: C03 remained deliberately failing and the registered Go QA command used invalid Windows/cwd paths, so C01/C02 were not independently reverified.
+- Correction scope: None authorized in M-06 after the 2026-07-13 MVP replan.
+- Attempts used/remaining: historical ledger remains 2/0; it is not reset.
+- Next artifact: `../M-13-integrated-operator-workspaces/milestone.md` after M-09.
+- Revalidation evidence required: M-14 vertical real-read/browser gate, not another M-06 production-auth gate.
+
+## MVP Replan Disposition
+
+- M-06 is not relabeled Pass and its QA history is not rewritten.
+- Its implemented orders, profitability, Sankhya linkage, and UI evidence are reusable inputs.
+- Production authentication/authorization and provider-write durability move to M-11.

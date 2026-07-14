@@ -1,0 +1,67 @@
+{
+  "captured_at": "2026-07-13",
+  "scope": "Current official Mercado Livre routes for prelisting product identity and competitor price intelligence",
+  "external_product_data_transmitted": false,
+  "confirmed": [
+    {
+      "route": "GET /products/search",
+      "capability": "Prelisting catalog-product discovery by product_identifier, query or part number, plus filters such as site, status and domain",
+      "limitation": "Returns catalog products, not the complete active-listing set"
+    },
+    {
+      "route": "POST /products/search",
+      "capability": "Catalog-product discovery using a domain and at least three public attributes",
+      "limitation": "Still returns catalog products rather than all seller offers"
+    },
+    {
+      "route": "GET /products/{product_id}",
+      "capability": "May expose buy_box_winner and buy_box_winner_price_range before the caller has a listing",
+      "limitation": "The fields can legitimately be null and have no published coverage SLA"
+    },
+    {
+      "route": "GET /products/{product_id}/items",
+      "capability": "Historically returned competing items with seller and price and still responded in the July 2026 project probe",
+      "limitation": "Official English documentation marks it for shutdown; Portuguese documentation still shows it. Treat as legacy observation, never a durable contract."
+    },
+    {
+      "route": "GET /items/{item_id}/price_to_win?version=v2",
+      "capability": "Winner and price-to-win intelligence",
+      "limitation": "Requires an existing item and therefore does not solve prelisting discovery"
+    },
+    {
+      "route": "GET /suggestions/items/{item_id}/details",
+      "capability": "Official pricing references",
+      "limitation": "Requires an existing caller-owned item"
+    },
+    {
+      "route": "Mercado Livre MCP",
+      "capability": "Official documentation search and page retrieval",
+      "limitation": "Does not query catalog products, offers or prices"
+    }
+  ],
+  "best_official_chain": "products/search -> deterministic identity validation -> products/{id} -> consume winner/range only when non-null",
+  "project_live_evidence": {
+    "catalog_products_tested": 22,
+    "products_detail_http_200": 22,
+    "non_null_buy_box_winner": 0,
+    "non_null_buy_box_winner_price_range": 0,
+    "conclusion": "Official routes are the best identity layer but did not provide price coverage for the real cohort."
+  },
+  "unknown": [
+    "Exact runtime shutdown date for products/{id}/items in MLB",
+    "Whether arbitrary /sites/MLB/search?q access can be granted to this application",
+    "Production coverage of buy_box_winner and price range by Brazilian domain",
+    "Any documented durable replacement that returns all competing offers before listing"
+  ],
+  "verdict": "official_identity_first_but_insufficient_as_only_price_source",
+  "sources": [
+    "https://developers.mercadolivre.com.br/pt_br/buscador-de-produtos",
+    "https://developers.mercadolivre.com.br/pt_br/publicacao-de-produtos/buscador-de-produtos",
+    "https://developers.mercadolivre.com.br/pt_br/gerenciamento-perguntas-respostas/concorrencia-em-catalogo",
+    "https://developers.mercadolivre.com.br/en_us/catalog-competition",
+    "https://developers.mercadolivre.com.br/pt_br/usuarios-e-aplicativos/referencias-de-precos",
+    "https://developers.mercadolivre.com.br/pt_br/convivencia-me1-me2/itens-e-buscas",
+    "https://developers.mercadolivre.com.br/pt_br/user-products",
+    "https://developers.mercadolivre.com.br/pt_br/publicacao-de-produtos/server-mcp"
+  ]
+}

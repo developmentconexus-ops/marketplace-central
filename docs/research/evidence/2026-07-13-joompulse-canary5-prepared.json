@@ -1,0 +1,33 @@
+{
+  "prepared_at": "2026-07-13",
+  "provider": "JoomPulse",
+  "status": "offline_prepared_not_sent",
+  "external_transfer_authorized": false,
+  "artifact": {
+    "path": "output/pdf/joompulse-canary5-catalog.pdf",
+    "sha256": "4BB05DD120185F8CF1135FD33BC42754AD3A61B5B784022FBF61E491B039688F",
+    "pages": 1,
+    "products": 5
+  },
+  "transmission_scope_if_authorized": ["synthetic_id", "ean", "brand", "manufacturer_reference", "commercial_description"],
+  "excluded": ["ERP SKU", "real cost", "customer data", "supplier data", "internal test stratum"],
+  "test_routes": ["Supplier Catalog Scanner PDF", "OAuth MCP tabular product analysis"],
+  "gates": {
+    "known_false_ean_collision_must_not_accept": "JP-CANARY-2",
+    "minimum_correct_matches": 3,
+    "maximum_false_automatic_accepts": 0,
+    "required_observations": [
+      "EAN preserved or absent",
+      "Mercado Livre MLB or MLBU identifier",
+      "Mercado Livre URL",
+      "candidate title, brand, reference and variant attributes",
+      "current price",
+      "historic minimum price if exposed",
+      "average market price if exposed",
+      "seller count",
+      "estimated sales",
+      "XLS export fields",
+      "latency and manual steps"
+    ]
+  }
+}

@@ -1,0 +1,499 @@
+{
+  "provider": "SearchAPI.io",
+  "method": "semantic Google Shopping -> Google Product details -> identity gate -> Google Product Offers",
+  "request_counts": {
+    "shopping": 5,
+    "details": 8,
+    "offers": 4
+  },
+  "products": [
+    {
+      "synthetic_id": "SA-DETAIL-CANARY-1",
+      "ean": "7892162167027",
+      "stratum": "known_semantically_compatible_catalog_match",
+      "shopping_http_status": 200,
+      "shopping_latency_s": 8.03,
+      "candidate_count": 2,
+      "candidates": [
+        {
+          "shopping_title": "Coifa de Ilha Franke Linea Touch 90cm 220V",
+          "shopping_seller": "Hidronox",
+          "shopping_price": 2999.0,
+          "detail_http_status": 200,
+          "detail_latency_s": 3.217,
+          "detail": {
+            "title": "Coifa de Ilha Franke Linea Touch 90cm 220V",
+            "brand": "Franke",
+            "description": "Fundada em 2014, com distribuição nacional e foco no segmento de luxo, a Evol é a marca no 1 em churrasqueiras a gás no Brasil. A marca entende a importância de um espaço gourmet de alta qualidade, onde momentos especiais são compartilhados. Por isso, investe milhares de horas no desenvolvimento de seus produtos e acessórios. A Evol desenvolve eletrodomésticos com precisão, potência e durabilidade, entregando alta performance e qualidade em cada produto. A Linha Kitchen evidencia superioridade, requinte, praticidade, recursos inovadores e qualidade em sua essência, transpondo o que há de mais ",
+            "specification_text": [
+              "Largura",
+              "90 cm",
+              "Tipo de Instalação",
+              "Ilha",
+              "Voltagem",
+              "220V",
+              "Capacidade de Extração",
+              "550 m³/h",
+              "Nível de Ruído (em dB)",
+              "64 dB",
+              "Nível de ruído mín - velocidade 1 (IEC* 60704)",
+              "52dB (A)",
+              "Indicada para fogões e cooktops",
+              "De até 90cm (5 ou 6 queimadores)",
+              "Ambiente",
+              "Cozinha",
+              "Modo de instalação",
+              "Depurador ou exaustor",
+              "Baixo Ruído",
+              "Sim",
+              "Display Digital",
+              "Sim",
+              "Timer",
+              "Sim",
+              "Função Filtrante",
+              "Sim",
+              "Velocidades",
+              "3 velocidades",
+              "Dimensões com Embalagem",
+              "Comprimento 99 cm | Largura 46,5 cm | Altura 66 cm"
+            ]
+          },
+          "identity": {
+            "ean": false,
+            "brand": true,
+            "reference": false,
+            "title_token_recall": 1.0,
+            "contradictions": [],
+            "verdict": "ACCEPT"
+          },
+          "offers_http_status": 200,
+          "offers_latency_s": 2.564,
+          "mercado_livre_offers": 0
+        },
+        {
+          "shopping_title": "Franke Coifa Ilha Glass Touch 90cm 220V",
+          "shopping_seller": "Condec Premium",
+          "shopping_price": 3159.9,
+          "detail_http_status": 200,
+          "detail_latency_s": 0.994,
+          "detail": {
+            "title": "Franke Coifa Ilha Glass Touch 90cm 220V",
+            "brand": "Franke",
+            "description": "A Coifa Glass Touch Ilha Franke é um misto de modernidade e eficiência. Seu tamanho com 90 cm de largura, é a opção ideal para garantir maior organização e beleza na sua cozinha. Possui lâmpadas LED e acabamento em vidro preto, com painel funcional nas duas faces, a Coifa Glass Touch de Ilha possui alta capacidade de extração. O filtro em alumínio é coberto por uma camada de aço inox tornando mais bonito e durável. Um produto completo para você deixar sua cozinha mais charmosa e moderna.",
+            "specification_text": [
+              "Instalação",
+              "Ilha",
+              "Sistema de Cozinha",
+              "Glass",
+              "Filtro de Carvão Ativado",
+              "Sim",
+              "Filtro Metálico",
+              "Sim",
+              "Controle Remoto",
+              "Não",
+              "Medidas",
+              "89,5 x 59,5 cm",
+              "Acabamento",
+              "Aço Escovado, Vidro",
+              "Formato",
+              "Quadrado",
+              "Garantia",
+              "1 ano",
+              "Dimensão",
+              "89,50x60x59",
+              "Iluminação",
+              "LED 2x1,5W",
+              "Comando",
+              "Touch",
+              "Tensão",
+              "220V",
+              "Frequência de Operação",
+              "60Hz",
+              "Consumo",
+              "0,326 kWh"
+            ]
+          },
+          "identity": {
+            "ean": false,
+            "brand": true,
+            "reference": false,
+            "title_token_recall": 0.833,
+            "contradictions": [],
+            "verdict": "ACCEPT"
+          },
+          "offers_http_status": 200,
+          "offers_latency_s": 2.395,
+          "mercado_livre_offers": 1
+        }
+      ],
+      "accepted_mercado_livre_offers": [
+        {
+          "url": "https://www.mercadolivre.com.br/coifa-de-ilha-franke-linea-touch-90cm-teto-para-cozinha/up/MLBU4082871676",
+          "title": "Coifa De Ilha Franke Linea Touch 90cm Teto Para Cozinha",
+          "merchant": "mercadolivre.com.br",
+          "price_brl": 2229.9,
+          "delivery_price_brl": null,
+          "total_price_brl": 2229.9,
+          "condition": null,
+          "availability": null,
+          "identity": {
+            "ean": false,
+            "brand": true,
+            "reference": false,
+            "title_token_recall": 0.833,
+            "contradictions": [],
+            "verdict": "ACCEPT"
+          },
+          "identity_verdict": "ACCEPT",
+          "offer_contradictions": []
+        }
+      ],
+      "price_stats": {
+        "n_unique_prices": 1,
+        "min_brl": 2229.9,
+        "median_brl": 2229.9,
+        "mean_brl": 2229.9,
+        "max_brl": 2229.9
+      },
+      "verdict": "ACCEPT"
+    },
+    {
+      "synthetic_id": "SA-DETAIL-CANARY-2",
+      "ean": "7890013123284",
+      "stratum": "known_false_gtin_collision",
+      "shopping_http_status": 200,
+      "shopping_latency_s": 13.085,
+      "candidate_count": 2,
+      "candidates": [
+        {
+          "shopping_title": "Toalheiro De Bancada Tolha De Rosto Inox Gold Padrão Deca Tozzatto Inox",
+          "shopping_seller": "Mercado Livre",
+          "shopping_price": 400.18,
+          "detail_http_status": 200,
+          "detail_latency_s": 4.994,
+          "detail": {
+            "title": "Toalheiro De Bancada Tolha De Rosto Inox Gold Padrão Deca Tozzatto Inox",
+            "brand": null,
+            "description": null,
+            "specification_text": [
+              "Acabamento",
+              "Aço inoxidável"
+            ]
+          },
+          "identity": {
+            "ean": false,
+            "brand": false,
+            "reference": false,
+            "title_token_recall": 0.75,
+            "contradictions": [],
+            "verdict": "REVIEW"
+          }
+        },
+        {
+          "shopping_title": "Toalheiro Duplo Steel 100% Inox 304 Polido",
+          "shopping_seller": "C3 Metais",
+          "shopping_price": 452.1,
+          "detail_http_status": 200,
+          "detail_latency_s": 12.02,
+          "detail": {
+            "title": "Toalheiro Duplo Steel 100% Inox 304 Polido",
+            "brand": "C3 Metais",
+            "description": null,
+            "specification_text": [
+              "Acabamento",
+              "Aço inoxidável",
+              "Marca",
+              "C3 Metais"
+            ]
+          },
+          "identity": {
+            "ean": false,
+            "brand": false,
+            "reference": false,
+            "title_token_recall": 0.5,
+            "contradictions": [],
+            "verdict": "REVIEW"
+          }
+        }
+      ],
+      "accepted_mercado_livre_offers": [],
+      "price_stats": null,
+      "verdict": "REVIEW"
+    },
+    {
+      "synthetic_id": "SA-DETAIL-CANARY-3",
+      "ean": "7892162145681",
+      "stratum": "official_no_match_strong_brand_reference",
+      "shopping_http_status": 200,
+      "shopping_latency_s": 12.394,
+      "candidate_count": 2,
+      "candidates": [
+        {
+          "shopping_title": "Coifa de Ilha Crystal Franke 90cm 220V",
+          "shopping_seller": "mercadolivre.com.br",
+          "shopping_price": 2394.0,
+          "detail_http_status": 200,
+          "detail_latency_s": 14.112,
+          "detail": {
+            "title": "Coifa de Ilha Crystal Franke 90cm 220V",
+            "brand": "Franke",
+            "description": "A Coifa Crystal Ilha é sinônimo de charme e sofisticação em cada detalhe. Com acabamento em aço escovado e vidro preto, pode ser utilizada nos mais diferentes estilos de cozinha. Seu design possui 90cm de largura, com dupla função, pode ser instalada como depurador ou exaustor. Possui comando touch com 3 velocidades + turbo de fácil utilização, possui iluminação em LED que permite melhor visualização dos alimentos na sua preparação. Acompanha filtro de carvão ativado e filtro metálico lavável em lava-louças. Um produto completo para você deixar sua cozinha mais charmosa e moderna.",
+            "specification_text": [
+              "Instalação",
+              "Ilha",
+              "Filtro de Carvão Ativado",
+              "Sim",
+              "Filtro Metálico",
+              "Sim",
+              "Controle Remoto",
+              "Não",
+              "Medidas",
+              "89,8 x 100 cm",
+              "Ruído",
+              "68 dB(A)",
+              "Acabamento",
+              "Aço Escovado, Vidro",
+              "Formato",
+              "Quadrado",
+              "Garantia",
+              "1 ano",
+              "Turbo",
+              "Sim",
+              "Iluminação",
+              "4-1W",
+              "Comando",
+              "Touch",
+              "Tensão",
+              "220V",
+              "Frequência de Operação",
+              "60Hz",
+              "Consumo",
+              "0,254 kWh"
+            ]
+          },
+          "identity": {
+            "ean": false,
+            "brand": true,
+            "reference": false,
+            "title_token_recall": 0.8,
+            "contradictions": [],
+            "verdict": "ACCEPT"
+          },
+          "offers_http_status": 200,
+          "offers_latency_s": 7.87,
+          "mercado_livre_offers": 2
+        },
+        {
+          "shopping_title": "Coifa de Ilha Franke Glass Classic 90cm",
+          "shopping_seller": "Fast Shop",
+          "shopping_price": 1784.15,
+          "detail_http_status": 200,
+          "detail_latency_s": 11.347,
+          "detail": {
+            "title": "Coifa de Ilha Franke Glass Classic 90cm",
+            "brand": "Franke",
+            "description": "A Coifa de Ilha Franke 90 cm Inox Glass Classic é um produto de alta performance, ideal para manter sua cozinha sempre limpa e sem fumaça. Projetada pela renomada marca Franke, conhecida por sua qualidade e inovação no mercado de eletrodomésticos, este produto é voltado para quem busca eficiência e sofisticação. Com 90 cm de largura, essa coifa de ilha se destaca por seu design moderno e funcional. A estrutura em inox garante durabilidade e resistência, enquanto o vidro temperado adiciona um toque de elegância ao produto. A combinação de materiais faz com que a Coifa de Ilha Franke seja uma pe",
+            "specification_text": [
+              "Tipo de Coifa",
+              "de Ilha",
+              "Indicado para fogão de",
+              "5 e 6 Bocas",
+              "Tensão Elétrica",
+              "220V",
+              "Potência",
+              "230 W",
+              "Vazão",
+              "550 m³/h",
+              "Quantidade de Velocidades",
+              "3 velocidade(s)",
+              "Largura",
+              "89,50 cm",
+              "Profundidade",
+              "60,00 cm",
+              "Dimensão",
+              "64,9x89,5x60 cm",
+              "Peso do Produto",
+              "24,00 Kg",
+              "Acompanha Lâmpadas",
+              "Sim",
+              "Possui Filtro de Carvão",
+              "Sim",
+              "Acompanha Vidro",
+              "com Vidro",
+              "Possui Chaminé",
+              "Sim",
+              "Garantia do Fabricante",
+              "12 mes(es)"
+            ]
+          },
+          "identity": {
+            "ean": false,
+            "brand": true,
+            "reference": false,
+            "title_token_recall": 0.6,
+            "contradictions": [],
+            "verdict": "ACCEPT"
+          },
+          "offers_http_status": 200,
+          "offers_latency_s": 3.957,
+          "mercado_livre_offers": 0
+        }
+      ],
+      "accepted_mercado_livre_offers": [
+        {
+          "url": "https://www.mercadolivre.com.br/coifa-de-ilha-franke-linea-touch-90cm-220v-teto-para-cozinha/up/MLBU1149771880",
+          "title": "Coifa De Ilha Franke Linea Touch 90cm 220v Teto Em Aço Inox",
+          "merchant": "mercadolivre.com.br",
+          "price_brl": 2394.0,
+          "delivery_price_brl": null,
+          "total_price_brl": 2394.0,
+          "condition": null,
+          "availability": null,
+          "identity": {
+            "ean": false,
+            "brand": true,
+            "reference": false,
+            "title_token_recall": 0.8,
+            "contradictions": [],
+            "verdict": "ACCEPT"
+          },
+          "identity_verdict": "ACCEPT",
+          "offer_contradictions": []
+        },
+        {
+          "url": "https://www.mercadolivre.com.br/coifa-de-ilha-90cm-230w-5-bocas-220v-franke-linea-16702/up/MLBU3209866138",
+          "title": "Coifa De Ilha 90cm 230w 5 Bocas 220v Franke Linea 16702",
+          "merchant": "mercadolivre.com.br",
+          "price_brl": 5219.9,
+          "delivery_price_brl": null,
+          "total_price_brl": 5219.9,
+          "condition": null,
+          "availability": null,
+          "identity": {
+            "ean": false,
+            "brand": true,
+            "reference": false,
+            "title_token_recall": 0.8,
+            "contradictions": [],
+            "verdict": "ACCEPT"
+          },
+          "identity_verdict": "ACCEPT",
+          "offer_contradictions": []
+        }
+      ],
+      "price_stats": {
+        "n_unique_prices": 2,
+        "min_brl": 2394.0,
+        "median_brl": 3806.95,
+        "mean_brl": 3806.95,
+        "max_brl": 5219.9
+      },
+      "verdict": "ACCEPT"
+    },
+    {
+      "synthetic_id": "SA-DETAIL-CANARY-4",
+      "ean": "7891461390075",
+      "stratum": "variant_sensitive_finish",
+      "shopping_http_status": 200,
+      "shopping_latency_s": 30.209,
+      "candidate_count": 2,
+      "candidates": [
+        {
+          "shopping_title": "Acabamento Monocomando para Chuveiro Ouro Escovado Docol New Edge",
+          "shopping_seller": "Amazon.com.br - Seller",
+          "shopping_price": 974.9,
+          "detail_http_status": 200,
+          "detail_latency_s": 11.959,
+          "detail": {
+            "title": "Acabamento Monocomando para Chuveiro Ouro Escovado Docol New Edge",
+            "brand": "Docol",
+            "description": "Seu acabamento biníquel de alta durabilidade e resistência à corrosão proporciona beleza duradoura. Com um simples movimento de 1/4 de volta, regule o fluxo de água com precisão e suavidade, trazendo praticidade e conforto para seu banho. As tecnologias de ponta empregadas, como DocolChroma e Garantia Toda Vida, garantem cores nobres e durabilidade. A peça delicadamente escovada agrega elegância ao ambiente, destacando-se pelo perfeito acabamento. O Acabamento Monocomando 3/4\" New Edge Ouro Escovado Docol vem completo para instalação e sua composição de ligas de cobre, elastômeros e zamac asse",
+            "specification_text": [
+              "Largura",
+              "13.0",
+              "Comprimento",
+              "13.0",
+              "Peso unidade",
+              "0.3",
+              "Volume",
+              "0.0",
+              "Altura da caixa",
+              "9.0",
+              "Comprimento da caixa",
+              "20.3",
+              "Largura da caixa",
+              "20.3",
+              "Peso da caixa",
+              "0.4"
+            ]
+          },
+          "identity": {
+            "ean": false,
+            "brand": true,
+            "reference": false,
+            "title_token_recall": 0.375,
+            "contradictions": [],
+            "verdict": "REVIEW"
+          }
+        },
+        {
+          "shopping_title": "Docol Acabamento Monocomando para Chuveiro e Ducha Higiênica New Edge/Minima",
+          "shopping_seller": "Poligress",
+          "shopping_price": 1378.07,
+          "detail_http_status": 200,
+          "detail_latency_s": 9.859,
+          "detail": {
+            "title": "Docol Acabamento Monocomando para Chuveiro e Ducha Higiênica New Edge/Minima",
+            "brand": "Docol",
+            "description": "Esse acabamento monocomando para chuveiro e ducha higiênica serve para finalizar seu projeto com elegância, formas simétricas e simples, que deixam os ambientes muito mais modernos. Além disso, o produto aguenta temperaturas de até 70°C, com garantia de 40% a mais de durabilidade, pela presença da tecnologia DocolChroma garante um acabamento colorido, como esse produto, em ouro escovado. Assim como os demais produtos dessa linha, a New Edge disponibiliza seus traços simples e retos em todas as cores cromadas, desde o cobre ao ouro. Escolher o formato e a cor do seu novo produto nunca foi tão f",
+            "specification_text": [
+              "Acabamento",
+              "Escovado",
+              "Tipo de Instalação",
+              "Parede",
+              "Dimensões",
+              "Altura: 13cm, Largura 13cm, Profundidade 8,1cm",
+              "Base",
+              "Docol",
+              "Bitola",
+              "1/2\"",
+              "Acionamento",
+              "Alavanca",
+              "Garantia",
+              "Vitalícia com a Docol (toda vida)"
+            ]
+          },
+          "identity": {
+            "ean": false,
+            "brand": true,
+            "reference": false,
+            "title_token_recall": 0.5,
+            "contradictions": [],
+            "verdict": "REVIEW"
+          }
+        }
+      ],
+      "accepted_mercado_livre_offers": [],
+      "price_stats": null,
+      "verdict": "REVIEW"
+    },
+    {
+      "synthetic_id": "SA-DETAIL-CANARY-5",
+      "ean": "751320451033",
+      "stratum": "obscure_long_tail",
+      "shopping_http_status": 0,
+      "shopping_latency_s": 45.09,
+      "candidate_count": 0,
+      "candidates": [],
+      "accepted_mercado_livre_offers": [],
+      "price_stats": null,
+      "verdict": "REJECT"
+    }
+  ],
+  "summary": {
+    "accept": 2,
+    "review": 2,
+    "reject": 1,
+    "products_with_accepted_ml_price": 2
+  }
+}

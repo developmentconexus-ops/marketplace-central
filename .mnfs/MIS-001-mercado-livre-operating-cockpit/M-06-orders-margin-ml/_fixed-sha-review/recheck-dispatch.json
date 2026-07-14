@@ -1,0 +1,62 @@
+{
+  "role": "Feature Implementer",
+  "base_sha": "434778503ec314a24e2b613e7ef1d1afdec76539",
+  "accepted_base_sha": "434778503ec314a24e2b613e7ef1d1afdec76539",
+  "dispatch_id": "m06-fixed-sha-review-recheck-20260713-01",
+  "feature_id": "M-06-fixed-sha-review-recheck",
+  "work_item_id": "M-06-fixed-sha-review-recheck",
+  "source_task_id": "/root/m06_assisted_sankhya_linkage/fixed_sha_review",
+  "parent_task_id": "/root/m06_assisted_sankhya_linkage",
+  "callback_task_id": "/root/m06_assisted_sankhya_linkage",
+  "milestone_task_id": "/root/m06_assisted_sankhya_linkage",
+  "feature_file": ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/_fixed-sha-review/recheck-brief.md",
+  "required_files": [
+    "AGENTS.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/_fixed-sha-review/recheck-brief.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/milestone-review.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-15-partial-tax-snapshot-quality/validation.md"
+  ],
+  "context_files": [
+    "AGENTS.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/validation-contract.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/corrections/correction-task.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/milestone-review.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-14-profitability-sankhya-lineage/validation.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-15-partial-tax-snapshot-quality/spec.md",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/F-15-partial-tax-snapshot-quality/validation.md"
+  ],
+  "knowledge_routes": ["portfolio-core", "orders-margin"],
+  "allowed_paths": [
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/_fixed-sha-review",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/milestone-review.md"
+  ],
+  "dirty_paths": [
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/_fixed-sha-review",
+    ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/milestone-review.md"
+  ],
+  "dirty_owner_task_id": "/root/m06_assisted_sankhya_linkage/fixed_sha_review",
+  "one_writer": {
+    "owner_task_id": "/root/m06_assisted_sankhya_linkage/fixed_sha_review",
+    "owned_paths": [
+      ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/_fixed-sha-review",
+      ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/milestone-review.md"
+    ]
+  },
+  "forbidden_paths": ["apps", "contracts", "packages", "scripts", "docs/research", "docker"],
+  "shared_seams": ["milestone-review"],
+  "side_effects": {
+    "allowed": ["repository-read", "review-artifact-write", "isolated-cache-write", "test-execution"],
+    "forbidden": ["source-write", "git-commit", "git-ref-write", "oracle-read", "postgres-read", "provider-read", "network", "dependency-install", "secret-output", "pii-output"]
+  },
+  "proof": {
+    "command_ids": ["git-replacement-fixed-sha-review", "go-profitability-review", "evidence-correction-audit"],
+    "evidence_targets": [
+      ".mnfs/MIS-001-mercado-livre-operating-cockpit/M-06-orders-margin-ml/milestone-review.md"
+    ]
+  },
+  "stop_conditions": [
+    "The reviewed commit is not the replacement frozen SHA.",
+    "The prior review failure would be erased rather than preserved.",
+    "A source/Git/live-system/dependency/secret/PII mutation would be required."
+  ]
+}

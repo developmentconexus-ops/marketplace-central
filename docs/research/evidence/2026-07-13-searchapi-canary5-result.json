@@ -1,0 +1,290 @@
+{
+  "provider": "SearchAPI.io",
+  "method": "Google Shopping then Google Product Offers; gl=br; hl=pt-br",
+  "shopping_requests": [
+    {
+      "product_index": 0,
+      "route": "ean",
+      "http_status": 200,
+      "latency_s": 16.271,
+      "accepted_candidates": 2
+    },
+    {
+      "product_index": 0,
+      "route": "semantic",
+      "http_status": 200,
+      "latency_s": 15.108,
+      "accepted_candidates": 0
+    },
+    {
+      "product_index": 1,
+      "route": "ean",
+      "http_status": 200,
+      "latency_s": 4.458,
+      "accepted_candidates": 2
+    },
+    {
+      "product_index": 1,
+      "route": "semantic",
+      "http_status": 200,
+      "latency_s": 6.836,
+      "accepted_candidates": 0
+    },
+    {
+      "product_index": 2,
+      "route": "ean",
+      "http_status": 200,
+      "latency_s": 1.641,
+      "accepted_candidates": 2
+    },
+    {
+      "product_index": 2,
+      "route": "semantic",
+      "http_status": 200,
+      "latency_s": 1.356,
+      "accepted_candidates": 0
+    },
+    {
+      "product_index": 3,
+      "route": "ean",
+      "http_status": 200,
+      "latency_s": 1.614,
+      "accepted_candidates": 2
+    },
+    {
+      "product_index": 3,
+      "route": "semantic",
+      "http_status": 200,
+      "latency_s": 5.426,
+      "accepted_candidates": 0
+    },
+    {
+      "product_index": 4,
+      "route": "ean",
+      "http_status": 200,
+      "latency_s": 25.08,
+      "accepted_candidates": 2
+    },
+    {
+      "product_index": 4,
+      "route": "semantic",
+      "http_status": 200,
+      "latency_s": 28.052,
+      "accepted_candidates": 0
+    }
+  ],
+  "offer_requests": [
+    {
+      "product_index": 0,
+      "query_route": "ean",
+      "candidate_verdict": "REVIEW",
+      "http_status": 200,
+      "latency_s": 7.846,
+      "ml_offers": 1
+    },
+    {
+      "product_index": 0,
+      "query_route": "ean",
+      "candidate_verdict": "REVIEW",
+      "http_status": 0,
+      "latency_s": 30.085,
+      "ml_offers": 0
+    },
+    {
+      "product_index": 1,
+      "query_route": "ean",
+      "candidate_verdict": "REVIEW",
+      "http_status": 200,
+      "latency_s": 3.01,
+      "ml_offers": 0
+    },
+    {
+      "product_index": 1,
+      "query_route": "ean",
+      "candidate_verdict": "REVIEW",
+      "http_status": 200,
+      "latency_s": 1.142,
+      "ml_offers": 0
+    },
+    {
+      "product_index": 2,
+      "query_route": "ean",
+      "candidate_verdict": "REVIEW",
+      "http_status": 200,
+      "latency_s": 10.011,
+      "ml_offers": 1
+    },
+    {
+      "product_index": 2,
+      "query_route": "ean",
+      "candidate_verdict": "REVIEW",
+      "http_status": 200,
+      "latency_s": 4.81,
+      "ml_offers": 0
+    },
+    {
+      "product_index": 3,
+      "query_route": "ean",
+      "candidate_verdict": "REVIEW",
+      "http_status": 200,
+      "latency_s": 3.681,
+      "ml_offers": 0
+    },
+    {
+      "product_index": 3,
+      "query_route": "ean",
+      "candidate_verdict": "REVIEW",
+      "http_status": 200,
+      "latency_s": 22.526,
+      "ml_offers": 0
+    },
+    {
+      "product_index": 4,
+      "query_route": "ean",
+      "candidate_verdict": "REVIEW",
+      "http_status": 200,
+      "latency_s": 5.869,
+      "ml_offers": 1
+    },
+    {
+      "product_index": 4,
+      "query_route": "ean",
+      "candidate_verdict": "REVIEW",
+      "http_status": 200,
+      "latency_s": 12.696,
+      "ml_offers": 1
+    }
+  ],
+  "products": [
+    {
+      "synthetic_id": "SA-CANARY-1",
+      "ean": "7892162167027",
+      "stratum": "known_semantically_compatible_catalog_match",
+      "candidate_count": 2,
+      "mercado_livre_offer_count": 1,
+      "accepted_mercado_livre_offer_count": 0,
+      "verdict": "REVIEW",
+      "price_stats": null,
+      "offers": [
+        {
+          "url": "https://www.mercadolivre.com.br/biscoito-biscuit-bon-o-bon-76g-arcor--kit-com-3-unidades/up/MLBU3852809615",
+          "title": "Biscoito Biscuit Bon O Bon 76g Arcor - Kit Com 3 Unidades",
+          "merchant": "Mercado Livre",
+          "price_brl": 45.99,
+          "delivery_price_brl": null,
+          "total_price_brl": 45.99,
+          "condition": null,
+          "availability": null,
+          "identity": {
+            "ean": false,
+            "brand": false,
+            "reference": false
+          },
+          "identity_verdict": "REVIEW"
+        }
+      ]
+    },
+    {
+      "synthetic_id": "SA-CANARY-2",
+      "ean": "7890013123284",
+      "stratum": "known_false_gtin_collision",
+      "candidate_count": 2,
+      "mercado_livre_offer_count": 0,
+      "accepted_mercado_livre_offer_count": 0,
+      "verdict": "REVIEW",
+      "price_stats": null,
+      "offers": []
+    },
+    {
+      "synthetic_id": "SA-CANARY-3",
+      "ean": "7892162145681",
+      "stratum": "official_no_match_strong_brand_reference",
+      "candidate_count": 2,
+      "mercado_livre_offer_count": 1,
+      "accepted_mercado_livre_offer_count": 0,
+      "verdict": "REVIEW",
+      "price_stats": null,
+      "offers": [
+        {
+          "url": "https://www.mercadolivre.com.br/conjunto-3-panos-microfibra-30cm-lyor-para-limpeza-multiuso/up/MLBU3535915787",
+          "title": "Conjunto 3 Panos Microfibra 30cm Lyor Para Limpeza Multiuso",
+          "merchant": "Mercado Livre",
+          "price_brl": 18.32,
+          "delivery_price_brl": null,
+          "total_price_brl": 18.32,
+          "condition": null,
+          "availability": null,
+          "identity": {
+            "ean": false,
+            "brand": false,
+            "reference": false
+          },
+          "identity_verdict": "REVIEW"
+        }
+      ]
+    },
+    {
+      "synthetic_id": "SA-CANARY-4",
+      "ean": "7891461390075",
+      "stratum": "variant_sensitive_finish",
+      "candidate_count": 2,
+      "mercado_livre_offer_count": 0,
+      "accepted_mercado_livre_offer_count": 0,
+      "verdict": "REVIEW",
+      "price_stats": null,
+      "offers": []
+    },
+    {
+      "synthetic_id": "SA-CANARY-5",
+      "ean": "751320451033",
+      "stratum": "obscure_long_tail",
+      "candidate_count": 2,
+      "mercado_livre_offer_count": 2,
+      "accepted_mercado_livre_offer_count": 0,
+      "verdict": "REVIEW",
+      "price_stats": null,
+      "offers": [
+        {
+          "url": "https://www.mercadolivre.com.br/kit-4-fita-durex-embalagem-adelbras-transparente-48mmx45m/up/MLBU3242759673",
+          "title": "Kit 4 Fita Durex Embalagem Adelbras Transparente 48mmx45m",
+          "merchant": "Mercado Livre",
+          "price_brl": 27.9,
+          "delivery_price_brl": null,
+          "total_price_brl": 27.9,
+          "condition": null,
+          "availability": null,
+          "identity": {
+            "ean": false,
+            "brand": false,
+            "reference": false
+          },
+          "identity_verdict": "REVIEW"
+        },
+        {
+          "url": "https://www.mercadolivre.com.br/esparadrapo-impermeavel-bege-sanfarma-alta-fixacao-25mmx45m/up/MLBU3908206605",
+          "title": "Esparadrapo Impermeável Bege Sanfarma Alta Fixação 25mmx4,5m",
+          "merchant": "Mercado Livre",
+          "price_brl": 18.33,
+          "delivery_price_brl": null,
+          "total_price_brl": 18.33,
+          "condition": null,
+          "availability": null,
+          "identity": {
+            "ean": false,
+            "brand": false,
+            "reference": false
+          },
+          "identity_verdict": "REVIEW"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "accept": 0,
+    "review": 5,
+    "reject": 0,
+    "products_with_ml_price": 0,
+    "mercado_livre_offers_total": 4,
+    "unverified_mercado_livre_offers": 4
+  }
+}

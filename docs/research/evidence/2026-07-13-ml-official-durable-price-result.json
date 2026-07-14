@@ -1,0 +1,204 @@
+{
+  "captured_at": "2026-07-13T11:02:30Z",
+  "method": "official_api_get_only",
+  "products": [
+    {
+      "buy_box_winner_price_range": null,
+      "catalog_id": "MLB20270041",
+      "domain_id": "MLB-BATHROOM_FAUCETS_AND_MIXERS",
+      "http_status": 200,
+      "sku": "39342",
+      "status": "active"
+    },
+    {
+      "buy_box_winner_price_range": null,
+      "catalog_id": "MLB21014314",
+      "domain_id": "MLB-KITCHEN_RANGE_HOODS",
+      "http_status": 200,
+      "sku": "39352",
+      "status": "active"
+    },
+    {
+      "buy_box_winner_price_range": null,
+      "catalog_id": "MLB21426743",
+      "domain_id": "MLB-WATER_HEATERS",
+      "http_status": 200,
+      "sku": "30585",
+      "status": "active"
+    },
+    {
+      "buy_box_winner_price_range": null,
+      "catalog_id": "MLB22322977",
+      "domain_id": "MLB-TOWEL_HOLDERS",
+      "http_status": 200,
+      "sku": "36303",
+      "status": "active"
+    },
+    {
+      "buy_box_winner_price_range": null,
+      "catalog_id": "MLB22490763",
+      "domain_id": "MLB-SHOWER_HEADS",
+      "http_status": 200,
+      "sku": "25070",
+      "status": "active"
+    },
+    {
+      "buy_box_winner_price_range": null,
+      "catalog_id": "MLB22696773",
+      "domain_id": "MLB-SHOWER_HEADS",
+      "http_status": 200,
+      "sku": "39452",
+      "status": "active"
+    },
+    {
+      "buy_box_winner_price_range": null,
+      "catalog_id": "MLB22781676",
+      "domain_id": "MLB-DOOR_AND_WINDOW_LOCKS",
+      "http_status": 200,
+      "sku": "17284",
+      "status": "active"
+    },
+    {
+      "buy_box_winner_price_range": null,
+      "catalog_id": "MLB22811498",
+      "domain_id": "MLB-BATHROOM_FAUCETS_AND_MIXERS",
+      "http_status": 200,
+      "sku": "41937",
+      "status": "active"
+    },
+    {
+      "buy_box_winner_price_range": null,
+      "catalog_id": "MLB23347135",
+      "domain_id": "MLB-DRAIN_GRATES",
+      "http_status": 200,
+      "sku": "39197",
+      "status": "active"
+    },
+    {
+      "buy_box_winner_price_range": null,
+      "catalog_id": "MLB23769103",
+      "domain_id": "MLB-TOILET_SEATS",
+      "http_status": 200,
+      "sku": "39957",
+      "status": "active"
+    },
+    {
+      "buy_box_winner_price_range": null,
+      "catalog_id": "MLB25159488",
+      "domain_id": "MLB-TOWEL_HOLDERS",
+      "http_status": 200,
+      "sku": "33701",
+      "status": "active"
+    },
+    {
+      "buy_box_winner_price_range": null,
+      "catalog_id": "MLB26533259",
+      "domain_id": "MLB-BATHROOM_FAUCETS_AND_MIXERS",
+      "http_status": 200,
+      "sku": "34602",
+      "status": "active"
+    },
+    {
+      "buy_box_winner_price_range": null,
+      "catalog_id": "MLB30426141",
+      "domain_id": "MLB-BATHROOM_FAUCETS_AND_MIXERS",
+      "http_status": 200,
+      "sku": "45042",
+      "status": "active"
+    },
+    {
+      "buy_box_winner_price_range": null,
+      "catalog_id": "MLB31007956",
+      "domain_id": "MLB-BATHROOM_FAUCETS_AND_MIXERS",
+      "http_status": 200,
+      "sku": "33590",
+      "status": "active"
+    },
+    {
+      "buy_box_winner_price_range": null,
+      "catalog_id": "MLB33160962",
+      "domain_id": "MLB-TOWEL_HOLDERS",
+      "http_status": 200,
+      "sku": "27233",
+      "status": "active"
+    },
+    {
+      "buy_box_winner_price_range": null,
+      "catalog_id": "MLB36555696",
+      "domain_id": "MLB-BATHROOM_FAUCETS_AND_MIXERS",
+      "http_status": 200,
+      "sku": "37744",
+      "status": "active"
+    },
+    {
+      "buy_box_winner_price_range": null,
+      "catalog_id": "MLB43351059",
+      "domain_id": "MLB-VEHICLE_TAIL_LIGHTS",
+      "http_status": 200,
+      "sku": "44812",
+      "status": "inactive"
+    },
+    {
+      "buy_box_winner_price_range": null,
+      "catalog_id": "MLB46153079",
+      "domain_id": "MLB-TOILET_PAPER_HOLDERS",
+      "http_status": 200,
+      "sku": "45622",
+      "status": "active"
+    },
+    {
+      "buy_box_winner_price_range": null,
+      "catalog_id": "MLB50839015",
+      "domain_id": "MLB-ELECTRIC_DRILLS",
+      "http_status": 200,
+      "sku": "45477",
+      "status": "active"
+    },
+    {
+      "buy_box_winner_price_range": null,
+      "catalog_id": "MLB64150581",
+      "domain_id": "MLB-FURNITURE_KNOBS",
+      "http_status": 200,
+      "sku": "43070",
+      "status": "active"
+    },
+    {
+      "buy_box_winner_price_range": null,
+      "catalog_id": "MLB64388600",
+      "domain_id": "MLB-HYGIENIC_SHOWERS",
+      "http_status": 200,
+      "sku": "43517",
+      "status": "active"
+    },
+    {
+      "buy_box_winner_price_range": null,
+      "catalog_id": "MLB9280403",
+      "domain_id": "MLB-BATHROOM_SINKS",
+      "http_status": 200,
+      "sku": "17530",
+      "status": "active"
+    }
+  ],
+  "shown_item": {
+    "api_error": {
+      "code": "access_denied",
+      "message": "Access to the requested resource is forbidden"
+    },
+    "item_http_status": 403,
+    "item_id": "MLB3474723449"
+  },
+  "shown_item_price_reference": {
+    "api_error": {
+      "code": "",
+      "message": "Caller is not the item's owner"
+    },
+    "http_status": 401,
+    "item_id": "MLB3474723449",
+    "status": 401
+  },
+  "summary": {
+    "catalog_products": 22,
+    "with_buy_box_winner": 0,
+    "with_price_range": 0
+  }
+}
