@@ -1,7 +1,14 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render as testingRender, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
+import { createWebQueryClient } from "@marketplace-central/web-query";
 import { OrdersPage, type OrdersClient, type ProfitabilityActor } from "./OrdersPage";
+
+const baseRender = testingRender;
+function render(ui: React.ReactNode) {
+  return baseRender(<QueryClientProvider client={createWebQueryClient()}>{ui}</QueryClientProvider>);
+}
 
 function makeInstallation() {
   return {

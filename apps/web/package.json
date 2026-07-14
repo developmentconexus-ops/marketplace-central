@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "start": "vite preview --port 3002",
-    "test": "vitest run"
+    "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
     "@marketplace-central/feature-classifications": "0.1.0",
@@ -19,7 +19,9 @@
     "@marketplace-central/feature-products": "0.1.0",
     "@marketplace-central/feature-simulator": "0.1.0",
     "@marketplace-central/sdk-runtime": "0.1.0",
+    "@marketplace-central/web-query": "0.1.0",
     "@tailwindcss/vite": "^4.2.2",
+    "@tanstack/react-query": "^5.101.2",
     "lucide-react": "^1.7.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

@@ -1,0 +1,11 @@
+{
+  "name": "@marketplace-central/web-query",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@tanstack/react-query": "^5.101.2",
+    "react": "*"
+  }
+}

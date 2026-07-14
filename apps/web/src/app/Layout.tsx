@@ -3,7 +3,7 @@ import { LayoutDashboard, Package, Tags, Store, Calculator, ActivitySquare, Link
 
 const navItems = [
   { to: "/",                 label: "Dashboard",         icon: LayoutDashboard },
-  { to: "/products",         label: "Products",          icon: Package },
+  { to: "/products",         label: "Catalog",           icon: Package },
   { to: "/classifications",  label: "Classifications",   icon: Tags },
   { to: "/marketplaces",     label: "Marketplaces",      icon: Store },
   { to: "/integrations",     label: "Integrations",      icon: ActivitySquare },

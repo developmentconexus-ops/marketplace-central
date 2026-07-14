@@ -1,7 +1,13 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render as testingRender, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import { StockSeguroPage, type StockSeguroClient } from "./StockSeguroPage";
+
+const baseRender = testingRender;
+function render(ui: React.ReactNode) {
+  return baseRender(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: 0 } } })}>{ui}</QueryClientProvider>);
+}
 
 function makeClient(items: any[], overrides?: Partial<StockSeguroClient>): StockSeguroClient {
   return {
