@@ -12,6 +12,7 @@ import (
 
 	"marketplace-central/apps/server_core/internal/modules/orders/domain"
 	"marketplace-central/apps/server_core/internal/modules/orders/ports"
+	internalreadports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 )
 
 type ListAssistedSankhyaCandidatesInput struct {
@@ -53,6 +54,7 @@ type AssistedSankhyaLinkageService struct {
 	linkages   ports.SankhyaLinkageRepository
 	now        func() time.Time
 	newEventID AssistedSankhyaEventIDGenerator
+	invalidator internalreadports.CacheInvalidator
 }
 
 type AssistedSankhyaLinkageServiceConfig struct {
@@ -61,6 +63,7 @@ type AssistedSankhyaLinkageServiceConfig struct {
 	Linkages   ports.SankhyaLinkageRepository
 	Now        func() time.Time
 	NewEventID AssistedSankhyaEventIDGenerator
+	Invalidator internalreadports.CacheInvalidator
 }
 
 func NewAssistedSankhyaLinkageService(config AssistedSankhyaLinkageServiceConfig) *AssistedSankhyaLinkageService {
@@ -72,7 +75,7 @@ func NewAssistedSankhyaLinkageService(config AssistedSankhyaLinkageServiceConfig
 	if newEventID == nil {
 		newEventID = newAssistedSankhyaEventID
 	}
-	return &AssistedSankhyaLinkageService{orders: config.Orders, reader: config.Reader, linkages: config.Linkages, now: now, newEventID: newEventID}
+	return &AssistedSankhyaLinkageService{orders: config.Orders, reader: config.Reader, linkages: config.Linkages, now: now, newEventID: newEventID, invalidator: config.Invalidator}
 }
 
 func (s *AssistedSankhyaLinkageService) GetCurrent(ctx context.Context, input GetAssistedSankhyaLinkageInput) (domain.SankhyaLinkage, error) {
@@ -248,6 +251,9 @@ func (s *AssistedSankhyaLinkageService) Confirm(ctx context.Context, input Confi
 	persisted, err := s.linkages.AppendConfirmation(ctx, linkage)
 	if err != nil {
 		return domain.AssistedSankhyaConfirmationResult{}, err
+	}
+	if s.invalidator != nil {
+		s.invalidator.InvalidateClass("catalog")
 	}
 
 	result := domain.AssistedSankhyaConfirmationResult{Linkage: persisted}

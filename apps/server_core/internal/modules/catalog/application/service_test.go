@@ -2,11 +2,13 @@ package application
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"testing"
 
 	"marketplace-central/apps/server_core/internal/modules/catalog/domain"
 	"marketplace-central/apps/server_core/internal/modules/catalog/ports"
+	internalreadports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 )
 
 type fakeProductReader struct {
@@ -45,13 +47,14 @@ func (f *fakeProductReader) ListProductsByIDs(_ context.Context, ids []string) (
 type fakeEnrichmentStore struct {
 	listEnrichmentsCalls int
 	listEnrichmentsIDs   [][]string
+	upsertErr            error
 }
 
 func (f *fakeEnrichmentStore) GetEnrichment(context.Context, string) (domain.ProductEnrichment, error) {
 	return domain.ProductEnrichment{}, nil
 }
 func (f *fakeEnrichmentStore) UpsertEnrichment(context.Context, domain.ProductEnrichment) error {
-	return nil
+	return f.upsertErr
 }
 func (f *fakeEnrichmentStore) ListEnrichments(_ context.Context, productIDs []string) (map[string]domain.ProductEnrichment, error) {
 	f.listEnrichmentsCalls++
@@ -61,6 +64,12 @@ func (f *fakeEnrichmentStore) ListEnrichments(_ context.Context, productIDs []st
 
 var _ ports.ProductReader = (*fakeProductReader)(nil)
 var _ ports.EnrichmentStore = (*fakeEnrichmentStore)(nil)
+
+type recordingInvalidator struct{ classes []string }
+
+func (r *recordingInvalidator) InvalidateClass(class string) { r.classes = append(r.classes, class) }
+
+var _ internalreadports.CacheInvalidator = (*recordingInvalidator)(nil)
 
 func TestService_ListProductsByIDs_EmptyIDsReturnsEmptyAndSkipsReader(t *testing.T) {
 	reader := &fakeProductReader{}
@@ -79,6 +88,25 @@ func TestService_ListProductsByIDs_EmptyIDsReturnsEmptyAndSkipsReader(t *testing
 	}
 	if enrichments.listEnrichmentsCalls != 0 {
 		t.Fatalf("expected enrichments not to be called, got %d calls", enrichments.listEnrichmentsCalls)
+	}
+}
+
+func TestEvictOnMutationFailedWriteDoesNotInvalidate(t *testing.T) {
+	invalidator := &recordingInvalidator{}
+	store := &fakeEnrichmentStore{upsertErr: errors.New("rolled back")}
+	service := NewServiceWithInvalidator(&fakeProductReader{}, store, "tenant-1", invalidator)
+	if err := service.UpsertEnrichment(context.Background(), domain.ProductEnrichment{}); err == nil {
+		t.Fatal("expected persistence error")
+	}
+	if len(invalidator.classes) != 0 {
+		t.Fatalf("failed write invalidated cache: %#v", invalidator.classes)
+	}
+	store.upsertErr = nil
+	if err := service.UpsertEnrichment(context.Background(), domain.ProductEnrichment{}); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(invalidator.classes, []string{"catalog"}) {
+		t.Fatalf("successful write invalidations=%v", invalidator.classes)
 	}
 }
 
