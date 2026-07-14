@@ -6,5 +6,5 @@
   "workspace": "/workspace",
   "oracle_lib_dir": "/opt/oracle/instantclient",
   "test_binary": "/opt/mpc/bin/oracle-live.test",
-  "go_test_regex": "^TestOracleLiveBaseline$"
+  "go_test_regex": "^TestOracleLive(Smoke|Baseline)$/^product_lookup$"
 }

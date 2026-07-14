@@ -46,8 +46,9 @@ receives key references rather than credential values as command arguments.
 
 Before Docker preflight, build, or run, the runner clears the Docker child process
 environment. It restores only a small Windows execution allowlist (`SystemRoot`,
-`WINDIR`, `ComSpec`, `PATH`, `PATHEXT`, temporary-directory, and Docker user
-configuration keys). The `docker version --format {{.Server.Version}}`
+`WINDIR`, `ComSpec`, `PATH`, `PATHEXT`, temporary/home-directory, program-file,
+program-data, and Docker user-configuration keys). The
+`docker version --format {{.Server.Version}}`
 preflight has no runtime values at all. For the `docker run` child the runner
 then adds exactly the five listed Oracle runtime keys. Ambient MPC, Oracle,
 provider, database, and legacy alias values cannot enter the Docker child or the
@@ -64,8 +65,19 @@ pwsh -NoProfile -File scripts/run-live-oracle-docker.ps1 -PreflightOnly
 When it returns `status=ready`, run the target:
 
 ```powershell
+pwsh -NoProfile -File scripts/run-live-oracle-docker.ps1 -PrepareImage
 pwsh -NoProfile -File scripts/run-live-oracle-docker.ps1
 ```
+
+Image preparation is explicit and normally needed only after the Dockerfile or
+Go source or module/workspace manifests change. It builds a staging tag using
+plain, bounded Docker output, preserves downloaded Go modules and a compiled
+Oracle smoke binary in immutable cached image layers, labels the image with a
+SHA-256 fingerprint of all Go source plus those runtime inputs, and promotes it
+to the canonical tag only after a successful build.
+The ordinary live run never rebuilds an image: it verifies that exact
+fingerprint and fails closed with `run -PrepareImage` when the image is absent
+or stale. This keeps Docker build availability separate from database health.
 
 Capture either invocation directly with `pwsh -NoProfile -File`; do not pipe or
 redirect its output. The runner intentionally emits only a small
@@ -78,11 +90,14 @@ reason matches the runner's safe fixed grammar, it is emitted as `reason`; any
 other error text is omitted. Docker command output, command arguments,
 environment values, and credentials remain suppressed.
 
-The runner builds `docker/dev/backend.Dockerfile`, mounts the checkout
-read-only, and executes only:
+The preparation phase builds `docker/dev/backend.Dockerfile` with deterministic
+Docker dependency/source layers. The execution phase does not mount the host
+checkout or invoke the Go toolchain. It runs the precompiled smoke binary with a
+read-only root filesystem, drops Linux capabilities, disables privilege
+escalation, and executes only:
 
 ```text
-go test ./internal/modules/internal_read/adapters/oracle -run ^TestOracleLiveSmoke$ -count=1
+/opt/mpc/bin/oracle-live.test -test.run ^TestOracleLive(Smoke|Baseline)$/^product_lookup$ -test.count=1 -test.v
 ```
 
 Inside the container it injects exactly `MPC_ORACLE_USERNAME`,
@@ -94,3 +109,19 @@ entrypoint, migration, Compose service, provider operation, or database write.
 Docker command output is suppressed to avoid accidental secret disclosure. A
 missing Docker installation, absent value, or live test failure must be
 recorded as blocked/failed evidence; it is never a successful validation.
+
+The supervisor drains Docker stdout and stderr concurrently and applies hard
+timeouts of 30 seconds for preflight, 10 minutes for image build, and 3 minutes
+for the live test. A timed-out phase terminates the Docker client process tree
+and emits only a values-free `timed_out` reason. It cannot wait indefinitely.
+
+## Runtime defaults
+
+The adapter uses a homogeneous `godror`/OCI session pool with minimum 1,
+maximum 4, and increment 1. Pool wait is 5 seconds, idle session timeout is 5
+minutes, maximum session lifetime is 30 minutes, network connect timeout is 10
+seconds, bootstrap is capped at 30 seconds, and each Oracle call is capped at
+30 seconds. Governed deployments may override these with the corresponding
+`MPC_ORACLE_*` duration/integer keys registered in
+`contracts/governance/runtime-config.json`; the canonical runner deliberately
+uses the bounded defaults and forwards no ambient tuning values.

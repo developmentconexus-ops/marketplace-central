@@ -200,6 +200,9 @@ Design rules:
 - SQL/query knowledge stays inside Oracle adapters and helper packages owned by that boundary.
 - PostgreSQL stores only MPC-owned operational state, audit, projections, and snapshots.
 - Removing or changing an Oracle query shape must not force business-module rewrites; only adapter implementations should move.
+- `godror` with ODPI-C/Oracle Instant Client is the single canonical driver; no Python sidecar or dual-driver fallback is part of the runtime.
+- Oracle connections use explicit bounded pool, connect, bootstrap, session-lifetime, and call timeouts; raw credential-bearing driver errors are never exposed.
+- The governed live-Oracle lane is read-only, capability-reduced, time-bounded, and must terminate its process tree on timeout.
 
 ## Platform packages
 

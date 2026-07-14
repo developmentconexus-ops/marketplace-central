@@ -43,13 +43,16 @@ Describe 'Docker live Oracle runner' {
       $plan = Invoke-WithoutSankhyaCallerConnectionValues { New-LiveOracleDockerPlan -EnvFilePath $fixture }
 
       Assert-RunnerCondition ($plan.BuildArguments -contains (Join-Path $repoRoot 'docker/dev/backend.Dockerfile')) 'backend Dockerfile missing'
-      Assert-RunnerCondition ($plan.RunArguments -contains 'go') 'Go command missing'
-      Assert-RunnerCondition ($plan.RunArguments -contains 'test') 'Go test command missing'
-      Assert-RunnerCondition ($plan.RunArguments -contains './internal/modules/internal_read/adapters/oracle') 'Oracle package missing'
-      Assert-RunnerCondition ($plan.RunArguments -contains '^TestOracleLiveSmoke$/^product_lookup$') 'product lookup subtest regex missing'
+      Assert-RunnerCondition ($plan.BuildArguments -contains '--progress=plain') 'bounded plain Docker progress missing'
+      Assert-RunnerCondition (($plan.BuildArguments -join ' ') -match 'mpc\.live-oracle\.runtime-fingerprint=') 'runtime fingerprint label missing'
+      Assert-RunnerCondition (($plan.InspectArguments -join ' ') -match 'runtime-fingerprint') 'runtime fingerprint inspection missing'
+      Assert-RunnerCondition ($plan.RunArguments -contains '/opt/mpc/bin/oracle-live.test') 'precompiled Oracle smoke binary missing'
+      Assert-RunnerCondition ($plan.RunArguments -contains '^TestOracleLive(Smoke|Baseline)$/^product_lookup$') 'product lookup subtest regex missing'
       Assert-RunnerCondition (($plan.RunArguments -join ' ') -notmatch 'docker\s+compose|\.env|migrations?|(^|\s)(air|serve|start)(\s|$)|entrypoint') 'forbidden command fragment present'
-      Assert-RunnerCondition (@($plan.RunArguments | Where-Object { $_ -eq '--mount' }).Count -eq 1) 'read-only workspace mount missing'
-      Assert-RunnerCondition (($plan.RunArguments -join ' ') -match 'readonly') 'workspace mount is not read-only'
+      Assert-RunnerCondition (@($plan.RunArguments | Where-Object { $_ -eq '--mount' }).Count -eq 0) 'host checkout entered the live container'
+      Assert-RunnerCondition ($plan.RunArguments -contains '--read-only') 'container root filesystem is writable'
+      Assert-RunnerCondition (($plan.RunArguments -join ' ') -match '--cap-drop ALL') 'Linux capabilities were not dropped'
+      Assert-RunnerCondition (($plan.RunArguments -join ' ') -match 'no-new-privileges') 'privilege escalation was not disabled'
     } finally { Remove-Item -LiteralPath $fixture -Force }
   }
 
@@ -204,6 +207,27 @@ Describe 'Docker live Oracle runner' {
     }
   }
 
+  It 'drains full stdout and stderr pipes concurrently without deadlocking' {
+    $pwsh = (Get-Process -Id $PID).Path
+    $arguments = @('-NoProfile', '-Command', "[Console]::Out.Write(('o' * 1048576)); [Console]::Error.Write(('e' * 1048576)); [Console]::Out.Write('marker')")
+    $startInfo = New-LiveOracleDockerProcessStartInfo -DockerPath $pwsh -Arguments $arguments -Environment ([ordered]@{})
+
+    $output = Invoke-LiveOracleDockerProcess -StartInfo $startInfo -Phase 'run' -Timeout ([TimeSpan]::FromSeconds(15))
+
+    Assert-RunnerCondition ($output.EndsWith('marker')) 'concurrent pipe drain lost stdout marker'
+  }
+
+  It 'terminates a timed-out child and returns only bounded sanitized telemetry' {
+    $pwsh = (Get-Process -Id $PID).Path
+    $arguments = @('-NoProfile', '-Command', 'Start-Sleep -Seconds 30')
+    $startInfo = New-LiveOracleDockerProcessStartInfo -DockerPath $pwsh -Arguments $arguments -Environment ([ordered]@{})
+    $message = ''
+
+    try { Invoke-LiveOracleDockerProcess -StartInfo $startInfo -Phase 'run' -Timeout ([TimeSpan]::FromMilliseconds(100)) | Out-Null } catch { $message = $_.Exception.Message }
+
+    Assert-RunnerCondition ($message -eq 'live Oracle Docker run timed_out timeout_seconds=1; output suppressed') 'timeout was not bounded and sanitized'
+  }
+
   It 'emits exact values-free ready telemetry from the entrypoint' {
     $exitCode = -1
     Mock -CommandName Invoke-LiveOracleDockerRunner -MockWith { }
@@ -212,6 +236,16 @@ Describe 'Docker live Oracle runner' {
 
     Assert-RunnerCondition (($telemetry -join ',') -eq 'status=ready,phase=preflight,exit_code=0') 'ready telemetry schema changed'
     Assert-RunnerCondition ($exitCode -eq 0) 'ready telemetry exit status changed'
+  }
+
+  It 'emits exact values-free image preparation telemetry from the entrypoint' {
+    $exitCode = -1
+    Mock -CommandName Invoke-LiveOracleDockerRunner -MockWith { }
+
+    $telemetry = @(Invoke-LiveOracleDockerEntrypoint -PrepareImage -ExitCode ([ref]$exitCode))
+
+    Assert-RunnerCondition (($telemetry -join ',') -eq 'status=ready,phase=prepared,exit_code=0') 'prepared telemetry schema changed'
+    Assert-RunnerCondition ($exitCode -eq 0) 'prepared telemetry exit status changed'
   }
 
   It 'emits exact values-free completion telemetry from the entrypoint' {

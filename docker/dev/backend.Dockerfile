@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 FROM golang:1.25-bookworm
 
 ARG ORACLE_IC_BASE=https://download.oracle.com/otn_software/linux/instantclient/2390000
@@ -32,5 +33,9 @@ WORKDIR /workspace
 COPY go.work go.work.sum ./
 COPY apps/server_core/go.mod apps/server_core/go.sum ./apps/server_core/
 RUN go mod download -C apps/server_core
+
+COPY apps/server_core ./apps/server_core
+RUN mkdir -p /opt/mpc/bin \
+    && go test -c -o /opt/mpc/bin/oracle-live.test ./apps/server_core/internal/modules/internal_read/adapters/oracle
 
 EXPOSE 8080
