@@ -32,11 +32,15 @@ func NewSankhyaLinkageReader(source sankhyaLinkageSource, configurationRevision,
 	return &SankhyaLinkageReader{source: source, configurationRevision: configurationRevision, evidenceReference: evidenceReference}, nil
 }
 
-func (r *SankhyaLinkageReader) ValidateConfiguration(ctx context.Context) error {
+// ValidateConfiguration reports only the in-memory configuration guard. The
+// underlying Oracle source is validated once at startup (composition root); the
+// request path must not issue Oracle Ping/metadata validation queries, so this
+// wrapper never delegates to the source here.
+func (r *SankhyaLinkageReader) ValidateConfiguration(_ context.Context) error {
 	if r == nil || r.source == nil || r.configurationRevision == "" || r.evidenceReference == "" {
 		return &ordersdomain.AssistedSankhyaReadError{Kind: ordersdomain.AssistedSankhyaReadConfigurationInvalid}
 	}
-	return translateReadError(r.source.ValidateConfiguration(ctx))
+	return nil
 }
 
 func (r *SankhyaLinkageReader) EvidenceReference() string {
