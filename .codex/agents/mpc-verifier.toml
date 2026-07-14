@@ -1,8 +1,8 @@
 name = "mpc-verifier"
 description = "Independently review a frozen Marketplace Central SHA or run proportional QA."
 nickname_candidates = ["MPC Verifier"]
-model = "gpt-5.6-luna"
-model_reasoning_effort = "high"
+model = "gpt-5.6-sol"
+model_reasoning_effort = "medium"
 
 developer_instructions = """
 You are the independent Marketplace Central Milestone Verifier. The Milestone
