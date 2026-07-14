@@ -14,7 +14,7 @@ lifecycle_scope: feature
 
 ## Summary
 
-The fourth correction round is test-only and addresses two hollow-test defects
+The fifth correction round is test-only and addresses two hollow-test defects
 in the prior evidence. The R1 post-invalidation singleflight regression test was
 initially hollow: it could pass after the generation component was removed
 from the normal-path group key. The test now deterministically observes
@@ -38,6 +38,64 @@ document records feature evidence; it is not a milestone or formal QA verdict.
    block never called a mutation service or invalidated a cache and therefore
    proved nothing. Failed-write/no-invalidation evidence remains at the
    application layer, where the mutation paths actually execute.
+
+### Fifth correction round
+
+1. G1 nil-vs-absent correction: `TestFreshnessCacheTTLPerClass` now uses the
+   comma-ok map lookup for cost key `1`, requiring the key to be present and its
+   value to be explicitly nil. It separately checks that key `2` remains
+   present with a value, preserves the error and one-downstream-call checks,
+   and reports key absence separately from a non-nil value. The cost fake now
+   returns `{1: nil, 2: &CostAsOf{}}`. The deep-copy cost, tax, and stock map
+   accesses were audited; none is a nil-preservation assertion, so no other
+   nil assertion required correction.
+
+2. G2 log-hygiene correction: `TestFreshnessCacheLRUAndLogs` now parses JSON
+   cache records and requires the exact attribute set `{time, level, msg,
+   cache, key_class}`. It still positively observes `cache=miss`, `cache=hit`,
+   and `key_class=catalog`. Any raw argument, ID, value, or digest attribute
+   therefore fails the test.
+
+#### G1 mutation proof
+
+`cache.go` was temporarily changed to omit nil values from `cloneCostFacts`.
+The required focused test then failed because the comma-ok assertion detected
+the absent key:
+
+```text
+--- FAIL: TestFreshnessCacheTTLPerClass (0.01s)
+    cache_test.go:215: pricecost cache hit dropped unknown fact key: calls=1 err=<nil>
+FAIL
+FAIL	marketplace-central/apps/server_core/internal/modules/internal_read/adapters/cache	1.422s
+```
+
+After restoring `cache.go`, `git diff --
+apps/server_core/internal/modules/internal_read/adapters/cache/cache.go` was
+empty and the same focused test passed:
+
+```text
+ok  	marketplace-central/apps/server_core/internal/modules/internal_read/adapters/cache	1.426s
+```
+
+#### G2 mutation proof
+
+`cache.go` was temporarily changed to add a `key` attribute to each cache log.
+The required focused test failed because the exact allowlist detected the
+unexpected attribute:
+
+```text
+--- FAIL: TestFreshnessCacheLRUAndLogs (0.01s)
+    cache_test.go:638: log record 1 has unexpected attribute "key": {"time":"2026-07-14T15:57:28.7630961-03:00","level":"INFO","msg":"internal_read.cache","cache":"miss","key_class":"catalog","key":"raw-key"}
+FAIL
+FAIL	marketplace-central/apps/server_core/internal/modules/internal_read/adapters/cache	1.668s
+```
+
+After restoring `cache.go`, its diff was empty and the same focused test
+passed:
+
+```text
+ok  	marketplace-central/apps/server_core/internal/modules/internal_read/adapters/cache	1.329s
+```
 
 #### H1 linkage-exclusion mutation proof
 
@@ -114,7 +172,8 @@ ok  	marketplace-central/apps/server_core/internal/modules/internal_read/adapter
    cache without joining a normal caller's singleflight double-check.
 3. P1-C deep clone: catalog pages and cost, tax, and stock maps clone all
    mutable pointers, slices, nested observed timestamps, nil maps/slices, and
-   nil map values on store and return.
+   nil map values on store and return; the cost nil map value is specifically
+   proven by the comma-ok assertion in `TestFreshnessCacheTTLPerClass`.
 4. P2-D waiter cancellation: `DoChan` plus context selection lets canceled
    waiters return without a helper goroutine while live waiters still collapse.
 5. P2-E persistence evidence: catalog/inventory/orders/profitability failure
@@ -148,13 +207,13 @@ $env:GOCACHE='C:\Users\leandro.theodoro\Documents\marketplace-central\.claude\wo
     --- PASS: TestEvictOnMutation
     --- PASS: ExampleCache
     PASS
-    ok  	marketplace-central/apps/server_core/internal/modules/internal_read/adapters/cache	1.237s
+    ok  	marketplace-central/apps/server_core/internal/modules/internal_read/adapters/cache	1.438s
     ```
 
 - `go test ./... -count=1`
   - Pass. All packages reported `ok` or `[no test files]`, including cache,
     inventory, orders, profitability, integration, and unit packages; command
-    runtime was 168.7s.
+    runtime was 59s.
 
 - `go vet ./...`
   - Pass. No output or diagnostics.
@@ -166,10 +225,10 @@ $env:GOCACHE='C:\Users\leandro.theodoro\Documents\marketplace-central\.claude\wo
 
 | Criterion | Evidence actually run | Result |
 | --- | --- | --- |
-| M-04-C01 | `TestFreshnessCacheTTLPerClass` in cache package and FreshnessCache suite | Pass |
+| M-04-C01 | `TestFreshnessCacheTTLPerClass` in cache package and FreshnessCache suite; its comma-ok lookup proves the cached unknown cost key is present with an explicit nil value | Pass |
 | M-04-C02 | `TestFreshnessCacheSingleflight` (20 live waiters, one downstream call), `TestFreshnessCacheErrorNotCached`, and `TestFreshnessCacheWaiterContextCancellation` | Pass |
 | M-04-C03 | Mutation-sensitive `TestFreshnessCacheBypassAndLinkageExclusion` (identical linkage input repeated three times; proven by the temporary caching mutation), `TestFreshnessCacheOlderLoadCannotOverwriteBypassRefresh`, existing bypass namespace/repopulation assertions, and `TestFreshnessCacheTTLPerClass` | Pass |
-| M-04-C04 | `TestFreshnessCacheLRUAndLogs`, `TestFreshnessCacheDeepCopiesCachedFacts`, and full cache suite | Pass |
+| M-04-C04 | `TestFreshnessCacheLRUAndLogs` proves structured fields are present and every `internal_read.cache` record has exactly `{cache, key_class}` plus standard `time`, `level`, and `msg`; its temporary raw-`key` mutation failed. `TestFreshnessCacheDeepCopiesCachedFacts` and the full cache suite also passed. The C01 comma-ok assertion proves nil map-value preservation. | Pass |
 | M-04-C05 / R1 | `TestFreshnessCacheFencesInFlightLoadAfterInvalidation`, deterministic `TestFreshnessCachePostInvalidationDoesNotJoinInFlightLoad`, and `TestEvictOnMutation` for eviction, warm pricecost-class survival, and repopulation only. Failed-write/no-invalidation coverage is provided by `TestEvictOnMutationFailedWriteDoesNotInvalidate` (catalog), `TestApplyManualStockActionDoesNotInvalidateFailedOrRejectedWrites` (inventory persistence failure and provider rejection), `TestAssistedSankhyaConfirmDoesNotInvalidateFailedPersistence` (orders), and `TestImportMarginInputsDoesNotInvalidateFailedPersistence` (profitability), plus the full suite. | Pass for runnable validation; the R1 and H1 mutations failed as expected and the restored tests passed; race evidence unavailable |
 
 ## Risks and Remaining Blockers

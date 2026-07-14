@@ -3,6 +3,7 @@ package cache
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -102,7 +103,7 @@ type fakeBatchReader struct {
 
 func (r *fakeBatchReader) GetCostFactsByIDs(context.Context, []int64) (map[int64]*internalreaddomain.CostAsOf, error) {
 	r.costCalls.Add(1)
-	return map[int64]*internalreaddomain.CostAsOf{1: nil}, nil
+	return map[int64]*internalreaddomain.CostAsOf{1: nil, 2: {}}, nil
 }
 
 func (r *fakeBatchReader) GetTaxFactsByIDs(context.Context, []int64) (map[int64]*internalreaddomain.TaxInputs, error) {
@@ -206,8 +207,22 @@ func TestFreshnessCacheTTLPerClass(t *testing.T) {
 		t.Fatal(err)
 	}
 	got, err := batch.GetCostFactsByIDs(context.Background(), []int64{1, 2})
-	if err != nil || got[1] != nil || batchDownstream.costCalls.Load() != 1 {
-		t.Fatalf("pricecost hit or nil preservation failed: calls=%d value=%v err=%v", batchDownstream.costCalls.Load(), got[1], err)
+	if err != nil {
+		t.Fatalf("pricecost cache hit returned an error: calls=%d err=%v", batchDownstream.costCalls.Load(), err)
+	}
+	value, ok := got[1]
+	if !ok {
+		t.Fatalf("pricecost cache hit dropped unknown fact key: calls=%d err=%v", batchDownstream.costCalls.Load(), err)
+	}
+	if value != nil {
+		t.Fatalf("pricecost cache hit did not preserve nil value: calls=%d value=%v", batchDownstream.costCalls.Load(), value)
+	}
+	value, ok = got[2]
+	if !ok || value == nil {
+		t.Fatalf("pricecost cache hit changed known fact key: present=%t value=%v", ok, value)
+	}
+	if batchDownstream.costCalls.Load() != 1 {
+		t.Fatalf("pricecost cache miss on equivalent IDs: calls=%d", batchDownstream.costCalls.Load())
 	}
 	clock.Advance(3 * time.Second)
 	if _, err := batch.GetCostFactsByIDs(context.Background(), []int64{1, 2}); err != nil {
@@ -586,7 +601,7 @@ func TestFreshnessCacheLRUAndLogs(t *testing.T) {
 	wrapped := NewCatalogPageReader(downstream, testCache(clock, 2, nil))
 	var logs bytes.Buffer
 	previous := slog.Default()
-	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, nil)))
 	defer slog.SetDefault(previous)
 	for _, cursor := range []int64{1, 2} {
 		if _, err := wrapped.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{InternalProductID: cursor}, 50); err != nil {
@@ -608,14 +623,37 @@ func TestFreshnessCacheLRUAndLogs(t *testing.T) {
 	if downstream.listCalls.Load() != 4 {
 		t.Fatalf("least-recently-used entry was not evicted: calls=%d", downstream.listCalls.Load())
 	}
-	text := logs.String()
-	for _, expected := range []string{"cache=miss", "cache=hit", "key_class=catalog"} {
-		if !bytes.Contains([]byte(text), []byte(expected)) {
-			t.Fatalf("missing structured log field %q in %s", expected, text)
+	allowed := map[string]bool{"time": true, "level": true, "msg": true, "cache": true, "key_class": true}
+	observedMiss, observedHit, observedCatalog := false, false, false
+	for lineNumber, line := range bytes.Split(bytes.TrimSpace(logs.Bytes()), []byte("\n")) {
+		var record map[string]json.RawMessage
+		if err := json.Unmarshal(line, &record); err != nil {
+			t.Fatalf("log record %d was not valid JSON: %v", lineNumber+1, err)
 		}
+		if string(record["msg"]) != `"internal_read.cache"` {
+			t.Fatalf("log record %d has unexpected msg: %s", lineNumber+1, line)
+		}
+		for key := range record {
+			if !allowed[key] {
+				t.Fatalf("log record %d has unexpected attribute %q: %s", lineNumber+1, key, line)
+			}
+		}
+		if len(record) != len(allowed) {
+			t.Fatalf("log record %d has incomplete attribute set: %s", lineNumber+1, line)
+		}
+		var cacheStatus, keyClass string
+		if err := json.Unmarshal(record["cache"], &cacheStatus); err != nil {
+			t.Fatalf("log record %d cache attribute was not a string: %v", lineNumber+1, err)
+		}
+		if err := json.Unmarshal(record["key_class"], &keyClass); err != nil {
+			t.Fatalf("log record %d key_class attribute was not a string: %v", lineNumber+1, err)
+		}
+		observedMiss = observedMiss || cacheStatus == "miss"
+		observedHit = observedHit || cacheStatus == "hit"
+		observedCatalog = observedCatalog || keyClass == "catalog"
 	}
-	if bytes.Contains([]byte(text), []byte("InternalProductID")) || bytes.Contains([]byte(text), []byte("sha256")) {
-		t.Fatalf("raw key data leaked in logs: %s", text)
+	if !observedMiss || !observedHit || !observedCatalog {
+		t.Fatalf("missing structured log field: miss=%t hit=%t catalog=%t logs=%s", observedMiss, observedHit, observedCatalog, logs.String())
 	}
 }
 
