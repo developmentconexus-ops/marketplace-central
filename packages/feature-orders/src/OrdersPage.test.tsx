@@ -1,7 +1,14 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render as testingRender, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
+import { createWebQueryClient, queryKeyNamespaces } from "@marketplace-central/web-query";
 import { OrdersPage, type OrdersClient, type ProfitabilityActor } from "./OrdersPage";
+
+const baseRender = testingRender;
+function render(ui: React.ReactNode) {
+  return baseRender(<QueryClientProvider client={createWebQueryClient()}>{ui}</QueryClientProvider>);
+}
 
 function makeInstallation() {
   return {
@@ -309,14 +316,16 @@ function makeClient(overrides: Partial<OrdersClient> = {}): OrdersClient {
   };
 }
 
-function renderPage(clientOverrides: Partial<OrdersClient> = {}, route = "/orders?installation=inst-1", operator?: ProfitabilityActor) {
+function renderPage(clientOverrides: Partial<OrdersClient> = {}, route = "/orders?installation=inst-1", operator?: ProfitabilityActor, queryClient = createWebQueryClient()) {
   const client = makeClient(clientOverrides);
   render(
     <MemoryRouter initialEntries={[route]}>
-      <OrdersPage client={client} operator={operator} />
+      <QueryClientProvider client={queryClient}>
+        <OrdersPage client={client} operator={operator} />
+      </QueryClientProvider>
     </MemoryRouter>,
   );
-  return client;
+  return { client, queryClient };
 }
 
 function getSelectedOrderSurface(): HTMLElement {
@@ -555,5 +564,32 @@ describe("OrdersPage", () => {
     await waitFor(() => expect(calculateProfitabilityProfitSnapshots).toHaveBeenCalled());
     expect(await screen.findByText("Manual adjustment saved for order 2000012659424976.")).toBeInTheDocument();
     expect(screen.getByText("Operator verified commission")).toBeInTheDocument();
+  });
+
+  it("invalidates catalog and profitability after importing margin inputs", async () => {
+    const queryClient = createWebQueryClient();
+    const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
+    const importProfitabilityMarginInputs = vi.fn().mockResolvedValue({});
+    renderPage({ importProfitabilityMarginInputs }, "/orders?installation=inst-1", undefined, queryClient);
+
+    await screen.findAllByText("Order #2000012659424976");
+    fireEvent.click(screen.getByRole("button", { name: "Import inputs" }));
+
+    await waitFor(() => expect(importProfitabilityMarginInputs).toHaveBeenCalledWith({ installation_id: "inst-1", limit: 50 }));
+    expect(invalidateQueries).toHaveBeenCalledTimes(2);
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: queryKeyNamespaces.catalog });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: queryKeyNamespaces.profitability });
+  });
+
+  it("does not invalidate after a failed margin-input import", async () => {
+    const queryClient = createWebQueryClient();
+    const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
+    renderPage({ importProfitabilityMarginInputs: vi.fn().mockRejectedValue(new Error("import failed")) }, "/orders?installation=inst-1", undefined, queryClient);
+
+    await screen.findAllByText("Order #2000012659424976");
+    fireEvent.click(screen.getByRole("button", { name: "Import inputs" }));
+
+    await waitFor(() => expect(screen.getByText("import failed")).toBeInTheDocument());
+    expect(invalidateQueries).not.toHaveBeenCalled();
   });
 });

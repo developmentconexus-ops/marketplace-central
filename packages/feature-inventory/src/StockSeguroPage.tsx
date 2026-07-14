@@ -1,13 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, SurfaceCard } from "@marketplace-central/ui";
 import type {
   ApplyInventoryStockActionResponse,
   IntegrationInstallation,
   InventoryStockRiskItem,
 } from "@marketplace-central/sdk-runtime";
+import {
+  FreshnessIndicator,
+  inventoryQueryKeys,
+  queryKeyNamespaces,
+  QUERY_STALE_TIME,
+  type RefreshableClient,
+} from "@marketplace-central/web-query";
 
-export interface StockSeguroClient {
+export interface StockSeguroClient extends RefreshableClient {
   listIntegrationInstallations: () => Promise<{ items: IntegrationInstallation[] }>;
   listInventoryStockRisks: (input: {
     installation_id: string;
@@ -15,7 +23,7 @@ export interface StockSeguroClient {
     link_state?: InventoryStockRiskItem["link_state"];
     actionability?: InventoryStockRiskItem["actionability"];
     limit?: number;
-  }) => Promise<{ items: InventoryStockRiskItem[] }>;
+  }) => Promise<{ items: InventoryStockRiskItem[]; as_of?: string }>;
   applyInventoryManualStockAction: (req: {
     stock_action_id: string;
     installation_id: string;
@@ -107,6 +115,7 @@ function actorIdFromName(name: string): string {
 }
 
 export function StockSeguroPage({ client }: StockSeguroPageProps) {
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [installations, setInstallations] = useState<IntegrationInstallation[]>([]);
   const [items, setItems] = useState<InventoryStockRiskItem[]>([]);
@@ -120,9 +129,41 @@ export function StockSeguroPage({ client }: StockSeguroPageProps) {
   const [reason, setReason] = useState("Stock Seguro manual apply");
 
   const selectedInstallationID = searchParams.get("installation") ?? "";
-  const selectedState = searchParams.get("state") ?? "";
-  const selectedLinkState = searchParams.get("link_state") ?? "";
-  const selectedActionability = searchParams.get("actionability") ?? "";
+  const selectedState = (searchParams.get("state") ?? "") as InventoryStockRiskItem["state"] | "";
+  const selectedLinkState = (searchParams.get("link_state") ?? "") as InventoryStockRiskItem["link_state"] | "";
+  const selectedActionability = (searchParams.get("actionability") ?? "") as InventoryStockRiskItem["actionability"] | "";
+
+  const riskFilters = {
+    state: selectedState || undefined,
+    link_state: selectedLinkState || undefined,
+    actionability: selectedActionability || undefined,
+    limit: 50,
+  };
+  const riskQuery = useQuery({
+    queryKey: inventoryQueryKeys.risks(selectedInstallationID, riskFilters),
+    queryFn: () => client.listInventoryStockRisks({
+      installation_id: selectedInstallationID,
+      ...riskFilters,
+    }),
+    staleTime: QUERY_STALE_TIME.stock,
+    enabled: Boolean(selectedInstallationID),
+  });
+  const stockActionMutation = useMutation({
+    mutationFn: (req: Parameters<StockSeguroClient["applyInventoryManualStockAction"]>[0]) =>
+      client.applyInventoryManualStockAction(req),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeyNamespaces.inventory }),
+  });
+  useEffect(() => {
+    if (riskQuery.data) {
+      setItems(riskQuery.data.items);
+      setError(null);
+      setState("ready");
+    }
+    if (riskQuery.error) {
+      setError(normalizeError(riskQuery.error, "Failed to load stock risks."));
+      setState("error");
+    }
+  }, [riskQuery.data, riskQuery.error]);
 
   useEffect(() => {
     let cancelled = false;
@@ -150,43 +191,16 @@ export function StockSeguroPage({ client }: StockSeguroPageProps) {
     };
   }, [client, selectedInstallationID, setSearchParams]);
 
-  useEffect(() => {
-    if (!selectedInstallationID) {
-      return;
-    }
-    let cancelled = false;
-    async function loadRisks() {
-      setState("loading");
-      setError(null);
-      try {
-        const result = await client.listInventoryStockRisks({
-          installation_id: selectedInstallationID,
-          state: selectedState || undefined,
-          link_state: selectedLinkState || undefined,
-          actionability: selectedActionability || undefined,
-          limit: 50,
-        });
-        if (cancelled) {
-          return;
-        }
-        setItems(result.items);
-        setState("ready");
-      } catch (loadError) {
-        if (cancelled) {
-          return;
-        }
-        setError(normalizeError(loadError, "Failed to load stock risks."));
-        setState("error");
-      }
-    }
-    void loadRisks();
-    return () => {
-      cancelled = true;
-    };
-  }, [client, selectedInstallationID, selectedState, selectedLinkState, selectedActionability]);
+  const displayedItems = riskQuery.data?.items ?? items;
+  const displayedError = error ?? (riskQuery.error ? normalizeError(riskQuery.error, "Failed to load stock risks.") : null);
+  const displayedState: LoadState = riskQuery.error
+    ? "error"
+    : riskQuery.data
+      ? "ready"
+      : state;
 
   const summary = useMemo(() => {
-    return items.reduce(
+    return displayedItems.reduce(
       (acc, item) => {
         acc.total += 1;
         if (item.actionable) {
@@ -202,9 +216,9 @@ export function StockSeguroPage({ client }: StockSeguroPageProps) {
       },
       { total: 0, actionable: 0, oversell: 0, blockers: 0 },
     );
-  }, [items]);
+  }, [displayedItems]);
 
-  const selected = items[0];
+  const selected = displayedItems[0];
 
   async function applyAction(item: InventoryStockRiskItem) {
     if (item.recommended_quantity == null) {
@@ -215,7 +229,7 @@ export function StockSeguroPage({ client }: StockSeguroPageProps) {
     setActionError(null);
     setActionMessage(null);
     try {
-      const result = await client.applyInventoryManualStockAction({
+      const result = await stockActionMutation.mutateAsync({
         stock_action_id: `ssa-${Date.now()}`,
         installation_id: item.identity.installation_id,
         provider_item_id: item.identity.provider_item_id,
@@ -234,19 +248,21 @@ export function StockSeguroPage({ client }: StockSeguroPageProps) {
       });
       setActionMessage(`Action ${result.action.state} for ${item.identity.provider_item_id}.`);
       setOpenConfirmKey(null);
-      const refreshed = await client.listInventoryStockRisks({
-        installation_id: selectedInstallationID,
-        state: selectedState || undefined,
-        link_state: selectedLinkState || undefined,
-        actionability: selectedActionability || undefined,
-        limit: 50,
-      });
-      setItems(refreshed.items);
     } catch (runError) {
       setActionError(normalizeError(runError, "Failed to apply stock action."));
     } finally {
       setPendingKey(null);
     }
+  }
+
+  async function refreshRisks() {
+    if (!selectedInstallationID) {
+      return;
+    }
+    const run = () => queryClient.refetchQueries({
+      queryKey: inventoryQueryKeys.risks(selectedInstallationID, riskFilters),
+    });
+    await (client.withNoCache ? client.withNoCache(run) : run());
   }
 
   function updateFilters(patch: Record<string, string>) {
@@ -271,8 +287,10 @@ export function StockSeguroPage({ client }: StockSeguroPageProps) {
             <p className="text-sm leading-6 text-slate-200">
               Scan persisted Mercado Livre stock drift, inspect source evidence, and only apply explicit manual corrections.
             </p>
+            <p className="text-sm text-cyan-100"><FreshnessIndicator asOf={riskQuery.data?.as_of} /></p>
           </div>
           <div className="grid gap-3 rounded-2xl border border-white/15 bg-white/8 p-4 sm:grid-cols-2 xl:min-w-[460px]">
+            <Button variant="secondary" disabled={!selectedInstallationID || riskQuery.isFetching} loading={riskQuery.isFetching} onClick={() => void refreshRisks()}>Refresh</Button>
             <label className="space-y-1 text-sm">
               <span className="block text-slate-300">Installation</span>
               <select
@@ -349,14 +367,14 @@ export function StockSeguroPage({ client }: StockSeguroPageProps) {
       {actionError ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{actionError}</div> : null}
       {actionMessage ? <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{actionMessage}</div> : null}
 
-      {state === "loading" ? <SurfaceCard><p className="text-sm text-slate-600">Loading Stock Seguro...</p></SurfaceCard> : null}
-      {state === "error" && error ? <SurfaceCard><p className="text-sm text-red-700">{error}</p></SurfaceCard> : null}
-      {state === "ready" && items.length === 0 ? <SurfaceCard><p className="text-sm text-slate-600">No Stock Seguro rows for the selected filters.</p></SurfaceCard> : null}
+      {displayedState === "loading" ? <SurfaceCard><p className="text-sm text-slate-600">Loading Stock Seguro...</p></SurfaceCard> : null}
+      {displayedState === "error" && displayedError ? <SurfaceCard><p className="text-sm text-red-700">{displayedError}</p></SurfaceCard> : null}
+      {displayedState === "ready" && displayedItems.length === 0 ? <SurfaceCard><p className="text-sm text-slate-600">No Stock Seguro rows for the selected filters.</p></SurfaceCard> : null}
 
-      {state === "ready" && items.length > 0 ? (
+      {displayedState === "ready" && displayedItems.length > 0 ? (
         <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
           <div className="grid gap-4">
-            {items.map((item) => {
+            {displayedItems.map((item) => {
               const key = itemKey(item);
               const confirmOpen = openConfirmKey === key;
               return (

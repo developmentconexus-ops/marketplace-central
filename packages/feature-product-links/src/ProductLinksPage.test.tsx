@@ -1,6 +1,8 @@
 import { MemoryRouter } from "react-router-dom";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createWebQueryClient, linkageQueryKeys, queryKeyNamespaces } from "@marketplace-central/web-query";
 import { ProductLinksPage, type ProductLinksClient } from "./ProductLinksPage";
 
 function makeClient(overrides: Partial<ProductLinksClient> = {}): ProductLinksClient {
@@ -131,14 +133,25 @@ function makeClient(overrides: Partial<ProductLinksClient> = {}): ProductLinksCl
   };
 }
 
-function renderPage(clientOverrides: Partial<ProductLinksClient> = {}) {
+// Production defaults retry once; an error-state assertion would have to wait out
+// the retry delay, so tests keep those defaults but disable the retry.
+function createTestQueryClient() {
+  const queryClient = createWebQueryClient();
+  const defaults = queryClient.getDefaultOptions();
+  queryClient.setDefaultOptions({ ...defaults, queries: { ...defaults.queries, retry: false } });
+  return queryClient;
+}
+
+function renderPage(clientOverrides: Partial<ProductLinksClient> = {}, queryClient = createWebQueryClient()) {
   const client = makeClient(clientOverrides);
   render(
     <MemoryRouter initialEntries={["/product-links?installation=inst-1"]}>
-      <ProductLinksPage client={client} />
+      <QueryClientProvider client={queryClient}>
+        <ProductLinksPage client={client} />
+      </QueryClientProvider>
     </MemoryRouter>,
   );
-  return client;
+  return { client, queryClient };
 }
 
 describe("ProductLinksPage", () => {
@@ -165,14 +178,18 @@ describe("ProductLinksPage", () => {
   });
 
   it("renders error state when workflow loading fails", async () => {
-    renderPage({
-      listProductLinkWorkflows: vi.fn().mockRejectedValue({ error: { message: "workflow exploded" } }),
-    });
+    renderPage(
+      {
+        listProductLinkWorkflows: vi.fn().mockRejectedValue({ error: { message: "workflow exploded" } }),
+      },
+      createTestQueryClient(),
+    );
     await waitFor(() => expect(screen.getByText("workflow exploded")).toBeInTheDocument());
   });
 
   it("approves a candidate and refreshes workflows", async () => {
-    const client = renderPage();
+    const { client, queryClient } = renderPage();
+    const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
     await waitFor(() => expect(screen.getByText("MLB-CONFLICT")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: /approve ref-11/i }));
     await waitFor(() =>
@@ -184,10 +201,14 @@ describe("ProductLinksPage", () => {
       ),
     );
     expect(client.listProductLinkWorkflows).toHaveBeenCalledTimes(2);
+    expect(invalidateQueries).toHaveBeenCalledTimes(2);
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: queryKeyNamespaces.linkage });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: queryKeyNamespaces.catalog });
   });
 
   it("rejects a listing identity", async () => {
-    const client = renderPage();
+    const { client, queryClient } = renderPage();
+    const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
     await waitFor(() => expect(screen.getByText("MLB-CONFLICT")).toBeInTheDocument());
     fireEvent.click(screen.getAllByRole("button", { name: /reject listing/i })[0]);
     await waitFor(() =>
@@ -199,10 +220,14 @@ describe("ProductLinksPage", () => {
         }),
       ),
     );
+    expect(invalidateQueries).toHaveBeenCalledTimes(2);
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: queryKeyNamespaces.linkage });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: queryKeyNamespaces.catalog });
   });
 
   it("manually resolves a workflow", async () => {
-    const client = renderPage();
+    const { client, queryClient } = renderPage();
+    const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
     await waitFor(() => expect(screen.getByText("MLB-CONFLICT")).toBeInTheDocument());
     fireEvent.click(screen.getAllByRole("button", { name: /manual resolve/i })[0]);
     fireEvent.change(screen.getByLabelText("Internal product ID MLB-CONFLICT"), { target: { value: "77" } });
@@ -222,5 +247,24 @@ describe("ProductLinksPage", () => {
         }),
       ),
     );
+    expect(invalidateQueries).toHaveBeenCalledTimes(2);
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: queryKeyNamespaces.linkage });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: queryKeyNamespaces.catalog });
+  });
+
+  it("registers linkage as uncached and does not invalidate after a failed write", async () => {
+    const { queryClient } = renderPage({
+      approveProductLinkCandidate: vi.fn().mockRejectedValue(new Error("approval failed")),
+    });
+    const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
+
+    await waitFor(() => expect(screen.getByText("MLB-CONFLICT")).toBeInTheDocument());
+    const cachedQuery = queryClient.getQueryCache().find({ queryKey: linkageQueryKeys.workflows("inst-1") });
+    expect(cachedQuery?.options.staleTime).toBe(0);
+    expect(cachedQuery?.options.gcTime).toBe(0);
+    fireEvent.click(screen.getByRole("button", { name: /approve ref-11/i }));
+
+    await waitFor(() => expect(screen.getByText("approval failed")).toBeInTheDocument());
+    expect(invalidateQueries).not.toHaveBeenCalled();
   });
 });

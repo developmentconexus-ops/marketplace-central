@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, StatCard, SurfaceCard } from "@marketplace-central/ui";
 import type {
   IntegrationInstallation,
@@ -15,13 +16,20 @@ import type {
   ProfitabilityMarginInput,
   ProfitabilityProfitSnapshot,
 } from "@marketplace-central/sdk-runtime";
+import {
+  FreshnessIndicator,
+  profitabilityQueryKeys,
+  queryKeyNamespaces,
+  QUERY_STALE_TIME,
+  type RefreshableClient,
+} from "@marketplace-central/web-query";
 
-export interface OrdersClient {
+export interface OrdersClient extends RefreshableClient {
   listIntegrationInstallations: () => Promise<{ items: IntegrationInstallation[] }>;
   importMarketplaceOrders: (req: { installation_id: string; limit?: number }) => Promise<unknown>;
   listMarketplaceOrders: (installationId: string, limit?: number) => Promise<{ items: MarketplaceOrder[] }>;
   importProfitabilityMarginInputs: (req: { installation_id: string; limit?: number }) => Promise<unknown>;
-  listProfitabilityMarginInputs: (installationId: string, limit?: number) => Promise<{ items: ProfitabilityMarginInput[] }>;
+  listProfitabilityMarginInputs: (installationId: string, limit?: number) => Promise<{ items: ProfitabilityMarginInput[]; as_of?: string }>;
   createProfitabilityManualAdjustment: (req: {
     installation_id: string;
     idempotency_key: string;
@@ -266,6 +274,7 @@ function inputLabel(kind: ProfitabilityInputKind): string {
 }
 
 export function OrdersPage({ client, operator }: OrdersPageProps) {
+  const queryClient = useQueryClient();
   const pendingAdjustmentSubmission = useRef<PendingAdjustmentSubmission | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [installations, setInstallations] = useState<IntegrationInstallation[]>([]);
@@ -283,6 +292,34 @@ export function OrdersPage({ client, operator }: OrdersPageProps) {
   const selectedInstallationID = searchParams.get("installation") ?? "";
   const selectedOrderID = searchParams.get("order") ?? "";
   const selectedQuality = (searchParams.get("quality") as QualityFilter | null) ?? "all";
+
+  const profitabilityQuery = useQuery({
+    queryKey: profitabilityQueryKeys.marginInputs(selectedInstallationID),
+    queryFn: () => client.listProfitabilityMarginInputs(selectedInstallationID, 200),
+    staleTime: QUERY_STALE_TIME.pricecost,
+    enabled: Boolean(selectedInstallationID),
+  });
+
+  const marginInputImportMutation = useMutation({
+    mutationFn: (req: Parameters<OrdersClient["importProfitabilityMarginInputs"]>[0]) =>
+      client.importProfitabilityMarginInputs(req),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeyNamespaces.catalog }),
+        queryClient.invalidateQueries({ queryKey: queryKeyNamespaces.profitability }),
+      ]);
+    },
+  });
+
+  useEffect(() => {
+    if (profitabilityQuery.data) {
+      setInputs(profitabilityQuery.data.items);
+    }
+    if (profitabilityQuery.error) {
+      setError(normalizeError(profitabilityQuery.error, "Failed to load profitability inputs."));
+      setState("error");
+    }
+  }, [profitabilityQuery.data, profitabilityQuery.error]);
 
   useEffect(() => {
     let cancelled = false;
@@ -313,15 +350,13 @@ export function OrdersPage({ client, operator }: OrdersPageProps) {
   }, [client, selectedInstallationID, setSearchParams]);
 
   async function loadWorkspace(installationID: string) {
-    const [ordersResult, inputsResult, adjustmentsResult, snapshotsResult] = await Promise.all([
+    const [ordersResult, adjustmentsResult, snapshotsResult] = await Promise.all([
       client.listMarketplaceOrders(installationID, 50),
-      client.listProfitabilityMarginInputs(installationID, 200),
       client.listProfitabilityManualAdjustments(installationID, 200),
       client.listProfitabilityProfitSnapshots(installationID, 200),
     ]);
 
     setOrders(ordersResult.items);
-    setInputs(inputsResult.items);
     setAdjustments(adjustmentsResult.items);
     setSnapshots(snapshotsResult.items);
   }
@@ -464,7 +499,13 @@ export function OrdersPage({ client, operator }: OrdersPageProps) {
     if (!selectedInstallationID) {
       return;
     }
-    await loadWorkspace(selectedInstallationID);
+    const run = async () => {
+      await Promise.all([
+        loadWorkspace(selectedInstallationID),
+        queryClient.refetchQueries({ queryKey: profitabilityQueryKeys.marginInputs(selectedInstallationID) }),
+      ]);
+    };
+    await (client.withNoCache ? client.withNoCache(run) : run());
   }
 
   async function handleCreateAdjustment() {
@@ -549,8 +590,17 @@ export function OrdersPage({ client, operator }: OrdersPageProps) {
           <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Orders + Margin ML</p>
           <h2 className="text-2xl font-semibold text-slate-900">Orders workspace</h2>
           <p className="text-sm text-slate-500">Inspect persisted order profitability, missing inputs, and operator adjustments.</p>
+          <p className="text-sm text-slate-500"><FreshnessIndicator asOf={profitabilityQuery.data?.as_of} /></p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button
+            variant="secondary"
+            loading={pendingAction === "refresh"}
+            disabled={!selectedInstallationID}
+            onClick={() => void runWorkspaceAction("refresh", refreshCurrentInstallation, "Orders workspace refreshed.")}
+          >
+            Refresh
+          </Button>
           <Button
             variant="secondary"
             loading={pendingAction === "import-orders"}
@@ -574,8 +624,7 @@ export function OrdersPage({ client, operator }: OrdersPageProps) {
               void runWorkspaceAction(
                 "import-inputs",
                 async () => {
-                  await client.importProfitabilityMarginInputs({ installation_id: selectedInstallationID, limit: 50 });
-                  await refreshCurrentInstallation();
+                  await marginInputImportMutation.mutateAsync({ installation_id: selectedInstallationID, limit: 50 });
                 },
                 "Margin inputs imported.",
               )

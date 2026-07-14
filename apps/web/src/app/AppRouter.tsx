@@ -3,7 +3,7 @@ import { ClassificationsPage } from "@marketplace-central/feature-classification
 import { MarketplaceSettingsPage } from "@marketplace-central/feature-marketplaces";
 import { PricingSimulatorPage } from "@marketplace-central/feature-simulator";
 import { StockSeguroPage } from "@marketplace-central/feature-inventory";
-import { ProductsPage } from "@marketplace-central/feature-products";
+import { CatalogPage } from "@marketplace-central/feature-products";
 import { IntegrationsHubPage } from "@marketplace-central/feature-integrations";
 import { ProductLinksPage } from "@marketplace-central/feature-product-links";
 import { OrdersPage } from "@marketplace-central/feature-orders";
@@ -11,9 +11,9 @@ import { Layout } from "./Layout";
 import { DashboardPage } from "../pages/DashboardPage";
 import { useClient } from "./ClientContext";
 
-function ProductsPageWrapper() {
+function CatalogPageWrapper() {
   const client = useClient();
-  return <ProductsPage client={client} />;
+  return <CatalogPage client={client} />;
 }
 
 function ClassificationsPageWrapper() {
@@ -57,7 +57,7 @@ export function AppRouter() {
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<DashboardPage />} />
-          <Route path="/products" element={<ProductsPageWrapper />} />
+          <Route path="/products" element={<CatalogPageWrapper />} />
           <Route path="/classifications" element={<ClassificationsPageWrapper />} />
           <Route path="/marketplaces" element={<MarketplaceSettingsPageWrapper />} />
           <Route path="/integrations" element={<IntegrationsHubPageWrapper />} />
