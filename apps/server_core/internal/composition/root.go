@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	cataloginternalread "marketplace-central/apps/server_core/internal/modules/catalog/adapters/internalread"
@@ -38,6 +39,7 @@ import (
 	integrationsdomain "marketplace-central/apps/server_core/internal/modules/integrations/domain"
 	integrationstransport "marketplace-central/apps/server_core/internal/modules/integrations/transport"
 	internalreadoracle "marketplace-central/apps/server_core/internal/modules/internal_read/adapters/oracle"
+	"marketplace-central/apps/server_core/internal/modules/internal_read/adapters/oracle/oraclebatch"
 	internalreadapp "marketplace-central/apps/server_core/internal/modules/internal_read/application"
 	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
 	internalreadobservability "marketplace-central/apps/server_core/internal/modules/internal_read/observability"
@@ -179,6 +181,14 @@ func registerBatchRoutes(mux *httpx.RouteClassMux) {
 	}
 }
 
+func oracleBatchPermits(getenv func(string) string) int {
+	permits, err := strconv.Atoi(getenv("MPC_ORACLE_BATCH_PERMITS"))
+	if err != nil || permits <= 0 {
+		return 4
+	}
+	return permits
+}
+
 func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	observabilityCfg, err := internalreadobservability.LoadConfig(os.Getenv)
 	if err != nil {
@@ -315,6 +325,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	var internalReadSvc internalreadapp.Service
 	var internalReadAvailable bool
 	var oracleDB internalreadoracle.Database
+	var oracleBatchSemaphore *oraclebatch.Semaphore
 	var poolStats *internalreadobservability.PoolStatsLoop
 	if oracleCfg, err := internalreadoracle.LoadConfigFromEnv(os.Getenv); err != nil {
 		slog.Warn("product links oracle reader unavailable", "err", err)
@@ -322,6 +333,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		slog.Warn("product links oracle connection failed", "err", err)
 	} else {
 		oracleDB = db
+		oracleBatchSemaphore = oraclebatch.NewSemaphore(oracleBatchPermits(os.Getenv))
 		reader := internalreadobservability.NewTimingReader(
 			internalreadoracle.NewReader(oracleDB),
 			slog.Default(),
@@ -417,7 +429,10 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		Snapshots:   profitabilityStore,
 	}
 	if internalReadAvailable {
-		profitabilityCfg.Internal = profitabilityinternalread.NewFactReader(internalReadSvc)
+		profitabilityCfg.Internal = profitabilityinternalread.NewFactReader(
+			internalReadSvc,
+			internalreadoracle.NewBatchReader(oracleDB, oracleBatchSemaphore),
+		)
 	}
 	if assistedLinkageService != nil {
 		profitabilityCfg.Lineage = profitabilityorders.NewSankhyaLineageReader(assistedLinkageService, cfg.DefaultTenantID)
