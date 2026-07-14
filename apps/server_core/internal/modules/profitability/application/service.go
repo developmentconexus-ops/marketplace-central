@@ -11,6 +11,7 @@ import (
 	"time"
 
 	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
+	internalreadports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 	profitabilitydomain "marketplace-central/apps/server_core/internal/modules/profitability/domain"
 	"marketplace-central/apps/server_core/internal/modules/profitability/ports"
 )
@@ -43,6 +44,7 @@ type Service struct {
 	snapshots       ports.ProfitSnapshotStore
 	now             func() time.Time
 	newAdjustmentID func() (string, error)
+	invalidator     internalreadports.CacheInvalidator
 }
 
 type ServiceConfig struct {
@@ -54,6 +56,7 @@ type ServiceConfig struct {
 	Snapshots       ports.ProfitSnapshotStore
 	Now             func() time.Time
 	NewAdjustmentID func() (string, error)
+	Invalidator     internalreadports.CacheInvalidator
 }
 
 const (
@@ -80,6 +83,7 @@ func NewService(cfg ServiceConfig) *Service {
 		snapshots:       cfg.Snapshots,
 		now:             now,
 		newAdjustmentID: newAdjustmentID,
+		invalidator:     cfg.Invalidator,
 	}
 }
 
@@ -118,6 +122,9 @@ func (s *Service) ImportMarginInputs(ctx context.Context, input ImportMarginInpu
 	}
 	if err := s.inputs.ReplaceInputs(ctx, installationID, orderIDs, items); err != nil {
 		return profitabilitydomain.ImportInputsResult{}, err
+	}
+	if s.invalidator != nil {
+		s.invalidator.InvalidateClass("pricecost")
 	}
 	return profitabilitydomain.ImportInputsResult{
 		InstallationID: installationID,

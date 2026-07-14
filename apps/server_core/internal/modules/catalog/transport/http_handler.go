@@ -31,20 +31,18 @@ const (
 	searchMaxLimit      = 50
 )
 
-type freshnessPolicyContextKey struct{}
-
 // FreshnessPolicyFromContext exposes the transport-to-read freshness seam to
-// the composition-owned reader without adding caching to this feature.
+// the composition-owned reader without coupling transport callers to the
+// context key implementation.
 func FreshnessPolicyFromContext(ctx context.Context) (internalreaddomain.FreshnessPolicy, bool) {
-	policy, ok := ctx.Value(freshnessPolicyContextKey{}).(internalreaddomain.FreshnessPolicy)
-	return policy, ok
+	return internalreaddomain.FreshnessPolicyFromContext(ctx)
 }
 
 func requestContext(r *http.Request) context.Context {
 	if !hasNoCacheDirective(r.Header.Get("Cache-Control")) {
 		return r.Context()
 	}
-	return context.WithValue(r.Context(), freshnessPolicyContextKey{}, internalreaddomain.FreshnessPolicy{MaxAge: 0})
+	return internalreaddomain.WithFreshnessPolicy(r.Context(), internalreaddomain.FreshnessPolicy{MaxAge: 0})
 }
 
 func hasNoCacheDirective(header string) bool {

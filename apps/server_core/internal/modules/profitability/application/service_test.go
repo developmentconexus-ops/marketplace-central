@@ -8,6 +8,7 @@ import (
 	"time"
 
 	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
+	internalreadports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 	profitabilitydomain "marketplace-central/apps/server_core/internal/modules/profitability/domain"
 	"marketplace-central/apps/server_core/internal/modules/profitability/ports"
 )
@@ -408,6 +409,22 @@ func TestImportMarginInputsPreservesUnknownCost(t *testing.T) {
 	t.Fatal("expected a cost input")
 }
 
+func TestImportMarginInputsDoesNotInvalidateFailedPersistence(t *testing.T) {
+	invalidator := &recordingCacheInvalidator{}
+	persistErr := errors.New("rolled back")
+	service := NewService(ServiceConfig{
+		Orders:      stubOrderReader{},
+		Inputs:      failingInputStore{err: persistErr},
+		Invalidator: invalidator,
+	})
+	if _, err := service.ImportMarginInputs(context.Background(), ImportMarginInputsInput{InstallationID: "inst-1"}); !errors.Is(err, persistErr) {
+		t.Fatalf("ImportMarginInputs() error=%v, want persistence failure", err)
+	}
+	if len(invalidator.classes) != 0 {
+		t.Fatalf("invalidations=%v after persistence failure, want none", invalidator.classes)
+	}
+}
+
 func TestImportMarginInputsDoesNotReadInternalFactsForNonResolvedLinkWithProductID(t *testing.T) {
 	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
 	productID := 20303
@@ -746,6 +763,21 @@ func validAdjustmentInput(actor profitabilitydomain.ActorMetadata) CreateManualA
 }
 
 type storeInputNoop struct{}
+
+type failingInputStore struct{ err error }
+
+func (s failingInputStore) ReplaceInputs(context.Context, string, []string, []profitabilitydomain.MarginInput) error {
+	return s.err
+}
+func (failingInputStore) ListInputs(context.Context, string, int) ([]profitabilitydomain.MarginInput, error) {
+	return nil, nil
+}
+
+type recordingCacheInvalidator struct{ classes []string }
+
+func (r *recordingCacheInvalidator) InvalidateClass(class string) { r.classes = append(r.classes, class) }
+
+var _ internalreadports.CacheInvalidator = (*recordingCacheInvalidator)(nil)
 
 func (storeInputNoop) ReplaceInputs(context.Context, string, []string, []profitabilitydomain.MarginInput) error {
 	return nil

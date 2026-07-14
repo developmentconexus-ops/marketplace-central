@@ -40,6 +40,7 @@ import (
 	integrationsdomain "marketplace-central/apps/server_core/internal/modules/integrations/domain"
 	integrationstransport "marketplace-central/apps/server_core/internal/modules/integrations/transport"
 	internalreadoracle "marketplace-central/apps/server_core/internal/modules/internal_read/adapters/oracle"
+	internalreadcache "marketplace-central/apps/server_core/internal/modules/internal_read/adapters/cache"
 	"marketplace-central/apps/server_core/internal/modules/internal_read/adapters/oracle/oraclebatch"
 	internalreadapp "marketplace-central/apps/server_core/internal/modules/internal_read/application"
 	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
@@ -187,6 +188,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	if err != nil {
 		return nil, fmt.Errorf("observability config: %w", err)
 	}
+	freshnessCache := internalreadcache.New(internalreadcache.ConfigFromEnv(os.Getenv))
 
 	mux := httpx.NewRouteClassMux()
 	registerBatchRoutes(mux)
@@ -326,8 +328,12 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		slog.Warn("product links oracle connection failed", "err", err)
 	} else {
 		oracleDB = db
-		reader := internalreadobservability.NewTimingReader(
+		cachedReader := internalreadcache.NewReader(
 			internalreadoracle.NewReader(oracleDB),
+			freshnessCache,
+		)
+		reader := internalreadobservability.NewTimingReader(
+			cachedReader,
 			slog.Default(),
 			observabilityCfg.SlowQueryThreshold,
 		)
@@ -335,7 +341,10 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		poolStats = internalreadobservability.NewPoolStatsLoop(oracleDB, slog.Default(), observabilityCfg.PoolStatsInterval)
 		internalReadAvailable = true
 		productMatcher = internalReadSvc
-		inventoryStockReader = internalreadoracle.NewBatchStockReader(oracleDB, oracleBatchSemaphore)
+		inventoryStockReader = internalreadcache.NewStockBatchReader(
+			internalreadoracle.NewBatchStockReader(oracleDB, oracleBatchSemaphore),
+			freshnessCache,
+		)
 	}
 	var canonicalCatalogReader catalogports.CanonicalProductReader = cataloginternalread.UnavailableReader{Err: internalreaddomain.NewReadError(internalreaddomain.ReadErrorSourceUnavailable, "oracle catalog reader is unavailable", nil)}
 	if internalReadAvailable {
@@ -343,7 +352,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	}
 	catalogEnrichments := catalogpostgres.NewEnrichmentRepository(pool, cfg.DefaultTenantID)
 	legacyReader := canonicalCatalogReader.(catalogports.ProductReader)
-	catalogSvc := catalogapp.NewService(legacyReader, catalogEnrichments, cfg.DefaultTenantID)
+	catalogSvc := catalogapp.NewServiceWithInvalidator(legacyReader, catalogEnrichments, cfg.DefaultTenantID, freshnessCache)
 	var catalogPageReader internalreadports.CatalogPageReader
 	if internalReadAvailable {
 		catalogPageReader = internalReadSvc
@@ -367,9 +376,10 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		inventoryproductlinks.NewLinkReader(productLinkCandidateRepo, productLinkCandidateRepo),
 		inventoryStockReader,
 	)
-	inventoryActionSvc := inventoryapp.NewStockActionService(
+	inventoryActionSvc := inventoryapp.NewStockActionServiceWithInvalidator(
 		inventoryActionRepo,
 		inventoryconnectors.NewStockWriter(marketplaceCapabilities),
+		freshnessCache,
 	)
 	inventoryManualAction := inventoryapp.NewManualActionFacade(
 		inventoryRiskSvc,
@@ -414,7 +424,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 			slog.Warn("assisted Sankhya linkage unavailable", "err", err)
 		} else {
 			assistedLinkageService = ordersapp.NewAssistedSankhyaLinkageService(ordersapp.AssistedSankhyaLinkageServiceConfig{
-				Orders: ordersRepo, Reader: reader, Linkages: linkageRepo,
+				Orders: ordersRepo, Reader: reader, Linkages: linkageRepo, Invalidator: freshnessCache,
 			})
 			assistedLinkageApp = assistedLinkageService
 		}
@@ -431,9 +441,13 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	if internalReadAvailable {
 		profitabilityCfg.Internal = profitabilityinternalread.NewFactReader(
 			internalReadSvc,
-			internalreadoracle.NewBatchReader(oracleDB, oracleBatchSemaphore),
+			internalreadcache.NewBatchReader(
+				internalreadoracle.NewBatchReader(oracleDB, oracleBatchSemaphore),
+				freshnessCache,
+			),
 		)
 	}
+	profitabilityCfg.Invalidator = freshnessCache
 	if assistedLinkageService != nil {
 		profitabilityCfg.Lineage = profitabilityorders.NewSankhyaLineageReader(assistedLinkageService, cfg.DefaultTenantID)
 	}

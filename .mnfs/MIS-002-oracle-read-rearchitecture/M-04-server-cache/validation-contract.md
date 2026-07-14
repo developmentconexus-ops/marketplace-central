@@ -111,9 +111,10 @@ Per criterion.
 
 ## Retry Policy
 
-- correction_attempts: 0
+- correction_attempts: 6
 - max_correction_attempts: 2
-- last_validation_result: none
+- last_validation_result: qa-validator PASS at df2cac6a31f68c8980ccfa47da51cb40dfbcacee; Codex gpt-5.6-sol FAIL at the same frozen SHA with 3 blocking evidence-level findings; validation at the new SHA is pending
+- overrun: correction rounds 3-6 exceed max_correction_attempts and were user-authorized in the visible Milestone session as deliberate, disclosed test/evidence-only corrections; this is not a silent overrun
 
 ## Handoff
 

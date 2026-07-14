@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	internalreadports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 	"marketplace-central/apps/server_core/internal/modules/inventory/domain"
 )
 
@@ -250,6 +251,38 @@ func TestApplyManualStockActionPersistsWriterErrorAudit(t *testing.T) {
 	}
 }
 
+func TestApplyManualStockActionDoesNotInvalidateFailedOrRejectedWrites(t *testing.T) {
+	now := time.Date(2026, 7, 9, 14, 0, 0, 0, time.UTC)
+	fresh := now.Add(-time.Minute)
+	t.Run("persistence failure", func(t *testing.T) {
+		invalidator := &recordingCacheInvalidator{}
+		store := &memoryActionStore{failOnSave: 2, saveErr: errors.New("rolled back")}
+		writer := &fakeStockWriter{result: domain.StockWriteResult{Status: domain.StockWriteResultApplied, Message: "updated"}}
+		service := NewStockActionServiceWithInvalidator(store, writer, invalidator)
+		if _, err := service.ApplyManual(context.Background(), applyInput("act-persist-fail", actionRiskInput(now, domain.LinkStateResolved, intPtr(8), intPtr(9), &fresh, &fresh), 7, now)); err == nil {
+			t.Fatal("ApplyManual() error = nil, want persistence failure")
+		}
+		if writer.calls != 1 || store.saveCalls != 2 {
+			t.Fatalf("provider/save path was not reached: writer calls=%d save calls=%d, want 1/2", writer.calls, store.saveCalls)
+		}
+		if len(invalidator.classes) != 0 {
+			t.Fatalf("invalidations=%v after persistence failure, want none", invalidator.classes)
+		}
+	})
+	t.Run("provider rejection", func(t *testing.T) {
+		invalidator := &recordingCacheInvalidator{}
+		writer := &fakeStockWriter{result: domain.StockWriteResult{Status: domain.StockWriteResultRejected, Message: "rejected"}}
+		service := NewStockActionServiceWithInvalidator(&memoryActionStore{}, writer, invalidator)
+		action, err := service.ApplyManual(context.Background(), applyInput("act-provider-reject", actionRiskInput(now, domain.LinkStateResolved, intPtr(8), intPtr(9), &fresh, &fresh), 7, now))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if action.State == domain.StockActionStateApplied || len(invalidator.classes) != 0 {
+			t.Fatalf("state=%s invalidations=%v, want non-applied and none", action.State, invalidator.classes)
+		}
+	})
+}
+
 func TestApplyManualStockActionDoesNotRepeatProviderIntentForSameActionID(t *testing.T) {
 	now := time.Date(2026, 7, 9, 14, 0, 0, 0, time.UTC)
 	fresh := now.Add(-time.Minute)
@@ -352,9 +385,20 @@ func (w *fakeStockWriter) UpdateAvailableQuantity(_ context.Context, request dom
 }
 
 type memoryActionStore struct {
-	items map[string]domain.StockAction
-	err   error
+	items      map[string]domain.StockAction
+	err        error
+	failOnSave int
+	saveErr    error
+	saveCalls  int
 }
+
+type recordingCacheInvalidator struct{ classes []string }
+
+func (r *recordingCacheInvalidator) InvalidateClass(class string) {
+	r.classes = append(r.classes, class)
+}
+
+var _ internalreadports.CacheInvalidator = (*recordingCacheInvalidator)(nil)
 
 func (s *memoryActionStore) FindByID(_ context.Context, actionID string) (domain.StockAction, bool, error) {
 	if s.err != nil {
@@ -368,8 +412,12 @@ func (s *memoryActionStore) FindByID(_ context.Context, actionID string) (domain
 }
 
 func (s *memoryActionStore) Save(_ context.Context, action domain.StockAction) error {
+	s.saveCalls++
 	if s.err != nil {
 		return s.err
+	}
+	if s.failOnSave > 0 && s.saveCalls == s.failOnSave {
+		return s.saveErr
 	}
 	if action.ActionID == "" {
 		return errors.New("missing action id")

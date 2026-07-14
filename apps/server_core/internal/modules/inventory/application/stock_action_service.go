@@ -8,15 +8,21 @@ import (
 
 	"marketplace-central/apps/server_core/internal/modules/inventory/domain"
 	"marketplace-central/apps/server_core/internal/modules/inventory/ports"
+	internalreadports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 )
 
 type StockActionService struct {
 	store  ports.StockActionStore
 	writer ports.StockWriter
+	invalidator internalreadports.CacheInvalidator
 }
 
 func NewStockActionService(store ports.StockActionStore, writer ports.StockWriter) StockActionService {
-	return StockActionService{store: store, writer: writer}
+	return NewStockActionServiceWithInvalidator(store, writer, nil)
+}
+
+func NewStockActionServiceWithInvalidator(store ports.StockActionStore, writer ports.StockWriter, invalidator internalreadports.CacheInvalidator) StockActionService {
+	return StockActionService{store: store, writer: writer, invalidator: invalidator}
 }
 
 type ApplyManualStockActionInput struct {
@@ -111,7 +117,13 @@ func (s StockActionService) ApplyManual(ctx context.Context, input ApplyManualSt
 		action.FailureReason = domain.BlockingReason{Code: "provider_rejected", Message: result.Message}
 		action = withActionEvent(action, domain.StockActionStateFailed, result.Message, input.Now)
 	}
-	return action, s.store.Save(ctx, action)
+	if err := s.store.Save(ctx, action); err != nil {
+		return domain.StockAction{}, err
+	}
+	if action.State == domain.StockActionStateApplied && s.invalidator != nil {
+		s.invalidator.InvalidateClass("inventory")
+	}
+	return action, nil
 }
 
 func newStockAction(input ApplyManualStockActionInput, row domain.StockRiskRow) domain.StockAction {

@@ -5,16 +5,22 @@ import (
 
 	"marketplace-central/apps/server_core/internal/modules/catalog/domain"
 	"marketplace-central/apps/server_core/internal/modules/catalog/ports"
+	internalreadports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 )
 
 type Service struct {
 	reader      ports.ProductReader
 	enrichments ports.EnrichmentStore
 	tenantID    string
+	invalidator internalreadports.CacheInvalidator
 }
 
 func NewService(reader ports.ProductReader, enrichments ports.EnrichmentStore, tenantID string) Service {
-	return Service{reader: reader, enrichments: enrichments, tenantID: tenantID}
+	return NewServiceWithInvalidator(reader, enrichments, tenantID, nil)
+}
+
+func NewServiceWithInvalidator(reader ports.ProductReader, enrichments ports.EnrichmentStore, tenantID string, invalidator internalreadports.CacheInvalidator) Service {
+	return Service{reader: reader, enrichments: enrichments, tenantID: tenantID, invalidator: invalidator}
 }
 
 func (s Service) ListProducts(ctx context.Context) ([]domain.Product, error) {
@@ -66,7 +72,13 @@ func (s Service) GetEnrichment(ctx context.Context, productID string) (domain.Pr
 
 func (s Service) UpsertEnrichment(ctx context.Context, enrichment domain.ProductEnrichment) error {
 	enrichment.TenantID = s.tenantID
-	return s.enrichments.UpsertEnrichment(ctx, enrichment)
+	if err := s.enrichments.UpsertEnrichment(ctx, enrichment); err != nil {
+		return err
+	}
+	if s.invalidator != nil {
+		s.invalidator.InvalidateClass("catalog")
+	}
+	return nil
 }
 
 // applyEnrichments overlays MPC manual enrichment onto canonical source products.
