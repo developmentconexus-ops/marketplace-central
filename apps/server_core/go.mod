@@ -3,7 +3,7 @@ module marketplace-central/apps/server_core
 go 1.25.1
 
 require (
-	github.com/godror/godror v0.49.4
+	github.com/godror/godror v0.51.0
 	github.com/jackc/pgx/v5 v5.7.6
 )
 

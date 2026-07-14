@@ -64,24 +64,6 @@ func TestBuildTaxInputsQueryUsesExactSaleLinePredicates(t *testing.T) {
 	}
 }
 
-func TestBuildDSNIncludesOnlyConfigKeys(t *testing.T) {
-	dsn := buildDSN(Config{
-		Username:        "user",
-		Password:        "secret",
-		ConnectString:   "host:1521/service",
-		PoolMinSessions: 1,
-		PoolMaxSessions: 4,
-		SessionTimeout:  5 * time.Minute,
-	})
-	if !strings.Contains(dsn, `connectString="host:1521/service"`) {
-		t.Fatalf("expected connectString in dsn, got %q", dsn)
-	}
-	legacyDatabaseURLKey := "MS" + "_DATABASE_URL"
-	if strings.Contains(dsn, legacyDatabaseURLKey) {
-		t.Fatalf("did not expect legacy msdb keys in dsn %q", dsn)
-	}
-}
-
 func TestFindProductsQueryKeepsEANSeparateFromTGFPROReference(t *testing.T) {
 	ean := "7890000000000"
 	query, args, err := buildFindProductsQuery(ports.FindProductsInput{EAN: &ean})

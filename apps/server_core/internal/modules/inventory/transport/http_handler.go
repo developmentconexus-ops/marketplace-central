@@ -31,7 +31,7 @@ func NewHandler(risks StockRiskLister, actions ManualActionApplier) Handler {
 	return Handler{risks: risks, actions: actions}
 }
 
-func (h Handler) Register(mux *http.ServeMux) {
+func (h Handler) Register(mux httpx.RouteRegistrar) {
 	mux.HandleFunc("/inventory/stock-risks", h.handleStockRisks)
 	mux.HandleFunc("/inventory/stock-actions/manual-apply", h.handleManualApply)
 }

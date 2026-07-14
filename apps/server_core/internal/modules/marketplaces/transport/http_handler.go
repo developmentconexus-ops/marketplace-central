@@ -50,7 +50,7 @@ func mapMarketplacesError(msg string) (int, string) {
 	return http.StatusInternalServerError, "MARKETPLACES_INTERNAL_ERROR"
 }
 
-func (h Handler) Register(mux *http.ServeMux) {
+func (h Handler) Register(mux httpx.RouteRegistrar) {
 	mux.HandleFunc("/marketplaces/accounts", func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		switch r.Method {

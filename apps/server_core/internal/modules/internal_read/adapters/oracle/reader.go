@@ -380,25 +380,7 @@ func (r *Reader) ensureAvailable(ctx context.Context) error {
 	if r == nil || r.db == nil {
 		return domain.NewReadError(domain.ReadErrorSourceUnavailable, "oracle reader is not configured", nil)
 	}
-	if err := r.db.PingContext(ctx); err != nil {
-		return wrapOracleError("ping oracle", err)
-	}
 	return nil
-}
-
-func buildDSN(cfg Config) string {
-	parts := []string{
-		fmt.Sprintf("user=%q", cfg.Username),
-		fmt.Sprintf("password=%q", cfg.Password),
-		fmt.Sprintf("connectString=%q", cfg.ConnectString),
-		fmt.Sprintf("poolMinSessions=%d", cfg.PoolMinSessions),
-		fmt.Sprintf("poolMaxSessions=%d", cfg.PoolMaxSessions),
-		fmt.Sprintf("poolSessionTimeout=%s", cfg.SessionTimeout),
-	}
-	if cfg.LibDir != "" {
-		parts = append(parts, fmt.Sprintf("libDir=%q", cfg.LibDir))
-	}
-	return strings.Join(parts, " ")
 }
 
 func buildFindProductsQuery(input ports.FindProductsInput) (string, []any, error) {
@@ -527,7 +509,18 @@ func wrapOracleError(operation string, err error) error {
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.NewReadError(domain.ReadErrorUnsupportedQuery, fmt.Sprintf("oracle %s returned no rows", operation), nil)
 	}
-	return domain.NewReadError(domain.ReadErrorSourceUnavailable, fmt.Sprintf("oracle %s failed", operation), err)
+	return domain.NewReadError(domain.ReadErrorSourceUnavailable, fmt.Sprintf("oracle %s failed", operation), safeOracleCause(err))
+}
+
+func safeOracleCause(err error) error {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return err
+	}
+	var coded interface{ Code() int }
+	if errors.As(err, &coded) {
+		return fmt.Errorf("oracle error code=%d", coded.Code())
+	}
+	return errors.New("oracle driver error")
 }
 
 func trimmedPointer(value *string) *string {

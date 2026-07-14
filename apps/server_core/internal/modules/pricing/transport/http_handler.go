@@ -49,7 +49,7 @@ func mapPricingError(msg string) (int, string) {
 	return http.StatusInternalServerError, "PRICING_INTERNAL_ERROR"
 }
 
-func (h Handler) Register(mux *http.ServeMux) {
+func (h Handler) Register(mux httpx.RouteRegistrar) {
 	mux.HandleFunc("/pricing/simulations", h.handleSimulations)
 	mux.HandleFunc("/pricing/simulations/batch", h.handleBatch)
 }

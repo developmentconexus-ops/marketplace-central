@@ -54,7 +54,7 @@ func NewHandler(importer ListingSnapshotImporter, candidateMaker LinkCandidateGe
 	}
 }
 
-func (h Handler) Register(mux *http.ServeMux) {
+func (h Handler) Register(mux httpx.RouteRegistrar) {
 	mux.HandleFunc("/product-links/listing-snapshots/imports", h.handleListingSnapshotImports)
 	mux.HandleFunc("/product-links/link-candidates/generations", h.handleLinkCandidateGenerations)
 	mux.HandleFunc("/product-links/link-candidates", h.handleLinkCandidates)

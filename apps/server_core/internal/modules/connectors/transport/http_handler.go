@@ -33,7 +33,7 @@ func normalizeMEAuth(meAuth connectorports.MEAuthPort) connectorports.MEAuthPort
 	return meAuth
 }
 
-func (h *Handler) Register(mux *http.ServeMux) {
+func (h *Handler) Register(mux httpx.RouteRegistrar) {
 	mux.HandleFunc("/connectors/melhor-envio/auth/start", h.handleMEAuthStart)
 	mux.HandleFunc("/connectors/melhor-envio/auth/callback", h.handleMEAuthCallback)
 	mux.HandleFunc("/connectors/melhor-envio/status", h.handleMEStatus)

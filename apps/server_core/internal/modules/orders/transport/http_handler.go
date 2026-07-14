@@ -31,7 +31,7 @@ func NewHandler(importer OrderImporter, lister OrderLister) Handler {
 	return Handler{importer: importer, lister: lister}
 }
 
-func (h Handler) Register(mux *http.ServeMux) {
+func (h Handler) Register(mux httpx.RouteRegistrar) {
 	mux.HandleFunc("/orders/import", h.handleImport)
 	mux.HandleFunc("/orders", h.handleList)
 }

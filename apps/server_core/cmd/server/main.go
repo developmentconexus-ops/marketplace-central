@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"time"
 
 	"marketplace-central/apps/server_core/internal/composition"
 	"marketplace-central/apps/server_core/internal/platform/config"
@@ -24,13 +25,17 @@ func main() {
 	if err != nil {
 		log.Fatalf("db pool: %v", err)
 	}
-	// Note: pool.Close() is not deferred because http.ListenAndServe exits via log.Fatal (os.Exit).
-	// The OS reclaims all connections on process exit.
-
 	logger.Printf("server starting on %s", cfg.Addr)
 	router, err := composition.NewRootRouter(pool, dbCfg)
 	if err != nil {
 		log.Fatalf("root router: %v", err)
 	}
-	log.Fatal(http.ListenAndServe(cfg.Addr, router))
+	server := &http.Server{
+		Addr:              cfg.Addr,
+		Handler:           router,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      60 * time.Second,
+	}
+	log.Fatal(server.ListenAndServe())
 }

@@ -31,7 +31,7 @@ func NewSankhyaLinkageHandler(service AssistedSankhyaLinkageApplication, tenantI
 	return SankhyaLinkageHandler{service: service, tenantID: strings.TrimSpace(tenantID)}
 }
 
-func (h SankhyaLinkageHandler) Register(mux *http.ServeMux) {
+func (h SankhyaLinkageHandler) Register(mux httpx.RouteRegistrar) {
 	mux.HandleFunc("GET /orders/{provider_order_id}/sankhya-linkage", h.handleCurrent)
 	mux.HandleFunc("GET /orders/{provider_order_id}/sankhya-linkage/candidates", h.handleCandidates)
 	mux.HandleFunc("POST /orders/{provider_order_id}/sankhya-linkage/confirm", h.handleConfirm)

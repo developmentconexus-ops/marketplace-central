@@ -2,7 +2,6 @@ package composition
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -152,7 +151,18 @@ func (f authFlowFacade) ReadStock(ctx context.Context, installationID string, re
 }
 
 func NewRootRouter(pool *pgxpool.Pool, cfg pgdb.Config) (http.Handler, error) {
-	mux := http.NewServeMux()
+	mux := httpx.NewRouteClassMux()
+	for _, pattern := range []string{
+		"/profitability/margin-inputs/import",
+		"/profitability/profit-snapshots/calculate",
+		"/orders/import",
+		"/product-links/listing-snapshots/imports",
+		"/product-links/link-candidates/generations",
+		"/pricing/simulations/batch",
+		"/admin/fee-schedules/sync",
+	} {
+		mux.RegisterRouteClass(pattern, httpx.BatchRouteClass)
+	}
 
 	base := httpx.NewRouter()
 	mux.Handle("/healthz", base)
@@ -280,7 +290,7 @@ func NewRootRouter(pool *pgxpool.Pool, cfg pgdb.Config) (http.Handler, error) {
 	}
 	var internalReadSvc internalreadapp.Service
 	var internalReadAvailable bool
-	var oracleDB *sql.DB
+	var oracleDB internalreadoracle.Database
 	if oracleCfg, err := internalreadoracle.LoadConfigFromEnv(os.Getenv); err != nil {
 		slog.Warn("product links oracle reader unavailable", "err", err)
 	} else if db, err := internalreadoracle.OpenDB(context.Background(), oracleCfg); err != nil {

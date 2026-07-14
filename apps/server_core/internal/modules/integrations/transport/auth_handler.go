@@ -42,7 +42,7 @@ func NewAuthHandler(flow AuthFlowReader) AuthHandler {
 	return AuthHandler{flow: flow}
 }
 
-func (h AuthHandler) Register(mux *http.ServeMux) {
+func (h AuthHandler) Register(mux httpx.RouteRegistrar) {
 	mux.HandleFunc("/integrations/installations/", h.handleInstallationAuth)
 	mux.HandleFunc("/integrations/auth/callback", h.handleCallback)
 }

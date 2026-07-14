@@ -68,7 +68,7 @@ func mapIntegrationError(err error) (int, string, string) {
 	return http.StatusInternalServerError, "INTEGRATIONS_INTERNAL_ERROR", "internal error"
 }
 
-func (h Handler) Register(mux *http.ServeMux) {
+func (h Handler) Register(mux httpx.RouteRegistrar) {
 	mux.HandleFunc("/integrations/providers", h.handleProviders)
 	mux.HandleFunc("/integrations/installations", h.handleInstallations)
 }

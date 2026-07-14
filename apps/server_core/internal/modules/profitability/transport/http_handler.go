@@ -27,7 +27,7 @@ type Handler struct{ service MarginInputImporter }
 
 func NewHandler(service MarginInputImporter) Handler { return Handler{service: service} }
 
-func (h Handler) Register(mux *http.ServeMux) {
+func (h Handler) Register(mux httpx.RouteRegistrar) {
 	mux.HandleFunc("/profitability/margin-inputs/import", h.handleImport)
 	mux.HandleFunc("/profitability/margin-inputs", h.handleListInputs)
 	mux.HandleFunc("/profitability/manual-adjustments", h.handleAdjustments)

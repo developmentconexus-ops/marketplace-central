@@ -45,7 +45,7 @@ func mapClassificationsError(msg string) (int, string, string) {
 	}
 }
 
-func (h Handler) Register(mux *http.ServeMux) {
+func (h Handler) Register(mux httpx.RouteRegistrar) {
 	mux.HandleFunc("/classifications", h.handleCollection)
 	mux.HandleFunc("GET /classifications/{id}", h.handleGet)
 	mux.HandleFunc("PUT /classifications/{id}", h.handleUpdate)

@@ -24,7 +24,7 @@ func writeError(w http.ResponseWriter, status int, code, message string) {
 	})
 }
 
-func (h Handler) Register(mux *http.ServeMux) {
+func (h Handler) Register(mux httpx.RouteRegistrar) {
 	mux.HandleFunc("/catalog/products", h.handleProducts)
 	mux.HandleFunc("GET /catalog/products/search", h.handleSearch)
 	mux.HandleFunc("/catalog/taxonomy", h.handleTaxonomy)

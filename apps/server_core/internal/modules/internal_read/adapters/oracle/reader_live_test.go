@@ -4,7 +4,6 @@ package oracle
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"os"
 	"testing"
@@ -156,7 +155,7 @@ func TestOracleLiveSmoke(t *testing.T) {
 	})
 }
 
-func discoverProductLookupInput(t *testing.T, ctx context.Context, db *sql.DB) ports.FindProductsInput {
+func discoverProductLookupInput(t *testing.T, ctx context.Context, db queryer) ports.FindProductsInput {
 	t.Helper()
 
 	var productID int
@@ -172,7 +171,7 @@ FETCH FIRST 1 ROW ONLY`).Scan(&productID)
 	return ports.FindProductsInput{ProductID: &productID}
 }
 
-func discoverStockProductID(t *testing.T, ctx context.Context, db *sql.DB) int {
+func discoverStockProductID(t *testing.T, ctx context.Context, db queryer) int {
 	t.Helper()
 
 	var productID int
@@ -189,7 +188,7 @@ FETCH FIRST 1 ROW ONLY`).Scan(&productID)
 	return productID
 }
 
-func discoverCurrentPriceInput(t *testing.T, ctx context.Context, db *sql.DB) (int, int, int, time.Time) {
+func discoverCurrentPriceInput(t *testing.T, ctx context.Context, db queryer) (int, int, int, time.Time) {
 	t.Helper()
 
 	var (
@@ -209,7 +208,7 @@ FETCH FIRST 1 ROW ONLY`).Scan(&productID, &tableID, &localID, &effectiveAt)
 	return productID, tableID, localID, effectiveAt
 }
 
-func discoverCostInput(t *testing.T, ctx context.Context, db *sql.DB) (int, int, time.Time) {
+func discoverCostInput(t *testing.T, ctx context.Context, db queryer) (int, int, time.Time) {
 	t.Helper()
 
 	var (
@@ -229,7 +228,7 @@ FETCH FIRST 1 ROW ONLY`).Scan(&productID, &companyID, &effectiveAt)
 	return productID, companyID, effectiveAt
 }
 
-func discoverSalesHistoryInput(t *testing.T, ctx context.Context, db *sql.DB) ports.SalesHistoryInput {
+func discoverSalesHistoryInput(t *testing.T, ctx context.Context, db queryer) ports.SalesHistoryInput {
 	t.Helper()
 
 	var (
@@ -255,7 +254,7 @@ FETCH FIRST 1 ROW ONLY`).Scan(&productID, &start, &end)
 	}
 }
 
-func discoverTaxInput(t *testing.T, ctx context.Context, db *sql.DB) (int, time.Time, int) {
+func discoverTaxInput(t *testing.T, ctx context.Context, db queryer) (int, time.Time, int) {
 	t.Helper()
 
 	var (
