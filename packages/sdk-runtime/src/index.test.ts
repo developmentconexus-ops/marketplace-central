@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createMarketplaceCentralClient } from "./index";
-import type { CanonicalCatalogProduct, IntegrationProviderDefinition } from "./index";
+import type { CatalogProductFactPage, CanonicalCatalogProduct, IntegrationProviderDefinition } from "./index";
 
 describe("sdk runtime", () => {
   it("models canonical CODPROD products with nullable source facts", () => {
@@ -37,6 +37,32 @@ describe("sdk runtime", () => {
       expect(sdk).toMatch(new RegExp(`\\n  ${field}: string \\| null;`));
     }
     expect(sdk).toMatch(/\n  quality_reason: string \| null;/);
+  });
+
+  it("lists catalog facts with the IC-01 page envelope", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const response = {
+      items: [],
+      next_cursor: null,
+      page_size: 0,
+      as_of: "2026-07-14T12:00:00Z",
+    } satisfies CatalogProductFactPage;
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(JSON.stringify(response), { status: 200 });
+      },
+    });
+
+    const page = await client.listCatalogProductFacts({ cursor: "MTIz", limit: 25 });
+    const searchPage = await client.searchCatalogProductFacts({ q: "PARAFUSO", limit: 50 });
+
+    expect(String(requests[0].input)).toBe("http://localhost:8080/catalog/products?cursor=MTIz&limit=25");
+    expect(String(requests[1].input)).toBe("http://localhost:8080/catalog/products/search?q=PARAFUSO&limit=50");
+    expect(requests[0].init?.method).toBe("GET");
+    expect(page.next_cursor).toBeNull();
+    expect(searchPage.page_size).toBe(0);
   });
 
   it("rejects non-positive product-link CODPROD before transport", () => {
