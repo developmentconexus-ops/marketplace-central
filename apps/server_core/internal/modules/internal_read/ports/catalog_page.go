@@ -9,9 +9,19 @@ import (
 	"time"
 )
 
-// ErrInvalidCursor is returned when an opaque catalog cursor cannot be
-// decoded to a positive internal product id.
+// ErrInvalidCursor is the sentinel wrapped by InvalidCursorError.
 var ErrInvalidCursor = errors.New("invalid_cursor")
+
+// InvalidCursorError is returned when an opaque catalog cursor cannot be
+// decoded to a positive internal product id.
+type InvalidCursorError struct{}
+
+func (*InvalidCursorError) Error() string { return ErrInvalidCursor.Error() }
+func (*InvalidCursorError) Unwrap() error { return ErrInvalidCursor }
+
+func invalidCursor() error { return &InvalidCursorError{} }
+
+func NewInvalidCursorError() error { return invalidCursor() }
 
 // Cursor is the keyset position for a catalog page. The zero value means the
 // first page; non-zero values contain the last CODPROD returned to the caller.
@@ -22,16 +32,17 @@ type Cursor struct {
 // DecodeCursor validates and decodes the base64 cursor envelope used by the
 // catalog transport.
 func DecodeCursor(encoded string) (Cursor, error) {
-	if strings.TrimSpace(encoded) == "" {
-		return Cursor{}, ErrInvalidCursor
+	encoded = strings.TrimSpace(encoded)
+	if encoded == "" {
+		return Cursor{}, invalidCursor()
 	}
 	decoded, err := base64.StdEncoding.DecodeString(encoded)
 	if err != nil {
-		return Cursor{}, ErrInvalidCursor
+		return Cursor{}, invalidCursor()
 	}
 	id, err := strconv.ParseInt(string(decoded), 10, 64)
 	if err != nil || id <= 0 {
-		return Cursor{}, ErrInvalidCursor
+		return Cursor{}, invalidCursor()
 	}
 	return Cursor{InternalProductID: id}, nil
 }
@@ -39,7 +50,7 @@ func DecodeCursor(encoded string) (Cursor, error) {
 // Encode returns the opaque cursor representation for a positive product id.
 func (c Cursor) Encode() (string, error) {
 	if c.InternalProductID <= 0 {
-		return "", ErrInvalidCursor
+		return "", invalidCursor()
 	}
 	return base64.StdEncoding.EncodeToString([]byte(strconv.FormatInt(c.InternalProductID, 10))), nil
 }
@@ -52,13 +63,13 @@ type CatalogFactPage struct {
 
 type CatalogProductFact struct {
 	InternalProductID int64
-	Reference          *string
-	Description        *string
-	EAN                *string
-	Active             bool
-	SellableStock      CatalogQuantityFact
-	CurrentPrice       CatalogMoneyFact
-	Cost               CatalogMoneyFact
+	Reference         *string
+	Description       *string
+	EAN               *string
+	Active            bool
+	SellableStock     CatalogQuantityFact
+	CurrentPrice      CatalogMoneyFact
+	Cost              CatalogMoneyFact
 }
 
 type CatalogQuantityFact struct {

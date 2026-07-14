@@ -9,6 +9,7 @@ const (
 	QualityMissingStock     QualityFlag = "missing_stock"
 	QualityMissingPrice     QualityFlag = "missing_price"
 	QualityMissingCost      QualityFlag = "missing_cost"
+	QualityAmbiguousPrice   QualityFlag = "ambiguous_price"
 	QualityMissingTax       QualityFlag = "missing_tax"
 	QualityStaleSource      QualityFlag = "stale_source"
 )
