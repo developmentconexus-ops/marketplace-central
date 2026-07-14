@@ -228,7 +228,7 @@ try {
   Assert-True ($unit.allowed_runtime_keys.Count -eq 0) 'unit lane must allow no application runtime keys'
 
   $liveOracle = @($lanes.lanes | Where-Object id -eq 'live-oracle')[0]
-  Assert-True (($liveOracle.side_effects.Count -eq 1) -and ($liveOracle.side_effects[0] -eq 'database-read')) 'live-oracle lane must declare database-read only'
+  Assert-True ((($liveOracle.side_effects | Sort-Object) -join '|') -eq 'database-read|session-temporary-write') 'live-oracle lane must declare database-read plus the session-temporary-write envelope (EXPLAIN PLAN PLAN_TABLE) and nothing else'
 
   $providerWrite = @($lanes.lanes | Where-Object id -eq 'provider-write')[0]
   $requiredWriteGates = @('actor','idempotency','execute','resolved-link','policy','source-timestamp','before-after-audit')

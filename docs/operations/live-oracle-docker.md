@@ -115,7 +115,11 @@ Inside the container it injects exactly `MPC_ORACLE_USERNAME`,
 `MPC_ORACLE_PASSWORD`, `MPC_ORACLE_CONNECT_STRING=host:port/service`,
 `MPC_ORACLE_LIVE_TEST=1`, and `MPC_ORACLE_LIB_DIR=/opt/oracle/instantclient`.
 It starts no application
-entrypoint, migration, Compose service, provider operation, or database write.
+entrypoint, migration, Compose service, provider operation, or durable
+database write. The governance lane (`contracts/governance/execution-lanes.json`,
+id `live-oracle`) classifies the full side-effect envelope as `database-read`
+plus `session-temporary-write` — the latter existing only for the explicit
+`-EmitBaseline` mode's `PLAN_TABLE` behavior described above.
 
 Docker command output is suppressed to avoid accidental secret disclosure. A
 missing Docker installation, absent value, or live test failure must be

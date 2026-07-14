@@ -21,7 +21,7 @@
           "inherit_parent": { "type": "boolean" },
           "network": { "enum": ["disabled", "localhost", "live"] },
           "database": { "enum": ["disabled", "ephemeral-postgres", "live-oracle", "application"] },
-          "side_effects": { "type": "array", "uniqueItems": true, "items": { "enum": ["none", "browser-read", "database-read", "provider-read", "provider-write"] } },
+          "side_effects": { "type": "array", "uniqueItems": true, "items": { "enum": ["none", "browser-read", "database-read", "session-temporary-write", "provider-read", "provider-write"] } },
           "target_label": { "enum": ["fake", "ephemeral-postgres", "dev-invariance", "live-oracle", "live-provider", "browser", "provider-write"] },
           "allowed_runtime_keys": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" } },
           "gates": {
