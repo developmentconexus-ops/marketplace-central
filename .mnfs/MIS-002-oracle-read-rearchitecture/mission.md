@@ -3,14 +3,15 @@
 ```yaml
 id: MIS-002
 type: mission
-status: planned
+status: complete
 owner: Mission Strategist
 parent: none
 created: 2026-07-13
-updated: 2026-07-13
+updated: 2026-07-14
 validation_level: QA-2
 lifecycle_scope: mission
-planning_phase: ready
+closed: 2026-07-14
+final_sha: 314b1ef34bdecb91b5c5695fc7f63068b2149c5a
 ```
 
 ## Objective
@@ -171,12 +172,42 @@ QA-2. Feature quick-validation by implementer; milestone verdicts by QA Validato
 | R9 | mutation leaves L1/L2 cache stale | M | M | evict-on-mutation contract (IC-01) + TanStack queryKey invalidation | stale read after confirm/apply | M-04/M-05 |
 | R10 | real catalog count ≫ assumption | L | M | M-01 COUNT via live lane feeds baseline | count >150k | M-01 |
 
+## Closeout (2026-07-14)
+
+Mission QA verdict **PASS** at merged main `314b1ef34bdecb91b5c5695fc7f63068b2149c5a`. Artifact of record: `validation-result.md` (mission rollup, all MIS-02-C01..C05 re-executed live against merged main; live-Oracle facts cited only from governed-lane outputs in M-01/M-02 artifacts).
+
+### Traceability
+
+| Milestone | Frozen QA SHA | Merged into main | Verdict |
+| --- | --- | --- | --- |
+| M-01 foundation-observability | 4fde7c0e | on main lineage (base for W2) | PASS |
+| M-02 catalog-batch-cutover | 648adbdf | f55bc5ba | PASS |
+| M-03 batch-inventory-profitability-sankhya | 37930585 | bb2a1df5 | PASS |
+| M-04 server-cache | 56d5be9e | 314b1ef3 | PASS |
+| M-05 web-tanstack | c2aea877 | 3669887f | PASS (dual review) |
+
+### Accepted limitations / unresolved risks
+
+1. `-race` never run: validation machine has CGO_ENABLED=0 / no C compiler. **Obligation: run the concurrency suite (singleflight, fences) under `-race` in cgo-capable CI before production rollout.**
+2. Cache is per-process with no invalidation bus (Non-Scope by design): multi-instance deployment can serve divergent `as_of` until TTL; acceptable for current single-node topology.
+3. `TestFreshnessCacheSingleflight` is a weak (timing-based) regression guard for coalescing; the real C02 guard is `ErrorNotCached`. A refactor could regress coalescing without a loud test failure.
+4. `cache_test.go:585` carries a dead-weight assertion (known, non-blocking).
+5. `apps/web` typecheck broken at a pre-existing TS2688 baseline; `vite build` (esbuild-only) is the contract's build gate and is not type-safe.
+6. IC-01 product-edit crosswalk row is DORMANT with a forward obligation: any future product-edit surface must honor it (evict-on-mutation contract).
+7. Process note: M-04 exceeded the correction budget (6 rounds vs max 2), disclosed and operator-authorized.
+8. Tooling note: codex-companion is broken on this machine (worktree sandbox); the direct `codex exec` path is documented in the M-04 checkpoint.
+
+### Lessons propagated
+
+- Dual-review fold rule caught 3 blocking evidence gaps in M-04 that QA alone missed — keep the independent second review on milestone gates.
+- Require mutation proof for criterion-cited tests: six hollow tests found in M-04 (test passed with the guarded behavior removed).
+- One composed end-to-end test per Evidence line, not half-proofs.
+
 ## Handoff
 
-- Current status: planned — readiness Ready (3 rounds, see `readiness-review.md`)
-- Current owner: Mission Strategist
-- Next owner: Milestone Orchestrator (M-01)
-- Next action: hub-orchestrated parallel execution per `execution-plan.md` — W0 commit working tree, W1 M-01 chip, W2 M-02∥M-03 chips, W3 M-04∥M-05 chips (workers mpc-implementer/mpc-verifier, gpt-5.6-luna high; terminal callbacks to hub session)
-- Required artifact paths: `mission.md`, `validation-contract.md`, `research/catalog-read-interface-contract.md`, `research/oracle-runtime-dimensioning.md`, `M-0{1..5}-*/milestone.md`, `M-0{1..5}-*/validation-contract.md`, feature briefs under each milestone
-- Required evidence paths: `<feature-root>/validation.md`; `<milestone-root>/validation-result.md`; `<mission-root>/validation-result.md`
-- Blocked decisions: None - all operator answers received
+- Current status: complete — mission QA PASS at `314b1ef3` (see Closeout)
+- Current owner: Mission Strategist (closed)
+- Next owner: Operations
+- Next actions: (1) production rollout is pending a `-race` run of the concurrency suite in cgo-capable CI; (2) any future product-edit surface is bound by the dormant IC-01 crosswalk row (evict-on-mutation)
+- Evidence of record: `validation-result.md` (mission), `M-0{1..5}-*/validation-result.md` (milestones), governed live-Oracle lane outputs cited therein
+- Blocked decisions: None
