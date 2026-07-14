@@ -59,7 +59,15 @@ Rule: a wave-2 session finding it must edit a seam owned by the other lane STOPS
 ## Hub Protocol
 
 1. Hub spawns one chip per Milestone session (spawn_task). Fresh worktree per session — hence W0 commit prerequisite.
-2. Each Milestone session: MNFS + hub-style acceptance (verifier per feature, fixed-SHA review, QA gate), then persists `checkpoint.md` and sends verdict + path to hub session `local_00112a95` via cross-session messaging.
+2. Each Milestone session: MNFS + hub-style acceptance, then persists `checkpoint.md` and sends verdict + path to hub session `local_00112a95` via cross-session messaging.
+
+### End-of-Milestone Dual Review (mandatory, replaces Claude-dispatched mpc-verifier)
+
+At the frozen milestone SHA, run BOTH, independently:
+1. **Codex review** — via the Codex CLI plugin (`codex:rescue` / codex review), model **gpt-5.6-sol**, read-only fixed-SHA review of the milestone diff against the milestone contract + IC-01. Findings returned verbatim.
+2. **Claude review** — the Milestone session's own Claude-side review of the same frozen SHA (contract conformance + seam/redaction checks) plus proportional QA (qa-validator) against the validation contract.
+
+Fold rule: any blocking finding from EITHER reviewer fails the review; fix, re-freeze, re-run both. Only QA passes the milestone. Per-feature acceptance stays lightweight (implementer evidence + Claude review in-session); the Sol cross-model gate is the milestone-end review.
 3. Hub folds callbacks; when a wave's gate is satisfied, spawns the next wave's chips (W2: two chips simultaneously; W3: two chips simultaneously).
 4. Merges to main happen in the declared order; the later lane rebases before its merge. Hub verifies post-merge test ladder (`GOCACHE=.gocache go test ./...`, `npm run build`) per merge.
 
