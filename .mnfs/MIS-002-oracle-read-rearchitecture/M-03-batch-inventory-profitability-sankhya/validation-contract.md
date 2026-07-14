@@ -63,7 +63,7 @@ Type: Functional
 Required: Yes
 Status: Pending
 Evidence:
-- Command: `GOCACHE=.gocache go test ./internal/modules/product_links/... -run 'Linkage' -v`
+- Command: `GOCACHE=.gocache go test ./internal/modules/internal_read/adapters/oracle/... -run 'TestSankhyaLinkage' -v` (linkage tests live in the oracle adapter package, not product_links)
 - Expected: candidate scoring for k candidates = 1 candidates query + 1 IN-list lines query (fake queryer count); no Ping/metadata validation queries in the call path (ValidateConfiguration only at startup)
 - Actual:
 - Artifact: `M-03-batch-inventory-profitability-sankhya/F-03-sankhya-linkage-lean/validation.md`
