@@ -421,7 +421,10 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		Snapshots:   profitabilityStore,
 	}
 	if internalReadAvailable {
-		profitabilityCfg.Internal = profitabilityinternalread.NewFactReader(internalReadSvc)
+		profitabilityCfg.Internal = profitabilityinternalread.NewFactReader(
+			internalReadSvc,
+			internalreadoracle.NewBatchReader(oracleDB, oracleBatchSemaphore),
+		)
 	}
 	if assistedLinkageService != nil {
 		profitabilityCfg.Lineage = profitabilityorders.NewSankhyaLineageReader(assistedLinkageService, cfg.DefaultTenantID)

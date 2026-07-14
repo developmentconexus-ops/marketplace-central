@@ -11,10 +11,15 @@ import (
 
 type FactReader struct {
 	service internalreadapp.Service
+	batch   internalreadports.BatchReader
 }
 
-func NewFactReader(service internalreadapp.Service) FactReader {
-	return FactReader{service: service}
+func NewFactReader(service internalreadapp.Service, batch ...internalreadports.BatchReader) FactReader {
+	var batchReader internalreadports.BatchReader
+	if len(batch) > 0 {
+		batchReader = batch[0]
+	}
+	return FactReader{service: service, batch: batchReader}
 }
 
 func (r FactReader) GetCostAsOf(ctx context.Context, productID int, effectiveAt time.Time) (internalreaddomain.CostAsOf, error) {
@@ -37,4 +42,18 @@ func (r FactReader) GetTaxInputs(ctx context.Context, productID int, effectiveAt
 		Policy:    policy,
 		Freshness: internalreaddomain.FreshnessPolicy{},
 	})
+}
+
+func (r FactReader) GetCostFactsByIDs(ctx context.Context, ids []int64) (map[int64]*internalreaddomain.CostAsOf, error) {
+	if r.batch == nil {
+		return nil, internalreaddomain.NewReadError(internalreaddomain.ReadErrorSourceUnavailable, "oracle cost batch reader is unavailable", nil)
+	}
+	return r.batch.GetCostFactsByIDs(ctx, ids)
+}
+
+func (r FactReader) GetTaxFactsByIDs(ctx context.Context, ids []int64) (map[int64]*internalreaddomain.TaxInputs, error) {
+	if r.batch == nil {
+		return nil, internalreaddomain.NewReadError(internalreaddomain.ReadErrorSourceUnavailable, "oracle tax batch reader is unavailable", nil)
+	}
+	return r.batch.GetTaxFactsByIDs(ctx, ids)
 }
