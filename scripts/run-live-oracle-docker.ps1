@@ -1,6 +1,8 @@
 [CmdletBinding()]
 param(
-  [switch]$PreflightOnly
+  [switch]$PreflightOnly,
+  [switch]$PrepareImage,
+  [switch]$EmitBaseline
 )
 
 Set-StrictMode -Version Latest
@@ -24,11 +26,53 @@ $script:ContainerCredentialKeys = @('MPC_ORACLE_USERNAME', 'MPC_ORACLE_PASSWORD'
 $script:ContainerKeys = @($script:ContainerCredentialKeys + @('MPC_ORACLE_LIVE_TEST', 'MPC_ORACLE_LIB_DIR'))
 $script:DockerExecutionEnvironmentKeys = @(
   'SystemRoot', 'WINDIR', 'ComSpec', 'PATH', 'PATHEXT',
-  'TEMP', 'TMP', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA'
+  'TEMP', 'TMP', 'USERPROFILE', 'HOMEDRIVE', 'HOMEPATH',
+  'APPDATA', 'LOCALAPPDATA', 'ProgramFiles', 'ProgramData'
 )
+$script:PhaseTimeouts = [ordered]@{
+  preflight = [TimeSpan]::FromSeconds(30)
+  build = [TimeSpan]::FromMinutes(10)
+  run = [TimeSpan]::FromMinutes(3)
+  inspect = [TimeSpan]::FromSeconds(30)
+  promote = [TimeSpan]::FromSeconds(30)
+}
+$script:RuntimeFingerprintCache = $null
 
 function Get-LiveOracleDockerProfile {
   Get-Content -Raw -LiteralPath $script:ProfilePath | ConvertFrom-Json -Depth 10
+}
+
+function Get-LiveOracleRuntimeFingerprint {
+  param([Parameter(Mandatory)][object]$Profile)
+
+  if (-not [string]::IsNullOrWhiteSpace($script:RuntimeFingerprintCache)) {
+    return $script:RuntimeFingerprintCache
+  }
+
+  $inputs = [Collections.Generic.List[string]]::new()
+  @(
+    [string]$Profile.dockerfile,
+    'go.work',
+    'go.work.sum',
+    'apps/server_core/go.mod',
+    'apps/server_core/go.sum'
+  ) | ForEach-Object { $inputs.Add($_) }
+  Get-ChildItem -LiteralPath (Join-Path $script:RepositoryRoot 'apps/server_core') -Recurse -File -Filter '*.go' |
+    Where-Object { $_.FullName -notmatch '[\\/]\.(gocache|gomodcache)[\\/]' } |
+    ForEach-Object { [IO.Path]::GetRelativePath($script:RepositoryRoot, $_.FullName).Replace('\', '/') } |
+    Sort-Object -Unique |
+    ForEach-Object { $inputs.Add($_) }
+  $manifest = @($inputs | ForEach-Object {
+    $path = Join-Path $script:RepositoryRoot $_
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "live Oracle runtime input_missing=$_" }
+    "$_=$((Get-FileHash -Algorithm SHA256 -LiteralPath $path).Hash.ToLowerInvariant())"
+  }) -join "`n"
+  $bytes = [Text.Encoding]::UTF8.GetBytes($manifest)
+  $sha = [Security.Cryptography.SHA256]::Create()
+  try {
+    $script:RuntimeFingerprintCache = -join @($sha.ComputeHash($bytes) | ForEach-Object { $_.ToString('x2') })
+    return $script:RuntimeFingerprintCache
+  } finally { $sha.Dispose() }
 }
 
 function Get-LiveOracleLocalEnvValues {
@@ -88,6 +132,7 @@ function New-LiveOracleDockerPlan {
   param([string]$EnvFilePath = $script:LocalEnvPath)
 
   $profile = Get-LiveOracleDockerProfile
+  $fingerprint = Get-LiveOracleRuntimeFingerprint -Profile $profile
   $connection = Get-LiveOracleCredentialValues -EnvFilePath $EnvFilePath
   $containerEnvironment = [ordered]@{
     MPC_ORACLE_USERNAME = $connection.MPC_SANKHYA_ORACLE_USERNAME
@@ -98,14 +143,17 @@ function New-LiveOracleDockerPlan {
   }
   [pscustomobject]@{
     Profile = $profile
+    RuntimeFingerprint = $fingerprint
     ContainerEnvironment = $containerEnvironment
-    BuildArguments = @('build', '--file', (Join-Path $script:RepositoryRoot ([string]$profile.dockerfile)), '--tag', [string]$profile.image_tag, $script:RepositoryRoot)
+    InspectArguments = @('image', 'inspect', '--format', '{{ index .Config.Labels "mpc.live-oracle.runtime-fingerprint" }}', [string]$profile.image_tag)
+    BuildArguments = @('build', '--progress=plain', '--file', (Join-Path $script:RepositoryRoot ([string]$profile.dockerfile)), '--label', "mpc.live-oracle.runtime-fingerprint=$fingerprint", '--tag', [string]$profile.build_tag, $script:RepositoryRoot)
+    PromoteArguments = @('tag', [string]$profile.build_tag, [string]$profile.image_tag)
     RunArguments = @(
-      'run', '--rm', '--mount', "type=bind,source=$script:RepositoryRoot,target=$($profile.workspace),readonly",
-      '--workdir', "$($profile.workspace)/apps/server_core"
+      'run', '--rm', '--read-only', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
+      '--tmpfs', '/tmp:rw,noexec,nosuid,size=64m'
     ) + @($script:ContainerKeys | ForEach-Object { @('--env', $_) }) + @(
-      [string]$profile.image_tag, 'go', 'test', [string]$profile.go_package,
-      '-run', [string]$profile.go_test_regex, '-count=1', '-v'
+      [string]$profile.image_tag, [string]$profile.test_binary,
+      '-test.run', [string]$profile.go_test_regex, '-test.count=1', '-test.v'
     )
   }
 }
@@ -157,16 +205,31 @@ function New-LiveOracleDockerPreflightPlan {
 function Invoke-LiveOracleDockerProcess {
   param(
     [Parameter(Mandatory)][Diagnostics.ProcessStartInfo]$StartInfo,
-    [Parameter(Mandatory)][string]$Phase
+    [Parameter(Mandatory)][string]$Phase,
+    [TimeSpan]$Timeout = $script:PhaseTimeouts[$Phase]
   )
+
+  if ($Timeout -le [TimeSpan]::Zero) { throw "live Oracle Docker $Phase invalid_timeout" }
 
   $process = [Diagnostics.Process]::new()
   $process.StartInfo = $StartInfo
   [void]$process.Start()
 
-  $standardOutput = $process.StandardOutput.ReadToEnd()
-  [void]$process.StandardError.ReadToEnd()
-  $process.WaitForExit()
+  # Both redirected pipes must be drained concurrently. Waiting on one stream
+  # first can deadlock when Docker fills the other OS pipe buffer.
+  $standardOutputTask = $process.StandardOutput.ReadToEndAsync()
+  $standardErrorTask = $process.StandardError.ReadToEndAsync()
+  $completed = $process.WaitForExit([Math]::Max(1, [int][Math]::Ceiling($Timeout.TotalMilliseconds)))
+  if (-not $completed) {
+    try { $process.Kill($true) } catch { try { $process.Kill() } catch { } }
+    try { $process.WaitForExit() } catch { }
+    try { [void]$standardOutputTask.GetAwaiter().GetResult() } catch { }
+    try { [void]$standardErrorTask.GetAwaiter().GetResult() } catch { }
+    throw "live Oracle Docker $Phase timed_out timeout_seconds=$([int][Math]::Ceiling($Timeout.TotalSeconds)); output suppressed"
+  }
+
+  $standardOutput = $standardOutputTask.GetAwaiter().GetResult()
+  [void]$standardErrorTask.GetAwaiter().GetResult()
   if ($process.ExitCode -ne 0) { throw "live Oracle Docker $Phase failed exit_code=$($process.ExitCode); output suppressed" }
 
   return $standardOutput
@@ -187,6 +250,8 @@ function Invoke-LiveOracleDockerCommand {
 function Invoke-LiveOracleDockerRunner {
   param(
     [switch]$PreflightOnly,
+    [switch]$PrepareImage,
+    [switch]$EmitBaseline,
     [string]$EnvFilePath = $script:LocalEnvPath
   )
 
@@ -194,17 +259,64 @@ function Invoke-LiveOracleDockerRunner {
   $dockerPath = Test-LiveOracleDockerAvailable
   if ($PreflightOnly) { return }
 
-  [void](Invoke-LiveOracleDockerCommand -DockerPath $dockerPath -Arguments $plan.BuildArguments -Environment @{} -Phase 'build')
+  if ($PrepareImage) {
+    [void](Invoke-LiveOracleDockerCommand -DockerPath $dockerPath -Arguments $plan.BuildArguments -Environment @{} -Phase 'build')
+    [void](Invoke-LiveOracleDockerCommand -DockerPath $dockerPath -Arguments $plan.PromoteArguments -Environment @{} -Phase 'promote')
+    return
+  }
+
+  try {
+    $observedFingerprint = (Invoke-LiveOracleDockerCommand -DockerPath $dockerPath -Arguments $plan.InspectArguments -Environment @{} -Phase 'inspect').Trim()
+  } catch {
+    throw 'live Oracle runtime image unavailable; run -PrepareImage'
+  }
+  if ($observedFingerprint -ne $plan.RuntimeFingerprint) {
+    throw 'live Oracle runtime image stale; run -PrepareImage'
+  }
   $runOutput = Invoke-LiveOracleDockerCommand -DockerPath $dockerPath -Arguments $plan.RunArguments -Environment $plan.ContainerEnvironment -Phase 'run'
+  if ($EmitBaseline) {
+    $baselineLines = Get-LiveOracleBaselineLines -RunOutput $runOutput
+    if ($null -eq $baselineLines) {
+      throw 'live Oracle Docker run failed exit_code=1; output suppressed'
+    }
+    return $baselineLines
+  }
   if ($runOutput -notmatch '(?m)^MPC_C05_POSITIVE_CODPROD_OBSERVED=true\s*$') {
     throw 'live Oracle Docker run failed exit_code=1; output suppressed'
   }
 }
 
+# Get-LiveOracleBaselineLines extracts ONLY the three whitelisted baseline
+# markers from suppressed run output. Each must match its strict shape exactly
+# (integer or INDEX|FULL_SCAN); every other line of container output is
+# discarded so no SQL text, bind values, DSN, credential, or driver message can
+# surface. Returns the ordered sanitized lines, or $null if any is missing.
+function Get-LiveOracleBaselineLines {
+  param([Parameter(Mandatory)][AllowEmptyString()][string]$RunOutput)
+
+  $patterns = [ordered]@{
+    'MPC_BASELINE_TGFPRO_ACTIVE_COUNT' = '^MPC_BASELINE_TGFPRO_ACTIVE_COUNT=[0-9]+$'
+    'MPC_BASELINE_RTT_MS'              = '^MPC_BASELINE_RTT_MS=[0-9]+$'
+    'MPC_BASELINE_PAGE_PLAN'           = '^MPC_BASELINE_PAGE_PLAN=(INDEX|FULL_SCAN)$'
+  }
+  $lines = $RunOutput -split "`r?`n"
+  $result = [System.Collections.Generic.List[string]]::new()
+  foreach ($key in $patterns.Keys) {
+    $match = $null
+    foreach ($line in $lines) {
+      $trimmed = $line.Trim()
+      if ($trimmed -match $patterns[$key]) { $match = $trimmed; break }
+    }
+    if ($null -eq $match) { return $null }
+    $result.Add($match)
+  }
+  return $result.ToArray()
+}
+
 function Write-LiveOracleDockerTelemetry {
   param(
     [Parameter(Mandatory)][ValidateSet('ready', 'passed', 'blocked')][string]$Status,
-    [Parameter(Mandatory)][ValidateSet('preflight', 'complete', 'failed')][string]$Phase,
+    [Parameter(Mandatory)][ValidateSet('preflight', 'prepared', 'complete', 'failed')][string]$Phase,
     [Parameter(Mandatory)][int]$ExitCode,
     [string]$Reason
   )
@@ -224,7 +336,9 @@ function Get-LiveOracleDockerSafeReason {
     '^live Oracle \.env unsupported_key=[A-Za-z_][A-Za-z0-9_]*$',
     '^live Oracle preflight missing_keys=[A-Za-z0-9_,]+$',
     '^live Oracle preflight docker_unavailable$',
-    '^live Oracle Docker (preflight|build|run) failed exit_code=\d+; output suppressed$'
+    '^live Oracle runtime image (unavailable|stale); run -PrepareImage$',
+    '^live Oracle Docker (preflight|build|inspect|promote|run) failed exit_code=\d+; output suppressed$',
+    '^live Oracle Docker (preflight|build|inspect|promote|run) timed_out timeout_seconds=\d+; output suppressed$'
   )
   if (@($safePatterns | Where-Object { $message -match $_ }).Count -gt 0) { return $message }
   return $null
@@ -233,18 +347,25 @@ function Get-LiveOracleDockerSafeReason {
 function Invoke-LiveOracleDockerEntrypoint {
   param(
     [switch]$PreflightOnly,
+    [switch]$PrepareImage,
     [switch]$EmitC05Evidence,
+    [switch]$EmitBaseline,
     [string]$EnvFilePath = $script:LocalEnvPath,
     [Parameter(Mandatory)][ref]$ExitCode
   )
 
   try {
-    Invoke-LiveOracleDockerRunner -PreflightOnly:$PreflightOnly -EnvFilePath $EnvFilePath
+    $runnerResult = Invoke-LiveOracleDockerRunner -PreflightOnly:$PreflightOnly -PrepareImage:$PrepareImage -EmitBaseline:$EmitBaseline -EnvFilePath $EnvFilePath
     if ($PreflightOnly) {
       Write-LiveOracleDockerTelemetry -Status 'ready' -Phase 'preflight' -ExitCode 0
+    } elseif ($PrepareImage) {
+      Write-LiveOracleDockerTelemetry -Status 'ready' -Phase 'prepared' -ExitCode 0
     } else {
       Write-LiveOracleDockerTelemetry -Status 'passed' -Phase 'complete' -ExitCode 0
-      if ($EmitC05Evidence) {
+      if ($EmitBaseline -and $null -ne $runnerResult) {
+        foreach ($line in $runnerResult) { Write-Output $line }
+      }
+      if ($EmitC05Evidence -and -not $EmitBaseline) {
         Write-Output "frozen_sha=$(git -C $script:RepositoryRoot rev-parse HEAD)"
         Write-Output 'source=oracle/sankhya'
         Write-Output "observed_at=$([DateTimeOffset]::UtcNow.ToString('o'))"
@@ -262,6 +383,6 @@ function Invoke-LiveOracleDockerEntrypoint {
 
 if ($MyInvocation.InvocationName -ne '.') {
   $exitCode = 0
-  Invoke-LiveOracleDockerEntrypoint -PreflightOnly:$PreflightOnly -EmitC05Evidence -ExitCode ([ref]$exitCode)
+  Invoke-LiveOracleDockerEntrypoint -PreflightOnly:$PreflightOnly -PrepareImage:$PrepareImage -EmitC05Evidence -EmitBaseline:$EmitBaseline -ExitCode ([ref]$exitCode)
   exit $exitCode
 }
