@@ -164,13 +164,7 @@ func NewRootRouter(pool *pgxpool.Pool, cfg pgdb.Config) (http.Handler, error) {
 	return runtime.Handler, nil
 }
 
-func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
-	observabilityCfg, err := internalreadobservability.LoadConfig(os.Getenv)
-	if err != nil {
-		return nil, fmt.Errorf("observability config: %w", err)
-	}
-
-	mux := httpx.NewRouteClassMux()
+func registerBatchRoutes(mux *httpx.RouteClassMux) {
 	for _, pattern := range []string{
 		"/profitability/margin-inputs/import",
 		"/profitability/profit-snapshots/calculate",
@@ -179,9 +173,20 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		"/product-links/link-candidates/generations",
 		"/pricing/simulations/batch",
 		"/admin/fee-schedules/sync",
+		"/admin/fee-schedules/seed",
 	} {
 		mux.RegisterRouteClass(pattern, httpx.BatchRouteClass)
 	}
+}
+
+func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
+	observabilityCfg, err := internalreadobservability.LoadConfig(os.Getenv)
+	if err != nil {
+		return nil, fmt.Errorf("observability config: %w", err)
+	}
+
+	mux := httpx.NewRouteClassMux()
+	registerBatchRoutes(mux)
 
 	base := httpx.NewRouter()
 	mux.Handle("/healthz", base)

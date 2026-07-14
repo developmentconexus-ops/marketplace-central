@@ -3,7 +3,6 @@ package observability
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -54,8 +53,8 @@ func (codedError) Code() int { return 942 }
 
 type fakePoolStatsSource struct{}
 
-func (fakePoolStatsSource) Stats() sql.DBStats {
-	return sql.DBStats{OpenConnections: 7, InUse: 3, WaitCount: 11}
+func (fakePoolStatsSource) Stats() ports.PoolStats {
+	return ports.PoolStats{Open: 7, InUse: 3, WaitCount: 11}
 }
 
 func TestTimingReaderLogsLatencySlowFlagAndSanitizedError(t *testing.T) {

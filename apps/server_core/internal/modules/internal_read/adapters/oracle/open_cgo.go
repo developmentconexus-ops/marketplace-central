@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"marketplace-central/apps/server_core/internal/modules/internal_read/domain"
+	"marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 
 	"github.com/godror/godror"
 )
@@ -23,6 +24,10 @@ func (db *managedDB) QueryContext(ctx context.Context, query string, args ...any
 
 func (db *managedDB) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
 	return db.DB.QueryRowContext(ctx, query, append(args, godror.CallTimeout(db.callTimeout))...)
+}
+
+func (db *managedDB) Stats() ports.PoolStats {
+	return poolStatsFromDBStats(db.DB.Stats())
 }
 
 func OpenDB(ctx context.Context, cfg Config) (Database, error) {

@@ -84,3 +84,12 @@ default 12, HTTP server timeouts, composition-declared route classes, context
 deadline cancellation, and redacted Oracle causes. No retry, shutdown, readyz,
 or query-shape changes were added. Next owner: Milestone Orchestrator for
 fixed-SHA review and proportional QA.
+
+## Scoped correction evidence (C02)
+
+- `apps/server_core/internal/composition/root.go` classifies both
+  `/admin/fee-schedules/sync` and `/admin/fee-schedules/seed` as batch before
+  transport registration.
+- `$env:GOCACHE='C:\Users\leandro.theodoro\Documents\marketplace-central\apps\server_core\.gocache'; go test -count=1 ./internal/composition -run TestFeeScheduleRoutesUseBatchDeadline -v` — Pass; both routes resolved with approximately the 120s batch deadline.
+- `$env:GOCACHE='C:\Users\leandro.theodoro\Documents\marketplace-central\apps\server_core\.gocache'; go build ./...` — Pass.
+- `$env:GOCACHE='C:\Users\leandro.theodoro\Documents\marketplace-central\apps\server_core\.gocache'; go test ./...` — Pass.

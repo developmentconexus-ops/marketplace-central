@@ -82,3 +82,13 @@ Local implementation and quick validation passed. The governed Oracle lane is st
 - Status: Fail for the requested direct-parent criterion; evidence type: ran.
 - Actual: `dc5d79de feat(observability): port latency, slow-query and pool-stats logging + live baseline probe` is followed by external commit `777785e1 chore(tooling): remove Claude bridge`, then the supplied base `909f61e6`. Exactly one F-02 commit exists, but it is not directly based on `909f61e6`.
 - Current commit parent: `777785e1`; requested parent: `909f61e6`.
+
+## Scoped correction evidence (C03)
+
+- `ports.PoolStats` owns neutral `Open`, `InUse`, and `WaitCount` fields.
+  The Oracle adapter maps `sql.DBStats` at its boundary; observability
+  consumes only `ports.PoolStats`.
+- `rg -n '"database/sql"' apps/server_core/internal/modules/internal_read/observability` — Pass with no matches; remaining `database/sql` imports are confined to the Oracle adapter package.
+- `$env:GOCACHE='C:\Users\leandro.theodoro\Documents\marketplace-central\apps\server_core\.gocache'; go test -count=1 ./internal/modules/internal_read/observability ./internal/modules/internal_read/adapters/oracle -run 'TestPoolStatsLoopEmitsAndStops|TestPoolStatsMappingUsesNeutralValue' -v` — Pass; the emitted line remained `pool_stats open=7 in_use=3 wait_count=11`, and mapping passed.
+- `$env:GOCACHE='C:\Users\leandro.theodoro\Documents\marketplace-central\apps\server_core\.gocache'; go build ./...` — Pass.
+- `$env:GOCACHE='C:\Users\leandro.theodoro\Documents\marketplace-central\apps\server_core\.gocache'; go test ./...` — Pass.

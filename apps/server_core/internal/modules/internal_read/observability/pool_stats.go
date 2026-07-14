@@ -2,14 +2,15 @@ package observability
 
 import (
 	"context"
-	"database/sql"
 	"log/slog"
 	"sync"
 	"time"
+
+	"marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 )
 
 type PoolStatsSource interface {
-	Stats() sql.DBStats
+	Stats() ports.PoolStats
 }
 
 type PoolStatsLoop struct {
@@ -62,7 +63,7 @@ func (l *PoolStatsLoop) Start(ctx context.Context) {
 			}
 			emit := func() {
 				stats := l.source.Stats()
-				l.logger.Info("pool_stats", "open", stats.OpenConnections, "in_use", stats.InUse, "wait_count", stats.WaitCount)
+				l.logger.Info("pool_stats", "open", stats.Open, "in_use", stats.InUse, "wait_count", stats.WaitCount)
 			}
 			emit()
 			ticker := time.NewTicker(l.interval)
