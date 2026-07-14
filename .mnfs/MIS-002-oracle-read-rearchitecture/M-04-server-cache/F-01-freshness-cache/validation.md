@@ -14,8 +14,8 @@ lifecycle_scope: feature
 
 ## Summary
 
-The fifth correction round is test-only and addresses two hollow-test defects
-in the prior evidence. The R1 post-invalidation singleflight regression test was
+The sixth correction round is test/evidence-only and addresses three
+evidence-level defects in the prior evidence. The R1 post-invalidation singleflight regression test was
 initially hollow: it could pass after the generation component was removed
 from the normal-path group key. The test now deterministically observes
 downstream entry for both readers before releasing the first load. The
@@ -122,6 +122,38 @@ PASS
 ok  	marketplace-central/apps/server_core/internal/modules/internal_read/adapters/cache	1.310s
 ```
 
+### Sixth correction round
+
+1. C03 now has composed `TestComposedCatalogHTTPNoCacheBypassesAndRepopulates`
+   in `tests/unit/cache_composed_test.go`: real catalog transport handler →
+   real catalog cache decorator → fake Oracle page reader. It proves two warm
+   GETs make one Oracle call with identical response `as_of`, `Cache-Control:
+   no-cache` makes call two with a strictly newer `as_of`, and a following
+   ordinary GET makes no third call while returning the bypass-refreshed
+   `as_of`. The older cache-only bypass-repopulation assertion at
+   `cache_test.go:585` is insensitive; this response-body assertion supplies
+   the mutation-sensitive coverage.
+2. C05 now has
+   `TestAssistedSankhyaConfirmInvalidatesCatalogAfterSuccessfulPersistence`,
+   requiring exactly `[]string{"catalog"}`, and composed
+   `TestComposedLinkageConfirmEvictsCatalogButPreservesPriceCost`, proving the
+   real handler → cache → successful `Confirm` flow evicts the warm catalog
+   key inside TTL while preserving a warm `pricecost` key.
+3. C02 evidence is stated precisely: `TestFreshnessCacheSingleflight` is a
+   weak guard because it has no barrier proving all 19 other waiters parked;
+   QA observed it catches singleflight deletion only about 15/100 runs.
+   `TestFreshnessCacheErrorNotCached`, with the readiness barrier, is the real
+   C02 mutation guard and caught that removal 20/20.
+
+#### Sixth-round mutation evidence
+
+The C03 bypass mutation failed at `bypass Oracle calls=1, want 2`; after
+restoration the composed test passed. Removing the success-path
+`InvalidateClass("catalog")` call failed the direct C05 assertion with
+`invalidations=[], want exactly [catalog]` and independently failed the
+composed C05 assertion with `post-confirm catalog Oracle calls=1, want 2`.
+Both production files were restored to empty diffs and the three tests passed.
+
 ### Prior correction evidence, retained and not regressed
 
 1. R1 test correction: `stagedCatalogReader` now reports every catalog
@@ -184,7 +216,9 @@ ok  	marketplace-central/apps/server_core/internal/modules/internal_read/adapter
 
 This correction round permanently changes only:
 
-- `apps/server_core/internal/modules/internal_read/adapters/cache/cache_test.go`
+- `apps/server_core/tests/unit/cache_composed_test.go`
+- `apps/server_core/internal/modules/orders/application/assisted_sankhya_linkage_service_test.go`
+- `.mnfs/MIS-002-oracle-read-rearchitecture/M-04-server-cache/validation-contract.md`
 - `.mnfs/MIS-002-oracle-read-rearchitecture/M-04-server-cache/F-01-freshness-cache/validation.md`
 
 `cache.go` was changed only temporarily for the mutation proof and was
@@ -210,6 +244,9 @@ $env:GOCACHE='C:\Users\leandro.theodoro\Documents\marketplace-central\.claude\wo
     ok  	marketplace-central/apps/server_core/internal/modules/internal_read/adapters/cache	1.438s
     ```
 
+- `go test ./apps/server_core/tests/unit ./apps/server_core/internal/modules/orders/application -run 'TestComposedCatalogHTTPNoCacheBypassesAndRepopulates|TestComposedLinkageConfirmEvictsCatalogButPreservesPriceCost|TestAssistedSankhyaConfirmInvalidatesCatalogAfterSuccessfulPersistence' -count=1 -v`
+  - Pass. Both composed flows and the direct success-path invalidation assertion passed.
+
 - `go test ./... -count=1`
   - Pass. All packages reported `ok` or `[no test files]`, including cache,
     inventory, orders, profitability, integration, and unit packages; command
@@ -226,10 +263,10 @@ $env:GOCACHE='C:\Users\leandro.theodoro\Documents\marketplace-central\.claude\wo
 | Criterion | Evidence actually run | Result |
 | --- | --- | --- |
 | M-04-C01 | `TestFreshnessCacheTTLPerClass` in cache package and FreshnessCache suite; its comma-ok lookup proves the cached unknown cost key is present with an explicit nil value | Pass |
-| M-04-C02 | `TestFreshnessCacheSingleflight` (20 live waiters, one downstream call), `TestFreshnessCacheErrorNotCached`, and `TestFreshnessCacheWaiterContextCancellation` | Pass |
-| M-04-C03 | Mutation-sensitive `TestFreshnessCacheBypassAndLinkageExclusion` (identical linkage input repeated three times; proven by the temporary caching mutation), `TestFreshnessCacheOlderLoadCannotOverwriteBypassRefresh`, existing bypass namespace/repopulation assertions, and `TestFreshnessCacheTTLPerClass` | Pass |
+| M-04-C02 | `TestFreshnessCacheSingleflight` is retained as a weak guard because it lacks an all-waiters barrier; `TestFreshnessCacheErrorNotCached` is the real mutation guard for singleflight removal (20/20), plus `TestFreshnessCacheWaiterContextCancellation` | Pass |
+| M-04-C03 | `TestComposedCatalogHTTPNoCacheBypassesAndRepopulates` proves the real handler→cache→Oracle flow, including response-body `as_of` repopulation; the older cache-only bypass-repopulation assertion is insensitive. Linkage exclusion remains mutation-sensitive in `TestFreshnessCacheBypassAndLinkageExclusion`, with `TestFreshnessCacheOlderLoadCannotOverwriteBypassRefresh` and `TestFreshnessCacheTTLPerClass` retained | Pass |
 | M-04-C04 | `TestFreshnessCacheLRUAndLogs` proves structured fields are present and every `internal_read.cache` record has exactly `{cache, key_class}` plus standard `time`, `level`, and `msg`; its temporary raw-`key` mutation failed. `TestFreshnessCacheDeepCopiesCachedFacts` and the full cache suite also passed. The C01 comma-ok assertion proves nil map-value preservation. | Pass |
-| M-04-C05 / R1 | `TestFreshnessCacheFencesInFlightLoadAfterInvalidation`, deterministic `TestFreshnessCachePostInvalidationDoesNotJoinInFlightLoad`, and `TestEvictOnMutation` for eviction, warm pricecost-class survival, and repopulation only. Failed-write/no-invalidation coverage is provided by `TestEvictOnMutationFailedWriteDoesNotInvalidate` (catalog), `TestApplyManualStockActionDoesNotInvalidateFailedOrRejectedWrites` (inventory persistence failure and provider rejection), `TestAssistedSankhyaConfirmDoesNotInvalidateFailedPersistence` (orders), and `TestImportMarginInputsDoesNotInvalidateFailedPersistence` (profitability), plus the full suite. | Pass for runnable validation; the R1 and H1 mutations failed as expected and the restored tests passed; race evidence unavailable |
+| M-04-C05 / R1 | `TestComposedLinkageConfirmEvictsCatalogButPreservesPriceCost` proves the real handler→cache→successful `Confirm` flow, catalog refresh, newer response `as_of`, and warm pricecost survival. `TestAssistedSankhyaConfirmInvalidatesCatalogAfterSuccessfulPersistence` requires exactly `[catalog]`. Existing generation-fence tests and `TestEvictOnMutation` remain. Failed-write/no-invalidation coverage is provided by `TestEvictOnMutationFailedWriteDoesNotInvalidate`, `TestApplyManualStockActionDoesNotInvalidateFailedOrRejectedWrites`, `TestAssistedSankhyaConfirmDoesNotInvalidateFailedPersistence`, and `TestImportMarginInputsDoesNotInvalidateFailedPersistence`. | Pass for runnable validation; the C03 bypass and both C05 success-path mutations failed as expected and restored tests passed; race evidence unavailable |
 
 ## Risks and Remaining Blockers
 

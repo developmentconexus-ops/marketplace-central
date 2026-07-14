@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 
@@ -398,7 +399,9 @@ func TestAssistedSankhyaConfirmPreservesRepositoryConflict(t *testing.T) {
 
 type recordingCacheInvalidator struct{ classes []string }
 
-func (r *recordingCacheInvalidator) InvalidateClass(class string) { r.classes = append(r.classes, class) }
+func (r *recordingCacheInvalidator) InvalidateClass(class string) {
+	r.classes = append(r.classes, class)
+}
 
 var _ internalreadports.CacheInvalidator = (*recordingCacheInvalidator)(nil)
 
@@ -412,6 +415,19 @@ func TestAssistedSankhyaConfirmDoesNotInvalidateFailedPersistence(t *testing.T) 
 	}
 	if len(invalidator.classes) != 0 {
 		t.Fatalf("invalidations=%v after persistence failure, want none", invalidator.classes)
+	}
+}
+
+func TestAssistedSankhyaConfirmInvalidatesCatalogAfterSuccessfulPersistence(t *testing.T) {
+	service, _, _, _, input, _ := assistedServiceFixture()
+	invalidator := &recordingCacheInvalidator{}
+	service.invalidator = invalidator
+
+	if _, err := service.Confirm(context.Background(), input); err != nil {
+		t.Fatalf("Confirm() error=%v, want success", err)
+	}
+	if !reflect.DeepEqual(invalidator.classes, []string{"catalog"}) {
+		t.Fatalf("invalidations=%v, want exactly [catalog]", invalidator.classes)
 	}
 }
 
