@@ -344,7 +344,11 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	catalogEnrichments := catalogpostgres.NewEnrichmentRepository(pool, cfg.DefaultTenantID)
 	legacyReader := canonicalCatalogReader.(catalogports.ProductReader)
 	catalogSvc := catalogapp.NewService(legacyReader, catalogEnrichments, cfg.DefaultTenantID)
-	catalogtransport.Handler{Service: catalogapp.NewCanonicalService(canonicalCatalogReader), CompatibilityService: catalogSvc}.Register(mux)
+	var catalogPageReader internalreadports.CatalogPageReader
+	if internalReadAvailable {
+		catalogPageReader = internalReadSvc
+	}
+	catalogtransport.Handler{Service: catalogapp.NewCanonicalService(canonicalCatalogReader), CompatibilityService: catalogSvc, PageReader: catalogPageReader}.Register(mux)
 
 	productLinkGenerationSvc := productlinksapp.NewGenerationService(productlinksapp.GenerationServiceConfig{
 		Snapshots: productLinkSnapshotRepo,

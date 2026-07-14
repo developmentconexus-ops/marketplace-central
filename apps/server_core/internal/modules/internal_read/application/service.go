@@ -38,3 +38,21 @@ func (s Service) GetSalesHistory(ctx context.Context, input ports.SalesHistoryIn
 func (s Service) GetTaxInputs(ctx context.Context, input ports.TaxInput) (domain.TaxInputs, error) {
 	return s.reader.GetTaxInputs(ctx, input)
 }
+
+func (s Service) ListCatalogProductFacts(ctx context.Context, cursor ports.Cursor, limit int) (ports.CatalogFactPage, error) {
+	reader, ok := s.reader.(ports.CatalogPageReader)
+	if !ok {
+		return ports.CatalogFactPage{}, domain.NewReadError(domain.ReadErrorSourceUnavailable, "oracle catalog page reader is unavailable", nil)
+	}
+	return reader.ListCatalogProductFacts(ctx, cursor, limit)
+}
+
+func (s Service) SearchCatalogProductFacts(ctx context.Context, q string, limit int) (ports.CatalogFactPage, error) {
+	reader, ok := s.reader.(ports.CatalogPageReader)
+	if !ok {
+		return ports.CatalogFactPage{}, domain.NewReadError(domain.ReadErrorSourceUnavailable, "oracle catalog page reader is unavailable", nil)
+	}
+	return reader.SearchCatalogProductFacts(ctx, q, limit)
+}
+
+var _ ports.CatalogPageReader = Service{}
