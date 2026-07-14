@@ -397,6 +397,10 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 			slog.Default(),
 			observabilityCfg.SlowQueryThreshold,
 		)
+		if err := source.ValidateConfiguration(context.Background()); err != nil {
+			_ = oracleDB.Close()
+			return nil, fmt.Errorf("sankhya linkage startup validation: %w", err)
+		}
 		reader, err := ordersinternalread.NewSankhyaLinkageReader(
 			source,
 			runtimeConfig.ReaderConfig.ConfigurationRevision,
