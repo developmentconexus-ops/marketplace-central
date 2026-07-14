@@ -256,9 +256,14 @@ func TestApplyManualStockActionDoesNotInvalidateFailedOrRejectedWrites(t *testin
 	fresh := now.Add(-time.Minute)
 	t.Run("persistence failure", func(t *testing.T) {
 		invalidator := &recordingCacheInvalidator{}
-		service := NewStockActionServiceWithInvalidator(&memoryActionStore{err: errors.New("rolled back")}, &fakeStockWriter{}, invalidator)
+		store := &memoryActionStore{failOnSave: 2, saveErr: errors.New("rolled back")}
+		writer := &fakeStockWriter{result: domain.StockWriteResult{Status: domain.StockWriteResultApplied, Message: "updated"}}
+		service := NewStockActionServiceWithInvalidator(store, writer, invalidator)
 		if _, err := service.ApplyManual(context.Background(), applyInput("act-persist-fail", actionRiskInput(now, domain.LinkStateResolved, intPtr(8), intPtr(9), &fresh, &fresh), 7, now)); err == nil {
 			t.Fatal("ApplyManual() error = nil, want persistence failure")
+		}
+		if writer.calls != 1 || store.saveCalls != 2 {
+			t.Fatalf("provider/save path was not reached: writer calls=%d save calls=%d, want 1/2", writer.calls, store.saveCalls)
 		}
 		if len(invalidator.classes) != 0 {
 			t.Fatalf("invalidations=%v after persistence failure, want none", invalidator.classes)
@@ -380,13 +385,18 @@ func (w *fakeStockWriter) UpdateAvailableQuantity(_ context.Context, request dom
 }
 
 type memoryActionStore struct {
-	items map[string]domain.StockAction
-	err   error
+	items      map[string]domain.StockAction
+	err        error
+	failOnSave int
+	saveErr    error
+	saveCalls  int
 }
 
 type recordingCacheInvalidator struct{ classes []string }
 
-func (r *recordingCacheInvalidator) InvalidateClass(class string) { r.classes = append(r.classes, class) }
+func (r *recordingCacheInvalidator) InvalidateClass(class string) {
+	r.classes = append(r.classes, class)
+}
 
 var _ internalreadports.CacheInvalidator = (*recordingCacheInvalidator)(nil)
 
@@ -402,8 +412,12 @@ func (s *memoryActionStore) FindByID(_ context.Context, actionID string) (domain
 }
 
 func (s *memoryActionStore) Save(_ context.Context, action domain.StockAction) error {
+	s.saveCalls++
 	if s.err != nil {
 		return s.err
+	}
+	if s.failOnSave > 0 && s.saveCalls == s.failOnSave {
+		return s.saveErr
 	}
 	if action.ActionID == "" {
 		return errors.New("missing action id")

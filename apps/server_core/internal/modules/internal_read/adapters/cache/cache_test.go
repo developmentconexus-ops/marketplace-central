@@ -118,13 +118,15 @@ func (r *fakeStockReader) GetStockFactsByIDs(context.Context, []int64) (map[int6
 }
 
 type stagedCatalogReader struct {
-	clock       Clock
-	calls       atomic.Int64
-	firstStart  chan struct{}
+	clock        Clock
+	calls        atomic.Int64
+	firstStart   chan struct{}
 	firstRelease chan struct{}
 }
 
-type staticCatalogReader struct{ page internalreadports.CatalogFactPage }
+type staticCatalogReader struct {
+	page internalreadports.CatalogFactPage
+}
 
 func (r *staticCatalogReader) ListCatalogProductFacts(context.Context, internalreadports.Cursor, int) (internalreadports.CatalogFactPage, error) {
 	return r.page, nil
@@ -160,7 +162,9 @@ func (r *mutableBatchReader) GetTaxFactsByIDs(context.Context, []int64) (map[int
 	return r.tax, nil
 }
 
-type mutableStockReader struct{ facts map[int64]*internalreaddomain.StockFact }
+type mutableStockReader struct {
+	facts map[int64]*internalreaddomain.StockFact
+}
 
 func (r *mutableStockReader) GetStockFactsByIDs(context.Context, []int64) (map[int64]*internalreaddomain.StockFact, error) {
 	return r.facts, nil
@@ -289,6 +293,79 @@ func TestFreshnessCacheFencesInFlightLoadAfterInvalidation(t *testing.T) {
 	}
 	if !second.AsOf.After(first.AsOf) || downstream.listCalls.Load() != 2 {
 		t.Fatalf("stale in-flight load was cached: calls=%d first=%s second=%s", downstream.listCalls.Load(), first.AsOf, second.AsOf)
+	}
+}
+
+func TestFreshnessCachePostInvalidationDoesNotJoinInFlightLoad(t *testing.T) {
+	clock := &fakeClock{now: time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)}
+	c := testCache(clock, 10, nil)
+	downstream := &stagedCatalogReader{clock: clock, firstStart: make(chan struct{}), firstRelease: make(chan struct{})}
+	catalog := NewCatalogPageReader(downstream, c)
+	firstResult := make(chan internalreadports.CatalogFactPage, 1)
+	go func() {
+		page, _ := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50)
+		firstResult <- page
+	}()
+	select {
+	case <-downstream.firstStart:
+	case <-time.After(time.Second):
+		t.Fatal("first downstream load was not entered")
+	}
+
+	c.InvalidateClass(ClassCatalog)
+	clock.Advance(time.Second)
+	secondResult := make(chan internalreadports.CatalogFactPage, 1)
+	go func() {
+		page, _ := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50)
+		secondResult <- page
+	}()
+	close(downstream.firstRelease)
+	first := <-firstResult
+	second := <-secondResult
+	if downstream.calls.Load() != 2 {
+		t.Fatalf("post-invalidation reader joined stale flight: downstream calls=%d, want 2", downstream.calls.Load())
+	}
+	if !second.AsOf.After(first.AsOf) {
+		t.Fatalf("post-invalidation reader got stale data: first=%s second=%s", first.AsOf, second.AsOf)
+	}
+}
+
+func TestFreshnessCacheOlderLoadCannotOverwriteBypassRefresh(t *testing.T) {
+	clock := &fakeClock{now: time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)}
+	downstream := &stagedCatalogReader{clock: clock, firstStart: make(chan struct{}), firstRelease: make(chan struct{})}
+	catalog := NewCatalogPageReader(downstream, testCache(clock, 10, nil))
+	normalResult := make(chan internalreadports.CatalogFactPage, 1)
+	go func() {
+		page, _ := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50)
+		normalResult <- page
+	}()
+	select {
+	case <-downstream.firstStart:
+	case <-time.After(time.Second):
+		t.Fatal("normal leader was not entered")
+	}
+
+	clock.Advance(time.Second)
+	bypass := internalreaddomain.WithFreshnessPolicy(context.Background(), internalreaddomain.FreshnessPolicy{MaxAge: 0})
+	fresh, err := catalog.ListCatalogProductFacts(bypass, internalreadports.Cursor{}, 50)
+	if err != nil {
+		t.Fatal(err)
+	}
+	close(downstream.firstRelease)
+	older := <-normalResult
+	if downstream.calls.Load() != 2 {
+		t.Fatalf("expected normal and bypass downstream calls, got %d", downstream.calls.Load())
+	}
+	if !fresh.AsOf.After(older.AsOf) {
+		t.Fatalf("bypass snapshot=%s, normal snapshot=%s; want bypass newer", fresh.AsOf, older.AsOf)
+	}
+
+	got, err := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.AsOf.Equal(fresh.AsOf) {
+		t.Fatalf("older normal load overwrote bypass refresh: got=%s, want=%s", got.AsOf, fresh.AsOf)
 	}
 }
 

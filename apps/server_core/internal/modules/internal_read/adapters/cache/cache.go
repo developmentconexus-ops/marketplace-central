@@ -93,14 +93,14 @@ type entry struct {
 }
 
 type Cache struct {
-	mu         sync.Mutex
-	entries    map[string]*list.Element
-	lru        *list.List
-	group      singleflight.Group
+	mu          sync.Mutex
+	entries     map[string]*list.Element
+	lru         *list.List
+	group       singleflight.Group
 	generations map[string]uint64
-	policies   map[string]domain.FreshnessPolicy
-	maxEntries int
-	clock      Clock
+	policies    map[string]domain.FreshnessPolicy
+	maxEntries  int
+	clock       Clock
 }
 
 var _ internalreadports.CacheInvalidator = (*Cache)(nil)
@@ -128,12 +128,12 @@ func New(config Config) *Cache {
 		maxEntries = defaultMaxEntries
 	}
 	return &Cache{
-		entries:    make(map[string]*list.Element),
-		lru:        list.New(),
+		entries:     make(map[string]*list.Element),
+		lru:         list.New(),
 		generations: make(map[string]uint64),
-		policies:   policies,
-		maxEntries: maxEntries,
-		clock:      clock,
+		policies:    policies,
+		maxEntries:  maxEntries,
+		clock:       clock,
 	}
 }
 
@@ -156,6 +156,7 @@ func (c *Cache) InvalidateClass(factClass string) {
 }
 
 func (c *Cache) load(ctx context.Context, class, key string, loader func() (any, time.Time, error)) (any, error) {
+	generation := c.classGeneration(class)
 	policy := c.policies[class]
 	bypass := false
 	if requested, ok := domain.FreshnessPolicyFromContext(ctx); ok && requested.IsZero() {
@@ -171,12 +172,11 @@ func (c *Cache) load(ctx context.Context, class, key string, loader func() (any,
 		cacheLog("bypass", class)
 	}
 
-	groupKey := key
+	groupKey := class + ":" + strconv.FormatUint(generation, 10) + ":normal:" + key
 	if bypass {
-		groupKey = "bypass:" + key
+		groupKey = class + ":" + strconv.FormatUint(generation, 10) + ":bypass:" + key
 	}
 	done := c.group.DoChan(groupKey, func() (any, error) {
-		generation := c.classGeneration(class)
 		if !bypass {
 			if cached, ok := c.lookup(class, key, policy.MaxAge); ok {
 				return cached, nil
@@ -226,8 +226,11 @@ func (c *Cache) storeIfCurrent(class, key string, value any, snapshot time.Time,
 	if c.generations[class] != generation {
 		return
 	}
-	value = cloneCachedValue(value)
 	if existing, ok := c.entries[key]; ok {
+		if existing.Value.(*entry).snapshot.After(snapshot) {
+			return
+		}
+		value = cloneCachedValue(value)
 		existing.Value.(*entry).value = value
 		existing.Value.(*entry).created = c.clock.Now()
 		existing.Value.(*entry).snapshot = snapshot
@@ -235,6 +238,7 @@ func (c *Cache) storeIfCurrent(class, key string, value any, snapshot time.Time,
 		c.lru.MoveToFront(existing)
 		return
 	}
+	value = cloneCachedValue(value)
 	for len(c.entries) >= c.maxEntries {
 		oldest := c.lru.Back()
 		if oldest == nil {
