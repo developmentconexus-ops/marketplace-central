@@ -571,7 +571,7 @@ func TestFreshnessCacheBypassAndLinkageExclusion(t *testing.T) {
 		t.Fatalf("bypass did not repopulate cache: calls=%d", downstream.listCalls.Load())
 	}
 	for i := 0; i < 3; i++ {
-		if _, err := wrapped.FindProductsForLinking(context.Background(), internalreadports.FindProductsInput{ProductID: intPtr(i + 1)}); err != nil {
+		if _, err := wrapped.FindProductsForLinking(context.Background(), internalreadports.FindProductsInput{ProductID: intPtr(1)}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -646,14 +646,6 @@ func TestEvictOnMutation(t *testing.T) {
 	}
 	if reader.listCalls.Load() != 2 {
 		t.Fatalf("repopulated catalog entry missed: calls=%d", reader.listCalls.Load())
-	}
-	var invalidations atomic.Int64
-	var failed = errors.New("rolled back")
-	if err := func() error { return failed }(); err == nil {
-		invalidations.Add(1)
-	}
-	if invalidations.Load() != 0 {
-		t.Fatal("failed mutation invalidated cache")
 	}
 }
 
