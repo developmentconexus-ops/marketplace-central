@@ -1,7 +1,9 @@
 package transport
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -10,12 +12,48 @@ import (
 
 	"marketplace-central/apps/server_core/internal/modules/catalog/application"
 	"marketplace-central/apps/server_core/internal/modules/catalog/domain"
+	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
+	"marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 )
 
 type Handler struct {
 	Service              application.CanonicalService
 	CompatibilityService application.Service
+	PageReader           ports.CatalogPageReader
+}
+
+const (
+	catalogListPath     = "/catalog/products"
+	catalogSearchPath   = "/catalog/products/search"
+	catalogDefaultLimit = 50
+	catalogMaxLimit     = 100
+	searchMaxLimit      = 50
+)
+
+type freshnessPolicyContextKey struct{}
+
+// FreshnessPolicyFromContext exposes the transport-to-read freshness seam to
+// the composition-owned reader without adding caching to this feature.
+func FreshnessPolicyFromContext(ctx context.Context) (internalreaddomain.FreshnessPolicy, bool) {
+	policy, ok := ctx.Value(freshnessPolicyContextKey{}).(internalreaddomain.FreshnessPolicy)
+	return policy, ok
+}
+
+func requestContext(r *http.Request) context.Context {
+	if !hasNoCacheDirective(r.Header.Get("Cache-Control")) {
+		return r.Context()
+	}
+	return context.WithValue(r.Context(), freshnessPolicyContextKey{}, internalreaddomain.FreshnessPolicy{MaxAge: 0})
+}
+
+func hasNoCacheDirective(header string) bool {
+	for _, directive := range strings.Split(header, ",") {
+		if strings.EqualFold(strings.TrimSpace(strings.SplitN(directive, "=", 2)[0]), "no-cache") {
+			return true
+		}
+	}
+	return false
 }
 
 func writeError(w http.ResponseWriter, status int, code, message string) {
@@ -25,48 +63,236 @@ func writeError(w http.ResponseWriter, status int, code, message string) {
 }
 
 func (h Handler) Register(mux httpx.RouteRegistrar) {
-	mux.HandleFunc("/catalog/products", h.handleProducts)
-	mux.HandleFunc("GET /catalog/products/search", h.handleSearch)
+	_, hasRouteClasses := mux.(routeClassRegistrar)
+	if h.PageReader == nil && !hasRouteClasses {
+		// Deprecated compatibility registration for direct legacy test harnesses.
+		// The production RouteClassMux and every page-reader wiring use IC-01.
+		mux.HandleFunc(catalogListPath, h.handleLegacyProducts)
+		mux.HandleFunc("GET "+catalogSearchPath, h.handleLegacySearch)
+	} else {
+		registerInteractiveRoute(mux, catalogListPath, h.handleProducts)
+		registerInteractiveRoute(mux, catalogSearchPath, h.handleSearch)
+	}
 	mux.HandleFunc("/catalog/taxonomy", h.handleTaxonomy)
 	mux.HandleFunc("GET /catalog/products/{id}", h.handleGetProduct)
 	mux.HandleFunc("GET /catalog/products/{id}/enrichment", h.handleGetEnrichment)
 	mux.HandleFunc("PUT /catalog/products/{id}/enrichment", h.handleUpsertEnrichment)
 }
 
+type routeClassRegistrar interface {
+	RegisterRouteClass(string, httpx.RouteClass)
+}
+
+func registerInteractiveRoute(mux httpx.RouteRegistrar, pattern string, handler func(http.ResponseWriter, *http.Request)) {
+	if registrar, ok := mux.(routeClassRegistrar); ok {
+		registrar.RegisterRouteClass(pattern, httpx.InteractiveRouteClass)
+	}
+	mux.HandleFunc("GET "+pattern, handler)
+}
+
 func (h Handler) handleProducts(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	cursor, limit, err := parseCatalogPageQuery(r, catalogMaxLimit)
+	if err != nil {
+		writeCatalogPageError(w, err)
+		return
+	}
+	if h.PageReader == nil {
+		writeCatalogPageError(w, errors.New("source_unavailable"))
+		return
+	}
+	page, err := h.PageReader.ListCatalogProductFacts(requestContext(r), cursor, limit)
+	if err != nil {
+		writeCatalogPageError(w, err)
+		return
+	}
+	slog.Info("catalog.products", "action", "list", "result", "200", "duration_ms", time.Since(start).Milliseconds())
+	httpx.WriteJSON(w, http.StatusOK, newCatalogPageResponse(page, false))
+}
+
+// handleLegacyProducts remains only for direct legacy mux compatibility. The
+// production route is registered through RouteClassMux and uses handleProducts.
+func (h Handler) handleLegacyProducts(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", "GET")
-		slog.Error("catalog.products", "action", "list", "result", "405", "duration_ms", time.Since(start).Milliseconds())
 		writeError(w, http.StatusMethodNotAllowed, "CATALOG_METHOD_NOT_ALLOWED", "method not allowed")
 		return
 	}
 	products, err := h.Service.ListProducts(r.Context())
 	if err != nil {
-		slog.Error("catalog.products", "action", "list", "result", "500", "duration_ms", time.Since(start).Milliseconds())
 		writeCatalogReadError(w, err)
 		return
 	}
-	slog.Info("catalog.products", "action", "list", "result", "200", "duration_ms", time.Since(start).Milliseconds())
+	slog.Info("catalog.products", "action", "legacy_list", "result", "200", "duration_ms", time.Since(start).Milliseconds())
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": products})
 }
 
 func (h Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	q := r.URL.Query().Get("q")
+	limit, err := parseLimit(r, searchMaxLimit)
+	if err != nil {
+		writeCatalogPageError(w, err)
+		return
+	}
+	if h.PageReader == nil {
+		writeCatalogPageError(w, errors.New("source_unavailable"))
+		return
+	}
+	page, err := h.PageReader.SearchCatalogProductFacts(requestContext(r), q, limit)
+	if err != nil {
+		writeCatalogPageError(w, err)
+		return
+	}
+	slog.Info("catalog.search", "action", "search", "result", "200", "duration_ms", time.Since(start).Milliseconds())
+	httpx.WriteJSON(w, http.StatusOK, newCatalogPageResponse(page, true))
+}
+
+// handleLegacySearch remains only for direct legacy mux compatibility.
+func (h Handler) handleLegacySearch(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	q := r.URL.Query().Get("q")
 	if strings.TrimSpace(q) == "" {
-		slog.Error("catalog.search", "action", "search", "result", "400", "duration_ms", time.Since(start).Milliseconds())
 		writeError(w, http.StatusBadRequest, "CATALOG_SEARCH_QUERY_REQUIRED", "query parameter q is required")
 		return
 	}
 	products, err := h.Service.SearchProducts(r.Context(), q)
 	if err != nil {
-		slog.Error("catalog.search", "action", "search", "result", "500", "duration_ms", time.Since(start).Milliseconds())
 		writeCatalogReadError(w, err)
 		return
 	}
-	slog.Info("catalog.search", "action", "search", "result", "200", "duration_ms", time.Since(start).Milliseconds())
+	slog.Info("catalog.search", "action", "legacy_search", "result", "200", "duration_ms", time.Since(start).Milliseconds())
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": products})
+}
+
+type catalogPageQueryError struct {
+	code         string
+	allowedRange string
+}
+
+func (e *catalogPageQueryError) Error() string { return e.code }
+
+func parseCatalogPageQuery(r *http.Request, maxLimit int) (ports.Cursor, int, error) {
+	cursor := ports.Cursor{}
+	if raw, ok := r.URL.Query()["cursor"]; ok {
+		if len(raw) != 1 {
+			return cursor, 0, &catalogPageQueryError{code: "invalid_cursor"}
+		}
+		decoded, err := ports.DecodeCursor(raw[0])
+		if err != nil {
+			return cursor, 0, &catalogPageQueryError{code: "invalid_cursor"}
+		}
+		cursor = decoded
+	}
+	limit, err := parseLimit(r, maxLimit)
+	return cursor, limit, err
+}
+
+func parseLimit(r *http.Request, maxLimit int) (int, error) {
+	query := r.URL.Query()
+	raw, ok := query["limit"]
+	if !ok {
+		return catalogDefaultLimit, nil
+	}
+	if len(raw) != 1 {
+		return 0, &catalogPageQueryError{code: "invalid_limit", allowedRange: "1.." + strconv.Itoa(maxLimit)}
+	}
+	limit, err := strconv.Atoi(strings.TrimSpace(raw[0]))
+	if err != nil || limit < 1 || limit > maxLimit {
+		return 0, &catalogPageQueryError{code: "invalid_limit", allowedRange: "1.." + strconv.Itoa(maxLimit)}
+	}
+	return limit, nil
+}
+
+type catalogPageEnvelope struct {
+	Items      []catalogProductFactResponse `json:"items"`
+	NextCursor *string                      `json:"next_cursor"`
+	PageSize   int                          `json:"page_size"`
+	AsOf       time.Time                    `json:"as_of"`
+}
+
+type catalogProductFactResponse struct {
+	InternalProductID int                         `json:"internal_product_id"`
+	Reference         *string                     `json:"reference"`
+	Description       *string                     `json:"description"`
+	EAN               *string                     `json:"ean"`
+	Active            bool                        `json:"active"`
+	SellableStock     catalogQuantityFactResponse `json:"sellable_stock"`
+	CurrentPrice      catalogMoneyFactResponse    `json:"current_price"`
+	Cost              catalogMoneyFactResponse    `json:"cost"`
+}
+
+type catalogQuantityFactResponse struct {
+	Quantity *float64 `json:"quantity"`
+	Quality  []string `json:"quality"`
+}
+
+type catalogMoneyFactResponse struct {
+	Amount   *string  `json:"amount"`
+	Currency string   `json:"currency"`
+	Quality  []string `json:"quality"`
+}
+
+func newCatalogPageResponse(page ports.CatalogFactPage, search bool) catalogPageEnvelope {
+	items := make([]catalogProductFactResponse, 0, len(page.Items))
+	for _, item := range page.Items {
+		items = append(items, catalogProductFactResponse{
+			InternalProductID: int(item.InternalProductID),
+			Reference:         item.Reference,
+			Description:       item.Description,
+			EAN:               item.EAN,
+			Active:            item.Active,
+			SellableStock: catalogQuantityFactResponse{
+				Quantity: item.SellableStock.Quantity,
+				Quality:  nonNilStrings(item.SellableStock.Quality),
+			},
+			CurrentPrice: catalogMoneyFactResponse{
+				Amount:   item.CurrentPrice.Amount,
+				Currency: item.CurrentPrice.Currency,
+				Quality:  nonNilStrings(item.CurrentPrice.Quality),
+			},
+			Cost: catalogMoneyFactResponse{
+				Amount:   item.Cost.Amount,
+				Currency: item.Cost.Currency,
+				Quality:  nonNilStrings(item.Cost.Quality),
+			},
+		})
+	}
+	response := catalogPageEnvelope{Items: items, PageSize: len(items), AsOf: page.AsOf.UTC()}
+	if !search && page.NextCursor != nil {
+		if encoded, err := page.NextCursor.Encode(); err == nil {
+			response.NextCursor = &encoded
+		}
+	}
+	return response
+}
+
+func nonNilStrings(values []string) []string {
+	if values == nil {
+		return []string{}
+	}
+	return values
+}
+
+func writeCatalogPageError(w http.ResponseWriter, err error) {
+	if queryErr, ok := err.(*catalogPageQueryError); ok {
+		if queryErr.code == "invalid_limit" {
+			httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{"error": queryErr.code, "allowed_range": queryErr.allowedRange})
+			return
+		}
+		httpx.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": queryErr.code})
+		return
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		httpx.WriteJSON(w, http.StatusGatewayTimeout, map[string]string{"error": "deadline_exceeded"})
+		return
+	}
+	if internalreaddomain.IsReadErrorCode(err, internalreaddomain.ReadErrorSourceUnavailable) || strings.Contains(err.Error(), "source_unavailable") {
+		httpx.WriteJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "source_unavailable"})
+		return
+	}
+	httpx.WriteJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "source_unavailable"})
 }
 
 func (h Handler) handleGetProduct(w http.ResponseWriter, r *http.Request) {

@@ -5,15 +5,54 @@ info:
 paths:
   /catalog/products:
     get:
-      summary: List catalog products
-      operationId: listCatalogProducts
+      summary: List paginated catalog product facts
+      operationId: listCatalogProductFacts
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Opaque base64 keyset cursor returned by the previous page.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: Cache-Control
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Set to no-cache to map FreshnessPolicy.MaxAge to zero.
       responses:
         "200":
           description: Successful response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ListCatalogProductsResponse'
+                $ref: '#/components/schemas/CatalogProductFactPage'
+        "400":
+          description: Invalid cursor or limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogPageErrorResponse'
+        "503":
+          description: Catalog source unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogPageErrorResponse'
+        "504":
+          description: Interactive deadline exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogPageErrorResponse'
   /catalog/products/{id}:
     get:
       summary: Get a single catalog product
@@ -39,8 +78,8 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
   /catalog/products/search:
     get:
-      summary: Search catalog products
-      operationId: searchCatalogProducts
+      summary: Search paginated catalog product facts
+      operationId: searchCatalogProductFacts
       parameters:
         - name: q
           in: query
@@ -48,13 +87,45 @@ paths:
           schema:
             type: string
           description: Search query string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 50
+        - name: Cache-Control
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Set to no-cache to map FreshnessPolicy.MaxAge to zero.
       responses:
         "200":
           description: Successful response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ListCatalogProductsResponse'
+                $ref: '#/components/schemas/CatalogProductFactPage'
+        "400":
+          description: Invalid limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogPageErrorResponse'
+        "503":
+          description: Catalog source unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogPageErrorResponse'
+        "504":
+          description: Interactive deadline exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogPageErrorResponse'
   /catalog/products/{id}/enrichment:
     get:
       summary: Get product enrichment data
@@ -1533,6 +1604,82 @@ components:
           $ref: '#/components/schemas/CanonicalNumericSourceFact'
         stock_quantity:
           $ref: '#/components/schemas/CanonicalNumericSourceFact'
+    CatalogProductFact:
+      type: object
+      required: [internal_product_id, reference, description, ean, active, sellable_stock, current_price, cost]
+      properties:
+        internal_product_id:
+          type: integer
+          minimum: 1
+        reference:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        ean:
+          type: string
+          nullable: true
+        active:
+          type: boolean
+        sellable_stock:
+          $ref: '#/components/schemas/CatalogQuantityFact'
+        current_price:
+          $ref: '#/components/schemas/CatalogMoneyFact'
+        cost:
+          $ref: '#/components/schemas/CatalogMoneyFact'
+    CatalogQuantityFact:
+      type: object
+      required: [quantity, quality]
+      properties:
+        quantity:
+          type: number
+          nullable: true
+        quality:
+          type: array
+          items:
+            type: string
+    CatalogMoneyFact:
+      type: object
+      required: [amount, currency, quality]
+      properties:
+        amount:
+          type: string
+          nullable: true
+        currency:
+          type: string
+        quality:
+          type: array
+          items:
+            type: string
+    CatalogProductFactPage:
+      type: object
+      required: [items, next_cursor, page_size, as_of]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CatalogProductFact'
+        next_cursor:
+          type: string
+          nullable: true
+          description: Opaque base64 keyset cursor; null on the last page.
+        page_size:
+          type: integer
+          minimum: 0
+        as_of:
+          type: string
+          format: date-time
+    CatalogPageErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          enum: [invalid_cursor, invalid_limit, source_unavailable, deadline_exceeded]
+        allowed_range:
+          type: string
+          description: Present for invalid_limit and states the inclusive range.
     CatalogProduct:
       type: object
       properties:

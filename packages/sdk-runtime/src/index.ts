@@ -174,6 +174,45 @@ export interface CanonicalCatalogProduct {
   stock_quantity: CanonicalNumericSourceFact;
 }
 
+export interface CatalogProductFact {
+  internal_product_id: number;
+  reference: string | null;
+  description: string | null;
+  ean: string | null;
+  active: boolean;
+  sellable_stock: {
+    quantity: number | null;
+    quality: string[];
+  };
+  current_price: {
+    amount: string | null;
+    currency: string;
+    quality: string[];
+  };
+  cost: {
+    amount: string | null;
+    currency: string;
+    quality: string[];
+  };
+}
+
+export interface CatalogProductFactPage {
+  items: CatalogProductFact[];
+  next_cursor: string | null;
+  page_size: number;
+  as_of: string;
+}
+
+export interface CatalogPageOptions {
+  cursor?: string;
+  limit?: number;
+}
+
+export interface CatalogSearchPageOptions {
+  q: string;
+  limit?: number;
+}
+
 export interface IntegrationConnectionSnapshot {
   state: "draft" | "pending_connection" | "connected" | "degraded" | "needs_reauth" | "disconnected";
   health: "healthy" | "warning" | "critical";
@@ -967,6 +1006,17 @@ export function createMarketplaceCentralClient(options: {
     return data as T;
   }
 
+  function catalogQuery(params: Record<string, string | number | undefined>): string {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined) {
+        query.set(key, String(value));
+      }
+    }
+    const encoded = query.toString();
+    return encoded ? `?${encoded}` : "";
+  }
+
   async function putJson<T>(path: string, body: unknown): Promise<T> {
     const response = await fetchImpl(`${options.baseUrl}${path}`, {
       method: "PUT",
@@ -1002,7 +1052,19 @@ export function createMarketplaceCentralClient(options: {
   }
 
   return {
-    listCatalogProducts: () => getJson<ListResponse<CanonicalCatalogProduct>>("/catalog/products"),
+    listCatalogProductFacts: (options: CatalogPageOptions = {}) =>
+      getJson<CatalogProductFactPage>(
+        `/catalog/products${catalogQuery({ cursor: options.cursor, limit: options.limit })}`,
+      ),
+    searchCatalogProductFacts: (options: CatalogSearchPageOptions) =>
+      getJson<CatalogProductFactPage>(
+        `/catalog/products/search${catalogQuery({ q: options.q, limit: options.limit })}`,
+      ),
+    /** @deprecated Use listCatalogProductFacts; the endpoint is now paginated. */
+    listCatalogProducts: (options: CatalogPageOptions = {}) =>
+      getJson<CatalogProductFactPage>(
+        `/catalog/products${catalogQuery({ cursor: options.cursor, limit: options.limit })}`,
+      ),
     listMarketplaceAccounts: () => getJson<ListResponse<MarketplaceAccount>>("/marketplaces/accounts"),
     listMarketplacePolicies: () => getJson<ListResponse<MarketplacePolicy>>("/marketplaces/policies"),
     listMarketplaceDefinitions: () => getJson<ListResponse<MarketplaceDefinition>>("/marketplaces/definitions"),
@@ -1172,10 +1234,11 @@ export function createMarketplaceCentralClient(options: {
       getJson<{ connected: boolean }>("/connectors/melhor-envio/status"),
 
     // Catalog
-    searchCatalogProducts: (query: string) =>
-      getJson<ListResponse<CanonicalCatalogProduct>>(`/catalog/products/search?q=${encodeURIComponent(query)}`),
-	getCatalogProduct: (productId: number) =>
-	  getJson<CanonicalCatalogProduct>(`/catalog/products/${productId}`),
+    /** @deprecated Use searchCatalogProductFacts; the endpoint now returns the IC-01 page envelope. */
+    searchCatalogProducts: (query: string, limit?: number) =>
+      getJson<CatalogProductFactPage>(`/catalog/products/search${catalogQuery({ q: query, limit })}`),
+    getCatalogProduct: (productId: number) =>
+      getJson<CanonicalCatalogProduct>(`/catalog/products/${productId}`),
     listTaxonomyNodes: () =>
       getJson<ListResponse<TaxonomyNode>>("/catalog/taxonomy"),
     getProductEnrichment: (productId: string) =>
