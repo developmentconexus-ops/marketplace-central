@@ -99,11 +99,13 @@ No downstream feature returns an error case absent from this matrix; new case = 
 | Mutation | Server `InvalidateClass` | Client `invalidateQueries` |
 | --- | --- | --- |
 | linkage confirm | `catalog` | `['linkage']` + `['catalog']` |
-| product edit | `catalog` | `['catalog']` |
+| product edit (DORMANT) | `catalog` | `['catalog']` |
 | stock-affecting action | `inventory` | `['inventory']` |
 | margin-input import | `pricecost` | `['catalog']` + `['profitability']` |
 
 Server fact classes: `catalog`, `inventory`, `pricecost` (linkage has no class — never cached).
+
+DORMANT row (product edit): M-05 removed the legacy ProductsPage — the only product-edit write surface — so this row currently has no implementation target. It is a forward obligation, not dead: any reintroduced product-edit surface MUST invalidate server class `catalog` and client `['catalog']`.
 - `MaxAge=0` (from `Cache-Control: no-cache`) bypasses L2 and repopulates it.
 
 ## Batch & Route-Class Rules (server-internal, cross-milestone)

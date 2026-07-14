@@ -8,8 +8,10 @@ Portfolio prepares one copyable `/goal` handoff, then the user starts one clean
 visible standalone Milestone session manually with the desired root
 model/effort. The Milestone role comes from
 `.agents/skills/mpc-goal-harness/` plus that handoff. Milestone dispatches the
-project custom agents `mpc-implementer` and `mpc-verifier`, both pinned to
-`gpt-5.6-luna` with high reasoning. Milestone requests those agents directly
+project custom agent `mpc-implementer`, pinned to `gpt-5.6-luna` with high
+reasoning; milestone-end review is the dual gate — Codex review (`mpc-verifier`
+config: `gpt-5.6-sol`, medium) plus an independent Claude review — per the
+mission execution plan. Milestone requests those agents directly
 by their configured names and gives each one the bounded role packet. Portfolio passes
 mission/milestone paths, the accepted base SHA, knowledge routes, constraints,
 QA contract, and its task ID for the terminal callback. Milestone owns feature
