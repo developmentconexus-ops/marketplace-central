@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	cataloginternalread "marketplace-central/apps/server_core/internal/modules/catalog/adapters/internalread"
@@ -38,6 +40,7 @@ import (
 	integrationsdomain "marketplace-central/apps/server_core/internal/modules/integrations/domain"
 	integrationstransport "marketplace-central/apps/server_core/internal/modules/integrations/transport"
 	internalreadoracle "marketplace-central/apps/server_core/internal/modules/internal_read/adapters/oracle"
+	"marketplace-central/apps/server_core/internal/modules/internal_read/adapters/oracle/oraclebatch"
 	internalreadapp "marketplace-central/apps/server_core/internal/modules/internal_read/application"
 	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
 	internalreadobservability "marketplace-central/apps/server_core/internal/modules/internal_read/observability"
@@ -309,9 +312,10 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	productMatcher := productlinksapp.ProductMatcher(unavailableProductMatcher{
 		err: internalreaddomain.NewReadError(internalreaddomain.ReadErrorSourceUnavailable, "oracle product linking reader is unavailable", nil),
 	})
-	var inventoryStockReader inventoryports.InternalStockReader = inventoryinternalread.UnavailableStockReader{
+	var inventoryStockReader inventoryports.InternalStockBatchReader = inventoryinternalread.UnavailableStockBatchReader{
 		Err: internalreaddomain.NewReadError(internalreaddomain.ReadErrorSourceUnavailable, "oracle inventory stock reader is unavailable", nil),
 	}
+	oracleBatchSemaphore := oraclebatch.NewSemaphore(oracleBatchPermits(os.Getenv))
 	var internalReadSvc internalreadapp.Service
 	var internalReadAvailable bool
 	var oracleDB internalreadoracle.Database
@@ -331,7 +335,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		poolStats = internalreadobservability.NewPoolStatsLoop(oracleDB, slog.Default(), observabilityCfg.PoolStatsInterval)
 		internalReadAvailable = true
 		productMatcher = internalReadSvc
-		inventoryStockReader = inventoryinternalread.NewStockReader(internalReadSvc)
+		inventoryStockReader = internalreadoracle.NewBatchStockReader(oracleDB, oracleBatchSemaphore)
 	}
 	var canonicalCatalogReader catalogports.CanonicalProductReader = cataloginternalread.UnavailableReader{Err: internalreaddomain.NewReadError(internalreaddomain.ReadErrorSourceUnavailable, "oracle catalog reader is unavailable", nil)}
 	if internalReadAvailable {
@@ -483,4 +487,18 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	connectorstransport.NewHandler(meOAuth).Register(mux)
 
 	return &RootRuntime{Handler: httpx.CORSMiddleware(mux), PoolStats: poolStats}, nil
+}
+
+func oracleBatchPermits(getenv func(string) string) int {
+	const defaultPermits = 4
+	raw := strings.TrimSpace(getenv("MPC_ORACLE_BATCH_PERMITS"))
+	if raw == "" {
+		return defaultPermits
+	}
+	permits, err := strconv.Atoi(raw)
+	if err != nil || permits <= 0 {
+		slog.Warn("invalid Oracle batch permits; using default", "value", raw, "default", defaultPermits)
+		return defaultPermits
+	}
+	return permits
 }

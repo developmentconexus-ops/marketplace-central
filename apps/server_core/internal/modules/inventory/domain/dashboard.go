@@ -56,6 +56,7 @@ type StockRiskListItem struct {
 	InternalObservedAt    *time.Time             `json:"internal_observed_at,omitempty"`
 	ProviderObservedAt    *time.Time             `json:"provider_observed_at,omitempty"`
 	BlockingReason        BlockingReason         `json:"blocking_reason,omitempty"`
+	QualityFlags          []string               `json:"quality,omitempty"`
 }
 
 func (r StockRiskRow) IsActionable() bool {

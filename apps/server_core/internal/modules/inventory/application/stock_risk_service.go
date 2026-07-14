@@ -19,10 +19,10 @@ type ListStockRisksInput struct {
 type StockRiskService struct {
 	snapshots ports.ListingSnapshotReader
 	links     ports.ListingLinkReader
-	stocks    ports.InternalStockReader
+	stocks    ports.InternalStockBatchReader
 }
 
-func NewStockRiskService(snapshots ports.ListingSnapshotReader, links ports.ListingLinkReader, stocks ports.InternalStockReader) StockRiskService {
+func NewStockRiskService(snapshots ports.ListingSnapshotReader, links ports.ListingLinkReader, stocks ports.InternalStockBatchReader) StockRiskService {
 	return StockRiskService{snapshots: snapshots, links: links, stocks: stocks}
 }
 
@@ -43,13 +43,33 @@ func (s StockRiskService) List(ctx context.Context, input ListStockRisksInput) (
 	for _, link := range links {
 		linksByKey[keyOf(link.Identity)] = link
 	}
-	items := make([]domain.StockRiskListItem, 0, len(snapshots))
+
+	stockIDs := make([]int64, 0, len(snapshots))
+	seenStockIDs := make(map[int64]struct{}, len(snapshots))
 	for _, snapshot := range snapshots {
 		link := linksByKey[keyOf(snapshot.Identity)]
-		row, err := s.classifySnapshot(ctx, snapshot, link)
+		if link.InternalProductID == nil {
+			continue
+		}
+		id := int64(*link.InternalProductID)
+		if _, seen := seenStockIDs[id]; seen {
+			continue
+		}
+		seenStockIDs[id] = struct{}{}
+		stockIDs = append(stockIDs, id)
+	}
+	stockFacts := map[int64]*ports.StockFact{}
+	if len(stockIDs) > 0 {
+		stockFacts, err = s.stocks.GetStockFactsByIDs(ctx, stockIDs)
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	items := make([]domain.StockRiskListItem, 0, len(snapshots))
+	for _, snapshot := range snapshots {
+		link := linksByKey[keyOf(snapshot.Identity)]
+		row := s.classifySnapshot(snapshot, link, stockFacts)
 		if matchesRiskFilters(row, input) {
 			items = append(items, row)
 		}
@@ -57,7 +77,7 @@ func (s StockRiskService) List(ctx context.Context, input ListStockRisksInput) (
 	return items, nil
 }
 
-func (s StockRiskService) classifySnapshot(ctx context.Context, snapshot domain.ListingSnapshot, link domain.LinkRecord) (domain.StockRiskListItem, error) {
+func (s StockRiskService) classifySnapshot(snapshot domain.ListingSnapshot, link domain.LinkRecord, stockFacts map[int64]*ports.StockFact) domain.StockRiskListItem {
 	policy := domain.DefaultStockPolicy()
 	input := domain.RiskInput{
 		Policy: policy,
@@ -75,12 +95,12 @@ func (s StockRiskService) classifySnapshot(ctx context.Context, snapshot domain.
 		input.Link.State = domain.LinkStateNone
 	}
 	if link.InternalProductID != nil {
-		internalStock, product, err := s.stocks.GetSellableStock(ctx, *link.InternalProductID, policy)
-		if err != nil {
-			return domain.StockRiskListItem{}, err
+		productID := int64(*link.InternalProductID)
+		input.Product = domain.ProductEvidence{ProductID: *link.InternalProductID}
+		if fact, ok := stockFacts[productID]; ok && fact != nil {
+			input.InternalStock.Quantity = stockQuantityToInt(fact.Quantity)
+			input.InternalStock.Source.ObservedAt = stockObservedAt(fact)
 		}
-		input.InternalStock = internalStock
-		input.Product = product
 	}
 	input.Now = time.Now().UTC()
 	row := domain.ClassifyStockRisk(input)
@@ -89,7 +109,7 @@ func (s StockRiskService) classifySnapshot(ctx context.Context, snapshot domain.
 	if actionable {
 		actionability = domain.StockRiskActionabilityActionable
 	}
-	return domain.StockRiskListItem{
+	result := domain.StockRiskListItem{
 		Identity:              snapshot.Identity,
 		ProviderCode:          snapshot.ProviderCode,
 		ProviderStatus:        snapshot.ProviderStatus,
@@ -110,7 +130,44 @@ func (s StockRiskService) classifySnapshot(ctx context.Context, snapshot domain.
 		InternalObservedAt:    row.InternalObservedAt,
 		ProviderObservedAt:    row.ProviderObservedAt,
 		BlockingReason:        row.BlockingReason,
-	}, nil
+	}
+	if link.InternalProductID != nil {
+		fact, found := stockFacts[int64(*link.InternalProductID)]
+		if !found || fact == nil {
+			result.QualityFlags = []string{"missing_stock"}
+		} else {
+			result.QualityFlags = stockQualityFlags(fact)
+		}
+	}
+	return result
+}
+
+func stockQuantityToInt(value *float64) *int {
+	if value == nil {
+		return nil
+	}
+	quantity := int(*value)
+	return &quantity
+}
+
+func stockObservedAt(fact *ports.StockFact) *time.Time {
+	if fact.Source.ObservedAt != nil {
+		observedAt := fact.Source.ObservedAt.UTC()
+		return &observedAt
+	}
+	if fact.Source.FetchedAt.IsZero() {
+		return nil
+	}
+	fetchedAt := fact.Source.FetchedAt.UTC()
+	return &fetchedAt
+}
+
+func stockQualityFlags(fact *ports.StockFact) []string {
+	flags := make([]string, 0, len(fact.QualityFlags))
+	for _, flag := range fact.QualityFlags {
+		flags = append(flags, string(flag))
+	}
+	return flags
 }
 
 func matchesRiskFilters(item domain.StockRiskListItem, input ListStockRisksInput) bool {
