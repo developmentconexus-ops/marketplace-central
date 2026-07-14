@@ -174,11 +174,18 @@ func (h Handler) handleListSnapshots(w http.ResponseWriter, r *http.Request) {
 }
 
 func writeError(w http.ResponseWriter, status int, code, message string) {
+	if status == http.StatusUnprocessableEntity && code == "limit_exceeded" {
+		httpx.WriteJSON(w, status, map[string]any{"error": code, "limit": 200, "message": message})
+		return
+	}
 	httpx.WriteJSON(w, status, map[string]any{"error": map[string]any{"code": code, "message": message, "details": map[string]any{}}})
 }
 
 func mapError(err error) (int, string) {
 	msg := strings.TrimSpace(err.Error())
+	if strings.HasPrefix(msg, "limit_exceeded") {
+		return http.StatusUnprocessableEntity, "limit_exceeded"
+	}
 	if strings.HasPrefix(msg, "PROFITABILITY_") {
 		return http.StatusBadRequest, msg
 	}

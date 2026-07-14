@@ -22,4 +22,5 @@ type SalesHistory struct {
 	Entries      []SalesHistoryEntry
 	Source       SourceMetadata
 	QualityFlags []QualityFlag
+	Truncated    bool
 }

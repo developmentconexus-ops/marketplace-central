@@ -137,10 +137,9 @@ func (s *AssistedSankhyaLinkageService) ResolveCurrentLineage(ctx context.Contex
 		result.State = domain.AssistedSankhyaLineageUnavailable
 		return result, nil
 	}
-	if err := s.reader.ValidateConfiguration(ctx); err != nil {
-		result.State = lineageErrorState(err)
-		return result, nil
-	}
+	// Configuration is validated once at startup (composition root); the request
+	// path must not issue Oracle Ping/metadata validation queries. Any runtime
+	// unavailability surfaces through the actual candidate/descendant reads.
 	candidates, err := s.reader.FindCandidates(ctx, linkage.ExternalOrderKey)
 	if err != nil {
 		result.State = lineageErrorState(err)
@@ -172,9 +171,8 @@ func (s *AssistedSankhyaLinkageService) ListCandidates(ctx context.Context, inpu
 	if s.reader == nil {
 		return domain.AssistedSankhyaCandidateResult{}, &domain.AssistedSankhyaReadError{Kind: domain.AssistedSankhyaReadConfigurationInvalid}
 	}
-	if err := s.reader.ValidateConfiguration(ctx); err != nil {
-		return domain.AssistedSankhyaCandidateResult{}, err
-	}
+	// ValidateConfiguration runs only at startup; the request path must not issue
+	// Oracle Ping/metadata validation queries.
 	externalKey := domain.ExternalOrderKeyFor(scope)
 	candidates, err := s.reader.FindCandidates(ctx, externalKey)
 	if err != nil {
@@ -195,9 +193,9 @@ func (s *AssistedSankhyaLinkageService) Confirm(ctx context.Context, input Confi
 	if input.SelectedDocumentID <= 0 {
 		return domain.AssistedSankhyaConfirmationResult{}, assistedInvalid("selected_document_id")
 	}
-	if err := s.reader.ValidateConfiguration(ctx); err != nil {
-		return domain.AssistedSankhyaConfirmationResult{}, err
-	}
+	// ValidateConfiguration runs only at startup; the request path relies on the
+	// in-memory runtime revision/evidence guard below and the actual reads, never
+	// on Oracle Ping/metadata validation queries.
 	configurationRevision := strings.TrimSpace(s.reader.ConfigurationRevision())
 	evidenceReference := strings.TrimSpace(s.reader.EvidenceReference())
 	if configurationRevision == "" || evidenceReference == "" {

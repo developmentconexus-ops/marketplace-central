@@ -108,7 +108,7 @@ func TestAssistedSankhyaListCandidatesUsesOnlyPersistedExactMLKey(t *testing.T) 
 	if len(reader.keys) != 1 || reader.keys[0] != "ml:v1:install-1:order-1" || got.ExternalOrderKey != reader.keys[0] {
 		t.Fatalf("exact keys = %#v result=%q", reader.keys, got.ExternalOrderKey)
 	}
-	if reader.validateCalls != 1 || len(repo.appended) != 0 || len(got.Candidates) != 1 {
+	if reader.validateCalls != 0 || len(repo.appended) != 0 || len(got.Candidates) != 1 {
 		t.Fatalf("validation=%d appends=%d candidates=%d", reader.validateCalls, len(repo.appended), len(got.Candidates))
 	}
 }
@@ -161,7 +161,7 @@ func TestAssistedSankhyaResolveCurrentLineageUsesExactCandidateQuantityAndCanCom
 		t.Fatalf("ResolveCurrentLineage() error = %v", err)
 	}
 	wantScope := domain.LinkageScope{TenantID: "tenant-1", InstallationID: "install-1", ProviderOrderID: "order-1"}
-	if orders.scope != wantScope || repo.scope != wantScope || reader.validateCalls != 1 {
+	if orders.scope != wantScope || repo.scope != wantScope || reader.validateCalls != 0 {
 		t.Fatalf("exact scope/validation = order:%#v repo:%#v validations:%d", orders.scope, repo.scope, reader.validateCalls)
 	}
 	if got.MPCLineID != serviceLineOne || got.Origin != origin || got.State != domain.AssistedSankhyaLineageComplete || len(got.Descendants) != 1 {
@@ -278,7 +278,9 @@ func TestAssistedSankhyaResolveCurrentLineagePreservesMissingConflictAndUnavaila
 		{name: "source unavailable", configure: func(_ *fakeAssistedOrderLookup, reader *fakeAssistedReader, repo *fakeAssistedLinkageRepository, input ConfirmAssistedSankhyaLinkageInput, recordedAt time.Time) {
 			repo.current = expectedLinkage(input, reader.candidates[0], recordedAt, "event", "cfg-runtime-1")
 			repo.found = true
-			reader.configurationErr = &domain.AssistedSankhyaReadError{Kind: domain.AssistedSankhyaReadUnavailable}
+			// Runtime unavailability now surfaces through the actual candidate read
+			// rather than a per-request ValidateConfiguration call.
+			reader.candidateErr = &domain.AssistedSankhyaReadError{Kind: domain.AssistedSankhyaReadUnavailable}
 		}, want: domain.AssistedSankhyaLineageUnavailable},
 	}
 	for _, test := range tests {

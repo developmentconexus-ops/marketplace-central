@@ -84,6 +84,9 @@ func NewService(cfg ServiceConfig) *Service {
 }
 
 func (s *Service) ImportMarginInputs(ctx context.Context, input ImportMarginInputsInput) (profitabilitydomain.ImportInputsResult, error) {
+	if input.Limit > 200 {
+		return profitabilitydomain.ImportInputsResult{}, errors.New("limit_exceeded: maximum limit is 200")
+	}
 	if s.orders == nil || s.inputs == nil {
 		return profitabilitydomain.ImportInputsResult{}, errors.New("PROFITABILITY_IMPORT_NOT_CONFIGURED")
 	}
@@ -99,6 +102,10 @@ func (s *Service) ImportMarginInputs(ctx context.Context, input ImportMarginInpu
 	if err != nil {
 		return profitabilitydomain.ImportInputsResult{}, err
 	}
+	batchFacts, err := s.loadBatchFacts(ctx, orders)
+	if err != nil {
+		return profitabilitydomain.ImportInputsResult{}, err
+	}
 	now := s.now()
 	items := make([]profitabilitydomain.MarginInput, 0)
 	orderIDs := make([]string, 0, len(orders))
@@ -106,7 +113,7 @@ func (s *Service) ImportMarginInputs(ctx context.Context, input ImportMarginInpu
 		orderIDs = append(orderIDs, order.ProviderOrderID)
 		items = append(items, s.buildOrderLevelInputs(order, now)...)
 		for _, item := range order.Items {
-			items = append(items, s.buildItemInputs(ctx, order, item, now)...)
+			items = append(items, s.buildItemInputs(ctx, order, item, now, batchFacts)...)
 		}
 	}
 	if err := s.inputs.ReplaceInputs(ctx, installationID, orderIDs, items); err != nil {
@@ -165,7 +172,47 @@ func (s *Service) buildOrderLevelInputs(order profitabilitydomain.OrderFact, now
 	}
 }
 
-func (s *Service) buildItemInputs(ctx context.Context, order profitabilitydomain.OrderFact, item profitabilitydomain.OrderItemFact, now time.Time) []profitabilitydomain.MarginInput {
+type batchFacts struct {
+	enabled bool
+	costs   map[int64]*internalreaddomain.CostAsOf
+	taxes   map[int64]*internalreaddomain.TaxInputs
+}
+
+func (s *Service) loadBatchFacts(ctx context.Context, orders []profitabilitydomain.OrderFact) (*batchFacts, error) {
+	reader, ok := s.internal.(ports.BatchInternalFactReader)
+	if !ok {
+		return nil, nil
+	}
+	seen := make(map[int64]struct{})
+	ids := make([]int64, 0)
+	for _, order := range orders {
+		for _, item := range order.Items {
+			if item.LinkQuality != profitabilitydomain.OrderLinkResolved || item.InternalProductID == nil || *item.InternalProductID <= 0 {
+				continue
+			}
+			id := int64(*item.InternalProductID)
+			if _, exists := seen[id]; exists {
+				continue
+			}
+			seen[id] = struct{}{}
+			ids = append(ids, id)
+		}
+	}
+	if len(ids) == 0 {
+		return &batchFacts{enabled: true, costs: map[int64]*internalreaddomain.CostAsOf{}, taxes: map[int64]*internalreaddomain.TaxInputs{}}, nil
+	}
+	costs, err := reader.GetCostFactsByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	taxes, err := reader.GetTaxFactsByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	return &batchFacts{enabled: true, costs: costs, taxes: taxes}, nil
+}
+
+func (s *Service) buildItemInputs(ctx context.Context, order profitabilitydomain.OrderFact, item profitabilitydomain.OrderItemFact, now time.Time, facts *batchFacts) []profitabilitydomain.MarginInput {
 	observedAt := order.ProviderUpdatedAt
 	if observedAt == nil {
 		observedAt = &order.FetchedAt
@@ -236,11 +283,57 @@ func (s *Service) buildItemInputs(ctx context.Context, order profitabilitydomain
 		)
 	}
 
-	cost, costErr := s.internal.GetCostAsOf(ctx, *item.InternalProductID, effectiveAt(order))
+	var cost internalreaddomain.CostAsOf
+	var costErr error
+	if facts != nil && facts.enabled {
+		costFact := facts.costs[int64(*item.InternalProductID)]
+		if costFact == nil {
+			costErr = errors.New("missing_cost")
+		} else {
+			cost = *costFact
+		}
+	} else {
+		cost, costErr = s.internal.GetCostAsOf(ctx, *item.InternalProductID, effectiveAt(order))
+	}
 	inputs = append(inputs, mapCostInput(base, cost, item.Quantity, costErr))
 
+	if facts != nil && facts.enabled {
+		return append(inputs, mapBatchTaxInputs(base, *item.InternalProductID, facts.taxes[int64(*item.InternalProductID)])...)
+	}
 	inputs = append(inputs, s.buildExactLineageTaxInputs(ctx, order, item, base)...)
 	return inputs
+}
+
+func mapBatchTaxInputs(base profitabilitydomain.MarginInput, productID int, fact *internalreaddomain.TaxInputs) []profitabilitydomain.MarginInput {
+	reference := fmt.Sprintf("oracle:product:%d:tax", productID)
+	return []profitabilitydomain.MarginInput{
+		mapTaxFactInput(base, profitabilitydomain.InputKindTaxICMS, reference+":icms", fact, func(value *internalreaddomain.TaxInputs) *float64 { return value.ICMSAmount }),
+		mapTaxFactInput(base, profitabilitydomain.InputKindTaxIPI, reference+":ipi", fact, func(value *internalreaddomain.TaxInputs) *float64 { return value.IPIAmount }),
+		mapTaxFactInput(base, profitabilitydomain.InputKindTaxPIS, reference+":pis", fact, func(value *internalreaddomain.TaxInputs) *float64 { return value.PISAmount }),
+		mapTaxFactInput(base, profitabilitydomain.InputKindTaxCOFINS, reference+":cofins", fact, func(value *internalreaddomain.TaxInputs) *float64 { return value.COFINSAmount }),
+	}
+}
+
+func mapTaxFactInput(base profitabilitydomain.MarginInput, kind profitabilitydomain.InputKind, reference string, fact *internalreaddomain.TaxInputs, amountOf func(*internalreaddomain.TaxInputs) *float64) profitabilitydomain.MarginInput {
+	if fact == nil {
+		input := missingInput(base, kind, "missing_tax")
+		input.SourceReference = reference
+		return input
+	}
+	amount := amountOf(fact)
+	quality := mapInternalQuality(amount, fact.QualityFlags)
+	input := profitabilitydomain.MarginInput{
+		InstallationID: base.InstallationID, ProviderOrderID: base.ProviderOrderID,
+		ProviderItemID: base.ProviderItemID, ProviderVariationID: base.ProviderVariationID,
+		Scope: base.Scope, Kind: kind, Amount: amount, Currency: base.Currency,
+		SourceSystem: firstNonEmpty(fact.Source.System, "internal_read"), SourceReference: reference,
+		ObservedAt: firstTime(fact.Source.ObservedAt, &fact.EffectiveAt), Quality: quality,
+		QualityReason: qualityReason(fact.QualityFlags), CreatedAt: base.CreatedAt, UpdatedAt: base.UpdatedAt,
+	}
+	if amount == nil && input.QualityReason == "" {
+		input.QualityReason = "missing_tax"
+	}
+	return input
 }
 
 type exactTaxRead struct {

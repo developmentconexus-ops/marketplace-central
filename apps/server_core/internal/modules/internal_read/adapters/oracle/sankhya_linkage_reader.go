@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 
+	"marketplace-central/apps/server_core/internal/modules/internal_read/adapters/oracle/oraclebatch"
 	"marketplace-central/apps/server_core/internal/modules/internal_read/domain"
 	"marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 )
@@ -15,9 +16,10 @@ import (
 const (
 	sankhyaOriginTOP      int64 = 313
 	sankhyaDestinationTOP int64 = 306
-	maxCandidateLimit           = 50
+	maxCandidateLimit           = 1000
 	maxCandidateLineLimit       = 500
 	maxLineageLimit             = 500
+	sankhyaLineChunkSize        = 500
 )
 
 var (
@@ -101,7 +103,7 @@ func (r *SankhyaLinkageReader) ValidateConfiguration(ctx context.Context) error 
 }
 
 func (r *SankhyaLinkageReader) FindCandidates(ctx context.Context, input ports.SankhyaCandidateInput) ([]domain.SankhyaDocumentCandidate, error) {
-	if err := r.ValidateConfiguration(ctx); err != nil {
+	if err := r.validateReadConfiguration(); err != nil {
 		return nil, err
 	}
 	if !sankhyaExternalOrderKey.MatchString(input.ExternalOrderKey) {
@@ -146,10 +148,21 @@ func (r *SankhyaLinkageReader) FindCandidates(ctx context.Context, input ports.S
 		return nil, domain.NewReadError(domain.ReadErrorCandidateAmbiguous, "sankhya candidate lookup exceeded its configured bound", nil)
 	}
 
+	documentIDs := make([]int64, 0, len(candidates))
+	for _, candidate := range candidates {
+		documentIDs = append(documentIDs, candidate.DocumentID)
+	}
+	linesByDocument, err := r.readCandidateLines(ctx, documentIDs)
+	if err != nil {
+		return nil, err
+	}
 	for index := range candidates {
-		lines, err := r.readCandidateLines(ctx, candidates[index].DocumentID)
-		if err != nil {
-			return nil, err
+		lines := linesByDocument[candidates[index].DocumentID]
+		if lines == nil {
+			lines = make([]domain.SankhyaLineEvidence, 0)
+		}
+		if len(lines) > r.config.CandidateLineLimit {
+			return nil, domain.NewReadError(domain.ReadErrorCandidateAmbiguous, "sankhya candidate lines exceeded their configured bound", nil)
 		}
 		candidates[index].Lines = lines
 	}
@@ -157,7 +170,7 @@ func (r *SankhyaLinkageReader) FindCandidates(ctx context.Context, input ports.S
 }
 
 func (r *SankhyaLinkageReader) ListDescendants(ctx context.Context, input ports.SankhyaDescendantInput) (domain.SankhyaLineage, error) {
-	if err := r.ValidateConfiguration(ctx); err != nil {
+	if err := r.validateReadConfiguration(); err != nil {
 		return domain.SankhyaLineage{}, err
 	}
 	if !input.Origin.Valid() {
@@ -200,8 +213,35 @@ func (r *SankhyaLinkageReader) ListDescendants(ctx context.Context, input ports.
 	return domain.NewSankhyaLineage(input.Origin, input.ExpectedOriginQuantity, descendants)
 }
 
-func (r *SankhyaLinkageReader) readCandidateLines(ctx context.Context, documentID int64) ([]domain.SankhyaLineEvidence, error) {
-	query, args, err := buildSankhyaCandidateLinesQuery(r.config, documentID)
+func (r *SankhyaLinkageReader) validateReadConfiguration() error {
+	if r == nil {
+		return domain.NewReadError(domain.ReadErrorConfigurationInvalid, "sankhya linkage reader is not configured", nil)
+	}
+	if err := validateSankhyaLinkageConfig(r.config); err != nil {
+		return err
+	}
+	if r.db == nil {
+		return domain.NewReadError(domain.ReadErrorSourceUnavailable, "sankhya linkage oracle reader is not configured", nil)
+	}
+	return nil
+}
+
+func (r *SankhyaLinkageReader) readCandidateLines(ctx context.Context, documentIDs []int64) (map[int64][]domain.SankhyaLineEvidence, error) {
+	linesByDocument := make(map[int64][]domain.SankhyaLineEvidence, len(documentIDs))
+	for _, chunk := range oraclebatch.Chunks(documentIDs, sankhyaLineChunkSize) {
+		lines, err := r.readCandidateLineChunk(ctx, chunk)
+		if err != nil {
+			return nil, err
+		}
+		for documentID, documentLines := range lines {
+			linesByDocument[documentID] = documentLines
+		}
+	}
+	return linesByDocument, nil
+}
+
+func (r *SankhyaLinkageReader) readCandidateLineChunk(ctx context.Context, documentIDs []int64) (map[int64][]domain.SankhyaLineEvidence, error) {
+	query, args, err := buildSankhyaCandidateLinesQuery(r.config, documentIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +251,11 @@ func (r *SankhyaLinkageReader) readCandidateLines(ctx context.Context, documentI
 	}
 	defer rows.Close()
 
-	lines := make([]domain.SankhyaLineEvidence, 0)
+	requested := make(map[int64]struct{}, len(documentIDs))
+	for _, documentID := range documentIDs {
+		requested[documentID] = struct{}{}
+	}
+	linesByDocument := make(map[int64][]domain.SankhyaLineEvidence, len(documentIDs))
 	for rows.Next() {
 		var returnedDocumentID int64
 		var lineNumber int
@@ -222,10 +266,10 @@ func (r *SankhyaLinkageReader) readCandidateLines(ctx context.Context, documentI
 			return nil, sankhyaOracleError("scan candidate line", err)
 		}
 		identity := domain.InternalDocumentLine{DocumentID: returnedDocumentID, LineNumber: lineNumber}
-		if returnedDocumentID != documentID || !identity.Valid() {
+		if _, ok := requested[returnedDocumentID]; !ok || !identity.Valid() {
 			return nil, domain.NewReadError(domain.ReadErrorCandidateAmbiguous, "sankhya candidate line identity is invalid", nil)
 		}
-		lines = append(lines, domain.SankhyaLineEvidence{
+		linesByDocument[returnedDocumentID] = append(linesByDocument[returnedDocumentID], domain.SankhyaLineEvidence{
 			Identity:  identity,
 			ProductID: sankhyaNullableInt64(productID),
 			Quantity:  nullableFloat(quantity),
@@ -235,10 +279,7 @@ func (r *SankhyaLinkageReader) readCandidateLines(ctx context.Context, documentI
 	if err := rows.Err(); err != nil {
 		return nil, sankhyaOracleError("iterate candidate lines", err)
 	}
-	if len(lines) > r.config.CandidateLineLimit {
-		return nil, domain.NewReadError(domain.ReadErrorCandidateAmbiguous, "sankhya candidate lines exceeded their configured bound", nil)
-	}
-	return lines, nil
+	return linesByDocument, nil
 }
 
 func validateSankhyaLinkageConfig(config SankhyaLinkageConfig) error {
@@ -332,18 +373,33 @@ FETCH FIRST :3 ROWS ONLY`, schema, field)
 	return query, []any{externalKey, config.ExpectedOriginTOP, config.CandidateLimit + 1}, nil
 }
 
-func buildSankhyaCandidateLinesQuery(config SankhyaLinkageConfig, documentID int64) (string, []any, error) {
+func buildSankhyaCandidateLinesQuery(config SankhyaLinkageConfig, documentIDs []int64) (string, []any, error) {
 	schema, err := quoteSankhyaIdentifier(config.Schema)
 	if err != nil {
 		return "", nil, domain.NewReadError(domain.ReadErrorConfigurationInvalid, "sankhya linkage schema is invalid", err)
 	}
+	if len(documentIDs) == 0 {
+		return "", nil, domain.NewReadError(domain.ReadErrorConfigurationInvalid, "sankhya linkage candidate line IDs are empty", nil)
+	}
+	placeholders := make([]string, 0, len(documentIDs))
+	args := make([]any, 0, len(documentIDs)+1)
+	for index, documentID := range documentIDs {
+		placeholders = append(placeholders, fmt.Sprintf(":%d", index+1))
+		args = append(args, documentID)
+	}
+	limitPlaceholder := len(args) + 1
+	args = append(args, config.CandidateLineLimit+1)
 	query := fmt.Sprintf(`
-SELECT i.NUNOTA, i.SEQUENCIA, i.CODPROD, i.QTDNEG, i.VLRTOT
-FROM %s.TGFITE i
-WHERE i.NUNOTA = :1
-ORDER BY i.SEQUENCIA
-FETCH FIRST :2 ROWS ONLY`, schema)
-	return query, []any{documentID, config.CandidateLineLimit + 1}, nil
+SELECT lines.NUNOTA, lines.SEQUENCIA, lines.CODPROD, lines.QTDNEG, lines.VLRTOT
+FROM (
+  SELECT i.NUNOTA, i.SEQUENCIA, i.CODPROD, i.QTDNEG, i.VLRTOT,
+         ROW_NUMBER() OVER (PARTITION BY i.NUNOTA ORDER BY i.SEQUENCIA) AS MPC_LINE_NUMBER
+  FROM %s.TGFITE i
+  WHERE i.NUNOTA IN (%s)
+ ) lines
+WHERE lines.MPC_LINE_NUMBER <= :%d
+ORDER BY lines.NUNOTA, lines.SEQUENCIA`, schema, strings.Join(placeholders, ", "), limitPlaceholder)
+	return query, args, nil
 }
 
 func buildSankhyaDescendantQuery(config SankhyaLinkageConfig, origin domain.InternalDocumentLine) (string, []any, error) {
@@ -365,7 +421,7 @@ FETCH FIRST :4 ROWS ONLY`, schema, schema, schema)
 }
 
 func sankhyaOracleError(operation string, err error) error {
-	return domain.NewReadError(domain.ReadErrorSourceUnavailable, fmt.Sprintf("sankhya oracle %s failed", operation), err)
+	return domain.NewReadError(domain.ReadErrorSourceUnavailable, fmt.Sprintf("sankhya oracle %s failed", operation), safeOracleCause(err))
 }
 
 func sankhyaNullableInt64(value sql.NullInt64) *int64 {
