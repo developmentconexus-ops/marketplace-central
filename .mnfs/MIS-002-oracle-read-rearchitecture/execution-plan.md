@@ -3,7 +3,7 @@
 ```yaml
 type: execution-plan
 mission: MIS-002
-owner: Portfolio Hub (session 458b61dd-e128-4840-bd26-dbf453d7acd3)
+owner: Portfolio Hub (session local_00112a95)
 created: 2026-07-14
 model_workers: mpc-implementer / mpc-verifier (gpt-5.6-luna, high reasoning)
 orchestration: hub spawn_task per wave; standalone Milestone sessions in fresh worktrees; terminal callback via cross-session messaging
@@ -59,7 +59,7 @@ Rule: a wave-2 session finding it must edit a seam owned by the other lane STOPS
 ## Hub Protocol
 
 1. Hub spawns one chip per Milestone session (spawn_task). Fresh worktree per session — hence W0 commit prerequisite.
-2. Each Milestone session: MNFS + hub-style acceptance (verifier per feature, fixed-SHA review, QA gate), then persists `checkpoint.md` and sends verdict + path to hub session `458b61dd-e128-4840-bd26-dbf453d7acd3` via cross-session messaging.
+2. Each Milestone session: MNFS + hub-style acceptance (verifier per feature, fixed-SHA review, QA gate), then persists `checkpoint.md` and sends verdict + path to hub session `local_00112a95` via cross-session messaging.
 3. Hub folds callbacks; when a wave's gate is satisfied, spawns the next wave's chips (W2: two chips simultaneously; W3: two chips simultaneously).
 4. Merges to main happen in the declared order; the later lane rebases before its merge. Hub verifies post-merge test ladder (`GOCACHE=.gocache go test ./...`, `npm run build`) per merge.
 
