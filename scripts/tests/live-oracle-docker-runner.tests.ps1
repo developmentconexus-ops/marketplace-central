@@ -47,12 +47,23 @@ Describe 'Docker live Oracle runner' {
       Assert-RunnerCondition (($plan.BuildArguments -join ' ') -match 'mpc\.live-oracle\.runtime-fingerprint=') 'runtime fingerprint label missing'
       Assert-RunnerCondition (($plan.InspectArguments -join ' ') -match 'runtime-fingerprint') 'runtime fingerprint inspection missing'
       Assert-RunnerCondition ($plan.RunArguments -contains '/opt/mpc/bin/oracle-live.test') 'precompiled Oracle smoke binary missing'
-      Assert-RunnerCondition ($plan.RunArguments -contains '^TestOracleLive(Smoke|Baseline)$/^product_lookup$') 'product lookup subtest regex missing'
+      Assert-RunnerCondition ($plan.RunArguments -contains '^TestOracleLiveSmoke$/^product_lookup$') 'product lookup subtest regex missing'
+      Assert-RunnerCondition (($plan.RunArguments -join ' ') -notmatch 'Baseline') 'default C05 lane selected the PLAN_TABLE-writing baseline test'
       Assert-RunnerCondition (($plan.RunArguments -join ' ') -notmatch 'docker\s+compose|\.env|migrations?|(^|\s)(air|serve|start)(\s|$)|entrypoint') 'forbidden command fragment present'
       Assert-RunnerCondition (@($plan.RunArguments | Where-Object { $_ -eq '--mount' }).Count -eq 0) 'host checkout entered the live container'
       Assert-RunnerCondition ($plan.RunArguments -contains '--read-only') 'container root filesystem is writable'
       Assert-RunnerCondition (($plan.RunArguments -join ' ') -match '--cap-drop ALL') 'Linux capabilities were not dropped'
       Assert-RunnerCondition (($plan.RunArguments -join ' ') -match 'no-new-privileges') 'privilege escalation was not disabled'
+    } finally { Remove-Item -LiteralPath $fixture -Force }
+  }
+
+  It 'selects only the baseline test in -EmitBaseline mode and never the smoke subtest' {
+    $fixture = New-CredentialFixtureFile -Lines @('MPC_SANKHYA_ORACLE_USERNAME=u', 'MPC_SANKHYA_ORACLE_PASSWORD=p', 'MPC_SANKHYA_ORACLE_HOST=fixture-host', 'MPC_SANKHYA_ORACLE_PORT=1521', 'MPC_SANKHYA_ORACLE_CONNECT_STRING=fixture-service')
+    try {
+      $plan = Invoke-WithoutSankhyaCallerConnectionValues { New-LiveOracleDockerPlan -EnvFilePath $fixture -EmitBaseline }
+
+      Assert-RunnerCondition ($plan.RunArguments -contains '^TestOracleLiveBaseline$') 'baseline regex missing in -EmitBaseline mode'
+      Assert-RunnerCondition (($plan.RunArguments -join ' ') -notmatch 'Smoke') 'baseline mode selected the smoke test'
     } finally { Remove-Item -LiteralPath $fixture -Force }
   }
 

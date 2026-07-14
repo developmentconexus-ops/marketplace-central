@@ -74,7 +74,11 @@ Go source or module/workspace manifests change. It builds a staging tag using
 plain, bounded Docker output, preserves downloaded Go modules and a compiled
 Oracle smoke binary in immutable cached image layers, labels the image with a
 SHA-256 fingerprint of all Go source plus those runtime inputs, and promotes it
-to the canonical tag only after a successful build.
+to the canonical tag only after a successful build. The fingerprint covers
+repository inputs only (Dockerfile, Go source, module/workspace manifests); it
+does not pin the resolved base-image digest, APT package versions, or the
+Oracle Instant Client archive, so two builds at the same fingerprint may
+differ in those externally sourced layers.
 The ordinary live run never rebuilds an image: it verifies that exact
 fingerprint and fails closed with `run -PrepareImage` when the image is absent
 or stale. This keeps Docker build availability separate from database health.
@@ -90,15 +94,22 @@ reason matches the runner's safe fixed grammar, it is emitted as `reason`; any
 other error text is omitted. Docker command output, command arguments,
 environment values, and credentials remain suppressed.
 
-The preparation phase builds `docker/dev/backend.Dockerfile` with deterministic
-Docker dependency/source layers. The execution phase does not mount the host
-checkout or invoke the Go toolchain. It runs the precompiled smoke binary with a
-read-only root filesystem, drops Linux capabilities, disables privilege
-escalation, and executes only:
+The preparation phase builds `docker/dev/backend.Dockerfile` with cached,
+repository-fingerprinted dependency/source layers. The execution phase does not
+mount the host checkout or invoke the Go toolchain. It runs the precompiled
+smoke binary with a read-only root filesystem, drops Linux capabilities,
+disables privilege escalation, and executes only:
 
 ```text
-/opt/mpc/bin/oracle-live.test -test.run ^TestOracleLive(Smoke|Baseline)$/^product_lookup$ -test.count=1 -test.v
+/opt/mpc/bin/oracle-live.test -test.run ^TestOracleLiveSmoke$/^product_lookup$ -test.count=1 -test.v
 ```
+
+The optional `-EmitBaseline` mode substitutes its own selector,
+`-test.run ^TestOracleLiveBaseline$`, and never runs the smoke subtest. The
+baseline test issues `EXPLAIN PLAN`, which inserts into the session-private
+`PLAN_TABLE` global temporary table; those rows vanish when the session ends
+and no durable database state changes. The default C05 lane issues SELECTs
+only and never selects the baseline test.
 
 Inside the container it injects exactly `MPC_ORACLE_USERNAME`,
 `MPC_ORACLE_PASSWORD`, `MPC_ORACLE_CONNECT_STRING=host:port/service`,

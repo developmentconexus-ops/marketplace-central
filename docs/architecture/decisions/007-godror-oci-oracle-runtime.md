@@ -36,7 +36,12 @@ The runtime contract is:
   a read-only checkout/root filesystem, dropped capabilities, bounded phases,
   concurrent output draining, and forced process-tree termination on timeout;
 - Oracle validation remains strictly read-only and requires an explicitly
-  governed live-test opt-in.
+  governed live-test opt-in. The default C05 lane issues SELECTs only; the
+  explicit `-EmitBaseline` mode additionally runs `EXPLAIN PLAN`, whose only
+  side effect is a session-private `PLAN_TABLE` global-temporary insert that
+  leaves no durable database state. Each mode has its own test selector in
+  `docker/live-oracle/profile.json`; the default lane never selects the
+  baseline test.
 
 ## Consequences
 

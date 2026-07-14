@@ -129,9 +129,17 @@ function Get-LiveOracleCredentialValues {
 }
 
 function New-LiveOracleDockerPlan {
-  param([string]$EnvFilePath = $script:LocalEnvPath)
+  param(
+    [string]$EnvFilePath = $script:LocalEnvPath,
+    [switch]$EmitBaseline
+  )
 
   $profile = Get-LiveOracleDockerProfile
+  # The default C05 lane may only issue SELECTs; TestOracleLiveBaseline runs
+  # EXPLAIN PLAN (a session-private PLAN_TABLE insert) and is reachable solely
+  # through the explicit -EmitBaseline mode with its own regex.
+  $goTestRegex = if ($EmitBaseline) { [string]$profile.baseline_go_test_regex } else { [string]$profile.go_test_regex }
+  if ([string]::IsNullOrWhiteSpace($goTestRegex)) { throw 'live Oracle profile missing go test regex for requested mode' }
   $fingerprint = Get-LiveOracleRuntimeFingerprint -Profile $profile
   $connection = Get-LiveOracleCredentialValues -EnvFilePath $EnvFilePath
   $containerEnvironment = [ordered]@{
@@ -153,7 +161,7 @@ function New-LiveOracleDockerPlan {
       '--tmpfs', '/tmp:rw,noexec,nosuid,size=64m'
     ) + @($script:ContainerKeys | ForEach-Object { @('--env', $_) }) + @(
       [string]$profile.image_tag, [string]$profile.test_binary,
-      '-test.run', [string]$profile.go_test_regex, '-test.count=1', '-test.v'
+      '-test.run', $goTestRegex, '-test.count=1', '-test.v'
     )
   }
 }
@@ -255,7 +263,7 @@ function Invoke-LiveOracleDockerRunner {
     [string]$EnvFilePath = $script:LocalEnvPath
   )
 
-  $plan = New-LiveOracleDockerPlan -EnvFilePath $EnvFilePath
+  $plan = New-LiveOracleDockerPlan -EnvFilePath $EnvFilePath -EmitBaseline:$EmitBaseline
   $dockerPath = Test-LiveOracleDockerAvailable
   if ($PreflightOnly) { return }
 
