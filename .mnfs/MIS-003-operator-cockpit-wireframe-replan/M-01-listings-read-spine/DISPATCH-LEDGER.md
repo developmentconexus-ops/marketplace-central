@@ -174,4 +174,13 @@ Slices 2+3 CLOSED acknowledged by hub. orders + TestPhase1SmokeFlow confirmed hu
 
 | # | Feature/Slice | Role | Model / effort | Log | Result |
 |---|---|---|---|---|---|
-| I9 | F-02 Slice 4 (GET /listings/by-product grouping, null-last, group_state, group-scan) | Implementer | gpt-5.6-sol / low (complex, OS-process bg) | scratchpad/f02-slice4.log (task bofe8wq4i) | RUNNING — 2-stmt group repo (keys+children, no N+1), fast/scan split, maxBelowMarginGroupScanPages=50, (f)/(g)/(h) semantics, D-17 group_state, sem-produto null-last, IC-02 group envelope + doc-note grouping paragraph. No root.go mount (Slice 6). |
+| I9 | F-02 Slice 4 (GET /listings/by-product grouping, null-last, group_state, group-scan) | Implementer | gpt-5.6-sol / low (complex, OS-process bg) | scratchpad/f02-slice4.log (task bofe8wq4i) | CLOSED 2d64c7c — 2-stmt group repo (keys+children, no N+1), fast/scan split, maxBelowMarginGroupScanPages=50, (f)/(g)/(h) semantics, D-17 group_state, sem-produto null-last, IC-02 group envelope + doc-note grouping paragraph. No root.go mount (Slice 6). |
+
+## F-02 Slice 4 — CLOSED 2d64c7c (2026-07-15)
+Review (cavecrew-reviewer sonnet): 1🔴 2🟡 — ALL false positives, dismissed with evidence:
+- 🔴 prefixedListingScanner `&title,&id` (`**string`) "wrong for nullable" → FALSE. Matches established repo idiom (repository.go:50 scans `var priceAmount *string` as `&priceAmount`); correct pgx v5 nullable pattern. Disproven by real-PG integration lane (EXITCODE=0).
+- 🟡 partial-enrich risk → FALSE. enrichGroups returns on error; no partial state consumed (ADR-17 abort-whole-request).
+- 🟡 PageSize=len(groups) → FALSE. Matches flat-list envelope semantics (HandleList uses len(page.Items)); page_size = this-page count by contract, not requested limit.
+Verified: go build 0; go vet -tags=integration 0; go test listings/... green; governance passed; hermetic integration lane green for listings/adapters/postgres (real ephemeral Postgres, incl. new group integration tests — read_repository_integration_test.go +62). Conditions (a)-(i) all satisfied.
+
+Committed this session: d9e4737d (Slice 2), 57fba22d (Slice 3), 0a420dc3 (Slice 4 escalation), 2d64c7c (Slice 4) + ledger commits. Next: F-02 Slice 5 (summary one-aggregate, Sol-low, serial same files).
