@@ -33,7 +33,7 @@ function Test-NativeWorktreeCoordination {
 try {
   Assert-True (Test-Path -LiteralPath $contextModule -PathType Leaf) 'RED: Context.psm1 is missing'
   Assert-True (Test-Path -LiteralPath $stateModule -PathType Leaf) 'RED: State.psm1 is missing'
-  Assert-True (Test-Path -LiteralPath (Join-Path $repoRoot 'docs/superpowers/HARNESS.md') -PathType Leaf) 'RED: binding harness doctrine (docs/superpowers/HARNESS.md) is missing'
+  Assert-True (Test-Path -LiteralPath (Join-Path $repoRoot 'docs/HARNESS.md') -PathType Leaf) 'RED: binding harness doctrine (docs/HARNESS.md) is missing'
   Assert-True (Test-Path -LiteralPath (Join-Path $repoRoot '.agents/skills/harness-worker/SKILL.md') -PathType Leaf) 'RED: harness-worker skill is missing'
   Import-Module $contextModule -Force
   Import-Module $stateModule -Force
@@ -70,10 +70,10 @@ try {
   }
 
   $workerSkill = Get-Content -Raw -LiteralPath (Join-Path $repoRoot '.agents/skills/harness-worker/SKILL.md')
-  foreach ($required in @('docs/superpowers/HARNESS.md', 'mpc-goal-harness', 'One writer per shared seam', 'ADR-17', 'GOCACHE=.gocache')) {
+  foreach ($required in @('docs/HARNESS.md', 'mpc-goal-harness', 'One writer per shared seam', 'ADR-17', 'GOCACHE=.gocache')) {
     Assert-True ($workerSkill -match [regex]::Escape($required)) "harness-worker skill lacks pinned rule: $required"
   }
-  $doctrine = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'docs/superpowers/HARNESS.md')
+  $doctrine = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'docs/HARNESS.md')
   foreach ($required in @('anti-slop', 'Verification ladder', 'collision matrix', 'SPLIT-REQUEST')) {
     Assert-True ($doctrine -match $required) "harness doctrine lacks section marker: $required"
   }

@@ -1,6 +1,6 @@
 # Marketplace Central — Harness Bootstrap
 
-Development runs under the hub-and-chips harness: **`docs/superpowers/HARNESS.md` is BINDING** —
+Development runs under the hub-and-chips harness: **`docs/HARNESS.md` is BINDING** —
 read it before any milestone/feature work. The hub session (boots via the `harness-hub` skill)
 authors milestone chips (spawn_task, operator launches on Opus, worktree isolation), owns
 merging/deploy/shared seams, and adjudicates parallelism via the collision matrix. Milestone
