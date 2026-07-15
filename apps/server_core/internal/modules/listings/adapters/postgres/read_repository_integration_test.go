@@ -5,6 +5,7 @@ package postgres_test
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -14,6 +15,69 @@ import (
 	"marketplace-central/apps/server_core/internal/modules/listings/ports"
 	testpostgres "marketplace-central/apps/server_core/internal/testsupport/postgres"
 )
+
+func TestGetListingRowAndTimelineUseCompositeTenantKey(t *testing.T) {
+	ctx := context.Background()
+	pool, _ := testpostgres.OpenPool(t, "tenant_harness_listings_get")
+	token := time.Now().UTC().Format("150405.000000000")
+	tenant, other, installation := "get-a-"+token, "get-b-"+token, "get-inst-"+token
+	t.Cleanup(func() {
+		for _, table := range []string{"listing_sync_events", "product_links", "product_link_listing_snapshots", "listings"} {
+			_, _ = pool.Exec(context.Background(), "DELETE FROM "+table+" WHERE tenant_id = ANY($1) AND installation_id=$2", []string{tenant, other}, installation)
+		}
+	})
+	for _, row := range []struct{ id, variation, title string }{{"42664", "-", "Base"}, {"42664", "v1", "Variation"}} {
+		_, err := pool.Exec(ctx, `INSERT INTO listings(tenant_id,installation_id,provider,provider_listing_id,variation_id,title,status,price_amount,price_currency,sync_state) VALUES($1,$2,'mercadolivre',$3,$4,$5,'active',90,'BRL','synced')`, tenant, installation, row.id, row.variation, row.title)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	for i := 1; i <= 12; i++ {
+		_, err := pool.Exec(ctx, `INSERT INTO listing_sync_events(tenant_id,installation_id,provider_listing_id,variation_id,event_id,at,kind,message_pt) VALUES($1,$2,'42664','-', $3, $4, 'synced', $3)`, tenant, installation, fmt.Sprintf("e%02d", i), time.Date(2026, 7, 15, 12, 0, 0, 0, time.UTC))
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	_, err := pool.Exec(ctx, `INSERT INTO listing_sync_events(tenant_id,installation_id,provider_listing_id,variation_id,event_id,at,kind,message_pt) VALUES($1,$2,'42664','-', 'e99', $3, 'synced', 'other tenant')`, other, installation, time.Date(2026, 7, 15, 12, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo := listingspostgres.NewRepository(pool, tenant)
+	page, err := repo.ListListingRows(ctx, ports.ListingQuery{InstallationID: installation, Limit: 10})
+	if err != nil || len(page.Items) != 2 {
+		t.Fatalf("list items=%+v err=%v", page.Items, err)
+	}
+	for _, id := range []domain.ListingID{{InstallationID: installation, ProviderListingID: "42664", VariationID: "-"}, {InstallationID: installation, ProviderListingID: "42664", VariationID: "v1"}} {
+		got, found, err := repo.GetListingRow(ctx, domain.ListingKey{TenantID: other, InstallationID: id.InstallationID, ProviderListingID: id.ProviderListingID, VariationID: id.VariationID})
+		if err != nil || !found {
+			t.Fatalf("get %s found=%v err=%v", id.String(), found, err)
+		}
+		var listed domain.ListingReadModel
+		for _, item := range page.Items {
+			if item.ListingID == id.String() {
+				listed = item
+			}
+		}
+		if !reflect.DeepEqual(got, listed) {
+			t.Fatalf("get=%+v list=%+v", got, listed)
+		}
+	}
+	_, found, err := repo.GetListingRow(ctx, domain.ListingKey{InstallationID: installation, ProviderListingID: "unknown", VariationID: "-"})
+	if err != nil || found {
+		t.Fatalf("unknown found=%v err=%v", found, err)
+	}
+	events, err := repo.ListListingTimeline(ctx, domain.ListingKey{TenantID: other, InstallationID: installation, ProviderListingID: "42664", VariationID: "-"}, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 10 || events[0].MessagePT != "e12" || events[9].MessagePT != "e03" {
+		t.Fatalf("events=%+v", events)
+	}
+	empty, err := repo.ListListingTimeline(ctx, domain.ListingKey{InstallationID: installation, ProviderListingID: "42664", VariationID: "v1"}, 10)
+	if err != nil || empty == nil || len(empty) != 0 {
+		t.Fatalf("empty=%#v err=%v", empty, err)
+	}
+}
 
 type integrationFacts struct{ costs map[int64]*ports.CostFact }
 

@@ -7,12 +7,14 @@ import (
 	"strings"
 
 	"marketplace-central/apps/server_core/internal/modules/listings/application"
+	"marketplace-central/apps/server_core/internal/modules/listings/domain"
 	"marketplace-central/apps/server_core/internal/modules/listings/ports"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 )
 
 type ListService interface {
 	List(context.Context, ports.ListingQuery) (ports.ListingRowPage, error)
+	Get(context.Context, domain.ListingID) (domain.ListingReadModel, []domain.TimelineEvent, error)
 }
 type ReadHandler struct{ service ListService }
 
@@ -31,6 +33,11 @@ type listingPageEnvelope struct {
 	NextCursor *string `json:"next_cursor"`
 	PageSize   int     `json:"page_size"`
 	AsOf       any     `json:"as_of"`
+}
+
+type listingDetailEnvelope struct {
+	domain.ListingReadModel
+	Timeline []domain.TimelineEvent `json:"timeline"`
 }
 
 func (h ReadHandler) HandleList(w http.ResponseWriter, r *http.Request) {
@@ -91,6 +98,33 @@ func (h ReadHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 		next = &encoded
 	}
 	httpx.WriteJSON(w, http.StatusOK, listingPageEnvelope{Items: page.Items, NextCursor: next, PageSize: len(page.Items), AsOf: page.AsOf.UTC()})
+}
+
+func (h ReadHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		writeListError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed", "")
+		return
+	}
+	rawID := r.PathValue("listing_id")
+	id, err := domain.ParseListingID(rawID)
+	if err != nil {
+		writeListError(w, http.StatusNotFound, "listing_not_found", "anúncio não encontrado", "listing_id")
+		return
+	}
+	model, timeline, err := h.service.Get(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, domain.ErrListingNotFound) {
+			writeListError(w, http.StatusNotFound, "listing_not_found", "anúncio não encontrado", "listing_id")
+			return
+		}
+		writeListError(w, http.StatusInternalServerError, "internal_error", "internal error", "")
+		return
+	}
+	if timeline == nil {
+		timeline = []domain.TimelineEvent{}
+	}
+	httpx.WriteJSON(w, http.StatusOK, listingDetailEnvelope{ListingReadModel: model, Timeline: timeline})
 }
 func single(v map[string][]string, key string) (string, bool) {
 	values, ok := v[key]

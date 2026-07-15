@@ -24,6 +24,52 @@ type Repository struct {
 	tenantID string
 }
 
+type listingRowScanner interface {
+	Scan(...any) error
+}
+
+const listingLinkState = "COALESCE(NULLIF(pl.state, 'none'), 'unresolved')"
+
+func listingProjectionSQL() string {
+	return fmt.Sprintf(`SELECT l.installation_id,l.provider,l.provider_listing_id,l.variation_id,l.title,l.listing_type_code,l.status,
+		l.price_amount::text,l.price_currency,l.published_quantity,l.sync_state,l.sync_error,l.quality_score,l.sales_30d,l.fetched_at,
+		%s,CASE WHEN pl.state='resolved' THEN pl.internal_product_id::text END,NULLIF(pls.seller_sku,'')
+	FROM listings l
+	LEFT JOIN product_links pl ON pl.tenant_id=l.tenant_id AND pl.installation_id=l.installation_id AND pl.provider_item_id=l.provider_listing_id AND pl.provider_variation_id=CASE WHEN l.variation_id='-' THEN '' ELSE l.variation_id END
+	LEFT JOIN product_link_listing_snapshots pls ON pls.tenant_id=l.tenant_id AND pls.installation_id=l.installation_id AND pls.provider_item_id=l.provider_listing_id AND pls.provider_variation_id=CASE WHEN l.variation_id='-' THEN '' ELSE l.variation_id END`, listingLinkState)
+}
+
+func scanListingReadModel(row listingRowScanner) (domain.ListingReadModel, error) {
+	var m domain.ListingReadModel
+	var variation string
+	var typeCode *domain.ListingTypeCode
+	var priceAmount *string
+	var currency *domain.PriceCurrency
+	var syncJSON []byte
+	var linkState domain.LinkState
+	if err := row.Scan(&m.InstallationID, &m.Provider, &m.ProviderListingID, &variation, &m.Title, &typeCode, &m.Status, &priceAmount, &currency, &m.PublishedQuantity, &m.SyncState, &syncJSON, &m.QualityScore, &m.Sales30D, &m.FetchedAt, &linkState, &m.Link.ProductID, &m.Link.SellerSKU); err != nil {
+		return domain.ListingReadModel{}, err
+	}
+	m.ListingID = domain.ListingID{InstallationID: m.InstallationID, ProviderListingID: m.ProviderListingID, VariationID: variation}.String()
+	m.Link.State = linkState
+	if typeCode != nil {
+		if typ, ok := domain.ListingTypeForCode(*typeCode); ok {
+			m.ListingType = &typ
+		}
+	}
+	if priceAmount != nil && currency != nil {
+		m.Price = &domain.Money{Amount: *priceAmount, Currency: *currency}
+	}
+	if len(syncJSON) > 0 {
+		var se domain.ReadSyncError
+		if err := json.Unmarshal(syncJSON, &se); err != nil {
+			return domain.ListingReadModel{}, fmt.Errorf("decode listing sync error: %w", err)
+		}
+		m.SyncError = &se
+	}
+	return m, nil
+}
+
 func NewRepository(pool *pgxpool.Pool, tenantID string) *Repository {
 	return &Repository{pool: pool, tenantID: tenantID}
 }
@@ -41,9 +87,8 @@ func (r *Repository) ListListingRows(ctx context.Context, q ports.ListingQuery) 
 	if q.Filter.SyncState != "" {
 		add("l.sync_state = $%d", q.Filter.SyncState)
 	}
-	linkState := "COALESCE(NULLIF(pl.state, 'none'), 'unresolved')"
 	if q.Filter.LinkState != "" {
-		add(linkState+" = $%d", q.Filter.LinkState)
+		add(listingLinkState+" = $%d", q.Filter.LinkState)
 	}
 	if q.Filter.ListingTypeCode != "" {
 		add("l.listing_type_code = $%d", q.Filter.ListingTypeCode)
@@ -57,7 +102,7 @@ func (r *Repository) ListListingRows(ctx context.Context, q ports.ListingQuery) 
 	case domain.ListingExceptionStale:
 		where = append(where, "l.sync_state = 'stale'")
 	case domain.ListingExceptionUnlinked:
-		where = append(where, linkState+" = 'unresolved'")
+		where = append(where, listingLinkState+" = 'unresolved'")
 	}
 	if q.Q != "" {
 		escaped := strings.NewReplacer("\\", "\\\\", "%", "\\%", "_", "\\_").Replace(q.Q)
@@ -76,13 +121,7 @@ func (r *Repository) ListListingRows(ctx context.Context, q ports.ListingQuery) 
 	}
 	args = append(args, q.Limit+1)
 	limitArg := len(args)
-	sql := fmt.Sprintf(`SELECT l.installation_id,l.provider,l.provider_listing_id,l.variation_id,l.title,l.listing_type_code,l.status,
-		l.price_amount::text,l.price_currency,l.published_quantity,l.sync_state,l.sync_error,l.quality_score,l.sales_30d,l.fetched_at,
-		%s,CASE WHEN pl.state='resolved' THEN pl.internal_product_id::text END,NULLIF(pls.seller_sku,'')
-	FROM listings l
-	LEFT JOIN product_links pl ON pl.tenant_id=l.tenant_id AND pl.installation_id=l.installation_id AND pl.provider_item_id=l.provider_listing_id AND pl.provider_variation_id=CASE WHEN l.variation_id='-' THEN '' ELSE l.variation_id END
-	LEFT JOIN product_link_listing_snapshots pls ON pls.tenant_id=l.tenant_id AND pls.installation_id=l.installation_id AND pls.provider_item_id=l.provider_listing_id AND pls.provider_variation_id=CASE WHEN l.variation_id='-' THEN '' ELSE l.variation_id END
-	WHERE %s ORDER BY l.title,l.provider_listing_id,l.variation_id LIMIT $%d`, linkState, strings.Join(where, " AND "), limitArg)
+	sql := fmt.Sprintf(`%s WHERE %s ORDER BY l.title,l.provider_listing_id,l.variation_id LIMIT $%d`, listingProjectionSQL(), strings.Join(where, " AND "), limitArg)
 	rows, err := r.pool.Query(ctx, sql, args...)
 	if err != nil {
 		return ports.ListingRowPage{}, fmt.Errorf("list listing rows: %w", err)
@@ -90,32 +129,9 @@ func (r *Repository) ListListingRows(ctx context.Context, q ports.ListingQuery) 
 	defer rows.Close()
 	items := make([]domain.ListingReadModel, 0, q.Limit+1)
 	for rows.Next() {
-		var m domain.ListingReadModel
-		var variation string
-		var typeCode *domain.ListingTypeCode
-		var priceAmount *string
-		var currency *domain.PriceCurrency
-		var syncJSON []byte
-		var linkState domain.LinkState
-		if err := rows.Scan(&m.InstallationID, &m.Provider, &m.ProviderListingID, &variation, &m.Title, &typeCode, &m.Status, &priceAmount, &currency, &m.PublishedQuantity, &m.SyncState, &syncJSON, &m.QualityScore, &m.Sales30D, &m.FetchedAt, &linkState, &m.Link.ProductID, &m.Link.SellerSKU); err != nil {
+		m, err := scanListingReadModel(rows)
+		if err != nil {
 			return ports.ListingRowPage{}, fmt.Errorf("scan listing row: %w", err)
-		}
-		m.ListingID = domain.ListingID{InstallationID: m.InstallationID, ProviderListingID: m.ProviderListingID, VariationID: variation}.String()
-		m.Link.State = linkState
-		if typeCode != nil {
-			if typ, ok := domain.ListingTypeForCode(*typeCode); ok {
-				m.ListingType = &typ
-			}
-		}
-		if priceAmount != nil && currency != nil {
-			m.Price = &domain.Money{Amount: *priceAmount, Currency: *currency}
-		}
-		if len(syncJSON) > 0 {
-			var se domain.ReadSyncError
-			if err := json.Unmarshal(syncJSON, &se); err != nil {
-				return ports.ListingRowPage{}, fmt.Errorf("decode listing sync error: %w", err)
-			}
-			m.SyncError = &se
 		}
 		items = append(items, m)
 	}
@@ -135,14 +151,44 @@ func (r *Repository) ListListingRows(ctx context.Context, q ports.ListingQuery) 
 func (*Repository) ListListingGroupRows(context.Context, ports.ListingGroupQuery) (ports.ListingGroupRowPage, error) {
 	return ports.ListingGroupRowPage{}, errors.New("listings read: ListListingGroupRows not implemented (Slice 3/4/5)")
 }
-func (*Repository) GetListingRow(context.Context, domain.ListingKey) (domain.ListingReadModel, bool, error) {
-	return domain.ListingReadModel{}, false, errors.New("listings read: GetListingRow not implemented (Slice 3/4/5)")
+func (r *Repository) GetListingRow(ctx context.Context, key domain.ListingKey) (domain.ListingReadModel, bool, error) {
+	row := r.pool.QueryRow(ctx, fmt.Sprintf(`%s
+	WHERE l.tenant_id=$1 AND l.installation_id=$2 AND l.provider_listing_id=$3 AND l.variation_id=$4`, listingProjectionSQL()), r.tenantID, key.InstallationID, key.ProviderListingID, key.VariationID)
+	model, err := scanListingReadModel(row)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ListingReadModel{}, false, nil
+		}
+		return domain.ListingReadModel{}, false, fmt.Errorf("get listing row: %w", err)
+	}
+	return model, true, nil
 }
 func (*Repository) GetListingsSummary(context.Context, ports.SummaryQuery) (ports.ListingSummaryRow, error) {
 	return ports.ListingSummaryRow{}, errors.New("listings read: GetListingsSummary not implemented (Slice 3/4/5)")
 }
-func (*Repository) ListListingTimeline(context.Context, domain.ListingKey, int) ([]domain.TimelineEvent, error) {
-	return nil, errors.New("listings read: ListListingTimeline not implemented (Slice 3/4/5)")
+func (r *Repository) ListListingTimeline(ctx context.Context, key domain.ListingKey, limit int) ([]domain.TimelineEvent, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT at,kind,message_pt
+		FROM listing_sync_events
+		WHERE tenant_id=$1 AND installation_id=$2 AND provider_listing_id=$3 AND variation_id=$4
+		ORDER BY at DESC,event_id DESC
+		LIMIT $5`, r.tenantID, key.InstallationID, key.ProviderListingID, key.VariationID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list listing timeline: %w", err)
+	}
+	defer rows.Close()
+	events := make([]domain.TimelineEvent, 0)
+	for rows.Next() {
+		var event domain.TimelineEvent
+		if err := rows.Scan(&event.At, &event.Kind, &event.MessagePT); err != nil {
+			return nil, fmt.Errorf("scan listing timeline: %w", err)
+		}
+		events = append(events, event)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate listing timeline: %w", err)
+	}
+	return events, nil
 }
 
 func (r *Repository) ApplyCompletedPull(ctx context.Context, installationID string, rows []domain.Listing, completedAt time.Time) error {

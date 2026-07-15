@@ -11,8 +11,12 @@ import (
 )
 
 type fakeRows struct {
-	pages []ports.ListingRowPage
-	calls int
+	pages    []ports.ListingRowPage
+	calls    int
+	getModel domain.ListingReadModel
+	getFound bool
+	getErr   error
+	timeline []domain.TimelineEvent
 }
 
 func (f *fakeRows) ListListingRows(_ context.Context, _ ports.ListingQuery) (ports.ListingRowPage, error) {
@@ -23,14 +27,14 @@ func (f *fakeRows) ListListingRows(_ context.Context, _ ports.ListingQuery) (por
 func (*fakeRows) ListListingGroupRows(context.Context, ports.ListingGroupQuery) (ports.ListingGroupRowPage, error) {
 	return ports.ListingGroupRowPage{}, nil
 }
-func (*fakeRows) GetListingRow(context.Context, domain.ListingKey) (domain.ListingReadModel, bool, error) {
-	return domain.ListingReadModel{}, false, nil
+func (f *fakeRows) GetListingRow(context.Context, domain.ListingKey) (domain.ListingReadModel, bool, error) {
+	return f.getModel, f.getFound, f.getErr
 }
 func (*fakeRows) GetListingsSummary(context.Context, ports.SummaryQuery) (ports.ListingSummaryRow, error) {
 	return ports.ListingSummaryRow{}, nil
 }
-func (*fakeRows) ListListingTimeline(context.Context, domain.ListingKey, int) ([]domain.TimelineEvent, error) {
-	return nil, nil
+func (f *fakeRows) ListListingTimeline(context.Context, domain.ListingKey, int) ([]domain.TimelineEvent, error) {
+	return f.timeline, nil
 }
 
 type fakeFacts struct {
@@ -113,6 +117,80 @@ func TestReadServiceOracleFailureFailsRequest(t *testing.T) {
 	}
 }
 
+func TestReadServiceGetNotFoundReturnsListingNotFoundWithoutEnrichment(t *testing.T) {
+	r := &fakeRows{}
+	f := &fakeFacts{}
+	_, _, err := NewReadService(r, f, fakePolicy{}, fakeInstallation(true), time.Now).Get(context.Background(), domain.ListingID{InstallationID: "i", ProviderListingID: "missing", VariationID: "-"})
+	var notFound *domain.ListingNotFoundError
+	if !errors.As(err, &notFound) || r.getErr != nil || f.costCalls != 0 || f.ceilingCalls != 0 {
+		t.Fatalf("err=%v repo_err=%v cost=%d ceiling=%d", err, r.getErr, f.costCalls, f.ceilingCalls)
+	}
+}
+
+func TestReadServiceGetBuildsDeterministicICMSMatrixAndTimeline(t *testing.T) {
+	model := resolved("i~42664~-")
+	model.InstallationID = "i"
+	model.ProviderListingID = "42664"
+	model.Link.ProductID = ptrString("42664")
+	r := &fakeRows{
+		getModel: model,
+		getFound: true,
+		timeline: []domain.TimelineEvent{{Kind: "synced", MessagePT: "Sincronizado"}},
+	}
+	rate22, rateNil, rate10 := 22.0, (*float64)(nil), 10.0
+	f := &fakeFacts{
+		costs:    map[int64]*ports.CostFact{42664: {Amount: ptr(65.6597)}},
+		ceilings: map[int64]*ports.ICMSCeiling{1: {Percent: rateNil}, 5: {Percent: &rate10}, 8: {Percent: &rate22}},
+	}
+	got, timeline, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), time.Now).Get(context.Background(), domain.ListingID{InstallationID: "i", ProviderListingID: "42664", VariationID: "-"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(timeline) != 1 || timeline[0].Kind != "synced" {
+		t.Fatalf("timeline=%+v", timeline)
+	}
+	if got.ICMSWorstCaseByUF == nil || len(*got.ICMSWorstCaseByUF) != 3 {
+		t.Fatalf("matrix=%+v", got.ICMSWorstCaseByUF)
+	}
+	rows := *got.ICMSWorstCaseByUF
+	if rows[0].DestinationUF != "1" || rows[1].DestinationUF != "5" || rows[2].DestinationUF != "8" {
+		t.Fatalf("matrix order=%+v", rows)
+	}
+	if rows[2].WorstCaseICMSPct == nil || *rows[2].WorstCaseICMSPct != "22" || rows[2].PriceNetBasis == nil || *rows[2].PriceNetBasis != "70.2" || rows[2].BelowMarginAtUF == nil || !*rows[2].BelowMarginAtUF {
+		t.Fatalf("golden row=%+v", rows[2])
+	}
+	if rows[0].WorstCaseICMSPct != nil || rows[0].PriceNetBasis != nil || rows[0].BelowMarginAtUF != nil {
+		t.Fatalf("nil ceiling row=%+v", rows[0])
+	}
+}
+
+func TestReadServiceGetMissingCostLeavesMatrixMarginUnknown(t *testing.T) {
+	model := resolved("i~42664~-")
+	model.InstallationID = "i"
+	model.ProviderListingID = "42664"
+	model.Link.ProductID = ptrString("42664")
+	rate := 22.0
+	r := &fakeRows{getModel: model, getFound: true}
+	f := &fakeFacts{ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: &rate}}}
+	got, _, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), time.Now).Get(context.Background(), domain.ListingID{InstallationID: "i", ProviderListingID: "42664", VariationID: "-"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ICMSWorstCaseByUF == nil || len(*got.ICMSWorstCaseByUF) != 1 || (*got.ICMSWorstCaseByUF)[0].BelowMarginAtUF != nil {
+		t.Fatalf("matrix=%+v", got.ICMSWorstCaseByUF)
+	}
+}
+
+func TestReadServiceGetOracleFailureFailsRequest(t *testing.T) {
+	model := resolved("i~42664~-")
+	r := &fakeRows{getModel: model, getFound: true}
+	f := &fakeFacts{err: errors.New("oracle down")}
+	_, _, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), time.Now).Get(context.Background(), domain.ListingID{InstallationID: "i", ProviderListingID: "42664", VariationID: "-"})
+	if err == nil {
+		t.Fatal("expected source failure")
+	}
+}
+
 func TestReadServiceRejectsUnknownInstallationBeforeReads(t *testing.T) {
 	r := &fakeRows{}
 	f := &fakeFacts{}
@@ -133,4 +211,5 @@ func TestBelowMarginTriState(t *testing.T) {
 		t.Fatalf("unknown=%v", got)
 	}
 }
-func ptr(v float64) *float64 { return &v }
+func ptr(v float64) *float64     { return &v }
+func ptrString(v string) *string { return &v }

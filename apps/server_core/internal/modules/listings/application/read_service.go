@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -68,6 +69,39 @@ func (s ReadService) List(ctx context.Context, query ports.ListingQuery) (ports.
 		return page, nil
 	}
 	return s.scan(ctx, query, maxCeiling, policy, policyFound, serveTime)
+}
+
+func (s ReadService) Get(ctx context.Context, id domain.ListingID) (domain.ListingReadModel, []domain.TimelineEvent, error) {
+	key := domain.ListingKey{InstallationID: id.InstallationID, ProviderListingID: id.ProviderListingID, VariationID: id.VariationID}
+	model, found, err := s.repo.GetListingRow(ctx, key)
+	if err != nil {
+		return domain.ListingReadModel{}, nil, fmt.Errorf("get listing row: %w", err)
+	}
+	if !found {
+		return domain.ListingReadModel{}, nil, &domain.ListingNotFoundError{}
+	}
+	policy, policyFound, err := s.policies.GetPricingPolicyForInstallation(ctx, id.InstallationID)
+	if err != nil {
+		return domain.ListingReadModel{}, nil, fmt.Errorf("read pricing policy: %w", err)
+	}
+	ceilings, err := s.facts.GetICMSCeilingByOrigin(ctx, originUFMG)
+	if err != nil {
+		return domain.ListingReadModel{}, nil, fmt.Errorf("read ICMS ceiling: %w", err)
+	}
+	items := []domain.ListingReadModel{model}
+	if err := s.enrich(ctx, items, maximumCeiling(ceilings), policy, policyFound); err != nil {
+		return domain.ListingReadModel{}, nil, err
+	}
+	model = items[0]
+	model.ICMSWorstCaseByUF = icmsWorstCaseByUF(model, ceilings, policy, policyFound)
+	timeline, err := s.repo.ListListingTimeline(ctx, key, 10)
+	if err != nil {
+		return domain.ListingReadModel{}, nil, fmt.Errorf("read listing timeline: %w", err)
+	}
+	if timeline == nil {
+		timeline = []domain.TimelineEvent{}
+	}
+	return model, timeline, nil
 }
 
 func (s ReadService) scan(ctx context.Context, q ports.ListingQuery, ceiling *float64, policy ports.PricingPolicy, policyFound bool, asOf time.Time) (ports.ListingRowPage, error) {
@@ -214,4 +248,55 @@ func belowMargin(price *domain.Money, cost, ceiling, margin *float64) *bool {
 	threshold := new(big.Rat).Mul(costRat, new(big.Rat).Add(one, marginRat))
 	result := net.Cmp(threshold) < 0
 	return &result
+}
+
+func icmsWorstCaseByUF(item domain.ListingReadModel, ceilings map[int64]*ports.ICMSCeiling, policy ports.PricingPolicy, policyFound bool) *[]domain.ICMWorstCaseByUF {
+	destinations := make([]int64, 0, len(ceilings))
+	for destination := range ceilings {
+		destinations = append(destinations, destination)
+	}
+	sort.Slice(destinations, func(i, j int) bool { return destinations[i] < destinations[j] })
+
+	var cost *float64
+	if item.Cost != nil {
+		if parsed, err := strconv.ParseFloat(item.Cost.Amount, 64); err == nil {
+			cost = &parsed
+		}
+	}
+	var margin *float64
+	if policyFound {
+		margin = &policy.MinMarginPercent
+	}
+	rows := make([]domain.ICMWorstCaseByUF, 0, len(destinations))
+	for _, destination := range destinations {
+		row := domain.ICMWorstCaseByUF{DestinationUF: strconv.FormatInt(destination, 10)}
+		ceiling := ceilings[destination]
+		var percent *float64
+		if ceiling != nil {
+			percent = ceiling.Percent
+		}
+		if percent != nil {
+			value := strconv.FormatFloat(*percent, 'f', -1, 64)
+			row.WorstCaseICMSPct = &value
+			row.PriceNetBasis = priceNetBasis(item.Price, percent)
+			row.BelowMarginAtUF = belowMargin(item.Price, cost, percent, margin)
+		}
+		rows = append(rows, row)
+	}
+	return &rows
+}
+
+func priceNetBasis(price *domain.Money, ceiling *float64) *string {
+	if price == nil || ceiling == nil {
+		return nil
+	}
+	gross, ok := new(big.Rat).SetString(price.Amount)
+	if !ok {
+		return nil
+	}
+	pct := new(big.Rat).Quo(new(big.Rat).SetFloat64(*ceiling), big.NewRat(100, 1))
+	net := new(big.Rat).Mul(gross, new(big.Rat).Sub(big.NewRat(1, 1), pct))
+	value := net.FloatString(12)
+	value = strings.TrimRight(strings.TrimRight(value, "0"), ".")
+	return &value
 }
