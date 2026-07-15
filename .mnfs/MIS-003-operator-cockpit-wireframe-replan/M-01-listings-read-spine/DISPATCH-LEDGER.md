@@ -123,3 +123,16 @@ Additive `GetPricingPolicyForInstallation` on marketplaces: Repository port meth
 | I7 | F-02 Slice 2 (keyset GET /listings + below_margin) | Implementer | gpt-5.6-sol / low (complex, OS-process bg) | scratchpad/agent__f02-slice2.log (task bs8mvgq0a, 82.8k tok) | **BLOCKED — zero source changed (honest stop).** Real over-constrained conflict: `exception=below_margin`/exact `has_exception` need below_margin (Oracle cost per row), but D-20 forbids a PG cost projection + D-18 mandates keyset limit+1 + IC-02 needs the exact filter — can't hold all four. |
 
 Milestone-owner classification (slice2-escalation.md): block is SMALL — only the below_margin-**dependent filter predicates**. Everything else (keyset list, direct filters, sync_error/stale/unlinked exception filters, q, below_margin per-row DISPLAY via per-page Oracle batch, cursor, IC-02 response) is implementable with ZERO contract change. Options: (1) defer below_margin list filter to later milestone; (2) **iterative bounded keyset scan** for below_margin-filtered queries only — preserves D-18/D-20/IC-02, costs multi-batch on sparse filters [OWNER RECOMMENDATION]; (3) authorize PG cost projection (reverses D-20). ESCALATION sent to hub local_efa46c30; HOLDING for ruling — no redispatch until ruled. D-21 (min_margin seam) already landed 1b644ed7.
+
+## HUB RULING → F-02 Slice 2 (2026-07-15) — OPTION 2 APPROVED (conditions a–e)
+Hub adjudicated within authority (D-18/D-20 intent interpretation, NOT reversal). Option 3 DENIED, Option 1 not needed.
+- (a) short non-final pages BLESSED for below_margin-dependent predicates ONLY; every other filter = mandatory single-statement keyset limit+1 full pages; D-18 EXPLAIN keyset-index proof per underlying fetch.
+- (b) multi-batch Oracle BLESSED as "bounded"; D-20 no-projection stays binding — nothing Oracle-cost-derived written to PG, no request-pattern caches beyond request lifetime.
+- (c) explicit NAMED scan cap (chip picks + documents); cap hit before `limit` qualifiers → return accumulated + cursor of last SCANNED row; no silent skip, no error on cap.
+- (d) Oracle batch failure mid-scan → FAIL the request explicitly; never emit a row with unevaluated below_margin as pass/fail (AGENTS.md invariant).
+- (e) chip authors IC-02 clarifying doc note (short non-final pages + scan-cap + resumption); response shape unchanged; hub reviews at acceptance.
+Redispatching ONE combined Slice 2: full unblocked scope + option-2 filter path under a–e. Two paths (fast mandatory / scan for below_margin predicates). Prereqs D-21(1b644ed7)+D-24(176d8082) landed.
+
+| # | Feature/Slice | Role | Model / effort | Log | Result |
+|---|---|---|---|---|---|
+| I7-retry | F-02 Slice 2 (keyset list + below_margin display+filter, option-2 scan) | Implementer | gpt-5.6-sol / low (complex, OS-process bg) | scratchpad/agent__f02-slice2.log (redispatch) | RUNNING — two-path (fast keyset limit+1 / bounded scan for below_margin predicates), named scan cap, fail-on-Oracle-error, short non-final pages, no PG projection, IC-02 doc note. root.go deferred to Slice 6. |
