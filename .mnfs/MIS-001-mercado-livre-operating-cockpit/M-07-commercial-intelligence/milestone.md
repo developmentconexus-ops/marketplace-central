@@ -3,7 +3,8 @@
 ```yaml
 id: M-07
 type: milestone
-status: planned
+status: superseded
+superseded_by: MIS-003
 owner: Mission Strategist
 parent: MIS-001
 created: 2026-07-06
