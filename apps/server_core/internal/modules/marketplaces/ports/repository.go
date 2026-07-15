@@ -12,4 +12,5 @@ type Repository interface {
 	ListAccounts(ctx context.Context) ([]domain.Account, error)
 	ListPolicies(ctx context.Context) ([]domain.Policy, error)
 	ListPoliciesByIDs(ctx context.Context, policyIDs []string) ([]domain.Policy, error)
+	GetPricingPolicyForInstallation(ctx context.Context, installationID string) (domain.Policy, bool, error)
 }

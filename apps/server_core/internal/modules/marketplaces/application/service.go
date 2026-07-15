@@ -105,3 +105,11 @@ func (s Service) ListPoliciesByIDs(ctx context.Context, policyIDs []string) ([]d
 	}
 	return s.repo.ListPoliciesByIDs(ctx, policyIDs)
 }
+
+func (s Service) GetPricingPolicyForInstallation(ctx context.Context, installationID string) (domain.Policy, bool, error) {
+	installationID = strings.TrimSpace(installationID)
+	if installationID == "" {
+		return domain.Policy{}, false, nil
+	}
+	return s.repo.GetPricingPolicyForInstallation(ctx, installationID)
+}

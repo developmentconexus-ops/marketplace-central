@@ -3,6 +3,8 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"marketplace-central/apps/server_core/internal/modules/marketplaces/domain"
@@ -10,6 +12,12 @@ import (
 )
 
 var _ ports.Repository = (*Repository)(nil)
+
+// ErrMultiplePoliciesForInstallation is returned when a single installation
+// resolves to more than one pricing policy. The lookup fails honestly rather
+// than picking an arbitrary row (ADR-17); callers can distinguish this
+// ambiguity via errors.Is instead of matching the message string.
+var ErrMultiplePoliciesForInstallation = errors.New("MARKETPLACES_MULTIPLE_POLICIES_FOR_INSTALLATION")
 
 type Repository struct {
 	pool     *pgxpool.Pool
@@ -165,4 +173,58 @@ func (r *Repository) ListPoliciesByIDs(ctx context.Context, policyIDs []string) 
 		policies = append(policies, p)
 	}
 	return policies, rows.Err()
+}
+
+func (r *Repository) GetPricingPolicyForInstallation(ctx context.Context, installationID string) (domain.Policy, bool, error) {
+	installationID = strings.TrimSpace(installationID)
+	if installationID == "" {
+		return domain.Policy{}, false, nil
+	}
+
+	rows, err := r.pool.Query(ctx, `
+		SELECT
+			p.tenant_id, p.policy_id, p.account_id,
+			COALESCE(a.marketplace_code, a.channel_code, ''),
+			p.commission_percent, p.commission_override,
+			p.fixed_fee_amount, p.default_shipping_amount,
+			p.tax_percent, p.min_margin_percent,
+			p.sla_question_minutes, p.sla_dispatch_hours,
+			p.shipping_provider
+		FROM marketplace_accounts a
+		JOIN marketplace_pricing_policies p
+			ON p.tenant_id = a.tenant_id
+			AND p.account_id = a.account_id
+		WHERE a.tenant_id = $1
+			AND a.integration_installation_id = $2
+		ORDER BY p.policy_id
+		LIMIT 2
+	`, r.tenantID, installationID)
+	if err != nil {
+		return domain.Policy{}, false, err
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		return domain.Policy{}, false, rows.Err()
+	}
+
+	var policy domain.Policy
+	if err := rows.Scan(
+		&policy.TenantID, &policy.PolicyID, &policy.AccountID, &policy.MarketplaceCode,
+		&policy.CommissionPercent, &policy.CommissionOverride,
+		&policy.FixedFeeAmount, &policy.DefaultShipping,
+		&policy.TaxPercent, &policy.MinMarginPercent,
+		&policy.SLAQuestionMinutes, &policy.SLADispatchHours,
+		&policy.ShippingProvider,
+	); err != nil {
+		return domain.Policy{}, false, err
+	}
+
+	if rows.Next() {
+		return domain.Policy{}, false, ErrMultiplePoliciesForInstallation
+	}
+	if err := rows.Err(); err != nil {
+		return domain.Policy{}, false, err
+	}
+	return policy, true, nil
 }
