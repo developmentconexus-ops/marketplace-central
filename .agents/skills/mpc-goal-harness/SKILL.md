@@ -1,9 +1,15 @@
 ---
 name: mpc-goal-harness
-description: Run Marketplace Central through a visible Portfolio hub, one user-started /goal Milestone, named Luna/high workers, direct human questions, and compact terminal handoffs.
+description: SUPERSEDED 2026-07-15 — do NOT invoke. The binding harness is docs/superpowers/HARNESS.md (hub-and-chips); workers use the harness-worker skill. This file is retained only for the dispatch_preflight.py concept pending migration.
 ---
 
-# Marketplace Central Goal Harness
+> **SUPERSEDED (2026-07-15).** This /goal + Portfolio-Hub protocol was replaced by the
+> hub-and-chips harness: `docs/superpowers/HARNESS.md` (BINDING) + `.agents/skills/harness-worker`.
+> Do not follow anything below. Retained temporarily because
+> `scripts/dispatch_preflight.py` contains a fail-closed dispatch-packet validation concept
+> queued for migration into the new harness (hub queue item).
+
+# Marketplace Central Goal Harness (RETIRED)
 
 This harness is a lightweight session protocol. `/goal` keeps a Milestone
 running; this skill defines ownership, delegation, validation, and handoff.

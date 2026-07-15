@@ -4,7 +4,6 @@ Set-StrictMode -Version Latest
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $contextModule = Join-Path $repoRoot 'scripts/harness/Context.psm1'
 $stateModule = Join-Path $repoRoot 'scripts/harness/State.psm1'
-$skillPath = Join-Path $repoRoot '.agents/skills/mpc-goal-harness/SKILL.md'
 $fixtureRoot = Join-Path ([IO.Path]::GetTempPath()) ("mpc-orchestration-$([guid]::NewGuid().ToString('N'))")
 
 function Assert-True([bool]$Condition, [string]$Message) {
@@ -34,7 +33,8 @@ function Test-NativeWorktreeCoordination {
 try {
   Assert-True (Test-Path -LiteralPath $contextModule -PathType Leaf) 'RED: Context.psm1 is missing'
   Assert-True (Test-Path -LiteralPath $stateModule -PathType Leaf) 'RED: State.psm1 is missing'
-  Assert-True (Test-Path -LiteralPath $skillPath -PathType Leaf) 'RED: mpc-goal-harness skill is missing'
+  Assert-True (Test-Path -LiteralPath (Join-Path $repoRoot 'docs/superpowers/HARNESS.md') -PathType Leaf) 'RED: binding harness doctrine (docs/superpowers/HARNESS.md) is missing'
+  Assert-True (Test-Path -LiteralPath (Join-Path $repoRoot '.agents/skills/harness-worker/SKILL.md') -PathType Leaf) 'RED: harness-worker skill is missing'
   Import-Module $contextModule -Force
   Import-Module $stateModule -Force
 
@@ -69,9 +69,13 @@ try {
     Assert-True (@($policy.command_ids).Count -gt 0) "risk policy has no registered command IDs for $($expected.Key)"
   }
 
-  $skill = Get-Content -Raw -LiteralPath $skillPath
-  foreach ($required in @('Portfolio -> Milestone packet', 'Milestone -> Feature packet', 'Feature Plan', 'Feature Execution', 'portfolio_task_id', 'milestone_task_id', 'context_files', 'knowledge_routes', 'constraints', 'operator-observed', 'fresh-session fallback', 'registered command IDs')) {
-    Assert-True ($skill -match [regex]::Escape($required)) "skill lacks capability boundary: $required"
+  $workerSkill = Get-Content -Raw -LiteralPath (Join-Path $repoRoot '.agents/skills/harness-worker/SKILL.md')
+  foreach ($required in @('docs/superpowers/HARNESS.md', 'mpc-goal-harness', 'One writer per shared seam', 'ADR-17', 'GOCACHE=.gocache')) {
+    Assert-True ($workerSkill -match [regex]::Escape($required)) "harness-worker skill lacks pinned rule: $required"
+  }
+  $doctrine = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'docs/superpowers/HARNESS.md')
+  foreach ($required in @('anti-slop', 'Verification ladder', 'collision matrix', 'SPLIT-REQUEST')) {
+    Assert-True ($doctrine -match $required) "harness doctrine lacks section marker: $required"
   }
 
   $handoff = Test-HarnessCompactHandoff -Value @{

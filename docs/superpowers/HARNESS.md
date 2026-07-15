@@ -90,7 +90,10 @@ docs/superpowers/HARNESS.md §4–§5 before implementing"; (c) evidence dispatc
 obligation; (e) comms contract (`HUB_SESSION_ID` + title-match fallback); (f) the milestone's
 mission paths (`.mnfs/MIS-003.../M-0n.../milestone.md`, its `validation-contract.md`, feature
 briefs, owning ICs) and accepted base SHA; (g) its collision-matrix ownership (exclusive files,
-contract-lock status).
+contract-lock status); (h) skill pin: "the binding harness is docs/superpowers/HARNESS.md +
+`.agents/skills/harness-worker`; NEVER invoke `mpc-goal-harness` (superseded 2026-07-15)" —
+propagated verbatim into every nested worker dispatch (field finding: worker skill-discovery
+auto-resolved to the stale skill; `.claude/skills/` is gitignored so worktrees never see it).
 
 **Remediation is a message, not a new chip:** ACCEPT-WITH-CONDITIONS / REJECT findings go back to
 the same milestone session; new corrective dispatch only on 2× reject.
@@ -100,11 +103,18 @@ the same milestone session; new corrective dispatch only on 2× reject.
 Order governed by the real dependency DAG, never row number. **The true parallelism axis is
 hub-dispatched sibling milestone/feature tracks** — one worktree/branch/chip each.
 
-**Nested-child misrouting (proven, MetalDocs 2026-07-13):** a BACKGROUND nested child of a chip
-completes to the HUB's loop, never to its parent — parent deadlocks. Therefore: intra-milestone
-workers run SYNC only (`run_in_background: false`). A milestone that finds internal parallelism
-emits `SPLIT-REQUEST`; the hub adjudicates against the collision matrix and forks a sibling
-worktree if clean.
+**Nested-child misrouting (proven, MetalDocs 2026-07-13; sharpened 2026-07-15 M-01):** a
+BACKGROUND **Agent/Task-tool** nested child of a chip completes to the HUB's loop, never to its
+parent — parent deadlocks. The artifact is Agent/Task routing, NOT parallelism itself. Rules:
+- Agent/Task-tool nested children: SYNC only (`run_in_background: false`).
+- **OS-process codex dispatch** (background shell: stdin closed, output teed to a scratchpad
+  log, `.done` sentinel) completes to the DISPATCHING session's own loop (field-verified
+  2026-07-15) — allowed intra-milestone, including backgrounded, subject to: one writer per
+  seam still holds; every worker in the dispatch ledger; slice review before any dependent
+  slice starts.
+A milestone whose internal parallelism needs a second WRITER on a shared seam still emits
+`SPLIT-REQUEST`; the hub adjudicates against the collision matrix and forks a sibling worktree
+if clean.
 
 **Collision matrix — two tracks run concurrently ONLY when disjoint on ALL axes:**
 
@@ -204,3 +214,9 @@ milestone/feature artifacts, evidence files, task board, memory index — unwrit
 happen. Commit per green slice = crash-recovery contract. Sessions open only their listed
 context files; bulk reads via investigator. Hub self-compacts at ~200k tokens after flushing
 durable state.
+
+**Operator visibility (recommended, not obligatory — ratified 2026-07-15):** a session running
+multiple OS-process workers may serve a local live dashboard (pattern: scratchpad
+`live-server.mjs`, bound to 127.0.0.1 only, SSE-tailing the per-worker teed logs with
+live/idle/done state). Scratchpad-local, per-session, never committed, never exposed beyond
+localhost. Compensates for the native task panel showing backgrounded wrappers as idle.
