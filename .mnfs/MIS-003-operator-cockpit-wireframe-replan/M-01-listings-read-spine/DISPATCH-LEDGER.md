@@ -92,3 +92,27 @@ Hub (local_efa46c30) ruled the escalation. **A) ADOPTED** — cache-warm is doct
 
 ### B evidence line (hub-required)
 `go test -tags=integration ./tests/integration ./internal/modules/orders/adapters/postgres ./internal/modules/profitability/adapters/postgres ./internal/modules/product_links/application -count=1` on a clean migrated ephemeral PG (NO listings in set) → `--- FAIL: TestPhase1SmokeFlow (0.44s) phase1_smoke_test.go:75: PRICING_INVALID_PRODUCT_ID`; orders/profitability/product_links `ok`. Isolation `-run TestPhase1SmokeFlow` → FAIL 0.34s deterministic. Full capture: evidence/phase1-preexisting-repro.md. Proves the failure is pre-existing and independent of M-01.
+
+## Wave-2 sequencing (2026-07-15) — HOLD lifted, D-21 prerequisite surfaced
+Proceeding to F-02 Slice 2 (tenant-scoped GET /listings keyset + below_margin worst-case enrichment). Pre-dispatch seam audit (milestone owner, read-only) resolved every enrichment input EXCEPT one, and surfaced a hard prerequisite:
+- **Cost basis**: internal_read `BatchReader.GetCostFactsByIDs(ctx, []int64) map[int64]*domain.CostAsOf`; `CostAsOf.Amount *float64` = CUSSEMICM (nil = unknown → below_margin unevaluable). Confirmed present.
+- **ICMS ceiling**: internal_read `GetICMSCeilingByOrigin(ctx, domain.UF) map[domain.UF]*ICMSCeiling` (D-24, landed 176d8082). Worst-case scalar = MAX ceiling over the returned UFDEST map.
+- **Origin UF (:uforig)**: PINNED — D-22 line 104 fixes `UFORIG=13` (MG, the CODEMP=1 company state). Read-service passes it as a documented constant; empty ceiling map → unevaluable/nil (ADR-17).
+- **min_margin**: `marketplaces.domain.Policy.MinMarginPercent` (float64) — but the published read method **D-21 `GetPricingPolicyForInstallation` DOES NOT EXIST YET** (git grep: referenced only in DECISIONS.md/plan.md, absent from marketplaces code). Slice 2's below_margin enrichment consumes it → **D-21 is a hard prerequisite**.
+- **root.go**: plan's "inject into existing F-01 handler" is STALE — root.go has NO listings wiring yet (F-01 built domain/adapters/app/ports but never composed; no handler exists). **Reconciled deviation:** Slice 2 will NOT touch root.go; all composition wiring deferred to Slice 6 (routes+OpenAPI+SDK, one commit). Read stack is exercised via constructor injection in unit+integration tests. No route, no benefit to half-wiring root twice.
+
+Decision: dispatch **D-21 first** (marketplaces-only, file-disjoint, additive lock already GRANTED by hub — DECISIONS D-21 — so standing authorization, no new REQUEST), then F-02 Slice 2 after D-21 lands+reviews. Mirrors the D-24 additive-lock sub-worker pattern. Slices 2–5 remain serial (one writer on repository.go/read_service.go) — no parallel listings dispatch.
+
+| # | Feature/Slice | Role | Model / effort | Log | Result |
+|---|---|---|---|---|---|
+| I6 | D-21 marketplaces `GetPricingPolicyForInstallation` (additive published policy read, tenant-scoped via marketplace_accounts.integration_installation_id) | Implementer | gpt-5.6-luna / high (standard, OS-process bg) | scratchpad/agent__d21-policy-read.log (task b6qtngabk) | RUNNING — additive: Repository port method + postgres SQL + Service method + fakeRepository stub + RED-first tests. Existing marketplaces tests untouched-green. Feeds F-02 Slice 2 below_margin (min_margin input). |
+
+## HUB DOCTRINE UPDATE (2026-07-15) — P7 gate replaced (HARNESS.md master commit 320d4a2)
+Applies at P7 (not yet reached; currently P3). Read docs/superpowers/HARNESS.md P7 + §5 L4 from MASTER at close (worktree copy predates 320d4a2).
+- **P7 = MNFS milestone gate**, replacing ad-hoc fresh-browser QA persona: run `/milestone-validate <milestone-path> --apply` → dispatches independent cold `milestone-reviewer` crew + `qa-validator` live browser drive against validation-contract.md → writes `<milestone-root>/validation-result.md`. ONLY that verdict passes the milestone.
+- On Fail: `/correction-create <milestone-path> <report> --apply` scopes; milestone owner (me) dispatches corrective worker (codex per codex-dispatch matrix); full re-gate, never-downgrade.
+- **Unchanged:** P6 dual gate (Opus + Sol medium, fixed SHA) STILL required BEFORE P7. Evidence paths unchanged. Rulings A–D unchanged.
+- **Role binding** (mnfs-plugin/docs/shared-standards.md §Role Binding): I am Milestone Orchestrator; workers = Feature Implementer / Correction Worker. Deleted upstream — NEVER invoke: milestone-orchestrator/feature-implementer/correction-worker agents, /milestone-start, /feature-context, /feature-accept.
+
+### I6 result — D-21 GREEN, committed 1b644ed7 (106.2k tok)
+Additive `GetPricingPolicyForInstallation` on marketplaces: Repository port method + Service method + fakeRepository stub + RED-first service tests (blank-guard / found / not-found / repo-error via errors.Is) + postgres SQL. SQL tenant-scoped on BOTH sides (`a.tenant_id=$1` AND join `p.tenant_id=a.tenant_id`), bound params, `LIMIT 2` + `ORDER BY policy_id` duplicate detection, blank installationID short-circuits pre-query. Review (sonnet cavecrew-reviewer) 0🔴 1🟡 1🔵 — 🟡 FIXED by milestone owner: duplicate-policy bare `errors.New` → `ErrMultiplePoliciesForInstallation` sentinel (errors.Is-able, code string preserved, fail-honest ADR-17). 🔵 (inner JOIN semantic) intentional, no change. `go build`+`go vet -tags=integration`+`go test ./internal/modules/marketplaces/...` GREEN; governance passed. Existing marketplaces methods/tests untouched. Unblocks F-02 Slice 2 below_margin (min_margin input now available).
