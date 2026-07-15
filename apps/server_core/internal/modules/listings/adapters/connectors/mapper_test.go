@@ -143,7 +143,7 @@ func TestMapListingSnapshotToCanonicalRowsRejectsMissingRequiredFacts(t *testing
 		name   string
 		mutate func(*connectorsdomain.ListingSnapshot)
 	}{
-		{name: "tenant", mutate: func(snapshot *connectorsdomain.ListingSnapshot) { snapshot.ProviderItemID = "" }},
+		{name: "tenant", mutate: func(snapshot *connectorsdomain.ListingSnapshot) { /* snapshot stays valid; only account.TenantID is blanked below to isolate the tenant-required path */ }},
 		{name: "provider item", mutate: func(snapshot *connectorsdomain.ListingSnapshot) { snapshot.ProviderItemID = "" }},
 		{name: "provider", mutate: func(snapshot *connectorsdomain.ListingSnapshot) { snapshot.ProviderCode = "" }},
 		{name: "title", mutate: func(snapshot *connectorsdomain.ListingSnapshot) { snapshot.Title = "" }},
