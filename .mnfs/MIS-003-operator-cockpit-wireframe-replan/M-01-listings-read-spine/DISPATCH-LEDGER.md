@@ -163,3 +163,15 @@ Contract gap: by-product shares the flat-list filter grammar (IC-02 52-53, incl.
 - NOT blocked (will implement regardless): group_state DISPLAY (D-17 worst-child, attention if any child below_margin) via bounded per-page child cost enrichment — already blessed.
 - BLOCKED: exception=below_margin / has_exception AS FILTER PREDICATES on by-product only.
 Analysis + 3 options in slice4-escalation.md (committed 0a420dc3). Milestone-owner recommends Option 1 (extend Option-2 bounded scan to group keys, drop zero-survivor groups, cursor=last scanned group key — symmetric with flat list). ESCALATION event sent to hub local_efa46c30. HOLDING — no Slice 4 dispatch until ruled. Slices 4/5/6/7 are serial on the same files; F-01 Slice 4 collides on http_handler.go/root.go (not parallelizable). No file-disjoint work available meanwhile.
+
+## HUB RULING → F-02 Slice 4 (2026-07-15) — OPTION 1 APPROVED (conditions a–i)
+Extend Option-2 bounded scan to group-key pagination (symmetric with flat list; D-18/D-20 intent, no reversal). Options 2/3 denied — IC-02 shares one filter grammar, stays whole. Conditions (a)–(e) carry over mapped to groups. Group pins:
+- (f) group appears iff ≥1 child survives predicate; has_exception=false ⇒ all children evaluated, none active. Cursor advances over SCANNED group keys incl dropped zero-survivor groups.
+- (g) [MILESTONE-OWNER DECISION] listing_count = surviving-child count = len(listings); every emitted child cost-evaluated, no sampling. Invariant listing_count==len(listings) always. Stated in doc note.
+- (h) sem-produto (null group): below_margin defined ONLY for linked (no product ⇒ predicate FALSE by definition, not unknown; no Oracle for unlinked). exception=below_margin ⇒ sem-produto EXCLUDED; has_exception=true ⇒ INCLUDED (via unlinked); has_exception=false ⇒ EXCLUDED. (d) still governs LINKED children.
+- (i) group_state DISPLAY (D-17 worst-child) proceeds.
+Slices 2+3 CLOSED acknowledged by hub. orders + TestPhase1SmokeFlow confirmed hub-owned (board #1/#4), not mine.
+
+| # | Feature/Slice | Role | Model / effort | Log | Result |
+|---|---|---|---|---|---|
+| I9 | F-02 Slice 4 (GET /listings/by-product grouping, null-last, group_state, group-scan) | Implementer | gpt-5.6-sol / low (complex, OS-process bg) | scratchpad/f02-slice4.log (task bofe8wq4i) | RUNNING — 2-stmt group repo (keys+children, no N+1), fast/scan split, maxBelowMarginGroupScanPages=50, (f)/(g)/(h) semantics, D-17 group_state, sem-produto null-last, IC-02 group envelope + doc-note grouping paragraph. No root.go mount (Slice 6). |
