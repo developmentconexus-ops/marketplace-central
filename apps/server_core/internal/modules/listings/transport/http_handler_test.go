@@ -9,17 +9,24 @@ import (
 	"testing"
 	"time"
 
+	"marketplace-central/apps/server_core/internal/modules/listings/application"
 	"marketplace-central/apps/server_core/internal/modules/listings/domain"
 	"marketplace-central/apps/server_core/internal/modules/listings/ports"
 )
 
 type fakeListService struct {
-	page      ports.ListingRowPage
-	groupPage ports.ListingGroupRowPage
-	calls     int
-	model     domain.ListingReadModel
-	timeline  []domain.TimelineEvent
-	getErr    error
+	page       ports.ListingRowPage
+	groupPage  ports.ListingGroupRowPage
+	calls      int
+	model      domain.ListingReadModel
+	timeline   []domain.TimelineEvent
+	getErr     error
+	summary    ports.ListingSummaryRow
+	summaryErr error
+}
+
+func (f *fakeListService) Summary(context.Context, ports.SummaryQuery) (ports.ListingSummaryRow, error) {
+	return f.summary, f.summaryErr
 }
 
 func (f *fakeListService) List(context.Context, ports.ListingQuery) (ports.ListingRowPage, error) {
@@ -157,5 +164,47 @@ func TestByProductHandlerValidationAndIC02Envelope(t *testing.T) {
 	group := groups[0].(map[string]any)
 	if w.Code != 200 || body["page_size"] != float64(1) || group["product_id"] != nil || group["product_title"] != title || group["listing_count"] != float64(1) || group["group_state"] != "attention" {
 		t.Fatalf("body=%s", w.Body.String())
+	}
+}
+
+func TestSummaryHandlerEnvelopeAndErrors(t *testing.T) {
+	one := 1
+	at := time.Date(2026, 7, 15, 12, 0, 0, 0, time.UTC)
+	svc := &fakeListService{summary: ports.ListingSummaryRow{Total: 3, Active: 1, Paused: 1, SyncError: 1, Stale: 1, Unlinked: 1, BelowMarginWorstCase: &one, MarginUnknown: nil, AsOf: at}}
+	w := httptest.NewRecorder()
+	NewReadHandler(svc).HandleSummary(w, httptest.NewRequest(http.MethodGet, "/listings/summary?installation_id=i", nil))
+	var body map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	exceptions := body["exceptions"].(map[string]any)
+	if w.Code != 200 || body["total"] != float64(3) || body["as_of"] != "2026-07-15T12:00:00Z" || exceptions["below_margin_worst_case"] != float64(1) || exceptions["margin_unknown"] != nil {
+		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+	}
+	for _, tc := range []struct {
+		name, url, method string
+		err               error
+		status            int
+		code              string
+	}{
+		{"required", "/listings/summary", http.MethodGet, nil, 400, "installation_required"},
+		{"not found", "/listings/summary?installation_id=i", http.MethodGet, application.ErrInstallationNotFound, 404, "installation_not_found"},
+		{"source", "/listings/summary?installation_id=i", http.MethodGet, errors.New("down"), 503, "source_unavailable"},
+		{"method", "/listings/summary?installation_id=i", http.MethodPost, nil, 405, "method_not_allowed"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			NewReadHandler(&fakeListService{summaryErr: tc.err}).HandleSummary(w, httptest.NewRequest(tc.method, tc.url, nil))
+			var got listErrorEnvelope
+			if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+				t.Fatal(err)
+			}
+			if w.Code != tc.status || got.Error.Code != tc.code {
+				t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+			}
+			if tc.status == 405 && w.Header().Get("Allow") != http.MethodGet {
+				t.Fatalf("allow=%q", w.Header().Get("Allow"))
+			}
+		})
 	}
 }

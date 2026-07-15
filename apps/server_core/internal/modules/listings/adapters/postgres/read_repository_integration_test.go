@@ -6,15 +6,104 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	listingspostgres "marketplace-central/apps/server_core/internal/modules/listings/adapters/postgres"
 	"marketplace-central/apps/server_core/internal/modules/listings/application"
 	"marketplace-central/apps/server_core/internal/modules/listings/domain"
 	"marketplace-central/apps/server_core/internal/modules/listings/ports"
 	testpostgres "marketplace-central/apps/server_core/internal/testsupport/postgres"
 )
+
+type queryCounter struct{ count atomic.Int64 }
+
+func (q *queryCounter) TraceQueryStart(ctx context.Context, _ *pgx.Conn, _ pgx.TraceQueryStartData) context.Context {
+	q.count.Add(1)
+	return ctx
+}
+func (*queryCounter) TraceQueryEnd(context.Context, *pgx.Conn, pgx.TraceQueryEndData) {}
+
+func TestGetListingsSummaryUsesOneTenantScopedAggregate(t *testing.T) {
+	ctx := context.Background()
+	seedPool, cfg := testpostgres.OpenPool(t, "tenant_harness_listings_summary")
+	token := time.Now().UTC().Format("150405.000000000")
+	tenant, other, installation := "summary-a-"+token, "summary-b-"+token, "summary-inst-"+token
+	t.Cleanup(func() {
+		for _, table := range []string{"product_links", "listings"} {
+			_, _ = seedPool.Exec(context.Background(), "DELETE FROM "+table+" WHERE tenant_id = ANY($1) AND installation_id=$2", []string{tenant, other}, installation)
+		}
+	})
+	seed := func(owner, id, status, sync string, syncError bool, price any) {
+		var problem any
+		if syncError {
+			problem = []byte(`{"code":"x","message":"x"}`)
+		}
+		var currency any = "BRL"
+		if price == nil {
+			currency = nil // listings_price_pair_check: amount+currency both-null or both-set
+		}
+		if _, err := seedPool.Exec(ctx, `INSERT INTO listings(tenant_id,installation_id,provider,provider_listing_id,variation_id,title,status,price_amount,price_currency,sync_state,sync_error) VALUES($1,$2,'mercadolivre',$3,'-',$3,$4,$5,$6,$7,$8)`, owner, installation, id, status, price, currency, sync, problem); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, owner := range []string{tenant, other} {
+		seed(owner, "active", "active", "synced", false, 90)
+		seed(owner, "paused", "paused", "stale", false, 100)
+		seed(owner, "closed", "closed", "error", true, nil)
+		for _, row := range []struct {
+			id      string
+			product int64
+		}{{"active", 101}, {"paused", 102}, {"closed", 103}} {
+			if _, err := seedPool.Exec(ctx, `INSERT INTO product_links(tenant_id,installation_id,provider_code,provider_item_id,provider_variation_id,state,internal_product_id) VALUES($1,$2,'mercadolivre',$3,'','resolved',$4)`, owner, installation, row.id, row.product); err != nil {
+				t.Fatal(err)
+			}
+		}
+		seed(owner, "unlinked", "active", "synced", false, 90)
+	}
+	counter := &queryCounter{}
+	poolConfig, err := pgxpool.ParseConfig(cfg.DatabaseURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	poolConfig.ConnConfig.Tracer = counter
+	countedPool, err := pgxpool.NewWithConfig(ctx, poolConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(countedPool.Close)
+	got, err := listingspostgres.NewRepository(countedPool, tenant).GetListingsSummary(ctx, ports.SummaryQuery{InstallationID: installation})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if counter.count.Load() != 1 {
+		t.Fatalf("queries=%d", counter.count.Load())
+	}
+	if got.Total != 4 || got.Active != 2 || got.Paused != 1 || got.SyncError != 1 || got.Stale != 1 || got.Unlinked != 1 || len(got.Linked) != 3 {
+		t.Fatalf("summary=%+v", got)
+	}
+	for _, linked := range got.Linked {
+		if linked.CostID == 103 && linked.Price != nil {
+			t.Fatalf("null price defaulted: %+v", linked)
+		}
+	}
+	low, high := 65.6597, 10.0
+	service := application.NewReadService(
+		listingspostgres.NewRepository(seedPool, tenant),
+		integrationFacts{costs: map[int64]*ports.CostFact{101: {Amount: &low}, 102: {Amount: &high}, 103: nil}},
+		integrationPolicy{}, integrationInstallation{}, time.Now,
+	)
+	summary, err := service.Summary(ctx, ports.SummaryQuery{InstallationID: installation})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if summary.BelowMarginWorstCase == nil || *summary.BelowMarginWorstCase != 1 || summary.MarginUnknown == nil || *summary.MarginUnknown != 1 {
+		t.Fatalf("margin counters=%+v", summary)
+	}
+}
 
 func TestGetListingRowAndTimelineUseCompositeTenantKey(t *testing.T) {
 	ctx := context.Background()

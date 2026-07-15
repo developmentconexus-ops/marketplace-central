@@ -19,6 +19,9 @@ type fakeRows struct {
 	getFound     bool
 	getErr       error
 	timeline     []domain.TimelineEvent
+	summary      ports.ListingSummaryRow
+	summaryErr   error
+	summaryCalls int
 }
 
 func (f *fakeRows) ListListingRows(_ context.Context, _ ports.ListingQuery) (ports.ListingRowPage, error) {
@@ -34,8 +37,9 @@ func (f *fakeRows) ListListingGroupRows(_ context.Context, q ports.ListingGroupQ
 func (f *fakeRows) GetListingRow(context.Context, domain.ListingKey) (domain.ListingReadModel, bool, error) {
 	return f.getModel, f.getFound, f.getErr
 }
-func (*fakeRows) GetListingsSummary(context.Context, ports.SummaryQuery) (ports.ListingSummaryRow, error) {
-	return ports.ListingSummaryRow{}, nil
+func (f *fakeRows) GetListingsSummary(context.Context, ports.SummaryQuery) (ports.ListingSummaryRow, error) {
+	f.summaryCalls++
+	return f.summary, f.summaryErr
 }
 func (f *fakeRows) ListListingTimeline(context.Context, domain.ListingKey, int) ([]domain.TimelineEvent, error) {
 	return f.timeline, nil
@@ -45,15 +49,23 @@ type fakeFacts struct {
 	costs                   map[int64]*ports.CostFact
 	ceilings                map[int64]*ports.ICMSCeiling
 	err                     error
+	costErr                 error
+	ceilingErr              error
 	costCalls, ceilingCalls int
 }
 
 func (f *fakeFacts) GetCostFactsByIDs(context.Context, []int64) (map[int64]*ports.CostFact, error) {
 	f.costCalls++
+	if f.costErr != nil {
+		return nil, f.costErr
+	}
 	return f.costs, f.err
 }
 func (f *fakeFacts) GetICMSCeilingByOrigin(context.Context, int64) (map[int64]*ports.ICMSCeiling, error) {
 	f.ceilingCalls++
+	if f.ceilingErr != nil {
+		return nil, f.ceilingErr
+	}
 	return f.ceilings, f.err
 }
 
@@ -70,6 +82,73 @@ func (f fakePolicy) GetPricingPolicyForInstallation(context.Context, string) (po
 func money(v string) *domain.Money { return &domain.Money{Amount: v, Currency: "BRL"} }
 func resolved(id string) domain.ListingReadModel {
 	return domain.ListingReadModel{ListingID: id, InstallationID: "i", ProviderListingID: id, Title: id, Link: domain.ListingLink{State: domain.LinkStateResolved, ProductID: &id}, Price: money("90"), ICMSWorstCaseByUF: nil}
+}
+
+func TestReadServiceSummaryCountsMarginsAndBatchesCosts(t *testing.T) {
+	r := &fakeRows{summary: ports.ListingSummaryRow{Total: 4, Active: 1, Paused: 1, SyncError: 1, Stale: 1, Unlinked: 1, Linked: []ports.SummaryLinkedRow{
+		{CostID: 1, Price: money("90")}, {CostID: 2, Price: money("100")}, {CostID: 3, Price: nil}, {CostID: 1, Price: money("90")},
+	}}}
+	f := &fakeFacts{costs: map[int64]*ports.CostFact{1: {Amount: ptr(65.6597)}, 2: {Amount: ptr(10)}, 3: nil}, ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}
+	now := time.Date(2026, 7, 15, 13, 0, 0, 0, time.FixedZone("x", 3600))
+	got, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), func() time.Time { return now }).Summary(context.Background(), ports.SummaryQuery{InstallationID: "i"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.BelowMarginWorstCase == nil || *got.BelowMarginWorstCase != 2 || got.MarginUnknown == nil || *got.MarginUnknown != 1 {
+		t.Fatalf("summary=%+v", got)
+	}
+	if got.Total != 4 || got.Active != 1 || got.Paused != 1 || got.SyncError != 1 || got.Stale != 1 || got.Unlinked != 1 {
+		t.Fatalf("counters=%+v", got)
+	}
+	if f.costCalls != 1 || f.ceilingCalls != 1 || r.summaryCalls != 1 || !got.AsOf.Equal(now.UTC()) {
+		t.Fatalf("calls cost=%d ceiling=%d repo=%d asof=%s", f.costCalls, f.ceilingCalls, r.summaryCalls, got.AsOf)
+	}
+}
+
+func TestReadServiceSummaryUnknownInputsAndSourceOutage(t *testing.T) {
+	base := ports.ListingSummaryRow{Total: 2, Unlinked: 1, Linked: []ports.SummaryLinkedRow{{CostID: 1, Price: money("90")}}}
+	for _, tc := range []struct {
+		name    string
+		policy  bool
+		facts   *fakeFacts
+		wantNil bool
+	}{
+		{"missing policy", false, &fakeFacts{costs: map[int64]*ports.CostFact{1: {Amount: ptr(1)}}, ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}, false},
+		{"missing cost", true, &fakeFacts{costs: map[int64]*ports.CostFact{}, ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}, false},
+		{"cost outage", true, &fakeFacts{costErr: errors.New("down"), ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}, true},
+		{"ceiling outage", true, &fakeFacts{ceilingErr: errors.New("down")}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := NewReadService(&fakeRows{summary: base}, tc.facts, fakePolicy{found: tc.policy}, fakeInstallation(true), time.Now).Summary(context.Background(), ports.SummaryQuery{InstallationID: "i"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.wantNil {
+				if got.BelowMarginWorstCase != nil || got.MarginUnknown != nil {
+					t.Fatalf("summary=%+v", got)
+				}
+			} else if got.MarginUnknown == nil || *got.MarginUnknown != 1 || got.BelowMarginWorstCase == nil || *got.BelowMarginWorstCase != 0 {
+				t.Fatalf("summary=%+v", got)
+			}
+			if got.Unlinked != 1 {
+				t.Fatalf("unlinked=%d", got.Unlinked)
+			}
+		})
+	}
+}
+
+func TestReadServiceSummaryValidatesInstallationFirst(t *testing.T) {
+	for _, tc := range []struct {
+		id           string
+		installation fakeInstallation
+		want         error
+	}{{"", true, ErrInstallationIDRequired}, {"i", false, ErrInstallationNotFound}} {
+		r, f := &fakeRows{}, &fakeFacts{}
+		_, err := NewReadService(r, f, fakePolicy{found: true}, tc.installation, time.Now).Summary(context.Background(), ports.SummaryQuery{InstallationID: tc.id})
+		if !errors.Is(err, tc.want) || r.summaryCalls != 0 || f.costCalls != 0 || f.ceilingCalls != 0 {
+			t.Fatalf("err=%v calls repo=%d cost=%d ceiling=%d", err, r.summaryCalls, f.costCalls, f.ceilingCalls)
+		}
+	}
 }
 
 func TestReadServiceFastPathUsesOnePageAndEnrichesDisplay(t *testing.T) {

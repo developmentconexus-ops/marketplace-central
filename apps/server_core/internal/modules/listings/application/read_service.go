@@ -41,6 +41,69 @@ func NewReadService(repo ports.ListingReadRepository, facts ports.CostReader, po
 	return ReadService{repo: repo, facts: facts, policies: policies, installations: installations, now: now}
 }
 
+func (s ReadService) Summary(ctx context.Context, query ports.SummaryQuery) (ports.ListingSummaryRow, error) {
+	if strings.TrimSpace(query.InstallationID) == "" {
+		return ports.ListingSummaryRow{}, ErrInstallationIDRequired
+	}
+	found, err := s.installations.InstallationExists(ctx, query.InstallationID)
+	if err != nil {
+		return ports.ListingSummaryRow{}, fmt.Errorf("validate installation: %w", err)
+	}
+	if !found {
+		return ports.ListingSummaryRow{}, ErrInstallationNotFound
+	}
+	policy, policyFound, err := s.policies.GetPricingPolicyForInstallation(ctx, query.InstallationID)
+	if err != nil {
+		return ports.ListingSummaryRow{}, fmt.Errorf("read pricing policy: %w", err)
+	}
+	ceilings, ceilingErr := s.facts.GetICMSCeilingByOrigin(ctx, originUFMG)
+	row, err := s.repo.GetListingsSummary(ctx, query)
+	if err != nil {
+		return ports.ListingSummaryRow{}, err
+	}
+	row.AsOf = s.now().UTC()
+	if ceilingErr != nil {
+		row.BelowMarginWorstCase, row.MarginUnknown = nil, nil
+		return row, nil
+	}
+	ids := make([]int64, 0, len(row.Linked))
+	seen := make(map[int64]bool, len(row.Linked))
+	for _, linked := range row.Linked {
+		if !seen[linked.CostID] {
+			seen[linked.CostID] = true
+			ids = append(ids, linked.CostID)
+		}
+	}
+	costs := map[int64]*ports.CostFact{}
+	if len(ids) > 0 {
+		costs, err = s.facts.GetCostFactsByIDs(ctx, ids)
+		if err != nil {
+			row.BelowMarginWorstCase, row.MarginUnknown = nil, nil
+			return row, nil
+		}
+	}
+	below, unknown := 0, 0
+	ceiling := maximumCeiling(ceilings)
+	var margin *float64
+	if policyFound {
+		margin = &policy.MinMarginPercent
+	}
+	for _, linked := range row.Linked {
+		var cost *float64
+		if fact := costs[linked.CostID]; fact != nil {
+			cost = fact.Amount
+		}
+		value := belowMargin(linked.Price, cost, ceiling, margin)
+		if value == nil {
+			unknown++
+		} else if *value {
+			below++
+		}
+	}
+	row.BelowMarginWorstCase, row.MarginUnknown = &below, &unknown
+	return row, nil
+}
+
 func (s ReadService) List(ctx context.Context, query ports.ListingQuery) (ports.ListingRowPage, error) {
 	if strings.TrimSpace(query.InstallationID) == "" {
 		return ports.ListingRowPage{}, ErrInstallationIDRequired

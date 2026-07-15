@@ -16,7 +16,53 @@ type ListService interface {
 	List(context.Context, ports.ListingQuery) (ports.ListingRowPage, error)
 	ByProduct(context.Context, ports.ListingGroupQuery) (ports.ListingGroupRowPage, error)
 	Get(context.Context, domain.ListingID) (domain.ListingReadModel, []domain.TimelineEvent, error)
+	Summary(context.Context, ports.SummaryQuery) (ports.ListingSummaryRow, error)
 }
+type listingSummaryEnvelope struct {
+	Total      int                      `json:"total"`
+	Active     int                      `json:"active"`
+	Paused     int                      `json:"paused"`
+	Exceptions listingSummaryExceptions `json:"exceptions"`
+	AsOf       any                      `json:"as_of"`
+}
+type listingSummaryExceptions struct {
+	SyncError            int  `json:"sync_error"`
+	Stale                int  `json:"stale"`
+	Unlinked             int  `json:"unlinked"`
+	BelowMarginWorstCase *int `json:"below_margin_worst_case"`
+	MarginUnknown        *int `json:"margin_unknown"`
+}
+
+func (h ReadHandler) HandleSummary(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		writeListError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed", "")
+		return
+	}
+	installation, ok := single(r.URL.Query(), "installation_id")
+	if !ok || strings.TrimSpace(installation) == "" {
+		writeListError(w, http.StatusBadRequest, "installation_required", "installation_id é obrigatório", "installation_id")
+		return
+	}
+	row, err := h.service.Summary(r.Context(), ports.SummaryQuery{InstallationID: installation})
+	if err != nil {
+		if errors.Is(err, application.ErrInstallationIDRequired) {
+			writeListError(w, http.StatusBadRequest, "installation_required", "installation_id é obrigatório", "installation_id")
+			return
+		}
+		if errors.Is(err, application.ErrInstallationNotFound) {
+			writeListError(w, http.StatusNotFound, "installation_not_found", "instalação não encontrada", "installation_id")
+			return
+		}
+		writeListError(w, http.StatusServiceUnavailable, "source_unavailable", "fonte de dados indisponível", "")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, listingSummaryEnvelope{
+		Total: row.Total, Active: row.Active, Paused: row.Paused, AsOf: row.AsOf.UTC(),
+		Exceptions: listingSummaryExceptions{SyncError: row.SyncError, Stale: row.Stale, Unlinked: row.Unlinked, BelowMarginWorstCase: row.BelowMarginWorstCase, MarginUnknown: row.MarginUnknown},
+	})
+}
+
 type ReadHandler struct{ service ListService }
 
 func NewReadHandler(service ListService) ReadHandler { return ReadHandler{service: service} }

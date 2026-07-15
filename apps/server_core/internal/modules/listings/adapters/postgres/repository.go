@@ -299,8 +299,48 @@ func (r *Repository) GetListingRow(ctx context.Context, key domain.ListingKey) (
 	}
 	return model, true, nil
 }
-func (*Repository) GetListingsSummary(context.Context, ports.SummaryQuery) (ports.ListingSummaryRow, error) {
-	return ports.ListingSummaryRow{}, errors.New("listings read: GetListingsSummary not implemented (Slice 3/4/5)")
+func (r *Repository) GetListingsSummary(ctx context.Context, q ports.SummaryQuery) (ports.ListingSummaryRow, error) {
+	var result ports.ListingSummaryRow
+	var linkedJSON []byte
+	err := r.pool.QueryRow(ctx, `
+		SELECT count(*)::int,
+			count(*) FILTER (WHERE l.status='active')::int,
+			count(*) FILTER (WHERE l.status='paused')::int,
+			count(*) FILTER (WHERE l.sync_state='error' OR l.sync_error IS NOT NULL)::int,
+			count(*) FILTER (WHERE l.sync_state='stale')::int,
+			count(*) FILTER (WHERE `+listingLinkState+` = 'unresolved')::int,
+			COALESCE(json_agg(json_build_object(
+				'cost_id',pl.internal_product_id,
+				'price_amount',l.price_amount::text,
+				'currency',l.price_currency
+			)) FILTER (WHERE pl.state='resolved' AND pl.internal_product_id IS NOT NULL),'[]'::json)
+		FROM listings l
+		LEFT JOIN product_links pl ON pl.tenant_id=$1 AND pl.installation_id=$2
+			AND pl.tenant_id=l.tenant_id AND pl.installation_id=l.installation_id
+			AND pl.provider_item_id=l.provider_listing_id
+			AND pl.provider_variation_id=CASE WHEN l.variation_id='-' THEN '' ELSE l.variation_id END
+		WHERE l.tenant_id=$1 AND l.installation_id=$2`, r.tenantID, q.InstallationID).Scan(
+		&result.Total, &result.Active, &result.Paused, &result.SyncError, &result.Stale, &result.Unlinked, &linkedJSON)
+	if err != nil {
+		return ports.ListingSummaryRow{}, fmt.Errorf("get listings summary: %w", err)
+	}
+	var linked []struct {
+		CostID      int64                 `json:"cost_id"`
+		PriceAmount *string               `json:"price_amount"`
+		Currency    *domain.PriceCurrency `json:"currency"`
+	}
+	if err := json.Unmarshal(linkedJSON, &linked); err != nil {
+		return ports.ListingSummaryRow{}, fmt.Errorf("decode listings summary inputs: %w", err)
+	}
+	result.Linked = make([]ports.SummaryLinkedRow, 0, len(linked))
+	for _, row := range linked {
+		item := ports.SummaryLinkedRow{CostID: row.CostID}
+		if row.PriceAmount != nil && row.Currency != nil {
+			item.Price = &domain.Money{Amount: *row.PriceAmount, Currency: *row.Currency}
+		}
+		result.Linked = append(result.Linked, item)
+	}
+	return result, nil
 }
 func (r *Repository) ListListingTimeline(ctx context.Context, key domain.ListingKey, limit int) ([]domain.TimelineEvent, error) {
 	rows, err := r.pool.Query(ctx, `

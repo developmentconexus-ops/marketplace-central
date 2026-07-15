@@ -44,9 +44,15 @@ type ListingSummaryRow struct {
 	SyncError            int
 	Stale                int
 	Unlinked             int
-	BelowMarginWorstCase int
-	MarginUnknown        int
+	BelowMarginWorstCase *int
+	MarginUnknown        *int
 	AsOf                 time.Time
+	Linked               []SummaryLinkedRow
+}
+
+type SummaryLinkedRow struct {
+	CostID int64
+	Price  *domain.Money
 }
 
 type ListingReadRepository interface {
