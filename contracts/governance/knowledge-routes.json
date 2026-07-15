@@ -20,7 +20,8 @@
       "concerns": ["bootstrap"],
       "selectors": [
         {"path": "AGENTS.md", "selector": "Harness Bootstrap", "reason": "durable entry policy", "estimated_tokens": 220},
-        {"path": ".agents/skills/mpc-goal-harness/SKILL.md", "selector": "Portfolio -> Milestone packet; Milestone -> Feature packet; Context and token constraints", "reason": "session packets, callbacks, context discipline, and handoff procedure", "estimated_tokens": 900}
+        {"path": "docs/superpowers/HARNESS.md", "selector": "Execution loop; Parallel-track execution; Context and handoff discipline", "reason": "binding hub-and-chips doctrine: dispatch, events, context discipline, handoff", "estimated_tokens": 900},
+        {"path": ".agents/skills/harness-worker/SKILL.md", "selector": "Pinned non-negotiables", "reason": "worker-facing pinned rules for dispatched sessions", "estimated_tokens": 260}
       ]
     },
     {
