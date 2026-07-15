@@ -147,3 +147,13 @@ Prereqs verified landed: `listing_sync_events` table+index (0036), F-01 event wr
 | # | Feature/Slice | Role | Model / effort | Log | Result |
 |---|---|---|---|---|---|
 | I8 | F-02 Slice 3 (GET /listings/{id} detail + last-10 timeline + per-UF matrix) | Implementer | gpt-5.6-luna / high (standard, OS-process bg) | scratchpad/f02-slice3.log (task b7w9yeoai) | RUNNING — reuse shared list projection/scanner, timeline via idx (at DESC,event_id DESC) LIMIT 10 empty→[], per-UF D-22 big.Rat sorted, 404-not-400 on malformed/absent/unknown id, Oracle-fail-request, no root.go mount. |
+
+### I8 result — F-02 Slice 3 GREEN, committed 57fba22d
+Worker b7w9yeoai (gpt-5.6-luna high). Composite GET /listings/{id} + last-10 timeline + per-UF ICMS matrix. 6 files (repository.go GetListingRow+ListListingTimeline real impls replacing Slice-2 stubs; read_service Get `(model,[]TimelineEvent,error)`; handler HandleGet; +tests). Shared list projection/scanner reused (no drift). Timeline via idx_listing_sync_events_timeline (at DESC,event_id DESC) LIMIT 10, empty→[]. Per-UF matrix D-22 big.Rat, sorted numeric UFDEST, nil-safe (ADR-17), GET-only (nil in list). destination_uf = numeric Sankhya code (no abbrev registry exists — truthful rendering, not a contract change). 404-not-400 via typed errors.As. No root.go mount (Slice 6). Review (sonnet cavecrew-reviewer) 0🔴 0🟡 — clean. go test/build/vet green, governance passed.
+
+**Integration lane verified for real (ephemeral Postgres):** ran hermetic lane via direct lifecycle diagnostic. `./internal/modules/listings/adapters/postgres` (Slices 2+3 integration tests) = EXITCODE=0 GREEN in isolation — real page walk, keyset cursor, timeline ordering, tenant isolation all pass. Migrations applied through 0036. Modcache was warm (no false HPG_MIGRATION_FAILED).
+
+**PRE-EXISTING integration failures (NOT listings, route to hub at P8):** full default lane (`scripts/harness.ps1 integration`) reports HPG_TEST_FAILED from two non-listings packages I never touched:
+- `orders/adapters/postgres` → `TestOrderRepositoryDuplicateIdentityGroupPreservesIDSetAndRemainsAmbiguous`
+- `tests/integration` → `TestPhase1SmokeFlow` (already-known pre-existing failure)
+These are pre-existing (my changes are listings + marketplaces-D21 only; marketplaces isn't in the integration lane; I touched neither orders nor tests/integration). Classify as pre-existing at P8 closeout, do not fix under M-01 scope.
