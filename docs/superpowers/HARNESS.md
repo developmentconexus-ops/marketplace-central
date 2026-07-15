@@ -26,6 +26,11 @@ field findings from that program carry over where marked.
 
 Concurrency: bounded by operator attention (chips) + ≤15 workers per session. Fable never a worker.
 
+**Codex invocation rule:** all codex dispatches route through
+`/codex:rescue --model <m> --effort <e> --wait` (companion runtime handles result-handling, resume
+threading, and stdout-verbatim capture for the dispatch ledger; `--wait` = foreground = SYNC).
+Raw `codex exec` is permitted ONLY for the one-off codex precondition probe.
+
 **Codex precondition:** before the first codex-dependent dispatch, hub verifies `codex exec`
 works on this machine (MetalDocs field finding 2026-07-14: Windows sandbox can be broken
 machine-wide — `orchestrator_helper_launch_failed`; fix = operator runs interactive
@@ -130,8 +135,12 @@ the hub (MetalDocs 3D000/template-collision finding); same-fingerprint runs are 
 
 Milestone-session obligations, checkable:
 
-1. Every feature gets a **Sol-medium plan** (P2) before any implementation dispatch — plan
-   quality is the speed lever; skipping planning to "go fast" is a harness violation.
+1. Planning is a **P2 BATCH up-front phase**: ONE Sol-medium planner pass per milestone emits
+   slice cards for ALL of the milestone's features + the shared module seam, BEFORE any
+   implementation — never one-at-a-time at implement time. Dispatch via
+   `/codex:rescue --model gpt-5.6-sol --effort medium --wait`. Batch-of-planning ≠
+   batch-of-implementation: implementation still respects one-writer-per-seam (serial within the
+   same module). Plan quality is the speed lever; skipping planning to "go fast" is a violation.
 2. Code slices implemented by dispatched codex workers (Luna high standard / Sol low complex).
    Opus writes inline ONLY trivial glue (≤ ~10 lines, no new behavior).
 3. Every slice reviewed by an **independent Claude reviewer** before the next slice. Implementer
