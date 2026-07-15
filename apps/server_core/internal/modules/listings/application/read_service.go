@@ -21,6 +21,11 @@ const originUFMG int64 = 13
 // clients resume from the last scanned row when the cap is reached.
 const maxBelowMarginScanPages = 50
 
+// maxBelowMarginGroupScanPages separately bounds group-key pages because each
+// page expands to complete child sets and one cost batch; clients resume from
+// the last scanned group key when the bound is reached.
+const maxBelowMarginGroupScanPages = 50
+
 var ErrInstallationIDRequired = errors.New("installation_id is required")
 var ErrInstallationNotFound = errors.New("installation not found")
 
@@ -69,6 +74,129 @@ func (s ReadService) List(ctx context.Context, query ports.ListingQuery) (ports.
 		return page, nil
 	}
 	return s.scan(ctx, query, maxCeiling, policy, policyFound, serveTime)
+}
+
+func (s ReadService) ByProduct(ctx context.Context, query ports.ListingGroupQuery) (ports.ListingGroupRowPage, error) {
+	if strings.TrimSpace(query.InstallationID) == "" {
+		return ports.ListingGroupRowPage{}, ErrInstallationIDRequired
+	}
+	found, err := s.installations.InstallationExists(ctx, query.InstallationID)
+	if err != nil {
+		return ports.ListingGroupRowPage{}, fmt.Errorf("validate installation: %w", err)
+	}
+	if !found {
+		return ports.ListingGroupRowPage{}, ErrInstallationNotFound
+	}
+	policy, policyFound, err := s.policies.GetPricingPolicyForInstallation(ctx, query.InstallationID)
+	if err != nil {
+		return ports.ListingGroupRowPage{}, fmt.Errorf("read pricing policy: %w", err)
+	}
+	ceilings, err := s.facts.GetICMSCeilingByOrigin(ctx, originUFMG)
+	if err != nil {
+		return ports.ListingGroupRowPage{}, fmt.Errorf("read ICMS ceiling: %w", err)
+	}
+	ceiling, asOf := maximumCeiling(ceilings), s.now().UTC()
+	if needsBelowMarginScan(query.Filter) {
+		return s.scanGroups(ctx, query, ceiling, policy, policyFound, asOf)
+	}
+	page, err := s.repo.ListListingGroupRows(ctx, query)
+	if err != nil {
+		return ports.ListingGroupRowPage{}, err
+	}
+	if err := s.enrichGroups(ctx, page.Groups, ceiling, policy, policyFound); err != nil {
+		return ports.ListingGroupRowPage{}, err
+	}
+	finalizeGroups(page.Groups)
+	page.AsOf = asOf
+	return page, nil
+}
+
+func (s ReadService) scanGroups(ctx context.Context, q ports.ListingGroupQuery, ceiling *float64, policy ports.PricingPolicy, policyFound bool, asOf time.Time) (ports.ListingGroupRowPage, error) {
+	result := ports.ListingGroupRowPage{Groups: []domain.ListingGroup{}, AsOf: asOf}
+	cursor := q.Cursor
+	for pageNo := 0; pageNo < maxBelowMarginGroupScanPages; pageNo++ {
+		candidate := q
+		candidate.Cursor = cursor
+		page, err := s.repo.ListListingGroupRows(ctx, candidate)
+		if err != nil {
+			return ports.ListingGroupRowPage{}, err
+		}
+		if err := s.enrichGroups(ctx, page.Groups, ceiling, policy, policyFound); err != nil {
+			return ports.ListingGroupRowPage{}, err
+		}
+		for groupIndex := range page.Groups {
+			group := page.Groups[groupIndex]
+			last := cursorForGroup(group)
+			result.NextCursor = &last
+			survivors := make([]domain.ListingReadModel, 0, len(group.Listings))
+			for _, child := range group.Listings {
+				if matchesDependentFilter(child, q.Filter) {
+					survivors = append(survivors, child)
+				}
+			}
+			if len(survivors) == 0 {
+				continue
+			}
+			group.Listings = survivors
+			group.ListingCount = len(survivors)
+			group.GroupState = groupState(survivors)
+			result.Groups = append(result.Groups, group)
+			if len(result.Groups) == q.Limit {
+				if page.NextCursor == nil && groupIndex == len(page.Groups)-1 {
+					result.NextCursor = nil
+				}
+				return result, nil
+			}
+		}
+		if page.NextCursor == nil {
+			result.NextCursor = nil
+			return result, nil
+		}
+		cursor = *page.NextCursor
+	}
+	return result, nil
+}
+
+func (s ReadService) enrichGroups(ctx context.Context, groups []domain.ListingGroup, ceiling *float64, policy ports.PricingPolicy, policyFound bool) error {
+	items := make([]domain.ListingReadModel, 0)
+	for _, group := range groups {
+		items = append(items, group.Listings...)
+	}
+	if err := s.enrich(ctx, items, ceiling, policy, policyFound); err != nil {
+		return err
+	}
+	offset := 0
+	for i := range groups {
+		n := len(groups[i].Listings)
+		copy(groups[i].Listings, items[offset:offset+n])
+		offset += n
+	}
+	return nil
+}
+
+func finalizeGroups(groups []domain.ListingGroup) {
+	for i := range groups {
+		groups[i].ListingCount = len(groups[i].Listings)
+		groups[i].GroupState = groupState(groups[i].Listings)
+	}
+}
+func groupState(items []domain.ListingReadModel) domain.GroupState {
+	state := domain.GroupStateOK
+	for _, item := range items {
+		if item.SyncState == domain.ListingSyncStateError || item.SyncError != nil {
+			return domain.GroupStateError
+		}
+		if item.SyncState == domain.ListingSyncStateStale || item.Link.State != domain.LinkStateResolved || item.BelowMarginWorstCase != nil && *item.BelowMarginWorstCase {
+			state = domain.GroupStateAttention
+		}
+	}
+	return state
+}
+func cursorForGroup(group domain.ListingGroup) ports.GroupCursor {
+	if group.ProductID == nil {
+		return ports.GroupCursor{NullLast: true}
+	}
+	return ports.GroupCursor{ProductTitle: *group.ProductTitle, ProductID: *group.ProductID}
 }
 
 func (s ReadService) Get(ctx context.Context, id domain.ListingID) (domain.ListingReadModel, []domain.TimelineEvent, error) {
@@ -153,9 +281,13 @@ func (s ReadService) enrich(ctx context.Context, items []domain.ListingReadModel
 			}
 		}
 	}
-	costs, err := s.facts.GetCostFactsByIDs(ctx, ids)
-	if err != nil {
-		return fmt.Errorf("read listing costs: %w", err)
+	costs := map[int64]*ports.CostFact{}
+	if len(ids) > 0 {
+		var err error
+		costs, err = s.facts.GetCostFactsByIDs(ctx, ids)
+		if err != nil {
+			return fmt.Errorf("read listing costs: %w", err)
+		}
 	}
 	for i := range items {
 		item := &items[i]

@@ -148,8 +148,144 @@ func (r *Repository) ListListingRows(ctx context.Context, q ports.ListingQuery) 
 	return page, nil
 }
 
-func (*Repository) ListListingGroupRows(context.Context, ports.ListingGroupQuery) (ports.ListingGroupRowPage, error) {
-	return ports.ListingGroupRowPage{}, errors.New("listings read: ListListingGroupRows not implemented (Slice 3/4/5)")
+func (r *Repository) ListListingGroupRows(ctx context.Context, q ports.ListingGroupQuery) (ports.ListingGroupRowPage, error) {
+	args, where := listingGroupWhere(r.tenantID, q)
+	if !q.Cursor.IsFirstPage() {
+		args = append(args, q.Cursor.NullLast, q.Cursor.ProductTitle, q.Cursor.ProductID)
+		n := len(args)
+		where = append(where, fmt.Sprintf("(CASE WHEN pl.state='resolved' AND pl.internal_product_id IS NOT NULL THEN false ELSE true END, CASE WHEN pl.state='resolved' AND pl.internal_product_id IS NOT NULL THEN pl.internal_product_name ELSE '' END, CASE WHEN pl.state='resolved' AND pl.internal_product_id IS NOT NULL THEN pl.internal_product_id::text ELSE '' END) > ($%d,$%d,$%d)", n-2, n-1, n))
+	}
+	args = append(args, q.Limit+1)
+	keySQL := fmt.Sprintf(`SELECT DISTINCT
+		CASE WHEN pl.state='resolved' AND pl.internal_product_id IS NOT NULL THEN false ELSE true END AS null_last,
+		CASE WHEN pl.state='resolved' AND pl.internal_product_id IS NOT NULL THEN pl.internal_product_name ELSE '' END AS product_title,
+		CASE WHEN pl.state='resolved' AND pl.internal_product_id IS NOT NULL THEN pl.internal_product_id::text ELSE '' END AS product_id
+	FROM listings l
+	LEFT JOIN product_links pl ON pl.tenant_id=l.tenant_id AND pl.installation_id=l.installation_id AND pl.provider_item_id=l.provider_listing_id AND pl.provider_variation_id=CASE WHEN l.variation_id='-' THEN '' ELSE l.variation_id END
+	LEFT JOIN product_link_listing_snapshots pls ON pls.tenant_id=l.tenant_id AND pls.installation_id=l.installation_id AND pls.provider_item_id=l.provider_listing_id AND pls.provider_variation_id=CASE WHEN l.variation_id='-' THEN '' ELSE l.variation_id END
+	WHERE %s ORDER BY null_last,product_title,product_id LIMIT $%d`, strings.Join(where, " AND "), len(args))
+	rows, err := r.pool.Query(ctx, keySQL, args...)
+	if err != nil {
+		return ports.ListingGroupRowPage{}, fmt.Errorf("list listing group keys: %w", err)
+	}
+	keys := make([]ports.GroupCursor, 0, q.Limit+1)
+	for rows.Next() {
+		var k ports.GroupCursor
+		if err := rows.Scan(&k.NullLast, &k.ProductTitle, &k.ProductID); err != nil {
+			rows.Close()
+			return ports.ListingGroupRowPage{}, fmt.Errorf("scan listing group key: %w", err)
+		}
+		keys = append(keys, k)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return ports.ListingGroupRowPage{}, fmt.Errorf("iterate listing group keys: %w", err)
+	}
+	rows.Close()
+	page := ports.ListingGroupRowPage{}
+	if len(keys) > q.Limit {
+		keys = keys[:q.Limit]
+		c := keys[len(keys)-1]
+		page.NextCursor = &c
+	}
+	if len(keys) == 0 {
+		page.Groups = []domain.ListingGroup{}
+		return page, nil
+	}
+
+	childArgs, childWhere := listingGroupWhere(r.tenantID, q)
+	groups := make([]domain.ListingGroup, len(keys))
+	keyIndex := make(map[string]int, len(keys))
+	selectors := make([]string, 0, len(keys))
+	for i, k := range keys {
+		if k.NullLast {
+			title := "sem produto"
+			groups[i] = domain.ListingGroup{ProductTitle: &title, Listings: []domain.ListingReadModel{}}
+			selectors = append(selectors, "NOT (pl.state='resolved' AND pl.internal_product_id IS NOT NULL)")
+			keyIndex["null"] = i
+			continue
+		}
+		id, title := k.ProductID, k.ProductTitle
+		groups[i] = domain.ListingGroup{ProductID: &id, ProductTitle: &title, Listings: []domain.ListingReadModel{}}
+		childArgs = append(childArgs, k.ProductTitle, k.ProductID)
+		n := len(childArgs)
+		selectors = append(selectors, fmt.Sprintf("(pl.state='resolved' AND pl.internal_product_id IS NOT NULL AND pl.internal_product_name=$%d AND pl.internal_product_id::text=$%d)", n-1, n))
+		keyIndex[k.ProductTitle+"\x00"+k.ProductID] = i
+	}
+	childWhere = append(childWhere, "("+strings.Join(selectors, " OR ")+")")
+	projection := strings.Replace(listingProjectionSQL(), "SELECT ", `SELECT CASE WHEN pl.state='resolved' AND pl.internal_product_id IS NOT NULL THEN pl.internal_product_name END, CASE WHEN pl.state='resolved' AND pl.internal_product_id IS NOT NULL THEN pl.internal_product_id::text END, `, 1)
+	childSQL := fmt.Sprintf(`%s WHERE %s ORDER BY l.title,l.provider_listing_id,l.variation_id`, projection, strings.Join(childWhere, " AND "))
+	rows, err = r.pool.Query(ctx, childSQL, childArgs...)
+	if err != nil {
+		return ports.ListingGroupRowPage{}, fmt.Errorf("list listing group children: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var title, id *string
+		wrapped := &prefixedListingScanner{row: rows, prefix: []any{&title, &id}}
+		item, err := scanListingReadModel(wrapped)
+		if err != nil {
+			return ports.ListingGroupRowPage{}, fmt.Errorf("scan listing group child: %w", err)
+		}
+		key := "null"
+		if id != nil && title != nil {
+			key = *title + "\x00" + *id
+		}
+		groups[keyIndex[key]].Listings = append(groups[keyIndex[key]].Listings, item)
+	}
+	if err := rows.Err(); err != nil {
+		return ports.ListingGroupRowPage{}, fmt.Errorf("iterate listing group children: %w", err)
+	}
+	page.Groups = groups
+	return page, nil
+}
+
+type prefixedListingScanner struct {
+	row    pgx.Rows
+	prefix []any
+}
+
+func (s *prefixedListingScanner) Scan(dest ...any) error {
+	return s.row.Scan(append(s.prefix, dest...)...)
+}
+
+func listingGroupWhere(tenantID string, q ports.ListingGroupQuery) ([]any, []string) {
+	args := []any{tenantID, q.InstallationID}
+	where := []string{"l.tenant_id = $1", "l.installation_id = $2"}
+	add := func(clause string, value any) {
+		args = append(args, value)
+		where = append(where, fmt.Sprintf(clause, len(args)))
+	}
+	if q.Filter.Status != "" {
+		add("l.status = $%d", q.Filter.Status)
+	}
+	if q.Filter.SyncState != "" {
+		add("l.sync_state = $%d", q.Filter.SyncState)
+	}
+	if q.Filter.LinkState != "" {
+		add(listingLinkState+" = $%d", q.Filter.LinkState)
+	}
+	if q.Filter.ListingTypeCode != "" {
+		add("l.listing_type_code = $%d", q.Filter.ListingTypeCode)
+	}
+	if q.Filter.ProductID != "" {
+		add("pl.state = 'resolved' AND pl.internal_product_id = $%d::bigint", q.Filter.ProductID)
+	}
+	switch q.Filter.Exception {
+	case domain.ListingExceptionSyncError:
+		where = append(where, "(l.sync_state = 'error' OR l.sync_error IS NOT NULL)")
+	case domain.ListingExceptionStale:
+		where = append(where, "l.sync_state = 'stale'")
+	case domain.ListingExceptionUnlinked:
+		where = append(where, listingLinkState+" = 'unresolved'")
+	}
+	if q.Q != "" {
+		escaped := strings.NewReplacer("\\", "\\\\", "%", "\\%", "_", "\\_").Replace(q.Q)
+		args = append(args, escaped)
+		n := len(args)
+		where = append(where, fmt.Sprintf("(l.title ILIKE '%%%%' || $%d || '%%%%' ESCAPE E'\\\\' OR l.provider_listing_id ILIKE '%%%%' || $%d || '%%%%' ESCAPE E'\\\\' OR pls.seller_sku ILIKE '%%%%' || $%d || '%%%%' ESCAPE E'\\\\')", n, n, n))
+	}
+	return args, where
 }
 func (r *Repository) GetListingRow(ctx context.Context, key domain.ListingKey) (domain.ListingReadModel, bool, error) {
 	row := r.pool.QueryRow(ctx, fmt.Sprintf(`%s

@@ -69,6 +69,15 @@ found, the response contains the accumulated matches and `next_cursor` identifie
 row. Passing that cursor resumes without silently skipping candidates. The response shape is
 unchanged. Lists without a below-margin-dependent predicate retain the single-query `limit+1` path.
 
+**Grouping (`GET /listings/by-product`).** Below-margin-dependent filters use the same bounded
+scan mapped to group keys: a group appears iff at least one child survives, and the cursor advances
+over every scanned group key, including dropped zero-survivor groups. The cap is 50 group-key pages;
+on a cap hit the cursor is the last scanned group key. `listing_count` is the surviving-child count
+(equal to `len(listings)`); every emitted child is cost-evaluated, with no sampling. Below margin is
+defined only for linked listings, so `exception=below_margin` excludes "sem produto",
+`has_exception=true` includes it via `unlinked`, and `has_exception=false` excludes it. The response
+shape is unchanged.
+
 ## Enums And Statuses
 
 - `sync_state`: `synced | error | stale | queued | syncing | paused_sync`. pt-BR labels fixed: sincronizado / com erro / desatualizado / na fila / sincronizando / pausado. ("sem vínculo" is `link.state`, NOT a sync_state.)

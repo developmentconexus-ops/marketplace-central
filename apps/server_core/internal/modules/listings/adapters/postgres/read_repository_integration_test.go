@@ -217,3 +217,65 @@ func TestReadServiceBelowMarginScanCapAndCursorResumption(t *testing.T) {
 		t.Fatalf("resumed page=%+v", resumed)
 	}
 }
+
+func TestByProductWalkUsesProductIDTieBreakAndOneNullLastBucket(t *testing.T) {
+	ctx := context.Background()
+	pool, _ := testpostgres.OpenPool(t, "tenant_harness_listings_groups")
+	token := time.Now().UTC().Format("150405.000000000")
+	tenant, other, installation := "groups-a-"+token, "groups-b-"+token, "groups-inst-"+token
+	t.Cleanup(func() {
+		for _, table := range []string{"product_links", "listings"} {
+			_, _ = pool.Exec(context.Background(), "DELETE FROM "+table+" WHERE tenant_id = ANY($1) AND installation_id=$2", []string{tenant, other}, installation)
+		}
+	})
+	seed := func(owner, id string) {
+		if _, err := pool.Exec(ctx, `INSERT INTO listings(tenant_id,installation_id,provider,provider_listing_id,variation_id,title,status,price_amount,price_currency,sync_state) VALUES($1,$2,'mercadolivre',$3,'-',$3,'active',90,'BRL','synced')`, owner, installation, id); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, id := range []string{"a1", "a2", "b1", "conflict", "rejected", "absent"} {
+		seed(tenant, id)
+	}
+	seed(other, "leak")
+	for _, row := range []struct {
+		id, state string
+		product   any
+	}{{"a1", "resolved", 101}, {"a2", "resolved", 101}, {"b1", "resolved", 102}, {"conflict", "conflict", nil}, {"rejected", "rejected", nil}} {
+		name := ""
+		if row.state == "resolved" {
+			name = "Mesmo"
+		}
+		if _, err := pool.Exec(ctx, `INSERT INTO product_links(tenant_id,installation_id,provider_code,provider_item_id,provider_variation_id,state,internal_product_id,internal_product_name) VALUES($1,$2,'mercadolivre',$3,'',$4,$5,$6)`, tenant, installation, row.id, row.state, row.product, name); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO product_links(tenant_id,installation_id,provider_code,provider_item_id,provider_variation_id,state,internal_product_id,internal_product_name) VALUES($1,$2,'mercadolivre','leak','','resolved',1,'Aardvark')`, other, installation); err != nil {
+		t.Fatal(err)
+	}
+	one := 1.0
+	service := application.NewReadService(listingspostgres.NewRepository(pool, tenant), integrationFacts{costs: map[int64]*ports.CostFact{101: {Amount: &one}, 102: {Amount: &one}}}, integrationPolicy{}, integrationInstallation{}, time.Now)
+	query := ports.ListingGroupQuery{InstallationID: installation, Limit: 1}
+	var got []domain.ListingGroup
+	for {
+		page, err := service.ByProduct(ctx, query)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got = append(got, page.Groups...)
+		if page.NextCursor == nil {
+			break
+		}
+		query.Cursor = *page.NextCursor
+	}
+	if len(got) != 3 || got[0].ProductID == nil || *got[0].ProductID != "101" || got[1].ProductID == nil || *got[1].ProductID != "102" || got[2].ProductID != nil || got[2].ProductTitle == nil || *got[2].ProductTitle != "sem produto" {
+		t.Fatalf("groups=%+v", got)
+	}
+	if len(got[0].Listings) != 2 || len(got[2].Listings) != 3 {
+		t.Fatalf("children=%d/%d groups=%+v", len(got[0].Listings), len(got[2].Listings), got)
+	}
+	for _, group := range got {
+		if group.ListingCount != len(group.Listings) {
+			t.Fatalf("count invariant group=%+v", group)
+		}
+	}
+}

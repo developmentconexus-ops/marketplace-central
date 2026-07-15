@@ -11,12 +11,14 @@ import (
 )
 
 type fakeRows struct {
-	pages    []ports.ListingRowPage
-	calls    int
-	getModel domain.ListingReadModel
-	getFound bool
-	getErr   error
-	timeline []domain.TimelineEvent
+	pages        []ports.ListingRowPage
+	groupPages   []ports.ListingGroupRowPage
+	calls        int
+	groupQueries []ports.ListingGroupQuery
+	getModel     domain.ListingReadModel
+	getFound     bool
+	getErr       error
+	timeline     []domain.TimelineEvent
 }
 
 func (f *fakeRows) ListListingRows(_ context.Context, _ ports.ListingQuery) (ports.ListingRowPage, error) {
@@ -24,8 +26,10 @@ func (f *fakeRows) ListListingRows(_ context.Context, _ ports.ListingQuery) (por
 	f.calls++
 	return p, nil
 }
-func (*fakeRows) ListListingGroupRows(context.Context, ports.ListingGroupQuery) (ports.ListingGroupRowPage, error) {
-	return ports.ListingGroupRowPage{}, nil
+func (f *fakeRows) ListListingGroupRows(_ context.Context, q ports.ListingGroupQuery) (ports.ListingGroupRowPage, error) {
+	f.groupQueries = append(f.groupQueries, q)
+	p := f.groupPages[len(f.groupQueries)-1]
+	return p, nil
 }
 func (f *fakeRows) GetListingRow(context.Context, domain.ListingKey) (domain.ListingReadModel, bool, error) {
 	return f.getModel, f.getFound, f.getErr
@@ -209,6 +213,68 @@ func TestBelowMarginTriState(t *testing.T) {
 	}
 	if got := belowMargin(money("100"), nil, ptr(22), ptr(10)); got != nil {
 		t.Fatalf("unknown=%v", got)
+	}
+}
+
+func TestByProductFastPathEnrichesAndComputesWorstChild(t *testing.T) {
+	id := "42664"
+	r := &fakeRows{groupPages: []ports.ListingGroupRowPage{{Groups: []domain.ListingGroup{{ProductID: &id, ProductTitle: ptrString("Mesmo"), Listings: []domain.ListingReadModel{resolved(id), {Link: domain.ListingLink{State: domain.LinkStateResolved}, SyncState: domain.ListingSyncStateError}}}}}}}
+	f := &fakeFacts{costs: map[int64]*ports.CostFact{42664: {Amount: ptr(1)}}, ceilings: map[int64]*ports.ICMSCeiling{}}
+	p, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), time.Now).ByProduct(context.Background(), ports.ListingGroupQuery{InstallationID: "i", Limit: 50})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r.groupQueries) != 1 || f.costCalls != 1 || len(p.Groups) != 1 || p.Groups[0].GroupState != domain.GroupStateError || p.Groups[0].ListingCount != len(p.Groups[0].Listings) {
+		t.Fatalf("page=%+v queries=%d costs=%d", p, len(r.groupQueries), f.costCalls)
+	}
+}
+
+func TestByProductScanDropsGroupsAndHandlesSemProdutoDefinitionally(t *testing.T) {
+	falseValue := false
+	nullTitle := "sem produto"
+	c1 := ports.GroupCursor{ProductTitle: "A", ProductID: "1"}
+	r := &fakeRows{groupPages: []ports.ListingGroupRowPage{
+		{Groups: []domain.ListingGroup{{ProductID: ptrString("1"), ProductTitle: ptrString("A"), Listings: []domain.ListingReadModel{resolved("1")}}}, NextCursor: &c1},
+		{Groups: []domain.ListingGroup{{ProductTitle: &nullTitle, Listings: []domain.ListingReadModel{{Link: domain.ListingLink{State: domain.LinkStateUnresolved}}}}}},
+	}}
+	f := &fakeFacts{costs: map[int64]*ports.CostFact{1: {Amount: ptr(1)}}, ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}
+	p, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), time.Now).ByProduct(context.Background(), ports.ListingGroupQuery{InstallationID: "i", Limit: 2, Filter: domain.ListingFilter{HasException: &falseValue}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p.Groups) != 1 || p.Groups[0].ProductID == nil || p.Groups[0].ListingCount != 1 || len(r.groupQueries) != 2 || !r.groupQueries[1].Cursor.IsFirstPage() && r.groupQueries[1].Cursor != c1 {
+		t.Fatalf("page=%+v queries=%+v", p, r.groupQueries)
+	}
+}
+
+func TestGroupStateWorstChildIsOrderIndependent(t *testing.T) {
+	below := true
+	cases := []struct {
+		name  string
+		items []domain.ListingReadModel
+		want  domain.GroupState
+	}{
+		{"ok", []domain.ListingReadModel{{Link: domain.ListingLink{State: domain.LinkStateResolved}}}, domain.GroupStateOK},
+		{"stale", []domain.ListingReadModel{{Link: domain.ListingLink{State: domain.LinkStateResolved}, SyncState: domain.ListingSyncStateStale}}, domain.GroupStateAttention},
+		{"below", []domain.ListingReadModel{{Link: domain.ListingLink{State: domain.LinkStateResolved}, BelowMarginWorstCase: &below}}, domain.GroupStateAttention},
+		{"unlinked", []domain.ListingReadModel{{Link: domain.ListingLink{State: domain.LinkStateConflict}}}, domain.GroupStateAttention},
+		{"error-last", []domain.ListingReadModel{{Link: domain.ListingLink{State: domain.LinkStateConflict}}, {Link: domain.ListingLink{State: domain.LinkStateResolved}, SyncState: domain.ListingSyncStateError}}, domain.GroupStateError},
+		{"error-first", []domain.ListingReadModel{{Link: domain.ListingLink{State: domain.LinkStateResolved}, SyncError: &domain.ReadSyncError{}}, {Link: domain.ListingLink{State: domain.LinkStateConflict}}}, domain.GroupStateError},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := groupState(tc.items); got != tc.want {
+				t.Fatalf("got=%s want=%s", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestSemProdutoDependentFilterDefinitions(t *testing.T) {
+	item := domain.ListingReadModel{Link: domain.ListingLink{State: domain.LinkStateUnresolved}}
+	yes, no := true, false
+	if matchesDependentFilter(item, domain.ListingFilter{Exception: domain.ListingExceptionBelowMargin}) || !matchesDependentFilter(item, domain.ListingFilter{HasException: &yes}) || matchesDependentFilter(item, domain.ListingFilter{HasException: &no}) {
+		t.Fatal("sem produto definition mismatch")
 	}
 }
 func ptr(v float64) *float64     { return &v }

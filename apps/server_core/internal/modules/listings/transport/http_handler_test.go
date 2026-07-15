@@ -14,16 +14,20 @@ import (
 )
 
 type fakeListService struct {
-	page     ports.ListingRowPage
-	calls    int
-	model    domain.ListingReadModel
-	timeline []domain.TimelineEvent
-	getErr   error
+	page      ports.ListingRowPage
+	groupPage ports.ListingGroupRowPage
+	calls     int
+	model     domain.ListingReadModel
+	timeline  []domain.TimelineEvent
+	getErr    error
 }
 
 func (f *fakeListService) List(context.Context, ports.ListingQuery) (ports.ListingRowPage, error) {
 	f.calls++
 	return f.page, nil
+}
+func (f *fakeListService) ByProduct(context.Context, ports.ListingGroupQuery) (ports.ListingGroupRowPage, error) {
+	return f.groupPage, nil
 }
 func (f *fakeListService) Get(context.Context, domain.ListingID) (domain.ListingReadModel, []domain.TimelineEvent, error) {
 	return f.model, f.timeline, f.getErr
@@ -129,5 +133,29 @@ func TestGetHandlerServiceNotFoundAndWrongMethod(t *testing.T) {
 	NewReadHandler(&fakeListService{}).HandleGet(w, r)
 	if w.Code != http.StatusMethodNotAllowed || w.Header().Get("Allow") != http.MethodGet {
 		t.Fatalf("status=%d allow=%q", w.Code, w.Header().Get("Allow"))
+	}
+}
+
+func TestByProductHandlerValidationAndIC02Envelope(t *testing.T) {
+	h := NewReadHandler(&fakeListService{})
+	for _, url := range []string{"/listings/by-product", "/listings/by-product?installation_id=i&filter.nope=x", "/listings/by-product?installation_id=i&cursor=bad"} {
+		w := httptest.NewRecorder()
+		h.HandleByProduct(w, httptest.NewRequest(http.MethodGet, url, nil))
+		if w.Code != 400 {
+			t.Fatalf("%s status=%d body=%s", url, w.Code, w.Body.String())
+		}
+	}
+	title := "sem produto"
+	svc := &fakeListService{groupPage: ports.ListingGroupRowPage{Groups: []domain.ListingGroup{{ProductTitle: &title, ListingCount: 1, GroupState: domain.GroupStateAttention, Listings: []domain.ListingReadModel{{ListingID: "i~x~-"}}}}, AsOf: time.Date(2026, 7, 15, 12, 0, 0, 0, time.UTC)}}
+	w := httptest.NewRecorder()
+	NewReadHandler(svc).HandleByProduct(w, httptest.NewRequest(http.MethodGet, "/listings/by-product?installation_id=i", nil))
+	var body map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	groups := body["groups"].([]any)
+	group := groups[0].(map[string]any)
+	if w.Code != 200 || body["page_size"] != float64(1) || group["product_id"] != nil || group["product_title"] != title || group["listing_count"] != float64(1) || group["group_state"] != "attention" {
+		t.Fatalf("body=%s", w.Body.String())
 	}
 }
