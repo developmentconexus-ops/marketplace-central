@@ -98,5 +98,33 @@ Hub GRANTED M-01 a temporary additive contract-lock on the marketplaces module f
 - Lock ends at M-01 CLOSED; the marketplaces diff is called out explicitly in the CLOSED payload.
 - Touching anything in marketplaces beyond this one method + its tests = new REQUEST to hub.
 
+## D-22 · below_margin = WORST-CASE ICMS simulation (R1/ICMS) — RESOLVED by hub, operator-ratified 2026-07-15
+below_margin SHIPS in M-01. No deterministic per-product ICMS rate exists (specialist proof, cost-read-verification.md), so below_margin is a **conservative worst-case simulation**, operator-chosen scalar-flag + per-UF matrix. UNPARKS F-02 Slice 2 (enrichment) + Slice 5 (summary counter); EXPANDS F-02 Slice 3 (GET /listings/{id} per-UF matrix) + OpenAPI/SDK.
+
+**(1) FLAG (counter + list filter)** — global worst-case ceiling. `worstcase_icms_pct` = max over UFdest of (dest internal alíquota + FCP) for UFORIG=13 (~22% today). ICMS-por-dentro:
+- `price_net_basis = price_gross × (1 − worstcase_icms_pct/100)`
+- `below_margin = price_net_basis < CUSSEMICM × (1 + min_margin_percent/100)`
+Cost = CUSSEMICM (D-16 basis unchanged; the price side is netted to be comparable). Null-safe (ADR-17): any of {price, cost, ceiling rate, policy} missing → below_margin null (never false).
+
+**(2) PER-UF MATRIX** — GET /listings/{id} (and/or summary — contract call per IC-02 shape) exposes 27-UF simulation: per UFdest `{worstcase_icms_pct, price_net_basis, below_margin_at_uf}`. ONE batched product-INDEPENDENT rate read (specialist bind-var): `SELECT UFDEST, MAX(ALIQUFDEST)+NVL(MAX(PERCICMSFCP),0) AS ceiling FROM METALPRD.TGFICM WHERE UFORIG=:uforig GROUP BY UFDEST`.
+
+**(3) NAMING** — honest worst-case naming in IC-02 + OpenAPI: field/counter carries simulation semantics (e.g. `below_margin_worst_case` or `below_margin{mode:"worst_case"}`). D-16 literal recorded as CLARIFIED; D-17 exception keeps its precedence slot under the amended name. Documented bias: conservative — over-flags ST/reduced-base rows, NEVER under-flags.
+
+**(4) RATE SOURCE FACTS** (bind into adapter; do NOT reimplement the tax engine):
+- TGFICM is NOT date-versioned → no as-of; document in contract as "current-config rate, refreshed per read/refresh".
+- ALIQUOTA alone is WRONG (REDBASE / reduced-base traps). Use `ALIQUFDEST + FCP` ceiling ONLY.
+- NEVER realized `TGFITE.ALIQICMS` (understates by DIFAL+FCP). Golden 42664/RJ reconciled: 12% + 8% + 2% = 22%.
+
+**(5) UNKNOWNS** — missing cost (QualityMissingCost) OR missing/NULL ceiling rate for a UF → that row/UF is UNEVALUABLE, surfaced DISTINCTLY (ties to `exceptions.margin_unknown`, D-20). Never defaulted, never counted as not-below-margin (ADR-17).
+
+**(6) DEFERRED** (hub queue, not M-01): per-NCM/ST refinement + operator-configurable rate-assumption UX ("smart configuration"). Log in CLOSED defers.
+
+**(7) EVIDENCE** — formula + source query + golden 42664 reconciliation + FP-tolerance acceptance recorded in F-02/validation.md; D-22 flagged in CLOSED alongside the C09 (D-20) reinterpretation.
+
+**Oracle bounds** (D-20 respected): cost batch `GetCostFactsByIDs` + ONE rate-ceiling batch — both bounded, no per-row reads.
+
+## D-23 · listings composition_required deferral (Slice 1) — milestone-ratified
+Governance invariant (Policy.psm1): every dir under `internal/modules/` MUST be in modules.json (GOV_MODULE_COVERAGE), AND every `composition_required:true` module MUST appear as `/modules/<id>` in `apps/server_core/internal/composition/root.go` (GOV_COMPOSITION_MISSING). F-01 Slice 1 creates the `listings/domain` package (forces registration) but has NO runtime surface to wire (no ports/application/handler yet) — so it cannot satisfy composition wiring without inventing a fake root.go reference. Ratified: register `listings` with **`composition_required: false`** for Slice 1 (schema+domain only). Honest — nothing to compose yet. Flips to **`true`** + real root.go wiring in the slice that mounts the first runtime unit (repository + refresh handler). Schema permits boolean; the composition check skips `false`; coverage check only needs the id present. governance-validate passes. No fake wiring introduced.
+
 ## Escalation (out-of-scope, not blocking)
 - ADR-12 / ADR-17 have no formal record under docs/architecture/decisions (behavior unambiguous in mission.md). Architecture owner repairs; F-01 proceeds on the mission-fixed behavior.

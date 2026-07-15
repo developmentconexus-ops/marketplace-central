@@ -43,7 +43,9 @@ Harness §4.1 (amended) requires ONE batched planner pass per milestone covering
 
 | # | Feature/Slice | Role | Model / effort | Log | Result |
 |---|---|---|---|---|---|
-| I1 | F-01 Slice 1 (schema+domain+modules.json) | Implementer | gpt-5.6-luna / high (direct `codex exec`, live log) | scratchpad/agent__f01-slice1.log | IN PROGRESS — dispatched. Scope: 0036_listings.sql (listings + listing_sync_events per D-19), domain listing.go, migration+domain RED-first tests, modules.json register. TDD, GOCACHE absolute, governance green no prefix-exception. |
+| I1 | F-01 Slice 1 (schema+domain+modules.json) | Implementer | gpt-5.6-luna / high (direct `codex exec`, live log) | scratchpad/agent__f01-slice1.log | **GREEN — committed 746a97d4**. 0036_listings.sql (listings + listing_sync_events per D-19), domain listing.go, RED-first migration+domain tests, modules.json register. Tests+build green (re-run by milestone owner in worktree), governance-validate passed, no prefix-exception. Sonnet review clean (1 finding = false positive: `provider` col IS IC-02-mandated, line 31/134). Governance-composition gap resolved via D-23. |
+
+| I2 | F-01 Slice 2 (connectors seam + ML mapper) | Implementer | gpt-5.6-luna / high (direct `codex exec`, live log) | scratchpad/agent__f01-slice2.log | **GREEN — committed 9df16851** (+ review fixup 2167dbb7). Additive connectors ListingSnapshot fields (price/currency/listing_type, D-3) + ErrCodeProviderAuth (401/403 split); ML decode via json.Number (no float); listings mapper ML→canonical (D-5 allowlist, ADR-17 nil-not-zero, '-' expansion). Tests+build green (re-run by milestone owner), governance-validate passed, existing connectors tests untouched, no ML-type leak, no product_links. Sonnet review: 1 finding (test-isolation defect in tenant reject case) FIXED in 2167dbb7 — production mapper confirmed to reject blank tenant_id. |
 
 Note: D-19 folded — `listing_sync_events` table created in the SAME 0036 migration in Slice 1 (schema only; write logic stays Slice 3).
 
