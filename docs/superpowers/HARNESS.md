@@ -32,6 +32,15 @@ machine-wide — `orchestrator_helper_launch_failed`; fix = operator runs intera
 `/codex:setup`). Until fixed: milestone sessions do NOT attempt codex; hub runs GPT passes via
 stdin evidence-pack (`codex exec --sandbox read-only -` with full diff + post-state of key files).
 
+**Codex stdin gotcha (field-verified 2026-07-15, codex-cli 0.144.4):** in a non-tty shell
+(every harness PowerShell/Bash call), `codex exec "<prompt>"` prints
+`Reading additional input from stdin...` and BLOCKS FOREVER waiting for stdin to close. Every
+codex call from a session MUST close stdin explicitly — PowerShell: `@() | codex exec ...`
+(or pipe the evidence-pack when using `-`). A codex call silent for ~2 min is this hang, not a
+slow model — kill and re-issue with stdin closed. PowerShell `Select-Object`/`Out-String`
+buffer the whole pipeline, so interim output is invisible; append per-line to a log file when
+progress visibility matters.
+
 ## 2. Execution loop
 
 ```
