@@ -13,7 +13,7 @@ field findings from that program carry over where marked.
 
 | Role | Model / path | Does | Never does |
 |---|---|---|---|
-| **Hub** | Standing dispatch session (operator's hub; boots via `.claude/skills/harness-hub`) | Builds per-milestone context pack → spawn_task chip → collision matrix across parallel tracks → answers events → acceptance dual review → merge → post-merge ladder → deploy/correct → advance | Writing large diffs itself; reviewing its own dispatched work; letting chips touch shared infra |
+| **Hub** | Standing dispatch session (operator's hub; boots via the `harness-hub` skill, plugin `harness@mnfs-harness`) | Builds per-milestone context pack → spawn_task chip → collision matrix across parallel tracks → answers events → acceptance dual review → merge → post-merge ladder → deploy/correct → advance | Writing large diffs itself; reviewing its own dispatched work; letting chips touch shared infra |
 | **Milestone session** | **Opus** (operator launches chip, worktree isolation) | Orchestrates ONE milestone end-to-end: native task board first act, feature order, dispatches all workers below, integrates features, emits events | Scope beyond its milestone; pushing; merging to master; shared infra; flipping mission status |
 | **Feature planner** | **GPT-5.6 Sol, medium reasoning** via `/codex:rescue` | One thorough plan per feature BEFORE implementation — considers contracts, negative paths, seams, invariants, edge cases up front so implementation doesn't loop on corrections | Implementing |
 | **Implement worker (standard)** | **GPT-5.6 Luna, high reasoning** via `/codex:rescue` | Standard/easy TDD slices per the written plan | Slices flagged complex |
@@ -33,7 +33,7 @@ Concurrency: bounded by operator attention (chips) + ≤15 workers per session. 
 `/codex:rescue --model <m> --effort <e> --wait` (companion runtime handles result-handling, resume
 threading, and stdout-verbatim capture for the dispatch ledger; `--wait` = foreground = SYNC).
 Raw `codex exec` is permitted ONLY for the one-off codex precondition probe.
-Role → exact flags: use `.agents/skills/codex-dispatch` — never retype the matrix from memory,
+Role → exact flags: use the `codex-dispatch` skill (plugin `harness@mnfs-harness`) — never retype the matrix from memory,
 and NEVER omit `--effort` (global codex default is `xhigh`: silently slower/costlier).
 
 **Codex precondition:** before the first codex-dependent dispatch, hub verifies `codex exec`
@@ -107,7 +107,8 @@ obligation; (e) comms contract (`HUB_SESSION_ID` + title-match fallback); (f) th
 mission paths (`.mnfs/MIS-003.../M-0n.../milestone.md`, its `validation-contract.md`, feature
 briefs, owning ICs) and accepted base SHA; (g) its collision-matrix ownership (exclusive files,
 contract-lock status); (h) skill pin: "the binding harness is docs/HARNESS.md +
-`.agents/skills/harness-worker`; NEVER invoke `mpc-goal-harness` (superseded 2026-07-15)" —
+the `harness-worker` skill (plugin `harness@mnfs-harness`); NEVER invoke `mpc-goal-harness`
+(superseded 2026-07-15)" —
 propagated verbatim into every nested worker dispatch (field finding: worker skill-discovery
 auto-resolved to a stale skill — never rely on on-disk skill discovery in worktrees; the pin
 travels verbatim in every dispatch prompt).

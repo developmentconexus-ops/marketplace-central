@@ -34,7 +34,8 @@ try {
   Assert-True (Test-Path -LiteralPath $contextModule -PathType Leaf) 'RED: Context.psm1 is missing'
   Assert-True (Test-Path -LiteralPath $stateModule -PathType Leaf) 'RED: State.psm1 is missing'
   Assert-True (Test-Path -LiteralPath (Join-Path $repoRoot 'docs/HARNESS.md') -PathType Leaf) 'RED: binding harness doctrine (docs/HARNESS.md) is missing'
-  Assert-True (Test-Path -LiteralPath (Join-Path $repoRoot '.agents/skills/harness-worker/SKILL.md') -PathType Leaf) 'RED: harness-worker skill is missing'
+  $workerSkillPath = @(Get-ChildItem -Path (Join-Path $env:USERPROFILE '.claude/plugins/cache/mnfs-harness/harness/*/skills/harness-worker/SKILL.md') -ErrorAction SilentlyContinue | Sort-Object FullName -Descending | Select-Object -First 1).FullName
+  Assert-True (-not [string]::IsNullOrEmpty($workerSkillPath)) 'RED: harness-worker skill missing — install plugin: claude plugin install harness@mnfs-harness'
   Import-Module $contextModule -Force
   Import-Module $stateModule -Force
 
@@ -69,7 +70,7 @@ try {
     Assert-True (@($policy.command_ids).Count -gt 0) "risk policy has no registered command IDs for $($expected.Key)"
   }
 
-  $workerSkill = Get-Content -Raw -LiteralPath (Join-Path $repoRoot '.agents/skills/harness-worker/SKILL.md')
+  $workerSkill = Get-Content -Raw -LiteralPath $workerSkillPath
   foreach ($required in @('docs/HARNESS.md', 'mpc-goal-harness', 'One writer per shared seam', 'ADR-17', 'GOCACHE=.gocache')) {
     Assert-True ($workerSkill -match [regex]::Escape($required)) "harness-worker skill lacks pinned rule: $required"
   }

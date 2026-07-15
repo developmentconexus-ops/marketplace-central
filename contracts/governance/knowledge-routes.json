@@ -20,8 +20,7 @@
       "concerns": ["bootstrap"],
       "selectors": [
         {"path": "AGENTS.md", "selector": "Harness Bootstrap", "reason": "durable entry policy", "estimated_tokens": 220},
-        {"path": "docs/HARNESS.md", "selector": "Execution loop; Parallel-track execution; Context and handoff discipline", "reason": "binding hub-and-chips doctrine: dispatch, events, context discipline, handoff", "estimated_tokens": 900},
-        {"path": ".agents/skills/harness-worker/SKILL.md", "selector": "Pinned non-negotiables", "reason": "worker-facing pinned rules for dispatched sessions", "estimated_tokens": 260}
+        {"path": "docs/HARNESS.md", "selector": "Execution loop; Parallel-track execution; Anti-slop contract; Context and handoff discipline", "reason": "binding hub-and-chips doctrine: dispatch, events, worker obligations, context discipline, handoff", "estimated_tokens": 1100}
       ]
     },
     {
