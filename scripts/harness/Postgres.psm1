@@ -116,7 +116,7 @@ function Invoke-HarnessPostgresLifecycle {
     [ValidateRange(1, 600)][int]$ReadyMaxAttempts = 60,
     [ValidateRange(0, 60000)][int]$ReadyRetryDelayMilliseconds = 1000,
     [ValidateRange(1, 600000)][int]$ReadyTimeoutMilliseconds = 60000,
-    [string[]]$TestArguments = @('test', '-tags=integration', './tests/integration', './internal/modules/orders/adapters/postgres', './internal/modules/profitability/adapters/postgres', './internal/modules/product_links/application', '-count=1'),
+    [string[]]$TestArguments = @('test', '-tags=integration', './tests/integration', './internal/modules/orders/adapters/postgres', './internal/modules/profitability/adapters/postgres', './internal/modules/product_links/application', './internal/modules/listings/adapters/postgres', '-count=1'),
     [switch]$HoldConnectionDuringCleanupTest
   )
 
