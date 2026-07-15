@@ -184,3 +184,5 @@ Review (cavecrew-reviewer sonnet): 1🔴 2🟡 — ALL false positives, dismisse
 Verified: go build 0; go vet -tags=integration 0; go test listings/... green; governance passed; hermetic integration lane green for listings/adapters/postgres (real ephemeral Postgres, incl. new group integration tests — read_repository_integration_test.go +62). Conditions (a)-(i) all satisfied.
 
 Committed this session: d9e4737d (Slice 2), 57fba22d (Slice 3), 0a420dc3 (Slice 4 escalation), 2d64c7c (Slice 4) + ledger commits. Next: F-02 Slice 5 (summary one-aggregate, Sol-low, serial same files).
+
+| I10 | F-02 Slice 5 (GET /listings/summary one-aggregate + margin counters) | Implementer | gpt-5.6-sol / low (complex, OS-process bg) | scratchpad/f02-slice5.log (task bc6xwbmbm) | RUNNING — D-20 one PG conditional-aggregate + one bounded Oracle cost batch; below_margin_worst_case=known-true, margin_unknown=linked-unevaluable (both *int, nil on cost-source outage, ADR-17 never 0); unlinked excluded from margin counters; envelope exceptions{sync_error,stale,unlinked,below_margin_worst_case,margin_unknown}; tenant+installation on all joins; NO route/OpenAPI/SDK/root.go (Slice 6). |
