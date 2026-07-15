@@ -1,0 +1,71 @@
+package application
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strconv"
+	"time"
+
+	"marketplace-central/apps/server_core/internal/modules/listings/domain"
+	"marketplace-central/apps/server_core/internal/modules/listings/ports"
+)
+
+var ErrDuplicateCanonicalKey = errors.New("duplicate canonical listing key")
+
+// maxIngestionPages is an honest ceiling on a single completed pull. A connector
+// that never signals a short final page (bug or malice) would otherwise loop and
+// grow memory without bound; past this many full pages we fail loudly instead of
+// truncating silently. A real catalog that legitimately exceeds it must page in
+// smaller runs — a wrong count is never treated as complete.
+const maxIngestionPages = 10_000
+
+type Ingestion struct {
+	source   ports.PageSource
+	store    ports.CompletedPullStore
+	pageSize int
+	now      func() time.Time
+}
+
+func NewIngestion(source ports.PageSource, store ports.CompletedPullStore, pageSize int, now func() time.Time) *Ingestion {
+	return &Ingestion{source: source, store: store, pageSize: pageSize, now: now}
+}
+
+func (i *Ingestion) Pull(ctx context.Context, account ports.InstallationAccount) error {
+	if i.source == nil || i.store == nil || i.pageSize <= 0 || i.now == nil {
+		return errors.New("listing ingestion is not configured")
+	}
+
+	var rows []domain.Listing
+	seen := make(map[domain.ListingKey]struct{})
+	offset := 0
+	for pages := 0; ; pages++ {
+		if pages >= maxIngestionPages {
+			return fmt.Errorf("listing ingestion exceeded %d pages without a final short page", maxIngestionPages)
+		}
+		cursor := ""
+		if offset > 0 {
+			cursor = strconv.Itoa(offset)
+		}
+		page, err := i.source.ReadPage(ctx, account, cursor, i.pageSize)
+		if err != nil {
+			return err
+		}
+		if page.ProviderItemCount < 0 || page.ProviderItemCount > i.pageSize {
+			return fmt.Errorf("invalid provider page item count %d", page.ProviderItemCount)
+		}
+		for _, row := range page.Rows {
+			if _, duplicate := seen[row.Key]; duplicate {
+				return fmt.Errorf("%w: %s/%s", ErrDuplicateCanonicalKey, row.Key.ProviderListingID, row.Key.VariationID)
+			}
+			seen[row.Key] = struct{}{}
+			rows = append(rows, row)
+		}
+		offset += page.ProviderItemCount
+		if page.ProviderItemCount < i.pageSize {
+			break
+		}
+	}
+
+	return i.store.ApplyCompletedPull(ctx, account.InstallationID, rows, i.now().UTC())
+}
