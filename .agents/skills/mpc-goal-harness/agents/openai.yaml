@@ -1,4 +1,0 @@
-interface:
-  display_name: "Marketplace Central Goal Harness"
-  short_description: "Run visible milestone delivery workflows"
-  default_prompt: "Use $mpc-goal-harness to coordinate one Marketplace Central milestone."
