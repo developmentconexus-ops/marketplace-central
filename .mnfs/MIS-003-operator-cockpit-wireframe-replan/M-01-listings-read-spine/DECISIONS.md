@@ -126,5 +126,15 @@ Cost = CUSSEMICM (D-16 basis unchanged; the price side is netted to be comparabl
 ## D-23 · listings composition_required deferral (Slice 1) — milestone-ratified
 Governance invariant (Policy.psm1): every dir under `internal/modules/` MUST be in modules.json (GOV_MODULE_COVERAGE), AND every `composition_required:true` module MUST appear as `/modules/<id>` in `apps/server_core/internal/composition/root.go` (GOV_COMPOSITION_MISSING). F-01 Slice 1 creates the `listings/domain` package (forces registration) but has NO runtime surface to wire (no ports/application/handler yet) — so it cannot satisfy composition wiring without inventing a fake root.go reference. Ratified: register `listings` with **`composition_required: false`** for Slice 1 (schema+domain only). Honest — nothing to compose yet. Flips to **`true`** + real root.go wiring in the slice that mounts the first runtime unit (repository + refresh handler). Schema permits boolean; the composition check skips `false`; coverage check only needs the id present. governance-validate passes. No fake wiring introduced.
 
+## D-24 · internal_read ICMS-ceiling read — RESOLVED by hub (additive contract-lock)
+Hub GRANTED M-01 a temporary additive contract-lock on the `internal_read` module for exactly one new capability serving the D-22 worst-case ceiling read. Reuse internal_read's Oracle infra (semaphore, `wrapOracleError`, nil-unknown, chunking) instead of duplicating a connection inside listings — approved architecture rationale.
+- **Additive surface only**: BatchReader port method **`GetICMSCeilingByOrigin`** + oracle adapter impl + domain `ICMSCeiling` + fake adapter compile stub. Existing methods/tests untouched-green.
+- Query = specialist's ratified bind-var verbatim: `SELECT UFDEST, MAX(ALIQUFDEST)+NVL(MAX(PERCICMSFCP),0) AS ceiling FROM METALPRD.TGFICM WHERE UFORIG=:uforig GROUP BY UFDEST`. Same semaphore/wrapOracleError/nil-unknown discipline.
+- TGFICM documented **current-config (no as-of)** per D-22.4. UF without a row → nil, UNEVALUABLE, never defaulted (ADR-17, ties D-22.5 / D-20 margin_unknown).
+- **Adapter test must cover the REDBASE trap NEGATIVELY**: assert the query reads `ALIQUFDEST(+FCP)` and NOT `ALIQUOTA` — a regression to ALIQUOTA is the known wrong-rate failure mode (D-22.4).
+- Terms identical to D-3/D-21: lock ends at M-01 CLOSED; internal_read diff called out in CLOSED payload; anything beyond this one method + its files = new REQUEST.
+- M-01 now holds FOUR scoped locks (connectors D-3, marketplaces one-method D-21, internal_read one-method D-24, /listings OpenAPI). Zero collision — no sibling track until CLOSE.
+- Consumed by F-02 below_margin slices (Slice 2 enrichment, Slice 3 per-UF matrix, Slice 5 counter). Not needed by F-01.
+
 ## Escalation (out-of-scope, not blocking)
 - ADR-12 / ADR-17 have no formal record under docs/architecture/decisions (behavior unambiguous in mission.md). Architecture owner repairs; F-01 proceeds on the mission-fixed behavior.
