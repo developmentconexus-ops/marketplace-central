@@ -370,6 +370,39 @@ func (r BatchReader) GetTaxFactsByIDs(ctx context.Context, ids []int64) (map[int
 	return cloneTaxFacts(value.(map[int64]*domain.TaxInputs)), nil
 }
 
+func (r BatchReader) GetICMSCeilingByOrigin(ctx context.Context, originUF domain.UF) (map[domain.UF]*domain.ICMSCeiling, error) {
+	key := canonicalKey("GetICMSCeilingByOrigin", strconv.FormatInt(int64(originUF), 10))
+	value, err := r.cache.load(ctx, ClassPriceCost, key, func() (any, time.Time, error) {
+		ceilings, err := r.downstream.GetICMSCeilingByOrigin(ctx, originUF)
+		return cloneICMSCeilings(ceilings), r.cache.clock.Now(), err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return cloneICMSCeilings(value.(map[domain.UF]*domain.ICMSCeiling)), nil
+}
+
+func cloneICMSCeilings(source map[domain.UF]*domain.ICMSCeiling) map[domain.UF]*domain.ICMSCeiling {
+	if source == nil {
+		return nil
+	}
+	result := make(map[domain.UF]*domain.ICMSCeiling, len(source))
+	for uf, ceiling := range source {
+		if ceiling == nil {
+			result[uf] = nil
+			continue
+		}
+		clone := *ceiling
+		if ceiling.CeilingPercent != nil {
+			value := *ceiling.CeilingPercent
+			clone.CeilingPercent = &value
+		}
+		clone.QualityFlags = append([]domain.QualityFlag(nil), ceiling.QualityFlags...)
+		result[uf] = &clone
+	}
+	return result
+}
+
 type StockBatchReader struct {
 	downstream inventoryports.InternalStockBatchReader
 	cache      *Cache

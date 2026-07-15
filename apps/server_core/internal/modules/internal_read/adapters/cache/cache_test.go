@@ -97,8 +97,9 @@ func (r *fakeReader) GetTaxInputs(context.Context, internalreadports.TaxInput) (
 }
 
 type fakeBatchReader struct {
-	costCalls atomic.Int64
-	taxCalls  atomic.Int64
+	costCalls    atomic.Int64
+	taxCalls     atomic.Int64
+	icmsCeilings map[internalreaddomain.UF]*internalreaddomain.ICMSCeiling
 }
 
 func (r *fakeBatchReader) GetCostFactsByIDs(context.Context, []int64) (map[int64]*internalreaddomain.CostAsOf, error) {
@@ -109,6 +110,10 @@ func (r *fakeBatchReader) GetCostFactsByIDs(context.Context, []int64) (map[int64
 func (r *fakeBatchReader) GetTaxFactsByIDs(context.Context, []int64) (map[int64]*internalreaddomain.TaxInputs, error) {
 	r.taxCalls.Add(1)
 	return map[int64]*internalreaddomain.TaxInputs{1: nil}, nil
+}
+
+func (r *fakeBatchReader) GetICMSCeilingByOrigin(context.Context, internalreaddomain.UF) (map[internalreaddomain.UF]*internalreaddomain.ICMSCeiling, error) {
+	return r.icmsCeilings, nil
 }
 
 type fakeStockReader struct{ calls atomic.Int64 }
@@ -155,8 +160,9 @@ func (r *stagedCatalogReader) SearchCatalogProductFacts(context.Context, string,
 }
 
 type mutableBatchReader struct {
-	cost map[int64]*internalreaddomain.CostAsOf
-	tax  map[int64]*internalreaddomain.TaxInputs
+	cost         map[int64]*internalreaddomain.CostAsOf
+	tax          map[int64]*internalreaddomain.TaxInputs
+	icmsCeilings map[internalreaddomain.UF]*internalreaddomain.ICMSCeiling
 }
 
 func (r *mutableBatchReader) GetCostFactsByIDs(context.Context, []int64) (map[int64]*internalreaddomain.CostAsOf, error) {
@@ -165,6 +171,10 @@ func (r *mutableBatchReader) GetCostFactsByIDs(context.Context, []int64) (map[in
 
 func (r *mutableBatchReader) GetTaxFactsByIDs(context.Context, []int64) (map[int64]*internalreaddomain.TaxInputs, error) {
 	return r.tax, nil
+}
+
+func (r *mutableBatchReader) GetICMSCeilingByOrigin(context.Context, internalreaddomain.UF) (map[internalreaddomain.UF]*internalreaddomain.ICMSCeiling, error) {
+	return r.icmsCeilings, nil
 }
 
 type mutableStockReader struct {

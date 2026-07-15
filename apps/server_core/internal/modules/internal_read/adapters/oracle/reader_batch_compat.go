@@ -25,3 +25,10 @@ func (r *Reader) GetTaxFactsByIDs(ctx context.Context, ids []int64) (map[int64]*
 	}
 	return NewBatchReader(r.db, compatibilityBatchSemaphore).GetTaxFactsByIDs(ctx, ids)
 }
+
+func (r *Reader) GetICMSCeilingByOrigin(ctx context.Context, originUF domain.UF) (map[domain.UF]*domain.ICMSCeiling, error) {
+	if r == nil {
+		return NewBatchReader(nil, compatibilityBatchSemaphore).GetICMSCeilingByOrigin(ctx, originUF)
+	}
+	return NewBatchReader(r.db, compatibilityBatchSemaphore).GetICMSCeilingByOrigin(ctx, originUF)
+}
