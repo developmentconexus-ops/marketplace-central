@@ -61,6 +61,14 @@ No listing entity exists today (only thin snapshots inside product_links). Six s
 `filter` is a flat JSON object, URL-encoded as `filter.<key>=<value>` query params:
 `{status?, sync_state?, link_state?, exception?, has_exception?, listing_type_code?, product_id?}` — values are single enum strings (no arrays, no wildcards, no operators this mission; extension = add keys, never change existing key semantics). `has_exception ∈ true|false` matches any/no `pending_issue` (powers the "Com pendência" tab). `q` (free text over title/provider_listing_id/seller_sku) is separate from `filter`.
 
+**Hub-blessed clarification (Option 2 ruling).** Lists filtered by `exception=below_margin` or
+`has_exception=true|false` use a bounded iterative keyset scan because the worst-case margin fact
+depends on request-local Oracle reads. These filters may therefore return a short non-final page.
+One request scans at most 50 candidate pages; when that cap is reached before `limit` matches are
+found, the response contains the accumulated matches and `next_cursor` identifies the last scanned
+row. Passing that cursor resumes without silently skipping candidates. The response shape is
+unchanged. Lists without a below-margin-dependent predicate retain the single-query `limit+1` path.
+
 ## Enums And Statuses
 
 - `sync_state`: `synced | error | stale | queued | syncing | paused_sync`. pt-BR labels fixed: sincronizado / com erro / desatualizado / na fila / sincronizando / pausado. ("sem vínculo" is `link.state`, NOT a sync_state.)
