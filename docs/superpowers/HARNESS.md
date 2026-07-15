@@ -192,6 +192,16 @@ theater (asserting the mock; missing negative/cross-tenant case).
 | L3 | browser QA persona on the milestone VC Drive blocks | GREEN verdict artifact |
 | L4 | milestone validation vs `validation-contract.md` (only QA passes a milestone) | PASS written to `<milestone-root>/validation-result.md` |
 
+**Fresh-worktree bootstrap (ratified 2026-07-15, M-01 field finding):** the registered
+integration lane runs Go hermetically (`GOPROXY=off`, `GOSUMDB=off`,
+`GOMODCACHE=apps/server_core/.gomodcache`) — a fresh worktree has an empty `.gomodcache`, so
+`go run ./cmd/testdb migrate` fails at BUILD (module lookup disabled) and the lane reports
+`HPG_MIGRATION_FAILED` with `migrations_first=-1` (false alarm, not a SQL/migration defect).
+Standard first act in every new chip worktree before any hermetic lane:
+`cd apps/server_core && GOMODCACHE=$(pwd)/.gomodcache go mod download all` (~130M, env prep —
+NOT a dep change, no REQUEST needed). `migrations_first=-1` means "build died before migrate
+ran"; warm the cache before diagnosing SQL.
+
 **Backend non-negotiables re-checked at L0–L2 per touched endpoint:** tenant_id predicate on
 every query · provider payloads at adapters only · unknown never zero/default (ADR-17) ·
 OpenAPI + sdk-runtime same commit · provider writes: resolved linkage, explicit policy/source
