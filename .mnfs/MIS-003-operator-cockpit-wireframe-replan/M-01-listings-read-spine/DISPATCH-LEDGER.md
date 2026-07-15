@@ -157,3 +157,9 @@ Worker b7w9yeoai (gpt-5.6-luna high). Composite GET /listings/{id} + last-10 tim
 - `orders/adapters/postgres` → `TestOrderRepositoryDuplicateIdentityGroupPreservesIDSetAndRemainsAmbiguous`
 - `tests/integration` → `TestPhase1SmokeFlow` (already-known pre-existing failure)
 These are pre-existing (my changes are listings + marketplaces-D21 only; marketplaces isn't in the integration lane; I touched neither orders nor tests/integration). Classify as pre-existing at P8 closeout, do not fix under M-01 scope.
+
+## F-02 Slice 4 — by-product grouping — ESCALATED to hub (2026-07-15), HOLDING for ruling
+Contract gap: by-product shares the flat-list filter grammar (IC-02 52-53, incl. exception=below_margin / has_exception) but the Slice-2 Option-2 ruling + doc note are row/list-scoped ("last scanned row" cursor, single-query limit+1) — they do NOT cover GROUP-KEY pagination. A below_margin child filter changes listing_count + group presence; group-key resumption ≠ row resumption. UNRULED.
+- NOT blocked (will implement regardless): group_state DISPLAY (D-17 worst-child, attention if any child below_margin) via bounded per-page child cost enrichment — already blessed.
+- BLOCKED: exception=below_margin / has_exception AS FILTER PREDICATES on by-product only.
+Analysis + 3 options in slice4-escalation.md (committed 0a420dc3). Milestone-owner recommends Option 1 (extend Option-2 bounded scan to group keys, drop zero-survivor groups, cursor=last scanned group key — symmetric with flat list). ESCALATION event sent to hub local_efa46c30. HOLDING — no Slice 4 dispatch until ruled. Slices 4/5/6/7 are serial on the same files; F-01 Slice 4 collides on http_handler.go/root.go (not parallelizable). No file-disjoint work available meanwhile.
