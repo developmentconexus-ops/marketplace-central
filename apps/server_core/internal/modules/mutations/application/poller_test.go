@@ -34,7 +34,7 @@ func TestPollerPassTerminalStates(t *testing.T) {
 			}
 			if tt.name == "mixed" {
 				var f domain.Failure
-				if err := json.Unmarshal(r.claim.outcomes["item-2"].Failure, &f); err != nil || f.Code != domain.FailureCodeProviderValidation {
+				if err := json.Unmarshal(r.outcomes["item-2"].Failure, &f); err != nil || f.Code != domain.FailureCodeProviderValidation {
 					t.Fatalf("failure=%+v err=%v", f, err)
 				}
 			}
@@ -44,7 +44,7 @@ func TestPollerPassTerminalStates(t *testing.T) {
 
 func TestPollerPassSkipsAppliedKeyAndSanitizesUnknownError(t *testing.T) {
 	r := newFakeRepo("p:a", "p:b")
-	r.claim.applied = []string{"p:a"}
+	r.applied = []string{"p:a"}
 	w := stub.NewWriter(map[string]stub.Result{"p:b": {Err: errors.New("token=secret upstream dump")}})
 	if _, err := NewPoller(r, w, time.Now).Pass(context.Background(), "inst"); err != nil {
 		t.Fatal(err)
@@ -52,8 +52,8 @@ func TestPollerPassSkipsAppliedKeyAndSanitizesUnknownError(t *testing.T) {
 	if got := w.Keys(); len(got) != 1 || got[0] != "p:b" {
 		t.Fatalf("writer keys=%v", got)
 	}
-	if r.claim.outcomes["item-1"].State != domain.ItemStateSkipped {
-		t.Fatalf("duplicate outcome=%+v", r.claim.outcomes["item-1"])
+	if r.outcomes["item-1"].State != domain.ItemStateSkipped {
+		t.Fatalf("duplicate outcome=%+v", r.outcomes["item-1"])
 	}
 	var f struct {
 		Code            domain.FailureCode `json:"code"`
@@ -61,7 +61,7 @@ func TestPollerPassSkipsAppliedKeyAndSanitizesUnknownError(t *testing.T) {
 		MessageProvider string             `json:"message_provider"`
 		Retryable       bool               `json:"retryable"`
 	}
-	if err := json.Unmarshal(r.claim.outcomes["item-2"].Failure, &f); err != nil {
+	if err := json.Unmarshal(r.outcomes["item-2"].Failure, &f); err != nil {
 		t.Fatal(err)
 	}
 	if f.Code != domain.FailureCodeInternal || f.Retryable || f.MessagePT != "Falha interna ao aplicar alteração." || f.MessageProvider != "" {
@@ -69,14 +69,59 @@ func TestPollerPassSkipsAppliedKeyAndSanitizesUnknownError(t *testing.T) {
 	}
 }
 
-type fakeRepo struct{ claim *fakeClaim }
+func TestPollerPassCrashResumeDoesNotResendDurableAppliedItems(t *testing.T) {
+	r := newFakeRepo("p:a", "p:b", "p:c")
+	r.failOutcomeAfter = 1
+	w := stub.NewWriter(nil)
+	p := NewPoller(r, w, time.Now)
+
+	if worked, err := p.Pass(context.Background(), "inst"); err == nil || !worked {
+		t.Fatalf("first Pass() worked=%v err=%v, want simulated crash error", worked, err)
+	}
+	if r.protocolState != domain.ProtocolStateApproved || r.outcomes["item-1"].State != domain.ItemStateApplied {
+		t.Fatalf("after crash protocol=%q outcomes=%v", r.protocolState, r.outcomes)
+	}
+	r.failOutcomeAfter = 0
+	if worked, err := p.Pass(context.Background(), "inst"); err != nil || !worked {
+		t.Fatalf("resumed Pass() worked=%v err=%v", worked, err)
+	}
+	if got := w.Keys(); !equalStrings(got, []string{"p:a", "p:b", "p:c"}) {
+		t.Fatalf("writer keys=%v, durable applied key was resent", got)
+	}
+	if r.protocolState != domain.ProtocolStateApplied || !r.claim.committed {
+		t.Fatalf("terminal=%q committed=%v", r.protocolState, r.claim.committed)
+	}
+}
+
+func equalStrings(got, want []string) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			return false
+		}
+	}
+	return true
+}
+
+type fakeRepo struct {
+	claim            *fakeClaim
+	protocol         ports.Protocol
+	protocolState    domain.ProtocolState
+	items            []ports.MutationItem
+	outcomes         map[string]ports.ItemOutcome
+	applied          []string
+	failOutcomeAfter int
+}
 
 func newFakeRepo(keys ...string) *fakeRepo {
 	items := make([]ports.MutationItem, len(keys))
 	for i, key := range keys {
 		items[i] = ports.MutationItem{Seq: i + 1, ItemID: "item-" + string(rune('1'+i)), ListingID: key[2:], IdempotencyKey: key, After: json.RawMessage(`{"value":1}`)}
 	}
-	return &fakeRepo{&fakeClaim{protocol: ports.Protocol{ProtocolID: "p", InstallationID: "inst", Type: domain.ProtocolTypePriceUpdate, State: domain.ProtocolStateApplying}, items: items, outcomes: map[string]ports.ItemOutcome{}}}
+	protocol := ports.Protocol{ProtocolID: "p", InstallationID: "inst", Type: domain.ProtocolTypePriceUpdate, State: domain.ProtocolStateApproved}
+	return &fakeRepo{protocol: protocol, protocolState: domain.ProtocolStateApproved, items: items, outcomes: map[string]ports.ItemOutcome{}}
 }
 func (r *fakeRepo) CreateProtocol(context.Context, ports.CreateProtocolInput) (ports.Protocol, error) {
 	panic("unused")
@@ -89,34 +134,59 @@ func (r *fakeRepo) ReplaceItems(context.Context, string, []ports.ReplaceItemInpu
 }
 func (r *fakeRepo) ApproveItems(context.Context, string, time.Time) error { panic("unused") }
 func (r *fakeRepo) ClaimProtocol(context.Context, string) (ports.ProtocolClaim, bool, error) {
+	r.protocolState = domain.ProtocolStateApplying
+	r.protocol.State = domain.ProtocolStateApplying
+	r.claim = &fakeClaim{repo: r, protocol: r.protocol}
 	return r.claim, true, nil
 }
 
 type fakeClaim struct {
+	repo                  *fakeRepo
 	protocol              ports.Protocol
-	items                 []ports.MutationItem
-	applied               []string
-	outcomes              map[string]ports.ItemOutcome
 	finished              domain.ProtocolState
+	writes                int
 	committed, rolledBack bool
 }
 
 func (c *fakeClaim) Protocol() ports.Protocol { return c.protocol }
 func (c *fakeClaim) FetchPendingItems(context.Context) ([]ports.MutationItem, error) {
-	items := c.items
-	c.items = nil
+	var items []ports.MutationItem
+	for _, item := range c.repo.items {
+		if _, terminal := c.repo.outcomes[item.ItemID]; !terminal {
+			items = append(items, item)
+		}
+	}
 	return items, nil
 }
 func (c *fakeClaim) WriteItemOutcome(_ context.Context, id string, o ports.ItemOutcome) error {
-	c.outcomes[id] = o
+	c.repo.outcomes[id] = o
+	c.writes++
+	if c.repo.failOutcomeAfter > 0 && c.writes == c.repo.failOutcomeAfter {
+		return errors.New("simulated crash after durable outcome")
+	}
 	return nil
 }
 func (c *fakeClaim) AppliedIdempotencyKeys(context.Context, []string) ([]string, error) {
-	return c.applied, nil
+	return c.repo.applied, nil
+}
+func (c *fakeClaim) ItemStateCounts(context.Context) (map[domain.ItemState]int, error) {
+	counts := make(map[domain.ItemState]int)
+	for _, outcome := range c.repo.outcomes {
+		counts[outcome.State]++
+	}
+	return counts, nil
 }
 func (c *fakeClaim) Finish(_ context.Context, s domain.ProtocolState, _ time.Time) error {
 	c.finished = s
+	c.repo.protocolState = s
 	return nil
 }
-func (c *fakeClaim) Commit(context.Context) error   { c.committed = true; return nil }
-func (c *fakeClaim) Rollback(context.Context) error { c.rolledBack = true; return nil }
+func (c *fakeClaim) Commit(context.Context) error { c.committed = true; return nil }
+func (c *fakeClaim) Rollback(context.Context) error {
+	if c.committed {
+		return nil
+	}
+	c.rolledBack = true
+	c.repo.protocolState = domain.ProtocolStateApproved
+	return nil
+}

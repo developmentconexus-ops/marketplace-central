@@ -63,6 +63,7 @@ type ProtocolClaim interface {
 	FetchPendingItems(context.Context) ([]MutationItem, error)
 	WriteItemOutcome(context.Context, string, ItemOutcome) error
 	AppliedIdempotencyKeys(context.Context, []string) ([]string, error)
+	ItemStateCounts(context.Context) (map[domain.ItemState]int, error)
 	Finish(context.Context, domain.ProtocolState, time.Time) error
 	Commit(context.Context) error
 	Rollback(context.Context) error

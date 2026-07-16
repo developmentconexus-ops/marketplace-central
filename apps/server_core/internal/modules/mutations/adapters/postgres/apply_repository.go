@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"marketplace-central/apps/server_core/internal/modules/mutations/domain"
 	"marketplace-central/apps/server_core/internal/modules/mutations/ports"
 )
@@ -77,6 +78,7 @@ func (r *Repository) ApproveItems(ctx context.Context, protocolID string, approv
 
 type protocolClaim struct {
 	tx       pgx.Tx
+	pool     *pgxpool.Pool
 	tenantID string
 	protocol ports.Protocol
 	done     bool
@@ -89,7 +91,7 @@ func (r *Repository) ClaimProtocol(ctx context.Context, installationID string) (
 	if err != nil {
 		return nil, false, err
 	}
-	c := &protocolClaim{tx: tx, tenantID: r.tenantID}
+	c := &protocolClaim{tx: tx, pool: r.pool, tenantID: r.tenantID}
 	err = scanProtocolInto(&c.protocol, tx.QueryRow(ctx, `SELECT protocol_id,installation_id,type,state,actor,intent,selection,totals,source_as_of,retried_from,created_at,previewed_at,approved_at,finished_at FROM mutation_protocols WHERE tenant_id=$1 AND installation_id=$2 AND state IN ('approved','applying') ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1`, r.tenantID, installationID))
 	if errors.Is(err, pgx.ErrNoRows) {
 		_ = tx.Rollback(ctx)
@@ -105,10 +107,6 @@ func (r *Repository) ClaimProtocol(ctx context.Context, installationID string) (
 			return nil, false, err
 		}
 		if _, err = tx.Exec(ctx, `UPDATE mutation_protocols SET state='applying' WHERE tenant_id=$1 AND protocol_id=$2`, r.tenantID, c.protocol.ProtocolID); err != nil {
-			_ = tx.Rollback(ctx)
-			return nil, false, err
-		}
-		if _, err = tx.Exec(ctx, `UPDATE mutation_items SET state='applying' WHERE tenant_id=$1 AND protocol_id=$2 AND state IN ('previewed','approved')`, r.tenantID, c.protocol.ProtocolID); err != nil {
 			_ = tx.Rollback(ctx)
 			return nil, false, err
 		}
@@ -141,7 +139,7 @@ func (c *protocolClaim) WriteItemOutcome(ctx context.Context, itemID string, out
 	if outcome.State == domain.ItemStateApplied {
 		appliedAt = outcome.AppliedAt.UTC()
 	}
-	tag, err := c.tx.Exec(ctx, `UPDATE mutation_items SET state=$4,failure=$5,applied_at=$6 WHERE tenant_id=$1 AND protocol_id=$2 AND item_id=$3 AND state NOT IN ('applied','failed','skipped')`, c.tenantID, c.protocol.ProtocolID, itemID, outcome.State, nullableJSON(outcome.Failure), appliedAt)
+	tag, err := c.pool.Exec(ctx, `UPDATE mutation_items SET state=$4,failure=$5,applied_at=$6 WHERE tenant_id=$1 AND protocol_id=$2 AND item_id=$3 AND state NOT IN ('applied','failed','skipped')`, c.tenantID, c.protocol.ProtocolID, itemID, outcome.State, nullableJSON(outcome.Failure), appliedAt)
 	if err != nil {
 		return err
 	}
@@ -151,7 +149,7 @@ func (c *protocolClaim) WriteItemOutcome(ctx context.Context, itemID string, out
 	return nil
 }
 func (c *protocolClaim) AppliedIdempotencyKeys(ctx context.Context, keys []string) ([]string, error) {
-	rows, err := c.tx.Query(ctx, `SELECT idempotency_key FROM mutation_items WHERE tenant_id=$1 AND protocol_id=$2 AND idempotency_key=ANY($3) AND state='applied' ORDER BY seq`, c.tenantID, c.protocol.ProtocolID, keys)
+	rows, err := c.pool.Query(ctx, `SELECT idempotency_key FROM mutation_items WHERE tenant_id=$1 AND protocol_id=$2 AND idempotency_key=ANY($3) AND state='applied' ORDER BY seq`, c.tenantID, c.protocol.ProtocolID, keys)
 	if err != nil {
 		return nil, err
 	}
@@ -165,6 +163,23 @@ func (c *protocolClaim) AppliedIdempotencyKeys(ctx context.Context, keys []strin
 		out = append(out, k)
 	}
 	return out, rows.Err()
+}
+func (c *protocolClaim) ItemStateCounts(ctx context.Context) (map[domain.ItemState]int, error) {
+	rows, err := c.pool.Query(ctx, `SELECT state,count(*) FROM mutation_items WHERE tenant_id=$1 AND protocol_id=$2 GROUP BY state`, c.tenantID, c.protocol.ProtocolID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	counts := make(map[domain.ItemState]int)
+	for rows.Next() {
+		var state domain.ItemState
+		var count int
+		if err := rows.Scan(&state, &count); err != nil {
+			return nil, err
+		}
+		counts[state] = count
+	}
+	return counts, rows.Err()
 }
 func (c *protocolClaim) Finish(ctx context.Context, state domain.ProtocolState, finishedAt time.Time) error {
 	if err := domain.TransitionProtocolState(c.protocol.State, state); err != nil {

@@ -25,14 +25,9 @@ func (p *Poller) Pass(ctx context.Context, installationID string) (worked bool, 
 	if err != nil || !found {
 		return false, err
 	}
-	defer func() {
-		if err != nil {
-			_ = claim.Rollback(ctx)
-		}
-	}()
+	defer func() { _ = claim.Rollback(ctx) }()
 
 	protocol := claim.Protocol()
-	var states []domain.ItemState
 	for {
 		items, fetchErr := claim.FetchPendingItems(ctx)
 		if fetchErr != nil {
@@ -74,7 +69,16 @@ func (p *Poller) Pass(ctx context.Context, installationID string) (worked bool, 
 			if err = claim.WriteItemOutcome(ctx, item.ItemID, outcome); err != nil {
 				return true, fmt.Errorf("write mutation item outcome: %w", err)
 			}
-			states = append(states, outcome.State)
+		}
+	}
+	counts, err := claim.ItemStateCounts(ctx)
+	if err != nil {
+		return true, fmt.Errorf("read mutation item state counts: %w", err)
+	}
+	states := make([]domain.ItemState, 0)
+	for _, state := range []domain.ItemState{domain.ItemStateApplied, domain.ItemStateFailed, domain.ItemStateSkipped} {
+		for range counts[state] {
+			states = append(states, state)
 		}
 	}
 	terminal, err := domain.TerminalProtocolState(states)
