@@ -2,6 +2,7 @@
 
 @source "../../../packages/ui/src";
 @source "../../../packages/feature-products/src";
+@source "../../../packages/feature-inventory/src";
 @source "../../../packages/feature-integrations/src";
 @source "../../../packages/feature-marketplaces/src";
 @source "../../../packages/feature-product-links/src";

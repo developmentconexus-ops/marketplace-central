@@ -47,6 +47,22 @@ export default defineConfig({
       "/product-links/link-resolutions": proxyTarget,
       "/product-links/link-workflows": proxyTarget,
       "/product-links/listing-snapshots": proxyTarget,
+      "/listings": proxyTarget,
+      "/mutations": proxyTarget,
+      "/market": proxyTarget,
+      "/profitability": proxyTarget,
+      "/dashboard": proxyTarget,
+      "/sync": proxyTarget,
+      "/orders": {
+        target: proxyTarget,
+        bypass(req) {
+          if (req.headers.accept?.includes("text/html")) {
+            return req.url;
+          }
+
+          return undefined;
+        },
+      },
     },
   },
   preview: {
