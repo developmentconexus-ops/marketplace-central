@@ -1,11 +1,10 @@
 # Harness Profile — marketplace-central
 
-**Layer:** REPO (binds with the plugin's `HARNESS-CORE.md`; mission content lives in `.mnfs/`).
-**Status of this file:** STAGED — extracted 2026-07-15 from the ratified combined
-`docs/HARNESS.md`. While MIS-003 is in flight, `docs/HARNESS.md` remains the binding doctrine
-(core §0: product repo wins for in-flight missions); the hub swaps the binding to
-CORE + this profile at the M-01 milestone boundary. All provenance below carries over from the
-combined doctrine's dated ratifications — nothing here is new content.
+**Layer:** REPO (binds with `docs/HARNESS-CORE.md` — vendored from plugin `harness@mnfs-harness`;
+mission content lives in `.mnfs/`).
+**Status of this file:** BINDING — swap executed 2026-07-16 at the M-01 milestone boundary
+(operator-approved). `docs/HARNESS.md` is now a pointer. Provenance below carries over from the
+combined doctrine's dated ratifications.
 
 ---
 
@@ -27,9 +26,25 @@ combined doctrine's dated ratifications — nothing here is new content.
   detached worktree** (main checkout sweeps `.claude/worktrees/*` and false-fails until the
   scanner exclusion lands) and pass the **full 40-hex** BaseSha (short sha =
   `GOV_SEMANTIC_DRIFT id=base-sha-invalid`).
+- **GOCACHE must resolve to an ABSOLUTE path on Windows/pwsh** (D-14, M-01): relative
+  `.gocache` breaks when the working dir shifts mid-pipeline — bind it as
+  `$env:GOCACHE = (Join-Path (Get-Location) '.gocache')` (or equivalent) before Go commands.
+- **Governance base anchor (per milestone):** the drift gate's BaseSha for a chip is the
+  milestone's ACCEPTED BASE SHA (40-hex, carried in the chip prompt) — on a long-lived
+  worktree, drift REDs computed against any other base are not the chip's defect
+  (M-01 field, 2×: Slice 7 `base-sha-invalid`, P5 tool-vs-validate topology). The chip
+  records the anchor in its evidence; the hub re-runs governance on the integrated default
+  branch at acceptance.
 - **L1** — `GOCACHE=.gocache go test ./...` (touched packages + guard suites; full sweep only
   when migrations/platform touched) · web vitest · integration lane
   `npm run harness:integration` (see §4).
+- **Known pre-existing failure allowlist (L1):** verdicts CITE this list instead of
+  re-proving non-linkage from scratch (M-01 re-proved `TestPhase1SmokeFlow` 5×). A ladder
+  run is GREEN-with-allowlist when its only failures are listed here unchanged. Editing the
+  list is hub-owned; each entry needs an evidence pointer + a backlog owner.
+  - `TestPhase1SmokeFlow` (`apps/server_core/tests/integration`) — pre-existing sibling
+    breakage, predates M-01 (evidence: M-01 DISPATCH-LEDGER.md hub ruling B); backlog: hub
+    queue, unowned.
 - **L2** — dev stack up **ONLY via docker compose**: `npm run docker:dev`
   (postgres+backend+frontend, server `:8080` + web `:5174`); OAuth flows:
   `npm run docker:oauth`. HUB-OWNED seam: chips send `REQUEST dev-stack`, never boot their own
@@ -87,6 +102,11 @@ cd apps/server_core && GOMODCACHE=$(pwd)/.gomodcache go mod download all
 Hub-owned (chips `REQUEST`, never take): OpenAPI/sdk-runtime contract lock · migration number
 blocks · dev stack (:8080/:5174) · harness control files (`scripts/harness*`, package.json
 harness scripts) · `contracts/governance/` registry · `docs/HARNESS*` doctrine files.
+
+**Dev-stack sync standing policy (ratified 2026-07-16):** a chip `COMMITTED` event carrying
+`stack-sync: <sha>` triggers the hub to rebuild/redeploy the dev stack at that SHA WITHOUT
+per-request negotiation — M-01 burned 4 hub round-trips on restart asks alone. The hub still
+owns the action (chips never touch containers); only the approval ceremony is removed.
 
 ## 7. Non-negotiables (per-endpoint / per-write, core §5)
 `status: ratified` · `provenance: 2026-07-15 · docs/HARNESS.md §5 + AGENTS.md`
@@ -169,4 +189,10 @@ verification conflicts against this list.
 2026-07-16 · §11 (new) + HARNESS.md §4 · ratified · REVIEW-STANDARD adopted (operator-requested hardening): fixed review order, global-vs-local-maximum G1-G3, YAGNI+DRY rule-of-three, two-axis severity, anchor-or-abstain+receipts, deterministic pre-pass (go vet added to L0), dual-gate agreement merge, delta re-review, learnings memory docs/REVIEW-LEARNINGS.md, ≤300-line slices
 2026-07-15 · §7 · ratified · no-stub doctrine: validation contracts/tests never fallback stub/mock on integration seams without operator authorization; real dependency required; planning declares real bindings up front (operator ruling after M-01 C10 — root.go nil-DB cost reader + permanent-unavailable policy reader passed hermetic gates, blocked live validation)
 2026-07-15 · §2 L2 + §6 · corrected · dev stack ONLY via docker compose (npm run docker:dev / docker:oauth), hub-owned; chips never boot own server, never bind :8080/:5174, never load .env* into session env (field violation: M-01 chip ran bare worktree server with real .env for C10 — 42P01s were self-inflicted bypass of compose postgres+entrypoint)
+2026-07-16 · header · ratified · binding swap executed at M-01 boundary: CORE (vendored docs/HARNESS-CORE.md @ mnfs-harness cd114e6) + this profile + mission Parallel Execution Plan; docs/HARNESS.md reduced to pointer; harness-control seam extended to the three doctrine files
+2026-07-16 · §2 · ratified · GOCACHE absolute-path binding on Windows/pwsh (D-14, M-01 ledger practice applied ad hoc)
+2026-07-16 · §2 · ratified · per-milestone governance base anchor: chip drift gate runs against the milestone's accepted 40-hex base SHA from the chip prompt; other-base REDs on long-lived worktrees are not chip defects (M-01 field 2×)
+2026-07-16 · §2 · ratified · known pre-existing failure allowlist for L1 (cite, don't re-prove; hub-owned edits; entries carry evidence + backlog owner) — seeded with TestPhase1SmokeFlow (M-01 re-proved it 5×)
+2026-07-16 · §6 · ratified · dev-stack sync standing policy: COMMITTED event with stack-sync <sha> → hub rebuilds without negotiation (M-01: 4 round-trips were restart asks)
+2026-07-16 · (upstream) · ratified · core amendments landed in mnfs-harness cd114e6: sonnet fallback implementer row, COMMITTED event grammar, lean close (★ crew superseded at close by P6 dual gate), additive contract-lock named mechanism, P2 required plan outputs (write-DAG + contract satisfiability + lock pre-identification), Claude-side dispatch visibility accepted limitation
 ```

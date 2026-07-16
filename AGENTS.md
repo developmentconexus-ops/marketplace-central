@@ -1,14 +1,17 @@
 # Marketplace Central — Harness Bootstrap
 
-Development runs under the hub-and-chips harness: **`docs/HARNESS.md` is BINDING** —
-read it before any milestone/feature work. The hub session (boots via the `harness-hub` skill)
-authors milestone chips (spawn_task, operator launches on Opus, worktree isolation), owns
-merging/deploy/shared seams, and adjudicates parallelism via the collision matrix. Milestone
-sessions orchestrate; feature plans come from GPT-5.6 Sol medium, implementation from GPT-5.6
-Luna high (standard) / Sol low (complex) via `/codex:rescue`, bulk reads from Luna-medium
-investigators. Milestone close = dual gate (full Opus + GPT-5.6 Sol medium, agreement required)
-then fresh browser QA. Only QA passes a milestone. Chips talk to the hub only via events
-(`CLOSED`/`BLOCKED`/`ESCALATION`/`REQUEST`/`SPLIT-REQUEST`).
+Development runs under the hub-and-chips harness. **BINDING doctrine = `docs/HARNESS-CORE.md`
+(method) + `docs/HARNESS-PROFILE.md` (this repo's bindings) + the active mission's
+`## Parallel Execution Plan` (`.mnfs/MIS-*/mission.md`)** — read core §4–§5 and the profile
+before any milestone/feature work (`docs/HARNESS.md` is a pointer). The hub session (boots via
+the `harness-hub` skill) authors milestone chips (spawn_task, operator launches on Opus,
+worktree isolation), owns merging/deploy/shared seams, and adjudicates parallelism via the
+collision matrix. Milestone sessions orchestrate; feature plans come from GPT-5.6 Sol medium,
+implementation from GPT-5.6 Luna high (standard) / Sol low (complex) via `/codex:rescue`
+(Claude sonnet = sanctioned fallback per core §1), bulk reads from Luna-medium investigators.
+Milestone close = dual gate (cold Opus + GPT-5.6 Sol medium, agreement required) then fresh
+QA live-drive. Only QA passes a milestone. Chips talk to the hub only via events
+(`CLOSED`/`BLOCKED`/`ESCALATION`/`REQUEST`/`SPLIT-REQUEST`/`COMMITTED`/`ACK`).
 
 Repository truth is ordered: `ARCHITECTURE.md`/ADRs, OpenAPI plus SDK,
 `contracts/governance/`, wiki, `.mnfs/`, then tests/builds/commits. Stop and
