@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	mutationsbg "marketplace-central/apps/server_core/internal/modules/mutations/background"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 	"marketplace-central/apps/server_core/internal/platform/pgdb"
 )
@@ -34,6 +35,17 @@ func TestRefreshListingsOpenAPIContractParity(t *testing.T) {
 			t.Fatalf("refresh contract unexpectedly contains %q", unwanted)
 		}
 	}
+}
+
+func TestRootRuntimeWiresMutationPoller(t *testing.T) {
+	runtime, err := NewRootRuntime(nil, pgdb.Config{DefaultTenantID: "tenant_default", EncryptionKey: "0123456789abcdef0123456789abcdef"})
+	if err != nil {
+		t.Fatalf("NewRootRuntime() error = %v", err)
+	}
+	if runtime.MutationPoller == nil {
+		t.Fatal("MutationPoller is nil")
+	}
+	var _ *mutationsbg.Poller = runtime.MutationPoller
 }
 
 func TestFeeScheduleRoutesUseBatchDeadline(t *testing.T) {

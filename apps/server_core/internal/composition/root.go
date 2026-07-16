@@ -70,6 +70,10 @@ import (
 	marketplacesapp "marketplace-central/apps/server_core/internal/modules/marketplaces/application"
 	marketplacesregistry "marketplace-central/apps/server_core/internal/modules/marketplaces/registry"
 	marketplacestransport "marketplace-central/apps/server_core/internal/modules/marketplaces/transport"
+	mutationspostgres "marketplace-central/apps/server_core/internal/modules/mutations/adapters/postgres"
+	mutationsstub "marketplace-central/apps/server_core/internal/modules/mutations/adapters/stub"
+	mutationsapp "marketplace-central/apps/server_core/internal/modules/mutations/application"
+	mutationsbg "marketplace-central/apps/server_core/internal/modules/mutations/background"
 	ordersintegrations "marketplace-central/apps/server_core/internal/modules/orders/adapters/integrations"
 	ordersinternalread "marketplace-central/apps/server_core/internal/modules/orders/adapters/internalread"
 	orderspostgres "marketplace-central/apps/server_core/internal/modules/orders/adapters/postgres"
@@ -168,8 +172,9 @@ func (f authFlowFacade) ReadStock(ctx context.Context, installationID string, re
 }
 
 type RootRuntime struct {
-	Handler   http.Handler
-	PoolStats *internalreadobservability.PoolStatsLoop
+	Handler        http.Handler
+	PoolStats      *internalreadobservability.PoolStatsLoop
+	MutationPoller *mutationsbg.Poller
 }
 
 func NewRootRouter(pool *pgxpool.Pool, cfg pgdb.Config) (http.Handler, error) {
@@ -227,6 +232,21 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 
 	installationRepo := integrationspostgres.NewInstallationRepository(pool, cfg.DefaultTenantID)
 	installationSvc := integrationsapp.NewInstallationService(installationRepo, cfg.DefaultTenantID)
+	mutationRepo := mutationspostgres.NewRepository(pool, cfg.DefaultTenantID)
+	// TEMPORARY stub writer — 2026-07-16, replaced by F02-S8
+	mutationWriter := mutationsstub.NewWriter(nil)
+	mutationPoller := mutationsapp.NewPoller(mutationRepo, mutationWriter, time.Now)
+	mutationRunner := mutationsbg.NewPoller(mutationPoller, func(ctx context.Context) ([]string, error) {
+		installations, err := installationSvc.List(ctx)
+		if err != nil {
+			return nil, err
+		}
+		ids := make([]string, len(installations))
+		for i := range installations {
+			ids[i] = installations[i].InstallationID
+		}
+		return ids, nil
+	}, slog.Default(), 2*time.Second, nil)
 	credentialRepo := integrationspostgres.NewCredentialRepository(pool, cfg.DefaultTenantID)
 	credentialSvc := integrationsapp.NewCredentialService(credentialRepo, cfg.DefaultTenantID)
 	authSessionRepo := integrationspostgres.NewAuthSessionRepository(pool, cfg.DefaultTenantID)
@@ -562,7 +582,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	// Connectors (Melhor Envio auth + fee seeding foundations)
 	connectorstransport.NewHandler(meOAuth).Register(mux)
 
-	return &RootRuntime{Handler: httpx.CORSMiddleware(mux), PoolStats: poolStats}, nil
+	return &RootRuntime{Handler: httpx.CORSMiddleware(mux), PoolStats: poolStats, MutationPoller: mutationRunner}, nil
 }
 
 func oracleBatchPermits(getenv func(string) string) int {
