@@ -12,6 +12,7 @@ import (
 )
 
 var _ ports.OperationRunStore = (*OperationRunRepository)(nil)
+var _ ports.OperationRunReadStore = (*OperationRunRepository)(nil)
 
 type OperationRunRepository struct {
 	pool     *pgxpool.Pool
@@ -133,6 +134,65 @@ func (r *OperationRunRepository) ListByInstallation(ctx context.Context, install
 		runs = append(runs, run)
 	}
 	return runs, rows.Err()
+}
+
+func (r *OperationRunRepository) ListRuns(ctx context.Context, query ports.RunListQuery) (ports.RunPage, error) {
+	query, err := query.Normalize()
+	if err != nil {
+		return ports.RunPage{}, err
+	}
+	rows, err := r.pool.Query(ctx, `
+		SELECT operation_run_id, installation_id, operation_type, status,
+			result_code, failure_code, translated_error_code, attempt_count, duration_ms,
+			started_at, completed_at
+		FROM integration_operation_runs
+		WHERE tenant_id = $1
+		  AND installation_id = $2
+		  AND started_at >= now() - interval '90 days'
+		  AND ($3 = '' OR operation_type = $3)
+		  AND ($4 = '' OR status = $4)
+		  AND ($5::timestamptz IS NULL OR (started_at, operation_run_id) < ($5, $6))
+		ORDER BY started_at DESC, operation_run_id DESC
+		LIMIT $7
+	`, r.tenantID, query.InstallationID, query.Module, string(query.Status), nullableCursorTime(query.Cursor), query.Cursor.OperationRunID, query.Limit+1)
+	if err != nil {
+		return ports.RunPage{}, err
+	}
+	defer rows.Close()
+
+	items := make([]ports.RunReadModel, 0, query.Limit+1)
+	for rows.Next() {
+		var item ports.RunReadModel
+		var startedAt pgtype.Timestamptz
+		var finishedAt pgtype.Timestamptz
+		if err := rows.Scan(&item.OperationRunID, &item.InstallationID, &item.Module, &item.Status,
+			&item.ResultCode, &item.FailureCode, &item.TranslatedErrorCode, &item.AttemptCount, &item.DurationMs,
+			&startedAt, &finishedAt); err != nil {
+			return ports.RunPage{}, err
+		}
+		item.StartedAt = scanTimestamptz(startedAt)
+		item.FinishedAt = scanTimestamptz(finishedAt)
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return ports.RunPage{}, err
+	}
+	page := ports.RunPage{Items: items}
+	if len(items) > query.Limit {
+		page.Items = items[:query.Limit]
+		last := page.Items[len(page.Items)-1]
+		if last.StartedAt != nil {
+			page.NextCursor = &ports.RunCursor{StartedAt: *last.StartedAt, OperationRunID: last.OperationRunID}
+		}
+	}
+	return page, nil
+}
+
+func nullableCursorTime(cursor ports.RunCursor) any {
+	if cursor.IsFirstPage() {
+		return nil
+	}
+	return cursor.StartedAt
 }
 
 func scanOperationRun(scanner interface {
