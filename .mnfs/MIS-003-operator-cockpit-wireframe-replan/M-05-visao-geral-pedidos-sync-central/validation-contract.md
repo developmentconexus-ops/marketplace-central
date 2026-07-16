@@ -49,7 +49,7 @@ Required: Yes
 Status: Pending
 Evidence:
 - Command: integration tests over seeded orders (0027/0033 tables)
-- Expected: cursor list newest-first; `filter.status`/fulfillment/date filters honored; `GET /orders/{unknown}` → 404 `order_not_found`; malformed date → 400 `invalid_filter`; canonical fields only (no raw provider payload in response)
+- Expected: cursor list newest-first; `filter.status`/date filters honored; `filter.fulfillment` → 400 `unsupported_filter` (hub ruling 2026-07-16: no canonical fulfillment source in storage this mission; decoding raw_provider_ref in the read path is forbidden); `GET /orders/{unknown}` → 404 `order_not_found`; malformed date → 400 `invalid_filter`; canonical fields only (no raw provider payload in response); buyer/currency/fulfillment/NF-state honest-null (ADR-17 — null, never defaulted) until adapter-ingestion columns land in a successor scope
 - Actual:
 - Artifact: `F-01.../validation.md`
 Blocking failure: provider payload leak or filter row failing
