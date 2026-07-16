@@ -39,6 +39,27 @@ function Get-HarnessCanonicalMigrationCount {
   return [int]$migrations.Count
 }
 
+function Get-HarnessIntegrationTestPackages {
+  [CmdletBinding()]
+  param([Parameter(Mandatory)][string]$RepositoryRoot)
+
+  $serverRoot = Join-Path $RepositoryRoot 'apps/server_core'
+  $packages = [System.Collections.Generic.SortedSet[string]]::new([StringComparer]::Ordinal)
+  [void]$packages.Add('./tests/integration')
+  $modulesRoot = Join-Path $serverRoot 'internal/modules'
+  if (Test-Path -LiteralPath $modulesRoot -PathType Container) {
+    $testFiles = @(Get-ChildItem -LiteralPath $modulesRoot -Recurse -File -Filter '*_test.go' -ErrorAction SilentlyContinue)
+    foreach ($file in $testFiles) {
+      $head = @(Get-Content -LiteralPath $file.FullName -TotalCount 5 -ErrorAction SilentlyContinue)
+      if (@($head | Where-Object { $_ -match '^//go:build\b.*\bintegration\b' }).Count -gt 0) {
+        $relative = [IO.Path]::GetRelativePath($serverRoot, $file.DirectoryName).Replace('\', '/')
+        [void]$packages.Add("./$relative")
+      }
+    }
+  }
+  return @($packages)
+}
+
 function New-HarnessPostgresRunSpec {
   [CmdletBinding()]
   param(
@@ -116,7 +137,7 @@ function Invoke-HarnessPostgresLifecycle {
     [ValidateRange(1, 600)][int]$ReadyMaxAttempts = 60,
     [ValidateRange(0, 60000)][int]$ReadyRetryDelayMilliseconds = 1000,
     [ValidateRange(1, 600000)][int]$ReadyTimeoutMilliseconds = 60000,
-    [string[]]$TestArguments = @('test', '-tags=integration', './tests/integration', './internal/modules/orders/adapters/postgres', './internal/modules/profitability/adapters/postgres', './internal/modules/product_links/application', '-count=1'),
+    [string[]]$TestArguments = @(),
     [switch]$HoldConnectionDuringCleanupTest
   )
 
@@ -124,6 +145,9 @@ function Invoke-HarnessPostgresLifecycle {
     throw 'HPG_MIGRATION_INVENTORY_INVALID'
   }
   $expectedMigrationCount = [int]$RunSpec.ExpectedMigrationCount
+  if (@($TestArguments).Count -eq 0) {
+    $TestArguments = @('test', '-tags=integration') + @(Get-HarnessIntegrationTestPackages -RepositoryRoot $RunSpec.RepositoryRoot) + @('-count=1')
+  }
   $dockerEnvironment = Copy-HarnessEnvironment $BaseEnvironment
   $dockerEnvironment['POSTGRES_PASSWORD'] = [string]$RunSpec.Password
   $goEnvironment = Copy-HarnessEnvironment $BaseEnvironment
@@ -221,8 +245,18 @@ function Invoke-HarnessPostgresLifecycle {
     $targetURL = "postgresql://postgres:$escapedPassword@127.0.0.1:$hostPort/$($RunSpec.DatabaseName)?sslmode=disable"
     $goEnvironment['MPC_TEST_DATABASE_URL'] = $targetURL
 
-    $create = Invoke-Docker @('exec', $RunSpec.ContainerName, 'psql', '--username', 'postgres', '--dbname', 'postgres', '--set', 'ON_ERROR_STOP=1', '--command', "CREATE DATABASE $($RunSpec.DatabaseName)")
-    if ($create.ExitCode -ne 0) { Set-Primary 'HPG_DATABASE_CREATE_FAILED' $create.ExitCode; break }
+    # pg_isready can pass during the image's first-boot init phase (server restarts once
+    # after init), so the first CREATE DATABASE may hit a restarting server. Retry until
+    # the database provably exists instead of trusting readiness.
+    $create = $null
+    for ($createAttempt = 1; $createAttempt -le 15; $createAttempt++) {
+      $exists = Invoke-Docker @('exec', $RunSpec.ContainerName, 'psql', '--username', 'postgres', '--dbname', 'postgres', '--quiet', '--tuples-only', '--no-align', '--set', 'ON_ERROR_STOP=1', '--command', "SELECT 1 FROM pg_database WHERE datname = '$($RunSpec.DatabaseName)'")
+      if ($exists.ExitCode -eq 0 -and $exists.Stdout.Trim() -eq '1') { $create = $exists; break }
+      $create = Invoke-Docker @('exec', $RunSpec.ContainerName, 'psql', '--username', 'postgres', '--dbname', 'postgres', '--set', 'ON_ERROR_STOP=1', '--command', "CREATE DATABASE $($RunSpec.DatabaseName)")
+      if ($create.ExitCode -eq 0) { break }
+      if ($createAttempt -lt 15) { Start-Sleep -Milliseconds 1000 }
+    }
+    if ($null -eq $create -or $create.ExitCode -ne 0) { Set-Primary 'HPG_DATABASE_CREATE_FAILED' $(if ($null -eq $create) { 1 } else { $create.ExitCode }); break }
     $databaseCreated = $true
 
     $migrationArgs = @('run', './cmd/testdb', 'migrate')
@@ -293,4 +327,4 @@ function Invoke-HarnessPostgresLifecycle {
   }
 }
 
-Export-ModuleMember -Function Resolve-HarnessPostgresDockerApplication, New-HarnessPostgresRunSpec, Invoke-HarnessPostgresLifecycle
+Export-ModuleMember -Function Resolve-HarnessPostgresDockerApplication, New-HarnessPostgresRunSpec, Invoke-HarnessPostgresLifecycle, Get-HarnessIntegrationTestPackages

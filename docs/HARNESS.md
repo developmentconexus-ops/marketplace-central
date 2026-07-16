@@ -220,6 +220,17 @@ Standard first act in every new chip worktree before any hermetic lane:
 NOT a dep change, no REQUEST needed). `migrations_first=-1` means "build died before migrate
 ran"; warm the cache before diagnosing SQL.
 
+**Integration lane hardening (ratified 2026-07-15, M-01 retrospective):** the lane is
+self-discovering and race-proof by construction — `scripts/harness/Postgres.psm1` globs every
+package with `//go:build integration` tests under `internal/modules/` plus `tests/integration`
+(no hardcoded package list: a new module joins the lane by existing), and `CREATE DATABASE`
+retries until the database provably exists (pg_isready passes during the image's first-boot
+init restart; a 3D000/"database does not exist" on first attempt is that race, not a defect —
+the loop absorbs it). Chips may additionally keep ONE long-lived postgres container per
+milestone session (fresh `CREATE DATABASE mpc_test_<32hex>` per run, drop after) instead of
+per-run container boot — same isolation, no boot race per run; the container is removed at
+milestone close.
+
 **Backend non-negotiables re-checked at L0–L2 per touched endpoint:** tenant_id predicate on
 every query · provider payloads at adapters only · unknown never zero/default (ADR-17) ·
 OpenAPI + sdk-runtime same commit · provider writes: resolved linkage, explicit policy/source
