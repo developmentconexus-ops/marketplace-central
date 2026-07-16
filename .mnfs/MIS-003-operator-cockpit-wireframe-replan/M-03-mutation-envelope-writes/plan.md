@@ -311,6 +311,98 @@ Serialization points:
 
 ### F02-S8 — live composition wiring and F-01 stub removal
 
+- SUPERSEDED 2026-07-16 by F02-S8a + F02-S8b (replan D-36 after implement worker proved the
+  3-file scope cannot satisfy this Done list honestly: router callbacks unexposed at
+  repository scope, WriterPort bridge adapters unplanned, no provider-write lane gate in
+  root.go). Original card retained below the amended cards for traceability.
+- Replan decisions (planner gpt-5.6-sol medium, D-36; sandbox denied its amendment file
+  write — orchestrator transcribed the decisions verbatim from the planner's final summary):
+  - Callback seam = option 3: the poller exclusively owns idempotency and audit.
+    `WriteThroughGates` moves into the application poller backed by the claim's
+    `AppliedIdempotencyKeys` + `MarkItemApplying`; `WriterRouter` drops the
+    `alreadyApplied`/`persistAudit` callbacks. No duplicate writes, no no-op callbacks.
+    Alternatives rejected: repository-scope callback methods (duplicates the claim's dedup
+    and audit inside one pass — double-write); per-claim router construction (forces
+    application wiring into the hot claim loop and leaks claim lifetime into the router).
+    S6 contract amendment acknowledged — S8a review must include a focused S6 delta
+    re-review, including production consumption of `MapFailure`/`MapRejected`.
+  - Provider-write lane gate: `MPC_PROVIDER_WRITES_ENABLED` env flag read in root.go; only
+    trimmed case-insensitive `true` enables the real write lane; DEFAULT OFF keeps the F-01
+    stub wired. Flipping the flag and redeploying is an explicit operator deployment action
+    — composition never enables live provider writes autonomously.
+  - `Run()` re-entrancy: reset-on-return concurrent re-entry guard in
+    `mutations/background/poller.go` (S8b).
+  - Migration 0039 FK absence: deliberate (protocol rows may be pruned/archived on a
+    different cadence than legacy stock-action history; the nullable TEXT link is a soft
+    reference by design). Carry closed.
+
+### F02-S8a — poller-owned gates and production writer bridges
+
+- Goal: amend the S6 router contract so the poller owns idempotency/audit, and build the
+  production WriterPort bridge adapters that connect the connectors ML capabilities to the
+  mutations router.
+- Files:
+  - `apps/server_core/internal/modules/mutations/application/writer.go`
+  - `apps/server_core/internal/modules/mutations/application/writer_test.go`
+  - `apps/server_core/internal/modules/mutations/application/poller.go`
+  - `apps/server_core/internal/modules/mutations/application/poller_test.go`
+  - `apps/server_core/internal/modules/mutations/adapters/connectors/price_writer.go`
+  - `apps/server_core/internal/modules/mutations/adapters/connectors/price_writer_test.go`
+  - `apps/server_core/internal/modules/mutations/adapters/connectors/stock_writer.go`
+  - `apps/server_core/internal/modules/mutations/adapters/connectors/stock_writer_test.go`
+  - `apps/server_core/internal/modules/mutations/adapters/connectors/listing_writer.go`
+  - `apps/server_core/internal/modules/mutations/adapters/connectors/listing_writer_test.go`
+- Failing test first: poller test proves the gate sequence (idempotency skip + applying-mark
+  audit) executes exactly once per item at the poller layer; bridge tests prove each adapter
+  resolves its capability explicitly (absent capability → typed unsupported failure, never a
+  silent stub) and maps provider errors through `MapFailure`/`MapRejected`.
+- Done:
+  - `WriterRouter` no longer takes `alreadyApplied`/`persistAudit`; `WriteThroughGates`
+    invoked by the poller with claim-backed functions; per-item semantics unchanged
+    (skip on duplicate idempotency key, audit before write).
+  - Bridge adapters implement `ports.WriterPort` for price_update, stock_correct,
+    listing_pause/listing_edit by delegating to the connectors capability service
+    (explicit-only lookup per F02-S2 doctrine; `ErrCodeProviderUnsupportedShape` → typed
+    IC-03 failure).
+  - `MapFailure`/`MapRejected` gain production callers (D-31 carry closed).
+  - Sanitized `message_provider` passthrough only — no raw payloads above adapters.
+  - All existing mutations suites remain green.
+- Complexity: `complex`
+- Serves: M03-C04, C05, C06, C07
+- Budget: ~300 lines.
+
+### F02-S8b — capability exposure, gated composition wiring, runner guard
+
+- Goal: expose ML write capabilities explicitly, wire the real router + envelope into the
+  composition root behind the operator lane gate, and guard the background runner.
+- Files:
+  - `apps/server_core/internal/modules/connectors/adapters/mercado_livre/capability_adapter.go`
+  - `apps/server_core/internal/composition/root.go`
+  - `apps/server_core/internal/composition/root_test.go`
+  - `apps/server_core/internal/modules/mutations/background/poller.go`
+  - `apps/server_core/internal/modules/mutations/background/poller_test.go`
+  - `apps/server_core/internal/modules/inventory/application/stock_action_service.go`
+- Failing test first: root test proves that with `MPC_PROVIDER_WRITES_ENABLED=true` mutations
+  receives price/stock/listing/link/resync writers and legacy inventory receives the
+  envelope adapter, and that with the flag unset/false the stub lane is wired.
+- Done:
+  - `ProviderCapabilitySet()` adds `StockWrites: a`, `ListingWrites: a` (PriceWrites present
+    since S3) — explicit fields, no promotion.
+  - Root wires the real router only when `MPC_PROVIDER_WRITES_ENABLED` is trimmed
+    case-insensitive `true`; default keeps the F-01 stub (stub package itself stays
+    test-and-fallback only, never removed).
+  - Inventory composed via `NewStockActionServiceWithEnvelope`; direct
+    `inventoryconnectors.NewStockWriter(...)` wiring removed; transitional
+    `_ ports.StockWriter` constructor params removed (carry D-34 closed).
+  - `background.Poller.Run()` gets a reset-on-return concurrent re-entry guard.
+  - Live ML execution remains disabled unless the operator authorizes the provider-write
+    lane (flag default OFF; flipping it is a deployment action, never autonomous).
+- Complexity: `complex`
+- Serves: M03-C04, C05, C06
+- Budget: ~280 lines.
+
+### F02-S8 — ORIGINAL (superseded, retained for traceability)
+
 - Goal: replace the dated F-01 stub with all real application adapters.
 - Files:
   - `apps/server_core/internal/modules/connectors/adapters/mercado_livre/capability_adapter.go`
