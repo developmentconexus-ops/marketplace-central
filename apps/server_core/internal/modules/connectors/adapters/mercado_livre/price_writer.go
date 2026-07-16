@@ -72,7 +72,7 @@ func (a *CapabilityAdapter) UpdatePrice(ctx context.Context, request domain.Pric
 		}, nil
 	}
 
-	message := sanitizedProviderMessage(rawBody, resp.StatusCode)
+	message := sanitizedProviderMessage("price update", rawBody, resp.StatusCode)
 	switch {
 	case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
 		return domain.PriceWriteResult{}, domain.NewCapabilityError(domain.ErrCodeProviderAuth, message)
@@ -111,7 +111,7 @@ func validatePriceWriteRequest(request domain.PriceWriteRequest) (domain.PriceWr
 	return request, nil
 }
 
-func sanitizedProviderMessage(rawBody []byte, statusCode int) string {
+func sanitizedProviderMessage(operation string, rawBody []byte, statusCode int) string {
 	message := ""
 	var response mlProviderErrorResponse
 	if err := json.Unmarshal(rawBody, &response); err == nil {
@@ -122,7 +122,7 @@ func sanitizedProviderMessage(rawBody []byte, statusCode int) string {
 		message = http.StatusText(statusCode)
 	}
 	if message == "" {
-		message = "provider rejected price update"
+		message = "provider rejected " + operation
 	}
 	message = strings.Join(strings.Fields(message), " ")
 	message = providerSecretPattern.ReplaceAllString(message, "$1=[REDACTED]")
@@ -130,5 +130,5 @@ func sanitizedProviderMessage(rawBody []byte, statusCode int) string {
 	if len(message) > 300 {
 		message = message[:300]
 	}
-	return "provider price update: " + message
+	return "provider " + operation + ": " + message
 }

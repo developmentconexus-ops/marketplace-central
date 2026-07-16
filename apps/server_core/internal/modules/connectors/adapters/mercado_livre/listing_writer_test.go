@@ -58,18 +58,35 @@ func TestUpdateListingSendsCanonicalPauseAndEdit(t *testing.T) {
 }
 
 func TestUpdateListingMapsRemoteStateHonestly(t *testing.T) {
-	for _, status := range []string{"paused", "closed"} {
-		t.Run(status, func(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		action  domain.ListingWriteAction
+		status  string
+		wantMsg string
+	}{
+		{"edit-paused", domain.ListingWriteEdit, "paused", "paused"},
+		{"edit-closed", domain.ListingWriteEdit, "closed", "closed"},
+		{"edit-under-review", domain.ListingWriteEdit, "under_review", "under_review"},
+		{"edit-empty-status", domain.ListingWriteEdit, "", "unknown"},
+		{"pause-closed", domain.ListingWritePause, "closed", "closed"},
+		{"pause-under-review", domain.ListingWritePause, "under_review", "under_review"},
+		{"pause-empty-status", domain.ListingWritePause, "", "unknown"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-				_, _ = io.WriteString(w, `{"id":"MLB-1","status":"`+status+`"}`)
+				_, _ = io.WriteString(w, `{"id":"MLB-1","status":"`+tt.status+`"}`)
 			}))
 			defer server.Close()
-			result, err := testListingAdapter(server).UpdateListing(context.Background(), listingRequest(domain.ListingWriteEdit, []domain.ListingAttribute{{ID: "BRAND", ValueName: "Acme"}}))
+			var attributes []domain.ListingAttribute
+			if tt.action == domain.ListingWriteEdit {
+				attributes = []domain.ListingAttribute{{ID: "BRAND", ValueName: "Acme"}}
+			}
+			result, err := testListingAdapter(server).UpdateListing(context.Background(), listingRequest(tt.action, attributes))
 			if err != nil {
 				t.Fatal(err)
 			}
-			if result.Result != domain.WriteResultRejected || !strings.Contains(result.Message, status) {
-				t.Fatalf("result = %+v", result)
+			if result.Result != domain.WriteResultRejected || !strings.Contains(result.Message, tt.wantMsg) {
+				t.Fatalf("result = %+v, want rejected containing %q", result, tt.wantMsg)
 			}
 		})
 	}

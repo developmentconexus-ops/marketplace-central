@@ -55,9 +55,13 @@ func (a *CapabilityAdapter) UpdateListing(ctx context.Context, request domain.Li
 	}
 	status := strings.ToLower(strings.TrimSpace(provider.Status))
 	result := domain.ListingWriteResult{ListingID: request.ListingID, IdempotencyKey: request.IdempotencyKey, Action: request.Action, Result: domain.WriteResultApplied, Message: "provider listing update applied"}
-	if status == "closed" || (request.Action == domain.ListingWriteEdit && status == "paused") {
-		result.Result, result.Message = domain.WriteResultRejected, "provider listing is "+status
-	} else if request.Action == domain.ListingWritePause && status != "paused" {
+	// Applied only on the expected post-write state; any other or unknown
+	// provider status is an honest rejection, never defaulted to success.
+	expected := "paused"
+	if request.Action == domain.ListingWriteEdit {
+		expected = "active"
+	}
+	if status != expected {
 		result.Result, result.Message = domain.WriteResultRejected, "provider listing state is "+firstNonEmpty(status, "unknown")
 	}
 	return result, nil
@@ -93,8 +97,7 @@ func validateListingWriteRequest(request domain.ListingWriteRequest) (domain.Lis
 }
 
 func listingProviderError(status int, raw []byte) error {
-	message := sanitizedProviderMessage(raw, status)
-	message = strings.Replace(message, "provider price update:", "provider listing update:", 1)
+	message := sanitizedProviderMessage("listing update", raw, status)
 	code := domain.ErrorCode("CONNECTORS_INTERNAL")
 	switch {
 	case status == 401 || status == 403:
