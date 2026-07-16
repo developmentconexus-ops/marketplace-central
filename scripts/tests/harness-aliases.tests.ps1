@@ -44,8 +44,6 @@ try {
 
   $sha = (git -C $repoRoot rev-parse HEAD).Trim()
   Assert-Result (Invoke-FromForeign 'harness:governance' @('-BaseSha', $sha)) 0 'status=passed' 'governance alias'
-  Assert-Result (Invoke-FromForeign 'harness:context:compile' @()) 1 'CTX_FEATURE_INVALID' 'context compile alias'
-  Assert-Result (Invoke-FromForeign 'harness:context:validate' @()) 1 'CTX_SOURCE_MISSING' 'context validate alias'
 
   Push-Location $foreign
   try {

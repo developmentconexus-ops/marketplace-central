@@ -5,13 +5,11 @@
     {
       "id": "harness-control-plane",
       "module_id": "harness",
-      "concerns": ["context", "orchestration", "validation"],
+      "concerns": ["orchestration", "validation"],
       "selectors": [
-        {"path": "scripts/harness/Context.psm1", "selector": "New-CanonicalContextPack", "reason": "compiles canonical pack sources and gates", "estimated_tokens": 260},
-        {"path": "scripts/harness/State.psm1", "selector": "exports", "reason": "owns ignored leases, checkpoints, resume, and handoffs", "estimated_tokens": 260},
-        {"path": "scripts/harness/Impact.psm1", "selector": "Get-HarnessImpactCommand", "reason": "resolves registered argv only", "estimated_tokens": 140},
-        {"path": "scripts/harness.ps1", "selector": "Invoke-Impact", "reason": "stable current-checkout entrypoint", "estimated_tokens": 130},
-        {"path": "scripts/tests/harness-orchestration.tests.ps1", "selector": "fixtures", "reason": "deterministic ownership and resume proof", "estimated_tokens": 180}
+        {"path": "scripts/harness.ps1", "selector": "command dispatcher", "reason": "stable verification-lane entrypoint (unit/integration/live/governance/pg-session)", "estimated_tokens": 200},
+        {"path": "scripts/harness/Postgres.psm1", "selector": "session and lifecycle exports", "reason": "integration lane: session container reuse, per-run database, migration idempotence", "estimated_tokens": 260},
+        {"path": "scripts/tests/harness-orchestration.tests.ps1", "selector": "fixtures", "reason": "doctrine markers and worker-skill pin proof", "estimated_tokens": 120}
       ]
     },
     {

@@ -35,7 +35,7 @@ function Invoke-ProbeLifecycle(
   if (-not [string]::IsNullOrWhiteSpace($FailureOperations)) { $environment['HARNESS_POSTGRES_PROBE_FAIL_OPERATIONS'] = $FailureOperations }
   foreach ($key in $ProbeOptions.Keys) { $environment[$key] = [string]$ProbeOptions[$key] }
   $spec = New-HarnessPostgresRunSpec -RepositoryRoot $repoRoot -RunId $runId -Password $password -DockerFilePath $node -DockerArgumentPrefix @($probe, 'docker')
-  $result = Invoke-HarnessPostgresLifecycle -RunSpec $spec -BaseEnvironment $environment -GoFilePath $node -GoArgumentPrefix @($probe, 'go') -TimeoutSeconds 10 -ReadyMaxAttempts $ReadyMaxAttempts -ReadyRetryDelayMilliseconds 0 -ReadyTimeoutMilliseconds $ReadyTimeoutMilliseconds -HoldConnectionDuringCleanupTest:$HoldConnection
+  $result = Invoke-HarnessPostgresLifecycle -RunSpec $spec -BaseEnvironment $environment -GoFilePath $node -GoArgumentPrefix @($probe, 'go') -TimeoutSeconds 10 -ReadyMaxAttempts $ReadyMaxAttempts -ReadyRetryDelayMilliseconds 0 -ReadyTimeoutMilliseconds $ReadyTimeoutMilliseconds -CreateMaxAttempts 3 -CreateRetryDelayMilliseconds 0 -HoldConnectionDuringCleanupTest:$HoldConnection
   $calls = if (Test-Path -LiteralPath $log) { @(Get-Content -LiteralPath $log | ForEach-Object { $_ | ConvertFrom-Json }) } else { @() }
   [pscustomobject]@{ Result = $result; Calls = $calls; Log = $log; Password = $password; ExpectedMigrationCount = $spec.ExpectedMigrationCount }
 }
@@ -67,7 +67,7 @@ try {
   $happy = Invoke-ProbeLifecycle ''
   $runs += $happy
   $operations = @($happy.Calls.operation)
-  $expected = @('daemon', 'image', 'preflight-name', 'preflight-label', 'start', 'ownership', 'ready', 'port', 'create', 'migrate', 'migrate', 'tests', 'drop', 'drop-verify', 'remove', 'inventory-label', 'inventory-name')
+  $expected = @('daemon', 'image', 'preflight-name', 'preflight-label', 'start', 'ownership', 'ready', 'port', 'create-verify', 'create', 'migrate', 'migrate', 'tests', 'drop', 'drop-verify', 'remove', 'inventory-label', 'inventory-name')
   Assert-True (($operations -join ',') -ceq ($expected -join ',')) "lifecycle order mismatch: $($operations -join ',')"
   Assert-True ($happy.Result.ExitCode -eq 0) 'happy lifecycle returned nonzero'
   Assert-True ($happy.ExpectedMigrationCount -gt 0) 'canonical migration inventory is empty'

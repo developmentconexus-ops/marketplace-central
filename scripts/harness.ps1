@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-  [ValidateSet('unit', 'integration', 'live', 'browser', 'provider-write', 'governance-validate', 'governance-drift', 'governance', 'context-compile', 'context-validate', 'impact')]
+  [ValidateSet('unit', 'integration', 'live', 'browser', 'provider-write', 'governance-validate', 'governance-drift', 'governance', 'pg-session-up', 'pg-session-down')]
   [string]$Command = 'unit',
   [switch]$PreflightOnly,
   [string]$EnvFile,
@@ -10,10 +10,6 @@ param(
   [string]$Actor,
   [string]$IdempotencyKey,
   [string]$BaseSha,
-  [string]$FeaturePath,
-  [string[]]$AllowedPath,
-  [string]$ContextPath,
-  [switch]$RequireCurrentBase,
   [switch]$Execute
 )
 
@@ -27,7 +23,6 @@ Import-Module (Join-Path $PSScriptRoot 'harness/Environment.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'harness/Execution.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'harness/Postgres.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'harness/Evidence.psm1') -Force
-Import-Module (Join-Path $PSScriptRoot 'harness/Impact.psm1') -Force
 
 function Resolve-HarnessApplication {
   param([Parameter(Mandatory)][string]$Name)
@@ -74,10 +69,20 @@ function Invoke-Integration {
   if (-not [string]::IsNullOrWhiteSpace($DatabaseUrl)) { throw 'HPG_EXTERNAL_TARGET_FORBIDDEN' }
   Write-Output 'target=ephemeral-postgres'; Write-Output 'key=MPC_TEST_DATABASE_URL'; Write-Output 'migrations=embedded'
   if ($PreflightOnly) { Write-Output 'status=ready'; return }
-  $passwordBytes = [byte[]]::new(24); [Security.Cryptography.RandomNumberGenerator]::Fill($passwordBytes)
-  $spec = New-HarnessPostgresRunSpec -RepositoryRoot $repoRoot -RunId $runId -Password ([Convert]::ToHexString($passwordBytes).ToLowerInvariant()) -DockerFilePath (Resolve-HarnessPostgresDockerApplication)
-  $result = Invoke-HarnessPostgresLifecycle -RunSpec $spec -BaseEnvironment (New-HarnessChildEnvironment -RepositoryRoot $repoRoot -LaneId 'integration') -GoFilePath (Resolve-HarnessApplication -Name 'go') -TimeoutSeconds 1200
+  $dockerPath = Resolve-HarnessPostgresDockerApplication
+  $session = Get-HarnessPostgresSession -RepositoryRoot $repoRoot -DockerFilePath $dockerPath
+  if ($null -ne $session) {
+    Write-Output 'container=session-reuse'
+    $spec = New-HarnessPostgresRunSpec -RepositoryRoot $repoRoot -RunId $runId -Password ([string]$session.Password) -DockerFilePath $dockerPath
+    $result = Invoke-HarnessPostgresLifecycle -RunSpec $spec -Session $session -BaseEnvironment (New-HarnessChildEnvironment -RepositoryRoot $repoRoot -LaneId 'integration') -GoFilePath (Resolve-HarnessApplication -Name 'go') -TimeoutSeconds 1200
+  } else {
+    Write-Output 'container=ephemeral'
+    $passwordBytes = [byte[]]::new(24); [Security.Cryptography.RandomNumberGenerator]::Fill($passwordBytes)
+    $spec = New-HarnessPostgresRunSpec -RepositoryRoot $repoRoot -RunId $runId -Password ([Convert]::ToHexString($passwordBytes).ToLowerInvariant()) -DockerFilePath $dockerPath
+    $result = Invoke-HarnessPostgresLifecycle -RunSpec $spec -BaseEnvironment (New-HarnessChildEnvironment -RepositoryRoot $repoRoot -LaneId 'integration') -GoFilePath (Resolve-HarnessApplication -Name 'go') -TimeoutSeconds 1200
+  }
   Write-Output "migrations_first=$($result.MigrationsAppliedFirst)"; Write-Output "migrations_second=$($result.MigrationsAppliedSecond)"; Write-Output "resource_count=$(@($result.ResourceInventory).Count)"; Write-Output "port=$($result.HostPort)"
+  foreach ($token in @($result.FailureDiagnosticTokens)) { Write-Output "failure_token=$token" }
   if ($result.ExitCode -ne 0) { throw "postgres lifecycle failed reasons=$((@($result.PrimaryReasonCode) + @($result.CleanupReasonCodes) | Where-Object { $_ } ) -join ',') exit_code=$($result.ExitCode)" }
   Write-Summary -TargetType 'ephemeral-postgres' -Status 'passed'
 }
@@ -112,29 +117,23 @@ function Invoke-Governance {
   Write-GovernanceResult $result; if (-not $result.Passed) { exit 1 }
 }
 
-function Invoke-Context {
-  param([ValidateSet('compile', 'validate')][string]$Mode)
-  Import-Module (Join-Path $PSScriptRoot 'harness/Context.psm1') -Force
-  if ($Mode -eq 'compile') { $path = "scripts/.runs/$runId/context-pack.json"; $result = if ([string]::IsNullOrWhiteSpace($FeaturePath) -or @($AllowedPath).Count -eq 0) { [pscustomobject]@{ Passed=$false; Status='failed'; ErrorCode='CTX_FEATURE_INVALID'; Id='compile-input'; Path='' } } else { New-HarnessContextPack -FeaturePath $FeaturePath -BaseSha $BaseSha -AllowedPath $AllowedPath -OutputPath (Join-Path $repoRoot $path) } }
-  else {
-    $path = if ($ContextPath) { $ContextPath } else { 'context-pack.json' }
-    if ([string]::IsNullOrWhiteSpace($ContextPath)) { $result = [pscustomobject]@{ Passed=$false; Status='failed'; ErrorCode='CTX_SOURCE_MISSING'; Id='context-pack'; Path='' } }
-    else { $resolvedContextPath = if ([IO.Path]::IsPathRooted($ContextPath)) { $ContextPath } else { Join-Path $repoRoot $ContextPath }; $result = Test-HarnessContextPack -Path $resolvedContextPath -RepositoryRoot $repoRoot -RequireCurrentBase:$RequireCurrentBase }
-  }
-  $displayPath = if ($result.Path) { [string]$result.Path } else { $path }
-  Write-Output "status=$($result.Status)"; if (-not $result.Passed) { Write-Output "error_code=$($result.ErrorCode)"; Write-Output "id=$($result.Id)"; Write-Output "path=$displayPath" }; Write-Output "artifact_path=$path"; if (-not $result.Passed) { exit 1 }
+function Invoke-PgSessionUp {
+  $dockerPath = Resolve-HarnessPostgresDockerApplication
+  $session = Start-HarnessPostgresSession -RepositoryRoot $repoRoot -DockerFilePath $dockerPath
+  Write-Output "container=$($session.ContainerName)"; Write-Output "port=$($session.HostPort)"
+  Write-Summary -TargetType 'pg-session' -Status 'ready'
 }
 
-function Invoke-Impact {
-  if ([string]::IsNullOrWhiteSpace($ContextPath)) { throw 'HIMPACT_CONTEXT_REQUIRED' }
-  $result = Invoke-HarnessImpactGate -RepositoryRoot $repoRoot -ContextPath $ContextPath -RunId $runId -RunDirectory $runDir
-  Write-Output "status=$($result.Status)"; Write-Output "outcome_path=$($result.OutcomePath)"; foreach ($seam in @($result.SharedSeams)) { Write-Output "shared_seam=$seam" }; if (-not $result.Passed) { Write-Output "error_code=$($result.ErrorCode)"; exit 1 }
+function Invoke-PgSessionDown {
+  $dockerPath = Resolve-HarnessPostgresDockerApplication
+  Stop-HarnessPostgresSession -RepositoryRoot $repoRoot -DockerFilePath $dockerPath
+  Write-Summary -TargetType 'pg-session' -Status 'stopped'
 }
 
 try {
   switch ($Command) {
     'unit' { Invoke-Unit }; 'integration' { Invoke-Integration }; 'live' { Invoke-Live }; 'browser' { Invoke-Browser }; 'provider-write' { Invoke-ProviderWrite }
     'governance-validate' { Invoke-Governance -Mode validate }; 'governance-drift' { Invoke-Governance -Mode drift }; 'governance' { Invoke-Governance -Mode all }
-    'context-compile' { Invoke-Context -Mode compile }; 'context-validate' { Invoke-Context -Mode validate }; 'impact' { Invoke-Impact }
+    'pg-session-up' { Invoke-PgSessionUp }; 'pg-session-down' { Invoke-PgSessionDown }
   }
 } catch { Write-Output 'status=blocked'; Write-Output $_.Exception.Message; exit 1 }

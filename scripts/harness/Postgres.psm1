@@ -60,6 +60,130 @@ function Get-HarnessIntegrationTestPackages {
   return @($packages)
 }
 
+function Get-HarnessPostgresSessionStatePath {
+  param([Parameter(Mandatory)][string]$RepositoryRoot)
+  return Join-Path $RepositoryRoot 'scripts/.runs/pg-session.json'
+}
+
+function Get-HarnessPostgresSessionContainerName {
+  param([Parameter(Mandatory)][string]$RepositoryRoot)
+  # Per-checkout name: hub and chip worktrees each own their session container,
+  # so one checkout starting a session never removes another checkout's container.
+  $canonical = [IO.Path]::GetFullPath($RepositoryRoot).TrimEnd('\', '/').ToLowerInvariant()
+  $digest = [Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($canonical))
+  $suffix = [Convert]::ToHexString($digest).Substring(0, 8).ToLowerInvariant()
+  return "mpc-pg-session-$suffix"
+}
+
+function Get-HarnessPostgresSession {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory)][string]$RepositoryRoot,
+    [Parameter(Mandatory)][string]$DockerFilePath,
+    [string[]]$DockerArgumentPrefix = @()
+  )
+
+  $statePath = Get-HarnessPostgresSessionStatePath -RepositoryRoot $RepositoryRoot
+  if (-not (Test-Path -LiteralPath $statePath -PathType Leaf)) { return $null }
+  try { $state = Get-Content -Raw -LiteralPath $statePath | ConvertFrom-Json } catch { return $null }
+  if ($null -eq $state -or
+      [string]::IsNullOrWhiteSpace([string]$state.ContainerName) -or
+      $state.ContainerName -cne (Get-HarnessPostgresSessionContainerName -RepositoryRoot $RepositoryRoot) -or
+      [string]::IsNullOrWhiteSpace([string]$state.Password) -or
+      [int]$state.HostPort -lt 1 -or [int]$state.HostPort -gt 65535) {
+    return $null
+  }
+  $environment = [System.Collections.Generic.Dictionary[string,string]]::new([StringComparer]::OrdinalIgnoreCase)
+  $request = New-HarnessProcessRequest -FilePath $DockerFilePath -ArgumentList (@($DockerArgumentPrefix) + @('inspect', '--format', '{{.State.Running}}', [string]$state.ContainerName)) -WorkingDirectory $RepositoryRoot -Environment $environment -TimeoutSeconds 60 -RedactionCandidates @([string]$state.Password)
+  $inspect = Invoke-HarnessProcess -Request $request
+  if ($inspect.ExitCode -ne 0 -or $inspect.Stdout.Trim() -cne 'true') { return $null }
+  return [pscustomobject]@{
+    ContainerName = [string]$state.ContainerName
+    HostPort = [int]$state.HostPort
+    Password = [string]$state.Password
+  }
+}
+
+function Start-HarnessPostgresSession {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory)][string]$RepositoryRoot,
+    [Parameter(Mandatory)][string]$DockerFilePath,
+    [string[]]$DockerArgumentPrefix = @(),
+    [ValidateRange(1, 600)][int]$ReadyMaxAttempts = 60,
+    [ValidateRange(0, 60000)][int]$ReadyRetryDelayMilliseconds = 1000
+  )
+
+  $existing = Get-HarnessPostgresSession -RepositoryRoot $RepositoryRoot -DockerFilePath $DockerFilePath -DockerArgumentPrefix $DockerArgumentPrefix
+  if ($null -ne $existing) { return $existing }
+
+  $containerName = Get-HarnessPostgresSessionContainerName -RepositoryRoot $RepositoryRoot
+  $passwordBytes = [byte[]]::new(24)
+  [Security.Cryptography.RandomNumberGenerator]::Fill($passwordBytes)
+  $password = [Convert]::ToHexString($passwordBytes).ToLowerInvariant()
+  $environment = [System.Collections.Generic.Dictionary[string,string]]::new([StringComparer]::OrdinalIgnoreCase)
+  $environment['POSTGRES_PASSWORD'] = $password
+  function Invoke-SessionDocker([string[]]$Arguments) {
+    $request = New-HarnessProcessRequest -FilePath $DockerFilePath -ArgumentList (@($DockerArgumentPrefix) + @($Arguments)) -WorkingDirectory $RepositoryRoot -Environment $environment -TimeoutSeconds 120 -RedactionCandidates @($password)
+    return Invoke-HarnessProcess -Request $request
+  }
+
+  # Stale state or dead container: clear both before starting fresh.
+  [void](Invoke-SessionDocker @('rm', '--force', $containerName))
+  $statePath = Get-HarnessPostgresSessionStatePath -RepositoryRoot $RepositoryRoot
+  Remove-Item -LiteralPath $statePath -Force -ErrorAction SilentlyContinue
+
+  $start = Invoke-SessionDocker @(
+    'run', '--detach', '--rm', '--pull=never',
+    '--name', $containerName,
+    '--label', 'marketplace-central.harness.session=true',
+    '--publish', '127.0.0.1::5432',
+    '--tmpfs', '/var/lib/postgresql/data:rw,noexec,nosuid,size=512m',
+    '--env', 'POSTGRES_PASSWORD',
+    '--env', 'POSTGRES_DB=postgres',
+    'postgres:16-bookworm'
+  )
+  if ($start.ExitCode -ne 0) { throw 'HPG_CONTAINER_START_FAILED' }
+
+  $ready = $null
+  for ($attempt = 1; $attempt -le $ReadyMaxAttempts; $attempt++) {
+    $ready = Invoke-SessionDocker @('exec', $containerName, 'pg_isready', '--username', 'postgres', '--dbname', 'postgres', '--timeout', '5')
+    if ($ready.ExitCode -eq 0) { break }
+    if ($attempt -lt $ReadyMaxAttempts -and $ReadyRetryDelayMilliseconds -gt 0) { Start-Sleep -Milliseconds $ReadyRetryDelayMilliseconds }
+  }
+  if ($null -eq $ready -or $ready.ExitCode -ne 0) {
+    [void](Invoke-SessionDocker @('rm', '--force', $containerName))
+    throw 'HPG_READY_TIMEOUT'
+  }
+
+  $port = Invoke-SessionDocker @('port', $containerName, '5432/tcp')
+  if ($port.ExitCode -ne 0 -or $port.Stdout -notmatch '(?m)^127\.0\.0\.1:(\d+)\s*$') {
+    [void](Invoke-SessionDocker @('rm', '--force', $containerName))
+    throw 'HPG_PORT_UNAVAILABLE'
+  }
+  $hostPort = [int]$Matches[1]
+
+  $stateDirectory = Split-Path -Parent $statePath
+  New-Item -ItemType Directory -Path $stateDirectory -Force | Out-Null
+  @{ ContainerName = $containerName; HostPort = $hostPort; Password = $password } | ConvertTo-Json | Set-Content -LiteralPath $statePath -Encoding utf8
+  return [pscustomobject]@{ ContainerName = $containerName; HostPort = $hostPort; Password = $password }
+}
+
+function Stop-HarnessPostgresSession {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory)][string]$RepositoryRoot,
+    [Parameter(Mandatory)][string]$DockerFilePath,
+    [string[]]$DockerArgumentPrefix = @()
+  )
+
+  $environment = [System.Collections.Generic.Dictionary[string,string]]::new([StringComparer]::OrdinalIgnoreCase)
+  $request = New-HarnessProcessRequest -FilePath $DockerFilePath -ArgumentList (@($DockerArgumentPrefix) + @('rm', '--force', (Get-HarnessPostgresSessionContainerName -RepositoryRoot $RepositoryRoot))) -WorkingDirectory $RepositoryRoot -Environment $environment -TimeoutSeconds 120 -RedactionCandidates @()
+  [void](Invoke-HarnessProcess -Request $request)
+  $statePath = Get-HarnessPostgresSessionStatePath -RepositoryRoot $RepositoryRoot
+  Remove-Item -LiteralPath $statePath -Force -ErrorAction SilentlyContinue
+}
+
 function New-HarnessPostgresRunSpec {
   [CmdletBinding()]
   param(
@@ -137,8 +261,11 @@ function Invoke-HarnessPostgresLifecycle {
     [ValidateRange(1, 600)][int]$ReadyMaxAttempts = 60,
     [ValidateRange(0, 60000)][int]$ReadyRetryDelayMilliseconds = 1000,
     [ValidateRange(1, 600000)][int]$ReadyTimeoutMilliseconds = 60000,
+    [ValidateRange(1, 60)][int]$CreateMaxAttempts = 15,
+    [ValidateRange(0, 60000)][int]$CreateRetryDelayMilliseconds = 1000,
     [string[]]$TestArguments = @(),
-    [switch]$HoldConnectionDuringCleanupTest
+    [switch]$HoldConnectionDuringCleanupTest,
+    [object]$Session = $null
   )
 
   if (-not $RunSpec.PSObject.Properties['ExpectedMigrationCount'] -or $RunSpec.ExpectedMigrationCount -isnot [int] -or $RunSpec.ExpectedMigrationCount -lt 1) {
@@ -157,6 +284,7 @@ function Invoke-HarnessPostgresLifecycle {
   $databaseCreated = $false
   $containerStartAttempted = $false
   $containerOwned = $false
+  $execContainer = if ($null -ne $Session) { [string]$Session.ContainerName } else { [string]$RunSpec.ContainerName }
   $firstCount = -1
   $secondCount = -1
   $hostPort = 0
@@ -195,6 +323,14 @@ function Invoke-HarnessPostgresLifecycle {
     $daemon = Invoke-Docker @('version', '--format', '{{.Server.Version}}')
     if ($daemon.ExitCode -ne 0) { Set-Primary 'HPG_DOCKER_UNAVAILABLE' $daemon.ExitCode; break }
 
+    if ($null -ne $Session) {
+      # Session mode: reuse the long-lived container started by Start-HarnessPostgresSession.
+      # Verify it is still running, then skip straight to per-run database creation.
+      $sessionAlive = Invoke-Docker @('inspect', '--format', '{{.State.Running}}', $execContainer)
+      if ($sessionAlive.ExitCode -ne 0 -or $sessionAlive.Stdout.Trim() -cne 'true') { Set-Primary 'HPG_CONTAINER_START_FAILED' 1; break }
+      $hostPort = [int]$Session.HostPort
+      if ($hostPort -lt 1 -or $hostPort -gt 65535) { Set-Primary 'HPG_PORT_UNAVAILABLE' 1; break }
+    } else {
     $image = Invoke-Docker @('image', 'inspect', 'postgres:16-bookworm', '--format', '{{.Id}}')
     if ($image.ExitCode -ne 0) { Set-Primary 'HPG_IMAGE_MISSING' $image.ExitCode; break }
 
@@ -241,6 +377,7 @@ function Invoke-HarnessPostgresLifecycle {
     if ($port.ExitCode -ne 0 -or $port.Stdout -notmatch '(?m)^127\.0\.0\.1:(\d+)\s*$') { Set-Primary 'HPG_PORT_UNAVAILABLE' $port.ExitCode; break }
     $hostPort = [int]$Matches[1]
     if ($hostPort -lt 1 -or $hostPort -gt 65535) { Set-Primary 'HPG_PORT_UNAVAILABLE' 1; break }
+    }
     $escapedPassword = [uri]::EscapeDataString([string]$RunSpec.Password)
     $targetURL = "postgresql://postgres:$escapedPassword@127.0.0.1:$hostPort/$($RunSpec.DatabaseName)?sslmode=disable"
     $goEnvironment['MPC_TEST_DATABASE_URL'] = $targetURL
@@ -249,12 +386,12 @@ function Invoke-HarnessPostgresLifecycle {
     # after init), so the first CREATE DATABASE may hit a restarting server. Retry until
     # the database provably exists instead of trusting readiness.
     $create = $null
-    for ($createAttempt = 1; $createAttempt -le 15; $createAttempt++) {
-      $exists = Invoke-Docker @('exec', $RunSpec.ContainerName, 'psql', '--username', 'postgres', '--dbname', 'postgres', '--quiet', '--tuples-only', '--no-align', '--set', 'ON_ERROR_STOP=1', '--command', "SELECT 1 FROM pg_database WHERE datname = '$($RunSpec.DatabaseName)'")
+    for ($createAttempt = 1; $createAttempt -le $CreateMaxAttempts; $createAttempt++) {
+      $exists = Invoke-Docker @('exec', $execContainer, 'psql', '--username', 'postgres', '--dbname', 'postgres', '--quiet', '--tuples-only', '--no-align', '--set', 'ON_ERROR_STOP=1', '--command', "SELECT 1 FROM pg_database WHERE datname = '$($RunSpec.DatabaseName)'")
       if ($exists.ExitCode -eq 0 -and $exists.Stdout.Trim() -eq '1') { $create = $exists; break }
-      $create = Invoke-Docker @('exec', $RunSpec.ContainerName, 'psql', '--username', 'postgres', '--dbname', 'postgres', '--set', 'ON_ERROR_STOP=1', '--command', "CREATE DATABASE $($RunSpec.DatabaseName)")
+      $create = Invoke-Docker @('exec', $execContainer, 'psql', '--username', 'postgres', '--dbname', 'postgres', '--set', 'ON_ERROR_STOP=1', '--command', "CREATE DATABASE $($RunSpec.DatabaseName)")
       if ($create.ExitCode -eq 0) { break }
-      if ($createAttempt -lt 15) { Start-Sleep -Milliseconds 1000 }
+      if ($createAttempt -lt $CreateMaxAttempts -and $CreateRetryDelayMilliseconds -gt 0) { Start-Sleep -Milliseconds $CreateRetryDelayMilliseconds }
     }
     if ($null -eq $create -or $create.ExitCode -ne 0) { Set-Primary 'HPG_DATABASE_CREATE_FAILED' $(if ($null -eq $create) { 1 } else { $create.ExitCode }); break }
     $databaseCreated = $true
@@ -269,10 +406,10 @@ function Invoke-HarnessPostgresLifecycle {
     if ($firstCount -ne $expectedMigrationCount -or $secondCount -ne 0) { Set-Primary 'HPG_MIGRATION_NOT_IDEMPOTENT' 1; break }
 
     if ($HoldConnectionDuringCleanupTest) {
-      $heldConnection = Invoke-Docker @('exec', '--detach', $RunSpec.ContainerName, 'psql', '--username', 'postgres', '--dbname', $RunSpec.DatabaseName, '--command', 'SELECT pg_sleep(300)')
+      $heldConnection = Invoke-Docker @('exec', '--detach', $execContainer, 'psql', '--username', 'postgres', '--dbname', $RunSpec.DatabaseName, '--command', 'SELECT pg_sleep(300)')
       if ($heldConnection.ExitCode -ne 0) { Set-Primary 'HPG_TEST_FAILED' $heldConnection.ExitCode; break }
       for ($heldAttempt = 1; $heldAttempt -le 20; $heldAttempt++) {
-        $heldCheck = Invoke-Docker @('exec', $RunSpec.ContainerName, 'psql', '--username', 'postgres', '--dbname', 'postgres', '--quiet', '--tuples-only', '--no-align', '--set', 'ON_ERROR_STOP=1', '--command', "SELECT count(*) FROM pg_stat_activity WHERE datname = '$($RunSpec.DatabaseName)' AND state = 'active' AND query LIKE 'SELECT pg_sleep(300)%'")
+        $heldCheck = Invoke-Docker @('exec', $execContainer, 'psql', '--username', 'postgres', '--dbname', 'postgres', '--quiet', '--tuples-only', '--no-align', '--set', 'ON_ERROR_STOP=1', '--command', "SELECT count(*) FROM pg_stat_activity WHERE datname = '$($RunSpec.DatabaseName)' AND state = 'active' AND query LIKE 'SELECT pg_sleep(300)%'")
         if ($heldCheck.ExitCode -eq 0 -and $heldCheck.Stdout.Trim() -match '^[1-9][0-9]*$') { $heldConnectionConfirmed = $true; break }
         Start-Sleep -Milliseconds 100
       }
@@ -286,10 +423,10 @@ function Invoke-HarnessPostgresLifecycle {
     }
     } while ($false)
   } finally {
-    if ($databaseCreated -and $containerOwned) {
-      $drop = Invoke-Docker @('exec', $RunSpec.ContainerName, 'psql', '--username', 'postgres', '--dbname', 'postgres', '--set', 'ON_ERROR_STOP=1', '--command', "DROP DATABASE $($RunSpec.DatabaseName) WITH (FORCE)")
+    if ($databaseCreated -and ($containerOwned -or $null -ne $Session)) {
+      $drop = Invoke-Docker @('exec', $execContainer, 'psql', '--username', 'postgres', '--dbname', 'postgres', '--set', 'ON_ERROR_STOP=1', '--command', "DROP DATABASE $($RunSpec.DatabaseName) WITH (FORCE)")
       if ($drop.ExitCode -ne 0) { Add-CleanupCode 'HPG_DATABASE_DROP_FAILED' }
-      $dropVerify = Invoke-Docker @('exec', $RunSpec.ContainerName, 'psql', '--username', 'postgres', '--dbname', 'postgres', '--tuples-only', '--no-align', '--set', 'ON_ERROR_STOP=1', '--command', "SELECT datname FROM pg_database WHERE datname = '$($RunSpec.DatabaseName)'")
+      $dropVerify = Invoke-Docker @('exec', $execContainer, 'psql', '--username', 'postgres', '--dbname', 'postgres', '--tuples-only', '--no-align', '--set', 'ON_ERROR_STOP=1', '--command', "SELECT datname FROM pg_database WHERE datname = '$($RunSpec.DatabaseName)'")
       if ($dropVerify.ExitCode -ne 0 -or -not [string]::IsNullOrWhiteSpace($dropVerify.Stdout)) { Add-CleanupCode 'HPG_DATABASE_DROP_FAILED' }
     }
     if ($containerOwned) {
@@ -327,4 +464,4 @@ function Invoke-HarnessPostgresLifecycle {
   }
 }
 
-Export-ModuleMember -Function Resolve-HarnessPostgresDockerApplication, New-HarnessPostgresRunSpec, Invoke-HarnessPostgresLifecycle, Get-HarnessIntegrationTestPackages
+Export-ModuleMember -Function Resolve-HarnessPostgresDockerApplication, New-HarnessPostgresRunSpec, Invoke-HarnessPostgresLifecycle, Get-HarnessIntegrationTestPackages, Get-HarnessPostgresSession, Start-HarnessPostgresSession, Stop-HarnessPostgresSession

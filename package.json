@@ -29,9 +29,8 @@
     "harness:browser": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command browser",
     "harness:provider-write": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command provider-write",
     "harness:governance": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command governance",
-    "harness:context:compile": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command context-compile",
-    "harness:context:validate": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command context-validate",
-    "harness:impact": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command impact"
+    "harness:pg:up": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command pg-session-up",
+    "harness:pg:down": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command pg-session-down"
   },
   "dependencies": {},
   "devDependencies": {

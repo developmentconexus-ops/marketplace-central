@@ -35,6 +35,7 @@ function operationForDocker(argv) {
   if (text.includes("pg_isready")) return "ready";
   if (text.includes("CREATE DATABASE")) return "create";
   if (text.includes("DROP DATABASE")) return "drop";
+  if (text.includes("SELECT 1 FROM pg_database")) return "create-verify";
   if (text.includes("FROM pg_database")) return "drop-verify";
   if (text.includes("FROM pg_stat_activity")) return "held-check";
   return "docker-unknown";
@@ -129,6 +130,7 @@ if (operation === "drop" && !failures.includes(operation) && process.env.HARNESS
   state.databaseExists = false;
   writeFileSync(statePath, JSON.stringify(state));
 }
+if (operation === "create-verify" && state.databaseExists) process.stdout.write("1\n");
 if (operation === "drop-verify" && state.databaseExists) process.stdout.write("database-still-exists\n");
 
 if (operation === "remove") {
