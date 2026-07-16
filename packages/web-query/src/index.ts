@@ -139,3 +139,4 @@ export function FreshnessIndicator({ asOf }: { asOf: string | null | undefined }
 }
 
 export { invalidateAfterMutation, UnknownMutationInvalidationTypeError, type MutationInvalidationType } from "./invalidation";
+export { failureCodes, failureCopy, type FailureCode } from "./failureCopy";
