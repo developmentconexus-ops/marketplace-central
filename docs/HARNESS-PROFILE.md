@@ -147,6 +147,12 @@ verification conflicts against this list.
   allowed (§15 — reviewed-green before merge/dependent slice, not before every next slice);
   ★ crews run under noise control (FAIL-restraint verbatim-quote rule, advisory cap 10,
   learnings suppression via `docs/REVIEW-LEARNINGS.md`).
+- Reviewer model/reasoning bindings (standard §13 restates core §1 matrix — canonical there):
+  slice reviewer = Claude subagent **sonnet** (session-default effort); dual gate = **full
+  Opus** + **GPT-5.6 Sol `--effort medium`**; ★ crews = cold Claude **sonnet** subagents,
+  mission readiness P7 adds **GPT-5.6 Sol `--effort high`**; hub spot-check = sonnet subagent.
+  GPT flags NEVER retyped from memory — resolve via the `codex-dispatch` skill; `--effort`
+  always explicit.
 
 ## Amendment log
 
@@ -156,6 +162,7 @@ verification conflicts against this list.
 2026-07-15 · §3 · ratified · fresh-worktree GOMODCACHE warm + HPG_MIGRATION_FAILED/migrations_first=-1 false-alarm signature (M-01 field finding)
 2026-07-15 · §4 · ratified · session postgres container harness:pg:up/down (mpc-pg-session-<8hex>) + createdb first-boot retry absorbing 3D000
 2026-07-16 · §11 + rubrics · ratified · REVIEW-STANDARD execution model (operator study, method-level): prompt-pack vehicle, one-reviewer slices, simultaneous dual gate, disjoint-slice overlap cadence, ★ crew noise control (FAIL-restraint + advisory cap 10 + learnings) — plugin rubrics amended upstream
+2026-07-16 · §11 · ratified · reviewer model/reasoning bindings pinned in standard §13 (operator correction — execution must carry the ratified matrix, evidence-based): sonnet slice reviewer, Opus+Sol-medium dual gate, sonnet ★ crews + Sol-high P7, codex-dispatch resolver mandatory for GPT flags
 2026-07-16 · §11 (new) + HARNESS.md §4 · ratified · REVIEW-STANDARD adopted (operator-requested hardening): fixed review order, global-vs-local-maximum G1-G3, YAGNI+DRY rule-of-three, two-axis severity, anchor-or-abstain+receipts, deterministic pre-pass (go vet added to L0), dual-gate agreement merge, delta re-review, learnings memory docs/REVIEW-LEARNINGS.md, ≤300-line slices
 2026-07-15 · §7 · ratified · no-stub doctrine: validation contracts/tests never fallback stub/mock on integration seams without operator authorization; real dependency required; planning declares real bindings up front (operator ruling after M-01 C10 — root.go nil-DB cost reader + permanent-unavailable policy reader passed hermetic gates, blocked live validation)
 2026-07-15 · §2 L2 + §6 · corrected · dev stack ONLY via docker compose (npm run docker:dev / docker:oauth), hub-owned; chips never boot own server, never bind :8080/:5174, never load .env* into session env (field violation: M-01 chip ran bare worktree server with real .env for C10 — 42P01s were self-inflicted bypass of compose postgres+entrypoint)
