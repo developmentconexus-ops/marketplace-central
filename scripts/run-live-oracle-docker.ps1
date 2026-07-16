@@ -118,8 +118,17 @@ function Get-LiveOracleCredentialValues {
   $localValues = Get-LiveOracleLocalEnvValues -EnvFilePath $EnvFilePath
   $values = [ordered]@{}
   $missing = [Collections.Generic.List[string]]::new()
+  # Reads stay literal per key so the runtime-config governance registry can
+  # bind each read to this file (no unbounded dynamic reader).
+  $processValues = [ordered]@{
+    MPC_SANKHYA_ORACLE_USERNAME = $env:MPC_SANKHYA_ORACLE_USERNAME
+    MPC_SANKHYA_ORACLE_PASSWORD = $env:MPC_SANKHYA_ORACLE_PASSWORD
+    MPC_SANKHYA_ORACLE_HOST = $env:MPC_SANKHYA_ORACLE_HOST
+    MPC_SANKHYA_ORACLE_PORT = $env:MPC_SANKHYA_ORACLE_PORT
+    MPC_SANKHYA_ORACLE_CONNECT_STRING = $env:MPC_SANKHYA_ORACLE_CONNECT_STRING
+  }
   foreach ($key in $script:CallerConnectionKeys) {
-    $processValue = [Environment]::GetEnvironmentVariable($key, 'Process')
+    $processValue = [string]$processValues[$key]
     $value = if (-not [string]::IsNullOrWhiteSpace($processValue)) { $processValue.Trim() } else { $localValues[$key] }
     if ([string]::IsNullOrWhiteSpace($value)) { $missing.Add($key); continue }
     $values[$key] = $value
@@ -192,8 +201,24 @@ function New-LiveOracleDockerProcessStartInfo {
   # configuration. Retain only the OS support values Docker needs to execute,
   # then add the explicitly allowlisted runtime values for the run invocation.
   $startInfo.Environment.Clear()
+  $osSupportValues = [ordered]@{
+    SystemRoot = $env:SystemRoot
+    WINDIR = $env:WINDIR
+    ComSpec = $env:ComSpec
+    PATH = $env:PATH
+    PATHEXT = $env:PATHEXT
+    TEMP = $env:TEMP
+    TMP = $env:TMP
+    USERPROFILE = $env:USERPROFILE
+    HOMEDRIVE = $env:HOMEDRIVE
+    HOMEPATH = $env:HOMEPATH
+    APPDATA = $env:APPDATA
+    LOCALAPPDATA = $env:LOCALAPPDATA
+    ProgramFiles = $env:ProgramFiles
+    ProgramData = $env:ProgramData
+  }
   foreach ($key in $script:DockerExecutionEnvironmentKeys) {
-    $value = [Environment]::GetEnvironmentVariable($key, 'Process')
+    $value = [string]$osSupportValues[$key]
     if (-not [string]::IsNullOrWhiteSpace($value)) { $startInfo.Environment[$key] = $value }
   }
   foreach ($key in $Environment.Keys) { $startInfo.Environment[$key] = [string]$Environment[$key] }
