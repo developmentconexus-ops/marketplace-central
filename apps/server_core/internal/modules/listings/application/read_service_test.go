@@ -11,12 +11,14 @@ import (
 	"marketplace-central/apps/server_core/internal/modules/listings/ports"
 )
 
-// sourceUnavailable builds a typed source-unavailable read error using the
-// existing internal_read error taxonomy, the only kind that may legitimately
-// degrade cost/ceiling facts to null. Any other error (plain, cancellation,
-// timeout) must propagate instead of degrading.
 func sourceUnavailable(msg string) error {
 	return internalreaddomain.NewReadError(internalreaddomain.ReadErrorSourceUnavailable, msg, nil)
+}
+
+// wrappedCause builds the error shape the oracle reader produces: the
+// source-unavailable code carrying an arbitrary underlying cause.
+func wrappedCause(cause error) error {
+	return internalreaddomain.NewReadError(internalreaddomain.ReadErrorSourceUnavailable, "oracle read failed", cause)
 }
 
 type fakeRows struct {
@@ -159,10 +161,6 @@ func TestReadServiceSummaryUnknownInputsAndSourceOutage(t *testing.T) {
 	}
 }
 
-// TestReadServiceSummaryNonSourceUnavailableErrorsPropagate pins B2: only a
-// genuine source-unavailable read error may degrade to null margins.
-// Cancellation, timeout, and plain adapter/data defects must propagate as
-// errors instead of silently becoming a confident 200 with null facts.
 func TestReadServiceSummaryNonSourceUnavailableErrorsPropagate(t *testing.T) {
 	base := ports.ListingSummaryRow{Total: 2, Unlinked: 1, Linked: []ports.SummaryLinkedRow{{CostID: 1, Price: money("90")}}}
 	for _, tc := range []struct {
@@ -314,8 +312,23 @@ func TestReadServiceOptionalFactOutagesServeListByProductAndGet(t *testing.T) {
 			if got.Cost != nil || got.BelowMarginWorstCase != nil {
 				t.Fatalf("degraded detail=%+v", got)
 			}
-			if outage.ceilingErr && got.ICMSWorstCaseByUF != nil {
-				t.Fatalf("ceiling outage matrix=%+v", got.ICMSWorstCaseByUF)
+			if outage.ceilingErr {
+				if got.ICMSWorstCaseByUF != nil {
+					t.Fatalf("ceiling outage matrix=%+v", got.ICMSWorstCaseByUF)
+				}
+			}
+			if outage.costErr {
+				if got.ICMSWorstCaseByUF == nil {
+					t.Fatalf("cost outage matrix=nil, want full matrix with only below_margin_at_uf null")
+				}
+				for _, row := range *got.ICMSWorstCaseByUF {
+					if row.WorstCaseICMSPct == nil || row.PriceNetBasis == nil {
+						t.Fatalf("cost outage row missing known-true facts: %+v", row)
+					}
+					if row.BelowMarginAtUF != nil {
+						t.Fatalf("cost outage row should have unknown below_margin_at_uf: %+v", row)
+					}
+				}
 			}
 			if f.costCalls != outage.wantCosts {
 				t.Fatalf("cost calls=%d want=%d", f.costCalls, outage.wantCosts)
@@ -324,11 +337,6 @@ func TestReadServiceOptionalFactOutagesServeListByProductAndGet(t *testing.T) {
 	}
 }
 
-// TestReadServiceFlatPathNonSourceUnavailableErrorsPropagate pins B2 across
-// List, ByProduct and Get: only a genuine source-unavailable read error may
-// degrade cost/ceiling facts to null. Cancellation, timeout, and plain
-// adapter/data defects must propagate as errors instead of silently
-// becoming a confident 200 with null facts.
 func TestReadServiceFlatPathNonSourceUnavailableErrorsPropagate(t *testing.T) {
 	newFacts := func(ceilingErr, costErr error) *fakeFacts {
 		f := &fakeFacts{ceilingErr: ceilingErr, costErr: costErr}
@@ -379,19 +387,12 @@ func TestReadServiceFlatPathNonSourceUnavailableErrorsPropagate(t *testing.T) {
 	}
 }
 
-// TestReadServiceDependentFilterErrorsWhenFactsSourceUnavailable pins B1
-// (hub ruling: PURE, uniform fail-honest). ANY fact-dependent filter --
-// filter.has_exception (true or false) or filter.exception=below_margin --
-// during a genuine source-unavailable outage must return a source-unavailable
-// error through the existing error envelope, never a confident 200 built by
-// re-querying without the filter applied. This supersedes the old
-// TestReadServiceDependentFilterPassesThroughWhenOptionalFactsUnavailable,
-// which pinned the defect (rows whose facts couldn't be evaluated were
-// silently served as matches/non-matches -- a known-false fact returned as a
-// match, exactly what ADR-17 forbids). Applying the filter's SQL-computable
-// half only (has_exception) while nulling margin was explicitly rejected by
-// the hub ruling as under-inclusive; both filter directions get the same
-// uniform error.
+// TestReadServiceDependentFilterErrorsWhenFactsSourceUnavailable asserts that
+// ANY fact-dependent filter -- filter.has_exception (true or false) or
+// filter.exception=below_margin -- during a genuine source-unavailable
+// outage returns a source-unavailable error, never a confident 200 built by
+// re-querying without the filter applied. Both filter directions get the
+// same uniform error.
 func TestReadServiceDependentFilterErrorsWhenFactsSourceUnavailable(t *testing.T) {
 	trueValue, falseValue := true, false
 	originalCursor := ports.ListingCursor{LastTitle: "before", ListingID: "i~before~-"}
@@ -453,11 +454,9 @@ func TestReadServiceDependentFilterErrorsWhenFactsSourceUnavailable(t *testing.T
 	}
 }
 
-// TestReadServiceNoDependentFilterStillDegradesOnSourceUnavailable guards
-// against over-correcting B1: a request with NO fact-dependent filter must
-// still serve a 200 with facts nulled on a genuine source-unavailable
-// outage -- that path is ADR-17-correct (null = not-evaluable) and must not
-// regress into an error just because dependent-filter requests now do.
+// TestReadServiceNoDependentFilterStillDegradesOnSourceUnavailable asserts
+// that a request with NO fact-dependent filter still serves a 200 with facts
+// nulled on a genuine source-unavailable outage.
 func TestReadServiceNoDependentFilterStillDegradesOnSourceUnavailable(t *testing.T) {
 	for _, outage := range []struct {
 		name       string
@@ -506,10 +505,101 @@ func TestReadServiceNoDependentFilterStillDegradesOnSourceUnavailable(t *testing
 	}
 }
 
-// TestReadServiceDependentFilterNonSourceUnavailablePropagates pins B2 for
-// the scan path: cancellation/timeout/adapter defects discovered mid-scan
-// under a fact-dependent filter must propagate as errors, not be classified
-// as a degrade-worthy outage.
+// TestReadServiceCancellationCarryingSourceUnavailableCodePropagates asserts
+// that cancellation and timeout propagate on every read path even when the
+// error reaches the service already labelled source-unavailable. A cancelled
+// or timed-out request must never serve a 200 with facts nulled.
+func TestReadServiceCancellationCarryingSourceUnavailableCodePropagates(t *testing.T) {
+	for _, cause := range []struct {
+		name string
+		err  error
+	}{
+		{"canceled", context.Canceled},
+		{"deadline exceeded", context.DeadlineExceeded},
+	} {
+		for _, fact := range []struct {
+			name       string
+			ceilingErr bool
+		}{
+			{"ceiling", true},
+			{"cost", false},
+		} {
+			newFacts := func() *fakeFacts {
+				f := &fakeFacts{}
+				if fact.ceilingErr {
+					f.ceilingErr = wrappedCause(cause.err)
+					return f
+				}
+				f.ceilings = map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}
+				f.costErr = wrappedCause(cause.err)
+				return f
+			}
+			prefix := cause.name + " " + fact.name + " "
+
+			t.Run(prefix+"summary", func(t *testing.T) {
+				base := ports.ListingSummaryRow{Total: 2, Unlinked: 1, Linked: []ports.SummaryLinkedRow{{CostID: 1, Price: money("90")}}}
+				got, err := NewReadService(&fakeRows{summary: base}, newFacts(), fakePolicy{found: true}, fakeInstallation(true), time.Now).Summary(context.Background(), ports.SummaryQuery{InstallationID: "i"})
+				if !errors.Is(err, cause.err) {
+					t.Fatalf("expected %v to propagate, got summary=%+v err=%v", cause.err, got, err)
+				}
+			})
+
+			t.Run(prefix+"list", func(t *testing.T) {
+				r := &fakeRows{pages: []ports.ListingRowPage{{Items: []domain.ListingReadModel{resolved("42664")}}}}
+				page, err := NewReadService(r, newFacts(), fakePolicy{found: true}, fakeInstallation(true), time.Now).List(context.Background(), ports.ListingQuery{InstallationID: "i", Limit: 1})
+				if !errors.Is(err, cause.err) {
+					t.Fatalf("expected %v to propagate, got page=%+v err=%v", cause.err, page, err)
+				}
+			})
+
+			t.Run(prefix+"by product", func(t *testing.T) {
+				productID := "42664"
+				r := &fakeRows{groupPages: []ports.ListingGroupRowPage{{Groups: []domain.ListingGroup{{ProductID: &productID, ProductTitle: ptrString("Produto"), Listings: []domain.ListingReadModel{resolved(productID)}}}}}}
+				page, err := NewReadService(r, newFacts(), fakePolicy{found: true}, fakeInstallation(true), time.Now).ByProduct(context.Background(), ports.ListingGroupQuery{InstallationID: "i", Limit: 1})
+				if !errors.Is(err, cause.err) {
+					t.Fatalf("expected %v to propagate, got page=%+v err=%v", cause.err, page, err)
+				}
+			})
+
+			t.Run(prefix+"get", func(t *testing.T) {
+				model := resolved("i~42664~-")
+				model.InstallationID = "i"
+				model.ProviderListingID = "42664"
+				model.Link.ProductID = ptrString("42664")
+				r := &fakeRows{getModel: model, getFound: true, timeline: []domain.TimelineEvent{{Kind: "synced"}}}
+				got, timeline, err := NewReadService(r, newFacts(), fakePolicy{found: true}, fakeInstallation(true), time.Now).Get(context.Background(), domain.ListingID{InstallationID: "i", ProviderListingID: "42664", VariationID: "-"})
+				if !errors.Is(err, cause.err) {
+					t.Fatalf("expected %v to propagate, got detail=%+v timeline=%+v err=%v", cause.err, got, timeline, err)
+				}
+			})
+
+			t.Run(prefix+"dependent filter scan", func(t *testing.T) {
+				next := ports.ListingCursor{LastTitle: "next", ListingID: "i~next~-"}
+				r := &fakeRows{pages: []ports.ListingRowPage{{Items: []domain.ListingReadModel{resolved("42664")}, NextCursor: &next}}}
+				query := ports.ListingQuery{InstallationID: "i", Limit: 1, Filter: domain.ListingFilter{Exception: domain.ListingExceptionBelowMargin}}
+				page, err := NewReadService(r, newFacts(), fakePolicy{found: true}, fakeInstallation(true), fixedNow).List(context.Background(), query)
+				if !errors.Is(err, cause.err) {
+					t.Fatalf("expected %v to propagate, got page=%+v err=%v", cause.err, page, err)
+				}
+			})
+
+			t.Run(prefix+"dependent filter group scan", func(t *testing.T) {
+				productID := "42664"
+				next := ports.GroupCursor{ProductTitle: "Próximo", ProductID: "42666"}
+				r := &fakeRows{groupPages: []ports.ListingGroupRowPage{{Groups: []domain.ListingGroup{{ProductID: &productID, ProductTitle: ptrString("Produto"), Listings: []domain.ListingReadModel{resolved(productID)}}}, NextCursor: &next}}}
+				query := ports.ListingGroupQuery{InstallationID: "i", Limit: 1, Filter: domain.ListingFilter{Exception: domain.ListingExceptionBelowMargin}}
+				page, err := NewReadService(r, newFacts(), fakePolicy{found: true}, fakeInstallation(true), fixedNow).ByProduct(context.Background(), query)
+				if !errors.Is(err, cause.err) {
+					t.Fatalf("expected %v to propagate, got page=%+v err=%v", cause.err, page, err)
+				}
+			})
+		}
+	}
+}
+
+// TestReadServiceDependentFilterNonSourceUnavailablePropagates asserts that
+// cancellation/timeout/adapter defects discovered mid-scan under a
+// fact-dependent filter propagate as errors, not a degrade-worthy outage.
 func TestReadServiceDependentFilterNonSourceUnavailablePropagates(t *testing.T) {
 	r := &fakeRows{pages: []ports.ListingRowPage{{Items: []domain.ListingReadModel{resolved("42664")}}}}
 	f := &fakeFacts{ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}, costErr: context.DeadlineExceeded}

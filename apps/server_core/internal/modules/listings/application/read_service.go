@@ -16,11 +16,13 @@ import (
 	"marketplace-central/apps/server_core/internal/modules/listings/ports"
 )
 
-// isSourceUnavailable classifies an error using the existing internal_read
-// error taxonomy. Only ReadErrorSourceUnavailable may legitimately degrade
-// cost/ceiling facts to null; every other error (cancellation, timeout,
-// adapter/data defects) must propagate.
+// isSourceUnavailable reports whether err may legitimately degrade a fact to
+// null; every other error must propagate. Cancellation and timeout propagate
+// regardless of the code the error carries.
 func isSourceUnavailable(err error) bool {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return false
+	}
 	return internalreaddomain.IsReadErrorCode(err, internalreaddomain.ReadErrorSourceUnavailable)
 }
 
@@ -145,9 +147,6 @@ func (s ReadService) List(ctx context.Context, query ports.ListingQuery) (ports.
 		slog.Error("listings: icms ceiling fact read failed", "err", ceilingErr, "op", "List")
 		return ports.ListingRowPage{}, ceilingErr
 	}
-	if ceilingErr != nil {
-		slog.Warn("listings: icms ceiling source unavailable, degrading fact to null", "err", ceilingErr, "op", "List", "fact", "icms_ceiling")
-	}
 	maxCeiling := maximumCeiling(ceilings)
 	serveTime := s.now().UTC()
 	if !needsBelowMarginScan(query.Filter) {
@@ -155,9 +154,12 @@ func (s ReadService) List(ctx context.Context, query ports.ListingQuery) (ports.
 		if err != nil {
 			return ports.ListingRowPage{}, err
 		}
-		_, err = s.enrich(ctx, page.Items, maxCeiling, policy, policyFound, ceilingErr)
+		unavailable, err := s.enrich(ctx, page.Items, maxCeiling, policy, policyFound, ceilingErr)
 		if err != nil {
 			return ports.ListingRowPage{}, err
+		}
+		if unavailable != nil {
+			slog.Warn("listings: fact source unavailable, degrading fact to null", "err", unavailable, "op", "List", "fact", unavailableFact(ceilingErr))
 		}
 		page.AsOf = serveTime
 		return page, nil
@@ -185,9 +187,6 @@ func (s ReadService) ByProduct(ctx context.Context, query ports.ListingGroupQuer
 		slog.Error("listings: icms ceiling fact read failed", "err", ceilingErr, "op", "ByProduct")
 		return ports.ListingGroupRowPage{}, ceilingErr
 	}
-	if ceilingErr != nil {
-		slog.Warn("listings: icms ceiling source unavailable, degrading fact to null", "err", ceilingErr, "op", "ByProduct", "fact", "icms_ceiling")
-	}
 	ceiling, asOf := maximumCeiling(ceilings), s.now().UTC()
 	if needsBelowMarginScan(query.Filter) {
 		return s.scanGroups(ctx, query, ceiling, policy, policyFound, ceilingErr, asOf)
@@ -196,23 +195,24 @@ func (s ReadService) ByProduct(ctx context.Context, query ports.ListingGroupQuer
 	if err != nil {
 		return ports.ListingGroupRowPage{}, err
 	}
-	_, err = s.enrichGroups(ctx, page.Groups, ceiling, policy, policyFound, ceilingErr)
+	unavailable, err := s.enrichGroups(ctx, page.Groups, ceiling, policy, policyFound, ceilingErr)
 	if err != nil {
 		return ports.ListingGroupRowPage{}, err
+	}
+	if unavailable != nil {
+		slog.Warn("listings: fact source unavailable, degrading fact to null", "err", unavailable, "op", "ByProduct", "fact", unavailableFact(ceilingErr))
 	}
 	finalizeGroups(page.Groups)
 	page.AsOf = asOf
 	return page, nil
 }
 
-// scanGroups is only reached for a fact-dependent filter (needsBelowMarginScan
-// is true). Per the hub ruling (B1, PURE uniform fail-honest), a genuine
-// source-unavailable outage under such a filter must surface as an error
-// through the existing error envelope, never as a confidently-served page
-// built by dropping the filter. Both directions of the filter
-// (has_exception true/false, exception=below_margin) are treated uniformly.
+// scanGroups is only reached for a fact-dependent filter; a source-unavailable
+// outage fails the request rather than serving a page built by dropping the
+// filter.
 func (s ReadService) scanGroups(ctx context.Context, q ports.ListingGroupQuery, ceiling *float64, policy ports.PricingPolicy, policyFound bool, unavailable error, asOf time.Time) (ports.ListingGroupRowPage, error) {
 	if unavailable != nil {
+		slog.Error("listings: fact source unavailable, failing fact-dependent filter", "err", unavailable, "op", "ByProduct")
 		return ports.ListingGroupRowPage{}, unavailable
 	}
 	result := ports.ListingGroupRowPage{Groups: []domain.ListingGroup{}, AsOf: asOf}
@@ -229,6 +229,7 @@ func (s ReadService) scanGroups(ctx context.Context, q ports.ListingGroupQuery, 
 			return ports.ListingGroupRowPage{}, err
 		}
 		if unavailable != nil {
+			slog.Error("listings: fact source unavailable, failing fact-dependent filter", "err", unavailable, "op", "ByProduct")
 			return ports.ListingGroupRowPage{}, unavailable
 		}
 		for groupIndex := range page.Groups {
@@ -325,16 +326,16 @@ func (s ReadService) Get(ctx context.Context, id domain.ListingID) (domain.Listi
 		slog.Error("listings: icms ceiling fact read failed", "err", ceilingErr, "op", "Get")
 		return domain.ListingReadModel{}, nil, ceilingErr
 	}
-	if ceilingErr != nil {
-		slog.Warn("listings: icms ceiling source unavailable, degrading fact to null", "err", ceilingErr, "op", "Get", "fact", "icms_ceiling")
-	}
 	items := []domain.ListingReadModel{model}
 	unavailable, err := s.enrich(ctx, items, maximumCeiling(ceilings), policy, policyFound, ceilingErr)
 	if err != nil {
 		return domain.ListingReadModel{}, nil, err
 	}
-	model = items[0]
 	if unavailable != nil {
+		slog.Warn("listings: fact source unavailable, degrading fact to null", "err", unavailable, "op", "Get", "fact", unavailableFact(ceilingErr))
+	}
+	model = items[0]
+	if ceilingErr != nil {
 		model.ICMSWorstCaseByUF = nil
 	} else {
 		model.ICMSWorstCaseByUF = icmsWorstCaseByUF(model, ceilings, policy, policyFound)
@@ -349,16 +350,13 @@ func (s ReadService) Get(ctx context.Context, id domain.ListingID) (domain.Listi
 	return model, timeline, nil
 }
 
-// scan is only reached for a fact-dependent filter (needsBelowMarginScan is
-// true). Per the hub ruling (B1, PURE uniform fail-honest), a genuine
-// source-unavailable outage under such a filter must surface as an error
-// through the existing error envelope, never as a confidently-served page
-// built by dropping the filter. Both directions of the filter
-// (has_exception true/false, exception=below_margin) are treated uniformly;
-// a request with no fact-dependent filter never reaches this function and
-// keeps the ADR-17-correct degrade-to-null behavior via the flat path.
+// scan applies fact-dependent filters in-process; a source-unavailable
+// outage fails the request rather than serving a page built by dropping the
+// filter. A request with no fact-dependent filter never reaches this
+// function and keeps the degrade-to-null behavior via the flat path.
 func (s ReadService) scan(ctx context.Context, q ports.ListingQuery, ceiling *float64, policy ports.PricingPolicy, policyFound bool, unavailable error, asOf time.Time) (ports.ListingRowPage, error) {
 	if unavailable != nil {
+		slog.Error("listings: fact source unavailable, failing fact-dependent filter", "err", unavailable, "op", "List")
 		return ports.ListingRowPage{}, unavailable
 	}
 	result := ports.ListingRowPage{Items: make([]domain.ListingReadModel, 0, q.Limit), AsOf: asOf}
@@ -375,6 +373,7 @@ func (s ReadService) scan(ctx context.Context, q ports.ListingQuery, ceiling *fl
 			return ports.ListingRowPage{}, err
 		}
 		if unavailable != nil {
+			slog.Error("listings: fact source unavailable, failing fact-dependent filter", "err", unavailable, "op", "List")
 			return ports.ListingRowPage{}, unavailable
 		}
 		for _, item := range page.Items {
@@ -404,11 +403,11 @@ func (s ReadService) scan(ctx context.Context, q ports.ListingQuery, ceiling *fl
 
 // enrich attaches cost/margin facts to items. unavailable, if non-nil on
 // entry, is a source-unavailable error already known to the caller (the
-// cost fetch below is skipped in that case). If the cost fetch here fails,
-// only a source-unavailable classified error may degrade the batch to
-// null facts (logged once at WARN); any other error (cancellation, timeout,
-// adapter/data defect) propagates immediately (logged at ERROR) instead of
-// being swallowed into a false "unknown" state.
+// cost fetch below is skipped in that case). A source-unavailable cost fetch
+// sets unavailable and nulls the batch's facts; any other cost fetch error
+// propagates immediately instead of being swallowed into a false "unknown"
+// state. Callers own logging the outcome once they know whether the result
+// degrades or fails.
 func (s ReadService) enrich(ctx context.Context, items []domain.ListingReadModel, ceiling *float64, policy ports.PricingPolicy, policyFound bool, unavailable error) (error, error) {
 	ids := make([]int64, 0, len(items))
 	seen := map[int64]bool{}
@@ -430,7 +429,6 @@ func (s ReadService) enrich(ctx context.Context, items []domain.ListingReadModel
 				slog.Error("listings: cost fact read failed", "err", costErr)
 				return unavailable, costErr
 			}
-			slog.Warn("listings: cost fact source unavailable, degrading to null", "err", costErr, "fact", "cost")
 			unavailable = costErr
 		} else {
 			costs = fetched
@@ -466,6 +464,15 @@ func (s ReadService) enrich(ctx context.Context, items []domain.ListingReadModel
 	return unavailable, nil
 }
 
+// unavailableFact reports which fact degraded: a non-nil ceilingErr means the
+// ceiling fetch already failed and enrich skipped the cost fetch, so the outage
+// is the ceiling; otherwise it is the cost fetch enrich attempted.
+func unavailableFact(ceilingErr error) string {
+	if ceilingErr != nil {
+		return "icms_ceiling"
+	}
+	return "cost"
+}
 func priceCurrency(price *domain.Money) domain.PriceCurrency {
 	if price != nil {
 		return price.Currency
