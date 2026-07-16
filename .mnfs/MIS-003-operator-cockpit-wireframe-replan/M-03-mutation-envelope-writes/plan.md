@@ -276,6 +276,14 @@ Serialization points:
 - Complexity: `complex`
 - Serves: M03-C04, C05, C06, C07, C12
 - Budget: ~300 lines.
+- Design note (G2, added at review D-31): link actions route via a dedicated `LinkageWriter.ApplyLink`
+  path instead of forcing linkage into the uniform `WriterPort` shape. Alternative considered —
+  wrapping `LinkageWriter` behind `WriterPort` — rejected: `WriteOutcome` cannot carry the
+  `skipped` terminal state, which would collapse identical re-resolutions into `applied` and
+  violate IC-03. Dedicated path is the only shape where `skipped` survives to the poller.
+  `MapFailure` precedence (network check before typed switch) is deliberate: a typed connector
+  code (e.g. rate_limited) overrides the transport symptom (net.Error → unavailable) because
+  the specific classification carries retryability semantics the symptom cannot.
 
 ### F02-S7 — stock_correct and StockActionService fold
 
