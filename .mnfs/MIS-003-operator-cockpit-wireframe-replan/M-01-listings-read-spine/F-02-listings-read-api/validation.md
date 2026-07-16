@@ -66,3 +66,46 @@ the corrective slice ALSO removes the composition-root stubs (see
   `go test -count=1 ./internal/modules/listings/...` **exit 0** (fresh). Independent cold review (cavecrew): CLEAN.
 - Wiring runtime proof deferred to the C10 live re-drive (composition wiring is out-of-band for unit tests).
   No reachable stub remains; NO-STUB satisfied by removal, not deferral (deferral record marked SUPERSEDED).
+
+## Slice 9 validation
+
+Status: **implementation green; SDK Vitest environment-blocked**
+
+Test-first RED proof (before implementation):
+
+- `[ran]` From `apps/server_core`: `GOCACHE=C:\Users\leandro.theodoro\Documents\marketplace-central\.claude\worktrees\m01-listings\apps\server_core\.gocache go test -count=1 ./internal/modules/listings/...` — **exit 1**. Before domain constants existed, the new domain/mapper test references failed with four `undefined: ListingStatus...` errors; transport also rejected `under_review`, `inactive`, `payment_required`, and `not_yet_active` as invalid status values.
+- `[ran]` After Step 2 and before mapper implementation: `go test -count=1 ./internal/modules/listings/domain ./internal/modules/listings/transport ./internal/modules/listings/adapters/connectors` — **exit 1**; domain and transport passed, while mapper reported `status "under_review" = "unknown", want "under_review"`.
+- `[ran]` After adding `0037_listings_status.sql` and before count updates: `go test -count=1 ./internal/platform/migrate/...` — **exit 1**; both inventory tests observed 37 migrations while expecting 36.
+
+Files changed for Slice 9:
+
+- `apps/server_core/internal/modules/listings/domain/listing.go`
+- `apps/server_core/internal/modules/listings/domain/listing_test.go`
+- `apps/server_core/internal/modules/listings/adapters/connectors/mapper.go`
+- `apps/server_core/internal/modules/listings/adapters/connectors/mapper_test.go`
+- `apps/server_core/internal/modules/listings/transport/query_test.go`
+- `apps/server_core/migrations/0037_listings_status.sql` (new)
+- `apps/server_core/internal/platform/migrate/runner_test.go`
+- `contracts/api/marketplace-central.openapi.yaml`
+- `packages/sdk-runtime/src/index.ts`
+
+Validation commands (all marked `ran`):
+
+- `[ran]` `go build ./...` — **exit 1** on the first run due Git VCS safe-directory stamping; rerun with process-only `GIT_CONFIG_*` safe-directory environment override — **exit 0**. No repository config changed.
+- `[ran]` `go vet ./...` — **exit 0**, with the same process-only safe-directory environment override.
+- `[ran]` `go test -count=1 ./internal/modules/listings/... ./internal/composition/... ./internal/platform/migrate/... ./migrations/...` — **exit 0**.
+- `[ran]` From `packages/sdk-runtime`: `npx --no-install tsc --noEmit` — **exit 0**.
+- `[ran]` From `packages/sdk-runtime`: `npx --no-install vitest run --config vitest.config.ts` — **exit 1** before test execution; resolver reported access denied reading an ancestor and could not resolve the worktree `vitest.config.ts`.
+- `[ran]` From `packages/sdk-runtime`: `npm test` — **exit 1** with the same pre-test Vitest resolver/access-denied failure.
+- `[ran]` From `packages/sdk-runtime`: `npx --no-install vitest run --root . --config .\vitest.config.ts` — **exit 1** with the same resolver/access-denied failure; explicit root did not change the environment result.
+
+Integration lane: not run, per the operator instruction that the milestone owner drives ephemeral Postgres and no Docker/server boot is allowed in this worker session.
+
+Locus differences: `docs/HARNESS.md` was not present under this worktree; it was not read from the off-limits main tree. SDK Vitest remains environment/tooling-blocked, with no assertion failure observed. No other plan locus differed.
+
+### Slice 9 — L1 integration lane over 0037 (GREEN)
+
+- Ephemeral postgres:16; migrate #1 = applied 37, #2 = applied 0 (idempotent).
+- `listings_status_check` live constraint = `active,paused,closed,unknown,under_review,inactive,payment_required,not_yet_active` (8 values, name preserved).
+- `go test -tags=integration -run TestListingsRead` PASS exit 0 (27.6s): ContractEndToEnd (8 subtests) + Performance2000 (p95 3.17ms).
+- §14 cold sonnet review: no blocking; single important (lane-evidence gap) CLOSED by this run. Effective APPROVE. See `_gate-evidence/round-2/slice9-review.md`.

@@ -11,10 +11,14 @@ const NoVariationID = "-"
 type ListingStatus string
 
 const (
-	ListingStatusActive  ListingStatus = "active"
-	ListingStatusPaused  ListingStatus = "paused"
-	ListingStatusClosed  ListingStatus = "closed"
-	ListingStatusUnknown ListingStatus = "unknown"
+	ListingStatusActive          ListingStatus = "active"
+	ListingStatusPaused          ListingStatus = "paused"
+	ListingStatusClosed          ListingStatus = "closed"
+	ListingStatusUnknown         ListingStatus = "unknown"
+	ListingStatusUnderReview     ListingStatus = "under_review"
+	ListingStatusInactive        ListingStatus = "inactive"
+	ListingStatusPaymentRequired ListingStatus = "payment_required"
+	ListingStatusNotYetActive    ListingStatus = "not_yet_active"
 )
 
 type ListingSyncState string
@@ -161,7 +165,8 @@ func NewListing(input ListingInput) (Listing, error) {
 
 func (s ListingStatus) IsValid() bool {
 	switch s {
-	case ListingStatusActive, ListingStatusPaused, ListingStatusClosed, ListingStatusUnknown:
+	case ListingStatusActive, ListingStatusPaused, ListingStatusClosed, ListingStatusUnknown,
+		ListingStatusUnderReview, ListingStatusInactive, ListingStatusPaymentRequired, ListingStatusNotYetActive:
 		return true
 	default:
 		return false

@@ -2,6 +2,7 @@ package connectors
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -107,7 +108,16 @@ func canonicalListingStatus(providerStatus string) listingsdomain.ListingStatus 
 		return listingsdomain.ListingStatusPaused
 	case "closed":
 		return listingsdomain.ListingStatusClosed
+	case "under_review":
+		return listingsdomain.ListingStatusUnderReview
+	case "inactive":
+		return listingsdomain.ListingStatusInactive
+	case "payment_required":
+		return listingsdomain.ListingStatusPaymentRequired
+	case "not_yet_active":
+		return listingsdomain.ListingStatusNotYetActive
 	default:
+		slog.Warn("unmapped provider listing status", "raw", providerStatus, "provider", "mercado_livre")
 		return listingsdomain.ListingStatusUnknown
 	}
 }

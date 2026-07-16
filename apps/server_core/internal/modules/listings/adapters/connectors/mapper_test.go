@@ -81,6 +81,10 @@ func TestMapListingSnapshotToCanonicalRows(t *testing.T) {
 		{provider: "active", want: listingsdomain.ListingStatusActive},
 		{provider: "paused", want: listingsdomain.ListingStatusPaused},
 		{provider: "closed", want: listingsdomain.ListingStatusClosed},
+		{provider: "under_review", want: listingsdomain.ListingStatusUnderReview},
+		{provider: "inactive", want: listingsdomain.ListingStatusInactive},
+		{provider: "payment_required", want: listingsdomain.ListingStatusPaymentRequired},
+		{provider: "not_yet_active", want: listingsdomain.ListingStatusNotYetActive},
 		{provider: "something-new", want: listingsdomain.ListingStatusUnknown},
 	}
 	for _, tt := range statusCases {
@@ -143,7 +147,8 @@ func TestMapListingSnapshotToCanonicalRowsRejectsMissingRequiredFacts(t *testing
 		name   string
 		mutate func(*connectorsdomain.ListingSnapshot)
 	}{
-		{name: "tenant", mutate: func(snapshot *connectorsdomain.ListingSnapshot) { /* snapshot stays valid; only account.TenantID is blanked below to isolate the tenant-required path */ }},
+		{name: "tenant", mutate: func(snapshot *connectorsdomain.ListingSnapshot) { /* snapshot stays valid; only account.TenantID is blanked below to isolate the tenant-required path */
+		}},
 		{name: "provider item", mutate: func(snapshot *connectorsdomain.ListingSnapshot) { snapshot.ProviderItemID = "" }},
 		{name: "provider", mutate: func(snapshot *connectorsdomain.ListingSnapshot) { snapshot.ProviderCode = "" }},
 		{name: "title", mutate: func(snapshot *connectorsdomain.ListingSnapshot) { snapshot.Title = "" }},

@@ -213,7 +213,7 @@ export interface CatalogSearchPageOptions {
   limit?: number;
 }
 
-export type ListingStatus = "active" | "paused" | "closed" | "unknown";
+export type ListingStatus = "active" | "paused" | "closed" | "unknown" | "under_review" | "inactive" | "payment_required" | "not_yet_active";
 export type ListingSyncState = "synced" | "error" | "stale" | "queued" | "syncing" | "paused_sync";
 export type ListingLinkState = "unresolved" | "conflict" | "resolved" | "rejected";
 export type ListingException = "sync_error" | "stale" | "unlinked" | "below_margin";

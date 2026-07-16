@@ -21,7 +21,7 @@ func TestParseListingQueryAcceptsFixedGrammar(t *testing.T) {
 
 func TestParseListingQueryAcceptsAllFixedEnumValues(t *testing.T) {
 	cases := map[string][]string{
-		"status": {"active", "paused", "closed", "unknown"}, "sync_state": {"synced", "error", "stale", "queued", "syncing", "paused_sync"},
+		"status": {"active", "paused", "closed", "unknown", "under_review", "inactive", "payment_required", "not_yet_active"}, "sync_state": {"synced", "error", "stale", "queued", "syncing", "paused_sync"},
 		"link_state": {"unresolved", "conflict", "resolved", "rejected"}, "exception": {"sync_error", "stale", "unlinked", "below_margin"},
 	}
 	for key, values := range cases {

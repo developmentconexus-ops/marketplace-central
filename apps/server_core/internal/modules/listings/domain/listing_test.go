@@ -14,11 +14,18 @@ func TestListingStatusValues(t *testing.T) {
 		{"paused", ListingStatusPaused},
 		{"closed", ListingStatusClosed},
 		{"unknown", ListingStatusUnknown},
+		{"under_review", ListingStatusUnderReview},
+		{"inactive", ListingStatusInactive},
+		{"payment_required", ListingStatusPaymentRequired},
+		{"not_yet_active", ListingStatusNotYetActive},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if string(tt.value) != tt.name {
 				t.Fatalf("status = %q, want %q", tt.value, tt.name)
+			}
+			if !tt.value.IsValid() {
+				t.Fatalf("status %q should be valid", tt.value)
 			}
 		})
 	}
