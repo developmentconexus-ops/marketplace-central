@@ -1,9 +1,13 @@
+import { useEffect, useRef } from "react";
 import type { ListingLinkState, ListingReadModel, ListingSyncState } from "@marketplace-central/sdk-runtime";
 import { ConflictTag, UnknownValue } from "@marketplace-central/ui";
 
 export interface AnunciosTableProps {
   items: ListingReadModel[];
   asOf?: string;
+  selectedIds: Set<string>;
+  onToggle: (id: string) => void;
+  onTogglePage: (ids: string[]) => void;
 }
 
 const syncLabels = {
@@ -39,13 +43,33 @@ function renderMargin(item: ListingReadModel) {
     : stateTag("ok", "bg-emerald-100 text-emerald-800");
 }
 
-export function AnunciosTable({ items, asOf }: AnunciosTableProps) {
+export function AnunciosTable({ items, asOf, selectedIds, onToggle, onTogglePage }: AnunciosTableProps) {
+  const headerCheckboxRef = useRef<HTMLInputElement>(null);
+  const pageIds = items.map((item) => item.listing_id);
+  const selectedOnPage = pageIds.filter((id) => selectedIds.has(id)).length;
+  const allSelected = items.length > 0 && selectedOnPage === items.length;
+  const partiallySelected = selectedOnPage > 0 && !allSelected;
+
+  useEffect(() => {
+    if (headerCheckboxRef.current) headerCheckboxRef.current.indeterminate = partiallySelected;
+  }, [partiallySelected]);
+
   return (
     <div className="mt-3 overflow-x-auto">
       <table className="w-full min-w-[980px] border-collapse text-left text-sm">
         <caption className="sr-only">Anúncios{asOf ? `, dados de ${asOf}` : ""}</caption>
         <thead className="border-b border-slate-200 text-xs font-medium text-slate-500">
           <tr>
+            <th className="px-3 py-3" scope="col">
+              <input
+                ref={headerCheckboxRef}
+                type="checkbox"
+                checked={allSelected}
+                disabled={items.length === 0}
+                onChange={() => onTogglePage(pageIds)}
+                aria-label="Selecionar todos os anúncios desta página"
+              />
+            </th>
             <th className="px-3 py-3" scope="col">Anúncio</th>
             <th className="px-3 py-3" scope="col">Modalidade</th>
             <th className="px-3 py-3" scope="col">Vínculo</th>
@@ -60,6 +84,14 @@ export function AnunciosTable({ items, asOf }: AnunciosTableProps) {
         <tbody className="divide-y divide-slate-100">
           {items.map((item) => (
             <tr key={item.listing_id} className="align-middle text-slate-700">
+              <td className="px-3 py-3">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(item.listing_id)}
+                  onChange={() => onToggle(item.listing_id)}
+                  aria-label={`Selecionar anúncio ${item.title}`}
+                />
+              </td>
               <td className="px-3 py-3">
                 <div className="font-medium text-slate-950">{item.title}</div>
                 <div className="mt-0.5 text-xs text-slate-500">{item.provider_listing_id}</div>

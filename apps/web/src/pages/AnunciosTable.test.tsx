@@ -3,6 +3,12 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { AnunciosTable } from "./AnunciosTable";
 
+const tableSelectionProps = {
+  selectedIds: new Set<string>(),
+  onToggle: () => undefined,
+  onTogglePage: () => undefined,
+};
+
 const listing: ListingReadModel = {
   listing_id: "listing_1",
   installation_id: "installation_1",
@@ -27,7 +33,7 @@ const listing: ListingReadModel = {
 
 describe("AnunciosTable", () => {
   it("renders the listing facts and pending issue", () => {
-    render(<AnunciosTable items={[listing]} asOf="2026-07-16T12:00:00Z" />);
+    render(<AnunciosTable items={[listing]} asOf="2026-07-16T12:00:00Z" {...tableSelectionProps} />);
 
     expect(screen.getByText("Camiseta azul")).toBeInTheDocument();
     expect(screen.getByText("MLB123456789")).toBeInTheDocument();
@@ -45,6 +51,7 @@ describe("AnunciosTable", () => {
     render(
       <AnunciosTable
         items={[{ ...listing, price: null, published_quantity: null, sales_30d: null, below_margin_worst_case: null }]}
+        {...tableSelectionProps}
       />,
     );
 
@@ -54,13 +61,13 @@ describe("AnunciosTable", () => {
   });
 
   it("explains an unsimulated margin when ERP cost is unknown", () => {
-    render(<AnunciosTable items={[{ ...listing, cost: null, below_margin_worst_case: null }]} />);
+    render(<AnunciosTable items={[{ ...listing, cost: null, below_margin_worst_case: null }]} {...tableSelectionProps} />);
 
     expect(screen.getByTitle("sem custo no ERP → não simulado")).toHaveTextContent("—");
   });
 
   it("uses the fixed sync and conflict labels", () => {
-    render(<AnunciosTable items={[{ ...listing, sync_state: "error", link: { ...listing.link, state: "conflict" }}]} />);
+    render(<AnunciosTable items={[{ ...listing, sync_state: "error", link: { ...listing.link, state: "conflict" }}]} {...tableSelectionProps} />);
 
     expect(screen.getByText("com erro")).toBeInTheDocument();
     expect(screen.getByText("divergente")).toBeInTheDocument();
