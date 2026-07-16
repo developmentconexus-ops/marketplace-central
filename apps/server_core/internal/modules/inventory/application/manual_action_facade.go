@@ -95,27 +95,17 @@ func (f ManualActionFacade) Apply(ctx context.Context, input ApplyManualActionIn
 	if err != nil {
 		return ApplyManualActionResult{}, err
 	}
-	if action.State == domain.StockActionStateApplied {
-		observedAt := now.UTC()
-		if err := f.snapshots.SaveListingSnapshot(ctx, domain.ListingSnapshot{
-			Identity:          risk.Identity,
-			ProviderCode:      risk.ProviderCode,
-			ProviderStatus:    risk.ProviderStatus,
-			SellerSKU:         risk.SellerSKU,
-			EAN:               risk.EAN,
-			Title:             risk.Title,
-			AvailableQuantity: &input.RequestedQuantity,
-			ObservedAt:        &observedAt,
-		}); err != nil {
-			return ApplyManualActionResult{}, err
-		}
-		risk.ProviderQuantity = &input.RequestedQuantity
-		risk.ProviderObservedAt = &observedAt
-		risk.RecommendedQuantity = &input.RequestedQuantity
-		risk.State = domain.StockRiskHealthy
+	// Provider write now happens asynchronously via the mutation envelope: the
+	// action returns `approved` with a protocol id, and the provider quantity is
+	// unknown until the poller applies it — the snapshot/risk view must not be
+	// updated optimistically (ADR-17).
+	if action.State == domain.StockActionStateApproved && action.MutationProtocolID != nil {
 		risk.Actionability = domain.StockRiskActionabilityBlocked
 		risk.Actionable = false
-		risk.BlockingReason = domain.BlockingReason{}
+		risk.BlockingReason = domain.BlockingReason{
+			Code:    "mutation_protocol_pending",
+			Message: "Correção delegada ao protocolo de mutação " + *action.MutationProtocolID + ".",
+		}
 	}
 	return ApplyManualActionResult{Action: action, Risk: risk}, nil
 }

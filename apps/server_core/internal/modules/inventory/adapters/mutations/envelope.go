@@ -7,6 +7,7 @@ import (
 
 	inventorydomain "marketplace-central/apps/server_core/internal/modules/inventory/domain"
 	inventoryports "marketplace-central/apps/server_core/internal/modules/inventory/ports"
+	listingsdomain "marketplace-central/apps/server_core/internal/modules/listings/domain"
 	mutationsdomain "marketplace-central/apps/server_core/internal/modules/mutations/domain"
 	mutationsports "marketplace-central/apps/server_core/internal/modules/mutations/ports"
 )
@@ -66,6 +67,12 @@ func (e *Envelope) CreateStockCorrection(ctx context.Context, action inventorydo
 	return protocol.ProtocolID, nil
 }
 
+// stockListingID builds the canonical composite mutation listing id; the
+// listings domain reserves "-" for "no variation", while inventory refs use "".
 func stockListingID(ref inventorydomain.ProviderStockRef) string {
-	return strings.Join([]string{ref.InstallationID, ref.ProviderItemID, ref.ProviderVariationID}, "~")
+	variation := ref.ProviderVariationID
+	if variation == "" {
+		variation = listingsdomain.NoVariationID
+	}
+	return strings.Join([]string{ref.InstallationID, ref.ProviderItemID, variation}, "~")
 }
