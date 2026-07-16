@@ -6,9 +6,18 @@ import (
 	"testing"
 	"time"
 
+	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
 	"marketplace-central/apps/server_core/internal/modules/listings/domain"
 	"marketplace-central/apps/server_core/internal/modules/listings/ports"
 )
+
+// sourceUnavailable builds a typed source-unavailable read error using the
+// existing internal_read error taxonomy, the only kind that may legitimately
+// degrade cost/ceiling facts to null. Any other error (plain, cancellation,
+// timeout) must propagate instead of degrading.
+func sourceUnavailable(msg string) error {
+	return internalreaddomain.NewReadError(internalreaddomain.ReadErrorSourceUnavailable, msg, nil)
+}
 
 type fakeRows struct {
 	pages        []ports.ListingRowPage
@@ -128,8 +137,8 @@ func TestReadServiceSummaryUnknownInputsAndSourceOutage(t *testing.T) {
 	}{
 		{"missing policy", false, &fakeFacts{costs: map[int64]*ports.CostFact{1: {Amount: ptr(1)}}, ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}, false},
 		{"missing cost", true, &fakeFacts{costs: map[int64]*ports.CostFact{}, ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}, false},
-		{"cost outage", true, &fakeFacts{costErr: errors.New("down"), ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}, true},
-		{"ceiling outage", true, &fakeFacts{ceilingErr: errors.New("down")}, true},
+		{"cost outage", true, &fakeFacts{costErr: sourceUnavailable("down"), ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}, true},
+		{"ceiling outage", true, &fakeFacts{ceilingErr: sourceUnavailable("down")}, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := NewReadService(&fakeRows{summary: base}, tc.facts, fakePolicy{found: tc.policy}, fakeInstallation(true), time.Now).Summary(context.Background(), ports.SummaryQuery{InstallationID: "i"})
@@ -145,6 +154,32 @@ func TestReadServiceSummaryUnknownInputsAndSourceOutage(t *testing.T) {
 			}
 			if got.Unlinked != 1 {
 				t.Fatalf("unlinked=%d", got.Unlinked)
+			}
+		})
+	}
+}
+
+// TestReadServiceSummaryNonSourceUnavailableErrorsPropagate pins B2: only a
+// genuine source-unavailable read error may degrade to null margins.
+// Cancellation, timeout, and plain adapter/data defects must propagate as
+// errors instead of silently becoming a confident 200 with null facts.
+func TestReadServiceSummaryNonSourceUnavailableErrorsPropagate(t *testing.T) {
+	base := ports.ListingSummaryRow{Total: 2, Unlinked: 1, Linked: []ports.SummaryLinkedRow{{CostID: 1, Price: money("90")}}}
+	for _, tc := range []struct {
+		name  string
+		facts *fakeFacts
+	}{
+		{"ceiling deadline exceeded", &fakeFacts{ceilingErr: context.DeadlineExceeded}},
+		{"ceiling canceled", &fakeFacts{ceilingErr: context.Canceled}},
+		{"ceiling plain adapter defect", &fakeFacts{ceilingErr: errors.New("adapter defect")}},
+		{"cost deadline exceeded", &fakeFacts{costErr: context.DeadlineExceeded, ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}},
+		{"cost canceled", &fakeFacts{costErr: context.Canceled, ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}},
+		{"cost plain adapter defect", &fakeFacts{costErr: errors.New("adapter defect"), ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := NewReadService(&fakeRows{summary: base}, tc.facts, fakePolicy{found: true}, fakeInstallation(true), time.Now).Summary(context.Background(), ports.SummaryQuery{InstallationID: "i"})
+			if err == nil {
+				t.Fatalf("expected propagated error, got summary=%+v", got)
 			}
 		})
 	}
@@ -218,10 +253,10 @@ func TestReadServiceOptionalFactOutagesServeListByProductAndGet(t *testing.T) {
 			r := &fakeRows{pages: []ports.ListingRowPage{{Items: []domain.ListingReadModel{resolved("42664")}}}}
 			f := &fakeFacts{ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}
 			if outage.ceilingErr {
-				f.ceilingErr = errors.New("ceiling down")
+				f.ceilingErr = sourceUnavailable("ceiling down")
 			}
 			if outage.costErr {
-				f.costErr = errors.New("cost down")
+				f.costErr = sourceUnavailable("cost down")
 			}
 			page, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), time.Now).List(context.Background(), ports.ListingQuery{InstallationID: "i", Limit: 1})
 			if err != nil || len(page.Items) != 1 {
@@ -241,10 +276,10 @@ func TestReadServiceOptionalFactOutagesServeListByProductAndGet(t *testing.T) {
 			r := &fakeRows{groupPages: []ports.ListingGroupRowPage{{Groups: []domain.ListingGroup{{ProductID: &productID, ProductTitle: ptrString("Produto"), Listings: []domain.ListingReadModel{resolved(productID)}}}}}}
 			f := &fakeFacts{ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}
 			if outage.ceilingErr {
-				f.ceilingErr = errors.New("ceiling down")
+				f.ceilingErr = sourceUnavailable("ceiling down")
 			}
 			if outage.costErr {
-				f.costErr = errors.New("cost down")
+				f.costErr = sourceUnavailable("cost down")
 			}
 			page, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), time.Now).ByProduct(context.Background(), ports.ListingGroupQuery{InstallationID: "i", Limit: 1})
 			if err != nil || len(page.Groups) != 1 || len(page.Groups[0].Listings) != 1 {
@@ -267,10 +302,10 @@ func TestReadServiceOptionalFactOutagesServeListByProductAndGet(t *testing.T) {
 			r := &fakeRows{getModel: model, getFound: true, timeline: []domain.TimelineEvent{{Kind: "synced"}}}
 			f := &fakeFacts{ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}
 			if outage.ceilingErr {
-				f.ceilingErr = errors.New("ceiling down")
+				f.ceilingErr = sourceUnavailable("ceiling down")
 			}
 			if outage.costErr {
-				f.costErr = errors.New("cost down")
+				f.costErr = sourceUnavailable("cost down")
 			}
 			got, timeline, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), time.Now).Get(context.Background(), domain.ListingID{InstallationID: "i", ProviderListingID: "42664", VariationID: "-"})
 			if err != nil || got.ListingID == "" || len(timeline) != 1 {
@@ -289,70 +324,199 @@ func TestReadServiceOptionalFactOutagesServeListByProductAndGet(t *testing.T) {
 	}
 }
 
-func TestReadServiceDependentFilterPassesThroughWhenOptionalFactsUnavailable(t *testing.T) {
+// TestReadServiceFlatPathNonSourceUnavailableErrorsPropagate pins B2 across
+// List, ByProduct and Get: only a genuine source-unavailable read error may
+// degrade cost/ceiling facts to null. Cancellation, timeout, and plain
+// adapter/data defects must propagate as errors instead of silently
+// becoming a confident 200 with null facts.
+func TestReadServiceFlatPathNonSourceUnavailableErrorsPropagate(t *testing.T) {
+	newFacts := func(ceilingErr, costErr error) *fakeFacts {
+		f := &fakeFacts{ceilingErr: ceilingErr, costErr: costErr}
+		if ceilingErr == nil {
+			f.ceilings = map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}
+		}
+		return f
+	}
+	cases := []struct {
+		name       string
+		ceilingErr error
+		costErr    error
+	}{
+		{"ceiling deadline exceeded", context.DeadlineExceeded, nil},
+		{"ceiling canceled", context.Canceled, nil},
+		{"ceiling plain adapter defect", errors.New("adapter defect"), nil},
+		{"cost deadline exceeded", nil, context.DeadlineExceeded},
+		{"cost canceled", nil, context.Canceled},
+		{"cost plain adapter defect", nil, errors.New("adapter defect")},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name+" list", func(t *testing.T) {
+			r := &fakeRows{pages: []ports.ListingRowPage{{Items: []domain.ListingReadModel{resolved("42664")}}}}
+			page, err := NewReadService(r, newFacts(tc.ceilingErr, tc.costErr), fakePolicy{found: true}, fakeInstallation(true), time.Now).List(context.Background(), ports.ListingQuery{InstallationID: "i", Limit: 1})
+			if err == nil {
+				t.Fatalf("expected propagated error, got page=%+v", page)
+			}
+		})
+		t.Run(tc.name+" by product", func(t *testing.T) {
+			productID := "42664"
+			r := &fakeRows{groupPages: []ports.ListingGroupRowPage{{Groups: []domain.ListingGroup{{ProductID: &productID, ProductTitle: ptrString("Produto"), Listings: []domain.ListingReadModel{resolved(productID)}}}}}}
+			page, err := NewReadService(r, newFacts(tc.ceilingErr, tc.costErr), fakePolicy{found: true}, fakeInstallation(true), time.Now).ByProduct(context.Background(), ports.ListingGroupQuery{InstallationID: "i", Limit: 1})
+			if err == nil {
+				t.Fatalf("expected propagated error, got page=%+v", page)
+			}
+		})
+		t.Run(tc.name+" get", func(t *testing.T) {
+			model := resolved("i~42664~-")
+			model.InstallationID = "i"
+			model.ProviderListingID = "42664"
+			model.Link.ProductID = ptrString("42664")
+			r := &fakeRows{getModel: model, getFound: true, timeline: []domain.TimelineEvent{{Kind: "synced"}}}
+			got, timeline, err := NewReadService(r, newFacts(tc.ceilingErr, tc.costErr), fakePolicy{found: true}, fakeInstallation(true), time.Now).Get(context.Background(), domain.ListingID{InstallationID: "i", ProviderListingID: "42664", VariationID: "-"})
+			if err == nil {
+				t.Fatalf("expected propagated error, got detail=%+v timeline=%+v", got, timeline)
+			}
+		})
+	}
+}
+
+// TestReadServiceDependentFilterErrorsWhenFactsSourceUnavailable pins B1
+// (hub ruling: PURE, uniform fail-honest). ANY fact-dependent filter --
+// filter.has_exception (true or false) or filter.exception=below_margin --
+// during a genuine source-unavailable outage must return a source-unavailable
+// error through the existing error envelope, never a confident 200 built by
+// re-querying without the filter applied. This supersedes the old
+// TestReadServiceDependentFilterPassesThroughWhenOptionalFactsUnavailable,
+// which pinned the defect (rows whose facts couldn't be evaluated were
+// silently served as matches/non-matches -- a known-false fact returned as a
+// match, exactly what ADR-17 forbids). Applying the filter's SQL-computable
+// half only (has_exception) while nulling margin was explicitly rejected by
+// the hub ruling as under-inclusive; both filter directions get the same
+// uniform error.
+func TestReadServiceDependentFilterErrorsWhenFactsSourceUnavailable(t *testing.T) {
+	trueValue, falseValue := true, false
 	originalCursor := ports.ListingCursor{LastTitle: "before", ListingID: "i~before~-"}
 	for _, outage := range []struct {
 		name       string
 		ceilingErr bool
 		costErr    bool
-		wantCalls  int
 	}{
-		{name: "ceiling outage", ceilingErr: true, wantCalls: 1},
-		{name: "cost outage", costErr: true, wantCalls: 2},
+		{name: "ceiling outage", ceilingErr: true},
+		{name: "cost outage", costErr: true},
+	} {
+		for _, filter := range []struct {
+			name   string
+			filter domain.ListingFilter
+		}{
+			{"exception below_margin", domain.ListingFilter{Exception: domain.ListingExceptionBelowMargin}},
+			{"has_exception true", domain.ListingFilter{HasException: &trueValue}},
+			{"has_exception false", domain.ListingFilter{HasException: &falseValue}},
+		} {
+			t.Run(outage.name+" "+filter.name+" list", func(t *testing.T) {
+				next := ports.ListingCursor{LastTitle: "next", ListingID: "i~next~-"}
+				r := &fakeRows{pages: []ports.ListingRowPage{
+					{Items: []domain.ListingReadModel{resolved("42664")}, NextCursor: &next},
+				}}
+				f := &fakeFacts{}
+				if outage.ceilingErr {
+					f.ceilingErr = sourceUnavailable("ceiling down")
+				}
+				if outage.costErr {
+					f.costErr = sourceUnavailable("cost down")
+				}
+				query := ports.ListingQuery{InstallationID: "i", Cursor: originalCursor, Limit: 1, Filter: filter.filter}
+				page, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), fixedNow).List(context.Background(), query)
+				if err == nil {
+					t.Fatalf("expected source-unavailable error, got page=%+v", page)
+				}
+			})
+
+			t.Run(outage.name+" "+filter.name+" by product", func(t *testing.T) {
+				productID := "42664"
+				next := ports.GroupCursor{ProductTitle: "Próximo", ProductID: "42666"}
+				r := &fakeRows{groupPages: []ports.ListingGroupRowPage{
+					{Groups: []domain.ListingGroup{{ProductID: &productID, ProductTitle: ptrString("Produto"), Listings: []domain.ListingReadModel{resolved(productID)}}}, NextCursor: &next},
+				}}
+				f := &fakeFacts{}
+				if outage.ceilingErr {
+					f.ceilingErr = sourceUnavailable("ceiling down")
+				}
+				if outage.costErr {
+					f.costErr = sourceUnavailable("cost down")
+				}
+				query := ports.ListingGroupQuery{InstallationID: "i", Cursor: ports.GroupCursor{ProductTitle: "Antes", ProductID: "1"}, Limit: 1, Filter: filter.filter}
+				page, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), fixedNow).ByProduct(context.Background(), query)
+				if err == nil {
+					t.Fatalf("expected source-unavailable error, got page=%+v", page)
+				}
+			})
+		}
+	}
+}
+
+// TestReadServiceNoDependentFilterStillDegradesOnSourceUnavailable guards
+// against over-correcting B1: a request with NO fact-dependent filter must
+// still serve a 200 with facts nulled on a genuine source-unavailable
+// outage -- that path is ADR-17-correct (null = not-evaluable) and must not
+// regress into an error just because dependent-filter requests now do.
+func TestReadServiceNoDependentFilterStillDegradesOnSourceUnavailable(t *testing.T) {
+	for _, outage := range []struct {
+		name       string
+		ceilingErr bool
+		costErr    bool
+	}{
+		{name: "ceiling outage", ceilingErr: true},
+		{name: "cost outage", costErr: true},
 	} {
 		t.Run(outage.name+" list", func(t *testing.T) {
-			next := ports.ListingCursor{LastTitle: "next", ListingID: "i~next~-"}
-			r := &fakeRows{pages: []ports.ListingRowPage{
-				{Items: []domain.ListingReadModel{resolved("42664")}, NextCursor: &next},
-				{Items: []domain.ListingReadModel{resolved("42665")}, NextCursor: &next},
-			}}
-			f := &fakeFacts{}
+			r := &fakeRows{pages: []ports.ListingRowPage{{Items: []domain.ListingReadModel{resolved("42664")}}}}
+			f := &fakeFacts{ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}
 			if outage.ceilingErr {
-				f.ceilingErr = errors.New("ceiling down")
+				f.ceilingErr = sourceUnavailable("ceiling down")
 			}
 			if outage.costErr {
-				f.costErr = errors.New("cost down")
+				f.costErr = sourceUnavailable("cost down")
 			}
-			query := ports.ListingQuery{InstallationID: "i", Cursor: originalCursor, Limit: 1, Filter: domain.ListingFilter{Exception: domain.ListingExceptionBelowMargin}}
-			page, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), fixedNow).List(context.Background(), query)
-			if err != nil || len(page.Items) != 1 || page.NextCursor == nil || *page.NextCursor != next || !page.AsOf.Equal(fixedNow().UTC()) {
+			page, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), time.Now).List(context.Background(), ports.ListingQuery{InstallationID: "i", Limit: 1})
+			if err != nil || len(page.Items) != 1 {
 				t.Fatalf("page=%+v err=%v", page, err)
 			}
 			if page.Items[0].Cost != nil || page.Items[0].BelowMarginWorstCase != nil {
-				t.Fatalf("unknown item=%+v", page.Items[0])
-			}
-			if len(r.listQueries) != outage.wantCalls || r.listQueries[0].Cursor != originalCursor || (outage.costErr && r.listQueries[1].Cursor != originalCursor) {
-				t.Fatalf("queries=%+v", r.listQueries)
+				t.Fatalf("degraded item=%+v", page.Items[0])
 			}
 		})
 
 		t.Run(outage.name+" by product", func(t *testing.T) {
 			productID := "42664"
-			fallbackID := "42665"
-			next := ports.GroupCursor{ProductTitle: "Próximo", ProductID: "42666"}
-			r := &fakeRows{groupPages: []ports.ListingGroupRowPage{
-				{Groups: []domain.ListingGroup{{ProductID: &productID, ProductTitle: ptrString("Produto"), Listings: []domain.ListingReadModel{resolved(productID)}}}, NextCursor: &next},
-				{Groups: []domain.ListingGroup{{ProductID: &fallbackID, ProductTitle: ptrString("Fallback"), Listings: []domain.ListingReadModel{resolved(fallbackID)}}}, NextCursor: &next},
-			}}
-			f := &fakeFacts{}
+			r := &fakeRows{groupPages: []ports.ListingGroupRowPage{{Groups: []domain.ListingGroup{{ProductID: &productID, ProductTitle: ptrString("Produto"), Listings: []domain.ListingReadModel{resolved(productID)}}}}}}
+			f := &fakeFacts{ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}
 			if outage.ceilingErr {
-				f.ceilingErr = errors.New("ceiling down")
+				f.ceilingErr = sourceUnavailable("ceiling down")
 			}
 			if outage.costErr {
-				f.costErr = errors.New("cost down")
+				f.costErr = sourceUnavailable("cost down")
 			}
-			query := ports.ListingGroupQuery{InstallationID: "i", Cursor: ports.GroupCursor{ProductTitle: "Antes", ProductID: "1"}, Limit: 1, Filter: domain.ListingFilter{Exception: domain.ListingExceptionBelowMargin}}
-			page, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), fixedNow).ByProduct(context.Background(), query)
-			if err != nil || len(page.Groups) != 1 || len(page.Groups[0].Listings) != 1 || page.NextCursor == nil || *page.NextCursor != next || !page.AsOf.Equal(fixedNow().UTC()) {
+			page, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), time.Now).ByProduct(context.Background(), ports.ListingGroupQuery{InstallationID: "i", Limit: 1})
+			if err != nil || len(page.Groups) != 1 {
 				t.Fatalf("page=%+v err=%v", page, err)
 			}
-			if page.Groups[0].Listings[0].Cost != nil || page.Groups[0].Listings[0].BelowMarginWorstCase != nil || page.Groups[0].ListingCount != 1 {
-				t.Fatalf("unknown group=%+v", page.Groups[0])
-			}
-			if len(r.groupQueries) != outage.wantCalls || r.groupQueries[0].Cursor != query.Cursor || (outage.costErr && r.groupQueries[1].Cursor != query.Cursor) {
-				t.Fatalf("queries=%+v", r.groupQueries)
+			if page.Groups[0].Listings[0].Cost != nil || page.Groups[0].Listings[0].BelowMarginWorstCase != nil {
+				t.Fatalf("degraded item=%+v", page.Groups[0].Listings[0])
 			}
 		})
+	}
+}
+
+// TestReadServiceDependentFilterNonSourceUnavailablePropagates pins B2 for
+// the scan path: cancellation/timeout/adapter defects discovered mid-scan
+// under a fact-dependent filter must propagate as errors, not be classified
+// as a degrade-worthy outage.
+func TestReadServiceDependentFilterNonSourceUnavailablePropagates(t *testing.T) {
+	r := &fakeRows{pages: []ports.ListingRowPage{{Items: []domain.ListingReadModel{resolved("42664")}}}}
+	f := &fakeFacts{ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}, costErr: context.DeadlineExceeded}
+	query := ports.ListingQuery{InstallationID: "i", Limit: 1, Filter: domain.ListingFilter{Exception: domain.ListingExceptionBelowMargin}}
+	page, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), time.Now).List(context.Background(), query)
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("expected context.DeadlineExceeded to propagate, got page=%+v err=%v", page, err)
 	}
 }
 
