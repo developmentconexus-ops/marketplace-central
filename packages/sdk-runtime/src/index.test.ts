@@ -1168,6 +1168,103 @@ describe("sdk runtime", () => {
     expect(result.items[0].payments[0].total_paid_amount).toBe(125.92);
   });
 
+  it("lists canonical orders with cursor and filter query parameters", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                provider_order_id: "order-1",
+                provider_code: "mercado_livre",
+                status: "paid",
+                provider_status_detail: "",
+                buyer_nickname: null,
+                total: null,
+                currency: null,
+                fulfillment: null,
+                nf_state: null,
+                created_at: null,
+                provider_created_at: null,
+                provider_closed_at: null,
+                provider_updated_at: null,
+                items: [],
+                payments: [],
+              },
+            ],
+            next_cursor: null,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      },
+    });
+
+    const result = await client.listOrders({
+      installation_id: "inst/1",
+      cursor: "cursor+with/slash=",
+      status: "paid & shipped",
+      date_from: "2026-07-01",
+      date_to: "2026-07-16T12:00:00Z",
+      q: "buyer/order?1",
+    });
+
+    expect(String(requests[0].input)).toBe(
+      "http://localhost:8080/orders?installation_id=inst%2F1&cursor=cursor%2Bwith%2Fslash%3D&status=paid+%26+shipped&date_from=2026-07-01&date_to=2026-07-16T12%3A00%3A00Z&q=buyer%2Forder%3F1",
+    );
+    const read: OrderRead = result.items[0];
+    expect(read.provider_order_id).toBe("order-1");
+    expect(result.items[0].buyer_nickname).toBeNull();
+    expect(result.items[0].total).toBeNull();
+    const nullableCurrency: string | null = result.items[0].currency;
+    const nullableFulfillment: string | null = result.items[0].fulfillment;
+    const nullableNFState: string | null = result.items[0].nf_state;
+    expect(nullableCurrency).toBeNull();
+    expect(nullableFulfillment).toBeNull();
+    expect(nullableNFState).toBeNull();
+  });
+
+  it("gets an order with both identifiers URL-encoded", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(
+          JSON.stringify({
+            provider_order_id: "order/with ?chars",
+            provider_code: "mercado_livre",
+            status: "paid",
+            provider_status_detail: "",
+            buyer_nickname: null,
+            total: null,
+            currency: null,
+            fulfillment: null,
+            nf_state: null,
+            created_at: null,
+            provider_created_at: null,
+            provider_closed_at: null,
+            provider_updated_at: null,
+            items: [],
+            payments: [],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      },
+    });
+
+    const result = await client.getOrder("installation/1", "order/with ?chars");
+
+    expect(String(requests[0].input)).toBe(
+      "http://localhost:8080/orders/order%2Fwith%20%3Fchars?installation_id=installation%2F1",
+    );
+    const read: OrderRead = result;
+    expect(read.provider_code).toBe("mercado_livre");
+    expect(result.provider_order_id).toBe("order/with ?chars");
+  });
+
   it("imports profitability margin inputs as json", async () => {
     const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
     const client = createMarketplaceCentralClient({
