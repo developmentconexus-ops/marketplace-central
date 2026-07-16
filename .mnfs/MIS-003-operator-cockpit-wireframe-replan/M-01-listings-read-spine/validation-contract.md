@@ -124,10 +124,10 @@ Required: Yes
 Status: Pending
 Evidence:
 - Command: integration test on seeded listing with NULL cost
-- Expected: item JSON contains `"cost": null` and `"below_margin": null` (not `false`); summary counter `below_margin` excludes it
+- Expected: item JSON contains `"cost": null` and `"below_margin_worst_case": null` (not `false`); summary `below_margin_worst_case` counter excludes it and it is counted in the additive `margin_unknown` counter (field renamed per operator-ratified D-22 / binding OpenAPI; supersedes the pre-D-22 `below_margin` wording — see DECISIONS.md:101)
 - Actual:
 - Artifact: `F-02.../validation.md`
-Blocking failure: `below_margin: false` or 0-cost computation for null cost
+Blocking failure: `below_margin_worst_case: false` or 0-cost computation for null cost
 Blocking failure observed: No
 Owner: QA Validator
 
