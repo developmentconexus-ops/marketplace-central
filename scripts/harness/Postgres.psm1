@@ -1,7 +1,7 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-Import-Module (Join-Path $PSScriptRoot 'Execution.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'Execution.psm1')
 
 function Copy-HarnessEnvironment {
   param([Parameter(Mandatory)][System.Collections.IDictionary]$Source)
