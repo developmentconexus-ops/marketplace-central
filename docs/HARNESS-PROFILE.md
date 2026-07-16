@@ -103,6 +103,19 @@ Hub-owned (chips `REQUEST`, never take): OpenAPI/sdk-runtime contract lock · mi
 blocks · dev stack (:8080/:5174) · harness control files (`scripts/harness*`, package.json
 harness scripts) · `contracts/governance/` registry · `docs/HARNESS*` doctrine files.
 
+**Live dispatch viewer (ratified 2026-07-16):** the hub serves the codex live dashboard
+(core §8 pattern): scratchpad `live-server.mjs`, `127.0.0.1:7391`, SSE-tailing every
+`agent__<id>.log`/`.done` across ALL marketplace-central session scratchpads (hub + chips,
+discovered dynamically). Hub boots it at wave dispatch; scratchpad-local, never committed.
+Canonical copy travels session-to-session by copying from the previous hub/milestone
+scratchpad (glob `Temp/claude/C--*marketplace-central*/*/scratchpad/live-server.mjs`, newest).
+
+**DB-specialist consultation seam (ratified 2026-07-16):** Oracle/Sankhya query questions
+(schema semantics, TOP/CODPROD/TGF* doubts, query plans) route to the standing MNOS
+specialist session `local_ec787804-f8e9-4981-9c12-7d3f45292294` ("Marketplace Central
+database queries") via ccd `send_message`. Chips do NOT message it directly — chip sends
+`REQUEST db-consult` to the hub with the question; hub relays and returns the answer.
+
 **Dev-stack sync standing policy (ratified 2026-07-16):** a chip `COMMITTED` event carrying
 `stack-sync: <sha>` triggers the hub to rebuild/redeploy the dev stack at that SHA WITHOUT
 per-request negotiation — M-01 burned 4 hub round-trips on restart asks alone. The hub still
@@ -194,5 +207,6 @@ verification conflicts against this list.
 2026-07-16 · §2 · ratified · per-milestone governance base anchor: chip drift gate runs against the milestone's accepted 40-hex base SHA from the chip prompt; other-base REDs on long-lived worktrees are not chip defects (M-01 field 2×)
 2026-07-16 · §2 · ratified · known pre-existing failure allowlist for L1 (cite, don't re-prove; hub-owned edits; entries carry evidence + backlog owner) — seeded with TestPhase1SmokeFlow (M-01 re-proved it 5×)
 2026-07-16 · §6 · ratified · dev-stack sync standing policy: COMMITTED event with stack-sync <sha> → hub rebuilds without negotiation (M-01: 4 round-trips were restart asks)
+2026-07-16 · §6 · ratified · live dispatch viewer (hub-served live-server.mjs :7391, dynamic multi-session scratchpad discovery) + DB-specialist consultation seam (MNOS session local_ec787804, hub-relayed via REQUEST db-consult) — operator-requested at W1 dispatch
 2026-07-16 · (upstream) · ratified · core amendments landed in mnfs-harness cd114e6: sonnet fallback implementer row, COMMITTED event grammar, lean close (★ crew superseded at close by P6 dual gate), additive contract-lock named mechanism, P2 required plan outputs (write-DAG + contract satisfiability + lock pre-identification), Claude-side dispatch visibility accepted limitation
 ```
