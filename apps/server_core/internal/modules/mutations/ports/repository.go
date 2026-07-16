@@ -34,8 +34,45 @@ type CreateProtocolInput struct {
 	CreatedAt      time.Time
 }
 
+type MutationItem struct {
+	Seq            int
+	ItemID         string
+	ListingID      string
+	IdempotencyKey string
+	Before         json.RawMessage
+	After          json.RawMessage
+	State          domain.ItemState
+	Failure        json.RawMessage
+	AppliedAt      *time.Time
+}
+
+type ReplaceItemInput struct {
+	ListingID string
+	Before    json.RawMessage
+	After     json.RawMessage
+}
+
+type ItemOutcome struct {
+	State     domain.ItemState
+	Failure   json.RawMessage
+	AppliedAt time.Time
+}
+
+type ProtocolClaim interface {
+	Protocol() Protocol
+	FetchPendingItems(context.Context) ([]MutationItem, error)
+	WriteItemOutcome(context.Context, string, ItemOutcome) error
+	AppliedIdempotencyKeys(context.Context, []string) ([]string, error)
+	Finish(context.Context, domain.ProtocolState, time.Time) error
+	Commit(context.Context) error
+	Rollback(context.Context) error
+}
+
 // ProtocolRepository serves mutation application commands and protocol polling reads.
 type ProtocolRepository interface {
 	CreateProtocol(context.Context, CreateProtocolInput) (Protocol, error)
 	GetProtocol(context.Context, string) (Protocol, bool, error)
+	ReplaceItems(context.Context, string, []ReplaceItemInput) ([]MutationItem, error)
+	ApproveItems(context.Context, string, time.Time) error
+	ClaimProtocol(context.Context, string) (ProtocolClaim, bool, error)
 }
