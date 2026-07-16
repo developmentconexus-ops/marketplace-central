@@ -64,7 +64,6 @@ import (
 	listingstransport "marketplace-central/apps/server_core/internal/modules/listings/transport"
 	marketplacespostgres "marketplace-central/apps/server_core/internal/modules/marketplaces/adapters/postgres"
 	marketplacesapp "marketplace-central/apps/server_core/internal/modules/marketplaces/application"
-	marketplacesdomain "marketplace-central/apps/server_core/internal/modules/marketplaces/domain"
 	marketplacesregistry "marketplace-central/apps/server_core/internal/modules/marketplaces/registry"
 	marketplacestransport "marketplace-central/apps/server_core/internal/modules/marketplaces/transport"
 	ordersintegrations "marketplace-central/apps/server_core/internal/modules/orders/adapters/integrations"
@@ -102,14 +101,6 @@ type authFlowFacade struct {
 
 type unavailableProductMatcher struct {
 	err error
-}
-
-type unavailablePolicyService struct {
-	err error
-}
-
-func (s unavailablePolicyService) GetPricingPolicyForInstallation(context.Context, string) (marketplacesdomain.Policy, bool, error) {
-	return marketplacesdomain.Policy{}, false, s.err
 }
 
 type unavailableListingPolicyReader struct {
@@ -491,10 +482,8 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	marketSvc := marketplacesapp.NewService(marketRepo, cfg.DefaultTenantID)
 
 	listingRepo := listingspostgres.NewRepository(pool, cfg.DefaultTenantID)
-	listingCostReader := listingsinternalread.NewCostReader(internalreadoracle.NewBatchReader(nil, oracleBatchSemaphore))
-	listingPolicyReader := unavailableListingPolicyReader{delegate: listingsmarketplaces.NewPolicyReader(unavailablePolicyService{
-		err: internalreaddomain.NewReadError(internalreaddomain.ReadErrorSourceUnavailable, "marketplace policy reader is unavailable", nil),
-	})}
+	listingCostReader := listingsinternalread.NewCostReader(internalreadoracle.NewBatchReader(oracleDB, oracleBatchSemaphore))
+	listingPolicyReader := unavailableListingPolicyReader{delegate: listingsmarketplaces.NewPolicyReader(marketSvc)}
 	listingInstallationReader := listingsintegrations.NewInstallationReader(installationSvc)
 	listingSvc := listingsapp.NewReadService(
 		listingRepo,

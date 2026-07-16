@@ -119,10 +119,8 @@ func (s ReadService) List(ctx context.Context, query ports.ListingQuery) (ports.
 	if err != nil {
 		return ports.ListingRowPage{}, fmt.Errorf("read pricing policy: %w", err)
 	}
-	ceilings, err := s.facts.GetICMSCeilingByOrigin(ctx, originUFMG)
-	if err != nil {
-		return ports.ListingRowPage{}, fmt.Errorf("read ICMS ceiling: %w", err)
-	}
+	ceilings, ceilingErr := s.facts.GetICMSCeilingByOrigin(ctx, originUFMG)
+	factsUnavailable := ceilingErr != nil
 	maxCeiling := maximumCeiling(ceilings)
 	serveTime := s.now().UTC()
 	if !needsBelowMarginScan(query.Filter) {
@@ -130,13 +128,14 @@ func (s ReadService) List(ctx context.Context, query ports.ListingQuery) (ports.
 		if err != nil {
 			return ports.ListingRowPage{}, err
 		}
-		if err := s.enrich(ctx, page.Items, maxCeiling, policy, policyFound); err != nil {
+		_, err = s.enrich(ctx, page.Items, maxCeiling, policy, policyFound, factsUnavailable)
+		if err != nil {
 			return ports.ListingRowPage{}, err
 		}
 		page.AsOf = serveTime
 		return page, nil
 	}
-	return s.scan(ctx, query, maxCeiling, policy, policyFound, serveTime)
+	return s.scan(ctx, query, maxCeiling, policy, policyFound, factsUnavailable, serveTime)
 }
 
 func (s ReadService) ByProduct(ctx context.Context, query ports.ListingGroupQuery) (ports.ListingGroupRowPage, error) {
@@ -154,19 +153,18 @@ func (s ReadService) ByProduct(ctx context.Context, query ports.ListingGroupQuer
 	if err != nil {
 		return ports.ListingGroupRowPage{}, fmt.Errorf("read pricing policy: %w", err)
 	}
-	ceilings, err := s.facts.GetICMSCeilingByOrigin(ctx, originUFMG)
-	if err != nil {
-		return ports.ListingGroupRowPage{}, fmt.Errorf("read ICMS ceiling: %w", err)
-	}
+	ceilings, ceilingErr := s.facts.GetICMSCeilingByOrigin(ctx, originUFMG)
+	factsUnavailable := ceilingErr != nil
 	ceiling, asOf := maximumCeiling(ceilings), s.now().UTC()
 	if needsBelowMarginScan(query.Filter) {
-		return s.scanGroups(ctx, query, ceiling, policy, policyFound, asOf)
+		return s.scanGroups(ctx, query, ceiling, policy, policyFound, factsUnavailable, asOf)
 	}
 	page, err := s.repo.ListListingGroupRows(ctx, query)
 	if err != nil {
 		return ports.ListingGroupRowPage{}, err
 	}
-	if err := s.enrichGroups(ctx, page.Groups, ceiling, policy, policyFound); err != nil {
+	_, err = s.enrichGroups(ctx, page.Groups, ceiling, policy, policyFound, factsUnavailable)
+	if err != nil {
 		return ports.ListingGroupRowPage{}, err
 	}
 	finalizeGroups(page.Groups)
@@ -174,7 +172,10 @@ func (s ReadService) ByProduct(ctx context.Context, query ports.ListingGroupQuer
 	return page, nil
 }
 
-func (s ReadService) scanGroups(ctx context.Context, q ports.ListingGroupQuery, ceiling *float64, policy ports.PricingPolicy, policyFound bool, asOf time.Time) (ports.ListingGroupRowPage, error) {
+func (s ReadService) scanGroups(ctx context.Context, q ports.ListingGroupQuery, ceiling *float64, policy ports.PricingPolicy, policyFound, factsUnavailable bool, asOf time.Time) (ports.ListingGroupRowPage, error) {
+	if factsUnavailable {
+		return s.passThroughGroups(ctx, q, ceiling, policy, policyFound, asOf)
+	}
 	result := ports.ListingGroupRowPage{Groups: []domain.ListingGroup{}, AsOf: asOf}
 	cursor := q.Cursor
 	for pageNo := 0; pageNo < maxBelowMarginGroupScanPages; pageNo++ {
@@ -184,8 +185,12 @@ func (s ReadService) scanGroups(ctx context.Context, q ports.ListingGroupQuery, 
 		if err != nil {
 			return ports.ListingGroupRowPage{}, err
 		}
-		if err := s.enrichGroups(ctx, page.Groups, ceiling, policy, policyFound); err != nil {
+		factsUnavailable, err = s.enrichGroups(ctx, page.Groups, ceiling, policy, policyFound, factsUnavailable)
+		if err != nil {
 			return ports.ListingGroupRowPage{}, err
+		}
+		if factsUnavailable {
+			return s.passThroughGroups(ctx, q, ceiling, policy, policyFound, asOf)
 		}
 		for groupIndex := range page.Groups {
 			group := page.Groups[groupIndex]
@@ -220,13 +225,27 @@ func (s ReadService) scanGroups(ctx context.Context, q ports.ListingGroupQuery, 
 	return result, nil
 }
 
-func (s ReadService) enrichGroups(ctx context.Context, groups []domain.ListingGroup, ceiling *float64, policy ports.PricingPolicy, policyFound bool) error {
+func (s ReadService) passThroughGroups(ctx context.Context, q ports.ListingGroupQuery, ceiling *float64, policy ports.PricingPolicy, policyFound bool, asOf time.Time) (ports.ListingGroupRowPage, error) {
+	page, err := s.repo.ListListingGroupRows(ctx, q)
+	if err != nil {
+		return ports.ListingGroupRowPage{}, err
+	}
+	if _, err := s.enrichGroups(ctx, page.Groups, ceiling, policy, policyFound, true); err != nil {
+		return ports.ListingGroupRowPage{}, err
+	}
+	finalizeGroups(page.Groups)
+	page.AsOf = asOf
+	return page, nil
+}
+
+func (s ReadService) enrichGroups(ctx context.Context, groups []domain.ListingGroup, ceiling *float64, policy ports.PricingPolicy, policyFound, factsUnavailable bool) (bool, error) {
 	items := make([]domain.ListingReadModel, 0)
 	for _, group := range groups {
 		items = append(items, group.Listings...)
 	}
-	if err := s.enrich(ctx, items, ceiling, policy, policyFound); err != nil {
-		return err
+	factsUnavailable, err := s.enrich(ctx, items, ceiling, policy, policyFound, factsUnavailable)
+	if err != nil {
+		return false, err
 	}
 	offset := 0
 	for i := range groups {
@@ -234,7 +253,7 @@ func (s ReadService) enrichGroups(ctx context.Context, groups []domain.ListingGr
 		copy(groups[i].Listings, items[offset:offset+n])
 		offset += n
 	}
-	return nil
+	return factsUnavailable, nil
 }
 
 func finalizeGroups(groups []domain.ListingGroup) {
@@ -275,16 +294,19 @@ func (s ReadService) Get(ctx context.Context, id domain.ListingID) (domain.Listi
 	if err != nil {
 		return domain.ListingReadModel{}, nil, fmt.Errorf("read pricing policy: %w", err)
 	}
-	ceilings, err := s.facts.GetICMSCeilingByOrigin(ctx, originUFMG)
-	if err != nil {
-		return domain.ListingReadModel{}, nil, fmt.Errorf("read ICMS ceiling: %w", err)
-	}
+	ceilings, ceilingErr := s.facts.GetICMSCeilingByOrigin(ctx, originUFMG)
+	factsUnavailable := ceilingErr != nil
 	items := []domain.ListingReadModel{model}
-	if err := s.enrich(ctx, items, maximumCeiling(ceilings), policy, policyFound); err != nil {
+	factsUnavailable, err = s.enrich(ctx, items, maximumCeiling(ceilings), policy, policyFound, factsUnavailable)
+	if err != nil {
 		return domain.ListingReadModel{}, nil, err
 	}
 	model = items[0]
-	model.ICMSWorstCaseByUF = icmsWorstCaseByUF(model, ceilings, policy, policyFound)
+	if ceilingErr != nil {
+		model.ICMSWorstCaseByUF = nil
+	} else {
+		model.ICMSWorstCaseByUF = icmsWorstCaseByUF(model, ceilings, policy, policyFound)
+	}
 	timeline, err := s.repo.ListListingTimeline(ctx, key, 10)
 	if err != nil {
 		return domain.ListingReadModel{}, nil, fmt.Errorf("read listing timeline: %w", err)
@@ -295,7 +317,10 @@ func (s ReadService) Get(ctx context.Context, id domain.ListingID) (domain.Listi
 	return model, timeline, nil
 }
 
-func (s ReadService) scan(ctx context.Context, q ports.ListingQuery, ceiling *float64, policy ports.PricingPolicy, policyFound bool, asOf time.Time) (ports.ListingRowPage, error) {
+func (s ReadService) scan(ctx context.Context, q ports.ListingQuery, ceiling *float64, policy ports.PricingPolicy, policyFound, factsUnavailable bool, asOf time.Time) (ports.ListingRowPage, error) {
+	if factsUnavailable {
+		return s.passThrough(ctx, q, ceiling, policy, policyFound, asOf)
+	}
 	result := ports.ListingRowPage{Items: make([]domain.ListingReadModel, 0, q.Limit), AsOf: asOf}
 	cursor := q.Cursor
 	for pageNo := 0; pageNo < maxBelowMarginScanPages; pageNo++ {
@@ -305,8 +330,12 @@ func (s ReadService) scan(ctx context.Context, q ports.ListingQuery, ceiling *fl
 		if err != nil {
 			return ports.ListingRowPage{}, err
 		}
-		if err := s.enrich(ctx, page.Items, ceiling, policy, policyFound); err != nil {
+		factsUnavailable, err = s.enrich(ctx, page.Items, ceiling, policy, policyFound, factsUnavailable)
+		if err != nil {
 			return ports.ListingRowPage{}, err
+		}
+		if factsUnavailable {
+			return s.passThrough(ctx, q, ceiling, policy, policyFound, asOf)
 		}
 		for _, item := range page.Items {
 			lastScanned := ports.ListingCursor{LastTitle: item.Title, ListingID: item.ListingID}
@@ -333,14 +362,28 @@ func (s ReadService) scan(ctx context.Context, q ports.ListingQuery, ceiling *fl
 	return result, nil
 }
 
-func (s ReadService) enrich(ctx context.Context, items []domain.ListingReadModel, ceiling *float64, policy ports.PricingPolicy, policyFound bool) error {
+func (s ReadService) passThrough(ctx context.Context, q ports.ListingQuery, ceiling *float64, policy ports.PricingPolicy, policyFound bool, asOf time.Time) (ports.ListingRowPage, error) {
+	page, err := s.repo.ListListingRows(ctx, q)
+	if err != nil {
+		return ports.ListingRowPage{}, err
+	}
+	if _, err := s.enrich(ctx, page.Items, ceiling, policy, policyFound, true); err != nil {
+		return ports.ListingRowPage{}, err
+	}
+	page.AsOf = asOf
+	return page, nil
+}
+
+func (s ReadService) enrich(ctx context.Context, items []domain.ListingReadModel, ceiling *float64, policy ports.PricingPolicy, policyFound, factsUnavailable bool) (bool, error) {
 	ids := make([]int64, 0, len(items))
 	seen := map[int64]bool{}
-	for _, item := range items {
-		if item.Link.ProductID != nil {
-			if id, err := strconv.ParseInt(*item.Link.ProductID, 10, 64); err == nil && !seen[id] {
-				seen[id] = true
-				ids = append(ids, id)
+	if !factsUnavailable {
+		for _, item := range items {
+			if item.Link.ProductID != nil {
+				if id, err := strconv.ParseInt(*item.Link.ProductID, 10, 64); err == nil && !seen[id] {
+					seen[id] = true
+					ids = append(ids, id)
+				}
 			}
 		}
 	}
@@ -349,31 +392,37 @@ func (s ReadService) enrich(ctx context.Context, items []domain.ListingReadModel
 		var err error
 		costs, err = s.facts.GetCostFactsByIDs(ctx, ids)
 		if err != nil {
-			return fmt.Errorf("read listing costs: %w", err)
+			factsUnavailable = true
 		}
 	}
 	for i := range items {
 		item := &items[i]
 		var amount *float64
-		if item.Link.ProductID != nil {
-			if id, e := strconv.ParseInt(*item.Link.ProductID, 10, 64); e == nil {
-				if fact := costs[id]; fact != nil {
-					amount = fact.Amount
+		if factsUnavailable {
+			item.Cost = nil
+			item.BelowMarginWorstCase = nil
+			item.ICMSWorstCaseByUF = nil
+		} else {
+			if item.Link.ProductID != nil {
+				if id, e := strconv.ParseInt(*item.Link.ProductID, 10, 64); e == nil {
+					if fact := costs[id]; fact != nil {
+						amount = fact.Amount
+					}
 				}
 			}
+			if amount != nil {
+				item.Cost = &domain.Money{Amount: strconv.FormatFloat(*amount, 'f', -1, 64), Currency: priceCurrency(item.Price)}
+			}
+			var margin *float64
+			if policyFound {
+				margin = &policy.MinMarginPercent
+			}
+			item.BelowMarginWorstCase = belowMargin(item.Price, amount, ceiling, margin)
+			item.ICMSWorstCaseByUF = nil
 		}
-		if amount != nil {
-			item.Cost = &domain.Money{Amount: strconv.FormatFloat(*amount, 'f', -1, 64), Currency: priceCurrency(item.Price)}
-		}
-		var margin *float64
-		if policyFound {
-			margin = &policy.MinMarginPercent
-		}
-		item.BelowMarginWorstCase = belowMargin(item.Price, amount, ceiling, margin)
-		item.ICMSWorstCaseByUF = nil
 		item.PendingIssue = pendingIssue(*item)
 	}
-	return nil
+	return factsUnavailable, nil
 }
 
 func priceCurrency(price *domain.Money) domain.PriceCurrency {

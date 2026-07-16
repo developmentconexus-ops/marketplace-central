@@ -25,3 +25,44 @@ Integration tests close M01-C04..C09 for the read-only listings spine. They driv
 - `TestListingsReadContractEndToEnd` PASS (2.06s) — all 8 subtests green: cursor walk + JSON null contract, all filter keys, q (title/provider-id/SKU), by-product tie/null-last, detail timeline + 404, error matrix (status + `error.code`), null-cost honesty + known below-margin + summary counters, tenant isolation across all read paths + cursor.
 
 Real ephemeral Postgres, real migrations (0036), real registrar/handler/repository; the only substitution is the deterministic `ports.CostReader` fake at the Oracle boundary (explicit fake, not live-Oracle evidence). Completes **M01-C04..C09**.
+
+## Slice 8 validation — optional margin-reader degradation
+
+Status: **quick_validation_passed**
+
+Test-first evidence:
+
+- Added failing ceiling-outage and cost-outage cases for `List`, `ByProduct`, and `Get`; dependent `below_margin` pass-through cases; and installation/policy hard-error guards.
+- Before the service change, `go test ./internal/modules/listings/application` exited **1** with the expected optional-reader errors (`read ICMS ceiling` / `read listing costs`) and dependent-filter failures.
+
+Implementation evidence:
+
+- Changed only `apps/server_core/internal/modules/listings/application/read_service.go` and `apps/server_core/internal/modules/listings/application/read_service_test.go`.
+- Ceiling or cost outage now returns rows/groups/detail with nullable cost and margin facts; ceiling outage skips cost lookup; cost-only detail outage preserves known ICMS rows with null margin results; dependent filters restart from the original cursor and pass candidates through. Installation, policy, repository, and timeline errors remain hard.
+
+Commands and results from `apps/server_core` (absolute cache: `C:\Users\leandro.theodoro\Documents\marketplace-central\.claude\worktrees\m01-listings\apps\server_core\.gocache`):
+
+- `GOCACHE=$(pwd)/.gocache go test ./internal/modules/listings/...` — **exit 0**, all listings packages passed.
+- `GOCACHE=$(pwd)/.gocache go build ./...` — initial **exit 1** from sandbox Git safe-directory VCS stamping; rerun with an in-process `safe.directory=*` Git environment override — **exit 0**. No repository or Git configuration was changed.
+- `GOCACHE=$(pwd)/.gocache go vet ./internal/modules/listings/...` — **exit 0**.
+
+Evidence type: `ran` for every command above. No transport, OpenAPI, SDK, migration, adapter, or other-module changes.
+
+### Slice 8 wiring addendum — NO-STUB (composition root)
+
+Per hub NO-STUB doctrine (docs/HARNESS.md §4/§5, ratified 2026-07-15) + hub in-worktree verification,
+the corrective slice ALSO removes the composition-root stubs (see
+`../HUB-EVENT-ADJUDICATION-cost-policy-wiring.md` FINAL and `slice8-corrective-brief.md` FINAL ADDENDUM):
+
+- `apps/server_core/internal/composition/root.go`: listings cost reader `NewBatchReader(nil,…)` → `NewBatchReader(oracleDB,…)`
+  (real Oracle handle, identical to profitability `:474`); policy reader stub `unavailablePolicyService`
+  → real Postgres-backed `marketSvc`, keeping the `unavailableListingPolicyReader` degrade wrapper; dead
+  `unavailablePolicyService` type + unused `marketplacesdomain` import removed.
+- Zero-value `oracleDB` safety (Oracle env absent): `BatchReader.ensureBatchAvailable`
+  (`internal_read/adapters/oracle/batch_reader.go:204-212`) returns `ReadErrorSourceUnavailable` before any
+  DB call → clean degrade via fix (a), no panic. Verified by inspection + the cost-outage unit cases.
+- Verification (chip, absolute GOCACHE, `apps/server_core`): `go build ./...` **exit 0**;
+  `go vet ./internal/composition/... ./internal/modules/listings/...` **exit 0**;
+  `go test -count=1 ./internal/modules/listings/...` **exit 0** (fresh). Independent cold review (cavecrew): CLEAN.
+- Wiring runtime proof deferred to the C10 live re-drive (composition wiring is out-of-band for unit tests).
+  No reachable stub remains; NO-STUB satisfied by removal, not deferral (deferral record marked SUPERSEDED).

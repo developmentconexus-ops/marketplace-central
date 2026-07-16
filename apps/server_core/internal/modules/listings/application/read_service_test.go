@@ -12,6 +12,7 @@ import (
 
 type fakeRows struct {
 	pages        []ports.ListingRowPage
+	listQueries  []ports.ListingQuery
 	groupPages   []ports.ListingGroupRowPage
 	calls        int
 	groupQueries []ports.ListingGroupQuery
@@ -24,7 +25,8 @@ type fakeRows struct {
 	summaryCalls int
 }
 
-func (f *fakeRows) ListListingRows(_ context.Context, _ ports.ListingQuery) (ports.ListingRowPage, error) {
+func (f *fakeRows) ListListingRows(_ context.Context, q ports.ListingQuery) (ports.ListingRowPage, error) {
+	f.listQueries = append(f.listQueries, q)
 	p := f.pages[f.calls]
 	f.calls++
 	return p, nil
@@ -72,12 +74,23 @@ func (f *fakeFacts) GetICMSCeilingByOrigin(context.Context, int64) (map[int64]*p
 type fakePolicy struct{ found bool }
 type fakeInstallation bool
 
+type failingInstallation struct{ err error }
+type failingPolicy struct{ err error }
+
 func (f fakeInstallation) InstallationExists(context.Context, string) (bool, error) {
 	return bool(f), nil
 }
 
+func (f failingInstallation) InstallationExists(context.Context, string) (bool, error) {
+	return false, f.err
+}
+
 func (f fakePolicy) GetPricingPolicyForInstallation(context.Context, string) (ports.PricingPolicy, bool, error) {
 	return ports.PricingPolicy{MinMarginPercent: 10}, f.found, nil
+}
+
+func (f failingPolicy) GetPricingPolicyForInstallation(context.Context, string) (ports.PricingPolicy, bool, error) {
+	return ports.PricingPolicy{}, false, f.err
 }
 func money(v string) *domain.Money { return &domain.Money{Amount: v, Currency: "BRL"} }
 func resolved(id string) domain.ListingReadModel {
@@ -191,12 +204,173 @@ func TestReadServiceScanCapReturnsLastScannedCursor(t *testing.T) {
 	}
 }
 
-func TestReadServiceOracleFailureFailsRequest(t *testing.T) {
+func TestReadServiceOptionalFactOutagesServeListByProductAndGet(t *testing.T) {
+	for _, outage := range []struct {
+		name       string
+		ceilingErr bool
+		costErr    bool
+		wantCosts  int
+	}{
+		{name: "ceiling outage", ceilingErr: true},
+		{name: "cost outage", costErr: true, wantCosts: 1},
+	} {
+		t.Run(outage.name+" list", func(t *testing.T) {
+			r := &fakeRows{pages: []ports.ListingRowPage{{Items: []domain.ListingReadModel{resolved("42664")}}}}
+			f := &fakeFacts{ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}
+			if outage.ceilingErr {
+				f.ceilingErr = errors.New("ceiling down")
+			}
+			if outage.costErr {
+				f.costErr = errors.New("cost down")
+			}
+			page, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), time.Now).List(context.Background(), ports.ListingQuery{InstallationID: "i", Limit: 1})
+			if err != nil || len(page.Items) != 1 {
+				t.Fatalf("page=%+v err=%v", page, err)
+			}
+			item := page.Items[0]
+			if item.Cost != nil || item.BelowMarginWorstCase != nil || item.ICMSWorstCaseByUF != nil {
+				t.Fatalf("degraded item=%+v", item)
+			}
+			if f.costCalls != outage.wantCosts {
+				t.Fatalf("cost calls=%d want=%d", f.costCalls, outage.wantCosts)
+			}
+		})
+
+		t.Run(outage.name+" by product", func(t *testing.T) {
+			productID := "42664"
+			r := &fakeRows{groupPages: []ports.ListingGroupRowPage{{Groups: []domain.ListingGroup{{ProductID: &productID, ProductTitle: ptrString("Produto"), Listings: []domain.ListingReadModel{resolved(productID)}}}}}}
+			f := &fakeFacts{ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}
+			if outage.ceilingErr {
+				f.ceilingErr = errors.New("ceiling down")
+			}
+			if outage.costErr {
+				f.costErr = errors.New("cost down")
+			}
+			page, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), time.Now).ByProduct(context.Background(), ports.ListingGroupQuery{InstallationID: "i", Limit: 1})
+			if err != nil || len(page.Groups) != 1 || len(page.Groups[0].Listings) != 1 {
+				t.Fatalf("page=%+v err=%v", page, err)
+			}
+			item := page.Groups[0].Listings[0]
+			if item.Cost != nil || item.BelowMarginWorstCase != nil || item.ICMSWorstCaseByUF != nil {
+				t.Fatalf("degraded item=%+v", item)
+			}
+			if f.costCalls != outage.wantCosts {
+				t.Fatalf("cost calls=%d want=%d", f.costCalls, outage.wantCosts)
+			}
+		})
+
+		t.Run(outage.name+" get", func(t *testing.T) {
+			model := resolved("i~42664~-")
+			model.InstallationID = "i"
+			model.ProviderListingID = "42664"
+			model.Link.ProductID = ptrString("42664")
+			r := &fakeRows{getModel: model, getFound: true, timeline: []domain.TimelineEvent{{Kind: "synced"}}}
+			f := &fakeFacts{ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}
+			if outage.ceilingErr {
+				f.ceilingErr = errors.New("ceiling down")
+			}
+			if outage.costErr {
+				f.costErr = errors.New("cost down")
+			}
+			got, timeline, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), time.Now).Get(context.Background(), domain.ListingID{InstallationID: "i", ProviderListingID: "42664", VariationID: "-"})
+			if err != nil || got.ListingID == "" || len(timeline) != 1 {
+				t.Fatalf("detail=%+v timeline=%+v err=%v", got, timeline, err)
+			}
+			if got.Cost != nil || got.BelowMarginWorstCase != nil {
+				t.Fatalf("degraded detail=%+v", got)
+			}
+			if outage.ceilingErr && got.ICMSWorstCaseByUF != nil {
+				t.Fatalf("ceiling outage matrix=%+v", got.ICMSWorstCaseByUF)
+			}
+			if f.costCalls != outage.wantCosts {
+				t.Fatalf("cost calls=%d want=%d", f.costCalls, outage.wantCosts)
+			}
+		})
+	}
+}
+
+func TestReadServiceDependentFilterPassesThroughWhenOptionalFactsUnavailable(t *testing.T) {
+	originalCursor := ports.ListingCursor{LastTitle: "before", ListingID: "i~before~-"}
+	for _, outage := range []struct {
+		name       string
+		ceilingErr bool
+		costErr    bool
+		wantCalls  int
+	}{
+		{name: "ceiling outage", ceilingErr: true, wantCalls: 1},
+		{name: "cost outage", costErr: true, wantCalls: 2},
+	} {
+		t.Run(outage.name+" list", func(t *testing.T) {
+			next := ports.ListingCursor{LastTitle: "next", ListingID: "i~next~-"}
+			r := &fakeRows{pages: []ports.ListingRowPage{
+				{Items: []domain.ListingReadModel{resolved("42664")}, NextCursor: &next},
+				{Items: []domain.ListingReadModel{resolved("42665")}, NextCursor: &next},
+			}}
+			f := &fakeFacts{}
+			if outage.ceilingErr {
+				f.ceilingErr = errors.New("ceiling down")
+			}
+			if outage.costErr {
+				f.costErr = errors.New("cost down")
+			}
+			query := ports.ListingQuery{InstallationID: "i", Cursor: originalCursor, Limit: 1, Filter: domain.ListingFilter{Exception: domain.ListingExceptionBelowMargin}}
+			page, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), fixedNow).List(context.Background(), query)
+			if err != nil || len(page.Items) != 1 || page.NextCursor == nil || *page.NextCursor != next || !page.AsOf.Equal(fixedNow().UTC()) {
+				t.Fatalf("page=%+v err=%v", page, err)
+			}
+			if page.Items[0].Cost != nil || page.Items[0].BelowMarginWorstCase != nil {
+				t.Fatalf("unknown item=%+v", page.Items[0])
+			}
+			if len(r.listQueries) != outage.wantCalls || r.listQueries[0].Cursor != originalCursor || (outage.costErr && r.listQueries[1].Cursor != originalCursor) {
+				t.Fatalf("queries=%+v", r.listQueries)
+			}
+		})
+
+		t.Run(outage.name+" by product", func(t *testing.T) {
+			productID := "42664"
+			fallbackID := "42665"
+			next := ports.GroupCursor{ProductTitle: "Próximo", ProductID: "42666"}
+			r := &fakeRows{groupPages: []ports.ListingGroupRowPage{
+				{Groups: []domain.ListingGroup{{ProductID: &productID, ProductTitle: ptrString("Produto"), Listings: []domain.ListingReadModel{resolved(productID)}}}, NextCursor: &next},
+				{Groups: []domain.ListingGroup{{ProductID: &fallbackID, ProductTitle: ptrString("Fallback"), Listings: []domain.ListingReadModel{resolved(fallbackID)}}}, NextCursor: &next},
+			}}
+			f := &fakeFacts{}
+			if outage.ceilingErr {
+				f.ceilingErr = errors.New("ceiling down")
+			}
+			if outage.costErr {
+				f.costErr = errors.New("cost down")
+			}
+			query := ports.ListingGroupQuery{InstallationID: "i", Cursor: ports.GroupCursor{ProductTitle: "Antes", ProductID: "1"}, Limit: 1, Filter: domain.ListingFilter{Exception: domain.ListingExceptionBelowMargin}}
+			page, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), fixedNow).ByProduct(context.Background(), query)
+			if err != nil || len(page.Groups) != 1 || len(page.Groups[0].Listings) != 1 || page.NextCursor == nil || *page.NextCursor != next || !page.AsOf.Equal(fixedNow().UTC()) {
+				t.Fatalf("page=%+v err=%v", page, err)
+			}
+			if page.Groups[0].Listings[0].Cost != nil || page.Groups[0].Listings[0].BelowMarginWorstCase != nil || page.Groups[0].ListingCount != 1 {
+				t.Fatalf("unknown group=%+v", page.Groups[0])
+			}
+			if len(r.groupQueries) != outage.wantCalls || r.groupQueries[0].Cursor != query.Cursor || (outage.costErr && r.groupQueries[1].Cursor != query.Cursor) {
+				t.Fatalf("queries=%+v", r.groupQueries)
+			}
+		})
+	}
+}
+
+func TestReadServiceInstallationAndPolicyFailuresRemainHard(t *testing.T) {
+	installationErr := errors.New("installation reader down")
 	r := &fakeRows{pages: []ports.ListingRowPage{{Items: []domain.ListingReadModel{resolved("42664")}}}}
-	f := &fakeFacts{err: errors.New("oracle down")}
-	_, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), time.Now).List(context.Background(), ports.ListingQuery{InstallationID: "i", Limit: 1})
-	if err == nil {
-		t.Fatal("expected source failure")
+	f := &fakeFacts{}
+	_, err := NewReadService(r, f, fakePolicy{found: true}, failingInstallation{err: installationErr}, time.Now).List(context.Background(), ports.ListingQuery{InstallationID: "i", Limit: 1})
+	if !errors.Is(err, installationErr) || len(r.listQueries) != 0 || f.ceilingCalls != 0 {
+		t.Fatalf("installation err=%v repo=%d ceiling=%d", err, len(r.listQueries), f.ceilingCalls)
+	}
+
+	policyErr := errors.New("policy reader down")
+	r = &fakeRows{pages: []ports.ListingRowPage{{Items: []domain.ListingReadModel{resolved("42664")}}}}
+	f = &fakeFacts{}
+	_, err = NewReadService(r, f, failingPolicy{err: policyErr}, fakeInstallation(true), time.Now).List(context.Background(), ports.ListingQuery{InstallationID: "i", Limit: 1})
+	if !errors.Is(err, policyErr) || len(r.listQueries) != 0 || f.ceilingCalls != 0 {
+		t.Fatalf("policy err=%v repo=%d ceiling=%d", err, len(r.listQueries), f.ceilingCalls)
 	}
 }
 
@@ -261,16 +435,6 @@ func TestReadServiceGetMissingCostLeavesMatrixMarginUnknown(t *testing.T) {
 	}
 	if got.ICMSWorstCaseByUF == nil || len(*got.ICMSWorstCaseByUF) != 1 || (*got.ICMSWorstCaseByUF)[0].BelowMarginAtUF != nil {
 		t.Fatalf("matrix=%+v", got.ICMSWorstCaseByUF)
-	}
-}
-
-func TestReadServiceGetOracleFailureFailsRequest(t *testing.T) {
-	model := resolved("i~42664~-")
-	r := &fakeRows{getModel: model, getFound: true}
-	f := &fakeFacts{err: errors.New("oracle down")}
-	_, _, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), time.Now).Get(context.Background(), domain.ListingID{InstallationID: "i", ProviderListingID: "42664", VariationID: "-"})
-	if err == nil {
-		t.Fatal("expected source failure")
 	}
 }
 
@@ -358,3 +522,4 @@ func TestSemProdutoDependentFilterDefinitions(t *testing.T) {
 }
 func ptr(v float64) *float64     { return &v }
 func ptrString(v string) *string { return &v }
+func fixedNow() time.Time        { return time.Date(2026, 7, 15, 12, 0, 0, 0, time.FixedZone("x", 3600)) }
