@@ -36,3 +36,29 @@ func (s ListService) List(ctx context.Context, input ListOrdersInput) ([]domain.
 	}
 	return s.store.ListOrders(ctx, installationID, limit)
 }
+
+// ReadService delegates canonical order reads to the tenant-scoped read port.
+// The legacy ListService above remains available to existing consumers.
+type ReadService struct {
+	store ports.OrderReadStore
+}
+
+var ErrOrderReadStoreNotConfigured = errors.New("ORDERS_READ_STORE_NOT_CONFIGURED")
+
+func NewReadService(store ports.OrderReadStore) ReadService {
+	return ReadService{store: store}
+}
+
+func (s ReadService) List(ctx context.Context, query ports.OrderListQuery) (ports.OrderPage, error) {
+	if s.store == nil {
+		return ports.OrderPage{}, ErrOrderReadStoreNotConfigured
+	}
+	return s.store.ListOrders(ctx, query)
+}
+
+func (s ReadService) Get(ctx context.Context, installationID, providerOrderID string) (domain.OrderReadModel, error) {
+	if s.store == nil {
+		return domain.OrderReadModel{}, ErrOrderReadStoreNotConfigured
+	}
+	return s.store.GetOrder(ctx, installationID, providerOrderID)
+}

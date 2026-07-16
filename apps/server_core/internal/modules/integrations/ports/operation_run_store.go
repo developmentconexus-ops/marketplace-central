@@ -11,3 +11,11 @@ type OperationRunStore interface {
 	SaveOperationRun(ctx context.Context, run domain.OperationRun) error
 	ListByInstallation(ctx context.Context, installationID string) ([]domain.OperationRun, error)
 }
+
+type OperationRunReadStore interface {
+	ListRuns(ctx context.Context, query RunListQuery) (RunPage, error)
+}
+
+type OperationRunLatestReadStore interface {
+	LatestRunsByModule(ctx context.Context, installationID string) ([]LatestRunByModule, error)
+}

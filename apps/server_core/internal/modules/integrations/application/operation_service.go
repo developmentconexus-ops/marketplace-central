@@ -88,6 +88,27 @@ func (s *OperationService) ListByInstallation(ctx context.Context, installationI
 	return s.store.ListByInstallation(ctx, installationID)
 }
 
+func (s *OperationService) LatestRunsByModule(ctx context.Context, installationID string) ([]ports.LatestRunByModule, error) {
+	installationID = strings.TrimSpace(installationID)
+	if installationID == "" {
+		return nil, errors.New("INTEGRATIONS_OPERATION_INVALID")
+	}
+
+	readStore, ok := s.store.(ports.OperationRunLatestReadStore)
+	if !ok {
+		return nil, errors.New("INTEGRATIONS_OPERATION_READ_UNAVAILABLE")
+	}
+	return readStore.LatestRunsByModule(ctx, installationID)
+}
+
+func (s *OperationService) ListRuns(ctx context.Context, query ports.RunListQuery) (ports.RunPage, error) {
+	readStore, ok := s.store.(ports.OperationRunReadStore)
+	if !ok {
+		return ports.RunPage{}, errors.New("INTEGRATIONS_OPERATION_READ_UNAVAILABLE")
+	}
+	return readStore.ListRuns(ctx, query)
+}
+
 func isValidOperationRunStatus(status domain.OperationRunStatus) bool {
 	switch status {
 	case domain.OperationRunStatusQueued,

@@ -11,6 +11,8 @@ import type {
   ListingReadModel,
   ListingDetail,
   ListingSummary,
+  DashboardSummary,
+  SyncRunPage,
 } from "./index";
 
 describe("sdk runtime", () => {
@@ -1166,6 +1168,103 @@ describe("sdk runtime", () => {
     expect(result.items[0].payments[0].total_paid_amount).toBe(125.92);
   });
 
+  it("lists canonical orders with cursor and filter query parameters", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                provider_order_id: "order-1",
+                provider_code: "mercado_livre",
+                status: "paid",
+                provider_status_detail: "",
+                buyer_nickname: null,
+                total: null,
+                currency: null,
+                fulfillment: null,
+                nf_state: null,
+                created_at: null,
+                provider_created_at: null,
+                provider_closed_at: null,
+                provider_updated_at: null,
+                items: [],
+                payments: [],
+              },
+            ],
+            next_cursor: null,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      },
+    });
+
+    const result = await client.listOrders({
+      installation_id: "inst/1",
+      cursor: "cursor+with/slash=",
+      status: "paid & shipped",
+      date_from: "2026-07-01",
+      date_to: "2026-07-16T12:00:00Z",
+      q: "buyer/order?1",
+    });
+
+    expect(String(requests[0].input)).toBe(
+      "http://localhost:8080/orders?installation_id=inst%2F1&cursor=cursor%2Bwith%2Fslash%3D&status=paid+%26+shipped&date_from=2026-07-01&date_to=2026-07-16T12%3A00%3A00Z&q=buyer%2Forder%3F1",
+    );
+    const read: OrderRead = result.items[0];
+    expect(read.provider_order_id).toBe("order-1");
+    expect(result.items[0].buyer_nickname).toBeNull();
+    expect(result.items[0].total).toBeNull();
+    const nullableCurrency: string | null = result.items[0].currency;
+    const nullableFulfillment: string | null = result.items[0].fulfillment;
+    const nullableNFState: string | null = result.items[0].nf_state;
+    expect(nullableCurrency).toBeNull();
+    expect(nullableFulfillment).toBeNull();
+    expect(nullableNFState).toBeNull();
+  });
+
+  it("gets an order with both identifiers URL-encoded", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(
+          JSON.stringify({
+            provider_order_id: "order/with ?chars",
+            provider_code: "mercado_livre",
+            status: "paid",
+            provider_status_detail: "",
+            buyer_nickname: null,
+            total: null,
+            currency: null,
+            fulfillment: null,
+            nf_state: null,
+            created_at: null,
+            provider_created_at: null,
+            provider_closed_at: null,
+            provider_updated_at: null,
+            items: [],
+            payments: [],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      },
+    });
+
+    const result = await client.getOrder("installation/1", "order/with ?chars");
+
+    expect(String(requests[0].input)).toBe(
+      "http://localhost:8080/orders/order%2Fwith%20%3Fchars?installation_id=installation%2F1",
+    );
+    const read: OrderRead = result;
+    expect(read.provider_code).toBe("mercado_livre");
+    expect(result.provider_order_id).toBe("order/with ?chars");
+  });
+
   it("imports profitability margin inputs as json", async () => {
     const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
     const client = createMarketplaceCentralClient({
@@ -1670,6 +1769,69 @@ describe("sdk runtime", () => {
     expect(sent).not.toHaveProperty("external_order_key");
     expect(result.audit.event_id).toBe("server-event-1");
     expect(result.lineage[0].state).toBe("none");
+  });
+
+  it("reads dashboard summary and sync runs with encoded query values and nullable fields", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const summary = {
+      sync_errors: null,
+      pending_links: 2,
+      below_margin: null,
+      missing_gtin: 1,
+      orders_today: null,
+      orders_7d: 4,
+      last_sync_at: null,
+      degraded: ["linkage"],
+      as_of: "2026-07-16T12:01:00Z",
+    } satisfies DashboardSummary;
+    const runs = {
+      items: [{
+        operation_run_id: "run/1",
+        installation_id: "install/1",
+        module: "listing/read",
+        status: "running",
+        result_code: "",
+        failure_code: "",
+        translated_error_code: "",
+        attempt_count: 1,
+        duration_ms: 0,
+        started_at: "2026-07-16T12:00:00Z",
+        finished_at: null,
+      }],
+      next_cursor: null,
+      page_size: 1,
+      as_of: "2026-07-16T12:01:00Z",
+    } satisfies SyncRunPage;
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(JSON.stringify(String(input).includes("/dashboard/") ? summary : runs), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      },
+    });
+
+    const dashboard = await client.getDashboardSummary("install/1");
+    const syncRuns = await client.listSyncRuns({
+      installation_id: "install/1",
+      cursor: "cursor/1",
+      limit: 25,
+      module: "listing/read",
+      status: "running",
+    });
+
+    expect(String(requests[0].input)).toBe(
+      "http://localhost:8080/dashboard/summary?installation_id=install%2F1",
+    );
+    expect(String(requests[1].input)).toBe(
+      "http://localhost:8080/sync/runs?installation_id=install%2F1&cursor=cursor%2F1&limit=25&filter.module=listing%2Fread&filter.status=running",
+    );
+    expect(requests.every((request) => request.init?.method === "GET")).toBe(true);
+    expect(dashboard.sync_errors).toBeNull();
+    expect(dashboard.last_sync_at).toBeNull();
+    expect(syncRuns.items[0].finished_at).toBeNull();
   });
 });
 

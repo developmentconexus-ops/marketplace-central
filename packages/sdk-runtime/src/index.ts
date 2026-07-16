@@ -459,6 +459,7 @@ export interface IntegrationOrderProbe {
 
 export type OrderLinkQuality = "resolved" | "rejected" | "conflict" | "unresolved" | "missing";
 
+/** @deprecated per hub lock-exception D-02 */
 export interface MarketplaceOrderItem {
   provider_item_id: string;
   provider_variation_id?: string;
@@ -471,6 +472,7 @@ export interface MarketplaceOrderItem {
   internal_product_id?: number | null;
 }
 
+/** @deprecated per hub lock-exception D-02 */
 export interface MarketplaceOrderPayment {
   provider_payment_id: string;
   provider_status?: string;
@@ -478,6 +480,7 @@ export interface MarketplaceOrderPayment {
   total_paid_amount?: number | null;
 }
 
+/** @deprecated per hub lock-exception D-02 */
 export interface MarketplaceOrder {
   installation_id: string;
   provider_code: string;
@@ -496,6 +499,58 @@ export interface MarketplaceOrder {
   payments: MarketplaceOrderPayment[];
   created_at?: string;
   updated_at?: string;
+}
+
+export interface OrderReadItem {
+  provider_item_id: string;
+  provider_variation_id?: string;
+  seller_sku?: string;
+  title?: string;
+  quantity: number;
+  unit_price?: number;
+  sale_fee_amount?: number;
+  link_quality: OrderLinkQuality;
+  internal_product_id?: number;
+}
+
+export interface OrderReadPayment {
+  provider_payment_id: string;
+  provider_status?: string;
+  transaction_amount?: number;
+  total_paid_amount?: number;
+}
+
+export interface OrderRead {
+  provider_order_id: string;
+  provider_code: string;
+  status: string;
+  provider_status_detail: string;
+  buyer_nickname: string | null;
+  total: number | null;
+  currency: string | null;
+  fulfillment: string | null;
+  nf_state: string | null;
+  created_at: string | null;
+  provider_created_at: string | null;
+  provider_closed_at: string | null;
+  provider_updated_at: string | null;
+  items: OrderReadItem[];
+  payments: OrderReadPayment[];
+}
+
+export interface OrderPage {
+  items: OrderRead[];
+  next_cursor: string | null;
+}
+
+export interface OrderListOptions {
+  installation_id: string;
+  limit?: number;
+  cursor?: string;
+  status?: string;
+  date_from?: string;
+  date_to?: string;
+  q?: string;
 }
 
 export interface ImportMarketplaceOrdersResponse {
@@ -1179,6 +1234,28 @@ export function createMarketplaceCentralClient(options: {
     return `?${query.toString()}`;
   }
 
+  function syncRunQuery(params: SyncRunListOptions): string {
+    const query = new URLSearchParams();
+    query.set("installation_id", params.installation_id);
+    if (params.cursor !== undefined) query.set("cursor", params.cursor);
+    if (params.limit !== undefined) query.set("limit", String(params.limit));
+    if (params.module !== undefined) query.set("filter.module", params.module);
+    if (params.status !== undefined) query.set("filter.status", params.status);
+    return `?${query.toString()}`;
+  }
+
+  function orderQuery(params: OrderListOptions): string {
+    const query = new URLSearchParams();
+    query.set("installation_id", params.installation_id);
+    if (params.cursor !== undefined) query.set("cursor", params.cursor);
+    if (params.limit !== undefined) query.set("limit", String(params.limit));
+    if (params.status !== undefined) query.set("status", params.status);
+    if (params.date_from !== undefined) query.set("date_from", params.date_from);
+    if (params.date_to !== undefined) query.set("date_to", params.date_to);
+    if (params.q !== undefined) query.set("q", params.q);
+    return `?${query.toString()}`;
+  }
+
   async function putJson<T>(path: string, body: unknown): Promise<T> {
     const response = await fetchImpl(`${options.baseUrl}${path}`, {
       method: "PUT",
@@ -1230,6 +1307,10 @@ export function createMarketplaceCentralClient(options: {
       getJson<ListingDetail>(`/listings/${encodeURIComponent(id)}`),
     getListingsSummary: (installationId: string) =>
       getJson<ListingSummary>(`/listings/summary?installation_id=${encodeURIComponent(installationId)}`),
+    getDashboardSummary: (installationId: string) =>
+      getJson<DashboardSummary>(`/dashboard/summary?installation_id=${encodeURIComponent(installationId)}`),
+    listSyncRuns: (options: SyncRunListOptions) =>
+      getJson<SyncRunPage>(`/sync/runs${syncRunQuery(options)}`),
     refreshListings: (req: RefreshListingsRequest) =>
       postJson<RefreshListingsAccepted>("/listings/refresh", req),
     /** @deprecated Use listCatalogProductFacts; the endpoint is now paginated. */
@@ -1339,9 +1420,16 @@ export function createMarketplaceCentralClient(options: {
     }) => postJson<ApplyInventoryStockActionResponse>("/inventory/stock-actions/manual-apply", req),
     importMarketplaceOrders: (req: { installation_id: string; limit?: number }) =>
       postJson<ImportMarketplaceOrdersResponse>("/orders/import", req),
+    /** @deprecated per hub lock-exception D-02 */
     listMarketplaceOrders: (installationId: string, limit = 20) =>
       getJson<ListResponse<MarketplaceOrder>>(
         `/orders?installation_id=${encodeURIComponent(installationId)}&limit=${encodeURIComponent(String(limit))}`,
+      ),
+    listOrders: (options: OrderListOptions) =>
+      getJson<OrderPage>(`/orders${orderQuery(options)}`),
+    getOrder: (installationId: string, providerOrderId: string) =>
+      getJson<OrderRead>(
+        `/orders/${encodeURIComponent(providerOrderId)}?installation_id=${encodeURIComponent(installationId)}`,
       ),
     getAssistedSankhyaLinkage: (installationId: string, providerOrderId: string) =>
       getJson<AssistedSankhyaLinkageResponse>(
@@ -1430,4 +1518,47 @@ export function createMarketplaceCentralClient(options: {
     deleteClassification: (id: string) =>
       deleteJson(`/classifications/${id}`),
   };
+}
+
+export interface DashboardSummary {
+  sync_errors: number | null;
+  pending_links: number | null;
+  below_margin: number | null;
+  missing_gtin: number | null;
+  orders_today: number | null;
+  orders_7d: number | null;
+  last_sync_at: Record<string, string | null> | null;
+  degraded: Array<"listings" | "linkage" | "orders" | "sync">;
+  as_of: string;
+}
+
+export type SyncRunStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled";
+
+export interface SyncRun {
+  operation_run_id: string;
+  installation_id: string;
+  module: string;
+  status: SyncRunStatus;
+  result_code: string;
+  failure_code: string;
+  translated_error_code: string;
+  attempt_count: number;
+  duration_ms: number;
+  started_at: string;
+  finished_at: string | null;
+}
+
+export interface SyncRunPage {
+  items: SyncRun[];
+  next_cursor: string | null;
+  page_size: number;
+  as_of: string;
+}
+
+export interface SyncRunListOptions {
+  installation_id: string;
+  cursor?: string;
+  limit?: number;
+  module?: string;
+  status?: SyncRunStatus;
 }
