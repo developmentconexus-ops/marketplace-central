@@ -1179,6 +1179,16 @@ export function createMarketplaceCentralClient(options: {
     return `?${query.toString()}`;
   }
 
+  function syncRunQuery(params: SyncRunListOptions): string {
+    const query = new URLSearchParams();
+    query.set("installation_id", params.installation_id);
+    if (params.cursor !== undefined) query.set("cursor", params.cursor);
+    if (params.limit !== undefined) query.set("limit", String(params.limit));
+    if (params.module !== undefined) query.set("filter.module", params.module);
+    if (params.status !== undefined) query.set("filter.status", params.status);
+    return `?${query.toString()}`;
+  }
+
   async function putJson<T>(path: string, body: unknown): Promise<T> {
     const response = await fetchImpl(`${options.baseUrl}${path}`, {
       method: "PUT",
@@ -1230,6 +1240,10 @@ export function createMarketplaceCentralClient(options: {
       getJson<ListingDetail>(`/listings/${encodeURIComponent(id)}`),
     getListingsSummary: (installationId: string) =>
       getJson<ListingSummary>(`/listings/summary?installation_id=${encodeURIComponent(installationId)}`),
+    getDashboardSummary: (installationId: string) =>
+      getJson<DashboardSummary>(`/dashboard/summary?installation_id=${encodeURIComponent(installationId)}`),
+    listSyncRuns: (options: SyncRunListOptions) =>
+      getJson<SyncRunPage>(`/sync/runs${syncRunQuery(options)}`),
     refreshListings: (req: RefreshListingsRequest) =>
       postJson<RefreshListingsAccepted>("/listings/refresh", req),
     /** @deprecated Use listCatalogProductFacts; the endpoint is now paginated. */
@@ -1430,4 +1444,47 @@ export function createMarketplaceCentralClient(options: {
     deleteClassification: (id: string) =>
       deleteJson(`/classifications/${id}`),
   };
+}
+
+export interface DashboardSummary {
+  sync_errors: number | null;
+  pending_links: number | null;
+  below_margin: number | null;
+  missing_gtin: number | null;
+  orders_today: number | null;
+  orders_7d: number | null;
+  last_sync_at: Record<string, string | null> | null;
+  degraded: Array<"listings" | "linkage" | "orders" | "sync">;
+  as_of: string;
+}
+
+export type SyncRunStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled";
+
+export interface SyncRun {
+  operation_run_id: string;
+  installation_id: string;
+  module: string;
+  status: SyncRunStatus;
+  result_code: string;
+  failure_code: string;
+  translated_error_code: string;
+  attempt_count: number;
+  duration_ms: number;
+  started_at: string;
+  finished_at: string | null;
+}
+
+export interface SyncRunPage {
+  items: SyncRun[];
+  next_cursor: string | null;
+  page_size: number;
+  as_of: string;
+}
+
+export interface SyncRunListOptions {
+  installation_id: string;
+  cursor?: string;
+  limit?: number;
+  module?: string;
+  status?: SyncRunStatus;
 }

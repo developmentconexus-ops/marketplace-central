@@ -11,6 +11,8 @@ import type {
   ListingReadModel,
   ListingDetail,
   ListingSummary,
+  DashboardSummary,
+  SyncRunPage,
 } from "./index";
 
 describe("sdk runtime", () => {
@@ -1670,6 +1672,69 @@ describe("sdk runtime", () => {
     expect(sent).not.toHaveProperty("external_order_key");
     expect(result.audit.event_id).toBe("server-event-1");
     expect(result.lineage[0].state).toBe("none");
+  });
+
+  it("reads dashboard summary and sync runs with encoded query values and nullable fields", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const summary = {
+      sync_errors: null,
+      pending_links: 2,
+      below_margin: null,
+      missing_gtin: 1,
+      orders_today: null,
+      orders_7d: 4,
+      last_sync_at: null,
+      degraded: ["linkage"],
+      as_of: "2026-07-16T12:01:00Z",
+    } satisfies DashboardSummary;
+    const runs = {
+      items: [{
+        operation_run_id: "run/1",
+        installation_id: "install/1",
+        module: "listing/read",
+        status: "running",
+        result_code: "",
+        failure_code: "",
+        translated_error_code: "",
+        attempt_count: 1,
+        duration_ms: 0,
+        started_at: "2026-07-16T12:00:00Z",
+        finished_at: null,
+      }],
+      next_cursor: null,
+      page_size: 1,
+      as_of: "2026-07-16T12:01:00Z",
+    } satisfies SyncRunPage;
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(JSON.stringify(String(input).includes("/dashboard/") ? summary : runs), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      },
+    });
+
+    const dashboard = await client.getDashboardSummary("install/1");
+    const syncRuns = await client.listSyncRuns({
+      installation_id: "install/1",
+      cursor: "cursor/1",
+      limit: 25,
+      module: "listing/read",
+      status: "running",
+    });
+
+    expect(String(requests[0].input)).toBe(
+      "http://localhost:8080/dashboard/summary?installation_id=install%2F1",
+    );
+    expect(String(requests[1].input)).toBe(
+      "http://localhost:8080/sync/runs?installation_id=install%2F1&cursor=cursor%2F1&limit=25&filter.module=listing%2Fread&filter.status=running",
+    );
+    expect(requests.every((request) => request.init?.method === "GET")).toBe(true);
+    expect(dashboard.sync_errors).toBeNull();
+    expect(dashboard.last_sync_at).toBeNull();
+    expect(syncRuns.items[0].finished_at).toBeNull();
   });
 });
 

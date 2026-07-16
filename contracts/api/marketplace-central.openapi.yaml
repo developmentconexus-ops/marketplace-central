@@ -1860,6 +1860,113 @@ paths:
               schema:
                 $ref: '#/components/schemas/ConnectorErrorResponse'
 
+  /dashboard/summary:
+    get:
+      summary: Get dashboard summary
+      operationId: getDashboardSummary
+      parameters:
+        - name: installation_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardSummary'
+        "400":
+          description: Missing installation_id (installation_required)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "404":
+          description: Installation not found (installation_not_found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "405":
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /sync/runs:
+    get:
+      summary: List synchronization runs
+      operationId: listSyncRuns
+      parameters:
+        - name: installation_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: filter.module
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: filter.status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [queued, running, succeeded, failed, cancelled]
+      responses:
+        "200":
+          description: Synchronization run history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncRunPage'
+        "400":
+          description: Invalid request (installation_required, invalid_cursor, or invalid_filter)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "404":
+          description: Installation not found (installation_not_found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "405":
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   schemas:
     ListingReadType:
@@ -4917,3 +5024,91 @@ components:
                     - CONNECTORS_EXECUTOR_INTERNAL
                     - CONNECTORS_RETRY_MISSING_PRODUCT
                     - CONNECTORS_BATCH_NOT_FOUND
+
+    DashboardSummary:
+      type: object
+      required: [sync_errors, pending_links, below_margin, missing_gtin, orders_today, orders_7d, last_sync_at, degraded, as_of]
+      properties:
+        sync_errors:
+          type: integer
+          nullable: true
+        pending_links:
+          type: integer
+          nullable: true
+        below_margin:
+          type: integer
+          nullable: true
+        missing_gtin:
+          type: integer
+          nullable: true
+        orders_today:
+          type: integer
+          nullable: true
+        orders_7d:
+          type: integer
+          nullable: true
+        last_sync_at:
+          type: object
+          nullable: true
+          additionalProperties:
+            type: string
+            format: date-time
+            nullable: true
+        degraded:
+          type: array
+          items:
+            type: string
+            enum: [listings, linkage, orders, sync]
+        as_of:
+          type: string
+          format: date-time
+
+    SyncRun:
+      type: object
+      required: [operation_run_id, installation_id, module, status, result_code, failure_code, translated_error_code, attempt_count, duration_ms, started_at, finished_at]
+      properties:
+        operation_run_id:
+          type: string
+        installation_id:
+          type: string
+        module:
+          type: string
+        status:
+          type: string
+          enum: [queued, running, succeeded, failed, cancelled]
+        result_code:
+          type: string
+        failure_code:
+          type: string
+        translated_error_code:
+          type: string
+        attempt_count:
+          type: integer
+        duration_ms:
+          type: integer
+          format: int64
+        started_at:
+          type: string
+          format: date-time
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    SyncRunPage:
+      type: object
+      required: [items, next_cursor, page_size, as_of]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncRun'
+        next_cursor:
+          type: string
+          nullable: true
+        page_size:
+          type: integer
+          minimum: 0
+        as_of:
+          type: string
+          format: date-time
