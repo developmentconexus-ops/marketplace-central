@@ -31,11 +31,31 @@ Corrigir-atributo is the wireframe's remaining actionable pendência (quality ga
 | F-01 | corrigir-atributo-flow | Category-attribute read + guided attribute-fix UI via listing_edit envelope |
 | F-02 | market-contract-module | market module tables/endpoints/CollectorPort, contract tests, no adapter |
 
-Order F-01 → F-02 sequential: both features write the shared `contracts/api/marketplace-central.openapi.yaml`, `packages/sdk-runtime`, and server composition root (one writer per seam; F-02 rebases on accepted F-01).
+Order (replanned 2026-07-16, mission Parallel Execution Plan): **F-02 first** (W1, inside
+CHIP-SAT — depends only on M-01), F-01 later (W3, rebases on merged F-02). Both write the
+shared `contracts/api/marketplace-central.openapi.yaml`, `packages/sdk-runtime`, and server
+composition root — the original F-01 → F-02 serialization guarded that; it is now handled by
+disjoint OpenAPI sections + the additive composition-root lock (see Ownership & Concurrency).
 
 ## Dependencies
 
 M-03 (listing_edit envelope), M-04 F-01 (produto/anúncio detail surfaces host the flow entry). F-02 depends only on M-01 module precedent.
+
+## Ownership & Concurrency
+
+Split execution (mission Parallel Execution Plan): **F-02 runs in W1 inside CHIP-SAT**
+(depends only on M-01 — contract-only, no adapter, no UI); F-01 runs in W3 as CHIP-M06
+after M-03, M-04 F-01 (host surface), and merged F-02.
+
+- F-02 (in CHIP-SAT, W1): migration block **0043–0045** reserved (do not exceed; more →
+  `REQUEST`). OpenAPI/SDK sections = market + category-attribute paths (additive; never
+  touch CHIP-M03's mutation sections or M-05 F-01's dashboard/orders/sync sections).
+  Additive contract-lock: composition-root registration lines for the market module.
+- F-02 closes at feature grain (CHIP-SAT reports its `CLOSED`); this milestone stays open
+  until W3.
+- F-01 (CHIP-M06, W3): consumes merged F-02 contracts; AppRouter/nav route rows disjoint
+  from CHIP-M05's but files shared — hub serializes merges (rebase-then-merge).
+- Governance base anchor: pinned per chip at dispatch (profile §2).
 
 ## Risks
 

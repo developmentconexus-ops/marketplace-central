@@ -39,6 +39,21 @@ F-01 first (defines produto-page patterns others link into). F-02/F-03/F-04 then
 
 M-02 (platform + shell), M-03 (envelope writes for corrections/links). IC-02 by-product endpoint from M-01.
 
+## Ownership & Concurrency
+
+Wave W2 (mission Parallel Execution Plan) — sole chip in its wave; starts after M-02 and
+M-03 both CLOSED and merged.
+
+- Owns during W2: AppRouter route rows + shared nav links (M-02-owned files; one milestone
+  writer at a time — that writer is M-04 for the whole wave). Internal order F-01 →
+  F-02/F-03/F-04 sequential stands.
+- Migrations: none expected; if a planner finds otherwise → `REQUEST` for a block.
+- OpenAPI/SDK: consumer only; any endpoint gap discovered → `REQUEST`/`ESCALATION`, not an
+  inline addition.
+- Outbound edge: F-01 (produto detail) is the host surface for M-06 F-01 (W3) — report F-01
+  in `COMMITTED` so the hub can stage CHIP-M06's W3 start.
+- Governance base anchor: pinned in chip prompt at dispatch (profile §2).
+
 ## Risks
 
 - IC-01 activation regression: catalog invalidation proven by dormant-row test finally running non-dormant.

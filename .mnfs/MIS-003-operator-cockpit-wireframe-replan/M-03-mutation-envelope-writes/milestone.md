@@ -39,6 +39,21 @@ Order F-01 → F-02 → F-03 → F-04. F-02 and F-03 both touch application laye
 
 M-01 (listings rows are selection targets); M-02 F-02 (`invalidateAfterMutation`, failureCopy) for F-04. Integration lane uses stub provider adapter; live ML write lane requires explicit operator authorization per mission Validation Strategy.
 
+## Ownership & Concurrency
+
+Wave W1 (mission Parallel Execution Plan) — runs concurrent with CHIP-M02 and CHIP-SAT.
+
+- Migration block: **0038–0042** reserved. Do not exceed; more needed → `REQUEST` to hub.
+- OpenAPI/SDK: mutation/protocolo paths + schemas only (additive; CHIP-SAT owns
+  dashboard/orders/sync-runs and market sections — never touch those).
+- Additive contract-locks held: composition root (mutations module registration lines only);
+  `connectors` PriceWriter/StockWriter wiring (F-02 only). Released at CLOSED, diffs called
+  out in the event.
+- F-04 FE gate: preview/confirm modal mounts in M-02 F-03's Anúncios workspace. F-01..F-03
+  proceed regardless; start F-04 FE only after the hub confirms M-02 F-03 merged and triggers
+  the rebase. If M-02 stalls, `BLOCKED` — do not build a stand-in surface.
+- Governance base anchor: pinned in chip prompt at dispatch (profile §2).
+
 ## Risks
 
 - RK-03 (provider write hazard): stub adapter default; live lane gated on operator; idempotency keys prevent duplicates on retry/crash.

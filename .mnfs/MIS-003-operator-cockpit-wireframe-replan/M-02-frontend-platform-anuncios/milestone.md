@@ -38,6 +38,19 @@ Order F-01 → F-02 → F-03. No parallel: all three touch IC-05-owned files (on
 
 M-01 (IC-02 endpoints live; F-03 consumes them). Mutation actions in 2a render disabled with tooltip "disponível em breve" until M-03 (buttons present per wireframe, no dead handlers).
 
+## Ownership & Concurrency
+
+Wave W1 (mission Parallel Execution Plan) — runs concurrent with CHIP-M03 and CHIP-SAT.
+
+- Owns exclusively: frontend platform seam — `AppRouter`, `Layout`/nav, redirects,
+  `InstallationContext`, web-query namespaces, state components, failureCopy. No other W1
+  chip touches frontend files.
+- Migrations: none. OpenAPI/SDK: none (read-only consumer of M-01 SDK).
+- Composition root: not touched.
+- Outbound edge: F-03 (Anúncios workspace) unblocks M-03 F-04 FE work — report F-03 in the
+  `COMMITTED` event so the hub can trigger CHIP-M03's rebase without waiting for CLOSED.
+- Governance base anchor: pinned in chip prompt at dispatch (profile §2).
+
 ## Risks
 
 - RK-05 (legacy direct-fetch pages regress under new router): redirects tested; legacy pages keep working unrebuilt under new Layout.

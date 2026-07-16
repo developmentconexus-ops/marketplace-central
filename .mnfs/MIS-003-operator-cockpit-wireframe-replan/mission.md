@@ -3,11 +3,11 @@
 ```yaml
 id: MIS-003
 type: mission
-status: planned
+status: in_progress
 owner: Mission Strategist
 parent: none
 created: 2026-07-14
-updated: 2026-07-15
+updated: 2026-07-16
 validation_level: QA-0
 lifecycle_scope: mission
 planning_phase: ready
@@ -139,6 +139,66 @@ Accepted trade-offs: ADR-12 — narrow column overlap with product_links snapsho
 | M-06 | corrigir-atributo-market-contracts | ML category-attribute read + corrigir-atributo flow via envelope (`listing_edit`) + `market` module contract-only | Needs M-03 envelope + M-04 product detail as host surface | `M-06-corrigir-atributo-market-contracts/milestone.md` |
 
 Dependencies: M-01 → {M-02, M-03}; M-02 → {M-04, M-05}; M-03 → {M-04 (write actions), M-05 (protocolo list), M-06}; M-04 → M-05 (AppRouter/nav seam — one milestone writer at a time); M-04 → M-06 (host surface). M-01 ∥ nothing; M-02 ∥ M-03 after M-01.
+
+## Parallel Execution Plan
+
+Replanned 2026-07-16 at the M-01 boundary (M-01 `passed`). Feature-grain refinement of the
+milestone DAG above — where this plan and the milestone-grain line conflict, this plan wins
+(core §0). Binding for the hub board and every chip prompt.
+
+### Waves
+
+| Wave | Chips (concurrent) | Contents | Starts when |
+| --- | --- | --- | --- |
+| W1 | CHIP-M02 ∥ CHIP-M03 ∥ CHIP-SAT | M-02 (all) · M-03 (all; F-04 FE bits gated, see below) · SAT = M-05 F-01 + M-06 F-02 | now (M-01 passed) |
+| W2 | CHIP-M04 | M-04 (all) | M-02 CLOSED + M-03 CLOSED (merged) |
+| W3 | CHIP-M05 ∥ CHIP-M06 | M-05 F-02/F-03/F-04 · M-06 F-01 | M-04 CLOSED; M-05 FE also needs SAT's M-05 F-01 merged; M-06 F-01 needs SAT's M-06 F-02 merged + M-03 |
+
+### Feature-grain DAG refinements (deltas vs milestone-grain line)
+
+- **M-05 F-01 depends only on M-01** (aggregate/orders/sync-runs endpoints, zero frontend).
+  Pulled forward into W1 SAT chip. The M-02 dependency applies only to M-05 F-02..F-04.
+- **M-06 F-02 depends only on M-01** (market contract module, no adapter, no UI; feature.md
+  already marks it parallel-eligible). Pulled forward into W1 SAT chip. M-03/M-04 dependencies
+  apply only to M-06 F-01.
+- **M-03 F-04 ← M-02 F-03** (undeclared edge, now declared): preview/confirm modal mounts in
+  the Anúncios workspace M-02 F-03 builds. M-03 F-01..F-03 (backend) proceed regardless; F-04
+  FE work starts only after the hub confirms M-02 F-03 merged and triggers CHIP-M03's rebase.
+- **M-06 internal order corrected**: F-02 runs FIRST (W1, inside SAT), F-01 later (W3, rebases
+  on merged F-02). The one-writer concern the old F-01→F-02 order guarded is handled by
+  disjoint OpenAPI sections + the additive composition-root lock below.
+
+### Shared-seam pre-assignments (W1 concurrency contract)
+
+- **OpenAPI (`contracts/api/marketplace-central.openapi.yaml`) + `packages/sdk-runtime`** —
+  disjoint sections, additive-only: CHIP-M03 = mutation/protocolo paths + their schemas;
+  CHIP-SAT(M-05 F-01) = dashboard-summary, orders, sync-runs paths; CHIP-SAT(M-06 F-02) =
+  market + category-attribute paths. No chip touches another's section; shared preamble/info
+  blocks are hub-owned.
+- **Migration blocks** (existing max = 0037): CHIP-M03 = **0038–0042**; CHIP-SAT(M-06 F-02) =
+  **0043–0045**. M-05 F-01 gets no block (reads existing tables); if its planner finds a new
+  table is required → `REQUEST` to hub for a block, never self-assign.
+- **Additive contract-locks pre-granted** (core §5 mechanism; released at each CLOSED, diffs
+  called out in the event): (1) server composition root — module registration lines only:
+  CHIP-M03 registers mutations module, CHIP-SAT registers dashboard/orders/sync + market
+  modules; (2) `connectors` PriceWriter/StockWriter wiring — CHIP-M03 F-02 only.
+- **Frontend platform seam (AppRouter/nav/web-query/state components)** — CHIP-M02 exclusive
+  in W1. CHIP-M04 exclusive in W2. W3: M-05 FE vs M-06 F-01 route rows are disjoint but the
+  files are shared — hub serializes merges (rebase-then-merge, one at a time).
+- **`GET /orders` contract-satisfiability directive** (binding on M-05 F-01 planner): OpenAPI
+  already defines `listMarketplaceOrders` (limit-based) on the same path. Evolve the existing
+  operation in place, additive-only (cursor params added alongside, existing params/response
+  fields preserved). Never author a duplicate path/operationId. If cursor semantics cannot be
+  added without breaking the existing contract → `ESCALATION`, not a workaround.
+
+### Bookkeeping
+
+- CHIP-SAT closes at **feature** grain: it reports `CLOSED` for M-05 F-01 and M-06 F-02 (own
+  evidence per feature); milestones M-05/M-06 stay `in_progress`/open until their W3 chips
+  close, then dual gate + QA at milestone grain per core §6.
+- Each chip pins the per-milestone governance base anchor (profile §2) at dispatch; drift is
+  measured against that 40-hex SHA, not `main`-at-merge-time.
+- Known-failure allowlist (profile §2) applies: chips cite, never re-prove, listed failures.
 
 ## Quality Attributes
 
