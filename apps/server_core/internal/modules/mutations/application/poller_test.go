@@ -45,7 +45,7 @@ func TestPollerPassTerminalStates(t *testing.T) {
 	}
 }
 
-func TestPollerPassSkipsAppliedKeyAndSanitizesUnknownError(t *testing.T) {
+func TestPollerOwnsGateSequenceExactlyOncePerItem(t *testing.T) {
 	r := newFakeRepo("p:a", "p:b")
 	r.applied = []string{"p:a"}
 	w := stub.NewWriter(map[string]stub.Result{"p:b": {Err: errors.New("token=secret upstream dump")}})
@@ -60,6 +60,9 @@ func TestPollerPassSkipsAppliedKeyAndSanitizesUnknownError(t *testing.T) {
 	}
 	if !equalStrings(r.applying, []string{"item-2"}) {
 		t.Fatalf("applying marks=%v, skipped item must never be marked applying", r.applying)
+	}
+	if r.appliedReads != 1 {
+		t.Fatalf("applied idempotency reads=%d, want one claim-backed read for the chunk", r.appliedReads)
 	}
 	var f struct {
 		Code            domain.FailureCode `json:"code"`
@@ -118,6 +121,7 @@ type fakeRepo struct {
 	items            []ports.MutationItem
 	outcomes         map[string]ports.ItemOutcome
 	applied          []string
+	appliedReads     int
 	applying         []string
 	failOutcomeAfter int
 }
@@ -181,6 +185,7 @@ func (c *fakeClaim) WriteItemOutcome(_ context.Context, id string, o ports.ItemO
 	return nil
 }
 func (c *fakeClaim) AppliedIdempotencyKeys(context.Context, []string) ([]string, error) {
+	c.repo.appliedReads++
 	return c.repo.applied, nil
 }
 func (c *fakeClaim) ItemStateCounts(context.Context) (map[domain.ItemState]int, error) {

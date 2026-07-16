@@ -25,12 +25,10 @@ func (w *captureLink) ApplyLink(_ context.Context, in ports.LinkageInput) (ports
 	return ports.LinkageOutcome{State: domain.ItemStateSkipped}, nil
 }
 
-func TestWriterRouterDispatchesEveryEnabledIntentThroughGates(t *testing.T) {
+func TestWriterRouterDispatchesEveryEnabledIntentAndPreservesSkipped(t *testing.T) {
 	price, stock, listing, resync, link := &captureWriter{}, &captureWriter{}, &captureWriter{}, &captureWriter{}, &captureLink{}
-	audits := 0
 	r := NewWriterRouter(price, stock, listing, resync, link,
-		func(context.Context, string) (bool, error) { return true, nil }, func(context.Context, string) (bool, error) { return true, nil },
-		func(context.Context, string) (bool, error) { return false, nil }, func(context.Context, ports.WriteItem) error { audits++; return nil })
+		func(context.Context, string) (bool, error) { return true, nil }, func(context.Context, string) (bool, error) { return true, nil })
 	tests := []struct {
 		name  string
 		typ   domain.ProtocolType
@@ -54,14 +52,14 @@ func TestWriterRouterDispatchesEveryEnabledIntentThroughGates(t *testing.T) {
 			}
 		})
 	}
-	if audits != len(tests) || price.calls != 1 || stock.calls != 1 || listing.calls != 2 || resync.calls != 1 || link.calls != 3 {
-		t.Fatalf("audits=%d calls=%d/%d/%d/%d/%d", audits, price.calls, stock.calls, listing.calls, resync.calls, link.calls)
+	if price.calls != 1 || stock.calls != 1 || listing.calls != 2 || resync.calls != 1 || link.calls != 3 {
+		t.Fatalf("calls=%d/%d/%d/%d/%d", price.calls, stock.calls, listing.calls, resync.calls, link.calls)
 	}
 }
 
 func TestWriterRouterRejectsSKUInvariantBeforeAdapter(t *testing.T) {
 	listing := &captureWriter{}
-	r := NewWriterRouter(nil, nil, listing, nil, nil, func(context.Context, string) (bool, error) { return true, nil }, nil, func(context.Context, string) (bool, error) { return false, nil }, func(context.Context, ports.WriteItem) error { return nil })
+	r := NewWriterRouter(nil, nil, listing, nil, nil, func(context.Context, string) (bool, error) { return true, nil }, nil)
 	out, err := r.ApplyItem(context.Background(), ports.WriteItem{ProtocolType: domain.ProtocolTypeListingEdit, After: json.RawMessage(`{"product_id":7,"attributes":[{"ID":"SELLER_SKU","ValueName":"8"}]}`)})
 	if err != nil || out.Failure == nil || out.Failure.Code != domain.FailureCodeSKUInvariantViolation || listing.calls != 0 {
 		t.Fatalf("out=%+v calls=%d err=%v", out, listing.calls, err)

@@ -44,21 +44,31 @@ func (p *Poller) Pass(ctx context.Context, installationID string) (worked bool, 
 		if keysErr != nil {
 			return true, fmt.Errorf("read applied idempotency keys: %w", keysErr)
 		}
-		appliedSet := make(map[string]struct{}, len(applied))
-		for _, key := range applied {
-			appliedSet[key] = struct{}{}
-		}
-
 		for _, item := range items {
 			outcome := ports.ItemOutcome{State: domain.ItemStateSkipped}
-			if _, duplicate := appliedSet[item.IdempotencyKey]; !duplicate {
-				if err = claim.MarkItemApplying(ctx, item.ItemID); err != nil {
-					return true, fmt.Errorf("mark mutation item applying: %w", err)
-				}
-				write, writeErr := p.writer.Apply(ctx, ports.WriteItem{ProtocolID: protocol.ProtocolID, InstallationID: protocol.InstallationID, ProtocolType: protocol.Type, ItemID: item.ItemID, ListingID: item.ListingID, IdempotencyKey: item.IdempotencyKey, Before: item.Before, After: item.After})
-				if writeErr != nil {
-					write.Failure = &domain.Failure{Code: domain.FailureCodeInternal, MessagePT: "Falha interna ao aplicar alteração."}
-				}
+			write := ports.WriteOutcome{}
+			skipped, gateErr := WriteThroughGates(ctx, item.IdempotencyKey,
+				func(context.Context, string) (bool, error) {
+					for _, key := range applied {
+						if key == item.IdempotencyKey {
+							return true, nil
+						}
+					}
+					return false, nil
+				},
+				func(ctx context.Context) error { return claim.MarkItemApplying(ctx, item.ItemID) },
+				func(ctx context.Context) error {
+					var writeErr error
+					write, writeErr = p.writer.Apply(ctx, ports.WriteItem{ProtocolID: protocol.ProtocolID, InstallationID: protocol.InstallationID, ProtocolType: protocol.Type, ItemID: item.ItemID, ListingID: item.ListingID, IdempotencyKey: item.IdempotencyKey, Before: item.Before, After: item.After})
+					if writeErr != nil {
+						write.Failure = &domain.Failure{Code: domain.FailureCodeInternal, MessagePT: "Falha interna ao aplicar alteração."}
+					}
+					return nil
+				})
+			if gateErr != nil {
+				return true, gateErr
+			}
+			if !skipped {
 				if write.Failure == nil {
 					outcome.State, outcome.AppliedAt = domain.ItemStateApplied, p.now()
 				} else {

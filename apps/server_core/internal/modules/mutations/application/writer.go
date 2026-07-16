@@ -25,8 +25,6 @@ type WriterRouter struct {
 	price, stock, listing, resync ports.WriterPort
 	linkage                       ports.LinkageWriter
 	resolved, policy              PresenceReader
-	alreadyApplied                func(context.Context, string) (bool, error)
-	persistAudit                  func(context.Context, ports.WriteItem) error
 }
 
 type RoutedWriteOutcome struct {
@@ -34,8 +32,8 @@ type RoutedWriteOutcome struct {
 	Failure *domain.Failure
 }
 
-func NewWriterRouter(price, stock, listing, resync ports.WriterPort, linkage ports.LinkageWriter, resolved, policy PresenceReader, alreadyApplied func(context.Context, string) (bool, error), persistAudit func(context.Context, ports.WriteItem) error) *WriterRouter {
-	return &WriterRouter{price: price, stock: stock, listing: listing, resync: resync, linkage: linkage, resolved: resolved, policy: policy, alreadyApplied: alreadyApplied, persistAudit: persistAudit}
+func NewWriterRouter(price, stock, listing, resync ports.WriterPort, linkage ports.LinkageWriter, resolved, policy PresenceReader) *WriterRouter {
+	return &WriterRouter{price: price, stock: stock, listing: listing, resync: resync, linkage: linkage, resolved: resolved, policy: policy}
 }
 
 func (r *WriterRouter) ValidateProtocol(v ProtocolWriteValidation) error {
@@ -60,26 +58,17 @@ func (r *WriterRouter) ApplyItem(ctx context.Context, item ports.WriteItem) (rou
 		}
 		return routedFailure(domain.FailureCodeTypeNotEnabled, "Este tipo de alteração ainda não está habilitado."), nil
 	}
-	if r == nil || r.alreadyApplied == nil || r.persistAudit == nil {
+	if r == nil {
 		return RoutedWriteOutcome{}, errors.New("mutation writer router is not configured")
 	}
 	if failure := r.itemGate(ctx, item); failure != nil {
 		return RoutedWriteOutcome{State: domain.ItemStateFailed, Failure: failure}, nil
 	}
-	var out ports.WriteOutcome
-	write := func(ctx context.Context) error {
-		var state domain.ItemState
-		out, state, err = r.dispatch(ctx, item)
-		routed.State = state
-		return err
-	}
-	skipped, err := WriteThroughGates(ctx, item.IdempotencyKey, r.alreadyApplied, func(ctx context.Context) error { return r.persistAudit(ctx, item) }, write)
+	out, state, err := r.dispatch(ctx, item)
 	if err != nil {
 		return RoutedWriteOutcome{}, err
 	}
-	if skipped {
-		return RoutedWriteOutcome{State: domain.ItemStateSkipped}, nil
-	}
+	routed.State = state
 	if routed.State == "" {
 		routed.State = domain.ItemStateApplied
 	}
