@@ -169,7 +169,13 @@ func TestOrderRepositoryDuplicateIdentityGroupPreservesIDSetAndRemainsAmbiguous(
 	second := readOrderForTest(t, ctx, repo, order.InstallationID, order.ProviderOrderID)
 	secondIDs := sortedLineIDs(second.Items)
 	assertReconciliationState(t, second.Items, ordersdomain.LineReconciliationAmbiguous)
-	if len(secondIDs) != 3 || secondIDs[0] != firstIDs[0] || secondIDs[1] != firstIDs[1] {
+	// mpc_line_id is crypto/rand, so the new ID can sort anywhere among the
+	// preserved ones — assert set containment, not positions.
+	preserved := make(map[ordersdomain.MPCLineID]bool, len(secondIDs))
+	for _, id := range secondIDs {
+		preserved[id] = true
+	}
+	if len(secondIDs) != 3 || !preserved[firstIDs[0]] || !preserved[firstIDs[1]] {
 		t.Fatalf("expanded duplicate IDs = %v, want preserved %v plus one", secondIDs, firstIDs)
 	}
 
