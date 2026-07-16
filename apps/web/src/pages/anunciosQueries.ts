@@ -4,7 +4,7 @@ import { toListingListOptions, type AnunciosQueryState } from "./anunciosQuerySt
 
 export type AnunciosClient = Pick<
   ReturnType<typeof createMarketplaceCentralClient>,
-  "listListings" | "getListingsSummary"
+  "listListings" | "getListingsSummary" | "refreshListings" | "listIntegrationOperationRuns"
 >;
 
 export function anunciosPageQuery(

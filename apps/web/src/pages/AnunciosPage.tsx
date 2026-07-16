@@ -16,6 +16,7 @@ import { anunciosSummaryQuery } from "./anunciosQueries";
 import { AnunciosTable } from "./AnunciosTable";
 import { ListingDetailPanel } from "./ListingDetailPanel";
 import { ListingsSummary } from "./ListingsSummary";
+import { ListingsRefreshControl } from "./ListingsRefreshControl";
 
 const tabs: Array<{ value: AnunciosTab; label: string }> = [
   { value: "todos", label: "Todos" },
@@ -177,6 +178,7 @@ export function AnunciosPage() {
           Lista de anúncios
         </h2>
         <div className="mt-3 flex flex-wrap items-center gap-2" aria-label="Ações de seleção">
+          <ListingsRefreshControl installationId={installationId} />
           {visibleSelectedIds.size > 0 ? (
             <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">
               {visibleSelectedIds.size} selecionado(s)
