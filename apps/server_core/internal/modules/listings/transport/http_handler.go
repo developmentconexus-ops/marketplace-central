@@ -67,6 +67,23 @@ type ReadHandler struct{ service ListService }
 
 func NewReadHandler(service ListService) ReadHandler { return ReadHandler{service: service} }
 
+type routeClassRegistrar interface {
+	RegisterRouteClass(string, httpx.RouteClass)
+}
+
+func (h ReadHandler) Register(mux httpx.RouteRegistrar) {
+	if registrar, ok := mux.(routeClassRegistrar); ok {
+		for _, pattern := range []string{"/listings", "/listings/by-product", "/listings/summary", "/listings/{id}"} {
+			registrar.RegisterRouteClass(pattern, httpx.InteractiveRouteClass)
+		}
+	}
+	// POST /listings/refresh belongs here in the later write slice.
+	mux.HandleFunc("GET /listings", h.HandleList)
+	mux.HandleFunc("GET /listings/by-product", h.HandleByProduct)
+	mux.HandleFunc("GET /listings/summary", h.HandleSummary)
+	mux.HandleFunc("GET /listings/{id}", h.HandleGet)
+}
+
 type listError struct {
 	Code    string         `json:"code"`
 	Message string         `json:"message"`
@@ -219,7 +236,10 @@ func (h ReadHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 		writeListError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed", "")
 		return
 	}
-	rawID := r.PathValue("listing_id")
+	rawID := r.PathValue("id")
+	if rawID == "" {
+		rawID = r.PathValue("listing_id")
+	}
 	id, err := domain.ParseListingID(rawID)
 	if err != nil {
 		writeListError(w, http.StatusNotFound, "listing_not_found", "anúncio não encontrado", "listing_id")

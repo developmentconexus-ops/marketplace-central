@@ -213,6 +213,131 @@ export interface CatalogSearchPageOptions {
   limit?: number;
 }
 
+export type ListingStatus = "active" | "paused" | "closed" | "unknown";
+export type ListingSyncState = "synced" | "error" | "stale" | "queued" | "syncing" | "paused_sync";
+export type ListingLinkState = "unresolved" | "conflict" | "resolved" | "rejected";
+export type ListingException = "sync_error" | "stale" | "unlinked" | "below_margin";
+
+export interface ListingListOptions {
+  installation_id: string;
+  q?: string;
+  status?: ListingStatus;
+  sync_state?: ListingSyncState;
+  link_state?: ListingLinkState;
+  exception?: ListingException;
+  has_exception?: boolean;
+  listing_type_code?: string;
+  product_id?: string;
+  limit?: number;
+  cursor?: string;
+}
+
+export interface ListingType {
+  code: string;
+  label: string;
+}
+
+export interface ListingMoney {
+  amount: string;
+  currency: string;
+}
+
+export interface ListingLink {
+  state: ListingLinkState;
+  product_id: string | null;
+  seller_sku: string | null;
+}
+
+export interface ListingSyncError {
+  code: string;
+  message_pt: string;
+  message_provider: string | null;
+}
+
+export type ListingPendingIssueKind = "sync_error" | "stale" | "unlinked" | "below_margin" | "attribute_required";
+
+export interface ListingPendingIssue {
+  kind: ListingPendingIssueKind;
+  message_pt: string;
+}
+
+export interface ListingICMSWorstCase {
+  destination_uf: string;
+  worst_case_icms_pct: string | null;
+  price_net_basis: string | null;
+  below_margin_at_uf: boolean | null;
+}
+
+export interface ListingReadModel {
+  listing_id: string;
+  installation_id: string;
+  provider: string;
+  provider_listing_id: string;
+  title: string;
+  listing_type: ListingType | null;
+  status: ListingStatus;
+  link: ListingLink;
+  price: ListingMoney | null;
+  published_quantity: number | null;
+  sync_state: ListingSyncState;
+  sync_error: ListingSyncError | null;
+  quality_score: number | null;
+  pending_issue: ListingPendingIssue | null;
+  sales_30d: number | null;
+  cost: ListingMoney | null;
+  below_margin_worst_case: boolean | null;
+  icms_worst_case_by_uf: ListingICMSWorstCase[] | null;
+  fetched_at: string | null;
+}
+
+export interface ListingPage {
+  items: ListingReadModel[];
+  next_cursor: string | null;
+  page_size: number;
+  as_of: string;
+}
+
+export interface ListingGroup {
+  product_id: string | null;
+  product_title: string | null;
+  listing_count: number;
+  group_state: "ok" | "attention" | "error";
+  listings: ListingReadModel[];
+}
+
+export interface ListingGroupPage {
+  groups: ListingGroup[];
+  next_cursor: string | null;
+  page_size: number;
+  as_of: string;
+}
+
+export interface ListingTimelineEvent {
+  at: string;
+  kind: string;
+  message_pt: string;
+}
+
+export interface ListingDetail extends ListingReadModel {
+  timeline: ListingTimelineEvent[];
+}
+
+export interface ListingSummaryExceptions {
+  sync_error: number;
+  stale: number;
+  unlinked: number;
+  below_margin_worst_case: number | null;
+  margin_unknown: number | null;
+}
+
+export interface ListingSummary {
+  total: number;
+  active: number;
+  paused: number;
+  exceptions: ListingSummaryExceptions;
+  as_of: string;
+}
+
 export interface IntegrationConnectionSnapshot {
   state: "draft" | "pending_connection" | "connected" | "degraded" | "needs_reauth" | "disconnected";
   health: "healthy" | "warning" | "critical";
@@ -1017,6 +1142,27 @@ export function createMarketplaceCentralClient(options: {
     return encoded ? `?${encoded}` : "";
   }
 
+  function listingQuery(params: ListingListOptions): string {
+    const query = new URLSearchParams();
+    query.set("installation_id", params.installation_id);
+    if (params.q !== undefined) query.set("q", params.q);
+    const filters: Array<[string, string | number | boolean | undefined]> = [
+      ["status", params.status],
+      ["sync_state", params.sync_state],
+      ["link_state", params.link_state],
+      ["exception", params.exception],
+      ["has_exception", params.has_exception],
+      ["listing_type_code", params.listing_type_code],
+      ["product_id", params.product_id],
+    ];
+    for (const [key, value] of filters) {
+      if (value !== undefined) query.set(`filter.${key}`, String(value));
+    }
+    if (params.limit !== undefined) query.set("limit", String(params.limit));
+    if (params.cursor !== undefined) query.set("cursor", params.cursor);
+    return `?${query.toString()}`;
+  }
+
   async function putJson<T>(path: string, body: unknown): Promise<T> {
     const response = await fetchImpl(`${options.baseUrl}${path}`, {
       method: "PUT",
@@ -1060,6 +1206,14 @@ export function createMarketplaceCentralClient(options: {
       getJson<CatalogProductFactPage>(
         `/catalog/products/search${catalogQuery({ q: options.q, limit: options.limit })}`,
       ),
+    listListings: (options: ListingListOptions) =>
+      getJson<ListingPage>(`/listings${listingQuery(options)}`),
+    listListingsByProduct: (options: ListingListOptions) =>
+      getJson<ListingGroupPage>(`/listings/by-product${listingQuery(options)}`),
+    getListing: (id: string) =>
+      getJson<ListingDetail>(`/listings/${encodeURIComponent(id)}`),
+    getListingsSummary: (installationId: string) =>
+      getJson<ListingSummary>(`/listings/summary?installation_id=${encodeURIComponent(installationId)}`),
     /** @deprecated Use listCatalogProductFacts; the endpoint is now paginated. */
     listCatalogProducts: (options: CatalogPageOptions = {}) =>
       getJson<CatalogProductFactPage>(

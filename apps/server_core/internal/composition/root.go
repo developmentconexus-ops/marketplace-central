@@ -39,8 +39,8 @@ import (
 	integrationsbg "marketplace-central/apps/server_core/internal/modules/integrations/background"
 	integrationsdomain "marketplace-central/apps/server_core/internal/modules/integrations/domain"
 	integrationstransport "marketplace-central/apps/server_core/internal/modules/integrations/transport"
-	internalreadoracle "marketplace-central/apps/server_core/internal/modules/internal_read/adapters/oracle"
 	internalreadcache "marketplace-central/apps/server_core/internal/modules/internal_read/adapters/cache"
+	internalreadoracle "marketplace-central/apps/server_core/internal/modules/internal_read/adapters/oracle"
 	"marketplace-central/apps/server_core/internal/modules/internal_read/adapters/oracle/oraclebatch"
 	internalreadapp "marketplace-central/apps/server_core/internal/modules/internal_read/application"
 	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
@@ -54,8 +54,16 @@ import (
 	inventoryapp "marketplace-central/apps/server_core/internal/modules/inventory/application"
 	inventoryports "marketplace-central/apps/server_core/internal/modules/inventory/ports"
 	inventorytransport "marketplace-central/apps/server_core/internal/modules/inventory/transport"
+	listingsintegrations "marketplace-central/apps/server_core/internal/modules/listings/adapters/integrations"
+	listingsinternalread "marketplace-central/apps/server_core/internal/modules/listings/adapters/internalread"
+	listingsmarketplaces "marketplace-central/apps/server_core/internal/modules/listings/adapters/marketplaces"
+	listingspostgres "marketplace-central/apps/server_core/internal/modules/listings/adapters/postgres"
+	listingsapp "marketplace-central/apps/server_core/internal/modules/listings/application"
+	listingsports "marketplace-central/apps/server_core/internal/modules/listings/ports"
+	listingstransport "marketplace-central/apps/server_core/internal/modules/listings/transport"
 	marketplacespostgres "marketplace-central/apps/server_core/internal/modules/marketplaces/adapters/postgres"
 	marketplacesapp "marketplace-central/apps/server_core/internal/modules/marketplaces/application"
+	marketplacesdomain "marketplace-central/apps/server_core/internal/modules/marketplaces/domain"
 	marketplacesregistry "marketplace-central/apps/server_core/internal/modules/marketplaces/registry"
 	marketplacestransport "marketplace-central/apps/server_core/internal/modules/marketplaces/transport"
 	ordersintegrations "marketplace-central/apps/server_core/internal/modules/orders/adapters/integrations"
@@ -93,6 +101,26 @@ type authFlowFacade struct {
 
 type unavailableProductMatcher struct {
 	err error
+}
+
+type unavailablePolicyService struct {
+	err error
+}
+
+func (s unavailablePolicyService) GetPricingPolicyForInstallation(context.Context, string) (marketplacesdomain.Policy, bool, error) {
+	return marketplacesdomain.Policy{}, false, s.err
+}
+
+type unavailableListingPolicyReader struct {
+	delegate listingsports.PolicyReader
+}
+
+func (r unavailableListingPolicyReader) GetPricingPolicyForInstallation(ctx context.Context, installationID string) (listingsports.PricingPolicy, bool, error) {
+	policy, found, err := r.delegate.GetPricingPolicyForInstallation(ctx, installationID)
+	if internalreaddomain.IsReadErrorCode(err, internalreaddomain.ReadErrorSourceUnavailable) {
+		return listingsports.PricingPolicy{}, false, nil
+	}
+	return policy, found, err
 }
 
 func (m unavailableProductMatcher) FindProductsForLinking(context.Context, internalreadports.FindProductsInput) ([]internalreaddomain.ProductCandidate, error) {
@@ -460,6 +488,21 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 
 	marketRepo := marketplacespostgres.NewRepository(pool, cfg.DefaultTenantID)
 	marketSvc := marketplacesapp.NewService(marketRepo, cfg.DefaultTenantID)
+
+	listingRepo := listingspostgres.NewRepository(pool, cfg.DefaultTenantID)
+	listingCostReader := listingsinternalread.NewCostReader(internalreadoracle.NewBatchReader(nil, oracleBatchSemaphore))
+	listingPolicyReader := unavailableListingPolicyReader{delegate: listingsmarketplaces.NewPolicyReader(unavailablePolicyService{
+		err: internalreaddomain.NewReadError(internalreaddomain.ReadErrorSourceUnavailable, "marketplace policy reader is unavailable", nil),
+	})}
+	listingInstallationReader := listingsintegrations.NewInstallationReader(installationSvc)
+	listingSvc := listingsapp.NewReadService(
+		listingRepo,
+		listingCostReader,
+		listingPolicyReader,
+		listingInstallationReader,
+		time.Now,
+	)
+	listingstransport.NewReadHandler(listingSvc).Register(mux)
 
 	feeSvc := marketplacesapp.NewFeeScheduleService(feeRepo)
 

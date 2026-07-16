@@ -12,6 +12,7 @@ import (
 	"marketplace-central/apps/server_core/internal/modules/listings/application"
 	"marketplace-central/apps/server_core/internal/modules/listings/domain"
 	"marketplace-central/apps/server_core/internal/modules/listings/ports"
+	"marketplace-central/apps/server_core/internal/platform/httpx"
 )
 
 type fakeListService struct {
@@ -23,6 +24,29 @@ type fakeListService struct {
 	getErr     error
 	summary    ports.ListingSummaryRow
 	summaryErr error
+}
+
+func TestReadHandlerRegisterMapsReadRoutes(t *testing.T) {
+	mux := httpx.NewRouteClassMux()
+	NewReadHandler(&fakeListService{}).Register(mux)
+
+	for _, tc := range []struct {
+		path   string
+		status int
+	}{
+		{path: "/listings", status: http.StatusBadRequest},
+		{path: "/listings/by-product", status: http.StatusBadRequest},
+		{path: "/listings/summary", status: http.StatusBadRequest},
+		{path: "/listings/not-a-listing-id", status: http.StatusNotFound},
+	} {
+		t.Run(tc.path, func(t *testing.T) {
+			recorder := httptest.NewRecorder()
+			mux.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, tc.path, nil))
+			if recorder.Code != tc.status {
+				t.Fatalf("status = %d, want %d; body=%s", recorder.Code, tc.status, recorder.Body.String())
+			}
+		})
+	}
 }
 
 func (f *fakeListService) Summary(context.Context, ports.SummaryQuery) (ports.ListingSummaryRow, error) {
