@@ -360,3 +360,84 @@ Hub restart-backend served a595f36c. Read-only probes vs `http://127.0.0.1:8080`
 - **ESCALATED to hub** (`HUB-EVENT-ESCALATION-c10-status-mapping-gap.md`): R1 raw ML status distribution of the 7 unknown (chip has no DB/.env/self-boot — hub/DB-specialist runs read-only SELECT); R2 canonical mapping ruling (collapse vs grow enum — contract/wireframe decision, growing ripples domain+mapper+transport filter+OpenAPI+SDK+tests); R3 scope (M-01 corrective slice vs F-01 ingestion reopen — mapper is F-01 seam, C10 is M-01 contract). Not fixing inline.
 
 **P7g VERDICT: C10 primary PASS + fix(a)/NO-STUB wiring LIVE-PROVEN; C10 secondary BLOCKED by status-mapping gap (20.6%>20%). Dual-gate DELTA + P8 CLOSED HELD.** Awaiting hub R1/R2/R3. No push.
+
+---
+
+## BACKFILL — slices 9-12 + gate rounds 3-5 (written 2026-07-16, after P8 CLOSED)
+
+> **Provenance, on the face of it: RECONSTRUCTED, not captured.** Every row above this line was
+> written from a file on disk — an `agent__<id>.log` teed by an OS-process worker. Every row below
+> it is reconstructed after the fact from git history, `_gate-evidence/` artifacts, and the
+> milestone owner's session context. **A backfilled row is weaker evidence than a teed log**, and
+> this ledger says so rather than reading as though the capture worked. Durations are approximate;
+> verbatim stdout was preserved for no dispatch below, because the dispatch path in force produced
+> none.
+>
+> **Why the gap exists** (escalated — `HUB-EVENT-ESCALATION-codex-dispatch-visibility.md`): the
+> ledger stops at P7g at exactly the line where the harness amendment moved all codex dispatch from
+> OS-process (`codex exec` + tee + `.done` sentinel + dashboard at `127.0.0.1:7391`) to
+> `/codex:rescue --wait`. The companion returns stdout to the calling session's context and writes
+> no ledger-addressable artifact, so the `Log` column had nothing to point at and the dashboard had
+> nothing to tail. The ledger did not decay because discipline decayed; the artifact it was made of
+> stopped existing. HUB rules on the doctrine.
+>
+> **Model note (HARNESS §1 deviation, operator-directed):** implementation ran on **Claude sonnet**
+> across slices 8-12 per explicit operator directive, not GPT-5.6 Luna-high / Sol-low. Consequence
+> for this ledger: after the amendment the **only** codex dispatches in the milestone were the three
+> Sol gate reviews. Every other worker below is Claude-side (Agent tool), which no codex mechanism —
+> `/codex:rescue`, the tee, or the dashboard — covers at all.
+
+### Implement + slice review
+
+| # | Slice | Role | Model / effort | Path | Artifact | Result |
+|---|---|---|---|---|---|---|
+| I9 | 9 — grow canonical status enum (`under_review`/`inactive`/`payment_required`/`not_yet_active`), migration 0037, OpenAPI 3 enum sites + SDK parity | Implementer | **claude sonnet** (operator directive) | Agent tool, SYNC | `_gate-evidence/round-2/slice9-L0-report.md` | **GREEN — `c4e8ab91` 02:59.** C10 unknown 20.6% → **0.0%** on the live re-drive. |
+| R9 | 9 | §14 slice review | claude sonnet, prompt-pack verbatim | Agent tool, SYNC | `_gate-evidence/round-2/slice9-review.md` | APPROVE |
+| I10 | 10 — fail honestly on fact-dependent filters during outage (hub ruling R1=(C) pure) | Implementer | **claude sonnet** | Agent tool, SYNC | `_gate-evidence/round-3/slice10-L0-report.md`, `slice10-candidate.diff` | **GREEN — `7f5a1b8c` 08:52.** |
+| R10 | 10 | §14 slice review | claude sonnet | Agent tool, SYNC | `_gate-evidence/round-3/slice10-review.md` | APPROVE — **and this review is where G2 entered.** It recorded the `Get` guard change as a *"BONUS fix nobody asked for"*; it was a regression, nulling 25 known ICMS ceilings on a cost-only outage. Reviewer and milestone owner both missed it. Caught at gate round 3 by Sol. |
+| I11 | 11 — G1 cancel/timeout no longer degrade; **G2 revert** (`:338` back to `ceilingErr != nil`); G3 pin test; G5 honest telemetry; G4 narration purge | Implementer | **claude sonnet** | Agent tool, SYNC | `_gate-evidence/round-4/slice11-L0-report.md`, `slice11-candidate.diff` | **GREEN — `a6878dc6` 09:52.** |
+| R11 | 11 | §14 slice review | claude sonnet | Agent tool, SYNC | `_gate-evidence/round-4/slice11-review.md` | APPROVE |
+| I12 | 12 — thread `op` through `enrich`/`enrichGroups`, closing H1 (`:430` cost-fact propagate ERROR attributable to no read path) | Implementer | **claude sonnet** | Agent tool, SYNC | `_gate-evidence/round-4/slice12-L0-report.md`, `slice12-candidate.diff` | **GREEN — `982d44e` 10:29.** 7 hunks, behaviour-neutral, telemetry attribution only. **No slice review dispatched** — slice 12 went straight to gate round 5, where both reviewers examined it cold. Recorded as a deviation, not an omission: the slice existed only to close a gate finding. |
+
+### Gate rounds (P6 DELTA, REVIEW-STANDARD §8/§9/§14)
+
+Both sides at a fixed SHA, prompt-pack §14 verbatim, verdicts merged per §8 (union of findings, max
+severity, deeper receipt wins a contradiction).
+
+| Round | SHA | Claude side | GPT side | Merged |
+|---|---|---|---|---|
+| 3 | `c4e8ab91` | **cold Opus subagent** — Agent tool, `model=opus` explicit, clean context, SYNC. PASS on delta. | **gpt-5.6-sol `--effort medium`** via `/codex:rescue --wait --fresh`. **FAIL** — left the delta to read the adapter. | **FAIL** — G1..G6. `_gate-evidence/round-3/dual-gate-round3-verdict.md` |
+| 4 | `a6878dc6` | **cold Opus subagent**, same shape. PASS — traced the wrap chain deeper; raised H4/H5 as questions. | **gpt-5.6-sol `--effort medium`**, `/codex:rescue --wait --fresh`, **~679s**. **FAIL** — enumerated the telemetry surface Opus skipped. | **FAIL** — H1 (important). `_gate-evidence/round-4/dual-gate-round4-verdict.md` |
+| 5 | `982d44e` | **cold Opus subagent**, same shape. PASS — and **caught a miscount in the milestone owner's own L0 report** (16 vs **15** `slog` sites) while checking a claim it had been invited to distrust. | **gpt-5.6-sol `--effort medium`**, `/codex:rescue --wait --fresh`, **~281s**. PASS — Sol verified its own round-4 finding rather than assuming it fixed. | **PASS** — zero blocking, zero important, one non-gating nit (G6). `_gate-evidence/round-5/dual-gate-round5-verdict.md` |
+
+**Dispatch-shape deviation, recorded:** §8/§13 require both sides dispatched **simultaneously**.
+Rounds 4 and 5 were issued **sequentially** (Opus first, then Sol) in separate turns. Both sides read
+the same fixed SHA and neither saw the other's output, so independence held and the merge is sound —
+but the concurrency instruction was not honoured, and this is the record of it rather than a silent
+pass.
+
+**Field finding — `--task` vs `--prompt-file` (new, escalated for the harness):** round-4's
+`codex:codex-rescue` reported verbatim: *"The forwarded task ran successfully via `--prompt-file`
+after the inline `--task` argument was hitting a shell command-length limit on this Bash tool that
+mangled quoting in long multi-line arguments."* The §14 reviewer prompt-pack **is** a long multi-line
+argument, so the mandated review prompt reliably collides with the mandated dispatch path — and it
+fails by *mangling quoting*, which can silently hand a **truncated prompt to a gate reviewer** that
+still emits a confident VERDICT line.
+
+### Live visibility across this whole span: none
+
+No `agent__<id>.log`, no `.done` sentinel, no dashboard stream for any dispatch in this backfill. The
+Sol gate reviews ran 281-679s completely unwatched; a stdin hang or sandbox failure would have
+surfaced at the timeout rather than at minute two. Contrast the planner recorded above, whose 3.7h
+hang was diagnosable *precisely because* its log was visibly empty of reasoning output.
+
+### P7 / P8
+
+| Phase | Owner | Artifact | Result |
+|---|---|---|---|
+| P7 | milestone owner, **fresh browser session** vs hub stack @ `c89fae3d` | `_gate-evidence/P7-browser-qa.md` | **PASS** — C04, C05, C06, C07, C10 driven live: 34 rows, 34 unique, zero dup/skip, title ASC held, 0.0% unknown status, 33/34 `cost: null` with **zero** `below_margin_worst_case: false`. Surface is the API (M-01 is QA-2; no `/listings` route exists yet — the cockpit that consumes this spine lands in later MIS-003 milestones). |
+| P8 | milestone owner | `HUB-EVENT-CLOSED-m01.md`, `validation-result.md` (round 2, supersedes round 1's Blocked) | **CLOSED — PASS** @ `b2ca671c`. Not pushed. |
+
+**Backfill verdict: the dispatch record for slices 9-12 and gate rounds 3-5 now exists, and is
+honest about being weaker than the captured rows above it.** The mechanism that produced the gap is
+the hub's to rule on.
