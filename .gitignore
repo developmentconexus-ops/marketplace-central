@@ -41,3 +41,7 @@ certificates/
 .superpowers/sdd/task-2-brief.md
 .superpowers/sdd/task-2-report.md
 .tmp-web-4174.log
+
+# Generated artifacts (session tooling)
+__pycache__/
+output/
