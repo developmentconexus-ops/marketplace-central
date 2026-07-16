@@ -14,6 +14,8 @@ type ProviderCapabilitySet struct {
 	FeeQuotes     ports.FeeQuoteReader
 	StockReads    ports.StockReader
 	StockWrites   ports.StockWriter
+	PriceWrites   ports.PriceWriter
+	ListingWrites ports.ListingWriter
 	Orders        ports.OrderReader
 }
 
@@ -29,6 +31,11 @@ func NewMarketplaceCapabilityService(capabilities []ProviderCapabilitySet) *Mark
 			continue
 		}
 		capability.ProviderCode = code
+		if capability.StockWrites == nil {
+			if writer, ok := capability.StockReads.(ports.StockWriter); ok {
+				capability.StockWrites = writer
+			}
+		}
 		byProvider[code] = capability
 	}
 
@@ -88,6 +95,28 @@ func (s *MarketplaceCapabilityService) StockWriter(providerCode string) (ports.S
 		return nil, unsupported(providerCode, ports.CapabilityStockWrite)
 	}
 	return capability.StockWrites, nil
+}
+
+func (s *MarketplaceCapabilityService) PriceWriter(providerCode string) (ports.PriceWriter, error) {
+	capability, err := s.provider(providerCode)
+	if err != nil {
+		return nil, err
+	}
+	if capability.PriceWrites == nil {
+		return nil, unsupported(providerCode, ports.CapabilityPriceWrite)
+	}
+	return capability.PriceWrites, nil
+}
+
+func (s *MarketplaceCapabilityService) ListingWriter(providerCode string) (ports.ListingWriter, error) {
+	capability, err := s.provider(providerCode)
+	if err != nil {
+		return nil, err
+	}
+	if capability.ListingWrites == nil {
+		return nil, unsupported(providerCode, ports.CapabilityListingWrite)
+	}
+	return capability.ListingWrites, nil
 }
 
 func (s *MarketplaceCapabilityService) OrderReader(providerCode string) (ports.OrderReader, error) {
