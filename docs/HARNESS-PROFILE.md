@@ -142,6 +142,11 @@ verification conflicts against this list.
 - Slice size norm: ≤ ~300 changed lines (mechanical/generated diffs exempt when declared).
 - Severity taxonomy + dual-gate agreement merge as per standard §5/§8; reconciliation table
   required in every `CLOSED` event.
+- Execution model (standard §13-§16, ratified 2026-07-16): slice review = ONE reviewer via
+  prompt-pack §14 (never a crew); dual gate dispatched simultaneously; disjoint-slice overlap
+  allowed (§15 — reviewed-green before merge/dependent slice, not before every next slice);
+  ★ crews run under noise control (FAIL-restraint verbatim-quote rule, advisory cap 10,
+  learnings suppression via `docs/REVIEW-LEARNINGS.md`).
 
 ## Amendment log
 
@@ -150,6 +155,7 @@ verification conflicts against this list.
 2026-07-15 · §2 · ratified · governance lane: run from clean detached worktree + full 40-hex BaseSha (field finding: main-checkout sweep of .claude/worktrees false-fails; short sha = GOV_SEMANTIC_DRIFT base-sha-invalid) — memory/governance-lane-clean-worktree.md
 2026-07-15 · §3 · ratified · fresh-worktree GOMODCACHE warm + HPG_MIGRATION_FAILED/migrations_first=-1 false-alarm signature (M-01 field finding)
 2026-07-15 · §4 · ratified · session postgres container harness:pg:up/down (mpc-pg-session-<8hex>) + createdb first-boot retry absorbing 3D000
+2026-07-16 · §11 + rubrics · ratified · REVIEW-STANDARD execution model (operator study, method-level): prompt-pack vehicle, one-reviewer slices, simultaneous dual gate, disjoint-slice overlap cadence, ★ crew noise control (FAIL-restraint + advisory cap 10 + learnings) — plugin rubrics amended upstream
 2026-07-16 · §11 (new) + HARNESS.md §4 · ratified · REVIEW-STANDARD adopted (operator-requested hardening): fixed review order, global-vs-local-maximum G1-G3, YAGNI+DRY rule-of-three, two-axis severity, anchor-or-abstain+receipts, deterministic pre-pass (go vet added to L0), dual-gate agreement merge, delta re-review, learnings memory docs/REVIEW-LEARNINGS.md, ≤300-line slices
 2026-07-15 · §7 · ratified · no-stub doctrine: validation contracts/tests never fallback stub/mock on integration seams without operator authorization; real dependency required; planning declares real bindings up front (operator ruling after M-01 C10 — root.go nil-DB cost reader + permanent-unavailable policy reader passed hermetic gates, blocked live validation)
 2026-07-15 · §2 L2 + §6 · corrected · dev stack ONLY via docker compose (npm run docker:dev / docker:oauth), hub-owned; chips never boot own server, never bind :8080/:5174, never load .env* into session env (field violation: M-01 chip ran bare worktree server with real .env for C10 — 42P01s were self-inflicted bypass of compose postgres+entrypoint)
