@@ -441,3 +441,31 @@ hang was diagnosable *precisely because* its log was visibly empty of reasoning 
 **Backfill verdict: the dispatch record for slices 9-12 and gate rounds 3-5 now exists, and is
 honest about being weaker than the captured rows above it.** The mechanism that produced the gap is
 the hub's to rule on.
+
+---
+
+## HUB ACCEPTANCE — merge + post-merge ladder (2026-07-16)
+
+Evidence judged sufficient: dual-gate round-5 verdicts (both PASS, no contradiction), full
+reconciliation table rounds 2-5, P7 fresh-browser QA at the gated SHA (C04/C05/C06/C07/C10 PASS),
+ledger + backfill (provenance declared). Hub independently re-verified: worktree tip, code-only
+delta scopes per slice, internal_read untouched, G1 receipts in-tree.
+
+- **Merged to main**: `6ac02ac0` (--no-ff, conflict in `scripts/harness/Postgres.psm1` resolved to
+  HEAD's self-discovering lane — the branch's hardcoded listings package is subsumed; discovery
+  finds both listings integration test files). Post-CLOSED ledger backfill merged at `547fa90a`.
+  Branch `mis-003/m-01-listings-read-spine` deleted after merge (`-d`, clean).
+- **Post-merge ladder on integrated main**: L0 build+vet PASS · L1 unit PASS · integration lane:
+  all green EXCEPT `TestPhase1SmokeFlow` = the pre-existing adjudicated failure (ruling B
+  2026-07-15, evidence `evidence/phase1-preexisting-repro.md`, re-confirmed same signature
+  `PRICING_INVALID_PRODUCT_ID`; hub board task #4) · governance drift vs `fec2d44d`: caught
+  undeclared module edges listings→internal_read, listings→marketplaces (real F-02 imports never
+  registered) — contract updated to match ratified design (`90853e62`), re-run **PASS**.
+- **Dev stack re-pointed** at the merged main checkout (was worktree-mounted): backend recreated,
+  healthy, `/healthz` 200, `/listings` 200 with live rows.
+- **Session postgres** `mpc-pg-session-e7e297a5` torn down (`harness:pg:down`).
+- **Deferred-with-name on the hub board**: #2 internal_read taxonomy (G1 residual), #3 H4+H5
+  round-4 questions, #4 phase1 smoke fixture. Codex dispatch-visibility mechanism escalation
+  (`HUB-EVENT-ESCALATION-codex-dispatch-visibility.md`) pending hub/doctrine ruling.
+
+**M-01 ACCEPTED AND MERGED. Not pushed (operator gate).**
