@@ -191,12 +191,22 @@ Milestone-session obligations, checkable:
    dispatches listed = fails hub acceptance.
 8. Native task board live at all times: in_progress at dispatch, completed only reviewed-green.
 
+**Every code review (slice, dual gate, hub spot-check) follows `docs/REVIEW-STANDARD.md` —
+BINDING (ratified 2026-07-16):** fixed review order (design → correctness → complexity → tests →
+naming → docs; style is machine-owned), global-vs-local-maximum design questions G1-G3
+(alternatives-considered notes on non-trivial decisions), Beck simplicity rules (YAGNI + DRY
+rule-of-three), two-axis severity on every finding (`blocking|important|suggestion|nit|question`
++ anchored `path:line`), anchor-or-abstain with receipts, deterministic pre-pass before
+judgment, dual-gate agreement merge, delta-only re-review, learnings memory
+(`docs/REVIEW-LEARNINGS.md`), ≤~300-line slices.
+
 **AI-slop checklist — any hit = REJECT the slice:** speculative abstraction / one-impl
 interfaces with no named consumer · comment narration / PR-voice comments · blanket
 recover/try-catch, fallbacks on integrity-critical reads (unknown ≠ zero — ADR-17, fail honest) ·
 idiom mismatch with the surrounding module · dead code / commented blocks / unanchored TODOs ·
 hand-rolled platform equivalents · generated-file edits (contract-first or nothing) · test
-theater (asserting the mock; missing negative/cross-tenant case) · permanent stub/nil dependency
+theater (asserting the mock; missing negative/cross-tenant case) · duplication of an existing
+helper/pattern past the rule of three (cite the existing symbol) · permanent stub/nil dependency
 wired into a composition-root live path without dated deferral or operator authorization
 (ratified 2026-07-15 — M-01 field case: `root.go` listings cost reader built with nil DB +
 permanently-unavailable policy reader passed every hermetic gate, then blocked live C10).

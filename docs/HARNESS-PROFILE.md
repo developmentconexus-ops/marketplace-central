@@ -129,6 +129,20 @@ verification conflicts against this list.
   (`context-compile`/`context-validate`/`impact`) were deleted 2026-07-15.
 - Codex-only harness previously in AGENTS.md — superseded 2026-07-15.
 
+## 11. Code-review bindings (REVIEW-STANDARD.md instantiation)
+`status: ratified` · `provenance: 2026-07-16 · operator-requested review hardening`
+
+- Standard: `docs/REVIEW-STANDARD.md` (method copy; canonical in mnfs-harness
+  `harness/REVIEW-STANDARD.md`) — binds slice review, dual gate, hub spot-check.
+- Deterministic pre-pass (§7) = L0 lane: `go build ./...` + `go vet ./...` (both
+  `GOCACHE=.gocache`) · web `tsc` · governance lane (clean worktree, 40-hex BaseSha). Review
+  dispatch only after L0 green; reviewer receives the L0/governance report as input.
+  Candidate additions (staticcheck, dupl, gocognit) = dependency gate: `REQUEST` to hub first.
+- Learnings file: `docs/REVIEW-LEARNINGS.md` — loaded into every code-review dispatch.
+- Slice size norm: ≤ ~300 changed lines (mechanical/generated diffs exempt when declared).
+- Severity taxonomy + dual-gate agreement merge as per standard §5/§8; reconciliation table
+  required in every `CLOSED` event.
+
 ## Amendment log
 
 ```
@@ -136,6 +150,7 @@ verification conflicts against this list.
 2026-07-15 · §2 · ratified · governance lane: run from clean detached worktree + full 40-hex BaseSha (field finding: main-checkout sweep of .claude/worktrees false-fails; short sha = GOV_SEMANTIC_DRIFT base-sha-invalid) — memory/governance-lane-clean-worktree.md
 2026-07-15 · §3 · ratified · fresh-worktree GOMODCACHE warm + HPG_MIGRATION_FAILED/migrations_first=-1 false-alarm signature (M-01 field finding)
 2026-07-15 · §4 · ratified · session postgres container harness:pg:up/down (mpc-pg-session-<8hex>) + createdb first-boot retry absorbing 3D000
+2026-07-16 · §11 (new) + HARNESS.md §4 · ratified · REVIEW-STANDARD adopted (operator-requested hardening): fixed review order, global-vs-local-maximum G1-G3, YAGNI+DRY rule-of-three, two-axis severity, anchor-or-abstain+receipts, deterministic pre-pass (go vet added to L0), dual-gate agreement merge, delta re-review, learnings memory docs/REVIEW-LEARNINGS.md, ≤300-line slices
 2026-07-15 · §7 · ratified · no-stub doctrine: validation contracts/tests never fallback stub/mock on integration seams without operator authorization; real dependency required; planning declares real bindings up front (operator ruling after M-01 C10 — root.go nil-DB cost reader + permanent-unavailable policy reader passed hermetic gates, blocked live validation)
 2026-07-15 · §2 L2 + §6 · corrected · dev stack ONLY via docker compose (npm run docker:dev / docker:oauth), hub-owned; chips never boot own server, never bind :8080/:5174, never load .env* into session env (field violation: M-01 chip ran bare worktree server with real .env for C10 — 42P01s were self-inflicted bypass of compose postgres+entrypoint)
 ```
