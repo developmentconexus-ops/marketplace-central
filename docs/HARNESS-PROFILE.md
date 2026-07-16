@@ -161,6 +161,16 @@ verification conflicts against this list.
   surfaces it in a worktree. Its control-plane modules (Context/Impact/State/Evals) and lanes
   (`context-compile`/`context-validate`/`impact`) were deleted 2026-07-15.
 - Codex-only harness previously in AGENTS.md — superseded 2026-07-15.
+- mnfs-workflow execution-layer skills/agents — superseded 2026-07-15 (mnfs-harness
+  `6b29412` "layered unification — harness is the only execution engine"; deleted at source,
+  MNFS retains contract + verdict layer only): `feature-execution`, `milestone-execution`,
+  `feature-context-pack`, `feature-validation-review`, `correction-worker` skill,
+  `feature-implementer` / `milestone-orchestrator` agents, `/milestone-start`,
+  `/feature-context`, `/feature-accept`. Stale copies survive in the codex plugin cache
+  (`mnfs-workflow 0.1.0+codex.local-20260706-01`) and `~/.codex/plugins/mnfs-codex-plugin/`
+  until repackage to 0.2.0 — workers MUST NOT follow them if auto-discovery surfaces one.
+  General rule (ratified 2026-07-16): auto-discovered skills are never doctrine; only
+  files pinned verbatim in the dispatch prompt-pack bind a worker.
 
 ## 11. Code-review bindings (REVIEW-STANDARD.md instantiation)
 `status: ratified` · `provenance: 2026-07-16 · operator-requested review hardening`
@@ -209,4 +219,5 @@ verification conflicts against this list.
 2026-07-16 · §6 · ratified · dev-stack sync standing policy: COMMITTED event with stack-sync <sha> → hub rebuilds without negotiation (M-01: 4 round-trips were restart asks)
 2026-07-16 · §6 · ratified · live dispatch viewer (hub-served live-server.mjs :7391, dynamic multi-session scratchpad discovery) + DB-specialist consultation seam (MNOS session local_ec787804, hub-relayed via REQUEST db-consult) — operator-requested at W1 dispatch
 2026-07-16 · (upstream) · ratified · core amendments landed in mnfs-harness cd114e6: sonnet fallback implementer row, COMMITTED event grammar, lean close (★ crew superseded at close by P6 dual gate), additive contract-lock named mechanism, P2 required plan outputs (write-DAG + contract satisfiability + lock pre-identification), Claude-side dispatch visibility accepted limitation
+2026-07-16 · §10 · ratified · mnfs-workflow execution-layer skills denylisted (deleted at source in mnfs-harness 6b29412 layered unification; stale codex cache 0.1.0 + ~/.codex/plugins/mnfs-codex-plugin still ship them — operator field finding: CHIP-SAT worker auto-loaded feature-execution). General rule: auto-discovered skills never bind; only prompt-pack pins are doctrine. Cache repackage to 0.2.0 deferred to W1 close (no tooling swap under running workers).
 ```
