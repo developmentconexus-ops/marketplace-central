@@ -10,6 +10,7 @@ import { OrdersPage } from "@marketplace-central/feature-orders";
 import { Layout } from "./Layout";
 import { DashboardPage } from "../pages/DashboardPage";
 import { useClient } from "./ClientContext";
+import { InstallationProvider } from "./InstallationContext";
 
 function CatalogPageWrapper() {
   const client = useClient();
@@ -54,19 +55,21 @@ function OrdersPageWrapper() {
 export function AppRouter() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route element={<Layout />}>
-          <Route index element={<DashboardPage />} />
-          <Route path="/products" element={<CatalogPageWrapper />} />
-          <Route path="/classifications" element={<ClassificationsPageWrapper />} />
-          <Route path="/marketplaces" element={<MarketplaceSettingsPageWrapper />} />
-          <Route path="/integrations" element={<IntegrationsHubPageWrapper />} />
-          <Route path="/product-links" element={<ProductLinksPageWrapper />} />
-          <Route path="/inventory/stock-seguro" element={<StockSeguroPageWrapper />} />
-          <Route path="/orders" element={<OrdersPageWrapper />} />
-          <Route path="/simulator" element={<PricingSimulatorPageWrapper />} />
-        </Route>
-      </Routes>
+      <InstallationProvider>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route index element={<DashboardPage />} />
+            <Route path="/products" element={<CatalogPageWrapper />} />
+            <Route path="/classifications" element={<ClassificationsPageWrapper />} />
+            <Route path="/marketplaces" element={<MarketplaceSettingsPageWrapper />} />
+            <Route path="/integrations" element={<IntegrationsHubPageWrapper />} />
+            <Route path="/product-links" element={<ProductLinksPageWrapper />} />
+            <Route path="/inventory/stock-seguro" element={<StockSeguroPageWrapper />} />
+            <Route path="/orders" element={<OrdersPageWrapper />} />
+            <Route path="/simulator" element={<PricingSimulatorPageWrapper />} />
+          </Route>
+        </Routes>
+      </InstallationProvider>
     </BrowserRouter>
   );
 }
