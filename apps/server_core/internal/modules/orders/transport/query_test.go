@@ -6,6 +6,47 @@ import (
 	"testing"
 )
 
+func TestParseOrderQueryRejectsUncoveredInvalidBranches(t *testing.T) {
+	cases := []struct {
+		name   string
+		values url.Values
+		key    string
+	}{
+		{"limit below range", url.Values{"installation_id": {"inst-1"}, "limit": {"0"}}, "limit"},
+		{"limit above range", url.Values{"installation_id": {"inst-1"}, "limit": {"101"}}, "limit"},
+		{"missing installation", url.Values{}, "installation_id"},
+		{"inverted date range", url.Values{"installation_id": {"inst-1"}, "date_from": {"2026-07-17"}, "date_to": {"2026-07-16"}}, "date_from"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := ParseOrderQuery(tc.values)
+			var typed *InvalidFilterError
+			if !errors.As(err, &typed) || typed.Key != tc.key {
+				t.Fatalf("error = %#v; want invalid_filter for %s", err, tc.key)
+			}
+		})
+	}
+}
+
+func TestParseOrderQueryClassifiesBadKeysDeterministically(t *testing.T) {
+	values := url.Values{"z_bad": {"x"}, "a_bad": {"x"}, "installation_id": {"inst-1"}}
+	for range 20 {
+		_, err := ParseOrderQuery(values)
+		var typed *InvalidFilterError
+		if !errors.As(err, &typed) || typed.Key != "a_bad" {
+			t.Fatalf("error = %#v; want stable first key a_bad", err)
+		}
+	}
+}
+
+func TestParseOrderQueryRepeatedCursorIsInvalidFilter(t *testing.T) {
+	_, err := ParseOrderQuery(url.Values{"installation_id": {"inst-1"}, "cursor": {"one", "two"}})
+	var typed *InvalidFilterError
+	if !errors.As(err, &typed) || typed.Key != "cursor" {
+		t.Fatalf("error = %#v; want invalid_filter for cursor", err)
+	}
+}
+
 func TestParseOrderQueryRejectsMalformedDateAsInvalidFilter(t *testing.T) {
 	_, err := ParseOrderQuery(url.Values{
 		"installation_id": {"inst-1"},

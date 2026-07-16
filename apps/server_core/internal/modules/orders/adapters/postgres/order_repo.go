@@ -15,9 +15,153 @@ import (
 )
 
 var (
-	_ ports.OrderStore  = (*OrderRepository)(nil)
-	_ ports.OrderLookup = (*OrderRepository)(nil)
+	_ ports.OrderStore     = (*OrderRepository)(nil)
+	_ ports.OrderLookup    = (*OrderRepository)(nil)
+	_ ports.OrderReadStore = (*OrderReadRepository)(nil)
 )
+
+type OrderReadRepository struct {
+	pool     *pgxpool.Pool
+	tenantID string
+}
+
+func NewOrderReadRepository(pool *pgxpool.Pool, tenantID string) *OrderReadRepository {
+	return &OrderReadRepository{pool: pool, tenantID: tenantID}
+}
+
+func (r *OrderReadRepository) ListOrders(ctx context.Context, query ports.OrderListQuery) (ports.OrderPage, error) {
+	page := ports.OrderPage{Items: make([]ordersdomain.OrderReadModel, 0)}
+	if r.pool == nil {
+		return page, nil
+	}
+	limit := query.Limit
+	if limit < 1 {
+		limit = 20
+	}
+	escapedQuery := escapeLike(strings.TrimSpace(query.Q))
+	prefixPattern, containsPattern := escapedQuery+"%", "%"+escapedQuery+"%"
+	if escapedQuery == "" {
+		prefixPattern, containsPattern = "", ""
+	}
+	rows, err := r.pool.Query(ctx, `
+		SELECT o.provider_order_id, o.provider_code, o.provider_status, o.provider_status_detail,
+		       o.provider_created_at, o.provider_closed_at, o.provider_updated_at,
+		       CASE WHEN EXISTS (
+		           SELECT 1 FROM orders_sankhya_linkage_events e
+		           WHERE e.tenant_id=$1 AND e.installation_id=$2 AND e.provider_order_id=o.provider_order_id
+		             AND e.evidence_state = 'exact'
+		       ) THEN 'linked'::text ELSE NULL::text END,
+		       (SELECT SUM(COALESCE(p.total_paid_amount, p.transaction_amount))
+		        FROM orders_marketplace_order_payments p
+		        WHERE p.tenant_id=$1 AND p.installation_id=$2 AND p.provider_order_id=o.provider_order_id)
+		FROM orders_marketplace_orders o
+		WHERE o.tenant_id=$1 AND o.installation_id=$2
+		  AND o.provider_created_at IS NOT NULL
+		  AND ($3='' OR o.provider_status=$3)
+		  AND ($4::timestamptz IS NULL OR o.provider_created_at >= $4)
+		  AND ($5::timestamptz IS NULL OR o.provider_created_at <= $5)
+		  AND ($6='' OR o.provider_order_id ILIKE $6 ESCAPE E'\\' OR EXISTS (
+		      SELECT 1 FROM orders_marketplace_order_items i
+		      WHERE i.tenant_id=$1 AND i.installation_id=$2 AND i.provider_order_id=o.provider_order_id
+		        AND (i.seller_sku ILIKE $7 ESCAPE E'\\' OR i.title ILIKE $7 ESCAPE E'\\')
+		  ))
+		  AND ($8::timestamptz IS NULL OR (o.provider_created_at, o.provider_order_id) < ($8, $9))
+		ORDER BY o.provider_created_at DESC, o.provider_order_id DESC
+		LIMIT $10
+	`, r.tenantID, strings.TrimSpace(query.InstallationID), strings.TrimSpace(query.Status), query.DateFrom, query.DateTo,
+		prefixPattern, containsPattern, nullableCursorTime(query.Cursor), query.Cursor.ProviderOrderID, limit+1)
+	if err != nil {
+		return page, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		model, err := scanReadModel(rows)
+		if err != nil {
+			return page, err
+		}
+		page.Items = append(page.Items, model)
+	}
+	if err := rows.Err(); err != nil {
+		return page, err
+	}
+	if len(page.Items) > limit {
+		page.Items = page.Items[:limit]
+		last := page.Items[len(page.Items)-1]
+		page.NextCursor = &ports.OrderCursor{Timestamp: *last.ProviderCreatedAt, ProviderOrderID: last.ProviderOrderID}
+	}
+	return page, nil
+}
+
+func (r *OrderReadRepository) GetOrder(ctx context.Context, installationID, providerOrderID string) (ordersdomain.OrderReadModel, error) {
+	if r.pool == nil {
+		return ordersdomain.OrderReadModel{}, &ports.OrderNotFoundError{InstallationID: installationID, ProviderOrderID: providerOrderID}
+	}
+	row := r.pool.QueryRow(ctx, `
+		SELECT o.provider_order_id, o.provider_code, o.provider_status, o.provider_status_detail,
+		       o.provider_created_at, o.provider_closed_at, o.provider_updated_at,
+		       CASE WHEN EXISTS (SELECT 1 FROM orders_sankhya_linkage_events e WHERE e.tenant_id=$1 AND e.installation_id=$2 AND e.provider_order_id=o.provider_order_id AND e.evidence_state = 'exact') THEN 'linked'::text ELSE NULL::text END,
+		       (SELECT SUM(COALESCE(p.total_paid_amount,p.transaction_amount)) FROM orders_marketplace_order_payments p WHERE p.tenant_id=$1 AND p.installation_id=$2 AND p.provider_order_id=o.provider_order_id)
+		FROM orders_marketplace_orders o
+		WHERE o.tenant_id=$1 AND o.installation_id=$2 AND o.provider_order_id=$3
+	`, r.tenantID, strings.TrimSpace(installationID), strings.TrimSpace(providerOrderID))
+	model, err := scanReadModel(row)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ordersdomain.OrderReadModel{}, &ports.OrderNotFoundError{InstallationID: installationID, ProviderOrderID: providerOrderID}
+	}
+	if err != nil {
+		return ordersdomain.OrderReadModel{}, err
+	}
+	model.Items, err = readItems(ctx, r.pool, r.tenantID, installationID, providerOrderID)
+	if err != nil {
+		return ordersdomain.OrderReadModel{}, err
+	}
+	model.Payments, err = readPayments(ctx, r.pool, r.tenantID, installationID, providerOrderID)
+	return model, err
+}
+
+func scanReadModel(scanner interface{ Scan(...any) error }) (ordersdomain.OrderReadModel, error) {
+	var model ordersdomain.OrderReadModel
+	var created, closed, updated pgtype.Timestamptz
+	var nf pgtype.Text
+	var total pgtype.Float8
+	err := scanner.Scan(&model.ProviderOrderID, &model.ProviderCode, &model.Status, &model.ProviderStatusDetail, &created, &closed, &updated, &nf, &total)
+	if err != nil {
+		return model, err
+	}
+	model.ProviderCreatedAt, model.CreatedAt = scanTime(created), scanTime(created)
+	model.ProviderClosedAt, model.ProviderUpdatedAt = scanTime(closed), scanTime(updated)
+	if nf.Valid {
+		value := nf.String
+		model.NFState = &value
+	}
+	model.Total = scanFloat8(total)
+	model.Items = make([]ordersdomain.MarketplaceOrderItem, 0)
+	model.Payments = make([]ordersdomain.MarketplaceOrderPayment, 0)
+	return model, nil
+}
+
+func readItems(ctx context.Context, pool *pgxpool.Pool, tenantID, installationID, providerOrderID string) ([]ordersdomain.MarketplaceOrderItem, error) {
+	r := &OrderRepository{pool: pool, tenantID: tenantID}
+	return r.listItems(ctx, strings.TrimSpace(installationID), strings.TrimSpace(providerOrderID))
+}
+
+func readPayments(ctx context.Context, pool *pgxpool.Pool, tenantID, installationID, providerOrderID string) ([]ordersdomain.MarketplaceOrderPayment, error) {
+	r := &OrderRepository{pool: pool, tenantID: tenantID}
+	return r.listPayments(ctx, strings.TrimSpace(installationID), strings.TrimSpace(providerOrderID))
+}
+
+func nullableCursorTime(cursor ports.OrderCursor) any {
+	if cursor.IsFirstPage() {
+		return nil
+	}
+	return cursor.Timestamp.UTC()
+}
+
+func escapeLike(value string) string {
+	value = strings.ReplaceAll(value, `\`, `\\`)
+	value = strings.ReplaceAll(value, `%`, `\%`)
+	return strings.ReplaceAll(value, `_`, `\_`)
+}
 
 type OrderRepository struct {
 	pool     *pgxpool.Pool

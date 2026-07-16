@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -48,7 +49,12 @@ func ParseOrderQuery(values url.Values) (ports.OrderListQuery, error) {
 		"installation_id": {}, "limit": {}, "cursor": {}, "status": {},
 		"date_from": {}, "date_to": {}, "q": {},
 	}
+	keys := make([]string, 0, len(values))
 	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
 		if key == "fulfillment" || key == "filter.fulfillment" {
 			return ports.OrderListQuery{}, unsupportedFilter("fulfillment")
 		}
@@ -102,7 +108,7 @@ func ParseOrderQuery(values url.Values) (ports.OrderListQuery, error) {
 
 	cursor, err := scalar(values, "cursor")
 	if err != nil {
-		return ports.OrderListQuery{}, &InvalidCursorError{}
+		return ports.OrderListQuery{}, err
 	}
 	if cursor != "" {
 		result.Cursor, err = ports.DecodeOrderCursor(cursor)
