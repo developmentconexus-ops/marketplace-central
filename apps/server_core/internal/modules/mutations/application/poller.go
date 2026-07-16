@@ -52,6 +52,9 @@ func (p *Poller) Pass(ctx context.Context, installationID string) (worked bool, 
 		for _, item := range items {
 			outcome := ports.ItemOutcome{State: domain.ItemStateSkipped}
 			if _, duplicate := appliedSet[item.IdempotencyKey]; !duplicate {
+				if err = claim.MarkItemApplying(ctx, item.ItemID); err != nil {
+					return true, fmt.Errorf("mark mutation item applying: %w", err)
+				}
 				write, writeErr := p.writer.Apply(ctx, ports.WriteItem{ProtocolID: protocol.ProtocolID, InstallationID: protocol.InstallationID, ProtocolType: protocol.Type, ItemID: item.ItemID, ListingID: item.ListingID, IdempotencyKey: item.IdempotencyKey, Before: item.Before, After: item.After})
 				if writeErr != nil {
 					write.Failure = &domain.Failure{Code: domain.FailureCodeInternal, MessagePT: "Falha interna ao aplicar alteração."}

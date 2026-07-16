@@ -61,6 +61,7 @@ type ItemOutcome struct {
 type ProtocolClaim interface {
 	Protocol() Protocol
 	FetchPendingItems(context.Context) ([]MutationItem, error)
+	MarkItemApplying(context.Context, string) error
 	WriteItemOutcome(context.Context, string, ItemOutcome) error
 	AppliedIdempotencyKeys(context.Context, []string) ([]string, error)
 	ItemStateCounts(context.Context) (map[domain.ItemState]int, error)

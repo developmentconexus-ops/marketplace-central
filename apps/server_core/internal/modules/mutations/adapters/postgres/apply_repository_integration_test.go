@@ -85,8 +85,18 @@ func TestApplyRepositorySnapshotClaimChunkAndImmutableOutcomes(t *testing.T) {
 	if err := claim.WriteItemOutcome(ctx, chunk[1].ItemID, ports.ItemOutcome{State: domain.ItemStateFailed, Failure: json.RawMessage(`{"code":"provider_unavailable","message_pt":"indisponível","retryable":true}`), AppliedAt: appliedAt}); err != nil {
 		t.Fatal(err)
 	}
+	if err := claim.MarkItemApplying(ctx, chunk[2].ItemID); err != nil {
+		t.Fatal(err)
+	}
+	if err := claim.MarkItemApplying(ctx, chunk[0].ItemID); err == nil {
+		t.Fatal("MarkItemApplying on terminal item succeeded")
+	}
+	var applyingVisible domain.ItemState
+	if err := pool.QueryRow(ctx, `SELECT state FROM mutation_items WHERE tenant_id=$1 AND protocol_id=$2 AND item_id=$3`, tenant, created.ProtocolID, chunk[2].ItemID).Scan(&applyingVisible); err != nil || applyingVisible != domain.ItemStateApplying {
+		t.Fatalf("applying mark before claim commit=%q err=%v", applyingVisible, err)
+	}
 	counts, err := claim.ItemStateCounts(ctx)
-	if err != nil || counts[domain.ItemStateApplied] != 1 || counts[domain.ItemStateFailed] != 1 || counts[domain.ItemStateApproved] != 21 {
+	if err != nil || counts[domain.ItemStateApplied] != 1 || counts[domain.ItemStateFailed] != 1 || counts[domain.ItemStateApplying] != 1 || counts[domain.ItemStateApproved] != 20 {
 		t.Fatalf("item state counts=%v err=%v", counts, err)
 	}
 	var visibleBeforeCommit domain.ItemState

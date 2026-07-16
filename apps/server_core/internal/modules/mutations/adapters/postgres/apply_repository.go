@@ -116,6 +116,9 @@ func (r *Repository) ClaimProtocol(ctx context.Context, installationID string) (
 }
 
 func (c *protocolClaim) FetchPendingItems(ctx context.Context) ([]ports.MutationItem, error) {
+	// Runs on the claim tx, which must be READ COMMITTED: each fetch takes a fresh
+	// snapshot so pool-committed outcome writes shrink the pending set — the poller
+	// loop's termination depends on it.
 	rows, err := c.tx.Query(ctx, `SELECT seq,item_id,listing_id,idempotency_key,before,after,state,failure,applied_at FROM mutation_items WHERE tenant_id=$1 AND protocol_id=$2 AND state NOT IN ('applied','failed','skipped') ORDER BY seq LIMIT 20`, c.tenantID, c.protocol.ProtocolID)
 	if err != nil {
 		return nil, err
@@ -131,6 +134,17 @@ func (c *protocolClaim) FetchPendingItems(ctx context.Context) ([]ports.Mutation
 	}
 	return out, rows.Err()
 }
+func (c *protocolClaim) MarkItemApplying(ctx context.Context, itemID string) error {
+	tag, err := c.pool.Exec(ctx, `UPDATE mutation_items SET state='applying' WHERE tenant_id=$1 AND protocol_id=$2 AND item_id=$3 AND state NOT IN ('applied','failed','skipped')`, c.tenantID, c.protocol.ProtocolID, itemID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() != 1 {
+		return ErrImmutableItem
+	}
+	return nil
+}
+
 func (c *protocolClaim) WriteItemOutcome(ctx context.Context, itemID string, outcome ports.ItemOutcome) error {
 	if outcome.State != domain.ItemStateApplied && outcome.State != domain.ItemStateFailed && outcome.State != domain.ItemStateSkipped {
 		return domain.ErrItemOutcomeInvalid

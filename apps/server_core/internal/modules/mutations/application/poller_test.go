@@ -32,6 +32,9 @@ func TestPollerPassTerminalStates(t *testing.T) {
 			if r.claim.finished != tt.want || !r.claim.committed || r.claim.rolledBack {
 				t.Fatalf("finish=%q committed=%v rolledBack=%v", r.claim.finished, r.claim.committed, r.claim.rolledBack)
 			}
+			if !equalStrings(r.applying, []string{"item-1", "item-2"}) {
+				t.Fatalf("applying marks=%v, want every sent item marked applying before send", r.applying)
+			}
 			if tt.name == "mixed" {
 				var f domain.Failure
 				if err := json.Unmarshal(r.outcomes["item-2"].Failure, &f); err != nil || f.Code != domain.FailureCodeProviderValidation {
@@ -54,6 +57,9 @@ func TestPollerPassSkipsAppliedKeyAndSanitizesUnknownError(t *testing.T) {
 	}
 	if r.outcomes["item-1"].State != domain.ItemStateSkipped {
 		t.Fatalf("duplicate outcome=%+v", r.outcomes["item-1"])
+	}
+	if !equalStrings(r.applying, []string{"item-2"}) {
+		t.Fatalf("applying marks=%v, skipped item must never be marked applying", r.applying)
 	}
 	var f struct {
 		Code            domain.FailureCode `json:"code"`
@@ -112,6 +118,7 @@ type fakeRepo struct {
 	items            []ports.MutationItem
 	outcomes         map[string]ports.ItemOutcome
 	applied          []string
+	applying         []string
 	failOutcomeAfter int
 }
 
@@ -157,6 +164,13 @@ func (c *fakeClaim) FetchPendingItems(context.Context) ([]ports.MutationItem, er
 		}
 	}
 	return items, nil
+}
+func (c *fakeClaim) MarkItemApplying(_ context.Context, id string) error {
+	if _, terminal := c.repo.outcomes[id]; terminal {
+		return errors.New("mutation item outcome is immutable")
+	}
+	c.repo.applying = append(c.repo.applying, id)
+	return nil
 }
 func (c *fakeClaim) WriteItemOutcome(_ context.Context, id string, o ports.ItemOutcome) error {
 	c.repo.outcomes[id] = o
