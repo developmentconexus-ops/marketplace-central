@@ -25,6 +25,8 @@ import (
 	connectorsapp "marketplace-central/apps/server_core/internal/modules/connectors/application"
 	connectorsdomain "marketplace-central/apps/server_core/internal/modules/connectors/domain"
 	connectorstransport "marketplace-central/apps/server_core/internal/modules/connectors/transport"
+	dashboardapp "marketplace-central/apps/server_core/internal/modules/dashboard/application"
+	dashboardtransport "marketplace-central/apps/server_core/internal/modules/dashboard/transport"
 	_ "marketplace-central/apps/server_core/internal/modules/integrations/adapters/amazon"
 	integrationscrypto "marketplace-central/apps/server_core/internal/modules/integrations/adapters/crypto"
 	integrationsfeesync "marketplace-central/apps/server_core/internal/modules/integrations/adapters/feesync"
@@ -310,6 +312,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 
 	integrationstransport.NewHandler(providerSvc, installationSvc).Register(mux)
 	integrationstransport.NewAuthHandler(flowFacade).Register(mux)
+	integrationstransport.NewRunReadHandler(operationSvc).Register(mux)
 
 	productLinkSnapshotRepo := productlinkspostgres.NewListingSnapshotRepository(pool, cfg.DefaultTenantID)
 	productLinkCandidateRepo := productlinkspostgres.NewLinkCandidateRepository(pool, cfg.DefaultTenantID)
@@ -375,6 +378,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		Candidates: productLinkCandidateRepo,
 		Workflows:  productLinkCandidateRepo,
 	})
+	productLinkSummarySvc := productlinksapp.NewSummaryService(productlinkspostgres.NewSummaryReader(pool, cfg.DefaultTenantID))
 	productlinkstransport.NewHandler(productLinkImportSvc, productLinkGenerationSvc, productLinkGenerationSvc, productLinkResolutionSvc, productLinkResolutionSvc).Register(mux)
 
 	inventoryActionRepo := inventorypostgres.NewStockActionRepository(pool, cfg.DefaultTenantID)
@@ -403,7 +407,10 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		Store:  ordersRepo,
 	})
 	ordersListSvc := ordersapp.NewListService(ordersRepo)
-	orderstransport.NewHandler(ordersImportSvc, ordersListSvc).Register(mux)
+	ordersReadRepo := orderspostgres.NewOrderReadRepository(pool, cfg.DefaultTenantID)
+	ordersReadSvc := ordersapp.NewReadService(ordersReadRepo)
+	ordersSummarySvc := ordersapp.NewSummaryService(ordersRepo)
+	orderstransport.NewHandlerWithReader(ordersImportSvc, ordersReadSvc).Register(mux)
 
 	linkageRepo := orderspostgres.NewSankhyaLinkageRepository(pool, cfg.DefaultTenantID)
 	var assistedLinkageApp orderstransport.AssistedSankhyaLinkageApplication
@@ -480,6 +487,15 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		time.Now,
 	)
 	listingstransport.NewReadHandler(listingSvc).Register(mux)
+	dashboardSvc := dashboardapp.NewService(
+		installationSvc,
+		listingSvc,
+		productLinkSummarySvc,
+		ordersSummarySvc,
+		operationSvc,
+		time.Now,
+	)
+	dashboardtransport.NewHandler(dashboardSvc).Register(mux)
 	listingIngestion := listingsapp.NewIngestion(listingsconnectors.NewSource(marketplaceCapabilities), listingRepo, 100, time.Now)
 	listingRefreshGateway := listingsintegrations.NewGateway(installationSvc, operationSvc)
 	listingRefreshSvc := listingsapp.NewRefreshService(

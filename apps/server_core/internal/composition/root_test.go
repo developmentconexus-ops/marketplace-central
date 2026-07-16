@@ -94,3 +94,57 @@ func TestRootRuntimeRegistersListingsReadRoutes(t *testing.T) {
 		})
 	}
 }
+
+func TestRootMountsDashboardSummary(t *testing.T) {
+	runtime, err := NewRootRuntime(nil, pgdb.Config{
+		DefaultTenantID: "tenant_default",
+		EncryptionKey:   "0123456789abcdef0123456789abcdef",
+	})
+	if err != nil {
+		t.Fatalf("NewRootRuntime() error = %v", err)
+	}
+
+	recorder := httptest.NewRecorder()
+	runtime.Handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/dashboard/summary", nil))
+	if recorder.Code == http.StatusNotFound || recorder.Code == http.StatusMethodNotAllowed {
+		t.Fatalf("dashboard summary route is not mounted: status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestRootMountsSyncRuns(t *testing.T) {
+	runtime, err := NewRootRuntime(nil, pgdb.Config{
+		DefaultTenantID: "tenant_default",
+		EncryptionKey:   "0123456789abcdef0123456789abcdef",
+	})
+	if err != nil {
+		t.Fatalf("NewRootRuntime() error = %v", err)
+	}
+
+	recorder := httptest.NewRecorder()
+	runtime.Handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/sync/runs", nil))
+	if recorder.Code == http.StatusNotFound || recorder.Code == http.StatusMethodNotAllowed {
+		t.Fatalf("sync runs route is not mounted: status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestRootMountsOrdersOnce(t *testing.T) {
+	runtime, err := NewRootRuntime(nil, pgdb.Config{
+		DefaultTenantID: "tenant_default",
+		EncryptionKey:   "0123456789abcdef0123456789abcdef",
+	})
+	if err != nil {
+		t.Fatalf("NewRootRuntime() error = %v", err)
+	}
+
+	listRecorder := httptest.NewRecorder()
+	runtime.Handler.ServeHTTP(listRecorder, httptest.NewRequest(http.MethodGet, "/orders?installation_id=installation-1", nil))
+	if listRecorder.Code == http.StatusNotFound || listRecorder.Code == http.StatusMethodNotAllowed {
+		t.Fatalf("orders list route is not mounted: status=%d body=%s", listRecorder.Code, listRecorder.Body.String())
+	}
+
+	detailRecorder := httptest.NewRecorder()
+	runtime.Handler.ServeHTTP(detailRecorder, httptest.NewRequest(http.MethodGet, "/orders/provider-order-1?installation_id=installation-1", nil))
+	if detailRecorder.Code != http.StatusNotFound || !strings.Contains(detailRecorder.Body.String(), "order_not_found") {
+		t.Fatalf("orders detail route was not handled by the orders transport: status=%d body=%s", detailRecorder.Code, detailRecorder.Body.String())
+	}
+}
