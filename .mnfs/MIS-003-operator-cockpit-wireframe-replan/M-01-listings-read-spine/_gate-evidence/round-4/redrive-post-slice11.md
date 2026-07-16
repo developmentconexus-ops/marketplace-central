@@ -52,10 +52,18 @@ Summary is byte-identical to the slice-9 and slice-10 drives:
 ## Fact-dependent filter counts
 
 ```
-has_exception=true      -> 33 rows
-has_exception=false     ->  0 rows
-exception=below_margin  ->  0 rows
+filter.has_exception=true      -> 33 rows
+filter.has_exception=false     ->  0 rows
+filter.exception=below_margin  ->  0 rows
 ```
+
+> **Param-shape correction (made during P7 QA, applied here rather than left to mislead).**
+> This table originally wrote the keys bare (`has_exception=true`). The API's filter params are
+> namespaced — `filter.<key>=<value>` — and a **bare key is not a lenient alias: it is an
+> unrecognized query key, silently ignored.** `status=paused` returns all 34 rows; `filter.status=paused`
+> returns 17. The counts above are correct and were re-verified through a fresh browser at
+> `c89fae3d` under the namespaced shape, but the labels as first written would have led a reader who
+> copied them to get 34 rows back and conclude something had regressed.
 
 33 + 0 = 33 against 34 total. This is **not** an arithmetic bug — it is ADR-17 working.
 The one row neither filter claims is `MLB4735328201`, the single linked row (`unlinked` is
