@@ -8,6 +8,7 @@ export interface AnunciosTableProps {
   selectedIds: Set<string>;
   onToggle: (id: string) => void;
   onTogglePage: (ids: string[]) => void;
+  onOpen?: (listingId: string) => void;
 }
 
 const syncLabels = {
@@ -43,7 +44,7 @@ function renderMargin(item: ListingReadModel) {
     : stateTag("ok", "bg-emerald-100 text-emerald-800");
 }
 
-export function AnunciosTable({ items, asOf, selectedIds, onToggle, onTogglePage }: AnunciosTableProps) {
+export function AnunciosTable({ items, asOf, selectedIds, onToggle, onTogglePage, onOpen }: AnunciosTableProps) {
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
   const pageIds = items.map((item) => item.listing_id);
   const selectedOnPage = pageIds.filter((id) => selectedIds.has(id)).length;
@@ -93,7 +94,13 @@ export function AnunciosTable({ items, asOf, selectedIds, onToggle, onTogglePage
                 />
               </td>
               <td className="px-3 py-3">
-                <div className="font-medium text-slate-950">{item.title}</div>
+                <button
+                  type="button"
+                  className="font-medium text-left text-blue-700 hover:text-blue-800 hover:underline"
+                  onClick={() => onOpen?.(item.listing_id)}
+                >
+                  {item.title}
+                </button>
                 <div className="mt-0.5 text-xs text-slate-500">{item.provider_listing_id}</div>
               </td>
               <td className="px-3 py-3">{item.listing_type ? stateTag(item.listing_type.label) : <UnknownValue />}</td>

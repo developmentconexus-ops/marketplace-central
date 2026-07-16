@@ -1,6 +1,6 @@
 import type { ListingReadModel } from "@marketplace-central/sdk-runtime";
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { AnunciosTable } from "./AnunciosTable";
 
 const tableSelectionProps = {
@@ -64,6 +64,18 @@ describe("AnunciosTable", () => {
     render(<AnunciosTable items={[{ ...listing, cost: null, below_margin_worst_case: null }]} {...tableSelectionProps} />);
 
     expect(screen.getByTitle("sem custo no ERP → não simulado")).toHaveTextContent("—");
+  });
+
+  it("opens the listing from the title button without reacting to checkbox clicks", () => {
+    const onOpen = vi.fn();
+    render(<AnunciosTable items={[listing]} {...tableSelectionProps} onOpen={onOpen} />);
+
+    fireEvent.click(screen.getByLabelText("Selecionar anúncio Camiseta azul"));
+    expect(onOpen).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Camiseta azul" }));
+    expect(onOpen).toHaveBeenCalledOnce();
+    expect(onOpen).toHaveBeenCalledWith("listing_1");
   });
 
   it("uses the fixed sync and conflict labels", () => {

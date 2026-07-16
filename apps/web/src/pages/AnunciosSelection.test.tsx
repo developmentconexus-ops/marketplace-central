@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AnunciosPage } from "./AnunciosPage";
 
 const listListings = vi.fn();
+const getListing = vi.fn();
 const getListingsSummary = vi.fn(() =>
   Promise.resolve({
     total: 3,
@@ -56,6 +57,7 @@ const pageTwo = {
 vi.mock("../app/ClientContext", () => ({
   useClient: () => ({
     listListings: (...args: unknown[]) => listListings(...args),
+    getListing: (...args: unknown[]) => getListing(...args),
     getListingsSummary,
   }),
 }));
@@ -84,6 +86,15 @@ beforeEach(() => {
   vi.clearAllMocks();
   listListings.mockImplementation((options: { cursor?: string }) =>
     Promise.resolve(options.cursor === "c2" ? pageTwo : pageOne),
+  );
+  getListing.mockImplementation((listingId: string) =>
+    Promise.resolve({
+      ...baseListing,
+      listing_id: listingId,
+      provider_listing_id: "MLB1",
+      title: "Página 1 A",
+      timeline: [],
+    }),
   );
 });
 
@@ -173,6 +184,22 @@ describe("AnunciosPage selection and pagination", () => {
     const lastOptions = listListings.mock.calls.at(-1)?.[0] as Record<string, unknown>;
     expect(lastOptions).toEqual({ installation_id: "inst_1", status: "active" });
     expect(screen.getByRole("button", { name: "Anterior" })).toBeDisabled();
+  });
+
+  it("opens the detail drawer from a row title and closes it when the installation changes", async () => {
+    const view = renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Página 1 A" }));
+
+    expect(await screen.findByRole("button", { name: "Fechar painel" })).toBeInTheDocument();
+    expect(getListing).toHaveBeenCalledWith("inst_1~MLB1~-");
+
+    mockInstallationId = "inst_2";
+    view.rerender(pageElement());
+
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Fechar painel" })).not.toBeInTheDocument(),
+    );
   });
 
   it("keeps bulk actions disabled and makes no SDK calls when clicked", async () => {

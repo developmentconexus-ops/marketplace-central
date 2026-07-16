@@ -14,6 +14,7 @@ import {
 } from "./anunciosQueryState";
 import { anunciosSummaryQuery } from "./anunciosQueries";
 import { AnunciosTable } from "./AnunciosTable";
+import { ListingDetailPanel } from "./ListingDetailPanel";
 import { ListingsSummary } from "./ListingsSummary";
 
 const tabs: Array<{ value: AnunciosTab; label: string }> = [
@@ -39,6 +40,7 @@ export function AnunciosPage() {
   const [cursor, setCursor] = useState<string | undefined>();
   const [cursorStack, setCursorStack] = useState<Array<string | undefined>>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [openListingId, setOpenListingId] = useState<string | null>(null);
   const paginationIdentity = JSON.stringify([installationId, state]);
   const previousPaginationIdentity = useRef(paginationIdentity);
   const selectionInstallationId = useRef(installationId);
@@ -66,6 +68,7 @@ export function AnunciosPage() {
     if (selectionInstallationId.current !== installationId) {
       selectionInstallationId.current = installationId;
       setSelectedIds(new Set());
+      setOpenListingId(null);
     }
   }, [installationId]);
 
@@ -219,6 +222,7 @@ export function AnunciosPage() {
               selectedIds={visibleSelectedIds}
               onToggle={toggleSelection}
               onTogglePage={togglePageSelection}
+              onOpen={setOpenListingId}
             />
             <nav className="mt-4 flex items-center justify-end gap-2" aria-label="Paginação de anúncios">
               <button
@@ -241,6 +245,7 @@ export function AnunciosPage() {
           </>
         ) : null}
       </section>
+      <ListingDetailPanel listingId={openListingId} onClose={() => setOpenListingId(null)} />
     </section>
   );
 }

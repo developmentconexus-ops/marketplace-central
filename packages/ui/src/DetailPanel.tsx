@@ -5,6 +5,7 @@ export interface DetailPanelProps {
   open: boolean;
   onClose: () => void;
   title: string;
+  closeLabel?: string;
   subtitle?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
@@ -15,6 +16,7 @@ export function DetailPanel({
   open,
   onClose,
   title,
+  closeLabel = "Close panel",
   subtitle,
   children,
   footer,
@@ -47,7 +49,7 @@ export function DetailPanel({
         </div>
         <button
           onClick={onClose}
-          aria-label="Close panel"
+          aria-label={closeLabel}
           className="ml-3 shrink-0 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
         >
           <X className="w-5 h-5" />
