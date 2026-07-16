@@ -9,8 +9,11 @@ import { ProductLinksPage } from "@marketplace-central/feature-product-links";
 import { OrdersPage } from "@marketplace-central/feature-orders";
 import { Layout } from "./Layout";
 import { DashboardPage } from "../pages/DashboardPage";
+import { AnunciosPage } from "../pages/AnunciosPage";
+import { WorkspacePlaceholder } from "../pages/WorkspacePlaceholder";
 import { useClient } from "./ClientContext";
 import { InstallationProvider } from "./InstallationContext";
+import { LegacyRedirect } from "./LegacyRedirect";
 
 function CatalogPageWrapper() {
   const client = useClient();
@@ -59,14 +62,23 @@ export function AppRouter() {
         <Routes>
           <Route element={<Layout />}>
             <Route index element={<DashboardPage />} />
-            <Route path="/products" element={<CatalogPageWrapper />} />
+            <Route path="/anuncios" element={<AnunciosPage />} />
+            <Route path="/catalogo" element={<CatalogPageWrapper />} />
+            <Route path="/catalogo/produtos/:productId" element={<WorkspacePlaceholder />} />
+            <Route path="/vinculos" element={<ProductLinksPageWrapper />} />
+            <Route path="/estoque" element={<StockSeguroPageWrapper />} />
+            <Route path="/precos" element={<PricingSimulatorPageWrapper />} />
+            <Route path="/pedidos" element={<OrdersPageWrapper />} />
+            <Route path="/integracoes" element={<IntegrationsHubPageWrapper />} />
+            <Route path="/protocolos/:protocolId" element={<WorkspacePlaceholder />} />
             <Route path="/classifications" element={<ClassificationsPageWrapper />} />
             <Route path="/marketplaces" element={<MarketplaceSettingsPageWrapper />} />
-            <Route path="/integrations" element={<IntegrationsHubPageWrapper />} />
-            <Route path="/product-links" element={<ProductLinksPageWrapper />} />
-            <Route path="/inventory/stock-seguro" element={<StockSeguroPageWrapper />} />
-            <Route path="/orders" element={<OrdersPageWrapper />} />
-            <Route path="/simulator" element={<PricingSimulatorPageWrapper />} />
+            <Route path="/products" element={<LegacyRedirect to="/catalogo" />} />
+            <Route path="/product-links" element={<LegacyRedirect to="/vinculos" />} />
+            <Route path="/inventory/stock-seguro" element={<LegacyRedirect to="/estoque" />} />
+            <Route path="/orders" element={<LegacyRedirect to="/pedidos" />} />
+            <Route path="/integrations" element={<LegacyRedirect to="/integracoes" />} />
+            <Route path="/simulator" element={<LegacyRedirect to="/precos" />} />
           </Route>
         </Routes>
       </InstallationProvider>
