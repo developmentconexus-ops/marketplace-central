@@ -14,3 +14,7 @@ type StockActionStore interface {
 type StockWriter interface {
 	UpdateAvailableQuantity(ctx context.Context, request domain.StockWriteRequest) (domain.StockWriteResult, error)
 }
+
+type StockMutationEnvelope interface {
+	CreateStockCorrection(ctx context.Context, action domain.StockAction) (string, error)
+}

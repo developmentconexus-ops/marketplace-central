@@ -41,8 +41,8 @@ func TestApplyManualStockActionBlocksUnsafeRowsWithoutProviderWrite(t *testing.T
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			writer := &fakeStockWriter{}
-			service := NewStockActionService(&memoryActionStore{}, writer)
+			envelope := &fakeStockEnvelope{}
+			service := NewStockActionServiceWithEnvelope(&memoryActionStore{}, envelope)
 			risk := tt.risk
 			if tt.mutate != nil {
 				tt.mutate(&risk)
@@ -59,8 +59,8 @@ func TestApplyManualStockActionBlocksUnsafeRowsWithoutProviderWrite(t *testing.T
 			if action.BlockingReason.Code != tt.wantCode {
 				t.Fatalf("blocking code=%q, want %q", action.BlockingReason.Code, tt.wantCode)
 			}
-			if writer.calls != 0 {
-				t.Fatalf("writer calls=%d, want 0", writer.calls)
+			if envelope.calls != 0 {
+				t.Fatalf("envelope calls=%d, want 0", envelope.calls)
 			}
 		})
 	}
@@ -69,8 +69,8 @@ func TestApplyManualStockActionBlocksUnsafeRowsWithoutProviderWrite(t *testing.T
 func TestApplyManualStockActionSkipsWithoutManualApproval(t *testing.T) {
 	now := time.Date(2026, 7, 9, 14, 0, 0, 0, time.UTC)
 	fresh := now.Add(-time.Minute)
-	writer := &fakeStockWriter{}
-	service := NewStockActionService(&memoryActionStore{}, writer)
+	envelope := &fakeStockEnvelope{}
+	service := NewStockActionServiceWithEnvelope(&memoryActionStore{}, envelope)
 	input := applyInput("act-unapproved", actionRiskInput(now, domain.LinkStateResolved, intPtr(8), intPtr(9), &fresh, &fresh), 7, now)
 	input.Approval.Approved = false
 
@@ -85,16 +85,16 @@ func TestApplyManualStockActionSkipsWithoutManualApproval(t *testing.T) {
 	if action.BlockingReason.Code != "manual_approval_required" {
 		t.Fatalf("blocking code=%q, want manual_approval_required", action.BlockingReason.Code)
 	}
-	if writer.calls != 0 {
-		t.Fatalf("writer calls=%d, want 0", writer.calls)
+	if envelope.calls != 0 {
+		t.Fatalf("envelope calls=%d, want 0", envelope.calls)
 	}
 }
 
 func TestApplyManualStockActionSkipsWhenManualApprovalIsIncomplete(t *testing.T) {
 	now := time.Date(2026, 7, 9, 14, 0, 0, 0, time.UTC)
 	fresh := now.Add(-time.Minute)
-	writer := &fakeStockWriter{}
-	service := NewStockActionService(&memoryActionStore{}, writer)
+	envelope := &fakeStockEnvelope{}
+	service := NewStockActionServiceWithEnvelope(&memoryActionStore{}, envelope)
 	input := applyInput("act-incomplete-approval", actionRiskInput(now, domain.LinkStateResolved, intPtr(8), intPtr(9), &fresh, &fresh), 7, now)
 	input.Approval.Operator.ActorID = ""
 
@@ -109,16 +109,16 @@ func TestApplyManualStockActionSkipsWhenManualApprovalIsIncomplete(t *testing.T)
 	if action.BlockingReason.Code != "manual_approval_incomplete" {
 		t.Fatalf("blocking code=%q, want manual_approval_incomplete", action.BlockingReason.Code)
 	}
-	if writer.calls != 0 {
-		t.Fatalf("writer calls=%d, want 0", writer.calls)
+	if envelope.calls != 0 {
+		t.Fatalf("envelope calls=%d, want 0", envelope.calls)
 	}
 }
 
 func TestApplyManualStockActionSkipsHealthyNoopRows(t *testing.T) {
 	now := time.Date(2026, 7, 9, 14, 0, 0, 0, time.UTC)
 	fresh := now.Add(-time.Minute)
-	writer := &fakeStockWriter{}
-	service := NewStockActionService(&memoryActionStore{}, writer)
+	envelope := &fakeStockEnvelope{}
+	service := NewStockActionServiceWithEnvelope(&memoryActionStore{}, envelope)
 
 	action, err := service.ApplyManual(context.Background(), applyInput("act-healthy", actionRiskInput(now, domain.LinkStateResolved, intPtr(8), intPtr(7), &fresh, &fresh), 7, now))
 	if err != nil {
@@ -131,41 +131,35 @@ func TestApplyManualStockActionSkipsHealthyNoopRows(t *testing.T) {
 	if action.BlockingReason.Code != "no_stock_change_required" {
 		t.Fatalf("blocking code=%q, want no_stock_change_required", action.BlockingReason.Code)
 	}
-	if writer.calls != 0 {
-		t.Fatalf("writer calls=%d, want 0", writer.calls)
+	if envelope.calls != 0 {
+		t.Fatalf("envelope calls=%d, want 0", envelope.calls)
 	}
 }
 
-func TestApplyManualStockActionWritesWithIdempotencyAndAuditEvidence(t *testing.T) {
+func TestApplyManualStockActionCreatesOneEnvelopeAndLinkedHistoryWithoutProviderWrite(t *testing.T) {
 	now := time.Date(2026, 7, 9, 14, 0, 0, 0, time.UTC)
 	fresh := now.Add(-time.Minute)
-	writer := &fakeStockWriter{
-		result: domain.StockWriteResult{
-			Status:              domain.StockWriteResultApplied,
-			IdempotencyKey:      "act-apply",
-			ProviderCode:        "mercado_livre",
-			ProviderItemID:      "MLB123",
-			ProviderVariationID: "987",
-			Message:             "updated",
-			ResponseSummary:     "200 OK",
-		},
-	}
+	envelope := &fakeStockEnvelope{protocolID: "MP-000042"}
+	provider := &fakeStockWriter{}
 	store := &memoryActionStore{}
-	service := NewStockActionService(store, writer)
+	service := NewStockActionServiceWithEnvelope(store, envelope)
 
 	action, err := service.ApplyManual(context.Background(), applyInput("act-apply", actionRiskInput(now, domain.LinkStateResolved, intPtr(8), intPtr(9), &fresh, &fresh), 7, now))
 	if err != nil {
 		t.Fatalf("ApplyManual() error = %v", err)
 	}
 
-	if action.State != domain.StockActionStateApplied {
-		t.Fatalf("state=%s, want applied", action.State)
+	if action.State != domain.StockActionStateApproved {
+		t.Fatalf("state=%s, want approved", action.State)
 	}
-	if writer.calls != 1 {
-		t.Fatalf("writer calls=%d, want 1", writer.calls)
+	if envelope.calls != 1 || store.saveCalls != 1 {
+		t.Fatalf("envelope calls=%d saves=%d, want 1/1", envelope.calls, store.saveCalls)
 	}
-	if writer.lastRequest.IdempotencyKey != "act-apply" {
-		t.Fatalf("idempotency key=%q, want action id", writer.lastRequest.IdempotencyKey)
+	if provider.calls != 0 {
+		t.Fatalf("direct provider calls=%d, want 0", provider.calls)
+	}
+	if action.MutationProtocolID == nil || *action.MutationProtocolID != "MP-000042" {
+		t.Fatalf("mutation protocol id=%v, want MP-000042", action.MutationProtocolID)
 	}
 	if action.BeforeQuantity == nil || *action.BeforeQuantity != 9 {
 		t.Fatalf("before quantity=%v, want 9", action.BeforeQuantity)
@@ -182,11 +176,8 @@ func TestApplyManualStockActionWritesWithIdempotencyAndAuditEvidence(t *testing.
 	if action.Operator.ActorID != "leandro" || action.Trigger != domain.StockActionTriggerManual {
 		t.Fatalf("operator/trigger not audited: %+v", action)
 	}
-	if action.ProviderResult.Status != domain.StockWriteResultApplied || action.ProviderResult.ResponseSummary != "200 OK" {
-		t.Fatalf("provider result not audited: %+v", action.ProviderResult)
-	}
-	if !hasActionEvent(action, domain.StockActionStateApproved) || !hasActionEvent(action, domain.StockActionStateApplied) {
-		t.Fatalf("expected approved and applied audit events, got %+v", action.AuditEvents)
+	if !hasActionEvent(action, domain.StockActionStateApproved) {
+		t.Fatalf("expected approved audit event, got %+v", action.AuditEvents)
 	}
 	for _, event := range action.AuditEvents {
 		if event.OccurredAt.IsZero() {
@@ -195,20 +186,11 @@ func TestApplyManualStockActionWritesWithIdempotencyAndAuditEvidence(t *testing.
 	}
 }
 
-func TestApplyManualStockActionPersistsProviderFailureAudit(t *testing.T) {
+func TestApplyManualStockActionPersistsEnvelopeFailureAudit(t *testing.T) {
 	now := time.Date(2026, 7, 9, 14, 0, 0, 0, time.UTC)
 	fresh := now.Add(-time.Minute)
-	writer := &fakeStockWriter{
-		result: domain.StockWriteResult{
-			Status:          domain.StockWriteResultRejected,
-			IdempotencyKey:  "act-fail",
-			ProviderCode:    "mercado_livre",
-			ProviderItemID:  "MLB123",
-			Message:         "provider rejected quantity",
-			ResponseSummary: "400 validation",
-		},
-	}
-	service := NewStockActionService(&memoryActionStore{}, writer)
+	envelope := &fakeStockEnvelope{err: errors.New("protocol persistence failed")}
+	service := NewStockActionServiceWithEnvelope(&memoryActionStore{}, envelope)
 
 	action, err := service.ApplyManual(context.Background(), applyInput("act-fail", actionRiskInput(now, domain.LinkStateResolved, intPtr(8), intPtr(9), &fresh, &fresh), 7, now))
 	if err != nil {
@@ -218,77 +200,20 @@ func TestApplyManualStockActionPersistsProviderFailureAudit(t *testing.T) {
 	if action.State != domain.StockActionStateFailed {
 		t.Fatalf("state=%s, want failed", action.State)
 	}
-	if action.ProviderResult.Status != domain.StockWriteResultRejected {
-		t.Fatalf("provider status=%s, want rejected", action.ProviderResult.Status)
-	}
-	if action.FailureReason.Code != "provider_rejected" {
-		t.Fatalf("failure code=%q, want provider_rejected", action.FailureReason.Code)
+	if action.FailureReason.Code != "mutation_envelope_error" {
+		t.Fatalf("failure code=%q, want mutation_envelope_error", action.FailureReason.Code)
 	}
 	if !hasActionEvent(action, domain.StockActionStateFailed) {
 		t.Fatalf("expected failed audit event, got %+v", action.AuditEvents)
 	}
 }
 
-func TestApplyManualStockActionPersistsWriterErrorAudit(t *testing.T) {
+func TestApplyManualStockActionDoesNotRepeatEnvelopeForSameActionID(t *testing.T) {
 	now := time.Date(2026, 7, 9, 14, 0, 0, 0, time.UTC)
 	fresh := now.Add(-time.Minute)
-	writer := &fakeStockWriter{err: errors.New("network timeout")}
-	service := NewStockActionService(&memoryActionStore{}, writer)
-
-	action, err := service.ApplyManual(context.Background(), applyInput("act-error", actionRiskInput(now, domain.LinkStateResolved, intPtr(8), intPtr(9), &fresh, &fresh), 7, now))
-	if err != nil {
-		t.Fatalf("ApplyManual() error = %v", err)
-	}
-
-	if action.State != domain.StockActionStateFailed {
-		t.Fatalf("state=%s, want failed", action.State)
-	}
-	if action.FailureReason.Code != "provider_error" || action.FailureReason.Message != "network timeout" {
-		t.Fatalf("failure reason=%+v, want provider_error network timeout", action.FailureReason)
-	}
-	if !hasActionEvent(action, domain.StockActionStateApproved) || !hasActionEvent(action, domain.StockActionStateFailed) {
-		t.Fatalf("expected approved and failed audit events, got %+v", action.AuditEvents)
-	}
-}
-
-func TestApplyManualStockActionDoesNotInvalidateFailedOrRejectedWrites(t *testing.T) {
-	now := time.Date(2026, 7, 9, 14, 0, 0, 0, time.UTC)
-	fresh := now.Add(-time.Minute)
-	t.Run("persistence failure", func(t *testing.T) {
-		invalidator := &recordingCacheInvalidator{}
-		store := &memoryActionStore{failOnSave: 2, saveErr: errors.New("rolled back")}
-		writer := &fakeStockWriter{result: domain.StockWriteResult{Status: domain.StockWriteResultApplied, Message: "updated"}}
-		service := NewStockActionServiceWithInvalidator(store, writer, invalidator)
-		if _, err := service.ApplyManual(context.Background(), applyInput("act-persist-fail", actionRiskInput(now, domain.LinkStateResolved, intPtr(8), intPtr(9), &fresh, &fresh), 7, now)); err == nil {
-			t.Fatal("ApplyManual() error = nil, want persistence failure")
-		}
-		if writer.calls != 1 || store.saveCalls != 2 {
-			t.Fatalf("provider/save path was not reached: writer calls=%d save calls=%d, want 1/2", writer.calls, store.saveCalls)
-		}
-		if len(invalidator.classes) != 0 {
-			t.Fatalf("invalidations=%v after persistence failure, want none", invalidator.classes)
-		}
-	})
-	t.Run("provider rejection", func(t *testing.T) {
-		invalidator := &recordingCacheInvalidator{}
-		writer := &fakeStockWriter{result: domain.StockWriteResult{Status: domain.StockWriteResultRejected, Message: "rejected"}}
-		service := NewStockActionServiceWithInvalidator(&memoryActionStore{}, writer, invalidator)
-		action, err := service.ApplyManual(context.Background(), applyInput("act-provider-reject", actionRiskInput(now, domain.LinkStateResolved, intPtr(8), intPtr(9), &fresh, &fresh), 7, now))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if action.State == domain.StockActionStateApplied || len(invalidator.classes) != 0 {
-			t.Fatalf("state=%s invalidations=%v, want non-applied and none", action.State, invalidator.classes)
-		}
-	})
-}
-
-func TestApplyManualStockActionDoesNotRepeatProviderIntentForSameActionID(t *testing.T) {
-	now := time.Date(2026, 7, 9, 14, 0, 0, 0, time.UTC)
-	fresh := now.Add(-time.Minute)
-	writer := &fakeStockWriter{result: domain.StockWriteResult{Status: domain.StockWriteResultApplied, IdempotencyKey: "act-repeat"}}
+	envelope := &fakeStockEnvelope{protocolID: "MP-000043"}
 	store := &memoryActionStore{}
-	service := NewStockActionService(store, writer)
+	service := NewStockActionServiceWithEnvelope(store, envelope)
 	input := applyInput("act-repeat", actionRiskInput(now, domain.LinkStateResolved, intPtr(8), intPtr(9), &fresh, &fresh), 7, now)
 
 	first, err := service.ApplyManual(context.Background(), input)
@@ -300,10 +225,10 @@ func TestApplyManualStockActionDoesNotRepeatProviderIntentForSameActionID(t *tes
 		t.Fatalf("second ApplyManual() error = %v", err)
 	}
 
-	if writer.calls != 1 {
-		t.Fatalf("writer calls=%d, want 1", writer.calls)
+	if envelope.calls != 1 {
+		t.Fatalf("envelope calls=%d, want 1", envelope.calls)
 	}
-	if first.ActionID != second.ActionID || second.State != domain.StockActionStateApplied {
+	if first.ActionID != second.ActionID || second.State != domain.StockActionStateApproved {
 		t.Fatalf("duplicate did not return existing action: first=%+v second=%+v", first, second)
 	}
 }
@@ -373,6 +298,20 @@ type fakeStockWriter struct {
 	lastRequest domain.StockWriteRequest
 	result      domain.StockWriteResult
 	err         error
+}
+
+type fakeStockEnvelope struct {
+	calls      int
+	protocolID string
+	err        error
+}
+
+func (e *fakeStockEnvelope) CreateStockCorrection(_ context.Context, _ domain.StockAction) (string, error) {
+	e.calls++
+	if e.err != nil {
+		return "", e.err
+	}
+	return e.protocolID, nil
 }
 
 func (w *fakeStockWriter) UpdateAvailableQuantity(_ context.Context, request domain.StockWriteRequest) (domain.StockWriteResult, error) {

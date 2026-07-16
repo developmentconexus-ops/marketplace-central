@@ -26,7 +26,7 @@ func NewStockActionRepository(pool *pgxpool.Pool, tenantID string) *StockActionR
 func (r *StockActionRepository) FindByID(ctx context.Context, actionID string) (domain.StockAction, bool, error) {
 	row := r.pool.QueryRow(ctx, `
 		SELECT
-			stock_action_id, installation_id, provider_code, provider_account_id, provider_item_id, provider_variation_id,
+			stock_action_id, mutation_protocol_id, installation_id, provider_code, provider_account_id, provider_item_id, provider_variation_id,
 			state, trigger, before_quantity, requested_quantity, recommended_quantity, policy_id,
 			internal_observed_at, provider_observed_at,
 			operator_actor_type, operator_actor_id, operator_actor_name,
@@ -55,7 +55,7 @@ func (r *StockActionRepository) Save(ctx context.Context, action domain.StockAct
 	}
 	_, err = r.pool.Exec(ctx, `
 		INSERT INTO inventory_stock_actions (
-			tenant_id, stock_action_id, installation_id, provider_code, provider_account_id, provider_item_id, provider_variation_id,
+			tenant_id, stock_action_id, mutation_protocol_id, installation_id, provider_code, provider_account_id, provider_item_id, provider_variation_id,
 			state, trigger, before_quantity, requested_quantity, recommended_quantity, policy_id,
 			internal_observed_at, provider_observed_at,
 			operator_actor_type, operator_actor_id, operator_actor_name,
@@ -64,16 +64,17 @@ func (r *StockActionRepository) Save(ctx context.Context, action domain.StockAct
 			provider_result_status, provider_result_code, provider_result_message, provider_response_summary,
 			audit_events_json, created_at, updated_at
 		) VALUES (
-			$1, $2, $3, $4, $5, $6, $7,
-			$8, $9, $10, $11, $12, $13,
-			$14, $15,
-			$16, $17, $18,
-			$19, $20,
-			$21, $22, $23, $24,
-			$25, $26, $27, $28,
-			$29, $30, $31
+			$1, $2, $3, $4, $5, $6, $7, $8,
+			$9, $10, $11, $12, $13, $14,
+			$15, $16,
+			$17, $18, $19,
+			$20, $21,
+			$22, $23, $24, $25,
+			$26, $27, $28, $29,
+			$30, $31, $32
 		)
 		ON CONFLICT (tenant_id, stock_action_id) DO UPDATE SET
+			mutation_protocol_id = EXCLUDED.mutation_protocol_id,
 			installation_id = EXCLUDED.installation_id,
 			provider_code = EXCLUDED.provider_code,
 			provider_account_id = EXCLUDED.provider_account_id,
@@ -102,7 +103,7 @@ func (r *StockActionRepository) Save(ctx context.Context, action domain.StockAct
 			provider_response_summary = EXCLUDED.provider_response_summary,
 			audit_events_json = EXCLUDED.audit_events_json,
 			updated_at = EXCLUDED.updated_at
-	`, r.tenantID, action.ActionID, action.ProviderRef.InstallationID, action.ProviderRef.ProviderCode, action.ProviderRef.ProviderAccountID, action.ProviderRef.ProviderItemID, action.ProviderRef.ProviderVariationID,
+	`, r.tenantID, action.ActionID, action.MutationProtocolID, action.ProviderRef.InstallationID, action.ProviderRef.ProviderCode, action.ProviderRef.ProviderAccountID, action.ProviderRef.ProviderItemID, action.ProviderRef.ProviderVariationID,
 		action.State, action.Trigger, nullableInt4(action.BeforeQuantity), action.RequestedQuantity, nullableInt4(action.RecommendedQuantity), action.PolicyID,
 		nullableTime(action.InternalObservedAt), nullableTime(action.ProviderObservedAt),
 		action.Operator.ActorType, action.Operator.ActorID, action.Operator.ActorName,
@@ -123,6 +124,7 @@ func scanStockAction(scanner interface{ Scan(dest ...any) error }) (domain.Stock
 	var auditJSON []byte
 	err := scanner.Scan(
 		&action.ActionID,
+		&action.MutationProtocolID,
 		&action.ProviderRef.InstallationID,
 		&action.ProviderRef.ProviderCode,
 		&action.ProviderRef.ProviderAccountID,
