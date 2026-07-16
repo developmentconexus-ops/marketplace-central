@@ -51,6 +51,10 @@ func (r *marketplacesRepoStub) ListPoliciesByIDs(_ context.Context, policyIDs []
 	return result, nil
 }
 
+func (r *marketplacesRepoStub) GetPricingPolicyForInstallation(context.Context, string) (domain.Policy, bool, error) {
+	return domain.Policy{}, false, nil
+}
+
 func newMarketplacesHandler() transport.Handler {
 	repo := &marketplacesRepoStub{}
 	svc := application.NewService(repo, "tenant_default")

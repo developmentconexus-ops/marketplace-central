@@ -106,6 +106,10 @@ func (r stubMarketplacesRepo) ListPoliciesByIDs(_ context.Context, policyIDs []s
 	return result, nil
 }
 
+func (r stubMarketplacesRepo) GetPricingPolicyForInstallation(context.Context, string) (marketplacesdomain.Policy, bool, error) {
+	return marketplacesdomain.Policy{}, false, nil
+}
+
 // stubPricingRepo satisfies pricing ports.Repository with in-memory no-ops.
 type stubPricingRepo struct{}
 
