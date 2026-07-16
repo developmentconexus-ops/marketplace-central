@@ -31,11 +31,6 @@ func NewMarketplaceCapabilityService(capabilities []ProviderCapabilitySet) *Mark
 			continue
 		}
 		capability.ProviderCode = code
-		if capability.StockWrites == nil {
-			if writer, ok := capability.StockReads.(ports.StockWriter); ok {
-				capability.StockWrites = writer
-			}
-		}
 		byProvider[code] = capability
 	}
 

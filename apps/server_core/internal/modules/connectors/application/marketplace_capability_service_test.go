@@ -198,7 +198,7 @@ func TestMarketplaceCapabilityServiceExposesWriteCapabilities(t *testing.T) {
 		ProviderCode:  "mercado_livre",
 		PriceWrites:   fakePriceWriter{},
 		ListingWrites: fakeListingWriter{},
-		StockReads:    fakeStockManager{},
+		StockWrites:   fakeStockManager{},
 	}})
 
 	priceWriter, err := svc.PriceWriter("mercado_livre")
@@ -239,6 +239,26 @@ func TestMarketplaceCapabilityServiceExposesWriteCapabilities(t *testing.T) {
 	}
 	if stockWriter == nil {
 		t.Fatal("StockWriter() returned nil writer")
+	}
+}
+
+func TestMarketplaceCapabilityServiceDoesNotPromoteStockReaderToWriter(t *testing.T) {
+	t.Parallel()
+
+	// fakeStockManager implements ports.StockWriter, but registering it as a
+	// reader must never expose the write capability: provider writes go live
+	// only through explicit StockWrites wiring.
+	svc := NewMarketplaceCapabilityService([]ProviderCapabilitySet{{
+		ProviderCode: "mercado_livre",
+		StockReads:   fakeStockManager{},
+	}})
+
+	_, err := svc.StockWriter("mercado_livre")
+	if err == nil {
+		t.Fatal("StockWriter() error = nil, want unsupported when only StockReads is wired")
+	}
+	if got, want := domain.ErrorCodeOf(err), domain.ErrCodeProviderUnsupportedShape; got != want {
+		t.Fatalf("ErrorCodeOf() = %q, want %q", got, want)
 	}
 }
 
