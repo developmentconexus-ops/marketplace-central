@@ -19,6 +19,7 @@
     "@marketplace-central/feature-products": "0.1.0",
     "@marketplace-central/feature-simulator": "0.1.0",
     "@marketplace-central/sdk-runtime": "0.1.0",
+    "@marketplace-central/ui": "0.1.0",
     "@marketplace-central/web-query": "0.1.0",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/react-query": "^5.101.2",
