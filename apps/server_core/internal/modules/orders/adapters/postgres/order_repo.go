@@ -15,9 +15,10 @@ import (
 )
 
 var (
-	_ ports.OrderStore     = (*OrderRepository)(nil)
-	_ ports.OrderLookup    = (*OrderRepository)(nil)
-	_ ports.OrderReadStore = (*OrderReadRepository)(nil)
+	_ ports.OrderStore        = (*OrderRepository)(nil)
+	_ ports.OrderSummaryStore = (*OrderRepository)(nil)
+	_ ports.OrderLookup       = (*OrderRepository)(nil)
+	_ ports.OrderReadStore    = (*OrderReadRepository)(nil)
 )
 
 type OrderReadRepository struct {
@@ -170,6 +171,31 @@ type OrderRepository struct {
 
 func NewOrderRepository(pool *pgxpool.Pool, tenantID string) *OrderRepository {
 	return &OrderRepository{pool: pool, tenantID: tenantID}
+}
+
+func (r *OrderRepository) GetOrderSummary(ctx context.Context, installationID string, referenceTime time.Time) (ports.OrderSummary, error) {
+	if r.pool == nil {
+		return ports.OrderSummary{}, errors.New("orders summary repository: database is not configured")
+	}
+
+	referenceUTC := referenceTime.UTC()
+	todayStart := time.Date(referenceUTC.Year(), referenceUTC.Month(), referenceUTC.Day(), 0, 0, 0, 0, time.UTC)
+	sevenDaysStart := todayStart.AddDate(0, 0, -6)
+
+	var summary ports.OrderSummary
+	err := r.pool.QueryRow(ctx, `
+		SELECT
+			COUNT(*) FILTER (WHERE provider_created_at >= $3 AND provider_created_at <= $4),
+			COUNT(*) FILTER (WHERE provider_created_at >= $5 AND provider_created_at <= $4)
+		FROM orders_marketplace_orders
+		WHERE tenant_id = $1
+		  AND installation_id = $2
+		  AND provider_created_at IS NOT NULL
+	`, r.tenantID, strings.TrimSpace(installationID), todayStart, referenceUTC, sevenDaysStart).Scan(&summary.Today, &summary.SevenDays)
+	if err != nil {
+		return ports.OrderSummary{}, err
+	}
+	return summary, nil
 }
 
 func (r *OrderRepository) FindExactOrder(ctx context.Context, scope ordersdomain.LinkageScope) (ordersdomain.MarketplaceOrder, bool, error) {

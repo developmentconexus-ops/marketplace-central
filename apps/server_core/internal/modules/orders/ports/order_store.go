@@ -3,6 +3,7 @@ package ports
 import (
 	"context"
 	"errors"
+	"time"
 
 	"marketplace-central/apps/server_core/internal/modules/orders/domain"
 )
@@ -30,4 +31,13 @@ type OrderReadStore interface {
 type OrderStore interface {
 	UpsertOrders(ctx context.Context, orders []domain.MarketplaceOrder) (importedCount int, skippedCount int, err error)
 	ListOrders(ctx context.Context, installationID string, limit int) ([]domain.MarketplaceOrder, error)
+}
+
+type OrderSummary struct {
+	Today     int64
+	SevenDays int64
+}
+
+type OrderSummaryStore interface {
+	GetOrderSummary(ctx context.Context, installationID string, referenceTime time.Time) (OrderSummary, error)
 }
