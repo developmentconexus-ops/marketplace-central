@@ -66,6 +66,10 @@ type stubOperationRunStore struct {
 	saved []domain.OperationRun
 }
 
+func (s *stubOperationRunStore) BeginExclusive(_ context.Context, run domain.OperationRun) (domain.OperationRun, bool, error) {
+	return run, false, nil
+}
+
 func (s *stubOperationRunStore) SaveOperationRun(_ context.Context, run domain.OperationRun) error {
 	s.saved = append(s.saved, run)
 	return nil
@@ -129,11 +133,11 @@ func TestUpsertAuthSession(t *testing.T) {
 	svc := NewAuthService(store, "tenant-default")
 
 	session, err := svc.Upsert(context.Background(), UpsertAuthSessionInput{
-		AuthSessionID:      "auth_001",
-		InstallationID:     "inst_001",
-		ProviderAccountID:  "acct_001",
+		AuthSessionID:        "auth_001",
+		InstallationID:       "inst_001",
+		ProviderAccountID:    "acct_001",
 		AccessTokenExpiresAt: &now,
-		NextRetryAt:        &nextRetry,
+		NextRetryAt:          &nextRetry,
 	})
 	if err != nil {
 		t.Fatalf("Upsert() error = %v", err)

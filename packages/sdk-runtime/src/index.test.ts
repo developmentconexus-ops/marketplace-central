@@ -2,7 +2,16 @@ import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createMarketplaceCentralClient } from "./index";
-import type { CatalogProductFactPage, CanonicalCatalogProduct, IntegrationProviderDefinition } from "./index";
+import type {
+  CatalogProductFactPage,
+  CanonicalCatalogProduct,
+  IntegrationProviderDefinition,
+  ListingGroupPage,
+  ListingPage,
+  ListingReadModel,
+  ListingDetail,
+  ListingSummary,
+} from "./index";
 
 describe("sdk runtime", () => {
   it("models canonical CODPROD products with nullable source facts", () => {
@@ -63,6 +72,83 @@ describe("sdk runtime", () => {
     expect(requests[0].init?.method).toBe("GET");
     expect(page.next_cursor).toBeNull();
     expect(searchPage.page_size).toBe(0);
+  });
+
+  it("reads listing pages, grouped pages, details, and summaries with server filter syntax", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const page = { items: [], next_cursor: null, page_size: 0, as_of: "2026-07-15T12:00:00Z" } satisfies ListingPage;
+    const listing = {
+      listing_id: "install/1~provider/1~-",
+      installation_id: "install/1",
+      provider: "mercado_livre",
+      provider_listing_id: "MLB1",
+      title: "Parafuso sextavado M6",
+      listing_type: null,
+      status: "active",
+      link: { state: "resolved", product_id: "prod/1", seller_sku: "SKU-1" },
+      price: { amount: "100.00", currency: "BRL" },
+      published_quantity: 5,
+      sync_state: "synced",
+      sync_error: null,
+      quality_score: null,
+      pending_issue: null,
+      sales_30d: 3,
+      cost: { amount: "60.00", currency: "BRL" },
+      below_margin_worst_case: false,
+      icms_worst_case_by_uf: null,
+      fetched_at: "2026-07-15T12:00:00Z",
+    } satisfies ListingReadModel;
+    const groups = { groups: [], next_cursor: null, page_size: 0, as_of: "2026-07-15T12:00:00Z" } satisfies ListingGroupPage;
+    const summary = {
+      total: 0,
+      active: 0,
+      paused: 0,
+      exceptions: {
+        sync_error: 0,
+        stale: 0,
+        unlinked: 0,
+        below_margin_worst_case: null,
+        margin_unknown: null,
+      },
+      as_of: "2026-07-15T12:00:00Z",
+    } satisfies ListingSummary;
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        const path = String(input);
+        const detail = { ...listing, timeline: [] } satisfies ListingDetail;
+        const body = path.includes("/summary") ? summary : path.includes("/by-product") ? groups : path.includes("~") ? detail : page;
+        return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
+      },
+    });
+
+    const list = await client.listListings({
+      installation_id: "install/1",
+      status: "active",
+      sync_state: "stale",
+      exception: "unlinked",
+      has_exception: false,
+      limit: 25,
+      cursor: "cursor/1",
+    });
+    const grouped = await client.listListingsByProduct({ installation_id: "install/1", link_state: "resolved" });
+    const detail = await client.getListing("install/1~provider/1~-");
+    const typedSummary = await client.getListingsSummary("install/1");
+
+    expect(String(requests[0].input)).toBe(
+      "http://localhost:8080/listings?installation_id=install%2F1&filter.status=active&filter.sync_state=stale&filter.exception=unlinked&filter.has_exception=false&limit=25&cursor=cursor%2F1",
+    );
+    expect(String(requests[1].input)).toBe(
+      "http://localhost:8080/listings/by-product?installation_id=install%2F1&filter.link_state=resolved",
+    );
+    expect(String(requests[2].input)).toBe("http://localhost:8080/listings/install%2F1~provider%2F1~-");
+    expect(String(requests[3].input)).toBe("http://localhost:8080/listings/summary?installation_id=install%2F1");
+    expect(requests.every((request) => request.init?.method === "GET")).toBe(true);
+    expect(list.page_size).toBe(0);
+    expect(grouped.groups).toEqual([]);
+    expect(detail.timeline).toEqual([]);
+    expect(typedSummary.exceptions.margin_unknown).toBeNull();
   });
 
   it("rejects non-positive product-link CODPROD before transport", () => {
@@ -635,6 +721,29 @@ describe("sdk runtime", () => {
     expect(requests[0].init?.body).toBe(JSON.stringify({ installation_id: "inst-1", limit: 5 }));
     expect(result.imported_count).toBe(2);
     expect(result.items[0].provider_variation_id).toBe("VAR-1");
+  });
+
+  it("refreshes listings and preserves the active operation on conflict", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    let conflict = false;
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        if (conflict) {
+          return new Response(JSON.stringify({ error: { code: "refresh_in_progress", message: "busy", details: { operation_run_id: "op_active" } } }), { status: 409, headers: { "Content-Type": "application/json" } });
+        }
+        return new Response(JSON.stringify({ operation_run_id: "op_new" }), { status: 202, headers: { "Content-Type": "application/json" } });
+      },
+    });
+
+    await expect(client.refreshListings({ installation_id: "inst_test" })).resolves.toEqual({ operation_run_id: "op_new" });
+    expect(String(requests[0].input)).toBe("http://localhost:8080/listings/refresh");
+    expect(requests[0].init?.method).toBe("POST");
+    expect(requests[0].init?.body).toBe(JSON.stringify({ installation_id: "inst_test" }));
+
+    conflict = true;
+    await expect(client.refreshListings({ installation_id: "inst_test" })).rejects.toMatchObject({ status: 409, error: { code: "refresh_in_progress", details: { operation_run_id: "op_active" } } });
   });
 
   it("generates product link candidates as json", async () => {

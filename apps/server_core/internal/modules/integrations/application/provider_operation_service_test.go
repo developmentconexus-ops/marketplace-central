@@ -47,6 +47,10 @@ type providerOperationRunStore struct {
 	runs []domain.OperationRun
 }
 
+func (s *providerOperationRunStore) BeginExclusive(_ context.Context, run domain.OperationRun) (domain.OperationRun, bool, error) {
+	return run, false, nil
+}
+
 type providerOperationCapabilityStore struct {
 	states []domain.CapabilityState
 }

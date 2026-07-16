@@ -148,6 +148,10 @@ func (r *composedBatchOracleReader) GetTaxFactsByIDs(context.Context, []int64) (
 	return map[int64]*internalreaddomain.TaxInputs{}, nil
 }
 
+func (r *composedBatchOracleReader) GetICMSCeilingByOrigin(context.Context, internalreaddomain.UF) (map[internalreaddomain.UF]*internalreaddomain.ICMSCeiling, error) {
+	return map[internalreaddomain.UF]*internalreaddomain.ICMSCeiling{}, nil
+}
+
 type composedOrderLookup struct {
 	order ordersdomain.MarketplaceOrder
 }

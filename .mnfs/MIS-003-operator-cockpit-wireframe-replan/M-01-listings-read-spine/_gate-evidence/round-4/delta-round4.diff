@@ -1,0 +1,2153 @@
+diff --git a/.mnfs/MIS-003-operator-cockpit-wireframe-replan/M-01-listings-read-spine/F-02-listings-read-api/slice11-brief.md b/.mnfs/MIS-003-operator-cockpit-wireframe-replan/M-01-listings-read-spine/F-02-listings-read-api/slice11-brief.md
+new file mode 100644
+index 00000000..a80272c4
+--- /dev/null
++++ b/.mnfs/MIS-003-operator-cockpit-wireframe-replan/M-01-listings-read-spine/F-02-listings-read-api/slice11-brief.md
+@@ -0,0 +1,102 @@
++# Slice 11 brief — round-3 corrective + G1 ruling receipt
++
++```yaml
++base: 7f5a1b8c
++scope: apps/server_core/internal/modules/listings/application/ ONLY (read_service.go + read_service_test.go)
++out_of_scope: internal_read/ (cross-module seam, hub-owned), composition, transport, OpenAPI, SDK, migrations
++gate_that_produced_this: dual-gate round 3 — FAIL both sides (_gate-evidence/round-3/dual-gate-round3-verdict.md)
++```
++
++## G1 — HUB RULING: **(C)** — adjudication receipt (VERBATIM-BINDING for round 4)
++
++The hub verified the chip's receipts independently before ruling (`reader.go:508-513`,
++`safeOracleCause:515-523`, `read_error.go:8-9`, `Unwrap:28-33` — all confirmed), and found the seam
++**wider than the chip reported**: `sankhya_linkage_reader.go:424` and `open_cgo.go:62` share
++`safeOracleCause`, and `catalog/transport/http_handler.go:289` additionally string-matches
++`strings.Contains("source_unavailable")` on top of `IsReadErrorCode`. **4+ modules consume it.**
++Option (A) inside M-01 = a chip writing into a 4-module seam, plus scope widening against the
++operator directive. **(A) REJECTED.**
++
++Ruling (C), two parts:
++
++1. **In-module fix, slice 11:** `errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)`
++   checked in `isSourceUnavailable` **BEFORE** `IsReadErrorCode`. Cancellation/timeout never degrades
++   — it propagates and logs at ERROR. Slice 10's strict classification already covers the rest.
++   Test MUST inject a **real `context.Canceled` cause travelling through the `ReadError` wrap** — NOT
++   a fake carrying the right code. Fakes-with-the-right-code are exactly the hole that hid this.
++2. **Residual deferred WITH A NAME:** an adapter/data defect still degrades, misclassified but
++   logged at WARN (B2b landed). → **hub board task #2**: `internal_read` taxonomy refactor,
++   hub-owned, post-M-01. Registered scope: new codes, reclassify the 3 sites, preserve the sentinel
++   instead of flattening it at `:519-523`, update 4+ consumers including killing catalog's
++   string-match.
++
++### Round-4 prompt-pack MUST carry this receipt
++
++> **B2 = resolved in-module (cancel/timeout) + residual deferred-with-name to hub task #2 per G1
++> ruling (C).**
++
++Without it a reviewer re-blocks on a residue that has already been adjudicated. The §9 resolution
++check consumes the receipt rather than re-litigating it.
++
++## G2 (important) — revert a regression the round-2 gate had certified
++
++`read_service.go:337` guard reverts `unavailable != nil` → `ceilingErr != nil`.
++`icmsWorstCaseByUF:563-567` fills `WorstCaseICMSPct` and `PriceNetBasis` (`priceNetBasis:574-576`)
++from **price + ceiling only** — no cost dependency — and `belowMargin:520-536` already nils on a nil
++cost. So a **cost-only** outage must keep the FULL matrix with only `below_margin_at_uf` null.
++Nulling the whole matrix discards known-true facts because an unrelated fact is missing. ADR-17
++licenses null for *unknown*, never for known.
++
++**Owned honestly:** `slice10-review.md:29-31` (mine) blessed this as a *"BONUS fix… closing a latent
++gap."* It was a regression. The §14 slice review is the milestone owner's, so the misclassification
++is the milestone owner's. The cold gate caught what the slice review had already approved — the
++hub is recording this in the ledger as evidence for the standard itself (implementer ≠ reviewer,
++and the cold gate sits downstream of the slice review for exactly this reason).
++
++## G3 (important) — pin the branch G2 left unpinned
++
++`read_service_test.go:317` guards the matrix assertion behind `outage.ceilingErr &&`, so the
++cost-outage case asserts nothing. **Bar: the test must FAIL if G2's fix is reverted.** A test that
++still passes with the fix reverted is not coverage — round-2's own I2 criterion.
++
++## G4 (blocking) — strip comment narration
++
++`HARNESS.md:203-204`, AI-slop checklist, **any hit = REJECT the slice**: *"comment narration /
++PR-voice comments"*. Slice 10 narrated adjudication history in production code ("Per the hub ruling
++(B1, PURE…)", "pins B2"). Hub ACK: **decision context lives in the ledger/evidence, not in the
++code.** Comments state only invariants a future reader needs; when a comment carries no constraint
++the code cannot show, delete it.
++
++## G5 (important) — telemetry must not state the opposite of the outcome
++
++The ceiling WARN (`:117`, `:189`, `:329`) says "degrading fact to null" but fires **before** the
++`needsBelowMarginScan` branch (`:153`, `:192`) decides — so a filtered request logs "degrading" and
++then 503s. One approach, applied consistently at every site (List/Summary/ByProduct/Get + enrich's
++cost path). Invariants that survive: ERROR on propagate, WARN on degrade, `err` + `op` (+ `fact`
++where already present), at most once per request, never per row.
++
++## Governance — HUB RULING
++
++Do **NOT** catch the worktree's `docs/` up (merging master into a mid-flight branch = noise). Pin
++reviewers to the **main checkout's ABSOLUTE paths**:
++- `C:\Users\leandro.theodoro\Documents\marketplace-central\docs\REVIEW-STANDARD.md`
++- `C:\Users\leandro.theodoro\Documents\marketplace-central\docs\HARNESS.md`
++
++Codex's cwd is already the main root, so it resolves. The worktree's stale `AGENTS.md` is harmless
++to this flow — **do not cite `docs/superpowers/`**.
++
++## Must not break (all pinned, all currently green)
++
++- Any fact-dependent filter (`has_exception` both directions AND `exception=below_margin`, uniform
++  via `needsBelowMarginScan`) during a source-unavailable outage → error, never a page built by
++  dropping the filter.
++- A read WITHOUT a fact-dependent filter → still degrades to null (ADR-17), not 503.
++- `matchesDependentFilter` genuinely applied on the happy path.
++- Only `ReadErrorSourceUnavailable` degrades; everything else propagates.
++- Telemetry once per request, never per row.
++
++## DoD
++
++L0 (build+vet) → sonnet §14 review ∥ L1 → integration lane → COMMITTED (restart pre-armed) →
++re-drive → gate round 4 (delta since `7f5a1b8c` + resolution check of EVERY round-3 finding, G1
++consuming the ruling receipt above) → P8 CLOSED. **No push.**
+diff --git a/.mnfs/MIS-003-operator-cockpit-wireframe-replan/M-01-listings-read-spine/HUB-EVENT-BLOCKED-gate-round3-adapter-taxonomy.md b/.mnfs/MIS-003-operator-cockpit-wireframe-replan/M-01-listings-read-spine/HUB-EVENT-BLOCKED-gate-round3-adapter-taxonomy.md
+new file mode 100644
+index 00000000..5873e88c
+--- /dev/null
++++ b/.mnfs/MIS-003-operator-cockpit-wireframe-replan/M-01-listings-read-spine/HUB-EVENT-BLOCKED-gate-round3-adapter-taxonomy.md
+@@ -0,0 +1,116 @@
++# HUB EVENT — BLOCKED (gate round 3 FAIL; G1 needs a ruling on a shared seam)
++
++```yaml
++event: BLOCKED
++from: chip M-01-listings-read-spine
++to: HUB (local_efa46c30-1c0c-4075-9671-c2d7ae9efabe)
++gate: P6 dual gate round 3, delta c4e8ab91..7f5a1b8c
++result: FAIL — both sides, independently, simultaneous at fixed SHA
++verdict: _gate-evidence/round-3/dual-gate-round3-verdict.md (full §8 reconciliation table)
++blocking_on: ONE ruling (G1). G2/G3/G4/G5 are chip-owned and already moving as slice 11.
++```
++
++## Round-2 resolution check: 6 of 7 resolved
++
++B1, B2b, I1, I2, N1 **RESOLVED** with receipts, both sides agreeing. S1 **UNRESOLVED but
++defensible** (suggestion, out of R2 scope, verified safe) — both sides agree it does not gate.
++
++**B2 is UNRESOLVED**, and that is G1.
++
++## G1 — the ruling I need
++
++`wrapOracleError` (`internal_read/adapters/oracle/reader.go:508-513`) labels **everything** that is
++not `sql.ErrNoRows` as `ReadErrorSourceUnavailable` — `context.Canceled`, `DeadlineExceeded`, and
++query/scan/iteration defects included. Slice 10's classification is strict at the application layer,
++but the labels it classifies on are indiscriminate at the source. The unit tests pass only because
++they inject raw fakes carrying the correct code; **in production a data/driver defect on a
++no-filter read still degrades to null facts** — the exact substance B2 was raised to stop.
++
++Sol found it; Opus (bounded to the delta's 3 files) marked B2 resolved. Not a contradiction of fact
++— a difference in depth. **I re-verified `reader.go:508-513` in-tree myself** before merging: the
++`errors.Is(err, sql.ErrNoRows)` check is the only discrimination that exists. Sol's receipt wins.
++
++### Why this is NOT mine to fix
++
++`wrapOracleError` is a **cross-module shared seam**. Its `source_unavailable` output is consumed by
++`catalog/transport/http_handler.go:289`, `product_links/application/generation_service.go:319`, and
++`profitability/adapters/internalread/fact_reader.go` — not just listings. And the taxonomy
++(`internal_read/domain/read_error.go:8-9`) has only TWO general codes, `source_unavailable` and
++`unsupported_query`: there is **no code for cancellation and none for an adapter/data defect**.
++Fixing it means ADDING to the taxonomy and re-classifying for every consumer. One writer owns a
++shared seam; the hub owns cross-module ones. I am not touching it unilaterally.
++
++### What I CAN do without the seam — verified, not assumed
++
++`ReadError.Unwrap` returns `Cause` (`read_error.go:28-33`) and `safeOracleCause:515-518`
++**preserves** `context.Canceled` / `DeadlineExceeded` as that cause. So `errors.Is` reaches through
++the wrap **today**, and listings can de-classify cancellation locally:
++
++```go
++func isSourceUnavailable(err error) bool {
++    if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
++        return false
++    }
++    return internalreaddomain.IsReadErrorCode(err, internalreaddomain.ReadErrorSourceUnavailable)
++}
++```
++
++That closes the **cancellation/timeout half** of B2 inside my module. The **defect half does not
++close this way**: `safeOracleCause:519-523` flattens a query/scan defect into
++`errors.New("oracle driver error")` / `oracle error code=N`, erasing the distinction from a genuine
++connectivity outage before listings ever sees it. No application-layer code can recover it.
++
++## Options
++
++- **(A) Fix the taxonomy at the adapter.** Add codes (cancellation, adapter/data defect), classify
++  in `wrapOracleError`, update the three other consumers. The correct fix. But it is a cross-module
++  seam change that widens M-01 from a listings read spine into an `internal_read` refactor, and it
++  puts a chip inside a seam three other modules read.
++- **(B) Chip-local only.** Ship the `errors.Is` de-classification above in slice 11. Cancellation
++  and timeout stop degrading. Adapter/data defects still degrade to null — **but now with a WARN**
++  (B2b landed), so it is misclassified, not silent. Defer the residue with a name.
++- **(C) (B) now + (A) as its own hub-owned work** on the `internal_read` seam, scheduled separately.
++
++**My recommendation: (C).** With the honest caveat: **(B) does not fully close B2** — it closes the
++cancellation half and leaves the defect half misclassified-but-logged. If you consider that residue
++unacceptable for M-01's bar, then M-01 cannot close without (A), and (A) is yours to place, not
++mine to take.
++
++I am not going to overstate this one. Last round my recommendation (A+C) was partly wrong and you
++corrected it — you rejected my (A) because it produced a silently under-inclusive result. So: the
++above is my read, the residue is stated plainly, and the scope call is yours.
++
++## Also in the round-3 FAIL — chip-owned, no ruling needed, slice 11 in flight
++
++- **G2 (important):** `read_service.go:337` — `Get` now nulls the ENTIRE `ICMSWorstCaseByUF` on a
++  **cost-only** outage. `WorstCaseICMSPct` / `PriceNetBasis` depend on price + ceiling only
++  (`icmsWorstCaseByUF:563-567`, `priceNetBasis:574-576`) and `belowMargin:520-522` already nils on a
++  nil cost. Round 2 explicitly **certified the old behavior correct**. This throws away known-true
++  facts because an unrelated fact is missing — ADR-17 licenses null for *unknown*, not for known.
++  **This is the thing I recorded in `slice10-review.md:29-31` as a "BONUS fix… closing a latent
++  gap." I was wrong; the §14 slice review is mine, so the misclassification is mine.** The cold gate
++  caught what I had already blessed — which is the argument for the cold gate.
++- **G3 (important):** `read_service_test.go:317` guards the matrix assertion behind
++  `outage.ceilingErr &&`, so G2 is invisible to the suite. Round-2's own I2 criterion, turned on me.
++- **G4 (blocking):** comment narration / PR-voice in production code —
++  `read_service.go:172-177,:271-278,:318-324` narrate "Per the hub ruling (B1, PURE…)", "pins B2".
++  `HARNESS.md:203-204` lists it in the AI-slop checklist: **any hit = REJECT the slice**.
++- **G5 (important):** the ceiling WARN (`:117,:189,:329`) says "degrading fact to null" but fires
++  before the `needsBelowMarginScan` branch (`:153`,`:192`) — a filtered request logs "degrading" and
++  then 503s. The log states the opposite of the outcome, undercutting the honesty B2b restored.
++
++## Governance drift (FYI, not a finding)
++
++This worktree's `docs/` is behind the main repo: no `docs/REVIEW-STANDARD.md`, and `AGENTS.md` still
++points at `docs/superpowers/HARNESS.md`. The binding copies live only in the main checkout. My
++prompt-pack handed both reviewers a worktree path that does not resolve; both still returned
++§14-conformant output (codex's cwd is the main root). Worth catching the worktree up, or pinning
++reviewers to main-repo governance paths.
++
++## State
++
++`7f5a1b8c` committed, **not pushed**. Live stack at that SHA re-driven: **no regression** — C10 still
++PASS (unknown 0.0%, 34/34 real MLB ids), all three fact-dependent filters 200 with the source
++healthy (no over-correction). Evidence: `_gate-evidence/round-3/redrive-post-slice10.md`.
++
++Slice 11 (G2/G3/G4/G5) is being implemented now — it needs no ruling. G1 waits on you.
+diff --git a/.mnfs/MIS-003-operator-cockpit-wireframe-replan/M-01-listings-read-spine/HUB-EVENT-COMMITTED-slice10-fail-honest.md b/.mnfs/MIS-003-operator-cockpit-wireframe-replan/M-01-listings-read-spine/HUB-EVENT-COMMITTED-slice10-fail-honest.md
+new file mode 100644
+index 00000000..dfc1c3ff
+--- /dev/null
++++ b/.mnfs/MIS-003-operator-cockpit-wireframe-replan/M-01-listings-read-spine/HUB-EVENT-COMMITTED-slice10-fail-honest.md
+@@ -0,0 +1,52 @@
++# HUB EVENT — COMMITTED (slice 10, fail-honest dependent filters)
++
++```yaml
++event: COMMITTED
++from: chip M-01-listings-read-spine
++to: HUB (local_efa46c30-1c0c-4075-9671-c2d7ae9efabe)
++sha: 7f5a1b8c
++base: 1f6b72d8 (= c4e8ab91 slice 9 + round-2 gate evidence)
++scope: exactly 3 source files, hub R2 scope — no migration, no OpenAPI, no SDK, no transport
++pushed: NO (never without explicit operator permission)
++```
++
++## What landed
++
++Hub ruling **(C) PURE** implemented. Any fact-dependent filter (`has_exception` both
++directions AND `exception=below_margin`, uniform via `needsBelowMarginScan`) during a genuine
++fact-source outage now returns source-unavailable through the EXISTING error envelope →
++transport already 503s `source_unavailable`, so **no contract change**. Reads without such a
++filter keep degrading to null (ADR-17), pinned by an over-correction guard test.
++
++Gate covers **both** Oracle facts: ceiling (known pre-scan) and cost (only discovered mid-scan,
++threaded out of `enrich` via `(error, error)`). A ceiling-only pre-check would have left the
++cost hole open. Strict classification via existing `IsReadErrorCode/ReadErrorSourceUnavailable`
++— cancellation/timeout/adapter defects propagate + log ERROR. Degrade logs `slog.Warn` once per
++request with `op` + `fact`, never per row. `passThrough`/`passThroughGroups` and the dead
++`unavailableListingPolicyReader` wrapper deleted.
++
++Option (A) absent, as ruled. Option (B) `service_degraded` remains deferred with a name.
++
++## Gates (all green, independently run by chip, not relayed)
++
++| Gate | Result |
++|---|---|
++| L0 build + vet | exit 0 / exit 0 |
++| L1 unit | exit 0 |
++| §14 cold sonnet review | **APPROVE** — zero blocking, zero important |
++| Integration lane (ephemeral pg) | **GREEN** — migrate 37→0, 0037 constraint 8 values intact, `TestListingsReadContractEndToEnd` 8/8 incl `null_cost_honesty` + `tenant_isolation`, `Performance2000` p95 3.93ms |
++
++Evidence: `_gate-evidence/round-3/` (`slice10-L0-report.md`, `slice10-review.md`,
++`slice10-candidate.diff`, `delta-round3.diff`).
++
++## Deviation logged
++
++Implementation ran on **sonnet** per explicit operator directive (finish M-01 fast).
++Overrides HARNESS §1 (implement = GPT-5.6 Luna high). Operator authority wins; recorded here.
++Test-first + §14 cold independent review preserved (implementer ≠ reviewer).
++
++## Ask
++
++Restart the dev stack at `7f5a1b8c` (pre-armed, no formal REQUEST per your last message).
++Chip re-drives to confirm no regression, then runs gate round 3 (§9 delta since `c4e8ab91`
+++ explicit resolution check of every round-2 finding) → P8 CLOSED.
+diff --git a/.mnfs/MIS-003-operator-cockpit-wireframe-replan/M-01-listings-read-spine/_gate-evidence/round-3/delta-round3.diff b/.mnfs/MIS-003-operator-cockpit-wireframe-replan/M-01-listings-read-spine/_gate-evidence/round-3/delta-round3.diff
+new file mode 100644
+index 00000000..e0298b15
+--- /dev/null
++++ b/.mnfs/MIS-003-operator-cockpit-wireframe-replan/M-01-listings-read-spine/_gate-evidence/round-3/delta-round3.diff
+@@ -0,0 +1,715 @@
++diff --git a/apps/server_core/internal/composition/root.go b/apps/server_core/internal/composition/root.go
++index dc95ff37..6b2d211a 100644
++--- a/apps/server_core/internal/composition/root.go
+++++ b/apps/server_core/internal/composition/root.go
++@@ -60,7 +60,6 @@ import (
++ 	listingsmarketplaces "marketplace-central/apps/server_core/internal/modules/listings/adapters/marketplaces"
++ 	listingspostgres "marketplace-central/apps/server_core/internal/modules/listings/adapters/postgres"
++ 	listingsapp "marketplace-central/apps/server_core/internal/modules/listings/application"
++-	listingsports "marketplace-central/apps/server_core/internal/modules/listings/ports"
++ 	listingstransport "marketplace-central/apps/server_core/internal/modules/listings/transport"
++ 	marketplacespostgres "marketplace-central/apps/server_core/internal/modules/marketplaces/adapters/postgres"
++ 	marketplacesapp "marketplace-central/apps/server_core/internal/modules/marketplaces/application"
++@@ -103,18 +102,6 @@ type unavailableProductMatcher struct {
++ 	err error
++ }
++ 
++-type unavailableListingPolicyReader struct {
++-	delegate listingsports.PolicyReader
++-}
++-
++-func (r unavailableListingPolicyReader) GetPricingPolicyForInstallation(ctx context.Context, installationID string) (listingsports.PricingPolicy, bool, error) {
++-	policy, found, err := r.delegate.GetPricingPolicyForInstallation(ctx, installationID)
++-	if internalreaddomain.IsReadErrorCode(err, internalreaddomain.ReadErrorSourceUnavailable) {
++-		return listingsports.PricingPolicy{}, false, nil
++-	}
++-	return policy, found, err
++-}
++-
++ func (m unavailableProductMatcher) FindProductsForLinking(context.Context, internalreadports.FindProductsInput) ([]internalreaddomain.ProductCandidate, error) {
++ 	return nil, m.err
++ }
++@@ -483,7 +470,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
++ 
++ 	listingRepo := listingspostgres.NewRepository(pool, cfg.DefaultTenantID)
++ 	listingCostReader := listingsinternalread.NewCostReader(internalreadoracle.NewBatchReader(oracleDB, oracleBatchSemaphore))
++-	listingPolicyReader := unavailableListingPolicyReader{delegate: listingsmarketplaces.NewPolicyReader(marketSvc)}
+++	listingPolicyReader := listingsmarketplaces.NewPolicyReader(marketSvc)
++ 	listingInstallationReader := listingsintegrations.NewInstallationReader(installationSvc)
++ 	listingSvc := listingsapp.NewReadService(
++ 		listingRepo,
++diff --git a/apps/server_core/internal/modules/listings/application/read_service.go b/apps/server_core/internal/modules/listings/application/read_service.go
++index 09f933cb..f9c31afb 100644
++--- a/apps/server_core/internal/modules/listings/application/read_service.go
+++++ b/apps/server_core/internal/modules/listings/application/read_service.go
++@@ -4,16 +4,26 @@ import (
++ 	"context"
++ 	"errors"
++ 	"fmt"
+++	"log/slog"
++ 	"math/big"
++ 	"sort"
++ 	"strconv"
++ 	"strings"
++ 	"time"
++ 
+++	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
++ 	"marketplace-central/apps/server_core/internal/modules/listings/domain"
++ 	"marketplace-central/apps/server_core/internal/modules/listings/ports"
++ )
++ 
+++// isSourceUnavailable classifies an error using the existing internal_read
+++// error taxonomy. Only ReadErrorSourceUnavailable may legitimately degrade
+++// cost/ceiling facts to null; every other error (cancellation, timeout,
+++// adapter/data defects) must propagate.
+++func isSourceUnavailable(err error) bool {
+++	return internalreaddomain.IsReadErrorCode(err, internalreaddomain.ReadErrorSourceUnavailable)
+++}
+++
++ const originUFMG int64 = 13
++ 
++ // maxBelowMarginScanPages limits one request to 50 keyset fetches and 50 cost
++@@ -57,12 +67,17 @@ func (s ReadService) Summary(ctx context.Context, query ports.SummaryQuery) (por
++ 		return ports.ListingSummaryRow{}, fmt.Errorf("read pricing policy: %w", err)
++ 	}
++ 	ceilings, ceilingErr := s.facts.GetICMSCeilingByOrigin(ctx, originUFMG)
+++	if ceilingErr != nil && !isSourceUnavailable(ceilingErr) {
+++		slog.Error("listings: icms ceiling fact read failed", "err", ceilingErr, "op", "Summary")
+++		return ports.ListingSummaryRow{}, ceilingErr
+++	}
++ 	row, err := s.repo.GetListingsSummary(ctx, query)
++ 	if err != nil {
++ 		return ports.ListingSummaryRow{}, err
++ 	}
++ 	row.AsOf = s.now().UTC()
++ 	if ceilingErr != nil {
+++		slog.Warn("listings: icms ceiling source unavailable, degrading margin counts to null", "err", ceilingErr, "op", "Summary", "fact", "icms_ceiling")
++ 		row.BelowMarginWorstCase, row.MarginUnknown = nil, nil
++ 		return row, nil
++ 	}
++@@ -76,8 +91,14 @@ func (s ReadService) Summary(ctx context.Context, query ports.SummaryQuery) (por
++ 	}
++ 	costs := map[int64]*ports.CostFact{}
++ 	if len(ids) > 0 {
++-		costs, err = s.facts.GetCostFactsByIDs(ctx, ids)
++-		if err != nil {
+++		var costErr error
+++		costs, costErr = s.facts.GetCostFactsByIDs(ctx, ids)
+++		if costErr != nil {
+++			if !isSourceUnavailable(costErr) {
+++				slog.Error("listings: cost fact read failed", "err", costErr, "op", "Summary")
+++				return ports.ListingSummaryRow{}, costErr
+++			}
+++			slog.Warn("listings: cost fact source unavailable, degrading margin counts to null", "err", costErr, "op", "Summary", "fact", "cost")
++ 			row.BelowMarginWorstCase, row.MarginUnknown = nil, nil
++ 			return row, nil
++ 		}
++@@ -120,7 +141,13 @@ func (s ReadService) List(ctx context.Context, query ports.ListingQuery) (ports.
++ 		return ports.ListingRowPage{}, fmt.Errorf("read pricing policy: %w", err)
++ 	}
++ 	ceilings, ceilingErr := s.facts.GetICMSCeilingByOrigin(ctx, originUFMG)
++-	factsUnavailable := ceilingErr != nil
+++	if ceilingErr != nil && !isSourceUnavailable(ceilingErr) {
+++		slog.Error("listings: icms ceiling fact read failed", "err", ceilingErr, "op", "List")
+++		return ports.ListingRowPage{}, ceilingErr
+++	}
+++	if ceilingErr != nil {
+++		slog.Warn("listings: icms ceiling source unavailable, degrading fact to null", "err", ceilingErr, "op", "List", "fact", "icms_ceiling")
+++	}
++ 	maxCeiling := maximumCeiling(ceilings)
++ 	serveTime := s.now().UTC()
++ 	if !needsBelowMarginScan(query.Filter) {
++@@ -128,14 +155,14 @@ func (s ReadService) List(ctx context.Context, query ports.ListingQuery) (ports.
++ 		if err != nil {
++ 			return ports.ListingRowPage{}, err
++ 		}
++-		_, err = s.enrich(ctx, page.Items, maxCeiling, policy, policyFound, factsUnavailable)
+++		_, err = s.enrich(ctx, page.Items, maxCeiling, policy, policyFound, ceilingErr)
++ 		if err != nil {
++ 			return ports.ListingRowPage{}, err
++ 		}
++ 		page.AsOf = serveTime
++ 		return page, nil
++ 	}
++-	return s.scan(ctx, query, maxCeiling, policy, policyFound, factsUnavailable, serveTime)
+++	return s.scan(ctx, query, maxCeiling, policy, policyFound, ceilingErr, serveTime)
++ }
++ 
++ func (s ReadService) ByProduct(ctx context.Context, query ports.ListingGroupQuery) (ports.ListingGroupRowPage, error) {
++@@ -154,16 +181,22 @@ func (s ReadService) ByProduct(ctx context.Context, query ports.ListingGroupQuer
++ 		return ports.ListingGroupRowPage{}, fmt.Errorf("read pricing policy: %w", err)
++ 	}
++ 	ceilings, ceilingErr := s.facts.GetICMSCeilingByOrigin(ctx, originUFMG)
++-	factsUnavailable := ceilingErr != nil
+++	if ceilingErr != nil && !isSourceUnavailable(ceilingErr) {
+++		slog.Error("listings: icms ceiling fact read failed", "err", ceilingErr, "op", "ByProduct")
+++		return ports.ListingGroupRowPage{}, ceilingErr
+++	}
+++	if ceilingErr != nil {
+++		slog.Warn("listings: icms ceiling source unavailable, degrading fact to null", "err", ceilingErr, "op", "ByProduct", "fact", "icms_ceiling")
+++	}
++ 	ceiling, asOf := maximumCeiling(ceilings), s.now().UTC()
++ 	if needsBelowMarginScan(query.Filter) {
++-		return s.scanGroups(ctx, query, ceiling, policy, policyFound, factsUnavailable, asOf)
+++		return s.scanGroups(ctx, query, ceiling, policy, policyFound, ceilingErr, asOf)
++ 	}
++ 	page, err := s.repo.ListListingGroupRows(ctx, query)
++ 	if err != nil {
++ 		return ports.ListingGroupRowPage{}, err
++ 	}
++-	_, err = s.enrichGroups(ctx, page.Groups, ceiling, policy, policyFound, factsUnavailable)
+++	_, err = s.enrichGroups(ctx, page.Groups, ceiling, policy, policyFound, ceilingErr)
++ 	if err != nil {
++ 		return ports.ListingGroupRowPage{}, err
++ 	}
++@@ -172,9 +205,15 @@ func (s ReadService) ByProduct(ctx context.Context, query ports.ListingGroupQuer
++ 	return page, nil
++ }
++ 
++-func (s ReadService) scanGroups(ctx context.Context, q ports.ListingGroupQuery, ceiling *float64, policy ports.PricingPolicy, policyFound, factsUnavailable bool, asOf time.Time) (ports.ListingGroupRowPage, error) {
++-	if factsUnavailable {
++-		return s.passThroughGroups(ctx, q, ceiling, policy, policyFound, asOf)
+++// scanGroups is only reached for a fact-dependent filter (needsBelowMarginScan
+++// is true). Per the hub ruling (B1, PURE uniform fail-honest), a genuine
+++// source-unavailable outage under such a filter must surface as an error
+++// through the existing error envelope, never as a confidently-served page
+++// built by dropping the filter. Both directions of the filter
+++// (has_exception true/false, exception=below_margin) are treated uniformly.
+++func (s ReadService) scanGroups(ctx context.Context, q ports.ListingGroupQuery, ceiling *float64, policy ports.PricingPolicy, policyFound bool, unavailable error, asOf time.Time) (ports.ListingGroupRowPage, error) {
+++	if unavailable != nil {
+++		return ports.ListingGroupRowPage{}, unavailable
++ 	}
++ 	result := ports.ListingGroupRowPage{Groups: []domain.ListingGroup{}, AsOf: asOf}
++ 	cursor := q.Cursor
++@@ -185,12 +224,12 @@ func (s ReadService) scanGroups(ctx context.Context, q ports.ListingGroupQuery,
++ 		if err != nil {
++ 			return ports.ListingGroupRowPage{}, err
++ 		}
++-		factsUnavailable, err = s.enrichGroups(ctx, page.Groups, ceiling, policy, policyFound, factsUnavailable)
+++		unavailable, err = s.enrichGroups(ctx, page.Groups, ceiling, policy, policyFound, unavailable)
++ 		if err != nil {
++ 			return ports.ListingGroupRowPage{}, err
++ 		}
++-		if factsUnavailable {
++-			return s.passThroughGroups(ctx, q, ceiling, policy, policyFound, asOf)
+++		if unavailable != nil {
+++			return ports.ListingGroupRowPage{}, unavailable
++ 		}
++ 		for groupIndex := range page.Groups {
++ 			group := page.Groups[groupIndex]
++@@ -225,27 +264,14 @@ func (s ReadService) scanGroups(ctx context.Context, q ports.ListingGroupQuery,
++ 	return result, nil
++ }
++ 
++-func (s ReadService) passThroughGroups(ctx context.Context, q ports.ListingGroupQuery, ceiling *float64, policy ports.PricingPolicy, policyFound bool, asOf time.Time) (ports.ListingGroupRowPage, error) {
++-	page, err := s.repo.ListListingGroupRows(ctx, q)
++-	if err != nil {
++-		return ports.ListingGroupRowPage{}, err
++-	}
++-	if _, err := s.enrichGroups(ctx, page.Groups, ceiling, policy, policyFound, true); err != nil {
++-		return ports.ListingGroupRowPage{}, err
++-	}
++-	finalizeGroups(page.Groups)
++-	page.AsOf = asOf
++-	return page, nil
++-}
++-
++-func (s ReadService) enrichGroups(ctx context.Context, groups []domain.ListingGroup, ceiling *float64, policy ports.PricingPolicy, policyFound, factsUnavailable bool) (bool, error) {
+++func (s ReadService) enrichGroups(ctx context.Context, groups []domain.ListingGroup, ceiling *float64, policy ports.PricingPolicy, policyFound bool, unavailable error) (error, error) {
++ 	items := make([]domain.ListingReadModel, 0)
++ 	for _, group := range groups {
++ 		items = append(items, group.Listings...)
++ 	}
++-	factsUnavailable, err := s.enrich(ctx, items, ceiling, policy, policyFound, factsUnavailable)
+++	unavailable, err := s.enrich(ctx, items, ceiling, policy, policyFound, unavailable)
++ 	if err != nil {
++-		return false, err
+++		return unavailable, err
++ 	}
++ 	offset := 0
++ 	for i := range groups {
++@@ -253,7 +279,7 @@ func (s ReadService) enrichGroups(ctx context.Context, groups []domain.ListingGr
++ 		copy(groups[i].Listings, items[offset:offset+n])
++ 		offset += n
++ 	}
++-	return factsUnavailable, nil
+++	return unavailable, nil
++ }
++ 
++ func finalizeGroups(groups []domain.ListingGroup) {
++@@ -295,14 +321,20 @@ func (s ReadService) Get(ctx context.Context, id domain.ListingID) (domain.Listi
++ 		return domain.ListingReadModel{}, nil, fmt.Errorf("read pricing policy: %w", err)
++ 	}
++ 	ceilings, ceilingErr := s.facts.GetICMSCeilingByOrigin(ctx, originUFMG)
++-	factsUnavailable := ceilingErr != nil
+++	if ceilingErr != nil && !isSourceUnavailable(ceilingErr) {
+++		slog.Error("listings: icms ceiling fact read failed", "err", ceilingErr, "op", "Get")
+++		return domain.ListingReadModel{}, nil, ceilingErr
+++	}
+++	if ceilingErr != nil {
+++		slog.Warn("listings: icms ceiling source unavailable, degrading fact to null", "err", ceilingErr, "op", "Get", "fact", "icms_ceiling")
+++	}
++ 	items := []domain.ListingReadModel{model}
++-	factsUnavailable, err = s.enrich(ctx, items, maximumCeiling(ceilings), policy, policyFound, factsUnavailable)
+++	unavailable, err := s.enrich(ctx, items, maximumCeiling(ceilings), policy, policyFound, ceilingErr)
++ 	if err != nil {
++ 		return domain.ListingReadModel{}, nil, err
++ 	}
++ 	model = items[0]
++-	if ceilingErr != nil {
+++	if unavailable != nil {
++ 		model.ICMSWorstCaseByUF = nil
++ 	} else {
++ 		model.ICMSWorstCaseByUF = icmsWorstCaseByUF(model, ceilings, policy, policyFound)
++@@ -317,9 +349,17 @@ func (s ReadService) Get(ctx context.Context, id domain.ListingID) (domain.Listi
++ 	return model, timeline, nil
++ }
++ 
++-func (s ReadService) scan(ctx context.Context, q ports.ListingQuery, ceiling *float64, policy ports.PricingPolicy, policyFound, factsUnavailable bool, asOf time.Time) (ports.ListingRowPage, error) {
++-	if factsUnavailable {
++-		return s.passThrough(ctx, q, ceiling, policy, policyFound, asOf)
+++// scan is only reached for a fact-dependent filter (needsBelowMarginScan is
+++// true). Per the hub ruling (B1, PURE uniform fail-honest), a genuine
+++// source-unavailable outage under such a filter must surface as an error
+++// through the existing error envelope, never as a confidently-served page
+++// built by dropping the filter. Both directions of the filter
+++// (has_exception true/false, exception=below_margin) are treated uniformly;
+++// a request with no fact-dependent filter never reaches this function and
+++// keeps the ADR-17-correct degrade-to-null behavior via the flat path.
+++func (s ReadService) scan(ctx context.Context, q ports.ListingQuery, ceiling *float64, policy ports.PricingPolicy, policyFound bool, unavailable error, asOf time.Time) (ports.ListingRowPage, error) {
+++	if unavailable != nil {
+++		return ports.ListingRowPage{}, unavailable
++ 	}
++ 	result := ports.ListingRowPage{Items: make([]domain.ListingReadModel, 0, q.Limit), AsOf: asOf}
++ 	cursor := q.Cursor
++@@ -330,12 +370,12 @@ func (s ReadService) scan(ctx context.Context, q ports.ListingQuery, ceiling *fl
++ 		if err != nil {
++ 			return ports.ListingRowPage{}, err
++ 		}
++-		factsUnavailable, err = s.enrich(ctx, page.Items, ceiling, policy, policyFound, factsUnavailable)
+++		unavailable, err = s.enrich(ctx, page.Items, ceiling, policy, policyFound, unavailable)
++ 		if err != nil {
++ 			return ports.ListingRowPage{}, err
++ 		}
++-		if factsUnavailable {
++-			return s.passThrough(ctx, q, ceiling, policy, policyFound, asOf)
+++		if unavailable != nil {
+++			return ports.ListingRowPage{}, unavailable
++ 		}
++ 		for _, item := range page.Items {
++ 			lastScanned := ports.ListingCursor{LastTitle: item.Title, ListingID: item.ListingID}
++@@ -362,22 +402,17 @@ func (s ReadService) scan(ctx context.Context, q ports.ListingQuery, ceiling *fl
++ 	return result, nil
++ }
++ 
++-func (s ReadService) passThrough(ctx context.Context, q ports.ListingQuery, ceiling *float64, policy ports.PricingPolicy, policyFound bool, asOf time.Time) (ports.ListingRowPage, error) {
++-	page, err := s.repo.ListListingRows(ctx, q)
++-	if err != nil {
++-		return ports.ListingRowPage{}, err
++-	}
++-	if _, err := s.enrich(ctx, page.Items, ceiling, policy, policyFound, true); err != nil {
++-		return ports.ListingRowPage{}, err
++-	}
++-	page.AsOf = asOf
++-	return page, nil
++-}
++-
++-func (s ReadService) enrich(ctx context.Context, items []domain.ListingReadModel, ceiling *float64, policy ports.PricingPolicy, policyFound, factsUnavailable bool) (bool, error) {
+++// enrich attaches cost/margin facts to items. unavailable, if non-nil on
+++// entry, is a source-unavailable error already known to the caller (the
+++// cost fetch below is skipped in that case). If the cost fetch here fails,
+++// only a source-unavailable classified error may degrade the batch to
+++// null facts (logged once at WARN); any other error (cancellation, timeout,
+++// adapter/data defect) propagates immediately (logged at ERROR) instead of
+++// being swallowed into a false "unknown" state.
+++func (s ReadService) enrich(ctx context.Context, items []domain.ListingReadModel, ceiling *float64, policy ports.PricingPolicy, policyFound bool, unavailable error) (error, error) {
++ 	ids := make([]int64, 0, len(items))
++ 	seen := map[int64]bool{}
++-	if !factsUnavailable {
+++	if unavailable == nil {
++ 		for _, item := range items {
++ 			if item.Link.ProductID != nil {
++ 				if id, err := strconv.ParseInt(*item.Link.ProductID, 10, 64); err == nil && !seen[id] {
++@@ -389,16 +424,22 @@ func (s ReadService) enrich(ctx context.Context, items []domain.ListingReadModel
++ 	}
++ 	costs := map[int64]*ports.CostFact{}
++ 	if len(ids) > 0 {
++-		var err error
++-		costs, err = s.facts.GetCostFactsByIDs(ctx, ids)
++-		if err != nil {
++-			factsUnavailable = true
+++		fetched, costErr := s.facts.GetCostFactsByIDs(ctx, ids)
+++		if costErr != nil {
+++			if !isSourceUnavailable(costErr) {
+++				slog.Error("listings: cost fact read failed", "err", costErr)
+++				return unavailable, costErr
+++			}
+++			slog.Warn("listings: cost fact source unavailable, degrading to null", "err", costErr, "fact", "cost")
+++			unavailable = costErr
+++		} else {
+++			costs = fetched
++ 		}
++ 	}
++ 	for i := range items {
++ 		item := &items[i]
++ 		var amount *float64
++-		if factsUnavailable {
+++		if unavailable != nil {
++ 			item.Cost = nil
++ 			item.BelowMarginWorstCase = nil
++ 			item.ICMSWorstCaseByUF = nil
++@@ -422,7 +463,7 @@ func (s ReadService) enrich(ctx context.Context, items []domain.ListingReadModel
++ 		}
++ 		item.PendingIssue = pendingIssue(*item)
++ 	}
++-	return factsUnavailable, nil
+++	return unavailable, nil
++ }
++ 
++ func priceCurrency(price *domain.Money) domain.PriceCurrency {
++diff --git a/apps/server_core/internal/modules/listings/application/read_service_test.go b/apps/server_core/internal/modules/listings/application/read_service_test.go
++index be4da9a4..a33ab8f3 100644
++--- a/apps/server_core/internal/modules/listings/application/read_service_test.go
+++++ b/apps/server_core/internal/modules/listings/application/read_service_test.go
++@@ -6,10 +6,19 @@ import (
++ 	"testing"
++ 	"time"
++ 
+++	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
++ 	"marketplace-central/apps/server_core/internal/modules/listings/domain"
++ 	"marketplace-central/apps/server_core/internal/modules/listings/ports"
++ )
++ 
+++// sourceUnavailable builds a typed source-unavailable read error using the
+++// existing internal_read error taxonomy, the only kind that may legitimately
+++// degrade cost/ceiling facts to null. Any other error (plain, cancellation,
+++// timeout) must propagate instead of degrading.
+++func sourceUnavailable(msg string) error {
+++	return internalreaddomain.NewReadError(internalreaddomain.ReadErrorSourceUnavailable, msg, nil)
+++}
+++
++ type fakeRows struct {
++ 	pages        []ports.ListingRowPage
++ 	listQueries  []ports.ListingQuery
++@@ -128,8 +137,8 @@ func TestReadServiceSummaryUnknownInputsAndSourceOutage(t *testing.T) {
++ 	}{
++ 		{"missing policy", false, &fakeFacts{costs: map[int64]*ports.CostFact{1: {Amount: ptr(1)}}, ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}, false},
++ 		{"missing cost", true, &fakeFacts{costs: map[int64]*ports.CostFact{}, ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}, false},
++-		{"cost outage", true, &fakeFacts{costErr: errors.New("down"), ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}, true},
++-		{"ceiling outage", true, &fakeFacts{ceilingErr: errors.New("down")}, true},
+++		{"cost outage", true, &fakeFacts{costErr: sourceUnavailable("down"), ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}, true},
+++		{"ceiling outage", true, &fakeFacts{ceilingErr: sourceUnavailable("down")}, true},
++ 	} {
++ 		t.Run(tc.name, func(t *testing.T) {
++ 			got, err := NewReadService(&fakeRows{summary: base}, tc.facts, fakePolicy{found: tc.policy}, fakeInstallation(true), time.Now).Summary(context.Background(), ports.SummaryQuery{InstallationID: "i"})
++@@ -150,6 +159,32 @@ func TestReadServiceSummaryUnknownInputsAndSourceOutage(t *testing.T) {
++ 	}
++ }
++ 
+++// TestReadServiceSummaryNonSourceUnavailableErrorsPropagate pins B2: only a
+++// genuine source-unavailable read error may degrade to null margins.
+++// Cancellation, timeout, and plain adapter/data defects must propagate as
+++// errors instead of silently becoming a confident 200 with null facts.
+++func TestReadServiceSummaryNonSourceUnavailableErrorsPropagate(t *testing.T) {
+++	base := ports.ListingSummaryRow{Total: 2, Unlinked: 1, Linked: []ports.SummaryLinkedRow{{CostID: 1, Price: money("90")}}}
+++	for _, tc := range []struct {
+++		name  string
+++		facts *fakeFacts
+++	}{
+++		{"ceiling deadline exceeded", &fakeFacts{ceilingErr: context.DeadlineExceeded}},
+++		{"ceiling canceled", &fakeFacts{ceilingErr: context.Canceled}},
+++		{"ceiling plain adapter defect", &fakeFacts{ceilingErr: errors.New("adapter defect")}},
+++		{"cost deadline exceeded", &fakeFacts{costErr: context.DeadlineExceeded, ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}},
+++		{"cost canceled", &fakeFacts{costErr: context.Canceled, ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}},
+++		{"cost plain adapter defect", &fakeFacts{costErr: errors.New("adapter defect"), ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}},
+++	} {
+++		t.Run(tc.name, func(t *testing.T) {
+++			got, err := NewReadService(&fakeRows{summary: base}, tc.facts, fakePolicy{found: true}, fakeInstallation(true), time.Now).Summary(context.Background(), ports.SummaryQuery{InstallationID: "i"})
+++			if err == nil {
+++				t.Fatalf("expected propagated error, got summary=%+v", got)
+++			}
+++		})
+++	}
+++}
+++
++ func TestReadServiceSummaryValidatesInstallationFirst(t *testing.T) {
++ 	for _, tc := range []struct {
++ 		id           string
++@@ -218,10 +253,10 @@ func TestReadServiceOptionalFactOutagesServeListByProductAndGet(t *testing.T) {
++ 			r := &fakeRows{pages: []ports.ListingRowPage{{Items: []domain.ListingReadModel{resolved("42664")}}}}
++ 			f := &fakeFacts{ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}
++ 			if outage.ceilingErr {
++-				f.ceilingErr = errors.New("ceiling down")
+++				f.ceilingErr = sourceUnavailable("ceiling down")
++ 			}
++ 			if outage.costErr {
++-				f.costErr = errors.New("cost down")
+++				f.costErr = sourceUnavailable("cost down")
++ 			}
++ 			page, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), time.Now).List(context.Background(), ports.ListingQuery{InstallationID: "i", Limit: 1})
++ 			if err != nil || len(page.Items) != 1 {
++@@ -241,10 +276,10 @@ func TestReadServiceOptionalFactOutagesServeListByProductAndGet(t *testing.T) {
++ 			r := &fakeRows{groupPages: []ports.ListingGroupRowPage{{Groups: []domain.ListingGroup{{ProductID: &productID, ProductTitle: ptrString("Produto"), Listings: []domain.ListingReadModel{resolved(productID)}}}}}}
++ 			f := &fakeFacts{ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}
++ 			if outage.ceilingErr {
++-				f.ceilingErr = errors.New("ceiling down")
+++				f.ceilingErr = sourceUnavailable("ceiling down")
++ 			}
++ 			if outage.costErr {
++-				f.costErr = errors.New("cost down")
+++				f.costErr = sourceUnavailable("cost down")
++ 			}
++ 			page, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), time.Now).ByProduct(context.Background(), ports.ListingGroupQuery{InstallationID: "i", Limit: 1})
++ 			if err != nil || len(page.Groups) != 1 || len(page.Groups[0].Listings) != 1 {
++@@ -267,10 +302,10 @@ func TestReadServiceOptionalFactOutagesServeListByProductAndGet(t *testing.T) {
++ 			r := &fakeRows{getModel: model, getFound: true, timeline: []domain.TimelineEvent{{Kind: "synced"}}}
++ 			f := &fakeFacts{ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}
++ 			if outage.ceilingErr {
++-				f.ceilingErr = errors.New("ceiling down")
+++				f.ceilingErr = sourceUnavailable("ceiling down")
++ 			}
++ 			if outage.costErr {
++-				f.costErr = errors.New("cost down")
+++				f.costErr = sourceUnavailable("cost down")
++ 			}
++ 			got, timeline, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), time.Now).Get(context.Background(), domain.ListingID{InstallationID: "i", ProviderListingID: "42664", VariationID: "-"})
++ 			if err != nil || got.ListingID == "" || len(timeline) != 1 {
++@@ -289,73 +324,202 @@ func TestReadServiceOptionalFactOutagesServeListByProductAndGet(t *testing.T) {
++ 	}
++ }
++ 
++-func TestReadServiceDependentFilterPassesThroughWhenOptionalFactsUnavailable(t *testing.T) {
+++// TestReadServiceFlatPathNonSourceUnavailableErrorsPropagate pins B2 across
+++// List, ByProduct and Get: only a genuine source-unavailable read error may
+++// degrade cost/ceiling facts to null. Cancellation, timeout, and plain
+++// adapter/data defects must propagate as errors instead of silently
+++// becoming a confident 200 with null facts.
+++func TestReadServiceFlatPathNonSourceUnavailableErrorsPropagate(t *testing.T) {
+++	newFacts := func(ceilingErr, costErr error) *fakeFacts {
+++		f := &fakeFacts{ceilingErr: ceilingErr, costErr: costErr}
+++		if ceilingErr == nil {
+++			f.ceilings = map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}
+++		}
+++		return f
+++	}
+++	cases := []struct {
+++		name       string
+++		ceilingErr error
+++		costErr    error
+++	}{
+++		{"ceiling deadline exceeded", context.DeadlineExceeded, nil},
+++		{"ceiling canceled", context.Canceled, nil},
+++		{"ceiling plain adapter defect", errors.New("adapter defect"), nil},
+++		{"cost deadline exceeded", nil, context.DeadlineExceeded},
+++		{"cost canceled", nil, context.Canceled},
+++		{"cost plain adapter defect", nil, errors.New("adapter defect")},
+++	}
+++	for _, tc := range cases {
+++		t.Run(tc.name+" list", func(t *testing.T) {
+++			r := &fakeRows{pages: []ports.ListingRowPage{{Items: []domain.ListingReadModel{resolved("42664")}}}}
+++			page, err := NewReadService(r, newFacts(tc.ceilingErr, tc.costErr), fakePolicy{found: true}, fakeInstallation(true), time.Now).List(context.Background(), ports.ListingQuery{InstallationID: "i", Limit: 1})
+++			if err == nil {
+++				t.Fatalf("expected propagated error, got page=%+v", page)
+++			}
+++		})
+++		t.Run(tc.name+" by product", func(t *testing.T) {
+++			productID := "42664"
+++			r := &fakeRows{groupPages: []ports.ListingGroupRowPage{{Groups: []domain.ListingGroup{{ProductID: &productID, ProductTitle: ptrString("Produto"), Listings: []domain.ListingReadModel{resolved(productID)}}}}}}
+++			page, err := NewReadService(r, newFacts(tc.ceilingErr, tc.costErr), fakePolicy{found: true}, fakeInstallation(true), time.Now).ByProduct(context.Background(), ports.ListingGroupQuery{InstallationID: "i", Limit: 1})
+++			if err == nil {
+++				t.Fatalf("expected propagated error, got page=%+v", page)
+++			}
+++		})
+++		t.Run(tc.name+" get", func(t *testing.T) {
+++			model := resolved("i~42664~-")
+++			model.InstallationID = "i"
+++			model.ProviderListingID = "42664"
+++			model.Link.ProductID = ptrString("42664")
+++			r := &fakeRows{getModel: model, getFound: true, timeline: []domain.TimelineEvent{{Kind: "synced"}}}
+++			got, timeline, err := NewReadService(r, newFacts(tc.ceilingErr, tc.costErr), fakePolicy{found: true}, fakeInstallation(true), time.Now).Get(context.Background(), domain.ListingID{InstallationID: "i", ProviderListingID: "42664", VariationID: "-"})
+++			if err == nil {
+++				t.Fatalf("expected propagated error, got detail=%+v timeline=%+v", got, timeline)
+++			}
+++		})
+++	}
+++}
+++
+++// TestReadServiceDependentFilterErrorsWhenFactsSourceUnavailable pins B1
+++// (hub ruling: PURE, uniform fail-honest). ANY fact-dependent filter --
+++// filter.has_exception (true or false) or filter.exception=below_margin --
+++// during a genuine source-unavailable outage must return a source-unavailable
+++// error through the existing error envelope, never a confident 200 built by
+++// re-querying without the filter applied. This supersedes the old
+++// TestReadServiceDependentFilterPassesThroughWhenOptionalFactsUnavailable,
+++// which pinned the defect (rows whose facts couldn't be evaluated were
+++// silently served as matches/non-matches -- a known-false fact returned as a
+++// match, exactly what ADR-17 forbids). Applying the filter's SQL-computable
+++// half only (has_exception) while nulling margin was explicitly rejected by
+++// the hub ruling as under-inclusive; both filter directions get the same
+++// uniform error.
+++func TestReadServiceDependentFilterErrorsWhenFactsSourceUnavailable(t *testing.T) {
+++	trueValue, falseValue := true, false
++ 	originalCursor := ports.ListingCursor{LastTitle: "before", ListingID: "i~before~-"}
++ 	for _, outage := range []struct {
++ 		name       string
++ 		ceilingErr bool
++ 		costErr    bool
++-		wantCalls  int
++ 	}{
++-		{name: "ceiling outage", ceilingErr: true, wantCalls: 1},
++-		{name: "cost outage", costErr: true, wantCalls: 2},
+++		{name: "ceiling outage", ceilingErr: true},
+++		{name: "cost outage", costErr: true},
+++	} {
+++		for _, filter := range []struct {
+++			name   string
+++			filter domain.ListingFilter
+++		}{
+++			{"exception below_margin", domain.ListingFilter{Exception: domain.ListingExceptionBelowMargin}},
+++			{"has_exception true", domain.ListingFilter{HasException: &trueValue}},
+++			{"has_exception false", domain.ListingFilter{HasException: &falseValue}},
+++		} {
+++			t.Run(outage.name+" "+filter.name+" list", func(t *testing.T) {
+++				next := ports.ListingCursor{LastTitle: "next", ListingID: "i~next~-"}
+++				r := &fakeRows{pages: []ports.ListingRowPage{
+++					{Items: []domain.ListingReadModel{resolved("42664")}, NextCursor: &next},
+++				}}
+++				f := &fakeFacts{}
+++				if outage.ceilingErr {
+++					f.ceilingErr = sourceUnavailable("ceiling down")
+++				}
+++				if outage.costErr {
+++					f.costErr = sourceUnavailable("cost down")
+++				}
+++				query := ports.ListingQuery{InstallationID: "i", Cursor: originalCursor, Limit: 1, Filter: filter.filter}
+++				page, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), fixedNow).List(context.Background(), query)
+++				if err == nil {
+++					t.Fatalf("expected source-unavailable error, got page=%+v", page)
+++				}
+++			})
+++
+++			t.Run(outage.name+" "+filter.name+" by product", func(t *testing.T) {
+++				productID := "42664"
+++				next := ports.GroupCursor{ProductTitle: "Próximo", ProductID: "42666"}
+++				r := &fakeRows{groupPages: []ports.ListingGroupRowPage{
+++					{Groups: []domain.ListingGroup{{ProductID: &productID, ProductTitle: ptrString("Produto"), Listings: []domain.ListingReadModel{resolved(productID)}}}, NextCursor: &next},
+++				}}
+++				f := &fakeFacts{}
+++				if outage.ceilingErr {
+++					f.ceilingErr = sourceUnavailable("ceiling down")
+++				}
+++				if outage.costErr {
+++					f.costErr = sourceUnavailable("cost down")
+++				}
+++				query := ports.ListingGroupQuery{InstallationID: "i", Cursor: ports.GroupCursor{ProductTitle: "Antes", ProductID: "1"}, Limit: 1, Filter: filter.filter}
+++				page, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), fixedNow).ByProduct(context.Background(), query)
+++				if err == nil {
+++					t.Fatalf("expected source-unavailable error, got page=%+v", page)
+++				}
+++			})
+++		}
+++	}
+++}
+++
+++// TestReadServiceNoDependentFilterStillDegradesOnSourceUnavailable guards
+++// against over-correcting B1: a request with NO fact-dependent filter must
+++// still serve a 200 with facts nulled on a genuine source-unavailable
+++// outage -- that path is ADR-17-correct (null = not-evaluable) and must not
+++// regress into an error just because dependent-filter requests now do.
+++func TestReadServiceNoDependentFilterStillDegradesOnSourceUnavailable(t *testing.T) {
+++	for _, outage := range []struct {
+++		name       string
+++		ceilingErr bool
+++		costErr    bool
+++	}{
+++		{name: "ceiling outage", ceilingErr: true},
+++		{name: "cost outage", costErr: true},
++ 	} {
++ 		t.Run(outage.name+" list", func(t *testing.T) {
++-			next := ports.ListingCursor{LastTitle: "next", ListingID: "i~next~-"}
++-			r := &fakeRows{pages: []ports.ListingRowPage{
++-				{Items: []domain.ListingReadModel{resolved("42664")}, NextCursor: &next},
++-				{Items: []domain.ListingReadModel{resolved("42665")}, NextCursor: &next},
++-			}}
++-			f := &fakeFacts{}
+++			r := &fakeRows{pages: []ports.ListingRowPage{{Items: []domain.ListingReadModel{resolved("42664")}}}}
+++			f := &fakeFacts{ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}
++ 			if outage.ceilingErr {
++-				f.ceilingErr = errors.New("ceiling down")
+++				f.ceilingErr = sourceUnavailable("ceiling down")
++ 			}
++ 			if outage.costErr {
++-				f.costErr = errors.New("cost down")
+++				f.costErr = sourceUnavailable("cost down")
++ 			}
++-			query := ports.ListingQuery{InstallationID: "i", Cursor: originalCursor, Limit: 1, Filter: domain.ListingFilter{Exception: domain.ListingExceptionBelowMargin}}
++-			page, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), fixedNow).List(context.Background(), query)
++-			if err != nil || len(page.Items) != 1 || page.NextCursor == nil || *page.NextCursor != next || !page.AsOf.Equal(fixedNow().UTC()) {
+++			page, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), time.Now).List(context.Background(), ports.ListingQuery{InstallationID: "i", Limit: 1})
+++			if err != nil || len(page.Items) != 1 {
++ 				t.Fatalf("page=%+v err=%v", page, err)
++ 			}
++ 			if page.Items[0].Cost != nil || page.Items[0].BelowMarginWorstCase != nil {
++-				t.Fatalf("unknown item=%+v", page.Items[0])
++-			}
++-			if len(r.listQueries) != outage.wantCalls || r.listQueries[0].Cursor != originalCursor || (outage.costErr && r.listQueries[1].Cursor != originalCursor) {
++-				t.Fatalf("queries=%+v", r.listQueries)
+++				t.Fatalf("degraded item=%+v", page.Items[0])
++ 			}
++ 		})
++ 
++ 		t.Run(outage.name+" by product", func(t *testing.T) {
++ 			productID := "42664"
++-			fallbackID := "42665"
++-			next := ports.GroupCursor{ProductTitle: "Próximo", ProductID: "42666"}
++-			r := &fakeRows{groupPages: []ports.ListingGroupRowPage{
++-				{Groups: []domain.ListingGroup{{ProductID: &productID, ProductTitle: ptrString("Produto"), Listings: []domain.ListingReadModel{resolved(productID)}}}, NextCursor: &next},
++-				{Groups: []domain.ListingGroup{{ProductID: &fallbackID, ProductTitle: ptrString("Fallback"), Listings: []domain.ListingReadModel{resolved(fallbackID)}}}, NextCursor: &next},
++-			}}
++-			f := &fakeFacts{}
+++			r := &fakeRows{groupPages: []ports.ListingGroupRowPage{{Groups: []domain.ListingGroup{{ProductID: &productID, ProductTitle: ptrString("Produto"), Listings: []domain.ListingReadModel{resolved(productID)}}}}}}
+++			f := &fakeFacts{ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}
++ 			if outage.ceilingErr {
++-				f.ceilingErr = errors.New("ceiling down")
+++				f.ceilingErr = sourceUnavailable("ceiling down")
++ 			}
++ 			if outage.costErr {
++-				f.costErr = errors.New("cost down")
+++				f.costErr = sourceUnavailable("cost down")
++ 			}
++-			query := ports.ListingGroupQuery{InstallationID: "i", Cursor: ports.GroupCursor{ProductTitle: "Antes", ProductID: "1"}, Limit: 1, Filter: domain.ListingFilter{Exception: domain.ListingExceptionBelowMargin}}
++-			page, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), fixedNow).ByProduct(context.Background(), query)
++-			if err != nil || len(page.Groups) != 1 || len(page.Groups[0].Listings) != 1 || page.NextCursor == nil || *page.NextCursor != next || !page.AsOf.Equal(fixedNow().UTC()) {
+++			page, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), time.Now).ByProduct(context.Background(), ports.ListingGroupQuery{InstallationID: "i", Limit: 1})
+++			if err != nil || len(page.Groups) != 1 {
++ 				t.Fatalf("page=%+v err=%v", page, err)
++ 			}
++-			if page.Groups[0].Listings[0].Cost != nil || page.Groups[0].Listings[0].BelowMarginWorstCase != nil || page.Groups[0].ListingCount != 1 {
++-				t.Fatalf("unknown group=%+v", page.Groups[0])
++-			}
++-			if len(r.groupQueries) != outage.wantCalls || r.groupQueries[0].Cursor != query.Cursor || (outage.costErr && r.groupQueries[1].Cursor != query.Cursor) {
++-				t.Fatalf("queries=%+v", r.groupQueries)
+++			if page.Groups[0].Listings[0].Cost != nil || page.Groups[0].Listings[0].BelowMarginWorstCase != nil {
+++				t.Fatalf("degraded item=%+v", page.Groups[0].Listings[0])
++ 			}
++ 		})
++ 	}
++ }
++ 
+++// TestReadServiceDependentFilterNonSourceUnavailablePropagates pins B2 for
+++// the scan path: cancellation/timeout/adapter defects discovered mid-scan
+++// under a fact-dependent filter must propagate as errors, not be classified
+++// as a degrade-worthy outage.
+++func TestReadServiceDependentFilterNonSourceUnavailablePropagates(t *testing.T) {
+++	r := &fakeRows{pages: []ports.ListingRowPage{{Items: []domain.ListingReadModel{resolved("42664")}}}}
+++	f := &fakeFacts{ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}, costErr: context.DeadlineExceeded}
+++	query := ports.ListingQuery{InstallationID: "i", Limit: 1, Filter: domain.ListingFilter{Exception: domain.ListingExceptionBelowMargin}}
+++	page, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), time.Now).List(context.Background(), query)
+++	if !errors.Is(err, context.DeadlineExceeded) {
+++		t.Fatalf("expected context.DeadlineExceeded to propagate, got page=%+v err=%v", page, err)
+++	}
+++}
+++
++ func TestReadServiceInstallationAndPolicyFailuresRemainHard(t *testing.T) {
++ 	installationErr := errors.New("installation reader down")
++ 	r := &fakeRows{pages: []ports.ListingRowPage{{Items: []domain.ListingReadModel{resolved("42664")}}}}
+diff --git a/.mnfs/MIS-003-operator-cockpit-wireframe-replan/M-01-listings-read-spine/_gate-evidence/round-3/dual-gate-round3-verdict.md b/.mnfs/MIS-003-operator-cockpit-wireframe-replan/M-01-listings-read-spine/_gate-evidence/round-3/dual-gate-round3-verdict.md
+new file mode 100644
+index 00000000..08392955
+--- /dev/null
++++ b/.mnfs/MIS-003-operator-cockpit-wireframe-replan/M-01-listings-read-spine/_gate-evidence/round-3/dual-gate-round3-verdict.md
+@@ -0,0 +1,88 @@
++# Dual-gate round 3 (slice 10 delta) — MERGED VERDICT: **FAIL**
++
++```yaml
++gate: P6 dual gate, DELTA scope (REVIEW-STANDARD §9) + explicit round-2 resolution check
++base: c4e8ab91
++head: 7f5a1b8c
++diff: _gate-evidence/round-3/delta-round3.diff (715 lines, 3 files)
++claude_side: COLD Opus subagent (model=opus, clean context, implementer≠reviewer) — VERDICT: FAIL
++gpt_side:    GPT-5.6 Sol --effort medium (/codex:rescue, fresh thread) — VERDICT: FAIL
++dispatch: SIMULTANEOUS at fixed SHA 7f5a1b8c, both on the §14 prompt-pack, neither saw the other's output
++merge: §8 — both FAIL. One CONTRADICTION (B2), resolved in favour of the side with the deeper receipt.
++verdict: FAIL. M-01 does NOT close. Slice 11 required + one hub ruling.
++```
++
++## Part 2 — round-2 resolution check
++
++| # | Opus | Sol | Merged | Receipt |
++|---|---|---|---|---|
++| **B1** degraded path drops fact-dependent filters | RESOLVED | RESOLVED | **RESOLVED** | `read_service.go:361-363` (ceiling pre-check), `:377-379` (cost mid-scan), `:215-217`,`:231-233` (scanGroups); `passThrough`/`passThroughGroups` deleted; `needsBelowMarginScan:485-487` uniform. |
++| **B2** all cost-reader errors collapse to "facts unavailable" | RESOLVED | **UNRESOLVED** | **UNRESOLVED — Sol wins** | See G1 below. Opus verified only the application layer, where the gate IS strict (`:65-67`, `:76-79`, `:99-102`, `:112-115`, `:144-147`, `:324-327`, `:429-432`). Sol read one layer down into the adapter and found the taxonomy itself is not discriminating. Sol's receipt is deeper and independently re-verified by the milestone owner. |
++| **B2b** outage swallowed with zero telemetry | RESOLVED | RESOLVED | **RESOLVED** | `slog.Error` `:77,:100,:113,:145,:325,:430`; `slog.Warn` `:86,:103,:117,:189,:329,:433`; once per request (cost fetch gated by `if unavailable == nil` `:415`; scan/scanGroups early-return `:377`,`:231`) — no per-row flood. (But see G5: the WARN's wording can misreport the outcome.) |
++| **I1** unreachable policy wrapper | RESOLVED | RESOLVED | **RESOLVED** | `root.go:472-473` wires `NewPolicyReader(marketSvc)` directly; type + `listingsports` import gone; repo-wide grep = 0 hits. |
++| **I2** tests pin the defect | RESOLVED | RESOLVED | **RESOLVED** | `read_service_test.go:550` replaces the defective test; `t.Fatalf` on `err == nil` across 3 filter shapes × 2 outage sources × List/ByProduct; over-correction guard `:619`. (But G3: a *different* branch is now unpinned.) |
++| **S1** `NewBatchReader` unguarded / skips `TimingReader` | UNRESOLVED — defensible | UNRESOLVED — defensible | **UNRESOLVED — defensible, non-gating** | `root.go:472` unchanged. Accepted as a *suggestion* in round 2, verified safe (`ensureBatchAvailable` nil-checks), explicitly outside slice 10's R2 scope. Both sides agree it does not gate. The unproven live per-page Oracle latency stays separately tracked. |
++| **N1** `enrichGroups` discards known state | RESOLVED | RESOLVED | **RESOLVED** | `read_service.go:272-274` returns `unavailable, err`. |
++
++**6 of 7 resolved. B2 is not.**
++
++## Part 1 — merged delta findings
++
++| # | Finding | Opus | Sol | Merged |
++|---|---|---|---|---|
++| **G1** | **Adapter taxonomy defeats the strict classification the ruling mandated.** `wrapOracleError` (`internal_read/adapters/oracle/reader.go:508-513`) labels EVERYTHING that is not `sql.ErrNoRows` as `ReadErrorSourceUnavailable` — `context.Canceled`, `DeadlineExceeded`, and query/scan/iteration defects included. So `isSourceUnavailable` returns true in production for errors that must propagate. Unit tests pass only because they inject raw fakes carrying the correct code. Net effect: on a no-filter read, a genuine data/driver defect still degrades to null facts — the exact substance B2 was raised to stop. | not raised | **blocking** | **blocking** |
++| **G2** | **`Get` regressed a round-2-certified behavior.** `read_service.go:337` changed its matrix guard from `ceilingErr != nil` to `unavailable != nil`, so a **cost-only** outage now nulls the ENTIRE `ICMSWorstCaseByUF`. But `icmsWorstCaseByUF:563-567` populates `WorstCaseICMSPct` and `PriceNetBasis` (`priceNetBasis:574-576` — price + ceiling only) with **no cost dependency**, and `belowMargin:520-522` already returns nil for a nil cost. Pre-slice-10 returned the full matrix with only `below_margin_at_uf` null — which round 2 **explicitly certified as correct** ("keeps the real ICMS matrix… rather than nulling the whole matrix"). This discards KNOWN-TRUE facts because an unrelated fact is unavailable. ADR-17 licenses null for *unknown* facts, not for known ones. | **important** | not raised | **important** |
++| **G3** | **The G2 regression is invisible to the suite.** `read_service_test.go:317` guards the matrix assertion behind `outage.ceilingErr &&`, so the cost-outage case asserts nothing about `ICMSWorstCaseByUF`. This is round-2's own I2 criterion turned on slice 10: a test that does not pin is not coverage. | **important** | not raised | **important** |
++| **G4** | **Comment narration / PR-voice comments in production code.** `read_service.go:172-177`, `:271-278`, `:318-324` and the test doc comments narrate adjudication history — "Per the hub ruling (B1, PURE uniform fail-honest)", "pins B2". `HARNESS.md:203-204` is unambiguous: *"AI-slop checklist — any hit = REJECT the slice: … comment narration / PR-voice comments"*. A binding REJECT rule, hit directly. | not raised | **blocking** | **blocking** |
++| **G5** | **The degrade WARN can state the opposite of what happened.** The ceiling WARN (`:117`, `:189`, `:329`) reads "degrading fact to null" but fires BEFORE the `needsBelowMarginScan` branch (`:153`, `:192`), so a fact-dependent-filter request logs "degrading to null" and then returns 503. The log contradicts the outcome — undercutting exactly the operator honesty B2b was raised to restore. | suggestion | **important** | **important** (higher severity wins per §8) |
++| **G6** | `(error, error)` uses `error` as a state carrier in the non-terminal position; transposable at call sites, against Go convention. Correctly threaded at all six call sites today. | nit | not raised | nit |
++
++## The one contradiction, and how it merged
++
++Opus marked **B2 RESOLVED**; Sol marked it **UNRESOLVED**. Not a disagreement about facts — a
++difference in depth. Opus reviewed the delta's three files, where the classification IS strict and
++correct. Sol left the delta to read the adapter that produces the codes, and found the labels
++themselves are indiscriminate. Both descriptions are true of what each read; Sol's is true of the
++running system. **The milestone owner re-verified `reader.go:508-513` in-tree before merging** — the
++`errors.Is(err, sql.ErrNoRows)` check is the only discrimination that exists. §8 merge = union of
++findings, max severity, deeper receipt wins the contradiction.
++
++This is also the case for reviewing at fixed SHA with *two* readers rather than one: a single
++reviewer bounded strictly to the delta would have passed a defect that lives outside it.
++
++## Milestone-owner note on my own slice review
++
++`slice10-review.md:29-31` recorded G2 as a **"BONUS fix nobody asked for… closing a latent gap."**
++That was wrong: it is a regression of behavior a prior gate had certified. The §14 slice review is
++mine to own — I attached it, so I own the misclassification. Recorded here rather than quietly
++corrected. It is precisely why the cold gate exists downstream of the slice review.
++
++## Scope split — G1 is NOT the chip's to fix
++
++`wrapOracleError` is a **cross-module shared seam**. Its `ReadErrorSourceUnavailable` output is
++consumed by `catalog/transport/http_handler.go:289`, `product_links/application/generation_service.go:319`
++and `profitability/adapters/internalread/fact_reader.go`, besides listings. The taxonomy
++(`internal_read/domain/read_error.go:8-9`) has only TWO general codes — `source_unavailable` and
++`unsupported_query` — so there is **no existing code** for cancellation or for an adapter/data
++defect; fixing G1 means ADDING to the taxonomy and re-classifying for every consumer.
++
++Per HARNESS, one writer owns a shared seam and the hub owns cross-module seams. The M-01 chip must
++NOT unilaterally edit it. **G1 escalates to the hub** — see
++`HUB-EVENT-BLOCKED-gate-round3-adapter-taxonomy.md`.
++
++G2/G3/G4/G5 are inside the listings module = chip's, slice 11.
++
++## Governance drift observed (not a code finding)
++
++This worktree's `docs/` is behind the main repo's governance commits: it has no
++`docs/REVIEW-STANDARD.md`, and its `AGENTS.md` still points at `docs/superpowers/HARNESS.md`. The
++binding copies (`docs/HARNESS.md`, `docs/REVIEW-STANDARD.md`) exist only in the main checkout. The
++prompt-pack handed both reviewers a worktree path for `REVIEW-STANDARD.md` that does not resolve
++there; both nonetheless returned §14-conformant output, so they sourced the standard elsewhere
++(codex's cwd is the main root). Flagged for the hub: reviewers should be pointed at the main-repo
++governance paths until the worktree is caught up.
++
++## Consequence
++
++**M-01 does NOT close. P8 CLOSED withheld.** Slice 11 required (G2/G3/G4/G5), plus a hub ruling on
++G1's scope before B2 can be honestly called resolved.
+diff --git a/.mnfs/MIS-003-operator-cockpit-wireframe-replan/M-01-listings-read-spine/_gate-evidence/round-3/redrive-post-slice10.md b/.mnfs/MIS-003-operator-cockpit-wireframe-replan/M-01-listings-read-spine/_gate-evidence/round-3/redrive-post-slice10.md
+new file mode 100644
+index 00000000..e8b5cc58
+--- /dev/null
++++ b/.mnfs/MIS-003-operator-cockpit-wireframe-replan/M-01-listings-read-spine/_gate-evidence/round-3/redrive-post-slice10.md
+@@ -0,0 +1,75 @@
++# Live re-drive post slice 10 — NO REGRESSION
++
++```yaml
++lane: non-regression re-drive (C10 + fail-honest filter paths)
++backend: 7f5a1b8c (hub ENV-READY; "applied 0 migration(s)" = correct, slice 10 has no migration; /healthz 200; server up 11:57:29)
++installation: inst-mercado_livre-d373dc64-577f-4950-b11b-b90244f30cb2 (tenant_default)
++base: http://127.0.0.1:8080
++as_of: 2026-07-16T11:59:19Z
++driven_by: chip (canonical reads only — no DB, no .env, no self-boot)
++verdict: PASS — no regression
++```
++
++## Read paths
++
++| Request | HTTP |
++|---|---|
++| `GET /healthz` | 200 |
++| `GET /listings?installation_id=…&limit=100` | 200 |
++| `GET /listings/summary?installation_id=…` | 200 |
++| `GET /listings/by-product?installation_id=…&limit=20` | 200 |
++| `GET /listings?…&filter.has_exception=false` | 200 |
++| `GET /listings?…&filter.has_exception=true` | 200 |
++| `GET /listings?…&filter.exception=below_margin` | 200 |
++
++All three fact-dependent filters serve **200** with the fact source healthy — slice 10 did NOT
++over-correct into a blanket 503. The fail-honest arm is reachable only under a genuine
++`ReadErrorSourceUnavailable`, which cannot be provoked from the canonical surface; it is pinned
++deterministically instead (unit tests + `slice10-review.md`).
++
++## C10 — still PASS, byte-identical to the post-slice-9 drive
++
++34 rows, **34/34 real `MLB…` provider ids**, `next_cursor: null`.
++
++| status | count | share |
++|---|---:|---:|
++| paused | 17 | 50.0% |
++| active | 10 | 29.4% |
++| under_review | 7 | 20.6% |
++| **unknown** | **0** | **0.0%** |
++
++`unknown = 0.0% < 20%` → **C10 PASS holds** (contract `validation-contract.md:172,175`).
++
++Summary unchanged vs post-slice-9:
++`{"total":34,"active":10,"paused":17,"exceptions":{"sync_error":0,"stale":0,"unlinked":33,"below_margin_worst_case":0,"margin_unknown":1}}`
++
++## Filter row counts — the one thing worth explaining
++
++| Filter | Rows |
++|---|---:|
++| `has_exception=true` | 33 |
++| `has_exception=false` | 0 |
++| `exception=below_margin` | 0 |
++
++33 + 0 = 33, against 34 total. **One row appears in neither filter — and that is correct, not a
++regression.** The row is `MLB4735328201` (the single linked one): `link.state=resolved`,
++`sync_state=synced`, `cost=91.57` (real Oracle), but `below_margin_worst_case=null` because the
++ICMS ceiling / pricing policy is absent for it (`margin_unknown`, the same row the summary counts).
++
++- `has_exception=true` requires a **provable** exception (`sqlException || below_margin==true`) → this
++  row has neither → excluded.
++- `has_exception=false` requires `BelowMarginWorstCase != nil && !active` → margin is unknown, so the
++  service refuses to assert "this row has no exception" → excluded.
++
++A row whose exception status is genuinely **unknown** is claimed by neither side of a boolean filter.
++That is ADR-17 exactly: unknown never collapses into a confident `false`. `matchesDependentFilter`
++(`read_service.go:488-500`) is untouched by slice 10 — this is pre-existing, intended, and it is the
++same principle slice 10 exists to enforce (a known-false or unknown fact must never be returned as a
++match). The summary surfacing `margin_unknown: 1` and the filter declining to classify that row are
++consistent, not contradictory.
++
++## Other C10 facts (unchanged, still green)
++
++- Oracle cost wiring live-proven: `MLB4735328201` (pid 15956) → `cost=91.57` real Oracle.
++- 33 unlinked → `cost` null (legit ADR-17); 1 linked → `margin_unknown` (cost present, ceiling/policy
++  absent → honest null, C07-consistent).
+diff --git a/.mnfs/MIS-003-operator-cockpit-wireframe-replan/M-01-listings-read-spine/_gate-evidence/round-4/slice11-L0-report.md b/.mnfs/MIS-003-operator-cockpit-wireframe-replan/M-01-listings-read-spine/_gate-evidence/round-4/slice11-L0-report.md
+new file mode 100644
+index 00000000..c61221e8
+--- /dev/null
++++ b/.mnfs/MIS-003-operator-cockpit-wireframe-replan/M-01-listings-read-spine/_gate-evidence/round-4/slice11-L0-report.md
+@@ -0,0 +1,74 @@
++# Slice 11 — L0/L1 deterministic pre-pass report (§7)
++
++```yaml
++base_sha: 7f5a1b8c (slice 10)
++candidate: working-tree diff — 2 files, 410 diff lines (+ a 3-line comment fix by the milestone owner)
++scope: apps/server_core/internal/modules/listings/application/ ONLY
++gocache: absolute (worktree .gocache)
++buildvcs: false (sandbox Git safe.directory VCS-stamp; no repo config changed)
++run_by: milestone-owner (chip), INDEPENDENT of the worker — not a relayed claim
++```
++
++## L0 (precedes review dispatch)
++
++- `go build -buildvcs=false ./...` → **exit 0**
++- `go vet ./...` → **exit 0** (whole repo)
++
++Re-run green after the milestone owner's post-review comment fix.
++
++## L1 unit (ran ∥ review per §15)
++
++`go test -count=1 ./internal/modules/listings/... ./internal/composition/...` → **exit 0**
++(connectors, integrations, application, domain, ports, transport, composition all `ok`)
++
++## L1 integration lane — GREEN
++
++Ephemeral `postgres:16-bookworm`, container `mpc-s11c-…`, port 55531:
++
++- migrate #1 → **applied 37**, #2 → **applied 0** (idempotent)
++- `listings_status_check` = the 8-value set (slice 9 intact):
++  `active, paused, closed, unknown, under_review, inactive, payment_required, not_yet_active`
++- `go test -tags=integration -run TestListingsRead -count=1 ./tests/integration` → **PASS, exit 0** (21.4s)
++  - `TestListingsReadContractEndToEnd` **8/8 subtests**, including
++    **`null_cost_honesty_known_margin_and_summary`** (C07 null-honesty NOT regressed by G2's revert)
++    and `tenant_isolation_all_read_paths_and_cursors`.
++  - `TestListingsReadPerformance2000` PASS — nearest-rank **p95 3.56ms**, index-only scan, summary
++    aggregate query count=1.
++
++### Lane infra note (NOT a code signal — read this before believing a red lane)
++
++Two earlier lane attempts went red and **both were pure infra, caused by the milestone owner's
++scripting, not by slice 11**:
++
++1. **Attempt 1** — `sed`-derived script inherited `docker run --rm`; the container died and `--rm`
++   destroyed the body before autopsy. Output read `CREATE_DB_OK=False after 240 tries` then
++   `FAIL TestListingsReadContractEndToEnd` / `unexpected EOF`. Port 55511 showed `TimeWait`
++   connections, proving the container had accepted connections and then died.
++2. **Attempt 2** — script rewritten from memory invented the env-var contract: used
++   `TEST_DATABASE_URL` + `go run ./cmd/migrate up` instead of the real `MPC_TEST_DATABASE_URL` +
++   `go run ./cmd/testdb migrate`. Output read `MC_DATABASE_URL is required` and
++   `HPG_TARGET_INVALID` → `FAIL TestListingsReadPerformance2000`.
++
++**Every one of those failure modes prints output that looks like a code failure.** Neither was.
++The lesson is recorded: start from the lane script that worked and change only name/port; never
++`sed` it blindly (inherits `--rm`) and never rewrite it from memory (invents plausible-but-wrong
++env vars). Attempt 3 (`s11-lane3.ps1`) added: no `--rm`, echoed `docker run` exit code, 300-retry
++cap, and an autopsy branch (`docker ps -a` + `docker logs`, exit 9) that aborts loudly as INFRA
++instead of running tests against a database that does not exist. `CREATE_DB_OK=True after 192 tries`
++— initdb duration varies wildly with host load (12 / 61 / 192 / 229 tries observed on this box).
++
++## Scope
++
++Exactly 2 files: `internal/modules/listings/application/read_service.go` and `read_service_test.go`.
++No `internal_read/` (the hub-owned cross-module seam), no composition, no transport, no migration,
++no OpenAPI, no SDK, no `docker/dev/*.sh`, no `.env`. Matches the slice-11 brief exactly.
++
++## Milestone-owner independent verification (not relayed from the worker)
++
++- `read_service.go:338` — `Get`'s matrix guard reads `if ceilingErr != nil` (**G2 reverted**).
++- `read_service.go:23-25` — `errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)`
++  returns false BEFORE `IsReadErrorCode` (**G1 in-module half**, per hub ruling (C)).
++- Whole-file grep for narration/PR-voice (`hub ruling`, `pins B1/B2`, `supersed`, `task #2`,
++  `round-2`, `ADR-17`) across both files → **zero hits** (**G4** genuinely clean, not just in the
++  diff hunks).
++- `internal_read/` untouched — confirmed by `git status`: only the 2 listings files are modified.
+diff --git a/.mnfs/MIS-003-operator-cockpit-wireframe-replan/M-01-listings-read-spine/_gate-evidence/round-4/slice11-candidate.diff b/.mnfs/MIS-003-operator-cockpit-wireframe-replan/M-01-listings-read-spine/_gate-evidence/round-4/slice11-candidate.diff
+new file mode 100644
+index 00000000..1fe04c58
+--- /dev/null
++++ b/.mnfs/MIS-003-operator-cockpit-wireframe-replan/M-01-listings-read-spine/_gate-evidence/round-4/slice11-candidate.diff
+@@ -0,0 +1,410 @@
++diff --git a/apps/server_core/internal/modules/listings/application/read_service.go b/apps/server_core/internal/modules/listings/application/read_service.go
++index f9c31afb..82e80942 100644
++--- a/apps/server_core/internal/modules/listings/application/read_service.go
+++++ b/apps/server_core/internal/modules/listings/application/read_service.go
++@@ -16,11 +16,13 @@ import (
++ 	"marketplace-central/apps/server_core/internal/modules/listings/ports"
++ )
++ 
++-// isSourceUnavailable classifies an error using the existing internal_read
++-// error taxonomy. Only ReadErrorSourceUnavailable may legitimately degrade
++-// cost/ceiling facts to null; every other error (cancellation, timeout,
++-// adapter/data defects) must propagate.
+++// isSourceUnavailable reports whether err may legitimately degrade a fact to
+++// null; every other error must propagate. Cancellation and timeout propagate
+++// regardless of the code the error carries.
++ func isSourceUnavailable(err error) bool {
+++	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+++		return false
+++	}
++ 	return internalreaddomain.IsReadErrorCode(err, internalreaddomain.ReadErrorSourceUnavailable)
++ }
++ 
++@@ -145,9 +147,6 @@ func (s ReadService) List(ctx context.Context, query ports.ListingQuery) (ports.
++ 		slog.Error("listings: icms ceiling fact read failed", "err", ceilingErr, "op", "List")
++ 		return ports.ListingRowPage{}, ceilingErr
++ 	}
++-	if ceilingErr != nil {
++-		slog.Warn("listings: icms ceiling source unavailable, degrading fact to null", "err", ceilingErr, "op", "List", "fact", "icms_ceiling")
++-	}
++ 	maxCeiling := maximumCeiling(ceilings)
++ 	serveTime := s.now().UTC()
++ 	if !needsBelowMarginScan(query.Filter) {
++@@ -155,10 +154,13 @@ func (s ReadService) List(ctx context.Context, query ports.ListingQuery) (ports.
++ 		if err != nil {
++ 			return ports.ListingRowPage{}, err
++ 		}
++-		_, err = s.enrich(ctx, page.Items, maxCeiling, policy, policyFound, ceilingErr)
+++		unavailable, err := s.enrich(ctx, page.Items, maxCeiling, policy, policyFound, ceilingErr)
++ 		if err != nil {
++ 			return ports.ListingRowPage{}, err
++ 		}
+++		if unavailable != nil {
+++			slog.Warn("listings: fact source unavailable, degrading fact to null", "err", unavailable, "op", "List", "fact", unavailableFact(ceilingErr))
+++		}
++ 		page.AsOf = serveTime
++ 		return page, nil
++ 	}
++@@ -185,9 +187,6 @@ func (s ReadService) ByProduct(ctx context.Context, query ports.ListingGroupQuer
++ 		slog.Error("listings: icms ceiling fact read failed", "err", ceilingErr, "op", "ByProduct")
++ 		return ports.ListingGroupRowPage{}, ceilingErr
++ 	}
++-	if ceilingErr != nil {
++-		slog.Warn("listings: icms ceiling source unavailable, degrading fact to null", "err", ceilingErr, "op", "ByProduct", "fact", "icms_ceiling")
++-	}
++ 	ceiling, asOf := maximumCeiling(ceilings), s.now().UTC()
++ 	if needsBelowMarginScan(query.Filter) {
++ 		return s.scanGroups(ctx, query, ceiling, policy, policyFound, ceilingErr, asOf)
++@@ -196,23 +195,24 @@ func (s ReadService) ByProduct(ctx context.Context, query ports.ListingGroupQuer
++ 	if err != nil {
++ 		return ports.ListingGroupRowPage{}, err
++ 	}
++-	_, err = s.enrichGroups(ctx, page.Groups, ceiling, policy, policyFound, ceilingErr)
+++	unavailable, err := s.enrichGroups(ctx, page.Groups, ceiling, policy, policyFound, ceilingErr)
++ 	if err != nil {
++ 		return ports.ListingGroupRowPage{}, err
++ 	}
+++	if unavailable != nil {
+++		slog.Warn("listings: fact source unavailable, degrading fact to null", "err", unavailable, "op", "ByProduct", "fact", unavailableFact(ceilingErr))
+++	}
++ 	finalizeGroups(page.Groups)
++ 	page.AsOf = asOf
++ 	return page, nil
++ }
++ 
++-// scanGroups is only reached for a fact-dependent filter (needsBelowMarginScan
++-// is true). Per the hub ruling (B1, PURE uniform fail-honest), a genuine
++-// source-unavailable outage under such a filter must surface as an error
++-// through the existing error envelope, never as a confidently-served page
++-// built by dropping the filter. Both directions of the filter
++-// (has_exception true/false, exception=below_margin) are treated uniformly.
+++// scanGroups is only reached for a fact-dependent filter; a source-unavailable
+++// outage fails the request rather than serving a page built by dropping the
+++// filter.
++ func (s ReadService) scanGroups(ctx context.Context, q ports.ListingGroupQuery, ceiling *float64, policy ports.PricingPolicy, policyFound bool, unavailable error, asOf time.Time) (ports.ListingGroupRowPage, error) {
++ 	if unavailable != nil {
+++		slog.Error("listings: fact source unavailable, failing fact-dependent filter", "err", unavailable, "op", "ByProduct")
++ 		return ports.ListingGroupRowPage{}, unavailable
++ 	}
++ 	result := ports.ListingGroupRowPage{Groups: []domain.ListingGroup{}, AsOf: asOf}
++@@ -229,6 +229,7 @@ func (s ReadService) scanGroups(ctx context.Context, q ports.ListingGroupQuery,
++ 			return ports.ListingGroupRowPage{}, err
++ 		}
++ 		if unavailable != nil {
+++			slog.Error("listings: fact source unavailable, failing fact-dependent filter", "err", unavailable, "op", "ByProduct")
++ 			return ports.ListingGroupRowPage{}, unavailable
++ 		}
++ 		for groupIndex := range page.Groups {
++@@ -325,16 +326,16 @@ func (s ReadService) Get(ctx context.Context, id domain.ListingID) (domain.Listi
++ 		slog.Error("listings: icms ceiling fact read failed", "err", ceilingErr, "op", "Get")
++ 		return domain.ListingReadModel{}, nil, ceilingErr
++ 	}
++-	if ceilingErr != nil {
++-		slog.Warn("listings: icms ceiling source unavailable, degrading fact to null", "err", ceilingErr, "op", "Get", "fact", "icms_ceiling")
++-	}
++ 	items := []domain.ListingReadModel{model}
++ 	unavailable, err := s.enrich(ctx, items, maximumCeiling(ceilings), policy, policyFound, ceilingErr)
++ 	if err != nil {
++ 		return domain.ListingReadModel{}, nil, err
++ 	}
++-	model = items[0]
++ 	if unavailable != nil {
+++		slog.Warn("listings: fact source unavailable, degrading fact to null", "err", unavailable, "op", "Get", "fact", unavailableFact(ceilingErr))
+++	}
+++	model = items[0]
+++	if ceilingErr != nil {
++ 		model.ICMSWorstCaseByUF = nil
++ 	} else {
++ 		model.ICMSWorstCaseByUF = icmsWorstCaseByUF(model, ceilings, policy, policyFound)
++@@ -349,16 +350,13 @@ func (s ReadService) Get(ctx context.Context, id domain.ListingID) (domain.Listi
++ 	return model, timeline, nil
++ }
++ 
++-// scan is only reached for a fact-dependent filter (needsBelowMarginScan is
++-// true). Per the hub ruling (B1, PURE uniform fail-honest), a genuine
++-// source-unavailable outage under such a filter must surface as an error
++-// through the existing error envelope, never as a confidently-served page
++-// built by dropping the filter. Both directions of the filter
++-// (has_exception true/false, exception=below_margin) are treated uniformly;
++-// a request with no fact-dependent filter never reaches this function and
++-// keeps the ADR-17-correct degrade-to-null behavior via the flat path.
+++// scan applies fact-dependent filters in-process; a source-unavailable
+++// outage fails the request rather than serving a page built by dropping the
+++// filter. A request with no fact-dependent filter never reaches this
+++// function and keeps the degrade-to-null behavior via the flat path.
++ func (s ReadService) scan(ctx context.Context, q ports.ListingQuery, ceiling *float64, policy ports.PricingPolicy, policyFound bool, unavailable error, asOf time.Time) (ports.ListingRowPage, error) {
++ 	if unavailable != nil {
+++		slog.Error("listings: fact source unavailable, failing fact-dependent filter", "err", unavailable, "op", "List")
++ 		return ports.ListingRowPage{}, unavailable
++ 	}
++ 	result := ports.ListingRowPage{Items: make([]domain.ListingReadModel, 0, q.Limit), AsOf: asOf}
++@@ -375,6 +373,7 @@ func (s ReadService) scan(ctx context.Context, q ports.ListingQuery, ceiling *fl
++ 			return ports.ListingRowPage{}, err
++ 		}
++ 		if unavailable != nil {
+++			slog.Error("listings: fact source unavailable, failing fact-dependent filter", "err", unavailable, "op", "List")
++ 			return ports.ListingRowPage{}, unavailable
++ 		}
++ 		for _, item := range page.Items {
++@@ -404,11 +403,11 @@ func (s ReadService) scan(ctx context.Context, q ports.ListingQuery, ceiling *fl
++ 
++ // enrich attaches cost/margin facts to items. unavailable, if non-nil on
++ // entry, is a source-unavailable error already known to the caller (the
++-// cost fetch below is skipped in that case). If the cost fetch here fails,
++-// only a source-unavailable classified error may degrade the batch to
++-// null facts (logged once at WARN); any other error (cancellation, timeout,
++-// adapter/data defect) propagates immediately (logged at ERROR) instead of
++-// being swallowed into a false "unknown" state.
+++// cost fetch below is skipped in that case). A source-unavailable cost fetch
+++// sets unavailable and nulls the batch's facts; any other cost fetch error
+++// propagates immediately instead of being swallowed into a false "unknown"
+++// state. Callers own logging the outcome once they know whether the result
+++// degrades or fails.
++ func (s ReadService) enrich(ctx context.Context, items []domain.ListingReadModel, ceiling *float64, policy ports.PricingPolicy, policyFound bool, unavailable error) (error, error) {
++ 	ids := make([]int64, 0, len(items))
++ 	seen := map[int64]bool{}
++@@ -430,7 +429,6 @@ func (s ReadService) enrich(ctx context.Context, items []domain.ListingReadModel
++ 				slog.Error("listings: cost fact read failed", "err", costErr)
++ 				return unavailable, costErr
++ 			}
++-			slog.Warn("listings: cost fact source unavailable, degrading to null", "err", costErr, "fact", "cost")
++ 			unavailable = costErr
++ 		} else {
++ 			costs = fetched
++@@ -466,6 +464,15 @@ func (s ReadService) enrich(ctx context.Context, items []domain.ListingReadModel
++ 	return unavailable, nil
++ }
++ 
+++// unavailableFact reports which fact enrich degraded: if ceilingErr was
+++// already set before enrich ran, the ceiling fetch never happened, so the
+++// outage is the ceiling; otherwise it's the cost fetch enrich attempted.
+++func unavailableFact(ceilingErr error) string {
+++	if ceilingErr != nil {
+++		return "icms_ceiling"
+++	}
+++	return "cost"
+++}
++ func priceCurrency(price *domain.Money) domain.PriceCurrency {
++ 	if price != nil {
++ 		return price.Currency
++diff --git a/apps/server_core/internal/modules/listings/application/read_service_test.go b/apps/server_core/internal/modules/listings/application/read_service_test.go
++index a33ab8f3..634f7cec 100644
++--- a/apps/server_core/internal/modules/listings/application/read_service_test.go
+++++ b/apps/server_core/internal/modules/listings/application/read_service_test.go
++@@ -11,14 +11,16 @@ import (
++ 	"marketplace-central/apps/server_core/internal/modules/listings/ports"
++ )
++ 
++-// sourceUnavailable builds a typed source-unavailable read error using the
++-// existing internal_read error taxonomy, the only kind that may legitimately
++-// degrade cost/ceiling facts to null. Any other error (plain, cancellation,
++-// timeout) must propagate instead of degrading.
++ func sourceUnavailable(msg string) error {
++ 	return internalreaddomain.NewReadError(internalreaddomain.ReadErrorSourceUnavailable, msg, nil)
++ }
++ 
+++// wrappedCause builds the error shape the oracle reader produces: the
+++// source-unavailable code carrying an arbitrary underlying cause.
+++func wrappedCause(cause error) error {
+++	return internalreaddomain.NewReadError(internalreaddomain.ReadErrorSourceUnavailable, "oracle read failed", cause)
+++}
+++
++ type fakeRows struct {
++ 	pages        []ports.ListingRowPage
++ 	listQueries  []ports.ListingQuery
++@@ -159,10 +161,6 @@ func TestReadServiceSummaryUnknownInputsAndSourceOutage(t *testing.T) {
++ 	}
++ }
++ 
++-// TestReadServiceSummaryNonSourceUnavailableErrorsPropagate pins B2: only a
++-// genuine source-unavailable read error may degrade to null margins.
++-// Cancellation, timeout, and plain adapter/data defects must propagate as
++-// errors instead of silently becoming a confident 200 with null facts.
++ func TestReadServiceSummaryNonSourceUnavailableErrorsPropagate(t *testing.T) {
++ 	base := ports.ListingSummaryRow{Total: 2, Unlinked: 1, Linked: []ports.SummaryLinkedRow{{CostID: 1, Price: money("90")}}}
++ 	for _, tc := range []struct {
++@@ -314,8 +312,23 @@ func TestReadServiceOptionalFactOutagesServeListByProductAndGet(t *testing.T) {
++ 			if got.Cost != nil || got.BelowMarginWorstCase != nil {
++ 				t.Fatalf("degraded detail=%+v", got)
++ 			}
++-			if outage.ceilingErr && got.ICMSWorstCaseByUF != nil {
++-				t.Fatalf("ceiling outage matrix=%+v", got.ICMSWorstCaseByUF)
+++			if outage.ceilingErr {
+++				if got.ICMSWorstCaseByUF != nil {
+++					t.Fatalf("ceiling outage matrix=%+v", got.ICMSWorstCaseByUF)
+++				}
+++			}
+++			if outage.costErr {
+++				if got.ICMSWorstCaseByUF == nil {
+++					t.Fatalf("cost outage matrix=nil, want full matrix with only below_margin_at_uf null")
+++				}
+++				for _, row := range *got.ICMSWorstCaseByUF {
+++					if row.WorstCaseICMSPct == nil || row.PriceNetBasis == nil {
+++						t.Fatalf("cost outage row missing known-true facts: %+v", row)
+++					}
+++					if row.BelowMarginAtUF != nil {
+++						t.Fatalf("cost outage row should have unknown below_margin_at_uf: %+v", row)
+++					}
+++				}
++ 			}
++ 			if f.costCalls != outage.wantCosts {
++ 				t.Fatalf("cost calls=%d want=%d", f.costCalls, outage.wantCosts)
++@@ -324,11 +337,6 @@ func TestReadServiceOptionalFactOutagesServeListByProductAndGet(t *testing.T) {
++ 	}
++ }
++ 
++-// TestReadServiceFlatPathNonSourceUnavailableErrorsPropagate pins B2 across
++-// List, ByProduct and Get: only a genuine source-unavailable read error may
++-// degrade cost/ceiling facts to null. Cancellation, timeout, and plain
++-// adapter/data defects must propagate as errors instead of silently
++-// becoming a confident 200 with null facts.
++ func TestReadServiceFlatPathNonSourceUnavailableErrorsPropagate(t *testing.T) {
++ 	newFacts := func(ceilingErr, costErr error) *fakeFacts {
++ 		f := &fakeFacts{ceilingErr: ceilingErr, costErr: costErr}
++@@ -379,19 +387,12 @@ func TestReadServiceFlatPathNonSourceUnavailableErrorsPropagate(t *testing.T) {
++ 	}
++ }
++ 
++-// TestReadServiceDependentFilterErrorsWhenFactsSourceUnavailable pins B1
++-// (hub ruling: PURE, uniform fail-honest). ANY fact-dependent filter --
++-// filter.has_exception (true or false) or filter.exception=below_margin --
++-// during a genuine source-unavailable outage must return a source-unavailable
++-// error through the existing error envelope, never a confident 200 built by
++-// re-querying without the filter applied. This supersedes the old
++-// TestReadServiceDependentFilterPassesThroughWhenOptionalFactsUnavailable,
++-// which pinned the defect (rows whose facts couldn't be evaluated were
++-// silently served as matches/non-matches -- a known-false fact returned as a
++-// match, exactly what ADR-17 forbids). Applying the filter's SQL-computable
++-// half only (has_exception) while nulling margin was explicitly rejected by
++-// the hub ruling as under-inclusive; both filter directions get the same
++-// uniform error.
+++// TestReadServiceDependentFilterErrorsWhenFactsSourceUnavailable asserts that
+++// ANY fact-dependent filter -- filter.has_exception (true or false) or
+++// filter.exception=below_margin -- during a genuine source-unavailable
+++// outage returns a source-unavailable error, never a confident 200 built by
+++// re-querying without the filter applied. Both filter directions get the
+++// same uniform error.
++ func TestReadServiceDependentFilterErrorsWhenFactsSourceUnavailable(t *testing.T) {
++ 	trueValue, falseValue := true, false
++ 	originalCursor := ports.ListingCursor{LastTitle: "before", ListingID: "i~before~-"}
++@@ -453,11 +454,9 @@ func TestReadServiceDependentFilterErrorsWhenFactsSourceUnavailable(t *testing.T
++ 	}
++ }
++ 
++-// TestReadServiceNoDependentFilterStillDegradesOnSourceUnavailable guards
++-// against over-correcting B1: a request with NO fact-dependent filter must
++-// still serve a 200 with facts nulled on a genuine source-unavailable
++-// outage -- that path is ADR-17-correct (null = not-evaluable) and must not
++-// regress into an error just because dependent-filter requests now do.
+++// TestReadServiceNoDependentFilterStillDegradesOnSourceUnavailable asserts
+++// that a request with NO fact-dependent filter still serves a 200 with facts
+++// nulled on a genuine source-unavailable outage.
++ func TestReadServiceNoDependentFilterStillDegradesOnSourceUnavailable(t *testing.T) {
++ 	for _, outage := range []struct {
++ 		name       string
++@@ -506,10 +505,101 @@ func TestReadServiceNoDependentFilterStillDegradesOnSourceUnavailable(t *testing
++ 	}
++ }
++ 
++-// TestReadServiceDependentFilterNonSourceUnavailablePropagates pins B2 for
++-// the scan path: cancellation/timeout/adapter defects discovered mid-scan
++-// under a fact-dependent filter must propagate as errors, not be classified
++-// as a degrade-worthy outage.
+++// TestReadServiceCancellationCarryingSourceUnavailableCodePropagates asserts
+++// that cancellation and timeout propagate on every read path even when the
+++// error reaches the service already labelled source-unavailable. A cancelled
+++// or timed-out request must never serve a 200 with facts nulled.
+++func TestReadServiceCancellationCarryingSourceUnavailableCodePropagates(t *testing.T) {
+++	for _, cause := range []struct {
+++		name string
+++		err  error
+++	}{
+++		{"canceled", context.Canceled},
+++		{"deadline exceeded", context.DeadlineExceeded},
+++	} {
+++		for _, fact := range []struct {
+++			name       string
+++			ceilingErr bool
+++		}{
+++			{"ceiling", true},
+++			{"cost", false},
+++		} {
+++			newFacts := func() *fakeFacts {
+++				f := &fakeFacts{}
+++				if fact.ceilingErr {
+++					f.ceilingErr = wrappedCause(cause.err)
+++					return f
+++				}
+++				f.ceilings = map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}
+++				f.costErr = wrappedCause(cause.err)
+++				return f
+++			}
+++			prefix := cause.name + " " + fact.name + " "
+++
+++			t.Run(prefix+"summary", func(t *testing.T) {
+++				base := ports.ListingSummaryRow{Total: 2, Unlinked: 1, Linked: []ports.SummaryLinkedRow{{CostID: 1, Price: money("90")}}}
+++				got, err := NewReadService(&fakeRows{summary: base}, newFacts(), fakePolicy{found: true}, fakeInstallation(true), time.Now).Summary(context.Background(), ports.SummaryQuery{InstallationID: "i"})
+++				if !errors.Is(err, cause.err) {
+++					t.Fatalf("expected %v to propagate, got summary=%+v err=%v", cause.err, got, err)
+++				}
+++			})
+++
+++			t.Run(prefix+"list", func(t *testing.T) {
+++				r := &fakeRows{pages: []ports.ListingRowPage{{Items: []domain.ListingReadModel{resolved("42664")}}}}
+++				page, err := NewReadService(r, newFacts(), fakePolicy{found: true}, fakeInstallation(true), time.Now).List(context.Background(), ports.ListingQuery{InstallationID: "i", Limit: 1})
+++				if !errors.Is(err, cause.err) {
+++					t.Fatalf("expected %v to propagate, got page=%+v err=%v", cause.err, page, err)
+++				}
+++			})
+++
+++			t.Run(prefix+"by product", func(t *testing.T) {
+++				productID := "42664"
+++				r := &fakeRows{groupPages: []ports.ListingGroupRowPage{{Groups: []domain.ListingGroup{{ProductID: &productID, ProductTitle: ptrString("Produto"), Listings: []domain.ListingReadModel{resolved(productID)}}}}}}
+++				page, err := NewReadService(r, newFacts(), fakePolicy{found: true}, fakeInstallation(true), time.Now).ByProduct(context.Background(), ports.ListingGroupQuery{InstallationID: "i", Limit: 1})
+++				if !errors.Is(err, cause.err) {
+++					t.Fatalf("expected %v to propagate, got page=%+v err=%v", cause.err, page, err)
+++				}
+++			})
+++
+++			t.Run(prefix+"get", func(t *testing.T) {
+++				model := resolved("i~42664~-")
+++				model.InstallationID = "i"
+++				model.ProviderListingID = "42664"
+++				model.Link.ProductID = ptrString("42664")
+++				r := &fakeRows{getModel: model, getFound: true, timeline: []domain.TimelineEvent{{Kind: "synced"}}}
+++				got, timeline, err := NewReadService(r, newFacts(), fakePolicy{found: true}, fakeInstallation(true), time.Now).Get(context.Background(), domain.ListingID{InstallationID: "i", ProviderListingID: "42664", VariationID: "-"})
+++				if !errors.Is(err, cause.err) {
+++					t.Fatalf("expected %v to propagate, got detail=%+v timeline=%+v err=%v", cause.err, got, timeline, err)
+++				}
+++			})
+++
+++			t.Run(prefix+"dependent filter scan", func(t *testing.T) {
+++				next := ports.ListingCursor{LastTitle: "next", ListingID: "i~next~-"}
+++				r := &fakeRows{pages: []ports.ListingRowPage{{Items: []domain.ListingReadModel{resolved("42664")}, NextCursor: &next}}}
+++				query := ports.ListingQuery{InstallationID: "i", Limit: 1, Filter: domain.ListingFilter{Exception: domain.ListingExceptionBelowMargin}}
+++				page, err := NewReadService(r, newFacts(), fakePolicy{found: true}, fakeInstallation(true), fixedNow).List(context.Background(), query)
+++				if !errors.Is(err, cause.err) {
+++					t.Fatalf("expected %v to propagate, got page=%+v err=%v", cause.err, page, err)
+++				}
+++			})
+++
+++			t.Run(prefix+"dependent filter group scan", func(t *testing.T) {
+++				productID := "42664"
+++				next := ports.GroupCursor{ProductTitle: "Próximo", ProductID: "42666"}
+++				r := &fakeRows{groupPages: []ports.ListingGroupRowPage{{Groups: []domain.ListingGroup{{ProductID: &productID, ProductTitle: ptrString("Produto"), Listings: []domain.ListingReadModel{resolved(productID)}}}, NextCursor: &next}}}
+++				query := ports.ListingGroupQuery{InstallationID: "i", Limit: 1, Filter: domain.ListingFilter{Exception: domain.ListingExceptionBelowMargin}}
+++				page, err := NewReadService(r, newFacts(), fakePolicy{found: true}, fakeInstallation(true), fixedNow).ByProduct(context.Background(), query)
+++				if !errors.Is(err, cause.err) {
+++					t.Fatalf("expected %v to propagate, got page=%+v err=%v", cause.err, page, err)
+++				}
+++			})
+++		}
+++	}
+++}
+++
+++// TestReadServiceDependentFilterNonSourceUnavailablePropagates asserts that
+++// cancellation/timeout/adapter defects discovered mid-scan under a
+++// fact-dependent filter propagate as errors, not a degrade-worthy outage.
++ func TestReadServiceDependentFilterNonSourceUnavailablePropagates(t *testing.T) {
++ 	r := &fakeRows{pages: []ports.ListingRowPage{{Items: []domain.ListingReadModel{resolved("42664")}}}}
++ 	f := &fakeFacts{ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}, costErr: context.DeadlineExceeded}
+diff --git a/.mnfs/MIS-003-operator-cockpit-wireframe-replan/M-01-listings-read-spine/_gate-evidence/round-4/slice11-review.md b/.mnfs/MIS-003-operator-cockpit-wireframe-replan/M-01-listings-read-spine/_gate-evidence/round-4/slice11-review.md
+new file mode 100644
+index 00000000..59ccd24e
+--- /dev/null
++++ b/.mnfs/MIS-003-operator-cockpit-wireframe-replan/M-01-listings-read-spine/_gate-evidence/round-4/slice11-review.md
+@@ -0,0 +1,57 @@
++# Slice 11 — §14 independent review — APPROVE
++
++```yaml
++reviewer: cold Claude sonnet subagent (independent context, implementer≠reviewer)
++standard: docs/REVIEW-STANDARD.md §14 (MAIN checkout path, per hub governance ruling)
++candidate: slice11-candidate.diff (410 lines, 2 files, base 7f5a1b8c)
++ran: concurrently with the integration lane (§15)
++verdict: APPROVE — zero blocking, zero important
++```
++
++## Verdict
++
++**APPROVE.** G1–G5 correctly implemented and verified against the real wrap/unwrap chain; no
++must-not-break invariant regressed; no narration/PR-voice comments remain anywhere in either file
++(checked whole-file, not just the diff hunks). Only non-gating findings remain.
++
++## Reviewer's in-tree verifications (confirmed against source, not accepted as claims)
++
++- **G1 works through the production wrap.** `wrapOracleError`/`safeOracleCause`
++  (`reader.go:508-519`) preserve `context.Canceled`/`DeadlineExceeded` as `ReadError.Cause`, and
++  `ReadError.Unwrap` (`read_error.go:28-33`) returns `Cause` — so `errors.Is` genuinely walks the
++  production shape. The new `wrappedCause` helper (`read_service_test.go:206-210`) builds exactly
++  that shape (correct code + real context cause), **not a fake-code shortcut**.
++- **G2 restored.** `Get`'s guard is `ceilingErr != nil` (`read_service.go:338`). Reviewer traced the
++  cost-outage path through `enrich` and `icmsWorstCaseByUF` and confirmed the full matrix survives
++  with only `BelowMarginAtUF` nulled.
++- **G3 pins.** New assertions (`read_service_test.go:237-249`) genuinely fail if G2 is reverted
++  (traced by hand, independently of the worker's executed proof).
++- **G4 clean.** Whole-file grep for narration/PR-voice: **no hits** in either file.
++- **G5 truthful at every site.** WARN/ERROR placement checked at Summary, List, ByProduct, Get,
++  `scan`, `scanGroups`, `enrich` — all fire only once the outcome (degrade vs fail) is known, none
++  inside a per-row loop.
++
++## The worker's self-reported caveat — independently CONFIRMED, and it holds
++
++The worker disclosed that its 2 `dependent_filter_scan` subtests pass even with the `errors.Is`
++check removed. The reviewer verified the reasoning against the code and **confirms it**: with G1
++reverted, `isSourceUnavailable` would misclassify the wrapped context cause and `enrich` would
++degrade instead of propagate — but `scan`/`scanGroups` return `unavailable` as an error whenever it
++is non-nil (`read_service.go:358-361`, `:375-378`, `:214-217`, `:231-234`) **regardless of why**. So
++those two subtests cannot pin G1 there; the behavior is identical either way. The pinning force
++comes entirely from the **16 flat-path/Summary/List/ByProduct/Get subtests**, where the top-level
++guard or `enrich`'s propagate-vs-degrade branch is the only thing between a 200 and an error.
++
++**Not a coverage gap — correctly characterized by the worker.** Recorded because a self-reported
++caveat that survives independent verification is evidence, not noise.
++
++Worker's executed pin proof on the 16 that do pin: removing the `errors.Is` check produced
++`read_service_test.go:543: expected context canceled to propagate, got summary={...MarginUnknown:<nil>...} err=<nil>`
++— a 200 with null facts on a cancelled context. Restored → green.
++
++## Non-gating findings
++
++| Severity | Locus | Finding | Disposition |
++|---|---|---|---|
++| suggestion | `read_service.go:467-469` | `unavailableFact`'s doc comment reasoned backwards — it said "the ceiling fetch never happened", but the ceiling fetch *did* happen and failed (that is how `ceilingErr` got set); it is the **cost** fetch that `enrich` skips when `unavailable` is already non-nil (`:414`). The returned label was correct; only the comment's reasoning was wrong. | **FIXED by the milestone owner** before commit. Reworded to state that a non-nil `ceilingErr` means the ceiling fetch already failed and `enrich` skipped the cost fetch. Comment-only change; build + vet + `listings/application` tests re-run green after it. |
++| question | `read_service_test.go:381-400` | The "ceiling" half of the new dependent-filter scan/group-scan subtests never reaches `scan`/`scanGroups` — `List`/`ByProduct`'s top-level `ceilingErr != nil && !isSourceUnavailable(ceilingErr)` guard returns before the `needsBelowMarginScan` branch — so they duplicate the plain "list"/"by product" subtests above them. Not a correctness bug. | **Accepted as-is.** Redundant coverage, not wrong coverage; the subtests still assert the required invariant. Removing them buys nothing and risks the pinning set. Recorded, not actioned. |
+diff --git a/apps/server_core/internal/modules/listings/application/read_service.go b/apps/server_core/internal/modules/listings/application/read_service.go
+index f9c31afb..2efb2dd1 100644
+--- a/apps/server_core/internal/modules/listings/application/read_service.go
++++ b/apps/server_core/internal/modules/listings/application/read_service.go
+@@ -16,11 +16,13 @@ import (
+ 	"marketplace-central/apps/server_core/internal/modules/listings/ports"
+ )
+ 
+-// isSourceUnavailable classifies an error using the existing internal_read
+-// error taxonomy. Only ReadErrorSourceUnavailable may legitimately degrade
+-// cost/ceiling facts to null; every other error (cancellation, timeout,
+-// adapter/data defects) must propagate.
++// isSourceUnavailable reports whether err may legitimately degrade a fact to
++// null; every other error must propagate. Cancellation and timeout propagate
++// regardless of the code the error carries.
+ func isSourceUnavailable(err error) bool {
++	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
++		return false
++	}
+ 	return internalreaddomain.IsReadErrorCode(err, internalreaddomain.ReadErrorSourceUnavailable)
+ }
+ 
+@@ -145,9 +147,6 @@ func (s ReadService) List(ctx context.Context, query ports.ListingQuery) (ports.
+ 		slog.Error("listings: icms ceiling fact read failed", "err", ceilingErr, "op", "List")
+ 		return ports.ListingRowPage{}, ceilingErr
+ 	}
+-	if ceilingErr != nil {
+-		slog.Warn("listings: icms ceiling source unavailable, degrading fact to null", "err", ceilingErr, "op", "List", "fact", "icms_ceiling")
+-	}
+ 	maxCeiling := maximumCeiling(ceilings)
+ 	serveTime := s.now().UTC()
+ 	if !needsBelowMarginScan(query.Filter) {
+@@ -155,10 +154,13 @@ func (s ReadService) List(ctx context.Context, query ports.ListingQuery) (ports.
+ 		if err != nil {
+ 			return ports.ListingRowPage{}, err
+ 		}
+-		_, err = s.enrich(ctx, page.Items, maxCeiling, policy, policyFound, ceilingErr)
++		unavailable, err := s.enrich(ctx, page.Items, maxCeiling, policy, policyFound, ceilingErr)
+ 		if err != nil {
+ 			return ports.ListingRowPage{}, err
+ 		}
++		if unavailable != nil {
++			slog.Warn("listings: fact source unavailable, degrading fact to null", "err", unavailable, "op", "List", "fact", unavailableFact(ceilingErr))
++		}
+ 		page.AsOf = serveTime
+ 		return page, nil
+ 	}
+@@ -185,9 +187,6 @@ func (s ReadService) ByProduct(ctx context.Context, query ports.ListingGroupQuer
+ 		slog.Error("listings: icms ceiling fact read failed", "err", ceilingErr, "op", "ByProduct")
+ 		return ports.ListingGroupRowPage{}, ceilingErr
+ 	}
+-	if ceilingErr != nil {
+-		slog.Warn("listings: icms ceiling source unavailable, degrading fact to null", "err", ceilingErr, "op", "ByProduct", "fact", "icms_ceiling")
+-	}
+ 	ceiling, asOf := maximumCeiling(ceilings), s.now().UTC()
+ 	if needsBelowMarginScan(query.Filter) {
+ 		return s.scanGroups(ctx, query, ceiling, policy, policyFound, ceilingErr, asOf)
+@@ -196,23 +195,24 @@ func (s ReadService) ByProduct(ctx context.Context, query ports.ListingGroupQuer
+ 	if err != nil {
+ 		return ports.ListingGroupRowPage{}, err
+ 	}
+-	_, err = s.enrichGroups(ctx, page.Groups, ceiling, policy, policyFound, ceilingErr)
++	unavailable, err := s.enrichGroups(ctx, page.Groups, ceiling, policy, policyFound, ceilingErr)
+ 	if err != nil {
+ 		return ports.ListingGroupRowPage{}, err
+ 	}
++	if unavailable != nil {
++		slog.Warn("listings: fact source unavailable, degrading fact to null", "err", unavailable, "op", "ByProduct", "fact", unavailableFact(ceilingErr))
++	}
+ 	finalizeGroups(page.Groups)
+ 	page.AsOf = asOf
+ 	return page, nil
+ }
+ 
+-// scanGroups is only reached for a fact-dependent filter (needsBelowMarginScan
+-// is true). Per the hub ruling (B1, PURE uniform fail-honest), a genuine
+-// source-unavailable outage under such a filter must surface as an error
+-// through the existing error envelope, never as a confidently-served page
+-// built by dropping the filter. Both directions of the filter
+-// (has_exception true/false, exception=below_margin) are treated uniformly.
++// scanGroups is only reached for a fact-dependent filter; a source-unavailable
++// outage fails the request rather than serving a page built by dropping the
++// filter.
+ func (s ReadService) scanGroups(ctx context.Context, q ports.ListingGroupQuery, ceiling *float64, policy ports.PricingPolicy, policyFound bool, unavailable error, asOf time.Time) (ports.ListingGroupRowPage, error) {
+ 	if unavailable != nil {
++		slog.Error("listings: fact source unavailable, failing fact-dependent filter", "err", unavailable, "op", "ByProduct")
+ 		return ports.ListingGroupRowPage{}, unavailable
+ 	}
+ 	result := ports.ListingGroupRowPage{Groups: []domain.ListingGroup{}, AsOf: asOf}
+@@ -229,6 +229,7 @@ func (s ReadService) scanGroups(ctx context.Context, q ports.ListingGroupQuery,
+ 			return ports.ListingGroupRowPage{}, err
+ 		}
+ 		if unavailable != nil {
++			slog.Error("listings: fact source unavailable, failing fact-dependent filter", "err", unavailable, "op", "ByProduct")
+ 			return ports.ListingGroupRowPage{}, unavailable
+ 		}
+ 		for groupIndex := range page.Groups {
+@@ -325,16 +326,16 @@ func (s ReadService) Get(ctx context.Context, id domain.ListingID) (domain.Listi
+ 		slog.Error("listings: icms ceiling fact read failed", "err", ceilingErr, "op", "Get")
+ 		return domain.ListingReadModel{}, nil, ceilingErr
+ 	}
+-	if ceilingErr != nil {
+-		slog.Warn("listings: icms ceiling source unavailable, degrading fact to null", "err", ceilingErr, "op", "Get", "fact", "icms_ceiling")
+-	}
+ 	items := []domain.ListingReadModel{model}
+ 	unavailable, err := s.enrich(ctx, items, maximumCeiling(ceilings), policy, policyFound, ceilingErr)
+ 	if err != nil {
+ 		return domain.ListingReadModel{}, nil, err
+ 	}
+-	model = items[0]
+ 	if unavailable != nil {
++		slog.Warn("listings: fact source unavailable, degrading fact to null", "err", unavailable, "op", "Get", "fact", unavailableFact(ceilingErr))
++	}
++	model = items[0]
++	if ceilingErr != nil {
+ 		model.ICMSWorstCaseByUF = nil
+ 	} else {
+ 		model.ICMSWorstCaseByUF = icmsWorstCaseByUF(model, ceilings, policy, policyFound)
+@@ -349,16 +350,13 @@ func (s ReadService) Get(ctx context.Context, id domain.ListingID) (domain.Listi
+ 	return model, timeline, nil
+ }
+ 
+-// scan is only reached for a fact-dependent filter (needsBelowMarginScan is
+-// true). Per the hub ruling (B1, PURE uniform fail-honest), a genuine
+-// source-unavailable outage under such a filter must surface as an error
+-// through the existing error envelope, never as a confidently-served page
+-// built by dropping the filter. Both directions of the filter
+-// (has_exception true/false, exception=below_margin) are treated uniformly;
+-// a request with no fact-dependent filter never reaches this function and
+-// keeps the ADR-17-correct degrade-to-null behavior via the flat path.
++// scan applies fact-dependent filters in-process; a source-unavailable
++// outage fails the request rather than serving a page built by dropping the
++// filter. A request with no fact-dependent filter never reaches this
++// function and keeps the degrade-to-null behavior via the flat path.
+ func (s ReadService) scan(ctx context.Context, q ports.ListingQuery, ceiling *float64, policy ports.PricingPolicy, policyFound bool, unavailable error, asOf time.Time) (ports.ListingRowPage, error) {
+ 	if unavailable != nil {
++		slog.Error("listings: fact source unavailable, failing fact-dependent filter", "err", unavailable, "op", "List")
+ 		return ports.ListingRowPage{}, unavailable
+ 	}
+ 	result := ports.ListingRowPage{Items: make([]domain.ListingReadModel, 0, q.Limit), AsOf: asOf}
+@@ -375,6 +373,7 @@ func (s ReadService) scan(ctx context.Context, q ports.ListingQuery, ceiling *fl
+ 			return ports.ListingRowPage{}, err
+ 		}
+ 		if unavailable != nil {
++			slog.Error("listings: fact source unavailable, failing fact-dependent filter", "err", unavailable, "op", "List")
+ 			return ports.ListingRowPage{}, unavailable
+ 		}
+ 		for _, item := range page.Items {
+@@ -404,11 +403,11 @@ func (s ReadService) scan(ctx context.Context, q ports.ListingQuery, ceiling *fl
+ 
+ // enrich attaches cost/margin facts to items. unavailable, if non-nil on
+ // entry, is a source-unavailable error already known to the caller (the
+-// cost fetch below is skipped in that case). If the cost fetch here fails,
+-// only a source-unavailable classified error may degrade the batch to
+-// null facts (logged once at WARN); any other error (cancellation, timeout,
+-// adapter/data defect) propagates immediately (logged at ERROR) instead of
+-// being swallowed into a false "unknown" state.
++// cost fetch below is skipped in that case). A source-unavailable cost fetch
++// sets unavailable and nulls the batch's facts; any other cost fetch error
++// propagates immediately instead of being swallowed into a false "unknown"
++// state. Callers own logging the outcome once they know whether the result
++// degrades or fails.
+ func (s ReadService) enrich(ctx context.Context, items []domain.ListingReadModel, ceiling *float64, policy ports.PricingPolicy, policyFound bool, unavailable error) (error, error) {
+ 	ids := make([]int64, 0, len(items))
+ 	seen := map[int64]bool{}
+@@ -430,7 +429,6 @@ func (s ReadService) enrich(ctx context.Context, items []domain.ListingReadModel
+ 				slog.Error("listings: cost fact read failed", "err", costErr)
+ 				return unavailable, costErr
+ 			}
+-			slog.Warn("listings: cost fact source unavailable, degrading to null", "err", costErr, "fact", "cost")
+ 			unavailable = costErr
+ 		} else {
+ 			costs = fetched
+@@ -466,6 +464,15 @@ func (s ReadService) enrich(ctx context.Context, items []domain.ListingReadModel
+ 	return unavailable, nil
+ }
+ 
++// unavailableFact reports which fact degraded: a non-nil ceilingErr means the
++// ceiling fetch already failed and enrich skipped the cost fetch, so the outage
++// is the ceiling; otherwise it is the cost fetch enrich attempted.
++func unavailableFact(ceilingErr error) string {
++	if ceilingErr != nil {
++		return "icms_ceiling"
++	}
++	return "cost"
++}
+ func priceCurrency(price *domain.Money) domain.PriceCurrency {
+ 	if price != nil {
+ 		return price.Currency
+diff --git a/apps/server_core/internal/modules/listings/application/read_service_test.go b/apps/server_core/internal/modules/listings/application/read_service_test.go
+index a33ab8f3..634f7cec 100644
+--- a/apps/server_core/internal/modules/listings/application/read_service_test.go
++++ b/apps/server_core/internal/modules/listings/application/read_service_test.go
+@@ -11,14 +11,16 @@ import (
+ 	"marketplace-central/apps/server_core/internal/modules/listings/ports"
+ )
+ 
+-// sourceUnavailable builds a typed source-unavailable read error using the
+-// existing internal_read error taxonomy, the only kind that may legitimately
+-// degrade cost/ceiling facts to null. Any other error (plain, cancellation,
+-// timeout) must propagate instead of degrading.
+ func sourceUnavailable(msg string) error {
+ 	return internalreaddomain.NewReadError(internalreaddomain.ReadErrorSourceUnavailable, msg, nil)
+ }
+ 
++// wrappedCause builds the error shape the oracle reader produces: the
++// source-unavailable code carrying an arbitrary underlying cause.
++func wrappedCause(cause error) error {
++	return internalreaddomain.NewReadError(internalreaddomain.ReadErrorSourceUnavailable, "oracle read failed", cause)
++}
++
+ type fakeRows struct {
+ 	pages        []ports.ListingRowPage
+ 	listQueries  []ports.ListingQuery
+@@ -159,10 +161,6 @@ func TestReadServiceSummaryUnknownInputsAndSourceOutage(t *testing.T) {
+ 	}
+ }
+ 
+-// TestReadServiceSummaryNonSourceUnavailableErrorsPropagate pins B2: only a
+-// genuine source-unavailable read error may degrade to null margins.
+-// Cancellation, timeout, and plain adapter/data defects must propagate as
+-// errors instead of silently becoming a confident 200 with null facts.
+ func TestReadServiceSummaryNonSourceUnavailableErrorsPropagate(t *testing.T) {
+ 	base := ports.ListingSummaryRow{Total: 2, Unlinked: 1, Linked: []ports.SummaryLinkedRow{{CostID: 1, Price: money("90")}}}
+ 	for _, tc := range []struct {
+@@ -314,8 +312,23 @@ func TestReadServiceOptionalFactOutagesServeListByProductAndGet(t *testing.T) {
+ 			if got.Cost != nil || got.BelowMarginWorstCase != nil {
+ 				t.Fatalf("degraded detail=%+v", got)
+ 			}
+-			if outage.ceilingErr && got.ICMSWorstCaseByUF != nil {
+-				t.Fatalf("ceiling outage matrix=%+v", got.ICMSWorstCaseByUF)
++			if outage.ceilingErr {
++				if got.ICMSWorstCaseByUF != nil {
++					t.Fatalf("ceiling outage matrix=%+v", got.ICMSWorstCaseByUF)
++				}
++			}
++			if outage.costErr {
++				if got.ICMSWorstCaseByUF == nil {
++					t.Fatalf("cost outage matrix=nil, want full matrix with only below_margin_at_uf null")
++				}
++				for _, row := range *got.ICMSWorstCaseByUF {
++					if row.WorstCaseICMSPct == nil || row.PriceNetBasis == nil {
++						t.Fatalf("cost outage row missing known-true facts: %+v", row)
++					}
++					if row.BelowMarginAtUF != nil {
++						t.Fatalf("cost outage row should have unknown below_margin_at_uf: %+v", row)
++					}
++				}
+ 			}
+ 			if f.costCalls != outage.wantCosts {
+ 				t.Fatalf("cost calls=%d want=%d", f.costCalls, outage.wantCosts)
+@@ -324,11 +337,6 @@ func TestReadServiceOptionalFactOutagesServeListByProductAndGet(t *testing.T) {
+ 	}
+ }
+ 
+-// TestReadServiceFlatPathNonSourceUnavailableErrorsPropagate pins B2 across
+-// List, ByProduct and Get: only a genuine source-unavailable read error may
+-// degrade cost/ceiling facts to null. Cancellation, timeout, and plain
+-// adapter/data defects must propagate as errors instead of silently
+-// becoming a confident 200 with null facts.
+ func TestReadServiceFlatPathNonSourceUnavailableErrorsPropagate(t *testing.T) {
+ 	newFacts := func(ceilingErr, costErr error) *fakeFacts {
+ 		f := &fakeFacts{ceilingErr: ceilingErr, costErr: costErr}
+@@ -379,19 +387,12 @@ func TestReadServiceFlatPathNonSourceUnavailableErrorsPropagate(t *testing.T) {
+ 	}
+ }
+ 
+-// TestReadServiceDependentFilterErrorsWhenFactsSourceUnavailable pins B1
+-// (hub ruling: PURE, uniform fail-honest). ANY fact-dependent filter --
+-// filter.has_exception (true or false) or filter.exception=below_margin --
+-// during a genuine source-unavailable outage must return a source-unavailable
+-// error through the existing error envelope, never a confident 200 built by
+-// re-querying without the filter applied. This supersedes the old
+-// TestReadServiceDependentFilterPassesThroughWhenOptionalFactsUnavailable,
+-// which pinned the defect (rows whose facts couldn't be evaluated were
+-// silently served as matches/non-matches -- a known-false fact returned as a
+-// match, exactly what ADR-17 forbids). Applying the filter's SQL-computable
+-// half only (has_exception) while nulling margin was explicitly rejected by
+-// the hub ruling as under-inclusive; both filter directions get the same
+-// uniform error.
++// TestReadServiceDependentFilterErrorsWhenFactsSourceUnavailable asserts that
++// ANY fact-dependent filter -- filter.has_exception (true or false) or
++// filter.exception=below_margin -- during a genuine source-unavailable
++// outage returns a source-unavailable error, never a confident 200 built by
++// re-querying without the filter applied. Both filter directions get the
++// same uniform error.
+ func TestReadServiceDependentFilterErrorsWhenFactsSourceUnavailable(t *testing.T) {
+ 	trueValue, falseValue := true, false
+ 	originalCursor := ports.ListingCursor{LastTitle: "before", ListingID: "i~before~-"}
+@@ -453,11 +454,9 @@ func TestReadServiceDependentFilterErrorsWhenFactsSourceUnavailable(t *testing.T
+ 	}
+ }
+ 
+-// TestReadServiceNoDependentFilterStillDegradesOnSourceUnavailable guards
+-// against over-correcting B1: a request with NO fact-dependent filter must
+-// still serve a 200 with facts nulled on a genuine source-unavailable
+-// outage -- that path is ADR-17-correct (null = not-evaluable) and must not
+-// regress into an error just because dependent-filter requests now do.
++// TestReadServiceNoDependentFilterStillDegradesOnSourceUnavailable asserts
++// that a request with NO fact-dependent filter still serves a 200 with facts
++// nulled on a genuine source-unavailable outage.
+ func TestReadServiceNoDependentFilterStillDegradesOnSourceUnavailable(t *testing.T) {
+ 	for _, outage := range []struct {
+ 		name       string
+@@ -506,10 +505,101 @@ func TestReadServiceNoDependentFilterStillDegradesOnSourceUnavailable(t *testing
+ 	}
+ }
+ 
+-// TestReadServiceDependentFilterNonSourceUnavailablePropagates pins B2 for
+-// the scan path: cancellation/timeout/adapter defects discovered mid-scan
+-// under a fact-dependent filter must propagate as errors, not be classified
+-// as a degrade-worthy outage.
++// TestReadServiceCancellationCarryingSourceUnavailableCodePropagates asserts
++// that cancellation and timeout propagate on every read path even when the
++// error reaches the service already labelled source-unavailable. A cancelled
++// or timed-out request must never serve a 200 with facts nulled.
++func TestReadServiceCancellationCarryingSourceUnavailableCodePropagates(t *testing.T) {
++	for _, cause := range []struct {
++		name string
++		err  error
++	}{
++		{"canceled", context.Canceled},
++		{"deadline exceeded", context.DeadlineExceeded},
++	} {
++		for _, fact := range []struct {
++			name       string
++			ceilingErr bool
++		}{
++			{"ceiling", true},
++			{"cost", false},
++		} {
++			newFacts := func() *fakeFacts {
++				f := &fakeFacts{}
++				if fact.ceilingErr {
++					f.ceilingErr = wrappedCause(cause.err)
++					return f
++				}
++				f.ceilings = map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}
++				f.costErr = wrappedCause(cause.err)
++				return f
++			}
++			prefix := cause.name + " " + fact.name + " "
++
++			t.Run(prefix+"summary", func(t *testing.T) {
++				base := ports.ListingSummaryRow{Total: 2, Unlinked: 1, Linked: []ports.SummaryLinkedRow{{CostID: 1, Price: money("90")}}}
++				got, err := NewReadService(&fakeRows{summary: base}, newFacts(), fakePolicy{found: true}, fakeInstallation(true), time.Now).Summary(context.Background(), ports.SummaryQuery{InstallationID: "i"})
++				if !errors.Is(err, cause.err) {
++					t.Fatalf("expected %v to propagate, got summary=%+v err=%v", cause.err, got, err)
++				}
++			})
++
++			t.Run(prefix+"list", func(t *testing.T) {
++				r := &fakeRows{pages: []ports.ListingRowPage{{Items: []domain.ListingReadModel{resolved("42664")}}}}
++				page, err := NewReadService(r, newFacts(), fakePolicy{found: true}, fakeInstallation(true), time.Now).List(context.Background(), ports.ListingQuery{InstallationID: "i", Limit: 1})
++				if !errors.Is(err, cause.err) {
++					t.Fatalf("expected %v to propagate, got page=%+v err=%v", cause.err, page, err)
++				}
++			})
++
++			t.Run(prefix+"by product", func(t *testing.T) {
++				productID := "42664"
++				r := &fakeRows{groupPages: []ports.ListingGroupRowPage{{Groups: []domain.ListingGroup{{ProductID: &productID, ProductTitle: ptrString("Produto"), Listings: []domain.ListingReadModel{resolved(productID)}}}}}}
++				page, err := NewReadService(r, newFacts(), fakePolicy{found: true}, fakeInstallation(true), time.Now).ByProduct(context.Background(), ports.ListingGroupQuery{InstallationID: "i", Limit: 1})
++				if !errors.Is(err, cause.err) {
++					t.Fatalf("expected %v to propagate, got page=%+v err=%v", cause.err, page, err)
++				}
++			})
++
++			t.Run(prefix+"get", func(t *testing.T) {
++				model := resolved("i~42664~-")
++				model.InstallationID = "i"
++				model.ProviderListingID = "42664"
++				model.Link.ProductID = ptrString("42664")
++				r := &fakeRows{getModel: model, getFound: true, timeline: []domain.TimelineEvent{{Kind: "synced"}}}
++				got, timeline, err := NewReadService(r, newFacts(), fakePolicy{found: true}, fakeInstallation(true), time.Now).Get(context.Background(), domain.ListingID{InstallationID: "i", ProviderListingID: "42664", VariationID: "-"})
++				if !errors.Is(err, cause.err) {
++					t.Fatalf("expected %v to propagate, got detail=%+v timeline=%+v err=%v", cause.err, got, timeline, err)
++				}
++			})
++
++			t.Run(prefix+"dependent filter scan", func(t *testing.T) {
++				next := ports.ListingCursor{LastTitle: "next", ListingID: "i~next~-"}
++				r := &fakeRows{pages: []ports.ListingRowPage{{Items: []domain.ListingReadModel{resolved("42664")}, NextCursor: &next}}}
++				query := ports.ListingQuery{InstallationID: "i", Limit: 1, Filter: domain.ListingFilter{Exception: domain.ListingExceptionBelowMargin}}
++				page, err := NewReadService(r, newFacts(), fakePolicy{found: true}, fakeInstallation(true), fixedNow).List(context.Background(), query)
++				if !errors.Is(err, cause.err) {
++					t.Fatalf("expected %v to propagate, got page=%+v err=%v", cause.err, page, err)
++				}
++			})
++
++			t.Run(prefix+"dependent filter group scan", func(t *testing.T) {
++				productID := "42664"
++				next := ports.GroupCursor{ProductTitle: "Próximo", ProductID: "42666"}
++				r := &fakeRows{groupPages: []ports.ListingGroupRowPage{{Groups: []domain.ListingGroup{{ProductID: &productID, ProductTitle: ptrString("Produto"), Listings: []domain.ListingReadModel{resolved(productID)}}}, NextCursor: &next}}}
++				query := ports.ListingGroupQuery{InstallationID: "i", Limit: 1, Filter: domain.ListingFilter{Exception: domain.ListingExceptionBelowMargin}}
++				page, err := NewReadService(r, newFacts(), fakePolicy{found: true}, fakeInstallation(true), fixedNow).ByProduct(context.Background(), query)
++				if !errors.Is(err, cause.err) {
++					t.Fatalf("expected %v to propagate, got page=%+v err=%v", cause.err, page, err)
++				}
++			})
++		}
++	}
++}
++
++// TestReadServiceDependentFilterNonSourceUnavailablePropagates asserts that
++// cancellation/timeout/adapter defects discovered mid-scan under a
++// fact-dependent filter propagate as errors, not a degrade-worthy outage.
+ func TestReadServiceDependentFilterNonSourceUnavailablePropagates(t *testing.T) {
+ 	r := &fakeRows{pages: []ports.ListingRowPage{{Items: []domain.ListingReadModel{resolved("42664")}}}}
+ 	f := &fakeFacts{ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}, costErr: context.DeadlineExceeded}

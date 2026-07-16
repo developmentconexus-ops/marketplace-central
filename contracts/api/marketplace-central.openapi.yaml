@@ -183,6 +183,313 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /listings:
+    get:
+      summary: List marketplace listings
+      operationId: listListings
+      parameters:
+        - name: installation_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: filter.status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [active, paused, closed, unknown, under_review, inactive, payment_required, not_yet_active]
+        - name: filter.sync_state
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [synced, error, stale, queued, syncing, paused_sync]
+        - name: filter.link_state
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [unresolved, conflict, resolved, rejected]
+        - name: filter.exception
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [sync_error, stale, unlinked, below_margin]
+        - name: filter.has_exception
+          in: query
+          required: false
+          schema:
+            type: boolean
+        - name: filter.listing_type_code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: filter.product_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListingPage'
+        "400":
+          description: Installation or listing filter is invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "404":
+          description: Installation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "405":
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "503":
+          description: Listing source unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /listings/by-product:
+    get:
+      summary: List marketplace listings grouped by product
+      operationId: listListingsByProduct
+      parameters:
+        - name: installation_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: filter.status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [active, paused, closed, unknown, under_review, inactive, payment_required, not_yet_active]
+        - name: filter.sync_state
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [synced, error, stale, queued, syncing, paused_sync]
+        - name: filter.link_state
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [unresolved, conflict, resolved, rejected]
+        - name: filter.exception
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [sync_error, stale, unlinked, below_margin]
+        - name: filter.has_exception
+          in: query
+          required: false
+          schema:
+            type: boolean
+        - name: filter.listing_type_code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: filter.product_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListingGroupPage'
+        "400":
+          description: Installation or listing filter is invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "404":
+          description: Installation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "405":
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "503":
+          description: Listing source unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /listings/{id}:
+    get:
+      summary: Get a marketplace listing
+      operationId: getListing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListingDetail'
+        "404":
+          description: Listing not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "405":
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: Internal listing read error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /listings/summary:
+    get:
+      summary: Get marketplace listing summary
+      operationId: getListingsSummary
+      parameters:
+        - name: installation_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListingSummary'
+        "400":
+          description: Installation is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "404":
+          description: Installation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "405":
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "503":
+          description: Listing source unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /listings/refresh:
+    post:
+      summary: Start an asynchronous listings refresh
+      operationId: refreshListings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshListingsRequest'
+      responses:
+        "202":
+          description: Listings refresh accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshListingsAccepted'
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "404":
+          description: Installation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "409":
+          description: A listings refresh is already queued or running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /catalog/taxonomy:
     get:
       summary: List taxonomy nodes
@@ -1555,6 +1862,265 @@ paths:
 
 components:
   schemas:
+    ListingReadType:
+      type: object
+      required: [code, label]
+      properties:
+        code:
+          type: string
+        label:
+          type: string
+
+    ListingReadMoney:
+      type: object
+      required: [amount, currency]
+      properties:
+        amount:
+          type: string
+        currency:
+          type: string
+
+    ListingReadLink:
+      type: object
+      required: [state, product_id, seller_sku]
+      properties:
+        state:
+          type: string
+          enum: [unresolved, conflict, resolved, rejected]
+        product_id:
+          type: string
+          nullable: true
+        seller_sku:
+          type: string
+          nullable: true
+
+    ListingReadSyncError:
+      type: object
+      required: [code, message_pt, message_provider]
+      properties:
+        code:
+          type: string
+        message_pt:
+          type: string
+        message_provider:
+          type: string
+          nullable: true
+
+    ListingReadPendingIssue:
+      type: object
+      required: [kind, message_pt]
+      properties:
+        kind:
+          type: string
+          enum: [sync_error, stale, unlinked, below_margin, attribute_required]
+        message_pt:
+          type: string
+
+    ListingReadICMSWorstCase:
+      type: object
+      required: [destination_uf, worst_case_icms_pct, price_net_basis, below_margin_at_uf]
+      properties:
+        destination_uf:
+          type: string
+        worst_case_icms_pct:
+          type: string
+          nullable: true
+        price_net_basis:
+          type: string
+          nullable: true
+        below_margin_at_uf:
+          type: boolean
+          nullable: true
+
+    ListingReadModel:
+      type: object
+      required: [listing_id, installation_id, provider, provider_listing_id, title, listing_type, status, link, price, published_quantity, sync_state, sync_error, quality_score, pending_issue, sales_30d, cost, below_margin_worst_case, icms_worst_case_by_uf, fetched_at]
+      properties:
+        listing_id:
+          type: string
+        installation_id:
+          type: string
+        provider:
+          type: string
+        provider_listing_id:
+          type: string
+        title:
+          type: string
+        listing_type:
+          allOf:
+            - $ref: '#/components/schemas/ListingReadType'
+          nullable: true
+        status:
+          type: string
+          enum: [active, paused, closed, unknown, under_review, inactive, payment_required, not_yet_active]
+        link:
+          $ref: '#/components/schemas/ListingReadLink'
+        price:
+          allOf:
+            - $ref: '#/components/schemas/ListingReadMoney'
+          nullable: true
+        published_quantity:
+          type: integer
+          nullable: true
+        sync_state:
+          type: string
+          enum: [synced, error, stale, queued, syncing, paused_sync]
+        sync_error:
+          allOf:
+            - $ref: '#/components/schemas/ListingReadSyncError'
+          nullable: true
+        quality_score:
+          type: integer
+          nullable: true
+        pending_issue:
+          allOf:
+            - $ref: '#/components/schemas/ListingReadPendingIssue'
+          nullable: true
+        sales_30d:
+          type: integer
+          nullable: true
+        cost:
+          allOf:
+            - $ref: '#/components/schemas/ListingReadMoney'
+          nullable: true
+        below_margin_worst_case:
+          type: boolean
+          nullable: true
+        icms_worst_case_by_uf:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/ListingReadICMSWorstCase'
+        fetched_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    ListingPage:
+      type: object
+      required: [items, next_cursor, page_size, as_of]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ListingReadModel'
+        next_cursor:
+          type: string
+          nullable: true
+        page_size:
+          type: integer
+        as_of:
+          type: string
+          format: date-time
+
+    ListingGroup:
+      type: object
+      required: [product_id, product_title, listing_count, group_state, listings]
+      properties:
+        product_id:
+          type: string
+          nullable: true
+        product_title:
+          type: string
+          nullable: true
+        listing_count:
+          type: integer
+        group_state:
+          type: string
+          enum: [ok, attention, error]
+        listings:
+          type: array
+          items:
+            $ref: '#/components/schemas/ListingReadModel'
+
+    ListingGroupPage:
+      type: object
+      required: [groups, next_cursor, page_size, as_of]
+      properties:
+        groups:
+          type: array
+          items:
+            $ref: '#/components/schemas/ListingGroup'
+        next_cursor:
+          type: string
+          nullable: true
+        page_size:
+          type: integer
+        as_of:
+          type: string
+          format: date-time
+
+    ListingTimelineEvent:
+      type: object
+      required: [at, kind, message_pt]
+      properties:
+        at:
+          type: string
+          format: date-time
+        kind:
+          type: string
+        message_pt:
+          type: string
+
+    ListingDetail:
+      allOf:
+        - $ref: '#/components/schemas/ListingReadModel'
+        - type: object
+          required: [timeline]
+          properties:
+            timeline:
+              type: array
+              items:
+                $ref: '#/components/schemas/ListingTimelineEvent'
+
+    ListingSummaryExceptions:
+      type: object
+      required: [sync_error, stale, unlinked, below_margin_worst_case, margin_unknown]
+      properties:
+        sync_error:
+          type: integer
+        stale:
+          type: integer
+        unlinked:
+          type: integer
+        below_margin_worst_case:
+          type: integer
+          nullable: true
+        margin_unknown:
+          type: integer
+          nullable: true
+
+    ListingSummary:
+      type: object
+      required: [total, active, paused, exceptions, as_of]
+      properties:
+        total:
+          type: integer
+        active:
+          type: integer
+        paused:
+          type: integer
+        exceptions:
+          $ref: '#/components/schemas/ListingSummaryExceptions'
+        as_of:
+          type: string
+          format: date-time
+    RefreshListingsRequest:
+      type: object
+      additionalProperties: false
+      required: [installation_id]
+      properties:
+        installation_id:
+          type: string
+          minLength: 1
+    RefreshListingsAccepted:
+      type: object
+      additionalProperties: false
+      required: [operation_run_id]
+      properties:
+        operation_run_id:
+          type: string
+
     CanonicalNumericSourceFact:
       type: object
       required: [source, value, quality, observed_at, quality_reason]

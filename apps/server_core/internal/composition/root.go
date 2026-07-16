@@ -39,8 +39,8 @@ import (
 	integrationsbg "marketplace-central/apps/server_core/internal/modules/integrations/background"
 	integrationsdomain "marketplace-central/apps/server_core/internal/modules/integrations/domain"
 	integrationstransport "marketplace-central/apps/server_core/internal/modules/integrations/transport"
-	internalreadoracle "marketplace-central/apps/server_core/internal/modules/internal_read/adapters/oracle"
 	internalreadcache "marketplace-central/apps/server_core/internal/modules/internal_read/adapters/cache"
+	internalreadoracle "marketplace-central/apps/server_core/internal/modules/internal_read/adapters/oracle"
 	"marketplace-central/apps/server_core/internal/modules/internal_read/adapters/oracle/oraclebatch"
 	internalreadapp "marketplace-central/apps/server_core/internal/modules/internal_read/application"
 	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
@@ -54,6 +54,13 @@ import (
 	inventoryapp "marketplace-central/apps/server_core/internal/modules/inventory/application"
 	inventoryports "marketplace-central/apps/server_core/internal/modules/inventory/ports"
 	inventorytransport "marketplace-central/apps/server_core/internal/modules/inventory/transport"
+	listingsconnectors "marketplace-central/apps/server_core/internal/modules/listings/adapters/connectors"
+	listingsintegrations "marketplace-central/apps/server_core/internal/modules/listings/adapters/integrations"
+	listingsinternalread "marketplace-central/apps/server_core/internal/modules/listings/adapters/internalread"
+	listingsmarketplaces "marketplace-central/apps/server_core/internal/modules/listings/adapters/marketplaces"
+	listingspostgres "marketplace-central/apps/server_core/internal/modules/listings/adapters/postgres"
+	listingsapp "marketplace-central/apps/server_core/internal/modules/listings/application"
+	listingstransport "marketplace-central/apps/server_core/internal/modules/listings/transport"
 	marketplacespostgres "marketplace-central/apps/server_core/internal/modules/marketplaces/adapters/postgres"
 	marketplacesapp "marketplace-central/apps/server_core/internal/modules/marketplaces/application"
 	marketplacesregistry "marketplace-central/apps/server_core/internal/modules/marketplaces/registry"
@@ -460,6 +467,27 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 
 	marketRepo := marketplacespostgres.NewRepository(pool, cfg.DefaultTenantID)
 	marketSvc := marketplacesapp.NewService(marketRepo, cfg.DefaultTenantID)
+
+	listingRepo := listingspostgres.NewRepository(pool, cfg.DefaultTenantID)
+	listingCostReader := listingsinternalread.NewCostReader(internalreadoracle.NewBatchReader(oracleDB, oracleBatchSemaphore))
+	listingPolicyReader := listingsmarketplaces.NewPolicyReader(marketSvc)
+	listingInstallationReader := listingsintegrations.NewInstallationReader(installationSvc)
+	listingSvc := listingsapp.NewReadService(
+		listingRepo,
+		listingCostReader,
+		listingPolicyReader,
+		listingInstallationReader,
+		time.Now,
+	)
+	listingstransport.NewReadHandler(listingSvc).Register(mux)
+	listingIngestion := listingsapp.NewIngestion(listingsconnectors.NewSource(marketplaceCapabilities), listingRepo, 100, time.Now)
+	listingRefreshGateway := listingsintegrations.NewGateway(installationSvc, operationSvc)
+	listingRefreshSvc := listingsapp.NewRefreshService(
+		listingRefreshGateway, listingIngestion, func(task func()) { go task() }, time.Now,
+		func(err error) { slog.Error("listings refresh lifecycle persistence failed", "err", err) },
+		func(err error) string { return string(connectorsdomain.ErrorCodeOf(err)) },
+	)
+	listingstransport.NewRefreshHandler(listingRefreshSvc).Register(mux)
 
 	feeSvc := marketplacesapp.NewFeeScheduleService(feeRepo)
 

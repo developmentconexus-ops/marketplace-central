@@ -448,15 +448,15 @@ func (a *CapabilityAdapter) ReadFeeQuote(ctx context.Context, input domain.FeeQu
 
 func (a *CapabilityAdapter) accessToken(ctx context.Context, accountRef domain.ProviderAccountRef) (string, error) {
 	if a.accessTokenResolver == nil {
-		return "", domain.NewCapabilityError(domain.ErrCodeProviderInvalidReference, "access token resolver is not configured")
+		return "", domain.NewCapabilityError(domain.ErrCodeProviderAuth, "access token resolver is not configured")
 	}
 	token, err := a.accessTokenResolver(ctx, accountRef)
 	if err != nil {
-		return "", domain.NewCapabilityError(domain.ErrCodeProviderTransient, "failed to resolve access token")
+		return "", domain.NewCapabilityError(domain.ErrCodeProviderAuth, "failed to resolve access token")
 	}
 	token = strings.TrimSpace(token)
 	if token == "" {
-		return "", domain.NewCapabilityError(domain.ErrCodeProviderInvalidReference, "access token is empty")
+		return "", domain.NewCapabilityError(domain.ErrCodeProviderAuth, "access token is empty")
 	}
 	return token, nil
 }
@@ -473,6 +473,9 @@ func (a *CapabilityAdapter) doJSON(ctx context.Context, accountRef domain.Provid
 	resp, rawBody, err := a.doRaw(ctx, accountRef, token, method, path, body)
 	if err != nil {
 		return err
+	}
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		return domain.NewCapabilityError(domain.ErrCodeProviderAuth, "provider credentials were rejected")
 	}
 	if resp.StatusCode == http.StatusNotFound {
 		return domain.NewCapabilityError(domain.ErrCodeProviderInvalidReference, "provider resource was not found")
@@ -536,10 +539,24 @@ func (a *CapabilityAdapter) doRaw(ctx context.Context, accountRef domain.Provide
 }
 
 func (a *CapabilityAdapter) mapListing(item mlItemResponse) domain.ListingSnapshot {
+	priceAmount := strings.TrimSpace(item.Price.String())
+	priceCurrency := strings.TrimSpace(item.CurrencyID)
+	if priceAmount == "" || priceCurrency == "" {
+		priceAmount = ""
+		priceCurrency = ""
+	}
+	var publishedPrice *string
+	if priceAmount != "" {
+		publishedPrice = &priceAmount
+	}
+
 	snapshot := domain.ListingSnapshot{
 		ProviderCode:      "mercado_livre",
 		ProviderItemID:    item.ID,
 		ProviderStatus:    item.Status,
+		PriceAmount:       publishedPrice,
+		PriceCurrency:     priceCurrency,
+		ListingTypeCode:   strings.TrimSpace(item.ListingTypeID),
 		SellerSKU:         firstNonEmpty(item.SellerSKU, item.SellerCustomField),
 		EAN:               attributeValue(item.Attributes, "GTIN", "EAN"),
 		Title:             item.Title,
@@ -744,6 +761,9 @@ type mlItemResponse struct {
 	Title             string        `json:"title"`
 	Status            string        `json:"status"`
 	AvailableQuantity *int          `json:"available_quantity"`
+	Price             json.Number   `json:"price"`
+	CurrencyID        string        `json:"currency_id"`
+	ListingTypeID     string        `json:"listing_type_id"`
 	LastUpdated       string        `json:"last_updated"`
 	SellerSKU         string        `json:"seller_sku"`
 	SellerCustomField string        `json:"seller_custom_field"`

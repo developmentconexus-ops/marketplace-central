@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"testing"
 
@@ -10,9 +11,13 @@ import (
 )
 
 type fakeRepository struct {
-	listPoliciesByIDsCalls int
-	listPoliciesByIDsIDs   [][]string
-	policiesByID           map[string]domain.Policy
+	listPoliciesByIDsCalls               int
+	listPoliciesByIDsIDs                 [][]string
+	policiesByID                         map[string]domain.Policy
+	getPricingPolicyForInstallationCalls int
+	pricingPolicyForInstallation         domain.Policy
+	pricingPolicyForInstallationFound    bool
+	pricingPolicyForInstallationErr      error
 }
 
 func (f *fakeRepository) SaveAccount(context.Context, domain.Account) error      { return nil }
@@ -34,6 +39,11 @@ func (f *fakeRepository) ListPoliciesByIDs(_ context.Context, ids []string) ([]d
 		}
 	}
 	return result, nil
+}
+
+func (f *fakeRepository) GetPricingPolicyForInstallation(context.Context, string) (domain.Policy, bool, error) {
+	f.getPricingPolicyForInstallationCalls++
+	return f.pricingPolicyForInstallation, f.pricingPolicyForInstallationFound, f.pricingPolicyForInstallationErr
 }
 
 var _ ports.Repository = (*fakeRepository)(nil)
@@ -72,4 +82,66 @@ func TestService_ListPoliciesByIDs_PreservesMissingAndDeduplicates(t *testing.T)
 	if got := repo.listPoliciesByIDsIDs; !reflect.DeepEqual(got, [][]string{{"m1", "missing", "m3", "m1"}}) {
 		t.Fatalf("unexpected repository IDs: %#v", got)
 	}
+}
+
+func TestService_GetPricingPolicyForInstallation(t *testing.T) {
+	t.Run("blank installation ID skips repository", func(t *testing.T) {
+		repo := &fakeRepository{}
+		svc := NewService(repo, "tenant-1")
+
+		policy, found, err := svc.GetPricingPolicyForInstallation(context.Background(), " \t")
+		if err != nil {
+			t.Fatalf("GetPricingPolicyForInstallation returned error: %v", err)
+		}
+		if found || policy != (domain.Policy{}) {
+			t.Fatalf("expected zero policy and not found, got %#v, %v", policy, found)
+		}
+		if repo.getPricingPolicyForInstallationCalls != 0 {
+			t.Fatalf("expected repository not to be called, got %d calls", repo.getPricingPolicyForInstallationCalls)
+		}
+	})
+
+	policy := domain.Policy{PolicyID: "p1", TenantID: "tenant-1", AccountID: "a1", MarketplaceCode: "shop", MinMarginPercent: 12.5}
+	t.Run("returns found policy", func(t *testing.T) {
+		repo := &fakeRepository{pricingPolicyForInstallation: policy, pricingPolicyForInstallationFound: true}
+		svc := NewService(repo, "tenant-1")
+
+		got, found, err := svc.GetPricingPolicyForInstallation(context.Background(), "installation-1")
+		if err != nil {
+			t.Fatalf("GetPricingPolicyForInstallation returned error: %v", err)
+		}
+		if !found || got != policy {
+			t.Fatalf("expected found policy %#v, got %#v, %v", policy, got, found)
+		}
+		if repo.getPricingPolicyForInstallationCalls != 1 {
+			t.Fatalf("expected one repository call, got %d", repo.getPricingPolicyForInstallationCalls)
+		}
+	})
+
+	t.Run("returns not found without policy", func(t *testing.T) {
+		repo := &fakeRepository{}
+		svc := NewService(repo, "tenant-1")
+
+		got, found, err := svc.GetPricingPolicyForInstallation(context.Background(), "installation-1")
+		if err != nil {
+			t.Fatalf("GetPricingPolicyForInstallation returned error: %v", err)
+		}
+		if found || got != (domain.Policy{}) {
+			t.Fatalf("expected zero policy and not found, got %#v, %v", got, found)
+		}
+	})
+
+	repoErr := errors.New("repository unavailable")
+	t.Run("propagates repository error", func(t *testing.T) {
+		repo := &fakeRepository{pricingPolicyForInstallationErr: repoErr}
+		svc := NewService(repo, "tenant-1")
+
+		got, found, err := svc.GetPricingPolicyForInstallation(context.Background(), "installation-1")
+		if !errors.Is(err, repoErr) {
+			t.Fatalf("expected repository error %v, got %v", repoErr, err)
+		}
+		if found || got != (domain.Policy{}) {
+			t.Fatalf("expected zero policy and not found, got %#v, %v", got, found)
+		}
+	})
 }

@@ -1,0 +1,171 @@
+﻿**********************
+Início da transcrição do Windows PowerShell
+Hora de início: 20260715230537
+Nome de Usuário: METALNOBRE\Leandro.theodoro
+Executar como Usuário: METALNOBRE\Leandro.theodoro
+Nome da Configuração: 
+Computador: MN-NTB-LEANDROT (Microsoft Windows NT 10.0.26200.0)
+Aplicativo Host: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Users\LEANDR~1.THE\AppData\Local\Temp\claude\C--Users-leandro-theodoro-Documents-marketplace-central\b07b5d1f-b23d-47bb-8e70-5f65f6d015fd\scratchpad\p7-lane.ps1
+ID do Processo: 5816
+PSVersion: 5.1.26100.8875
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.8875
+BuildVersion: 10.0.26100.8875
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+== DOCKER_CHECK ==
+29.6.1
+== DOCKER_CHECK_EXIT=0 ==
+== DOCKER_RUN=52d8cfc448e7fa62d9964549da2c310b33650967070c223c8f918e632a083d00 ==
+== PORT=65251 ==
+docker : psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: No such file or 
+directory
+No C:\Users\leandro.theodoro\AppData\Local\Temp\claude\C--Users-leandro-theodoro-Documents-marketplace-central\b07b5d1f-
+b23d-47bb-8e70-5f65f6d015fd\scratchpad\p7-lane.ps1:20 caractere:27
++ ... t 90;$i++){ docker exec $name psql -U postgres -d postgres --set ON_E ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (psql: error: co...le or directory:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+	Is the server running locally and accepting connections on that socket?
+docker : psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: FATAL:  the database 
+system is shutting down
+No C:\Users\leandro.theodoro\AppData\Local\Temp\claude\C--Users-leandro-theodoro-Documents-marketplace-central\b07b5d1f-
+b23d-47bb-8e70-5f65f6d015fd\scratchpad\p7-lane.ps1:20 caractere:27
++ ... t 90;$i++){ docker exec $name psql -U postgres -d postgres --set ON_E ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (psql: error: co...s shutting down:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+== CREATE_DB_OK=True after 2 tries ==
+== GOCACHE=C:\Users\leandro.theodoro\Documents\marketplace-central\.claude\worktrees\m01-listings\.gocache ==
+== MIGRATE ==
+applied 36 migration(s)
+== MIGRATE_EXIT=0 ==
+== TEST all M-01 integration ==
+=== RUN   TestListingsReadPerformance2000
+    listings_read_perf_test.go:138: environment: go=go1.26.4 os=windows/amd64 sha=
+    listings_read_perf_test.go:139: samples=[2.2003ms 1.5764ms 2.1771ms 2.0876ms 1.5493ms 2.5037ms 2.1685ms 1.6085ms 2.1137ms 2.7002ms 1.5851ms 1.611ms 1.5845ms 2.2402ms 1.6293ms 1.5933ms 2.1289ms 1.7045ms 2.2783ms 1.6008ms 1.5879ms 1.7044ms 2.2379ms 1.5819ms 1.624ms 2.3709ms 2.6697ms 2.3165ms 2.3161ms 2.4025ms 2.2437ms 2.1967ms 1.0257ms 3.3432ms 2.3183ms 1.6128ms 2.3333ms 2.1226ms 2.3036ms 1.6022ms 2.1222ms 2.7427ms 2.0347ms 2.1224ms 2.5184ms 2.7907ms 2.1687ms 1.7086ms 2.3235ms 2.6752ms 2.6937ms 2.1956ms 2.1817ms 2.2128ms 1.7202ms 2.4507ms 2.757ms 2.1287ms 1.5754ms 2.1768ms 2.8932ms 2.615ms 2.2569ms 2.6449ms 1.6823ms 2.2086ms 1.5465ms 2.9266ms 1.6165ms 2.1465ms 2.2081ms 3.9844ms 2.8609ms 2.1301ms 2.5861ms 2.1992ms 2.335ms 3.2304ms 1.6094ms 2.2176ms 2.095ms 2.2155ms 2.2849ms 1.6791ms 2.1321ms 2.7353ms 2.225ms 1.6014ms 2.6598ms 2.297ms 2.2018ms 1.6506ms 3.2947ms 2.4616ms 2.3078ms 2.3544ms 3.1384ms 3.0787ms 3.8904ms 2.3907ms]
+    listings_read_perf_test.go:140: nearest-rank p95=3.1384ms
+    listings_read_perf_test.go:163: EXPLAIN plan:
+        Limit  (cost=0.28..9.83 rows=51 width=25)
+          ->  Index Only Scan using idx_listings_f02_title_key on listings l  (cost=0.28..183.83 rows=980 width=25)
+                Index Cond: ((tenant_id = 'f02-perf-1784167625684590100'::text) AND (installation_id = 'f02-perf-inst-1784167625684590100'::text) AND (ROW(title, provider_listing_id, variation_id) > ROW('Title 1000'::text, 'MLBPERF1000'::text, '-'::text)))
+    listings_read_perf_test.go:175: summary conditional-aggregate query count=1
+--- PASS: TestListingsReadPerformance2000 (3.28s)
+=== RUN   TestListingsReadContractEndToEnd
+=== RUN   TestListingsReadContractEndToEnd/small_page_cursor_walk_and_JSON_null_contract
+=== RUN   TestListingsReadContractEndToEnd/all_filter_keys
+=== RUN   TestListingsReadContractEndToEnd/q_title_provider_id_and_seller_sku
+=== RUN   TestListingsReadContractEndToEnd/by_product_cursor_walk_tie_order_and_null_last
+=== RUN   TestListingsReadContractEndToEnd/detail_variation_timeline_and_not_found
+=== RUN   TestListingsReadContractEndToEnd/error_matrix
+=== RUN   TestListingsReadContractEndToEnd/null_cost_honesty_known_margin_and_summary
+=== RUN   TestListingsReadContractEndToEnd/tenant_isolation_all_read_paths_and_cursors
+--- PASS: TestListingsReadContractEndToEnd (6.32s)
+    --- PASS: TestListingsReadContractEndToEnd/small_page_cursor_walk_and_JSON_null_contract (0.01s)
+    --- PASS: TestListingsReadContractEndToEnd/all_filter_keys (0.02s)
+    --- PASS: TestListingsReadContractEndToEnd/q_title_provider_id_and_seller_sku (0.01s)
+    --- PASS: TestListingsReadContractEndToEnd/by_product_cursor_walk_tie_order_and_null_last (0.01s)
+    --- PASS: TestListingsReadContractEndToEnd/detail_variation_timeline_and_not_found (0.01s)
+    --- PASS: TestListingsReadContractEndToEnd/error_matrix (0.00s)
+    --- PASS: TestListingsReadContractEndToEnd/null_cost_honesty_known_margin_and_summary (0.01s)
+    --- PASS: TestListingsReadContractEndToEnd/tenant_isolation_all_read_paths_and_cursors (0.02s)
+=== RUN   TestListingsRefreshSeedsIC02RowsAndClosesMissing
+--- PASS: TestListingsRefreshSeedsIC02RowsAndClosesMissing (0.29s)
+=== RUN   TestListingsRefreshRejectsConcurrentRunWithActiveID
+--- PASS: TestListingsRefreshRejectsConcurrentRunWithActiveID (0.24s)
+=== RUN   TestListingsRefreshCapabilityErrorMidPullLeavesRowsUnchanged
+--- PASS: TestListingsRefreshCapabilityErrorMidPullLeavesRowsUnchanged (0.39s)
+=== RUN   TestListingsRefreshIsTenantIsolated
+--- PASS: TestListingsRefreshIsTenantIsolated (0.63s)
+=== RUN   TestListingsRefreshUnknownInstallation
+--- PASS: TestListingsRefreshUnknownInstallation (0.09s)
+PASS
+ok  	marketplace-central/apps/server_core/tests/integration	14.426s
+== TEST_EXIT=0 ==
+== DONE ==
+**********************
+Fim da transcrição do Windows PowerShell
+Hora de término: 20260715230720
+**********************
+
+===== SUPPLEMENTAL LANE: TestOperationRunRepositoryBeginExclusiveIsAtomic (C02 atomicity, integrations/adapters/postgres pkg) =====
+**********************
+Início da transcrição do Windows PowerShell
+Hora de início: 20260715230933
+Nome de Usuário: METALNOBRE\Leandro.theodoro
+Executar como Usuário: METALNOBRE\Leandro.theodoro
+Nome da Configuração: 
+Computador: MN-NTB-LEANDROT (Microsoft Windows NT 10.0.26200.0)
+Aplicativo Host: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Users\LEANDR~1.THE\AppData\Local\Temp\claude\C--Users-leandro-theodoro-Documents-marketplace-central\b07b5d1f-b23d-47bb-8e70-5f65f6d015fd\scratchpad\p7-lane2.ps1
+ID do Processo: 24088
+PSVersion: 5.1.26100.8875
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.8875
+BuildVersion: 10.0.26100.8875
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+== DOCKER_RUN=cf0eab07990fdb284f9e91ff95e5a0e1e513148c99ca1bf71313e91fc0e3ad0b ==
+== PORT=52095 ==
+docker : psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: No such file or 
+directory
+No C:\Users\leandro.theodoro\AppData\Local\Temp\claude\C--Users-leandro-theodoro-Documents-marketplace-central\b07b5d1f-
+b23d-47bb-8e70-5f65f6d015fd\scratchpad\p7-lane2.ps1:16 caractere:27
++ ... t 90;$i++){ docker exec $name psql -U postgres -d postgres --set ON_E ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (psql: error: co...le or directory:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+	Is the server running locally and accepting connections on that socket?
+docker : psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: No such file or 
+directory
+No C:\Users\leandro.theodoro\AppData\Local\Temp\claude\C--Users-leandro-theodoro-Documents-marketplace-central\b07b5d1f-
+b23d-47bb-8e70-5f65f6d015fd\scratchpad\p7-lane2.ps1:16 caractere:27
++ ... t 90;$i++){ docker exec $name psql -U postgres -d postgres --set ON_E ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (psql: error: co...le or directory:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+	Is the server running locally and accepting connections on that socket?
+docker : psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: FATAL:  the database 
+system is shutting down
+No C:\Users\leandro.theodoro\AppData\Local\Temp\claude\C--Users-leandro-theodoro-Documents-marketplace-central\b07b5d1f-
+b23d-47bb-8e70-5f65f6d015fd\scratchpad\p7-lane2.ps1:16 caractere:27
++ ... t 90;$i++){ docker exec $name psql -U postgres -d postgres --set ON_E ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (psql: error: co...s shutting down:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+docker : psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: FATAL:  the database 
+system is shutting down
+No C:\Users\leandro.theodoro\AppData\Local\Temp\claude\C--Users-leandro-theodoro-Documents-marketplace-central\b07b5d1f-
+b23d-47bb-8e70-5f65f6d015fd\scratchpad\p7-lane2.ps1:16 caractere:27
++ ... t 90;$i++){ docker exec $name psql -U postgres -d postgres --set ON_E ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (psql: error: co...s shutting down:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+docker : psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: FATAL:  the database 
+system is starting up
+No C:\Users\leandro.theodoro\AppData\Local\Temp\claude\C--Users-leandro-theodoro-Documents-marketplace-central\b07b5d1f-
+b23d-47bb-8e70-5f65f6d015fd\scratchpad\p7-lane2.ps1:16 caractere:27
++ ... t 90;$i++){ docker exec $name psql -U postgres -d postgres --set ON_E ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (psql: error: co... is starting up:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+== CREATE_DB_OK=True after 5 tries ==
+== MIGRATE ==
+applied 36 migration(s)
+== MIGRATE_EXIT=0 ==
+== TEST BeginExclusiveIsAtomic ==
+=== RUN   TestOperationRunRepositoryBeginExclusiveIsAtomic
+--- PASS: TestOperationRunRepositoryBeginExclusiveIsAtomic (1.91s)
+PASS
+ok  	marketplace-central/apps/server_core/internal/modules/integrations/adapters/postgres	4.903s
+== TEST_EXIT=0 ==
+== DONE ==
+**********************
+Fim da transcrição do Windows PowerShell
+Hora de término: 20260715231252
+**********************

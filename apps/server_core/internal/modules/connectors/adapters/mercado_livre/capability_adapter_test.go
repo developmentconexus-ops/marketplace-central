@@ -3,6 +3,7 @@ package mercadolivre
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +13,114 @@ import (
 
 	"marketplace-central/apps/server_core/internal/modules/connectors/domain"
 )
+
+func TestCapabilityAdapterReadListingPublishesCanonicalFactsWithoutProviderPayload(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/items/MLB-DECIMAL" {
+			t.Fatalf("unexpected path %q", r.URL.Path)
+		}
+		_, _ = io.WriteString(w, `{
+			"id":"MLB-DECIMAL",
+			"title":"Produto decimal",
+			"status":"paused",
+			"available_quantity":23,
+			"price":89.00,
+			"currency_id":"BRL",
+			"listing_type_id":"gold_pro",
+			"variations":[
+				{"id":101,"available_quantity":7},
+				{"id":102,"available_quantity":11}
+			]
+		}`)
+	}))
+	defer server.Close()
+
+	adapter := NewCapabilityAdapter(CapabilityAdapterConfig{
+		BaseURL:    server.URL,
+		HTTPClient: server.Client(),
+		AccessTokenResolver: func(context.Context, domain.ProviderAccountRef) (string, error) {
+			return "token-decimal", nil
+		},
+	})
+
+	snapshot, err := adapter.ReadListing(context.Background(), listingRef("MLB-DECIMAL", ""))
+	if err != nil {
+		t.Fatalf("ReadListing() error = %v", err)
+	}
+	if snapshot.PriceAmount == nil || *snapshot.PriceAmount != "89.00" {
+		t.Fatalf("price amount = %#v, want exact decimal 89.00", snapshot.PriceAmount)
+	}
+	if snapshot.PriceCurrency != "BRL" || snapshot.ListingTypeCode != "gold_pro" {
+		t.Fatalf("published facts = %#v", snapshot)
+	}
+	if snapshot.ProviderStatus != "paused" || snapshot.AvailableQuantity == nil || *snapshot.AvailableQuantity != 23 {
+		t.Fatalf("item facts = %#v", snapshot)
+	}
+	if len(snapshot.Variations) != 2 || snapshot.Variations[0].AvailableQuantity == nil || *snapshot.Variations[0].AvailableQuantity != 7 || snapshot.Variations[1].AvailableQuantity == nil || *snapshot.Variations[1].AvailableQuantity != 11 {
+		t.Fatalf("variation facts = %#v", snapshot.Variations)
+	}
+	if raw, ok := snapshot.RawProviderRef.(string); !ok || raw != "/items/MLB-DECIMAL" {
+		t.Fatalf("raw provider ref = %#v, want sanitized path string", snapshot.RawProviderRef)
+	}
+}
+
+func TestCapabilityAdapterClassifiesProviderAuthFailures(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		statusCode int
+		resolver   AccessTokenResolver
+		wantCalls  int
+	}{
+		{name: "http 401", statusCode: http.StatusUnauthorized, wantCalls: 1},
+		{name: "http 403", statusCode: http.StatusForbidden, wantCalls: 1},
+		{name: "credential unavailable", resolver: func(context.Context, domain.ProviderAccountRef) (string, error) {
+			return "", errors.New("credential unavailable")
+		}, wantCalls: 0},
+		{name: "empty credential", resolver: func(context.Context, domain.ProviderAccountRef) (string, error) {
+			return "", nil
+		}, wantCalls: 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			requestCalls := 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requestCalls++
+				if r.URL.Path != "/items/MLB-AUTH" {
+					t.Fatalf("unexpected path %q", r.URL.Path)
+				}
+				w.WriteHeader(tt.statusCode)
+			}))
+			defer server.Close()
+
+			resolver := tt.resolver
+			if resolver == nil {
+				resolver = func(context.Context, domain.ProviderAccountRef) (string, error) {
+					return "token-auth", nil
+				}
+			}
+			adapter := NewCapabilityAdapter(CapabilityAdapterConfig{
+				BaseURL:             server.URL,
+				HTTPClient:          server.Client(),
+				AccessTokenResolver: resolver,
+			})
+
+			_, err := adapter.ReadListing(context.Background(), listingRef("MLB-AUTH", ""))
+			if got := domain.ErrorCodeOf(err); got != domain.ErrCodeProviderAuth {
+				t.Fatalf("error code = %q, err = %v, want provider auth", got, err)
+			}
+			if requestCalls != tt.wantCalls {
+				t.Fatalf("provider request calls = %d, want %d", requestCalls, tt.wantCalls)
+			}
+		})
+	}
+}
 
 func TestCapabilityAdapterReadListingMapsItemWithoutVariation(t *testing.T) {
 	t.Parallel()

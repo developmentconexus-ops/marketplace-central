@@ -37,6 +37,7 @@ const (
 
 const (
 	ErrCodeProviderRateLimited      ErrorCode = "CONNECTORS_PROVIDER_RATE_LIMITED"
+	ErrCodeProviderAuth             ErrorCode = "CONNECTORS_PROVIDER_AUTH"
 	ErrCodeProviderValidation       ErrorCode = "CONNECTORS_PROVIDER_VALIDATION"
 	ErrCodeProviderUnsupportedShape ErrorCode = "CONNECTORS_PROVIDER_UNSUPPORTED_SHAPE"
 	ErrCodeProviderTransient        ErrorCode = "CONNECTORS_PROVIDER_TRANSIENT"
@@ -120,6 +121,9 @@ type ListingSnapshot struct {
 	ProviderItemID      string                     `json:"provider_item_id"`
 	ProviderVariationID string                     `json:"provider_variation_id,omitempty"`
 	ProviderStatus      string                     `json:"provider_status,omitempty"`
+	PriceAmount         *string                    `json:"price_amount,omitempty"`
+	PriceCurrency       string                     `json:"price_currency,omitempty"`
+	ListingTypeCode     string                     `json:"listing_type_code,omitempty"`
 	SellerSKU           string                     `json:"seller_sku,omitempty"`
 	EAN                 string                     `json:"ean,omitempty"`
 	Title               string                     `json:"title,omitempty"`

@@ -61,6 +61,23 @@ No listing entity exists today (only thin snapshots inside product_links). Six s
 `filter` is a flat JSON object, URL-encoded as `filter.<key>=<value>` query params:
 `{status?, sync_state?, link_state?, exception?, has_exception?, listing_type_code?, product_id?}` — values are single enum strings (no arrays, no wildcards, no operators this mission; extension = add keys, never change existing key semantics). `has_exception ∈ true|false` matches any/no `pending_issue` (powers the "Com pendência" tab). `q` (free text over title/provider_listing_id/seller_sku) is separate from `filter`.
 
+**Hub-blessed clarification (Option 2 ruling).** Lists filtered by `exception=below_margin` or
+`has_exception=true|false` use a bounded iterative keyset scan because the worst-case margin fact
+depends on request-local Oracle reads. These filters may therefore return a short non-final page.
+One request scans at most 50 candidate pages; when that cap is reached before `limit` matches are
+found, the response contains the accumulated matches and `next_cursor` identifies the last scanned
+row. Passing that cursor resumes without silently skipping candidates. The response shape is
+unchanged. Lists without a below-margin-dependent predicate retain the single-query `limit+1` path.
+
+**Grouping (`GET /listings/by-product`).** Below-margin-dependent filters use the same bounded
+scan mapped to group keys: a group appears iff at least one child survives, and the cursor advances
+over every scanned group key, including dropped zero-survivor groups. The cap is 50 group-key pages;
+on a cap hit the cursor is the last scanned group key. `listing_count` is the surviving-child count
+(equal to `len(listings)`); every emitted child is cost-evaluated, with no sampling. Below margin is
+defined only for linked listings, so `exception=below_margin` excludes "sem produto",
+`has_exception=true` includes it via `unlinked`, and `has_exception=false` excludes it. The response
+shape is unchanged.
+
 ## Enums And Statuses
 
 - `sync_state`: `synced | error | stale | queued | syncing | paused_sync`. pt-BR labels fixed: sincronizado / com erro / desatualizado / na fila / sincronizando / pausado. ("sem vínculo" is `link.state`, NOT a sync_state.)

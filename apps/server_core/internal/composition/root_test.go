@@ -3,11 +3,38 @@ package composition
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"marketplace-central/apps/server_core/internal/platform/httpx"
+	"marketplace-central/apps/server_core/internal/platform/pgdb"
 )
+
+func TestRefreshListingsOpenAPIContractParity(t *testing.T) {
+	raw, err := os.ReadFile("../../../../contracts/api/marketplace-central.openapi.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	spec := string(raw)
+	start := strings.Index(spec, "  /listings/refresh:")
+	end := strings.Index(spec[start+1:], "\n  /")
+	if start < 0 || end < 0 {
+		t.Fatal("/listings/refresh path not found")
+	}
+	path := spec[start : start+1+end]
+	for _, want := range []string{"operationId: refreshListings", "$ref: '#/components/schemas/RefreshListingsRequest'", "$ref: '#/components/schemas/RefreshListingsAccepted'", `"202":`, `"400":`, `"404":`, `"409":`} {
+		if !strings.Contains(path, want) {
+			t.Fatalf("refresh contract missing %q", want)
+		}
+	}
+	for _, unwanted := range []string{`"200":`, `"405":`, `"500":`, `"503":`} {
+		if strings.Contains(path, unwanted) {
+			t.Fatalf("refresh contract unexpectedly contains %q", unwanted)
+		}
+	}
+}
 
 func TestFeeScheduleRoutesUseBatchDeadline(t *testing.T) {
 	mux := httpx.NewRouteClassMux()
@@ -33,6 +60,36 @@ func TestFeeScheduleRoutesUseBatchDeadline(t *testing.T) {
 			}
 			if remaining := time.Until(deadline); remaining < 119*time.Second || remaining > 120*time.Second {
 				t.Fatalf("batch deadline remaining = %s, want approximately 120s", remaining)
+			}
+		})
+	}
+}
+
+func TestRootRuntimeRegistersListingsReadRoutes(t *testing.T) {
+	runtime, err := NewRootRuntime(nil, pgdb.Config{
+		DefaultTenantID: "tenant_default",
+		EncryptionKey:   "0123456789abcdef0123456789abcdef",
+	})
+	if err != nil {
+		t.Fatalf("NewRootRuntime() error = %v", err)
+	}
+
+	for _, tc := range []struct {
+		path   string
+		method string
+		status int
+	}{
+		{path: "/listings", method: http.MethodGet, status: http.StatusBadRequest},
+		{path: "/listings/by-product", method: http.MethodGet, status: http.StatusBadRequest},
+		{path: "/listings/summary", method: http.MethodGet, status: http.StatusBadRequest},
+		{path: "/listings/not-a-listing-id", method: http.MethodGet, status: http.StatusNotFound},
+		{path: "/listings/refresh", method: http.MethodPost, status: http.StatusBadRequest},
+	} {
+		t.Run(tc.path, func(t *testing.T) {
+			recorder := httptest.NewRecorder()
+			runtime.Handler.ServeHTTP(recorder, httptest.NewRequest(tc.method, tc.path, nil))
+			if recorder.Code != tc.status {
+				t.Fatalf("status = %d, want %d; body=%s", recorder.Code, tc.status, recorder.Body.String())
 			}
 		})
 	}
