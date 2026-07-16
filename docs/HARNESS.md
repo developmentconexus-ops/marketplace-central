@@ -196,7 +196,10 @@ interfaces with no named consumer · comment narration / PR-voice comments · bl
 recover/try-catch, fallbacks on integrity-critical reads (unknown ≠ zero — ADR-17, fail honest) ·
 idiom mismatch with the surrounding module · dead code / commented blocks / unanchored TODOs ·
 hand-rolled platform equivalents · generated-file edits (contract-first or nothing) · test
-theater (asserting the mock; missing negative/cross-tenant case).
+theater (asserting the mock; missing negative/cross-tenant case) · permanent stub/nil dependency
+wired into a composition-root live path without dated deferral or operator authorization
+(ratified 2026-07-15 — M-01 field case: `root.go` listings cost reader built with nil DB +
+permanently-unavailable policy reader passed every hermetic gate, then blocked live C10).
 
 **Reviews verify, never generate scope.** New scope wanted = finding for the hub queue.
 
@@ -242,7 +245,11 @@ dispatch prompts and the hub adjudicates collisions; nothing references them.
 **Backend non-negotiables re-checked at L0–L2 per touched endpoint:** tenant_id predicate on
 every query · provider payloads at adapters only · unknown never zero/default (ADR-17) ·
 OpenAPI + sdk-runtime same commit · provider writes: resolved linkage, explicit policy/source
-time, duplicate protection, audit (IC-03 gates) · mocks never prove live integration.
+time, duplicate protection, audit (IC-03 gates) · mocks never prove live integration ·
+validation contracts/tests NEVER fall back to stub/mock for an integration seam without explicit
+operator authorization — integration criteria run against the REAL dependency, and mission
+planning declares real-integration bindings (seam + env) up front so stubs never ship as
+placeholders (operator-ratified 2026-07-15).
 
 ## 6. Repo invariants (survive any harness)
 

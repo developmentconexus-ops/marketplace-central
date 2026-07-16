@@ -99,6 +99,11 @@ harness scripts) · `contracts/governance/` registry · `docs/HARNESS*` doctrine
 - Provider writes: resolved linkage, explicit policy/source time, duplicate protection, audit
   (IC-03 gates).
 - Mocks prove contract behavior, never live integration.
+- Validation contracts/tests NEVER fall back to stub/mock for an integration seam without
+  explicit operator authorization; integration criteria run against the REAL dependency
+  (live/operator-provisioned env). Composition roots never ship permanent stub/nil wiring on a
+  live path — stub only with dated deferral naming the replacing slice. Mission planning must
+  declare real-integration bindings (seam + env) up front.
 
 ## 8. Truth order (core §6)
 `status: ratified` · `provenance: 2026-07-15 · AGENTS.md + docs/HARNESS.md §6`
@@ -131,5 +136,6 @@ verification conflicts against this list.
 2026-07-15 · §2 · ratified · governance lane: run from clean detached worktree + full 40-hex BaseSha (field finding: main-checkout sweep of .claude/worktrees false-fails; short sha = GOV_SEMANTIC_DRIFT base-sha-invalid) — memory/governance-lane-clean-worktree.md
 2026-07-15 · §3 · ratified · fresh-worktree GOMODCACHE warm + HPG_MIGRATION_FAILED/migrations_first=-1 false-alarm signature (M-01 field finding)
 2026-07-15 · §4 · ratified · session postgres container harness:pg:up/down (mpc-pg-session-<8hex>) + createdb first-boot retry absorbing 3D000
+2026-07-15 · §7 · ratified · no-stub doctrine: validation contracts/tests never fallback stub/mock on integration seams without operator authorization; real dependency required; planning declares real bindings up front (operator ruling after M-01 C10 — root.go nil-DB cost reader + permanent-unavailable policy reader passed hermetic gates, blocked live validation)
 2026-07-15 · §2 L2 + §6 · corrected · dev stack ONLY via docker compose (npm run docker:dev / docker:oauth), hub-owned; chips never boot own server, never bind :8080/:5174, never load .env* into session env (field violation: M-01 chip ran bare worktree server with real .env for C10 — 42P01s were self-inflicted bypass of compose postgres+entrypoint)
 ```
