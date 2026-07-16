@@ -31,8 +31,12 @@ deliberate call, not an omission.
 
 ## Milestone-owner independent verification (not relayed from the worker)
 
-- **All 16 log sites carry `op`.** `grep -n "slog\.\(Warn\|Error\)" read_service.go` → 16 sites;
-  the same grep piped through `grep -v '"op"'` → **0**. The site that H1 named, now `:430`, reads
+- **Every log site carries `op`.** `grep -n "slog\.\(Warn\|Error\)" read_service.go` → **15** sites;
+  the same grep piped through `grep -v '"op"'` → **0**. (CORRECTION: this report originally said 16.
+  The true count is 15 — the miscount was mine, caught by the round-5 cold Opus reviewer while
+  checking a claim it was invited to distrust. The substance is unaffected: what H1 turns on is that
+  the set of sites *without* `op` is empty, and it is. Left visible rather than silently edited.)
+  The site that H1 named, now `:430`, reads
   `slog.Error("listings: cost fact read failed", "err", costErr, "op", op)`. `:100` — the same
   message on the same condition inside `Summary` — still reads `"op", "Summary"`. The invariant is
   now uniform across the file.
