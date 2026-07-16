@@ -13,6 +13,7 @@ import (
 
 var _ ports.OperationRunStore = (*OperationRunRepository)(nil)
 var _ ports.OperationRunReadStore = (*OperationRunRepository)(nil)
+var _ ports.OperationRunLatestReadStore = (*OperationRunRepository)(nil)
 
 type OperationRunRepository struct {
 	pool     *pgxpool.Pool
@@ -134,6 +135,37 @@ func (r *OperationRunRepository) ListByInstallation(ctx context.Context, install
 		runs = append(runs, run)
 	}
 	return runs, rows.Err()
+}
+
+func (r *OperationRunRepository) LatestRunsByModule(ctx context.Context, installationID string) ([]ports.LatestRunByModule, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT operation_type,
+			MAX(started_at) AS latest_attempted_at,
+			MAX(completed_at) FILTER (WHERE status = 'succeeded') AS latest_successful_at
+		FROM integration_operation_runs
+		WHERE tenant_id = $1
+		  AND installation_id = $2
+		GROUP BY operation_type
+		ORDER BY operation_type ASC
+	`, r.tenantID, installationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	latestRuns := make([]ports.LatestRunByModule, 0)
+	for rows.Next() {
+		var item ports.LatestRunByModule
+		var latestAttemptedAt pgtype.Timestamptz
+		var latestSuccessfulAt pgtype.Timestamptz
+		if err := rows.Scan(&item.OperationType, &latestAttemptedAt, &latestSuccessfulAt); err != nil {
+			return nil, err
+		}
+		item.LatestAttemptedAt = scanTimestamptz(latestAttemptedAt)
+		item.LatestSuccessfulAt = scanTimestamptz(latestSuccessfulAt)
+		latestRuns = append(latestRuns, item)
+	}
+	return latestRuns, rows.Err()
 }
 
 func (r *OperationRunRepository) ListRuns(ctx context.Context, query ports.RunListQuery) (ports.RunPage, error) {

@@ -23,7 +23,8 @@ Branch `chip/sat-m05f01-m06f02` · base `a49168e641ffd6f61932ca57c29b1d1bdcde2fb
 | 21 | Slice review F01-D1 | claude sonnet subagent | Agent | scratchpad/review-pack-f01-d1.md | scratchpad/review-verdict-f01-d1.md | done | ACCEPT (1 suggestion + 1 nit, non-blocking) |
 | 23 | Implement F01-O3 orders app+HTTP evolution | gpt-5.6-luna / high | OS-process | scratchpad/prompt-f01-o3.md | scratchpad/agent__f01-o3.log · agent__f01-o3.last.md | dispatched | pending |
 | 19 | Implement F01-D3 last-sync projection | gpt-5.6-luna / high | OS-process | scratchpad/prompt-f01-d3.md | scratchpad/agent__f01-d3.log · agent__f01-d3.last.md | done | quick_validation_passed; write-set respected; vet green both modes |
-| 22 | Slice review F01-D3 | claude sonnet subagent | Agent | scratchpad/review-pack-f01-d3.md | scratchpad/review-verdict-f01-d3.md | dispatched | pending |
+| 22 | Slice review F01-D3 | claude sonnet subagent | Agent | scratchpad/review-pack-f01-d3.md | scratchpad/review-verdict-f01-d3.md | done | ACCEPT (2 nits, non-blocking) |
+| 24 | Implement F01-D4 dashboard composition | gpt-5.6-luna / high | OS-process | scratchpad/prompt-f01-d4.md | scratchpad/agent__f01-d4.log · agent__f01-d4.last.md | dispatched | pending |
 | 15 | Slice review F01-S2 | claude sonnet subagent | Agent | scratchpad/review-pack-f01-s2.md | scratchpad/review-verdict-f01-s2.md | done | REJECT — 1 blocking (4 dead exported error lines), fix row 17 |
 | 17 | Corrective: S2 delete dead exports (trivial) | claude sonnet subagent (fallback, core §1) | Agent | (inline instruction) | run_query.go 149→143 lines | done | 4 dead exports deleted; vet+tests green |
 | 17b | Delta re-review F01-S2 | claude sonnet subagent (resumed row 15) | SendMessage | (delta instruction) | scratchpad/review-verdict-f01-s2.md (appended) | done | DELTA ACCEPT — no open blocking/important |

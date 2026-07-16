@@ -51,3 +51,9 @@ type RunPage struct {
 	Items      []RunReadModel
 	NextCursor *RunCursor
 }
+
+type LatestRunByModule struct {
+	OperationType      string
+	LatestAttemptedAt  *time.Time
+	LatestSuccessfulAt *time.Time
+}

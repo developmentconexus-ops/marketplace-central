@@ -9,8 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	integrationspostgres "marketplace-central/apps/server_core/internal/modules/integrations/adapters/postgres"
 	"marketplace-central/apps/server_core/internal/modules/integrations/domain"
+	"marketplace-central/apps/server_core/internal/modules/integrations/ports"
 	testpostgres "marketplace-central/apps/server_core/internal/testsupport/postgres"
 )
 
@@ -83,6 +85,85 @@ func TestOperationRunRepositoryBeginExclusiveIsAtomic(t *testing.T) {
 		if err != nil || active || got.OperationRunID != tc.id {
 			t.Fatalf("independent start got=%+v active=%v err=%v", got, active, err)
 		}
+	}
+}
+
+func TestLatestRunsByModuleTenantScoped(t *testing.T) {
+	ctx, repo, pool, tenant, other, installation := runLatestRunsHarness(t, "tenant")
+	now := time.Now().UTC()
+	successAt := now.Add(-time.Minute)
+	seedLatestRun(t, pool, tenant, installation, "latest-success", "listing_read", domain.OperationRunStatusSucceeded, successAt, &successAt)
+	seedLatestRun(t, pool, tenant, installation, "latest-attempt", "listing_read", domain.OperationRunStatusFailed, now, &now)
+	seedLatestRun(t, pool, tenant, installation, "other-module", "order_read", domain.OperationRunStatusSucceeded, now, &now)
+	seedLatestRun(t, pool, other, installation, "other-tenant", "pricing_fee_sync", domain.OperationRunStatusSucceeded, now.Add(time.Minute), &now)
+
+	got, err := repo.LatestRunsByModule(ctx, installation)
+	if err != nil {
+		t.Fatalf("LatestRunsByModule() error = %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("projection rows = %d, want 2: %+v", len(got), got)
+	}
+	byModule := make(map[string]ports.LatestRunByModule, len(got))
+	for _, item := range got {
+		byModule[item.OperationType] = item
+	}
+	if _, ok := byModule["pricing_fee_sync"]; ok {
+		t.Fatal("projection leaked another tenant's operation module")
+	}
+	if byModule["listing_read"].LatestAttemptedAt == nil || !byModule["listing_read"].LatestAttemptedAt.Equal(now) {
+		t.Fatalf("listing_read timestamps = %+v", byModule["listing_read"])
+	}
+	if byModule["listing_read"].LatestSuccessfulAt == nil || !byModule["listing_read"].LatestSuccessfulAt.Equal(successAt) {
+		t.Fatalf("listing_read successful timestamp = %v, want %v", byModule["listing_read"].LatestSuccessfulAt, successAt)
+	}
+}
+
+func TestLatestRunsKeepsUnknownTimestampNull(t *testing.T) {
+	ctx, repo, pool, tenant, _, installation := runLatestRunsHarness(t, "null")
+	now := time.Now().UTC()
+	seedLatestRun(t, pool, tenant, installation, "running", "listing_read", domain.OperationRunStatusRunning, now, nil)
+
+	got, err := repo.LatestRunsByModule(ctx, installation)
+	if err != nil {
+		t.Fatalf("LatestRunsByModule() error = %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("projection rows = %d, want 1: %+v", len(got), got)
+	}
+	if got[0].LatestSuccessfulAt != nil {
+		t.Fatalf("latest successful timestamp = %v, want nil", got[0].LatestSuccessfulAt)
+	}
+	if got[0].LatestAttemptedAt == nil || !got[0].LatestAttemptedAt.Equal(now) {
+		t.Fatalf("latest attempted timestamp = %v, want %v", got[0].LatestAttemptedAt, now)
+	}
+}
+
+func runLatestRunsHarness(t *testing.T, name string) (context.Context, *integrationspostgres.OperationRunRepository, *pgxpool.Pool, string, string, string) {
+	t.Helper()
+	ctx := context.Background()
+	pool, _ := testpostgres.OpenPool(t, "operation_run_latest_"+name)
+	token := fmt.Sprintf("%d", time.Now().UnixNano())
+	tenant, other, installation := "latest-a-"+token, "latest-b-"+token, "latest-inst-"+token
+	provider := "latest-provider-" + token
+	if _, err := pool.Exec(ctx, `INSERT INTO integration_provider_definitions(provider_code,family,display_name,auth_strategy,install_mode) VALUES($1,'marketplace',$1,'none','manual')`, provider); err != nil {
+		t.Fatal(err)
+	}
+	for _, owner := range []string{tenant, other} {
+		if _, err := pool.Exec(ctx, `INSERT INTO integration_installations(tenant_id,installation_id,provider_code,family,display_name,status) VALUES($1,$2,$3,'marketplace',$2,'connected')`, owner, installation, provider); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM integration_provider_definitions WHERE provider_code=$1`, provider)
+	})
+	return ctx, integrationspostgres.NewOperationRunRepository(pool, tenant), pool, tenant, other, installation
+}
+
+func seedLatestRun(t *testing.T, pool *pgxpool.Pool, tenant, installation, id, module string, status domain.OperationRunStatus, startedAt time.Time, finishedAt *time.Time) {
+	t.Helper()
+	if _, err := pool.Exec(context.Background(), `INSERT INTO integration_operation_runs(tenant_id,operation_run_id,installation_id,operation_type,status,result_code,failure_code,attempt_count,duration_ms,started_at,completed_at) VALUES($1,$2,$3,$4,$5,'result','failure',2,123,$6,$7)`, tenant, id, installation, module, status, startedAt, finishedAt); err != nil {
+		t.Fatal(err)
 	}
 }
 

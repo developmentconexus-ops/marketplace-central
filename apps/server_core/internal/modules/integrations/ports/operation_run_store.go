@@ -15,3 +15,7 @@ type OperationRunStore interface {
 type OperationRunReadStore interface {
 	ListRuns(ctx context.Context, query RunListQuery) (RunPage, error)
 }
+
+type OperationRunLatestReadStore interface {
+	LatestRunsByModule(ctx context.Context, installationID string) ([]LatestRunByModule, error)
+}
