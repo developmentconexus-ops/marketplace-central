@@ -90,7 +90,7 @@ func TestOperationRunRepositoryBeginExclusiveIsAtomic(t *testing.T) {
 
 func TestLatestRunsByModuleTenantScoped(t *testing.T) {
 	ctx, repo, pool, tenant, other, installation, otherInstallation := runLatestRunsHarness(t, "tenant")
-	now := time.Now().UTC()
+	now := time.Now().UTC().Truncate(time.Microsecond)
 	successAt := now.Add(-time.Minute)
 	seedLatestRun(t, pool, tenant, installation, "latest-success", "listing_read", domain.OperationRunStatusSucceeded, successAt, &successAt)
 	seedLatestRun(t, pool, tenant, installation, "latest-attempt", "listing_read", domain.OperationRunStatusFailed, now, &now)
@@ -125,7 +125,7 @@ func TestLatestRunsByModuleTenantScoped(t *testing.T) {
 
 func TestLatestRunsKeepsUnknownTimestampNull(t *testing.T) {
 	ctx, repo, pool, tenant, _, installation, _ := runLatestRunsHarness(t, "null")
-	now := time.Now().UTC()
+	now := time.Now().UTC().Truncate(time.Microsecond)
 	seedLatestRun(t, pool, tenant, installation, "running", "listing_read", domain.OperationRunStatusRunning, now, nil)
 
 	got, err := repo.LatestRunsByModule(ctx, installation)
