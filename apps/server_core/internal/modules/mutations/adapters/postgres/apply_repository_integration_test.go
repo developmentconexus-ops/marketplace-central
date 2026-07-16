@@ -82,6 +82,19 @@ func TestApplyRepositorySnapshotClaimChunkAndImmutableOutcomes(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(keys, []string{chunk[0].IdempotencyKey}) {
 		t.Fatalf("applied keys=%v err=%v", keys, err)
 	}
+	if err := claim.WriteItemOutcome(ctx, chunk[1].ItemID, ports.ItemOutcome{State: domain.ItemStateFailed, Failure: json.RawMessage(`{"code":"provider_unavailable","message_pt":"indisponível","retryable":true}`), AppliedAt: appliedAt}); err != nil {
+		t.Fatal(err)
+	}
+	if err := claim.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var failedAppliedAt *time.Time
+	if err := pool.QueryRow(ctx, `SELECT applied_at FROM mutation_items WHERE tenant_id=$1 AND protocol_id=$2 AND item_id=$3`, tenant, created.ProtocolID, chunk[1].ItemID).Scan(&failedAppliedAt); err != nil {
+		t.Fatal(err)
+	}
+	if failedAppliedAt != nil {
+		t.Fatalf("failed item applied_at = %v, want NULL", failedAppliedAt)
+	}
 }
 
 func TestApplyRepositoryClaimsDifferentInstallationsConcurrently(t *testing.T) {

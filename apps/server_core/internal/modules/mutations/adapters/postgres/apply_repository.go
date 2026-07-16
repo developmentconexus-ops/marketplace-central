@@ -137,7 +137,11 @@ func (c *protocolClaim) WriteItemOutcome(ctx context.Context, itemID string, out
 	if outcome.State != domain.ItemStateApplied && outcome.State != domain.ItemStateFailed && outcome.State != domain.ItemStateSkipped {
 		return domain.ErrItemOutcomeInvalid
 	}
-	tag, err := c.tx.Exec(ctx, `UPDATE mutation_items SET state=$4,failure=$5,applied_at=$6 WHERE tenant_id=$1 AND protocol_id=$2 AND item_id=$3 AND state NOT IN ('applied','failed','skipped')`, c.tenantID, c.protocol.ProtocolID, itemID, outcome.State, nullableJSON(outcome.Failure), outcome.AppliedAt.UTC())
+	var appliedAt any
+	if outcome.State == domain.ItemStateApplied {
+		appliedAt = outcome.AppliedAt.UTC()
+	}
+	tag, err := c.tx.Exec(ctx, `UPDATE mutation_items SET state=$4,failure=$5,applied_at=$6 WHERE tenant_id=$1 AND protocol_id=$2 AND item_id=$3 AND state NOT IN ('applied','failed','skipped')`, c.tenantID, c.protocol.ProtocolID, itemID, outcome.State, nullableJSON(outcome.Failure), appliedAt)
 	if err != nil {
 		return err
 	}
