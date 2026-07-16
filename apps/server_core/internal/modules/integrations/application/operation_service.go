@@ -88,6 +88,14 @@ func (s *OperationService) ListByInstallation(ctx context.Context, installationI
 	return s.store.ListByInstallation(ctx, installationID)
 }
 
+func (s *OperationService) ListRuns(ctx context.Context, query ports.RunListQuery) (ports.RunPage, error) {
+	readStore, ok := s.store.(ports.OperationRunReadStore)
+	if !ok {
+		return ports.RunPage{}, errors.New("INTEGRATIONS_OPERATION_READ_UNAVAILABLE")
+	}
+	return readStore.ListRuns(ctx, query)
+}
+
 func isValidOperationRunStatus(status domain.OperationRunStatus) bool {
 	switch status {
 	case domain.OperationRunStatusQueued,

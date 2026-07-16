@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"marketplace-central/apps/server_core/internal/modules/integrations/domain"
+	"marketplace-central/apps/server_core/internal/modules/integrations/ports"
 )
 
 func TestOperationServiceListByInstallationReturnsRuns(t *testing.T) {
@@ -55,6 +56,31 @@ func TestOperationServiceListByInstallationRejectsEmptyInstallationID(t *testing
 	}
 }
 
+func TestOperationServiceListRunsDelegatesToReadStore(t *testing.T) {
+	t.Parallel()
+
+	startedAt := time.Unix(100, 0).UTC()
+	store := &stubOperationRunListStore{readPage: ports.RunPage{Items: []ports.RunReadModel{{
+		OperationRunID: "run_read_001",
+		InstallationID: "inst_001",
+		Module:         "listing_read",
+		StartedAt:      &startedAt,
+	}}}}
+	svc := NewOperationService(store, "tenant-default")
+	query := ports.RunListQuery{InstallationID: "inst_001", Limit: 10, Module: "listing_read"}
+
+	page, err := svc.ListRuns(context.Background(), query)
+	if err != nil {
+		t.Fatalf("ListRuns() error = %v", err)
+	}
+	if !reflect.DeepEqual(page, store.readPage) {
+		t.Fatalf("page = %#v, want %#v", page, store.readPage)
+	}
+	if !reflect.DeepEqual(store.lastRunQuery, query) {
+		t.Fatalf("query = %#v, want %#v", store.lastRunQuery, query)
+	}
+}
+
 func TestOperationServiceBeginExclusiveReturnsActiveRun(t *testing.T) {
 	store := &stubOperationRunListStore{runs: []domain.OperationRun{{OperationRunID: "op_active", InstallationID: "inst", OperationType: "listings_refresh", Status: domain.OperationRunStatusRunning}}}
 	svc := NewOperationService(store, "tenant")
@@ -67,6 +93,8 @@ func TestOperationServiceBeginExclusiveReturnsActiveRun(t *testing.T) {
 type stubOperationRunListStore struct {
 	runs               []domain.OperationRun
 	lastInstallationID string
+	readPage           ports.RunPage
+	lastRunQuery       ports.RunListQuery
 }
 
 func (s *stubOperationRunListStore) BeginExclusive(_ context.Context, run domain.OperationRun) (domain.OperationRun, bool, error) {
@@ -87,6 +115,11 @@ func (s *stubOperationRunListStore) SaveOperationRun(_ context.Context, run doma
 func (s *stubOperationRunListStore) ListByInstallation(_ context.Context, installationID string) ([]domain.OperationRun, error) {
 	s.lastInstallationID = installationID
 	return append([]domain.OperationRun(nil), s.runs...), nil
+}
+
+func (s *stubOperationRunListStore) ListRuns(_ context.Context, query ports.RunListQuery) (ports.RunPage, error) {
+	s.lastRunQuery = query
+	return s.readPage, nil
 }
 
 func TestOperationServiceRecordMapsRichFields(t *testing.T) {
