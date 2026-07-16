@@ -205,6 +205,43 @@ verification conflicts against this list.
   implementation conversation. GPT flags NEVER retyped from memory — resolve via the
   `codex-dispatch` skill; `--effort` always explicit.
 
+## 12. Implementer dispatch bindings (core §4 instantiation)
+`status: ratified` · `provenance: 2026-07-16 · operator-ratified alt-D+ design session (4 adversarial Opus×Sol rounds + MIS-003 field evidence: hub + CHIP-SAT/CHIP-M02/CHIP-M03)`
+
+- **Prompt-pack:** every codex implementer dispatch carries the canonical implementer
+  prompt-pack from `docs/HARNESS-CORE.md` §4 ("Implementer prompt-pack — canonical,
+  versioned"), stamped `impl-pack v<semver> · milestone <id> · body-sha256 <hash>`. Block
+  order fixed: pack → role/repo bindings → slice card (variable, always last); mid-milestone
+  changes = dated addenda appended after the card, folded at milestone boundary. The ledger
+  records `pack_version` + body hash per dispatch.
+- **Deterministic lane tooling:** vendored at `scripts/harness/dispatch/`
+  (`New-DispatchPrompt.ps1` assembler · `Invoke-CodexDispatch.ps1` dispatcher ·
+  `Test-HarnessPreflight.ps1` · `HarnessDispatch.psm1` · `roles.psd1` · Pester tests),
+  hash-locked by `scripts.lock.json` — every entrypoint fail-closes on hash mismatch
+  (LOCK-MISMATCH = re-vendor from the harness plugin, NEVER re-lock locally;
+  `Update-ScriptLock.ps1` refuses to run outside plugin source). Scripts validate FORM only
+  (max verdict `FORM-COMPLETE`); merit stays with the review ladder.
+- **Dispatch registry:** append-only JSONL, lifecycle `assembled → started →
+  completed/failed/cancelled`; assembly alone never yields a complete row — only the
+  dispatcher promotes to `started`. Location: `output/harness/dispatch-registry.jsonl`
+  (`assumed` — hub may re-bind to a `.mnfs/` path at first field use; whichever path the hub
+  uses first becomes the binding). Dispatcher writes atomic `agent__<id>.result.json`
+  receipts (dispatcherPid, timestamps, exit code, prompt/log/output hashes) replacing the
+  bare `.done` sentinel, and NEVER auto-re-issues a writing worker (timeout/exception →
+  `failed` + stop for diagnosis).
+- **Role → flags:** `roles.psd1` mirrors core §1 (canonical there; edits land in CORE first).
+  Per-role default sandbox: writers `workspace-write`, judges/auditors `read-only`;
+  `--effort` always explicit.
+- **F-A commit-denial clause (index.lock):** if a worker's `git commit` is denied by an
+  existing `.git/index.lock` (or sandbox git-write denial), the worker must ATTEMPT the
+  commit once, and on denial LEAVE THE FILES IN PLACE and REPORT the denial verbatim in its
+  final report (evidence type `could-not-run`) — never delete work, never retry-loop, never
+  remove the lock file itself. The chip/hub owns lock diagnosis (CHIP-M03 field finding,
+  MIS-003 W1). `Test-HarnessPreflight.ps1` surfaces `git-index-lock` as an advisory check
+  before writer dispatch.
+- **Evidence types bind here too (core §5):** worker reports classify each verification as
+  `ran` / `assumed` / `could-not-run`; a Pass is only recordable on `ran` with artifact.
+
 ## Amendment log
 
 ```
@@ -227,4 +264,5 @@ verification conflicts against this list.
 2026-07-16 · (upstream) · ratified · core amendments landed in mnfs-harness cd114e6: sonnet fallback implementer row, COMMITTED event grammar, lean close (★ crew superseded at close by P6 dual gate), additive contract-lock named mechanism, P2 required plan outputs (write-DAG + contract satisfiability + lock pre-identification), Claude-side dispatch visibility accepted limitation
 2026-07-16 · §3 · ratified · node bootstrap clause for fresh worktrees: npm ci at worktree root = env prep (mirror of gomodcache clause); never symlink-reuse another checkout's node_modules (CHIP-SAT field finding + REQUEST)
 2026-07-16 · §10 · ratified · mnfs-workflow execution-layer skills denylisted (deleted at source in mnfs-harness 6b29412 layered unification; stale codex cache 0.1.0 + ~/.codex/plugins/mnfs-codex-plugin still ship them — operator field finding: CHIP-SAT worker auto-loaded feature-execution). General rule: auto-discovered skills never bind; only prompt-pack pins are doctrine. Cache repackage to 0.2.0 deferred to W1 close (no tooling swap under running workers).
+2026-07-16 · header + §12 (new) · ratified · alt-D+ implementation method adopted (operator-ratified after 4 adversarial Opus×Sol rounds + MIS-003 field evidence): docs/HARNESS-CORE.md + docs/REVIEW-STANDARD.md re-vendored @ mnfs-harness 6206cc1 (implementer prompt-pack v1.0.0 in CORE §4, canonical dispatch-prompt architecture, deterministic lane, evidence types ran/assumed/could-not-run, reproduce+1-fixup→BLOCKED; REVIEW §9 remedy re-review resumes same reviewer, §13 reviewer reads worker prompt-file, §14 slim read-mandate pack); deterministic dispatch tooling vendored scripts/harness/dispatch/ with fail-closed scripts.lock.json (28 Pester green at source); F-A index.lock commit-denial clause (attempt once, leave files, report verbatim — CHIP-M03); harness plugin 0.3.0 synced to local Claude Code cache. Field-test milestone next — chip converses with design session; pack v1.1.0 fed by its retro.
 ```
