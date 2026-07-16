@@ -113,10 +113,10 @@ describe("AppRouter", () => {
     expect(window.history.length).toBe(historyLengthBeforePush + 1);
   });
 
-  it("renders the anuncios placeholder", async () => {
+  it("renders the anuncios workspace", async () => {
     window.history.pushState({}, "", "/anuncios");
     renderAppRouter();
-    expect(await screen.findByText("Marcador da rota de anúncios.")).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: "Todos" })).toBeInTheDocument();
   });
 
   it("renders the product workspace placeholder", async () => {
