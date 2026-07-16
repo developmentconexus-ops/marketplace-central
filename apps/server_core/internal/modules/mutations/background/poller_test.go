@@ -103,3 +103,46 @@ func TestPollerRunStopsOnCancelWithoutTick(t *testing.T) {
 		t.Fatalf("passes=%v, want none", passer.calls)
 	}
 }
+
+func TestPollerRunIgnoresConcurrentReentry(t *testing.T) {
+	passer := &fakePasser{}
+	ticks := make(chan time.Time)
+	entered := make(chan struct{})
+	p := NewPoller(passer, func(context.Context) ([]string, error) {
+		close(entered)
+		return []string{"inst-a"}, nil
+	}, slog.Default(), time.Second, ticks)
+	ctx, cancel := context.WithCancel(context.Background())
+	first := runPoller(t, p, ctx)
+	ticks <- time.Time{}
+	<-entered
+	second := runPoller(t, p, ctx)
+	waitClosed(t, second, "concurrent poller re-entry")
+
+	cancel()
+	waitClosed(t, first, "poller")
+	if len(passer.calls) != 1 {
+		t.Fatalf("passes=%v, want one pass from the active Run", passer.calls)
+	}
+}
+
+func TestPollerRunCanRestartAfterReturn(t *testing.T) {
+	passer := &fakePasser{}
+	ticks := make(chan time.Time)
+	p := NewPoller(passer, func(context.Context) ([]string, error) { return []string{"inst-a"}, nil }, slog.Default(), time.Second, ticks)
+
+	firstCtx, firstCancel := context.WithCancel(context.Background())
+	first := runPoller(t, p, firstCtx)
+	ticks <- time.Time{}
+	firstCancel()
+	waitClosed(t, first, "first poller run")
+
+	secondCtx, secondCancel := context.WithCancel(context.Background())
+	second := runPoller(t, p, secondCtx)
+	ticks <- time.Time{}
+	secondCancel()
+	waitClosed(t, second, "second poller run")
+	if len(passer.calls) != 2 {
+		t.Fatalf("passes=%v, want one pass from each Run", passer.calls)
+	}
+}

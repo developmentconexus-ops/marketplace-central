@@ -3,6 +3,7 @@ package background
 import (
 	"context"
 	"log/slog"
+	"sync"
 	"time"
 )
 
@@ -18,6 +19,8 @@ type Poller struct {
 	logger        *slog.Logger
 	interval      time.Duration
 	ticks         <-chan time.Time
+	runMu         sync.Mutex
+	running       bool
 }
 
 func NewPoller(passer Passer, installations InstallationProvider, logger *slog.Logger, interval time.Duration, ticks <-chan time.Time) *Poller {
@@ -34,6 +37,18 @@ func (p *Poller) Run(ctx context.Context) {
 	if p == nil || p.passer == nil || p.installations == nil {
 		return
 	}
+	p.runMu.Lock()
+	if p.running {
+		p.runMu.Unlock()
+		return
+	}
+	p.running = true
+	p.runMu.Unlock()
+	defer func() {
+		p.runMu.Lock()
+		p.running = false
+		p.runMu.Unlock()
+	}()
 	ticks := p.ticks
 	var ticker *time.Ticker
 	if ticks == nil {

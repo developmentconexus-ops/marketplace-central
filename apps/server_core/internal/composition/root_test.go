@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	mutationsstub "marketplace-central/apps/server_core/internal/modules/mutations/adapters/stub"
+	mutationsapp "marketplace-central/apps/server_core/internal/modules/mutations/application"
 	mutationsbg "marketplace-central/apps/server_core/internal/modules/mutations/background"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 	"marketplace-central/apps/server_core/internal/platform/pgdb"
@@ -46,6 +48,46 @@ func TestRootRuntimeWiresMutationPoller(t *testing.T) {
 		t.Fatal("MutationPoller is nil")
 	}
 	var _ *mutationsbg.Poller = runtime.MutationPoller
+}
+
+func TestRootRuntimeSelectsMutationWriterLane(t *testing.T) {
+	for _, tc := range []struct {
+		name, value string
+		real        bool
+	}{
+		{name: "unset"},
+		{name: "false", value: "false"},
+		{name: "yes", value: "yes"},
+		{name: "one", value: "1"},
+		{name: "true", value: "true", real: true},
+		{name: "trimmed uppercase true", value: "  TRUE  ", real: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("MPC_PROVIDER_WRITES_ENABLED", tc.value)
+			runtime, err := NewRootRuntime(nil, pgdb.Config{DefaultTenantID: "tenant_default", EncryptionKey: "0123456789abcdef0123456789abcdef"})
+			if err != nil {
+				t.Fatalf("NewRootRuntime() error = %v", err)
+			}
+			if runtime.mutationLane.envelope == nil {
+				t.Fatal("inventory mutation envelope is nil")
+			}
+			if tc.real {
+				if _, ok := runtime.mutationLane.writer.(*mutationsapp.WriterRouter); !ok {
+					t.Fatalf("writer = %T, want real WriterRouter", runtime.mutationLane.writer)
+				}
+				if !runtime.mutationLane.real || !runtime.mutationLane.price || !runtime.mutationLane.stock || !runtime.mutationLane.listing || !runtime.mutationLane.linkage || !runtime.mutationLane.resync {
+					t.Fatalf("real lane surfaces = %+v, want all configured", runtime.mutationLane)
+				}
+				return
+			}
+			if _, ok := runtime.mutationLane.writer.(*mutationsstub.Writer); !ok {
+				t.Fatalf("writer = %T, want fallback stub", runtime.mutationLane.writer)
+			}
+			if runtime.mutationLane.real || runtime.mutationLane.price || runtime.mutationLane.stock || runtime.mutationLane.listing || runtime.mutationLane.linkage || runtime.mutationLane.resync {
+				t.Fatalf("fallback lane unexpectedly exposes real surfaces: %+v", runtime.mutationLane)
+			}
+		})
+	}
 }
 
 func TestFeeScheduleRoutesUseBatchDeadline(t *testing.T) {

@@ -76,6 +76,8 @@ func (a *CapabilityAdapter) ProviderCapabilitySet() connectorsapp.ProviderCapabi
 		StockReads:    a,
 		Orders:        a,
 		PriceWrites:   a,
+		StockWrites:   a,
+		ListingWrites: a,
 	}
 }
 

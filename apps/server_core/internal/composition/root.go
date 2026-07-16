@@ -48,9 +48,9 @@ import (
 	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
 	internalreadobservability "marketplace-central/apps/server_core/internal/modules/internal_read/observability"
 	internalreadports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
-	inventoryconnectors "marketplace-central/apps/server_core/internal/modules/inventory/adapters/connectors"
 	inventoryintegrations "marketplace-central/apps/server_core/internal/modules/inventory/adapters/integrations"
 	inventoryinternalread "marketplace-central/apps/server_core/internal/modules/inventory/adapters/internalread"
+	inventorymutations "marketplace-central/apps/server_core/internal/modules/inventory/adapters/mutations"
 	inventorypostgres "marketplace-central/apps/server_core/internal/modules/inventory/adapters/postgres"
 	inventoryproductlinks "marketplace-central/apps/server_core/internal/modules/inventory/adapters/productlinks"
 	inventoryapp "marketplace-central/apps/server_core/internal/modules/inventory/application"
@@ -62,6 +62,8 @@ import (
 	listingsmarketplaces "marketplace-central/apps/server_core/internal/modules/listings/adapters/marketplaces"
 	listingspostgres "marketplace-central/apps/server_core/internal/modules/listings/adapters/postgres"
 	listingsapp "marketplace-central/apps/server_core/internal/modules/listings/application"
+	listingsdomain "marketplace-central/apps/server_core/internal/modules/listings/domain"
+	listingsports "marketplace-central/apps/server_core/internal/modules/listings/ports"
 	listingstransport "marketplace-central/apps/server_core/internal/modules/listings/transport"
 	marketpostgres "marketplace-central/apps/server_core/internal/modules/market/adapters/postgres"
 	marketapp "marketplace-central/apps/server_core/internal/modules/market/application"
@@ -70,10 +72,14 @@ import (
 	marketplacesapp "marketplace-central/apps/server_core/internal/modules/marketplaces/application"
 	marketplacesregistry "marketplace-central/apps/server_core/internal/modules/marketplaces/registry"
 	marketplacestransport "marketplace-central/apps/server_core/internal/modules/marketplaces/transport"
+	mutationsconnectors "marketplace-central/apps/server_core/internal/modules/mutations/adapters/connectors"
+	mutationslistings "marketplace-central/apps/server_core/internal/modules/mutations/adapters/listings"
 	mutationspostgres "marketplace-central/apps/server_core/internal/modules/mutations/adapters/postgres"
+	mutationsproductlinks "marketplace-central/apps/server_core/internal/modules/mutations/adapters/productlinks"
 	mutationsstub "marketplace-central/apps/server_core/internal/modules/mutations/adapters/stub"
 	mutationsapp "marketplace-central/apps/server_core/internal/modules/mutations/application"
 	mutationsbg "marketplace-central/apps/server_core/internal/modules/mutations/background"
+	mutationsports "marketplace-central/apps/server_core/internal/modules/mutations/ports"
 	ordersintegrations "marketplace-central/apps/server_core/internal/modules/orders/adapters/integrations"
 	ordersinternalread "marketplace-central/apps/server_core/internal/modules/orders/adapters/internalread"
 	orderspostgres "marketplace-central/apps/server_core/internal/modules/orders/adapters/postgres"
@@ -175,6 +181,49 @@ type RootRuntime struct {
 	Handler        http.Handler
 	PoolStats      *internalreadobservability.PoolStatsLoop
 	MutationPoller *mutationsbg.Poller
+	mutationLane   mutationLane
+}
+
+type mutationLane struct {
+	real, price, stock, listing, linkage, resync bool
+	envelope                                     inventoryports.StockMutationEnvelope
+	writer                                       mutationsports.WriterPort
+}
+
+type installationStockWriter struct {
+	capabilities  *connectorsapp.MarketplaceCapabilityService
+	installations *integrationsapp.InstallationService
+	tenantID      string
+}
+
+func (w installationStockWriter) Apply(ctx context.Context, item mutationsports.WriteItem) (mutationsports.WriteOutcome, error) {
+	installation, found, err := w.installations.Get(ctx, item.InstallationID)
+	if err != nil {
+		return mutationsports.WriteOutcome{}, err
+	}
+	if !found {
+		return mutationsports.WriteOutcome{}, fmt.Errorf("mutation installation %q not found", item.InstallationID)
+	}
+	return mutationsconnectors.NewStockWriter(w.capabilities, w.tenantID, installation.ProviderCode, installation.ExternalAccountID).Apply(ctx, item)
+}
+
+type installationResyncWriter struct {
+	source        listingsports.PageSource
+	store         listingsports.CompletedPullStore
+	installations *integrationsapp.InstallationService
+	tenantID      string
+}
+
+func (w installationResyncWriter) Apply(ctx context.Context, item mutationsports.WriteItem) (mutationsports.WriteOutcome, error) {
+	installation, found, err := w.installations.Get(ctx, item.InstallationID)
+	if err != nil {
+		return mutationsports.WriteOutcome{}, err
+	}
+	if !found {
+		return mutationsports.WriteOutcome{}, fmt.Errorf("mutation installation %q not found", item.InstallationID)
+	}
+	account := listingsports.InstallationAccount{TenantID: w.tenantID, InstallationID: installation.InstallationID, ProviderCode: installation.ProviderCode, ProviderAccountID: installation.ExternalAccountID}
+	return mutationslistings.NewResyncWriter(w.source, w.store, account, 100, time.Now).Apply(ctx, item)
 }
 
 func NewRootRouter(pool *pgxpool.Pool, cfg pgdb.Config) (http.Handler, error) {
@@ -233,20 +282,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	installationRepo := integrationspostgres.NewInstallationRepository(pool, cfg.DefaultTenantID)
 	installationSvc := integrationsapp.NewInstallationService(installationRepo, cfg.DefaultTenantID)
 	mutationRepo := mutationspostgres.NewRepository(pool, cfg.DefaultTenantID)
-	// TEMPORARY stub writer — 2026-07-16, replaced by F02-S8
-	mutationWriter := mutationsstub.NewWriter(nil)
-	mutationPoller := mutationsapp.NewPoller(mutationRepo, mutationWriter, time.Now)
-	mutationRunner := mutationsbg.NewPoller(mutationPoller, func(ctx context.Context) ([]string, error) {
-		installations, err := installationSvc.List(ctx)
-		if err != nil {
-			return nil, err
-		}
-		ids := make([]string, len(installations))
-		for i := range installations {
-			ids[i] = installations[i].InstallationID
-		}
-		return ids, nil
-	}, slog.Default(), 2*time.Second, nil)
+	mutationEnvelope := inventorymutations.NewEnvelope(mutationRepo)
 	credentialRepo := integrationspostgres.NewCredentialRepository(pool, cfg.DefaultTenantID)
 	credentialSvc := integrationsapp.NewCredentialService(credentialRepo, cfg.DefaultTenantID)
 	authSessionRepo := integrationspostgres.NewAuthSessionRepository(pool, cfg.DefaultTenantID)
@@ -410,11 +446,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		inventoryproductlinks.NewLinkReader(productLinkCandidateRepo, productLinkCandidateRepo),
 		inventoryStockReader,
 	)
-	inventoryActionSvc := inventoryapp.NewStockActionServiceWithInvalidator(
-		inventoryActionRepo,
-		inventoryconnectors.NewStockWriter(marketplaceCapabilities),
-		freshnessCache,
-	)
+	inventoryActionSvc := inventoryapp.NewStockActionServiceWithEnvelope(inventoryActionRepo, mutationEnvelope)
 	inventoryManualAction := inventoryapp.NewManualActionFacade(
 		inventoryRiskSvc,
 		inventoryActionSvc,
@@ -532,6 +564,40 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	)
 	listingstransport.NewRefreshHandler(listingRefreshSvc).Register(mux)
 
+	mutationLane := mutationLane{envelope: mutationEnvelope}
+	mutationWriter := mutationsports.WriterPort(mutationsstub.NewWriter(nil))
+	if providerWritesEnabled(os.Getenv) {
+		priceWriter := mutationsconnectors.NewPriceWriter(marketplaceCapabilities, cfg.DefaultTenantID, "mercado_livre")
+		stockWriter := installationStockWriter{capabilities: marketplaceCapabilities, installations: installationSvc, tenantID: cfg.DefaultTenantID}
+		listingWriter := mutationsconnectors.NewListingWriter(marketplaceCapabilities, cfg.DefaultTenantID, "mercado_livre")
+		linkageWriter := mutationsproductlinks.NewWriter(productLinkResolutionSvc)
+		resyncWriter := installationResyncWriter{source: listingsconnectors.NewSource(marketplaceCapabilities), store: listingRepo, installations: installationSvc, tenantID: cfg.DefaultTenantID}
+		policyPresent := func(ctx context.Context, listingID string) (bool, error) {
+			parsed, err := listingsdomain.ParseListingID(listingID)
+			if err != nil {
+				return false, err
+			}
+			_, found, err := marketSvc.GetPricingPolicyForInstallation(ctx, parsed.InstallationID)
+			return found, err
+		}
+		mutationWriter = mutationsapp.NewWriterRouter(priceWriter, stockWriter, listingWriter, resyncWriter, linkageWriter, linkageWriter.HasResolvedLink, policyPresent)
+		mutationLane.real, mutationLane.price, mutationLane.stock = true, true, true
+		mutationLane.listing, mutationLane.linkage, mutationLane.resync = true, true, true
+	}
+	mutationLane.writer = mutationWriter
+	mutationPoller := mutationsapp.NewPoller(mutationRepo, mutationWriter, time.Now)
+	mutationRunner := mutationsbg.NewPoller(mutationPoller, func(ctx context.Context) ([]string, error) {
+		installations, err := installationSvc.List(ctx)
+		if err != nil {
+			return nil, err
+		}
+		ids := make([]string, len(installations))
+		for i := range installations {
+			ids[i] = installations[i].InstallationID
+		}
+		return ids, nil
+	}, slog.Default(), 2*time.Second, nil)
+
 	feeSvc := marketplacesapp.NewFeeScheduleService(feeRepo)
 
 	if pool != nil {
@@ -582,7 +648,11 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	// Connectors (Melhor Envio auth + fee seeding foundations)
 	connectorstransport.NewHandler(meOAuth).Register(mux)
 
-	return &RootRuntime{Handler: httpx.CORSMiddleware(mux), PoolStats: poolStats, MutationPoller: mutationRunner}, nil
+	return &RootRuntime{Handler: httpx.CORSMiddleware(mux), PoolStats: poolStats, MutationPoller: mutationRunner, mutationLane: mutationLane}, nil
+}
+
+func providerWritesEnabled(getenv func(string) string) bool {
+	return strings.EqualFold(strings.TrimSpace(getenv("MPC_PROVIDER_WRITES_ENABLED")), "true")
 }
 
 func oracleBatchPermits(getenv func(string) string) int {

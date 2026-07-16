@@ -17,11 +17,11 @@ type StockActionService struct {
 	invalidator internalreadports.CacheInvalidator
 }
 
-func NewStockActionService(store ports.StockActionStore, _ ports.StockWriter) StockActionService {
+func NewStockActionService(store ports.StockActionStore) StockActionService {
 	return StockActionService{store: store}
 }
 
-func NewStockActionServiceWithInvalidator(store ports.StockActionStore, _ ports.StockWriter, invalidator internalreadports.CacheInvalidator) StockActionService {
+func NewStockActionServiceWithInvalidator(store ports.StockActionStore, invalidator internalreadports.CacheInvalidator) StockActionService {
 	return StockActionService{store: store, invalidator: invalidator}
 }
 
