@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	listingsdomain "marketplace-central/apps/server_core/internal/modules/listings/domain"
 	mutationsdomain "marketplace-central/apps/server_core/internal/modules/mutations/domain"
 	mutationsports "marketplace-central/apps/server_core/internal/modules/mutations/ports"
 	productlinksapp "marketplace-central/apps/server_core/internal/modules/product_links/application"
@@ -146,21 +147,40 @@ func (w *Writer) Apply(ctx context.Context, item mutationsports.WriteItem) (muta
 	return mutationsports.WriteOutcome{Failure: outcome.Failure}, nil
 }
 
-func (w *Writer) HasResolvedLink(ctx context.Context, installationID string) (bool, error) {
+// HasResolvedLink answers the link_unresolved gate for ONE listing: the
+// composite `installation~item~variation` mutation listing id must match the
+// workflow identity — an unrelated resolved listing in the same installation
+// never satisfies the gate.
+func (w *Writer) HasResolvedLink(ctx context.Context, listingID string) (bool, error) {
 	reader, ok := w.resolver.(workflowReader)
 	if !ok {
 		return false, errors.New("product link workflow reader is not configured")
 	}
-	items, err := reader.ListLinkWorkflows(ctx, productlinksapp.ListLinkWorkflowsInput{InstallationID: installationID, Limit: 2000})
+	id, err := listingsdomain.ParseListingID(listingID)
+	if err != nil {
+		return false, fmt.Errorf("parse mutation listing id %q: %w", listingID, err)
+	}
+	items, err := reader.ListLinkWorkflows(ctx, productlinksapp.ListLinkWorkflowsInput{InstallationID: id.InstallationID, Limit: 2000})
 	if err != nil {
 		return false, err
 	}
 	for _, item := range items {
-		if item.CurrentLink != nil && item.CurrentLink.State == productlinksdomain.ProductLinkStateResolved {
-			return true, nil
+		identity := item.Identity
+		if identity.InstallationID != id.InstallationID ||
+			identity.ProviderItemID != id.ProviderListingID ||
+			normalizeVariation(identity.ProviderVariationID) != normalizeVariation(id.VariationID) {
+			continue
 		}
+		return item.CurrentLink != nil && item.CurrentLink.State == productlinksdomain.ProductLinkStateResolved, nil
 	}
 	return false, nil
+}
+
+func normalizeVariation(value string) string {
+	if value == listingsdomain.NoVariationID {
+		return ""
+	}
+	return value
 }
 
 func (w *Writer) preflight(ctx context.Context, input mutationsports.LinkageInput) (*mutationsports.LinkageOutcome, error) {

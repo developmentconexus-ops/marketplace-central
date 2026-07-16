@@ -99,9 +99,42 @@ func TestWriterPropagatesResolverError(t *testing.T) {
 
 func TestUnresolvedLinkGateReturnsIC03CodeFromAdapter(t *testing.T) {
 	writer := NewWriter(&fakeResolver{})
-	err := mutationsapp.RequireResolvedLink(context.Background(), mutationsdomain.ProtocolTypePriceUpdate, "inst-1", writer.HasResolvedLink)
+	err := mutationsapp.RequireResolvedLink(context.Background(), mutationsdomain.ProtocolTypePriceUpdate, "inst-1~MLB-1~-", writer.HasResolvedLink)
 	var gateErr *mutationsapp.GateError
 	if !errors.As(err, &gateErr) || gateErr.Code != mutationsdomain.FailureCodeLinkUnresolved {
 		t.Fatalf("error = %v, want link_unresolved", err)
+	}
+}
+
+func TestHasResolvedLinkIsScopedToTheGatedListing(t *testing.T) {
+	productID := 10
+	resolver := &fakeResolver{workflows: []productlinksdomain.ProductLinkWorkflowItem{
+		{
+			Identity: productlinksdomain.ListingIdentity{InstallationID: "inst-1", ProviderItemID: "MLB-unlinked"},
+		},
+		{
+			Identity:    productlinksdomain.ListingIdentity{InstallationID: "inst-1", ProviderItemID: "MLB-linked"},
+			CurrentLink: &productlinksdomain.ProductLink{State: productlinksdomain.ProductLinkStateResolved, InternalProductID: &productID},
+		},
+	}}
+	writer := NewWriter(resolver)
+
+	resolved, err := writer.HasResolvedLink(context.Background(), "inst-1~MLB-unlinked~-")
+	if err != nil || resolved {
+		t.Fatalf("unlinked listing resolved = %v, err = %v; a sibling's resolved link must not satisfy the gate", resolved, err)
+	}
+
+	resolved, err = writer.HasResolvedLink(context.Background(), "inst-1~MLB-linked~-")
+	if err != nil || !resolved {
+		t.Fatalf("linked listing resolved = %v, err = %v", resolved, err)
+	}
+
+	resolved, err = writer.HasResolvedLink(context.Background(), "inst-1~MLB-missing~-")
+	if err != nil || resolved {
+		t.Fatalf("missing listing resolved = %v, err = %v", resolved, err)
+	}
+
+	if _, err = writer.HasResolvedLink(context.Background(), "not-a-listing-id"); err == nil {
+		t.Fatal("malformed listing id must error, not default to unresolved silently")
 	}
 }

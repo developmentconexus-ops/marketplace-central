@@ -249,6 +249,14 @@ Serialization points:
 - Complexity: `standard`
 - Serves: M03-C04, C06
 - Budget: ~280 lines.
+- Design note (post-implementation, G2): the adapter checks resolution state twice —
+  preflight via ListLinkWorkflows (catches `skipped`/`conflict_remote_changed` WITHOUT
+  invoking the resolution API, keeping repeated approvals side-effect-free) and post-call
+  via the resolution audit entry (source of truth when the write actually ran).
+  Alternative considered: audit-only single check — rejected because idempotent re-sends
+  would re-invoke the resolution API for outcomes already known identical, producing
+  spurious audit rows. Preflight-only was rejected because the list read races the write;
+  the audit entry is authoritative for what the API actually did.
 
 ### F02-S6 — six-intent writer router and failure mapping
 
