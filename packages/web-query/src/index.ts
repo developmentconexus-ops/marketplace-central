@@ -137,3 +137,5 @@ export function createRefreshableFetch(baseFetch: typeof fetch = fetch): {
 export function FreshnessIndicator({ asOf }: { asOf: string | null | undefined }): ReactNode {
   return createElement("span", { "aria-label": "Data freshness" }, formatAsOf(asOf));
 }
+
+export { invalidateAfterMutation, UnknownMutationInvalidationTypeError, type MutationInvalidationType } from "./invalidation";
