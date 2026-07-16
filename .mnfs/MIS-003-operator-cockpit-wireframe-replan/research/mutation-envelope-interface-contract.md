@@ -34,7 +34,7 @@ No queue/outbox exists; one implemented StockWriter is synchronous and never liv
 | `intent` | object | no | type-specific payload (see per-type intents) |
 | `selection` | object | no | `{mode: "explicit"\|"filter", listing_ids?: string[], filter?: <IC-02 filter object>, q?: string}`; filter selections are SNAPSHOT to explicit item rows at preview time |
 | `totals` | object | no | `{items, previewed, applied, failed, skipped}` |
-| `source_as_of` | string | no | RFC3339; freshest source-fact time used in preview (source-timestamp gate) |
+| `source_as_of` | string | yes* | RFC3339; freshest source-fact time used in preview (source-timestamp gate). *State-conditional: null while `draft` (no source time exists yet — ADR-17, never defaulted), required non-null from `previewed` onward; approve enforces ≤15 min staleness. Enforced in domain, not DB default. (Hub-ratified 2026-07-16, CHIP-M03 REQUEST, plan ledger D-01.) |
 | `retried_from` | string | yes | protocol_id of the terminal protocol this one was cloned from; set only by `retryMutationFailures`, null otherwise |
 | `created_at/previewed_at/approved_at/finished_at` | string | yes | RFC3339 UTC |
 
