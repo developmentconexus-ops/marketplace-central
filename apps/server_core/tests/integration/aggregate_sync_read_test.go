@@ -267,27 +267,7 @@ func newAggregateSyncHarness(t *testing.T) *aggregateSyncHarness {
 	dashboardtransport.NewHandler(dashboardSvc).Register(mux)
 	h.handler = mux
 
-	t.Cleanup(func() {
-		ctx := context.Background()
-		for _, statement := range []string{
-			`DELETE FROM orders_sankhya_linkage_lines WHERE tenant_id = ANY($1)`,
-			`DELETE FROM orders_sankhya_linkage_events WHERE tenant_id = ANY($1)`,
-			`DELETE FROM orders_marketplace_order_items WHERE tenant_id = ANY($1)`,
-			`DELETE FROM orders_marketplace_order_payments WHERE tenant_id = ANY($1)`,
-			`DELETE FROM orders_marketplace_orders WHERE tenant_id = ANY($1)`,
-			`DELETE FROM product_link_candidates WHERE tenant_id = ANY($1)`,
-			`DELETE FROM product_link_audit_entries WHERE tenant_id = ANY($1)`,
-			`DELETE FROM product_links WHERE tenant_id = ANY($1)`,
-			`DELETE FROM product_link_listing_snapshots WHERE tenant_id = ANY($1)`,
-			`DELETE FROM listings WHERE tenant_id = ANY($1)`,
-			`DELETE FROM integration_operation_runs WHERE tenant_id = ANY($1)`,
-			`DELETE FROM integration_installations WHERE tenant_id = ANY($1)`,
-		} {
-			if _, err := pool.Exec(ctx, statement, []string{h.tenantA, h.tenantB}); err != nil {
-				t.Errorf("cleanup %q: %v", statement, err)
-			}
-		}
-	})
+	// The Sankhya linkage ledger is append-only (DELETE is rejected by a trigger), and unique-per-run tenant IDs isolate these rows, so no cleanup is performed.
 	return h
 }
 
