@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"marketplace-central/apps/server_core/internal/modules/integrations/domain"
@@ -15,6 +16,56 @@ var _ ports.OperationRunStore = (*OperationRunRepository)(nil)
 type OperationRunRepository struct {
 	pool     *pgxpool.Pool
 	tenantID string
+}
+
+func (r *OperationRunRepository) BeginExclusive(ctx context.Context, run domain.OperationRun) (domain.OperationRun, bool, error) {
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return domain.OperationRun{}, false, err
+	}
+	defer tx.Rollback(ctx)
+
+	// hashtextextended produces one deterministic int8 key for the tenant-scoped
+	// installation and operation type; the transaction lock releases on commit.
+	lockKey := r.tenantID + "|" + run.InstallationID + "|" + run.OperationType
+	if _, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, lockKey); err != nil {
+		return domain.OperationRun{}, false, err
+	}
+	row := tx.QueryRow(ctx, `
+		SELECT operation_run_id, tenant_id, installation_id, operation_type, status,
+			result_code, failure_code, translated_error_code, attempt_count, actor_type, actor_id,
+			provider_evidence_json, duration_ms, started_at, completed_at, created_at, updated_at
+		FROM integration_operation_runs
+		WHERE tenant_id = $1 AND installation_id = $2 AND operation_type = $3
+		  AND status IN ('queued', 'running')
+		ORDER BY created_at DESC, operation_run_id DESC LIMIT 1
+	`, r.tenantID, run.InstallationID, run.OperationType)
+	active, _, scanErr := scanOperationRun(row)
+	if scanErr == nil {
+		if err = tx.Commit(ctx); err != nil {
+			return domain.OperationRun{}, false, err
+		}
+		return active, true, nil
+	}
+	if scanErr != pgx.ErrNoRows {
+		return domain.OperationRun{}, false, scanErr
+	}
+	_, err = tx.Exec(ctx, `
+		INSERT INTO integration_operation_runs (
+			tenant_id, operation_run_id, installation_id, operation_type, status,
+			result_code, failure_code, translated_error_code, attempt_count, actor_type, actor_id,
+			provider_evidence_json, duration_ms, started_at, completed_at, created_at, updated_at
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+	`, r.tenantID, run.OperationRunID, run.InstallationID, run.OperationType, run.Status,
+		run.ResultCode, run.FailureCode, run.TranslatedErrorCode, run.AttemptCount, run.ActorType, run.ActorID,
+		marshalJSONObject(run.ProviderEvidence), run.DurationMs, timestamptzArg(run.StartedAt), timestamptzArg(run.CompletedAt), run.CreatedAt, run.UpdatedAt)
+	if err != nil {
+		return domain.OperationRun{}, false, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return domain.OperationRun{}, false, err
+	}
+	return run, false, nil
 }
 
 func NewOperationRunRepository(pool *pgxpool.Pool, tenantID string) *OperationRunRepository {

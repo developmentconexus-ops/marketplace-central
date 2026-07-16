@@ -55,9 +55,28 @@ func TestOperationServiceListByInstallationRejectsEmptyInstallationID(t *testing
 	}
 }
 
+func TestOperationServiceBeginExclusiveReturnsActiveRun(t *testing.T) {
+	store := &stubOperationRunListStore{runs: []domain.OperationRun{{OperationRunID: "op_active", InstallationID: "inst", OperationType: "listings_refresh", Status: domain.OperationRunStatusRunning}}}
+	svc := NewOperationService(store, "tenant")
+	run, active, err := svc.BeginExclusive(context.Background(), RecordOperationInput{OperationRunID: "op_new", InstallationID: "inst", OperationType: "listings_refresh", Status: domain.OperationRunStatusQueued})
+	if err != nil || !active || run.OperationRunID != "op_active" || len(store.runs) != 1 {
+		t.Fatalf("run=%+v active=%v count=%d err=%v", run, active, len(store.runs), err)
+	}
+}
+
 type stubOperationRunListStore struct {
 	runs               []domain.OperationRun
 	lastInstallationID string
+}
+
+func (s *stubOperationRunListStore) BeginExclusive(_ context.Context, run domain.OperationRun) (domain.OperationRun, bool, error) {
+	for _, existing := range s.runs {
+		if existing.InstallationID == run.InstallationID && existing.OperationType == run.OperationType && (existing.Status == domain.OperationRunStatusQueued || existing.Status == domain.OperationRunStatusRunning) {
+			return existing, true, nil
+		}
+	}
+	s.runs = append(s.runs, run)
+	return run, false, nil
 }
 
 func (s *stubOperationRunListStore) SaveOperationRun(_ context.Context, run domain.OperationRun) error {

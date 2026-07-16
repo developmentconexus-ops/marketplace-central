@@ -32,6 +32,20 @@ type OperationService struct {
 	tenantID string
 }
 
+func (s *OperationService) BeginExclusive(ctx context.Context, input RecordOperationInput) (domain.OperationRun, bool, error) {
+	if input.OperationRunID == "" || strings.TrimSpace(input.InstallationID) == "" || strings.TrimSpace(input.OperationType) == "" || input.Status != domain.OperationRunStatusQueued || input.AttemptCount < 0 {
+		return domain.OperationRun{}, false, errors.New("INTEGRATIONS_OPERATION_INVALID")
+	}
+	now := time.Now().UTC()
+	run := domain.OperationRun{
+		OperationRunID: input.OperationRunID, TenantID: s.tenantID, InstallationID: strings.TrimSpace(input.InstallationID),
+		OperationType: strings.TrimSpace(input.OperationType), Status: input.Status, ResultCode: input.ResultCode,
+		AttemptCount: input.AttemptCount, ActorType: input.ActorType, ActorID: input.ActorID, CreatedAt: now, UpdatedAt: now,
+	}
+	active, alreadyActive, err := s.store.BeginExclusive(ctx, run)
+	return active, alreadyActive, err
+}
+
 func NewOperationService(store ports.OperationRunStore, tenantID string) *OperationService {
 	return &OperationService{store: store, tenantID: tenantID}
 }

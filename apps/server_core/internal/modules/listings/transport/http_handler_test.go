@@ -1,11 +1,13 @@
 package transport
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,6 +16,50 @@ import (
 	"marketplace-central/apps/server_core/internal/modules/listings/ports"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 )
+
+type refreshServiceStub struct {
+	id  string
+	err error
+}
+
+func (s refreshServiceStub) Start(context.Context, string) (string, error) { return s.id, s.err }
+
+func TestRefreshHandlerContract(t *testing.T) {
+	tests := []struct {
+		name, body string
+		service    refreshServiceStub
+		wantStatus int
+		wantBody   string
+	}{
+		{"missing", `{}`, refreshServiceStub{err: application.ErrInstallationIDRequired}, 400, `"code":"installation_required"`},
+		{"blank", `{"installation_id":" "}`, refreshServiceStub{err: application.ErrInstallationIDRequired}, 400, `"code":"installation_required"`},
+		{"unknown", `{"installation_id":"missing"}`, refreshServiceStub{err: application.ErrInstallationNotFound}, 404, `"code":"installation_not_found"`},
+		{"accepted", `{"installation_id":"inst"}`, refreshServiceStub{id: "op_new"}, 202, `{"operation_run_id":"op_new"}`},
+		{"active", `{"installation_id":"inst"}`, refreshServiceStub{err: &application.RefreshInProgressError{OperationRunID: "op_active"}}, 409, `"operation_run_id":"op_active"`},
+		{"malformed", `{"installation_id":`, refreshServiceStub{}, 400, `"code":"invalid_request"`},
+		{"trailing", `{"installation_id":"inst"}{}`, refreshServiceStub{}, 400, `"code":"invalid_request"`},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPost, "/listings/refresh", bytes.NewBufferString(tc.body))
+			NewRefreshHandler(tc.service).HandleRefresh(rec, req)
+			if rec.Code != tc.wantStatus || !strings.Contains(strings.TrimSpace(rec.Body.String()), tc.wantBody) {
+				t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestRefreshHandlerRegistersPostOnly(t *testing.T) {
+	mux := http.NewServeMux()
+	NewRefreshHandler(refreshServiceStub{id: "op"}).Register(mux)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/listings/refresh", nil))
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status=%d", rec.Code)
+	}
+}
 
 type fakeListService struct {
 	page       ports.ListingRowPage

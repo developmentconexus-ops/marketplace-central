@@ -723,6 +723,29 @@ describe("sdk runtime", () => {
     expect(result.items[0].provider_variation_id).toBe("VAR-1");
   });
 
+  it("refreshes listings and preserves the active operation on conflict", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    let conflict = false;
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        if (conflict) {
+          return new Response(JSON.stringify({ error: { code: "refresh_in_progress", message: "busy", details: { operation_run_id: "op_active" } } }), { status: 409, headers: { "Content-Type": "application/json" } });
+        }
+        return new Response(JSON.stringify({ operation_run_id: "op_new" }), { status: 202, headers: { "Content-Type": "application/json" } });
+      },
+    });
+
+    await expect(client.refreshListings({ installation_id: "inst_test" })).resolves.toEqual({ operation_run_id: "op_new" });
+    expect(String(requests[0].input)).toBe("http://localhost:8080/listings/refresh");
+    expect(requests[0].init?.method).toBe("POST");
+    expect(requests[0].init?.body).toBe(JSON.stringify({ installation_id: "inst_test" }));
+
+    conflict = true;
+    await expect(client.refreshListings({ installation_id: "inst_test" })).rejects.toMatchObject({ status: 409, error: { code: "refresh_in_progress", details: { operation_run_id: "op_active" } } });
+  });
+
   it("generates product link candidates as json", async () => {
     const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
     const client = createMarketplaceCentralClient({

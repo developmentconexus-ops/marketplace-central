@@ -455,6 +455,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /listings/refresh:
+    post:
+      summary: Start an asynchronous listings refresh
+      operationId: refreshListings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshListingsRequest'
+      responses:
+        "202":
+          description: Listings refresh accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshListingsAccepted'
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "404":
+          description: Installation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "409":
+          description: A listings refresh is already queued or running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /catalog/taxonomy:
     get:
       summary: List taxonomy nodes
@@ -2070,6 +2105,21 @@ components:
         as_of:
           type: string
           format: date-time
+    RefreshListingsRequest:
+      type: object
+      additionalProperties: false
+      required: [installation_id]
+      properties:
+        installation_id:
+          type: string
+          minLength: 1
+    RefreshListingsAccepted:
+      type: object
+      additionalProperties: false
+      required: [operation_run_id]
+      properties:
+        operation_run_id:
+          type: string
 
     CanonicalNumericSourceFact:
       type: object

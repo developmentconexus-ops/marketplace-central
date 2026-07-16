@@ -2,7 +2,9 @@ package transport
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"strings"
 
@@ -11,6 +13,60 @@ import (
 	"marketplace-central/apps/server_core/internal/modules/listings/ports"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 )
+
+type RefreshService interface {
+	Start(context.Context, string) (string, error)
+}
+type RefreshHandler struct{ service RefreshService }
+
+func NewRefreshHandler(service RefreshService) RefreshHandler {
+	return RefreshHandler{service: service}
+}
+func (h RefreshHandler) Register(mux httpx.RouteRegistrar) {
+	if registrar, ok := mux.(routeClassRegistrar); ok {
+		registrar.RegisterRouteClass("/listings/refresh", httpx.BatchRouteClass)
+	}
+	mux.HandleFunc("POST /listings/refresh", h.HandleRefresh)
+}
+
+func (h RefreshHandler) HandleRefresh(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		InstallationID string `json:"installation_id"`
+	}
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&input); err != nil {
+		writeListError(w, http.StatusBadRequest, "invalid_request", "corpo da requisição inválido", "")
+		return
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); err == nil {
+		writeListError(w, http.StatusBadRequest, "invalid_request", "corpo da requisição inválido", "")
+		return
+	} else if !errors.Is(err, io.EOF) {
+		writeListError(w, http.StatusBadRequest, "invalid_request", "corpo da requisição inválido", "")
+		return
+	}
+	id, err := h.service.Start(r.Context(), input.InstallationID)
+	if err == nil {
+		httpx.WriteJSON(w, http.StatusAccepted, map[string]string{"operation_run_id": id})
+		return
+	}
+	if errors.Is(err, application.ErrInstallationIDRequired) {
+		writeListError(w, 400, "installation_required", "installation_id é obrigatório", "installation_id")
+		return
+	}
+	if errors.Is(err, application.ErrInstallationNotFound) {
+		writeListError(w, 404, "installation_not_found", "instalação não encontrada", "installation_id")
+		return
+	}
+	var active *application.RefreshInProgressError
+	if errors.As(err, &active) {
+		writeListErrorDetails(w, 409, "refresh_in_progress", "atualização já está em andamento", map[string]any{"operation_run_id": active.OperationRunID})
+		return
+	}
+	writeListError(w, 503, "source_unavailable", "fonte de dados indisponível", "")
+}
 
 type ListService interface {
 	List(context.Context, ports.ListingQuery) (ports.ListingRowPage, error)
@@ -273,5 +329,8 @@ func writeListError(w http.ResponseWriter, status int, code, message, key string
 	if key != "" {
 		details["key"] = key
 	}
+	writeListErrorDetails(w, status, code, message, details)
+}
+func writeListErrorDetails(w http.ResponseWriter, status int, code, message string, details map[string]any) {
 	httpx.WriteJSON(w, status, listErrorEnvelope{Error: listError{Code: code, Message: message, Details: details}})
 }

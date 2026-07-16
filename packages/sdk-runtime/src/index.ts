@@ -232,6 +232,14 @@ export interface ListingListOptions {
   cursor?: string;
 }
 
+export interface RefreshListingsRequest {
+  installation_id: string;
+}
+
+export interface RefreshListingsAccepted {
+  operation_run_id: string;
+}
+
 export interface ListingType {
   code: string;
   label: string;
@@ -1116,6 +1124,14 @@ export interface MarketplaceCentralClientError {
   error: ErrorResponse["error"];
 }
 
+export interface ListingsRefreshConflictError extends MarketplaceCentralClientError {
+  status: 409;
+  error: MarketplaceCentralClientError["error"] & {
+    code: "refresh_in_progress";
+    details: { operation_run_id: string } & Record<string, unknown>;
+  };
+}
+
 export function createMarketplaceCentralClient(options: {
   baseUrl: string;
   fetchImpl?: typeof fetch;
@@ -1214,6 +1230,8 @@ export function createMarketplaceCentralClient(options: {
       getJson<ListingDetail>(`/listings/${encodeURIComponent(id)}`),
     getListingsSummary: (installationId: string) =>
       getJson<ListingSummary>(`/listings/summary?installation_id=${encodeURIComponent(installationId)}`),
+    refreshListings: (req: RefreshListingsRequest) =>
+      postJson<RefreshListingsAccepted>("/listings/refresh", req),
     /** @deprecated Use listCatalogProductFacts; the endpoint is now paginated. */
     listCatalogProducts: (options: CatalogPageOptions = {}) =>
       getJson<CatalogProductFactPage>(

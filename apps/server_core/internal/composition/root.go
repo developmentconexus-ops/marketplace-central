@@ -54,6 +54,7 @@ import (
 	inventoryapp "marketplace-central/apps/server_core/internal/modules/inventory/application"
 	inventoryports "marketplace-central/apps/server_core/internal/modules/inventory/ports"
 	inventorytransport "marketplace-central/apps/server_core/internal/modules/inventory/transport"
+	listingsconnectors "marketplace-central/apps/server_core/internal/modules/listings/adapters/connectors"
 	listingsintegrations "marketplace-central/apps/server_core/internal/modules/listings/adapters/integrations"
 	listingsinternalread "marketplace-central/apps/server_core/internal/modules/listings/adapters/internalread"
 	listingsmarketplaces "marketplace-central/apps/server_core/internal/modules/listings/adapters/marketplaces"
@@ -503,6 +504,14 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		time.Now,
 	)
 	listingstransport.NewReadHandler(listingSvc).Register(mux)
+	listingIngestion := listingsapp.NewIngestion(listingsconnectors.NewSource(marketplaceCapabilities), listingRepo, 100, time.Now)
+	listingRefreshGateway := listingsintegrations.NewGateway(installationSvc, operationSvc)
+	listingRefreshSvc := listingsapp.NewRefreshService(
+		listingRefreshGateway, listingIngestion, func(task func()) { go task() }, time.Now,
+		func(err error) { slog.Error("listings refresh lifecycle persistence failed", "err", err) },
+		func(err error) string { return string(connectorsdomain.ErrorCodeOf(err)) },
+	)
+	listingstransport.NewRefreshHandler(listingRefreshSvc).Register(mux)
 
 	feeSvc := marketplacesapp.NewFeeScheduleService(feeRepo)
 
