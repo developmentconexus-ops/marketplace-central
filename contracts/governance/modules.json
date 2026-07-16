@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "registry_id": "modules",
   "modules": [
-    { "id": "catalog", "root": "apps/server_core/internal/modules/catalog", "code_owner_path": "apps/server_core/internal/modules/catalog", "composition_required": true, "openapi_prefixes": ["/catalog"], "dependencies": [] },
+    { "id": "catalog", "root": "apps/server_core/internal/modules/catalog", "code_owner_path": "apps/server_core/internal/modules/catalog", "composition_required": true, "openapi_prefixes": ["/catalog"], "dependencies": ["internal_read"] },
     { "id": "classifications", "root": "apps/server_core/internal/modules/classifications", "code_owner_path": "apps/server_core/internal/modules/classifications", "composition_required": true, "openapi_prefixes": ["/classifications"], "dependencies": [] },
     { "id": "connectors", "root": "apps/server_core/internal/modules/connectors", "code_owner_path": "apps/server_core/internal/modules/connectors", "composition_required": true, "openapi_prefixes": ["/connectors"], "dependencies": ["integrations", "marketplaces", "pricing"] },
     { "id": "integrations", "root": "apps/server_core/internal/modules/integrations", "code_owner_path": "apps/server_core/internal/modules/integrations", "composition_required": true, "openapi_prefixes": ["/integrations"], "dependencies": ["connectors", "marketplaces"] },
