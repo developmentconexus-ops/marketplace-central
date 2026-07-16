@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { ErrorState, LoadingState } from "@marketplace-central/ui";
+import { EmptyState, ErrorState, LoadingState } from "@marketplace-central/ui";
 import { useSearchParams } from "react-router-dom";
 import { useClient } from "../app/ClientContext";
 import { useInstallation } from "../app/InstallationContext";
@@ -10,6 +10,8 @@ import {
   type AnunciosTab,
 } from "./anunciosQueryState";
 import { anunciosPageQuery, anunciosSummaryQuery } from "./anunciosQueries";
+import { AnunciosTable } from "./AnunciosTable";
+import { ListingsSummary } from "./ListingsSummary";
 
 const tabs: Array<{ value: AnunciosTab; label: string }> = [
   { value: "todos", label: "Todos" },
@@ -17,10 +19,6 @@ const tabs: Array<{ value: AnunciosTab; label: string }> = [
   { value: "pausados", label: "Pausados" },
   { value: "pendencia", label: "Com pendência" },
 ];
-
-function nullableCount(value: number | null): number | string {
-  return value ?? "—";
-}
 
 function isInvalidFilterError(error: unknown): boolean {
   return (
@@ -90,17 +88,12 @@ export function AnunciosPage() {
         <h2 id="anuncios-summary-title" className="text-sm font-semibold text-slate-900">
           Resumo
         </h2>
-        {summaryQuery.isPending ? <LoadingState /> : summaryQuery.isError ? (
-          <ErrorState onRetry={() => void summaryQuery.refetch()} />
-        ) : summaryQuery.data ? (
-          <dl className="mt-3 grid gap-3 sm:grid-cols-5">
-            <div><dt className="text-xs text-slate-500">Total</dt><dd className="text-lg font-semibold">{summaryQuery.data.total}</dd></div>
-            <div><dt className="text-xs text-slate-500">Ativos</dt><dd className="text-lg font-semibold">{summaryQuery.data.active}</dd></div>
-            <div><dt className="text-xs text-slate-500">Pausados</dt><dd className="text-lg font-semibold">{summaryQuery.data.paused}</dd></div>
-            <div><dt className="text-xs text-slate-500">Abaixo da margem</dt><dd className="text-lg font-semibold">{nullableCount(summaryQuery.data.exceptions.below_margin_worst_case)}</dd></div>
-            <div><dt className="text-xs text-slate-500">Margem desconhecida</dt><dd className="text-lg font-semibold">{nullableCount(summaryQuery.data.exceptions.margin_unknown)}</dd></div>
-          </dl>
-        ) : null}
+        <ListingsSummary
+          isPending={summaryQuery.isPending}
+          isError={summaryQuery.isError}
+          data={summaryQuery.data}
+          onRetry={() => void summaryQuery.refetch()}
+        />
       </section>
 
       <section aria-labelledby="anuncios-list-title" className="rounded-xl border border-slate-200 bg-white p-4">
@@ -117,11 +110,21 @@ export function AnunciosPage() {
               }
             }}
           />
-        ) : (
-          <p className="mt-3 text-sm text-slate-600">
-            {pageQuery.data?.items.length ?? 0} anúncio(s) encontrado(s).
-          </p>
-        )}
+        ) : pageQuery.data && pageQuery.data.items.length === 0 ? (
+          <EmptyState
+            hint={
+              <button
+                type="button"
+                className="font-medium text-blue-700 underline decoration-blue-300 underline-offset-2 hover:text-blue-800"
+                onClick={() => setSearchParams(clearFilters(searchParams))}
+              >
+                Limpar filtros
+              </button>
+            }
+          />
+        ) : pageQuery.data ? (
+          <AnunciosTable items={pageQuery.data.items} asOf={pageQuery.data.as_of} />
+        ) : null}
       </section>
     </section>
   );
