@@ -64,6 +64,12 @@ cd apps/server_core && GOMODCACHE=$(pwd)/.gomodcache go mod download all
 
 (~130M; env prep, NOT a dep change — no REQUEST needed.)
 
+Node side (ratified 2026-07-16, CHIP-SAT REQUEST): fresh chip worktrees have no
+`node_modules`; run `npm ci` at the worktree root before web `tsc`/`vitest` lanes.
+Lockfile-faithful install = env prep, NOT a dep change — no REQUEST needed. Never reuse
+another checkout's `node_modules`: npm workspace symlinks would resolve workspace packages
+(e.g. `packages/sdk-runtime`) to the OTHER tree's sources, silently validating the wrong code.
+
 **False-alarm signatures:**
 - `HPG_MIGRATION_FAILED` with `migrations_first=-1` = build died before migrate ran (empty
   `.gomodcache` under `GOPROXY=off`/`GOSUMDB=off`), not a SQL/migration defect. Warm the cache
@@ -219,5 +225,6 @@ verification conflicts against this list.
 2026-07-16 · §6 · ratified · dev-stack sync standing policy: COMMITTED event with stack-sync <sha> → hub rebuilds without negotiation (M-01: 4 round-trips were restart asks)
 2026-07-16 · §6 · ratified · live dispatch viewer (hub-served live-server.mjs :7391, dynamic multi-session scratchpad discovery) + DB-specialist consultation seam (MNOS session local_ec787804, hub-relayed via REQUEST db-consult) — operator-requested at W1 dispatch
 2026-07-16 · (upstream) · ratified · core amendments landed in mnfs-harness cd114e6: sonnet fallback implementer row, COMMITTED event grammar, lean close (★ crew superseded at close by P6 dual gate), additive contract-lock named mechanism, P2 required plan outputs (write-DAG + contract satisfiability + lock pre-identification), Claude-side dispatch visibility accepted limitation
+2026-07-16 · §3 · ratified · node bootstrap clause for fresh worktrees: npm ci at worktree root = env prep (mirror of gomodcache clause); never symlink-reuse another checkout's node_modules (CHIP-SAT field finding + REQUEST)
 2026-07-16 · §10 · ratified · mnfs-workflow execution-layer skills denylisted (deleted at source in mnfs-harness 6b29412 layered unification; stale codex cache 0.1.0 + ~/.codex/plugins/mnfs-codex-plugin still ship them — operator field finding: CHIP-SAT worker auto-loaded feature-execution). General rule: auto-discovered skills never bind; only prompt-pack pins are doctrine. Cache repackage to 0.2.0 deferred to W1 close (no tooling swap under running workers).
 ```
