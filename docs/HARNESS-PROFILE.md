@@ -30,9 +30,12 @@ combined doctrine's dated ratifications — nothing here is new content.
 - **L1** — `GOCACHE=.gocache go test ./...` (touched packages + guard suites; full sweep only
   when migrations/platform touched) · web vitest · integration lane
   `npm run harness:integration` (see §4).
-- **L2** — dev stack up: server_core `:8080` + apps/web `:5174` via repo scripts (PowerShell);
-  smoke: target routes, error shapes, OpenAPI ↔ SDK ↔ handler parity; evidence captured to the
-  mission's contract paths.
+- **L2** — dev stack up **ONLY via docker compose**: `npm run docker:dev`
+  (postgres+backend+frontend, server `:8080` + web `:5174`); OAuth flows:
+  `npm run docker:oauth`. HUB-OWNED seam: chips send `REQUEST dev-stack`, never boot their own
+  server process, never bind the ports, never load `.env*` into session env vars (env is
+  consumed by the container entrypoint, not the session). Smoke: target routes, error shapes,
+  OpenAPI ↔ SDK ↔ handler parity; evidence captured to the mission's contract paths.
 - Post-merge ladder on integrated master MUST include the clean-worktree governance run.
 
 ## 3. Fresh-workspace bootstrap
@@ -128,4 +131,5 @@ verification conflicts against this list.
 2026-07-15 · §2 · ratified · governance lane: run from clean detached worktree + full 40-hex BaseSha (field finding: main-checkout sweep of .claude/worktrees false-fails; short sha = GOV_SEMANTIC_DRIFT base-sha-invalid) — memory/governance-lane-clean-worktree.md
 2026-07-15 · §3 · ratified · fresh-worktree GOMODCACHE warm + HPG_MIGRATION_FAILED/migrations_first=-1 false-alarm signature (M-01 field finding)
 2026-07-15 · §4 · ratified · session postgres container harness:pg:up/down (mpc-pg-session-<8hex>) + createdb first-boot retry absorbing 3D000
+2026-07-15 · §2 L2 + §6 · corrected · dev stack ONLY via docker compose (npm run docker:dev / docker:oauth), hub-owned; chips never boot own server, never bind :8080/:5174, never load .env* into session env (field violation: M-01 chip ran bare worktree server with real .env for C10 — 42P01s were self-inflicted bypass of compose postgres+entrypoint)
 ```

@@ -206,7 +206,7 @@ theater (asserting the mock; missing negative/cross-tenant case).
 |---|---|---|
 | L0 | `go build ./...` (`GOCACHE=.gocache`) · web `tsc`/typecheck · governance lanes (module boundaries, contracts) | zero findings |
 | L1 | `GOCACHE=.gocache go test ./...` (touched packages + guard suites; full sweep only when migrations/platform touched) · web vitest | green; flaky = fix or delete |
-| L2 | dev stack up (server_core :8080 + apps/web :5174 via repo scripts, PowerShell never bash) · smoke: target routes, error shapes, OpenAPI ↔ SDK ↔ handler parity | green, evidence captured |
+| L2 | dev stack up — **ONLY via docker compose: `npm run docker:dev`** (postgres+backend+frontend; OAuth flows: `npm run docker:oauth`), HUB-OWNED: chips send `REQUEST dev-stack`, NEVER boot their own server process, never bind :8080/:5174, never load `.env*` into session env vars (env is consumed by the container entrypoint, not the session — ratified 2026-07-15, M-01 C10 violation) · smoke: target routes, error shapes, OpenAPI ↔ SDK ↔ handler parity | green, evidence captured |
 | L3 | browser QA persona on the milestone VC Drive blocks | GREEN verdict artifact |
 | L4 | MNFS milestone gate `/milestone-validate <milestone-path> --apply` (cold `milestone-reviewer` crew + QA live-drive vs `validation-contract.md`; only QA passes a milestone) | PASS written to `<milestone-root>/validation-result.md` |
 
