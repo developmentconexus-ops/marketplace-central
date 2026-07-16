@@ -1,0 +1,131 @@
+# Harness Profile — marketplace-central
+
+**Layer:** REPO (binds with the plugin's `HARNESS-CORE.md`; mission content lives in `.mnfs/`).
+**Status of this file:** STAGED — extracted 2026-07-15 from the ratified combined
+`docs/HARNESS.md`. While MIS-003 is in flight, `docs/HARNESS.md` remains the binding doctrine
+(core §0: product repo wins for in-flight missions); the hub swaps the binding to
+CORE + this profile at the M-01 milestone boundary. All provenance below carries over from the
+combined doctrine's dated ratifications — nothing here is new content.
+
+---
+
+## 1. Identity & stack
+`status: ratified` · `provenance: 2026-07-15 · extracted from docs/HARNESS.md (operator-ratified 2026-07-15)`
+
+- Go backend (`apps/server_core`, Go workspaces) + React/TypeScript frontend (`apps/web`),
+  npm monorepo.
+- OS/shell binding: Windows; **PowerShell for all stack ops — never bash, never WSL**.
+- Default branch: `master`. Hub checkout must be on `master` before every hub commit
+  (field gotcha: chip launch can switch the hub's working dir onto the scaffold branch).
+- Contract-first: OpenAPI spec + generated SDK (`packages/sdk-runtime`).
+
+## 2. Verification ladder bindings (core §5)
+`status: ratified` · `provenance: 2026-07-15 · docs/HARNESS.md §5 + field finding (governance lane, 2026-07-15)`
+
+- **L0** — `go build ./...` with `GOCACHE=.gocache` · web `tsc`/typecheck ·
+  governance lanes: `npm run harness:governance -- -BaseSha <sha>` — run from a **clean
+  detached worktree** (main checkout sweeps `.claude/worktrees/*` and false-fails until the
+  scanner exclusion lands) and pass the **full 40-hex** BaseSha (short sha =
+  `GOV_SEMANTIC_DRIFT id=base-sha-invalid`).
+- **L1** — `GOCACHE=.gocache go test ./...` (touched packages + guard suites; full sweep only
+  when migrations/platform touched) · web vitest · integration lane
+  `npm run harness:integration` (see §4).
+- **L2** — dev stack up: server_core `:8080` + apps/web `:5174` via repo scripts (PowerShell);
+  smoke: target routes, error shapes, OpenAPI ↔ SDK ↔ handler parity; evidence captured to the
+  mission's contract paths.
+- Post-merge ladder on integrated master MUST include the clean-worktree governance run.
+
+## 3. Fresh-workspace bootstrap
+`status: ratified` · `provenance: 2026-07-15 · M-01 field finding (hermetic lane)`
+
+Standard first act in every new chip worktree, before any hermetic lane:
+
+```
+cd apps/server_core && GOMODCACHE=$(pwd)/.gomodcache go mod download all
+```
+
+(~130M; env prep, NOT a dep change — no REQUEST needed.)
+
+**False-alarm signatures:**
+- `HPG_MIGRATION_FAILED` with `migrations_first=-1` = build died before migrate ran (empty
+  `.gomodcache` under `GOPROXY=off`/`GOSUMDB=off`), not a SQL/migration defect. Warm the cache
+  before diagnosing SQL.
+- 3D000 "database does not exist" on first CREATE DATABASE attempt = postgres first-boot init
+  restart race (pg_isready passes during it); the lane's retry loop absorbs it — not a defect.
+
+## 4. Test database / integration strategy
+`status: ratified` · `provenance: 2026-07-15 · docs/HARNESS.md §5 (integration lane hardening + session container)`
+
+- Isolation unit: fresh `CREATE DATABASE mpc_test_<32hex>` per run, dropped after.
+- Session container: `npm run harness:pg:up` starts one long-lived postgres per checkout
+  (`mpc-pg-session-<8hex>`, hashed from checkout path — hub and chip worktrees never collide);
+  `npm run harness:integration` auto-reuses it (`container=session-reuse`, ~20s → ~3s
+  overhead); without it, per-run `container=ephemeral`. Remove at milestone close:
+  `npm run harness:pg:down`. State: `scripts/.runs/pg-session.json` (gitignored, 127.0.0.1).
+- Lane is self-discovering: `scripts/harness/Postgres.psm1` globs every `//go:build integration`
+  package under `internal/modules/` + `tests/integration` — a new module joins by existing.
+- Cross-track serialization: integration runs across tracks with **divergent migrations** are
+  serialized by the hub (3D000/template-collision finding); same-fingerprint runs safe concurrent.
+
+## 5. Collision axes — instantiation (core §3)
+`status: ratified` · `provenance: 2026-07-15 · docs/HARNESS.md §3`
+
+| Axis | Concrete binding in this repo |
+|---|---|
+| Contract artifacts | `contracts/api/marketplace-central.openapi.yaml` + `packages/sdk-runtime` (contract lock: one owner at a time, or hub pre-assigns disjoint path sections and resolves regen conflict at merge) |
+| FE surface | `apps/web` component/route trees; AppRouter/nav/Layout are named owned seams |
+| Migration | hub pre-allocates disjoint number blocks in chip prompts; unplanned need = `REQUEST migration-number`, never grab blind |
+| DB shape | one exclusive owner per table / module registration; other tracks `REQUEST` |
+| Module | Go modules under `apps/server_core/internal/modules/`; cross-module edges via published interfaces safe, same-module internals serialize |
+
+## 6. Shared seams & owners
+`status: ratified` · `provenance: 2026-07-15 · docs/HARNESS.md §§2-3-6`
+
+Hub-owned (chips `REQUEST`, never take): OpenAPI/sdk-runtime contract lock · migration number
+blocks · dev stack (:8080/:5174) · harness control files (`scripts/harness*`, package.json
+harness scripts) · `contracts/governance/` registry · `docs/HARNESS*` doctrine files.
+
+## 7. Non-negotiables (per-endpoint / per-write, core §5)
+`status: ratified` · `provenance: 2026-07-15 · docs/HARNESS.md §5 + AGENTS.md`
+
+- `tenant_id` predicate on every tenant query.
+- Provider payloads at adapters only (domain/application/ports/adapters/transport boundaries hold).
+- Unknown never becomes zero/default — ADR-17, fail honest; no blanket recover/fallback on
+  integrity-critical reads.
+- OpenAPI + `sdk-runtime` land in the same commit.
+- Provider writes: resolved linkage, explicit policy/source time, duplicate protection, audit
+  (IC-03 gates).
+- Mocks prove contract behavior, never live integration.
+
+## 8. Truth order (core §6)
+`status: ratified` · `provenance: 2026-07-15 · AGENTS.md + docs/HARNESS.md §6`
+
+`ARCHITECTURE.md`/ADRs > OpenAPI + SDK > `contracts/governance/` > wiki > `.mnfs/` >
+tests/builds/commits. Stop and classify architecture, contract, runtime, ownership, or
+verification conflicts against this list.
+
+## 9. Human gates
+`status: ratified` · `provenance: 2026-07-15 · AGENTS.md + docs/HARNESS.md §6`
+
+- Push: NEVER without explicit operator permission (commit after verified work = standing auth).
+- Dependency changes (dep change = `REQUEST` to hub; install-as-ritual forbidden).
+- Live ML (Mercado Livre) writes: explicit operator authorization per mission Validation Strategy.
+- Never read/print/commit `.env*` contents.
+- `git branch -d` never `-D` (refusal = unmerged work, operator decides).
+
+## 10. Superseded protocols denylist
+`status: ratified` · `provenance: 2026-07-15 · docs/HARNESS.md §2 (chip-prompt pin h)`
+
+- `mpc-goal-harness` skill — superseded 2026-07-15; never invoke, even if skill discovery
+  surfaces it in a worktree. Its control-plane modules (Context/Impact/State/Evals) and lanes
+  (`context-compile`/`context-validate`/`impact`) were deleted 2026-07-15.
+- Codex-only harness previously in AGENTS.md — superseded 2026-07-15.
+
+## Amendment log
+
+```
+2026-07-15 · all sections · ratified · profile extracted from combined docs/HARNESS.md (operator-ratified doctrine) at A′ restructure; swap to CORE+profile binding scheduled for M-01 close
+2026-07-15 · §2 · ratified · governance lane: run from clean detached worktree + full 40-hex BaseSha (field finding: main-checkout sweep of .claude/worktrees false-fails; short sha = GOV_SEMANTIC_DRIFT base-sha-invalid) — memory/governance-lane-clean-worktree.md
+2026-07-15 · §3 · ratified · fresh-worktree GOMODCACHE warm + HPG_MIGRATION_FAILED/migrations_first=-1 false-alarm signature (M-01 field finding)
+2026-07-15 · §4 · ratified · session postgres container harness:pg:up/down (mpc-pg-session-<8hex>) + createdb first-boot retry absorbing 3D000
+```
