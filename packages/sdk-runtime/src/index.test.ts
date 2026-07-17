@@ -13,6 +13,12 @@ import type {
   ListingSummary,
   DashboardSummary,
   SyncRunPage,
+  MarketObservation,
+  MarketObservationPage,
+  MarketReference,
+  MarketReferencePage,
+  CategoryAttribute,
+  CategoryAttributesResponse,
 } from "./index";
 
 describe("sdk runtime", () => {
@@ -1832,6 +1838,164 @@ describe("sdk runtime", () => {
     expect(dashboard.sync_errors).toBeNull();
     expect(dashboard.last_sync_at).toBeNull();
     expect(syncRuns.items[0].finished_at).toBeNull();
+  });
+
+  it("gets category attributes with an encoded path segment and preserves provider order", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const attributes: CategoryAttribute[] = [
+      {
+        id: "color",
+        name: "Color",
+        required: false,
+        value_type: "string",
+        values: null,
+        constraints: null,
+      },
+      {
+        id: "brand",
+        name: "Brand",
+        required: true,
+        value_type: "enum",
+        values: [{ id: "brand-b", name: "Brand B" }, { id: "brand-a", name: "Brand A" }],
+        constraints: { max_length: 80 },
+      },
+    ];
+    const response: CategoryAttributesResponse = {
+      category_id: "MLB/123?draft",
+      attributes,
+    };
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(JSON.stringify(response), { status: 200 });
+      },
+    });
+
+    const result = await client.getCategoryAttributes("MLB/123?draft");
+
+    expect(String(requests[0].input)).toBe(
+      "http://localhost:8080/listings/categories/MLB%2F123%3Fdraft/attributes",
+    );
+    expect(requests[0].init?.method).toBe("GET");
+    expect(result.attributes).toEqual(attributes);
+    expect(result.attributes.map((attribute) => attribute.id)).toEqual(["color", "brand"]);
+    expect(result.attributes[0].constraints).toBeNull();
+    expect(result.attributes[1].constraints).toEqual({ max_length: 80 });
+  });
+
+  it.each([
+    [404, "category_not_found"],
+    [502, "provider_unavailable"],
+  ] as const)("preserves category attribute error code %s", async (status, code) => {
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async () =>
+        new Response(JSON.stringify({ error: { code, message: "category attributes unavailable" } }), { status }),
+    });
+
+    await expect(client.getCategoryAttributes("MLB/category")).rejects.toMatchObject({
+      status,
+      error: { code },
+    });
+  });
+
+  it("lists market observations and references with encoded ordered ids", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(JSON.stringify({ items: [], as_of: "2026-07-16T12:00:00Z" }), { status: 200 });
+      },
+    });
+
+    await client.listMarketObservations("install/1", ["listing/2", "listing/1"]);
+    await client.listMarketReferences(["product/2", "product/1"]);
+
+    expect(String(requests[0].input)).toBe(
+      "http://localhost:8080/market/observations?installation_id=install%2F1&listing_ids=listing%2F2%2Clisting%2F1",
+    );
+    expect(String(requests[1].input)).toBe(
+      "http://localhost:8080/market/references?product_ids=product%2F2%2Cproduct%2F1",
+    );
+    expect(requests.every((request) => request.init?.method === "GET")).toBe(true);
+  });
+
+  it("round-trips honest-empty market evidence with nullable provenance", async () => {
+    const observation: MarketObservation = {
+      listing_id: "listing-empty",
+      our_sale_price: null,
+      competitive_status: null,
+      winner_price: null,
+      competitive_target: null,
+      catalog_offer_price: null,
+      catalog_stats: null,
+      evidence_state: "no_price_evidence",
+      captured_at: null,
+      source: null,
+    };
+    const reference: MarketReference = {
+      product_id: "product-empty",
+      catalog_product_id: null,
+      match_state: "no_candidate",
+      match_method: null,
+      catalog_stats: null,
+      evidence_state: "no_price_evidence",
+      captured_at: null,
+      source: null,
+    };
+    const responses: [MarketObservationPage, MarketReferencePage] = [
+      { items: [observation], as_of: "2026-07-16T12:00:00Z" },
+      { items: [reference], as_of: "2026-07-16T12:00:00Z" },
+    ];
+    let responseIndex = 0;
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async () => new Response(JSON.stringify(responses[responseIndex++]), { status: 200 }),
+    });
+
+    const observationResult = await client.listMarketObservations("install-1", ["listing-empty"]);
+    const referenceResult = await client.listMarketReferences(["product-empty"]);
+
+    expect(observationResult.items[0]).toEqual(observation);
+    expect(observationResult.items[0].our_sale_price).toBeNull();
+    expect(observationResult.items[0].captured_at).toBeNull();
+    expect(observationResult.items[0].source).toBeNull();
+    expect(referenceResult.items[0]).toEqual(reference);
+    expect(referenceResult.items[0].catalog_product_id).toBeNull();
+    expect(referenceResult.items[0].captured_at).toBeNull();
+    expect(referenceResult.items[0].source).toBeNull();
+  });
+
+  it("keeps the six market observation signals distinct", () => {
+    const observation = {
+      listing_id: "listing-1",
+      our_sale_price: { amount: "100.00", currency: "BRL" },
+      competitive_status: "competing",
+      winner_price: { amount: "98.00", currency: "BRL" },
+      competitive_target: { amount: "99.00", currency: "BRL" },
+      catalog_offer_price: { amount: "101.00", currency: "BRL" },
+      catalog_stats: {
+        min: "97.00",
+        p25: "98.00",
+        median: "100.00",
+        trimmed_mean: "100.25",
+        p75: "102.00",
+        max: "105.00",
+        n_offers: 8,
+        n_sellers: 6,
+      },
+      evidence_state: "observed",
+      captured_at: "2026-07-16T12:00:00Z",
+      source: "official_api",
+    } satisfies MarketObservation;
+
+    expect(observation.our_sale_price.amount).toBe("100.00");
+    expect(observation.winner_price.amount).toBe("98.00");
+    expect(observation.competitive_target.amount).toBe("99.00");
+    expect(observation.catalog_offer_price.amount).toBe("101.00");
+    expect(observation.catalog_stats.median).toBe("100.00");
   });
 });
 

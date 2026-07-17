@@ -63,6 +63,9 @@ import (
 	listingspostgres "marketplace-central/apps/server_core/internal/modules/listings/adapters/postgres"
 	listingsapp "marketplace-central/apps/server_core/internal/modules/listings/application"
 	listingstransport "marketplace-central/apps/server_core/internal/modules/listings/transport"
+	marketpostgres "marketplace-central/apps/server_core/internal/modules/market/adapters/postgres"
+	marketapp "marketplace-central/apps/server_core/internal/modules/market/application"
+	markettransport "marketplace-central/apps/server_core/internal/modules/market/transport"
 	marketplacespostgres "marketplace-central/apps/server_core/internal/modules/marketplaces/adapters/postgres"
 	marketplacesapp "marketplace-central/apps/server_core/internal/modules/marketplaces/application"
 	marketplacesregistry "marketplace-central/apps/server_core/internal/modules/marketplaces/registry"
@@ -471,6 +474,10 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	go integrationsbg.NewRefreshTicker(authSessionRepo, authFlowSvc, 5*time.Minute).Start(context.Background())
 	go integrationsbg.NewStateCleanup(oauthStateRepo, time.Hour).Start(context.Background())
 	go integrationsbg.NewFeeSyncScheduler(installationSvc, providerSvc, feeSyncSvc, 15*time.Minute).Start(context.Background())
+
+	marketModuleRepo := marketpostgres.NewRepository(pool, cfg.DefaultTenantID)
+	marketReadSvc := marketapp.NewReadService(marketModuleRepo, marketModuleRepo, time.Now)
+	markettransport.NewHandler(marketReadSvc).Register(mux)
 
 	marketRepo := marketplacespostgres.NewRepository(pool, cfg.DefaultTenantID)
 	marketSvc := marketplacesapp.NewService(marketRepo, cfg.DefaultTenantID)

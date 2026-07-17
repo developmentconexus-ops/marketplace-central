@@ -1,0 +1,27 @@
+-- IC-04 contract-only append-only market observations; no production seed data.
+CREATE TABLE IF NOT EXISTS market_observations (
+    tenant_id TEXT NOT NULL,
+    listing_id TEXT NOT NULL,
+    our_sale_price_amount NUMERIC,
+    our_sale_price_currency TEXT,
+    competitive_status TEXT,
+    winner_price_amount NUMERIC,
+    winner_price_currency TEXT,
+    competitive_target_amount NUMERIC,
+    competitive_target_currency TEXT,
+    catalog_offer_price_amount NUMERIC,
+    catalog_offer_price_currency TEXT,
+    catalog_stats JSONB,
+    evidence_state TEXT NOT NULL,
+    captured_at TIMESTAMPTZ NOT NULL,
+    source TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (tenant_id, listing_id, captured_at),
+    CONSTRAINT market_observations_our_sale_price_pair_check CHECK ((our_sale_price_amount IS NULL AND our_sale_price_currency IS NULL) OR (our_sale_price_amount IS NOT NULL AND our_sale_price_currency IS NOT NULL AND our_sale_price_currency = 'BRL')),
+    CONSTRAINT market_observations_competitive_status_check CHECK (competitive_status IN ('winning', 'competing', 'not_listed')),
+    CONSTRAINT market_observations_winner_price_pair_check CHECK ((winner_price_amount IS NULL AND winner_price_currency IS NULL) OR (winner_price_amount IS NOT NULL AND winner_price_currency IS NOT NULL AND winner_price_currency = 'BRL')),
+    CONSTRAINT market_observations_competitive_target_pair_check CHECK ((competitive_target_amount IS NULL AND competitive_target_currency IS NULL) OR (competitive_target_amount IS NOT NULL AND competitive_target_currency IS NOT NULL AND competitive_target_currency = 'BRL')),
+    CONSTRAINT market_observations_catalog_offer_price_pair_check CHECK ((catalog_offer_price_amount IS NULL AND catalog_offer_price_currency IS NULL) OR (catalog_offer_price_amount IS NOT NULL AND catalog_offer_price_currency IS NOT NULL AND catalog_offer_price_currency = 'BRL')),
+    CONSTRAINT market_observations_evidence_state_check CHECK (evidence_state IN ('observed', 'insufficient_market', 'no_price_evidence')),
+    CONSTRAINT market_observations_source_check CHECK (source IN ('official_api', 'vendor', 'manual'))
+);
