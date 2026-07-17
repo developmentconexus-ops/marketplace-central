@@ -164,3 +164,41 @@ TestPhase1SmokeFlow, cited; both new integration tests executed live in lane);
 harness:unit status=passed; go vet (default + integration tags), build,
 mutations sweep 0 FAIL. Corrective set complete: COR-1a/1b/1c/1d/1e/1f, COR-2,
 COR-3 all ACCEPT.
+
+## QA corrective 1 (M03-QA-1) — 2026-07-17
+
+Anchors: f2e6ff40 → c45b7874. Single item (hub QA live-drive blocker): server
+main constructed RootRuntime and called only `PoolStats.Start` —
+`runtime.MutationPoller.Run` had zero call sites outside tests, so approved
+protocols were never processed by the background poller (C10: MP-000001
+created+approved but protocol stayed `approved`, modal stuck "Carregando…").
+Root cause hub-confirmed; the previously-added `TestRootRuntimeWiresMutationPoller`
+asserted non-nil wiring, not execution.
+
+| Commit | What |
+| --- | --- |
+| c45b7874 | fix: start mutation poller in server main (cancellable ctx + go Run + shutdown cancel) |
+
+Fix is the single missing call site in `cmd/server/main.go` (hub-specified
+shape, no refactor): `ctx` upgraded to `context.WithCancel` + `defer cancel()`;
+`go runtime.MutationPoller.Run(ctx)` after runtime construction, nil-guarded,
+alongside `PoolStats.Start`; explicit `cancel()` on the shutdown path after
+`ListenAndServe` returns and before `PoolStats.Stop` (Run selects on
+`ctx.Done()`, so cancel stops the goroutine). Orchestrator-direct, dispatch
+ceremony waived for the one-point hub-specified patch (ledger D-81, D-80
+precedent).
+
+No new test authored: EXECUTION (not wiring) is already unit-proven in
+`background/poller_test.go` @ b271e5b2 — `TestPollerRunTicksDrivePassesAndErrorsContinue`
+drives `Pass` on real ticks, error-continue, cancel-stop, and re-entry guard.
+`main()` has no clean unit seam without the refactor the hub forbade; a
+duplicate test would be theater.
+
+Cold sonnet review ACCEPT unconditional (0 findings): ctx lifecycle correct,
+`cancel()` unblocks Run's select (confirmed against the existing tests),
+nil-guard defensive, shutdown ordering correct, defer+explicit cancel
+idempotent. Lanes @ c45b7874: go build cmd/server (0); go vet cmd/server +
+background (0); background unit tests ok; harness:unit status=passed (go unit +
+web 25 files/165 tests); harness:integration GREEN-with-allowlist (0 `--- FAIL:`
+lines; sole failure_token = TestPhase1SmokeFlow, allowlisted + cited;
+migrations_first=41 applied clean).
