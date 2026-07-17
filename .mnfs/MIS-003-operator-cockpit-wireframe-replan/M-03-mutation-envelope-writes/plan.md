@@ -500,6 +500,17 @@ Serialization points:
 - Complexity: `complex`
 - Serves: M03-C04, C07, C08
 - Budget: ~300 lines.
+- G2 NOTE 2026-07-16 (review D-44 condition 1 — DRY): `preview_repository.go` ReplacePreview
+  near-duplicates the `apply_repository.go` ReplaceItems tx/lock/delete/insert/update sequence
+  (~104 lines). Kept separate deliberately: ReplaceItems is the F-01 envelope path and never
+  sets `source_as_of`; ReplacePreview is the preview path and must persist `source_as_of`
+  (ADR-17 — max non-null FetchedAt, never now()). Merging now would put a nullable
+  source-time parameter on the envelope path and blur which caller owns the honest-null rule.
+  Alternatives considered: (a) shared private helper with source_as_of param — rejected,
+  parameter honesty; (b) duplicate + per-concern file (chosen) — each path owns its
+  state-guard and source-time contract; consolidation re-evaluated at F03-S9 when route
+  wiring shows both call sites. Related hub finding: ReplaceItems path leaves `source_as_of`
+  null at previewed state (IC-03/PD-01 gap) — queued for CLOSED ratification.
 
 ### F03-S3 — approve and cancel application services
 
