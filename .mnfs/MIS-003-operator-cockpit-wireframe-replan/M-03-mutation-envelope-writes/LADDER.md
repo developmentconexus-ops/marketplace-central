@@ -42,6 +42,38 @@ F-04 lands, this file then extends.
 - `-race`: unavailable on this machine (accepted; hub decides cross-machine run
   pre-mission-close).
 
+## Final re-run — post-rebase + F-04 (evidence head `a093f0f0`)
+
+Rebase onto main @ `79d6787f18916cf9906fd355fb8eae9b2bc3067a` (hub F-04 trigger): 55 commits
+replayed, 3 additive conflicts resolved (openapi.yaml schemas, sdk index.ts, root_test.go),
+migration union 41 → fixture bump ea19ac33. New BaseSha for governance =
+`79d6787f18916cf9906fd355fb8eae9b2bc3067a` (merge-base vs main).
+
+### L0 (@ a093f0f0)
+
+- `go build ./...` + `go vet ./...` — GREEN (absolute GOCACHE, apps/server_core).
+- Governance lane: **status=passed** in clean detached worktree (`Documents/mpc-govcheck-m03`
+  @ a093f0f0), full 40-hex BaseSha 79d6787f..., zero violations, 23 baseline_exceptions
+  (all pre-existing main registry entries; count grew 14→23 from M-02 upstream additions).
+
+### L1 (@ a093f0f0)
+
+- **Full `go test ./...`**: GREEN — 86 packages ok, 0 failures, exit 0.
+- **harness:unit**: GREEN (status=passed, exit 0).
+- **harness:integration**: GREEN-with-allowlist @ session pg (migrations_first=41 embedded,
+  fresh db, container session-reuse) — sole failure `TestPhase1SmokeFlow` = ratified profile
+  §2 allowlist entry, cited not re-proven. Orders flake absent (d9a36a0a fix holding).
+- **Web vitest**: 25 files / 164 tests green (workspace run @ code-identical tree 1d7a5bad;
+  a093f0f0 adds docs only) + `npm run build --workspace @marketplace-central/web` green.
+- **sdk-runtime vitest**: 60/60 (grew 51→60: mutation query builders + M-02 upstream).
+- `-race`: unavailable on this machine (accepted; hub decides cross-machine run
+  pre-mission-close).
+
+### F-04 slice evidence
+
+S1 fe268655, S2 a84f0b44, S3 19075cd7, S4 42574869, S5 1d7a5bad — all cold-review ACCEPT
+(D-66, D-69, D-71, D-73). Full trail in DISPATCH-LEDGER.md rows D-63..D-73.
+
 ## L2
 
 Hub-owned seam (dev stack via docker compose). Chip does not execute. Pending hub
