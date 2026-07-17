@@ -1974,6 +1974,87 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /market/observations:
+    get:
+      summary: List market observations
+      operationId: listMarketObservations
+      parameters:
+        - name: installation_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Installation whose listing observations are requested.
+        - name: listing_ids
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated ordered listing IDs; input order is preserved and at most 200 IDs may be supplied.
+      responses:
+        "200":
+          description: Market observations in request order
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, as_of]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MarketObservation'
+                  as_of:
+                    type: string
+                    format: date-time
+        "400":
+          description: Missing installation_id (installation_required)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "422":
+          description: More than 200 IDs supplied (too_many_ids)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /market/references:
+    get:
+      summary: List market references
+      operationId: listMarketReferences
+      parameters:
+        - name: product_ids
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated ordered product IDs; input order is preserved and at most 200 IDs may be supplied.
+      responses:
+        "200":
+          description: Market references in request order
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, as_of]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MarketReference'
+                  as_of:
+                    type: string
+                    format: date-time
+        "422":
+          description: More than 200 IDs supplied (too_many_ids)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /sync/runs:
     get:
       summary: List synchronization runs
@@ -5313,3 +5394,112 @@ components:
         as_of:
           type: string
           format: date-time
+
+    MarketMoney:
+      type: object
+      required: [amount, currency]
+      properties:
+        amount:
+          type: string
+        currency:
+          type: string
+          enum: [BRL]
+
+    MarketCatalogStats:
+      type: object
+      required: [min, p25, median, trimmed_mean, p75, max, n_offers, n_sellers]
+      properties:
+        min:
+          type: string
+        p25:
+          type: string
+        median:
+          type: string
+        trimmed_mean:
+          type: string
+        p75:
+          type: string
+        max:
+          type: string
+        n_offers:
+          type: integer
+        n_sellers:
+          type: integer
+
+    MarketObservation:
+      type: object
+      description: >-
+        Independent market signals remain separate: no synthetic aggregate price is
+        created. Stored rows always carry source and captured_at; null provenance is
+        reserved for synthetic no-price-evidence items.
+      required: [listing_id, our_sale_price, competitive_status, winner_price, competitive_target, catalog_offer_price, catalog_stats, evidence_state, captured_at, source]
+      properties:
+        listing_id:
+          type: string
+        our_sale_price:
+          allOf:
+            - $ref: '#/components/schemas/MarketMoney'
+          nullable: true
+        competitive_status:
+          type: string
+          enum: [winning, competing, not_listed]
+          nullable: true
+        winner_price:
+          allOf:
+            - $ref: '#/components/schemas/MarketMoney'
+          nullable: true
+        competitive_target:
+          allOf:
+            - $ref: '#/components/schemas/MarketMoney'
+          nullable: true
+        catalog_offer_price:
+          allOf:
+            - $ref: '#/components/schemas/MarketMoney'
+          nullable: true
+        catalog_stats:
+          allOf:
+            - $ref: '#/components/schemas/MarketCatalogStats'
+          nullable: true
+        evidence_state:
+          type: string
+          enum: [observed, insufficient_market, no_price_evidence]
+        captured_at:
+          type: string
+          format: date-time
+          nullable: true
+        source:
+          type: string
+          enum: [official_api, vendor, manual]
+          nullable: true
+
+    MarketReference:
+      type: object
+      description: Independent catalog evidence; it carries no derived aggregate price.
+      required: [product_id, catalog_product_id, match_state, match_method, catalog_stats, evidence_state, captured_at, source]
+      properties:
+        product_id:
+          type: string
+        catalog_product_id:
+          type: string
+          nullable: true
+        match_state:
+          type: string
+          enum: [accept, review, reject, no_candidate]
+        match_method:
+          type: string
+          nullable: true
+        catalog_stats:
+          allOf:
+            - $ref: '#/components/schemas/MarketCatalogStats'
+          nullable: true
+        evidence_state:
+          type: string
+          enum: [observed, insufficient_market, no_price_evidence]
+        captured_at:
+          type: string
+          format: date-time
+          nullable: true
+        source:
+          type: string
+          enum: [official_api, vendor, manual]
+          nullable: true

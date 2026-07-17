@@ -1517,6 +1517,17 @@ export function createMarketplaceCentralClient(options: {
       putJson<Classification>(`/classifications/${id}`, req),
     deleteClassification: (id: string) =>
       deleteJson(`/classifications/${id}`),
+    listMarketObservations: (installationId: string, listingIds: string[]) => {
+      const query = new URLSearchParams();
+      query.set("installation_id", installationId);
+      query.set("listing_ids", listingIds.join(","));
+      return getJson<MarketObservationPage>(`/market/observations?${query.toString()}`);
+    },
+    listMarketReferences: (productIds: string[]) => {
+      const query = new URLSearchParams();
+      query.set("product_ids", productIds.join(","));
+      return getJson<MarketReferencePage>(`/market/references?${query.toString()}`);
+    },
   };
 }
 
@@ -1561,4 +1572,59 @@ export interface SyncRunListOptions {
   limit?: number;
   module?: string;
   status?: SyncRunStatus;
+}
+
+export interface MarketMoney {
+  amount: string;
+  currency: "BRL";
+}
+
+export interface MarketCatalogStats {
+  min: string;
+  p25: string;
+  median: string;
+  trimmed_mean: string;
+  p75: string;
+  max: string;
+  n_offers: number;
+  n_sellers: number;
+}
+
+export type MarketCompetitiveStatus = "winning" | "competing" | "not_listed";
+export type MarketEvidenceState = "observed" | "insufficient_market" | "no_price_evidence";
+export type MarketSource = "official_api" | "vendor" | "manual";
+export type MarketMatchState = "accept" | "review" | "reject" | "no_candidate";
+
+export interface MarketObservation {
+  listing_id: string;
+  our_sale_price: MarketMoney | null;
+  competitive_status: MarketCompetitiveStatus | null;
+  winner_price: MarketMoney | null;
+  competitive_target: MarketMoney | null;
+  catalog_offer_price: MarketMoney | null;
+  catalog_stats: MarketCatalogStats | null;
+  evidence_state: MarketEvidenceState;
+  captured_at: string | null;
+  source: MarketSource | null;
+}
+
+export interface MarketReference {
+  product_id: string;
+  catalog_product_id: string | null;
+  match_state: MarketMatchState;
+  match_method: string | null;
+  catalog_stats: MarketCatalogStats | null;
+  evidence_state: MarketEvidenceState;
+  captured_at: string | null;
+  source: MarketSource | null;
+}
+
+export interface MarketObservationPage {
+  items: MarketObservation[];
+  as_of: string;
+}
+
+export interface MarketReferencePage {
+  items: MarketReference[];
+  as_of: string;
 }
