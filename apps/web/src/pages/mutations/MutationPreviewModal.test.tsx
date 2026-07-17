@@ -7,9 +7,12 @@ import { MutationPreviewModal } from "./MutationPreviewModal";
 const createMutation = vi.fn();
 const previewMutation = vi.fn();
 const cancelMutation = vi.fn();
+const approveMutation = vi.fn();
+const getMutation = vi.fn();
+const listMutationItems = vi.fn();
 
 vi.mock("../../app/ClientContext", () => ({
-  useClient: () => ({ createMutation, previewMutation, cancelMutation }),
+  useClient: () => ({ createMutation, previewMutation, cancelMutation, approveMutation, getMutation, listMutationItems }),
 }));
 
 const draft: MutationProtocol = {
@@ -85,9 +88,15 @@ describe("MutationPreviewModal", () => {
     createMutation.mockReset();
     previewMutation.mockReset();
     cancelMutation.mockReset();
+    approveMutation.mockReset();
+    getMutation.mockReset();
+    listMutationItems.mockReset();
     createMutation.mockResolvedValue(draft);
     previewMutation.mockResolvedValue(preview);
     cancelMutation.mockResolvedValue({ ...draft, state: "cancelled" });
+    approveMutation.mockResolvedValue({ ...draft, state: "applying", approved_at: "2026-07-17T12:00:02Z" });
+    getMutation.mockResolvedValue({ ...draft, state: "applying", approved_at: "2026-07-17T12:00:02Z" });
+    listMutationItems.mockResolvedValue({ items: [], next_cursor: null, page_size: 50 });
   });
 
   it("mantém a confirmação indisponível até previewMutation resolver", async () => {
@@ -197,5 +206,67 @@ describe("MutationPreviewModal", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("reduza a seleção ou refine o filtro");
     await waitFor(() => expect(cancelMutation).toHaveBeenCalledTimes(1));
     expect(screen.queryByRole("button", { name: "Confirmar e aplicar" })).not.toBeInTheDocument();
+  });
+
+  it("exige confirmação explícita antes de aprovar", async () => {
+    renderModal("listing_pause");
+    submit();
+
+    const approve = await screen.findByRole("button", { name: "Confirmar e aplicar" });
+    expect(approve).toBeDisabled();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Confirmo que revisei a prévia" }));
+    expect(approve).toBeEnabled();
+  });
+
+  it("aprova uma vez diante de dois cliques imediatos", async () => {
+    let resolveApprove!: (value: MutationProtocol) => void;
+    approveMutation.mockReturnValue(new Promise((resolve) => { resolveApprove = resolve; }));
+    renderModal("listing_pause");
+    submit();
+    await screen.findByRole("button", { name: "Confirmar e aplicar" });
+    fireEvent.click(screen.getByRole("checkbox", { name: "Confirmo que revisei a prévia" }));
+    const approve = screen.getByRole("button", { name: "Confirmar e aplicar" });
+
+    fireEvent.click(approve);
+    fireEvent.click(approve);
+
+    await waitFor(() => expect(approveMutation).toHaveBeenCalledTimes(1));
+    expect(approveMutation).toHaveBeenCalledWith("MP-000042", { execute: true });
+    resolveApprove({ ...draft, state: "applying" });
+  });
+
+  it("volta à prévia sem reaprová-la quando ela expira", async () => {
+    approveMutation.mockRejectedValue({ status: 409, error: { code: "preview_stale", message: "stale" } });
+    renderModal("listing_pause");
+    submit();
+    await screen.findByRole("button", { name: "Confirmar e aplicar" });
+    fireEvent.click(screen.getByRole("checkbox", { name: "Confirmo que revisei a prévia" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar e aplicar" }));
+
+    expect(await screen.findByText("Prévia expirada. Gere novamente.")).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Confirmo que revisei a prévia" })).not.toBeChecked();
+    expect(screen.queryByRole("button", { name: "Confirmar e aplicar" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Gerar prévia novamente" })).toBeEnabled();
+    expect(approveMutation).toHaveBeenCalledTimes(1);
+  });
+
+  it("mostra o resultado terminal com cópia segura e link do protocolo", async () => {
+    const terminal = { ...draft, state: "partially_failed" as const, finished_at: "2026-07-17T12:00:03Z" };
+    approveMutation.mockResolvedValue(terminal);
+    getMutation.mockResolvedValue(terminal);
+    listMutationItems.mockResolvedValue({
+      items: [{ ...preview.items[0], state: "failed", failure: { code: "provider_validation", message_pt: "texto cru proibido" } }],
+      next_cursor: null,
+      page_size: 50,
+    });
+    renderModal("listing_pause");
+    submit();
+    await screen.findByRole("button", { name: "Confirmar e aplicar" });
+    fireEvent.click(screen.getByRole("checkbox", { name: "Confirmo que revisei a prévia" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar e aplicar" }));
+
+    expect(await screen.findByText("Rejeitado pela validação do marketplace.")).toBeInTheDocument();
+    expect(screen.queryByText("texto cru proibido")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ver protocolo" })).toHaveAttribute("href", "/protocolos/MP-000042");
   });
 });
