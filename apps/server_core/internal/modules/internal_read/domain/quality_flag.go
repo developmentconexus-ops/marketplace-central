@@ -12,6 +12,8 @@ const (
 	QualityAmbiguousPrice   QualityFlag = "ambiguous_price"
 	QualityMissingTax       QualityFlag = "missing_tax"
 	QualityStaleSource      QualityFlag = "stale_source"
+	QualityInvalidEAN       QualityFlag = "invalid_ean"
+	QualityEANCollision     QualityFlag = "ean_collision"
 )
 
 func HasQualityFlag(flags []QualityFlag, target QualityFlag) bool {

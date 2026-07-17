@@ -9,6 +9,7 @@ type ProductCandidate struct {
 	Name              string
 	EAN               *string
 	ReferenceCode     *string
+	NCM               *string
 	ProductGroupID    *int
 	ProductGroupName  *string
 	BrandID           *int

@@ -36,6 +36,8 @@ func TestRequiredQualityFlagsRemainExplicit(t *testing.T) {
 		QualityMissingTax,
 		QualityAmbiguousProduct,
 		QualityStaleSource,
+		QualityInvalidEAN,
+		QualityEANCollision,
 	}
 
 	expected := []QualityFlag{
@@ -47,6 +49,8 @@ func TestRequiredQualityFlagsRemainExplicit(t *testing.T) {
 		"missing_tax",
 		"ambiguous_product",
 		"stale_source",
+		"invalid_ean",
+		"ean_collision",
 	}
 
 	if !reflect.DeepEqual(flags, expected) {
@@ -71,6 +75,14 @@ func TestProductCandidateUsesOracleFirstFields(t *testing.T) {
 	}
 	if !reflect.DeepEqual(candidate.QualityFlags, []QualityFlag{QualityComplete}) {
 		t.Fatalf("expected complete quality flag, got %v", candidate.QualityFlags)
+	}
+}
+
+func TestProductAndTaxNCMRemainNullable(t *testing.T) {
+	candidate := ProductCandidate{}
+	tax := TaxInputs{}
+	if candidate.NCM != nil || tax.NCM != nil {
+		t.Fatalf("absent NCM must remain nil: candidate=%v tax=%v", candidate.NCM, tax.NCM)
 	}
 }
 

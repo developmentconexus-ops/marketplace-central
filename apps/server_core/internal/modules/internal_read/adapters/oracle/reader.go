@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	catalogdomain "marketplace-central/apps/server_core/internal/modules/catalog/domain"
 	"marketplace-central/apps/server_core/internal/modules/internal_read/domain"
 	"marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 )
@@ -51,36 +52,46 @@ func (r *Reader) FindProductsForLinking(ctx context.Context, input ports.FindPro
 		var (
 			productID      int
 			name           string
+			eanValue       sql.NullString
 			referenceValue sql.NullString
+			ncmValue       sql.NullString
 			productGroupID sql.NullInt64
 			brandName      sql.NullString
 			brandID        sql.NullInt64
 			activeValue    string
 			usageType      sql.NullString
+			activeEANCount sql.NullInt64
 		)
-		if err := rows.Scan(&productID, &name, &referenceValue, &productGroupID, &brandName, &brandID, &activeValue, &usageType); err != nil {
+		if err := rows.Scan(&productID, &name, &eanValue, &referenceValue, &ncmValue, &productGroupID, &brandName, &brandID, &activeValue, &usageType, &activeEANCount); err != nil {
 			return nil, wrapOracleError("scan product candidate", err)
+		}
+
+		ean := nullableString(eanValue)
+		qualityFlags := []domain.QualityFlag{domain.QualityComplete}
+		if ean == nil || !catalogdomain.IsValidGTIN(*ean) {
+			ean = nil
+			qualityFlags = []domain.QualityFlag{domain.QualityInvalidEAN}
+		} else if activeEANCount.Valid && activeEANCount.Int64 >= 2 {
+			qualityFlags = append(qualityFlags, domain.QualityEANCollision)
 		}
 
 		candidate := domain.ProductCandidate{
 			InternalProductID: canonicalProductID(productID),
 			ProductID:         productID,
 			Name:              name,
-			// TGFPRO.REFERENCIA is the governed manufacturer/reference value.
-			// No governed barcode column is selected here, so EAN must remain
-			// unknown instead of duplicating REFERENCIA into both identifiers.
-			EAN:            nil,
-			ReferenceCode:  nullableString(referenceValue),
-			BrandID:        nullableInt(brandID),
-			BrandName:      nullableString(brandName),
-			ProductGroupID: nullableInt(productGroupID),
-			IsActive:       strings.EqualFold(activeValue, "S"),
-			UsageType:      nullableString(usageType),
+			EAN:               ean,
+			ReferenceCode:     nullableString(referenceValue),
+			NCM:               nullableNCM(ncmValue),
+			BrandID:           nullableInt(brandID),
+			BrandName:         nullableString(brandName),
+			ProductGroupID:    nullableInt(productGroupID),
+			IsActive:          strings.EqualFold(activeValue, "S"),
+			UsageType:         nullableString(usageType),
 			Source: domain.SourceMetadata{
 				System:    "oracle",
 				FetchedAt: r.now().UTC(),
 			},
-			QualityFlags: []domain.QualityFlag{domain.QualityComplete},
+			QualityFlags: qualityFlags,
 		}
 		candidates = append(candidates, candidate)
 	}
@@ -96,7 +107,9 @@ func (r *Reader) FindProductsForLinking(ctx context.Context, input ports.FindPro
 	}
 	if len(candidates) > 1 {
 		for i := range candidates {
-			candidates[i].QualityFlags = []domain.QualityFlag{domain.QualityAmbiguousProduct}
+			if !domain.HasQualityFlag(candidates[i].QualityFlags, domain.QualityAmbiguousProduct) {
+				candidates[i].QualityFlags = append(candidates[i].QualityFlags, domain.QualityAmbiguousProduct)
+			}
 		}
 	}
 	return candidates, nil
@@ -389,11 +402,19 @@ SELECT
 	p.CODPROD,
 	p.DESCRPROD,
 	p.REFERENCIA,
+	p.REFFORN,
+	p.NCM,
 	p.CODGRUPOPROD,
 	p.MARCA,
 	p.CODMARCA,
 	p.ATIVO,
-	p.USOPROD
+	p.USOPROD,
+	(
+		SELECT COUNT(DISTINCT collision.CODPROD)
+		FROM METALPRD.TGFPRO collision
+		WHERE collision.ATIVO = 'S'
+		  AND TRIM(collision.REFERENCIA) = TRIM(p.REFERENCIA)
+	) AS EAN_ACTIVE_COUNT
 FROM METALPRD.TGFPRO p
 WHERE 1 = 1`
 
@@ -543,6 +564,19 @@ func nullableString(value sql.NullString) *string {
 		return nil
 	}
 	return &v
+}
+
+func nullableNCM(value sql.NullString) *string {
+	ncm := nullableString(value)
+	if ncm == nil || len(*ncm) != 8 {
+		return nil
+	}
+	for _, digit := range *ncm {
+		if digit < '0' || digit > '9' {
+			return nil
+		}
+	}
+	return ncm
 }
 
 func nullableInt(value sql.NullInt64) *int {

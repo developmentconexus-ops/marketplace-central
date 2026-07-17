@@ -31,6 +31,7 @@ type TaxInputs struct {
 	EffectiveAt    time.Time
 	IncidenceCode  int
 	SourceIdentity TaxSourceIdentity
+	NCM            *string
 	ICMSAmount     *float64
 	IPIAmount      *float64
 	PISAmount      *float64
