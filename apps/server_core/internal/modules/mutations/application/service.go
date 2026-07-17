@@ -48,6 +48,9 @@ type CreateInput struct {
 }
 
 func (s Service) Create(ctx context.Context, input CreateInput) (ports.Protocol, error) {
+	if !domain.ProtocolTypeEnabled(input.Type) {
+		return ports.Protocol{}, gateError(domain.FailureCodeTypeNotEnabled, "este tipo de alteração não está habilitado")
+	}
 	if _, err := listingsadapter.ParseSelectionJSON(input.Selection); err != nil {
 		return ports.Protocol{}, err
 	}

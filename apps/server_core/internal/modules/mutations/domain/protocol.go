@@ -41,6 +41,20 @@ const (
 	ProtocolTypeListingCreate ProtocolType = "listing_create"
 )
 
+var enabledProtocolTypes = map[ProtocolType]struct{}{
+	ProtocolTypePriceUpdate:   {},
+	ProtocolTypeStockCorrect:  {},
+	ProtocolTypeLinkApply:     {},
+	ProtocolTypeListingPause:  {},
+	ProtocolTypeListingResync: {},
+	ProtocolTypeListingEdit:   {},
+}
+
+func ProtocolTypeEnabled(t ProtocolType) bool {
+	_, ok := enabledProtocolTypes[t]
+	return ok
+}
+
 const InvalidStateCode = "invalid_state"
 
 var (

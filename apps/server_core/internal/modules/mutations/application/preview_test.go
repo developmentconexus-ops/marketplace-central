@@ -90,6 +90,16 @@ func TestCreateValidatesAndPersistsSelectionAsDraft(t *testing.T) {
 	}
 }
 
+func TestCreateRejectsDisabledProtocolType(t *testing.T) {
+	store := &previewStore{}
+	input := CreateInput{InstallationID: "inst-1", Type: domain.ProtocolTypeListingCreate, Actor: "operator_supplied_unverified", Intent: json.RawMessage(`{}`), Selection: json.RawMessage(`{"mode":"filter","filter":{"status":"active"}}`)}
+	_, err := NewService(store, &previewResolver{}, &previewListingReader{}, time.Now).Create(context.Background(), input)
+	assertPreviewGateCode(t, err, domain.FailureCodeTypeNotEnabled)
+	if store.protocol.ProtocolID != "" {
+		t.Fatalf("protocol persisted despite disabled type: %+v", store.protocol)
+	}
+}
+
 func TestCreateRejectsBlankActorThroughGate(t *testing.T) {
 	store := &previewStore{}
 	input := CreateInput{InstallationID: "inst-1", Type: domain.ProtocolTypePriceUpdate, Actor: "   ", Intent: json.RawMessage(`{}`), Selection: json.RawMessage(`{"mode":"filter","filter":{"status":"active"}}`)}

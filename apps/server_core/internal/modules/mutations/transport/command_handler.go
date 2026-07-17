@@ -225,17 +225,7 @@ func isJSONObject(raw json.RawMessage) bool {
 }
 
 func isEnabledType(protocolType domain.ProtocolType) bool {
-	switch protocolType {
-	case domain.ProtocolTypePriceUpdate,
-		domain.ProtocolTypeStockCorrect,
-		domain.ProtocolTypeLinkApply,
-		domain.ProtocolTypeListingPause,
-		domain.ProtocolTypeListingResync,
-		domain.ProtocolTypeListingEdit:
-		return true
-	default:
-		return false
-	}
+	return domain.ProtocolTypeEnabled(protocolType)
 }
 
 func protocolJSONFrom(protocol ports.Protocol) map[string]any {
