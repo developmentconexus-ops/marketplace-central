@@ -90,3 +90,41 @@ scheduling at milestone close.
 | 50df9d29 | cherry-pick d9a36a0a — fix(orders): de-flake duplicate-identity test |
 | 31f85d3c | chore(governance): inventory deps + listings/mutations (hub grant #2a) |
 | 8a53105c | chore(governance): declare MPC_PROVIDER_WRITES_ENABLED (hub grant #2b) |
+
+## Corrective round 1 (M03-COR-1) — 2026-07-17
+
+Anchors: before = bd87d15a (dual gate round 1 target, Sol FAIL) → after = 939ea614
+(docs SHA; ladder run at this tree). Commits in range:
+
+| Commit | What |
+| --- | --- |
+| 2ba61fa3 | fix(web): COR-1d failure code literal + totals-based canRetry |
+| 94f8efb5 | fix(mutations): COR-1a/1b/1c envelope gate, retry clone scope, msg fallback |
+| 75c623cb | docs(mnfs): COR-1f VC ruling (C04 422, C09 409) + PLAN-ADJUDICATION |
+| d0ecee1c | fix(mutations): COR-1a review fix — ProviderObservedAt as source time |
+| 654721c2 | test(mutations): distinct CreatedAt fixture per review note |
+| 939ea614 | docs(mnfs): ledger D-74..D-77 + F-04 validation.md (COR-1e) |
+
+Review: cold sonnet round 1 REJECT on COR-1a (gate validated approval-instant timestamp,
+could never fire) → fixed d0ecee1c → re-review ACCEPT; COR-1b/1c/1d ACCEPT round 1
+(ledger D-76).
+
+### Ladder re-run @ 939ea614
+
+- **L0**: `go build ./...` + `go vet ./...` green. **governance**: status=passed @
+  939ea614 in clean detached worktree mpc-govcheck-m03, BaseSha
+  79d6787f18916cf9906fd355fb8eae9b2bc3067a (`scripts\harness.ps1 governance`);
+  baseline exceptions only (7, unchanged set).
+- **Go sweep**: `go test -count=1 ./...` (server_core, GOCACHE=.gocache) — 86 pkgs ok,
+  0 FAIL.
+- **harness:unit**: status=passed (run b6277fa360e2427fa030a589c960bf6d).
+- **harness:integration**: GREEN-with-allowlist (run 39cec6931f37477c97f2aaf4b9627441,
+  ephemeral container port 54738, migrations_first=41) — sole failure
+  `TestPhase1SmokeFlow` = ratified profile §2 allowlist entry, cited not re-proven.
+  Earlier same-day session-pg run (df7bdc21… + re-run) identical allowlist-only result.
+- **Web vitest**: 25 files / 165 tests green (grew 164→165: COR-1d out-of-page retry
+  test) + `npm run build --workspace @marketplace-central/web` green.
+- **sdk-runtime vitest**: 60/60.
+- `-race`: unavailable on this machine (accepted; hub decides pre-mission-close).
+
+L2 unchanged: hub-owned seam.
