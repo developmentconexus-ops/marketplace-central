@@ -67,7 +67,7 @@ describe("ProtocoloPage", () => {
 
     getMutation.mockRejectedValue(new Error("indisponível"));
     mount();
-    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    await act(async () => { await vi.runOnlyPendingTimersAsync(); });
     expect(screen.getByRole("alert")).toHaveTextContent("Não foi possível carregar o protocolo.");
     expect(screen.getByRole("button", { name: "Tentar novamente" })).toBeInTheDocument();
   });
@@ -91,7 +91,7 @@ describe("ProtocoloPage", () => {
     getMutation.mockResolvedValue({ ...applying, state: "failed_preserved", finished_at: "2026-07-17T12:00:03Z" });
     listMutationItems.mockResolvedValue({ items: [failedItem], next_cursor: null, page_size: 50 });
     mount();
-    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    await act(async () => { await vi.runOnlyPendingTimersAsync(); });
     await act(async () => { await vi.runOnlyPendingTimersAsync(); });
 
     expect(screen.getByRole("heading", { name: "Protocolo MP-000042" })).toBeInTheDocument();
@@ -100,7 +100,9 @@ describe("ProtocoloPage", () => {
     expect(screen.getByRole("link", { name: "MP-000001" })).toHaveAttribute("href", "/protocolos/MP-000001");
     expect(screen.getByText("—")).toBeInTheDocument();
     expect(screen.getByText("MLB-1")).toBeInTheDocument();
+    expect(screen.getByText("provider_unavailable")).toBeInTheDocument();
     expect(screen.getByText(/indisponível/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Repetir itens com falha" })).not.toBeInTheDocument();
     expect(screen.queryByText("raw secreto")).not.toBeInTheDocument();
     fireEvent.click(screen.getByText("▸ técnico"));
     expect(screen.getByText("raw secreto")).toBeInTheDocument();
@@ -112,7 +114,7 @@ describe("ProtocoloPage", () => {
       .mockResolvedValueOnce({ items: [{ ...failedItem, failure: null, state: "applied" }], next_cursor: "cursor-2", page_size: 1 })
       .mockResolvedValueOnce({ items: [{ ...failedItem, item_id: "item-2", listing_id: "MLB-2" }], next_cursor: null, page_size: 1 });
     mount();
-    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    await act(async () => { await vi.runOnlyPendingTimersAsync(); });
     await act(async () => { await vi.runOnlyPendingTimersAsync(); });
     fireEvent.click(screen.getByRole("button", { name: "Próxima página" }));
     await act(async () => { await vi.runOnlyPendingTimersAsync(); });
@@ -120,7 +122,12 @@ describe("ProtocoloPage", () => {
   });
 
   it("repete falhas uma vez, preserva a instalação e abre o novo protocolo", async () => {
-    const failed = { ...applying, state: "failed_preserved" as const, finished_at: "2026-07-17T12:00:03Z" };
+    const failed = {
+      ...applying,
+      state: "failed_preserved" as const,
+      finished_at: "2026-07-17T12:00:03Z",
+      totals: { items: 1, previewed: 1, applied: 0, failed: 1, skipped: 0 },
+    };
     const retried = { ...failed, protocol_id: "MP-000043", retried_from: "MP-000042", state: "applied" as const };
     let resolveRetry!: (protocol: MutationProtocol) => void;
     retryMutationFailures.mockReturnValue(new Promise<MutationProtocol>((resolve) => { resolveRetry = resolve; }));
@@ -132,7 +139,7 @@ describe("ProtocoloPage", () => {
     const retryButton = screen.getByRole("button", { name: "Repetir itens com falha" });
     fireEvent.click(retryButton);
     fireEvent.click(retryButton);
-    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    await act(async () => { await vi.runOnlyPendingTimersAsync(); });
     expect(retryButton).toBeDisabled();
     expect(retryMutationFailures).toHaveBeenCalledTimes(1);
     expect(retryMutationFailures).toHaveBeenCalledWith("MP-000042");
@@ -141,11 +148,27 @@ describe("ProtocoloPage", () => {
       resolveRetry(retried);
       await vi.runOnlyPendingTimersAsync();
     });
-    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    await act(async () => { await vi.runOnlyPendingTimersAsync(); });
     await act(async () => { await vi.runOnlyPendingTimersAsync(); });
 
     expect(screen.getByRole("heading", { name: "Protocolo MP-000043" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "MP-000042" })).toHaveAttribute("href", "/protocolos/MP-000042");
     expect(screen.getByTestId("location")).toHaveTextContent("/protocolos/MP-000043?installation=inst_test&tab=failed");
+  });
+
+  it("mostra retry quando a falha está fora da página atual", async () => {
+    const failed = {
+      ...applying,
+      state: "failed_preserved" as const,
+      finished_at: "2026-07-17T12:00:03Z",
+      totals: { items: 2, previewed: 2, applied: 1, failed: 1, skipped: 0 },
+    };
+    getMutation.mockResolvedValue(failed);
+    listMutationItems.mockResolvedValue({ items: [], next_cursor: null, page_size: 50 });
+    mount();
+
+    await act(async () => { await vi.runOnlyPendingTimersAsync(); });
+
+    expect(screen.getByRole("button", { name: "Repetir itens com falha" })).toBeInTheDocument();
   });
 });

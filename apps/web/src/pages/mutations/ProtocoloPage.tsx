@@ -63,13 +63,14 @@ function ItemsTable({ items }: { items: MutationItem[] }) {
         <tbody className="divide-y divide-slate-100">
           {items.map((item) => {
             const message = providerMessage(item);
+            const code = failureCode(item);
             const open = openItems.has(item.item_id);
             return <tr key={item.item_id} className="align-top">
               <td className="px-3 py-3 font-medium text-slate-900">{item.listing_id}</td>
               <td className="px-3 py-3 font-mono text-xs">{item.before === null ? <UnknownValue /> : presentMutationValue(item.before)}</td>
               <td className="px-3 py-3 font-mono text-xs">{presentMutationValue(item.after)}</td>
               <td className="px-3 py-3">
-                {item.failure ? <p className="text-red-700">{failureCopy(failureCode(item))}</p> : item.state}
+                {item.failure ? <p className="text-red-700"><span className="font-mono text-xs">{code}</span>{" "}{failureCopy(code)}</p> : item.state}
                 {message ? <div className="mt-2"><button className="text-sm text-slate-700" type="button" aria-expanded={open} onClick={() => setOpenItems((current) => {
                   const next = new Set(current); open ? next.delete(item.item_id) : next.add(item.item_id); return next;
                 })}>▸ técnico</button>{open ? <p className="mt-2 break-words font-mono text-xs">{message}</p> : null}</div> : null}
@@ -105,8 +106,10 @@ function ProtocolItems({ protocolId, protocol }: { protocolId: string; protocol:
   });
   if (query.isPending) return <LoadingState />;
   if (query.isError) return <ErrorState detail="Não foi possível carregar os itens." onRetry={() => void query.refetch()} />;
-  const hasFailedItems = query.data.items.some((item) => item.state === "failed" || Boolean(item.failure));
-  const canRetry = isMutationTerminal(protocol.state) && hasFailedItems;
+  const failedTotal = typeof protocol.totals?.failed === "number" && Number.isFinite(protocol.totals.failed)
+    ? protocol.totals.failed
+    : null;
+  const canRetry = isMutationTerminal(protocol.state) && failedTotal !== null && failedTotal > 0;
   const retry = () => {
     if (retryStarted.current || retryOperation.isPending) return;
     retryStarted.current = true;
