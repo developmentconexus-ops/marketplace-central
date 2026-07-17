@@ -25,6 +25,33 @@ Ladder re-run at 13b49e2c: L0 build exit 0 · L0 governance clean-worktree BaseS
 exit 0 (baseline exceptions unchanged) · L1 web 133/133 (22 files) exit 0. L0 typecheck
 unchanged pre-existing F4.
 
+## Corrective round 2 (dual-gate divergence @ 13b49e2c → M02-COR-2)
+
+Gate round 2 diverged: Opus PASS, Sol FAIL on M02-C03 app-wide (ProductLinksPage:184,
+OrdersPage:329, IntegrationsHubPage:210, MarketplaceSettingsPage:62 still fetched
+installations directly; AppRouter test mocks hid the fetches). Operator ruled REMOVAL,
+not migration (pages rebuilt from scratch next mission, design handoff
+`docs/design/handoff-2026-07/`). Fixed in e4c8ea90 (ledger rows 32–33, reviewer
+ACCEPT-WITH-CONDITIONS — both importants process-level, recorded below):
+
+- **Removal, not just unmount:** nothing outside the 4 packages referenced their code
+  (verified: only AppRouter import/mock sites, own package tests, package.json/lock rows,
+  and historical docs/.mnfs evidence). All 4 packages DELETED entirely (−7312 lines):
+  `feature-product-links`, `feature-orders`, `feature-integrations`, `feature-marketplaces`.
+- `/vinculos`, `/pedidos`, `/integracoes`, `/marketplaces` mount the existing
+  `WorkspacePlaceholder` stub (same pattern as `/catalogo/produtos/:productId` and
+  `/protocolos/:protocolId`). The 6 LegacyRedirect routes byte-unchanged (M02-C01).
+  `/estoque` untouched (already compliant per COR-1).
+- AppRouter test: 4 legacy page mocks deleted; `listIntegrationInstallations` exactly-once
+  assertion now honestly app-wide (remaining mocked pages contain zero installation fetches,
+  grep-verified) and asserted on every stub route against the real InstallationProvider.
+- **PLAN-ADJUDICATION #3 SUPERSEDED by operator directive:** the adjudicated position
+  (legacy pages stay mounted as-is during M-02) is void; removal is the ratified end-state.
+
+Ladder re-run at e4c8ea90: L0 build exit 0 (bundle 438.77 → 361.17 kB) · L0 governance
+clean-worktree BaseSha 40-hex exit 0 (baseline exceptions unchanged) · L1 web 133/133
+(22 files) exit 0. Zero-grep for the 4 package names over apps/+packages/.
+
 ## Features
 
 | Feature | Evidence | COMMITTED |
@@ -64,6 +91,14 @@ conditions fixed in-slice).
 6. Filter chip copy chip-pinned pt-BR (M02-COR-1): exception map Erro de sync / Desatualizado /
    Sem vínculo / Abaixo da margem; chip prefixes Exceção/Sync/Vínculo/Modalidade; dismiss aria
    `Remover filtro {label}`.
+7. package-lock regen (M02-COR-2): chip ran `npm install --package-lock-only` to sync the
+   lockfile after the operator-ordered package removal (−70 lines, deletions only, verified
+   scoped to the 4 removed entries). Consequence of the removal directive, not an
+   independent dep change — but it bypassed the formal REQUEST path; hub ratification
+   requested (reviewer important #1).
+8. index.css @source cleanup (M02-COR-2): 4 dead tailwind `@source` rows pointing at the
+   deleted package dirs removed by chip — outside the worker's declared scope but required
+   for a truthful build. Hub ratification requested (reviewer important #2).
 
 ## Field findings
 
