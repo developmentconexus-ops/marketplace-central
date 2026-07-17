@@ -85,19 +85,33 @@ func TestCreateStockCorrectionUsesCanonicalNoVariationSentinel(t *testing.T) {
 	}
 }
 
-func TestCreateStockCorrectionPersistsSourceAndApprovalTimesHonestly(t *testing.T) {
+func TestCreateStockCorrectionPersistsProviderObservedSourceTime(t *testing.T) {
 	repo := &fakeProtocolRepository{}
 	action := stockAction("")
-	action.CreatedAt = action.UpdatedAt.Add(-time.Minute)
+	observed := action.UpdatedAt.Add(-10 * time.Minute)
+	action.ProviderObservedAt = &observed
 
 	if _, err := NewEnvelope(repo).CreateStockCorrection(context.Background(), action); err != nil {
 		t.Fatalf("CreateStockCorrection() error = %v", err)
 	}
-	if repo.sourceAsOf == nil || !repo.sourceAsOf.Equal(action.UpdatedAt) {
-		t.Fatalf("source_as_of = %v, want %v", repo.sourceAsOf, action.UpdatedAt)
+	if repo.sourceAsOf == nil || !repo.sourceAsOf.Equal(observed) {
+		t.Fatalf("source_as_of = %v, want provider observation %v", repo.sourceAsOf, observed)
 	}
-	if !repo.approvedAt.Equal(action.CreatedAt) || repo.approvedAt.Equal(action.UpdatedAt) {
-		t.Fatalf("approved_at = %v, want %v and distinct from source time", repo.approvedAt, action.CreatedAt)
+	if !repo.approvedAt.Equal(action.UpdatedAt) {
+		t.Fatalf("approved_at = %v, want approval transition %v", repo.approvedAt, action.UpdatedAt)
+	}
+}
+
+func TestCreateStockCorrectionKeepsUnknownSourceTimeNull(t *testing.T) {
+	repo := &fakeProtocolRepository{}
+	action := stockAction("")
+	action.ProviderObservedAt = nil
+
+	if _, err := NewEnvelope(repo).CreateStockCorrection(context.Background(), action); err != nil {
+		t.Fatalf("CreateStockCorrection() error = %v", err)
+	}
+	if repo.sourceAsOf != nil {
+		t.Fatalf("source_as_of = %v, want nil when provider observation is unknown", repo.sourceAsOf)
 	}
 }
 
