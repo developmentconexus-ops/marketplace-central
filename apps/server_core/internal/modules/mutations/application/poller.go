@@ -32,7 +32,23 @@ func (p *Poller) Pass(ctx context.Context, installationID string) (worked bool, 
 	protocol := claim.Protocol()
 	execute := true
 	if err := ValidateProtocol(ProtocolWriteValidation{Actor: protocol.Actor, Execute: &execute, SourceAsOf: protocol.SourceAsOf, Now: p.now(), MaxAge: protocolSourceMaxAge}); err != nil {
-		return true, err
+		failure, marshalErr := marshalFailure(*itemFailure(err))
+		if marshalErr != nil {
+			return true, marshalErr
+		}
+		items, fetchErr := claim.FetchPendingItems(ctx)
+		if fetchErr != nil {
+			return true, fmt.Errorf("fetch pending mutation items after protocol gate failure: %w", fetchErr)
+		}
+		for _, item := range items {
+			if writeErr := claim.WriteItemOutcome(ctx, item.ItemID, ports.ItemOutcome{State: domain.ItemStateFailed, Failure: failure}); writeErr != nil {
+				return true, fmt.Errorf("write mutation item gate failure outcome: %w", writeErr)
+			}
+		}
+		if finishErr := p.finish(ctx, claim); finishErr != nil {
+			return true, finishErr
+		}
+		return true, nil
 	}
 	for {
 		items, fetchErr := claim.FetchPendingItems(ctx)
@@ -90,9 +106,16 @@ func (p *Poller) Pass(ctx context.Context, installationID string) (worked bool, 
 			}
 		}
 	}
+	if err = p.finish(ctx, claim); err != nil {
+		return true, err
+	}
+	return true, nil
+}
+
+func (p *Poller) finish(ctx context.Context, claim ports.ProtocolClaim) error {
 	counts, err := claim.ItemStateCounts(ctx)
 	if err != nil {
-		return true, fmt.Errorf("read mutation item state counts: %w", err)
+		return fmt.Errorf("read mutation item state counts: %w", err)
 	}
 	states := make([]domain.ItemState, 0)
 	for _, state := range []domain.ItemState{domain.ItemStateApplied, domain.ItemStateFailed, domain.ItemStateSkipped} {
@@ -102,15 +125,15 @@ func (p *Poller) Pass(ctx context.Context, installationID string) (worked bool, 
 	}
 	terminal, err := domain.TerminalProtocolState(states)
 	if err != nil {
-		return true, fmt.Errorf("compute mutation protocol terminal state: %w", err)
+		return fmt.Errorf("compute mutation protocol terminal state: %w", err)
 	}
 	if err = claim.Finish(ctx, terminal, p.now()); err != nil {
-		return true, fmt.Errorf("finish mutation protocol: %w", err)
+		return fmt.Errorf("finish mutation protocol: %w", err)
 	}
 	if err = claim.Commit(ctx); err != nil {
-		return true, fmt.Errorf("commit mutation protocol: %w", err)
+		return fmt.Errorf("commit mutation protocol: %w", err)
 	}
-	return true, nil
+	return nil
 }
 
 func marshalFailure(f domain.Failure) (json.RawMessage, error) {

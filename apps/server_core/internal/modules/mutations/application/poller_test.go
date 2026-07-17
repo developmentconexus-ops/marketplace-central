@@ -81,23 +81,41 @@ func TestPollerOwnsGateSequenceExactlyOncePerItem(t *testing.T) {
 func TestPollerRejectsProtocolWithoutFreshSource(t *testing.T) {
 	now := time.Date(2026, 7, 17, 12, 0, 0, 0, time.UTC)
 	for _, tt := range []struct {
-		name   string
-		source *time.Time
-		code   domain.FailureCode
+		name      string
+		source    *time.Time
+		code      domain.FailureCode
+		retryable bool
 	}{
 		{name: "missing", code: FailureCodeSourceTimeUnavailable},
-		{name: "stale", source: timePtr(now.Add(-15*time.Minute - time.Nanosecond)), code: domain.FailureCodeStaleSource},
+		{name: "stale", source: timePtr(now.Add(-15*time.Minute - time.Nanosecond)), code: domain.FailureCodeStaleSource, retryable: true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newFakeRepo("p:a")
 			r.protocol.SourceAsOf = tt.source
-			worked, err := NewPoller(r, stub.NewWriter(nil), func() time.Time { return now }).Pass(context.Background(), "inst")
-			if !worked {
-				t.Fatal("Pass() worked=false, want claimed protocol")
+			w := stub.NewWriter(nil)
+			p := NewPoller(r, w, func() time.Time { return now })
+			worked, err := p.Pass(context.Background(), "inst")
+			if err != nil || !worked {
+				t.Fatalf("Pass() worked=%v err=%v", worked, err)
 			}
-			assertGateCode(t, err, tt.code)
-			if r.claim.committed || len(r.outcomes) != 0 {
-				t.Fatalf("committed=%v outcomes=%v", r.claim.committed, r.outcomes)
+			if r.claim.finished != domain.ProtocolStateFailedPreserved || !r.claim.committed || r.claim.rolledBack {
+				t.Fatalf("finish=%q committed=%v rolledBack=%v", r.claim.finished, r.claim.committed, r.claim.rolledBack)
+			}
+			var failure domain.Failure
+			if err := json.Unmarshal(r.outcomes["item-1"].Failure, &failure); err != nil {
+				t.Fatal(err)
+			}
+			if r.outcomes["item-1"].State != domain.ItemStateFailed || failure.Code != tt.code || failure.Retryable != tt.retryable {
+				t.Fatalf("outcome=%+v failure=%+v", r.outcomes["item-1"], failure)
+			}
+			if got := w.Keys(); len(got) != 0 {
+				t.Fatalf("writer keys=%v, want none", got)
+			}
+			if worked, err := p.Pass(context.Background(), "inst"); err != nil || worked {
+				t.Fatalf("second Pass() worked=%v err=%v", worked, err)
+			}
+			if r.claimAttempts != 2 || r.claims != 1 {
+				t.Fatalf("claim attempts=%d successful claims=%d", r.claimAttempts, r.claims)
 			}
 		})
 	}
@@ -151,6 +169,8 @@ type fakeRepo struct {
 	appliedReads     int
 	applying         []string
 	failOutcomeAfter int
+	claimAttempts    int
+	claims           int
 }
 
 func newFakeRepo(keys ...string) *fakeRepo {
@@ -173,6 +193,11 @@ func (r *fakeRepo) ReplaceItems(context.Context, string, []ports.ReplaceItemInpu
 }
 func (r *fakeRepo) ApproveItems(context.Context, string, time.Time) error { panic("unused") }
 func (r *fakeRepo) ClaimProtocol(context.Context, string) (ports.ProtocolClaim, bool, error) {
+	r.claimAttempts++
+	if r.protocolState != domain.ProtocolStateApproved {
+		return nil, false, nil
+	}
+	r.claims++
 	r.protocolState = domain.ProtocolStateApplying
 	r.protocol.State = domain.ProtocolStateApplying
 	r.claim = &fakeClaim{repo: r, protocol: r.protocol}
