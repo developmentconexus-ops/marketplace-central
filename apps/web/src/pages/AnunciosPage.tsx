@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import type { ListingException, ListingLinkState, ListingSyncState } from "@marketplace-central/sdk-runtime";
 import { EmptyState, ErrorState, LoadingState } from "@marketplace-central/ui";
 import { listingsQueryKeys, QUERY_STALE_TIME } from "@marketplace-central/web-query";
 import { useEffect, useRef, useState } from "react";
@@ -24,6 +25,45 @@ const tabs: Array<{ value: AnunciosTab; label: string }> = [
   { value: "pausados", label: "Pausados" },
   { value: "pendencia", label: "Com pendência" },
 ];
+
+const exceptionLabels = {
+  sync_error: "Erro de sync",
+  stale: "Desatualizado",
+  unlinked: "Sem vínculo",
+  below_margin: "Abaixo da margem",
+} satisfies Record<ListingException, string>;
+
+const syncLabels = {
+  synced: "sincronizado",
+  error: "com erro",
+  stale: "desatualizado",
+  queued: "na fila",
+  syncing: "sincronizando",
+  paused_sync: "pausado",
+} satisfies Record<ListingSyncState, string>;
+
+const linkLabels = {
+  resolved: "vinculado",
+  unresolved: "sem vínculo",
+  rejected: "rejeitado",
+  conflict: "divergente",
+} satisfies Record<ListingLinkState, string>;
+
+function ActiveFilterChip({ kind, value, onDismiss }: { kind: string; value: string; onDismiss: () => void }) {
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
+      <span>{`${kind}: ${value}`}</span>
+      <button
+        type="button"
+        aria-label={`Remover filtro ${value}`}
+        onClick={onDismiss}
+        className="text-slate-500 hover:text-slate-900"
+      >
+        ×
+      </button>
+    </span>
+  );
+}
 
 function isInvalidFilterError(error: unknown): boolean {
   return (
@@ -147,6 +187,36 @@ export function AnunciosPage() {
               {tab.label}
             </button>
           ))}
+        </div>
+        <div className="flex flex-wrap gap-2" aria-label="Filtros ativos">
+          {state.filters.exception ? (
+            <ActiveFilterChip
+              kind="Exceção"
+              value={exceptionLabels[state.filters.exception]}
+              onDismiss={() => updateState({ ...state, filters: { ...state.filters, exception: undefined } })}
+            />
+          ) : null}
+          {state.filters.sync_state ? (
+            <ActiveFilterChip
+              kind="Sync"
+              value={syncLabels[state.filters.sync_state]}
+              onDismiss={() => updateState({ ...state, filters: { ...state.filters, sync_state: undefined } })}
+            />
+          ) : null}
+          {state.filters.link_state ? (
+            <ActiveFilterChip
+              kind="Vínculo"
+              value={linkLabels[state.filters.link_state]}
+              onDismiss={() => updateState({ ...state, filters: { ...state.filters, link_state: undefined } })}
+            />
+          ) : null}
+          {state.filters.listing_type_code ? (
+            <ActiveFilterChip
+              kind="Modalidade"
+              value={state.filters.listing_type_code}
+              onDismiss={() => updateState({ ...state, filters: { ...state.filters, listing_type_code: undefined } })}
+            />
+          ) : null}
         </div>
         <label className="flex max-w-xl flex-col gap-1 text-sm font-medium text-slate-700" htmlFor="anuncios-search">
           Buscar anúncios

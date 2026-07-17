@@ -3,12 +3,12 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppRouter } from "./AppRouter";
 
+const { listIntegrationInstallations } = vi.hoisted(() => ({
+  listIntegrationInstallations: vi.fn(),
+}));
+
 vi.mock("./ClientContext", () => ({
-  useClient: () => ({
-    mocked: true,
-    listIntegrationInstallations: () =>
-      Promise.resolve({ items: [{ installation_id: "inst_test" }] }),
-  }),
+  useClient: () => ({ mocked: true, listIntegrationInstallations }),
 }));
 
 vi.mock("@marketplace-central/feature-products", () => ({
@@ -45,7 +45,9 @@ vi.mock("@marketplace-central/feature-product-links", () => ({
 }));
 
 vi.mock("@marketplace-central/feature-inventory", () => ({
-  StockSeguroPage: () => <div>Stock Seguro route</div>,
+  StockSeguroPage: ({ installations }: { installations: Array<{ installation_id: string }> }) => (
+    <div>Stock Seguro route: {installations.map((installation) => installation.installation_id).join(", ")}</div>
+  ),
 }));
 
 vi.mock("@marketplace-central/feature-orders", () => ({
@@ -54,6 +56,8 @@ vi.mock("@marketplace-central/feature-orders", () => ({
 
 describe("AppRouter", () => {
   beforeEach(() => {
+    listIntegrationInstallations.mockReset();
+    listIntegrationInstallations.mockResolvedValue({ items: [{ installation_id: "inst_test" }] });
     window.history.pushState({}, "", "/");
   });
 
@@ -72,7 +76,8 @@ describe("AppRouter", () => {
   it("renders the stock seguro route at its new path", async () => {
     window.history.pushState({}, "", "/estoque");
     renderAppRouter();
-    expect(await screen.findByText("Stock Seguro route")).toBeInTheDocument();
+    expect(await screen.findByText("Stock Seguro route: inst_test")).toBeInTheDocument();
+    expect(listIntegrationInstallations).toHaveBeenCalledTimes(1);
   });
 
   it("renders the orders route at its new path", async () => {

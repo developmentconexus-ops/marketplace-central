@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { AnunciosPage } from "./AnunciosPage";
 
@@ -55,10 +55,71 @@ function renderPage(search: string) {
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={[`/anuncios${search}`]}>
         <AnunciosPage />
+        <LocationProbe />
       </MemoryRouter>
     </QueryClientProvider>,
   );
 }
+
+function LocationProbe() {
+  return <output data-testid="location-search">{useLocation().search}</output>;
+}
+
+describe("AnunciosPage active filter chips", () => {
+  it("renders and dismisses an exception chip while preserving other query state", async () => {
+    listListings.mockReset();
+    listListings.mockResolvedValue(listingPage);
+    renderPage("?installation=inst_1&tab=ativos&filter.exception=sync_error&q=camiseta");
+
+    expect(await screen.findByText("Exceção: Erro de sync")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Remover filtro Erro de sync" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText("Exceção: Erro de sync")).not.toBeInTheDocument();
+    });
+    expect(listListings.mock.calls.at(-1)?.[0]).toEqual({
+      installation_id: "inst_1",
+      q: "camiseta",
+      status: "active",
+    });
+    const search = new URLSearchParams(screen.getByTestId("location-search").textContent ?? "");
+    expect(search.get("installation")).toBe("inst_1");
+    expect(search.get("tab")).toBe("ativos");
+    expect(search.get("q")).toBe("camiseta");
+    expect(search.has("filter.exception")).toBe(false);
+  });
+
+  it("dismisses a sync_state chip without touching the remaining filters", async () => {
+    listListings.mockReset();
+    listListings.mockResolvedValue(listingPage);
+    renderPage("?installation=inst_1&filter.sync_state=error&filter.link_state=conflict");
+
+    expect(await screen.findByText("Sync: com erro")).toBeInTheDocument();
+    expect(screen.getByText("Vínculo: divergente")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Remover filtro com erro" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText("Sync: com erro")).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("Vínculo: divergente")).toBeInTheDocument();
+    expect(listListings.mock.calls.at(-1)?.[0]).toEqual({
+      installation_id: "inst_1",
+      link_state: "conflict",
+    });
+    const search = new URLSearchParams(screen.getByTestId("location-search").textContent ?? "");
+    expect(search.has("filter.sync_state")).toBe(false);
+    expect(search.get("filter.link_state")).toBe("conflict");
+  });
+
+  it("renders no filter chips without active filters", async () => {
+    listListings.mockReset();
+    listListings.mockResolvedValue(listingPage);
+    renderPage("?installation=inst_1");
+
+    expect(await screen.findByText("Camiseta azul")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Remover filtro/ })).not.toBeInTheDocument();
+  });
+});
 
 describe("AnunciosPage error recovery", () => {
   it("clears filter params on retry only for invalid_filter errors", async () => {

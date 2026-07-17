@@ -16,7 +16,6 @@ import {
 } from "@marketplace-central/web-query";
 
 export interface StockSeguroClient extends RefreshableClient {
-  listIntegrationInstallations: () => Promise<{ items: IntegrationInstallation[] }>;
   listInventoryStockRisks: (input: {
     installation_id: string;
     state?: InventoryStockRiskItem["state"];
@@ -45,6 +44,7 @@ export interface StockSeguroClient extends RefreshableClient {
 
 export interface StockSeguroPageProps {
   client: StockSeguroClient;
+  installations: IntegrationInstallation[];
 }
 
 type LoadState = "loading" | "ready" | "error";
@@ -114,10 +114,9 @@ function actorIdFromName(name: string): string {
   return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "operator";
 }
 
-export function StockSeguroPage({ client }: StockSeguroPageProps) {
+export function StockSeguroPage({ client, installations }: StockSeguroPageProps) {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [installations, setInstallations] = useState<IntegrationInstallation[]>([]);
   const [items, setItems] = useState<InventoryStockRiskItem[]>([]);
   const [state, setState] = useState<LoadState>("loading");
   const [error, setError] = useState<string | null>(null);
@@ -164,32 +163,6 @@ export function StockSeguroPage({ client }: StockSeguroPageProps) {
       setState("error");
     }
   }, [riskQuery.data, riskQuery.error]);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function loadInstallations() {
-      try {
-        const result = await client.listIntegrationInstallations();
-        if (cancelled) {
-          return;
-        }
-        setInstallations(result.items);
-        if (!selectedInstallationID && result.items[0]) {
-          setSearchParams({ installation: result.items[0].installation_id }, { replace: true });
-        }
-      } catch (loadError) {
-        if (cancelled) {
-          return;
-        }
-        setError(normalizeError(loadError, "Failed to load installations."));
-        setState("error");
-      }
-    }
-    void loadInstallations();
-    return () => {
-      cancelled = true;
-    };
-  }, [client, selectedInstallationID, setSearchParams]);
 
   const displayedItems = riskQuery.data?.items ?? items;
   const displayedError = error ?? (riskQuery.error ? normalizeError(riskQuery.error, "Failed to load stock risks.") : null);

@@ -3,6 +3,7 @@ import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import { queryKeyNamespaces } from "@marketplace-central/web-query";
+import type { IntegrationInstallation } from "@marketplace-central/sdk-runtime";
 import { StockSeguroPage, type StockSeguroClient } from "./StockSeguroPage";
 
 const baseRender = testingRender;
@@ -12,33 +13,6 @@ function render(ui: React.ReactNode, queryClient = new QueryClient({ defaultOpti
 
 function makeClient(items: any[], overrides?: Partial<StockSeguroClient>): StockSeguroClient {
   return {
-    listIntegrationInstallations: async () => ({
-      items: [
-        {
-          installation_id: "inst-1",
-          tenant_id: "tenant_default",
-          provider_code: "mercado_livre",
-          family: "marketplace",
-          display_name: "Mercado Livre",
-          status: "connected",
-          health_status: "healthy",
-          external_account_id: "acct-1",
-          external_account_name: "Acct 1",
-          connection: {
-            state: "connected",
-            health: "healthy",
-            provider_code: "mercado_livre",
-            external_account_id: "acct-1",
-            external_account_name: "Acct 1",
-            auth_strategy: "oauth2",
-            next_action: "none",
-          },
-          runtime_capabilities: [],
-          created_at: "2026-07-09T12:00:00Z",
-          updated_at: "2026-07-09T12:00:00Z",
-        },
-      ],
-    }),
     listInventoryStockRisks: async () => ({ items }),
     applyInventoryManualStockAction: async () => ({
       action: {
@@ -66,6 +40,30 @@ function makeClient(items: any[], overrides?: Partial<StockSeguroClient>): Stock
     ...overrides,
   };
 }
+
+const installations: IntegrationInstallation[] = [{
+  installation_id: "inst-1",
+  tenant_id: "tenant_default",
+  provider_code: "mercado_livre",
+  family: "marketplace",
+  display_name: "Mercado Livre",
+  status: "connected",
+  health_status: "healthy",
+  external_account_id: "acct-1",
+  external_account_name: "Acct 1",
+  connection: {
+    state: "connected",
+    health: "healthy",
+    provider_code: "mercado_livre",
+    external_account_id: "acct-1",
+    external_account_name: "Acct 1",
+    auth_strategy: "oauth2",
+    next_action: "none",
+  },
+  runtime_capabilities: [],
+  created_at: "2026-07-09T12:00:00Z",
+  updated_at: "2026-07-09T12:00:00Z",
+}];
 
 const oversellItem = {
   identity: { installation_id: "inst-1", provider_item_id: "MLB123" },
@@ -112,19 +110,19 @@ describe("StockSeguroPage", () => {
   it("renders loading and then oversell state", async () => {
     render(
       <MemoryRouter initialEntries={["/inventory/stock-seguro?installation=inst-1"]}>
-        <StockSeguroPage client={makeClient([oversellItem])} />
+        <StockSeguroPage client={makeClient([oversellItem])} installations={installations} />
       </MemoryRouter>,
     );
 
     expect(screen.getByText("Loading Stock Seguro...")).toBeInTheDocument();
     expect((await screen.findAllByText("Oversell")).length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Produto testado").length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("Produto testado")).length).toBeGreaterThan(0);
   });
 
   it("renders empty state", async () => {
     render(
       <MemoryRouter initialEntries={["/inventory/stock-seguro?installation=inst-1"]}>
-        <StockSeguroPage client={makeClient([])} />
+        <StockSeguroPage client={makeClient([])} installations={installations} />
       </MemoryRouter>,
     );
 
@@ -140,6 +138,7 @@ describe("StockSeguroPage", () => {
               throw new Error("inventory unavailable");
             },
           })}
+          installations={installations}
         />
       </MemoryRouter>,
     );
@@ -156,6 +155,7 @@ describe("StockSeguroPage", () => {
             { ...oversellItem, state: "unresolved", link_state: "unresolved", actionability: "blocked", actionable: false, blocking_reason: { code: "unresolved_link", message: "product link is not resolved" }, identity: { installation_id: "inst-1", provider_item_id: "MLB124" } },
             { ...oversellItem, state: "stale", actionability: "blocked", actionable: false, blocking_reason: { code: "stale_provider_source", message: "source_older_than_policy" }, identity: { installation_id: "inst-1", provider_item_id: "MLB125" } },
           ])}
+          installations={installations}
         />
       </MemoryRouter>,
     );
@@ -168,14 +168,14 @@ describe("StockSeguroPage", () => {
   it("renders healthy, undersell, and ineligible states and counts all blocked rows", async () => {
     render(
       <MemoryRouter initialEntries={["/inventory/stock-seguro?installation=inst-1"]}>
-        <StockSeguroPage client={makeClient([undersellItem, healthyItem, ineligibleItem])} />
+        <StockSeguroPage client={makeClient([undersellItem, healthyItem, ineligibleItem])} installations={installations} />
       </MemoryRouter>,
     );
 
     expect((await screen.findAllByText("Undersell")).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Healthy").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Ineligivel").length).toBeGreaterThan(0);
-    expect(screen.getByTestId("stock-summary-total")).toHaveTextContent("3");
+    expect(await screen.findByTestId("stock-summary-total")).toHaveTextContent("3");
     expect(screen.getByTestId("stock-summary-actionable")).toHaveTextContent("1");
     expect(screen.getByTestId("stock-summary-blockers")).toHaveTextContent("2");
   });
@@ -208,13 +208,13 @@ describe("StockSeguroPage", () => {
     const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
     render(
       <MemoryRouter initialEntries={["/inventory/stock-seguro?installation=inst-1"]}>
-        <StockSeguroPage client={makeClient([oversellItem], { applyInventoryManualStockAction })} />
+        <StockSeguroPage client={makeClient([oversellItem], { applyInventoryManualStockAction })} installations={installations} />
       </MemoryRouter>,
       queryClient,
     );
 
     expect((await screen.findAllByText("Oversell")).length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole("button", { name: "Apply recommended quantity" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Apply recommended quantity" }));
     expect(await screen.findByRole("button", { name: "Confirm apply" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Confirm apply" }));
 
@@ -229,7 +229,7 @@ describe("StockSeguroPage", () => {
     const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
     render(
       <MemoryRouter initialEntries={["/inventory/stock-seguro?installation=inst-1"]}>
-        <StockSeguroPage client={makeClient([oversellItem], { applyInventoryManualStockAction: vi.fn().mockRejectedValue(new Error("stock action failed")) })} />
+        <StockSeguroPage client={makeClient([oversellItem], { applyInventoryManualStockAction: vi.fn().mockRejectedValue(new Error("stock action failed")) })} installations={installations} />
       </MemoryRouter>,
       queryClient,
     );

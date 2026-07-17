@@ -12,7 +12,7 @@ import { DashboardPage } from "../pages/DashboardPage";
 import { AnunciosPage } from "../pages/AnunciosPage";
 import { WorkspacePlaceholder } from "../pages/WorkspacePlaceholder";
 import { useClient } from "./ClientContext";
-import { InstallationProvider } from "./InstallationContext";
+import { InstallationProvider, useInstallation } from "./InstallationContext";
 import { LegacyRedirect } from "./LegacyRedirect";
 
 function CatalogPageWrapper() {
@@ -47,7 +47,8 @@ function ProductLinksPageWrapper() {
 
 function StockSeguroPageWrapper() {
   const client = useClient();
-  return <StockSeguroPage client={client} />;
+  const { installations } = useInstallation();
+  return <StockSeguroPage client={client} installations={installations} />;
 }
 
 function OrdersPageWrapper() {
