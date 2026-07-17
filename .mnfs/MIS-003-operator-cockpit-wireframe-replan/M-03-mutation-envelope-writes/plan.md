@@ -464,6 +464,22 @@ Serialization points:
 - Complexity: `complex`
 - Serves: M03-C08
 - Budget: ~300 lines.
+- G2 design note (added post-implementation per review D-42 condition, commit 184d11b0):
+  - Error type: a domain-level `InvalidFilterError` was introduced alongside the pre-existing
+    `transport.InvalidFilterError` rather than reusing it — the domain package cannot import
+    transport (dependency direction), and moving the transport type down would have forced a
+    cross-module rename outside the slice's file set. The name collision across packages is
+    accepted (callers always qualify by package); folding the transport alias away is a
+    candidate cleanup when transport is next touched (F03-S5).
+  - Resolver seam: the selection resolver consumes a narrow consumer-side `listingReader`
+    interface (List only) instead of depending on the concrete listings application service —
+    keeps the mutations adapter testable with a fake and avoids importing the listings
+    composition surface into mutations. Alternative rejected: direct concrete dependency
+    (couples adapter tests to full listings service construction).
+  - Grammar conflict (hub queue): live grammar accepts statuses
+    `under_review/inactive/payment_required/not_yet_active` beyond IC-02's documented four;
+    extraction preserved live behavior in both entry points (extraction ≠ narrowing).
+    Contract-vs-code conflict reported to hub, not silently fixed.
 
 ### F03-S2 — create and preview application services
 
