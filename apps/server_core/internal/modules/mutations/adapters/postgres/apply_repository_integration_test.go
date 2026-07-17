@@ -115,6 +115,72 @@ func TestApplyRepositorySnapshotClaimChunkAndImmutableOutcomes(t *testing.T) {
 	}
 }
 
+func TestFinishRecomputesTotalsFromItemRows(t *testing.T) {
+	ctx := context.Background()
+	pool, _ := testpostgres.OpenPool(t, "tenant_harness_mutations_finish_totals")
+	tenant := "mutation-finish-totals-" + time.Now().UTC().Format("150405.000000000")
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM mutation_protocols WHERE tenant_id = $1`, tenant)
+	})
+	repo := mutationspostgres.NewRepository(pool, tenant)
+	created, err := repo.CreateProtocol(ctx, ports.CreateProtocolInput{InstallationID: "installation-a", Type: domain.ProtocolTypePriceUpdate, Actor: "operator_supplied_unverified", Intent: json.RawMessage(`{"price":{"currency":"BRL","amount":"49.90"}}`), Selection: json.RawMessage(`{"mode":"explicit"}`), CreatedAt: time.Now().UTC()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourceAsOf := time.Now().UTC()
+	items, err := repo.ReplaceItems(ctx, created.ProtocolID, []ports.ReplaceItemInput{
+		{ListingID: "MLB-001", After: json.RawMessage(`{"price":{"amount":"49.90"}}`)},
+		{ListingID: "MLB-002", After: json.RawMessage(`{"price":{"amount":"59.90"}}`)},
+	}, &sourceAsOf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.ApproveItems(ctx, created.ProtocolID, time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+	claim, found, err := repo.ClaimProtocol(ctx, "installation-a")
+	if err != nil || !found {
+		t.Fatalf("ClaimProtocol: found=%v err=%v", found, err)
+	}
+	defer claim.Rollback(ctx)
+	if err := claim.WriteItemOutcome(ctx, items[0].ItemID, ports.ItemOutcome{State: domain.ItemStateApplied, AppliedAt: time.Now().UTC()}); err != nil {
+		t.Fatal(err)
+	}
+	if err := claim.WriteItemOutcome(ctx, items[1].ItemID, ports.ItemOutcome{State: domain.ItemStateFailed, Failure: json.RawMessage(`{"code":"provider_unavailable","message_pt":"indisponível","retryable":true}`)}); err != nil {
+		t.Fatal(err)
+	}
+	terminal, err := domain.TerminalProtocolState([]domain.ItemState{domain.ItemStateApplied, domain.ItemStateFailed})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := claim.Finish(ctx, terminal, time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+	if err := claim.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	finished, found, err := repo.GetProtocol(ctx, created.ProtocolID)
+	if err != nil || !found {
+		t.Fatalf("GetProtocol: found=%v err=%v", found, err)
+	}
+	var totals struct {
+		Items     int `json:"items"`
+		Previewed int `json:"previewed"`
+		Applied   int `json:"applied"`
+		Failed    int `json:"failed"`
+		Skipped   int `json:"skipped"`
+	}
+	if err := json.Unmarshal(finished.Totals, &totals); err != nil {
+		t.Fatal(err)
+	}
+	if totals.Items != 2 || totals.Applied != 1 || totals.Failed != 1 || totals.Previewed != 0 || totals.Skipped != 0 {
+		t.Fatalf("totals=%+v, want items=2 applied=1 failed=1", totals)
+	}
+	if claimTotals := claim.Protocol().Totals; !reflect.DeepEqual([]byte(claimTotals), []byte(finished.Totals)) {
+		t.Fatalf("in-memory claim totals=%s, persisted=%s", claimTotals, finished.Totals)
+	}
+}
+
 func TestApplyRepositoryClaimsDifferentInstallationsConcurrently(t *testing.T) {
 	ctx := context.Background()
 	pool, _ := testpostgres.OpenPool(t, "tenant_harness_mutations_claim_installations")

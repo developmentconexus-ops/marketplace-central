@@ -199,13 +199,23 @@ func (c *protocolClaim) Finish(ctx context.Context, state domain.ProtocolState, 
 	if err := domain.TransitionProtocolState(c.protocol.State, state); err != nil {
 		return err
 	}
-	tag, err := c.tx.Exec(ctx, `UPDATE mutation_protocols SET state=$3,finished_at=$4 WHERE tenant_id=$1 AND protocol_id=$2 AND state='applying'`, c.tenantID, c.protocol.ProtocolID, state, finishedAt.UTC())
+	var totals json.RawMessage
+	err := c.tx.QueryRow(ctx, `UPDATE mutation_protocols SET state=$3,finished_at=$4,
+		totals=(SELECT jsonb_build_object(
+			'items', COUNT(*),
+			'previewed', COUNT(*) FILTER (WHERE state='previewed'),
+			'applied', COUNT(*) FILTER (WHERE state='applied'),
+			'failed', COUNT(*) FILTER (WHERE state='failed'),
+			'skipped', COUNT(*) FILTER (WHERE state='skipped'))
+		 FROM mutation_items WHERE tenant_id=$1 AND protocol_id=$2)
+		WHERE tenant_id=$1 AND protocol_id=$2 AND state='applying' RETURNING totals`, c.tenantID, c.protocol.ProtocolID, state, finishedAt.UTC()).Scan(&totals)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.ErrInvalidStateTransition
+	}
 	if err != nil {
 		return err
 	}
-	if tag.RowsAffected() != 1 {
-		return domain.ErrInvalidStateTransition
-	}
+	c.protocol.Totals = totals
 	c.protocol.State = state
 	c.protocol.FinishedAt = &finishedAt
 	return nil

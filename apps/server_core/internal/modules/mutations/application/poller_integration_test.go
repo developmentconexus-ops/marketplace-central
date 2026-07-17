@@ -67,6 +67,55 @@ func TestPollerPassResumesPostgresClaimWithoutResendingAppliedItem(t *testing.T)
 	}
 }
 
+func TestPollerGateFailureTerminalizesWithRealTotals(t *testing.T) {
+	ctx := context.Background()
+	pool, _ := testpostgres.OpenPool(t, "tenant_harness_mutations_poller_gate_totals")
+	tenant := "mutation-poller-gate-" + time.Now().UTC().Format("150405.000000000")
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM mutation_protocols WHERE tenant_id=$1`, tenant)
+	})
+	repo := mutationspostgres.NewRepository(pool, tenant)
+	created, err := repo.CreateProtocol(ctx, ports.CreateProtocolInput{InstallationID: "installation-a", Type: domain.ProtocolTypeStockCorrect, Actor: "operator_supplied_unverified", Intent: json.RawMessage(`{"publish_quantity":7}`), Selection: json.RawMessage(`{"mode":"explicit"}`), CreatedAt: time.Now().UTC()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.ReplaceItems(ctx, created.ProtocolID, []ports.ReplaceItemInput{
+		{ListingID: "MLB-001", After: json.RawMessage(`{"publish_quantity":7}`)},
+		{ListingID: "MLB-002", After: json.RawMessage(`{"publish_quantity":8}`)},
+		{ListingID: "MLB-003", After: json.RawMessage(`{"publish_quantity":9}`)},
+	}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.ApproveItems(ctx, created.ProtocolID, time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+
+	writer := stub.NewWriter(nil)
+	if worked, err := application.NewPoller(repo, writer, time.Now).Pass(ctx, "installation-a"); err != nil || !worked {
+		t.Fatalf("Pass() worked=%v err=%v", worked, err)
+	}
+	if got := writer.Keys(); len(got) != 0 {
+		t.Fatalf("writer keys=%v, want none on gate failure", got)
+	}
+	finished, found, err := repo.GetProtocol(ctx, created.ProtocolID)
+	if err != nil || !found || finished.State != domain.ProtocolStateFailedPreserved {
+		t.Fatalf("protocol=%+v found=%v err=%v", finished, found, err)
+	}
+	var totals struct {
+		Items  int `json:"items"`
+		Failed int `json:"failed"`
+	}
+	if err := json.Unmarshal(finished.Totals, &totals); err != nil {
+		t.Fatal(err)
+	}
+	if totals.Items != 3 || totals.Failed != 3 {
+		t.Fatalf("totals=%+v, want items=3 failed=3", totals)
+	}
+	if worked, err := application.NewPoller(repo, writer, time.Now).Pass(ctx, "installation-a"); err != nil || worked {
+		t.Fatalf("second Pass() worked=%v err=%v; terminal protocol re-claimed", worked, err)
+	}
+}
+
 var errSimulatedCrash = errors.New("simulated crash after durable outcome")
 
 type crashAfterOutcomeRepository struct{ ports.ProtocolRepository }
