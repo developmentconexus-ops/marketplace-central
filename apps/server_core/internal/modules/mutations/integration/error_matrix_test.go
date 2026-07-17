@@ -35,6 +35,7 @@ func TestMutationTransportErrorMatrix(t *testing.T) {
 		if status != 405 || payload["error"].(map[string]any)["code"] != "method_not_allowed" { t.Fatalf("status=%d payload=%v", status, payload) }
 	})
 	assert("invalid_filter", http.MethodGet, "/mutations?installation_id=i&bogus=x", "", 400, "invalid_filter")
+	assert("invalid_filter_disabled_type", http.MethodGet, "/mutations?installation_id=i&type=listing_create", "", 400, "invalid_filter")
 	assert("invalid_cursor", http.MethodGet, "/mutations?installation_id=i&cursor=bad", "", 400, "invalid_cursor")
 	assert("protocol_not_found", http.MethodGet, "/mutations/missing", "", 404, "protocol_not_found")
 	assert("actor_required", http.MethodPost, "/mutations", `{"installation_id":"i","type":"price_update","selection":{"mode":"explicit","listing_ids":["i~x~-"]},"intent":{},"actor":""}`, 422, "actor_required")
