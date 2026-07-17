@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	listingspostgres "marketplace-central/apps/server_core/internal/modules/listings/adapters/postgres"
 	listingsapp "marketplace-central/apps/server_core/internal/modules/listings/application"
+	listingsports "marketplace-central/apps/server_core/internal/modules/listings/ports"
 	mutationslistings "marketplace-central/apps/server_core/internal/modules/mutations/adapters/listings"
 	mutationspostgres "marketplace-central/apps/server_core/internal/modules/mutations/adapters/postgres"
 	"marketplace-central/apps/server_core/internal/modules/mutations/adapters/stub"
@@ -37,6 +38,28 @@ type lane struct {
 	writer               *stub.Writer
 }
 
+type laneInstallations struct{ id string }
+
+func (f laneInstallations) InstallationExists(_ context.Context, id string) (bool, error) {
+	return id == f.id, nil
+}
+
+type lanePolicies struct{}
+
+func (lanePolicies) GetPricingPolicyForInstallation(context.Context, string) (listingsports.PricingPolicy, bool, error) {
+	return listingsports.PricingPolicy{}, false, nil
+}
+
+type laneFacts struct{}
+
+func (laneFacts) GetCostFactsByIDs(context.Context, []int64) (map[int64]*listingsports.CostFact, error) {
+	return map[int64]*listingsports.CostFact{}, nil
+}
+
+func (laneFacts) GetICMSCeilingByOrigin(context.Context, int64) (map[int64]*listingsports.ICMSCeiling, error) {
+	return map[int64]*listingsports.ICMSCeiling{}, nil
+}
+
 func newLane(t *testing.T) *lane {
 	t.Helper()
 	if os.Getenv("MPC_TEST_DATABASE_URL") == "" {
@@ -47,7 +70,7 @@ func newLane(t *testing.T) *lane {
 	x := &lane{t: t, pool: pool, tenant: fmt.Sprintf("mutation-http-%d", now.UnixNano()), installation: "inst-http", writer: stub.NewWriter(map[string]stub.Result{})}
 	x.repo = mutationspostgres.NewRepository(pool, x.tenant)
 	listingRepo := listingspostgres.NewRepository(pool, x.tenant)
-	reader := listingsapp.NewReadService(listingRepo, nil, nil, nil, time.Now)
+	reader := listingsapp.NewReadService(listingRepo, laneFacts{}, lanePolicies{}, laneInstallations{id: x.installation}, time.Now)
 	service := application.NewService(x.repo, mutationslistings.NewSelectionResolver(reader), reader, time.Now)
 	mux := httpx.NewRouter()
 	h := transport.NewHandler(service, application.NewApprovalService(x.repo, time.Now), application.NewRetryService(x.repo, time.Now))
