@@ -86,6 +86,9 @@ another checkout's `node_modules`: npm workspace symlinks would resolve workspac
   before diagnosing SQL.
 - 3D000 "database does not exist" on first CREATE DATABASE attempt = postgres first-boot init
   restart race (pg_isready passes during it); the lane's retry loop absorbs it — not a defect.
+- codex-cli 0.144.4 logs non-fatal `failed to renew cache TTL: missing field
+  supports_reasoning_summaries` on every run on this machine; output still produced — noise,
+  not a dispatch failure (CHIP-M02 field finding 2026-07-17).
 
 ## 4. Test database / integration strategy
 `status: ratified` · `provenance: 2026-07-15 · docs/HARNESS.md §5 (integration lane hardening + session container)`
@@ -276,4 +279,5 @@ verification conflicts against this list.
 2026-07-16 · §3 · ratified · node bootstrap clause for fresh worktrees: npm ci at worktree root = env prep (mirror of gomodcache clause); never symlink-reuse another checkout's node_modules (CHIP-SAT field finding + REQUEST)
 2026-07-16 · §10 · ratified · mnfs-workflow execution-layer skills denylisted (deleted at source in mnfs-harness 6b29412 layered unification; stale codex cache 0.1.0 + ~/.codex/plugins/mnfs-codex-plugin still ship them — operator field finding: CHIP-SAT worker auto-loaded feature-execution). General rule: auto-discovered skills never bind; only prompt-pack pins are doctrine. Cache repackage to 0.2.0 deferred to W1 close (no tooling swap under running workers).
 2026-07-16 · header + §12 (new) · ratified · alt-D+ implementation method adopted (operator-ratified after 4 adversarial Opus×Sol rounds + MIS-003 field evidence): docs/HARNESS-CORE.md + docs/REVIEW-STANDARD.md re-vendored @ mnfs-harness 6206cc1 (implementer prompt-pack v1.0.0 in CORE §4, canonical dispatch-prompt architecture, deterministic lane, evidence types ran/assumed/could-not-run, reproduce+1-fixup→BLOCKED; REVIEW §9 remedy re-review resumes same reviewer, §13 reviewer reads worker prompt-file, §14 slim read-mandate pack); deterministic dispatch tooling vendored scripts/harness/dispatch/ with fail-closed scripts.lock.json (28 Pester green at source); F-A index.lock commit-denial clause (attempt once, leave files, report verbatim — CHIP-M03); harness plugin 0.3.0 synced to local Claude Code cache. Field-test milestone next — chip converses with design session; pack v1.1.0 fed by its retro.
+2026-07-17 · §3 · ratified · codex-cli 0.144.4 non-fatal cache-TTL warning (`failed to renew cache TTL: missing field supports_reasoning_summaries`) added to false-alarm signatures — CHIP-M02 field finding, MIS-004 wave A
 ```
