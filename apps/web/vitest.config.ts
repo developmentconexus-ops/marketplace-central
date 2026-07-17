@@ -12,6 +12,8 @@ export default defineConfig({
       "src/**/*.test.ts",
       "src/**/*.test.tsx",
       "../../packages/feature-products/src/CatalogPage.test.tsx",
+      "../../packages/web-query/src/**/*.test.{ts,tsx}",
+      "../../packages/ui/src/**/*.test.{ts,tsx}",
     ],
   },
 });

@@ -5,6 +5,11 @@ export const QUERY_STALE_TIME = {
   catalog: 300_000,
   stock: 45_000,
   pricecost: 120_000,
+  listings: 45_000,
+  mutations: 5_000,
+  orders: 120_000,
+  sync: 30_000,
+  market: 300_000,
 } as const;
 
 export const queryKeyNamespaces = {
@@ -12,6 +17,12 @@ export const queryKeyNamespaces = {
   inventory: ["inventory"] as const,
   linkage: ["linkage"] as const,
   profitability: ["profitability"] as const,
+  listings: ["listings"] as const,
+  mutations: ["mutations"] as const,
+  orders: ["orders"] as const,
+  sync: ["sync"] as const,
+  market: ["market"] as const,
+  installations: ["installations"] as const,
 } as const;
 
 export const catalogQueryKeys = {
@@ -30,6 +41,37 @@ export const linkageQueryKeys = {
 
 export const profitabilityQueryKeys = {
   marginInputs: (installation_id: string) => ["profitability", { installation_id }] as const,
+};
+
+export const listingsQueryKeys = {
+  page: (installationId: string, filters: Record<string, unknown>) =>
+    ["listings", "page", { installation_id: installationId, filters }] as const,
+  byProduct: (installationId: string, filters: Record<string, unknown>) =>
+    ["listings", "by-product", { installation_id: installationId, filters }] as const,
+  detail: (listingId: string) => ["listings", "detail", listingId] as const,
+  summary: (installationId: string) =>
+    ["listings", "summary", { installation_id: installationId }] as const,
+};
+
+export const mutationsQueryKeys = {
+  list: (installationId: string, filters: Record<string, unknown>) =>
+    ["mutations", "list", { installation_id: installationId, filters }] as const,
+  detail: (protocolId: string) => ["mutations", "detail", protocolId] as const,
+  items: (protocolId: string) => ["mutations", "items", protocolId] as const,
+};
+
+export const ordersQueryKeys = {
+  list: (installationId: string, filters: Record<string, unknown>) =>
+    ["orders", "list", { installation_id: installationId, filters }] as const,
+};
+
+export const syncQueryKeys = {
+  runs: (installationId: string, filters: Record<string, unknown>) =>
+    ["sync", "runs", { installation_id: installationId, filters }] as const,
+};
+
+export const installationsQueryKeys = {
+  list: () => ["installations", "list"] as const,
 };
 
 export function createWebQueryClient(): QueryClient {
@@ -95,3 +137,6 @@ export function createRefreshableFetch(baseFetch: typeof fetch = fetch): {
 export function FreshnessIndicator({ asOf }: { asOf: string | null | undefined }): ReactNode {
   return createElement("span", { "aria-label": "Data freshness" }, formatAsOf(asOf));
 }
+
+export { invalidateAfterMutation, UnknownMutationInvalidationTypeError, type MutationInvalidationType } from "./invalidation";
+export { failureCodes, failureCopy, type FailureCode } from "./failureCopy";

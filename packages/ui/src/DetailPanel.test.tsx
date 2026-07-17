@@ -73,4 +73,14 @@ describe("DetailPanel", () => {
     );
     expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
   });
+
+  it("uses the provided close label", () => {
+    render(
+      <DetailPanel open={true} onClose={vi.fn()} title="Edit Product" closeLabel="Fechar painel">
+        <p>content</p>
+      </DetailPanel>,
+    );
+
+    expect(screen.getByRole("button", { name: "Fechar painel" })).toBeInTheDocument();
+  });
 });
