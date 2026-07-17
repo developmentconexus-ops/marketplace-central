@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- API-REF: Tabela DIFAL, parâmetros e notificações: 100% domínio nosso ❌ (ML não fornece dados fiscais) · status integrações: health-check OAuth ⚠️. Mapa completo: API-MAP.md -->
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fbfaf7;--surface:#ffffff;--surface2:#f4f2ea;--border:#e6e3da;--border2:#f0eee6;--ink:#25291f;--muted:#6f6d63;--faint:#8b887c;--accent:#4a7c59;--accent-soft:#edf3ec;--accent-ink:#33573f;--warn:#a3552e;--warn-soft:#f7ebe2;--info:#2f5bb7;--info-soft:#e8eef9;--amber:#8a6d1f;--amber-soft:#fdf3d7}
+[data-theme="dark"]{--bg:#161814;--surface:#1f221c;--surface2:#262a23;--border:#2e312a;--border2:#2a2d26;--ink:#e9e8e2;--muted:#a5a399;--faint:#8b887c;--accent:#7fb08c;--accent-soft:#243328;--accent-ink:#9ecfab;--warn:#d08a63;--warn-soft:#3a2a20;--info:#7fa3e0;--info-soft:#222b3c;--amber:#d4b45a;--amber-soft:#37311d}
+body{margin:0;background:var(--bg);font-family:'Instrument Sans',sans-serif;color:var(--ink)}
+a{color:var(--accent-ink);text-decoration:none}a:hover{opacity:.75}
+input{font-family:'IBM Plex Mono',monospace}
+</style>
+</helmet>
+<div data-screen-label="Configurações" data-theme="{{ theme }}" style="min-height:100vh;background:var(--bg);color:var(--ink);display:flex;flex-direction:column">
+  <div style="display:flex;align-items:center;gap:18px;padding:12px 28px;border-bottom:1px solid var(--border);background:var(--surface)">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:28px;height:28px;border-radius:8px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">M</div>
+      <span style="font-weight:700;font-size:14px;letter-spacing:-.01em;white-space:nowrap">Marketplace Central</span>
+    </div>
+    <div style="display:flex;gap:2px;font-size:13px;margin-left:10px;white-space:nowrap">
+      <a href="Dashboard.dc.html" style="padding:7px 14px;color:var(--muted)">Visão geral</a>
+      <a href="Anuncios.dc.html" style="padding:7px 14px;color:var(--muted)">Anúncios</a>
+      <a href="Mercado.dc.html" style="padding:7px 14px;color:var(--muted)">Mercado</a>
+      <a href="Simulador.dc.html" style="padding:7px 14px;color:var(--muted)">Simulador</a>
+      <a href="Pedidos.dc.html" style="padding:7px 14px;color:var(--muted)">Pedidos</a>
+      <a href="Repasses.dc.html" style="padding:7px 14px;color:var(--muted)">Repasses</a>
+    </div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+      <span onClick="{{ toggleTheme }}" style="cursor:pointer;white-space:nowrap;flex:none;font-size:12.5px;border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--muted)" style-hover="border-color:var(--accent)">{{ themeIcon }}</span>
+      <span style="font-size:12.5px;border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent-ink);border-radius:8px;padding:6px 10px;font-weight:600">⚙</span>
+      <span style="width:30px;height:30px;border-radius:999px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--muted)">AL</span>
+    </div>
+  </div>
+  <div style="flex:1;padding:22px 28px;display:flex;gap:20px;align-items:flex-start;min-width:0">
+    <div style="width:200px;flex:none;display:flex;flex-direction:column;gap:2px;font-size:13px;position:sticky;top:22px">
+      <span style="font-size:20px;font-weight:700;letter-spacing:-.01em;margin-bottom:10px">Configurações</span>
+      <sc-for list="{{ menu }}" as="m" hint-placeholder-count="5">
+        <span onClick="{{ m.pick }}" style="cursor:pointer;padding:8px 12px;border-radius:8px;background:{{ m.bg }};color:{{ m.fg }};font-weight:{{ m.w }}">{{ m.label }}</span>
+      </sc-for>
+    </div>
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:14px;max-width:860px">
+      <sc-if value="{{ secGeral }}" hint-placeholder-val="{{ true }}">
+        <div style="border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:18px 20px;display:flex;flex-direction:column;gap:14px">
+          <b style="font-size:14px">Geral</b>
+          <div style="display:flex;align-items:center;gap:10px;font-size:13px"><span style="color:var(--muted);flex:1">Tema</span><span onClick="{{ toggleTheme }}" style="cursor:pointer;border:1px solid var(--border);border-radius:8px;padding:5px 12px;color:var(--muted);font-size:12.5px">{{ themeIcon }}</span></div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:13px"><span style="color:var(--muted);flex:1">Visão padrão de Pedidos</span>
+            <span style="display:flex;gap:4px">
+              <sc-for list="{{ visoes }}" as="v" hint-placeholder-count="3"><span onClick="{{ v.pick }}" style="cursor:pointer;border:1.5px solid {{ v.border }};background:{{ v.bg }};color:{{ v.fg }};border-radius:999px;padding:3px 12px;font-size:12px;font-weight:600">{{ v.label }}</span></sc-for>
+            </span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:13px"><span style="color:var(--muted);flex:1">Moeda / formato</span><span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px">R$ · pt-BR</span></div>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:18px 20px;display:flex;flex-direction:column;gap:12px">
+          <b style="font-size:14px">Notificações</b>
+          <sc-for list="{{ notifs }}" as="n" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;gap:10px;font-size:13px">
+              <span style="flex:1;min-width:0"><span style="display:block">{{ n.label }}</span><span style="font-size:11.5px;color:var(--faint)">{{ n.sub }}</span></span>
+              <span onClick="{{ n.toggle }}" style="cursor:pointer;border:1.5px solid {{ n.border }};background:{{ n.bg }};color:{{ n.fg }};border-radius:999px;padding:3px 12px;font-size:11.5px;font-weight:600;white-space:nowrap">{{ n.state }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+      <sc-if value="{{ secCalculo }}" hint-placeholder-val="{{ false }}">
+        <div style="border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:18px 20px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;gap:8px"><b style="font-size:14px">Parâmetros de cálculo</b><span style="font-size:10.5px;background:var(--info-soft);color:var(--info);border-radius:999px;padding:2px 8px;font-weight:600">globais — valem para todo o app</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
+            <div style="border:1px solid var(--border2);border-radius:10px;padding:10px 12px"><div style="font-size:11px;color:var(--faint);margin-bottom:2px">Regime / imposto</div><span style="font-family:'IBM Plex Mono',monospace;font-weight:600">Simples · 4%</span></div>
+            <div style="border:1px solid var(--border2);border-radius:10px;padding:10px 12px"><div style="font-size:11px;color:var(--faint);margin-bottom:2px">Limiares de margem</div><span style="font-family:'IBM Plex Mono',monospace;font-weight:600">verde ≥18% · âmbar ≥10%</span></div>
+            <div style="border:1px solid var(--border2);border-radius:10px;padding:10px 12px"><div style="font-size:11px;color:var(--faint);margin-bottom:2px">Tarifa Full /un</div><span style="font-family:'IBM Plex Mono',monospace;font-weight:600">R$ 12,00</span></div>
+            <div style="border:1px solid var(--border2);border-radius:10px;padding:10px 12px"><div style="font-size:11px;color:var(--faint);margin-bottom:2px">Custo do produto</div><span style="font-family:'IBM Plex Mono',monospace;font-weight:600">vem do ERP</span></div>
+          </div>
+          <div style="font-size:12px;color:var(--muted)">Edite pelo drawer <a href="Simulador.dc.html">⚙ Parâmetros de cálculo no Simulador</a> — lá o recálculo é ao vivo.</div>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:12px;background:var(--surface);overflow:hidden">
+          <div style="display:flex;align-items:center;gap:8px;padding:14px 20px;border-bottom:1px solid var(--border)">
+            <b style="font-size:14px">Tabela DIFAL por UF</b>
+            <span style="font-size:11.5px;color:var(--faint)">origem SC · padrão 2026 pré-carregado — ajuste só as exceções</span>
+            <span style="margin-left:auto;font-size:11.5px;color:var(--faint)">{{ ajustadasCount }}</span>
+          </div>
+          <div style="display:grid;grid-template-columns:56px 1fr 110px 120px 90px 110px 90px;padding:8px 20px;background:var(--surface2);color:var(--faint);font-size:11px;letter-spacing:.04em">
+            <span>UF</span><span>ESTADO</span><span>INTERNA</span><span>INTERESTADUAL</span><span>DIFAL</span><span>ORIGEM</span><span></span>
+          </div>
+          <sc-for list="{{ ufs }}" as="u" hint-placeholder-count="8">
+            <div style="display:grid;grid-template-columns:56px 1fr 110px 120px 90px 110px 90px;align-items:center;padding:8px 20px;border-top:1px solid var(--border2);font-size:12.5px;background:{{ u.bg }}">
+              <span style="font-family:'IBM Plex Mono',monospace;font-weight:600">{{ u.uf }}</span>
+              <span style="color:var(--muted)">{{ u.nome }}</span>
+              <span style="font-family:'IBM Plex Mono',monospace">{{ u.interna }}</span>
+              <span style="font-family:'IBM Plex Mono',monospace;color:var(--muted)">{{ u.inter }}</span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:{{ u.difalColor }}">{{ u.difal }}</span>
+              <span><span style="background:{{ u.chipBg }};color:{{ u.chipFg }};border-radius:999px;padding:1px 8px;font-size:10.5px;font-weight:600">{{ u.chip }}</span></span>
+              <span onClick="{{ u.edit }}" style="cursor:pointer;color:var(--accent-ink);font-size:11.5px;font-weight:600;text-align:right">ajustar</span>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+      <sc-if value="{{ secIntegra }}" hint-placeholder-val="{{ false }}">
+        <div style="border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:18px 20px;display:flex;flex-direction:column;gap:12px">
+          <b style="font-size:14px">Integrações</b>
+          <sc-for list="{{ integracoes }}" as="i" hint-placeholder-count="2">
+            <div style="display:flex;align-items:center;gap:12px;border:1px solid var(--border2);border-radius:10px;padding:12px 14px;font-size:13px">
+              <span style="width:34px;height:34px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:var(--muted);flex:none">{{ i.sigla }}</span>
+              <span style="flex:1;min-width:0"><span style="display:block;font-weight:600">{{ i.nome }}</span><span style="font-size:11.5px;color:var(--faint)">{{ i.sub }}</span></span>
+              <span style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:{{ i.stColor }};font-weight:600;white-space:nowrap"><span style="width:7px;height:7px;border-radius:999px;background:{{ i.stColor }}"></span>{{ i.status }}</span>
+            </div>
+          </sc-for>
+          <div style="font-size:12px;color:var(--muted)">Vinculação de anúncios ↔ produtos: <a href="Vinculos e Importacao.dc.html">abrir Vínculos &amp; Importação</a></div>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+  <sc-if value="{{ editOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeEdit }}" style="position:fixed;inset:0;background:rgba(22,24,20,.35);z-index:40"></div>
+    <div style="position:fixed;top:0;right:0;bottom:0;width:360px;max-width:92vw;background:var(--surface);border-left:1px solid var(--border);z-index:41;display:flex;flex-direction:column;font-size:12.5px;box-shadow:-16px 0 40px rgba(0,0,0,.14)">
+      <div style="display:flex;align-items:center;gap:8px;padding:13px 18px;border-bottom:1px solid var(--border);background:var(--surface2)">
+        <b style="font-size:13.5px">Ajustar DIFAL — {{ editUf }}</b>
+        <span onClick="{{ closeEdit }}" style="margin-left:auto;cursor:pointer;color:var(--faint);padding:2px 6px">✕</span>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:14px">
+        <div style="font-size:12px;color:var(--muted);line-height:1.5">Padrão 2026 para {{ editNome }}: interna {{ editPadraoInterna }} · interestadual {{ editInter }} → DIFAL <b>{{ editPadraoDifal }}</b>. Ajuste a alíquota interna se houver benefício fiscal ou regra própria.</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="color:var(--muted);flex:1">Alíquota interna</span>
+          <span style="display:flex;align-items:center;gap:4px;border:1.5px solid var(--accent);border-radius:8px;padding:6px 10px;width:70px;flex:none"><input value="{{ editInput }}" onChange="{{ onEditInterna }}" style="width:100%;border:none;background:transparent;font-size:14px;font-weight:600;color:var(--ink);outline:none;text-align:right"><span style="color:var(--faint);font-size:11.5px">%</span></span>
+        </div>
+        <div style="border:1px solid var(--border2);border-radius:10px;padding:10px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.9">
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Interna</span><span>{{ editInternaAtual }}</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">(−) Interestadual</span><span>{{ editInter }}</span></div>
+          <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:5px;font-weight:700"><span>DIFAL efetivo</span><span style="color:var(--accent-ink)">{{ editDifalAtual }}</span></div>
+        </div>
+        <div style="font-size:11.5px;color:var(--faint)">O Simulador e o bloco DIFAL de Pedidos passam a usar este valor para pedidos com destino {{ editUf }}.</div>
+      </div>
+      <div style="display:flex;gap:8px;padding:12px 18px;border-top:1px solid var(--border)">
+        <span onClick="{{ restaurarUf }}" style="font-size:12.5px;border:1px solid var(--border);border-radius:8px;padding:9px 14px;color:var(--muted);cursor:pointer;white-space:nowrap" style-hover="border-color:var(--warn);color:var(--warn)">Restaurar padrão</span>
+        <span onClick="{{ salvarUf }}" style="flex:1;text-align:center;font-size:12.5px;background:var(--accent);color:#fff;border-radius:8px;padding:9px 0;font-weight:600;cursor:pointer" style-hover="opacity:.9">Salvar ajuste</span>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Aparência&quot;}}">
+class Component extends DCLogic {
+  state = { theme: null, sec: 'geral', visao: 'fila', notifs: { difal: true, ruptura: true, radar: false }, overrides: {}, editUf: null, editVal: null };
+  inter = { sul_sudeste: 12, resto: 7 };
+  ufsBase = [
+    ['AC','Acre',19,7],['AL','Alagoas',20,7],['AP','Amapá',18,7],['AM','Amazonas',20,7],['BA','Bahia',20.5,7],['CE','Ceará',20,7],['DF','Distrito Federal',20,7],['ES','Espírito Santo',17,7],['GO','Goiás',19,7],['MA','Maranhão',22,7],['MT','Mato Grosso',17,7],['MS','Mato Grosso do Sul',17,7],['MG','Minas Gerais',18,12],['PA','Pará',19,7],['PB','Paraíba',20,7],['PR','Paraná',19.5,12],['PE','Pernambuco',20.5,7],['PI','Piauí',21,7],['RJ','Rio de Janeiro',22,12],['RN','Rio Grande do Norte',20,7],['RS','Rio Grande do Sul',17,12],['RO','Rondônia',19.5,7],['RR','Roraima',20,7],['SC','Santa Catarina',17,12],['SP','São Paulo',18,12],['SE','Sergipe',20,7],['TO','Tocantins',20,7],
+  ];
+  fmtPct(v) { return v.toFixed(1).replace('.', ',').replace(',0', '') + '%'; }
+  renderVals() {
+    const theme = this.state.theme ?? this.props.theme ?? 'light';
+    const { sec, visao, notifs, overrides, editUf, editVal } = this.state;
+    const menuDef = [['geral', 'Geral'], ['calculo', 'Cálculo & DIFAL'], ['integra', 'Integrações']];
+    const editRow = editUf ? this.ufsBase.find(u => u[0] === editUf) : null;
+    const editInterna = editRow ? (editVal ?? overrides[editUf] ?? editRow[2]) : 0;
+    return {
+      theme,
+      themeIcon: theme === 'dark' ? '☀ Claro' : '☾ Escuro',
+      toggleTheme: () => this.setState({ theme: theme === 'dark' ? 'light' : 'dark' }),
+      menu: menuDef.map(([k, label]) => ({ label, bg: sec === k ? 'var(--accent-soft)' : 'transparent', fg: sec === k ? 'var(--accent-ink)' : 'var(--muted)', w: sec === k ? 600 : 400, pick: () => this.setState({ sec: k }) })),
+      secGeral: sec === 'geral', secCalculo: sec === 'calculo', secIntegra: sec === 'integra',
+      visoes: [['fila', 'Fila'], ['lista', 'Lista'], ['kanban', 'Kanban']].map(([k, label]) => {
+        const on = visao === k;
+        return { label, border: on ? 'var(--accent)' : 'var(--border)', bg: on ? 'var(--accent-soft)' : 'transparent', fg: on ? 'var(--accent-ink)' : 'var(--muted)', pick: () => this.setState({ visao: k }) };
+      }),
+      notifs: [
+        { k: 'difal', label: 'Lembrete de DIFAL a pagar', sub: 'aviso no topo de Pedidos na data agendada' },
+        { k: 'ruptura', label: 'Alerta de ruptura de estoque', sub: 'quando a cobertura ficar abaixo de 7 dias' },
+        { k: 'radar', label: 'Radar de reprecificação', sub: 'resumo diário de oportunidades do Mercado' },
+      ].map(n => {
+        const on = notifs[n.k];
+        return { ...n, state: on ? 'ativo ✓' : 'inativo', border: on ? 'var(--accent)' : 'var(--border)', bg: on ? 'var(--accent-soft)' : 'transparent', fg: on ? 'var(--accent-ink)' : 'var(--faint)', toggle: () => this.setState({ notifs: { ...notifs, [n.k]: !on } }) };
+      }),
+      ajustadasCount: Object.keys(overrides).length ? Object.keys(overrides).length + ' UF ajustada(s)' : 'nenhum ajuste manual',
+      ufs: this.ufsBase.map(([uf, nome, interna0, inter]) => {
+        const interna = overrides[uf] ?? interna0;
+        const ajustada = overrides[uf] !== undefined;
+        const difal = interna - inter;
+        return {
+          uf, nome, interna: this.fmtPct(interna), inter: this.fmtPct(inter), difal: this.fmtPct(difal),
+          difalColor: ajustada ? 'var(--info)' : 'var(--ink)',
+          chip: ajustada ? 'ajustada' : 'padrão 2026', chipBg: ajustada ? 'var(--info-soft)' : 'var(--surface2)', chipFg: ajustada ? 'var(--info)' : 'var(--faint)',
+          bg: ajustada ? 'var(--info-soft)' : 'transparent',
+          edit: () => this.setState({ editUf: uf, editVal: null }),
+        };
+      }),
+      integracoes: [
+        { sigla: 'ERP', nome: 'ERP — Ômega Industrial', sub: 'custo, estoque e NF · sync a cada 15 min', status: 'conectado', stColor: 'var(--accent)' },
+        { sigla: 'ML', nome: 'Mercado Livre — conta AL Ferramentas', sub: 'anúncios, pedidos e repasses via API oficial', status: 'conectado', stColor: 'var(--accent)' },
+      ],
+      editOpen: !!editUf,
+      closeEdit: () => this.setState({ editUf: null, editVal: null }),
+      editUf, editNome: editRow ? editRow[1] : '',
+      editPadraoInterna: editRow ? this.fmtPct(editRow[2]) : '', editInter: editRow ? this.fmtPct(editRow[3]) : '',
+      editPadraoDifal: editRow ? this.fmtPct(editRow[2] - editRow[3]) : '',
+      editInput: editInterna.toFixed(1).replace('.', ','),
+      editInternaAtual: this.fmtPct(editInterna),
+      editDifalAtual: editRow ? this.fmtPct(editInterna - editRow[3]) : '',
+      onEditInterna: e => { const v = parseFloat(e.target.value.replace(',', '.')); if (!isNaN(v) && v >= 0 && v <= 35) this.setState({ editVal: v }); },
+      salvarUf: () => { const o = { ...overrides }; if (editVal !== null && editRow && Math.abs(editVal - editRow[2]) > 0.049) o[editUf] = editVal; this.setState({ overrides: o, editUf: null, editVal: null }); },
+      restaurarUf: () => { const o = { ...overrides }; delete o[editUf]; this.setState({ overrides: o, editUf: null, editVal: null }); },
+    };
+  }
+}
+</script>
+</body>
+</html>
