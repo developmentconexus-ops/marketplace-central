@@ -1,12 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type { MutationItem, MutationProtocol } from "@marketplace-central/sdk-runtime";
 import { EmptyState, ErrorState, LoadingState, UnknownValue } from "@marketplace-central/ui";
 import { failureCopy, mutationsQueryKeys, QUERY_STALE_TIME } from "@marketplace-central/web-query";
-import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useRef, useState } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useClient } from "../../app/ClientContext";
 import { mutationTypeLabels, presentMutationValue } from "./mutationPresentation";
-import { useMutationProtocol } from "./useMutationProtocol";
+import { isMutationTerminal, useMutationProtocol } from "./useMutationProtocol";
 
 function formatTime(value: string | null) {
   if (value === null) return <UnknownValue />;
@@ -82,10 +82,22 @@ function ItemsTable({ items }: { items: MutationItem[] }) {
   );
 }
 
-function ProtocolItems({ protocolId }: { protocolId: string }) {
+function ProtocolItems({ protocolId, protocol }: { protocolId: string; protocol: MutationProtocol }) {
   const client = useClient();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const retryStarted = useRef(false);
   const [cursor, setCursor] = useState<string | undefined>();
   const [history, setHistory] = useState<Array<string | undefined>>([]);
+  const retryOperation = useMutation({
+    mutationFn: () => client.retryMutationFailures(protocolId),
+    onSuccess: (retried) => {
+      navigate(`/protocolos/${retried.protocol_id}${location.search}`);
+    },
+    onError: () => {
+      retryStarted.current = false;
+    },
+  });
   const query = useQuery({
     queryKey: [...mutationsQueryKeys.items(protocolId), { cursor }],
     queryFn: () => client.listMutationItems(protocolId, { limit: 50, cursor }),
@@ -93,6 +105,13 @@ function ProtocolItems({ protocolId }: { protocolId: string }) {
   });
   if (query.isPending) return <LoadingState />;
   if (query.isError) return <ErrorState detail="Não foi possível carregar os itens." onRetry={() => void query.refetch()} />;
+  const hasFailedItems = query.data.items.some((item) => item.state === "failed" || Boolean(item.failure));
+  const canRetry = isMutationTerminal(protocol.state) && hasFailedItems;
+  const retry = () => {
+    if (retryStarted.current || retryOperation.isPending) return;
+    retryStarted.current = true;
+    retryOperation.mutate();
+  };
   return <section className="rounded-lg border border-slate-200 bg-white p-5" aria-labelledby="protocol-items-title">
     <h2 id="protocol-items-title" className="mb-4 text-base font-semibold text-slate-950">Itens</h2>
     <ItemsTable items={query.data.items} />
@@ -100,6 +119,7 @@ function ProtocolItems({ protocolId }: { protocolId: string }) {
       <button type="button" disabled={history.length === 0} onClick={() => { const next = [...history]; setCursor(next.pop()); setHistory(next); }}>Página anterior</button>
       <button type="button" disabled={!query.data.next_cursor} onClick={() => { setHistory((value) => [...value, cursor]); setCursor(query.data.next_cursor ?? undefined); }}>Próxima página</button>
     </nav>
+    {canRetry ? <button type="button" onClick={retry} disabled={retryOperation.isPending || retryStarted.current}>Repetir itens com falha</button> : null}
   </section>;
 }
 
@@ -109,5 +129,5 @@ export function ProtocoloPage() {
   if (protocol.isPending) return <LoadingState />;
   if (protocol.isError) return <ErrorState detail="Não foi possível carregar o protocolo." onRetry={() => void protocol.refetch()} />;
   if (!protocol.data) return null;
-  return <main className="space-y-5 p-6"><ProtocolHeader protocol={protocol.data} /><ProtocolItems protocolId={protocolId} /></main>;
+  return <main className="space-y-5 p-6"><ProtocolHeader protocol={protocol.data} /><ProtocolItems protocolId={protocolId} protocol={protocol.data} /></main>;
 }

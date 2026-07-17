@@ -6,6 +6,7 @@ import { CatalogPage } from "@marketplace-central/feature-products";
 import { Layout } from "./Layout";
 import { DashboardPage } from "../pages/DashboardPage";
 import { AnunciosPage } from "../pages/AnunciosPage";
+import { ProtocoloPage } from "../pages/mutations/ProtocoloPage";
 import { WorkspacePlaceholder } from "../pages/WorkspacePlaceholder";
 import { useClient } from "./ClientContext";
 import { InstallationProvider, useInstallation } from "./InstallationContext";
@@ -47,7 +48,7 @@ export function AppRouter() {
             <Route path="/precos" element={<PricingSimulatorPageWrapper />} />
             <Route path="/pedidos" element={<WorkspacePlaceholder />} />
             <Route path="/integracoes" element={<WorkspacePlaceholder />} />
-            <Route path="/protocolos/:protocolId" element={<WorkspacePlaceholder />} />
+            <Route path="/protocolos/:protocolId" element={<ProtocoloPage />} />
             <Route path="/classifications" element={<ClassificationsPageWrapper />} />
             <Route path="/marketplaces" element={<WorkspacePlaceholder />} />
             <Route path="/products" element={<LegacyRedirect to="/catalogo" />} />

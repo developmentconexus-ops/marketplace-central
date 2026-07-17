@@ -1,17 +1,18 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { MutationItem, MutationProtocol } from "@marketplace-central/sdk-runtime";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ProtocoloPage } from "./ProtocoloPage";
 
-const { getMutation, listMutationItems, invalidateAfterMutation } = vi.hoisted(() => ({
+const { getMutation, listMutationItems, retryMutationFailures, invalidateAfterMutation } = vi.hoisted(() => ({
   getMutation: vi.fn(),
   listMutationItems: vi.fn(),
+  retryMutationFailures: vi.fn(),
   invalidateAfterMutation: vi.fn(),
 }));
 
-vi.mock("../../app/ClientContext", () => ({ useClient: () => ({ getMutation, listMutationItems }) }));
+vi.mock("../../app/ClientContext", () => ({ useClient: () => ({ getMutation, listMutationItems, retryMutationFailures }) }));
 vi.mock("@marketplace-central/web-query", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@marketplace-central/web-query")>()),
   invalidateAfterMutation,
@@ -30,10 +31,16 @@ const failedItem: MutationItem = {
   failure: { code: "provider_unavailable", message_pt: "não usar", message_provider: "raw secreto" }, applied_at: null,
 };
 
-function mount(queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })) {
+function LocationProbe() {
+  const location = useLocation();
+  return <div data-testid="location">{location.pathname}{location.search}</div>;
+}
+
+function mount(initialEntry = "/protocolos/MP-000042", queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })) {
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={["/protocolos/MP-000042"]}>
+      <MemoryRouter initialEntries={[initialEntry]}>
+        <LocationProbe />
         <Routes><Route path="/protocolos/:protocolId" element={<ProtocoloPage />} /></Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -45,6 +52,7 @@ describe("ProtocoloPage", () => {
     vi.useFakeTimers();
     getMutation.mockReset();
     listMutationItems.mockReset();
+    retryMutationFailures.mockReset();
     invalidateAfterMutation.mockReset();
     listMutationItems.mockResolvedValue({ items: [], next_cursor: null, page_size: 50 });
   });
@@ -70,6 +78,7 @@ describe("ProtocoloPage", () => {
 
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
     expect(screen.getByText("applying")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Repetir itens com falha" })).not.toBeInTheDocument();
     await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
     await act(async () => { await vi.runOnlyPendingTimersAsync(); });
     expect(screen.getByText("applied")).toBeInTheDocument();
@@ -108,5 +117,35 @@ describe("ProtocoloPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Próxima página" }));
     await act(async () => { await vi.runOnlyPendingTimersAsync(); });
     expect(listMutationItems).toHaveBeenLastCalledWith("MP-000042", { limit: 50, cursor: "cursor-2" });
+  });
+
+  it("repete falhas uma vez, preserva a instalação e abre o novo protocolo", async () => {
+    const failed = { ...applying, state: "failed_preserved" as const, finished_at: "2026-07-17T12:00:03Z" };
+    const retried = { ...failed, protocol_id: "MP-000043", retried_from: "MP-000042", state: "applied" as const };
+    let resolveRetry!: (protocol: MutationProtocol) => void;
+    retryMutationFailures.mockReturnValue(new Promise<MutationProtocol>((resolve) => { resolveRetry = resolve; }));
+    getMutation.mockResolvedValueOnce(failed).mockResolvedValue(retried);
+    listMutationItems.mockResolvedValue({ items: [failedItem], next_cursor: null, page_size: 50 });
+    mount("/protocolos/MP-000042?installation=inst_test&tab=failed");
+
+    await act(async () => { await vi.runOnlyPendingTimersAsync(); });
+    const retryButton = screen.getByRole("button", { name: "Repetir itens com falha" });
+    fireEvent.click(retryButton);
+    fireEvent.click(retryButton);
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    expect(retryButton).toBeDisabled();
+    expect(retryMutationFailures).toHaveBeenCalledTimes(1);
+    expect(retryMutationFailures).toHaveBeenCalledWith("MP-000042");
+
+    await act(async () => {
+      resolveRetry(retried);
+      await vi.runOnlyPendingTimersAsync();
+    });
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    await act(async () => { await vi.runOnlyPendingTimersAsync(); });
+
+    expect(screen.getByRole("heading", { name: "Protocolo MP-000043" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "MP-000042" })).toHaveAttribute("href", "/protocolos/MP-000042");
+    expect(screen.getByTestId("location")).toHaveTextContent("/protocolos/MP-000043?installation=inst_test&tab=failed");
   });
 });
