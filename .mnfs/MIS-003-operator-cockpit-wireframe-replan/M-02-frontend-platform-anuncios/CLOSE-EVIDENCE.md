@@ -3,6 +3,28 @@
 Chip: CHIP-M02 · branch `chip/m-02-frontend-platform-anuncios` · base a49168e641ffd6f61932ca57c29b1d1bdcde2fb0
 Closed 2026-07-17. Milestone close (P6 dual-gate + P7 browser QA) is HUB-owned; chip stops here.
 
+## Corrective round (dual-gate FAIL @ 8744c280 → M02-COR-1)
+
+First dual gate returned FAIL with 2 blockings; both fixed in 13b49e2c (ledger rows 30–31,
+reviewer ACCEPT-WITH-CONDITIONS, both suggestions applied):
+
+- **BLOCKING-1 (M02-C03):** StockSeguroPage fetched installations directly. Fix:
+  `listIntegrationInstallations` removed from StockSeguroClient interface (page is
+  type-incapable of the fetch), fetch effect + page default-installation fallback deleted
+  (InstallationProvider owns both), installations = required prop injected by the /estoque
+  wrapper from `useInstallation()`. AppRouter test asserts exactly-once app-wide.
+  Supersedes the narrowing previously declared in `F-01-shell-routes-context/validation.md`.
+- **BLOCKING-2 (M02-C08):** no visible chip for active exception filter. Fix: dismissible
+  chips for exception / sync_state / link_state / listing_type_code with exhaustive pt-BR
+  maps (`satisfies`); dismiss removes only that filter key, preserves tab/q/installation/
+  remaining filters. New chip label copy (Exceção: Erro de sync / Desatualizado / Sem vínculo /
+  Abaixo da margem; Sync:/Vínculo:/Modalidade: prefixes; aria `Remover filtro {label}`) —
+  added to ratification list below.
+
+Ladder re-run at 13b49e2c: L0 build exit 0 · L0 governance clean-worktree BaseSha 40-hex
+exit 0 (baseline exceptions unchanged) · L1 web 133/133 (22 files) exit 0. L0 typecheck
+unchanged pre-existing F4.
+
 ## Features
 
 | Feature | Evidence | COMMITTED |
@@ -39,6 +61,9 @@ conditions fixed in-slice).
 4. `syncQueryKeys.runs` polling pattern (refetchInterval 2s, stop at terminal) — adjudication #12.
 5. Refresh run status copy chip-pinned pt-BR: na fila / em andamento / concluído / falhou /
    cancelado (F03-S5).
+6. Filter chip copy chip-pinned pt-BR (M02-COR-1): exception map Erro de sync / Desatualizado /
+   Sem vínculo / Abaixo da margem; chip prefixes Exceção/Sync/Vínculo/Modalidade; dismiss aria
+   `Remover filtro {label}`.
 
 ## Field findings
 
