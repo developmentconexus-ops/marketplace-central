@@ -48,6 +48,14 @@ ACCEPT-WITH-CONDITIONS — both importants process-level, recorded below):
 - **PLAN-ADJUDICATION #3 SUPERSEDED by operator directive:** the adjudicated position
   (legacy pages stay mounted as-is during M-02) is void; removal is the ratified end-state.
 
+**M02-COR-3 (gate round 3, Opus mechanical blocking):** `docker/dev/frontend.Dockerfile`
+COPY rows for the 2 deleted packages (feature-integrations, feature-marketplaces) removed —
+2-line deletion, nothing else; hub-abbreviated process (no round 4; hub delta-verify + QA
+live-drive prove the image build). Round-3 advisories recorded, not fixed: chip dismiss
+aria-label uses value without kind prefix (folded into ratification #6); stale docs citing
+the 4 removed packages = hub post-merge doc-sync task; AppRouter.test mocks routed pages
+(weak future guard — accepted, static inspection covers).
+
 Ladder re-run at e4c8ea90: L0 build exit 0 (bundle 438.77 → 361.17 kB) · L0 governance
 clean-worktree BaseSha 40-hex exit 0 (baseline exceptions unchanged) · L1 web 133/133
 (22 files) exit 0. Zero-grep for the 4 package names over apps/+packages/.
