@@ -36,7 +36,7 @@ func NewWriterRouter(price, stock, listing, resync ports.WriterPort, linkage por
 	return &WriterRouter{price: price, stock: stock, listing: listing, resync: resync, linkage: linkage, resolved: resolved, policy: policy}
 }
 
-func (r *WriterRouter) ValidateProtocol(v ProtocolWriteValidation) error {
+func ValidateProtocol(v ProtocolWriteValidation) error {
 	if strings.TrimSpace(v.Actor) == "" {
 		return gateError(FailureCodeActorRequired, "ator é obrigatório")
 	}

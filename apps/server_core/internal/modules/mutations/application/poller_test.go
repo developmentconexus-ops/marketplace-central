@@ -78,6 +78,33 @@ func TestPollerOwnsGateSequenceExactlyOncePerItem(t *testing.T) {
 	}
 }
 
+func TestPollerRejectsProtocolWithoutFreshSource(t *testing.T) {
+	now := time.Date(2026, 7, 17, 12, 0, 0, 0, time.UTC)
+	for _, tt := range []struct {
+		name   string
+		source *time.Time
+		code   domain.FailureCode
+	}{
+		{name: "missing", code: FailureCodeSourceTimeUnavailable},
+		{name: "stale", source: timePtr(now.Add(-15*time.Minute - time.Nanosecond)), code: domain.FailureCodeStaleSource},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			r := newFakeRepo("p:a")
+			r.protocol.SourceAsOf = tt.source
+			worked, err := NewPoller(r, stub.NewWriter(nil), func() time.Time { return now }).Pass(context.Background(), "inst")
+			if !worked {
+				t.Fatal("Pass() worked=false, want claimed protocol")
+			}
+			assertGateCode(t, err, tt.code)
+			if r.claim.committed || len(r.outcomes) != 0 {
+				t.Fatalf("committed=%v outcomes=%v", r.claim.committed, r.outcomes)
+			}
+		})
+	}
+}
+
+func timePtr(value time.Time) *time.Time { return &value }
+
 func TestPollerPassCrashResumeDoesNotResendDurableAppliedItems(t *testing.T) {
 	r := newFakeRepo("p:a", "p:b", "p:c")
 	r.failOutcomeAfter = 1
@@ -131,7 +158,8 @@ func newFakeRepo(keys ...string) *fakeRepo {
 	for i, key := range keys {
 		items[i] = ports.MutationItem{Seq: i + 1, ItemID: "item-" + string(rune('1'+i)), ListingID: key[2:], IdempotencyKey: key, After: json.RawMessage(`{"value":1}`)}
 	}
-	protocol := ports.Protocol{ProtocolID: "p", InstallationID: "inst", Type: domain.ProtocolTypePriceUpdate, State: domain.ProtocolStateApproved}
+	source := time.Now()
+	protocol := ports.Protocol{ProtocolID: "p", InstallationID: "inst", Type: domain.ProtocolTypePriceUpdate, State: domain.ProtocolStateApproved, Actor: "operator", SourceAsOf: &source}
 	return &fakeRepo{protocol: protocol, protocolState: domain.ProtocolStateApproved, items: items, outcomes: map[string]ports.ItemOutcome{}}
 }
 func (r *fakeRepo) CreateProtocol(context.Context, ports.CreateProtocolInput) (ports.Protocol, error) {
@@ -140,7 +168,7 @@ func (r *fakeRepo) CreateProtocol(context.Context, ports.CreateProtocolInput) (p
 func (r *fakeRepo) GetProtocol(context.Context, string) (ports.Protocol, bool, error) {
 	panic("unused")
 }
-func (r *fakeRepo) ReplaceItems(context.Context, string, []ports.ReplaceItemInput) ([]ports.MutationItem, error) {
+func (r *fakeRepo) ReplaceItems(context.Context, string, []ports.ReplaceItemInput, *time.Time) ([]ports.MutationItem, error) {
 	panic("unused")
 }
 func (r *fakeRepo) ApproveItems(context.Context, string, time.Time) error { panic("unused") }

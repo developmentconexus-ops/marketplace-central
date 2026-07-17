@@ -42,7 +42,7 @@ func TestPriceWriterResolvesExplicitCapabilityAndMapsOutcomes(t *testing.T) {
 	}
 	provider.result.Result, provider.result.Message = connectorsdomain.WriteResultStatus("unknown"), "must not pass"
 	out, _ = writer.Apply(context.Background(), ports.WriteItem{InstallationID: "inst", ListingID: "inst~MLB1~-", IdempotencyKey: "key", After: []byte(`{"new_price":{"amount":"10.00","currency":"BRL"}}`)})
-	if out.Failure == nil || out.Failure.Code != domain.FailureCodeInternal || out.Failure.MessageProvider != "" {
+	if out.Failure == nil || out.Failure.Code != domain.FailureCodeInternal || out.Failure.MessageProvider != "unknown provider price outcome" {
 		t.Fatalf("unknown=%+v", out.Failure)
 	}
 }

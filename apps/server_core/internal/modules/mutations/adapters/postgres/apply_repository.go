@@ -15,7 +15,7 @@ import (
 
 var ErrImmutableItem = errors.New("mutation item outcome is immutable")
 
-func (r *Repository) ReplaceItems(ctx context.Context, protocolID string, inputs []ports.ReplaceItemInput) ([]ports.MutationItem, error) {
+func (r *Repository) ReplaceItems(ctx context.Context, protocolID string, inputs []ports.ReplaceItemInput, sourceAsOf *time.Time) ([]ports.MutationItem, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("begin replace mutation items: %w", err)
@@ -45,7 +45,7 @@ func (r *Repository) ReplaceItems(ctx context.Context, protocolID string, inputs
 		}
 		items = append(items, ports.MutationItem{Seq: seq, ItemID: itemID, ListingID: input.ListingID, IdempotencyKey: key, Before: input.Before, After: input.After, State: domain.ItemStatePreviewed})
 	}
-	if _, err := tx.Exec(ctx, `UPDATE mutation_protocols SET state='previewed', previewed_at=COALESCE(previewed_at,now()), totals=jsonb_build_object('items',$3::int,'previewed',$3::int,'applied',0,'failed',0,'skipped',0) WHERE tenant_id=$1 AND protocol_id=$2`, r.tenantID, protocolID, len(items)); err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE mutation_protocols SET state='previewed', source_as_of=COALESCE($3,source_as_of), previewed_at=COALESCE(previewed_at,now()), totals=jsonb_build_object('items',$4::int,'previewed',$4::int,'applied',0,'failed',0,'skipped',0) WHERE tenant_id=$1 AND protocol_id=$2`, r.tenantID, protocolID, sourceAsOf, len(items)); err != nil {
 		return nil, fmt.Errorf("mark mutation protocol previewed: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {

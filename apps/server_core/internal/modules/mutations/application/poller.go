@@ -16,6 +16,8 @@ type Poller struct {
 	now        func() time.Time
 }
 
+const protocolSourceMaxAge = 15 * time.Minute
+
 func NewPoller(repository ports.ProtocolRepository, writer ports.WriterPort, now func() time.Time) *Poller {
 	return &Poller{repository: repository, writer: writer, now: now}
 }
@@ -28,6 +30,10 @@ func (p *Poller) Pass(ctx context.Context, installationID string) (worked bool, 
 	defer func() { _ = claim.Rollback(ctx) }()
 
 	protocol := claim.Protocol()
+	execute := true
+	if err := ValidateProtocol(ProtocolWriteValidation{Actor: protocol.Actor, Execute: &execute, SourceAsOf: protocol.SourceAsOf, Now: p.now(), MaxAge: protocolSourceMaxAge}); err != nil {
+		return true, err
+	}
 	for {
 		items, fetchErr := claim.FetchPendingItems(ctx)
 		if fetchErr != nil {

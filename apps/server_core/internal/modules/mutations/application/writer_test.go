@@ -81,8 +81,7 @@ func TestWriterRouterListingCreateValidatesThenReturnsTypedNotEnabled(t *testing
 
 func TestWriterRouterProtocolRejectsRemainTypedErrors(t *testing.T) {
 	now := time.Now()
-	r := &WriterRouter{}
-	err := r.ValidateProtocol(ProtocolWriteValidation{Actor: "", Execute: boolPtr(true), SourceAsOf: &now, Now: now, MaxAge: time.Minute})
+	err := ValidateProtocol(ProtocolWriteValidation{Actor: "", Execute: boolPtr(true), SourceAsOf: &now, Now: now, MaxAge: time.Minute})
 	var gate *GateError
 	if !errors.As(err, &gate) || gate.Code != FailureCodeActorRequired {
 		t.Fatalf("err=%v", err)

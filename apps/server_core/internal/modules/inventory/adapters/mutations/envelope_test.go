@@ -11,9 +11,10 @@ import (
 )
 
 type fakeProtocolRepository struct {
-	created  mutationsports.CreateProtocolInput
-	replaced []mutationsports.ReplaceItemInput
-	approved bool
+	created    mutationsports.CreateProtocolInput
+	replaced   []mutationsports.ReplaceItemInput
+	sourceAsOf *time.Time
+	approvedAt time.Time
 }
 
 func (f *fakeProtocolRepository) CreateProtocol(_ context.Context, input mutationsports.CreateProtocolInput) (mutationsports.Protocol, error) {
@@ -25,13 +26,14 @@ func (f *fakeProtocolRepository) GetProtocol(context.Context, string) (mutations
 	return mutationsports.Protocol{}, false, nil
 }
 
-func (f *fakeProtocolRepository) ReplaceItems(_ context.Context, _ string, items []mutationsports.ReplaceItemInput) ([]mutationsports.MutationItem, error) {
+func (f *fakeProtocolRepository) ReplaceItems(_ context.Context, _ string, items []mutationsports.ReplaceItemInput, sourceAsOf *time.Time) ([]mutationsports.MutationItem, error) {
 	f.replaced = items
+	f.sourceAsOf = sourceAsOf
 	return nil, nil
 }
 
-func (f *fakeProtocolRepository) ApproveItems(context.Context, string, time.Time) error {
-	f.approved = true
+func (f *fakeProtocolRepository) ApproveItems(_ context.Context, _ string, at time.Time) error {
+	f.approvedAt = at
 	return nil
 }
 
@@ -64,8 +66,8 @@ func TestCreateStockCorrectionUsesCanonicalNoVariationSentinel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateStockCorrection() error = %v", err)
 	}
-	if protocolID != "prot-1" || !repo.approved {
-		t.Fatalf("protocolID = %q, approved = %v", protocolID, repo.approved)
+	if protocolID != "prot-1" || repo.approvedAt.IsZero() {
+		t.Fatalf("protocolID = %q, approved_at = %v", protocolID, repo.approvedAt)
 	}
 	if len(repo.replaced) != 1 {
 		t.Fatalf("replaced items = %d, want 1", len(repo.replaced))
@@ -80,6 +82,22 @@ func TestCreateStockCorrectionUsesCanonicalNoVariationSentinel(t *testing.T) {
 	}
 	if parsed.VariationID != listingsdomain.NoVariationID {
 		t.Fatalf("parsed variation = %q, want %q", parsed.VariationID, listingsdomain.NoVariationID)
+	}
+}
+
+func TestCreateStockCorrectionPersistsSourceAndApprovalTimesHonestly(t *testing.T) {
+	repo := &fakeProtocolRepository{}
+	action := stockAction("")
+	action.CreatedAt = action.UpdatedAt.Add(-time.Minute)
+
+	if _, err := NewEnvelope(repo).CreateStockCorrection(context.Background(), action); err != nil {
+		t.Fatalf("CreateStockCorrection() error = %v", err)
+	}
+	if repo.sourceAsOf == nil || !repo.sourceAsOf.Equal(action.UpdatedAt) {
+		t.Fatalf("source_as_of = %v, want %v", repo.sourceAsOf, action.UpdatedAt)
+	}
+	if !repo.approvedAt.Equal(action.CreatedAt) || repo.approvedAt.Equal(action.UpdatedAt) {
+		t.Fatalf("approved_at = %v, want %v and distinct from source time", repo.approvedAt, action.CreatedAt)
 	}
 }
 

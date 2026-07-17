@@ -29,11 +29,12 @@ func TestPollerPassResumesPostgresClaimWithoutResendingAppliedItem(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
+	sourceAsOf := time.Now().UTC()
 	items, err := repo.ReplaceItems(ctx, created.ProtocolID, []ports.ReplaceItemInput{
 		{ListingID: "MLB-001", After: json.RawMessage(`{"price":{"amount":"49.90"}}`)},
 		{ListingID: "MLB-002", After: json.RawMessage(`{"price":{"amount":"59.90"}}`)},
 		{ListingID: "MLB-003", After: json.RawMessage(`{"price":{"amount":"69.90"}}`)},
-	})
+	}, &sourceAsOf)
 	if err != nil {
 		t.Fatal(err)
 	}

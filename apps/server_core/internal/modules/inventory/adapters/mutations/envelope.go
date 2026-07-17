@@ -58,10 +58,10 @@ func (e *Envelope) CreateStockCorrection(ctx context.Context, action inventorydo
 		ListingID: listingID,
 		Before:    before,
 		After:     intent,
-	}}); err != nil {
+	}}, &action.UpdatedAt); err != nil {
 		return "", err
 	}
-	if err := e.repository.ApproveItems(ctx, protocol.ProtocolID, action.UpdatedAt); err != nil {
+	if err := e.repository.ApproveItems(ctx, protocol.ProtocolID, action.CreatedAt); err != nil {
 		return "", err
 	}
 	return protocol.ProtocolID, nil

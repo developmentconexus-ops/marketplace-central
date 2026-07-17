@@ -32,7 +32,7 @@ func TestApplyRepositorySnapshotClaimChunkAndImmutableOutcomes(t *testing.T) {
 	for i := range inputs {
 		inputs[i] = ports.ReplaceItemInput{ListingID: fmt.Sprintf("MLB-%03d", i+1), Before: json.RawMessage(`{"price":{"currency":"BRL","amount":"39.90"},"stock":{"available":7}}`), After: json.RawMessage(`{"price":{"amount":"49.90","currency":"BRL"},"stock":{"available":7}}`)}
 	}
-	items, err := repo.ReplaceItems(ctx, created.ProtocolID, inputs)
+	items, err := repo.ReplaceItems(ctx, created.ProtocolID, inputs, nil)
 	if err != nil {
 		t.Fatalf("ReplaceItems: %v", err)
 	}
@@ -44,7 +44,7 @@ func TestApplyRepositorySnapshotClaimChunkAndImmutableOutcomes(t *testing.T) {
 	if err := repo.ApproveItems(ctx, created.ProtocolID, approvedAt); err != nil {
 		t.Fatalf("ApproveItems: %v", err)
 	}
-	if _, err := repo.ReplaceItems(ctx, created.ProtocolID, inputs[:1]); err == nil {
+	if _, err := repo.ReplaceItems(ctx, created.ProtocolID, inputs[:1], nil); err == nil {
 		t.Fatal("ReplaceItems on approved protocol succeeded")
 	}
 	claim, found, err := repo.ClaimProtocol(ctx, "installation-a")

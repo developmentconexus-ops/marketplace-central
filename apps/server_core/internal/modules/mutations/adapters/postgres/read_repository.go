@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -22,12 +23,33 @@ func (r *Repository) CloneRetry(ctx context.Context, sourceID string, createdAt 
 	if err := tx.QueryRow(ctx, `SELECT protocol_id,installation_id,type,state,actor,intent,selection,totals,source_as_of,retried_from,created_at,previewed_at,approved_at,finished_at FROM mutation_protocols WHERE tenant_id=$1 AND protocol_id=$2 FOR UPDATE`, r.tenantID, sourceID).Scan(&source.ProtocolID, &source.InstallationID, &source.Type, &source.State, &source.Actor, &source.Intent, &source.Selection, &source.Totals, &source.SourceAsOf, &source.RetriedFrom, &source.CreatedAt, &source.PreviewedAt, &source.ApprovedAt, &source.FinishedAt); err != nil {
 		return ports.Protocol{}, false, fmt.Errorf("lock retry source protocol: %w", err)
 	}
-	var eligible bool
-	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM mutation_items WHERE tenant_id=$1 AND protocol_id=$2 AND state='failed' AND failure->>'code' IN ('provider_rate_limited','provider_unavailable','stale_source'))`, r.tenantID, sourceID).Scan(&eligible); err != nil {
+	rows, err := tx.Query(ctx, `SELECT listing_id FROM mutation_items WHERE tenant_id=$1 AND protocol_id=$2 AND state='failed' AND failure->>'code' IN ('provider_rate_limited','provider_unavailable','stale_source') ORDER BY seq`, r.tenantID, sourceID)
+	if err != nil {
 		return ports.Protocol{}, false, fmt.Errorf("read retryable mutation failures: %w", err)
 	}
-	if !eligible {
+	listingIDs := make([]string, 0)
+	for rows.Next() {
+		var listingID string
+		if err := rows.Scan(&listingID); err != nil {
+			rows.Close()
+			return ports.Protocol{}, false, fmt.Errorf("scan retryable mutation failure: %w", err)
+		}
+		listingIDs = append(listingIDs, listingID)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return ports.Protocol{}, false, fmt.Errorf("iterate retryable mutation failures: %w", err)
+	}
+	rows.Close()
+	if len(listingIDs) == 0 {
 		return ports.Protocol{}, false, nil
+	}
+	selection, err := json.Marshal(struct {
+		Mode       string   `json:"mode"`
+		ListingIDs []string `json:"listing_ids"`
+	}{Mode: "explicit", ListingIDs: listingIDs})
+	if err != nil {
+		return ports.Protocol{}, false, fmt.Errorf("marshal retry mutation selection: %w", err)
 	}
 	id, err := r.allocateProtocolID(ctx, tx)
 	if err != nil {
@@ -35,13 +57,13 @@ func (r *Repository) CloneRetry(ctx context.Context, sourceID string, createdAt 
 	}
 	totals := []byte(`{"items":0,"previewed":0,"applied":0,"failed":0,"skipped":0}`)
 	createdAt = createdAt.UTC()
-	if _, err := tx.Exec(ctx, `INSERT INTO mutation_protocols(tenant_id,protocol_id,installation_id,type,state,actor,intent,selection,totals,source_as_of,retried_from,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,NULL,$10,$11)`, r.tenantID, id, source.InstallationID, source.Type, domain.ProtocolStateDraft, source.Actor, source.Intent, source.Selection, totals, sourceID, createdAt); err != nil {
+	if _, err := tx.Exec(ctx, `INSERT INTO mutation_protocols(tenant_id,protocol_id,installation_id,type,state,actor,intent,selection,totals,source_as_of,retried_from,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,NULL,$10,$11)`, r.tenantID, id, source.InstallationID, source.Type, domain.ProtocolStateDraft, source.Actor, source.Intent, selection, totals, sourceID, createdAt); err != nil {
 		return ports.Protocol{}, false, fmt.Errorf("insert retry protocol: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return ports.Protocol{}, false, fmt.Errorf("commit retry protocol: %w", err)
 	}
-	return ports.Protocol{ProtocolID: id, InstallationID: source.InstallationID, Type: source.Type, State: domain.ProtocolStateDraft, Actor: source.Actor, Intent: append([]byte(nil), source.Intent...), Selection: append([]byte(nil), source.Selection...), Totals: totals, RetriedFrom: &sourceID, CreatedAt: createdAt}, true, nil
+	return ports.Protocol{ProtocolID: id, InstallationID: source.InstallationID, Type: source.Type, State: domain.ProtocolStateDraft, Actor: source.Actor, Intent: append([]byte(nil), source.Intent...), Selection: selection, Totals: totals, RetriedFrom: &sourceID, CreatedAt: createdAt}, true, nil
 }
 
 func (r *Repository) ListProtocols(ctx context.Context, q application.ProtocolQuery) (application.ProtocolPage, error) {

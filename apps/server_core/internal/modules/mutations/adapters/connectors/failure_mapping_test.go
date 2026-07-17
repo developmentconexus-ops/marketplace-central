@@ -43,3 +43,10 @@ func TestFailureMappingCoversProviderSurface(t *testing.T) {
 		})
 	}
 }
+
+func TestMapFailurePreservesUnknownProviderMessage(t *testing.T) {
+	got := MapFailure(errors.New("boom"))
+	if got.Code != domain.FailureCodeInternal || got.MessageProvider != "boom" || got.MessagePT != "Falha interna ao aplicar alteração." {
+		t.Fatalf("MapFailure() = %+v", got)
+	}
+}

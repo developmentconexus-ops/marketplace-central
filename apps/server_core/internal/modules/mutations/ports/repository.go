@@ -74,7 +74,7 @@ type ProtocolClaim interface {
 type ProtocolRepository interface {
 	CreateProtocol(context.Context, CreateProtocolInput) (Protocol, error)
 	GetProtocol(context.Context, string) (Protocol, bool, error)
-	ReplaceItems(context.Context, string, []ReplaceItemInput) ([]MutationItem, error)
+	ReplaceItems(context.Context, string, []ReplaceItemInput, *time.Time) ([]MutationItem, error)
 	ApproveItems(context.Context, string, time.Time) error
 	ClaimProtocol(context.Context, string) (ProtocolClaim, bool, error)
 }

@@ -30,6 +30,9 @@ func MapFailure(err error) domain.Failure {
 	if errors.As(err, &provider) {
 		message = provider.Message
 	}
+	if message == "" && err != nil {
+		message = err.Error()
+	}
 	return domain.Failure{Code: code, MessagePT: messagePT(code), MessageProvider: message, Retryable: code == domain.FailureCodeProviderRateLimited || code == domain.FailureCodeProviderUnavailable}
 }
 

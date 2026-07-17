@@ -87,3 +87,45 @@ func TestRetryCloneAndReadPagesAreTenantScopedAndStable(t *testing.T) {
 		t.Fatalf("foreign=%+v err=%v", foreign, err)
 	}
 }
+
+func TestCloneRetrySelectsOnlyRetryableFailedListings(t *testing.T) {
+	ctx := context.Background()
+	pool, _ := testpostgres.OpenPool(t, "tenant_harness_mutation_retry_selection")
+	token := time.Now().UTC().Format("150405.000000000")
+	tenant, protocolID := "mutation-retry-selection-"+token, "MP-009901"
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM mutation_protocols WHERE tenant_id=$1`, tenant)
+	})
+	now := time.Date(2026, 7, 17, 10, 0, 0, 0, time.UTC)
+	_, err := pool.Exec(ctx, `INSERT INTO mutation_protocols(tenant_id,protocol_id,installation_id,type,state,actor,intent,selection,totals,created_at,finished_at) VALUES($1,$2,'inst','price_update','partially_failed','operator','{}','{"mode":"filter"}','{}',$3,$3)`, tenant, protocolID, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for seq, item := range []struct {
+		listingID string
+		state     domain.ItemState
+		failure   any
+	}{
+		{listingID: "listing-applied", state: domain.ItemStateApplied},
+		{listingID: "listing-retry", state: domain.ItemStateFailed, failure: json.RawMessage(`{"code":"provider_unavailable"}`)},
+	} {
+		_, err := pool.Exec(ctx, `INSERT INTO mutation_items(tenant_id,protocol_id,seq,item_id,listing_id,idempotency_key,after,state,failure) VALUES($1,$2,$3,$4,$5,$6,'{}',$7,$8)`, tenant, protocolID, seq+1, "item-"+item.listingID, item.listingID, protocolID+":"+item.listingID, item.state, item.failure)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	clone, eligible, err := mutationspostgres.NewRepository(pool, tenant).CloneRetry(ctx, protocolID, now.Add(time.Minute))
+	if err != nil || !eligible {
+		t.Fatalf("CloneRetry() clone=%+v eligible=%v err=%v", clone, eligible, err)
+	}
+	var selection struct {
+		Mode       string   `json:"mode"`
+		ListingIDs []string `json:"listing_ids"`
+	}
+	if err := json.Unmarshal(clone.Selection, &selection); err != nil {
+		t.Fatal(err)
+	}
+	if selection.Mode != "explicit" || len(selection.ListingIDs) != 1 || selection.ListingIDs[0] != "listing-retry" {
+		t.Fatalf("selection=%+v", selection)
+	}
+}
