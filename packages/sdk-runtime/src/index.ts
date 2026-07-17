@@ -1247,6 +1247,26 @@ export interface MutationPreview extends MutationProtocol {
   items: MutationItem[];
 }
 
+export interface MutationPage<T> {
+  items: T[];
+  next_cursor: string | null;
+  page_size: number;
+}
+
+export interface MutationListOptions {
+  installation_id: string;
+  state?: MutationState;
+  type?: MutationType;
+  limit?: number;
+  cursor?: string;
+}
+
+export interface MutationItemListOptions {
+  state?: MutationItemState;
+  limit?: number;
+  cursor?: string;
+}
+
 export interface ListResponse<T> {
   items: T[];
 }
@@ -1338,6 +1358,14 @@ export function createMarketplaceCentralClient(options: {
     if (params.date_from !== undefined) query.set("date_from", params.date_from);
     if (params.date_to !== undefined) query.set("date_to", params.date_to);
     if (params.q !== undefined) query.set("q", params.q);
+    return `?${query.toString()}`;
+  }
+
+  function mutationQuery(params: Record<string, string | number | undefined>): string {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined) query.set(key, String(value));
+    }
     return `?${query.toString()}`;
   }
 
@@ -1591,6 +1619,26 @@ export function createMarketplaceCentralClient(options: {
       postJson<MutationProtocol>(`/mutations/${encodeURIComponent(protocolId)}/cancel`, {}),
     retryMutationFailures: (protocolId: string) =>
       postJson<MutationProtocol>(`/mutations/${encodeURIComponent(protocolId)}/retry`, {}),
+    listMutations: (options: MutationListOptions) =>
+      getJson<MutationPage<MutationProtocol>>(
+        `/mutations${mutationQuery({
+          installation_id: options.installation_id,
+          state: options.state,
+          type: options.type,
+          limit: options.limit,
+          cursor: options.cursor,
+        })}`,
+      ),
+    getMutation: (protocolId: string) =>
+      getJson<MutationProtocol>(`/mutations/${encodeURIComponent(protocolId)}`),
+    listMutationItems: (protocolId: string, options: MutationItemListOptions = {}) =>
+      getJson<MutationPage<MutationItem>>(
+        `/mutations/${encodeURIComponent(protocolId)}/items${mutationQuery({
+          state: options.state,
+          limit: options.limit,
+          cursor: options.cursor,
+        })}`,
+      ),
 
     // Catalog
     /** @deprecated Use searchCatalogProductFacts; the endpoint now returns the IC-01 page envelope. */

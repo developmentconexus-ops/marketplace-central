@@ -1720,6 +1720,73 @@ describe("sdk runtime", () => {
     expect(JSON.parse(String(requests[0].init?.body))).toEqual({});
   });
 
+  it("listMutations gets an encoded filtered protocol page", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(JSON.stringify({ items: [{ protocol_id: "MP-1" }], next_cursor: null, page_size: 1 }), { status: 200 });
+      },
+    });
+
+    const page = await client.listMutations({
+      installation_id: "install/1",
+      state: "partially_failed",
+      type: "price_update",
+      limit: 200,
+      cursor: "opaque+/=",
+    });
+
+    expect(String(requests[0].input)).toBe(
+      "http://localhost:8080/mutations?installation_id=install%2F1&state=partially_failed&type=price_update&limit=200&cursor=opaque%2B%2F%3D",
+    );
+    expect(requests[0].init?.method).toBe("GET");
+    expect(page.items[0].protocol_id).toBe("MP-1");
+    expect(page.next_cursor).toBeNull();
+  });
+
+  it("getMutation gets an encoded protocol path with typed response", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(JSON.stringify({ protocol_id: "MP/1?" }), { status: 200 });
+      },
+    });
+
+    const protocol = await client.getMutation("MP/1?");
+
+    expect(String(requests[0].input)).toBe("http://localhost:8080/mutations/MP%2F1%3F");
+    expect(requests[0].init?.method).toBe("GET");
+    expect(protocol.protocol_id).toBe("MP/1?");
+  });
+
+  it("listMutationItems gets an encoded filtered item page", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(JSON.stringify({ items: [{ seq: 1 }], next_cursor: "next", page_size: 1 }), { status: 200 });
+      },
+    });
+
+    const page = await client.listMutationItems("MP/1", {
+      state: "failed",
+      limit: 50,
+      cursor: "opaque+/=",
+    });
+
+    expect(String(requests[0].input)).toBe(
+      "http://localhost:8080/mutations/MP%2F1/items?state=failed&limit=50&cursor=opaque%2B%2F%3D",
+    );
+    expect(requests[0].init?.method).toBe("GET");
+    expect(page.items[0].seq).toBe(1);
+    expect(page.next_cursor).toBe("next");
+  });
+
   it("throws parsed error payload on non-ok response", async () => {
     const client = createMarketplaceCentralClient({
       baseUrl: "http://localhost:8080",
