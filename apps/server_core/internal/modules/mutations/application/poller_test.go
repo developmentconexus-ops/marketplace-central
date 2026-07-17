@@ -90,7 +90,8 @@ func TestPollerRejectsProtocolWithoutFreshSource(t *testing.T) {
 		{name: "stale", source: timePtr(now.Add(-15*time.Minute - time.Nanosecond)), code: domain.FailureCodeStaleSource, retryable: true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			r := newFakeRepo("p:a")
+			r := newFakeRepo("p:a", "p:b", "p:c")
+			r.fetchLimit = 2
 			r.protocol.SourceAsOf = tt.source
 			w := stub.NewWriter(nil)
 			p := NewPoller(r, w, func() time.Time { return now })
@@ -101,12 +102,17 @@ func TestPollerRejectsProtocolWithoutFreshSource(t *testing.T) {
 			if r.claim.finished != domain.ProtocolStateFailedPreserved || !r.claim.committed || r.claim.rolledBack {
 				t.Fatalf("finish=%q committed=%v rolledBack=%v", r.claim.finished, r.claim.committed, r.claim.rolledBack)
 			}
-			var failure domain.Failure
-			if err := json.Unmarshal(r.outcomes["item-1"].Failure, &failure); err != nil {
-				t.Fatal(err)
+			if len(r.outcomes) != len(r.items) {
+				t.Fatalf("outcomes=%d, want every pending item failed (%d)", len(r.outcomes), len(r.items))
 			}
-			if r.outcomes["item-1"].State != domain.ItemStateFailed || failure.Code != tt.code || failure.Retryable != tt.retryable {
-				t.Fatalf("outcome=%+v failure=%+v", r.outcomes["item-1"], failure)
+			for _, item := range r.items {
+				var failure domain.Failure
+				if err := json.Unmarshal(r.outcomes[item.ItemID].Failure, &failure); err != nil {
+					t.Fatal(err)
+				}
+				if r.outcomes[item.ItemID].State != domain.ItemStateFailed || failure.Code != tt.code || failure.Retryable != tt.retryable {
+					t.Fatalf("item %s outcome=%+v failure=%+v", item.ItemID, r.outcomes[item.ItemID], failure)
+				}
 			}
 			if got := w.Keys(); len(got) != 0 {
 				t.Fatalf("writer keys=%v, want none", got)
@@ -171,6 +177,7 @@ type fakeRepo struct {
 	failOutcomeAfter int
 	claimAttempts    int
 	claims           int
+	fetchLimit       int
 }
 
 func newFakeRepo(keys ...string) *fakeRepo {
@@ -218,6 +225,9 @@ func (c *fakeClaim) FetchPendingItems(context.Context) ([]ports.MutationItem, er
 	for _, item := range c.repo.items {
 		if _, terminal := c.repo.outcomes[item.ItemID]; !terminal {
 			items = append(items, item)
+		}
+		if c.repo.fetchLimit > 0 && len(items) == c.repo.fetchLimit {
+			break
 		}
 	}
 	return items, nil

@@ -36,13 +36,18 @@ func (p *Poller) Pass(ctx context.Context, installationID string) (worked bool, 
 		if marshalErr != nil {
 			return true, marshalErr
 		}
-		items, fetchErr := claim.FetchPendingItems(ctx)
-		if fetchErr != nil {
-			return true, fmt.Errorf("fetch pending mutation items after protocol gate failure: %w", fetchErr)
-		}
-		for _, item := range items {
-			if writeErr := claim.WriteItemOutcome(ctx, item.ItemID, ports.ItemOutcome{State: domain.ItemStateFailed, Failure: failure}); writeErr != nil {
-				return true, fmt.Errorf("write mutation item gate failure outcome: %w", writeErr)
+		for {
+			items, fetchErr := claim.FetchPendingItems(ctx)
+			if fetchErr != nil {
+				return true, fmt.Errorf("fetch pending mutation items after protocol gate failure: %w", fetchErr)
+			}
+			if len(items) == 0 {
+				break
+			}
+			for _, item := range items {
+				if writeErr := claim.WriteItemOutcome(ctx, item.ItemID, ports.ItemOutcome{State: domain.ItemStateFailed, Failure: failure}); writeErr != nil {
+					return true, fmt.Errorf("write mutation item gate failure outcome: %w", writeErr)
+				}
 			}
 		}
 		if finishErr := p.finish(ctx, claim); finishErr != nil {
