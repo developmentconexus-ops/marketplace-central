@@ -578,6 +578,18 @@ Serialization points:
 - Complexity: `standard`
 - Serves: M03-C01, C04, C07, C08, C09
 - Budget: ~300 lines.
+- G2 NOTE 2026-07-16 (review D-51 finding — enabled-type authority): the 6-type allow-list
+  was originally duplicated in transport (isEnabledType) and application/writer.go dispatch
+  with no shared source. Fix (commit 66b0944a): `domain.ProtocolTypeEnabled` is the single
+  authority; transport delegates to it; `Service.Create` also gates on it (typed
+  type_not_enabled) so disabled types cannot be inserted by any future non-HTTP caller.
+  Alternatives considered: (a) transport-only gate (original) — rejected, application had
+  zero protection and two lists could drift; (b) application-only gate — rejected, loses
+  the cheap 422 fast-fail before body-dependent validation ordering; (c) dual-layer with
+  domain authority (chosen). writer.go dispatch switch stays — it routes types to concrete
+  writers (cannot be a set), and its default arm remains the apply-time backstop; adding a
+  type to the domain set without wiring a writer fails honestly at apply with
+  type_not_enabled.
 
 ### F03-S6 — query HTTP endpoints
 
