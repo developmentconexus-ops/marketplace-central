@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
@@ -62,9 +61,6 @@ func (laneFacts) GetICMSCeilingByOrigin(context.Context, int64) (map[int64]*list
 
 func newLane(t *testing.T) *lane {
 	t.Helper()
-	if os.Getenv("MPC_TEST_DATABASE_URL") == "" {
-		t.Skip("MPC_TEST_DATABASE_URL is unset")
-	}
 	pool, _ := testpostgres.OpenPool(t, "mutation-lifecycle")
 	now := time.Now().UTC()
 	x := &lane{t: t, pool: pool, tenant: fmt.Sprintf("mutation-http-%d", now.UnixNano()), installation: "inst-http", writer: stub.NewWriter(map[string]stub.Result{})}
