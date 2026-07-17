@@ -1628,6 +1628,98 @@ describe("sdk runtime", () => {
     expect(result.connected).toBe(true);
   });
 
+  it("createMutation posts the command request", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(JSON.stringify({ protocol_id: "MP-000001" }), { status: 201 });
+      },
+    });
+    const request = {
+      installation_id: "install-1",
+      type: "price_update" as const,
+      actor: "operator-1",
+      intent: { price: { amount: "49.90", currency: "BRL" } },
+      selection: { listing_ids: ["MLB-1"] },
+    };
+
+    await client.createMutation(request);
+
+    expect(String(requests[0].input)).toBe("http://localhost:8080/mutations");
+    expect(requests[0].init?.method).toBe("POST");
+    expect(JSON.parse(String(requests[0].init?.body))).toEqual(request);
+  });
+
+  it("previewMutation posts to the encoded protocol path", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(JSON.stringify({ protocol_id: "MP/1", items: [] }), { status: 200 });
+      },
+    });
+
+    await client.previewMutation("MP/1");
+
+    expect(String(requests[0].input)).toBe("http://localhost:8080/mutations/MP%2F1/preview");
+    expect(requests[0].init?.method).toBe("POST");
+    expect(JSON.parse(String(requests[0].init?.body))).toEqual({});
+  });
+
+  it("approveMutation posts the execute confirmation", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(JSON.stringify({ protocol_id: "MP-1" }), { status: 200 });
+      },
+    });
+
+    await client.approveMutation("MP-1", { execute: true });
+
+    expect(String(requests[0].input)).toBe("http://localhost:8080/mutations/MP-1/approve");
+    expect(requests[0].init?.method).toBe("POST");
+    expect(JSON.parse(String(requests[0].init?.body))).toEqual({ execute: true });
+  });
+
+  it("cancelMutation posts to the protocol command path", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(JSON.stringify({ protocol_id: "MP-1" }), { status: 200 });
+      },
+    });
+
+    await client.cancelMutation("MP-1");
+
+    expect(String(requests[0].input)).toBe("http://localhost:8080/mutations/MP-1/cancel");
+    expect(requests[0].init?.method).toBe("POST");
+    expect(JSON.parse(String(requests[0].init?.body))).toEqual({});
+  });
+
+  it("retryMutationFailures posts to the protocol command path", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(JSON.stringify({ protocol_id: "MP-2" }), { status: 200 });
+      },
+    });
+
+    await client.retryMutationFailures("MP-1");
+
+    expect(String(requests[0].input)).toBe("http://localhost:8080/mutations/MP-1/retry");
+    expect(requests[0].init?.method).toBe("POST");
+    expect(JSON.parse(String(requests[0].init?.body))).toEqual({});
+  });
+
   it("throws parsed error payload on non-ok response", async () => {
     const client = createMarketplaceCentralClient({
       baseUrl: "http://localhost:8080",
