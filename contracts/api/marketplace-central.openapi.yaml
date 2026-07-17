@@ -58,6 +58,7 @@ paths:
           required: false
           schema:
             $ref: '#/components/schemas/MutationType'
+          description: Query filtering accepts enabled protocol types; reserved listing_create is rejected as invalid_filter.
         - name: limit
           in: query
           required: false
