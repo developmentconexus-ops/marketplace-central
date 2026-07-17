@@ -40,6 +40,8 @@ type CapabilityAdapter struct {
 	now                 func() time.Time
 }
 
+var _ ports.MarketReader = (*CapabilityAdapter)(nil)
+
 func NewCapabilityAdapter(cfg CapabilityAdapterConfig) *CapabilityAdapter {
 	baseURL := strings.TrimRight(strings.TrimSpace(cfg.BaseURL), "/")
 	if baseURL == "" {
@@ -79,6 +81,30 @@ func (a *CapabilityAdapter) ProviderCapabilitySet() connectorsapp.ProviderCapabi
 		StockWrites:   a,
 		ListingWrites: a,
 	}
+}
+
+func (a *CapabilityAdapter) GetOwnItemPricing(ctx context.Context, accountRef domain.ProviderAccountRef, itemID string) (domain.OwnItemPricing, error) {
+	accountRef, err := normalizeAccountRef(accountRef)
+	if err != nil {
+		return domain.OwnItemPricing{}, err
+	}
+	token, err := a.accessToken(ctx, accountRef)
+	if err != nil {
+		return domain.OwnItemPricing{}, mapPricingReaderError(err)
+	}
+	return a.getOwnItemPricing(ctx, accountRef, token, strings.TrimSpace(itemID))
+}
+
+func (a *CapabilityAdapter) GetPriceToWin(ctx context.Context, accountRef domain.ProviderAccountRef, itemID string) (domain.PriceToWin, error) {
+	accountRef, err := normalizeAccountRef(accountRef)
+	if err != nil {
+		return domain.PriceToWin{}, err
+	}
+	token, err := a.accessToken(ctx, accountRef)
+	if err != nil {
+		return domain.PriceToWin{}, mapPricingReaderError(err)
+	}
+	return a.getPriceToWin(ctx, accountRef, token, strings.TrimSpace(itemID))
 }
 
 func (a *CapabilityAdapter) ProbeAccount(ctx context.Context, ref domain.ProviderAccountRef) (domain.AccountSnapshot, error) {
