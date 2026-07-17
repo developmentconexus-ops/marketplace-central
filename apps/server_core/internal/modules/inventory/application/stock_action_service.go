@@ -6,23 +6,27 @@ import (
 	"strings"
 	"time"
 
+	internalreadports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 	"marketplace-central/apps/server_core/internal/modules/inventory/domain"
 	"marketplace-central/apps/server_core/internal/modules/inventory/ports"
-	internalreadports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 )
 
 type StockActionService struct {
-	store  ports.StockActionStore
-	writer ports.StockWriter
+	store       ports.StockActionStore
+	envelope    ports.StockMutationEnvelope
 	invalidator internalreadports.CacheInvalidator
 }
 
-func NewStockActionService(store ports.StockActionStore, writer ports.StockWriter) StockActionService {
-	return NewStockActionServiceWithInvalidator(store, writer, nil)
+func NewStockActionService(store ports.StockActionStore) StockActionService {
+	return StockActionService{store: store}
 }
 
-func NewStockActionServiceWithInvalidator(store ports.StockActionStore, writer ports.StockWriter, invalidator internalreadports.CacheInvalidator) StockActionService {
-	return StockActionService{store: store, writer: writer, invalidator: invalidator}
+func NewStockActionServiceWithInvalidator(store ports.StockActionStore, invalidator internalreadports.CacheInvalidator) StockActionService {
+	return StockActionService{store: store, invalidator: invalidator}
+}
+
+func NewStockActionServiceWithEnvelope(store ports.StockActionStore, envelope ports.StockMutationEnvelope) StockActionService {
+	return StockActionService{store: store, envelope: envelope}
 }
 
 type ApplyManualStockActionInput struct {
@@ -82,46 +86,25 @@ func (s StockActionService) ApplyManual(ctx context.Context, input ApplyManualSt
 		action = withActionEvent(action, domain.StockActionStateBlocked, action.BlockingReason.Message, input.Now)
 		return action, s.store.Save(ctx, action)
 	}
-	if s.writer == nil {
+	if s.envelope == nil {
 		action.State = domain.StockActionStateFailed
-		action.FailureReason = domain.BlockingReason{Code: "stock_writer_unavailable", Message: "stock writer is not configured"}
+		action.FailureReason = domain.BlockingReason{Code: "mutation_envelope_unavailable", Message: "mutation envelope is not configured"}
 		action = withActionEvent(action, domain.StockActionStateFailed, action.FailureReason.Message, input.Now)
 		return action, s.store.Save(ctx, action)
 	}
 
 	action.State = domain.StockActionStateApproved
 	action = withActionEvent(action, domain.StockActionStateApproved, "manual approval accepted", input.Now)
-	if err := s.store.Save(ctx, action); err != nil {
-		return domain.StockAction{}, err
-	}
-
-	result, err := s.writer.UpdateAvailableQuantity(ctx, domain.StockWriteRequest{
-		ProviderRef:       input.ProviderRef,
-		IdempotencyKey:    input.ActionID,
-		RequestedQuantity: input.RequestedQuantity,
-		Reason:            input.Reason,
-	})
-	action.ProviderResult = result
+	protocolID, err := s.envelope.CreateStockCorrection(ctx, action)
 	if err != nil {
 		action.State = domain.StockActionStateFailed
-		action.FailureReason = domain.BlockingReason{Code: "provider_error", Message: err.Error()}
+		action.FailureReason = domain.BlockingReason{Code: "mutation_envelope_error", Message: err.Error()}
 		action = withActionEvent(action, domain.StockActionStateFailed, action.FailureReason.Message, input.Now)
 		return action, s.store.Save(ctx, action)
 	}
-	switch result.Status {
-	case domain.StockWriteResultApplied:
-		action.State = domain.StockActionStateApplied
-		action = withActionEvent(action, domain.StockActionStateApplied, result.Message, input.Now)
-	default:
-		action.State = domain.StockActionStateFailed
-		action.FailureReason = domain.BlockingReason{Code: "provider_rejected", Message: result.Message}
-		action = withActionEvent(action, domain.StockActionStateFailed, result.Message, input.Now)
-	}
+	action.MutationProtocolID = &protocolID
 	if err := s.store.Save(ctx, action); err != nil {
 		return domain.StockAction{}, err
-	}
-	if action.State == domain.StockActionStateApplied && s.invalidator != nil {
-		s.invalidator.InvalidateClass("inventory")
 	}
 	return action, nil
 }

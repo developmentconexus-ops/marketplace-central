@@ -8,6 +8,9 @@ import (
 	"testing"
 	"time"
 
+	mutationsstub "marketplace-central/apps/server_core/internal/modules/mutations/adapters/stub"
+	mutationsapp "marketplace-central/apps/server_core/internal/modules/mutations/application"
+	mutationsbg "marketplace-central/apps/server_core/internal/modules/mutations/background"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 	"marketplace-central/apps/server_core/internal/platform/pgdb"
 )
@@ -33,6 +36,57 @@ func TestRefreshListingsOpenAPIContractParity(t *testing.T) {
 		if strings.Contains(path, unwanted) {
 			t.Fatalf("refresh contract unexpectedly contains %q", unwanted)
 		}
+	}
+}
+
+func TestRootRuntimeWiresMutationPoller(t *testing.T) {
+	runtime, err := NewRootRuntime(nil, pgdb.Config{DefaultTenantID: "tenant_default", EncryptionKey: "0123456789abcdef0123456789abcdef"})
+	if err != nil {
+		t.Fatalf("NewRootRuntime() error = %v", err)
+	}
+	if runtime.MutationPoller == nil {
+		t.Fatal("MutationPoller is nil")
+	}
+	var _ *mutationsbg.Poller = runtime.MutationPoller
+}
+
+func TestRootRuntimeSelectsMutationWriterLane(t *testing.T) {
+	for _, tc := range []struct {
+		name, value string
+		real        bool
+	}{
+		{name: "unset"},
+		{name: "false", value: "false"},
+		{name: "yes", value: "yes"},
+		{name: "one", value: "1"},
+		{name: "true", value: "true", real: true},
+		{name: "trimmed uppercase true", value: "  TRUE  ", real: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("MPC_PROVIDER_WRITES_ENABLED", tc.value)
+			runtime, err := NewRootRuntime(nil, pgdb.Config{DefaultTenantID: "tenant_default", EncryptionKey: "0123456789abcdef0123456789abcdef"})
+			if err != nil {
+				t.Fatalf("NewRootRuntime() error = %v", err)
+			}
+			if runtime.mutationLane.envelope == nil {
+				t.Fatal("inventory mutation envelope is nil")
+			}
+			if tc.real {
+				if _, ok := runtime.mutationLane.writer.(*mutationsapp.WriterRouter); !ok {
+					t.Fatalf("writer = %T, want real WriterRouter", runtime.mutationLane.writer)
+				}
+				if !runtime.mutationLane.real || !runtime.mutationLane.price || !runtime.mutationLane.stock || !runtime.mutationLane.listing || !runtime.mutationLane.linkage || !runtime.mutationLane.resync {
+					t.Fatalf("real lane surfaces = %+v, want all configured", runtime.mutationLane)
+				}
+				return
+			}
+			if _, ok := runtime.mutationLane.writer.(*mutationsstub.Writer); !ok {
+				t.Fatalf("writer = %T, want fallback stub", runtime.mutationLane.writer)
+			}
+			if runtime.mutationLane.real || runtime.mutationLane.price || runtime.mutationLane.stock || runtime.mutationLane.listing || runtime.mutationLane.linkage || runtime.mutationLane.resync {
+				t.Fatalf("fallback lane unexpectedly exposes real surfaces: %+v", runtime.mutationLane)
+			}
+		})
 	}
 }
 
@@ -196,5 +250,30 @@ func TestRootMountsOrdersOnce(t *testing.T) {
 	runtime.Handler.ServeHTTP(detailRecorder, httptest.NewRequest(http.MethodGet, "/orders/provider-order-1?installation_id=installation-1", nil))
 	if detailRecorder.Code != http.StatusNotFound || !strings.Contains(detailRecorder.Body.String(), "order_not_found") {
 		t.Fatalf("orders detail route was not handled by the orders transport: status=%d body=%s", detailRecorder.Code, detailRecorder.Body.String())
+	}
+}
+
+func TestRootRuntimeRegistersMutationRoutes(t *testing.T) {
+	runtime, err := NewRootRuntime(nil, pgdb.Config{DefaultTenantID: "tenant_default", EncryptionKey: "0123456789abcdef0123456789abcdef"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, route := range []struct{ method, path, body string }{
+		{http.MethodPost, "/mutations", "["},
+		{http.MethodPost, "/mutations/missing/preview", "["},
+		{http.MethodPost, "/mutations/missing/approve", "["},
+		{http.MethodPost, "/mutations/missing/cancel", "["},
+		{http.MethodPost, "/mutations/missing/retry-failures", "["},
+		{http.MethodGet, "/mutations", ""},
+		{http.MethodPost, "/mutations/missing", ""},
+		{http.MethodPost, "/mutations/missing/items", ""},
+	} {
+		t.Run(route.method+" "+route.path, func(t *testing.T) {
+			recorder := httptest.NewRecorder()
+			runtime.Handler.ServeHTTP(recorder, httptest.NewRequest(route.method, route.path, strings.NewReader(route.body)))
+			if recorder.Code == http.StatusNotFound && !strings.Contains(recorder.Body.String(), "protocol_not_found") {
+				t.Fatalf("route was not registered: status=%d body=%s", recorder.Code, recorder.Body.String())
+			}
+		})
 	}
 }

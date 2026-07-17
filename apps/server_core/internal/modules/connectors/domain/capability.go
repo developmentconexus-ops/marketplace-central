@@ -11,6 +11,8 @@ type ProviderCode string
 type CapabilityStatus string
 type StockScope string
 type StockWriteResultStatus string
+type WriteResultStatus string
+type ListingWriteAction string
 type ProviderOperationState string
 type ErrorCode string
 
@@ -27,6 +29,12 @@ const (
 	StockWriteResultRejected         StockWriteResultStatus = "rejected"
 	StockWriteResultTransientFailure StockWriteResultStatus = "transient_failure"
 	StockWriteResultUnsupportedShape StockWriteResultStatus = "unsupported_shape"
+	WriteResultApplied               WriteResultStatus      = "applied"
+	WriteResultRejected              WriteResultStatus      = "rejected"
+	WriteResultTransientFailure      WriteResultStatus      = "transient_failure"
+	WriteResultUnsupportedShape      WriteResultStatus      = "unsupported_shape"
+	ListingWritePause                ListingWriteAction     = "pause"
+	ListingWriteEdit                 ListingWriteAction     = "edit"
 
 	ProviderOperationStatePending   ProviderOperationState = "pending"
 	ProviderOperationStateRunning   ProviderOperationState = "running"
@@ -186,6 +194,50 @@ type StockWriteResult struct {
 	ProviderVariationID string                 `json:"provider_variation_id,omitempty"`
 	Message             string                 `json:"message,omitempty"`
 	ProviderResponseRef any                    `json:"provider_response_ref,omitempty"`
+}
+
+// Price is the canonical absolute price exchanged by mutation writers.
+type Price struct {
+	Amount   string `json:"amount"`
+	Currency string `json:"currency"`
+}
+
+type PriceWriteRequest struct {
+	TenantID       string
+	InstallationID string
+	ListingID      string
+	IdempotencyKey string
+	Price          Price
+}
+
+type PriceWriteResult struct {
+	ListingID      string            `json:"listing_id"`
+	IdempotencyKey string            `json:"idempotency_key"`
+	Price          Price             `json:"price"`
+	Result         WriteResultStatus `json:"result"`
+	Message        string            `json:"message,omitempty"`
+}
+
+type ListingAttribute struct {
+	ID        string `json:"id"`
+	ValueName string `json:"value_name"`
+}
+
+type ListingWriteRequest struct {
+	TenantID       string
+	InstallationID string
+	ListingID      string
+	IdempotencyKey string
+	Action         ListingWriteAction
+	Attributes     []ListingAttribute
+}
+
+type ListingWriteResult struct {
+	ListingID      string             `json:"listing_id"`
+	IdempotencyKey string             `json:"idempotency_key"`
+	Action         ListingWriteAction `json:"action"`
+	Result         WriteResultStatus  `json:"result"`
+	Message        string             `json:"message,omitempty"`
 }
 
 type OrderSnapshot struct {

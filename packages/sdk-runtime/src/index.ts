@@ -1181,6 +1181,92 @@ export interface BatchSimulationItem {
   freight_source: string;
 }
 
+export type MutationType =
+  | "price_update"
+  | "stock_correct"
+  | "link_apply"
+  | "listing_pause"
+  | "listing_resync"
+  | "listing_edit"
+  | "listing_create";
+
+export type MutationState =
+  | "draft"
+  | "previewed"
+  | "approved"
+  | "applying"
+  | "applied"
+  | "partially_failed"
+  | "failed_preserved"
+  | "cancelled";
+
+export type MutationItemState = "previewed" | "approved" | "applying" | "applied" | "failed" | "skipped";
+
+export interface CreateMutationRequest {
+  installation_id: string;
+  type: MutationType;
+  actor: string;
+  intent: Record<string, unknown>;
+  selection: Record<string, unknown>;
+}
+
+export interface ApproveMutationRequest {
+  execute: true;
+}
+
+export interface MutationProtocol {
+  protocol_id: string;
+  installation_id: string;
+  type: MutationType;
+  state: MutationState;
+  actor: string;
+  intent: Record<string, unknown>;
+  selection: Record<string, unknown>;
+  totals: Record<string, unknown>;
+  source_as_of: string | null;
+  retried_from: string | null;
+  created_at: string;
+  previewed_at: string | null;
+  approved_at: string | null;
+  finished_at: string | null;
+}
+
+export interface MutationItem {
+  seq: number;
+  item_id: string;
+  listing_id: string;
+  idempotency_key: string;
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown>;
+  state: MutationItemState;
+  failure: Record<string, unknown> | null;
+  applied_at: string | null;
+}
+
+export interface MutationPreview extends MutationProtocol {
+  items: MutationItem[];
+}
+
+export interface MutationPage<T> {
+  items: T[];
+  next_cursor: string | null;
+  page_size: number;
+}
+
+export interface MutationListOptions {
+  installation_id: string;
+  state?: MutationState;
+  type?: MutationType;
+  limit?: number;
+  cursor?: string;
+}
+
+export interface MutationItemListOptions {
+  state?: MutationItemState;
+  limit?: number;
+  cursor?: string;
+}
+
 export interface ListResponse<T> {
   items: T[];
 }
@@ -1272,6 +1358,14 @@ export function createMarketplaceCentralClient(options: {
     if (params.date_from !== undefined) query.set("date_from", params.date_from);
     if (params.date_to !== undefined) query.set("date_to", params.date_to);
     if (params.q !== undefined) query.set("q", params.q);
+    return `?${query.toString()}`;
+  }
+
+  function mutationQuery(params: Record<string, string | number | undefined>): string {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined) query.set(key, String(value));
+    }
     return `?${query.toString()}`;
   }
 
@@ -1515,6 +1609,36 @@ export function createMarketplaceCentralClient(options: {
       postJson<{ items: BatchSimulationItem[] }>("/pricing/simulations/batch", req),
     getMelhorEnvioStatus: () =>
       getJson<{ connected: boolean }>("/connectors/melhor-envio/status"),
+    createMutation: (req: CreateMutationRequest) =>
+      postJson<MutationProtocol>("/mutations", req),
+    previewMutation: (protocolId: string) =>
+      postJson<MutationPreview>(`/mutations/${encodeURIComponent(protocolId)}/preview`, {}),
+    approveMutation: (protocolId: string, req: ApproveMutationRequest) =>
+      postJson<MutationProtocol>(`/mutations/${encodeURIComponent(protocolId)}/approve`, req),
+    cancelMutation: (protocolId: string) =>
+      postJson<MutationProtocol>(`/mutations/${encodeURIComponent(protocolId)}/cancel`, {}),
+    retryMutationFailures: (protocolId: string) =>
+      postJson<MutationProtocol>(`/mutations/${encodeURIComponent(protocolId)}/retry`, {}),
+    listMutations: (options: MutationListOptions) =>
+      getJson<MutationPage<MutationProtocol>>(
+        `/mutations${mutationQuery({
+          installation_id: options.installation_id,
+          state: options.state,
+          type: options.type,
+          limit: options.limit,
+          cursor: options.cursor,
+        })}`,
+      ),
+    getMutation: (protocolId: string) =>
+      getJson<MutationProtocol>(`/mutations/${encodeURIComponent(protocolId)}`),
+    listMutationItems: (protocolId: string, options: MutationItemListOptions = {}) =>
+      getJson<MutationPage<MutationItem>>(
+        `/mutations/${encodeURIComponent(protocolId)}/items${mutationQuery({
+          state: options.state,
+          limit: options.limit,
+          cursor: options.cursor,
+        })}`,
+      ),
 
     // Catalog
     /** @deprecated Use searchCatalogProductFacts; the endpoint now returns the IC-01 page envelope. */

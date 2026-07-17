@@ -13,7 +13,8 @@ import (
 )
 
 func main() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	cfg := config.Load()
 	logger := logging.New()
 
@@ -33,6 +34,9 @@ func main() {
 	if runtime.PoolStats != nil {
 		runtime.PoolStats.Start(ctx)
 	}
+	if runtime.MutationPoller != nil {
+		go runtime.MutationPoller.Run(ctx)
+	}
 	server := &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           runtime.Handler,
@@ -41,6 +45,7 @@ func main() {
 		WriteTimeout:      60 * time.Second,
 	}
 	serveErr := server.ListenAndServe()
+	cancel()
 	if runtime.PoolStats != nil {
 		runtime.PoolStats.Stop()
 	}

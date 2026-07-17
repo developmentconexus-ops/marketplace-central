@@ -23,6 +23,28 @@ func (f fakeListingReader) ReadListing(_ context.Context, _ domain.ProviderListi
 
 type fakeStockManager struct{}
 
+type fakePriceWriter struct{}
+
+func (fakePriceWriter) UpdatePrice(_ context.Context, request domain.PriceWriteRequest) (domain.PriceWriteResult, error) {
+	return domain.PriceWriteResult{
+		ListingID:      request.ListingID,
+		IdempotencyKey: request.IdempotencyKey,
+		Price:          request.Price,
+		Result:         domain.WriteResultApplied,
+	}, nil
+}
+
+type fakeListingWriter struct{}
+
+func (fakeListingWriter) UpdateListing(_ context.Context, request domain.ListingWriteRequest) (domain.ListingWriteResult, error) {
+	return domain.ListingWriteResult{
+		ListingID:      request.ListingID,
+		IdempotencyKey: request.IdempotencyKey,
+		Action:         request.Action,
+		Result:         domain.WriteResultApplied,
+	}, nil
+}
+
 type fakeAccountProber struct{}
 
 func (fakeAccountProber) ProbeAccount(_ context.Context, ref domain.ProviderAccountRef) (domain.AccountSnapshot, error) {
@@ -169,6 +191,96 @@ func TestMarketplaceCapabilityServiceReturnsStockManagerWhenRegistered(t *testin
 	}
 }
 
+func TestMarketplaceCapabilityServiceExposesWriteCapabilities(t *testing.T) {
+	t.Parallel()
+
+	svc := NewMarketplaceCapabilityService([]ProviderCapabilitySet{{
+		ProviderCode:  "mercado_livre",
+		PriceWrites:   fakePriceWriter{},
+		ListingWrites: fakeListingWriter{},
+		StockWrites:   fakeStockManager{},
+	}})
+
+	priceWriter, err := svc.PriceWriter("mercado_livre")
+	if err != nil {
+		t.Fatalf("PriceWriter() error = %v", err)
+	}
+	price, err := priceWriter.UpdatePrice(context.Background(), domain.PriceWriteRequest{
+		ListingID:      "inst_1~listing-1~-",
+		IdempotencyKey: "MP-000001:inst_1~listing-1~-",
+		Price:          domain.Price{Amount: "49.90", Currency: "BRL"},
+	})
+	if err != nil {
+		t.Fatalf("UpdatePrice() error = %v", err)
+	}
+	if price.IdempotencyKey != "MP-000001:inst_1~listing-1~-" || price.Price.Amount != "49.90" {
+		t.Fatalf("UpdatePrice() result = %+v, want canonical price and idempotency key", price)
+	}
+
+	listingWriter, err := svc.ListingWriter("mercado_livre")
+	if err != nil {
+		t.Fatalf("ListingWriter() error = %v", err)
+	}
+	listing, err := listingWriter.UpdateListing(context.Background(), domain.ListingWriteRequest{
+		ListingID:      "inst_1~listing-1~-",
+		IdempotencyKey: "MP-000002:inst_1~listing-1~-",
+		Action:         domain.ListingWritePause,
+	})
+	if err != nil {
+		t.Fatalf("UpdateListing() error = %v", err)
+	}
+	if listing.Action != domain.ListingWritePause || listing.IdempotencyKey == "" {
+		t.Fatalf("UpdateListing() result = %+v, want pause and idempotency key", listing)
+	}
+
+	stockWriter, err := svc.StockWriter("mercado_livre")
+	if err != nil {
+		t.Fatalf("StockWriter() error = %v, want live exposure from registered stock manager: %v", err, err)
+	}
+	if stockWriter == nil {
+		t.Fatal("StockWriter() returned nil writer")
+	}
+}
+
+func TestMarketplaceCapabilityServiceDoesNotPromoteStockReaderToWriter(t *testing.T) {
+	t.Parallel()
+
+	// fakeStockManager implements ports.StockWriter, but registering it as a
+	// reader must never expose the write capability: provider writes go live
+	// only through explicit StockWrites wiring.
+	svc := NewMarketplaceCapabilityService([]ProviderCapabilitySet{{
+		ProviderCode: "mercado_livre",
+		StockReads:   fakeStockManager{},
+	}})
+
+	_, err := svc.StockWriter("mercado_livre")
+	if err == nil {
+		t.Fatal("StockWriter() error = nil, want unsupported when only StockReads is wired")
+	}
+	if got, want := domain.ErrorCodeOf(err), domain.ErrCodeProviderUnsupportedShape; got != want {
+		t.Fatalf("ErrorCodeOf() = %q, want %q", got, want)
+	}
+}
+
+func TestMarketplaceCapabilityServiceReturnsUnsupportedForMissingWriteCapabilities(t *testing.T) {
+	t.Parallel()
+
+	svc := NewMarketplaceCapabilityService([]ProviderCapabilitySet{{ProviderCode: "mercado_livre"}})
+	for name, lookup := range map[string]func(string) (any, error){
+		"price":   func(provider string) (any, error) { return svc.PriceWriter(provider) },
+		"listing": func(provider string) (any, error) { return svc.ListingWriter(provider) },
+		"stock":   func(provider string) (any, error) { return svc.StockWriter(provider) },
+	} {
+		_, err := lookup("mercado_livre")
+		if err == nil {
+			t.Fatalf("%s lookup error = nil, want unsupported error", name)
+		}
+		if got, want := domain.ErrorCodeOf(err), domain.ErrCodeProviderUnsupportedShape; got != want {
+			t.Fatalf("%s lookup error code = %q, want %q", name, got, want)
+		}
+	}
+}
+
 func TestMarketplaceCapabilityServiceAccountProber(t *testing.T) {
 	t.Parallel()
 
@@ -206,3 +318,5 @@ var _ ports.AccountProber = fakeAccountProber{}
 var _ ports.FeeQuoteReader = fakeFeeQuoteReader{}
 var _ ports.StockReader = fakeStockManager{}
 var _ ports.StockWriter = fakeStockManager{}
+var _ ports.PriceWriter = fakePriceWriter{}
+var _ ports.ListingWriter = fakeListingWriter{}

@@ -62,6 +62,7 @@ type StockWriteResult struct {
 
 type StockAction struct {
 	ActionID            string                  `json:"action_id"`
+	MutationProtocolID  *string                 `json:"mutation_protocol_id,omitempty"`
 	State               StockActionState        `json:"state"`
 	Trigger             StockActionTrigger      `json:"trigger"`
 	ProviderRef         ProviderStockRef        `json:"provider_ref"`

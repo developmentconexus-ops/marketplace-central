@@ -75,6 +75,9 @@ func (a *CapabilityAdapter) ProviderCapabilitySet() connectorsapp.ProviderCapabi
 		FeeQuotes:     a,
 		StockReads:    a,
 		Orders:        a,
+		PriceWrites:   a,
+		StockWrites:   a,
+		ListingWrites: a,
 	}
 }
 
@@ -513,6 +516,10 @@ func decodeListingPriceResponses(rawBody []byte) ([]mlListingPriceResponse, erro
 }
 
 func (a *CapabilityAdapter) doRaw(ctx context.Context, accountRef domain.ProviderAccountRef, token, method, path string, body io.Reader) (*http.Response, []byte, error) {
+	return a.doRawWithIdempotency(ctx, accountRef, token, method, path, body, "")
+}
+
+func (a *CapabilityAdapter) doRawWithIdempotency(ctx context.Context, accountRef domain.ProviderAccountRef, token, method, path string, body io.Reader, idempotencyKey string) (*http.Response, []byte, error) {
 	req, err := http.NewRequestWithContext(ctx, method, a.baseURL+path, body)
 	if err != nil {
 		return nil, nil, domain.NewCapabilityError(domain.ErrCodeProviderTransient, "provider request build failed")
@@ -524,6 +531,9 @@ func (a *CapabilityAdapter) doRaw(ctx context.Context, accountRef domain.Provide
 	}
 	req.Header.Set("X-Tenant-ID", accountRef.TenantID)
 	req.Header.Set("X-Installation-ID", accountRef.InstallationID)
+	if strings.TrimSpace(idempotencyKey) != "" {
+		req.Header.Set("X-Idempotency-Key", strings.TrimSpace(idempotencyKey))
+	}
 
 	resp, err := a.httpClient.Do(req)
 	if err != nil {
@@ -853,5 +863,6 @@ var (
 	_ ports.ListingReader  = (*CapabilityAdapter)(nil)
 	_ ports.StockReader    = (*CapabilityAdapter)(nil)
 	_ ports.StockWriter    = (*CapabilityAdapter)(nil)
+	_ ports.PriceWriter    = (*CapabilityAdapter)(nil)
 	_ ports.OrderReader    = (*CapabilityAdapter)(nil)
 )

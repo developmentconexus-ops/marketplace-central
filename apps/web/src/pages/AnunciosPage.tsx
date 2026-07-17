@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { ListingException, ListingLinkState, ListingSyncState } from "@marketplace-central/sdk-runtime";
+import type { ListingException, ListingLinkState, ListingSyncState, MutationType } from "@marketplace-central/sdk-runtime";
 import { EmptyState, ErrorState, LoadingState } from "@marketplace-central/ui";
 import { listingsQueryKeys, QUERY_STALE_TIME } from "@marketplace-central/web-query";
 import { useEffect, useRef, useState } from "react";
@@ -18,6 +18,8 @@ import { AnunciosTable } from "./AnunciosTable";
 import { ListingDetailPanel } from "./ListingDetailPanel";
 import { ListingsSummary } from "./ListingsSummary";
 import { ListingsRefreshControl } from "./ListingsRefreshControl";
+import { MutationBulkActions } from "./mutations/MutationBulkActions";
+import { MutationPreviewModal } from "./mutations/MutationPreviewModal";
 
 const tabs: Array<{ value: AnunciosTab; label: string }> = [
   { value: "todos", label: "Todos" },
@@ -82,6 +84,10 @@ export function AnunciosPage() {
   const [cursorStack, setCursorStack] = useState<Array<string | undefined>>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [openListingId, setOpenListingId] = useState<string | null>(null);
+  const [mutationLaunch, setMutationLaunch] = useState<{
+    type: MutationType;
+    selectedIds: string[];
+  } | null>(null);
   const paginationIdentity = JSON.stringify([installationId, state]);
   const previousPaginationIdentity = useRef(paginationIdentity);
   const selectionInstallationId = useRef(installationId);
@@ -110,10 +116,13 @@ export function AnunciosPage() {
       selectionInstallationId.current = installationId;
       setSelectedIds(new Set());
       setOpenListingId(null);
+      setMutationLaunch(null);
     }
   }, [installationId]);
 
-  const visibleSelectedIds = selectionInstallationId.current === installationId ? selectedIds : new Set<string>();
+  const installationChanged = selectionInstallationId.current !== installationId;
+  const visibleSelectedIds = installationChanged ? new Set<string>() : selectedIds;
+  const visibleMutationLaunch = installationChanged ? null : mutationLaunch;
 
   const updateState = (nextState: typeof state, options?: { replace: boolean }) => {
     setCursor(undefined);
@@ -254,15 +263,13 @@ export function AnunciosPage() {
               {visibleSelectedIds.size} selecionado(s)
             </span>
           ) : null}
-          <button type="button" disabled title="disponível em breve" className="rounded-lg border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50">
-            Pausar
-          </button>
-          <button type="button" disabled title="disponível em breve" className="rounded-lg border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50">
-            Atualizar preço
-          </button>
-          <button type="button" disabled title="disponível em breve" className="rounded-lg border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50">
-            Re-sync
-          </button>
+          <MutationBulkActions
+            selectedIds={visibleSelectedIds}
+            onOpen={(type) => {
+              if (visibleSelectedIds.size === 0) return;
+              setMutationLaunch({ type, selectedIds: Array.from(visibleSelectedIds) });
+            }}
+          />
         </div>
         {pageQuery.isPending ? <LoadingState /> : pageQuery.isError ? (
           <ErrorState
@@ -318,6 +325,16 @@ export function AnunciosPage() {
         ) : null}
       </section>
       <ListingDetailPanel listingId={openListingId} onClose={() => setOpenListingId(null)} />
+      {visibleMutationLaunch ? (
+        <MutationPreviewModal
+          key={`${visibleMutationLaunch.type}:${visibleMutationLaunch.selectedIds.join(",")}`}
+          open
+          type={visibleMutationLaunch.type}
+          installationId={installationId}
+          selectedIds={visibleMutationLaunch.selectedIds}
+          onClose={() => setMutationLaunch(null)}
+        />
+      ) : null}
     </section>
   );
 }

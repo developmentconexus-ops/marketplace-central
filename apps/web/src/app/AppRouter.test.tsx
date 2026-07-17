@@ -3,12 +3,14 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppRouter } from "./AppRouter";
 
-const { listIntegrationInstallations } = vi.hoisted(() => ({
+const { listIntegrationInstallations, getMutation, listMutationItems } = vi.hoisted(() => ({
   listIntegrationInstallations: vi.fn(),
+  getMutation: vi.fn(),
+  listMutationItems: vi.fn(),
 }));
 
 vi.mock("./ClientContext", () => ({
-  useClient: () => ({ mocked: true, listIntegrationInstallations }),
+  useClient: () => ({ mocked: true, listIntegrationInstallations, getMutation, listMutationItems }),
 }));
 
 vi.mock("@marketplace-central/feature-products", () => ({
@@ -41,7 +43,16 @@ vi.mock("@marketplace-central/feature-inventory", () => ({
 describe("AppRouter", () => {
   beforeEach(() => {
     listIntegrationInstallations.mockReset();
+    getMutation.mockReset();
+    listMutationItems.mockReset();
     listIntegrationInstallations.mockResolvedValue({ items: [{ installation_id: "inst_test" }] });
+    getMutation.mockResolvedValue({
+      protocol_id: "MP-000042", installation_id: "inst_test", type: "listing_pause", state: "applied",
+      actor: "operator_supplied_unverified", intent: {}, selection: {}, totals: {}, source_as_of: null,
+      retried_from: null, created_at: "2026-07-17T12:00:00Z", previewed_at: null, approved_at: null,
+      finished_at: "2026-07-17T12:00:03Z",
+    });
+    listMutationItems.mockResolvedValue({ items: [], next_cursor: null, page_size: 50 });
     window.history.pushState({}, "", "/");
   });
 
@@ -117,10 +128,10 @@ describe("AppRouter", () => {
     expect(await screen.findByText("Em construção — disponível em breve.")).toBeInTheDocument();
   });
 
-  it("renders the protocol workspace placeholder", async () => {
+  it("mounts the real protocol page on a direct deep link", async () => {
     window.history.pushState({}, "", "/protocolos/MP-000042");
     renderAppRouter();
-    expect(await screen.findByText("Em construção — disponível em breve.")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Protocolo MP-000042" })).toBeInTheDocument();
   });
 
   it("keeps the classifications route mounted", async () => {

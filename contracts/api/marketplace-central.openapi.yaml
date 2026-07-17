@@ -3,6 +3,338 @@ info:
   title: Marketplace Central API
   version: 2026-07-13
 paths:
+  /mutations:
+    post:
+      summary: Create a mutation protocol
+      operationId: createMutation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMutationRequest'
+      responses:
+        "201":
+          description: Mutation protocol created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationProtocol'
+        "400":
+          description: invalid_body, invalid_intent, or installation_required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationErrorResponse'
+        "405":
+          description: method_not_allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationErrorResponse'
+        "422":
+          description: actor_required, type_not_enabled, empty_selection, selection_too_large, or source_time_unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationErrorResponse'
+    get:
+      summary: List mutation protocols
+      description: Protocols are ordered by created_at descending, with protocol_id descending as the tiebreaker. The cursor is opaque to clients.
+      operationId: listMutations
+      parameters:
+        - name: installation_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/MutationState'
+        - name: type
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/MutationType'
+          description: Query filtering accepts enabled protocol types; reserved listing_create is rejected as invalid_filter.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Opaque base64 cursor returned by the previous page; its internal structure is not part of the API.
+      responses:
+        "200":
+          description: Mutation protocols ordered by created_at DESC, then protocol_id DESC
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationProtocolPage'
+        "400":
+          description: installation_required, invalid_filter, or invalid_cursor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationErrorResponse'
+        "405":
+          description: method_not_allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationErrorResponse'
+  /mutations/{id}/preview:
+    post:
+      summary: Preview a mutation protocol
+      operationId: previewMutation
+      parameters:
+        - $ref: '#/components/parameters/MutationProtocolId'
+      responses:
+        "200":
+          description: Mutation preview created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationPreview'
+        "400":
+          description: invalid_body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationErrorResponse'
+        "404":
+          description: protocol_not_found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationErrorResponse'
+        "405":
+          description: method_not_allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationErrorResponse'
+        "409":
+          description: invalid_state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationErrorResponse'
+        "422":
+          description: actor_required, empty_selection, selection_too_large, or source_time_unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationErrorResponse'
+  /mutations/{id}/approve:
+    post:
+      summary: Approve a mutation protocol for execution
+      operationId: approveMutation
+      parameters:
+        - $ref: '#/components/parameters/MutationProtocolId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApproveMutationRequest'
+      responses:
+        "200":
+          description: Mutation protocol approved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationProtocol'
+        "400":
+          description: invalid_body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationErrorResponse'
+        "404":
+          description: protocol_not_found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationErrorResponse'
+        "405":
+          description: method_not_allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationErrorResponse'
+        "409":
+          description: preview_stale or invalid_state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationErrorResponse'
+        "422":
+          description: execute_required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationErrorResponse'
+  /mutations/{id}/cancel:
+    post:
+      summary: Cancel a mutation protocol
+      operationId: cancelMutation
+      parameters:
+        - $ref: '#/components/parameters/MutationProtocolId'
+      responses:
+        "200":
+          description: Mutation protocol cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationProtocol'
+        "400":
+          description: invalid_body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationErrorResponse'
+        "404":
+          description: protocol_not_found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationErrorResponse'
+        "405":
+          description: method_not_allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationErrorResponse'
+        "409":
+          description: invalid_state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationErrorResponse'
+  /mutations/{id}/retry:
+    post:
+      summary: Retry failed mutation items in a new protocol
+      operationId: retryMutationFailures
+      parameters:
+        - $ref: '#/components/parameters/MutationProtocolId'
+      responses:
+        "200":
+          description: Retry mutation protocol created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationProtocol'
+        "400":
+          description: invalid_body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationErrorResponse'
+        "404":
+          description: protocol_not_found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationErrorResponse'
+        "405":
+          description: method_not_allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationErrorResponse'
+        "409":
+          description: invalid_state or nothing_to_retry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationErrorResponse'
+  /mutations/{id}:
+    get:
+      summary: Get a mutation protocol
+      description: Returns the mutation protocol represented by the path id.
+      operationId: getMutation
+      parameters:
+        - $ref: '#/components/parameters/MutationProtocolId'
+      responses:
+        "200":
+          description: Mutation protocol
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationProtocol'
+        "404":
+          description: protocol_not_found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationErrorResponse'
+        "405":
+          description: method_not_allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationErrorResponse'
+  /mutations/{id}/items:
+    get:
+      summary: List mutation items
+      description: Mutation items are ordered by seq ascending. The cursor is opaque to clients.
+      operationId: listMutationItems
+      parameters:
+        - $ref: '#/components/parameters/MutationProtocolId'
+        - name: state
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/MutationItemState'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Opaque base64 cursor returned by the previous page; its internal structure is not part of the API.
+      responses:
+        "200":
+          description: Mutation items ordered by seq ASC
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationItemPage'
+        "400":
+          description: invalid_filter or invalid_cursor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationErrorResponse'
+        "404":
+          description: protocol_not_found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationErrorResponse'
+        "405":
+          description: method_not_allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationErrorResponse'
   /catalog/products:
     get:
       summary: List paginated catalog product facts
@@ -2165,6 +2497,13 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
 components:
+  parameters:
+    MutationProtocolId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
   schemas:
     ListingReadType:
       type: object
@@ -5577,3 +5916,124 @@ components:
           type: string
           enum: [official_api, vendor, manual]
           nullable: true
+
+    MutationType:
+      type: string
+      description: listing_create is reserved in the protocol enum but currently disabled and returns type_not_enabled.
+      enum: [price_update, stock_correct, link_apply, listing_pause, listing_resync, listing_edit, listing_create]
+
+    MutationState:
+      type: string
+      enum: [draft, previewed, approved, applying, applied, partially_failed, failed_preserved, cancelled]
+
+    MutationItemState:
+      type: string
+      enum: [previewed, approved, applying, applied, failed, skipped]
+
+    CreateMutationRequest:
+      type: object
+      required: [installation_id, type, actor, intent, selection]
+      additionalProperties: false
+      properties:
+        installation_id: { type: string }
+        type: { $ref: '#/components/schemas/MutationType' }
+        actor: { type: string }
+        intent: { type: object, additionalProperties: true }
+        selection: { type: object, additionalProperties: true }
+
+    ApproveMutationRequest:
+      type: object
+      required: [execute]
+      additionalProperties: false
+      properties:
+        execute:
+          type: boolean
+          const: true
+
+    MutationProtocol:
+      type: object
+      required: [protocol_id, installation_id, type, state, actor, intent, selection, totals, source_as_of, retried_from, created_at, previewed_at, approved_at, finished_at]
+      properties:
+        protocol_id: { type: string }
+        installation_id: { type: string }
+        type: { $ref: '#/components/schemas/MutationType' }
+        state: { $ref: '#/components/schemas/MutationState' }
+        actor: { type: string }
+        intent: { type: object, additionalProperties: true }
+        selection: { type: object, additionalProperties: true }
+        totals: { type: object, additionalProperties: true }
+        source_as_of: { type: string, format: date-time, nullable: true }
+        retried_from: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+        previewed_at: { type: string, format: date-time, nullable: true }
+        approved_at: { type: string, format: date-time, nullable: true }
+        finished_at: { type: string, format: date-time, nullable: true }
+
+    MutationItem:
+      type: object
+      required: [seq, item_id, listing_id, idempotency_key, before, after, state, failure, applied_at]
+      properties:
+        seq: { type: integer }
+        item_id: { type: string }
+        listing_id: { type: string }
+        idempotency_key: { type: string }
+        before: { type: object, additionalProperties: true, nullable: true }
+        after: { type: object, additionalProperties: true }
+        state: { $ref: '#/components/schemas/MutationItemState' }
+        failure: { type: object, additionalProperties: true, nullable: true }
+        applied_at: { type: string, format: date-time, nullable: true }
+
+    MutationPreview:
+      allOf:
+        - $ref: '#/components/schemas/MutationProtocol'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/MutationItem'
+
+    MutationProtocolPage:
+      type: object
+      required: [items, next_cursor, page_size]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MutationProtocol'
+        next_cursor:
+          type: string
+          nullable: true
+          description: Opaque cursor for the next page; null when there is no next page.
+        page_size:
+          type: integer
+
+    MutationItemPage:
+      type: object
+      required: [items, next_cursor, page_size]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MutationItem'
+        next_cursor:
+          type: string
+          nullable: true
+          description: Opaque cursor for the next page; null when there is no next page.
+        page_size:
+          type: integer
+
+    MutationErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, details]
+          properties:
+            code:
+              type: string
+              enum: [invalid_body, invalid_intent, installation_required, invalid_filter, invalid_cursor, actor_required, type_not_enabled, empty_selection, selection_too_large, execute_required, source_time_unavailable, preview_stale, invalid_state, nothing_to_retry, protocol_not_found, method_not_allowed]
+            message: { type: string }
+            details: { type: object, additionalProperties: true }

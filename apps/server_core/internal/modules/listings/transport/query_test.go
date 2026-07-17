@@ -33,6 +33,26 @@ func TestParseListingQueryAcceptsAllFixedEnumValues(t *testing.T) {
 	}
 }
 
+func TestParseListingQueryUsesIC02Grammar(t *testing.T) {
+	cases := []struct {
+		key, value string
+		valid      bool
+	}{
+		{"status", "active", true}, {"status", "banana", false},
+		{"sync_state", "paused_sync", true}, {"link_state", "resolved", true},
+		{"exception", "below_margin", true}, {"has_exception", "true", true},
+		{"has_exception", "1", false}, {"listing_type_code", "gold_pro", true},
+		{"product_id", "42664", true}, {"product_id", "042664", false},
+		{"bogus", "x", false}, {"status[]", "active", false}, {"status", "gte:active", false},
+	}
+	for _, tc := range cases {
+		_, err := ParseListingQuery(url.Values{"filter." + tc.key: {tc.value}})
+		if (err == nil) != tc.valid {
+			t.Errorf("%s=%s error=%v; valid=%v", tc.key, tc.value, err, tc.valid)
+		}
+	}
+}
+
 func TestParseListingQueryRejectsInvalidScalarsWithKeyDetails(t *testing.T) {
 	cases := []url.Values{
 		{"filter.bogus": {"x"}}, {"filter.status[]": {"active"}}, {"filter.status.ne": {"active"}}, {"filter.status": {"banana"}}, {"filter.sync_state": {"banana"}}, {"filter.link_state": {"banana"}}, {"filter.exception": {"banana"}}, {"filter.has_exception": {"1"}}, {"filter.status": {"active", "paused"}}, {"q": {"a", "b"}}, {"limit": {"0"}}, {"limit": {"201"}}, {"limit": {"abc"}}, {"limit": {"10", "20"}},
