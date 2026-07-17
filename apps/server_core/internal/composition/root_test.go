@@ -127,6 +127,56 @@ func TestRootMountsSyncRuns(t *testing.T) {
 	}
 }
 
+func TestRootMountsMarketObservations(t *testing.T) {
+	runtime, err := NewRootRuntime(nil, pgdb.Config{
+		DefaultTenantID: "tenant_default",
+		EncryptionKey:   "0123456789abcdef0123456789abcdef",
+	})
+	if err != nil {
+		t.Fatalf("NewRootRuntime() error = %v", err)
+	}
+
+	recorder := httptest.NewRecorder()
+	runtime.Handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/market/observations", nil))
+	if recorder.Code == http.StatusNotFound || recorder.Code == http.StatusMethodNotAllowed {
+		t.Fatalf("market observations route is not mounted: status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestRootMountsMarketReferences(t *testing.T) {
+	runtime, err := NewRootRuntime(nil, pgdb.Config{
+		DefaultTenantID: "tenant_default",
+		EncryptionKey:   "0123456789abcdef0123456789abcdef",
+	})
+	if err != nil {
+		t.Fatalf("NewRootRuntime() error = %v", err)
+	}
+
+	recorder := httptest.NewRecorder()
+	runtime.Handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/market/references", nil))
+	if recorder.Code == http.StatusNotFound || recorder.Code == http.StatusMethodNotAllowed {
+		t.Fatalf("market references route is not mounted: status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestRootDoesNotWireMarketCollectorOrScheduler(t *testing.T) {
+	raw, err := os.ReadFile("root.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(raw)
+	for _, forbidden := range []string{
+		"marketapp.NewCollectionService(",
+		"marketbackground",
+		"marketCollector",
+		"marketScheduler",
+	} {
+		if strings.Contains(source, forbidden) {
+			t.Fatalf("root.go wires forbidden market runtime component %q", forbidden)
+		}
+	}
+}
+
 func TestRootMountsOrdersOnce(t *testing.T) {
 	runtime, err := NewRootRuntime(nil, pgdb.Config{
 		DefaultTenantID: "tenant_default",
