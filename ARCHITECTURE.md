@@ -84,7 +84,12 @@ contracts/
 packages/
   sdk-runtime/          # TypeScript client for web-to-core communication
   ui/                   # Shared UI primitives (Button, SurfaceCard, etc.)
-  feature-marketplaces/ # Marketplace settings page
+  web-query/            # Shared web data-query layer
+  feature-classifications/ # Classifications workspace screens
+  feature-connectors/   # Connectors workspace screens
+  feature-inventory/    # Inventory workspace screens
+  feature-orders/       # Orders workspace screens
+  feature-products/     # Products workspace screens
   feature-simulator/    # Pricing simulator page
 
 docs/

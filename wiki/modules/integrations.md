@@ -2,7 +2,7 @@
 
 Layer: technical operations
 Path: `apps/server_core/internal/modules/integrations/`
-Frontend: `packages/feature-integrations/`
+Frontend: removed — route renders `WorkspacePlaceholder` stub (M-02 COR-2, `packages/feature-integrations` deleted; rebuild pending)
 
 ## Main Question It Answers
 

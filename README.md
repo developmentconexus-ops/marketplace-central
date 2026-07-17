@@ -11,8 +11,8 @@ Marketplace Central is a MetalShopping-style monorepo for pricing simulation and
 
 - `packages/sdk-runtime`: runtime client for the web app
 - `packages/ui`: shared UI primitives
-- `packages/feature-marketplaces`: marketplace configuration screens
-- `packages/feature-simulator`: pricing simulator screens
+- `packages/web-query`: shared web data-query layer
+- `packages/feature-*`: per-workspace React screens — `feature-classifications`, `feature-connectors`, `feature-inventory`, `feature-orders`, `feature-products`, `feature-simulator`
 
 ## Docker Dev Environment
 

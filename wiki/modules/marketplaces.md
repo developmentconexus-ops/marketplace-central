@@ -2,7 +2,7 @@
 
 Layer: business configuration
 Path: `apps/server_core/internal/modules/marketplaces/`
-Frontend: `packages/feature-marketplaces/`
+Frontend: removed — route renders `WorkspacePlaceholder` stub (M-02 COR-2, `packages/feature-marketplaces` deleted; rebuild pending)
 
 ## Main Question It Answers
 
