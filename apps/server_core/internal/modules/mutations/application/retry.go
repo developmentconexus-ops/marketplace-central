@@ -33,7 +33,7 @@ func (s RetryService) Retry(ctx context.Context, protocolID string) (ports.Proto
 		return ports.Protocol{}, ErrProtocolNotFound
 	}
 	if protocol.State != domain.ProtocolStatePartiallyFailed && protocol.State != domain.ProtocolStateFailedPreserved {
-		return ports.Protocol{}, domain.TransitionProtocolState(protocol.State, domain.ProtocolStateDraft)
+		return ports.Protocol{}, &domain.InvalidStateTransitionError{Code: domain.InvalidStateCode, From: protocol.State, To: domain.ProtocolStateDraft}
 	}
 	clone, eligible, err := s.protocols.CloneRetry(ctx, protocolID, s.now().UTC())
 	if err != nil {

@@ -26,6 +26,23 @@ func NewRepository(pool *pgxpool.Pool, tenantID string) *Repository {
 	return &Repository{pool: pool, tenantID: tenantID}
 }
 
+func (r *Repository) allocateProtocolID(ctx context.Context, tx pgx.Tx) (string, error) {
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('mutation_protocols:' || $1, 0))`, r.tenantID); err != nil {
+		return "", fmt.Errorf("lock mutation protocol tenant: %w", err)
+	}
+	var next int
+	if err := tx.QueryRow(ctx, `
+		SELECT COALESCE(MAX(substring(protocol_id FROM 4)::integer), 0) + 1
+		FROM mutation_protocols
+		WHERE tenant_id = $1`, r.tenantID).Scan(&next); err != nil {
+		return "", fmt.Errorf("allocate mutation protocol id: %w", err)
+	}
+	if next > 999999 {
+		return "", fmt.Errorf("mutation protocol id space exhausted for tenant")
+	}
+	return fmt.Sprintf("MP-%06d", next), nil
+}
+
 func (r *Repository) CreateProtocol(ctx context.Context, input ports.CreateProtocolInput) (ports.Protocol, error) {
 	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
@@ -33,20 +50,10 @@ func (r *Repository) CreateProtocol(ctx context.Context, input ports.CreateProto
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('mutation_protocols:' || $1, 0))`, r.tenantID); err != nil {
-		return ports.Protocol{}, fmt.Errorf("lock mutation protocol tenant: %w", err)
+	protocolID, err := r.allocateProtocolID(ctx, tx)
+	if err != nil {
+		return ports.Protocol{}, err
 	}
-	var next int
-	if err := tx.QueryRow(ctx, `
-		SELECT COALESCE(MAX(substring(protocol_id FROM 4)::integer), 0) + 1
-		FROM mutation_protocols
-		WHERE tenant_id = $1`, r.tenantID).Scan(&next); err != nil {
-		return ports.Protocol{}, fmt.Errorf("allocate mutation protocol id: %w", err)
-	}
-	if next > 999999 {
-		return ports.Protocol{}, fmt.Errorf("mutation protocol id space exhausted for tenant")
-	}
-	protocolID := fmt.Sprintf("MP-%06d", next)
 	totals := []byte(`{"items":0,"previewed":0,"applied":0,"failed":0,"skipped":0}`)
 	createdAt := input.CreatedAt.UTC()
 

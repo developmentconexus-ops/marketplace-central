@@ -29,17 +29,10 @@ func (r *Repository) CloneRetry(ctx context.Context, sourceID string, createdAt 
 	if !eligible {
 		return ports.Protocol{}, false, nil
 	}
-	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('mutation_protocols:' || $1,0))`, r.tenantID); err != nil {
-		return ports.Protocol{}, false, fmt.Errorf("lock retry protocol tenant: %w", err)
+	id, err := r.allocateProtocolID(ctx, tx)
+	if err != nil {
+		return ports.Protocol{}, false, err
 	}
-	var next int
-	if err := tx.QueryRow(ctx, `SELECT COALESCE(MAX(substring(protocol_id FROM 4)::integer),0)+1 FROM mutation_protocols WHERE tenant_id=$1`, r.tenantID).Scan(&next); err != nil {
-		return ports.Protocol{}, false, fmt.Errorf("allocate retry protocol id: %w", err)
-	}
-	if next > 999999 {
-		return ports.Protocol{}, false, fmt.Errorf("mutation protocol id space exhausted for tenant")
-	}
-	id := fmt.Sprintf("MP-%06d", next)
 	totals := []byte(`{"items":0,"previewed":0,"applied":0,"failed":0,"skipped":0}`)
 	createdAt = createdAt.UTC()
 	if _, err := tx.Exec(ctx, `INSERT INTO mutation_protocols(tenant_id,protocol_id,installation_id,type,state,actor,intent,selection,totals,source_as_of,retried_from,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,NULL,$10,$11)`, r.tenantID, id, source.InstallationID, source.Type, domain.ProtocolStateDraft, source.Actor, source.Intent, source.Selection, totals, sourceID, createdAt); err != nil {
