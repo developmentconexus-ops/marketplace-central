@@ -6,6 +6,8 @@ import { AnunciosPage } from "./AnunciosPage";
 
 const listListings = vi.fn();
 const getListing = vi.fn();
+const createMutation = vi.fn();
+const previewMutation = vi.fn();
 const getListingsSummary = vi.fn(() =>
   Promise.resolve({
     total: 3,
@@ -58,6 +60,8 @@ vi.mock("../app/ClientContext", () => ({
   useClient: () => ({
     listListings: (...args: unknown[]) => listListings(...args),
     getListing: (...args: unknown[]) => getListing(...args),
+    createMutation: (...args: unknown[]) => createMutation(...args),
+    previewMutation: (...args: unknown[]) => previewMutation(...args),
     getListingsSummary,
   }),
 }));
@@ -81,6 +85,17 @@ function renderPage() {
   return render(pageElement());
 }
 
+function fillIntent(type: string) {
+  if (type === "price_update") {
+    fireEvent.change(screen.getByLabelText("Novo preço"), { target: { value: "49.90" } });
+  } else if (type === "stock_correct") {
+    fireEvent.change(screen.getByLabelText("Quantidade a publicar"), { target: { value: "7" } });
+  } else if (type === "listing_edit") {
+    fireEvent.change(screen.getByLabelText("ID do atributo"), { target: { value: "COLOR" } });
+    fireEvent.change(screen.getByLabelText("Valor do atributo"), { target: { value: "Azul" } });
+  }
+}
+
 beforeEach(() => {
   mockInstallationId = "inst_1";
   vi.clearAllMocks();
@@ -96,6 +111,39 @@ beforeEach(() => {
       timeline: [],
     }),
   );
+  createMutation.mockResolvedValue({
+    protocol_id: "MP-000042",
+    installation_id: "inst_1",
+    type: "listing_pause",
+    state: "draft",
+    actor: "operator_supplied_unverified",
+    intent: {},
+    selection: {},
+    totals: {},
+    source_as_of: null,
+    retried_from: null,
+    created_at: "2026-07-17T12:00:00Z",
+    previewed_at: null,
+    approved_at: null,
+    finished_at: null,
+  });
+  previewMutation.mockResolvedValue({
+    protocol_id: "MP-000042",
+    installation_id: "inst_1",
+    type: "listing_pause",
+    state: "previewed",
+    actor: "operator_supplied_unverified",
+    intent: {},
+    selection: {},
+    totals: { items: 1, previewed: 1, failed: 0 },
+    source_as_of: null,
+    retried_from: null,
+    created_at: "2026-07-17T12:00:00Z",
+    previewed_at: "2026-07-17T12:00:01Z",
+    approved_at: null,
+    finished_at: null,
+    items: [],
+  });
 });
 
 describe("AnunciosPage selection and pagination", () => {
@@ -202,18 +250,83 @@ describe("AnunciosPage selection and pagination", () => {
     );
   });
 
-  it("keeps bulk actions disabled and makes no SDK calls when clicked", async () => {
+  it("keeps all bulk actions disabled at zero selection", async () => {
     renderPage();
     await screen.findByText("Página 1 A");
-    const callsBefore = listListings.mock.calls.length;
 
-    for (const name of ["Pausar", "Atualizar preço", "Re-sync"]) {
+    for (const name of [
+      "Atualizar preço",
+      "Corrigir estoque",
+      "Pausar",
+      "Ressincronizar",
+      "Vincular",
+      "Editar",
+    ]) {
       const button = screen.getByRole("button", { name });
       expect(button).toBeDisabled();
-      expect(button).toHaveAttribute("title", "disponível em breve");
+      expect(button).toHaveAttribute("title", "Selecione ao menos um anúncio");
       fireEvent.click(button);
     }
+  });
 
-    expect(listListings.mock.calls).toHaveLength(callsBefore);
+  it.each([
+    ["Atualizar preço", "price_update", "Atualizar preço"],
+    ["Corrigir estoque", "stock_correct", "Corrigir estoque"],
+    ["Pausar", "listing_pause", "Pausar anúncios"],
+    ["Ressincronizar", "listing_resync", "Ressincronizar anúncios"],
+    ["Vincular", "link_apply", "Aplicar vínculo"],
+    ["Editar", "listing_edit", "Editar anúncios"],
+  ] as const)("opens %s with mutation type %s", async (action, type, heading) => {
+    renderPage();
+    fireEvent.click(await screen.findByLabelText("Selecionar anúncio Página 1 A"));
+    fireEvent.click(screen.getByRole("button", { name: action }));
+
+    expect(await screen.findByRole("heading", { name: heading })).toBeInTheDocument();
+    fillIntent(type);
+    fireEvent.click(screen.getByRole("button", { name: "Gerar prévia" }));
+
+    await waitFor(() => expect(createMutation).toHaveBeenCalledOnce());
+    expect(createMutation).toHaveBeenCalledWith({
+      installation_id: "inst_1",
+      type,
+      actor: "operator_supplied_unverified",
+      intent: expect.any(Object),
+      selection: { mode: "explicit", listing_ids: ["inst_1~MLB1~-"] },
+    });
+  });
+
+  it("passes the accumulated listing ids as a launch snapshot", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByLabelText("Selecionar anúncio Página 1 A"));
+    fireEvent.click(screen.getByLabelText("Selecionar anúncio Página 1 B"));
+    fireEvent.click(screen.getByRole("button", { name: "Próxima" }));
+    fireEvent.click(await screen.findByLabelText("Selecionar anúncio Página 2 A"));
+    fireEvent.click(screen.getByRole("button", { name: "Ressincronizar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Gerar prévia" }));
+
+    await waitFor(() => expect(createMutation).toHaveBeenCalledOnce());
+    expect(createMutation).toHaveBeenCalledWith(expect.objectContaining({
+      installation_id: "inst_1",
+      type: "listing_resync",
+      selection: {
+        mode: "explicit",
+        listing_ids: ["inst_1~MLB1~-", "inst_1~MLB2~-", "inst_1~MLB3~-"],
+      },
+    }));
+  });
+
+  it("clears selection and closes an unsubmitted modal when installation changes", async () => {
+    const view = renderPage();
+    fireEvent.click(await screen.findByLabelText("Selecionar anúncio Página 1 A"));
+    fireEvent.click(screen.getByRole("button", { name: "Editar" }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+
+    mockInstallationId = "inst_2";
+    view.rerender(pageElement());
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(screen.queryByText("1 selecionado(s)")).not.toBeInTheDocument();
+    });
   });
 });
