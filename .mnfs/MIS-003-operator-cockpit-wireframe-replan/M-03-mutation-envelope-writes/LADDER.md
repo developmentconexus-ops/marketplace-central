@@ -128,3 +128,21 @@ could never fire) → fixed d0ecee1c → re-review ACCEPT; COR-1b/1c/1d ACCEPT r
 - `-race`: unavailable on this machine (accepted; hub decides pre-mission-close).
 
 L2 unchanged: hub-owned seam.
+
+## Corrective round 2 (M03-COR-2) — 2026-07-17
+
+Anchors: 688496c7 → 32df1d4a. Single item: poller head-of-line livelock on gate
+failure (hub delta review @ 688496c7; COR-1b/1c/1d/1e/1f ACCEPT, COR-1a structure
+accepted, error path defect).
+
+| Commit | What |
+| --- | --- |
+| d5a85337 | fix: poller terminalizes gate-failed protocols (failed_preserved) |
+| 32df1d4a | fix: drain paginated pending items on gate failure (review REJECT→fix) |
+
+Review: cold sonnet REJECT round 1 (pagination stranding) → 32df1d4a → ACCEPT
+(ledger D-79). Affected lanes re-run @ 32df1d4a: go vet + mutations/inventory
+sweep 0 FAIL; build green; harness:unit status=passed; harness:integration
+GREEN-with-allowlist (sole TestPhase1SmokeFlow, cited). Reviewer finding
+(out of scope, reported to hub): totals never updated at finish → COR-1d
+canRetry gating never shows retry button for failed protocols.
