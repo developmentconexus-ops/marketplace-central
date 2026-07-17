@@ -317,7 +317,10 @@ func decodeMutationCursor(encoded string, target any) error {
 }
 
 func invalidMutationQuery(key string) error {
-	return &requestError{code: "invalid_body", message: "consulta inválida: parâmetro " + key}
+	if key == "cursor" {
+		return &requestError{code: "invalid_cursor", message: "cursor inválido"}
+	}
+	return &requestError{code: "invalid_filter", message: "consulta inválida: parâmetro " + key}
 }
 
 func writeMutationQueryMethodError(w http.ResponseWriter) {

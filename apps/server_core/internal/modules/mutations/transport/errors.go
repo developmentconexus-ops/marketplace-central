@@ -55,6 +55,10 @@ func mapMutationError(err error) (int, string, string) {
 		switch requestErr.code {
 		case "invalid_body":
 			return http.StatusBadRequest, requestErr.code, requestErr.message
+		case "invalid_filter":
+			return http.StatusBadRequest, requestErr.code, requestErr.message
+		case "invalid_cursor":
+			return http.StatusBadRequest, requestErr.code, requestErr.message
 		case "invalid_intent":
 			return http.StatusBadRequest, requestErr.code, requestErr.message
 		case "installation_required":

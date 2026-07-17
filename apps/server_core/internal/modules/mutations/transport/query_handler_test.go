@@ -50,9 +50,9 @@ func TestQueryHandlerListRequiresInstallationAndValidatesIC03Filters(t *testing.
 		code string
 	}{
 		{name: "missing installation", url: "/mutations", code: "installation_required"},
-		{name: "invalid state", url: "/mutations?installation_id=inst-1&state=unknown", code: "invalid_body"},
-		{name: "invalid type", url: "/mutations?installation_id=inst-1&type=listing_create", code: "invalid_body"},
-		{name: "invalid limit", url: "/mutations?installation_id=inst-1&limit=201", code: "invalid_body"},
+		{name: "invalid state", url: "/mutations?installation_id=inst-1&state=unknown", code: "invalid_filter"},
+		{name: "invalid type", url: "/mutations?installation_id=inst-1&type=listing_create", code: "invalid_filter"},
+		{name: "invalid limit", url: "/mutations?installation_id=inst-1&limit=201", code: "invalid_filter"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -92,20 +92,20 @@ func TestQueryHandlerProtocolCursorRoundTripsAndPreservesStableKeyset(t *testing
 
 func TestQueryHandlerRejectsMalformedCursorAndDuplicateFilters(t *testing.T) {
 	h := NewQueryHandler(&mutationReadFake{})
-	for _, url := range []string{
-		"/mutations?installation_id=inst-1&cursor=bad",
-		"/mutations?installation_id=inst-1&state=applied&state=failed",
-		"/mutations?installation_id=inst-1&filter.state=applied",
+	for _, tc := range []struct{ url, code string }{
+		{"/mutations?installation_id=inst-1&cursor=bad", "invalid_cursor"},
+		{"/mutations?installation_id=inst-1&state=applied&state=failed", "invalid_filter"},
+		{"/mutations?installation_id=inst-1&filter.state=applied", "invalid_filter"},
 	} {
 		w := httptest.NewRecorder()
-		h.HandleList(w, httptest.NewRequest(http.MethodGet, url, nil))
-		if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), `"code":"invalid_body"`) {
-			t.Fatalf("url=%s status=%d body=%s", url, w.Code, w.Body.String())
+		h.HandleList(w, httptest.NewRequest(http.MethodGet, tc.url, nil))
+		if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), `"code":"`+tc.code+`"`) {
+			t.Fatalf("url=%s status=%d body=%s", tc.url, w.Code, w.Body.String())
 		}
 	}
 }
 
-func TestQueryHandlerDetailAndItemsUseTenantScopedServiceAndMapNotFound(t *testing.T) {
+func TestQueryHandlerDetailAndItemsUsePathIDOnlyAndMapNotFound(t *testing.T) {
 	fake := &mutationReadFake{protocolErr: application.ErrProtocolNotFound}
 	h := NewQueryHandler(fake)
 	w := httptest.NewRecorder()
