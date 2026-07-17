@@ -146,7 +146,7 @@ func TestStubLaneLifecycleSnapshotRetryAndFailureCodes(t *testing.T) {
 	seen := map[string]bool{}
 	for _, raw := range items[1:] {
 		failure := raw.(map[string]any)["failure"].(map[string]any)
-		seen[failure["Code"].(string)] = true
+		seen[failure["code"].(string)] = true
 	}
 	for _, code := range codes {
 		if !seen[string(code)] {
