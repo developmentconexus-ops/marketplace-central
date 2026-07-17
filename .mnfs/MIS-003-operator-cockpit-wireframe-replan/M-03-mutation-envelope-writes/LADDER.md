@@ -146,3 +146,21 @@ sweep 0 FAIL; build green; harness:unit status=passed; harness:integration
 GREEN-with-allowlist (sole TestPhase1SmokeFlow, cited). Reviewer finding
 (out of scope, reported to hub): totals never updated at finish → COR-1d
 canRetry gating never shows retry button for failed protocols.
+
+## Corrective round 3 (M03-COR-3) — 2026-07-17
+
+Anchors: f6bab3cb → a930ad90. Single item (hub adjudicated the D-79 reviewer
+finding): totals never updated at Finish → totals.failed=0 on failed protocols →
+COR-1d retry gating never fires (C09 QA blocker).
+
+| Commit | What |
+| --- | --- |
+| a930ad90 | fix: Finish recomputes totals from real item rows (same-tx subselect) |
+
+Hub supplied the SQL verbatim; orchestrator applied directly (deviation, ledger
+D-80). Cold sonnet review ACCEPT unconditional. Lanes @ pre-commit tree
+(code-identical): harness:integration GREEN-with-allowlist (sole
+TestPhase1SmokeFlow, cited; both new integration tests executed live in lane);
+harness:unit status=passed; go vet (default + integration tags), build,
+mutations sweep 0 FAIL. Corrective set complete: COR-1a/1b/1c/1d/1e/1f, COR-2,
+COR-3 all ACCEPT.
