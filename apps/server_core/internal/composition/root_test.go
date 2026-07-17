@@ -252,3 +252,28 @@ func TestRootMountsOrdersOnce(t *testing.T) {
 		t.Fatalf("orders detail route was not handled by the orders transport: status=%d body=%s", detailRecorder.Code, detailRecorder.Body.String())
 	}
 }
+
+func TestRootRuntimeRegistersMutationRoutes(t *testing.T) {
+	runtime, err := NewRootRuntime(nil, pgdb.Config{DefaultTenantID: "tenant_default", EncryptionKey: "0123456789abcdef0123456789abcdef"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, route := range []struct{ method, path, body string }{
+		{http.MethodPost, "/mutations", "["},
+		{http.MethodPost, "/mutations/missing/preview", "["},
+		{http.MethodPost, "/mutations/missing/approve", "["},
+		{http.MethodPost, "/mutations/missing/cancel", "["},
+		{http.MethodPost, "/mutations/missing/retry-failures", "["},
+		{http.MethodGet, "/mutations", ""},
+		{http.MethodPost, "/mutations/missing", ""},
+		{http.MethodPost, "/mutations/missing/items", ""},
+	} {
+		t.Run(route.method+" "+route.path, func(t *testing.T) {
+			recorder := httptest.NewRecorder()
+			runtime.Handler.ServeHTTP(recorder, httptest.NewRequest(route.method, route.path, strings.NewReader(route.body)))
+			if recorder.Code == http.StatusNotFound && !strings.Contains(recorder.Body.String(), "protocol_not_found") {
+				t.Fatalf("route was not registered: status=%d body=%s", recorder.Code, recorder.Body.String())
+			}
+		})
+	}
+}

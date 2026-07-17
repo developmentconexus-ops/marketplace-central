@@ -80,6 +80,7 @@ import (
 	mutationsapp "marketplace-central/apps/server_core/internal/modules/mutations/application"
 	mutationsbg "marketplace-central/apps/server_core/internal/modules/mutations/background"
 	mutationsports "marketplace-central/apps/server_core/internal/modules/mutations/ports"
+	mutationstransport "marketplace-central/apps/server_core/internal/modules/mutations/transport"
 	ordersintegrations "marketplace-central/apps/server_core/internal/modules/orders/adapters/integrations"
 	ordersinternalread "marketplace-central/apps/server_core/internal/modules/orders/adapters/internalread"
 	orderspostgres "marketplace-central/apps/server_core/internal/modules/orders/adapters/postgres"
@@ -585,6 +586,13 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		mutationLane.listing, mutationLane.linkage, mutationLane.resync = true, true, true
 	}
 	mutationLane.writer = mutationWriter
+	mutationService := mutationsapp.NewService(mutationRepo, mutationslistings.NewSelectionResolver(listingSvc), listingSvc, time.Now)
+	mutationApproval := mutationsapp.NewApprovalService(mutationRepo, time.Now)
+	mutationRetry := mutationsapp.NewRetryService(mutationRepo, time.Now)
+	mutationHandler := mutationstransport.NewHandler(mutationService, mutationApproval, mutationRetry)
+	mutationHandler.Register(mux)
+	mux.HandleFunc("POST /mutations/{id}/retry-failures", mutationHandler.HandleRetry)
+	mutationstransport.NewQueryHandler(mutationsapp.NewReadService(mutationRepo)).Register(mux)
 	mutationPoller := mutationsapp.NewPoller(mutationRepo, mutationWriter, time.Now)
 	mutationRunner := mutationsbg.NewPoller(mutationPoller, func(ctx context.Context) ([]string, error) {
 		installations, err := installationSvc.List(ctx)
