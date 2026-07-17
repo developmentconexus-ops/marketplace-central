@@ -88,6 +88,7 @@ func TestCreateStockCorrectionUsesCanonicalNoVariationSentinel(t *testing.T) {
 func TestCreateStockCorrectionPersistsProviderObservedSourceTime(t *testing.T) {
 	repo := &fakeProtocolRepository{}
 	action := stockAction("")
+	action.CreatedAt = action.UpdatedAt.Add(-time.Minute)
 	observed := action.UpdatedAt.Add(-10 * time.Minute)
 	action.ProviderObservedAt = &observed
 
