@@ -90,6 +90,16 @@ func TestCreateValidatesAndPersistsSelectionAsDraft(t *testing.T) {
 	}
 }
 
+func TestCreateRejectsBlankActorThroughGate(t *testing.T) {
+	store := &previewStore{}
+	input := CreateInput{InstallationID: "inst-1", Type: domain.ProtocolTypePriceUpdate, Actor: "   ", Intent: json.RawMessage(`{}`), Selection: json.RawMessage(`{"mode":"filter","filter":{"status":"active"}}`)}
+	_, err := NewService(store, &previewResolver{}, &previewListingReader{}, time.Now).Create(context.Background(), input)
+	assertPreviewGateCode(t, err, FailureCodeActorRequired)
+	if store.protocol.ProtocolID != "" {
+		t.Fatalf("protocol persisted despite blank actor: %+v", store.protocol)
+	}
+}
+
 type previewStore struct {
 	protocol     ports.Protocol
 	items        []ports.ReplaceItemInput

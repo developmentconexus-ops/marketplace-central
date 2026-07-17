@@ -51,12 +51,18 @@ func (s Service) Create(ctx context.Context, input CreateInput) (ports.Protocol,
 	if _, err := listingsadapter.ParseSelectionJSON(input.Selection); err != nil {
 		return ports.Protocol{}, err
 	}
-	return s.protocols.CreateProtocol(ctx, ports.CreateProtocolInput{
-		InstallationID: input.InstallationID,
-		Type:           input.Type,
-		Actor:          input.Actor,
-		Intent:         append(json.RawMessage(nil), input.Intent...),
-		Selection:      append(json.RawMessage(nil), input.Selection...),
-		CreatedAt:      s.now().UTC(),
+	var created ports.Protocol
+	err := InsertWithActorGate(ctx, input.Actor, func(ctx context.Context) error {
+		var insertErr error
+		created, insertErr = s.protocols.CreateProtocol(ctx, ports.CreateProtocolInput{
+			InstallationID: input.InstallationID,
+			Type:           input.Type,
+			Actor:          input.Actor,
+			Intent:         append(json.RawMessage(nil), input.Intent...),
+			Selection:      append(json.RawMessage(nil), input.Selection...),
+			CreatedAt:      s.now().UTC(),
+		})
+		return insertErr
 	})
+	return created, err
 }
