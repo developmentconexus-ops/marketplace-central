@@ -309,6 +309,9 @@ function Test-GovernanceDrift {
     $path = ConvertTo-NormalizedPath $RepositoryRoot $file.FullName
     if ($path -notmatch '^apps/server_core/internal/modules/(?<source>[^/]+)/') { continue }
     $source = $Matches.source
+    # Undeclared module already surfaces as GOV_MODULE_COVERAGE above; skip
+    # dependency checks instead of crashing on $moduleById[$source] under StrictMode.
+    if (-not $moduleById.ContainsKey($source)) { continue }
     $content = Get-Content -Raw -LiteralPath $file.FullName
     foreach ($match in [regex]::Matches($content, '["'']marketplace-central/apps/server_core/internal/modules/(?<target>[a-z_]+)/(?<layer>[a-z_]+)[^"'']*["'']')) {
       $target = [string]$match.Groups['target'].Value; $layer = [string]$match.Groups['layer'].Value
