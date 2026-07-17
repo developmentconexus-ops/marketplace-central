@@ -70,6 +70,16 @@ Lockfile-faithful install = env prep, NOT a dep change — no REQUEST needed. Ne
 another checkout's `node_modules`: npm workspace symlinks would resolve workspace packages
 (e.g. `packages/sdk-runtime`) to the OTHER tree's sources, silently validating the wrong code.
 
+**Test-fixture conventions (ratified 2026-07-16, CHIP-SAT findings F-4 + M-06 F-02):**
+- Windows Go `time.Now()` ticks at 100ns; pg `timestamptz` stores µs. Any fixture asserting
+  `.Equal()` on a timestamp round-trip MUST `Truncate(time.Microsecond)` first (production
+  convention: `orders/domain/sankhya_linkage.go:178`). Signature: got/want differ only in the
+  7th fractional digit.
+- `internal/platform/migrate/runner_test.go` hardcodes the migration count — every migration
+  grant implies bumping that fixture in the same slice.
+- A new server module requires an entry in `contracts/governance/modules.json` or governance
+  fails `GOV_MODULE_COVERAGE` (precedents 17cce1a9, e1819778).
+
 **False-alarm signatures:**
 - `HPG_MIGRATION_FAILED` with `migrations_first=-1` = build died before migrate ran (empty
   `.gomodcache` under `GOPROXY=off`/`GOSUMDB=off`), not a SQL/migration defect. Warm the cache
@@ -262,6 +272,7 @@ verification conflicts against this list.
 2026-07-16 · §6 · ratified · dev-stack sync standing policy: COMMITTED event with stack-sync <sha> → hub rebuilds without negotiation (M-01: 4 round-trips were restart asks)
 2026-07-16 · §6 · ratified · live dispatch viewer (hub-served live-server.mjs :7391, dynamic multi-session scratchpad discovery) + DB-specialist consultation seam (MNOS session local_ec787804, hub-relayed via REQUEST db-consult) — operator-requested at W1 dispatch
 2026-07-16 · (upstream) · ratified · core amendments landed in mnfs-harness cd114e6: sonnet fallback implementer row, COMMITTED event grammar, lean close (★ crew superseded at close by P6 dual gate), additive contract-lock named mechanism, P2 required plan outputs (write-DAG + contract satisfiability + lock pre-identification), Claude-side dispatch visibility accepted limitation
+2026-07-16 · §3 · ratified · test-fixture conventions from CHIP-SAT W1 close: µs truncation on timestamp round-trip fixtures (F-4), migration-count fixture bump per migration grant, modules.json entry per new module (GOV_MODULE_COVERAGE); F-2 orders positional flake fixed on main d9a36a0a (set containment)
 2026-07-16 · §3 · ratified · node bootstrap clause for fresh worktrees: npm ci at worktree root = env prep (mirror of gomodcache clause); never symlink-reuse another checkout's node_modules (CHIP-SAT field finding + REQUEST)
 2026-07-16 · §10 · ratified · mnfs-workflow execution-layer skills denylisted (deleted at source in mnfs-harness 6b29412 layered unification; stale codex cache 0.1.0 + ~/.codex/plugins/mnfs-codex-plugin still ship them — operator field finding: CHIP-SAT worker auto-loaded feature-execution). General rule: auto-discovered skills never bind; only prompt-pack pins are doctrine. Cache repackage to 0.2.0 deferred to W1 close (no tooling swap under running workers).
 2026-07-16 · header + §12 (new) · ratified · alt-D+ implementation method adopted (operator-ratified after 4 adversarial Opus×Sol rounds + MIS-003 field evidence): docs/HARNESS-CORE.md + docs/REVIEW-STANDARD.md re-vendored @ mnfs-harness 6206cc1 (implementer prompt-pack v1.0.0 in CORE §4, canonical dispatch-prompt architecture, deterministic lane, evidence types ran/assumed/could-not-run, reproduce+1-fixup→BLOCKED; REVIEW §9 remedy re-review resumes same reviewer, §13 reviewer reads worker prompt-file, §14 slim read-mandate pack); deterministic dispatch tooling vendored scripts/harness/dispatch/ with fail-closed scripts.lock.json (28 Pester green at source); F-A index.lock commit-denial clause (attempt once, leave files, report verbatim — CHIP-M03); harness plugin 0.3.0 synced to local Claude Code cache. Field-test milestone next — chip converses with design session; pack v1.1.0 fed by its retro.
