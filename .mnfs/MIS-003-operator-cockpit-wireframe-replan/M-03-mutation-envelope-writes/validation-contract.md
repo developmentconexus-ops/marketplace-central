@@ -79,7 +79,7 @@ Required: Yes
 Status: Pending
 Evidence:
 - Command: gate matrix tests — one negative per gate
-- Expected: missing actor → protocol creation rejected; duplicate idempotency key → item skipped not re-sent; approve without `execute:true` → 400 `execute_required`; unresolved link → item `link_unresolved` with zero provider calls (spy assert); missing policy → item failed `policy_missing`, no default applied; missing source_timestamp → 422 `source_time_unavailable` pre-apply; audit-write failure → item aborts before provider call
+- Expected: missing actor → protocol creation rejected; duplicate idempotency key → item skipped not re-sent; approve without `execute:true` → 422 `execute_required` (amended 400→422 per hub ruling M03-COR-1f, 2026-07-17: OpenAPI+SDK > VC text, profile §8 / PLAN-ADJUDICATION #9 precedent — OpenAPI documents 422, code matches); unresolved link → item `link_unresolved` with zero provider calls (spy assert); missing policy → item failed `policy_missing`, no default applied; missing source_timestamp → 422 `source_time_unavailable` pre-apply; audit-write failure → item aborts before provider call
 - Actual:
 - Artifact: `F-02-write-types-adapters/validation.md`
 Blocking failure: any gate bypassable
@@ -154,7 +154,7 @@ Required: Yes
 Status: Pending
 Evidence:
 - Command: integration: partially_failed protocol (mix retryable/non-retryable failures) → `POST /mutations/{id}/retry`
-- Expected: NEW protocol id `MP-…` with `retried_from` set; only retryable-failed items cloned; original protocol rows byte-identical after retry; zero retryable → 422 `nothing_to_retry`
+- Expected: NEW protocol id `MP-…` with `retried_from` set; only retryable-failed items cloned; original protocol rows byte-identical after retry; zero retryable → 409 `nothing_to_retry` (amended 422→409 per hub ruling M03-COR-1f, 2026-07-17: OpenAPI+SDK > VC text, profile §8 / PLAN-ADJUDICATION #9 precedent — OpenAPI documents 409, code matches)
 - Actual:
 - Artifact: `F-03.../validation.md`
 Blocking failure: original mutated or non-retryable cloned
