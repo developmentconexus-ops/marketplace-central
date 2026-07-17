@@ -504,9 +504,22 @@ Serialization points:
 ### F03-S3 — approve and cancel application services
 
 - Goal: enforce execute, TTL, and lifecycle transitions below transport.
+- SCOPE AMENDMENT 2026-07-16 (orchestrator, after honest worker BLOCKED — D-45): original
+  2-file set cannot persist cancellation. Proven gaps: no repository method persists
+  cancel; `application.Service.protocols` is a consumer-side narrow interface (established
+  S2 pattern — it already carries `ReplacePreview`, which is not on `ports.ProtocolRepository`).
+  Approve persistence (`ApproveItems`) exists since F-01. Delta (mechanical, dictated by
+  existing patterns, no design alternatives): add cancel persistence as a new postgres
+  repository file following the preview_repository.go per-concern-file pattern; approval.go
+  declares its own narrow store interface (consumer-side, like protocolStore) — the ports
+  interface stays untouched; cancel state validation (draft|previewed only) enforced in SQL
+  predicate + affected-rows check, consistent with F-01 terminal-immutability idiom. File
+  set becomes the four files below.
 - Files:
   - `apps/server_core/internal/modules/mutations/application/approval.go`
   - `apps/server_core/internal/modules/mutations/application/approval_test.go`
+  - `apps/server_core/internal/modules/mutations/adapters/postgres/approval_repository.go`
+  - `apps/server_core/internal/modules/mutations/adapters/postgres/approval_repository_integration_test.go`
 - Failing test first: execute absent/false, exactly 15 minutes, over 15 minutes, and cancel-after-approved.
 - Done:
   - Only literal `execute:true` approves.
