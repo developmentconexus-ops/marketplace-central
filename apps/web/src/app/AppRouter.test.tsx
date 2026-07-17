@@ -23,10 +23,6 @@ vi.mock("@marketplace-central/feature-classifications", () => ({
   ClassificationsPage: () => <div>Classifications route</div>,
 }));
 
-vi.mock("@marketplace-central/feature-marketplaces", () => ({
-  MarketplaceSettingsPage: () => <div>Marketplaces route</div>,
-}));
-
 function renderAppRouter() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -36,22 +32,10 @@ function renderAppRouter() {
   );
 }
 
-vi.mock("@marketplace-central/feature-integrations", () => ({
-  IntegrationsHubPage: () => <div>Integrations hub route</div>,
-}));
-
-vi.mock("@marketplace-central/feature-product-links", () => ({
-  ProductLinksPage: () => <div>Product links route</div>,
-}));
-
 vi.mock("@marketplace-central/feature-inventory", () => ({
   StockSeguroPage: ({ installations }: { installations: Array<{ installation_id: string }> }) => (
     <div>Stock Seguro route: {installations.map((installation) => installation.installation_id).join(", ")}</div>
   ),
-}));
-
-vi.mock("@marketplace-central/feature-orders", () => ({
-  OrdersPage: () => <div>Orders route</div>,
 }));
 
 describe("AppRouter", () => {
@@ -61,16 +45,18 @@ describe("AppRouter", () => {
     window.history.pushState({}, "", "/");
   });
 
-  it("renders the integrations route at its new path", async () => {
+  it("mounts the em-construção stub at /integracoes with a single app-wide installation fetch", async () => {
     window.history.pushState({}, "", "/integracoes");
     renderAppRouter();
-    expect(await screen.findByText("Integrations hub route")).toBeInTheDocument();
+    expect(await screen.findByText("Em construção — disponível em breve.")).toBeInTheDocument();
+    expect(listIntegrationInstallations).toHaveBeenCalledTimes(1);
   });
 
-  it("renders the product links route at its new path", async () => {
+  it("mounts the em-construção stub at /vinculos with a single app-wide installation fetch", async () => {
     window.history.pushState({}, "", "/vinculos");
     renderAppRouter();
-    expect(await screen.findByText("Product links route")).toBeInTheDocument();
+    expect(await screen.findByText("Em construção — disponível em breve.")).toBeInTheDocument();
+    expect(listIntegrationInstallations).toHaveBeenCalledTimes(1);
   });
 
   it("renders the stock seguro route at its new path", async () => {
@@ -80,10 +66,11 @@ describe("AppRouter", () => {
     expect(listIntegrationInstallations).toHaveBeenCalledTimes(1);
   });
 
-  it("renders the orders route at its new path", async () => {
+  it("mounts the em-construção stub at /pedidos with a single app-wide installation fetch", async () => {
     window.history.pushState({}, "", "/pedidos");
     renderAppRouter();
-    expect(await screen.findByText("Orders route")).toBeInTheDocument();
+    expect(await screen.findByText("Em construção — disponível em breve.")).toBeInTheDocument();
+    expect(listIntegrationInstallations).toHaveBeenCalledTimes(1);
   });
 
   it("renders the catalog route at its new path", async () => {
@@ -142,10 +129,11 @@ describe("AppRouter", () => {
     expect(await screen.findByText("Classifications route")).toBeInTheDocument();
   });
 
-  it("keeps the marketplaces route mounted", async () => {
+  it("mounts the em-construção stub at /marketplaces with a single app-wide installation fetch", async () => {
     window.history.pushState({}, "", "/marketplaces");
     renderAppRouter();
-    expect(await screen.findByText("Marketplaces route")).toBeInTheDocument();
+    expect(await screen.findByText("Em construção — disponível em breve.")).toBeInTheDocument();
+    expect(listIntegrationInstallations).toHaveBeenCalledTimes(1);
   });
 
   it("does not render workspace content for an unknown path", () => {
