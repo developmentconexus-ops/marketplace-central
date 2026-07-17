@@ -346,6 +346,25 @@ export interface ListingSummary {
   as_of: string;
 }
 
+export interface CategoryAttributeValue {
+  id: string;
+  name: string;
+}
+
+export interface CategoryAttribute {
+  id: string;
+  name: string;
+  required: boolean;
+  value_type: string;
+  values: CategoryAttributeValue[] | null;
+  constraints: Record<string, unknown> | null;
+}
+
+export interface CategoryAttributesResponse {
+  category_id: string;
+  attributes: CategoryAttribute[];
+}
+
 export interface IntegrationConnectionSnapshot {
   state: "draft" | "pending_connection" | "connected" | "degraded" | "needs_reauth" | "disconnected";
   health: "healthy" | "warning" | "critical";
@@ -1305,6 +1324,10 @@ export function createMarketplaceCentralClient(options: {
       getJson<ListingGroupPage>(`/listings/by-product${listingQuery(options)}`),
     getListing: (id: string) =>
       getJson<ListingDetail>(`/listings/${encodeURIComponent(id)}`),
+    getCategoryAttributes: (categoryId: string) =>
+      getJson<CategoryAttributesResponse>(
+        `/listings/categories/${encodeURIComponent(categoryId)}/attributes`,
+      ),
     getListingsSummary: (installationId: string) =>
       getJson<ListingSummary>(`/listings/summary?installation_id=${encodeURIComponent(installationId)}`),
     getDashboardSummary: (installationId: string) =>

@@ -490,6 +490,49 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /listings/categories/{category_id}/attributes:
+    get:
+      summary: Get the attributes defined for a marketplace category
+      description: >
+        Contract reservation only: the handler and adapter arrive in M-06 F-01.
+        Until then, the runtime returns 404 because this route is absent. The
+        attributes array preserves provider order; it is not sorted by the
+        runtime.
+      operationId: getCategoryAttributes
+      parameters:
+        - name: category_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Category attributes in provider order
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [category_id, attributes]
+                properties:
+                  category_id:
+                    type: string
+                  attributes:
+                    type: array
+                    description: Provider-order-preserving; the runtime does not sort this array.
+                    items:
+                      $ref: '#/components/schemas/CategoryAttribute'
+        "404":
+          description: Category was not found (category_not_found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "502":
+          description: Category attribute provider is unavailable (provider_unavailable)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /catalog/taxonomy:
     get:
       summary: List taxonomy nodes
@@ -5243,6 +5286,37 @@ components:
         notes:              { type: string }
         source:             { type: string, enum: [api_sync, seeded, manual] }
         synced_at:          { type: string, format: date-time }
+
+    CategoryAttribute:
+      type: object
+      description: >
+        Conservative canonical reservation; fields mirror the provider
+        attribute contract at the adapter boundary.
+      required: [id, name, required, value_type, values, constraints]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        required:
+          type: boolean
+        value_type:
+          type: string
+        values:
+          type: array
+          nullable: true
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+        constraints:
+          type: object
+          nullable: true
+          additionalProperties: true
 
     ErrorResponse:
       type: object

@@ -17,6 +17,8 @@ import type {
   MarketObservationPage,
   MarketReference,
   MarketReferencePage,
+  CategoryAttribute,
+  CategoryAttributesResponse,
 } from "./index";
 
 describe("sdk runtime", () => {
@@ -1836,6 +1838,66 @@ describe("sdk runtime", () => {
     expect(dashboard.sync_errors).toBeNull();
     expect(dashboard.last_sync_at).toBeNull();
     expect(syncRuns.items[0].finished_at).toBeNull();
+  });
+
+  it("gets category attributes with an encoded path segment and preserves provider order", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const attributes: CategoryAttribute[] = [
+      {
+        id: "color",
+        name: "Color",
+        required: false,
+        value_type: "string",
+        values: null,
+        constraints: null,
+      },
+      {
+        id: "brand",
+        name: "Brand",
+        required: true,
+        value_type: "enum",
+        values: [{ id: "brand-b", name: "Brand B" }, { id: "brand-a", name: "Brand A" }],
+        constraints: { max_length: 80 },
+      },
+    ];
+    const response: CategoryAttributesResponse = {
+      category_id: "MLB/123?draft",
+      attributes,
+    };
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        return new Response(JSON.stringify(response), { status: 200 });
+      },
+    });
+
+    const result = await client.getCategoryAttributes("MLB/123?draft");
+
+    expect(String(requests[0].input)).toBe(
+      "http://localhost:8080/listings/categories/MLB%2F123%3Fdraft/attributes",
+    );
+    expect(requests[0].init?.method).toBe("GET");
+    expect(result.attributes).toEqual(attributes);
+    expect(result.attributes.map((attribute) => attribute.id)).toEqual(["color", "brand"]);
+    expect(result.attributes[0].constraints).toBeNull();
+    expect(result.attributes[1].constraints).toEqual({ max_length: 80 });
+  });
+
+  it.each([
+    [404, "category_not_found"],
+    [502, "provider_unavailable"],
+  ] as const)("preserves category attribute error code %s", async (status, code) => {
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async () =>
+        new Response(JSON.stringify({ error: { code, message: "category attributes unavailable" } }), { status }),
+    });
+
+    await expect(client.getCategoryAttributes("MLB/category")).rejects.toMatchObject({
+      status,
+      error: { code },
+    });
   });
 
   it("lists market observations and references with encoded ordered ids", async () => {
