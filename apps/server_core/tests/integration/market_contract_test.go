@@ -282,7 +282,7 @@ func assertRoundTripReference(t *testing.T, item map[string]any) {
 	if item["evidence_state"] != string(domain.EvidenceStateObserved) || item["match_state"] != string(domain.MatchStateAccept) || item["match_method"] != "semantic-gate" || item["source"] != string(domain.SourceManual) {
 		t.Fatalf("reference state/match/method/source=%v/%v/%v/%v", item["evidence_state"], item["match_state"], item["match_method"], item["source"])
 	}
-	if item["catalog_product_id"] != "catalog-product-round-trip-"+strings.TrimPrefix(item["product_id"].(string), "product-") {
+	if item["catalog_product_id"] != "catalog-"+item["product_id"].(string) {
 		t.Fatalf("catalog_product_id=%v", item["catalog_product_id"])
 	}
 	assertStats(t, item["catalog_stats"])
