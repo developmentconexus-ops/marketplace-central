@@ -93,3 +93,65 @@ func TestMarketAggregatePopulatedPricesRoundTrip(t *testing.T) {
 		t.Fatalf("counts/status = %d/%d/%q, want 9/6/OK", a.NOffers, a.NSellers, a.Status)
 	}
 }
+
+func TestMarketAggregateLatestBySourceOrderIsolationAndEmptyInput(t *testing.T) {
+	ctx := context.Background()
+	token := fmt.Sprintf("%d", time.Now().UnixNano())
+	pool, _ := testpostgres.OpenPool(t, "market_aggregate_source_"+token)
+	tenantA := "aggregate-source-a-" + token
+	repoA := marketpostgres.NewRepository(pool, tenantA)
+	repoB := marketpostgres.NewRepository(pool, "aggregate-source-b-"+token)
+	fetchedAt := time.Now().UTC().Truncate(time.Microsecond)
+	productA := "source-product-a-" + token
+	productB := "source-product-b-" + token
+	missing := "source-product-missing-" + token
+	if err := repoA.AppendMarketAggregates(ctx, []domain.MarketAggregate{
+		{ProductID: productA, Median: &domain.Money{Amount: "90.00", Currency: "BRL"}, Source: domain.MarketPriceSourceMLSalePrice, FetchedAt: fetchedAt, ComputedAt: fetchedAt.Add(time.Second), Status: domain.MarketAggregateStatusOK},
+		{ProductID: productA, Median: &domain.Money{Amount: "80.00", Currency: "BRL"}, Source: domain.MarketPriceSourceMLCatalogOffers, FetchedAt: fetchedAt, ComputedAt: fetchedAt.Add(2 * time.Second), Status: domain.MarketAggregateStatusOK},
+		{ProductID: productB, Median: &domain.Money{Amount: "70.00", Currency: "BRL"}, Source: domain.MarketPriceSourceMLCatalogOffers, FetchedAt: fetchedAt, ComputedAt: fetchedAt.Add(3 * time.Second), Status: domain.MarketAggregateStatusOK},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := repoB.AppendMarketAggregates(ctx, []domain.MarketAggregate{
+		{ProductID: productA, Median: &domain.Money{Amount: "1.00", Currency: "BRL"}, Source: domain.MarketPriceSourceMLCatalogOffers, FetchedAt: fetchedAt, ComputedAt: fetchedAt.Add(4 * time.Second), Status: domain.MarketAggregateStatusOK},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := repoA.LatestMarketAggregatesBySource(ctx, []string{productB, missing, productA}, domain.MarketPriceSourceMLCatalogOffers)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].ProductID != productB || got[1].ProductID != productA {
+		t.Fatalf("ordered source read = %#v", got)
+	}
+	if got[0].Median == nil || got[0].Median.Amount != "70.00" || got[1].Median == nil || got[1].Median.Amount != "80.00" {
+		t.Fatalf("source-selected prices = %#v, want 70.00 and 80.00", got)
+	}
+
+	// Discriminating case: sale_price is NOT productA's overall-latest row (catalog_offers @ +2s is newer
+	// than sale_price @ +1s), so a dropped source=$3 predicate would wrongly return the 80.00 catalog row here.
+	saleOnly, err := repoA.LatestMarketAggregatesBySource(ctx, []string{productA}, domain.MarketPriceSourceMLSalePrice)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(saleOnly) != 1 || saleOnly[0].Median == nil || saleOnly[0].Median.Amount != "90.00" {
+		t.Fatalf("sale-source read = %#v, want exactly 90.00 (not the newer catalog 80.00)", saleOnly)
+	}
+
+	otherTenant, err := repoB.LatestMarketAggregatesBySource(ctx, []string{productA}, domain.MarketPriceSourceMLCatalogOffers)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(otherTenant) != 1 || otherTenant[0].Median == nil || otherTenant[0].Median.Amount != "1.00" {
+		t.Fatalf("tenant B source read = %#v", otherTenant)
+	}
+
+	empty, err := repoA.LatestMarketAggregatesBySource(ctx, nil, domain.MarketPriceSourceMLCatalogOffers)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if empty == nil || len(empty) != 0 {
+		t.Fatalf("empty source read = %#v, want non-nil empty", empty)
+	}
+}

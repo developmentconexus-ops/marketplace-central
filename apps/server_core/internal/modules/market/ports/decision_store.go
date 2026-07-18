@@ -19,4 +19,5 @@ type CompetitiveSignalStore interface {
 type MarketAggregateStore interface {
 	AppendMarketAggregates(context.Context, []domain.MarketAggregate) error
 	LatestMarketAggregates(context.Context, []string) ([]domain.MarketAggregate, error)
+	LatestMarketAggregatesBySource(context.Context, []string, domain.MarketPriceSource) ([]domain.MarketAggregate, error)
 }

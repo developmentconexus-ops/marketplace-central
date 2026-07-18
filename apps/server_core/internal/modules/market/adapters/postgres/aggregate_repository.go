@@ -73,3 +73,46 @@ func (r *Repository) LatestMarketAggregates(ctx context.Context, productIDs []st
 	}
 	return result, nil
 }
+
+func (r *Repository) LatestMarketAggregatesBySource(ctx context.Context, productIDs []string, source domain.MarketPriceSource) ([]domain.MarketAggregate, error) {
+	if len(productIDs) == 0 {
+		return []domain.MarketAggregate{}, nil
+	}
+	rows, err := r.pool.Query(ctx, `
+		SELECT DISTINCT ON (product_id)
+			product_id, median_amount, median_currency, min_valid_amount,
+			min_valid_currency, n_offers, n_sellers, source, fetched_at,
+			computed_at, status
+		FROM market_aggregates
+		WHERE tenant_id = $1 AND product_id = ANY($2) AND source = $3
+		ORDER BY product_id, computed_at DESC
+	`, r.tenantID, productIDs, source)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	byProductID := make(map[string]domain.MarketAggregate, len(productIDs))
+	for rows.Next() {
+		var aggregate domain.MarketAggregate
+		var medianAmount, medianCurrency, minValidAmount, minValidCurrency *string
+		if err := rows.Scan(&aggregate.ProductID, &medianAmount, &medianCurrency, &minValidAmount,
+			&minValidCurrency, &aggregate.NOffers, &aggregate.NSellers, &aggregate.Source,
+			&aggregate.FetchedAt, &aggregate.ComputedAt, &aggregate.Status); err != nil {
+			return nil, err
+		}
+		aggregate.Median = scanMoney(medianAmount, medianCurrency)
+		aggregate.MinValid = scanMoney(minValidAmount, minValidCurrency)
+		byProductID[aggregate.ProductID] = aggregate
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	result := make([]domain.MarketAggregate, 0, len(byProductID))
+	for _, productID := range productIDs {
+		if aggregate, ok := byProductID[productID]; ok {
+			result = append(result, aggregate)
+		}
+	}
+	return result, nil
+}
