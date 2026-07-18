@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- API-REF: Lista: GET /users/$ID/items/search + /items?ids= (multiget) + webhook items ✅ · alterar preço/estoque: PUT /items/$ID ✅ (fila de sync é nossa) · comissão real: /items/$ID/sale_price ✅ · chip vs.mercado: derivado da busca ⚠️. Mapa completo: API-MAP.md -->
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fbfaf7;--surface:#ffffff;--surface2:#f4f2ea;--border:#e6e3da;--border2:#f0eee6;--ink:#25291f;--muted:#6f6d63;--faint:#8b887c;--accent:#4a7c59;--accent-soft:#edf3ec;--accent-ink:#33573f;--warn:#a3552e;--warn-soft:#f7ebe2;--info:#2f5bb7;--info-soft:#e8eef9;--amber:#8a6d1f;--amber-soft:#fdf3d7;--group-bg:#f4f2ea}
+[data-theme="dark"]{--bg:#161814;--surface:#1f221c;--surface2:#262a23;--border:#2e312a;--border2:#2a2d26;--ink:#e9e8e2;--muted:#a5a399;--faint:#8b887c;--accent:#7fb08c;--accent-soft:#243328;--accent-ink:#9ecfab;--warn:#d08a63;--warn-soft:#3a2a20;--info:#7fa3e0;--info-soft:#222b3c;--amber:#d4b45a;--amber-soft:#37311d;--group-bg:#262a23}
+body{margin:0;background:var(--bg);font-family:'Instrument Sans',sans-serif;color:var(--ink)}
+a{color:var(--accent-ink);text-decoration:none}a:hover{opacity:.75}
+</style>
+</helmet>
+<div data-screen-label="Anúncios" data-theme="{{ theme }}" style="min-height:100vh;background:var(--bg);color:var(--ink);display:flex;flex-direction:column">
+  <div style="display:flex;align-items:center;gap:18px;padding:12px 28px;border-bottom:1px solid var(--border);background:var(--surface)">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:28px;height:28px;border-radius:8px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">M</div>
+      <span style="font-weight:700;font-size:14px;letter-spacing:-.01em;white-space:nowrap">Marketplace Central</span>
+    </div>
+    <div style="display:flex;gap:2px;font-size:13px;margin-left:10px;white-space:nowrap">
+      <a href="Dashboard.dc.html" style="padding:7px 14px;color:var(--muted)">Visão geral</a>
+      <a href="#" style="padding:7px 14px;color:var(--muted)">Pedidos</a>
+      <span style="padding:7px 14px;border-radius:8px;background:var(--accent-soft);color:var(--accent-ink);font-weight:600">Anúncios</span>
+      <a href="#" style="padding:7px 14px;color:var(--muted)">Estoque</a>
+      <a href="Pedidos.dc.html" style="padding:7px 14px;color:var(--muted)">Pedidos</a>
+      <a href="Repasses.dc.html" style="padding:7px 14px;color:var(--muted)">Repasses</a>
+    </div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+      <span style="font-size:12.5px;color:var(--faint);border:1px solid var(--border);border-radius:999px;padding:6px 14px;background:var(--bg);white-space:nowrap;flex:none">⌕ SKU, MLB, título…</span>
+      <span onClick="{{ toggleTheme }}" style="cursor:pointer;white-space:nowrap;flex:none;font-size:12.5px;border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--muted)" style-hover="border-color:var(--accent)">{{ themeIcon }}</span>
+      <a href="Configuracoes.dc.html" style="font-size:12.5px;border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--muted)">⚙</a>
+      <span style="width:30px;height:30px;border-radius:999px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--muted)">AL</span>
+    </div>
+  </div>
+  <div style="flex:1;padding:22px 28px;display:flex;flex-direction:column;gap:14px;min-width:0">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="font-size:22px;font-weight:700;letter-spacing:-.01em">Anúncios</span>
+      <span style="font-size:12.5px;color:var(--faint)">1.284 · exceções:</span>
+      <sc-for list="{{ exceptions }}" as="x" hint-placeholder-count="4">
+        <span onClick="{{ x.onClick }}" style="cursor:pointer;font-size:12px;border:1px solid {{ x.border }};background:{{ x.bg }};color:{{ x.color }};border-radius:999px;padding:4px 12px;font-weight:600;white-space:nowrap">{{ x.label }}</span>
+      </sc-for>
+      <span style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <span onClick="{{ toggleGroup }}" style="cursor:pointer;font-size:12.5px;border:1px solid {{ groupBorder }};background:{{ groupBg }};color:{{ groupColor }};border-radius:8px;padding:7px 12px;font-weight:600;white-space:nowrap">{{ groupLabel }}</span>
+        <span style="font-size:12.5px;border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--muted);cursor:pointer;white-space:nowrap">Exportar</span>
+        <span style="font-size:12.5px;background:var(--accent);color:#fff;border-radius:8px;padding:8px 14px;font-weight:600;cursor:pointer;white-space:nowrap" style-hover="opacity:.9">+ Criar anúncio</span>
+      </span>
+    </div>
+    <div style="display:flex;gap:2px;border-bottom:1px solid var(--border);font-size:13px">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+        <span onClick="{{ t.onClick }}" style="cursor:pointer;padding:8px 16px;font-weight:{{ t.weight }};color:{{ t.color }};border-bottom:2px solid {{ t.line }};white-space:nowrap">{{ t.label }}</span>
+      </sc-for>
+    </div>
+    <sc-if value="{{ bulkVisible }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;gap:12px;background:var(--accent-soft);border:1px solid var(--accent);border-radius:10px;padding:9px 16px;font-size:13px">
+        <b>{{ selectedCount }} selecionados</b>
+        <span style="cursor:pointer;font-weight:600;color:var(--accent-ink)">Pausar</span>
+        <span style="cursor:pointer;font-weight:600;color:var(--accent-ink)">Atualizar preço</span>
+        <span style="cursor:pointer;font-weight:600;color:var(--accent-ink)">Re-sincronizar</span>
+        <span style="font-size:12px;color:var(--faint)">preview antes de aplicar</span>
+        <span onClick="{{ clearSelection }}" style="cursor:pointer;margin-left:auto;color:var(--muted)">✕ Limpar</span>
+      </div>
+    </sc-if>
+    <div style="display:flex;gap:14px;align-items:flex-start;min-width:0">
+      <div style="flex:1;min-width:0;border:1px solid var(--border);border-radius:12px;background:var(--surface);overflow-x:auto">
+        <div style="min-width:820px">
+        <div style="display:grid;grid-template-columns:34px 104px minmax(150px,1fr) 96px 84px 56px 96px 60px 120px;padding:9px 12px;background:var(--surface2);color:var(--faint);font-size:11px;letter-spacing:.04em">
+          <span></span><span>MLB</span><span>TÍTULO</span><span>PRODUTO</span><span>PREÇO</span><span>EST.</span><span>SYNC</span><span>QUAL.</span><span>PENDÊNCIA</span>
+        </div>
+        <sc-for list="{{ rows }}" as="r" hint-placeholder-count="7">
+          <div>
+            <sc-if value="{{ r.isGroup }}" hint-placeholder-val="{{ false }}">
+              <div onClick="{{ r.toggleGroupOpen }}" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid var(--border2);background:var(--group-bg);font-size:12.5px;cursor:pointer">
+                <span style="color:var(--faint);font-size:10px;width:14px">{{ r.chev }}</span>
+                <b>{{ r.name }}</b>
+                <span style="font-size:11.5px;color:var(--faint)">{{ r.meta }}</span>
+                <span style="margin-left:auto;display:flex;align-items:center;gap:5px;background:{{ r.pillBg }};color:{{ r.pillFg }};border-radius:999px;padding:1px 9px;font-size:10.5px;font-weight:600;white-space:nowrap">{{ r.status }}</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{ r.isItem }}" hint-placeholder-val="{{ true }}">
+              <div onClick="{{ r.select }}" style="display:grid;grid-template-columns:34px 104px minmax(150px,1fr) 96px 84px 56px 96px 60px 120px;align-items:center;padding:9px 12px;border-top:1px solid var(--border2);font-size:12.5px;cursor:pointer;background:{{ r.rowBg }}" style-hover="background:var(--surface2)">
+                <span onClick="{{ r.toggleSelect }}" style="width:15px;height:15px;border-radius:4px;border:1.5px solid {{ r.checkBorder }};background:{{ r.checkBg }};display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;cursor:pointer">{{ r.checkMark }}</span>
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--faint)">{{ r.mlb }}</span>
+                <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:8px;padding-left:{{ r.indent }};font-weight:500">{{ r.name }}</span>
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:{{ r.linkColor }}">{{ r.produto }}</span>
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:12px">{{ r.price }}</span>
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:{{ r.stockColor }}">{{ r.stock }}</span>
+                <span style="justify-self:start;display:flex;align-items:center;gap:4px;background:{{ r.pillBg }};color:{{ r.pillFg }};border-radius:999px;padding:1px 9px;font-size:10.5px;font-weight:600;white-space:nowrap"><span style="width:4px;height:4px;border-radius:999px;background:{{ r.pillFg }}"></span>{{ r.status }}</span>
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:{{ r.qualColor }}">{{ r.qual }}</span>
+                <span style="font-size:11.5px;color:{{ r.pendColor }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.pend }}</span>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+        </div>
+      </div>
+      <sc-if value="{{ drawerVisible }}" hint-placeholder-val="{{ true }}">
+        <div style="width:300px;flex:none;border:1px solid var(--border);border-radius:12px;background:var(--surface);overflow:hidden;position:sticky;top:16px">
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface2)">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--faint)">{{ drawer.mlb }}</span>
+            <b style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">{{ drawer.short }}</b>
+            <span onClick="{{ closeDrawer }}" style="cursor:pointer;color:var(--faint)">✕</span>
+          </div>
+          <div style="padding:14px;display:flex;flex-direction:column;gap:12px;font-size:12.5px">
+            <div style="display:flex;gap:10px">
+              <div style="width:56px;height:56px;border-radius:8px;background:repeating-linear-gradient(45deg,var(--surface2),var(--surface2) 6px,var(--border2) 6px,var(--border2) 12px);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--faint);flex:none">foto</div>
+              <div style="min-width:0">
+                <b>{{ drawer.name }}</b>
+                <div style="font-size:11.5px;color:var(--faint);margin-top:2px">{{ drawer.produto }} · {{ drawer.modal }}</div>
+                <span style="display:inline-flex;align-items:center;gap:4px;background:{{ drawer.pillBg }};color:{{ drawer.pillFg }};border-radius:999px;padding:1px 9px;font-size:10.5px;font-weight:600;margin-top:4px">{{ drawer.status }}</span>
+              </div>
+            </div>
+            <sc-if value="{{ drawer.hasError }}" hint-placeholder-val="{{ false }}">
+              <div style="background:var(--warn-soft);border:1px solid var(--warn);border-radius:8px;padding:9px 12px;font-size:12px;color:var(--warn);line-height:1.5"><b>{{ drawer.errorTitle }}</b><br>{{ drawer.errorBody }}<div style="font-size:10.5px;color:var(--faint);margin-top:4px;font-family:'IBM Plex Mono',monospace">▸ {{ drawer.errorTech }}</div></div>
+            </sc-if>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <div style="border:1px solid var(--border2);border-radius:8px;padding:8px 10px"><div style="font-size:10.5px;color:var(--faint)">Preço</div><div style="font-family:'IBM Plex Mono',monospace;font-weight:600;margin-top:2px">{{ drawer.price }}</div></div>
+              <div style="border:1px solid var(--border2);border-radius:8px;padding:8px 10px"><div style="font-size:10.5px;color:var(--faint)">Est. publicado</div><div style="font-family:'IBM Plex Mono',monospace;font-weight:600;margin-top:2px;color:{{ drawer.stockColor }}">{{ drawer.stock }}</div></div>
+              <div style="border:1px solid var(--border2);border-radius:8px;padding:8px 10px"><div style="font-size:10.5px;color:var(--faint)">Margem est.</div><div style="font-family:'IBM Plex Mono',monospace;font-weight:600;margin-top:2px;color:{{ drawer.marginColor }}">{{ drawer.margin }}</div></div>
+              <div style="border:1px solid var(--border2);border-radius:8px;padding:8px 10px"><div style="font-size:10.5px;color:var(--faint)">Qualidade</div><div style="font-family:'IBM Plex Mono',monospace;font-weight:600;margin-top:2px">{{ drawer.qual }}</div></div>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <span style="font-size:12px;background:var(--accent);color:#fff;border-radius:8px;padding:7px 12px;font-weight:600;cursor:pointer">{{ drawer.primaryAction }}</span>
+              <span style="font-size:12px;border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--muted);cursor:pointer">Simular preço</span>
+              <span style="font-size:12px;border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--muted);cursor:pointer">Pausar</span>
+            </div>
+            <div style="border-top:1px solid var(--border2);padding-top:10px">
+              <div style="font-size:10.5px;letter-spacing:.08em;color:var(--faint);font-weight:600;margin-bottom:6px">LINHA DO TEMPO</div>
+              <sc-for list="{{ drawer.timeline }}" as="ev" hint-placeholder-count="3">
+                <div style="display:flex;gap:8px;font-size:11.5px;padding:3px 0"><span style="font-family:'IBM Plex Mono',monospace;color:var(--faint);flex:none">{{ ev.time }}</span><span style="color:{{ ev.color }}">{{ ev.text }}</span></div>
+              </sc-for>
+            </div>
+            <a href="Produto Detalhe.dc.html" style="font-size:12px;font-weight:600">Abrir edição completa →</a>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Aparência&quot;}}">
+class Component extends DCLogic {
+  state = { theme: null, grouped: false, tab: 'Todos', exc: null, selected: {}, drawerId: 'MLB-…790', openGroups: { 'PAR-0451': true, 'ELE-2210': true } };
+  data = [
+    { mlb: 'MLB-…789', name: 'Parafuso Sextavado M8x40 Cx 100un', short: 'Parafuso M8x40', produto: 'PAR-0451', grp: 'PAR-0451', grpName: 'PAR-0451 · Parafuso Sextavado M8x40', grpMeta: 'ERP est. 320 · 2 anúncios', modal: 'Clássico', price: 'R$ 49,90', stock: '320', sync: 'Sincronizado', qual: '92%', pend: '—', margin: '31,2%', marginOk: true, timeline: [{ time: '14:20', text: 'preço confirmado no ML', ok: true }, { time: '09:12', text: 'sync concluído', ok: true }] },
+    { mlb: 'MLB-…9001', name: 'Kit Parafuso M8 Premium', short: 'Kit Parafuso M8', produto: 'PAR-0451', grp: 'PAR-0451', modal: 'Premium', price: 'R$ 54,90', stock: '320', sync: 'Sincronizado', qual: '88%', pend: 'reprecificar?', pendWarn: true, margin: '22,4%', marginOk: true, timeline: [{ time: '11:03', text: 'sync concluído', ok: true }] },
+    { mlb: 'MLB-…790', name: 'Eletrodo 6013 2,5mm Pacote 5kg', short: 'Eletrodo 6013', produto: 'ELE-2210', grp: 'ELE-2210', grpName: 'ELE-2210 · Eletrodo 6013 2,5mm 5kg', grpMeta: 'ERP est. 35 · 1 anúncio', modal: 'Premium', price: 'R$ 89,00', stock: '0 ⚠', stockWarn: true, sync: 'Erro', qual: '61%', qualLow: true, pend: 'Marca obrigatória', pendErr: true, margin: '7,9%', error: { title: 'A marca é obrigatória nesta categoria.', body: 'Abra o anúncio e preencha o campo "Marca".', tech: 'Attribute [BRAND] is required' }, timeline: [{ time: '14:02', text: 'erro de sync — marca obrigatória', err: true }, { time: '13:50', text: 'preço enviado ao ML', ok: true }, { time: '09:12', text: 'importado da conta Loja Principal', ok: true }] },
+    { mlb: 'MLB-…791', name: 'Disco de Corte 7" Aço Inox 10un', short: 'Disco de Corte 7"', produto: 'sem vínculo', noLink: true, grp: null, modal: 'Clássico', price: 'R$ 64,50', stock: '85', sync: 'Desatualizado', qual: '78%', pend: 'Vincular SKU', pendWarn: true, margin: '—', timeline: [{ time: '10:44', text: 'importado sem correspondência', warn: true }] },
+    { mlb: 'MLB-…792', name: 'Arame MIG 0,8mm Rolo 15kg', short: 'Arame MIG 0,8mm', produto: 'ARA-1180', grp: 'ARA-1180', grpName: 'ARA-1180 · Arame MIG 0,8mm 15kg', grpMeta: 'ERP est. 44 · 1 anúncio', modal: 'Premium', price: 'R$ 219,00', stock: '44', sync: 'Na fila', qual: '95%', pend: '—', margin: '24,6%', marginOk: true, timeline: [{ time: '14:30', text: 'aguardando fila de sync', warn: true }] },
+    { mlb: 'MLB-…795', name: 'Esmerilhadeira 4.1/2" 850W', short: 'Esmerilhadeira', produto: 'ESM-3301', grp: 'ESM-3301', grpName: 'ESM-3301 · Esmerilhadeira 4.1/2" 850W', grpMeta: 'ERP est. 8 · 1 anúncio', modal: 'Premium', price: 'R$ 289,90', stock: '8', sync: 'Pausado', qual: '90%', pend: '—', margin: '19,0%', marginOk: true, timeline: [{ time: 'ontem', text: 'pausado manualmente', warn: true }] },
+  ];
+  renderVals() {
+    const theme = this.state.theme ?? this.props.theme ?? 'light';
+    const { grouped, tab, exc, selected, drawerId, openGroups } = this.state;
+    const pillFor = s => s === 'Sincronizado' ? ['var(--accent-soft)', 'var(--accent-ink)'] : s === 'Erro' ? ['var(--warn-soft)', 'var(--warn)'] : s === 'Desatualizado' ? ['var(--amber-soft)', 'var(--amber)'] : s === 'Na fila' ? ['var(--info-soft)', 'var(--info)'] : ['var(--surface2)', 'var(--faint)'];
+    let items = this.data.filter(d =>
+      (tab === 'Todos' ? true : tab === 'Ativos' ? ['Sincronizado', 'Na fila'].includes(d.sync) : tab === 'Pausados' ? d.sync === 'Pausado' : ['Erro', 'Desatualizado'].includes(d.sync) || d.noLink) &&
+      (exc === null ? true : exc === 'erro' ? d.sync === 'Erro' : exc === 'desat' ? d.sync === 'Desatualizado' : exc === 'vinc' ? d.noLink : d.pendWarn === true));
+    const mkItem = (d, indented) => {
+      const [pillBg, pillFg] = pillFor(d.sync), isSel = !!selected[d.mlb];
+      return {
+        isItem: true, isGroup: false, mlb: d.mlb, name: d.name, produto: d.produto, price: d.price, stock: d.stock, qual: d.qual, pend: d.pend, status: d.sync,
+        pillBg, pillFg, indent: indented ? '18px' : '0px',
+        linkColor: d.noLink ? 'var(--warn)' : 'var(--muted)',
+        stockColor: d.stockWarn ? 'var(--warn)' : 'var(--ink)',
+        qualColor: d.qualLow ? 'var(--warn)' : 'var(--muted)',
+        pendColor: d.pendErr ? 'var(--warn)' : d.pendWarn ? 'var(--amber)' : 'var(--faint)',
+        rowBg: drawerId === d.mlb ? 'var(--accent-soft)' : 'transparent',
+        checkBg: isSel ? 'var(--accent)' : 'transparent', checkBorder: isSel ? 'var(--accent)' : 'var(--border)', checkMark: isSel ? '✓' : '',
+        select: () => this.setState({ drawerId: d.mlb }),
+        toggleSelect: e => { e.stopPropagation(); this.setState({ selected: { ...selected, [d.mlb]: !isSel } }); },
+      };
+    };
+    let rows;
+    if (!grouped) rows = items.map(d => mkItem(d, false));
+    else {
+      rows = [];
+      const seen = {};
+      for (const d of items) {
+        const g = d.grp || '— sem produto —';
+        if (!seen[g]) {
+          seen[g] = true;
+          const members = items.filter(x => (x.grp || '— sem produto —') === g);
+          const anyErr = members.some(x => x.sync === 'Erro');
+          const open = openGroups[g] !== false;
+          rows.push({ isGroup: true, isItem: false, name: d.grpName || g, meta: d.grpMeta || `${members.length} anúncio${members.length > 1 ? 's' : ''}`, chev: open ? '▾' : '▸', status: anyErr ? '1 erro' : 'ok', pillBg: anyErr ? 'var(--warn-soft)' : 'var(--accent-soft)', pillFg: anyErr ? 'var(--warn)' : 'var(--accent-ink)', toggleGroupOpen: () => this.setState({ openGroups: { ...openGroups, [g]: !open } }) });
+          if (open) members.forEach(m => rows.push(mkItem(m, true)));
+        }
+      }
+    }
+    const d = this.data.find(x => x.mlb === drawerId);
+    const selectedCount = Object.values(selected).filter(Boolean).length;
+    const mkTab = label => ({ label, onClick: () => this.setState({ tab: label, exc: null }), weight: tab === label ? '600' : '400', color: label === 'Com pendência 84' && tab !== label ? 'var(--warn)' : tab === label ? 'var(--accent-ink)' : 'var(--muted)', line: tab === label ? 'var(--accent)' : 'transparent' });
+    return {
+      theme,
+      themeIcon: theme === 'dark' ? '☀ Claro' : '☾ Escuro',
+      toggleTheme: () => this.setState({ theme: theme === 'dark' ? 'light' : 'dark' }),
+      toggleGroup: () => this.setState({ grouped: !grouped }),
+      groupLabel: grouped ? 'Agrupar: produto ✓' : 'Agrupar: nenhum ▾',
+      groupBg: grouped ? 'var(--accent-soft)' : 'var(--surface)',
+      groupColor: grouped ? 'var(--accent-ink)' : 'var(--muted)',
+      groupBorder: grouped ? 'var(--accent)' : 'var(--border)',
+      exceptions: [
+        { key: 'erro', label: '● erro 23', on: 'var(--warn)' },
+        { key: 'desat', label: '● desatualizado 14', on: 'var(--amber)' },
+        { key: 'vinc', label: '○ sem vínculo 41', on: 'var(--muted)' },
+        { key: 'marg', label: '● abaixo da margem 6', on: 'var(--amber)' },
+      ].map(x => ({ label: x.label, onClick: () => this.setState({ exc: exc === x.key ? null : x.key }), bg: exc === x.key ? 'var(--surface2)' : 'var(--surface)', color: x.on, border: exc === x.key ? x.on : 'var(--border)' })),
+      tabs: ['Todos', 'Ativos', 'Pausados', 'Com pendência 84'].map(mkTab),
+      bulkVisible: selectedCount > 0, selectedCount,
+      clearSelection: () => this.setState({ selected: {} }),
+      drawerVisible: !!d,
+      closeDrawer: () => this.setState({ drawerId: null }),
+      rows,
+      drawer: d ? (() => {
+        const [pillBg, pillFg] = pillFor(d.sync);
+        return {
+          mlb: d.mlb, short: d.short, name: d.name, produto: d.produto, modal: d.modal, status: d.sync, pillBg, pillFg,
+          price: d.price, stock: d.stock, stockColor: d.stockWarn ? 'var(--warn)' : 'var(--ink)',
+          margin: d.margin, marginColor: d.marginOk ? 'var(--accent-ink)' : 'var(--warn)', qual: d.qual,
+          hasError: !!d.error, errorTitle: d.error?.title || '', errorBody: d.error?.body || '', errorTech: d.error?.tech || '',
+          primaryAction: d.error ? 'Corrigir anúncio' : d.noLink ? 'Vincular produto' : 'Editar anúncio',
+          timeline: (d.timeline || []).map(ev => ({ time: ev.time, text: ev.text, color: ev.err ? 'var(--warn)' : ev.warn ? 'var(--amber)' : 'var(--muted)' })),
+        };
+      })() : { timeline: [] },
+    };
+  }
+}
+</script>
+</body>
+</html>

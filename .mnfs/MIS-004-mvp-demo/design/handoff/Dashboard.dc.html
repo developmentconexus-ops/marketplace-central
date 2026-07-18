@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- API-REF: KPIs agregados de /orders/search, /users/$ID/items/search, /post-purchase/v1/claims/search e billing — tudo derivado (⚠️). Mapa completo: API-MAP.md -->
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fbfaf7;--surface:#ffffff;--surface2:#f4f2ea;--border:#e6e3da;--border2:#f0eee6;--ink:#25291f;--muted:#6f6d63;--faint:#8b887c;--accent:#4a7c59;--accent-soft:#edf3ec;--accent-ink:#33573f;--warn:#a3552e;--warn-soft:#f7ebe2;--info:#2f5bb7;--info-soft:#e8eef9;--amber:#8a6d1f;--amber-soft:#fdf3d7;--donut-track:#e9e6dc}
+[data-theme="dark"]{--bg:#161814;--surface:#1f221c;--surface2:#262a23;--border:#2e312a;--border2:#2a2d26;--ink:#e9e8e2;--muted:#a5a399;--faint:#8b887c;--accent:#7fb08c;--accent-soft:#243328;--accent-ink:#9ecfab;--warn:#d08a63;--warn-soft:#3a2a20;--info:#7fa3e0;--info-soft:#222b3c;--amber:#d4b45a;--amber-soft:#37311d;--donut-track:#2e312a}
+body{margin:0;background:var(--bg);font-family:'Instrument Sans',sans-serif;color:var(--ink)}
+a{color:var(--accent-ink);text-decoration:none}a:hover{opacity:.75}
+</style>
+</helmet>
+<div data-screen-label="Dashboard" data-theme="{{ theme }}" style="min-height:100vh;background:var(--bg);color:var(--ink);display:flex;flex-direction:column">
+  <div style="display:flex;align-items:center;gap:18px;padding:12px 28px;border-bottom:1px solid var(--border);background:var(--surface)">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:28px;height:28px;border-radius:8px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">M</div>
+      <span style="font-weight:700;font-size:14px;letter-spacing:-.01em">Marketplace Central</span>
+    </div>
+    <div style="display:flex;gap:2px;font-size:13px;margin-left:10px;white-space:nowrap">
+      <span style="padding:7px 14px;border-radius:8px;background:var(--accent-soft);color:var(--accent-ink);font-weight:600">Visão geral</span>
+      <a href="#" style="padding:7px 14px;color:var(--muted)">Pedidos</a>
+      <a href="Anuncios.dc.html" style="padding:7px 14px;color:var(--muted)">Anúncios</a>
+      <a href="#" style="padding:7px 14px;color:var(--muted)">Estoque</a>
+      <a href="Pedidos.dc.html" style="padding:7px 14px;color:var(--muted)">Pedidos</a>
+      <a href="Repasses.dc.html" style="padding:7px 14px;color:var(--muted)">Repasses</a>
+    </div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+      <span style="font-size:12.5px;color:var(--faint);border:1px solid var(--border);border-radius:999px;padding:6px 14px;background:var(--bg);white-space:nowrap;flex:none">⌕ Buscar pedidos, SKUs…</span>
+      <span onClick="{{ toggleTheme }}" style="cursor:pointer;white-space:nowrap;flex:none;font-size:12.5px;border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--muted)" style-hover="border-color:var(--accent)">{{ themeIcon }}</span>
+      <a href="Configuracoes.dc.html" style="font-size:12.5px;border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--muted)">⚙</a>
+      <span style="width:30px;height:30px;border-radius:999px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--muted)">AL</span>
+    </div>
+  </div>
+  <div style="display:flex;flex:1;min-height:0">
+    <div style="flex:1;padding:26px 28px;display:flex;flex-direction:column;gap:20px;min-width:0">
+      <div style="display:flex;align-items:baseline;justify-content:space-between">
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <span style="font-size:22px;font-weight:700;letter-spacing:-.01em">Bom dia, Ana</span>
+          <span style="font-size:13px;color:var(--muted)">Veja o que precisa de atenção nos seus canais.</span>
+        </div>
+        <span style="font-size:12.5px;border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--muted);background:var(--surface)">Esta semana ▾</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+        <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px" style-hover="border-color:var(--accent)">
+            <div style="font-size:12px;color:var(--muted)">{{ k.label }}</div>
+            <div style="font-size:27px;font-weight:700;margin-top:6px;color:{{ k.color }}">{{ k.value }}</div>
+            <div style="font-size:11.5px;color:var(--faint);margin-top:3px">{{ k.sub }}</div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <span style="font-size:14px;font-weight:600">Pedidos recentes</span>
+            <a href="#" style="font-size:12.5px;font-weight:600">Ver todos →</a>
+          </div>
+          <div style="display:flex;flex-direction:column;font-size:13px">
+            <div style="display:grid;grid-template-columns:64px minmax(110px,1fr) 78px 64px 84px;padding:6px 0;color:var(--faint);font-size:11.5px;border-bottom:1px solid var(--border2)">
+              <span>PEDIDO</span><span>ITEM</span><span>CANAL</span><span>TOTAL</span><span>STATUS</span>
+            </div>
+            <sc-for list="{{ orders }}" as="o" hint-placeholder-count="5">
+              <div style="display:grid;grid-template-columns:64px minmax(110px,1fr) 78px 64px 84px;align-items:center;padding:9px 0;border-bottom:1px solid var(--border2)" style-hover="background:var(--surface2)">
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--faint)">{{ o.id }}</span>
+                <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:10px">{{ o.item }}</span>
+                <span style="font-size:12px;color:var(--muted)">{{ o.channel }}</span>
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px">{{ o.total }}</span>
+                <span style="justify-self:start;display:flex;align-items:center;gap:5px;background:{{ o.pillBg }};color:{{ o.pillFg }};border-radius:999px;padding:2px 10px;font-size:11px;font-weight:600"><span style="width:5px;height:5px;border-radius:999px;background:{{ o.pillFg }}"></span>{{ o.status }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:12px">
+            <span style="font-size:14px;font-weight:600">Saúde dos anúncios</span>
+            <div style="display:flex;align-items:center;gap:16px">
+              <div style="width:96px;height:96px;border-radius:50%;background:{{ donutBg }};display:flex;align-items:center;justify-content:center;flex:none">
+                <div style="width:64px;height:64px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:var(--accent-ink)">86%</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px;font-size:12.5px;flex:1">
+                <div style="display:flex;justify-content:space-between"><span style="color:var(--accent-ink)">● Ativos</span><b>1,164</b></div>
+                <div style="display:flex;justify-content:space-between"><span style="color:var(--amber)">● Pausados</span><b>121</b></div>
+                <div style="display:flex;justify-content:space-between"><span style="color:var(--warn)">● Com erro</span><b>68</b></div>
+              </div>
+            </div>
+            <a href="#" style="font-size:12.5px;font-weight:600;color:var(--warn)">Revisar 68 erros de publicação →</a>
+          </div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px">
+            <span style="font-size:14px;font-weight:600">Mais vendidos da semana</span>
+            <sc-for list="{{ topItems }}" as="t" hint-placeholder-count="3">
+              <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px">
+                <span>{{ t.name }}</span>
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted)">{{ t.qty }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="width:200px;border-left:1px solid var(--border);background:var(--surface);padding:24px 20px;display:flex;flex-direction:column;gap:18px;flex:none">
+      <span style="font-size:11px;letter-spacing:.1em;color:var(--faint);font-weight:600">RESUMO</span>
+      <sc-for list="{{ railStats }}" as="r" hint-placeholder-count="4">
+        <div>
+          <div style="font-size:12px;color:var(--muted)">{{ r.label }}</div>
+          <div style="font-size:18px;font-weight:700;margin-top:2px;color:{{ r.color }}">{{ r.value }}</div>
+        </div>
+      </sc-for>
+      <div style="border-top:1px solid var(--border2);padding-top:16px;display:flex;flex-direction:column;gap:10px">
+        <span style="font-size:11px;letter-spacing:.1em;color:var(--faint);font-weight:600">CANAIS</span>
+        <sc-for list="{{ channels }}" as="c" hint-placeholder-count="3">
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px">
+            <span>{{ c.name }}</span>
+            <span style="width:7px;height:7px;border-radius:999px;background:{{ c.dot }}"></span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Appearance&quot;}}">
+class Component extends DCLogic {
+  state = { theme: null };
+  renderVals() {
+    const theme = this.state.theme ?? this.props.theme ?? 'light';
+    const v = (l, d) => theme === 'dark' ? d : l;
+    return {
+      theme,
+      themeIcon: theme === 'dark' ? '☀ Claro' : '☾ Escuro',
+      toggleTheme: () => this.setState({ theme: theme === 'dark' ? 'light' : 'dark' }),
+      donutBg: `conic-gradient(${v('#4a7c59','#7fb08c')} 0 86%, ${v('#d4b45a','#8a7a3e')} 86% 95%, ${v('#a3552e','#d08a63')} 95% 100%)`,
+      kpis: [
+        { label: 'Para embalar', value: '228', sub: '12 atrasados', color: 'var(--accent-ink)' },
+        { label: 'Para enviar', value: '36', sub: 'coleta às 16h', color: 'var(--warn)' },
+        { label: 'Para entregar', value: '104', sub: '3 em atraso', color: 'var(--info)' },
+        { label: 'Para faturar', value: '474', sub: 'emissão automática à noite', color: 'var(--ink)' },
+      ],
+      orders: [
+        { id: '#88214', item: 'Escrivaninha de carvalho', channel: 'Mercado L.', total: 'R$ 1.240', status: 'Pago', pillBg: 'var(--accent-soft)', pillFg: 'var(--accent-ink)' },
+        { id: '#88213', item: 'Jogo de cerâmica ×4 — Atelier Rô', channel: 'Shopee', total: 'R$ 96', status: 'Pendente', pillBg: 'var(--amber-soft)', pillFg: 'var(--amber)' },
+        { id: '#88212', item: 'Manta de lã — North Loom', channel: 'Amazon', total: 'R$ 210', status: 'Em envio', pillBg: 'var(--info-soft)', pillFg: 'var(--info)' },
+        { id: '#88211', item: 'Jogo de cortinas de linho', channel: 'Mercado L.', total: 'R$ 150', status: 'Pago', pillBg: 'var(--accent-soft)', pillFg: 'var(--accent-ink)' },
+        { id: '#88210', item: 'Luminária pendente de rattan', channel: 'Magalu', total: 'R$ 342', status: 'Erro', pillBg: 'var(--warn-soft)', pillFg: 'var(--warn)' },
+      ],
+      topItems: [
+        { name: 'Escrivaninha', qty: '171 un' },
+        { name: 'Manta de lã', qty: '45 un' },
+        { name: 'Jogo de cerâmica', qty: '38 jogos' },
+      ],
+      railStats: [
+        { label: 'GMV hoje', value: 'R$ 48.210', color: 'var(--ink)' },
+        { label: 'Receita no ano', value: 'R$ 98,7 mil', color: 'var(--ink)' },
+        { label: 'Disputas abertas', value: '3', color: 'var(--warn)' },
+        { label: 'SKUs ativos', value: '1,353', color: 'var(--ink)' },
+      ],
+      channels: [
+        { name: 'Mercado Livre', dot: 'var(--accent)' },
+        { name: 'Amazon', dot: 'var(--accent)' },
+        { name: 'Shopee', dot: 'var(--amber)' },
+        { name: 'Magalu', dot: 'var(--warn)' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

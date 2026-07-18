@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- API-REF: Cadastro/custo/estoque físico: ERP ❌ · Full: GET /inventories/$INV/stock/fulfillment + /stock/fulfillment/operations/search ✅ (inbound sem API) · visitas: /items/$ID/visits ✅ · aba Pedidos: agregação de /orders/search ⚠️ · Histórico de preço: snapshot diário próprio ❌ · auditoria: log nosso ❌. Mapa completo: API-MAP.md -->
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fbfaf7;--surface:#ffffff;--surface2:#f4f2ea;--border:#e6e3da;--border2:#f0eee6;--ink:#25291f;--muted:#6f6d63;--faint:#8b887c;--accent:#4a7c59;--accent-soft:#edf3ec;--accent-ink:#33573f;--warn:#a3552e;--warn-soft:#f7ebe2;--info:#2f5bb7;--info-soft:#e8eef9;--amber:#8a6d1f;--amber-soft:#fdf3d7}
+[data-theme="dark"]{--bg:#161814;--surface:#1f221c;--surface2:#262a23;--border:#2e312a;--border2:#2a2d26;--ink:#e9e8e2;--muted:#a5a399;--faint:#8b887c;--accent:#7fb08c;--accent-soft:#243328;--accent-ink:#9ecfab;--warn:#d08a63;--warn-soft:#3a2a20;--info:#7fa3e0;--info-soft:#222b3c;--amber:#d4b45a;--amber-soft:#37311d}
+body{margin:0;background:var(--bg);font-family:'Instrument Sans',sans-serif;color:var(--ink)}
+a{color:var(--accent-ink);text-decoration:none}a:hover{opacity:.75}
+</style>
+</helmet>
+<div data-screen-label="Detalhe do produto" data-theme="{{ theme }}" style="min-height:100vh;background:var(--bg);color:var(--ink);display:flex;flex-direction:column">
+  <div style="display:flex;align-items:center;gap:18px;padding:12px 28px;border-bottom:1px solid var(--border);background:var(--surface)">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:28px;height:28px;border-radius:8px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">M</div>
+      <span style="font-weight:700;font-size:14px;letter-spacing:-.01em;white-space:nowrap">Marketplace Central</span>
+    </div>
+    <div style="display:flex;gap:2px;font-size:13px;margin-left:10px;white-space:nowrap">
+      <a href="Dashboard.dc.html" style="padding:7px 14px;color:var(--muted)">Visão geral</a>
+      <a href="Anuncios.dc.html" style="padding:7px 14px;color:var(--muted)">Anúncios</a>
+      <a href="Mercado.dc.html" style="padding:7px 14px;color:var(--muted)">Mercado</a>
+      <a href="Simulador.dc.html" style="padding:7px 14px;color:var(--muted)">Simulador</a>
+      <a href="Pedidos.dc.html" style="padding:7px 14px;color:var(--muted)">Pedidos</a>
+      <a href="Repasses.dc.html" style="padding:7px 14px;color:var(--muted)">Repasses</a>
+    </div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+      <span onClick="{{ toggleTheme }}" style="cursor:pointer;white-space:nowrap;flex:none;font-size:12.5px;border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--muted)" style-hover="border-color:var(--accent)">{{ themeIcon }}</span>
+      <a href="Configuracoes.dc.html" style="font-size:12.5px;border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--muted)">⚙</a>
+      <span style="width:30px;height:30px;border-radius:999px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--muted)">AL</span>
+    </div>
+  </div>
+  <div style="flex:1;padding:22px 28px;display:flex;flex-direction:column;gap:16px;min-width:0;max-width:1200px;margin:0 auto;width:100%;box-sizing:border-box">
+    <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--faint)">
+      <a href="Anuncios.dc.html">Anúncios</a><span>/</span><span style="font-family:'IBM Plex Mono',monospace">ELE-2210</span>
+      <span style="margin-left:auto;display:flex;gap:8px">
+        <span style="border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--muted);cursor:pointer;white-space:nowrap">Simular preço</span>
+        <span style="background:var(--accent);color:#fff;border-radius:8px;padding:8px 14px;font-weight:600;cursor:pointer;white-space:nowrap" style-hover="opacity:.9">+ Criar anúncio</span>
+      </span>
+    </div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+      <div style="width:96px;height:96px;border-radius:10px;background:repeating-linear-gradient(45deg,var(--surface2),var(--surface2) 6px,var(--border2) 6px,var(--border2) 12px);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--faint);flex:none">foto</div>
+      <div style="flex:1;min-width:260px;display:flex;flex-direction:column;gap:6px">
+        <span style="font-size:21px;font-weight:700;letter-spacing:-.01em">Eletrodo 6013 2,5mm 5kg</span>
+        <div style="font-size:12.5px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap">
+          <span>GTIN <span style="font-family:'IBM Plex Mono',monospace">7891235…</span></span>
+          <span>NCM <span style="font-family:'IBM Plex Mono',monospace">8311.10</span></span>
+          <span>Custo <b style="color:var(--ink)">R$ 61,00</b></span>
+          <span>35×6×6 cm · 5,2 kg ✓</span>
+        </div>
+        <div style="font-size:12.5px;color:var(--muted)">Estoque: físico <b style="color:var(--ink)">40</b> · reservado <b style="color:var(--ink)">5</b> · disponível <b style="color:var(--ink)">35</b> · seguro 5</div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:12.5px">
+          <span style="color:var(--muted)">Completude</span>
+          <span style="width:110px;height:7px;border-radius:999px;background:var(--border2);overflow:hidden;display:inline-block"><span style="display:block;width:61%;height:100%;background:var(--amber)"></span></span>
+          <b style="color:var(--amber)">61%</b>
+          <span style="color:var(--faint)">falta: marca, ficha técnica</span>
+        </div>
+      </div>
+      <div style="width:270px;flex:none;border:1px solid var(--amber);border-radius:12px;background:var(--surface);overflow:hidden">
+        <div style="padding:9px 14px;background:var(--amber-soft);font-size:13px;font-weight:700;color:var(--amber)">Vale a pena vender? ●</div>
+        <div style="padding:12px 14px;font-size:12.5px;line-height:1.7">
+          Mediana ML: <b>R$ 75,40</b> <span style="color:var(--faint)">(23 concorrentes)</span><br>
+          Margem na mediana: <b style="color:var(--warn)">−2,1%</b><br>
+          Margem no meu preço: <b>7,9%</b> · vendas 30d: 37<br>
+          <b>Veredicto: caro p/ ML Premium → tentar Clássico ou renegociar custo</b>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:2px;border-bottom:1px solid var(--border);font-size:13px;overflow-x:auto">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="6">
+        <span onClick="{{ t.onClick }}" style="cursor:pointer;padding:8px 16px;font-weight:{{ t.weight }};color:{{ t.color }};border-bottom:2px solid {{ t.line }};white-space:nowrap">{{ t.label }}</span>
+      </sc-for>
+    </div>
+    <sc-if value="{{ showAnuncios }}" hint-placeholder-val="{{ true }}">
+      <div style="border:1px solid var(--border);border-radius:12px;background:var(--surface);overflow-x:auto">
+        <div style="min-width:760px">
+          <div style="display:grid;grid-template-columns:104px 90px minmax(150px,1fr) 84px 84px 96px 76px 76px 70px;padding:9px 14px;background:var(--surface2);color:var(--faint);font-size:11px;letter-spacing:.04em">
+            <span>MLB</span><span>CONTA</span><span>TÍTULO</span><span>MODAL.</span><span>PREÇO</span><span>VS MERCADO</span><span>SYNC</span><span>VENDAS 30D</span><span></span>
+          </div>
+          <div style="display:grid;grid-template-columns:104px 90px minmax(150px,1fr) 84px 84px 96px 76px 76px 70px;align-items:center;padding:10px 14px;border-top:1px solid var(--border2);font-size:12.5px;background:var(--warn-soft)">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--faint)">MLB-…790</span>
+            <span style="font-size:12px;color:var(--muted)">Loja Princ.</span>
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:8px;font-weight:500">Eletrodo 6013 2,5mm Pacote 5kg</span>
+            <span style="font-size:12px;color:var(--muted)">Premium</span>
+            <span style="font-family:'IBM Plex Mono',monospace">R$ 89,00</span>
+            <span style="justify-self:start;background:var(--warn-soft);color:var(--warn);border:1px solid var(--warn);border-radius:999px;padding:1px 9px;font-size:10.5px;font-weight:600">+18% ↑med</span>
+            <span style="justify-self:start;display:flex;align-items:center;gap:4px;background:var(--warn-soft);color:var(--warn);border-radius:999px;padding:1px 9px;font-size:10.5px;font-weight:600"><span style="width:4px;height:4px;border-radius:999px;background:var(--warn)"></span>Erro</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:12px">37</span>
+            <a href="#" style="font-size:12px;font-weight:600">abrir</a>
+          </div>
+          <div style="padding:10px 14px;border-top:1px solid var(--border2);font-size:12.5px;color:var(--faint)">+ <a href="#" style="font-weight:600">criar 2º anúncio Clássico com preço competitivo</a> — sugestão do radar</div>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ showConcorrencia }}" hint-placeholder-val="{{ false }}">
+      <div style="border:1px solid var(--border);border-radius:12px;background:var(--surface);overflow:hidden">
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--surface2);font-size:13px;font-weight:600">Concorrência <span style="font-size:11.5px;color:var(--faint);font-weight:400">dados públicos ML · atualizado 1×/dia · hoje 06:00</span></div>
+        <div style="display:flex;gap:16px;padding:16px;flex-wrap:wrap">
+          <div style="width:250px;height:120px;flex:none;border-radius:10px;background:repeating-linear-gradient(45deg,var(--surface2),var(--surface2) 6px,var(--border2) 6px,var(--border2) 12px);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;text-align:center;font-size:11.5px;color:var(--faint);padding:10px;box-sizing:border-box">histograma de preços dos 23 concorrentes · ▼ meu preço marcado</div>
+          <div style="flex:1;min-width:320px;overflow-x:auto">
+            <div style="display:grid;grid-template-columns:30px minmax(120px,1fr) 80px 70px 76px 100px;padding:7px 0;color:var(--faint);font-size:11px;border-bottom:1px solid var(--border2)">
+              <span>#</span><span>CONCORRENTE</span><span>PREÇO</span><span>FRETE</span><span>VENDAS</span><span>REPUTAÇÃO</span>
+            </div>
+            <sc-for list="{{ competitors }}" as="c" hint-placeholder-count="3">
+              <div style="display:grid;grid-template-columns:30px minmax(120px,1fr) 80px 70px 76px 100px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border2);font-size:12.5px;background:{{ c.bg }}">
+                <span style="color:var(--faint)">{{ c.rank }}</span>
+                <span style="font-weight:{{ c.weight }}">{{ c.name }}</span>
+                <span style="font-family:'IBM Plex Mono',monospace;font-weight:{{ c.weight }}">{{ c.price }}</span>
+                <span style="color:var(--muted)">{{ c.frete }}</span>
+                <span style="font-family:'IBM Plex Mono',monospace;color:var(--muted)">{{ c.vendas }}</span>
+                <span style="font-size:11.5px;color:var(--accent-ink)">{{ c.rep }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ showEstoque }}" hint-placeholder-val="{{ false }}">
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:10px">
+        <div style="border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:12px 14px"><div style="font-size:11px;color:var(--faint);margin-bottom:4px">FÍSICO (ERP)</div><span style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700">40</span><div style="font-size:11.5px;color:var(--faint)">depósito Itajaí</div></div>
+        <div style="border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:12px 14px"><div style="font-size:11px;color:var(--faint);margin-bottom:4px">RESERVADO</div><span style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700">5</span><div style="font-size:11.5px;color:var(--faint)">em <a href="Pedidos.dc.html">pedidos a faturar</a></div></div>
+        <div style="border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:12px 14px"><div style="font-size:11px;color:var(--faint);margin-bottom:4px">DISPONÍVEL P/ VENDA</div><span style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:var(--accent-ink)">35</span><div style="font-size:11.5px;color:var(--faint)">físico − reservado − seguro 5</div></div>
+        <div style="border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:12px 14px"><div style="font-size:11px;color:var(--faint);margin-bottom:4px">FULL (ML)</div><span style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700">12</span><div style="font-size:11.5px;color:var(--faint)">CD Cajamar · reposição sugerida</div></div>
+      </div>
+      <div style="border:1px solid var(--amber);border-radius:12px;background:var(--amber-soft);padding:11px 16px;display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--amber)">
+        <b>Cobertura: ~9 dias</b><span>vendendo 37/30d nos dois canais — repor até <b>26/07</b> para não romper</span>
+        <span style="margin-left:auto;border:1px solid var(--amber);border-radius:8px;padding:5px 12px;font-weight:600;cursor:pointer;white-space:nowrap">Criar pedido de compra no ERP</span>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:12px;background:var(--surface);overflow-x:auto">
+        <div style="min-width:640px">
+          <div style="display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--surface2);font-size:13px;font-weight:600">Movimentações <span style="font-size:11.5px;color:var(--faint);font-weight:400;margin-left:8px">últimos 30 dias · fonte ERP + ML</span></div>
+          <div style="display:grid;grid-template-columns:90px 110px minmax(180px,1fr) 70px 70px;padding:8px 16px;background:var(--surface2);color:var(--faint);font-size:11px;letter-spacing:.04em"><span>DATA</span><span>TIPO</span><span>ORIGEM</span><span>QTDE</span><span>SALDO</span></div>
+          <sc-for list="{{ movs }}" as="m" hint-placeholder-count="5">
+            <div style="display:grid;grid-template-columns:90px 110px minmax(180px,1fr) 70px 70px;align-items:center;padding:8px 16px;border-top:1px solid var(--border2);font-size:12.5px">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--faint)">{{ m.data }}</span>
+              <span><span style="background:{{ m.chipBg }};color:{{ m.chipFg }};border-radius:999px;padding:1px 8px;font-size:10.5px;font-weight:600">{{ m.tipo }}</span></span>
+              <span style="color:var(--muted)">{{ m.origem }}</span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-weight:600;color:{{ m.qtdColor }}">{{ m.qtd }}</span>
+              <span style="font-family:'IBM Plex Mono',monospace;color:var(--muted)">{{ m.saldo }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ showPedidos }}" hint-placeholder-val="{{ false }}">
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:10px">
+        <div style="border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:12px 14px"><div style="font-size:11px;color:var(--faint);margin-bottom:4px">VENDAS 30D</div><span style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700">37</span><div style="font-size:11.5px;color:var(--accent-ink)">+12% vs. mês anterior</div></div>
+        <div style="border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:12px 14px"><div style="font-size:11px;color:var(--faint);margin-bottom:4px">TICKET MÉDIO</div><span style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700">R$ 91,40</span><div style="font-size:11.5px;color:var(--faint)">c/ kits e 2+ unidades</div></div>
+        <div style="border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:12px 14px"><div style="font-size:11px;color:var(--faint);margin-bottom:4px">DEVOLUÇÕES 30D</div><span style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700">2</span><div style="font-size:11.5px;color:var(--faint)">5,4% — mediana da categoria 4%</div></div>
+        <div style="border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:12px 14px"><div style="font-size:11px;color:var(--faint);margin-bottom:4px">RETORNO 30D</div><span style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:var(--accent-ink)">R$ 262</span><div style="font-size:11.5px;color:var(--faint)">margem real após tarifas</div></div>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:12px;background:var(--surface);overflow-x:auto">
+        <div style="min-width:680px">
+          <div style="display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--surface2);font-size:13px;font-weight:600">Pedidos recentes deste produto <a href="Pedidos.dc.html" style="margin-left:auto;font-size:12px;font-weight:600">ver todos em Pedidos →</a></div>
+          <div style="display:grid;grid-template-columns:110px 90px minmax(140px,1fr) 70px 90px 120px;padding:8px 16px;background:var(--surface2);color:var(--faint);font-size:11px;letter-spacing:.04em"><span>PEDIDO</span><span>DATA</span><span>COMPRADOR</span><span>QTDE</span><span>TOTAL</span><span>STATUS</span></div>
+          <sc-for list="{{ pedidosProd }}" as="p" hint-placeholder-count="5">
+            <div style="display:grid;grid-template-columns:110px 90px minmax(140px,1fr) 70px 90px 120px;align-items:center;padding:8px 16px;border-top:1px solid var(--border2);font-size:12.5px">
+              <a href="Pedidos.dc.html" style="font-family:'IBM Plex Mono',monospace;font-size:11.5px">{{ p.id }}</a>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--faint)">{{ p.data }}</span>
+              <span style="color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ p.comprador }}</span>
+              <span style="font-family:'IBM Plex Mono',monospace">{{ p.qtd }}</span>
+              <span style="font-family:'IBM Plex Mono',monospace">{{ p.total }}</span>
+              <span><span style="display:inline-flex;align-items:center;gap:4px;background:{{ p.stBg }};color:{{ p.stFg }};border-radius:999px;padding:1px 9px;font-size:10.5px;font-weight:600"><span style="width:4px;height:4px;border-radius:999px;background:{{ p.stFg }}"></span>{{ p.status }}</span></span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ showHistorico }}" hint-placeholder-val="{{ false }}">
+      <div style="border:1px solid var(--border);border-radius:12px;background:var(--surface);overflow:hidden">
+        <div style="display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--surface2);font-size:13px;font-weight:600">Preço — nosso vs. mercado <span style="font-size:11.5px;color:var(--faint);font-weight:400;margin-left:8px">90 dias</span></div>
+        <div style="display:flex;gap:16px;padding:16px;flex-wrap:wrap">
+          <div style="flex:1;min-width:280px;height:130px;border-radius:10px;background:repeating-linear-gradient(45deg,var(--surface2),var(--surface2) 6px,var(--border2) 6px,var(--border2) 12px);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;text-align:center;font-size:11.5px;color:var(--faint);padding:10px;box-sizing:border-box">gráfico de linha: nosso preço vs. mediana ML (90d) · eventos de reprecificação marcados</div>
+          <div style="width:250px;flex:none;font-size:12.5px;line-height:1.9;color:var(--muted)">
+            <div style="display:flex;justify-content:space-between"><span>Hoje</span><span style="font-family:'IBM Plex Mono',monospace;color:var(--ink)">R$ 89,00 · med 75,40</span></div>
+            <div style="display:flex;justify-content:space-between"><span>Há 30d</span><span style="font-family:'IBM Plex Mono',monospace">R$ 89,00 · med 78,10</span></div>
+            <div style="display:flex;justify-content:space-between"><span>Há 90d</span><span style="font-family:'IBM Plex Mono',monospace">R$ 84,00 · med 81,00</span></div>
+            <div style="color:var(--warn);font-size:11.5px">mercado caiu 7% e nós subimos — por isso a posição 19º/23</div>
+          </div>
+        </div>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:12px;background:var(--surface);overflow-x:auto">
+        <div style="min-width:640px">
+          <div style="display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--surface2);font-size:13px;font-weight:600">Alterações no sistema <span style="font-size:11.5px;color:var(--faint);font-weight:400;margin-left:8px">auditoria — quem mudou o quê</span></div>
+          <sc-for list="{{ auditoria }}" as="a" hint-placeholder-count="5">
+            <div style="display:flex;align-items:center;gap:12px;padding:9px 16px;border-top:1px solid var(--border2);font-size:12.5px">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--faint);width:110px;flex:none">{{ a.quando }}</span>
+              <span style="width:26px;height:26px;border-radius:999px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:var(--muted);flex:none">{{ a.quem }}</span>
+              <span style="flex:1;min-width:0;color:var(--muted)">{{ a.oque }}</span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--ink);white-space:nowrap">{{ a.valor }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ showPlaceholder }}" hint-placeholder-val="{{ false }}">
+      <div style="border:1px dashed var(--border);border-radius:12px;padding:36px;text-align:center;font-size:13px;color:var(--faint)">Conteúdo da aba "{{ activeTab }}" — a detalhar no próximo ciclo de wireframes.</div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Aparência&quot;}}">
+class Component extends DCLogic {
+  state = { theme: null, tab: 'Anúncios vinculados 1' };
+  renderVals() {
+    const theme = this.state.theme ?? this.props.theme ?? 'light';
+    const { tab } = this.state;
+    const labels = ['Dados', 'Estoque', 'Anúncios vinculados 1', 'Concorrência', 'Pedidos 37', 'Histórico'];
+    return {
+      theme,
+      themeIcon: theme === 'dark' ? '☀ Claro' : '☾ Escuro',
+      toggleTheme: () => this.setState({ theme: theme === 'dark' ? 'light' : 'dark' }),
+      activeTab: tab,
+      tabs: labels.map(label => ({ label, onClick: () => this.setState({ tab: label }), weight: tab === label ? '600' : '400', color: tab === label ? 'var(--accent-ink)' : 'var(--muted)', line: tab === label ? 'var(--accent)' : 'transparent' })),
+      showAnuncios: tab === 'Anúncios vinculados 1',
+      showConcorrencia: tab === 'Concorrência',
+      showEstoque: tab === 'Estoque',
+      showPedidos: tab === 'Pedidos 37',
+      showHistorico: tab === 'Histórico',
+      showPlaceholder: tab === 'Dados',
+      movs: [
+        { data: '16/07 14:02', tipo: 'venda', origem: 'ML #2000345 · 2 un', qtd: '−2', saldo: '40' , neg: true },
+        { data: '15/07 09:30', tipo: 'reserva', origem: 'ML #2000341 · aguardando NF', qtd: '−1', saldo: '42', neg: true },
+        { data: '12/07 16:45', tipo: 'entrada', origem: 'ERP · compra fornecedor Belgo', qtd: '+30', saldo: '43' },
+        { data: '10/07 11:20', tipo: 'envio Full', origem: 'remessa p/ CD Cajamar', qtd: '−12', saldo: '13', neg: true },
+        { data: '08/07 08:15', tipo: 'devolução', origem: 'ML #2000298 · retornou ao estoque', qtd: '+1', saldo: '25' },
+        { data: '02/07 10:00', tipo: 'ajuste', origem: 'ERP · inventário rotativo', qtd: '−1', saldo: '24', neg: true },
+      ].map(m => ({ ...m, chipBg: m.tipo === 'entrada' || m.tipo === 'devolução' ? 'var(--accent-soft)' : m.tipo === 'ajuste' ? 'var(--amber-soft)' : 'var(--surface2)', chipFg: m.tipo === 'entrada' || m.tipo === 'devolução' ? 'var(--accent-ink)' : m.tipo === 'ajuste' ? 'var(--amber)' : 'var(--muted)', qtdColor: m.neg ? 'var(--warn)' : 'var(--accent-ink)' })),
+      pedidosProd: [
+        { id: '#2000345', data: '16/07', comprador: 'Metalúrgica Voss', qtd: '2', total: 'R$ 178,00', status: 'a faturar', stBg: 'var(--amber-soft)', stFg: 'var(--amber)' },
+        { id: '#2000341', data: '15/07', comprador: 'C. Andrade ME', qtd: '1', total: 'R$ 89,00', status: 'a enviar', stBg: 'var(--info-soft)', stFg: 'var(--info)' },
+        { id: '#2000322', data: '13/07', comprador: 'J. Pereira', qtd: '1', total: 'R$ 89,00', status: 'enviado', stBg: 'var(--surface2)', stFg: 'var(--muted)' },
+        { id: '#2000310', data: '11/07', comprador: 'Serralheria Kaiser', qtd: '4', total: 'R$ 356,00', status: 'entregue', stBg: 'var(--accent-soft)', stFg: 'var(--accent-ink)' },
+        { id: '#2000298', data: '08/07', comprador: 'R. Nakamura', qtd: '1', total: 'R$ 89,00', status: 'devolvido', stBg: 'var(--warn-soft)', stFg: 'var(--warn)' },
+      ],
+      auditoria: [
+        { quando: '15/07 17:40', quem: 'AL', oque: 'preço do anúncio MLB-…790 alterado via Simulador (fila de sync)', valor: 'R$ 84,00 → 89,00' },
+        { quando: '12/07 16:45', quem: 'ERP', oque: 'custo atualizado pela entrada de compra', valor: 'R$ 58,20 → 61,00' },
+        { quando: '10/07 09:12', quem: 'LM', oque: 'estoque de segurança alterado', valor: '3 → 5' },
+        { quando: '28/06 14:30', quem: 'AL', oque: 'vinculado ao anúncio MLB-…790 (Vínculos & Importação, lote #128)', valor: 'confiança 96' },
+        { quando: '25/06 08:00', quem: 'ERP', oque: 'produto importado do ERP com GTIN e NCM', valor: '—' },
+      ],
+      competitors: [
+        { rank: '1', name: 'SolduraSul · líder catálogo', price: 'R$ 69,90', frete: 'grátis', vendas: '+500', rep: '● platinum', bg: 'transparent', weight: '400' },
+        { rank: '2', name: 'FerrAço Ltda', price: 'R$ 74,00', frete: 'R$ 12', vendas: '+100', rep: '●', bg: 'transparent', weight: '400' },
+        { rank: '3', name: 'nós — MLB-…790', price: 'R$ 89,00', frete: 'R$ 18', vendas: '37', rep: '●', bg: 'var(--accent-soft)', weight: '700' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>
