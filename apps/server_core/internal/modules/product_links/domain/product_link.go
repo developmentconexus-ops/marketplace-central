@@ -17,6 +17,10 @@ const (
 	ProductLinkActionApproveCandidate ProductLinkAction = "approve_candidate"
 	ProductLinkActionRejectListing    ProductLinkAction = "reject_listing"
 	ProductLinkActionManualResolve    ProductLinkAction = "manual_resolve"
+	// ProductLinkActionUndo marks a reversal transition (S4): the audit row
+	// it produces is a NEW append-only entry — never a delete/rewrite of the
+	// entry it reverses — so the full resolution history stays intact.
+	ProductLinkActionUndo ProductLinkAction = "undo"
 )
 
 type ActorMetadata struct {

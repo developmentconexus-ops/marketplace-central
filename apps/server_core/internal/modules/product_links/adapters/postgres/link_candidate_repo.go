@@ -494,6 +494,126 @@ func (r *LinkCandidateRepository) ListProductLinkAuditEntries(ctx context.Contex
 	return items, rows.Err()
 }
 
+// scanAuditRow scans one product_link_audit_entries row in the column order
+// shared by GetAuditEntry / LatestAuditForIdentity / ListAuditByBatch.
+func scanAuditRow(row interface {
+	Scan(dest ...any) error
+}) (domain.ProductLinkAuditEntry, error) {
+	var audit domain.ProductLinkAuditEntry
+	var previousInternalProductID pgtype.Int4
+	var nextInternalProductID pgtype.Int4
+	var createdAt pgtype.Timestamptz
+	err := row.Scan(
+		&audit.AuditID,
+		&audit.InstallationID,
+		&audit.ProviderCode,
+		&audit.ProviderItemID,
+		&audit.ProviderVariationID,
+		&audit.Action,
+		&audit.Reason,
+		&audit.SourceCandidateID,
+		&audit.Actor.ActorType,
+		&audit.Actor.ActorID,
+		&audit.Actor.ActorName,
+		&audit.PreviousState,
+		&audit.NextState,
+		&previousInternalProductID,
+		&nextInternalProductID,
+		&audit.BatchID,
+		&createdAt,
+	)
+	if err != nil {
+		return domain.ProductLinkAuditEntry{}, err
+	}
+	audit.PreviousInternalProductID = scanInt4Ptr(previousInternalProductID)
+	audit.NextInternalProductID = scanInt4Ptr(nextInternalProductID)
+	audit.CreatedAt = createdAt.Time.UTC()
+	return audit, nil
+}
+
+const auditEntryColumns = `
+	audit_id, installation_id, provider_code, provider_item_id, provider_variation_id,
+	action, reason, source_candidate_id, actor_type, actor_id, actor_name,
+	previous_state, next_state, previous_internal_product_id, next_internal_product_id, batch_id, created_at
+`
+
+// GetAuditEntry loads a single audit row by AuditID (S4 undo target lookup),
+// tenant-scoped.
+func (r *LinkCandidateRepository) GetAuditEntry(ctx context.Context, auditID string) (domain.ProductLinkAuditEntry, bool, error) {
+	if r.pool == nil {
+		return domain.ProductLinkAuditEntry{}, false, nil
+	}
+	row := r.pool.QueryRow(ctx, `
+		SELECT `+auditEntryColumns+`
+		FROM product_link_audit_entries
+		WHERE tenant_id = $1
+		  AND audit_id = $2
+	`, r.tenantID, strings.TrimSpace(auditID))
+	audit, err := scanAuditRow(row)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return domain.ProductLinkAuditEntry{}, false, nil
+		}
+		return domain.ProductLinkAuditEntry{}, false, err
+	}
+	return audit, true, nil
+}
+
+// LatestAuditForIdentity returns the most recent audit row for a listing
+// identity (S4 undo ordering decision), tenant-scoped.
+func (r *LinkCandidateRepository) LatestAuditForIdentity(ctx context.Context, identity domain.ListingIdentity) (domain.ProductLinkAuditEntry, bool, error) {
+	if r.pool == nil {
+		return domain.ProductLinkAuditEntry{}, false, nil
+	}
+	row := r.pool.QueryRow(ctx, `
+		SELECT `+auditEntryColumns+`
+		FROM product_link_audit_entries
+		WHERE tenant_id = $1
+		  AND installation_id = $2
+		  AND provider_item_id = $3
+		  AND provider_variation_id = $4
+		ORDER BY created_at DESC, audit_id DESC
+		LIMIT 1
+	`, r.tenantID, identity.InstallationID, identity.ProviderItemID, identity.ProviderVariationID)
+	audit, err := scanAuditRow(row)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return domain.ProductLinkAuditEntry{}, false, nil
+		}
+		return domain.ProductLinkAuditEntry{}, false, err
+	}
+	return audit, true, nil
+}
+
+// ListAuditByBatch returns every audit row tagged with batchID, newest
+// first (S4 batch-undo fan-out), tenant-scoped.
+func (r *LinkCandidateRepository) ListAuditByBatch(ctx context.Context, batchID string) ([]domain.ProductLinkAuditEntry, error) {
+	if r.pool == nil {
+		return nil, nil
+	}
+	rows, err := r.pool.Query(ctx, `
+		SELECT `+auditEntryColumns+`
+		FROM product_link_audit_entries
+		WHERE tenant_id = $1
+		  AND batch_id = $2
+		ORDER BY created_at DESC, audit_id DESC
+	`, r.tenantID, strings.TrimSpace(batchID))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := make([]domain.ProductLinkAuditEntry, 0)
+	for rows.Next() {
+		audit, err := scanAuditRow(rows)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, audit)
+	}
+	return items, rows.Err()
+}
+
 func marshalReasons(reasons []domain.LinkCandidateReason) ([]byte, error) {
 	if reasons == nil {
 		reasons = []domain.LinkCandidateReason{}

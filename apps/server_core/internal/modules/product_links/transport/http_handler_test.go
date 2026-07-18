@@ -48,6 +48,12 @@ type stubCandidateEngine struct {
 	items            []domain.LinkCandidate
 	workflowItems    []domain.ProductLinkWorkflowItem
 	resolutionResult domain.ProductLinkResolutionResult
+	undoInput        application.UndoResolutionInput
+	undoResult       domain.ProductLinkResolutionResult
+	undoErr          error
+	undoBatchID      string
+	undoBatchResult  application.UndoBatchResult
+	undoBatchErr     error
 }
 
 func (s *stubCandidateEngine) GenerateLinkCandidates(_ context.Context, input application.GenerateLinkCandidatesInput) (domain.LinkCandidateGenerationResult, error) {
@@ -148,6 +154,45 @@ func (s *stubCandidateEngine) ManualResolve(_ context.Context, input application
 		Link:  domain.ProductLink{InstallationID: input.InstallationID, ProviderCode: input.ProviderCode, ProviderItemID: input.ProviderItemID, ProviderVariationID: input.ProviderVariationID, State: domain.ProductLinkStateResolved, InternalProductID: &productID},
 		Audit: domain.ProductLinkAuditEntry{AuditID: "audit-3", Action: domain.ProductLinkActionManualResolve, PreviousState: domain.ProductLinkStateNone, NextState: domain.ProductLinkStateResolved},
 	}, nil
+}
+
+func (s *stubCandidateEngine) UndoResolution(_ context.Context, input application.UndoResolutionInput) (domain.ProductLinkResolutionResult, error) {
+	s.undoInput = input
+	if s.undoErr != nil {
+		return domain.ProductLinkResolutionResult{}, s.undoErr
+	}
+	if s.undoResult.Link.InstallationID == "" {
+		s.undoResult = domain.ProductLinkResolutionResult{
+			Link: domain.ProductLink{
+				InstallationID: "inst-1",
+				ProviderCode:   "mercado_livre",
+				ProviderItemID: "MLB123",
+				State:          domain.ProductLinkStateUnresolved,
+			},
+			Audit: domain.ProductLinkAuditEntry{
+				AuditID:       "audit-undo-1",
+				Action:        domain.ProductLinkActionUndo,
+				PreviousState: domain.ProductLinkStateResolved,
+				NextState:     domain.ProductLinkStateUnresolved,
+				CreatedAt:     time.Date(2026, 7, 8, 19, 10, 0, 0, time.UTC),
+			},
+		}
+	}
+	return s.undoResult, nil
+}
+
+func (s *stubCandidateEngine) UndoBatch(_ context.Context, batchID string) (application.UndoBatchResult, error) {
+	s.undoBatchID = batchID
+	if s.undoBatchErr != nil {
+		return application.UndoBatchResult{}, s.undoBatchErr
+	}
+	if s.undoBatchResult.BatchID == "" {
+		s.undoBatchResult = application.UndoBatchResult{
+			BatchID:  batchID,
+			Reverted: []application.UndoBatchItem{{AuditID: "audit-batch-1", CandidateID: "cand-1", Status: application.BatchItemStatusOK}},
+		}
+	}
+	return s.undoBatchResult, nil
 }
 
 func TestHandleListingSnapshotImportsDelegatesToImporter(t *testing.T) {
