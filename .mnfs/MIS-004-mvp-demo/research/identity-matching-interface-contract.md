@@ -62,3 +62,30 @@ Lista de âncoras, thresholds de confiança, novos estados, semântica de coluna
 ## Validation Impact
 
 Fixtures de colisão (Doka/Menegotti, Doka/VW) obrigatórias no resolver (M-02); QA verifica REVIEW-only quando sem EAN (M-01/M-04).
+
+## Amendment A2 — feasible anchor model for provider-side data (2026-07-18, hub ruling D-25)
+
+Field finding (CHIP-M04 D01/D02): listing snapshots carry ONLY `seller_sku + ean + title`
+(migração 0022); `marca`/`refforn` existem apenas no lado interno — pares de âncoras
+marca/refforn são estruturalmente incomputáveis contra dados de provider hoje. Modelo viável
+ratificado (owner ruling; o texto original permanece válido para quando houver enriquecimento
+de provider):
+
+- **Âncoras cross-side disponíveis**: `seller_sku` (exact → codprod; regra dura inalterada) e
+  `ean` (corroboração; derivado de REFERENCIA, flag `unproved` mantida). `title` segue
+  ranking-only. `marca`/`refforn` DEVEM aparecer em `reasons[]` como `UNAVAILABLE` (ADR-17 —
+  motivo sempre visível), nunca silenciosamente omitidas.
+- **`seller_sku` é âncora ACCEPT-grade** no escopo M-04 (vínculo listing-própria ↔ ERP): é
+  mapeamento autorado pelo próprio tenant no ML e resolve somente para codprod. NÃO se aplica
+  ao matching de ofertas de mercado (M-02) — ofertas de concorrentes não têm seller_sku
+  significativo; para M-02 nada muda neste amendment.
+- **Par de auto-ACCEPT viável** = `seller_sku` + `ean` concordando no MESMO codprod, sem hard
+  negative ⇒ banda ALTA, `match_status: ACCEPT` (proxy das "2 âncoras independentes").
+- **Bandas**: âncora única (inclusive seller_sku sozinho) ⇒ MEDIA / `REVIEW` — a regra "EAN
+  ausente ⇒ máximo REVIEW" permanece binding. Title-only ⇒ BAIXA. Conflito SKU/EAN ou hard
+  negative de título (kit/combo, cor, medida, voltagem) ⇒ cap BAIXA + reason AGAINST
+  (contradição vence EAN, inalterado). Thresholds numéricos ≥85/50–84/<50 inalterados.
+- **Fixtures**: M-04 F-01 autora fixtures próprias derivadas deste modelo (≥8 casos, banda +
+  reasons exatos, incluindo hard-negative estilo Doka); fixtures de colisão do M-02 seguem
+  obrigatórias e inalteradas. Verdade única: qualquer futuro consumo de âncoras no M-02+ lê
+  ESTE amendment, não decide localmente.
