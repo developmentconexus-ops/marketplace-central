@@ -93,7 +93,8 @@ describe("AppRouter", () => {
   it("renders the pricing simulator route at its new path", async () => {
     window.history.pushState({}, "", "/precos");
     renderAppRouter();
-    expect(await screen.findByText("Pricing route")).toBeInTheDocument();
+    // New in-app IC-04 /precos page (PricingPage), no longer the feature-simulator stub.
+    expect(await screen.findByText("Preços & Simulador")).toBeInTheDocument();
   });
 
   it.each([

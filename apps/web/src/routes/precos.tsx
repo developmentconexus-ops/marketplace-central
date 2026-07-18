@@ -1,7 +1,5 @@
-import { PricingSimulatorPage } from "@marketplace-central/feature-simulator";
-import { useClient } from "../app/ClientContext";
+import { PricingPage } from "../pages/precos";
 
 export function PrecosRoute() {
-  const client = useClient();
-  return <PricingSimulatorPage client={client} />;
+  return <PricingPage />;
 }
