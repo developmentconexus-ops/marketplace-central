@@ -15,6 +15,7 @@ type OrderReadModel struct {
 	Currency             *string                   `json:"currency"`
 	Fulfillment          *string                   `json:"fulfillment"`
 	NFState              *string                   `json:"nf_state"`
+	ShippingID           string                    `json:"shipping_id,omitempty"`
 	CreatedAt            *time.Time                `json:"created_at"`
 	ProviderCreatedAt    *time.Time                `json:"provider_created_at"`
 	ProviderClosedAt     *time.Time                `json:"provider_closed_at"`

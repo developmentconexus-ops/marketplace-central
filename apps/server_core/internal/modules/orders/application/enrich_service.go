@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"marketplace-central/apps/server_core/internal/modules/orders/domain"
@@ -17,6 +18,19 @@ type ItemCost struct {
 	UnitCost       *float64
 }
 
+// ShipmentEnrichment carries the per-order shipment facts sourced via
+// ShipmentReader. It is nil on EnrichedOrder whenever the shipment could not
+// be honestly read (no shipping_id, reader error) — ADR-17: unknown != zero,
+// never a fabricated date/status/UF. Rastreio is represented by ShipmentID
+// plus Status only; the provider exposes no tracking-URL/code field.
+type ShipmentEnrichment struct {
+	ShipmentID    string
+	Status        string
+	SLADue        *time.Time
+	Delayed       *bool
+	DestinationUF *string
+}
+
 // EnrichedOrder wraps a canonical read model with derived, read-time-only
 // enrichment facts. It is an internal application value — it is never
 // marshaled directly onto the HTTP transport contract or the SDK.
@@ -26,21 +40,27 @@ type EnrichedOrder struct {
 	VinculoStatus            domain.VinculoStatus
 	ItemCosts                []ItemCost
 	ComponentesDesconhecidos []string
+	Shipment                 *ShipmentEnrichment
 }
 
 // EnrichService adds read-time enrichment (masked buyer identity, vinculo
-// status, per-item ERP cost) to canonical order read models. Buyer/vinculo
-// facts already exist on the read model or its items and require no
-// external call. Cost is sourced via CostReader (the internal_read cost
-// fact); tenant scoping remains the repo layer's responsibility —
-// installationID is accepted for future enrichment concerns but drives no
-// query here.
+// status, per-item ERP cost, per-order shipment facts) to canonical order
+// read models. Buyer/vinculo facts already exist on the read model or its
+// items and require no external call. Cost is sourced via CostReader (the
+// internal_read cost fact); shipment is sourced via ShipmentReader keyed by
+// installationID + the order's ShippingID. Tenant scoping remains the repo
+// layer's responsibility.
 type EnrichService struct {
-	cost ports.CostReader
+	cost     ports.CostReader
+	shipment ports.ShipmentReader
+	logger   *slog.Logger
 }
 
-func NewEnrichService(cost ports.CostReader) EnrichService {
-	return EnrichService{cost: cost}
+func NewEnrichService(cost ports.CostReader, shipment ports.ShipmentReader, logger *slog.Logger) EnrichService {
+	if logger == nil {
+		logger = slog.Default()
+	}
+	return EnrichService{cost: cost, shipment: shipment, logger: logger}
 }
 
 func (s EnrichService) Enrich(ctx context.Context, installationID string, orders []domain.OrderReadModel) []EnrichedOrder {
@@ -51,15 +71,50 @@ func (s EnrichService) Enrich(ctx context.Context, installationID string, orders
 			nickname = *order.BuyerNickname
 		}
 		itemCosts, unknown := s.resolveItemCosts(ctx, order)
+		buyer := domain.MaskBuyer(nickname)
+		shipmentInfo := s.resolveShipment(ctx, installationID, order, &buyer)
 		enriched = append(enriched, EnrichedOrder{
 			Order:                    order,
-			Buyer:                    domain.MaskBuyer(nickname),
+			Buyer:                    buyer,
 			VinculoStatus:            domain.DeriveVinculoStatus(order.Items),
 			ItemCosts:                itemCosts,
 			ComponentesDesconhecidos: unknown,
+			Shipment:                 shipmentInfo,
 		})
 	}
 	return enriched
+}
+
+// resolveShipment looks up the order's shipment via ShipmentReader and, when
+// found, fills buyer.UF from the shipment's honest DestinationUF. It never
+// fabricates a value: an empty ShippingID skips the reader entirely (not an
+// error), and a reader error degrades to a nil ShipmentEnrichment plus a
+// structured warn — the order itself is still returned.
+func (s EnrichService) resolveShipment(ctx context.Context, installationID string, order domain.OrderReadModel, buyer *domain.MaskedBuyer) *ShipmentEnrichment {
+	if order.ShippingID == "" {
+		return nil
+	}
+	info, err := s.shipment.GetShipment(ctx, installationID, order.ShippingID)
+	if err != nil {
+		s.logger.Warn("orders: shipment lookup failed",
+			"installation_id", installationID,
+			"provider_order_id", order.ProviderOrderID,
+			"shipping_id", order.ShippingID,
+			"error", err,
+		)
+		return nil
+	}
+	if info.DestinationUF != nil {
+		uf := *info.DestinationUF
+		buyer.UF = &uf
+	}
+	return &ShipmentEnrichment{
+		ShipmentID:    info.ID,
+		Status:        info.Status,
+		SLADue:        info.SLADue,
+		Delayed:       info.Delayed,
+		DestinationUF: info.DestinationUF,
+	}
 }
 
 // resolveItemCosts looks up the per-unit ERP cost for every item on order.

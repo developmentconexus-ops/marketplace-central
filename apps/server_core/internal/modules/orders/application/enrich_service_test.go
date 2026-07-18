@@ -3,9 +3,11 @@ package application
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"testing"
 	"time"
 
+	connectorsdomain "marketplace-central/apps/server_core/internal/modules/connectors/domain"
 	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
 	"marketplace-central/apps/server_core/internal/modules/orders/domain"
 )
@@ -37,6 +39,29 @@ func (f *fakeCostReader) GetCostAsOf(ctx context.Context, productID int, effecti
 		AmountScope: internalreaddomain.CostAmountScopePerUnit,
 	}, nil
 }
+
+// fakeShipmentReader is a table-driven test double for ports.ShipmentReader.
+// It never touches connectors; it lets callers script a ShipmentInfo or an
+// error per shipmentID and records how many times it was invoked.
+type fakeShipmentReader struct {
+	calls int
+	infos map[string]connectorsdomain.ShipmentInfo
+	errs  map[string]error
+}
+
+func newFakeShipmentReader() *fakeShipmentReader {
+	return &fakeShipmentReader{infos: map[string]connectorsdomain.ShipmentInfo{}, errs: map[string]error{}}
+}
+
+func (f *fakeShipmentReader) GetShipment(ctx context.Context, installationID, shipmentID string) (connectorsdomain.ShipmentInfo, error) {
+	f.calls++
+	if err := f.errs[shipmentID]; err != nil {
+		return connectorsdomain.ShipmentInfo{}, err
+	}
+	return f.infos[shipmentID], nil
+}
+
+func testLogger() *slog.Logger { return slog.Default() }
 
 func TestEnrichServiceEnrich(t *testing.T) {
 	cases := []struct {
@@ -82,7 +107,7 @@ func TestEnrichServiceEnrich(t *testing.T) {
 		},
 	}
 
-	svc := NewEnrichService(newFakeCostReader())
+	svc := NewEnrichService(newFakeCostReader(), newFakeShipmentReader(), testLogger())
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			got := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{tc.order})
@@ -119,7 +144,7 @@ func TestEnrichServiceEnrich_Cost(t *testing.T) {
 				{SellerSKU: "sku-1", InternalProductID: intPtr(10)},
 			},
 		}
-		svc := NewEnrichService(reader)
+		svc := NewEnrichService(reader, newFakeShipmentReader(), testLogger())
 		got := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})
 		result := got[0]
 		if reader.calls != 1 {
@@ -143,7 +168,7 @@ func TestEnrichServiceEnrich_Cost(t *testing.T) {
 				{SellerSKU: "sku-2", InternalProductID: intPtr(11)},
 			},
 		}
-		svc := NewEnrichService(reader)
+		svc := NewEnrichService(reader, newFakeShipmentReader(), testLogger())
 		got := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})
 		result := got[0]
 		if reader.calls != 1 {
@@ -167,7 +192,7 @@ func TestEnrichServiceEnrich_Cost(t *testing.T) {
 				{SellerSKU: "sku-3", InternalProductID: intPtr(12)},
 			},
 		}
-		svc := NewEnrichService(reader)
+		svc := NewEnrichService(reader, newFakeShipmentReader(), testLogger())
 		got := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})
 		if len(got) != 1 {
 			t.Fatalf("len(got) = %d, want 1 (order must not fail on cost miss)", len(got))
@@ -190,7 +215,7 @@ func TestEnrichServiceEnrich_Cost(t *testing.T) {
 				{SellerSKU: "sku-4"},
 			},
 		}
-		svc := NewEnrichService(reader)
+		svc := NewEnrichService(reader, newFakeShipmentReader(), testLogger())
 		got := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})
 		if reader.calls != 0 {
 			t.Fatalf("calls = %d, want 0", reader.calls)
@@ -212,7 +237,7 @@ func TestEnrichServiceEnrich_Cost(t *testing.T) {
 				{SellerSKU: "sku-5", InternalProductID: intPtr(13)},
 			},
 		}
-		svc := NewEnrichService(reader)
+		svc := NewEnrichService(reader, newFakeShipmentReader(), testLogger())
 		got := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})
 		if reader.calls != 0 {
 			t.Fatalf("calls = %d, want 0", reader.calls)
@@ -234,7 +259,7 @@ func TestEnrichServiceEnrich_Cost(t *testing.T) {
 				{SellerSKU: "sku-6", InternalProductID: intPtr(14), LinkQuality: domain.LinkQualityResolved},
 			},
 		}
-		svc := NewEnrichService(reader)
+		svc := NewEnrichService(reader, newFakeShipmentReader(), testLogger())
 		got := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})
 		result := got[0]
 		if result.Buyer.Display != "Ana L." {
@@ -256,11 +281,171 @@ func TestEnrichServiceEnrich_Cost(t *testing.T) {
 				{ProviderItemID: "prov-7"},
 			},
 		}
-		svc := NewEnrichService(reader)
+		svc := NewEnrichService(reader, newFakeShipmentReader(), testLogger())
 		got := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})
 		result := got[0]
 		if len(result.ComponentesDesconhecidos) != 1 || result.ComponentesDesconhecidos[0] != "prov-7" {
 			t.Fatalf("ComponentesDesconhecidos = %v, want [prov-7]", result.ComponentesDesconhecidos)
+		}
+	})
+}
+
+func TestEnrichServiceEnrich_Shipment(t *testing.T) {
+	slaDue := time.Date(2026, 7, 20, 12, 0, 0, 0, time.UTC)
+
+	t.Run("shipment present populates SLA/Delayed/DestinationUF/ShipmentID+Status and Buyer.UF", func(t *testing.T) {
+		costReader := newFakeCostReader()
+		shipmentReader := newFakeShipmentReader()
+		delayed := true
+		uf := "SP"
+		shipmentReader.infos["SHIP-1"] = connectorsdomain.ShipmentInfo{
+			ID:            "SHIP-1",
+			Status:        "shipped",
+			SLADue:        &slaDue,
+			Delayed:       &delayed,
+			DestinationUF: &uf,
+		}
+		order := domain.OrderReadModel{
+			ProviderOrderID: "ord-ship-1",
+			BuyerNickname:   strPtr("Joao Silva"),
+			ShippingID:      "SHIP-1",
+		}
+		svc := NewEnrichService(costReader, shipmentReader, testLogger())
+		got := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})
+		result := got[0]
+		if shipmentReader.calls != 1 {
+			t.Fatalf("shipment calls = %d, want 1", shipmentReader.calls)
+		}
+		if result.Shipment == nil {
+			t.Fatalf("Shipment = nil, want populated")
+		}
+		if result.Shipment.ShipmentID != "SHIP-1" || result.Shipment.Status != "shipped" {
+			t.Fatalf("Shipment = %+v, want ShipmentID=SHIP-1 Status=shipped", result.Shipment)
+		}
+		if result.Shipment.SLADue == nil || !result.Shipment.SLADue.Equal(slaDue) {
+			t.Fatalf("Shipment.SLADue = %v, want %v", result.Shipment.SLADue, slaDue)
+		}
+		if result.Shipment.Delayed == nil || !*result.Shipment.Delayed {
+			t.Fatalf("Shipment.Delayed = %v, want true", result.Shipment.Delayed)
+		}
+		if result.Shipment.DestinationUF == nil || *result.Shipment.DestinationUF != "SP" {
+			t.Fatalf("Shipment.DestinationUF = %v, want SP", result.Shipment.DestinationUF)
+		}
+		if result.Buyer.UF == nil || *result.Buyer.UF != "SP" {
+			t.Fatalf("Buyer.UF = %v, want SP", result.Buyer.UF)
+		}
+	})
+
+	t.Run("reader error yields nil shipment, order still present, Buyer.UF stays nil", func(t *testing.T) {
+		costReader := newFakeCostReader()
+		shipmentReader := newFakeShipmentReader()
+		shipmentReader.errs["SHIP-2"] = errors.New("boom")
+		order := domain.OrderReadModel{
+			ProviderOrderID: "ord-ship-2",
+			ShippingID:      "SHIP-2",
+		}
+		svc := NewEnrichService(costReader, shipmentReader, testLogger())
+		got := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})
+		if len(got) != 1 {
+			t.Fatalf("len(got) = %d, want 1 (order must not fail on shipment miss)", len(got))
+		}
+		result := got[0]
+		if shipmentReader.calls != 1 {
+			t.Fatalf("shipment calls = %d, want 1 (reader was called)", shipmentReader.calls)
+		}
+		if result.Shipment != nil {
+			t.Fatalf("Shipment = %+v, want nil", result.Shipment)
+		}
+		if result.Buyer.UF != nil {
+			t.Fatalf("Buyer.UF = %v, want nil", *result.Buyer.UF)
+		}
+	})
+
+	t.Run("empty shipping_id skips the reader and yields nil shipment", func(t *testing.T) {
+		costReader := newFakeCostReader()
+		shipmentReader := newFakeShipmentReader()
+		order := domain.OrderReadModel{
+			ProviderOrderID: "ord-ship-3",
+			ShippingID:      "",
+		}
+		svc := NewEnrichService(costReader, shipmentReader, testLogger())
+		got := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})
+		result := got[0]
+		if shipmentReader.calls != 0 {
+			t.Fatalf("shipment calls = %d, want 0 (reader must not be called)", shipmentReader.calls)
+		}
+		if result.Shipment != nil {
+			t.Fatalf("Shipment = %+v, want nil", result.Shipment)
+		}
+	})
+
+	t.Run("provider nil fields pass through as nil, never fabricated, Buyer.UF stays nil", func(t *testing.T) {
+		costReader := newFakeCostReader()
+		shipmentReader := newFakeShipmentReader()
+		shipmentReader.infos["SHIP-4"] = connectorsdomain.ShipmentInfo{
+			ID:     "SHIP-4",
+			Status: "pending",
+		}
+		order := domain.OrderReadModel{
+			ProviderOrderID: "ord-ship-4",
+			ShippingID:      "SHIP-4",
+		}
+		svc := NewEnrichService(costReader, shipmentReader, testLogger())
+		got := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})
+		result := got[0]
+		if result.Shipment == nil {
+			t.Fatalf("Shipment = nil, want populated (with nil sub-fields)")
+		}
+		if result.Shipment.SLADue != nil {
+			t.Fatalf("Shipment.SLADue = %v, want nil", result.Shipment.SLADue)
+		}
+		if result.Shipment.Delayed != nil {
+			t.Fatalf("Shipment.Delayed = %v, want nil", result.Shipment.Delayed)
+		}
+		if result.Shipment.DestinationUF != nil {
+			t.Fatalf("Shipment.DestinationUF = %v, want nil", result.Shipment.DestinationUF)
+		}
+		if result.Buyer.UF != nil {
+			t.Fatalf("Buyer.UF = %v, want nil", *result.Buyer.UF)
+		}
+	})
+
+	t.Run("S1 buyer-mask + vinculo + S2 cost stay correct alongside shipment", func(t *testing.T) {
+		costReader := newFakeCostReader()
+		costReader.amounts[20] = floatPtr(15.0)
+		shipmentReader := newFakeShipmentReader()
+		uf := "RJ"
+		shipmentReader.infos["SHIP-5"] = connectorsdomain.ShipmentInfo{
+			ID:            "SHIP-5",
+			Status:        "delivered",
+			DestinationUF: &uf,
+		}
+		order := domain.OrderReadModel{
+			ProviderOrderID:  "ord-ship-5",
+			BuyerNickname:    strPtr("Carlos Souza"),
+			ProviderClosedAt: timePtr(time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)),
+			ShippingID:       "SHIP-5",
+			Items: []domain.MarketplaceOrderItem{
+				{SellerSKU: "sku-20", InternalProductID: intPtr(20), LinkQuality: domain.LinkQualityResolved},
+			},
+		}
+		svc := NewEnrichService(costReader, shipmentReader, testLogger())
+		got := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})
+		result := got[0]
+		if result.Buyer.Display != "Carlos S." {
+			t.Fatalf("Buyer.Display = %q, want %q", result.Buyer.Display, "Carlos S.")
+		}
+		if result.Buyer.UF == nil || *result.Buyer.UF != "RJ" {
+			t.Fatalf("Buyer.UF = %v, want RJ", result.Buyer.UF)
+		}
+		if result.VinculoStatus != domain.VinculoStatusOK {
+			t.Fatalf("VinculoStatus = %q, want OK", result.VinculoStatus)
+		}
+		if result.ItemCosts[0].UnitCost == nil || *result.ItemCosts[0].UnitCost != 15.0 {
+			t.Fatalf("ItemCosts[0] = %+v, want unit cost 15.0", result.ItemCosts[0])
+		}
+		if result.Shipment == nil || result.Shipment.ShipmentID != "SHIP-5" {
+			t.Fatalf("Shipment = %+v, want ShipmentID=SHIP-5", result.Shipment)
 		}
 	})
 }
