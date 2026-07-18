@@ -54,6 +54,12 @@ export function DecompositionPanel({
         </p>
       ) : null}
 
+      {!profile.difal_enabled ? (
+        <p data-testid="difal-off-warning" className="mb-2 rounded-md bg-amber-soft px-3 py-2 text-xs text-amber">
+          Margem sem DIFAL — não use para decisão de venda interestadual.
+        </p>
+      ) : null}
+
       <Row label="Preço"><Value amount={d.preco} /></Row>
       <Row label="(−) Comissão"><Value amount={d.comissao} /></Row>
       <Row label="(−) Taxa fixa"><Value amount={d.taxa_fixa} /></Row>

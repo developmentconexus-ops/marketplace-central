@@ -87,6 +87,26 @@ describe("DecompositionPanel", () => {
     expect(screen.getByText("12%")).toHaveClass("bg-amber-soft");
   });
 
+  it("warns that the margin excludes DIFAL when DIFAL is disabled", () => {
+    render(<DecompositionPanel decomposition={decomposition()} profile={profile} blockingState={null} />);
+    const warning = screen.getByTestId("difal-off-warning");
+    expect(warning).toHaveTextContent(/sem DIFAL/i);
+    expect(warning).toHaveTextContent(/não use/i);
+  });
+
+  it("does not show the DIFAL-off warning when DIFAL is enabled", () => {
+    const difalOn: PricingCalcProfile = { ...profile, difal_enabled: true, difal_destino_uf: "SP" };
+    render(
+      <DecompositionPanel
+        decomposition={decomposition({ difal: "3.50" })}
+        profile={difalOn}
+        blockingState={null}
+        difalUf="SP"
+      />,
+    );
+    expect(screen.queryByTestId("difal-off-warning")).toBeNull();
+  });
+
   it("labels the DIFAL line with the destination UF when provided", () => {
     render(
       <DecompositionPanel
