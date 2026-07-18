@@ -20,6 +20,7 @@ Two corrections applied by CHIP-M07 at P2 acceptance (planner artifact accepted-
   - web build: `npm run build --workspace @marketplace-central/web` (or root `npm run web:build`)
   - typecheck: `npx tsc --noEmit -p <pkgDir>`
   Go lanes carry `GOCACHE=$(pwd)/.gocache` (+ hermetic `GOMODCACHE`) per PROFILE §2/§3 — bindings-block concern, enforced in each implementer dispatch.
+- **C-C · SDK-PRICING-M07 (HUB v2 grant amendment, D-day) — supersedes pricing.ts + BARREL-M07 (both VOID).** Ground truth on base 8b6c4b3 drifted: the pricing SDK already lives INLINE in `packages/sdk-runtime/src/index.ts` — types `PricingSimulation`/`RunPricingSimulationRequest` at :1227–1237, client methods `listPricingSimulations`/`runPricingSimulation`/batch at :1697–1707 on `createMarketplaceCentralClient` (:1383). apps/web's `useClient()` builds ONLY `createMarketplaceCentralClient`, so a standalone `pricing.ts` would be unreachable without editing forbidden `app/**` (same finding M-08 hit for orders). **NEW grant:** additive **INSERT-only** edits in the PRICING region of index.ts — new types + new client methods for F-01 endpoints (decompose, solve-target, scenarios, DIFAL params/overrides, price_update mutation call). Existing PricingSimulation types/methods stay **byte-identical** (additive constraint). NEVER modify/delete/reorder existing lines; never touch orders/listings/market/other regions; never edit existing consumers. Released at CLOSED; full grant diff in CLOSED payload under SDK-PRICING-M07. **DO NOT create `pricing.ts`; DO NOT add a barrel export line.** This rewrites F01-S8's SDK write-target and every "consume pricing.ts" seam in F-02 → consume via the index.ts `createMarketplaceCentralClient` methods (as market simulations already are). OpenAPI additive + composition-root wiring (ROOT-M07) + port-publication duty UNCHANGED.
 
 ---
 
@@ -106,16 +107,16 @@ Two corrections applied by CHIP-M07 at P2 acceptance (planner artifact accepted-
 - depends_on: [F01-S3, F01-S4, F01-S6]
 - notes: POST /pricing/simulations extended ADDITIVELY — existing float64 DTO fields (http_handler.go:72-82) preserved; new decomposition + margem-alvo direction are additive. Register additions at transport :53-54 region. May approach 300 lines — if so, split scenarios CRUD into F01-S7b (still same DAG position, depends identical).
 
-### Slice F01-S8 — OpenAPI /pricing/* additive + pricing.ts SDK (same commit) + composition-root wiring
+### Slice F01-S8 — OpenAPI /pricing/* additive + index.ts pricing-region SDK INSERT (SDK-PRICING-M07, same commit) + composition-root wiring
 - feature: F-01
 - complexity: standard
 - validation_kind: contract + web-build
-- failing_test_first: `packages/sdk-runtime/src/pricing.test.ts` — pricing client methods (getProfile/putProfile/listDifal/putDifal/listScenarios/create/delete/runSimulation) hit correct paths + decode decomposition/difal/error shapes; mirrors market.ts self-contained pattern. OpenAPI validated by existing contract lane.
-- write_set: [`contracts/api/marketplace-central.openapi.yaml` (ADDITIVE new paths after :2325 + new schemas — /pricing/profile, /pricing/difal, /pricing/difal/{uf}, /pricing/scenarios; existing /simulations preserved), `packages/sdk-runtime/src/pricing.ts` (NEW standalone, Pricing*-prefixed, own client/error/money types, no import from index.ts), `packages/sdk-runtime/src/pricing.test.ts`, `packages/sdk-runtime/src/index.ts` (BARREL-M07: exactly one `export * from "./pricing"`), `apps/server_core/internal/composition/root.go` (ROOT-M07: additive imports :95-100 region + PRICING wiring :689-702 region — new calc service/repos/cost shim, existing constructors untouched, no stub/nil on live paths)]
+- failing_test_first: `packages/sdk-runtime/src/index.test.ts` (or the existing sdk-runtime test file covering the client) — NEW pricing methods (getProfile/putProfile/listDifal/putDifal/listScenarios/create/delete/decompose/solveTarget + price_update mutation call) hit correct paths + decode decomposition/difal/error shapes; **existing `listPricingSimulations`/`runPricingSimulation` assertions remain unchanged and green** (additive regression). OpenAPI validated by existing contract lane.
+- write_set: [`contracts/api/marketplace-central.openapi.yaml` (ADDITIVE new paths after :2325 + new schemas — /pricing/profile, /pricing/difal, /pricing/difal/{uf}, /pricing/scenarios; existing /simulations preserved), `packages/sdk-runtime/src/index.ts` (**SDK-PRICING-M07: INSERT-only** — new Pricing* types near the existing pricing types :1227–1237 + new methods on `createMarketplaceCentralClient` near :1697–1707; existing PricingSimulation types/methods byte-identical; touch ONLY the pricing region, never orders/listings/market), sdk-runtime pricing test file, `apps/server_core/internal/composition/root.go` (ROOT-M07: additive imports :95-100 region + PRICING wiring :689-702 region — new calc service/repos/cost shim, existing constructors untouched, no stub/nil on live paths)]
 - commands: [`npx tsc --noEmit -p packages/sdk-runtime`, `npm run test --workspace @marketplace-central/sdk-runtime`, `go build ./apps/server_core/...`, OpenAPI lint/contract lane]
-- expected_artifacts: [tsc clean; sdk-runtime vitest PASS; go build PASS; OpenAPI validates]
+- expected_artifacts: [tsc clean; sdk-runtime vitest PASS incl. existing pricing-simulation regression; go build PASS; OpenAPI validates; `git diff` on index.ts shows ONLY additions in the pricing region]
 - depends_on: [F01-S7]
-- notes: OpenAPI + sdk-runtime land SAME commit (invariant). BARREL-M07 = one additive line only. ROOT-M07 = additive wiring only. market.ts is the exact mirror pattern for pricing.ts (own createPricingClient, getJson/postJson, throws `{status, error}`). **This slice publishes the SDK surface F-02 consumes — F-02 starts after this.**
+- notes: **SDK-PRICING-M07 (SECTION 0 · C-C) — NO pricing.ts, NO barrel line.** Pricing SDK is INLINE in index.ts; add new types + new `createMarketplaceCentralClient` methods as pure INSERTs in the pricing region, mirroring how `runPricingSimulation` (:1704) already posts. Existing pricing types/methods stay byte-identical. OpenAPI + sdk-runtime land SAME commit (invariant). ROOT-M07 = additive wiring only. **This slice publishes the SDK surface F-02 consumes — F-02 starts after this.**
 
 ---
 
@@ -123,12 +124,12 @@ Two corrections applied by CHIP-M07 at P2 acceptance (planner artifact accepted-
 - feature: F-02
 - complexity: standard
 - validation_kind: web-vitest
-- failing_test_first: `apps/web/src/pages/precos/PricingPage.test.tsx` — page mounts, loads profile+product via pricing.ts client (mocked), renders shell regions (decomposição, parâmetros trigger, comparação, aplicar). `apps/web/src/app/AppRouter.test.tsx` :93-97 updated (APPTEST-M07, that single /precos case only) to assert new page marker.
+- failing_test_first: `apps/web/src/pages/precos/PricingPage.test.tsx` — page mounts, loads profile+product via the `createMarketplaceCentralClient` pricing methods (mocked), renders shell regions (decomposição, parâmetros trigger, comparação, aplicar). `apps/web/src/app/AppRouter.test.tsx` :93-97 updated (APPTEST-M07, that single /precos case only) to assert new page marker.
 - write_set: [`apps/web/src/pages/precos/PricingPage.tsx`, `apps/web/src/pages/precos/PricingPage.test.tsx`, `apps/web/src/pages/precos/index.ts`, `apps/web/src/routes/precos.tsx` (rewire from legacy PricingSimulatorPage to new page), `apps/web/src/app/AppRouter.test.tsx` (APPTEST-M07: /precos case only)]
 - commands: [`npm run test --workspace @marketplace-central/web -- PricingPage AppRouter`]
 - expected_artifacts: [vitest PASS for PricingPage + AppRouter /precos case]
 - depends_on: [F01-S8]
-- notes: APPTEST-M07 grant = edit ONLY the :93-97 /precos case, zero other cases; legacy redirect ["/simulator","/precos"] at :105 untouched. Consumes pricing.ts from F01-S8. C05 shell anchor.
+- notes: APPTEST-M07 grant = edit ONLY the :93-97 /precos case, zero other cases; legacy redirect ["/simulator","/precos"] at :105 untouched. Consumes the index.ts `createMarketplaceCentralClient` pricing methods from F01-S8 (via apps/web `useClient()`; NO pricing.ts). C05 shell anchor.
 
 ### Slice F02-S2 — decomposition panel (per-component) + MarginChip + UnknownValue/blocking SEM_CUSTO
 - feature: F-02
@@ -199,7 +200,7 @@ Two corrections applied by CHIP-M07 at P2 acceptance (planner artifact accepted-
 | F01-S5 | migrations/0055–0058*.sql (0059 reserve), platform/migrate/runner_test.go (fixture bump) |
 | F01-S6 | pricing/adapters/postgres/calc_repository.go(+test), pricing/ports/cost_read.go, pricing/adapters/costread/reader.go(+test) |
 | F01-S7 | pricing/transport/{calc_handler,http_handler}.go(+test), pricing/application/calc_service.go(+test) |
-| F01-S8 | contracts/api/…openapi.yaml (additive), sdk-runtime/src/pricing.ts(+test), sdk-runtime/src/index.ts (BARREL-M07), composition/root.go (ROOT-M07) |
+| F01-S8 | contracts/api/…openapi.yaml (additive), sdk-runtime/src/index.ts (SDK-PRICING-M07: INSERT-only in pricing region)(+test), composition/root.go (ROOT-M07) |
 
 ### F-02 (frontend) — all within granted paths
 | Slice | Write targets |
@@ -217,7 +218,7 @@ Write-DAG serialization point: `apps/server_core/internal/modules/pricing/transp
 
 ## SECTION C — CONTRACT-SATISFIABILITY CHECK (vs current contract + sibling tracks)
 
-Current OpenAPI pricing block: `/pricing/simulations` (:2240-2284), `/pricing/simulations/batch` (:2285-2325); next path `/connectors/...` at :2326. Current SDK: pricing.ts ABSENT; index.ts exports erpImport + market.
+Current OpenAPI pricing block: `/pricing/simulations` (:2240-2284), `/pricing/simulations/batch` (:2285-2325); next path `/connectors/...` at :2326. Current SDK: **no pricing.ts** — pricing SDK is INLINE in index.ts (types :1227–1237, methods :1697–1707 on `createMarketplaceCentralClient` :1383). [SDK-PRICING-M07]
 
 | Claimed surface | Current state | Verdict |
 |---|---|---|
@@ -225,13 +226,12 @@ Current OpenAPI pricing block: `/pricing/simulations` (:2240-2284), `/pricing/si
 | `GET /pricing/difal`, `PUT /pricing/difal/{uf}` | ABSENT | ADD — clean |
 | `GET/POST/DELETE /pricing/scenarios` | ABSENT | ADD — clean |
 | `POST /pricing/simulations` (extended) | EXISTS :2251 | EXTEND ADDITIVELY — W1 float64 DTO + `{items}` GET preserved (C03 regression guards) |
-| `packages/sdk-runtime/src/pricing.ts` | ABSENT | CREATE — standalone, market.ts mirror |
-| `index.ts` barrel `export * from "./pricing"` | ABSENT | ADD 1 line — BARREL-M07 |
+| New pricing types + client methods (decompose/solve/scenarios/DIFAL/price_update) | INLINE region exists (:1227–1237, :1697–1707) | INSERT additively into index.ts pricing region — SDK-PRICING-M07 (no pricing.ts, no barrel) |
 | Decompose / DifalForUF Go ports | ABSENT (no existing Decompose/CalcProfile) | CREATE — no collision |
 
 Sibling-track disjointness: M-05 (listings) owns modules/listings + listing paths; M-08 (orders) owns modules/orders + order paths; M-07 owns modules/pricing + /pricing/*. **No path/schema/SDK-identifier collision.** M-08 is a read-only CONSUMER of DifalForUF (frozen sig, F01-S3) — a dependency, not a write collision.
 
-**FLAGS: none.** No colliding/occupied path. No ownership collision. All F-01/F-02 write targets fall inside the granted exclusive paths or the three narrow grants (BARREL-M07 / ROOT-M07 / APPTEST-M07).
+**FLAGS: none.** No colliding/occupied path. No ownership collision. All F-01/F-02 write targets fall inside the granted exclusive paths or the three narrow grants (SDK-PRICING-M07 / ROOT-M07 / APPTEST-M07). [SDK-PRICING-M07 replaced the former pricing.ts+BARREL-M07 grant — HUB v2 amendment C-C.]
 
 ---
 
@@ -257,8 +257,7 @@ Every criterion maps to ≥1 named command AND carrying file(s). No unmapped cri
 | Seam | Closure | Where |
 |---|---|---|
 | Composition-root wiring | ROOT-M07 grant — additive New* for calc service/repos/cost shim | F01-S8 root.go :95-100 + :689-702 |
-| SDK client surface (METHODS not just types) | pricing.ts createPricingClient with getProfile/putProfile/listDifal/putDifal/scenarios CRUD/runSimulation | F01-S8 pricing.ts |
-| SDK barrel export | BARREL-M07 — one additive line | F01-S8 index.ts |
+| SDK client surface (METHODS not just types) | new methods on `createMarketplaceCentralClient` (getProfile/putProfile/listDifal/putDifal/scenarios CRUD/decompose/solveTarget/price_update) — INSERT-only in index.ts pricing region | F01-S8 index.ts [SDK-PRICING-M07] |
 | OpenAPI spec | additive /pricing/* paths+schemas, same commit as SDK | F01-S8 openapi.yaml |
 | Migrations + fixture bump | 0055–0058 (0059 reserve) + runner_test 51→55 same slice | F01-S5 |
 | Cost port (IC-02) consumption | pricing-side cost port + costread adapter + root shim | F01-S6 (port/adapter) + F01-S8 (shim wiring) |
@@ -269,7 +268,7 @@ Every criterion maps to ≥1 named command AND carrying file(s). No unmapped cri
 | Seam | Closure | Where |
 |---|---|---|
 | Router/shell test | AppRouter.test.tsx /precos case (APPTEST-M07) + route rewire | F02-S1 |
-| SDK consumption (pricing) | pricing.ts client methods used by page | F02-S1..S5 |
+| SDK consumption (pricing) | `createMarketplaceCentralClient` pricing methods (via useClient) used by page | F02-S1..S5 |
 | SDK consumption (market IC-03 HTTP) | market.ts listMarketAggregates | F02-S4 |
 | ui component reuse | MarginChip/UnknownValue/Loading/Error/Empty from packages/ui (consume, not fork — packages/ui FORBIDDEN) | F02-S2, S3 |
 | /mutations seam (price_update) | ApplyPrice creates intent via SDK, previewed ceiling | F02-S5 |
@@ -298,6 +297,6 @@ Hub-owned post-merge steps (named, not in write-set): dev-stack rebuild/re-point
 - Slice count: F-01 = 8 (F01-S1…S8), F-02 = 6 (F02-S1…S6). Total 14.
 - DAG order: F01-S1 → F01-S2 → **F01-S3(ic04-ports)** → F01-S4 → F01-S5 → F01-S6 → F01-S7 → F01-S8 → F02-S1 → F02-S2 → {F02-S3 ∥ F02-S4 ∥ F02-S5} → F02-S6. (F01-S5 depends only on S2 → may run parallel to S3/S4; F02-S3/S4/S5 all depend only on F02-S2 → parallel.)
 - ic04-ports publication slice: **F01-S3** (Decompose + DifalForUF, frozen sigs + engine + C01 golden + C04 contract), unblocks M-08.
-- Contract-satisfiability flags: NONE. All /pricing/* sub-paths absent (additive-clean); POST /simulations extended additively; pricing.ts new; no sibling collision (M-05/M-08 disjoint; M-08 = read-only consumer).
-- Ownership collisions: NONE. All writes inside granted exclusive paths + BARREL-M07/ROOT-M07/APPTEST-M07.
+- Contract-satisfiability flags: NONE. All /pricing/* sub-paths absent (additive-clean); POST /simulations extended additively; SDK = INSERT-only into index.ts pricing region [SDK-PRICING-M07]; no sibling collision (M-05/M-08 disjoint; M-08 = read-only consumer).
+- Ownership collisions: NONE. All writes inside granted exclusive paths + SDK-PRICING-M07/ROOT-M07/APPTEST-M07.
 - Residual open_questions: NONE. (In-flight verify-at-execution notes, not blockers: MS interna_pct seeded 17,0 DISPUTED per R-04 — carried as code comment for execution-time confirmation, not a planning unknown; migration fixture final count = 55 = 51 current + 4 [SECTION 0 · C-A]; DIFAL override+audit = columns on pricing_difal_rates, NOT a 4th table.)
