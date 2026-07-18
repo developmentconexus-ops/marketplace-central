@@ -863,6 +863,18 @@ export type ProductLinkCandidateState =
 
 export type ProductLinkCandidateMatchInput = "manual" | "seller_sku" | "ean" | "title" | "none";
 
+export type ProductLinkConfidenceBand = "ALTA" | "MEDIA" | "BAIXA";
+
+export type ProductLinkMatchStatus = "ACCEPT" | "REVIEW" | "REJECT" | "NO_CANDIDATE";
+
+export type ProductLinkReasonDirection = "FOR" | "AGAINST" | "UNAVAILABLE";
+
+export interface ProductLinkReason {
+  anchor: string;
+  direction: ProductLinkReasonDirection;
+  detail?: string;
+}
+
 export interface ProductLinkCandidateItem {
   candidate_id: string;
   installation_id: string;
@@ -876,6 +888,10 @@ export interface ProductLinkCandidateItem {
   match_input: ProductLinkCandidateMatchInput;
   match_value?: string;
   source_snapshot_fetched_at?: string | null;
+  confidence: number;
+  confidence_band: ProductLinkConfidenceBand;
+  match_status: ProductLinkMatchStatus;
+  reasons: ProductLinkReason[];
   created_at: string;
   updated_at: string;
 }
@@ -943,6 +959,48 @@ export interface ProductLinkWorkflowItem {
 export interface ProductLinkResolutionResult {
   link: ProductLink;
   audit: ProductLinkAuditEntry;
+}
+
+export interface ProductLinkBatchApproval {
+  candidate_id: string;
+}
+
+export interface ProductLinkBatchPreviewItem {
+  candidate_id: string;
+  status: "OK" | "FAILED";
+  cause?: string;
+}
+
+export interface PreviewProductLinkBatchResponse {
+  items: ProductLinkBatchPreviewItem[];
+}
+
+export interface ProductLinkAppliedBatchItem {
+  candidate_id: string;
+}
+
+export interface ProductLinkFailedBatchItem {
+  candidate_id: string;
+  cause: string;
+}
+
+export interface ApplyProductLinkBatchResponse {
+  batch_id: string;
+  applied: ProductLinkAppliedBatchItem[];
+  failed: ProductLinkFailedBatchItem[];
+}
+
+export interface ProductLinkUndoBatchItem {
+  audit_id: string;
+  candidate_id?: string;
+  status: "OK" | "FAILED";
+  cause?: string;
+}
+
+export interface UndoProductLinkBatchResponse {
+  batch_id: string;
+  reverted: ProductLinkUndoBatchItem[];
+  failed: ProductLinkUndoBatchItem[];
 }
 
 export type StockRiskState =
@@ -1543,6 +1601,14 @@ export function createMarketplaceCentralClient(options: {
       }
       return postJson<ProductLinkResolutionResult>("/product-links/link-resolutions/manual-resolve", req);
     },
+    previewProductLinkBatch: (req: { approvals: ProductLinkBatchApproval[] }) =>
+      postJson<PreviewProductLinkBatchResponse>("/product-links/link-resolutions/batch-preview", req),
+    applyProductLinkBatch: (req: { approvals: ProductLinkBatchApproval[]; actor: ProductLinkActor }) =>
+      postJson<ApplyProductLinkBatchResponse>("/product-links/link-resolutions/batch", req),
+    undoProductLinkResolution: (auditId: string, req: { reason?: string; actor?: ProductLinkActor } = {}) =>
+      postJson<ProductLinkResolutionResult>(`/product-links/link-resolutions/${encodeURIComponent(auditId)}/undo`, req),
+    undoProductLinkBatch: (batchId: string) =>
+      postJson<UndoProductLinkBatchResponse>(`/product-links/link-resolutions/batch/${encodeURIComponent(batchId)}/undo`, {}),
     listInventoryStockRisks: (input: {
       installation_id: string;
       state?: StockRiskState;
