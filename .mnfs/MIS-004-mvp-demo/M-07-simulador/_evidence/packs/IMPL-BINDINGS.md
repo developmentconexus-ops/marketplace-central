@@ -32,10 +32,11 @@ slice's `write_set` is a FINDING you report back to the orchestrator, never a "f
 - NEVER boot a server, bind ports (:8080/:5174/:3002), or touch the dev stack / docker compose — that seam is hub-owned. Your slices are unit/integration-test only; if a slice needs the live stack, report it, don't start one.
 - Windows + PowerShell/Bash tools only. Never WSL.
 
-## Commit discipline (commit per GREEN slice)
-- After the slice is GREEN and self-verified, stage ONLY your `write_set` files (explicit paths, never `git add -A` — my `_evidence/` and other slices must stay out of your commit) and commit:
-  `cd "<worktree>" && git add <exact write_set paths> && git commit -m "<type>(pricing): <slice> — <what>"`
-- Commit message ends with the Co-Authored-By trailer for Claude. One commit per slice. Do NOT push.
+## Commit discipline — ORCHESTRATOR IS SOLE COMMITTER (do NOT git add / commit)
+- **This worktree has a SHARED git index** (subagents and the orchestrator run git in the same physical worktree). Concurrent `git add` + `git commit` races: one process's commit sweeps another's staged files (field finding F-boot-2). Therefore:
+- **You do NOT run `git add`, `git commit`, `git stage`, or any index/history command. At all.** Leave your `write_set` files modified on disk. The orchestrator reviews your GREEN slice and commits it — one clean commit per slice, correct message + trailer — serialized so no race can occur.
+- Do not `git stash`/`reset`/`clean` either. Touch git ONLY for read-only inspection (`git status`, `git diff`, `git show`) if you need it for your report — never a mutating git command.
+- In your return, give the orchestrator exactly what it needs to commit: the exact list of files you created/modified (so it stages precisely those), plus your RED/GREEN logs.
 
 ## Domain invariants that touch pricing (profile §7 — bind per your slice)
 - `tenant_id` on every row / every query predicate (tables, repos, handlers).
