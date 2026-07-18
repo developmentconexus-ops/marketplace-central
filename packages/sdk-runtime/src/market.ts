@@ -43,7 +43,9 @@ export type MarketPriceIntelCollectionCauseReason =
   | "NO_IDENTITY"
   | "FLAG_DISABLED"
   | "PROVIDER_4XX"
-  | "PROVIDER_5XX";
+  | "PROVIDER_5XX"
+  | "TIMEOUT"
+  | "PRICE_UNAVAILABLE";
 export type MarketPriceIntelCollectionStatus = "COMPLETED" | "PARTIAL";
 
 export interface MarketPriceIntelCollectionDecision {

@@ -500,6 +500,172 @@ func TestCollectRateLimitedStopsRemainingProviderWork(t *testing.T) {
 	}
 }
 
+// --- (g2) GetOwnItemPricing nil-price -> FAILED PRICE_UNAVAILABLE snapshot --
+
+func TestCollectOwnItemPricingNullPriceWritesFailedSnapshot(t *testing.T) {
+	fk := newPipelineFakes()
+	local, candidate := acceptCandidate("P1", "CAT1")
+	fk.identity.identities["P1"] = local
+	fk.collector.searchResult = ports.CatalogIdentityResult{Candidates: []domain.IdentityCandidate{candidate}, FetchedAt: fixedNow()}
+	fk.collector.catalogProduct = ports.CatalogProductDetail{CatalogProductID: "CAT1", FetchedAt: fixedNow()}
+	fk.collector.offers = []domain.ValidatedOffer{
+		qualifiedOffer(t, "CAT1", "seller-1", "100.00"),
+		qualifiedOffer(t, "CAT1", "seller-2", "101.00"),
+		qualifiedOffer(t, "CAT1", "seller-3", "102.00"),
+		qualifiedOffer(t, "CAT1", "seller-4", "103.00"),
+		qualifiedOffer(t, "CAT1", "seller-5", "104.00"),
+	}
+	fk.identity.linked["P1"] = []string{"listing-1"}
+	fk.collector.ownPricing["listing-1"] = ports.OwnItemPricing{ListingID: "listing-1", OurPrice: nil, FetchedAt: fixedNow()}
+	fk.collector.priceToWin["listing-1"] = ports.PriceToWinSignal{ListingID: "listing-1", TargetPrice: money("97.50"), FetchedAt: fixedNow()}
+
+	summary, err := fk.service().Collect(context.Background(), "P1")
+	if err != nil {
+		t.Fatalf("Collect() error = %v", err)
+	}
+	if summary.Status != CollectionStatusPartial {
+		t.Fatalf("status = %v, want PARTIAL", summary.Status)
+	}
+	if len(summary.Causas) != 1 || summary.Causas[0] != CollectionCausePriceUnavailable {
+		t.Fatalf("causas = %v, want [PRICE_UNAVAILABLE]", summary.Causas)
+	}
+	if fk.collector.priceToWinCalls != 1 {
+		t.Fatalf("priceToWinCalls = %d, want 1 (null OurPrice must not suppress the price-to-win probe)", fk.collector.priceToWinCalls)
+	}
+
+	var saleFailed, saleValid int
+	for _, snap := range fk.snapshots.appended {
+		if snap.Source != domain.MarketPriceSourceMLSalePrice {
+			continue
+		}
+		switch snap.Status {
+		case domain.MarketPriceSnapshotStatusFailed:
+			saleFailed++
+			if snap.FailureReason == nil || *snap.FailureReason != string(CollectionCausePriceUnavailable) {
+				t.Fatalf("failed sale-price snapshot reason = %v, want PRICE_UNAVAILABLE", snap.FailureReason)
+			}
+		case domain.MarketPriceSnapshotStatusValid:
+			saleValid++
+		}
+	}
+	if saleFailed != 1 {
+		t.Fatalf("failed ml_sale_price snapshots = %d, want 1", saleFailed)
+	}
+	if saleValid != 0 {
+		t.Fatalf("valid ml_sale_price snapshots = %d, want 0", saleValid)
+	}
+	if len(fk.signals.appended) != 0 {
+		t.Fatalf("persisted competitive signals = %d, want 0 (no OurPrice, no signal)", len(fk.signals.appended))
+	}
+}
+
+// --- (g3) GetPriceToWin nil-price -> FAILED PRICE_UNAVAILABLE snapshot -----
+
+func TestCollectPriceToWinNullPriceWritesFailedSnapshot(t *testing.T) {
+	fk := newPipelineFakes()
+	local, candidate := acceptCandidate("P1", "CAT1")
+	fk.identity.identities["P1"] = local
+	fk.collector.searchResult = ports.CatalogIdentityResult{Candidates: []domain.IdentityCandidate{candidate}, FetchedAt: fixedNow()}
+	fk.collector.catalogProduct = ports.CatalogProductDetail{CatalogProductID: "CAT1", FetchedAt: fixedNow()}
+	fk.collector.offers = []domain.ValidatedOffer{
+		qualifiedOffer(t, "CAT1", "seller-1", "100.00"),
+		qualifiedOffer(t, "CAT1", "seller-2", "101.00"),
+		qualifiedOffer(t, "CAT1", "seller-3", "102.00"),
+		qualifiedOffer(t, "CAT1", "seller-4", "103.00"),
+		qualifiedOffer(t, "CAT1", "seller-5", "104.00"),
+	}
+	fk.identity.linked["P1"] = []string{"listing-1"}
+	fk.collector.ownPricing["listing-1"] = ports.OwnItemPricing{ListingID: "listing-1", OurPrice: money("99.00"), WinnerPrice: money("98.00"), FetchedAt: fixedNow()}
+	fk.collector.priceToWin["listing-1"] = ports.PriceToWinSignal{ListingID: "listing-1", TargetPrice: nil, FetchedAt: fixedNow()}
+
+	summary, err := fk.service().Collect(context.Background(), "P1")
+	if err != nil {
+		t.Fatalf("Collect() error = %v", err)
+	}
+	if summary.Status != CollectionStatusPartial {
+		t.Fatalf("status = %v, want PARTIAL", summary.Status)
+	}
+	if len(summary.Causas) != 1 || summary.Causas[0] != CollectionCausePriceUnavailable {
+		t.Fatalf("causas = %v, want [PRICE_UNAVAILABLE]", summary.Causas)
+	}
+
+	var winFailed, winValid, saleValid int
+	for _, snap := range fk.snapshots.appended {
+		switch {
+		case snap.Source == domain.MarketPriceSourceMLPriceToWin && snap.Status == domain.MarketPriceSnapshotStatusFailed:
+			winFailed++
+			if snap.FailureReason == nil || *snap.FailureReason != string(CollectionCausePriceUnavailable) {
+				t.Fatalf("failed price-to-win snapshot reason = %v, want PRICE_UNAVAILABLE", snap.FailureReason)
+			}
+		case snap.Source == domain.MarketPriceSourceMLPriceToWin && snap.Status == domain.MarketPriceSnapshotStatusValid:
+			winValid++
+		case snap.Source == domain.MarketPriceSourceMLSalePrice && snap.Status == domain.MarketPriceSnapshotStatusValid:
+			saleValid++
+		}
+	}
+	if winFailed != 1 {
+		t.Fatalf("failed ml_price_to_win snapshots = %d, want 1", winFailed)
+	}
+	if winValid != 0 {
+		t.Fatalf("valid ml_price_to_win snapshots = %d, want 0", winValid)
+	}
+	if saleValid != 1 {
+		t.Fatalf("valid ml_sale_price snapshots = %d, want 1 (sale-price path stayed green)", saleValid)
+	}
+	if len(fk.signals.appended) != 1 || fk.signals.appended[0].ListingID != "listing-1" {
+		t.Fatalf("persisted competitive signals = %+v, want one listing-1 row (OurPrice present)", fk.signals.appended)
+	}
+}
+
+// --- (g4) context.DeadlineExceeded -> TIMEOUT, run stops -------------------
+
+func TestCollectDeadlineExceededStopsRunWithTimeoutCause(t *testing.T) {
+	fk := newPipelineFakes()
+	local, candidate := acceptCandidate("P1", "CAT1")
+	fk.identity.identities["P1"] = local
+	fk.collector.searchResult = ports.CatalogIdentityResult{Candidates: []domain.IdentityCandidate{candidate}, FetchedAt: fixedNow()}
+	fk.collector.catalogProduct = ports.CatalogProductDetail{CatalogProductID: "CAT1", FetchedAt: fixedNow()}
+	fk.collector.offers = []domain.ValidatedOffer{
+		qualifiedOffer(t, "CAT1", "seller-1", "100.00"),
+		qualifiedOffer(t, "CAT1", "seller-2", "101.00"),
+		qualifiedOffer(t, "CAT1", "seller-3", "102.00"),
+		qualifiedOffer(t, "CAT1", "seller-4", "103.00"),
+		qualifiedOffer(t, "CAT1", "seller-5", "104.00"),
+	}
+	fk.identity.linked["P1"] = []string{"listing-1", "listing-2"}
+	fk.collector.ownPricingErr["listing-1"] = context.DeadlineExceeded
+
+	summary, err := fk.service().Collect(context.Background(), "P1")
+	if err != nil {
+		t.Fatalf("Collect() error = %v", err)
+	}
+	if summary.Status != CollectionStatusPartial {
+		t.Fatalf("status = %v, want PARTIAL", summary.Status)
+	}
+	if len(summary.Causas) != 1 || summary.Causas[0] != CollectionCauseTimeout {
+		t.Fatalf("causas = %v, want [TIMEOUT]", summary.Causas)
+	}
+	if fk.collector.ownPricingCalls != 1 {
+		t.Fatalf("ownPricingCalls = %d, want 1 (stopped after timeout, listing-2 not probed)", fk.collector.ownPricingCalls)
+	}
+	if fk.collector.priceToWinCalls != 0 {
+		t.Fatalf("priceToWinCalls = %d, want 0 (stopped after timeout)", fk.collector.priceToWinCalls)
+	}
+
+	var failed int
+	for _, snap := range fk.snapshots.appended {
+		if snap.Source == domain.MarketPriceSourceMLSalePrice && snap.Status == domain.MarketPriceSnapshotStatusFailed {
+			failed++
+			if snap.FailureReason == nil || *snap.FailureReason != string(CollectionCauseTimeout) {
+				t.Fatalf("failed snapshot reason = %v, want TIMEOUT", snap.FailureReason)
+			}
+		}
+	}
+	if failed != 1 {
+		t.Fatalf("failed ml_sale_price snapshots = %d, want 1", failed)
+	}
+}
+
 // --- (h) concurrent Collect on same codprod -> ErrCollectionInProgress ------
 
 func TestCollectConcurrentSameCodprodReturnsInProgress(t *testing.T) {

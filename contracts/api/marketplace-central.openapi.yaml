@@ -6063,7 +6063,7 @@ components:
           type: string
         reason:
           type: string
-          enum: [NO_IDENTITY, FLAG_DISABLED, PROVIDER_4XX, PROVIDER_5XX]
+          enum: [NO_IDENTITY, FLAG_DISABLED, PROVIDER_4XX, PROVIDER_5XX, TIMEOUT, PRICE_UNAVAILABLE]
         detail:
           type: string
           nullable: true

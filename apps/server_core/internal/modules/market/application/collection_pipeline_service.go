@@ -28,10 +28,12 @@ const (
 type CollectionCause string
 
 const (
-	CollectionCauseNoIdentity   CollectionCause = "NO_IDENTITY"
-	CollectionCauseFlagDisabled CollectionCause = "FLAG_DISABLED"
-	CollectionCauseProvider4xx  CollectionCause = "PROVIDER_4XX"
-	CollectionCauseProvider5xx  CollectionCause = "PROVIDER_5XX"
+	CollectionCauseNoIdentity       CollectionCause = "NO_IDENTITY"
+	CollectionCauseFlagDisabled     CollectionCause = "FLAG_DISABLED"
+	CollectionCauseProvider4xx      CollectionCause = "PROVIDER_4XX"
+	CollectionCauseProvider5xx      CollectionCause = "PROVIDER_5XX"
+	CollectionCauseTimeout          CollectionCause = "TIMEOUT"
+	CollectionCausePriceUnavailable CollectionCause = "PRICE_UNAVAILABLE"
 )
 
 // CollectionDecision is one collection outcome row for a codprod. Blocking
@@ -235,7 +237,12 @@ func (s *CollectionPipelineService) collectCompetitiveSignals(ctx context.Contex
 			}
 			continue
 		}
-		if err := s.appendValidSnapshot(ctx, codprod, listingID, domain.MarketPriceSourceMLSalePrice, pricing.OurPrice, pricing.FetchedAt); err != nil {
+		if pricing.OurPrice == nil {
+			run.fail(CollectionCausePriceUnavailable, false)
+			if err := s.appendFailedSnapshot(ctx, codprod, listingID, domain.MarketPriceSourceMLSalePrice, CollectionCausePriceUnavailable); err != nil {
+				return err
+			}
+		} else if err := s.appendValidSnapshot(ctx, codprod, listingID, domain.MarketPriceSourceMLSalePrice, pricing.OurPrice, pricing.FetchedAt); err != nil {
 			return err
 		}
 
@@ -248,6 +255,11 @@ func (s *CollectionPipelineService) collectCompetitiveSignals(ctx context.Contex
 				cause, stop := classifyProviderFailure(err)
 				run.fail(cause, stop)
 				if err := s.appendFailedSnapshot(ctx, codprod, listingID, domain.MarketPriceSourceMLPriceToWin, cause); err != nil {
+					return err
+				}
+			case signal.TargetPrice == nil:
+				run.fail(CollectionCausePriceUnavailable, false)
+				if err := s.appendFailedSnapshot(ctx, codprod, listingID, domain.MarketPriceSourceMLPriceToWin, CollectionCausePriceUnavailable); err != nil {
 					return err
 				}
 			default:
@@ -299,9 +311,6 @@ func (s *CollectionPipelineService) persistNoPriceEvidenceAggregate(ctx context.
 }
 
 func (s *CollectionPipelineService) appendValidSnapshot(ctx context.Context, codprod, refID string, source domain.MarketPriceSource, price *domain.Money, fetchedAt time.Time) error {
-	if price == nil {
-		return nil
-	}
 	snapshot, err := domain.NewMarketPriceSnapshot(domain.MarketPriceSnapshotInput{
 		Scope:      domain.MarketPriceScopeListing,
 		RefID:      refID,
@@ -340,6 +349,9 @@ func (s *CollectionPipelineService) appendFailedSnapshot(ctx context.Context, co
 }
 
 func classifyProviderFailure(err error) (CollectionCause, bool) {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return CollectionCauseTimeout, true
+	}
 	if errors.Is(err, ports.ErrRateLimited) {
 		return CollectionCauseProvider4xx, true
 	}
