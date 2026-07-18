@@ -40,9 +40,12 @@ describe("Header", () => {
 
     const labels = ["Visão geral", "Anúncios", "Mercado", "Simulador", "Pedidos", "Repasses"];
     const navigation = screen.getByRole("navigation");
-    const renderedLabels = Array.from(navigation.querySelectorAll("*"))
-      .filter((element) => labels.includes(element.textContent?.trim() ?? ""))
-      .map((element) => element.textContent?.trim());
+    // Each pill is a direct child of <nav> (enabled = <a>, disabled = <span>); the pill's first
+    // child node is the label text node (the "em breve" badge is a separate nested span, so
+    // filtering by full textContent would miss the disabled pills).
+    const renderedLabels = Array.from(navigation.children).map(
+      (pill) => pill.childNodes[0]?.textContent?.trim() ?? "",
+    );
 
     expect(renderedLabels).toEqual(labels);
   });
@@ -50,10 +53,15 @@ describe("Header", () => {
   it("keeps Mercado and Repasses visible but non-navigable", () => {
     renderHeader();
 
+    const navigation = screen.getByRole("navigation");
     for (const label of ["Mercado", "Repasses"]) {
-      const pill = screen.getByText(label, { exact: true }).parentElement;
-      expect(pill?.closest("a")).toBeNull();
-      expect(within(pill as HTMLElement).getByText("em breve")).toBeInTheDocument();
+      const pill = Array.from(navigation.children).find((el) =>
+        el.textContent?.includes(label),
+      ) as HTMLElement | undefined;
+      expect(pill).toBeDefined();
+      expect(pill!.tagName).toBe("SPAN"); // a disabled stub, never an <a> link
+      expect(pill!.querySelector("a")).toBeNull();
+      expect(within(pill!).getByText("em breve")).toBeInTheDocument();
     }
   });
 
@@ -81,7 +89,9 @@ describe("Header", () => {
   it("exposes the exact gear menu entries and DIFAL target", () => {
     renderHeader();
 
-    fireEvent.click(screen.getByRole("button", { name: "Abrir menu" }));
+    // The gear is a native <summary aria-label="Abrir menu"> — jsdom does not expose <summary>
+    // as role "button", so target it by its glyph to toggle the <details> open.
+    fireEvent.click(screen.getByText("⚙"));
 
     const menu = screen.getByRole("group", { name: "Menu de configurações" });
     expect(within(menu).getByText("Configurações")).toBeInTheDocument();
