@@ -1,6 +1,7 @@
 import type {
   ListingDetail,
   ListingLinkState,
+  ListingMarketSignal,
   ListingReadModel,
   ListingStatus,
 } from "@marketplace-central/sdk-runtime";
@@ -15,6 +16,7 @@ import {
 } from "@marketplace-central/ui";
 import { listingsQueryKeys, QUERY_STALE_TIME } from "@marketplace-central/web-query";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useClient } from "../app/ClientContext";
 
 export interface ListingDetailPanelProps {
@@ -71,6 +73,99 @@ function formatEventTime(at: string) {
   });
 }
 
+function renderEvidenceCount(value: number | null) {
+  return value === null ? <UnknownValue /> : value;
+}
+
+function formatPriceToWin(signal: ListingMarketSignal) {
+  return signal.price_to_win === null ? <UnknownValue /> : `R$ ${signal.price_to_win.amount}`;
+}
+
+function formatPosition(signal: ListingMarketSignal) {
+  return signal.position ? `${signal.position.rank}/${signal.position.total}` : <UnknownValue />;
+}
+
+function formatDelta(signal: ListingMarketSignal) {
+  return signal.delta_pct === null
+    ? <UnknownValue />
+    : `${signal.delta_pct.startsWith("-") ? "" : "+"}${signal.delta_pct}%`;
+}
+
+// Evidência de mercado: distinct honest rendering per signal_status (ADR-17) —
+// SEM_VINCULO shows no market numbers (link to /vinculos to resolve the link),
+// NO_PRICE_EVIDENCE (and a missing/undefined signal_status, treated as the
+// honest absent state) shows a named "sem evidência" state — never a
+// fabricated number — and OK/STALE show the underlying evidence (small
+// n_offers/n_sellers samples included verbatim, never suppressed), with STALE
+// additionally marked via FreshnessIndicator so old numbers read as old.
+function EvidenceSection({ detail }: { detail: ListingDetail }) {
+  const status = detail.signal_status ?? "NO_PRICE_EVIDENCE";
+
+  if (status === "SEM_VINCULO") {
+    return (
+      <section aria-labelledby="listing-detail-evidence-title">
+        <h4 id="listing-detail-evidence-title" className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Evidência de mercado
+        </h4>
+        <p className="text-sm text-slate-600">
+          Anúncio sem vínculo com produto — sem evidência de mercado.{" "}
+          <Link
+            to="/vinculos"
+            className="font-medium text-blue-700 underline decoration-blue-300 underline-offset-2 hover:text-blue-800"
+          >
+            Vincular produto
+          </Link>
+        </p>
+      </section>
+    );
+  }
+
+  const signal = detail.market_signal;
+  if (status === "NO_PRICE_EVIDENCE" || !signal) {
+    return (
+      <section aria-labelledby="listing-detail-evidence-title">
+        <h4 id="listing-detail-evidence-title" className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Evidência de mercado
+        </h4>
+        <p className="text-sm text-slate-600">
+          <UnknownValue hint="sem evidência de preço de mercado" /> Sem evidência de preço de mercado
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section aria-labelledby="listing-detail-evidence-title">
+      <h4 id="listing-detail-evidence-title" className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        Evidência de mercado
+      </h4>
+      <dl className="space-y-3">
+        <Fact label="Posição">{formatPosition(signal)}</Fact>
+        <Fact label="Preço para vencer">{formatPriceToWin(signal)}</Fact>
+        <Fact label="Diferença">{formatDelta(signal)}</Fact>
+        <Fact label="Match">{signal.match_status ?? <UnknownValue />}</Fact>
+        <Fact label="Ofertas">{renderEvidenceCount(signal.n_offers)}</Fact>
+        <Fact label="Vendedores">{renderEvidenceCount(signal.n_sellers)}</Fact>
+        <Fact label="Fonte">{signal.evidence?.source ?? <UnknownValue />}</Fact>
+        <Fact label="Coletado em">
+          {signal.evidence?.fetched_at ? <FreshnessIndicator asOf={signal.evidence.fetched_at} /> : <UnknownValue />}
+        </Fact>
+      </dl>
+      {status === "STALE" ? (
+        <p className="mt-2 text-sm text-amber-700">Evidência desatualizada — pode não refletir o mercado atual.</p>
+      ) : null}
+      {detail.link.product_id ? (
+        <Link
+          to={`/catalogo/produtos/${detail.link.product_id}`}
+          className="mt-2 inline-block font-medium text-blue-700 underline decoration-blue-300 underline-offset-2 hover:text-blue-800"
+        >
+          Ver produto vinculado
+        </Link>
+      ) : null}
+    </section>
+  );
+}
+
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-3 last:border-b-0 last:pb-0">
@@ -101,6 +196,8 @@ function DetailBody({ detail }: { detail: ListingDetail }) {
           <Fact label="Margem">{renderMargin(detail)}</Fact>
         </dl>
       </section>
+
+      <EvidenceSection detail={detail} />
 
       <section aria-labelledby="listing-detail-freshness-title">
         <h4 id="listing-detail-freshness-title" className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">

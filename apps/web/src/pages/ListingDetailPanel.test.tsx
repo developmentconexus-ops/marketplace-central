@@ -1,7 +1,8 @@
-import type { ListingDetail } from "@marketplace-central/sdk-runtime";
+import type { ListingDetail, ListingMarketSignal } from "@marketplace-central/sdk-runtime";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { MemoryRouter } from "react-router-dom";
 import { ListingDetailPanel } from "./ListingDetailPanel";
 
 const getListing = vi.fn();
@@ -38,14 +39,27 @@ const detail: ListingDetail = {
   ],
 };
 
+const okSignal: ListingMarketSignal = {
+  status: "OK",
+  position: { rank: 2, total: 5 },
+  price_to_win: { amount: "119.90", currency: "BRL" },
+  delta_pct: "-7.5",
+  match_status: "ACCEPT",
+  n_offers: 5,
+  n_sellers: 3,
+  evidence: { source: "buybox_api", fetched_at: "2026-07-18T10:00:00Z", freshness: "fresh" },
+};
+
 function renderPanel(listingId = "listing_1", onClose = vi.fn()) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return {
     onClose,
     ...render(
-      <QueryClientProvider client={queryClient}>
-        <ListingDetailPanel listingId={listingId} onClose={onClose} />
-      </QueryClientProvider>,
+      <MemoryRouter>
+        <QueryClientProvider client={queryClient}>
+          <ListingDetailPanel listingId={listingId} onClose={onClose} />
+        </QueryClientProvider>
+      </MemoryRouter>,
     ),
   };
 }
@@ -126,5 +140,73 @@ describe("ListingDetailPanel", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Fechar painel" }));
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("renders full market evidence for OK signal_status", async () => {
+    getListing.mockResolvedValueOnce({ ...detail, signal_status: "OK", market_signal: okSignal });
+
+    renderPanel();
+    await screen.findByText("Camiseta azul");
+
+    expect(screen.getByText("2/5")).toBeInTheDocument();
+    expect(screen.getByText("-7.5%")).toBeInTheDocument();
+    expect(screen.getByText("ACCEPT")).toBeInTheDocument();
+    expect(screen.getByText("5")).toBeInTheDocument();
+    expect(screen.getByText("3")).toBeInTheDocument();
+    expect(screen.getByText("buybox_api")).toBeInTheDocument();
+    expect(screen.getByText(/R\$ 119\.90/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Ver produto vinculado" }),
+    ).toHaveAttribute("href", "/catalogo/produtos/product_1");
+  });
+
+  it("shows STALE evidence numbers marked with a freshness indicator, not silently hidden", async () => {
+    getListing.mockResolvedValueOnce({
+      ...detail,
+      signal_status: "STALE",
+      market_signal: { ...okSignal, status: "STALE" },
+    });
+
+    renderPanel();
+    await screen.findByText("Camiseta azul");
+
+    expect(screen.getByText("2/5")).toBeInTheDocument();
+    expect(screen.getByText(/desatualizada/i)).toBeInTheDocument();
+  });
+
+  it("shows an honest sem-evidência state for NO_PRICE_EVIDENCE, never a fabricated number", async () => {
+    getListing.mockResolvedValueOnce({ ...detail, signal_status: "NO_PRICE_EVIDENCE", market_signal: null });
+
+    renderPanel();
+    await screen.findByText("Camiseta azul");
+
+    expect(screen.getByText("Sem evidência de preço de mercado")).toBeInTheDocument();
+    expect(screen.queryByText("ACCEPT")).not.toBeInTheDocument();
+    expect(screen.queryByText(/^\d+\/\d+$/)).not.toBeInTheDocument();
+  });
+
+  it("shows the sem-vínculo honest state with a link to /vinculos, no evidence section", async () => {
+    getListing.mockResolvedValueOnce({
+      ...detail,
+      link: { state: "unresolved", product_id: null, seller_sku: null },
+      signal_status: "SEM_VINCULO",
+      market_signal: null,
+    });
+
+    renderPanel();
+    await screen.findByText("Camiseta azul");
+
+    expect(screen.getByRole("link", { name: "Vincular produto" })).toHaveAttribute("href", "/vinculos");
+    expect(screen.queryByText("ACCEPT")).not.toBeInTheDocument();
+    expect(screen.queryByText("Sem evidência de preço de mercado")).not.toBeInTheDocument();
+  });
+
+  it("defensively renders the honest-absent evidence state when signal_status is undefined, never throws", async () => {
+    getListing.mockResolvedValueOnce({ ...detail });
+
+    renderPanel();
+    await screen.findByText("Camiseta azul");
+
+    expect(screen.getByText("Sem evidência de preço de mercado")).toBeInTheDocument();
   });
 });
