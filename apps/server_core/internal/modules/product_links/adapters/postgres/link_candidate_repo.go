@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -47,15 +48,19 @@ func (r *LinkCandidateRepository) ReplaceLinkCandidates(ctx context.Context, ins
 	}
 
 	for _, candidate := range candidates {
-		_, err := tx.Exec(ctx, `
+		reasons, err := marshalReasons(candidate.Reasons)
+		if err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, `
 			INSERT INTO product_link_candidates (
 				tenant_id, candidate_id, installation_id, provider_code, provider_item_id, provider_variation_id,
 				internal_product_id, internal_product_name, internal_reference_code, state, match_input, match_value,
-				source_snapshot_fetched_at, created_at, updated_at
+				source_snapshot_fetched_at, confidence, confidence_band, match_status, reasons, created_at, updated_at
 			) VALUES (
 				$1, $2, $3, $4, $5, $6,
 				$7, $8, $9, $10, $11, $12,
-				$13, $14, $15
+				$13, $14, $15, $16, $17, $18, $19
 			)
 			ON CONFLICT (tenant_id, candidate_id) DO UPDATE SET
 				provider_code = EXCLUDED.provider_code,
@@ -68,6 +73,10 @@ func (r *LinkCandidateRepository) ReplaceLinkCandidates(ctx context.Context, ins
 				match_input = EXCLUDED.match_input,
 				match_value = EXCLUDED.match_value,
 				source_snapshot_fetched_at = EXCLUDED.source_snapshot_fetched_at,
+				confidence = EXCLUDED.confidence,
+				confidence_band = EXCLUDED.confidence_band,
+				match_status = EXCLUDED.match_status,
+				reasons = EXCLUDED.reasons,
 				created_at = EXCLUDED.created_at,
 				updated_at = EXCLUDED.updated_at
 		`, r.tenantID,
@@ -83,6 +92,10 @@ func (r *LinkCandidateRepository) ReplaceLinkCandidates(ctx context.Context, ins
 			candidate.MatchInput,
 			candidate.MatchValue,
 			timestamptzArg(candidate.SourceSnapshotFetchedAt),
+			candidate.Confidence,
+			candidate.ConfidenceBand,
+			candidate.MatchStatus,
+			reasons,
 			candidate.CreatedAt,
 			candidate.UpdatedAt,
 		)
@@ -102,7 +115,7 @@ func (r *LinkCandidateRepository) ListLinkCandidates(ctx context.Context, instal
 		SELECT
 			candidate_id, installation_id, provider_code, provider_item_id, provider_variation_id,
 			internal_product_id, internal_product_name, internal_reference_code, state, match_input, match_value,
-			source_snapshot_fetched_at, created_at, updated_at
+			source_snapshot_fetched_at, confidence, confidence_band, match_status, reasons, created_at, updated_at
 		FROM product_link_candidates
 		WHERE tenant_id = $1
 		  AND installation_id = $2
@@ -119,6 +132,7 @@ func (r *LinkCandidateRepository) ListLinkCandidates(ctx context.Context, instal
 		var candidate domain.LinkCandidate
 		var internalProductID pgtype.Int4
 		var sourceSnapshotFetchedAt pgtype.Timestamptz
+		var reasons []byte
 		var createdAt pgtype.Timestamptz
 		var updatedAt pgtype.Timestamptz
 
@@ -135,6 +149,10 @@ func (r *LinkCandidateRepository) ListLinkCandidates(ctx context.Context, instal
 			&candidate.MatchInput,
 			&candidate.MatchValue,
 			&sourceSnapshotFetchedAt,
+			&candidate.Confidence,
+			&candidate.ConfidenceBand,
+			&candidate.MatchStatus,
+			&reasons,
 			&createdAt,
 			&updatedAt,
 		); err != nil {
@@ -143,6 +161,10 @@ func (r *LinkCandidateRepository) ListLinkCandidates(ctx context.Context, instal
 
 		candidate.InternalProductID = scanInt4Ptr(internalProductID)
 		candidate.SourceSnapshotFetchedAt = scanTimestamptz(sourceSnapshotFetchedAt)
+		candidate.Reasons, err = unmarshalReasons(reasons)
+		if err != nil {
+			return nil, err
+		}
 		candidate.CreatedAt = createdAt.Time.UTC()
 		candidate.UpdatedAt = updatedAt.Time.UTC()
 		candidates = append(candidates, candidate)
@@ -158,7 +180,7 @@ func (r *LinkCandidateRepository) GetLinkCandidate(ctx context.Context, candidat
 		SELECT
 			candidate_id, installation_id, provider_code, provider_item_id, provider_variation_id,
 			internal_product_id, internal_product_name, internal_reference_code, state, match_input, match_value,
-			source_snapshot_fetched_at, created_at, updated_at
+			source_snapshot_fetched_at, confidence, confidence_band, match_status, reasons, created_at, updated_at
 		FROM product_link_candidates
 		WHERE tenant_id = $1
 		  AND candidate_id = $2
@@ -167,6 +189,7 @@ func (r *LinkCandidateRepository) GetLinkCandidate(ctx context.Context, candidat
 	var candidate domain.LinkCandidate
 	var internalProductID pgtype.Int4
 	var sourceSnapshotFetchedAt pgtype.Timestamptz
+	var reasons []byte
 	var createdAt pgtype.Timestamptz
 	var updatedAt pgtype.Timestamptz
 	if err := row.Scan(
@@ -182,6 +205,10 @@ func (r *LinkCandidateRepository) GetLinkCandidate(ctx context.Context, candidat
 		&candidate.MatchInput,
 		&candidate.MatchValue,
 		&sourceSnapshotFetchedAt,
+		&candidate.Confidence,
+		&candidate.ConfidenceBand,
+		&candidate.MatchStatus,
+		&reasons,
 		&createdAt,
 		&updatedAt,
 	); err != nil {
@@ -192,6 +219,11 @@ func (r *LinkCandidateRepository) GetLinkCandidate(ctx context.Context, candidat
 	}
 	candidate.InternalProductID = scanInt4Ptr(internalProductID)
 	candidate.SourceSnapshotFetchedAt = scanTimestamptz(sourceSnapshotFetchedAt)
+	parsedReasons, err := unmarshalReasons(reasons)
+	if err != nil {
+		return domain.LinkCandidate{}, false, err
+	}
+	candidate.Reasons = parsedReasons
 	candidate.CreatedAt = createdAt.Time.UTC()
 	candidate.UpdatedAt = updatedAt.Time.UTC()
 	return candidate, true, nil
@@ -420,4 +452,22 @@ func (r *LinkCandidateRepository) ListProductLinkAuditEntries(ctx context.Contex
 		items = append(items, audit)
 	}
 	return items, rows.Err()
+}
+
+func marshalReasons(reasons []domain.LinkCandidateReason) ([]byte, error) {
+	if reasons == nil {
+		reasons = []domain.LinkCandidateReason{}
+	}
+	return json.Marshal(reasons)
+}
+
+func unmarshalReasons(raw []byte) ([]domain.LinkCandidateReason, error) {
+	reasons := make([]domain.LinkCandidateReason, 0)
+	if len(raw) == 0 {
+		return reasons, nil
+	}
+	if err := json.Unmarshal(raw, &reasons); err != nil {
+		return nil, err
+	}
+	return reasons, nil
 }
