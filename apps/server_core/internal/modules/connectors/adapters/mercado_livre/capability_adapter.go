@@ -45,6 +45,7 @@ type CapabilityAdapter struct {
 
 var _ ports.MarketReader = (*CapabilityAdapter)(nil)
 var _ ports.CatalogOffersReader = (*CapabilityAdapter)(nil)
+var _ ports.CatalogReader = (*CapabilityAdapter)(nil)
 
 func NewCapabilityAdapter(cfg CapabilityAdapterConfig) *CapabilityAdapter {
 	baseURL := strings.TrimRight(strings.TrimSpace(cfg.BaseURL), "/")
@@ -110,6 +111,30 @@ func (a *CapabilityAdapter) GetPriceToWin(ctx context.Context, accountRef domain
 		return domain.PriceToWin{}, mapPricingReaderError(err)
 	}
 	return a.getPriceToWin(ctx, accountRef, token, strings.TrimSpace(itemID))
+}
+
+func (a *CapabilityAdapter) SearchCatalogByEAN(ctx context.Context, accountRef domain.ProviderAccountRef, ean string) (domain.CatalogSearchResult, error) {
+	accountRef, err := normalizeAccountRef(accountRef)
+	if err != nil {
+		return domain.CatalogSearchResult{}, err
+	}
+	token, err := a.accessToken(ctx, accountRef)
+	if err != nil {
+		return domain.CatalogSearchResult{}, mapPricingReaderError(err)
+	}
+	return a.searchCatalogByEAN(ctx, accountRef, token, strings.TrimSpace(ean))
+}
+
+func (a *CapabilityAdapter) GetCatalogProduct(ctx context.Context, accountRef domain.ProviderAccountRef, catalogProductID string) (domain.CatalogProduct, error) {
+	accountRef, err := normalizeAccountRef(accountRef)
+	if err != nil {
+		return domain.CatalogProduct{}, err
+	}
+	token, err := a.accessToken(ctx, accountRef)
+	if err != nil {
+		return domain.CatalogProduct{}, mapPricingReaderError(err)
+	}
+	return a.getCatalogProduct(ctx, accountRef, token, strings.TrimSpace(catalogProductID))
 }
 
 func (a *CapabilityAdapter) ListCatalogOffers(ctx context.Context, accountRef domain.ProviderAccountRef, catalogProductID string) ([]domain.CatalogOffer, error) {
