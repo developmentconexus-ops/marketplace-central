@@ -1,3 +1,5 @@
+export * from "./erpImport";
+
 export interface CatalogProduct {
   product_id: string;
   sku: string;
