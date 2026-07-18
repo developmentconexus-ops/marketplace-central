@@ -11,7 +11,7 @@ func TestDeriveSignalStatusUnlinkedIsSemVinculoWithNilSignal(t *testing.T) {
 	link := ListingLink{ProductID: nil}
 	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
 
-	got := DeriveSignalStatus(link, nil, false, now)
+	got := DeriveSignalStatus(link, nil, now)
 
 	if got != SignalStatusSemVinculo {
 		t.Errorf("DeriveSignalStatus() = %q; want SEM_VINCULO", got)
@@ -22,7 +22,7 @@ func TestDeriveSignalStatusLinkedNoEvidenceIsNoPriceEvidence(t *testing.T) {
 	link := ListingLink{ProductID: productID("42664")}
 	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
 
-	got := DeriveSignalStatus(link, nil, false, now)
+	got := DeriveSignalStatus(link, nil, now)
 
 	if got != SignalStatusNoPriceEvidence {
 		t.Errorf("DeriveSignalStatus() = %q; want NO_PRICE_EVIDENCE", got)
@@ -42,7 +42,7 @@ func TestDeriveSignalStatusOldSignalIsStaleButValueRetained(t *testing.T) {
 		},
 	}
 
-	got := DeriveSignalStatus(link, signal, true, now)
+	got := DeriveSignalStatus(link, signal, now)
 
 	if got != SignalStatusStale {
 		t.Errorf("DeriveSignalStatus() = %q; want STALE", got)
@@ -65,7 +65,7 @@ func TestDeriveSignalStatusFreshSignalIsOK(t *testing.T) {
 		},
 	}
 
-	got := DeriveSignalStatus(link, signal, true, now)
+	got := DeriveSignalStatus(link, signal, now)
 
 	if got != SignalStatusOK {
 		t.Errorf("DeriveSignalStatus() = %q; want OK", got)

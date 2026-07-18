@@ -53,16 +53,12 @@ type MarketSignal struct {
 	Evidence    SignalEvidence  `json:"evidence"`
 }
 
-// DeriveSignalStatus is pure: no port dependency. hasAggregate reflects
-// whether a MarketAggregate/Verdict exists for the linked codprod (IC-03);
-// signal is the listings-owned per-listing MarketSignal (nil when none was
-// mapped). now is injected for deterministic staleness checks.
-func DeriveSignalStatus(link ListingLink, signal *MarketSignal, hasAggregate bool, now time.Time) SignalStatus {
+// DeriveSignalStatus is pure: no port dependency. signal is the listings-owned
+// per-listing MarketSignal (nil when none was mapped). now is injected for
+// deterministic staleness checks.
+func DeriveSignalStatus(link ListingLink, signal *MarketSignal, now time.Time) SignalStatus {
 	if link.ProductID == nil {
 		return SignalStatusSemVinculo
-	}
-	if signal == nil && !hasAggregate {
-		return SignalStatusNoPriceEvidence
 	}
 	if signal == nil {
 		return SignalStatusNoPriceEvidence
