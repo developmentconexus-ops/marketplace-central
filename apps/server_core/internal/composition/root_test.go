@@ -15,6 +15,93 @@ import (
 	"marketplace-central/apps/server_core/internal/platform/pgdb"
 )
 
+func TestERPSource(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		env     string
+		want    string
+		wantErr bool
+	}{
+		{name: "empty defaults to oracle", want: "oracle"},
+		{name: "oracle", env: "oracle", want: "oracle"},
+		{name: "xlsx", env: "xlsx", want: "xlsx"},
+		{name: "uppercase oracle", env: "ORACLE", want: "oracle"},
+		{name: "trimmed xlsx", env: " xlsx ", want: "xlsx"},
+		{name: "postgres rejected", env: "postgres", wantErr: true},
+		{name: "garbage rejected", env: "garbage", wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := erpSource(func(key string) string {
+				if key == "MC_ERP_SOURCE" {
+					return tc.env
+				}
+				return ""
+			})
+			if tc.wantErr {
+				if err == nil {
+					t.Fatal("erpSource() error = nil, want error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("erpSource() error = %v", err)
+			}
+			if got != tc.want {
+				t.Fatalf("erpSource() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestNewRootRuntimeRejectsInvalidERPSource(t *testing.T) {
+	t.Setenv("MC_ERP_SOURCE", "postgres")
+	_, err := NewRootRuntime(nil, pgdb.Config{
+		DefaultTenantID: "tenant_default",
+		EncryptionKey:   "0123456789abcdef0123456789abcdef",
+	})
+	if err == nil || !strings.Contains(err.Error(), "erp source") {
+		t.Fatalf("NewRootRuntime() error = %v, want invalid ERP source error", err)
+	}
+}
+
+func TestRootRuntimeRegistersERPImportRoutes(t *testing.T) {
+	t.Setenv("MC_ERP_SOURCE", "xlsx")
+	runtime, err := NewRootRuntime(nil, pgdb.Config{
+		DefaultTenantID: "tenant_default",
+		EncryptionKey:   "0123456789abcdef0123456789abcdef",
+	})
+	if err != nil {
+		t.Fatalf("NewRootRuntime() error = %v", err)
+	}
+
+	recorder := httptest.NewRecorder()
+	runtime.Handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/erp/imports", nil))
+	if recorder.Code == http.StatusNotFound || recorder.Code == http.StatusMethodNotAllowed {
+		t.Fatalf("ERP import route is not mounted: status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestRootWiresERPImportWithoutRepositoryTenant(t *testing.T) {
+	raw, err := os.ReadFile("root.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(raw)
+	for _, want := range []string{
+		"erppostgres.NewRepository(pool)",
+		"erpapp.NewImportService(erpxlsx.NewParser(), erpRepo, cfg.DefaultTenantID)",
+		"erpapp.NewQueryService(erpRepo, cfg.DefaultTenantID)",
+		"erptransport.NewHandler(erpImportSvc, erpQuerySvc).Register(mux)",
+	} {
+		if !strings.Contains(source, want) {
+			t.Fatalf("root.go missing ERP import wiring %q", want)
+		}
+	}
+	if strings.Contains(source, "erppostgres.NewRepository(pool, cfg.DefaultTenantID)") {
+		t.Fatal("ERP repository must not receive a tenant at construction")
+	}
+}
+
 func TestRefreshListingsOpenAPIContractParity(t *testing.T) {
 	raw, err := os.ReadFile("../../../../contracts/api/marketplace-central.openapi.yaml")
 	if err != nil {
