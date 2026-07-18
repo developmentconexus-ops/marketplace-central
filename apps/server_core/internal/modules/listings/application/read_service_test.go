@@ -825,7 +825,7 @@ func TestReadServiceEnrichSignalsMixedBatchAndUnlinked(t *testing.T) {
 	f := &fakeFacts{costs: map[int64]*ports.CostFact{}, ceilings: map[int64]*ports.ICMSCeiling{}}
 	ev := &fakeEvidence{
 		signals:    []ports.EvidenceSignal{{ListingID: "L1", OurPrice: money("90"), TargetPrice: money("100"), Position: &domain.SignalPosition{Rank: 2, Total: 5}, FetchedAt: now.Add(-10 * time.Minute)}},
-		aggregates: []ports.EvidenceAggregate{{ProductID: "200", NOffers: 3, NSellers: 2}},
+		aggregates: []ports.EvidenceAggregate{{ProductID: "100", NOffers: 7, NSellers: 4}, {ProductID: "200", NOffers: 3, NSellers: 2}},
 		verdicts:   []ports.EvidenceVerdict{{ProductID: "100", MatchStatus: "ACCEPT"}},
 	}
 	s := NewReadServiceWithEvidence(r, f, fakePolicy{found: true}, fakeInstallation(true), func() time.Time { return now }, ev)
@@ -844,6 +844,11 @@ func TestReadServiceEnrichSignalsMixedBatchAndUnlinked(t *testing.T) {
 	}
 	if l1.MarketSignal.MatchStatus != "ACCEPT" || l1.MarketSignal.Evidence.Source != evidenceSourceMLPriceToWin {
 		t.Fatalf("L1 signal=%+v", l1.MarketSignal)
+	}
+	// Aggregate join keyed on L1's own codprod ("100"): a key-mismatch or
+	// wrong-field join would surface WRONG competitor counts in the FE.
+	if l1.MarketSignal.NOffers != 7 || l1.MarketSignal.NSellers != 4 {
+		t.Fatalf("L1 aggregate join wrong: NOffers=%d NSellers=%d (want 7/4)", l1.MarketSignal.NOffers, l1.MarketSignal.NSellers)
 	}
 
 	l2 := byID["L2"]
