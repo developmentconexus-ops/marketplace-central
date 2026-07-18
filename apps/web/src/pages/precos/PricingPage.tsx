@@ -5,8 +5,22 @@ import { ErrorState, LoadingState } from "@marketplace-central/ui";
 import type {
   CatalogProductFact,
   PricingCalcInput,
+  PricingCalcProfile,
 } from "@marketplace-central/sdk-runtime";
 import { useClient } from "../../app/ClientContext";
+import { DecompositionPanel } from "./DecompositionPanel";
+
+/** Seed padrão thresholds/regime used until the operator's profile loads (or if it errors). */
+const DEFAULT_PROFILE: PricingCalcProfile = {
+  regime: "SIMPLES",
+  aliquota_pct: "4",
+  limiar_verde_pct: "18",
+  limiar_amarelo_pct: "10",
+  tarifa_full: null,
+  difal_enabled: false,
+  difal_destino_uf: null,
+  origem: "seed",
+};
 
 /** ML commission by modalidade (comes from ML — not operator-editable). */
 export const MODALIDADES = [
@@ -167,12 +181,12 @@ export function PricingPage() {
             ) : decomposeQuery.isError ? (
               <ErrorState title="Falha ao decompor o preço" />
             ) : decomposeQuery.data ? (
-              <p className="font-mono text-sm text-ink">
-                Retorno /un{" "}
-                <span data-testid="decomp-margem">
-                  {decomposeQuery.data.decomposition.margem_valor ?? "—"}
-                </span>
-              </p>
+              <DecompositionPanel
+                decomposition={decomposeQuery.data.decomposition}
+                profile={profileQuery.data ?? DEFAULT_PROFILE}
+                blockingState={decomposeQuery.data.blocking_state}
+                difalUf={(profileQuery.data ?? DEFAULT_PROFILE).difal_destino_uf}
+              />
             ) : (
               <p className="text-sm text-muted">Selecione um produto e um preço para simular.</p>
             )}
