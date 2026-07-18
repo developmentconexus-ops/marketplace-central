@@ -45,6 +45,12 @@ combined doctrine's dated ratifications.
   - `TestPhase1SmokeFlow` (`apps/server_core/tests/integration`) — pre-existing sibling
     breakage, predates M-01 (evidence: M-01 DISPATCH-LEDGER.md hub ruling B); backlog: hub
     queue, unowned.
+  - Raw `tsc --noEmit -p apps/web/tsconfig.json` fails `TS2688: Cannot find type definition
+    file for 'node'` on base ≤ c6df5cc1 — tsconfig declares `"types": ["node", …]` but no
+    package.json carries `@types/node` (pre-existing repo-wide; verified on main by CHIP-M03
+    2026-07-17). Cite this entry; verify FE slices via `npm run build` + vitest meanwhile.
+    Fix owner: CHIP-M03 (hub grant D-05 — `@types/node` root devDependency arrives via M-03
+    merge; entry retires then).
 - **L2** — dev stack up **ONLY via docker compose**: `npm run docker:dev`
   (postgres+backend+frontend, server `:8080` + web `:5174`); OAuth flows:
   `npm run docker:oauth`. HUB-OWNED seam: chips send `REQUEST dev-stack`, never boot their own
@@ -89,6 +95,13 @@ another checkout's `node_modules`: npm workspace symlinks would resolve workspac
 - codex-cli 0.144.4 logs non-fatal `failed to renew cache TTL: missing field
   supports_reasoning_summaries` on every run on this machine; output still produced — noise,
   not a dispatch failure (CHIP-M02 field finding 2026-07-17).
+- codex `--sandbox workspace-write` on Windows CANNOT run the vite/esbuild build (`npm run
+  build` fails esbuild access-denied / "could not resolve vite.config.ts"; `tsc` may also
+  fail in-sandbox). A worker BLOCKED on these signatures with complete written code is an
+  ENV false alarm, not a code defect. Ratified mitigation: workers stay workspace-write; the
+  CHIP re-runs build/tsc/vitest chip-side post-dispatch and that re-run is the verification
+  of record (CHIP-M03 field finding 2026-07-17, verified same-code green chip-side; never
+  grant danger-full-access for this).
 
 ## 4. Test database / integration strategy
 `status: ratified` · `provenance: 2026-07-15 · docs/HARNESS.md §5 (integration lane hardening + session container)`
@@ -280,4 +293,5 @@ verification conflicts against this list.
 2026-07-16 · §10 · ratified · mnfs-workflow execution-layer skills denylisted (deleted at source in mnfs-harness 6b29412 layered unification; stale codex cache 0.1.0 + ~/.codex/plugins/mnfs-codex-plugin still ship them — operator field finding: CHIP-SAT worker auto-loaded feature-execution). General rule: auto-discovered skills never bind; only prompt-pack pins are doctrine. Cache repackage to 0.2.0 deferred to W1 close (no tooling swap under running workers).
 2026-07-16 · header + §12 (new) · ratified · alt-D+ implementation method adopted (operator-ratified after 4 adversarial Opus×Sol rounds + MIS-003 field evidence): docs/HARNESS-CORE.md + docs/REVIEW-STANDARD.md re-vendored @ mnfs-harness 6206cc1 (implementer prompt-pack v1.0.0 in CORE §4, canonical dispatch-prompt architecture, deterministic lane, evidence types ran/assumed/could-not-run, reproduce+1-fixup→BLOCKED; REVIEW §9 remedy re-review resumes same reviewer, §13 reviewer reads worker prompt-file, §14 slim read-mandate pack); deterministic dispatch tooling vendored scripts/harness/dispatch/ with fail-closed scripts.lock.json (28 Pester green at source); F-A index.lock commit-denial clause (attempt once, leave files, report verbatim — CHIP-M03); harness plugin 0.3.0 synced to local Claude Code cache. Field-test milestone next — chip converses with design session; pack v1.1.0 fed by its retro.
 2026-07-17 · §3 · ratified · codex-cli 0.144.4 non-fatal cache-TTL warning (`failed to renew cache TTL: missing field supports_reasoning_summaries`) added to false-alarm signatures — CHIP-M02 field finding, MIS-004 wave A
+2026-07-17 · §3 + §2 · ratified · codex workspace-write sandbox cannot run vite/esbuild build on Windows — false-alarm signature + mitigation (a): chip-side build/tsc/vitest re-run is verification of record, workers stay workspace-write (CHIP-M03 field finding; core-candidate, upstream at milestone boundary) · L1 allowlist +TS2688 @types/node pre-existing base break (fix owner CHIP-M03 via grant D-05)
 ```
