@@ -209,4 +209,27 @@ describe("ListingDetailPanel", () => {
 
     expect(screen.getByText("Sem evidência de preço de mercado")).toBeInTheDocument();
   });
+
+  it("renders the 2x2 facts grid card labels from the ratified drawer (Preço/Est. publicado/Margem est./Qualidade)", async () => {
+    getListing.mockResolvedValueOnce(detail);
+
+    renderPanel();
+    await screen.findByText("Camiseta azul");
+
+    expect(screen.getByText("Preço")).toBeInTheDocument();
+    expect(screen.getByText("Est. publicado")).toBeInTheDocument();
+    expect(screen.getByText("Margem est.")).toBeInTheDocument();
+    expect(screen.getByText("Qualidade")).toBeInTheDocument();
+  });
+
+  it("has no inline-edit affordance in the drawer body", async () => {
+    getListing.mockResolvedValueOnce(detail);
+
+    renderPanel();
+    await screen.findByText("Camiseta azul");
+
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(document.querySelector('input[type="text"]')).not.toBeInTheDocument();
+    expect(document.querySelector("textarea")).not.toBeInTheDocument();
+  });
 });
