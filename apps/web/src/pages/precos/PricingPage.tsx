@@ -11,6 +11,7 @@ import { useClient } from "../../app/ClientContext";
 import { DecompositionPanel } from "./DecompositionPanel";
 import { ParamsDrawer } from "./ParamsDrawer";
 import { DifalDrawer } from "./DifalDrawer";
+import { MarketComparison } from "./MarketComparison";
 
 /** Seed padrão thresholds/regime used until the operator's profile loads (or if it errors). */
 const DEFAULT_PROFILE: PricingCalcProfile = {
@@ -240,7 +241,7 @@ export function PricingPage() {
             </div>
 
             <div data-testid="region-comparacao" className="rounded-lg border border-border bg-surface p-3">
-              <p className="text-sm text-muted">Comparação de mercado</p>
+              <MarketComparison productId={selected ? String(selected.internal_product_id) : null} />
             </div>
 
             <div data-testid="region-aplicar" className="rounded-lg border border-border bg-surface p-3">

@@ -75,6 +75,12 @@ const putPricingProfile = vi.fn((next: PricingCalcProfile) => Promise.resolve(ne
 const listPricingDifal = vi.fn(() => Promise.resolve(difalList));
 const putPricingDifalOverride = vi.fn(() => Promise.resolve({ persisted: true, rate: difalList.items[0] }));
 
+// The market comparison panel owns its own IC-03 client + query; the page test
+// stubs it so /precos page behavior is exercised without a live market fetch.
+vi.mock("./MarketComparison", () => ({
+  MarketComparison: () => <div data-testid="market-comparison-stub" />,
+}));
+
 vi.mock("../../app/ClientContext", () => ({
   useClient: () => ({
     getPricingProfile,
