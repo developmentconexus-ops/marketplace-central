@@ -305,6 +305,25 @@ verification conflicts against this list.
   remove the lock file itself. The chip/hub owns lock diagnosis (CHIP-M03 field finding,
   MIS-003 W1). `Test-HarnessPreflight.ps1` surfaces `git-index-lock` as an advisory check
   before writer dispatch.
+
+### Contingency lane — codex quota outage (TEMPORARY, ratified 2026-07-18, D-23)
+`status: ratified` · `expiry: codex quota return (2026-07-25) or MIS-004 demo close, whichever first`
+
+Machine-wide codex quota exhausted 2026-07-18 until 2026-07-25 (post-demo; evidence
+CHIP-M04 F-ENV-M04-1). All GPT roles rebind to Claude for MIS-004 pre-demo work:
+- P2 planner: **cold Opus subagent** (fresh context, plan-only prompt; sonnet fallback if
+  Opus limits bite). Plan outputs unchanged (core §4.1 — write-sets, contract-satisfiability,
+  verification map).
+- Implementers: **sonnet subagents** (already sanctioned core §1 fallback, field-proven
+  M-01 s8–s12). Anti-slop contract + slice cards unchanged.
+- Slice reviewer: independent Claude (sonnet), implementer ≠ reviewer unchanged.
+- P6 dual gate: **cold Opus + INDEPENDENT second Claude reviewer (sonnet, separate
+  dispatch, adversarial-refute prompt)** replacing the GPT side. Cross-vendor diversity is
+  lost — compensate: the second gate prompt MUST be refutation-framed, and the hub
+  spot-check right stays. Agreement/reconciliation rules unchanged.
+- Investigators/bulk reads: sonnet (haiku for trivial greps).
+On expiry the matrix reverts to core §1; milestones closed under this lane MAY receive a
+retroactive GPT-5.6 Sol medium review at mission closeout (operator's call).
 - **Evidence types bind here too (core §5):** worker reports classify each verification as
   `ran` / `assumed` / `could-not-run`; a Pass is only recordable on `ran` with artifact.
 
