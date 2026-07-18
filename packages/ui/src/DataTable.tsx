@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from "react";
+import { useRef, type ReactNode, type JSX } from "react";
 
 export interface DataTableColumn<T> {
   key: string;

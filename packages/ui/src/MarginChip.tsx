@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 interface MarginChipProps {
   marginPct: number | null;
   thresholds?: { healthy: number; tight: number };
@@ -21,7 +23,7 @@ function hasValidThresholds(thresholds: { healthy: number; tight: number }): boo
 export function MarginChip({ marginPct, thresholds }: MarginChipProps): JSX.Element {
   const validThresholds = thresholds === undefined || hasValidThresholds(thresholds);
 
-  if (thresholds !== undefined && !validThresholds && import.meta.env.DEV) {
+  if (thresholds !== undefined && !validThresholds) {
     console.warn("MarginChip received invalid thresholds; using defaults.");
   }
 
