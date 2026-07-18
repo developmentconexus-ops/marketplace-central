@@ -112,6 +112,13 @@ another checkout's `node_modules`: npm workspace symlinks would resolve workspac
   CHIP re-runs build/tsc/vitest chip-side post-dispatch and that re-run is the verification
   of record (CHIP-M03 field finding 2026-07-17, verified same-code green chip-side; never
   grant danger-full-access for this).
+- Codex worker validation — split build/vet/test into SEPARATE commands (never chain
+  `go build … ; go vet … ; go test …` in one dispatch): cold `go build ./...` alone runs
+  ~65s in a chip worktree and can exhaust the 120s codex timeout, surfacing as a spurious
+  BLOCKED with no stage output. A combined-command timeout with no per-stage output is a
+  FALSE ALARM — re-run the three lanes split with long timeouts before treating as a
+  defect. Impl-pack instruction: workers run the commands separately, not chained
+  (CHIP-M02 field finding 2026-07-18, F-03-S1; dispatcher re-ran split: all exit 0).
 
 ## 4. Test database / integration strategy
 `status: ratified` · `provenance: 2026-07-15 · docs/HARNESS.md §5 (integration lane hardening + session container)`
@@ -316,4 +323,5 @@ verification conflicts against this list.
 2026-07-17 · §2 · ratified · L1 allowlist maintenance: TestPhase1SmokeFlow RETIRED (CHIP-M02 root cause: fixture "smoke-prod-1" vs positiveProductID integer validator, both pre-existing on base 59d0e62f; hub fixture fix "1001", lane green run 5b244bce) · +TestListingsReadContractEndToEnd intermittent full-lane flake entry (passes isolated 8/8; backlog test-isolation audit, hub queue)
 2026-07-17 · §10 · ratified · F-ENV-3: impeccable plugin auto-injects skill mandate into codex worker sessions and derails them (NO_PRODUCT_MD abort, CHIP-M03 field 2×); mandatory skill-discovery denylist clause in every codex dispatch bindings block; core-candidate, upstream at milestone boundary
 2026-07-17 · §3 + §2 · ratified · codex workspace-write sandbox cannot run vite/esbuild build on Windows — false-alarm signature + mitigation (a): chip-side build/tsc/vitest re-run is verification of record, workers stay workspace-write (CHIP-M03 field finding; core-candidate, upstream at milestone boundary) · L1 allowlist +TS2688 @types/node pre-existing base break (fix owner CHIP-M03 via grant D-05)
+2026-07-18 · §3 · ratified · codex combined build+vet+test single-command timeout = false alarm (cold go build ~65s vs 120s codex cap); split lanes, re-run split before treating as defect (CHIP-M02 field finding F-03-S1; core-candidate for impl-pack template, upstream at milestone boundary)
 ```
