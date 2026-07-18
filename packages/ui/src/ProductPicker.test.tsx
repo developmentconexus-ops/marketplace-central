@@ -65,11 +65,11 @@ describe("ProductPicker", () => {
 
     expect(selectedRow).toHaveClass("bg-accent-soft");
     expect(table.parentElement).toHaveClass("border-border");
-    expect(
-      screen.getByText(
-        (200).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
-      ),
-    ).toBeInTheDocument();
+    // price 200 renders via the real pt-BR BRL formatter (honest passthrough, not hard-coded).
+    // Match with a regex so the non-breaking space (U+00A0) that pt-BR puts between "R$" and the
+    // value doesn't cause a false miss — testing-library normalizes the DOM node's nbsp to a
+    // regular space, and \s in the regex matches either.
+    expect(screen.getByText(/R\$\s*200,00/)).toBeInTheDocument();
   });
 
   it("calls onSelectionChange when checkbox clicked", () => {
