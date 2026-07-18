@@ -465,7 +465,13 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		Workflows:  productLinkCandidateRepo,
 	})
 	productLinkSummarySvc := productlinksapp.NewSummaryService(productlinkspostgres.NewSummaryReader(pool, cfg.DefaultTenantID))
-	productlinkstransport.NewHandler(productLinkImportSvc, productLinkGenerationSvc, productLinkGenerationSvc, productLinkResolutionSvc, productLinkResolutionSvc).Register(mux)
+	productLinkBatchSvc := productlinksapp.NewBatchService(productlinksapp.BatchServiceConfig{
+		Candidates: productLinkCandidateRepo,
+		Workflows:  productLinkCandidateRepo,
+		Approver:   productLinkResolutionSvc,
+		Now:        time.Now,
+	})
+	productlinkstransport.NewHandlerWithBatchPreview(productLinkImportSvc, productLinkGenerationSvc, productLinkGenerationSvc, productLinkResolutionSvc, productLinkResolutionSvc, productLinkBatchSvc).Register(mux)
 
 	inventoryActionRepo := inventorypostgres.NewStockActionRepository(pool, cfg.DefaultTenantID)
 	inventoryRiskSvc := inventoryapp.NewStockRiskService(

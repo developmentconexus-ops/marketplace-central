@@ -29,6 +29,10 @@ type ApproveCandidateInput struct {
 	CandidateID string
 	Actor       domain.ActorMetadata
 	Reason      string
+	// BatchID tags the resulting audit entry with the batch it was
+	// approved under (S3 ApplyBatch). Empty for a standalone approval —
+	// additive field, existing callers default to "".
+	BatchID string
 }
 
 type RejectListingInput struct {
@@ -56,6 +60,54 @@ type ListLinkWorkflowsInput struct {
 	InstallationID string
 	Limit          int
 }
+
+// UndoResolutionInput is the S4 single-resolution undo request: the audit
+// row identifying the transition to reverse, plus the acting operator
+// (threaded into the reversal's own audit entry — the reversal is a new
+// audited action, never an anonymous rewrite).
+type UndoResolutionInput struct {
+	AuditID string
+	Actor   domain.ActorMetadata
+	Reason  string
+}
+
+// UndoBatchItem is the itemized per-item outcome of a batch-undo run. An
+// item that is already SUPERSEDED/ALREADY_UNDONE is itemized as FAILED —
+// it is never fatal to the rest of the batch (mirrors ApplyBatch's
+// partial-failure semantics).
+type UndoBatchItem struct {
+	AuditID     string `json:"audit_id"`
+	CandidateID string `json:"candidate_id,omitempty"`
+	Status      string `json:"status"`
+	Cause       string `json:"cause,omitempty"`
+}
+
+// UndoBatchResult is the itemized outcome of a batch-undo run.
+type UndoBatchResult struct {
+	BatchID  string          `json:"batch_id"`
+	Reverted []UndoBatchItem `json:"reverted"`
+	Failed   []UndoBatchItem `json:"failed"`
+}
+
+// ErrProductLinkAuditNotFound signals UndoResolution/UndoBatch found no
+// audit row for the given id/batch (module sentinel style, mapped to 404 by
+// the existing "_NOT_FOUND" suffix convention).
+var ErrProductLinkAuditNotFound = errors.New("PRODUCT_LINKS_AUDIT_NOT_FOUND")
+
+// ErrProductLinkBatchNotFound signals UndoBatch found no audit rows tagged
+// with the given batch_id.
+var ErrProductLinkBatchNotFound = errors.New("PRODUCT_LINKS_BATCH_NOT_FOUND")
+
+// ErrProductLinkSuperseded (409) — the audit entry targeted by
+// UndoResolution is no longer the latest action for its listing identity: a
+// newer resolution has since replaced it, so reversing it would not be a
+// safe/coherent undo of the CURRENT state.
+var ErrProductLinkSuperseded = errors.New("SUPERSEDED")
+
+// ErrProductLinkAlreadyUndone (409) — the latest action for the target
+// audit's listing identity is itself already an undo, so there is nothing
+// further to reverse.
+var ErrProductLinkAlreadyUndone = errors.New("ALREADY_UNDONE")
 
 func NewResolutionService(cfg ResolutionServiceConfig) *ResolutionService {
 	now := cfg.Now
@@ -120,6 +172,7 @@ func (s *ResolutionService) ApproveCandidate(ctx context.Context, input ApproveC
 		Action:                domain.ProductLinkActionApproveCandidate,
 		Reason:                input.Reason,
 		Actor:                 input.Actor,
+		BatchID:               input.BatchID,
 	})
 	if err := s.workflows.ApplyProductLinkTransition(ctx, result); err != nil {
 		return domain.ProductLinkResolutionResult{}, err
@@ -261,6 +314,159 @@ func (s *ResolutionService) ListLinkWorkflows(ctx context.Context, input ListLin
 	return items, nil
 }
 
+// UndoResolution reverses a single prior resolution transition (S4). The
+// decision between proceeding, SUPERSEDED, and ALREADY_UNDONE is derived
+// entirely from the audit chain (never from time/random):
+//
+//  1. Load the target audit entry by AuditID. Missing ⇒ ErrProductLinkAuditNotFound.
+//  2. Load the latest audit entry for that same listing identity.
+//  3. If the latest action is itself "undo" ⇒ ErrProductLinkAlreadyUndone —
+//     the identity's current state has already been reverted (this also
+//     covers re-undoing the same target: its own reversal becomes the new
+//     latest, so a second UndoResolution(sameAuditID) sees latest.Action ==
+//     undo before it ever compares audit ids).
+//  4. Else if the latest audit id differs from the target's ⇒
+//     ErrProductLinkSuperseded — a newer resolution has replaced the target
+//     since it was written; reversing the target would not reflect the
+//     identity's current state.
+//  5. Else (target IS the latest, non-undo action) ⇒ write a REVERSAL
+//     transition: state <- target.PreviousState, internal product <-
+//     target.PreviousInternalProductID, action = undo. This is a NEW audit
+//     row (history preserved), never a delete/rewrite of the target.
+func (s *ResolutionService) UndoResolution(ctx context.Context, input UndoResolutionInput) (domain.ProductLinkResolutionResult, error) {
+	if s.workflows == nil {
+		return domain.ProductLinkResolutionResult{}, errors.New("PRODUCT_LINKS_RESOLUTION_NOT_CONFIGURED")
+	}
+	auditID := strings.TrimSpace(input.AuditID)
+	if auditID == "" {
+		return domain.ProductLinkResolutionResult{}, errors.New("PRODUCT_LINKS_AUDIT_REQUIRED")
+	}
+	target, found, err := s.workflows.GetAuditEntry(ctx, auditID)
+	if err != nil {
+		return domain.ProductLinkResolutionResult{}, err
+	}
+	if !found {
+		return domain.ProductLinkResolutionResult{}, ErrProductLinkAuditNotFound
+	}
+	return s.undoAuditEntry(ctx, target, input.Actor, input.Reason)
+}
+
+// UndoBatch fans out UndoResolution over every original (non-undo) audit
+// row tagged with batchID (S4). Each item is undone independently — an item
+// that is already SUPERSEDED/ALREADY_UNDONE is itemized as failed, never
+// fatal to the rest of the batch.
+func (s *ResolutionService) UndoBatch(ctx context.Context, batchID string) (UndoBatchResult, error) {
+	if s.workflows == nil {
+		return UndoBatchResult{}, errors.New("PRODUCT_LINKS_RESOLUTION_NOT_CONFIGURED")
+	}
+	batchID = strings.TrimSpace(batchID)
+	if batchID == "" {
+		return UndoBatchResult{}, errors.New("PRODUCT_LINKS_BATCH_REQUIRED")
+	}
+	entries, err := s.workflows.ListAuditByBatch(ctx, batchID)
+	if err != nil {
+		return UndoBatchResult{}, err
+	}
+	// Only original (non-undo) rows are undo targets. Reversal rows this
+	// same method writes are tagged with batchID too (traceability) but
+	// must never be re-selected as targets.
+	originals := make([]domain.ProductLinkAuditEntry, 0, len(entries))
+	for _, entry := range entries {
+		if entry.Action != domain.ProductLinkActionUndo {
+			originals = append(originals, entry)
+		}
+	}
+	if len(originals) == 0 {
+		return UndoBatchResult{}, ErrProductLinkBatchNotFound
+	}
+	result := UndoBatchResult{BatchID: batchID}
+	for _, target := range originals {
+		item := UndoBatchItem{AuditID: target.AuditID, CandidateID: target.SourceCandidateID}
+		if _, err := s.undoAuditEntry(ctx, target, domain.ActorMetadata{ActorType: "operator"}, fmt.Sprintf("batch undo %s", batchID)); err != nil {
+			item.Status = BatchItemStatusFailed
+			item.Cause = err.Error()
+			result.Failed = append(result.Failed, item)
+			continue
+		}
+		item.Status = BatchItemStatusOK
+		result.Reverted = append(result.Reverted, item)
+	}
+	return result, nil
+}
+
+// undoAuditEntry applies the SUPERSEDED/ALREADY_UNDONE ordering check
+// against the latest audit for target's identity, then (if clear) writes
+// the reversal transition. Shared by UndoResolution and UndoBatch so both
+// paths agree on the exact same ordering decision.
+func (s *ResolutionService) undoAuditEntry(ctx context.Context, target domain.ProductLinkAuditEntry, actor domain.ActorMetadata, reason string) (domain.ProductLinkResolutionResult, error) {
+	identity := domain.ListingIdentity{
+		InstallationID:      target.InstallationID,
+		ProviderItemID:      target.ProviderItemID,
+		ProviderVariationID: target.ProviderVariationID,
+	}
+	latest, found, err := s.workflows.LatestAuditForIdentity(ctx, identity)
+	if err != nil {
+		return domain.ProductLinkResolutionResult{}, err
+	}
+	if !found {
+		// Cannot happen if target itself was persisted, but guard honestly
+		// rather than assume.
+		return domain.ProductLinkResolutionResult{}, ErrProductLinkAuditNotFound
+	}
+	if latest.Action == domain.ProductLinkActionUndo {
+		return domain.ProductLinkResolutionResult{}, ErrProductLinkAlreadyUndone
+	}
+	if latest.AuditID != target.AuditID {
+		return domain.ProductLinkResolutionResult{}, ErrProductLinkSuperseded
+	}
+
+	current, foundLink, err := s.workflows.GetProductLink(ctx, identity)
+	if err != nil {
+		return domain.ProductLinkResolutionResult{}, err
+	}
+	now := s.now().UTC()
+	createdAt := now
+	prevStateForAudit := domain.ProductLinkStateNone
+	var prevProductForAudit *int
+	if foundLink {
+		createdAt = current.CreatedAt
+		prevStateForAudit = current.State
+		prevProductForAudit = current.InternalProductID
+	}
+
+	link := domain.ProductLink{
+		InstallationID:      target.InstallationID,
+		ProviderCode:        target.ProviderCode,
+		ProviderItemID:      target.ProviderItemID,
+		ProviderVariationID: target.ProviderVariationID,
+		State:               target.PreviousState,
+		InternalProductID:   target.PreviousInternalProductID,
+		CreatedAt:           createdAt,
+		UpdatedAt:           now,
+	}
+	audit := domain.ProductLinkAuditEntry{
+		AuditID:                   s.newAuditID(),
+		InstallationID:            target.InstallationID,
+		ProviderCode:              target.ProviderCode,
+		ProviderItemID:            target.ProviderItemID,
+		ProviderVariationID:       target.ProviderVariationID,
+		Action:                    domain.ProductLinkActionUndo,
+		Reason:                    strings.TrimSpace(reason),
+		Actor:                     actor,
+		PreviousState:             prevStateForAudit,
+		NextState:                 target.PreviousState,
+		PreviousInternalProductID: prevProductForAudit,
+		NextInternalProductID:     target.PreviousInternalProductID,
+		BatchID:                   target.BatchID,
+		CreatedAt:                 now,
+	}
+	transition := domain.ProductLinkTransition{Link: link, Audit: audit}
+	if err := s.workflows.ApplyProductLinkTransition(ctx, transition); err != nil {
+		return domain.ProductLinkResolutionResult{}, err
+	}
+	return domain.ProductLinkResolutionResult{Link: link, Audit: audit}, nil
+}
+
 type buildResolvedLinkInput struct {
 	InstallationID        string
 	ProviderCode          string
@@ -273,6 +479,7 @@ type buildResolvedLinkInput struct {
 	Action                domain.ProductLinkAction
 	Reason                string
 	Actor                 domain.ActorMetadata
+	BatchID               string
 }
 
 type buildRejectedLinkInput struct {
@@ -326,6 +533,7 @@ func (s *ResolutionService) buildTransition(current domain.ProductLink, found bo
 				NextState:                 domain.ProductLinkStateResolved,
 				PreviousInternalProductID: prevProductID,
 				NextInternalProductID:     typed.InternalProductID,
+				BatchID:                   typed.BatchID,
 				CreatedAt:                 now,
 			},
 		}

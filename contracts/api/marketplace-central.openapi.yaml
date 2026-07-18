@@ -1494,6 +1494,111 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProductLinkResolutionResult'
+  /product-links/link-resolutions/batch-preview:
+    post:
+      summary: Dry-run preview of a batch of product link candidate approvals
+      operationId: previewProductLinkBatch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PreviewProductLinkBatchRequest'
+      responses:
+        "200":
+          description: Itemized batch preview result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreviewProductLinkBatchResponse'
+        "422":
+          description: INSUFFICIENT_ANCHORS — at least one approval is required (empty batch)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /product-links/link-resolutions/batch:
+    post:
+      summary: Apply a batch of product link candidate approvals
+      operationId: applyProductLinkBatch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplyProductLinkBatchRequest'
+      responses:
+        "200":
+          description: Itemized batch apply result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplyProductLinkBatchResponse'
+        "422":
+          description: INSUFFICIENT_ANCHORS — at least one approval is required (empty batch)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /product-links/link-resolutions/{id}/undo:
+    post:
+      summary: Undo a single prior product link resolution
+      operationId: undoProductLinkResolution
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: audit_id of the resolution transition to reverse
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UndoProductLinkResolutionRequest'
+      responses:
+        "200":
+          description: Resolution reversed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductLinkResolutionResult'
+        "404":
+          description: PRODUCT_LINKS_AUDIT_NOT_FOUND — no audit row for the given id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "409":
+          description: SUPERSEDED or ALREADY_UNDONE — the target audit row is not the latest action for its listing identity, or has already been undone
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /product-links/link-resolutions/batch/{batch_id}/undo:
+    post:
+      summary: Undo every original resolution tagged with a batch_id
+      operationId: undoProductLinkBatch
+      parameters:
+        - name: batch_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Itemized batch-undo result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UndoProductLinkBatchResponse'
+        "404":
+          description: PRODUCT_LINKS_BATCH_NOT_FOUND — no audit rows tagged with the given batch_id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /inventory/stock-risks:
     get:
       summary: List persisted Stock Seguro risk rows
@@ -5176,6 +5281,10 @@ components:
         - provider_item_id
         - state
         - match_input
+        - confidence
+        - confidence_band
+        - match_status
+        - reasons
         - created_at
         - updated_at
       properties:
@@ -5208,12 +5317,40 @@ components:
           type: string
           format: date-time
           nullable: true
+        confidence:
+          type: integer
+          minimum: 0
+          maximum: 100
+        confidence_band:
+          type: string
+          enum: [ALTA, MEDIA, BAIXA]
+        match_status:
+          type: string
+          enum: [ACCEPT, REVIEW, REJECT, NO_CANDIDATE]
+        reasons:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductLinkCandidateReason'
         created_at:
           type: string
           format: date-time
         updated_at:
           type: string
           format: date-time
+
+    ProductLinkCandidateReason:
+      type: object
+      required:
+        - anchor
+        - direction
+      properties:
+        anchor:
+          type: string
+        direction:
+          type: string
+          enum: [FOR, AGAINST, UNAVAILABLE]
+        detail:
+          type: string
 
     GenerateProductLinkCandidatesRequest:
       type: object
@@ -5408,6 +5545,140 @@ components:
           $ref: '#/components/schemas/ProductLink'
         audit:
           $ref: '#/components/schemas/ProductLinkAuditEntry'
+
+    ProductLinkBatchApproval:
+      type: object
+      required:
+        - candidate_id
+      properties:
+        candidate_id:
+          type: string
+
+    PreviewProductLinkBatchRequest:
+      type: object
+      required:
+        - approvals
+      properties:
+        approvals:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductLinkBatchApproval'
+
+    ProductLinkBatchPreviewItem:
+      type: object
+      required:
+        - candidate_id
+        - status
+      properties:
+        candidate_id:
+          type: string
+        status:
+          type: string
+          enum: [OK, FAILED]
+        cause:
+          type: string
+
+    PreviewProductLinkBatchResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductLinkBatchPreviewItem'
+
+    ApplyProductLinkBatchRequest:
+      type: object
+      required:
+        - approvals
+        - actor
+      properties:
+        approvals:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductLinkBatchApproval'
+        actor:
+          $ref: '#/components/schemas/ProductLinkActor'
+
+    ProductLinkAppliedBatchItem:
+      type: object
+      required:
+        - candidate_id
+      properties:
+        candidate_id:
+          type: string
+
+    ProductLinkFailedBatchItem:
+      type: object
+      required:
+        - candidate_id
+        - cause
+      properties:
+        candidate_id:
+          type: string
+        cause:
+          type: string
+
+    ApplyProductLinkBatchResponse:
+      type: object
+      required:
+        - batch_id
+        - applied
+        - failed
+      properties:
+        batch_id:
+          type: string
+        applied:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductLinkAppliedBatchItem'
+        failed:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductLinkFailedBatchItem'
+
+    UndoProductLinkResolutionRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+        actor:
+          $ref: '#/components/schemas/ProductLinkActor'
+
+    ProductLinkUndoBatchItem:
+      type: object
+      required:
+        - audit_id
+        - status
+      properties:
+        audit_id:
+          type: string
+        candidate_id:
+          type: string
+        status:
+          type: string
+          enum: [OK, FAILED]
+        cause:
+          type: string
+
+    UndoProductLinkBatchResponse:
+      type: object
+      required:
+        - batch_id
+        - reverted
+        - failed
+      properties:
+        batch_id:
+          type: string
+        reverted:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductLinkUndoBatchItem'
+        failed:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductLinkUndoBatchItem'
 
     StockRiskState:
       type: string

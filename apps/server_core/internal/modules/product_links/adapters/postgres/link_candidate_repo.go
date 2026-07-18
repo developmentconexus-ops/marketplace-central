@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -47,15 +48,19 @@ func (r *LinkCandidateRepository) ReplaceLinkCandidates(ctx context.Context, ins
 	}
 
 	for _, candidate := range candidates {
-		_, err := tx.Exec(ctx, `
+		reasons, err := marshalReasons(candidate.Reasons)
+		if err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, `
 			INSERT INTO product_link_candidates (
 				tenant_id, candidate_id, installation_id, provider_code, provider_item_id, provider_variation_id,
 				internal_product_id, internal_product_name, internal_reference_code, state, match_input, match_value,
-				source_snapshot_fetched_at, created_at, updated_at
+				source_snapshot_fetched_at, confidence, confidence_band, match_status, reasons, created_at, updated_at
 			) VALUES (
 				$1, $2, $3, $4, $5, $6,
 				$7, $8, $9, $10, $11, $12,
-				$13, $14, $15
+				$13, $14, $15, $16, $17, $18, $19
 			)
 			ON CONFLICT (tenant_id, candidate_id) DO UPDATE SET
 				provider_code = EXCLUDED.provider_code,
@@ -68,6 +73,10 @@ func (r *LinkCandidateRepository) ReplaceLinkCandidates(ctx context.Context, ins
 				match_input = EXCLUDED.match_input,
 				match_value = EXCLUDED.match_value,
 				source_snapshot_fetched_at = EXCLUDED.source_snapshot_fetched_at,
+				confidence = EXCLUDED.confidence,
+				confidence_band = EXCLUDED.confidence_band,
+				match_status = EXCLUDED.match_status,
+				reasons = EXCLUDED.reasons,
 				created_at = EXCLUDED.created_at,
 				updated_at = EXCLUDED.updated_at
 		`, r.tenantID,
@@ -83,6 +92,10 @@ func (r *LinkCandidateRepository) ReplaceLinkCandidates(ctx context.Context, ins
 			candidate.MatchInput,
 			candidate.MatchValue,
 			timestamptzArg(candidate.SourceSnapshotFetchedAt),
+			candidate.Confidence,
+			candidate.ConfidenceBand,
+			candidate.MatchStatus,
+			reasons,
 			candidate.CreatedAt,
 			candidate.UpdatedAt,
 		)
@@ -102,7 +115,7 @@ func (r *LinkCandidateRepository) ListLinkCandidates(ctx context.Context, instal
 		SELECT
 			candidate_id, installation_id, provider_code, provider_item_id, provider_variation_id,
 			internal_product_id, internal_product_name, internal_reference_code, state, match_input, match_value,
-			source_snapshot_fetched_at, created_at, updated_at
+			source_snapshot_fetched_at, confidence, confidence_band, match_status, reasons, created_at, updated_at
 		FROM product_link_candidates
 		WHERE tenant_id = $1
 		  AND installation_id = $2
@@ -119,6 +132,7 @@ func (r *LinkCandidateRepository) ListLinkCandidates(ctx context.Context, instal
 		var candidate domain.LinkCandidate
 		var internalProductID pgtype.Int4
 		var sourceSnapshotFetchedAt pgtype.Timestamptz
+		var reasons []byte
 		var createdAt pgtype.Timestamptz
 		var updatedAt pgtype.Timestamptz
 
@@ -135,6 +149,10 @@ func (r *LinkCandidateRepository) ListLinkCandidates(ctx context.Context, instal
 			&candidate.MatchInput,
 			&candidate.MatchValue,
 			&sourceSnapshotFetchedAt,
+			&candidate.Confidence,
+			&candidate.ConfidenceBand,
+			&candidate.MatchStatus,
+			&reasons,
 			&createdAt,
 			&updatedAt,
 		); err != nil {
@@ -143,6 +161,10 @@ func (r *LinkCandidateRepository) ListLinkCandidates(ctx context.Context, instal
 
 		candidate.InternalProductID = scanInt4Ptr(internalProductID)
 		candidate.SourceSnapshotFetchedAt = scanTimestamptz(sourceSnapshotFetchedAt)
+		candidate.Reasons, err = unmarshalReasons(reasons)
+		if err != nil {
+			return nil, err
+		}
 		candidate.CreatedAt = createdAt.Time.UTC()
 		candidate.UpdatedAt = updatedAt.Time.UTC()
 		candidates = append(candidates, candidate)
@@ -158,7 +180,7 @@ func (r *LinkCandidateRepository) GetLinkCandidate(ctx context.Context, candidat
 		SELECT
 			candidate_id, installation_id, provider_code, provider_item_id, provider_variation_id,
 			internal_product_id, internal_product_name, internal_reference_code, state, match_input, match_value,
-			source_snapshot_fetched_at, created_at, updated_at
+			source_snapshot_fetched_at, confidence, confidence_band, match_status, reasons, created_at, updated_at
 		FROM product_link_candidates
 		WHERE tenant_id = $1
 		  AND candidate_id = $2
@@ -167,6 +189,7 @@ func (r *LinkCandidateRepository) GetLinkCandidate(ctx context.Context, candidat
 	var candidate domain.LinkCandidate
 	var internalProductID pgtype.Int4
 	var sourceSnapshotFetchedAt pgtype.Timestamptz
+	var reasons []byte
 	var createdAt pgtype.Timestamptz
 	var updatedAt pgtype.Timestamptz
 	if err := row.Scan(
@@ -182,6 +205,10 @@ func (r *LinkCandidateRepository) GetLinkCandidate(ctx context.Context, candidat
 		&candidate.MatchInput,
 		&candidate.MatchValue,
 		&sourceSnapshotFetchedAt,
+		&candidate.Confidence,
+		&candidate.ConfidenceBand,
+		&candidate.MatchStatus,
+		&reasons,
 		&createdAt,
 		&updatedAt,
 	); err != nil {
@@ -192,6 +219,11 @@ func (r *LinkCandidateRepository) GetLinkCandidate(ctx context.Context, candidat
 	}
 	candidate.InternalProductID = scanInt4Ptr(internalProductID)
 	candidate.SourceSnapshotFetchedAt = scanTimestamptz(sourceSnapshotFetchedAt)
+	parsedReasons, err := unmarshalReasons(reasons)
+	if err != nil {
+		return domain.LinkCandidate{}, false, err
+	}
+	candidate.Reasons = parsedReasons
 	candidate.CreatedAt = createdAt.Time.UTC()
 	candidate.UpdatedAt = updatedAt.Time.UTC()
 	return candidate, true, nil
@@ -289,11 +321,11 @@ func (r *LinkCandidateRepository) ApplyProductLinkTransition(ctx context.Context
 		INSERT INTO product_link_audit_entries (
 			tenant_id, audit_id, installation_id, provider_code, provider_item_id, provider_variation_id,
 			action, reason, source_candidate_id, actor_type, actor_id, actor_name,
-			previous_state, next_state, previous_internal_product_id, next_internal_product_id, created_at
+			previous_state, next_state, previous_internal_product_id, next_internal_product_id, batch_id, created_at
 		) VALUES (
 			$1, $2, $3, $4, $5, $6,
 			$7, $8, $9, $10, $11, $12,
-			$13, $14, $15, $16, $17
+			$13, $14, $15, $16, $17, $18
 		)
 	`, r.tenantID,
 		transition.Audit.AuditID,
@@ -311,12 +343,51 @@ func (r *LinkCandidateRepository) ApplyProductLinkTransition(ctx context.Context
 		transition.Audit.NextState,
 		transition.Audit.PreviousInternalProductID,
 		transition.Audit.NextInternalProductID,
+		transition.Audit.BatchID,
 		transition.Audit.CreatedAt,
 	)
 	if err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+// InsertBatch persists the module-owned batch audit row for a completed
+// ApplyBatch run (S3, C02 "tabela própria").
+func (r *LinkCandidateRepository) InsertBatch(ctx context.Context, batch domain.ProductLinkBatch) error {
+	if r.pool == nil {
+		return nil
+	}
+	_, err := r.pool.Exec(ctx, `
+		INSERT INTO product_link_batches (
+			tenant_id, batch_id, installation_id, actor_type, actor_id, actor_name,
+			requested_count, applied_count, failed_count, status, created_at
+		) VALUES (
+			$1, $2, $3, $4, $5, $6,
+			$7, $8, $9, $10, $11
+		)
+		ON CONFLICT (tenant_id, batch_id) DO UPDATE SET
+			installation_id = EXCLUDED.installation_id,
+			actor_type = EXCLUDED.actor_type,
+			actor_id = EXCLUDED.actor_id,
+			actor_name = EXCLUDED.actor_name,
+			requested_count = EXCLUDED.requested_count,
+			applied_count = EXCLUDED.applied_count,
+			failed_count = EXCLUDED.failed_count,
+			status = EXCLUDED.status
+	`, r.tenantID,
+		batch.BatchID,
+		batch.InstallationID,
+		batch.Actor.ActorType,
+		batch.Actor.ActorID,
+		batch.Actor.ActorName,
+		batch.RequestedCount,
+		batch.AppliedCount,
+		batch.FailedCount,
+		batch.Status,
+		batch.CreatedAt,
+	)
+	return err
 }
 
 func (r *LinkCandidateRepository) ListProductLinks(ctx context.Context, installationID string, limit int) ([]domain.ProductLink, error) {
@@ -376,7 +447,7 @@ func (r *LinkCandidateRepository) ListProductLinkAuditEntries(ctx context.Contex
 		SELECT
 			audit_id, installation_id, provider_code, provider_item_id, provider_variation_id,
 			action, reason, source_candidate_id, actor_type, actor_id, actor_name,
-			previous_state, next_state, previous_internal_product_id, next_internal_product_id, created_at
+			previous_state, next_state, previous_internal_product_id, next_internal_product_id, batch_id, created_at
 		FROM product_link_audit_entries
 		WHERE tenant_id = $1
 		  AND installation_id = $2
@@ -410,6 +481,7 @@ func (r *LinkCandidateRepository) ListProductLinkAuditEntries(ctx context.Contex
 			&audit.NextState,
 			&previousInternalProductID,
 			&nextInternalProductID,
+			&audit.BatchID,
 			&createdAt,
 		); err != nil {
 			return nil, err
@@ -420,4 +492,142 @@ func (r *LinkCandidateRepository) ListProductLinkAuditEntries(ctx context.Contex
 		items = append(items, audit)
 	}
 	return items, rows.Err()
+}
+
+// scanAuditRow scans one product_link_audit_entries row in the column order
+// shared by GetAuditEntry / LatestAuditForIdentity / ListAuditByBatch.
+func scanAuditRow(row interface {
+	Scan(dest ...any) error
+}) (domain.ProductLinkAuditEntry, error) {
+	var audit domain.ProductLinkAuditEntry
+	var previousInternalProductID pgtype.Int4
+	var nextInternalProductID pgtype.Int4
+	var createdAt pgtype.Timestamptz
+	err := row.Scan(
+		&audit.AuditID,
+		&audit.InstallationID,
+		&audit.ProviderCode,
+		&audit.ProviderItemID,
+		&audit.ProviderVariationID,
+		&audit.Action,
+		&audit.Reason,
+		&audit.SourceCandidateID,
+		&audit.Actor.ActorType,
+		&audit.Actor.ActorID,
+		&audit.Actor.ActorName,
+		&audit.PreviousState,
+		&audit.NextState,
+		&previousInternalProductID,
+		&nextInternalProductID,
+		&audit.BatchID,
+		&createdAt,
+	)
+	if err != nil {
+		return domain.ProductLinkAuditEntry{}, err
+	}
+	audit.PreviousInternalProductID = scanInt4Ptr(previousInternalProductID)
+	audit.NextInternalProductID = scanInt4Ptr(nextInternalProductID)
+	audit.CreatedAt = createdAt.Time.UTC()
+	return audit, nil
+}
+
+const auditEntryColumns = `
+	audit_id, installation_id, provider_code, provider_item_id, provider_variation_id,
+	action, reason, source_candidate_id, actor_type, actor_id, actor_name,
+	previous_state, next_state, previous_internal_product_id, next_internal_product_id, batch_id, created_at
+`
+
+// GetAuditEntry loads a single audit row by AuditID (S4 undo target lookup),
+// tenant-scoped.
+func (r *LinkCandidateRepository) GetAuditEntry(ctx context.Context, auditID string) (domain.ProductLinkAuditEntry, bool, error) {
+	if r.pool == nil {
+		return domain.ProductLinkAuditEntry{}, false, nil
+	}
+	row := r.pool.QueryRow(ctx, `
+		SELECT `+auditEntryColumns+`
+		FROM product_link_audit_entries
+		WHERE tenant_id = $1
+		  AND audit_id = $2
+	`, r.tenantID, strings.TrimSpace(auditID))
+	audit, err := scanAuditRow(row)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return domain.ProductLinkAuditEntry{}, false, nil
+		}
+		return domain.ProductLinkAuditEntry{}, false, err
+	}
+	return audit, true, nil
+}
+
+// LatestAuditForIdentity returns the most recent audit row for a listing
+// identity (S4 undo ordering decision), tenant-scoped.
+func (r *LinkCandidateRepository) LatestAuditForIdentity(ctx context.Context, identity domain.ListingIdentity) (domain.ProductLinkAuditEntry, bool, error) {
+	if r.pool == nil {
+		return domain.ProductLinkAuditEntry{}, false, nil
+	}
+	row := r.pool.QueryRow(ctx, `
+		SELECT `+auditEntryColumns+`
+		FROM product_link_audit_entries
+		WHERE tenant_id = $1
+		  AND installation_id = $2
+		  AND provider_item_id = $3
+		  AND provider_variation_id = $4
+		ORDER BY created_at DESC, audit_id DESC
+		LIMIT 1
+	`, r.tenantID, identity.InstallationID, identity.ProviderItemID, identity.ProviderVariationID)
+	audit, err := scanAuditRow(row)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return domain.ProductLinkAuditEntry{}, false, nil
+		}
+		return domain.ProductLinkAuditEntry{}, false, err
+	}
+	return audit, true, nil
+}
+
+// ListAuditByBatch returns every audit row tagged with batchID, newest
+// first (S4 batch-undo fan-out), tenant-scoped.
+func (r *LinkCandidateRepository) ListAuditByBatch(ctx context.Context, batchID string) ([]domain.ProductLinkAuditEntry, error) {
+	if r.pool == nil {
+		return nil, nil
+	}
+	rows, err := r.pool.Query(ctx, `
+		SELECT `+auditEntryColumns+`
+		FROM product_link_audit_entries
+		WHERE tenant_id = $1
+		  AND batch_id = $2
+		ORDER BY created_at DESC, audit_id DESC
+	`, r.tenantID, strings.TrimSpace(batchID))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := make([]domain.ProductLinkAuditEntry, 0)
+	for rows.Next() {
+		audit, err := scanAuditRow(rows)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, audit)
+	}
+	return items, rows.Err()
+}
+
+func marshalReasons(reasons []domain.LinkCandidateReason) ([]byte, error) {
+	if reasons == nil {
+		reasons = []domain.LinkCandidateReason{}
+	}
+	return json.Marshal(reasons)
+}
+
+func unmarshalReasons(raw []byte) ([]domain.LinkCandidateReason, error) {
+	reasons := make([]domain.LinkCandidateReason, 0)
+	if len(raw) == 0 {
+		return reasons, nil
+	}
+	if err := json.Unmarshal(raw, &reasons); err != nil {
+		return nil, err
+	}
+	return reasons, nil
 }

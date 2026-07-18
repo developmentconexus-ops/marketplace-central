@@ -17,6 +17,10 @@ const (
 	ProductLinkActionApproveCandidate ProductLinkAction = "approve_candidate"
 	ProductLinkActionRejectListing    ProductLinkAction = "reject_listing"
 	ProductLinkActionManualResolve    ProductLinkAction = "manual_resolve"
+	// ProductLinkActionUndo marks a reversal transition (S4): the audit row
+	// it produces is a NEW append-only entry — never a delete/rewrite of the
+	// entry it reverses — so the full resolution history stays intact.
+	ProductLinkActionUndo ProductLinkAction = "undo"
 )
 
 type ActorMetadata struct {
@@ -53,12 +57,39 @@ type ProductLinkAuditEntry struct {
 	NextState              ProductLinkState  `json:"next_state"`
 	PreviousInternalProductID *int           `json:"previous_internal_product_id,omitempty"`
 	NextInternalProductID  *int              `json:"next_internal_product_id,omitempty"`
+	// BatchID links this per-item audit row to the product_link_batches
+	// aggregate row it was written under (S3). Empty for non-batch
+	// resolutions (approve/reject/manual outside a batch).
+	BatchID                string            `json:"batch_id,omitempty"`
 	CreatedAt              time.Time         `json:"created_at"`
 }
 
 type ProductLinkTransition struct {
 	Link  ProductLink
 	Audit ProductLinkAuditEntry
+}
+
+// ProductLinkBatchStatus is the aggregate outcome of a batch-apply run (S3).
+type ProductLinkBatchStatus string
+
+const (
+	ProductLinkBatchStatusCompleted ProductLinkBatchStatus = "COMPLETED"
+	ProductLinkBatchStatusPartial   ProductLinkBatchStatus = "PARTIAL"
+	ProductLinkBatchStatusFailed    ProductLinkBatchStatus = "FAILED"
+)
+
+// ProductLinkBatch is the module-owned batch audit row (C02 "tabela
+// própria"): one row per ApplyBatch call, aggregating counts across all
+// per-item transitions/audit entries tagged with the same BatchID.
+type ProductLinkBatch struct {
+	BatchID        string                 `json:"batch_id"`
+	InstallationID string                 `json:"installation_id"`
+	Actor          ActorMetadata          `json:"actor"`
+	RequestedCount int                    `json:"requested_count"`
+	AppliedCount   int                    `json:"applied_count"`
+	FailedCount    int                    `json:"failed_count"`
+	Status         ProductLinkBatchStatus `json:"status"`
+	CreatedAt      time.Time              `json:"created_at"`
 }
 
 type ProductLinkWorkflowItem struct {
