@@ -14,3 +14,8 @@ export { PaginatedTable } from "./PaginatedTable";
 export type { PaginatedTableProps } from "./PaginatedTable";
 export { DetailPanel } from "./DetailPanel";
 export type { DetailPanelProps } from "./DetailPanel";
+export * from "./MarginChip";
+export { DataTable } from "./DataTable";
+export type { DataTableProps, DataTableColumn } from "./DataTable";
+export { DetailDrawer } from "./DetailDrawer";
+export type { DetailDrawerProps } from "./DetailDrawer";
