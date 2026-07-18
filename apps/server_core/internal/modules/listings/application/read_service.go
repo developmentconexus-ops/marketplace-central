@@ -47,10 +47,21 @@ type ReadService struct {
 	policies      ports.PolicyReader
 	installations ports.InstallationReader
 	now           func() time.Time
+	evidence      ports.EvidenceReader
 }
 
 func NewReadService(repo ports.ListingReadRepository, facts ports.CostReader, policies ports.PolicyReader, installations ports.InstallationReader, now func() time.Time) ReadService {
 	return ReadService{repo: repo, facts: facts, policies: policies, installations: installations, now: now}
+}
+
+// NewReadServiceWithEvidence is additive: it is byte-identical to
+// NewReadService plus the evidence dependency. The LIVE path (composition
+// root, F01-S5) always wires a real evidence reader here; a nil evidence
+// (the legacy NewReadService path, and any caller not yet migrated) makes
+// enrichSignals a no-op so MarketSignal/SignalStatus stay at their zero
+// value — existing callers/tests are unaffected.
+func NewReadServiceWithEvidence(repo ports.ListingReadRepository, facts ports.CostReader, policies ports.PolicyReader, installations ports.InstallationReader, now func() time.Time, evidence ports.EvidenceReader) ReadService {
+	return ReadService{repo: repo, facts: facts, policies: policies, installations: installations, now: now, evidence: evidence}
 }
 
 func (s ReadService) Summary(ctx context.Context, query ports.SummaryQuery) (ports.ListingSummaryRow, error) {
@@ -158,6 +169,7 @@ func (s ReadService) List(ctx context.Context, query ports.ListingQuery) (ports.
 		if err != nil {
 			return ports.ListingRowPage{}, err
 		}
+		s.enrichSignals(ctx, page.Items, "List")
 		if unavailable != nil {
 			slog.Warn("listings: fact source unavailable, degrading fact to null", "err", unavailable, "op", "List", "fact", unavailableFact(ceilingErr))
 		}
@@ -274,6 +286,7 @@ func (s ReadService) enrichGroups(ctx context.Context, groups []domain.ListingGr
 	if err != nil {
 		return unavailable, err
 	}
+	s.enrichSignals(ctx, items, op)
 	offset := 0
 	for i := range groups {
 		n := len(groups[i].Listings)
@@ -331,6 +344,7 @@ func (s ReadService) Get(ctx context.Context, id domain.ListingID) (domain.Listi
 	if err != nil {
 		return domain.ListingReadModel{}, nil, err
 	}
+	s.enrichSignals(ctx, items, "Get")
 	if unavailable != nil {
 		slog.Warn("listings: fact source unavailable, degrading fact to null", "err", unavailable, "op", "Get", "fact", unavailableFact(ceilingErr))
 	}
@@ -372,6 +386,7 @@ func (s ReadService) scan(ctx context.Context, q ports.ListingQuery, ceiling *fl
 		if err != nil {
 			return ports.ListingRowPage{}, err
 		}
+		s.enrichSignals(ctx, page.Items, "List")
 		if unavailable != nil {
 			slog.Error("listings: fact source unavailable, failing fact-dependent filter", "err", unavailable, "op", "List")
 			return ports.ListingRowPage{}, unavailable
@@ -463,6 +478,147 @@ func (s ReadService) enrich(ctx context.Context, items []domain.ListingReadModel
 		item.PendingIssue = pendingIssue(*item)
 	}
 	return unavailable, nil
+}
+
+// evidenceSourceMLPriceToWin is the fixed evidence source label for every
+// per-listing CompetitiveSignal: IC-03 defines CompetitiveSignal.target_price
+// as an alias of price_to_win, so the market snapshot backing a per-listing
+// signal is always ml_price_to_win-sourced (not a fabricated value; per the
+// contract's own field naming).
+const evidenceSourceMLPriceToWin = "ml_price_to_win"
+
+// enrichSignals is a no-op when no evidence reader is wired (nil evidence ==
+// legacy NewReadService path): MarketSignal/SignalStatus stay at their zero
+// value on items, matching every existing caller's expectations byte-for-byte.
+//
+// When an evidence reader is wired, it batches exactly one Signals/
+// Aggregates/Verdicts call per invocation over the distinct listing IDs and
+// codprods among items whose Link.ProductID is set (unlinked items are never
+// sent to the port: they are SEM_VINCULO by definition, per ADR-17). A
+// reader error degrades every eligible item to NO_PRICE_EVIDENCE with a
+// logged (telemetry) event — enrichment failure NEVER propagates as an error
+// and NEVER turns into a 500; the read paths that call this always keep
+// returning 200. Per-item isolation: a codprod/listing missing from the
+// batched response (as opposed to a hard reader error) degrades only that
+// item, because the per-item map lookup below simply misses.
+func (s ReadService) enrichSignals(ctx context.Context, items []domain.ListingReadModel, op string) {
+	if s.evidence == nil {
+		return
+	}
+	now := s.now().UTC()
+
+	listingIDs := make([]string, 0, len(items))
+	codprods := make([]string, 0, len(items))
+	seenListing := map[string]bool{}
+	seenCodprod := map[string]bool{}
+	for i := range items {
+		item := &items[i]
+		if item.Link.ProductID == nil {
+			item.MarketSignal = nil
+			item.SignalStatus = domain.SignalStatusSemVinculo
+			continue
+		}
+		if !seenListing[item.ListingID] {
+			seenListing[item.ListingID] = true
+			listingIDs = append(listingIDs, item.ListingID)
+		}
+		codprod := *item.Link.ProductID
+		if !seenCodprod[codprod] {
+			seenCodprod[codprod] = true
+			codprods = append(codprods, codprod)
+		}
+	}
+	if len(listingIDs) == 0 {
+		return
+	}
+
+	signals, sigErr := s.evidence.Signals(ctx, listingIDs)
+	aggregates, aggErr := s.evidence.Aggregates(ctx, codprods)
+	verdicts, verErr := s.evidence.Verdicts(ctx, codprods)
+	if sigErr != nil || aggErr != nil || verErr != nil {
+		slog.Error("listings: market evidence read failed, degrading signals to no_price_evidence",
+			"op", op, "signals_err", sigErr, "aggregates_err", aggErr, "verdicts_err", verErr)
+		for i := range items {
+			item := &items[i]
+			if item.Link.ProductID == nil {
+				continue
+			}
+			item.MarketSignal = nil
+			item.SignalStatus = domain.SignalStatusNoPriceEvidence
+		}
+		return
+	}
+
+	bySignal := make(map[string]ports.EvidenceSignal, len(signals))
+	for _, sig := range signals {
+		bySignal[sig.ListingID] = sig
+	}
+	byAggregate := make(map[string]ports.EvidenceAggregate, len(aggregates))
+	for _, agg := range aggregates {
+		byAggregate[agg.ProductID] = agg
+	}
+	byVerdict := make(map[string]ports.EvidenceVerdict, len(verdicts))
+	for _, v := range verdicts {
+		byVerdict[v.ProductID] = v
+	}
+
+	for i := range items {
+		item := &items[i]
+		if item.Link.ProductID == nil {
+			continue
+		}
+		codprod := *item.Link.ProductID
+		sig, hasSignal := bySignal[item.ListingID]
+		var signal *domain.MarketSignal
+		if hasSignal {
+			agg := byAggregate[codprod]
+			verdict := byVerdict[codprod]
+			signal = &domain.MarketSignal{
+				Position:    sig.Position,
+				PriceToWin:  sig.TargetPrice,
+				DeltaPct:    deltaPct(sig.OurPrice, sig.TargetPrice),
+				MatchStatus: verdict.MatchStatus,
+				NOffers:     agg.NOffers,
+				NSellers:    agg.NSellers,
+				Evidence:    domain.SignalEvidence{Source: evidenceSourceMLPriceToWin, FetchedAt: sig.FetchedAt},
+			}
+		}
+		status := domain.DeriveSignalStatus(item.Link, signal, now)
+		if signal != nil {
+			signal.Status = status
+			if status == domain.SignalStatusStale {
+				signal.Evidence.Freshness = "stale"
+			} else {
+				signal.Evidence.Freshness = "fresh"
+			}
+		}
+		item.MarketSignal = signal
+		item.SignalStatus = status
+	}
+}
+
+// deltaPct computes how our_price compares to target_price as a signed
+// percentage string ((our-target)/target * 100), reusing the decimal-string
+// big.Rat comparison pattern from belowMargin (:528 below). Either price
+// missing or a non-numeric/zero target degrades to nil (unknown, never a
+// fabricated 0%).
+func deltaPct(our, target *domain.Money) *string {
+	if our == nil || target == nil {
+		return nil
+	}
+	ourRat, ok := new(big.Rat).SetString(our.Amount)
+	if !ok {
+		return nil
+	}
+	targetRat, ok := new(big.Rat).SetString(target.Amount)
+	if !ok || targetRat.Sign() == 0 {
+		return nil
+	}
+	diff := new(big.Rat).Sub(ourRat, targetRat)
+	pct := new(big.Rat).Quo(diff, targetRat)
+	pct.Mul(pct, big.NewRat(100, 1))
+	value := pct.FloatString(2)
+	return &value
 }
 
 // unavailableFact reports which fact degraded: a non-nil ceilingErr means the

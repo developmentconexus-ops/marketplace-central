@@ -776,4 +776,141 @@ func TestSemProdutoDependentFilterDefinitions(t *testing.T) {
 }
 func ptr(v float64) *float64     { return &v }
 func ptrString(v string) *string { return &v }
-func fixedNow() time.Time        { return time.Date(2026, 7, 15, 12, 0, 0, 0, time.FixedZone("x", 3600)) }
+
+// fakeEvidence is the F01-S3 fake reader: proves ReadService.enrichSignals'
+// consumer contract shape against ports.EvidenceReader (mock proves contract
+// shape only; behavior is asserted against the derived signal_status/
+// market_signal below, not against mock call assertions alone).
+type fakeEvidence struct {
+	signals              []ports.EvidenceSignal
+	aggregates           []ports.EvidenceAggregate
+	verdicts             []ports.EvidenceVerdict
+	err                  error
+	signalsCalledWith    []string
+	aggregatesCalledWith []string
+}
+
+func (f *fakeEvidence) Signals(_ context.Context, listingIDs []string) ([]ports.EvidenceSignal, error) {
+	f.signalsCalledWith = append([]string{}, listingIDs...)
+	if f.err != nil {
+		return nil, f.err
+	}
+	return f.signals, nil
+}
+func (f *fakeEvidence) Aggregates(_ context.Context, codprods []string) ([]ports.EvidenceAggregate, error) {
+	f.aggregatesCalledWith = append([]string{}, codprods...)
+	if f.err != nil {
+		return nil, f.err
+	}
+	return f.aggregates, nil
+}
+func (f *fakeEvidence) Verdicts(_ context.Context, codprods []string) ([]ports.EvidenceVerdict, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return f.verdicts, nil
+}
+
+func linkedItem(listingID, codprod string) domain.ListingReadModel {
+	return domain.ListingReadModel{ListingID: listingID, InstallationID: "i", ProviderListingID: listingID, Title: listingID, Link: domain.ListingLink{State: domain.LinkStateResolved, ProductID: ptrString(codprod)}, Price: money("90")}
+}
+func unlinkedItem(listingID string) domain.ListingReadModel {
+	return domain.ListingReadModel{ListingID: listingID, InstallationID: "i", ProviderListingID: listingID, Title: listingID, Link: domain.ListingLink{State: domain.LinkStateUnresolved}, Price: money("90")}
+}
+
+func TestReadServiceEnrichSignalsMixedBatchAndUnlinked(t *testing.T) {
+	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
+	items := []domain.ListingReadModel{linkedItem("L1", "100"), linkedItem("L2", "200"), unlinkedItem("L3")}
+	r := &fakeRows{pages: []ports.ListingRowPage{{Items: items}}}
+	f := &fakeFacts{costs: map[int64]*ports.CostFact{}, ceilings: map[int64]*ports.ICMSCeiling{}}
+	ev := &fakeEvidence{
+		signals:    []ports.EvidenceSignal{{ListingID: "L1", OurPrice: money("90"), TargetPrice: money("100"), Position: &domain.SignalPosition{Rank: 2, Total: 5}, FetchedAt: now.Add(-10 * time.Minute)}},
+		aggregates: []ports.EvidenceAggregate{{ProductID: "200", NOffers: 3, NSellers: 2}},
+		verdicts:   []ports.EvidenceVerdict{{ProductID: "100", MatchStatus: "ACCEPT"}},
+	}
+	s := NewReadServiceWithEvidence(r, f, fakePolicy{found: true}, fakeInstallation(true), func() time.Time { return now }, ev)
+	p, err := s.List(context.Background(), ports.ListingQuery{InstallationID: "i", Limit: 50})
+	if err != nil {
+		t.Fatal(err)
+	}
+	byID := map[string]domain.ListingReadModel{}
+	for _, item := range p.Items {
+		byID[item.ListingID] = item
+	}
+
+	l1 := byID["L1"]
+	if l1.SignalStatus != domain.SignalStatusOK || l1.MarketSignal == nil {
+		t.Fatalf("L1 want OK+signal, got status=%s signal=%+v", l1.SignalStatus, l1.MarketSignal)
+	}
+	if l1.MarketSignal.MatchStatus != "ACCEPT" || l1.MarketSignal.Evidence.Source != evidenceSourceMLPriceToWin {
+		t.Fatalf("L1 signal=%+v", l1.MarketSignal)
+	}
+
+	l2 := byID["L2"]
+	if l2.SignalStatus != domain.SignalStatusNoPriceEvidence || l2.MarketSignal != nil {
+		t.Fatalf("L2 want NO_PRICE_EVIDENCE (aggregate present, no per-listing signal), not SEM_VINCULO; got status=%s signal=%+v", l2.SignalStatus, l2.MarketSignal)
+	}
+
+	l3 := byID["L3"]
+	if l3.SignalStatus != domain.SignalStatusSemVinculo || l3.MarketSignal != nil {
+		t.Fatalf("L3 want SEM_VINCULO, got status=%s signal=%+v", l3.SignalStatus, l3.MarketSignal)
+	}
+	for _, id := range ev.signalsCalledWith {
+		if id == "L3" {
+			t.Fatalf("unlinked listing L3 must never reach the evidence port, called with=%v", ev.signalsCalledWith)
+		}
+	}
+}
+
+func TestReadServiceEnrichSignalsReaderErrorDegradesWithout500(t *testing.T) {
+	items := []domain.ListingReadModel{linkedItem("L1", "100"), linkedItem("L2", "200")}
+	r := &fakeRows{pages: []ports.ListingRowPage{{Items: items}}}
+	f := &fakeFacts{costs: map[int64]*ports.CostFact{}, ceilings: map[int64]*ports.ICMSCeiling{}}
+	ev := &fakeEvidence{err: errors.New("market unavailable")}
+	s := NewReadServiceWithEvidence(r, f, fakePolicy{found: true}, fakeInstallation(true), time.Now, ev)
+	p, err := s.List(context.Background(), ports.ListingQuery{InstallationID: "i", Limit: 50})
+	if err != nil {
+		t.Fatalf("reader error must never propagate/500, got err=%v", err)
+	}
+	for _, item := range p.Items {
+		if item.SignalStatus != domain.SignalStatusNoPriceEvidence || item.MarketSignal != nil {
+			t.Fatalf("item=%s want NO_PRICE_EVIDENCE degrade on reader error, got status=%s signal=%+v", item.ListingID, item.SignalStatus, item.MarketSignal)
+		}
+	}
+}
+
+func TestReadServiceEnrichSignalsStaleAgeRetainsEvidence(t *testing.T) {
+	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
+	items := []domain.ListingReadModel{linkedItem("L1", "100")}
+	r := &fakeRows{pages: []ports.ListingRowPage{{Items: items}}}
+	f := &fakeFacts{costs: map[int64]*ports.CostFact{}, ceilings: map[int64]*ports.ICMSCeiling{}}
+	ev := &fakeEvidence{signals: []ports.EvidenceSignal{{ListingID: "L1", OurPrice: money("90"), TargetPrice: money("100"), FetchedAt: now.Add(-2 * time.Hour)}}}
+	s := NewReadServiceWithEvidence(r, f, fakePolicy{found: true}, fakeInstallation(true), func() time.Time { return now }, ev)
+	p, err := s.List(context.Background(), ports.ListingQuery{InstallationID: "i", Limit: 50})
+	if err != nil {
+		t.Fatal(err)
+	}
+	item := p.Items[0]
+	if item.SignalStatus != domain.SignalStatusStale {
+		t.Fatalf("want STALE, got %s", item.SignalStatus)
+	}
+	if item.MarketSignal == nil || item.MarketSignal.Evidence.Freshness != "stale" {
+		t.Fatalf("stale signal must retain its evidence (value+age), never hide it: signal=%+v", item.MarketSignal)
+	}
+}
+
+func TestReadServiceWithoutEvidenceSkipsEnrichmentUnchanged(t *testing.T) {
+	items := []domain.ListingReadModel{linkedItem("L1", "100"), unlinkedItem("L2")}
+	r := &fakeRows{pages: []ports.ListingRowPage{{Items: items}}}
+	f := &fakeFacts{costs: map[int64]*ports.CostFact{}, ceilings: map[int64]*ports.ICMSCeiling{}}
+	p, err := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), time.Now).List(context.Background(), ports.ListingQuery{InstallationID: "i", Limit: 50})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range p.Items {
+		if item.SignalStatus != "" || item.MarketSignal != nil {
+			t.Fatalf("legacy NewReadService path must skip enrichment entirely, got status=%q signal=%+v", item.SignalStatus, item.MarketSignal)
+		}
+	}
+}
+func fixedNow() time.Time { return time.Date(2026, 7, 15, 12, 0, 0, 0, time.FixedZone("x", 3600)) }
