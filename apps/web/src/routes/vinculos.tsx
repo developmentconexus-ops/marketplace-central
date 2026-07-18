@@ -1,5 +1,5 @@
-import { WorkspacePlaceholder } from "../pages/WorkspacePlaceholder";
+import { VinculosPage } from "../pages/vinculos/VinculosPage";
 
 export function VinculosRoute() {
-  return <WorkspacePlaceholder />;
+  return <VinculosPage />;
 }

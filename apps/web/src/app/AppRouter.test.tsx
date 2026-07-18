@@ -63,10 +63,10 @@ describe("AppRouter", () => {
     expect(listIntegrationInstallations).toHaveBeenCalledTimes(1);
   });
 
-  it("mounts the em-construção stub at /vinculos with a single app-wide installation fetch", async () => {
+  it("mounts the vínculos workspace at /vinculos with a single app-wide installation fetch", async () => {
     window.history.pushState({}, "", "/vinculos");
     renderAppRouter();
-    expect(await screen.findByText("Em construção — disponível em breve.")).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: "Fila" })).toBeInTheDocument();
     expect(listIntegrationInstallations).toHaveBeenCalledTimes(1);
   });
 
