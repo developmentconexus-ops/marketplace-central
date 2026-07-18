@@ -131,8 +131,10 @@ function renderPriceCell(item: ListingReadModel) {
 }
 
 function formatQuality(qualityScore: number | null) {
+  // quality_score is an integer 0–100 at the source (0036_listings.sql CHECK
+  // BETWEEN 0 AND 100; Go QualityScore *int) — render it directly, never ×100.
   if (qualityScore === null) return <UnknownValue />;
-  return `${Math.round(qualityScore * 100)}%`;
+  return `${qualityScore}%`;
 }
 
 export function AnunciosTable({ items, groups, asOf, selectedIds, onToggle, onTogglePage, onOpen }: AnunciosTableProps) {

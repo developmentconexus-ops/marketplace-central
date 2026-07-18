@@ -27,7 +27,7 @@ const listing: ListingReadModel = {
   published_quantity: 7,
   sync_state: "synced",
   sync_error: null,
-  quality_score: 0.9,
+  quality_score: 92,
   pending_issue: { kind: "stale", message_pt: "Atualização pendente" },
   sales_30d: 12,
   cost: { amount: "70.00", currency: "BRL" },
@@ -70,7 +70,9 @@ describe("AnunciosTable", () => {
     expect(screen.getByText("R$ 129.90")).toBeInTheDocument();
     expect(screen.getByText("7")).toBeInTheDocument();
     expect(screen.getByText("sincronizado")).toBeInTheDocument();
-    expect(screen.getByText("90%")).toBeInTheDocument();
+    // quality_score is an int 0–100 — 92 must render "92%", never "9200%".
+    expect(screen.getByText("92%")).toBeInTheDocument();
+    expect(screen.queryByText("9200%")).not.toBeInTheDocument();
     expect(screen.getByTitle("Atualização pendente")).toHaveTextContent("Atualização pendente");
   });
 
