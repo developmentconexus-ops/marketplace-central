@@ -211,14 +211,18 @@ type catalogPageEnvelope struct {
 }
 
 type catalogProductFactResponse struct {
-	InternalProductID int                         `json:"internal_product_id"`
-	Reference         *string                     `json:"reference"`
-	Description       *string                     `json:"description"`
-	EAN               *string                     `json:"ean"`
-	Active            bool                        `json:"active"`
-	SellableStock     catalogQuantityFactResponse `json:"sellable_stock"`
-	CurrentPrice      catalogMoneyFactResponse    `json:"current_price"`
-	Cost              catalogMoneyFactResponse    `json:"cost"`
+	InternalProductID     int                         `json:"internal_product_id"`
+	Reference             *string                     `json:"reference"`
+	ManufacturerReference *string                     `json:"manufacturer_reference"`
+	Description           *string                     `json:"description"`
+	EAN                   *string                     `json:"ean"`
+	BrandName             *string                     `json:"brand_name"`
+	NCM                   *string                     `json:"ncm"`
+	QualityFlags          []string                    `json:"quality_flags"`
+	Active                bool                        `json:"active"`
+	SellableStock         catalogQuantityFactResponse `json:"sellable_stock"`
+	CurrentPrice          catalogMoneyFactResponse    `json:"current_price"`
+	Cost                  catalogMoneyFactResponse    `json:"cost"`
 }
 
 type catalogQuantityFactResponse struct {
@@ -236,11 +240,15 @@ func newCatalogPageResponse(page ports.CatalogFactPage, search bool) catalogPage
 	items := make([]catalogProductFactResponse, 0, len(page.Items))
 	for _, item := range page.Items {
 		items = append(items, catalogProductFactResponse{
-			InternalProductID: int(item.InternalProductID),
-			Reference:         item.Reference,
-			Description:       item.Description,
-			EAN:               item.EAN,
-			Active:            item.Active,
+			InternalProductID:     int(item.InternalProductID),
+			Reference:             item.Reference,
+			ManufacturerReference: item.ManufacturerReference,
+			Description:           item.Description,
+			EAN:                   item.EAN,
+			BrandName:             item.BrandName,
+			NCM:                   item.NCM,
+			QualityFlags:          nonNilStrings(item.QualityFlags),
+			Active:                item.Active,
 			SellableStock: catalogQuantityFactResponse{
 				Quantity: item.SellableStock.Quantity,
 				Quality:  nonNilStrings(item.SellableStock.Quality),

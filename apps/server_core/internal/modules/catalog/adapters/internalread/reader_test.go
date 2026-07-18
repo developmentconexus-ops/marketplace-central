@@ -1,11 +1,13 @@
 package internalread
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
 	catalogdomain "marketplace-central/apps/server_core/internal/modules/catalog/domain"
 	readdomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
+	readports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 )
 
 func TestFactProjectsQualityFlagsWithoutInventingCurrentData(t *testing.T) {
@@ -33,6 +35,19 @@ func TestFactProjectsQualityFlagsWithoutInventingCurrentData(t *testing.T) {
 				t.Fatalf("fact = %+v, want quality=%s value=%v", got, tt.want, tt.wantValue)
 			}
 		})
+	}
+}
+
+func TestCatalogPageIdentityProjectsWithoutDroppingFlags(t *testing.T) {
+	ean, reference, brand, ncm := "4006381333931", "MF-1", "Marca", "12345678"
+	page := readports.CatalogFactPage{AsOf: time.Now().UTC(), Items: []readports.CatalogProductFact{{InternalProductID: 1, EAN: &ean, Reference: &reference, ManufacturerReference: &reference, BrandName: &brand, NCM: &ncm, QualityFlags: []string{"complete", "ean_collision"}}}}
+	products, err := canonicalProductsFromPage(page)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := products[0]
+	if got.EAN == nil || *got.EAN != ean || got.ManufacturerReference == nil || *got.ManufacturerReference != reference || got.BrandName == nil || *got.BrandName != brand || got.NCM == nil || *got.NCM != ncm || !reflect.DeepEqual(got.QualityFlags, []string{"complete", "ean_collision"}) {
+		t.Fatalf("identity = %+v", got)
 	}
 }
 

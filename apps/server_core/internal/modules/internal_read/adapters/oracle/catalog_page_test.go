@@ -82,10 +82,10 @@ func TestCatalogPageCursorChainIsGaplessAndNonOverlapping(t *testing.T) {
 
 func TestCatalogPageMapsNullableFactsAndAmbiguousPrice(t *testing.T) {
 	row := catalogDriverRow(42664)
-	row[5] = nil
-	row[6] = nil
-	row[7] = int64(2)
 	row[8] = nil
+	row[9] = nil
+	row[10] = int64(2)
+	row[11] = nil
 	queryer := &fakeCatalogQueryer{rows: [][]driver.Value{row}}
 	reader := NewReader(queryer)
 
@@ -102,6 +102,61 @@ func TestCatalogPageMapsNullableFactsAndAmbiguousPrice(t *testing.T) {
 	}
 	if item.Cost.Amount != nil || !hasCatalogQuality(item.Cost.Quality, domain.QualityMissingCost) {
 		t.Fatalf("cost = %+v, want nil + missing_cost", item.Cost)
+	}
+}
+
+func TestCatalogPageIdentitySemantics(t *testing.T) {
+	validEAN := "4006381333931"
+	tests := []struct {
+		name      string
+		row       []driver.Value
+		wantEAN   *string
+		wantRef   *string
+		wantNCM   *string
+		wantFlags []domain.QualityFlag
+	}{
+		{name: "valid EAN and reference alias", row: catalogIdentityDriverRow(101, validEAN, "MF-101", "Marca", "12345678", 1), wantEAN: &validEAN, wantRef: stringPointer("MF-101"), wantNCM: stringPointer("12345678"), wantFlags: []domain.QualityFlag{domain.QualityComplete}},
+		{name: "invalid_ean is nil not empty", row: catalogIdentityDriverRow(102, "not-a-gtin", "MF-102", "Marca", "1234", 1), wantRef: stringPointer("MF-102"), wantFlags: []domain.QualityFlag{domain.QualityInvalidEAN}},
+		{name: "blank EAN is nil not empty", row: catalogIdentityDriverRow(103, "   ", nil, nil, nil, 1), wantFlags: []domain.QualityFlag{domain.QualityInvalidEAN}},
+		{name: "ean_collision preserves product", row: catalogIdentityDriverRow(104, validEAN, "MF-104", "Marca", "12345678", 2), wantEAN: &validEAN, wantRef: stringPointer("MF-104"), wantNCM: stringPointer("12345678"), wantFlags: []domain.QualityFlag{domain.QualityComplete, domain.QualityEANCollision}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reader := NewReader(&fakeCatalogQueryer{rows: [][]driver.Value{tt.row}})
+			page, err := reader.ListCatalogProductFacts(context.Background(), ports.Cursor{}, 1)
+			if err != nil {
+				t.Fatal(err)
+			}
+			item := page.Items[0]
+			if !equalStringPointers(item.EAN, tt.wantEAN) || !equalStringPointers(item.Reference, tt.wantRef) || !equalStringPointers(item.ManufacturerReference, tt.wantRef) || !equalStringPointers(item.NCM, tt.wantNCM) {
+				t.Fatalf("identity = ean:%v reference:%v manufacturer_reference:%v ncm:%v", item.EAN, item.Reference, item.ManufacturerReference, item.NCM)
+			}
+			if len(item.QualityFlags) != len(tt.wantFlags) {
+				t.Fatalf("quality_flags = %v, want %v", item.QualityFlags, tt.wantFlags)
+			}
+			for i := range tt.wantFlags {
+				if item.QualityFlags[i] != string(tt.wantFlags[i]) {
+					t.Fatalf("quality_flags = %v, want %v", item.QualityFlags, tt.wantFlags)
+				}
+			}
+		})
+	}
+
+	t.Run("collision preserves both CODPRODs", func(t *testing.T) {
+		rows := [][]driver.Value{catalogIdentityDriverRow(201, validEAN, "A", "Marca", "12345678", 2), catalogIdentityDriverRow(202, validEAN, "B", "Marca", "12345678", 2)}
+		reader := NewReader(&fakeCatalogQueryer{rows: rows})
+		page, err := reader.ListCatalogProductFacts(context.Background(), ports.Cursor{}, 2)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(page.Items) != 2 || page.Items[0].InternalProductID != 201 || page.Items[1].InternalProductID != 202 {
+			t.Fatalf("items = %+v", page.Items)
+		}
+	})
+
+	query, _ := buildCatalogPageQuery(ports.Cursor{}, 2, "")
+	if strings.Contains(query, "p.REFERENCIA,\n    p.DESCRPROD") || !strings.Contains(query, "p.REFFORN") || !strings.Contains(query, "EAN_ACTIVE_COUNT") {
+		t.Fatalf("query does not isolate REFERENCIA as EAN and REFFORN as reference: %s", query)
 	}
 }
 
@@ -146,7 +201,16 @@ func TestCatalogSearchUsesOneBoundedQueryAndNoCursor(t *testing.T) {
 }
 
 func catalogDriverRow(id int64) []driver.Value {
-	return []driver.Value{id, "REF-" + itoa(int(id)), "Description", nil, "S", float64(id), "12.90", int64(1), "4.50"}
+	return catalogIdentityDriverRow(id, nil, "REF-"+itoa(int(id)), nil, nil, nil)
+}
+
+func catalogIdentityDriverRow(id int64, ean, reference, brand, ncm any, collisionCount any) []driver.Value {
+	return []driver.Value{id, ean, reference, "Description", brand, ncm, collisionCount, "S", float64(id), "12.90", int64(1), "4.50"}
+}
+
+func stringPointer(value string) *string { return &value }
+func equalStringPointers(left, right *string) bool {
+	return left == nil && right == nil || left != nil && right != nil && *left == *right
 }
 
 func itoa(value int) string {
@@ -234,7 +298,7 @@ type fakeCatalogRows struct {
 }
 
 func (r *fakeCatalogRows) Columns() []string {
-	return []string{"CODPROD", "REFERENCIA", "DESCRPROD", "EAN", "ATIVO", "SELLABLE_QTY", "PRICE_AMOUNT", "ACTIVE_PRICE_ROWS", "COST_AMOUNT"}
+	return []string{"CODPROD", "EAN", "REFFORN", "DESCRPROD", "MARCA", "NCM", "EAN_ACTIVE_COUNT", "ATIVO", "SELLABLE_QTY", "PRICE_AMOUNT", "ACTIVE_PRICE_ROWS", "COST_AMOUNT"}
 }
 func (r *fakeCatalogRows) Close() error { return nil }
 func (r *fakeCatalogRows) Next(dest []driver.Value) error {

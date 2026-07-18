@@ -149,6 +149,39 @@ func TestCatalogSearchPageEnvelopeAndNoCachePolicy(t *testing.T) {
 	}
 }
 
+func TestCatalogIdentityJSONNullNotEmptyAndReferenceAlias(t *testing.T) {
+	t.Run("identity and collision flags", func(t *testing.T) {
+		ean, reference, brand, ncm := "4006381333931", "MF-10", "Marca", "12345678"
+		fact := catalogFact(10)
+		fact.EAN, fact.Reference, fact.ManufacturerReference, fact.BrandName, fact.NCM = &ean, &reference, &reference, &brand, &ncm
+		fact.QualityFlags = []string{"complete", "ean_collision"}
+		assertCatalogIdentityJSON(t, fact, `"ean":"4006381333931"`, `"reference":"MF-10"`, `"manufacturer_reference":"MF-10"`, `"brand_name":"Marca"`, `"ncm":"12345678"`, `"quality_flags":["complete","ean_collision"]`)
+	})
+	t.Run("invalid_ean unknowns are null not empty", func(t *testing.T) {
+		fact := catalogFact(11)
+		fact.Reference, fact.ManufacturerReference, fact.EAN, fact.BrandName, fact.NCM = nil, nil, nil, nil, nil
+		fact.QualityFlags = []string{"invalid_ean"}
+		assertCatalogIdentityJSON(t, fact, `"ean":null`, `"reference":null`, `"manufacturer_reference":null`, `"brand_name":null`, `"ncm":null`, `"quality_flags":["invalid_ean"]`)
+	})
+}
+
+func assertCatalogIdentityJSON(t *testing.T, fact ports.CatalogProductFact, fragments ...string) {
+	t.Helper()
+	fake := &fakeCatalogPageReader{listPages: map[int64]ports.CatalogFactPage{0: {Items: []ports.CatalogProductFact{fact}, AsOf: time.Now().UTC()}}}
+	mux := httpx.NewRouteClassMux()
+	(Handler{PageReader: fake}).Register(mux)
+	recorder := httptest.NewRecorder()
+	mux.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/catalog/products", nil))
+	for _, fragment := range fragments {
+		if !strings.Contains(recorder.Body.String(), fragment) {
+			t.Fatalf("missing %s in %s", fragment, recorder.Body.String())
+		}
+	}
+	if strings.Contains(recorder.Body.String(), `:""`) {
+		t.Fatalf("unknown identity emitted empty string: %s", recorder.Body.String())
+	}
+}
+
 func TestCatalogPageRoutesMapSourceAndDeadlineErrors(t *testing.T) {
 	for _, tc := range []struct {
 		name       string

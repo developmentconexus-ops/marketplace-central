@@ -73,6 +73,8 @@ type CanonicalProduct struct {
 	ManufacturerReference *string           `json:"manufacturer_reference"`
 	SellerSKU             *string           `json:"seller_sku"`
 	BrandName             *string           `json:"brand_name"`
+	NCM                   *string           `json:"ncm"`
+	QualityFlags          []string          `json:"quality_flags"`
 	ProductGroupName      *string           `json:"product_group_name"`
 	CostAmount            NumericSourceFact `json:"cost_amount"`
 	PriceAmount           NumericSourceFact `json:"price_amount"`

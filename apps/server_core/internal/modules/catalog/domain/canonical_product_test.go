@@ -21,6 +21,21 @@ func TestInternalProductIDRequiresPositiveCODPROD(t *testing.T) {
 	}
 }
 
+func TestCanonicalProductCarriesGovernedCatalogIdentity(t *testing.T) {
+	id, _ := NewInternalProductID(1001)
+	ean, reference, brand, ncm := "4006381333931", "MF-1001", "Marca", "12345678"
+	product := CanonicalProduct{InternalProductID: id, EAN: &ean, ManufacturerReference: &reference, BrandName: &brand, NCM: &ncm, QualityFlags: []string{"complete", "ean_collision"}}
+	body, err := json.Marshal(product)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, fragment := range []string{`"ean":"4006381333931"`, `"manufacturer_reference":"MF-1001"`, `"brand_name":"Marca"`, `"ncm":"12345678"`, `"quality_flags":["complete","ean_collision"]`} {
+		if !strings.Contains(string(body), fragment) {
+			t.Fatalf("missing %s in %s", fragment, body)
+		}
+	}
+}
+
 func TestNumericSourceFactDistinguishesUnknownFromKnownZero(t *testing.T) {
 	zero := 0.0
 	observedAt := time.Date(2026, 7, 13, 12, 0, 0, 0, time.UTC)
