@@ -404,8 +404,13 @@ func TestMarketContractAbsenceProof(t *testing.T) {
 
 	insertHits := marketInsertHits(files)
 	wantInsertFiles := []string{
+		"/internal/modules/market/adapters/postgres/aggregate_repository.go",
+		"/internal/modules/market/adapters/postgres/competitive_signal_repository.go",
+		"/internal/modules/market/adapters/postgres/match_decision_repository.go",
 		"/internal/modules/market/adapters/postgres/observation_repository.go",
+		"/internal/modules/market/adapters/postgres/offer_repository.go",
 		"/internal/modules/market/adapters/postgres/reference_repository.go",
+		"/internal/modules/market/adapters/postgres/snapshot_repository.go",
 	}
 	gotInsertFiles := make([]string, 0, len(insertHits))
 	for _, hit := range insertHits {

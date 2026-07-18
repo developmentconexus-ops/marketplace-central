@@ -649,7 +649,14 @@ func (a *CapabilityAdapter) doRawWithIdempotency(ctx context.Context, accountRef
 
 	resp, err := a.httpClient.Do(req)
 	if err != nil {
-		return nil, nil, domain.NewCapabilityError(domain.ErrCodeProviderTransient, "provider request failed")
+		// Wrap the transport error as Cause so timeout classification
+		// (errors.Is(err, context.DeadlineExceeded)) survives the chain
+		// through CapabilityError.Unwrap (IC-03 Amendment A1).
+		return nil, nil, &domain.CapabilityError{
+			Code:    domain.ErrCodeProviderTransient,
+			Message: "provider request failed",
+			Cause:   err,
+		}
 	}
 	defer resp.Body.Close()
 

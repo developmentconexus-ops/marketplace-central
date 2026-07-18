@@ -1,4 +1,5 @@
 export * from "./erpImport";
+export * from "./market";
 
 export interface CatalogProduct {
   product_id: string;

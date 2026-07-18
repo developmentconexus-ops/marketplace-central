@@ -355,6 +355,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 			}
 			return resolved.AccessToken, nil
 		},
+		CatalogOffersEnabled: mlCatalogOffersEnabled(os.Getenv),
 	})
 	marketplaceCapabilities := connectorsapp.NewMarketplaceCapabilityService([]connectorsapp.ProviderCapabilitySet{
 		mercadoLivreCapabilities.ProviderCapabilitySet(),
@@ -557,7 +558,21 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 
 	marketModuleRepo := marketpostgres.NewRepository(pool, cfg.DefaultTenantID)
 	marketReadSvc := marketapp.NewReadService(marketModuleRepo, marketModuleRepo, time.Now)
-	markettransport.NewHandler(marketReadSvc).Register(mux)
+	marketCostReader := newMarketCostReaderAdapter(internalReadSvc, internalReadAvailable)
+	marketIdentityReader := newMarketProductIdentityReaderAdapter(internalReadSvc, internalReadAvailable, installationSvc, productLinkCandidateRepo)
+	marketPriceIntelReader := newMarketPriceIntelCollectorAdapter(mercadoLivreCapabilities, installationSvc, cfg.DefaultTenantID)
+	marketCollectionSvc := marketapp.NewCollectionPipelineService(
+		marketIdentityReader,
+		marketPriceIntelReader,
+		marketModuleRepo,
+		marketModuleRepo,
+		marketModuleRepo,
+		marketModuleRepo,
+		marketModuleRepo,
+		time.Now,
+	)
+	marketEvidenceSvc := marketapp.NewEvidenceReadService(marketModuleRepo, marketModuleRepo, marketModuleRepo, marketCostReader, time.Now)
+	markettransport.NewHandlerWithCollections(marketReadSvc, marketCollectionSvc, marketEvidenceSvc).Register(mux)
 
 	marketRepo := marketplacespostgres.NewRepository(pool, cfg.DefaultTenantID)
 	marketSvc := marketplacesapp.NewService(marketRepo, cfg.DefaultTenantID)
@@ -688,6 +703,13 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 
 func providerWritesEnabled(getenv func(string) string) bool {
 	return strings.EqualFold(strings.TrimSpace(getenv("MPC_PROVIDER_WRITES_ENABLED")), "true")
+}
+
+// mlCatalogOffersEnabled gates the mercado_livre catalog-offers READ route
+// (ADR-05: flag defaults OFF). This is a read-only provider flag, unrelated
+// to MPC_PROVIDER_WRITES_ENABLED and the mutations dispatcher.
+func mlCatalogOffersEnabled(getenv func(string) string) bool {
+	return strings.EqualFold(strings.TrimSpace(getenv("MPC_ML_CATALOG_OFFERS_ENABLED")), "true")
 }
 
 func erpSource(getenv func(string) string) (string, error) {
