@@ -62,14 +62,18 @@ type CatalogFactPage struct {
 }
 
 type CatalogProductFact struct {
-	InternalProductID int64
-	Reference         *string
-	Description       *string
-	EAN               *string
-	Active            bool
-	SellableStock     CatalogQuantityFact
-	CurrentPrice      CatalogMoneyFact
-	Cost              CatalogMoneyFact
+	InternalProductID     int64
+	Reference             *string
+	ManufacturerReference *string
+	Description           *string
+	EAN                   *string
+	BrandName             *string
+	NCM                   *string
+	QualityFlags          []string
+	Active                bool
+	SellableStock         CatalogQuantityFact
+	CurrentPrice          CatalogMoneyFact
+	Cost                  CatalogMoneyFact
 }
 
 type CatalogQuantityFact struct {

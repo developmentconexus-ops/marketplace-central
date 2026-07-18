@@ -126,7 +126,10 @@ func canonicalProductsFromPage(page readports.CatalogFactPage) ([]catalogdomain.
 			InternalProductID:     catalogdomain.InternalProductID(item.InternalProductID),
 			Name:                  ptr(item.Description),
 			EAN:                   item.EAN,
-			ManufacturerReference: item.Reference,
+			ManufacturerReference: item.ManufacturerReference,
+			BrandName:             item.BrandName,
+			NCM:                   item.NCM,
+			QualityFlags:          item.QualityFlags,
 			PriceAmount:           price,
 			CostAmount:            cost,
 			StockQuantity:         stock,
@@ -208,7 +211,11 @@ func (r *Reader) product(ctx context.Context, c readdomain.ProductCandidate) (ca
 	if err != nil {
 		return catalogdomain.CanonicalProduct{}, fmt.Errorf("catalog stock projection: %w", err)
 	}
-	return catalogdomain.CanonicalProduct{InternalProductID: *c.InternalProductID, Name: c.Name, EAN: c.EAN, ManufacturerReference: c.ReferenceCode, BrandName: c.BrandName, ProductGroupName: c.ProductGroupName, CostAmount: costFact, PriceAmount: priceFact, StockQuantity: stockFact}, nil
+	qualityFlags := make([]string, 0, len(c.QualityFlags))
+	for _, flag := range c.QualityFlags {
+		qualityFlags = append(qualityFlags, string(flag))
+	}
+	return catalogdomain.CanonicalProduct{InternalProductID: *c.InternalProductID, Name: c.Name, EAN: c.EAN, ManufacturerReference: c.ReferenceCode, BrandName: c.BrandName, NCM: c.NCM, ProductGroupName: c.ProductGroupName, QualityFlags: qualityFlags, CostAmount: costFact, PriceAmount: priceFact, StockQuantity: stockFact}, nil
 }
 func fact(value *float64, source readdomain.SourceMetadata, flags []readdomain.QualityFlag, missingFlag readdomain.QualityFlag, fallbackReason string) (catalogdomain.NumericSourceFact, error) {
 	q := catalogdomain.SourceFactQualityCurrent

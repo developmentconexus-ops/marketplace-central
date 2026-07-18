@@ -15,6 +15,8 @@ func TestQualityFlagsAreStable(t *testing.T) {
 		QualityMissingTax,
 		QualityAmbiguousProduct,
 		QualityStaleSource,
+		QualityInvalidEAN,
+		QualityEANCollision,
 	}
 
 	want := []QualityFlag{
@@ -26,6 +28,8 @@ func TestQualityFlagsAreStable(t *testing.T) {
 		"missing_tax",
 		"ambiguous_product",
 		"stale_source",
+		"invalid_ean",
+		"ean_collision",
 	}
 
 	if !reflect.DeepEqual(flags, want) {

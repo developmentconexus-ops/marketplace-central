@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	catalogdomain "marketplace-central/apps/server_core/internal/modules/catalog/domain"
 	"marketplace-central/apps/server_core/internal/modules/internal_read/domain"
 	"marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 )
@@ -56,20 +57,23 @@ func (r *Reader) readCatalogPage(ctx context.Context, query string, args []any, 
 	for rows.Next() {
 		var (
 			productID       int64
+			ean             sql.NullString
 			reference       sql.NullString
 			description     sql.NullString
-			ean             sql.NullString
+			brandName       sql.NullString
+			ncm             sql.NullString
+			activeEANCount  sql.NullInt64
 			active          sql.NullString
 			stock           sql.NullFloat64
 			price           sql.NullString
 			activePriceRows sql.NullInt64
 			cost            sql.NullString
 		)
-		if err := rows.Scan(&productID, &reference, &description, &ean, &active, &stock, &price, &activePriceRows, &cost); err != nil {
+		if err := rows.Scan(&productID, &ean, &reference, &description, &brandName, &ncm, &activeEANCount, &active, &stock, &price, &activePriceRows, &cost); err != nil {
 			return ports.CatalogFactPage{}, wrapOracleError("scan catalog page", err)
 		}
 
-		page.Items = append(page.Items, catalogProductFact(productID, reference, description, ean, active, stock, price, activePriceRows, cost))
+		page.Items = append(page.Items, catalogProductFact(productID, ean, reference, description, brandName, ncm, activeEANCount, active, stock, price, activePriceRows, cost))
 	}
 	if err := rows.Err(); err != nil {
 		return ports.CatalogFactPage{}, wrapOracleError("iterate catalog page", err)
@@ -123,9 +127,17 @@ WITH stock AS (
 )
 SELECT
     p.CODPROD,
-    p.REFERENCIA,
+	 p.REFERENCIA AS EAN,
+	 p.REFFORN,
     p.DESCRPROD,
-    CAST(NULL AS VARCHAR2(1)) AS EAN,
+	 p.MARCA,
+	 p.NCM,
+	 (
+		 SELECT COUNT(DISTINCT collision.CODPROD)
+		 FROM METALPRD.TGFPRO collision
+		 WHERE collision.ATIVO = 'S'
+		   AND TRIM(collision.REFERENCIA) = TRIM(p.REFERENCIA)
+	 ) AS EAN_ACTIVE_COUNT,
     p.ATIVO,
     stock.sellable_qty,
     price.amount,
@@ -153,13 +165,26 @@ WHERE p.ATIVO = 'S'
 	return query, args
 }
 
-func catalogProductFact(productID int64, reference, description, ean, active sql.NullString, stock sql.NullFloat64, price sql.NullString, activePriceRows sql.NullInt64, cost sql.NullString) ports.CatalogProductFact {
+func catalogProductFact(productID int64, eanValue, reference, description, brandName, ncmValue sql.NullString, activeEANCount sql.NullInt64, active sql.NullString, stock sql.NullFloat64, price sql.NullString, activePriceRows sql.NullInt64, cost sql.NullString) ports.CatalogProductFact {
+	ean := nullableString(eanValue)
+	qualityFlags := []string{string(domain.QualityComplete)}
+	if ean == nil || !catalogdomain.IsValidGTIN(*ean) {
+		ean = nil
+		qualityFlags = []string{string(domain.QualityInvalidEAN)}
+	} else if activeEANCount.Valid && activeEANCount.Int64 >= 2 {
+		qualityFlags = append(qualityFlags, string(domain.QualityEANCollision))
+	}
+	manufacturerReference := nullableString(reference)
 	result := ports.CatalogProductFact{
-		InternalProductID: productID,
-		Reference:         nullableString(reference),
-		Description:       nullableString(description),
-		EAN:               nullableString(ean),
-		Active:            strings.EqualFold(active.String, "S"),
+		InternalProductID:     productID,
+		Reference:             manufacturerReference,
+		ManufacturerReference: manufacturerReference,
+		Description:           nullableString(description),
+		EAN:                   ean,
+		BrandName:             nullableString(brandName),
+		NCM:                   nullableNCM(ncmValue),
+		QualityFlags:          qualityFlags,
+		Active:                strings.EqualFold(active.String, "S"),
 		SellableStock: ports.CatalogQuantityFact{
 			Quantity: nullableFloat(stock),
 		},
