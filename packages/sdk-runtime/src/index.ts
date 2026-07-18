@@ -1,3 +1,5 @@
+import type { ErpImportDetail, ErpImportList } from "./erpImport";
+
 export * from "./erpImport";
 
 export interface CatalogProduct {
@@ -1520,6 +1522,8 @@ export function createMarketplaceCentralClient(options: {
       getJson<CatalogProductFactPage>(
         `/catalog/products${catalogQuery({ cursor: options.cursor, limit: options.limit })}`,
       ),
+    listErpImports: () => getJson<ErpImportList>("/erp/imports"),
+    getErpImport: (id: string) => getJson<ErpImportDetail>(`/erp/imports/${encodeURIComponent(id)}`),
     listMarketplaceAccounts: () => getJson<ListResponse<MarketplaceAccount>>("/marketplaces/accounts"),
     listMarketplacePolicies: () => getJson<ListResponse<MarketplacePolicy>>("/marketplaces/policies"),
     listMarketplaceDefinitions: () => getJson<ListResponse<MarketplaceDefinition>>("/marketplaces/definitions"),

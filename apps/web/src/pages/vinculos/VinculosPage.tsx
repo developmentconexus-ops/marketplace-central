@@ -5,6 +5,7 @@ import { QUERY_STALE_TIME } from "@marketplace-central/web-query";
 import { useState } from "react";
 import { useClient } from "../../app/ClientContext";
 import { useInstallation } from "../../app/InstallationContext";
+import { ImportacaoSection } from "./ImportacaoSection";
 import { QueueTab } from "./QueueTab";
 import { vinculosQueryKeys } from "./vinculosQueryKeys";
 
@@ -152,6 +153,8 @@ export function VinculosPage() {
           )}
         </section>
       )}
+
+      <ImportacaoSection />
     </section>
   );
 }

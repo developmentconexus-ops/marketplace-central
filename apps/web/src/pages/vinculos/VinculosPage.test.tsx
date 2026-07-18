@@ -1,16 +1,18 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { VinculosPage } from "./VinculosPage";
 
 const listProductLinkCandidates = vi.fn();
 const listProductLinkWorkflows = vi.fn();
+const listErpImports = vi.fn();
 
 vi.mock("../../app/ClientContext", () => ({
   useClient: () => ({
     listProductLinkCandidates: (...args: unknown[]) => listProductLinkCandidates(...args),
     listProductLinkWorkflows: (...args: unknown[]) => listProductLinkWorkflows(...args),
+    listErpImports: (...args: unknown[]) => listErpImports(...args),
   }),
 }));
 
@@ -30,6 +32,13 @@ function renderPage() {
 }
 
 describe("VinculosPage", () => {
+  beforeEach(() => {
+    listErpImports.mockReset();
+    // Default: the read-only Importação section (S9) has its own empty history —
+    // pre-existing Fila/Resolvidos tests below are not exercising that section.
+    listErpImports.mockResolvedValue({ items: [] });
+  });
+
   it("renders tabs and shows the queue KPIs once loaded", async () => {
     listProductLinkCandidates.mockResolvedValue({
       items: [
