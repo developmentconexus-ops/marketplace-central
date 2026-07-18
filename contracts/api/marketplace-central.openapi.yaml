@@ -2430,6 +2430,119 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /market/collections:
+    post:
+      summary: Run an on-demand price-intel collection for one product
+      operationId: collectMarketPriceIntel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MarketCollectionRequest'
+      responses:
+        "200":
+          description: Synchronous collection summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketCollectionResponse'
+        "404":
+          description: codprod has no local identity row (PRODUCT_NOT_FOUND)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "409":
+          description: Concurrent collection already running for this codprod (COLLECTION_IN_PROGRESS)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /market/signals:
+    get:
+      summary: List latest competitive signals per listing
+      operationId: listMarketSignals
+      parameters:
+        - name: listing_ids
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated ordered listing IDs; input order is preserved and at most 200 IDs may be supplied.
+      responses:
+        "200":
+          description: Competitive signals in request order
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MarketCompetitiveSignal'
+        "422":
+          description: More than 200 IDs supplied (too_many_ids)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /market/aggregates:
+    get:
+      summary: List latest market aggregate per product
+      operationId: listMarketAggregates
+      parameters:
+        - name: codprod
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated ordered codprod IDs; input order is preserved and at most 200 IDs may be supplied.
+      responses:
+        "200":
+          description: Market aggregates in request order
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MarketAggregate'
+        "422":
+          description: More than 200 IDs supplied (too_many_ids)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /market/verdicts:
+    get:
+      summary: List assembled price-intel verdict per product
+      operationId: listMarketVerdicts
+      parameters:
+        - name: codprod
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated ordered codprod IDs; input order is preserved and at most 200 IDs may be supplied.
+      responses:
+        "200":
+          description: >-
+            Verdicts in request order; a never-collected codprod still yields
+            a 200 NO_PRICE_EVIDENCE verdict, never a 404.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MarketVerdict'
+        "422":
+          description: More than 200 IDs supplied (too_many_ids)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /sync/runs:
     get:
       summary: List synchronization runs
@@ -5915,6 +6028,202 @@ components:
         source:
           type: string
           enum: [official_api, vendor, manual]
+          nullable: true
+
+    MarketCollectionRequest:
+      type: object
+      required: [codprod]
+      additionalProperties: false
+      properties:
+        codprod:
+          type: string
+
+    MarketCollectionDecision:
+      type: object
+      required: [codprod, match_status, price_evidence_status, blocking_state]
+      properties:
+        codprod:
+          type: string
+        match_status:
+          type: string
+          enum: [ACCEPT, REVIEW, REJECT, NO_CANDIDATE]
+        price_evidence_status:
+          type: string
+          enum: [OK, INSUFFICIENT_MARKET, NO_PRICE_EVIDENCE]
+        blocking_state:
+          type: string
+          enum: [NO_CANDIDATE, NO_PRICE_EVIDENCE, INSUFFICIENT_MARKET, SEM_CUSTO]
+          nullable: true
+
+    MarketCollectionCause:
+      type: object
+      required: [codprod, reason, detail]
+      properties:
+        codprod:
+          type: string
+        reason:
+          type: string
+          enum: [NO_IDENTITY, FLAG_DISABLED, PROVIDER_4XX, PROVIDER_5XX]
+        detail:
+          type: string
+          nullable: true
+
+    MarketCollectionResponse:
+      type: object
+      description: >-
+        B.1 synchronous collection envelope (single product, D-F4-p).
+        decisões/contagens/causas keys are verbatim per the IC-06/IC-03
+        amendment; contagens is a full five-key snake_case count map.
+      required: ["status", "decisões", contagens, causas]
+      properties:
+        status:
+          type: string
+          enum: [COMPLETED, PARTIAL]
+        decisões:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarketCollectionDecision'
+        contagens:
+          type: object
+          required: [ok, no_price_evidence, insufficient_market, no_candidate, sem_custo]
+          properties:
+            ok:
+              type: integer
+            no_price_evidence:
+              type: integer
+            insufficient_market:
+              type: integer
+            no_candidate:
+              type: integer
+            sem_custo:
+              type: integer
+        causas:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarketCollectionCause'
+
+    MarketPosition:
+      type: object
+      required: [rank, total]
+      properties:
+        rank:
+          type: integer
+        total:
+          type: integer
+
+    MarketCompetitiveSignal:
+      type: object
+      required: [listing_id, our_price, winner_price, target_price, position, fetched_at]
+      properties:
+        listing_id:
+          type: string
+        our_price:
+          allOf:
+            - $ref: '#/components/schemas/MarketMoney'
+          nullable: true
+        winner_price:
+          allOf:
+            - $ref: '#/components/schemas/MarketMoney'
+          nullable: true
+        target_price:
+          allOf:
+            - $ref: '#/components/schemas/MarketMoney'
+          nullable: true
+        position:
+          allOf:
+            - $ref: '#/components/schemas/MarketPosition'
+          nullable: true
+        fetched_at:
+          type: string
+          format: date-time
+
+    MarketAggregate:
+      type: object
+      required: [product_id, median, min_valid, n_offers, n_sellers, source, fetched_at, computed_at, status]
+      properties:
+        product_id:
+          type: string
+        median:
+          allOf:
+            - $ref: '#/components/schemas/MarketMoney'
+          nullable: true
+        min_valid:
+          allOf:
+            - $ref: '#/components/schemas/MarketMoney'
+          nullable: true
+        n_offers:
+          type: integer
+        n_sellers:
+          type: integer
+        source:
+          type: string
+          enum: [ml_sale_price, ml_price_to_win, ml_catalog_offers]
+        fetched_at:
+          type: string
+          format: date-time
+        computed_at:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [OK, INSUFFICIENT_MARKET, NO_PRICE_EVIDENCE]
+
+    MarketVerdictInputRef:
+      type: object
+      required: [source, as_of]
+      properties:
+        source:
+          type: string
+        as_of:
+          type: string
+          format: date-time
+
+    MarketVerdictMarketRange:
+      type: object
+      description: Mirrors the frozen MarketAggregate exactly; deliberately no max field.
+      required: [min_valid, median, currency, n_offers, n_sellers]
+      properties:
+        min_valid:
+          allOf:
+            - $ref: '#/components/schemas/MarketMoney'
+          nullable: true
+        median:
+          allOf:
+            - $ref: '#/components/schemas/MarketMoney'
+          nullable: true
+        currency:
+          type: string
+          enum: [BRL]
+        n_offers:
+          type: integer
+        n_sellers:
+          type: integer
+
+    MarketVerdict:
+      type: object
+      required: [match_status, price_evidence_status, verdict_label, blocking_state, inputs_used, market_range]
+      properties:
+        match_status:
+          type: string
+          enum: [ACCEPT, REVIEW, REJECT, NO_CANDIDATE]
+        price_evidence_status:
+          type: string
+          enum: [OK, INSUFFICIENT_MARKET, NO_PRICE_EVIDENCE]
+        verdict_label:
+          type: string
+          nullable: true
+          description: Always null from M-02; margin labels are M-07-owned.
+        blocking_state:
+          type: string
+          enum: [NO_CANDIDATE, NO_PRICE_EVIDENCE, INSUFFICIENT_MARKET, SEM_CUSTO]
+          nullable: true
+        inputs_used:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/MarketVerdictInputRef'
+        market_range:
+          allOf:
+            - $ref: '#/components/schemas/MarketVerdictMarketRange'
           nullable: true
 
     MutationType:

@@ -16,17 +16,49 @@ type ReadService interface {
 	ListReferences(context.Context, []string) (application.ReferenceReadResult, error)
 }
 
+// CollectionService is the write side of on-demand price-intel collection
+// (F-04-S5). Single-product synchronous by design (D-F4-p): no batch POST.
+type CollectionService interface {
+	Collect(ctx context.Context, codprod string) (application.CollectionSummary, error)
+}
+
+// EvidenceReader is the read side of assembled price-intel evidence
+// (F-04-S5), matching ports.EvidenceReader's frozen signature.
+type EvidenceReader interface {
+	Signals(ctx context.Context, listingIDs []string) ([]domain.CompetitiveSignal, error)
+	Aggregates(ctx context.Context, codprods []string) ([]domain.MarketAggregate, error)
+	Verdicts(ctx context.Context, codprods []string) ([]domain.Verdict, error)
+}
+
 type Handler struct {
-	service ReadService
+	service     ReadService
+	collections CollectionService
+	evidence    EvidenceReader
 }
 
 func NewHandler(service ReadService) Handler {
 	return Handler{service: service}
 }
 
+// NewHandlerWithCollections extends NewHandler with the F-04-S5 collection
+// and evidence capabilities. Additive: NewHandler's single-argument
+// signature is unchanged so the existing composition/root.go call site keeps
+// compiling untouched.
+func NewHandlerWithCollections(service ReadService, collections CollectionService, evidence EvidenceReader) Handler {
+	return Handler{service: service, collections: collections, evidence: evidence}
+}
+
 func (h Handler) Register(mux httpx.RouteRegistrar) {
 	mux.HandleFunc("GET /market/observations", h.handleObservations)
 	mux.HandleFunc("GET /market/references", h.handleReferences)
+	if h.collections != nil {
+		mux.HandleFunc("POST /market/collections", h.handleCollect)
+	}
+	if h.evidence != nil {
+		mux.HandleFunc("GET /market/signals", h.handleSignals)
+		mux.HandleFunc("GET /market/aggregates", h.handleAggregates)
+		mux.HandleFunc("GET /market/verdicts", h.handleVerdicts)
+	}
 }
 
 type marketObservationsEnvelope struct {

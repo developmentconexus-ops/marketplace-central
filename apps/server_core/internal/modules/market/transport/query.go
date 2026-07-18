@@ -1,8 +1,10 @@
 package transport
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 )
@@ -39,6 +41,18 @@ type ReferenceQuery struct {
 	ProductIDs []string
 }
 
+type CodprodQuery struct {
+	Codprods []string
+}
+
+type SignalQuery struct {
+	ListingIDs []string
+}
+
+type CollectionRequest struct {
+	Codprod string
+}
+
 func ParseObservationQuery(values url.Values) (ObservationQuery, error) {
 	if err := rejectUnknown(values, map[string]struct{}{
 		"installation_id": {},
@@ -71,6 +85,46 @@ func ParseReferenceQuery(values url.Values) (ReferenceQuery, error) {
 		return ReferenceQuery{}, err
 	}
 	return ReferenceQuery{ProductIDs: productIDs}, nil
+}
+
+func ParseCodprodQuery(values url.Values) (CodprodQuery, error) {
+	if err := rejectUnknown(values, map[string]struct{}{"codprod": {}}); err != nil {
+		return CodprodQuery{}, err
+	}
+	codprods, err := commaSeparated(values, "codprod")
+	if err != nil {
+		return CodprodQuery{}, err
+	}
+	return CodprodQuery{Codprods: codprods}, nil
+}
+
+func ParseSignalQuery(values url.Values) (SignalQuery, error) {
+	if err := rejectUnknown(values, map[string]struct{}{"listing_ids": {}}); err != nil {
+		return SignalQuery{}, err
+	}
+	listingIDs, err := commaSeparated(values, "listing_ids")
+	if err != nil {
+		return SignalQuery{}, err
+	}
+	return SignalQuery{ListingIDs: listingIDs}, nil
+}
+
+// ParseCollectionRequest decodes the POST /market/collections body. A
+// missing or blank codprod is an invalid_filter, not a silent no-op — the
+// caller must name exactly one product (D-F4-p: single-product synchronous).
+func ParseCollectionRequest(r *http.Request) (CollectionRequest, error) {
+	defer r.Body.Close()
+	var body struct {
+		Codprod string `json:"codprod"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		return CollectionRequest{}, &InvalidFilterError{Key: "codprod"}
+	}
+	codprod := strings.TrimSpace(body.Codprod)
+	if codprod == "" {
+		return CollectionRequest{}, &InvalidFilterError{Key: "codprod"}
+	}
+	return CollectionRequest{Codprod: codprod}, nil
 }
 
 func rejectUnknown(values url.Values, allowed map[string]struct{}) error {
