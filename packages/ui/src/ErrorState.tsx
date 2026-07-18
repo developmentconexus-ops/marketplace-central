@@ -7,7 +7,7 @@ interface ErrorStateProps {
 
 export function ErrorState({ onRetry, detail }: ErrorStateProps) {
   return (
-    <div className="flex flex-col items-start gap-3 text-sm text-red-700">
+    <div className="flex flex-col items-start gap-3 text-sm text-warn">
       <p role="alert">{detail ? <>Erro ao carregar. {detail}</> : "Erro ao carregar."}</p>
       <Button variant="secondary" onClick={onRetry}>
         Tentar novamente

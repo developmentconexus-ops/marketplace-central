@@ -6,9 +6,9 @@ interface EmptyStateProps {
 
 export function EmptyState({ hint }: EmptyStateProps) {
   return (
-    <div className="flex flex-col gap-1 text-sm text-slate-500">
+    <div className="flex flex-col gap-1 text-sm text-muted">
       <p>Nenhum registro encontrado.</p>
-      {hint ? <p className="text-xs text-slate-400">{hint}</p> : null}
+      {hint ? <p className="text-xs text-faint">{hint}</p> : null}
     </div>
   );
 }

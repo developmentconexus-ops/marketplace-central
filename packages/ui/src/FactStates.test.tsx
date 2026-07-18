@@ -9,6 +9,7 @@ describe("fact state components", () => {
     const { rerender } = render(<UnknownValue hint="x" />);
 
     expect(screen.getByText("—")).toHaveAttribute("title", "x");
+    expect(screen.getByText("—")).toHaveClass("text-faint");
 
     rerender(<UnknownValue />);
 
@@ -24,6 +25,7 @@ describe("fact state components", () => {
     const tag = screen.getByText("divergente");
 
     expect(tag.className).toContain("amber");
+    expect(tag).toHaveClass("bg-amber-soft", "text-amber");
     expect(tag).toHaveAttribute("title", "ERP=35");
 
     rerender(<ConflictTag />);
@@ -49,6 +51,7 @@ describe("fact state components", () => {
     expect(screen.getByLabelText("Atualização dos dados")).toHaveTextContent(
       `dados de ${expectedTime}`,
     );
+    expect(screen.getByLabelText("Atualização dos dados")).toHaveClass("text-muted");
   });
 
   it.each([null, undefined])("renders unknown freshness for %s", (asOf) => {
