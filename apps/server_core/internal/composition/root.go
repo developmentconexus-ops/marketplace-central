@@ -93,6 +93,7 @@ import (
 	ordersapp "marketplace-central/apps/server_core/internal/modules/orders/application"
 	orderstransport "marketplace-central/apps/server_core/internal/modules/orders/transport"
 	pricingcatalog "marketplace-central/apps/server_core/internal/modules/pricing/adapters/catalog"
+	pricingcostread "marketplace-central/apps/server_core/internal/modules/pricing/adapters/costread"
 	pricingfee "marketplace-central/apps/server_core/internal/modules/pricing/adapters/feeschedule"
 	pricingmarket "marketplace-central/apps/server_core/internal/modules/pricing/adapters/marketplace"
 	pricingpostgres "marketplace-central/apps/server_core/internal/modules/pricing/adapters/postgres"
@@ -699,7 +700,20 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	prodReader := pricingcatalog.NewReader(catalogSvc)
 	polReader := pricingmarket.NewReader(marketSvc)
 	batchOrch := pricingapp.NewBatchOrchestrator(prodReader, polReader, meClient, feeAdapter, cfg.DefaultTenantID)
-	pricingtransport.NewHandler(pricingSvc, batchOrch).Register(mux)
+
+	// IC-04 calculator (M-07): profile, DIFAL seed+override, scenarios, decompose,
+	// solve. Wired only when internal_read (cost facts) is available — mirrors the
+	// profitability module's conditional Internal wiring. When unavailable the calc
+	// routes are simply absent; W1 /pricing/simulations is unaffected.
+	pricingHandler := pricingtransport.NewHandler(pricingSvc, batchOrch)
+	if internalReadAvailable {
+		calcRepo := pricingpostgres.NewCalcRepository(pool)
+		calcCost := pricingcostread.NewReader(profitabilityinternalread.NewFactReader(internalReadSvc))
+		calcProducts := pricingcatalog.NewProductChecker(catalogSvc)
+		calcSvc := pricingapp.NewCalcService(calcRepo, calcCost, calcProducts, cfg.DefaultTenantID)
+		pricingHandler = pricingHandler.WithCalc(calcSvc)
+	}
+	pricingHandler.Register(mux)
 
 	// Connectors (Melhor Envio auth + fee seeding foundations)
 	connectorstransport.NewHandler(meOAuth).Register(mux)

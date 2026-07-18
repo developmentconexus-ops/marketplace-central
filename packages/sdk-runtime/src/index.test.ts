@@ -20,6 +20,12 @@ import type {
   MarketReferencePage,
   CategoryAttribute,
   CategoryAttributesResponse,
+  PricingCalcProfile,
+  PricingDifalListResponse,
+  PricingDifalOverrideResponse,
+  PricingScenario,
+  PricingDecomposeResponse,
+  PricingSolveResponse,
 } from "./index";
 
 describe("sdk runtime", () => {
@@ -2218,6 +2224,120 @@ describe("sdk runtime", () => {
     expect(observation.competitive_target.amount).toBe("99.00");
     expect(observation.catalog_offer_price.amount).toBe("101.00");
     expect(observation.catalog_stats.median).toBe("100.00");
+  });
+
+  it("drives the IC-04 pricing calculator endpoints (profile, difal, scenarios, decompose, solve)", async () => {
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const profile: PricingCalcProfile = {
+      regime: "SIMPLES",
+      aliquota_pct: "4",
+      limiar_verde_pct: "18",
+      limiar_amarelo_pct: "10",
+      tarifa_full: null,
+      difal_enabled: false,
+      difal_destino_uf: null,
+      origem: "operator",
+    };
+    const difalList: PricingDifalListResponse = {
+      items: [
+        {
+          uf: "SP",
+          interna_pct: "18.00",
+          interestadual_pct: "12",
+          efetivo_pct: "6.00",
+          origem_versao: "padrao-2026",
+          override: null,
+        },
+      ],
+      disclaimer: "seed padrão 2026 — não é orientação fiscal",
+    };
+    const overrideResp: PricingDifalOverrideResponse = {
+      persisted: true,
+      rate: { ...difalList.items[0], efetivo_pct: "7.00", override: { interna_pct: "19.00", updated_at: "2026-07-18T00:00:00Z", actor: "op" } },
+    };
+    const scenario: PricingScenario = { id: "sc1", name: "Cenário", payload: { preco: "100.00" }, created_at: "2026-07-18T00:00:00Z" };
+    const decompose: PricingDecomposeResponse = {
+      decomposition: {
+        preco: "100.00",
+        comissao: "12.00",
+        taxa_fixa: "0",
+        frete: "15.00",
+        imposto: "4.00",
+        difal: null,
+        tarifa_full: null,
+        custo: null,
+        margem_valor: null,
+        margem_pct: null,
+        componentes_desconhecidos: ["custo_erp"],
+      },
+      blocking_state: "SEM_CUSTO",
+    };
+    const solve: PricingSolveResponse = {
+      reached: false,
+      preco: null,
+      ceiling_pct: "80.00",
+      desconhecidos: [],
+      blocking_state: null,
+      code: "UNREACHABLE_TARGET",
+    };
+
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        const path = String(input);
+        const method = init?.method ?? "GET";
+        let body: unknown = {};
+        if (path.endsWith("/pricing/profile")) body = profile;
+        else if (path.endsWith("/pricing/difal")) body = difalList;
+        else if (path.includes("/pricing/difal/")) body = overrideResp;
+        else if (path.endsWith("/pricing/scenarios")) body = method === "POST" ? scenario : { items: [scenario] };
+        else if (path.endsWith("/pricing/decompose")) body = decompose;
+        else if (path.endsWith("/pricing/solve")) body = solve;
+        if (method === "DELETE") return new Response(null, { status: 204 });
+        return new Response(JSON.stringify(body), { status: method === "POST" && path.endsWith("/scenarios") ? 201 : 200 });
+      },
+    });
+
+    const gotProfile = await client.getPricingProfile();
+    const putProfile = await client.putPricingProfile(profile);
+    const gotDifal = await client.listPricingDifal();
+    const putDifal = await client.putPricingDifalOverride("SP", { interna_pct: "19.00", actor: "op" });
+    const listScenarios = await client.listPricingScenarios();
+    const createScenario = await client.createPricingScenario({ id: "sc1", name: "Cenário", payload: { preco: "100.00" } });
+    await client.deletePricingScenario("sc1");
+    const gotDecompose = await client.pricingDecompose({ preco: "100.00", comissao_pct: "12", modalidade: "classico", product_id: 90001 });
+    const gotSolve = await client.pricingSolveTarget({ margem_alvo_pct: "95", comissao_pct: "16", modalidade: "classico", custo: "10.00", frete_produto: "15.00" });
+
+    const url = (i: number) => String(requests[i].input);
+    const verb = (i: number) => requests[i].init?.method ?? "GET";
+    expect(url(0)).toBe("http://localhost:8080/pricing/profile");
+    expect(verb(0)).toBe("GET");
+    expect(verb(1)).toBe("PUT");
+    expect(url(2)).toBe("http://localhost:8080/pricing/difal");
+    expect(url(3)).toBe("http://localhost:8080/pricing/difal/SP");
+    expect(verb(3)).toBe("PUT");
+    expect(url(4)).toBe("http://localhost:8080/pricing/scenarios");
+    expect(verb(5)).toBe("POST");
+    expect(url(6)).toBe("http://localhost:8080/pricing/scenarios/sc1");
+    expect(verb(6)).toBe("DELETE");
+    expect(url(7)).toBe("http://localhost:8080/pricing/decompose");
+    expect(url(8)).toBe("http://localhost:8080/pricing/solve");
+
+    expect(gotProfile.origem).toBe("operator");
+    expect(putProfile.aliquota_pct).toBe("4");
+    expect(gotDifal.disclaimer).toBe("seed padrão 2026 — não é orientação fiscal");
+    expect(gotDifal.items[0].override).toBeNull();
+    expect(putDifal.persisted).toBe(true);
+    expect(putDifal.rate.efetivo_pct).toBe("7.00");
+    expect(listScenarios.items).toHaveLength(1);
+    expect(createScenario.id).toBe("sc1");
+    // ADR-17: unknown cost stays null (never fabricated 0) and surfaces as SEM_CUSTO.
+    expect(gotDecompose.decomposition.custo).toBeNull();
+    expect(gotDecompose.blocking_state).toBe("SEM_CUSTO");
+    // Unreachable target is a 200 with an explicit code, not a thrown error.
+    expect(gotSolve.reached).toBe(false);
+    expect(gotSolve.code).toBe("UNREACHABLE_TARGET");
   });
 });
 
