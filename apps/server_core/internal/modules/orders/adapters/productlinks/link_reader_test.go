@@ -28,6 +28,22 @@ func (s stubWorkflowStore) ListProductLinkAuditEntries(context.Context, string, 
 	return nil, nil
 }
 
+func (s stubWorkflowStore) InsertBatch(context.Context, productlinksdomain.ProductLinkBatch) error {
+	return nil
+}
+
+func (s stubWorkflowStore) GetAuditEntry(context.Context, string) (productlinksdomain.ProductLinkAuditEntry, bool, error) {
+	return productlinksdomain.ProductLinkAuditEntry{}, false, nil
+}
+
+func (s stubWorkflowStore) LatestAuditForIdentity(context.Context, productlinksdomain.ListingIdentity) (productlinksdomain.ProductLinkAuditEntry, bool, error) {
+	return productlinksdomain.ProductLinkAuditEntry{}, false, nil
+}
+
+func (s stubWorkflowStore) ListAuditByBatch(context.Context, string) ([]productlinksdomain.ProductLinkAuditEntry, error) {
+	return nil, nil
+}
+
 type stubCandidateStore struct {
 	candidates []productlinksdomain.LinkCandidate
 }
