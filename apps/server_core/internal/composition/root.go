@@ -499,7 +499,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	ordersReadSvc := ordersapp.NewReadService(ordersReadRepo)
 	ordersSummarySvc := ordersapp.NewSummaryService(ordersRepo)
 	ordersEnrichSvc := ordersapp.NewEnrichService(nil, nil, slog.Default())
-	orderstransport.NewHandlerWithEnricher(ordersImportSvc, ordersReadSvc, &ordersEnrichSvc).Register(mux)
+	orderstransport.NewHandlerWithSummary(ordersImportSvc, ordersReadSvc, &ordersEnrichSvc, ordersSummarySvc).Register(mux)
 
 	linkageRepo := orderspostgres.NewSankhyaLinkageRepository(pool, cfg.DefaultTenantID)
 	var assistedLinkageApp orderstransport.AssistedSankhyaLinkageApplication

@@ -37,6 +37,7 @@ type Handler struct {
 	lister     OrderLister
 	readLister OrderReadLister
 	enricher   *application.EnrichService
+	summary    application.SummaryService
 }
 
 func NewHandler(importer OrderImporter, lister OrderLister) Handler {
@@ -56,9 +57,21 @@ func NewHandlerWithEnricher(importer OrderImporter, reader OrderReadLister, enri
 	return Handler{importer: importer, readLister: reader, enricher: enricher}
 }
 
+// NewHandlerWithSummary extends NewHandlerWithEnricher with the counts
+// summary service backing GET /orders/summary (F01-S5). Additive: the
+// enricher-only constructor keeps working for its existing callers, and
+// summary is a value type whose zero value already answers honestly (see
+// application.SummaryService.Summary, store-nil branch), so passing a fresh
+// Handler through this constructor never regresses NewHandlerWithEnricher
+// call sites.
+func NewHandlerWithSummary(importer OrderImporter, reader OrderReadLister, enricher *application.EnrichService, summary application.SummaryService) Handler {
+	return Handler{importer: importer, readLister: reader, enricher: enricher, summary: summary}
+}
+
 func (h Handler) Register(mux httpx.RouteRegistrar) {
 	mux.HandleFunc("/orders/import", h.handleImport)
 	mux.HandleFunc("/orders", h.handleList)
+	mux.HandleFunc("/orders/summary", h.handleSummary)
 	if h.readLister != nil {
 		mux.HandleFunc("/orders/{provider_order_id}", h.handleGet)
 	}
@@ -211,6 +224,45 @@ func (h Handler) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, model)
+}
+
+// orderSummaryDTO is the response shape for GET /orders/summary. Keys are
+// locked byte-identical to the OpenAPI OrderSummary schema and the SDK
+// OrderSummary interface (F01-S5 CONSISTENCY requirement).
+type orderSummaryDTO struct {
+	Today     int64 `json:"today"`
+	SevenDays int64 `json:"seven_days"`
+}
+
+// handleSummary resolves installationID the same way handleGet/handleReadList
+// do (requiredInstallation over the query string) and delegates counting to
+// application.SummaryService. On any Summary() error it writes an honest
+// error status — never a fabricated {"today":0,"seven_days":0} body — since
+// an unresolved count is unknown, not zero.
+func (h Handler) handleSummary(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		writeOrdersError(w, http.StatusMethodNotAllowed, "ORDERS_METHOD_NOT_ALLOWED", "method not allowed")
+		return
+	}
+	installationID, err := requiredInstallation(r.URL.Query())
+	if err != nil {
+		writeOrderReadError(w, err)
+		return
+	}
+	summary, err := h.summary.Summary(r.Context(), installationID, time.Now())
+	if err != nil {
+		switch {
+		case errors.Is(err, application.ErrSummaryInstallationRequired):
+			writeOrdersErrorDetails(w, http.StatusBadRequest, "installation_required", "installation_id é obrigatório", map[string]any{"key": "installation_id"})
+		case errors.Is(err, application.ErrSummaryStoreNotConfigured):
+			writeOrdersError(w, http.StatusServiceUnavailable, "ORDERS_SUMMARY_STORE_NOT_CONFIGURED", "orders summary is not configured")
+		default:
+			writeOrdersError(w, http.StatusInternalServerError, "ORDERS_INTERNAL_ERROR", "orders summary failed")
+		}
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, orderSummaryDTO{Today: summary.Today, SevenDays: summary.SevenDays})
 }
 
 // enrichedBuyerDTO is the ONLY buyer identification allowed onto the

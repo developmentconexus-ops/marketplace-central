@@ -1731,6 +1731,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /orders/summary:
+    get:
+      summary: Get today/last-7-days order counts for an installation
+      operationId: getOrdersSummary
+      description: >-
+        Additive read-only counts endpoint (F01-S5). Backed by the existing
+        orders summary store also used by the dashboard; the runtime DTO is
+        the source of truth (lock-exception D-02).
+      parameters:
+        - name: installation_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Order counts for today and the last 7 days
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderSummary'
+        "400":
+          description: Missing installation_id (installation_required)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "503":
+          description: Orders summary store is not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /orders/{provider_order_id}:
     get:
       summary: Get a persisted marketplace order
@@ -4600,6 +4633,17 @@ components:
           type: string
         status:
           type: string
+
+    OrderSummary:
+      type: object
+      required:
+        - today
+        - seven_days
+      properties:
+        today:
+          type: integer
+        seven_days:
+          type: integer
 
     ImportMarketplaceOrdersRequest:
       type: object

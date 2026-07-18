@@ -615,6 +615,11 @@ export interface OrderPage {
   next_cursor: string | null;
 }
 
+export interface OrderSummary {
+  today: number;
+  seven_days: number;
+}
+
 export interface OrderListOptions {
   installation_id: string;
   limit?: number;
@@ -1669,6 +1674,8 @@ export function createMarketplaceCentralClient(options: {
       getJson<OrderRead>(
         `/orders/${encodeURIComponent(providerOrderId)}?installation_id=${encodeURIComponent(installationId)}`,
       ),
+    getOrderSummary: (installationId: string) =>
+      getJson<OrderSummary>(`/orders/summary?installation_id=${encodeURIComponent(installationId)}`),
     getAssistedSankhyaLinkage: (installationId: string, providerOrderId: string) =>
       getJson<AssistedSankhyaLinkageResponse>(
         `/orders/${encodeURIComponent(providerOrderId)}/sankhya-linkage?installation_id=${encodeURIComponent(installationId)}`,
