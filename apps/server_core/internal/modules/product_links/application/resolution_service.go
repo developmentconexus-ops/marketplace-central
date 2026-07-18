@@ -29,6 +29,10 @@ type ApproveCandidateInput struct {
 	CandidateID string
 	Actor       domain.ActorMetadata
 	Reason      string
+	// BatchID tags the resulting audit entry with the batch it was
+	// approved under (S3 ApplyBatch). Empty for a standalone approval —
+	// additive field, existing callers default to "".
+	BatchID string
 }
 
 type RejectListingInput struct {
@@ -120,6 +124,7 @@ func (s *ResolutionService) ApproveCandidate(ctx context.Context, input ApproveC
 		Action:                domain.ProductLinkActionApproveCandidate,
 		Reason:                input.Reason,
 		Actor:                 input.Actor,
+		BatchID:               input.BatchID,
 	})
 	if err := s.workflows.ApplyProductLinkTransition(ctx, result); err != nil {
 		return domain.ProductLinkResolutionResult{}, err
@@ -273,6 +278,7 @@ type buildResolvedLinkInput struct {
 	Action                domain.ProductLinkAction
 	Reason                string
 	Actor                 domain.ActorMetadata
+	BatchID               string
 }
 
 type buildRejectedLinkInput struct {
@@ -326,6 +332,7 @@ func (s *ResolutionService) buildTransition(current domain.ProductLink, found bo
 				NextState:                 domain.ProductLinkStateResolved,
 				PreviousInternalProductID: prevProductID,
 				NextInternalProductID:     typed.InternalProductID,
+				BatchID:                   typed.BatchID,
 				CreatedAt:                 now,
 			},
 		}

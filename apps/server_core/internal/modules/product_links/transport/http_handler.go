@@ -3,6 +3,7 @@ package transport
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -36,12 +37,23 @@ type LinkWorkflowResolver interface {
 	ManualResolve(ctx context.Context, input application.ManualResolveInput) (domain.ProductLinkResolutionResult, error)
 }
 
+// BatchResolver is the batch dry-run (S2) + batch-apply (S3) surface for
+// product-links resolutions. Kept as its own narrow interface — additive to
+// LinkWorkflowResolver — so wiring it does not require touching NewHandler's
+// existing signature or its callers. A single injected *application.BatchService
+// satisfies both methods, so one root.go wiring call covers preview+apply.
+type BatchResolver interface {
+	PreviewBatch(ctx context.Context, input application.PreviewBatchInput) (application.PreviewBatchResult, error)
+	ApplyBatch(ctx context.Context, input application.ApplyBatchInput) (application.ApplyBatchResult, error)
+}
+
 type Handler struct {
 	importer         ListingSnapshotImporter
 	candidateMaker   LinkCandidateGenerator
 	candidateReader  LinkCandidateReader
 	workflowReader   LinkWorkflowReader
 	workflowResolver LinkWorkflowResolver
+	batchResolver    BatchResolver
 }
 
 func NewHandler(importer ListingSnapshotImporter, candidateMaker LinkCandidateGenerator, candidateReader LinkCandidateReader, workflowReader LinkWorkflowReader, workflowResolver LinkWorkflowResolver) Handler {
@@ -54,6 +66,16 @@ func NewHandler(importer ListingSnapshotImporter, candidateMaker LinkCandidateGe
 	}
 }
 
+// NewHandlerWithBatchPreview is an additive constructor (same precedent as
+// orders.NewHandlerWithReader) that also wires the batch surface (S2 preview
+// + S3 apply, via the single BatchResolver), without changing NewHandler's
+// existing signature/callers.
+func NewHandlerWithBatchPreview(importer ListingSnapshotImporter, candidateMaker LinkCandidateGenerator, candidateReader LinkCandidateReader, workflowReader LinkWorkflowReader, workflowResolver LinkWorkflowResolver, batchResolver BatchResolver) Handler {
+	h := NewHandler(importer, candidateMaker, candidateReader, workflowReader, workflowResolver)
+	h.batchResolver = batchResolver
+	return h
+}
+
 func (h Handler) Register(mux httpx.RouteRegistrar) {
 	mux.HandleFunc("/product-links/listing-snapshots/imports", h.handleListingSnapshotImports)
 	mux.HandleFunc("/product-links/link-candidates/generations", h.handleLinkCandidateGenerations)
@@ -62,6 +84,8 @@ func (h Handler) Register(mux httpx.RouteRegistrar) {
 	mux.HandleFunc("/product-links/link-resolutions/approve-candidate", h.handleApproveCandidate)
 	mux.HandleFunc("/product-links/link-resolutions/reject-listing", h.handleRejectListing)
 	mux.HandleFunc("/product-links/link-resolutions/manual-resolve", h.handleManualResolve)
+	mux.HandleFunc("/product-links/link-resolutions/batch-preview", h.handleBatchPreview)
+	mux.HandleFunc("/product-links/link-resolutions/batch", h.handleBatchApply)
 }
 
 type apiError struct {
@@ -333,6 +357,93 @@ func (h Handler) handleManualResolve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	slog.Info("product_links.link_resolutions", "action", "manual_resolve", "result", "200", "installation_id", req.InstallationID, "duration_ms", time.Since(start).Milliseconds())
+	httpx.WriteJSON(w, http.StatusOK, result)
+}
+
+func (h Handler) handleBatchPreview(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		slog.Info("product_links.link_resolutions", "action", "batch_preview_method", "result", "405", "duration_ms", time.Since(start).Milliseconds())
+		writeProductLinksError(w, http.StatusMethodNotAllowed, "PRODUCT_LINKS_METHOD_NOT_ALLOWED", "method not allowed")
+		return
+	}
+	if h.batchResolver == nil {
+		slog.Error("product_links.link_resolutions", "action", "batch_preview", "result", "500", "error", "batch resolver not configured", "duration_ms", time.Since(start).Milliseconds())
+		writeProductLinksError(w, http.StatusInternalServerError, "PRODUCT_LINKS_INTERNAL_ERROR", "internal error")
+		return
+	}
+	var req struct {
+		Approvals []struct {
+			CandidateID string `json:"candidate_id"`
+		} `json:"approvals"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		slog.Info("product_links.link_resolutions", "action", "batch_preview_decode", "result", "400", "duration_ms", time.Since(start).Milliseconds())
+		writeProductLinksError(w, http.StatusBadRequest, "PRODUCT_LINKS_INVALID_REQUEST", "malformed request body")
+		return
+	}
+	approvals := make([]application.BatchApprovalInput, 0, len(req.Approvals))
+	for _, item := range req.Approvals {
+		approvals = append(approvals, application.BatchApprovalInput{CandidateID: item.CandidateID})
+	}
+	result, err := h.batchResolver.PreviewBatch(r.Context(), application.PreviewBatchInput{Approvals: approvals})
+	if err != nil {
+		if errors.Is(err, application.ErrBatchApprovalsRequired) {
+			slog.Info("product_links.link_resolutions", "action", "batch_preview", "result", "422", "duration_ms", time.Since(start).Milliseconds())
+			writeProductLinksError(w, http.StatusUnprocessableEntity, "PRODUCT_LINKS_BATCH_APPROVALS_REQUIRED", "at least one approval is required")
+			return
+		}
+		status, code, message := mapProductLinksError(err)
+		slog.Error("product_links.link_resolutions", "action", "batch_preview", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
+		writeProductLinksError(w, status, code, message)
+		return
+	}
+	slog.Info("product_links.link_resolutions", "action", "batch_preview", "result", "200", "count", len(result.Items), "duration_ms", time.Since(start).Milliseconds())
+	httpx.WriteJSON(w, http.StatusOK, result)
+}
+
+func (h Handler) handleBatchApply(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		slog.Info("product_links.link_resolutions", "action", "reject_method", "result", "405", "duration_ms", time.Since(start).Milliseconds())
+		writeProductLinksError(w, http.StatusMethodNotAllowed, "PRODUCT_LINKS_METHOD_NOT_ALLOWED", "method not allowed")
+		return
+	}
+	if h.batchResolver == nil {
+		slog.Error("product_links.link_resolutions", "action", "batch_apply", "result", "500", "error", "batch resolver not configured", "duration_ms", time.Since(start).Milliseconds())
+		writeProductLinksError(w, http.StatusInternalServerError, "PRODUCT_LINKS_INTERNAL_ERROR", "internal error")
+		return
+	}
+	var req struct {
+		Approvals []struct {
+			CandidateID string `json:"candidate_id"`
+		} `json:"approvals"`
+		Actor domain.ActorMetadata `json:"actor"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		slog.Info("product_links.link_resolutions", "action", "batch_apply_decode", "result", "400", "duration_ms", time.Since(start).Milliseconds())
+		writeProductLinksError(w, http.StatusBadRequest, "PRODUCT_LINKS_INVALID_REQUEST", "malformed request body")
+		return
+	}
+	approvals := make([]application.ApplyApprovalInput, 0, len(req.Approvals))
+	for _, item := range req.Approvals {
+		approvals = append(approvals, application.ApplyApprovalInput{CandidateID: item.CandidateID})
+	}
+	result, err := h.batchResolver.ApplyBatch(r.Context(), application.ApplyBatchInput{Approvals: approvals, Actor: req.Actor})
+	if err != nil {
+		if errors.Is(err, application.ErrBatchApprovalsRequired) {
+			slog.Info("product_links.link_resolutions", "action", "batch_apply", "result", "422", "duration_ms", time.Since(start).Milliseconds())
+			writeProductLinksError(w, http.StatusUnprocessableEntity, "PRODUCT_LINKS_BATCH_APPROVALS_REQUIRED", "at least one approval is required")
+			return
+		}
+		status, code, message := mapProductLinksError(err)
+		slog.Error("product_links.link_resolutions", "action", "batch_apply", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
+		writeProductLinksError(w, status, code, message)
+		return
+	}
+	slog.Info("product_links.link_resolutions", "action", "batch_apply", "result", "200", "batch_id", result.BatchID, "applied", len(result.Applied), "failed", len(result.Failed), "duration_ms", time.Since(start).Milliseconds())
 	httpx.WriteJSON(w, http.StatusOK, result)
 }
 

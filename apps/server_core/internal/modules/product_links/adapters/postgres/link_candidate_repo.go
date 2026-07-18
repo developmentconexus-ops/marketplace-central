@@ -321,11 +321,11 @@ func (r *LinkCandidateRepository) ApplyProductLinkTransition(ctx context.Context
 		INSERT INTO product_link_audit_entries (
 			tenant_id, audit_id, installation_id, provider_code, provider_item_id, provider_variation_id,
 			action, reason, source_candidate_id, actor_type, actor_id, actor_name,
-			previous_state, next_state, previous_internal_product_id, next_internal_product_id, created_at
+			previous_state, next_state, previous_internal_product_id, next_internal_product_id, batch_id, created_at
 		) VALUES (
 			$1, $2, $3, $4, $5, $6,
 			$7, $8, $9, $10, $11, $12,
-			$13, $14, $15, $16, $17
+			$13, $14, $15, $16, $17, $18
 		)
 	`, r.tenantID,
 		transition.Audit.AuditID,
@@ -343,12 +343,51 @@ func (r *LinkCandidateRepository) ApplyProductLinkTransition(ctx context.Context
 		transition.Audit.NextState,
 		transition.Audit.PreviousInternalProductID,
 		transition.Audit.NextInternalProductID,
+		transition.Audit.BatchID,
 		transition.Audit.CreatedAt,
 	)
 	if err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+// InsertBatch persists the module-owned batch audit row for a completed
+// ApplyBatch run (S3, C02 "tabela própria").
+func (r *LinkCandidateRepository) InsertBatch(ctx context.Context, batch domain.ProductLinkBatch) error {
+	if r.pool == nil {
+		return nil
+	}
+	_, err := r.pool.Exec(ctx, `
+		INSERT INTO product_link_batches (
+			tenant_id, batch_id, installation_id, actor_type, actor_id, actor_name,
+			requested_count, applied_count, failed_count, status, created_at
+		) VALUES (
+			$1, $2, $3, $4, $5, $6,
+			$7, $8, $9, $10, $11
+		)
+		ON CONFLICT (tenant_id, batch_id) DO UPDATE SET
+			installation_id = EXCLUDED.installation_id,
+			actor_type = EXCLUDED.actor_type,
+			actor_id = EXCLUDED.actor_id,
+			actor_name = EXCLUDED.actor_name,
+			requested_count = EXCLUDED.requested_count,
+			applied_count = EXCLUDED.applied_count,
+			failed_count = EXCLUDED.failed_count,
+			status = EXCLUDED.status
+	`, r.tenantID,
+		batch.BatchID,
+		batch.InstallationID,
+		batch.Actor.ActorType,
+		batch.Actor.ActorID,
+		batch.Actor.ActorName,
+		batch.RequestedCount,
+		batch.AppliedCount,
+		batch.FailedCount,
+		batch.Status,
+		batch.CreatedAt,
+	)
+	return err
 }
 
 func (r *LinkCandidateRepository) ListProductLinks(ctx context.Context, installationID string, limit int) ([]domain.ProductLink, error) {
@@ -408,7 +447,7 @@ func (r *LinkCandidateRepository) ListProductLinkAuditEntries(ctx context.Contex
 		SELECT
 			audit_id, installation_id, provider_code, provider_item_id, provider_variation_id,
 			action, reason, source_candidate_id, actor_type, actor_id, actor_name,
-			previous_state, next_state, previous_internal_product_id, next_internal_product_id, created_at
+			previous_state, next_state, previous_internal_product_id, next_internal_product_id, batch_id, created_at
 		FROM product_link_audit_entries
 		WHERE tenant_id = $1
 		  AND installation_id = $2
@@ -442,6 +481,7 @@ func (r *LinkCandidateRepository) ListProductLinkAuditEntries(ctx context.Contex
 			&audit.NextState,
 			&previousInternalProductID,
 			&nextInternalProductID,
+			&audit.BatchID,
 			&createdAt,
 		); err != nil {
 			return nil, err

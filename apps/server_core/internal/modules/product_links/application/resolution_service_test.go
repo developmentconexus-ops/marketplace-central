@@ -16,9 +16,20 @@ type stubWorkflowStore struct {
 	audits         []productlinksdomain.ProductLinkAuditEntry
 	applied        []productlinksdomain.ProductLinkTransition
 	auditIDCounter int
+	batches        []productlinksdomain.ProductLinkBatch
+	// linksByIdentity tracks every applied link by identity (rather than
+	// just the single pre-seeded currentLink), so batch-apply tests with
+	// multiple distinct identities can assert each one individually
+	// (e.g. re-evaluating a just-applied candidate now reports
+	// ALREADY_RESOLVED, without clobbering other identities' state).
+	linksByIdentity map[string]productlinksdomain.ProductLink
 }
 
 func (s *stubWorkflowStore) GetProductLink(_ context.Context, identity productlinksdomain.ListingIdentity) (productlinksdomain.ProductLink, bool, error) {
+	key := identityKey(identity.InstallationID, identity.ProviderItemID, identity.ProviderVariationID)
+	if link, ok := s.linksByIdentity[key]; ok {
+		return link, true, nil
+	}
 	if s.linkFound &&
 		s.currentLink.InstallationID == identity.InstallationID &&
 		s.currentLink.ProviderItemID == identity.ProviderItemID &&
@@ -34,6 +45,11 @@ func (s *stubWorkflowStore) ApplyProductLinkTransition(_ context.Context, transi
 	s.linkFound = true
 	s.links = []productlinksdomain.ProductLink{transition.Link}
 	s.audits = append([]productlinksdomain.ProductLinkAuditEntry{transition.Audit}, s.audits...)
+	if s.linksByIdentity == nil {
+		s.linksByIdentity = map[string]productlinksdomain.ProductLink{}
+	}
+	key := identityKey(transition.Link.InstallationID, transition.Link.ProviderItemID, transition.Link.ProviderVariationID)
+	s.linksByIdentity[key] = transition.Link
 	return nil
 }
 
@@ -55,6 +71,16 @@ func (s *stubWorkflowStore) ListProductLinkAuditEntries(_ context.Context, insta
 		}
 	}
 	return items, nil
+}
+
+// InsertBatch is the S3 batch-audit write. Kept on the shared stub (rather
+// than only in batch_service_test.go) because widening
+// ports.ProductLinkWorkflowStore with this method means every stub
+// implementing the interface — including this resolution_service_test.go
+// fixture used by NewResolutionService — must keep compiling.
+func (s *stubWorkflowStore) InsertBatch(_ context.Context, batch productlinksdomain.ProductLinkBatch) error {
+	s.batches = append(s.batches, batch)
+	return nil
 }
 
 func TestApproveCandidateCreatesResolvedLinkAndAudit(t *testing.T) {
