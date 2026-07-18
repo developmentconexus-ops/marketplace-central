@@ -2,7 +2,6 @@ CREATE TABLE IF NOT EXISTS erp_import_protocols (
     id UUID PRIMARY KEY,
     tenant_id TEXT NOT NULL,
     file_sha256 TEXT NOT NULL,
-    filename_sanitized TEXT NOT NULL,
     protocol TEXT NOT NULL,
     source TEXT NOT NULL,
     imported_at TIMESTAMPTZ NOT NULL,
