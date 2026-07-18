@@ -62,3 +62,40 @@ Enums de source/status, regras de agregação, semântica price_to_win (alvo com
 ## Validation Impact
 
 Teste negativo ADR-17 (VC M-02); QA visual: FreshnessIndicator + fonte presentes em Anúncios, Produto Detalhe, Simulador, Dashboard.
+
+## Amendment A1 — 2026-07-17 (hub-ratified, D-12; drafted by CHIP-M02 per D-04 flow)
+
+F-04 public JSON freeze. Money = decimal string; null stays null (ADR-17).
+
+**POST /market/collections 200 envelope:**
+```json
+{
+  "status": "COMPLETED|PARTIAL",
+  "decisões": [{"codprod": ..., "match_status": ..., "price_evidence_status": ..., "blocking_state": "...|null"}],
+  "contagens": {"ok": 0, "no_price_evidence": 0, "insufficient_market": 0, "no_candidate": 0, "sem_custo": 0},
+  "causas": [{"codprod": ..., "reason": "FLAG_DISABLED|PROVIDER_4XX|PROVIDER_5XX|NO_IDENTITY|TIMEOUT", "detail": "...|null"}]
+}
+```
+- `decisões` in input order; `causas` = non-OK rows only; `contagens` rolls up `decisões`.
+- RULING: `contagens` keys = lower snake_case (hub-approved) — wire keys decoupled from
+  UPPER Go enum constants per D-04 "enum-keyed snake_case count maps".
+
+**Verdict (per codprod):**
+```json
+{
+  "match_status": ...,
+  "price_evidence_status": ...,
+  "verdict_label": null,
+  "blocking_state": "NO_CANDIDATE|NO_PRICE_EVIDENCE|INSUFFICIENT_MARKET|SEM_CUSTO|null",
+  "inputs_used": {"<input>": {"source": "ml_sale_price|ml_price_to_win|ml_catalog_offers|erp_cost", "as_of": "RFC3339"}},
+  "market_range": {"min_valid": "dec|null", "median": "dec|null", "currency": "BRL", "n_offers": 0, "n_sellers": 0}
+}
+```
+- `verdict_label` ALWAYS null from M-02 in MIS-004 (Q3/D-04: no margin label crosses the
+  M-02 boundary; verde/âmbar = M-07-owned via IC-04 CalcProfile).
+- `market_range` mirrors frozen MarketAggregate EXACTLY — NO max field; present whenever
+  price evidence exists, including SEM_CUSTO.
+- SEM_CUSTO cost input = consumer-side minimal port mirroring IC-02 GetCostAsOf,
+  hub-wired at composition root post-merge (Q3).
+- Aggregates product-vs-source-keyed: F-04-S1 internal decision; GET /market/aggregates
+  stays product-keyed; exposed JSON unaffected (excluded from this amendment).
