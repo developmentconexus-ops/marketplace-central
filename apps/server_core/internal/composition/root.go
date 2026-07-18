@@ -587,12 +587,14 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	listingCostReader := listingsinternalread.NewCostReader(internalreadoracle.NewBatchReader(oracleDB, oracleBatchSemaphore))
 	listingPolicyReader := listingsmarketplaces.NewPolicyReader(marketSvc)
 	listingInstallationReader := listingsintegrations.NewInstallationReader(installationSvc)
-	listingSvc := listingsapp.NewReadService(
+	listingEvidenceReader := newListingsEvidenceAdapter(marketEvidenceSvc)
+	listingSvc := listingsapp.NewReadServiceWithEvidence(
 		listingRepo,
 		listingCostReader,
 		listingPolicyReader,
 		listingInstallationReader,
 		time.Now,
+		listingEvidenceReader,
 	)
 	listingstransport.NewReadHandler(listingSvc).Register(mux)
 	dashboardSvc := dashboardapp.NewService(
