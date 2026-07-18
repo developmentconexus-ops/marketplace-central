@@ -560,6 +560,7 @@ export interface OrderReadItem {
   sale_fee_amount?: number;
   link_quality: OrderLinkQuality;
   internal_product_id?: number;
+  custo_unitario?: number;
 }
 
 export interface OrderReadPayment {
@@ -567,6 +568,22 @@ export interface OrderReadPayment {
   provider_status?: string;
   transaction_amount?: number;
   total_paid_amount?: number;
+}
+
+export interface OrderBuyer {
+  display: string;
+  city?: string;
+  uf?: string;
+}
+
+export interface OrderSla {
+  due?: string;
+  atrasado?: boolean;
+}
+
+export interface OrderRastreio {
+  shipment_id: string;
+  status: string;
 }
 
 export interface OrderRead {
@@ -585,6 +602,12 @@ export interface OrderRead {
   provider_updated_at: string | null;
   items: OrderReadItem[];
   payments: OrderReadPayment[];
+  vinculo_status?: string;
+  buyer?: OrderBuyer;
+  componentes_desconhecidos?: string[];
+  sla?: OrderSla;
+  destino_uf?: string;
+  rastreio?: OrderRastreio;
 }
 
 export interface OrderPage {

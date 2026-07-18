@@ -4464,6 +4464,9 @@ components:
           $ref: '#/components/schemas/OrderLinkQuality'
         internal_product_id:
           type: integer
+        custo_unitario:
+          type: number
+          format: double
 
     OrderReadPayment:
       type: object
@@ -4548,6 +4551,55 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/OrderReadPayment'
+        vinculo_status:
+          type: string
+          enum:
+            - OK
+            - SEM_VINCULO
+        buyer:
+          $ref: '#/components/schemas/OrderBuyer'
+        componentes_desconhecidos:
+          type: array
+          items:
+            type: string
+        sla:
+          $ref: '#/components/schemas/OrderSla'
+        destino_uf:
+          type: string
+        rastreio:
+          $ref: '#/components/schemas/OrderRastreio'
+
+    OrderBuyer:
+      type: object
+      required:
+        - display
+      properties:
+        display:
+          type: string
+        city:
+          type: string
+        uf:
+          type: string
+
+    OrderSla:
+      type: object
+      properties:
+        due:
+          type: string
+          format: date-time
+        atrasado:
+          type: boolean
+
+    OrderRastreio:
+      type: object
+      required:
+        - shipment_id
+        - status
+      properties:
+        shipment_id:
+          type: string
+        status:
+          type: string
 
     ImportMarketplaceOrdersRequest:
       type: object
