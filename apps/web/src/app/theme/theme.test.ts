@@ -10,6 +10,24 @@ import {
 } from "./theme";
 import { useTheme } from "./useTheme";
 
+// jsdom under this repo's vitest env (jsdom 26 / vitest 3.2.4) does not instantiate Web Storage:
+// window.localStorage is undefined (env-verified 2026-07-17). Install a spec-shaped, Map-backed
+// localStorage whose methods live on Storage.prototype so vi.spyOn(Storage.prototype, ...) below
+// still intercepts them. No-op in a real browser env where localStorage already exists.
+if (typeof globalThis.localStorage === "undefined") {
+  const store = new Map<string, string>();
+  const def = (name: string, value: unknown) =>
+    Object.defineProperty(Storage.prototype, name, { configurable: true, writable: true, value });
+  def("getItem", (key: string) => (store.has(key) ? store.get(key)! : null));
+  def("setItem", (key: string, value: string) => void store.set(key, String(value)));
+  def("removeItem", (key: string) => void store.delete(key));
+  def("clear", () => store.clear());
+  def("key", (index: number) => Array.from(store.keys())[index] ?? null);
+  const localStorage = Object.create(Storage.prototype) as Storage;
+  Object.defineProperty(globalThis, "localStorage", { configurable: true, value: localStorage });
+  Object.defineProperty(window, "localStorage", { configurable: true, value: localStorage });
+}
+
 describe("theme storage", () => {
   afterEach(() => {
     vi.restoreAllMocks();
