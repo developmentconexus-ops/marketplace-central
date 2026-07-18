@@ -49,7 +49,7 @@ describe("VinculosPage", () => {
           provider_item_id: "MLB1",
           state: "exact_sku",
           match_input: "seller_sku",
-          confidence: 0.95,
+          confidence: 95,
           confidence_band: "ALTA",
           match_status: "REVIEW",
           reasons: [],

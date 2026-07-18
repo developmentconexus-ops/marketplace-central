@@ -35,7 +35,7 @@ function pill(label: string, className: string) {
 
 function confidencePercent(confidence: number): string {
   if (!Number.isFinite(confidence)) return "";
-  return `${Math.round(confidence * 100)}%`;
+  return `${Math.round(confidence)}%`;
 }
 
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {

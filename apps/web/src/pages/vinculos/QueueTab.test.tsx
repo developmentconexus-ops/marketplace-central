@@ -29,7 +29,7 @@ function candidate(overrides: Partial<ProductLinkCandidateItem>): ProductLinkCan
     provider_item_id: "MLB_X",
     state: "title_match",
     match_input: "title",
-    confidence: 0.5,
+    confidence: 50,
     confidence_band: "MEDIA",
     match_status: "REVIEW",
     reasons: [],
@@ -67,7 +67,7 @@ describe("QueueTab", () => {
           provider_item_id: "MLB1",
           internal_product_id: 111,
           internal_product_name: "Parafuso A",
-          confidence: 0.95,
+          confidence: 95,
           confidence_band: "ALTA",
           reasons: [{ anchor: "SKU idêntico", direction: "FOR", detail: "100%" }],
         }),
@@ -75,7 +75,7 @@ describe("QueueTab", () => {
           candidate_id: "cand_2",
           provider_item_id: "MLB2",
           internal_product_id: 222,
-          confidence: 0.6,
+          confidence: 60,
           confidence_band: "MEDIA",
           reasons: [{ anchor: "Título parcial", direction: "AGAINST", detail: "62%" }],
         }),
@@ -83,7 +83,7 @@ describe("QueueTab", () => {
           candidate_id: "cand_3",
           provider_item_id: "MLB3",
           internal_product_id: 333,
-          confidence: 0.3,
+          confidence: 30,
           confidence_band: "BAIXA",
           reasons: [{ anchor: "EAN", direction: "UNAVAILABLE", detail: "sem EAN" }],
         }),
@@ -106,6 +106,12 @@ describe("QueueTab", () => {
     expect(screen.getByText("Título parcial: 62%")).toBeInTheDocument();
     // A reason with no % still renders its motivo (never blank / never a bare value).
     expect(screen.getByText("EAN: sem EAN")).toBeInTheDocument();
+
+    // Regression guard: confidence is already an integer 0-100 percentage (OpenAPI
+    // ProductLinkCandidate.confidence). A candidate with confidence: 95 must render
+    // exactly "95%" — never "9500%" (double-scaled) and never "0.95%" (unscaled raw).
+    expect(screen.getByText("95%")).toBeInTheDocument();
+    expect(screen.queryByText("9500%")).not.toBeInTheDocument();
   });
 
   it("renders an honest NO_CANDIDATE row instead of a blank row", async () => {
@@ -139,7 +145,7 @@ describe("QueueTab", () => {
             candidate_id: "cand_1",
             provider_item_id: "MLB1",
             internal_product_id: 111,
-            confidence: 0.95,
+            confidence: 95,
             confidence_band: "ALTA",
           }),
         ],
@@ -175,7 +181,7 @@ describe("QueueTab", () => {
           provider_item_id: "MLB1",
           internal_product_id: 111,
           internal_product_name: "Parafuso A",
-          confidence: 0.95,
+          confidence: 95,
           confidence_band: "ALTA",
           reasons: [{ anchor: "SKU idêntico", direction: "FOR", detail: "100%" }],
         }),
