@@ -46,6 +46,7 @@ type CapabilityAdapter struct {
 var _ ports.MarketReader = (*CapabilityAdapter)(nil)
 var _ ports.CatalogOffersReader = (*CapabilityAdapter)(nil)
 var _ ports.CatalogReader = (*CapabilityAdapter)(nil)
+var _ ports.ShipmentReader = (*CapabilityAdapter)(nil)
 
 func NewCapabilityAdapter(cfg CapabilityAdapterConfig) *CapabilityAdapter {
 	baseURL := strings.TrimRight(strings.TrimSpace(cfg.BaseURL), "/")
@@ -135,6 +136,30 @@ func (a *CapabilityAdapter) GetCatalogProduct(ctx context.Context, accountRef do
 		return domain.CatalogProduct{}, mapPricingReaderError(err)
 	}
 	return a.getCatalogProduct(ctx, accountRef, token, strings.TrimSpace(catalogProductID))
+}
+
+func (a *CapabilityAdapter) GetShipmentInfo(ctx context.Context, accountRef domain.ProviderAccountRef, shipmentID string) (domain.ShipmentInfo, error) {
+	accountRef, err := normalizeAccountRef(accountRef)
+	if err != nil {
+		return domain.ShipmentInfo{}, err
+	}
+	token, err := a.accessToken(ctx, accountRef)
+	if err != nil {
+		return domain.ShipmentInfo{}, mapPricingReaderError(err)
+	}
+	return a.getShipmentInfo(ctx, accountRef, token, strings.TrimSpace(shipmentID))
+}
+
+func (a *CapabilityAdapter) GetFreeShippingCost(ctx context.Context, accountRef domain.ProviderAccountRef, query domain.FreeShippingQuery) (domain.FreeShippingCost, error) {
+	accountRef, err := normalizeAccountRef(accountRef)
+	if err != nil {
+		return domain.FreeShippingCost{}, err
+	}
+	token, err := a.accessToken(ctx, accountRef)
+	if err != nil {
+		return domain.FreeShippingCost{}, mapPricingReaderError(err)
+	}
+	return a.getFreeShippingCost(ctx, accountRef, token, query)
 }
 
 func (a *CapabilityAdapter) ListCatalogOffers(ctx context.Context, accountRef domain.ProviderAccountRef, catalogProductID string) ([]domain.CatalogOffer, error) {
