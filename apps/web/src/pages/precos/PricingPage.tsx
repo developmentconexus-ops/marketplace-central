@@ -12,6 +12,7 @@ import { DecompositionPanel } from "./DecompositionPanel";
 import { ParamsDrawer } from "./ParamsDrawer";
 import { DifalDrawer } from "./DifalDrawer";
 import { MarketComparison } from "./MarketComparison";
+import { ApplyPriceAction } from "./ApplyPriceAction";
 
 /** Seed padrão thresholds/regime used until the operator's profile loads (or if it errors). */
 const DEFAULT_PROFILE: PricingCalcProfile = {
@@ -109,6 +110,26 @@ export function PricingPage() {
     const byId = products.find((p) => p.internal_product_id === selectedId);
     return byId ?? products[0];
   }, [products, selectedId]);
+
+  // "Aplicar preço" targets an ML listing under an installation — resolve both
+  // (installation app-wide, listing by the selected product) for the action.
+  const installationsQuery = useQuery({
+    queryKey: ["pricing", "installations"],
+    queryFn: () => client.listIntegrationInstallations(),
+  });
+  const installationId = installationsQuery.data?.items[0]?.installation_id ?? "";
+
+  const listingQuery = useQuery({
+    queryKey: ["pricing", "listing", installationId, selected?.internal_product_id ?? null],
+    queryFn: () =>
+      client.listListingsByProduct({
+        installation_id: installationId,
+        product_id: String(selected!.internal_product_id),
+        limit: 1,
+      }),
+    enabled: installationId !== "" && selected !== null,
+  });
+  const listingId = listingQuery.data?.items[0]?.listing_id ?? null;
 
   // Working price: explicit input wins, else the product's current price.
   const preco = precoInput.trim() !== "" ? precoInput.trim() : selected?.current_price.amount ?? "";
@@ -245,7 +266,7 @@ export function PricingPage() {
             </div>
 
             <div data-testid="region-aplicar" className="rounded-lg border border-border bg-surface p-3">
-              <p className="text-sm text-muted">Aplicar preço</p>
+              <ApplyPriceAction installationId={installationId} listingId={listingId} newPrice={preco} />
             </div>
           </section>
         </div>

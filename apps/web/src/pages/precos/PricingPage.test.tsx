@@ -74,11 +74,20 @@ const pricingSolveTarget = vi.fn();
 const putPricingProfile = vi.fn((next: PricingCalcProfile) => Promise.resolve(next));
 const listPricingDifal = vi.fn(() => Promise.resolve(difalList));
 const putPricingDifalOverride = vi.fn(() => Promise.resolve({ persisted: true, rate: difalList.items[0] }));
+const listIntegrationInstallations = vi.fn(() =>
+  Promise.resolve({ items: [{ installation_id: "inst_test" }] }),
+);
+const listListingsByProduct = vi.fn(() =>
+  Promise.resolve({ items: [{ listing_id: "MLB3758134295" }], next_cursor: null, page_size: 1 }),
+);
 
-// The market comparison panel owns its own IC-03 client + query; the page test
-// stubs it so /precos page behavior is exercised without a live market fetch.
+// The market comparison + apply panels own their own client seams/mutations; the
+// page test stubs them so /precos page behavior runs without their side effects.
 vi.mock("./MarketComparison", () => ({
   MarketComparison: () => <div data-testid="market-comparison-stub" />,
+}));
+vi.mock("./ApplyPriceAction", () => ({
+  ApplyPriceAction: () => <div data-testid="apply-action-stub" />,
 }));
 
 vi.mock("../../app/ClientContext", () => ({
@@ -90,6 +99,8 @@ vi.mock("../../app/ClientContext", () => ({
     putPricingProfile,
     listPricingDifal,
     putPricingDifalOverride,
+    listIntegrationInstallations,
+    listListingsByProduct,
   }),
 }));
 
