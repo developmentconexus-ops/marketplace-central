@@ -4,26 +4,36 @@ import { Badge } from "./Badge";
 describe("Badge", () => {
   it("renders pending status", () => {
     render(<Badge status="pending" />);
-    expect(screen.getByText("Pending")).toBeInTheDocument();
+    const badge = screen.getByText("Pending");
+    expect(badge).toBeInTheDocument();
+    expect(badge).toHaveClass("bg-surface-2", "text-muted");
   });
 
   it("renders succeeded status", () => {
     render(<Badge status="succeeded" />);
-    expect(screen.getByText("Succeeded")).toBeInTheDocument();
+    const badge = screen.getByText("Succeeded");
+    expect(badge).toBeInTheDocument();
+    expect(badge).toHaveClass("bg-accent-soft", "text-accent-ink");
   });
 
   it("renders failed status", () => {
     render(<Badge status="failed" />);
-    expect(screen.getByText("Failed")).toBeInTheDocument();
+    const badge = screen.getByText("Failed");
+    expect(badge).toBeInTheDocument();
+    expect(badge).toHaveClass("bg-warn-soft", "text-warn");
   });
 
   it("renders in_progress status", () => {
     render(<Badge status="in_progress" />);
-    expect(screen.getByText("In Progress")).toBeInTheDocument();
+    const badge = screen.getByText("In Progress");
+    expect(badge).toBeInTheDocument();
+    expect(badge).toHaveClass("bg-info-soft", "text-info");
   });
 
   it("renders completed status", () => {
     render(<Badge status="completed" />);
-    expect(screen.getByText("Completed")).toBeInTheDocument();
+    const badge = screen.getByText("Completed");
+    expect(badge).toBeInTheDocument();
+    expect(badge).toHaveClass("bg-accent-soft", "text-accent-ink");
   });
 });

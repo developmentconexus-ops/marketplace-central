@@ -5,5 +5,5 @@ interface SurfaceCardProps {
 }
 
 export function SurfaceCard({ children, className = "" }: PropsWithChildren<SurfaceCardProps>) {
-  return <section className={`bg-white border border-slate-200 rounded-xl p-6 ${className}`}>{children}</section>;
+  return <section className={`bg-surface border border-border rounded-card p-6 ${className}`}>{children}</section>;
 }

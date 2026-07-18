@@ -8,9 +8,9 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<Variant, string> = {
-  primary: "bg-blue-600 hover:bg-blue-700 text-white border-transparent",
-  secondary: "bg-white hover:bg-slate-50 text-slate-700 border-slate-200",
-  danger: "bg-red-600 hover:bg-red-700 text-white border-transparent",
+  primary: "bg-accent hover:bg-accent-ink text-white border-transparent",
+  secondary: "bg-surface hover:bg-surface-2 text-ink border-border",
+  danger: "bg-warn hover:opacity-90 text-white border-transparent",
 };
 
 export function Button({
@@ -27,7 +27,7 @@ export function Button({
     <button
       type={type}
       disabled={isDisabled}
-      className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border cursor-pointer transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed ${variantClasses[variant]} ${className}`}
+      className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-control border cursor-pointer transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed ${variantClasses[variant]} ${className}`}
       {...props}
     >
       {loading && (
