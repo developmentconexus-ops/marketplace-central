@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -25,22 +26,25 @@ const (
 type AccessTokenResolver func(context.Context, domain.ProviderAccountRef) (string, error)
 
 type CapabilityAdapterConfig struct {
-	BaseURL             string
-	SiteID              string
-	HTTPClient          *http.Client
-	AccessTokenResolver AccessTokenResolver
-	Now                 func() time.Time
+	BaseURL              string
+	SiteID               string
+	HTTPClient           *http.Client
+	AccessTokenResolver  AccessTokenResolver
+	Now                  func() time.Time
+	CatalogOffersEnabled bool
 }
 
 type CapabilityAdapter struct {
-	baseURL             string
-	siteID              string
-	httpClient          *http.Client
-	accessTokenResolver AccessTokenResolver
-	now                 func() time.Time
+	baseURL              string
+	siteID               string
+	httpClient           *http.Client
+	accessTokenResolver  AccessTokenResolver
+	now                  func() time.Time
+	catalogOffersEnabled bool
 }
 
 var _ ports.MarketReader = (*CapabilityAdapter)(nil)
+var _ ports.CatalogOffersReader = (*CapabilityAdapter)(nil)
 
 func NewCapabilityAdapter(cfg CapabilityAdapterConfig) *CapabilityAdapter {
 	baseURL := strings.TrimRight(strings.TrimSpace(cfg.BaseURL), "/")
@@ -61,11 +65,12 @@ func NewCapabilityAdapter(cfg CapabilityAdapterConfig) *CapabilityAdapter {
 	}
 
 	return &CapabilityAdapter{
-		baseURL:             baseURL,
-		siteID:              siteID,
-		httpClient:          httpClient,
-		accessTokenResolver: cfg.AccessTokenResolver,
-		now:                 now,
+		baseURL:              baseURL,
+		siteID:               siteID,
+		httpClient:           httpClient,
+		accessTokenResolver:  cfg.AccessTokenResolver,
+		now:                  now,
+		catalogOffersEnabled: cfg.CatalogOffersEnabled,
 	}
 }
 
@@ -105,6 +110,37 @@ func (a *CapabilityAdapter) GetPriceToWin(ctx context.Context, accountRef domain
 		return domain.PriceToWin{}, mapPricingReaderError(err)
 	}
 	return a.getPriceToWin(ctx, accountRef, token, strings.TrimSpace(itemID))
+}
+
+func (a *CapabilityAdapter) ListCatalogOffers(ctx context.Context, accountRef domain.ProviderAccountRef, catalogProductID string) ([]domain.CatalogOffer, error) {
+	started := time.Now()
+	status := "error"
+	pageCount := 0
+	offerCount := 0
+	defer func() { logCatalogOffers(status, pageCount, offerCount, started) }()
+	if !a.catalogOffersEnabled {
+		status = "unavailable"
+		return nil, domain.ErrCatalogOffersUnavailable
+	}
+	accountRef, err := normalizeAccountRef(accountRef)
+	if err != nil {
+		return nil, err
+	}
+	token, err := a.accessToken(ctx, accountRef)
+	if err != nil {
+		return nil, mapPricingReaderError(err)
+	}
+	offers, pages, err := a.listCatalogOffers(ctx, accountRef, token, strings.TrimSpace(catalogProductID))
+	pageCount = pages
+	if err != nil {
+		if errors.Is(err, domain.ErrCatalogOffersUnavailable) {
+			status = "unavailable"
+		}
+		return nil, err
+	}
+	offerCount = len(offers)
+	status = "ok"
+	return offers, nil
 }
 
 func (a *CapabilityAdapter) ProbeAccount(ctx context.Context, ref domain.ProviderAccountRef) (domain.AccountSnapshot, error) {
