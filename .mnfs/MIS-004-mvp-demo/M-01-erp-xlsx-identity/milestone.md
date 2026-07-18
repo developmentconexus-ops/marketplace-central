@@ -3,11 +3,11 @@
 ```yaml
 id: M-01
 type: milestone
-status: planned
+status: closed
 owner: Mission Strategist
 parent: MIS-004
 created: 2026-07-17
-updated: 2026-07-17
+updated: 2026-07-18
 validation_level: QA-0
 lifecycle_scope: milestone
 ```
@@ -55,10 +55,9 @@ Import de planilha exemplo real completa com protocolo; linha inválida rejeitad
 
 ## Handoff
 
-- Current status: planned.
-- Next owner: hub (dispatch chip wave A).
-- Next action: chip implementa F-01∥F-02 → F-03.
-- Required files/evidence: `validation-result.md` deste milestone; relatório de import em evidência QA.
+- Current status: **CLOSED** (2026-07-18). P7 QA live-drive PASS C01–C06 — see `validation-result.md`. Merged to main @ 69764da (chip branch f19d4376 + hub fixes).
+- Next owner: hub (wave B dispatch — M-01 edges to M-04/M-06/M-07/M-08 now satisfied).
+- Carried finding: F-QA-M01-1 (`GET /catalog/products/{id}` 500 in xlsx mode) → M-06 context pack.
 - Blockers or open decisions: none.
 
 ## Correction Handoff

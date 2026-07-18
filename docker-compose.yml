@@ -26,6 +26,7 @@ services:
       SERVER_ADDR: ":8080"
       MC_DATABASE_URL: postgres://marketplace:marketplace@postgres:5432/marketplace_central?sslmode=disable
       MPC_ORACLE_LIB_DIR: /opt/oracle/instantclient
+      MC_ERP_SOURCE: ${MC_ERP_SOURCE:-xlsx}
       RUN_MIGRATIONS: "1"
     working_dir: /workspace
     volumes:
