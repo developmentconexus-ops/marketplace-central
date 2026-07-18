@@ -45,6 +45,16 @@ Toda exibição de preço de mercado carrega: `source`, `fetched_at` (⇒ idade 
 
 Coleta falha/null grava tentativa `FAILED` NOVA; último snapshot `VALID` permanece intacto e visivelmente envelhecido. `buy_box_winner` null ⇒ NÃO produz snapshot de preço (fica `NO_PRICE_EVIDENCE`). Expiração marca `EXPIRED`, não deleta.
 
+**Amendment A1 (2026-07-18, hub ruling D-34).** Clarificação vinculante da cláusula acima
+para fontes de LISTING (`ml_sale_price`, `ml_price_to_win`): leitura com `err == nil` e preço
+ausente (ex.: anúncio pausado, ML omite `current_price`) é "coleta null" — grava tentativa
+`FAILED` NOVA com causa `PRICE_UNAVAILABLE` + `run` marca `PARTIAL`. O único carve-out de null
+sem tentativa FAILED segue sendo `buy_box_winner` (catálogo/agregado). Enum de causa
+(`CollectionCause` / `causas.reason`) passa a ser, fechado: `NO_IDENTITY` | `FLAG_DISABLED` |
+`PROVIDER_4XX` | `PROVIDER_5XX` | `TIMEOUT` | `PRICE_UNAVAILABLE`. (`TIMEOUT` já constava na
+lista de causas do amendment anterior e faltava no código — mesma correção.) Narrowing do
+card F-04-S3 ("provider-fail ⇒ FAILED", omitindo o ramo null) fica SUPERSEDED por este texto.
+
 ## Error Matrix
 
 | Case | Status | Code | Notes |
