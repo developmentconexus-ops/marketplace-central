@@ -1,10 +1,14 @@
 # Harness Profile — marketplace-central
 
-**Layer:** REPO (binds with `docs/HARNESS-CORE.md` — vendored from plugin `harness@mnfs-harness`;
-mission content lives in `.mnfs/`).
+**Layer:** REPO (binds with the `harness@mnfs-harness` plugin's `HARNESS-CORE.md` +
+`REVIEW-STANDARD.md` — canonical source `Documents/mnfs-harness/harness/`, loaded by the
+harness skills; mission content lives in `.mnfs/`). This profile is the ONLY doctrine file
+vendored in-repo — the method (core + review-standard) is plugin-sourced, not duplicated here.
 **Status of this file:** BINDING — swap executed 2026-07-16 at the M-01 milestone boundary
-(operator-approved). `docs/HARNESS.md` is now a pointer. Provenance below carries over from the
-combined doctrine's dated ratifications.
+(operator-approved). Vendored core/review-standard copies + the legacy `docs/HARNESS.md` pointer
+were retired 2026-07-18 (doctrine ships from the plugin). Provenance below carries over from the
+combined doctrine's dated ratifications (historical `docs/HARNESS.md §X` citations reference that
+now-retired file as it stood at ratification time).
 
 ---
 
@@ -247,8 +251,9 @@ verification conflicts against this list.
 ## 11. Code-review bindings (REVIEW-STANDARD.md instantiation)
 `status: ratified` · `provenance: 2026-07-16 · operator-requested review hardening`
 
-- Standard: `docs/REVIEW-STANDARD.md` (method copy; canonical in mnfs-harness
-  `harness/REVIEW-STANDARD.md`) — binds slice review, dual gate, hub spot-check.
+- Standard: the `harness@mnfs-harness` plugin's `REVIEW-STANDARD.md` (canonical
+  `Documents/mnfs-harness/harness/REVIEW-STANDARD.md`, loaded by the harness skills; NOT
+  vendored in-repo) — binds per-feature adversarial review, dual gate, hub spot-check.
 - Deterministic pre-pass (§7) = L0 lane: `go build ./...` + `go vet ./...` (both
   `GOCACHE=.gocache`) · web `tsc` · governance lane (clean worktree, 40-hex BaseSha). Review
   dispatch only after L0 green; reviewer receives the L0/governance report as input.
@@ -257,13 +262,14 @@ verification conflicts against this list.
 - Slice size norm: ≤ ~300 changed lines (mechanical/generated diffs exempt when declared).
 - Severity taxonomy + dual-gate agreement merge as per standard §5/§8; reconciliation table
   required in every `CLOSED` event.
-- Execution model (standard §13-§16, ratified 2026-07-16): slice review = ONE reviewer via
-  prompt-pack §14 (never a crew); dual gate dispatched simultaneously; disjoint-slice overlap
-  allowed (§15 — reviewed-green before merge/dependent slice, not before every next slice);
-  ★ crews run under noise control (FAIL-restraint verbatim-quote rule, advisory cap 10,
-  learnings suppression via `docs/REVIEW-LEARNINGS.md`).
+- Execution model (standard §13-§16; per-feature amendment ratified 2026-07-18, D-51): review =
+  ONE adversarial reviewer per FEATURE (all its slices together) via prompt-pack §14 (never a
+  crew), emitting a correction plan; inter-slice guard = failing-test-first per slice; dual gate
+  dispatched simultaneously; disjoint-feature overlap allowed (§15 — reviewed-green before
+  merge/dependent feature); ★ crews run under noise control (FAIL-restraint verbatim-quote rule,
+  advisory cap 10, learnings suppression via `docs/REVIEW-LEARNINGS.md`).
 - Reviewer model/reasoning bindings (standard §13 restates core §1 matrix — canonical there):
-  slice reviewer = Claude subagent **sonnet** (session-default effort); dual gate = **COLD
+  per-feature reviewer = Claude subagent **sonnet** (session-default effort); dual gate = **COLD
   Opus subagent** (clean context, explicit `model=opus`, never the orchestrating session —
   self-grade bias) + **GPT-5.6 Sol `--effort medium`**; ★ crews = cold Claude **sonnet**
   subagents, mission readiness P7 adds **GPT-5.6 Sol `--effort high`**; hub spot-check =
@@ -275,7 +281,7 @@ verification conflicts against this list.
 `status: ratified` · `provenance: 2026-07-16 · operator-ratified alt-D+ design session (4 adversarial Opus×Sol rounds + MIS-003 field evidence: hub + CHIP-SAT/CHIP-M02/CHIP-M03)`
 
 - **Prompt-pack:** every codex implementer dispatch carries the canonical implementer
-  prompt-pack from `docs/HARNESS-CORE.md` §4 ("Implementer prompt-pack — canonical,
+  prompt-pack from the plugin's `HARNESS-CORE.md` §4 ("Implementer prompt-pack — canonical,
   versioned"), stamped `impl-pack v<semver> · milestone <id> · body-sha256 <hash>`. Block
   order fixed: pack → role/repo bindings → slice card (variable, always last); mid-milestone
   changes = dated addenda appended after the card, folded at milestone boundary. The ledger

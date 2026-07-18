@@ -1,9 +1,11 @@
 # Marketplace Central — Harness Bootstrap
 
-Development runs under the hub-and-chips harness. **BINDING doctrine = `docs/HARNESS-CORE.md`
-(method) + `docs/HARNESS-PROFILE.md` (this repo's bindings) + the active mission's
-`## Parallel Execution Plan` (`.mnfs/MIS-*/mission.md`)** — read core §4–§5 and the profile
-before any milestone/feature work (`docs/HARNESS.md` is a pointer). The hub session (boots via
+Development runs under the hub-and-chips harness. **BINDING doctrine = the `harness@mnfs-harness`
+plugin's `HARNESS-CORE.md` (method; canonical source `Documents/mnfs-harness/harness/HARNESS-CORE.md`,
+loaded by the `harness-hub`/`harness-worker` skills) + `docs/HARNESS-PROFILE.md` (this repo's
+bindings — the ONLY doctrine file vendored in-repo, because it is repo-specific) + the active
+mission's `## Parallel Execution Plan` (`.mnfs/MIS-*/mission.md`)** — read core §4–§5 and the
+profile before any milestone/feature work. The hub session (boots via
 the `harness-hub` skill) authors milestone chips (spawn_task, operator launches on Opus,
 worktree isolation), owns merging/deploy/shared seams, and adjudicates parallelism via the
 collision matrix. Milestone sessions orchestrate; feature plans come from GPT-5.6 Sol medium,

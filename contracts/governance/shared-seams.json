@@ -7,7 +7,7 @@
     { "id": "composition-root", "exclusive_paths": ["apps/server_core/internal/composition/root.go"] },
     { "id": "dependency-graph", "exclusive_paths": ["apps/server_core/go.mod", "package-lock.json", "package.json"] },
     { "id": "architecture-decisions", "exclusive_paths": ["docs/architecture/decisions"] },
-    { "id": "harness-control", "exclusive_paths": ["scripts/harness", "scripts/harness.ps1", "contracts/governance", "docs/HARNESS.md", "docs/HARNESS-CORE.md", "docs/HARNESS-PROFILE.md"] },
+    { "id": "harness-control", "exclusive_paths": ["scripts/harness", "scripts/harness.ps1", "contracts/governance", "docs/HARNESS-PROFILE.md"] },
     {
       "id": "provider-capability-contract",
       "exclusive_paths": [

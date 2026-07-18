@@ -17,8 +17,8 @@
       "module_id": "repository",
       "concerns": ["bootstrap"],
       "selectors": [
-        {"path": "AGENTS.md", "selector": "Harness Bootstrap", "reason": "durable entry policy", "estimated_tokens": 220},
-        {"path": "docs/HARNESS.md", "selector": "Execution loop; Parallel-track execution; Anti-slop contract; Context and handoff discipline", "reason": "binding hub-and-chips doctrine: dispatch, events, worker obligations, context discipline, handoff", "estimated_tokens": 1100}
+        {"path": "AGENTS.md", "selector": "Harness Bootstrap", "reason": "durable entry policy; names the plugin-sourced binding doctrine (core) + repo profile", "estimated_tokens": 220},
+        {"path": "docs/HARNESS-PROFILE.md", "selector": "repo bindings: commands, seams, collision axes, non-negotiables, human gates, denylist", "reason": "the only in-repo doctrine layer (repo-specific); binding method lives in the harness@mnfs-harness plugin", "estimated_tokens": 900}
       ]
     },
     {
