@@ -65,10 +65,7 @@ describe("ProductPicker", () => {
 
     expect(selectedRow).toHaveClass("bg-accent-soft");
     expect(table.parentElement).toHaveClass("border-border");
-    // price 200 renders via the real pt-BR BRL formatter (honest passthrough, not hard-coded).
-    // Match with a regex so the non-breaking space (U+00A0) that pt-BR puts between "R$" and the
-    // value doesn't cause a false miss — testing-library normalizes the DOM node's nbsp to a
-    // regular space, and \s in the regex matches either.
+    // Regex tolerates the pt-BR nbsp (U+00A0) after "R$"; honest formatter passthrough.
     expect(screen.getByText(/R\$\s*200,00/)).toBeInTheDocument();
   });
 

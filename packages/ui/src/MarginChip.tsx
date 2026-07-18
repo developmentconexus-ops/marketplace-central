@@ -1,6 +1,6 @@
 import type { JSX } from "react";
 
-interface MarginChipProps {
+export interface MarginChipProps {
   marginPct: number | null;
   thresholds?: { healthy: number; tight: number };
 }

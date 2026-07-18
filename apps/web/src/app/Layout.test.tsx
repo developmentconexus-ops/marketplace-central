@@ -53,11 +53,8 @@ describe("Layout", () => {
     renderLayout();
     await screen.findByRole("combobox", { name: "Selecionar instalação" });
 
-    // The retheme moved the primary nav out of Layout into <Header/>. Layout's job is to mount
-    // that header; the canonical six-pill contract (order + the disabled "em breve" stubs) is
-    // owned and asserted by Header.test.tsx. Here we only assert the integration wiring: the
-    // primary <nav> renders the four enabled pills as links. (Native `toContain` — avoids adding
-    // a jest-dom matcher, which would trip the known F-ENV-4 TS2339 gap and inflate the count.)
+    // Layout only mounts the header; the six-pill contract lives in Header.test.tsx.
+    // Native `toContain` (not a jest-dom matcher) holds the tsc baseline.
     const navLinkNames = within(screen.getByRole("navigation"))
       .getAllByRole("link")
       .map((link) => link.textContent);
@@ -93,9 +90,7 @@ describe("Layout", () => {
     renderLayout("/anuncios?installation=inst_test&tab=pendencia");
     await screen.findByRole("combobox", { name: "Selecionar instalação" });
 
-    // Enabled pills carry the current search (installation + unrelated params) via
-    // `to={{ pathname, search: location.search }}` in Header, so no query is dropped on nav.
-    // (Catálogo is intentionally a gear-menu link now, not a pill, per the M-03 nav contract.)
+    // Enabled pills carry location.search via object-form `to`, so no query is dropped.
     fireEvent.click(screen.getByRole("link", { name: "Simulador" }));
 
     expect(screen.getByTestId("location")).toHaveTextContent(
