@@ -15,6 +15,7 @@ import (
 type Handler struct {
 	svc   application.Service
 	batch *application.BatchOrchestrator
+	calc  *application.CalcService
 }
 
 func NewHandler(svc application.Service, batch *application.BatchOrchestrator) Handler {
@@ -52,6 +53,9 @@ func mapPricingError(msg string) (int, string) {
 func (h Handler) Register(mux httpx.RouteRegistrar) {
 	mux.HandleFunc("/pricing/simulations", h.handleSimulations)
 	mux.HandleFunc("/pricing/simulations/batch", h.handleBatch)
+	if h.calc != nil {
+		h.registerCalc(mux)
+	}
 }
 
 func (h Handler) handleSimulations(w http.ResponseWriter, r *http.Request) {
