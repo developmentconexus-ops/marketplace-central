@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createMarketplaceCentralClient } from "./index";
 import type {
+  CatalogProductFact,
   CatalogProductFactPage,
   CanonicalCatalogProduct,
   IntegrationProviderDefinition,
@@ -31,6 +32,8 @@ describe("sdk runtime", () => {
       seller_sku: "SELLER-1001",
       brand_name: null,
       product_group_name: null,
+      ncm: null,
+      quality_flags: ["invalid_ean"],
       cost_amount: { source: "sankhya", value: null, quality: "unknown", observed_at: null, quality_reason: "missing_cost" },
       price_amount: { source: "sankhya", value: 0, quality: "current", observed_at: "2026-07-13T12:00:00Z", quality_reason: null },
       stock_quantity: { source: "sankhya", value: 0, quality: "current", observed_at: "2026-07-13T12:00:00Z", quality_reason: null },
@@ -45,15 +48,75 @@ describe("sdk runtime", () => {
     const sdk = readFileSync(resolve(process.cwd(), "src/index.ts"), "utf8");
     const factSchema = openapi.slice(openapi.indexOf("    CanonicalNumericSourceFact:"), openapi.indexOf("    CanonicalCatalogProduct:"));
     const productSchema = openapi.slice(openapi.indexOf("    CanonicalCatalogProduct:"), openapi.indexOf("    CatalogProduct:"));
+    const catalogFactSchema = openapi.slice(openapi.indexOf("    CatalogProductFact:"), openapi.indexOf("    CatalogQuantityFact:"));
+    const canonicalSdk = sdk.slice(sdk.indexOf("export interface CanonicalCatalogProduct"), sdk.indexOf("export interface CatalogProductFact"));
+    const catalogFactSdk = sdk.slice(sdk.indexOf("export interface CatalogProductFact"), sdk.indexOf("export interface CatalogProductFactPage"));
+    const catalogFact: CatalogProductFact = {
+      internal_product_id: 1001,
+      reference: null,
+      description: null,
+      ean: null,
+      manufacturer_reference: "REF-1001",
+      brand_name: null,
+      ncm: null,
+      quality_flags: ["invalid_ean", "ean_collision"],
+      active: true,
+      sellable_stock: { quantity: null, quality: [] },
+      current_price: { amount: null, currency: "BRL", quality: [] },
+      cost: { amount: null, currency: "BRL", quality: [] },
+    };
 
     expect(factSchema).toContain("required: [source, value, quality, observed_at, quality_reason]");
     expect(factSchema).toMatch(/quality_reason:\s*\n\s*type: string\s*\n\s*nullable: true/);
-    expect(productSchema).toContain("required: [internal_product_id, name, ean, manufacturer_reference, seller_sku, brand_name, product_group_name, cost_amount, price_amount, stock_quantity]");
+    expect(productSchema).toContain("required: [internal_product_id, name, ean, manufacturer_reference, seller_sku, brand_name, product_group_name, cost_amount, price_amount, stock_quantity, ncm, quality_flags]");
     for (const field of ["ean", "manufacturer_reference", "seller_sku", "brand_name", "product_group_name"]) {
       expect(productSchema).toMatch(new RegExp(`${field}:\\s*\\n\\s*type: string\\s*\\n\\s*nullable: true`));
-      expect(sdk).toMatch(new RegExp(`\\n  ${field}: string \\| null;`));
+      expect(canonicalSdk).toMatch(new RegExp(`\\n  ${field}: string \\| null;`));
     }
+    expect(productSchema).toMatch(/ncm:\s*\n\s*type: string\s*\n\s*nullable: true\s*\n\s*pattern: '\^\[0-9\]\{8\}\$'/);
+    expect(productSchema).toMatch(/quality_flags:\s*\n\s*type: array\s*\n\s*items:\s*\n\s*\$ref: '#\/components\/schemas\/QualityFlag'/);
+    expect(canonicalSdk).toContain("ncm: string | null;");
+    expect(canonicalSdk).toContain("quality_flags: QualityFlag[];");
+    expect(catalogFactSchema).toContain("required: [internal_product_id, reference, description, ean, active, sellable_stock, current_price, cost, manufacturer_reference, brand_name, ncm, quality_flags]");
+    expect(catalogFactSchema).toMatch(/reference:\s*\n\s*type: string\s*\n\s*nullable: true\s*\n\s*deprecated: true\s*\n\s*description:.*manufacturer_reference/);
+    for (const field of ["ean", "manufacturer_reference", "brand_name", "ncm"]) {
+      expect(catalogFactSchema).toMatch(new RegExp(`${field}:\\s*\\n\\s*type: string\\s*\\n\\s*nullable: true`));
+      expect(catalogFactSdk).toMatch(new RegExp(`\\n  ${field}: string \\| null;`));
+    }
+    expect(catalogFactSchema).toMatch(/quality_flags:\s*\n\s*type: array\s*\n\s*items:\s*\n\s*\$ref: '#\/components\/schemas\/QualityFlag'/);
+    expect(catalogFactSdk).toContain("quality_flags: QualityFlag[];");
+    expect(catalogFactSdk).toMatch(/@deprecated[\s\S]*\n\s*reference: string \| null;/);
+    expect(catalogFact.quality_flags).toEqual(["invalid_ean", "ean_collision"]);
     expect(sdk).toMatch(/\n  quality_reason: string \| null;/);
+
+    // quality_flags must admit every value the wire can carry — the reader passes
+    // the closed QualityFlag domain through unfiltered (catalog_page.go emits the
+    // `complete` default; the single-product reader propagates missing_product /
+    // ambiguous_product). An enum narrowed to [invalid_ean, ean_collision] would
+    // make conformant clients reject the majority of real responses.
+    const qualityFlagSchema = openapi.slice(openapi.indexOf("    QualityFlag:"), openapi.indexOf("    CanonicalCatalogProduct:"));
+    const qualityFlagSdk = sdk.slice(sdk.indexOf("export type QualityFlag"), sdk.indexOf("export interface CanonicalCatalogProduct"));
+    for (const flag of ["complete", "missing_product", "ambiguous_product", "invalid_ean", "ean_collision"]) {
+      expect(qualityFlagSchema).toContain(`- ${flag}`);
+      expect(qualityFlagSdk).toContain(`"${flag}"`);
+    }
+    const wireFact: CatalogProductFact = { ...catalogFact, quality_flags: ["complete", "ean_collision"] };
+    const wireCanonical: CanonicalCatalogProduct = {
+      internal_product_id: 42,
+      name: "PARAFUSO",
+      ean: null,
+      manufacturer_reference: null,
+      seller_sku: null,
+      brand_name: null,
+      product_group_name: null,
+      ncm: null,
+      quality_flags: ["missing_product", "ambiguous_product"],
+      cost_amount: { source: "oracle", value: null, quality: "unknown", observed_at: null, quality_reason: "cost unavailable" },
+      price_amount: { source: "oracle", value: null, quality: "unknown", observed_at: null, quality_reason: "price unavailable" },
+      stock_quantity: { source: "oracle", value: null, quality: "unknown", observed_at: null, quality_reason: "stock unavailable" },
+    };
+    expect(wireFact.quality_flags).toContain("complete");
+    expect(wireCanonical.quality_flags).toContain("ambiguous_product");
   });
 
   it("lists catalog facts with the IC-01 page envelope", async () => {

@@ -161,6 +161,24 @@ export interface CanonicalNumericSourceFact {
   quality_reason: string | null;
 }
 
+/**
+ * Closed set of source/identity quality flags a canonical product row may carry.
+ * `complete` is the default (no anomaly); `invalid_ean`/`ean_collision` are identity
+ * warnings; the rest surface product-existence and per-source gaps from the reader.
+ */
+export type QualityFlag =
+  | "complete"
+  | "missing_product"
+  | "ambiguous_product"
+  | "missing_stock"
+  | "missing_price"
+  | "missing_cost"
+  | "ambiguous_price"
+  | "missing_tax"
+  | "stale_source"
+  | "invalid_ean"
+  | "ean_collision";
+
 export interface CanonicalCatalogProduct {
   internal_product_id: number;
   name: string;
@@ -169,6 +187,8 @@ export interface CanonicalCatalogProduct {
   seller_sku: string | null;
   brand_name: string | null;
   product_group_name: string | null;
+  ncm: string | null;
+  quality_flags: QualityFlag[];
   cost_amount: CanonicalNumericSourceFact;
   price_amount: CanonicalNumericSourceFact;
   stock_quantity: CanonicalNumericSourceFact;
@@ -176,9 +196,14 @@ export interface CanonicalCatalogProduct {
 
 export interface CatalogProductFact {
   internal_product_id: number;
+  /** @deprecated Compatibility alias of manufacturer_reference. */
   reference: string | null;
   description: string | null;
   ean: string | null;
+  manufacturer_reference: string | null;
+  brand_name: string | null;
+  ncm: string | null;
+  quality_flags: QualityFlag[];
   active: boolean;
   sellable_stock: {
     quantity: number | null;

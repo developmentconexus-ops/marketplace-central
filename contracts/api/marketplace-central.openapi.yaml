@@ -2783,9 +2783,28 @@ components:
         quality_reason:
           type: string
           nullable: true
+    QualityFlag:
+      type: string
+      description: >-
+        Closed set of source/identity quality flags a canonical product row may
+        carry. `complete` is the default (no anomaly); `invalid_ean`/`ean_collision`
+        are identity warnings; the remaining values surface product-existence and
+        per-source gaps propagated from the internal reader.
+      enum:
+        - complete
+        - missing_product
+        - ambiguous_product
+        - missing_stock
+        - missing_price
+        - missing_cost
+        - ambiguous_price
+        - missing_tax
+        - stale_source
+        - invalid_ean
+        - ean_collision
     CanonicalCatalogProduct:
       type: object
-      required: [internal_product_id, name, ean, manufacturer_reference, seller_sku, brand_name, product_group_name, cost_amount, price_amount, stock_quantity]
+      required: [internal_product_id, name, ean, manufacturer_reference, seller_sku, brand_name, product_group_name, cost_amount, price_amount, stock_quantity, ncm, quality_flags]
       properties:
         internal_product_id:
           type: integer
@@ -2807,6 +2826,14 @@ components:
         product_group_name:
           type: string
           nullable: true
+        ncm:
+          type: string
+          nullable: true
+          pattern: '^[0-9]{8}$'
+        quality_flags:
+          type: array
+          items:
+            $ref: '#/components/schemas/QualityFlag'
         cost_amount:
           $ref: '#/components/schemas/CanonicalNumericSourceFact'
         price_amount:
@@ -2815,7 +2842,7 @@ components:
           $ref: '#/components/schemas/CanonicalNumericSourceFact'
     CatalogProductFact:
       type: object
-      required: [internal_product_id, reference, description, ean, active, sellable_stock, current_price, cost]
+      required: [internal_product_id, reference, description, ean, active, sellable_stock, current_price, cost, manufacturer_reference, brand_name, ncm, quality_flags]
       properties:
         internal_product_id:
           type: integer
@@ -2823,12 +2850,28 @@ components:
         reference:
           type: string
           nullable: true
+          deprecated: true
+          description: Deprecated compatibility alias of manufacturer_reference.
         description:
           type: string
           nullable: true
         ean:
           type: string
           nullable: true
+        manufacturer_reference:
+          type: string
+          nullable: true
+        brand_name:
+          type: string
+          nullable: true
+        ncm:
+          type: string
+          nullable: true
+          pattern: '^[0-9]{8}$'
+        quality_flags:
+          type: array
+          items:
+            $ref: '#/components/schemas/QualityFlag'
         active:
           type: boolean
         sellable_stock:
