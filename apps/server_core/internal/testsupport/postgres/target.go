@@ -46,8 +46,8 @@ func LoadConfig(getenv func(string) string, tenantID, encryptionKey string) (pgd
 // is absent, so integration-tagged packages compile and skip clean without a DSN.
 func SkipWithoutTarget(t testing.TB) {
 	t.Helper()
-	if os.Getenv(targetKey) == "" {
-		t.Skip(targetKey + " is unset")
+	if os.Getenv("MPC_TEST_DATABASE_URL") == "" {
+		t.Skip("MPC_TEST_DATABASE_URL is unset")
 	}
 }
 
