@@ -3,11 +3,11 @@
 ```yaml
 id: M-03
 type: milestone
-status: planned
+status: closed
 owner: Mission Strategist
 parent: MIS-004
 created: 2026-07-17
-updated: 2026-07-17
+updated: 2026-07-18
 validation_level: QA-0
 lifecycle_scope: milestone
 ```
@@ -54,10 +54,9 @@ Toggle light/dark persiste e cobre todas as rotas; pills canônicas + estados "e
 
 ## Handoff
 
-- Current status: planned.
-- Next owner: hub (dispatch chip wave A).
-- Next action: chip implementa F-01 → F-02∥F-03.
-- Required files/evidence: `validation-result.md`; screenshots light/dark.
+- Current status: **CLOSED** (2026-07-18). P6 dual gate reconciled + P7 browser QA PASS C01-C06 — see `validation-result.md` (visual evidence = computed-style captures per F-ENV-10, screenshot rasterizer broken). Merged to main @ dff99dce; post-merge FE ladder green (tsc 181=baseline, vitest 215/215, build OK, governance passed @ 4bbdab8b).
+- Next owner: hub (wave B — M-03 edge to M-04..M-09 satisfied).
+- Deferred: StatCard explicit null→"—" branch (future milestone enhancement, chip REQUEST).
 - Blockers or open decisions: none.
 
 ## Correction Handoff

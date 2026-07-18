@@ -119,6 +119,20 @@ another checkout's `node_modules`: npm workspace symlinks would resolve workspac
   FALSE ALARM — re-run the three lanes split with long timeouts before treating as a
   defect. Impl-pack instruction: workers run the commands separately, not chained
   (CHIP-M02 field finding 2026-07-18, F-03-S1; dispatcher re-ran split: all exit 0).
+- codex 0.144.4 PATH binary can DIE mid-dispatch on cache-TTL renewal (vs the non-fatal
+  0.144.4 warning already listed): schema clash with 0.145.0 models_cache. Mitigation:
+  dispatch via the 0.145.0-alpha.18 binary explicitly, not bare `codex` from PATH
+  (CHIP-M03 field finding F-ENV-9, 2026-07-18).
+- Browser-pane screenshot rasterizer broken on this machine — a blank/failed screenshot
+  during browser QA is an ENV failure, not a UI defect. Visual QA evidence = computed-style
+  captures (getComputedStyle assertions) + accessibility-tree reads instead of pixels
+  (CHIP-M03 field finding F-ENV-10, 2026-07-18).
+
+**Review-process note (F-ENV-8, 2026-07-18):** isolated per-slice reviews cannot see test
+responsibilities MOVED between files (e.g. nav assertions relocating Layout.test → Header.test
+reads as deletion in one diff and addition in another). The full-suite L0 run at milestone
+close is the backstop that proves net coverage — never waive it for FE milestones on the
+grounds that each slice was reviewed.
 
 ## 4. Test database / integration strategy
 `status: ratified` · `provenance: 2026-07-15 · docs/HARNESS.md §5 (integration lane hardening + session container)`
@@ -324,4 +338,5 @@ verification conflicts against this list.
 2026-07-17 · §10 · ratified · F-ENV-3: impeccable plugin auto-injects skill mandate into codex worker sessions and derails them (NO_PRODUCT_MD abort, CHIP-M03 field 2×); mandatory skill-discovery denylist clause in every codex dispatch bindings block; core-candidate, upstream at milestone boundary
 2026-07-17 · §3 + §2 · ratified · codex workspace-write sandbox cannot run vite/esbuild build on Windows — false-alarm signature + mitigation (a): chip-side build/tsc/vitest re-run is verification of record, workers stay workspace-write (CHIP-M03 field finding; core-candidate, upstream at milestone boundary) · L1 allowlist +TS2688 @types/node pre-existing base break (fix owner CHIP-M03 via grant D-05)
 2026-07-18 · §3 · ratified · codex combined build+vet+test single-command timeout = false alarm (cold go build ~65s vs 120s codex cap); split lanes, re-run split before treating as defect (CHIP-M02 field finding F-03-S1; core-candidate for impl-pack template, upstream at milestone boundary)
+2026-07-18 · §3 · ratified · CHIP-M03 close findings F-ENV-8/9/10: full-suite L0 at close = backstop for moved-test blind spot (never waive); codex dispatch via 0.145.0-alpha.18 binary (0.144.4 PATH binary dies on cache-TTL renewal); browser screenshot rasterizer broken → visual QA via computed-style + a11y-tree captures
 ```
