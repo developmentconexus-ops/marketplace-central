@@ -9,6 +9,7 @@ import type {
 } from "@marketplace-central/sdk-runtime";
 import { useClient } from "../../app/ClientContext";
 import { DecompositionPanel } from "./DecompositionPanel";
+import { SolverPanel } from "./SolverPanel";
 import { ParamsDrawer } from "./ParamsDrawer";
 import { DifalDrawer } from "./DifalDrawer";
 import { MarketComparison } from "./MarketComparison";
@@ -259,6 +260,15 @@ export function PricingPage() {
               ) : (
                 <p className="text-sm text-muted">Selecione um produto e um preço para simular.</p>
               )}
+            </div>
+
+            <div data-testid="region-solver" className="rounded-lg border border-border bg-surface p-3">
+              <h3 className="mb-2 text-sm font-semibold text-ink">Margem alvo → preço</h3>
+              <SolverPanel
+                productId={selected ? selected.internal_product_id : null}
+                comissaoPct={comissaoFor(modalidade)}
+                modalidade={modalidade}
+              />
             </div>
 
             <div data-testid="region-comparacao" className="rounded-lg border border-border bg-surface p-3">

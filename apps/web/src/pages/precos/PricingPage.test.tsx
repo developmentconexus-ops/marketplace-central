@@ -83,6 +83,9 @@ const listListingsByProduct = vi.fn(() =>
 
 // The market comparison + apply panels own their own client seams/mutations; the
 // page test stubs them so /precos page behavior runs without their side effects.
+vi.mock("./SolverPanel", () => ({
+  SolverPanel: () => <div data-testid="solver-panel-stub" />,
+}));
 vi.mock("./MarketComparison", () => ({
   MarketComparison: () => <div data-testid="market-comparison-stub" />,
 }));
@@ -130,6 +133,7 @@ describe("PricingPage scaffold", () => {
 
     // Shell regions the later slices flesh out.
     expect(screen.getByTestId("region-decomposicao")).toBeInTheDocument();
+    expect(screen.getByTestId("region-solver")).toBeInTheDocument();
     expect(screen.getByTestId("params-trigger")).toBeInTheDocument();
     expect(screen.getByTestId("region-comparacao")).toBeInTheDocument();
     expect(screen.getByTestId("region-aplicar")).toBeInTheDocument();
