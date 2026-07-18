@@ -89,6 +89,11 @@ func (s ReadService) Summary(ctx context.Context, query ports.SummaryQuery) (por
 		return ports.ListingSummaryRow{}, err
 	}
 	row.AsOf = s.now().UTC()
+	// sem_vinculo reuses the SQL link-state predicate already computed as
+	// Unlinked (repository.go GetListingsSummary/ListListingRows share the
+	// same unresolved predicate) — no separate query, unconditional on the
+	// cost/ceiling outages handled below.
+	row.SemVinculo = row.Unlinked
 	if ceilingErr != nil {
 		slog.Warn("listings: icms ceiling source unavailable, degrading margin counts to null", "err", ceilingErr, "op", "Summary", "fact", "icms_ceiling")
 		row.BelowMarginWorstCase, row.MarginUnknown = nil, nil
@@ -117,11 +122,19 @@ func (s ReadService) Summary(ctx context.Context, query ports.SummaryQuery) (por
 		}
 	}
 	below, unknown := 0, 0
+	abaixoCusto, semEvidencia := 0, 0
 	ceiling := maximumCeiling(ceilings)
 	var margin *float64
 	if policyFound {
 		margin = &policy.MinMarginPercent
 	}
+	// signals batches ONE evidence.Signals call over the SAME row.Linked rows
+	// this loop already tallies BelowMarginWorstCase over — not a second
+	// full scan. evidenceWired is false only for the legacy NewReadService
+	// path (s.evidence == nil), mirroring enrichSignals' own no-op posture:
+	// abaixo_custo/sem_evidencia then stay at their zero value instead of
+	// fabricating a degrade that was never attempted.
+	signals, evidenceWired := s.summarySignals(ctx, row.Linked)
 	for _, linked := range row.Linked {
 		var cost *float64
 		if fact := costs[linked.CostID]; fact != nil {
@@ -133,9 +146,60 @@ func (s ReadService) Summary(ctx context.Context, query ports.SummaryQuery) (por
 		} else if *value {
 			below++
 		}
+		if !evidenceWired {
+			continue
+		}
+		sig, hasSignal := signals[linked.ListingID]
+		if !hasSignal {
+			// No per-listing signal for an already-linked row is exactly
+			// NO_PRICE_EVIDENCE (ADR-17): linked but no market evidence.
+			semEvidencia++
+			continue
+		}
+		var costMoney *domain.Money
+		if cost != nil {
+			costMoney = &domain.Money{Amount: strconv.FormatFloat(*cost, 'f', -1, 64), Currency: priceCurrency(linked.Price)}
+		}
+		if domain.BelowCost(costMoney, sig.TargetPrice) {
+			abaixoCusto++
+		}
 	}
 	row.BelowMarginWorstCase, row.MarginUnknown = &below, &unknown
+	row.AbaixoCusto, row.SemEvidencia = abaixoCusto, semEvidencia
 	return row, nil
+}
+
+// summarySignals batches one evidence.Signals call over the distinct
+// ListingIDs among an already-fetched summary's Linked rows (F01-S4). nil
+// evidence (legacy NewReadService, s.evidence == nil) reports wired=false so
+// Summary leaves abaixo_custo/sem_evidencia at zero, unchanged for every
+// existing 5-arg caller. A reader error degrades honestly — every linked row
+// is then NO_PRICE_EVIDENCE (empty map, wired=true) — logged, never a 500.
+func (s ReadService) summarySignals(ctx context.Context, linked []ports.SummaryLinkedRow) (map[string]ports.EvidenceSignal, bool) {
+	if s.evidence == nil {
+		return nil, false
+	}
+	ids := make([]string, 0, len(linked))
+	seen := make(map[string]bool, len(linked))
+	for _, row := range linked {
+		if row.ListingID != "" && !seen[row.ListingID] {
+			seen[row.ListingID] = true
+			ids = append(ids, row.ListingID)
+		}
+	}
+	bySignal := map[string]ports.EvidenceSignal{}
+	if len(ids) == 0 {
+		return bySignal, true
+	}
+	fetched, err := s.evidence.Signals(ctx, ids)
+	if err != nil {
+		slog.Error("listings: market evidence read failed for summary, degrading to no_price_evidence", "err", err, "op", "Summary")
+		return bySignal, true
+	}
+	for _, sig := range fetched {
+		bySignal[sig.ListingID] = sig
+	}
+	return bySignal, true
 }
 
 func (s ReadService) List(ctx context.Context, query ports.ListingQuery) (ports.ListingRowPage, error) {
@@ -160,7 +224,7 @@ func (s ReadService) List(ctx context.Context, query ports.ListingQuery) (ports.
 	}
 	maxCeiling := maximumCeiling(ceilings)
 	serveTime := s.now().UTC()
-	if !needsBelowMarginScan(query.Filter) {
+	if !needsExceptionScan(query.Filter) {
 		page, err := s.repo.ListListingRows(ctx, query)
 		if err != nil {
 			return ports.ListingRowPage{}, err
@@ -200,7 +264,7 @@ func (s ReadService) ByProduct(ctx context.Context, query ports.ListingGroupQuer
 		return ports.ListingGroupRowPage{}, ceilingErr
 	}
 	ceiling, asOf := maximumCeiling(ceilings), s.now().UTC()
-	if needsBelowMarginScan(query.Filter) {
+	if needsExceptionScan(query.Filter) {
 		return s.scanGroups(ctx, query, ceiling, policy, policyFound, ceilingErr, asOf)
 	}
 	page, err := s.repo.ListListingGroupRows(ctx, query)
@@ -646,13 +710,24 @@ func maximumCeiling(values map[int64]*ports.ICMSCeiling) *float64 {
 	}
 	return max
 }
-func needsBelowMarginScan(f domain.ListingFilter) bool {
-	return f.Exception == domain.ListingExceptionBelowMargin || f.HasException != nil
+// needsExceptionScan generalizes the former needsBelowMarginScan (F01-S4):
+// below_margin, abaixo_custo and sem_evidencia are all computed (not
+// SQL-filterable) exceptions, so any of them — like has_exception — must
+// route through the capped scan-and-filter loop. sem_vinculo stays OFF this
+// list: it reuses the SQL link-state predicate (repository.go), same as
+// unlinked, so it never needs the scan.
+func needsExceptionScan(f domain.ListingFilter) bool {
+	return f.Exception == domain.ListingExceptionBelowMargin || f.Exception == domain.ListingExceptionAbaixoCusto || f.Exception == domain.ListingExceptionSemEvidencia || f.HasException != nil
 }
 func matchesDependentFilter(item domain.ListingReadModel, f domain.ListingFilter) bool {
 	active := sqlException(item) || item.BelowMarginWorstCase != nil && *item.BelowMarginWorstCase
-	if f.Exception == domain.ListingExceptionBelowMargin {
+	switch f.Exception {
+	case domain.ListingExceptionBelowMargin:
 		return item.BelowMarginWorstCase != nil && *item.BelowMarginWorstCase
+	case domain.ListingExceptionAbaixoCusto:
+		return domain.BelowCost(item.Cost, signalTargetPrice(item))
+	case domain.ListingExceptionSemEvidencia:
+		return item.SignalStatus == domain.SignalStatusNoPriceEvidence
 	}
 	if f.HasException == nil {
 		return true
@@ -661,6 +736,18 @@ func matchesDependentFilter(item domain.ListingReadModel, f domain.ListingFilter
 		return active
 	}
 	return item.BelowMarginWorstCase != nil && !active
+}
+
+// signalTargetPrice reads the per-listing price-to-win off the item's own
+// enriched MarketSignal (F01-S3's enrichSignals already populated it on
+// every row reaching this scan); nil when no signal (SEM_VINCULO/
+// NO_PRICE_EVIDENCE/STALE-without-signal), matching domain.BelowCost's own
+// nil-target guard.
+func signalTargetPrice(item domain.ListingReadModel) *domain.Money {
+	if item.MarketSignal == nil {
+		return nil
+	}
+	return item.MarketSignal.PriceToWin
 }
 func sqlException(i domain.ListingReadModel) bool {
 	return i.SyncState == domain.ListingSyncStateError || i.SyncError != nil || i.SyncState == domain.ListingSyncStateStale || i.Link.State != domain.LinkStateResolved

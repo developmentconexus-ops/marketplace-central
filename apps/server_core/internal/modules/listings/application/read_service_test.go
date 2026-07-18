@@ -129,6 +129,78 @@ func TestReadServiceSummaryCountsMarginsAndBatchesCosts(t *testing.T) {
 	}
 }
 
+// TestReadServiceSummaryExceptionCounters is F01-S4's failing-test-first for
+// the sem_vinculo/abaixo_custo/sem_evidencia summary counters: a 4-linked +
+// 1-unlinked seed covering an OK item, a custo-desconhecido item (excluded
+// from abaixo_custo per ADR-17 despite a very low target), a no-evidence
+// item, and a genuinely below-cost item.
+func TestReadServiceSummaryExceptionCounters(t *testing.T) {
+	base := ports.ListingSummaryRow{Total: 5, Unlinked: 1, Linked: []ports.SummaryLinkedRow{
+		{CostID: 10, Price: money("100"), ListingID: "i~L1~-"}, // OK: cost known, target above cost
+		{CostID: 20, Price: money("200"), ListingID: "i~L2~-"}, // custo desconhecido: no cost fact
+		{CostID: 30, Price: money("300"), ListingID: "i~L3~-"}, // sem_evidencia: no signal returned
+		{CostID: 40, Price: money("400"), ListingID: "i~L4~-"}, // abaixo_custo: target below cost
+	}}
+	f := &fakeFacts{costs: map[int64]*ports.CostFact{10: {Amount: ptr(50)}, 30: {Amount: ptr(250)}, 40: {Amount: ptr(300)}}, ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}
+	ev := &fakeEvidence{signals: []ports.EvidenceSignal{
+		{ListingID: "i~L1~-", TargetPrice: money("80")},
+		{ListingID: "i~L2~-", TargetPrice: money("10")},
+		{ListingID: "i~L4~-", TargetPrice: money("150")},
+	}}
+	got, err := NewReadServiceWithEvidence(&fakeRows{summary: base}, f, fakePolicy{found: true}, fakeInstallation(true), time.Now, ev).Summary(context.Background(), ports.SummaryQuery{InstallationID: "i"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.SemVinculo != 1 {
+		t.Fatalf("sem_vinculo=%d want 1 (reuses Unlinked)", got.SemVinculo)
+	}
+	if got.SemEvidencia != 1 {
+		t.Fatalf("sem_evidencia=%d want 1 (only L3 has no signal)", got.SemEvidencia)
+	}
+	if got.AbaixoCusto != 1 {
+		t.Fatalf("abaixo_custo=%d want 1 (L2's unknown cost must be EXCLUDED despite target 10, only L4 counts)", got.AbaixoCusto)
+	}
+}
+
+// TestReadServiceSummaryWithoutEvidenceLeavesNewCountersZero asserts the
+// legacy NewReadService path (no evidence wired) leaves abaixo_custo/
+// sem_evidencia at zero rather than fabricating a degrade that was never
+// attempted — sem_vinculo still reuses the SQL Unlinked count unconditionally.
+func TestReadServiceSummaryWithoutEvidenceLeavesNewCountersZero(t *testing.T) {
+	base := ports.ListingSummaryRow{Total: 2, Unlinked: 1, Linked: []ports.SummaryLinkedRow{{CostID: 1, Price: money("90"), ListingID: "i~L1~-"}}}
+	f := &fakeFacts{costs: map[int64]*ports.CostFact{1: {Amount: ptr(10)}}, ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}
+	got, err := NewReadService(&fakeRows{summary: base}, f, fakePolicy{found: true}, fakeInstallation(true), time.Now).Summary(context.Background(), ports.SummaryQuery{InstallationID: "i"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.SemVinculo != 1 {
+		t.Fatalf("sem_vinculo=%d want 1 even without evidence wired", got.SemVinculo)
+	}
+	if got.AbaixoCusto != 0 || got.SemEvidencia != 0 {
+		t.Fatalf("legacy no-evidence path must leave new counters at zero, got abaixo_custo=%d sem_evidencia=%d", got.AbaixoCusto, got.SemEvidencia)
+	}
+}
+
+// TestReadServiceSummaryEvidenceErrorDegradesToSemEvidenciaWithout500 proves
+// the summary counters honor the same no-500 degrade posture as List/
+// ByProduct/Get: a reader error counts every linked row as sem_evidencia
+// (honest NO_PRICE_EVIDENCE degrade) instead of failing the whole summary.
+func TestReadServiceSummaryEvidenceErrorDegradesToSemEvidenciaWithout500(t *testing.T) {
+	base := ports.ListingSummaryRow{Total: 2, Linked: []ports.SummaryLinkedRow{
+		{CostID: 1, Price: money("90"), ListingID: "i~L1~-"},
+		{CostID: 2, Price: money("90"), ListingID: "i~L2~-"},
+	}}
+	f := &fakeFacts{costs: map[int64]*ports.CostFact{1: {Amount: ptr(10)}, 2: {Amount: ptr(10)}}, ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}
+	ev := &fakeEvidence{err: errors.New("market unavailable")}
+	got, err := NewReadServiceWithEvidence(&fakeRows{summary: base}, f, fakePolicy{found: true}, fakeInstallation(true), time.Now, ev).Summary(context.Background(), ports.SummaryQuery{InstallationID: "i"})
+	if err != nil {
+		t.Fatalf("evidence error must never propagate/500, got err=%v", err)
+	}
+	if got.SemEvidencia != 2 || got.AbaixoCusto != 0 {
+		t.Fatalf("reader error must degrade every linked row to sem_evidencia, got sem_evidencia=%d abaixo_custo=%d", got.SemEvidencia, got.AbaixoCusto)
+	}
+}
+
 func TestReadServiceSummaryUnknownInputsAndSourceOutage(t *testing.T) {
 	base := ports.ListingSummaryRow{Total: 2, Unlinked: 1, Linked: []ports.SummaryLinkedRow{{CostID: 1, Price: money("90")}}}
 	for _, tc := range []struct {
@@ -919,3 +991,82 @@ func TestReadServiceWithoutEvidenceSkipsEnrichmentUnchanged(t *testing.T) {
 	}
 }
 func fixedNow() time.Time { return time.Date(2026, 7, 15, 12, 0, 0, 0, time.FixedZone("x", 3600)) }
+
+// TestReadServiceSemVinculoFilterIsSQLFilterableNoScan proves exception=
+// sem_vinculo does NOT trigger the computed scan-and-filter loop (unlike
+// abaixo_custo/sem_evidencia below): it delegates straight to the repository,
+// same as the existing unlinked filter, trusting the SQL link-state
+// predicate (repository.go) already did the filtering.
+func TestReadServiceSemVinculoFilterIsSQLFilterableNoScan(t *testing.T) {
+	r := &fakeRows{pages: []ports.ListingRowPage{{Items: []domain.ListingReadModel{unlinkedItem("L1")}}}}
+	f := &fakeFacts{costs: map[int64]*ports.CostFact{}, ceilings: map[int64]*ports.ICMSCeiling{}}
+	s := NewReadService(r, f, fakePolicy{found: true}, fakeInstallation(true), time.Now)
+	page, err := s.List(context.Background(), ports.ListingQuery{InstallationID: "i", Limit: 50, Filter: domain.ListingFilter{Exception: domain.ListingExceptionSemVinculo}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.calls != 1 || len(page.Items) != 1 {
+		t.Fatalf("sem_vinculo must be a single SQL-filterable repo call (no scan), calls=%d items=%d", r.calls, len(page.Items))
+	}
+	if len(r.listQueries) != 1 || r.listQueries[0].Filter.Exception != domain.ListingExceptionSemVinculo {
+		t.Fatalf("query filter not passed through unmodified: %+v", r.listQueries[0].Filter)
+	}
+}
+
+// TestReadServiceAbaixoCustoAndSemEvidenciaFiltersScanAndMatch is F01-S4's
+// failing-test-first for the two computed exception filters: L1 is
+// genuinely below cost, L2 has evidence but is NOT below cost, L3 is linked
+// with no returned signal (sem_evidencia). Each filter must return exactly
+// its own subset.
+func TestReadServiceAbaixoCustoAndSemEvidenciaFiltersScanAndMatch(t *testing.T) {
+	items := []domain.ListingReadModel{linkedItem("L1", "100"), linkedItem("L2", "200"), linkedItem("L3", "300")}
+	f := &fakeFacts{costs: map[int64]*ports.CostFact{100: {Amount: ptr(300)}, 200: {Amount: ptr(50)}}, ceilings: map[int64]*ports.ICMSCeiling{}}
+	ev := &fakeEvidence{signals: []ports.EvidenceSignal{
+		{ListingID: "L1", TargetPrice: money("150")}, // 150 < cost 300: below cost
+		{ListingID: "L2", TargetPrice: money("90")},  // 90 > cost 50: not below cost
+	}}
+
+	t.Run("abaixo_custo", func(t *testing.T) {
+		r := &fakeRows{pages: []ports.ListingRowPage{{Items: items}}}
+		s := NewReadServiceWithEvidence(r, f, fakePolicy{found: true}, fakeInstallation(true), time.Now, ev)
+		page, err := s.List(context.Background(), ports.ListingQuery{InstallationID: "i", Limit: 50, Filter: domain.ListingFilter{Exception: domain.ListingExceptionAbaixoCusto}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(page.Items) != 1 || page.Items[0].ListingID != "L1" {
+			t.Fatalf("abaixo_custo filter items=%+v", page.Items)
+		}
+	})
+
+	t.Run("sem_evidencia", func(t *testing.T) {
+		r := &fakeRows{pages: []ports.ListingRowPage{{Items: items}}}
+		s := NewReadServiceWithEvidence(r, f, fakePolicy{found: true}, fakeInstallation(true), time.Now, ev)
+		page, err := s.List(context.Background(), ports.ListingQuery{InstallationID: "i", Limit: 50, Filter: domain.ListingFilter{Exception: domain.ListingExceptionSemEvidencia}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(page.Items) != 1 || page.Items[0].ListingID != "L3" {
+			t.Fatalf("sem_evidencia filter items=%+v", page.Items)
+		}
+	})
+}
+
+// TestReadServiceExistingExceptionFiltersUnchanged is the F01-S4 regression
+// guard: the 4 original exception kinds keep their pre-existing semantics
+// (below_margin still scan-computed; sync_error/stale/unlinked still
+// SQL-only, never routed through the scan).
+func TestReadServiceExistingExceptionFiltersUnchanged(t *testing.T) {
+	for _, exc := range []domain.ListingException{domain.ListingExceptionSyncError, domain.ListingExceptionStale, domain.ListingExceptionUnlinked} {
+		if needsExceptionScan(domain.ListingFilter{Exception: exc}) {
+			t.Fatalf("%s must stay SQL-only (no scan)", exc)
+		}
+	}
+	if !needsExceptionScan(domain.ListingFilter{Exception: domain.ListingExceptionBelowMargin}) {
+		t.Fatal("below_margin must still trigger the scan")
+	}
+	item := domain.ListingReadModel{BelowMarginWorstCase: ptrBool(true), Link: domain.ListingLink{State: domain.LinkStateResolved}}
+	if !matchesDependentFilter(item, domain.ListingFilter{Exception: domain.ListingExceptionBelowMargin}) {
+		t.Fatal("below_margin match definition changed")
+	}
+}
+func ptrBool(v bool) *bool { return &v }

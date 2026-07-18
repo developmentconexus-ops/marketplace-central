@@ -46,13 +46,26 @@ type ListingSummaryRow struct {
 	Unlinked             int
 	BelowMarginWorstCase *int
 	MarginUnknown        *int
-	AsOf                 time.Time
-	Linked               []SummaryLinkedRow
+	// SemVinculo, AbaixoCusto, SemEvidencia are the F01-S4 additive exception
+	// counters (never nullable/unknown: sem_vinculo reuses the SQL
+	// link-state predicate already backing Unlinked; abaixo_custo/
+	// sem_evidencia are derived from the same Linked-row pass Summary
+	// already tallies BelowMarginWorstCase over — see application.Summary).
+	SemVinculo   int
+	AbaixoCusto  int
+	SemEvidencia int
+	AsOf         time.Time
+	Linked       []SummaryLinkedRow
 }
 
 type SummaryLinkedRow struct {
 	CostID int64
 	Price  *domain.Money
+	// ListingID is the composite domain.ListingID string (F01-S4), carried
+	// alongside CostID/Price so the Summary tally can batch ONE
+	// evidence.Signals lookup over the same already-fetched Linked rows
+	// instead of a second scan.
+	ListingID string
 }
 
 type ListingReadRepository interface {

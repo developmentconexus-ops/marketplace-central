@@ -87,6 +87,9 @@ type listingSummaryExceptions struct {
 	Unlinked             int  `json:"unlinked"`
 	BelowMarginWorstCase *int `json:"below_margin_worst_case"`
 	MarginUnknown        *int `json:"margin_unknown"`
+	SemVinculo           int  `json:"sem_vinculo"`
+	AbaixoCusto          int  `json:"abaixo_custo"`
+	SemEvidencia         int  `json:"sem_evidencia"`
 }
 
 func (h ReadHandler) HandleSummary(w http.ResponseWriter, r *http.Request) {
@@ -115,7 +118,10 @@ func (h ReadHandler) HandleSummary(w http.ResponseWriter, r *http.Request) {
 	}
 	httpx.WriteJSON(w, http.StatusOK, listingSummaryEnvelope{
 		Total: row.Total, Active: row.Active, Paused: row.Paused, AsOf: row.AsOf.UTC(),
-		Exceptions: listingSummaryExceptions{SyncError: row.SyncError, Stale: row.Stale, Unlinked: row.Unlinked, BelowMarginWorstCase: row.BelowMarginWorstCase, MarginUnknown: row.MarginUnknown},
+		Exceptions: listingSummaryExceptions{
+			SyncError: row.SyncError, Stale: row.Stale, Unlinked: row.Unlinked, BelowMarginWorstCase: row.BelowMarginWorstCase, MarginUnknown: row.MarginUnknown,
+			SemVinculo: row.SemVinculo, AbaixoCusto: row.AbaixoCusto, SemEvidencia: row.SemEvidencia,
+		},
 	})
 }
 

@@ -87,3 +87,11 @@ func belowCost(cost *Money, target *Money) bool {
 	}
 	return targetRat.Cmp(costRat) < 0
 }
+
+// BelowCost is the exported form of belowCost (above) for the F01-S4
+// consumers outside this package (application.ReadService's summary tally
+// and List/ByProduct exception-filter scan): same ADR-17 rule, same
+// unknown-cost exclusion, not re-implemented at the call site.
+func BelowCost(cost *Money, target *Money) bool {
+	return belowCost(cost, target)
+}

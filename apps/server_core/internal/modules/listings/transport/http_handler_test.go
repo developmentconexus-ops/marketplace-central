@@ -240,7 +240,7 @@ func TestByProductHandlerValidationAndIC02Envelope(t *testing.T) {
 func TestSummaryHandlerEnvelopeAndErrors(t *testing.T) {
 	one := 1
 	at := time.Date(2026, 7, 15, 12, 0, 0, 0, time.UTC)
-	svc := &fakeListService{summary: ports.ListingSummaryRow{Total: 3, Active: 1, Paused: 1, SyncError: 1, Stale: 1, Unlinked: 1, BelowMarginWorstCase: &one, MarginUnknown: nil, AsOf: at}}
+	svc := &fakeListService{summary: ports.ListingSummaryRow{Total: 3, Active: 1, Paused: 1, SyncError: 1, Stale: 1, Unlinked: 1, BelowMarginWorstCase: &one, MarginUnknown: nil, SemVinculo: 1, AbaixoCusto: 2, SemEvidencia: 3, AsOf: at}}
 	w := httptest.NewRecorder()
 	NewReadHandler(svc).HandleSummary(w, httptest.NewRequest(http.MethodGet, "/listings/summary?installation_id=i", nil))
 	var body map[string]any
@@ -250,6 +250,11 @@ func TestSummaryHandlerEnvelopeAndErrors(t *testing.T) {
 	exceptions := body["exceptions"].(map[string]any)
 	if w.Code != 200 || body["total"] != float64(3) || body["as_of"] != "2026-07-15T12:00:00Z" || exceptions["below_margin_worst_case"] != float64(1) || exceptions["margin_unknown"] != nil {
 		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+	}
+	// F01-S4 additive counters: strictly additional keys alongside the 4
+	// original ones (W1's response remains a valid subset of this envelope).
+	if exceptions["sem_vinculo"] != float64(1) || exceptions["abaixo_custo"] != float64(2) || exceptions["sem_evidencia"] != float64(3) {
+		t.Fatalf("additive exception counters missing/wrong: %+v", exceptions)
 	}
 	for _, tc := range []struct {
 		name, url, method string
