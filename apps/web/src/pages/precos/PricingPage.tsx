@@ -14,6 +14,7 @@ import { ParamsDrawer } from "./ParamsDrawer";
 import { DifalDrawer } from "./DifalDrawer";
 import { MarketComparison } from "./MarketComparison";
 import { ApplyPriceAction } from "./ApplyPriceAction";
+import { ScenariosPanel } from "./ScenariosPanel";
 
 /** Seed padrão thresholds/regime used until the operator's profile loads (or if it errors). */
 const DEFAULT_PROFILE: PricingCalcProfile = {
@@ -134,6 +135,21 @@ export function PricingPage() {
 
   // Working price: explicit input wins, else the product's current price.
   const preco = precoInput.trim() !== "" ? precoInput.trim() : selected?.current_price.amount ?? "";
+
+  // A scenario snapshots the working simulation; reloading re-applies it to the
+  // page state (product, modalidade, price) so the operator can compare setups.
+  const scenarioPayload: Record<string, unknown> = {
+    preco,
+    modalidade,
+    product_id: selected?.internal_product_id ?? null,
+  };
+  const applyScenario = (payload: Record<string, unknown>) => {
+    if (typeof payload.product_id === "number") setSelectedId(payload.product_id);
+    if (typeof payload.modalidade === "string" && MODALIDADES.some((m) => m.key === payload.modalidade)) {
+      setModalidade(payload.modalidade as ModalidadeKey);
+    }
+    if (typeof payload.preco === "string") setPrecoInput(payload.preco);
+  };
 
   const decomposeInput: PricingCalcInput | null = selected && preco !== ""
     ? {
@@ -277,6 +293,10 @@ export function PricingPage() {
 
             <div data-testid="region-aplicar" className="rounded-lg border border-border bg-surface p-3">
               <ApplyPriceAction installationId={installationId} listingId={listingId} newPrice={preco} />
+            </div>
+
+            <div data-testid="region-cenarios" className="rounded-lg border border-border bg-surface p-3">
+              <ScenariosPanel payload={scenarioPayload} onReload={applyScenario} />
             </div>
           </section>
         </div>

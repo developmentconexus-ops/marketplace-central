@@ -92,6 +92,9 @@ vi.mock("./MarketComparison", () => ({
 vi.mock("./ApplyPriceAction", () => ({
   ApplyPriceAction: () => <div data-testid="apply-action-stub" />,
 }));
+vi.mock("./ScenariosPanel", () => ({
+  ScenariosPanel: () => <div data-testid="scenarios-panel-stub" />,
+}));
 
 vi.mock("../../app/ClientContext", () => ({
   useClient: () => ({
@@ -137,6 +140,7 @@ describe("PricingPage scaffold", () => {
     expect(screen.getByTestId("params-trigger")).toBeInTheDocument();
     expect(screen.getByTestId("region-comparacao")).toBeInTheDocument();
     expect(screen.getByTestId("region-aplicar")).toBeInTheDocument();
+    expect(screen.getByTestId("region-cenarios")).toBeInTheDocument();
 
     // Profile drives the calc surface — it must be fetched on mount.
     expect(getPricingProfile).toHaveBeenCalled();
