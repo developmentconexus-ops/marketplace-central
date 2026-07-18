@@ -131,8 +131,8 @@ export function ProductPicker({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12 text-slate-500">
-        <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-300 border-t-blue-600 mr-3" />
+      <div className="flex items-center justify-center py-12 text-muted">
+        <div className="animate-spin rounded-full h-6 w-6 border-2 border-border border-t-accent mr-3" />
         Loading products...
       </div>
     );
@@ -143,20 +143,20 @@ export function ProductPicker({
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-faint" />
           <input
             type="text"
             placeholder="Search by name, SKU, EAN or reference..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full pl-10 pr-3 py-2 border border-border rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
           />
         </div>
 
         <select
           value={taxonomyFilter}
           onChange={(e) => setTaxonomyFilter(e.target.value)}
-          className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="px-3 py-2 border border-border rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
         >
           <option value="">All taxonomy groups</option>
           {taxonomyNodes.map((node) => (
@@ -169,7 +169,7 @@ export function ProductPicker({
         <select
           value={classificationFilter}
           onChange={(e) => handleClassificationChange(e.target.value)}
-          className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="px-3 py-2 border border-border rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
         >
           <option value="">All classifications</option>
           {classifications.map((cls) => (
@@ -181,42 +181,42 @@ export function ProductPicker({
       </div>
 
       {/* Selection count */}
-      <div className="text-sm text-slate-600">
+      <div className="text-sm text-muted">
         <span className="font-medium">{selectedIds.length}</span> product
         {selectedIds.length !== 1 ? "s" : ""} selected
         {filteredProducts.length !== products.length && (
-          <span className="ml-2 text-slate-400">
+          <span className="ml-2 text-faint">
             ({filteredProducts.length} of {products.length} shown)
           </span>
         )}
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto border border-slate-200 rounded-lg">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <thead className="bg-slate-50">
+      <div className="overflow-x-auto border border-border rounded-control">
+        <table className="min-w-full divide-y divide-border text-sm">
+          <thead className="bg-surface-2">
             <tr>
               <th className="px-4 py-3 text-left">
                 <input
                   type="checkbox"
                   checked={allFilteredSelected}
                   onChange={handleToggleAll}
-                  className="rounded border-slate-300"
+                  className="rounded border-border"
                   aria-label="Select all"
                 />
               </th>
-              <th className="px-4 py-3 text-left font-medium text-slate-700">Name</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-700">SKU</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-700">EAN</th>
-              <th className="px-4 py-3 text-right font-medium text-slate-700">Cost (R$)</th>
-              <th className="px-4 py-3 text-right font-medium text-slate-700">Price (R$)</th>
-              <th className="px-4 py-3 text-right font-medium text-slate-700">Stock</th>
+              <th className="px-4 py-3 text-left font-medium text-ink">Name</th>
+              <th className="px-4 py-3 text-left font-medium text-ink">SKU</th>
+              <th className="px-4 py-3 text-left font-medium text-ink">EAN</th>
+              <th className="px-4 py-3 text-right font-medium text-ink">Cost (R$)</th>
+              <th className="px-4 py-3 text-right font-medium text-ink">Price (R$)</th>
+              <th className="px-4 py-3 text-right font-medium text-ink">Stock</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-border">
             {filteredProducts.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                <td colSpan={7} className="px-4 py-8 text-center text-faint">
                   No products found.
                 </td>
               </tr>
@@ -224,23 +224,23 @@ export function ProductPicker({
               filteredProducts.map((product) => (
                 <tr
                   key={product.product_id}
-                  className={`hover:bg-slate-50 ${selectedSet.has(product.product_id) ? "bg-blue-50" : ""}`}
+                  className={`hover:bg-surface-2 ${selectedSet.has(product.product_id) ? "bg-accent-soft" : ""}`}
                 >
                   <td className="px-4 py-3">
                     <input
                       type="checkbox"
                       checked={selectedSet.has(product.product_id)}
                       onChange={() => handleToggle(product.product_id)}
-                      className="rounded border-slate-300"
+                      className="rounded border-border"
                       aria-label={`Select ${product.name}`}
                     />
                   </td>
-                  <td className="px-4 py-3 font-medium text-slate-900">{product.name}</td>
-                  <td className="px-4 py-3 text-slate-600">{product.sku}</td>
-                  <td className="px-4 py-3 text-slate-600">{product.ean}</td>
-                  <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(product.cost_amount)}</td>
-                  <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(product.price_amount)}</td>
-                  <td className="px-4 py-3 text-right text-slate-600">{product.stock_quantity}</td>
+                  <td className="px-4 py-3 font-medium text-ink">{product.name}</td>
+                  <td className="px-4 py-3 text-muted">{product.sku}</td>
+                  <td className="px-4 py-3 text-muted">{product.ean}</td>
+                  <td className="px-4 py-3 text-right text-muted">{formatCurrency(product.cost_amount)}</td>
+                  <td className="px-4 py-3 text-right text-muted">{formatCurrency(product.price_amount)}</td>
+                  <td className="px-4 py-3 text-right text-muted">{product.stock_quantity}</td>
                 </tr>
               ))
             )}

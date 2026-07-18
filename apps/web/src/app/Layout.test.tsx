@@ -49,27 +49,19 @@ describe("Layout", () => {
     listIntegrationInstallations.mockResolvedValue({ items: installations });
   });
 
-  it("renders the eight sidebar labels in the contracted order", async () => {
+  it("mounts the header navigation with the enabled pills as links", async () => {
     renderLayout();
     await screen.findByRole("combobox", { name: "Selecionar instalação" });
 
-    const labels = within(screen.getByRole("navigation"))
+    // Layout only mounts the header; the six-pill contract lives in Header.test.tsx.
+    // Native `toContain` (not a jest-dom matcher) holds the tsc baseline.
+    const navLinkNames = within(screen.getByRole("navigation"))
       .getAllByRole("link")
       .map((link) => link.textContent);
 
-    expect(labels).toEqual([
-      "Visão geral",
-      "Catálogo",
-      "Anúncios",
-      "Vínculos & Import.",
-      "Estoque",
-      "Preços & Simulador",
-      "Pedidos",
-      "Integrações & Sync",
-    ]);
-    expect(labels).not.toContain("Mercado");
-    expect(labels).not.toContain("Classifications");
-    expect(labels).not.toContain("Marketplaces");
+    for (const label of ["Visão geral", "Anúncios", "Simulador", "Pedidos"]) {
+      expect(navLinkNames).toContain(label);
+    }
   });
 
   it("shows the selected installation in the ML pill", async () => {
@@ -94,14 +86,15 @@ describe("Layout", () => {
     );
   });
 
-  it("preserves the installation query param when following a sidebar link", async () => {
+  it("preserves the query string when following an enabled navigation pill", async () => {
     renderLayout("/anuncios?installation=inst_test&tab=pendencia");
     await screen.findByRole("combobox", { name: "Selecionar instalação" });
 
-    fireEvent.click(screen.getByRole("link", { name: "Catálogo" }));
+    // Enabled pills carry location.search via object-form `to`, so no query is dropped.
+    fireEvent.click(screen.getByRole("link", { name: "Simulador" }));
 
     expect(screen.getByTestId("location")).toHaveTextContent(
-      "/catalogo?installation=inst_test&tab=pendencia",
+      "/precos?installation=inst_test&tab=pendencia",
     );
   });
 

@@ -32,8 +32,8 @@
     "harness:pg:up": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command pg-session-up",
     "harness:pg:down": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command pg-session-down"
   },
-  "dependencies": {},
   "devDependencies": {
+    "@types/node": "^22.20.1",
     "jsdom": "^26.1.0",
     "typescript": "^5"
   },

@@ -9,6 +9,7 @@ describe("load state components", () => {
     render(<LoadingState />);
 
     expect(screen.getByText("Carregando…")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveClass("text-muted");
   });
 
   it("renders the generic error and retries once", () => {
@@ -16,6 +17,7 @@ describe("load state components", () => {
     render(<ErrorState onRetry={onRetry} />);
 
     expect(screen.getByRole("alert")).toHaveTextContent(/^Erro ao carregar\.$/);
+    expect(screen.getByRole("alert").parentElement).toHaveClass("text-warn");
     expect(screen.getByRole("button", { name: "Tentar novamente" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
@@ -37,6 +39,10 @@ describe("load state components", () => {
     expect(screen.getByText("Nenhum registro encontrado.")).toBeInTheDocument();
     expect(screen.getByText("Ajuste os filtros.")).toBeInTheDocument();
     expect(container.querySelectorAll("p")).toHaveLength(2);
+    expect(screen.getByText("Nenhum registro encontrado.").parentElement).toHaveClass(
+      "text-muted",
+    );
+    expect(screen.getByText("Ajuste os filtros.")).toHaveClass("text-faint");
 
     rerender(<EmptyState />);
 

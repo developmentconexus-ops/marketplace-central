@@ -1,16 +1,19 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { ClassificationsPage } from "@marketplace-central/feature-classifications";
-import { PricingSimulatorPage } from "@marketplace-central/feature-simulator";
 import { StockSeguroPage } from "@marketplace-central/feature-inventory";
 import { CatalogPage } from "@marketplace-central/feature-products";
 import { Layout } from "./Layout";
-import { DashboardPage } from "../pages/DashboardPage";
-import { AnunciosPage } from "../pages/AnunciosPage";
 import { ProtocoloPage } from "../pages/mutations/ProtocoloPage";
 import { WorkspacePlaceholder } from "../pages/WorkspacePlaceholder";
 import { useClient } from "./ClientContext";
 import { InstallationProvider, useInstallation } from "./InstallationContext";
 import { LegacyRedirect } from "./LegacyRedirect";
+import { DashboardRoute } from "../routes/dashboard";
+import { AnunciosRoute } from "../routes/anuncios";
+import { VinculosRoute } from "../routes/vinculos";
+import { ProdutoRoute } from "../routes/produto";
+import { PrecosRoute } from "../routes/precos";
+import { PedidosRoute } from "../routes/pedidos";
 
 function CatalogPageWrapper() {
   const client = useClient();
@@ -20,11 +23,6 @@ function CatalogPageWrapper() {
 function ClassificationsPageWrapper() {
   const client = useClient();
   return <ClassificationsPage client={client} />;
-}
-
-function PricingSimulatorPageWrapper() {
-  const client = useClient();
-  return <PricingSimulatorPage client={client} />;
 }
 
 function StockSeguroPageWrapper() {
@@ -39,14 +37,14 @@ export function AppRouter() {
       <InstallationProvider>
         <Routes>
           <Route element={<Layout />}>
-            <Route index element={<DashboardPage />} />
-            <Route path="/anuncios" element={<AnunciosPage />} />
+            <Route index element={<DashboardRoute />} />
+            <Route path="/anuncios" element={<AnunciosRoute />} />
             <Route path="/catalogo" element={<CatalogPageWrapper />} />
-            <Route path="/catalogo/produtos/:productId" element={<WorkspacePlaceholder />} />
-            <Route path="/vinculos" element={<WorkspacePlaceholder />} />
+            <Route path="/catalogo/produtos/:productId" element={<ProdutoRoute />} />
+            <Route path="/vinculos" element={<VinculosRoute />} />
             <Route path="/estoque" element={<StockSeguroPageWrapper />} />
-            <Route path="/precos" element={<PricingSimulatorPageWrapper />} />
-            <Route path="/pedidos" element={<WorkspacePlaceholder />} />
+            <Route path="/precos" element={<PrecosRoute />} />
+            <Route path="/pedidos" element={<PedidosRoute />} />
             <Route path="/integracoes" element={<WorkspacePlaceholder />} />
             <Route path="/protocolos/:protocolId" element={<ProtocoloPage />} />
             <Route path="/classifications" element={<ClassificationsPageWrapper />} />

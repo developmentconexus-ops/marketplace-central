@@ -10,6 +10,8 @@
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
+    "@fontsource/ibm-plex-mono": "^5.2.7",
+    "@fontsource/instrument-sans": "^5.2.8",
     "@marketplace-central/feature-classifications": "0.1.0",
     "@marketplace-central/feature-inventory": "0.1.0",
     "@marketplace-central/feature-products": "0.1.0",

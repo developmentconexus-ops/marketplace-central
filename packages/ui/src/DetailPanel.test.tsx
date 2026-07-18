@@ -23,6 +23,19 @@ describe("DetailPanel", () => {
     expect(screen.getByText("Panel content")).toBeInTheDocument();
   });
 
+  it("uses semantic panel tokens", () => {
+    render(
+      <DetailPanel open={true} onClose={vi.fn()} title="Edit Product">
+        <p>Panel content</p>
+      </DetailPanel>
+    );
+    const panel = screen.getByRole("complementary", { name: "Edit Product" });
+
+    expect(panel).toHaveClass("bg-surface", "border-border");
+    expect(screen.getByText("Edit Product")).toHaveClass("text-ink");
+    expect(screen.getByRole("button", { name: "Close panel" })).toHaveClass("text-faint");
+  });
+
   it("renders subtitle when provided", () => {
     render(
       <DetailPanel open={true} onClose={vi.fn()} title="Edit Product" subtitle="SKU-001">

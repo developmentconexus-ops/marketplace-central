@@ -58,6 +58,17 @@ describe("ProductPicker", () => {
     expect(screen.getByText("SKU-002")).toBeInTheDocument();
   });
 
+  it("uses semantic surface tokens and formats known prices", () => {
+    render(<ProductPicker {...defaultProps} selectedIds={["p1"]} />);
+    const selectedRow = screen.getByText("Cuba Inox").closest("tr");
+    const table = screen.getByRole("table");
+
+    expect(selectedRow).toHaveClass("bg-accent-soft");
+    expect(table.parentElement).toHaveClass("border-border");
+    // Regex tolerates the pt-BR nbsp (U+00A0) after "R$"; honest formatter passthrough.
+    expect(screen.getByText(/R\$\s*200,00/)).toBeInTheDocument();
+  });
+
   it("calls onSelectionChange when checkbox clicked", () => {
     const onSelectionChange = vi.fn();
     render(
