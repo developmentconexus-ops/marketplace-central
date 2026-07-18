@@ -17,6 +17,7 @@ import (
 var (
 	_ ports.OrderStore        = (*OrderRepository)(nil)
 	_ ports.OrderSummaryStore = (*OrderRepository)(nil)
+	_ ports.OrderBucketStore  = (*OrderRepository)(nil)
 	_ ports.OrderLookup       = (*OrderRepository)(nil)
 	_ ports.OrderReadStore    = (*OrderReadRepository)(nil)
 )
@@ -202,6 +203,57 @@ func (r *OrderRepository) GetOrderSummary(ctx context.Context, installationID st
 		return ports.OrderSummary{}, err
 	}
 	return summary, nil
+}
+
+// GetOrderBucketCounts implements ports.OrderBucketStore (F01-A). It selects
+// the minimal per-order fields DeriveOrderBucket needs (provider_status,
+// shipping_id presence) for the WHOLE installation — no pagination, since
+// the KPI/Lista/Kanban buckets must be server-accurate over all orders, not
+// one page — under the SAME tenancy predicate and provider_created_at guard
+// GetOrderSummary already uses. Bucket rules are NOT reimplemented in SQL:
+// domain.DeriveOrderBucket is the single authority, applied per row in Go.
+func (r *OrderRepository) GetOrderBucketCounts(ctx context.Context, installationID string) (ports.OrderBucketCounts, error) {
+	if r.pool == nil {
+		return ports.OrderBucketCounts{}, errors.New("orders bucket counts repository: database is not configured")
+	}
+
+	rows, err := r.pool.Query(ctx, `
+		SELECT provider_status, shipping_id
+		FROM orders_marketplace_orders
+		WHERE tenant_id = $1
+		  AND installation_id = $2
+		  AND provider_created_at IS NOT NULL
+	`, r.tenantID, strings.TrimSpace(installationID))
+	if err != nil {
+		return ports.OrderBucketCounts{}, err
+	}
+	defer rows.Close()
+
+	var counts ports.OrderBucketCounts
+	for rows.Next() {
+		var providerStatus string
+		var shippingID pgtype.Text
+		if err := rows.Scan(&providerStatus, &shippingID); err != nil {
+			return ports.OrderBucketCounts{}, err
+		}
+		switch ordersdomain.DeriveOrderBucket(providerStatus, shippingID.Valid && shippingID.String != "") {
+		case ordersdomain.BucketNovo:
+			counts.Novo++
+		case ordersdomain.BucketFaturar:
+			counts.Faturar++
+		case ordersdomain.BucketEnviar:
+			counts.Enviar++
+		case ordersdomain.BucketEnviado:
+			counts.Enviado++
+		case ordersdomain.BucketCancelado:
+			// Excluded from the four KPI buckets by design (F01-A); still
+			// consumed so cancelled orders are not silently folded into novo.
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return ports.OrderBucketCounts{}, err
+	}
+	return counts, nil
 }
 
 func (r *OrderRepository) FindExactOrder(ctx context.Context, scope ordersdomain.LinkageScope) (ordersdomain.MarketplaceOrder, bool, error) {

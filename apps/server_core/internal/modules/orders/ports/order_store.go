@@ -41,3 +41,19 @@ type OrderSummary struct {
 type OrderSummaryStore interface {
 	GetOrderSummary(ctx context.Context, installationID string, referenceTime time.Time) (OrderSummary, error)
 }
+
+// OrderBucketCounts is the by=status response shape for GET /orders/summary
+// (F01-A). It carries the four KPI/Lista-tab/Kanban-column buckets;
+// domain.BucketCancelado is intentionally excluded (see domain/order_bucket.go).
+type OrderBucketCounts struct {
+	Novo    int64
+	Faturar int64
+	Enviar  int64
+	Enviado int64
+}
+
+// OrderBucketStore is additive to OrderSummaryStore so existing fakes/stores
+// that only implement OrderSummaryStore keep compiling unchanged.
+type OrderBucketStore interface {
+	GetOrderBucketCounts(ctx context.Context, installationID string) (OrderBucketCounts, error)
+}

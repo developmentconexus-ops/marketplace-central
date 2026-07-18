@@ -362,6 +362,18 @@ func (f *fakeSummaryStore) GetOrderSummary(context.Context, string, time.Time) (
 	return f.summary, f.err
 }
 
+// fakeBucketStore mirrors fakeSummaryStore's idiom for ports.OrderBucketStore
+// (F01-A), driving handleSummary's ?by=status branch through a real
+// SummaryService without a database.
+type fakeBucketStore struct {
+	counts ports.OrderBucketCounts
+	err    error
+}
+
+func (f *fakeBucketStore) GetOrderBucketCounts(context.Context, string) (ports.OrderBucketCounts, error) {
+	return f.counts, f.err
+}
+
 func TestHandleSummaryReturnsCounts(t *testing.T) {
 	summarySvc := application.NewSummaryService(&fakeSummaryStore{summary: ports.OrderSummary{Today: 3, SevenDays: 11}})
 	handler := NewHandlerWithSummary(stubOrderImporter{}, stubOrderReadService{}, nil, summarySvc)
@@ -423,6 +435,111 @@ func TestHandleSummaryStoreNotConfiguredReturns503(t *testing.T) {
 
 	if rr.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status=%d body=%s, want 503", rr.Code, rr.Body.String())
+	}
+}
+
+func TestHandleSummaryByStatusReturnsBucketCounts(t *testing.T) {
+	summarySvc := application.NewSummaryServiceWithBuckets(
+		&fakeSummaryStore{summary: ports.OrderSummary{Today: 3, SevenDays: 11}},
+		&fakeBucketStore{counts: ports.OrderBucketCounts{Novo: 4, Faturar: 2, Enviar: 1, Enviado: 7}},
+	)
+	handler := NewHandlerWithSummary(stubOrderImporter{}, stubOrderReadService{}, nil, summarySvc)
+	req := httptest.NewRequest(http.MethodGet, "/orders/summary?installation_id=inst-1&by=status", nil)
+	rr := httptest.NewRecorder()
+
+	handler.handleSummary(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s, want 200", rr.Code, rr.Body.String())
+	}
+	var payload struct {
+		ByStatus map[string]int64 `json:"by_status"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode response: %v body=%s", err, rr.Body.String())
+	}
+	want := map[string]int64{"novo": 4, "faturar": 2, "enviar": 1, "enviado": 7}
+	if len(payload.ByStatus) != len(want) {
+		t.Fatalf("by_status = %#v, want exactly novo/faturar/enviar/enviado keys", payload.ByStatus)
+	}
+	for key, wantValue := range want {
+		if payload.ByStatus[key] != wantValue {
+			t.Fatalf("by_status[%q] = %d, want %d; body=%s", key, payload.ByStatus[key], wantValue, rr.Body.String())
+		}
+	}
+}
+
+func TestHandleSummaryByStatusStoreErrorReturns500NoFabricatedZeros(t *testing.T) {
+	summarySvc := application.NewSummaryServiceWithBuckets(
+		&fakeSummaryStore{summary: ports.OrderSummary{Today: 3, SevenDays: 11}},
+		&fakeBucketStore{err: errors.New("bucket source unavailable")},
+	)
+	handler := NewHandlerWithSummary(stubOrderImporter{}, stubOrderReadService{}, nil, summarySvc)
+	req := httptest.NewRequest(http.MethodGet, "/orders/summary?installation_id=inst-1&by=status", nil)
+	rr := httptest.NewRecorder()
+
+	handler.handleSummary(rr, req)
+
+	if rr.Code != http.StatusInternalServerError {
+		t.Fatalf("status=%d body=%s, want 500", rr.Code, rr.Body.String())
+	}
+	if bytes.Contains(rr.Body.Bytes(), []byte(`"by_status"`)) {
+		t.Fatalf("error body must not fabricate zero bucket counts; body=%s", rr.Body.String())
+	}
+}
+
+func TestHandleSummaryByStatusMissingInstallationReturns400(t *testing.T) {
+	summarySvc := application.NewSummaryServiceWithBuckets(
+		&fakeSummaryStore{summary: ports.OrderSummary{Today: 1, SevenDays: 2}},
+		&fakeBucketStore{counts: ports.OrderBucketCounts{Novo: 1}},
+	)
+	handler := NewHandlerWithSummary(stubOrderImporter{}, stubOrderReadService{}, nil, summarySvc)
+	req := httptest.NewRequest(http.MethodGet, "/orders/summary?by=status", nil)
+	rr := httptest.NewRecorder()
+
+	handler.handleSummary(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d body=%s, want 400", rr.Code, rr.Body.String())
+	}
+}
+
+func TestHandleSummaryUnsupportedByValueReturns400(t *testing.T) {
+	summarySvc := application.NewSummaryService(&fakeSummaryStore{summary: ports.OrderSummary{Today: 1, SevenDays: 2}})
+	handler := NewHandlerWithSummary(stubOrderImporter{}, stubOrderReadService{}, nil, summarySvc)
+	req := httptest.NewRequest(http.MethodGet, "/orders/summary?installation_id=inst-1&by=bogus", nil)
+	rr := httptest.NewRecorder()
+
+	handler.handleSummary(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d body=%s, want 400", rr.Code, rr.Body.String())
+	}
+}
+
+func TestHandleSummaryNoParamStillReturnsDefaultShape(t *testing.T) {
+	summarySvc := application.NewSummaryServiceWithBuckets(
+		&fakeSummaryStore{summary: ports.OrderSummary{Today: 3, SevenDays: 11}},
+		&fakeBucketStore{counts: ports.OrderBucketCounts{Novo: 9}},
+	)
+	handler := NewHandlerWithSummary(stubOrderImporter{}, stubOrderReadService{}, nil, summarySvc)
+	req := httptest.NewRequest(http.MethodGet, "/orders/summary?installation_id=inst-1", nil)
+	rr := httptest.NewRecorder()
+
+	handler.handleSummary(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s, want 200", rr.Code, rr.Body.String())
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode response: %v body=%s", err, rr.Body.String())
+	}
+	if len(payload) != 2 {
+		t.Fatalf("payload = %#v, want exactly today/seven_days keys (no-param call unchanged)", payload)
+	}
+	if payload["today"] != float64(3) || payload["seven_days"] != float64(11) {
+		t.Fatalf("payload = %#v, want today=3 seven_days=11", payload)
 	}
 }
 

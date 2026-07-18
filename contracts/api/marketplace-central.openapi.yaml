@@ -1738,13 +1738,25 @@ paths:
       description: >-
         Additive read-only counts endpoint (F01-S5). Backed by the existing
         orders summary store also used by the dashboard; the runtime DTO is
-        the source of truth (lock-exception D-02).
+        the source of truth (lock-exception D-02). The optional "by" query
+        param selects the response dimension (F01-A): absent keeps the
+        default {today, seven_days} shape; "status" additionally returns
+        by_status bucket counts.
       parameters:
         - name: installation_id
           in: query
           required: true
           schema:
             type: string
+        - name: by
+          in: query
+          required: false
+          description: >-
+            When set to "status", the response additionally includes
+            by_status bucket counts (novo/faturar/enviar/enviado).
+          schema:
+            type: string
+            enum: [status]
       responses:
         "200":
           description: Order counts for today and the last 7 days
@@ -4644,6 +4656,26 @@ components:
           type: integer
         seven_days:
           type: integer
+        by_status:
+          description: >-
+            Present only when the request includes by=status (F01-A).
+            Server-accurate bucket counts over the whole installation for the
+            pedidos Lista status tabs, Kanban column headers, and KPI row.
+          type: object
+          required:
+            - novo
+            - faturar
+            - enviar
+            - enviado
+          properties:
+            novo:
+              type: integer
+            faturar:
+              type: integer
+            enviar:
+              type: integer
+            enviado:
+              type: integer
 
     ImportMarketplaceOrdersRequest:
       type: object

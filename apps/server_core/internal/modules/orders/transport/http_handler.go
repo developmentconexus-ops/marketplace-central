@@ -234,11 +234,27 @@ type orderSummaryDTO struct {
 	SevenDays int64 `json:"seven_days"`
 }
 
+// orderBucketCountsDTO is the response shape for GET /orders/summary?by=status
+// (F01-A). The four keys are locked byte-identical to domain.OrderBucket's
+// novo/faturar/enviar/enviado constants, the OpenAPI by_status schema, and
+// the SDK OrderSummary.by_status interface (CONSISTENCY requirement).
+type orderBucketCountsDTO struct {
+	Novo    int64 `json:"novo"`
+	Faturar int64 `json:"faturar"`
+	Enviar  int64 `json:"enviar"`
+	Enviado int64 `json:"enviado"`
+}
+
 // handleSummary resolves installationID the same way handleGet/handleReadList
 // do (requiredInstallation over the query string) and delegates counting to
 // application.SummaryService. On any Summary() error it writes an honest
 // error status — never a fabricated {"today":0,"seven_days":0} body — since
 // an unresolved count is unknown, not zero.
+//
+// The optional "by" query param selects the response dimension (F01-A):
+// absent/empty keeps the existing {today, seven_days} shape; "status"
+// returns {by_status: {...}} bucket counts; any other value is an honest 400
+// (never a silent fallback to the default shape).
 func (h Handler) handleSummary(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", http.MethodGet)
@@ -250,19 +266,45 @@ func (h Handler) handleSummary(w http.ResponseWriter, r *http.Request) {
 		writeOrderReadError(w, err)
 		return
 	}
+	switch by := r.URL.Query().Get("by"); by {
+	case "":
+		h.handleSummaryDefault(w, r, installationID)
+	case "status":
+		h.handleSummaryByStatus(w, r, installationID)
+	default:
+		writeOrdersErrorDetails(w, http.StatusBadRequest, "unsupported_summary_dimension", "unsupported summary dimension", map[string]any{"by": by})
+	}
+}
+
+func (h Handler) handleSummaryDefault(w http.ResponseWriter, r *http.Request, installationID string) {
 	summary, err := h.summary.Summary(r.Context(), installationID, time.Now())
 	if err != nil {
-		switch {
-		case errors.Is(err, application.ErrSummaryInstallationRequired):
-			writeOrdersErrorDetails(w, http.StatusBadRequest, "installation_required", "installation_id é obrigatório", map[string]any{"key": "installation_id"})
-		case errors.Is(err, application.ErrSummaryStoreNotConfigured):
-			writeOrdersError(w, http.StatusServiceUnavailable, "ORDERS_SUMMARY_STORE_NOT_CONFIGURED", "orders summary is not configured")
-		default:
-			writeOrdersError(w, http.StatusInternalServerError, "ORDERS_INTERNAL_ERROR", "orders summary failed")
-		}
+		writeSummaryError(w, err)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, orderSummaryDTO{Today: summary.Today, SevenDays: summary.SevenDays})
+}
+
+func (h Handler) handleSummaryByStatus(w http.ResponseWriter, r *http.Request, installationID string) {
+	counts, err := h.summary.BucketCounts(r.Context(), installationID)
+	if err != nil {
+		writeSummaryError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+		"by_status": orderBucketCountsDTO{Novo: counts.Novo, Faturar: counts.Faturar, Enviar: counts.Enviar, Enviado: counts.Enviado},
+	})
+}
+
+func writeSummaryError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, application.ErrSummaryInstallationRequired):
+		writeOrdersErrorDetails(w, http.StatusBadRequest, "installation_required", "installation_id é obrigatório", map[string]any{"key": "installation_id"})
+	case errors.Is(err, application.ErrSummaryStoreNotConfigured):
+		writeOrdersError(w, http.StatusServiceUnavailable, "ORDERS_SUMMARY_STORE_NOT_CONFIGURED", "orders summary is not configured")
+	default:
+		writeOrdersError(w, http.StatusInternalServerError, "ORDERS_INTERNAL_ERROR", "orders summary failed")
+	}
 }
 
 // enrichedBuyerDTO is the ONLY buyer identification allowed onto the
