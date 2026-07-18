@@ -2496,6 +2496,105 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /erp/imports:
+    post:
+      summary: Import ERP product data from an XLSX file
+      operationId: createErpImport
+      tags: [erp-imports]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: ERP import created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErpImportCreated'
+        "400":
+          description: Invalid ERP import file
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErpImportError'
+        "409":
+          description: Duplicate file or another ERP import is in progress
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErpImportConflict'
+        "422":
+          description: Required ERP import column is missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErpImportError'
+        "500":
+          description: Unexpected ERP import failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErpImportError'
+    get:
+      summary: List ERP imports
+      description: ERP imports are returned newest-first by imported_at, with import_id as the tiebreaker.
+      operationId: listErpImports
+      tags: [erp-imports]
+      responses:
+        "200":
+          description: ERP import history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErpImportList'
+        "500":
+          description: Unexpected ERP import failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErpImportError'
+
+  /erp/imports/{id}:
+    get:
+      summary: Get an ERP import
+      operationId: getErpImport
+      tags: [erp-imports]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ERP import UUID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: ERP import details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErpImportDetail'
+        "404":
+          description: ERP import not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErpImportError'
+        "500":
+          description: Unexpected ERP import failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErpImportError'
+
 components:
   parameters:
     MutationProtocolId:
@@ -6080,3 +6179,117 @@ components:
               enum: [invalid_body, invalid_intent, installation_required, invalid_filter, invalid_cursor, actor_required, type_not_enabled, empty_selection, selection_too_large, execute_required, source_time_unavailable, preview_stale, invalid_state, nothing_to_retry, protocol_not_found, method_not_allowed]
             message: { type: string }
             details: { type: object, additionalProperties: true }
+
+    ErpImportStatus:
+      type: string
+      enum: [COMPLETED, REJECTED]
+
+    ErpImportCreated:
+      type: object
+      required: [import_id, protocol, status]
+      properties:
+        import_id:
+          type: string
+        protocol:
+          type: string
+        status:
+          $ref: '#/components/schemas/ErpImportStatus'
+
+    ErpImportSummary:
+      type: object
+      description: One persisted ERP import summary.
+      required: [import_id, protocol, file_sha256, source, imported_at, status, accepted_count, rejected_count, warning_count]
+      properties:
+        import_id:
+          type: string
+        protocol:
+          type: string
+        file_sha256:
+          type: string
+        source:
+          type: string
+          enum: [xlsx]
+        imported_at:
+          type: string
+          format: date-time
+          description: RFC3339 UTC timestamp.
+        status:
+          $ref: '#/components/schemas/ErpImportStatus'
+        accepted_count:
+          type: integer
+        rejected_count:
+          type: integer
+        warning_count:
+          type: integer
+
+    ErpImportIssueCode:
+      type: string
+      enum: [EMPTY_CODPROD, DUPLICATE_CODPROD, EMPTY_DESCRPROD, INVALID_CUSTO, INVALID_ESTOQUE, INVALID_EAN, INVALID_NCM]
+
+    ErpImportIssue:
+      type: object
+      required: [row, code, detail]
+      properties:
+        row:
+          type: integer
+        code:
+          $ref: '#/components/schemas/ErpImportIssueCode'
+        detail:
+          type: string
+        column:
+          type: string
+          nullable: true
+        offending_value:
+          type: string
+          nullable: true
+
+    ErpImportDetail:
+      allOf:
+        - $ref: '#/components/schemas/ErpImportSummary'
+        - type: object
+          required: [rejected_rows, warnings]
+          properties:
+            rejected_rows:
+              type: array
+              items:
+                $ref: '#/components/schemas/ErpImportIssue'
+            warnings:
+              type: array
+              items:
+                $ref: '#/components/schemas/ErpImportIssue'
+
+    ErpImportList:
+      type: object
+      description: ERP imports ordered newest-first by imported_at, with import_id as the tiebreaker.
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErpImportSummary'
+
+    ErpImportError:
+      type: object
+      description: Flat ERP import error body.
+      required: [error]
+      properties:
+        error:
+          type: string
+          enum: [invalid_file, missing_required_column, import_not_found, internal_error]
+        detail:
+          type: string
+        column:
+          type: string
+
+    ErpImportConflict:
+      type: object
+      description: Flat ERP import conflict body.
+      required: [error]
+      properties:
+        error:
+          type: string
+          enum: [duplicate_file, import_in_progress]
+        import_id:
+          type: string
+        protocol:
+          type: string
