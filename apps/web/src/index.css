@@ -11,13 +11,80 @@
 }
 
 :root {
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --bg:#fbfaf7;
+  --surface:#ffffff;
+  --surface2:#f4f2ea;
+  --border:#e6e3da;
+  --border2:#f0eee6;
+  --ink:#25291f;
+  --muted:#6f6d63;
+  --faint:#8b887c;
+  --accent:#4a7c59;
+  --accent-soft:#edf3ec;
+  --accent-ink:#33573f;
+  --warn:#a3552e;
+  --warn-soft:#f7ebe2;
+  --info:#2f5bb7;
+  --info-soft:#e8eef9;
+  --amber:#8a6d1f;
+  --amber-soft:#fdf3d7;
+  --donut-track:#e9e6dc;
+  --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-pill: 999px;
+}
+
+[data-theme="dark"] {
+  --bg:#161814;
+  --surface:#1f221c;
+  --surface2:#262a23;
+  --border:#2e312a;
+  --border2:#2a2d26;
+  --ink:#e9e8e2;
+  --muted:#a5a399;
+  --faint:#8b887c;
+  --accent:#7fb08c;
+  --accent-soft:#243328;
+  --accent-ink:#9ecfab;
+  --warn:#d08a63;
+  --warn-soft:#3a2a20;
+  --info:#7fa3e0;
+  --info-soft:#222b3c;
+  --amber:#d4b45a;
+  --amber-soft:#37311d;
+  --donut-track:#2e312a;
+}
+
+@theme {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface2);
+  --color-border: var(--border);
+  --color-border-2: var(--border2);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-amber: var(--amber);
+  --color-amber-soft: var(--amber-soft);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --radius-control: var(--radius-control);
+  --radius-card: var(--radius-card);
+  --radius-pill: var(--radius-pill);
 }
 
 body {
   font-family: var(--font-sans);
-  background-color: #F8FAFC;
-  color: #0F172A;
+  background-color: var(--bg);
+  color: var(--ink);
   -webkit-font-smoothing: antialiased;
 }
