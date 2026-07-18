@@ -5,6 +5,7 @@ import { QUERY_STALE_TIME } from "@marketplace-central/web-query";
 import { useState } from "react";
 import { useClient } from "../../app/ClientContext";
 import { useInstallation } from "../../app/InstallationContext";
+import { QueueTab } from "./QueueTab";
 import { vinculosQueryKeys } from "./vinculosQueryKeys";
 
 type VinculosTab = "fila" | "resolvidos";
@@ -129,10 +130,7 @@ export function VinculosPage() {
           ) : queueItems.length === 0 ? (
             <EmptyState />
           ) : (
-            // TODO(S7): render the queue table rows + drawer detail here.
-            <div className="mt-3 text-sm text-slate-500">
-              {queueItems.length} candidato(s) na fila — tabela detalhada chega na próxima etapa.
-            </div>
+            <QueueTab installationId={installationId} />
           )}
         </section>
       ) : (

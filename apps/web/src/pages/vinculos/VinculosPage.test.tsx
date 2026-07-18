@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { VinculosPage } from "./VinculosPage";
 
@@ -21,7 +22,9 @@ function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <VinculosPage />
+      <MemoryRouter>
+        <VinculosPage />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -54,8 +57,9 @@ describe("VinculosPage", () => {
     expect(screen.getByRole("tab", { name: "Resolvidos" })).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getByText("1 candidato(s) na fila — tabela detalhada chega na próxima etapa.")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Aprovar" })).toBeInTheDocument();
     });
+    expect(screen.getByText("MLB1")).toBeInTheDocument();
   });
 
   it("shows loading then empty state for the resolvidos tab", async () => {
