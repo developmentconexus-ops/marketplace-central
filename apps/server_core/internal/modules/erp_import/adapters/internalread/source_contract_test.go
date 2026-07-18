@@ -215,8 +215,11 @@ func importContractFixture(t *testing.T, data []byte, id erpdomain.ImportID) (*c
 	if err != nil {
 		t.Fatalf("RunImport() error = %v", err)
 	}
-	if !reflect.DeepEqual(repo.persistedSnapshot, repo.snapshot) {
-		t.Fatal("repository did not retain the persisted snapshot")
+	if !repo.persistCalled {
+		t.Fatal("RunImport did not persist a snapshot")
+	}
+	if len(repo.snapshot.AcceptedRows) != report.AcceptedCount {
+		t.Fatalf("persisted accepted rows = %d, report.AcceptedCount = %d (persistence out of sync with returned summary)", len(repo.snapshot.AcceptedRows), report.AcceptedCount)
 	}
 	return repo, report
 }
@@ -234,14 +237,14 @@ func seqIDs(ids []erpdomain.ImportID) func() (erpdomain.ImportID, error) {
 }
 
 type contractRepo struct {
-	snapshot          erpdomain.ImportSnapshot
-	persistedSnapshot erpdomain.ImportSnapshot
-	nextIDs           []erpdomain.ImportID
+	snapshot      erpdomain.ImportSnapshot
+	persistCalled bool
+	nextIDs       []erpdomain.ImportID
 }
 
 func (r *contractRepo) PersistSnapshotAtomically(_ context.Context, _ string, snapshot erpdomain.ImportSnapshot) error {
 	r.snapshot = snapshot
-	r.persistedSnapshot = snapshot
+	r.persistCalled = true
 	return nil
 }
 

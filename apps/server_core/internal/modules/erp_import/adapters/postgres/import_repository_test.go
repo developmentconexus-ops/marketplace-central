@@ -73,7 +73,9 @@ func TestPersistSnapshotAtomicDuplicateRejectedRollbackAndLock(t *testing.T) {
 	}
 	defer tx.Rollback(ctx)
 	var held bool
-	if err := tx.QueryRow(ctx, `SELECT pg_try_advisory_xact_lock(hashtextextended($1, 0)) WHERE $1=$1`, tenant).Scan(&held); err != nil || !held {
+	// Must hold the SAME advisory-lock key production uses ('erp_import:'||tenant), else no contention
+	// is created and ErrImportInProgress below would never fire (the assertion would pass vacuously).
+	if err := tx.QueryRow(ctx, `SELECT pg_try_advisory_xact_lock(hashtextextended('erp_import:'||$1, 0)) WHERE $1=$1`, tenant).Scan(&held); err != nil || !held {
 		t.Fatalf("hold lock=%v err=%v", held, err)
 	}
 	err = repo.PersistSnapshotAtomically(ctx, tenant, domain.ImportSnapshot{ID: "55555555-5555-5555-5555-555555555555", Protocol: "#105-E", FileSHA256: "hash-lock", ImportedAt: now, Status: domain.ImportStatusCompleted})
