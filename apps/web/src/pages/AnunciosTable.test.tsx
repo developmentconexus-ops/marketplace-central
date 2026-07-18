@@ -1,5 +1,5 @@
 import type { ListingMarketSignal, ListingReadModel } from "@marketplace-central/sdk-runtime";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { AnunciosTable } from "./AnunciosTable";
@@ -47,41 +47,56 @@ const okSignal: ListingMarketSignal = {
   evidence: { source: "ml_price_to_win", fetched_at: "2026-07-16T11:00:00Z", freshness: "fresh" },
 };
 
+const belowMarketSignal: ListingMarketSignal = { ...okSignal, delta_pct: "-4.20" };
+
 describe("AnunciosTable", () => {
-  it("renders the listing facts and pending issue", () => {
+  it("renders the ratified 9-column header, no dropped columns", () => {
+    renderTable(<AnunciosTable items={[listing]} {...tableSelectionProps} />);
+
+    const headers = screen.getAllByRole("columnheader").map((th) => th.textContent);
+    expect(headers).toEqual(["", "MLB", "TÍTULO", "PRODUTO", "PREÇO", "EST.", "SYNC", "QUAL.", "PENDÊNCIA"]);
+    expect(screen.queryByText("Vs. mercado")).not.toBeInTheDocument();
+    expect(screen.queryByText("Modalidade")).not.toBeInTheDocument();
+    expect(screen.queryByText("Vendas 30d")).not.toBeInTheDocument();
+    expect(screen.queryByText("Margem")).not.toBeInTheDocument();
+  });
+
+  it("renders the listing facts", () => {
     renderTable(<AnunciosTable items={[listing]} asOf="2026-07-16T12:00:00Z" {...tableSelectionProps} />);
 
     expect(screen.getByText("Camiseta azul")).toBeInTheDocument();
     expect(screen.getByText("MLB123456789")).toBeInTheDocument();
-    expect(screen.getByText("Clássico")).toBeInTheDocument();
-    expect(screen.getByText("vinculado")).toBeInTheDocument();
+    expect(screen.getByText("product_1")).toBeInTheDocument();
     expect(screen.getByText("R$ 129.90")).toBeInTheDocument();
     expect(screen.getByText("7")).toBeInTheDocument();
-    expect(screen.getByText("12")).toBeInTheDocument();
-    expect(screen.getByText("abaixo da margem")).toBeInTheDocument();
     expect(screen.getByText("sincronizado")).toBeInTheDocument();
-    expect(screen.getByLabelText("Atualização pendente")).toHaveAttribute("title", "Atualização pendente");
+    expect(screen.getByText("90%")).toBeInTheDocument();
+    expect(screen.getByTitle("Atualização pendente")).toHaveTextContent("Atualização pendente");
   });
 
-  it("renders honest unknowns for nullable values", () => {
+  it("renders honest unknowns for nullable values, never a fabricated 0", () => {
     renderTable(
       <AnunciosTable
-        items={[{ ...listing, price: null, published_quantity: null, sales_30d: null, below_margin_worst_case: null }]}
+        items={[
+          {
+            ...listing,
+            price: null,
+            published_quantity: null,
+            quality_score: null,
+            pending_issue: null,
+            link: { state: "unresolved", product_id: null, seller_sku: null },
+          },
+        ]}
         {...tableSelectionProps}
       />,
     );
 
-    // 4 pre-existing unknowns (price/estoque/vendas/margem) + 1 honest absent
-    // VS MERCADO state for a listing with no market_signal/signal_status.
-    expect(screen.getAllByText("—")).toHaveLength(5);
+    // price (—), EST (—), QUAL (—) = 3 honest unknowns. Pendência null is an
+    // honest EMPTY cell (no pending issue), not an UnknownValue "—".
+    expect(screen.getAllByText("—")).toHaveLength(3);
     expect(screen.queryByText("0")).not.toBeInTheDocument();
+    expect(screen.queryByText("0%")).not.toBeInTheDocument();
     expect(screen.queryByText("R$ 0,00")).not.toBeInTheDocument();
-  });
-
-  it("explains an unsimulated margin when ERP cost is unknown", () => {
-    renderTable(<AnunciosTable items={[{ ...listing, cost: null, below_margin_worst_case: null }]} {...tableSelectionProps} />);
-
-    expect(screen.getByTitle("sem custo no ERP → não simulado")).toHaveTextContent("—");
   });
 
   it("opens the listing from the title button without reacting to checkbox clicks", () => {
@@ -96,42 +111,67 @@ describe("AnunciosTable", () => {
     expect(onOpen).toHaveBeenCalledWith("listing_1");
   });
 
-  it("uses the fixed sync and conflict labels", () => {
-    renderTable(<AnunciosTable items={[{ ...listing, sync_state: "error", link: { ...listing.link, state: "conflict" }}]} {...tableSelectionProps} />);
+  it("selects all rows on the page via the header checkbox", () => {
+    const onTogglePage = vi.fn();
+    renderTable(
+      <AnunciosTable
+        items={[listing, { ...listing, listing_id: "listing_2", title: "Bermuda cinza" }]}
+        {...tableSelectionProps}
+        onTogglePage={onTogglePage}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("Selecionar todos os anúncios desta página"));
+    expect(onTogglePage).toHaveBeenCalledWith(["listing_1", "listing_2"]);
+  });
+
+  it("uses the fixed sync pill label and a conflict tag for a divergent link", () => {
+    renderTable(
+      <AnunciosTable
+        items={[{ ...listing, sync_state: "error", link: { ...listing.link, state: "conflict" } }]}
+        {...tableSelectionProps}
+      />,
+    );
 
     expect(screen.getByText("com erro")).toBeInTheDocument();
     expect(screen.getByText("divergente")).toBeInTheDocument();
   });
 
-  describe("VS MERCADO column (signal_status)", () => {
-    it("OK: renders position and delta vs price_to_win in mono, no fabricated fallback", () => {
+  describe("PREÇO cell (value + %chip vs mercado, folded per RULING D-56)", () => {
+    it("OK: renders the price value plus a sign-colored %chip, no fabricated fallback", () => {
       renderTable(
-        <AnunciosTable
-          items={[{ ...listing, signal_status: "OK", market_signal: okSignal }]}
-          {...tableSelectionProps}
-        />,
+        <AnunciosTable items={[{ ...listing, signal_status: "OK", market_signal: okSignal }]} {...tableSelectionProps} />,
       );
 
-      expect(screen.getByText("2/8")).toBeInTheDocument();
+      expect(screen.getByText("R$ 129.90")).toBeInTheDocument();
       expect(screen.getByText("+8.34%")).toBeInTheDocument();
-      expect(screen.getByText("2/8").closest(".font-mono")).not.toBeNull();
     });
 
-    it("SEM_VINCULO: renders a grey chip linking to /vinculos, no numeric price", () => {
+    it("OK below market: renders a negative %chip", () => {
       renderTable(
         <AnunciosTable
-          items={[{ ...listing, signal_status: "SEM_VINCULO", market_signal: null }]}
+          items={[{ ...listing, signal_status: "OK", market_signal: belowMarketSignal }]}
           {...tableSelectionProps}
         />,
       );
 
-      const link = screen.getByRole("link", { name: /vínculo/i });
-      expect(link).toHaveAttribute("href", "/vinculos");
-      expect(screen.queryByText("2/8")).not.toBeInTheDocument();
-      expect(screen.queryByText(/%/)).not.toBeInTheDocument();
+      expect(screen.getByText("-4.20%")).toBeInTheDocument();
     });
 
-    it("NO_PRICE_EVIDENCE: renders UnknownValue with a tooltip, no number", () => {
+    it("STALE: shows the value, an âmbar %chip, and a freshness age marker — never a double underline", () => {
+      renderTable(
+        <AnunciosTable
+          items={[{ ...listing, signal_status: "STALE", market_signal: { ...okSignal, status: "STALE" } }]}
+          {...tableSelectionProps}
+        />,
+      );
+
+      expect(screen.getByText("R$ 129.90")).toBeInTheDocument();
+      expect(screen.getByText("+8.34%")).toBeInTheDocument();
+      expect(screen.getByLabelText("Data freshness")).toBeInTheDocument();
+    });
+
+    it("NO_PRICE_EVIDENCE: renders the price value only, no %chip, no fabricated number", () => {
       renderTable(
         <AnunciosTable
           items={[{ ...listing, signal_status: "NO_PRICE_EVIDENCE", market_signal: null }]}
@@ -139,47 +179,52 @@ describe("AnunciosTable", () => {
         />,
       );
 
-      expect(screen.getByTitle("sem evidência de preço de mercado")).toHaveTextContent("—");
-      expect(screen.queryByText(/%/)).not.toBeInTheDocument();
+      expect(screen.getByText("R$ 129.90")).toBeInTheDocument();
+      expect(within(screen.getByTestId("preco-cell")).queryByText(/%/)).not.toBeInTheDocument();
     });
 
-    it("STALE: shows the value plus a freshness (amber age) indicator", () => {
+    it("SEM_VINCULO: renders the price value plus a link to /vinculos, no market number", () => {
       renderTable(
         <AnunciosTable
-          items={[
-            {
-              ...listing,
-              signal_status: "STALE",
-              market_signal: { ...okSignal, status: "STALE" },
-            },
-          ]}
+          items={[{ ...listing, signal_status: "SEM_VINCULO", market_signal: null }]}
           {...tableSelectionProps}
         />,
       );
 
-      expect(screen.getByText("2/8")).toBeInTheDocument();
-      expect(screen.getByLabelText("Data freshness")).toBeInTheDocument();
+      expect(screen.getByText("R$ 129.90")).toBeInTheDocument();
+      const link = screen.getByRole("link", { name: "sem vínculo" });
+      expect(link).toHaveAttribute("href", "/vinculos");
+      expect(within(screen.getByTestId("preco-cell")).queryByText(/%/)).not.toBeInTheDocument();
     });
 
-    it("renders all 4 states in one table without throwing, and a missing signal_status is treated as the honest absent state", () => {
+    it("a missing signal_status is treated as the honest absent state (defensive, never throws)", () => {
+      expect(() =>
+        renderTable(
+          <AnunciosTable items={[{ ...listing, signal_status: undefined, market_signal: undefined }]} {...tableSelectionProps} />,
+        ),
+      ).not.toThrow();
+
+      expect(screen.getByText("R$ 129.90")).toBeInTheDocument();
+      expect(within(screen.getByTestId("preco-cell")).queryByText(/%/)).not.toBeInTheDocument();
+    });
+
+    it("renders all 4 signal states in one table without throwing", () => {
       const items = [
         { ...listing, listing_id: "l_ok", signal_status: "OK" as const, market_signal: okSignal },
         { ...listing, listing_id: "l_sem_vinculo", signal_status: "SEM_VINCULO" as const, market_signal: null },
         { ...listing, listing_id: "l_no_evidence", signal_status: "NO_PRICE_EVIDENCE" as const, market_signal: null },
         { ...listing, listing_id: "l_stale", signal_status: "STALE" as const, market_signal: { ...okSignal, status: "STALE" as const } },
-        { ...listing, listing_id: "l_missing", signal_status: undefined, market_signal: undefined },
       ];
 
       expect(() => renderTable(<AnunciosTable items={items} {...tableSelectionProps} />)).not.toThrow();
 
-      expect(screen.getAllByText("2/8")).toHaveLength(2);
-      expect(screen.getByRole("link", { name: /vínculo/i })).toBeInTheDocument();
-      expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("+8.34%")).toHaveLength(2);
+      expect(screen.getByRole("link", { name: "sem vínculo" })).toBeInTheDocument();
     });
   });
 
   describe("group rendering (agrupar por produto)", () => {
-    it("renders a group header per CODPROD with per-listing signal columns preserved inside the group", () => {
+    it("renders a group header per CODPROD with per-listing PREÇO chip preserved inside the group", () => {
       renderTable(
         <AnunciosTable
           groups={[
@@ -196,7 +241,7 @@ describe("AnunciosTable", () => {
       );
 
       expect(screen.getByText("Grupo Camisetas")).toBeInTheDocument();
-      expect(screen.getByText("2/8")).toBeInTheDocument();
+      expect(screen.getByText("+8.34%")).toBeInTheDocument();
     });
 
     it("renders a 1-listing group as a normal group, no special collapse", () => {
