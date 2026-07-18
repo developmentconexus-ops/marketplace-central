@@ -177,4 +177,65 @@ describe("AnunciosTable", () => {
       expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(1);
     });
   });
+
+  describe("group rendering (agrupar por produto)", () => {
+    it("renders a group header per CODPROD with per-listing signal columns preserved inside the group", () => {
+      renderTable(
+        <AnunciosTable
+          groups={[
+            {
+              product_id: "product_1",
+              product_title: "Grupo Camisetas",
+              listing_count: 1,
+              group_state: "ok",
+              listings: [{ ...listing, signal_status: "OK", market_signal: okSignal }],
+            },
+          ]}
+          {...tableSelectionProps}
+        />,
+      );
+
+      expect(screen.getByText("Grupo Camisetas")).toBeInTheDocument();
+      expect(screen.getByText("2/8")).toBeInTheDocument();
+    });
+
+    it("renders a 1-listing group as a normal group, no special collapse", () => {
+      renderTable(
+        <AnunciosTable
+          groups={[
+            {
+              product_id: "product_1",
+              product_title: "Meia branca",
+              listing_count: 1,
+              group_state: "ok",
+              listings: [{ ...listing, listing_id: "listing_solo", title: "Meia branca" }],
+            },
+          ]}
+          {...tableSelectionProps}
+        />,
+      );
+
+      expect(screen.getAllByText("Meia branca").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByRole("button", { name: "Meia branca" })).toBeInTheDocument();
+    });
+
+    it("renders the synthetic sem-produto group with its honest label", () => {
+      renderTable(
+        <AnunciosTable
+          groups={[
+            {
+              product_id: null,
+              product_title: null,
+              listing_count: 1,
+              group_state: "attention",
+              listings: [listing],
+            },
+          ]}
+          {...tableSelectionProps}
+        />,
+      );
+
+      expect(screen.getByText("Sem produto")).toBeInTheDocument();
+    });
+  });
 });

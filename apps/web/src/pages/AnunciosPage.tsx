@@ -1,5 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import type { ListingException, ListingLinkState, ListingSyncState, MutationType } from "@marketplace-central/sdk-runtime";
+import type {
+  ListingException,
+  ListingGroupPage,
+  ListingLinkState,
+  ListingPage,
+  ListingSyncState,
+  MutationType,
+} from "@marketplace-central/sdk-runtime";
 import { EmptyState, ErrorState, LoadingState } from "@marketplace-central/ui";
 import { listingsQueryKeys, QUERY_STALE_TIME } from "@marketplace-central/web-query";
 import { useEffect, useRef, useState } from "react";
@@ -99,11 +106,17 @@ export function AnunciosPage() {
     ...toListingListOptions(state, installationId),
     ...(cursorForQuery ? { cursor: cursorForQuery } : {}),
   };
-  const pageQuery = useQuery({
-    queryKey: listingsQueryKeys.page(installationId, pageOptions),
-    queryFn: () => client.listListings(pageOptions),
+  const pageQuery = useQuery<ListingPage | ListingGroupPage>({
+    queryKey: state.grouped
+      ? listingsQueryKeys.byProduct(installationId, pageOptions)
+      : listingsQueryKeys.page(installationId, pageOptions),
+    queryFn: () => (state.grouped ? client.listListingsByProduct(pageOptions) : client.listListings(pageOptions)),
     staleTime: QUERY_STALE_TIME.listings,
   });
+  const pageData = pageQuery.data;
+  const groups = pageData && "groups" in pageData ? pageData.groups : undefined;
+  const flatItems = pageData && "items" in pageData ? pageData.items : undefined;
+  const isEmptyPage = groups ? groups.length === 0 : (flatItems?.length ?? 0) === 0;
   const summaryQuery = useQuery(anunciosSummaryQuery(client, installationId));
 
   useEffect(() => {
@@ -230,6 +243,15 @@ export function AnunciosPage() {
             />
           ) : null}
         </div>
+        <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+          <input
+            type="checkbox"
+            checked={state.grouped}
+            onChange={(event) => updateState({ ...state, grouped: event.target.checked })}
+            aria-label="Agrupar por produto"
+          />
+          Agrupar por produto
+        </label>
         <label className="flex max-w-xl flex-col gap-1 text-sm font-medium text-slate-700" htmlFor="anuncios-search">
           Buscar anúncios
           <input
@@ -288,7 +310,7 @@ export function AnunciosPage() {
               }
             }}
           />
-        ) : pageQuery.data && pageQuery.data.items.length === 0 ? (
+        ) : pageQuery.data && isEmptyPage ? (
           <EmptyState
             hint={
               <button
@@ -303,7 +325,8 @@ export function AnunciosPage() {
         ) : pageQuery.data ? (
           <>
             <AnunciosTable
-              items={pageQuery.data.items}
+              items={flatItems}
+              groups={groups}
               asOf={pageQuery.data.as_of}
               selectedIds={visibleSelectedIds}
               onToggle={toggleSelection}

@@ -91,6 +91,29 @@ describe("anuncios query state", () => {
 
     expect(next.toString()).toBe("installation=inst_1&view=compact&tab=ativos&q=camiseta");
   });
+
+  it("defaults grouped to false when the param is absent", () => {
+    const state = parseAnunciosQueryState(new URLSearchParams("installation=inst_1"));
+
+    expect(state.grouped).toBe(false);
+  });
+
+  it("round-trips the grouped=1 param", () => {
+    const searchParams = new URLSearchParams("installation=inst_1&grouped=1");
+    const state = parseAnunciosQueryState(searchParams);
+
+    expect(state.grouped).toBe(true);
+    expect(applyAnunciosQueryState(searchParams, state).toString()).toBe(searchParams.toString());
+  });
+
+  it("omits the grouped param from the URL when false", () => {
+    const searchParams = new URLSearchParams("installation=inst_1&grouped=1");
+    const state = parseAnunciosQueryState(searchParams);
+
+    const next = applyAnunciosQueryState(searchParams, { ...state, grouped: false });
+
+    expect(next.has("grouped")).toBe(false);
+  });
 });
 
 describe("anuncios query factories", () => {
