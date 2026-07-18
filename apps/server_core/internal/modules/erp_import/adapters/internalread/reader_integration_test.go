@@ -5,7 +5,6 @@ package internalread
 import (
 	"context"
 	"errors"
-	"os"
 	"testing"
 	"time"
 
@@ -17,9 +16,7 @@ import (
 )
 
 func TestReaderRealRepositoryCostReservedAsOfAndRejectedIgnored(t *testing.T) {
-	if os.Getenv("MPC_TEST_DATABASE_URL") == "" {
-		t.Skip("MPC_TEST_DATABASE_URL is unset")
-	}
+	testpostgres.SkipWithoutTarget(t)
 	ctx := context.Background()
 	tenant := "erp-internalread-" + time.Now().UTC().Format("150405.000000000")
 	pool, _ := testpostgres.OpenPool(t, tenant)

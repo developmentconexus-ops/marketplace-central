@@ -42,6 +42,15 @@ func LoadConfig(getenv func(string) string, tenantID, encryptionKey string) (pgd
 	}, nil
 }
 
+// SkipWithoutTarget skips the test when the harness-owned PostgreSQL target
+// is absent, so integration-tagged packages compile and skip clean without a DSN.
+func SkipWithoutTarget(t testing.TB) {
+	t.Helper()
+	if os.Getenv(targetKey) == "" {
+		t.Skip(targetKey + " is unset")
+	}
+}
+
 // OpenPool fails closed when the harness-owned target is absent or unsafe.
 // Integration tests must use this boundary instead of application ambient config.
 func OpenPool(t testing.TB, tenantID string) (*pgxpool.Pool, pgdb.Config) {

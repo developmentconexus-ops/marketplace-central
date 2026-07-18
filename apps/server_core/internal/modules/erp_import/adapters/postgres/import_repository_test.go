@@ -5,7 +5,6 @@ package postgres_test
 import (
 	"context"
 	"errors"
-	"os"
 	"testing"
 	"time"
 
@@ -17,9 +16,7 @@ import (
 
 func integrationRepo(t *testing.T) (*erppostgres.Repository, string) {
 	t.Helper()
-	if os.Getenv("MPC_TEST_DATABASE_URL") == "" {
-		t.Skip("MPC_TEST_DATABASE_URL is unset")
-	}
+	testpostgres.SkipWithoutTarget(t)
 	tenant := "erp-import-" + time.Now().UTC().Format("150405.000000000")
 	pool, _ := testpostgres.OpenPool(t, tenant)
 	t.Cleanup(func() {
