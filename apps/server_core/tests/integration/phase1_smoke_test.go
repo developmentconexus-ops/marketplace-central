@@ -62,7 +62,7 @@ func TestPhase1SmokeFlow(t *testing.T) {
 	// Run pricing simulation
 	sim, err := pricingSvc.RunSimulation(context.Background(), pricingapp.RunSimulationInput{
 		SimulationID:      "smoke-sim-1",
-		ProductID:         "smoke-prod-1",
+		ProductID:         "1001",
 		AccountID:         account.AccountID,
 		BasePriceAmount:   100.0,
 		CostAmount:        60.0,
