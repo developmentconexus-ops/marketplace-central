@@ -58,6 +58,20 @@ describe("ProductPicker", () => {
     expect(screen.getByText("SKU-002")).toBeInTheDocument();
   });
 
+  it("uses semantic surface tokens and formats known prices", () => {
+    render(<ProductPicker {...defaultProps} selectedIds={["p1"]} />);
+    const selectedRow = screen.getByText("Cuba Inox").closest("tr");
+    const table = screen.getByRole("table");
+
+    expect(selectedRow).toHaveClass("bg-accent-soft");
+    expect(table.parentElement).toHaveClass("border-border");
+    expect(
+      screen.getByText(
+        (200).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("calls onSelectionChange when checkbox clicked", () => {
     const onSelectionChange = vi.fn();
     render(

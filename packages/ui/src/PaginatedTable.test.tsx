@@ -19,6 +19,22 @@ describe("PaginatedTable", () => {
     expect(screen.queryByText("Item 25")).not.toBeInTheDocument();
   });
 
+  it("uses semantic table and pagination tokens", () => {
+    render(
+      <PaginatedTable
+        items={items}
+        pageSize={25}
+        renderHeader={() => <tr><th>Name</th></tr>}
+        renderRow={(item) => <tr key={item.id}><td>{item.name}</td></tr>}
+      />
+    );
+    const table = screen.getByRole("table");
+
+    expect(table.parentElement).toHaveClass("border-border", "rounded-card");
+    expect(table.querySelector("thead")).toHaveClass("bg-surface-2");
+    expect(screen.getByText(/showing 1–25 of 60/i)).toHaveClass("text-muted");
+  });
+
   it("shows correct page count", () => {
     render(
       <PaginatedTable
