@@ -20,7 +20,15 @@ export interface AnunciosQueryState {
   filters: AnunciosFilterState;
 }
 
-const exceptionValues = ["sync_error", "stale", "unlinked", "below_margin"] as const;
+const exceptionValues = [
+  "sync_error",
+  "stale",
+  "unlinked",
+  "below_margin",
+  "sem_vinculo",
+  "abaixo_custo",
+  "sem_evidencia",
+] as const;
 const syncStateValues = ["synced", "error", "stale", "queued", "syncing", "paused_sync"] as const;
 const linkStateValues = ["unresolved", "conflict", "resolved", "rejected"] as const;
 

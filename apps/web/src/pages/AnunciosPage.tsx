@@ -33,6 +33,9 @@ const exceptionLabels = {
   stale: "Desatualizado",
   unlinked: "Sem vínculo",
   below_margin: "Abaixo da margem",
+  sem_vinculo: "Sem vínculo",
+  abaixo_custo: "Abaixo do custo",
+  sem_evidencia: "Sem evidência",
 } satisfies Record<ListingException, string>;
 
 const syncLabels = {
