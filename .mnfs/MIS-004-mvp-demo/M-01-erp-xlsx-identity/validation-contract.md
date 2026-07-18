@@ -34,7 +34,7 @@ Required: Yes
 Status: Pending
 Evidence:
 - Command: POST /erp/imports com a planilha exemplo real (multipart) contra o stack local
-- Expected: **201 síncrono** com body `{import_id, protocol, status}`; `protocol` no formato `#NNN-E`; `status` ∈ {COMPLETED, REJECTED}; re-POST do MESMO arquivo (hash igual) não duplica snapshot (409 `DUPLICATE_FILE`, IC-02); logs do server na janela do import SEM payload cru da planilha (grep por valores de custo/descrição do fixture ⇒ zero hits em log)
+- Expected: **201 síncrono** com body `{import_id, protocol, status}`; `protocol` no formato `#NNN-E`; `status` ∈ {COMPLETED, REJECTED}; re-POST do MESMO arquivo (hash igual) não duplica snapshot (409 `duplicate_file`, IC-02; hub ruling D-13 2026-07-18: código de erro wire = flat-lowercase conforme família ratificada em OpenAPI+SDK — truth order OpenAPI>prose; prose original dizia `DUPLICATE_FILE`); logs do server na janela do import SEM payload cru da planilha (grep por valores de custo/descrição do fixture ⇒ zero hits em log)
 - Actual:
 - Artifact: `M-01-erp-xlsx-identity/validation-result.md` §import (transcript request/response + SELECT import_protocols)
 Blocking failure: 202/job assíncrono, protocolo fora do formato, ou import duplicado criando segundo snapshot

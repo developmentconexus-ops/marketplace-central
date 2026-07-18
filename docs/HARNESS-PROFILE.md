@@ -100,6 +100,11 @@ another checkout's `node_modules`: npm workspace symlinks would resolve workspac
 - codex-cli 0.144.4 logs non-fatal `failed to renew cache TTL: missing field
   supports_reasoning_summaries` on every run on this machine; output still produced — noise,
   not a dispatch failure (CHIP-M02 field finding 2026-07-17).
+- Full-tree `gofmt -l` on a Windows worktree falsely flags pre-existing files whose only
+  diff is CRLF (`gofmt -d` shows `^M` only, zero token changes — autocrlf checkout
+  artifact, seen on MIS-002 `internal_read/*.go`). Not a formatting defect. Scope gofmt
+  gates to milestone-authored dirs, or set `core.autocrlf=false` before a full-tree gate
+  (CHIP-M01 field finding F-ENV-M01, 2026-07-18).
 - codex `--sandbox workspace-write` on Windows CANNOT run the vite/esbuild build (`npm run
   build` fails esbuild access-denied / "could not resolve vite.config.ts"; `tsc` may also
   fail in-sandbox). A worker BLOCKED on these signatures with complete written code is an
@@ -307,6 +312,7 @@ verification conflicts against this list.
 2026-07-16 · §10 · ratified · mnfs-workflow execution-layer skills denylisted (deleted at source in mnfs-harness 6b29412 layered unification; stale codex cache 0.1.0 + ~/.codex/plugins/mnfs-codex-plugin still ship them — operator field finding: CHIP-SAT worker auto-loaded feature-execution). General rule: auto-discovered skills never bind; only prompt-pack pins are doctrine. Cache repackage to 0.2.0 deferred to W1 close (no tooling swap under running workers).
 2026-07-16 · header + §12 (new) · ratified · alt-D+ implementation method adopted (operator-ratified after 4 adversarial Opus×Sol rounds + MIS-003 field evidence): docs/HARNESS-CORE.md + docs/REVIEW-STANDARD.md re-vendored @ mnfs-harness 6206cc1 (implementer prompt-pack v1.0.0 in CORE §4, canonical dispatch-prompt architecture, deterministic lane, evidence types ran/assumed/could-not-run, reproduce+1-fixup→BLOCKED; REVIEW §9 remedy re-review resumes same reviewer, §13 reviewer reads worker prompt-file, §14 slim read-mandate pack); deterministic dispatch tooling vendored scripts/harness/dispatch/ with fail-closed scripts.lock.json (28 Pester green at source); F-A index.lock commit-denial clause (attempt once, leave files, report verbatim — CHIP-M03); harness plugin 0.3.0 synced to local Claude Code cache. Field-test milestone next — chip converses with design session; pack v1.1.0 fed by its retro.
 2026-07-17 · §3 · ratified · codex-cli 0.144.4 non-fatal cache-TTL warning (`failed to renew cache TTL: missing field supports_reasoning_summaries`) added to false-alarm signatures — CHIP-M02 field finding, MIS-004 wave A
+2026-07-18 · §3 · ratified · full-tree gofmt CRLF false-alarm on Windows worktrees (CHIP-M01 F-ENV-M01): pre-existing files flagged with ^M-only diffs = autocrlf artifact, not defect; scope gofmt to authored dirs
 2026-07-17 · §2 · ratified · L1 allowlist maintenance: TestPhase1SmokeFlow RETIRED (CHIP-M02 root cause: fixture "smoke-prod-1" vs positiveProductID integer validator, both pre-existing on base 59d0e62f; hub fixture fix "1001", lane green run 5b244bce) · +TestListingsReadContractEndToEnd intermittent full-lane flake entry (passes isolated 8/8; backlog test-isolation audit, hub queue)
 2026-07-17 · §10 · ratified · F-ENV-3: impeccable plugin auto-injects skill mandate into codex worker sessions and derails them (NO_PRODUCT_MD abort, CHIP-M03 field 2×); mandatory skill-discovery denylist clause in every codex dispatch bindings block; core-candidate, upstream at milestone boundary
 2026-07-17 · §3 + §2 · ratified · codex workspace-write sandbox cannot run vite/esbuild build on Windows — false-alarm signature + mitigation (a): chip-side build/tsc/vitest re-run is verification of record, workers stay workspace-write (CHIP-M03 field finding; core-candidate, upstream at milestone boundary) · L1 allowlist +TS2688 @types/node pre-existing base break (fix owner CHIP-M03 via grant D-05)
