@@ -252,6 +252,10 @@ export function AnunciosPage() {
           isError={summaryQuery.isError}
           data={summaryQuery.data}
           onRetry={() => void summaryQuery.refetch()}
+          activeException={state.filters.exception}
+          onExceptionChipClick={(exception) =>
+            updateState({ ...state, filters: { ...state.filters, exception } })
+          }
         />
       </section>
 

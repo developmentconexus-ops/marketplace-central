@@ -1,11 +1,23 @@
 import type { ListingSummary } from "@marketplace-central/sdk-runtime";
 import { ErrorState, FreshnessIndicator, LoadingState, UnknownValue } from "@marketplace-central/ui";
 
+type SummaryExceptionChipKey = "sem_vinculo" | "abaixo_custo" | "sem_evidencia";
+
+const exceptionChipLabels: Record<SummaryExceptionChipKey, string> = {
+  sem_vinculo: "Sem vínculo",
+  abaixo_custo: "Abaixo do custo",
+  sem_evidencia: "Sem evidência",
+};
+
+const exceptionChipKeys: SummaryExceptionChipKey[] = ["sem_vinculo", "abaixo_custo", "sem_evidencia"];
+
 export interface ListingsSummaryProps {
   isPending: boolean;
   isError: boolean;
   data: ListingSummary | undefined;
   onRetry: () => void;
+  onExceptionChipClick: (exception: SummaryExceptionChipKey) => void;
+  activeException?: string;
 }
 
 interface SummaryCounterProps {
@@ -24,10 +36,21 @@ function SummaryCounter({ label, value }: SummaryCounterProps) {
   );
 }
 
-export function ListingsSummary({ isPending, isError, data, onRetry }: ListingsSummaryProps) {
+export function ListingsSummary({
+  isPending,
+  isError,
+  data,
+  onRetry,
+  onExceptionChipClick,
+  activeException,
+}: ListingsSummaryProps) {
   if (isPending) return <LoadingState />;
   if (isError) return <ErrorState onRetry={onRetry} />;
   if (!data) return null;
+
+  const chips = exceptionChipKeys
+    .map((key) => ({ key, count: data.exceptions[key] }))
+    .filter((chip): chip is { key: SummaryExceptionChipKey; count: number } => Boolean(chip.count));
 
   return (
     <div className="mt-3">
@@ -44,6 +67,28 @@ export function ListingsSummary({ isPending, isError, data, onRetry }: ListingsS
       <p className="mt-4 text-xs text-slate-500">
         Atualizado <FreshnessIndicator asOf={data.as_of} />
       </p>
+      {chips.length > 0 ? (
+        <div className="mt-4 flex flex-wrap gap-2" aria-label="Filtros rápidos de exceção">
+          {chips.map(({ key, count }) => {
+            const active = activeException === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={active}
+                onClick={() => onExceptionChipClick(key)}
+                className={`rounded-full border px-3 py-1 text-sm font-medium transition-colors ${
+                  active
+                    ? "border-blue-600 bg-blue-600 text-white"
+                    : "border-slate-200 bg-slate-100 text-slate-700 hover:border-slate-300 hover:bg-slate-200"
+                }`}
+              >
+                {`${exceptionChipLabels[key]}: ${count}`}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }

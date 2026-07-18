@@ -121,6 +121,72 @@ describe("AnunciosPage active filter chips", () => {
   });
 });
 
+describe("AnunciosPage exception summary chips", () => {
+  it("clicking a summary exception chip deep-links the URL filter and re-issues the list query", async () => {
+    listListings.mockReset();
+    listListings.mockResolvedValue(listingPage);
+    getListingsSummary.mockReset();
+    getListingsSummary.mockResolvedValue({
+      total: 10,
+      active: 6,
+      paused: 4,
+      exceptions: {
+        sync_error: 0,
+        stale: 0,
+        unlinked: 0,
+        below_margin_worst_case: null,
+        margin_unknown: null,
+        sem_vinculo: 4,
+      },
+      as_of: "2026-07-16T12:00:00Z",
+    });
+    renderPage("?installation=inst_1");
+
+    const chip = await screen.findByRole("button", { name: "Sem vínculo: 4" });
+    fireEvent.click(chip);
+
+    await waitFor(() => {
+      expect(listListings.mock.calls.at(-1)?.[0]).toEqual({
+        installation_id: "inst_1",
+        exception: "sem_vinculo",
+      });
+    });
+    const search = new URLSearchParams(screen.getByTestId("location-search").textContent ?? "");
+    expect(search.get("filter.exception")).toBe("sem_vinculo");
+    expect(await screen.findByText("Exceção: Sem vínculo")).toBeInTheDocument();
+  });
+
+  it("restores the exception filter from the URL on load (F5-restorable)", async () => {
+    listListings.mockReset();
+    listListings.mockResolvedValue(listingPage);
+    getListingsSummary.mockReset();
+    getListingsSummary.mockResolvedValue({
+      total: 10,
+      active: 6,
+      paused: 4,
+      exceptions: {
+        sync_error: 0,
+        stale: 0,
+        unlinked: 0,
+        below_margin_worst_case: null,
+        margin_unknown: null,
+        sem_vinculo: 4,
+      },
+      as_of: "2026-07-16T12:00:00Z",
+    });
+    renderPage("?installation=inst_1&filter.exception=sem_vinculo");
+
+    expect(await screen.findByRole("button", { name: "Sem vínculo: 4" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(listListings.mock.calls.at(-1)?.[0]).toEqual({
+      installation_id: "inst_1",
+      exception: "sem_vinculo",
+    });
+  });
+});
+
 describe("AnunciosPage error recovery", () => {
   it("clears filter params on retry only for invalid_filter errors", async () => {
     listListings.mockRejectedValueOnce({
@@ -163,6 +229,9 @@ describe("AnunciosPage independent states", () => {
 
     expect(await screen.findByText("Camiseta azul")).toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent("Erro ao carregar.");
+    expect(screen.queryByRole("button", { name: /Sem vínculo/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Abaixo do custo/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Sem evidência/ })).not.toBeInTheDocument();
   });
 
   it("keeps summary counters visible when the table query fails", async () => {
