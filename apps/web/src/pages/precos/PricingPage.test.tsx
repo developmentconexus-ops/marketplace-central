@@ -1,11 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PricingPage } from "./PricingPage";
 import type {
   PricingCalcProfile,
   PricingDecomposeResponse,
+  PricingDifalListResponse,
 } from "@marketplace-central/sdk-runtime";
 
 const profile: PricingCalcProfile = {
@@ -58,10 +59,21 @@ const productFactsPage = {
   as_of: "2026-07-18T12:00:00Z",
 };
 
+const difalList: PricingDifalListResponse = {
+  disclaimer: "seed padrão 2026 — não é orientação fiscal",
+  items: [
+    { uf: "SP", interna_pct: "18", interestadual_pct: "12", efetivo_pct: "6", origem_versao: "padrao-2026", override: null },
+    { uf: "BA", interna_pct: "19", interestadual_pct: "7", efetivo_pct: "12", origem_versao: "padrao-2026", override: null },
+  ],
+};
+
 const getPricingProfile = vi.fn(() => Promise.resolve(profile));
 const listCatalogProductFacts = vi.fn(() => Promise.resolve(productFactsPage));
 const pricingDecompose = vi.fn(() => Promise.resolve(decompose));
 const pricingSolveTarget = vi.fn();
+const putPricingProfile = vi.fn((next: PricingCalcProfile) => Promise.resolve(next));
+const listPricingDifal = vi.fn(() => Promise.resolve(difalList));
+const putPricingDifalOverride = vi.fn(() => Promise.resolve({ persisted: true, rate: difalList.items[0] }));
 
 vi.mock("../../app/ClientContext", () => ({
   useClient: () => ({
@@ -69,6 +81,9 @@ vi.mock("../../app/ClientContext", () => ({
     listCatalogProductFacts,
     pricingDecompose,
     pricingSolveTarget,
+    putPricingProfile,
+    listPricingDifal,
+    putPricingDifalOverride,
   }),
 }));
 
@@ -84,6 +99,12 @@ function renderPage(search = "") {
 }
 
 describe("PricingPage scaffold", () => {
+  beforeEach(() => {
+    putPricingProfile.mockClear();
+    listPricingDifal.mockClear();
+    putPricingDifalOverride.mockClear();
+  });
+
   it("mounts, loads the calc profile, and renders the shell regions", async () => {
     renderPage();
 
@@ -98,5 +119,35 @@ describe("PricingPage scaffold", () => {
 
     // Profile drives the calc surface — it must be fetched on mount.
     expect(getPricingProfile).toHaveBeenCalled();
+  });
+
+  it("opens the Parâmetros drawer on the ?params=1 deep link", async () => {
+    renderPage("?params=1");
+    expect(await screen.findByTestId("params-drawer")).toBeInTheDocument();
+  });
+
+  it("saves an edited profile and closes the drawer", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByTestId("params-trigger"));
+    const drawer = await screen.findByTestId("params-drawer");
+    expect(drawer).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Alíquota"), { target: { value: "9.25" } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar parâmetros" }));
+
+    await waitFor(() => expect(putPricingProfile).toHaveBeenCalledTimes(1));
+    expect(putPricingProfile.mock.calls[0][0]).toMatchObject({ aliquota_pct: "9.25" });
+    // onSuccess closes the drawer.
+    await waitFor(() => expect(screen.queryByTestId("params-drawer")).toBeNull());
+  });
+
+  it("opens the DIFAL drawer and lists the UF table with the disclaimer", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByTestId("difal-trigger"));
+
+    expect(await screen.findByTestId("difal-drawer")).toBeInTheDocument();
+    await waitFor(() => expect(listPricingDifal).toHaveBeenCalled());
+    expect(await screen.findByTestId("difal-disclaimer")).toHaveTextContent("não é orientação fiscal");
+    expect(screen.getByRole("row", { name: /^SP/ })).toBeInTheDocument();
   });
 });
