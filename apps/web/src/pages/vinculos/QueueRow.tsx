@@ -11,6 +11,8 @@ export interface QueueRowProps {
   onOpen: (candidateId: string) => void;
   onApprove: (candidate: ProductLinkCandidateItem) => void;
   pending?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (candidateId: string) => void;
 }
 
 const bandLabels: Record<ProductLinkConfidenceBand, string> = {
@@ -68,7 +70,7 @@ function AnchorChips({ reasons }: { reasons: ProductLinkReason[] }) {
   );
 }
 
-export function QueueRow({ candidate, onOpen, onApprove, pending }: QueueRowProps) {
+export function QueueRow({ candidate, onOpen, onApprove, pending, selected, onToggleSelect }: QueueRowProps) {
   const noCandidate = candidate.match_status === "NO_CANDIDATE";
   const codprod = candidate.internal_product_id;
   const descricao = candidate.internal_product_name;
@@ -78,6 +80,17 @@ export function QueueRow({ candidate, onOpen, onApprove, pending }: QueueRowProp
 
   return (
     <tr className="align-top text-slate-700" data-testid="queue-row" data-match-status={candidate.match_status}>
+      {/* Seleção em lote */}
+      <td className="px-3 py-3">
+        <input
+          type="checkbox"
+          aria-label={`Selecionar ${candidate.provider_item_id}`}
+          checked={selected ?? false}
+          disabled={noCandidate || !onToggleSelect}
+          onChange={() => onToggleSelect?.(candidate.candidate_id)}
+        />
+      </td>
+
       {/* Produto (interno) */}
       <td className="px-3 py-3">
         <div className="font-medium text-slate-900">

@@ -1,6 +1,10 @@
-import type { ProductLinkCandidateItem } from "@marketplace-central/sdk-runtime";
+import type { ApplyProductLinkBatchResponse, ProductLinkCandidateItem } from "@marketplace-central/sdk-runtime";
 import { EmptyState, ErrorState, LoadingState } from "@marketplace-central/ui";
+import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { BatchPreviewModal } from "./BatchPreviewModal";
+import { BatchResultFeedback } from "./BatchResultFeedback";
+import { BulkBar } from "./BulkBar";
 import { QueueRow } from "./QueueRow";
 import { VinculoDrawer } from "./VinculoDrawer";
 import { rejectInputForCandidate, useVinculosQueue } from "./useVinculosQueue";
@@ -9,11 +13,16 @@ const CANDIDATE_PARAM = "candidate";
 
 export interface QueueTabProps {
   installationId: string;
+  onViewResolved?: () => void;
 }
 
-export function QueueTab({ installationId }: QueueTabProps) {
+export function QueueTab({ installationId, onViewResolved }: QueueTabProps) {
   const { queueQuery, approve, reject, conflict } = useVinculosQueue(installationId);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchModalOpen, setBatchModalOpen] = useState(false);
+  const [batchCandidateIds, setBatchCandidateIds] = useState<string[]>([]);
+  const [batchResult, setBatchResult] = useState<ApplyProductLinkBatchResponse | null>(null);
 
   const openCandidateId = searchParams.get(CANDIDATE_PARAM);
 
@@ -48,6 +57,35 @@ export function QueueTab({ installationId }: QueueTabProps) {
     closeDrawer();
   };
 
+  const toggleSelect = (candidateId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(candidateId)) next.delete(candidateId);
+      else next.add(candidateId);
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  // Selection is cleared right after enqueue (the moment the batch is sent to
+  // preview) — the modal keeps its own snapshot (batchCandidateIds) so it
+  // still has the right candidates to dry-run even though selectedIds is
+  // already empty. Also cleared (defensively) after apply.
+  const openBatchPreview = () => {
+    setBatchCandidateIds(Array.from(selectedIds));
+    setBatchModalOpen(true);
+    clearSelection();
+  };
+
+  const closeBatchPreview = () => setBatchModalOpen(false);
+
+  const handleBatchApplied = (result: ApplyProductLinkBatchResponse) => {
+    setBatchResult(result);
+    setBatchModalOpen(false);
+    clearSelection();
+  };
+
   if (queueQuery.isPending) return <LoadingState />;
   if (queueQuery.isError) return <ErrorState onRetry={() => void queueQuery.refetch()} />;
 
@@ -67,11 +105,27 @@ export function QueueTab({ installationId }: QueueTabProps) {
         </div>
       ) : null}
 
+      {batchResult ? (
+        <BatchResultFeedback
+          result={batchResult}
+          onDismiss={() => setBatchResult(null)}
+          onViewResolved={() => {
+            setBatchResult(null);
+            onViewResolved?.();
+          }}
+        />
+      ) : null}
+
+      <BulkBar selectedCount={selectedIds.size} onPreview={openBatchPreview} onClear={clearSelection} />
+
       <div className="overflow-x-auto">
         <table className="w-full min-w-[900px] border-collapse text-left text-sm">
           <caption className="sr-only">Fila de candidatos de vínculo</caption>
           <thead className="border-b border-slate-200 text-xs font-medium text-slate-500">
             <tr>
+              <th className="px-3 py-3" scope="col">
+                <span className="sr-only">Selecionar</span>
+              </th>
               <th className="px-3 py-3" scope="col">Produto</th>
               <th className="px-3 py-3" scope="col">Melhor candidato</th>
               <th className="px-3 py-3" scope="col">Sinais</th>
@@ -87,6 +141,8 @@ export function QueueTab({ installationId }: QueueTabProps) {
                 onOpen={openDrawer}
                 onApprove={handleApprove}
                 pending={mutating}
+                selected={selectedIds.has(candidate.candidate_id)}
+                onToggleSelect={toggleSelect}
               />
             ))}
           </tbody>
@@ -103,6 +159,13 @@ export function QueueTab({ installationId }: QueueTabProps) {
         }}
         onReject={handleReject}
         pending={mutating}
+      />
+
+      <BatchPreviewModal
+        open={batchModalOpen}
+        candidateIds={batchCandidateIds}
+        onClose={closeBatchPreview}
+        onApplied={handleBatchApplied}
       />
     </div>
   );

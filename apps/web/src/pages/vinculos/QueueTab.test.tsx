@@ -8,12 +8,16 @@ import { QueueTab } from "./QueueTab";
 const listProductLinkCandidates = vi.fn();
 const approveProductLinkCandidate = vi.fn();
 const rejectProductLinkListing = vi.fn();
+const previewProductLinkBatch = vi.fn();
+const applyProductLinkBatch = vi.fn();
 
 vi.mock("../../app/ClientContext", () => ({
   useClient: () => ({
     listProductLinkCandidates: (...args: unknown[]) => listProductLinkCandidates(...args),
     approveProductLinkCandidate: (...args: unknown[]) => approveProductLinkCandidate(...args),
     rejectProductLinkListing: (...args: unknown[]) => rejectProductLinkListing(...args),
+    previewProductLinkBatch: (...args: unknown[]) => previewProductLinkBatch(...args),
+    applyProductLinkBatch: (...args: unknown[]) => applyProductLinkBatch(...args),
   }),
 }));
 
@@ -50,6 +54,8 @@ beforeEach(() => {
   listProductLinkCandidates.mockReset();
   approveProductLinkCandidate.mockReset();
   rejectProductLinkListing.mockReset();
+  previewProductLinkBatch.mockReset();
+  applyProductLinkBatch.mockReset();
 });
 
 describe("QueueTab", () => {
@@ -183,5 +189,71 @@ describe("QueueTab", () => {
     expect(screen.getByTestId("drawer-candidate")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Aprovar este candidato" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Rejeitar anúncio" })).toBeInTheDocument();
+  });
+
+  it("bulk selects rows, previews as a pure dry-run, applies the valid subset, and clears selection + refetches the queue", async () => {
+    listProductLinkCandidates
+      .mockResolvedValueOnce({
+        items: [
+          candidate({ candidate_id: "cand_1", provider_item_id: "MLB1", internal_product_id: 111 }),
+          candidate({ candidate_id: "cand_2", provider_item_id: "MLB2", internal_product_id: 222 }),
+        ],
+      })
+      // After apply, the page-local queue refetches — the applied item leaves the fila.
+      .mockResolvedValue({
+        items: [candidate({ candidate_id: "cand_2", provider_item_id: "MLB2", internal_product_id: 222 })],
+      });
+    previewProductLinkBatch.mockResolvedValue({
+      items: [
+        { candidate_id: "cand_1", status: "OK" },
+        { candidate_id: "cand_2", status: "FAILED", cause: "ALREADY_RESOLVED" },
+      ],
+    });
+    applyProductLinkBatch.mockResolvedValue({
+      batch_id: "batch_1",
+      applied: [{ candidate_id: "cand_1" }],
+      failed: [{ candidate_id: "cand_2", cause: "ALREADY_RESOLVED" }],
+    });
+
+    renderTab();
+
+    const checkboxes = await screen.findAllByRole("checkbox");
+    fireEvent.click(checkboxes[0]);
+    fireEvent.click(checkboxes[1]);
+
+    expect(await screen.findByText("2 selecionado(s)")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Pré-visualizar em lote" }));
+
+    // Opening the preview is a pure dry-run — apply must not fire yet.
+    await waitFor(() => {
+      expect(previewProductLinkBatch).toHaveBeenCalledWith({
+        approvals: [{ candidate_id: "cand_1" }, { candidate_id: "cand_2" }],
+      });
+    });
+    expect(applyProductLinkBatch).not.toHaveBeenCalled();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Prosseguir só com válidos" }));
+
+    await waitFor(() => {
+      expect(applyProductLinkBatch).toHaveBeenCalledWith(
+        expect.objectContaining({ approvals: [{ candidate_id: "cand_1" }] }),
+      );
+    });
+
+    // Itemized applied + failed feedback renders (partial failure is normal).
+    expect(await screen.findByText("1 aplicado(s), 1 falha(s)")).toBeInTheDocument();
+    expect(screen.getByTestId("batch-result-failed")).toHaveTextContent("cand_2: ALREADY_RESOLVED");
+    expect(screen.getByTestId("batch-result-applied")).toHaveTextContent("cand_1: aplicado");
+
+    // Selection cleared post-apply.
+    expect(screen.queryByText(/selecionado\(s\)/)).not.toBeInTheDocument();
+
+    // Page-local queue was invalidated + refetched (2xx applied item left the fila).
+    await waitFor(() => {
+      expect(listProductLinkCandidates).toHaveBeenCalledTimes(2);
+    });
+    expect(screen.queryByText("MLB1")).not.toBeInTheDocument();
+    expect(screen.getByText("MLB2")).toBeInTheDocument();
   });
 });

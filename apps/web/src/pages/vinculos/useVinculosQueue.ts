@@ -16,8 +16,12 @@ import { vinculosQueryKeys } from "./vinculosQueryKeys";
  */
 export const PRODUCT_LINKS_ROOT = ["product-links"] as const;
 
-/** UI-supplied, unverified operator actor (no auth context in the demo shell). */
-const WEB_OPERATOR_ACTOR: ProductLinkActor = {
+/**
+ * UI-supplied, unverified operator actor (no auth context in the demo shell).
+ * Exported so batch flows (useVinculosBatch) mirror the same actor instead of
+ * redefining it.
+ */
+export const WEB_OPERATOR_ACTOR: ProductLinkActor = {
   actor_type: "operator",
   actor_id: "web-operator",
   actor_name: "Operador",

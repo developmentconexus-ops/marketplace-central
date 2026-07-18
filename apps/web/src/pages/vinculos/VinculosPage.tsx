@@ -130,7 +130,7 @@ export function VinculosPage() {
           ) : queueItems.length === 0 ? (
             <EmptyState />
           ) : (
-            <QueueTab installationId={installationId} />
+            <QueueTab installationId={installationId} onViewResolved={() => setTab("resolvidos")} />
           )}
         </section>
       ) : (
