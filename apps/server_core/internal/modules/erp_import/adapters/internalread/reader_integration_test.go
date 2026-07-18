@@ -28,8 +28,8 @@ func TestReaderRealRepositoryCostReservedAsOfAndRejectedIgnored(t *testing.T) {
 	})
 	repo := erppostgres.NewRepository(pool)
 	imported := time.Now().UTC().Add(-time.Hour).Truncate(time.Microsecond)
-	reserved := "2.5"
-	completed := erpdomain.ImportSnapshot{ID: "61111111-1111-1111-1111-111111111111", Protocol: "#611-E", FileSHA256: "internalread-completed", Source: erpdomain.SourceXLSX, ImportedAt: imported, Status: erpdomain.ImportStatusCompleted, AcceptedRows: []erpdomain.NormalizedRow{{Codprod: "10", Descrprod: "Widget", Custo: "12.30", StockPhysical: "9.5", StockReserved: &reserved}}}
+	reserved := "2"
+	completed := erpdomain.ImportSnapshot{ID: "61111111-1111-1111-1111-111111111111", Protocol: "#611-E", FileSHA256: "internalread-completed", Source: erpdomain.SourceXLSX, ImportedAt: imported, Status: erpdomain.ImportStatusCompleted, AcceptedRows: []erpdomain.NormalizedRow{{Codprod: "10", Descrprod: "Widget", Custo: "12.30", StockPhysical: "9", StockReserved: &reserved}}}
 	if err := repo.PersistSnapshotAtomically(ctx, tenant, completed); err != nil {
 		t.Fatal(err)
 	}
