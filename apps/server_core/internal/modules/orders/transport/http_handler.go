@@ -36,6 +36,7 @@ type Handler struct {
 	importer   OrderImporter
 	lister     OrderLister
 	readLister OrderReadLister
+	enricher   *application.EnrichService
 }
 
 func NewHandler(importer OrderImporter, lister OrderLister) Handler {
@@ -44,6 +45,15 @@ func NewHandler(importer OrderImporter, lister OrderLister) Handler {
 
 func NewHandlerWithReader(importer OrderImporter, reader OrderReadLister) Handler {
 	return Handler{importer: importer, readLister: reader}
+}
+
+// NewHandlerWithEnricher wires the /orders read transport with a read-time
+// EnrichService: handleReadList/handleGet map results through enricher and
+// emit the enriched response DTO instead of the raw domain.OrderReadModel.
+// enricher may be nil (defensive) — the handler then falls back to the raw
+// marshal exactly like NewHandlerWithReader, so no caller regresses.
+func NewHandlerWithEnricher(importer OrderImporter, reader OrderReadLister, enricher *application.EnrichService) Handler {
+	return Handler{importer: importer, readLister: reader, enricher: enricher}
 }
 
 func (h Handler) Register(mux httpx.RouteRegistrar) {
@@ -117,9 +127,15 @@ type orderPageEnvelope struct {
 	NextCursor *string                 `json:"next_cursor"`
 }
 
+type enrichedOrderPageEnvelope struct {
+	Items      []enrichedOrderDTO `json:"items"`
+	NextCursor *string            `json:"next_cursor"`
+}
+
 func (h Handler) handleReadList(w http.ResponseWriter, r *http.Request) {
 	values := r.URL.Query()
-	if _, err := requiredInstallation(values); err != nil {
+	installationID, err := requiredInstallation(values)
+	if err != nil {
 		writeOrderReadError(w, err)
 		return
 	}
@@ -144,6 +160,15 @@ func (h Handler) handleReadList(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		next = &encoded
+	}
+	if h.enricher != nil {
+		enriched := h.enricher.Enrich(r.Context(), installationID, page.Items)
+		dtos := make([]enrichedOrderDTO, len(enriched))
+		for i, e := range enriched {
+			dtos[i] = mapEnrichedOrder(e)
+		}
+		httpx.WriteJSON(w, http.StatusOK, enrichedOrderPageEnvelope{Items: dtos, NextCursor: next})
+		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, orderPageEnvelope{Items: page.Items, NextCursor: next})
 }
@@ -180,7 +205,86 @@ func (h Handler) handleGet(w http.ResponseWriter, r *http.Request) {
 		writeOrderReadError(w, err)
 		return
 	}
+	if h.enricher != nil {
+		enriched := h.enricher.Enrich(r.Context(), installationID, []domain.OrderReadModel{model})
+		httpx.WriteJSON(w, http.StatusOK, mapEnrichedOrder(enriched[0]))
+		return
+	}
 	httpx.WriteJSON(w, http.StatusOK, model)
+}
+
+// enrichedBuyerDTO is the ONLY buyer identification allowed onto the
+// transport: masked Display plus honest, possibly-unknown City/UF. Never the
+// raw provider nickname or any other PII (C06/LGPD).
+type enrichedBuyerDTO struct {
+	Display string  `json:"display"`
+	City    *string `json:"city,omitempty"`
+	UF      *string `json:"uf,omitempty"`
+}
+
+type enrichedSLADTO struct {
+	Due      *time.Time `json:"due,omitempty"`
+	Atrasado *bool      `json:"atrasado,omitempty"`
+}
+
+type enrichedRastreioDTO struct {
+	ShipmentID string `json:"shipment_id"`
+	Status     string `json:"status"`
+}
+
+// enrichedItemDTO carries the existing item JSON fields (embedded, so no
+// duplication/drift risk) plus the read-time-only per-unit cost.
+// CustoUnitario is omitted (never 0) when the cost could not be honestly
+// resolved (ADR-17).
+type enrichedItemDTO struct {
+	domain.MarketplaceOrderItem
+	CustoUnitario *float64 `json:"custo_unitario,omitempty"`
+}
+
+// enrichedOrderDTO embeds the canonical OrderReadModel (reusing its existing
+// JSON fields, including the always-nil buyer_nickname the additive SDK lock
+// still requires) and overrides Items with the per-item enriched shape, then
+// adds the S1-S3 order-level enrichment facts. Every enrichment field is a
+// pointer/omitempty slice so an unresolved fact is honestly absent, never a
+// fabricated zero value (ADR-17).
+type enrichedOrderDTO struct {
+	domain.OrderReadModel
+	Items                    []enrichedItemDTO    `json:"items"`
+	VinculoStatus            string               `json:"vinculo_status"`
+	Buyer                    enrichedBuyerDTO     `json:"buyer"`
+	ComponentesDesconhecidos []string             `json:"componentes_desconhecidos,omitempty"`
+	SLA                      *enrichedSLADTO      `json:"sla,omitempty"`
+	DestinoUF                *string              `json:"destino_uf,omitempty"`
+	Rastreio                 *enrichedRastreioDTO `json:"rastreio,omitempty"`
+}
+
+// mapEnrichedOrder maps an application.EnrichedOrder onto the transport DTO.
+// ItemCosts is built by EnrichService in the same iteration order as
+// Order.Items (application/enrich_service.go resolveItemCosts, S2), so the
+// zip below is positional and order-safe by construction.
+func mapEnrichedOrder(e application.EnrichedOrder) enrichedOrderDTO {
+	items := make([]enrichedItemDTO, len(e.Order.Items))
+	for i, item := range e.Order.Items {
+		dto := enrichedItemDTO{MarketplaceOrderItem: item}
+		if i < len(e.ItemCosts) {
+			dto.CustoUnitario = e.ItemCosts[i].UnitCost
+		}
+		items[i] = dto
+	}
+
+	dto := enrichedOrderDTO{
+		OrderReadModel:           e.Order,
+		Items:                    items,
+		VinculoStatus:            string(e.VinculoStatus),
+		Buyer:                    enrichedBuyerDTO{Display: e.Buyer.Display, City: e.Buyer.City, UF: e.Buyer.UF},
+		ComponentesDesconhecidos: e.ComponentesDesconhecidos,
+	}
+	if e.Shipment != nil {
+		dto.SLA = &enrichedSLADTO{Due: e.Shipment.SLADue, Atrasado: e.Shipment.Delayed}
+		dto.DestinoUF = e.Shipment.DestinationUF
+		dto.Rastreio = &enrichedRastreioDTO{ShipmentID: e.Shipment.ShipmentID, Status: e.Shipment.Status}
+	}
+	return dto
 }
 
 func requiredInstallation(values url.Values) (string, error) {

@@ -89,9 +89,11 @@ func (s EnrichService) Enrich(ctx context.Context, installationID string, orders
 // found, fills buyer.UF from the shipment's honest DestinationUF. It never
 // fabricates a value: an empty ShippingID skips the reader entirely (not an
 // error), and a reader error degrades to a nil ShipmentEnrichment plus a
-// structured warn — the order itself is still returned.
+// structured warn — the order itself is still returned. A nil ShipmentReader
+// (real adapter not wired yet) is honest-unknown too: the lookup is skipped
+// exactly as an empty ShippingID would be, never a panic.
 func (s EnrichService) resolveShipment(ctx context.Context, installationID string, order domain.OrderReadModel, buyer *domain.MaskedBuyer) *ShipmentEnrichment {
-	if order.ShippingID == "" {
+	if s.shipment == nil || order.ShippingID == "" {
 		return nil
 	}
 	info, err := s.shipment.GetShipment(ctx, installationID, order.ShippingID)
@@ -120,9 +122,9 @@ func (s EnrichService) resolveShipment(ctx context.Context, installationID strin
 // resolveItemCosts looks up the per-unit ERP cost for every item on order.
 // An item is degraded to unknown (nil UnitCost, identifier appended to the
 // unknown list) — never a fabricated 0 — whenever it has no linked internal
-// product, the order carries no honest effectiveAt date, or the reader
-// itself returns an error or a nil Amount. A per-item miss never aborts the
-// order.
+// product, the order carries no honest effectiveAt date, the CostReader is
+// not wired yet (nil, real adapter is a later slice), or the reader itself
+// returns an error or a nil Amount. A per-item miss never aborts the order.
 func (s EnrichService) resolveItemCosts(ctx context.Context, order domain.OrderReadModel) ([]ItemCost, []string) {
 	itemCosts := make([]ItemCost, 0, len(order.Items))
 	var unknown []string
@@ -131,7 +133,7 @@ func (s EnrichService) resolveItemCosts(ctx context.Context, order domain.OrderR
 	for _, item := range order.Items {
 		identifier := itemIdentifier(item)
 
-		if item.InternalProductID == nil || !hasEffectiveAt {
+		if s.cost == nil || item.InternalProductID == nil || !hasEffectiveAt {
 			itemCosts = append(itemCosts, ItemCost{ItemIdentifier: identifier})
 			unknown = append(unknown, identifier)
 			continue

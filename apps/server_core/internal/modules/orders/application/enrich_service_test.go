@@ -290,6 +290,85 @@ func TestEnrichServiceEnrich_Cost(t *testing.T) {
 	})
 }
 
+func TestEnrichServiceEnrich_NilReaders(t *testing.T) {
+	closedAt := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+
+	t.Run("nil cost reader marks every item unknown without panicking", func(t *testing.T) {
+		shipmentReader := newFakeShipmentReader()
+		order := domain.OrderReadModel{
+			ProviderOrderID:  "ord-nilcost-1",
+			ProviderClosedAt: timePtr(closedAt),
+			Items: []domain.MarketplaceOrderItem{
+				{SellerSKU: "sku-1", InternalProductID: intPtr(1)},
+				{SellerSKU: "sku-2", InternalProductID: intPtr(2)},
+			},
+		}
+		svc := NewEnrichService(nil, shipmentReader, testLogger())
+		got := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})
+		if len(got) != 1 {
+			t.Fatalf("len(got) = %d, want 1", len(got))
+		}
+		result := got[0]
+		if len(result.ItemCosts) != 2 {
+			t.Fatalf("ItemCosts = %+v, want 2 entries", result.ItemCosts)
+		}
+		for _, ic := range result.ItemCosts {
+			if ic.UnitCost != nil {
+				t.Fatalf("ItemCosts = %+v, want all UnitCost nil (cost reader is nil)", result.ItemCosts)
+			}
+		}
+		if len(result.ComponentesDesconhecidos) != 2 {
+			t.Fatalf("ComponentesDesconhecidos = %v, want [sku-1 sku-2]", result.ComponentesDesconhecidos)
+		}
+	})
+
+	t.Run("nil shipment reader skips shipment lookup and leaves Buyer.UF nil", func(t *testing.T) {
+		costReader := newFakeCostReader()
+		order := domain.OrderReadModel{
+			ProviderOrderID: "ord-nilship-1",
+			BuyerNickname:   strPtr("Rita Alves"),
+			ShippingID:      "SHIP-9",
+		}
+		svc := NewEnrichService(costReader, nil, testLogger())
+		got := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})
+		if len(got) != 1 {
+			t.Fatalf("len(got) = %d, want 1", len(got))
+		}
+		result := got[0]
+		if result.Shipment != nil {
+			t.Fatalf("Shipment = %+v, want nil (shipment reader is nil)", result.Shipment)
+		}
+		if result.Buyer.UF != nil {
+			t.Fatalf("Buyer.UF = %v, want nil", *result.Buyer.UF)
+		}
+		if result.Buyer.Display != "Rita A." {
+			t.Fatalf("Buyer.Display = %q, want %q", result.Buyer.Display, "Rita A.")
+		}
+	})
+
+	t.Run("both readers nil produces a fully honest-null enrichment without panicking", func(t *testing.T) {
+		order := domain.OrderReadModel{
+			ProviderOrderID: "ord-nilboth-1",
+			ShippingID:      "SHIP-10",
+			Items: []domain.MarketplaceOrderItem{
+				{SellerSKU: "sku-3", InternalProductID: intPtr(3)},
+			},
+		}
+		svc := NewEnrichService(nil, nil, testLogger())
+		got := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})
+		if len(got) != 1 {
+			t.Fatalf("len(got) = %d, want 1", len(got))
+		}
+		result := got[0]
+		if result.Shipment != nil {
+			t.Fatalf("Shipment = %+v, want nil", result.Shipment)
+		}
+		if result.ItemCosts[0].UnitCost != nil {
+			t.Fatalf("UnitCost = %v, want nil", *result.ItemCosts[0].UnitCost)
+		}
+	})
+}
+
 func TestEnrichServiceEnrich_Shipment(t *testing.T) {
 	slaDue := time.Date(2026, 7, 20, 12, 0, 0, 0, time.UTC)
 
