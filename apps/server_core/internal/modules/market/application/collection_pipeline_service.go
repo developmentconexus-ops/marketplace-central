@@ -229,12 +229,7 @@ func (s *CollectionPipelineService) collectCatalogEvidence(ctx context.Context, 
 	// filtered. Own seller id is resolved dynamically per installation.
 	ownSellerID, err := s.collector.OwnSellerID(ctx)
 	if err != nil {
-		cause, stop := classifyProviderFailure(err)
-		run.fail(cause, stop, providerCauseDetail("own seller id resolution", err))
-		if err := s.persistNoPriceEvidenceAggregate(ctx, codprod, catalogProduct.FetchedAt); err != nil {
-			return "", nil, err
-		}
-		return domain.PriceEvidenceStatusNoPriceEvidence, blockingPtr(domain.BlockingStateNoPriceEvidence), nil
+		return "", nil, err
 	}
 	competitorOffers := excludeOwnSeller(offers, ownSellerID)
 
