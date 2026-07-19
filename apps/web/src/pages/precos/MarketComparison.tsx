@@ -18,7 +18,7 @@ export interface MarketAggregatesClient {
  * Kept local (not imported from ClientContext) so this panel stays decoupled from
  * the central seam — the app's useClient() carries no market client.
  */
-function apiBaseUrl(): string {
+export function apiBaseUrl(): string {
   const env = import.meta.env.VITE_API_BASE_URL;
   if (env && env.trim()) return env;
   return import.meta.env.DEV ? "http://localhost:8080" : "";
