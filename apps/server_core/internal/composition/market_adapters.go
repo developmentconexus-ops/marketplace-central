@@ -11,6 +11,7 @@ import (
 
 	mercadolivreconnector "marketplace-central/apps/server_core/internal/modules/connectors/adapters/mercado_livre"
 	connectorsdomain "marketplace-central/apps/server_core/internal/modules/connectors/domain"
+	erpinternalread "marketplace-central/apps/server_core/internal/modules/erp_import/adapters/internalread"
 	integrationsapp "marketplace-central/apps/server_core/internal/modules/integrations/application"
 	integrationsdomain "marketplace-central/apps/server_core/internal/modules/integrations/domain"
 	internalreadapp "marketplace-central/apps/server_core/internal/modules/internal_read/application"
@@ -125,6 +126,13 @@ func (r *marketProductIdentityReaderAdapter) GetLocalIdentity(ctx context.Contex
 	}
 	candidates, err := r.service.FindProductsForLinking(ctx, internalreadports.FindProductsInput{ProductID: &productID})
 	if err != nil {
+		// A codprod absent from the ERP source surfaces as the reader's own
+		// not-found error; translate it to the market port sentinel so the
+		// collection handler answers 404 instead of a raw 500 (FINDING-M02-COLLECT-4XX, D-86).
+		var notFound *erpinternalread.ERPProductNotFoundError
+		if errors.As(err, &notFound) {
+			return marketdomain.LocalProductIdentity{}, marketports.ErrProductNotFound
+		}
 		return marketdomain.LocalProductIdentity{}, err
 	}
 	if len(candidates) == 0 {
