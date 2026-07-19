@@ -1,6 +1,9 @@
 package domain
 
-import "testing"
+import (
+	"math/big"
+	"testing"
+)
 
 // baseSolve returns a fully-resolved SolveInput (classico, SIMPLES 4%, difal
 // SP 6.00, frete 15.00, custo 40.00) with no target set — tests fill Target.
@@ -216,6 +219,56 @@ func TestSolveHighSegmentExactAndCheapest(t *testing.T) {
 		}
 		if ratOf(t, *res.Preco).Cmp(ratOf(t, centsToStr(witness))) > 0 {
 			t.Fatalf("solver preço %s costlier than witness %s (not cheapest)", *res.Preco, centsToStr(witness))
+		}
+	}
+}
+
+// centsOf parses a 2dp preço string to integer cents (fails if not whole cents).
+func centsOf(t *testing.T, price string) int64 {
+	t.Helper()
+	r := ratOf(t, price)
+	r.Mul(r, big.NewRat(100, 1))
+	if !r.IsInt() {
+		t.Fatalf("preço %s is not whole cents", price)
+	}
+	return r.Num().Int64()
+}
+
+// C03(f) — FINDING-P6-SOLVER-2 regime: a >2dp comissão makes the EXACT ceiling
+// carry a 3rd decimal, so the exact gap to the ceiling can be as small as 0.005
+// for a reachable (2dp) target. The high-segment scan window must be DERIVED
+// from that gap, not a fixed cap that could truncate the reachable band. Here
+// exactCeiling = 100 − 12.005 = 87.995 (2dp ceiling gate = 88.00) and F = 0.50
+// keeps the crossing price inside the R$1M cap as the gap shrinks. Assert exact
+// match AND that no cheaper exact match exists just below the solved price (the
+// window did not truncate the band). Targets are 2dp — a >2dp target is
+// unreachable by construction since Decompose emits 2dp.
+func TestSolveHighSegmentNearCeilingCheapest(t *testing.T) {
+	base := SolveInput{
+		ComissaoPct: "12.005", AliquotaPct: "0", Modalidade: ModalidadeClassico,
+		FreteProduto: money("0.00"), Custo: money("0.50"),
+	}
+	for _, tgt := range []string{"87.90", "87.98", "87.99"} {
+		in := base
+		in.TargetMargemPct = tgt
+		res := SolveTargetPrice(in)
+		if !res.Reached || res.Preco == nil {
+			t.Fatalf("target %s must reach (sub-0.01 ceiling-gap regime); got %+v", tgt, res)
+		}
+		if got := resim(in, *res.Preco); cmpPct(got, tgt) != 0 {
+			t.Fatalf("target %s: solver preço %s re-sim=%s want EXACT", tgt, *res.Preco, got)
+		}
+		// no cheaper exact match below the solved price → window not truncated.
+		solved := centsOf(t, *res.Preco)
+		lo := solved - 200_000
+		if lo < defaultTaxaFixaLimiarCents {
+			lo = defaultTaxaFixaLimiarCents
+		}
+		for c := lo; c < solved; c++ {
+			if cmpPct(resim(in, centsToStr(c)), tgt) == 0 {
+				t.Fatalf("target %s: cheaper exact match at %s < solver %s (window truncated)",
+					tgt, centsToStr(c), *res.Preco)
+			}
 		}
 	}
 }

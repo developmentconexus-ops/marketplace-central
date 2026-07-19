@@ -133,15 +133,11 @@ func (in SolveInput) structuralUnknowns() []string {
 // it is scanned exhaustively; the unbounded high segment is bracketed first.
 const lowSegmentSpanCents int64 = 200_000
 
-// highSegmentWindowCents is the half-width of the linear scan around the
-// high-segment bracket crossing. round2(exact.pct) is monotone, and the real
-// Decompose match lies within the 2dp component-rounding perturbation of it:
-// |Δpreço| ≤ 150/(ceiling−target) cents, and ceiling−target ≥ 0.01 (targets
-// at/above the ceiling are rejected before any search), so ≤ 15000 cents — a
-// fixed 20000-cent half-window covers every case with margin. This keeps the
-// search O(log) + bounded (no unbounded cap, no false UNREACHABLE for a
-// reachable target within solveMaxCents).
-const highSegmentWindowCents int64 = 20_000
+// windowMarginCents pads the DERIVED high-segment scan half-window (150/gStar
+// cents, see searchSegment) to absorb the integer ceil. The window itself is
+// computed per-input from the exact ceiling gap, never a fixed cap, so it can
+// never silently truncate a reachable target (FINDING-P6-SOLVER-2).
+const windowMarginCents int64 = 8
 
 // searchSegment returns the cheapest 2dp preço (in cents) within [loCents,
 // hiCents] whose Decompose margem_pct equals TargetMargemPct EXACTLY, and
@@ -161,23 +157,37 @@ func (in SolveInput) searchSegment(loCents, hiCents int64) (string, bool) {
 	limiar := in.limiarCents()
 	scanLo, scanHi := loCents, hiCents
 	if hiCents-loCents > lowSegmentSpanCents {
-		// High segment: bracket the round2(exact.pct) crossing by bisection (the
-		// exact margem_pct is strictly increasing) then scan a bounded window
-		// around it against the real Decompose. round2(exact) ≥ target iff
-		// exact ≥ target − 0.005, so the crossing is firstCentExactAtLeast(target
-		// − 0.005); the real Decompose match differs from it only by the 2dp
-		// component-rounding perturbation, ≤ highSegmentWindowCents (see const).
+		// High segment: bracket the round2(exact.pct)=target crossing by bisection
+		// (exact margem_pct is strictly increasing), then scan a window around it
+		// against the real Decompose. round2(exact) ≥ target ⇔ exact ≥ target−0.005,
+		// so cStar = firstCentExactAtLeast(target−0.005) is that crossing (the
+		// −0.005 is the final-round2 half-band, already folded in here).
+		//
+		// The cheapest Decompose match lies at most 150/gStar cents from cStar,
+		// gStar = exactCeiling − (target−0.005): Decompose = round2(exact + ρ) with
+		// |ρ| ≤ 1.5/preço pp (2dp rounding of ≤3 cost components), and the exact
+		// slope is 10000·F/preço² pp/cent, so |Δpreço| ≤ (1.5/preço)/(10000F/preço²)
+		// = 150·preço/(10000F) = 150/gStar cents at the crossing (preço = 10000F/
+		// gStar). gStar ≥ 0.005 by construction (target < the 2dp ceiling ≤
+		// exactCeiling+0.005), so the window is finite for EVERY input — including
+		// sub-0.01 ceiling gaps a >2dp comissão admits, which a fixed cap would
+		// truncate (FINDING-P6-SOLVER-2).
 		half := big.NewRat(5, 1000) // 0.005 = round2 half-band
 		bound := new(big.Rat).Sub(mustRat(in.TargetMargemPct), half)
+		gStar := new(big.Rat).Sub(in.exactCeilingRat(), bound)
+		if gStar.Sign() <= 0 {
+			return "", false // target at/above the exact asymptote — unreachable
+		}
 		cStar := in.firstCentExactAtLeast(loCents, hiCents, limiar, bound)
 		if cStar > hiCents {
-			return "", false // target unreachable within the segment
+			return "", false // crossing beyond the search cap — unreachable
 		}
-		scanLo = cStar - highSegmentWindowCents
+		winCents := ceilRatToCents(new(big.Rat).Quo(big.NewRat(150, 1), gStar)) + windowMarginCents
+		scanLo = cStar - winCents
 		if scanLo < loCents {
 			scanLo = loCents
 		}
-		scanHi = cStar + highSegmentWindowCents
+		scanHi = cStar + winCents
 		if scanHi > hiCents {
 			scanHi = hiCents
 		}
@@ -237,6 +247,32 @@ func (in SolveInput) exactMargemPctRat(cents, limiar int64) *big.Rat {
 	fOverP := new(big.Rat).Quo(fixed, preco)
 	fOverP.Mul(fOverP, cem)
 	return pct.Sub(pct, fOverP)
+}
+
+// exactCeilingRat is the UNROUNDED margem_pct asymptote (100 − comissão −
+// aliquota − applied difal) as preço→∞ — the exact analogue of ceilingPct,
+// which rounds to 2dp. The window derivation needs the unrounded value: the 2dp
+// ceiling gate can admit a target only ~0.005 below the true asymptote when a
+// >2dp comissão is supplied, so a rounded gap would understate the window.
+func (in SolveInput) exactCeilingRat() *big.Rat {
+	ceil := new(big.Rat).Set(cem)
+	ceil.Sub(ceil, mustRat(in.ComissaoPct))
+	ceil.Sub(ceil, mustRat(in.AliquotaPct))
+	if in.difalApplied() {
+		ceil.Sub(ceil, mustRat(in.EfetivoPct))
+	}
+	return ceil
+}
+
+// ceilRatToCents returns ⌈x⌉ as int64 for a non-negative *big.Rat.
+func ceilRatToCents(x *big.Rat) int64 {
+	q := new(big.Int)
+	m := new(big.Int)
+	q.DivMod(x.Num(), x.Denom(), m) // Euclidean: m ≥ 0
+	if m.Sign() != 0 {
+		q.Add(q, big.NewInt(1))
+	}
+	return q.Int64()
 }
 
 // margemAt returns the margem_pct string at a candidate preço (in cents). The
