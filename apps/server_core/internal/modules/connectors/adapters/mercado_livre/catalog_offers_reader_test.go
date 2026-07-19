@@ -192,6 +192,62 @@ func TestListCatalogOffersFansOutParentToChildLeaves(t *testing.T) {
 	}
 }
 
+func TestListCatalogOffersParentSkipsBlankChildAndTolerates404Leaf(t *testing.T) {
+	t.Parallel()
+
+	// A blank children_ids entry is provider noise (must never become
+	// /products//items) and a leaf whose /items resource is absent (404)
+	// legitimately contributes zero offers — neither may nuke the sibling that
+	// does have offers (FINDING-M02-LIVE-2 D2, adversarial P6).
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/products/MLB-PARENT":
+			_, _ = io.WriteString(w, `{"children_ids":["  ","MLB-EMPTY","MLB-LIVE"]}`)
+		case "/products/MLB-EMPTY/items":
+			w.WriteHeader(http.StatusNotFound)
+		case "/products/MLB-LIVE/items":
+			_, _ = io.WriteString(w, `{"paging":{"total":1,"offset":0,"limit":50},"results":[{"seller_id":"seller-1","price":100.00,"currency_id":"BRL","condition":"new","shipping":{"mode":"me2"}}]}`)
+		default:
+			t.Fatalf("unexpected request = %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	offers, err := catalogOffersTestAdapter(server.URL, true).ListCatalogOffers(context.Background(), pricingAccountRef(), "MLB-PARENT")
+	if err != nil {
+		t.Fatalf("ListCatalogOffers() error = %v", err)
+	}
+	if len(offers) != 1 || offers[0].SellerID != "seller-1" {
+		t.Fatalf("offers = %#v, want the single live-child offer", offers)
+	}
+}
+
+func TestListCatalogOffersParentChildFaultAbortsWithoutPartial(t *testing.T) {
+	t.Parallel()
+
+	// A child 5xx is an UNKNOWN, not a known-empty leaf: returning the surviving
+	// sibling's offers would silently undercount competitors (unknown treated as
+	// zero). The whole parent aggregate must fail (FINDING-M02-LIVE-2 D2/D1).
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/products/MLB-PARENT":
+			_, _ = io.WriteString(w, `{"children_ids":["MLB-LIVE","MLB-DOWN"]}`)
+		case "/products/MLB-LIVE/items":
+			_, _ = io.WriteString(w, `{"paging":{"total":1,"offset":0,"limit":50},"results":[{"seller_id":"seller-1","price":100.00,"currency_id":"BRL"}]}`)
+		case "/products/MLB-DOWN/items":
+			w.WriteHeader(http.StatusInternalServerError)
+		default:
+			t.Fatalf("unexpected request = %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	offers, err := catalogOffersTestAdapter(server.URL, true).ListCatalogOffers(context.Background(), pricingAccountRef(), "MLB-PARENT")
+	if !errors.Is(err, domain.ErrProviderUnavailable) || errors.Is(err, domain.ErrCatalogOffersUnavailable) || offers != nil {
+		t.Fatalf("offers = %#v, error = %v, want ErrProviderUnavailable with no partial", offers, err)
+	}
+}
+
 func catalogOffersTestAdapter(baseURL string, enabled bool) *CapabilityAdapter {
 	return NewCapabilityAdapter(CapabilityAdapterConfig{
 		BaseURL:              baseURL,

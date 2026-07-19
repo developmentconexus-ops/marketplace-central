@@ -3,6 +3,7 @@ package mercadolivre
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -55,9 +56,20 @@ func (a *CapabilityAdapter) listCatalogOffers(ctx context.Context, accountRef do
 	offers := make([]domain.CatalogOffer, 0)
 	pageCount := 0
 	for _, childID := range product.ChildrenIDs {
-		childOffers, childPages, err := a.listLeafCatalogOffers(ctx, accountRef, token, strings.TrimSpace(childID))
+		childID = strings.TrimSpace(childID)
+		if childID == "" {
+			continue // provider noise: a blank ref is not a resolvable leaf
+		}
+		childOffers, childPages, err := a.listLeafCatalogOffers(ctx, accountRef, token, childID)
 		pageCount += childPages
 		if err != nil {
+			// A leaf whose /items resource is absent (404) legitimately contributes
+			// zero offers; skip it. Any other fault (5xx/timeout/401/429) is an
+			// UNKNOWN and must abort — returning the surviving siblings would
+			// silently undercount competitors, i.e. treat unknown as zero.
+			if errors.Is(err, domain.ErrNotFound) {
+				continue
+			}
 			return nil, pageCount, err
 		}
 		offers = append(offers, childOffers...)
