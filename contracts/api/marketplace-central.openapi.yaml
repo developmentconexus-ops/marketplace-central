@@ -2545,6 +2545,63 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /pricing/tariff-defaults:
+    get:
+      summary: Get the tenant tariff defaults (degrau-4 config)
+      operationId: pricingGetTariffDefaults
+      parameters:
+        - name: installation_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Tariff defaults
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingTariffDefaults'
+        "503":
+          description: Tariff store not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Update the tenant tariff defaults (degrau-4 config)
+      operationId: pricingPutTariffDefaults
+      parameters:
+        - name: installation_id
+          in: query
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PricingTariffDefaults'
+      responses:
+        "200":
+          description: Updated tariff defaults
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingTariffDefaults'
+        "422":
+          description: Invalid frete_policy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "503":
+          description: Tariff store not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /connectors/melhor-envio/auth/start:
     get:
       summary: Start Melhor Envio OAuth flow
@@ -4100,7 +4157,6 @@ components:
     PricingCalcInput:
       type: object
       required:
-        - comissao_pct
         - modalidade
       properties:
         preco:
@@ -4172,12 +4228,16 @@ components:
         blocking_state:
           type: string
           nullable: true
+        tarifa:
+          $ref: '#/components/schemas/PricingTarifa'
+          nullable: true
     PricingSolveResponse:
       type: object
       required:
         - reached
         - ceiling_pct
         - desconhecidos
+        - frete_desconhecido
       properties:
         reached:
           type: boolean
@@ -4190,11 +4250,79 @@ components:
           type: array
           items:
             type: string
+        frete_desconhecido:
+          type: boolean
         blocking_state:
           type: string
           nullable: true
+        tarifa:
+          $ref: '#/components/schemas/PricingTarifa'
+          nullable: true
         code:
           type: string
+          enum:
+            - UNREACHABLE_TARGET
+            - SEM_FRETE
+            - DADOS_INCOMPLETOS
+    PricingTarifaComponent:
+      type: object
+      required:
+        - valor
+        - fonte
+        - degrau
+        - data
+        - estimativa
+      properties:
+        valor:
+          type: string
+          nullable: true
+        fonte:
+          type: string
+        degrau:
+          type: integer
+        data:
+          type: string
+          nullable: true
+        estimativa:
+          type: boolean
+    PricingTarifaFrete:
+      allOf:
+        - $ref: '#/components/schemas/PricingTarifaComponent'
+        - type: object
+          required:
+            - sem_dados
+          properties:
+            sem_dados:
+              type: boolean
+    PricingTarifa:
+      type: object
+      required:
+        - comissao
+        - frete
+      properties:
+        comissao:
+          $ref: '#/components/schemas/PricingTarifaComponent'
+        frete:
+          $ref: '#/components/schemas/PricingTarifaFrete'
+    PricingTariffDefaults:
+      type: object
+      required:
+        - comissao_classico_pct
+        - comissao_premium_pct
+        - frete_policy
+      properties:
+        comissao_classico_pct:
+          type: string
+        comissao_premium_pct:
+          type: string
+        frete_estimativa_amount:
+          type: string
+          nullable: true
+        frete_policy:
+          type: string
+          enum:
+            - estimativa
+            - sem_dados
     ListIntegrationProvidersResponse:
       type: object
       required:

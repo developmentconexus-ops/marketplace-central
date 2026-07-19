@@ -314,10 +314,14 @@ func (h Handler) handleDecompose(w http.ResponseWriter, r *http.Request) {
 		h.writeCalcError(w, err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+	body := map[string]any{
 		"decomposition":  toDecompositionDTO(res.Decomposition),
 		"blocking_state": res.BlockingState,
-	})
+	}
+	if tarifa := toTarifaDTO(res.Tarifa); tarifa != nil {
+		body["tarifa"] = tarifa
+	}
+	httpx.WriteJSON(w, http.StatusOK, body)
 }
 
 func (h Handler) handleSolve(w http.ResponseWriter, r *http.Request) {
@@ -340,18 +344,84 @@ func (h Handler) handleSolve(w http.ResponseWriter, r *http.Request) {
 		h.writeCalcError(w, err)
 		return
 	}
-	body := map[string]any{
-		"reached":        out.Result.Reached,
-		"preco":          out.Result.Preco,
-		"ceiling_pct":    out.Result.CeilingPct,
-		"desconhecidos":  out.Result.Desconhecidos,
-		"blocking_state": out.BlockingState,
+	desconhecidos := out.Result.Desconhecidos
+	if desconhecidos == nil {
+		desconhecidos = []string{}
 	}
-	// Unreachable is a 200 with the exact IC-04 code, not an error.
-	if !out.Result.Reached {
-		body["code"] = "UNREACHABLE_TARGET"
+	body := map[string]any{
+		"reached":            out.Result.Reached,
+		"preco":              out.Result.Preco,
+		"ceiling_pct":        out.Result.CeilingPct,
+		"desconhecidos":      desconhecidos,
+		"frete_desconhecido": out.Result.FreteDesconhecido,
+		"blocking_state":     out.BlockingState,
+	}
+	if tarifa := toTarifaDTO(out.Tarifa); tarifa != nil {
+		body["tarifa"] = tarifa
+	}
+	if code := solveCode(out.Result); code != "" {
+		body["code"] = code
 	}
 	httpx.WriteJSON(w, http.StatusOK, body)
+}
+
+type tarifaComissaoDTO struct {
+	Valor      *string `json:"valor"`
+	Fonte      string  `json:"fonte"`
+	Degrau     int     `json:"degrau"`
+	Data       *string `json:"data"`
+	Estimativa bool    `json:"estimativa"`
+}
+
+type tarifaFreteDTO struct {
+	Valor      *string `json:"valor"`
+	Fonte      string  `json:"fonte"`
+	Degrau     int     `json:"degrau"`
+	Data       *string `json:"data"`
+	Estimativa bool    `json:"estimativa"`
+	SemDados   bool    `json:"sem_dados"`
+}
+
+type tarifaDTO struct {
+	Comissao tarifaComissaoDTO `json:"comissao"`
+	Frete    tarifaFreteDTO    `json:"frete"`
+}
+
+// toTarifaDTO renders the resolved tariff stamps. `data` (source timestamp) is
+// always null at degrau 4 — the config default has no authoritative per-resolve
+// timestamp; fabricating one would violate ADR-17 (no invented operational
+// facts). Degraus 1-3 will populate it when they land.
+func toTarifaDTO(t *domain.TariffResolution) *tarifaDTO {
+	if t == nil {
+		return nil
+	}
+	return &tarifaDTO{
+		Comissao: tarifaComissaoDTO{
+			Valor: t.Comissao.Valor, Fonte: string(t.Comissao.Fonte),
+			Degrau: t.Comissao.Degrau, Data: nil, Estimativa: t.Comissao.Estimativa,
+		},
+		Frete: tarifaFreteDTO{
+			Valor: t.Frete.Valor, Fonte: string(t.Frete.Fonte),
+			Degrau: t.Frete.Degrau, Data: nil, Estimativa: t.Frete.Estimativa,
+			SemDados: t.Frete.Valor == nil,
+		},
+	}
+}
+
+// solveCode maps a solve outcome to its IC-04 code by CAUSE — never a blanket
+// UNREACHABLE_TARGET. Mutually exclusive in the current domain: structural
+// unknowns, then missing frete (high segment), then true unreachability.
+func solveCode(r domain.SolveResult) string {
+	switch {
+	case len(r.Desconhecidos) > 0:
+		return "DADOS_INCOMPLETOS"
+	case r.FreteDesconhecido:
+		return "SEM_FRETE"
+	case !r.Reached && r.CeilingPct != "":
+		return "UNREACHABLE_TARGET"
+	default:
+		return ""
+	}
 }
 
 // --- Tariff Defaults (CHIP-T1 Slice A) ---
