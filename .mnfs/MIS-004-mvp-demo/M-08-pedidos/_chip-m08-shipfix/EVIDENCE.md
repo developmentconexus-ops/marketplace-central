@@ -60,13 +60,44 @@ emits `TS2339` jest-dom matcher errors (`toBeInTheDocument`, `toBeDisabled`,
 hits AppRouter/Header test files on base, unrelated to this change. Zero errors
 in touched production `.ts/.tsx`. Authoritative FE gate = `vite build` (green).
 
-## Governance lane
+## Governance lane — PASSED
 
-_(recorded below after run against BaseSha `8b9e0ec0…`)_
+`npm run harness:governance -- -BaseSha 8b9e0ec01cae7b64f68001054464b3cb7f534160`
+(clean worktree, full 40-hex anchor) → `status=passed`. The `OrderRastreio.substatus`
+addition is optional/additive → no semantic drift. All emitted `baseline_exception`
+lines are the pre-existing repo baseline (direct-reader secrets, module edges,
+migration-prefix, production-panic allowlist) — none introduced by this chip.
 
-## P6 dual gate
+## P6 dual gate — PASS / PASS (agreement)
 
-_(cold Opus + adversarial sonnet — recorded below)_
+Two independent read-only reviewers of committed diff `8b9e0ec0..aa4bb11`.
+
+**Cold correctness (Opus, did not write the code): PASS.** Verified: x-format-new
+on /costs only; degrade on ProviderPayloadInvalid|InvalidReference, 5xx still
+sinks; bucket precedence coherent (cancel > delivered-tag > shipment-status >
+provider-status fallback); both DeriveOrderBucket call sites consistent; tags
+genuinely populated end-to-end (migration 0027 `tags_json` jsonb → scanReadModel
+→ EnrichedOrder.Order.Tags → handler); ADR-17 honest-unknown throughout;
+contract/SDK additive+consistent; tests exercise the claimed behavior (not theater).
+
+**Adversarial slop (sonnet): PASS, no BLOCKER/MAJOR.** Confirmed error
+classification, bucket priority, contract/SDK sync, nil-safe FE chaining, and
+that the KPI-from-list rewrite fixes the defect.
+
+### Adjudicated review notes (non-blocking)
+
+1. **`not_delivered` top-level shipment status → enviar** (Opus). A failed-delivery
+   shipment falls through to the provider fallback and buckets as *enviar*. Rare,
+   genuinely ambiguous (no live *devolucao* bucket yet — placeholder), orthogonal
+   to the shipped/delivered defect. **Design judgment, left as-is; flagged to hub
+   as a follow-up if `not_delivered` appears in real data.**
+2. **Silent `json.Unmarshal` on `tags_json`** (sonnet, both call sites).
+   **Intentional per ADR-17** — corrupt/absent tags degrade to nil (honest
+   unknown), never fabricated. Reviewer acknowledged as intentional. Left as-is.
+3. **Happy-path substatus not asserted** (sonnet). VALID — actioned: added
+   `Substatus == "ready_to_print"` assertion to
+   `TestGetShipmentInfoMapsShipmentAndCosts` (removes a dangling mock field,
+   guards happy-path substatus mapping). ML connector package re-run green.
 
 ## HAND-BACK
 

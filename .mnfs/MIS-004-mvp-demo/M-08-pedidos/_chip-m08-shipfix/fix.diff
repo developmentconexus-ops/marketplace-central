@@ -93,7 +93,7 @@ index b9929c08..fb498e8b 100644
  		Delayed:       shipment.Delayed,
  		DestinationUF: destinationUF,
 diff --git a/apps/server_core/internal/modules/connectors/adapters/mercado_livre/shipping_reader_test.go b/apps/server_core/internal/modules/connectors/adapters/mercado_livre/shipping_reader_test.go
-index c34df931..06effb80 100644
+index c34df931..aabed3b5 100644
 --- a/apps/server_core/internal/modules/connectors/adapters/mercado_livre/shipping_reader_test.go
 +++ b/apps/server_core/internal/modules/connectors/adapters/mercado_livre/shipping_reader_test.go
 @@ -23,7 +23,7 @@ func TestGetShipmentInfoMapsShipmentAndCosts(t *testing.T) {
@@ -105,7 +105,17 @@ index c34df931..06effb80 100644
  		case "/shipments/SHIP-1/costs":
  			_, _ = io.WriteString(w, `{"gross_amount":19.90,"receiver":{"cost":2.50},"senders":[{"cost":17.40}],"currency_id":"BRL"}`)
  		default:
-@@ -111,6 +111,75 @@ func TestGetShipmentInfoCostsServerErrorFails(t *testing.T) {
+@@ -39,6 +39,9 @@ func TestGetShipmentInfoMapsShipmentAndCosts(t *testing.T) {
+ 	if shipment.ID != "SHIP-1" || shipment.Status != "ready_to_ship" || !shipment.FetchedAt.Equal(fetchedAt) {
+ 		t.Fatalf("shipment = %#v", shipment)
+ 	}
++	if shipment.Substatus != "ready_to_print" {
++		t.Fatalf("Substatus = %q, want ready_to_print", shipment.Substatus)
++	}
+ 	wantSLA := time.Date(2026, 7, 22, 15, 4, 5, 0, time.UTC)
+ 	if shipment.SLADue == nil || !shipment.SLADue.Equal(wantSLA) {
+ 		t.Fatalf("SLADue = %#v, want %v", shipment.SLADue, wantSLA)
+@@ -111,6 +114,75 @@ func TestGetShipmentInfoCostsServerErrorFails(t *testing.T) {
  	}
  }
  

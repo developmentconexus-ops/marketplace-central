@@ -39,6 +39,9 @@ func TestGetShipmentInfoMapsShipmentAndCosts(t *testing.T) {
 	if shipment.ID != "SHIP-1" || shipment.Status != "ready_to_ship" || !shipment.FetchedAt.Equal(fetchedAt) {
 		t.Fatalf("shipment = %#v", shipment)
 	}
+	if shipment.Substatus != "ready_to_print" {
+		t.Fatalf("Substatus = %q, want ready_to_print", shipment.Substatus)
+	}
 	wantSLA := time.Date(2026, 7, 22, 15, 4, 5, 0, time.UTC)
 	if shipment.SLADue == nil || !shipment.SLADue.Equal(wantSLA) {
 		t.Fatalf("SLADue = %#v, want %v", shipment.SLADue, wantSLA)
