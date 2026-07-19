@@ -661,7 +661,8 @@ universal de-para categoria-fonte→categoria-ML com cascata por grupo.
 1. **CHIP-T2-MIN (PRÉ-DEMO):** degrau 3 mínimo — adapter fino ligando a máquina catalog-match já
    mergeada (EAN+título→categoria→listing_prices) ao port TariffResolver do CHIP-T1. Mesmo port,
    mesma cadeia, carimbo fonte=COTACAO degrau=3. Serializa após merge do T1 (colisão pricing).
-   SEM: persistência history (0069 fica T3), frete por dims, fix buy_box/mojibake (ficam T2 full).
+   SEM: persistência history (fica T3), frete por dims, fix buy_box (fica T2 full; "mojibake"
+   RETRATADO D-85 — falso positivo de decode cp1252 no console Windows, bytes limpos).
 2. **CategoryResolver = port próprio** desde o T2-MIN: fonte 1 = EAN+título (catalog-match).
    Catmap entra pós-demo como fonte 2 atrás do MESMO port. Consumidor nunca vê a origem, só o
    carimbo {categoria, fonte: EAN-CATALOGO|TITULO|GRUPO-DEPARA|MANUAL, confianca, data}.
@@ -676,3 +677,9 @@ universal de-para categoria-fonte→categoria-ML com cascata por grupo.
 6. **Fee = cache TTL curto via listing_prices, NUNCA tabela estática longa** — sem endpoint bulk;
    mudança estrutural oficial de 02/03 (provisoes/comissao-por-vender) muda FORMA da cobrança, não
    só números. TTL 7d comissão (D-78) mantido. fee_schedules categoria permanece só degrau 3.5.
+7. **Numeração de migration (AMENDA D-87, supersede §6.3/§8/reservas acima):** reserva de número
+   para migration FUTURA está CANCELADA — reservar cria hazard de apply fora de ordem (fresh DB =
+   ordem lexical; DB existente = ordem de chegada). Regra: número = próximo-livre concedido pelo
+   hub no momento do GRANT, sequencial, sem buracos. Alocação corrente: 0068 = T1
+   (pricing_tariff_defaults), 0069 = GRUPO-IMPORT (grupo/descrgrupo), T3 pega next-free ao existir.
+   Menções a "0069 reservado T3" e "reserva hub 0070-0074" neste doc estão obsoletas.
