@@ -13,11 +13,15 @@ type fakeCatalogService struct {
 	listProductsByIDsCalls int
 	listProductsByIDsIDs   [][]string
 	productsByID           map[string]domain.Product
+	err                    error
 }
 
 func (f *fakeCatalogService) ListProductsByIDs(_ context.Context, ids []string) ([]domain.Product, error) {
 	f.listProductsByIDsCalls++
 	f.listProductsByIDsIDs = append(f.listProductsByIDsIDs, append([]string(nil), ids...))
+	if f.err != nil {
+		return nil, f.err
+	}
 	result := make([]domain.Product, 0, len(ids))
 	seen := make(map[string]struct{}, len(ids))
 	for _, id := range ids {

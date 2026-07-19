@@ -503,6 +503,38 @@ func TestSolveWithResolverSurfacesTarifa(t *testing.T) {
 	}
 }
 
+func TestDecomposeDegrau3StampsCotacaoData(t *testing.T) {
+	ts := "2026-07-19T12:00:00Z"
+	resolver := fakeTariffResolver{res: domain.TariffResolution{
+		Comissao: domain.ComponentResolution{Valor: strPtr("11.50"), Fonte: domain.FonteCotacao, Degrau: 3, Data: strPtr(ts)},
+		Frete:    domain.ComponentResolution{Valor: nil, Fonte: domain.FontePadrao, Degrau: 4, Estimativa: true},
+	}}
+	mux := newCalcMuxWithResolver(newRepoStub(), costStub{money: &domain.Money{Amount: "10.00", Currency: "BRL"}}, nil, resolver)
+	w := do(t, mux, http.MethodPost, "/pricing/decompose",
+		`{"preco":"100.00","modalidade":"classico","custo":"10.00"}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200, body=%s", w.Code, w.Body.String())
+	}
+	var body struct {
+		Tarifa *tarifaDTO `json:"tarifa"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Tarifa == nil {
+		t.Fatalf("tarifa = nil, want resolved tarifa object, body=%s", w.Body.String())
+	}
+	if body.Tarifa.Comissao.Fonte != "COTACAO" {
+		t.Fatalf("tarifa.comissao.fonte = %q, want COTACAO", body.Tarifa.Comissao.Fonte)
+	}
+	if body.Tarifa.Comissao.Degrau != 3 {
+		t.Fatalf("tarifa.comissao.degrau = %d, want 3", body.Tarifa.Comissao.Degrau)
+	}
+	if body.Tarifa.Comissao.Data == nil || *body.Tarifa.Comissao.Data != ts {
+		t.Fatalf("tarifa.comissao.data = %v, want %q (degrau 3 stamps the cotação timestamp)", body.Tarifa.Comissao.Data, ts)
+	}
+}
+
 func TestDecomposeWithResolverSurfacesTarifa(t *testing.T) {
 	resolver := fakeTariffResolver{res: domain.TariffResolution{
 		Comissao: domain.ComponentResolution{Valor: strPtr("13.00"), Fonte: domain.FontePadrao, Degrau: 4},
