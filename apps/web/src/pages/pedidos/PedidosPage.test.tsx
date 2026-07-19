@@ -300,6 +300,53 @@ describe("PedidosPage", () => {
     expect(screen.getByText("ENVIADOS · 0")).toBeInTheDocument();
   });
 
+  it("Fila shows 'sem ação' (not Faturar) for a cancelado order, agreeing with Lista/Kanban (F02-S5 #1)", async () => {
+    listOrders.mockResolvedValue({
+      items: [{ ...baseOrder, bucket: "cancelado" as const, nf_state: null }],
+      next_cursor: null,
+    });
+
+    renderPage();
+
+    await screen.findByText("ML-1001");
+    expect(screen.getByText("sem ação")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Faturar" })).not.toBeInTheDocument();
+  });
+
+  it("follows next_cursor to load the full order dataset across pages (F02-S5 #2)", async () => {
+    listOrders.mockImplementation(({ cursor }: { cursor?: string }) => {
+      if (!cursor) {
+        return Promise.resolve({
+          items: [{ ...baseOrder, bucket: "novo" as const }],
+          next_cursor: "page2",
+        });
+      }
+      if (cursor === "page2") {
+        return Promise.resolve({
+          items: [
+            {
+              ...baseOrder,
+              provider_order_id: "PO2",
+              provider_code: "ML-1002",
+              bucket: "novo" as const,
+            },
+          ],
+          next_cursor: null,
+        });
+      }
+      return Promise.resolve({ items: [], next_cursor: null });
+    });
+
+    renderPage();
+
+    await screen.findByRole("heading", { name: "Pedidos" });
+    await goToLista();
+
+    expect(await screen.findByText("ML-1001")).toBeInTheDocument();
+    expect(await screen.findByText("ML-1002")).toBeInTheDocument();
+    expect(listOrders.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+
   it("shows the error state with retry when the fetch fails", async () => {
     listOrders.mockRejectedValueOnce({ status: 500, error: { code: "internal" } });
     listOrders.mockResolvedValue({ items: [], next_cursor: null });

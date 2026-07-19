@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import type { OrderRead } from "@marketplace-central/sdk-runtime";
+import type { OrderPage, OrderRead } from "@marketplace-central/sdk-runtime";
 import { EmptyState, ErrorState, LoadingState, StatCard } from "@marketplace-central/ui";
 import { ordersQueryKeys, QUERY_STALE_TIME } from "@marketplace-central/web-query";
 import { useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
+import type { Client } from "../../app/ClientContext";
 import { useClient } from "../../app/ClientContext";
 import { useInstallation } from "../../app/InstallationContext";
 import { FilaView } from "./FilaView";
@@ -30,6 +31,33 @@ const viewHeadings: Record<PedidosView, string> = {
 // only) without forking packages/ui/StatCard.tsx, which this slice may only consume. The literal
 // em dash below matches UnknownValue's glyph so the KPI still reads as an honest unknown, not a 0.
 const UNKNOWN_KPI_VALUE = "—";
+
+// Safety cap on the pagination accumulator below (G2/F02-S5): a backstop against an unbounded
+// loop if the API ever returns a next_cursor that never resolves to null. 20 pages is far beyond
+// the demo dataset.
+const MAX_ORDER_PAGES = 20;
+
+// Fila/Kanban rows and the Lista per-tab counts all derive from this single query, while the KPI
+// row's counts come from the full-dataset getOrderSummary by_status. Fetching only page 1 would
+// let those two sources silently disagree once there is more than one page. This accumulator
+// follows OrderPage.next_cursor until it is exhausted (or the safety cap is hit) so the single
+// existing read query returns the complete dataset — no pagination UI, no second query.
+async function fetchAllOrders(client: Client, installationId: string): Promise<OrderPage> {
+  const items: OrderRead[] = [];
+  let cursor: string | undefined;
+  for (let page = 0; page < MAX_ORDER_PAGES; page += 1) {
+    const result = await client.listOrders({ installation_id: installationId, cursor });
+    items.push(...result.items);
+    if (!result.next_cursor) {
+      return { items, next_cursor: null };
+    }
+    cursor = result.next_cursor;
+  }
+  // Cap reached while next_cursor was still non-null: an honest partial-load edge, not a silent
+  // "complete" claim. Acceptable for the demo; flagged so it isn't mistaken for a full dataset.
+  console.warn("[pedidos] order list pagination hit MAX_ORDER_PAGES, dataset may be incomplete");
+  return { items, next_cursor: null };
+}
 
 interface KpiCardProps {
   label: string;
@@ -74,7 +102,7 @@ export function PedidosPage() {
 
   const ordersQuery = useQuery({
     queryKey: ordersQueryKeys.list(installationId, {}),
-    queryFn: () => client.listOrders({ installation_id: installationId }),
+    queryFn: () => fetchAllOrders(client, installationId),
     staleTime: QUERY_STALE_TIME.orders,
   });
 

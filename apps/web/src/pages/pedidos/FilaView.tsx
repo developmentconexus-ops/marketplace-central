@@ -1,23 +1,10 @@
 import type { OrderRead } from "@marketplace-central/sdk-runtime";
 import { UnknownValue } from "@marketplace-central/ui";
-import { formatDateTime, formatMoney } from "./pedidosFormatters";
+import { actionLabelForBucket, formatDateTime, formatMoney } from "./pedidosFormatters";
 
 export interface FilaViewProps {
   items: OrderRead[];
   onOpenOrder: (orderId: string) => void;
-}
-
-interface FilaAction {
-  label: "Faturar" | "Etiqueta";
-}
-
-// Client-derived heuristic from real fields only (no fabricated bucket field on OrderRead):
-// no nf_state yet -> needs invoicing; nf_state but no rastreio -> needs a shipping label;
-// rastreio present -> already shipped, nothing left to action here.
-function deriveAction(item: OrderRead): FilaAction | null {
-  if (!item.nf_state) return { label: "Faturar" };
-  if (!item.rastreio) return { label: "Etiqueta" };
-  return null;
 }
 
 function sortByUrgency(items: OrderRead[]): OrderRead[] {
@@ -60,7 +47,7 @@ export function FilaView({ items, onOpenOrder }: FilaViewProps) {
       <div className="overflow-x-auto rounded-card border border-border bg-surface">
         <div style={{ minWidth: "820px" }} className="flex flex-col">
           {ordered.map((item, index) => {
-            const action = deriveAction(item);
+            const actionLabel = actionLabelForBucket(item.bucket);
             const atrasado = item.sla?.atrasado === true;
             const due = formatDateTime(item.sla?.due);
             return (
@@ -94,14 +81,14 @@ export function FilaView({ items, onOpenOrder }: FilaViewProps) {
                 <span className="flex flex-none items-center gap-1 whitespace-nowrap font-mono font-semibold">
                   <UnknownValue hint="retorno depende de decomposição ainda não disponível (DIFAL/custo)" />
                 </span>
-                {action ? (
+                {actionLabel ? (
                   <button
                     type="button"
                     disabled
                     title="disponível em breve"
                     className="flex-none rounded-md border border-border bg-surface-2 px-3 py-1 text-[11.5px] font-semibold text-muted disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {action.label}
+                    {actionLabel}
                   </button>
                 ) : (
                   <span className="flex-none text-[11.5px] text-faint">sem ação</span>
