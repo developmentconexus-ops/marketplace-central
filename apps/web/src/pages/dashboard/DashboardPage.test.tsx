@@ -50,10 +50,7 @@ describe("DashboardPage", () => {
     listOrders.mockResolvedValue({ items: [], next_cursor: null });
   });
 
-  // A measured zero must render "0", never a blank/absent glyph (ADR-17: real zero ≠ unknown).
-  // The null direction (source down) is covered by the "isolated ErrorState" test below —
-  // the backend never emits a null KPI without also marking its source degraded, so a
-  // "null from a healthy source" shape is unreachable and is deliberately not asserted here.
+  // ADR-17: a measured zero renders "0"; an absent value renders the "—" glyph — never confused.
   it("renders '0' for a measured zero, never a blank glyph", async () => {
     getDashboardSummary.mockResolvedValue({
       ...baseSummary,
@@ -70,6 +67,26 @@ describe("DashboardPage", () => {
     const semanaLabel = await screen.findByText("Vendas 7 dias");
     expect(semanaLabel.nextElementSibling).toHaveTextContent("0");
     expect(semanaLabel.nextElementSibling?.textContent?.trim()).not.toBe("—");
+  });
+
+  // A single KPI can be null while its source is healthy and NOT degraded — service.go
+  // sets below_margin from a nil BelowMarginWorstCase (proven by the backend's
+  // TestSummaryKeepsNilBelowMarginFromHealthySourceNil). That reachable path must render the
+  // "—" glyph, distinct from "0", NOT an ErrorState (the source is up).
+  it("renders '—' for a null KPI from a healthy (non-degraded) source, never '0'", async () => {
+    getDashboardSummary.mockResolvedValue({
+      ...baseSummary,
+      below_margin: null,
+      degraded: [],
+    });
+
+    renderPage();
+
+    const label = await screen.findByText("Anúncios abaixo da margem");
+    expect(label.nextElementSibling).toHaveTextContent("—");
+    expect(label.nextElementSibling?.textContent?.trim()).not.toBe("0");
+    // healthy source ⇒ no ErrorState on this card
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("shows an isolated ErrorState on the sync-errors card when 'listings' is degraded, while other cards render normally", async () => {
