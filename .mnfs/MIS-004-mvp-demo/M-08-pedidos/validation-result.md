@@ -176,3 +176,28 @@ All 6 criteria pass their chip-verifiable half:
 No blocking failure was found for anything chip-verifiable: no write leak, no fabricated value, no PII exposure, no ownership breach, no migration out of block. All go/vitest lanes pass; the only tsc errors are the pre-existing jest-dom baseline plus one unrelated pre-existing file outside this diff's scope.
 
 Design structure matches Pedidos.dc.html/DESIGN-REFERENCE.md with no mismatches; the DIFAL coluna-chip styling and drawer margin-chip/disclaimer label are honestly absent (C2-deferred), not defects.
+
+---
+
+## HUB P7 BROWSER LIVE-DRIVE — CLOSE STAMP (2026-07-19, D-72)
+
+```yaml
+gate: P7 browser QA (hub live-drive)
+verdict: PASS → M-08 CLOSED
+stack: integrated main @72b083e, MC_ERP_SOURCE=xlsx (#003-E demo-client snapshot), backend :8080 / frontend :5174
+driver: hub (fresh live-drive on the integrated stack)
+```
+
+Discharges every ROUTED-TO-HUB item from the cold-static verdict above:
+
+- **C01 live GET /orders** — DISCHARGED. 24 real mercado_livre orders (bucket A ENVIAR), real ML order ids + lifecycle timestamps (09/07/2026); list, summary?by=status, and detail /orders/{id} enrich all returned 200. No 500 on the read/enrich path (distinct from the M-07 decompose blocker D-71).
+- **C02 value-parity decomposição** — remains **DEFERRED-C2 → post-demo backlog** per D-70 (order carries real SaleFeeAmount but no modalidade; feeding IC-04 simulator engine would fabricate modalidade/fee = ADR-17 violation). NOT a close-blocker: operator ruled pedidos ships the honest "—" it renders; the real-numbers story is the simulador (M-07).
+- **C03 browser live-drive /pedidos** — DISCHARGED. KPI cards + all 3 views (Fila default / Lista abas+contagem / Kanban read-only) render light + dark. KPI↔Lista agree (A ENVIAR 24 in both). Kanban has no drag surface ("sem arrastar · ações nos cards em breve").
+- **C04 two-case drawer + honesty** — DISCHARGED. Cost-present path: item vinculado + CODPROD 15956 with "custo incompleto" honest badge (custo unit "—"). Decomposição/DIFAL/margem/retorno all render UnknownValue "—" with the "Pendente: comissao, taxa_fixa, frete, imposto, difal, tarifa_full, custo — … mostram '—' até a decomposição ser calculada" ComponentesDesconhecidos banner. No fabricated value anywhere. Margin color-chip + DIFAL "seed padrão 2026" disclaimer label remain C2-deferred (honestly absent under C1, not defects).
+- **C06 PII (live)** — CONFIRMED in-drive. Drawer Comprador "—" / Documento "—"; Lista COMPRADOR column "—". No raw buyer nickname/CPF/CNPJ/email/phone rendered. LGPD-safe honest degrade.
+- **Design pixel/theme 1:1 vs Pedidos.dc.html** — DISCHARGED (structural). Tokens hold light + dark (paper/dark bg, green accent, IBM Plex Mono numerals); KPI order + view set + drawer section order match the cold-static structural table above.
+- **C05 gate-wording reading** — ACCEPTED by hub (D-62/D-70): C1 defines a module-local nil-able Decomposer port and never imports modules/pricing, so the literal "consume M-07 ports SHA" ordering gate does not apply; the substantive protection (no formula duplication, no cross-module import) was independently verified. Re-verify when C2 wires the real decomposer (post-demo).
+
+**Zero Mercado Livre writes**: every mutation control disabled ("disponível em breve" fila+drawer; Kanban "sem arrastar"); MPC_PROVIDER_WRITES_ENABLED unset holds.
+
+**OVERALL: M-08 pedidos CLOSED on the read-only-rich + C1 honest-"—" bar (D-57/D-62/D-70). Only QA passes a milestone — this P7 is that QA and it PASSED.** C2 order-actuals decomposition = post-demo backlog.
