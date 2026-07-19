@@ -1,0 +1,1511 @@
+diff --git a/apps/server_core/internal/composition/orders_adapters.go b/apps/server_core/internal/composition/orders_adapters.go
+index 9246fdc3..dad67331 100644
+--- a/apps/server_core/internal/composition/orders_adapters.go
++++ b/apps/server_core/internal/composition/orders_adapters.go
+@@ -106,3 +106,45 @@ func (r *ordersShipmentReaderAdapter) GetShipment(ctx context.Context, installat
+ 	ref := accountRefForInstallation(r.tenantID, inst)
+ 	return r.capabilities.GetShipmentInfo(ctx, ref, shipmentID)
+ }
++
++// --- ports.BuyerFiscalReader -------------------------------------------------
++
++// ordersBuyerFiscalReaderAdapter backs ports.BuyerFiscalReader with the
++// mercado_livre connectors capability adapter, resolving installationID to a
++// connectorsdomain.ProviderAccountRef via the same accountRefForInstallation
++// helper as ordersShipmentReaderAdapter. The connectors adapter runs the whole
++// documented two-step billing-info flow and already degrades a buyer without
++// billing data to an honest-absence value; EnrichService degrades any error
++// here to a nil block plus a warn-once (enrich_service.go resolveBuyerFiscal),
++// so the provider error passes straight up unmapped.
++type ordersBuyerFiscalReaderAdapter struct {
++	capabilities  *mercadolivreconnector.CapabilityAdapter
++	installations *integrationsapp.InstallationService
++	tenantID      string
++}
++
++var _ ordersports.BuyerFiscalReader = (*ordersBuyerFiscalReaderAdapter)(nil)
++
++func newOrdersBuyerFiscalReaderAdapter(
++	capabilities *mercadolivreconnector.CapabilityAdapter,
++	installations *integrationsapp.InstallationService,
++	tenantID string,
++) *ordersBuyerFiscalReaderAdapter {
++	return &ordersBuyerFiscalReaderAdapter{
++		capabilities:  capabilities,
++		installations: installations,
++		tenantID:      tenantID,
++	}
++}
++
++func (r *ordersBuyerFiscalReaderAdapter) GetBuyerFiscal(ctx context.Context, installationID, providerOrderID string) (connectorsdomain.BuyerFiscalInfo, error) {
++	inst, found, err := r.installations.Get(ctx, installationID)
++	if err != nil {
++		return connectorsdomain.BuyerFiscalInfo{}, err
++	}
++	if !found {
++		return connectorsdomain.BuyerFiscalInfo{}, fmt.Errorf("orders: installation %q not found", installationID)
++	}
++	ref := accountRefForInstallation(r.tenantID, inst)
++	return r.capabilities.GetBuyerFiscalInfo(ctx, ref, providerOrderID)
++}
+diff --git a/apps/server_core/internal/composition/root.go b/apps/server_core/internal/composition/root.go
+index 5b16f858..053942c5 100644
+--- a/apps/server_core/internal/composition/root.go
++++ b/apps/server_core/internal/composition/root.go
+@@ -506,7 +506,8 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
+ 	ordersSummarySvc := ordersapp.NewSummaryServiceWithBuckets(ordersRepo, ordersRepo)
+ 	ordersCostReader := newOrdersCostReaderAdapter(internalReadSvc, internalReadAvailable)
+ 	ordersShipmentReader := newOrdersShipmentReaderAdapter(mercadoLivreCapabilities, installationSvc, cfg.DefaultTenantID)
+-	ordersEnrichSvc := ordersapp.NewEnrichService(ordersCostReader, ordersShipmentReader, slog.Default())
++	ordersBuyerFiscalReader := newOrdersBuyerFiscalReaderAdapter(mercadoLivreCapabilities, installationSvc, cfg.DefaultTenantID)
++	ordersEnrichSvc := ordersapp.NewEnrichServiceWithReaders(ordersCostReader, ordersShipmentReader, nil, ordersBuyerFiscalReader, slog.Default())
+ 	orderstransport.NewHandlerWithSummary(ordersImportSvc, ordersReadSvc, &ordersEnrichSvc, ordersSummarySvc).Register(mux)
+ 
+ 	linkageRepo := orderspostgres.NewSankhyaLinkageRepository(pool, cfg.DefaultTenantID)
+diff --git a/apps/server_core/internal/modules/connectors/adapters/mercado_livre/buyer_fiscal_reader.go b/apps/server_core/internal/modules/connectors/adapters/mercado_livre/buyer_fiscal_reader.go
+new file mode 100644
+index 00000000..777d0009
+--- /dev/null
++++ b/apps/server_core/internal/modules/connectors/adapters/mercado_livre/buyer_fiscal_reader.go
+@@ -0,0 +1,163 @@
++package mercadolivre
++
++import (
++	"context"
++	"net/http"
++	"net/url"
++	"strings"
++	"time"
++
++	"marketplace-central/apps/server_core/internal/modules/connectors/domain"
++)
++
++// mlBillingInfoResponse mirrors the documented GET /orders/billing-info/{SITE_ID}/{id}
++// response (ML docs: faturamento). Only the ERP-registration fields are decoded; the
++// MLA-only blocks (taxes.iibb, attributes, vat) are intentionally ignored (YAGNI — dispatch
++// scope). The `invoice_type` field is NOT decoded: ML officially removed it (the integrator
++// derives invoice handling from the identification document, not a provider field).
++type mlBillingInfoResponse struct {
++	Buyer *mlBillingInfoBuyer `json:"buyer"`
++}
++
++type mlBillingInfoBuyer struct {
++	BillingInfo *mlBillingInfoData `json:"billing_info"`
++}
++
++type mlBillingInfoData struct {
++	Name           string                   `json:"name"`
++	LastName       string                   `json:"last_name"`
++	Identification *mlBillingIdentification `json:"identification"`
++	Address        *mlBillingAddress        `json:"address"`
++}
++
++type mlBillingIdentification struct {
++	// Type is OPAQUE (ADR-17): the MLB literal is doc-unverified (documented examples are
++	// MLA DNI/CUIT). The decoder renders it as-is and never maps it to a CPF/CNPJ enum.
++	Type   string `json:"type"`
++	Number string `json:"number"`
++}
++
++type mlBillingAddress struct {
++	StreetName   string          `json:"street_name"`
++	StreetNumber string          `json:"street_number"`
++	CityName     string          `json:"city_name"`
++	State        *mlBillingState `json:"state"`
++	ZipCode      string          `json:"zip_code"`
++	CountryID    string          `json:"country_id"`
++}
++
++type mlBillingState struct {
++	Code string `json:"code"`
++	Name string `json:"name"`
++}
++
++// GetBuyerFiscalInfo resolves a buyer's fiscal identity via the documented two-step ML flow
++// (docs: faturamento): GET /orders/{id} -> buyer.billing_info.id -> GET
++// /orders/billing-info/{SITE_ID}/{billing_info_id}. A buyer without billing linkage (no
++// billing_info.id) or a 404 on the billing-info call degrades to an empty, honest-absence
++// BuyerFiscalInfo (HasData() == false), never an error — the order still renders.
++func (a *CapabilityAdapter) GetBuyerFiscalInfo(ctx context.Context, accountRef domain.ProviderAccountRef, providerOrderID string) (domain.BuyerFiscalInfo, error) {
++	accountRef, err := normalizeAccountRef(accountRef)
++	if err != nil {
++		return domain.BuyerFiscalInfo{}, err
++	}
++	token, err := a.accessToken(ctx, accountRef)
++	if err != nil {
++		return domain.BuyerFiscalInfo{}, mapPricingReaderError(err)
++	}
++	return a.getBuyerFiscalInfo(ctx, accountRef, token, strings.TrimSpace(providerOrderID))
++}
++
++func (a *CapabilityAdapter) getBuyerFiscalInfo(ctx context.Context, accountRef domain.ProviderAccountRef, token, providerOrderID string) (domain.BuyerFiscalInfo, error) {
++	// Step 1: GET /orders/{id} -> buyer.billing_info.id (Bearer only). A failure here is a
++	// real read error (the order itself could not be read), so it propagates.
++	var order mlOrderResponse
++	if err := a.doJSON(ctx, accountRef, token, http.MethodGet, "/orders/"+url.PathEscape(providerOrderID), nil, &order); err != nil {
++		return domain.BuyerFiscalInfo{}, mapPricingReaderError(err)
++	}
++
++	billingInfoID := ""
++	if order.Buyer != nil && order.Buyer.BillingInfo != nil {
++		billingInfoID = strings.TrimSpace(order.Buyer.BillingInfo.ID)
++	}
++	if billingInfoID == "" {
++		// Buyer carries no billing linkage — honest absence, skip the step-2 call entirely.
++		return domain.BuyerFiscalInfo{FetchedAt: a.now()}, nil
++	}
++
++	// Step 2: GET /orders/billing-info/{SITE_ID}/{billing_info_id}. Bearer only — NO
++	// x-format-new header (that is a shipments-only requirement). Site is the order's own
++	// site_id, falling back to the account-configured site before any default so a non-BR
++	// tenant is not silently relabelled (unknown != default).
++	site := firstNonEmpty(strings.TrimSpace(order.SiteID), a.siteID)
++	var billing mlBillingInfoResponse
++	path := "/orders/billing-info/" + url.PathEscape(site) + "/" + url.PathEscape(billingInfoID)
++	if err := a.doJSON(ctx, accountRef, token, http.MethodGet, path, nil, &billing); err != nil {
++		// A 404 (a buyer without billing data — ML returns 404 as a normal "none"
++		// condition) or a payload we cannot decode is honest absence: degrade to an empty
++		// fiscal info so the order still renders, no WARN. Only these two non-fatal codes
++		// degrade; auth/transient/rate-limit/validation propagate so the caller degrades
++		// AND warns ONCE (never silently swallow a real provider failure).
++		if code := domain.ErrorCodeOf(err); code == domain.ErrCodeProviderInvalidReference || code == domain.ErrCodeProviderPayloadInvalid {
++			return domain.BuyerFiscalInfo{FetchedAt: a.now()}, nil
++		}
++		return domain.BuyerFiscalInfo{}, mapPricingReaderError(err)
++	}
++	return mapBuyerFiscalInfo(billing, a.now()), nil
++}
++
++func mapBuyerFiscalInfo(resp mlBillingInfoResponse, fetchedAt time.Time) domain.BuyerFiscalInfo {
++	info := domain.BuyerFiscalInfo{FetchedAt: fetchedAt}
++	if resp.Buyer == nil || resp.Buyer.BillingInfo == nil {
++		return info
++	}
++	bi := resp.Buyer.BillingInfo
++	info.Name = trimmedStringPtr(joinName(bi.Name, bi.LastName))
++	if bi.Identification != nil {
++		info.DocType = trimmedStringPtr(bi.Identification.Type)
++		info.DocNumber = trimmedStringPtr(bi.Identification.Number)
++	}
++	info.Address = mapBuyerFiscalAddress(bi.Address)
++	return info
++}
++
++// mapBuyerFiscalAddress maps the ML billing address onto the neutral fiscal address. Every
++// field degrades to nil when blank; when ALL fields are blank (e.g. an obfuscated/masked
++// address) the whole address is nil — honest absence, never a fabricated-empty object (ADR-17).
++func mapBuyerFiscalAddress(addr *mlBillingAddress) *domain.BuyerFiscalAddress {
++	if addr == nil {
++		return nil
++	}
++	out := domain.BuyerFiscalAddress{
++		StreetName:   trimmedStringPtr(addr.StreetName),
++		StreetNumber: trimmedStringPtr(addr.StreetNumber),
++		City:         trimmedStringPtr(addr.CityName),
++		ZipCode:      trimmedStringPtr(addr.ZipCode),
++		CountryID:    trimmedStringPtr(addr.CountryID),
++	}
++	if addr.State != nil {
++		out.StateCode = trimmedStringPtr(addr.State.Code)
++		out.StateName = trimmedStringPtr(addr.State.Name)
++	}
++	if out.StreetName == nil && out.StreetNumber == nil && out.City == nil &&
++		out.StateCode == nil && out.StateName == nil && out.ZipCode == nil && out.CountryID == nil {
++		return nil
++	}
++	return &out
++}
++
++// joinName joins a first + last name with a single separating space, trimming each part and
++// the whole; an all-blank pair yields "" (which trimmedStringPtr turns into a nil Name).
++func joinName(first, last string) string {
++	return strings.TrimSpace(strings.TrimSpace(first) + " " + strings.TrimSpace(last))
++}
++
++// trimmedStringPtr returns a pointer to the trimmed string, or nil when it trims to empty —
++// how a masked/blank provider value degrades to honest absence (ADR-17), never a blank string.
++func trimmedStringPtr(s string) *string {
++	t := strings.TrimSpace(s)
++	if t == "" {
++		return nil
++	}
++	return &t
++}
+diff --git a/apps/server_core/internal/modules/connectors/adapters/mercado_livre/buyer_fiscal_reader_test.go b/apps/server_core/internal/modules/connectors/adapters/mercado_livre/buyer_fiscal_reader_test.go
+new file mode 100644
+index 00000000..7d443f6b
+--- /dev/null
++++ b/apps/server_core/internal/modules/connectors/adapters/mercado_livre/buyer_fiscal_reader_test.go
+@@ -0,0 +1,223 @@
++package mercadolivre
++
++import (
++	"context"
++	"errors"
++	"net/http"
++	"net/http/httptest"
++	"strings"
++	"testing"
++	"time"
++
++	"marketplace-central/apps/server_core/internal/modules/connectors/domain"
++)
++
++// The two-step ML fiscal flow (docs: faturamento):
++//  1. GET /orders/{id}          -> buyer.billing_info.id
++//  2. GET /orders/billing-info/{SITE_ID}/{billing_info_id} -> name, identification, address
++//
++// Fixtures mirror the documented payload shapes verbatim (deepmap Q2). For MLB the
++// identification.type literal is UNVERIFIED in the docs (examples are MLA DNI/CUIT), so the
++// decoder treats it as an opaque string — see TestGetBuyerFiscalInfoTypeIsOpaque.
++func TestGetBuyerFiscalInfoMapsTwoStepFlow(t *testing.T) {
++	t.Parallel()
++
++	fetchedAt := time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC)
++	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		switch r.URL.Path {
++		case "/orders/ORDER-1":
++			_, _ = w.Write([]byte(`{"id":2000010733434062,"site_id":"MLB","buyer":{"id":2212631646,"nickname":"JOAOSILVA","billing_info":{"id":"677487519924852462"}}}`))
++		case "/orders/billing-info/MLB/677487519924852462":
++			_, _ = w.Write([]byte(`{"site_id":"MLB","buyer":{"cust_id":2212631646,"billing_info":{"name":"João","last_name":"Silva","identification":{"type":"CPF","number":"12345678909"},"address":{"street_name":"Avenida Rio Branco","street_number":"1","city_name":"Rio de Janeiro","state":{"code":"BR-RJ","name":"Rio de Janeiro"},"zip_code":"20040-002","country_id":"BR"}}},"seller":{"cust_id":81387353}}`))
++		default:
++			t.Fatalf("unexpected path = %s", r.URL.Path)
++		}
++	}))
++	defer server.Close()
++
++	info, err := pricingTestAdapter(server.URL, fetchedAt).GetBuyerFiscalInfo(context.Background(), pricingAccountRef(), "ORDER-1")
++	if err != nil {
++		t.Fatalf("GetBuyerFiscalInfo() error = %v", err)
++	}
++	if !info.HasData() {
++		t.Fatal("HasData() = false, want true")
++	}
++	if !info.FetchedAt.Equal(fetchedAt) {
++		t.Fatalf("FetchedAt = %v, want %v", info.FetchedAt, fetchedAt)
++	}
++	if info.Name == nil || *info.Name != "João Silva" {
++		t.Fatalf("Name = %#v, want João Silva", info.Name)
++	}
++	if info.DocType == nil || *info.DocType != "CPF" {
++		t.Fatalf("DocType = %#v, want CPF", info.DocType)
++	}
++	if info.DocNumber == nil || *info.DocNumber != "12345678909" {
++		t.Fatalf("DocNumber = %#v, want 12345678909", info.DocNumber)
++	}
++	if info.Address == nil {
++		t.Fatal("Address = nil, want populated")
++	}
++	addr := info.Address
++	if addr.StreetName == nil || *addr.StreetName != "Avenida Rio Branco" {
++		t.Fatalf("StreetName = %#v", addr.StreetName)
++	}
++	if addr.StreetNumber == nil || *addr.StreetNumber != "1" {
++		t.Fatalf("StreetNumber = %#v", addr.StreetNumber)
++	}
++	if addr.City == nil || *addr.City != "Rio de Janeiro" {
++		t.Fatalf("City = %#v", addr.City)
++	}
++	if addr.StateCode == nil || *addr.StateCode != "BR-RJ" {
++		t.Fatalf("StateCode = %#v, want verbatim BR-RJ", addr.StateCode)
++	}
++	if addr.StateName == nil || *addr.StateName != "Rio de Janeiro" {
++		t.Fatalf("StateName = %#v", addr.StateName)
++	}
++	if addr.ZipCode == nil || *addr.ZipCode != "20040-002" {
++		t.Fatalf("ZipCode = %#v", addr.ZipCode)
++	}
++	if addr.CountryID == nil || *addr.CountryID != "BR" {
++		t.Fatalf("CountryID = %#v", addr.CountryID)
++	}
++}
++
++// identification.type is rendered as an opaque string: the decoder must never assume the
++// MLB literal is "CPF"/"CNPJ" nor branch on it (ADR-17, dispatch constraint). An unexpected
++// type string passes straight through unchanged.
++func TestGetBuyerFiscalInfoTypeIsOpaque(t *testing.T) {
++	t.Parallel()
++
++	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		switch r.URL.Path {
++		case "/orders/ORDER-2":
++			_, _ = w.Write([]byte(`{"id":42,"site_id":"MLB","buyer":{"id":7,"billing_info":{"id":"BI-2"}}}`))
++		case "/orders/billing-info/MLB/BI-2":
++			_, _ = w.Write([]byte(`{"buyer":{"billing_info":{"name":"ACME","last_name":"","identification":{"type":"CNPJ_MEI","number":"11222333000181"}}}}`))
++		default:
++			t.Fatalf("unexpected path = %s", r.URL.Path)
++		}
++	}))
++	defer server.Close()
++
++	info, err := pricingTestAdapter(server.URL, time.Now().UTC()).GetBuyerFiscalInfo(context.Background(), pricingAccountRef(), "ORDER-2")
++	if err != nil {
++		t.Fatalf("error = %v", err)
++	}
++	if info.DocType == nil || *info.DocType != "CNPJ_MEI" {
++		t.Fatalf("DocType = %#v, want opaque CNPJ_MEI passthrough", info.DocType)
++	}
++	// last_name empty -> Name is just the first name, no trailing space.
++	if info.Name == nil || *info.Name != "ACME" {
++		t.Fatalf("Name = %#v, want ACME", info.Name)
++	}
++}
++
++// A buyer with no billing_info.id (order payload carries no billing block) is honest
++// absence, not an error: the billing-info call is skipped and HasData() is false. The
++// server fails the test if the billing-info endpoint is hit.
++func TestGetBuyerFiscalInfoNoBillingInfoIDIsAbsent(t *testing.T) {
++	t.Parallel()
++
++	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		switch r.URL.Path {
++		case "/orders/ORDER-3":
++			_, _ = w.Write([]byte(`{"id":99,"site_id":"MLB","buyer":{"id":7,"nickname":"NB"}}`))
++		default:
++			t.Fatalf("billing-info must NOT be called when billing_info.id is absent; got %s", r.URL.Path)
++		}
++	}))
++	defer server.Close()
++
++	info, err := pricingTestAdapter(server.URL, time.Now().UTC()).GetBuyerFiscalInfo(context.Background(), pricingAccountRef(), "ORDER-3")
++	if err != nil {
++		t.Fatalf("error = %v, want nil (honest absence)", err)
++	}
++	if info.HasData() {
++		t.Fatalf("HasData() = true, want false for a buyer with no billing_info")
++	}
++}
++
++// A 404 on the billing-info call is honest absence (a buyer without billing data), NOT an
++// error: the order still renders. Degrade to empty + nil error, never a WARN-worthy failure.
++func TestGetBuyerFiscalInfoBillingInfoNotFoundIsAbsent(t *testing.T) {
++	t.Parallel()
++
++	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		switch r.URL.Path {
++		case "/orders/ORDER-4":
++			_, _ = w.Write([]byte(`{"id":100,"site_id":"MLB","buyer":{"id":7,"billing_info":{"id":"BI-4"}}}`))
++		case "/orders/billing-info/MLB/BI-4":
++			w.WriteHeader(http.StatusNotFound)
++		default:
++			t.Fatalf("unexpected path = %s", r.URL.Path)
++		}
++	}))
++	defer server.Close()
++
++	info, err := pricingTestAdapter(server.URL, time.Now().UTC()).GetBuyerFiscalInfo(context.Background(), pricingAccountRef(), "ORDER-4")
++	if err != nil {
++		t.Fatalf("error = %v, want nil (404 = honest absence)", err)
++	}
++	if info.HasData() {
++		t.Fatalf("HasData() = true, want false on billing-info 404")
++	}
++}
++
++// A non-degradable provider failure (500) on billing-info propagates as an error so the
++// caller can degrade+warn ONCE — distinct from the silent 404 absence path.
++func TestGetBuyerFiscalInfoBillingInfoServerErrorFails(t *testing.T) {
++	t.Parallel()
++
++	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		switch r.URL.Path {
++		case "/orders/ORDER-5":
++			_, _ = w.Write([]byte(`{"id":101,"site_id":"MLB","buyer":{"id":7,"billing_info":{"id":"BI-5"}}}`))
++		case "/orders/billing-info/MLB/BI-5":
++			w.WriteHeader(http.StatusInternalServerError)
++		default:
++			t.Fatalf("unexpected path = %s", r.URL.Path)
++		}
++	}))
++	defer server.Close()
++
++	_, err := pricingTestAdapter(server.URL, time.Now().UTC()).GetBuyerFiscalInfo(context.Background(), pricingAccountRef(), "ORDER-5")
++	if !errors.Is(err, domain.ErrProviderUnavailable) {
++		t.Fatalf("error = %v, want provider unavailable", err)
++	}
++}
++
++// The billing-info call is Bearer-only: no x-format-new header (that is a shipments-only
++// requirement). Masked/blank provider fields degrade to nil (ADR-17), never a fabricated blank.
++func TestGetBuyerFiscalInfoBillingInfoIsBearerOnlyAndMasksDegrade(t *testing.T) {
++	t.Parallel()
++
++	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		switch r.URL.Path {
++		case "/orders/ORDER-6":
++			_, _ = w.Write([]byte(`{"id":102,"site_id":"MLB","buyer":{"id":7,"billing_info":{"id":"BI-6"}}}`))
++		case "/orders/billing-info/MLB/BI-6":
++			if got := r.Header.Get("x-format-new"); got != "" {
++				t.Fatalf("x-format-new = %q, want absent on billing-info", got)
++			}
++			if auth := r.Header.Get("Authorization"); !strings.HasPrefix(auth, "Bearer ") {
++				t.Fatalf("Authorization = %q, want Bearer token", auth)
++			}
++			// name present but address fields all blank -> Address degrades to nil.
++			_, _ = w.Write([]byte(`{"buyer":{"billing_info":{"name":"Ana","last_name":"","identification":{"type":"CPF","number":"1"},"address":{"street_name":"  ","street_number":"","city_name":"","state":{"code":"","name":""},"zip_code":"","country_id":""}}}}`))
++		default:
++			t.Fatalf("unexpected path = %s", r.URL.Path)
++		}
++	}))
++	defer server.Close()
++
++	info, err := pricingTestAdapter(server.URL, time.Now().UTC()).GetBuyerFiscalInfo(context.Background(), pricingAccountRef(), "ORDER-6")
++	if err != nil {
++		t.Fatalf("error = %v", err)
++	}
++	if info.Address != nil {
++		t.Fatalf("Address = %#v, want nil (all fields masked/blank)", info.Address)
++	}
++	if info.Name == nil || *info.Name != "Ana" {
++		t.Fatalf("Name = %#v, want Ana", info.Name)
++	}
++}
+diff --git a/apps/server_core/internal/modules/connectors/adapters/mercado_livre/capability_adapter.go b/apps/server_core/internal/modules/connectors/adapters/mercado_livre/capability_adapter.go
+index f77dfc54..72db6405 100644
+--- a/apps/server_core/internal/modules/connectors/adapters/mercado_livre/capability_adapter.go
++++ b/apps/server_core/internal/modules/connectors/adapters/mercado_livre/capability_adapter.go
+@@ -957,6 +957,7 @@ type mlAttribute struct {
+ 
+ type mlOrderResponse struct {
+ 	ID              any             `json:"id"`
++	SiteID          string          `json:"site_id"`
+ 	Status          string          `json:"status"`
+ 	StatusDetail    string          `json:"status_detail"`
+ 	DateCreated     string          `json:"date_created"`
+@@ -967,6 +968,24 @@ type mlOrderResponse struct {
+ 	Payments        []mlPayment     `json:"payments"`
+ 	Shipping        mlOrderShipping `json:"shipping"`
+ 	Tags            []string        `json:"tags"`
++	// Buyer carries the fiscal linkage: buyer.billing_info.id is the key for the
++	// step-2 billing-info call (docs: faturamento). Additive/pointer — an order
++	// payload without a buyer block leaves it nil (honest absence), and mapOrder
++	// ignores it (the buyer fiscal fact is a read-time enrichment, not persisted).
++	Buyer *mlOrderBuyer `json:"buyer"`
++}
++
++// mlOrderBuyer is the subset of the ML order `buyer` object the fiscal flow needs.
++// nickname is NOT surfaced past the adapter (the masked buyer identity is derived
++// elsewhere from the read model); only billing_info.id feeds the step-2 call.
++type mlOrderBuyer struct {
++	ID          any                  `json:"id"`
++	Nickname    string               `json:"nickname"`
++	BillingInfo *mlOrderBillingInfid `json:"billing_info"`
++}
++
++type mlOrderBillingInfid struct {
++	ID string `json:"id"`
+ }
+ 
+ type mlOrderShipping struct {
+@@ -996,11 +1015,12 @@ type mlPayment struct {
+ }
+ 
+ var (
+-	_ ports.AccountProber  = (*CapabilityAdapter)(nil)
+-	_ ports.FeeQuoteReader = (*CapabilityAdapter)(nil)
+-	_ ports.ListingReader  = (*CapabilityAdapter)(nil)
+-	_ ports.StockReader    = (*CapabilityAdapter)(nil)
+-	_ ports.StockWriter    = (*CapabilityAdapter)(nil)
+-	_ ports.PriceWriter    = (*CapabilityAdapter)(nil)
+-	_ ports.OrderReader    = (*CapabilityAdapter)(nil)
++	_ ports.AccountProber     = (*CapabilityAdapter)(nil)
++	_ ports.FeeQuoteReader    = (*CapabilityAdapter)(nil)
++	_ ports.ListingReader     = (*CapabilityAdapter)(nil)
++	_ ports.StockReader       = (*CapabilityAdapter)(nil)
++	_ ports.StockWriter       = (*CapabilityAdapter)(nil)
++	_ ports.PriceWriter       = (*CapabilityAdapter)(nil)
++	_ ports.OrderReader       = (*CapabilityAdapter)(nil)
++	_ ports.BuyerFiscalReader = (*CapabilityAdapter)(nil)
+ )
+diff --git a/apps/server_core/internal/modules/connectors/domain/buyer_fiscal.go b/apps/server_core/internal/modules/connectors/domain/buyer_fiscal.go
+new file mode 100644
+index 00000000..4e08de0c
+--- /dev/null
++++ b/apps/server_core/internal/modules/connectors/domain/buyer_fiscal.go
+@@ -0,0 +1,42 @@
++package domain
++
++import "time"
++
++// BuyerFiscalInfo is the marketplace-neutral buyer fiscal identity used to register a sale in
++// the ERP: legal name, a fiscal document (opaque type + number) and a billing address. No
++// provider payload shape (ML "billing_info"/"identification"/"cust_id") leaks past the adapter.
++//
++// Every field is a pointer — nil is honest absence (ADR-17). ML obfuscates buyer fiscal data
++// until it is available and returns 404 for a buyer without billing data; a masked/blank
++// provider value degrades to nil, never a fabricated blank.
++//
++// DocType is the document type string EXACTLY as the provider returns it (e.g. the ML
++// identification.type). It is opaque: the decoder never assumes a literal ("CPF"/"CNPJ"/…) nor
++// maps it to an enum — the ERP/UI render it as-is (ADR-17).
++type BuyerFiscalInfo struct {
++	Name      *string             `json:"name"`
++	DocType   *string             `json:"doc_type"`
++	DocNumber *string             `json:"doc_number"`
++	Address   *BuyerFiscalAddress `json:"address"`
++	FetchedAt time.Time           `json:"fetched_at"`
++}
++
++// BuyerFiscalAddress is the neutral billing address. StateCode/StateName are the provider's
++// own state code + label rendered verbatim (no UF derivation — that transform belongs to the
++// shipment destination fact, not the fiscal address). Every field is honest-absence nil.
++type BuyerFiscalAddress struct {
++	StreetName   *string `json:"street_name"`
++	StreetNumber *string `json:"street_number"`
++	City         *string `json:"city"`
++	StateCode    *string `json:"state_code"`
++	StateName    *string `json:"state_name"`
++	ZipCode      *string `json:"zip_code"`
++	CountryID    *string `json:"country_id"`
++}
++
++// HasData reports whether any identity field is present. A BuyerFiscalInfo with no name, no
++// document and no address is honest absence (a buyer without billing data, or a 404) — the
++// caller treats it as nil rather than surfacing an empty fiscal block.
++func (b BuyerFiscalInfo) HasData() bool {
++	return b.Name != nil || b.DocType != nil || b.DocNumber != nil || b.Address != nil
++}
+diff --git a/apps/server_core/internal/modules/connectors/ports/buyer_fiscal_read.go b/apps/server_core/internal/modules/connectors/ports/buyer_fiscal_read.go
+new file mode 100644
+index 00000000..7d80ae67
+--- /dev/null
++++ b/apps/server_core/internal/modules/connectors/ports/buyer_fiscal_read.go
+@@ -0,0 +1,15 @@
++package ports
++
++import (
++	"context"
++
++	"marketplace-central/apps/server_core/internal/modules/connectors/domain"
++)
++
++// BuyerFiscalReader resolves a buyer's fiscal identity (name, document, billing address) for
++// an order, via the provider's documented two-step flow (order -> billing_info id ->
++// billing-info). A buyer without billing data degrades to an empty, honest-absence
++// BuyerFiscalInfo (BuyerFiscalInfo.HasData() == false), never an error.
++type BuyerFiscalReader interface {
++	GetBuyerFiscalInfo(ctx context.Context, accountRef domain.ProviderAccountRef, providerOrderID string) (domain.BuyerFiscalInfo, error)
++}
+diff --git a/apps/server_core/internal/modules/orders/application/enrich_service.go b/apps/server_core/internal/modules/orders/application/enrich_service.go
+index eb3b3c51..d6f31a2f 100644
+--- a/apps/server_core/internal/modules/orders/application/enrich_service.go
++++ b/apps/server_core/internal/modules/orders/application/enrich_service.go
+@@ -50,6 +50,11 @@ type EnrichedOrder struct {
+ 	ComponentesDesconhecidos []string
+ 	Shipment                 *ShipmentEnrichment
+ 	Profitability            domain.OrderProfitability
++	// BuyerFiscal is the buyer's fiscal identity (name, opaque document,
++	// billing address) for ERP registration, resolved read-time via
++	// BuyerFiscalReader. It is nil whenever the buyer has no billing data
++	// (honest absence) or the lookup could not run — never a fabricated block.
++	BuyerFiscal *connectorsdomain.BuyerFiscalInfo
+ }
+ 
+ // EnrichService adds read-time enrichment (masked buyer identity, vinculo
+@@ -60,27 +65,37 @@ type EnrichedOrder struct {
+ // installationID + the order's ShippingID. Tenant scoping remains the repo
+ // layer's responsibility.
+ type EnrichService struct {
+-	cost       ports.CostReader
+-	shipment   ports.ShipmentReader
+-	decomposer ports.Decomposer
+-	logger     *slog.Logger
++	cost        ports.CostReader
++	shipment    ports.ShipmentReader
++	decomposer  ports.Decomposer
++	buyerFiscal ports.BuyerFiscalReader
++	logger      *slog.Logger
+ }
+ 
+ // NewEnrichService keeps constructing an EnrichService with a nil decomposer
+-// (delegating to NewEnrichServiceWithDecomposer) so it yields the honest-empty
+-// profitability path — this is the C1 contract seam; the hub wires a real
+-// decomposer via NewEnrichServiceWithDecomposer in C2 post-merge.
++// and a nil buyer-fiscal reader (delegating through the full constructor) so it
++// yields the honest-empty profitability path and a nil BuyerFiscal — this is
++// the C1 contract seam; the hub wires the real readers post-merge.
+ func NewEnrichService(cost ports.CostReader, shipment ports.ShipmentReader, logger *slog.Logger) EnrichService {
+-	return NewEnrichServiceWithDecomposer(cost, shipment, nil, logger)
++	return NewEnrichServiceWithReaders(cost, shipment, nil, nil, logger)
+ }
+ 
+-// NewEnrichServiceWithDecomposer is the full constructor: decomposer may be
+-// nil (honest-unknown profitability, never a panic) — see resolveProfitability.
++// NewEnrichServiceWithDecomposer keeps the decomposer-only constructor byte
++// stable (the planned C2 root.go swap targets it): a nil buyer-fiscal reader,
++// honest-unknown profitability when the decomposer is nil.
+ func NewEnrichServiceWithDecomposer(cost ports.CostReader, shipment ports.ShipmentReader, decomposer ports.Decomposer, logger *slog.Logger) EnrichService {
++	return NewEnrichServiceWithReaders(cost, shipment, decomposer, nil, logger)
++}
++
++// NewEnrichServiceWithReaders is the full constructor: every dependency may be
++// nil (honest-unknown, never a panic) — see resolveProfitability /
++// resolveBuyerFiscal. The composition layer wires the real buyer-fiscal adapter
++// here.
++func NewEnrichServiceWithReaders(cost ports.CostReader, shipment ports.ShipmentReader, decomposer ports.Decomposer, buyerFiscal ports.BuyerFiscalReader, logger *slog.Logger) EnrichService {
+ 	if logger == nil {
+ 		logger = slog.Default()
+ 	}
+-	return EnrichService{cost: cost, shipment: shipment, decomposer: decomposer, logger: logger}
++	return EnrichService{cost: cost, shipment: shipment, decomposer: decomposer, buyerFiscal: buyerFiscal, logger: logger}
+ }
+ 
+ func (s EnrichService) Enrich(ctx context.Context, installationID string, orders []domain.OrderReadModel) []EnrichedOrder {
+@@ -94,6 +109,7 @@ func (s EnrichService) Enrich(ctx context.Context, installationID string, orders
+ 		buyer := domain.MaskBuyer(nickname)
+ 		shipmentInfo := s.resolveShipment(ctx, installationID, order, &buyer)
+ 		profitability := s.resolveProfitability(ctx, order)
++		buyerFiscal := s.resolveBuyerFiscal(ctx, installationID, order)
+ 		enriched = append(enriched, EnrichedOrder{
+ 			Order:                    order,
+ 			Buyer:                    buyer,
+@@ -102,6 +118,7 @@ func (s EnrichService) Enrich(ctx context.Context, installationID string, orders
+ 			ComponentesDesconhecidos: unknown,
+ 			Shipment:                 shipmentInfo,
+ 			Profitability:            profitability,
++			BuyerFiscal:              buyerFiscal,
+ 		})
+ 	}
+ 	return enriched
+@@ -152,6 +169,34 @@ func (s EnrichService) resolveShipment(ctx context.Context, installationID strin
+ 	}
+ }
+ 
++// resolveBuyerFiscal looks up the buyer's fiscal identity via BuyerFiscalReader
++// (keyed by installationID + the order's own ProviderOrderID — the read model
++// carries no billing_info.id, so the reader re-fetches the order internally).
++// A nil reader (real adapter not wired yet) or an empty ProviderOrderID skips
++// the lookup entirely — honest unknown, never a panic. The reader already maps
++// a buyer-without-billing (a 404 / undecodable payload) to an empty
++// honest-absence value, so an error here is a REAL failure (auth/transient):
++// it degrades to nil AND warns once (never silently swallow a provider fault).
++// An empty (HasData()==false) value is honest absence: nil, no warn.
++func (s EnrichService) resolveBuyerFiscal(ctx context.Context, installationID string, order domain.OrderReadModel) *connectorsdomain.BuyerFiscalInfo {
++	if s.buyerFiscal == nil || order.ProviderOrderID == "" {
++		return nil
++	}
++	info, err := s.buyerFiscal.GetBuyerFiscal(ctx, installationID, order.ProviderOrderID)
++	if err != nil {
++		s.logger.Warn("orders: buyer fiscal lookup failed",
++			"installation_id", installationID,
++			"provider_order_id", order.ProviderOrderID,
++			"error", err,
++		)
++		return nil
++	}
++	if !info.HasData() {
++		return nil
++	}
++	return &info
++}
++
+ // resolveProfitability looks up the order's decomposição/DIFAL/retorno via
+ // Decomposer. A nil Decomposer (real adapter not wired yet — C1) or a
+ // not-ok result both degrade to domain.UnknownOrderProfitability(), the
+diff --git a/apps/server_core/internal/modules/orders/application/enrich_service_test.go b/apps/server_core/internal/modules/orders/application/enrich_service_test.go
+index ef2950b9..d3420f9f 100644
+--- a/apps/server_core/internal/modules/orders/application/enrich_service_test.go
++++ b/apps/server_core/internal/modules/orders/application/enrich_service_test.go
+@@ -61,6 +61,27 @@ func (f *fakeShipmentReader) GetShipment(ctx context.Context, installationID, sh
+ 	return f.infos[shipmentID], nil
+ }
+ 
++// fakeBuyerFiscalReader is a table-driven test double for ports.BuyerFiscalReader.
++// It never touches connectors; it lets callers script a BuyerFiscalInfo or an
++// error per providerOrderID and records how many times it was invoked.
++type fakeBuyerFiscalReader struct {
++	calls int
++	infos map[string]connectorsdomain.BuyerFiscalInfo
++	errs  map[string]error
++}
++
++func newFakeBuyerFiscalReader() *fakeBuyerFiscalReader {
++	return &fakeBuyerFiscalReader{infos: map[string]connectorsdomain.BuyerFiscalInfo{}, errs: map[string]error{}}
++}
++
++func (f *fakeBuyerFiscalReader) GetBuyerFiscal(ctx context.Context, installationID, providerOrderID string) (connectorsdomain.BuyerFiscalInfo, error) {
++	f.calls++
++	if err := f.errs[providerOrderID]; err != nil {
++		return connectorsdomain.BuyerFiscalInfo{}, err
++	}
++	return f.infos[providerOrderID], nil
++}
++
+ func testLogger() *slog.Logger { return slog.Default() }
+ 
+ func TestEnrichServiceEnrich(t *testing.T) {
+@@ -417,6 +438,132 @@ func TestEnrichServiceEnrich_NilDecomposerYieldsHonestEmptyProfitability(t *test
+ 	}
+ }
+ 
++func TestEnrichServiceEnrich_BuyerFiscal(t *testing.T) {
++	fetchedAt := time.Date(2026, 7, 19, 10, 0, 0, 0, time.UTC)
++
++	t.Run("present populates BuyerFiscal keyed by provider order id", func(t *testing.T) {
++		reader := newFakeBuyerFiscalReader()
++		reader.infos["ord-bf-1"] = connectorsdomain.BuyerFiscalInfo{
++			Name:      strPtr("Maria Souza"),
++			DocType:   strPtr("CPF"),
++			DocNumber: strPtr("12345678909"),
++			Address: &connectorsdomain.BuyerFiscalAddress{
++				City:      strPtr("São Paulo"),
++				StateCode: strPtr("SP"),
++			},
++			FetchedAt: fetchedAt,
++		}
++		order := domain.OrderReadModel{ProviderOrderID: "ord-bf-1"}
++		svc := NewEnrichServiceWithReaders(newFakeCostReader(), newFakeShipmentReader(), nil, reader, testLogger())
++		result := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})[0]
++		if reader.calls != 1 {
++			t.Fatalf("buyer fiscal calls = %d, want 1", reader.calls)
++		}
++		if result.BuyerFiscal == nil {
++			t.Fatalf("BuyerFiscal = nil, want populated")
++		}
++		if result.BuyerFiscal.Name == nil || *result.BuyerFiscal.Name != "Maria Souza" {
++			t.Fatalf("BuyerFiscal.Name = %v, want Maria Souza", result.BuyerFiscal.Name)
++		}
++		if result.BuyerFiscal.DocType == nil || *result.BuyerFiscal.DocType != "CPF" {
++			t.Fatalf("BuyerFiscal.DocType = %v, want CPF", result.BuyerFiscal.DocType)
++		}
++		if result.BuyerFiscal.Address == nil || result.BuyerFiscal.Address.StateCode == nil || *result.BuyerFiscal.Address.StateCode != "SP" {
++			t.Fatalf("BuyerFiscal.Address = %+v, want StateCode=SP", result.BuyerFiscal.Address)
++		}
++	})
++
++	t.Run("no-data info yields nil BuyerFiscal (honest absence, order still returned)", func(t *testing.T) {
++		reader := newFakeBuyerFiscalReader()
++		reader.infos["ord-bf-2"] = connectorsdomain.BuyerFiscalInfo{FetchedAt: fetchedAt}
++		order := domain.OrderReadModel{ProviderOrderID: "ord-bf-2"}
++		svc := NewEnrichServiceWithReaders(newFakeCostReader(), newFakeShipmentReader(), nil, reader, testLogger())
++		got := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})
++		if len(got) != 1 {
++			t.Fatalf("len(got) = %d, want 1", len(got))
++		}
++		if reader.calls != 1 {
++			t.Fatalf("buyer fiscal calls = %d, want 1", reader.calls)
++		}
++		if got[0].BuyerFiscal != nil {
++			t.Fatalf("BuyerFiscal = %+v, want nil (HasData()==false)", got[0].BuyerFiscal)
++		}
++	})
++
++	t.Run("reader error yields nil BuyerFiscal, order still returned", func(t *testing.T) {
++		reader := newFakeBuyerFiscalReader()
++		reader.errs["ord-bf-3"] = errors.New("boom")
++		order := domain.OrderReadModel{ProviderOrderID: "ord-bf-3"}
++		svc := NewEnrichServiceWithReaders(newFakeCostReader(), newFakeShipmentReader(), nil, reader, testLogger())
++		got := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})
++		if len(got) != 1 {
++			t.Fatalf("len(got) = %d, want 1 (order must not fail on buyer fiscal miss)", len(got))
++		}
++		if reader.calls != 1 {
++			t.Fatalf("buyer fiscal calls = %d, want 1", reader.calls)
++		}
++		if got[0].BuyerFiscal != nil {
++			t.Fatalf("BuyerFiscal = %+v, want nil", got[0].BuyerFiscal)
++		}
++	})
++
++	t.Run("nil reader skips lookup and yields nil BuyerFiscal", func(t *testing.T) {
++		order := domain.OrderReadModel{ProviderOrderID: "ord-bf-4"}
++		// NewEnrichService (3-arg) wires a nil buyer fiscal reader.
++		svc := NewEnrichService(newFakeCostReader(), newFakeShipmentReader(), testLogger())
++		result := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})[0]
++		if result.BuyerFiscal != nil {
++			t.Fatalf("BuyerFiscal = %+v, want nil (reader is nil)", result.BuyerFiscal)
++		}
++	})
++
++	t.Run("empty provider order id skips the reader", func(t *testing.T) {
++		reader := newFakeBuyerFiscalReader()
++		order := domain.OrderReadModel{ProviderOrderID: ""}
++		svc := NewEnrichServiceWithReaders(newFakeCostReader(), newFakeShipmentReader(), nil, reader, testLogger())
++		svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})
++		if reader.calls != 0 {
++			t.Fatalf("buyer fiscal calls = %d, want 0 (empty provider order id must skip)", reader.calls)
++		}
++	})
++
++	t.Run("stays correct alongside buyer mask, cost and shipment", func(t *testing.T) {
++		costReader := newFakeCostReader()
++		costReader.amounts[30] = floatPtr(7.5)
++		shipmentReader := newFakeShipmentReader()
++		uf := "RJ"
++		shipmentReader.infos["SHIP-30"] = connectorsdomain.ShipmentInfo{ID: "SHIP-30", Status: "shipped", DestinationUF: &uf}
++		bfReader := newFakeBuyerFiscalReader()
++		bfReader.infos["ord-bf-5"] = connectorsdomain.BuyerFiscalInfo{DocType: strPtr("CNPJ"), DocNumber: strPtr("11222333000181"), FetchedAt: fetchedAt}
++		order := domain.OrderReadModel{
++			ProviderOrderID:  "ord-bf-5",
++			BuyerNickname:    strPtr("Ana Lima"),
++			ProviderClosedAt: timePtr(time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)),
++			ShippingID:       "SHIP-30",
++			Items: []domain.MarketplaceOrderItem{
++				{SellerSKU: "sku-30", InternalProductID: intPtr(30), LinkQuality: domain.LinkQualityResolved},
++			},
++		}
++		svc := NewEnrichServiceWithReaders(costReader, shipmentReader, nil, bfReader, testLogger())
++		result := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})[0]
++		if result.Buyer.Display != "Ana L." {
++			t.Fatalf("Buyer.Display = %q, want Ana L.", result.Buyer.Display)
++		}
++		if result.Buyer.UF == nil || *result.Buyer.UF != "RJ" {
++			t.Fatalf("Buyer.UF = %v, want RJ", result.Buyer.UF)
++		}
++		if result.VinculoStatus != domain.VinculoStatusOK {
++			t.Fatalf("VinculoStatus = %q, want OK", result.VinculoStatus)
++		}
++		if result.ItemCosts[0].UnitCost == nil || *result.ItemCosts[0].UnitCost != 7.5 {
++			t.Fatalf("ItemCosts[0] = %+v, want unit cost 7.5", result.ItemCosts[0])
++		}
++		if result.BuyerFiscal == nil || result.BuyerFiscal.DocType == nil || *result.BuyerFiscal.DocType != "CNPJ" {
++			t.Fatalf("BuyerFiscal = %+v, want DocType=CNPJ", result.BuyerFiscal)
++		}
++	})
++}
++
+ func TestEnrichServiceEnrich_Shipment(t *testing.T) {
+ 	slaDue := time.Date(2026, 7, 20, 12, 0, 0, 0, time.UTC)
+ 
+diff --git a/apps/server_core/internal/modules/orders/ports/buyer_fiscal_reader.go b/apps/server_core/internal/modules/orders/ports/buyer_fiscal_reader.go
+new file mode 100644
+index 00000000..d09d09b8
+--- /dev/null
++++ b/apps/server_core/internal/modules/orders/ports/buyer_fiscal_reader.go
+@@ -0,0 +1,21 @@
++package ports
++
++import (
++	"context"
++
++	connectorsdomain "marketplace-central/apps/server_core/internal/modules/connectors/domain"
++)
++
++// BuyerFiscalReader is the orders-local, module-scoped consumer port for the
++// connectors buyer-fiscal fact. It mirrors the simplified-key pattern of
++// ShipmentReader (shipment_reader.go): the real adapter (a grant-gated
++// composition slice) resolves installationID to a connectors
++// domain.ProviderAccountRef and calls connectors ports.BuyerFiscalReader —
++// that resolution is not this module's concern.
++//
++// A buyer without billing data degrades, inside the adapter, to an empty
++// honest-absence BuyerFiscalInfo (HasData() == false), never an error; only a
++// real read failure (auth/transient) surfaces as an error here.
++type BuyerFiscalReader interface {
++	GetBuyerFiscal(ctx context.Context, installationID, providerOrderID string) (connectorsdomain.BuyerFiscalInfo, error)
++}
+diff --git a/apps/server_core/internal/modules/orders/transport/http_handler.go b/apps/server_core/internal/modules/orders/transport/http_handler.go
+index d121eec2..c669796c 100644
+--- a/apps/server_core/internal/modules/orders/transport/http_handler.go
++++ b/apps/server_core/internal/modules/orders/transport/http_handler.go
+@@ -372,6 +372,34 @@ type decomposicaoDTO struct {
+ 	ComponentesDesconhecidos []string `json:"componentes_desconhecidos"`
+ }
+ 
++// compradorFiscalEnderecoDTO is the buyer's billing address for ERP
++// registration. Every field is pointer/omitempty: nil (absent key) means the
++// provider did not supply it (ADR-17). UfCodigo/UfNome are the provider's own
++// state code + label, rendered verbatim (no UF derivation — that belongs to the
++// shipment destination fact, not the fiscal address).
++type compradorFiscalEnderecoDTO struct {
++	Logradouro *string `json:"logradouro,omitempty"`
++	Numero     *string `json:"numero,omitempty"`
++	Cidade     *string `json:"cidade,omitempty"`
++	UfCodigo   *string `json:"uf_codigo,omitempty"`
++	UfNome     *string `json:"uf_nome,omitempty"`
++	Cep        *string `json:"cep,omitempty"`
++	Pais       *string `json:"pais,omitempty"`
++}
++
++// compradorFiscalDTO is the buyer fiscal identity surfaced for ERP
++// registration: legal name, an opaque document (type + number) and a billing
++// address. DocTipo is the provider's document-type string rendered verbatim —
++// never mapped to a CPF/CNPJ enum (ADR-17). Every field is pointer/omitempty:
++// a masked/absent provider value is honestly absent, never a fabricated blank.
++// The whole block is omitted (nil) when the buyer carries no billing data.
++type compradorFiscalDTO struct {
++	Nome      *string                     `json:"nome,omitempty"`
++	DocTipo   *string                     `json:"doc_tipo,omitempty"`
++	DocNumero *string                     `json:"doc_numero,omitempty"`
++	Endereco  *compradorFiscalEnderecoDTO `json:"endereco,omitempty"`
++}
++
+ // difalDTO is the response shape for the order-level DIFAL fact (F01-C1).
+ // All fields pointer/omitempty: nil (absent key) means unknown (ADR-17).
+ type difalDTO struct {
+@@ -412,6 +440,12 @@ type enrichedOrderDTO struct {
+ 	MargemPct      *float64        `json:"margem_pct,omitempty"`
+ 	Decomposicao   decomposicaoDTO `json:"decomposicao"`
+ 	Difal          difalDTO        `json:"difal"`
++	// CompradorFiscal is the buyer's fiscal identity for ERP registration
++	// (name, opaque document, billing address). Additive/omitempty: nil (buyer
++	// without billing data, or a lookup that could not run) omits the block
++	// entirely — never a fabricated identity (ADR-17). The document number is
++	// rendered by the caller only; it is never logged (LGPD).
++	CompradorFiscal *compradorFiscalDTO `json:"comprador_fiscal,omitempty"`
+ }
+ 
+ // mapEnrichedOrder maps an application.EnrichedOrder onto the transport DTO.
+@@ -461,9 +495,45 @@ func mapEnrichedOrder(e application.EnrichedOrder) enrichedOrderDTO {
+ 			UrlRastreio:    derefString(e.Shipment.TrackingURL),
+ 		}
+ 	}
++	dto.CompradorFiscal = mapCompradorFiscal(e.BuyerFiscal)
+ 	return dto
+ }
+ 
++// mapCompradorFiscal maps the neutral BuyerFiscalInfo onto the transport
++// comprador_fiscal block. Returns nil (block omitted) when the enrichment is
++// nil — honest absence, never a fabricated identity (ADR-17). doc_tipo is
++// carried verbatim; the document number is passed straight through for the
++// caller to render and is NEVER logged here (LGPD).
++func mapCompradorFiscal(info *connectorsdomain.BuyerFiscalInfo) *compradorFiscalDTO {
++	if info == nil {
++		return nil
++	}
++	return &compradorFiscalDTO{
++		Nome:      info.Name,
++		DocTipo:   info.DocType,
++		DocNumero: info.DocNumber,
++		Endereco:  mapCompradorFiscalEndereco(info.Address),
++	}
++}
++
++// mapCompradorFiscalEndereco maps the neutral billing address onto the
++// transport endereco block. Returns nil (endereco omitted) when the address is
++// nil (the connectors adapter already collapses an all-blank address to nil).
++func mapCompradorFiscalEndereco(addr *connectorsdomain.BuyerFiscalAddress) *compradorFiscalEnderecoDTO {
++	if addr == nil {
++		return nil
++	}
++	return &compradorFiscalEnderecoDTO{
++		Logradouro: addr.StreetName,
++		Numero:     addr.StreetNumber,
++		Cidade:     addr.City,
++		UfCodigo:   addr.StateCode,
++		UfNome:     addr.StateName,
++		Cep:        addr.ZipCode,
++		Pais:       addr.CountryID,
++	}
++}
++
+ // mapFreteReal maps the connectors ShipmentCosts (real freight actuals) onto the
+ // transport frete_real block. Returns nil when no costs were resolved so the
+ // field is honestly absent (ADR-17); each amount is nil when its Money is nil.
+diff --git a/apps/server_core/internal/modules/orders/transport/http_handler_test.go b/apps/server_core/internal/modules/orders/transport/http_handler_test.go
+index 78c87e94..b4515f25 100644
+--- a/apps/server_core/internal/modules/orders/transport/http_handler_test.go
++++ b/apps/server_core/internal/modules/orders/transport/http_handler_test.go
+@@ -574,6 +574,137 @@ func TestMapEnrichedOrderOmitsFreteRealWhenAllAmountsNil(t *testing.T) {
+ 	}
+ }
+ 
++// TestMapEnrichedOrderSurfacesCompradorFiscal asserts the buyer fiscal identity
++// (name, opaque document type + number, billing address) reaches the JSON DTO
++// as an additive comprador_fiscal block when the enrichment carries it. doc_tipo
++// is passed through verbatim (a non-CPF value proves it is never mapped to an
++// enum — ADR-17).
++func TestMapEnrichedOrderSurfacesCompradorFiscal(t *testing.T) {
++	order := enrichedOrderModels()[1]
++
++	name := "ACME Comercio LTDA"
++	docType := "CNPJ_MEI" // deliberately non-CPF: proves opaque passthrough
++	docNumber := "11222333000181"
++	street := "Av. Paulista"
++	number := "1000"
++	city := "São Paulo"
++	stateCode := "SP"
++	stateName := "São Paulo"
++	zip := "01310-100"
++	country := "BR"
++
++	e := application.EnrichedOrder{
++		Order: order,
++		BuyerFiscal: &connectorsdomain.BuyerFiscalInfo{
++			Name:      &name,
++			DocType:   &docType,
++			DocNumber: &docNumber,
++			Address: &connectorsdomain.BuyerFiscalAddress{
++				StreetName:   &street,
++				StreetNumber: &number,
++				City:         &city,
++				StateCode:    &stateCode,
++				StateName:    &stateName,
++				ZipCode:      &zip,
++				CountryID:    &country,
++			},
++		},
++	}
++
++	dtoJSON, err := json.Marshal(mapEnrichedOrder(e))
++	if err != nil {
++		t.Fatalf("marshal dto: %v", err)
++	}
++	var decoded map[string]any
++	if err := json.Unmarshal(dtoJSON, &decoded); err != nil {
++		t.Fatalf("decode dto: %v", err)
++	}
++
++	cf, ok := decoded["comprador_fiscal"].(map[string]any)
++	if !ok {
++		t.Fatalf("comprador_fiscal missing/not object; body=%s", dtoJSON)
++	}
++	if cf["nome"] != name {
++		t.Fatalf("comprador_fiscal.nome = %#v, want %q; body=%s", cf["nome"], name, dtoJSON)
++	}
++	if cf["doc_tipo"] != docType {
++		t.Fatalf("comprador_fiscal.doc_tipo = %#v, want %q (opaque passthrough); body=%s", cf["doc_tipo"], docType, dtoJSON)
++	}
++	if cf["doc_numero"] != docNumber {
++		t.Fatalf("comprador_fiscal.doc_numero = %#v, want %q; body=%s", cf["doc_numero"], docNumber, dtoJSON)
++	}
++	end, ok := cf["endereco"].(map[string]any)
++	if !ok {
++		t.Fatalf("comprador_fiscal.endereco missing/not object; body=%s", dtoJSON)
++	}
++	for k, want := range map[string]string{
++		"logradouro": street, "numero": number, "cidade": city,
++		"uf_codigo": stateCode, "uf_nome": stateName, "cep": zip, "pais": country,
++	} {
++		if end[k] != want {
++			t.Fatalf("comprador_fiscal.endereco.%s = %#v, want %q; body=%s", k, end[k], want, dtoJSON)
++		}
++	}
++}
++
++// TestMapEnrichedOrderOmitsCompradorFiscalWhenAbsent asserts the honest-absence
++// contract: a nil BuyerFiscal enrichment omits comprador_fiscal entirely (never
++// a fabricated empty block — ADR-17).
++func TestMapEnrichedOrderOmitsCompradorFiscalWhenAbsent(t *testing.T) {
++	order := enrichedOrderModels()[1]
++	e := application.EnrichedOrder{Order: order}
++
++	dtoJSON, err := json.Marshal(mapEnrichedOrder(e))
++	if err != nil {
++		t.Fatalf("marshal dto: %v", err)
++	}
++	var decoded map[string]any
++	if err := json.Unmarshal(dtoJSON, &decoded); err != nil {
++		t.Fatalf("decode dto: %v", err)
++	}
++	if _, present := decoded["comprador_fiscal"]; present {
++		t.Fatalf("comprador_fiscal must be omitted when BuyerFiscal is nil; body=%s", dtoJSON)
++	}
++}
++
++// TestMapEnrichedOrderCompradorFiscalOmitsBlankAddressFields asserts that within
++// a present comprador_fiscal, individual absent fields (nil pointers) are omitted
++// rather than emitted as empty strings, and an all-nil address omits endereco.
++func TestMapEnrichedOrderCompradorFiscalOmitsBlankAddressFields(t *testing.T) {
++	order := enrichedOrderModels()[1]
++	docType := "CPF"
++	docNumber := "12345678909"
++	e := application.EnrichedOrder{
++		Order: order,
++		BuyerFiscal: &connectorsdomain.BuyerFiscalInfo{
++			DocType:   &docType,
++			DocNumber: &docNumber,
++			// Name nil, Address nil.
++		},
++	}
++	dtoJSON, err := json.Marshal(mapEnrichedOrder(e))
++	if err != nil {
++		t.Fatalf("marshal dto: %v", err)
++	}
++	var decoded map[string]any
++	if err := json.Unmarshal(dtoJSON, &decoded); err != nil {
++		t.Fatalf("decode dto: %v", err)
++	}
++	cf, ok := decoded["comprador_fiscal"].(map[string]any)
++	if !ok {
++		t.Fatalf("comprador_fiscal missing/not object; body=%s", dtoJSON)
++	}
++	if _, present := cf["nome"]; present {
++		t.Fatalf("comprador_fiscal.nome must be omitted when nil; body=%s", dtoJSON)
++	}
++	if _, present := cf["endereco"]; present {
++		t.Fatalf("comprador_fiscal.endereco must be omitted when address is nil; body=%s", dtoJSON)
++	}
++	if cf["doc_tipo"] != docType {
++		t.Fatalf("comprador_fiscal.doc_tipo = %#v, want %q; body=%s", cf["doc_tipo"], docType, dtoJSON)
++	}
++}
++
+ func TestHandleGetWithEnricherEmitsHonestNullEnrichment(t *testing.T) {
+ 	model := enrichedOrderModels()[1]
+ 	service := stubOrderReadService{model: model}
+diff --git a/apps/web/src/pages/pedidos/PedidoDrawer.tsx b/apps/web/src/pages/pedidos/PedidoDrawer.tsx
+index ed710d69..f3ab868d 100644
+--- a/apps/web/src/pages/pedidos/PedidoDrawer.tsx
++++ b/apps/web/src/pages/pedidos/PedidoDrawer.tsx
+@@ -217,65 +217,151 @@ function TimelineSection({ order }: { order: OrderRead }) {
+   );
+ }
+ 
++// FactRow: label → value; null/undefined → honest UnknownValue (ADR-17). Never a
++// hardcoded "—" string.
++function FactRow({
++  label,
++  value,
++  hint,
++  mono,
++}: {
++  label: string;
++  value: React.ReactNode;
++  hint?: string;
++  mono?: boolean;
++}) {
++  const empty = value === null || value === undefined || value === "";
++  return (
++    <div className="flex items-start justify-between gap-3">
++      <span>{label}</span>
++      <span className={`text-right text-ink${mono ? " font-mono text-[11px]" : ""}`}>
++        {empty ? <UnknownValue hint={hint} /> : value}
++      </span>
++    </div>
++  );
++}
++
+ function FactsSection({ order }: { order: OrderRead }) {
+   const local = [order.buyer?.city, order.buyer?.uf].filter(Boolean).join("/");
++  const destino = [order.destino_uf, order.destino_cep].filter(Boolean).join(" · ");
++  const carrier = order.rastreio?.transportadora;
++  const trackUrl = order.rastreio?.url_rastreio;
++  const frete = order.frete_real;
+   return (
+     <section className="flex flex-col gap-2 border-t border-border-2 pt-3 text-xs text-muted">
+-      <div className="flex items-start justify-between gap-3">
+-        <span>Nota fiscal</span>
+-        {/* nf_state is the vínculo 'linked' marker on OrderRead, not a real NF number — rendered
+-            honestly, never as a fabricated NF number/deep-link (ruling-6). */}
+-        <span className="text-right text-ink">
+-          {order.nf_state ? `vínculo: ${order.nf_state}` : <UnknownValue hint="ainda não emitida" />}
+-        </span>
+-      </div>
+-      <div className="flex items-start justify-between gap-3">
+-        <span>Rastreio</span>
+-        <span className="text-right font-mono text-[11px] text-ink">
+-          {order.rastreio
++      <FactRow
++        label="Nota fiscal"
++        /* nf_state is the vínculo 'linked' marker on OrderRead, not a real NF number — rendered
++           honestly, never as a fabricated NF number/deep-link (ruling-6). */
++        value={order.nf_state ? `vínculo: ${order.nf_state}` : null}
++        hint="ainda não emitida"
++      />
++      <FactRow
++        label="Rastreio"
++        mono
++        value={
++          order.rastreio
+             ? `${order.rastreio.shipment_id} · ${order.rastreio.status}${order.rastreio.substatus ? ` · ${order.rastreio.substatus}` : ""}`
+-            : <UnknownValue />}
+-        </span>
+-      </div>
+-      <div className="flex items-start justify-between gap-3">
+-        <span>Destino</span>
+-        <span className="text-right text-ink">{order.destino_uf ?? <UnknownValue />}</span>
+-      </div>
+-      <div className="flex items-start justify-between gap-3">
+-        <span>Código de rastreio</span>
+-        {/* No carrier tracking code on OrderRead — honest unknown, never fabricated (ADR-17). */}
+-        <span className="text-right text-ink">
+-          <UnknownValue hint="código da transportadora não disponível no backend" />
+-        </span>
+-      </div>
+-      <div className="flex items-start justify-between gap-3">
+-        <span>Comprador</span>
+-        <span className="text-right text-ink">
+-          {order.buyer?.display ?? <UnknownValue />}
+-          {order.buyer ? (
++            : null
++        }
++      />
++      <FactRow
++        label="Transportadora"
++        value={
++          carrier ? (
++            <>
++              <span>{carrier}</span>
++              {trackUrl ? (
++                <>
++                  {" · "}
++                  <a
++                    href={trackUrl}
++                    target="_blank"
++                    rel="noopener noreferrer"
++                    className="underline underline-offset-2 hover:text-ink"
++                  >
++                    rastrear
++                  </a>
++                </>
++              ) : null}
++            </>
++          ) : null
++        }
++        hint="transportadora ainda não atribuída"
++      />
++      <FactRow label="Destino" value={destino || null} />
++      <FactRow label="Destinatário" value={order.destinatario ?? null} hint="destinatário ainda não disponível" />
++      <FactRow
++        label="Frete real"
++        mono
++        value={
++          frete && (frete.bruto != null || frete.receiver != null || frete.sender != null) ? (
+             <>
++              <span>{formatMoney(frete.bruto ?? null) ?? <UnknownValue />}</span>
++              <br />
++              <span className="text-[11px] text-faint">
++                receiver {formatMoney(frete.receiver ?? null) ?? "—"} · sender{" "}
++                {formatMoney(frete.sender ?? null) ?? "—"}
++              </span>
++            </>
++          ) : null
++        }
++        hint="custos de frete não disponíveis"
++      />
++      <FactRow
++        label="Comprador"
++        value={
++          order.buyer ? (
++            <>
++              {order.buyer.display || <UnknownValue />}
+               <br />
+               <span className="text-[11px] text-faint">{local || <UnknownValue />}</span>
+             </>
+-          ) : null}
+-        </span>
+-      </div>
+-      <div className="flex items-start justify-between gap-3">
+-        <span>Documento</span>
+-        {/* No buyer document (CPF/CNPJ) on OrderRead — honest unknown, never fabricated (ruling-6). */}
+-        <span className="text-right text-ink">
+-          <UnknownValue hint="documento do comprador não disponível no backend" />
+-        </span>
+-      </div>
++          ) : null
++        }
++      />
+     </section>
+   );
+ }
+ 
++// Composes the buyer billing address into a single honest line. Absent parts are
++// dropped; an all-absent address yields null (caller renders UnknownValue). Never
++// fabricates a value (ADR-17).
++function formatEndereco(end: NonNullable<OrderRead["comprador_fiscal"]>["endereco"]): string | null {
++  if (!end) return null;
++  const linha1 = [end.logradouro, end.numero].filter(Boolean).join(", ");
++  const linha2 = [end.cidade, end.uf_codigo].filter(Boolean).join("/");
++  const parts = [linha1, linha2, end.cep, end.pais].filter(Boolean);
++  return parts.length > 0 ? parts.join(" · ") : null;
++}
++
++// Buyer fiscal identity for ERP registration (name, opaque document, billing
++// address). Additive comprador_fiscal block on OrderRead — absent (buyer without
++// billing data / masked until payment) renders honest "—", never fabricated
++// (ADR-17). doc_tipo is rendered VERBATIM (opaque — never mapped to a CPF/CNPJ
++// enum). The document number is rendered for the operator only; it is never
++// logged (LGPD).
++function CompradorFiscalSection({ order }: { order: OrderRead }) {
++  const cf = order.comprador_fiscal;
++  const doc = cf?.doc_tipo || cf?.doc_numero ? [cf?.doc_tipo, cf?.doc_numero].filter(Boolean).join(" ") : null;
++  const endereco = formatEndereco(cf?.endereco);
++  return (
++    <Section title="Comprador · fiscal (ERP)">
++      <dl className="flex flex-col gap-2 text-xs text-muted">
++        <FactRow label="Nome/Razão" value={cf?.nome ?? null} hint="nome fiscal não disponível" />
++        <FactRow label="Documento" value={doc} hint="documento não disponível" mono />
++        <FactRow label="Endereço" value={endereco} hint="endereço fiscal não disponível" />
++      </dl>
++    </Section>
++  );
++}
++
+ function DrawerBody({ order }: { order: OrderRead }) {
+   return (
+     <div className="flex flex-col gap-4">
+       <ItemsSection order={order} />
+       <DecomposicaoSection order={order} />
++      <CompradorFiscalSection order={order} />
+       <TimelineSection order={order} />
+       <FactsSection order={order} />
+     </div>
+diff --git a/apps/web/src/pages/pedidos/PedidosPage.test.tsx b/apps/web/src/pages/pedidos/PedidosPage.test.tsx
+index d35ccedb..96637f95 100644
+--- a/apps/web/src/pages/pedidos/PedidosPage.test.tsx
++++ b/apps/web/src/pages/pedidos/PedidosPage.test.tsx
+@@ -488,6 +488,58 @@ describe("PedidosPage", () => {
+     expect(footerAction).toBeDisabled();
+   });
+ 
++  it("renders the drawer buyer fiscal identity + carrier/destino/frete_real when present", async () => {
++    const withFiscal = {
++      ...detailOrder,
++      destinatario: "Maria Souza",
++      destino_uf: "SP",
++      destino_cep: "01310-100",
++      frete_real: { bruto: 23.45, receiver: 10.0, sender: 13.45 },
++      rastreio: {
++        shipment_id: "SHIP-1",
++        status: "shipped",
++        substatus: "out_for_delivery",
++        transportadora: "Total Express",
++        url_rastreio: "https://tracking.totalexpress.com.br/x?id=3",
++      },
++      comprador_fiscal: {
++        nome: "Maria Souza LTDA",
++        doc_tipo: "CNPJ", // rendered verbatim (opaque, ADR-17)
++        doc_numero: "11222333000181",
++        endereco: {
++          logradouro: "Av. Paulista",
++          numero: "1000",
++          cidade: "São Paulo",
++          uf_codigo: "SP",
++          uf_nome: "São Paulo",
++          cep: "01310-100",
++          pais: "BR",
++        },
++      },
++    };
++    listOrders.mockResolvedValue({ items: [withFiscal], next_cursor: null });
++    getOrder.mockResolvedValue(withFiscal);
++
++    renderPage("?order=PO1");
++
++    await screen.findByText("Parafuso M8x40 cx100");
++    const drawer = within(screen.getByRole("complementary"));
++    // Carrier + tracking link (round-4 additive).
++    expect(drawer.getByText("Total Express")).toBeInTheDocument();
++    const trackLink = drawer.getByRole("link", { name: /rastrear/i });
++    expect(trackLink).toHaveAttribute("href", "https://tracking.totalexpress.com.br/x?id=3");
++    // Destino + destinatário (round-4 additive).
++    expect(drawer.getByText("Maria Souza")).toBeInTheDocument(); // destinatario
++    expect(drawer.getByText("SP · 01310-100")).toBeInTheDocument(); // destino_uf · destino_cep
++    // Frete real actuals.
++    expect(drawer.getByText("R$ 23,45")).toBeInTheDocument(); // frete_real.bruto
++    // Buyer fiscal identity for ERP registration.
++    expect(drawer.getByText("Maria Souza LTDA")).toBeInTheDocument(); // nome
++    expect(drawer.getByText(/CNPJ/)).toBeInTheDocument(); // doc_tipo opaque
++    expect(drawer.getByText(/11222333000181/)).toBeInTheDocument(); // doc_numero
++    expect(drawer.getByText(/Av\. Paulista/)).toBeInTheDocument(); // endereco logradouro
++  });
++
+   it("renders the drawer decomposição/DIFAL block with real formatted values when present (F02-S6 real-ready path)", async () => {
+     const withDecomp = {
+       ...detailOrder,
+diff --git a/contracts/api/marketplace-central.openapi.yaml b/contracts/api/marketplace-central.openapi.yaml
+index 4391b313..148d1f6b 100644
+--- a/contracts/api/marketplace-central.openapi.yaml
++++ b/contracts/api/marketplace-central.openapi.yaml
+@@ -5062,6 +5062,8 @@ components:
+           $ref: '#/components/schemas/OrderDecomposicao'
+         difal:
+           $ref: '#/components/schemas/OrderDifal'
++        comprador_fiscal:
++          $ref: '#/components/schemas/OrderCompradorFiscal'
+ 
+     OrderBuyer:
+       type: object
+@@ -5133,6 +5135,55 @@ components:
+           format: double
+           nullable: true
+ 
++    OrderCompradorFiscal:
++      type: object
++      description: >-
++        Buyer fiscal identity for ERP registration, resolved read-time via the
++        provider's documented two-step billing-info flow (order → billing_info id
++        → billing-info). Additive/optional on the order: absent when the buyer has
++        no billing data (the provider returns 404 as a normal "none" condition —
++        masked ≠ error, ADR-17), never a fabricated identity. The document number
++        is rendered by the client only and is never logged (LGPD).
++      properties:
++        nome:
++          type: string
++          description: Buyer legal name (billing_info name + last_name), omitted when absent.
++        doc_tipo:
++          type: string
++          description: >-
++            Document type string EXACTLY as the provider returns it
++            (identification.type). Opaque: never assume/map to a CPF/CNPJ enum —
++            render as-is (ADR-17).
++        doc_numero:
++          type: string
++          description: >-
++            Document number (identification.number). Rendered by the client only;
++            never logged (LGPD).
++        endereco:
++          $ref: '#/components/schemas/OrderCompradorFiscalEndereco'
++
++    OrderCompradorFiscalEndereco:
++      type: object
++      description: >-
++        Buyer billing address. Every field optional: absent (masked/blank) is
++        honest absence, never a fabricated value (ADR-17). uf_codigo/uf_nome are
++        the provider's own state code + label, rendered verbatim.
++      properties:
++        logradouro:
++          type: string
++        numero:
++          type: string
++        cidade:
++          type: string
++        uf_codigo:
++          type: string
++        uf_nome:
++          type: string
++        cep:
++          type: string
++        pais:
++          type: string
++
+     OrderDecomposicao:
+       type: object
+       required:
+diff --git a/packages/sdk-runtime/src/index.ts b/packages/sdk-runtime/src/index.ts
+index c02f19b0..79a3b777 100644
+--- a/packages/sdk-runtime/src/index.ts
++++ b/packages/sdk-runtime/src/index.ts
+@@ -634,6 +634,33 @@ export interface OrderDifal {
+   paid: boolean | null;
+ }
+ 
++// OrderCompradorFiscalEndereco is the buyer billing address. Every field is
++// optional: absent (masked/blank) is honest absence, never a fabricated value
++// (ADR-17). uf_codigo/uf_nome are the provider's own state code + label,
++// rendered verbatim.
++export interface OrderCompradorFiscalEndereco {
++  logradouro?: string;
++  numero?: string;
++  cidade?: string;
++  uf_codigo?: string;
++  uf_nome?: string;
++  cep?: string;
++  pais?: string;
++}
++
++// OrderCompradorFiscal is the buyer fiscal identity for ERP registration,
++// resolved read-time via the provider's two-step billing-info flow. Additive/
++// optional on the order: absent when the buyer has no billing data (404 = a
++// normal "none" condition, ADR-17), never a fabricated identity. doc_tipo is
++// opaque — render as-is, never map to a CPF/CNPJ enum. doc_numero is rendered
++// by the client only and MUST never be logged (LGPD).
++export interface OrderCompradorFiscal {
++  nome?: string;
++  doc_tipo?: string;
++  doc_numero?: string;
++  endereco?: OrderCompradorFiscalEndereco;
++}
++
+ export interface OrderRead {
+   provider_order_id: string;
+   provider_code: string;
+@@ -667,6 +694,7 @@ export interface OrderRead {
+   margem_pct?: number | null;
+   decomposicao: OrderDecomposicao;
+   difal: OrderDifal;
++  comprador_fiscal?: OrderCompradorFiscal;
+ }
+ 
+ export interface OrderPage {

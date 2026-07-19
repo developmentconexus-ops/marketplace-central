@@ -957,6 +957,7 @@ type mlAttribute struct {
 
 type mlOrderResponse struct {
 	ID              any             `json:"id"`
+	SiteID          string          `json:"site_id"`
 	Status          string          `json:"status"`
 	StatusDetail    string          `json:"status_detail"`
 	DateCreated     string          `json:"date_created"`
@@ -967,6 +968,24 @@ type mlOrderResponse struct {
 	Payments        []mlPayment     `json:"payments"`
 	Shipping        mlOrderShipping `json:"shipping"`
 	Tags            []string        `json:"tags"`
+	// Buyer carries the fiscal linkage: buyer.billing_info.id is the key for the
+	// step-2 billing-info call (docs: faturamento). Additive/pointer — an order
+	// payload without a buyer block leaves it nil (honest absence), and mapOrder
+	// ignores it (the buyer fiscal fact is a read-time enrichment, not persisted).
+	Buyer *mlOrderBuyer `json:"buyer"`
+}
+
+// mlOrderBuyer is the subset of the ML order `buyer` object the fiscal flow needs.
+// nickname is NOT surfaced past the adapter (the masked buyer identity is derived
+// elsewhere from the read model); only billing_info.id feeds the step-2 call.
+type mlOrderBuyer struct {
+	ID          any                  `json:"id"`
+	Nickname    string               `json:"nickname"`
+	BillingInfo *mlOrderBillingInfid `json:"billing_info"`
+}
+
+type mlOrderBillingInfid struct {
+	ID string `json:"id"`
 }
 
 type mlOrderShipping struct {
@@ -996,11 +1015,12 @@ type mlPayment struct {
 }
 
 var (
-	_ ports.AccountProber  = (*CapabilityAdapter)(nil)
-	_ ports.FeeQuoteReader = (*CapabilityAdapter)(nil)
-	_ ports.ListingReader  = (*CapabilityAdapter)(nil)
-	_ ports.StockReader    = (*CapabilityAdapter)(nil)
-	_ ports.StockWriter    = (*CapabilityAdapter)(nil)
-	_ ports.PriceWriter    = (*CapabilityAdapter)(nil)
-	_ ports.OrderReader    = (*CapabilityAdapter)(nil)
+	_ ports.AccountProber     = (*CapabilityAdapter)(nil)
+	_ ports.FeeQuoteReader    = (*CapabilityAdapter)(nil)
+	_ ports.ListingReader     = (*CapabilityAdapter)(nil)
+	_ ports.StockReader       = (*CapabilityAdapter)(nil)
+	_ ports.StockWriter       = (*CapabilityAdapter)(nil)
+	_ ports.PriceWriter       = (*CapabilityAdapter)(nil)
+	_ ports.OrderReader       = (*CapabilityAdapter)(nil)
+	_ ports.BuyerFiscalReader = (*CapabilityAdapter)(nil)
 )

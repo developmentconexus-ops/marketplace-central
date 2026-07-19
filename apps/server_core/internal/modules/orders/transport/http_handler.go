@@ -372,6 +372,34 @@ type decomposicaoDTO struct {
 	ComponentesDesconhecidos []string `json:"componentes_desconhecidos"`
 }
 
+// compradorFiscalEnderecoDTO is the buyer's billing address for ERP
+// registration. Every field is pointer/omitempty: nil (absent key) means the
+// provider did not supply it (ADR-17). UfCodigo/UfNome are the provider's own
+// state code + label, rendered verbatim (no UF derivation — that belongs to the
+// shipment destination fact, not the fiscal address).
+type compradorFiscalEnderecoDTO struct {
+	Logradouro *string `json:"logradouro,omitempty"`
+	Numero     *string `json:"numero,omitempty"`
+	Cidade     *string `json:"cidade,omitempty"`
+	UfCodigo   *string `json:"uf_codigo,omitempty"`
+	UfNome     *string `json:"uf_nome,omitempty"`
+	Cep        *string `json:"cep,omitempty"`
+	Pais       *string `json:"pais,omitempty"`
+}
+
+// compradorFiscalDTO is the buyer fiscal identity surfaced for ERP
+// registration: legal name, an opaque document (type + number) and a billing
+// address. DocTipo is the provider's document-type string rendered verbatim —
+// never mapped to a CPF/CNPJ enum (ADR-17). Every field is pointer/omitempty:
+// a masked/absent provider value is honestly absent, never a fabricated blank.
+// The whole block is omitted (nil) when the buyer carries no billing data.
+type compradorFiscalDTO struct {
+	Nome      *string                     `json:"nome,omitempty"`
+	DocTipo   *string                     `json:"doc_tipo,omitempty"`
+	DocNumero *string                     `json:"doc_numero,omitempty"`
+	Endereco  *compradorFiscalEnderecoDTO `json:"endereco,omitempty"`
+}
+
 // difalDTO is the response shape for the order-level DIFAL fact (F01-C1).
 // All fields pointer/omitempty: nil (absent key) means unknown (ADR-17).
 type difalDTO struct {
@@ -412,6 +440,12 @@ type enrichedOrderDTO struct {
 	MargemPct      *float64        `json:"margem_pct,omitempty"`
 	Decomposicao   decomposicaoDTO `json:"decomposicao"`
 	Difal          difalDTO        `json:"difal"`
+	// CompradorFiscal is the buyer's fiscal identity for ERP registration
+	// (name, opaque document, billing address). Additive/omitempty: nil (buyer
+	// without billing data, or a lookup that could not run) omits the block
+	// entirely — never a fabricated identity (ADR-17). The document number is
+	// rendered by the caller only; it is never logged (LGPD).
+	CompradorFiscal *compradorFiscalDTO `json:"comprador_fiscal,omitempty"`
 }
 
 // mapEnrichedOrder maps an application.EnrichedOrder onto the transport DTO.
@@ -461,7 +495,43 @@ func mapEnrichedOrder(e application.EnrichedOrder) enrichedOrderDTO {
 			UrlRastreio:    derefString(e.Shipment.TrackingURL),
 		}
 	}
+	dto.CompradorFiscal = mapCompradorFiscal(e.BuyerFiscal)
 	return dto
+}
+
+// mapCompradorFiscal maps the neutral BuyerFiscalInfo onto the transport
+// comprador_fiscal block. Returns nil (block omitted) when the enrichment is
+// nil — honest absence, never a fabricated identity (ADR-17). doc_tipo is
+// carried verbatim; the document number is passed straight through for the
+// caller to render and is NEVER logged here (LGPD).
+func mapCompradorFiscal(info *connectorsdomain.BuyerFiscalInfo) *compradorFiscalDTO {
+	if info == nil {
+		return nil
+	}
+	return &compradorFiscalDTO{
+		Nome:      info.Name,
+		DocTipo:   info.DocType,
+		DocNumero: info.DocNumber,
+		Endereco:  mapCompradorFiscalEndereco(info.Address),
+	}
+}
+
+// mapCompradorFiscalEndereco maps the neutral billing address onto the
+// transport endereco block. Returns nil (endereco omitted) when the address is
+// nil (the connectors adapter already collapses an all-blank address to nil).
+func mapCompradorFiscalEndereco(addr *connectorsdomain.BuyerFiscalAddress) *compradorFiscalEnderecoDTO {
+	if addr == nil {
+		return nil
+	}
+	return &compradorFiscalEnderecoDTO{
+		Logradouro: addr.StreetName,
+		Numero:     addr.StreetNumber,
+		Cidade:     addr.City,
+		UfCodigo:   addr.StateCode,
+		UfNome:     addr.StateName,
+		Cep:        addr.ZipCode,
+		Pais:       addr.CountryID,
+	}
 }
 
 // mapFreteReal maps the connectors ShipmentCosts (real freight actuals) onto the

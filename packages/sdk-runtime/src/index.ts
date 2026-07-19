@@ -662,6 +662,33 @@ export interface OrderDifal {
   paid: boolean | null;
 }
 
+// OrderCompradorFiscalEndereco is the buyer billing address. Every field is
+// optional: absent (masked/blank) is honest absence, never a fabricated value
+// (ADR-17). uf_codigo/uf_nome are the provider's own state code + label,
+// rendered verbatim.
+export interface OrderCompradorFiscalEndereco {
+  logradouro?: string;
+  numero?: string;
+  cidade?: string;
+  uf_codigo?: string;
+  uf_nome?: string;
+  cep?: string;
+  pais?: string;
+}
+
+// OrderCompradorFiscal is the buyer fiscal identity for ERP registration,
+// resolved read-time via the provider's two-step billing-info flow. Additive/
+// optional on the order: absent when the buyer has no billing data (404 = a
+// normal "none" condition, ADR-17), never a fabricated identity. doc_tipo is
+// opaque — render as-is, never map to a CPF/CNPJ enum. doc_numero is rendered
+// by the client only and MUST never be logged (LGPD).
+export interface OrderCompradorFiscal {
+  nome?: string;
+  doc_tipo?: string;
+  doc_numero?: string;
+  endereco?: OrderCompradorFiscalEndereco;
+}
+
 export interface OrderRead {
   provider_order_id: string;
   provider_code: string;
@@ -695,6 +722,7 @@ export interface OrderRead {
   margem_pct?: number | null;
   decomposicao: OrderDecomposicao;
   difal: OrderDifal;
+  comprador_fiscal?: OrderCompradorFiscal;
 }
 
 export interface OrderPage {

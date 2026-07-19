@@ -50,6 +50,11 @@ type EnrichedOrder struct {
 	ComponentesDesconhecidos []string
 	Shipment                 *ShipmentEnrichment
 	Profitability            domain.OrderProfitability
+	// BuyerFiscal is the buyer's fiscal identity (name, opaque document,
+	// billing address) for ERP registration, resolved read-time via
+	// BuyerFiscalReader. It is nil whenever the buyer has no billing data
+	// (honest absence) or the lookup could not run — never a fabricated block.
+	BuyerFiscal *connectorsdomain.BuyerFiscalInfo
 }
 
 // EnrichService adds read-time enrichment (masked buyer identity, vinculo
@@ -60,27 +65,37 @@ type EnrichedOrder struct {
 // installationID + the order's ShippingID. Tenant scoping remains the repo
 // layer's responsibility.
 type EnrichService struct {
-	cost       ports.CostReader
-	shipment   ports.ShipmentReader
-	decomposer ports.Decomposer
-	logger     *slog.Logger
+	cost        ports.CostReader
+	shipment    ports.ShipmentReader
+	decomposer  ports.Decomposer
+	buyerFiscal ports.BuyerFiscalReader
+	logger      *slog.Logger
 }
 
 // NewEnrichService keeps constructing an EnrichService with a nil decomposer
-// (delegating to NewEnrichServiceWithDecomposer) so it yields the honest-empty
-// profitability path — this is the C1 contract seam; the hub wires a real
-// decomposer via NewEnrichServiceWithDecomposer in C2 post-merge.
+// and a nil buyer-fiscal reader (delegating through the full constructor) so it
+// yields the honest-empty profitability path and a nil BuyerFiscal — this is
+// the C1 contract seam; the hub wires the real readers post-merge.
 func NewEnrichService(cost ports.CostReader, shipment ports.ShipmentReader, logger *slog.Logger) EnrichService {
-	return NewEnrichServiceWithDecomposer(cost, shipment, nil, logger)
+	return NewEnrichServiceWithReaders(cost, shipment, nil, nil, logger)
 }
 
-// NewEnrichServiceWithDecomposer is the full constructor: decomposer may be
-// nil (honest-unknown profitability, never a panic) — see resolveProfitability.
+// NewEnrichServiceWithDecomposer keeps the decomposer-only constructor byte
+// stable (the planned C2 root.go swap targets it): a nil buyer-fiscal reader,
+// honest-unknown profitability when the decomposer is nil.
 func NewEnrichServiceWithDecomposer(cost ports.CostReader, shipment ports.ShipmentReader, decomposer ports.Decomposer, logger *slog.Logger) EnrichService {
+	return NewEnrichServiceWithReaders(cost, shipment, decomposer, nil, logger)
+}
+
+// NewEnrichServiceWithReaders is the full constructor: every dependency may be
+// nil (honest-unknown, never a panic) — see resolveProfitability /
+// resolveBuyerFiscal. The composition layer wires the real buyer-fiscal adapter
+// here.
+func NewEnrichServiceWithReaders(cost ports.CostReader, shipment ports.ShipmentReader, decomposer ports.Decomposer, buyerFiscal ports.BuyerFiscalReader, logger *slog.Logger) EnrichService {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return EnrichService{cost: cost, shipment: shipment, decomposer: decomposer, logger: logger}
+	return EnrichService{cost: cost, shipment: shipment, decomposer: decomposer, buyerFiscal: buyerFiscal, logger: logger}
 }
 
 func (s EnrichService) Enrich(ctx context.Context, installationID string, orders []domain.OrderReadModel) []EnrichedOrder {
@@ -94,6 +109,7 @@ func (s EnrichService) Enrich(ctx context.Context, installationID string, orders
 		buyer := domain.MaskBuyer(nickname)
 		shipmentInfo := s.resolveShipment(ctx, installationID, order, &buyer)
 		profitability := s.resolveProfitability(ctx, order)
+		buyerFiscal := s.resolveBuyerFiscal(ctx, installationID, order)
 		enriched = append(enriched, EnrichedOrder{
 			Order:                    order,
 			Buyer:                    buyer,
@@ -102,6 +118,7 @@ func (s EnrichService) Enrich(ctx context.Context, installationID string, orders
 			ComponentesDesconhecidos: unknown,
 			Shipment:                 shipmentInfo,
 			Profitability:            profitability,
+			BuyerFiscal:              buyerFiscal,
 		})
 	}
 	return enriched
@@ -150,6 +167,34 @@ func (s EnrichService) resolveShipment(ctx context.Context, installationID strin
 		TrackingURL:     info.TrackingURL,
 		Costs:           info.Costs,
 	}
+}
+
+// resolveBuyerFiscal looks up the buyer's fiscal identity via BuyerFiscalReader
+// (keyed by installationID + the order's own ProviderOrderID — the read model
+// carries no billing_info.id, so the reader re-fetches the order internally).
+// A nil reader (real adapter not wired yet) or an empty ProviderOrderID skips
+// the lookup entirely — honest unknown, never a panic. The reader already maps
+// a buyer-without-billing (a 404 / undecodable payload) to an empty
+// honest-absence value, so an error here is a REAL failure (auth/transient):
+// it degrades to nil AND warns once (never silently swallow a provider fault).
+// An empty (HasData()==false) value is honest absence: nil, no warn.
+func (s EnrichService) resolveBuyerFiscal(ctx context.Context, installationID string, order domain.OrderReadModel) *connectorsdomain.BuyerFiscalInfo {
+	if s.buyerFiscal == nil || order.ProviderOrderID == "" {
+		return nil
+	}
+	info, err := s.buyerFiscal.GetBuyerFiscal(ctx, installationID, order.ProviderOrderID)
+	if err != nil {
+		s.logger.Warn("orders: buyer fiscal lookup failed",
+			"installation_id", installationID,
+			"provider_order_id", order.ProviderOrderID,
+			"error", err,
+		)
+		return nil
+	}
+	if !info.HasData() {
+		return nil
+	}
+	return &info
 }
 
 // resolveProfitability looks up the order's decomposição/DIFAL/retorno via

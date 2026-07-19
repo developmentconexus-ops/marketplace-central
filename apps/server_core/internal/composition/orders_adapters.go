@@ -106,3 +106,45 @@ func (r *ordersShipmentReaderAdapter) GetShipment(ctx context.Context, installat
 	ref := accountRefForInstallation(r.tenantID, inst)
 	return r.capabilities.GetShipmentInfo(ctx, ref, shipmentID)
 }
+
+// --- ports.BuyerFiscalReader -------------------------------------------------
+
+// ordersBuyerFiscalReaderAdapter backs ports.BuyerFiscalReader with the
+// mercado_livre connectors capability adapter, resolving installationID to a
+// connectorsdomain.ProviderAccountRef via the same accountRefForInstallation
+// helper as ordersShipmentReaderAdapter. The connectors adapter runs the whole
+// documented two-step billing-info flow and already degrades a buyer without
+// billing data to an honest-absence value; EnrichService degrades any error
+// here to a nil block plus a warn-once (enrich_service.go resolveBuyerFiscal),
+// so the provider error passes straight up unmapped.
+type ordersBuyerFiscalReaderAdapter struct {
+	capabilities  *mercadolivreconnector.CapabilityAdapter
+	installations *integrationsapp.InstallationService
+	tenantID      string
+}
+
+var _ ordersports.BuyerFiscalReader = (*ordersBuyerFiscalReaderAdapter)(nil)
+
+func newOrdersBuyerFiscalReaderAdapter(
+	capabilities *mercadolivreconnector.CapabilityAdapter,
+	installations *integrationsapp.InstallationService,
+	tenantID string,
+) *ordersBuyerFiscalReaderAdapter {
+	return &ordersBuyerFiscalReaderAdapter{
+		capabilities:  capabilities,
+		installations: installations,
+		tenantID:      tenantID,
+	}
+}
+
+func (r *ordersBuyerFiscalReaderAdapter) GetBuyerFiscal(ctx context.Context, installationID, providerOrderID string) (connectorsdomain.BuyerFiscalInfo, error) {
+	inst, found, err := r.installations.Get(ctx, installationID)
+	if err != nil {
+		return connectorsdomain.BuyerFiscalInfo{}, err
+	}
+	if !found {
+		return connectorsdomain.BuyerFiscalInfo{}, fmt.Errorf("orders: installation %q not found", installationID)
+	}
+	ref := accountRefForInstallation(r.tenantID, inst)
+	return r.capabilities.GetBuyerFiscalInfo(ctx, ref, providerOrderID)
+}

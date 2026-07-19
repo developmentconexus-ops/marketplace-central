@@ -574,6 +574,137 @@ func TestMapEnrichedOrderOmitsFreteRealWhenAllAmountsNil(t *testing.T) {
 	}
 }
 
+// TestMapEnrichedOrderSurfacesCompradorFiscal asserts the buyer fiscal identity
+// (name, opaque document type + number, billing address) reaches the JSON DTO
+// as an additive comprador_fiscal block when the enrichment carries it. doc_tipo
+// is passed through verbatim (a non-CPF value proves it is never mapped to an
+// enum — ADR-17).
+func TestMapEnrichedOrderSurfacesCompradorFiscal(t *testing.T) {
+	order := enrichedOrderModels()[1]
+
+	name := "ACME Comercio LTDA"
+	docType := "CNPJ_MEI" // deliberately non-CPF: proves opaque passthrough
+	docNumber := "11222333000181"
+	street := "Av. Paulista"
+	number := "1000"
+	city := "São Paulo"
+	stateCode := "SP"
+	stateName := "São Paulo"
+	zip := "01310-100"
+	country := "BR"
+
+	e := application.EnrichedOrder{
+		Order: order,
+		BuyerFiscal: &connectorsdomain.BuyerFiscalInfo{
+			Name:      &name,
+			DocType:   &docType,
+			DocNumber: &docNumber,
+			Address: &connectorsdomain.BuyerFiscalAddress{
+				StreetName:   &street,
+				StreetNumber: &number,
+				City:         &city,
+				StateCode:    &stateCode,
+				StateName:    &stateName,
+				ZipCode:      &zip,
+				CountryID:    &country,
+			},
+		},
+	}
+
+	dtoJSON, err := json.Marshal(mapEnrichedOrder(e))
+	if err != nil {
+		t.Fatalf("marshal dto: %v", err)
+	}
+	var decoded map[string]any
+	if err := json.Unmarshal(dtoJSON, &decoded); err != nil {
+		t.Fatalf("decode dto: %v", err)
+	}
+
+	cf, ok := decoded["comprador_fiscal"].(map[string]any)
+	if !ok {
+		t.Fatalf("comprador_fiscal missing/not object; body=%s", dtoJSON)
+	}
+	if cf["nome"] != name {
+		t.Fatalf("comprador_fiscal.nome = %#v, want %q; body=%s", cf["nome"], name, dtoJSON)
+	}
+	if cf["doc_tipo"] != docType {
+		t.Fatalf("comprador_fiscal.doc_tipo = %#v, want %q (opaque passthrough); body=%s", cf["doc_tipo"], docType, dtoJSON)
+	}
+	if cf["doc_numero"] != docNumber {
+		t.Fatalf("comprador_fiscal.doc_numero = %#v, want %q; body=%s", cf["doc_numero"], docNumber, dtoJSON)
+	}
+	end, ok := cf["endereco"].(map[string]any)
+	if !ok {
+		t.Fatalf("comprador_fiscal.endereco missing/not object; body=%s", dtoJSON)
+	}
+	for k, want := range map[string]string{
+		"logradouro": street, "numero": number, "cidade": city,
+		"uf_codigo": stateCode, "uf_nome": stateName, "cep": zip, "pais": country,
+	} {
+		if end[k] != want {
+			t.Fatalf("comprador_fiscal.endereco.%s = %#v, want %q; body=%s", k, end[k], want, dtoJSON)
+		}
+	}
+}
+
+// TestMapEnrichedOrderOmitsCompradorFiscalWhenAbsent asserts the honest-absence
+// contract: a nil BuyerFiscal enrichment omits comprador_fiscal entirely (never
+// a fabricated empty block — ADR-17).
+func TestMapEnrichedOrderOmitsCompradorFiscalWhenAbsent(t *testing.T) {
+	order := enrichedOrderModels()[1]
+	e := application.EnrichedOrder{Order: order}
+
+	dtoJSON, err := json.Marshal(mapEnrichedOrder(e))
+	if err != nil {
+		t.Fatalf("marshal dto: %v", err)
+	}
+	var decoded map[string]any
+	if err := json.Unmarshal(dtoJSON, &decoded); err != nil {
+		t.Fatalf("decode dto: %v", err)
+	}
+	if _, present := decoded["comprador_fiscal"]; present {
+		t.Fatalf("comprador_fiscal must be omitted when BuyerFiscal is nil; body=%s", dtoJSON)
+	}
+}
+
+// TestMapEnrichedOrderCompradorFiscalOmitsBlankAddressFields asserts that within
+// a present comprador_fiscal, individual absent fields (nil pointers) are omitted
+// rather than emitted as empty strings, and an all-nil address omits endereco.
+func TestMapEnrichedOrderCompradorFiscalOmitsBlankAddressFields(t *testing.T) {
+	order := enrichedOrderModels()[1]
+	docType := "CPF"
+	docNumber := "12345678909"
+	e := application.EnrichedOrder{
+		Order: order,
+		BuyerFiscal: &connectorsdomain.BuyerFiscalInfo{
+			DocType:   &docType,
+			DocNumber: &docNumber,
+			// Name nil, Address nil.
+		},
+	}
+	dtoJSON, err := json.Marshal(mapEnrichedOrder(e))
+	if err != nil {
+		t.Fatalf("marshal dto: %v", err)
+	}
+	var decoded map[string]any
+	if err := json.Unmarshal(dtoJSON, &decoded); err != nil {
+		t.Fatalf("decode dto: %v", err)
+	}
+	cf, ok := decoded["comprador_fiscal"].(map[string]any)
+	if !ok {
+		t.Fatalf("comprador_fiscal missing/not object; body=%s", dtoJSON)
+	}
+	if _, present := cf["nome"]; present {
+		t.Fatalf("comprador_fiscal.nome must be omitted when nil; body=%s", dtoJSON)
+	}
+	if _, present := cf["endereco"]; present {
+		t.Fatalf("comprador_fiscal.endereco must be omitted when address is nil; body=%s", dtoJSON)
+	}
+	if cf["doc_tipo"] != docType {
+		t.Fatalf("comprador_fiscal.doc_tipo = %#v, want %q; body=%s", cf["doc_tipo"], docType, dtoJSON)
+	}
+}
+
 func TestHandleGetWithEnricherEmitsHonestNullEnrichment(t *testing.T) {
 	model := enrichedOrderModels()[1]
 	service := stubOrderReadService{model: model}

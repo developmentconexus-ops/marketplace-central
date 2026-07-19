@@ -5260,6 +5260,8 @@ components:
           $ref: '#/components/schemas/OrderDecomposicao'
         difal:
           $ref: '#/components/schemas/OrderDifal'
+        comprador_fiscal:
+          $ref: '#/components/schemas/OrderCompradorFiscal'
 
     OrderBuyer:
       type: object
@@ -5330,6 +5332,55 @@ components:
           type: number
           format: double
           nullable: true
+
+    OrderCompradorFiscal:
+      type: object
+      description: >-
+        Buyer fiscal identity for ERP registration, resolved read-time via the
+        provider's documented two-step billing-info flow (order → billing_info id
+        → billing-info). Additive/optional on the order: absent when the buyer has
+        no billing data (the provider returns 404 as a normal "none" condition —
+        masked ≠ error, ADR-17), never a fabricated identity. The document number
+        is rendered by the client only and is never logged (LGPD).
+      properties:
+        nome:
+          type: string
+          description: Buyer legal name (billing_info name + last_name), omitted when absent.
+        doc_tipo:
+          type: string
+          description: >-
+            Document type string EXACTLY as the provider returns it
+            (identification.type). Opaque: never assume/map to a CPF/CNPJ enum —
+            render as-is (ADR-17).
+        doc_numero:
+          type: string
+          description: >-
+            Document number (identification.number). Rendered by the client only;
+            never logged (LGPD).
+        endereco:
+          $ref: '#/components/schemas/OrderCompradorFiscalEndereco'
+
+    OrderCompradorFiscalEndereco:
+      type: object
+      description: >-
+        Buyer billing address. Every field optional: absent (masked/blank) is
+        honest absence, never a fabricated value (ADR-17). uf_codigo/uf_nome are
+        the provider's own state code + label, rendered verbatim.
+      properties:
+        logradouro:
+          type: string
+        numero:
+          type: string
+        cidade:
+          type: string
+        uf_codigo:
+          type: string
+        uf_nome:
+          type: string
+        cep:
+          type: string
+        pais:
+          type: string
 
     OrderDecomposicao:
       type: object
