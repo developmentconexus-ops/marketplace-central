@@ -9,10 +9,63 @@ import (
 	"time"
 
 	connectorsdomain "marketplace-central/apps/server_core/internal/modules/connectors/domain"
+	erpinternalread "marketplace-central/apps/server_core/internal/modules/erp_import/adapters/internalread"
 	integrationsapp "marketplace-central/apps/server_core/internal/modules/integrations/application"
 	integrationsdomain "marketplace-central/apps/server_core/internal/modules/integrations/domain"
+	internalreadapp "marketplace-central/apps/server_core/internal/modules/internal_read/application"
+	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
+	internalreadports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 	marketports "marketplace-central/apps/server_core/internal/modules/market/ports"
 )
+
+// stubInternalReader is a ports.Reader whose FindProductsForLinking returns a
+// caller-supplied (candidates, err); the other methods are unused by the
+// identity adapter and panic if reached.
+type stubInternalReader struct {
+	candidates []internalreaddomain.ProductCandidate
+	err        error
+}
+
+func (s stubInternalReader) FindProductsForLinking(context.Context, internalreadports.FindProductsInput) ([]internalreaddomain.ProductCandidate, error) {
+	return s.candidates, s.err
+}
+
+func (stubInternalReader) GetSellableStock(context.Context, internalreadports.SellableStockInput) (internalreaddomain.SellableStock, error) {
+	panic("unused")
+}
+
+func (stubInternalReader) GetCurrentPrice(context.Context, internalreadports.CurrentPriceInput) (internalreaddomain.CurrentPrice, error) {
+	panic("unused")
+}
+
+func (stubInternalReader) GetCostAsOf(context.Context, internalreadports.CostAsOfInput) (internalreaddomain.CostAsOf, error) {
+	panic("unused")
+}
+
+func (stubInternalReader) GetSalesHistory(context.Context, internalreadports.SalesHistoryInput) (internalreaddomain.SalesHistory, error) {
+	panic("unused")
+}
+
+func (stubInternalReader) GetTaxInputs(context.Context, internalreadports.TaxInput) (internalreaddomain.TaxInputs, error) {
+	panic("unused")
+}
+
+// TestGetLocalIdentityMapsReaderNotFoundToSentinel guards FINDING-M02-COLLECT-4XX
+// item 4 (D-86): a codprod absent from the ERP source makes the internal_read
+// reader return *erp_import.ERPProductNotFoundError. GetLocalIdentity MUST
+// translate that to the market port sentinel marketports.ErrProductNotFound so
+// the collection handler answers 404, not a raw 500 internal_error.
+func TestGetLocalIdentityMapsReaderNotFoundToSentinel(t *testing.T) {
+	svc := internalreadapp.NewService(stubInternalReader{
+		err: &erpinternalread.ERPProductNotFoundError{ProductID: 90001},
+	})
+	adapter := newMarketProductIdentityReaderAdapter(svc, true, nil, nil)
+
+	_, err := adapter.GetLocalIdentity(context.Background(), "90001")
+	if !errors.Is(err, marketports.ErrProductNotFound) {
+		t.Fatalf("GetLocalIdentity() error = %v, want ErrProductNotFound", err)
+	}
+}
 
 func TestMapMarketConnectorError(t *testing.T) {
 	statusOf := func(err error) (int, bool) {

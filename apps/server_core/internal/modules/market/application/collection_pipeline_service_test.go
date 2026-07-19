@@ -270,8 +270,11 @@ func TestCollectNoEANSkipsCatalogEntirely(t *testing.T) {
 	if summary.Contagens["no_candidate"] != 1 {
 		t.Fatalf("contagens = %+v, want no_candidate=1", summary.Contagens)
 	}
-	if len(summary.Causas) != 1 || summary.Causas[0] != CollectionCauseNoIdentity {
+	if len(summary.Causas) != 1 || summary.Causas[0].Cause != CollectionCauseNoIdentity {
 		t.Fatalf("causas = %v, want [NO_IDENTITY]", summary.Causas)
+	}
+	if summary.Causas[0].Detail != nil {
+		t.Fatalf("NO_IDENTITY detail = %v, want nil (local resolution, no provider status)", *summary.Causas[0].Detail)
 	}
 	if len(fk.decisions.appended) != 1 || fk.decisions.appended[0].Status != domain.MatchStatusNoCandidate {
 		t.Fatalf("persisted decisions = %+v, want one NO_CANDIDATE row", fk.decisions.appended)
@@ -378,8 +381,11 @@ func TestCollectAcceptWithCatalogOffersDisabledProducesNoPriceEvidence(t *testin
 	if row.PriceEvidence != domain.PriceEvidenceStatusNoPriceEvidence {
 		t.Fatalf("decision row = %+v, want NO_PRICE_EVIDENCE", row)
 	}
-	if len(summary.Causas) != 1 || summary.Causas[0] != CollectionCauseFlagDisabled {
+	if len(summary.Causas) != 1 || summary.Causas[0].Cause != CollectionCauseFlagDisabled {
 		t.Fatalf("causas = %v, want [FLAG_DISABLED]", summary.Causas)
+	}
+	if summary.Causas[0].Detail == nil || *summary.Causas[0].Detail != "catalog offers capability disabled for this account" {
+		t.Fatalf("FLAG_DISABLED detail = %v, want the capability-disabled note", summary.Causas[0].Detail)
 	}
 	if len(fk.aggregates.appended) != 1 || fk.aggregates.appended[0].Status != domain.MarketAggregateStatusNoPriceEvidence || fk.aggregates.appended[0].NOffers != 0 {
 		t.Fatalf("persisted aggregates = %+v, want one NO_PRICE_EVIDENCE/n=0 row", fk.aggregates.appended)
@@ -456,8 +462,11 @@ func TestCollectProvider5xxOnOffersPreservesLatestValidAggregate(t *testing.T) {
 	if summary.Status != CollectionStatusPartial {
 		t.Fatalf("status = %v, want PARTIAL", summary.Status)
 	}
-	if len(summary.Causas) != 1 || summary.Causas[0] != CollectionCauseProvider5xx {
+	if len(summary.Causas) != 1 || summary.Causas[0].Cause != CollectionCauseProvider5xx {
 		t.Fatalf("causas = %v, want [PROVIDER_5XX]", summary.Causas)
+	}
+	if summary.Causas[0].Detail == nil || *summary.Causas[0].Detail != "catalog offers fetch: provider responded HTTP 503" {
+		t.Fatalf("PROVIDER_5XX detail = %v, want honest operation+status note", summary.Causas[0].Detail)
 	}
 	if len(fk.aggregates.appended) != 2 {
 		t.Fatalf("persisted aggregates = %d, want 2 (untouched valid + new no-price-evidence)", len(fk.aggregates.appended))
@@ -489,8 +498,11 @@ func TestCollectRateLimitedStopsRemainingProviderWork(t *testing.T) {
 	if summary.Status != CollectionStatusPartial {
 		t.Fatalf("status = %v, want PARTIAL", summary.Status)
 	}
-	if len(summary.Causas) != 1 || summary.Causas[0] != CollectionCauseProvider4xx {
+	if len(summary.Causas) != 1 || summary.Causas[0].Cause != CollectionCauseProvider4xx {
 		t.Fatalf("causas = %v, want [PROVIDER_4XX]", summary.Causas)
+	}
+	if summary.Causas[0].Detail == nil || *summary.Causas[0].Detail != "catalog offers fetch: provider rate-limited (HTTP 429)" {
+		t.Fatalf("PROVIDER_4XX detail = %v, want the rate-limited note", summary.Causas[0].Detail)
 	}
 	if fk.collector.ownPricingCalls != 0 || fk.collector.priceToWinCalls != 0 {
 		t.Fatalf("ownPricingCalls=%d priceToWinCalls=%d, want 0/0 (stopped after rate limit)", fk.collector.ownPricingCalls, fk.collector.priceToWinCalls)
@@ -526,8 +538,11 @@ func TestCollectOwnItemPricingNullPriceWritesFailedSnapshot(t *testing.T) {
 	if summary.Status != CollectionStatusPartial {
 		t.Fatalf("status = %v, want PARTIAL", summary.Status)
 	}
-	if len(summary.Causas) != 1 || summary.Causas[0] != CollectionCausePriceUnavailable {
+	if len(summary.Causas) != 1 || summary.Causas[0].Cause != CollectionCausePriceUnavailable {
 		t.Fatalf("causas = %v, want [PRICE_UNAVAILABLE]", summary.Causas)
+	}
+	if summary.Causas[0].Detail == nil || *summary.Causas[0].Detail != "own listing pricing: provider omitted our price" {
+		t.Fatalf("PRICE_UNAVAILABLE detail = %v, want the omitted-our-price note", summary.Causas[0].Detail)
 	}
 	if fk.collector.priceToWinCalls != 1 {
 		t.Fatalf("priceToWinCalls = %d, want 1 (null OurPrice must not suppress the price-to-win probe)", fk.collector.priceToWinCalls)
@@ -585,8 +600,11 @@ func TestCollectPriceToWinNullPriceWritesFailedSnapshot(t *testing.T) {
 	if summary.Status != CollectionStatusPartial {
 		t.Fatalf("status = %v, want PARTIAL", summary.Status)
 	}
-	if len(summary.Causas) != 1 || summary.Causas[0] != CollectionCausePriceUnavailable {
+	if len(summary.Causas) != 1 || summary.Causas[0].Cause != CollectionCausePriceUnavailable {
 		t.Fatalf("causas = %v, want [PRICE_UNAVAILABLE]", summary.Causas)
+	}
+	if summary.Causas[0].Detail == nil || *summary.Causas[0].Detail != "price-to-win: provider omitted the target price" {
+		t.Fatalf("PRICE_UNAVAILABLE detail = %v, want the omitted-target-price note", summary.Causas[0].Detail)
 	}
 
 	var winFailed, winValid, saleValid int
@@ -642,8 +660,11 @@ func TestCollectDeadlineExceededStopsRunWithTimeoutCause(t *testing.T) {
 	if summary.Status != CollectionStatusPartial {
 		t.Fatalf("status = %v, want PARTIAL", summary.Status)
 	}
-	if len(summary.Causas) != 1 || summary.Causas[0] != CollectionCauseTimeout {
+	if len(summary.Causas) != 1 || summary.Causas[0].Cause != CollectionCauseTimeout {
 		t.Fatalf("causas = %v, want [TIMEOUT]", summary.Causas)
+	}
+	if summary.Causas[0].Detail == nil || *summary.Causas[0].Detail != "own listing pricing: provider request timed out" {
+		t.Fatalf("TIMEOUT detail = %v, want the timeout note", summary.Causas[0].Detail)
 	}
 	if fk.collector.ownPricingCalls != 1 {
 		t.Fatalf("ownPricingCalls = %d, want 1 (stopped after timeout, listing-2 not probed)", fk.collector.ownPricingCalls)

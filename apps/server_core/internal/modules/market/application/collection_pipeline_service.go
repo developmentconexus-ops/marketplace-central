@@ -46,6 +46,16 @@ type CollectionDecision struct {
 	Blocking      *domain.BlockingState
 }
 
+// CollectionCauseDetail pairs a PARTIAL/skip cause with an optional honest,
+// MPC-native observability note. Detail names the pipeline operation that
+// failed and — when the provider surfaced one — its HTTP status; it never
+// carries a raw provider payload, URL, PII, or token. Detail is nil when the
+// cause has no extra provider-status context (e.g. a local NO_IDENTITY).
+type CollectionCauseDetail struct {
+	Cause  CollectionCause
+	Detail *string
+}
+
 // CollectionSummary is the synchronous result of one Collect call. Contagens
 // keys mirror amendment B.1's lower snake_case categories; sem_custo always
 // stays 0 here because cost is a verdict-read (S4) concern, never consulted
@@ -55,7 +65,7 @@ type CollectionSummary struct {
 	Status    CollectionStatus
 	Decisoes  []CollectionDecision
 	Contagens map[string]int
-	Causas    []CollectionCause
+	Causas    []CollectionCauseDetail
 }
 
 // CollectionPipelineService orchestrates the on-demand collection pipeline
@@ -103,13 +113,13 @@ func NewCollectionPipelineService(
 // and whether remaining provider work must stop (rate-limited).
 type collectionRun struct {
 	codprod string
-	causas  []CollectionCause
+	causas  []CollectionCauseDetail
 	partial bool
 	stopped bool
 }
 
-func (r *collectionRun) fail(cause CollectionCause, stop bool) {
-	r.causas = append(r.causas, cause)
+func (r *collectionRun) fail(cause CollectionCause, stop bool, detail *string) {
+	r.causas = append(r.causas, CollectionCauseDetail{Cause: cause, Detail: detail})
 	r.partial = true
 	if stop {
 		r.stopped = true
@@ -137,7 +147,7 @@ func (s *CollectionPipelineService) Collect(ctx context.Context, codprod string)
 		if err := s.decisions.AppendMatchDecision(ctx, decision); err != nil {
 			return CollectionSummary{}, err
 		}
-		run.causas = append(run.causas, CollectionCauseNoIdentity)
+		run.causas = append(run.causas, CollectionCauseDetail{Cause: CollectionCauseNoIdentity})
 		return buildSummary(run, decision.Status, domain.PriceEvidenceStatusNoPriceEvidence, blockingPtr(domain.BlockingStateNoCandidate)), nil
 	}
 
@@ -148,7 +158,7 @@ func (s *CollectionPipelineService) Collect(ctx context.Context, codprod string)
 	catalogResult, err := s.collector.SearchCatalogByEAN(ctx, *local.EAN)
 	if err != nil {
 		cause, stop := classifyProviderFailure(err)
-		run.fail(cause, stop)
+		run.fail(cause, stop, providerCauseDetail("catalog EAN search", err))
 	} else {
 		decision, err := domain.ResolveIdentity(local, catalogResult.Candidates, s.now())
 		if err != nil {
@@ -179,7 +189,7 @@ func (s *CollectionPipelineService) collectCatalogEvidence(ctx context.Context, 
 	catalogProduct, err := s.collector.GetCatalogProduct(ctx, catalogProductID)
 	if err != nil {
 		cause, stop := classifyProviderFailure(err)
-		run.fail(cause, stop)
+		run.fail(cause, stop, providerCauseDetail("catalog product fetch", err))
 		if err := s.persistNoPriceEvidenceAggregate(ctx, codprod, s.now()); err != nil {
 			return "", nil, err
 		}
@@ -189,14 +199,14 @@ func (s *CollectionPipelineService) collectCatalogEvidence(ctx context.Context, 
 	offers, err := s.collector.ListCatalogOffers(ctx, catalogProductID)
 	switch {
 	case errors.Is(err, ports.ErrCatalogOffersDisabled):
-		run.causas = append(run.causas, CollectionCauseFlagDisabled)
+		run.causas = append(run.causas, CollectionCauseDetail{Cause: CollectionCauseFlagDisabled, Detail: detailPtr("catalog offers capability disabled for this account")})
 		if err := s.persistNoPriceEvidenceAggregate(ctx, codprod, catalogProduct.FetchedAt); err != nil {
 			return "", nil, err
 		}
 		return domain.PriceEvidenceStatusNoPriceEvidence, blockingPtr(domain.BlockingStateNoPriceEvidence), nil
 	case err != nil:
 		cause, stop := classifyProviderFailure(err)
-		run.fail(cause, stop)
+		run.fail(cause, stop, providerCauseDetail("catalog offers fetch", err))
 		if err := s.persistNoPriceEvidenceAggregate(ctx, codprod, catalogProduct.FetchedAt); err != nil {
 			return "", nil, err
 		}
@@ -231,14 +241,14 @@ func (s *CollectionPipelineService) collectCompetitiveSignals(ctx context.Contex
 		pricing, err := s.collector.GetOwnItemPricing(ctx, listingID)
 		if err != nil {
 			cause, stop := classifyProviderFailure(err)
-			run.fail(cause, stop)
+			run.fail(cause, stop, providerCauseDetail("own listing pricing", err))
 			if err := s.appendFailedSnapshot(ctx, codprod, listingID, domain.MarketPriceSourceMLSalePrice, cause); err != nil {
 				return err
 			}
 			continue
 		}
 		if pricing.OurPrice == nil {
-			run.fail(CollectionCausePriceUnavailable, false)
+			run.fail(CollectionCausePriceUnavailable, false, detailPtr("own listing pricing: provider omitted our price"))
 			if err := s.appendFailedSnapshot(ctx, codprod, listingID, domain.MarketPriceSourceMLSalePrice, CollectionCausePriceUnavailable); err != nil {
 				return err
 			}
@@ -253,12 +263,12 @@ func (s *CollectionPipelineService) collectCompetitiveSignals(ctx context.Contex
 			switch {
 			case err != nil:
 				cause, stop := classifyProviderFailure(err)
-				run.fail(cause, stop)
+				run.fail(cause, stop, providerCauseDetail("price-to-win", err))
 				if err := s.appendFailedSnapshot(ctx, codprod, listingID, domain.MarketPriceSourceMLPriceToWin, cause); err != nil {
 					return err
 				}
 			case signal.TargetPrice == nil:
-				run.fail(CollectionCausePriceUnavailable, false)
+				run.fail(CollectionCausePriceUnavailable, false, detailPtr("price-to-win: provider omitted the target price"))
 				if err := s.appendFailedSnapshot(ctx, codprod, listingID, domain.MarketPriceSourceMLPriceToWin, CollectionCausePriceUnavailable); err != nil {
 					return err
 				}
@@ -346,6 +356,28 @@ func (s *CollectionPipelineService) appendFailedSnapshot(ctx context.Context, co
 		return err
 	}
 	return s.snapshots.AppendSnapshot(ctx, snapshot)
+}
+
+func detailPtr(s string) *string { return &s }
+
+// providerCauseDetail renders an honest, MPC-native observability note for a
+// provider failure: the pipeline operation that failed plus the provider's
+// HTTP status when it surfaced one. It deliberately excludes response bodies,
+// URLs, PII, and tokens — only the operation label and status class leave the
+// adapter boundary.
+func providerCauseDetail(operation string, err error) *string {
+	switch {
+	case errors.Is(err, context.DeadlineExceeded):
+		return detailPtr(operation + ": provider request timed out")
+	case errors.Is(err, ports.ErrRateLimited):
+		return detailPtr(operation + ": provider rate-limited (HTTP 429)")
+	default:
+		var statusErr *ports.ProviderStatusError
+		if errors.As(err, &statusErr) {
+			return detailPtr(fmt.Sprintf("%s: provider responded HTTP %d", operation, statusErr.StatusCode))
+		}
+		return detailPtr(operation + ": provider request failed")
+	}
 }
 
 func classifyProviderFailure(err error) (CollectionCause, bool) {
