@@ -4,10 +4,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PedidosPage } from "./PedidosPage";
 
 const listOrders = vi.fn();
+const getOrderSummary = vi.fn();
 
 vi.mock("../../app/ClientContext", () => ({
   useClient: () => ({
     listOrders: (...args: unknown[]) => listOrders(...args),
+    getOrderSummary: (...args: unknown[]) => getOrderSummary(...args),
   }),
 }));
 
@@ -22,6 +24,11 @@ function renderPage() {
       <PedidosPage />
     </QueryClientProvider>,
   );
+}
+
+async function goToLista() {
+  fireEvent.click(screen.getByRole("tab", { name: "Lista" }));
+  await screen.findByRole("tablist", { name: "Filtros de pedidos" });
 }
 
 const baseOrder = {
@@ -45,14 +52,107 @@ const baseOrder = {
 describe("PedidosPage", () => {
   beforeEach(() => {
     listOrders.mockReset();
+    getOrderSummary.mockReset();
+    getOrderSummary.mockResolvedValue({
+      today: 0,
+      seven_days: 0,
+      by_status: { novo: 2, faturar: 1, enviar: 3, enviado: 4 },
+    });
   });
 
-  it("renders the header and tabs, including a disabled Cancelados tab", async () => {
+  it("renders the header, KPI row and default Fila view", async () => {
     listOrders.mockResolvedValue({ items: [], next_cursor: null });
 
     renderPage();
 
     expect(await screen.findByRole("heading", { name: "Pedidos" })).toBeInTheDocument();
+    expect(screen.getByText("NOVOS")).toBeInTheDocument();
+    expect(screen.getByText("A FATURAR")).toBeInTheDocument();
+    expect(screen.getByText("A ENVIAR")).toBeInTheDocument();
+    expect(screen.getByText("ENVIADOS")).toBeInTheDocument();
+    expect(screen.getByText("DIFAL A PAGAR")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Fila", selected: true })).toBeInTheDocument();
+  });
+
+  it("renders the KPI live bucket counts and the DIFAL card as an honest unknown", async () => {
+    listOrders.mockResolvedValue({ items: [], next_cursor: null });
+
+    renderPage();
+
+    await screen.findByRole("heading", { name: "Pedidos" });
+    expect(await screen.findByText("2")).toBeInTheDocument(); // novo
+    expect(screen.getByText("1")).toBeInTheDocument(); // faturar
+    expect(screen.getByText("3")).toBeInTheDocument(); // enviar
+    expect(screen.getByText("4")).toBeInTheDocument(); // enviado
+    expect(screen.getByText("—")).toBeInTheDocument(); // DIFAL, gated
+  });
+
+  it("renders '—' for every bucket when the summary endpoint is unavailable", async () => {
+    listOrders.mockResolvedValue({ items: [], next_cursor: null });
+    getOrderSummary.mockRejectedValue({ status: 503, error: { code: "unavailable" } });
+
+    renderPage();
+
+    await screen.findByRole("heading", { name: "Pedidos" });
+    await waitFor(() => {
+      expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(5);
+    });
+    expect(screen.queryByText("0")).not.toBeInTheDocument();
+  });
+
+  it("switches between Fila, Lista and Kanban views", async () => {
+    listOrders.mockResolvedValue({
+      items: [{ ...baseOrder, sla: { due: "2026-07-20T10:00:00Z", atrasado: false } }],
+      next_cursor: null,
+    });
+
+    renderPage();
+
+    await screen.findByRole("heading", { name: "Pedidos" });
+    expect(await screen.findByText("ML-1001")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Fila de trabalho" })).toBeInTheDocument();
+
+    await goToLista();
+    expect(screen.getByRole("tab", { name: "Lista", selected: true })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Todos" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Kanban" }));
+    expect(await screen.findByText(/Kanban por etapa/)).toBeInTheDocument();
+  });
+
+  it("renders a disabled mutation control in the Fila view (em breve, no handler)", async () => {
+    listOrders.mockResolvedValue({
+      items: [{ ...baseOrder, nf_state: null }],
+      next_cursor: null,
+    });
+
+    renderPage();
+
+    const action = await screen.findByRole("button", { name: "Faturar" });
+    expect(action).toBeDisabled();
+  });
+
+  it("clicking the DIFAL KPI card selects the Fila view", async () => {
+    listOrders.mockResolvedValue({ items: [], next_cursor: null });
+
+    renderPage();
+
+    await screen.findByRole("heading", { name: "Pedidos" });
+    await goToLista();
+    fireEvent.click(screen.getByText("DIFAL A PAGAR"));
+    await waitFor(() => {
+      expect(screen.getByRole("tab", { name: "Fila", selected: true })).toBeInTheDocument();
+    });
+  });
+
+  it("renders the Lista tabs, including a disabled Cancelados tab", async () => {
+    listOrders.mockResolvedValue({ items: [], next_cursor: null });
+
+    renderPage();
+
+    await screen.findByRole("heading", { name: "Pedidos" });
+    await goToLista();
+
     expect(screen.getByRole("tab", { name: "Todos" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Atrasados" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Sem vínculo" })).toBeInTheDocument();
@@ -60,7 +160,7 @@ describe("PedidosPage", () => {
     expect(cancelados).toBeDisabled();
   });
 
-  it("renders enriched order rows with masked buyer and honest nulls, never raw buyer_nickname", async () => {
+  it("renders enriched order rows in Lista with masked buyer and honest nulls, never raw buyer_nickname", async () => {
     listOrders.mockResolvedValue({
       items: [
         {
@@ -83,6 +183,9 @@ describe("PedidosPage", () => {
 
     renderPage();
 
+    await screen.findByRole("heading", { name: "Pedidos" });
+    await goToLista();
+
     expect(await screen.findByText("ML-1001")).toBeInTheDocument();
     expect(screen.getByText("J. S.")).toBeInTheDocument();
     expect(screen.queryByText("JOAOSILVA123")).not.toBeInTheDocument();
@@ -91,12 +194,11 @@ describe("PedidosPage", () => {
     expect(screen.getByText("sem vínculo")).toBeInTheDocument();
     expect(screen.getByText("custo incompleto")).toBeInTheDocument();
 
-    // honest null: PO2 has no destino_uf / sla -> renders as unknown-value dash, not fabricated data
     const rows = screen.getAllByRole("row");
     expect(rows.length).toBeGreaterThan(1);
   });
 
-  it("filters to the atrasados tab client-side", async () => {
+  it("filters to the atrasados tab client-side in Lista", async () => {
     listOrders.mockResolvedValue({
       items: [
         { ...baseOrder, sla: { due: "2026-07-15T10:00:00Z", atrasado: true } },
@@ -107,6 +209,8 @@ describe("PedidosPage", () => {
 
     renderPage();
 
+    await screen.findByRole("heading", { name: "Pedidos" });
+    await goToLista();
     await screen.findByText("ML-1001");
     fireEvent.click(screen.getByRole("tab", { name: "Atrasados" }));
 
