@@ -201,3 +201,13 @@ Discharges every ROUTED-TO-HUB item from the cold-static verdict above:
 **Zero Mercado Livre writes**: every mutation control disabled ("disponível em breve" fila+drawer; Kanban "sem arrastar"); MPC_PROVIDER_WRITES_ENABLED unset holds.
 
 **OVERALL: M-08 pedidos CLOSED on the read-only-rich + C1 honest-"—" bar (D-57/D-62/D-70). Only QA passes a milestone — this P7 is that QA and it PASSED.** C2 order-actuals decomposition = post-demo backlog.
+
+---
+
+## ⚠ CLOSE REVERSED — M-08 REOPENED (2026-07-19, D-73)
+
+The D-72 P7 CLOSE STAMP above is **REVERSED**. The hub P7 "PASS" was wrong: the pedidos KPI "A ENVIAR 24 / ENVIADOS 0" is a DEFECT, not real data. Operator (ground truth on the real ML account) flagged that most of those orders are already shipped/delivered; the hub had wrongly accepted the blank Rastreio/"—" as honest-degrade when it was a live shipment-read failure.
+
+Root cause (Context7 ML-docs-grounded): the connector omits the required `x-format-new: true` header on GET /shipments/{id}/costs → ML returns the legacy shape → decode fails (CONNECTORS_PROVIDER_PAYLOAD_INVALID); getShipmentInfo treats that decode failure as fatal (fallback catches only 404) → the whole shipment read dies → shipment status is lost → DeriveOrderBucket falls back to order.provider_status ("paid" for life on ML) → every paid order with a label buckets A ENVIAR, ENVIADO unreachable. KPI compound: GetOrderBucketCounts is pure SQL with no shipment-status column.
+
+Correction dispatched: **CHIP-M08-SHIPFIX** (task_0ed1ee6f) — connector x-format-new + non-fatal costs-decode degrade + substatus; DeriveOrderBucket consumes shipment status; FE-derived KPI counts. M-08 is NOT closed; re-close requires that chip landing + a fresh hub P7 live-drive. See HUB-LEDGER D-73.
