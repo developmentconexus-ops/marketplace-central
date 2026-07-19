@@ -205,7 +205,7 @@ export function AnunciosPage() {
               className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
                 state.tab === tab.value
                   ? "border-accent bg-accent text-white"
-                  : "border-border bg-white text-muted hover:border-border-2 hover:bg-surface-2"
+                  : "border-border bg-surface text-muted hover:border-border-2 hover:bg-surface-2"
               }`}
               onClick={() => updateState({ ...state, tab: tab.value })}
             >
@@ -260,12 +260,12 @@ export function AnunciosPage() {
             value={state.q}
             onChange={(event) => updateState({ ...state, q: event.target.value }, { replace: true })}
             placeholder="Título, SKU ou MLB"
-            className="rounded-lg border border-border bg-white px-3 py-2 font-normal text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent-soft"
+            className="rounded-lg border border-border bg-surface px-3 py-2 font-normal text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent-soft"
           />
         </label>
       </div>
 
-      <section aria-labelledby="anuncios-summary-title" className="rounded-xl border border-border bg-white p-4">
+      <section aria-labelledby="anuncios-summary-title" className="rounded-xl border border-border bg-surface p-4">
         <h2 id="anuncios-summary-title" className="text-sm font-semibold text-ink">
           Resumo
         </h2>
@@ -281,7 +281,7 @@ export function AnunciosPage() {
         />
       </section>
 
-      <section aria-labelledby="anuncios-list-title" className="rounded-xl border border-border bg-white p-4">
+      <section aria-labelledby="anuncios-list-title" className="rounded-xl border border-border bg-surface p-4">
         <h2 id="anuncios-list-title" className="text-sm font-semibold text-ink">
           Lista de anúncios
         </h2>

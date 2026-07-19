@@ -80,7 +80,7 @@ export function ListingsSummary({
                 className={`rounded-full border px-3 py-1 text-sm font-medium transition-colors ${
                   active
                     ? "border-accent bg-accent text-white"
-                    : "border-border bg-surface-2 text-muted hover:border-border-2 hover:bg-surface-2"
+                    : "border-border bg-surface-2 text-muted hover:border-border-2 hover:bg-accent-soft"
                 }`}
               >
                 {`${exceptionChipLabels[key]}: ${count}`}
