@@ -62,9 +62,9 @@ type collectionDecisionWire struct {
 }
 
 // collectionCauseWire adds codprod (same product for the whole single-product
-// run) and detail (always null: the domain carries no per-cause detail
-// string, so honesty means null, not a fabricated one) around the flat
-// application.CollectionCause enum.
+// run) around the application cause. Detail carries the application's honest,
+// MPC-native observability note (operation + provider status) when present, or
+// null when the cause has no extra provider context — never a fabricated one.
 type collectionCauseWire struct {
 	Codprod string  `json:"codprod"`
 	Reason  string  `json:"reason"`
@@ -83,7 +83,7 @@ func newCollectionResponse(summary application.CollectionSummary) collectionResp
 	}
 	causas := make([]collectionCauseWire, 0, len(summary.Causas))
 	for _, c := range summary.Causas {
-		causas = append(causas, collectionCauseWire{Codprod: summary.Codprod, Reason: string(c), Detail: nil})
+		causas = append(causas, collectionCauseWire{Codprod: summary.Codprod, Reason: string(c.Cause), Detail: c.Detail})
 	}
 	return collectionResponse{
 		Status:    string(summary.Status),
