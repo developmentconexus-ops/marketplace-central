@@ -11,7 +11,10 @@ const (
 	// override), overriding whatever the resolver would have returned.
 	// Degrau 0 (not resolved at all), never an estimate.
 	FonteManual Fonte = "MANUAL"
-	// (future: FonteListing, FonteConta, FonteML for degraus 1-3)
+	// FonteCotacao is degrau 3: a commission quoted live from the provider
+	// catalog match + listing_prices for the resolved category (design §11).
+	// It carries a real source timestamp in ComponentResolution.Data.
+	FonteCotacao Fonte = "COTACAO"
 )
 
 // ComponentResolution is one resolved tariff component (commission OR
@@ -22,9 +25,10 @@ type ComponentResolution struct {
 	Fonte      Fonte
 	Degrau     int
 	Estimativa bool
-	// Data (source timestamp) intentionally omitted at degrau 4 (config has
-	// no per-resolve timestamp); add when degraus 1-3 land. Do NOT stub a
-	// fake timestamp.
+	// Data is the source timestamp of a live resolve (degrau 3 COTACAO stamps
+	// the catalog-match FetchedAt). nil at degrau 4 — config has no per-resolve
+	// timestamp and ADR-17 forbids fabricating one.
+	Data *string
 }
 
 // TariffResolution bundles the resolved components for one solve/decompose.

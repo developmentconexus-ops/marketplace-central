@@ -388,9 +388,9 @@ type tarifaDTO struct {
 }
 
 // toTarifaDTO renders the resolved tariff stamps. `data` (source timestamp) is
-// always null at degrau 4 — the config default has no authoritative per-resolve
-// timestamp; fabricating one would violate ADR-17 (no invented operational
-// facts). Degraus 1-3 will populate it when they land.
+// null at degrau 4 — the config default has no authoritative per-resolve
+// timestamp; fabricating one would violate ADR-17. Degrau 3 (COTACAO) carries a
+// real timestamp in ComponentResolution.Data, mapped straight through here.
 func toTarifaDTO(t *domain.TariffResolution) *tarifaDTO {
 	if t == nil {
 		return nil
@@ -398,11 +398,11 @@ func toTarifaDTO(t *domain.TariffResolution) *tarifaDTO {
 	return &tarifaDTO{
 		Comissao: tarifaComissaoDTO{
 			Valor: t.Comissao.Valor, Fonte: string(t.Comissao.Fonte),
-			Degrau: t.Comissao.Degrau, Data: nil, Estimativa: t.Comissao.Estimativa,
+			Degrau: t.Comissao.Degrau, Data: t.Comissao.Data, Estimativa: t.Comissao.Estimativa,
 		},
 		Frete: tarifaFreteDTO{
 			Valor: t.Frete.Valor, Fonte: string(t.Frete.Fonte),
-			Degrau: t.Frete.Degrau, Data: nil, Estimativa: t.Frete.Estimativa,
+			Degrau: t.Frete.Degrau, Data: t.Frete.Data, Estimativa: t.Frete.Estimativa,
 			SemDados: t.Frete.Valor == nil,
 		},
 	}
