@@ -304,6 +304,19 @@ func accountRefForInstallation(tenantID string, inst integrationsdomain.Installa
 	}
 }
 
+// OwnSellerID resolves the installation's own marketplace seller id (the
+// provider account id) so the pipeline can exclude our own offer from the
+// competitor aggregate. It reuses the same Connected-installation resolution as
+// the catalog reads, so by the time offers exist a ref is resolvable; an empty
+// ProviderAccountID flows through as "" (exclude nothing), never a guess.
+func (r *marketPriceIntelCollectorAdapter) OwnSellerID(ctx context.Context) (string, error) {
+	ref, err := r.accountRefForTenant(ctx)
+	if err != nil {
+		return "", err
+	}
+	return ref.ProviderAccountID, nil
+}
+
 func (r *marketPriceIntelCollectorAdapter) SearchCatalogByEAN(ctx context.Context, ean string) (marketports.CatalogIdentityResult, error) {
 	ref, err := r.accountRefForTenant(ctx)
 	if err != nil {
@@ -622,6 +635,9 @@ func (a *listingsEvidenceAdapter) Aggregates(ctx context.Context, codprods []str
 			ProductID: agg.ProductID,
 			NOffers:   agg.NOffers,
 			NSellers:  agg.NSellers,
+			Median:    convertListingsMoney(agg.Median),
+			MinValid:  convertListingsMoney(agg.MinValid),
+			MaxValid:  convertListingsMoney(agg.MaxValid),
 		})
 	}
 	return out, nil

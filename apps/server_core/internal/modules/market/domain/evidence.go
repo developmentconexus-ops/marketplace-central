@@ -163,6 +163,7 @@ type MarketAggregate struct {
 	ProductID  string                `json:"product_id"`
 	Median     *Money                `json:"median,omitempty"`
 	MinValid   *Money                `json:"min_valid,omitempty"`
+	MaxValid   *Money                `json:"max_valid,omitempty"`
 	NOffers    int                   `json:"n_offers"`
 	NSellers   int                   `json:"n_sellers"`
 	Source     MarketPriceSource     `json:"source"`
@@ -175,6 +176,7 @@ type MarketAggregateInput struct {
 	ProductID  string
 	Median     *Money
 	MinValid   *Money
+	MaxValid   *Money
 	NOffers    int
 	NSellers   int
 	Source     MarketPriceSource
@@ -316,13 +318,13 @@ func NewMarketAggregate(input MarketAggregateInput) (MarketAggregate, error) {
 	if input.NOffers < 0 || input.NSellers < 0 {
 		return MarketAggregate{}, fmt.Errorf("aggregate counts must not be negative")
 	}
-	for field, money := range map[string]*Money{"median": input.Median, "min_valid": input.MinValid} {
+	for field, money := range map[string]*Money{"median": input.Median, "min_valid": input.MinValid, "max_valid": input.MaxValid} {
 		if err := validatePositiveMoney(field, money); err != nil {
 			return MarketAggregate{}, err
 		}
 	}
 	return MarketAggregate{
-		ProductID: strings.TrimSpace(input.ProductID), Median: input.Median, MinValid: input.MinValid,
+		ProductID: strings.TrimSpace(input.ProductID), Median: input.Median, MinValid: input.MinValid, MaxValid: input.MaxValid,
 		NOffers: input.NOffers, NSellers: input.NSellers, Source: input.Source,
 		FetchedAt: input.FetchedAt, ComputedAt: input.ComputedAt, Status: input.Status,
 	}, nil

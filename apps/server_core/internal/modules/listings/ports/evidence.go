@@ -19,11 +19,17 @@ type EvidenceSignal struct {
 }
 
 // EvidenceAggregate is listings' own mirror of the market module's
-// MarketAggregate (IC-03, por codprod) — only the counters ReadService needs.
+// MarketAggregate (IC-03, por codprod) — the counters plus the competitor
+// price range (min — median — max) ReadService surfaces as the "faixa de
+// mercado". The range Money pointers are nil when the market has no valid
+// competitor stats (ADR-17: absent renders "—", never a fabricated zero).
 type EvidenceAggregate struct {
 	ProductID string
 	NOffers   int
 	NSellers  int
+	Median    *domain.Money
+	MinValid  *domain.Money
+	MaxValid  *domain.Money
 }
 
 // EvidenceVerdict is listings' own mirror of the market module's Verdict

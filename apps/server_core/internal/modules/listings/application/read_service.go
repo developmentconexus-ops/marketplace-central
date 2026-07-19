@@ -644,6 +644,9 @@ func (s ReadService) enrichSignals(ctx context.Context, items []domain.ListingRe
 				MatchStatus: verdict.MatchStatus,
 				NOffers:     agg.NOffers,
 				NSellers:    agg.NSellers,
+				Median:      agg.Median,
+				MinValid:    agg.MinValid,
+				MaxValid:    agg.MaxValid,
 				Evidence:    domain.SignalEvidence{Source: evidenceSourceMLPriceToWin, FetchedAt: sig.FetchedAt},
 			}
 		}
