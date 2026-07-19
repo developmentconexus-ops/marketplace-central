@@ -118,10 +118,14 @@ New surfacing tests:
 | `tsc --noEmit` (sdk-runtime) | exit 0 |
 | OpenAPI YAML parse + schema presence | OK |
 
-## Governance lane — <FILLED AFTER RUN>
+## Governance lane — PASSED
 
-`harness:governance -BaseSha 62208dfef8c9474aea7af33f32cea0112b501395`
-(run from the clean chip worktree, post-commit).
+`harness:governance -BaseSha 62208dfef8c9474aea7af33f32cea0112b501395` (run from
+the clean chip worktree, post-commit @af4ff9e) → `status=passed`. Only
+pre-existing `baseline_exception=*` entries listed (direct-reader secrets,
+migration-0021 dup, module-edge adapters, production-panic pricing) — none
+touched by this delta. No new drift: the contract change is purely additive
+(OpenAPI + SDK in the same commit), no `modules.json` / migration delta.
 
 ## P6 dual gate — PASS / PASS (agreement)
 
