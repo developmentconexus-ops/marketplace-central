@@ -617,6 +617,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		productLinkSummarySvc,
 		ordersSummarySvc,
 		operationSvc,
+		erpQuerySvc,
 		time.Now,
 	)
 	dashboardtransport.NewHandler(dashboardSvc).Register(mux)
