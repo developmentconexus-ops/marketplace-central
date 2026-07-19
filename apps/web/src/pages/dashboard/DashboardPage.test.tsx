@@ -50,11 +50,15 @@ describe("DashboardPage", () => {
     listOrders.mockResolvedValue({ items: [], next_cursor: null });
   });
 
-  it("renders '0' for a real zero and '—' for a null value from a healthy source, never '0' for the null one", async () => {
+  // A measured zero must render "0", never a blank/absent glyph (ADR-17: real zero ≠ unknown).
+  // The null direction (source down) is covered by the "isolated ErrorState" test below —
+  // the backend never emits a null KPI without also marking its source degraded, so a
+  // "null from a healthy source" shape is unreachable and is deliberately not asserted here.
+  it("renders '0' for a measured zero, never a blank glyph", async () => {
     getDashboardSummary.mockResolvedValue({
       ...baseSummary,
       orders_today: 0,
-      orders_7d: null,
+      orders_7d: 0,
       degraded: [],
     });
 
@@ -64,8 +68,8 @@ describe("DashboardPage", () => {
     expect(hojeLabel.nextElementSibling).toHaveTextContent("0");
 
     const semanaLabel = await screen.findByText("Vendas 7 dias");
-    expect(semanaLabel.nextElementSibling).toHaveTextContent("—");
-    expect(semanaLabel.nextElementSibling?.textContent?.trim()).not.toBe("0");
+    expect(semanaLabel.nextElementSibling).toHaveTextContent("0");
+    expect(semanaLabel.nextElementSibling?.textContent?.trim()).not.toBe("—");
   });
 
   it("shows an isolated ErrorState on the sync-errors card when 'listings' is degraded, while other cards render normally", async () => {
