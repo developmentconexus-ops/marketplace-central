@@ -205,8 +205,11 @@ describe("PricingPage scaffold", () => {
     fireEvent.click(screen.getByTestId("stub-reload-valid"));
 
     await waitFor(() => expect(pricingDecompose).toHaveBeenCalled());
-    const lastArg = pricingDecompose.mock.calls.at(-1)![0];
+    const lastArg = pricingDecompose.mock.calls.at(-1)![0] as Record<string, unknown>;
     expect(lastArg).toMatchObject({ preco: "77.00", modalidade: "classico", product_id: 90001 });
+    // comissao_pct must be OMITTED so the backend resolver chain runs (COTACAO/PADRAO),
+    // never a hardcoded pct that forces the response into a MANUAL override.
+    expect(lastArg).not.toHaveProperty("comissao_pct");
   });
 
   it("does not silently load a different product when a reloaded scenario's product is absent", async () => {

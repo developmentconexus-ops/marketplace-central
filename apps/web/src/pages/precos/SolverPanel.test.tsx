@@ -14,7 +14,7 @@ function renderPanel(props: Partial<React.ComponentProps<typeof SolverPanel>> = 
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <SolverPanel productId={90001} comissaoPct="17" modalidade="premium" {...props} />
+      <SolverPanel productId={90001} modalidade="premium" {...props} />
     </QueryClientProvider>,
   );
 }
@@ -52,12 +52,15 @@ describe("SolverPanel — margem-alvo → preço", () => {
     fireEvent.click(screen.getByTestId("solver-submit"));
 
     await waitFor(() => expect(pricingSolveTarget).toHaveBeenCalledTimes(1));
-    expect(pricingSolveTarget.mock.calls[0][0]).toMatchObject({
+    const solveArg = pricingSolveTarget.mock.calls[0][0] as Record<string, unknown>;
+    expect(solveArg).toMatchObject({
       margem_alvo_pct: "20",
-      comissao_pct: "17",
       modalidade: "premium",
       product_id: 90001,
     });
+    // comissao_pct must be OMITTED so the backend resolver chain runs (COTACAO/PADRAO),
+    // never a hardcoded pct that forces a MANUAL override.
+    expect(solveArg).not.toHaveProperty("comissao_pct");
     expect(await screen.findByTestId("solver-price")).toHaveTextContent("104.50");
     expect(screen.queryByTestId("solver-unreachable")).toBeNull();
   });
@@ -327,7 +330,7 @@ describe("SolverPanel — margem-alvo → preço", () => {
 
     rerender(
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-        <SolverPanel productId={90002} comissaoPct="17" modalidade="premium" />
+        <SolverPanel productId={90002} modalidade="premium" />
       </QueryClientProvider>,
     );
 
