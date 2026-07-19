@@ -560,6 +560,7 @@ export interface OrderReadItem {
   sale_fee_amount?: number;
   link_quality: OrderLinkQuality;
   internal_product_id?: number;
+  custo_unitario?: number;
 }
 
 export interface OrderReadPayment {
@@ -567,6 +568,52 @@ export interface OrderReadPayment {
   provider_status?: string;
   transaction_amount?: number;
   total_paid_amount?: number;
+}
+
+export interface OrderBuyer {
+  display: string;
+  city?: string;
+  uf?: string;
+}
+
+export interface OrderSla {
+  due?: string;
+  atrasado?: boolean;
+}
+
+export interface OrderRastreio {
+  shipment_id: string;
+  status: string;
+}
+
+// OrderBucket is the workflow bucket derived from DeriveOrderBucket
+// (server-side single authority). Always present on OrderRead (ADR-17).
+export type OrderBucket = "novo" | "faturar" | "enviar" | "enviado" | "cancelado";
+
+// OrderDecomposicao is the order-level cost/fee decomposition (F01-C1).
+// Every amount is number|null: null means the component could not be
+// honestly sourced (ADR-17). componentes_desconhecidos names every unknown
+// source component so a null amount is always explained.
+export interface OrderDecomposicao {
+  comissao: number | null;
+  taxa_fixa: number | null;
+  frete: number | null;
+  imposto: number | null;
+  difal: number | null;
+  tarifa_full: number | null;
+  custo: number | null;
+  margem_valor: number | null;
+  margem_pct: number | null;
+  componentes_desconhecidos: string[];
+}
+
+// OrderDifal is the order-level DIFAL fact (F01-C1). All fields nullable:
+// null means unknown (ADR-17).
+export interface OrderDifal {
+  amount: number | null;
+  uf_route: string | null;
+  due_date: string | null;
+  paid: boolean | null;
 }
 
 export interface OrderRead {
@@ -585,11 +632,33 @@ export interface OrderRead {
   provider_updated_at: string | null;
   items: OrderReadItem[];
   payments: OrderReadPayment[];
+  vinculo_status?: string;
+  buyer?: OrderBuyer;
+  componentes_desconhecidos?: string[];
+  sla?: OrderSla;
+  destino_uf?: string;
+  rastreio?: OrderRastreio;
+  bucket: OrderBucket;
+  retorno_liquido?: number | null;
+  margem_pct?: number | null;
+  decomposicao: OrderDecomposicao;
+  difal: OrderDifal;
 }
 
 export interface OrderPage {
   items: OrderRead[];
   next_cursor: string | null;
+}
+
+export interface OrderSummary {
+  today: number;
+  seven_days: number;
+  by_status?: {
+    novo: number;
+    faturar: number;
+    enviar: number;
+    enviado: number;
+  };
 }
 
 export interface OrderListOptions {
@@ -1745,6 +1814,10 @@ export function createMarketplaceCentralClient(options: {
     getOrder: (installationId: string, providerOrderId: string) =>
       getJson<OrderRead>(
         `/orders/${encodeURIComponent(providerOrderId)}?installation_id=${encodeURIComponent(installationId)}`,
+      ),
+    getOrderSummary: (installationId: string, options?: { by?: "status" }) =>
+      getJson<OrderSummary>(
+        `/orders/summary?installation_id=${encodeURIComponent(installationId)}${options?.by ? `&by=${encodeURIComponent(options.by)}` : ""}`,
       ),
     getAssistedSankhyaLinkage: (installationId: string, providerOrderId: string) =>
       getJson<AssistedSankhyaLinkageResponse>(

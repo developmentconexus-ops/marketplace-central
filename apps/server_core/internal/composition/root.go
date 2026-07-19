@@ -498,8 +498,11 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	ordersListSvc := ordersapp.NewListService(ordersRepo)
 	ordersReadRepo := orderspostgres.NewOrderReadRepository(pool, cfg.DefaultTenantID)
 	ordersReadSvc := ordersapp.NewReadService(ordersReadRepo)
-	ordersSummarySvc := ordersapp.NewSummaryService(ordersRepo)
-	orderstransport.NewHandlerWithReader(ordersImportSvc, ordersReadSvc).Register(mux)
+	ordersSummarySvc := ordersapp.NewSummaryServiceWithBuckets(ordersRepo, ordersRepo)
+	ordersCostReader := newOrdersCostReaderAdapter(internalReadSvc, internalReadAvailable)
+	ordersShipmentReader := newOrdersShipmentReaderAdapter(mercadoLivreCapabilities, installationSvc, cfg.DefaultTenantID)
+	ordersEnrichSvc := ordersapp.NewEnrichService(ordersCostReader, ordersShipmentReader, slog.Default())
+	orderstransport.NewHandlerWithSummary(ordersImportSvc, ordersReadSvc, &ordersEnrichSvc, ordersSummarySvc).Register(mux)
 
 	linkageRepo := orderspostgres.NewSankhyaLinkageRepository(pool, cfg.DefaultTenantID)
 	var assistedLinkageApp orderstransport.AssistedSankhyaLinkageApplication

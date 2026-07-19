@@ -1731,6 +1731,51 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /orders/summary:
+    get:
+      summary: Get today/last-7-days order counts for an installation
+      operationId: getOrdersSummary
+      description: >-
+        Additive read-only counts endpoint (F01-S5). Backed by the existing
+        orders summary store also used by the dashboard; the runtime DTO is
+        the source of truth (lock-exception D-02). The optional "by" query
+        param selects the response dimension (F01-A): absent keeps the
+        default {today, seven_days} shape; "status" additionally returns
+        by_status bucket counts.
+      parameters:
+        - name: installation_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: by
+          in: query
+          required: false
+          description: >-
+            When set to "status", the response additionally includes
+            by_status bucket counts (novo/faturar/enviar/enviado).
+          schema:
+            type: string
+            enum: [status]
+      responses:
+        "200":
+          description: Order counts for today and the last 7 days
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderSummary'
+        "400":
+          description: Missing installation_id (installation_required)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "503":
+          description: Orders summary store is not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /orders/{provider_order_id}:
     get:
       summary: Get a persisted marketplace order
@@ -4875,6 +4920,9 @@ components:
           $ref: '#/components/schemas/OrderLinkQuality'
         internal_product_id:
           type: integer
+        custo_unitario:
+          type: number
+          format: double
 
     OrderReadPayment:
       type: object
@@ -4910,6 +4958,9 @@ components:
         - provider_updated_at
         - items
         - payments
+        - bucket
+        - decomposicao
+        - difal
       properties:
         provider_order_id:
           type: string
@@ -4959,6 +5010,170 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/OrderReadPayment'
+        vinculo_status:
+          type: string
+          enum:
+            - OK
+            - SEM_VINCULO
+        buyer:
+          $ref: '#/components/schemas/OrderBuyer'
+        componentes_desconhecidos:
+          type: array
+          items:
+            type: string
+        sla:
+          $ref: '#/components/schemas/OrderSla'
+        destino_uf:
+          type: string
+        rastreio:
+          $ref: '#/components/schemas/OrderRastreio'
+        bucket:
+          type: string
+          enum:
+            - novo
+            - faturar
+            - enviar
+            - enviado
+            - cancelado
+        retorno_liquido:
+          type: number
+          format: double
+          nullable: true
+        margem_pct:
+          type: number
+          format: double
+          nullable: true
+        decomposicao:
+          $ref: '#/components/schemas/OrderDecomposicao'
+        difal:
+          $ref: '#/components/schemas/OrderDifal'
+
+    OrderBuyer:
+      type: object
+      required:
+        - display
+      properties:
+        display:
+          type: string
+        city:
+          type: string
+        uf:
+          type: string
+
+    OrderSla:
+      type: object
+      properties:
+        due:
+          type: string
+          format: date-time
+        atrasado:
+          type: boolean
+
+    OrderRastreio:
+      type: object
+      required:
+        - shipment_id
+        - status
+      properties:
+        shipment_id:
+          type: string
+        status:
+          type: string
+
+    OrderDecomposicao:
+      type: object
+      required:
+        - componentes_desconhecidos
+      properties:
+        comissao:
+          type: number
+          format: double
+          nullable: true
+        taxa_fixa:
+          type: number
+          format: double
+          nullable: true
+        frete:
+          type: number
+          format: double
+          nullable: true
+        imposto:
+          type: number
+          format: double
+          nullable: true
+        difal:
+          type: number
+          format: double
+          nullable: true
+        tarifa_full:
+          type: number
+          format: double
+          nullable: true
+        custo:
+          type: number
+          format: double
+          nullable: true
+        margem_valor:
+          type: number
+          format: double
+          nullable: true
+        margem_pct:
+          type: number
+          format: double
+          nullable: true
+        componentes_desconhecidos:
+          type: array
+          items:
+            type: string
+
+    OrderDifal:
+      type: object
+      properties:
+        amount:
+          type: number
+          format: double
+          nullable: true
+        uf_route:
+          type: string
+          nullable: true
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
+        paid:
+          type: boolean
+          nullable: true
+
+    OrderSummary:
+      type: object
+      required:
+        - today
+        - seven_days
+      properties:
+        today:
+          type: integer
+        seven_days:
+          type: integer
+        by_status:
+          description: >-
+            Present only when the request includes by=status (F01-A).
+            Server-accurate bucket counts over the whole installation for the
+            pedidos Lista status tabs, Kanban column headers, and KPI row.
+          type: object
+          required:
+            - novo
+            - faturar
+            - enviar
+            - enviado
+          properties:
+            novo:
+              type: integer
+            faturar:
+              type: integer
+            enviar:
+              type: integer
+            enviado:
+              type: integer
 
     ImportMarketplaceOrdersRequest:
       type: object

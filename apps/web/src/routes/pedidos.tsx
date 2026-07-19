@@ -1,5 +1,5 @@
-import { WorkspacePlaceholder } from "../pages/WorkspacePlaceholder";
+import { PedidosPage } from "../pages/pedidos/PedidosPage";
 
 export function PedidosRoute() {
-  return <WorkspacePlaceholder />;
+  return <PedidosPage />;
 }

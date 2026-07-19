@@ -1,0 +1,345 @@
+import type { OrderBucket, OrderLinkQuality, OrderRead, OrderReadItem } from "@marketplace-central/sdk-runtime";
+import { useQuery } from "@tanstack/react-query";
+import { DetailDrawer, ErrorState, LoadingState, UnknownValue } from "@marketplace-central/ui";
+import { QUERY_STALE_TIME } from "@marketplace-central/web-query";
+import { useClient } from "../../app/ClientContext";
+import { useInstallation } from "../../app/InstallationContext";
+import { actionLabelForBucket, formatDateTime, formatMoney, formatPercent } from "./pedidosFormatters";
+
+export interface PedidoDrawerProps {
+  orderId: string | null;
+  onClose: () => void;
+}
+
+// ordersQueryKeys (web-query barrel) has only `.list`, no detail key — a local, stable key
+// mirrors the pattern PedidosPage already uses for the summary query (no barrel key exists).
+const orderDetailKey = (installationId: string, orderId: string) =>
+  ["orders", "detail", installationId, orderId] as const;
+
+// Mirrors PedidosTable's local stateTag idiom (not exported from packages/ui) — kept as a small
+// local duplicate here, same as ListingDetailPanel/VinculoDrawer already do for their own drawers.
+function stateTag(label: string, className = "bg-slate-100 text-slate-700") {
+  return (
+    <span className={`inline-flex whitespace-nowrap rounded px-2 py-0.5 text-xs font-medium ${className}`}>
+      {label}
+    </span>
+  );
+}
+
+const bucketStatusLabels: Record<OrderBucket, string> = {
+  novo: "aguard. pagamento",
+  faturar: "pago · falta NF",
+  enviar: "NF emitida",
+  enviado: "enviado",
+  cancelado: "cancelado",
+};
+
+const linkQualityLabels: Record<OrderLinkQuality, string> = {
+  resolved: "vinculado",
+  rejected: "rejeitado",
+  conflict: "divergente",
+  unresolved: "sem vínculo",
+  missing: "sem SKU",
+};
+
+const linkQualityClasses: Record<OrderLinkQuality, string> = {
+  resolved: "bg-emerald-100 text-emerald-800",
+  rejected: "bg-red-100 text-red-800",
+  conflict: "bg-amber-100 text-amber-800",
+  unresolved: "bg-slate-100 text-slate-700",
+  missing: "bg-slate-100 text-slate-500",
+};
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="flex flex-col gap-2">
+      <h4 className="text-[10px] font-semibold uppercase tracking-wide text-faint">{title}</h4>
+      {children}
+    </section>
+  );
+}
+
+function ItemRow({ item }: { item: OrderReadItem }) {
+  const title = item.title || item.seller_sku || item.provider_item_id;
+  const lineTotal = item.unit_price === undefined ? null : formatMoney(item.quantity * item.unit_price);
+  const custo = item.custo_unitario === undefined ? null : formatMoney(item.custo_unitario);
+  return (
+    <div className="flex flex-col gap-1 border-b border-border-2 pb-2 last:border-b-0 last:pb-0">
+      <div className="flex items-baseline gap-2">
+        <span className="min-w-0 flex-1 truncate text-sm">{title}</span>
+        <span className="flex-none font-mono text-xs">
+          {item.quantity}× {lineTotal ?? <UnknownValue />}
+        </span>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 text-[11px] text-faint">
+        {stateTag(linkQualityLabels[item.link_quality], linkQualityClasses[item.link_quality])}
+        <span>custo unit.: {custo ?? <UnknownValue hint="sem custo ERP no vínculo" />}</span>
+        {item.internal_product_id !== undefined ? <span>CODPROD {item.internal_product_id}</span> : null}
+      </div>
+    </div>
+  );
+}
+
+function ItemsSection({ order }: { order: OrderRead }) {
+  return (
+    <Section title="Itens">
+      <div className="flex flex-col gap-2">
+        {order.items.length === 0 ? (
+          <p className="text-xs text-faint">Sem itens.</p>
+        ) : (
+          order.items.map((item) => (
+            <ItemRow key={`${item.provider_item_id}-${item.provider_variation_id ?? ""}`} item={item} />
+          ))
+        )}
+        {order.componentes_desconhecidos && order.componentes_desconhecidos.length > 0
+          ? stateTag("custo incompleto", "bg-amber-100 text-amber-800")
+          : null}
+      </div>
+    </Section>
+  );
+}
+
+// Definition-list row: value → formatted text, null/undefined → UnknownValue (ADR-17). Never
+// hardcodes "—"; the hint explains why a component is unknown today (F01-C1 honest-empty) so
+// the same row lights up with a real number once the hub wires the decomposer (C2), no UI change.
+function DecompRow({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string | null;
+  hint?: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <dt>{label}</dt>
+      <dd className="font-mono text-[11px]">{value ?? <UnknownValue hint={hint} />}</dd>
+    </div>
+  );
+}
+
+// Real-ready wiring (F02-S6): every value here is read FROM order.decomposicao/difal/
+// retorno_liquido/margem_pct (F01-C1, additive on OrderRead). Today the decomposer isn't wired
+// (hub C2), so every component is honestly null and renders UnknownValue via DecompRow/formatMoney
+// — never a hardcoded "—" string. When C2 lands, these same formatters render the real numbers
+// with no further UI change.
+function DecomposicaoSection({ order }: { order: OrderRead }) {
+  const { decomposicao, difal } = order;
+  const pending = decomposicao.componentes_desconhecidos.length > 0;
+  const difalHint = "DIFAL ainda não decomposto (hub C2)";
+  const custoHint = "decomposição de custos ainda não disponível (hub C2)";
+
+  return (
+    <Section title="Decomposição + DIFAL">
+      <div className="rounded-lg border border-border bg-surface-2 p-3 text-xs text-muted">
+        {pending ? (
+          <p className="mb-2 text-[11px] text-faint">
+            Pendente: {decomposicao.componentes_desconhecidos.join(", ")} — estes componentes mostram
+            "—" até a decomposição ser calculada.
+          </p>
+        ) : null}
+        <dl className="space-y-1">
+          <DecompRow label="Comissão" value={formatMoney(decomposicao.comissao)} hint={custoHint} />
+          <DecompRow label="Taxa fixa" value={formatMoney(decomposicao.taxa_fixa)} hint={custoHint} />
+          <DecompRow label="Frete" value={formatMoney(decomposicao.frete)} hint={custoHint} />
+          <DecompRow label="Imposto" value={formatMoney(decomposicao.imposto)} hint={custoHint} />
+          <DecompRow label="DIFAL" value={formatMoney(decomposicao.difal)} hint={difalHint} />
+          <DecompRow label="Tarifa Full" value={formatMoney(decomposicao.tarifa_full)} hint={custoHint} />
+          <DecompRow label="Custo" value={formatMoney(decomposicao.custo)} hint={custoHint} />
+          <div className="my-1 border-t border-border-2" />
+          <DecompRow label="Margem valor" value={formatMoney(decomposicao.margem_valor)} hint={custoHint} />
+          <DecompRow label="Margem %" value={formatPercent(decomposicao.margem_pct)} hint={custoHint} />
+          <DecompRow label="Retorno líquido" value={formatMoney(order.retorno_liquido)} hint={custoHint} />
+        </dl>
+      </div>
+      <div className="rounded-lg border border-border bg-surface-2 p-3 text-xs text-muted">
+        <h5 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-faint">DIFAL</h5>
+        <dl className="space-y-1">
+          <DecompRow label="Valor" value={formatMoney(difal.amount)} hint={difalHint} />
+          <DecompRow label="Rota" value={difal.uf_route} hint="rota UF ainda não disponível (hub C2)" />
+          <DecompRow label="Vencimento" value={formatDateTime(difal.due_date)} hint={difalHint} />
+          <div className="flex items-center justify-between gap-3">
+            <dt>Pago</dt>
+            <dd className="font-mono text-[11px]">
+              {difal.paid == null ? <UnknownValue hint={difalHint} /> : difal.paid ? "sim" : "não"}
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </Section>
+  );
+}
+
+interface TimelineEvent {
+  label: string;
+  when: string | null;
+}
+
+// Client-derived from present timestamps only (ruling-6) — no fabricated dates; events whose
+// timestamp is absent are omitted entirely rather than shown with a placeholder date. "Enviado"
+// has no timestamp field on OrderRastreio, so it renders with status only, no invented "quando".
+function buildTimeline(order: OrderRead): TimelineEvent[] {
+  const events: TimelineEvent[] = [];
+  if (order.provider_created_at) {
+    events.push({ label: "Recebido", when: formatDateTime(order.provider_created_at) });
+  }
+  if (order.provider_updated_at) {
+    events.push({ label: "Atualizado", when: formatDateTime(order.provider_updated_at) });
+  }
+  if (order.rastreio) {
+    events.push({ label: `Enviado · ${order.rastreio.status}`, when: null });
+  }
+  if (order.provider_closed_at) {
+    events.push({ label: "Fechado", when: formatDateTime(order.provider_closed_at) });
+  }
+  return events;
+}
+
+function TimelineSection({ order }: { order: OrderRead }) {
+  const events = buildTimeline(order);
+  return (
+    <Section title="Linha do tempo · ML → interno">
+      {events.length === 0 ? (
+        <p className="text-xs text-faint">Sem eventos com data disponível.</p>
+      ) : (
+        <ol className="flex flex-col gap-1.5 text-xs">
+          {events.map((event) => (
+            <li key={event.label} className="flex items-baseline gap-2">
+              <span className="flex-1">{event.label}</span>
+              <span className="flex-none font-mono text-[10.5px] text-faint">{event.when ?? ""}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </Section>
+  );
+}
+
+function FactsSection({ order }: { order: OrderRead }) {
+  const local = [order.buyer?.city, order.buyer?.uf].filter(Boolean).join("/");
+  return (
+    <section className="flex flex-col gap-2 border-t border-border-2 pt-3 text-xs text-muted">
+      <div className="flex items-start justify-between gap-3">
+        <span>Nota fiscal</span>
+        {/* nf_state is the vínculo 'linked' marker on OrderRead, not a real NF number — rendered
+            honestly, never as a fabricated NF number/deep-link (ruling-6). */}
+        <span className="text-right text-ink">
+          {order.nf_state ? `vínculo: ${order.nf_state}` : <UnknownValue hint="ainda não emitida" />}
+        </span>
+      </div>
+      <div className="flex items-start justify-between gap-3">
+        <span>Rastreio</span>
+        <span className="text-right font-mono text-[11px] text-ink">
+          {order.rastreio ? `${order.rastreio.shipment_id} · ${order.rastreio.status}` : <UnknownValue />}
+        </span>
+      </div>
+      <div className="flex items-start justify-between gap-3">
+        <span>Destino</span>
+        <span className="text-right text-ink">{order.destino_uf ?? <UnknownValue />}</span>
+      </div>
+      <div className="flex items-start justify-between gap-3">
+        <span>Código de rastreio</span>
+        {/* No carrier tracking code on OrderRead — honest unknown, never fabricated (ADR-17). */}
+        <span className="text-right text-ink">
+          <UnknownValue hint="código da transportadora não disponível no backend" />
+        </span>
+      </div>
+      <div className="flex items-start justify-between gap-3">
+        <span>Comprador</span>
+        <span className="text-right text-ink">
+          {order.buyer?.display ?? <UnknownValue />}
+          {order.buyer ? (
+            <>
+              <br />
+              <span className="text-[11px] text-faint">{local || <UnknownValue />}</span>
+            </>
+          ) : null}
+        </span>
+      </div>
+      <div className="flex items-start justify-between gap-3">
+        <span>Documento</span>
+        {/* No buyer document (CPF/CNPJ) on OrderRead — honest unknown, never fabricated (ruling-6). */}
+        <span className="text-right text-ink">
+          <UnknownValue hint="documento do comprador não disponível no backend" />
+        </span>
+      </div>
+    </section>
+  );
+}
+
+function DrawerBody({ order }: { order: OrderRead }) {
+  return (
+    <div className="flex flex-col gap-4">
+      <ItemsSection order={order} />
+      <DecomposicaoSection order={order} />
+      <TimelineSection order={order} />
+      <FactsSection order={order} />
+    </div>
+  );
+}
+
+// Design's footer buttons per bucket (Faturar via ERP / Etiqueta / Marcar enviado / DIFAL
+// agendar / Devolução…) — ALL disabled here (READ-ONLY RICH bar, HUB ruling D-57): no working
+// mutations, no write SDK calls this slice.
+function DrawerActions({ bucket }: { bucket: OrderBucket }) {
+  const primaryLabel = actionLabelForBucket(bucket);
+  const buttons: string[] = [];
+  if (primaryLabel === "Faturar") buttons.push("Faturar via ERP");
+  if (primaryLabel === "Etiqueta") buttons.push("Etiqueta");
+  if (bucket === "enviar") buttons.push("Marcar enviado");
+  buttons.push("DIFAL agendar", "Devolução…");
+  return (
+    <div className="flex flex-wrap gap-2">
+      {buttons.map((label) => (
+        <button
+          key={label}
+          type="button"
+          disabled
+          title="disponível em breve"
+          className="flex-1 rounded-md border border-border bg-surface-2 px-3 py-2 text-xs font-semibold text-muted disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function PedidoDrawer({ orderId, onClose }: PedidoDrawerProps) {
+  const client = useClient();
+  const { installationId } = useInstallation();
+
+  const query = useQuery({
+    queryKey: orderDetailKey(installationId, orderId ?? ""),
+    queryFn: () => client.getOrder(installationId, orderId as string),
+    enabled: orderId !== null,
+    staleTime: QUERY_STALE_TIME.orders,
+  });
+
+  if (orderId === null) return null;
+
+  const order = query.data;
+  const title = order?.provider_code || orderId;
+  const subtitle = order ? bucketStatusLabels[order.bucket] : undefined;
+
+  return (
+    <DetailDrawer
+      open
+      onClose={onClose}
+      closeLabel="Fechar detalhe do pedido"
+      title={title}
+      subtitle={subtitle}
+      width={372}
+      actions={order ? <DrawerActions bucket={order.bucket} /> : undefined}
+    >
+      {query.isPending ? (
+        <LoadingState />
+      ) : query.isError ? (
+        <ErrorState onRetry={() => void query.refetch()} />
+      ) : order ? (
+        <DrawerBody order={order} />
+      ) : null}
+    </DetailDrawer>
+  );
+}

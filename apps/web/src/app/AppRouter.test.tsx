@@ -77,10 +77,10 @@ describe("AppRouter", () => {
     expect(listIntegrationInstallations).toHaveBeenCalledTimes(1);
   });
 
-  it("mounts the em-construção stub at /pedidos with a single app-wide installation fetch", async () => {
+  it("mounts the pedidos workspace at /pedidos with a single app-wide installation fetch", async () => {
     window.history.pushState({}, "", "/pedidos");
     renderAppRouter();
-    expect(await screen.findByText("Em construção — disponível em breve.")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Pedidos" })).toBeInTheDocument();
     expect(listIntegrationInstallations).toHaveBeenCalledTimes(1);
   });
 
