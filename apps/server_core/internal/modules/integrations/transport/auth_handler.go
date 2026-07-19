@@ -32,6 +32,7 @@ type AuthFlowReader interface {
 	ListOrders(ctx context.Context, installationID string, limit int) ([]connectorsdomain.OrderSnapshot, error)
 	ReadFeeQuote(ctx context.Context, installationID string, input connectorsdomain.FeeQuoteInput) (connectorsdomain.FeeQuoteSnapshot, error)
 	ReadStock(ctx context.Context, installationID string, ref connectorsdomain.ProviderListingRef) (connectorsdomain.StockSnapshot, error)
+	ProbeCatalogMatch(ctx context.Context, installationID string, input application.CatalogMatchProbeInput) (application.CatalogMatchProbeResult, error)
 }
 
 type AuthHandler struct {
@@ -359,6 +360,26 @@ func (h AuthHandler) handleInstallationAuth(w http.ResponseWriter, r *http.Reque
 		}
 		slog.Info("integrations.probes.stock", "action", "read_stock", "result", "200", "duration_ms", time.Since(start).Milliseconds())
 		httpx.WriteJSON(w, http.StatusOK, result)
+	case "probes/catalog-match":
+		if r.Method != http.MethodGet {
+			w.Header().Set("Allow", http.MethodGet)
+			writeIntegrationError(w, http.StatusMethodNotAllowed, "INTEGRATIONS_AUTH_METHOD_NOT_ALLOWED", "method not allowed")
+			slog.Info("integrations.probes.catalog_match", "action", "probe_catalog_match", "result", "405", "duration_ms", time.Since(start).Milliseconds())
+			return
+		}
+		result, err := h.flow.ProbeCatalogMatch(r.Context(), installationID, application.CatalogMatchProbeInput{
+			EAN:         strings.TrimSpace(r.URL.Query().Get("ean")),
+			Query:       strings.TrimSpace(r.URL.Query().Get("q")),
+			PriceAmount: parseOptionalFloat(r.URL.Query().Get("price")),
+		})
+		if err != nil {
+			status, code, message := mapIntegrationError(err)
+			writeIntegrationError(w, status, code, message)
+			slog.Error("integrations.probes.catalog_match", "action", "probe_catalog_match", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
+			return
+		}
+		slog.Info("integrations.probes.catalog_match", "action", "probe_catalog_match", "result", "200", "duration_ms", time.Since(start).Milliseconds())
+		httpx.WriteJSON(w, http.StatusOK, result)
 	default:
 		slog.Info("integrations.auth.installation", "action", "route_not_found", "result", "404", "duration_ms", time.Since(start).Milliseconds())
 		http.NotFound(w, r)
@@ -405,6 +426,17 @@ func parsePositiveInt(raw string, fallback int) int {
 	value, err := strconv.Atoi(strings.TrimSpace(raw))
 	if err != nil || value <= 0 {
 		return fallback
+	}
+	return value
+}
+
+// parseOptionalFloat returns the parsed positive price, or 0 when the parameter
+// is absent or unparseable. The catalog-match probe treats price as optional:
+// when omitted it quotes against the buy-box price the provider returns.
+func parseOptionalFloat(raw string) float64 {
+	value, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
+	if err != nil || value <= 0 {
+		return 0
 	}
 	return value
 }

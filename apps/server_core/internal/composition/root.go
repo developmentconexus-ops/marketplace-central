@@ -184,6 +184,10 @@ func (f authFlowFacade) ReadStock(ctx context.Context, installationID string, re
 	return f.providerOps.ReadStock(ctx, installationID, ref)
 }
 
+func (f authFlowFacade) ProbeCatalogMatch(ctx context.Context, installationID string, input integrationsapp.CatalogMatchProbeInput) (integrationsapp.CatalogMatchProbeResult, error) {
+	return f.providerOps.ProbeCatalogMatch(ctx, installationID, input)
+}
+
 type RootRuntime struct {
 	Handler        http.Handler
 	PoolStats      *internalreadobservability.PoolStatsLoop
@@ -377,6 +381,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		Capabilities:     marketplaceCapabilities,
 		CapabilityStates: capabilitySvc,
 		Operations:       operationSvc,
+		CatalogMatch:     mercadoLivreCapabilities,
 	})
 
 	flowFacade := authFlowFacade{
