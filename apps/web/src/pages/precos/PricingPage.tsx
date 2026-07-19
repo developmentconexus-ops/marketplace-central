@@ -65,8 +65,6 @@ export function PricingPage() {
   // Deep link: /precos?params=1 opens the Parâmetros drawer on mount.
   const [paramsOpen, setParamsOpen] = useState<boolean>(searchParams.get("params") === "1");
   const [difalOpen, setDifalOpen] = useState<boolean>(false);
-  // Set when a reloaded scenario references a product absent from the catalog.
-  const [reloadNotice, setReloadNotice] = useState<string | null>(null);
 
   const profileQuery = useQuery({
     queryKey: ["pricing", "profile"],
@@ -149,22 +147,18 @@ export function PricingPage() {
     product_id: selected?.internal_product_id ?? null,
   };
   const applyScenario = (payload: Record<string, unknown>) => {
-    if (typeof payload.product_id === "number") {
-      setSelectedId(payload.product_id);
-      // If the scenario's product isn't in the loaded catalog, tell the operator
-      // instead of silently decomposing a different product at this price.
-      const known = products.some((p) => p.internal_product_id === payload.product_id);
-      setReloadNotice(
-        known
-          ? null
-          : "O produto deste cenário não está na lista atual — selecione outro produto ou recarregue o catálogo.",
-      );
-    }
+    if (typeof payload.product_id === "number") setSelectedId(payload.product_id);
     if (typeof payload.modalidade === "string" && MODALIDADES.some((m) => m.key === payload.modalidade)) {
       setModalidade(payload.modalidade as ModalidadeKey);
     }
     if (typeof payload.preco === "string") setPrecoInput(payload.preco);
   };
+
+  // An explicit product pick that the loaded catalog can't resolve (e.g. a
+  // scenario reloaded for a product outside the fetched page) ⇒ tell the
+  // operator instead of silently decomposing a different product at this price.
+  // Derived (not stored) so it can't go stale against a still-loading catalog.
+  const productMissing = selectedId !== null && products.length > 0 && selected === null;
 
   const decomposeInput: PricingCalcInput | null = selected && preco !== ""
     ? {
@@ -223,10 +217,7 @@ export function PricingPage() {
                   <li key={p.internal_product_id}>
                     <button
                       type="button"
-                      onClick={() => {
-                        setSelectedId(p.internal_product_id);
-                        setReloadNotice(null);
-                      }}
+                      onClick={() => setSelectedId(p.internal_product_id)}
                       aria-pressed={selected?.internal_product_id === p.internal_product_id}
                       className={`w-full rounded-md px-2 py-1.5 text-left text-sm ${
                         selected?.internal_product_id === p.internal_product_id
@@ -243,9 +234,9 @@ export function PricingPage() {
           </aside>
 
           <section aria-label={`Simular · ${selected ? productLabel(selected) : ""}`} className="flex flex-col gap-4">
-            {reloadNotice ? (
+            {productMissing ? (
               <p role="alert" data-testid="scenario-reload-notice" className="rounded-md bg-warn-soft px-3 py-2 text-sm text-warn">
-                {reloadNotice}
+                O produto deste cenário não está na lista atual — selecione outro produto ou recarregue o catálogo.
               </p>
             ) : null}
 
