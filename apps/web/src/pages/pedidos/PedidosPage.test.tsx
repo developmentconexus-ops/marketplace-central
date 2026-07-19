@@ -47,6 +47,7 @@ const baseOrder = {
   provider_updated_at: null,
   items: [],
   payments: [],
+  bucket: "novo" as const,
 };
 
 describe("PedidosPage", () => {
@@ -114,10 +115,10 @@ describe("PedidosPage", () => {
 
     await goToLista();
     expect(screen.getByRole("tab", { name: "Lista", selected: true })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Todos" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Novos/ })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab", { name: "Kanban" }));
-    expect(await screen.findByText(/Kanban por etapa/)).toBeInTheDocument();
+    expect(await screen.findByText("NOVOS · 1")).toBeInTheDocument();
   });
 
   it("renders a disabled mutation control in the Fila view (em breve, no handler)", async () => {
@@ -130,6 +131,20 @@ describe("PedidosPage", () => {
 
     const action = await screen.findByRole("button", { name: "Faturar" });
     expect(action).toBeDisabled();
+  });
+
+  it("clicking a bucket KPI card switches to Lista AND selects the matching tab", async () => {
+    listOrders.mockResolvedValue({ items: [], next_cursor: null });
+
+    renderPage();
+
+    await screen.findByRole("heading", { name: "Pedidos" });
+    fireEvent.click(screen.getByText("A FATURAR"));
+
+    await waitFor(() => {
+      expect(screen.getByRole("tab", { name: "Lista", selected: true })).toBeInTheDocument();
+    });
+    expect(screen.getByRole("tab", { name: /A faturar/, selected: true })).toBeInTheDocument();
   });
 
   it("clicking the DIFAL KPI card selects the Fila view", async () => {
@@ -145,37 +160,78 @@ describe("PedidosPage", () => {
     });
   });
 
-  it("renders the Lista tabs, including a disabled Cancelados tab", async () => {
-    listOrders.mockResolvedValue({ items: [], next_cursor: null });
+  it("renders the 7 Lista bucket tabs with live counts on the 4 live buckets", async () => {
+    listOrders.mockResolvedValue({
+      items: [
+        { ...baseOrder, bucket: "novo" },
+        { ...baseOrder, provider_order_id: "PO2", bucket: "novo" },
+        { ...baseOrder, provider_order_id: "PO3", bucket: "faturar" },
+      ],
+      next_cursor: null,
+    });
 
     renderPage();
 
     await screen.findByRole("heading", { name: "Pedidos" });
     await goToLista();
 
-    expect(screen.getByRole("tab", { name: "Todos" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Atrasados" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Sem vínculo" })).toBeInTheDocument();
-    const cancelados = screen.getByRole("tab", { name: "Cancelados" });
-    expect(cancelados).toBeDisabled();
+    expect(screen.getByRole("tab", { name: "Novos 2" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "A faturar 1" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "A enviar 0" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Enviados 0" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Concluídos" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Cancelados" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Devoluções" })).toBeInTheDocument();
   });
 
-  it("renders enriched order rows in Lista with masked buyer and honest nulls, never raw buyer_nickname", async () => {
+  it("shows an 'em breve' placeholder panel for a placeholder tab, not a table", async () => {
+    listOrders.mockResolvedValue({
+      items: [{ ...baseOrder, bucket: "novo" }],
+      next_cursor: null,
+    });
+
+    renderPage();
+
+    await screen.findByRole("heading", { name: "Pedidos" });
+    await goToLista();
+    fireEvent.click(screen.getByRole("tab", { name: "Cancelados" }));
+
+    expect(await screen.findByText(/Cancelados — em breve/)).toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
+  it("filters Lista rows by the active bucket tab using OrderRead.bucket", async () => {
+    listOrders.mockResolvedValue({
+      items: [
+        { ...baseOrder, provider_code: "ML-1001", bucket: "novo" },
+        { ...baseOrder, provider_order_id: "PO2", provider_code: "ML-1002", bucket: "faturar" },
+      ],
+      next_cursor: null,
+    });
+
+    renderPage();
+
+    await screen.findByRole("heading", { name: "Pedidos" });
+    await goToLista();
+
+    expect(await screen.findByText("ML-1001")).toBeInTheDocument();
+    expect(screen.queryByText("ML-1002")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "A faturar 1" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("ML-1002")).toBeInTheDocument();
+      expect(screen.queryByText("ML-1001")).not.toBeInTheDocument();
+    });
+  });
+
+  it("renders the Lista table with RETORNO and DIFAL as honest '—' (gated)", async () => {
     listOrders.mockResolvedValue({
       items: [
         {
           ...baseOrder,
           buyer: { display: "J. S.", city: "São Paulo", uf: "SP" },
-          vinculo_status: "OK",
-          destino_uf: "SP",
-          sla: { due: "2026-07-20T10:00:00Z", atrasado: false },
-        },
-        {
-          ...baseOrder,
-          provider_order_id: "PO2",
-          provider_code: "ML-1002",
-          vinculo_status: "SEM_VINCULO",
-          componentes_desconhecidos: ["custo_unitario"],
+          bucket: "novo",
         },
       ],
       next_cursor: null,
@@ -190,20 +246,13 @@ describe("PedidosPage", () => {
     expect(screen.getByText("J. S.")).toBeInTheDocument();
     expect(screen.queryByText("JOAOSILVA123")).not.toBeInTheDocument();
 
-    expect(screen.getByText("ML-1002")).toBeInTheDocument();
-    expect(screen.getByText("sem vínculo")).toBeInTheDocument();
-    expect(screen.getByText("custo incompleto")).toBeInTheDocument();
-
     const rows = screen.getAllByRole("row");
     expect(rows.length).toBeGreaterThan(1);
   });
 
-  it("filters to the atrasados tab client-side in Lista", async () => {
+  it("enables mass-select in Lista and shows a disabled bulk action bar when rows are selected", async () => {
     listOrders.mockResolvedValue({
-      items: [
-        { ...baseOrder, sla: { due: "2026-07-15T10:00:00Z", atrasado: true } },
-        { ...baseOrder, provider_order_id: "PO2", provider_code: "ML-1002", sla: { due: "2026-07-25T10:00:00Z", atrasado: false } },
-      ],
+      items: [{ ...baseOrder, bucket: "novo" }],
       next_cursor: null,
     });
 
@@ -212,13 +261,32 @@ describe("PedidosPage", () => {
     await screen.findByRole("heading", { name: "Pedidos" });
     await goToLista();
     await screen.findByText("ML-1001");
-    fireEvent.click(screen.getByRole("tab", { name: "Atrasados" }));
 
-    await waitFor(() => {
-      expect(screen.getByText("ML-1001")).toBeInTheDocument();
-      expect(screen.queryByText("ML-1002")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("checkbox", { name: /Select row/ }));
+
+    expect(await screen.findByText("1 selecionado(s)")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Etiquetas" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Marcar enviados" })).toBeDisabled();
+  });
+
+  it("renders the Kanban view with 4 read-only columns grouped by bucket", async () => {
+    listOrders.mockResolvedValue({
+      items: [
+        { ...baseOrder, bucket: "novo" },
+        { ...baseOrder, provider_order_id: "PO2", provider_code: "ML-1002", bucket: "faturar" },
+      ],
+      next_cursor: null,
     });
-    expect(screen.getByText("atrasado")).toBeInTheDocument();
+
+    renderPage();
+
+    await screen.findByRole("heading", { name: "Pedidos" });
+    fireEvent.click(screen.getByRole("tab", { name: "Kanban" }));
+
+    expect(await screen.findByText("NOVOS · 1")).toBeInTheDocument();
+    expect(screen.getByText("A FATURAR · 1")).toBeInTheDocument();
+    expect(screen.getByText("A ENVIAR · 0")).toBeInTheDocument();
+    expect(screen.getByText("ENVIADOS · 0")).toBeInTheDocument();
   });
 
   it("shows the error state with retry when the fetch fails", async () => {

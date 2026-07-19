@@ -1,9 +1,11 @@
 import type { OrderRead } from "@marketplace-central/sdk-runtime";
 import { DataTable, UnknownValue, type DataTableColumn } from "@marketplace-central/ui";
-import { formatDateTime } from "./pedidosFormatters";
+import { actionLabelForBucket, formatDateTime, formatMoney } from "./pedidosFormatters";
 
 export interface PedidosTableProps {
   items: OrderRead[];
+  selectedKeys?: ReadonlySet<string>;
+  onSelectionChange?: (next: Set<string>) => void;
 }
 
 function stateTag(label: string, className = "bg-slate-100 text-slate-700") {
@@ -12,12 +14,6 @@ function stateTag(label: string, className = "bg-slate-100 text-slate-700") {
       {label}
     </span>
   );
-}
-
-function renderVinculo(status: string | undefined) {
-  if (!status) return <UnknownValue />;
-  if (status === "SEM_VINCULO") return stateTag("sem vínculo", "bg-amber-100 text-amber-800");
-  return stateTag(status.toLowerCase(), "bg-emerald-100 text-emerald-800");
 }
 
 function renderSla(item: OrderRead) {
@@ -30,11 +26,25 @@ function renderSla(item: OrderRead) {
   );
 }
 
-function renderCusto(item: OrderRead) {
-  if (item.componentes_desconhecidos && item.componentes_desconhecidos.length > 0) {
-    return stateTag("custo incompleto", "bg-amber-100 text-amber-800");
-  }
-  return null;
+function renderItens(item: OrderRead) {
+  if (item.items.length === 0) return <UnknownValue />;
+  if (item.items.length > 1) return `${item.items.length} itens`;
+  return item.items[0]?.title ?? <UnknownValue />;
+}
+
+function renderAcao(item: OrderRead) {
+  const label = actionLabelForBucket(item.bucket);
+  if (!label) return <span className="text-xs text-faint">—</span>;
+  return (
+    <button
+      type="button"
+      disabled
+      title="disponível em breve"
+      className="flex-none rounded-md border border-border bg-surface-2 px-3 py-1 text-[11.5px] font-semibold text-muted disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      {label}
+    </button>
+  );
 }
 
 const columns: DataTableColumn<OrderRead>[] = [
@@ -49,9 +59,9 @@ const columns: DataTableColumn<OrderRead>[] = [
     ),
   },
   {
-    key: "status",
-    header: "Status",
-    render: (item) => stateTag(item.status),
+    key: "data",
+    header: "Data",
+    render: (item) => formatDateTime(item.provider_created_at) ?? <UnknownValue />,
   },
   {
     key: "comprador",
@@ -59,14 +69,21 @@ const columns: DataTableColumn<OrderRead>[] = [
     render: (item) => item.buyer?.display ?? <UnknownValue />,
   },
   {
-    key: "destino",
-    header: "Destino",
-    render: (item) => item.destino_uf ?? <UnknownValue />,
+    key: "itens",
+    header: "Itens",
+    render: renderItens,
   },
   {
-    key: "vinculo",
-    header: "Vínculo",
-    render: (item) => renderVinculo(item.vinculo_status),
+    key: "valor",
+    header: "Valor",
+    render: (item) => formatMoney(item.total) ?? <UnknownValue />,
+  },
+  {
+    key: "retorno",
+    header: "Retorno",
+    // Gated (slice C, IC-04 open): no retorno/margem field on OrderRead — honest unknown, never
+    // fabricated (ADR-17).
+    render: () => <UnknownValue hint="retorno depende de decomposição ainda não disponível" />,
   },
   {
     key: "sla",
@@ -74,12 +91,30 @@ const columns: DataTableColumn<OrderRead>[] = [
     render: renderSla,
   },
   {
-    key: "custo",
-    header: "Custo",
-    render: renderCusto,
+    key: "difal",
+    header: "DIFAL",
+    // Gated (slice C): no difal field on OrderRead — honest unknown, never fabricated.
+    render: () => <UnknownValue hint="DIFAL ainda não decomposto" />,
+  },
+  {
+    key: "acao",
+    header: "Ação",
+    render: renderAcao,
   },
 ];
 
-export function PedidosTable({ items }: PedidosTableProps) {
-  return <DataTable<OrderRead> columns={columns} rows={items} rowKey={(item) => item.provider_order_id} />;
+export function PedidosTable({ items, selectedKeys, onSelectionChange }: PedidosTableProps) {
+  return (
+    <div className="overflow-x-auto">
+      <div style={{ minWidth: "980px" }}>
+        <DataTable<OrderRead>
+          columns={columns}
+          rows={items}
+          rowKey={(item) => item.provider_order_id}
+          selectedKeys={selectedKeys}
+          onSelectionChange={onSelectionChange}
+        />
+      </div>
+    </div>
+  );
 }

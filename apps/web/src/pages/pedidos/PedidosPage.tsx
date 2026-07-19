@@ -6,8 +6,9 @@ import { useState, type ReactNode } from "react";
 import { useClient } from "../../app/ClientContext";
 import { useInstallation } from "../../app/InstallationContext";
 import { FilaView } from "./FilaView";
-import { PedidosTable } from "./PedidosTable";
-import { filterOrdersByTab, pedidosTabs, type PedidosTab } from "./pedidosTabs";
+import { KanbanView } from "./KanbanView";
+import { ListaView } from "./ListaView";
+import type { PedidosTab } from "./pedidosTabs";
 
 type PedidosView = "fila" | "lista" | "kanban";
 
@@ -47,18 +48,10 @@ function KpiCard({ label, value, sub, onSelect }: KpiCardProps) {
   );
 }
 
-function KanbanPlaceholder() {
-  return (
-    <div className="rounded-card border border-dashed border-border bg-surface-2 p-8 text-center text-sm text-muted">
-      Kanban por etapa — em breve (F02-S3)
-    </div>
-  );
-}
-
 export function PedidosPage() {
   const client = useClient();
   const { installationId } = useInstallation();
-  const [tab, setTab] = useState<PedidosTab>("todos");
+  const [tab, setTab] = useState<PedidosTab>("novo");
   const [view, setView] = useState<PedidosView>("fila");
 
   const ordersQuery = useQuery({
@@ -76,11 +69,13 @@ export function PedidosPage() {
   });
 
   const allItems: OrderRead[] = ordersQuery.data?.items ?? [];
-  const visibleItems = filterOrdersByTab(allItems, tab);
   const byStatus = summaryQuery.data?.by_status;
 
-  const goToLista = () => setView("lista");
   const goToFila = () => setView("fila");
+  const goToListaTab = (bucketTab: PedidosTab) => () => {
+    setView("lista");
+    setTab(bucketTab);
+  };
 
   // Loading/Error gate the whole list area (as before); Empty is per-view since Lista keeps its
   // own filter tabs visible even when the current tab's slice is empty.
@@ -92,35 +87,9 @@ export function PedidosPage() {
   } else if (view === "fila") {
     body = allItems.length === 0 ? <EmptyState /> : <FilaView items={allItems} />;
   } else if (view === "kanban") {
-    body = <KanbanPlaceholder />;
+    body = <KanbanView items={allItems} />;
   } else {
-    body = (
-      <div className="flex flex-col gap-4">
-        <div aria-label="Filtros de pedidos" role="tablist" className="flex flex-wrap gap-2">
-          {pedidosTabs.map((tabItem) => (
-            <button
-              key={tabItem.value}
-              type="button"
-              role="tab"
-              aria-selected={tab === tabItem.value}
-              disabled={tabItem.disabled}
-              title={tabItem.disabled ? "disponível em breve" : undefined}
-              className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                tab === tabItem.value
-                  ? "border-accent bg-accent text-white"
-                  : "border-border bg-surface text-ink hover:border-accent"
-              }`}
-              onClick={() => {
-                if (!tabItem.disabled) setTab(tabItem.value);
-              }}
-            >
-              {tabItem.label}
-            </button>
-          ))}
-        </div>
-        {visibleItems.length === 0 ? <EmptyState /> : <PedidosTable items={visibleItems} />}
-      </div>
-    );
+    body = <ListaView items={allItems} tab={tab} onTabChange={setTab} />;
   }
 
   return (
@@ -142,24 +111,24 @@ export function PedidosPage() {
         <KpiCard
           label="NOVOS"
           value={byStatus ? String(byStatus.novo) : UNKNOWN_KPI_VALUE}
-          onSelect={goToLista}
+          onSelect={goToListaTab("novo")}
         />
         <KpiCard
           label="A FATURAR"
           value={byStatus ? String(byStatus.faturar) : UNKNOWN_KPI_VALUE}
-          onSelect={goToLista}
+          onSelect={goToListaTab("faturar")}
         />
         <KpiCard
           label="A ENVIAR"
           value={byStatus ? String(byStatus.enviar) : UNKNOWN_KPI_VALUE}
-          onSelect={goToLista}
+          onSelect={goToListaTab("enviar")}
         />
         {/* seven_days on OrderSummary is a TOTAL-orders count, not an enviado-in-7d bucket — a
             "últimos 7d" sub-note here would misrepresent it (ADR-17), so it is omitted. */}
         <KpiCard
           label="ENVIADOS"
           value={byStatus ? String(byStatus.enviado) : UNKNOWN_KPI_VALUE}
-          onSelect={goToLista}
+          onSelect={goToListaTab("enviado")}
         />
         <KpiCard
           label="DIFAL A PAGAR"
