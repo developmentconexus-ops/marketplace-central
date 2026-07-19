@@ -1015,12 +1015,12 @@ type mlPayment struct {
 }
 
 var (
-	_ ports.AccountProber  = (*CapabilityAdapter)(nil)
-	_ ports.FeeQuoteReader = (*CapabilityAdapter)(nil)
-	_ ports.ListingReader  = (*CapabilityAdapter)(nil)
-	_ ports.StockReader    = (*CapabilityAdapter)(nil)
-	_ ports.StockWriter    = (*CapabilityAdapter)(nil)
-	_ ports.PriceWriter    = (*CapabilityAdapter)(nil)
+	_ ports.AccountProber     = (*CapabilityAdapter)(nil)
+	_ ports.FeeQuoteReader    = (*CapabilityAdapter)(nil)
+	_ ports.ListingReader     = (*CapabilityAdapter)(nil)
+	_ ports.StockReader       = (*CapabilityAdapter)(nil)
+	_ ports.StockWriter       = (*CapabilityAdapter)(nil)
+	_ ports.PriceWriter       = (*CapabilityAdapter)(nil)
 	_ ports.OrderReader       = (*CapabilityAdapter)(nil)
 	_ ports.BuyerFiscalReader = (*CapabilityAdapter)(nil)
 )

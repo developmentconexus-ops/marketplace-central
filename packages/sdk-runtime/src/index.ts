@@ -246,7 +246,7 @@ export interface CatalogSearchPageOptions {
 export type ListingStatus = "active" | "paused" | "closed" | "unknown" | "under_review" | "inactive" | "payment_required" | "not_yet_active";
 export type ListingSyncState = "synced" | "error" | "stale" | "queued" | "syncing" | "paused_sync";
 export type ListingLinkState = "unresolved" | "conflict" | "resolved" | "rejected";
-export type ListingException = "sync_error" | "stale" | "unlinked" | "below_margin" | "sem_vinculo" | "abaixo_custo" | "sem_evidencia";
+export type ListingException = "sync_error" | "stale" | "unlinked" | "below_margin";
 
 export interface ListingListOptions {
   installation_id: string;
@@ -278,29 +278,6 @@ export interface ListingType {
 export interface ListingMoney {
   amount: string;
   currency: string;
-}
-
-// Listings-owned composite over IC-03 states (not a market enum) — see
-// domain invariant in the M-05 slice card: SEM_VINCULO (no codprod link) !=
-// NO_PRICE_EVIDENCE (linked, no market evidence) != STALE (evidence older
-// than TTL), never collapsed, never fabricated for an unlinked listing.
-export type SignalStatus = "OK" | "SEM_VINCULO" | "NO_PRICE_EVIDENCE" | "STALE";
-
-export interface ListingSignalEvidence {
-  source: string;
-  fetched_at: string;
-  freshness: string;
-}
-
-export interface ListingMarketSignal {
-  status: SignalStatus;
-  position: { rank: number; total: number } | null;
-  price_to_win: ListingMoney | null;
-  delta_pct: string | null;
-  match_status: "ACCEPT" | "REVIEW" | "REJECT" | "NO_CANDIDATE" | null;
-  n_offers: number | null;
-  n_sellers: number | null;
-  evidence: ListingSignalEvidence | null;
 }
 
 export interface ListingLink {
@@ -349,8 +326,6 @@ export interface ListingReadModel {
   below_margin_worst_case: boolean | null;
   icms_worst_case_by_uf: ListingICMSWorstCase[] | null;
   fetched_at: string | null;
-  market_signal?: ListingMarketSignal | null;
-  signal_status?: SignalStatus;
 }
 
 export interface ListingPage {
@@ -391,9 +366,6 @@ export interface ListingSummaryExceptions {
   unlinked: number;
   below_margin_worst_case: number | null;
   margin_unknown: number | null;
-  sem_vinculo?: number | null;
-  abaixo_custo?: number | null;
-  sem_evidencia?: number | null;
 }
 
 export interface ListingSummary {
