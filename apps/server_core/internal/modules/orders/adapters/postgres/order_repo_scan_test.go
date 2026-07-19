@@ -7,14 +7,16 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// fakeRow feeds a fixed 10-column sequence into scanReadModel without a
-// database, proving the shipping_id scan mapping (ADR-17: absent stays
+// fakeRow feeds a fixed 11-column sequence into scanReadModel without a
+// database, proving the shipping_id + tags scan mapping (ADR-17: absent stays
 // absent, never fabricated). Column order mirrors the ListOrders/GetOrder
 // SELECT lists in order_repo.go: provider_order_id, provider_code,
 // provider_status, provider_status_detail, provider_created_at,
-// provider_closed_at, provider_updated_at, nf_state, total, shipping_id.
+// provider_closed_at, provider_updated_at, nf_state, total, shipping_id,
+// tags_json.
 type fakeRow struct {
 	shippingID pgtype.Text
+	tagsJSON   []byte
 }
 
 func (f fakeRow) Scan(dest ...any) error {
@@ -28,6 +30,7 @@ func (f fakeRow) Scan(dest ...any) error {
 	*dest[7].(*pgtype.Text) = pgtype.Text{}
 	*dest[8].(*pgtype.Float8) = pgtype.Float8{}
 	*dest[9].(*pgtype.Text) = f.shippingID
+	*dest[10].(*[]byte) = f.tagsJSON
 	return nil
 }
 
@@ -49,6 +52,26 @@ func TestScanReadModel_ShippingID(t *testing.T) {
 		}
 		if model.ShippingID != "" {
 			t.Fatalf("ShippingID = %q, want empty", model.ShippingID)
+		}
+	})
+
+	t.Run("tags populated from tags_json (delivered signal for bucketing)", func(t *testing.T) {
+		model, err := scanReadModel(fakeRow{tagsJSON: []byte(`["paid","delivered"]`)})
+		if err != nil {
+			t.Fatalf("scanReadModel returned error: %v", err)
+		}
+		if len(model.Tags) != 2 || model.Tags[0] != "paid" || model.Tags[1] != "delivered" {
+			t.Fatalf("Tags = %v, want [paid delivered]", model.Tags)
+		}
+	})
+
+	t.Run("tags absent (NULL tags_json) stays nil", func(t *testing.T) {
+		model, err := scanReadModel(fakeRow{tagsJSON: nil})
+		if err != nil {
+			t.Fatalf("scanReadModel returned error: %v", err)
+		}
+		if len(model.Tags) != 0 {
+			t.Fatalf("Tags = %v, want empty", model.Tags)
 		}
 	})
 }

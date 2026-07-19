@@ -22,4 +22,9 @@ type OrderReadModel struct {
 	ProviderUpdatedAt    *time.Time                `json:"provider_updated_at"`
 	Items                []MarketplaceOrderItem    `json:"items"`
 	Payments             []MarketplaceOrderPayment `json:"payments"`
+	// Tags carries the provider order tags (e.g. "delivered", "paid"). It is a
+	// bucket-derivation signal only (DeriveOrderBucket) — Mercado Livre reports
+	// delivered on the order tags, not on provider_status — and is not exposed
+	// on the transport DTO. Empty/absent means no honest tag signal (ADR-17).
+	Tags []string `json:"tags,omitempty"`
 }

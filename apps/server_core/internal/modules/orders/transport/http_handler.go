@@ -324,6 +324,10 @@ type enrichedSLADTO struct {
 type enrichedRastreioDTO struct {
 	ShipmentID string `json:"shipment_id"`
 	Status     string `json:"status"`
+	// Substatus is the ML shipment sub-status (e.g. "out_for_delivery",
+	// "receiver_absent"). Additive/omitempty: absent when the provider reports
+	// no sub-status, never a fabricated value (ADR-17).
+	Substatus string `json:"substatus,omitempty"`
 }
 
 // enrichedItemDTO carries the existing item JSON fields (embedded, so no
@@ -411,12 +415,14 @@ func mapEnrichedOrder(e application.EnrichedOrder) enrichedOrderDTO {
 		VinculoStatus:            string(e.VinculoStatus),
 		Buyer:                    enrichedBuyerDTO{Display: e.Buyer.Display, City: e.Buyer.City, UF: e.Buyer.UF},
 		ComponentesDesconhecidos: e.ComponentesDesconhecidos,
-		// hasShipment keys off the shipping_id column (present on the read model), NOT the
-		// live shipment fetch (e.Shipment), so this per-order bucket stays consistent with the
-		// summary by_status counts (order_repo.go GetOrderBucketCounts uses the same signal) even
-		// when the live GetShipmentInfo call transiently fails. The live e.Shipment still drives
-		// the SLA/rastreio display below.
-		Bucket:                   domain.DeriveOrderBucket(e.Order.Status, e.Order.ShippingID != ""),
+		// Bucket derives from provider_status + the order "delivered" tag + the live
+		// shipment status. The delivered tag (order_repo read-through) is the robust
+		// signal that survives a shipment-lookup failure; the live e.Shipment status
+		// refines shipped/delivered vs ready_to_ship when the tag is absent. hasShipment
+		// (shipping_id column) stays the pre-shipment faturar/enviar proxy. The SQL
+		// summary path shares the tag signal, and the KPI cards derive their counts from
+		// this same per-order bucket (FE), so KPI == Lista by construction.
+		Bucket:                   domain.DeriveOrderBucket(e.Order.Status, shipmentStatusOf(e.Shipment), e.Order.Tags, e.Order.ShippingID != ""),
 		RetornoLiquido:           e.Profitability.RetornoLiquido,
 		MargemPct:                e.Profitability.MargemPct,
 		Decomposicao:             mapDecomposicao(e.Profitability.Decomposition),
@@ -425,9 +431,19 @@ func mapEnrichedOrder(e application.EnrichedOrder) enrichedOrderDTO {
 	if e.Shipment != nil {
 		dto.SLA = &enrichedSLADTO{Due: e.Shipment.SLADue, Atrasado: e.Shipment.Delayed}
 		dto.DestinoUF = e.Shipment.DestinationUF
-		dto.Rastreio = &enrichedRastreioDTO{ShipmentID: e.Shipment.ShipmentID, Status: e.Shipment.Status}
+		dto.Rastreio = &enrichedRastreioDTO{ShipmentID: e.Shipment.ShipmentID, Status: e.Shipment.Status, Substatus: e.Shipment.Substatus}
 	}
 	return dto
+}
+
+// shipmentStatusOf returns the live shipment status, or "" when the shipment
+// could not be read (nil enrichment). "" makes DeriveOrderBucket fall back to
+// the order tag / provider_status signals — never a fabricated status (ADR-17).
+func shipmentStatusOf(s *application.ShipmentEnrichment) string {
+	if s == nil {
+		return ""
+	}
+	return s.Status
 }
 
 // mapDecomposicao maps an application-layer domain.OrderDecomposition onto

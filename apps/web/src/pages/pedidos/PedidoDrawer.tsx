@@ -188,7 +188,8 @@ function buildTimeline(order: OrderRead): TimelineEvent[] {
     events.push({ label: "Atualizado", when: formatDateTime(order.provider_updated_at) });
   }
   if (order.rastreio) {
-    events.push({ label: `Enviado · ${order.rastreio.status}`, when: null });
+    const sub = order.rastreio.substatus ? ` (${order.rastreio.substatus})` : "";
+    events.push({ label: `Enviado · ${order.rastreio.status}${sub}`, when: null });
   }
   if (order.provider_closed_at) {
     events.push({ label: "Fechado", when: formatDateTime(order.provider_closed_at) });
@@ -231,7 +232,9 @@ function FactsSection({ order }: { order: OrderRead }) {
       <div className="flex items-start justify-between gap-3">
         <span>Rastreio</span>
         <span className="text-right font-mono text-[11px] text-ink">
-          {order.rastreio ? `${order.rastreio.shipment_id} · ${order.rastreio.status}` : <UnknownValue />}
+          {order.rastreio
+            ? `${order.rastreio.shipment_id} · ${order.rastreio.status}${order.rastreio.substatus ? ` · ${order.rastreio.substatus}` : ""}`
+            : <UnknownValue />}
         </span>
       </div>
       <div className="flex items-start justify-between gap-3">

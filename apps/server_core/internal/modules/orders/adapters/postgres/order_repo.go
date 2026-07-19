@@ -56,7 +56,7 @@ func (r *OrderReadRepository) ListOrders(ctx context.Context, query ports.OrderL
 		       (SELECT SUM(COALESCE(p.total_paid_amount, p.transaction_amount))
 		        FROM orders_marketplace_order_payments p
 		        WHERE p.tenant_id=$1 AND p.installation_id=$2 AND p.provider_order_id=o.provider_order_id),
-		       o.shipping_id
+		       o.shipping_id, o.tags_json
 		FROM orders_marketplace_orders o
 		WHERE o.tenant_id=$1 AND o.installation_id=$2
 		  AND o.provider_created_at IS NOT NULL
@@ -104,7 +104,7 @@ func (r *OrderReadRepository) GetOrder(ctx context.Context, installationID, prov
 		       o.provider_created_at, o.provider_closed_at, o.provider_updated_at,
 		       CASE WHEN EXISTS (SELECT 1 FROM orders_sankhya_linkage_events e WHERE e.tenant_id=$1 AND e.installation_id=$2 AND e.provider_order_id=o.provider_order_id AND e.evidence_state = 'exact') THEN 'linked'::text ELSE NULL::text END,
 		       (SELECT SUM(COALESCE(p.total_paid_amount,p.transaction_amount)) FROM orders_marketplace_order_payments p WHERE p.tenant_id=$1 AND p.installation_id=$2 AND p.provider_order_id=o.provider_order_id),
-		       o.shipping_id
+		       o.shipping_id, o.tags_json
 		FROM orders_marketplace_orders o
 		WHERE o.tenant_id=$1 AND o.installation_id=$2 AND o.provider_order_id=$3
 	`, r.tenantID, strings.TrimSpace(installationID), strings.TrimSpace(providerOrderID))
@@ -129,7 +129,8 @@ func scanReadModel(scanner interface{ Scan(...any) error }) (ordersdomain.OrderR
 	var nf pgtype.Text
 	var total pgtype.Float8
 	var shippingID pgtype.Text
-	err := scanner.Scan(&model.ProviderOrderID, &model.ProviderCode, &model.Status, &model.ProviderStatusDetail, &created, &closed, &updated, &nf, &total, &shippingID)
+	var tagsJSON []byte
+	err := scanner.Scan(&model.ProviderOrderID, &model.ProviderCode, &model.Status, &model.ProviderStatusDetail, &created, &closed, &updated, &nf, &total, &shippingID, &tagsJSON)
 	if err != nil {
 		return model, err
 	}
@@ -142,6 +143,9 @@ func scanReadModel(scanner interface{ Scan(...any) error }) (ordersdomain.OrderR
 	model.Total = scanFloat8(total)
 	if shippingID.Valid {
 		model.ShippingID = shippingID.String
+	}
+	if len(tagsJSON) > 0 {
+		_ = json.Unmarshal(tagsJSON, &model.Tags)
 	}
 	model.Items = make([]ordersdomain.MarketplaceOrderItem, 0)
 	model.Payments = make([]ordersdomain.MarketplaceOrderPayment, 0)
@@ -218,7 +222,7 @@ func (r *OrderRepository) GetOrderBucketCounts(ctx context.Context, installation
 	}
 
 	rows, err := r.pool.Query(ctx, `
-		SELECT provider_status, shipping_id
+		SELECT provider_status, shipping_id, tags_json
 		FROM orders_marketplace_orders
 		WHERE tenant_id = $1
 		  AND installation_id = $2
@@ -233,10 +237,20 @@ func (r *OrderRepository) GetOrderBucketCounts(ctx context.Context, installation
 	for rows.Next() {
 		var providerStatus string
 		var shippingID pgtype.Text
-		if err := rows.Scan(&providerStatus, &shippingID); err != nil {
+		var tagsJSON []byte
+		if err := rows.Scan(&providerStatus, &shippingID, &tagsJSON); err != nil {
 			return ports.OrderBucketCounts{}, err
 		}
-		switch ordersdomain.DeriveOrderBucket(providerStatus, shippingID.Valid && shippingID.String != "") {
+		// The SQL summary carries no live shipment status (no shipment column;
+		// no per-order fan-out here by design). It reflects the delivered tag —
+		// ML's persisted delivered signal — so the summary agrees with the
+		// tag-driven per-order bucket; the shipment-status refinement lives on
+		// the enriched read path (transport), which the KPI cards derive from.
+		var tags []string
+		if len(tagsJSON) > 0 {
+			_ = json.Unmarshal(tagsJSON, &tags)
+		}
+		switch ordersdomain.DeriveOrderBucket(providerStatus, "", tags, shippingID.Valid && shippingID.String != "") {
 		case ordersdomain.BucketNovo:
 			counts.Novo++
 		case ordersdomain.BucketFaturar:
