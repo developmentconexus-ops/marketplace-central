@@ -11,6 +11,21 @@ import (
 	"marketplace-central/apps/server_core/internal/modules/market/ports"
 )
 
+// An unparseable listing id is a LOCAL resolution failure. classifyProviderFailure
+// must map it to INVALID_LISTING_REF (non-fatal, stop=false), never dress it as a
+// fabricated PROVIDER_4XX provider fault (ADR-17; live-drive reprova, D-86).
+func TestClassifyInvalidListingRefIsLocalNotProvider4xx(t *testing.T) {
+	for _, err := range []error{
+		ports.ErrInvalidListingRef,
+		errors.Join(errors.New("resolve account context"), ports.ErrInvalidListingRef),
+	} {
+		cause, stop := classifyProviderFailure(err)
+		if cause != CollectionCauseInvalidListingRef || stop {
+			t.Fatalf("classify(%v) = (%s, %v); want (INVALID_LISTING_REF, false)", err, cause, stop)
+		}
+	}
+}
+
 // --- fakes -------------------------------------------------------------
 
 type fakeIdentityReader struct {
