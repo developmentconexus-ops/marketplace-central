@@ -1,0 +1,2226 @@
+diff --git a/apps/server_core/internal/composition/root.go b/apps/server_core/internal/composition/root.go
+index fce84bf4..364150c9 100644
+--- a/apps/server_core/internal/composition/root.go
++++ b/apps/server_core/internal/composition/root.go
+@@ -97,6 +97,7 @@ import (
+ 	pricingfee "marketplace-central/apps/server_core/internal/modules/pricing/adapters/feeschedule"
+ 	pricingmarket "marketplace-central/apps/server_core/internal/modules/pricing/adapters/marketplace"
+ 	pricingpostgres "marketplace-central/apps/server_core/internal/modules/pricing/adapters/postgres"
++	pricingtariffdefaults "marketplace-central/apps/server_core/internal/modules/pricing/adapters/tariffdefaults"
+ 	pricingapp "marketplace-central/apps/server_core/internal/modules/pricing/application"
+ 	pricingtransport "marketplace-central/apps/server_core/internal/modules/pricing/transport"
+ 	productlinkspostgres "marketplace-central/apps/server_core/internal/modules/product_links/adapters/postgres"
+@@ -713,7 +714,14 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
+ 		calcRepo := pricingpostgres.NewCalcRepository(pool)
+ 		calcCost := pricingcostread.NewReader(profitabilityinternalread.NewFactReader(internalReadSvc))
+ 		calcProducts := pricingcatalog.NewProductChecker(catalogSvc)
+-		calcSvc := pricingapp.NewCalcService(calcRepo, calcCost, calcProducts, cfg.DefaultTenantID)
++		// CHIP-T1: tariff defaults store + degrau-4 resolver (installation "" =
++		// default-installation sentinel for the single-installation demo). calcRepo
++		// implements ports.TariffDefaultsStore; the resolver reads config-seeded
++		// comissão/frete so an empty comissao_pct resolves and frete honors policy.
++		calcTariffResolver := pricingtariffdefaults.NewResolver(calcRepo, cfg.DefaultTenantID, "")
++		calcSvc := pricingapp.NewCalcService(calcRepo, calcCost, calcProducts, cfg.DefaultTenantID).
++			WithTariffStore(calcRepo).
++			WithTariffResolver(calcTariffResolver)
+ 		pricingHandler = pricingHandler.WithCalc(calcSvc)
+ 	}
+ 	pricingHandler.Register(mux)
+diff --git a/apps/server_core/internal/modules/pricing/adapters/postgres/calc_repository.go b/apps/server_core/internal/modules/pricing/adapters/postgres/calc_repository.go
+index 68b23d26..0959e1de 100644
+--- a/apps/server_core/internal/modules/pricing/adapters/postgres/calc_repository.go
++++ b/apps/server_core/internal/modules/pricing/adapters/postgres/calc_repository.go
+@@ -11,6 +11,7 @@ import (
+ )
+ 
+ var _ ports.CalcRepository = (*CalcRepository)(nil)
++var _ ports.TariffDefaultsStore = (*CalcRepository)(nil)
+ 
+ // CalcRepository persists the IC-04 calculator state: the tenant CalcProfile,
+ // the DIFAL rate table (with overrides), and saved scenarios. Numeric columns
+@@ -230,6 +231,84 @@ func (r *CalcRepository) DeleteScenario(ctx context.Context, tenantID, id string
+ 	return nil
+ }
+ 
++// GetTariffDefaults returns the tenant/installation's stored TariffDefaults,
++// materializing the row on first read: INSERT ... ON CONFLICT DO NOTHING lets
++// the DB column DEFAULTs (13.00/16.00/sem_dados) fill a new row, then it is
++// read back. frete_estimativa_amount scans into *string — NULL stays nil
++// (ADR-17), never 0.
++func (r *CalcRepository) GetTariffDefaults(ctx context.Context, tenantID, installationID string) (domain.TariffDefaults, error) {
++	if _, err := r.pool.Exec(ctx, `
++		INSERT INTO pricing_tariff_defaults (tenant_id, installation_id)
++		VALUES ($1, $2)
++		ON CONFLICT (tenant_id, installation_id) DO NOTHING
++	`, tenantID, installationID); err != nil {
++		return domain.TariffDefaults{}, err
++	}
++
++	var (
++		comissaoClassico string
++		comissaoPremium  string
++		freteEstimativa  *string
++		fretePolicy      string
++	)
++	err := r.pool.QueryRow(ctx, `
++		SELECT comissao_classico_pct::text, comissao_premium_pct::text,
++		       frete_estimativa_amount::text, frete_policy
++		FROM pricing_tariff_defaults
++		WHERE tenant_id = $1 AND installation_id = $2
++	`, tenantID, installationID).Scan(&comissaoClassico, &comissaoPremium, &freteEstimativa, &fretePolicy)
++	if err != nil {
++		return domain.TariffDefaults{}, err
++	}
++	return domain.TariffDefaults{
++		ComissaoClassicoPct:   comissaoClassico,
++		ComissaoPremiumPct:    comissaoPremium,
++		FreteEstimativaAmount: freteEstimativa,
++		FretePolicy:           fretePolicy,
++	}, nil
++}
++
++// UpsertTariffDefaults validates in.FretePolicy (domain.ErrInvalidFretePolicy
++// otherwise, no write attempted) and writes the full row, returning it as
++// stored. tenant_id + installation_id predicate is mandatory on conflict.
++func (r *CalcRepository) UpsertTariffDefaults(ctx context.Context, tenantID, installationID string, in domain.TariffDefaults) (domain.TariffDefaults, error) {
++	if !domain.ValidFretePolicy(in.FretePolicy) {
++		return domain.TariffDefaults{}, domain.ErrInvalidFretePolicy
++	}
++
++	var (
++		comissaoClassico string
++		comissaoPremium  string
++		freteEstimativa  *string
++		fretePolicy      string
++	)
++	err := r.pool.QueryRow(ctx, `
++		INSERT INTO pricing_tariff_defaults (
++			tenant_id, installation_id, comissao_classico_pct, comissao_premium_pct,
++			frete_estimativa_amount, frete_policy, updated_at
++		) VALUES ($1, $2, $3, $4, $5, $6, now())
++		ON CONFLICT (tenant_id, installation_id) DO UPDATE SET
++			comissao_classico_pct = EXCLUDED.comissao_classico_pct,
++			comissao_premium_pct = EXCLUDED.comissao_premium_pct,
++			frete_estimativa_amount = EXCLUDED.frete_estimativa_amount,
++			frete_policy = EXCLUDED.frete_policy,
++			updated_at = now()
++		RETURNING comissao_classico_pct::text, comissao_premium_pct::text,
++		          frete_estimativa_amount::text, frete_policy
++	`, tenantID, installationID, in.ComissaoClassicoPct, in.ComissaoPremiumPct,
++		in.FreteEstimativaAmount, in.FretePolicy,
++	).Scan(&comissaoClassico, &comissaoPremium, &freteEstimativa, &fretePolicy)
++	if err != nil {
++		return domain.TariffDefaults{}, err
++	}
++	return domain.TariffDefaults{
++		ComissaoClassicoPct:   comissaoClassico,
++		ComissaoPremiumPct:    comissaoPremium,
++		FreteEstimativaAmount: freteEstimativa,
++		FretePolicy:           fretePolicy,
++	}, nil
++}
++
+ // rowScanner is the read surface shared by pgx.Row (QueryRow) and pgx.Rows
+ // (Query loop), letting one scanDifalRate serve both RateForUF and
+ // ListDifalRates.
+diff --git a/apps/server_core/internal/modules/pricing/adapters/tariffdefaults/resolver.go b/apps/server_core/internal/modules/pricing/adapters/tariffdefaults/resolver.go
+new file mode 100644
+index 00000000..fdced81a
+--- /dev/null
++++ b/apps/server_core/internal/modules/pricing/adapters/tariffdefaults/resolver.go
+@@ -0,0 +1,66 @@
++// Package tariffdefaults implements degrau 4 of the tariff resolver: it
++// resolves commission + shipping tariff components purely from a
++// tenant/installation's TariffDefaults config (Slice A), with no live or
++// per-listing data. It implements ports.TariffResolver so a future composite
++// resolver can chain degraus 1->2->3->4 behind the same port.
++package tariffdefaults
++
++import (
++	"context"
++	"fmt"
++
++	"marketplace-central/apps/server_core/internal/modules/pricing/domain"
++	"marketplace-central/apps/server_core/internal/modules/pricing/ports"
++)
++
++// degrau4 is this adapter's fixed position in the resolver chain.
++const degrau4 = 4
++
++// Resolver is the degrau-4 (config-defaults) implementation of
++// ports.TariffResolver.
++type Resolver struct {
++	store          ports.TariffDefaultsStore
++	tenantID       string
++	installationID string
++}
++
++var _ ports.TariffResolver = (*Resolver)(nil)
++
++// NewResolver builds a degrau-4 resolver bound to one tenant/installation.
++func NewResolver(store ports.TariffDefaultsStore, tenantID, installationID string) *Resolver {
++	return &Resolver{store: store, tenantID: tenantID, installationID: installationID}
++}
++
++// Resolve loads the tenant's TariffDefaults and maps them onto the requested
++// modalidade's commission rate plus the configured frete estimate (or
++// NO-DATA per ADR-17 — never a fabricated 0).
++func (r *Resolver) Resolve(ctx context.Context, req ports.TariffRequest) (domain.TariffResolution, error) {
++	defaults, err := r.store.GetTariffDefaults(ctx, r.tenantID, r.installationID)
++	if err != nil {
++		return domain.TariffResolution{}, fmt.Errorf("tariffdefaults: get tariff defaults: %w", err)
++	}
++
++	comissaoPct := defaults.ComissaoClassicoPct
++	if req.Modalidade == domain.ModalidadePremium || req.Modalidade == domain.ModalidadeFull {
++		comissaoPct = defaults.ComissaoPremiumPct
++	}
++
++	comissao := domain.ComponentResolution{
++		Valor:      &comissaoPct,
++		Fonte:      domain.FontePadrao,
++		Degrau:     degrau4,
++		Estimativa: true,
++	}
++
++	frete := domain.ComponentResolution{
++		Valor:      nil,
++		Fonte:      domain.FontePadrao,
++		Degrau:     degrau4,
++		Estimativa: true,
++	}
++	if defaults.FretePolicy == domain.FretePolicyEstimativa && defaults.FreteEstimativaAmount != nil {
++		frete.Valor = defaults.FreteEstimativaAmount
++	}
++
++	return domain.TariffResolution{Comissao: comissao, Frete: frete}, nil
++}
+diff --git a/apps/server_core/internal/modules/pricing/adapters/tariffdefaults/resolver_test.go b/apps/server_core/internal/modules/pricing/adapters/tariffdefaults/resolver_test.go
+new file mode 100644
+index 00000000..ac125296
+--- /dev/null
++++ b/apps/server_core/internal/modules/pricing/adapters/tariffdefaults/resolver_test.go
+@@ -0,0 +1,129 @@
++package tariffdefaults
++
++import (
++	"context"
++	"errors"
++	"testing"
++
++	"marketplace-central/apps/server_core/internal/modules/pricing/domain"
++	"marketplace-central/apps/server_core/internal/modules/pricing/ports"
++)
++
++// fakeStore is an in-test stub of ports.TariffDefaultsStore (no DB).
++type fakeStore struct {
++	defaults domain.TariffDefaults
++	err      error
++}
++
++func (f *fakeStore) GetTariffDefaults(ctx context.Context, tenantID, installationID string) (domain.TariffDefaults, error) {
++	return f.defaults, f.err
++}
++
++func (f *fakeStore) UpsertTariffDefaults(ctx context.Context, tenantID, installationID string, in domain.TariffDefaults) (domain.TariffDefaults, error) {
++	return f.defaults, f.err
++}
++
++func amountPtr(s string) *string { return &s }
++
++func TestResolver_Resolve_Comissao(t *testing.T) {
++	cases := []struct {
++		name       string
++		modalidade domain.Modalidade
++		wantPct    string
++	}{
++		{"classico", domain.ModalidadeClassico, "13.00"},
++		{"premium", domain.ModalidadePremium, "16.00"},
++		{"full", domain.ModalidadeFull, "16.00"},
++	}
++
++	for _, tc := range cases {
++		t.Run(tc.name, func(t *testing.T) {
++			store := &fakeStore{defaults: domain.TariffDefaults{
++				ComissaoClassicoPct: "13.00",
++				ComissaoPremiumPct:  "16.00",
++				FretePolicy:         domain.FretePolicySemDados,
++			}}
++			r := NewResolver(store, "tenant-1", "")
++
++			got, err := r.Resolve(context.Background(), ports.TariffRequest{Modalidade: tc.modalidade})
++			if err != nil {
++				t.Fatalf("unexpected error: %v", err)
++			}
++
++			if got.Comissao.Valor == nil || *got.Comissao.Valor != tc.wantPct {
++				t.Fatalf("Comissao.Valor = %v, want %q", got.Comissao.Valor, tc.wantPct)
++			}
++			if got.Comissao.Fonte != domain.FontePadrao {
++				t.Fatalf("Comissao.Fonte = %v, want %v", got.Comissao.Fonte, domain.FontePadrao)
++			}
++			if got.Comissao.Degrau != 4 {
++				t.Fatalf("Comissao.Degrau = %d, want 4", got.Comissao.Degrau)
++			}
++			if !got.Comissao.Estimativa {
++				t.Fatalf("Comissao.Estimativa = false, want true")
++			}
++		})
++	}
++}
++
++func TestResolver_Resolve_Frete(t *testing.T) {
++	cases := []struct {
++		name        string
++		policy      string
++		amount      *string
++		wantValor   *string
++		wantEstimat bool
++	}{
++		{"estimativa com valor", domain.FretePolicyEstimativa, amountPtr("21.50"), amountPtr("21.50"), true},
++		{"estimativa sem valor", domain.FretePolicyEstimativa, nil, nil, true},
++		{"sem_dados com valor presente ainda assim nil", domain.FretePolicySemDados, amountPtr("21.50"), nil, true},
++		{"sem_dados sem valor", domain.FretePolicySemDados, nil, nil, true},
++	}
++
++	for _, tc := range cases {
++		t.Run(tc.name, func(t *testing.T) {
++			store := &fakeStore{defaults: domain.TariffDefaults{
++				ComissaoClassicoPct:   "13.00",
++				ComissaoPremiumPct:    "16.00",
++				FretePolicy:           tc.policy,
++				FreteEstimativaAmount: tc.amount,
++			}}
++			r := NewResolver(store, "tenant-1", "")
++
++			got, err := r.Resolve(context.Background(), ports.TariffRequest{Modalidade: domain.ModalidadeClassico})
++			if err != nil {
++				t.Fatalf("unexpected error: %v", err)
++			}
++
++			if tc.wantValor == nil {
++				if got.Frete.Valor != nil {
++					t.Fatalf("Frete.Valor = %v, want nil (NO-DATA)", *got.Frete.Valor)
++				}
++			} else {
++				if got.Frete.Valor == nil || *got.Frete.Valor != *tc.wantValor {
++					t.Fatalf("Frete.Valor = %v, want %q", got.Frete.Valor, *tc.wantValor)
++				}
++			}
++			if got.Frete.Fonte != domain.FontePadrao {
++				t.Fatalf("Frete.Fonte = %v, want %v", got.Frete.Fonte, domain.FontePadrao)
++			}
++			if got.Frete.Degrau != 4 {
++				t.Fatalf("Frete.Degrau = %d, want 4", got.Frete.Degrau)
++			}
++			if got.Frete.Estimativa != tc.wantEstimat {
++				t.Fatalf("Frete.Estimativa = %v, want %v", got.Frete.Estimativa, tc.wantEstimat)
++			}
++		})
++	}
++}
++
++func TestResolver_Resolve_StoreErrorPropagates(t *testing.T) {
++	wantErr := errors.New("boom")
++	store := &fakeStore{err: wantErr}
++	r := NewResolver(store, "tenant-1", "")
++
++	_, err := r.Resolve(context.Background(), ports.TariffRequest{Modalidade: domain.ModalidadeClassico})
++	if !errors.Is(err, wantErr) {
++		t.Fatalf("err = %v, want %v", err, wantErr)
++	}
++}
+diff --git a/apps/server_core/internal/modules/pricing/application/calc_service.go b/apps/server_core/internal/modules/pricing/application/calc_service.go
+index dc28c3bd..0ab340b0 100644
+--- a/apps/server_core/internal/modules/pricing/application/calc_service.go
++++ b/apps/server_core/internal/modules/pricing/application/calc_service.go
+@@ -19,6 +19,10 @@ var (
+ 	ErrItemNotFound = errors.New("ITEM_NOT_FOUND")
+ )
+ 
++// ErrTariffStoreNotConfigured is returned by Get/PutTariffDefaults when the
++// service was built without WithTariffStore (transport maps it to 503).
++var ErrTariffStoreNotConfigured = errors.New("PRICING_TARIFF_STORE_NOT_CONFIGURED")
++
+ // BlockingStateSemCusto is the IC-03/IC-04 blocking_state emitted when a
+ // decomposition is computed for a known product whose custo_erp is absent —
+ // the response is a 200 partial decomposition, never an error (ADR-17).
+@@ -35,16 +39,34 @@ var overrideThresholdPP = big.NewRat(49, 1000) // 0.049
+ // cost port, and the product-existence check. All money/percent values are
+ // decimal strings; the service never introduces float64.
+ type CalcService struct {
+-	repo     ports.CalcRepository
+-	cost     ports.CostReader
+-	products ports.ProductChecker
+-	tenantID string
++	repo           ports.CalcRepository
++	cost           ports.CostReader
++	products       ports.ProductChecker
++	tenantID       string
++	tariffStore    ports.TariffDefaultsStore
++	tariffResolver ports.TariffResolver
+ }
+ 
+ func NewCalcService(repo ports.CalcRepository, cost ports.CostReader, products ports.ProductChecker, tenantID string) CalcService {
+ 	return CalcService{repo: repo, cost: cost, products: products, tenantID: tenantID}
+ }
+ 
++// WithTariffStore attaches the CHIP-T1 tariff-defaults store, enabling
++// Get/PutTariffDefaults. Nil-safe: existing NewCalcService callers/tests that
++// never call this stay green (tariffStore nil ⇒ ErrTariffStoreNotConfigured).
++func (s CalcService) WithTariffStore(store ports.TariffDefaultsStore) CalcService {
++	s.tariffStore = store
++	return s
++}
++
++// WithTariffResolver attaches the CHIP-T1 degrau-4 tariff resolver. Nil-safe:
++// callers/tests that never call this keep today's behavior (no resolver ⇒
++// comissao_pct stays required, frete stays request-only, Tarifa nil).
++func (s CalcService) WithTariffResolver(r ports.TariffResolver) CalcService {
++	s.tariffResolver = r
++	return s
++}
++
+ // --- Profile ---
+ 
+ func (s CalcService) GetProfile(ctx context.Context) (domain.CalcProfile, error) {
+@@ -88,6 +110,38 @@ func (s CalcService) PutProfile(ctx context.Context, in ProfileUpdate) (domain.C
+ 	return profile, nil
+ }
+ 
++// --- Tariff Defaults (CHIP-T1 Slice A) ---
++
++// GetTariffDefaults returns the tenant's stored TariffDefaults for
++// installationID ("" = default installation sentinel).
++// ErrTariffStoreNotConfigured when the service has no tariffStore wired.
++func (s CalcService) GetTariffDefaults(ctx context.Context, installationID string) (domain.TariffDefaults, error) {
++	if s.tariffStore == nil {
++		return domain.TariffDefaults{}, ErrTariffStoreNotConfigured
++	}
++	return s.tariffStore.GetTariffDefaults(ctx, s.tenantID, installationID)
++}
++
++// PutTariffDefaults validates and persists a tariff-defaults edit for
++// installationID. domain.ErrInvalidFretePolicy (422) when in.FretePolicy is
++// outside {estimativa, sem_dados}. ErrTariffStoreNotConfigured when the
++// service has no tariffStore wired.
++func (s CalcService) PutTariffDefaults(ctx context.Context, installationID string, in domain.TariffDefaults) (domain.TariffDefaults, error) {
++	if s.tariffStore == nil {
++		return domain.TariffDefaults{}, ErrTariffStoreNotConfigured
++	}
++	if !domain.ValidFretePolicy(in.FretePolicy) {
++		return domain.TariffDefaults{}, domain.ErrInvalidFretePolicy
++	}
++	// guard the numeric columns before the DB numeric cast, so a non-decimal
++	// body is a 422 (INVALID_PRICE) rather than a 500 on the Postgres error.
++	if !decimalIsParseable(in.ComissaoClassicoPct) || !decimalIsParseable(in.ComissaoPremiumPct) ||
++		!optionalDecimalIsParseable(in.FreteEstimativaAmount) {
++		return domain.TariffDefaults{}, ErrInvalidPrice
++	}
++	return s.tariffStore.UpsertTariffDefaults(ctx, s.tenantID, installationID, in)
++}
++
+ // --- DIFAL ---
+ 
+ func (s CalcService) ListDifal(ctx context.Context) ([]domain.DifalRate, error) {
+@@ -176,6 +230,10 @@ type DecomposeRequest struct {
+ type DecomposeResult struct {
+ 	Decomposition domain.Decomposition
+ 	BlockingState *string
++	// Tarifa is the resolved tariff components (fonte/degrau/estimativa
++	// stamps) surfaced to the client; nil when the service has no
++	// tariffResolver wired.
++	Tarifa *domain.TariffResolution
+ }
+ 
+ // Decompose runs the single IC-04 formula over resolved inputs. Preco ≤ 0 ⇒
+@@ -190,8 +248,7 @@ func (s CalcService) Decompose(ctx context.Context, req DecomposeRequest) (Decom
+ 	// string via ParseRat and panic on failure. Validate each client-supplied
+ 	// decimal here so an empty/unparseable field is a 422 (ADR-17 honest
+ 	// rejection), never a panic. Preco is already guarded above.
+-	if !decimalIsParseable(req.ComissaoPct) ||
+-		!optionalDecimalIsParseable(req.TarifaFull) ||
++	if !optionalDecimalIsParseable(req.TarifaFull) ||
+ 		!optionalDecimalIsParseable(req.FreteProduto) ||
+ 		!optionalDecimalIsParseable(req.Custo) {
+ 		return DecomposeResult{}, ErrInvalidPrice
+@@ -204,13 +261,20 @@ func (s CalcService) Decompose(ctx context.Context, req DecomposeRequest) (Decom
+ 	if err != nil {
+ 		return DecomposeResult{}, err
+ 	}
++	comissao, frete, tarifa, err := s.resolveTariff(ctx, req.Modalidade, req.ComissaoPct, req.FreteProduto)
++	if err != nil {
++		return DecomposeResult{}, err
++	}
++	if !decimalIsParseable(comissao) {
++		return DecomposeResult{}, ErrInvalidPrice
++	}
+ 	in := domain.DecomposeInput{
+ 		Preco:        req.Preco,
+-		ComissaoPct:  req.ComissaoPct,
++		ComissaoPct:  comissao,
+ 		AliquotaPct:  profile.AliquotaPct,
+ 		Modalidade:   req.Modalidade,
+ 		TarifaFull:   resolveTarifaFull(req.TarifaFull, profile),
+-		FreteProduto: optionalMoney(req.FreteProduto),
++		FreteProduto: frete,
+ 		Custo:        custo,
+ 	}
+ 	// The effective tarifa_full may come from the profile (PutProfile persists
+@@ -221,7 +285,7 @@ func (s CalcService) Decompose(ctx context.Context, req DecomposeRequest) (Decom
+ 		return DecomposeResult{}, ErrInvalidPrice
+ 	}
+ 	s.applyDifal(ctx, profile, &in.DifalEnabled, &in.DestinoUF, &in.EfetivoPct)
+-	return DecomposeResult{Decomposition: domain.Decompose(in), BlockingState: blocking}, nil
++	return DecomposeResult{Decomposition: domain.Decompose(in), BlockingState: blocking, Tarifa: tarifa}, nil
+ }
+ 
+ // SolveRequest carries the bidirectional solver inputs (margem-alvo → preço).
+@@ -242,6 +306,10 @@ type SolveRequest struct {
+ type SolveOutput struct {
+ 	Result        domain.SolveResult
+ 	BlockingState *string
++	// Tarifa is the resolved tariff components (fonte/degrau/estimativa
++	// stamps) surfaced to the client; nil when the service has no
++	// tariffResolver wired.
++	Tarifa *domain.TariffResolution
+ }
+ 
+ // SolveTarget resolves the price achieving a target margin. An unreachable
+@@ -253,7 +321,6 @@ func (s CalcService) SolveTarget(ctx context.Context, req SolveRequest) (SolveOu
+ 	// Reject empty/unparseable client decimals here as a 422 (ADR-17) so no
+ 	// API-reachable solve path can panic.
+ 	if !decimalIsParseable(req.TargetMargemPct) ||
+-		!decimalIsParseable(req.ComissaoPct) ||
+ 		!optionalDecimalIsParseable(req.TarifaFull) ||
+ 		!optionalDecimalIsParseable(req.FreteProduto) ||
+ 		!optionalDecimalIsParseable(req.Custo) {
+@@ -267,14 +334,23 @@ func (s CalcService) SolveTarget(ctx context.Context, req SolveRequest) (SolveOu
+ 	if err != nil {
+ 		return SolveOutput{}, err
+ 	}
++	comissao, frete, tarifa, err := s.resolveTariff(ctx, req.Modalidade, req.ComissaoPct, req.FreteProduto)
++	if err != nil {
++		return SolveOutput{}, err
++	}
++	if !decimalIsParseable(comissao) {
++		return SolveOutput{}, ErrInvalidPrice
++	}
+ 	in := domain.SolveInput{
+ 		TargetMargemPct: req.TargetMargemPct,
+-		ComissaoPct:     req.ComissaoPct,
++		ComissaoPct:     comissao,
+ 		AliquotaPct:     profile.AliquotaPct,
+ 		Modalidade:      req.Modalidade,
+ 		TarifaFull:      resolveTarifaFull(req.TarifaFull, profile),
+-		FreteProduto:    optionalMoney(req.FreteProduto),
++		FreteProduto:    frete,
+ 		Custo:           custo,
++		// TaxaFixaLimiarCents left at zero value: the per-solve threshold
++		// override defaults to policy (7900) for the demo.
+ 	}
+ 	// See Decompose: the resolved tarifa_full may be a profile-sourced value
+ 	// that PutProfile never parse-checked; guard it before the solver forwards
+@@ -283,7 +359,7 @@ func (s CalcService) SolveTarget(ctx context.Context, req SolveRequest) (SolveOu
+ 		return SolveOutput{}, ErrInvalidPrice
+ 	}
+ 	s.applyDifal(ctx, profile, &in.DifalEnabled, &in.DestinoUF, &in.EfetivoPct)
+-	return SolveOutput{Result: domain.SolveTargetPrice(in), BlockingState: blocking}, nil
++	return SolveOutput{Result: domain.SolveTargetPrice(in), BlockingState: blocking, Tarifa: tarifa}, nil
+ }
+ 
+ // resolveCusto returns the custo Money for the request: an explicit req.Custo
+@@ -317,6 +393,40 @@ func (s CalcService) resolveCusto(ctx context.Context, req DecomposeRequest) (*d
+ 	return custo, nil, nil
+ }
+ 
++// resolveTariff computes the comissao pct and produto frete actually used by
++// the domain engine, plus the Tarifa stamp to surface. Manual request values
++// override the resolver (Fonte MANUAL). With no resolver wired it is a
++// pass-through (comissao=reqComissao, frete=reqFrete, tarifa nil) so existing
++// callers are unchanged. A resolver's sem_dados frete stays nil (ADR-17: never 0).
++func (s CalcService) resolveTariff(ctx context.Context, modalidade domain.Modalidade, reqComissao string, reqFrete *string) (comissao string, frete *domain.Money, tarifa *domain.TariffResolution, err error) {
++	if s.tariffResolver == nil {
++		return reqComissao, optionalMoney(reqFrete), nil, nil
++	}
++	res, err := s.tariffResolver.Resolve(ctx, ports.TariffRequest{Modalidade: modalidade})
++	if err != nil {
++		return "", nil, nil, err
++	}
++	comissaoComp := res.Comissao
++	if reqComissao != "" {
++		comissao = reqComissao
++		c := reqComissao
++		comissaoComp = domain.ComponentResolution{Valor: &c, Fonte: domain.FonteManual}
++	} else if res.Comissao.Valor != nil {
++		comissao = *res.Comissao.Valor
++	} // else comissao stays "" ⇒ caller's parseable check rejects it (422)
++
++	freteComp := res.Frete
++	if reqFrete != nil {
++		frete = &domain.Money{Amount: *reqFrete, Currency: "BRL"}
++		f := *reqFrete
++		freteComp = domain.ComponentResolution{Valor: &f, Fonte: domain.FonteManual}
++	} else if res.Frete.Valor != nil {
++		frete = &domain.Money{Amount: *res.Frete.Valor, Currency: "BRL"}
++	} // else frete stays nil ⇒ NO-DATA (sem_dados), ADR-17
++
++	return comissao, frete, &domain.TariffResolution{Comissao: comissaoComp, Frete: freteComp}, nil
++}
++
+ // applyDifal resolves the profile's DIFAL destino to an efetivo_pct via the
+ // repository. Enabled with a resolvable destino ⇒ difal applied; a destino
+ // that is unset or absent from the table ⇒ difal treated as unknown
+diff --git a/apps/server_core/internal/modules/pricing/application/calc_service_test.go b/apps/server_core/internal/modules/pricing/application/calc_service_test.go
+index 2b85bfcc..504f2a0e 100644
+--- a/apps/server_core/internal/modules/pricing/application/calc_service_test.go
++++ b/apps/server_core/internal/modules/pricing/application/calc_service_test.go
+@@ -103,6 +103,17 @@ func newService(repo ports.CalcRepository, cost ports.CostReader, products ports
+ 	return application.NewCalcService(repo, cost, products, "t1")
+ }
+ 
++// fakeTariffResolver is a configurable stub TariffResolver for CHIP-T1
++// Slice D CalcService wiring tests.
++type fakeTariffResolver struct {
++	res domain.TariffResolution
++	err error
++}
++
++func (f fakeTariffResolver) Resolve(_ context.Context, _ ports.TariffRequest) (domain.TariffResolution, error) {
++	return f.res, f.err
++}
++
+ func TestPutProfileInvalidRate(t *testing.T) {
+ 	svc := newService(newFakeRepo(), fakeCost{}, nil)
+ 	_, err := svc.PutProfile(context.Background(), application.ProfileUpdate{
+@@ -385,6 +396,129 @@ func recoverErr(fn func() error) (err error) {
+ 
+ func strptr(s string) *string { return &s }
+ 
++// --- CHIP-T1 Slice D: resolveTariff wiring ---
++
++func TestDecomposeEmptyComissaoUsesResolverPadrao(t *testing.T) {
++	resolver := fakeTariffResolver{res: domain.TariffResolution{
++		Comissao: domain.ComponentResolution{Valor: strptr("13.00"), Fonte: domain.FontePadrao, Degrau: 4, Estimativa: true},
++		Frete:    domain.ComponentResolution{Fonte: domain.FontePadrao, Degrau: 4, Estimativa: true},
++	}}
++	svc := newService(newFakeRepo(), fakeCost{}, nil).WithTariffResolver(resolver)
++	custo := "40.00"
++	res, err := svc.Decompose(context.Background(), application.DecomposeRequest{
++		Preco: "100.00", ComissaoPct: "", Modalidade: domain.ModalidadeClassico, Custo: &custo,
++	})
++	if err != nil {
++		t.Fatalf("unexpected error: %v", err)
++	}
++	if res.Tarifa == nil {
++		t.Fatalf("Tarifa = nil, want resolved tariff")
++	}
++	if res.Tarifa.Comissao.Valor == nil || *res.Tarifa.Comissao.Valor != "13.00" {
++		t.Fatalf("Tarifa.Comissao.Valor = %v, want 13.00", res.Tarifa.Comissao.Valor)
++	}
++	if res.Tarifa.Comissao.Fonte != domain.FontePadrao {
++		t.Fatalf("Tarifa.Comissao.Fonte = %v, want FontePadrao", res.Tarifa.Comissao.Fonte)
++	}
++	if !res.Tarifa.Comissao.Estimativa {
++		t.Fatalf("Tarifa.Comissao.Estimativa = false, want true")
++	}
++	// preço 100.00 @ comissão 13.00% ⇒ comissão amount 13.00; confirms the
++	// resolver's pct (not an empty/zero) reached the domain engine.
++	if res.Decomposition.Comissao != "13.00" {
++		t.Fatalf("decomposition Comissao = %v, want 13.00 (resolver pct applied)", res.Decomposition.Comissao)
++	}
++}
++
++func TestDecomposeManualComissaoOverridesResolver(t *testing.T) {
++	resolver := fakeTariffResolver{res: domain.TariffResolution{
++		Comissao: domain.ComponentResolution{Valor: strptr("13.00"), Fonte: domain.FontePadrao, Degrau: 4, Estimativa: true},
++		Frete:    domain.ComponentResolution{Fonte: domain.FontePadrao, Degrau: 4, Estimativa: true},
++	}}
++	svc := newService(newFakeRepo(), fakeCost{}, nil).WithTariffResolver(resolver)
++	custo := "40.00"
++	res, err := svc.Decompose(context.Background(), application.DecomposeRequest{
++		Preco: "100.00", ComissaoPct: "10", Modalidade: domain.ModalidadeClassico, Custo: &custo,
++	})
++	if err != nil {
++		t.Fatalf("unexpected error: %v", err)
++	}
++	if res.Tarifa == nil {
++		t.Fatalf("Tarifa = nil, want resolved tariff")
++	}
++	if res.Tarifa.Comissao.Valor == nil || *res.Tarifa.Comissao.Valor != "10" {
++		t.Fatalf("Tarifa.Comissao.Valor = %v, want 10 (manual)", res.Tarifa.Comissao.Valor)
++	}
++	if res.Tarifa.Comissao.Fonte != domain.FonteManual {
++		t.Fatalf("Tarifa.Comissao.Fonte = %v, want FonteManual", res.Tarifa.Comissao.Fonte)
++	}
++	// preço 100.00 @ comissão 10% ⇒ comissão amount 10.00; confirms the
++	// manual override (not the resolver's 13.00) reached the domain engine.
++	if res.Decomposition.Comissao != "10.00" {
++		t.Fatalf("decomposition Comissao = %v, want 10.00 (manual pct applied)", res.Decomposition.Comissao)
++	}
++}
++
++func TestDecomposeResolverFreteSemDadosStaysNil(t *testing.T) {
++	resolver := fakeTariffResolver{res: domain.TariffResolution{
++		Comissao: domain.ComponentResolution{Valor: strptr("13.00"), Fonte: domain.FontePadrao, Degrau: 4},
++		Frete:    domain.ComponentResolution{Valor: nil, Fonte: domain.FontePadrao, Degrau: 4},
++	}}
++	svc := newService(newFakeRepo(), fakeCost{}, nil).WithTariffResolver(resolver)
++	custo := "40.00"
++	res, err := svc.Decompose(context.Background(), application.DecomposeRequest{
++		Preco: "100.00", ComissaoPct: "", Modalidade: domain.ModalidadeClassico, Custo: &custo,
++	})
++	if err != nil {
++		t.Fatalf("unexpected error: %v", err)
++	}
++	if res.Tarifa == nil || res.Tarifa.Frete.Valor != nil {
++		t.Fatalf("Tarifa.Frete.Valor = %v, want nil (sem_dados, ADR-17: never 0)", res.Tarifa.Frete.Valor)
++	}
++	if res.Decomposition.Frete != nil {
++		t.Fatalf("Decomposition.Frete = %v, want nil (sem_dados, unknown, never 0)", res.Decomposition.Frete)
++	}
++}
++
++func TestSolveTargetResolverFreteSemDadosSurfacesFreteDesconhecido(t *testing.T) {
++	resolver := fakeTariffResolver{res: domain.TariffResolution{
++		Comissao: domain.ComponentResolution{Valor: strptr("12"), Fonte: domain.FontePadrao, Degrau: 4},
++		Frete:    domain.ComponentResolution{Valor: nil, Fonte: domain.FontePadrao, Degrau: 4},
++	}}
++	svc := newService(newFakeRepo(), fakeCost{}, nil).WithTariffResolver(resolver)
++	custo := "40.00"
++	// High target margem (above what the low segment, frete=0, can reach given
++	// custo 40.00) is only reachable in the ≥limiar (produto frete required)
++	// segment; with frete unknown from the resolver and no request override,
++	// SolveTarget must surface FreteDesconhecido rather than fabricate 0.
++	out, err := svc.SolveTarget(context.Background(), application.SolveRequest{
++		TargetMargemPct: "50", Modalidade: domain.ModalidadeClassico, Custo: &custo,
++	})
++	if err != nil {
++		t.Fatalf("unexpected error: %v", err)
++	}
++	if out.Tarifa == nil || out.Tarifa.Frete.Valor != nil {
++		t.Fatalf("Tarifa.Frete.Valor = %v, want nil (sem_dados)", out.Tarifa.Frete.Valor)
++	}
++	if !out.Result.FreteDesconhecido {
++		t.Fatalf("Result.FreteDesconhecido = false, want true (frete required, sem_dados)")
++	}
++}
++
++func TestDecomposeNoResolverEmptyComissaoStaysInvalidPrice(t *testing.T) {
++	svc := newService(newFakeRepo(), fakeCost{}, nil) // no WithTariffResolver
++	custo := "40.00"
++	res, err := svc.Decompose(context.Background(), application.DecomposeRequest{
++		Preco: "100.00", ComissaoPct: "", Modalidade: domain.ModalidadeClassico, Custo: &custo,
++	})
++	if !errors.Is(err, application.ErrInvalidPrice) {
++		t.Fatalf("err = %v, want ErrInvalidPrice (back-compat: no resolver, empty comissao)", err)
++	}
++	if res.Tarifa != nil {
++		t.Fatalf("Tarifa = %v, want nil on error", res.Tarifa)
++	}
++}
++
+ func containsStr(xs []string, want string) bool {
+ 	for _, x := range xs {
+ 		if x == want {
+diff --git a/apps/server_core/internal/modules/pricing/domain/decompose.go b/apps/server_core/internal/modules/pricing/domain/decompose.go
+index 4bc740d2..20ca7b8f 100644
+--- a/apps/server_core/internal/modules/pricing/domain/decompose.go
++++ b/apps/server_core/internal/modules/pricing/domain/decompose.go
+@@ -22,6 +22,11 @@ var (
+ 	cem            = big.NewRat(100, 1)
+ )
+ 
++// defaultTaxaFixaLimiarCents is taxaFixaLimiar expressed in cents (79,00 ⇒
++// 7900). This is the ONLY surviving form of the 79 literal for solve segment
++// math (solve.go); it must equal taxaFixaLimiar × 100.
++const defaultTaxaFixaLimiarCents int64 = 7900
++
+ // DecomposeInput carries the ALREADY-RESOLVED decimal inputs for one
+ // decomposition. The engine is pure (note G1): comissão pct, aliquota,
+ // efetivo, frete, custo and tarifa_full are resolved by the ports (S6)
+@@ -79,6 +84,15 @@ type Decomposition struct {
+ // exact interna−interestadual via big.Rat in DifalForUF, so no rounded value
+ // is ever re-rounded into a cost.
+ func Decompose(in DecomposeInput) Decomposition {
++	return decomposeWithLimiar(in, taxaFixaLimiar)
++}
++
++// decomposeWithLimiar is the IC-04 formula parameterized on the taxa_fixa/
++// frete step threshold. Decompose calls it with the default taxaFixaLimiar
++// (79); solve.go's per-segment math calls it directly with an override so
++// the frozen Decompose signature (DecomposeInput) Decomposition never
++// changes shape.
++func decomposeWithLimiar(in DecomposeInput, limiar *big.Rat) Decomposition {
+ 	preco := mustRat(in.Preco)
+ 
+ 	comissao, comissaoRat := pctOfPrice(in.ComissaoPct, preco)
+@@ -86,7 +100,7 @@ func Decompose(in DecomposeInput) Decomposition {
+ 
+ 	var taxaFixa string
+ 	var taxaFixaRat *big.Rat
+-	if preco.Cmp(taxaFixaLimiar) < 0 {
++	if preco.Cmp(limiar) < 0 {
+ 		taxaFixa, taxaFixaRat = round2(new(big.Rat).Set(taxaFixaValor))
+ 	} else {
+ 		taxaFixa, taxaFixaRat = round2(new(big.Rat))
+@@ -104,8 +118,8 @@ func Decompose(in DecomposeInput) Decomposition {
+ 	sum.Add(sum, taxaFixaRat)
+ 	var unknown []string
+ 
+-	// frete: applied only when preço ≥ 79.
+-	if preco.Cmp(taxaFixaLimiar) < 0 {
++	// frete: applied only when preço ≥ limiar.
++	if preco.Cmp(limiar) < 0 {
+ 		s, r := round2(new(big.Rat))
+ 		out.Frete = &s
+ 		sum.Add(sum, r)
+diff --git a/apps/server_core/internal/modules/pricing/domain/solve.go b/apps/server_core/internal/modules/pricing/domain/solve.go
+index 31530588..7bfe3e8d 100644
+--- a/apps/server_core/internal/modules/pricing/domain/solve.go
++++ b/apps/server_core/internal/modules/pricing/domain/solve.go
+@@ -7,11 +7,6 @@ import "math/big"
+ // it is treated as UNREACHABLE alongside the analytic ceiling.
+ const solveMaxCents int64 = 100_000_000
+ 
+-// thresholdCents is preço 79,00 — the taxa_fixa/frete step. The two monotone
+-// segments are [1, 7899] (taxa_fixa 6,50, frete 0) and [7900, cap] (taxa_fixa
+-// 0, frete = frete_produto).
+-const thresholdCents int64 = 7900
+-
+ // SolveInput is a DecomposeInput with the preço replaced by a target
+ // margem_pct — the bidirectional (margem → preço) direction. Every other
+ // component is resolved exactly as for Decompose.
+@@ -28,6 +23,10 @@ type SolveInput struct {
+ 	DifalEnabled bool
+ 	DestinoUF    string
+ 	EfetivoPct   string
++
++	// TaxaFixaLimiarCents overrides the taxa_fixa/frete step (in cents) for
++	// this solve. 0 ⇒ default defaultTaxaFixaLimiarCents (79,00).
++	TaxaFixaLimiarCents int64
+ }
+ 
+ // SolveResult is the outcome of SolveTargetPrice. Exactly one condition holds:
+@@ -36,12 +35,26 @@ type SolveInput struct {
+ //     the analytic ceiling (or unattainable within the cap); CeilingPct is the
+ //     attainable margem_pct ceiling to surface (mapped to HTTP 200 in S7).
+ //   - Desconhecidos non-empty: BLOCKING — inputs leave margem unknown (ADR-17);
+-//     the solver reports the missing components, never a preço or a ceiling.
++//     the solver reports the missing components (custo_erp / tarifa_full /
++//     difal — segment-independent), never a preço or a ceiling.
++//   - FreteDesconhecido true: the target is only attainable in the ≥limiar
++//     segment, where produto frete is required but unknown (ADR-17). Distinct
++//     from Desconhecidos (structural, segment-independent) and from
++//     CeilingPct (target unreachable regardless of frete).
+ type SolveResult struct {
+-	Preco         *string
+-	Reached       bool
+-	CeilingPct    string
+-	Desconhecidos []string
++	Preco             *string
++	Reached           bool
++	CeilingPct        string
++	Desconhecidos     []string
++	FreteDesconhecido bool
++}
++
++// limiarCents resolves the effective taxa_fixa/frete step for this solve.
++func (in SolveInput) limiarCents() int64 {
++	if in.TaxaFixaLimiarCents <= 0 {
++		return defaultTaxaFixaLimiarCents
++	}
++	return in.TaxaFixaLimiarCents
+ }
+ 
+ // SolveTargetPrice finds the cheapest 2dp preço whose Decompose margem_pct
+@@ -51,6 +64,7 @@ type SolveResult struct {
+ // break. The ceiling (100 − comissão − aliquota − difal) is the margem_pct
+ // asymptote as preço→∞.
+ func SolveTargetPrice(in SolveInput) SolveResult {
++	limiar := in.limiarCents()
+ 	if unk := in.structuralUnknowns(); len(unk) > 0 {
+ 		return SolveResult{Desconhecidos: unk}
+ 	}
+@@ -61,15 +75,22 @@ func SolveTargetPrice(in SolveInput) SolveResult {
+ 		return SolveResult{CeilingPct: ceiling}
+ 	}
+ 
+-	// low segment (preço < 79) yields the cheapest price when it can reach the
+-	// target — its top (78,99) already meets or exceeds it.
+-	if cmpPct(in.margemAt(thresholdCents-1), in.TargetMargemPct) >= 0 {
+-		if p, ok := in.searchSegment(1, thresholdCents-1); ok {
+-			return SolveResult{Preco: &p, Reached: true}
+-		}
++	// low segment (preço < limiar): frete is 0 here, so always evaluable even
++	// when produto frete is unknown, and being the cheapest segment it is tried
++	// first. searchSegment scans it EXHAUSTIVELY — Decompose margem_pct is not
++	// monotone in preço (2dp rounding of comissão/imposto/difal makes it wiggle
++	// downward by sub-cent amounts), so a rounded-value bisection skips valid
++	// prices and mis-reports reachable targets (FINDING-P6-SOLVER).
++	if p, ok := in.searchSegment(1, limiar-1); ok {
++		return SolveResult{Preco: &p, Reached: true}
++	}
++	// target needs the high segment (preço ≥ limiar), where produto frete is
++	// consulted. If it is unknown, block ONLY this segment (ADR-17) — do not
++	// fabricate a frete of 0.
++	if in.FreteProduto == nil {
++		return SolveResult{FreteDesconhecido: true}
+ 	}
+-	// high segment (preço ≥ 79).
+-	if p, ok := in.searchSegment(thresholdCents, solveMaxCents); ok {
++	if p, ok := in.searchSegment(limiar, solveMaxCents); ok {
+ 		return SolveResult{Preco: &p, Reached: true}
+ 	}
+ 	return SolveResult{CeilingPct: ceiling}
+@@ -94,34 +115,164 @@ func (in SolveInput) difalApplied() bool {
+ 
+ // structuralUnknowns returns the components that make margem unknown regardless
+ // of preço (custo nil, full+tarifa_full nil, difal enabled+destino unknown).
+-// frete_produto nil is caught here too because the search may enter the ≥79
+-// segment where frete is consulted. Evaluated at a ≥79 preço so every consulted
+-// component is exercised.
++// frete_produto nil is NO LONGER caught here — it is now a segment-conditional
++// state handled by SolveTargetPrice. Evaluated at limiar-1, a low-segment
++// preço where frete is 0.
+ func (in SolveInput) structuralUnknowns() []string {
+-	return in.margemDecompose(15000).ComponentesDesconhecidos
++	// probe a valid low-segment preço; floor at 1 cent so a degenerate limiar of
++	// 1 (limiar-1 == 0) cannot divide by preço 0 in Decompose.
++	probe := in.limiarCents() - 1
++	if probe < 1 {
++		probe = 1
++	}
++	return in.margemDecompose(probe).ComponentesDesconhecidos
+ }
+ 
++// lowSegmentSpanCents is the widest span searchSegment scans cent-by-cent. The
++// low segment (below the taxa_fixa limiar, ≤ 7899 cents) is always narrower, so
++// it is scanned exhaustively; the unbounded high segment is bracketed first.
++const lowSegmentSpanCents int64 = 200_000
++
++// windowMarginCents pads the DERIVED high-segment scan half-window (150/gStar
++// cents, see searchSegment) to absorb the integer ceil. The window itself is
++// computed per-input from the exact ceiling gap, never a fixed cap, so it can
++// never silently truncate a reachable target (FINDING-P6-SOLVER-2).
++const windowMarginCents int64 = 8
++
++// searchSegment returns the cheapest 2dp preço (in cents) within [loCents,
++// hiCents] whose Decompose margem_pct equals TargetMargemPct EXACTLY, and
++// whether such a preço exists.
++//
++// Decompose rounds comissão/imposto/difal to 2dp before subtracting, so its
++// margem_pct is only piecewise-increasing with sub-cent downward wiggles; a
++// binary search over the rounded value is unsound (FINDING-P6-SOLVER: it skips
++// valid prices and mis-reports reachable targets as SEM_FRETE/UNREACHABLE). The
++// EXACT margem_pct (100·k − 100·F/preço) IS strictly increasing, so it is used
++// only to BRACKET the candidate window; the exact-match test still runs the
++// real Decompose so the returned price honors the frozen contract exactly.
+ func (in SolveInput) searchSegment(loCents, hiCents int64) (string, bool) {
+-	// margem_pct is increasing within a segment; bail if even the top is short.
+-	if cmpPct(in.margemAt(hiCents), in.TargetMargemPct) < 0 {
++	if loCents > hiCents {
+ 		return "", false
+ 	}
+-	lo, hi := loCents, hiCents
++	limiar := in.limiarCents()
++	scanLo, scanHi := loCents, hiCents
++	if hiCents-loCents > lowSegmentSpanCents {
++		// High segment: bracket the round2(exact.pct)=target crossing by bisection
++		// (exact margem_pct is strictly increasing), then scan a window around it
++		// against the real Decompose. round2(exact) ≥ target ⇔ exact ≥ target−0.005,
++		// so cStar = firstCentExactAtLeast(target−0.005) is that crossing (the
++		// −0.005 is the final-round2 half-band, already folded in here).
++		//
++		// The cheapest Decompose match lies at most 150/gStar cents from cStar,
++		// gStar = exactCeiling − (target−0.005): Decompose = round2(exact + ρ) with
++		// |ρ| ≤ 1.5/preço pp (2dp rounding of ≤3 cost components), and the exact
++		// slope is 10000·F/preço² pp/cent, so |Δpreço| ≤ (1.5/preço)/(10000F/preço²)
++		// = 150·preço/(10000F) = 150/gStar cents at the crossing (preço = 10000F/
++		// gStar). gStar ≥ 0.005 by construction (target < the 2dp ceiling ≤
++		// exactCeiling+0.005), so the window is finite for EVERY input — including
++		// sub-0.01 ceiling gaps a >2dp comissão admits, which a fixed cap would
++		// truncate (FINDING-P6-SOLVER-2).
++		half := big.NewRat(5, 1000) // 0.005 = round2 half-band
++		bound := new(big.Rat).Sub(mustRat(in.TargetMargemPct), half)
++		gStar := new(big.Rat).Sub(in.exactCeilingRat(), bound)
++		if gStar.Sign() <= 0 {
++			return "", false // target at/above the exact asymptote — unreachable
++		}
++		cStar := in.firstCentExactAtLeast(loCents, hiCents, limiar, bound)
++		if cStar > hiCents {
++			return "", false // crossing beyond the search cap — unreachable
++		}
++		winCents := ceilRatToCents(new(big.Rat).Quo(big.NewRat(150, 1), gStar)) + windowMarginCents
++		scanLo = cStar - winCents
++		if scanLo < loCents {
++			scanLo = loCents
++		}
++		scanHi = cStar + winCents
++		if scanHi > hiCents {
++			scanHi = hiCents
++		}
++	}
++	for c := scanLo; c <= scanHi; c++ {
++		// numeric compare: target may arrive unnormalized ("15" vs "15.00").
++		if m := in.margemAt(c); m != "" && cmpPct(m, in.TargetMargemPct) == 0 {
++			return centsToStr(c), true
++		}
++	}
++	return "", false
++}
++
++// firstCentExactAtLeast returns the smallest cents in [lo,hi] whose EXACT
++// (unrounded, strictly-increasing) margem_pct is ≥ bound, or hi+1 if none.
++func (in SolveInput) firstCentExactAtLeast(lo, hi, limiar int64, bound *big.Rat) int64 {
++	if in.exactMargemPctRat(hi, limiar).Cmp(bound) < 0 {
++		return hi + 1
++	}
+ 	for lo < hi {
+ 		mid := lo + (hi-lo)/2
+-		if cmpPct(in.margemAt(mid), in.TargetMargemPct) < 0 {
++		if in.exactMargemPctRat(mid, limiar).Cmp(bound) < 0 {
+ 			lo = mid + 1
+ 		} else {
+ 			hi = mid
+ 		}
+ 	}
+-	// lo is the smallest cents whose margem_pct ≥ target; it matches exactly
+-	// unless a one-cent step skipped over the target band (only at tiny preços,
+-	// outside the money range these inputs target).
+-	if cmpPct(in.margemAt(lo), in.TargetMargemPct) == 0 {
+-		return centsToStr(lo), true
++	return lo
++}
++
++// exactMargemPctRat is the UNROUNDED margem_pct at preço=cents for the segment
++// selected by limiar: 100·k − 100·F/preço, where k = 1 − Σpct/100 (comissão +
++// aliquota + applied difal) and F is the fixed-cost sum (taxa_fixa below limiar
++// / produto frete at-or-above, plus tarifa_full when full and custo). Strictly
++// increasing in preço because F ≥ 0 — unlike Decompose's rounded margem_pct, so
++// it is safe to bisect. Used ONLY to bracket the search window.
++func (in SolveInput) exactMargemPctRat(cents, limiar int64) *big.Rat {
++	preco := big.NewRat(cents, 100)
++	pct := new(big.Rat).Set(cem)
++	pct.Sub(pct, mustRat(in.ComissaoPct))
++	pct.Sub(pct, mustRat(in.AliquotaPct))
++	if in.difalApplied() {
++		pct.Sub(pct, mustRat(in.EfetivoPct))
++	}
++	fixed := new(big.Rat)
++	if cents < limiar {
++		fixed.Add(fixed, taxaFixaValor)
++	} else if in.FreteProduto != nil {
++		fixed.Add(fixed, mustRat(in.FreteProduto.Amount))
+ 	}
+-	return "", false
++	if in.Modalidade == ModalidadeFull && in.TarifaFull != nil {
++		fixed.Add(fixed, mustRat(in.TarifaFull.Amount))
++	}
++	if in.Custo != nil {
++		fixed.Add(fixed, mustRat(in.Custo.Amount))
++	}
++	fOverP := new(big.Rat).Quo(fixed, preco)
++	fOverP.Mul(fOverP, cem)
++	return pct.Sub(pct, fOverP)
++}
++
++// exactCeilingRat is the UNROUNDED margem_pct asymptote (100 − comissão −
++// aliquota − applied difal) as preço→∞ — the exact analogue of ceilingPct,
++// which rounds to 2dp. The window derivation needs the unrounded value: the 2dp
++// ceiling gate can admit a target only ~0.005 below the true asymptote when a
++// >2dp comissão is supplied, so a rounded gap would understate the window.
++func (in SolveInput) exactCeilingRat() *big.Rat {
++	ceil := new(big.Rat).Set(cem)
++	ceil.Sub(ceil, mustRat(in.ComissaoPct))
++	ceil.Sub(ceil, mustRat(in.AliquotaPct))
++	if in.difalApplied() {
++		ceil.Sub(ceil, mustRat(in.EfetivoPct))
++	}
++	return ceil
++}
++
++// ceilRatToCents returns ⌈x⌉ as int64 for a non-negative *big.Rat.
++func ceilRatToCents(x *big.Rat) int64 {
++	q := new(big.Int)
++	m := new(big.Int)
++	q.DivMod(x.Num(), x.Denom(), m) // Euclidean: m ≥ 0
++	if m.Sign() != 0 {
++		q.Add(q, big.NewInt(1))
++	}
++	return q.Int64()
+ }
+ 
+ // margemAt returns the margem_pct string at a candidate preço (in cents). The
+@@ -136,12 +287,12 @@ func (in SolveInput) margemAt(cents int64) string {
+ }
+ 
+ func (in SolveInput) margemDecompose(cents int64) Decomposition {
+-	return Decompose(DecomposeInput{
++	return decomposeWithLimiar(DecomposeInput{
+ 		Preco: centsToStr(cents), ComissaoPct: in.ComissaoPct, AliquotaPct: in.AliquotaPct,
+ 		Modalidade: in.Modalidade, TarifaFull: in.TarifaFull,
+ 		FreteProduto: in.FreteProduto, Custo: in.Custo,
+ 		DifalEnabled: in.DifalEnabled, DestinoUF: in.DestinoUF, EfetivoPct: in.EfetivoPct,
+-	})
++	}, big.NewRat(in.limiarCents(), 100))
+ }
+ 
+ // centsToStr renders integer cents as a 2dp decimal string via the single
+diff --git a/apps/server_core/internal/modules/pricing/domain/solve_golden_test.go b/apps/server_core/internal/modules/pricing/domain/solve_golden_test.go
+index a4712904..e298e500 100644
+--- a/apps/server_core/internal/modules/pricing/domain/solve_golden_test.go
++++ b/apps/server_core/internal/modules/pricing/domain/solve_golden_test.go
+@@ -1,6 +1,9 @@
+ package domain
+ 
+-import "testing"
++import (
++	"math/big"
++	"testing"
++)
+ 
+ // baseSolve returns a fully-resolved SolveInput (classico, SIMPLES 4%, difal
+ // SP 6.00, frete 15.00, custo 40.00) with no target set — tests fill Target.
+@@ -99,26 +102,173 @@ func TestSolveTargetPriceUnknownInputsBlock(t *testing.T) {
+ 	}
+ }
+ 
+-// C03(d) — monotonic-bracket invariant: within a single segment margem_pct is
+-// strictly increasing in preço, which is the precondition the per-segment
+-// binary search relies on. Sampled across the low segment (< 79) and the high
+-// segment (≥ 79) separately (the jump lives only at the segment boundary).
+-func TestSolveMargemMonotonicWithinSegment(t *testing.T) {
++// FreteProduto nil but the target is attainable in the low segment (preço <
++// limiar), where frete is 0 and never consulted — must still solve.
++func TestSolveFreteNilLowSegmentSolves(t *testing.T) {
+ 	in := baseSolve()
+-	assertIncreasing := func(t *testing.T, from, to, step int64) {
+-		t.Helper()
+-		prev := ""
+-		for c := from; c <= to; c += step {
+-			cur := resim(in, centsToStr(c))
+-			if cur == "<unknown>" {
+-				t.Fatalf("unexpected unknown margem at cents %d", c)
++	in.FreteProduto = nil
++	in.TargetMargemPct = "15.00"
++
++	res := SolveTargetPrice(in)
++	if !res.Reached || res.Preco == nil || res.FreteDesconhecido || len(res.Desconhecidos) != 0 {
++		t.Fatalf("target 15.00 with frete nil must solve in the low segment; got %+v", res)
++	}
++	if p := ratOf(t, *res.Preco); p.Cmp(taxaFixaLimiar) >= 0 {
++		t.Fatalf("solved preço %q must be below 79 (low segment)", *res.Preco)
++	}
++	if got := resim(in, *res.Preco); got != "15.00" {
++		t.Fatalf("re-sim margem_pct = %q at preço %q, want 15.00 EXACT", got, *res.Preco)
++	}
++}
++
++// FreteProduto nil and the target is only attainable in the high segment
++// (preço ≥ limiar), where produto frete is required but unknown — must block
++// with FreteDesconhecido, not fabricate a preço or a ceiling.
++func TestSolveFreteNilHighSegmentBlocks(t *testing.T) {
++	in := baseSolve()
++	in.FreteProduto = nil
++	in.TargetMargemPct = "30.00"
++
++	res := SolveTargetPrice(in)
++	if !res.FreteDesconhecido || res.Reached || res.Preco != nil || len(res.Desconhecidos) != 0 || res.CeilingPct != "" {
++		t.Fatalf("target 30.00 with frete nil must block on FreteDesconhecido; got %+v", res)
++	}
++}
++
++// custo nil is a structural (segment-independent) block that must win over
++// the frete-nil segment-conditional block.
++func TestSolveCustoNilBlocksBeforeFrete(t *testing.T) {
++	in := baseSolve()
++	in.Custo = nil
++	in.FreteProduto = nil
++	in.TargetMargemPct = "30.00"
++
++	res := SolveTargetPrice(in)
++	if len(res.Desconhecidos) != 1 || res.Desconhecidos[0] != "custo_erp" || res.FreteDesconhecido || res.Reached {
++		t.Fatalf("custo nil must block structurally (not FreteDesconhecido); got %+v", res)
++	}
++}
++
++// C03(d) — FINDING-P6-SOLVER regression. Decompose's 2dp component rounding
++// makes margem_pct NON-monotone in preço (sub-cent downward wiggles), so the
++// old rounded-value bisection skipped valid prices and mis-reported reachable
++// targets. This brute-forces the cheapest exact-match preço for EVERY distinct
++// low-segment margem_pct and asserts SolveTargetPrice returns exactly it —
++// across ordinary comissão/aliquota grids that demonstrably contain dips.
++func TestSolveMatchesBruteForceLowSegment(t *testing.T) {
++	grids := []SolveInput{
++		{ComissaoPct: "12", AliquotaPct: "4", Modalidade: ModalidadeClassico, FreteProduto: money("15.00"), Custo: money("10.00")},
++		{ComissaoPct: "13", AliquotaPct: "4", Modalidade: ModalidadeClassico, FreteProduto: money("15.00"), Custo: money("40.00")},
++		{ComissaoPct: "16", AliquotaPct: "12", Modalidade: ModalidadeClassico, FreteProduto: money("15.00"), Custo: money("10.00")},
++	}
++	for _, base := range grids {
++		// cheapest[target] = smallest cents whose Decompose margem_pct == target.
++		cheapest := map[string]int64{}
++		for c := int64(1); c <= 7898; c++ {
++			m := resim(base, centsToStr(c))
++			if m == "<unknown>" {
++				continue
+ 			}
+-			if prev != "" && cmpPct(cur, prev) < 0 {
+-				t.Fatalf("margem_pct not monotonic at cents %d: %q < previous %q", c, cur, prev)
++			if _, seen := cheapest[m]; !seen {
++				cheapest[m] = c
++			}
++		}
++		// Deterministic sample: stride over cents in order (map iteration order is
++		// nondeterministic). Each sampled cent's target is looked up against the
++		// brute cheapest map, so the assertion is still cheapest-exact-match.
++		for c := int64(1); c <= 7898; c += 37 {
++			target := resim(base, centsToStr(c))
++			if target == "<unknown>" {
++				continue
++			}
++			wantCents := cheapest[target]
++			in := base
++			in.TargetMargemPct = target
++			res := SolveTargetPrice(in)
++			if !res.Reached || res.Preco == nil {
++				t.Fatalf("com=%s ali=%s target=%s must reach (brute @ %s); got %+v",
++					base.ComissaoPct, base.AliquotaPct, target, centsToStr(wantCents), res)
++			}
++			if *res.Preco != centsToStr(wantCents) {
++				t.Fatalf("com=%s ali=%s target=%s: solver=%s cheapest-brute=%s",
++					base.ComissaoPct, base.AliquotaPct, target, *res.Preco, centsToStr(wantCents))
++			}
++		}
++	}
++}
++
++// C03(e) — high-segment (preço ≥ limiar) exactness + cheapest: for a witness
++// price the solver must return SOME preço whose re-Decompose margem_pct equals
++// the target EXACTLY and is no costlier than the witness (proving the exact
++// bracket does not skip the reachable band the way the old bisection did).
++func TestSolveHighSegmentExactAndCheapest(t *testing.T) {
++	base := SolveInput{
++		ComissaoPct: "13", AliquotaPct: "4", Modalidade: ModalidadeClassico,
++		FreteProduto: money("15.00"), Custo: money("40.00"),
++	}
++	for _, witness := range []int64{9000, 15000, 30000, 90000} {
++		tgt := resim(base, centsToStr(witness))
++		in := base
++		in.TargetMargemPct = tgt
++		res := SolveTargetPrice(in)
++		if !res.Reached || res.Preco == nil {
++			t.Fatalf("witness %s target %s must reach; got %+v", centsToStr(witness), tgt, res)
++		}
++		if got := resim(in, *res.Preco); got != tgt {
++			t.Fatalf("solver preço %s re-sim=%s want %s EXACT", *res.Preco, got, tgt)
++		}
++		if ratOf(t, *res.Preco).Cmp(ratOf(t, centsToStr(witness))) > 0 {
++			t.Fatalf("solver preço %s costlier than witness %s (not cheapest)", *res.Preco, centsToStr(witness))
++		}
++	}
++}
++
++// centsOf parses a 2dp preço string to integer cents (fails if not whole cents).
++func centsOf(t *testing.T, price string) int64 {
++	t.Helper()
++	r := ratOf(t, price)
++	r.Mul(r, big.NewRat(100, 1))
++	if !r.IsInt() {
++		t.Fatalf("preço %s is not whole cents", price)
++	}
++	return r.Num().Int64()
++}
++
++// C03(f) — FINDING-P6-SOLVER-2 regime: a >2dp comissão makes the EXACT ceiling
++// carry a 3rd decimal, so the exact gap to the ceiling can be as small as 0.005
++// for a reachable (2dp) target. The high-segment scan window must be DERIVED
++// from that gap, not a fixed cap that could truncate the reachable band. Here
++// exactCeiling = 100 − 12.005 = 87.995 (2dp ceiling gate = 88.00) and F = 0.50
++// keeps the crossing price inside the R$1M cap as the gap shrinks. Assert exact
++// match AND that no cheaper exact match exists just below the solved price (the
++// window did not truncate the band). Targets are 2dp — a >2dp target is
++// unreachable by construction since Decompose emits 2dp.
++func TestSolveHighSegmentNearCeilingCheapest(t *testing.T) {
++	base := SolveInput{
++		ComissaoPct: "12.005", AliquotaPct: "0", Modalidade: ModalidadeClassico,
++		FreteProduto: money("0.00"), Custo: money("0.50"),
++	}
++	for _, tgt := range []string{"87.90", "87.98", "87.99"} {
++		in := base
++		in.TargetMargemPct = tgt
++		res := SolveTargetPrice(in)
++		if !res.Reached || res.Preco == nil {
++			t.Fatalf("target %s must reach (sub-0.01 ceiling-gap regime); got %+v", tgt, res)
++		}
++		if got := resim(in, *res.Preco); cmpPct(got, tgt) != 0 {
++			t.Fatalf("target %s: solver preço %s re-sim=%s want EXACT", tgt, *res.Preco, got)
++		}
++		// no cheaper exact match below the solved price → window not truncated.
++		solved := centsOf(t, *res.Preco)
++		lo := solved - 200_000
++		if lo < defaultTaxaFixaLimiarCents {
++			lo = defaultTaxaFixaLimiarCents
++		}
++		for c := lo; c < solved; c++ {
++			if cmpPct(resim(in, centsToStr(c)), tgt) == 0 {
++				t.Fatalf("target %s: cheaper exact match at %s < solver %s (window truncated)",
++					tgt, centsToStr(c), *res.Preco)
+ 			}
+-			prev = cur
+ 		}
+ 	}
+-	assertIncreasing(t, 5000, 7899, 137)    // low segment, preço < 79
+-	assertIncreasing(t, 7900, 500000, 4211) // high segment, preço ≥ 79
+ }
+diff --git a/apps/server_core/internal/modules/pricing/domain/tariff.go b/apps/server_core/internal/modules/pricing/domain/tariff.go
+new file mode 100644
+index 00000000..c05b213b
+--- /dev/null
++++ b/apps/server_core/internal/modules/pricing/domain/tariff.go
+@@ -0,0 +1,37 @@
++package domain
++
++// Fonte marks where a resolved tariff component came from.
++type Fonte string
++
++const (
++	// FontePadrao is degrau 4: the tenant/installation config default
++	// (TariffDefaults) resolved with no live or per-listing data.
++	FontePadrao Fonte = "PADRAO"
++	// FonteManual marks a component the caller supplied by hand (a request
++	// override), overriding whatever the resolver would have returned.
++	// Degrau 0 (not resolved at all), never an estimate.
++	FonteManual Fonte = "MANUAL"
++	// (future: FonteListing, FonteConta, FonteML for degraus 1-3)
++)
++
++// ComponentResolution is one resolved tariff component (commission OR
++// shipping). Valor is a decimal string; nil means NO DATA is available for
++// this component (ADR-17: unknown operational facts never become zero).
++type ComponentResolution struct {
++	Valor      *string
++	Fonte      Fonte
++	Degrau     int
++	Estimativa bool
++	// Data (source timestamp) intentionally omitted at degrau 4 (config has
++	// no per-resolve timestamp); add when degraus 1-3 land. Do NOT stub a
++	// fake timestamp.
++}
++
++// TariffResolution bundles the resolved components for one solve/decompose.
++type TariffResolution struct {
++	// Comissao.Valor is a percent string (e.g. "13.00").
++	Comissao ComponentResolution
++	// Frete.Valor is a money string, or nil when no shipping estimate is
++	// known (sem_dados policy, or estimativa policy with no amount set).
++	Frete ComponentResolution
++}
+diff --git a/apps/server_core/internal/modules/pricing/domain/tariff_defaults.go b/apps/server_core/internal/modules/pricing/domain/tariff_defaults.go
+new file mode 100644
+index 00000000..169140dc
+--- /dev/null
++++ b/apps/server_core/internal/modules/pricing/domain/tariff_defaults.go
+@@ -0,0 +1,33 @@
++package domain
++
++import "errors"
++
++// Frete policy values for TariffDefaults.FretePolicy. "estimativa" means
++// FreteEstimativaAmount carries a known estimate; "sem_dados" means no
++// shipping estimate is available (ADR-17 — never defaulted to 0).
++const (
++	FretePolicyEstimativa = "estimativa"
++	FretePolicySemDados   = "sem_dados"
++)
++
++// ErrInvalidFretePolicy is returned when a caller supplies a FretePolicy
++// outside {estimativa, sem_dados} (transport maps it to 422).
++var ErrInvalidFretePolicy = errors.New("PRICING_INVALID_FRETE_POLICY")
++
++// TariffDefaults is a tenant/installation's pricing tariff configuration
++// (CHIP-T1 Slice A): the classic/premium commission percentages (DB-default
++// seeded 13.00/16.00 — never Go constants) and the shipping estimate policy.
++// All money/percent fields are decimal strings, never float64.
++// FreteEstimativaAmount is nullable: nil means no shipping data is known,
++// never a zero amount (ADR-17).
++type TariffDefaults struct {
++	ComissaoClassicoPct   string
++	ComissaoPremiumPct    string
++	FreteEstimativaAmount *string
++	FretePolicy           string
++}
++
++// ValidFretePolicy reports whether policy is one of the two allowed values.
++func ValidFretePolicy(policy string) bool {
++	return policy == FretePolicyEstimativa || policy == FretePolicySemDados
++}
+diff --git a/apps/server_core/internal/modules/pricing/domain/tariff_defaults_test.go b/apps/server_core/internal/modules/pricing/domain/tariff_defaults_test.go
+new file mode 100644
+index 00000000..a92d278b
+--- /dev/null
++++ b/apps/server_core/internal/modules/pricing/domain/tariff_defaults_test.go
+@@ -0,0 +1,27 @@
++package domain_test
++
++import (
++	"testing"
++
++	"marketplace-central/apps/server_core/internal/modules/pricing/domain"
++)
++
++func TestValidFretePolicy(t *testing.T) {
++	cases := []struct {
++		name   string
++		policy string
++		want   bool
++	}{
++		{"estimativa is valid", domain.FretePolicyEstimativa, true},
++		{"sem_dados is valid", domain.FretePolicySemDados, true},
++		{"empty is invalid", "", false},
++		{"unknown value is invalid", "outro", false},
++	}
++	for _, tc := range cases {
++		t.Run(tc.name, func(t *testing.T) {
++			if got := domain.ValidFretePolicy(tc.policy); got != tc.want {
++				t.Fatalf("ValidFretePolicy(%q) = %v, want %v", tc.policy, got, tc.want)
++			}
++		})
++	}
++}
+diff --git a/apps/server_core/internal/modules/pricing/ports/tariff.go b/apps/server_core/internal/modules/pricing/ports/tariff.go
+new file mode 100644
+index 00000000..59ee6477
+--- /dev/null
++++ b/apps/server_core/internal/modules/pricing/ports/tariff.go
+@@ -0,0 +1,21 @@
++package ports
++
++import (
++	"context"
++
++	"marketplace-central/apps/server_core/internal/modules/pricing/domain"
++)
++
++// TariffDefaultsStore is the persistence port for a tenant/installation's
++// pricing tariff defaults (CHIP-T1 Slice A): classic/premium commission
++// percentages and the shipping-estimate policy. Every method is
++// tenant-scoped; installationID "" is the single-installation sentinel.
++type TariffDefaultsStore interface {
++	// GetTariffDefaults returns the stored row, materializing it on first
++	// read (DB column DEFAULTs fill comissao_classico_pct/comissao_premium_pct
++	// /frete_policy) so callers never see a zero row.
++	GetTariffDefaults(ctx context.Context, tenantID, installationID string) (domain.TariffDefaults, error)
++	// UpsertTariffDefaults validates in.FretePolicy (domain.ErrInvalidFretePolicy
++	// otherwise) and persists the full row, returning it as stored.
++	UpsertTariffDefaults(ctx context.Context, tenantID, installationID string, in domain.TariffDefaults) (domain.TariffDefaults, error)
++}
+diff --git a/apps/server_core/internal/modules/pricing/ports/tariff_resolver.go b/apps/server_core/internal/modules/pricing/ports/tariff_resolver.go
+new file mode 100644
+index 00000000..373bd544
+--- /dev/null
++++ b/apps/server_core/internal/modules/pricing/ports/tariff_resolver.go
+@@ -0,0 +1,22 @@
++package ports
++
++import (
++	"context"
++
++	"marketplace-central/apps/server_core/internal/modules/pricing/domain"
++)
++
++// TariffRequest carries the inputs needed to resolve one tariff. Degrau 4
++// only needs the modalidade; later degraus (live ML API, per-listing
++// overrides) will add fields here as they land — do not add them now.
++type TariffRequest struct {
++	Modalidade domain.Modalidade
++}
++
++// TariffResolver resolves the commission + shipping tariff components for a
++// TariffRequest. Degrau 4 (adapters/tariffdefaults) implements this purely
++// from tenant config defaults; a future composite resolver will chain
++// degraus 1->2->3->4 behind the same port with no interface change.
++type TariffResolver interface {
++	Resolve(ctx context.Context, req TariffRequest) (domain.TariffResolution, error)
++}
+diff --git a/apps/server_core/internal/modules/pricing/transport/calc_handler.go b/apps/server_core/internal/modules/pricing/transport/calc_handler.go
+index e6d47a4d..1bd5ac3f 100644
+--- a/apps/server_core/internal/modules/pricing/transport/calc_handler.go
++++ b/apps/server_core/internal/modules/pricing/transport/calc_handler.go
+@@ -33,6 +33,8 @@ func (h Handler) registerCalc(mux httpx.RouteRegistrar) {
+ 	mux.HandleFunc("DELETE /pricing/scenarios/{id}", h.handleDeleteScenario)
+ 	mux.HandleFunc("POST /pricing/decompose", h.handleDecompose)
+ 	mux.HandleFunc("POST /pricing/solve", h.handleSolve)
++	mux.HandleFunc("GET /pricing/tariff-defaults", h.handleGetTariffDefaults)
++	mux.HandleFunc("PUT /pricing/tariff-defaults", h.handlePutTariffDefaults)
+ }
+ 
+ // mapCalcError maps an IC-04 service error to its exact HTTP status + code.
+@@ -48,6 +50,10 @@ func mapCalcError(err error) (int, string) {
+ 		return http.StatusNotFound, "UF_NOT_FOUND"
+ 	case errors.Is(err, ports.ErrScenarioNotFound):
+ 		return http.StatusNotFound, "SCENARIO_NOT_FOUND"
++	case errors.Is(err, domain.ErrInvalidFretePolicy):
++		return http.StatusUnprocessableEntity, "INVALID_FRETE_POLICY"
++	case errors.Is(err, application.ErrTariffStoreNotConfigured):
++		return http.StatusServiceUnavailable, "PRICING_TARIFF_STORE_NOT_CONFIGURED"
+ 	default:
+ 		return http.StatusInternalServerError, "PRICING_INTERNAL_ERROR"
+ 	}
+@@ -308,10 +314,14 @@ func (h Handler) handleDecompose(w http.ResponseWriter, r *http.Request) {
+ 		h.writeCalcError(w, err)
+ 		return
+ 	}
+-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
++	body := map[string]any{
+ 		"decomposition":  toDecompositionDTO(res.Decomposition),
+ 		"blocking_state": res.BlockingState,
+-	})
++	}
++	if tarifa := toTarifaDTO(res.Tarifa); tarifa != nil {
++		body["tarifa"] = tarifa
++	}
++	httpx.WriteJSON(w, http.StatusOK, body)
+ }
+ 
+ func (h Handler) handleSolve(w http.ResponseWriter, r *http.Request) {
+@@ -334,16 +344,134 @@ func (h Handler) handleSolve(w http.ResponseWriter, r *http.Request) {
+ 		h.writeCalcError(w, err)
+ 		return
+ 	}
++	desconhecidos := out.Result.Desconhecidos
++	if desconhecidos == nil {
++		desconhecidos = []string{}
++	}
+ 	body := map[string]any{
+-		"reached":        out.Result.Reached,
+-		"preco":          out.Result.Preco,
+-		"ceiling_pct":    out.Result.CeilingPct,
+-		"desconhecidos":  out.Result.Desconhecidos,
+-		"blocking_state": out.BlockingState,
++		"reached":            out.Result.Reached,
++		"preco":              out.Result.Preco,
++		"ceiling_pct":        out.Result.CeilingPct,
++		"desconhecidos":      desconhecidos,
++		"frete_desconhecido": out.Result.FreteDesconhecido,
++		"blocking_state":     out.BlockingState,
++	}
++	if tarifa := toTarifaDTO(out.Tarifa); tarifa != nil {
++		body["tarifa"] = tarifa
+ 	}
+-	// Unreachable is a 200 with the exact IC-04 code, not an error.
+-	if !out.Result.Reached {
+-		body["code"] = "UNREACHABLE_TARGET"
++	if code := solveCode(out.Result); code != "" {
++		body["code"] = code
+ 	}
+ 	httpx.WriteJSON(w, http.StatusOK, body)
+ }
++
++type tarifaComissaoDTO struct {
++	Valor      *string `json:"valor"`
++	Fonte      string  `json:"fonte"`
++	Degrau     int     `json:"degrau"`
++	Data       *string `json:"data"`
++	Estimativa bool    `json:"estimativa"`
++}
++
++type tarifaFreteDTO struct {
++	Valor      *string `json:"valor"`
++	Fonte      string  `json:"fonte"`
++	Degrau     int     `json:"degrau"`
++	Data       *string `json:"data"`
++	Estimativa bool    `json:"estimativa"`
++	SemDados   bool    `json:"sem_dados"`
++}
++
++type tarifaDTO struct {
++	Comissao tarifaComissaoDTO `json:"comissao"`
++	Frete    tarifaFreteDTO    `json:"frete"`
++}
++
++// toTarifaDTO renders the resolved tariff stamps. `data` (source timestamp) is
++// always null at degrau 4 — the config default has no authoritative per-resolve
++// timestamp; fabricating one would violate ADR-17 (no invented operational
++// facts). Degraus 1-3 will populate it when they land.
++func toTarifaDTO(t *domain.TariffResolution) *tarifaDTO {
++	if t == nil {
++		return nil
++	}
++	return &tarifaDTO{
++		Comissao: tarifaComissaoDTO{
++			Valor: t.Comissao.Valor, Fonte: string(t.Comissao.Fonte),
++			Degrau: t.Comissao.Degrau, Data: nil, Estimativa: t.Comissao.Estimativa,
++		},
++		Frete: tarifaFreteDTO{
++			Valor: t.Frete.Valor, Fonte: string(t.Frete.Fonte),
++			Degrau: t.Frete.Degrau, Data: nil, Estimativa: t.Frete.Estimativa,
++			SemDados: t.Frete.Valor == nil,
++		},
++	}
++}
++
++// solveCode maps a solve outcome to its IC-04 code by CAUSE — never a blanket
++// UNREACHABLE_TARGET. Mutually exclusive in the current domain: structural
++// unknowns, then missing frete (high segment), then true unreachability.
++func solveCode(r domain.SolveResult) string {
++	switch {
++	case len(r.Desconhecidos) > 0:
++		return "DADOS_INCOMPLETOS"
++	case r.FreteDesconhecido:
++		return "SEM_FRETE"
++	case !r.Reached && r.CeilingPct != "":
++		return "UNREACHABLE_TARGET"
++	default:
++		return ""
++	}
++}
++
++// --- Tariff Defaults (CHIP-T1 Slice A) ---
++
++type tariffDefaultsDTO struct {
++	ComissaoClassicoPct   string  `json:"comissao_classico_pct"`
++	ComissaoPremiumPct    string  `json:"comissao_premium_pct"`
++	FreteEstimativaAmount *string `json:"frete_estimativa_amount"`
++	FretePolicy           string  `json:"frete_policy"`
++}
++
++func toTariffDefaultsDTO(t domain.TariffDefaults) tariffDefaultsDTO {
++	return tariffDefaultsDTO{
++		ComissaoClassicoPct:   t.ComissaoClassicoPct,
++		ComissaoPremiumPct:    t.ComissaoPremiumPct,
++		FreteEstimativaAmount: t.FreteEstimativaAmount,
++		FretePolicy:           t.FretePolicy,
++	}
++}
++
++// tariffInstallationID reads the optional installation_id query parameter,
++// defaulting to "" (the single-installation sentinel).
++func tariffInstallationID(r *http.Request) string {
++	return r.URL.Query().Get("installation_id")
++}
++
++func (h Handler) handleGetTariffDefaults(w http.ResponseWriter, r *http.Request) {
++	defaults, err := h.calc.GetTariffDefaults(r.Context(), tariffInstallationID(r))
++	if err != nil {
++		h.writeCalcError(w, err)
++		return
++	}
++	httpx.WriteJSON(w, http.StatusOK, toTariffDefaultsDTO(defaults))
++}
++
++func (h Handler) handlePutTariffDefaults(w http.ResponseWriter, r *http.Request) {
++	var req tariffDefaultsDTO
++	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
++		writePricingError(w, http.StatusBadRequest, "PRICING_REQUEST_INVALID", "malformed request body")
++		return
++	}
++	defaults, err := h.calc.PutTariffDefaults(r.Context(), tariffInstallationID(r), domain.TariffDefaults{
++		ComissaoClassicoPct:   req.ComissaoClassicoPct,
++		ComissaoPremiumPct:    req.ComissaoPremiumPct,
++		FreteEstimativaAmount: req.FreteEstimativaAmount,
++		FretePolicy:           req.FretePolicy,
++	})
++	if err != nil {
++		h.writeCalcError(w, err)
++		return
++	}
++	httpx.WriteJSON(w, http.StatusOK, toTariffDefaultsDTO(defaults))
++}
+diff --git a/apps/server_core/internal/modules/pricing/transport/calc_handler_test.go b/apps/server_core/internal/modules/pricing/transport/calc_handler_test.go
+index 61ee6056..b93a76e7 100644
+--- a/apps/server_core/internal/modules/pricing/transport/calc_handler_test.go
++++ b/apps/server_core/internal/modules/pricing/transport/calc_handler_test.go
+@@ -93,6 +93,65 @@ func newCalcMux(repo ports.CalcRepository, cost ports.CostReader, products ports
+ 	return mux
+ }
+ 
++// tariffStoreStub is an in-memory ports.TariffDefaultsStore for handler
++// tests. A nil rows map means "not yet materialized" — Get/Upsert seed the
++// DB-default row (13.00/16.00/sem_dados), mirroring the real repo's
++// materialize-on-read behavior.
++type tariffStoreStub struct {
++	rows map[string]domain.TariffDefaults
++}
++
++func newTariffStoreStub() *tariffStoreStub {
++	return &tariffStoreStub{rows: map[string]domain.TariffDefaults{}}
++}
++
++func tariffKey(tenantID, installationID string) string { return tenantID + "/" + installationID }
++
++func (f *tariffStoreStub) GetTariffDefaults(_ context.Context, tenantID, installationID string) (domain.TariffDefaults, error) {
++	key := tariffKey(tenantID, installationID)
++	if row, ok := f.rows[key]; ok {
++		return row, nil
++	}
++	row := domain.TariffDefaults{ComissaoClassicoPct: "13.00", ComissaoPremiumPct: "16.00", FretePolicy: domain.FretePolicySemDados}
++	f.rows[key] = row
++	return row, nil
++}
++
++func (f *tariffStoreStub) UpsertTariffDefaults(_ context.Context, tenantID, installationID string, in domain.TariffDefaults) (domain.TariffDefaults, error) {
++	if !domain.ValidFretePolicy(in.FretePolicy) {
++		return domain.TariffDefaults{}, domain.ErrInvalidFretePolicy
++	}
++	f.rows[tariffKey(tenantID, installationID)] = in
++	return in, nil
++}
++
++func newCalcMuxWithTariffStore(repo ports.CalcRepository, tariffStore ports.TariffDefaultsStore) *http.ServeMux {
++	svc := application.NewCalcService(repo, costStub{}, nil, "t1").WithTariffStore(tariffStore)
++	h := NewHandler(application.Service{}, nil).WithCalc(svc)
++	mux := http.NewServeMux()
++	h.Register(mux)
++	return mux
++}
++
++// fakeTariffResolver is a handler-test-local ports.TariffResolver stub —
++// mirrors application.fakeTariffResolver (unexported there, not reusable
++// across packages).
++type fakeTariffResolver struct {
++	res domain.TariffResolution
++}
++
++func (f fakeTariffResolver) Resolve(context.Context, ports.TariffRequest) (domain.TariffResolution, error) {
++	return f.res, nil
++}
++
++func newCalcMuxWithResolver(repo ports.CalcRepository, cost ports.CostReader, products ports.ProductChecker, resolver ports.TariffResolver) *http.ServeMux {
++	svc := application.NewCalcService(repo, cost, products, "t1").WithTariffResolver(resolver)
++	h := NewHandler(application.Service{}, nil).WithCalc(svc)
++	mux := http.NewServeMux()
++	h.Register(mux)
++	return mux
++}
++
+ func do(t *testing.T, mux *http.ServeMux, method, path, body string) *httptest.ResponseRecorder {
+ 	t.Helper()
+ 	var r *http.Request
+@@ -144,6 +203,95 @@ func TestPutDifalUFNotFound404(t *testing.T) {
+ 	}
+ }
+ 
++// --- tariff defaults (CHIP-T1 Slice A) ---
++
++func TestGetTariffDefaultsNotConfigured503(t *testing.T) {
++	mux := newCalcMux(newRepoStub(), costStub{}, nil)
++	w := do(t, mux, http.MethodGet, "/pricing/tariff-defaults", "")
++	if w.Code != http.StatusServiceUnavailable {
++		t.Fatalf("status = %d, want 503", w.Code)
++	}
++	if c := errCode(t, w); c != "PRICING_TARIFF_STORE_NOT_CONFIGURED" {
++		t.Fatalf("code = %q, want PRICING_TARIFF_STORE_NOT_CONFIGURED", c)
++	}
++}
++
++func TestGetTariffDefaultsMaterializesDBDefaults(t *testing.T) {
++	mux := newCalcMuxWithTariffStore(newRepoStub(), newTariffStoreStub())
++	w := do(t, mux, http.MethodGet, "/pricing/tariff-defaults", "")
++	if w.Code != http.StatusOK {
++		t.Fatalf("status = %d, want 200, body=%s", w.Code, w.Body.String())
++	}
++	var got tariffDefaultsDTO
++	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
++		t.Fatal(err)
++	}
++	if got.ComissaoClassicoPct != "13.00" || got.ComissaoPremiumPct != "16.00" || got.FretePolicy != "sem_dados" {
++		t.Fatalf("defaults = %#v", got)
++	}
++	if got.FreteEstimativaAmount != nil {
++		t.Fatalf("frete_estimativa_amount = %v, want nil (ADR-17)", *got.FreteEstimativaAmount)
++	}
++}
++
++func TestPutTariffDefaultsInvalidFretePolicy422(t *testing.T) {
++	mux := newCalcMuxWithTariffStore(newRepoStub(), newTariffStoreStub())
++	w := do(t, mux, http.MethodPut, "/pricing/tariff-defaults",
++		`{"comissao_classico_pct":"13.00","comissao_premium_pct":"16.00","frete_policy":"invalida"}`)
++	if w.Code != http.StatusUnprocessableEntity {
++		t.Fatalf("status = %d, want 422, body=%s", w.Code, w.Body.String())
++	}
++	if c := errCode(t, w); c != "INVALID_FRETE_POLICY" {
++		t.Fatalf("code = %q, want INVALID_FRETE_POLICY", c)
++	}
++}
++
++// A non-decimal numeric field must be a 422 INVALID_PRICE (guarded before the
++// DB numeric cast), never a 500 PRICING_INTERNAL_ERROR.
++func TestPutTariffDefaultsNonNumeric422(t *testing.T) {
++	mux := newCalcMuxWithTariffStore(newRepoStub(), newTariffStoreStub())
++	w := do(t, mux, http.MethodPut, "/pricing/tariff-defaults",
++		`{"comissao_classico_pct":"abc","comissao_premium_pct":"16.00","frete_policy":"sem_dados"}`)
++	if w.Code != http.StatusUnprocessableEntity {
++		t.Fatalf("status = %d, want 422, body=%s", w.Code, w.Body.String())
++	}
++	if c := errCode(t, w); c != "INVALID_PRICE" {
++		t.Fatalf("code = %q, want INVALID_PRICE", c)
++	}
++}
++
++func TestPutTariffDefaultsRoundTrip(t *testing.T) {
++	mux := newCalcMuxWithTariffStore(newRepoStub(), newTariffStoreStub())
++	w := do(t, mux, http.MethodPut, "/pricing/tariff-defaults",
++		`{"comissao_classico_pct":"14.00","comissao_premium_pct":"17.00","frete_estimativa_amount":"22.50","frete_policy":"estimativa"}`)
++	if w.Code != http.StatusOK {
++		t.Fatalf("status = %d, want 200, body=%s", w.Code, w.Body.String())
++	}
++	var got tariffDefaultsDTO
++	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
++		t.Fatal(err)
++	}
++	if got.ComissaoClassicoPct != "14.00" || got.ComissaoPremiumPct != "17.00" || got.FretePolicy != "estimativa" {
++		t.Fatalf("put response = %#v", got)
++	}
++	if got.FreteEstimativaAmount == nil || *got.FreteEstimativaAmount != "22.50" {
++		t.Fatalf("frete_estimativa_amount = %v, want 22.50", got.FreteEstimativaAmount)
++	}
++
++	w2 := do(t, mux, http.MethodGet, "/pricing/tariff-defaults", "")
++	var got2 tariffDefaultsDTO
++	if err := json.Unmarshal(w2.Body.Bytes(), &got2); err != nil {
++		t.Fatal(err)
++	}
++	if got2.ComissaoClassicoPct != got.ComissaoClassicoPct ||
++		got2.ComissaoPremiumPct != got.ComissaoPremiumPct ||
++		got2.FretePolicy != got.FretePolicy ||
++		got2.FreteEstimativaAmount == nil || got.FreteEstimativaAmount == nil ||
++		*got2.FreteEstimativaAmount != *got.FreteEstimativaAmount {
++		t.Fatalf("GET after PUT = %#v, want %#v", got2, got)
++	}
++}
++
+ func TestPutDifalInvalidRate422(t *testing.T) {
+ 	repo := newRepoStub()
+ 	repo.rates["SP"] = domain.DifalRate{UF: "SP", InternaPct: "18.00", InterestadualPct: "12", EfetivoPct: "6.00", OrigemVersao: "padrao-2026"}
+@@ -247,6 +395,145 @@ func TestSolveUnreachable200Code(t *testing.T) {
+ 	}
+ }
+ 
++// --- CHIP-T1 Slice E: solve code CAUSE-branching (never a blanket
++// UNREACHABLE_TARGET) + tarifa stamp surfacing ---
++
++func TestSolveDadosIncompletos200Code(t *testing.T) {
++	mux := newCalcMux(newRepoStub(), costStub{}, nil)
++	// No custo, no product_id: custo_erp is a structural unknown ⇒
++	// Desconhecidos non-empty ⇒ DADOS_INCOMPLETOS, never UNREACHABLE_TARGET.
++	w := do(t, mux, http.MethodPost, "/pricing/solve",
++		`{"margem_alvo_pct":"50","comissao_pct":"16","modalidade":"classico"}`)
++	if w.Code != http.StatusOK {
++		t.Fatalf("status = %d, want 200, body=%s", w.Code, w.Body.String())
++	}
++	var body struct {
++		Code             string   `json:"code"`
++		Desconhecidos    []string `json:"desconhecidos"`
++		FreteDesconhecido bool    `json:"frete_desconhecido"`
++	}
++	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
++		t.Fatal(err)
++	}
++	if body.Code != "DADOS_INCOMPLETOS" {
++		t.Fatalf("code = %q, want DADOS_INCOMPLETOS", body.Code)
++	}
++	if len(body.Desconhecidos) == 0 {
++		t.Fatalf("desconhecidos = %v, want non-empty", body.Desconhecidos)
++	}
++	if body.FreteDesconhecido {
++		t.Fatalf("frete_desconhecido = true, want false")
++	}
++}
++
++func TestSolveSemFrete200Code(t *testing.T) {
++	mux := newCalcMux(newRepoStub(), costStub{}, nil)
++	// custo known, no frete_produto: target margem (65%) exceeds what the low
++	// segment (frete=0, custo=10.00) can reach, forcing the high (>=limiar)
++	// segment where produto frete is required — but unknown here (no resolver,
++	// no request override) ⇒ FreteDesconhecido ⇒ SEM_FRETE.
++	w := do(t, mux, http.MethodPost, "/pricing/solve",
++		`{"margem_alvo_pct":"65","comissao_pct":"16","modalidade":"classico","custo":"10.00"}`)
++	if w.Code != http.StatusOK {
++		t.Fatalf("status = %d, want 200, body=%s", w.Code, w.Body.String())
++	}
++	var body struct {
++		Code              string `json:"code"`
++		FreteDesconhecido bool   `json:"frete_desconhecido"`
++	}
++	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
++		t.Fatal(err)
++	}
++	if body.Code != "SEM_FRETE" {
++		t.Fatalf("code = %q, want SEM_FRETE", body.Code)
++	}
++	if !body.FreteDesconhecido {
++		t.Fatalf("frete_desconhecido = false, want true")
++	}
++}
++
++func TestSolveReached200NoCode(t *testing.T) {
++	mux := newCalcMux(newRepoStub(), costStub{}, nil)
++	w := do(t, mux, http.MethodPost, "/pricing/solve",
++		`{"margem_alvo_pct":"20","comissao_pct":"16","modalidade":"classico","custo":"10.00","frete_produto":"15.00"}`)
++	if w.Code != http.StatusOK {
++		t.Fatalf("status = %d, want 200, body=%s", w.Code, w.Body.String())
++	}
++	var body map[string]any
++	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
++		t.Fatal(err)
++	}
++	if reached, _ := body["reached"].(bool); !reached {
++		t.Fatalf("reached = %v, want true, body=%s", body["reached"], w.Body.String())
++	}
++	if _, hasCode := body["code"]; hasCode {
++		t.Fatalf("code key present = %v, want absent when reached", body["code"])
++	}
++}
++
++func TestSolveWithResolverSurfacesTarifa(t *testing.T) {
++	resolver := fakeTariffResolver{res: domain.TariffResolution{
++		Comissao: domain.ComponentResolution{Valor: strPtr("13.00"), Fonte: domain.FontePadrao, Degrau: 4, Estimativa: true},
++		Frete:    domain.ComponentResolution{Valor: nil, Fonte: domain.FontePadrao, Degrau: 4, Estimativa: true},
++	}}
++	custo := "10.00"
++	mux := newCalcMuxWithResolver(newRepoStub(), costStub{money: &domain.Money{Amount: custo, Currency: "BRL"}}, nil, resolver)
++	w := do(t, mux, http.MethodPost, "/pricing/solve",
++		`{"margem_alvo_pct":"20","modalidade":"classico","custo":"10.00"}`)
++	if w.Code != http.StatusOK {
++		t.Fatalf("status = %d, want 200, body=%s", w.Code, w.Body.String())
++	}
++	var body struct {
++		Tarifa *tarifaDTO `json:"tarifa"`
++	}
++	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
++		t.Fatal(err)
++	}
++	if body.Tarifa == nil {
++		t.Fatalf("tarifa = nil, want resolved tarifa object, body=%s", w.Body.String())
++	}
++	if body.Tarifa.Comissao.Valor == nil || *body.Tarifa.Comissao.Valor != "13.00" {
++		t.Fatalf("tarifa.comissao.valor = %v, want 13.00", body.Tarifa.Comissao.Valor)
++	}
++	if body.Tarifa.Comissao.Data != nil {
++		t.Fatalf("tarifa.comissao.data = %v, want null (degrau 4 has no source timestamp)", *body.Tarifa.Comissao.Data)
++	}
++	if !body.Tarifa.Frete.SemDados {
++		t.Fatalf("tarifa.frete.sem_dados = false, want true (resolver frete unknown)")
++	}
++}
++
++func TestDecomposeWithResolverSurfacesTarifa(t *testing.T) {
++	resolver := fakeTariffResolver{res: domain.TariffResolution{
++		Comissao: domain.ComponentResolution{Valor: strPtr("13.00"), Fonte: domain.FontePadrao, Degrau: 4},
++		Frete:    domain.ComponentResolution{Valor: strPtr("22.50"), Fonte: domain.FontePadrao, Degrau: 4},
++	}}
++	custo := "10.00"
++	mux := newCalcMuxWithResolver(newRepoStub(), costStub{money: &domain.Money{Amount: custo, Currency: "BRL"}}, nil, resolver)
++	w := do(t, mux, http.MethodPost, "/pricing/decompose",
++		`{"preco":"100.00","modalidade":"classico","custo":"10.00"}`)
++	if w.Code != http.StatusOK {
++		t.Fatalf("status = %d, want 200, body=%s", w.Code, w.Body.String())
++	}
++	var body struct {
++		Tarifa *tarifaDTO `json:"tarifa"`
++	}
++	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
++		t.Fatal(err)
++	}
++	if body.Tarifa == nil {
++		t.Fatalf("tarifa = nil, want resolved tarifa object, body=%s", w.Body.String())
++	}
++	if body.Tarifa.Comissao.Valor == nil || *body.Tarifa.Comissao.Valor != "13.00" {
++		t.Fatalf("tarifa.comissao.valor = %v, want 13.00", body.Tarifa.Comissao.Valor)
++	}
++	if body.Tarifa.Frete.SemDados {
++		t.Fatalf("tarifa.frete.sem_dados = true, want false (resolver frete known)")
++	}
++}
++
++func strPtr(s string) *string { return &s }
++
+ func TestDeleteScenarioNotFound404(t *testing.T) {
+ 	mux := newCalcMux(newRepoStub(), costStub{}, nil)
+ 	w := do(t, mux, http.MethodDelete, "/pricing/scenarios/missing", "")
+diff --git a/apps/server_core/internal/platform/migrate/runner_test.go b/apps/server_core/internal/platform/migrate/runner_test.go
+index aad43d58..3bba43c8 100644
+--- a/apps/server_core/internal/platform/migrate/runner_test.go
++++ b/apps/server_core/internal/platform/migrate/runner_test.go
+@@ -22,8 +22,8 @@ func TestCanonicalSourceListsEveryMigrationByFullFilename(t *testing.T) {
+ 		want = append(want, filepath.Base(path))
+ 	}
+ 	sort.Strings(want)
+-	if len(want) != 55 {
+-		t.Fatalf("fixture inventory drift: got %d canonical migrations, want 55", len(want))
++	if len(want) != 56 {
++		t.Fatalf("fixture inventory drift: got %d canonical migrations, want 56", len(want))
+ 	}
+ 
+ 	got, err := migrate.Filenames(canonical.Source())
+@@ -61,7 +61,7 @@ func TestCanonicalSourceDoesNotDependOnCallerWorkingDirectory(t *testing.T) {
+ 	if err != nil {
+ 		t.Fatalf("list embedded migrations from foreign CWD: %v", err)
+ 	}
+-	if len(got) != 55 {
+-		t.Fatalf("foreign CWD returned %d migrations, want 55", len(got))
++	if len(got) != 56 {
++		t.Fatalf("foreign CWD returned %d migrations, want 56", len(got))
+ 	}
+ }
+diff --git a/apps/server_core/migrations/0068_pricing_tariff_defaults.sql b/apps/server_core/migrations/0068_pricing_tariff_defaults.sql
+new file mode 100644
+index 00000000..99432eb1
+--- /dev/null
++++ b/apps/server_core/migrations/0068_pricing_tariff_defaults.sql
+@@ -0,0 +1,19 @@
++-- TariffDefaults (CHIP-T1 Slice A): one pricing-tariff-defaults row per
++-- tenant/installation. comissao_classico_pct/comissao_premium_pct are seeded
++-- by DB column DEFAULT (13.00/16.00) — the row is materialized on first read
++-- via INSERT ... ON CONFLICT DO NOTHING, never a Go literal. frete_estimativa_amount
++-- is NULLABLE — NULL means unknown, never 0 (ADR-17); frete_policy tracks
++-- whether an estimate is known ('estimativa') or absent ('sem_dados').
++-- installation_id '' is the default-installation sentinel for the current
++-- single-installation demo; the (tenant_id, installation_id) key already
++-- makes this schema multi-installation-ready.
++CREATE TABLE IF NOT EXISTS pricing_tariff_defaults (
++    tenant_id             text NOT NULL,
++    installation_id       text NOT NULL DEFAULT '',
++    comissao_classico_pct numeric NOT NULL DEFAULT 13.00 CHECK (comissao_classico_pct >= 0 AND comissao_classico_pct <= 100),
++    comissao_premium_pct  numeric NOT NULL DEFAULT 16.00 CHECK (comissao_premium_pct  >= 0 AND comissao_premium_pct  <= 100),
++    frete_estimativa_amount numeric CHECK (frete_estimativa_amount IS NULL OR frete_estimativa_amount >= 0),
++    frete_policy          text NOT NULL DEFAULT 'sem_dados' CHECK (frete_policy IN ('estimativa','sem_dados')),
++    updated_at            timestamptz NOT NULL DEFAULT now(),
++    PRIMARY KEY (tenant_id, installation_id)
++);
+diff --git a/contracts/api/marketplace-central.openapi.yaml b/contracts/api/marketplace-central.openapi.yaml
+index 47b90ef1..5abbd319 100644
+--- a/contracts/api/marketplace-central.openapi.yaml
++++ b/contracts/api/marketplace-central.openapi.yaml
+@@ -2545,6 +2545,65 @@ paths:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/ErrorResponse'
++  /pricing/tariff-defaults:
++    get:
++      summary: Get the tenant tariff defaults (degrau-4 config)
++      operationId: pricingGetTariffDefaults
++      parameters:
++        - name: installation_id
++          in: query
++          required: false
++          schema:
++            type: string
++      responses:
++        "200":
++          description: Tariff defaults
++          content:
++            application/json:
++              schema:
++                $ref: '#/components/schemas/PricingTariffDefaults'
++        "503":
++          description: Tariff store not configured
++          content:
++            application/json:
++              schema:
++                $ref: '#/components/schemas/ErrorResponse'
++    put:
++      summary: Update the tenant tariff defaults (degrau-4 config)
++      operationId: pricingPutTariffDefaults
++      parameters:
++        - name: installation_id
++          in: query
++          required: false
++          schema:
++            type: string
++      requestBody:
++        required: true
++        content:
++          application/json:
++            schema:
++              $ref: '#/components/schemas/PricingTariffDefaults'
++      responses:
++        "200":
++          description: Updated tariff defaults
++          content:
++            application/json:
++              schema:
++                $ref: '#/components/schemas/PricingTariffDefaults'
++        "422":
++          description: >-
++            Invalid input: unrecognized frete_policy, or a non-numeric
++            commission/frete estimate (code INVALID_PRICE).
++          content:
++            application/json:
++              schema:
++                $ref: '#/components/schemas/ErrorResponse'
++        "503":
++          description: Tariff store not configured
++          content:
++            application/json:
++              schema:
++                $ref: '#/components/schemas/ErrorResponse'
+   /connectors/melhor-envio/auth/start:
+     get:
+       summary: Start Melhor Envio OAuth flow
+@@ -4100,7 +4159,6 @@ components:
+     PricingCalcInput:
+       type: object
+       required:
+-        - comissao_pct
+         - modalidade
+       properties:
+         preco:
+@@ -4172,12 +4230,17 @@ components:
+         blocking_state:
+           type: string
+           nullable: true
++        tarifa:
++          allOf:
++            - $ref: '#/components/schemas/PricingTarifa'
++          nullable: true
+     PricingSolveResponse:
+       type: object
+       required:
+         - reached
+         - ceiling_pct
+         - desconhecidos
++        - frete_desconhecido
+       properties:
+         reached:
+           type: boolean
+@@ -4190,11 +4253,80 @@ components:
+           type: array
+           items:
+             type: string
++        frete_desconhecido:
++          type: boolean
+         blocking_state:
+           type: string
+           nullable: true
++        tarifa:
++          allOf:
++            - $ref: '#/components/schemas/PricingTarifa'
++          nullable: true
+         code:
+           type: string
++          enum:
++            - UNREACHABLE_TARGET
++            - SEM_FRETE
++            - DADOS_INCOMPLETOS
++    PricingTarifaComponent:
++      type: object
++      required:
++        - valor
++        - fonte
++        - degrau
++        - data
++        - estimativa
++      properties:
++        valor:
++          type: string
++          nullable: true
++        fonte:
++          type: string
++        degrau:
++          type: integer
++        data:
++          type: string
++          nullable: true
++        estimativa:
++          type: boolean
++    PricingTarifaFrete:
++      allOf:
++        - $ref: '#/components/schemas/PricingTarifaComponent'
++        - type: object
++          required:
++            - sem_dados
++          properties:
++            sem_dados:
++              type: boolean
++    PricingTarifa:
++      type: object
++      required:
++        - comissao
++        - frete
++      properties:
++        comissao:
++          $ref: '#/components/schemas/PricingTarifaComponent'
++        frete:
++          $ref: '#/components/schemas/PricingTarifaFrete'
++    PricingTariffDefaults:
++      type: object
++      required:
++        - comissao_classico_pct
++        - comissao_premium_pct
++        - frete_policy
++      properties:
++        comissao_classico_pct:
++          type: string
++        comissao_premium_pct:
++          type: string
++        frete_estimativa_amount:
++          type: string
++          nullable: true
++        frete_policy:
++          type: string
++          enum:
++            - estimativa
++            - sem_dados
+     ListIntegrationProvidersResponse:
+       type: object
+       required:
+diff --git a/packages/sdk-runtime/src/index.ts b/packages/sdk-runtime/src/index.ts
+index fc433f0d..62047a11 100644
+--- a/packages/sdk-runtime/src/index.ts
++++ b/packages/sdk-runtime/src/index.ts
+@@ -1405,7 +1405,7 @@ export interface PricingScenarioRequest {
+ export interface PricingCalcInput {
+   preco?: string;
+   margem_alvo_pct?: string;
+-  comissao_pct: string;
++  comissao_pct?: string;
+   modalidade: string;
+   tarifa_full?: string | null;
+   frete_produto?: string | null;
+@@ -1427,9 +1427,34 @@ export interface PricingDecomposition {
+   componentes_desconhecidos: string[];
+ }
+ 
++export interface PricingTarifaComponent {
++  valor: string | null;
++  fonte: string;
++  degrau: number;
++  data: string | null;
++  estimativa: boolean;
++}
++
++export interface PricingTarifaFrete extends PricingTarifaComponent {
++  sem_dados: boolean;
++}
++
++export interface PricingTarifa {
++  comissao: PricingTarifaComponent;
++  frete: PricingTarifaFrete;
++}
++
++export interface PricingTariffDefaults {
++  comissao_classico_pct: string;
++  comissao_premium_pct: string;
++  frete_estimativa_amount: string | null;
++  frete_policy: "estimativa" | "sem_dados";
++}
++
+ export interface PricingDecomposeResponse {
+   decomposition: PricingDecomposition;
+   blocking_state: string | null;
++  tarifa?: PricingTarifa | null;
+ }
+ 
+ export interface PricingSolveResponse {
+@@ -1437,7 +1462,9 @@ export interface PricingSolveResponse {
+   preco: string | null;
+   ceiling_pct: string;
+   desconhecidos: string[];
++  frete_desconhecido: boolean;
+   blocking_state: string | null;
++  tarifa?: PricingTarifa | null;
+   code?: string;
+ }
+ 
