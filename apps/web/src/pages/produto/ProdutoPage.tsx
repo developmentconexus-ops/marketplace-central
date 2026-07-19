@@ -2,6 +2,7 @@ import type { JSX } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ErrorState } from "@marketplace-central/ui";
 import { applyProdutoTab, parseProdutoTab, type ProdutoTab } from "./productQueryState";
+import { ProdutoHeader } from "./ProdutoHeader";
 
 const tabs: Array<{ value: ProdutoTab; label: string }> = [
   { value: "veredicto", label: "Veredicto" },
@@ -57,6 +58,8 @@ export function ProdutoPage(): JSX.Element {
           Produto {productId}
         </h1>
       </header>
+
+      <ProdutoHeader productId={productId} />
 
       <div role="tablist" aria-label="Seções do produto" className="flex flex-wrap gap-2 border-b border-border pb-4">
         {tabs.map((tab) => (
