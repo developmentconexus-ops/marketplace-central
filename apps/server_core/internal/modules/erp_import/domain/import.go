@@ -17,6 +17,8 @@ type NormalizedRow struct {
 	Refforn       *string `json:"refforn,omitempty"`
 	Marca         *string `json:"marca,omitempty"`
 	NCM           *string `json:"ncm,omitempty"`
+	Grupo         *string `json:"grupo,omitempty"`
+	DescrGrupo    *string `json:"descrgrupo,omitempty"`
 }
 
 type IssueKind string

@@ -49,7 +49,7 @@ func (r *Repository) PersistSnapshotAtomically(ctx context.Context, tenantID str
 		return fmt.Errorf("insert ERP import protocol: %w", err)
 	}
 	for _, product := range snapshot.AcceptedRows {
-		_, err = tx.Exec(ctx, `INSERT INTO erp_import_products (tenant_id,protocol_id,codprod,descrprod,custo,stock_physical,stock_reserved,ean,refforn,marca,ncm) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`, tenantID, snapshot.ID, product.Codprod, product.Descrprod, product.Custo, product.StockPhysical, product.StockReserved, product.EAN, product.Refforn, product.Marca, product.NCM)
+		_, err = tx.Exec(ctx, `INSERT INTO erp_import_products (tenant_id,protocol_id,codprod,descrprod,custo,stock_physical,stock_reserved,ean,refforn,marca,ncm,grupo,descrgrupo) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`, tenantID, snapshot.ID, product.Codprod, product.Descrprod, product.Custo, product.StockPhysical, product.StockReserved, product.EAN, product.Refforn, product.Marca, product.NCM, product.Grupo, product.DescrGrupo)
 		if err != nil {
 			return fmt.Errorf("insert ERP import product: %w", err)
 		}

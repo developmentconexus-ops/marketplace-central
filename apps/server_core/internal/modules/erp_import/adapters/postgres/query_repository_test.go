@@ -22,7 +22,8 @@ func TestQueriesNewestCompletedAndTenantIsolation(t *testing.T) {
 		_, _ = pool.Exec(context.Background(), `DELETE FROM erp_import_protocols WHERE tenant_id=$1`, other)
 	})
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	completed := domain.ImportSnapshot{ID: "66666666-6666-6666-6666-666666666666", Protocol: "#201-E", FileSHA256: "same-hash", ImportedAt: now, Status: domain.ImportStatusCompleted, AcceptedRows: []domain.NormalizedRow{{Codprod: "A", Descrprod: "Alpha", Custo: "2.5", StockPhysical: "3"}}}
+	grupo, descrGrupo := "07", "Ferramentas"
+	completed := domain.ImportSnapshot{ID: "66666666-6666-6666-6666-666666666666", Protocol: "#201-E", FileSHA256: "same-hash", ImportedAt: now, Status: domain.ImportStatusCompleted, AcceptedRows: []domain.NormalizedRow{{Codprod: "A", Descrprod: "Alpha", Custo: "2.5", StockPhysical: "3", Grupo: &grupo, DescrGrupo: &descrGrupo}}}
 	rejected := domain.ImportSnapshot{ID: "77777777-7777-7777-7777-777777777777", Protocol: "#202-E", FileSHA256: "later-rejected", ImportedAt: now.Add(time.Second), Status: domain.ImportStatusRejected, Issues: []domain.Issue{{Row: 2, Kind: domain.Rejection, Code: domain.CodeInvalidCusto}}}
 	if err := repo.PersistSnapshotAtomically(ctx, tenant, completed); err != nil {
 		t.Fatal(err)
@@ -44,6 +45,9 @@ func TestQueriesNewestCompletedAndTenantIsolation(t *testing.T) {
 	latest, err := repo.LatestCompletedSnapshot(ctx, tenant)
 	if err != nil || latest.ID != completed.ID || len(latest.AcceptedRows) != 1 {
 		t.Fatalf("latest=%#v err=%v", latest, err)
+	}
+	if got := latest.AcceptedRows[0]; got.Grupo == nil || *got.Grupo != grupo || got.DescrGrupo == nil || *got.DescrGrupo != descrGrupo {
+		t.Fatalf("grupo round trip lost: %#v", got)
 	}
 	if _, err := repo.GetImport(ctx, other, completed.ID); !errors.Is(err, ports.ErrImportNotFound) {
 		t.Fatalf("cross tenant get err=%v", err)
