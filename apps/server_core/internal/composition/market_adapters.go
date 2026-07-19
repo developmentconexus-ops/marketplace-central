@@ -518,16 +518,32 @@ func (r *marketPriceIntelCollectorAdapter) observeProviderFailure(operation stri
 	)
 }
 
-var bearerTokenPattern = regexp.MustCompile(`(?i)bearer\s+[A-Za-z0-9._~+/-]+=*`)
-
 const maxProviderBodyLog = 256
 
+// The provider body is attacker/provider-controlled (echoed straight from the
+// HTTP response), so redaction must cover more than the literal "Bearer X"
+// header shape: bare ML credential tokens and token-bearing JSON/query fields
+// can appear anywhere in a 4xx/401 body.
+var (
+	// Authorization header echoed back + bare ML credential token shapes.
+	credentialTokenPatterns = []*regexp.Regexp{
+		regexp.MustCompile(`(?i)bearer\s+[A-Za-z0-9._~+/-]+=*`),
+		regexp.MustCompile(`(?i)\b(?:APP_USR|APP_ID|TG)-[A-Za-z0-9._~+/-]+`),
+	}
+	// token-bearing JSON fields or query params: keep the field name, drop value.
+	credentialFieldPattern = regexp.MustCompile(`(?i)("?(?:access_token|refresh_token|client_secret|token|secret|authorization)"?\s*[:=]\s*"?)[A-Za-z0-9._~+/-]+`)
+)
+
 // sanitizeProviderBody makes a provider payload safe to log: whitespace is
-// collapsed, bearer tokens are redacted, and the result is rune-bounded so an
-// oversized body cannot flood the log or split a multibyte rune.
+// collapsed, credential tokens are redacted BEFORE truncation (so a token can
+// never survive by straddling the length bound), and the result is rune-bounded
+// so an oversized body cannot flood the log or split a multibyte rune.
 func sanitizeProviderBody(body string) string {
 	body = strings.Join(strings.Fields(body), " ")
-	body = bearerTokenPattern.ReplaceAllString(body, "Bearer [REDACTED]")
+	body = credentialFieldPattern.ReplaceAllString(body, "$1[REDACTED]")
+	for _, pattern := range credentialTokenPatterns {
+		body = pattern.ReplaceAllString(body, "[REDACTED]")
+	}
 	if runes := []rune(body); len(runes) > maxProviderBodyLog {
 		body = string(runes[:maxProviderBodyLog]) + "…"
 	}

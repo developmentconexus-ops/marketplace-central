@@ -213,6 +213,37 @@ func TestObserveProviderFailureWarnsOnceSanitized(t *testing.T) {
 	}
 }
 
+func TestSanitizeProviderBodyRedactsNonBearerCredentials(t *testing.T) {
+	// The provider body is echoed straight from the HTTP response, so a leaked
+	// credential can take any shape, not just "Bearer X" (FINDING-M02-LIVE-2
+	// observability hardening — adversarial P6).
+	secrets := []string{"APP_USR-1234567890123456-071912-abcdef", "TG-abc123def456", "refresh-XYZ789"}
+	cases := []string{
+		`{"error":"invalid_token","message":"Invalid access_token: APP_USR-1234567890123456-071912-abcdef"}`,
+		`{"refresh_token":"refresh-XYZ789","status":401}`,
+		"a valid TG-abc123def456 token was rejected",
+		"Authorization=Bearer APP_USR-1234567890123456-071912-abcdef",
+	}
+	for _, body := range cases {
+		got := sanitizeProviderBody(body)
+		for _, secret := range secrets {
+			if strings.Contains(got, secret) {
+				t.Fatalf("secret %q leaked through sanitize:\n in:  %s\n out: %s", secret, body, got)
+			}
+		}
+		if !strings.Contains(got, "[REDACTED]") {
+			t.Fatalf("expected redaction marker in %q", got)
+		}
+	}
+
+	// A benign body with no credential must survive intact (no over-redaction of
+	// the diagnostic signal, e.g. an ML "status" code or error message).
+	benign := sanitizeProviderBody(`{"message":"item MLB123 not found","status":404}`)
+	if strings.Contains(benign, "[REDACTED]") {
+		t.Fatalf("over-redacted a benign body: %s", benign)
+	}
+}
+
 func TestObserveProviderFailureIgnoresBodilessErrors(t *testing.T) {
 	var buf bytes.Buffer
 	adapter := &marketPriceIntelCollectorAdapter{
