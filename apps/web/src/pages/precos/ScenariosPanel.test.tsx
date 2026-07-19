@@ -4,9 +4,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PricingScenario, PricingScenarioListResponse } from "@marketplace-central/sdk-runtime";
 import { ScenariosPanel } from "./ScenariosPanel";
 
-const listPricingScenarios = vi.fn<[], Promise<PricingScenarioListResponse>>();
-const createPricingScenario = vi.fn<[unknown], Promise<PricingScenario>>();
-const deletePricingScenario = vi.fn<[string], Promise<void>>();
+const listPricingScenarios = vi.fn<() => Promise<PricingScenarioListResponse>>();
+const createPricingScenario = vi.fn<(input: unknown) => Promise<PricingScenario>>();
+const deletePricingScenario = vi.fn<(id: string) => Promise<void>>();
 
 vi.mock("../../app/ClientContext", () => ({
   useClient: () => ({ listPricingScenarios, createPricingScenario, deletePricingScenario }),
