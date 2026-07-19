@@ -17,10 +17,6 @@ vi.mock("@marketplace-central/feature-products", () => ({
   CatalogPage: () => <div>Catalog route</div>,
 }));
 
-vi.mock("@marketplace-central/feature-simulator", () => ({
-  PricingSimulatorPage: () => <div>Pricing route</div>,
-}));
-
 vi.mock("@marketplace-central/feature-classifications", () => ({
   ClassificationsPage: () => <div>Classifications route</div>,
 }));
