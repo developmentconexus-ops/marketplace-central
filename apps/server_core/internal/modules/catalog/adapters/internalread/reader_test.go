@@ -93,6 +93,36 @@ func TestListProductsByIDsDegradesUnavailableFacts(t *testing.T) {
 	}
 }
 
+// TestCanonicalProductDegradesOnlyTheFailingFact proves the degrade is scoped:
+// when one fact read errors (unsupported), sibling facts that return real values
+// still pass through as Current — the fix never collapses a whole product to
+// missing when only one source is unavailable.
+func TestCanonicalProductDegradesOnlyTheFailingFact(t *testing.T) {
+	now := time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC)
+	qty, cst := 12.0, 7.96
+	complete := []readdomain.QualityFlag{readdomain.QualityComplete}
+	src := readdomain.SourceMetadata{System: "xlsx", FetchedAt: now}
+	r := &Reader{reader: stubReadPortsReader{
+		candidate: candidateForID(90001),
+		stock:     readdomain.SellableStock{Quantity: &qty, Source: src, QualityFlags: complete},
+		priceErr:  readdomain.NewReadError(readdomain.ReadErrorUnsupportedQuery, "xlsx snapshot does not contain current price", nil),
+		cost:      readdomain.CostAsOf{Amount: &cst, Source: src, QualityFlags: complete},
+	}}
+	got, err := r.GetCanonicalProduct(context.Background(), catalogdomain.InternalProductID(90001))
+	if err != nil {
+		t.Fatalf("expected degrade, got error: %v", err)
+	}
+	if got.PriceAmount.Quality != catalogdomain.SourceFactQualityUnknown || got.PriceAmount.Value != nil {
+		t.Fatalf("price should be missing, got quality=%s value=%v", got.PriceAmount.Quality, got.PriceAmount.Value)
+	}
+	if got.StockQuantity.Quality != catalogdomain.SourceFactQualityCurrent || got.StockQuantity.Value == nil || *got.StockQuantity.Value != qty {
+		t.Fatalf("stock should survive as current %v, got quality=%s value=%v", qty, got.StockQuantity.Quality, got.StockQuantity.Value)
+	}
+	if got.CostAmount.Quality != catalogdomain.SourceFactQualityCurrent || got.CostAmount.Value == nil || *got.CostAmount.Value != cst {
+		t.Fatalf("cost should survive as current %v, got quality=%s value=%v", cst, got.CostAmount.Quality, got.CostAmount.Value)
+	}
+}
+
 // TestCanonicalProductPropagatesUnexpectedFactError is the over-degrade guard:
 // a read error that is NOT an availability signal must still surface, never be
 // swallowed into a fake-missing fact.
