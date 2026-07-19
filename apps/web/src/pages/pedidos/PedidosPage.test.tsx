@@ -41,6 +41,28 @@ async function goToLista() {
   await screen.findByRole("tablist", { name: "Filtros de pedidos" });
 }
 
+// F01-C1 honest-empty decomposição/DIFAL — required objects, every member null (F02-S6 real-ready
+// path: same shape lights up with real numbers once the hub wires the decomposer, no UI change).
+const nullDecomposicao = {
+  comissao: null,
+  taxa_fixa: null,
+  frete: null,
+  imposto: null,
+  difal: null,
+  tarifa_full: null,
+  custo: null,
+  margem_valor: null,
+  margem_pct: null,
+  componentes_desconhecidos: ["comissao", "taxa_fixa", "frete", "imposto", "difal", "tarifa_full", "custo"],
+};
+
+const nullDifal = {
+  amount: null,
+  uf_route: null,
+  due_date: null,
+  paid: null,
+};
+
 const baseOrder = {
   provider_order_id: "PO1",
   provider_code: "ML-1001",
@@ -58,6 +80,10 @@ const baseOrder = {
   items: [],
   payments: [],
   bucket: "novo" as const,
+  retorno_liquido: null,
+  margem_pct: null,
+  decomposicao: nullDecomposicao,
+  difal: nullDifal,
 };
 
 describe("PedidosPage", () => {
@@ -259,6 +285,35 @@ describe("PedidosPage", () => {
 
     const rows = screen.getAllByRole("row");
     expect(rows.length).toBeGreaterThan(1);
+    // RETORNO/DIFAL render FROM order.retorno_liquido/difal.amount — both null on this fixture,
+    // so both columns render honest UnknownValue "—", never a hardcoded string (ADR-17/F02-S6).
+    expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("renders the Lista RETORNO/DIFAL columns with real formatted values when present (F02-S6 real-ready path)", async () => {
+    listOrders.mockResolvedValue({
+      items: [
+        {
+          ...baseOrder,
+          buyer: { display: "J. S.", city: "São Paulo", uf: "SP" },
+          bucket: "novo",
+          retorno_liquido: 123.45,
+          margem_pct: 0.182,
+          difal: { ...nullDifal, amount: 8.76 },
+        },
+      ],
+      next_cursor: null,
+    });
+
+    renderPage();
+
+    await screen.findByRole("heading", { name: "Pedidos" });
+    await goToLista();
+
+    expect(await screen.findByText("ML-1001")).toBeInTheDocument();
+    expect(screen.getByText("R$ 123,45")).toBeInTheDocument();
+    expect(screen.getByText("18.2%")).toBeInTheDocument();
+    expect(screen.getByText("R$ 8,76")).toBeInTheDocument();
   });
 
   it("enables mass-select in Lista and shows a disabled bulk action bar when rows are selected", async () => {
@@ -413,6 +468,49 @@ describe("PedidosPage", () => {
     expect(screen.getAllByText("—").length).toBeGreaterThan(0);
     const footerAction = screen.getByRole("button", { name: "Faturar via ERP" });
     expect(footerAction).toBeDisabled();
+  });
+
+  it("renders the drawer decomposição/DIFAL block with real formatted values when present (F02-S6 real-ready path)", async () => {
+    const withDecomp = {
+      ...detailOrder,
+      retorno_liquido: 145.67,
+      margem_pct: 0.234,
+      decomposicao: {
+        comissao: 12.5,
+        taxa_fixa: 6.5,
+        frete: 18.3,
+        imposto: 9.4,
+        difal: 4.12,
+        tarifa_full: null,
+        custo: 42.2,
+        margem_valor: 154.2,
+        margem_pct: 0.234,
+        componentes_desconhecidos: ["tarifa_full"],
+      },
+      difal: {
+        amount: 8.76,
+        uf_route: "SC → SP",
+        due_date: "2026-07-25T00:00:00Z",
+        paid: false,
+      },
+    };
+    listOrders.mockResolvedValue({ items: [withDecomp], next_cursor: null });
+    getOrder.mockResolvedValue(withDecomp);
+
+    renderPage("?order=PO1");
+
+    await screen.findByText("Parafuso M8x40 cx100");
+    // Decomposition + margem + retorno + DIFAL render FROM the data, formatted — proving the
+    // real-ready path (same components, no UI change, once the hub wires the decomposer).
+    expect(screen.getByText("R$ 145,67")).toBeInTheDocument(); // retorno_liquido
+    expect(screen.getByText("R$ 154,20")).toBeInTheDocument(); // margem_valor
+    expect(screen.getByText("23.4%")).toBeInTheDocument(); // margem_pct
+    expect(screen.getByText("R$ 8,76")).toBeInTheDocument(); // difal.amount
+    expect(screen.getByText("R$ 4,12")).toBeInTheDocument(); // decomposicao.difal (cost component)
+    expect(screen.getByText("SC → SP")).toBeInTheDocument(); // difal.uf_route
+    expect(screen.getByText("não")).toBeInTheDocument(); // difal.paid === false
+    // tarifa_full stays null (componentes_desconhecidos) — still honest "—", not fabricated.
+    expect(screen.getAllByText("—").length).toBeGreaterThan(0);
   });
 
   it("closing the drawer clears the ?order= param", async () => {

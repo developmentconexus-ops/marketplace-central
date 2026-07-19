@@ -4,7 +4,7 @@ import { DetailDrawer, ErrorState, LoadingState, UnknownValue } from "@marketpla
 import { QUERY_STALE_TIME } from "@marketplace-central/web-query";
 import { useClient } from "../../app/ClientContext";
 import { useInstallation } from "../../app/InstallationContext";
-import { actionLabelForBucket, formatDateTime, formatMoney } from "./pedidosFormatters";
+import { actionLabelForBucket, formatDateTime, formatMoney, formatPercent } from "./pedidosFormatters";
 
 export interface PedidoDrawerProps {
   orderId: string | null;
@@ -99,33 +99,70 @@ function ItemsSection({ order }: { order: OrderRead }) {
   );
 }
 
-function DecomposicaoSection() {
-  // Gated (slice C, IC-04 open): OrderRead has no retorno/margem/decomposição/DIFAL fields —
-  // an honest "não disponível" block, never fabricated numbers (ADR-17).
+// Definition-list row: value → formatted text, null/undefined → UnknownValue (ADR-17). Never
+// hardcodes "—"; the hint explains why a component is unknown today (F01-C1 honest-empty) so
+// the same row lights up with a real number once the hub wires the decomposer (C2), no UI change.
+function DecompRow({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string | null;
+  hint?: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <dt>{label}</dt>
+      <dd className="font-mono text-[11px]">{value ?? <UnknownValue hint={hint} />}</dd>
+    </div>
+  );
+}
+
+// Real-ready wiring (F02-S6): every value here is read FROM order.decomposicao/difal/
+// retorno_liquido/margem_pct (F01-C1, additive on OrderRead). Today the decomposer isn't wired
+// (hub C2), so every component is honestly null and renders UnknownValue via DecompRow/formatMoney
+// — never a hardcoded "—" string. When C2 lands, these same formatters render the real numbers
+// with no further UI change.
+function DecomposicaoSection({ order }: { order: OrderRead }) {
+  const { decomposicao, difal } = order;
+  const pending = decomposicao.componentes_desconhecidos.length > 0;
+  const difalHint = "DIFAL ainda não decomposto (hub C2)";
+  const custoHint = "decomposição de custos ainda não disponível (hub C2)";
+
   return (
     <Section title="Decomposição + DIFAL">
-      <div className="rounded-lg border border-dashed border-border bg-surface-2 p-3 text-xs text-muted">
-        <p>
-          Retorno líquido, margem e decomposição de custos (comissão, frete, imposto, DIFAL) ainda
-          não estão disponíveis nesta instalação.
-        </p>
-        <dl className="mt-2 space-y-1">
+      <div className="rounded-lg border border-border bg-surface-2 p-3 text-xs text-muted">
+        {pending ? (
+          <p className="mb-2 text-[11px] text-faint">
+            Pendente: {decomposicao.componentes_desconhecidos.join(", ")} ainda não disponíveis nesta
+            instalação — os campos abaixo mostram "—" até a decomposição ser calculada.
+          </p>
+        ) : null}
+        <dl className="space-y-1">
+          <DecompRow label="Comissão" value={formatMoney(decomposicao.comissao)} hint={custoHint} />
+          <DecompRow label="Taxa fixa" value={formatMoney(decomposicao.taxa_fixa)} hint={custoHint} />
+          <DecompRow label="Frete" value={formatMoney(decomposicao.frete)} hint={custoHint} />
+          <DecompRow label="Imposto" value={formatMoney(decomposicao.imposto)} hint={custoHint} />
+          <DecompRow label="DIFAL" value={formatMoney(decomposicao.difal)} hint={difalHint} />
+          <DecompRow label="Tarifa Full" value={formatMoney(decomposicao.tarifa_full)} hint={custoHint} />
+          <DecompRow label="Custo" value={formatMoney(decomposicao.custo)} hint={custoHint} />
+          <div className="my-1 border-t border-border-2" />
+          <DecompRow label="Margem valor" value={formatMoney(decomposicao.margem_valor)} hint={custoHint} />
+          <DecompRow label="Margem %" value={formatPercent(decomposicao.margem_pct)} hint={custoHint} />
+          <DecompRow label="Retorno líquido" value={formatMoney(order.retorno_liquido)} hint={custoHint} />
+        </dl>
+      </div>
+      <div className="rounded-lg border border-border bg-surface-2 p-3 text-xs text-muted">
+        <h5 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-faint">DIFAL</h5>
+        <dl className="space-y-1">
+          <DecompRow label="Valor" value={formatMoney(difal.amount)} hint={difalHint} />
+          <DecompRow label="Rota" value={difal.uf_route} hint="rota UF ainda não disponível (hub C2)" />
+          <DecompRow label="Vencimento" value={formatDateTime(difal.due_date)} hint={difalHint} />
           <div className="flex items-center justify-between gap-3">
-            <dt>Retorno líquido</dt>
-            <dd>
-              <UnknownValue hint="decomposição de custos ainda não disponível (IC-04)" />
-            </dd>
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <dt>Margem</dt>
-            <dd>
-              <UnknownValue hint="decomposição de custos ainda não disponível (IC-04)" />
-            </dd>
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <dt>DIFAL</dt>
-            <dd>
-              <UnknownValue hint="DIFAL ainda não decomposto" />
+            <dt>Pago</dt>
+            <dd className="font-mono text-[11px]">
+              {difal.paid === null ? <UnknownValue hint={difalHint} /> : difal.paid ? "sim" : "não"}
             </dd>
           </div>
         </dl>
@@ -235,7 +272,7 @@ function DrawerBody({ order }: { order: OrderRead }) {
   return (
     <div className="flex flex-col gap-4">
       <ItemsSection order={order} />
-      <DecomposicaoSection />
+      <DecomposicaoSection order={order} />
       <TimelineSection order={order} />
       <FactsSection order={order} />
     </div>

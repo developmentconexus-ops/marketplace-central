@@ -1,6 +1,6 @@
 import type { OrderRead } from "@marketplace-central/sdk-runtime";
 import { DataTable, UnknownValue, type DataTableColumn } from "@marketplace-central/ui";
-import { actionLabelForBucket, formatDateTime, formatMoney } from "./pedidosFormatters";
+import { actionLabelForBucket, formatDateTime, formatMoney, formatPercent } from "./pedidosFormatters";
 
 export interface PedidosTableProps {
   items: OrderRead[];
@@ -31,6 +31,25 @@ function renderItens(item: OrderRead) {
   if (item.items.length === 0) return <UnknownValue />;
   if (item.items.length > 1) return `${item.items.length} itens`;
   return item.items[0]?.title ?? <UnknownValue />;
+}
+
+// Real-ready wiring (F02-S6): reads order.retorno_liquido/margem_pct — null (honest-empty, hub
+// C2 not wired yet) renders UnknownValue, a real value renders formatted with no further UI
+// change once the decomposer lands.
+function renderRetorno(item: OrderRead) {
+  const retorno = formatMoney(item.retorno_liquido);
+  const margem = formatPercent(item.margem_pct);
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="font-mono">{retorno ?? <UnknownValue hint="decomposição de custos ainda não disponível (hub C2)" />}</span>
+      {margem ? <span className="text-[10.5px] text-faint">{margem}</span> : null}
+    </div>
+  );
+}
+
+// Real-ready wiring (F02-S6): reads order.difal?.amount — null renders UnknownValue honestly.
+function renderDifal(item: OrderRead) {
+  return formatMoney(item.difal?.amount) ?? <UnknownValue hint="DIFAL ainda não decomposto (hub C2)" />;
 }
 
 function renderAcao(item: OrderRead) {
@@ -82,9 +101,8 @@ const columns: DataTableColumn<OrderRead>[] = [
   {
     key: "retorno",
     header: "Retorno",
-    // Gated (slice C, IC-04 open): no retorno/margem field on OrderRead — honest unknown, never
-    // fabricated (ADR-17).
-    render: () => <UnknownValue hint="retorno depende de decomposição ainda não disponível" />,
+    // null until the decomposer is wired (hub C2); renders '—' honestly, real value when present.
+    render: renderRetorno,
   },
   {
     key: "sla",
@@ -94,8 +112,8 @@ const columns: DataTableColumn<OrderRead>[] = [
   {
     key: "difal",
     header: "DIFAL",
-    // Gated (slice C): no difal field on OrderRead — honest unknown, never fabricated.
-    render: () => <UnknownValue hint="DIFAL ainda não decomposto" />,
+    // null until the decomposer is wired (hub C2); renders '—' honestly, real value when present.
+    render: renderDifal,
   },
   {
     key: "acao",
