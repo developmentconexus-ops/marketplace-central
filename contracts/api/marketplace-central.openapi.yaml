@@ -553,7 +553,7 @@ paths:
           required: false
           schema:
             type: string
-            enum: [sync_error, stale, unlinked, below_margin]
+            enum: [sync_error, stale, unlinked, below_margin, sem_vinculo, abaixo_custo, sem_evidencia]
         - name: filter.has_exception
           in: query
           required: false
@@ -651,7 +651,7 @@ paths:
           required: false
           schema:
             type: string
-            enum: [sync_error, stale, unlinked, below_margin]
+            enum: [sync_error, stale, unlinked, below_margin, sem_vinculo, abaixo_custo, sem_evidencia]
         - name: filter.has_exception
           in: query
           required: false
@@ -3177,6 +3177,63 @@ components:
           type: string
           format: date-time
           nullable: true
+        market_signal:
+          allOf:
+            - $ref: '#/components/schemas/ListingReadMarketSignal'
+          nullable: true
+        signal_status:
+          type: string
+          enum: [OK, SEM_VINCULO, NO_PRICE_EVIDENCE, STALE]
+
+    ListingReadSignalEvidence:
+      type: object
+      required: [source, fetched_at, freshness]
+      properties:
+        source:
+          type: string
+        fetched_at:
+          type: string
+          format: date-time
+        freshness:
+          type: string
+
+    ListingReadMarketSignal:
+      type: object
+      required: [status, position, price_to_win, delta_pct, match_status, n_offers, n_sellers, evidence]
+      properties:
+        status:
+          type: string
+          enum: [OK, SEM_VINCULO, NO_PRICE_EVIDENCE, STALE]
+        position:
+          type: object
+          nullable: true
+          required: [rank, total]
+          properties:
+            rank:
+              type: integer
+            total:
+              type: integer
+        price_to_win:
+          allOf:
+            - $ref: '#/components/schemas/ListingReadMoney'
+          nullable: true
+        delta_pct:
+          type: string
+          nullable: true
+        match_status:
+          type: string
+          nullable: true
+          enum: [ACCEPT, REVIEW, REJECT, NO_CANDIDATE]
+        n_offers:
+          type: integer
+          nullable: true
+        n_sellers:
+          type: integer
+          nullable: true
+        evidence:
+          allOf:
+            - $ref: '#/components/schemas/ListingReadSignalEvidence'
+          nullable: true
 
     ListingPage:
       type: object
@@ -3269,6 +3326,15 @@ components:
           type: integer
           nullable: true
         margin_unknown:
+          type: integer
+          nullable: true
+        sem_vinculo:
+          type: integer
+          nullable: true
+        abaixo_custo:
+          type: integer
+          nullable: true
+        sem_evidencia:
           type: integer
           nullable: true
 

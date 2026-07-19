@@ -49,6 +49,30 @@ describe("anuncios query state", () => {
     });
   });
 
+  it.each(["sync_error", "stale", "unlinked", "below_margin", "sem_vinculo", "abaixo_custo", "sem_evidencia"])(
+    "round-trips the %s exception filter",
+    (exception) => {
+      const searchParams = new URLSearchParams(`installation=inst_1&filter.exception=${exception}`);
+      const state = parseAnunciosQueryState(searchParams);
+
+      expect(state.filters.exception).toBe(exception);
+      expect(applyAnunciosQueryState(searchParams, state).toString()).toBe(searchParams.toString());
+      expect(toListingListOptions(state, "inst_1")).toEqual({
+        installation_id: "inst_1",
+        exception,
+      });
+    },
+  );
+
+  it("ignores an invalid exception value without crashing", () => {
+    const searchParams = new URLSearchParams("installation=inst_1&filter.exception=xyz");
+    const state = parseAnunciosQueryState(searchParams);
+
+    expect(state.filters.exception).toBeUndefined();
+    expect(toListingListOptions(state, "inst_1")).toEqual({ installation_id: "inst_1" });
+    expect(clearFilters(searchParams).toString()).toBe("installation=inst_1");
+  });
+
   it("clears every filter while preserving route state", () => {
     const searchParams = new URLSearchParams(
       "q=camiseta&tab=ativos&installation=inst_1&filter.exception=sync_error&filter.bogus=x",
@@ -66,6 +90,29 @@ describe("anuncios query state", () => {
     const next = applyAnunciosQueryState(searchParams, state);
 
     expect(next.toString()).toBe("installation=inst_1&view=compact&tab=ativos&q=camiseta");
+  });
+
+  it("defaults grouped to false when the param is absent", () => {
+    const state = parseAnunciosQueryState(new URLSearchParams("installation=inst_1"));
+
+    expect(state.grouped).toBe(false);
+  });
+
+  it("round-trips the grouped=1 param", () => {
+    const searchParams = new URLSearchParams("installation=inst_1&grouped=1");
+    const state = parseAnunciosQueryState(searchParams);
+
+    expect(state.grouped).toBe(true);
+    expect(applyAnunciosQueryState(searchParams, state).toString()).toBe(searchParams.toString());
+  });
+
+  it("omits the grouped param from the URL when false", () => {
+    const searchParams = new URLSearchParams("installation=inst_1&grouped=1");
+    const state = parseAnunciosQueryState(searchParams);
+
+    const next = applyAnunciosQueryState(searchParams, { ...state, grouped: false });
+
+    expect(next.has("grouped")).toBe(false);
   });
 });
 

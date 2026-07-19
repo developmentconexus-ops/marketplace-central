@@ -1,5 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import type { ListingException, ListingLinkState, ListingSyncState, MutationType } from "@marketplace-central/sdk-runtime";
+import type {
+  ListingException,
+  ListingGroupPage,
+  ListingLinkState,
+  ListingPage,
+  ListingSyncState,
+  MutationType,
+} from "@marketplace-central/sdk-runtime";
 import { EmptyState, ErrorState, LoadingState } from "@marketplace-central/ui";
 import { listingsQueryKeys, QUERY_STALE_TIME } from "@marketplace-central/web-query";
 import { useEffect, useRef, useState } from "react";
@@ -33,6 +40,9 @@ const exceptionLabels = {
   stale: "Desatualizado",
   unlinked: "Sem vínculo",
   below_margin: "Abaixo da margem",
+  sem_vinculo: "Sem vínculo",
+  abaixo_custo: "Abaixo do custo",
+  sem_evidencia: "Sem evidência",
 } satisfies Record<ListingException, string>;
 
 const syncLabels = {
@@ -53,13 +63,13 @@ const linkLabels = {
 
 function ActiveFilterChip({ kind, value, onDismiss }: { kind: string; value: string; onDismiss: () => void }) {
   return (
-    <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
+    <span className="inline-flex items-center gap-2 rounded-full bg-surface-2 px-3 py-1 text-sm font-medium text-muted">
       <span>{`${kind}: ${value}`}</span>
       <button
         type="button"
         aria-label={`Remover filtro ${value}`}
         onClick={onDismiss}
-        className="text-slate-500 hover:text-slate-900"
+        className="text-faint hover:text-ink"
       >
         ×
       </button>
@@ -96,11 +106,17 @@ export function AnunciosPage() {
     ...toListingListOptions(state, installationId),
     ...(cursorForQuery ? { cursor: cursorForQuery } : {}),
   };
-  const pageQuery = useQuery({
-    queryKey: listingsQueryKeys.page(installationId, pageOptions),
-    queryFn: () => client.listListings(pageOptions),
+  const pageQuery = useQuery<ListingPage | ListingGroupPage>({
+    queryKey: state.grouped
+      ? listingsQueryKeys.byProduct(installationId, pageOptions)
+      : listingsQueryKeys.page(installationId, pageOptions),
+    queryFn: () => (state.grouped ? client.listListingsByProduct(pageOptions) : client.listListings(pageOptions)),
     staleTime: QUERY_STALE_TIME.listings,
   });
+  const pageData = pageQuery.data;
+  const groups = pageData && "groups" in pageData ? pageData.groups : undefined;
+  const flatItems = pageData && "items" in pageData ? pageData.items : undefined;
+  const isEmptyPage = groups ? groups.length === 0 : (flatItems?.length ?? 0) === 0;
   const summaryQuery = useQuery(anunciosSummaryQuery(client, installationId));
 
   useEffect(() => {
@@ -169,16 +185,16 @@ export function AnunciosPage() {
   return (
     <section aria-labelledby="anuncios-title" className="mx-auto flex max-w-7xl flex-col gap-6">
       <header className="flex flex-col gap-1">
-        <p className="text-sm font-medium text-blue-700">Workspace operacional</p>
-        <h1 id="anuncios-title" className="text-2xl font-semibold tracking-tight text-slate-950">
+        <p className="text-sm font-medium text-accent">Workspace operacional</p>
+        <h1 id="anuncios-title" className="text-2xl font-semibold tracking-tight text-ink">
           Anúncios
         </h1>
-        <p className="max-w-2xl text-sm text-slate-600">
+        <p className="max-w-2xl text-sm text-muted">
           Acompanhe publicação, vínculo e sincronização dos anúncios da instalação selecionada.
         </p>
       </header>
 
-      <div className="flex flex-col gap-4 border-b border-slate-200 pb-4">
+      <div className="flex flex-col gap-4 border-b border-border pb-4">
         <div aria-label="Filtros de status" role="tablist" className="flex flex-wrap gap-2">
           {tabs.map((tab) => (
             <button
@@ -188,8 +204,8 @@ export function AnunciosPage() {
               aria-selected={state.tab === tab.value}
               className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
                 state.tab === tab.value
-                  ? "border-blue-600 bg-blue-600 text-white"
-                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                  ? "border-accent bg-accent text-white"
+                  : "border-border bg-surface text-muted hover:border-border-2 hover:bg-surface-2"
               }`}
               onClick={() => updateState({ ...state, tab: tab.value })}
             >
@@ -227,7 +243,16 @@ export function AnunciosPage() {
             />
           ) : null}
         </div>
-        <label className="flex max-w-xl flex-col gap-1 text-sm font-medium text-slate-700" htmlFor="anuncios-search">
+        <label className="flex items-center gap-2 text-sm font-medium text-muted">
+          <input
+            type="checkbox"
+            checked={state.grouped}
+            onChange={(event) => updateState({ ...state, grouped: event.target.checked })}
+            aria-label="Agrupar por produto"
+          />
+          Agrupar por produto
+        </label>
+        <label className="flex max-w-xl flex-col gap-1 text-sm font-medium text-muted" htmlFor="anuncios-search">
           Buscar anúncios
           <input
             id="anuncios-search"
@@ -235,13 +260,13 @@ export function AnunciosPage() {
             value={state.q}
             onChange={(event) => updateState({ ...state, q: event.target.value }, { replace: true })}
             placeholder="Título, SKU ou MLB"
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-normal text-slate-900 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+            className="rounded-lg border border-border bg-surface px-3 py-2 font-normal text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent-soft"
           />
         </label>
       </div>
 
-      <section aria-labelledby="anuncios-summary-title" className="rounded-xl border border-slate-200 bg-white p-4">
-        <h2 id="anuncios-summary-title" className="text-sm font-semibold text-slate-900">
+      <section aria-labelledby="anuncios-summary-title" className="rounded-xl border border-border bg-surface p-4">
+        <h2 id="anuncios-summary-title" className="text-sm font-semibold text-ink">
           Resumo
         </h2>
         <ListingsSummary
@@ -249,17 +274,21 @@ export function AnunciosPage() {
           isError={summaryQuery.isError}
           data={summaryQuery.data}
           onRetry={() => void summaryQuery.refetch()}
+          activeException={state.filters.exception}
+          onExceptionChipClick={(exception) =>
+            updateState({ ...state, filters: { ...state.filters, exception } })
+          }
         />
       </section>
 
-      <section aria-labelledby="anuncios-list-title" className="rounded-xl border border-slate-200 bg-white p-4">
-        <h2 id="anuncios-list-title" className="text-sm font-semibold text-slate-900">
+      <section aria-labelledby="anuncios-list-title" className="rounded-xl border border-border bg-surface p-4">
+        <h2 id="anuncios-list-title" className="text-sm font-semibold text-ink">
           Lista de anúncios
         </h2>
         <div className="mt-3 flex flex-wrap items-center gap-2" aria-label="Ações de seleção">
           <ListingsRefreshControl installationId={installationId} />
           {visibleSelectedIds.size > 0 ? (
-            <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">
+            <span className="rounded-full bg-accent-soft px-3 py-1 text-sm font-medium text-accent-ink">
               {visibleSelectedIds.size} selecionado(s)
             </span>
           ) : null}
@@ -281,12 +310,12 @@ export function AnunciosPage() {
               }
             }}
           />
-        ) : pageQuery.data && pageQuery.data.items.length === 0 ? (
+        ) : pageQuery.data && isEmptyPage ? (
           <EmptyState
             hint={
               <button
                 type="button"
-                className="font-medium text-blue-700 underline decoration-blue-300 underline-offset-2 hover:text-blue-800"
+                className="font-medium text-accent underline decoration-accent-soft underline-offset-2 hover:text-accent-ink"
                 onClick={() => setSearchParams(clearFilters(searchParams))}
               >
                 Limpar filtros
@@ -296,7 +325,8 @@ export function AnunciosPage() {
         ) : pageQuery.data ? (
           <>
             <AnunciosTable
-              items={pageQuery.data.items}
+              items={flatItems}
+              groups={groups}
               asOf={pageQuery.data.as_of}
               selectedIds={visibleSelectedIds}
               onToggle={toggleSelection}

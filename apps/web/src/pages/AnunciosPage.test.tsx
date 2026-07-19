@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { AnunciosPage } from "./AnunciosPage";
 
 const listListings = vi.fn();
+const listListingsByProduct = vi.fn();
 const getListingsSummary = vi.fn(() =>
   Promise.resolve({
     total: 1,
@@ -42,7 +43,11 @@ const listingPage = {
 };
 
 vi.mock("../app/ClientContext", () => ({
-  useClient: () => ({ listListings: (...args: unknown[]) => listListings(...args), getListingsSummary }),
+  useClient: () => ({
+    listListings: (...args: unknown[]) => listListings(...args),
+    listListingsByProduct: (...args: unknown[]) => listListingsByProduct(...args),
+    getListingsSummary,
+  }),
 }));
 
 vi.mock("../app/InstallationContext", () => ({
@@ -121,6 +126,72 @@ describe("AnunciosPage active filter chips", () => {
   });
 });
 
+describe("AnunciosPage exception summary chips", () => {
+  it("clicking a summary exception chip deep-links the URL filter and re-issues the list query", async () => {
+    listListings.mockReset();
+    listListings.mockResolvedValue(listingPage);
+    getListingsSummary.mockReset();
+    getListingsSummary.mockResolvedValue({
+      total: 10,
+      active: 6,
+      paused: 4,
+      exceptions: {
+        sync_error: 0,
+        stale: 0,
+        unlinked: 0,
+        below_margin_worst_case: null,
+        margin_unknown: null,
+        sem_vinculo: 4,
+      },
+      as_of: "2026-07-16T12:00:00Z",
+    });
+    renderPage("?installation=inst_1");
+
+    const chip = await screen.findByRole("button", { name: "Sem vínculo: 4" });
+    fireEvent.click(chip);
+
+    await waitFor(() => {
+      expect(listListings.mock.calls.at(-1)?.[0]).toEqual({
+        installation_id: "inst_1",
+        exception: "sem_vinculo",
+      });
+    });
+    const search = new URLSearchParams(screen.getByTestId("location-search").textContent ?? "");
+    expect(search.get("filter.exception")).toBe("sem_vinculo");
+    expect(await screen.findByText("Exceção: Sem vínculo")).toBeInTheDocument();
+  });
+
+  it("restores the exception filter from the URL on load (F5-restorable)", async () => {
+    listListings.mockReset();
+    listListings.mockResolvedValue(listingPage);
+    getListingsSummary.mockReset();
+    getListingsSummary.mockResolvedValue({
+      total: 10,
+      active: 6,
+      paused: 4,
+      exceptions: {
+        sync_error: 0,
+        stale: 0,
+        unlinked: 0,
+        below_margin_worst_case: null,
+        margin_unknown: null,
+        sem_vinculo: 4,
+      },
+      as_of: "2026-07-16T12:00:00Z",
+    });
+    renderPage("?installation=inst_1&filter.exception=sem_vinculo");
+
+    expect(await screen.findByRole("button", { name: "Sem vínculo: 4" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(listListings.mock.calls.at(-1)?.[0]).toEqual({
+      installation_id: "inst_1",
+      exception: "sem_vinculo",
+    });
+  });
+});
+
 describe("AnunciosPage error recovery", () => {
   it("clears filter params on retry only for invalid_filter errors", async () => {
     listListings.mockRejectedValueOnce({
@@ -163,6 +234,9 @@ describe("AnunciosPage independent states", () => {
 
     expect(await screen.findByText("Camiseta azul")).toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent("Erro ao carregar.");
+    expect(screen.queryByRole("button", { name: /Sem vínculo/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Abaixo do custo/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Sem evidência/ })).not.toBeInTheDocument();
   });
 
   it("keeps summary counters visible when the table query fails", async () => {
@@ -190,5 +264,82 @@ describe("AnunciosPage independent states", () => {
     await waitFor(() => {
       expect(listListings.mock.calls.at(-1)?.[0]).toEqual({ installation_id: "inst_1" });
     });
+  });
+});
+
+describe("AnunciosPage agrupar por produto toggle", () => {
+  const groupPage = {
+    groups: [
+      {
+        product_id: "product_1",
+        product_title: "Grupo Camisetas",
+        listing_count: 1,
+        group_state: "ok",
+        listings: [listingPage.items[0]],
+      },
+      {
+        product_id: "product_2",
+        product_title: "Grupo Meias",
+        listing_count: 1,
+        group_state: "ok",
+        listings: [{ ...listingPage.items[0], listing_id: "listing_2", title: "Meia branca" }],
+      },
+    ],
+    next_cursor: null,
+    page_size: 2,
+    as_of: "2026-07-16T12:00:00Z",
+  };
+
+  it("toggling on issues listListingsByProduct, sets the URL flag, and renders per-product groups", async () => {
+    listListings.mockReset();
+    listListings.mockResolvedValue(listingPage);
+    listListingsByProduct.mockReset();
+    listListingsByProduct.mockResolvedValue(groupPage);
+    renderPage("?installation=inst_1");
+
+    expect(await screen.findByText("Camiseta azul")).toBeInTheDocument();
+    expect(listListingsByProduct).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Agrupar por produto" }));
+
+    await waitFor(() => {
+      expect(listListingsByProduct).toHaveBeenCalledWith({ installation_id: "inst_1" });
+    });
+    expect(await screen.findByText("Grupo Meias")).toBeInTheDocument();
+    expect(await screen.findByText("Meia branca")).toBeInTheDocument();
+    const search = new URLSearchParams(screen.getByTestId("location-search").textContent ?? "");
+    expect(search.get("grouped")).toBe("1");
+  });
+
+  it("renders a 1-listing group as a normal group (no special collapse)", async () => {
+    listListings.mockReset();
+    listListingsByProduct.mockReset();
+    listListingsByProduct.mockResolvedValue({
+      groups: [groupPage.groups[0]],
+      next_cursor: null,
+      page_size: 1,
+      as_of: "2026-07-16T12:00:00Z",
+    });
+    renderPage("?installation=inst_1&grouped=1");
+
+    expect(await screen.findByText("Camiseta azul")).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Agrupar por produto" })).toBeChecked();
+  });
+
+  it("toggling off restores the flat W1 list unchanged", async () => {
+    listListings.mockReset();
+    listListings.mockResolvedValue(listingPage);
+    listListingsByProduct.mockReset();
+    listListingsByProduct.mockResolvedValue(groupPage);
+    renderPage("?installation=inst_1&grouped=1");
+
+    expect(await screen.findByRole("checkbox", { name: "Agrupar por produto" })).toBeChecked();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Agrupar por produto" }));
+
+    await waitFor(() => {
+      expect(listListings).toHaveBeenCalledWith({ installation_id: "inst_1" });
+    });
+    const search = new URLSearchParams(screen.getByTestId("location-search").textContent ?? "");
+    expect(search.has("grouped")).toBe(false);
   });
 });

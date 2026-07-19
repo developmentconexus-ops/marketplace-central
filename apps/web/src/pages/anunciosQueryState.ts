@@ -18,9 +18,18 @@ export interface AnunciosQueryState {
   tab: AnunciosTab;
   q: string;
   filters: AnunciosFilterState;
+  grouped: boolean;
 }
 
-const exceptionValues = ["sync_error", "stale", "unlinked", "below_margin"] as const;
+const exceptionValues = [
+  "sync_error",
+  "stale",
+  "unlinked",
+  "below_margin",
+  "sem_vinculo",
+  "abaixo_custo",
+  "sem_evidencia",
+] as const;
 const syncStateValues = ["synced", "error", "stale", "queued", "syncing", "paused_sync"] as const;
 const linkStateValues = ["unresolved", "conflict", "resolved", "rejected"] as const;
 
@@ -61,6 +70,7 @@ export function parseAnunciosQueryState(searchParams: URLSearchParams): Anuncios
     tab,
     q: searchParams.get("q") ?? "",
     filters,
+    grouped: searchParams.get("grouped") === "1",
   };
 }
 
@@ -71,12 +81,14 @@ export function applyAnunciosQueryState(
   const next = new URLSearchParams(searchParams);
   next.delete("tab");
   next.delete("q");
+  next.delete("grouped");
   for (const key of Array.from(next.keys())) {
     if (key.startsWith("filter.")) next.delete(key);
   }
 
   if (state.tab !== "todos") next.set("tab", state.tab);
   if (state.q) next.set("q", state.q);
+  if (state.grouped) next.set("grouped", "1");
 
   const filters = state.filters;
   if (filters.exception && isListingException(filters.exception)) {

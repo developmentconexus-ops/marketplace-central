@@ -43,7 +43,8 @@ func SetFilterValue(filter *ListingFilter, key, value string) error {
 		}
 	case "exception":
 		filter.Exception = ListingException(value)
-		if filter.Exception != ListingExceptionSyncError && filter.Exception != ListingExceptionStale && filter.Exception != ListingExceptionUnlinked && filter.Exception != ListingExceptionBelowMargin {
+		if filter.Exception != ListingExceptionSyncError && filter.Exception != ListingExceptionStale && filter.Exception != ListingExceptionUnlinked && filter.Exception != ListingExceptionBelowMargin &&
+			filter.Exception != ListingExceptionSemVinculo && filter.Exception != ListingExceptionAbaixoCusto && filter.Exception != ListingExceptionSemEvidencia {
 			return &InvalidFilterError{Key: key}
 		}
 	case "has_exception":

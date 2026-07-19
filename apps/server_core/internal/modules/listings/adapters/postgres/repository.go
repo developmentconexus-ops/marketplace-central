@@ -101,7 +101,7 @@ func (r *Repository) ListListingRows(ctx context.Context, q ports.ListingQuery) 
 		where = append(where, "(l.sync_state = 'error' OR l.sync_error IS NOT NULL)")
 	case domain.ListingExceptionStale:
 		where = append(where, "l.sync_state = 'stale'")
-	case domain.ListingExceptionUnlinked:
+	case domain.ListingExceptionUnlinked, domain.ListingExceptionSemVinculo:
 		where = append(where, listingLinkState+" = 'unresolved'")
 	}
 	if q.Q != "" {
@@ -276,7 +276,7 @@ func listingGroupWhere(tenantID string, q ports.ListingGroupQuery) ([]any, []str
 		where = append(where, "(l.sync_state = 'error' OR l.sync_error IS NOT NULL)")
 	case domain.ListingExceptionStale:
 		where = append(where, "l.sync_state = 'stale'")
-	case domain.ListingExceptionUnlinked:
+	case domain.ListingExceptionUnlinked, domain.ListingExceptionSemVinculo:
 		where = append(where, listingLinkState+" = 'unresolved'")
 	}
 	if q.Q != "" {
@@ -312,7 +312,10 @@ func (r *Repository) GetListingsSummary(ctx context.Context, q ports.SummaryQuer
 			COALESCE(json_agg(json_build_object(
 				'cost_id',pl.internal_product_id,
 				'price_amount',l.price_amount::text,
-				'currency',l.price_currency
+				'currency',l.price_currency,
+				'installation_id',l.installation_id,
+				'provider_listing_id',l.provider_listing_id,
+				'variation_id',l.variation_id
 			)) FILTER (WHERE pl.state='resolved' AND pl.internal_product_id IS NOT NULL),'[]'::json)
 		FROM listings l
 		LEFT JOIN product_links pl ON pl.tenant_id=$1 AND pl.installation_id=$2
@@ -325,16 +328,22 @@ func (r *Repository) GetListingsSummary(ctx context.Context, q ports.SummaryQuer
 		return ports.ListingSummaryRow{}, fmt.Errorf("get listings summary: %w", err)
 	}
 	var linked []struct {
-		CostID      int64                 `json:"cost_id"`
-		PriceAmount *string               `json:"price_amount"`
-		Currency    *domain.PriceCurrency `json:"currency"`
+		CostID            int64                 `json:"cost_id"`
+		PriceAmount       *string               `json:"price_amount"`
+		Currency          *domain.PriceCurrency `json:"currency"`
+		InstallationID    string                `json:"installation_id"`
+		ProviderListingID string                `json:"provider_listing_id"`
+		VariationID       string                `json:"variation_id"`
 	}
 	if err := json.Unmarshal(linkedJSON, &linked); err != nil {
 		return ports.ListingSummaryRow{}, fmt.Errorf("decode listings summary inputs: %w", err)
 	}
 	result.Linked = make([]ports.SummaryLinkedRow, 0, len(linked))
 	for _, row := range linked {
-		item := ports.SummaryLinkedRow{CostID: row.CostID}
+		item := ports.SummaryLinkedRow{
+			CostID:    row.CostID,
+			ListingID: domain.ListingID{InstallationID: row.InstallationID, ProviderListingID: row.ProviderListingID, VariationID: row.VariationID}.String(),
+		}
 		if row.PriceAmount != nil && row.Currency != nil {
 			item.Price = &domain.Money{Amount: *row.PriceAmount, Currency: *row.Currency}
 		}

@@ -1,8 +1,9 @@
 import type {
   ListingDetail,
   ListingLinkState,
+  ListingMarketSignal,
   ListingReadModel,
-  ListingStatus,
+  ListingSyncState,
 } from "@marketplace-central/sdk-runtime";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -15,6 +16,7 @@ import {
 } from "@marketplace-central/ui";
 import { listingsQueryKeys, QUERY_STALE_TIME } from "@marketplace-central/web-query";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useClient } from "../app/ClientContext";
 
 export interface ListingDetailPanelProps {
@@ -22,31 +24,37 @@ export interface ListingDetailPanelProps {
   onClose: () => void;
 }
 
-const statusLabels: Record<ListingStatus, string> = {
-  active: "ativo",
-  paused: "pausado",
-  closed: "encerrado",
-  unknown: "desconhecido",
-  under_review: "em análise",
-  inactive: "inativo",
-  payment_required: "pagamento necessário",
-  not_yet_active: "ainda não ativo",
-};
-
-const linkLabels: Record<ListingLinkState, string> = {
+const linkStateLabels: Record<ListingLinkState, string> = {
   resolved: "vinculado",
   unresolved: "sem vínculo",
   rejected: "rejeitado",
   conflict: "divergente",
 };
 
-function stateTag(label: string, className = "bg-slate-100 text-slate-700") {
-  return <span className={`inline-flex whitespace-nowrap rounded px-2 py-0.5 text-xs font-medium ${className}`}>{label}</span>;
-}
+// SYNC status pill copy/colors mirror the ratified drawer status pill, which
+// reuses the table SYNC column's pillFor() mapping — duplicated here (not
+// imported) because AnunciosTable.tsx's map is page-internal and out of this
+// slice's write_set; see pages/AnunciosTable.tsx:27-53 for the source pattern.
+const syncPillLabels: Record<ListingSyncState, string> = {
+  synced: "sincronizado",
+  error: "com erro",
+  stale: "desatualizado",
+  queued: "na fila",
+  syncing: "sincronizando",
+  paused_sync: "pausado",
+};
 
-function renderLinkState(state: ListingLinkState) {
-  if (state === "conflict") return <ConflictTag />;
-  return stateTag(linkLabels[state]);
+const syncPillClassName: Record<ListingSyncState, string> = {
+  synced: "bg-accent-soft text-accent-ink",
+  error: "bg-warn-soft text-warn",
+  stale: "bg-amber-soft text-amber",
+  queued: "bg-info-soft text-info",
+  syncing: "bg-surface-2 text-faint",
+  paused_sync: "bg-surface-2 text-faint",
+};
+
+function stateTag(label: string, className = "bg-surface-2 text-muted") {
+  return <span className={`inline-flex whitespace-nowrap rounded-pill px-2 py-0.5 text-xs font-medium ${className}`}>{label}</span>;
 }
 
 function renderMargin(item: ListingReadModel) {
@@ -54,8 +62,8 @@ function renderMargin(item: ListingReadModel) {
     return item.cost === null ? <UnknownValue hint="sem custo no ERP → não simulado" /> : <UnknownValue />;
   }
   return item.below_margin_worst_case
-    ? stateTag("abaixo da margem", "bg-red-100 text-red-800")
-    : stateTag("ok", "bg-emerald-100 text-emerald-800");
+    ? stateTag("abaixo da margem", "bg-warn-soft text-warn")
+    : stateTag("ok", "bg-accent-soft text-accent-ink");
 }
 
 function renderFactValue(value: string | number | null, hint?: string) {
@@ -71,11 +79,149 @@ function formatEventTime(at: string) {
   });
 }
 
-function Fact({ label, children }: { label: string; children: React.ReactNode }) {
+// Timeline row color follows the event's own `kind` (real field, never
+// inferred/fabricated): sync errors read warn, stale/queue waits read amber,
+// everything else (synced/created/...) reads muted — matches the ratified
+// drawer's colored timeline text without inventing new event data.
+function timelineColor(kind: string) {
+  if (kind === "sync_error") return "text-warn";
+  if (kind === "stale" || kind === "queued") return "text-amber";
+  return "text-muted";
+}
+
+function renderEvidenceCount(value: number | null) {
+  return value === null ? <UnknownValue /> : value;
+}
+
+function formatPriceToWin(signal: ListingMarketSignal) {
+  return signal.price_to_win === null ? <UnknownValue /> : `R$ ${signal.price_to_win.amount}`;
+}
+
+function formatPosition(signal: ListingMarketSignal) {
+  return signal.position ? `${signal.position.rank}/${signal.position.total}` : <UnknownValue />;
+}
+
+function formatDelta(signal: ListingMarketSignal) {
+  return signal.delta_pct === null
+    ? <UnknownValue />
+    : `${signal.delta_pct.startsWith("-") ? "" : "+"}${signal.delta_pct}%`;
+}
+
+// 2x2 (and evidence-grid) bordered card idiom from the ratified drawer:
+// faint uppercase-ish label + mono bold value, border-border-2, rounded-lg.
+function InfoCard({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-3 last:border-b-0 last:pb-0">
-      <dt className="text-sm text-slate-500">{label}</dt>
-      <dd className="text-right text-sm font-medium text-slate-900">{children}</dd>
+    <div className="rounded-lg border border-border-2 px-2.5 py-2">
+      <div className="text-[10.5px] text-faint">{label}</div>
+      <div className="mt-0.5 font-mono text-sm font-semibold text-ink">{children}</div>
+    </div>
+  );
+}
+
+// Evidência vs. mercado: distinct honest rendering per signal_status (ADR-17) —
+// SEM_VINCULO shows no market numbers (link to /vinculos to resolve the link),
+// NO_PRICE_EVIDENCE (and a missing/undefined signal_status, treated as the
+// honest absent state) shows a named "sem evidência" state — never a
+// fabricated number — and OK/STALE show the underlying evidence as ADDITIVE
+// bordered cards in the SAME grid/token idiom as the facts grid above (small
+// n_offers/n_sellers samples included verbatim, never suppressed), with STALE
+// additionally marked via FreshnessIndicator so old numbers read as old.
+function EvidenceSection({ detail }: { detail: ListingDetail }) {
+  const status = detail.signal_status ?? "NO_PRICE_EVIDENCE";
+  const heading = (
+    <h4 id="listing-detail-evidence-title" className="mb-2 text-[10.5px] font-semibold uppercase tracking-wide text-faint">
+      Vs. mercado
+    </h4>
+  );
+
+  if (status === "SEM_VINCULO") {
+    return (
+      <section aria-labelledby="listing-detail-evidence-title">
+        {heading}
+        <p className="text-sm text-muted">
+          Anúncio sem vínculo com produto — sem evidência de mercado.{" "}
+          <Link to="/vinculos" className="font-medium text-accent-ink underline underline-offset-2 hover:opacity-80">
+            Vincular produto
+          </Link>
+        </p>
+      </section>
+    );
+  }
+
+  const signal = detail.market_signal;
+  if (status === "NO_PRICE_EVIDENCE" || !signal) {
+    return (
+      <section aria-labelledby="listing-detail-evidence-title">
+        {heading}
+        <p className="text-sm text-muted">
+          <UnknownValue hint="sem evidência de preço de mercado" /> Sem evidência de preço de mercado
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section aria-labelledby="listing-detail-evidence-title">
+      {heading}
+      <div className="grid grid-cols-2 gap-2">
+        <InfoCard label="Posição">{formatPosition(signal)}</InfoCard>
+        <InfoCard label="Preço p/ vencer">{formatPriceToWin(signal)}</InfoCard>
+        <InfoCard label="Diferença">{formatDelta(signal)}</InfoCard>
+        <InfoCard label="Match">{signal.match_status ?? <UnknownValue />}</InfoCard>
+        <InfoCard label="Ofertas">{renderEvidenceCount(signal.n_offers)}</InfoCard>
+        <InfoCard label="Vendedores">{renderEvidenceCount(signal.n_sellers)}</InfoCard>
+        <InfoCard label="Fonte">{signal.evidence?.source ?? <UnknownValue />}</InfoCard>
+        <InfoCard label="Coletado em">
+          {signal.evidence?.fetched_at ? <FreshnessIndicator asOf={signal.evidence.fetched_at} /> : <UnknownValue />}
+        </InfoCard>
+      </div>
+      {status === "STALE" ? (
+        <p className="mt-2 text-xs text-amber">Evidência desatualizada — pode não refletir o mercado atual.</p>
+      ) : null}
+      {detail.link.product_id ? (
+        <Link
+          to={`/catalogo/produtos/${detail.link.product_id}`}
+          className="mt-2 inline-block text-xs font-medium text-accent-ink underline underline-offset-2 hover:opacity-80"
+        >
+          Ver produto vinculado
+        </Link>
+      ) : null}
+    </section>
+  );
+}
+
+// Foto placeholder + título + produto/modalidade + sync-status pill — mirrors
+// the ratified drawer's identity row. PRODUTO reuses the same honest
+// present/absent rule as AnunciosTable's PRODUTO cell (product_id, else the
+// link-state label, else the conflict tag) — see
+// pages/AnunciosTable.tsx:64-77 for the source pattern.
+function IdentityRow({ detail }: { detail: ListingDetail }) {
+  const produtoNode = detail.link.product_id
+    ? detail.link.product_id
+    : detail.link.state === "conflict"
+      ? <ConflictTag />
+      : linkStateLabels[detail.link.state];
+  const modalidade = detail.listing_type?.label;
+
+  return (
+    <div className="flex gap-2.5">
+      <div
+        aria-hidden="true"
+        className="flex h-14 w-14 flex-none items-center justify-center rounded-lg border border-border bg-surface-2 text-[10px] text-faint"
+      >
+        foto
+      </div>
+      <div className="min-w-0">
+        <p className="truncate text-xs text-faint">
+          {produtoNode}
+          {modalidade ? ` · ${modalidade}` : ""}
+        </p>
+        <span
+          className={`mt-1 inline-flex items-center gap-1 whitespace-nowrap rounded-pill px-2 py-0.5 text-xs font-medium ${syncPillClassName[detail.sync_state]}`}
+        >
+          {syncPillLabels[detail.sync_state]}
+        </span>
+      </div>
     </div>
   );
 }
@@ -85,81 +231,90 @@ function DetailBody({ detail }: { detail: ListingDetail }) {
 
   return (
     <>
-      <section aria-labelledby="listing-detail-facts-title">
-        <h4 id="listing-detail-facts-title" className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Dados do anúncio
-        </h4>
-        <dl className="space-y-3">
-          <Fact label="Status">{stateTag(statusLabels[detail.status])}</Fact>
-          <Fact label="Vínculo">{renderLinkState(detail.link.state)}</Fact>
-          <Fact label="Preço">
-            {detail.price === null ? <UnknownValue /> : `R$ ${detail.price.amount}`}
-          </Fact>
-          <Fact label="Estoque">{renderFactValue(detail.published_quantity)}</Fact>
-          <Fact label="Vendas 30d">{renderFactValue(detail.sales_30d)}</Fact>
-          <Fact label="Qualidade">{renderFactValue(detail.quality_score)}</Fact>
-          <Fact label="Margem">{renderMargin(detail)}</Fact>
-        </dl>
-      </section>
-
-      <section aria-labelledby="listing-detail-freshness-title">
-        <h4 id="listing-detail-freshness-title" className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Atualização
-        </h4>
-        <p className="text-sm text-slate-600">
-          {detail.fetched_at === null ? <UnknownValue /> : <FreshnessIndicator asOf={detail.fetched_at} />}
-        </p>
-      </section>
+      <IdentityRow detail={detail} />
 
       {detail.sync_error ? (
-        <section aria-labelledby="listing-detail-sync-error-title" className="rounded-lg border border-red-200 bg-red-50 p-3">
-          <h4 id="listing-detail-sync-error-title" className="text-sm font-semibold text-red-900">Erro de sincronização</h4>
-          <p className="mt-1 text-sm text-red-800">{detail.sync_error.message_pt}</p>
+        <section aria-labelledby="listing-detail-sync-error-title" className="rounded-lg border border-warn bg-warn-soft p-3">
+          <h4 id="listing-detail-sync-error-title" className="text-sm font-semibold text-warn">Erro de sincronização</h4>
+          <p className="mt-1 text-sm text-warn">{detail.sync_error.message_pt}</p>
           {detail.sync_error.message_provider !== null ? (
             <details
-              className="mt-2 text-sm text-red-900"
+              className="mt-2 text-sm text-warn"
               onToggle={(event) => setTechnicalDetailsOpen(event.currentTarget.open)}
             >
               <summary className="cursor-pointer" onClick={() => setTechnicalDetailsOpen((open) => !open)}>▸ técnico</summary>
               {technicalDetailsOpen ? (
-                <p className="mt-2 break-words font-mono text-xs">{detail.sync_error.message_provider}</p>
+                <p className="mt-2 break-words font-mono text-xs text-faint">{detail.sync_error.message_provider}</p>
               ) : null}
             </details>
           ) : null}
         </section>
       ) : null}
 
+      <section aria-label="Dados do anúncio">
+        <div className="grid grid-cols-2 gap-2">
+          <InfoCard label="Preço">{detail.price === null ? <UnknownValue /> : `R$ ${detail.price.amount}`}</InfoCard>
+          <InfoCard label="Est. publicado">{renderFactValue(detail.published_quantity)}</InfoCard>
+          <InfoCard label="Margem est.">{renderMargin(detail)}</InfoCard>
+          <InfoCard label="Qualidade">{detail.quality_score === null ? <UnknownValue /> : `${detail.quality_score}%`}</InfoCard>
+        </div>
+      </section>
+
+      <EvidenceSection detail={detail} />
+
       <section aria-labelledby="listing-detail-timeline-title">
-        <h4 id="listing-detail-timeline-title" className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Histórico
+        <h4 id="listing-detail-timeline-title" className="mb-2 text-[10.5px] font-semibold uppercase tracking-wide text-faint">
+          Linha do tempo
         </h4>
-        <ol className="space-y-3">
+        <ol className="space-y-1.5">
           {detail.timeline.map((event, index) => (
-            <li key={`${event.at}-${index}`} data-testid="timeline-event" className="border-l-2 border-slate-200 pl-3">
-              <time dateTime={event.at} className="block text-xs text-slate-500">{formatEventTime(event.at)}</time>
-              <p className="mt-1 text-sm text-slate-800">{event.message_pt}</p>
+            <li key={`${event.at}-${index}`} data-testid="timeline-event" className="flex gap-2 text-xs">
+              <time dateTime={event.at} className="flex-none font-mono text-faint">{formatEventTime(event.at)}</time>
+              <span className={timelineColor(event.kind)}>{event.message_pt}</span>
             </li>
           ))}
         </ol>
       </section>
+
+      {detail.link.product_id ? (
+        <Link to={`/catalogo/produtos/${detail.link.product_id}`} className="text-xs font-semibold text-accent-ink hover:underline">
+          Abrir edição completa →
+        </Link>
+      ) : null}
     </>
   );
 }
 
+// Action row: kept intentionally inert (non-regression rule — no inline
+// edit affordance yet). Rendered in DetailPanel's footer slot, which already
+// gives the sticky bottom action-row placement the ratified drawer shows.
 function FutureActions() {
   return (
-    <div className="flex gap-2">
-      {(["Corrigir", "Simular", "Pausar"] as const).map((label) => (
-        <button
-          key={label}
-          type="button"
-          disabled
-          title="disponível em breve"
-          className="flex-1 rounded-lg border border-slate-200 px-2 py-2 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {label}
-        </button>
-      ))}
+    <div className="flex flex-wrap gap-2">
+      <button
+        type="button"
+        disabled
+        title="disponível em breve"
+        className="rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        Corrigir
+      </button>
+      <button
+        type="button"
+        disabled
+        title="disponível em breve"
+        className="rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        Simular
+      </button>
+      <button
+        type="button"
+        disabled
+        title="disponível em breve"
+        className="rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        Pausar
+      </button>
     </div>
   );
 }

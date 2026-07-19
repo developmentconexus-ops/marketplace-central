@@ -17,6 +17,7 @@ import (
 	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
 	internalreadports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 	listingsdomain "marketplace-central/apps/server_core/internal/modules/listings/domain"
+	listingsports "marketplace-central/apps/server_core/internal/modules/listings/ports"
 	marketdomain "marketplace-central/apps/server_core/internal/modules/market/domain"
 	marketports "marketplace-central/apps/server_core/internal/modules/market/ports"
 	productlinkspostgres "marketplace-central/apps/server_core/internal/modules/product_links/adapters/postgres"
@@ -462,4 +463,94 @@ func mapMarketConnectorError(err error) error {
 		}
 	}
 	return &marketports.ProviderStatusError{StatusCode: http.StatusBadGateway}
+}
+
+// --- listingsports.EvidenceReader (F-01 M-05) -------------------------------
+
+// listingsEvidenceAdapter backs listings' consumer-owned
+// listingsports.EvidenceReader (internal/modules/listings/ports/evidence.go)
+// over the market module's public marketports.EvidenceReader
+// (internal/modules/market/ports/evidence_reader.go), per the D-21
+// composition-adapter pattern above: this is the ONE place allowed to import
+// both modules' public ports, and it does the anti-corruption mapping from
+// market's domain types (marketdomain.CompetitiveSignal/MarketAggregate/
+// Verdict) to listings' own mirror types (listingsports.EvidenceSignal/
+// EvidenceAggregate/EvidenceVerdict) — listings never imports modules/market.
+type listingsEvidenceAdapter struct {
+	reader marketports.EvidenceReader
+}
+
+var _ listingsports.EvidenceReader = (*listingsEvidenceAdapter)(nil)
+
+func newListingsEvidenceAdapter(reader marketports.EvidenceReader) *listingsEvidenceAdapter {
+	return &listingsEvidenceAdapter{reader: reader}
+}
+
+func (a *listingsEvidenceAdapter) Signals(ctx context.Context, listingIDs []string) ([]listingsports.EvidenceSignal, error) {
+	signals, err := a.reader.Signals(ctx, listingIDs)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]listingsports.EvidenceSignal, 0, len(signals))
+	for _, sig := range signals {
+		out = append(out, listingsports.EvidenceSignal{
+			ListingID:   sig.ListingID,
+			OurPrice:    convertListingsMoney(sig.OurPrice),
+			TargetPrice: convertListingsMoney(sig.TargetPrice),
+			Position:    convertListingsPosition(sig.Position),
+			FetchedAt:   sig.FetchedAt,
+		})
+	}
+	return out, nil
+}
+
+func (a *listingsEvidenceAdapter) Aggregates(ctx context.Context, codprods []string) ([]listingsports.EvidenceAggregate, error) {
+	aggregates, err := a.reader.Aggregates(ctx, codprods)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]listingsports.EvidenceAggregate, 0, len(aggregates))
+	for _, agg := range aggregates {
+		out = append(out, listingsports.EvidenceAggregate{
+			ProductID: agg.ProductID,
+			NOffers:   agg.NOffers,
+			NSellers:  agg.NSellers,
+		})
+	}
+	return out, nil
+}
+
+func (a *listingsEvidenceAdapter) Verdicts(ctx context.Context, codprods []string) ([]listingsports.EvidenceVerdict, error) {
+	verdicts, err := a.reader.Verdicts(ctx, codprods)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]listingsports.EvidenceVerdict, 0, len(verdicts))
+	for _, v := range verdicts {
+		out = append(out, listingsports.EvidenceVerdict{
+			ProductID:   v.ProductID,
+			MatchStatus: string(v.MatchStatus),
+		})
+	}
+	return out, nil
+}
+
+// convertListingsMoney maps market's *marketdomain.Money to listings' own
+// *listingsdomain.Money mirror (same Amount/Currency shape, listings'
+// Currency is its own PriceCurrency type per read_model.go:85).
+func convertListingsMoney(m *marketdomain.Money) *listingsdomain.Money {
+	if m == nil {
+		return nil
+	}
+	return &listingsdomain.Money{Amount: m.Amount, Currency: listingsdomain.PriceCurrency(m.Currency)}
+}
+
+// convertListingsPosition maps market's *marketdomain.MarketPosition to
+// listings' own *listingsdomain.SignalPosition mirror (IC-03 position
+// {rank, total}).
+func convertListingsPosition(p *marketdomain.MarketPosition) *listingsdomain.SignalPosition {
+	if p == nil {
+		return nil
+	}
+	return &listingsdomain.SignalPosition{Rank: p.Rank, Total: p.Total}
 }

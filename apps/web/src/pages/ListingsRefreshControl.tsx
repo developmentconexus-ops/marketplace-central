@@ -117,9 +117,9 @@ export function ListingsRefreshControl({ installationId }: { installationId: str
       >
         Atualizar
       </button>
-      {status !== null ? <small className="text-slate-600">{statusCopy[status]}</small> : null}
-      {startError !== null ? <small role="alert" className="text-red-700">{startError}</small> : null}
-      {terminalError !== null ? <small role="alert" className="text-red-700">{terminalError}</small> : null}
+      {status !== null ? <small className="text-muted">{statusCopy[status]}</small> : null}
+      {startError !== null ? <small role="alert" className="text-warn">{startError}</small> : null}
+      {terminalError !== null ? <small role="alert" className="text-warn">{terminalError}</small> : null}
     </div>
   );
 }

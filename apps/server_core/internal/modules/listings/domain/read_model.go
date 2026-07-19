@@ -18,10 +18,13 @@ const (
 type ListingException string
 
 const (
-	ListingExceptionSyncError   ListingException = "sync_error"
-	ListingExceptionStale       ListingException = "stale"
-	ListingExceptionUnlinked    ListingException = "unlinked"
-	ListingExceptionBelowMargin ListingException = "below_margin"
+	ListingExceptionSyncError    ListingException = "sync_error"
+	ListingExceptionStale        ListingException = "stale"
+	ListingExceptionUnlinked     ListingException = "unlinked"
+	ListingExceptionBelowMargin  ListingException = "below_margin"
+	ListingExceptionSemVinculo   ListingException = "sem_vinculo"
+	ListingExceptionAbaixoCusto  ListingException = "abaixo_custo"
+	ListingExceptionSemEvidencia ListingException = "sem_evidencia"
 )
 
 type ListingFilter struct {
@@ -136,6 +139,8 @@ type ListingReadModel struct {
 	BelowMarginWorstCase *bool               `json:"below_margin_worst_case"`
 	ICMSWorstCaseByUF    *[]ICMWorstCaseByUF `json:"icms_worst_case_by_uf"`
 	FetchedAt            *time.Time          `json:"fetched_at"`
+	MarketSignal         *MarketSignal       `json:"market_signal"`
+	SignalStatus         SignalStatus        `json:"signal_status"`
 }
 
 type GroupState string
