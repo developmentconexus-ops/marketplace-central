@@ -114,7 +114,7 @@ func TestGetShipmentInfoCostsServerErrorFails(t *testing.T) {
 	}
 }
 
-func TestGetShipmentInfoCostsRequestSendsXFormatNewHeader(t *testing.T) {
+func TestGetShipmentInfoRequestsSendXFormatNewHeader(t *testing.T) {
 	t.Parallel()
 
 	var costsHeader, primaryHeader string
@@ -136,17 +136,53 @@ func TestGetShipmentInfoCostsRequestSendsXFormatNewHeader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetShipmentInfo() error = %v", err)
 	}
-	// The /costs endpoint returns the legacy shape unless x-format-new:true is sent; without it
-	// the body fails to decode and costs sink. Assert the header rides the costs request.
+	// BOTH ML shipment GETs require x-format-new:true. Without it the primary
+	// GET /shipments/{id} returns the legacy shape and the whole read sinks
+	// before the costs degrade is reached (ML docs: gerenciamento-de-envios,
+	// "é necessário enviar o header 'x-format-new: true'"); the /costs call
+	// likewise needs it or costs sink.
+	if primaryHeader != "true" {
+		t.Fatalf("primary x-format-new = %q, want true", primaryHeader)
+	}
 	if costsHeader != "true" {
 		t.Fatalf("costs x-format-new = %q, want true", costsHeader)
 	}
-	// The primary shipment GET works header-less; keep it untouched so a working call stays working.
-	if primaryHeader != "" {
-		t.Fatalf("primary x-format-new = %q, want empty (unchanged)", primaryHeader)
-	}
 	if shipment.Substatus != "out_for_delivery" {
 		t.Fatalf("Substatus = %q, want out_for_delivery", shipment.Substatus)
+	}
+}
+
+func TestGetShipmentInfoDecodesNewFormatNumericID(t *testing.T) {
+	t.Parallel()
+
+	// The x-format-new shipment JSON carries a NUMERIC id (ML docs:
+	// status-de-pedidos-rastreamento — "id": 28264263908) plus many extra
+	// top-level fields. The read must decode it (numeric id, unknown fields
+	// ignored) and surface status+substatus — not sink on the id type.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/shipments/28264263908":
+			_, _ = io.WriteString(w, `{"id":28264263908,"mode":"me2","order_id":2339711980,"order_cost":99.9,"base_cost":22.07,"site_id":"MLB","status":"shipped","substatus":"out_for_delivery","date_created":"2024-04-23T10:48:51.245-04:00","receiver_address":{"state":{"id":"BR-SP"}}}`)
+		case "/shipments/28264263908/costs":
+			_, _ = io.WriteString(w, `{"gross_amount":19.90,"currency_id":"BRL"}`)
+		default:
+			t.Fatalf("unexpected path = %s", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	shipment, err := pricingTestAdapter(server.URL, time.Now().UTC()).GetShipmentInfo(context.Background(), pricingAccountRef(), "28264263908")
+	if err != nil {
+		t.Fatalf("GetShipmentInfo() error = %v, want nil (numeric id must decode)", err)
+	}
+	if shipment.ID != "28264263908" {
+		t.Fatalf("ID = %q, want 28264263908", shipment.ID)
+	}
+	if shipment.Status != "shipped" || shipment.Substatus != "out_for_delivery" {
+		t.Fatalf("status/substatus = %q/%q, want shipped/out_for_delivery", shipment.Status, shipment.Substatus)
+	}
+	if shipment.DestinationUF == nil || *shipment.DestinationUF != "SP" {
+		t.Fatalf("DestinationUF = %#v, want SP", shipment.DestinationUF)
 	}
 }
 

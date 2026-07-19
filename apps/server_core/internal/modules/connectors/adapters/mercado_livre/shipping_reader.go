@@ -12,12 +12,38 @@ import (
 )
 
 type mlShipmentResponse struct {
-	ID              string              `json:"id"`
+	ID              flexString          `json:"id"`
 	Status          string              `json:"status"`
 	Substatus       *string             `json:"substatus"`
 	LeadTime        *mlShipmentLeadTime `json:"lead_time"`
 	Delayed         *bool               `json:"delayed"`
 	ReceiverAddress *mlReceiverAddress  `json:"receiver_address"`
+}
+
+// flexString decodes a JSON value that ML may send as either a string or a bare
+// number. The x-format-new shipment JSON carries a NUMERIC id (ML docs:
+// status-de-pedidos-rastreamento), so a plain `string` field would fail to
+// unmarshal and sink the whole read. Accepting both keeps decoding tolerant of
+// that shape drift (ADR-17: shape drift degrades the field, never the read).
+type flexString string
+
+func (s *flexString) UnmarshalJSON(data []byte) error {
+	trimmed := strings.TrimSpace(string(data))
+	if trimmed == "null" || trimmed == "" {
+		*s = ""
+		return nil
+	}
+	if trimmed[0] == '"' {
+		var str string
+		if err := json.Unmarshal(data, &str); err != nil {
+			return err
+		}
+		*s = flexString(str)
+		return nil
+	}
+	// Bare number (or any other scalar token): keep its literal text.
+	*s = flexString(trimmed)
+	return nil
 }
 
 type mlShipmentLeadTime struct {
@@ -68,7 +94,12 @@ type mlShippingCoverageCountry struct {
 func (a *CapabilityAdapter) getShipmentInfo(ctx context.Context, accountRef domain.ProviderAccountRef, token, shipmentID string) (domain.ShipmentInfo, error) {
 	var shipment mlShipmentResponse
 	path := "/shipments/" + url.PathEscape(shipmentID)
-	if err := a.doJSON(ctx, accountRef, token, http.MethodGet, path, nil, &shipment); err != nil {
+	// The PRIMARY shipment GET also REQUIRES `x-format-new: true`; without it ML
+	// returns the legacy shipment shape and the decode sinks the whole read (ML
+	// docs: gerenciamento-de-envios — "ao fazer uma requisição GET, é necessário
+	// enviar o header 'x-format-new: true'"). A primary decode failure stays a
+	// hard error (honest): unlike costs, there is no partial shipment to degrade to.
+	if err := a.doJSONWithHeaders(ctx, accountRef, token, http.MethodGet, path, nil, map[string]string{"x-format-new": "true"}, &shipment); err != nil {
 		return domain.ShipmentInfo{}, mapPricingReaderError(err)
 	}
 
@@ -138,7 +169,7 @@ func mapShipmentInfo(shipment mlShipmentResponse, fetchedAt time.Time) domain.Sh
 	}
 
 	return domain.ShipmentInfo{
-		ID:            strings.TrimSpace(shipment.ID),
+		ID:            strings.TrimSpace(string(shipment.ID)),
 		Status:        strings.TrimSpace(shipment.Status),
 		Substatus:     substatus,
 		SLADue:        slaDue,
