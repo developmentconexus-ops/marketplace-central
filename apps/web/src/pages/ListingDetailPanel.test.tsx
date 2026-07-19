@@ -47,6 +47,9 @@ const okSignal: ListingMarketSignal = {
   match_status: "ACCEPT",
   n_offers: 5,
   n_sellers: 3,
+  median: { amount: "135.50", currency: "BRL" },
+  min_valid: { amount: "110.00", currency: "BRL" },
+  max_valid: { amount: "149.90", currency: "BRL" },
   evidence: { source: "buybox_api", fetched_at: "2026-07-18T10:00:00Z", freshness: "fresh" },
 };
 
@@ -155,9 +158,37 @@ describe("ListingDetailPanel", () => {
     expect(screen.getByText("3")).toBeInTheDocument();
     expect(screen.getByText("buybox_api")).toBeInTheDocument();
     expect(screen.getByText(/R\$ 119\.90/)).toBeInTheDocument();
+    // Honest label rename: the ML target is "Alvo buybox (ML)", not the
+    // operator-misleading "Preço p/ vencer".
+    expect(screen.getByText("Alvo buybox (ML)")).toBeInTheDocument();
+    expect(screen.queryByText("Preço p/ vencer")).not.toBeInTheDocument();
+    // Faixa de mercado (min — mediana — máx), competitor-only.
+    expect(screen.getByText("Faixa de mercado (concorrentes)")).toBeInTheDocument();
+    expect(screen.getByText(/R\$ 110\.00/)).toBeInTheDocument();
+    expect(screen.getByText(/R\$ 135\.50/)).toBeInTheDocument();
+    expect(screen.getByText(/R\$ 149\.90/)).toBeInTheDocument();
+    // Own-seller exclusion means the seller count is competitor-only.
+    expect(screen.getByText("Concorrentes")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Ver produto vinculado" }),
     ).toHaveAttribute("href", "/catalogo/produtos/product_1");
+  });
+
+  it("renders honest '—' for absent faixa bounds, never a fabricated 0 (ADR-17)", async () => {
+    getListing.mockResolvedValueOnce({
+      ...detail,
+      signal_status: "OK",
+      market_signal: { ...okSignal, min_valid: null, median: null, max_valid: null },
+    });
+
+    renderPanel();
+    await screen.findByText("Camiseta azul");
+
+    // The faixa card is still present and labeled, but every bound reads "—".
+    expect(screen.getByText("Faixa de mercado (concorrentes)")).toBeInTheDocument();
+    expect(screen.queryByText(/R\$ 110\.00/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/R\$ 135\.50/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/R\$ 149\.90/)).not.toBeInTheDocument();
   });
 
   it("shows STALE evidence numbers marked with a freshness indicator, not silently hidden", async () => {

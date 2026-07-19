@@ -300,6 +300,11 @@ export interface ListingMarketSignal {
   match_status: "ACCEPT" | "REVIEW" | "REJECT" | "NO_CANDIDATE" | null;
   n_offers: number | null;
   n_sellers: number | null;
+  /** Competitor price range (faixa de mercado), our own offer excluded.
+   * null when no valid stats — render "—", never 0 (ADR-17). */
+  median: ListingMoney | null;
+  min_valid: ListingMoney | null;
+  max_valid: ListingMoney | null;
   evidence: ListingSignalEvidence | null;
 }
 
