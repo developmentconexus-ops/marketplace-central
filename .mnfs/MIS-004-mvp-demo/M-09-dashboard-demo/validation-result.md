@@ -13,6 +13,13 @@ gate: dual (D08 cold Opus + D09 adversarial sonnet) = PASS/agreement
 
 Sections: [kpis](#kpis) · [fila](#fila) · [ausente](#ausente) · [api](#api) · [seams](#seams)
 
+## Merge-gate markers (harness 0.4.0)
+
+Worktree branch: `claude/adoring-euclid-3ccec3` (naming vs `chip/*` flagged to hub).
+
+P6-DUAL-GATE: AGREEMENT
+LIVE-VERIFIED: pending P7 live-drive (awaiting hub dev-stack)
+
 ---
 
 ## seams
