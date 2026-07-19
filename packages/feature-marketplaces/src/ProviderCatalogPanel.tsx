@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { IntegrationInstallation, IntegrationProviderDefinition } from "@marketplace-central/sdk-runtime";
+import type { CredentialField, IntegrationInstallation, IntegrationProviderDefinition } from "@marketplace-central/sdk-runtime";
 import { X } from "lucide-react";
 import { StatusBadge } from "./components/StatusBadge";
 
@@ -34,11 +34,11 @@ export function ProviderCatalogPanel({
     if (!provider) {
       return [];
     }
-    const rawSchema = provider.metadata?.credential_schema;
+    const rawSchema: unknown = provider.metadata?.credential_schema;
     if (!Array.isArray(rawSchema)) {
       return [];
     }
-    return rawSchema.filter((item): item is { key: string; label: string; secret?: boolean } => {
+    return rawSchema.filter((item): item is CredentialField => {
       if (typeof item !== "object" || item === null) {
         return false;
       }

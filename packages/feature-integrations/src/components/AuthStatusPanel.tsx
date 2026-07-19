@@ -96,7 +96,7 @@ export function AuthStatusPanel({
 
       <div className="mt-4 flex flex-wrap gap-2">
         {actions.map((action) => {
-          const disabled = loading || Boolean(pendingAction) || action.disabled;
+          const disabled = loading || Boolean(pendingAction) || Boolean(action.disabled);
 
           return (
             <button

@@ -228,7 +228,7 @@ export function ProductLinksPage({ client }: ProductLinksPageProps) {
         acc[workflowState] += 1;
         return acc;
       },
-      { total: 0, unresolved: 0, conflict: 0, resolved: 0, rejected: 0 } as Record<"total" | "unresolved" | "conflict" | "resolved" | "rejected", number>,
+      { total: 0, none: 0, unresolved: 0, conflict: 0, resolved: 0, rejected: 0 } as Record<"total" | ProductLinkState, number>,
     );
   }, [items]);
 

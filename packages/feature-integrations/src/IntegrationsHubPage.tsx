@@ -806,7 +806,7 @@ export function IntegrationsHubPage({ client, onAuthRedirect }: IntegrationsHubP
 
   const drawerActions = selectedInstallation
     ? buildAuthActions({
-        provider: selectedProvider,
+        provider: selectedProvider ?? undefined,
         resolvedStatus: resolvedStatus ?? selectedInstallation.status,
         pendingAction: drawerState.pendingAction,
         onAuthorize: handleAuthorize,
