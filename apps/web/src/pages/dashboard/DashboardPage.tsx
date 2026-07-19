@@ -20,7 +20,6 @@ function isDegraded(degraded: DashboardDegradedSource[], source: DashboardDegrad
 }
 
 interface KpiCardConfig {
-  key: string;
   label: string;
   sub?: string;
   value: number | null;
@@ -121,7 +120,6 @@ export function DashboardPage() {
           >
             <KpiCard
               config={{
-                key: "orders_today",
                 label: "Vendas hoje",
                 sub: "hoje",
                 value: query.data.orders_today,
@@ -132,7 +130,6 @@ export function DashboardPage() {
             />
             <KpiCard
               config={{
-                key: "orders_7d",
                 label: "Vendas 7 dias",
                 sub: "últimos 7 dias",
                 value: query.data.orders_7d,
@@ -143,7 +140,6 @@ export function DashboardPage() {
             />
             <KpiCard
               config={{
-                key: "anuncios_ativos",
                 label: "Anúncios ativos",
                 value: query.data.anuncios_ativos,
                 source: "listings",
@@ -153,7 +149,6 @@ export function DashboardPage() {
             />
             <KpiCard
               config={{
-                key: "sync_errors",
                 label: "Anúncios com erro de sync",
                 value: query.data.sync_errors,
                 source: "listings",
@@ -163,7 +158,6 @@ export function DashboardPage() {
             />
             <KpiCard
               config={{
-                key: "below_margin",
                 label: "Anúncios abaixo da margem",
                 value: query.data.below_margin,
                 source: "listings",
@@ -173,7 +167,6 @@ export function DashboardPage() {
             />
             <KpiCard
               config={{
-                key: "pending_links",
                 label: "Produtos sem vínculo",
                 value: query.data.pending_links,
                 source: "linkage",
@@ -183,7 +176,6 @@ export function DashboardPage() {
             />
             <KpiCard
               config={{
-                key: "missing_gtin",
                 label: "Sem GTIN",
                 value: query.data.missing_gtin,
                 source: "linkage",
