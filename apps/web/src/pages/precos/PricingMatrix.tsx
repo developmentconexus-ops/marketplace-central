@@ -20,6 +20,8 @@ export interface PricingMatrixProps {
   modalidade: ModalidadeKey;
   /** Operator thresholds for the margin chip bands. */
   profile: PricingCalcProfile;
+  /** Installation whose listings decide the "novo" tag; "" ⇒ tag not resolvable (hidden). */
+  installationId?: string;
   /** Injectable for tests; defaults to a standalone IC-03 client (useClient has no market seam). */
   marketClient?: MarketAggregatesClient;
 }
@@ -70,6 +72,7 @@ export function PricingMatrix({
   onSelect,
   modalidade,
   profile,
+  installationId = "",
   marketClient,
 }: PricingMatrixProps): JSX.Element {
   const client = useClient();
@@ -108,6 +111,23 @@ export function PricingMatrix({
     })),
   });
 
+  // Lane C — "novo" tag: a product with no ML listing under this installation. The
+  // tag renders ONLY once the query resolves to zero listings; while loading (or
+  // when no installation is known) the tag is hidden — "novo" is a confirmed fact,
+  // never an assumption about a listing we simply have not fetched yet (ADR-17).
+  const listingResults = useQueries({
+    queries: products.map((p) => ({
+      queryKey: ["pricing", "matrix-listing", installationId, p.internal_product_id],
+      queryFn: () =>
+        client.listListingsByProduct({
+          installation_id: installationId,
+          product_id: String(p.internal_product_id),
+          limit: 1,
+        }),
+      enabled: installationId !== "",
+    })),
+  });
+
   const thresholds = {
     healthy: Number(profile.limiar_verde_pct),
     tight: Number(profile.limiar_amarelo_pct),
@@ -136,6 +156,9 @@ export function PricingMatrix({
             const pctNum = margemPct !== null && Number.isFinite(Number(margemPct)) ? Number(margemPct) : null;
             const priced = agg?.status === "OK";
             const isSelected = selectedId === p.internal_product_id;
+            // "novo" only when the listing query has RESOLVED to zero listings.
+            const listing = listingResults[i];
+            const isNovo = listing?.isSuccess === true && (listing.data?.groups[0]?.listings.length ?? 0) === 0;
 
             return (
               <tr
@@ -148,7 +171,17 @@ export function PricingMatrix({
                 }`}
               >
                 <Td>
-                  <span className="font-mono text-ink">{productSku(p)}</span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="font-mono text-ink">{productSku(p)}</span>
+                    {isNovo ? (
+                      <span
+                        data-testid={`matrix-novo-${p.internal_product_id}`}
+                        className="rounded-pill bg-info-soft px-1.5 py-0.5 text-[10px] font-medium text-info"
+                      >
+                        novo
+                      </span>
+                    ) : null}
+                  </span>
                 </Td>
                 <Td>
                   <span className="text-ink">{productDescription(p)}</span>

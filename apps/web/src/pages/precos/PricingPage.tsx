@@ -13,6 +13,7 @@ import { SolverPanel } from "./SolverPanel";
 import { ParamsDrawer } from "./ParamsDrawer";
 import { DifalDrawer } from "./DifalDrawer";
 import { MarketComparison } from "./MarketComparison";
+import { PricingMatrix } from "./PricingMatrix";
 import { ApplyPriceAction } from "./ApplyPriceAction";
 import { ScenariosPanel } from "./ScenariosPanel";
 import { ptBrMoneyToDot } from "./ptbrDecimal";
@@ -213,34 +214,30 @@ export function PricingPage() {
           </p>
         ) : null}
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">
-          <aside aria-label="Produtos em análise" className="rounded-lg border border-border bg-surface p-3">
-            {productsQuery.isLoading ? (
-              <LoadingState />
-            ) : (
-              <ul className="flex flex-col gap-1">
-                {products.map((p) => (
-                  <li key={p.internal_product_id}>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedId(p.internal_product_id)}
-                      aria-pressed={selected?.internal_product_id === p.internal_product_id}
-                      className={`w-full rounded-md px-2 py-1.5 text-left text-sm ${
-                        selected?.internal_product_id === p.internal_product_id
-                          ? "bg-accent-soft text-accent-ink"
-                          : "text-ink hover:bg-surface-2"
-                      }`}
-                    >
-                      {productLabel(p)}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </aside>
+        {productsQuery.isLoading ? (
+          <LoadingState />
+        ) : (
+          <PricingMatrix
+            products={products}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            modalidade={modalidade}
+            profile={profile}
+            installationId={installationId}
+          />
+        )}
+      </div>
 
-          <section aria-label={`Simular · ${selected ? productLabel(selected) : ""}`} className="flex flex-col gap-4">
-            {productMissing ? (
+      {/* The simular panel is the PRESERVED single-product section, now a 380px side
+          panel opened by a matrix row-click. It renders while a product is selected
+          (products[0] on mount) OR when a reloaded scenario's product is missing —
+          so the honest "product not in list" notice is never swallowed. */}
+      {selected !== null || productMissing ? (
+        <aside
+          aria-label={`Simular · ${selected ? productLabel(selected) : ""}`}
+          className="flex w-[380px] shrink-0 flex-col gap-4"
+        >
+          {productMissing ? (
               <p role="alert" data-testid="scenario-reload-notice" className="rounded-md bg-warn-soft px-3 py-2 text-sm text-warn">
                 O produto deste cenário não está na lista atual — selecione outro produto ou recarregue o catálogo.
               </p>
@@ -319,9 +316,8 @@ export function PricingPage() {
             <div data-testid="region-cenarios" className="rounded-lg border border-border bg-surface p-3">
               <ScenariosPanel payload={scenarioPayload} onReload={applyScenario} />
             </div>
-          </section>
-        </div>
-      </div>
+        </aside>
+      ) : null}
 
       <ParamsDrawer
         open={paramsOpen}

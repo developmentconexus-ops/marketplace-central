@@ -122,11 +122,28 @@ const pricingDecompose = vi.fn((req: { product_id?: number | null }) =>
   Promise.resolve(decomposeFor(req.product_id as number)),
 );
 
+// 90001 has a listing; 90003 has none → "novo".
+const listListingsByProduct = vi.fn((req: { product_id: string }) =>
+  Promise.resolve({
+    groups: [
+      {
+        product_id: req.product_id,
+        product_title: null,
+        listing_count: req.product_id === "90001" ? 1 : 0,
+        group_state: "ok",
+        listings: req.product_id === "90001" ? [{ listing_id: "MLB1" }] : [],
+      },
+    ],
+    next_cursor: null,
+    page_size: 1,
+  }),
+);
+
 vi.mock("../../app/ClientContext", () => ({
-  useClient: () => ({ pricingDecompose }),
+  useClient: () => ({ pricingDecompose, listListingsByProduct }),
 }));
 
-function renderMatrix(marketClient: MarketAggregatesClient) {
+function renderMatrix(marketClient: MarketAggregatesClient, installationId = "") {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
@@ -136,6 +153,7 @@ function renderMatrix(marketClient: MarketAggregatesClient) {
         onSelect={() => {}}
         modalidade="premium"
         profile={profile}
+        installationId={installationId}
         marketClient={marketClient}
       />
     </QueryClientProvider>,
@@ -145,6 +163,7 @@ function renderMatrix(marketClient: MarketAggregatesClient) {
 describe("PricingMatrix (EXEMPLO-IO golden)", () => {
   beforeEach(() => {
     pricingDecompose.mockClear();
+    listListingsByProduct.mockClear();
   });
 
   it("renders the design columns for a multi-product list", async () => {
@@ -208,6 +227,24 @@ describe("PricingMatrix (EXEMPLO-IO golden)", () => {
       expect(cell).toHaveTextContent("—");
       expect(within(cell).getByTitle("margem: M-07")).toBeInTheDocument();
     });
+  });
+
+  it('tags a product with no listing "novo" once the listing query resolves', async () => {
+    const listMarketAggregates = vi.fn(() => Promise.resolve(aggregates));
+    renderMatrix({ listMarketAggregates }, "inst_test");
+
+    // 90003 has no listing → "novo"; 90001 has a listing → no tag.
+    await waitFor(() => expect(screen.getByTestId("matrix-novo-90003")).toBeInTheDocument());
+    expect(screen.queryByTestId("matrix-novo-90001")).toBeNull();
+  });
+
+  it("never tags novo when no installation is known (unknown ≠ novo)", async () => {
+    const listMarketAggregates = vi.fn(() => Promise.resolve(aggregates));
+    renderMatrix({ listMarketAggregates }); // installationId "" → listing lane disabled
+
+    await screen.findByTestId("matrix-row-90003");
+    expect(listListingsByProduct).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("matrix-novo-90003")).toBeNull();
   });
 
   it("queries the market ONCE with all codprods, and omits rank + comissao_pct", async () => {
