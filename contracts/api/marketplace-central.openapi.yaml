@@ -7194,7 +7194,7 @@ components:
 
     DashboardSummary:
       type: object
-      required: [sync_errors, pending_links, below_margin, missing_gtin, orders_today, orders_7d, last_sync_at, degraded, as_of]
+      required: [sync_errors, pending_links, below_margin, missing_gtin, orders_today, orders_7d, anuncios_ativos, last_sync_at, degraded, last_import, as_of]
       properties:
         sync_errors:
           type: integer
@@ -7214,6 +7214,9 @@ components:
         orders_7d:
           type: integer
           nullable: true
+        anuncios_ativos:
+          type: integer
+          nullable: true
         last_sync_at:
           type: object
           nullable: true
@@ -7225,7 +7228,17 @@ components:
           type: array
           items:
             type: string
-            enum: [listings, linkage, orders, sync]
+            enum: [listings, linkage, orders, sync, erp_import]
+        last_import:
+          type: object
+          nullable: true
+          required: [at, age_seconds]
+          properties:
+            at:
+              type: string
+              format: date-time
+            age_seconds:
+              type: integer
         as_of:
           type: string
           format: date-time
