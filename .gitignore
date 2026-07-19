@@ -21,6 +21,7 @@ certificates/
 !.claude/plugins/
 !.claude/plugins/mnfs-workflow/
 !.claude/plugins/mnfs-workflow/**
+!.claude/settings.json
 .trello-agent/project.json
 .mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-01-baseline-recovery/runs/
 

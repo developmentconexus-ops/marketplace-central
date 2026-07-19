@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(git push*)",
+      "Bash(git branch -D *)",
+      "Bash(git reset*)",
+      "Bash(git stash*)",
+      "Bash(git clean*)",
+      "Read(.env*)",
+      "Read(**/.env*)"
+    ]
+  }
+}
