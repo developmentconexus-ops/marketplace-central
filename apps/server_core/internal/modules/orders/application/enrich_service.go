@@ -26,6 +26,7 @@ type ItemCost struct {
 type ShipmentEnrichment struct {
 	ShipmentID    string
 	Status        string
+	Substatus     string
 	SLADue        *time.Time
 	Delayed       *bool
 	DestinationUF *string
@@ -127,6 +128,7 @@ func (s EnrichService) resolveShipment(ctx context.Context, installationID strin
 	return &ShipmentEnrichment{
 		ShipmentID:    info.ID,
 		Status:        info.Status,
+		Substatus:     info.Substatus,
 		SLADue:        info.SLADue,
 		Delayed:       info.Delayed,
 		DestinationUF: info.DestinationUF,

@@ -585,7 +585,16 @@ func (a *CapabilityAdapter) readItem(ctx context.Context, accountRef domain.Prov
 }
 
 func (a *CapabilityAdapter) doJSON(ctx context.Context, accountRef domain.ProviderAccountRef, token, method, path string, body io.Reader, target any) error {
-	resp, rawBody, err := a.doRaw(ctx, accountRef, token, method, path, body)
+	return a.doJSONWithHeaders(ctx, accountRef, token, method, path, body, nil, target)
+}
+
+// doJSONWithHeaders is doJSON plus a narrow per-request header map, for the few
+// ML endpoints that require an extra header (e.g. the shipments /costs endpoint
+// needs `x-format-new: true` or ML returns the legacy cost shape that fails to
+// decode). Passing nil headers is identical to doJSON — it does NOT alter the
+// default headers of any other call.
+func (a *CapabilityAdapter) doJSONWithHeaders(ctx context.Context, accountRef domain.ProviderAccountRef, token, method, path string, body io.Reader, headers map[string]string, target any) error {
+	resp, rawBody, err := a.doRawWithHeaders(ctx, accountRef, token, method, path, body, "", headers)
 	if err != nil {
 		return err
 	}
@@ -632,6 +641,10 @@ func (a *CapabilityAdapter) doRaw(ctx context.Context, accountRef domain.Provide
 }
 
 func (a *CapabilityAdapter) doRawWithIdempotency(ctx context.Context, accountRef domain.ProviderAccountRef, token, method, path string, body io.Reader, idempotencyKey string) (*http.Response, []byte, error) {
+	return a.doRawWithHeaders(ctx, accountRef, token, method, path, body, idempotencyKey, nil)
+}
+
+func (a *CapabilityAdapter) doRawWithHeaders(ctx context.Context, accountRef domain.ProviderAccountRef, token, method, path string, body io.Reader, idempotencyKey string, headers map[string]string) (*http.Response, []byte, error) {
 	req, err := http.NewRequestWithContext(ctx, method, a.baseURL+path, body)
 	if err != nil {
 		return nil, nil, domain.NewCapabilityError(domain.ErrCodeProviderTransient, "provider request build failed")
@@ -645,6 +658,12 @@ func (a *CapabilityAdapter) doRawWithIdempotency(ctx context.Context, accountRef
 	req.Header.Set("X-Installation-ID", accountRef.InstallationID)
 	if strings.TrimSpace(idempotencyKey) != "" {
 		req.Header.Set("X-Idempotency-Key", strings.TrimSpace(idempotencyKey))
+	}
+	// Per-request headers apply last (narrow, endpoint-specific — e.g.
+	// x-format-new for the shipments /costs endpoint). They never touch the
+	// default headers of other calls.
+	for key, value := range headers {
+		req.Header.Set(key, value)
 	}
 
 	resp, err := a.httpClient.Do(req)

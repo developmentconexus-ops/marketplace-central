@@ -584,6 +584,9 @@ export interface OrderSla {
 export interface OrderRastreio {
   shipment_id: string;
   status: string;
+  // ML shipment sub-status (e.g. out_for_delivery, receiver_absent). Additive/
+  // optional: absent when the provider reports no sub-status, never fabricated (ADR-17).
+  substatus?: string;
 }
 
 // OrderBucket is the workflow bucket derived from DeriveOrderBucket

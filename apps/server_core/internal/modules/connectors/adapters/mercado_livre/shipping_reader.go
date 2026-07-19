@@ -14,6 +14,7 @@ import (
 type mlShipmentResponse struct {
 	ID              string              `json:"id"`
 	Status          string              `json:"status"`
+	Substatus       *string             `json:"substatus"`
 	LeadTime        *mlShipmentLeadTime `json:"lead_time"`
 	Delayed         *bool               `json:"delayed"`
 	ReceiverAddress *mlReceiverAddress  `json:"receiver_address"`
@@ -73,8 +74,17 @@ func (a *CapabilityAdapter) getShipmentInfo(ctx context.Context, accountRef doma
 
 	var costsResponse mlShipmentCostsResponse
 	costsPath := path + "/costs"
-	if err := a.doJSON(ctx, accountRef, token, http.MethodGet, costsPath, nil, &costsResponse); err != nil {
-		if domain.ErrorCodeOf(err) == domain.ErrCodeProviderInvalidReference {
+	// The ML shipments /costs endpoint REQUIRES `x-format-new: true`; without it
+	// ML returns the legacy cost shape which fails to decode into
+	// mlShipmentCostsResponse (ML docs: mercado-envios-2 "Get Shipment Details
+	// with New Format").
+	if err := a.doJSONWithHeaders(ctx, accountRef, token, http.MethodGet, costsPath, nil, map[string]string{"x-format-new": "true"}, &costsResponse); err != nil {
+		// A missing shipment (404) OR a costs payload we cannot decode degrades
+		// to a shipment WITHOUT costs — the shipment STATUS from the first call
+		// still stands, so the order's bucket/rastreio survive a costs failure.
+		// Only these two non-fatal codes degrade; auth/transient/rate-limit/
+		// validation still sink the whole read (never silently zero costs).
+		if code := domain.ErrorCodeOf(err); code == domain.ErrCodeProviderInvalidReference || code == domain.ErrCodeProviderPayloadInvalid {
 			return mapShipmentInfo(shipment, a.now()), nil
 		}
 		return domain.ShipmentInfo{}, mapPricingReaderError(err)
@@ -122,9 +132,15 @@ func mapShipmentInfo(shipment mlShipmentResponse, fetchedAt time.Time) domain.Sh
 		destinationUF = &value
 	}
 
+	var substatus string
+	if shipment.Substatus != nil {
+		substatus = strings.TrimSpace(*shipment.Substatus)
+	}
+
 	return domain.ShipmentInfo{
 		ID:            strings.TrimSpace(shipment.ID),
 		Status:        strings.TrimSpace(shipment.Status),
+		Substatus:     substatus,
 		SLADue:        slaDue,
 		Delayed:       shipment.Delayed,
 		DestinationUF: destinationUF,

@@ -1,0 +1,821 @@
+diff --git a/apps/server_core/internal/modules/connectors/adapters/mercado_livre/capability_adapter.go b/apps/server_core/internal/modules/connectors/adapters/mercado_livre/capability_adapter.go
+index cbafc342..f77dfc54 100644
+--- a/apps/server_core/internal/modules/connectors/adapters/mercado_livre/capability_adapter.go
++++ b/apps/server_core/internal/modules/connectors/adapters/mercado_livre/capability_adapter.go
+@@ -585,7 +585,16 @@ func (a *CapabilityAdapter) readItem(ctx context.Context, accountRef domain.Prov
+ }
+ 
+ func (a *CapabilityAdapter) doJSON(ctx context.Context, accountRef domain.ProviderAccountRef, token, method, path string, body io.Reader, target any) error {
+-	resp, rawBody, err := a.doRaw(ctx, accountRef, token, method, path, body)
++	return a.doJSONWithHeaders(ctx, accountRef, token, method, path, body, nil, target)
++}
++
++// doJSONWithHeaders is doJSON plus a narrow per-request header map, for the few
++// ML endpoints that require an extra header (e.g. the shipments /costs endpoint
++// needs `x-format-new: true` or ML returns the legacy cost shape that fails to
++// decode). Passing nil headers is identical to doJSON — it does NOT alter the
++// default headers of any other call.
++func (a *CapabilityAdapter) doJSONWithHeaders(ctx context.Context, accountRef domain.ProviderAccountRef, token, method, path string, body io.Reader, headers map[string]string, target any) error {
++	resp, rawBody, err := a.doRawWithHeaders(ctx, accountRef, token, method, path, body, "", headers)
+ 	if err != nil {
+ 		return err
+ 	}
+@@ -632,6 +641,10 @@ func (a *CapabilityAdapter) doRaw(ctx context.Context, accountRef domain.Provide
+ }
+ 
+ func (a *CapabilityAdapter) doRawWithIdempotency(ctx context.Context, accountRef domain.ProviderAccountRef, token, method, path string, body io.Reader, idempotencyKey string) (*http.Response, []byte, error) {
++	return a.doRawWithHeaders(ctx, accountRef, token, method, path, body, idempotencyKey, nil)
++}
++
++func (a *CapabilityAdapter) doRawWithHeaders(ctx context.Context, accountRef domain.ProviderAccountRef, token, method, path string, body io.Reader, idempotencyKey string, headers map[string]string) (*http.Response, []byte, error) {
+ 	req, err := http.NewRequestWithContext(ctx, method, a.baseURL+path, body)
+ 	if err != nil {
+ 		return nil, nil, domain.NewCapabilityError(domain.ErrCodeProviderTransient, "provider request build failed")
+@@ -646,6 +659,12 @@ func (a *CapabilityAdapter) doRawWithIdempotency(ctx context.Context, accountRef
+ 	if strings.TrimSpace(idempotencyKey) != "" {
+ 		req.Header.Set("X-Idempotency-Key", strings.TrimSpace(idempotencyKey))
+ 	}
++	// Per-request headers apply last (narrow, endpoint-specific — e.g.
++	// x-format-new for the shipments /costs endpoint). They never touch the
++	// default headers of other calls.
++	for key, value := range headers {
++		req.Header.Set(key, value)
++	}
+ 
+ 	resp, err := a.httpClient.Do(req)
+ 	if err != nil {
+diff --git a/apps/server_core/internal/modules/connectors/adapters/mercado_livre/shipping_reader.go b/apps/server_core/internal/modules/connectors/adapters/mercado_livre/shipping_reader.go
+index b9929c08..fb498e8b 100644
+--- a/apps/server_core/internal/modules/connectors/adapters/mercado_livre/shipping_reader.go
++++ b/apps/server_core/internal/modules/connectors/adapters/mercado_livre/shipping_reader.go
+@@ -14,6 +14,7 @@ import (
+ type mlShipmentResponse struct {
+ 	ID              string              `json:"id"`
+ 	Status          string              `json:"status"`
++	Substatus       *string             `json:"substatus"`
+ 	LeadTime        *mlShipmentLeadTime `json:"lead_time"`
+ 	Delayed         *bool               `json:"delayed"`
+ 	ReceiverAddress *mlReceiverAddress  `json:"receiver_address"`
+@@ -73,8 +74,17 @@ func (a *CapabilityAdapter) getShipmentInfo(ctx context.Context, accountRef doma
+ 
+ 	var costsResponse mlShipmentCostsResponse
+ 	costsPath := path + "/costs"
+-	if err := a.doJSON(ctx, accountRef, token, http.MethodGet, costsPath, nil, &costsResponse); err != nil {
+-		if domain.ErrorCodeOf(err) == domain.ErrCodeProviderInvalidReference {
++	// The ML shipments /costs endpoint REQUIRES `x-format-new: true`; without it
++	// ML returns the legacy cost shape which fails to decode into
++	// mlShipmentCostsResponse (ML docs: mercado-envios-2 "Get Shipment Details
++	// with New Format").
++	if err := a.doJSONWithHeaders(ctx, accountRef, token, http.MethodGet, costsPath, nil, map[string]string{"x-format-new": "true"}, &costsResponse); err != nil {
++		// A missing shipment (404) OR a costs payload we cannot decode degrades
++		// to a shipment WITHOUT costs — the shipment STATUS from the first call
++		// still stands, so the order's bucket/rastreio survive a costs failure.
++		// Only these two non-fatal codes degrade; auth/transient/rate-limit/
++		// validation still sink the whole read (never silently zero costs).
++		if code := domain.ErrorCodeOf(err); code == domain.ErrCodeProviderInvalidReference || code == domain.ErrCodeProviderPayloadInvalid {
+ 			return mapShipmentInfo(shipment, a.now()), nil
+ 		}
+ 		return domain.ShipmentInfo{}, mapPricingReaderError(err)
+@@ -122,9 +132,15 @@ func mapShipmentInfo(shipment mlShipmentResponse, fetchedAt time.Time) domain.Sh
+ 		destinationUF = &value
+ 	}
+ 
++	var substatus string
++	if shipment.Substatus != nil {
++		substatus = strings.TrimSpace(*shipment.Substatus)
++	}
++
+ 	return domain.ShipmentInfo{
+ 		ID:            strings.TrimSpace(shipment.ID),
+ 		Status:        strings.TrimSpace(shipment.Status),
++		Substatus:     substatus,
+ 		SLADue:        slaDue,
+ 		Delayed:       shipment.Delayed,
+ 		DestinationUF: destinationUF,
+diff --git a/apps/server_core/internal/modules/connectors/adapters/mercado_livre/shipping_reader_test.go b/apps/server_core/internal/modules/connectors/adapters/mercado_livre/shipping_reader_test.go
+index c34df931..06effb80 100644
+--- a/apps/server_core/internal/modules/connectors/adapters/mercado_livre/shipping_reader_test.go
++++ b/apps/server_core/internal/modules/connectors/adapters/mercado_livre/shipping_reader_test.go
+@@ -23,7 +23,7 @@ func TestGetShipmentInfoMapsShipmentAndCosts(t *testing.T) {
+ 		}
+ 		switch r.URL.Path {
+ 		case "/shipments/SHIP-1":
+-			_, _ = io.WriteString(w, `{"id":"SHIP-1","status":"ready_to_ship","lead_time":{"estimated_delivery_limit":{"date":"2026-07-22T15:04:05Z"}},"delayed":true,"receiver_address":{"state":{"id":"BR-RJ"}}}`)
++			_, _ = io.WriteString(w, `{"id":"SHIP-1","status":"ready_to_ship","substatus":"ready_to_print","lead_time":{"estimated_delivery_limit":{"date":"2026-07-22T15:04:05Z"}},"delayed":true,"receiver_address":{"state":{"id":"BR-RJ"}}}`)
+ 		case "/shipments/SHIP-1/costs":
+ 			_, _ = io.WriteString(w, `{"gross_amount":19.90,"receiver":{"cost":2.50},"senders":[{"cost":17.40}],"currency_id":"BRL"}`)
+ 		default:
+@@ -111,6 +111,75 @@ func TestGetShipmentInfoCostsServerErrorFails(t *testing.T) {
+ 	}
+ }
+ 
++func TestGetShipmentInfoCostsRequestSendsXFormatNewHeader(t *testing.T) {
++	t.Parallel()
++
++	var costsHeader, primaryHeader string
++	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		switch r.URL.Path {
++		case "/shipments/SHIP-7":
++			primaryHeader = r.Header.Get("x-format-new")
++			_, _ = io.WriteString(w, `{"id":"SHIP-7","status":"shipped","substatus":"out_for_delivery"}`)
++		case "/shipments/SHIP-7/costs":
++			costsHeader = r.Header.Get("x-format-new")
++			_, _ = io.WriteString(w, `{"gross_amount":10.00,"currency_id":"BRL"}`)
++		default:
++			t.Fatalf("unexpected path = %s", r.URL.Path)
++		}
++	}))
++	defer server.Close()
++
++	shipment, err := pricingTestAdapter(server.URL, time.Now().UTC()).GetShipmentInfo(context.Background(), pricingAccountRef(), "SHIP-7")
++	if err != nil {
++		t.Fatalf("GetShipmentInfo() error = %v", err)
++	}
++	// The /costs endpoint returns the legacy shape unless x-format-new:true is sent; without it
++	// the body fails to decode and costs sink. Assert the header rides the costs request.
++	if costsHeader != "true" {
++		t.Fatalf("costs x-format-new = %q, want true", costsHeader)
++	}
++	// The primary shipment GET works header-less; keep it untouched so a working call stays working.
++	if primaryHeader != "" {
++		t.Fatalf("primary x-format-new = %q, want empty (unchanged)", primaryHeader)
++	}
++	if shipment.Substatus != "out_for_delivery" {
++		t.Fatalf("Substatus = %q, want out_for_delivery", shipment.Substatus)
++	}
++}
++
++func TestGetShipmentInfoCostsLegacyShapeDegradesToStatusOnly(t *testing.T) {
++	t.Parallel()
++
++	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		switch r.URL.Path {
++		case "/shipments/SHIP-6":
++			_, _ = io.WriteString(w, `{"id":"SHIP-6","status":"shipped","substatus":"receiver_absent"}`)
++		case "/shipments/SHIP-6/costs":
++			// Legacy cost shape (what ML returns when x-format-new is absent): `senders` is an
++			// object, not the new-format array → decode into mlShipmentCostsResponse fails with
++			// ProviderPayloadInvalid. That must degrade to shipment-with-status, not sink the read.
++			_, _ = io.WriteString(w, `{"senders":{"cost":17.40},"currency_id":"BRL"}`)
++		default:
++			t.Fatalf("unexpected path = %s", r.URL.Path)
++		}
++	}))
++	defer server.Close()
++
++	shipment, err := pricingTestAdapter(server.URL, time.Now().UTC()).GetShipmentInfo(context.Background(), pricingAccountRef(), "SHIP-6")
++	if err != nil {
++		t.Fatalf("GetShipmentInfo() error = %v, want degrade (nil error)", err)
++	}
++	if shipment.Status != "shipped" {
++		t.Fatalf("Status = %q, want shipped (must survive costs decode failure)", shipment.Status)
++	}
++	if shipment.Substatus != "receiver_absent" {
++		t.Fatalf("Substatus = %q, want receiver_absent (must survive costs decode failure)", shipment.Substatus)
++	}
++	if shipment.Costs != nil {
++		t.Fatalf("Costs = %#v, want nil (undecodable legacy body → costs unknown)", shipment.Costs)
++	}
++}
++
+ func TestGetShipmentInfoAbsentOptionalsStayNil(t *testing.T) {
+ 	t.Parallel()
+ 
+diff --git a/apps/server_core/internal/modules/connectors/domain/shipping_read.go b/apps/server_core/internal/modules/connectors/domain/shipping_read.go
+index b18258c2..1a44be96 100644
+--- a/apps/server_core/internal/modules/connectors/domain/shipping_read.go
++++ b/apps/server_core/internal/modules/connectors/domain/shipping_read.go
+@@ -5,6 +5,7 @@ import "time"
+ type ShipmentInfo struct {
+ 	ID            string         `json:"id"`
+ 	Status        string         `json:"status"`
++	Substatus     string         `json:"substatus"`
+ 	SLADue        *time.Time     `json:"sla_due"`
+ 	Delayed       *bool          `json:"delayed"`
+ 	Costs         *ShipmentCosts `json:"costs"`
+diff --git a/apps/server_core/internal/modules/orders/adapters/postgres/order_repo.go b/apps/server_core/internal/modules/orders/adapters/postgres/order_repo.go
+index ba82d736..8474c32d 100644
+--- a/apps/server_core/internal/modules/orders/adapters/postgres/order_repo.go
++++ b/apps/server_core/internal/modules/orders/adapters/postgres/order_repo.go
+@@ -56,7 +56,7 @@ func (r *OrderReadRepository) ListOrders(ctx context.Context, query ports.OrderL
+ 		       (SELECT SUM(COALESCE(p.total_paid_amount, p.transaction_amount))
+ 		        FROM orders_marketplace_order_payments p
+ 		        WHERE p.tenant_id=$1 AND p.installation_id=$2 AND p.provider_order_id=o.provider_order_id),
+-		       o.shipping_id
++		       o.shipping_id, o.tags_json
+ 		FROM orders_marketplace_orders o
+ 		WHERE o.tenant_id=$1 AND o.installation_id=$2
+ 		  AND o.provider_created_at IS NOT NULL
+@@ -104,7 +104,7 @@ func (r *OrderReadRepository) GetOrder(ctx context.Context, installationID, prov
+ 		       o.provider_created_at, o.provider_closed_at, o.provider_updated_at,
+ 		       CASE WHEN EXISTS (SELECT 1 FROM orders_sankhya_linkage_events e WHERE e.tenant_id=$1 AND e.installation_id=$2 AND e.provider_order_id=o.provider_order_id AND e.evidence_state = 'exact') THEN 'linked'::text ELSE NULL::text END,
+ 		       (SELECT SUM(COALESCE(p.total_paid_amount,p.transaction_amount)) FROM orders_marketplace_order_payments p WHERE p.tenant_id=$1 AND p.installation_id=$2 AND p.provider_order_id=o.provider_order_id),
+-		       o.shipping_id
++		       o.shipping_id, o.tags_json
+ 		FROM orders_marketplace_orders o
+ 		WHERE o.tenant_id=$1 AND o.installation_id=$2 AND o.provider_order_id=$3
+ 	`, r.tenantID, strings.TrimSpace(installationID), strings.TrimSpace(providerOrderID))
+@@ -129,7 +129,8 @@ func scanReadModel(scanner interface{ Scan(...any) error }) (ordersdomain.OrderR
+ 	var nf pgtype.Text
+ 	var total pgtype.Float8
+ 	var shippingID pgtype.Text
+-	err := scanner.Scan(&model.ProviderOrderID, &model.ProviderCode, &model.Status, &model.ProviderStatusDetail, &created, &closed, &updated, &nf, &total, &shippingID)
++	var tagsJSON []byte
++	err := scanner.Scan(&model.ProviderOrderID, &model.ProviderCode, &model.Status, &model.ProviderStatusDetail, &created, &closed, &updated, &nf, &total, &shippingID, &tagsJSON)
+ 	if err != nil {
+ 		return model, err
+ 	}
+@@ -143,6 +144,9 @@ func scanReadModel(scanner interface{ Scan(...any) error }) (ordersdomain.OrderR
+ 	if shippingID.Valid {
+ 		model.ShippingID = shippingID.String
+ 	}
++	if len(tagsJSON) > 0 {
++		_ = json.Unmarshal(tagsJSON, &model.Tags)
++	}
+ 	model.Items = make([]ordersdomain.MarketplaceOrderItem, 0)
+ 	model.Payments = make([]ordersdomain.MarketplaceOrderPayment, 0)
+ 	return model, nil
+@@ -218,7 +222,7 @@ func (r *OrderRepository) GetOrderBucketCounts(ctx context.Context, installation
+ 	}
+ 
+ 	rows, err := r.pool.Query(ctx, `
+-		SELECT provider_status, shipping_id
++		SELECT provider_status, shipping_id, tags_json
+ 		FROM orders_marketplace_orders
+ 		WHERE tenant_id = $1
+ 		  AND installation_id = $2
+@@ -233,10 +237,20 @@ func (r *OrderRepository) GetOrderBucketCounts(ctx context.Context, installation
+ 	for rows.Next() {
+ 		var providerStatus string
+ 		var shippingID pgtype.Text
+-		if err := rows.Scan(&providerStatus, &shippingID); err != nil {
++		var tagsJSON []byte
++		if err := rows.Scan(&providerStatus, &shippingID, &tagsJSON); err != nil {
+ 			return ports.OrderBucketCounts{}, err
+ 		}
+-		switch ordersdomain.DeriveOrderBucket(providerStatus, shippingID.Valid && shippingID.String != "") {
++		// The SQL summary carries no live shipment status (no shipment column;
++		// no per-order fan-out here by design). It reflects the delivered tag —
++		// ML's persisted delivered signal — so the summary agrees with the
++		// tag-driven per-order bucket; the shipment-status refinement lives on
++		// the enriched read path (transport), which the KPI cards derive from.
++		var tags []string
++		if len(tagsJSON) > 0 {
++			_ = json.Unmarshal(tagsJSON, &tags)
++		}
++		switch ordersdomain.DeriveOrderBucket(providerStatus, "", tags, shippingID.Valid && shippingID.String != "") {
+ 		case ordersdomain.BucketNovo:
+ 			counts.Novo++
+ 		case ordersdomain.BucketFaturar:
+diff --git a/apps/server_core/internal/modules/orders/adapters/postgres/order_repo_scan_test.go b/apps/server_core/internal/modules/orders/adapters/postgres/order_repo_scan_test.go
+index 82f9f1e4..10b449a7 100644
+--- a/apps/server_core/internal/modules/orders/adapters/postgres/order_repo_scan_test.go
++++ b/apps/server_core/internal/modules/orders/adapters/postgres/order_repo_scan_test.go
+@@ -7,14 +7,16 @@ import (
+ 	"github.com/jackc/pgx/v5/pgtype"
+ )
+ 
+-// fakeRow feeds a fixed 10-column sequence into scanReadModel without a
+-// database, proving the shipping_id scan mapping (ADR-17: absent stays
++// fakeRow feeds a fixed 11-column sequence into scanReadModel without a
++// database, proving the shipping_id + tags scan mapping (ADR-17: absent stays
+ // absent, never fabricated). Column order mirrors the ListOrders/GetOrder
+ // SELECT lists in order_repo.go: provider_order_id, provider_code,
+ // provider_status, provider_status_detail, provider_created_at,
+-// provider_closed_at, provider_updated_at, nf_state, total, shipping_id.
++// provider_closed_at, provider_updated_at, nf_state, total, shipping_id,
++// tags_json.
+ type fakeRow struct {
+ 	shippingID pgtype.Text
++	tagsJSON   []byte
+ }
+ 
+ func (f fakeRow) Scan(dest ...any) error {
+@@ -28,6 +30,7 @@ func (f fakeRow) Scan(dest ...any) error {
+ 	*dest[7].(*pgtype.Text) = pgtype.Text{}
+ 	*dest[8].(*pgtype.Float8) = pgtype.Float8{}
+ 	*dest[9].(*pgtype.Text) = f.shippingID
++	*dest[10].(*[]byte) = f.tagsJSON
+ 	return nil
+ }
+ 
+@@ -51,4 +54,24 @@ func TestScanReadModel_ShippingID(t *testing.T) {
+ 			t.Fatalf("ShippingID = %q, want empty", model.ShippingID)
+ 		}
+ 	})
++
++	t.Run("tags populated from tags_json (delivered signal for bucketing)", func(t *testing.T) {
++		model, err := scanReadModel(fakeRow{tagsJSON: []byte(`["paid","delivered"]`)})
++		if err != nil {
++			t.Fatalf("scanReadModel returned error: %v", err)
++		}
++		if len(model.Tags) != 2 || model.Tags[0] != "paid" || model.Tags[1] != "delivered" {
++			t.Fatalf("Tags = %v, want [paid delivered]", model.Tags)
++		}
++	})
++
++	t.Run("tags absent (NULL tags_json) stays nil", func(t *testing.T) {
++		model, err := scanReadModel(fakeRow{tagsJSON: nil})
++		if err != nil {
++			t.Fatalf("scanReadModel returned error: %v", err)
++		}
++		if len(model.Tags) != 0 {
++			t.Fatalf("Tags = %v, want empty", model.Tags)
++		}
++	})
+ }
+diff --git a/apps/server_core/internal/modules/orders/application/enrich_service.go b/apps/server_core/internal/modules/orders/application/enrich_service.go
+index f782c7a0..8b5e4076 100644
+--- a/apps/server_core/internal/modules/orders/application/enrich_service.go
++++ b/apps/server_core/internal/modules/orders/application/enrich_service.go
+@@ -26,6 +26,7 @@ type ItemCost struct {
+ type ShipmentEnrichment struct {
+ 	ShipmentID    string
+ 	Status        string
++	Substatus     string
+ 	SLADue        *time.Time
+ 	Delayed       *bool
+ 	DestinationUF *string
+@@ -127,6 +128,7 @@ func (s EnrichService) resolveShipment(ctx context.Context, installationID strin
+ 	return &ShipmentEnrichment{
+ 		ShipmentID:    info.ID,
+ 		Status:        info.Status,
++		Substatus:     info.Substatus,
+ 		SLADue:        info.SLADue,
+ 		Delayed:       info.Delayed,
+ 		DestinationUF: info.DestinationUF,
+diff --git a/apps/server_core/internal/modules/orders/domain/order_bucket.go b/apps/server_core/internal/modules/orders/domain/order_bucket.go
+index 1a47605e..89d9dfe0 100644
+--- a/apps/server_core/internal/modules/orders/domain/order_bucket.go
++++ b/apps/server_core/internal/modules/orders/domain/order_bucket.go
+@@ -16,19 +16,56 @@ const (
+ 	BucketCancelado OrderBucket = "cancelado"
+ )
+ 
+-// DeriveOrderBucket maps the RAW provider status + shipment presence to a
++// DeriveOrderBucket maps the RAW provider status + shipment facts to a
+ // workflow bucket. It is the single authority for bucket membership across
+ // the API and the pedidos UI (F01-A).
+ //
+-// hasShipment is a PROXY for the design's NF-emitted state: orders storage
+-// carries no true ERP NF-emission signal, only the shipping_id column. The
+-// faturar/enviar split therefore approximates design semantics using
+-// available marketplace data, degrading honestly per ruling D-57(6).
+-func DeriveOrderBucket(providerStatus string, hasShipment bool) OrderBucket {
++// Why more than provider_status: Mercado Livre keeps order.provider_status at
++// "paid" for the WHOLE post-payment lifecycle — shipped/delivered live on the
++// SHIPMENT object (status+substatus) and on the order TAGS (e.g. "delivered"),
++// never on provider_status (ML docs: gerenciamento-de-envios status table;
++// pedidos-e-opinioes order tags). Deriving from provider_status alone therefore
++// pins every paid+shipped order in "enviar" forever (the "A ENVIAR 24 /
++// ENVIADOS 0" defect). Two extra signals lift it:
++//
++//   - tags: the order-level "delivered" tag is the most robust delivered signal
++//     — it is persisted with the order (tags_json) and survives even a total
++//     shipment-lookup failure, so a delivered order leaves "enviar" regardless
++//     of the fragile live /shipments read.
++//   - shipmentStatus: the live shipment status distinguishes shipped/delivered
++//     (→ enviado) from ready_to_ship/handling/pending (→ enviar) when the tag
++//     is absent.
++//
++// hasShipment stays the pre-shipment faturar/enviar proxy (shipping_id present
++// but no live status/tag yet), degrading honestly per ruling D-57(6).
++// providerStatus keeps sole authority over novo/faturar/cancelado.
++func DeriveOrderBucket(providerStatus, shipmentStatus string, tags []string, hasShipment bool) OrderBucket {
+ 	status := strings.ToLower(strings.TrimSpace(providerStatus))
+-	switch status {
+-	case "cancelled", "invalid":
++
++	// Order-level cancel wins first: a cancelled order is cancelado even if a
++	// shipment was created before the cancellation.
++	if status == "cancelled" || status == "invalid" {
+ 		return BucketCancelado
++	}
++
++	// Order tag "delivered" is authoritative and shipment-lookup-independent.
++	if hasTag(tags, "delivered") {
++		return BucketEnviado
++	}
++
++	// Live shipment status is authoritative for the ML dispatch lifecycle that
++	// provider_status does not track. Every "shipped" substatus (out_for_delivery,
++	// receiver_absent, buyer_rescheduled, …) stays under status "shipped" → enviado.
++	switch strings.ToLower(strings.TrimSpace(shipmentStatus)) {
++	case "shipped", "delivered":
++		return BucketEnviado
++	case "ready_to_ship", "handling", "pending":
++		return BucketEnviar
++	}
++
++	// No delivered tag and no (or an unrecognised) live shipment status: fall
++	// back to provider_status. This is also the shipment-blind SQL summary path.
++	switch status {
+ 	case "delivered", "shipped":
+ 		return BucketEnviado
+ 	case "paid", "confirmed":
+@@ -40,3 +77,13 @@ func DeriveOrderBucket(providerStatus string, hasShipment bool) OrderBucket {
+ 		return BucketNovo
+ 	}
+ }
++
++// hasTag reports whether tags contains target (case-insensitive, trimmed).
++func hasTag(tags []string, target string) bool {
++	for _, tag := range tags {
++		if strings.EqualFold(strings.TrimSpace(tag), target) {
++			return true
++		}
++	}
++	return false
++}
+diff --git a/apps/server_core/internal/modules/orders/domain/order_bucket_test.go b/apps/server_core/internal/modules/orders/domain/order_bucket_test.go
+index 5af3eddb..10385936 100644
+--- a/apps/server_core/internal/modules/orders/domain/order_bucket_test.go
++++ b/apps/server_core/internal/modules/orders/domain/order_bucket_test.go
+@@ -9,39 +9,66 @@ func TestDeriveOrderBucket(t *testing.T) {
+ 	cases := []struct {
+ 		name           string
+ 		providerStatus string
++		shipmentStatus string
++		tags           []string
+ 		hasShipment    bool
+ 		want           OrderBucket
+ 	}{
+-		{"cancelled lowercase", "cancelled", false, BucketCancelado},
+-		{"cancelled uppercase", "CANCELLED", false, BucketCancelado},
+-		{"cancelled with shipment", "cancelled", true, BucketCancelado},
+-		{"invalid", "invalid", false, BucketCancelado},
+-		{"invalid with shipment", "invalid", true, BucketCancelado},
+-		{"delivered", "delivered", false, BucketEnviado},
+-		{"delivered with shipment", "delivered", true, BucketEnviado},
+-		{"shipped", "shipped", false, BucketEnviado},
+-		{"shipped mixed case", "Shipped", true, BucketEnviado},
+-		{"paid with shipment", "paid", true, BucketEnviar},
+-		{"paid without shipment", "paid", false, BucketFaturar},
+-		{"confirmed with shipment", "confirmed", true, BucketEnviar},
+-		{"confirmed without shipment", "confirmed", false, BucketFaturar},
+-		{"confirmed uppercase with shipment", "CONFIRMED", true, BucketEnviar},
+-		{"pending", "pending", false, BucketNovo},
+-		{"pending with shipment", "pending", true, BucketNovo},
+-		{"payment_required", "payment_required", false, BucketNovo},
+-		{"payment_in_process", "payment_in_process", false, BucketNovo},
+-		{"new", "new", false, BucketNovo},
+-		{"empty status", "", false, BucketNovo},
+-		{"empty status with shipment", "", true, BucketNovo},
+-		{"unknown status", "some_unknown_status", false, BucketNovo},
+-		{"whitespace padded paid", "  paid  ", true, BucketEnviar},
++		// provider_status-only fallback (no shipment status, no tags) — the
++		// shipment-blind SQL summary path and pre-shipment ML orders.
++		{"cancelled lowercase", "cancelled", "", nil, false, BucketCancelado},
++		{"cancelled uppercase", "CANCELLED", "", nil, false, BucketCancelado},
++		{"cancelled with shipment", "cancelled", "", nil, true, BucketCancelado},
++		{"invalid", "invalid", "", nil, false, BucketCancelado},
++		{"invalid with shipment", "invalid", "", nil, true, BucketCancelado},
++		{"delivered provider status", "delivered", "", nil, false, BucketEnviado},
++		{"shipped provider status", "shipped", "", nil, false, BucketEnviado},
++		{"shipped mixed case", "Shipped", "", nil, true, BucketEnviado},
++		{"paid with shipment", "paid", "", nil, true, BucketEnviar},
++		{"paid without shipment", "paid", "", nil, false, BucketFaturar},
++		{"confirmed with shipment", "confirmed", "", nil, true, BucketEnviar},
++		{"confirmed without shipment", "confirmed", "", nil, false, BucketFaturar},
++		{"confirmed uppercase with shipment", "CONFIRMED", "", nil, true, BucketEnviar},
++		{"pending", "pending", "", nil, false, BucketNovo},
++		{"pending with shipment", "pending", "", nil, true, BucketNovo},
++		{"payment_required", "payment_required", "", nil, false, BucketNovo},
++		{"payment_in_process", "payment_in_process", "", nil, false, BucketNovo},
++		{"new", "new", "", nil, false, BucketNovo},
++		{"empty status", "", "", nil, false, BucketNovo},
++		{"empty status with shipment", "", "", nil, true, BucketNovo},
++		{"unknown status", "some_unknown_status", "", nil, false, BucketNovo},
++		{"whitespace padded paid", "  paid  ", "", nil, true, BucketEnviar},
++
++		// Order tag "delivered" — the robust order-level delivered signal. ML
++		// keeps provider_status "paid" after delivery; the tag lifts it to enviado
++		// even with no live shipment status (shipment lookup may have degraded).
++		{"paid + delivered tag", "paid", "", []string{"paid", "delivered"}, true, BucketEnviado},
++		{"paid + delivered tag no shipment status", "paid", "", []string{"delivered"}, true, BucketEnviado},
++		{"delivered tag mixed case", "paid", "", []string{"Delivered"}, true, BucketEnviado},
++		{"delivered tag whitespace", "paid", "", []string{" delivered "}, true, BucketEnviado},
++		{"non-delivered tags stay enviar", "paid", "", []string{"paid", "claim_opened"}, true, BucketEnviar},
++		{"delivered tag overrides ready_to_ship", "paid", "ready_to_ship", []string{"delivered"}, true, BucketEnviado},
++		{"cancelled wins over delivered tag", "cancelled", "", []string{"delivered"}, true, BucketCancelado},
++
++		// Live shipment status — ML dispatch lifecycle that provider_status
++		// ("paid") does not track. Authoritative when the delivered tag is absent.
++		{"shipment shipped -> enviado", "paid", "shipped", nil, true, BucketEnviado},
++		{"shipment delivered -> enviado", "paid", "delivered", nil, true, BucketEnviado},
++		{"shipment shipped mixed case", "paid", "Shipped", nil, true, BucketEnviado},
++		{"shipment ready_to_ship -> enviar", "paid", "ready_to_ship", nil, true, BucketEnviar},
++		{"shipment handling -> enviar", "paid", "handling", nil, true, BucketEnviar},
++		{"shipment pending -> enviar", "paid", "pending", nil, true, BucketEnviar},
++		{"shipment not_delivered falls back to provider", "paid", "not_delivered", nil, true, BucketEnviar},
++		{"shipment unknown status falls back to provider", "paid", "in_hub", nil, true, BucketEnviar},
++		{"shipment shipped but faturar provider no shipment flag", "paid", "shipped", nil, false, BucketEnviado},
++		{"shipment ready_to_ship with confirmed provider", "confirmed", "ready_to_ship", nil, true, BucketEnviar},
+ 	}
+ 
+ 	for _, tc := range cases {
+ 		t.Run(tc.name, func(t *testing.T) {
+-			got := DeriveOrderBucket(tc.providerStatus, tc.hasShipment)
++			got := DeriveOrderBucket(tc.providerStatus, tc.shipmentStatus, tc.tags, tc.hasShipment)
+ 			if got != tc.want {
+-				t.Fatalf("DeriveOrderBucket(%q, %v) = %q, want %q", tc.providerStatus, tc.hasShipment, got, tc.want)
++				t.Fatalf("DeriveOrderBucket(%q, %q, %v, %v) = %q, want %q", tc.providerStatus, tc.shipmentStatus, tc.tags, tc.hasShipment, got, tc.want)
+ 			}
+ 		})
+ 	}
+diff --git a/apps/server_core/internal/modules/orders/domain/read_model.go b/apps/server_core/internal/modules/orders/domain/read_model.go
+index bd128372..d8c44039 100644
+--- a/apps/server_core/internal/modules/orders/domain/read_model.go
++++ b/apps/server_core/internal/modules/orders/domain/read_model.go
+@@ -22,4 +22,9 @@ type OrderReadModel struct {
+ 	ProviderUpdatedAt    *time.Time                `json:"provider_updated_at"`
+ 	Items                []MarketplaceOrderItem    `json:"items"`
+ 	Payments             []MarketplaceOrderPayment `json:"payments"`
++	// Tags carries the provider order tags (e.g. "delivered", "paid"). It is a
++	// bucket-derivation signal only (DeriveOrderBucket) — Mercado Livre reports
++	// delivered on the order tags, not on provider_status — and is not exposed
++	// on the transport DTO. Empty/absent means no honest tag signal (ADR-17).
++	Tags []string `json:"tags,omitempty"`
+ }
+diff --git a/apps/server_core/internal/modules/orders/transport/http_handler.go b/apps/server_core/internal/modules/orders/transport/http_handler.go
+index b31aa3d9..61047353 100644
+--- a/apps/server_core/internal/modules/orders/transport/http_handler.go
++++ b/apps/server_core/internal/modules/orders/transport/http_handler.go
+@@ -324,6 +324,10 @@ type enrichedSLADTO struct {
+ type enrichedRastreioDTO struct {
+ 	ShipmentID string `json:"shipment_id"`
+ 	Status     string `json:"status"`
++	// Substatus is the ML shipment sub-status (e.g. "out_for_delivery",
++	// "receiver_absent"). Additive/omitempty: absent when the provider reports
++	// no sub-status, never a fabricated value (ADR-17).
++	Substatus string `json:"substatus,omitempty"`
+ }
+ 
+ // enrichedItemDTO carries the existing item JSON fields (embedded, so no
+@@ -411,12 +415,14 @@ func mapEnrichedOrder(e application.EnrichedOrder) enrichedOrderDTO {
+ 		VinculoStatus:            string(e.VinculoStatus),
+ 		Buyer:                    enrichedBuyerDTO{Display: e.Buyer.Display, City: e.Buyer.City, UF: e.Buyer.UF},
+ 		ComponentesDesconhecidos: e.ComponentesDesconhecidos,
+-		// hasShipment keys off the shipping_id column (present on the read model), NOT the
+-		// live shipment fetch (e.Shipment), so this per-order bucket stays consistent with the
+-		// summary by_status counts (order_repo.go GetOrderBucketCounts uses the same signal) even
+-		// when the live GetShipmentInfo call transiently fails. The live e.Shipment still drives
+-		// the SLA/rastreio display below.
+-		Bucket:                   domain.DeriveOrderBucket(e.Order.Status, e.Order.ShippingID != ""),
++		// Bucket derives from provider_status + the order "delivered" tag + the live
++		// shipment status. The delivered tag (order_repo read-through) is the robust
++		// signal that survives a shipment-lookup failure; the live e.Shipment status
++		// refines shipped/delivered vs ready_to_ship when the tag is absent. hasShipment
++		// (shipping_id column) stays the pre-shipment faturar/enviar proxy. The SQL
++		// summary path shares the tag signal, and the KPI cards derive their counts from
++		// this same per-order bucket (FE), so KPI == Lista by construction.
++		Bucket:                   domain.DeriveOrderBucket(e.Order.Status, shipmentStatusOf(e.Shipment), e.Order.Tags, e.Order.ShippingID != ""),
+ 		RetornoLiquido:           e.Profitability.RetornoLiquido,
+ 		MargemPct:                e.Profitability.MargemPct,
+ 		Decomposicao:             mapDecomposicao(e.Profitability.Decomposition),
+@@ -425,11 +431,21 @@ func mapEnrichedOrder(e application.EnrichedOrder) enrichedOrderDTO {
+ 	if e.Shipment != nil {
+ 		dto.SLA = &enrichedSLADTO{Due: e.Shipment.SLADue, Atrasado: e.Shipment.Delayed}
+ 		dto.DestinoUF = e.Shipment.DestinationUF
+-		dto.Rastreio = &enrichedRastreioDTO{ShipmentID: e.Shipment.ShipmentID, Status: e.Shipment.Status}
++		dto.Rastreio = &enrichedRastreioDTO{ShipmentID: e.Shipment.ShipmentID, Status: e.Shipment.Status, Substatus: e.Shipment.Substatus}
+ 	}
+ 	return dto
+ }
+ 
++// shipmentStatusOf returns the live shipment status, or "" when the shipment
++// could not be read (nil enrichment). "" makes DeriveOrderBucket fall back to
++// the order tag / provider_status signals — never a fabricated status (ADR-17).
++func shipmentStatusOf(s *application.ShipmentEnrichment) string {
++	if s == nil {
++		return ""
++	}
++	return s.Status
++}
++
+ // mapDecomposicao maps an application-layer domain.OrderDecomposition onto
+ // its transport DTO field-by-field. Flows via mapEnrichedOrder to BOTH the
+ // /orders list and /orders/{id} detail responses (shared mapper).
+diff --git a/apps/web/src/pages/pedidos/PedidoDrawer.tsx b/apps/web/src/pages/pedidos/PedidoDrawer.tsx
+index 419ed7c5..ed710d69 100644
+--- a/apps/web/src/pages/pedidos/PedidoDrawer.tsx
++++ b/apps/web/src/pages/pedidos/PedidoDrawer.tsx
+@@ -188,7 +188,8 @@ function buildTimeline(order: OrderRead): TimelineEvent[] {
+     events.push({ label: "Atualizado", when: formatDateTime(order.provider_updated_at) });
+   }
+   if (order.rastreio) {
+-    events.push({ label: `Enviado · ${order.rastreio.status}`, when: null });
++    const sub = order.rastreio.substatus ? ` (${order.rastreio.substatus})` : "";
++    events.push({ label: `Enviado · ${order.rastreio.status}${sub}`, when: null });
+   }
+   if (order.provider_closed_at) {
+     events.push({ label: "Fechado", when: formatDateTime(order.provider_closed_at) });
+@@ -231,7 +232,9 @@ function FactsSection({ order }: { order: OrderRead }) {
+       <div className="flex items-start justify-between gap-3">
+         <span>Rastreio</span>
+         <span className="text-right font-mono text-[11px] text-ink">
+-          {order.rastreio ? `${order.rastreio.shipment_id} · ${order.rastreio.status}` : <UnknownValue />}
++          {order.rastreio
++            ? `${order.rastreio.shipment_id} · ${order.rastreio.status}${order.rastreio.substatus ? ` · ${order.rastreio.substatus}` : ""}`
++            : <UnknownValue />}
+         </span>
+       </div>
+       <div className="flex items-start justify-between gap-3">
+diff --git a/apps/web/src/pages/pedidos/PedidosPage.test.tsx b/apps/web/src/pages/pedidos/PedidosPage.test.tsx
+index 30dfa3da..d35ccedb 100644
+--- a/apps/web/src/pages/pedidos/PedidosPage.test.tsx
++++ b/apps/web/src/pages/pedidos/PedidosPage.test.tsx
+@@ -112,26 +112,44 @@ describe("PedidosPage", () => {
+     expect(screen.getByRole("tab", { name: "Fila", selected: true })).toBeInTheDocument();
+   });
+ 
+-  it("renders the KPI live bucket counts and the DIFAL card as an honest unknown", async () => {
+-    listOrders.mockResolvedValue({ items: [], next_cursor: null });
++  it("derives the KPI bucket counts from the loaded list (KPI == Lista) and gates DIFAL as unknown", async () => {
++    // Counts come from OrderRead.bucket over the full list — the same source the Lista tabs count,
++    // so a card and its tab always agree. Bucket split here: novo=2, faturar=1, enviar=3, enviado=4.
++    listOrders.mockResolvedValue({
++      items: [
++        { ...baseOrder, provider_order_id: "A", bucket: "novo" as const },
++        { ...baseOrder, provider_order_id: "B", bucket: "novo" as const },
++        { ...baseOrder, provider_order_id: "C", bucket: "faturar" as const },
++        { ...baseOrder, provider_order_id: "D", bucket: "enviar" as const },
++        { ...baseOrder, provider_order_id: "E", bucket: "enviar" as const },
++        { ...baseOrder, provider_order_id: "F", bucket: "enviar" as const },
++        { ...baseOrder, provider_order_id: "G", bucket: "enviado" as const },
++        { ...baseOrder, provider_order_id: "H", bucket: "enviado" as const },
++        { ...baseOrder, provider_order_id: "I", bucket: "enviado" as const },
++        { ...baseOrder, provider_order_id: "J", bucket: "enviado" as const },
++      ],
++      next_cursor: null,
++    });
+ 
+     renderPage();
+ 
+-    await screen.findByRole("heading", { name: "Pedidos" });
+-    expect(await screen.findByText("2")).toBeInTheDocument(); // novo
+-    expect(screen.getByText("1")).toBeInTheDocument(); // faturar
+-    expect(screen.getByText("3")).toBeInTheDocument(); // enviar
+-    expect(screen.getByText("4")).toBeInTheDocument(); // enviado
+-    expect(screen.getByText("—")).toBeInTheDocument(); // DIFAL, gated
++    // KpiCard is a button whose accessible name is "LABEL VALUE" — assert the derived counts.
++    expect(await screen.findByRole("button", { name: "NOVOS 2" })).toBeInTheDocument();
++    expect(screen.getByRole("button", { name: "A FATURAR 1" })).toBeInTheDocument();
++    expect(screen.getByRole("button", { name: "A ENVIAR 3" })).toBeInTheDocument();
++    expect(screen.getByRole("button", { name: "ENVIADOS 4" })).toBeInTheDocument();
++    // DIFAL stays an honest unknown (decomposição not wired) — never a fabricated 0.
++    expect(screen.getByRole("button", { name: /DIFAL A PAGAR —/ })).toBeInTheDocument();
+   });
+ 
+-  it("renders '—' for every bucket when the summary endpoint is unavailable", async () => {
+-    listOrders.mockResolvedValue({ items: [], next_cursor: null });
+-    getOrderSummary.mockRejectedValue({ status: 503, error: { code: "unavailable" } });
++  it("renders '—' for every bucket KPI while the order list is unavailable", async () => {
++    listOrders.mockRejectedValue({ status: 503, error: { code: "unavailable" } });
+ 
+     renderPage();
+ 
+     await screen.findByRole("heading", { name: "Pedidos" });
++    // List error → the bucket counts are unknown, so all four bucket cards + DIFAL render "—",
++    // never a fabricated 0 (ADR-17).
+     await waitFor(() => {
+       expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(5);
+     });
+diff --git a/apps/web/src/pages/pedidos/PedidosPage.tsx b/apps/web/src/pages/pedidos/PedidosPage.tsx
+index ff740853..cc4e3f30 100644
+--- a/apps/web/src/pages/pedidos/PedidosPage.tsx
++++ b/apps/web/src/pages/pedidos/PedidosPage.tsx
+@@ -11,7 +11,7 @@ import { FilaView } from "./FilaView";
+ import { KanbanView } from "./KanbanView";
+ import { ListaView } from "./ListaView";
+ import { PedidoDrawer } from "./PedidoDrawer";
+-import type { PedidosTab } from "./pedidosTabs";
++import { bucketTabCount, type PedidosTab } from "./pedidosTabs";
+ 
+ type PedidosView = "fila" | "lista" | "kanban";
+ 
+@@ -37,11 +37,13 @@ const UNKNOWN_KPI_VALUE = "—";
+ // the demo dataset.
+ const MAX_ORDER_PAGES = 20;
+ 
+-// Fila/Kanban rows and the Lista per-tab counts all derive from this single query, while the KPI
+-// row's counts come from the full-dataset getOrderSummary by_status. Fetching only page 1 would
+-// let those two sources silently disagree once there is more than one page. This accumulator
+-// follows OrderPage.next_cursor until it is exhausted (or the safety cap is hit) so the single
+-// existing read query returns the complete dataset — no pagination UI, no second query.
++// Fila/Kanban rows, the Lista per-tab counts AND the KPI row's counts all derive from this single
++// query's full dataset (each order's OrderRead.bucket, the server-side single authority that now
++// consumes the delivered tag + live shipment status). Deriving the KPI cards from the same rows the
++// Lista tabs count makes KPI == Lista by construction — the old getOrderSummary by_status path was
++// shipment-status-blind (pure SQL over provider_status+shipping_id) and disagreed with the list.
++// This accumulator follows OrderPage.next_cursor until it is exhausted (or the safety cap is hit)
++// so the single read query returns the complete dataset — no pagination UI, no second query.
+ async function fetchAllOrders(client: Client, installationId: string): Promise<OrderPage> {
+   const items: OrderRead[] = [];
+   let cursor: string | undefined;
+@@ -106,16 +108,15 @@ export function PedidosPage() {
+     staleTime: QUERY_STALE_TIME.orders,
+   });
+ 
+-  // No summary key exists yet in the web-query barrel (checked packages/web-query/src/index.ts);
+-  // a local, stable key is used here per the dispatch pack's fallback instruction.
+-  const summaryQuery = useQuery({
+-    queryKey: ["orders", "summary", installationId, "by_status"] as const,
+-    queryFn: () => client.getOrderSummary(installationId, { by: "status" }),
+-    staleTime: QUERY_STALE_TIME.orders,
+-  });
+-
+   const allItems: OrderRead[] = ordersQuery.data?.items ?? [];
+-  const byStatus = summaryQuery.data?.by_status;
++
++  // KPI counts derive from the fully-loaded list's per-order bucket (same source as the Lista
++  // tabs), so a card and its tab always agree. Until the list resolves — or if it errors — the
++  // count is an honest unknown "—", never a fabricated 0 (ADR-17). A loaded-but-empty dataset
++  // legitimately yields 0 in every bucket.
++  const ordersReady = !ordersQuery.isPending && !ordersQuery.isError;
++  const kpiValue = (bucket: PedidosTab): string =>
++    ordersReady ? String(bucketTabCount(allItems, bucket) ?? 0) : UNKNOWN_KPI_VALUE;
+ 
+   const goToFila = () => setView("fila");
+   const goToListaTab = (bucketTab: PedidosTab) => () => {
+@@ -154,28 +155,10 @@ export function PedidosPage() {
+         aria-label="Indicadores de pedidos"
+         className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"
+       >
+-        <KpiCard
+-          label="NOVOS"
+-          value={byStatus ? String(byStatus.novo) : UNKNOWN_KPI_VALUE}
+-          onSelect={goToListaTab("novo")}
+-        />
+-        <KpiCard
+-          label="A FATURAR"
+-          value={byStatus ? String(byStatus.faturar) : UNKNOWN_KPI_VALUE}
+-          onSelect={goToListaTab("faturar")}
+-        />
+-        <KpiCard
+-          label="A ENVIAR"
+-          value={byStatus ? String(byStatus.enviar) : UNKNOWN_KPI_VALUE}
+-          onSelect={goToListaTab("enviar")}
+-        />
+-        {/* seven_days on OrderSummary is a TOTAL-orders count, not an enviado-in-7d bucket — a
+-            "últimos 7d" sub-note here would misrepresent it (ADR-17), so it is omitted. */}
+-        <KpiCard
+-          label="ENVIADOS"
+-          value={byStatus ? String(byStatus.enviado) : UNKNOWN_KPI_VALUE}
+-          onSelect={goToListaTab("enviado")}
+-        />
++        <KpiCard label="NOVOS" value={kpiValue("novo")} onSelect={goToListaTab("novo")} />
++        <KpiCard label="A FATURAR" value={kpiValue("faturar")} onSelect={goToListaTab("faturar")} />
++        <KpiCard label="A ENVIAR" value={kpiValue("enviar")} onSelect={goToListaTab("enviar")} />
++        <KpiCard label="ENVIADOS" value={kpiValue("enviado")} onSelect={goToListaTab("enviado")} />
+         <KpiCard
+           label="DIFAL A PAGAR"
+           value={UNKNOWN_KPI_VALUE}
+diff --git a/apps/web/src/pages/pedidos/pedidosTabs.ts b/apps/web/src/pages/pedidos/pedidosTabs.ts
+index b44417cb..b09928b6 100644
+--- a/apps/web/src/pages/pedidos/pedidosTabs.ts
++++ b/apps/web/src/pages/pedidos/pedidosTabs.ts
+@@ -32,9 +32,9 @@ export function filterOrdersByTab(items: OrderRead[], tab: PedidosTab): OrderRea
+   return items.filter((item) => item.bucket === tab);
+ }
+ 
+-// Counts derive from the already-loaded page's `bucket` field, so a tab's label always matches
+-// the rows it renders. The KPI cards keep using the server `by_status` summary independently;
+-// for the single-page demo dataset the two agree.
++// Counts derive from the already-loaded list's `bucket` field, so a tab's label always matches
++// the rows it renders. The KPI cards (PedidosPage) derive from this same helper over the same
++// list, so KPI == Lista by construction.
+ export function bucketTabCount(items: OrderRead[], tab: PedidosTab): number | null {
+   if (!isLiveBucketTab(tab)) return null;
+   return items.filter((item) => item.bucket === tab).length;
+diff --git a/contracts/api/marketplace-central.openapi.yaml b/contracts/api/marketplace-central.openapi.yaml
+index eeeda1b3..47b90ef1 100644
+--- a/contracts/api/marketplace-central.openapi.yaml
++++ b/contracts/api/marketplace-central.openapi.yaml
+@@ -5079,6 +5079,12 @@ components:
+           type: string
+         status:
+           type: string
++        substatus:
++          type: string
++          description: >-
++            ML shipment sub-status (e.g. out_for_delivery, receiver_absent).
++            Additive/optional: absent when the provider reports no sub-status,
++            never a fabricated value (ADR-17).
+ 
+     OrderDecomposicao:
+       type: object
+diff --git a/packages/sdk-runtime/src/index.ts b/packages/sdk-runtime/src/index.ts
+index 9ba3bc67..fc433f0d 100644
+--- a/packages/sdk-runtime/src/index.ts
++++ b/packages/sdk-runtime/src/index.ts
+@@ -584,6 +584,9 @@ export interface OrderSla {
+ export interface OrderRastreio {
+   shipment_id: string;
+   status: string;
++  // ML shipment sub-status (e.g. out_for_delivery, receiver_absent). Additive/
++  // optional: absent when the provider reports no sub-status, never fabricated (ADR-17).
++  substatus?: string;
+ }
+ 
+ // OrderBucket is the workflow bucket derived from DeriveOrderBucket

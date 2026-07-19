@@ -5079,6 +5079,12 @@ components:
           type: string
         status:
           type: string
+        substatus:
+          type: string
+          description: >-
+            ML shipment sub-status (e.g. out_for_delivery, receiver_absent).
+            Additive/optional: absent when the provider reports no sub-status,
+            never a fabricated value (ADR-17).
 
     OrderDecomposicao:
       type: object

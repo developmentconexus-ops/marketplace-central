@@ -23,7 +23,7 @@ func TestGetShipmentInfoMapsShipmentAndCosts(t *testing.T) {
 		}
 		switch r.URL.Path {
 		case "/shipments/SHIP-1":
-			_, _ = io.WriteString(w, `{"id":"SHIP-1","status":"ready_to_ship","lead_time":{"estimated_delivery_limit":{"date":"2026-07-22T15:04:05Z"}},"delayed":true,"receiver_address":{"state":{"id":"BR-RJ"}}}`)
+			_, _ = io.WriteString(w, `{"id":"SHIP-1","status":"ready_to_ship","substatus":"ready_to_print","lead_time":{"estimated_delivery_limit":{"date":"2026-07-22T15:04:05Z"}},"delayed":true,"receiver_address":{"state":{"id":"BR-RJ"}}}`)
 		case "/shipments/SHIP-1/costs":
 			_, _ = io.WriteString(w, `{"gross_amount":19.90,"receiver":{"cost":2.50},"senders":[{"cost":17.40}],"currency_id":"BRL"}`)
 		default:
@@ -108,6 +108,75 @@ func TestGetShipmentInfoCostsServerErrorFails(t *testing.T) {
 	}
 	if shipment != (domain.ShipmentInfo{}) {
 		t.Fatalf("shipment = %#v, want zero value on costs failure", shipment)
+	}
+}
+
+func TestGetShipmentInfoCostsRequestSendsXFormatNewHeader(t *testing.T) {
+	t.Parallel()
+
+	var costsHeader, primaryHeader string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/shipments/SHIP-7":
+			primaryHeader = r.Header.Get("x-format-new")
+			_, _ = io.WriteString(w, `{"id":"SHIP-7","status":"shipped","substatus":"out_for_delivery"}`)
+		case "/shipments/SHIP-7/costs":
+			costsHeader = r.Header.Get("x-format-new")
+			_, _ = io.WriteString(w, `{"gross_amount":10.00,"currency_id":"BRL"}`)
+		default:
+			t.Fatalf("unexpected path = %s", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	shipment, err := pricingTestAdapter(server.URL, time.Now().UTC()).GetShipmentInfo(context.Background(), pricingAccountRef(), "SHIP-7")
+	if err != nil {
+		t.Fatalf("GetShipmentInfo() error = %v", err)
+	}
+	// The /costs endpoint returns the legacy shape unless x-format-new:true is sent; without it
+	// the body fails to decode and costs sink. Assert the header rides the costs request.
+	if costsHeader != "true" {
+		t.Fatalf("costs x-format-new = %q, want true", costsHeader)
+	}
+	// The primary shipment GET works header-less; keep it untouched so a working call stays working.
+	if primaryHeader != "" {
+		t.Fatalf("primary x-format-new = %q, want empty (unchanged)", primaryHeader)
+	}
+	if shipment.Substatus != "out_for_delivery" {
+		t.Fatalf("Substatus = %q, want out_for_delivery", shipment.Substatus)
+	}
+}
+
+func TestGetShipmentInfoCostsLegacyShapeDegradesToStatusOnly(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/shipments/SHIP-6":
+			_, _ = io.WriteString(w, `{"id":"SHIP-6","status":"shipped","substatus":"receiver_absent"}`)
+		case "/shipments/SHIP-6/costs":
+			// Legacy cost shape (what ML returns when x-format-new is absent): `senders` is an
+			// object, not the new-format array → decode into mlShipmentCostsResponse fails with
+			// ProviderPayloadInvalid. That must degrade to shipment-with-status, not sink the read.
+			_, _ = io.WriteString(w, `{"senders":{"cost":17.40},"currency_id":"BRL"}`)
+		default:
+			t.Fatalf("unexpected path = %s", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	shipment, err := pricingTestAdapter(server.URL, time.Now().UTC()).GetShipmentInfo(context.Background(), pricingAccountRef(), "SHIP-6")
+	if err != nil {
+		t.Fatalf("GetShipmentInfo() error = %v, want degrade (nil error)", err)
+	}
+	if shipment.Status != "shipped" {
+		t.Fatalf("Status = %q, want shipped (must survive costs decode failure)", shipment.Status)
+	}
+	if shipment.Substatus != "receiver_absent" {
+		t.Fatalf("Substatus = %q, want receiver_absent (must survive costs decode failure)", shipment.Substatus)
+	}
+	if shipment.Costs != nil {
+		t.Fatalf("Costs = %#v, want nil (undecodable legacy body → costs unknown)", shipment.Costs)
 	}
 }
 

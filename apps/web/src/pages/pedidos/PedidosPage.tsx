@@ -11,7 +11,7 @@ import { FilaView } from "./FilaView";
 import { KanbanView } from "./KanbanView";
 import { ListaView } from "./ListaView";
 import { PedidoDrawer } from "./PedidoDrawer";
-import type { PedidosTab } from "./pedidosTabs";
+import { bucketTabCount, type PedidosTab } from "./pedidosTabs";
 
 type PedidosView = "fila" | "lista" | "kanban";
 
@@ -37,11 +37,13 @@ const UNKNOWN_KPI_VALUE = "—";
 // the demo dataset.
 const MAX_ORDER_PAGES = 20;
 
-// Fila/Kanban rows and the Lista per-tab counts all derive from this single query, while the KPI
-// row's counts come from the full-dataset getOrderSummary by_status. Fetching only page 1 would
-// let those two sources silently disagree once there is more than one page. This accumulator
-// follows OrderPage.next_cursor until it is exhausted (or the safety cap is hit) so the single
-// existing read query returns the complete dataset — no pagination UI, no second query.
+// Fila/Kanban rows, the Lista per-tab counts AND the KPI row's counts all derive from this single
+// query's full dataset (each order's OrderRead.bucket, the server-side single authority that now
+// consumes the delivered tag + live shipment status). Deriving the KPI cards from the same rows the
+// Lista tabs count makes KPI == Lista by construction — the old getOrderSummary by_status path was
+// shipment-status-blind (pure SQL over provider_status+shipping_id) and disagreed with the list.
+// This accumulator follows OrderPage.next_cursor until it is exhausted (or the safety cap is hit)
+// so the single read query returns the complete dataset — no pagination UI, no second query.
 async function fetchAllOrders(client: Client, installationId: string): Promise<OrderPage> {
   const items: OrderRead[] = [];
   let cursor: string | undefined;
@@ -106,16 +108,15 @@ export function PedidosPage() {
     staleTime: QUERY_STALE_TIME.orders,
   });
 
-  // No summary key exists yet in the web-query barrel (checked packages/web-query/src/index.ts);
-  // a local, stable key is used here per the dispatch pack's fallback instruction.
-  const summaryQuery = useQuery({
-    queryKey: ["orders", "summary", installationId, "by_status"] as const,
-    queryFn: () => client.getOrderSummary(installationId, { by: "status" }),
-    staleTime: QUERY_STALE_TIME.orders,
-  });
-
   const allItems: OrderRead[] = ordersQuery.data?.items ?? [];
-  const byStatus = summaryQuery.data?.by_status;
+
+  // KPI counts derive from the fully-loaded list's per-order bucket (same source as the Lista
+  // tabs), so a card and its tab always agree. Until the list resolves — or if it errors — the
+  // count is an honest unknown "—", never a fabricated 0 (ADR-17). A loaded-but-empty dataset
+  // legitimately yields 0 in every bucket.
+  const ordersReady = !ordersQuery.isPending && !ordersQuery.isError;
+  const kpiValue = (bucket: PedidosTab): string =>
+    ordersReady ? String(bucketTabCount(allItems, bucket) ?? 0) : UNKNOWN_KPI_VALUE;
 
   const goToFila = () => setView("fila");
   const goToListaTab = (bucketTab: PedidosTab) => () => {
@@ -154,28 +155,10 @@ export function PedidosPage() {
         aria-label="Indicadores de pedidos"
         className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"
       >
-        <KpiCard
-          label="NOVOS"
-          value={byStatus ? String(byStatus.novo) : UNKNOWN_KPI_VALUE}
-          onSelect={goToListaTab("novo")}
-        />
-        <KpiCard
-          label="A FATURAR"
-          value={byStatus ? String(byStatus.faturar) : UNKNOWN_KPI_VALUE}
-          onSelect={goToListaTab("faturar")}
-        />
-        <KpiCard
-          label="A ENVIAR"
-          value={byStatus ? String(byStatus.enviar) : UNKNOWN_KPI_VALUE}
-          onSelect={goToListaTab("enviar")}
-        />
-        {/* seven_days on OrderSummary is a TOTAL-orders count, not an enviado-in-7d bucket — a
-            "últimos 7d" sub-note here would misrepresent it (ADR-17), so it is omitted. */}
-        <KpiCard
-          label="ENVIADOS"
-          value={byStatus ? String(byStatus.enviado) : UNKNOWN_KPI_VALUE}
-          onSelect={goToListaTab("enviado")}
-        />
+        <KpiCard label="NOVOS" value={kpiValue("novo")} onSelect={goToListaTab("novo")} />
+        <KpiCard label="A FATURAR" value={kpiValue("faturar")} onSelect={goToListaTab("faturar")} />
+        <KpiCard label="A ENVIAR" value={kpiValue("enviar")} onSelect={goToListaTab("enviar")} />
+        <KpiCard label="ENVIADOS" value={kpiValue("enviado")} onSelect={goToListaTab("enviado")} />
         <KpiCard
           label="DIFAL A PAGAR"
           value={UNKNOWN_KPI_VALUE}

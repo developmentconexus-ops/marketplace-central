@@ -32,9 +32,9 @@ export function filterOrdersByTab(items: OrderRead[], tab: PedidosTab): OrderRea
   return items.filter((item) => item.bucket === tab);
 }
 
-// Counts derive from the already-loaded page's `bucket` field, so a tab's label always matches
-// the rows it renders. The KPI cards keep using the server `by_status` summary independently;
-// for the single-page demo dataset the two agree.
+// Counts derive from the already-loaded list's `bucket` field, so a tab's label always matches
+// the rows it renders. The KPI cards (PedidosPage) derive from this same helper over the same
+// list, so KPI == Lista by construction.
 export function bucketTabCount(items: OrderRead[], tab: PedidosTab): number | null {
   if (!isLiveBucketTab(tab)) return null;
   return items.filter((item) => item.bucket === tab).length;

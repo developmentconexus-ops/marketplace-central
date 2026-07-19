@@ -112,26 +112,44 @@ describe("PedidosPage", () => {
     expect(screen.getByRole("tab", { name: "Fila", selected: true })).toBeInTheDocument();
   });
 
-  it("renders the KPI live bucket counts and the DIFAL card as an honest unknown", async () => {
-    listOrders.mockResolvedValue({ items: [], next_cursor: null });
+  it("derives the KPI bucket counts from the loaded list (KPI == Lista) and gates DIFAL as unknown", async () => {
+    // Counts come from OrderRead.bucket over the full list — the same source the Lista tabs count,
+    // so a card and its tab always agree. Bucket split here: novo=2, faturar=1, enviar=3, enviado=4.
+    listOrders.mockResolvedValue({
+      items: [
+        { ...baseOrder, provider_order_id: "A", bucket: "novo" as const },
+        { ...baseOrder, provider_order_id: "B", bucket: "novo" as const },
+        { ...baseOrder, provider_order_id: "C", bucket: "faturar" as const },
+        { ...baseOrder, provider_order_id: "D", bucket: "enviar" as const },
+        { ...baseOrder, provider_order_id: "E", bucket: "enviar" as const },
+        { ...baseOrder, provider_order_id: "F", bucket: "enviar" as const },
+        { ...baseOrder, provider_order_id: "G", bucket: "enviado" as const },
+        { ...baseOrder, provider_order_id: "H", bucket: "enviado" as const },
+        { ...baseOrder, provider_order_id: "I", bucket: "enviado" as const },
+        { ...baseOrder, provider_order_id: "J", bucket: "enviado" as const },
+      ],
+      next_cursor: null,
+    });
 
     renderPage();
 
-    await screen.findByRole("heading", { name: "Pedidos" });
-    expect(await screen.findByText("2")).toBeInTheDocument(); // novo
-    expect(screen.getByText("1")).toBeInTheDocument(); // faturar
-    expect(screen.getByText("3")).toBeInTheDocument(); // enviar
-    expect(screen.getByText("4")).toBeInTheDocument(); // enviado
-    expect(screen.getByText("—")).toBeInTheDocument(); // DIFAL, gated
+    // KpiCard is a button whose accessible name is "LABEL VALUE" — assert the derived counts.
+    expect(await screen.findByRole("button", { name: "NOVOS 2" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "A FATURAR 1" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "A ENVIAR 3" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "ENVIADOS 4" })).toBeInTheDocument();
+    // DIFAL stays an honest unknown (decomposição not wired) — never a fabricated 0.
+    expect(screen.getByRole("button", { name: /DIFAL A PAGAR —/ })).toBeInTheDocument();
   });
 
-  it("renders '—' for every bucket when the summary endpoint is unavailable", async () => {
-    listOrders.mockResolvedValue({ items: [], next_cursor: null });
-    getOrderSummary.mockRejectedValue({ status: 503, error: { code: "unavailable" } });
+  it("renders '—' for every bucket KPI while the order list is unavailable", async () => {
+    listOrders.mockRejectedValue({ status: 503, error: { code: "unavailable" } });
 
     renderPage();
 
     await screen.findByRole("heading", { name: "Pedidos" });
+    // List error → the bucket counts are unknown, so all four bucket cards + DIFAL render "—",
+    // never a fabricated 0 (ADR-17).
     await waitFor(() => {
       expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(5);
     });
