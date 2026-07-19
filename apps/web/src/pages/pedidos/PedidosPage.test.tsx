@@ -488,6 +488,58 @@ describe("PedidosPage", () => {
     expect(footerAction).toBeDisabled();
   });
 
+  it("renders the drawer buyer fiscal identity + carrier/destino/frete_real when present", async () => {
+    const withFiscal = {
+      ...detailOrder,
+      destinatario: "Maria Souza",
+      destino_uf: "SP",
+      destino_cep: "01310-100",
+      frete_real: { bruto: 23.45, receiver: 10.0, sender: 13.45 },
+      rastreio: {
+        shipment_id: "SHIP-1",
+        status: "shipped",
+        substatus: "out_for_delivery",
+        transportadora: "Total Express",
+        url_rastreio: "https://tracking.totalexpress.com.br/x?id=3",
+      },
+      comprador_fiscal: {
+        nome: "Maria Souza LTDA",
+        doc_tipo: "CNPJ", // rendered verbatim (opaque, ADR-17)
+        doc_numero: "11222333000181",
+        endereco: {
+          logradouro: "Av. Paulista",
+          numero: "1000",
+          cidade: "São Paulo",
+          uf_codigo: "SP",
+          uf_nome: "São Paulo",
+          cep: "01310-100",
+          pais: "BR",
+        },
+      },
+    };
+    listOrders.mockResolvedValue({ items: [withFiscal], next_cursor: null });
+    getOrder.mockResolvedValue(withFiscal);
+
+    renderPage("?order=PO1");
+
+    await screen.findByText("Parafuso M8x40 cx100");
+    const drawer = within(screen.getByRole("complementary"));
+    // Carrier + tracking link (round-4 additive).
+    expect(drawer.getByText("Total Express")).toBeInTheDocument();
+    const trackLink = drawer.getByRole("link", { name: /rastrear/i });
+    expect(trackLink).toHaveAttribute("href", "https://tracking.totalexpress.com.br/x?id=3");
+    // Destino + destinatário (round-4 additive).
+    expect(drawer.getByText("Maria Souza")).toBeInTheDocument(); // destinatario
+    expect(drawer.getByText("SP · 01310-100")).toBeInTheDocument(); // destino_uf · destino_cep
+    // Frete real actuals.
+    expect(drawer.getByText("R$ 23,45")).toBeInTheDocument(); // frete_real.bruto
+    // Buyer fiscal identity for ERP registration.
+    expect(drawer.getByText("Maria Souza LTDA")).toBeInTheDocument(); // nome
+    expect(drawer.getByText(/CNPJ/)).toBeInTheDocument(); // doc_tipo opaque
+    expect(drawer.getByText(/11222333000181/)).toBeInTheDocument(); // doc_numero
+    expect(drawer.getByText(/Av\. Paulista/)).toBeInTheDocument(); // endereco logradouro
+  });
+
   it("renders the drawer decomposição/DIFAL block with real formatted values when present (F02-S6 real-ready path)", async () => {
     const withDecomp = {
       ...detailOrder,

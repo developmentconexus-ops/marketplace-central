@@ -217,57 +217,142 @@ function TimelineSection({ order }: { order: OrderRead }) {
   );
 }
 
+// FactRow: label → value; null/undefined → honest UnknownValue (ADR-17). Never a
+// hardcoded "—" string.
+function FactRow({
+  label,
+  value,
+  hint,
+  mono,
+}: {
+  label: string;
+  value: React.ReactNode;
+  hint?: string;
+  mono?: boolean;
+}) {
+  const empty = value === null || value === undefined || value === "";
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <span>{label}</span>
+      <span className={`text-right text-ink${mono ? " font-mono text-[11px]" : ""}`}>
+        {empty ? <UnknownValue hint={hint} /> : value}
+      </span>
+    </div>
+  );
+}
+
 function FactsSection({ order }: { order: OrderRead }) {
   const local = [order.buyer?.city, order.buyer?.uf].filter(Boolean).join("/");
+  const destino = [order.destino_uf, order.destino_cep].filter(Boolean).join(" · ");
+  const carrier = order.rastreio?.transportadora;
+  const trackUrl = order.rastreio?.url_rastreio;
+  const frete = order.frete_real;
   return (
     <section className="flex flex-col gap-2 border-t border-border-2 pt-3 text-xs text-muted">
-      <div className="flex items-start justify-between gap-3">
-        <span>Nota fiscal</span>
-        {/* nf_state is the vínculo 'linked' marker on OrderRead, not a real NF number — rendered
-            honestly, never as a fabricated NF number/deep-link (ruling-6). */}
-        <span className="text-right text-ink">
-          {order.nf_state ? `vínculo: ${order.nf_state}` : <UnknownValue hint="ainda não emitida" />}
-        </span>
-      </div>
-      <div className="flex items-start justify-between gap-3">
-        <span>Rastreio</span>
-        <span className="text-right font-mono text-[11px] text-ink">
-          {order.rastreio
+      <FactRow
+        label="Nota fiscal"
+        /* nf_state is the vínculo 'linked' marker on OrderRead, not a real NF number — rendered
+           honestly, never as a fabricated NF number/deep-link (ruling-6). */
+        value={order.nf_state ? `vínculo: ${order.nf_state}` : null}
+        hint="ainda não emitida"
+      />
+      <FactRow
+        label="Rastreio"
+        mono
+        value={
+          order.rastreio
             ? `${order.rastreio.shipment_id} · ${order.rastreio.status}${order.rastreio.substatus ? ` · ${order.rastreio.substatus}` : ""}`
-            : <UnknownValue />}
-        </span>
-      </div>
-      <div className="flex items-start justify-between gap-3">
-        <span>Destino</span>
-        <span className="text-right text-ink">{order.destino_uf ?? <UnknownValue />}</span>
-      </div>
-      <div className="flex items-start justify-between gap-3">
-        <span>Código de rastreio</span>
-        {/* No carrier tracking code on OrderRead — honest unknown, never fabricated (ADR-17). */}
-        <span className="text-right text-ink">
-          <UnknownValue hint="código da transportadora não disponível no backend" />
-        </span>
-      </div>
-      <div className="flex items-start justify-between gap-3">
-        <span>Comprador</span>
-        <span className="text-right text-ink">
-          {order.buyer?.display ?? <UnknownValue />}
-          {order.buyer ? (
+            : null
+        }
+      />
+      <FactRow
+        label="Transportadora"
+        value={
+          carrier ? (
             <>
+              <span>{carrier}</span>
+              {trackUrl ? (
+                <>
+                  {" · "}
+                  <a
+                    href={trackUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-2 hover:text-ink"
+                  >
+                    rastrear
+                  </a>
+                </>
+              ) : null}
+            </>
+          ) : null
+        }
+        hint="transportadora ainda não atribuída"
+      />
+      <FactRow label="Destino" value={destino || null} />
+      <FactRow label="Destinatário" value={order.destinatario ?? null} hint="destinatário ainda não disponível" />
+      <FactRow
+        label="Frete real"
+        mono
+        value={
+          frete && (frete.bruto != null || frete.receiver != null || frete.sender != null) ? (
+            <>
+              <span>{formatMoney(frete.bruto ?? null) ?? <UnknownValue />}</span>
+              <br />
+              <span className="text-[11px] text-faint">
+                receiver {formatMoney(frete.receiver ?? null) ?? "—"} · sender{" "}
+                {formatMoney(frete.sender ?? null) ?? "—"}
+              </span>
+            </>
+          ) : null
+        }
+        hint="custos de frete não disponíveis"
+      />
+      <FactRow
+        label="Comprador"
+        value={
+          order.buyer ? (
+            <>
+              {order.buyer.display || <UnknownValue />}
               <br />
               <span className="text-[11px] text-faint">{local || <UnknownValue />}</span>
             </>
-          ) : null}
-        </span>
-      </div>
-      <div className="flex items-start justify-between gap-3">
-        <span>Documento</span>
-        {/* No buyer document (CPF/CNPJ) on OrderRead — honest unknown, never fabricated (ruling-6). */}
-        <span className="text-right text-ink">
-          <UnknownValue hint="documento do comprador não disponível no backend" />
-        </span>
-      </div>
+          ) : null
+        }
+      />
     </section>
+  );
+}
+
+// Composes the buyer billing address into a single honest line. Absent parts are
+// dropped; an all-absent address yields null (caller renders UnknownValue). Never
+// fabricates a value (ADR-17).
+function formatEndereco(end: NonNullable<OrderRead["comprador_fiscal"]>["endereco"]): string | null {
+  if (!end) return null;
+  const linha1 = [end.logradouro, end.numero].filter(Boolean).join(", ");
+  const linha2 = [end.cidade, end.uf_codigo].filter(Boolean).join("/");
+  const parts = [linha1, linha2, end.cep, end.pais].filter(Boolean);
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+// Buyer fiscal identity for ERP registration (name, opaque document, billing
+// address). Additive comprador_fiscal block on OrderRead — absent (buyer without
+// billing data / masked until payment) renders honest "—", never fabricated
+// (ADR-17). doc_tipo is rendered VERBATIM (opaque — never mapped to a CPF/CNPJ
+// enum). The document number is rendered for the operator only; it is never
+// logged (LGPD).
+function CompradorFiscalSection({ order }: { order: OrderRead }) {
+  const cf = order.comprador_fiscal;
+  const doc = cf?.doc_tipo || cf?.doc_numero ? [cf?.doc_tipo, cf?.doc_numero].filter(Boolean).join(" ") : null;
+  const endereco = formatEndereco(cf?.endereco);
+  return (
+    <Section title="Comprador · fiscal (ERP)">
+      <dl className="flex flex-col gap-2 text-xs text-muted">
+        <FactRow label="Nome/Razão" value={cf?.nome ?? null} hint="nome fiscal não disponível" />
+        <FactRow label="Documento" value={doc} hint="documento não disponível" mono />
+        <FactRow label="Endereço" value={endereco} hint="endereço fiscal não disponível" />
+      </dl>
+    </Section>
   );
 }
 
@@ -276,6 +361,7 @@ function DrawerBody({ order }: { order: OrderRead }) {
     <div className="flex flex-col gap-4">
       <ItemsSection order={order} />
       <DecomposicaoSection order={order} />
+      <CompradorFiscalSection order={order} />
       <TimelineSection order={order} />
       <FactsSection order={order} />
     </div>
