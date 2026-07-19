@@ -3,6 +3,9 @@ import type { DashboardDegradedSource, DashboardOverview } from "@marketplace-ce
 import { EmptyState, ErrorState, LoadingState, StatCard } from "@marketplace-central/ui";
 import { useClient } from "../../app/ClientContext";
 import { useInstallation } from "../../app/InstallationContext";
+import { Atalhos } from "./Atalhos";
+import { FilaDeAtencao } from "./FilaDeAtencao";
+import { PedidosRecentes } from "./PedidosRecentes";
 
 // Honest-absent glyph: matches the UNKNOWN_KPI_VALUE convention in pedidos/PedidosPage.tsx:33
 // (cited/reused, not forked) so a null source and a real 0 are never visually confused (ADR-17).
@@ -189,6 +192,14 @@ export function DashboardPage() {
               onRetry={() => void query.refetch()}
             />
             <UltimoImportCard summary={query.data} onRetry={() => void query.refetch()} />
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <div className="flex flex-col gap-6 lg:col-span-2">
+              <FilaDeAtencao summary={query.data} />
+              <PedidosRecentes />
+            </div>
+            <Atalhos />
           </div>
         </>
       )}
