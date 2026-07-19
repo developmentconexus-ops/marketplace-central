@@ -152,10 +152,10 @@ describe("AppRouter", () => {
     expect(await screen.findByRole("tab", { name: "Todos" })).toBeInTheDocument();
   });
 
-  it("renders the product workspace placeholder", async () => {
-    window.history.pushState({}, "", "/catalogo/produtos/PROD1");
+  it("renders the product workspace", async () => {
+    window.history.pushState({}, "", "/catalogo/produtos/90008");
     renderAppRouter();
-    expect(await screen.findByText("Em construção — disponível em breve.")).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: "Veredicto" })).toBeInTheDocument();
   });
 
   it("mounts the real protocol page on a direct deep link", async () => {
