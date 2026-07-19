@@ -15,7 +15,7 @@ Sections: [kpis](#kpis) · [fila](#fila) · [ausente](#ausente) · [api](#api) �
 
 ## Merge-gate markers (harness 0.4.0)
 
-Worktree branch: `claude/adoring-euclid-3ccec3` (naming vs `chip/*` flagged to hub).
+Worktree branch: `chip/adoring-euclid-3ccec3` (renamed from claude/* per hub decision (a) for 0.4.0 merge-gate).
 
 P6-DUAL-GATE: AGREEMENT
 LIVE-VERIFIED: pending P7 live-drive (awaiting hub dev-stack)
