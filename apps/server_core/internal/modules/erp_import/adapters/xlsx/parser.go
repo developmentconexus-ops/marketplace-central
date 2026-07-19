@@ -77,6 +77,8 @@ func (p *Parser) Parse(ctx context.Context, source io.Reader) ([]domain.Normaliz
 			Refforn:       optionalCell(row, columns, "REFFORN"),
 			Marca:         optionalCell(row, columns, "MARCA"),
 			NCM:           optionalCell(row, columns, "NCM"),
+			Grupo:         optionalCell(row, columns, "GRUPO"),
+			DescrGrupo:    optionalCell(row, columns, "DESCRGRUPO"),
 		})
 	}
 	return result, nil

@@ -71,7 +71,7 @@ func (r *Repository) LatestCompletedSnapshot(ctx context.Context, tenantID strin
 	if err != nil {
 		return domain.ImportSnapshot{}, err
 	}
-	rows, err := r.pool.Query(ctx, `SELECT codprod,descrprod,custo::text,stock_physical,stock_reserved,ean,refforn,marca,ncm FROM erp_import_products WHERE tenant_id=$1 AND protocol_id=$2 ORDER BY codprod`, tenantID, s.ID)
+	rows, err := r.pool.Query(ctx, `SELECT codprod,descrprod,custo::text,stock_physical,stock_reserved,ean,refforn,marca,ncm,grupo,descrgrupo FROM erp_import_products WHERE tenant_id=$1 AND protocol_id=$2 ORDER BY codprod`, tenantID, s.ID)
 	if err != nil {
 		return domain.ImportSnapshot{}, err
 	}
@@ -79,7 +79,7 @@ func (r *Repository) LatestCompletedSnapshot(ctx context.Context, tenantID strin
 	s.AcceptedRows = make([]domain.NormalizedRow, 0)
 	for rows.Next() {
 		var p domain.NormalizedRow
-		if err := rows.Scan(&p.Codprod, &p.Descrprod, &p.Custo, &p.StockPhysical, &p.StockReserved, &p.EAN, &p.Refforn, &p.Marca, &p.NCM); err != nil {
+		if err := rows.Scan(&p.Codprod, &p.Descrprod, &p.Custo, &p.StockPhysical, &p.StockReserved, &p.EAN, &p.Refforn, &p.Marca, &p.NCM, &p.Grupo, &p.DescrGrupo); err != nil {
 			return domain.ImportSnapshot{}, err
 		}
 		s.AcceptedRows = append(s.AcceptedRows, p)

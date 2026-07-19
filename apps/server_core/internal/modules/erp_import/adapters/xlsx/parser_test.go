@@ -51,6 +51,59 @@ func TestParserValidAndInvalidRows(t *testing.T) {
 	if rows[1].StockReserved != nil || rows[1].EAN != nil || rows[1].Refforn != nil || rows[1].Marca != nil || rows[1].NCM != nil {
 		t.Errorf("empty optional cells must be nil: %#v", rows[1])
 	}
+	// GRUPO/DESCRGRUPO columns absent from the header ⇒ honestly absent (nil),
+	// never an empty string pretending a value (ADR-17). Covers legacy files
+	// exported before the ERP grew the group columns.
+	if rows[0].Grupo != nil || rows[0].DescrGrupo != nil || rows[1].Grupo != nil || rows[1].DescrGrupo != nil {
+		t.Errorf("absent grupo columns must be nil: %#v / %#v", rows[0], rows[1])
+	}
+}
+
+func TestParserCapturesGrupoColumns(t *testing.T) {
+	data := xlsxBytes(t, []testSheet{{
+		name: "ERP",
+		rows: [][]string{
+			{"CODPROD", "DESCRPROD", "CUSTO", "ESTOQUE_FISICO", "GRUPO", "DESCRGRUPO"},
+			{"P1", "Produto 1", "12,34", "7", "07", "Ferramentas"},
+			{"P2", "Produto 2", "5,00", "3", "", ""},
+		},
+	}})
+
+	rows, err := NewParser().Parse(context.Background(), bytes.NewReader(data))
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	if rows[0].Grupo == nil || *rows[0].Grupo != "07" {
+		t.Errorf("row 1 Grupo = %#v, want pointer to 07", rows[0].Grupo)
+	}
+	if rows[0].DescrGrupo == nil || *rows[0].DescrGrupo != "Ferramentas" {
+		t.Errorf("row 1 DescrGrupo = %#v, want pointer to Ferramentas", rows[0].DescrGrupo)
+	}
+	// Empty group cells on a row of a file that HAS the columns ⇒ still nil.
+	if rows[1].Grupo != nil || rows[1].DescrGrupo != nil {
+		t.Errorf("empty grupo cells must be nil: %#v", rows[1])
+	}
+}
+
+func TestParserGrupoHeaderFoldsAccentAndCase(t *testing.T) {
+	data := xlsxBytes(t, []testSheet{{
+		name: "ERP",
+		rows: [][]string{
+			{"codprod", "descrprod", "custo", "estoque_fisico", " Grupo ", "DescrGrupo"},
+			{"P1", "Produto 1", "9,90", "2", "12", "Solda"},
+		},
+	}})
+
+	rows, err := NewParser().Parse(context.Background(), bytes.NewReader(data))
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	if rows[0].Grupo == nil || *rows[0].Grupo != "12" {
+		t.Errorf("folded Grupo header mapped incorrectly: %#v", rows[0].Grupo)
+	}
+	if rows[0].DescrGrupo == nil || *rows[0].DescrGrupo != "Solda" {
+		t.Errorf("folded DescrGrupo header mapped incorrectly: %#v", rows[0].DescrGrupo)
+	}
 }
 
 func TestParserHeaderFoldingAndFirstSheetOnly(t *testing.T) {
