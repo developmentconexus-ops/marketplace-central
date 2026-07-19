@@ -310,7 +310,12 @@ describe("PricingMatrix (EXEMPLO-IO golden)", () => {
     // A failed fetch is unknown, not a verdict — "we couldn't check" ≠ "no evidence".
     await waitFor(() => expect(veredicto).not.toHaveTextContent("SEM_EVIDENCIA"));
     expect(veredicto).toHaveTextContent("—");
-    expect(within(row).getByTestId("matrix-mercado-90001")).toHaveTextContent("—");
+    // Positively assert the ERROR hint (not the loading hint) so a regression that
+    // sticks in the loading branch — same "—" DOM — cannot pass this test.
+    expect(within(veredicto).getByTitle("mercado: falha ao carregar")).toBeInTheDocument();
+    const mercado = within(row).getByTestId("matrix-mercado-90001");
+    expect(mercado).toHaveTextContent("—");
+    expect(within(mercado).getByTitle("mercado: falha ao carregar")).toBeInTheDocument();
   });
 
   it("decompose failure is honest, not misattributed to the M-07 placeholder (ADR-17)", async () => {
@@ -320,8 +325,11 @@ describe("PricingMatrix (EXEMPLO-IO golden)", () => {
 
     const row = await screen.findByTestId("matrix-row-90001");
     const cell = within(row).getByTestId("matrix-margem-90001");
-    await waitFor(() => expect(cell).toHaveTextContent("—"));
-    // A failed calc must NOT wear the "margem: M-07" (engine-pending) hint.
+    await waitFor(() =>
+      // Positively assert the ERROR hint so a regression stuck in the plain-loading
+      // branch (also "—", no hint) cannot pass; and NOT the engine-pending M-07 hint.
+      expect(within(cell).getByTitle("margem: falha ao calcular")).toBeInTheDocument(),
+    );
     expect(within(cell).queryByTitle("margem: M-07")).toBeNull();
   });
 });
