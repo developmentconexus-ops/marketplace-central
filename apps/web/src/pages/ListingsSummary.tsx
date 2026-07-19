@@ -27,9 +27,9 @@ interface SummaryCounterProps {
 
 function SummaryCounter({ label, value }: SummaryCounterProps) {
   return (
-    <div className="border-l border-slate-200 pl-3 first:border-l-0 first:pl-0">
-      <dt className="text-xs text-slate-500">{label}</dt>
-      <dd className="mt-1 text-lg font-semibold text-slate-950">
+    <div className="border-l border-border pl-3 first:border-l-0 first:pl-0">
+      <dt className="text-xs text-faint">{label}</dt>
+      <dd className="mt-1 text-lg font-semibold text-ink">
         {value === null ? <UnknownValue /> : value}
       </dd>
     </div>
@@ -64,7 +64,7 @@ export function ListingsSummary({
         <SummaryCounter label="Abaixo da margem" value={data.exceptions.below_margin_worst_case} />
         <SummaryCounter label="Margem desconhecida" value={data.exceptions.margin_unknown} />
       </dl>
-      <p className="mt-4 text-xs text-slate-500">
+      <p className="mt-4 text-xs text-faint">
         Atualizado <FreshnessIndicator asOf={data.as_of} />
       </p>
       {chips.length > 0 ? (
@@ -79,8 +79,8 @@ export function ListingsSummary({
                 onClick={() => onExceptionChipClick(key)}
                 className={`rounded-full border px-3 py-1 text-sm font-medium transition-colors ${
                   active
-                    ? "border-blue-600 bg-blue-600 text-white"
-                    : "border-slate-200 bg-slate-100 text-slate-700 hover:border-slate-300 hover:bg-slate-200"
+                    ? "border-accent bg-accent text-white"
+                    : "border-border bg-surface-2 text-muted hover:border-border-2 hover:bg-surface-2"
                 }`}
               >
                 {`${exceptionChipLabels[key]}: ${count}`}
