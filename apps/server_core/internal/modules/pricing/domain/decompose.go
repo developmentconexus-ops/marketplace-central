@@ -22,6 +22,11 @@ var (
 	cem            = big.NewRat(100, 1)
 )
 
+// defaultTaxaFixaLimiarCents is taxaFixaLimiar expressed in cents (79,00 ⇒
+// 7900). This is the ONLY surviving form of the 79 literal for solve segment
+// math (solve.go); it must equal taxaFixaLimiar × 100.
+const defaultTaxaFixaLimiarCents int64 = 7900
+
 // DecomposeInput carries the ALREADY-RESOLVED decimal inputs for one
 // decomposition. The engine is pure (note G1): comissão pct, aliquota,
 // efetivo, frete, custo and tarifa_full are resolved by the ports (S6)
@@ -79,6 +84,15 @@ type Decomposition struct {
 // exact interna−interestadual via big.Rat in DifalForUF, so no rounded value
 // is ever re-rounded into a cost.
 func Decompose(in DecomposeInput) Decomposition {
+	return decomposeWithLimiar(in, taxaFixaLimiar)
+}
+
+// decomposeWithLimiar is the IC-04 formula parameterized on the taxa_fixa/
+// frete step threshold. Decompose calls it with the default taxaFixaLimiar
+// (79); solve.go's per-segment math calls it directly with an override so
+// the frozen Decompose signature (DecomposeInput) Decomposition never
+// changes shape.
+func decomposeWithLimiar(in DecomposeInput, limiar *big.Rat) Decomposition {
 	preco := mustRat(in.Preco)
 
 	comissao, comissaoRat := pctOfPrice(in.ComissaoPct, preco)
@@ -86,7 +100,7 @@ func Decompose(in DecomposeInput) Decomposition {
 
 	var taxaFixa string
 	var taxaFixaRat *big.Rat
-	if preco.Cmp(taxaFixaLimiar) < 0 {
+	if preco.Cmp(limiar) < 0 {
 		taxaFixa, taxaFixaRat = round2(new(big.Rat).Set(taxaFixaValor))
 	} else {
 		taxaFixa, taxaFixaRat = round2(new(big.Rat))
@@ -104,8 +118,8 @@ func Decompose(in DecomposeInput) Decomposition {
 	sum.Add(sum, taxaFixaRat)
 	var unknown []string
 
-	// frete: applied only when preço ≥ 79.
-	if preco.Cmp(taxaFixaLimiar) < 0 {
+	// frete: applied only when preço ≥ limiar.
+	if preco.Cmp(limiar) < 0 {
 		s, r := round2(new(big.Rat))
 		out.Frete = &s
 		sum.Add(sum, r)

@@ -99,6 +99,53 @@ func TestSolveTargetPriceUnknownInputsBlock(t *testing.T) {
 	}
 }
 
+// FreteProduto nil but the target is attainable in the low segment (preço <
+// limiar), where frete is 0 and never consulted — must still solve.
+func TestSolveFreteNilLowSegmentSolves(t *testing.T) {
+	in := baseSolve()
+	in.FreteProduto = nil
+	in.TargetMargemPct = "15.00"
+
+	res := SolveTargetPrice(in)
+	if !res.Reached || res.Preco == nil || res.FreteDesconhecido || len(res.Desconhecidos) != 0 {
+		t.Fatalf("target 15.00 with frete nil must solve in the low segment; got %+v", res)
+	}
+	if p := ratOf(t, *res.Preco); p.Cmp(taxaFixaLimiar) >= 0 {
+		t.Fatalf("solved preço %q must be below 79 (low segment)", *res.Preco)
+	}
+	if got := resim(in, *res.Preco); got != "15.00" {
+		t.Fatalf("re-sim margem_pct = %q at preço %q, want 15.00 EXACT", got, *res.Preco)
+	}
+}
+
+// FreteProduto nil and the target is only attainable in the high segment
+// (preço ≥ limiar), where produto frete is required but unknown — must block
+// with FreteDesconhecido, not fabricate a preço or a ceiling.
+func TestSolveFreteNilHighSegmentBlocks(t *testing.T) {
+	in := baseSolve()
+	in.FreteProduto = nil
+	in.TargetMargemPct = "30.00"
+
+	res := SolveTargetPrice(in)
+	if !res.FreteDesconhecido || res.Reached || res.Preco != nil || len(res.Desconhecidos) != 0 || res.CeilingPct != "" {
+		t.Fatalf("target 30.00 with frete nil must block on FreteDesconhecido; got %+v", res)
+	}
+}
+
+// custo nil is a structural (segment-independent) block that must win over
+// the frete-nil segment-conditional block.
+func TestSolveCustoNilBlocksBeforeFrete(t *testing.T) {
+	in := baseSolve()
+	in.Custo = nil
+	in.FreteProduto = nil
+	in.TargetMargemPct = "30.00"
+
+	res := SolveTargetPrice(in)
+	if len(res.Desconhecidos) != 1 || res.Desconhecidos[0] != "custo_erp" || res.FreteDesconhecido || res.Reached {
+		t.Fatalf("custo nil must block structurally (not FreteDesconhecido); got %+v", res)
+	}
+}
+
 // C03(d) — monotonic-bracket invariant: within a single segment margem_pct is
 // strictly increasing in preço, which is the precondition the per-segment
 // binary search relies on. Sampled across the low segment (< 79) and the high

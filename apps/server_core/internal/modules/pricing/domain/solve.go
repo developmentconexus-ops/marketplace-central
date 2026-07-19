@@ -7,11 +7,6 @@ import "math/big"
 // it is treated as UNREACHABLE alongside the analytic ceiling.
 const solveMaxCents int64 = 100_000_000
 
-// thresholdCents is preço 79,00 — the taxa_fixa/frete step. The two monotone
-// segments are [1, 7899] (taxa_fixa 6,50, frete 0) and [7900, cap] (taxa_fixa
-// 0, frete = frete_produto).
-const thresholdCents int64 = 7900
-
 // SolveInput is a DecomposeInput with the preço replaced by a target
 // margem_pct — the bidirectional (margem → preço) direction. Every other
 // component is resolved exactly as for Decompose.
@@ -28,6 +23,10 @@ type SolveInput struct {
 	DifalEnabled bool
 	DestinoUF    string
 	EfetivoPct   string
+
+	// TaxaFixaLimiarCents overrides the taxa_fixa/frete step (in cents) for
+	// this solve. 0 ⇒ default defaultTaxaFixaLimiarCents (79,00).
+	TaxaFixaLimiarCents int64
 }
 
 // SolveResult is the outcome of SolveTargetPrice. Exactly one condition holds:
@@ -36,12 +35,26 @@ type SolveInput struct {
 //     the analytic ceiling (or unattainable within the cap); CeilingPct is the
 //     attainable margem_pct ceiling to surface (mapped to HTTP 200 in S7).
 //   - Desconhecidos non-empty: BLOCKING — inputs leave margem unknown (ADR-17);
-//     the solver reports the missing components, never a preço or a ceiling.
+//     the solver reports the missing components (custo_erp / tarifa_full /
+//     difal — segment-independent), never a preço or a ceiling.
+//   - FreteDesconhecido true: the target is only attainable in the ≥limiar
+//     segment, where produto frete is required but unknown (ADR-17). Distinct
+//     from Desconhecidos (structural, segment-independent) and from
+//     CeilingPct (target unreachable regardless of frete).
 type SolveResult struct {
-	Preco         *string
-	Reached       bool
-	CeilingPct    string
-	Desconhecidos []string
+	Preco             *string
+	Reached           bool
+	CeilingPct        string
+	Desconhecidos     []string
+	FreteDesconhecido bool
+}
+
+// limiarCents resolves the effective taxa_fixa/frete step for this solve.
+func (in SolveInput) limiarCents() int64 {
+	if in.TaxaFixaLimiarCents <= 0 {
+		return defaultTaxaFixaLimiarCents
+	}
+	return in.TaxaFixaLimiarCents
 }
 
 // SolveTargetPrice finds the cheapest 2dp preço whose Decompose margem_pct
@@ -51,6 +64,7 @@ type SolveResult struct {
 // break. The ceiling (100 − comissão − aliquota − difal) is the margem_pct
 // asymptote as preço→∞.
 func SolveTargetPrice(in SolveInput) SolveResult {
+	limiar := in.limiarCents()
 	if unk := in.structuralUnknowns(); len(unk) > 0 {
 		return SolveResult{Desconhecidos: unk}
 	}
@@ -61,15 +75,20 @@ func SolveTargetPrice(in SolveInput) SolveResult {
 		return SolveResult{CeilingPct: ceiling}
 	}
 
-	// low segment (preço < 79) yields the cheapest price when it can reach the
-	// target — its top (78,99) already meets or exceeds it.
-	if cmpPct(in.margemAt(thresholdCents-1), in.TargetMargemPct) >= 0 {
-		if p, ok := in.searchSegment(1, thresholdCents-1); ok {
+	// low segment (preço < limiar): frete is 0 here, so always evaluable even
+	// when produto frete is unknown — this is the cheapest price when it reaches.
+	if cmpPct(in.margemAt(limiar-1), in.TargetMargemPct) >= 0 {
+		if p, ok := in.searchSegment(1, limiar-1); ok {
 			return SolveResult{Preco: &p, Reached: true}
 		}
 	}
-	// high segment (preço ≥ 79).
-	if p, ok := in.searchSegment(thresholdCents, solveMaxCents); ok {
+	// target needs the high segment (preço ≥ limiar), where produto frete is
+	// consulted. If it is unknown, block ONLY this segment (ADR-17) — do not
+	// fabricate a frete of 0.
+	if in.FreteProduto == nil {
+		return SolveResult{FreteDesconhecido: true}
+	}
+	if p, ok := in.searchSegment(limiar, solveMaxCents); ok {
 		return SolveResult{Preco: &p, Reached: true}
 	}
 	return SolveResult{CeilingPct: ceiling}
@@ -94,11 +113,11 @@ func (in SolveInput) difalApplied() bool {
 
 // structuralUnknowns returns the components that make margem unknown regardless
 // of preço (custo nil, full+tarifa_full nil, difal enabled+destino unknown).
-// frete_produto nil is caught here too because the search may enter the ≥79
-// segment where frete is consulted. Evaluated at a ≥79 preço so every consulted
-// component is exercised.
+// frete_produto nil is NO LONGER caught here — it is now a segment-conditional
+// state handled by SolveTargetPrice. Evaluated at limiar-1, a low-segment
+// preço where frete is 0.
 func (in SolveInput) structuralUnknowns() []string {
-	return in.margemDecompose(15000).ComponentesDesconhecidos
+	return in.margemDecompose(in.limiarCents() - 1).ComponentesDesconhecidos
 }
 
 func (in SolveInput) searchSegment(loCents, hiCents int64) (string, bool) {
@@ -136,12 +155,12 @@ func (in SolveInput) margemAt(cents int64) string {
 }
 
 func (in SolveInput) margemDecompose(cents int64) Decomposition {
-	return Decompose(DecomposeInput{
+	return decomposeWithLimiar(DecomposeInput{
 		Preco: centsToStr(cents), ComissaoPct: in.ComissaoPct, AliquotaPct: in.AliquotaPct,
 		Modalidade: in.Modalidade, TarifaFull: in.TarifaFull,
 		FreteProduto: in.FreteProduto, Custo: in.Custo,
 		DifalEnabled: in.DifalEnabled, DestinoUF: in.DestinoUF, EfetivoPct: in.EfetivoPct,
-	})
+	}, big.NewRat(in.limiarCents(), 100))
 }
 
 // centsToStr renders integer cents as a 2dp decimal string via the single
