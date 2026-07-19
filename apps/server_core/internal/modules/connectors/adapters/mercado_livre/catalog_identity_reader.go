@@ -35,7 +35,10 @@ type mlCatalogBuyBoxWinner struct {
 }
 
 func (a *CapabilityAdapter) searchCatalogByEAN(ctx context.Context, accountRef domain.ProviderAccountRef, token, ean string) (domain.CatalogSearchResult, error) {
+	// ML /products/search 4XXs without site_id (FINDING-M02-COLLECT-4XX, D-86);
+	// same contract catalog_match_reader.searchCatalog honors and D-83 proved live.
 	query := url.Values{}
+	query.Set("site_id", a.siteID)
 	query.Set("product_identifier", ean)
 	var response mlCatalogSearchResponse
 	if err := a.doJSON(ctx, accountRef, token, http.MethodGet, "/products/search?"+query.Encode(), nil, &response); err != nil {

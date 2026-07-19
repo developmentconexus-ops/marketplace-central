@@ -55,6 +55,33 @@ func TestSearchCatalogByEANMapsCandidatesInProviderOrder(t *testing.T) {
 	}
 }
 
+// TestSearchCatalogByEANSendsSiteIDAndProductIdentifier is the regression guard
+// for FINDING-M02-COLLECT-4XX (D-86): the ML /products/search endpoint 4XXs
+// when site_id is absent, so every catalog EAN search MUST carry site_id
+// alongside product_identifier — the same contract catalog_match_reader's
+// searchCatalog already honors and that homologation proved live (D-83).
+func TestSearchCatalogByEANSendsSiteIDAndProductIdentifier(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/products/search" {
+			t.Fatalf("request = %s %s", r.Method, r.URL.Path)
+		}
+		if got := r.URL.Query().Get("site_id"); got != "MLB" {
+			t.Fatalf("site_id = %q, want MLB", got)
+		}
+		if got := r.URL.Query().Get("product_identifier"); got != "7891234560019" {
+			t.Fatalf("product_identifier = %q, want 7891234560019", got)
+		}
+		_, _ = io.WriteString(w, `{"results":[]}`)
+	}))
+	defer server.Close()
+
+	if _, err := catalogIdentityTestAdapter(server.URL, time.Now().UTC()).SearchCatalogByEAN(context.Background(), pricingAccountRef(), "7891234560019"); err != nil {
+		t.Fatalf("SearchCatalogByEAN() error = %v", err)
+	}
+}
+
 func TestSearchCatalogByEANZeroResultsReturnsEmptyNonNil(t *testing.T) {
 	t.Parallel()
 
