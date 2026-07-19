@@ -2,6 +2,7 @@ import type { JSX } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ErrorState } from "@marketplace-central/ui";
 import { applyProdutoTab, parseProdutoTab, type ProdutoTab } from "./productQueryState";
+import { AnunciosVinculadosTab } from "./AnunciosVinculadosTab";
 import { ProdutoHeader } from "./ProdutoHeader";
 import { VeredictoBox } from "./VeredictoBox";
 
@@ -87,7 +88,7 @@ export function ProdutoPage(): JSX.Element {
         <VeredictoBox productId={productId} />
       </TabPanel>
       <TabPanel tab="anuncios" active={activeTab === "anuncios"}>
-        <p className="text-sm text-muted">Anúncios vinculados — em breve.</p>
+        <AnunciosVinculadosTab productId={productId} />
       </TabPanel>
       <TabPanel tab="estoque" active={activeTab === "estoque"}>
         <p className="text-sm text-muted">Estoque — em breve.</p>
