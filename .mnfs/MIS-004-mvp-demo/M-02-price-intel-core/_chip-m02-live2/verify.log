@@ -1,0 +1,27 @@
+# CHIP-M02-LIVE-2 verification log — 7fde1998
+
+## go build ./... (server_core)
+exit=0
+
+## go vet connectors+market+composition
+exit=0
+
+## go test connectors ML (v, offers+pricing)
+ok  	marketplace-central/apps/server_core/internal/modules/connectors/adapters/mercado_livre	2.316s
+
+## go test composition (v, observe+map)
+--- PASS: TestGetLocalIdentityMapsReaderNotFoundToSentinel (0.00s)
+--- PASS: TestMapMarketConnectorError (0.00s)
+--- PASS: TestMapMarketProviderErrorContextDeadline (0.00s)
+--- PASS: TestObserveProviderFailureWarnsOnceSanitized (0.01s)
+--- PASS: TestObserveProviderFailureIgnoresBodilessErrors (0.00s)
+--- PASS: TestAccountRefForTenant (0.00s)
+PASS
+ok  	marketplace-central/apps/server_core/internal/composition	2.932s
+
+## go test market
+?   	marketplace-central/apps/server_core/internal/modules/market/adapters/postgres	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/market/application	1.323s
+ok  	marketplace-central/apps/server_core/internal/modules/market/domain	1.161s
+?   	marketplace-central/apps/server_core/internal/modules/market/ports	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/market/transport	1.385s
