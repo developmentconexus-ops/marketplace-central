@@ -284,5 +284,89 @@ describe("AnunciosTable", () => {
 
       expect(screen.getByText("Sem produto")).toBeInTheDocument();
     });
+
+    // Golden rows per dispatch EXEMPLO-IO (design-screens §Anúncios group-row
+    // spec: chevron + meta "ERP est. N · M anúncios" + pill ok/N erro).
+    // ERP est. is genuinely unavailable FE-only (ListingGroup carries no ERP
+    // stock field, seam FROZEN T-1) → honest "—" per ADR-17, never fabricated.
+    describe("enriched group header (chevron + meta + error pill)", () => {
+      const grp = (overrides: Partial<import("@marketplace-central/sdk-runtime").ListingGroup> = {}) => ({
+        product_id: "product_1",
+        product_title: "Produto X",
+        listing_count: 3,
+        group_state: "ok" as const,
+        listings: [
+          { ...listing, listing_id: "g1", sync_state: "synced" as const },
+          { ...listing, listing_id: "g2", sync_state: "synced" as const },
+          { ...listing, listing_id: "g3", sync_state: "synced" as const },
+        ],
+        ...overrides,
+      });
+
+      it("GOLDEN: 3 listings, 1 sync error → 'ERP est. —', '3 anúncios', '1 erro'", () => {
+        renderTable(
+          <AnunciosTable
+            groups={[grp({ listings: [
+              { ...listing, listing_id: "g1", sync_state: "error" },
+              { ...listing, listing_id: "g2", sync_state: "synced" },
+              { ...listing, listing_id: "g3", sync_state: "synced" },
+            ] })]}
+            {...tableSelectionProps}
+          />,
+        );
+
+        const header = screen.getByText("Produto X").closest("tr")!;
+        expect(within(header).getByText(/ERP est\.\s*—/)).toBeInTheDocument();
+        expect(within(header).getByText(/3\s+anúncios/)).toBeInTheDocument();
+        expect(within(header).getByText("1 erro")).toBeInTheDocument();
+        // ADR-17: never a fabricated ERP stock 0.
+        expect(within(header).queryByText(/ERP est\.\s*0/)).not.toBeInTheDocument();
+      });
+
+      it("GOLDEN: 3 listings, all synced → 'ERP est. —', '✓ ok' pill, no error count", () => {
+        renderTable(<AnunciosTable groups={[grp()]} {...tableSelectionProps} />);
+
+        const header = screen.getByText("Produto X").closest("tr")!;
+        expect(within(header).getByText(/ERP est\.\s*—/)).toBeInTheDocument();
+        expect(within(header).getByText(/3\s+anúncios/)).toBeInTheDocument();
+        expect(within(header).getByText("ok")).toBeInTheDocument();
+        expect(within(header).queryByText(/erro/)).not.toBeInTheDocument();
+      });
+
+      it("pluralizes honestly: 1 listing → 'anúncio', 2 errors → 'erros'", () => {
+        renderTable(
+          <AnunciosTable
+            groups={[grp({
+              listing_count: 2,
+              listings: [
+                { ...listing, listing_id: "g1", sync_state: "error" },
+                { ...listing, listing_id: "g2", sync_state: "error" },
+              ],
+            })]}
+            {...tableSelectionProps}
+          />,
+        );
+
+        const header = screen.getByText("Produto X").closest("tr")!;
+        expect(within(header).getByText(/2\s+anúncios/)).toBeInTheDocument();
+        expect(within(header).getByText("2 erros")).toBeInTheDocument();
+      });
+
+      it("chevron collapses the group: child listing rows hidden when collapsed", () => {
+        renderTable(<AnunciosTable groups={[grp()]} {...tableSelectionProps} />);
+
+        // Expanded by default → child rows present.
+        expect(screen.getAllByRole("button", { name: "Camiseta azul" })).toHaveLength(3);
+
+        const toggle = screen.getByRole("button", { name: /grupo Produto X/i });
+        expect(toggle).toHaveAttribute("aria-expanded", "true");
+        fireEvent.click(toggle);
+
+        expect(toggle).toHaveAttribute("aria-expanded", "false");
+        expect(screen.queryByRole("button", { name: "Camiseta azul" })).not.toBeInTheDocument();
+        // Header (title + meta) stays visible when collapsed.
+        expect(screen.getByText("Produto X")).toBeInTheDocument();
+      });
+    });
   });
 });

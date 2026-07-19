@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import type {
   ListingGroup,
@@ -137,8 +137,26 @@ function formatQuality(qualityScore: number | null) {
   return `${qualityScore}%`;
 }
 
+// A group's stable key (matches the group-header row key). product_id is the
+// CODPROD; the synthetic no-product bucket collapses to "sem-produto".
+function groupKey(group: ListingGroup) {
+  return group.product_id ?? "sem-produto";
+}
+
 export function AnunciosTable({ items, groups, asOf, selectedIds, onToggle, onTogglePage, onOpen }: AnunciosTableProps) {
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
+  // Groups start expanded (preserves the flat-list demo behaviour); the chevron
+  // collapses a group to just its header row. Set holds the collapsed keys.
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set());
+
+  function toggleGroup(key: string) {
+    setCollapsedGroups((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
   // Agrupar-por-produto renders per-CODPROD groups (group-header row + child
   // listing rows); the flat W1 view (groups absent) is unchanged. Both modes
   // select over the same flattened listing set.
@@ -197,11 +215,45 @@ export function AnunciosTable({ items, groups, asOf, selectedIds, onToggle, onTo
 
   function renderGroupHeader(group: ListingGroup) {
     const title = group.product_title ?? "Sem produto";
+    const key = groupKey(group);
+    const expanded = !collapsedGroups.has(key);
+    // M anúncios = listing_count (authoritative count from the page).
+    const listingsLabel = `${group.listing_count} ${group.listing_count === 1 ? "anúncio" : "anúncios"}`;
+    // Error pill = listings whose sync_state is a hard error (per-listing data
+    // already in the row set). ADR-17: counts only real error states.
+    const errorCount = group.listings.filter((l) => l.sync_state === "error").length;
     return (
-      <tr key={`group:${group.product_id ?? "sem-produto"}`} className="bg-surface-2 text-ink">
+      <tr key={`group:${key}`} className="bg-surface-2 text-ink">
         <td className="px-3 py-2" colSpan={TABLE_COLUMN_COUNT}>
-          <span className="text-sm font-semibold">{title}</span>{" "}
-          <span className="text-xs font-normal text-faint">({group.listing_count})</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => toggleGroup(key)}
+              aria-expanded={expanded}
+              aria-label={`${expanded ? "Recolher" : "Expandir"} grupo ${title}`}
+              className="flex h-5 w-5 items-center justify-center rounded text-faint hover:bg-surface hover:text-ink"
+            >
+              <span aria-hidden="true">{expanded ? "▾" : "▸"}</span>
+            </button>
+            <span className="text-sm font-semibold">{title}</span>
+            <span className="text-faint" aria-hidden="true">·</span>
+            {/* ERP stock per group is not available FE-only (ListingGroup carries
+                no ERP field, seam frozen) — honest "—", never a fabricated 0. */}
+            <span className="text-xs font-normal text-faint">ERP est. —</span>
+            <span className="text-faint" aria-hidden="true">·</span>
+            <span className="text-xs font-normal text-faint">{listingsLabel}</span>
+            <span className="text-faint" aria-hidden="true">·</span>
+            {errorCount > 0 ? (
+              <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-pill bg-warn-soft px-2 py-0.5 text-xs font-medium text-warn">
+                {`${errorCount} ${errorCount === 1 ? "erro" : "erros"}`}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-pill bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent-ink">
+                <span aria-hidden="true">✓</span>
+                <span>ok</span>
+              </span>
+            )}
+          </div>
         </td>
       </tr>
     );
@@ -235,7 +287,10 @@ export function AnunciosTable({ items, groups, asOf, selectedIds, onToggle, onTo
         </thead>
         <tbody className="divide-y divide-border-2">
           {groups
-            ? groups.flatMap((group) => [renderGroupHeader(group), ...group.listings.map((item) => renderRow(item))])
+            ? groups.flatMap((group) => [
+                renderGroupHeader(group),
+                ...(collapsedGroups.has(groupKey(group)) ? [] : group.listings.map((item) => renderRow(item))),
+              ])
             : flatItems.map((item) => renderRow(item))}
         </tbody>
       </table>
