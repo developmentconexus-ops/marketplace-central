@@ -85,8 +85,10 @@ func TestListCatalogOffersMidPaginationFailureReturnsNoPartialResults(t *testing
 	}))
 	defer server.Close()
 
+	// A mid-pagination 5xx is a provider fault, NOT the capability being disabled.
+	// Disabled is reserved for the flag-off path (FINDING-M02-LIVE-2 D1, D-86).
 	offers, err := catalogOffersTestAdapter(server.URL, true).ListCatalogOffers(context.Background(), pricingAccountRef(), "MLB-CATALOG")
-	if !errors.Is(err, domain.ErrCatalogOffersUnavailable) || offers != nil {
+	if !errors.Is(err, domain.ErrProviderUnavailable) || errors.Is(err, domain.ErrCatalogOffersUnavailable) || offers != nil {
 		t.Fatalf("offers = %#v, error = %v", offers, err)
 	}
 }
@@ -95,8 +97,9 @@ func TestListCatalogOffersEmptyPageBeforeTotalReturnsNoPartialResults(t *testing
 	t.Parallel()
 
 	// Provider lies: Total=2 but the second page is genuinely empty (not an HTTP
-	// error). The non-advancing guard must hard-stop with a typed error, never
-	// return the one already-accumulated offer nor loop forever.
+	// error). The non-advancing guard must hard-stop with a typed provider error
+	// (integrity fault, NOT capability-disabled), never return the one
+	// already-accumulated offer nor loop forever (FINDING-M02-LIVE-2 D1).
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("offset") == "0" {
 			_, _ = io.WriteString(w, `{"paging":{"total":2,"offset":0,"limit":1},"results":[{"seller_id":"seller-1","price":90,"currency_id":"BRL"}]}`)
@@ -107,7 +110,7 @@ func TestListCatalogOffersEmptyPageBeforeTotalReturnsNoPartialResults(t *testing
 	defer server.Close()
 
 	offers, err := catalogOffersTestAdapter(server.URL, true).ListCatalogOffers(context.Background(), pricingAccountRef(), "MLB-CATALOG")
-	if !errors.Is(err, domain.ErrCatalogOffersUnavailable) || offers != nil {
+	if !errors.Is(err, domain.ErrProviderUnavailable) || errors.Is(err, domain.ErrCatalogOffersUnavailable) || offers != nil {
 		t.Fatalf("offers = %#v, error = %v", offers, err)
 	}
 }

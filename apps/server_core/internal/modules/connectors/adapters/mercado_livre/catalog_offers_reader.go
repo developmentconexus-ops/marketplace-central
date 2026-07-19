@@ -3,7 +3,6 @@ package mercadolivre
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -46,11 +45,10 @@ func (a *CapabilityAdapter) listCatalogOffers(ctx context.Context, accountRef do
 		path := "/products/" + url.PathEscape(catalogProductID) + "/items?" + query.Encode()
 		var response mlCatalogOffersResponse
 		if err := a.doJSON(ctx, accountRef, token, http.MethodGet, path, nil, &response); err != nil {
-			mapped := mapPricingReaderError(err)
-			if errors.Is(mapped, domain.ErrUnauthorized) || errors.Is(mapped, domain.ErrNotFound) || errors.Is(mapped, domain.ErrRateLimited) {
-				return nil, pageCount, mapped
-			}
-			return nil, pageCount, fmt.Errorf("%w: %w", domain.ErrCatalogOffersUnavailable, mapped)
+			// A provider fault is a provider fault; ErrCatalogOffersUnavailable is
+			// reserved for the flag-off path so composition never reports "disabled"
+			// while the capability is on (FINDING-M02-LIVE-2 D1, D-86).
+			return nil, pageCount, mapPricingReaderError(err)
 		}
 		pageCount++
 		for _, result := range response.Results {
@@ -70,7 +68,7 @@ func (a *CapabilityAdapter) listCatalogOffers(ctx context.Context, accountRef do
 			return offers, pageCount, nil
 		}
 		if len(response.Results) == 0 || nextOffset <= offset {
-			return nil, pageCount, fmt.Errorf("%w: incomplete pagination", domain.ErrCatalogOffersUnavailable)
+			return nil, pageCount, fmt.Errorf("%w: incomplete pagination", domain.ErrProviderUnavailable)
 		}
 		offset = nextOffset
 	}
