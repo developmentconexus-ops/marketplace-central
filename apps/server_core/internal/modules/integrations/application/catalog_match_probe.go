@@ -36,6 +36,7 @@ type CatalogMatchProbeResult struct {
 	DomainDiscovery []connectorsdomain.DomainPrediction `json:"domain_discovery"`
 	FeeQuote        *CatalogMatchFeeQuote               `json:"fee_quote"`
 	Flags           CatalogMatchFlags                   `json:"flags"`
+	FetchedAt       time.Time                           `json:"fetched_at"`
 }
 
 // CatalogMatchFeeQuote holds the resolved category used for the quote plus the
@@ -108,6 +109,7 @@ func buildCatalogMatchResult(snapshot connectorsdomain.CatalogMatchSnapshot) Cat
 		CatalogHits:     snapshot.CatalogHits,
 		BuyBox:          snapshot.BuyBox,
 		DomainDiscovery: snapshot.DomainDiscovery,
+		FetchedAt:       snapshot.FetchedAt,
 	}
 	result.Flags = CatalogMatchFlags{
 		BuyBoxNull:   snapshot.BuyBox == nil || strings.TrimSpace(snapshot.BuyBox.CategoryID) == "",

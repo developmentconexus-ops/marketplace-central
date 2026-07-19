@@ -98,6 +98,9 @@ func TestProbeCatalogMatchQuotesBuyBoxCategory(t *testing.T) {
 	if result.Flags.CategoryPredita || result.Flags.BuyBoxNull || result.Flags.NoCatalogHit {
 		t.Fatalf("flags = %+v, want all false", result.Flags)
 	}
+	if !result.FetchedAt.Equal(now) {
+		t.Fatalf("fetched_at = %v, want %v", result.FetchedAt, now)
+	}
 	if result.FeeQuote == nil {
 		t.Fatal("fee quote = nil, want composed")
 	}
