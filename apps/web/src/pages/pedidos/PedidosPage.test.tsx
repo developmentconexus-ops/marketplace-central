@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PedidosPage } from "./PedidosPage";
@@ -500,17 +500,20 @@ describe("PedidosPage", () => {
     renderPage("?order=PO1");
 
     await screen.findByText("Parafuso M8x40 cx100");
+    // Scope to the drawer: the Fila row also renders retorno_liquido, so query within the
+    // drawer container (role="complementary") to assert the decomposição/DIFAL block specifically.
+    const drawer = within(screen.getByRole("complementary"));
     // Decomposition + margem + retorno + DIFAL render FROM the data, formatted — proving the
     // real-ready path (same components, no UI change, once the hub wires the decomposer).
-    expect(screen.getByText("R$ 145,67")).toBeInTheDocument(); // retorno_liquido
-    expect(screen.getByText("R$ 154,20")).toBeInTheDocument(); // margem_valor
-    expect(screen.getByText("23.4%")).toBeInTheDocument(); // margem_pct
-    expect(screen.getByText("R$ 8,76")).toBeInTheDocument(); // difal.amount
-    expect(screen.getByText("R$ 4,12")).toBeInTheDocument(); // decomposicao.difal (cost component)
-    expect(screen.getByText("SC → SP")).toBeInTheDocument(); // difal.uf_route
-    expect(screen.getByText("não")).toBeInTheDocument(); // difal.paid === false
+    expect(drawer.getByText("R$ 145,67")).toBeInTheDocument(); // retorno_liquido
+    expect(drawer.getByText("R$ 154,20")).toBeInTheDocument(); // margem_valor
+    expect(drawer.getByText("23.4%")).toBeInTheDocument(); // margem_pct
+    expect(drawer.getByText("R$ 8,76")).toBeInTheDocument(); // difal.amount
+    expect(drawer.getByText("R$ 4,12")).toBeInTheDocument(); // decomposicao.difal (cost component)
+    expect(drawer.getByText("SC → SP")).toBeInTheDocument(); // difal.uf_route
+    expect(drawer.getByText("não")).toBeInTheDocument(); // difal.paid === false
     // tarifa_full stays null (componentes_desconhecidos) — still honest "—", not fabricated.
-    expect(screen.getAllByText("—").length).toBeGreaterThan(0);
+    expect(drawer.getAllByText("—").length).toBeGreaterThan(0);
   });
 
   it("closing the drawer clears the ?order= param", async () => {

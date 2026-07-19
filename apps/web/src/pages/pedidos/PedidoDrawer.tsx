@@ -135,8 +135,8 @@ function DecomposicaoSection({ order }: { order: OrderRead }) {
       <div className="rounded-lg border border-border bg-surface-2 p-3 text-xs text-muted">
         {pending ? (
           <p className="mb-2 text-[11px] text-faint">
-            Pendente: {decomposicao.componentes_desconhecidos.join(", ")} ainda não disponíveis nesta
-            instalação — os campos abaixo mostram "—" até a decomposição ser calculada.
+            Pendente: {decomposicao.componentes_desconhecidos.join(", ")} — estes componentes mostram
+            "—" até a decomposição ser calculada.
           </p>
         ) : null}
         <dl className="space-y-1">
@@ -162,7 +162,7 @@ function DecomposicaoSection({ order }: { order: OrderRead }) {
           <div className="flex items-center justify-between gap-3">
             <dt>Pago</dt>
             <dd className="font-mono text-[11px]">
-              {difal.paid === null ? <UnknownValue hint={difalHint} /> : difal.paid ? "sim" : "não"}
+              {difal.paid == null ? <UnknownValue hint={difalHint} /> : difal.paid ? "sim" : "não"}
             </dd>
           </div>
         </dl>
