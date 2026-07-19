@@ -133,6 +133,12 @@ func (s CalcService) PutTariffDefaults(ctx context.Context, installationID strin
 	if !domain.ValidFretePolicy(in.FretePolicy) {
 		return domain.TariffDefaults{}, domain.ErrInvalidFretePolicy
 	}
+	// guard the numeric columns before the DB numeric cast, so a non-decimal
+	// body is a 422 (INVALID_PRICE) rather than a 500 on the Postgres error.
+	if !decimalIsParseable(in.ComissaoClassicoPct) || !decimalIsParseable(in.ComissaoPremiumPct) ||
+		!optionalDecimalIsParseable(in.FreteEstimativaAmount) {
+		return domain.TariffDefaults{}, ErrInvalidPrice
+	}
 	return s.tariffStore.UpsertTariffDefaults(ctx, s.tenantID, installationID, in)
 }
 

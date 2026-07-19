@@ -246,6 +246,20 @@ func TestPutTariffDefaultsInvalidFretePolicy422(t *testing.T) {
 	}
 }
 
+// A non-decimal numeric field must be a 422 INVALID_PRICE (guarded before the
+// DB numeric cast), never a 500 PRICING_INTERNAL_ERROR.
+func TestPutTariffDefaultsNonNumeric422(t *testing.T) {
+	mux := newCalcMuxWithTariffStore(newRepoStub(), newTariffStoreStub())
+	w := do(t, mux, http.MethodPut, "/pricing/tariff-defaults",
+		`{"comissao_classico_pct":"abc","comissao_premium_pct":"16.00","frete_policy":"sem_dados"}`)
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422, body=%s", w.Code, w.Body.String())
+	}
+	if c := errCode(t, w); c != "INVALID_PRICE" {
+		t.Fatalf("code = %q, want INVALID_PRICE", c)
+	}
+}
+
 func TestPutTariffDefaultsRoundTrip(t *testing.T) {
 	mux := newCalcMuxWithTariffStore(newRepoStub(), newTariffStoreStub())
 	w := do(t, mux, http.MethodPut, "/pricing/tariff-defaults",

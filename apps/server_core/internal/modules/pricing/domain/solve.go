@@ -119,7 +119,13 @@ func (in SolveInput) difalApplied() bool {
 // state handled by SolveTargetPrice. Evaluated at limiar-1, a low-segment
 // preço where frete is 0.
 func (in SolveInput) structuralUnknowns() []string {
-	return in.margemDecompose(in.limiarCents() - 1).ComponentesDesconhecidos
+	// probe a valid low-segment preço; floor at 1 cent so a degenerate limiar of
+	// 1 (limiar-1 == 0) cannot divide by preço 0 in Decompose.
+	probe := in.limiarCents() - 1
+	if probe < 1 {
+		probe = 1
+	}
+	return in.margemDecompose(probe).ComponentesDesconhecidos
 }
 
 // lowSegmentSpanCents is the widest span searchSegment scans cent-by-cent. The
