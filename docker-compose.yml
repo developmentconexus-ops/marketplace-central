@@ -27,6 +27,9 @@ services:
       MC_DATABASE_URL: postgres://marketplace:marketplace@postgres:5432/marketplace_central?sslmode=disable
       MPC_ORACLE_LIB_DIR: /opt/oracle/instantclient
       MC_ERP_SOURCE: ${MC_ERP_SOURCE:-xlsx}
+      # ADR-05 read-only flag: ML catalog-offers reads (competitor price evidence).
+      # Unrelated to MPC_PROVIDER_WRITES_ENABLED (writes stay OFF).
+      MPC_ML_CATALOG_OFFERS_ENABLED: "true"
       RUN_MIGRATIONS: "1"
     working_dir: /workspace
     volumes:
