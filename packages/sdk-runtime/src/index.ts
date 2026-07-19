@@ -246,7 +246,7 @@ export interface CatalogSearchPageOptions {
 export type ListingStatus = "active" | "paused" | "closed" | "unknown" | "under_review" | "inactive" | "payment_required" | "not_yet_active";
 export type ListingSyncState = "synced" | "error" | "stale" | "queued" | "syncing" | "paused_sync";
 export type ListingLinkState = "unresolved" | "conflict" | "resolved" | "rejected";
-export type ListingException = "sync_error" | "stale" | "unlinked" | "below_margin";
+export type ListingException = "sync_error" | "stale" | "unlinked" | "below_margin" | "sem_vinculo" | "abaixo_custo" | "sem_evidencia";
 
 export interface ListingListOptions {
   installation_id: string;
@@ -278,6 +278,29 @@ export interface ListingType {
 export interface ListingMoney {
   amount: string;
   currency: string;
+}
+
+// Listings-owned composite over IC-03 states (not a market enum) — see
+// domain invariant in the M-05 slice card: SEM_VINCULO (no codprod link) !=
+// NO_PRICE_EVIDENCE (linked, no market evidence) != STALE (evidence older
+// than TTL), never collapsed, never fabricated for an unlinked listing.
+export type SignalStatus = "OK" | "SEM_VINCULO" | "NO_PRICE_EVIDENCE" | "STALE";
+
+export interface ListingSignalEvidence {
+  source: string;
+  fetched_at: string;
+  freshness: string;
+}
+
+export interface ListingMarketSignal {
+  status: SignalStatus;
+  position: { rank: number; total: number } | null;
+  price_to_win: ListingMoney | null;
+  delta_pct: string | null;
+  match_status: "ACCEPT" | "REVIEW" | "REJECT" | "NO_CANDIDATE" | null;
+  n_offers: number | null;
+  n_sellers: number | null;
+  evidence: ListingSignalEvidence | null;
 }
 
 export interface ListingLink {
@@ -326,6 +349,8 @@ export interface ListingReadModel {
   below_margin_worst_case: boolean | null;
   icms_worst_case_by_uf: ListingICMSWorstCase[] | null;
   fetched_at: string | null;
+  market_signal?: ListingMarketSignal | null;
+  signal_status?: SignalStatus;
 }
 
 export interface ListingPage {
@@ -366,6 +391,9 @@ export interface ListingSummaryExceptions {
   unlinked: number;
   below_margin_worst_case: number | null;
   margin_unknown: number | null;
+  sem_vinculo?: number | null;
+  abaixo_custo?: number | null;
+  sem_evidencia?: number | null;
 }
 
 export interface ListingSummary {
@@ -634,6 +662,33 @@ export interface OrderDifal {
   paid: boolean | null;
 }
 
+// OrderCompradorFiscalEndereco is the buyer billing address. Every field is
+// optional: absent (masked/blank) is honest absence, never a fabricated value
+// (ADR-17). uf_codigo/uf_nome are the provider's own state code + label,
+// rendered verbatim.
+export interface OrderCompradorFiscalEndereco {
+  logradouro?: string;
+  numero?: string;
+  cidade?: string;
+  uf_codigo?: string;
+  uf_nome?: string;
+  cep?: string;
+  pais?: string;
+}
+
+// OrderCompradorFiscal is the buyer fiscal identity for ERP registration,
+// resolved read-time via the provider's two-step billing-info flow. Additive/
+// optional on the order: absent when the buyer has no billing data (404 = a
+// normal "none" condition, ADR-17), never a fabricated identity. doc_tipo is
+// opaque — render as-is, never map to a CPF/CNPJ enum. doc_numero is rendered
+// by the client only and MUST never be logged (LGPD).
+export interface OrderCompradorFiscal {
+  nome?: string;
+  doc_tipo?: string;
+  doc_numero?: string;
+  endereco?: OrderCompradorFiscalEndereco;
+}
+
 export interface OrderRead {
   provider_order_id: string;
   provider_code: string;
@@ -667,6 +722,7 @@ export interface OrderRead {
   margem_pct?: number | null;
   decomposicao: OrderDecomposicao;
   difal: OrderDifal;
+  comprador_fiscal?: OrderCompradorFiscal;
 }
 
 export interface OrderPage {
