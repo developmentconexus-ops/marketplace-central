@@ -33,6 +33,8 @@ func (h Handler) registerCalc(mux httpx.RouteRegistrar) {
 	mux.HandleFunc("DELETE /pricing/scenarios/{id}", h.handleDeleteScenario)
 	mux.HandleFunc("POST /pricing/decompose", h.handleDecompose)
 	mux.HandleFunc("POST /pricing/solve", h.handleSolve)
+	mux.HandleFunc("GET /pricing/tariff-defaults", h.handleGetTariffDefaults)
+	mux.HandleFunc("PUT /pricing/tariff-defaults", h.handlePutTariffDefaults)
 }
 
 // mapCalcError maps an IC-04 service error to its exact HTTP status + code.
@@ -48,6 +50,10 @@ func mapCalcError(err error) (int, string) {
 		return http.StatusNotFound, "UF_NOT_FOUND"
 	case errors.Is(err, ports.ErrScenarioNotFound):
 		return http.StatusNotFound, "SCENARIO_NOT_FOUND"
+	case errors.Is(err, domain.ErrInvalidFretePolicy):
+		return http.StatusUnprocessableEntity, "INVALID_FRETE_POLICY"
+	case errors.Is(err, application.ErrTariffStoreNotConfigured):
+		return http.StatusServiceUnavailable, "PRICING_TARIFF_STORE_NOT_CONFIGURED"
 	default:
 		return http.StatusInternalServerError, "PRICING_INTERNAL_ERROR"
 	}
@@ -308,10 +314,14 @@ func (h Handler) handleDecompose(w http.ResponseWriter, r *http.Request) {
 		h.writeCalcError(w, err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+	body := map[string]any{
 		"decomposition":  toDecompositionDTO(res.Decomposition),
 		"blocking_state": res.BlockingState,
-	})
+	}
+	if tarifa := toTarifaDTO(res.Tarifa); tarifa != nil {
+		body["tarifa"] = tarifa
+	}
+	httpx.WriteJSON(w, http.StatusOK, body)
 }
 
 func (h Handler) handleSolve(w http.ResponseWriter, r *http.Request) {
@@ -334,16 +344,134 @@ func (h Handler) handleSolve(w http.ResponseWriter, r *http.Request) {
 		h.writeCalcError(w, err)
 		return
 	}
-	body := map[string]any{
-		"reached":        out.Result.Reached,
-		"preco":          out.Result.Preco,
-		"ceiling_pct":    out.Result.CeilingPct,
-		"desconhecidos":  out.Result.Desconhecidos,
-		"blocking_state": out.BlockingState,
+	desconhecidos := out.Result.Desconhecidos
+	if desconhecidos == nil {
+		desconhecidos = []string{}
 	}
-	// Unreachable is a 200 with the exact IC-04 code, not an error.
-	if !out.Result.Reached {
-		body["code"] = "UNREACHABLE_TARGET"
+	body := map[string]any{
+		"reached":            out.Result.Reached,
+		"preco":              out.Result.Preco,
+		"ceiling_pct":        out.Result.CeilingPct,
+		"desconhecidos":      desconhecidos,
+		"frete_desconhecido": out.Result.FreteDesconhecido,
+		"blocking_state":     out.BlockingState,
+	}
+	if tarifa := toTarifaDTO(out.Tarifa); tarifa != nil {
+		body["tarifa"] = tarifa
+	}
+	if code := solveCode(out.Result); code != "" {
+		body["code"] = code
 	}
 	httpx.WriteJSON(w, http.StatusOK, body)
+}
+
+type tarifaComissaoDTO struct {
+	Valor      *string `json:"valor"`
+	Fonte      string  `json:"fonte"`
+	Degrau     int     `json:"degrau"`
+	Data       *string `json:"data"`
+	Estimativa bool    `json:"estimativa"`
+}
+
+type tarifaFreteDTO struct {
+	Valor      *string `json:"valor"`
+	Fonte      string  `json:"fonte"`
+	Degrau     int     `json:"degrau"`
+	Data       *string `json:"data"`
+	Estimativa bool    `json:"estimativa"`
+	SemDados   bool    `json:"sem_dados"`
+}
+
+type tarifaDTO struct {
+	Comissao tarifaComissaoDTO `json:"comissao"`
+	Frete    tarifaFreteDTO    `json:"frete"`
+}
+
+// toTarifaDTO renders the resolved tariff stamps. `data` (source timestamp) is
+// always null at degrau 4 — the config default has no authoritative per-resolve
+// timestamp; fabricating one would violate ADR-17 (no invented operational
+// facts). Degraus 1-3 will populate it when they land.
+func toTarifaDTO(t *domain.TariffResolution) *tarifaDTO {
+	if t == nil {
+		return nil
+	}
+	return &tarifaDTO{
+		Comissao: tarifaComissaoDTO{
+			Valor: t.Comissao.Valor, Fonte: string(t.Comissao.Fonte),
+			Degrau: t.Comissao.Degrau, Data: nil, Estimativa: t.Comissao.Estimativa,
+		},
+		Frete: tarifaFreteDTO{
+			Valor: t.Frete.Valor, Fonte: string(t.Frete.Fonte),
+			Degrau: t.Frete.Degrau, Data: nil, Estimativa: t.Frete.Estimativa,
+			SemDados: t.Frete.Valor == nil,
+		},
+	}
+}
+
+// solveCode maps a solve outcome to its IC-04 code by CAUSE — never a blanket
+// UNREACHABLE_TARGET. Mutually exclusive in the current domain: structural
+// unknowns, then missing frete (high segment), then true unreachability.
+func solveCode(r domain.SolveResult) string {
+	switch {
+	case len(r.Desconhecidos) > 0:
+		return "DADOS_INCOMPLETOS"
+	case r.FreteDesconhecido:
+		return "SEM_FRETE"
+	case !r.Reached && r.CeilingPct != "":
+		return "UNREACHABLE_TARGET"
+	default:
+		return ""
+	}
+}
+
+// --- Tariff Defaults (CHIP-T1 Slice A) ---
+
+type tariffDefaultsDTO struct {
+	ComissaoClassicoPct   string  `json:"comissao_classico_pct"`
+	ComissaoPremiumPct    string  `json:"comissao_premium_pct"`
+	FreteEstimativaAmount *string `json:"frete_estimativa_amount"`
+	FretePolicy           string  `json:"frete_policy"`
+}
+
+func toTariffDefaultsDTO(t domain.TariffDefaults) tariffDefaultsDTO {
+	return tariffDefaultsDTO{
+		ComissaoClassicoPct:   t.ComissaoClassicoPct,
+		ComissaoPremiumPct:    t.ComissaoPremiumPct,
+		FreteEstimativaAmount: t.FreteEstimativaAmount,
+		FretePolicy:           t.FretePolicy,
+	}
+}
+
+// tariffInstallationID reads the optional installation_id query parameter,
+// defaulting to "" (the single-installation sentinel).
+func tariffInstallationID(r *http.Request) string {
+	return r.URL.Query().Get("installation_id")
+}
+
+func (h Handler) handleGetTariffDefaults(w http.ResponseWriter, r *http.Request) {
+	defaults, err := h.calc.GetTariffDefaults(r.Context(), tariffInstallationID(r))
+	if err != nil {
+		h.writeCalcError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, toTariffDefaultsDTO(defaults))
+}
+
+func (h Handler) handlePutTariffDefaults(w http.ResponseWriter, r *http.Request) {
+	var req tariffDefaultsDTO
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writePricingError(w, http.StatusBadRequest, "PRICING_REQUEST_INVALID", "malformed request body")
+		return
+	}
+	defaults, err := h.calc.PutTariffDefaults(r.Context(), tariffInstallationID(r), domain.TariffDefaults{
+		ComissaoClassicoPct:   req.ComissaoClassicoPct,
+		ComissaoPremiumPct:    req.ComissaoPremiumPct,
+		FreteEstimativaAmount: req.FreteEstimativaAmount,
+		FretePolicy:           req.FretePolicy,
+	})
+	if err != nil {
+		h.writeCalcError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, toTariffDefaultsDTO(defaults))
 }

@@ -103,6 +103,17 @@ func newService(repo ports.CalcRepository, cost ports.CostReader, products ports
 	return application.NewCalcService(repo, cost, products, "t1")
 }
 
+// fakeTariffResolver is a configurable stub TariffResolver for CHIP-T1
+// Slice D CalcService wiring tests.
+type fakeTariffResolver struct {
+	res domain.TariffResolution
+	err error
+}
+
+func (f fakeTariffResolver) Resolve(_ context.Context, _ ports.TariffRequest) (domain.TariffResolution, error) {
+	return f.res, f.err
+}
+
 func TestPutProfileInvalidRate(t *testing.T) {
 	svc := newService(newFakeRepo(), fakeCost{}, nil)
 	_, err := svc.PutProfile(context.Background(), application.ProfileUpdate{
@@ -384,6 +395,129 @@ func recoverErr(fn func() error) (err error) {
 }
 
 func strptr(s string) *string { return &s }
+
+// --- CHIP-T1 Slice D: resolveTariff wiring ---
+
+func TestDecomposeEmptyComissaoUsesResolverPadrao(t *testing.T) {
+	resolver := fakeTariffResolver{res: domain.TariffResolution{
+		Comissao: domain.ComponentResolution{Valor: strptr("13.00"), Fonte: domain.FontePadrao, Degrau: 4, Estimativa: true},
+		Frete:    domain.ComponentResolution{Fonte: domain.FontePadrao, Degrau: 4, Estimativa: true},
+	}}
+	svc := newService(newFakeRepo(), fakeCost{}, nil).WithTariffResolver(resolver)
+	custo := "40.00"
+	res, err := svc.Decompose(context.Background(), application.DecomposeRequest{
+		Preco: "100.00", ComissaoPct: "", Modalidade: domain.ModalidadeClassico, Custo: &custo,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.Tarifa == nil {
+		t.Fatalf("Tarifa = nil, want resolved tariff")
+	}
+	if res.Tarifa.Comissao.Valor == nil || *res.Tarifa.Comissao.Valor != "13.00" {
+		t.Fatalf("Tarifa.Comissao.Valor = %v, want 13.00", res.Tarifa.Comissao.Valor)
+	}
+	if res.Tarifa.Comissao.Fonte != domain.FontePadrao {
+		t.Fatalf("Tarifa.Comissao.Fonte = %v, want FontePadrao", res.Tarifa.Comissao.Fonte)
+	}
+	if !res.Tarifa.Comissao.Estimativa {
+		t.Fatalf("Tarifa.Comissao.Estimativa = false, want true")
+	}
+	// preço 100.00 @ comissão 13.00% ⇒ comissão amount 13.00; confirms the
+	// resolver's pct (not an empty/zero) reached the domain engine.
+	if res.Decomposition.Comissao != "13.00" {
+		t.Fatalf("decomposition Comissao = %v, want 13.00 (resolver pct applied)", res.Decomposition.Comissao)
+	}
+}
+
+func TestDecomposeManualComissaoOverridesResolver(t *testing.T) {
+	resolver := fakeTariffResolver{res: domain.TariffResolution{
+		Comissao: domain.ComponentResolution{Valor: strptr("13.00"), Fonte: domain.FontePadrao, Degrau: 4, Estimativa: true},
+		Frete:    domain.ComponentResolution{Fonte: domain.FontePadrao, Degrau: 4, Estimativa: true},
+	}}
+	svc := newService(newFakeRepo(), fakeCost{}, nil).WithTariffResolver(resolver)
+	custo := "40.00"
+	res, err := svc.Decompose(context.Background(), application.DecomposeRequest{
+		Preco: "100.00", ComissaoPct: "10", Modalidade: domain.ModalidadeClassico, Custo: &custo,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.Tarifa == nil {
+		t.Fatalf("Tarifa = nil, want resolved tariff")
+	}
+	if res.Tarifa.Comissao.Valor == nil || *res.Tarifa.Comissao.Valor != "10" {
+		t.Fatalf("Tarifa.Comissao.Valor = %v, want 10 (manual)", res.Tarifa.Comissao.Valor)
+	}
+	if res.Tarifa.Comissao.Fonte != domain.FonteManual {
+		t.Fatalf("Tarifa.Comissao.Fonte = %v, want FonteManual", res.Tarifa.Comissao.Fonte)
+	}
+	// preço 100.00 @ comissão 10% ⇒ comissão amount 10.00; confirms the
+	// manual override (not the resolver's 13.00) reached the domain engine.
+	if res.Decomposition.Comissao != "10.00" {
+		t.Fatalf("decomposition Comissao = %v, want 10.00 (manual pct applied)", res.Decomposition.Comissao)
+	}
+}
+
+func TestDecomposeResolverFreteSemDadosStaysNil(t *testing.T) {
+	resolver := fakeTariffResolver{res: domain.TariffResolution{
+		Comissao: domain.ComponentResolution{Valor: strptr("13.00"), Fonte: domain.FontePadrao, Degrau: 4},
+		Frete:    domain.ComponentResolution{Valor: nil, Fonte: domain.FontePadrao, Degrau: 4},
+	}}
+	svc := newService(newFakeRepo(), fakeCost{}, nil).WithTariffResolver(resolver)
+	custo := "40.00"
+	res, err := svc.Decompose(context.Background(), application.DecomposeRequest{
+		Preco: "100.00", ComissaoPct: "", Modalidade: domain.ModalidadeClassico, Custo: &custo,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.Tarifa == nil || res.Tarifa.Frete.Valor != nil {
+		t.Fatalf("Tarifa.Frete.Valor = %v, want nil (sem_dados, ADR-17: never 0)", res.Tarifa.Frete.Valor)
+	}
+	if res.Decomposition.Frete != nil {
+		t.Fatalf("Decomposition.Frete = %v, want nil (sem_dados, unknown, never 0)", res.Decomposition.Frete)
+	}
+}
+
+func TestSolveTargetResolverFreteSemDadosSurfacesFreteDesconhecido(t *testing.T) {
+	resolver := fakeTariffResolver{res: domain.TariffResolution{
+		Comissao: domain.ComponentResolution{Valor: strptr("12"), Fonte: domain.FontePadrao, Degrau: 4},
+		Frete:    domain.ComponentResolution{Valor: nil, Fonte: domain.FontePadrao, Degrau: 4},
+	}}
+	svc := newService(newFakeRepo(), fakeCost{}, nil).WithTariffResolver(resolver)
+	custo := "40.00"
+	// High target margem (above what the low segment, frete=0, can reach given
+	// custo 40.00) is only reachable in the ≥limiar (produto frete required)
+	// segment; with frete unknown from the resolver and no request override,
+	// SolveTarget must surface FreteDesconhecido rather than fabricate 0.
+	out, err := svc.SolveTarget(context.Background(), application.SolveRequest{
+		TargetMargemPct: "50", Modalidade: domain.ModalidadeClassico, Custo: &custo,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if out.Tarifa == nil || out.Tarifa.Frete.Valor != nil {
+		t.Fatalf("Tarifa.Frete.Valor = %v, want nil (sem_dados)", out.Tarifa.Frete.Valor)
+	}
+	if !out.Result.FreteDesconhecido {
+		t.Fatalf("Result.FreteDesconhecido = false, want true (frete required, sem_dados)")
+	}
+}
+
+func TestDecomposeNoResolverEmptyComissaoStaysInvalidPrice(t *testing.T) {
+	svc := newService(newFakeRepo(), fakeCost{}, nil) // no WithTariffResolver
+	custo := "40.00"
+	res, err := svc.Decompose(context.Background(), application.DecomposeRequest{
+		Preco: "100.00", ComissaoPct: "", Modalidade: domain.ModalidadeClassico, Custo: &custo,
+	})
+	if !errors.Is(err, application.ErrInvalidPrice) {
+		t.Fatalf("err = %v, want ErrInvalidPrice (back-compat: no resolver, empty comissao)", err)
+	}
+	if res.Tarifa != nil {
+		t.Fatalf("Tarifa = %v, want nil on error", res.Tarifa)
+	}
+}
 
 func containsStr(xs []string, want string) bool {
 	for _, x := range xs {

@@ -1454,7 +1454,7 @@ export interface PricingScenarioRequest {
 export interface PricingCalcInput {
   preco?: string;
   margem_alvo_pct?: string;
-  comissao_pct: string;
+  comissao_pct?: string;
   modalidade: string;
   tarifa_full?: string | null;
   frete_produto?: string | null;
@@ -1476,9 +1476,34 @@ export interface PricingDecomposition {
   componentes_desconhecidos: string[];
 }
 
+export interface PricingTarifaComponent {
+  valor: string | null;
+  fonte: string;
+  degrau: number;
+  data: string | null;
+  estimativa: boolean;
+}
+
+export interface PricingTarifaFrete extends PricingTarifaComponent {
+  sem_dados: boolean;
+}
+
+export interface PricingTarifa {
+  comissao: PricingTarifaComponent;
+  frete: PricingTarifaFrete;
+}
+
+export interface PricingTariffDefaults {
+  comissao_classico_pct: string;
+  comissao_premium_pct: string;
+  frete_estimativa_amount: string | null;
+  frete_policy: "estimativa" | "sem_dados";
+}
+
 export interface PricingDecomposeResponse {
   decomposition: PricingDecomposition;
   blocking_state: string | null;
+  tarifa?: PricingTarifa | null;
 }
 
 export interface PricingSolveResponse {
@@ -1486,7 +1511,9 @@ export interface PricingSolveResponse {
   preco: string | null;
   ceiling_pct: string;
   desconhecidos: string[];
+  frete_desconhecido: boolean;
   blocking_state: string | null;
+  tarifa?: PricingTarifa | null;
   code?: string;
 }
 

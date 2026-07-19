@@ -93,6 +93,65 @@ func newCalcMux(repo ports.CalcRepository, cost ports.CostReader, products ports
 	return mux
 }
 
+// tariffStoreStub is an in-memory ports.TariffDefaultsStore for handler
+// tests. A nil rows map means "not yet materialized" — Get/Upsert seed the
+// DB-default row (13.00/16.00/sem_dados), mirroring the real repo's
+// materialize-on-read behavior.
+type tariffStoreStub struct {
+	rows map[string]domain.TariffDefaults
+}
+
+func newTariffStoreStub() *tariffStoreStub {
+	return &tariffStoreStub{rows: map[string]domain.TariffDefaults{}}
+}
+
+func tariffKey(tenantID, installationID string) string { return tenantID + "/" + installationID }
+
+func (f *tariffStoreStub) GetTariffDefaults(_ context.Context, tenantID, installationID string) (domain.TariffDefaults, error) {
+	key := tariffKey(tenantID, installationID)
+	if row, ok := f.rows[key]; ok {
+		return row, nil
+	}
+	row := domain.TariffDefaults{ComissaoClassicoPct: "13.00", ComissaoPremiumPct: "16.00", FretePolicy: domain.FretePolicySemDados}
+	f.rows[key] = row
+	return row, nil
+}
+
+func (f *tariffStoreStub) UpsertTariffDefaults(_ context.Context, tenantID, installationID string, in domain.TariffDefaults) (domain.TariffDefaults, error) {
+	if !domain.ValidFretePolicy(in.FretePolicy) {
+		return domain.TariffDefaults{}, domain.ErrInvalidFretePolicy
+	}
+	f.rows[tariffKey(tenantID, installationID)] = in
+	return in, nil
+}
+
+func newCalcMuxWithTariffStore(repo ports.CalcRepository, tariffStore ports.TariffDefaultsStore) *http.ServeMux {
+	svc := application.NewCalcService(repo, costStub{}, nil, "t1").WithTariffStore(tariffStore)
+	h := NewHandler(application.Service{}, nil).WithCalc(svc)
+	mux := http.NewServeMux()
+	h.Register(mux)
+	return mux
+}
+
+// fakeTariffResolver is a handler-test-local ports.TariffResolver stub —
+// mirrors application.fakeTariffResolver (unexported there, not reusable
+// across packages).
+type fakeTariffResolver struct {
+	res domain.TariffResolution
+}
+
+func (f fakeTariffResolver) Resolve(context.Context, ports.TariffRequest) (domain.TariffResolution, error) {
+	return f.res, nil
+}
+
+func newCalcMuxWithResolver(repo ports.CalcRepository, cost ports.CostReader, products ports.ProductChecker, resolver ports.TariffResolver) *http.ServeMux {
+	svc := application.NewCalcService(repo, cost, products, "t1").WithTariffResolver(resolver)
+	h := NewHandler(application.Service{}, nil).WithCalc(svc)
+	mux := http.NewServeMux()
+	h.Register(mux)
+	return mux
+}
+
 func do(t *testing.T, mux *http.ServeMux, method, path, body string) *httptest.ResponseRecorder {
 	t.Helper()
 	var r *http.Request
@@ -141,6 +200,95 @@ func TestPutDifalUFNotFound404(t *testing.T) {
 	}
 	if c := errCode(t, w); c != "UF_NOT_FOUND" {
 		t.Fatalf("code = %q, want UF_NOT_FOUND", c)
+	}
+}
+
+// --- tariff defaults (CHIP-T1 Slice A) ---
+
+func TestGetTariffDefaultsNotConfigured503(t *testing.T) {
+	mux := newCalcMux(newRepoStub(), costStub{}, nil)
+	w := do(t, mux, http.MethodGet, "/pricing/tariff-defaults", "")
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503", w.Code)
+	}
+	if c := errCode(t, w); c != "PRICING_TARIFF_STORE_NOT_CONFIGURED" {
+		t.Fatalf("code = %q, want PRICING_TARIFF_STORE_NOT_CONFIGURED", c)
+	}
+}
+
+func TestGetTariffDefaultsMaterializesDBDefaults(t *testing.T) {
+	mux := newCalcMuxWithTariffStore(newRepoStub(), newTariffStoreStub())
+	w := do(t, mux, http.MethodGet, "/pricing/tariff-defaults", "")
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200, body=%s", w.Code, w.Body.String())
+	}
+	var got tariffDefaultsDTO
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.ComissaoClassicoPct != "13.00" || got.ComissaoPremiumPct != "16.00" || got.FretePolicy != "sem_dados" {
+		t.Fatalf("defaults = %#v", got)
+	}
+	if got.FreteEstimativaAmount != nil {
+		t.Fatalf("frete_estimativa_amount = %v, want nil (ADR-17)", *got.FreteEstimativaAmount)
+	}
+}
+
+func TestPutTariffDefaultsInvalidFretePolicy422(t *testing.T) {
+	mux := newCalcMuxWithTariffStore(newRepoStub(), newTariffStoreStub())
+	w := do(t, mux, http.MethodPut, "/pricing/tariff-defaults",
+		`{"comissao_classico_pct":"13.00","comissao_premium_pct":"16.00","frete_policy":"invalida"}`)
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422, body=%s", w.Code, w.Body.String())
+	}
+	if c := errCode(t, w); c != "INVALID_FRETE_POLICY" {
+		t.Fatalf("code = %q, want INVALID_FRETE_POLICY", c)
+	}
+}
+
+// A non-decimal numeric field must be a 422 INVALID_PRICE (guarded before the
+// DB numeric cast), never a 500 PRICING_INTERNAL_ERROR.
+func TestPutTariffDefaultsNonNumeric422(t *testing.T) {
+	mux := newCalcMuxWithTariffStore(newRepoStub(), newTariffStoreStub())
+	w := do(t, mux, http.MethodPut, "/pricing/tariff-defaults",
+		`{"comissao_classico_pct":"abc","comissao_premium_pct":"16.00","frete_policy":"sem_dados"}`)
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422, body=%s", w.Code, w.Body.String())
+	}
+	if c := errCode(t, w); c != "INVALID_PRICE" {
+		t.Fatalf("code = %q, want INVALID_PRICE", c)
+	}
+}
+
+func TestPutTariffDefaultsRoundTrip(t *testing.T) {
+	mux := newCalcMuxWithTariffStore(newRepoStub(), newTariffStoreStub())
+	w := do(t, mux, http.MethodPut, "/pricing/tariff-defaults",
+		`{"comissao_classico_pct":"14.00","comissao_premium_pct":"17.00","frete_estimativa_amount":"22.50","frete_policy":"estimativa"}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200, body=%s", w.Code, w.Body.String())
+	}
+	var got tariffDefaultsDTO
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.ComissaoClassicoPct != "14.00" || got.ComissaoPremiumPct != "17.00" || got.FretePolicy != "estimativa" {
+		t.Fatalf("put response = %#v", got)
+	}
+	if got.FreteEstimativaAmount == nil || *got.FreteEstimativaAmount != "22.50" {
+		t.Fatalf("frete_estimativa_amount = %v, want 22.50", got.FreteEstimativaAmount)
+	}
+
+	w2 := do(t, mux, http.MethodGet, "/pricing/tariff-defaults", "")
+	var got2 tariffDefaultsDTO
+	if err := json.Unmarshal(w2.Body.Bytes(), &got2); err != nil {
+		t.Fatal(err)
+	}
+	if got2.ComissaoClassicoPct != got.ComissaoClassicoPct ||
+		got2.ComissaoPremiumPct != got.ComissaoPremiumPct ||
+		got2.FretePolicy != got.FretePolicy ||
+		got2.FreteEstimativaAmount == nil || got.FreteEstimativaAmount == nil ||
+		*got2.FreteEstimativaAmount != *got.FreteEstimativaAmount {
+		t.Fatalf("GET after PUT = %#v, want %#v", got2, got)
 	}
 }
 
@@ -246,6 +394,145 @@ func TestSolveUnreachable200Code(t *testing.T) {
 		t.Fatalf("code = %q, want UNREACHABLE_TARGET", body.Code)
 	}
 }
+
+// --- CHIP-T1 Slice E: solve code CAUSE-branching (never a blanket
+// UNREACHABLE_TARGET) + tarifa stamp surfacing ---
+
+func TestSolveDadosIncompletos200Code(t *testing.T) {
+	mux := newCalcMux(newRepoStub(), costStub{}, nil)
+	// No custo, no product_id: custo_erp is a structural unknown ⇒
+	// Desconhecidos non-empty ⇒ DADOS_INCOMPLETOS, never UNREACHABLE_TARGET.
+	w := do(t, mux, http.MethodPost, "/pricing/solve",
+		`{"margem_alvo_pct":"50","comissao_pct":"16","modalidade":"classico"}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200, body=%s", w.Code, w.Body.String())
+	}
+	var body struct {
+		Code             string   `json:"code"`
+		Desconhecidos    []string `json:"desconhecidos"`
+		FreteDesconhecido bool    `json:"frete_desconhecido"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Code != "DADOS_INCOMPLETOS" {
+		t.Fatalf("code = %q, want DADOS_INCOMPLETOS", body.Code)
+	}
+	if len(body.Desconhecidos) == 0 {
+		t.Fatalf("desconhecidos = %v, want non-empty", body.Desconhecidos)
+	}
+	if body.FreteDesconhecido {
+		t.Fatalf("frete_desconhecido = true, want false")
+	}
+}
+
+func TestSolveSemFrete200Code(t *testing.T) {
+	mux := newCalcMux(newRepoStub(), costStub{}, nil)
+	// custo known, no frete_produto: target margem (65%) exceeds what the low
+	// segment (frete=0, custo=10.00) can reach, forcing the high (>=limiar)
+	// segment where produto frete is required — but unknown here (no resolver,
+	// no request override) ⇒ FreteDesconhecido ⇒ SEM_FRETE.
+	w := do(t, mux, http.MethodPost, "/pricing/solve",
+		`{"margem_alvo_pct":"65","comissao_pct":"16","modalidade":"classico","custo":"10.00"}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200, body=%s", w.Code, w.Body.String())
+	}
+	var body struct {
+		Code              string `json:"code"`
+		FreteDesconhecido bool   `json:"frete_desconhecido"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Code != "SEM_FRETE" {
+		t.Fatalf("code = %q, want SEM_FRETE", body.Code)
+	}
+	if !body.FreteDesconhecido {
+		t.Fatalf("frete_desconhecido = false, want true")
+	}
+}
+
+func TestSolveReached200NoCode(t *testing.T) {
+	mux := newCalcMux(newRepoStub(), costStub{}, nil)
+	w := do(t, mux, http.MethodPost, "/pricing/solve",
+		`{"margem_alvo_pct":"20","comissao_pct":"16","modalidade":"classico","custo":"10.00","frete_produto":"15.00"}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200, body=%s", w.Code, w.Body.String())
+	}
+	var body map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if reached, _ := body["reached"].(bool); !reached {
+		t.Fatalf("reached = %v, want true, body=%s", body["reached"], w.Body.String())
+	}
+	if _, hasCode := body["code"]; hasCode {
+		t.Fatalf("code key present = %v, want absent when reached", body["code"])
+	}
+}
+
+func TestSolveWithResolverSurfacesTarifa(t *testing.T) {
+	resolver := fakeTariffResolver{res: domain.TariffResolution{
+		Comissao: domain.ComponentResolution{Valor: strPtr("13.00"), Fonte: domain.FontePadrao, Degrau: 4, Estimativa: true},
+		Frete:    domain.ComponentResolution{Valor: nil, Fonte: domain.FontePadrao, Degrau: 4, Estimativa: true},
+	}}
+	custo := "10.00"
+	mux := newCalcMuxWithResolver(newRepoStub(), costStub{money: &domain.Money{Amount: custo, Currency: "BRL"}}, nil, resolver)
+	w := do(t, mux, http.MethodPost, "/pricing/solve",
+		`{"margem_alvo_pct":"20","modalidade":"classico","custo":"10.00"}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200, body=%s", w.Code, w.Body.String())
+	}
+	var body struct {
+		Tarifa *tarifaDTO `json:"tarifa"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Tarifa == nil {
+		t.Fatalf("tarifa = nil, want resolved tarifa object, body=%s", w.Body.String())
+	}
+	if body.Tarifa.Comissao.Valor == nil || *body.Tarifa.Comissao.Valor != "13.00" {
+		t.Fatalf("tarifa.comissao.valor = %v, want 13.00", body.Tarifa.Comissao.Valor)
+	}
+	if body.Tarifa.Comissao.Data != nil {
+		t.Fatalf("tarifa.comissao.data = %v, want null (degrau 4 has no source timestamp)", *body.Tarifa.Comissao.Data)
+	}
+	if !body.Tarifa.Frete.SemDados {
+		t.Fatalf("tarifa.frete.sem_dados = false, want true (resolver frete unknown)")
+	}
+}
+
+func TestDecomposeWithResolverSurfacesTarifa(t *testing.T) {
+	resolver := fakeTariffResolver{res: domain.TariffResolution{
+		Comissao: domain.ComponentResolution{Valor: strPtr("13.00"), Fonte: domain.FontePadrao, Degrau: 4},
+		Frete:    domain.ComponentResolution{Valor: strPtr("22.50"), Fonte: domain.FontePadrao, Degrau: 4},
+	}}
+	custo := "10.00"
+	mux := newCalcMuxWithResolver(newRepoStub(), costStub{money: &domain.Money{Amount: custo, Currency: "BRL"}}, nil, resolver)
+	w := do(t, mux, http.MethodPost, "/pricing/decompose",
+		`{"preco":"100.00","modalidade":"classico","custo":"10.00"}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200, body=%s", w.Code, w.Body.String())
+	}
+	var body struct {
+		Tarifa *tarifaDTO `json:"tarifa"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Tarifa == nil {
+		t.Fatalf("tarifa = nil, want resolved tarifa object, body=%s", w.Body.String())
+	}
+	if body.Tarifa.Comissao.Valor == nil || *body.Tarifa.Comissao.Valor != "13.00" {
+		t.Fatalf("tarifa.comissao.valor = %v, want 13.00", body.Tarifa.Comissao.Valor)
+	}
+	if body.Tarifa.Frete.SemDados {
+		t.Fatalf("tarifa.frete.sem_dados = true, want false (resolver frete known)")
+	}
+}
+
+func strPtr(s string) *string { return &s }
 
 func TestDeleteScenarioNotFound404(t *testing.T) {
 	mux := newCalcMux(newRepoStub(), costStub{}, nil)
