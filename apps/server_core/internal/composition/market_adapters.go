@@ -518,7 +518,9 @@ func (r *marketPriceIntelCollectorAdapter) observeProviderFailure(operation stri
 	)
 }
 
-const maxProviderBodyLog = 256
+// Bounded but roomy enough to keep a provider error body diagnosable in the log
+// (the connector already clips the raw body to ~512 before it reaches here).
+const maxProviderBodyLog = 512
 
 // The provider body is attacker/provider-controlled (echoed straight from the
 // HTTP response), so redaction must cover more than the literal "Bearer X"

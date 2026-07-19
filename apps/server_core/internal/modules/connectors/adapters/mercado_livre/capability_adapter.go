@@ -611,15 +611,33 @@ func (a *CapabilityAdapter) doJSONWithHeaders(ctx context.Context, accountRef do
 		return domain.NewCapabilityError(domain.ErrCodeProviderTransient, "provider temporarily unavailable")
 	}
 	if resp.StatusCode >= 400 {
-		return domain.NewCapabilityError(domain.ErrCodeProviderValidation, strings.TrimSpace(string(rawBody)))
+		return domain.NewCapabilityError(domain.ErrCodeProviderValidation, providerDiag(method, path, resp.StatusCode, rawBody))
 	}
 	if target == nil {
 		return nil
 	}
 	if err := json.Unmarshal(rawBody, target); err != nil {
-		return domain.NewCapabilityError(domain.ErrCodeProviderPayloadInvalid, "provider payload decode failed")
+		// A 2xx whose body does not fit the expected struct is a contract drift,
+		// not a client bug. Carry the raw (bounded) body + route so the failure is
+		// diagnosable instead of a blind "decode failed" (FINDING-M02-LIVE-2 /
+		// live-drive reprova, D-86). The market-collection boundary sanitizes
+		// (token-redacts + truncates) this message before it reaches any log.
+		return domain.NewCapabilityError(domain.ErrCodeProviderPayloadInvalid, providerDiag(method, path, resp.StatusCode, rawBody))
 	}
 	return nil
+}
+
+// providerDiag builds a bounded, single-line diagnostic string from a provider
+// response: HTTP route + status + the raw body clipped to a sane length. Token
+// redaction is applied downstream at the market-collection boundary; this keeps
+// only the size bound so a large body cannot bloat the error chain.
+func providerDiag(method, path string, status int, rawBody []byte) string {
+	body := strings.Join(strings.Fields(string(rawBody)), " ")
+	const maxDiagBody = 512
+	if runes := []rune(body); len(runes) > maxDiagBody {
+		body = string(runes[:maxDiagBody]) + "…"
+	}
+	return fmt.Sprintf("%s %s -> HTTP %d: %s", method, path, status, body)
 }
 
 func decodeListingPriceResponses(rawBody []byte) ([]mlListingPriceResponse, error) {
