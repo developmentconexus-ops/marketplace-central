@@ -1,10 +1,13 @@
 package composition
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -168,6 +171,58 @@ func TestMapMarketProviderErrorContextDeadline(t *testing.T) {
 	got = mapMarketProviderError(context.Background(), fmt.Errorf("wrapped: %w", connectorsdomain.ErrRateLimited))
 	if !errors.Is(got, marketports.ErrRateLimited) {
 		t.Fatalf("live ctx: got %v, want ErrRateLimited", got)
+	}
+}
+
+// TestObserveProviderFailureWarnsOnceSanitized guards FINDING-M02-LIVE-2
+// observability (D-86): a provider validation body (e.g. the ML 400 that today
+// dies silently) must surface a single warn per operation+status, with the body
+// whitespace-collapsed, token-redacted, and length-bounded — never the raw
+// bearer token or an unbounded payload.
+func TestObserveProviderFailureWarnsOnceSanitized(t *testing.T) {
+	var buf bytes.Buffer
+	adapter := &marketPriceIntelCollectorAdapter{
+		log: slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn})),
+	}
+	err := &connectorsdomain.CapabilityError{
+		Code:    connectorsdomain.ErrCodeProviderValidation,
+		Message: "  {\"message\":\"invalid item\",\n\t\"auth\":\"Bearer secret-abc123\"}  " + strings.Repeat("x", 400),
+	}
+	mapped := &marketports.ProviderStatusError{StatusCode: http.StatusBadRequest}
+
+	adapter.observeProviderFailure("ListCatalogOffers", err, mapped)
+	adapter.observeProviderFailure("ListCatalogOffers", err, mapped) // same op+status: deduped
+
+	logged := buf.String()
+	if n := strings.Count(logged, "market collection provider failure"); n != 1 {
+		t.Fatalf("warn count = %d, want 1 (deduped); log =\n%s", n, logged)
+	}
+	if strings.Contains(logged, "secret-abc123") {
+		t.Fatalf("provider token leaked into log:\n%s", logged)
+	}
+	if !strings.Contains(logged, "ListCatalogOffers") || !strings.Contains(logged, "400") {
+		t.Fatalf("log missing operation/status:\n%s", logged)
+	}
+	if strings.Contains(logged, "\n\t") {
+		t.Fatalf("provider body not whitespace-collapsed:\n%s", logged)
+	}
+	// A different status is a distinct signal and must warn again.
+	adapter.observeProviderFailure("ListCatalogOffers", err, &marketports.ProviderStatusError{StatusCode: http.StatusBadGateway})
+	if n := strings.Count(buf.String(), "market collection provider failure"); n != 2 {
+		t.Fatalf("warn count after new status = %d, want 2", n)
+	}
+}
+
+func TestObserveProviderFailureIgnoresBodilessErrors(t *testing.T) {
+	var buf bytes.Buffer
+	adapter := &marketPriceIntelCollectorAdapter{
+		log: slog.New(slog.NewTextHandler(&buf, nil)),
+	}
+	// Timeouts and bare sentinels carry no provider body — nothing to observe.
+	adapter.observeProviderFailure("GetOwnItemPricing", context.DeadlineExceeded, &marketports.ProviderStatusError{StatusCode: http.StatusGatewayTimeout})
+	adapter.observeProviderFailure("GetOwnItemPricing", marketports.ErrRateLimited, marketports.ErrRateLimited)
+	if buf.Len() != 0 {
+		t.Fatalf("expected no log for bodiless errors, got:\n%s", buf.String())
 	}
 }
 
