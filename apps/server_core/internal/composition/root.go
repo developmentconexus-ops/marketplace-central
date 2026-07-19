@@ -97,8 +97,11 @@ import (
 	pricingfee "marketplace-central/apps/server_core/internal/modules/pricing/adapters/feeschedule"
 	pricingmarket "marketplace-central/apps/server_core/internal/modules/pricing/adapters/marketplace"
 	pricingpostgres "marketplace-central/apps/server_core/internal/modules/pricing/adapters/postgres"
+	pricingtariffcomposite "marketplace-central/apps/server_core/internal/modules/pricing/adapters/tariffcomposite"
 	pricingtariffdefaults "marketplace-central/apps/server_core/internal/modules/pricing/adapters/tariffdefaults"
+	pricingtarifflive "marketplace-central/apps/server_core/internal/modules/pricing/adapters/tarifflive"
 	pricingapp "marketplace-central/apps/server_core/internal/modules/pricing/application"
+	pricingports "marketplace-central/apps/server_core/internal/modules/pricing/ports"
 	pricingtransport "marketplace-central/apps/server_core/internal/modules/pricing/transport"
 	productlinkspostgres "marketplace-central/apps/server_core/internal/modules/product_links/adapters/postgres"
 	productlinksapp "marketplace-central/apps/server_core/internal/modules/product_links/application"
@@ -726,9 +729,23 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		// implements ports.TariffDefaultsStore; the resolver reads config-seeded
 		// comissão/frete so an empty comissao_pct resolves and frete honors policy.
 		calcTariffResolver := pricingtariffdefaults.NewResolver(calcRepo, cfg.DefaultTenantID, "")
+		// CHIP-T2-MIN degrau 3 (live COTAÇÃO): compose over the degrau-4 base
+		// when the mercado_livre fee-quote reader is available, so a decompose/
+		// solve upgrades the commission to a live quote (category via catalog
+		// match, commission via listing_prices) and silently falls to degrau 4
+		// on any miss. If the provider has no fee-quote capability wired, the
+		// base degrau-4 resolver stands alone.
+		var tariffResolver pricingports.TariffResolver = calcTariffResolver
+		if feeReader, ferr := marketplaceCapabilities.FeeQuoteReader(mercadoLivreProviderCode); ferr == nil {
+			identityReader := pricingcatalog.NewProductIdentityReader(catalogSvc)
+			categoryResolver := newPricingCategoryResolverAdapter(mercadoLivreCapabilities, installationSvc, cfg.DefaultTenantID)
+			commissionQuoter := newPricingCommissionQuoterAdapter(feeReader, installationSvc, cfg.DefaultTenantID)
+			liveResolver := pricingtarifflive.NewResolver(identityReader, categoryResolver, commissionQuoter)
+			tariffResolver = pricingtariffcomposite.NewResolver(calcTariffResolver, liveResolver)
+		}
 		calcSvc := pricingapp.NewCalcService(calcRepo, calcCost, calcProducts, cfg.DefaultTenantID).
 			WithTariffStore(calcRepo).
-			WithTariffResolver(calcTariffResolver)
+			WithTariffResolver(tariffResolver)
 		pricingHandler = pricingHandler.WithCalc(calcSvc)
 	}
 	pricingHandler.Register(mux)

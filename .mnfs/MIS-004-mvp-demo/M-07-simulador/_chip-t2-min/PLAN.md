@@ -35,7 +35,7 @@ Frete stays degrau 4 in MIN (no frete-by-dims).
 - [x] S4 tarifflive assembler (silent-miss matrix; D-83 EAN+titulo together; happy=COTACAO/3/data). NOTE: modalidade->listing_type maps INSIDE the assembler (degrau-3 logic, unit-tested), not composition.
 - [x] S5 tariffcomposite (chain degrau3->degrau4; frete stays degrau4; degrau3 miss OR error -> silent degrau4; base error propagates).
 - [x] S6 calc_service threading (Decompose priceBasis=Preco, Solve priceBasis=nil; manual-commission gate -> ProductID+PriceBasis nil).
-- [ ] S7 composition wiring (pricing_adapters.go raw readers + accountRefForTenant + modalidade→listing_type; root.go wire). Full build/vet/test + IC-04 green.
+- [x] S7 composition wiring (pricing_adapters.go: CategoryResolver over raw ReadCatalogMatch + CommissionQuoter over raw ReadFeeQuote + firstConnectedMLAccountRef silent-miss; root.go composite wired behind FeeQuoteReader availability). Full build/vet/test + IC-04 green. NOTE: S7 adapter impl-then-test (mirrors D-21 market_adapters pattern) vs strict TDD on S1-S6.
 
 ## Gates (close)
 GOCACHE=C:/Users/leandro.theodoro/Documents/marketplace-central/.gocache absolute, no GOFLAGS.
