@@ -1,0 +1,430 @@
+diff --git a/apps/web/src/pages/precos/DecompositionPanel.test.tsx b/apps/web/src/pages/precos/DecompositionPanel.test.tsx
+index 200ca7c6..a857fad5 100644
+--- a/apps/web/src/pages/precos/DecompositionPanel.test.tsx
++++ b/apps/web/src/pages/precos/DecompositionPanel.test.tsx
+@@ -118,4 +118,114 @@ describe("DecompositionPanel", () => {
+     );
+     expect(screen.getByText("(−) DIFAL SP")).toBeInTheDocument();
+   });
++
++  it("renders the comissão fonte/degrau carimbo (COTACAO degrau 3, no ESTIMATIVA) beside the value", () => {
++    render(
++      <DecompositionPanel
++        decomposition={decomposition()}
++        profile={profile}
++        blockingState={null}
++        tarifa={{
++          comissao: { valor: "14.5", fonte: "COTACAO", degrau: 3, data: "2026-07-19T10:00:00Z", estimativa: false, sem_dados: false },
++          frete: { valor: "12.00", fonte: "CATEGORIA", degrau: 2, data: null, estimativa: false, sem_dados: false },
++        }}
++      />,
++    );
++
++    const carimbo = screen.getByTestId("decomp-tarifa-comissao");
++    expect(carimbo).toHaveTextContent("Cotação");
++    expect(carimbo).toHaveTextContent("degrau 3");
++    expect(carimbo).not.toHaveTextContent("ESTIMATIVA");
++    expect(within(carimbo).getByLabelText("Atualização dos dados")).toBeInTheDocument();
++  });
++
++  it("renders the ESTIMATIVA pill on a degrau-4 PADRAO comissão estimate", () => {
++    render(
++      <DecompositionPanel
++        decomposition={decomposition()}
++        profile={profile}
++        blockingState={null}
++        tarifa={{
++          comissao: { valor: "13.00", fonte: "PADRAO", degrau: 4, data: null, estimativa: true, sem_dados: false },
++          frete: null,
++        }}
++      />,
++    );
++
++    const carimbo = screen.getByTestId("decomp-tarifa-comissao");
++    expect(carimbo).toHaveTextContent("Padrão");
++    expect(carimbo).toHaveTextContent("degrau 4");
++    expect(carimbo).toHaveTextContent("ESTIMATIVA");
++  });
++
++  it("suppresses the frete carimbo and keeps '—' when frete is NO-DATA (valor null / sem_dados)", () => {
++    const d = decomposition({ frete: null, componentes_desconhecidos: ["frete"] });
++    render(
++      <DecompositionPanel
++        decomposition={d}
++        profile={profile}
++        blockingState={null}
++        tarifa={{
++          comissao: null,
++          frete: { valor: null, fonte: "PADRAO", degrau: 4, data: null, estimativa: false, sem_dados: true },
++        }}
++      />,
++    );
++
++    expect(screen.queryByTestId("decomp-tarifa-frete")).toBeNull();
++    const panel = screen.getByTestId("decomposition-panel");
++    expect(within(panel).getAllByText("—", { selector: "span.text-faint" }).length).toBeGreaterThanOrEqual(1);
++    expect(panel).not.toHaveTextContent("ESTIMATIVA");
++  });
++
++  it("never stamps a carimbo beside '—' even if tarifa.frete disagrees with a null decomposition.frete (ADR-17)", () => {
++    // Pathological backend disagreement: the frete value is unknown (null ⇒ "—") yet the
++    // tarifa block carries a resolved frete provenance. The FE must NOT render a source/
++    // degrau stamp next to the em-dash — honest-absence is enforced on the shown value.
++    const d = decomposition({ frete: null, componentes_desconhecidos: ["frete"] });
++    render(
++      <DecompositionPanel
++        decomposition={d}
++        profile={profile}
++        blockingState={null}
++        tarifa={{
++          comissao: null,
++          frete: { valor: "12.00", fonte: "COTACAO", degrau: 3, data: "2026-07-19T10:00:00Z", estimativa: false, sem_dados: false },
++        }}
++      />,
++    );
++
++    expect(screen.queryByTestId("decomp-tarifa-frete")).toBeNull();
++    const panel = screen.getByTestId("decomposition-panel");
++    expect(panel).not.toHaveTextContent("Cotação");
++  });
++
++  it("renders no carimbo when no tarifa block is passed (backward compatible)", () => {
++    render(<DecompositionPanel decomposition={decomposition()} profile={profile} blockingState={null} />);
++
++    expect(screen.queryByTestId("decomp-tarifa-comissao")).toBeNull();
++    expect(screen.queryByTestId("decomp-tarifa-frete")).toBeNull();
++    const panel = screen.getByTestId("decomposition-panel");
++    expect(within(panel).getByText("17.00")).toBeInTheDocument();
++  });
++
++  it("does not add a carimbo to custo/imposto rows even when tarifa is present", () => {
++    render(
++      <DecompositionPanel
++        decomposition={decomposition()}
++        profile={profile}
++        blockingState={null}
++        tarifa={{
++          comissao: { valor: "14.5", fonte: "COTACAO", degrau: 3, data: "2026-07-19T10:00:00Z", estimativa: false, sem_dados: false },
++          frete: { valor: "12.00", fonte: "CATEGORIA", degrau: 2, data: null, estimativa: false, sem_dados: false },
++        }}
++      />,
++    );
++
++    const panel = screen.getByTestId("decomposition-panel");
++    expect(within(panel).getByTestId("decomp-tarifa-comissao")).toBeInTheDocument();
++    expect(within(panel).getByTestId("decomp-tarifa-frete")).toBeInTheDocument();
++    expect(within(panel).getByText("40.00")).toBeInTheDocument();
++    expect(within(panel).getByText("4.00")).toBeInTheDocument();
++  });
+ });
+diff --git a/apps/web/src/pages/precos/DecompositionPanel.tsx b/apps/web/src/pages/precos/DecompositionPanel.tsx
+index 7798eebf..1f2ef631 100644
+--- a/apps/web/src/pages/precos/DecompositionPanel.tsx
++++ b/apps/web/src/pages/precos/DecompositionPanel.tsx
+@@ -4,6 +4,8 @@ import type {
+   PricingCalcProfile,
+   PricingDecomposition,
+ } from "@marketplace-central/sdk-runtime";
++import { TariffCarimbo } from "./tariffBadge";
++import type { TariffBlock } from "./tariffBadge";
+ 
+ export interface DecompositionPanelProps {
+   decomposition: PricingDecomposition;
+@@ -11,6 +13,8 @@ export interface DecompositionPanelProps {
+   blockingState: string | null;
+   /** Destination UF for the DIFAL line label (from the analysis CEP). */
+   difalUf?: string | null;
++  /** Tarifa carimbo (comissão + frete provenance) — SolverPanel's badge, reused here. */
++  tarifa?: TariffBlock | null;
+ }
+ 
+ /** A decimal-string value, or UnknownValue (—) when absent — never a fabricated 0. */
+@@ -38,6 +42,7 @@ export function DecompositionPanel({
+   profile,
+   blockingState,
+   difalUf,
++  tarifa,
+ }: DecompositionPanelProps): JSX.Element {
+   const thresholds = {
+     healthy: Number(profile.limiar_verde_pct),
+@@ -61,9 +66,22 @@ export function DecompositionPanel({
+       ) : null}
+ 
+       <Row label="Preço"><Value amount={d.preco} /></Row>
+-      <Row label="(−) Comissão"><Value amount={d.comissao} /></Row>
++      <Row label="(−) Comissão">
++        <span className="flex items-center gap-1.5">
++          <Value amount={d.comissao} />
++          <TariffCarimbo comp={tarifa?.comissao} testId="decomp-tarifa-comissao" />
++        </span>
++      </Row>
+       <Row label="(−) Taxa fixa"><Value amount={d.taxa_fixa} /></Row>
+-      <Row label="(−) Frete"><Value amount={d.frete} hint="frete calculado por peso e CEP" /></Row>
++      <Row label="(−) Frete">
++        <span className="flex items-center gap-1.5">
++          <Value amount={d.frete} hint="frete calculado por peso e CEP" />
++          {/* Carimbo only beside a shown value: never a provenance stamp next to "—",
++              even if the backend's tarifa.frete disagrees with a null decomposition.frete
++              (ADR-17). Comissão needs no such guard — decomposition.comissao is never null. */}
++          {d.frete !== null ? <TariffCarimbo comp={tarifa?.frete} testId="decomp-tarifa-frete" /> : null}
++        </span>
++      </Row>
+       <Row label="(−) Imposto"><Value amount={d.imposto} /></Row>
+       <Row label={`(−) DIFAL${difalUf ? ` ${difalUf}` : ""}`}>
+         <Value amount={d.difal} hint="diferencial de alíquota da UF de destino" />
+diff --git a/apps/web/src/pages/precos/PricingPage.test.tsx b/apps/web/src/pages/precos/PricingPage.test.tsx
+index 2a3bb081..74710285 100644
+--- a/apps/web/src/pages/precos/PricingPage.test.tsx
++++ b/apps/web/src/pages/precos/PricingPage.test.tsx
+@@ -35,6 +35,10 @@ const decompose: PricingDecomposeResponse = {
+     componentes_desconhecidos: [],
+   },
+   blocking_state: null,
++  tarifa: {
++    comissao: { valor: "15.13", fonte: "COTACAO", degrau: 3, data: "2026-07-18T12:00:00Z", estimativa: false },
++    frete: { valor: null, fonte: "PADRAO", degrau: 4, data: null, estimativa: false, sem_dados: true },
++  },
+ };
+ 
+ const productFactsPage = {
+@@ -174,6 +178,10 @@ describe("PricingPage scaffold", () => {
+ 
+     // Profile drives the calc surface — it must be fetched on mount.
+     expect(getPricingProfile).toHaveBeenCalled();
++
++    // The decompose response's tarifa block flows through to the panel's carimbo.
++    const carimbo = await screen.findByTestId("decomp-tarifa-comissao");
++    expect(carimbo).toHaveTextContent("Cotação");
+   });
+ 
+   it("opens the Parâmetros drawer on the ?params=1 deep link", async () => {
+diff --git a/apps/web/src/pages/precos/PricingPage.tsx b/apps/web/src/pages/precos/PricingPage.tsx
+index a1999452..a8f7075e 100644
+--- a/apps/web/src/pages/precos/PricingPage.tsx
++++ b/apps/web/src/pages/precos/PricingPage.tsx
+@@ -293,6 +293,7 @@ export function PricingPage() {
+                   profile={profile}
+                   blockingState={decomposeQuery.data.blocking_state}
+                   difalUf={profile.difal_destino_uf}
++                  tarifa={decomposeQuery.data.tarifa}
+                 />
+               ) : (
+                 <p className="text-sm text-muted">Selecione um produto e um preço para simular.</p>
+diff --git a/apps/web/src/pages/precos/SolverPanel.tsx b/apps/web/src/pages/precos/SolverPanel.tsx
+index cb9dfcf8..6aa13b88 100644
+--- a/apps/web/src/pages/precos/SolverPanel.tsx
++++ b/apps/web/src/pages/precos/SolverPanel.tsx
+@@ -1,10 +1,12 @@
+ import { useEffect, useState } from "react";
+ import type { JSX } from "react";
+ import { useMutation } from "@tanstack/react-query";
+-import { ErrorState, UnknownValue, FreshnessIndicator } from "@marketplace-central/ui";
++import { ErrorState } from "@marketplace-central/ui";
+ import type { PricingCalcInput, PricingSolveResponse } from "@marketplace-central/sdk-runtime";
+ import { useClient } from "../../app/ClientContext";
+ import { ptBrRateToDot } from "./ptbrDecimal";
++import { TariffBadge } from "./tariffBadge";
++import type { TariffBlock } from "./tariffBadge";
+ 
+ export interface SolverPanelProps {
+   /** Selected product to solve for, or null when none is chosen. */
+@@ -13,41 +15,9 @@ export interface SolverPanelProps {
+   modalidade: string;
+ }
+ 
+-/**
+- * Tarifa carimbo carried per component in the `/pricing/solve` response
+- * (design DESIGN-TARIFAS-ML §4.4 Layer 2/3). Owned by the backend chip CHIP-T1;
+- * declared locally + read tolerantly here until the SDK type lands the block.
+- * `valor` nil / `sem_dados` = NO-DATA honest state (ADR-17) — never 0, never green.
+- */
+-interface TariffComponent {
+-  valor?: string | null;
+-  fonte?: string | null; // VENDA | COTACAO | CATEGORIA | PADRAO
+-  degrau?: number | null; // 1-4
+-  data?: string | null; // event date (venda) or fetched_at (cotação)
+-  estimativa?: boolean;
+-  sem_dados?: boolean;
+-}
+-
+-interface TariffBlock {
+-  comissao?: TariffComponent | null;
+-  frete?: TariffComponent | null;
+-}
+-
+ /** Response shape widened with the design §4.4 tarifa block (SDK type lags). */
+ type SolveResult = PricingSolveResponse & { tarifa?: TariffBlock | null };
+ 
+-const FONTE_LABELS: Record<string, string> = {
+-  VENDA: "Venda",
+-  COTACAO: "Cotação",
+-  CATEGORIA: "Categoria",
+-  PADRAO: "Padrão",
+-};
+-
+-function fonteLabel(fonte: string | null | undefined): string | null {
+-  if (!fonte) return null;
+-  return FONTE_LABELS[fonte] ?? fonte;
+-}
+-
+ /**
+  * SolverPanel is the reverse (bidirectional) leg of the simulator: the operator
+  * enters a TARGET margin and the server solves for the price that yields it
+@@ -175,52 +145,3 @@ export function SolverPanel({ productId, modalidade }: SolverPanelProps): JSX.El
+     </div>
+   );
+ }
+-
+-interface TariffBadgeProps {
+-  testId: string;
+-  label: string;
+-  comp: TariffComponent | null | undefined;
+-  /** Comissão is a percentage; frete is money. */
+-  percent?: boolean;
+-}
+-
+-/**
+- * Renders one resolved tariff component with its fonte/degrau/data carimbos and an
+- * ESTIMATIVA pill when the value is a labeled degrau-4 estimate. NO-DATA (nil value
+- * or `sem_dados`) renders `UnknownValue` ("—") — never R$0, never a misleading pill.
+- */
+-function TariffBadge({ testId, label, comp, percent }: TariffBadgeProps): JSX.Element | null {
+-  if (!comp) return null;
+-
+-  // NO-DATA = explicit sem_dados, nil, OR an empty/blank value string (ceiling_pct uses ""
+-  // as its blank sentinel; a tarifa valor may too). Never render "R$ " / a false pill.
+-  const noData =
+-    comp.sem_dados === true ||
+-    comp.valor == null ||
+-    (typeof comp.valor === "string" && comp.valor.trim() === "");
+-  const isEstimativa = !noData && (comp.estimativa === true || comp.degrau === 4);
+-  const fonte = fonteLabel(comp.fonte);
+-
+-  return (
+-    <span data-testid={testId} className="flex items-center gap-1.5">
+-      <span className="text-muted">{label}</span>
+-      {noData ? (
+-        // Carimbos are suppressed beside "—": a source/degrau/ESTIMATIVA next to an
+-        // unknown value reads as if the unknown were a real resolved figure.
+-        <UnknownValue hint="Sem dados — cadastre dimensões ou vincule um anúncio ML" />
+-      ) : (
+-        <>
+-          <span className="font-mono text-ink">
+-            {percent ? `${comp.valor}%` : `R$ ${comp.valor}`}
+-          </span>
+-          {fonte ? <span className="rounded bg-surface px-1.5 py-0.5 text-muted">{fonte}</span> : null}
+-          {comp.degrau != null ? <span className="text-faint">degrau {comp.degrau}</span> : null}
+-          {isEstimativa ? (
+-            <span className="rounded bg-amber-soft px-1.5 py-0.5 font-medium text-amber">ESTIMATIVA</span>
+-          ) : null}
+-          {comp.data ? <FreshnessIndicator asOf={comp.data} /> : null}
+-        </>
+-      )}
+-    </span>
+-  );
+-}
+diff --git a/apps/web/src/pages/precos/tariffBadge.tsx b/apps/web/src/pages/precos/tariffBadge.tsx
+new file mode 100644
+index 00000000..a3d28730
+--- /dev/null
++++ b/apps/web/src/pages/precos/tariffBadge.tsx
+@@ -0,0 +1,99 @@
++import type { JSX } from "react";
++import { UnknownValue, FreshnessIndicator } from "@marketplace-central/ui";
++
++/**
++ * Tarifa carimbo carried per component in the /pricing/solve and /pricing/decompose
++ * responses (design DESIGN-TARIFAS-ML §4.4). `valor` nil / `sem_dados` = NO-DATA
++ * honest state (ADR-17) — never 0, never a green figure. Shape is tolerant/optional so
++ * the SDK's stricter PricingTarifaComponent/PricingTarifaFrete assign to it directly.
++ */
++export interface TariffComponent {
++  valor?: string | null;
++  fonte?: string | null; // VENDA | COTACAO | CATEGORIA | PADRAO
++  degrau?: number | null; // 1-4
++  data?: string | null; // event date (venda) or fetched_at (cotação)
++  estimativa?: boolean;
++  sem_dados?: boolean;
++}
++
++export interface TariffBlock {
++  comissao?: TariffComponent | null;
++  frete?: TariffComponent | null;
++}
++
++const FONTE_LABELS: Record<string, string> = {
++  VENDA: "Venda",
++  COTACAO: "Cotação",
++  CATEGORIA: "Categoria",
++  PADRAO: "Padrão",
++};
++
++export function fonteLabel(fonte: string | null | undefined): string | null {
++  if (!fonte) return null;
++  return FONTE_LABELS[fonte] ?? fonte;
++}
++
++/** NO-DATA = explicit sem_dados, nil valor, OR an empty/blank valor string. */
++export function isNoData(comp: TariffComponent): boolean {
++  return (
++    comp.sem_dados === true ||
++    comp.valor == null ||
++    (typeof comp.valor === "string" && comp.valor.trim() === "")
++  );
++}
++
++interface TariffCarimboProps {
++  comp: TariffComponent | null | undefined;
++  testId?: string;
++}
++
++/**
++ * The provenance carimbo cluster beside an already-rendered value: fonte + degrau +
++ * ESTIMATIVA pill + freshness. Returns null when the component is absent or NO-DATA —
++ * a source/degrau/ESTIMATIVA next to an unknown value reads as if it were resolved.
++ */
++export function TariffCarimbo({ comp, testId }: TariffCarimboProps): JSX.Element | null {
++  if (!comp || isNoData(comp)) return null;
++  const fonte = fonteLabel(comp.fonte);
++  const isEstimativa = comp.estimativa === true || comp.degrau === 4;
++  return (
++    <span data-testid={testId} className="flex items-center gap-1.5">
++      {fonte ? <span className="rounded bg-surface px-1.5 py-0.5 text-muted">{fonte}</span> : null}
++      {comp.degrau != null ? <span className="text-faint">degrau {comp.degrau}</span> : null}
++      {isEstimativa ? (
++        <span className="rounded bg-amber-soft px-1.5 py-0.5 font-medium text-amber">ESTIMATIVA</span>
++      ) : null}
++      {comp.data ? <FreshnessIndicator asOf={comp.data} /> : null}
++    </span>
++  );
++}
++
++interface TariffBadgeProps {
++  testId: string;
++  label: string;
++  comp: TariffComponent | null | undefined;
++  /** Comissão is a percentage; frete is money. */
++  percent?: boolean;
++}
++
++/**
++ * Full labeled badge (SolverPanel result panel): label + value + carimbo cluster.
++ * NO-DATA renders UnknownValue ("—") with the carimbos suppressed.
++ */
++export function TariffBadge({ testId, label, comp, percent }: TariffBadgeProps): JSX.Element | null {
++  if (!comp) return null;
++  const noData = isNoData(comp);
++  return (
++    <span data-testid={testId} className="flex items-center gap-1.5">
++      <span className="text-muted">{label}</span>
++      {noData ? (
++        <UnknownValue hint="Sem dados — cadastre dimensões ou vincule um anúncio ML" />
++      ) : (
++        <>
++          <span className="font-mono text-ink">{percent ? `${comp.valor}%` : `R$ ${comp.valor}`}</span>
++          <TariffCarimbo comp={comp} />
++        </>
++      )}
++    </span>
++  );
++}
