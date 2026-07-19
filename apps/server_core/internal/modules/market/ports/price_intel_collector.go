@@ -55,6 +55,12 @@ var (
 	// ErrRateLimited signals a provider backoff condition; the pipeline stops
 	// remaining provider work for the codprod rather than retrying.
 	ErrRateLimited = errors.New("PROVIDER_RATE_LIMITED")
+	// ErrInvalidListingRef signals a LOCAL failure to resolve a listing id into
+	// account context (a malformed id that cannot be parsed) — it is NOT a
+	// provider fault, so the pipeline must classify it as a local cause rather
+	// than dressing it as a fabricated PROVIDER_4XX (ADR-17: a local failure
+	// never wears an invented provider status). Live-drive reprova, D-86.
+	ErrInvalidListingRef = errors.New("INVALID_LISTING_REF")
 )
 
 // ProviderStatusError classifies a non-rate-limited provider failure by HTTP

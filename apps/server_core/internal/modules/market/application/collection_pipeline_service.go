@@ -34,6 +34,11 @@ const (
 	CollectionCauseProvider5xx      CollectionCause = "PROVIDER_5XX"
 	CollectionCauseTimeout          CollectionCause = "TIMEOUT"
 	CollectionCausePriceUnavailable CollectionCause = "PRICE_UNAVAILABLE"
+	// CollectionCauseInvalidListingRef is a LOCAL failure to resolve a listing
+	// id into account context — distinct from any provider fault so an
+	// unparseable id is never mislabeled PROVIDER_4XX (ADR-17; live-drive
+	// reprova, D-86).
+	CollectionCauseInvalidListingRef CollectionCause = "INVALID_LISTING_REF"
 )
 
 // CollectionDecision is one collection outcome row for a codprod. Blocking
@@ -371,6 +376,8 @@ func providerCauseDetail(operation string, err error) *string {
 		return detailPtr(operation + ": provider request timed out")
 	case errors.Is(err, ports.ErrRateLimited):
 		return detailPtr(operation + ": provider rate-limited (HTTP 429)")
+	case errors.Is(err, ports.ErrInvalidListingRef):
+		return detailPtr(operation + ": unresolvable listing reference (local)")
 	default:
 		var statusErr *ports.ProviderStatusError
 		if errors.As(err, &statusErr) {
@@ -386,6 +393,11 @@ func classifyProviderFailure(err error) (CollectionCause, bool) {
 	}
 	if errors.Is(err, ports.ErrRateLimited) {
 		return CollectionCauseProvider4xx, true
+	}
+	if errors.Is(err, ports.ErrInvalidListingRef) {
+		// Local resolution failure for this listing — not a provider fault, and
+		// not fatal to the other listings under the codprod (stop=false).
+		return CollectionCauseInvalidListingRef, false
 	}
 	var statusErr *ports.ProviderStatusError
 	if errors.As(err, &statusErr) && statusErr.StatusCode >= 500 {

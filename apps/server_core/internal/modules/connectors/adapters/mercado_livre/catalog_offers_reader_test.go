@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -245,6 +246,58 @@ func TestListCatalogOffersParentChildFaultAbortsWithoutPartial(t *testing.T) {
 	offers, err := catalogOffersTestAdapter(server.URL, true).ListCatalogOffers(context.Background(), pricingAccountRef(), "MLB-PARENT")
 	if !errors.Is(err, domain.ErrProviderUnavailable) || errors.Is(err, domain.ErrCatalogOffersUnavailable) || offers != nil {
 		t.Fatalf("offers = %#v, error = %v, want ErrProviderUnavailable with no partial", offers, err)
+	}
+}
+
+func TestListCatalogOffersDecodeFailureSurfacesRouteAndBody(t *testing.T) {
+	t.Parallel()
+
+	// A 2xx whose JSON does not fit the expected struct (contract drift) must NOT
+	// collapse to a blind "decode failed" — the CapabilityError has to carry the
+	// route + raw body so the live failure is diagnosable (FINDING-M02-LIVE-2 /
+	// live-drive reprova). Here ML returns children_ids as objects, not strings.
+	driftBody := `{"id":"MLB-PARENT","children_ids":[{"id":"MLB-CHILD-1"},{"id":"MLB-CHILD-2"}]}`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/products/MLB-PARENT" {
+			_, _ = io.WriteString(w, driftBody)
+			return
+		}
+		t.Fatalf("unexpected request = %s %s", r.Method, r.URL.Path)
+	}))
+	defer server.Close()
+
+	_, err := catalogOffersTestAdapter(server.URL, true).ListCatalogOffers(context.Background(), pricingAccountRef(), "MLB-PARENT")
+	var capErr *domain.CapabilityError
+	if !errors.As(err, &capErr) || capErr.Code != domain.ErrCodeProviderPayloadInvalid {
+		t.Fatalf("error = %v, want CapabilityError{PayloadInvalid}", err)
+	}
+	if !strings.Contains(capErr.Message, "/products/MLB-PARENT") || !strings.Contains(capErr.Message, "children_ids") {
+		t.Fatalf("decode-fail message missing route/body diagnostic: %q", capErr.Message)
+	}
+}
+
+func TestListCatalogOffersDecodesNumericSellerID(t *testing.T) {
+	t.Parallel()
+
+	// Live ML returns seller_id as a NUMBER (e.g. 691607102), not a string. A
+	// `SellerID string` field failed json.Unmarshal on the 2xx body and sank all
+	// 16 real offers behind a blind PAYLOAD_INVALID (live-drive reprova, D-86).
+	// flexString tolerates both shapes exactly like the x-format-new shipment id.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/products/MLB-CATALOG" {
+			_, _ = io.WriteString(w, `{"children_ids":[]}`)
+			return
+		}
+		_, _ = io.WriteString(w, `{"paging":{"total":1,"offset":0,"limit":100},"results":[{"item_id":"MLB4735328201","seller_id":691607102,"price":169.99,"currency_id":"BRL","condition":"new","shipping":{"mode":"me2"}}]}`)
+	}))
+	defer server.Close()
+
+	offers, err := catalogOffersTestAdapter(server.URL, true).ListCatalogOffers(context.Background(), pricingAccountRef(), "MLB-CATALOG")
+	if err != nil {
+		t.Fatalf("ListCatalogOffers() error = %v", err)
+	}
+	if len(offers) != 1 || offers[0].SellerID != "691607102" || offers[0].Price == nil || offers[0].Price.Amount != "169.99" {
+		t.Fatalf("offers = %#v", offers)
 	}
 }
 

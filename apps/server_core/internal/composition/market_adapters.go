@@ -176,12 +176,28 @@ func (r *marketProductIdentityReaderAdapter) LinkedListings(ctx context.Context,
 			listingID := listingsdomain.ListingID{
 				InstallationID:    link.InstallationID,
 				ProviderListingID: link.ProviderItemID,
-				VariationID:       link.ProviderVariationID,
+				VariationID:       listingVariationOrSentinel(link.ProviderVariationID),
 			}
 			listingIDs = append(listingIDs, listingID.String())
 		}
 	}
 	return listingIDs, nil
+}
+
+// listingVariationOrSentinel bridges the product_links representation of a
+// no-variation listing (empty provider_variation_id) to the canonical
+// NoVariationID sentinel the rest of the system uses: NewListingKey normalizes
+// empty -> "-", the listings read path stores/serializes "-", and
+// ParseListingID requires all three id segments non-empty (so "-" is the marker
+// and an empty segment is malformed by design). Without this bridge the composed
+// ListingID.String() emits a trailing empty segment ("inst~MLB~") that
+// ParseListingID rejects, which broke own-item pricing resolution for every
+// listing without variations (live-drive reprova, D-86).
+func listingVariationOrSentinel(providerVariationID string) string {
+	if strings.TrimSpace(providerVariationID) == "" {
+		return listingsdomain.NoVariationID
+	}
+	return providerVariationID
 }
 
 // --- ports.PriceIntelCollector -----------------------------------------------
@@ -263,7 +279,11 @@ func (r *marketPriceIntelCollectorAdapter) accountRefForTenant(ctx context.Conte
 func (r *marketPriceIntelCollectorAdapter) accountRefForListing(ctx context.Context, listingID string) (connectorsdomain.ProviderAccountRef, string, error) {
 	parsed, err := listingsdomain.ParseListingID(listingID)
 	if err != nil {
-		return connectorsdomain.ProviderAccountRef{}, "", &marketports.ProviderStatusError{StatusCode: http.StatusBadRequest}
+		// A listing id we cannot parse is a LOCAL resolution failure, never a
+		// provider fault: return the honest local sentinel so the pipeline
+		// classifies it as INVALID_LISTING_REF instead of a fabricated
+		// PROVIDER_4XX (ADR-17; live-drive reprova, D-86).
+		return connectorsdomain.ProviderAccountRef{}, "", fmt.Errorf("%w: %v", marketports.ErrInvalidListingRef, err)
 	}
 	inst, found, err := r.installations.Get(ctx, parsed.InstallationID)
 	if err != nil {
@@ -518,7 +538,9 @@ func (r *marketPriceIntelCollectorAdapter) observeProviderFailure(operation stri
 	)
 }
 
-const maxProviderBodyLog = 256
+// Bounded but roomy enough to keep a provider error body diagnosable in the log
+// (the connector already clips the raw body to ~512 before it reaches here).
+const maxProviderBodyLog = 512
 
 // The provider body is attacker/provider-controlled (echoed straight from the
 // HTTP response), so redaction must cover more than the literal "Bearer X"

@@ -27,7 +27,9 @@ type mlCatalogOffersPaging struct {
 }
 
 type mlCatalogOffer struct {
-	SellerID  string       `json:"seller_id"`
+	// Live ML sends seller_id as a bare NUMBER, not a string (live-drive reprova,
+	// D-86); flexString decodes both shapes so a numeric id never sinks the read.
+	SellerID  flexString   `json:"seller_id"`
 	Price     *json.Number `json:"price"`
 	Currency  string       `json:"currency_id"`
 	Condition string       `json:"condition"`
@@ -99,7 +101,7 @@ func (a *CapabilityAdapter) listLeafCatalogOffers(ctx context.Context, accountRe
 				return nil, pageCount, err
 			}
 			offers = append(offers, domain.CatalogOffer{
-				SellerID:     strings.TrimSpace(result.SellerID),
+				SellerID:     strings.TrimSpace(string(result.SellerID)),
 				Price:        price,
 				Condition:    strings.TrimSpace(result.Condition),
 				ShippingMode: strings.TrimSpace(result.Shipping.Mode),
