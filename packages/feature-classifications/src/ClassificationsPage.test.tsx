@@ -1,44 +1,42 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { ClassificationsPage } from "./ClassificationsPage";
 import type {
-  CatalogProduct,
-  TaxonomyNode,
+  CatalogProductFact,
+  CatalogProductFactPage,
   Classification,
 } from "@marketplace-central/sdk-runtime";
 
-const makeProduct = (i: number): CatalogProduct => ({
-  product_id: `p${i}`,
-  sku: `SKU-${i}`,
-  name: `Product ${i}`,
-  description: "",
-  brand_name: "Brand X",
-  status: "active",
-  cost_amount: 10,
-  price_amount: 20,
-  stock_quantity: 100,
-  ean: `EAN${i}`,
-  reference: `REF${i}`,
-  taxonomy_node_id: "tax1",
-  taxonomy_name: "Category A",
-  suggested_price: null,
-  height_cm: null,
-  width_cm: null,
-  length_cm: null,
+const makeProduct = (i: number): CatalogProductFact => ({
+  internal_product_id: i,
+  reference: `SKU-${i}`,
+  description: `Product ${i}`,
+  ean: null,
+  manufacturer_reference: `SKU-${i}`,
+  brand_name: null,
+  ncm: null,
+  quality_flags: ["complete"],
+  active: true,
+  sellable_stock: { quantity: 100, quality: [] },
+  current_price: { amount: "20", currency: "BRL", quality: [] },
+  cost: { amount: "10", currency: "BRL", quality: [] },
 });
 
-const products: CatalogProduct[] = Array.from({ length: 60 }, (_, i) => makeProduct(i));
+const products: CatalogProductFact[] = Array.from({ length: 60 }, (_, i) => makeProduct(i));
 
-const taxonomyNodes: TaxonomyNode[] = [
-  { node_id: "tax1", name: "Category A", level: 1, level_label: "L1", parent_node_id: "", is_active: true, product_count: 60 },
-];
+const factsPage: CatalogProductFactPage = {
+  items: products,
+  next_cursor: null,
+  page_size: products.length,
+  as_of: "2026-04-01T00:00:00Z",
+};
 
 const existingClassifications: Classification[] = [
   {
     classification_id: "cls1",
     name: "Mercado Livre Ready",
     ai_context: "Products ready for Mercado Livre",
-    product_ids: ["p0", "p1", "p2"],
+    product_ids: ["0", "1", "2"],
     product_count: 3,
     created_at: "2026-04-01T00:00:00Z",
     updated_at: "2026-04-01T00:00:00Z",
@@ -47,7 +45,7 @@ const existingClassifications: Classification[] = [
     classification_id: "cls2",
     name: "Clearance",
     ai_context: "",
-    product_ids: ["p5"],
+    product_ids: ["5"],
     product_count: 1,
     created_at: "2026-04-02T00:00:00Z",
     updated_at: "2026-04-02T00:00:00Z",
@@ -56,14 +54,13 @@ const existingClassifications: Classification[] = [
 
 function makeClient(overrides = {}) {
   return {
-    listCatalogProducts: vi.fn().mockResolvedValue({ items: products }),
-    listTaxonomyNodes: vi.fn().mockResolvedValue({ items: taxonomyNodes }),
+    listCatalogProductFacts: vi.fn().mockResolvedValue(factsPage),
     listClassifications: vi.fn().mockResolvedValue({ items: existingClassifications }),
     createClassification: vi.fn().mockResolvedValue({
       classification_id: "cls3",
       name: "New One",
       ai_context: "",
-      product_ids: ["p10"],
+      product_ids: ["10"],
       product_count: 1,
       created_at: "",
       updated_at: "",
@@ -115,7 +112,7 @@ describe("ClassificationsPage", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: /select product 3/i }));
     await waitFor(() =>
       expect(client.updateClassification).toHaveBeenCalledWith("cls1", expect.objectContaining({
-        product_ids: expect.arrayContaining(["p0", "p1", "p2", "p3"]),
+        product_ids: expect.arrayContaining(["0", "1", "2", "3"]),
       }))
     );
   });
@@ -129,7 +126,7 @@ describe("ClassificationsPage", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: /select product 0/i }));
     await waitFor(() =>
       expect(client.updateClassification).toHaveBeenCalledWith("cls1", expect.objectContaining({
-        product_ids: expect.not.arrayContaining(["p0"]),
+        product_ids: expect.not.arrayContaining(["0"]),
       }))
     );
   });
@@ -144,7 +141,7 @@ describe("ClassificationsPage", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: /select product 10/i }));
     await waitFor(() =>
       expect(client.createClassification).toHaveBeenCalledWith(
-        expect.objectContaining({ name: "New One", product_ids: ["p10"] })
+        expect.objectContaining({ name: "New One", product_ids: ["10"] })
       )
     );
   });
@@ -171,7 +168,7 @@ describe("ClassificationsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /select all filtered/i }));
     await waitFor(() =>
       expect(client.updateClassification).toHaveBeenCalledWith("cls1", expect.objectContaining({
-        product_ids: expect.arrayContaining(["p0", "p1", "p2", "p59"]),
+        product_ids: expect.arrayContaining(["0", "1", "2", "59"]),
       }))
     );
   });
@@ -222,7 +219,7 @@ describe("ClassificationsPage", () => {
 
   it("shows error when load fails", async () => {
     const client = makeClient({
-      listCatalogProducts: vi.fn().mockRejectedValue({ error: { message: "Network error" } }),
+      listCatalogProductFacts: vi.fn().mockRejectedValue({ error: { message: "Network error" } }),
     });
     render(<ClassificationsPage client={client} />);
     await waitFor(() => expect(screen.getByText(/network error/i)).toBeInTheDocument());
@@ -248,4 +245,3 @@ describe("ClassificationsPage", () => {
     expect(screen.getByText("Product 5")).toBeInTheDocument();
   });
 });
-

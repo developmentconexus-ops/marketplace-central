@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { Tags, Plus, Trash2 } from "lucide-react";
 import { Button, PaginatedTable } from "@marketplace-central/ui";
 import type {
-  CatalogProduct,
-  TaxonomyNode,
+  CatalogProductFact,
+  CatalogProductFactPage,
+  CatalogPageOptions,
   Classification,
   CreateClassificationRequest,
   UpdateClassificationRequest,
@@ -14,8 +15,7 @@ import type {
 // ---------------------------------------------------------------------------
 
 interface ClassificationsClient {
-  listCatalogProducts: () => Promise<{ items: CatalogProduct[] }>;
-  listTaxonomyNodes: () => Promise<{ items: TaxonomyNode[] }>;
+  listCatalogProductFacts: (options?: CatalogPageOptions) => Promise<CatalogProductFactPage>;
   listClassifications: () => Promise<{ items: Classification[] }>;
   createClassification: (req: CreateClassificationRequest) => Promise<Classification>;
   updateClassification: (id: string, req: UpdateClassificationRequest) => Promise<Classification>;
@@ -30,9 +30,34 @@ interface ClassificationsPageProps {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function formatCurrency(value: number | null | undefined): string {
+// Classification membership is keyed by product id as a string; catalog facts
+// carry a numeric internal_product_id, so we stringify it at the seam.
+function factId(fact: CatalogProductFact): string {
+  return String(fact.internal_product_id);
+}
+
+// Catalog fact money amounts arrive as decimal strings; null means the source
+// value is unknown (ADR-17) \u2014 render an honest em dash, never a fabricated 0.
+function formatCurrency(value: string | null | undefined): string {
   if (value == null) return "\u2014";
-  return `R$ ${value.toFixed(2)}`;
+  const amount = Number(value);
+  if (Number.isNaN(amount)) return "\u2014";
+  return `R$ ${amount.toFixed(2)}`;
+}
+
+// Fact pages are cursor-paginated (max 100/page); drain every page so the
+// membership table sees the full catalog, matching the pre-migration behaviour.
+async function loadAllFacts(
+  client: ClassificationsClient,
+): Promise<CatalogProductFact[]> {
+  const items: CatalogProductFact[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await client.listCatalogProductFacts({ cursor, limit: 100 });
+    items.push(...page.items);
+    cursor = page.next_cursor ?? undefined;
+  } while (cursor);
+  return items;
 }
 
 // ---------------------------------------------------------------------------
@@ -42,8 +67,7 @@ function formatCurrency(value: number | null | undefined): string {
 export function ClassificationsPage({ client }: ClassificationsPageProps) {
   // Data
   const [classifications, setClassifications] = useState<Classification[]>([]);
-  const [products, setProducts] = useState<CatalogProduct[]>([]);
-  const [taxonomyNodes, setTaxonomyNodes] = useState<TaxonomyNode[]>([]);
+  const [products, setProducts] = useState<CatalogProductFact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,7 +85,6 @@ export function ClassificationsPage({ client }: ClassificationsPageProps) {
 
   // Product table filters
   const [search, setSearch] = useState("");
-  const [taxonomyFilter, setTaxonomyFilter] = useState("");
 
   // API state
   const [actionError, setActionError] = useState<string | null>(null);
@@ -74,13 +97,11 @@ export function ClassificationsPage({ client }: ClassificationsPageProps) {
     setLoading(true);
     setError(null);
     try {
-      const [prodRes, taxRes, clsRes] = await Promise.all([
-        client.listCatalogProducts(),
-        client.listTaxonomyNodes(),
+      const [prodItems, clsRes] = await Promise.all([
+        loadAllFacts(client),
         client.listClassifications(),
       ]);
-      setProducts(prodRes.items);
-      setTaxonomyNodes(taxRes.items);
+      setProducts(prodItems);
       setClassifications(clsRes.items);
     } catch (err: any) {
       setError(err?.error?.message ?? "Failed to load data.");
@@ -107,18 +128,14 @@ export function ClassificationsPage({ client }: ClassificationsPageProps) {
   }, [selectedClassification]);
 
   const filtered = useMemo(() => {
-    return products.filter((p) => {
-      const q = search.toLowerCase();
-      const matchesSearch =
-        !q ||
-        p.name.toLowerCase().includes(q) ||
-        p.sku.toLowerCase().includes(q) ||
-        p.ean.toLowerCase().includes(q) ||
-        p.brand_name.toLowerCase().includes(q);
-      const matchesTaxonomy = !taxonomyFilter || p.taxonomy_node_id === taxonomyFilter;
-      return matchesSearch && matchesTaxonomy;
-    });
-  }, [products, search, taxonomyFilter]);
+    const q = search.toLowerCase();
+    if (!q) return products;
+    return products.filter(
+      (p) =>
+        (p.description?.toLowerCase().includes(q) ?? false) ||
+        (p.reference?.toLowerCase().includes(q) ?? false),
+    );
+  }, [products, search]);
 
   const sortedClassifications = useMemo(() => {
     return [...classifications].sort((a, b) => a.name.localeCompare(b.name));
@@ -134,7 +151,6 @@ export function ClassificationsPage({ client }: ClassificationsPageProps) {
     setEditName(cls.name);
     setEditAiContext(cls.ai_context);
     setSearch("");
-    setTaxonomyFilter("");
     setActionError(null);
   }
 
@@ -148,7 +164,6 @@ export function ClassificationsPage({ client }: ClassificationsPageProps) {
     setDraftName("");
     setDraftAiContext("");
     setSearch("");
-    setTaxonomyFilter("");
     setActionError(null);
   }
 
@@ -271,7 +286,7 @@ export function ClassificationsPage({ client }: ClassificationsPageProps) {
 
   async function handleSelectAllFiltered() {
     if (!selectedClassification) return;
-    const allFilteredIds = filtered.map((p) => p.product_id);
+    const allFilteredIds = filtered.map(factId);
     const merged = Array.from(new Set([...selectedClassification.product_ids, ...allFilteredIds]));
 
     setClassifications((prev) =>
@@ -516,17 +531,6 @@ export function ClassificationsPage({ client }: ClassificationsPageProps) {
                 onChange={(e) => setSearch(e.target.value)}
                 className="flex-1 min-w-[180px] px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <select
-                value={taxonomyFilter}
-                onChange={(e) => setTaxonomyFilter(e.target.value)}
-                aria-label="Taxonomy filter"
-                className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All Taxonomy</option>
-                {taxonomyNodes.map((t) => (
-                  <option key={t.node_id} value={t.node_id}>{t.name}</option>
-                ))}
-              </select>
             </div>
 
             {/* Selection count + bulk actions */}
@@ -563,42 +567,43 @@ export function ClassificationsPage({ client }: ClassificationsPageProps) {
                   <th className="px-3 py-3 w-10"></th>
                   <th className="px-4 py-3 font-medium text-slate-600">Name</th>
                   <th className="px-4 py-3 font-medium text-slate-600">SKU</th>
-                  <th className="px-4 py-3 font-medium text-slate-600">Brand</th>
                   <th className="px-4 py-3 font-medium text-slate-600 text-right">Cost</th>
                   <th className="px-4 py-3 font-medium text-slate-600 text-right">Price</th>
                   <th className="px-4 py-3 font-medium text-slate-600 text-right">Stock</th>
                 </tr>
               )}
               renderRow={(p) => {
-                const checked = checkedIds.has(p.product_id);
+                const id = factId(p);
+                const checked = checkedIds.has(id);
                 return (
                   <tr
-                    key={p.product_id}
+                    key={id}
                     className={`border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer ${
                       checked ? "bg-blue-50/40" : ""
                     }`}
-                    onClick={() => handleToggleProduct(p.product_id)}
+                    onClick={() => handleToggleProduct(id)}
                   >
                     <td className="px-3 py-3 text-center">
                       <input
                         type="checkbox"
                         checked={checked}
-                        aria-label={`Select ${p.name}`}
-                        onChange={() => handleToggleProduct(p.product_id)}
+                        aria-label={`Select ${p.description ?? id}`}
+                        onChange={() => handleToggleProduct(id)}
                         onClick={(e) => e.stopPropagation()}
                         className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500"
                       />
                     </td>
-                    <td className="px-4 py-3 font-medium text-slate-900">{p.name}</td>
-                    <td className="px-4 py-3 text-slate-500 font-mono text-xs">{p.sku}</td>
-                    <td className="px-4 py-3 text-slate-600">{p.brand_name}</td>
+                    <td className="px-4 py-3 font-medium text-slate-900">{p.description ?? "—"}</td>
+                    <td className="px-4 py-3 text-slate-500 font-mono text-xs">{p.reference ?? "—"}</td>
                     <td className="px-4 py-3 text-right font-mono text-slate-600 tabular-nums">
-                      {formatCurrency(p.cost_amount)}
+                      {formatCurrency(p.cost.amount)}
                     </td>
                     <td className="px-4 py-3 text-right font-mono text-slate-600 tabular-nums">
-                      {formatCurrency(p.price_amount)}
+                      {formatCurrency(p.current_price.amount)}
                     </td>
-                    <td className="px-4 py-3 text-right text-slate-600 tabular-nums">{p.stock_quantity}</td>
+                    <td className="px-4 py-3 text-right text-slate-600 tabular-nums">
+                      {p.sellable_stock.quantity ?? "—"}
+                    </td>
                   </tr>
                 );
               }}
