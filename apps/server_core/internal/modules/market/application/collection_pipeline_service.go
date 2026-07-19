@@ -221,7 +221,19 @@ func (s *CollectionPipelineService) collectCatalogEvidence(ctx context.Context, 
 	if err := s.offers.AppendValidatedOffers(ctx, offers); err != nil {
 		return "", nil, err
 	}
-	aggregate, err := domain.ComputeMarketAggregate(codprod, offers, domain.MarketPriceSourceMLCatalogOffers, catalogProduct.FetchedAt, s.now())
+
+	// Competitor aggregate EXCLUDES our own offer: ML returns our own listing
+	// among the catalog offers, and counting it would corrupt the competitor
+	// min/median/max/n_offers/n_sellers the operator prices against. The raw
+	// offers above keep the own offer (honest evidence); only the aggregate is
+	// filtered. Own seller id is resolved dynamically per installation.
+	ownSellerID, err := s.collector.OwnSellerID(ctx)
+	if err != nil {
+		return "", nil, err
+	}
+	competitorOffers := excludeOwnSeller(offers, ownSellerID)
+
+	aggregate, err := domain.ComputeMarketAggregate(codprod, competitorOffers, domain.MarketPriceSourceMLCatalogOffers, catalogProduct.FetchedAt, s.now())
 	if err != nil {
 		return "", nil, err
 	}
@@ -229,6 +241,28 @@ func (s *CollectionPipelineService) collectCatalogEvidence(ctx context.Context, 
 		return "", nil, err
 	}
 	return aggregateToPriceEvidence(aggregate.Status), aggregateToBlocking(aggregate.Status), nil
+}
+
+// excludeOwnSeller drops offers whose seller id matches the installation's own
+// seller id so the competitor aggregate never counts our own listing. An empty
+// ownSellerID (not resolvable) excludes nothing — we never guess which offer is
+// ours (ADR-17: an unknown own-seller id must not silently reshape the market).
+func excludeOwnSeller(offers []domain.ValidatedOffer, ownSellerID string) []domain.ValidatedOffer {
+	own := strings.TrimSpace(ownSellerID)
+	if own == "" {
+		return offers
+	}
+	filtered := make([]domain.ValidatedOffer, 0, len(offers))
+	for _, offer := range offers {
+		// Trim both sides so a stray-whitespace id (a seed/fixture that skips
+		// the repo's write-time trim) can never silently defeat the exclusion
+		// and leak our own offer back into the competitor stats.
+		if strings.TrimSpace(offer.SellerID) == own {
+			continue
+		}
+		filtered = append(filtered, offer)
+	}
+	return filtered
 }
 
 func (s *CollectionPipelineService) collectCompetitiveSignals(ctx context.Context, run *collectionRun, codprod string) error {

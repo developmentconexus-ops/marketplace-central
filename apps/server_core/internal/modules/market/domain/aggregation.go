@@ -51,6 +51,7 @@ func ComputeMarketAggregate(productID string, offers []ValidatedOffer, source Ma
 		return NewMarketAggregate(input)
 	}
 	input.MinValid = deduped[0].offer.Price
+	input.MaxValid = deduped[len(deduped)-1].offer.Price
 	input.Median = medianMoney(deduped)
 	input.Status = MarketAggregateStatusOK
 	if len(deduped) < 5 {

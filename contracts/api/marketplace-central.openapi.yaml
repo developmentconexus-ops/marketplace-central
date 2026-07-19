@@ -3258,7 +3258,7 @@ components:
 
     ListingReadMarketSignal:
       type: object
-      required: [status, position, price_to_win, delta_pct, match_status, n_offers, n_sellers, evidence]
+      required: [status, position, price_to_win, delta_pct, match_status, n_offers, n_sellers, median, min_valid, max_valid, evidence]
       properties:
         status:
           type: string
@@ -3288,6 +3288,24 @@ components:
           nullable: true
         n_sellers:
           type: integer
+          nullable: true
+        median:
+          description: >-
+            Competitor price range (faixa de mercado) median across competing
+            sellers; our own offer is excluded. null when no valid stats
+            (renders "—", never 0).
+          allOf:
+            - $ref: '#/components/schemas/ListingReadMoney'
+          nullable: true
+        min_valid:
+          description: Competitor price range minimum; null when no valid stats.
+          allOf:
+            - $ref: '#/components/schemas/ListingReadMoney'
+          nullable: true
+        max_valid:
+          description: Competitor price range maximum; null when no valid stats.
+          allOf:
+            - $ref: '#/components/schemas/ListingReadMoney'
           nullable: true
         evidence:
           allOf:

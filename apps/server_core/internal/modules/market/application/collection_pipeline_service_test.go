@@ -69,11 +69,20 @@ type fakeCollector struct {
 	priceToWin    map[string]ports.PriceToWinSignal
 	priceToWinErr map[string]error
 
-	searchCalls     int
-	catalogCalls    int
-	offersCalls     int
-	ownPricingCalls int
-	priceToWinCalls int
+	ownSellerID    string
+	ownSellerIDErr error
+
+	searchCalls      int
+	catalogCalls     int
+	offersCalls      int
+	ownPricingCalls  int
+	priceToWinCalls  int
+	ownSellerIDCalls int
+}
+
+func (f *fakeCollector) OwnSellerID(_ context.Context) (string, error) {
+	f.ownSellerIDCalls++
+	return f.ownSellerID, f.ownSellerIDErr
 }
 
 func (f *fakeCollector) SearchCatalogByEAN(_ context.Context, _ string) (ports.CatalogIdentityResult, error) {
@@ -346,6 +355,62 @@ func TestCollectAcceptWithFiveSellersProducesOKAggregate(t *testing.T) {
 			t.Fatalf("snapshot %+v, want VALID", snapshot)
 		}
 	}
+}
+
+// --- (b2) own seller EXCLUDED from competitor aggregate ---------------------
+// Our own offer appears inside the catalog offers (same seller id as the
+// installation's provider account). It MUST NOT count toward the competitor
+// min/median/max/n_offers/n_sellers, but stays in the raw offers evidence
+// (it is a real offer ML returned). Seller id is resolved dynamically via
+// OwnSellerID, never hardcoded. (M-05-FAIXA)
+func TestCollectExcludesOwnSellerFromCompetitorAggregate(t *testing.T) {
+	fk := newPipelineFakes()
+	local, candidate := acceptCandidate("P1", "CAT1")
+	fk.identity.identities["P1"] = local
+	fk.collector.searchResult = ports.CatalogIdentityResult{Candidates: []domain.IdentityCandidate{candidate}, FetchedAt: fixedNow()}
+	fk.collector.catalogProduct = ports.CatalogProductDetail{CatalogProductID: "CAT1", FetchedAt: fixedNow()}
+	fk.collector.ownSellerID = "OURSELLER"
+	fk.collector.offers = []domain.ValidatedOffer{
+		qualifiedOffer(t, "CAT1", "OURSELLER", "50.00"), // our own offer: cheapest, would corrupt min/n if counted
+		qualifiedOffer(t, "CAT1", "seller-1", "100.00"),
+		qualifiedOffer(t, "CAT1", "seller-2", "101.00"),
+		qualifiedOffer(t, "CAT1", "seller-3", "102.00"),
+		qualifiedOffer(t, "CAT1", "seller-4", "103.00"),
+		qualifiedOffer(t, "CAT1", "seller-5", "104.00"),
+	}
+
+	summary, err := fk.service().Collect(context.Background(), "P1")
+	if err != nil {
+		t.Fatalf("Collect() error = %v", err)
+	}
+	row := summary.Decisoes[0]
+	if row.PriceEvidence != domain.PriceEvidenceStatusOK || row.Blocking != nil {
+		t.Fatalf("decision row = %+v, want OK (5 competitor sellers)", row)
+	}
+	if len(fk.aggregates.appended) != 1 {
+		t.Fatalf("aggregates = %d, want 1", len(fk.aggregates.appended))
+	}
+	agg := fk.aggregates.appended[0]
+	if agg.NSellers != 5 || agg.NOffers != 5 {
+		t.Fatalf("competitor counts NSellers=%d NOffers=%d, want 5/5 (own seller excluded)", agg.NSellers, agg.NOffers)
+	}
+	if amount(agg.MinValid) != "100.00" || amount(agg.MaxValid) != "104.00" {
+		t.Fatalf("competitor range min=%q max=%q, want 100.00/104.00 (own 50.00 excluded)", amount(agg.MinValid), amount(agg.MaxValid))
+	}
+	if len(fk.offers.appended) != 6 {
+		t.Fatalf("raw offers evidence = %d, want 6 (own offer kept as honest evidence)", len(fk.offers.appended))
+	}
+	if fk.collector.ownSellerIDCalls < 1 {
+		t.Fatalf("OwnSellerID calls = %d, want >=1 (seller id resolved dynamically)", fk.collector.ownSellerIDCalls)
+	}
+}
+
+// amount mirrors the domain aggregation_test helper for *domain.Money.
+func amount(m *domain.Money) string {
+	if m == nil {
+		return ""
+	}
+	return m.Amount
 }
 
 // --- (c) ACCEPT + <5 sellers -> INSUFFICIENT_MARKET -------------------------

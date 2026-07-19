@@ -897,7 +897,7 @@ func TestReadServiceEnrichSignalsMixedBatchAndUnlinked(t *testing.T) {
 	f := &fakeFacts{costs: map[int64]*ports.CostFact{}, ceilings: map[int64]*ports.ICMSCeiling{}}
 	ev := &fakeEvidence{
 		signals:    []ports.EvidenceSignal{{ListingID: "L1", OurPrice: money("90"), TargetPrice: money("100"), Position: &domain.SignalPosition{Rank: 2, Total: 5}, FetchedAt: now.Add(-10 * time.Minute)}},
-		aggregates: []ports.EvidenceAggregate{{ProductID: "100", NOffers: 7, NSellers: 4}, {ProductID: "200", NOffers: 3, NSellers: 2}},
+		aggregates: []ports.EvidenceAggregate{{ProductID: "100", NOffers: 7, NSellers: 4, MinValid: money("120"), Median: money("150"), MaxValid: money("189")}, {ProductID: "200", NOffers: 3, NSellers: 2}},
 		verdicts:   []ports.EvidenceVerdict{{ProductID: "100", MatchStatus: "ACCEPT"}},
 	}
 	s := NewReadServiceWithEvidence(r, f, fakePolicy{found: true}, fakeInstallation(true), func() time.Time { return now }, ev)
@@ -921,6 +921,14 @@ func TestReadServiceEnrichSignalsMixedBatchAndUnlinked(t *testing.T) {
 	// wrong-field join would surface WRONG competitor counts in the FE.
 	if l1.MarketSignal.NOffers != 7 || l1.MarketSignal.NSellers != 4 {
 		t.Fatalf("L1 aggregate join wrong: NOffers=%d NSellers=%d (want 7/4)", l1.MarketSignal.NOffers, l1.MarketSignal.NSellers)
+	}
+	// Faixa de mercado (min — median — max) must flow from the aggregate into
+	// the signal for the drawer. A dropped field would render "—" for a stat we
+	// actually have (ADR-17 is about ABSENT stats, not swallowing present ones).
+	if l1.MarketSignal.MinValid == nil || l1.MarketSignal.MinValid.Amount != "120" ||
+		l1.MarketSignal.Median == nil || l1.MarketSignal.Median.Amount != "150" ||
+		l1.MarketSignal.MaxValid == nil || l1.MarketSignal.MaxValid.Amount != "189" {
+		t.Fatalf("L1 faixa join wrong: min=%v median=%v max=%v (want 120/150/189)", l1.MarketSignal.MinValid, l1.MarketSignal.Median, l1.MarketSignal.MaxValid)
 	}
 
 	l2 := byID["L2"]

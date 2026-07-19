@@ -19,6 +19,13 @@ type PriceIntelCollector interface {
 	ListCatalogOffers(ctx context.Context, catalogProductID string) ([]domain.ValidatedOffer, error)
 	GetOwnItemPricing(ctx context.Context, listingID string) (OwnItemPricing, error)
 	GetPriceToWin(ctx context.Context, listingID string) (PriceToWinSignal, error)
+	// OwnSellerID resolves the installation's own marketplace seller id (the
+	// provider account ref) so the collection pipeline can EXCLUDE our own
+	// offer from the competitor aggregate (min/median/max/n). It is resolved
+	// dynamically per installation, never hardcoded. An empty string means the
+	// installation's own seller id is not resolvable (e.g. no reconciled
+	// account) — the pipeline then excludes nothing rather than guessing.
+	OwnSellerID(ctx context.Context) (string, error)
 }
 
 type CatalogIdentityResult struct {

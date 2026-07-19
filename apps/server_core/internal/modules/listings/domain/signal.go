@@ -50,7 +50,13 @@ type MarketSignal struct {
 	MatchStatus string          `json:"match_status"`
 	NOffers     int             `json:"n_offers"`
 	NSellers    int             `json:"n_sellers"`
-	Evidence    SignalEvidence  `json:"evidence"`
+	// Competitor price range ("faixa de mercado"): min — median — max across
+	// competing sellers (our own offer excluded upstream). Each is nil when the
+	// market has no valid stats — ADR-17: the reader renders "—", never a zero.
+	Median   *Money         `json:"median"`
+	MinValid *Money         `json:"min_valid"`
+	MaxValid *Money         `json:"max_valid"`
+	Evidence SignalEvidence `json:"evidence"`
 }
 
 // DeriveSignalStatus is pure: no port dependency. signal is the listings-owned

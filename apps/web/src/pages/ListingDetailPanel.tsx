@@ -2,6 +2,7 @@ import type {
   ListingDetail,
   ListingLinkState,
   ListingMarketSignal,
+  ListingMoney,
   ListingReadModel,
   ListingSyncState,
 } from "@marketplace-central/sdk-runtime";
@@ -97,6 +98,30 @@ function formatPriceToWin(signal: ListingMarketSignal) {
   return signal.price_to_win === null ? <UnknownValue /> : `R$ ${signal.price_to_win.amount}`;
 }
 
+function formatMoney(money: ListingMoney | null) {
+  return money === null ? <UnknownValue /> : `R$ ${money.amount}`;
+}
+
+// Faixa de mercado: competitor price range min — mediana — max, our own offer
+// excluded upstream (own-seller exclusion at the market aggregation seam). Each
+// bound is honest per ADR-17 — a null part renders "—", never a fabricated 0,
+// even when the other bounds are present.
+function FaixaCard({ signal }: { signal: ListingMarketSignal }) {
+  return (
+    <div className="col-span-2 rounded-lg border border-border-2 px-2.5 py-2">
+      <div className="text-[10.5px] text-faint">Faixa de mercado (concorrentes)</div>
+      <div className="mt-0.5 flex items-baseline gap-1.5 font-mono text-sm font-semibold text-ink">
+        <span>{formatMoney(signal.min_valid)}</span>
+        <span className="text-faint">—</span>
+        <span>{formatMoney(signal.median)}</span>
+        <span className="text-faint">—</span>
+        <span>{formatMoney(signal.max_valid)}</span>
+      </div>
+      <div className="mt-0.5 text-[10.5px] text-faint">mín · mediana · máx</div>
+    </div>
+  );
+}
+
 function formatPosition(signal: ListingMarketSignal) {
   return signal.position ? `${signal.position.rank}/${signal.position.total}` : <UnknownValue />;
 }
@@ -165,11 +190,12 @@ function EvidenceSection({ detail }: { detail: ListingDetail }) {
       {heading}
       <div className="grid grid-cols-2 gap-2">
         <InfoCard label="Posição">{formatPosition(signal)}</InfoCard>
-        <InfoCard label="Preço p/ vencer">{formatPriceToWin(signal)}</InfoCard>
+        <InfoCard label="Alvo buybox (ML)">{formatPriceToWin(signal)}</InfoCard>
         <InfoCard label="Diferença">{formatDelta(signal)}</InfoCard>
         <InfoCard label="Match">{signal.match_status ?? <UnknownValue />}</InfoCard>
+        <FaixaCard signal={signal} />
         <InfoCard label="Ofertas">{renderEvidenceCount(signal.n_offers)}</InfoCard>
-        <InfoCard label="Vendedores">{renderEvidenceCount(signal.n_sellers)}</InfoCard>
+        <InfoCard label="Concorrentes">{renderEvidenceCount(signal.n_sellers)}</InfoCard>
         <InfoCard label="Fonte">{signal.evidence?.source ?? <UnknownValue />}</InfoCard>
         <InfoCard label="Coletado em">
           {signal.evidence?.fetched_at ? <FreshnessIndicator asOf={signal.evidence.fetched_at} /> : <UnknownValue />}
