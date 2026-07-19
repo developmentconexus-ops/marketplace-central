@@ -5,7 +5,7 @@ id: DESIGN-TARIFAS-ML
 mission: MIS-004-mvp-demo
 type: design-doc
 author: cold-planner (Opus, contingency lane §12)
-status: draft-para-ratificacao
+status: ratificado (operator, 2026-07-19 — ver HUB-LEDGER D-78)
 input_brief: scratchpad/design-brief-tarifas.md (HUB v2, 2026-07-19)
 base_sha: ca959ddaa37c258109600604de13fe862e8d8e6a
 head_verified: ca959ddaa37c258109600604de13fe862e8d8e6a (== base, sem delta)
