@@ -293,6 +293,7 @@ export function PricingPage() {
                   profile={profile}
                   blockingState={decomposeQuery.data.blocking_state}
                   difalUf={profile.difal_destino_uf}
+                  tarifa={decomposeQuery.data.tarifa}
                 />
               ) : (
                 <p className="text-sm text-muted">Selecione um produto e um preço para simular.</p>

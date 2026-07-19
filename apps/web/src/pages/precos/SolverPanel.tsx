@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import type { JSX } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { ErrorState, UnknownValue, FreshnessIndicator } from "@marketplace-central/ui";
+import { ErrorState } from "@marketplace-central/ui";
 import type { PricingCalcInput, PricingSolveResponse } from "@marketplace-central/sdk-runtime";
 import { useClient } from "../../app/ClientContext";
 import { ptBrRateToDot } from "./ptbrDecimal";
+import { TariffBadge } from "./tariffBadge";
+import type { TariffBlock } from "./tariffBadge";
 
 export interface SolverPanelProps {
   /** Selected product to solve for, or null when none is chosen. */
@@ -13,40 +15,8 @@ export interface SolverPanelProps {
   modalidade: string;
 }
 
-/**
- * Tarifa carimbo carried per component in the `/pricing/solve` response
- * (design DESIGN-TARIFAS-ML §4.4 Layer 2/3). Owned by the backend chip CHIP-T1;
- * declared locally + read tolerantly here until the SDK type lands the block.
- * `valor` nil / `sem_dados` = NO-DATA honest state (ADR-17) — never 0, never green.
- */
-interface TariffComponent {
-  valor?: string | null;
-  fonte?: string | null; // VENDA | COTACAO | CATEGORIA | PADRAO
-  degrau?: number | null; // 1-4
-  data?: string | null; // event date (venda) or fetched_at (cotação)
-  estimativa?: boolean;
-  sem_dados?: boolean;
-}
-
-interface TariffBlock {
-  comissao?: TariffComponent | null;
-  frete?: TariffComponent | null;
-}
-
 /** Response shape widened with the design §4.4 tarifa block (SDK type lags). */
 type SolveResult = PricingSolveResponse & { tarifa?: TariffBlock | null };
-
-const FONTE_LABELS: Record<string, string> = {
-  VENDA: "Venda",
-  COTACAO: "Cotação",
-  CATEGORIA: "Categoria",
-  PADRAO: "Padrão",
-};
-
-function fonteLabel(fonte: string | null | undefined): string | null {
-  if (!fonte) return null;
-  return FONTE_LABELS[fonte] ?? fonte;
-}
 
 /**
  * SolverPanel is the reverse (bidirectional) leg of the simulator: the operator
@@ -173,54 +143,5 @@ export function SolverPanel({ productId, modalidade }: SolverPanelProps): JSX.El
         </div>
       ) : null}
     </div>
-  );
-}
-
-interface TariffBadgeProps {
-  testId: string;
-  label: string;
-  comp: TariffComponent | null | undefined;
-  /** Comissão is a percentage; frete is money. */
-  percent?: boolean;
-}
-
-/**
- * Renders one resolved tariff component with its fonte/degrau/data carimbos and an
- * ESTIMATIVA pill when the value is a labeled degrau-4 estimate. NO-DATA (nil value
- * or `sem_dados`) renders `UnknownValue` ("—") — never R$0, never a misleading pill.
- */
-function TariffBadge({ testId, label, comp, percent }: TariffBadgeProps): JSX.Element | null {
-  if (!comp) return null;
-
-  // NO-DATA = explicit sem_dados, nil, OR an empty/blank value string (ceiling_pct uses ""
-  // as its blank sentinel; a tarifa valor may too). Never render "R$ " / a false pill.
-  const noData =
-    comp.sem_dados === true ||
-    comp.valor == null ||
-    (typeof comp.valor === "string" && comp.valor.trim() === "");
-  const isEstimativa = !noData && (comp.estimativa === true || comp.degrau === 4);
-  const fonte = fonteLabel(comp.fonte);
-
-  return (
-    <span data-testid={testId} className="flex items-center gap-1.5">
-      <span className="text-muted">{label}</span>
-      {noData ? (
-        // Carimbos are suppressed beside "—": a source/degrau/ESTIMATIVA next to an
-        // unknown value reads as if the unknown were a real resolved figure.
-        <UnknownValue hint="Sem dados — cadastre dimensões ou vincule um anúncio ML" />
-      ) : (
-        <>
-          <span className="font-mono text-ink">
-            {percent ? `${comp.valor}%` : `R$ ${comp.valor}`}
-          </span>
-          {fonte ? <span className="rounded bg-surface px-1.5 py-0.5 text-muted">{fonte}</span> : null}
-          {comp.degrau != null ? <span className="text-faint">degrau {comp.degrau}</span> : null}
-          {isEstimativa ? (
-            <span className="rounded bg-amber-soft px-1.5 py-0.5 font-medium text-amber">ESTIMATIVA</span>
-          ) : null}
-          {comp.data ? <FreshnessIndicator asOf={comp.data} /> : null}
-        </>
-      )}
-    </span>
   );
 }
