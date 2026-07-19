@@ -185,19 +185,37 @@ func (r *Reader) products(ctx context.Context, input readports.FindProductsInput
 	}
 	return out, nil
 }
+// isDegradableReadError reports whether a fact-read error means the fact is
+// honestly unavailable in the active source mode (unsupported query, e.g. the
+// xlsx snapshot has no current price; or source unavailable) rather than an
+// unexpected infra failure. Such facts degrade to missing per ADR-17 so an
+// existing product still resolves to a CanonicalProduct; any other error propagates.
+func isDegradableReadError(err error) bool {
+	return readdomain.IsReadErrorCode(err, readdomain.ReadErrorUnsupportedQuery) ||
+		readdomain.IsReadErrorCode(err, readdomain.ReadErrorSourceUnavailable)
+}
 func (r *Reader) product(ctx context.Context, c readdomain.ProductCandidate) (catalogdomain.CanonicalProduct, error) {
 	id := int(*c.InternalProductID)
 	stock, err := r.reader.GetSellableStock(ctx, readports.SellableStockInput{ProductID: id, Policy: readdomain.DefaultSellableStockPolicy()})
 	if err != nil {
-		return catalogdomain.CanonicalProduct{}, err
+		if !isDegradableReadError(err) {
+			return catalogdomain.CanonicalProduct{}, err
+		}
+		stock = readdomain.SellableStock{}
 	}
 	price, err := r.reader.GetCurrentPrice(ctx, readports.CurrentPriceInput{ProductID: id, Policy: readdomain.DefaultCurrentPricePolicy(time.Now().UTC())})
 	if err != nil {
-		return catalogdomain.CanonicalProduct{}, err
+		if !isDegradableReadError(err) {
+			return catalogdomain.CanonicalProduct{}, err
+		}
+		price = readdomain.CurrentPrice{}
 	}
 	cost, err := r.reader.GetCostAsOf(ctx, readports.CostAsOfInput{ProductID: id, Policy: readdomain.CostAsOfPolicy{CompanyID: 1, EffectiveAt: time.Now().UTC(), Basis: readdomain.CostBasisCUSSEMICM}})
 	if err != nil {
-		return catalogdomain.CanonicalProduct{}, err
+		if !isDegradableReadError(err) {
+			return catalogdomain.CanonicalProduct{}, err
+		}
+		cost = readdomain.CostAsOf{}
 	}
 	costFact, err := fact(cost.Amount, cost.Source, cost.QualityFlags, readdomain.QualityMissingCost, "cost unavailable")
 	if err != nil {

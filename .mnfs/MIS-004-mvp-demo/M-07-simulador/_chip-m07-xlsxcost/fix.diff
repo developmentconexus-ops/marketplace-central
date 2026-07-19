@@ -1,0 +1,196 @@
+diff --git a/apps/server_core/internal/modules/catalog/adapters/internalread/reader.go b/apps/server_core/internal/modules/catalog/adapters/internalread/reader.go
+index 2faa502b..74d6433c 100644
+--- a/apps/server_core/internal/modules/catalog/adapters/internalread/reader.go
++++ b/apps/server_core/internal/modules/catalog/adapters/internalread/reader.go
+@@ -185,19 +185,37 @@ func (r *Reader) products(ctx context.Context, input readports.FindProductsInput
+ 	}
+ 	return out, nil
+ }
++// isDegradableReadError reports whether a fact-read error means the fact is
++// honestly unavailable in the active source mode (unsupported query, e.g. the
++// xlsx snapshot has no current price; or source unavailable) rather than an
++// unexpected infra failure. Such facts degrade to missing per ADR-17 so an
++// existing product still resolves to a CanonicalProduct; any other error propagates.
++func isDegradableReadError(err error) bool {
++	return readdomain.IsReadErrorCode(err, readdomain.ReadErrorUnsupportedQuery) ||
++		readdomain.IsReadErrorCode(err, readdomain.ReadErrorSourceUnavailable)
++}
+ func (r *Reader) product(ctx context.Context, c readdomain.ProductCandidate) (catalogdomain.CanonicalProduct, error) {
+ 	id := int(*c.InternalProductID)
+ 	stock, err := r.reader.GetSellableStock(ctx, readports.SellableStockInput{ProductID: id, Policy: readdomain.DefaultSellableStockPolicy()})
+ 	if err != nil {
+-		return catalogdomain.CanonicalProduct{}, err
++		if !isDegradableReadError(err) {
++			return catalogdomain.CanonicalProduct{}, err
++		}
++		stock = readdomain.SellableStock{}
+ 	}
+ 	price, err := r.reader.GetCurrentPrice(ctx, readports.CurrentPriceInput{ProductID: id, Policy: readdomain.DefaultCurrentPricePolicy(time.Now().UTC())})
+ 	if err != nil {
+-		return catalogdomain.CanonicalProduct{}, err
++		if !isDegradableReadError(err) {
++			return catalogdomain.CanonicalProduct{}, err
++		}
++		price = readdomain.CurrentPrice{}
+ 	}
+ 	cost, err := r.reader.GetCostAsOf(ctx, readports.CostAsOfInput{ProductID: id, Policy: readdomain.CostAsOfPolicy{CompanyID: 1, EffectiveAt: time.Now().UTC(), Basis: readdomain.CostBasisCUSSEMICM}})
+ 	if err != nil {
+-		return catalogdomain.CanonicalProduct{}, err
++		if !isDegradableReadError(err) {
++			return catalogdomain.CanonicalProduct{}, err
++		}
++		cost = readdomain.CostAsOf{}
+ 	}
+ 	costFact, err := fact(cost.Amount, cost.Source, cost.QualityFlags, readdomain.QualityMissingCost, "cost unavailable")
+ 	if err != nil {
+diff --git a/apps/server_core/internal/modules/catalog/adapters/internalread/reader_test.go b/apps/server_core/internal/modules/catalog/adapters/internalread/reader_test.go
+index 3222a838..bc246ccd 100644
+--- a/apps/server_core/internal/modules/catalog/adapters/internalread/reader_test.go
++++ b/apps/server_core/internal/modules/catalog/adapters/internalread/reader_test.go
+@@ -1,6 +1,8 @@
+ package internalread
+ 
+ import (
++	"context"
++	"errors"
+ 	"reflect"
+ 	"testing"
+ 	"time"
+@@ -10,6 +12,137 @@ import (
+ 	readports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
+ )
+ 
++// stubReadPortsReader is a hand-rolled readports.Reader whose per-fact returns
++// (value + error) are set per test, used to drive product() enrichment paths.
++type stubReadPortsReader struct {
++	candidate readdomain.ProductCandidate
++	stock     readdomain.SellableStock
++	stockErr  error
++	price     readdomain.CurrentPrice
++	priceErr  error
++	cost      readdomain.CostAsOf
++	costErr   error
++}
++
++func (s stubReadPortsReader) FindProductsForLinking(context.Context, readports.FindProductsInput) ([]readdomain.ProductCandidate, error) {
++	return []readdomain.ProductCandidate{s.candidate}, nil
++}
++func (s stubReadPortsReader) GetSellableStock(context.Context, readports.SellableStockInput) (readdomain.SellableStock, error) {
++	return s.stock, s.stockErr
++}
++func (s stubReadPortsReader) GetCurrentPrice(context.Context, readports.CurrentPriceInput) (readdomain.CurrentPrice, error) {
++	return s.price, s.priceErr
++}
++func (s stubReadPortsReader) GetCostAsOf(context.Context, readports.CostAsOfInput) (readdomain.CostAsOf, error) {
++	return s.cost, s.costErr
++}
++func (s stubReadPortsReader) GetSalesHistory(context.Context, readports.SalesHistoryInput) (readdomain.SalesHistory, error) {
++	return readdomain.SalesHistory{}, nil
++}
++func (s stubReadPortsReader) GetTaxInputs(context.Context, readports.TaxInput) (readdomain.TaxInputs, error) {
++	return readdomain.TaxInputs{}, nil
++}
++
++func candidateForID(id int) readdomain.ProductCandidate {
++	pid := readdomain.InternalProductID(id)
++	return readdomain.ProductCandidate{InternalProductID: &pid, ProductID: id, Name: "Produto"}
++}
++
++// TestCanonicalProductDegradesUnavailableFactsToMissing is the regression guard
++// for the xlsx 500: an existing product whose stock/price/cost reads return an
++// honest "not available in this source" read error (unsupported_query — the xlsx
++// GetCurrentPrice signal — or source_unavailable) must resolve to a
++// CanonicalProduct with those facts marked missing and NO error, never abort.
++func TestCanonicalProductDegradesUnavailableFactsToMissing(t *testing.T) {
++	for _, code := range []readdomain.ReadErrorCode{readdomain.ReadErrorUnsupportedQuery, readdomain.ReadErrorSourceUnavailable} {
++		t.Run(string(code), func(t *testing.T) {
++			degradable := readdomain.NewReadError(code, "not available in this source mode", nil)
++			r := &Reader{reader: stubReadPortsReader{
++				candidate: candidateForID(90001),
++				stockErr:  degradable,
++				priceErr:  degradable,
++				costErr:   degradable,
++			}}
++			got, err := r.GetCanonicalProduct(context.Background(), catalogdomain.InternalProductID(90001))
++			if err != nil {
++				t.Fatalf("expected degrade to missing, got error: %v", err)
++			}
++			if got.InternalProductID != catalogdomain.InternalProductID(90001) {
++				t.Fatalf("product identity lost: %+v", got)
++			}
++			for name, f := range map[string]catalogdomain.NumericSourceFact{"stock": got.StockQuantity, "price": got.PriceAmount, "cost": got.CostAmount} {
++				if f.Quality != catalogdomain.SourceFactQualityUnknown || f.Value != nil {
++					t.Fatalf("%s fact should be missing, got quality=%s value=%v", name, f.Quality, f.Value)
++				}
++			}
++		})
++	}
++}
++
++// TestListProductsByIDsDegradesUnavailableFacts proves the same degrade holds
++// through the by-ID list entrypoint pricing.Exists depends on.
++func TestListProductsByIDsDegradesUnavailableFacts(t *testing.T) {
++	degradable := readdomain.NewReadError(readdomain.ReadErrorUnsupportedQuery, "xlsx snapshot does not contain current price", nil)
++	r := &Reader{reader: stubReadPortsReader{candidate: candidateForID(90001), priceErr: degradable}}
++	products, err := r.ListProductsByIDs(context.Background(), []string{"90001"})
++	if err != nil {
++		t.Fatalf("expected degrade, got error: %v", err)
++	}
++	if len(products) != 1 {
++		t.Fatalf("expected 1 product, got %d", len(products))
++	}
++}
++
++// TestCanonicalProductDegradesOnlyTheFailingFact proves the degrade is scoped:
++// when one fact read errors (unsupported), sibling facts that return real values
++// still pass through as Current — the fix never collapses a whole product to
++// missing when only one source is unavailable.
++func TestCanonicalProductDegradesOnlyTheFailingFact(t *testing.T) {
++	now := time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC)
++	qty, cst := 12.0, 7.96
++	complete := []readdomain.QualityFlag{readdomain.QualityComplete}
++	src := readdomain.SourceMetadata{System: "xlsx", FetchedAt: now}
++	r := &Reader{reader: stubReadPortsReader{
++		candidate: candidateForID(90001),
++		stock:     readdomain.SellableStock{Quantity: &qty, Source: src, QualityFlags: complete},
++		priceErr:  readdomain.NewReadError(readdomain.ReadErrorUnsupportedQuery, "xlsx snapshot does not contain current price", nil),
++		cost:      readdomain.CostAsOf{Amount: &cst, Source: src, QualityFlags: complete},
++	}}
++	got, err := r.GetCanonicalProduct(context.Background(), catalogdomain.InternalProductID(90001))
++	if err != nil {
++		t.Fatalf("expected degrade, got error: %v", err)
++	}
++	if got.PriceAmount.Quality != catalogdomain.SourceFactQualityUnknown || got.PriceAmount.Value != nil {
++		t.Fatalf("price should be missing, got quality=%s value=%v", got.PriceAmount.Quality, got.PriceAmount.Value)
++	}
++	if got.StockQuantity.Quality != catalogdomain.SourceFactQualityCurrent || got.StockQuantity.Value == nil || *got.StockQuantity.Value != qty {
++		t.Fatalf("stock should survive as current %v, got quality=%s value=%v", qty, got.StockQuantity.Quality, got.StockQuantity.Value)
++	}
++	if got.CostAmount.Quality != catalogdomain.SourceFactQualityCurrent || got.CostAmount.Value == nil || *got.CostAmount.Value != cst {
++		t.Fatalf("cost should survive as current %v, got quality=%s value=%v", cst, got.CostAmount.Quality, got.CostAmount.Value)
++	}
++}
++
++// TestCanonicalProductPropagatesUnexpectedFactError is the over-degrade guard:
++// a read error that is NOT an availability signal must still surface, never be
++// swallowed into a fake-missing fact.
++func TestCanonicalProductPropagatesUnexpectedFactError(t *testing.T) {
++	boom := errors.New("db connection reset")
++	cases := map[string]stubReadPortsReader{
++		"stock": {candidate: candidateForID(90001), stockErr: boom},
++		"price": {candidate: candidateForID(90001), priceErr: boom},
++		"cost":  {candidate: candidateForID(90001), costErr: boom},
++	}
++	for name, stub := range cases {
++		t.Run(name, func(t *testing.T) {
++			r := &Reader{reader: stub}
++			if _, err := r.GetCanonicalProduct(context.Background(), catalogdomain.InternalProductID(90001)); err == nil {
++				t.Fatalf("expected unexpected %s error to propagate, got nil", name)
++			}
++		})
++	}
++}
++
+ func TestFactProjectsQualityFlagsWithoutInventingCurrentData(t *testing.T) {
+ 	now := time.Date(2026, 7, 13, 12, 0, 0, 0, time.UTC)
+ 	value := 0.0
