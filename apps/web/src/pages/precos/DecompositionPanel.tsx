@@ -4,6 +4,8 @@ import type {
   PricingCalcProfile,
   PricingDecomposition,
 } from "@marketplace-central/sdk-runtime";
+import { TariffCarimbo } from "./tariffBadge";
+import type { TariffBlock } from "./tariffBadge";
 
 export interface DecompositionPanelProps {
   decomposition: PricingDecomposition;
@@ -11,6 +13,8 @@ export interface DecompositionPanelProps {
   blockingState: string | null;
   /** Destination UF for the DIFAL line label (from the analysis CEP). */
   difalUf?: string | null;
+  /** Tarifa carimbo (comissão + frete provenance) — SolverPanel's badge, reused here. */
+  tarifa?: TariffBlock | null;
 }
 
 /** A decimal-string value, or UnknownValue (—) when absent — never a fabricated 0. */
@@ -38,6 +42,7 @@ export function DecompositionPanel({
   profile,
   blockingState,
   difalUf,
+  tarifa,
 }: DecompositionPanelProps): JSX.Element {
   const thresholds = {
     healthy: Number(profile.limiar_verde_pct),
@@ -61,9 +66,22 @@ export function DecompositionPanel({
       ) : null}
 
       <Row label="Preço"><Value amount={d.preco} /></Row>
-      <Row label="(−) Comissão"><Value amount={d.comissao} /></Row>
+      <Row label="(−) Comissão">
+        <span className="flex items-center gap-1.5">
+          <Value amount={d.comissao} />
+          <TariffCarimbo comp={tarifa?.comissao} testId="decomp-tarifa-comissao" />
+        </span>
+      </Row>
       <Row label="(−) Taxa fixa"><Value amount={d.taxa_fixa} /></Row>
-      <Row label="(−) Frete"><Value amount={d.frete} hint="frete calculado por peso e CEP" /></Row>
+      <Row label="(−) Frete">
+        <span className="flex items-center gap-1.5">
+          <Value amount={d.frete} hint="frete calculado por peso e CEP" />
+          {/* Carimbo only beside a shown value: never a provenance stamp next to "—",
+              even if the backend's tarifa.frete disagrees with a null decomposition.frete
+              (ADR-17). Comissão needs no such guard — decomposition.comissao is never null. */}
+          {d.frete !== null ? <TariffCarimbo comp={tarifa?.frete} testId="decomp-tarifa-frete" /> : null}
+        </span>
+      </Row>
       <Row label="(−) Imposto"><Value amount={d.imposto} /></Row>
       <Row label={`(−) DIFAL${difalUf ? ` ${difalUf}` : ""}`}>
         <Value amount={d.difal} hint="diferencial de alíquota da UF de destino" />

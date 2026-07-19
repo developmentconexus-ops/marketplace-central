@@ -118,4 +118,114 @@ describe("DecompositionPanel", () => {
     );
     expect(screen.getByText("(−) DIFAL SP")).toBeInTheDocument();
   });
+
+  it("renders the comissão fonte/degrau carimbo (COTACAO degrau 3, no ESTIMATIVA) beside the value", () => {
+    render(
+      <DecompositionPanel
+        decomposition={decomposition()}
+        profile={profile}
+        blockingState={null}
+        tarifa={{
+          comissao: { valor: "14.5", fonte: "COTACAO", degrau: 3, data: "2026-07-19T10:00:00Z", estimativa: false, sem_dados: false },
+          frete: { valor: "12.00", fonte: "CATEGORIA", degrau: 2, data: null, estimativa: false, sem_dados: false },
+        }}
+      />,
+    );
+
+    const carimbo = screen.getByTestId("decomp-tarifa-comissao");
+    expect(carimbo).toHaveTextContent("Cotação");
+    expect(carimbo).toHaveTextContent("degrau 3");
+    expect(carimbo).not.toHaveTextContent("ESTIMATIVA");
+    expect(within(carimbo).getByLabelText("Atualização dos dados")).toBeInTheDocument();
+  });
+
+  it("renders the ESTIMATIVA pill on a degrau-4 PADRAO comissão estimate", () => {
+    render(
+      <DecompositionPanel
+        decomposition={decomposition()}
+        profile={profile}
+        blockingState={null}
+        tarifa={{
+          comissao: { valor: "13.00", fonte: "PADRAO", degrau: 4, data: null, estimativa: true, sem_dados: false },
+          frete: null,
+        }}
+      />,
+    );
+
+    const carimbo = screen.getByTestId("decomp-tarifa-comissao");
+    expect(carimbo).toHaveTextContent("Padrão");
+    expect(carimbo).toHaveTextContent("degrau 4");
+    expect(carimbo).toHaveTextContent("ESTIMATIVA");
+  });
+
+  it("suppresses the frete carimbo and keeps '—' when frete is NO-DATA (valor null / sem_dados)", () => {
+    const d = decomposition({ frete: null, componentes_desconhecidos: ["frete"] });
+    render(
+      <DecompositionPanel
+        decomposition={d}
+        profile={profile}
+        blockingState={null}
+        tarifa={{
+          comissao: null,
+          frete: { valor: null, fonte: "PADRAO", degrau: 4, data: null, estimativa: false, sem_dados: true },
+        }}
+      />,
+    );
+
+    expect(screen.queryByTestId("decomp-tarifa-frete")).toBeNull();
+    const panel = screen.getByTestId("decomposition-panel");
+    expect(within(panel).getAllByText("—", { selector: "span.text-faint" }).length).toBeGreaterThanOrEqual(1);
+    expect(panel).not.toHaveTextContent("ESTIMATIVA");
+  });
+
+  it("never stamps a carimbo beside '—' even if tarifa.frete disagrees with a null decomposition.frete (ADR-17)", () => {
+    // Pathological backend disagreement: the frete value is unknown (null ⇒ "—") yet the
+    // tarifa block carries a resolved frete provenance. The FE must NOT render a source/
+    // degrau stamp next to the em-dash — honest-absence is enforced on the shown value.
+    const d = decomposition({ frete: null, componentes_desconhecidos: ["frete"] });
+    render(
+      <DecompositionPanel
+        decomposition={d}
+        profile={profile}
+        blockingState={null}
+        tarifa={{
+          comissao: null,
+          frete: { valor: "12.00", fonte: "COTACAO", degrau: 3, data: "2026-07-19T10:00:00Z", estimativa: false, sem_dados: false },
+        }}
+      />,
+    );
+
+    expect(screen.queryByTestId("decomp-tarifa-frete")).toBeNull();
+    const panel = screen.getByTestId("decomposition-panel");
+    expect(panel).not.toHaveTextContent("Cotação");
+  });
+
+  it("renders no carimbo when no tarifa block is passed (backward compatible)", () => {
+    render(<DecompositionPanel decomposition={decomposition()} profile={profile} blockingState={null} />);
+
+    expect(screen.queryByTestId("decomp-tarifa-comissao")).toBeNull();
+    expect(screen.queryByTestId("decomp-tarifa-frete")).toBeNull();
+    const panel = screen.getByTestId("decomposition-panel");
+    expect(within(panel).getByText("17.00")).toBeInTheDocument();
+  });
+
+  it("does not add a carimbo to custo/imposto rows even when tarifa is present", () => {
+    render(
+      <DecompositionPanel
+        decomposition={decomposition()}
+        profile={profile}
+        blockingState={null}
+        tarifa={{
+          comissao: { valor: "14.5", fonte: "COTACAO", degrau: 3, data: "2026-07-19T10:00:00Z", estimativa: false, sem_dados: false },
+          frete: { valor: "12.00", fonte: "CATEGORIA", degrau: 2, data: null, estimativa: false, sem_dados: false },
+        }}
+      />,
+    );
+
+    const panel = screen.getByTestId("decomposition-panel");
+    expect(within(panel).getByTestId("decomp-tarifa-comissao")).toBeInTheDocument();
+    expect(within(panel).getByTestId("decomp-tarifa-frete")).toBeInTheDocument();
+    expect(within(panel).getByText("40.00")).toBeInTheDocument();
+    expect(within(panel).getByText("4.00")).toBeInTheDocument();
+  });
 });

@@ -35,6 +35,10 @@ const decompose: PricingDecomposeResponse = {
     componentes_desconhecidos: [],
   },
   blocking_state: null,
+  tarifa: {
+    comissao: { valor: "15.13", fonte: "COTACAO", degrau: 3, data: "2026-07-18T12:00:00Z", estimativa: false },
+    frete: { valor: null, fonte: "PADRAO", degrau: 4, data: null, estimativa: false, sem_dados: true },
+  },
 };
 
 const productFactsPage = {
@@ -174,6 +178,10 @@ describe("PricingPage scaffold", () => {
 
     // Profile drives the calc surface — it must be fetched on mount.
     expect(getPricingProfile).toHaveBeenCalled();
+
+    // The decompose response's tarifa block flows through to the panel's carimbo.
+    const carimbo = await screen.findByTestId("decomp-tarifa-comissao");
+    expect(carimbo).toHaveTextContent("Cotação");
   });
 
   it("opens the Parâmetros drawer on the ?params=1 deep link", async () => {
