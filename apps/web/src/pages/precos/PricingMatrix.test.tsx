@@ -164,6 +164,10 @@ describe("PricingMatrix (EXEMPLO-IO golden)", () => {
   beforeEach(() => {
     pricingDecompose.mockClear();
     listListingsByProduct.mockClear();
+    // Restore the default resolving impl so a per-test error override never leaks.
+    pricingDecompose.mockImplementation((req: { product_id?: number | null }) =>
+      Promise.resolve(decomposeFor(req.product_id as number)),
+    );
   });
 
   it("renders the design columns for a multi-product list", async () => {
@@ -208,7 +212,10 @@ describe("PricingMatrix (EXEMPLO-IO golden)", () => {
     const row = await screen.findByTestId("matrix-row-90002");
     // Market price is the honest dash, never a fabricated number.
     expect(within(row).getByTestId("matrix-mercado-90002")).toHaveTextContent("—");
-    expect(within(row).getByTestId("matrix-veredicto-90002")).toHaveTextContent("SEM_EVIDENCIA");
+    // SEM_EVIDENCIA only once the market query RESOLVES to no-evidence (not while loading).
+    await waitFor(() =>
+      expect(within(row).getByTestId("matrix-veredicto-90002")).toHaveTextContent("SEM_EVIDENCIA"),
+    );
     // Margem is still computed from custo/preço (decompose does not need market).
     await waitFor(() => expect(within(row).getByText(/11[.,]01/)).toBeInTheDocument());
   });
@@ -219,8 +226,10 @@ describe("PricingMatrix (EXEMPLO-IO golden)", () => {
 
     const row = await screen.findByTestId("matrix-row-90003");
     expect(within(row).getByTestId("matrix-custo-90003")).toHaveTextContent("—");
-    // Missing aggregate → honest SEM_EVIDENCIA.
-    expect(within(row).getByTestId("matrix-veredicto-90003")).toHaveTextContent("SEM_EVIDENCIA");
+    // Resolved-but-absent aggregate → honest SEM_EVIDENCIA (after the query resolves).
+    await waitFor(() =>
+      expect(within(row).getByTestId("matrix-veredicto-90003")).toHaveTextContent("SEM_EVIDENCIA"),
+    );
     // Margem UnknownValue with the M-07 hint (categorical margin verdict not invented here).
     await waitFor(() => {
       const cell = within(row).getByTestId("matrix-margem-90003");
@@ -264,5 +273,55 @@ describe("PricingMatrix (EXEMPLO-IO golden)", () => {
     for (const [arg] of pricingDecompose.mock.calls) {
       expect(arg).not.toHaveProperty("comissao_pct");
     }
+  });
+
+  it("(insufficient market) VEREDICTO MERCADO_INSUFICIENTE, price stays —", async () => {
+    const insufficient: MarketPriceIntelAggregate[] = [
+      {
+        product_id: "90001",
+        median: null,
+        min_valid: null,
+        n_offers: 2,
+        n_sellers: 2,
+        source: "ml_catalog_offers",
+        fetched_at: "2026-07-18T12:00:00Z",
+        computed_at: "2026-07-18T12:00:00Z",
+        status: "INSUFFICIENT_MARKET",
+      },
+    ];
+    const listMarketAggregates = vi.fn(() => Promise.resolve(insufficient));
+    renderMatrix({ listMarketAggregates });
+
+    const row = await screen.findByTestId("matrix-row-90001");
+    await waitFor(() =>
+      expect(within(row).getByTestId("matrix-veredicto-90001")).toHaveTextContent("MERCADO_INSUFICIENTE"),
+    );
+    // No usable median → honest dash, never a fabricated price.
+    expect(within(row).getByTestId("matrix-mercado-90001")).toHaveTextContent("—");
+  });
+
+  it("market fetch error stays unknown — never a confirmed SEM_EVIDENCIA (ADR-17)", async () => {
+    const listMarketAggregates = vi.fn(() => Promise.reject(new Error("boom")));
+    renderMatrix({ listMarketAggregates });
+
+    const row = await screen.findByTestId("matrix-row-90001");
+    await waitFor(() => expect(listMarketAggregates).toHaveBeenCalled());
+    const veredicto = within(row).getByTestId("matrix-veredicto-90001");
+    // A failed fetch is unknown, not a verdict — "we couldn't check" ≠ "no evidence".
+    await waitFor(() => expect(veredicto).not.toHaveTextContent("SEM_EVIDENCIA"));
+    expect(veredicto).toHaveTextContent("—");
+    expect(within(row).getByTestId("matrix-mercado-90001")).toHaveTextContent("—");
+  });
+
+  it("decompose failure is honest, not misattributed to the M-07 placeholder (ADR-17)", async () => {
+    const listMarketAggregates = vi.fn(() => Promise.resolve(aggregates));
+    pricingDecompose.mockImplementation(() => Promise.reject(new Error("boom")));
+    renderMatrix({ listMarketAggregates });
+
+    const row = await screen.findByTestId("matrix-row-90001");
+    const cell = within(row).getByTestId("matrix-margem-90001");
+    await waitFor(() => expect(cell).toHaveTextContent("—"));
+    // A failed calc must NOT wear the "margem: M-07" (engine-pending) hint.
+    expect(within(cell).queryByTitle("margem: M-07")).toBeNull();
   });
 });

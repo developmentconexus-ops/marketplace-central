@@ -28,8 +28,10 @@ export interface PricingMatrixProps {
 
 /** Price-evidence verdict shown in the VEREDICTO column — mapped from the market
  * aggregate status ONLY. The categorical MARGIN verdict (saudável/apertado/…) is
- * M-07-owned and deliberately NOT invented here. A missing aggregate is the honest
- * closest state: SEM_EVIDENCIA. */
+ * M-07-owned and deliberately NOT invented here. Called ONLY once the market query
+ * has RESOLVED (caller gates on isSuccess): a resolved-but-absent aggregate is the
+ * honest closest state SEM_EVIDENCIA, whereas a still-loading or errored query is
+ * unknown — never a confirmed verdict (ADR-17). */
 function veredictoFor(agg: MarketPriceIntelAggregate | undefined): string {
   switch (agg?.status) {
     case "OK":
@@ -133,6 +135,12 @@ export function PricingMatrix({
     tight: Number(profile.limiar_amarelo_pct),
   };
 
+  // Market is ONE page-level query → its resolution state is uniform for every row.
+  // ADR-17: a verdict is a confirmed fact — only trust the status once the query
+  // has resolved; loading and error stay honestly unknown, never SEM_EVIDENCIA.
+  const marketResolved = marketQuery.isSuccess;
+  const marketErrored = marketQuery.isError;
+
   return (
     <div data-testid="pricing-matrix" className="overflow-x-auto rounded-lg border border-border bg-surface">
       <table className="w-full min-w-[900px] border-collapse text-left">
@@ -156,6 +164,12 @@ export function PricingMatrix({
             const pctNum = margemPct !== null && Number.isFinite(Number(margemPct)) ? Number(margemPct) : null;
             const priced = agg?.status === "OK";
             const isSelected = selectedId === p.internal_product_id;
+            // Per-row margin lane state — an errored decompose is unknown, never the
+            // M-07 placeholder (which means "categorical engine pending", not "failed").
+            const decompose = decomposeResults[i];
+            const decomposeErrored = decompose?.isError === true;
+            const decomposeResolved = decompose?.isSuccess === true;
+            const hasPrice = p.current_price.amount !== null;
             // "novo" only when the listing query has RESOLVED to zero listings.
             const listing = listingResults[i];
             const isNovo = listing?.isSuccess === true && (listing.data?.groups[0]?.listings.length ?? 0) === 0;
@@ -194,26 +208,44 @@ export function PricingMatrix({
                 </Td>
                 <Td align="right" testId={`matrix-mercado-${p.internal_product_id}`}>
                   {/* Rank "19º/23" is absent from aggregate data → price only, no rank. */}
-                  {priced ? <Money amount={agg?.median?.amount ?? null} /> : <UnknownValue />}
+                  {marketErrored ? (
+                    <UnknownValue hint="mercado: falha ao carregar" />
+                  ) : !marketResolved ? (
+                    <UnknownValue hint="mercado: carregando…" />
+                  ) : priced ? (
+                    <Money amount={agg?.median?.amount ?? null} />
+                  ) : (
+                    <UnknownValue />
+                  )}
                 </Td>
                 <Td align="right" testId={`matrix-margem-${p.internal_product_id}`}>
-                  {margemValor !== null ? (
+                  {decomposeErrored ? (
+                    <UnknownValue hint="margem: falha ao calcular" />
+                  ) : margemValor !== null ? (
                     <span className="flex items-center justify-end gap-1.5">
                       <span className="font-mono text-ink">{margemValor}</span>
                       <MarginChip marginPct={pctNum} thresholds={thresholds} />
                     </span>
-                  ) : (
+                  ) : decomposeResolved || !hasPrice ? (
                     <UnknownValue hint="margem: M-07" />
+                  ) : (
+                    <UnknownValue />
                   )}
                 </Td>
                 <Td testId={`matrix-veredicto-${p.internal_product_id}`}>
-                  <span
-                    className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${
-                      priced ? "bg-accent-soft text-accent-ink" : "bg-warn-soft text-warn"
-                    }`}
-                  >
-                    {veredictoFor(agg)}
-                  </span>
+                  {marketErrored ? (
+                    <UnknownValue hint="mercado: falha ao carregar" />
+                  ) : !marketResolved ? (
+                    <UnknownValue hint="mercado: carregando…" />
+                  ) : (
+                    <span
+                      className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${
+                        priced ? "bg-accent-soft text-accent-ink" : "bg-warn-soft text-warn"
+                      }`}
+                    >
+                      {veredictoFor(agg)}
+                    </span>
+                  )}
                 </Td>
               </tr>
             );
