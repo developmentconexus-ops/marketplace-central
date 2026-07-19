@@ -7,6 +7,10 @@ const (
 	// FontePadrao is degrau 4: the tenant/installation config default
 	// (TariffDefaults) resolved with no live or per-listing data.
 	FontePadrao Fonte = "PADRAO"
+	// FonteManual marks a component the caller supplied by hand (a request
+	// override), overriding whatever the resolver would have returned.
+	// Degrau 0 (not resolved at all), never an estimate.
+	FonteManual Fonte = "MANUAL"
 	// (future: FonteListing, FonteConta, FonteML for degraus 1-3)
 )
 

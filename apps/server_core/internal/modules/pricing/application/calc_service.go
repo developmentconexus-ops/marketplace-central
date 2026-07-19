@@ -39,11 +39,12 @@ var overrideThresholdPP = big.NewRat(49, 1000) // 0.049
 // cost port, and the product-existence check. All money/percent values are
 // decimal strings; the service never introduces float64.
 type CalcService struct {
-	repo        ports.CalcRepository
-	cost        ports.CostReader
-	products    ports.ProductChecker
-	tenantID    string
-	tariffStore ports.TariffDefaultsStore
+	repo           ports.CalcRepository
+	cost           ports.CostReader
+	products       ports.ProductChecker
+	tenantID       string
+	tariffStore    ports.TariffDefaultsStore
+	tariffResolver ports.TariffResolver
 }
 
 func NewCalcService(repo ports.CalcRepository, cost ports.CostReader, products ports.ProductChecker, tenantID string) CalcService {
@@ -55,6 +56,14 @@ func NewCalcService(repo ports.CalcRepository, cost ports.CostReader, products p
 // never call this stay green (tariffStore nil ⇒ ErrTariffStoreNotConfigured).
 func (s CalcService) WithTariffStore(store ports.TariffDefaultsStore) CalcService {
 	s.tariffStore = store
+	return s
+}
+
+// WithTariffResolver attaches the CHIP-T1 degrau-4 tariff resolver. Nil-safe:
+// callers/tests that never call this keep today's behavior (no resolver ⇒
+// comissao_pct stays required, frete stays request-only, Tarifa nil).
+func (s CalcService) WithTariffResolver(r ports.TariffResolver) CalcService {
+	s.tariffResolver = r
 	return s
 }
 
@@ -215,6 +224,10 @@ type DecomposeRequest struct {
 type DecomposeResult struct {
 	Decomposition domain.Decomposition
 	BlockingState *string
+	// Tarifa is the resolved tariff components (fonte/degrau/estimativa
+	// stamps) surfaced to the client; nil when the service has no
+	// tariffResolver wired.
+	Tarifa *domain.TariffResolution
 }
 
 // Decompose runs the single IC-04 formula over resolved inputs. Preco ≤ 0 ⇒
@@ -229,8 +242,7 @@ func (s CalcService) Decompose(ctx context.Context, req DecomposeRequest) (Decom
 	// string via ParseRat and panic on failure. Validate each client-supplied
 	// decimal here so an empty/unparseable field is a 422 (ADR-17 honest
 	// rejection), never a panic. Preco is already guarded above.
-	if !decimalIsParseable(req.ComissaoPct) ||
-		!optionalDecimalIsParseable(req.TarifaFull) ||
+	if !optionalDecimalIsParseable(req.TarifaFull) ||
 		!optionalDecimalIsParseable(req.FreteProduto) ||
 		!optionalDecimalIsParseable(req.Custo) {
 		return DecomposeResult{}, ErrInvalidPrice
@@ -243,13 +255,20 @@ func (s CalcService) Decompose(ctx context.Context, req DecomposeRequest) (Decom
 	if err != nil {
 		return DecomposeResult{}, err
 	}
+	comissao, frete, tarifa, err := s.resolveTariff(ctx, req.Modalidade, req.ComissaoPct, req.FreteProduto)
+	if err != nil {
+		return DecomposeResult{}, err
+	}
+	if !decimalIsParseable(comissao) {
+		return DecomposeResult{}, ErrInvalidPrice
+	}
 	in := domain.DecomposeInput{
 		Preco:        req.Preco,
-		ComissaoPct:  req.ComissaoPct,
+		ComissaoPct:  comissao,
 		AliquotaPct:  profile.AliquotaPct,
 		Modalidade:   req.Modalidade,
 		TarifaFull:   resolveTarifaFull(req.TarifaFull, profile),
-		FreteProduto: optionalMoney(req.FreteProduto),
+		FreteProduto: frete,
 		Custo:        custo,
 	}
 	// The effective tarifa_full may come from the profile (PutProfile persists
@@ -260,7 +279,7 @@ func (s CalcService) Decompose(ctx context.Context, req DecomposeRequest) (Decom
 		return DecomposeResult{}, ErrInvalidPrice
 	}
 	s.applyDifal(ctx, profile, &in.DifalEnabled, &in.DestinoUF, &in.EfetivoPct)
-	return DecomposeResult{Decomposition: domain.Decompose(in), BlockingState: blocking}, nil
+	return DecomposeResult{Decomposition: domain.Decompose(in), BlockingState: blocking, Tarifa: tarifa}, nil
 }
 
 // SolveRequest carries the bidirectional solver inputs (margem-alvo → preço).
@@ -281,6 +300,10 @@ type SolveRequest struct {
 type SolveOutput struct {
 	Result        domain.SolveResult
 	BlockingState *string
+	// Tarifa is the resolved tariff components (fonte/degrau/estimativa
+	// stamps) surfaced to the client; nil when the service has no
+	// tariffResolver wired.
+	Tarifa *domain.TariffResolution
 }
 
 // SolveTarget resolves the price achieving a target margin. An unreachable
@@ -292,7 +315,6 @@ func (s CalcService) SolveTarget(ctx context.Context, req SolveRequest) (SolveOu
 	// Reject empty/unparseable client decimals here as a 422 (ADR-17) so no
 	// API-reachable solve path can panic.
 	if !decimalIsParseable(req.TargetMargemPct) ||
-		!decimalIsParseable(req.ComissaoPct) ||
 		!optionalDecimalIsParseable(req.TarifaFull) ||
 		!optionalDecimalIsParseable(req.FreteProduto) ||
 		!optionalDecimalIsParseable(req.Custo) {
@@ -306,14 +328,23 @@ func (s CalcService) SolveTarget(ctx context.Context, req SolveRequest) (SolveOu
 	if err != nil {
 		return SolveOutput{}, err
 	}
+	comissao, frete, tarifa, err := s.resolveTariff(ctx, req.Modalidade, req.ComissaoPct, req.FreteProduto)
+	if err != nil {
+		return SolveOutput{}, err
+	}
+	if !decimalIsParseable(comissao) {
+		return SolveOutput{}, ErrInvalidPrice
+	}
 	in := domain.SolveInput{
 		TargetMargemPct: req.TargetMargemPct,
-		ComissaoPct:     req.ComissaoPct,
+		ComissaoPct:     comissao,
 		AliquotaPct:     profile.AliquotaPct,
 		Modalidade:      req.Modalidade,
 		TarifaFull:      resolveTarifaFull(req.TarifaFull, profile),
-		FreteProduto:    optionalMoney(req.FreteProduto),
+		FreteProduto:    frete,
 		Custo:           custo,
+		// TaxaFixaLimiarCents left at zero value: the per-solve threshold
+		// override defaults to policy (7900) for the demo.
 	}
 	// See Decompose: the resolved tarifa_full may be a profile-sourced value
 	// that PutProfile never parse-checked; guard it before the solver forwards
@@ -322,7 +353,7 @@ func (s CalcService) SolveTarget(ctx context.Context, req SolveRequest) (SolveOu
 		return SolveOutput{}, ErrInvalidPrice
 	}
 	s.applyDifal(ctx, profile, &in.DifalEnabled, &in.DestinoUF, &in.EfetivoPct)
-	return SolveOutput{Result: domain.SolveTargetPrice(in), BlockingState: blocking}, nil
+	return SolveOutput{Result: domain.SolveTargetPrice(in), BlockingState: blocking, Tarifa: tarifa}, nil
 }
 
 // resolveCusto returns the custo Money for the request: an explicit req.Custo
@@ -354,6 +385,40 @@ func (s CalcService) resolveCusto(ctx context.Context, req DecomposeRequest) (*d
 		return nil, &blocking, nil
 	}
 	return custo, nil, nil
+}
+
+// resolveTariff computes the comissao pct and produto frete actually used by
+// the domain engine, plus the Tarifa stamp to surface. Manual request values
+// override the resolver (Fonte MANUAL). With no resolver wired it is a
+// pass-through (comissao=reqComissao, frete=reqFrete, tarifa nil) so existing
+// callers are unchanged. A resolver's sem_dados frete stays nil (ADR-17: never 0).
+func (s CalcService) resolveTariff(ctx context.Context, modalidade domain.Modalidade, reqComissao string, reqFrete *string) (comissao string, frete *domain.Money, tarifa *domain.TariffResolution, err error) {
+	if s.tariffResolver == nil {
+		return reqComissao, optionalMoney(reqFrete), nil, nil
+	}
+	res, err := s.tariffResolver.Resolve(ctx, ports.TariffRequest{Modalidade: modalidade})
+	if err != nil {
+		return "", nil, nil, err
+	}
+	comissaoComp := res.Comissao
+	if reqComissao != "" {
+		comissao = reqComissao
+		c := reqComissao
+		comissaoComp = domain.ComponentResolution{Valor: &c, Fonte: domain.FonteManual}
+	} else if res.Comissao.Valor != nil {
+		comissao = *res.Comissao.Valor
+	} // else comissao stays "" ⇒ caller's parseable check rejects it (422)
+
+	freteComp := res.Frete
+	if reqFrete != nil {
+		frete = &domain.Money{Amount: *reqFrete, Currency: "BRL"}
+		f := *reqFrete
+		freteComp = domain.ComponentResolution{Valor: &f, Fonte: domain.FonteManual}
+	} else if res.Frete.Valor != nil {
+		frete = &domain.Money{Amount: *res.Frete.Valor, Currency: "BRL"}
+	} // else frete stays nil ⇒ NO-DATA (sem_dados), ADR-17
+
+	return comissao, frete, &domain.TariffResolution{Comissao: comissaoComp, Frete: freteComp}, nil
 }
 
 // applyDifal resolves the profile's DIFAL destino to an efetivo_pct via the
