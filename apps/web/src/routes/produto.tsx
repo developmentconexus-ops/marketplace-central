@@ -1,5 +1,5 @@
-import { WorkspacePlaceholder } from "../pages/WorkspacePlaceholder";
+import { ProdutoPage } from "../pages/produto/ProdutoPage";
 
 export function ProdutoRoute() {
-  return <WorkspacePlaceholder />;
+  return <ProdutoPage />;
 }
