@@ -65,6 +65,8 @@ export function PricingPage() {
   // Deep link: /precos?params=1 opens the Parâmetros drawer on mount.
   const [paramsOpen, setParamsOpen] = useState<boolean>(searchParams.get("params") === "1");
   const [difalOpen, setDifalOpen] = useState<boolean>(false);
+  // Set when a reloaded scenario references a product absent from the catalog.
+  const [reloadNotice, setReloadNotice] = useState<string | null>(null);
 
   const profileQuery = useQuery({
     queryKey: ["pricing", "profile"],
@@ -109,8 +111,11 @@ export function PricingPage() {
   const products = productsQuery.data?.items ?? [];
   const selected = useMemo<CatalogProductFact | null>(() => {
     if (products.length === 0) return null;
-    const byId = products.find((p) => p.internal_product_id === selectedId);
-    return byId ?? products[0];
+    // No explicit pick yet ⇒ default to the first product. An explicit id that
+    // isn't in the loaded list ⇒ null (honest empty), NEVER a silent fallback to
+    // products[0] — that would show a different product's decomposition.
+    if (selectedId === null) return products[0];
+    return products.find((p) => p.internal_product_id === selectedId) ?? null;
   }, [products, selectedId]);
 
   // "Aplicar preço" targets an ML listing under an installation — resolve both
@@ -144,7 +149,17 @@ export function PricingPage() {
     product_id: selected?.internal_product_id ?? null,
   };
   const applyScenario = (payload: Record<string, unknown>) => {
-    if (typeof payload.product_id === "number") setSelectedId(payload.product_id);
+    if (typeof payload.product_id === "number") {
+      setSelectedId(payload.product_id);
+      // If the scenario's product isn't in the loaded catalog, tell the operator
+      // instead of silently decomposing a different product at this price.
+      const known = products.some((p) => p.internal_product_id === payload.product_id);
+      setReloadNotice(
+        known
+          ? null
+          : "O produto deste cenário não está na lista atual — selecione outro produto ou recarregue o catálogo.",
+      );
+    }
     if (typeof payload.modalidade === "string" && MODALIDADES.some((m) => m.key === payload.modalidade)) {
       setModalidade(payload.modalidade as ModalidadeKey);
     }
@@ -208,7 +223,10 @@ export function PricingPage() {
                   <li key={p.internal_product_id}>
                     <button
                       type="button"
-                      onClick={() => setSelectedId(p.internal_product_id)}
+                      onClick={() => {
+                        setSelectedId(p.internal_product_id);
+                        setReloadNotice(null);
+                      }}
                       aria-pressed={selected?.internal_product_id === p.internal_product_id}
                       className={`w-full rounded-md px-2 py-1.5 text-left text-sm ${
                         selected?.internal_product_id === p.internal_product_id
@@ -225,6 +243,12 @@ export function PricingPage() {
           </aside>
 
           <section aria-label={`Simular · ${selected ? productLabel(selected) : ""}`} className="flex flex-col gap-4">
+            {reloadNotice ? (
+              <p role="alert" data-testid="scenario-reload-notice" className="rounded-md bg-warn-soft px-3 py-2 text-sm text-warn">
+                {reloadNotice}
+              </p>
+            ) : null}
+
             <div className="flex flex-wrap items-end gap-4 rounded-lg border border-border bg-surface p-3">
               <label className="flex flex-col text-xs text-muted">
                 Preço de venda

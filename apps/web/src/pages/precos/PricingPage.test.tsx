@@ -92,8 +92,25 @@ vi.mock("./MarketComparison", () => ({
 vi.mock("./ApplyPriceAction", () => ({
   ApplyPriceAction: () => <div data-testid="apply-action-stub" />,
 }));
+// The stub exposes the onReload seam so the page's applyScenario logic (state
+// re-application) is exercised for real — both a present and an absent product.
 vi.mock("./ScenariosPanel", () => ({
-  ScenariosPanel: () => <div data-testid="scenarios-panel-stub" />,
+  ScenariosPanel: ({ onReload }: { onReload: (p: Record<string, unknown>) => void }) => (
+    <div data-testid="scenarios-panel-stub">
+      <button
+        data-testid="stub-reload-valid"
+        onClick={() => onReload({ product_id: 90001, preco: "77.00", modalidade: "classico" })}
+      >
+        reload-valid
+      </button>
+      <button
+        data-testid="stub-reload-missing"
+        onClick={() => onReload({ product_id: 99999, preco: "50.00", modalidade: "classico" })}
+      >
+        reload-missing
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock("../../app/ClientContext", () => ({
@@ -126,6 +143,7 @@ describe("PricingPage scaffold", () => {
     putPricingProfile.mockClear();
     listPricingDifal.mockClear();
     putPricingDifalOverride.mockClear();
+    pricingDecompose.mockClear();
   });
 
   it("mounts, loads the calc profile, and renders the shell regions", async () => {
@@ -164,6 +182,37 @@ describe("PricingPage scaffold", () => {
     expect(putPricingProfile.mock.calls[0][0]).toMatchObject({ aliquota_pct: "9.25" });
     // onSuccess closes the drawer.
     await waitFor(() => expect(screen.queryByTestId("params-drawer")).toBeNull());
+  });
+
+  it("reloads a scenario into page state and re-decomposes for that product", async () => {
+    renderPage();
+    await screen.findByText("Preços & Simulador");
+    await waitFor(() => expect(pricingDecompose).toHaveBeenCalled());
+    pricingDecompose.mockClear();
+
+    fireEvent.click(screen.getByTestId("stub-reload-valid"));
+
+    await waitFor(() => expect(pricingDecompose).toHaveBeenCalled());
+    const lastArg = pricingDecompose.mock.calls.at(-1)![0];
+    expect(lastArg).toMatchObject({ preco: "77.00", modalidade: "classico", product_id: 90001 });
+  });
+
+  it("does not silently load a different product when a reloaded scenario's product is absent", async () => {
+    renderPage();
+    await screen.findByText("Preços & Simulador");
+    await waitFor(() => expect(pricingDecompose).toHaveBeenCalled());
+
+    fireEvent.click(screen.getByTestId("stub-reload-missing"));
+
+    // Honest empty state + notice — NEVER a decomposition for the wrong product.
+    expect(await screen.findByTestId("scenario-reload-notice")).toBeInTheDocument();
+    expect(screen.getByText("Selecione um produto e um preço para simular.")).toBeInTheDocument();
+    const badCall = pricingDecompose.mock.calls.some(
+      ([arg]) =>
+        (arg as { product_id?: number }).product_id === 99999 ||
+        (arg as { preco?: string }).preco === "50.00",
+    );
+    expect(badCall).toBe(false);
   });
 
   it("opens the DIFAL drawer and lists the UF table with the disclaimer", async () => {
