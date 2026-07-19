@@ -2591,7 +2591,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/PricingTariffDefaults'
         "422":
-          description: Invalid frete_policy
+          description: >-
+            Invalid input: unrecognized frete_policy, or a non-numeric
+            commission/frete estimate (code INVALID_PRICE).
           content:
             application/json:
               schema:

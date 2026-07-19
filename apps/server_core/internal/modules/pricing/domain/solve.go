@@ -133,10 +133,15 @@ func (in SolveInput) structuralUnknowns() []string {
 // it is scanned exhaustively; the unbounded high segment is bracketed first.
 const lowSegmentSpanCents int64 = 200_000
 
-// highScanCapCents caps the high-segment linear scan after bracketing so a
-// pathological near-ceiling target cannot make it unbounded. A match beyond the
-// bracketed+capped window is reported UNREACHABLE (honest) — never mis-solved.
-const highScanCapCents int64 = 4_000_000
+// highSegmentWindowCents is the half-width of the linear scan around the
+// high-segment bracket crossing. round2(exact.pct) is monotone, and the real
+// Decompose match lies within the 2dp component-rounding perturbation of it:
+// |Δpreço| ≤ 150/(ceiling−target) cents, and ceiling−target ≥ 0.01 (targets
+// at/above the ceiling are rejected before any search), so ≤ 15000 cents — a
+// fixed 20000-cent half-window covers every case with margin. This keeps the
+// search O(log) + bounded (no unbounded cap, no false UNREACHABLE for a
+// reachable target within solveMaxCents).
+const highSegmentWindowCents int64 = 20_000
 
 // searchSegment returns the cheapest 2dp preço (in cents) within [loCents,
 // hiCents] whose Decompose margem_pct equals TargetMargemPct EXACTLY, and
@@ -156,24 +161,25 @@ func (in SolveInput) searchSegment(loCents, hiCents int64) (string, bool) {
 	limiar := in.limiarCents()
 	scanLo, scanHi := loCents, hiCents
 	if hiCents-loCents > lowSegmentSpanCents {
-		// |Decompose.pct − exact.pct| < 2/preço + 0.02 pp (2dp rounding of ≤3
-		// pct components, then of the ratio, with margin); preço ≥ loCents/100
-		// bounds it. Any exact-target match lies where the monotone exact value
-		// is within that wiggle of the target — bracket that band by bisection.
-		wig := new(big.Rat).Quo(big.NewRat(200, 100), big.NewRat(loCents, 100))
-		wig.Add(wig, big.NewRat(2, 100))
-		tgt := mustRat(in.TargetMargemPct)
-		scanLo = in.firstCentExactAtLeast(loCents, hiCents, limiar, new(big.Rat).Sub(tgt, wig))
-		if scanLo > hiCents {
-			return "", false // even the cap doesn't reach the target band
+		// High segment: bracket the round2(exact.pct) crossing by bisection (the
+		// exact margem_pct is strictly increasing) then scan a bounded window
+		// around it against the real Decompose. round2(exact) ≥ target iff
+		// exact ≥ target − 0.005, so the crossing is firstCentExactAtLeast(target
+		// − 0.005); the real Decompose match differs from it only by the 2dp
+		// component-rounding perturbation, ≤ highSegmentWindowCents (see const).
+		half := big.NewRat(5, 1000) // 0.005 = round2 half-band
+		bound := new(big.Rat).Sub(mustRat(in.TargetMargemPct), half)
+		cStar := in.firstCentExactAtLeast(loCents, hiCents, limiar, bound)
+		if cStar > hiCents {
+			return "", false // target unreachable within the segment
 		}
-		hiExceed := in.firstCentExactAtLeast(loCents, hiCents, limiar, new(big.Rat).Add(tgt, wig))
-		scanHi = hiExceed - 1
+		scanLo = cStar - highSegmentWindowCents
+		if scanLo < loCents {
+			scanLo = loCents
+		}
+		scanHi = cStar + highSegmentWindowCents
 		if scanHi > hiCents {
 			scanHi = hiCents
-		}
-		if scanHi-scanLo > highScanCapCents {
-			scanHi = scanLo + highScanCapCents
 		}
 	}
 	for c := scanLo; c <= scanHi; c++ {

@@ -170,12 +170,15 @@ func TestSolveMatchesBruteForceLowSegment(t *testing.T) {
 				cheapest[m] = c
 			}
 		}
-		i := 0
-		for target, wantCents := range cheapest {
-			i++
-			if i%50 != 0 { // sample to bound runtime; map order varies across runs
+		// Deterministic sample: stride over cents in order (map iteration order is
+		// nondeterministic). Each sampled cent's target is looked up against the
+		// brute cheapest map, so the assertion is still cheapest-exact-match.
+		for c := int64(1); c <= 7898; c += 37 {
+			target := resim(base, centsToStr(c))
+			if target == "<unknown>" {
 				continue
 			}
+			wantCents := cheapest[target]
 			in := base
 			in.TargetMargemPct = target
 			res := SolveTargetPrice(in)
