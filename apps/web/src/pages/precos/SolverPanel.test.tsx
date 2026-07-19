@@ -97,6 +97,23 @@ describe("SolverPanel — margem-alvo → preço", () => {
     expect(screen.queryByTestId("solver-price")).toBeNull();
   });
 
+  it("normalizes a pt-BR comma target to dot-decimal before the solve SDK call (F-P7-2)", async () => {
+    pricingSolveTarget.mockResolvedValue({
+      reached: true,
+      preco: "104.50",
+      ceiling_pct: "31.20",
+      desconhecidos: [],
+      blocking_state: null,
+    });
+    renderPanel();
+
+    fireEvent.change(screen.getByLabelText("Margem alvo"), { target: { value: "9,5" } });
+    fireEvent.click(screen.getByTestId("solver-submit"));
+
+    await waitFor(() => expect(pricingSolveTarget).toHaveBeenCalledTimes(1));
+    expect(pricingSolveTarget.mock.calls[0][0]).toMatchObject({ margem_alvo_pct: "9.5" });
+  });
+
   it("renders an error state when the solve call fails", async () => {
     pricingSolveTarget.mockRejectedValue(new Error("boom"));
     renderPanel();

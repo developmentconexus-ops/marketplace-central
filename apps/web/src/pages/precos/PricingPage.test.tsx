@@ -227,6 +227,25 @@ describe("PricingPage scaffold", () => {
     expect(badCall).toBe(false);
   });
 
+  it("normalizes a pt-BR comma price to dot-decimal before the decompose SDK call (F-P7-2)", async () => {
+    renderPage();
+    await screen.findByText("Preços & Simulador");
+    await waitFor(() => expect(pricingDecompose).toHaveBeenCalled());
+    pricingDecompose.mockClear();
+
+    // Operator types pt-BR "150,00"; the raw string stays in the input, but the
+    // value bound to the SDK must be dot-decimal or the Go parser answers 422.
+    const priceInput = screen.getByLabelText("Preço de venda") as HTMLInputElement;
+    fireEvent.change(priceInput, { target: { value: "150,00" } });
+
+    await waitFor(() => {
+      const lastArg = pricingDecompose.mock.calls.at(-1)?.[0] as { preco?: string } | undefined;
+      expect(lastArg?.preco).toBe("150.00");
+    });
+    // The input still shows the raw pt-BR string the operator typed.
+    expect(priceInput.value).toBe("150,00");
+  });
+
   it("opens the DIFAL drawer and lists the UF table with the disclaimer", async () => {
     renderPage();
     fireEvent.click(await screen.findByTestId("difal-trigger"));

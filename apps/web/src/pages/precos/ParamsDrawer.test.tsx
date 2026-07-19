@@ -50,6 +50,24 @@ describe("ParamsDrawer", () => {
     expect(onSave).not.toHaveBeenCalled();
   });
 
+  it("normalizes pt-BR comma rate fields to dot-decimal in the saved profile (F-P7-2)", () => {
+    const { onSave } = renderDrawer();
+    // pt-BR "9,25" alíquota must not be a false NaN-block, and must be dot-decimal on save.
+    fireEvent.change(screen.getByLabelText("Alíquota"), { target: { value: "9,25" } });
+    fireEvent.change(screen.getByLabelText("Limiar verde"), { target: { value: "18,5" } });
+    fireEvent.change(screen.getByLabelText("Tarifa Full"), { target: { value: "2,5" } });
+    const save = screen.getByRole("button", { name: "Salvar parâmetros" });
+    expect(save).not.toBeDisabled();
+    fireEvent.click(save);
+
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(onSave.mock.calls[0][0]).toMatchObject({
+      aliquota_pct: "9.25",
+      limiar_verde_pct: "18.5",
+      tarifa_full: "2.5",
+    });
+  });
+
   it("reveals the 27-UF destino selector only when DIFAL is enabled", () => {
     renderDrawer();
     expect(screen.queryByLabelText("UF de destino")).toBeNull();

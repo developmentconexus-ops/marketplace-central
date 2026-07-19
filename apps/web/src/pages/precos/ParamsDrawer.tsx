@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { JSX } from "react";
 import type { PricingCalcProfile } from "@marketplace-central/sdk-runtime";
+import { ptBrRateToDot } from "./ptbrDecimal";
 
 /** The 27 Brazilian UFs (26 states + DF), used for the DIFAL destination selector. */
 export const BR_UFS = [
@@ -20,8 +21,20 @@ export interface ParamsDrawerProps {
 
 /** aliquota is IC-04-bounded to [0,35]; the server re-validates (422 INVALID_RATE). */
 function aliquotaValid(value: string): boolean {
-  const n = Number(value);
+  // Validate the normalized (dot-decimal) form so pt-BR "9,25" isn't a false NaN.
+  const n = Number(ptBrRateToDot(value));
   return Number.isFinite(n) && n >= 0 && n <= 35;
+}
+
+/** Promote the operator's raw pt-BR rate fields to dot-decimal for the PUT. */
+function normalizeProfile(p: PricingCalcProfile): PricingCalcProfile {
+  return {
+    ...p,
+    aliquota_pct: ptBrRateToDot(p.aliquota_pct),
+    limiar_verde_pct: ptBrRateToDot(p.limiar_verde_pct),
+    limiar_amarelo_pct: ptBrRateToDot(p.limiar_amarelo_pct),
+    tarifa_full: p.tarifa_full === null ? null : ptBrRateToDot(p.tarifa_full),
+  };
 }
 
 /**
@@ -134,7 +147,7 @@ export function ParamsDrawer({ open, profile, onSave, onClose, saving }: ParamsD
         <button
           type="button"
           disabled={aliquotaError || saving}
-          onClick={() => onSave(draft)}
+          onClick={() => onSave(normalizeProfile(draft))}
           className="rounded-md bg-accent px-3 py-1.5 text-sm text-accent-ink disabled:opacity-50"
         >
           {saving ? "Salvando…" : "Salvar parâmetros"}
