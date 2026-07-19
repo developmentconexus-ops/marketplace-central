@@ -98,6 +98,13 @@ func NewEnrichServiceWithReaders(cost ports.CostReader, shipment ports.ShipmentR
 	return EnrichService{cost: cost, shipment: shipment, decomposer: decomposer, buyerFiscal: buyerFiscal, logger: logger}
 }
 
+// Enrich is the LIST path: it fills every read-time fact that is cheap at
+// scale (masked buyer, vinculo, per-item cost, per-order shipment,
+// profitability) for N orders. It deliberately does NOT resolve buyer fiscal
+// identity — that is drawer-only data whose two-step provider lookup (+2
+// sequential ML calls per order) would blow the request deadline across a full
+// list page (FINDING-M08-LIST-TIMEOUT). Every EnrichedOrder here carries a nil
+// BuyerFiscal; use EnrichOne on the detail path to resolve it.
 func (s EnrichService) Enrich(ctx context.Context, installationID string, orders []domain.OrderReadModel) []EnrichedOrder {
 	enriched := make([]EnrichedOrder, 0, len(orders))
 	for _, order := range orders {
@@ -109,7 +116,6 @@ func (s EnrichService) Enrich(ctx context.Context, installationID string, orders
 		buyer := domain.MaskBuyer(nickname)
 		shipmentInfo := s.resolveShipment(ctx, installationID, order, &buyer)
 		profitability := s.resolveProfitability(ctx, order)
-		buyerFiscal := s.resolveBuyerFiscal(ctx, installationID, order)
 		enriched = append(enriched, EnrichedOrder{
 			Order:                    order,
 			Buyer:                    buyer,
@@ -118,9 +124,20 @@ func (s EnrichService) Enrich(ctx context.Context, installationID string, orders
 			ComponentesDesconhecidos: unknown,
 			Shipment:                 shipmentInfo,
 			Profitability:            profitability,
-			BuyerFiscal:              buyerFiscal,
 		})
 	}
+	return enriched
+}
+
+// EnrichOne is the DETAIL path: it runs the same base enrichment as Enrich for
+// a single order and additionally resolves the buyer's fiscal identity via
+// BuyerFiscalReader. Bounding the fiscal lookup to the one order the drawer is
+// showing keeps it off the list hot path (FINDING-M08-LIST-TIMEOUT) while still
+// surfacing comprador_fiscal on GET /orders/{id}. Degrade semantics are the
+// reader's (honest absence / warn-once) — see resolveBuyerFiscal.
+func (s EnrichService) EnrichOne(ctx context.Context, installationID string, order domain.OrderReadModel) EnrichedOrder {
+	enriched := s.Enrich(ctx, installationID, []domain.OrderReadModel{order})[0]
+	enriched.BuyerFiscal = s.resolveBuyerFiscal(ctx, installationID, order)
 	return enriched
 }
 
