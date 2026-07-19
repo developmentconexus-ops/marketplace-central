@@ -248,12 +248,16 @@ func (s *CollectionPipelineService) collectCatalogEvidence(ctx context.Context, 
 // ownSellerID (not resolvable) excludes nothing — we never guess which offer is
 // ours (ADR-17: an unknown own-seller id must not silently reshape the market).
 func excludeOwnSeller(offers []domain.ValidatedOffer, ownSellerID string) []domain.ValidatedOffer {
-	if strings.TrimSpace(ownSellerID) == "" {
+	own := strings.TrimSpace(ownSellerID)
+	if own == "" {
 		return offers
 	}
 	filtered := make([]domain.ValidatedOffer, 0, len(offers))
 	for _, offer := range offers {
-		if offer.SellerID == ownSellerID {
+		// Trim both sides so a stray-whitespace id (a seed/fixture that skips
+		// the repo's write-time trim) can never silently defeat the exclusion
+		// and leak our own offer back into the competitor stats.
+		if strings.TrimSpace(offer.SellerID) == own {
 			continue
 		}
 		filtered = append(filtered, offer)
