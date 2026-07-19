@@ -20,7 +20,10 @@ func TestOwnItemPricing(t *testing.T) {
 
 	frozen := time.Date(2026, 7, 17, 12, 30, 0, 123456000, time.UTC)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet || r.URL.Path != "/items/MLB-PRICE/sale_price" || r.URL.RawQuery != "" {
+		// ML /items/{id}/sale_price 400s without context; channel_marketplace is
+		// the required marketplace-pricing context (FINDING-M02-LIVE-2, official
+		// docs precio-por-cantidad/kits-virtuales).
+		if r.Method != http.MethodGet || r.URL.Path != "/items/MLB-PRICE/sale_price" || r.URL.Query().Get("context") != "channel_marketplace" {
 			t.Fatalf("request = %s %s?%s", r.Method, r.URL.Path, r.URL.RawQuery)
 		}
 		if got := r.Header.Get("Authorization"); got != "Bearer test-token" {

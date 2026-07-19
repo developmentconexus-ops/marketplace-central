@@ -4,9 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	mercadolivreconnector "marketplace-central/apps/server_core/internal/modules/connectors/adapters/mercado_livre"
@@ -211,6 +214,8 @@ type marketPriceIntelCollectorAdapter struct {
 	installations *integrationsapp.InstallationService
 	tenantID      string
 	now           func() time.Time
+	log           *slog.Logger
+	warned        sync.Map // operation|status -> struct{}, warn-once dedup
 }
 
 var _ marketports.PriceIntelCollector = (*marketPriceIntelCollectorAdapter)(nil)
@@ -306,7 +311,7 @@ func (r *marketPriceIntelCollectorAdapter) GetCatalogProduct(ctx context.Context
 	}
 	product, err := r.capabilities.GetCatalogProduct(ctx, ref, catalogProductID)
 	if err != nil {
-		return marketports.CatalogProductDetail{}, mapMarketProviderError(ctx, err)
+		return marketports.CatalogProductDetail{}, r.mapAndObserve(ctx, "GetCatalogProduct", err)
 	}
 	detail := marketports.CatalogProductDetail{
 		CatalogProductID: product.ID,
@@ -329,7 +334,7 @@ func (r *marketPriceIntelCollectorAdapter) ListCatalogOffers(ctx context.Context
 		if errors.Is(err, connectorsdomain.ErrCatalogOffersUnavailable) {
 			return nil, marketports.ErrCatalogOffersDisabled
 		}
-		return nil, mapMarketProviderError(ctx, err)
+		return nil, r.mapAndObserve(ctx, "ListCatalogOffers", err)
 	}
 	fetchedAt := r.now()
 	validated := make([]marketdomain.ValidatedOffer, 0, len(offers))
@@ -357,7 +362,7 @@ func (r *marketPriceIntelCollectorAdapter) GetOwnItemPricing(ctx context.Context
 	}
 	pricing, err := r.capabilities.GetOwnItemPricing(ctx, ref, providerListingID)
 	if err != nil {
-		return marketports.OwnItemPricing{}, mapMarketProviderError(ctx, err)
+		return marketports.OwnItemPricing{}, r.mapAndObserve(ctx, "GetOwnItemPricing", err)
 	}
 	var ourPrice *marketdomain.Money
 	if pricing.Amount != nil {
@@ -384,7 +389,7 @@ func (r *marketPriceIntelCollectorAdapter) GetPriceToWin(ctx context.Context, li
 	}
 	signal, err := r.capabilities.GetPriceToWin(ctx, ref, providerListingID)
 	if err != nil {
-		return marketports.PriceToWinSignal{}, mapMarketProviderError(ctx, err)
+		return marketports.PriceToWinSignal{}, r.mapAndObserve(ctx, "GetPriceToWin", err)
 	}
 	var position *marketdomain.MarketPosition
 	if signal.Position != nil {
@@ -471,6 +476,78 @@ func mapMarketConnectorError(err error) error {
 		}
 	}
 	return &marketports.ProviderStatusError{StatusCode: http.StatusBadGateway}
+}
+
+// mapAndObserve maps a connector error to the market ports vocabulary and, at
+// this market-collection boundary, emits a warn-once observability signal for
+// provider-body faults (e.g. the ML 400 that otherwise dies silently). Dedup is
+// per operation+status so a looping pipeline logs the fault once, not per call
+// (FINDING-M02-LIVE-2 observability, D-86).
+func (r *marketPriceIntelCollectorAdapter) mapAndObserve(ctx context.Context, operation string, err error) error {
+	mapped := mapMarketProviderError(ctx, err)
+	r.observeProviderFailure(operation, err, mapped)
+	return mapped
+}
+
+func (r *marketPriceIntelCollectorAdapter) observeProviderFailure(operation string, err, mapped error) {
+	// Only provider-body faults carry a *CapabilityError with a payload worth
+	// surfacing. Timeouts and bare sentinels have no body — skip them.
+	var capErr *connectorsdomain.CapabilityError
+	if !errors.As(err, &capErr) || capErr == nil {
+		return
+	}
+	status := 0
+	var statusErr *marketports.ProviderStatusError
+	if errors.As(mapped, &statusErr) {
+		status = statusErr.StatusCode
+	}
+	key := operation + "|" + strconv.Itoa(status)
+	if _, loaded := r.warned.LoadOrStore(key, struct{}{}); loaded {
+		return
+	}
+	logger := r.log
+	if logger == nil {
+		logger = slog.Default()
+	}
+	logger.Warn("market collection provider failure",
+		"operation", operation,
+		"provider_code", mercadoLivreProviderCode,
+		"status", status,
+		"error_code", string(capErr.Code),
+		"provider_body", sanitizeProviderBody(capErr.Message),
+	)
+}
+
+const maxProviderBodyLog = 256
+
+// The provider body is attacker/provider-controlled (echoed straight from the
+// HTTP response), so redaction must cover more than the literal "Bearer X"
+// header shape: bare ML credential tokens and token-bearing JSON/query fields
+// can appear anywhere in a 4xx/401 body.
+var (
+	// Authorization header echoed back + bare ML credential token shapes.
+	credentialTokenPatterns = []*regexp.Regexp{
+		regexp.MustCompile(`(?i)bearer\s+[A-Za-z0-9._~+/-]+=*`),
+		regexp.MustCompile(`(?i)\b(?:APP_USR|APP_ID|TG)-[A-Za-z0-9._~+/-]+`),
+	}
+	// token-bearing JSON fields or query params: keep the field name, drop value.
+	credentialFieldPattern = regexp.MustCompile(`(?i)("?(?:access_token|refresh_token|client_secret|token|secret|authorization)"?\s*[:=]\s*"?)[A-Za-z0-9._~+/-]+`)
+)
+
+// sanitizeProviderBody makes a provider payload safe to log: whitespace is
+// collapsed, credential tokens are redacted BEFORE truncation (so a token can
+// never survive by straddling the length bound), and the result is rune-bounded
+// so an oversized body cannot flood the log or split a multibyte rune.
+func sanitizeProviderBody(body string) string {
+	body = strings.Join(strings.Fields(body), " ")
+	body = credentialFieldPattern.ReplaceAllString(body, "$1[REDACTED]")
+	for _, pattern := range credentialTokenPatterns {
+		body = pattern.ReplaceAllString(body, "[REDACTED]")
+	}
+	if runes := []rune(body); len(runes) > maxProviderBodyLog {
+		body = string(runes[:maxProviderBodyLog]) + "…"
+	}
+	return body
 }
 
 // --- listingsports.EvidenceReader (F-01 M-05) -------------------------------

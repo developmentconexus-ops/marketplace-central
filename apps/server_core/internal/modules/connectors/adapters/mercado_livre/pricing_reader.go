@@ -32,7 +32,12 @@ type mlMarketPosition struct {
 
 func (a *CapabilityAdapter) getOwnItemPricing(ctx context.Context, accountRef domain.ProviderAccountRef, token, itemID string) (domain.OwnItemPricing, error) {
 	var response mlOwnItemPricingResponse
-	path := "/items/" + url.PathEscape(itemID) + "/sale_price"
+	// ML /items/{id}/sale_price 400s without context; channel_marketplace selects
+	// standard marketplace pricing (FINDING-M02-LIVE-2, D-86; official docs
+	// precio-por-cantidad/kits-virtuales).
+	query := url.Values{}
+	query.Set("context", "channel_marketplace")
+	path := "/items/" + url.PathEscape(itemID) + "/sale_price?" + query.Encode()
 	if err := a.doJSON(ctx, accountRef, token, http.MethodGet, path, nil, &response); err != nil {
 		return domain.OwnItemPricing{}, mapPricingReaderError(err)
 	}

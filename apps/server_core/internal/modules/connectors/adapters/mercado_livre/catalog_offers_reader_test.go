@@ -19,12 +19,16 @@ func TestListCatalogOffersPaginatesAndPreservesProviderOrder(t *testing.T) {
 
 	var calls atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("Authorization"); got != "Bearer test-token" {
+			t.Fatalf("authorization = %q", got)
+		}
+		if r.URL.Path == "/products/MLB-CATALOG" {
+			_, _ = io.WriteString(w, `{"children_ids":[]}`)
+			return
+		}
 		calls.Add(1)
 		if r.Method != http.MethodGet || r.URL.Path != "/products/MLB-CATALOG/items" {
 			t.Fatalf("request = %s %s", r.Method, r.URL.Path)
-		}
-		if got := r.Header.Get("Authorization"); got != "Bearer test-token" {
-			t.Fatalf("authorization = %q", got)
 		}
 		switch r.URL.Query().Get("offset") {
 		case "0":
@@ -77,6 +81,10 @@ func TestListCatalogOffersMidPaginationFailureReturnsNoPartialResults(t *testing
 	t.Parallel()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/products/MLB-CATALOG" {
+			_, _ = io.WriteString(w, `{"children_ids":[]}`)
+			return
+		}
 		if r.URL.Query().Get("offset") == "0" {
 			_, _ = io.WriteString(w, `{"paging":{"total":2,"offset":0,"limit":1},"results":[{"seller_id":"seller-1","price":90,"currency_id":"BRL"}]}`)
 			return
@@ -85,8 +93,10 @@ func TestListCatalogOffersMidPaginationFailureReturnsNoPartialResults(t *testing
 	}))
 	defer server.Close()
 
+	// A mid-pagination 5xx is a provider fault, NOT the capability being disabled.
+	// Disabled is reserved for the flag-off path (FINDING-M02-LIVE-2 D1, D-86).
 	offers, err := catalogOffersTestAdapter(server.URL, true).ListCatalogOffers(context.Background(), pricingAccountRef(), "MLB-CATALOG")
-	if !errors.Is(err, domain.ErrCatalogOffersUnavailable) || offers != nil {
+	if !errors.Is(err, domain.ErrProviderUnavailable) || errors.Is(err, domain.ErrCatalogOffersUnavailable) || offers != nil {
 		t.Fatalf("offers = %#v, error = %v", offers, err)
 	}
 }
@@ -95,9 +105,14 @@ func TestListCatalogOffersEmptyPageBeforeTotalReturnsNoPartialResults(t *testing
 	t.Parallel()
 
 	// Provider lies: Total=2 but the second page is genuinely empty (not an HTTP
-	// error). The non-advancing guard must hard-stop with a typed error, never
-	// return the one already-accumulated offer nor loop forever.
+	// error). The non-advancing guard must hard-stop with a typed provider error
+	// (integrity fault, NOT capability-disabled), never return the one
+	// already-accumulated offer nor loop forever (FINDING-M02-LIVE-2 D1).
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/products/MLB-CATALOG" {
+			_, _ = io.WriteString(w, `{"children_ids":[]}`)
+			return
+		}
 		if r.URL.Query().Get("offset") == "0" {
 			_, _ = io.WriteString(w, `{"paging":{"total":2,"offset":0,"limit":1},"results":[{"seller_id":"seller-1","price":90,"currency_id":"BRL"}]}`)
 			return
@@ -107,7 +122,7 @@ func TestListCatalogOffersEmptyPageBeforeTotalReturnsNoPartialResults(t *testing
 	defer server.Close()
 
 	offers, err := catalogOffersTestAdapter(server.URL, true).ListCatalogOffers(context.Background(), pricingAccountRef(), "MLB-CATALOG")
-	if !errors.Is(err, domain.ErrCatalogOffersUnavailable) || offers != nil {
+	if !errors.Is(err, domain.ErrProviderUnavailable) || errors.Is(err, domain.ErrCatalogOffersUnavailable) || offers != nil {
 		t.Fatalf("offers = %#v, error = %v", offers, err)
 	}
 }
@@ -141,6 +156,95 @@ func TestListCatalogOffersMapsProviderErrors(t *testing.T) {
 				t.Fatalf("offers = %#v, error = %v, want %v", offers, err, test.want)
 			}
 		})
+	}
+}
+
+func TestListCatalogOffersFansOutParentToChildLeaves(t *testing.T) {
+	t.Parallel()
+
+	// MLB22624877 (codprod 90008) is a PARENT catalog product: /items exists only
+	// on its LEAF children. The reader must read /products/{id}, and when
+	// children_ids is non-empty fan out to each child's /items and aggregate
+	// (FINDING-M02-LIVE-2 D2, D-86; official docs competencia-en-catalogo).
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("Authorization"); got != "Bearer test-token" {
+			t.Fatalf("authorization = %q", got)
+		}
+		switch r.URL.Path {
+		case "/products/MLB-PARENT":
+			_, _ = io.WriteString(w, `{"children_ids":["MLB-CHILD-1","MLB-CHILD-2"]}`)
+		case "/products/MLB-CHILD-1/items":
+			_, _ = io.WriteString(w, `{"paging":{"total":1,"offset":0,"limit":50},"results":[{"seller_id":"seller-1","price":100.00,"currency_id":"BRL","condition":"new","shipping":{"mode":"me2"}}]}`)
+		case "/products/MLB-CHILD-2/items":
+			_, _ = io.WriteString(w, `{"paging":{"total":1,"offset":0,"limit":50},"results":[{"seller_id":"seller-2","price":95.50,"currency_id":"BRL","condition":"new","shipping":{"mode":"me1"}}]}`)
+		default:
+			t.Fatalf("unexpected request = %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	offers, err := catalogOffersTestAdapter(server.URL, true).ListCatalogOffers(context.Background(), pricingAccountRef(), "MLB-PARENT")
+	if err != nil {
+		t.Fatalf("ListCatalogOffers() error = %v", err)
+	}
+	if len(offers) != 2 || offers[0].SellerID != "seller-1" || offers[0].Price == nil || offers[0].Price.Amount != "100.00" || offers[1].SellerID != "seller-2" || offers[1].Price == nil || offers[1].Price.Amount != "95.50" {
+		t.Fatalf("offers = %#v", offers)
+	}
+}
+
+func TestListCatalogOffersParentSkipsBlankChildAndTolerates404Leaf(t *testing.T) {
+	t.Parallel()
+
+	// A blank children_ids entry is provider noise (must never become
+	// /products//items) and a leaf whose /items resource is absent (404)
+	// legitimately contributes zero offers — neither may nuke the sibling that
+	// does have offers (FINDING-M02-LIVE-2 D2, adversarial P6).
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/products/MLB-PARENT":
+			_, _ = io.WriteString(w, `{"children_ids":["  ","MLB-EMPTY","MLB-LIVE"]}`)
+		case "/products/MLB-EMPTY/items":
+			w.WriteHeader(http.StatusNotFound)
+		case "/products/MLB-LIVE/items":
+			_, _ = io.WriteString(w, `{"paging":{"total":1,"offset":0,"limit":50},"results":[{"seller_id":"seller-1","price":100.00,"currency_id":"BRL","condition":"new","shipping":{"mode":"me2"}}]}`)
+		default:
+			t.Fatalf("unexpected request = %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	offers, err := catalogOffersTestAdapter(server.URL, true).ListCatalogOffers(context.Background(), pricingAccountRef(), "MLB-PARENT")
+	if err != nil {
+		t.Fatalf("ListCatalogOffers() error = %v", err)
+	}
+	if len(offers) != 1 || offers[0].SellerID != "seller-1" {
+		t.Fatalf("offers = %#v, want the single live-child offer", offers)
+	}
+}
+
+func TestListCatalogOffersParentChildFaultAbortsWithoutPartial(t *testing.T) {
+	t.Parallel()
+
+	// A child 5xx is an UNKNOWN, not a known-empty leaf: returning the surviving
+	// sibling's offers would silently undercount competitors (unknown treated as
+	// zero). The whole parent aggregate must fail (FINDING-M02-LIVE-2 D2/D1).
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/products/MLB-PARENT":
+			_, _ = io.WriteString(w, `{"children_ids":["MLB-LIVE","MLB-DOWN"]}`)
+		case "/products/MLB-LIVE/items":
+			_, _ = io.WriteString(w, `{"paging":{"total":1,"offset":0,"limit":50},"results":[{"seller_id":"seller-1","price":100.00,"currency_id":"BRL"}]}`)
+		case "/products/MLB-DOWN/items":
+			w.WriteHeader(http.StatusInternalServerError)
+		default:
+			t.Fatalf("unexpected request = %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	offers, err := catalogOffersTestAdapter(server.URL, true).ListCatalogOffers(context.Background(), pricingAccountRef(), "MLB-PARENT")
+	if !errors.Is(err, domain.ErrProviderUnavailable) || errors.Is(err, domain.ErrCatalogOffersUnavailable) || offers != nil {
+		t.Fatalf("offers = %#v, error = %v, want ErrProviderUnavailable with no partial", offers, err)
 	}
 }
 
