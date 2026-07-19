@@ -32,13 +32,13 @@ Dual gate (P6) precedes the live-drive (contract §Evidence Requirements: "Dual 
 - **FE scenarios (S8, D19 `006aa0a`):** `ScenariosPanel.tsx` drives `listPricingScenarios`/`createPricingScenario`/`deletePricingScenario` from the UI; save snapshots the working sim payload, reload re-applies to page state, delete + list-invalidate. 6/6 tests GREEN.
 - Contract-note (C07): the SDK pricing surface landed ADDITIVELY in `packages/sdk-runtime/src/index.ts` (PRICING region, SDK-PRICING-M07 grant), NOT a separate `sdk-runtime/src/pricing.ts` as the C07 wording sketched — a ratified deviation (D9); OpenAPI `/pricing/*` + SDK same commit `b41583b8`.
 
-## §tela — /precos live-drive (preço→margem, margem→preço, destino≠SP, DIFAL off, sem custo)  ⏳ Pending-P7
-- Requires the hub dev-stack (localhost:5174 + M-01 custo + M-02 comissão/frete live). Chip never boots a server → REQUEST dev-stack to hub.
+## §tela — /precos live-drive (preço→margem, margem→preço, destino≠SP, DIFAL off, sem custo)  ⏳ HUB POST-MERGE P7
+- **Deferred to HUB post-merge P7 live-drive** (hub ledger D-63): NO worktree re-point — this chip carries migrations 0055-0059 + new decompose/solve endpoints not on main; re-pointing the shared dev DB to the worktree would drift it. Hub runs the fresh-QA-persona P7 on the proper main stack after merge (M-01/M-04 pattern). Chip never boots a server.
 - Planned steps per contract C05 Drive: open `/precos?params=1` → assert "Parâmetros"; product w/ custo; preço 129,90; destino BA; assert "DIFAL" + "seed padrão 2026"; expect decomposição com DIFAL BA (efetivo interna−7%). Plus: margem→preço solver drive, destino≠SP, DIFAL-off recalc, produto sem custo ⇒ SEM_CUSTO (nunca 0). Screenshots light+dark.
 - Static precondition met: all C05 UI surfaces present + wired (region-decomposicao/solver/comparacao/aplicar/cenarios), web-vitest 186/186 + build GREEN (D21).
 
-## §mutacao — aplicar preço, teto previewed, zero ML write  ⏳ Pending-P7
-- Requires live-drive: trigger "aplicar preço" on a simulation, `SELECT` the created protocol, inspect adapter log for the window.
+## §mutacao — aplicar preço, teto previewed, zero ML write  ⏳ HUB POST-MERGE P7
+- **Deferred to HUB post-merge P7 live-drive** (hub ledger D-63): live-drive on the main stack — trigger "aplicar preço" on a simulation, `SELECT` the created protocol, inspect adapter log for the window.
 - Expected: `price_update` via /mutations with preview+protocol; final status `previewed`; UI offers NO approve (teto); dispatcher provider OFF; ZERO ML write requests in the log window.
 - Static precondition met: `ApplyPriceAction` caps at `previewed` (createMutation→previewMutation, approve NEVER invoked; surface exposes no approve control — asserted `ApplyPrice.test.tsx`, D14). Demo listing 90001 ↔ MLB3758134295 (F-listing-1).
 
