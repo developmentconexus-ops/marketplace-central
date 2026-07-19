@@ -19,12 +19,16 @@ func TestListCatalogOffersPaginatesAndPreservesProviderOrder(t *testing.T) {
 
 	var calls atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("Authorization"); got != "Bearer test-token" {
+			t.Fatalf("authorization = %q", got)
+		}
+		if r.URL.Path == "/products/MLB-CATALOG" {
+			_, _ = io.WriteString(w, `{"children_ids":[]}`)
+			return
+		}
 		calls.Add(1)
 		if r.Method != http.MethodGet || r.URL.Path != "/products/MLB-CATALOG/items" {
 			t.Fatalf("request = %s %s", r.Method, r.URL.Path)
-		}
-		if got := r.Header.Get("Authorization"); got != "Bearer test-token" {
-			t.Fatalf("authorization = %q", got)
 		}
 		switch r.URL.Query().Get("offset") {
 		case "0":
@@ -77,6 +81,10 @@ func TestListCatalogOffersMidPaginationFailureReturnsNoPartialResults(t *testing
 	t.Parallel()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/products/MLB-CATALOG" {
+			_, _ = io.WriteString(w, `{"children_ids":[]}`)
+			return
+		}
 		if r.URL.Query().Get("offset") == "0" {
 			_, _ = io.WriteString(w, `{"paging":{"total":2,"offset":0,"limit":1},"results":[{"seller_id":"seller-1","price":90,"currency_id":"BRL"}]}`)
 			return
@@ -101,6 +109,10 @@ func TestListCatalogOffersEmptyPageBeforeTotalReturnsNoPartialResults(t *testing
 	// (integrity fault, NOT capability-disabled), never return the one
 	// already-accumulated offer nor loop forever (FINDING-M02-LIVE-2 D1).
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/products/MLB-CATALOG" {
+			_, _ = io.WriteString(w, `{"children_ids":[]}`)
+			return
+		}
 		if r.URL.Query().Get("offset") == "0" {
 			_, _ = io.WriteString(w, `{"paging":{"total":2,"offset":0,"limit":1},"results":[{"seller_id":"seller-1","price":90,"currency_id":"BRL"}]}`)
 			return
@@ -144,6 +156,39 @@ func TestListCatalogOffersMapsProviderErrors(t *testing.T) {
 				t.Fatalf("offers = %#v, error = %v, want %v", offers, err, test.want)
 			}
 		})
+	}
+}
+
+func TestListCatalogOffersFansOutParentToChildLeaves(t *testing.T) {
+	t.Parallel()
+
+	// MLB22624877 (codprod 90008) is a PARENT catalog product: /items exists only
+	// on its LEAF children. The reader must read /products/{id}, and when
+	// children_ids is non-empty fan out to each child's /items and aggregate
+	// (FINDING-M02-LIVE-2 D2, D-86; official docs competencia-en-catalogo).
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("Authorization"); got != "Bearer test-token" {
+			t.Fatalf("authorization = %q", got)
+		}
+		switch r.URL.Path {
+		case "/products/MLB-PARENT":
+			_, _ = io.WriteString(w, `{"children_ids":["MLB-CHILD-1","MLB-CHILD-2"]}`)
+		case "/products/MLB-CHILD-1/items":
+			_, _ = io.WriteString(w, `{"paging":{"total":1,"offset":0,"limit":50},"results":[{"seller_id":"seller-1","price":100.00,"currency_id":"BRL","condition":"new","shipping":{"mode":"me2"}}]}`)
+		case "/products/MLB-CHILD-2/items":
+			_, _ = io.WriteString(w, `{"paging":{"total":1,"offset":0,"limit":50},"results":[{"seller_id":"seller-2","price":95.50,"currency_id":"BRL","condition":"new","shipping":{"mode":"me1"}}]}`)
+		default:
+			t.Fatalf("unexpected request = %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	offers, err := catalogOffersTestAdapter(server.URL, true).ListCatalogOffers(context.Background(), pricingAccountRef(), "MLB-PARENT")
+	if err != nil {
+		t.Fatalf("ListCatalogOffers() error = %v", err)
+	}
+	if len(offers) != 2 || offers[0].SellerID != "seller-1" || offers[0].Price == nil || offers[0].Price.Amount != "100.00" || offers[1].SellerID != "seller-2" || offers[1].Price == nil || offers[1].Price.Amount != "95.50" {
+		t.Fatalf("offers = %#v", offers)
 	}
 }
 

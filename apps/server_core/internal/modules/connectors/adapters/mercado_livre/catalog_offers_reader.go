@@ -35,7 +35,37 @@ type mlCatalogOffer struct {
 	} `json:"shipping"`
 }
 
+type mlCatalogProductChildren struct {
+	ChildrenIDs []string `json:"children_ids"`
+}
+
+// listCatalogOffers resolves offers for a catalog product. Offers/items exist
+// only on LEAF catalog products; a PARENT product (children_ids non-empty) is
+// not purchasable and its /items 4xxs by design, so read /products/{id} first
+// and fan out to each child leaf when present (FINDING-M02-LIVE-2 D2, D-86).
 func (a *CapabilityAdapter) listCatalogOffers(ctx context.Context, accountRef domain.ProviderAccountRef, token, catalogProductID string) ([]domain.CatalogOffer, int, error) {
+	var product mlCatalogProductChildren
+	productPath := "/products/" + url.PathEscape(catalogProductID)
+	if err := a.doJSON(ctx, accountRef, token, http.MethodGet, productPath, nil, &product); err != nil {
+		return nil, 0, mapPricingReaderError(err)
+	}
+	if len(product.ChildrenIDs) == 0 {
+		return a.listLeafCatalogOffers(ctx, accountRef, token, catalogProductID)
+	}
+	offers := make([]domain.CatalogOffer, 0)
+	pageCount := 0
+	for _, childID := range product.ChildrenIDs {
+		childOffers, childPages, err := a.listLeafCatalogOffers(ctx, accountRef, token, strings.TrimSpace(childID))
+		pageCount += childPages
+		if err != nil {
+			return nil, pageCount, err
+		}
+		offers = append(offers, childOffers...)
+	}
+	return offers, pageCount, nil
+}
+
+func (a *CapabilityAdapter) listLeafCatalogOffers(ctx context.Context, accountRef domain.ProviderAccountRef, token, catalogProductID string) ([]domain.CatalogOffer, int, error) {
 	offers := make([]domain.CatalogOffer, 0)
 	offset := 0
 	pageCount := 0
