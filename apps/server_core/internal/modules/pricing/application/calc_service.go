@@ -261,7 +261,7 @@ func (s CalcService) Decompose(ctx context.Context, req DecomposeRequest) (Decom
 	if err != nil {
 		return DecomposeResult{}, err
 	}
-	comissao, frete, tarifa, err := s.resolveTariff(ctx, req.Modalidade, req.ComissaoPct, req.FreteProduto)
+	comissao, frete, tarifa, err := s.resolveTariff(ctx, req.Modalidade, req.ComissaoPct, req.FreteProduto, req.ProductID, &req.Preco)
 	if err != nil {
 		return DecomposeResult{}, err
 	}
@@ -334,7 +334,9 @@ func (s CalcService) SolveTarget(ctx context.Context, req SolveRequest) (SolveOu
 	if err != nil {
 		return SolveOutput{}, err
 	}
-	comissao, frete, tarifa, err := s.resolveTariff(ctx, req.Modalidade, req.ComissaoPct, req.FreteProduto)
+	// Solve carries no price basis (it is solving FOR the price); degrau 3
+	// falls back to the product's catalog price downstream.
+	comissao, frete, tarifa, err := s.resolveTariff(ctx, req.Modalidade, req.ComissaoPct, req.FreteProduto, req.ProductID, nil)
 	if err != nil {
 		return SolveOutput{}, err
 	}
@@ -398,11 +400,18 @@ func (s CalcService) resolveCusto(ctx context.Context, req DecomposeRequest) (*d
 // override the resolver (Fonte MANUAL). With no resolver wired it is a
 // pass-through (comissao=reqComissao, frete=reqFrete, tarifa nil) so existing
 // callers are unchanged. A resolver's sem_dados frete stays nil (ADR-17: never 0).
-func (s CalcService) resolveTariff(ctx context.Context, modalidade domain.Modalidade, reqComissao string, reqFrete *string) (comissao string, frete *domain.Money, tarifa *domain.TariffResolution, err error) {
+func (s CalcService) resolveTariff(ctx context.Context, modalidade domain.Modalidade, reqComissao string, reqFrete *string, productID *int, priceBasis *string) (comissao string, frete *domain.Money, tarifa *domain.TariffResolution, err error) {
 	if s.tariffResolver == nil {
 		return reqComissao, optionalMoney(reqFrete), nil, nil
 	}
-	res, err := s.tariffResolver.Resolve(ctx, ports.TariffRequest{Modalidade: modalidade})
+	tr := ports.TariffRequest{Modalidade: modalidade}
+	// A manual commission override wins outright: gate degrau 3 off so the
+	// resolver runs no live probe (and cannot second-guess the override).
+	if reqComissao == "" {
+		tr.ProductID = productID
+		tr.PriceBasis = priceBasis
+	}
+	res, err := s.tariffResolver.Resolve(ctx, tr)
 	if err != nil {
 		return "", nil, nil, err
 	}

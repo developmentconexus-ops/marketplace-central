@@ -108,9 +108,15 @@ func newService(repo ports.CalcRepository, cost ports.CostReader, products ports
 type fakeTariffResolver struct {
 	res domain.TariffResolution
 	err error
+	// gotReq, when non-nil, captures the last TariffRequest the service built
+	// (degrau-3 threading assertions). The value receiver writes through it.
+	gotReq *ports.TariffRequest
 }
 
-func (f fakeTariffResolver) Resolve(_ context.Context, _ ports.TariffRequest) (domain.TariffResolution, error) {
+func (f fakeTariffResolver) Resolve(_ context.Context, req ports.TariffRequest) (domain.TariffResolution, error) {
+	if f.gotReq != nil {
+		*f.gotReq = req
+	}
 	return f.res, f.err
 }
 
@@ -516,6 +522,72 @@ func TestDecomposeNoResolverEmptyComissaoStaysInvalidPrice(t *testing.T) {
 	}
 	if res.Tarifa != nil {
 		t.Fatalf("Tarifa = %v, want nil on error", res.Tarifa)
+	}
+}
+
+func intptr(i int) *int { return &i }
+
+// Decompose threads the product id and the decompose price into the tariff
+// request so degrau 3 can quote a live commission at that price.
+func TestDecomposeThreadsDegrau3Inputs(t *testing.T) {
+	var got ports.TariffRequest
+	resolver := fakeTariffResolver{res: domain.TariffResolution{Comissao: domain.ComponentResolution{Valor: strptr("12.00")}}, gotReq: &got}
+	svc := newService(newFakeRepo(), fakeCost{}, nil).WithTariffResolver(resolver)
+	custo := "40.00"
+	_, err := svc.Decompose(context.Background(), application.DecomposeRequest{
+		Preco: "150.00", ComissaoPct: "", Modalidade: domain.ModalidadeClassico, ProductID: intptr(7), Custo: &custo,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.ProductID == nil || *got.ProductID != 7 {
+		t.Fatalf("ProductID not threaded: %v", got.ProductID)
+	}
+	if got.PriceBasis == nil || *got.PriceBasis != "150.00" {
+		t.Fatalf("PriceBasis not threaded: %v", got.PriceBasis)
+	}
+}
+
+// A manual commission override wins outright, so degrau 3 is gated off: the
+// service must not offer a product id/price to the resolver (no wasted live
+// probe, and the override cannot be second-guessed by a quote).
+func TestDecomposeManualCommissionGatesDegrau3(t *testing.T) {
+	var got ports.TariffRequest
+	resolver := fakeTariffResolver{res: domain.TariffResolution{Comissao: domain.ComponentResolution{Valor: strptr("12.00")}}, gotReq: &got}
+	svc := newService(newFakeRepo(), fakeCost{}, nil).WithTariffResolver(resolver)
+	custo := "40.00"
+	_, err := svc.Decompose(context.Background(), application.DecomposeRequest{
+		Preco: "150.00", ComissaoPct: "9.50", Modalidade: domain.ModalidadeClassico, ProductID: intptr(7), Custo: &custo,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.ProductID != nil {
+		t.Fatalf("manual commission must gate degrau 3: ProductID=%v", got.ProductID)
+	}
+	if got.PriceBasis != nil {
+		t.Fatalf("manual commission must gate degrau 3: PriceBasis=%v", got.PriceBasis)
+	}
+}
+
+// Solve carries the product id but no price basis (it is solving FOR the
+// price); degrau 3 falls back to the product's catalog price downstream.
+func TestSolveThreadsProductIDNoPriceBasis(t *testing.T) {
+	var got ports.TariffRequest
+	resolver := fakeTariffResolver{res: domain.TariffResolution{Comissao: domain.ComponentResolution{Valor: strptr("12.00")}}, gotReq: &got}
+	svc := newService(newFakeRepo(), fakeCost{}, nil).WithTariffResolver(resolver)
+	custo := "40.00"
+	_, err := svc.SolveTarget(context.Background(), application.SolveRequest{
+		TargetMargemPct: "50", ComissaoPct: "", Modalidade: domain.ModalidadeClassico, ProductID: intptr(7), Custo: &custo,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.ProductID == nil || *got.ProductID != 7 {
+		t.Fatalf("ProductID not threaded: %v", got.ProductID)
+	}
+	if got.PriceBasis != nil {
+		t.Fatalf("Solve has no target price basis: %v", got.PriceBasis)
 	}
 }
 

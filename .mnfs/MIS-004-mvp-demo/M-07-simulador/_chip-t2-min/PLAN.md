@@ -34,7 +34,7 @@ Frete stays degrau 4 in MIN (no frete-by-dims).
 - [x] S3 ProductIdentityReader adapter (catalog svc; int→string; unknown→ok=false).
 - [x] S4 tarifflive assembler (silent-miss matrix; D-83 EAN+titulo together; happy=COTACAO/3/data). NOTE: modalidade->listing_type maps INSIDE the assembler (degrau-3 logic, unit-tested), not composition.
 - [x] S5 tariffcomposite (chain degrau3->degrau4; frete stays degrau4; degrau3 miss OR error -> silent degrau4; base error propagates).
-- [ ] S6 calc_service threading (productID+priceBasis; manual-commission gate → ProductID nil).
+- [x] S6 calc_service threading (Decompose priceBasis=Preco, Solve priceBasis=nil; manual-commission gate -> ProductID+PriceBasis nil).
 - [ ] S7 composition wiring (pricing_adapters.go raw readers + accountRefForTenant + modalidade→listing_type; root.go wire). Full build/vet/test + IC-04 green.
 
 ## Gates (close)
