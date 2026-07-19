@@ -49,6 +49,24 @@ describe("VeredictoBox", () => {
     expect(await screen.findByText("2 vendedores — mínimo 5")).toBeInTheDocument();
   });
 
+  it("never fabricates a seller count when market_range is null for INSUFFICIENT_MARKET (ADR-17)", async () => {
+    const verdict: MarketPriceIntelVerdict = {
+      match_status: "ACCEPT",
+      price_evidence_status: "INSUFFICIENT_MARKET",
+      verdict_label: null,
+      blocking_state: "INSUFFICIENT_MARKET",
+      inputs_used: {},
+      market_range: null,
+    };
+    const client = makeClient({ listMarketVerdicts: vi.fn().mockResolvedValue([verdict]) });
+
+    renderBox(client);
+
+    const headline = await screen.findByText(/mínimo 5/);
+    expect(headline.textContent).not.toMatch(/\b0\b/);
+    expect(headline.textContent).not.toMatch(/^\d/);
+  });
+
   it("renders faixa + evidence rows + M-07 unknown margin hint for an OK verdict", async () => {
     const verdict: MarketPriceIntelVerdict = {
       match_status: "ACCEPT",

@@ -89,7 +89,9 @@ export function AnunciosVinculadosTab({
   }
 
   const groups = query.data?.groups ?? [];
-  const group = groups.find((candidate) => candidate.product_id === productId) ?? (groups.length === 1 ? groups[0] : undefined);
+  const group =
+    groups.find((candidate) => candidate.product_id === productId) ??
+    (groups.length === 1 && (groups[0].product_id === productId || groups[0].product_id === null) ? groups[0] : undefined);
   const listings = group?.listings ?? [];
 
   return (

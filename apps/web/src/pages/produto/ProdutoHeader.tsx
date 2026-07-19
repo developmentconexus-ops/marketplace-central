@@ -66,15 +66,16 @@ export function ProdutoHeader({ productId }: ProdutoHeaderProps) {
 
       <div className="flex flex-wrap items-center gap-2 text-sm text-muted">
         {product.ean === null ? (
-          <>
-            <span className="inline-flex whitespace-nowrap rounded-pill bg-warn-soft px-2 py-0.5 text-xs font-medium text-warn">
-              sem EAN — matching limitado a REVIEW
-            </span>
-            <span>{renderText(product.manufacturer_reference)}</span>
-          </>
+          <span className="inline-flex whitespace-nowrap rounded-pill bg-warn-soft px-2 py-0.5 text-xs font-medium text-warn">
+            sem EAN — matching limitado a REVIEW
+          </span>
         ) : (
           <span className="font-mono">{product.ean}</span>
         )}
+        <span className="inline-flex items-center gap-1">
+          <span className="text-[10.5px] font-semibold uppercase text-faint">REF</span>
+          <span>{renderText(product.manufacturer_reference)}</span>
+        </span>
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">

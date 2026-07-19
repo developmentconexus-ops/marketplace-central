@@ -113,6 +113,29 @@ describe("AnunciosVinculadosTab", () => {
     expect(screen.getByRole("link", { name: "vincular anúncios" })).toHaveAttribute("href", "/vinculos");
   });
 
+  it("does not leak a mismatched group's listings when the lone group belongs to another product", async () => {
+    const page: ListingGroupPage = {
+      groups: [
+        {
+          product_id: "12345",
+          product_title: "Outro produto",
+          listing_count: 1,
+          group_state: "ok",
+          listings: [{ ...fullSignalListing, listing_id: "l-other" }],
+        },
+      ],
+      next_cursor: null,
+      page_size: 1,
+      as_of: "2026-07-19T10:00:00Z",
+    };
+    const client = makeClient({ listListingsByProduct: vi.fn().mockResolvedValue(page) });
+
+    renderTab(client, "90008");
+
+    expect(await screen.findByText("Nenhum registro encontrado.")).toBeInTheDocument();
+    expect(screen.queryByText("Anúncio com sinal")).not.toBeInTheDocument();
+  });
+
   it("scopes listListingsByProduct to the given productId", async () => {
     const listListingsByProduct = vi.fn().mockResolvedValue({ groups: [], next_cursor: null, page_size: 0, as_of: "" });
     const client = makeClient({ listListingsByProduct });

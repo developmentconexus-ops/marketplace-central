@@ -25,10 +25,16 @@ function Money({ value }: { value: { amount: string; currency: string } | null }
 
 function Headline({ verdict }: { verdict: MarketPriceIntelVerdict }): JSX.Element {
   if (verdict.price_evidence_status === "INSUFFICIENT_MARKET") {
-    const nSellers = verdict.market_range?.n_sellers ?? 0;
+    if (verdict.market_range === null) {
+      return (
+        <p className="text-sm font-semibold text-warn">
+          vendedores insuficientes — mínimo 5
+        </p>
+      );
+    }
     return (
       <p className="text-sm font-semibold text-warn">
-        {nSellers} vendedores — mínimo 5
+        {verdict.market_range.n_sellers} vendedores — mínimo 5
       </p>
     );
   }
