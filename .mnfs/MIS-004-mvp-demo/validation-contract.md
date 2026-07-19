@@ -161,9 +161,25 @@ Blocking failure: passo de preflight sem resultado registrado, ou trigger R3/R6 
 Blocking failure observed: No
 Owner: QA Validator
 
+## Criterion: Inventário app-inteiro de telas (design-fidelity sweep)
+ID: MIS-004-C10
+Level: Mission
+Type: QA
+Required: Yes
+Status: Pending
+Evidence:
+- Command: no fechamento (pós-merge M-06+M-09), no stack limpo, rodar o live-pass de `SCREEN-INVENTORY.md` §Live-pass protocol — para CADA rota do mapa (jornada + off-journey): (a) computed-style dos elementos de tema (bg/font-family/accent) vs paper+green + Instrument Sans/IBM Plex Mono; (b) a11y tree vs elementos do design R-02 (colunas/chips/seções-drawer/KPIs); registrar present/absent/differs por elemento
+- Expected: cada tela da JORNADA da demo com contraparte no design exibe os elementos declarados no design OU a omissão está declarada em feature.md/milestone.md do dono OU tem ruling operador accept-for-demo; nenhuma tela da jornada renderiza off-theme (slate/blue literais) onde o design pede paper+green; placeholders (`/integracoes`,`/marketplaces`) e stubs "em breve" são conhecidos e fora da jornada
+- Actual:
+- Artifact: `.mnfs/MIS-004-mvp-demo/validation-result.md` §screen-inventory (tabela por tela) + `.mnfs/MIS-004-mvp-demo/SCREEN-INVENTORY.md` (mapa estático base 390d79ab)
+Blocking failure: tela DA JORNADA com elemento missing/differs NÃO-declarado e sem ruling accept-for-demo do operador; OU tela da jornada off-theme vs DESIGN-REFERENCE
+Blocking failure observed: No
+Owner: QA Validator
+Note: pixel-diff impossível (rasterizer F-ENV-10) — evidência = computed-style + a11y, limite aceito pelo operador 2026-07-19. Gaps estruturais conhecidos pré-fechamento (Simulador matriz/VEREDICTO, Vínculos tema/tabela, Anúncios grupo-rows) = decisão de escopo do operador ANTES da demo, não auto-fail.
+
 ## Evidence Requirements
 
-- `validation-result.md` da missão com seções: rehearsal, zero-writes, milestones, evidencia-preco, difal-cross, adr17, security, ladder, runbook.
+- `validation-result.md` da missão com seções: rehearsal, zero-writes, milestones, evidencia-preco, difal-cross, adr17, security, ladder, runbook, screen-inventory.
 - Screenshots light theme por etapa da jornada (dark coberto nos VCs de milestone).
 - Log excerpt do adapter cobrindo a janela completa do rehearsal (C02).
 - VCs de milestone: `M-0X-*/validation-contract.md` (linkados, não duplicados).
