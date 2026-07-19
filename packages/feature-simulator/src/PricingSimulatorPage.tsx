@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useCallback, useMemo } from "react";
-import { Button, PaginatedTable } from "@marketplace-central/ui";
+import { Button, MarginChip, PaginatedTable } from "@marketplace-central/ui";
 import { ToggleLeft, ToggleRight } from "lucide-react";
 import type {
   CatalogProduct,
@@ -24,15 +24,21 @@ interface Props { client: SimulatorClient; }
 function fmt(v: number | null | undefined) {
   return v == null ? "—" : `R$ ${v.toFixed(2)}`;
 }
-function marginColor(pct: number) {
-  if (pct >= 0.20) return "text-emerald-700";
-  if (pct >= 0.10) return "text-amber-700";
-  return "text-red-700";
+/**
+ * Margin band text color, on design tokens and aligned to the single margin
+ * threshold (healthy ≥18% / tight ≥10%) shared with MarginChip — the healthy
+ * cut moved from the legacy 20% to 18% so this surface no longer drifts from
+ * the IC-04/IC-05 band definition. The chip itself now renders via MarginChip.
+ */
+function marginText(pct: number) {
+  if (pct >= 0.18) return "text-accent-ink";
+  if (pct >= 0.10) return "text-amber";
+  return "text-warn";
 }
-function marginBg(pct: number) {
-  if (pct >= 0.20) return "bg-emerald-100";
-  if (pct >= 0.10) return "bg-amber-100";
-  return "bg-red-100";
+
+/** MarginChip takes a percentage number (18 = 18%); our margins are fractions. */
+function pctNumber(fraction: number) {
+  return Number((fraction * 100).toFixed(1));
 }
 
 export function PricingSimulatorPage({ client }: Props) {
@@ -244,7 +250,7 @@ export function PricingSimulatorPage({ client }: Props) {
               <span className="text-slate-300" aria-hidden>•</span>
               <span>
                 Margem média:{" "}
-                <strong className={marginColor(avgMargin)}>{(avgMargin * 100).toFixed(1)}%</strong>
+                <strong className={marginText(avgMargin)}>{(avgMargin * 100).toFixed(1)}%</strong>
               </span>
               <span className="text-slate-300" aria-hidden>•</span>
               <span className="text-emerald-700">
@@ -504,10 +510,10 @@ export function PricingSimulatorPage({ client }: Props) {
                                 className="flex-1 min-w-0 text-base font-bold text-slate-900 bg-transparent border-0 border-b border-transparent hover:border-slate-200 focus:border-blue-400 focus:outline-none tabular-nums pb-0.5 cursor-pointer"
                               />
                               <span
+                                className="shrink-0"
                                 aria-label={`Final margin status ${(item.margin_percent * 100).toFixed(1)} percent`}
-                                className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold tabular-nums ${marginBg(item.margin_percent)} ${marginColor(item.margin_percent)}`}
                               >
-                                {(item.margin_percent * 100).toFixed(1)}%
+                                <MarginChip marginPct={pctNumber(item.margin_percent)} />
                               </span>
                             </div>
 
@@ -531,7 +537,7 @@ export function PricingSimulatorPage({ client }: Props) {
                                 <span>Frete:</span>
                                 <span className="font-mono text-slate-600">{fmt(item.freight_amount)}</span>
                               </div>
-                              <div className={`flex justify-between gap-2 font-semibold ${marginColor(item.margin_percent)}`}>
+                              <div className={`flex justify-between gap-2 font-semibold ${marginText(item.margin_percent)}`}>
                                 <span>Margem:</span>
                                 <span className="font-mono">{fmt(item.margin_amount)}</span>
                               </div>

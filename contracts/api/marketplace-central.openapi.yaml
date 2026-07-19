@@ -2323,6 +2323,183 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /pricing/profile:
+    get:
+      summary: Get the pricing calc profile (IC-04)
+      operationId: getPricingProfile
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingCalcProfile'
+    put:
+      summary: Update the pricing calc profile (IC-04)
+      operationId: putPricingProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PricingCalcProfile'
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingCalcProfile'
+        "422":
+          description: Invalid rate
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /pricing/difal:
+    get:
+      summary: List DIFAL rates with the seed disclaimer (IC-04)
+      operationId: listPricingDifal
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingDifalListResponse'
+  /pricing/difal/{uf}:
+    put:
+      summary: Set or clear a DIFAL interna override for a UF (IC-04)
+      operationId: putPricingDifalOverride
+      parameters:
+        - name: uf
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PricingDifalOverrideRequest'
+      responses:
+        "200":
+          description: Applied (persisted false when Δ within audit threshold)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingDifalOverrideResponse'
+        "404":
+          description: UF not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "422":
+          description: Invalid rate
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /pricing/scenarios:
+    get:
+      summary: List saved pricing scenarios, newest first (IC-04)
+      operationId: listPricingScenarios
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingScenarioListResponse'
+    post:
+      summary: Save a pricing scenario (IC-04)
+      operationId: createPricingScenario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PricingScenarioRequest'
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingScenario'
+  /pricing/scenarios/{id}:
+    delete:
+      summary: Delete a saved pricing scenario (IC-04)
+      operationId: deletePricingScenario
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Scenario not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /pricing/decompose:
+    post:
+      summary: Decompose a price into its IC-04 components
+      operationId: pricingDecompose
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PricingCalcInput'
+      responses:
+        "200":
+          description: Successful response (SEM_CUSTO surfaces as a blocking_state, not an error)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingDecomposeResponse'
+        "404":
+          description: Item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "422":
+          description: Invalid price
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /pricing/solve:
+    post:
+      summary: Solve for the price that hits a target margin (IC-04)
+      operationId: pricingSolveTarget
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PricingCalcInput'
+      responses:
+        "200":
+          description: Successful response (unreachable target surfaces as reached=false with code UNREACHABLE_TARGET, not an error)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingSolveResponse'
+        "404":
+          description: Item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /connectors/melhor-envio/auth/start:
     get:
       summary: Start Melhor Envio OAuth flow
@@ -3739,6 +3916,240 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PricingSimulation'
+    PricingCalcProfile:
+      type: object
+      required:
+        - regime
+        - aliquota_pct
+        - limiar_verde_pct
+        - limiar_amarelo_pct
+        - difal_enabled
+        - origem
+      properties:
+        regime:
+          type: string
+        aliquota_pct:
+          type: string
+        limiar_verde_pct:
+          type: string
+        limiar_amarelo_pct:
+          type: string
+        tarifa_full:
+          type: string
+          nullable: true
+        difal_enabled:
+          type: boolean
+        difal_destino_uf:
+          type: string
+          nullable: true
+        origem:
+          type: string
+    PricingDifalOverride:
+      type: object
+      required:
+        - interna_pct
+        - updated_at
+        - actor
+      properties:
+        interna_pct:
+          type: string
+        updated_at:
+          type: string
+        actor:
+          type: string
+    PricingDifalRate:
+      type: object
+      required:
+        - uf
+        - interna_pct
+        - interestadual_pct
+        - efetivo_pct
+        - origem_versao
+      properties:
+        uf:
+          type: string
+        interna_pct:
+          type: string
+        interestadual_pct:
+          type: string
+        efetivo_pct:
+          type: string
+        origem_versao:
+          type: string
+        override:
+          allOf:
+            - $ref: '#/components/schemas/PricingDifalOverride'
+          nullable: true
+    PricingDifalListResponse:
+      type: object
+      required:
+        - items
+        - disclaimer
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PricingDifalRate'
+        disclaimer:
+          type: string
+    PricingDifalOverrideRequest:
+      type: object
+      required:
+        - interna_pct
+        - actor
+      properties:
+        interna_pct:
+          type: string
+        actor:
+          type: string
+    PricingDifalOverrideResponse:
+      type: object
+      required:
+        - persisted
+        - rate
+      properties:
+        persisted:
+          type: boolean
+        rate:
+          $ref: '#/components/schemas/PricingDifalRate'
+    PricingScenario:
+      type: object
+      required:
+        - id
+        - name
+        - payload
+        - created_at
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+        created_at:
+          type: string
+    PricingScenarioListResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PricingScenario'
+    PricingScenarioRequest:
+      type: object
+      required:
+        - id
+        - name
+        - payload
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+    PricingCalcInput:
+      type: object
+      required:
+        - comissao_pct
+        - modalidade
+      properties:
+        preco:
+          type: string
+        margem_alvo_pct:
+          type: string
+        comissao_pct:
+          type: string
+        modalidade:
+          type: string
+        tarifa_full:
+          type: string
+          nullable: true
+        frete_produto:
+          type: string
+          nullable: true
+        custo:
+          type: string
+          nullable: true
+        product_id:
+          type: integer
+          nullable: true
+    PricingDecomposition:
+      type: object
+      required:
+        - preco
+        - comissao
+        - taxa_fixa
+        - imposto
+        - componentes_desconhecidos
+      properties:
+        preco:
+          type: string
+        comissao:
+          type: string
+        taxa_fixa:
+          type: string
+        frete:
+          type: string
+          nullable: true
+        imposto:
+          type: string
+        difal:
+          type: string
+          nullable: true
+        tarifa_full:
+          type: string
+          nullable: true
+        custo:
+          type: string
+          nullable: true
+        margem_valor:
+          type: string
+          nullable: true
+        margem_pct:
+          type: string
+          nullable: true
+        componentes_desconhecidos:
+          type: array
+          items:
+            type: string
+    PricingDecomposeResponse:
+      type: object
+      required:
+        - decomposition
+      properties:
+        decomposition:
+          $ref: '#/components/schemas/PricingDecomposition'
+        blocking_state:
+          type: string
+          nullable: true
+    PricingSolveResponse:
+      type: object
+      required:
+        - reached
+        - ceiling_pct
+        - desconhecidos
+      properties:
+        reached:
+          type: boolean
+        preco:
+          type: string
+          nullable: true
+        ceiling_pct:
+          type: string
+        desconhecidos:
+          type: array
+          items:
+            type: string
+        blocking_state:
+          type: string
+          nullable: true
+        code:
+          type: string
     ListIntegrationProvidersResponse:
       type: object
       required:

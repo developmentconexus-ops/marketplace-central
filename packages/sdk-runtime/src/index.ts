@@ -1269,6 +1269,106 @@ export interface BatchSimulationItem {
   freight_source: string;
 }
 
+// --- IC-04 pricing calculator (M-07) ---
+// Money and percentage fields are decimal strings (never float), and unknown
+// components are null (ADR-17: unknown ≠ zero), never a fabricated 0.
+export interface PricingCalcProfile {
+  regime: string;
+  aliquota_pct: string;
+  limiar_verde_pct: string;
+  limiar_amarelo_pct: string;
+  tarifa_full: string | null;
+  difal_enabled: boolean;
+  difal_destino_uf: string | null;
+  origem: string;
+}
+
+export interface PricingDifalOverride {
+  interna_pct: string;
+  updated_at: string;
+  actor: string;
+}
+
+export interface PricingDifalRate {
+  uf: string;
+  interna_pct: string;
+  interestadual_pct: string;
+  efetivo_pct: string;
+  origem_versao: string;
+  override: PricingDifalOverride | null;
+}
+
+export interface PricingDifalListResponse {
+  items: PricingDifalRate[];
+  disclaimer: string;
+}
+
+export interface PricingDifalOverrideRequest {
+  interna_pct: string;
+  actor: string;
+}
+
+export interface PricingDifalOverrideResponse {
+  persisted: boolean;
+  rate: PricingDifalRate;
+}
+
+export interface PricingScenario {
+  id: string;
+  name: string;
+  payload: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface PricingScenarioListResponse {
+  items: PricingScenario[];
+}
+
+export interface PricingScenarioRequest {
+  id: string;
+  name: string;
+  payload: Record<string, unknown>;
+}
+
+export interface PricingCalcInput {
+  preco?: string;
+  margem_alvo_pct?: string;
+  comissao_pct: string;
+  modalidade: string;
+  tarifa_full?: string | null;
+  frete_produto?: string | null;
+  custo?: string | null;
+  product_id?: number | null;
+}
+
+export interface PricingDecomposition {
+  preco: string;
+  comissao: string;
+  taxa_fixa: string;
+  frete: string | null;
+  imposto: string;
+  difal: string | null;
+  tarifa_full: string | null;
+  custo: string | null;
+  margem_valor: string | null;
+  margem_pct: string | null;
+  componentes_desconhecidos: string[];
+}
+
+export interface PricingDecomposeResponse {
+  decomposition: PricingDecomposition;
+  blocking_state: string | null;
+}
+
+export interface PricingSolveResponse {
+  reached: boolean;
+  preco: string | null;
+  ceiling_pct: string;
+  desconhecidos: string[];
+  blocking_state: string | null;
+  code?: string;
+}
+
 export type MutationType =
   | "price_update"
   | "stock_correct"
@@ -1705,6 +1805,21 @@ export function createMarketplaceCentralClient(options: {
       postJson<PricingSimulation>("/pricing/simulations", req),
     runBatchSimulation: (req: BatchSimulationRequest) =>
       postJson<{ items: BatchSimulationItem[] }>("/pricing/simulations/batch", req),
+    getPricingProfile: () => getJson<PricingCalcProfile>("/pricing/profile"),
+    putPricingProfile: (req: PricingCalcProfile) =>
+      putJson<PricingCalcProfile>("/pricing/profile", req),
+    listPricingDifal: () => getJson<PricingDifalListResponse>("/pricing/difal"),
+    putPricingDifalOverride: (uf: string, req: PricingDifalOverrideRequest) =>
+      putJson<PricingDifalOverrideResponse>(`/pricing/difal/${encodeURIComponent(uf)}`, req),
+    listPricingScenarios: () => getJson<PricingScenarioListResponse>("/pricing/scenarios"),
+    createPricingScenario: (req: PricingScenarioRequest) =>
+      postJson<PricingScenario>("/pricing/scenarios", req),
+    deletePricingScenario: (id: string) =>
+      deleteJson(`/pricing/scenarios/${encodeURIComponent(id)}`),
+    pricingDecompose: (req: PricingCalcInput) =>
+      postJson<PricingDecomposeResponse>("/pricing/decompose", req),
+    pricingSolveTarget: (req: PricingCalcInput) =>
+      postJson<PricingSolveResponse>("/pricing/solve", req),
     getMelhorEnvioStatus: () =>
       getJson<{ connected: boolean }>("/connectors/melhor-envio/status"),
     createMutation: (req: CreateMutationRequest) =>
