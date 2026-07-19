@@ -1,6 +1,9 @@
 import type { JSX } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ErrorState } from "@marketplace-central/ui";
+import { QUERY_STALE_TIME } from "@marketplace-central/web-query";
+import { useClient } from "../../app/ClientContext";
 import { applyProdutoTab, parseProdutoTab, type ProdutoTab } from "./productQueryState";
 import { AnunciosVinculadosTab } from "./AnunciosVinculadosTab";
 import { EstoqueTab } from "./EstoqueTab";
@@ -23,15 +26,21 @@ function TabPanel({ tab, active, children }: { tab: ProdutoTab; active: boolean;
 }
 
 /**
- * ProdutoPage mounts at /catalogo/produtos/:productId. This slice (S1) only
- * scaffolds the route: param parse + not-found guard, the hand-rolled
- * tablist with `?tab=` deep-link state, and placeholder panel bodies.
- * S2-S5 replace the placeholders with real widgets.
+ * ProdutoPage mounts at /catalogo/produtos/:productId: param parse +
+ * not-found guard, the hand-rolled tablist with `?tab=` deep-link state, and
+ * the composed ProdutoHeader/VeredictoBox/AnunciosVinculadosTab/EstoqueTab
+ * widgets.
  */
 export function ProdutoPage(): JSX.Element {
   const { productId = "" } = useParams();
+  const client = useClient();
   const numericId = Number(productId);
   const [searchParams, setSearchParams] = useSearchParams();
+  const productQuery = useQuery({
+    queryKey: ["catalog", "product", productId],
+    queryFn: () => client.getCatalogProduct(numericId),
+    staleTime: QUERY_STALE_TIME.catalog,
+  });
 
   if (productId === "" || !Number.isFinite(numericId)) {
     return (
@@ -86,7 +95,7 @@ export function ProdutoPage(): JSX.Element {
       </div>
 
       <TabPanel tab="veredicto" active={activeTab === "veredicto"}>
-        <VeredictoBox productId={productId} />
+        <VeredictoBox productId={productId} costFact={productQuery.data?.cost_amount} />
       </TabPanel>
       <TabPanel tab="anuncios" active={activeTab === "anuncios"}>
         <AnunciosVinculadosTab productId={productId} />
