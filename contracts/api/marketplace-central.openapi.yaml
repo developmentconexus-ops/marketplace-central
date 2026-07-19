@@ -4621,6 +4621,18 @@ components:
             - enviar
             - enviado
             - cancelado
+        retorno_liquido:
+          type: number
+          format: double
+          nullable: true
+        margem_pct:
+          type: number
+          format: double
+          nullable: true
+        decomposicao:
+          $ref: '#/components/schemas/OrderDecomposicao'
+        difal:
+          $ref: '#/components/schemas/OrderDifal'
 
     OrderBuyer:
       type: object
@@ -4653,6 +4665,70 @@ components:
           type: string
         status:
           type: string
+
+    OrderDecomposicao:
+      type: object
+      required:
+        - componentes_desconhecidos
+      properties:
+        comissao:
+          type: number
+          format: double
+          nullable: true
+        taxa_fixa:
+          type: number
+          format: double
+          nullable: true
+        frete:
+          type: number
+          format: double
+          nullable: true
+        imposto:
+          type: number
+          format: double
+          nullable: true
+        difal:
+          type: number
+          format: double
+          nullable: true
+        tarifa_full:
+          type: number
+          format: double
+          nullable: true
+        custo:
+          type: number
+          format: double
+          nullable: true
+        margem_valor:
+          type: number
+          format: double
+          nullable: true
+        margem_pct:
+          type: number
+          format: double
+          nullable: true
+        componentes_desconhecidos:
+          type: array
+          items:
+            type: string
+
+    OrderDifal:
+      type: object
+      properties:
+        amount:
+          type: number
+          format: double
+          nullable: true
+        uf_route:
+          type: string
+          nullable: true
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        paid:
+          type: boolean
+          nullable: true
 
     OrderSummary:
       type: object

@@ -369,6 +369,54 @@ func TestEnrichServiceEnrich_NilReaders(t *testing.T) {
 	})
 }
 
+// assertHonestEmptyProfitability asserts got equals
+// domain.UnknownOrderProfitability(): every pointer nil, and
+// ComponentesDesconhecidos names exactly the 7 known-unknown components.
+func assertHonestEmptyProfitability(t *testing.T, got domain.OrderProfitability) {
+	t.Helper()
+	want := domain.UnknownOrderProfitability()
+	if got.RetornoLiquido != nil {
+		t.Fatalf("RetornoLiquido = %v, want nil", *got.RetornoLiquido)
+	}
+	if got.MargemPct != nil {
+		t.Fatalf("MargemPct = %v, want nil", *got.MargemPct)
+	}
+	if got.Difal.Amount != nil || got.Difal.UFRoute != nil || got.Difal.DueDate != nil || got.Difal.Paid != nil {
+		t.Fatalf("Difal = %+v, want all nil", got.Difal)
+	}
+	d := got.Decomposition
+	if d.Comissao != nil || d.TaxaFixa != nil || d.Frete != nil || d.Imposto != nil ||
+		d.Difal != nil || d.TarifaFull != nil || d.Custo != nil || d.MargemValor != nil || d.MargemPct != nil {
+		t.Fatalf("Decomposition = %+v, want all pointers nil", d)
+	}
+	if len(d.ComponentesDesconhecidos) != len(want.Decomposition.ComponentesDesconhecidos) {
+		t.Fatalf("ComponentesDesconhecidos = %v, want %v", d.ComponentesDesconhecidos, want.Decomposition.ComponentesDesconhecidos)
+	}
+	for i, name := range want.Decomposition.ComponentesDesconhecidos {
+		if d.ComponentesDesconhecidos[i] != name {
+			t.Fatalf("ComponentesDesconhecidos[%d] = %q, want %q", i, d.ComponentesDesconhecidos[i], name)
+		}
+	}
+}
+
+func TestEnrichServiceEnrich_NilDecomposerYieldsHonestEmptyProfitability(t *testing.T) {
+	orders := []domain.OrderReadModel{
+		{ProviderOrderID: "ord-prof-1"},
+		{
+			ProviderOrderID: "ord-prof-2",
+			Items:           []domain.MarketplaceOrderItem{{SellerSKU: "sku-1"}},
+		},
+	}
+	svc := NewEnrichService(newFakeCostReader(), newFakeShipmentReader(), testLogger())
+	got := svc.Enrich(context.Background(), "install-1", orders)
+	if len(got) != len(orders) {
+		t.Fatalf("len(got) = %d, want %d", len(got), len(orders))
+	}
+	for _, result := range got {
+		assertHonestEmptyProfitability(t, result.Profitability)
+	}
+}
+
 func TestEnrichServiceEnrich_Shipment(t *testing.T) {
 	slaDue := time.Date(2026, 7, 20, 12, 0, 0, 0, time.UTC)
 

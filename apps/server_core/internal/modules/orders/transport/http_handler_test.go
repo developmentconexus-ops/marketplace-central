@@ -321,6 +321,42 @@ func TestHandleReadListWithEnricherEmitsHonestNullEnrichment(t *testing.T) {
 	if firstItem["seller_sku"] != "sku-1" {
 		t.Fatalf("items[0].seller_sku = %#v, want sku-1; body=%s", firstItem["seller_sku"], body)
 	}
+	for _, field := range []string{"retorno_liquido", "margem_pct"} {
+		if _, present := item[field]; present {
+			t.Fatalf("%s must be omitted when unknown; body=%s", field, body)
+		}
+	}
+	decomposicao, ok := item["decomposicao"].(map[string]any)
+	if !ok {
+		t.Fatalf("decomposicao missing or wrong type: %#v; body=%s", item["decomposicao"], body)
+	}
+	for _, field := range []string{"comissao", "taxa_fixa", "frete", "imposto", "difal", "tarifa_full", "custo", "margem_valor", "margem_pct"} {
+		if _, present := decomposicao[field]; present {
+			t.Fatalf("decomposicao.%s must be omitted when unknown; body=%s", field, body)
+		}
+	}
+	componentesDesconhecidos, ok := decomposicao["componentes_desconhecidos"].([]any)
+	if !ok {
+		t.Fatalf("decomposicao.componentes_desconhecidos missing or wrong type: %#v; body=%s", decomposicao["componentes_desconhecidos"], body)
+	}
+	wantComponents := []string{"comissao", "taxa_fixa", "frete", "imposto", "difal", "tarifa_full", "custo"}
+	if len(componentesDesconhecidos) != len(wantComponents) {
+		t.Fatalf("decomposicao.componentes_desconhecidos = %#v, want %v; body=%s", componentesDesconhecidos, wantComponents, body)
+	}
+	for i, want := range wantComponents {
+		if componentesDesconhecidos[i] != want {
+			t.Fatalf("decomposicao.componentes_desconhecidos[%d] = %#v, want %q; body=%s", i, componentesDesconhecidos[i], want, body)
+		}
+	}
+	difal, ok := item["difal"].(map[string]any)
+	if !ok {
+		t.Fatalf("difal missing or wrong type: %#v; body=%s", item["difal"], body)
+	}
+	for _, field := range []string{"amount", "uf_route", "due_date", "paid"} {
+		if _, present := difal[field]; present {
+			t.Fatalf("difal.%s must be omitted when unknown; body=%s", field, body)
+		}
+	}
 }
 
 func TestHandleReadListEmitsDerivedBucket(t *testing.T) {

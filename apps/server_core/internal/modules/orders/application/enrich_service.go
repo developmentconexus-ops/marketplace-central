@@ -41,6 +41,7 @@ type EnrichedOrder struct {
 	ItemCosts                []ItemCost
 	ComponentesDesconhecidos []string
 	Shipment                 *ShipmentEnrichment
+	Profitability            domain.OrderProfitability
 }
 
 // EnrichService adds read-time enrichment (masked buyer identity, vinculo
@@ -51,16 +52,27 @@ type EnrichedOrder struct {
 // installationID + the order's ShippingID. Tenant scoping remains the repo
 // layer's responsibility.
 type EnrichService struct {
-	cost     ports.CostReader
-	shipment ports.ShipmentReader
-	logger   *slog.Logger
+	cost       ports.CostReader
+	shipment   ports.ShipmentReader
+	decomposer ports.Decomposer
+	logger     *slog.Logger
 }
 
+// NewEnrichService keeps constructing an EnrichService with a nil decomposer
+// (delegating to NewEnrichServiceWithDecomposer) so it yields the honest-empty
+// profitability path — this is the C1 contract seam; the hub wires a real
+// decomposer via NewEnrichServiceWithDecomposer in C2 post-merge.
 func NewEnrichService(cost ports.CostReader, shipment ports.ShipmentReader, logger *slog.Logger) EnrichService {
+	return NewEnrichServiceWithDecomposer(cost, shipment, nil, logger)
+}
+
+// NewEnrichServiceWithDecomposer is the full constructor: decomposer may be
+// nil (honest-unknown profitability, never a panic) — see resolveProfitability.
+func NewEnrichServiceWithDecomposer(cost ports.CostReader, shipment ports.ShipmentReader, decomposer ports.Decomposer, logger *slog.Logger) EnrichService {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return EnrichService{cost: cost, shipment: shipment, logger: logger}
+	return EnrichService{cost: cost, shipment: shipment, decomposer: decomposer, logger: logger}
 }
 
 func (s EnrichService) Enrich(ctx context.Context, installationID string, orders []domain.OrderReadModel) []EnrichedOrder {
@@ -73,6 +85,7 @@ func (s EnrichService) Enrich(ctx context.Context, installationID string, orders
 		itemCosts, unknown := s.resolveItemCosts(ctx, order)
 		buyer := domain.MaskBuyer(nickname)
 		shipmentInfo := s.resolveShipment(ctx, installationID, order, &buyer)
+		profitability := s.resolveProfitability(ctx, order)
 		enriched = append(enriched, EnrichedOrder{
 			Order:                    order,
 			Buyer:                    buyer,
@@ -80,6 +93,7 @@ func (s EnrichService) Enrich(ctx context.Context, installationID string, orders
 			ItemCosts:                itemCosts,
 			ComponentesDesconhecidos: unknown,
 			Shipment:                 shipmentInfo,
+			Profitability:            profitability,
 		})
 	}
 	return enriched
@@ -117,6 +131,24 @@ func (s EnrichService) resolveShipment(ctx context.Context, installationID strin
 		Delayed:       info.Delayed,
 		DestinationUF: info.DestinationUF,
 	}
+}
+
+// resolveProfitability looks up the order's decomposição/DIFAL/retorno via
+// Decomposer. A nil Decomposer (real adapter not wired yet — C1) or a
+// not-ok result both degrade to domain.UnknownOrderProfitability(), the
+// honest-empty value (ADR-17: unknown != zero, never fabricated) — never a
+// panic. C1 does not populate Difal.UFRoute from destino: a route needs
+// both origin (seller UF, a tenant/engine fact not on the orders base) and
+// destino, so a decomposer-less path leaves UFRoute nil for C2 (which has
+// the engine's tenant origin) to fill.
+func (s EnrichService) resolveProfitability(ctx context.Context, order domain.OrderReadModel) domain.OrderProfitability {
+	if s.decomposer == nil {
+		return domain.UnknownOrderProfitability()
+	}
+	if p, ok := s.decomposer.Decompose(ctx, order); ok {
+		return p
+	}
+	return domain.UnknownOrderProfitability()
 }
 
 // resolveItemCosts looks up the per-unit ERP cost for every item on order.

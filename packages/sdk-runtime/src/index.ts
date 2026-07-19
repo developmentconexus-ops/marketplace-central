@@ -590,6 +590,32 @@ export interface OrderRastreio {
 // (server-side single authority). Always present on OrderRead (ADR-17).
 export type OrderBucket = "novo" | "faturar" | "enviar" | "enviado" | "cancelado";
 
+// OrderDecomposicao is the order-level cost/fee decomposition (F01-C1).
+// Every amount is number|null: null means the component could not be
+// honestly sourced (ADR-17). componentes_desconhecidos names every unknown
+// source component so a null amount is always explained.
+export interface OrderDecomposicao {
+  comissao: number | null;
+  taxa_fixa: number | null;
+  frete: number | null;
+  imposto: number | null;
+  difal: number | null;
+  tarifa_full: number | null;
+  custo: number | null;
+  margem_valor: number | null;
+  margem_pct: number | null;
+  componentes_desconhecidos: string[];
+}
+
+// OrderDifal is the order-level DIFAL fact (F01-C1). All fields nullable:
+// null means unknown (ADR-17).
+export interface OrderDifal {
+  amount: number | null;
+  uf_route: string | null;
+  due_date: string | null;
+  paid: boolean | null;
+}
+
 export interface OrderRead {
   provider_order_id: string;
   provider_code: string;
@@ -613,6 +639,10 @@ export interface OrderRead {
   destino_uf?: string;
   rastreio?: OrderRastreio;
   bucket: OrderBucket;
+  retorno_liquido?: number | null;
+  margem_pct?: number | null;
+  decomposicao?: OrderDecomposicao;
+  difal?: OrderDifal;
 }
 
 export interface OrderPage {

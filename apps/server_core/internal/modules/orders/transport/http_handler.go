@@ -335,6 +335,32 @@ type enrichedItemDTO struct {
 	CustoUnitario *float64 `json:"custo_unitario,omitempty"`
 }
 
+// decomposicaoDTO is the response shape for the order-level cost/fee
+// decomposition (F01-C1). Every amount is a pointer/omitempty: nil (absent
+// key) means the component could not be honestly sourced (ADR-17).
+// ComponentesDesconhecidos is never omitted — it is what explains the "—"s.
+type decomposicaoDTO struct {
+	Comissao                 *float64 `json:"comissao,omitempty"`
+	TaxaFixa                 *float64 `json:"taxa_fixa,omitempty"`
+	Frete                    *float64 `json:"frete,omitempty"`
+	Imposto                  *float64 `json:"imposto,omitempty"`
+	Difal                    *float64 `json:"difal,omitempty"`
+	TarifaFull               *float64 `json:"tarifa_full,omitempty"`
+	Custo                    *float64 `json:"custo,omitempty"`
+	MargemValor              *float64 `json:"margem_valor,omitempty"`
+	MargemPct                *float64 `json:"margem_pct,omitempty"`
+	ComponentesDesconhecidos []string `json:"componentes_desconhecidos"`
+}
+
+// difalDTO is the response shape for the order-level DIFAL fact (F01-C1).
+// All fields pointer/omitempty: nil (absent key) means unknown (ADR-17).
+type difalDTO struct {
+	Amount  *float64   `json:"amount,omitempty"`
+	UFRoute *string    `json:"uf_route,omitempty"`
+	DueDate *time.Time `json:"due_date,omitempty"`
+	Paid    *bool      `json:"paid,omitempty"`
+}
+
 // enrichedOrderDTO embeds the canonical OrderReadModel (reusing its existing
 // JSON fields, including the always-nil buyer_nickname the additive SDK lock
 // still requires) and overrides Items with the per-item enriched shape, then
@@ -354,6 +380,15 @@ type enrichedOrderDTO struct {
 	// ALWAYS derivable (never empty), so unlike the fields above it is
 	// required/non-omitempty (ADR-17).
 	Bucket domain.OrderBucket `json:"bucket"`
+	// RetornoLiquido/MargemPct/Decomposicao/Difal (F01-C1) are the
+	// decomposição/DIFAL/retorno seam. Decomposicao and Difal are always
+	// present (non-omitempty) because they carry the honest-unknown
+	// explanation (componentes_desconhecidos); RetornoLiquido/MargemPct are
+	// pointer/omitempty like every other ADR-17 fact.
+	RetornoLiquido *float64        `json:"retorno_liquido,omitempty"`
+	MargemPct      *float64        `json:"margem_pct,omitempty"`
+	Decomposicao   decomposicaoDTO `json:"decomposicao"`
+	Difal          difalDTO        `json:"difal"`
 }
 
 // mapEnrichedOrder maps an application.EnrichedOrder onto the transport DTO.
@@ -377,6 +412,10 @@ func mapEnrichedOrder(e application.EnrichedOrder) enrichedOrderDTO {
 		Buyer:                    enrichedBuyerDTO{Display: e.Buyer.Display, City: e.Buyer.City, UF: e.Buyer.UF},
 		ComponentesDesconhecidos: e.ComponentesDesconhecidos,
 		Bucket:                   domain.DeriveOrderBucket(e.Order.Status, e.Shipment != nil),
+		RetornoLiquido:           e.Profitability.RetornoLiquido,
+		MargemPct:                e.Profitability.MargemPct,
+		Decomposicao:             mapDecomposicao(e.Profitability.Decomposition),
+		Difal:                    difalDTO{Amount: e.Profitability.Difal.Amount, UFRoute: e.Profitability.Difal.UFRoute, DueDate: e.Profitability.Difal.DueDate, Paid: e.Profitability.Difal.Paid},
 	}
 	if e.Shipment != nil {
 		dto.SLA = &enrichedSLADTO{Due: e.Shipment.SLADue, Atrasado: e.Shipment.Delayed}
@@ -384,6 +423,24 @@ func mapEnrichedOrder(e application.EnrichedOrder) enrichedOrderDTO {
 		dto.Rastreio = &enrichedRastreioDTO{ShipmentID: e.Shipment.ShipmentID, Status: e.Shipment.Status}
 	}
 	return dto
+}
+
+// mapDecomposicao maps an application-layer domain.OrderDecomposition onto
+// its transport DTO field-by-field. Flows via mapEnrichedOrder to BOTH the
+// /orders list and /orders/{id} detail responses (shared mapper).
+func mapDecomposicao(d domain.OrderDecomposition) decomposicaoDTO {
+	return decomposicaoDTO{
+		Comissao:                 d.Comissao,
+		TaxaFixa:                 d.TaxaFixa,
+		Frete:                    d.Frete,
+		Imposto:                  d.Imposto,
+		Difal:                    d.Difal,
+		TarifaFull:               d.TarifaFull,
+		Custo:                    d.Custo,
+		MargemValor:              d.MargemValor,
+		MargemPct:                d.MargemPct,
+		ComponentesDesconhecidos: d.ComponentesDesconhecidos,
+	}
 }
 
 func requiredInstallation(values url.Values) (string, error) {
