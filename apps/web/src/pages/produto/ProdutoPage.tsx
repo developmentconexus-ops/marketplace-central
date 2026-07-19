@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ErrorState } from "@marketplace-central/ui";
 import { applyProdutoTab, parseProdutoTab, type ProdutoTab } from "./productQueryState";
 import { AnunciosVinculadosTab } from "./AnunciosVinculadosTab";
+import { EstoqueTab } from "./EstoqueTab";
 import { ProdutoHeader } from "./ProdutoHeader";
 import { VeredictoBox } from "./VeredictoBox";
 
@@ -91,7 +92,7 @@ export function ProdutoPage(): JSX.Element {
         <AnunciosVinculadosTab productId={productId} />
       </TabPanel>
       <TabPanel tab="estoque" active={activeTab === "estoque"}>
-        <p className="text-sm text-muted">Estoque — em breve.</p>
+        <EstoqueTab productId={productId} />
       </TabPanel>
     </section>
   );
