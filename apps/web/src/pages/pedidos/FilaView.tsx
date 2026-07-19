@@ -79,7 +79,7 @@ export function FilaView({ items, onOpenOrder }: FilaViewProps) {
                 </span>
                 <span className="min-w-0 flex-1 truncate">{orderDescription(item)}</span>
                 <span className="flex flex-none items-center gap-1 whitespace-nowrap font-mono font-semibold">
-                  <UnknownValue hint="retorno depende de decomposição ainda não disponível (DIFAL/custo)" />
+                  {formatMoney(item.retorno_liquido) ?? <UnknownValue hint="retorno depende de decomposição ainda não disponível (DIFAL/custo)" />}
                 </span>
                 {actionLabel ? (
                   <button
