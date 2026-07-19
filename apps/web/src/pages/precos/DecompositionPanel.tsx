@@ -76,7 +76,10 @@ export function DecompositionPanel({
       <Row label="(−) Frete">
         <span className="flex items-center gap-1.5">
           <Value amount={d.frete} hint="frete calculado por peso e CEP" />
-          <TariffCarimbo comp={tarifa?.frete} testId="decomp-tarifa-frete" />
+          {/* Carimbo only beside a shown value: never a provenance stamp next to "—",
+              even if the backend's tarifa.frete disagrees with a null decomposition.frete
+              (ADR-17). Comissão needs no such guard — decomposition.comissao is never null. */}
+          {d.frete !== null ? <TariffCarimbo comp={tarifa?.frete} testId="decomp-tarifa-frete" /> : null}
         </span>
       </Row>
       <Row label="(−) Imposto"><Value amount={d.imposto} /></Row>

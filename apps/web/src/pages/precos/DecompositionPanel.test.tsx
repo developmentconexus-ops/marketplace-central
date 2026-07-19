@@ -178,6 +178,28 @@ describe("DecompositionPanel", () => {
     expect(panel).not.toHaveTextContent("ESTIMATIVA");
   });
 
+  it("never stamps a carimbo beside '—' even if tarifa.frete disagrees with a null decomposition.frete (ADR-17)", () => {
+    // Pathological backend disagreement: the frete value is unknown (null ⇒ "—") yet the
+    // tarifa block carries a resolved frete provenance. The FE must NOT render a source/
+    // degrau stamp next to the em-dash — honest-absence is enforced on the shown value.
+    const d = decomposition({ frete: null, componentes_desconhecidos: ["frete"] });
+    render(
+      <DecompositionPanel
+        decomposition={d}
+        profile={profile}
+        blockingState={null}
+        tarifa={{
+          comissao: null,
+          frete: { valor: "12.00", fonte: "COTACAO", degrau: 3, data: "2026-07-19T10:00:00Z", estimativa: false, sem_dados: false },
+        }}
+      />,
+    );
+
+    expect(screen.queryByTestId("decomp-tarifa-frete")).toBeNull();
+    const panel = screen.getByTestId("decomposition-panel");
+    expect(panel).not.toHaveTextContent("Cotação");
+  });
+
   it("renders no carimbo when no tarifa block is passed (backward compatible)", () => {
     render(<DecompositionPanel decomposition={decomposition()} profile={profile} blockingState={null} />);
 
