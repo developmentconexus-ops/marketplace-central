@@ -5025,6 +5025,21 @@ components:
           $ref: '#/components/schemas/OrderSla'
         destino_uf:
           type: string
+        destino_cep:
+          type: string
+          description: >-
+            Shipment destination postal code (ML destination.shipping_address.zip_code).
+            Additive/optional: absent when the address is not yet honestly readable
+            (ML obfuscates the buyer address until payment is confirmed — masked ≠
+            error, ADR-17).
+        destinatario:
+          type: string
+          description: >-
+            Shipment receiver name (ML destination.receiver_name). Additive/optional:
+            absent (masked/not yet readable) is honest absence, never a fabricated
+            value (ADR-17).
+        frete_real:
+          $ref: '#/components/schemas/OrderFreteReal'
         rastreio:
           $ref: '#/components/schemas/OrderRastreio'
         bucket:
@@ -5085,6 +5100,38 @@ components:
             ML shipment sub-status (e.g. out_for_delivery, receiver_absent).
             Additive/optional: absent when the provider reports no sub-status,
             never a fabricated value (ADR-17).
+        transportadora:
+          type: string
+          description: >-
+            Carrier name from the shipment /carrier sub-resource. Additive/optional:
+            absent (carrier 404 / not yet dispatched) is honest absence, never a
+            fabricated carrier (ADR-17).
+        url_rastreio:
+          type: string
+          description: >-
+            Tracking URL from the shipment /carrier sub-resource. Additive/optional:
+            absent is honest absence, never a fabricated URL (ADR-17).
+
+    OrderFreteReal:
+      type: object
+      description: >-
+        Real shipment freight actuals from the ML shipment /costs sub-resource —
+        distinct from the modeled decomposicao.frete. Every amount is optional/
+        nullable: absent (nil) means the cost could not be honestly sourced,
+        never a fabricated zero (ADR-17).
+      properties:
+        bruto:
+          type: number
+          format: double
+          nullable: true
+        receiver:
+          type: number
+          format: double
+          nullable: true
+        sender:
+          type: number
+          format: double
+          nullable: true
 
     OrderDecomposicao:
       type: object

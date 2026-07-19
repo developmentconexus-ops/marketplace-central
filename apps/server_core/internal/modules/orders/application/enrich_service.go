@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"time"
 
+	connectorsdomain "marketplace-central/apps/server_core/internal/modules/connectors/domain"
 	"marketplace-central/apps/server_core/internal/modules/orders/domain"
 	"marketplace-central/apps/server_core/internal/modules/orders/ports"
 )
@@ -21,15 +22,21 @@ type ItemCost struct {
 // ShipmentEnrichment carries the per-order shipment facts sourced via
 // ShipmentReader. It is nil on EnrichedOrder whenever the shipment could not
 // be honestly read (no shipping_id, reader error) — ADR-17: unknown != zero,
-// never a fabricated date/status/UF. Rastreio is represented by ShipmentID
-// plus Status only; the provider exposes no tracking-URL/code field.
+// never a fabricated date/status/UF. Destination (city/zip/receiver), carrier
+// (name/tracking URL) and Costs are all pointer/nil-able honest-absence facts.
 type ShipmentEnrichment struct {
-	ShipmentID    string
-	Status        string
-	Substatus     string
-	SLADue        *time.Time
-	Delayed       *bool
-	DestinationUF *string
+	ShipmentID      string
+	Status          string
+	Substatus       string
+	SLADue          *time.Time
+	Delayed         *bool
+	DestinationUF   *string
+	DestinationCity *string
+	DestinationZip  *string
+	ReceiverName    *string
+	CarrierName     *string
+	TrackingURL     *string
+	Costs           *connectorsdomain.ShipmentCosts
 }
 
 // EnrichedOrder wraps a canonical read model with derived, read-time-only
@@ -125,13 +132,23 @@ func (s EnrichService) resolveShipment(ctx context.Context, installationID strin
 		uf := *info.DestinationUF
 		buyer.UF = &uf
 	}
+	if info.DestinationCity != nil {
+		city := *info.DestinationCity
+		buyer.City = &city
+	}
 	return &ShipmentEnrichment{
-		ShipmentID:    info.ID,
-		Status:        info.Status,
-		Substatus:     info.Substatus,
-		SLADue:        info.SLADue,
-		Delayed:       info.Delayed,
-		DestinationUF: info.DestinationUF,
+		ShipmentID:      info.ID,
+		Status:          info.Status,
+		Substatus:       info.Substatus,
+		SLADue:          info.SLADue,
+		Delayed:         info.Delayed,
+		DestinationUF:   info.DestinationUF,
+		DestinationCity: info.DestinationCity,
+		DestinationZip:  info.DestinationZip,
+		ReceiverName:    info.ReceiverName,
+		CarrierName:     info.CarrierName,
+		TrackingURL:     info.TrackingURL,
+		Costs:           info.Costs,
 	}
 }
 
