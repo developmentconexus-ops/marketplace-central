@@ -76,11 +76,13 @@ func SolveTargetPrice(in SolveInput) SolveResult {
 	}
 
 	// low segment (preço < limiar): frete is 0 here, so always evaluable even
-	// when produto frete is unknown — this is the cheapest price when it reaches.
-	if cmpPct(in.margemAt(limiar-1), in.TargetMargemPct) >= 0 {
-		if p, ok := in.searchSegment(1, limiar-1); ok {
-			return SolveResult{Preco: &p, Reached: true}
-		}
+	// when produto frete is unknown, and being the cheapest segment it is tried
+	// first. searchSegment scans it EXHAUSTIVELY — Decompose margem_pct is not
+	// monotone in preço (2dp rounding of comissão/imposto/difal makes it wiggle
+	// downward by sub-cent amounts), so a rounded-value bisection skips valid
+	// prices and mis-reports reachable targets (FINDING-P6-SOLVER).
+	if p, ok := in.searchSegment(1, limiar-1); ok {
+		return SolveResult{Preco: &p, Reached: true}
 	}
 	// target needs the high segment (preço ≥ limiar), where produto frete is
 	// consulted. If it is unknown, block ONLY this segment (ADR-17) — do not
@@ -120,27 +122,109 @@ func (in SolveInput) structuralUnknowns() []string {
 	return in.margemDecompose(in.limiarCents() - 1).ComponentesDesconhecidos
 }
 
+// lowSegmentSpanCents is the widest span searchSegment scans cent-by-cent. The
+// low segment (below the taxa_fixa limiar, ≤ 7899 cents) is always narrower, so
+// it is scanned exhaustively; the unbounded high segment is bracketed first.
+const lowSegmentSpanCents int64 = 200_000
+
+// highScanCapCents caps the high-segment linear scan after bracketing so a
+// pathological near-ceiling target cannot make it unbounded. A match beyond the
+// bracketed+capped window is reported UNREACHABLE (honest) — never mis-solved.
+const highScanCapCents int64 = 4_000_000
+
+// searchSegment returns the cheapest 2dp preço (in cents) within [loCents,
+// hiCents] whose Decompose margem_pct equals TargetMargemPct EXACTLY, and
+// whether such a preço exists.
+//
+// Decompose rounds comissão/imposto/difal to 2dp before subtracting, so its
+// margem_pct is only piecewise-increasing with sub-cent downward wiggles; a
+// binary search over the rounded value is unsound (FINDING-P6-SOLVER: it skips
+// valid prices and mis-reports reachable targets as SEM_FRETE/UNREACHABLE). The
+// EXACT margem_pct (100·k − 100·F/preço) IS strictly increasing, so it is used
+// only to BRACKET the candidate window; the exact-match test still runs the
+// real Decompose so the returned price honors the frozen contract exactly.
 func (in SolveInput) searchSegment(loCents, hiCents int64) (string, bool) {
-	// margem_pct is increasing within a segment; bail if even the top is short.
-	if cmpPct(in.margemAt(hiCents), in.TargetMargemPct) < 0 {
+	if loCents > hiCents {
 		return "", false
 	}
-	lo, hi := loCents, hiCents
+	limiar := in.limiarCents()
+	scanLo, scanHi := loCents, hiCents
+	if hiCents-loCents > lowSegmentSpanCents {
+		// |Decompose.pct − exact.pct| < 2/preço + 0.02 pp (2dp rounding of ≤3
+		// pct components, then of the ratio, with margin); preço ≥ loCents/100
+		// bounds it. Any exact-target match lies where the monotone exact value
+		// is within that wiggle of the target — bracket that band by bisection.
+		wig := new(big.Rat).Quo(big.NewRat(200, 100), big.NewRat(loCents, 100))
+		wig.Add(wig, big.NewRat(2, 100))
+		tgt := mustRat(in.TargetMargemPct)
+		scanLo = in.firstCentExactAtLeast(loCents, hiCents, limiar, new(big.Rat).Sub(tgt, wig))
+		if scanLo > hiCents {
+			return "", false // even the cap doesn't reach the target band
+		}
+		hiExceed := in.firstCentExactAtLeast(loCents, hiCents, limiar, new(big.Rat).Add(tgt, wig))
+		scanHi = hiExceed - 1
+		if scanHi > hiCents {
+			scanHi = hiCents
+		}
+		if scanHi-scanLo > highScanCapCents {
+			scanHi = scanLo + highScanCapCents
+		}
+	}
+	for c := scanLo; c <= scanHi; c++ {
+		// numeric compare: target may arrive unnormalized ("15" vs "15.00").
+		if m := in.margemAt(c); m != "" && cmpPct(m, in.TargetMargemPct) == 0 {
+			return centsToStr(c), true
+		}
+	}
+	return "", false
+}
+
+// firstCentExactAtLeast returns the smallest cents in [lo,hi] whose EXACT
+// (unrounded, strictly-increasing) margem_pct is ≥ bound, or hi+1 if none.
+func (in SolveInput) firstCentExactAtLeast(lo, hi, limiar int64, bound *big.Rat) int64 {
+	if in.exactMargemPctRat(hi, limiar).Cmp(bound) < 0 {
+		return hi + 1
+	}
 	for lo < hi {
 		mid := lo + (hi-lo)/2
-		if cmpPct(in.margemAt(mid), in.TargetMargemPct) < 0 {
+		if in.exactMargemPctRat(mid, limiar).Cmp(bound) < 0 {
 			lo = mid + 1
 		} else {
 			hi = mid
 		}
 	}
-	// lo is the smallest cents whose margem_pct ≥ target; it matches exactly
-	// unless a one-cent step skipped over the target band (only at tiny preços,
-	// outside the money range these inputs target).
-	if cmpPct(in.margemAt(lo), in.TargetMargemPct) == 0 {
-		return centsToStr(lo), true
+	return lo
+}
+
+// exactMargemPctRat is the UNROUNDED margem_pct at preço=cents for the segment
+// selected by limiar: 100·k − 100·F/preço, where k = 1 − Σpct/100 (comissão +
+// aliquota + applied difal) and F is the fixed-cost sum (taxa_fixa below limiar
+// / produto frete at-or-above, plus tarifa_full when full and custo). Strictly
+// increasing in preço because F ≥ 0 — unlike Decompose's rounded margem_pct, so
+// it is safe to bisect. Used ONLY to bracket the search window.
+func (in SolveInput) exactMargemPctRat(cents, limiar int64) *big.Rat {
+	preco := big.NewRat(cents, 100)
+	pct := new(big.Rat).Set(cem)
+	pct.Sub(pct, mustRat(in.ComissaoPct))
+	pct.Sub(pct, mustRat(in.AliquotaPct))
+	if in.difalApplied() {
+		pct.Sub(pct, mustRat(in.EfetivoPct))
 	}
-	return "", false
+	fixed := new(big.Rat)
+	if cents < limiar {
+		fixed.Add(fixed, taxaFixaValor)
+	} else if in.FreteProduto != nil {
+		fixed.Add(fixed, mustRat(in.FreteProduto.Amount))
+	}
+	if in.Modalidade == ModalidadeFull && in.TarifaFull != nil {
+		fixed.Add(fixed, mustRat(in.TarifaFull.Amount))
+	}
+	if in.Custo != nil {
+		fixed.Add(fixed, mustRat(in.Custo.Amount))
+	}
+	fOverP := new(big.Rat).Quo(fixed, preco)
+	fOverP.Mul(fOverP, cem)
+	return pct.Sub(pct, fOverP)
 }
 
 // margemAt returns the margem_pct string at a candidate preço (in cents). The

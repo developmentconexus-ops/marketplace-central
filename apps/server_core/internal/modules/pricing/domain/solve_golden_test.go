@@ -146,26 +146,73 @@ func TestSolveCustoNilBlocksBeforeFrete(t *testing.T) {
 	}
 }
 
-// C03(d) — monotonic-bracket invariant: within a single segment margem_pct is
-// strictly increasing in preço, which is the precondition the per-segment
-// binary search relies on. Sampled across the low segment (< 79) and the high
-// segment (≥ 79) separately (the jump lives only at the segment boundary).
-func TestSolveMargemMonotonicWithinSegment(t *testing.T) {
-	in := baseSolve()
-	assertIncreasing := func(t *testing.T, from, to, step int64) {
-		t.Helper()
-		prev := ""
-		for c := from; c <= to; c += step {
-			cur := resim(in, centsToStr(c))
-			if cur == "<unknown>" {
-				t.Fatalf("unexpected unknown margem at cents %d", c)
+// C03(d) — FINDING-P6-SOLVER regression. Decompose's 2dp component rounding
+// makes margem_pct NON-monotone in preço (sub-cent downward wiggles), so the
+// old rounded-value bisection skipped valid prices and mis-reported reachable
+// targets. This brute-forces the cheapest exact-match preço for EVERY distinct
+// low-segment margem_pct and asserts SolveTargetPrice returns exactly it —
+// across ordinary comissão/aliquota grids that demonstrably contain dips.
+func TestSolveMatchesBruteForceLowSegment(t *testing.T) {
+	grids := []SolveInput{
+		{ComissaoPct: "12", AliquotaPct: "4", Modalidade: ModalidadeClassico, FreteProduto: money("15.00"), Custo: money("10.00")},
+		{ComissaoPct: "13", AliquotaPct: "4", Modalidade: ModalidadeClassico, FreteProduto: money("15.00"), Custo: money("40.00")},
+		{ComissaoPct: "16", AliquotaPct: "12", Modalidade: ModalidadeClassico, FreteProduto: money("15.00"), Custo: money("10.00")},
+	}
+	for _, base := range grids {
+		// cheapest[target] = smallest cents whose Decompose margem_pct == target.
+		cheapest := map[string]int64{}
+		for c := int64(1); c <= 7898; c++ {
+			m := resim(base, centsToStr(c))
+			if m == "<unknown>" {
+				continue
 			}
-			if prev != "" && cmpPct(cur, prev) < 0 {
-				t.Fatalf("margem_pct not monotonic at cents %d: %q < previous %q", c, cur, prev)
+			if _, seen := cheapest[m]; !seen {
+				cheapest[m] = c
 			}
-			prev = cur
+		}
+		i := 0
+		for target, wantCents := range cheapest {
+			i++
+			if i%50 != 0 { // sample to bound runtime; map order varies across runs
+				continue
+			}
+			in := base
+			in.TargetMargemPct = target
+			res := SolveTargetPrice(in)
+			if !res.Reached || res.Preco == nil {
+				t.Fatalf("com=%s ali=%s target=%s must reach (brute @ %s); got %+v",
+					base.ComissaoPct, base.AliquotaPct, target, centsToStr(wantCents), res)
+			}
+			if *res.Preco != centsToStr(wantCents) {
+				t.Fatalf("com=%s ali=%s target=%s: solver=%s cheapest-brute=%s",
+					base.ComissaoPct, base.AliquotaPct, target, *res.Preco, centsToStr(wantCents))
+			}
 		}
 	}
-	assertIncreasing(t, 5000, 7899, 137)    // low segment, preço < 79
-	assertIncreasing(t, 7900, 500000, 4211) // high segment, preço ≥ 79
+}
+
+// C03(e) — high-segment (preço ≥ limiar) exactness + cheapest: for a witness
+// price the solver must return SOME preço whose re-Decompose margem_pct equals
+// the target EXACTLY and is no costlier than the witness (proving the exact
+// bracket does not skip the reachable band the way the old bisection did).
+func TestSolveHighSegmentExactAndCheapest(t *testing.T) {
+	base := SolveInput{
+		ComissaoPct: "13", AliquotaPct: "4", Modalidade: ModalidadeClassico,
+		FreteProduto: money("15.00"), Custo: money("40.00"),
+	}
+	for _, witness := range []int64{9000, 15000, 30000, 90000} {
+		tgt := resim(base, centsToStr(witness))
+		in := base
+		in.TargetMargemPct = tgt
+		res := SolveTargetPrice(in)
+		if !res.Reached || res.Preco == nil {
+			t.Fatalf("witness %s target %s must reach; got %+v", centsToStr(witness), tgt, res)
+		}
+		if got := resim(in, *res.Preco); got != tgt {
+			t.Fatalf("solver preço %s re-sim=%s want %s EXACT", *res.Preco, got, tgt)
+		}
+		if ratOf(t, *res.Preco).Cmp(ratOf(t, centsToStr(witness))) > 0 {
+			t.Fatalf("solver preço %s costlier than witness %s (not cheapest)", *res.Preco, centsToStr(witness))
+		}
+	}
 }
