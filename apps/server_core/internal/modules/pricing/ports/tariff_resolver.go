@@ -7,10 +7,20 @@ import (
 )
 
 // TariffRequest carries the inputs needed to resolve one tariff. Degrau 4
-// only needs the modalidade; later degraus (live ML API, per-listing
-// overrides) will add fields here as they land — do not add them now.
+// reads only Modalidade. Degrau 3 (live COTAÇÃO) additionally reads the
+// per-product id and the price basis to quote against; both are OPTIONAL —
+// when either is nil the composite resolver skips degrau 3 and degrau 4
+// answers (ADR-17: a missing input is never coerced into a live quote).
 type TariffRequest struct {
 	Modalidade domain.Modalidade
+	// ProductID identifies the product whose live category/commission to
+	// quote. nil => degrau 3 skipped (e.g. a manual-commission override, or a
+	// request with no resolvable product).
+	ProductID *int
+	// PriceBasis is the decimal price string the commission is quoted at
+	// (the decompose target price). nil => degrau 3 falls back to the
+	// product's catalog price, and skips if that is absent too.
+	PriceBasis *string
 }
 
 // TariffResolver resolves the commission + shipping tariff components for a

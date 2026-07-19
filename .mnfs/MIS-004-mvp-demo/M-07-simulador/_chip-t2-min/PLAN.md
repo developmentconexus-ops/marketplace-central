@@ -30,7 +30,7 @@ Frete stays degrau 4 in MIN (no frete-by-dims).
 
 ## TDD slices (failing test first → minimal green → commit)
 - [x] S1 domain+DTO: FonteCotacao const; ComponentResolution.Data; toTarifaDTO maps Data.
-- [ ] S2 ports: 3 new port files + TariffRequest.ProductID/PriceBasis. IC-04 freeze stays green.
+- [x] S2 ports: 3 new port files + TariffRequest.ProductID/PriceBasis. IC-04 freeze stays green.
 - [ ] S3 ProductIdentityReader adapter (catalog svc; int→string; unknown→ok=false).
 - [ ] S4 tarifflive assembler (silent-miss matrix; D-83 EAN+titulo together; happy=COTACAO/3/data).
 - [ ] S5 tariffcomposite (chain; frete untouched; ProductID nil → degrau3 skipped).
