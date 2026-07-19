@@ -220,8 +220,8 @@ func (h Handler) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if h.enricher != nil {
-		enriched := h.enricher.Enrich(r.Context(), installationID, []domain.OrderReadModel{model})
-		httpx.WriteJSON(w, http.StatusOK, mapEnrichedOrder(enriched[0]))
+		enriched := h.enricher.EnrichOne(r.Context(), installationID, model)
+		httpx.WriteJSON(w, http.StatusOK, mapEnrichedOrder(enriched))
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, model)

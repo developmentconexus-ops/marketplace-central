@@ -438,7 +438,39 @@ func TestEnrichServiceEnrich_NilDecomposerYieldsHonestEmptyProfitability(t *test
 	}
 }
 
-func TestEnrichServiceEnrich_BuyerFiscal(t *testing.T) {
+// TestEnrichServiceEnrich_ListNeverResolvesBuyerFiscal locks the M-08 list
+// performance contract (FINDING-M08-LIST-TIMEOUT): buyer fiscal is DRAWER-only
+// data. The list path (Enrich over N orders) must NEVER invoke the two-step
+// BuyerFiscalReader — even when the reader is wired and has data — because that
+// is +2 sequential ML calls per order and blows the request deadline at scale.
+// Every EnrichedOrder from Enrich carries a nil BuyerFiscal; the detail path
+// (EnrichOne) is the only place fiscal is resolved.
+func TestEnrichServiceEnrich_ListNeverResolvesBuyerFiscal(t *testing.T) {
+	fetchedAt := time.Date(2026, 7, 19, 10, 0, 0, 0, time.UTC)
+	reader := newFakeBuyerFiscalReader()
+	reader.infos["ord-list-1"] = connectorsdomain.BuyerFiscalInfo{Name: strPtr("Maria Souza"), DocType: strPtr("CPF"), FetchedAt: fetchedAt}
+	reader.infos["ord-list-2"] = connectorsdomain.BuyerFiscalInfo{Name: strPtr("Ana Lima"), DocType: strPtr("CNPJ"), FetchedAt: fetchedAt}
+	orders := []domain.OrderReadModel{
+		{ProviderOrderID: "ord-list-1"},
+		{ProviderOrderID: "ord-list-2"},
+	}
+	svc := NewEnrichServiceWithReaders(newFakeCostReader(), newFakeShipmentReader(), nil, reader, testLogger())
+	got := svc.Enrich(context.Background(), "install-1", orders)
+	if reader.calls != 0 {
+		t.Fatalf("buyer fiscal calls = %d, want 0 (list must never resolve fiscal)", reader.calls)
+	}
+	for i, e := range got {
+		if e.BuyerFiscal != nil {
+			t.Fatalf("got[%d].BuyerFiscal = %+v, want nil (list path never fills fiscal)", i, e.BuyerFiscal)
+		}
+	}
+}
+
+// TestEnrichServiceEnrichOne_BuyerFiscal covers the DETAIL path: EnrichOne is
+// the only entry that resolves the buyer's fiscal identity (single order = at
+// most one two-step lookup), with the honest-absence / degrade semantics
+// unchanged from the reader contract.
+func TestEnrichServiceEnrichOne_BuyerFiscal(t *testing.T) {
 	fetchedAt := time.Date(2026, 7, 19, 10, 0, 0, 0, time.UTC)
 
 	t.Run("present populates BuyerFiscal keyed by provider order id", func(t *testing.T) {
@@ -455,7 +487,7 @@ func TestEnrichServiceEnrich_BuyerFiscal(t *testing.T) {
 		}
 		order := domain.OrderReadModel{ProviderOrderID: "ord-bf-1"}
 		svc := NewEnrichServiceWithReaders(newFakeCostReader(), newFakeShipmentReader(), nil, reader, testLogger())
-		result := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})[0]
+		result := svc.EnrichOne(context.Background(), "install-1", order)
 		if reader.calls != 1 {
 			t.Fatalf("buyer fiscal calls = %d, want 1", reader.calls)
 		}
@@ -478,15 +510,12 @@ func TestEnrichServiceEnrich_BuyerFiscal(t *testing.T) {
 		reader.infos["ord-bf-2"] = connectorsdomain.BuyerFiscalInfo{FetchedAt: fetchedAt}
 		order := domain.OrderReadModel{ProviderOrderID: "ord-bf-2"}
 		svc := NewEnrichServiceWithReaders(newFakeCostReader(), newFakeShipmentReader(), nil, reader, testLogger())
-		got := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})
-		if len(got) != 1 {
-			t.Fatalf("len(got) = %d, want 1", len(got))
-		}
+		got := svc.EnrichOne(context.Background(), "install-1", order)
 		if reader.calls != 1 {
 			t.Fatalf("buyer fiscal calls = %d, want 1", reader.calls)
 		}
-		if got[0].BuyerFiscal != nil {
-			t.Fatalf("BuyerFiscal = %+v, want nil (HasData()==false)", got[0].BuyerFiscal)
+		if got.BuyerFiscal != nil {
+			t.Fatalf("BuyerFiscal = %+v, want nil (HasData()==false)", got.BuyerFiscal)
 		}
 	})
 
@@ -495,15 +524,12 @@ func TestEnrichServiceEnrich_BuyerFiscal(t *testing.T) {
 		reader.errs["ord-bf-3"] = errors.New("boom")
 		order := domain.OrderReadModel{ProviderOrderID: "ord-bf-3"}
 		svc := NewEnrichServiceWithReaders(newFakeCostReader(), newFakeShipmentReader(), nil, reader, testLogger())
-		got := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})
-		if len(got) != 1 {
-			t.Fatalf("len(got) = %d, want 1 (order must not fail on buyer fiscal miss)", len(got))
-		}
+		got := svc.EnrichOne(context.Background(), "install-1", order)
 		if reader.calls != 1 {
 			t.Fatalf("buyer fiscal calls = %d, want 1", reader.calls)
 		}
-		if got[0].BuyerFiscal != nil {
-			t.Fatalf("BuyerFiscal = %+v, want nil", got[0].BuyerFiscal)
+		if got.BuyerFiscal != nil {
+			t.Fatalf("BuyerFiscal = %+v, want nil", got.BuyerFiscal)
 		}
 	})
 
@@ -511,7 +537,7 @@ func TestEnrichServiceEnrich_BuyerFiscal(t *testing.T) {
 		order := domain.OrderReadModel{ProviderOrderID: "ord-bf-4"}
 		// NewEnrichService (3-arg) wires a nil buyer fiscal reader.
 		svc := NewEnrichService(newFakeCostReader(), newFakeShipmentReader(), testLogger())
-		result := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})[0]
+		result := svc.EnrichOne(context.Background(), "install-1", order)
 		if result.BuyerFiscal != nil {
 			t.Fatalf("BuyerFiscal = %+v, want nil (reader is nil)", result.BuyerFiscal)
 		}
@@ -521,7 +547,7 @@ func TestEnrichServiceEnrich_BuyerFiscal(t *testing.T) {
 		reader := newFakeBuyerFiscalReader()
 		order := domain.OrderReadModel{ProviderOrderID: ""}
 		svc := NewEnrichServiceWithReaders(newFakeCostReader(), newFakeShipmentReader(), nil, reader, testLogger())
-		svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})
+		svc.EnrichOne(context.Background(), "install-1", order)
 		if reader.calls != 0 {
 			t.Fatalf("buyer fiscal calls = %d, want 0 (empty provider order id must skip)", reader.calls)
 		}
@@ -545,7 +571,7 @@ func TestEnrichServiceEnrich_BuyerFiscal(t *testing.T) {
 			},
 		}
 		svc := NewEnrichServiceWithReaders(costReader, shipmentReader, nil, bfReader, testLogger())
-		result := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})[0]
+		result := svc.EnrichOne(context.Background(), "install-1", order)
 		if result.Buyer.Display != "Ana L." {
 			t.Fatalf("Buyer.Display = %q, want Ana L.", result.Buyer.Display)
 		}
