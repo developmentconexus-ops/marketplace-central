@@ -3,14 +3,24 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppRouter } from "./AppRouter";
 
-const { listIntegrationInstallations, getMutation, listMutationItems } = vi.hoisted(() => ({
-  listIntegrationInstallations: vi.fn(),
-  getMutation: vi.fn(),
-  listMutationItems: vi.fn(),
-}));
+const { listIntegrationInstallations, getMutation, listMutationItems, getDashboardSummary, listOrders } =
+  vi.hoisted(() => ({
+    listIntegrationInstallations: vi.fn(),
+    getMutation: vi.fn(),
+    listMutationItems: vi.fn(),
+    getDashboardSummary: vi.fn(),
+    listOrders: vi.fn(),
+  }));
 
 vi.mock("./ClientContext", () => ({
-  useClient: () => ({ mocked: true, listIntegrationInstallations, getMutation, listMutationItems }),
+  useClient: () => ({
+    mocked: true,
+    listIntegrationInstallations,
+    getMutation,
+    listMutationItems,
+    getDashboardSummary,
+    listOrders,
+  }),
 }));
 
 vi.mock("@marketplace-central/feature-products", () => ({
@@ -41,7 +51,23 @@ describe("AppRouter", () => {
     listIntegrationInstallations.mockReset();
     getMutation.mockReset();
     listMutationItems.mockReset();
+    getDashboardSummary.mockReset();
+    listOrders.mockReset();
     listIntegrationInstallations.mockResolvedValue({ items: [{ installation_id: "inst_test" }] });
+    getDashboardSummary.mockResolvedValue({
+      sync_errors: 0,
+      pending_links: 0,
+      below_margin: 0,
+      missing_gtin: 0,
+      orders_today: 0,
+      orders_7d: 0,
+      anuncios_ativos: 0,
+      last_sync_at: {},
+      degraded: [],
+      last_import: null,
+      as_of: "2026-07-19T12:00:00Z",
+    });
+    listOrders.mockResolvedValue({ items: [], next_cursor: null });
     getMutation.mockResolvedValue({
       protocol_id: "MP-000042", installation_id: "inst_test", type: "listing_pause", state: "applied",
       actor: "operator_supplied_unverified", intent: {}, selection: {}, totals: {}, source_as_of: null,
@@ -50,6 +76,13 @@ describe("AppRouter", () => {
     });
     listMutationItems.mockResolvedValue({ items: [], next_cursor: null, page_size: 50 });
     window.history.pushState({}, "", "/");
+  });
+
+  it("mounts the visão-geral dashboard at the / root route", async () => {
+    window.history.pushState({}, "", "/");
+    renderAppRouter();
+    expect(await screen.findByRole("heading", { name: "Visão geral" })).toBeInTheDocument();
+    expect(listIntegrationInstallations).toHaveBeenCalledTimes(1);
   });
 
   it("mounts the em-construção stub at /integracoes with a single app-wide installation fetch", async () => {

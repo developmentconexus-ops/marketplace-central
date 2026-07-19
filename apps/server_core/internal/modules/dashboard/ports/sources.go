@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	erpimportdomain "marketplace-central/apps/server_core/internal/modules/erp_import/domain"
 	integrationsdomain "marketplace-central/apps/server_core/internal/modules/integrations/domain"
 	integrationports "marketplace-central/apps/server_core/internal/modules/integrations/ports"
 	listingsports "marketplace-central/apps/server_core/internal/modules/listings/ports"
@@ -29,4 +30,8 @@ type OrdersSource interface {
 
 type SyncSource interface {
 	LatestRunsByModule(context.Context, string) ([]integrationports.LatestRunByModule, error)
+}
+
+type ErpImportSource interface {
+	ListImports(context.Context) ([]erpimportdomain.ImportReport, error)
 }

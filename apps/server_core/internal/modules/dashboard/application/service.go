@@ -7,6 +7,7 @@ import (
 
 	"marketplace-central/apps/server_core/internal/modules/dashboard/domain"
 	"marketplace-central/apps/server_core/internal/modules/dashboard/ports"
+	erpimportdomain "marketplace-central/apps/server_core/internal/modules/erp_import/domain"
 	listingsports "marketplace-central/apps/server_core/internal/modules/listings/ports"
 )
 
@@ -20,6 +21,7 @@ type Service struct {
 	linkage      ports.LinkageSource
 	orders       ports.OrdersSource
 	sync         ports.SyncSource
+	erp          ports.ErpImportSource
 	now          func() time.Time
 }
 
@@ -29,6 +31,7 @@ func NewService(
 	linkage ports.LinkageSource,
 	orders ports.OrdersSource,
 	sync ports.SyncSource,
+	erp ports.ErpImportSource,
 	now func() time.Time,
 ) Service {
 	return Service{
@@ -37,6 +40,7 @@ func NewService(
 		linkage:      linkage,
 		orders:       orders,
 		sync:         sync,
+		erp:          erp,
 		now:          now,
 	}
 }
@@ -68,6 +72,7 @@ func (s Service) Summary(ctx context.Context, installationID string) (domain.Sum
 	} else {
 		result.SyncErrors = int64Pointer(int64(row.SyncError))
 		result.BelowMargin = intPointer(row.BelowMarginWorstCase)
+		result.AnunciosAtivos = int64Pointer(int64(row.Active))
 	}
 
 	if s.linkage == nil {
@@ -98,6 +103,14 @@ func (s Service) Summary(ctx context.Context, installationID string) (domain.Sum
 		}
 	}
 
+	if s.erp == nil {
+		failed["erp_import"] = true
+	} else if reports, sourceErr := s.erp.ListImports(ctx); sourceErr != nil {
+		failed["erp_import"] = true
+	} else {
+		result.LastImport = newestCompletedImport(reports, asOf)
+	}
+
 	result.Degraded = degradedSources(failed)
 	if failed["sync"] {
 		result.LastSyncAt = nil
@@ -105,7 +118,27 @@ func (s Service) Summary(ctx context.Context, installationID string) (domain.Sum
 	return result, nil
 }
 
-var sourceOrder = [...]string{"listings", "linkage", "orders", "sync"}
+func newestCompletedImport(reports []erpimportdomain.ImportReport, asOf time.Time) *domain.LastImport {
+	var newest *erpimportdomain.ImportReport
+	for i := range reports {
+		report := reports[i]
+		if report.Status != erpimportdomain.ImportStatusCompleted {
+			continue
+		}
+		if newest == nil || report.ImportedAt.After(newest.ImportedAt) {
+			newest = &report
+		}
+	}
+	if newest == nil {
+		return nil
+	}
+	return &domain.LastImport{
+		At:         newest.ImportedAt.UTC(),
+		AgeSeconds: int64(asOf.Sub(newest.ImportedAt).Seconds()),
+	}
+}
+
+var sourceOrder = [...]string{"listings", "linkage", "orders", "sync", "erp_import"}
 
 func degradedSources(failed map[string]bool) []string {
 	degraded := make([]string, 0, len(sourceOrder))

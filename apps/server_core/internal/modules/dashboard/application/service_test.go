@@ -8,6 +8,7 @@ import (
 	"time"
 
 	dashboarddomain "marketplace-central/apps/server_core/internal/modules/dashboard/domain"
+	erpimportdomain "marketplace-central/apps/server_core/internal/modules/erp_import/domain"
 	"marketplace-central/apps/server_core/internal/modules/integrations/domain"
 	integrationports "marketplace-central/apps/server_core/internal/modules/integrations/ports"
 	listingsports "marketplace-central/apps/server_core/internal/modules/listings/ports"
@@ -62,14 +63,26 @@ func (s syncSourceStub) LatestRunsByModule(context.Context, string) ([]integrati
 	return s.runs, s.err
 }
 
-func healthySources() (installationSourceStub, listingsSourceStub, linkageSourceStub, ordersSourceStub, syncSourceStub) {
+type erpSourceStub struct {
+	reports []erpimportdomain.ImportReport
+	err     error
+}
+
+func (s erpSourceStub) ListImports(context.Context) ([]erpimportdomain.ImportReport, error) {
+	return s.reports, s.err
+}
+
+func healthySources() (installationSourceStub, listingsSourceStub, linkageSourceStub, ordersSourceStub, syncSourceStub, erpSourceStub) {
 	margin := 7
 	lastSync := summaryReferenceTime.Add(-time.Hour)
 	return installationSourceStub{found: true},
-		listingsSourceStub{row: listingsports.ListingSummaryRow{SyncError: 2, BelowMarginWorstCase: &margin}},
+		listingsSourceStub{row: listingsports.ListingSummaryRow{SyncError: 2, Active: 42, BelowMarginWorstCase: &margin}},
 		linkageSourceStub{summary: linkageports.LinkageSummary{PendingLinks: 3, MissingGTIN: 4}},
 		ordersSourceStub{summary: ordersports.OrderSummary{Today: 5, SevenDays: 11}},
-		syncSourceStub{runs: []integrationports.LatestRunByModule{{OperationType: "listings_refresh", LatestAttemptedAt: &lastSync}}}
+		syncSourceStub{runs: []integrationports.LatestRunByModule{{OperationType: "listings_refresh", LatestAttemptedAt: &lastSync}}},
+		erpSourceStub{reports: []erpimportdomain.ImportReport{
+			{Protocol: "p-1", ImportedAt: summaryReferenceTime.Add(-2 * time.Hour), Status: erpimportdomain.ImportStatusCompleted},
+		}}
 }
 
 func newTestService(
@@ -78,13 +91,14 @@ func newTestService(
 	linkage linkageSourceStub,
 	orders ordersSourceStub,
 	sync syncSourceStub,
+	erp erpSourceStub,
 ) Service {
-	return NewService(installation, listings, linkage, orders, sync, func() time.Time { return summaryReferenceTime })
+	return NewService(installation, listings, linkage, orders, sync, erp, func() time.Time { return summaryReferenceTime })
 }
 
 func TestSummaryOneFailedLinkageSourceReturnsPendingLinksNull(t *testing.T) {
-	installation, listings, _, orders, sync := healthySources()
-	service := newTestService(installation, listings, linkageSourceStub{err: errors.New("linkage unavailable")}, orders, sync)
+	installation, listings, _, orders, sync, erp := healthySources()
+	service := newTestService(installation, listings, linkageSourceStub{err: errors.New("linkage unavailable")}, orders, sync, erp)
 
 	got, err := service.Summary(context.Background(), "installation-1")
 	if err != nil {
@@ -124,25 +138,29 @@ func TestSummaryAllSourcesFailReturnsAllNullAndFullDegradedList(t *testing.T) {
 		linkageSourceStub{err: errors.New("linkage unavailable")},
 		ordersSourceStub{err: errors.New("orders unavailable")},
 		syncSourceStub{err: errors.New("sync unavailable")},
+		erpSourceStub{err: errors.New("erp unavailable")},
 	)
 
 	got, err := service.Summary(context.Background(), "installation-1")
 	if err != nil {
 		t.Fatalf("Summary() error = %v", err)
 	}
-	if got.SyncErrors != nil || got.PendingLinks != nil || got.BelowMargin != nil || got.MissingGTIN != nil || got.OrdersToday != nil || got.Orders7d != nil {
+	if got.SyncErrors != nil || got.PendingLinks != nil || got.BelowMargin != nil || got.MissingGTIN != nil || got.OrdersToday != nil || got.Orders7d != nil || got.AnunciosAtivos != nil {
 		t.Fatalf("summary counters = %+v, want all nil", got)
 	}
 	if got.LastSyncAt != nil {
 		t.Fatalf("LastSyncAt = %v, want nil", got.LastSyncAt)
 	}
-	if !reflect.DeepEqual(got.Degraded, []string{"listings", "linkage", "orders", "sync"}) {
+	if got.LastImport != nil {
+		t.Fatalf("LastImport = %v, want nil", got.LastImport)
+	}
+	if !reflect.DeepEqual(got.Degraded, []string{"listings", "linkage", "orders", "sync", "erp_import"}) {
 		t.Fatalf("Degraded = %v, want full fixed order", got.Degraded)
 	}
 }
 
 func TestSummaryUnknownInstallationReturnsInstallationNotFound(t *testing.T) {
-	service := newTestService(installationSourceStub{}, listingsSourceStub{}, linkageSourceStub{}, ordersSourceStub{}, syncSourceStub{})
+	service := newTestService(installationSourceStub{}, listingsSourceStub{}, linkageSourceStub{}, ordersSourceStub{}, syncSourceStub{}, erpSourceStub{})
 
 	_, err := service.Summary(context.Background(), "missing")
 	if !errors.Is(err, dashboarddomain.ErrInstallationNotFound) {
@@ -155,9 +173,9 @@ func TestSummaryUnknownInstallationReturnsInstallationNotFound(t *testing.T) {
 }
 
 func TestSummaryKeepsNilBelowMarginFromHealthySourceNil(t *testing.T) {
-	installation, listings, linkage, orders, sync := healthySources()
+	installation, listings, linkage, orders, sync, erp := healthySources()
 	listings.row.BelowMarginWorstCase = nil
-	service := newTestService(installation, listings, linkage, orders, sync)
+	service := newTestService(installation, listings, linkage, orders, sync, erp)
 
 	got, err := service.Summary(context.Background(), "installation-1")
 	if err != nil {
@@ -178,6 +196,7 @@ func TestSummaryDegradedDeterministicAndDeduplicated(t *testing.T) {
 		linkageSourceStub{err: errors.New("linkage unavailable")},
 		ordersSourceStub{err: errors.New("orders unavailable")},
 		syncSourceStub{err: errors.New("sync unavailable")},
+		erpSourceStub{err: errors.New("erp unavailable")},
 	)
 
 	for i := 0; i < 3; i++ {
@@ -185,8 +204,104 @@ func TestSummaryDegradedDeterministicAndDeduplicated(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Summary() error = %v", err)
 		}
-		if !reflect.DeepEqual(got.Degraded, []string{"listings", "linkage", "orders", "sync"}) {
+		if !reflect.DeepEqual(got.Degraded, []string{"listings", "linkage", "orders", "sync", "erp_import"}) {
 			t.Fatalf("run %d Degraded = %v, want fixed deduplicated order", i, got.Degraded)
 		}
+	}
+}
+
+func TestSummaryIncludesLastImportFromNewestCompletedImport(t *testing.T) {
+	installation, listings, linkage, orders, sync, _ := healthySources()
+	older := summaryReferenceTime.Add(-72 * time.Hour)
+	newestCompleted := summaryReferenceTime.Add(-30 * time.Minute)
+	newestRejected := summaryReferenceTime.Add(-5 * time.Minute)
+	erp := erpSourceStub{reports: []erpimportdomain.ImportReport{
+		{Protocol: "p-older", ImportedAt: older, Status: erpimportdomain.ImportStatusCompleted},
+		{Protocol: "p-newest-completed", ImportedAt: newestCompleted, Status: erpimportdomain.ImportStatusCompleted},
+		{Protocol: "p-newest-rejected", ImportedAt: newestRejected, Status: erpimportdomain.ImportStatusRejected},
+	}}
+	service := newTestService(installation, listings, linkage, orders, sync, erp)
+
+	got, err := service.Summary(context.Background(), "installation-1")
+	if err != nil {
+		t.Fatalf("Summary() error = %v", err)
+	}
+	if got.LastImport == nil {
+		t.Fatalf("LastImport = nil, want non-nil")
+	}
+	if !got.LastImport.At.Equal(newestCompleted.UTC()) {
+		t.Fatalf("LastImport.At = %v, want %v", got.LastImport.At, newestCompleted.UTC())
+	}
+	wantAge := int64(summaryReferenceTime.Sub(newestCompleted).Seconds())
+	if got.LastImport.AgeSeconds != wantAge {
+		t.Fatalf("LastImport.AgeSeconds = %v, want %v", got.LastImport.AgeSeconds, wantAge)
+	}
+	if len(got.Degraded) != 0 {
+		t.Fatalf("Degraded = %v, want empty", got.Degraded)
+	}
+}
+
+func TestSummaryNoImportsReturnsNilLastImportNotDegraded(t *testing.T) {
+	installation, listings, linkage, orders, sync, _ := healthySources()
+	erp := erpSourceStub{reports: []erpimportdomain.ImportReport{}}
+	service := newTestService(installation, listings, linkage, orders, sync, erp)
+
+	got, err := service.Summary(context.Background(), "installation-1")
+	if err != nil {
+		t.Fatalf("Summary() error = %v", err)
+	}
+	if got.LastImport != nil {
+		t.Fatalf("LastImport = %v, want nil", got.LastImport)
+	}
+	for _, source := range got.Degraded {
+		if source == "erp_import" {
+			t.Fatalf("Degraded = %v, want erp_import absent (no-import-yet is not a failure)", got.Degraded)
+		}
+	}
+}
+
+func TestSummaryErpSourceErrorDegradesErpImport(t *testing.T) {
+	installation, listings, linkage, orders, sync, _ := healthySources()
+	erp := erpSourceStub{err: errors.New("erp unavailable")}
+	service := newTestService(installation, listings, linkage, orders, sync, erp)
+
+	got, err := service.Summary(context.Background(), "installation-1")
+	if err != nil {
+		t.Fatalf("Summary() error = %v", err)
+	}
+	if got.LastImport != nil {
+		t.Fatalf("LastImport = %v, want nil", got.LastImport)
+	}
+	found := false
+	for _, source := range got.Degraded {
+		if source == "erp_import" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("Degraded = %v, want erp_import present", got.Degraded)
+	}
+}
+
+func TestSummaryAnunciosAtivosMapsFromListingsActiveAndNullsOnListingsDown(t *testing.T) {
+	installation, listings, linkage, orders, sync, erp := healthySources()
+	service := newTestService(installation, listings, linkage, orders, sync, erp)
+
+	got, err := service.Summary(context.Background(), "installation-1")
+	if err != nil {
+		t.Fatalf("Summary() error = %v", err)
+	}
+	if got.AnunciosAtivos == nil || *got.AnunciosAtivos != int64(listings.row.Active) {
+		t.Fatalf("AnunciosAtivos = %v, want %v", got.AnunciosAtivos, listings.row.Active)
+	}
+
+	downListings := listingsSourceStub{err: errors.New("listings unavailable")}
+	serviceDown := newTestService(installation, downListings, linkage, orders, sync, erp)
+	gotDown, err := serviceDown.Summary(context.Background(), "installation-1")
+	if err != nil {
+		t.Fatalf("Summary() error = %v", err)
+	}
+	if gotDown.AnunciosAtivos != nil {
+		t.Fatalf("AnunciosAtivos = %v, want nil when listings degraded", gotDown.AnunciosAtivos)
 	}
 }

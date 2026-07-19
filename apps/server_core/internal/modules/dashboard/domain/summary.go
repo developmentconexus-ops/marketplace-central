@@ -15,13 +15,20 @@ func (e *InstallationNotFoundError) Error() string { return ErrInstallationNotFo
 func (e *InstallationNotFoundError) Unwrap() error { return ErrInstallationNotFound }
 
 type Summary struct {
-	SyncErrors   *int64                `json:"sync_errors"`
-	PendingLinks *int64                `json:"pending_links"`
-	BelowMargin  *int64                `json:"below_margin"`
-	MissingGTIN  *int64                `json:"missing_gtin"`
-	OrdersToday  *int64                `json:"orders_today"`
-	Orders7d     *int64                `json:"orders_7d"`
-	LastSyncAt   map[string]*time.Time `json:"last_sync_at"`
-	Degraded     []string              `json:"degraded"`
-	AsOf         time.Time             `json:"as_of"`
+	SyncErrors     *int64                `json:"sync_errors"`
+	PendingLinks   *int64                `json:"pending_links"`
+	BelowMargin    *int64                `json:"below_margin"`
+	MissingGTIN    *int64                `json:"missing_gtin"`
+	OrdersToday    *int64                `json:"orders_today"`
+	Orders7d       *int64                `json:"orders_7d"`
+	AnunciosAtivos *int64                `json:"anuncios_ativos"`
+	LastSyncAt     map[string]*time.Time `json:"last_sync_at"`
+	LastImport     *LastImport           `json:"last_import"`
+	Degraded       []string              `json:"degraded"`
+	AsOf           time.Time             `json:"as_of"`
+}
+
+type LastImport struct {
+	At         time.Time `json:"at"`
+	AgeSeconds int64     `json:"age_seconds"`
 }
