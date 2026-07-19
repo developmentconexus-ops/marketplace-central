@@ -6,7 +6,7 @@ Contingency lane §12 (codex quota until 2026-07-25) — all roles ran on Claude
 ## Merge-gate lines (harness 0.4.0)
 
 - `P6-DUAL-GATE: AGREEMENT`
-- `LIVE-VERIFIED: <pending P7 live-drive — filled after QA>`
+- `LIVE-VERIFIED: 2026-07-19 hub P7 live-drive on clean docker dev-stack (frontend :5174 + backend :8080 on M-06 worktree mount). /catalogo/produtos/412 (CHAVE COMBINADA, cost 42.1, no market evidence): Veredicto tab honest no-evidence ("sem candidato de mercado — veredicto não avaliável"; Mínimo/Mediana/Vendedores all "—"; real Custo ERP 42.1; evidence source erp_cost; categorical verdict deferred "— M-07" per D-98); Estoque tab FÍSICO=12 real + RESERVADO/DISPONÍVEL "— DESCONHECIDO" (ADR-17, no fabricated zeros); Anúncios vinculados honest empty ("Nenhum registro encontrado" + vincular action). URL tab-state (?tab=estoque|anuncios) deep-links correctly. Theme paper rgb(251,250,247)+Instrument Sans light; a11y tablist/tab/tabpanel/note roles; zero console errors. Populated market path (mediana/vendedores) is data-gated (fixture ERP products all missing_price) — covered by VeredictoBox.test.tsx (182 lines), to be confirmed with real demo product at rehearsal C01. NOTE: reaching the page required an ephemeral hub dev-stack fix — vite proxy key "/catalog" prefix-matches the FE route "/catalogo/*" (dev-only 404 on full-load deep-links); patched to "/catalog/" for the drive, reverted at teardown. Pre-existing infra bug (not in M-06 diff), flagged for profile.>`
 
 ## Outcome
 
