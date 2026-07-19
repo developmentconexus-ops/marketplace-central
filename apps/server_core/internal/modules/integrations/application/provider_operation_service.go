@@ -9,6 +9,7 @@ import (
 
 	connectorsapp "marketplace-central/apps/server_core/internal/modules/connectors/application"
 	connectorsdomain "marketplace-central/apps/server_core/internal/modules/connectors/domain"
+	connectorsports "marketplace-central/apps/server_core/internal/modules/connectors/ports"
 	"marketplace-central/apps/server_core/internal/modules/integrations/domain"
 )
 
@@ -28,6 +29,7 @@ type ProviderOperationService struct {
 	tenantID      string
 	installations providerOperationInstallationReader
 	capabilities  *connectorsapp.MarketplaceCapabilityService
+	catalogMatch  connectorsports.CatalogMatchReader
 	stateWriter   providerOperationCapabilityStateWriter
 	operations    *OperationService
 	now           func() time.Time
@@ -41,6 +43,7 @@ type ProviderOperationServiceConfig struct {
 	TenantID         string
 	Installations    providerOperationInstallationReader
 	Capabilities     *connectorsapp.MarketplaceCapabilityService
+	CatalogMatch     connectorsports.CatalogMatchReader
 	CapabilityStates providerOperationCapabilityStateWriter
 	Operations       *OperationService
 	Now              func() time.Time
@@ -59,6 +62,7 @@ func NewProviderOperationService(cfg ProviderOperationServiceConfig) *ProviderOp
 		tenantID:      tenantID,
 		installations: cfg.Installations,
 		capabilities:  cfg.Capabilities,
+		catalogMatch:  cfg.CatalogMatch,
 		stateWriter:   cfg.CapabilityStates,
 		operations:    cfg.Operations,
 		now:           now,

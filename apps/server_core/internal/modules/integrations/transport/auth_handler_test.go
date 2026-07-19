@@ -30,6 +30,8 @@ type stubAuthFlow struct {
 	ordersLimit   int
 	feeQuoteInput connectorsdomain.FeeQuoteInput
 	stockInput    connectorsdomain.ProviderListingRef
+	catalogMatch  application.CatalogMatchProbeResult
+	catalogInput  application.CatalogMatchProbeInput
 }
 
 var _ AuthFlowReader = (*stubAuthFlow)(nil)
@@ -162,6 +164,69 @@ func (s *stubAuthFlow) ReadStock(ctx context.Context, installationID string, inp
 		}
 	}
 	return s.stock, nil
+}
+
+func (s *stubAuthFlow) ProbeCatalogMatch(ctx context.Context, installationID string, input application.CatalogMatchProbeInput) (application.CatalogMatchProbeResult, error) {
+	s.catalogInput = input
+	if s.catalogMatch.FeeQuote == nil && len(s.catalogMatch.CatalogHits) == 0 {
+		percent := 12.5
+		fixed := 6.0
+		price := 199.9
+		s.catalogMatch = application.CatalogMatchProbeResult{
+			CatalogHits: []connectorsdomain.CatalogHit{{ProductID: "MLB20270041", DomainID: "MLB-BATHROOM_FAUCETS_AND_MIXERS", Status: "active"}},
+			BuyBox:      &connectorsdomain.BuyBoxSnapshot{CategoryID: "MLB1276", Price: &price, ListingType: "gold_special"},
+			FeeQuote: &application.CatalogMatchFeeQuote{
+				CategoryID:  "MLB1276",
+				PriceAmount: 199.9,
+				CurrencyID:  "BRL",
+				Classico:    &application.CatalogMatchFeeTier{ListingTypeID: "gold_special", PercentageFee: &percent, FixedFee: &fixed},
+				Premium:     &application.CatalogMatchFeeTier{ListingTypeID: "gold_pro", PercentageFee: &percent, FixedFee: &fixed},
+			},
+		}
+	}
+	return s.catalogMatch, nil
+}
+
+func TestHandleInstallationCatalogMatchProbeReturnsSnapshot(t *testing.T) {
+	t.Parallel()
+
+	flow := &stubAuthFlow{}
+	h := NewAuthHandler(flow)
+	req := httptest.NewRequest(http.MethodGet, "/integrations/installations/inst_001/probes/catalog-match?ean=7891234567890&q=Torneira+Cozinha&price=250", nil)
+	rr := httptest.NewRecorder()
+
+	h.handleInstallationAuth(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if flow.catalogInput.EAN != "7891234567890" || flow.catalogInput.Query != "Torneira Cozinha" || flow.catalogInput.PriceAmount != 250 {
+		t.Fatalf("catalog input=%#v", flow.catalogInput)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode catalog match response: %v", err)
+	}
+	if _, ok := payload["fee_quote"]; !ok {
+		t.Fatalf("payload=%v, want snake_case fee_quote", payload)
+	}
+	if _, ok := payload["flags"]; !ok {
+		t.Fatalf("payload=%v, want flags", payload)
+	}
+}
+
+func TestHandleInstallationCatalogMatchProbeRejectsPost(t *testing.T) {
+	t.Parallel()
+
+	h := NewAuthHandler(&stubAuthFlow{})
+	req := httptest.NewRequest(http.MethodPost, "/integrations/installations/inst_001/probes/catalog-match?ean=7891234567890", nil)
+	rr := httptest.NewRecorder()
+
+	h.handleInstallationAuth(rr, req)
+
+	if rr.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
 }
 
 func TestAuthHandlerCompileTimeFeeSyncContract(t *testing.T) {
