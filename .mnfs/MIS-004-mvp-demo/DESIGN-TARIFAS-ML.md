@@ -648,3 +648,31 @@ dado. CHIP-T4 é FE disjunto (paralelo).
 - Codex morto até 2026-07-25 → lane Claude-only (planner Opus, implementers sonnet). ✔
 - Chips nunca sobem servidor; dep change = REQUEST ao hub. ✔
 ```
+
+## 11. ADENDO (ratificado D-84, 2026-07-19) — categoria, catmap e T2-MIN
+
+**Contexto:** live-drive da sonda catalog-match (D-83) provou comissão = f(categoria, tipo, faixa-preço)
+com valores reais ≠ default tier-4 (11%/14% vs 13%/16% em Kit de Chaves @R$699). Operator elevou a
+prioridade: feature principal da demo = preço concorrente + margem com comissão real + sugestão de
+produto. Pesquisa de mercado (Anymarket/Hub2b/uappi, category-mapping-research.md) confirmou padrão
+universal de-para categoria-fonte→categoria-ML com cascata por grupo.
+
+**Rulings:**
+1. **CHIP-T2-MIN (PRÉ-DEMO):** degrau 3 mínimo — adapter fino ligando a máquina catalog-match já
+   mergeada (EAN+título→categoria→listing_prices) ao port TariffResolver do CHIP-T1. Mesmo port,
+   mesma cadeia, carimbo fonte=COTACAO degrau=3. Serializa após merge do T1 (colisão pricing).
+   SEM: persistência history (0069 fica T3), frete por dims, fix buy_box/mojibake (ficam T2 full).
+2. **CategoryResolver = port próprio** desde o T2-MIN: fonte 1 = EAN+título (catalog-match).
+   Catmap entra pós-demo como fonte 2 atrás do MESMO port. Consumidor nunca vê a origem, só o
+   carimbo {categoria, fonte: EAN-CATALOGO|TITULO|GRUPO-DEPARA|MANUAL, confianca, data}.
+3. **Import captura grupo/descrgrupo JÁ** (colunas nullable + parser; aditivo). Dado guardado
+   desde agora; de-para consome depois.
+4. **CHIP-CATMAP (PÓS-DEMO):** árvore ML local via /sites/MLB/categories/all (cache MD5-diff,
+   mecanismo oficial); tabela de-para grupo→categoria-folha-ML com sugestão automática (votos de
+   EANs do grupo + domain_discovery limit=3) e confirmação humana em lote (padrão ACCEPT/REVIEW
+   M-04). Cobre os ~0,8% sem EAN + robustez/novos marketplaces.
+5. **NCM DESCARTADO como âncora de categoria** — nenhum recurso ML/mercado sanciona NCM→categoria
+   (pesquisa Q3, resultado negativo documentado). NCM segue só como dado fiscal.
+6. **Fee = cache TTL curto via listing_prices, NUNCA tabela estática longa** — sem endpoint bulk;
+   mudança estrutural oficial de 02/03 (provisoes/comissao-por-vender) muda FORMA da cobrança, não
+   só números. TTL 7d comissão (D-78) mantido. fee_schedules categoria permanece só degrau 3.5.
