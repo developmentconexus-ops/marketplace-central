@@ -7,7 +7,7 @@
 
 ## 1. Estado da missão
 
-- **main tip no momento deste handoff:** `ffd8d2afc26a0b42a4ca1a9118c6e1a7dd6a54b9` ("ledger D-94+D-95 — M-05 CLOSED"). **VAI AVANÇAR** — ver §3 (M05-FAIXA em voo).
+- **main tip no momento deste handoff:** `19b5f142` (ledger D-96). **M05-FAIXA JÁ MERGED @a4ddd106** — §3 resolvido, não é mais in-flight. Re-verifica o tip no boot.
 - **Waves A+B fechadas:** M-01, M-02, M-03, M-04, M-05, M-07, M-08 = **CLOSED**. Jornada central verde ponta-a-ponta (import → vínculos → sinais mercado → simulador → pedidos).
 - **Wave C (teu escopo):** M-06 ∥ M-09.
   - **M-06 produto-detalhe** = `planned`. **FE-only** (`apps/web/src/pages/produto/**` novo + `routes/produto.tsx` pós-seam; SEM backend/OpenAPI/SDK novo — consome clients existentes). Alvo real da demo (fecha narrativa: clicar produto → header + veredito + abas Anúncios vinculados/Estoque). Deps: M-01/M-02/M-04/M-05 todas CLOSED. Edge M-05→M-06 = `listings.ts` campos de sinal (já em main).
@@ -20,9 +20,9 @@ Doutrina: UM só hub escreve em `main` (seam compartilhado). **Não podem dois h
 - Hub novo forka chips de Wave C do main **no boot** (re-verifica tip — pode já ter avançado pós-M05-FAIXA) e dispara. M-06 (`pages/produto`) é disjunto de M05-FAIXA (`ListingDetailPanel` + backend market/listings) → rodam paralelo sem colisão.
 - **Merge order:** v2 mergeia M05-FAIXA primeiro; hub novo mergeia M-06 depois. Zero race. Confirmar via evento antes de mergear se houver dúvida de timing.
 
-## 3. Trabalho EM VOO (não é teu — não toque)
+## 3. ~~Trabalho EM VOO~~ — RESOLVIDO (nada in-flight sobra pra ti)
 
-- **CHIP-M05-FAIXA** — sessão `local_0c29ade2-cde4-4038-8fc0-1c6d8813d4f3`, worktree `dazzling-mclaren-0d1dc4`, branch `chip/m05-faixa` @base ffd8d2af. Reporta a **HUB v2**, não a ti. Entrega: faixa de mercado (min/mediana/max + n concorrentes) no drawer VS. MERCADO + own-seller exclusion + migration **0070** (max_valid) + rename label. **Migration 0070 já concedida a esse chip** — hub novo pega próximo-livre (0071+) pra qualquer migration de Wave C (M-06 não tem migration; M-09 teria se não for cortado).
+- **CHIP-M05-FAIXA MERGED @a4ddd106** (D-96, P7 QA PASS). Faixa min/mediana/max + own-seller exclusion dinâmica + migration **0070** (max_valid) + labels honestos — tudo em main. Worktree dazzling-mclaren-0d1dc4 stand-down; hub v2 remove após a sessão do chip encerrar. **Migration 0070 consumida** — hub novo pega **0071+** pra qualquer migration de Wave C (M-06 não tem migration; M-09 teria se não for cortado). Nenhum chip do hub v2 continua vivo: main é todo teu no boot.
 
 ## 4. Restrições binding (verbatim-strength)
 
