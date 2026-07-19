@@ -19,3 +19,14 @@ Base SHA: 89de2fef · Branch: claude/adoring-euclid-3ccec3 · Codex: quota-wall 
 - **#3 brittle YAML text-match test** (dashboard.test.ts) — non-blocking defer; passes, low value.
 - **#4 formatLastImportAge no negative guard** — non-blocking defer; age_seconds server-computed ≥0.
 - **DOC GAP** — `docs/REVIEW-STANDARD.md` absent even @89de2fef though profile §11 cites it. FINDING to hub (doctrine-ref gap; review ran against binding core §4 anti-slop).
+
+## P6 dual gate (fixed SHA 5ceab03; code range 89de2fef..277c62d3)
+| # | Role | Model | Verdict |
+|---|---|---|---|
+| D08 | cold independent gate reviewer | opus (cold) | **PASS** — C01✓(CONCERN: vendas parity method, API-level accepted per hub) C02✓ C03✓ C04✓(cross-schema SQL grep=0) C05✓(0 migrations, all writes in-bounds/grants). Anti-slop pass. go build/test green, web 30/30, sdk 71/71. Nit: unused `KpiCardConfig.key`. |
+| D09 | adversarial refuter | sonnet | **PASS (could not break)** — all 6 refutation targets survived. ONE finding, self-inflicted in the P4-fix @277c62d: reframe comment falsely claimed *all* null KPIs pair with degraded; `below_margin` null-from-healthy IS reachable (service.go:74), and the reframe dropped its "—" coverage. Runtime behavior correct; comment/coverage defect only. |
+
+**Dual-gate result: AGREEMENT = PASS.** Refuter's sole finding resolved:
+| — | P6-fix | chip inline (test-only) | opus (chip) | corrected comment scope (only orders pair atomic) + restored reachable null-from-healthy→"—" assertion via below_margin | d831810 — DashboardPage 8/8 green |
+
+Nits carried (non-blocking): unused `KpiCardConfig.key` field (cosmetic).
