@@ -38,6 +38,16 @@ function Money({ value }: { value: MarketPriceIntelMoney | null }): JSX.Element 
 }
 
 /**
+ * A NO_PRICE_EVIDENCE aggregate leaves the backend's non-nullable `FetchedAt`
+ * (Go `time.Time`) at its zero value, which marshals to "0001-01-01T00:00:00Z".
+ * ADR-17: unknown ≠ fabricated — surface the same honest "—" the Money component
+ * uses, never the zero-date literal. (FE-only guard; the struct stays as-is.)
+ */
+function isZeroTimestamp(ts: string | null | undefined): boolean {
+  return !ts || ts.trim() === "" || ts.startsWith("0001-01-01T00:00:00");
+}
+
+/**
  * MarketComparison shows the ML market evidence for the selected product: the
  * median and lowest valid offer, offer/seller counts, the evidence source, and
  * when it was fetched. INSUFFICIENT_MARKET / NO_PRICE_EVIDENCE surface as-is —
@@ -105,7 +115,13 @@ export function MarketComparison({ productId, client }: MarketComparisonProps): 
         <dt className="text-muted">Fonte</dt>
         <dd className="text-right font-mono text-ink">{aggregate.source}</dd>
         <dt className="text-muted">Coletado em</dt>
-        <dd className="text-right font-mono text-muted">{aggregate.fetched_at}</dd>
+        <dd className="text-right font-mono text-muted">
+          {isZeroTimestamp(aggregate.fetched_at) ? (
+            <span className="text-faint">—</span>
+          ) : (
+            aggregate.fetched_at
+          )}
+        </dd>
       </dl>
     </div>
   );

@@ -54,6 +54,14 @@ describe("DifalDrawer", () => {
     expect(onOverride).toHaveBeenCalledWith("SP", "20.5");
   });
 
+  it("normalizes a pt-BR comma override to dot-decimal before onOverride (F-P7-2)", () => {
+    const onOverride = vi.fn();
+    render(<DifalDrawer open data={data} onOverride={onOverride} onClose={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Override interna SP"), { target: { value: "20,5" } });
+    fireEvent.click(within(screen.getByRole("row", { name: /^SP/ })).getByRole("button", { name: "OK" }));
+    expect(onOverride).toHaveBeenCalledWith("SP", "20.5");
+  });
+
   it("renders the loading and error states", () => {
     const { rerender } = render(<DifalDrawer open data={undefined} isLoading onOverride={vi.fn()} onClose={vi.fn()} />);
     expect(screen.getByRole("status")).toBeInTheDocument();

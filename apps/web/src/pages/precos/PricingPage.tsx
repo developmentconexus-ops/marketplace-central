@@ -15,6 +15,7 @@ import { DifalDrawer } from "./DifalDrawer";
 import { MarketComparison } from "./MarketComparison";
 import { ApplyPriceAction } from "./ApplyPriceAction";
 import { ScenariosPanel } from "./ScenariosPanel";
+import { ptBrMoneyToDot } from "./ptbrDecimal";
 
 /** Seed padrão thresholds/regime used until the operator's profile loads (or if it errors). */
 const DEFAULT_PROFILE: PricingCalcProfile = {
@@ -136,8 +137,11 @@ export function PricingPage() {
   });
   const listingId = listingQuery.data?.groups[0]?.listings[0]?.listing_id ?? null;
 
-  // Working price: explicit input wins, else the product's current price.
+  // Working price: explicit input wins, else the product's current price. `preco`
+  // stays RAW (pt-BR, what the operator sees / scenarios round-trip); `precoForApi`
+  // is the dot-decimal the Go parser expects, normalized only at the SDK send point.
   const preco = precoInput.trim() !== "" ? precoInput.trim() : selected?.current_price.amount ?? "";
+  const precoForApi = ptBrMoneyToDot(preco);
 
   // A scenario snapshots the working simulation; reloading re-applies it to the
   // page state (product, modalidade, price) so the operator can compare setups.
@@ -162,7 +166,7 @@ export function PricingPage() {
 
   const decomposeInput: PricingCalcInput | null = selected && preco !== ""
     ? {
-        preco,
+        preco: precoForApi,
         comissao_pct: comissaoFor(modalidade),
         modalidade,
         product_id: selected.internal_product_id,
@@ -307,7 +311,7 @@ export function PricingPage() {
             </div>
 
             <div data-testid="region-aplicar" className="rounded-lg border border-border bg-surface p-3">
-              <ApplyPriceAction installationId={installationId} listingId={listingId} newPrice={preco} />
+              <ApplyPriceAction installationId={installationId} listingId={listingId} newPrice={precoForApi} />
             </div>
 
             <div data-testid="region-cenarios" className="rounded-lg border border-border bg-surface p-3">

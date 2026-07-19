@@ -71,6 +71,28 @@ describe("MarketComparison", () => {
     expect(await screen.findByTestId("market-status")).toHaveTextContent("NO_PRICE_EVIDENCE");
   });
 
+  it("renders a zero-date fetched_at as the honest — dash, never the zero literal (F-P7-1)", async () => {
+    // NO_PRICE_EVIDENCE leaves the backend's non-nullable FetchedAt at zero →
+    // marshals to "0001-01-01T00:00:00Z". It must surface as "—", not verbatim.
+    const client = marketClient([
+      aggregate({
+        status: "NO_PRICE_EVIDENCE",
+        median: null,
+        min_valid: null,
+        n_offers: 0,
+        n_sellers: 0,
+        fetched_at: "0001-01-01T00:00:00Z",
+      }),
+    ]);
+    renderPanel(<MarketComparison productId="90001" client={client} />);
+
+    const panel = await screen.findByTestId("market-comparison");
+    expect(panel).not.toHaveTextContent("0001-01-01");
+    // The "Coletado em" cell carries the same faint-dash treatment as Money.
+    const dashes = panel.querySelectorAll("dd span.text-faint");
+    expect(dashes.length).toBeGreaterThan(0);
+  });
+
   it("renders the empty state when the market has no aggregate for the product", async () => {
     const client = marketClient([]);
     renderPanel(<MarketComparison productId="90001" client={client} />);

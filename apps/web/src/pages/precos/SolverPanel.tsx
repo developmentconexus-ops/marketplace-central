@@ -4,6 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { ErrorState } from "@marketplace-central/ui";
 import type { PricingCalcInput, PricingSolveResponse } from "@marketplace-central/sdk-runtime";
 import { useClient } from "../../app/ClientContext";
+import { ptBrRateToDot } from "./ptbrDecimal";
 
 export interface SolverPanelProps {
   /** Selected product to solve for, or null when none is chosen. */
@@ -30,7 +31,7 @@ export function SolverPanel({ productId, comissaoPct, modalidade }: SolverPanelP
   const solve = useMutation({
     mutationFn: (): Promise<PricingSolveResponse> => {
       const input: PricingCalcInput = {
-        margem_alvo_pct: target.trim(),
+        margem_alvo_pct: ptBrRateToDot(target),
         comissao_pct: comissaoPct,
         modalidade,
         product_id: productId,

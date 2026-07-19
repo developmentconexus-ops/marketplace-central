@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { JSX } from "react";
 import { ErrorState, LoadingState } from "@marketplace-central/ui";
 import type { PricingDifalListResponse } from "@marketplace-central/sdk-runtime";
+import { ptBrRateToDot } from "./ptbrDecimal";
 
 /** Mandatory on every DIFAL surface (C02/C05) — fallback if the API omits it. */
 export const DIFAL_DISCLAIMER = "seed padrão 2026 — não é orientação fiscal";
@@ -80,7 +81,7 @@ export function DifalDrawer({
                       <button
                         type="button"
                         disabled={savingUf === rate.uf || (drafts[rate.uf] ?? "").trim() === ""}
-                        onClick={() => onOverride(rate.uf, (drafts[rate.uf] ?? "").trim())}
+                        onClick={() => onOverride(rate.uf, ptBrRateToDot(drafts[rate.uf] ?? ""))}
                         className="rounded px-1.5 py-0.5 text-accent hover:bg-accent-soft disabled:opacity-40"
                       >
                         {savingUf === rate.uf ? "…" : "OK"}
