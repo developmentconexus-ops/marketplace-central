@@ -29,18 +29,19 @@ const DEFAULT_PROFILE: PricingCalcProfile = {
   origem: "seed",
 };
 
-/** ML commission by modalidade (comes from ML — not operator-editable). */
+/**
+ * Sale modalidades. The ML commission is NOT hardcoded here: an absent
+ * `comissao_pct` lets the backend resolver chain run (degrau 3 live COTACAO
+ * quote → degrau 4 tenant PADRAO). Sending a fixed pct would force MANUAL
+ * override (degrau 0) and hide the real tariff, so we only send `modalidade`.
+ */
 export const MODALIDADES = [
-  { key: "classico", label: "Clássico", comissaoPct: "12" },
-  { key: "premium", label: "Premium", comissaoPct: "17" },
-  { key: "full", label: "Full", comissaoPct: "17" },
+  { key: "classico", label: "Clássico" },
+  { key: "premium", label: "Premium" },
+  { key: "full", label: "Full" },
 ] as const;
 
 export type ModalidadeKey = (typeof MODALIDADES)[number]["key"];
-
-function comissaoFor(modalidade: ModalidadeKey): string {
-  return MODALIDADES.find((m) => m.key === modalidade)?.comissaoPct ?? "17";
-}
 
 function productLabel(p: CatalogProductFact): string {
   return p.description ?? p.manufacturer_reference ?? `#${p.internal_product_id}`;
@@ -164,10 +165,11 @@ export function PricingPage() {
   // Derived (not stored) so it can't go stale against a still-loading catalog.
   const productMissing = selectedId !== null && products.length > 0 && selected === null;
 
+  // comissao_pct is deliberately OMITTED so the backend resolver chain runs
+  // (live COTACAO degrau 3 → PADRAO degrau 4). Sending it = MANUAL override.
   const decomposeInput: PricingCalcInput | null = selected && preco !== ""
     ? {
         preco: precoForApi,
-        comissao_pct: comissaoFor(modalidade),
         modalidade,
         product_id: selected.internal_product_id,
       }
@@ -301,7 +303,6 @@ export function PricingPage() {
               <h3 className="mb-2 text-sm font-semibold text-ink">Margem alvo → preço</h3>
               <SolverPanel
                 productId={selected ? selected.internal_product_id : null}
-                comissaoPct={comissaoFor(modalidade)}
                 modalidade={modalidade}
               />
             </div>

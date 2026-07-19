@@ -9,8 +9,6 @@ import { ptBrRateToDot } from "./ptbrDecimal";
 export interface SolverPanelProps {
   /** Selected product to solve for, or null when none is chosen. */
   productId: number | null;
-  /** ML commission for the active modalidade (decimal string). */
-  comissaoPct: string;
   /** Active modalidade key. */
   modalidade: string;
 }
@@ -59,16 +57,17 @@ function fonteLabel(fonte: string | null | undefined): string | null {
  * when it is non-empty — a blank ceiling never renders as a lone "%". We NEVER
  * fabricate a price (ADR-17). Money/percentages stay decimal strings end-to-end.
  */
-export function SolverPanel({ productId, comissaoPct, modalidade }: SolverPanelProps): JSX.Element {
+export function SolverPanel({ productId, modalidade }: SolverPanelProps): JSX.Element {
   const client = useClient();
   const [target, setTarget] = useState<string>("");
   const [result, setResult] = useState<SolveResult | null>(null);
 
   const solve = useMutation({
     mutationFn: (): Promise<PricingSolveResponse> => {
+      // comissao_pct OMITTED — lets the backend resolver chain run (COTACAO/PADRAO);
+      // sending it would force a MANUAL override and hide the real tariff.
       const input: PricingCalcInput = {
         margem_alvo_pct: ptBrRateToDot(target),
-        comissao_pct: comissaoPct,
         modalidade,
         product_id: productId,
       };

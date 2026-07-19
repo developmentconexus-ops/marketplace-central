@@ -1,0 +1,28 @@
+commit 72190e6f81fb141f5b4ea21755be84d6e38fd4c7
+Author: leandrotcawork <leandrotca.work@gmail.com>
+Date:   Sun Jul 19 15:14:43 2026 -0300
+
+    fix(precos): omit comissao_pct so the tariff resolver chain surfaces
+    
+    PricingPage hardcoded the ML commission per modalidade (12/17/17) and always
+    sent comissao_pct on decompose (line 170) and to SolverPanel (line 304), so the
+    backend treated every request as a MANUAL override (degrau 0) and gated off the
+    real tariff chain: degrau 3 (live ML COTACAO fee quote) and degrau 4 (tenant
+    PADRAO default) never surfaced.
+    
+    comissao_pct is OPTIONAL in the contract; absent/empty runs the resolver
+    (calc_service.go resolveTariff). Drop the hardcoded MODALIDADES.comissaoPct
+    values + comissaoFor(), and stop sending comissao_pct on both decompose and
+    solve. The tarifa carimbos (fonte/degrau/data/ESTIMATIVA) already render in
+    DecompositionPanel/SolverPanel and now show COTACAO/PADRAO honestly (ADR-17).
+    Tests assert comissao_pct is omitted from the request payloads.
+    
+    No backend/OpenAPI/SDK change; manual-override input UI is out of scope.
+    
+    Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+
+ apps/web/src/pages/precos/PricingPage.test.tsx |  5 ++++-
+ apps/web/src/pages/precos/PricingPage.tsx      | 21 +++++++++++----------
+ apps/web/src/pages/precos/SolverPanel.test.tsx | 11 +++++++----
+ apps/web/src/pages/precos/SolverPanel.tsx      |  7 +++----
+ 4 files changed, 25 insertions(+), 19 deletions(-)
