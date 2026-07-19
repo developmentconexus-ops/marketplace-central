@@ -350,6 +350,10 @@ type enrichedOrderDTO struct {
 	SLA                      *enrichedSLADTO      `json:"sla,omitempty"`
 	DestinoUF                *string              `json:"destino_uf,omitempty"`
 	Rastreio                 *enrichedRastreioDTO `json:"rastreio,omitempty"`
+	// Bucket is the workflow bucket derived by domain.DeriveOrderBucket. It is
+	// ALWAYS derivable (never empty), so unlike the fields above it is
+	// required/non-omitempty (ADR-17).
+	Bucket domain.OrderBucket `json:"bucket"`
 }
 
 // mapEnrichedOrder maps an application.EnrichedOrder onto the transport DTO.
@@ -372,6 +376,7 @@ func mapEnrichedOrder(e application.EnrichedOrder) enrichedOrderDTO {
 		VinculoStatus:            string(e.VinculoStatus),
 		Buyer:                    enrichedBuyerDTO{Display: e.Buyer.Display, City: e.Buyer.City, UF: e.Buyer.UF},
 		ComponentesDesconhecidos: e.ComponentesDesconhecidos,
+		Bucket:                   domain.DeriveOrderBucket(e.Order.Status, e.Shipment != nil),
 	}
 	if e.Shipment != nil {
 		dto.SLA = &enrichedSLADTO{Due: e.Shipment.SLADue, Atrasado: e.Shipment.Delayed}

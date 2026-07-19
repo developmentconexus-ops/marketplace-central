@@ -4613,6 +4613,14 @@ components:
           type: string
         rastreio:
           $ref: '#/components/schemas/OrderRastreio'
+        bucket:
+          type: string
+          enum:
+            - novo
+            - faturar
+            - enviar
+            - enviado
+            - cancelado
 
     OrderBuyer:
       type: object

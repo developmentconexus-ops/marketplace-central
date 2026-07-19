@@ -586,6 +586,10 @@ export interface OrderRastreio {
   status: string;
 }
 
+// OrderBucket is the workflow bucket derived from DeriveOrderBucket
+// (server-side single authority). Always present on OrderRead (ADR-17).
+export type OrderBucket = "novo" | "faturar" | "enviar" | "enviado" | "cancelado";
+
 export interface OrderRead {
   provider_order_id: string;
   provider_code: string;
@@ -608,6 +612,7 @@ export interface OrderRead {
   sla?: OrderSla;
   destino_uf?: string;
   rastreio?: OrderRastreio;
+  bucket: OrderBucket;
 }
 
 export interface OrderPage {

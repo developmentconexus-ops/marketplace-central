@@ -323,6 +323,66 @@ func TestHandleReadListWithEnricherEmitsHonestNullEnrichment(t *testing.T) {
 	}
 }
 
+func TestHandleReadListEmitsDerivedBucket(t *testing.T) {
+	service := stubOrderReadService{page: ports.OrderPage{Items: enrichedOrderModels()}}
+	enricher := application.NewEnrichService(nil, nil, testTransportLogger())
+	handler := NewHandlerWithEnricher(stubOrderImporter{}, service, &enricher)
+	req := httptest.NewRequest(http.MethodGet, "/orders?installation_id=inst-1", nil)
+	rr := httptest.NewRecorder()
+
+	handler.handleList(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s, want 200", rr.Code, rr.Body.String())
+	}
+	var payload struct {
+		Items []map[string]any `json:"items"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode response: %v body=%s", err, rr.Body.String())
+	}
+	if len(payload.Items) != 2 {
+		t.Fatalf("items = %d, want 2; body=%s", len(payload.Items), rr.Body.String())
+	}
+	for _, item := range payload.Items {
+		// enrichedOrderModels() has no shipment for either order, and both
+		// have Status "paid", so DeriveOrderBucket must yield "faturar".
+		if item["bucket"] != "faturar" {
+			t.Fatalf("bucket = %#v, want faturar; body=%s", item["bucket"], rr.Body.String())
+		}
+	}
+}
+
+func TestMapEnrichedOrderSetsBucketFromShipmentPresence(t *testing.T) {
+	order := enrichedOrderModels()[1]
+	order.Status = "paid"
+
+	withoutShipment := application.EnrichedOrder{Order: order}
+	if dto := mapEnrichedOrder(withoutShipment); dto.Bucket != domain.BucketFaturar {
+		t.Fatalf("bucket = %q, want %q (paid, no shipment)", dto.Bucket, domain.BucketFaturar)
+	}
+
+	withShipment := application.EnrichedOrder{
+		Order:    order,
+		Shipment: &application.ShipmentEnrichment{ShipmentID: "ship-1", Status: "shipped"},
+	}
+	if dto := mapEnrichedOrder(withShipment); dto.Bucket != domain.BucketEnviar {
+		t.Fatalf("bucket = %q, want %q (paid, with shipment)", dto.Bucket, domain.BucketEnviar)
+	}
+
+	dtoJSON, err := json.Marshal(mapEnrichedOrder(withShipment))
+	if err != nil {
+		t.Fatalf("marshal dto: %v", err)
+	}
+	var decoded map[string]any
+	if err := json.Unmarshal(dtoJSON, &decoded); err != nil {
+		t.Fatalf("decode dto: %v", err)
+	}
+	if decoded["bucket"] != "enviar" {
+		t.Fatalf("json field bucket = %#v, want \"enviar\"; body=%s", decoded["bucket"], dtoJSON)
+	}
+}
+
 func TestHandleGetWithEnricherEmitsHonestNullEnrichment(t *testing.T) {
 	model := enrichedOrderModels()[1]
 	service := stubOrderReadService{model: model}
