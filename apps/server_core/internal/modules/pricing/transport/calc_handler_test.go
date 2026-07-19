@@ -93,6 +93,46 @@ func newCalcMux(repo ports.CalcRepository, cost ports.CostReader, products ports
 	return mux
 }
 
+// tariffStoreStub is an in-memory ports.TariffDefaultsStore for handler
+// tests. A nil rows map means "not yet materialized" — Get/Upsert seed the
+// DB-default row (13.00/16.00/sem_dados), mirroring the real repo's
+// materialize-on-read behavior.
+type tariffStoreStub struct {
+	rows map[string]domain.TariffDefaults
+}
+
+func newTariffStoreStub() *tariffStoreStub {
+	return &tariffStoreStub{rows: map[string]domain.TariffDefaults{}}
+}
+
+func tariffKey(tenantID, installationID string) string { return tenantID + "/" + installationID }
+
+func (f *tariffStoreStub) GetTariffDefaults(_ context.Context, tenantID, installationID string) (domain.TariffDefaults, error) {
+	key := tariffKey(tenantID, installationID)
+	if row, ok := f.rows[key]; ok {
+		return row, nil
+	}
+	row := domain.TariffDefaults{ComissaoClassicoPct: "13.00", ComissaoPremiumPct: "16.00", FretePolicy: domain.FretePolicySemDados}
+	f.rows[key] = row
+	return row, nil
+}
+
+func (f *tariffStoreStub) UpsertTariffDefaults(_ context.Context, tenantID, installationID string, in domain.TariffDefaults) (domain.TariffDefaults, error) {
+	if !domain.ValidFretePolicy(in.FretePolicy) {
+		return domain.TariffDefaults{}, domain.ErrInvalidFretePolicy
+	}
+	f.rows[tariffKey(tenantID, installationID)] = in
+	return in, nil
+}
+
+func newCalcMuxWithTariffStore(repo ports.CalcRepository, tariffStore ports.TariffDefaultsStore) *http.ServeMux {
+	svc := application.NewCalcService(repo, costStub{}, nil, "t1").WithTariffStore(tariffStore)
+	h := NewHandler(application.Service{}, nil).WithCalc(svc)
+	mux := http.NewServeMux()
+	h.Register(mux)
+	return mux
+}
+
 func do(t *testing.T, mux *http.ServeMux, method, path, body string) *httptest.ResponseRecorder {
 	t.Helper()
 	var r *http.Request
@@ -141,6 +181,81 @@ func TestPutDifalUFNotFound404(t *testing.T) {
 	}
 	if c := errCode(t, w); c != "UF_NOT_FOUND" {
 		t.Fatalf("code = %q, want UF_NOT_FOUND", c)
+	}
+}
+
+// --- tariff defaults (CHIP-T1 Slice A) ---
+
+func TestGetTariffDefaultsNotConfigured503(t *testing.T) {
+	mux := newCalcMux(newRepoStub(), costStub{}, nil)
+	w := do(t, mux, http.MethodGet, "/pricing/tariff-defaults", "")
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503", w.Code)
+	}
+	if c := errCode(t, w); c != "PRICING_TARIFF_STORE_NOT_CONFIGURED" {
+		t.Fatalf("code = %q, want PRICING_TARIFF_STORE_NOT_CONFIGURED", c)
+	}
+}
+
+func TestGetTariffDefaultsMaterializesDBDefaults(t *testing.T) {
+	mux := newCalcMuxWithTariffStore(newRepoStub(), newTariffStoreStub())
+	w := do(t, mux, http.MethodGet, "/pricing/tariff-defaults", "")
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200, body=%s", w.Code, w.Body.String())
+	}
+	var got tariffDefaultsDTO
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.ComissaoClassicoPct != "13.00" || got.ComissaoPremiumPct != "16.00" || got.FretePolicy != "sem_dados" {
+		t.Fatalf("defaults = %#v", got)
+	}
+	if got.FreteEstimativaAmount != nil {
+		t.Fatalf("frete_estimativa_amount = %v, want nil (ADR-17)", *got.FreteEstimativaAmount)
+	}
+}
+
+func TestPutTariffDefaultsInvalidFretePolicy422(t *testing.T) {
+	mux := newCalcMuxWithTariffStore(newRepoStub(), newTariffStoreStub())
+	w := do(t, mux, http.MethodPut, "/pricing/tariff-defaults",
+		`{"comissao_classico_pct":"13.00","comissao_premium_pct":"16.00","frete_policy":"invalida"}`)
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422, body=%s", w.Code, w.Body.String())
+	}
+	if c := errCode(t, w); c != "INVALID_FRETE_POLICY" {
+		t.Fatalf("code = %q, want INVALID_FRETE_POLICY", c)
+	}
+}
+
+func TestPutTariffDefaultsRoundTrip(t *testing.T) {
+	mux := newCalcMuxWithTariffStore(newRepoStub(), newTariffStoreStub())
+	w := do(t, mux, http.MethodPut, "/pricing/tariff-defaults",
+		`{"comissao_classico_pct":"14.00","comissao_premium_pct":"17.00","frete_estimativa_amount":"22.50","frete_policy":"estimativa"}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200, body=%s", w.Code, w.Body.String())
+	}
+	var got tariffDefaultsDTO
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.ComissaoClassicoPct != "14.00" || got.ComissaoPremiumPct != "17.00" || got.FretePolicy != "estimativa" {
+		t.Fatalf("put response = %#v", got)
+	}
+	if got.FreteEstimativaAmount == nil || *got.FreteEstimativaAmount != "22.50" {
+		t.Fatalf("frete_estimativa_amount = %v, want 22.50", got.FreteEstimativaAmount)
+	}
+
+	w2 := do(t, mux, http.MethodGet, "/pricing/tariff-defaults", "")
+	var got2 tariffDefaultsDTO
+	if err := json.Unmarshal(w2.Body.Bytes(), &got2); err != nil {
+		t.Fatal(err)
+	}
+	if got2.ComissaoClassicoPct != got.ComissaoClassicoPct ||
+		got2.ComissaoPremiumPct != got.ComissaoPremiumPct ||
+		got2.FretePolicy != got.FretePolicy ||
+		got2.FreteEstimativaAmount == nil || got.FreteEstimativaAmount == nil ||
+		*got2.FreteEstimativaAmount != *got.FreteEstimativaAmount {
+		t.Fatalf("GET after PUT = %#v, want %#v", got2, got)
 	}
 }
 

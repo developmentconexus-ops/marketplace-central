@@ -19,6 +19,10 @@ var (
 	ErrItemNotFound = errors.New("ITEM_NOT_FOUND")
 )
 
+// ErrTariffStoreNotConfigured is returned by Get/PutTariffDefaults when the
+// service was built without WithTariffStore (transport maps it to 503).
+var ErrTariffStoreNotConfigured = errors.New("PRICING_TARIFF_STORE_NOT_CONFIGURED")
+
 // BlockingStateSemCusto is the IC-03/IC-04 blocking_state emitted when a
 // decomposition is computed for a known product whose custo_erp is absent —
 // the response is a 200 partial decomposition, never an error (ADR-17).
@@ -35,14 +39,23 @@ var overrideThresholdPP = big.NewRat(49, 1000) // 0.049
 // cost port, and the product-existence check. All money/percent values are
 // decimal strings; the service never introduces float64.
 type CalcService struct {
-	repo     ports.CalcRepository
-	cost     ports.CostReader
-	products ports.ProductChecker
-	tenantID string
+	repo        ports.CalcRepository
+	cost        ports.CostReader
+	products    ports.ProductChecker
+	tenantID    string
+	tariffStore ports.TariffDefaultsStore
 }
 
 func NewCalcService(repo ports.CalcRepository, cost ports.CostReader, products ports.ProductChecker, tenantID string) CalcService {
 	return CalcService{repo: repo, cost: cost, products: products, tenantID: tenantID}
+}
+
+// WithTariffStore attaches the CHIP-T1 tariff-defaults store, enabling
+// Get/PutTariffDefaults. Nil-safe: existing NewCalcService callers/tests that
+// never call this stay green (tariffStore nil ⇒ ErrTariffStoreNotConfigured).
+func (s CalcService) WithTariffStore(store ports.TariffDefaultsStore) CalcService {
+	s.tariffStore = store
+	return s
 }
 
 // --- Profile ---
@@ -86,6 +99,32 @@ func (s CalcService) PutProfile(ctx context.Context, in ProfileUpdate) (domain.C
 		return domain.CalcProfile{}, err
 	}
 	return profile, nil
+}
+
+// --- Tariff Defaults (CHIP-T1 Slice A) ---
+
+// GetTariffDefaults returns the tenant's stored TariffDefaults for
+// installationID ("" = default installation sentinel).
+// ErrTariffStoreNotConfigured when the service has no tariffStore wired.
+func (s CalcService) GetTariffDefaults(ctx context.Context, installationID string) (domain.TariffDefaults, error) {
+	if s.tariffStore == nil {
+		return domain.TariffDefaults{}, ErrTariffStoreNotConfigured
+	}
+	return s.tariffStore.GetTariffDefaults(ctx, s.tenantID, installationID)
+}
+
+// PutTariffDefaults validates and persists a tariff-defaults edit for
+// installationID. domain.ErrInvalidFretePolicy (422) when in.FretePolicy is
+// outside {estimativa, sem_dados}. ErrTariffStoreNotConfigured when the
+// service has no tariffStore wired.
+func (s CalcService) PutTariffDefaults(ctx context.Context, installationID string, in domain.TariffDefaults) (domain.TariffDefaults, error) {
+	if s.tariffStore == nil {
+		return domain.TariffDefaults{}, ErrTariffStoreNotConfigured
+	}
+	if !domain.ValidFretePolicy(in.FretePolicy) {
+		return domain.TariffDefaults{}, domain.ErrInvalidFretePolicy
+	}
+	return s.tariffStore.UpsertTariffDefaults(ctx, s.tenantID, installationID, in)
 }
 
 // --- DIFAL ---

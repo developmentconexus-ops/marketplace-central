@@ -11,6 +11,7 @@ import (
 )
 
 var _ ports.CalcRepository = (*CalcRepository)(nil)
+var _ ports.TariffDefaultsStore = (*CalcRepository)(nil)
 
 // CalcRepository persists the IC-04 calculator state: the tenant CalcProfile,
 // the DIFAL rate table (with overrides), and saved scenarios. Numeric columns
@@ -228,6 +229,84 @@ func (r *CalcRepository) DeleteScenario(ctx context.Context, tenantID, id string
 		return ports.ErrScenarioNotFound
 	}
 	return nil
+}
+
+// GetTariffDefaults returns the tenant/installation's stored TariffDefaults,
+// materializing the row on first read: INSERT ... ON CONFLICT DO NOTHING lets
+// the DB column DEFAULTs (13.00/16.00/sem_dados) fill a new row, then it is
+// read back. frete_estimativa_amount scans into *string — NULL stays nil
+// (ADR-17), never 0.
+func (r *CalcRepository) GetTariffDefaults(ctx context.Context, tenantID, installationID string) (domain.TariffDefaults, error) {
+	if _, err := r.pool.Exec(ctx, `
+		INSERT INTO pricing_tariff_defaults (tenant_id, installation_id)
+		VALUES ($1, $2)
+		ON CONFLICT (tenant_id, installation_id) DO NOTHING
+	`, tenantID, installationID); err != nil {
+		return domain.TariffDefaults{}, err
+	}
+
+	var (
+		comissaoClassico string
+		comissaoPremium  string
+		freteEstimativa  *string
+		fretePolicy      string
+	)
+	err := r.pool.QueryRow(ctx, `
+		SELECT comissao_classico_pct::text, comissao_premium_pct::text,
+		       frete_estimativa_amount::text, frete_policy
+		FROM pricing_tariff_defaults
+		WHERE tenant_id = $1 AND installation_id = $2
+	`, tenantID, installationID).Scan(&comissaoClassico, &comissaoPremium, &freteEstimativa, &fretePolicy)
+	if err != nil {
+		return domain.TariffDefaults{}, err
+	}
+	return domain.TariffDefaults{
+		ComissaoClassicoPct:   comissaoClassico,
+		ComissaoPremiumPct:    comissaoPremium,
+		FreteEstimativaAmount: freteEstimativa,
+		FretePolicy:           fretePolicy,
+	}, nil
+}
+
+// UpsertTariffDefaults validates in.FretePolicy (domain.ErrInvalidFretePolicy
+// otherwise, no write attempted) and writes the full row, returning it as
+// stored. tenant_id + installation_id predicate is mandatory on conflict.
+func (r *CalcRepository) UpsertTariffDefaults(ctx context.Context, tenantID, installationID string, in domain.TariffDefaults) (domain.TariffDefaults, error) {
+	if !domain.ValidFretePolicy(in.FretePolicy) {
+		return domain.TariffDefaults{}, domain.ErrInvalidFretePolicy
+	}
+
+	var (
+		comissaoClassico string
+		comissaoPremium  string
+		freteEstimativa  *string
+		fretePolicy      string
+	)
+	err := r.pool.QueryRow(ctx, `
+		INSERT INTO pricing_tariff_defaults (
+			tenant_id, installation_id, comissao_classico_pct, comissao_premium_pct,
+			frete_estimativa_amount, frete_policy, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, now())
+		ON CONFLICT (tenant_id, installation_id) DO UPDATE SET
+			comissao_classico_pct = EXCLUDED.comissao_classico_pct,
+			comissao_premium_pct = EXCLUDED.comissao_premium_pct,
+			frete_estimativa_amount = EXCLUDED.frete_estimativa_amount,
+			frete_policy = EXCLUDED.frete_policy,
+			updated_at = now()
+		RETURNING comissao_classico_pct::text, comissao_premium_pct::text,
+		          frete_estimativa_amount::text, frete_policy
+	`, tenantID, installationID, in.ComissaoClassicoPct, in.ComissaoPremiumPct,
+		in.FreteEstimativaAmount, in.FretePolicy,
+	).Scan(&comissaoClassico, &comissaoPremium, &freteEstimativa, &fretePolicy)
+	if err != nil {
+		return domain.TariffDefaults{}, err
+	}
+	return domain.TariffDefaults{
+		ComissaoClassicoPct:   comissaoClassico,
+		ComissaoPremiumPct:    comissaoPremium,
+		FreteEstimativaAmount: freteEstimativa,
+		FretePolicy:           fretePolicy,
+	}, nil
 }
 
 // rowScanner is the read surface shared by pgx.Row (QueryRow) and pgx.Rows

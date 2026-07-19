@@ -33,6 +33,8 @@ func (h Handler) registerCalc(mux httpx.RouteRegistrar) {
 	mux.HandleFunc("DELETE /pricing/scenarios/{id}", h.handleDeleteScenario)
 	mux.HandleFunc("POST /pricing/decompose", h.handleDecompose)
 	mux.HandleFunc("POST /pricing/solve", h.handleSolve)
+	mux.HandleFunc("GET /pricing/tariff-defaults", h.handleGetTariffDefaults)
+	mux.HandleFunc("PUT /pricing/tariff-defaults", h.handlePutTariffDefaults)
 }
 
 // mapCalcError maps an IC-04 service error to its exact HTTP status + code.
@@ -48,6 +50,10 @@ func mapCalcError(err error) (int, string) {
 		return http.StatusNotFound, "UF_NOT_FOUND"
 	case errors.Is(err, ports.ErrScenarioNotFound):
 		return http.StatusNotFound, "SCENARIO_NOT_FOUND"
+	case errors.Is(err, domain.ErrInvalidFretePolicy):
+		return http.StatusUnprocessableEntity, "INVALID_FRETE_POLICY"
+	case errors.Is(err, application.ErrTariffStoreNotConfigured):
+		return http.StatusServiceUnavailable, "PRICING_TARIFF_STORE_NOT_CONFIGURED"
 	default:
 		return http.StatusInternalServerError, "PRICING_INTERNAL_ERROR"
 	}
@@ -346,4 +352,56 @@ func (h Handler) handleSolve(w http.ResponseWriter, r *http.Request) {
 		body["code"] = "UNREACHABLE_TARGET"
 	}
 	httpx.WriteJSON(w, http.StatusOK, body)
+}
+
+// --- Tariff Defaults (CHIP-T1 Slice A) ---
+
+type tariffDefaultsDTO struct {
+	ComissaoClassicoPct   string  `json:"comissao_classico_pct"`
+	ComissaoPremiumPct    string  `json:"comissao_premium_pct"`
+	FreteEstimativaAmount *string `json:"frete_estimativa_amount"`
+	FretePolicy           string  `json:"frete_policy"`
+}
+
+func toTariffDefaultsDTO(t domain.TariffDefaults) tariffDefaultsDTO {
+	return tariffDefaultsDTO{
+		ComissaoClassicoPct:   t.ComissaoClassicoPct,
+		ComissaoPremiumPct:    t.ComissaoPremiumPct,
+		FreteEstimativaAmount: t.FreteEstimativaAmount,
+		FretePolicy:           t.FretePolicy,
+	}
+}
+
+// tariffInstallationID reads the optional installation_id query parameter,
+// defaulting to "" (the single-installation sentinel).
+func tariffInstallationID(r *http.Request) string {
+	return r.URL.Query().Get("installation_id")
+}
+
+func (h Handler) handleGetTariffDefaults(w http.ResponseWriter, r *http.Request) {
+	defaults, err := h.calc.GetTariffDefaults(r.Context(), tariffInstallationID(r))
+	if err != nil {
+		h.writeCalcError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, toTariffDefaultsDTO(defaults))
+}
+
+func (h Handler) handlePutTariffDefaults(w http.ResponseWriter, r *http.Request) {
+	var req tariffDefaultsDTO
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writePricingError(w, http.StatusBadRequest, "PRICING_REQUEST_INVALID", "malformed request body")
+		return
+	}
+	defaults, err := h.calc.PutTariffDefaults(r.Context(), tariffInstallationID(r), domain.TariffDefaults{
+		ComissaoClassicoPct:   req.ComissaoClassicoPct,
+		ComissaoPremiumPct:    req.ComissaoPremiumPct,
+		FreteEstimativaAmount: req.FreteEstimativaAmount,
+		FretePolicy:           req.FretePolicy,
+	})
+	if err != nil {
+		h.writeCalcError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, toTariffDefaultsDTO(defaults))
 }
