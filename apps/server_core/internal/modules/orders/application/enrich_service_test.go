@@ -463,6 +463,58 @@ func TestEnrichServiceEnrich_Shipment(t *testing.T) {
 		}
 	})
 
+	t.Run("destination city/zip/receiver, carrier and costs propagate to enrichment and Buyer.City", func(t *testing.T) {
+		costReader := newFakeCostReader()
+		shipmentReader := newFakeShipmentReader()
+		uf := "RJ"
+		city := "Rio de Janeiro"
+		zip := "20040-002"
+		receiver := "João Silva"
+		carrier := "Total Express"
+		tracking := "http://tracking.totalexpress.com.br/poupup_track.php?reid=3"
+		shipmentReader.infos["SHIP-C"] = connectorsdomain.ShipmentInfo{
+			ID:              "SHIP-C",
+			Status:          "shipped",
+			DestinationUF:   &uf,
+			DestinationCity: &city,
+			DestinationZip:  &zip,
+			ReceiverName:    &receiver,
+			CarrierName:     &carrier,
+			TrackingURL:     &tracking,
+			Costs: &connectorsdomain.ShipmentCosts{
+				GrossAmount: &connectorsdomain.Money{Amount: "23.45", Currency: "BRL"},
+			},
+		}
+		order := domain.OrderReadModel{ProviderOrderID: "ord-ship-c", ShippingID: "SHIP-C"}
+		svc := NewEnrichService(costReader, shipmentReader, testLogger())
+		result := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})[0]
+		if result.Shipment == nil {
+			t.Fatalf("Shipment = nil, want populated")
+		}
+		s := result.Shipment
+		if s.DestinationCity == nil || *s.DestinationCity != city {
+			t.Fatalf("DestinationCity = %v, want %q", s.DestinationCity, city)
+		}
+		if s.DestinationZip == nil || *s.DestinationZip != zip {
+			t.Fatalf("DestinationZip = %v, want %q", s.DestinationZip, zip)
+		}
+		if s.ReceiverName == nil || *s.ReceiverName != receiver {
+			t.Fatalf("ReceiverName = %v, want %q", s.ReceiverName, receiver)
+		}
+		if s.CarrierName == nil || *s.CarrierName != carrier {
+			t.Fatalf("CarrierName = %v, want %q", s.CarrierName, carrier)
+		}
+		if s.TrackingURL == nil || *s.TrackingURL != tracking {
+			t.Fatalf("TrackingURL = %v, want %q", s.TrackingURL, tracking)
+		}
+		if s.Costs == nil || s.Costs.GrossAmount == nil || s.Costs.GrossAmount.Amount != "23.45" {
+			t.Fatalf("Costs.GrossAmount = %+v, want 23.45", s.Costs)
+		}
+		if result.Buyer.City == nil || *result.Buyer.City != city {
+			t.Fatalf("Buyer.City = %v, want %q (blessed source = shipment)", result.Buyer.City, city)
+		}
+	})
+
 	t.Run("reader error yields nil shipment, order still present, Buyer.UF stays nil", func(t *testing.T) {
 		costReader := newFakeCostReader()
 		shipmentReader := newFakeShipmentReader()

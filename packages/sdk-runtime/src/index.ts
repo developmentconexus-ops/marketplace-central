@@ -587,6 +587,21 @@ export interface OrderRastreio {
   // ML shipment sub-status (e.g. out_for_delivery, receiver_absent). Additive/
   // optional: absent when the provider reports no sub-status, never fabricated (ADR-17).
   substatus?: string;
+  // Carrier name + tracking URL from the shipment /carrier sub-resource. Additive/
+  // optional: absent (carrier 404 / not yet dispatched) is honest absence, never
+  // a fabricated carrier (ADR-17).
+  transportadora?: string;
+  url_rastreio?: string;
+}
+
+// OrderFreteReal is the real shipment freight actuals from the ML shipment
+// /costs sub-resource — distinct from the modeled decomposicao.frete. Every
+// amount is number|null|undefined: absent/null means the cost could not be
+// honestly sourced, never a fabricated zero (ADR-17).
+export interface OrderFreteReal {
+  bruto?: number | null;
+  receiver?: number | null;
+  sender?: number | null;
 }
 
 // OrderBucket is the workflow bucket derived from DeriveOrderBucket
@@ -640,6 +655,12 @@ export interface OrderRead {
   componentes_desconhecidos?: string[];
   sla?: OrderSla;
   destino_uf?: string;
+  // Shipment destination postal code + receiver name (ML destination.*). Additive/
+  // optional: absent (masked/not yet readable — ML obfuscates until payment) is
+  // honest absence, never fabricated (ADR-17).
+  destino_cep?: string;
+  destinatario?: string;
+  frete_real?: OrderFreteReal;
   rastreio?: OrderRastreio;
   bucket: OrderBucket;
   retorno_liquido?: number | null;

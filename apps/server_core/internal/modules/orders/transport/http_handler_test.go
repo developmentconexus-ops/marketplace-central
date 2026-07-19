@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	connectorsdomain "marketplace-central/apps/server_core/internal/modules/connectors/domain"
 	"marketplace-central/apps/server_core/internal/modules/orders/application"
 	"marketplace-central/apps/server_core/internal/modules/orders/domain"
 	"marketplace-central/apps/server_core/internal/modules/orders/ports"
@@ -419,6 +420,157 @@ func TestMapEnrichedOrderDerivesBucketFromShippingID(t *testing.T) {
 	}
 	if decoded["bucket"] != "enviar" {
 		t.Fatalf("json field bucket = %#v, want \"enviar\"; body=%s", decoded["bucket"], dtoJSON)
+	}
+}
+
+// TestMapEnrichedOrderSurfacesShipmentDestinoCarrierFrete asserts the round-4
+// additive surfacing: the shipment destination (cep/destinatario), the carrier
+// (rastreio.transportadora/url_rastreio) and the real freight actuals
+// (frete_real.bruto/receiver/sender) all reach the JSON DTO when the shipment
+// enrichment carries them. Every field is additive/omitempty (ADR-17).
+func TestMapEnrichedOrderSurfacesShipmentDestinoCarrierFrete(t *testing.T) {
+	order := enrichedOrderModels()[1]
+	order.Status = "shipped"
+	order.ShippingID = "ship-col-1"
+
+	zip := "20040-002"
+	receiver := "João Silva"
+	city := "Rio de Janeiro"
+	uf := "RJ"
+	carrier := "Total Express"
+	tracking := "http://tracking.totalexpress.com.br/poupup_track.php?reid=3"
+
+	e := application.EnrichedOrder{
+		Order: order,
+		Buyer: domain.MaskedBuyer{City: &city, UF: &uf},
+		Shipment: &application.ShipmentEnrichment{
+			ShipmentID:      "ship-col-1",
+			Status:          "shipped",
+			DestinationUF:   &uf,
+			DestinationCity: &city,
+			DestinationZip:  &zip,
+			ReceiverName:    &receiver,
+			CarrierName:     &carrier,
+			TrackingURL:     &tracking,
+			Costs: &connectorsdomain.ShipmentCosts{
+				GrossAmount:  &connectorsdomain.Money{Amount: "23.45", Currency: "BRL"},
+				ReceiverCost: &connectorsdomain.Money{Amount: "10.00", Currency: "BRL"},
+				SenderCost:   &connectorsdomain.Money{Amount: "13.45", Currency: "BRL"},
+			},
+		},
+	}
+
+	dtoJSON, err := json.Marshal(mapEnrichedOrder(e))
+	if err != nil {
+		t.Fatalf("marshal dto: %v", err)
+	}
+	var decoded map[string]any
+	if err := json.Unmarshal(dtoJSON, &decoded); err != nil {
+		t.Fatalf("decode dto: %v", err)
+	}
+
+	if decoded["destino_cep"] != "20040-002" {
+		t.Fatalf("destino_cep = %#v, want 20040-002; body=%s", decoded["destino_cep"], dtoJSON)
+	}
+	if decoded["destinatario"] != "João Silva" {
+		t.Fatalf("destinatario = %#v, want João Silva; body=%s", decoded["destinatario"], dtoJSON)
+	}
+	if decoded["destino_uf"] != "RJ" {
+		t.Fatalf("destino_uf = %#v, want RJ; body=%s", decoded["destino_uf"], dtoJSON)
+	}
+
+	rastreio, ok := decoded["rastreio"].(map[string]any)
+	if !ok {
+		t.Fatalf("rastreio missing/not object; body=%s", dtoJSON)
+	}
+	if rastreio["transportadora"] != "Total Express" {
+		t.Fatalf("rastreio.transportadora = %#v, want Total Express; body=%s", rastreio["transportadora"], dtoJSON)
+	}
+	if rastreio["url_rastreio"] != tracking {
+		t.Fatalf("rastreio.url_rastreio = %#v, want %q; body=%s", rastreio["url_rastreio"], tracking, dtoJSON)
+	}
+
+	frete, ok := decoded["frete_real"].(map[string]any)
+	if !ok {
+		t.Fatalf("frete_real missing/not object; body=%s", dtoJSON)
+	}
+	if frete["bruto"] != 23.45 {
+		t.Fatalf("frete_real.bruto = %#v, want 23.45; body=%s", frete["bruto"], dtoJSON)
+	}
+	if frete["receiver"] != 10.0 {
+		t.Fatalf("frete_real.receiver = %#v, want 10.0; body=%s", frete["receiver"], dtoJSON)
+	}
+	if frete["sender"] != 13.45 {
+		t.Fatalf("frete_real.sender = %#v, want 13.45; body=%s", frete["sender"], dtoJSON)
+	}
+}
+
+// TestMapEnrichedOrderOmitsShipmentFactsWhenAbsent asserts the honest-absence
+// contract: a shipment with no carrier/costs/destino must omit frete_real and
+// the carrier fields entirely (never a fabricated zero/blank — ADR-17).
+func TestMapEnrichedOrderOmitsShipmentFactsWhenAbsent(t *testing.T) {
+	order := enrichedOrderModels()[1]
+	order.Status = "shipped"
+	order.ShippingID = "ship-col-1"
+
+	e := application.EnrichedOrder{
+		Order:    order,
+		Shipment: &application.ShipmentEnrichment{ShipmentID: "ship-col-1", Status: "ready_to_ship"},
+	}
+
+	dtoJSON, err := json.Marshal(mapEnrichedOrder(e))
+	if err != nil {
+		t.Fatalf("marshal dto: %v", err)
+	}
+	var decoded map[string]any
+	if err := json.Unmarshal(dtoJSON, &decoded); err != nil {
+		t.Fatalf("decode dto: %v", err)
+	}
+
+	for _, absent := range []string{"destino_cep", "destinatario", "destino_uf", "frete_real"} {
+		if _, present := decoded[absent]; present {
+			t.Fatalf("%s must be omitted when the shipment carries no such fact; body=%s", absent, dtoJSON)
+		}
+	}
+	rastreio, ok := decoded["rastreio"].(map[string]any)
+	if !ok {
+		t.Fatalf("rastreio missing/not object; body=%s", dtoJSON)
+	}
+	if _, present := rastreio["transportadora"]; present {
+		t.Fatalf("rastreio.transportadora must be omitted when carrier is nil; body=%s", dtoJSON)
+	}
+	if _, present := rastreio["url_rastreio"]; present {
+		t.Fatalf("rastreio.url_rastreio must be omitted when tracking is nil; body=%s", dtoJSON)
+	}
+}
+
+// TestMapEnrichedOrderOmitsFreteRealWhenAllAmountsNil asserts that a non-nil
+// Costs whose every amount is unresolvable omits frete_real entirely rather
+// than emitting an empty {} object (ADR-17 honest absence).
+func TestMapEnrichedOrderOmitsFreteRealWhenAllAmountsNil(t *testing.T) {
+	order := enrichedOrderModels()[1]
+	order.Status = "shipped"
+	order.ShippingID = "ship-col-1"
+
+	e := application.EnrichedOrder{
+		Order: order,
+		Shipment: &application.ShipmentEnrichment{
+			ShipmentID: "ship-col-1",
+			Status:     "shipped",
+			Costs:      &connectorsdomain.ShipmentCosts{}, // present, but every Money nil
+		},
+	}
+
+	dtoJSON, err := json.Marshal(mapEnrichedOrder(e))
+	if err != nil {
+		t.Fatalf("marshal dto: %v", err)
+	}
+	var decoded map[string]any
+	if err := json.Unmarshal(dtoJSON, &decoded); err != nil {
+		t.Fatalf("decode dto: %v", err)
+	}
+	if _, present := decoded["frete_real"]; present {
+		t.Fatalf("frete_real must be omitted when all amounts are nil; body=%s", dtoJSON)
 	}
 }
 

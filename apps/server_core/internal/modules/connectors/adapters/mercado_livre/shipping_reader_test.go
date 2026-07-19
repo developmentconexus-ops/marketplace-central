@@ -23,11 +23,18 @@ func TestGetShipmentInfoMapsShipmentAndCosts(t *testing.T) {
 		}
 		switch r.URL.Path {
 		case "/shipments/SHIP-1":
-			_, _ = io.WriteString(w, `{"id":"SHIP-1","site_id":"MLB","status":"ready_to_ship","substatus":"ready_to_print","lead_time":{"estimated_delivery_limit":{"date":"2026-07-22T15:04:05Z"}},"delayed":true,"receiver_address":{"state":{"id":"BR-RJ"}}}`)
+			// Real new-format GET /shipments/{id} shape (ML docs gerenciamento-de-envios):
+			// the buyer delivery address lives under `destination.shipping_address`
+			// ({state,city as {id,name}}, zip_code, …) + `destination.receiver_name` —
+			// NOT a flat `receiver_address` field (that key does not exist in the schema).
+			_, _ = io.WriteString(w, `{"id":"SHIP-1","site_id":"MLB","status":"ready_to_ship","substatus":"ready_to_print","lead_time":{"estimated_delivery_limit":{"date":"2026-07-22T15:04:05Z"}},"delayed":true,"destination":{"receiver_id":74425755,"receiver_name":"João Silva","shipping_address":{"city":{"id":"BR-RJ-RIO","name":"Rio de Janeiro"},"zip_code":"20040-002","street_name":"Avenida Rio Branco","street_number":"1","state":{"id":"BR-RJ","name":"Rio de Janeiro"}}}}`)
 		case "/shipments/SHIP-1/costs":
 			// Real new-format /costs shape (ML docs gerenciamento-de-envios): NO
 			// currency field — the amount currency is resolved from the shipment site.
 			_, _ = io.WriteString(w, `{"gross_amount":19.90,"receiver":{"user_id":74425755,"cost":2.50},"senders":[{"user_id":81387353,"cost":17.40}]}`)
+		case "/shipments/SHIP-1/carrier":
+			// Dedicated carrier sub-resource (ML docs gerenciamento-de-envios): {url, name}.
+			_, _ = io.WriteString(w, `{"url":"http://tracking.totalexpress.com.br/poupup_track.php?reid=3&pedido=14&nfiscal=1","name":"Total Express"}`)
 		default:
 			t.Fatalf("unexpected path = %s", r.URL.Path)
 		}
@@ -54,6 +61,21 @@ func TestGetShipmentInfoMapsShipmentAndCosts(t *testing.T) {
 	if shipment.DestinationUF == nil || *shipment.DestinationUF != "RJ" {
 		t.Fatalf("DestinationUF = %#v, want RJ", shipment.DestinationUF)
 	}
+	if shipment.DestinationCity == nil || *shipment.DestinationCity != "Rio de Janeiro" {
+		t.Fatalf("DestinationCity = %#v, want Rio de Janeiro", shipment.DestinationCity)
+	}
+	if shipment.DestinationZip == nil || *shipment.DestinationZip != "20040-002" {
+		t.Fatalf("DestinationZip = %#v, want 20040-002", shipment.DestinationZip)
+	}
+	if shipment.ReceiverName == nil || *shipment.ReceiverName != "João Silva" {
+		t.Fatalf("ReceiverName = %#v, want João Silva", shipment.ReceiverName)
+	}
+	if shipment.CarrierName == nil || *shipment.CarrierName != "Total Express" {
+		t.Fatalf("CarrierName = %#v, want Total Express", shipment.CarrierName)
+	}
+	if shipment.TrackingURL == nil || *shipment.TrackingURL != "http://tracking.totalexpress.com.br/poupup_track.php?reid=3&pedido=14&nfiscal=1" {
+		t.Fatalf("TrackingURL = %#v", shipment.TrackingURL)
+	}
 	if shipment.Costs == nil {
 		t.Fatal("Costs = nil, want mapped costs")
 	}
@@ -75,6 +97,8 @@ func TestGetShipmentInfoCostsNotFoundLeavesCostsUnknown(t *testing.T) {
 		switch r.URL.Path {
 		case "/shipments/SHIP-2":
 			_, _ = io.WriteString(w, `{"id":"SHIP-2","status":"shipped"}`)
+		case "/shipments/SHIP-2/carrier":
+			w.WriteHeader(http.StatusNotFound)
 		case "/shipments/SHIP-2/costs":
 			w.WriteHeader(http.StatusNotFound)
 		default:
@@ -99,6 +123,8 @@ func TestGetShipmentInfoCostsServerErrorFails(t *testing.T) {
 		switch r.URL.Path {
 		case "/shipments/SHIP-5":
 			_, _ = io.WriteString(w, `{"id":"SHIP-5","status":"shipped"}`)
+		case "/shipments/SHIP-5/carrier":
+			w.WriteHeader(http.StatusNotFound)
 		case "/shipments/SHIP-5/costs":
 			w.WriteHeader(http.StatusInternalServerError)
 		default:
@@ -119,12 +145,15 @@ func TestGetShipmentInfoCostsServerErrorFails(t *testing.T) {
 func TestGetShipmentInfoRequestsSendXFormatNewHeader(t *testing.T) {
 	t.Parallel()
 
-	var costsHeader, primaryHeader string
+	var costsHeader, primaryHeader, carrierHeader string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/shipments/SHIP-7":
 			primaryHeader = r.Header.Get("x-format-new")
 			_, _ = io.WriteString(w, `{"id":"SHIP-7","site_id":"MLB","status":"shipped","substatus":"out_for_delivery"}`)
+		case "/shipments/SHIP-7/carrier":
+			carrierHeader = r.Header.Get("x-format-new")
+			_, _ = io.WriteString(w, `{"url":"http://track.example/OP1","name":"Correios"}`)
 		case "/shipments/SHIP-7/costs":
 			costsHeader = r.Header.Get("x-format-new")
 			_, _ = io.WriteString(w, `{"gross_amount":10.00}`)
@@ -149,8 +178,14 @@ func TestGetShipmentInfoRequestsSendXFormatNewHeader(t *testing.T) {
 	if costsHeader != "true" {
 		t.Fatalf("costs x-format-new = %q, want true", costsHeader)
 	}
+	if carrierHeader != "true" {
+		t.Fatalf("carrier x-format-new = %q, want true", carrierHeader)
+	}
 	if shipment.Substatus != "out_for_delivery" {
 		t.Fatalf("Substatus = %q, want out_for_delivery", shipment.Substatus)
+	}
+	if shipment.CarrierName == nil || *shipment.CarrierName != "Correios" {
+		t.Fatalf("CarrierName = %#v, want Correios", shipment.CarrierName)
 	}
 }
 
@@ -164,7 +199,9 @@ func TestGetShipmentInfoDecodesNewFormatNumericID(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/shipments/28264263908":
-			_, _ = io.WriteString(w, `{"id":28264263908,"mode":"me2","order_id":2339711980,"order_cost":99.9,"base_cost":22.07,"site_id":"MLB","status":"shipped","substatus":"out_for_delivery","date_created":"2024-04-23T10:48:51.245-04:00","receiver_address":{"state":{"id":"BR-SP"}}}`)
+			_, _ = io.WriteString(w, `{"id":28264263908,"mode":"me2","order_id":2339711980,"order_cost":99.9,"base_cost":22.07,"site_id":"MLB","status":"shipped","substatus":"out_for_delivery","date_created":"2024-04-23T10:48:51.245-04:00","destination":{"shipping_address":{"state":{"id":"BR-SP","name":"São Paulo"}}}}`)
+		case "/shipments/28264263908/carrier":
+			w.WriteHeader(http.StatusNotFound)
 		case "/shipments/28264263908/costs":
 			_, _ = io.WriteString(w, `{"gross_amount":19.90}`)
 		default:
@@ -195,6 +232,8 @@ func TestGetShipmentInfoCostsLegacyShapeDegradesToStatusOnly(t *testing.T) {
 		switch r.URL.Path {
 		case "/shipments/SHIP-6":
 			_, _ = io.WriteString(w, `{"id":"SHIP-6","status":"shipped","substatus":"receiver_absent"}`)
+		case "/shipments/SHIP-6/carrier":
+			w.WriteHeader(http.StatusNotFound)
 		case "/shipments/SHIP-6/costs":
 			// Legacy cost shape (what ML returns when x-format-new is absent): `senders` is an
 			// object, not the new-format array → decode into mlShipmentCostsResponse fails with
@@ -233,6 +272,8 @@ func TestGetShipmentInfoCostsMappingFailureDegradesToStatusOnly(t *testing.T) {
 		switch r.URL.Path {
 		case "/shipments/SHIP-8":
 			_, _ = io.WriteString(w, `{"id":"SHIP-8","site_id":"MLB","status":"shipped","substatus":"out_for_delivery"}`)
+		case "/shipments/SHIP-8/carrier":
+			w.WriteHeader(http.StatusNotFound)
 		case "/shipments/SHIP-8/costs":
 			_, _ = io.WriteString(w, `{"gross_amount":2.4e1}`)
 		default:
@@ -253,6 +294,106 @@ func TestGetShipmentInfoCostsMappingFailureDegradesToStatusOnly(t *testing.T) {
 	}
 }
 
+func TestGetShipmentInfoMaskedDestinationDegradesToNil(t *testing.T) {
+	t.Parallel()
+
+	// ML obfuscates the buyer address in `destination` until payment is confirmed
+	// (ML docs gerenciamento-de-envios). The masked payload keeps the object shape
+	// but blanks the values. Masked-to-empty must degrade to nil honest-absence —
+	// never a fabricated blank, never a WARN/error (ADR-17).
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/shipments/SHIP-9":
+			_, _ = io.WriteString(w, `{"id":"SHIP-9","status":"pending","destination":{"receiver_name":"","shipping_address":{"state":{"id":"","name":""},"city":{"id":"","name":""},"zip_code":""}}}`)
+		case "/shipments/SHIP-9/carrier":
+			w.WriteHeader(http.StatusNotFound)
+		case "/shipments/SHIP-9/costs":
+			w.WriteHeader(http.StatusNotFound)
+		default:
+			t.Fatalf("unexpected path = %s", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	shipment, err := pricingTestAdapter(server.URL, time.Now().UTC()).GetShipmentInfo(context.Background(), pricingAccountRef(), "SHIP-9")
+	if err != nil {
+		t.Fatalf("GetShipmentInfo() error = %v, want nil (masked address is not an error)", err)
+	}
+	if shipment.Status != "pending" {
+		t.Fatalf("Status = %q, want pending (must survive masked destination)", shipment.Status)
+	}
+	if shipment.DestinationUF != nil || shipment.DestinationCity != nil || shipment.DestinationZip != nil || shipment.ReceiverName != nil {
+		t.Fatalf("masked destination fields = uf:%#v city:%#v zip:%#v receiver:%#v, want all nil", shipment.DestinationUF, shipment.DestinationCity, shipment.DestinationZip, shipment.ReceiverName)
+	}
+}
+
+func TestGetShipmentInfoCarrierNotFoundLeavesCarrierNil(t *testing.T) {
+	t.Parallel()
+
+	// The /carrier sub-resource returns 404 as a normal "none" condition (ML docs
+	// precedent: /delays 404 = no delay). A carrier 404 must degrade to a nil
+	// carrier with the shipment status intact — never a WARN, never a sink.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/shipments/SHIP-10":
+			_, _ = io.WriteString(w, `{"id":"SHIP-10","status":"shipped","substatus":"out_for_delivery"}`)
+		case "/shipments/SHIP-10/carrier":
+			w.WriteHeader(http.StatusNotFound)
+		case "/shipments/SHIP-10/costs":
+			_, _ = io.WriteString(w, `{"gross_amount":8.00}`)
+		default:
+			t.Fatalf("unexpected path = %s", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	shipment, err := pricingTestAdapter(server.URL, time.Now().UTC()).GetShipmentInfo(context.Background(), pricingAccountRef(), "SHIP-10")
+	if err != nil {
+		t.Fatalf("GetShipmentInfo() error = %v, want nil (carrier 404 is honest absence)", err)
+	}
+	if shipment.Status != "shipped" {
+		t.Fatalf("Status = %q, want shipped (must survive carrier 404)", shipment.Status)
+	}
+	if shipment.CarrierName != nil || shipment.TrackingURL != nil {
+		t.Fatalf("carrier = name:%#v url:%#v, want both nil", shipment.CarrierName, shipment.TrackingURL)
+	}
+	if shipment.Costs == nil {
+		t.Fatal("Costs = nil, want mapped (carrier failure must not drop costs)")
+	}
+}
+
+func TestGetShipmentInfoCarrierSurvivesCostsDegrade(t *testing.T) {
+	t.Parallel()
+
+	// Carrier is fetched independent of costs: a costs decode failure degrades to
+	// nil Costs, but the carrier fetched before it must still be present.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/shipments/SHIP-11":
+			_, _ = io.WriteString(w, `{"id":"SHIP-11","status":"shipped"}`)
+		case "/shipments/SHIP-11/carrier":
+			_, _ = io.WriteString(w, `{"url":"http://track.example/OP99","name":"Jadlog"}`)
+		case "/shipments/SHIP-11/costs":
+			// Legacy/undecodable cost shape → costs degrade.
+			_, _ = io.WriteString(w, `{"senders":{"cost":5.0}}`)
+		default:
+			t.Fatalf("unexpected path = %s", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	shipment, err := pricingTestAdapter(server.URL, time.Now().UTC()).GetShipmentInfo(context.Background(), pricingAccountRef(), "SHIP-11")
+	if err != nil {
+		t.Fatalf("GetShipmentInfo() error = %v, want degrade", err)
+	}
+	if shipment.Costs != nil {
+		t.Fatalf("Costs = %#v, want nil (undecodable costs)", shipment.Costs)
+	}
+	if shipment.CarrierName == nil || *shipment.CarrierName != "Jadlog" {
+		t.Fatalf("CarrierName = %#v, want Jadlog (carrier must survive costs degrade)", shipment.CarrierName)
+	}
+}
+
 func TestGetShipmentInfoAbsentOptionalsStayNil(t *testing.T) {
 	t.Parallel()
 
@@ -260,6 +401,8 @@ func TestGetShipmentInfoAbsentOptionalsStayNil(t *testing.T) {
 		switch r.URL.Path {
 		case "/shipments/SHIP-3":
 			_, _ = io.WriteString(w, `{"id":"SHIP-3","site_id":"MLB","status":"pending","delayed":null}`)
+		case "/shipments/SHIP-3/carrier":
+			w.WriteHeader(http.StatusNotFound)
 		case "/shipments/SHIP-3/costs":
 			_, _ = io.WriteString(w, `{"gross_amount":12.00}`)
 		default:
@@ -289,7 +432,10 @@ func TestGetShipmentInfoDestinationUFPreservesBareUF(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/shipments/SHIP-4":
-			_, _ = io.WriteString(w, `{"id":"SHIP-4","receiver_address":{"state":{"id":"SP"}}}`)
+			// state.id already a bare UF (no "BR-" prefix) — trim must be a no-op.
+			_, _ = io.WriteString(w, `{"id":"SHIP-4","destination":{"shipping_address":{"state":{"id":"SP","name":"São Paulo"}}}}`)
+		case "/shipments/SHIP-4/carrier":
+			w.WriteHeader(http.StatusNotFound)
 		case "/shipments/SHIP-4/costs":
 			w.WriteHeader(http.StatusNotFound)
 		default:

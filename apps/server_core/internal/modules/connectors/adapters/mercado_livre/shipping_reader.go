@@ -12,13 +12,13 @@ import (
 )
 
 type mlShipmentResponse struct {
-	ID              flexString          `json:"id"`
-	SiteID          string              `json:"site_id"`
-	Status          string              `json:"status"`
-	Substatus       *string             `json:"substatus"`
-	LeadTime        *mlShipmentLeadTime `json:"lead_time"`
-	Delayed         *bool               `json:"delayed"`
-	ReceiverAddress *mlReceiverAddress  `json:"receiver_address"`
+	ID          flexString          `json:"id"`
+	SiteID      string              `json:"site_id"`
+	Status      string              `json:"status"`
+	Substatus   *string             `json:"substatus"`
+	LeadTime    *mlShipmentLeadTime `json:"lead_time"`
+	Delayed     *bool               `json:"delayed"`
+	Destination *mlDestination      `json:"destination"`
 }
 
 // mlSiteCurrency resolves the ISO currency for an ML site_id. The new-format
@@ -82,12 +82,38 @@ type mlEstimatedDeliveryLimit struct {
 	Date *string `json:"date"`
 }
 
-type mlReceiverAddress struct {
-	State *mlShipmentState `json:"state"`
+// mlDestination mirrors the documented new-format GET /shipments/{id}
+// `destination` object (ML docs: gerenciamento-de-envios). Rounds 2–3's decode
+// targeted a `receiver_address` field that does NOT exist in the new-format
+// schema — the buyer delivery address lives under `destination.shipping_address`.
+// Only the fields we actually surface are decoded (state, city name, zip,
+// receiver_name); the many other documented sub-fields (agency, geolocation,
+// scoring, municipality, …) are intentionally ignored (YAGNI).
+type mlDestination struct {
+	ReceiverName    *string            `json:"receiver_name"`
+	ShippingAddress *mlShippingAddress `json:"shipping_address"`
 }
 
-type mlShipmentState struct {
-	ID *string `json:"id"`
+type mlShippingAddress struct {
+	State   *mlNamedRef `json:"state"`
+	City    *mlNamedRef `json:"city"`
+	ZipCode *string     `json:"zip_code"`
+}
+
+// mlNamedRef is the documented `{id, name}` shape ML uses for state and city.
+type mlNamedRef struct {
+	ID   *string `json:"id"`
+	Name *string `json:"name"`
+}
+
+// mlShipmentCarrierResponse is the dedicated GET /shipments/{id}/carrier
+// sub-resource (ML docs: gerenciamento-de-envios) — carrier name + tracking URL
+// only. Fetched with x-format-new:true; a 404/decode failure degrades to a nil
+// carrier (honest absence — ML returns 404 as a normal "none" condition on
+// sibling sub-resources like /delays), never sinking the shipment read.
+type mlShipmentCarrierResponse struct {
+	URL  *string `json:"url"`
+	Name *string `json:"name"`
 }
 
 type mlShipmentCostsResponse struct {
@@ -130,6 +156,11 @@ func (a *CapabilityAdapter) getShipmentInfo(ctx context.Context, accountRef doma
 		return domain.ShipmentInfo{}, mapPricingReaderError(err)
 	}
 
+	// Status/substatus/destino are in hand — build the result now, and fill the
+	// carrier sub-resource independent of costs (carrier survives a costs failure).
+	result := mapShipmentInfo(shipment, a.now())
+	a.fillShipmentCarrier(ctx, accountRef, token, path, &result)
+
 	var costsResponse mlShipmentCostsResponse
 	costsPath := path + "/costs"
 	// The ML shipments /costs endpoint REQUIRES `x-format-new: true`; without it
@@ -138,33 +169,45 @@ func (a *CapabilityAdapter) getShipmentInfo(ctx context.Context, accountRef doma
 	// with New Format").
 	if err := a.doJSONWithHeaders(ctx, accountRef, token, http.MethodGet, costsPath, nil, map[string]string{"x-format-new": "true"}, &costsResponse); err != nil {
 		// A missing shipment (404) OR a costs payload we cannot decode degrades
-		// to a shipment WITHOUT costs — the shipment STATUS from the first call
-		// still stands, so the order's bucket/rastreio survive a costs failure.
+		// to a shipment WITHOUT costs — the shipment STATUS/destino/carrier from
+		// the calls above still stand, so bucket/rastreio survive a costs failure.
 		// Only these two non-fatal codes degrade; auth/transient/rate-limit/
 		// validation still sink the whole read (never silently zero costs).
 		if code := domain.ErrorCodeOf(err); code == domain.ErrCodeProviderInvalidReference || code == domain.ErrCodeProviderPayloadInvalid {
-			return mapShipmentInfo(shipment, a.now()), nil
+			return result, nil
 		}
 		return domain.ShipmentInfo{}, mapPricingReaderError(err)
 	}
 
-	// The shipment status/substatus/rastreio are already in hand; a costs MAPPING
-	// failure (e.g. an amount that fails domain.ValidateMoney) must degrade to the
-	// costs-less shipment exactly like a costs DECODE failure above — it must never
-	// sink the whole read (round-1 invariant: costs failure degrades, status
-	// survives). Currency is resolved from the shipment site (new-format /costs
-	// carries none — see mlSiteCurrency).
-	result := mapShipmentInfo(shipment, a.now())
-	// Prefer the shipment's own site_id; fall back to the account-configured site
-	// (a.siteID) before the BRL default, so a non-BR tenant whose payload omits
-	// site_id is not silently relabelled BRL (unknown ≠ default) — same
-	// firstNonEmpty(input, a.siteID) pattern used on the listing-price path.
+	// A costs MAPPING failure (e.g. an amount that fails domain.ValidateMoney)
+	// degrades to the costs-less shipment exactly like a costs DECODE failure — it
+	// must never sink the whole read (round-1 invariant: costs failure degrades,
+	// status survives). Currency is resolved from the shipment site (new-format
+	// /costs carries none — see mlSiteCurrency); prefer the shipment's own site_id,
+	// fall back to the account-configured site before the BRL default so a non-BR
+	// tenant is not silently relabelled BRL (unknown ≠ default).
 	costs, err := mapShipmentCosts(costsResponse, mlSiteCurrency(firstNonEmpty(shipment.SiteID, a.siteID)))
 	if err != nil {
 		return result, nil
 	}
 	result.Costs = costs
 	return result, nil
+}
+
+// fillShipmentCarrier fetches GET /shipments/{id}/carrier and fills
+// CarrierName/TrackingURL on result. Any degradable failure (404 or a payload
+// we cannot decode) leaves them nil — ML returns 404 as a normal "none"
+// condition on shipment sub-resources (docs: /delays), so this is honest
+// absence, never a WARN. Non-degradable failures (auth/transient/rate-limit)
+// also leave carrier nil rather than sinking the whole shipment read, since the
+// status/costs already in hand are the load-bearing facts.
+func (a *CapabilityAdapter) fillShipmentCarrier(ctx context.Context, accountRef domain.ProviderAccountRef, token, shipmentPath string, result *domain.ShipmentInfo) {
+	var carrier mlShipmentCarrierResponse
+	if err := a.doJSONWithHeaders(ctx, accountRef, token, http.MethodGet, shipmentPath+"/carrier", nil, map[string]string{"x-format-new": "true"}, &carrier); err != nil {
+		return
+	}
+	result.CarrierName = trimmedPtr(carrier.Name)
+	result.TrackingURL = trimmedPtr(carrier.URL)
 }
 
 func (a *CapabilityAdapter) getFreeShippingCost(ctx context.Context, accountRef domain.ProviderAccountRef, token string, query domain.FreeShippingQuery) (domain.FreeShippingCost, error) {
@@ -194,10 +237,22 @@ func mapShipmentInfo(shipment mlShipmentResponse, fetchedAt time.Time) domain.Sh
 		slaDue = parseTimePtr(*shipment.LeadTime.EstimatedDeliveryLimit.Date)
 	}
 
-	var destinationUF *string
-	if shipment.ReceiverAddress != nil && shipment.ReceiverAddress.State != nil && shipment.ReceiverAddress.State.ID != nil {
-		value := strings.TrimPrefix(strings.TrimSpace(*shipment.ReceiverAddress.State.ID), "BR-")
-		destinationUF = &value
+	var destinationUF, destinationCity, destinationZip, receiverName *string
+	if shipment.Destination != nil {
+		receiverName = trimmedPtr(shipment.Destination.ReceiverName)
+		if addr := shipment.Destination.ShippingAddress; addr != nil {
+			if addr.State != nil && addr.State.ID != nil {
+				// state.id is the ML state code, e.g. "BR-SP" → bare UF "SP".
+				value := strings.TrimPrefix(strings.TrimSpace(*addr.State.ID), "BR-")
+				if value != "" {
+					destinationUF = &value
+				}
+			}
+			if addr.City != nil {
+				destinationCity = trimmedPtr(addr.City.Name)
+			}
+			destinationZip = trimmedPtr(addr.ZipCode)
+		}
 	}
 
 	var substatus string
@@ -206,14 +261,33 @@ func mapShipmentInfo(shipment mlShipmentResponse, fetchedAt time.Time) domain.Sh
 	}
 
 	return domain.ShipmentInfo{
-		ID:            strings.TrimSpace(string(shipment.ID)),
-		Status:        strings.TrimSpace(shipment.Status),
-		Substatus:     substatus,
-		SLADue:        slaDue,
-		Delayed:       shipment.Delayed,
-		DestinationUF: destinationUF,
-		FetchedAt:     fetchedAt,
+		ID:              strings.TrimSpace(string(shipment.ID)),
+		Status:          strings.TrimSpace(shipment.Status),
+		Substatus:       substatus,
+		SLADue:          slaDue,
+		Delayed:         shipment.Delayed,
+		DestinationUF:   destinationUF,
+		DestinationCity: destinationCity,
+		DestinationZip:  destinationZip,
+		ReceiverName:    receiverName,
+		FetchedAt:       fetchedAt,
 	}
+}
+
+// trimmedPtr returns a pointer to the trimmed string, or nil when the input is
+// nil or trims to empty. This is how a masked/obfuscated provider value (ML
+// obfuscates buyer address fields until payment is confirmed) degrades to
+// honest absence instead of a fabricated blank (ADR-17) — the caller never
+// warns or errors on a masked value.
+func trimmedPtr(s *string) *string {
+	if s == nil {
+		return nil
+	}
+	trimmed := strings.TrimSpace(*s)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
 }
 
 func mapShipmentCosts(response mlShipmentCostsResponse, currency string) (*domain.ShipmentCosts, error) {

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	connectorsdomain "marketplace-central/apps/server_core/internal/modules/connectors/domain"
 	"marketplace-central/apps/server_core/internal/modules/orders/application"
 	"marketplace-central/apps/server_core/internal/modules/orders/domain"
 	"marketplace-central/apps/server_core/internal/modules/orders/ports"
@@ -328,6 +329,21 @@ type enrichedRastreioDTO struct {
 	// "receiver_absent"). Additive/omitempty: absent when the provider reports
 	// no sub-status, never a fabricated value (ADR-17).
 	Substatus string `json:"substatus,omitempty"`
+	// Transportadora/UrlRastreio come from the shipment /carrier sub-resource.
+	// Additive/omitempty: absent (carrier 404 / not yet dispatched) is honest
+	// absence, never a fabricated carrier (ADR-17).
+	Transportadora string `json:"transportadora,omitempty"`
+	UrlRastreio    string `json:"url_rastreio,omitempty"`
+}
+
+// freteRealDTO surfaces the real shipment freight actuals (from the /costs
+// sub-resource, mapped by the connectors adapter) — distinct from the modeled
+// decomposicao.frete. Every amount is pointer/omitempty: nil means the cost
+// could not be honestly sourced (ADR-17), never a fabricated zero.
+type freteRealDTO struct {
+	Bruto    *float64 `json:"bruto,omitempty"`
+	Receiver *float64 `json:"receiver,omitempty"`
+	Sender   *float64 `json:"sender,omitempty"`
 }
 
 // enrichedItemDTO carries the existing item JSON fields (embedded, so no
@@ -379,6 +395,9 @@ type enrichedOrderDTO struct {
 	ComponentesDesconhecidos []string             `json:"componentes_desconhecidos,omitempty"`
 	SLA                      *enrichedSLADTO      `json:"sla,omitempty"`
 	DestinoUF                *string              `json:"destino_uf,omitempty"`
+	DestinoCep               *string              `json:"destino_cep,omitempty"`
+	Destinatario             *string              `json:"destinatario,omitempty"`
+	FreteReal                *freteRealDTO        `json:"frete_real,omitempty"`
 	Rastreio                 *enrichedRastreioDTO `json:"rastreio,omitempty"`
 	// Bucket is the workflow bucket derived by domain.DeriveOrderBucket. It is
 	// ALWAYS derivable (never empty), so unlike the fields above it is
@@ -422,18 +441,69 @@ func mapEnrichedOrder(e application.EnrichedOrder) enrichedOrderDTO {
 		// (shipping_id column) stays the pre-shipment faturar/enviar proxy. The SQL
 		// summary path shares the tag signal, and the KPI cards derive their counts from
 		// this same per-order bucket (FE), so KPI == Lista by construction.
-		Bucket:                   domain.DeriveOrderBucket(e.Order.Status, shipmentStatusOf(e.Shipment), e.Order.Tags, e.Order.ShippingID != ""),
-		RetornoLiquido:           e.Profitability.RetornoLiquido,
-		MargemPct:                e.Profitability.MargemPct,
-		Decomposicao:             mapDecomposicao(e.Profitability.Decomposition),
-		Difal:                    difalDTO{Amount: e.Profitability.Difal.Amount, UFRoute: e.Profitability.Difal.UFRoute, DueDate: e.Profitability.Difal.DueDate, Paid: e.Profitability.Difal.Paid},
+		Bucket:         domain.DeriveOrderBucket(e.Order.Status, shipmentStatusOf(e.Shipment), e.Order.Tags, e.Order.ShippingID != ""),
+		RetornoLiquido: e.Profitability.RetornoLiquido,
+		MargemPct:      e.Profitability.MargemPct,
+		Decomposicao:   mapDecomposicao(e.Profitability.Decomposition),
+		Difal:          difalDTO{Amount: e.Profitability.Difal.Amount, UFRoute: e.Profitability.Difal.UFRoute, DueDate: e.Profitability.Difal.DueDate, Paid: e.Profitability.Difal.Paid},
 	}
 	if e.Shipment != nil {
 		dto.SLA = &enrichedSLADTO{Due: e.Shipment.SLADue, Atrasado: e.Shipment.Delayed}
 		dto.DestinoUF = e.Shipment.DestinationUF
-		dto.Rastreio = &enrichedRastreioDTO{ShipmentID: e.Shipment.ShipmentID, Status: e.Shipment.Status, Substatus: e.Shipment.Substatus}
+		dto.DestinoCep = e.Shipment.DestinationZip
+		dto.Destinatario = e.Shipment.ReceiverName
+		dto.FreteReal = mapFreteReal(e.Shipment.Costs)
+		dto.Rastreio = &enrichedRastreioDTO{
+			ShipmentID:     e.Shipment.ShipmentID,
+			Status:         e.Shipment.Status,
+			Substatus:      e.Shipment.Substatus,
+			Transportadora: derefString(e.Shipment.CarrierName),
+			UrlRastreio:    derefString(e.Shipment.TrackingURL),
+		}
 	}
 	return dto
+}
+
+// mapFreteReal maps the connectors ShipmentCosts (real freight actuals) onto the
+// transport frete_real block. Returns nil when no costs were resolved so the
+// field is honestly absent (ADR-17); each amount is nil when its Money is nil.
+func mapFreteReal(c *connectorsdomain.ShipmentCosts) *freteRealDTO {
+	if c == nil {
+		return nil
+	}
+	bruto := moneyAmountFloat(c.GrossAmount)
+	receiver := moneyAmountFloat(c.ReceiverCost)
+	sender := moneyAmountFloat(c.SenderCost)
+	// All three amounts unresolvable -> omit the block entirely rather than
+	// emit an empty {}; honest absence, not a fabricated-empty object (ADR-17).
+	if bruto == nil && receiver == nil && sender == nil {
+		return nil
+	}
+	return &freteRealDTO{Bruto: bruto, Receiver: receiver, Sender: sender}
+}
+
+// moneyAmountFloat converts a connectors domain.Money (a validated decimal
+// string amount) to the *float64 the order DTO uses for every money field. It
+// returns nil for a nil Money or an unparseable amount — honest absence, never
+// a fabricated zero (ADR-17).
+func moneyAmountFloat(m *connectorsdomain.Money) *float64 {
+	if m == nil {
+		return nil
+	}
+	v, err := strconv.ParseFloat(m.Amount, 64)
+	if err != nil {
+		return nil
+	}
+	return &v
+}
+
+// derefString returns the pointed-to string, or "" for a nil pointer (so the
+// omitempty DTO field is absent). Used for the additive carrier fields.
+func derefString(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }
 
 // shipmentStatusOf returns the live shipment status, or "" when the shipment
