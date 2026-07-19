@@ -3,11 +3,13 @@ import type { OrderRead } from "@marketplace-central/sdk-runtime";
 import { EmptyState, ErrorState, LoadingState, StatCard } from "@marketplace-central/ui";
 import { ordersQueryKeys, QUERY_STALE_TIME } from "@marketplace-central/web-query";
 import { useState, type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useClient } from "../../app/ClientContext";
 import { useInstallation } from "../../app/InstallationContext";
 import { FilaView } from "./FilaView";
 import { KanbanView } from "./KanbanView";
 import { ListaView } from "./ListaView";
+import { PedidoDrawer } from "./PedidoDrawer";
 import type { PedidosTab } from "./pedidosTabs";
 
 type PedidosView = "fila" | "lista" | "kanban";
@@ -53,6 +55,22 @@ export function PedidosPage() {
   const { installationId } = useInstallation();
   const [tab, setTab] = useState<PedidosTab>("novo");
   const [view, setView] = useState<PedidosView>("fila");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const openOrderId = searchParams.get("order");
+
+  // Deep-link state lives in the `order` query param (not a route path param), so a row/card
+  // click and a shared/bookmarked URL open the same drawer. `replace: true` keeps opening and
+  // closing the drawer out of browser history (G2).
+  const openOrder = (orderId: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("order", orderId);
+    setSearchParams(next, { replace: true });
+  };
+  const closeOrder = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("order");
+    setSearchParams(next, { replace: true });
+  };
 
   const ordersQuery = useQuery({
     queryKey: ordersQueryKeys.list(installationId, {}),
@@ -85,11 +103,11 @@ export function PedidosPage() {
   } else if (ordersQuery.isError) {
     body = <ErrorState onRetry={() => void ordersQuery.refetch()} />;
   } else if (view === "fila") {
-    body = allItems.length === 0 ? <EmptyState /> : <FilaView items={allItems} />;
+    body = allItems.length === 0 ? <EmptyState /> : <FilaView items={allItems} onOpenOrder={openOrder} />;
   } else if (view === "kanban") {
-    body = <KanbanView items={allItems} />;
+    body = <KanbanView items={allItems} onOpenOrder={openOrder} />;
   } else {
-    body = <ListaView items={allItems} tab={tab} onTabChange={setTab} />;
+    body = <ListaView items={allItems} tab={tab} onTabChange={setTab} onOpenOrder={openOrder} />;
   }
 
   return (
@@ -169,6 +187,8 @@ export function PedidosPage() {
       <section aria-labelledby="pedidos-list-title" className="rounded-card border border-border bg-surface p-4">
         <div className="mt-1">{body}</div>
       </section>
+
+      <PedidoDrawer orderId={openOrderId} onClose={closeOrder} />
     </section>
   );
 }

@@ -4,6 +4,7 @@ import { formatDateTime, formatMoney } from "./pedidosFormatters";
 
 export interface FilaViewProps {
   items: OrderRead[];
+  onOpenOrder: (orderId: string) => void;
 }
 
 interface FilaAction {
@@ -47,7 +48,7 @@ function orderDescription(item: OrderRead): string {
   return total ? `${buyer} · ${itemsLabel} · ${total}` : `${buyer} · ${itemsLabel}`;
 }
 
-export function FilaView({ items }: FilaViewProps) {
+export function FilaView({ items, onOpenOrder }: FilaViewProps) {
   const ordered = sortByUrgency(items);
 
   return (
@@ -65,7 +66,17 @@ export function FilaView({ items }: FilaViewProps) {
             return (
               <div
                 key={item.provider_order_id}
-                className={`flex items-center gap-3 px-4 py-3 text-xs ${
+                role="button"
+                tabIndex={0}
+                aria-label={`Abrir detalhe do pedido ${item.provider_code || item.provider_order_id}`}
+                onClick={() => onOpenOrder(item.provider_order_id)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onOpenOrder(item.provider_order_id);
+                  }
+                }}
+                className={`flex cursor-pointer items-center gap-3 px-4 py-3 text-xs hover:bg-surface-2 ${
                   index > 0 ? "border-t border-border-2" : ""
                 } ${atrasado ? "bg-red-50" : ""}`}
               >

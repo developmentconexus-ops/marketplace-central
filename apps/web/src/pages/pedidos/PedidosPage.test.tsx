@@ -1,15 +1,18 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PedidosPage } from "./PedidosPage";
 
 const listOrders = vi.fn();
 const getOrderSummary = vi.fn();
+const getOrder = vi.fn();
 
 vi.mock("../../app/ClientContext", () => ({
   useClient: () => ({
     listOrders: (...args: unknown[]) => listOrders(...args),
     getOrderSummary: (...args: unknown[]) => getOrderSummary(...args),
+    getOrder: (...args: unknown[]) => getOrder(...args),
   }),
 }));
 
@@ -17,11 +20,18 @@ vi.mock("../../app/InstallationContext", () => ({
   useInstallation: () => ({ installationId: "inst_1" }),
 }));
 
-function renderPage() {
+function LocationProbe() {
+  return <output data-testid="location-search">{useLocation().search}</output>;
+}
+
+function renderPage(search = "") {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <PedidosPage />
+      <MemoryRouter initialEntries={[`/pedidos${search}`]}>
+        <PedidosPage />
+        <LocationProbe />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -54,6 +64,7 @@ describe("PedidosPage", () => {
   beforeEach(() => {
     listOrders.mockReset();
     getOrderSummary.mockReset();
+    getOrder.mockReset();
     getOrderSummary.mockResolvedValue({
       today: 0,
       seven_days: 0,
@@ -299,5 +310,75 @@ describe("PedidosPage", () => {
     fireEvent.click(retry);
 
     expect(await screen.findByText("Nenhum registro encontrado.")).toBeInTheDocument();
+  });
+
+  const detailOrder = {
+    ...baseOrder,
+    buyer: { display: "J. S.", city: "São Paulo", uf: "SP" },
+    bucket: "novo" as const,
+    items: [
+      {
+        provider_item_id: "item_1",
+        seller_sku: "PAR-0451",
+        title: "Parafuso M8x40 cx100",
+        quantity: 2,
+        unit_price: 49.9,
+        link_quality: "resolved" as const,
+        custo_unitario: 21.1,
+      },
+    ],
+  };
+
+  it("clicking a row opens the drawer, calls getOrder and sets the ?order= param", async () => {
+    listOrders.mockResolvedValue({ items: [detailOrder], next_cursor: null });
+    getOrder.mockResolvedValue(detailOrder);
+
+    renderPage();
+
+    await screen.findByRole("heading", { name: "Pedidos" });
+    await goToLista();
+    fireEvent.click(await screen.findByText("ML-1001"));
+
+    expect(getOrder).toHaveBeenCalledWith("inst_1", "PO1");
+    await waitFor(() => {
+      expect(screen.getByTestId("location-search")).toHaveTextContent("order=PO1");
+    });
+    expect(await screen.findByText("Parafuso M8x40 cx100")).toBeInTheDocument();
+  });
+
+  it("opening with a ?order= URL opens the drawer with real detail data", async () => {
+    listOrders.mockResolvedValue({ items: [detailOrder], next_cursor: null });
+    getOrder.mockResolvedValue(detailOrder);
+
+    renderPage("?order=PO1");
+
+    expect(getOrder).toHaveBeenCalledWith("inst_1", "PO1");
+    expect(await screen.findByText("J. S.")).toBeInTheDocument();
+  });
+
+  it("renders decomposição/DIFAL and buyer-doc/NF-number/tracking-code as honest '—', and a disabled footer action", async () => {
+    listOrders.mockResolvedValue({ items: [detailOrder], next_cursor: null });
+    getOrder.mockResolvedValue(detailOrder);
+
+    renderPage("?order=PO1");
+
+    await screen.findByText("Parafuso M8x40 cx100");
+    expect(screen.getAllByText("—").length).toBeGreaterThan(0);
+    const footerAction = screen.getByRole("button", { name: "Faturar via ERP" });
+    expect(footerAction).toBeDisabled();
+  });
+
+  it("closing the drawer clears the ?order= param", async () => {
+    listOrders.mockResolvedValue({ items: [detailOrder], next_cursor: null });
+    getOrder.mockResolvedValue(detailOrder);
+
+    renderPage("?order=PO1");
+
+    await screen.findByText("Parafuso M8x40 cx100");
+    fireEvent.click(screen.getByRole("button", { name: "Fechar detalhe do pedido" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location-search")).not.toHaveTextContent("order=PO1");
+    });
   });
 });

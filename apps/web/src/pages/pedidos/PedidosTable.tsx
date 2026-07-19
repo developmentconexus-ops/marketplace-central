@@ -6,6 +6,7 @@ export interface PedidosTableProps {
   items: OrderRead[];
   selectedKeys?: ReadonlySet<string>;
   onSelectionChange?: (next: Set<string>) => void;
+  onRowClick?: (item: OrderRead) => void;
 }
 
 function stateTag(label: string, className = "bg-slate-100 text-slate-700") {
@@ -103,7 +104,7 @@ const columns: DataTableColumn<OrderRead>[] = [
   },
 ];
 
-export function PedidosTable({ items, selectedKeys, onSelectionChange }: PedidosTableProps) {
+export function PedidosTable({ items, selectedKeys, onSelectionChange, onRowClick }: PedidosTableProps) {
   return (
     <div className="overflow-x-auto">
       <div style={{ minWidth: "980px" }}>
@@ -113,6 +114,7 @@ export function PedidosTable({ items, selectedKeys, onSelectionChange }: Pedidos
           rowKey={(item) => item.provider_order_id}
           selectedKeys={selectedKeys}
           onSelectionChange={onSelectionChange}
+          onRowClick={onRowClick}
         />
       </div>
     </div>

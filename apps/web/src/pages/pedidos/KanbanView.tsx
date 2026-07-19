@@ -4,6 +4,7 @@ import { actionLabelForBucket, formatMoney } from "./pedidosFormatters";
 
 export interface KanbanViewProps {
   items: OrderRead[];
+  onOpenOrder: (orderId: string) => void;
 }
 
 const columnDefs: { bucket: OrderBucket; title: string }[] = [
@@ -13,11 +14,23 @@ const columnDefs: { bucket: OrderBucket; title: string }[] = [
   { bucket: "enviado", title: "ENVIADOS" },
 ];
 
-function KanbanCard({ item }: { item: OrderRead }) {
+function KanbanCard({ item, onOpenOrder }: { item: OrderRead; onOpenOrder: (orderId: string) => void }) {
   const label = actionLabelForBucket(item.bucket);
   const money = formatMoney(item.total);
   return (
-    <div className="flex flex-col gap-1 rounded-lg border border-border bg-surface p-3 text-xs">
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label={`Abrir detalhe do pedido ${item.provider_code || item.provider_order_id}`}
+      onClick={() => onOpenOrder(item.provider_order_id)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpenOrder(item.provider_order_id);
+        }
+      }}
+      className="flex cursor-pointer flex-col gap-1 rounded-lg border border-border bg-surface p-3 text-xs hover:border-accent"
+    >
       <div className="flex items-center gap-2">
         <span className="font-mono text-[11px] text-faint">{item.provider_code || item.provider_order_id}</span>
         <span className="ml-auto font-mono font-semibold">{money ?? <UnknownValue />}</span>
@@ -44,7 +57,7 @@ function formatSlaLabel(item: OrderRead): string {
   return item.sla?.due ? "com prazo de envio" : "sem SLA de envio";
 }
 
-export function KanbanView({ items }: KanbanViewProps) {
+export function KanbanView({ items, onOpenOrder }: KanbanViewProps) {
   return (
     <div className="flex flex-col gap-2">
       <p className="text-xs text-faint">
@@ -60,7 +73,7 @@ export function KanbanView({ items }: KanbanViewProps) {
               </div>
               <div className="flex flex-col gap-2">
                 {cards.map((item) => (
-                  <KanbanCard key={item.provider_order_id} item={item} />
+                  <KanbanCard key={item.provider_order_id} item={item} onOpenOrder={onOpenOrder} />
                 ))}
               </div>
             </div>

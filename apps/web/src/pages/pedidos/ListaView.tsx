@@ -8,6 +8,7 @@ export interface ListaViewProps {
   items: OrderRead[];
   tab: PedidosTab;
   onTabChange: (tab: PedidosTab) => void;
+  onOpenOrder: (orderId: string) => void;
 }
 
 const placeholderCopy: Record<string, string> = {
@@ -16,7 +17,7 @@ const placeholderCopy: Record<string, string> = {
   devolucao: "Devoluções — em breve: fluxo de tratativa e reintegração de estoque",
 };
 
-export function ListaView({ items, tab, onTabChange }: ListaViewProps) {
+export function ListaView({ items, tab, onTabChange, onOpenOrder }: ListaViewProps) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   // Selection is scoped to a single tab's rows; switching tabs invalidates the row keys shown.
@@ -60,7 +61,12 @@ export function ListaView({ items, tab, onTabChange }: ListaViewProps) {
         <EmptyState />
       ) : (
         <>
-          <PedidosTable items={visibleItems} selectedKeys={selected} onSelectionChange={setSelected} />
+          <PedidosTable
+            items={visibleItems}
+            selectedKeys={selected}
+            onSelectionChange={setSelected}
+            onRowClick={(item) => onOpenOrder(item.provider_order_id)}
+          />
           {selected.size > 0 ? (
             <div className="flex items-center gap-3 rounded-card border border-border bg-surface px-4 py-2 text-sm text-muted">
               <b className="text-ink">{selected.size} selecionado(s)</b>
