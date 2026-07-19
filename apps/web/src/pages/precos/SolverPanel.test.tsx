@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PricingSolveResponse } from "@marketplace-central/sdk-runtime";
 import { SolverPanel } from "./SolverPanel";
 
-const pricingSolveTarget = vi.fn<[unknown], Promise<PricingSolveResponse>>();
+const pricingSolveTarget = vi.fn<(input: unknown) => Promise<PricingSolveResponse>>();
 
 vi.mock("../../app/ClientContext", () => ({
   useClient: () => ({ pricingSolveTarget }),

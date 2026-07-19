@@ -134,7 +134,7 @@ export function PricingPage() {
       }),
     enabled: installationId !== "" && selected !== null,
   });
-  const listingId = listingQuery.data?.items[0]?.listing_id ?? null;
+  const listingId = listingQuery.data?.groups[0]?.listings[0]?.listing_id ?? null;
 
   // Working price: explicit input wins, else the product's current price.
   const preco = precoInput.trim() !== "" ? precoInput.trim() : selected?.current_price.amount ?? "";

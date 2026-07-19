@@ -273,6 +273,118 @@ func TestSolveTargetReachable(t *testing.T) {
 	}
 }
 
+// TestDecomposeInvalidDecimalInputsReturnErrNotPanic asserts that empty or
+// unparseable client decimal strings are rejected as ErrInvalidPrice (422)
+// before the frozen no-error domain ports parse them — never a panic. Regression
+// for the M-07 post-merge RED: POST /pricing/decompose {"preco":"100.00"} (empty
+// commission) and POST /pricing/solve {} panicked in domain mustRat.
+func TestDecomposeInvalidDecimalInputsReturnErrNotPanic(t *testing.T) {
+	cases := []struct {
+		name string
+		req  application.DecomposeRequest
+	}{
+		{"empty preco", application.DecomposeRequest{Preco: "", ComissaoPct: "12", Modalidade: domain.ModalidadeClassico}},
+		{"empty commission, valid price", application.DecomposeRequest{Preco: "100.00", ComissaoPct: "", Modalidade: domain.ModalidadeClassico}},
+		{"empty preco and empty commission", application.DecomposeRequest{Preco: "", ComissaoPct: "", Modalidade: domain.ModalidadeClassico}},
+		{"unparseable commission", application.DecomposeRequest{Preco: "100.00", ComissaoPct: "abc", Modalidade: domain.ModalidadeClassico}},
+		{"empty tarifa_full override", application.DecomposeRequest{Preco: "100.00", ComissaoPct: "12", TarifaFull: strptr(""), Modalidade: domain.ModalidadeClassico}},
+		{"empty custo override", application.DecomposeRequest{Preco: "100.00", ComissaoPct: "12", Custo: strptr(""), Modalidade: domain.ModalidadeClassico}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := newService(newFakeRepo(), fakeCost{}, nil)
+			err := recoverErr(func() error {
+				_, e := svc.Decompose(context.Background(), tc.req)
+				return e
+			})
+			if !errors.Is(err, application.ErrInvalidPrice) {
+				t.Fatalf("err = %v, want ErrInvalidPrice (never panic)", err)
+			}
+		})
+	}
+}
+
+func TestSolveTargetInvalidDecimalInputsReturnErrNotPanic(t *testing.T) {
+	cases := []struct {
+		name string
+		req  application.SolveRequest
+	}{
+		{"empty everything (POST /pricing/solve {})", application.SolveRequest{Modalidade: domain.ModalidadeClassico}},
+		{"empty target margin, valid commission", application.SolveRequest{TargetMargemPct: "", ComissaoPct: "16", Modalidade: domain.ModalidadeClassico}},
+		{"valid target, empty commission", application.SolveRequest{TargetMargemPct: "20", ComissaoPct: "", Modalidade: domain.ModalidadeClassico}},
+		{"unparseable target", application.SolveRequest{TargetMargemPct: "x", ComissaoPct: "16", Modalidade: domain.ModalidadeClassico}},
+		{"empty frete override", application.SolveRequest{TargetMargemPct: "20", ComissaoPct: "16", FreteProduto: strptr(""), Modalidade: domain.ModalidadeClassico}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := newService(newFakeRepo(), fakeCost{}, nil)
+			err := recoverErr(func() error {
+				_, e := svc.SolveTarget(context.Background(), tc.req)
+				return e
+			})
+			if !errors.Is(err, application.ErrInvalidPrice) {
+				t.Fatalf("err = %v, want ErrInvalidPrice (never panic)", err)
+			}
+		})
+	}
+}
+
+// TestProfileSourcedUnparseableTarifaFullReturnsErrNotPanic covers the resolved
+// (profile-sourced) tarifa_full path: PutProfile persists tarifa_full without a
+// parse check, so a malformed stored value reaches the domain via
+// resolveTarifaFull even when the request carries no override. Both Decompose
+// and SolveTarget (modalidade=full) must reject it as ErrInvalidPrice, not panic.
+func TestProfileSourcedUnparseableTarifaFullReturnsErrNotPanic(t *testing.T) {
+	newRepoWithBadTarifa := func() *fakeCalcRepo {
+		repo := newFakeRepo()
+		repo.profile = &domain.CalcProfile{
+			Regime: domain.RegimeSimples, AliquotaPct: "4", LimiarVerdePct: "18", LimiarAmareloPct: "10",
+			TarifaFull: &domain.Money{Amount: "NaN", Currency: "BRL"}, Origem: "operator",
+		}
+		return repo
+	}
+	custo := "40.00"
+
+	t.Run("decompose", func(t *testing.T) {
+		svc := newService(newRepoWithBadTarifa(), fakeCost{}, nil)
+		err := recoverErr(func() error {
+			_, e := svc.Decompose(context.Background(), application.DecomposeRequest{
+				Preco: "100.00", ComissaoPct: "12", Modalidade: domain.ModalidadeFull, Custo: &custo,
+			})
+			return e
+		})
+		if !errors.Is(err, application.ErrInvalidPrice) {
+			t.Fatalf("err = %v, want ErrInvalidPrice (never panic)", err)
+		}
+	})
+
+	t.Run("solve", func(t *testing.T) {
+		svc := newService(newRepoWithBadTarifa(), fakeCost{}, nil)
+		err := recoverErr(func() error {
+			_, e := svc.SolveTarget(context.Background(), application.SolveRequest{
+				TargetMargemPct: "15", ComissaoPct: "12", Modalidade: domain.ModalidadeFull, Custo: &custo,
+			})
+			return e
+		})
+		if !errors.Is(err, application.ErrInvalidPrice) {
+			t.Fatalf("err = %v, want ErrInvalidPrice (never panic)", err)
+		}
+	})
+}
+
+// recoverErr runs fn and converts a panic into an error so the test asserts the
+// no-panic contract explicitly rather than crashing the run.
+func recoverErr(fn func() error) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = errors.New("panicked")
+		}
+	}()
+	return fn()
+}
+
+func strptr(s string) *string { return &s }
+
 func containsStr(xs []string, want string) bool {
 	for _, x := range xs {
 		if x == want {

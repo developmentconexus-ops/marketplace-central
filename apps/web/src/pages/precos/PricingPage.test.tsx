@@ -69,7 +69,7 @@ const difalList: PricingDifalListResponse = {
 
 const getPricingProfile = vi.fn(() => Promise.resolve(profile));
 const listCatalogProductFacts = vi.fn(() => Promise.resolve(productFactsPage));
-const pricingDecompose = vi.fn(() => Promise.resolve(decompose));
+const pricingDecompose = vi.fn((_req: unknown) => Promise.resolve(decompose));
 const pricingSolveTarget = vi.fn();
 const putPricingProfile = vi.fn((next: PricingCalcProfile) => Promise.resolve(next));
 const listPricingDifal = vi.fn(() => Promise.resolve(difalList));
@@ -78,7 +78,19 @@ const listIntegrationInstallations = vi.fn(() =>
   Promise.resolve({ items: [{ installation_id: "inst_test" }] }),
 );
 const listListingsByProduct = vi.fn(() =>
-  Promise.resolve({ items: [{ listing_id: "MLB3758134295" }], next_cursor: null, page_size: 1 }),
+  Promise.resolve({
+    groups: [
+      {
+        product_id: "90001",
+        product_title: null,
+        listing_count: 1,
+        group_state: "ok",
+        listings: [{ listing_id: "MLB3758134295" }],
+      },
+    ],
+    next_cursor: null,
+    page_size: 1,
+  }),
 );
 
 // The market comparison + apply panels own their own client seams/mutations; the

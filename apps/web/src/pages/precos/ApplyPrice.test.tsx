@@ -41,7 +41,7 @@ const preview: MutationPreview = {
   ],
 };
 
-const createMutation = vi.fn(() => Promise.resolve(draft));
+const createMutation = vi.fn((_input: unknown) => Promise.resolve(draft));
 const previewMutation = vi.fn(() => Promise.resolve(preview));
 // The write-path executor must never be reachable from this surface.
 const approveMutation = vi.fn(() => Promise.reject(new Error("approve must not be called")));

@@ -186,6 +186,16 @@ func (s CalcService) Decompose(ctx context.Context, req DecomposeRequest) (Decom
 	if !priceIsPositive(req.Preco) {
 		return DecomposeResult{}, ErrInvalidPrice
 	}
+	// The frozen domain ports (domain.Decompose) parse every forwarded decimal
+	// string via ParseRat and panic on failure. Validate each client-supplied
+	// decimal here so an empty/unparseable field is a 422 (ADR-17 honest
+	// rejection), never a panic. Preco is already guarded above.
+	if !decimalIsParseable(req.ComissaoPct) ||
+		!optionalDecimalIsParseable(req.TarifaFull) ||
+		!optionalDecimalIsParseable(req.FreteProduto) ||
+		!optionalDecimalIsParseable(req.Custo) {
+		return DecomposeResult{}, ErrInvalidPrice
+	}
 	profile, err := s.repo.GetProfile(ctx, s.tenantID)
 	if err != nil {
 		return DecomposeResult{}, err
@@ -202,6 +212,13 @@ func (s CalcService) Decompose(ctx context.Context, req DecomposeRequest) (Decom
 		TarifaFull:   resolveTarifaFull(req.TarifaFull, profile),
 		FreteProduto: optionalMoney(req.FreteProduto),
 		Custo:        custo,
+	}
+	// The effective tarifa_full may come from the profile (PutProfile persists
+	// tarifa_full without a parse check), not just the request override guarded
+	// above — validate the resolved value so a malformed stored profile is a
+	// 422, never a domain-layer mustRat panic in decompose.go.
+	if in.TarifaFull != nil && !decimalIsParseable(in.TarifaFull.Amount) {
+		return DecomposeResult{}, ErrInvalidPrice
 	}
 	s.applyDifal(ctx, profile, &in.DifalEnabled, &in.DestinoUF, &in.EfetivoPct)
 	return DecomposeResult{Decomposition: domain.Decompose(in), BlockingState: blocking}, nil
@@ -231,6 +248,17 @@ type SolveOutput struct {
 // target is NOT an error: Result.Reached=false + CeilingPct is returned as a
 // 200 UNREACHABLE_TARGET by transport. Unknown ProductID ⇒ ErrItemNotFound.
 func (s CalcService) SolveTarget(ctx context.Context, req SolveRequest) (SolveOutput, error) {
+	// domain.SolveTargetPrice forwards every decimal string below into the frozen
+	// no-error domain ports, which parse via ParseRat and panic on failure.
+	// Reject empty/unparseable client decimals here as a 422 (ADR-17) so no
+	// API-reachable solve path can panic.
+	if !decimalIsParseable(req.TargetMargemPct) ||
+		!decimalIsParseable(req.ComissaoPct) ||
+		!optionalDecimalIsParseable(req.TarifaFull) ||
+		!optionalDecimalIsParseable(req.FreteProduto) ||
+		!optionalDecimalIsParseable(req.Custo) {
+		return SolveOutput{}, ErrInvalidPrice
+	}
 	profile, err := s.repo.GetProfile(ctx, s.tenantID)
 	if err != nil {
 		return SolveOutput{}, err
@@ -247,6 +275,12 @@ func (s CalcService) SolveTarget(ctx context.Context, req SolveRequest) (SolveOu
 		TarifaFull:      resolveTarifaFull(req.TarifaFull, profile),
 		FreteProduto:    optionalMoney(req.FreteProduto),
 		Custo:           custo,
+	}
+	// See Decompose: the resolved tarifa_full may be a profile-sourced value
+	// that PutProfile never parse-checked; guard it before the solver forwards
+	// it into the frozen domain ports (mustRat).
+	if in.TarifaFull != nil && !decimalIsParseable(in.TarifaFull.Amount) {
+		return SolveOutput{}, ErrInvalidPrice
 	}
 	s.applyDifal(ctx, profile, &in.DifalEnabled, &in.DestinoUF, &in.EfetivoPct)
 	return SolveOutput{Result: domain.SolveTargetPrice(in), BlockingState: blocking}, nil
@@ -324,6 +358,21 @@ func rateInRange(pct string) bool {
 		return false
 	}
 	return r.Cmp(big.NewRat(0, 1)) >= 0 && r.Cmp(big.NewRat(35, 1)) <= 0
+}
+
+// decimalIsParseable reports whether s is a decimal the domain layer can parse.
+// The frozen no-error domain ports call ParseRat on every forwarded decimal
+// string and panic on failure, so an empty or malformed client value must be
+// rejected before the domain call (rendered 422 by transport).
+func decimalIsParseable(s string) bool {
+	_, err := domain.ParseRat(s)
+	return err == nil
+}
+
+// optionalDecimalIsParseable is decimalIsParseable for an optional override:
+// an absent (nil) field is valid; a present one must parse.
+func optionalDecimalIsParseable(s *string) bool {
+	return s == nil || decimalIsParseable(*s)
 }
 
 func priceIsPositive(preco string) bool {

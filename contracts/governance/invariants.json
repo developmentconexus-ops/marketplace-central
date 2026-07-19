@@ -29,6 +29,22 @@
       "occurrences": [],
       "reason": "Two current migrations use numeric prefix 0021.",
       "removal_owner": "M-08/F-03"
+    },
+    {
+      "id": "production-panic-pricing-decompose-mustrat",
+      "rule_id": "production-panic",
+      "paths": ["apps/server_core/internal/modules/pricing/domain/decompose.go"],
+      "occurrences": [{ "path": "apps/server_core/internal/modules/pricing/domain/decompose.go", "symbol": "mustRat", "fingerprint": "panic(err)", "count": 1 }],
+      "reason": "mustRat backs round2, the 2dp rounding primitive whose inputs are FormatRatHalfUp output (provably parseable); every input-derived decimal is validated at the application layer (calc_service Decompose/SolveTarget INVALID_PRICE guards, 422) before reaching the frozen no-error IC-04 ports domain.Decompose/SolveTargetPrice, so the panic is unreachable from the API. Threading an error would break the frozen port signatures and every round2 call site.",
+      "removal_owner": "M-10"
+    },
+    {
+      "id": "production-panic-pricing-difal-efetivo",
+      "rule_id": "production-panic",
+      "paths": ["apps/server_core/internal/modules/pricing/domain/difal.go"],
+      "occurrences": [{ "path": "apps/server_core/internal/modules/pricing/domain/difal.go", "symbol": "computeEfetivoPct", "fingerprint": "panic(err)", "count": 2 }],
+      "reason": "computeEfetivoPct feeds domain.DifalForUF, the frozen S3 IC-04 read port (no error in its signature, consumed by M-08) via ports.DifalForUF and transport; its inputs are DB-NUMERIC-typed (interna_pct/interestadual_pct) or rateInRange-gated override writes, with no verified client-input path (hub-analyst verified @594d7a48). Threading an error would break the frozen port and its four call sites.",
+      "removal_owner": "M-10"
     }
   ]
 }
