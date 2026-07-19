@@ -97,6 +97,7 @@ import (
 	pricingfee "marketplace-central/apps/server_core/internal/modules/pricing/adapters/feeschedule"
 	pricingmarket "marketplace-central/apps/server_core/internal/modules/pricing/adapters/marketplace"
 	pricingpostgres "marketplace-central/apps/server_core/internal/modules/pricing/adapters/postgres"
+	pricingtariffdefaults "marketplace-central/apps/server_core/internal/modules/pricing/adapters/tariffdefaults"
 	pricingapp "marketplace-central/apps/server_core/internal/modules/pricing/application"
 	pricingtransport "marketplace-central/apps/server_core/internal/modules/pricing/transport"
 	productlinkspostgres "marketplace-central/apps/server_core/internal/modules/product_links/adapters/postgres"
@@ -713,7 +714,14 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		calcRepo := pricingpostgres.NewCalcRepository(pool)
 		calcCost := pricingcostread.NewReader(profitabilityinternalread.NewFactReader(internalReadSvc))
 		calcProducts := pricingcatalog.NewProductChecker(catalogSvc)
-		calcSvc := pricingapp.NewCalcService(calcRepo, calcCost, calcProducts, cfg.DefaultTenantID)
+		// CHIP-T1: tariff defaults store + degrau-4 resolver (installation "" =
+		// default-installation sentinel for the single-installation demo). calcRepo
+		// implements ports.TariffDefaultsStore; the resolver reads config-seeded
+		// comissão/frete so an empty comissao_pct resolves and frete honors policy.
+		calcTariffResolver := pricingtariffdefaults.NewResolver(calcRepo, cfg.DefaultTenantID, "")
+		calcSvc := pricingapp.NewCalcService(calcRepo, calcCost, calcProducts, cfg.DefaultTenantID).
+			WithTariffStore(calcRepo).
+			WithTariffResolver(calcTariffResolver)
 		pricingHandler = pricingHandler.WithCalc(calcSvc)
 	}
 	pricingHandler.Register(mux)
