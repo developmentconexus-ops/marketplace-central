@@ -4,12 +4,29 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
 
 	"marketplace-central/apps/server_core/internal/modules/connectors/domain"
 )
+
+// logProviderReadFailure surfaces a provider read fault at the adapter boundary,
+// wrap-proof. The composition observeProviderFailure hook relies on
+// errors.As(&CapabilityError), which the connectors service layer can wrap away
+// on some routes (own-item pricing / price-to-win emitted NO warn in the
+// live-drive reprova, D-86). Logging err.Error() here — where it is still the
+// fresh CapabilityError carrying providerDiag's `METHOD path -> HTTP nnn: body`
+// — guarantees the raw route+status+body is always captured. The URL path holds
+// no secret (the token rides the Authorization header, never the query).
+func logProviderReadFailure(operation, itemID string, err error) {
+	slog.Default().Warn("market pricing provider failure",
+		"operation", operation,
+		"item_id", itemID,
+		"provider_error", err.Error(),
+	)
+}
 
 type mlOwnItemPricingResponse struct {
 	Amount        *json.Number `json:"amount"`
@@ -39,6 +56,7 @@ func (a *CapabilityAdapter) getOwnItemPricing(ctx context.Context, accountRef do
 	query.Set("context", "channel_marketplace")
 	path := "/items/" + url.PathEscape(itemID) + "/sale_price?" + query.Encode()
 	if err := a.doJSON(ctx, accountRef, token, http.MethodGet, path, nil, &response); err != nil {
+		logProviderReadFailure("GetOwnItemPricing", itemID, err)
 		return domain.OwnItemPricing{}, mapPricingReaderError(err)
 	}
 
@@ -63,6 +81,7 @@ func (a *CapabilityAdapter) getPriceToWin(ctx context.Context, accountRef domain
 	var response mlPriceToWinResponse
 	path := "/items/" + url.PathEscape(itemID) + "/price_to_win?version=v2"
 	if err := a.doJSON(ctx, accountRef, token, http.MethodGet, path, nil, &response); err != nil {
+		logProviderReadFailure("GetPriceToWin", itemID, err)
 		return domain.PriceToWin{}, mapPricingReaderError(err)
 	}
 

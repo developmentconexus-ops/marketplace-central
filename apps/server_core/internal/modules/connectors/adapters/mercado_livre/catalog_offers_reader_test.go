@@ -276,6 +276,31 @@ func TestListCatalogOffersDecodeFailureSurfacesRouteAndBody(t *testing.T) {
 	}
 }
 
+func TestListCatalogOffersDecodesNumericSellerID(t *testing.T) {
+	t.Parallel()
+
+	// Live ML returns seller_id as a NUMBER (e.g. 691607102), not a string. A
+	// `SellerID string` field failed json.Unmarshal on the 2xx body and sank all
+	// 16 real offers behind a blind PAYLOAD_INVALID (live-drive reprova, D-86).
+	// flexString tolerates both shapes exactly like the x-format-new shipment id.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/products/MLB-CATALOG" {
+			_, _ = io.WriteString(w, `{"children_ids":[]}`)
+			return
+		}
+		_, _ = io.WriteString(w, `{"paging":{"total":1,"offset":0,"limit":100},"results":[{"item_id":"MLB4735328201","seller_id":691607102,"price":169.99,"currency_id":"BRL","condition":"new","shipping":{"mode":"me2"}}]}`)
+	}))
+	defer server.Close()
+
+	offers, err := catalogOffersTestAdapter(server.URL, true).ListCatalogOffers(context.Background(), pricingAccountRef(), "MLB-CATALOG")
+	if err != nil {
+		t.Fatalf("ListCatalogOffers() error = %v", err)
+	}
+	if len(offers) != 1 || offers[0].SellerID != "691607102" || offers[0].Price == nil || offers[0].Price.Amount != "169.99" {
+		t.Fatalf("offers = %#v", offers)
+	}
+}
+
 func catalogOffersTestAdapter(baseURL string, enabled bool) *CapabilityAdapter {
 	return NewCapabilityAdapter(CapabilityAdapterConfig{
 		BaseURL:              baseURL,
