@@ -389,24 +389,27 @@ func TestHandleReadListEmitsDerivedBucket(t *testing.T) {
 	}
 }
 
-func TestMapEnrichedOrderSetsBucketFromShipmentPresence(t *testing.T) {
+func TestMapEnrichedOrderDerivesBucketFromShippingID(t *testing.T) {
 	order := enrichedOrderModels()[1]
 	order.Status = "paid"
+	order.ShippingID = ""
 
-	withoutShipment := application.EnrichedOrder{Order: order}
-	if dto := mapEnrichedOrder(withoutShipment); dto.Bucket != domain.BucketFaturar {
-		t.Fatalf("bucket = %q, want %q (paid, no shipment)", dto.Bucket, domain.BucketFaturar)
+	withoutShipping := application.EnrichedOrder{Order: order}
+	if dto := mapEnrichedOrder(withoutShipping); dto.Bucket != domain.BucketFaturar {
+		t.Fatalf("bucket = %q, want %q (paid, no shipping_id)", dto.Bucket, domain.BucketFaturar)
 	}
 
-	withShipment := application.EnrichedOrder{
-		Order:    order,
-		Shipment: &application.ShipmentEnrichment{ShipmentID: "ship-1", Status: "shipped"},
-	}
-	if dto := mapEnrichedOrder(withShipment); dto.Bucket != domain.BucketEnviar {
-		t.Fatalf("bucket = %q, want %q (paid, with shipment)", dto.Bucket, domain.BucketEnviar)
+	// shipping_id column present but the live shipment fetch failed (Shipment nil): the bucket
+	// must STILL be enviar, matching the summary by_status path (order_repo.go keys off the
+	// shipping_id column). The two paths must never diverge on the same order (P6 dual-gate finding).
+	shipped := order
+	shipped.ShippingID = "ship-col-1"
+	withShippingNoFetch := application.EnrichedOrder{Order: shipped}
+	if dto := mapEnrichedOrder(withShippingNoFetch); dto.Bucket != domain.BucketEnviar {
+		t.Fatalf("bucket = %q, want %q (paid, shipping_id present, live shipment fetch nil)", dto.Bucket, domain.BucketEnviar)
 	}
 
-	dtoJSON, err := json.Marshal(mapEnrichedOrder(withShipment))
+	dtoJSON, err := json.Marshal(mapEnrichedOrder(withShippingNoFetch))
 	if err != nil {
 		t.Fatalf("marshal dto: %v", err)
 	}

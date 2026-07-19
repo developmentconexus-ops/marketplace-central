@@ -4547,6 +4547,9 @@ components:
         - provider_updated_at
         - items
         - payments
+        - bucket
+        - decomposicao
+        - difal
       properties:
         provider_order_id:
           type: string

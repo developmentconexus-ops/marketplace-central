@@ -411,7 +411,12 @@ func mapEnrichedOrder(e application.EnrichedOrder) enrichedOrderDTO {
 		VinculoStatus:            string(e.VinculoStatus),
 		Buyer:                    enrichedBuyerDTO{Display: e.Buyer.Display, City: e.Buyer.City, UF: e.Buyer.UF},
 		ComponentesDesconhecidos: e.ComponentesDesconhecidos,
-		Bucket:                   domain.DeriveOrderBucket(e.Order.Status, e.Shipment != nil),
+		// hasShipment keys off the shipping_id column (present on the read model), NOT the
+		// live shipment fetch (e.Shipment), so this per-order bucket stays consistent with the
+		// summary by_status counts (order_repo.go GetOrderBucketCounts uses the same signal) even
+		// when the live GetShipmentInfo call transiently fails. The live e.Shipment still drives
+		// the SLA/rastreio display below.
+		Bucket:                   domain.DeriveOrderBucket(e.Order.Status, e.Order.ShippingID != ""),
 		RetornoLiquido:           e.Profitability.RetornoLiquido,
 		MargemPct:                e.Profitability.MargemPct,
 		Decomposicao:             mapDecomposicao(e.Profitability.Decomposition),
