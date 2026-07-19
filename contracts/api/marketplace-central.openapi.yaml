@@ -4724,7 +4724,7 @@ components:
           nullable: true
         due_date:
           type: string
-          format: date
+          format: date-time
           nullable: true
         paid:
           type: boolean

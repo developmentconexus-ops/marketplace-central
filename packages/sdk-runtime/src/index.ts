@@ -641,8 +641,8 @@ export interface OrderRead {
   bucket: OrderBucket;
   retorno_liquido?: number | null;
   margem_pct?: number | null;
-  decomposicao?: OrderDecomposicao;
-  difal?: OrderDifal;
+  decomposicao: OrderDecomposicao;
+  difal: OrderDifal;
 }
 
 export interface OrderPage {
