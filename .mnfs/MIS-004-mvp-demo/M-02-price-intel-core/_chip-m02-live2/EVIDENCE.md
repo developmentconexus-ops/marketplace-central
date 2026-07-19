@@ -4,7 +4,7 @@
 - **Finding / ledger:** FINDING-M02-LIVE-2 (D-86) — demo-critical (competitor-price path)
 - **Branch:** `chip/m02-live2`
 - **Base SHA:** `910d819688b5db64a870ccc26d464b14d32ffd0a` (main tip, hub-granted)
-- **Tip SHA:** `7fde1998ebc4f6ae38fbcde8945a7df24d1947a8`
+- **Tip SHA:** `0d2fa26a616cdbbc6ce015867548de175099d761` (post-P6 remediation)
 - **Owned seam:** `connectors/adapters/mercado_livre/{catalog_offers_reader,pricing_reader}.go`
   + the market-collection error/observability boundary in
   `composition/market_adapters.go` (the `marketPriceIntelCollectorAdapter`
@@ -26,6 +26,8 @@
 | `2cb1ba5d` | `fix(market): reserve ErrCatalogOffersUnavailable for the flag-off path only` | D1 |
 | `e0eedac4` | `fix(market): resolve catalog offers via parent product then child leaves` | D2 |
 | `7fde1998` | `feat(market): warn-once on provider-body faults at the collection boundary` | Observability |
+| `b421ed6` | `fix(market): parent fanout skips blank child and tolerates a 404 leaf` | D2 (P6 remediation) |
+| `0d2fa26` | `fix(market): redact non-Bearer credentials in logged provider body` | Observability (P6 remediation) |
 
 ## Defect reconciliation
 
@@ -49,6 +51,28 @@
 - `go vet` connectors + market + composition — exit 0
 - `go test ./internal/modules/connectors/... ./internal/modules/market/... ./internal/composition/` — all ok
 - `GOCACHE=<repo>/.gocache` (absolute), no GOFLAGS. Zero ML writes, no server boot, no `.env`.
+
+## P6 dual-gate remediation
+
+Cold Opus reviewer returned PASS on tip `7fde1998`. The adversarial reviewer
+returned FAIL on two real, provable defects; both accepted and fixed (the doc
+comment claimed "token-redacted" and the provider body is provider-controlled, so
+both were in-scope, not out-of-threat-model):
+
+1. **Non-Bearer token leak** — `sanitizeProviderBody` redacted only `Bearer X`; an
+   ML token echoed as a bare `APP_USR-`/`TG-` value or in an
+   `access_token`/`refresh_token`/`client_secret` JSON field/query param leaked.
+   Fixed in `0d2fa26` (broadened redaction, runs before truncation).
+   Guard: `TestSanitizeProviderBodyRedactsNonBearerCredentials` (leak inputs +
+   benign no-over-redact).
+2. **Parent aggregate nuked by one child** — a single child fault (or a blank
+   `children_ids` entry → `/products//items`) discarded all sibling offers.
+   Fixed in `b421ed6`: blank refs skipped; a 404 leaf contributes zero (honest);
+   only an UNKNOWN fault aborts (no silent undercount). Guards:
+   `TestListCatalogOffersParentSkipsBlankChildAndTolerates404Leaf` +
+   `TestListCatalogOffersParentChildFaultAbortsWithoutPartial`.
+
+Re-gate on tip `0d2fa26` recorded below.
 
 ## Honest-error / no-leak notes
 
