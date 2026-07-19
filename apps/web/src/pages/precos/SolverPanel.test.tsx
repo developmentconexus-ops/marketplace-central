@@ -44,6 +44,7 @@ describe("SolverPanel — margem-alvo → preço", () => {
       ceiling_pct: "31.20",
       desconhecidos: [],
       blocking_state: null,
+      frete_desconhecido: false,
     });
     renderPanel();
 
@@ -68,6 +69,7 @@ describe("SolverPanel — margem-alvo → preço", () => {
       ceiling_pct: "12.80",
       desconhecidos: [],
       blocking_state: null,
+      frete_desconhecido: false,
       code: "UNREACHABLE_TARGET",
     });
     renderPanel();
@@ -87,6 +89,7 @@ describe("SolverPanel — margem-alvo → preço", () => {
       ceiling_pct: "0",
       desconhecidos: ["custo"],
       blocking_state: "SEM_CUSTO",
+      frete_desconhecido: false,
     });
     renderPanel();
 
@@ -104,6 +107,7 @@ describe("SolverPanel — margem-alvo → preço", () => {
       ceiling_pct: "31.20",
       desconhecidos: [],
       blocking_state: null,
+      frete_desconhecido: false,
     });
     renderPanel();
 
@@ -131,6 +135,7 @@ describe("SolverPanel — margem-alvo → preço", () => {
       ceiling_pct: "",
       desconhecidos: ["frete"],
       blocking_state: null,
+      frete_desconhecido: true,
       code: "SEM_FRETE",
     });
     renderPanel();
@@ -154,6 +159,7 @@ describe("SolverPanel — margem-alvo → preço", () => {
       ceiling_pct: "",
       desconhecidos: ["frete"],
       blocking_state: null,
+      frete_desconhecido: true,
     });
     renderPanel();
 
@@ -171,6 +177,7 @@ describe("SolverPanel — margem-alvo → preço", () => {
       ceiling_pct: "",
       desconhecidos: [],
       blocking_state: null,
+      frete_desconhecido: false,
       code: "UNREACHABLE_TARGET",
     });
     renderPanel();
@@ -194,6 +201,7 @@ describe("SolverPanel — margem-alvo → preço", () => {
       ceiling_pct: "31.20",
       desconhecidos: [],
       blocking_state: null,
+      frete_desconhecido: false,
       tarifa: {
         comissao: {
           valor: "13.00",
@@ -244,6 +252,7 @@ describe("SolverPanel — margem-alvo → preço", () => {
       ceiling_pct: "20.00",
       desconhecidos: [],
       blocking_state: null,
+      frete_desconhecido: false,
       tarifa: {
         comissao: { valor: "13.00", fonte: "PADRAO", degrau: 4, data: null, estimativa: true, sem_dados: false },
         frete: { valor: "", fonte: "PADRAO", degrau: 4, data: null, estimativa: false, sem_dados: false },
@@ -268,6 +277,7 @@ describe("SolverPanel — margem-alvo → preço", () => {
       ceiling_pct: "18.50",
       desconhecidos: [],
       blocking_state: null,
+      frete_desconhecido: false,
       code: "DADOS_INCOMPLETOS",
     });
     renderPanel();
@@ -288,6 +298,7 @@ describe("SolverPanel — margem-alvo → preço", () => {
       ceiling_pct: "22.00",
       desconhecidos: [],
       blocking_state: null,
+      frete_desconhecido: false,
       code: "SEM_FRETE",
     });
     renderPanel();
@@ -306,6 +317,7 @@ describe("SolverPanel — margem-alvo → preço", () => {
       ceiling_pct: "31.20",
       desconhecidos: [],
       blocking_state: null,
+      frete_desconhecido: false,
     });
     const { rerender } = renderPanel({ productId: 90001 });
 
@@ -329,6 +341,7 @@ describe("SolverPanel — margem-alvo → preço", () => {
       ceiling_pct: "40.00",
       desconhecidos: [],
       blocking_state: null,
+      frete_desconhecido: false,
     });
     renderPanel();
 
