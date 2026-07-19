@@ -57,6 +57,11 @@ export function QueueTab({ installationId, onViewResolved }: QueueTabProps) {
     closeDrawer();
   };
 
+  // Row-level "Ignorar" (NO_CANDIDATE) — reject the listing without opening the drawer.
+  const handleRejectRow = (candidate: ProductLinkCandidateItem) => {
+    reject.mutate(rejectInputForCandidate(candidate));
+  };
+
   const toggleSelect = (candidateId: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -99,7 +104,7 @@ export function QueueTab({ installationId, onViewResolved }: QueueTabProps) {
       {conflict ? (
         <div
           role="alert"
-          className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+          className="rounded-control border border-amber/30 bg-amber-soft px-3 py-2 text-sm text-amber"
         >
           Este anúncio já foi resolvido por outra pessoa. A fila foi atualizada.
         </div>
@@ -120,26 +125,30 @@ export function QueueTab({ installationId, onViewResolved }: QueueTabProps) {
 
       <div className="overflow-x-auto">
         <table className="w-full min-w-[900px] border-collapse text-left text-sm">
-          <caption className="sr-only">Fila de candidatos de vínculo</caption>
-          <thead className="border-b border-slate-200 text-xs font-medium text-slate-500">
+          <caption className="sr-only">Fila de candidatos de vínculo (anúncio → produto sugerido)</caption>
+          <thead className="border-b border-border bg-surface-2 text-xs font-medium tracking-[0.04em] text-faint">
             <tr>
               <th className="px-3 py-3" scope="col">
                 <span className="sr-only">Selecionar</span>
               </th>
-              <th className="px-3 py-3" scope="col">Produto</th>
-              <th className="px-3 py-3" scope="col">Melhor candidato</th>
-              <th className="px-3 py-3" scope="col">Sinais</th>
+              <th className="px-3 py-3" scope="col">Anúncio ML</th>
+              <th className="px-3 py-3" scope="col">SKU ML</th>
+              <th className="px-3 py-3" scope="col">Produto sugerido</th>
+              <th className="px-3 py-3" scope="col">SKU HUB</th>
+              <th className="px-3 py-3" scope="col">GTIN</th>
               <th className="px-3 py-3" scope="col">Confiança</th>
-              <th className="px-3 py-3 text-right" scope="col">Ações</th>
+              <th className="px-3 py-3" scope="col">Motivo</th>
+              <th className="px-3 py-3 text-right" scope="col">Ação</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-border-2">
             {items.map((candidate) => (
               <QueueRow
                 key={candidate.candidate_id}
                 candidate={candidate}
                 onOpen={openDrawer}
                 onApprove={handleApprove}
+                onReject={handleRejectRow}
                 pending={mutating}
                 selected={selectedIds.has(candidate.candidate_id)}
                 onToggleSelect={toggleSelect}

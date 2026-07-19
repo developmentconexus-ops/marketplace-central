@@ -133,8 +133,11 @@ describe("QueueTab", () => {
     expect(await screen.findByText("Sem candidato")).toBeInTheDocument();
     const row = screen.getByTestId("queue-row");
     expect(row.getAttribute("data-match-status")).toBe("NO_CANDIDATE");
-    // Approve is disabled — there is nothing to approve.
-    expect(screen.getByRole("button", { name: "Aprovar" })).toBeDisabled();
+    // ADR-17 honest negative: no "Vincular" (nothing to link); Criar produto is a
+    // disabled honest affordance (no create seam); only Ignorar is actionable.
+    expect(screen.queryByRole("button", { name: "Vincular" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Criar produto" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Ignorar" })).toBeEnabled();
   });
 
   it("removes the item from the queue after an approve + page-local invalidation", async () => {
@@ -158,7 +161,7 @@ describe("QueueTab", () => {
 
     renderTab();
 
-    const approveButton = await screen.findByRole("button", { name: "Aprovar" });
+    const approveButton = await screen.findByRole("button", { name: "Vincular" });
     fireEvent.click(approveButton);
 
     await waitFor(() => {
@@ -193,8 +196,8 @@ describe("QueueTab", () => {
     // The drawer (DetailPanel complementary region) is open on first render.
     expect(await screen.findByRole("complementary", { name: "MLB1" })).toBeInTheDocument();
     expect(screen.getByTestId("drawer-candidate")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Aprovar este candidato" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Rejeitar anúncio" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Vincular este candidato" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ignorar anúncio" })).toBeInTheDocument();
   });
 
   it("bulk selects rows, previews as a pure dry-run, applies the valid subset, and clears selection + refetches the queue", async () => {

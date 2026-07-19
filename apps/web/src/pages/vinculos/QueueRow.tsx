@@ -10,6 +10,7 @@ export interface QueueRowProps {
   candidate: ProductLinkCandidateItem;
   onOpen: (candidateId: string) => void;
   onApprove: (candidate: ProductLinkCandidateItem) => void;
+  onReject: (candidate: ProductLinkCandidateItem) => void;
   pending?: boolean;
   selected?: boolean;
   onToggleSelect?: (candidateId: string) => void;
@@ -21,21 +22,23 @@ const bandLabels: Record<ProductLinkConfidenceBand, string> = {
   BAIXA: "BAIXA",
 };
 
+// Confidence bands keep their SEMANTIC mapping (≥85 verde / 50-84 âmbar / <50
+// vermelho) but through the paper+green design tokens, never literal Tailwind.
 const bandClasses: Record<ProductLinkConfidenceBand, string> = {
-  ALTA: "bg-emerald-100 text-emerald-800",
-  MEDIA: "bg-amber-100 text-amber-800",
-  BAIXA: "bg-slate-100 text-slate-700",
+  ALTA: "bg-accent-soft text-accent-ink",
+  MEDIA: "bg-amber-soft text-amber",
+  BAIXA: "bg-warn-soft text-warn",
 };
 
 const directionClasses: Record<ProductLinkReasonDirection, string> = {
-  FOR: "bg-emerald-100 text-emerald-800",
-  AGAINST: "bg-red-100 text-red-800",
-  UNAVAILABLE: "bg-slate-100 text-slate-600",
+  FOR: "bg-accent-soft text-accent-ink",
+  AGAINST: "bg-warn-soft text-warn",
+  UNAVAILABLE: "bg-surface-2 text-faint",
 };
 
 function pill(label: string, className: string) {
   return (
-    <span className={`inline-flex whitespace-nowrap rounded px-2 py-0.5 text-xs font-medium ${className}`}>
+    <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${className}`}>
       {label}
     </span>
   );
@@ -70,20 +73,20 @@ function AnchorChips({ reasons }: { reasons: ProductLinkReason[] }) {
   );
 }
 
-export function QueueRow({ candidate, onOpen, onApprove, pending, selected, onToggleSelect }: QueueRowProps) {
+export function QueueRow({ candidate, onOpen, onApprove, onReject, pending, selected, onToggleSelect }: QueueRowProps) {
   const noCandidate = candidate.match_status === "NO_CANDIDATE";
-  const codprod = candidate.internal_product_id;
-  const descricao = candidate.internal_product_name;
-  const eanRefforn =
-    candidate.internal_reference_code ??
-    (candidate.match_input === "ean" ? candidate.match_value : undefined);
+  // GTIN "✓ igual" is only honest when the listing matched the product on EAN
+  // (match_input === "ean"); otherwise the GTIN relationship is UNKNOWN → "—",
+  // never fabricated (ADR-17).
+  const gtinEqual = candidate.match_input === "ean" && Boolean(candidate.match_value);
 
   return (
-    <tr className="align-top text-slate-700" data-testid="queue-row" data-match-status={candidate.match_status}>
+    <tr className="align-top text-ink" data-testid="queue-row" data-match-status={candidate.match_status}>
       {/* Seleção em lote */}
       <td className="px-3 py-3">
         <input
           type="checkbox"
+          className="accent-[var(--accent)]"
           aria-label={`Selecionar ${candidate.provider_item_id}`}
           checked={selected ?? false}
           disabled={noCandidate || !onToggleSelect}
@@ -91,77 +94,120 @@ export function QueueRow({ candidate, onOpen, onApprove, pending, selected, onTo
         />
       </td>
 
-      {/* Produto (interno) */}
+      {/* ANÚNCIO ML (listing) */}
       <td className="px-3 py-3">
-        <div className="font-medium text-slate-900">
-          {codprod === undefined ? <UnknownValue hint="sem CODPROD" /> : codprod}
-        </div>
-        <div className="mt-0.5 text-xs text-slate-600">
-          {descricao ? descricao : <UnknownValue hint="sem descrição no ERP" />}
-        </div>
-        <div className="mt-0.5 text-xs text-slate-500">
-          EAN/refforn: {eanRefforn ? eanRefforn : <UnknownValue />}
-        </div>
+        <div className="font-mono text-sm font-medium text-ink">{candidate.provider_item_id}</div>
       </td>
 
-      {/* Melhor candidato (anúncio) */}
+      {/* SKU ML (código do anúncio no provider) */}
+      <td className="px-3 py-3">
+        <span className="font-mono text-xs text-muted">
+          {candidate.provider_code ? candidate.provider_code : <UnknownValue />}
+        </span>
+      </td>
+
+      {/* PRODUTO SUGERIDO (produto interno) */}
       <td className="px-3 py-3">
         {noCandidate ? (
           <div className="flex flex-col gap-1">
-            {pill("Sem candidato", "bg-slate-100 text-slate-600")}
-            <span className="text-xs text-slate-500">
-              Nenhuma correspondência encontrada para {candidate.provider_item_id}.
+            {pill("Sem candidato", "bg-surface-2 text-faint")}
+            <span className="text-xs text-faint">
+              Nenhuma correspondência para {candidate.provider_item_id}.
             </span>
           </div>
         ) : (
-          <>
-            <div className="font-medium text-slate-900">{candidate.provider_item_id}</div>
-            <div className="mt-0.5 text-xs text-slate-500">{candidate.provider_code}</div>
-            <div className="mt-1 text-xs text-slate-500">
-              {/* Preço genuinamente ausente no candidato → estado honesto, nunca 0 falso (ADR-17). */}
-              Preço: <UnknownValue hint="preço não disponível no candidato" />
-            </div>
-          </>
+          <div className="font-medium text-ink">
+            {candidate.internal_product_name ? (
+              candidate.internal_product_name
+            ) : (
+              <UnknownValue hint="sem descrição no ERP" />
+            )}
+          </div>
         )}
       </td>
 
-      {/* Sinais (anchor chips) */}
+      {/* SKU HUB (CODPROD interno) */}
       <td className="px-3 py-3">
-        <AnchorChips reasons={candidate.reasons} />
+        <span className="font-mono text-sm text-ink">
+          {candidate.internal_product_id === undefined ? (
+            <UnknownValue hint="sem CODPROD" />
+          ) : (
+            candidate.internal_product_id
+          )}
+        </span>
       </td>
 
-      {/* Confiança / banda % */}
+      {/* GTIN ("✓ igual" | "—") */}
+      <td className="px-3 py-3">
+        {gtinEqual ? (
+          <span className="whitespace-nowrap text-xs font-medium text-accent-ink">✓ igual</span>
+        ) : (
+          <UnknownValue />
+        )}
+      </td>
+
+      {/* CONFIANÇA (banda + %) */}
       <td className="px-3 py-3">
         {noCandidate ? (
           <UnknownValue hint="sem confiança sem candidato" />
         ) : (
           <div className="flex items-center gap-2">
             {pill(bandLabels[candidate.confidence_band], bandClasses[candidate.confidence_band])}
-            <span className="text-xs font-medium tabular-nums text-slate-700">
+            <span className="font-mono text-xs font-medium tabular-nums text-muted">
               {confidencePercent(candidate.confidence)}
             </span>
           </div>
         )}
       </td>
 
-      {/* Ações */}
+      {/* MOTIVO (sinais / anchor chips) */}
+      <td className="px-3 py-3">
+        <AnchorChips reasons={candidate.reasons} />
+      </td>
+
+      {/* AÇÃO */}
       <td className="px-3 py-3">
         <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-            onClick={() => onOpen(candidate.candidate_id)}
-          >
-            Abrir
-          </button>
-          <button
-            type="button"
-            disabled={noCandidate || pending}
-            className="rounded-lg border border-blue-600 bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={() => onApprove(candidate)}
-          >
-            Aprovar
-          </button>
+          {noCandidate ? (
+            <>
+              {/* Criação de produto a partir do anúncio ainda não tem seam de
+                  escrita — afordância honesta (desabilitada), nunca sucesso falso. */}
+              <button
+                type="button"
+                disabled
+                title="Criação de produto a partir do anúncio ainda não disponível"
+                className="cursor-not-allowed rounded-control border border-border px-2.5 py-1.5 text-xs font-medium text-faint opacity-60"
+              >
+                Criar produto
+              </button>
+              <button
+                type="button"
+                disabled={pending}
+                className="rounded-control border border-warn/40 px-2.5 py-1.5 text-xs font-medium text-warn hover:bg-warn-soft disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => onReject(candidate)}
+              >
+                Ignorar
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="rounded-control border border-border px-2.5 py-1.5 text-xs font-medium text-muted hover:bg-surface-2 hover:text-ink"
+                onClick={() => onOpen(candidate.candidate_id)}
+              >
+                Outro…
+              </button>
+              <button
+                type="button"
+                disabled={pending}
+                className="rounded-control bg-accent px-2.5 py-1.5 text-xs font-medium text-accent-ink hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => onApprove(candidate)}
+              >
+                Vincular
+              </button>
+            </>
+          )}
         </div>
       </td>
     </tr>

@@ -66,7 +66,7 @@ describe("VinculosPage", () => {
     expect(screen.getByRole("tab", { name: "Resolvidos" })).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Aprovar" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Vincular" })).toBeInTheDocument();
     });
     expect(screen.getByText("MLB1")).toBeInTheDocument();
   });
@@ -82,11 +82,16 @@ describe("VinculosPage", () => {
     expect(await screen.findByText("Nenhum registro encontrado.")).toBeInTheDocument();
   });
 
-  it("counts only resolved links in the resolvidos tab body, ignoring other states", async () => {
+  it("renders only resolved links as real rows in the resolvidos tab, ignoring other states", async () => {
     listProductLinkCandidates.mockResolvedValue({ items: [] });
     listProductLinkWorkflows.mockResolvedValue({
       items: [
-        { identity: { installation_id: "inst_1", provider_item_id: "MLB1" }, current_link: { state: "resolved", updated_at: "2020-01-01T00:00:00Z" }, candidates: [], audit: [] },
+        {
+          identity: { installation_id: "inst_1", provider_item_id: "MLB1" },
+          current_link: { state: "resolved", updated_at: "2020-01-01T00:00:00Z", internal_product_id: 111, internal_product_name: "Produto Y" },
+          candidates: [],
+          audit: [{ audit_id: "aud_1", next_state: "resolved", created_at: "2020-01-01T00:00:00Z" }],
+        },
         { identity: { installation_id: "inst_1", provider_item_id: "MLB2" }, current_link: { state: "conflict", updated_at: "2020-01-01T00:00:00Z" }, candidates: [], audit: [] },
         { identity: { installation_id: "inst_1", provider_item_id: "MLB3" }, candidates: [], audit: [] },
       ],
@@ -96,9 +101,15 @@ describe("VinculosPage", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "Resolvidos" }));
 
-    expect(
-      await screen.findByText("1 vínculo(s) — tabela detalhada chega na próxima etapa."),
-    ).toBeInTheDocument();
+    // Exactly one real resolved row (conflict + unresolved are excluded).
+    const rows = await screen.findAllByTestId("resolvido-row");
+    expect(rows).toHaveLength(1);
+    expect(screen.getByText("MLB1")).toBeInTheDocument();
+    expect(screen.getByText("Produto Y")).toBeInTheDocument();
+    expect(screen.getByText("Vinculado ✓")).toBeInTheDocument();
+    expect(screen.queryByText("MLB2")).not.toBeInTheDocument();
+    // Desfazer is enabled because a resolving audit entry exists.
+    expect(screen.getByRole("button", { name: "Desfazer" })).toBeEnabled();
   });
 
   it("renders an error state with retry for the fila tab", async () => {
