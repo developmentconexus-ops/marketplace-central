@@ -23,9 +23,11 @@ func TestGetShipmentInfoMapsShipmentAndCosts(t *testing.T) {
 		}
 		switch r.URL.Path {
 		case "/shipments/SHIP-1":
-			_, _ = io.WriteString(w, `{"id":"SHIP-1","status":"ready_to_ship","substatus":"ready_to_print","lead_time":{"estimated_delivery_limit":{"date":"2026-07-22T15:04:05Z"}},"delayed":true,"receiver_address":{"state":{"id":"BR-RJ"}}}`)
+			_, _ = io.WriteString(w, `{"id":"SHIP-1","site_id":"MLB","status":"ready_to_ship","substatus":"ready_to_print","lead_time":{"estimated_delivery_limit":{"date":"2026-07-22T15:04:05Z"}},"delayed":true,"receiver_address":{"state":{"id":"BR-RJ"}}}`)
 		case "/shipments/SHIP-1/costs":
-			_, _ = io.WriteString(w, `{"gross_amount":19.90,"receiver":{"cost":2.50},"senders":[{"cost":17.40}],"currency_id":"BRL"}`)
+			// Real new-format /costs shape (ML docs gerenciamento-de-envios): NO
+			// currency field — the amount currency is resolved from the shipment site.
+			_, _ = io.WriteString(w, `{"gross_amount":19.90,"receiver":{"user_id":74425755,"cost":2.50},"senders":[{"user_id":81387353,"cost":17.40}]}`)
 		default:
 			t.Fatalf("unexpected path = %s", r.URL.Path)
 		}
@@ -122,10 +124,10 @@ func TestGetShipmentInfoRequestsSendXFormatNewHeader(t *testing.T) {
 		switch r.URL.Path {
 		case "/shipments/SHIP-7":
 			primaryHeader = r.Header.Get("x-format-new")
-			_, _ = io.WriteString(w, `{"id":"SHIP-7","status":"shipped","substatus":"out_for_delivery"}`)
+			_, _ = io.WriteString(w, `{"id":"SHIP-7","site_id":"MLB","status":"shipped","substatus":"out_for_delivery"}`)
 		case "/shipments/SHIP-7/costs":
 			costsHeader = r.Header.Get("x-format-new")
-			_, _ = io.WriteString(w, `{"gross_amount":10.00,"currency_id":"BRL"}`)
+			_, _ = io.WriteString(w, `{"gross_amount":10.00}`)
 		default:
 			t.Fatalf("unexpected path = %s", r.URL.Path)
 		}
@@ -164,7 +166,7 @@ func TestGetShipmentInfoDecodesNewFormatNumericID(t *testing.T) {
 		case "/shipments/28264263908":
 			_, _ = io.WriteString(w, `{"id":28264263908,"mode":"me2","order_id":2339711980,"order_cost":99.9,"base_cost":22.07,"site_id":"MLB","status":"shipped","substatus":"out_for_delivery","date_created":"2024-04-23T10:48:51.245-04:00","receiver_address":{"state":{"id":"BR-SP"}}}`)
 		case "/shipments/28264263908/costs":
-			_, _ = io.WriteString(w, `{"gross_amount":19.90,"currency_id":"BRL"}`)
+			_, _ = io.WriteString(w, `{"gross_amount":19.90}`)
 		default:
 			t.Fatalf("unexpected path = %s", r.URL.Path)
 		}
@@ -219,15 +221,47 @@ func TestGetShipmentInfoCostsLegacyShapeDegradesToStatusOnly(t *testing.T) {
 	}
 }
 
+func TestGetShipmentInfoCostsMappingFailureDegradesToStatusOnly(t *testing.T) {
+	t.Parallel()
+
+	// The /costs body decodes cleanly into mlShipmentCostsResponse but a value
+	// fails money mapping (exponent amount is not a valid decimal string per
+	// domain.ValidateMoney). A mapping failure must degrade to the costs-less
+	// shipment — status/substatus survive, Costs nil — NEVER sink the whole read
+	// (round-1 invariant: costs failure degrades, status survives).
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/shipments/SHIP-8":
+			_, _ = io.WriteString(w, `{"id":"SHIP-8","site_id":"MLB","status":"shipped","substatus":"out_for_delivery"}`)
+		case "/shipments/SHIP-8/costs":
+			_, _ = io.WriteString(w, `{"gross_amount":2.4e1}`)
+		default:
+			t.Fatalf("unexpected path = %s", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	shipment, err := pricingTestAdapter(server.URL, time.Now().UTC()).GetShipmentInfo(context.Background(), pricingAccountRef(), "SHIP-8")
+	if err != nil {
+		t.Fatalf("GetShipmentInfo() error = %v, want degrade (nil error)", err)
+	}
+	if shipment.Status != "shipped" || shipment.Substatus != "out_for_delivery" {
+		t.Fatalf("status/substatus = %q/%q, want shipped/out_for_delivery (must survive costs mapping failure)", shipment.Status, shipment.Substatus)
+	}
+	if shipment.Costs != nil {
+		t.Fatalf("Costs = %#v, want nil (unmappable amount → costs unknown)", shipment.Costs)
+	}
+}
+
 func TestGetShipmentInfoAbsentOptionalsStayNil(t *testing.T) {
 	t.Parallel()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/shipments/SHIP-3":
-			_, _ = io.WriteString(w, `{"id":"SHIP-3","status":"pending","delayed":null}`)
+			_, _ = io.WriteString(w, `{"id":"SHIP-3","site_id":"MLB","status":"pending","delayed":null}`)
 		case "/shipments/SHIP-3/costs":
-			_, _ = io.WriteString(w, `{"gross_amount":12.00,"currency_id":"BRL"}`)
+			_, _ = io.WriteString(w, `{"gross_amount":12.00}`)
 		default:
 			t.Fatalf("unexpected path = %s", r.URL.Path)
 		}
