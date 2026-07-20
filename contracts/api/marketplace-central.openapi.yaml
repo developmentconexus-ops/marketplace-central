@@ -5267,6 +5267,14 @@ components:
           type: string
           format: date-time
           nullable: true
+        faturado_at:
+          type: string
+          format: date-time
+          description: >-
+            When the operator recorded the order as invoiced ("Foi faturado"),
+            an our-DB-only fact (never a Mercado Livre write). Optional: absent
+            means not yet marked invoiced, an honest unknown, never inferred
+            from shipment presence. Drives the Faturar->Enviar workflow bucket.
         items:
           type: array
           items:

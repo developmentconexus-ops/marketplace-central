@@ -709,6 +709,10 @@ export interface OrderRead {
   provider_created_at: string | null;
   provider_closed_at: string | null;
   provider_updated_at: string | null;
+  // Operator's "Foi faturado" mark (our-DB only, never an ML write). Optional:
+  // absent means not yet invoiced — an honest unknown (ADR-17), never inferred
+  // from shipment presence. Drives the Faturar->Enviar workflow bucket.
+  faturado_at?: string;
   items: OrderReadItem[];
   payments: OrderReadPayment[];
   vinculo_status?: string;

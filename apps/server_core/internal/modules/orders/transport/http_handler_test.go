@@ -432,13 +432,32 @@ func TestMapEnrichedOrderDerivesBucketFromFaturadoAt(t *testing.T) {
 	if decoded["bucket"] != "enviar" {
 		t.Fatalf("json field bucket = %#v, want \"enviar\"; body=%s", decoded["bucket"], dtoJSON)
 	}
-	// Contract guard (P6 cold-gate finding): faturado_at is an internal bucket
-	// signal (read_model.go json:"-"), NOT part of the OrderRead wire contract.
-	// This order HAS a non-nil FaturadoAt, so a revert to json:"faturado_at"
-	// would serialize the timestamp and trip this assertion — keeping the SDK /
-	// OpenAPI OrderRead schema honest (no undocumented field).
-	if _, present := decoded["faturado_at"]; present {
-		t.Fatalf("enriched DTO leaked faturado_at onto the wire (undocumented in OrderRead); body=%s", dtoJSON)
+	// Contract guard (P6 cold-gate finding + hub grant): faturado_at is an
+	// OPTIONAL OrderRead field (read_model.go json:"faturado_at,omitempty";
+	// documented in OpenAPI + sdk-runtime OrderRead as faturado_at?: string).
+	// A faturado order (non-nil timestamp) MUST emit it as the RFC3339 string so
+	// wire == contract == SDK; a revert to json:"-" would drop the key and trip
+	// this — proving the emit path is load-bearing.
+	if got := decoded["faturado_at"]; got != "2026-07-20T09:00:00Z" {
+		t.Fatalf("json field faturado_at = %#v, want \"2026-07-20T09:00:00Z\"; body=%s", got, dtoJSON)
+	}
+
+	// The other half of the omitempty contract (ADR-17 honest absence): an order
+	// NOT yet invoiced (nil FaturadoAt) MUST omit the key entirely, never a
+	// fabricated null/zero. A revert to a non-omitempty tag would emit
+	// "faturado_at": null here and trip this.
+	notInvoiced := order
+	notInvoiced.FaturadoAt = nil
+	niJSON, err := json.Marshal(mapEnrichedOrder(application.EnrichedOrder{Order: notInvoiced}))
+	if err != nil {
+		t.Fatalf("marshal not-invoiced dto: %v", err)
+	}
+	var niDecoded map[string]any
+	if err := json.Unmarshal(niJSON, &niDecoded); err != nil {
+		t.Fatalf("decode not-invoiced dto: %v", err)
+	}
+	if _, present := niDecoded["faturado_at"]; present {
+		t.Fatalf("not-invoiced order emitted faturado_at (want omitted per ADR-17); body=%s", niJSON)
 	}
 }
 
