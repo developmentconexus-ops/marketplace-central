@@ -18,5 +18,7 @@ data
 certificates
 .env
 .env.*
+**/.env
+**/.env.*
 *.log
 *.exe
