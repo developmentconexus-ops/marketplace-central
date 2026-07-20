@@ -7,8 +7,16 @@ Artifacts: `docker/prod/` (images), `deploy/` (compose + Caddyfile + env templat
 Flow in one line:
 
 ```
-git push main → CI builds images → GHCR → host: docker compose pull && up -d
+build (scripts/release.sh or CI) → GHCR → host: docker compose pull && up -d
 ```
+
+Two supported publishers, same registry and tag scheme (`sha-<commit>`):
+
+- **`bash scripts/release.sh`** — builds both images on the dev machine and
+  pushes to GHCR. Zero CI minutes; the default while GitHub Actions billing is
+  not enabled. Prereq once: `docker login ghcr.io` with a `write:packages` PAT.
+- **GitHub Actions** (`release-images.yml`) — same output on every push to
+  main, when the account has Actions minutes available.
 
 ---
 

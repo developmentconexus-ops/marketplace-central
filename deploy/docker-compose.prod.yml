@@ -21,7 +21,7 @@ services:
     restart: unless-stopped
 
   backend:
-    image: ${MPC_IMAGE_SERVER:-ghcr.io/leandrotcawork/marketplace-central-server}:${MPC_IMAGE_TAG:?set in .env}
+    image: ${MPC_IMAGE_SERVER:-ghcr.io/developmentconexus-ops/marketplace-central-server}:${MPC_IMAGE_TAG:?set in .env}
     env_file:
       - .env
     environment:
@@ -37,7 +37,7 @@ services:
     restart: unless-stopped
 
   web:
-    image: ${MPC_IMAGE_WEB:-ghcr.io/leandrotcawork/marketplace-central-web}:${MPC_IMAGE_TAG:?set in .env}
+    image: ${MPC_IMAGE_WEB:-ghcr.io/developmentconexus-ops/marketplace-central-web}:${MPC_IMAGE_TAG:?set in .env}
     depends_on:
       - backend
     restart: unless-stopped
