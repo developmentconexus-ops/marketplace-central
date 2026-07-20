@@ -134,7 +134,18 @@ export function MercadoPage({ marketClient: injectedMarket }: MercadoPageProps =
     },
   });
 
-  const listingRows = listingsQuery.data?.items ?? [];
+  // Operator D-120: order anúncios by observed price gap (mediana ML − nosso preço,
+  // both real displayed facts — a sort key, never a rendered margin, ADR-17). Listings
+  // without a collected market signal sort after, keeping their original order.
+  const rawListingRows = listingsQuery.data?.items ?? [];
+  const listingGap = (r: (typeof rawListingRows)[number]): number => {
+    const meu = r.price == null ? NaN : Number(r.price.amount);
+    const mediana =
+      r.market_signal?.median == null ? NaN : Number(r.market_signal.median.amount);
+    const value = mediana - meu;
+    return Number.isFinite(value) ? value : -Infinity;
+  };
+  const listingRows = [...rawListingRows].sort((a, b) => listingGap(b) - listingGap(a));
   const repriceCount = listingsQuery.data ? listingsQuery.data.total ?? listingRows.length : null;
   const oppRows = oppQuery.data?.rows ?? [];
   const oppCount = oppQuery.data ? oppRows.length : null;

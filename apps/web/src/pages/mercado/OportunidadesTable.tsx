@@ -3,16 +3,18 @@ import { UnknownValue } from "@marketplace-central/ui";
 import type { OppRow } from "./oportunidades";
 import { formatMoney } from "./mercadoFormatters";
 
-// Oportunidades grid — exact column track + min-width from Mercado.dc.html (min-w 960):
-// SKU | PRODUTO (ERP) | CUSTO | MEDIANA ML | CONCORRENTES | VENDAS LÍDER 30D | MARGEM EST. |
-// VEREDICTO | (action)
+// Oportunidades grid — column track from Mercado.dc.html (min-w 960) + MENOR CONC.
+// added per operator D-120: SKU | PRODUTO (ERP) | NOSSO PREÇO (= custo ERP; produto não
+// vendido, sem preço de anúncio — label per operator) | MENOR CONC. | MEDIANA ML |
+// CONCORRENTES | VENDAS LÍDER 30D | MARGEM EST. | VEREDICTO | (action)
 const GRID_COLS =
-  "84px minmax(170px,1.3fr) 76px 90px 110px 120px 110px minmax(150px,1fr) 120px";
+  "84px minmax(170px,1.3fr) 76px 90px 90px 110px 120px 110px minmax(150px,1fr) 120px";
 
 const HEAD = [
   "SKU",
   "PRODUTO (ERP)",
-  "CUSTO",
+  "NOSSO PREÇO",
+  "MENOR CONC.",
   "MEDIANA ML",
   "CONCORRENTES",
   "VENDAS LÍDER 30D",
@@ -43,7 +45,7 @@ export function OportunidadesTable({ rows }: OportunidadesTableProps): JSX.Eleme
   return (
     <>
       <div className="overflow-x-auto rounded-card border border-border bg-surface">
-        <div style={{ minWidth: 960 }}>
+        <div style={{ minWidth: 1050 }}>
           <div
             className="grid bg-surface-2 px-[14px] py-[9px] text-[11px] tracking-[0.04em] text-faint"
             style={{ gridTemplateColumns: GRID_COLS }}
@@ -55,6 +57,7 @@ export function OportunidadesTable({ rows }: OportunidadesTableProps): JSX.Eleme
           {rows.map((o) => {
             const custo = formatMoney(o.costAmount ? { amount: o.costAmount, currency: "BRL" } : null);
             const mediana = formatMoney(o.median);
+            const menor = formatMoney(o.minValid);
             return (
               <div
                 key={o.sku}
@@ -66,6 +69,7 @@ export function OportunidadesTable({ rows }: OportunidadesTableProps): JSX.Eleme
                   {o.name ?? <UnknownValue />}
                 </span>
                 <span className="font-mono text-muted">{custo === null ? <UnknownValue /> : custo}</span>
+                <span className="font-mono">{menor === null ? <UnknownValue /> : menor}</span>
                 <span className="font-mono">{mediana === null ? <UnknownValue /> : mediana}</span>
                 {/* CONCORRENTES = distinct competing sellers (n_sellers, deduped by seller per
                     the IC-03 aggregate contract), NOT the raw offer count — never overstate
@@ -101,7 +105,7 @@ export function OportunidadesTable({ rows }: OportunidadesTableProps): JSX.Eleme
         </div>
       </div>
       <p className="text-[11.5px] text-faint">
-        cruza catálogo ERP × demanda pública do ML · ordenado por concorrência observada · margem,
+        cruza catálogo ERP × demanda pública do ML · ordenado por diferença mediana − custo · margem,
         vendas do líder e recomendação chegam com M-07/snapshots
       </p>
     </>

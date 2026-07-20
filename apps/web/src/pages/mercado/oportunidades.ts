@@ -12,6 +12,8 @@ export interface OppRow {
   name: string | null;
   costAmount: string | null;
   median: MarketPriceIntelMoney | null;
+  /** Lowest validated competitor offer (min_valid from the aggregate). */
+  minValid: MarketPriceIntelMoney | null;
   /** Distinct competing sellers (deduped by seller) — the CONCORRENTES column + sort key. */
   nSellers: number | null;
   /** Drives the honest evidence note; the recommendation label itself is M-07-owned. */
@@ -71,15 +73,29 @@ export function buildOppRows(
       name: fact.description ?? null,
       costAmount,
       median: agg.median,
+      minValid: agg.min_valid ?? null,
       nSellers: agg.n_sellers,
       evidenceState:
         verdict?.price_evidence_status ?? (agg.status as MarketPriceIntelPriceEvidenceStatus),
     });
   }
 
-  // Order by observed competition (n_sellers desc — the CONCORRENTES value shown to the
-  // user, so the "ordenado por concorrência observada" footer is literally true); tie-break
-  // by SKU for stability. No margin sort — the opportunity ranking is M-07-owned (ADR-17).
-  rows.sort((a, b) => (b.nSellers ?? -Infinity) - (a.nSellers ?? -Infinity) || a.sku.localeCompare(b.sku));
+  // Order by raw price gap (mediana ML − custo ERP, both real backed facts —
+  // operator D-120: surface the client products worth showing first). This is a
+  // SORT on two displayed facts, not a margin figure: the operational margin
+  // (commission/freight/DIFAL) stays M-07-owned and is never rendered (ADR-17).
+  // Rows missing either fact sort after, by observed competition then SKU.
+  const gap = (r: OppRow): number => {
+    const custo = r.costAmount === null ? NaN : Number(r.costAmount);
+    const mediana = r.median === null ? NaN : Number(r.median.amount);
+    const value = mediana - custo;
+    return Number.isFinite(value) ? value : -Infinity;
+  };
+  rows.sort(
+    (a, b) =>
+      gap(b) - gap(a) ||
+      (b.nSellers ?? -Infinity) - (a.nSellers ?? -Infinity) ||
+      a.sku.localeCompare(b.sku),
+  );
   return rows;
 }
