@@ -7,12 +7,16 @@ import { PedidosPage } from "./PedidosPage";
 const listOrders = vi.fn();
 const getOrderSummary = vi.fn();
 const getOrder = vi.fn();
+const importMarketplaceOrders = vi.fn();
+const markOrderFaturado = vi.fn();
 
 vi.mock("../../app/ClientContext", () => ({
   useClient: () => ({
     listOrders: (...args: unknown[]) => listOrders(...args),
     getOrderSummary: (...args: unknown[]) => getOrderSummary(...args),
     getOrder: (...args: unknown[]) => getOrder(...args),
+    importMarketplaceOrders: (...args: unknown[]) => importMarketplaceOrders(...args),
+    markOrderFaturado: (...args: unknown[]) => markOrderFaturado(...args),
   }),
 }));
 
@@ -91,6 +95,8 @@ describe("PedidosPage", () => {
     listOrders.mockReset();
     getOrderSummary.mockReset();
     getOrder.mockReset();
+    importMarketplaceOrders.mockReset();
+    markOrderFaturado.mockReset();
     getOrderSummary.mockResolvedValue({
       today: 0,
       seven_days: 0,
@@ -653,6 +659,52 @@ describe("PedidosPage", () => {
     expect(drawer.getByText("não")).toBeInTheDocument(); // difal.paid === false
     // tarifa_full stays null (componentes_desconhecidos) — still honest "—", not fabricated.
     expect(drawer.getAllByText("—").length).toBeGreaterThan(0);
+  });
+
+  it("Atualizar re-runs the orders import then refetches the list", async () => {
+    listOrders.mockResolvedValue({ items: [], next_cursor: null });
+    importMarketplaceOrders.mockResolvedValue({ imported_count: 0, skipped_count: 0 });
+
+    renderPage();
+
+    // Wait for the initial load to settle — while ordersQuery is fetching the button reads
+    // "Atualizando…"; it only shows "Atualizar" once idle.
+    const button = await screen.findByRole("button", { name: "Atualizar" });
+    const callsBefore = listOrders.mock.calls.length;
+    fireEvent.click(button);
+
+    await waitFor(() =>
+      expect(importMarketplaceOrders).toHaveBeenCalledWith({ installation_id: "inst_1" }),
+    );
+    // onSuccess refetches the list, so listOrders is invoked again beyond the initial load.
+    await waitFor(() => expect(listOrders.mock.calls.length).toBeGreaterThan(callsBefore));
+  });
+
+  it("drawer 'Foi faturado' marks a faturar order (our-DB) and invalidates the orders queries", async () => {
+    const faturarOrder = { ...detailOrder, bucket: "faturar" as const };
+    listOrders.mockResolvedValue({ items: [faturarOrder], next_cursor: null });
+    getOrder.mockResolvedValue(faturarOrder);
+    markOrderFaturado.mockResolvedValue(undefined);
+
+    renderPage("?order=PO1");
+
+    await screen.findByText("Parafuso M8x40 cx100");
+    const drawer = within(screen.getByRole("complementary"));
+    fireEvent.click(drawer.getByRole("button", { name: "Foi faturado" }));
+
+    await waitFor(() => expect(markOrderFaturado).toHaveBeenCalledWith("inst_1", "PO1"));
+    // Invalidating the "orders" namespace re-derives the drawer bucket + the list/KPI counts.
+    await waitFor(() => expect(getOrder.mock.calls.length).toBeGreaterThanOrEqual(2));
+  });
+
+  it("drawer omits 'Foi faturado' for a non-faturar order (novo)", async () => {
+    listOrders.mockResolvedValue({ items: [detailOrder], next_cursor: null });
+    getOrder.mockResolvedValue(detailOrder);
+
+    renderPage("?order=PO1");
+
+    await screen.findByText("Parafuso M8x40 cx100");
+    expect(screen.queryByRole("button", { name: "Foi faturado" })).not.toBeInTheDocument();
   });
 
   it("closing the drawer clears the ?order= param", async () => {

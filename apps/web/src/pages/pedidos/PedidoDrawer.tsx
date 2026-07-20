@@ -1,5 +1,5 @@
 import type { OrderBucket, OrderLinkQuality, OrderRead, OrderReadItem } from "@marketplace-central/sdk-runtime";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DetailDrawer, ErrorState, LoadingState, UnknownValue } from "@marketplace-central/ui";
 import { QUERY_STALE_TIME } from "@marketplace-central/web-query";
 import { useClient } from "../../app/ClientContext";
@@ -368,29 +368,57 @@ function DrawerBody({ order }: { order: OrderRead }) {
   );
 }
 
-// Design's footer buttons per bucket (Faturar via ERP / Etiqueta / Marcar enviado / DIFAL
-// agendar / Devolução…) — ALL disabled here (READ-ONLY RICH bar, HUB ruling D-57): no working
-// mutations, no write SDK calls this slice.
-function DrawerActions({ bucket }: { bucket: OrderBucket }) {
+// Footer buttons per bucket. Only "Foi faturado" is a working mutation — it records our own
+// faturado_at fact (goal B), an OUR-DB write that moves the order from "A FATURAR" to "A ENVIAR";
+// it is NOT a Mercado Livre write. The provider/ERP actions (Faturar via ERP / Etiqueta / Marcar
+// enviado / DIFAL / Devolução…) stay inert per HUB ruling D-57 — no provider-mutating calls.
+function DrawerActions({
+  bucket,
+  onFaturado,
+  isFaturando,
+  faturarFailed,
+}: {
+  bucket: OrderBucket;
+  onFaturado: () => void;
+  isFaturando: boolean;
+  faturarFailed: boolean;
+}) {
   const primaryLabel = actionLabelForBucket(bucket);
-  const buttons: string[] = [];
-  if (primaryLabel === "Faturar") buttons.push("Faturar via ERP");
-  if (primaryLabel === "Etiqueta") buttons.push("Etiqueta");
-  if (bucket === "enviar") buttons.push("Marcar enviado");
-  buttons.push("DIFAL agendar", "Devolução…");
+  const inert: string[] = [];
+  if (primaryLabel === "Faturar") inert.push("Faturar via ERP");
+  if (primaryLabel === "Etiqueta") inert.push("Etiqueta");
+  if (bucket === "enviar") inert.push("Marcar enviado");
+  inert.push("DIFAL agendar", "Devolução…");
   return (
-    <div className="flex flex-wrap gap-2">
-      {buttons.map((label) => (
-        <button
-          key={label}
-          type="button"
-          disabled
-          title="disponível em breve"
-          className="flex-1 rounded-md border border-border bg-surface-2 px-3 py-2 text-xs font-semibold text-muted disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {label}
-        </button>
-      ))}
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap gap-2">
+        {bucket === "faturar" ? (
+          <button
+            type="button"
+            onClick={onFaturado}
+            disabled={isFaturando}
+            className="flex-1 rounded-md border border-accent bg-accent-soft px-3 py-2 text-xs font-semibold text-accent-ink transition-colors hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isFaturando ? "Marcando…" : "Foi faturado"}
+          </button>
+        ) : null}
+        {inert.map((label) => (
+          <button
+            key={label}
+            type="button"
+            disabled
+            title="disponível em breve"
+            className="flex-1 rounded-md border border-border bg-surface-2 px-3 py-2 text-xs font-semibold text-muted disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {faturarFailed ? (
+        <small role="alert" className="text-warn">
+          Falha ao marcar como faturado.
+        </small>
+      ) : null}
     </div>
   );
 }
@@ -398,12 +426,21 @@ function DrawerActions({ bucket }: { bucket: OrderBucket }) {
 export function PedidoDrawer({ orderId, onClose }: PedidoDrawerProps) {
   const client = useClient();
   const { installationId } = useInstallation();
+  const queryClient = useQueryClient();
 
   const query = useQuery({
     queryKey: orderDetailKey(installationId, orderId ?? ""),
     queryFn: () => client.getOrder(installationId, orderId as string),
     enabled: orderId !== null,
     staleTime: QUERY_STALE_TIME.orders,
+  });
+
+  // "Foi faturado" records our own faturado_at fact (OUR-DB only, never an ML write); on success
+  // we invalidate the whole "orders" namespace so this drawer's bucket AND the list/KPI counts
+  // (PedidosPage) re-derive — the order leaves "A FATURAR" and lands in "A ENVIAR".
+  const faturarMutation = useMutation({
+    mutationFn: () => client.markOrderFaturado(installationId, orderId as string),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["orders"] }),
   });
 
   if (orderId === null) return null;
@@ -423,7 +460,16 @@ export function PedidoDrawer({ orderId, onClose }: PedidoDrawerProps) {
       title={title}
       subtitle={subtitle}
       width={372}
-      actions={order ? <DrawerActions bucket={order.bucket} /> : undefined}
+      actions={
+        order ? (
+          <DrawerActions
+            bucket={order.bucket}
+            onFaturado={() => faturarMutation.mutate()}
+            isFaturando={faturarMutation.isPending}
+            faturarFailed={faturarMutation.isError}
+          />
+        ) : undefined
+      }
     >
       {query.isPending ? (
         <LoadingState />
