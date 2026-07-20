@@ -15,6 +15,8 @@ import (
 
 	dashboardapp "marketplace-central/apps/server_core/internal/modules/dashboard/application"
 	dashboardtransport "marketplace-central/apps/server_core/internal/modules/dashboard/transport"
+	erppostgres "marketplace-central/apps/server_core/internal/modules/erp_import/adapters/postgres"
+	erpapp "marketplace-central/apps/server_core/internal/modules/erp_import/application"
 	integrationspostgres "marketplace-central/apps/server_core/internal/modules/integrations/adapters/postgres"
 	integrationsapp "marketplace-central/apps/server_core/internal/modules/integrations/application"
 	integrationstransport "marketplace-central/apps/server_core/internal/modules/integrations/transport"
@@ -258,6 +260,7 @@ func newAggregateSyncHarness(t *testing.T) *aggregateSyncHarness {
 		productlinksapp.NewSummaryService(productlinkspostgres.NewSummaryReader(pool, h.tenantA)),
 		ordersapp.NewSummaryService(orderspostgres.NewOrderRepository(pool, h.tenantA)),
 		operationSvc,
+		erpapp.NewQueryService(erppostgres.NewRepository(pool), h.tenantA),
 		func() time.Time { return h.now },
 	)
 
