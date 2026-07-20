@@ -7,7 +7,8 @@ chip_branch: chip-m01-sync-state-scheduler
 worktree: .claude/worktrees/chip-m01
 base_sha: 078caf12d8a508c387411c1a9734bb42c674c65b   # forked off current main (superset of milestone base 138aac3d)
 milestone_base_sha: 138aac3d                          # contract anchor
-head_sha: ac8af597e06a56225bf370d49ee9a7ffec0768d4
+base_slice_sha: ac8af597e06a56225bf370d49ee9a7ffec0768d4    # green base (dual-gate)
+head_sha: 4c9a6494                                          # + corrective slice (delta re-gate)
 validation_level: QA-0
 status: READY-TO-MERGE (dual-gate AGREEMENT; C3/C4/C11 real-Postgres proof pending hub integration lane)
 ```
