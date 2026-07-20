@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -164,6 +165,51 @@ func TestRunOnceSkipsEntityOnReadError(t *testing.T) {
 	}
 	if len(store.successes) != 0 || len(store.failures) != 0 {
 		t.Errorf("read error recorded state (successes=%d failures=%d), want 0/0", len(store.successes), len(store.failures))
+	}
+}
+
+func TestRunOncePanicIsIsolatedAsFailure(t *testing.T) {
+	store := newFakeStore()
+	// Seed a real cursor for the panicking entity: a panic must record a failure
+	// and NEVER reach RecordSuccess(nil), which would erase this stored cursor
+	// (the #7×#3 interaction — panic isolation must not clobber progress).
+	store.readState[domain.EntityProducts] = domain.SyncState{Cursor: json.RawMessage(`{"page":7}`)}
+	at := time.Date(2026, 7, 20, 12, 0, 0, 0, time.UTC)
+	s := NewScheduler(store, "erp", time.Minute, fixedClock(at))
+
+	if err := s.RegisterJob(domain.EntityProducts, func(context.Context, json.RawMessage) (json.RawMessage, error) {
+		panic("kaboom")
+	}); err != nil {
+		t.Fatal(err)
+	}
+	ran := false
+	if err := s.RegisterJob(domain.EntityListings, func(context.Context, json.RawMessage) (json.RawMessage, error) {
+		ran = true
+		return nil, nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Must not propagate the panic; must record it as the entity's failure and
+	// keep serving the other entity.
+	s.RunOnce(context.Background())
+
+	if !ran {
+		t.Error("panic in first job aborted the loop — not isolated")
+	}
+	if len(store.failures) != 1 || store.failures[0].entity != domain.EntityProducts {
+		t.Fatalf("panic not recorded as products failure: %+v", store.failures)
+	}
+	if !strings.Contains(store.failures[0].syncErr.Message, "panicked") {
+		t.Errorf("panic failure message = %q, want it to mention panicked", store.failures[0].syncErr.Message)
+	}
+	// The panicking entity must NOT have recorded a success: RecordSuccess(nil)
+	// on the panic path would clobber the seeded {"page":7} cursor. Only the
+	// healthy listings entity may appear in successes.
+	for _, sc := range store.successes {
+		if sc.entity == domain.EntityProducts {
+			t.Errorf("panic path recorded a success for products (%q) — would clobber the stored cursor", sc.cursor)
+		}
 	}
 }
 

@@ -33,6 +33,9 @@ func NewSyncStateRepository(pool *pgxpool.Pool, tenantID string) *SyncStateRepos
 // Read returns the state for (installation, entity). A missing row is found=false
 // with no error and no fabricated cursor — an honest first run.
 func (r *SyncStateRepository) Read(ctx context.Context, installationID string, entity domain.Entity) (domain.SyncState, bool, error) {
+	if !entity.Valid() {
+		return domain.SyncState{}, false, domain.ErrUnknownEntity
+	}
 	row := r.pool.QueryRow(ctx, `
 		SELECT tenant_id, installation_id, entity,
 		       cursor, schedule, last_full_sync_at, last_incremental_at,
@@ -57,6 +60,9 @@ func (r *SyncStateRepository) Read(ctx context.Context, installationID string, e
 // and resets consecutive_failures to 0. A nil cursor is stored as SQL NULL, never
 // a fabricated `{}` (ADR-17).
 func (r *SyncStateRepository) RecordSuccess(ctx context.Context, installationID string, entity domain.Entity, cursor json.RawMessage, at time.Time, incremental bool) error {
+	if !entity.Valid() {
+		return domain.ErrUnknownEntity
+	}
 	_, err := r.pool.Exec(ctx, `
 		INSERT INTO sync_state (
 			tenant_id, installation_id, entity,
@@ -78,6 +84,9 @@ func (r *SyncStateRepository) RecordSuccess(ctx context.Context, installationID 
 // single atomic statement (read-modify-write in the DB, never in the app — no
 // lost update). It leaves the success timestamps untouched.
 func (r *SyncStateRepository) RecordFailure(ctx context.Context, installationID string, entity domain.Entity, syncErr domain.SyncError) error {
+	if !entity.Valid() {
+		return domain.ErrUnknownEntity
+	}
 	payload, err := json.Marshal(syncErr)
 	if err != nil {
 		return err
@@ -101,6 +110,9 @@ func (r *SyncStateRepository) RecordFailure(ctx context.Context, installationID 
 // consumers call it, they do not reimplement it. The row is created on first
 // append.
 func (r *SyncStateRepository) AppendPendingCodigo(ctx context.Context, installationID string, entity domain.Entity, codigo string) error {
+	if !entity.Valid() {
+		return domain.ErrUnknownEntity
+	}
 	_, err := r.pool.Exec(ctx, `
 		INSERT INTO sync_state (
 			tenant_id, installation_id, entity, cursor, consecutive_failures

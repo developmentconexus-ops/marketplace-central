@@ -38,6 +38,11 @@ type StateStore interface {
 // records last_error + a failure and never brings the loop down. Downstream job
 // bodies (M-03/M-04) MUST keep the returned error message generic — it becomes
 // sync_state.last_error and must not embed provider credentials or payloads.
+//
+// The returned cursor is AUTHORITATIVE: it replaces the stored cursor verbatim.
+// Returning nil ERASES the persisted cursor (writes SQL NULL) — a job that has
+// no new progress on a cycle MUST re-return the cursor it received, or it
+// destroys progress. (M-01's placeholder returns its input unchanged.)
 type JobFunc func(ctx context.Context, cursor json.RawMessage) (json.RawMessage, error)
 
 // Scheduler drives every registered job on a fixed tick and reconciles
@@ -144,7 +149,7 @@ func (s *Scheduler) runJob(ctx context.Context, j registeredJob) {
 	}
 	cursor := state.Cursor
 
-	next, jobErr := j.fn(ctx, cursor)
+	next, jobErr := s.safeInvoke(ctx, j.fn, cursor)
 	if jobErr != nil {
 		_ = s.store.RecordFailure(ctx, s.installationID, j.entity, domain.SyncError{
 			Message: jobErr.Error(),
@@ -153,4 +158,19 @@ func (s *Scheduler) runJob(ctx context.Context, j registeredJob) {
 		return
 	}
 	_ = s.store.RecordSuccess(ctx, s.installationID, j.entity, next, s.now().UTC(), false)
+}
+
+// safeInvoke runs a job body and converts a panic into a recorded failure at the
+// seam boundary. RegisterJob accepts arbitrary future job bodies (M-03/M-04), so
+// a panic in one entity's job must become that entity's failure — not crash the
+// loop that serves the other entities. This is per-job supervision at a goroutine
+// boundary, not a blanket swallow of an integrity read.
+func (s *Scheduler) safeInvoke(ctx context.Context, fn JobFunc, cursor json.RawMessage) (next json.RawMessage, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			next = nil
+			err = fmt.Errorf("sync: job panicked: %v", r)
+		}
+	}()
+	return fn(ctx, cursor)
 }
