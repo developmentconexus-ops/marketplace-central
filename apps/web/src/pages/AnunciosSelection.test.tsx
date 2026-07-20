@@ -155,14 +155,14 @@ describe("AnunciosPage selection and pagination", () => {
     fireEvent.click(screen.getByRole("button", { name: "Próxima" }));
     fireEvent.click(await screen.findByLabelText("Selecionar anúncio Página 2 A"));
 
-    expect(screen.getByText("3 selecionado(s)")).toBeInTheDocument();
+    expect(screen.getByText("3 selecionados")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Anterior" }));
 
     expect(await screen.findByText("Página 1 A")).toBeInTheDocument();
     expect(screen.getByLabelText("Selecionar anúncio Página 1 A")).toBeChecked();
     expect(screen.getByLabelText("Selecionar anúncio Página 1 B")).toBeChecked();
-    expect(screen.getByText("3 selecionado(s)")).toBeInTheDocument();
+    expect(screen.getByText("3 selecionados")).toBeInTheDocument();
   });
 
   it("selects and deselects only the current page from the header checkbox", async () => {
@@ -178,18 +178,18 @@ describe("AnunciosPage selection and pagination", () => {
 
     expect(screen.getByLabelText("Selecionar anúncio Página 1 A")).not.toBeChecked();
     expect(screen.getByLabelText("Selecionar anúncio Página 1 B")).not.toBeChecked();
-    expect(screen.getByText("1 selecionado(s)")).toBeInTheDocument();
+    expect(screen.getByText("1 selecionados")).toBeInTheDocument();
   });
 
   it("clears selection when the installation changes", async () => {
     const view = renderPage();
     fireEvent.click(await screen.findByLabelText("Selecionar anúncio Página 1 A"));
-    expect(screen.getByText("1 selecionado(s)")).toBeInTheDocument();
+    expect(screen.getByText("1 selecionados")).toBeInTheDocument();
 
     mockInstallationId = "inst_2";
     view.rerender(pageElement());
 
-    await waitFor(() => expect(screen.queryByText("1 selecionado(s)")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText("1 selecionados")).not.toBeInTheDocument());
   });
 
   it("marks the header checkbox indeterminate when only part of the page is selected", async () => {
@@ -250,22 +250,22 @@ describe("AnunciosPage selection and pagination", () => {
     );
   });
 
-  it("keeps all bulk actions disabled at zero selection", async () => {
+  it("hides the bulk actions bar at zero selection and reveals it once a row is selected", async () => {
     renderPage();
     await screen.findByText("Página 1 A");
 
-    for (const name of [
-      "Atualizar preço",
-      "Corrigir estoque",
-      "Pausar",
-      "Ressincronizar",
-      "Vincular",
-      "Editar",
-    ]) {
-      const button = screen.getByRole("button", { name });
-      expect(button).toBeDisabled();
-      expect(button).toHaveAttribute("title", "Selecione ao menos um anúncio");
-      fireEvent.click(button);
+    const bulkActions = ["Atualizar preço", "Corrigir estoque", "Pausar", "Ressincronizar", "Vincular", "Editar"];
+
+    // Design: the bulk bar is gated on selection — no actions render at zero.
+    for (const name of bulkActions) {
+      expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
+    }
+
+    fireEvent.click(await screen.findByLabelText("Selecionar anúncio Página 1 A"));
+
+    expect(screen.getByText("1 selecionados")).toBeInTheDocument();
+    for (const name of bulkActions) {
+      expect(screen.getByRole("button", { name })).toBeEnabled();
     }
   });
 
@@ -326,7 +326,7 @@ describe("AnunciosPage selection and pagination", () => {
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-      expect(screen.queryByText("1 selecionado(s)")).not.toBeInTheDocument();
+      expect(screen.queryByText("1 selecionados")).not.toBeInTheDocument();
     });
   });
 });
