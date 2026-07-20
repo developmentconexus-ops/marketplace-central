@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import type { OrderPage, OrderRead } from "@marketplace-central/sdk-runtime";
-import { EmptyState, ErrorState, LoadingState, StatCard } from "@marketplace-central/ui";
+import { EmptyState, ErrorState, LoadingState } from "@marketplace-central/ui";
 import { ordersQueryKeys, QUERY_STALE_TIME } from "@marketplace-central/web-query";
 import { useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -11,6 +11,7 @@ import { FilaView } from "./FilaView";
 import { KanbanView } from "./KanbanView";
 import { ListaView } from "./ListaView";
 import { PedidoDrawer } from "./PedidoDrawer";
+import { formatMoney } from "./pedidosFormatters";
 import { bucketTabCount, type PedidosTab } from "./pedidosTabs";
 
 type PedidosView = "fila" | "lista" | "kanban";
@@ -21,15 +22,8 @@ const viewOptions: { value: PedidosView; label: string }[] = [
   { value: "kanban", label: "Kanban" },
 ];
 
-const viewHeadings: Record<PedidosView, string> = {
-  fila: "Fila de trabalho",
-  lista: "Lista de pedidos",
-  kanban: "Kanban",
-};
-
-// UnknownValue's rendered node ("—") can't be passed through StatCard.value (string | number
-// only) without forking packages/ui/StatCard.tsx, which this slice may only consume. The literal
-// em dash below matches UnknownValue's glyph so the KPI still reads as an honest unknown, not a 0.
+// The em dash matches UnknownValue's glyph so a KPI reads as an honest unknown, never a
+// fabricated 0 (ADR-17).
 const UNKNOWN_KPI_VALUE = "—";
 
 // Safety cap on the pagination accumulator below (G2/F02-S5): a backstop against an unbounded
@@ -61,21 +55,47 @@ async function fetchAllOrders(client: Client, installationId: string): Promise<O
   return { items, next_cursor: null };
 }
 
+type KpiTone = "default" | "amber";
+
 interface KpiCardProps {
   label: string;
   value: string;
   sub?: string;
+  tone?: KpiTone;
   onSelect: () => void;
 }
 
-function KpiCard({ label, value, sub, onSelect }: KpiCardProps) {
+// Design KPI card (Pedidos.dc.html): flex-1, min-width 150, 1.5px border, 10.5px label, 19px
+// mono value with an inline nota. The nota is aria-hidden so the button's accessible name stays
+// "LABEL VALUE" (the counts the tests assert), not "LABEL nota VALUE".
+function KpiCard({ label, value, sub, tone = "default", onSelect }: KpiCardProps) {
+  const toneClass =
+    tone === "amber" ? "border-amber bg-amber-soft" : "border-border bg-surface";
   return (
     <button
       type="button"
       onClick={onSelect}
-      className="w-full rounded-card text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      className={`min-w-[150px] flex-1 rounded-[11px] border-[1.5px] ${toneClass} px-[15px] py-[10px] text-left transition-colors hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent`}
     >
-      <StatCard label={label} value={value} sub={sub} />
+      <span
+        className={`block text-[10.5px] font-semibold uppercase tracking-[0.06em] ${
+          tone === "amber" ? "text-amber" : "text-faint"
+        }`}
+      >
+        {label}
+      </span>
+      <span
+        className={`mt-1 block whitespace-nowrap font-mono text-[19px] font-bold ${
+          tone === "amber" ? "text-amber" : "text-ink"
+        }`}
+      >
+        {value}
+        {sub ? (
+          <span aria-hidden className="ml-2 font-sans text-[11px] font-semibold text-faint">
+            {sub}
+          </span>
+        ) : null}
+      </span>
     </button>
   );
 }
@@ -118,6 +138,16 @@ export function PedidosPage() {
   const kpiValue = (bucket: PedidosTab): string =>
     ordersReady ? String(bucketTabCount(allItems, bucket) ?? 0) : UNKNOWN_KPI_VALUE;
 
+  // DIFAL urgency banner is DATA-GATED: today every order's difal.amount is null (decomposer not
+  // wired, hub C2), so difalPending is empty and the banner is omitted — never fabricated. Once C2
+  // lands with real amounts, the same derivation lights the banner up with no UI change.
+  const difalPending = allItems.filter(
+    (order) => order.difal?.amount != null && order.difal.paid !== true,
+  );
+  const difalTotal = difalPending.reduce((sum, order) => sum + (order.difal.amount ?? 0), 0);
+  const showDifalBanner = ordersReady && difalPending.length > 0;
+  const difalResumo = `${formatMoney(difalTotal) ?? ""} a pagar · ${difalPending.length} agendado(s)`;
+
   const goToFila = () => setView("fila");
   const goToListaTab = (bucketTab: PedidosTab) => () => {
     setView("lista");
@@ -140,41 +170,40 @@ export function PedidosPage() {
   }
 
   return (
-    <section aria-labelledby="pedidos-title" className="mx-auto flex max-w-7xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm font-medium text-accent-ink">Workspace operacional</p>
-        <h1 id="pedidos-title" className="text-2xl font-semibold tracking-tight text-ink">
+    <section aria-labelledby="pedidos-title" className="mx-auto flex max-w-7xl flex-col gap-[14px]">
+      <div className="flex flex-wrap items-center gap-[10px]">
+        <h1 id="pedidos-title" className="text-[22px] font-bold tracking-tight text-ink">
           Pedidos
         </h1>
-        <p className="max-w-2xl text-sm text-muted">
-          Acompanhe os pedidos recebidos, o vínculo com produtos internos e os prazos de SLA.
-        </p>
-      </header>
-
-      <div
-        aria-label="Indicadores de pedidos"
-        className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"
-      >
-        <KpiCard label="NOVOS" value={kpiValue("novo")} onSelect={goToListaTab("novo")} />
-        <KpiCard label="A FATURAR" value={kpiValue("faturar")} onSelect={goToListaTab("faturar")} />
-        <KpiCard label="A ENVIAR" value={kpiValue("enviar")} onSelect={goToListaTab("enviar")} />
-        <KpiCard label="ENVIADOS" value={kpiValue("enviado")} onSelect={goToListaTab("enviado")} />
-        <KpiCard
-          label="DIFAL A PAGAR"
-          value={UNKNOWN_KPI_VALUE}
-          sub="decomposição pendente"
-          onSelect={goToFila}
-        />
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
-        <h2 id="pedidos-list-title" className="text-sm font-semibold text-ink">
-          {viewHeadings[view]}
-        </h2>
+        <button
+          type="button"
+          disabled
+          title="filtro de período em breve"
+          className="whitespace-nowrap rounded-pill border border-border px-3 py-1 text-[12.5px] text-muted disabled:cursor-not-allowed"
+        >
+          período: 7 dias ▾
+        </button>
+        <button
+          type="button"
+          disabled
+          title="filtro de logística em breve"
+          className="whitespace-nowrap rounded-pill border border-border px-3 py-1 text-[12.5px] text-muted disabled:cursor-not-allowed"
+        >
+          logística: todas ▾
+        </button>
+        {showDifalBanner ? (
+          <button
+            type="button"
+            onClick={goToFila}
+            className="whitespace-nowrap rounded-pill border border-amber bg-amber-soft px-3 py-1 text-[11.5px] font-semibold text-amber"
+          >
+            DIFAL: {difalResumo}
+          </button>
+        ) : null}
         <div
           role="tablist"
           aria-label="Alternar visualização de pedidos"
-          className="inline-flex overflow-hidden rounded-lg border border-border text-sm"
+          className="ml-auto inline-flex overflow-hidden rounded-[9px] border border-border text-[12.5px]"
         >
           {viewOptions.map((option) => (
             <button
@@ -183,7 +212,7 @@ export function PedidosPage() {
               role="tab"
               aria-selected={view === option.value}
               onClick={() => setView(option.value)}
-              className={`px-4 py-2 font-medium transition-colors ${
+              className={`px-4 py-1.5 font-medium transition-colors ${
                 view === option.value
                   ? "bg-accent-soft text-accent-ink"
                   : "bg-surface text-muted hover:text-ink"
@@ -195,9 +224,26 @@ export function PedidosPage() {
         </div>
       </div>
 
-      <section aria-labelledby="pedidos-list-title" className="rounded-card border border-border bg-surface p-4">
-        <div className="mt-1">{body}</div>
-      </section>
+      <div aria-label="Indicadores de pedidos" className="flex flex-wrap gap-[10px]">
+        <KpiCard label="NOVOS" value={kpiValue("novo")} sub="aguard. pagto" onSelect={goToListaTab("novo")} />
+        <KpiCard label="A FATURAR" value={kpiValue("faturar")} onSelect={goToListaTab("faturar")} />
+        <KpiCard label="A ENVIAR" value={kpiValue("enviar")} onSelect={goToListaTab("enviar")} />
+        <KpiCard label="ENVIADOS" value={kpiValue("enviado")} sub="últimos 7d" onSelect={goToListaTab("enviado")} />
+        <KpiCard
+          label="DIFAL A PAGAR"
+          value={UNKNOWN_KPI_VALUE}
+          sub="decomposição pendente"
+          onSelect={goToFila}
+        />
+      </div>
+
+      <div>{body}</div>
+
+      <p className="text-[11.5px] text-faint">
+        retorno = valor − comissão − frete − imposto − DIFAL − custo ERP (chips: verde ≥18% · âmbar
+        10–18% · vermelho &lt;10%) · SLA = prazo de despacho do ML · status sincronizado do ML/ERP,
+        sem edição inline
+      </p>
 
       <PedidoDrawer orderId={openOrderId} onClose={closeOrder} />
     </section>

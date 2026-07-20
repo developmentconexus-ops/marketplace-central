@@ -1,4 +1,4 @@
-import type { OrderBucket } from "@marketplace-central/sdk-runtime";
+import type { OrderBucket, OrderRead } from "@marketplace-central/sdk-runtime";
 
 const currencyFormatter = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -11,6 +11,61 @@ export function actionLabelForBucket(bucket: OrderBucket): "Faturar" | "Etiqueta
   if (bucket === "novo" || bucket === "faturar") return "Faturar";
   if (bucket === "enviar") return "Etiqueta";
   return null;
+}
+
+// Margin band → pct-chip token classes. margem_pct is a ratio (0.18 = 18%), matching the design
+// legend: verde ≥18% · âmbar 10–18% · vermelho <10%. No --err token in app @theme, so the <10%
+// band uses warn (reddish-brown) rather than a hardcoded red.
+export function marginBandClass(ratio: number): string {
+  if (ratio >= 0.18) return "bg-accent-soft text-accent-ink";
+  if (ratio >= 0.1) return "bg-amber-soft text-amber";
+  return "bg-warn-soft text-warn";
+}
+
+// Fila urgency tier: the leftmost tag of a work-queue row. Real-payload only (sla.due + atrasado,
+// then bucket) — never a fabricated relative label. Returns the display text + token color class.
+export function frontTier(item: OrderRead): { text: string; className: string } {
+  if (item.sla?.atrasado === true) {
+    return { text: "ATRASADO", className: "text-warn" };
+  }
+  const due = formatDateTime(item.sla?.due);
+  if (due) {
+    return { text: due, className: "text-muted" };
+  }
+  const byBucket: Record<OrderBucket, string> = {
+    novo: "NOVO",
+    faturar: "A FATURAR",
+    enviar: "A ENVIAR",
+    enviado: "ENVIADO",
+    cancelado: "CANCELADO",
+  };
+  return { text: byBucket[item.bucket], className: "text-faint" };
+}
+
+// Buyer/recipient name for a row's description. Prefers destinatario (the shipment receiver, the
+// real name we hold) then the masked buyer.display; null when neither is present (ADR-17 — never a
+// fabricated name). City/UF is intentionally NOT here: the design (Pedidos.dc.html) keeps the
+// Fila/Kanban description to comprador · itens · valor and shows destino only in the drawer.
+export function orderComprador(item: OrderRead): string | null {
+  return item.destinatario ?? item.buyer?.display ?? null;
+}
+
+// Item summary for a row's description, mirroring the design's descDe: a single item shows its
+// title, many collapse to "N itens". Empty items → null (honest unknown, not "0 itens").
+export function orderItensLabel(item: OrderRead): string | null {
+  if (item.items.length === 0) return null;
+  if (item.items.length > 1) return `${item.items.length} itens`;
+  return item.items[0]?.title ?? null;
+}
+
+// Fila row description = comprador · itens · valor (design descDe). Absent segments drop so an
+// order with real total but no item titles reads "Marcia Rocha · R$ 339,98" rather than injecting
+// a fabricated placeholder mid-string; all-absent → null for an honest UnknownValue (ADR-17).
+export function orderFilaDesc(item: OrderRead): string | null {
+  const parts = [orderComprador(item), orderItensLabel(item), formatMoney(item.total)].filter(
+    Boolean,
+  );
+  return parts.length > 0 ? parts.join(" · ") : null;
 }
 
 export function formatMoney(value: number | null | undefined): string | null {

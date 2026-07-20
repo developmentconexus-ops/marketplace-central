@@ -1,6 +1,13 @@
 import type { OrderRead } from "@marketplace-central/sdk-runtime";
 import { UnknownValue } from "@marketplace-central/ui";
-import { actionLabelForBucket, formatDateTime, formatMoney } from "./pedidosFormatters";
+import {
+  actionLabelForBucket,
+  formatMoney,
+  formatPercent,
+  frontTier,
+  marginBandClass,
+  orderFilaDesc,
+} from "./pedidosFormatters";
 
 export interface FilaViewProps {
   items: OrderRead[];
@@ -27,12 +34,27 @@ function sortByUrgency(items: OrderRead[]): OrderRead[] {
   });
 }
 
-function orderDescription(item: OrderRead): string {
-  const buyer = item.buyer?.display ?? "comprador desconhecido";
-  const itemsLabel =
-    item.items.length > 1 ? `${item.items.length} itens` : (item.items[0]?.title ?? "item");
-  const total = formatMoney(item.total);
-  return total ? `${buyer} · ${itemsLabel} · ${total}` : `${buyer} · ${itemsLabel}`;
+// Retorno + margem-pct chip (design's retDe group): mono value + a token-banded pill. Both derive
+// from the order's own retorno_liquido/margem_pct — null (decomposer not wired, hub C2) renders an
+// honest UnknownValue with no pill, never a fabricated 0 or band (ADR-17).
+function FilaRetorno({ item }: { item: OrderRead }) {
+  const retorno = formatMoney(item.retorno_liquido);
+  const ratio = item.margem_pct;
+  const margem = formatPercent(ratio);
+  return (
+    <span className="flex flex-none items-center gap-[5px] whitespace-nowrap">
+      <span className="font-mono font-semibold">
+        {retorno ?? (
+          <UnknownValue hint="retorno depende de decomposição ainda não disponível (DIFAL/custo)" />
+        )}
+      </span>
+      {margem != null && ratio != null ? (
+        <span className={`rounded-pill px-[7px] text-[10.5px] font-bold ${marginBandClass(ratio)}`}>
+          {margem}
+        </span>
+      ) : null}
+    </span>
+  );
 }
 
 export function FilaView({ items, onOpenOrder }: FilaViewProps) {
@@ -41,21 +63,22 @@ export function FilaView({ items, onOpenOrder }: FilaViewProps) {
   return (
     <div className="flex flex-col gap-2">
       <p className="text-xs text-faint">
-        Fila de trabalho · ordenada por urgência (atrasados primeiro, depois SLA de envio) · DIFAL
-        indisponível nesta fila
+        fila de trabalho · ordenada por urgência (atrasados → SLA de envio → data) · clique abre o
+        detalhe
       </p>
       <div className="overflow-x-auto rounded-card border border-border bg-surface">
         <div style={{ minWidth: "820px" }} className="flex flex-col">
-          {ordered.map((item, index) => {
+          {ordered.map((item) => {
             const actionLabel = actionLabelForBucket(item.bucket);
             const atrasado = item.sla?.atrasado === true;
-            const due = formatDateTime(item.sla?.due);
+            const tier = frontTier(item);
+            const desc = orderFilaDesc(item);
             return (
               <div
                 key={item.provider_order_id}
                 role="button"
                 tabIndex={0}
-                aria-label={`Abrir detalhe do pedido ${item.provider_code || item.provider_order_id}`}
+                aria-label={`Abrir detalhe do pedido ${item.provider_order_id}`}
                 onClick={() => onOpenOrder(item.provider_order_id)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
@@ -63,35 +86,34 @@ export function FilaView({ items, onOpenOrder }: FilaViewProps) {
                     onOpenOrder(item.provider_order_id);
                   }
                 }}
-                className={`flex cursor-pointer items-center gap-3 px-4 py-3 text-xs hover:bg-surface-2 ${
-                  index > 0 ? "border-t border-border-2" : ""
-                } ${atrasado ? "bg-red-50" : ""}`}
+                className={`flex cursor-pointer items-center gap-3 border-t border-border-2 px-4 py-[11px] text-[12.5px] hover:bg-surface-2 ${
+                  atrasado ? "bg-warn-soft" : ""
+                }`}
               >
+                <span className={`w-[110px] flex-none truncate text-[11px] font-bold ${tier.className}`}>
+                  {tier.text}
+                </span>
                 <span
-                  className={`w-24 flex-none text-[11px] font-bold uppercase tracking-wide ${
-                    atrasado ? "text-red-700" : "text-faint"
-                  }`}
+                  className="w-[78px] flex-none truncate font-mono text-[11.5px] text-faint"
+                  title={item.provider_order_id}
                 >
-                  {atrasado ? "atrasado" : (due ?? <UnknownValue hint="sem SLA de envio" />)}
+                  {item.provider_order_id}
                 </span>
-                <span className="w-20 flex-none font-mono text-[11.5px] text-faint">
-                  {item.provider_code || item.provider_order_id}
+                <span className="min-w-0 flex-1 truncate">
+                  {desc ?? <UnknownValue hint="comprador/itens/valor ainda não disponíveis" />}
                 </span>
-                <span className="min-w-0 flex-1 truncate">{orderDescription(item)}</span>
-                <span className="flex flex-none items-center gap-1 whitespace-nowrap font-mono font-semibold">
-                  {formatMoney(item.retorno_liquido) ?? <UnknownValue hint="retorno depende de decomposição ainda não disponível (DIFAL/custo)" />}
-                </span>
+                <FilaRetorno item={item} />
                 {actionLabel ? (
                   <button
                     type="button"
                     disabled
                     title="disponível em breve"
-                    className="flex-none rounded-md border border-border bg-surface-2 px-3 py-1 text-[11.5px] font-semibold text-muted disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex-none rounded-[7px] border border-border bg-surface-2 px-3 py-[5px] text-[11.5px] font-semibold text-muted disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {actionLabel}
                   </button>
                 ) : (
-                  <span className="flex-none text-[11.5px] text-faint">sem ação</span>
+                  <span className="flex-none whitespace-nowrap text-[11.5px] text-faint">sem ação</span>
                 )}
               </div>
             );
