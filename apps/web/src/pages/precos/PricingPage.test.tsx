@@ -110,6 +110,21 @@ vi.mock("./ApplyPriceAction", () => ({
 }));
 // The stub exposes the onReload seam so the page's applyScenario logic (state
 // re-application) is exercised for real — both a present and an absent product.
+// The matrix owns its own market + per-row decompose/listing fan-out; stub it here
+// (same sanctioned pattern as the child panels below) and expose its onSelect seam
+// so the page's row-click → setSelectedId wiring is exercised for real.
+vi.mock("./PricingMatrix", () => ({
+  PricingMatrix: ({ onSelect }: { onSelect: (id: number) => void }) => (
+    <div data-testid="pricing-matrix-stub">
+      <button data-testid="stub-row-90001" onClick={() => onSelect(90001)}>
+        row-90001
+      </button>
+      <button data-testid="stub-row-missing" onClick={() => onSelect(99999)}>
+        row-missing
+      </button>
+    </div>
+  ),
+}));
 vi.mock("./ScenariosPanel", () => ({
   ScenariosPanel: ({ onReload }: { onReload: (p: Record<string, unknown>) => void }) => (
     <div data-testid="scenarios-panel-stub">
@@ -168,8 +183,9 @@ describe("PricingPage scaffold", () => {
     // Page marker (also the AppRouter /precos smoke assertion).
     expect(await screen.findByText("Preços & Simulador")).toBeInTheDocument();
 
-    // Shell regions the later slices flesh out.
-    expect(screen.getByTestId("region-decomposicao")).toBeInTheDocument();
+    // The simular side panel opens for the auto-selected first product once the
+    // catalog resolves — its regions are the preserved single-product surface.
+    expect(await screen.findByTestId("region-decomposicao")).toBeInTheDocument();
     expect(screen.getByTestId("region-solver")).toBeInTheDocument();
     expect(screen.getByTestId("params-trigger")).toBeInTheDocument();
     expect(screen.getByTestId("region-comparacao")).toBeInTheDocument();
@@ -182,6 +198,18 @@ describe("PricingPage scaffold", () => {
     // The decompose response's tarifa block flows through to the panel's carimbo.
     const carimbo = await screen.findByTestId("decomp-tarifa-comissao");
     expect(carimbo).toHaveTextContent("Cotação");
+  });
+
+  it("renders the matrix as the main surface and wires row-click to selection", async () => {
+    renderPage();
+    // Matrix is the main surface.
+    expect(await screen.findByTestId("pricing-matrix-stub")).toBeInTheDocument();
+
+    // A row-click for a product NOT in the loaded catalog resolves to the honest
+    // "not in list" empty state — proving onSelect drives setSelectedId (never a
+    // silent fallback to a different product).
+    fireEvent.click(screen.getByTestId("stub-row-missing"));
+    expect(await screen.findByTestId("scenario-reload-notice")).toBeInTheDocument();
   });
 
   it("opens the Parâmetros drawer on the ?params=1 deep link", async () => {

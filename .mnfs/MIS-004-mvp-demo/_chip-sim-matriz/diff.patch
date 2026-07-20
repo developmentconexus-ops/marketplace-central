@@ -1,0 +1,781 @@
+diff --git a/apps/web/src/pages/precos/MarketComparison.tsx b/apps/web/src/pages/precos/MarketComparison.tsx
+index 37f76780..7e0b7c48 100644
+--- a/apps/web/src/pages/precos/MarketComparison.tsx
++++ b/apps/web/src/pages/precos/MarketComparison.tsx
+@@ -18,7 +18,7 @@ export interface MarketAggregatesClient {
+  * Kept local (not imported from ClientContext) so this panel stays decoupled from
+  * the central seam — the app's useClient() carries no market client.
+  */
+-function apiBaseUrl(): string {
++export function apiBaseUrl(): string {
+   const env = import.meta.env.VITE_API_BASE_URL;
+   if (env && env.trim()) return env;
+   return import.meta.env.DEV ? "http://localhost:8080" : "";
+diff --git a/apps/web/src/pages/precos/PricingMatrix.test.tsx b/apps/web/src/pages/precos/PricingMatrix.test.tsx
+new file mode 100644
+index 00000000..57f29a5d
+--- /dev/null
++++ b/apps/web/src/pages/precos/PricingMatrix.test.tsx
+@@ -0,0 +1,335 @@
++import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
++import { render, screen, waitFor, within } from "@testing-library/react";
++import { beforeEach, describe, expect, it, vi } from "vitest";
++import { PricingMatrix } from "./PricingMatrix";
++import type {
++  CatalogProductFact,
++  PricingCalcProfile,
++  PricingDecomposeResponse,
++} from "@marketplace-central/sdk-runtime";
++import type { MarketPriceIntelAggregate } from "@marketplace-central/sdk-runtime";
++import type { MarketAggregatesClient } from "./MarketComparison";
++
++const profile: PricingCalcProfile = {
++  regime: "SIMPLES",
++  aliquota_pct: "4",
++  limiar_verde_pct: "18",
++  limiar_amarelo_pct: "10",
++  tarifa_full: null,
++  difal_enabled: false,
++  difal_destino_uf: null,
++  origem: "operator",
++};
++
++function fact(over: Partial<CatalogProductFact> & { internal_product_id: number }): CatalogProductFact {
++  return {
++    reference: null,
++    description: null,
++    ean: null,
++    manufacturer_reference: null,
++    brand_name: null,
++    ncm: null,
++    quality_flags: [],
++    active: true,
++    sellable_stock: { quantity: 1, quality: [] },
++    current_price: { amount: "189.00", currency: "BRL", quality: [] },
++    cost: { amount: "120.00", currency: "BRL", quality: [] },
++    ...over,
++  };
++}
++
++// EXEMPLO-IO three products:
++// (a) 90001 custo 120 preço 189, mercado mediana 169 OK n_sellers 8, margem non-null
++// (b) 90002 same custo/preço, mercado NO_PRICE_EVIDENCE, margem still computed
++// (c) 90003 cost null, decompose margem null
++const products: CatalogProductFact[] = [
++  fact({ internal_product_id: 90001, manufacturer_reference: "SKU-A", description: "Produto A" }),
++  fact({ internal_product_id: 90002, manufacturer_reference: "SKU-B", description: "Produto B" }),
++  fact({
++    internal_product_id: 90003,
++    manufacturer_reference: "SKU-C",
++    description: "Produto C",
++    cost: { amount: null, currency: "BRL", quality: [] },
++  }),
++];
++
++const aggregates: MarketPriceIntelAggregate[] = [
++  {
++    product_id: "90001",
++    median: { amount: "169.00", currency: "BRL" },
++    min_valid: { amount: "150.00", currency: "BRL" },
++    n_offers: 16,
++    n_sellers: 8,
++    source: "ml_catalog_offers",
++    fetched_at: "2026-07-18T12:00:00Z",
++    computed_at: "2026-07-18T12:00:00Z",
++    status: "OK",
++  },
++  {
++    product_id: "90002",
++    median: null,
++    min_valid: null,
++    n_offers: 0,
++    n_sellers: 0,
++    source: "ml_catalog_offers",
++    fetched_at: "0001-01-01T00:00:00Z",
++    computed_at: "0001-01-01T00:00:00Z",
++    status: "NO_PRICE_EVIDENCE",
++  },
++  // 90003 intentionally absent from aggregates → honest "SEM_EVIDENCIA"
++];
++
++function decomposeFor(productId: number): PricingDecomposeResponse {
++  if (productId === 90003) {
++    return {
++      decomposition: {
++        preco: "189.00",
++        comissao: "32.13",
++        taxa_fixa: "0",
++        frete: null,
++        imposto: "7.56",
++        difal: null,
++        tarifa_full: null,
++        custo: null,
++        margem_valor: null,
++        margem_pct: null,
++        componentes_desconhecidos: ["custo_erp"],
++      },
++      blocking_state: "SEM_CUSTO",
++      tarifa: null,
++    };
++  }
++  return {
++    decomposition: {
++      preco: "189.00",
++      comissao: "32.13",
++      taxa_fixa: "0",
++      frete: "18.30",
++      imposto: "7.56",
++      difal: null,
++      tarifa_full: null,
++      custo: "120.00",
++      margem_valor: "11.01",
++      margem_pct: "5.83",
++      componentes_desconhecidos: [],
++    },
++    blocking_state: null,
++    tarifa: null,
++  };
++}
++
++const pricingDecompose = vi.fn((req: { product_id?: number | null }) =>
++  Promise.resolve(decomposeFor(req.product_id as number)),
++);
++
++// 90001 has a listing; 90003 has none → "novo".
++const listListingsByProduct = vi.fn((req: { product_id: string }) =>
++  Promise.resolve({
++    groups: [
++      {
++        product_id: req.product_id,
++        product_title: null,
++        listing_count: req.product_id === "90001" ? 1 : 0,
++        group_state: "ok",
++        listings: req.product_id === "90001" ? [{ listing_id: "MLB1" }] : [],
++      },
++    ],
++    next_cursor: null,
++    page_size: 1,
++  }),
++);
++
++vi.mock("../../app/ClientContext", () => ({
++  useClient: () => ({ pricingDecompose, listListingsByProduct }),
++}));
++
++function renderMatrix(marketClient: MarketAggregatesClient, installationId = "") {
++  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
++  return render(
++    <QueryClientProvider client={queryClient}>
++      <PricingMatrix
++        products={products}
++        selectedId={null}
++        onSelect={() => {}}
++        modalidade="premium"
++        profile={profile}
++        installationId={installationId}
++        marketClient={marketClient}
++      />
++    </QueryClientProvider>,
++  );
++}
++
++describe("PricingMatrix (EXEMPLO-IO golden)", () => {
++  beforeEach(() => {
++    pricingDecompose.mockClear();
++    listListingsByProduct.mockClear();
++    // Restore the default resolving impl so a per-test error override never leaks.
++    pricingDecompose.mockImplementation((req: { product_id?: number | null }) =>
++      Promise.resolve(decomposeFor(req.product_id as number)),
++    );
++  });
++
++  it("renders the design columns for a multi-product list", async () => {
++    const listMarketAggregates = vi.fn(() => Promise.resolve(aggregates));
++    renderMatrix({ listMarketAggregates });
++
++    // 7 design columns present.
++    for (const col of ["SKU", "DESCRIÇÃO", "CUSTO", "NOSSO PREÇO", "PREÇO MERCADO", "MARGEM", "VEREDICTO"]) {
++      expect(screen.getByRole("columnheader", { name: col })).toBeInTheDocument();
++    }
++    // All three product rows rendered.
++    expect(await screen.findByTestId("matrix-row-90001")).toBeInTheDocument();
++    expect(screen.getByTestId("matrix-row-90002")).toBeInTheDocument();
++    expect(screen.getByTestId("matrix-row-90003")).toBeInTheDocument();
++  });
++
++  it("(a) priced row: market median + margem chip + VEREDICTO OK", async () => {
++    const listMarketAggregates = vi.fn(() => Promise.resolve(aggregates));
++    renderMatrix({ listMarketAggregates });
++
++    const row = await screen.findByTestId("matrix-row-90001");
++    expect(within(row).getByText("SKU-A")).toBeInTheDocument();
++    expect(within(row).getByText("Produto A")).toBeInTheDocument();
++    // CUSTO + NOSSO PREÇO from the fact.
++    expect(within(row).getByText(/120[.,]00/)).toBeInTheDocument();
++    expect(within(row).getByText(/189[.,]00/)).toBeInTheDocument();
++    // PREÇO MERCADO = median (169) once the single market call resolves — NO rank string.
++    await waitFor(() =>
++      expect(within(row).getByTestId("matrix-mercado-90001")).toHaveTextContent(/169[.,]00/),
++    );
++    // VEREDICTO price-evidence (resolves with the market call).
++    expect(within(row).getByTestId("matrix-veredicto-90001")).toHaveTextContent("OK");
++    // MARGEM: retorno/un + chip %.
++    await waitFor(() => expect(within(row).getByText(/11[.,]01/)).toBeInTheDocument());
++    expect(within(row).getByText("5.83%")).toBeInTheDocument();
++  });
++
++  it("(b) no market evidence: PREÇO MERCADO — , VEREDICTO SEM_EVIDENCIA, margem still computed", async () => {
++    const listMarketAggregates = vi.fn(() => Promise.resolve(aggregates));
++    renderMatrix({ listMarketAggregates });
++
++    const row = await screen.findByTestId("matrix-row-90002");
++    // Market price is the honest dash, never a fabricated number.
++    expect(within(row).getByTestId("matrix-mercado-90002")).toHaveTextContent("—");
++    // SEM_EVIDENCIA only once the market query RESOLVES to no-evidence (not while loading).
++    await waitFor(() =>
++      expect(within(row).getByTestId("matrix-veredicto-90002")).toHaveTextContent("SEM_EVIDENCIA"),
++    );
++    // Margem is still computed from custo/preço (decompose does not need market).
++    await waitFor(() => expect(within(row).getByText(/11[.,]01/)).toBeInTheDocument());
++  });
++
++  it("(c) no ERP cost: CUSTO — and MARGEM UnknownValue —", async () => {
++    const listMarketAggregates = vi.fn(() => Promise.resolve(aggregates));
++    renderMatrix({ listMarketAggregates });
++
++    const row = await screen.findByTestId("matrix-row-90003");
++    expect(within(row).getByTestId("matrix-custo-90003")).toHaveTextContent("—");
++    // Resolved-but-absent aggregate → honest SEM_EVIDENCIA (after the query resolves).
++    await waitFor(() =>
++      expect(within(row).getByTestId("matrix-veredicto-90003")).toHaveTextContent("SEM_EVIDENCIA"),
++    );
++    // Margem UnknownValue with the M-07 hint (categorical margin verdict not invented here).
++    await waitFor(() => {
++      const cell = within(row).getByTestId("matrix-margem-90003");
++      expect(cell).toHaveTextContent("—");
++      expect(within(cell).getByTitle("margem: M-07")).toBeInTheDocument();
++    });
++  });
++
++  it('tags a product with no listing "novo" once the listing query resolves', async () => {
++    const listMarketAggregates = vi.fn(() => Promise.resolve(aggregates));
++    renderMatrix({ listMarketAggregates }, "inst_test");
++
++    // 90003 has no listing → "novo"; 90001 has a listing → no tag.
++    await waitFor(() => expect(screen.getByTestId("matrix-novo-90003")).toBeInTheDocument());
++    expect(screen.queryByTestId("matrix-novo-90001")).toBeNull();
++  });
++
++  it("never tags novo when no installation is known (unknown ≠ novo)", async () => {
++    const listMarketAggregates = vi.fn(() => Promise.resolve(aggregates));
++    renderMatrix({ listMarketAggregates }); // installationId "" → listing lane disabled
++
++    await screen.findByTestId("matrix-row-90003");
++    expect(listListingsByProduct).not.toHaveBeenCalled();
++    expect(screen.queryByTestId("matrix-novo-90003")).toBeNull();
++  });
++
++  it("queries the market ONCE with all codprods, and omits rank + comissao_pct", async () => {
++    const listMarketAggregates = vi.fn(() => Promise.resolve(aggregates));
++    renderMatrix({ listMarketAggregates });
++
++    await screen.findByTestId("matrix-row-90001");
++    // Single fan-in market call with every codprod.
++    await waitFor(() => expect(listMarketAggregates).toHaveBeenCalledTimes(1));
++    expect(listMarketAggregates).toHaveBeenCalledWith(["90001", "90002", "90003"]);
++
++    // Rank "19º/23" is absent from aggregate data → never rendered.
++    expect(screen.queryByText(/º\/\d/)).toBeNull();
++
++    // Per-row decompose omits comissao_pct so the backend resolver chain runs.
++    await waitFor(() => expect(pricingDecompose).toHaveBeenCalled());
++    for (const [arg] of pricingDecompose.mock.calls) {
++      expect(arg).not.toHaveProperty("comissao_pct");
++    }
++  });
++
++  it("(insufficient market) VEREDICTO MERCADO_INSUFICIENTE, price stays —", async () => {
++    const insufficient: MarketPriceIntelAggregate[] = [
++      {
++        product_id: "90001",
++        median: null,
++        min_valid: null,
++        n_offers: 2,
++        n_sellers: 2,
++        source: "ml_catalog_offers",
++        fetched_at: "2026-07-18T12:00:00Z",
++        computed_at: "2026-07-18T12:00:00Z",
++        status: "INSUFFICIENT_MARKET",
++      },
++    ];
++    const listMarketAggregates = vi.fn(() => Promise.resolve(insufficient));
++    renderMatrix({ listMarketAggregates });
++
++    const row = await screen.findByTestId("matrix-row-90001");
++    await waitFor(() =>
++      expect(within(row).getByTestId("matrix-veredicto-90001")).toHaveTextContent("MERCADO_INSUFICIENTE"),
++    );
++    // No usable median → honest dash, never a fabricated price.
++    expect(within(row).getByTestId("matrix-mercado-90001")).toHaveTextContent("—");
++  });
++
++  it("market fetch error stays unknown — never a confirmed SEM_EVIDENCIA (ADR-17)", async () => {
++    const listMarketAggregates = vi.fn(() => Promise.reject(new Error("boom")));
++    renderMatrix({ listMarketAggregates });
++
++    const row = await screen.findByTestId("matrix-row-90001");
++    await waitFor(() => expect(listMarketAggregates).toHaveBeenCalled());
++    const veredicto = within(row).getByTestId("matrix-veredicto-90001");
++    // A failed fetch is unknown, not a verdict — "we couldn't check" ≠ "no evidence".
++    await waitFor(() => expect(veredicto).not.toHaveTextContent("SEM_EVIDENCIA"));
++    expect(veredicto).toHaveTextContent("—");
++    // Positively assert the ERROR hint (not the loading hint) so a regression that
++    // sticks in the loading branch — same "—" DOM — cannot pass this test.
++    expect(within(veredicto).getByTitle("mercado: falha ao carregar")).toBeInTheDocument();
++    const mercado = within(row).getByTestId("matrix-mercado-90001");
++    expect(mercado).toHaveTextContent("—");
++    expect(within(mercado).getByTitle("mercado: falha ao carregar")).toBeInTheDocument();
++  });
++
++  it("decompose failure is honest, not misattributed to the M-07 placeholder (ADR-17)", async () => {
++    const listMarketAggregates = vi.fn(() => Promise.resolve(aggregates));
++    pricingDecompose.mockImplementation(() => Promise.reject(new Error("boom")));
++    renderMatrix({ listMarketAggregates });
++
++    const row = await screen.findByTestId("matrix-row-90001");
++    const cell = within(row).getByTestId("matrix-margem-90001");
++    await waitFor(() =>
++      // Positively assert the ERROR hint so a regression stuck in the plain-loading
++      // branch (also "—", no hint) cannot pass; and NOT the engine-pending M-07 hint.
++      expect(within(cell).getByTitle("margem: falha ao calcular")).toBeInTheDocument(),
++    );
++    expect(within(cell).queryByTitle("margem: M-07")).toBeNull();
++  });
++});
+diff --git a/apps/web/src/pages/precos/PricingMatrix.tsx b/apps/web/src/pages/precos/PricingMatrix.tsx
+new file mode 100644
+index 00000000..342ce353
+--- /dev/null
++++ b/apps/web/src/pages/precos/PricingMatrix.tsx
+@@ -0,0 +1,281 @@
++import { useMemo } from "react";
++import type { JSX } from "react";
++import { useQueries, useQuery } from "@tanstack/react-query";
++import { MarginChip, UnknownValue } from "@marketplace-central/ui";
++import {
++  createMarketPriceIntelClient,
++  type CatalogProductFact,
++  type MarketPriceIntelAggregate,
++  type PricingCalcProfile,
++} from "@marketplace-central/sdk-runtime";
++import { useClient } from "../../app/ClientContext";
++import { apiBaseUrl, type MarketAggregatesClient } from "./MarketComparison";
++import type { ModalidadeKey } from "./PricingPage";
++
++export interface PricingMatrixProps {
++  products: CatalogProductFact[];
++  /** Selected row (page owns selection); drives row highlight / aria-pressed. */
++  selectedId: number | null;
++  onSelect: (id: number) => void;
++  modalidade: ModalidadeKey;
++  /** Operator thresholds for the margin chip bands. */
++  profile: PricingCalcProfile;
++  /** Installation whose listings decide the "novo" tag; "" ⇒ tag not resolvable (hidden). */
++  installationId?: string;
++  /** Injectable for tests; defaults to a standalone IC-03 client (useClient has no market seam). */
++  marketClient?: MarketAggregatesClient;
++}
++
++/** Price-evidence verdict shown in the VEREDICTO column — mapped from the market
++ * aggregate status ONLY. The categorical MARGIN verdict (saudável/apertado/…) is
++ * M-07-owned and deliberately NOT invented here. Called ONLY once the market query
++ * has RESOLVED (caller gates on isSuccess): a resolved-but-absent aggregate is the
++ * honest closest state SEM_EVIDENCIA, whereas a still-loading or errored query is
++ * unknown — never a confirmed verdict (ADR-17). */
++function veredictoFor(agg: MarketPriceIntelAggregate | undefined): string {
++  switch (agg?.status) {
++    case "OK":
++      return "OK";
++    case "INSUFFICIENT_MARKET":
++      return "MERCADO_INSUFICIENTE";
++    case "NO_PRICE_EVIDENCE":
++    default:
++      return "SEM_EVIDENCIA";
++  }
++}
++
++function productSku(p: CatalogProductFact): string {
++  return p.manufacturer_reference ?? `#${p.internal_product_id}`;
++}
++
++function productDescription(p: CatalogProductFact): string {
++  return p.description ?? p.manufacturer_reference ?? `#${p.internal_product_id}`;
++}
++
++/** A decimal-string money value, or the honest "—" when absent (ADR-17: never 0). */
++function Money({ amount }: { amount: string | null }): JSX.Element {
++  if (amount === null) return <UnknownValue />;
++  return <span className="font-mono text-ink">R$ {amount}</span>;
++}
++
++/**
++ * PricingMatrix is the /precos main surface: the design's product matrix
++ * (SKU · DESCRIÇÃO · CUSTO · NOSSO PREÇO · PREÇO MERCADO · MARGEM · VEREDICTO).
++ * It reuses the SAME per-product seams the single-product panel uses — CUSTO and
++ * NOSSO PREÇO come straight off the CatalogProductFact, market evidence via ONE
++ * listMarketAggregates call for every codprod, and per-row margin via the existing
++ * pricingDecompose endpoint (no new endpoints; comissao_pct omitted so the backend
++ * resolver chain runs). Row-click hands selection back to the page, which opens the
++ * existing simular panel. Unknowns stay honest ("—"), never fabricated zeros.
++ */
++export function PricingMatrix({
++  products,
++  selectedId,
++  onSelect,
++  modalidade,
++  profile,
++  installationId = "",
++  marketClient,
++}: PricingMatrixProps): JSX.Element {
++  const client = useClient();
++  const resolvedMarketClient = useMemo<MarketAggregatesClient>(
++    () => marketClient ?? createMarketPriceIntelClient({ baseUrl: apiBaseUrl() }),
++    [marketClient],
++  );
++
++  const codprods = useMemo(() => products.map((p) => String(p.internal_product_id)), [products]);
++
++  // Lane A — market evidence for the WHOLE page in one call.
++  const marketQuery = useQuery({
++    queryKey: ["market", "matrix-aggregates", codprods.join(",")],
++    queryFn: () => resolvedMarketClient.listMarketAggregates(codprods),
++    enabled: codprods.length > 0,
++  });
++  const marketByCodprod = useMemo(() => {
++    const map = new Map<string, MarketPriceIntelAggregate>();
++    for (const agg of marketQuery.data ?? []) map.set(agg.product_id, agg);
++    return map;
++  }, [marketQuery.data]);
++
++  // Lane B — per-row margin via the existing decompose endpoint. comissao_pct is
++  // OMITTED so the backend resolver chain (COTACAO → PADRAO) runs, never a MANUAL
++  // override. Rows without a current price cannot be decomposed → margin unknown.
++  const decomposeResults = useQueries({
++    queries: products.map((p) => ({
++      queryKey: ["pricing", "matrix-decompose", p.internal_product_id, p.current_price.amount, modalidade],
++      queryFn: () =>
++        client.pricingDecompose({
++          preco: p.current_price.amount as string,
++          modalidade,
++          product_id: p.internal_product_id,
++        }),
++      enabled: p.current_price.amount !== null,
++    })),
++  });
++
++  // Lane C — "novo" tag: a product with no ML listing under this installation. The
++  // tag renders ONLY once the query resolves to zero listings; while loading (or
++  // when no installation is known) the tag is hidden — "novo" is a confirmed fact,
++  // never an assumption about a listing we simply have not fetched yet (ADR-17).
++  const listingResults = useQueries({
++    queries: products.map((p) => ({
++      queryKey: ["pricing", "matrix-listing", installationId, p.internal_product_id],
++      queryFn: () =>
++        client.listListingsByProduct({
++          installation_id: installationId,
++          product_id: String(p.internal_product_id),
++          limit: 1,
++        }),
++      enabled: installationId !== "",
++    })),
++  });
++
++  const thresholds = {
++    healthy: Number(profile.limiar_verde_pct),
++    tight: Number(profile.limiar_amarelo_pct),
++  };
++
++  // Market is ONE page-level query → its resolution state is uniform for every row.
++  // ADR-17: a verdict is a confirmed fact — only trust the status once the query
++  // has resolved; loading and error stay honestly unknown, never SEM_EVIDENCIA.
++  const marketResolved = marketQuery.isSuccess;
++  const marketErrored = marketQuery.isError;
++
++  return (
++    <div data-testid="pricing-matrix" className="overflow-x-auto rounded-lg border border-border bg-surface">
++      <table className="w-full min-w-[900px] border-collapse text-left">
++        <thead>
++          <tr className="bg-surface-2 text-[11px] uppercase tracking-[0.04em] text-muted">
++            <Th>SKU</Th>
++            <Th>DESCRIÇÃO</Th>
++            <Th align="right">CUSTO</Th>
++            <Th align="right">NOSSO PREÇO</Th>
++            <Th align="right">PREÇO MERCADO</Th>
++            <Th align="right">MARGEM</Th>
++            <Th>VEREDICTO</Th>
++          </tr>
++        </thead>
++        <tbody className="text-[12.5px]">
++          {products.map((p, i) => {
++            const agg = marketByCodprod.get(String(p.internal_product_id));
++            const decomposition = decomposeResults[i]?.data?.decomposition ?? null;
++            const margemValor = decomposition?.margem_valor ?? null;
++            const margemPct = decomposition?.margem_pct ?? null;
++            const pctNum = margemPct !== null && Number.isFinite(Number(margemPct)) ? Number(margemPct) : null;
++            const priced = agg?.status === "OK";
++            const isSelected = selectedId === p.internal_product_id;
++            // Per-row margin lane state — an errored decompose is unknown, never the
++            // M-07 placeholder (which means "categorical engine pending", not "failed").
++            const decompose = decomposeResults[i];
++            const decomposeErrored = decompose?.isError === true;
++            const decomposeResolved = decompose?.isSuccess === true;
++            const hasPrice = p.current_price.amount !== null;
++            // "novo" only when the listing query has RESOLVED to zero listings.
++            const listing = listingResults[i];
++            const isNovo = listing?.isSuccess === true && (listing.data?.groups[0]?.listings.length ?? 0) === 0;
++
++            return (
++              <tr
++                key={p.internal_product_id}
++                data-testid={`matrix-row-${p.internal_product_id}`}
++                onClick={() => onSelect(p.internal_product_id)}
++                aria-selected={isSelected}
++                className={`cursor-pointer border-t border-border-2 ${
++                  isSelected ? "bg-accent-soft" : "hover:bg-surface-2"
++                }`}
++              >
++                <Td>
++                  <span className="flex items-center gap-1.5">
++                    <span className="font-mono text-ink">{productSku(p)}</span>
++                    {isNovo ? (
++                      <span
++                        data-testid={`matrix-novo-${p.internal_product_id}`}
++                        className="rounded-pill bg-info-soft px-1.5 py-0.5 text-[10px] font-medium text-info"
++                      >
++                        novo
++                      </span>
++                    ) : null}
++                  </span>
++                </Td>
++                <Td>
++                  <span className="text-ink">{productDescription(p)}</span>
++                </Td>
++                <Td align="right" testId={`matrix-custo-${p.internal_product_id}`}>
++                  <Money amount={p.cost.amount} />
++                </Td>
++                <Td align="right">
++                  <Money amount={p.current_price.amount} />
++                </Td>
++                <Td align="right" testId={`matrix-mercado-${p.internal_product_id}`}>
++                  {/* Rank "19º/23" is absent from aggregate data → price only, no rank. */}
++                  {marketErrored ? (
++                    <UnknownValue hint="mercado: falha ao carregar" />
++                  ) : !marketResolved ? (
++                    <UnknownValue hint="mercado: carregando…" />
++                  ) : priced ? (
++                    <Money amount={agg?.median?.amount ?? null} />
++                  ) : (
++                    <UnknownValue />
++                  )}
++                </Td>
++                <Td align="right" testId={`matrix-margem-${p.internal_product_id}`}>
++                  {decomposeErrored ? (
++                    <UnknownValue hint="margem: falha ao calcular" />
++                  ) : margemValor !== null ? (
++                    <span className="flex items-center justify-end gap-1.5">
++                      <span className="font-mono text-ink">{margemValor}</span>
++                      <MarginChip marginPct={pctNum} thresholds={thresholds} />
++                    </span>
++                  ) : decomposeResolved || !hasPrice ? (
++                    <UnknownValue hint="margem: M-07" />
++                  ) : (
++                    <UnknownValue />
++                  )}
++                </Td>
++                <Td testId={`matrix-veredicto-${p.internal_product_id}`}>
++                  {marketErrored ? (
++                    <UnknownValue hint="mercado: falha ao carregar" />
++                  ) : !marketResolved ? (
++                    <UnknownValue hint="mercado: carregando…" />
++                  ) : (
++                    <span
++                      className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${
++                        priced ? "bg-accent-soft text-accent-ink" : "bg-warn-soft text-warn"
++                      }`}
++                    >
++                      {veredictoFor(agg)}
++                    </span>
++                  )}
++                </Td>
++              </tr>
++            );
++          })}
++        </tbody>
++      </table>
++    </div>
++  );
++}
++
++function Th({ children, align }: { children: React.ReactNode; align?: "right" }): JSX.Element {
++  return (
++    <th scope="col" className={`px-3 py-2 font-medium ${align === "right" ? "text-right" : ""}`}>
++      {children}
++    </th>
++  );
++}
++
++function Td({
++  children,
++  align,
++  testId,
++}: {
++  children: React.ReactNode;
++  align?: "right";
++  testId?: string;
++}): JSX.Element {
++  return (
++    <td data-testid={testId} className={`px-3 py-2 ${align === "right" ? "text-right" : ""}`}>
++      {children}
++    </td>
++  );
++}
+diff --git a/apps/web/src/pages/precos/PricingPage.test.tsx b/apps/web/src/pages/precos/PricingPage.test.tsx
+index 74710285..19f88f3e 100644
+--- a/apps/web/src/pages/precos/PricingPage.test.tsx
++++ b/apps/web/src/pages/precos/PricingPage.test.tsx
+@@ -110,6 +110,21 @@ vi.mock("./ApplyPriceAction", () => ({
+ }));
+ // The stub exposes the onReload seam so the page's applyScenario logic (state
+ // re-application) is exercised for real — both a present and an absent product.
++// The matrix owns its own market + per-row decompose/listing fan-out; stub it here
++// (same sanctioned pattern as the child panels below) and expose its onSelect seam
++// so the page's row-click → setSelectedId wiring is exercised for real.
++vi.mock("./PricingMatrix", () => ({
++  PricingMatrix: ({ onSelect }: { onSelect: (id: number) => void }) => (
++    <div data-testid="pricing-matrix-stub">
++      <button data-testid="stub-row-90001" onClick={() => onSelect(90001)}>
++        row-90001
++      </button>
++      <button data-testid="stub-row-missing" onClick={() => onSelect(99999)}>
++        row-missing
++      </button>
++    </div>
++  ),
++}));
+ vi.mock("./ScenariosPanel", () => ({
+   ScenariosPanel: ({ onReload }: { onReload: (p: Record<string, unknown>) => void }) => (
+     <div data-testid="scenarios-panel-stub">
+@@ -168,8 +183,9 @@ describe("PricingPage scaffold", () => {
+     // Page marker (also the AppRouter /precos smoke assertion).
+     expect(await screen.findByText("Preços & Simulador")).toBeInTheDocument();
+ 
+-    // Shell regions the later slices flesh out.
+-    expect(screen.getByTestId("region-decomposicao")).toBeInTheDocument();
++    // The simular side panel opens for the auto-selected first product once the
++    // catalog resolves — its regions are the preserved single-product surface.
++    expect(await screen.findByTestId("region-decomposicao")).toBeInTheDocument();
+     expect(screen.getByTestId("region-solver")).toBeInTheDocument();
+     expect(screen.getByTestId("params-trigger")).toBeInTheDocument();
+     expect(screen.getByTestId("region-comparacao")).toBeInTheDocument();
+@@ -184,6 +200,18 @@ describe("PricingPage scaffold", () => {
+     expect(carimbo).toHaveTextContent("Cotação");
+   });
+ 
++  it("renders the matrix as the main surface and wires row-click to selection", async () => {
++    renderPage();
++    // Matrix is the main surface.
++    expect(await screen.findByTestId("pricing-matrix-stub")).toBeInTheDocument();
++
++    // A row-click for a product NOT in the loaded catalog resolves to the honest
++    // "not in list" empty state — proving onSelect drives setSelectedId (never a
++    // silent fallback to a different product).
++    fireEvent.click(screen.getByTestId("stub-row-missing"));
++    expect(await screen.findByTestId("scenario-reload-notice")).toBeInTheDocument();
++  });
++
+   it("opens the Parâmetros drawer on the ?params=1 deep link", async () => {
+     renderPage("?params=1");
+     expect(await screen.findByTestId("params-drawer")).toBeInTheDocument();
+diff --git a/apps/web/src/pages/precos/PricingPage.tsx b/apps/web/src/pages/precos/PricingPage.tsx
+index a8f7075e..5b623c10 100644
+--- a/apps/web/src/pages/precos/PricingPage.tsx
++++ b/apps/web/src/pages/precos/PricingPage.tsx
+@@ -13,6 +13,7 @@ import { SolverPanel } from "./SolverPanel";
+ import { ParamsDrawer } from "./ParamsDrawer";
+ import { DifalDrawer } from "./DifalDrawer";
+ import { MarketComparison } from "./MarketComparison";
++import { PricingMatrix } from "./PricingMatrix";
+ import { ApplyPriceAction } from "./ApplyPriceAction";
+ import { ScenariosPanel } from "./ScenariosPanel";
+ import { ptBrMoneyToDot } from "./ptbrDecimal";
+@@ -213,34 +214,30 @@ export function PricingPage() {
+           </p>
+         ) : null}
+ 
+-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">
+-          <aside aria-label="Produtos em análise" className="rounded-lg border border-border bg-surface p-3">
+-            {productsQuery.isLoading ? (
+-              <LoadingState />
+-            ) : (
+-              <ul className="flex flex-col gap-1">
+-                {products.map((p) => (
+-                  <li key={p.internal_product_id}>
+-                    <button
+-                      type="button"
+-                      onClick={() => setSelectedId(p.internal_product_id)}
+-                      aria-pressed={selected?.internal_product_id === p.internal_product_id}
+-                      className={`w-full rounded-md px-2 py-1.5 text-left text-sm ${
+-                        selected?.internal_product_id === p.internal_product_id
+-                          ? "bg-accent-soft text-accent-ink"
+-                          : "text-ink hover:bg-surface-2"
+-                      }`}
+-                    >
+-                      {productLabel(p)}
+-                    </button>
+-                  </li>
+-                ))}
+-              </ul>
+-            )}
+-          </aside>
+-
+-          <section aria-label={`Simular · ${selected ? productLabel(selected) : ""}`} className="flex flex-col gap-4">
+-            {productMissing ? (
++        {productsQuery.isLoading ? (
++          <LoadingState />
++        ) : (
++          <PricingMatrix
++            products={products}
++            selectedId={selectedId}
++            onSelect={setSelectedId}
++            modalidade={modalidade}
++            profile={profile}
++            installationId={installationId}
++          />
++        )}
++      </div>
++
++      {/* The simular panel is the PRESERVED single-product section, now a 380px side
++          panel opened by a matrix row-click. It renders while a product is selected
++          (products[0] on mount) OR when a reloaded scenario's product is missing —
++          so the honest "product not in list" notice is never swallowed. */}
++      {selected !== null || productMissing ? (
++        <aside
++          aria-label={`Simular · ${selected ? productLabel(selected) : ""}`}
++          className="flex w-[380px] shrink-0 flex-col gap-4"
++        >
++          {productMissing ? (
+               <p role="alert" data-testid="scenario-reload-notice" className="rounded-md bg-warn-soft px-3 py-2 text-sm text-warn">
+                 O produto deste cenário não está na lista atual — selecione outro produto ou recarregue o catálogo.
+               </p>
+@@ -319,9 +316,8 @@ export function PricingPage() {
+             <div data-testid="region-cenarios" className="rounded-lg border border-border bg-surface p-3">
+               <ScenariosPanel payload={scenarioPayload} onReload={applyScenario} />
+             </div>
+-          </section>
+-        </div>
+-      </div>
++        </aside>
++      ) : null}
+ 
+       <ParamsDrawer
+         open={paramsOpen}
