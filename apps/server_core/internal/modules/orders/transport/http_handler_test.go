@@ -432,6 +432,14 @@ func TestMapEnrichedOrderDerivesBucketFromFaturadoAt(t *testing.T) {
 	if decoded["bucket"] != "enviar" {
 		t.Fatalf("json field bucket = %#v, want \"enviar\"; body=%s", decoded["bucket"], dtoJSON)
 	}
+	// Contract guard (P6 cold-gate finding): faturado_at is an internal bucket
+	// signal (read_model.go json:"-"), NOT part of the OrderRead wire contract.
+	// This order HAS a non-nil FaturadoAt, so a revert to json:"faturado_at"
+	// would serialize the timestamp and trip this assertion — keeping the SDK /
+	// OpenAPI OrderRead schema honest (no undocumented field).
+	if _, present := decoded["faturado_at"]; present {
+		t.Fatalf("enriched DTO leaked faturado_at onto the wire (undocumented in OrderRead); body=%s", dtoJSON)
+	}
 }
 
 // TestMapEnrichedOrderSurfacesShipmentDestinoCarrierFrete asserts the round-4

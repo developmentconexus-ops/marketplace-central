@@ -23,8 +23,12 @@ type OrderReadModel struct {
 	// FaturadoAt is when the operator recorded the order as invoiced
 	// ("Foi faturado"), our-DB only. nil = not yet marked invoiced, an
 	// honest unknown (ADR-17) -- never inferred from shipment presence.
-	// It drives DeriveOrderBucket bucket Faturar<->Enviar gate.
-	FaturadoAt           *time.Time                `json:"faturado_at"`
+	// It drives DeriveOrderBucket bucket Faturar<->Enviar gate. json:"-":
+	// internal read fact only — it feeds bucket derivation and is NEVER put on
+	// the wire (the transport DTO exposes the derived `bucket`, not this raw
+	// timestamp), so the OrderRead contract stays unchanged (no undocumented
+	// field). The FE drives purely off `bucket`.
+	FaturadoAt           *time.Time                `json:"-"`
 	Items                []MarketplaceOrderItem    `json:"items"`
 	Payments             []MarketplaceOrderPayment `json:"payments"`
 	// Tags carries the provider order tags (e.g. "delivered", "paid"). It is a
