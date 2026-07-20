@@ -58,18 +58,18 @@ export function BatchPreviewModal({ open, candidateIds, onClose, onApplied }: Ba
   };
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/50 p-4" role="presentation">
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-ink/50 p-4" role="presentation">
       <section
         role="dialog"
         aria-modal="true"
         aria-labelledby="batch-preview-modal-title"
-        className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-lg"
+        className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-card border border-border bg-surface shadow-lg"
       >
-        <header className="border-b border-slate-200 px-5 py-4">
-          <h2 id="batch-preview-modal-title" className="text-lg font-semibold text-slate-950">
+        <header className="border-b border-border px-5 py-4">
+          <h2 id="batch-preview-modal-title" className="text-lg font-semibold text-ink">
             Pré-visualizar aprovação em lote
           </h2>
-          <p className="mt-1 text-sm text-slate-600">{candidateIds.length} candidato(s) selecionado(s)</p>
+          <p className="mt-1 text-sm text-muted">{candidateIds.length} candidato(s) selecionado(s)</p>
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-5">
@@ -80,21 +80,21 @@ export function BatchPreviewModal({ open, candidateIds, onClose, onApplied }: Ba
           {preview.isSuccess ? (
             <div className="space-y-4">
               <div className="flex flex-wrap gap-2" aria-label="Totais da prévia">
-                <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-medium text-emerald-800">
+                <span className="rounded-full bg-accent-soft px-3 py-1 text-sm font-medium text-accent-ink">
                   {validApprovals.length} válido(s)
                 </span>
-                <span className="rounded-full bg-red-100 px-3 py-1 text-sm font-medium text-red-800">
+                <span className="rounded-full bg-warn-soft px-3 py-1 text-sm font-medium text-warn">
                   {failedItems.length} previsto(s) para falhar
                 </span>
               </div>
-              <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200" data-testid="batch-preview-items">
+              <ul className="divide-y divide-border-2 rounded-card border border-border" data-testid="batch-preview-items">
                 {items.map((item) => (
                   <li key={item.candidate_id} className="flex items-center justify-between px-4 py-2 text-sm">
-                    <span className="font-medium text-slate-900">{item.candidate_id}</span>
+                    <span className="font-mono font-medium text-ink">{item.candidate_id}</span>
                     {item.status === "OK" ? (
-                      <span className="text-xs font-medium text-emerald-700">OK</span>
+                      <span className="text-xs font-medium text-accent-ink">OK</span>
                     ) : (
-                      <span className="text-xs text-red-700">{item.cause ?? "falha prevista"}</span>
+                      <span className="text-xs text-warn">{item.cause ?? "falha prevista"}</span>
                     )}
                   </li>
                 ))}
@@ -106,12 +106,12 @@ export function BatchPreviewModal({ open, candidateIds, onClose, onApplied }: Ba
           ) : null}
         </div>
 
-        <footer className="flex flex-wrap justify-end gap-2 border-t border-slate-200 px-5 py-4">
+        <footer className="flex flex-wrap justify-end gap-2 border-t border-border px-5 py-4">
           <button
             type="button"
             onClick={handleClose}
             disabled={apply.isPending}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-50"
+            className="rounded-control border border-border px-4 py-2 text-sm font-medium text-muted hover:bg-surface-2 hover:text-ink disabled:opacity-50"
           >
             Cancelar
           </button>
@@ -120,7 +120,7 @@ export function BatchPreviewModal({ open, candidateIds, onClose, onApplied }: Ba
               type="button"
               onClick={handleApply}
               disabled={validApprovals.length === 0 || apply.isPending}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-control bg-accent px-4 py-2 text-sm font-medium text-accent-ink disabled:cursor-not-allowed disabled:opacity-50"
             >
               Prosseguir só com válidos
             </button>

@@ -14,20 +14,20 @@ export interface VinculoDrawerProps {
 }
 
 const bandClasses: Record<ProductLinkConfidenceBand, string> = {
-  ALTA: "bg-emerald-100 text-emerald-800",
-  MEDIA: "bg-amber-100 text-amber-800",
-  BAIXA: "bg-slate-100 text-slate-700",
+  ALTA: "bg-accent-soft text-accent-ink",
+  MEDIA: "bg-amber-soft text-amber",
+  BAIXA: "bg-warn-soft text-warn",
 };
 
 const directionClasses = {
-  FOR: "bg-emerald-100 text-emerald-800",
-  AGAINST: "bg-red-100 text-red-800",
-  UNAVAILABLE: "bg-slate-100 text-slate-600",
+  FOR: "bg-accent-soft text-accent-ink",
+  AGAINST: "bg-warn-soft text-warn",
+  UNAVAILABLE: "bg-surface-2 text-faint",
 } as const;
 
 function pill(label: string, className: string) {
   return (
-    <span className={`inline-flex whitespace-nowrap rounded px-2 py-0.5 text-xs font-medium ${className}`}>
+    <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${className}`}>
       {label}
     </span>
   );
@@ -40,9 +40,9 @@ function confidencePercent(confidence: number): string {
 
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-2 last:border-b-0 last:pb-0">
-      <dt className="text-xs text-slate-500">{label}</dt>
-      <dd className="text-right text-xs font-medium text-slate-900">{children}</dd>
+    <div className="flex items-start justify-between gap-4 border-b border-border-2 pb-2 last:border-b-0 last:pb-0">
+      <dt className="text-xs text-faint">{label}</dt>
+      <dd className="text-right text-xs font-medium text-ink">{children}</dd>
     </div>
   );
 }
@@ -64,19 +64,19 @@ function CandidateCompareCard({
   return (
     <section
       data-testid="drawer-candidate"
-      className={`rounded-lg border p-3 ${isSelected ? "border-blue-400 bg-blue-50/40" : "border-slate-200"}`}
+      className={`rounded-card border p-3 ${isSelected ? "border-accent bg-accent-soft/50" : "border-border"}`}
     >
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <span className="text-xs font-semibold uppercase tracking-wide text-faint">
           Candidato #{rank}
           {isSelected ? " (selecionado)" : ""}
         </span>
         {noCandidate
-          ? pill("Sem candidato", "bg-slate-100 text-slate-600")
+          ? pill("Sem candidato", "bg-surface-2 text-faint")
           : (
             <span className="flex items-center gap-1">
               {pill(candidate.confidence_band, bandClasses[candidate.confidence_band])}
-              <span className="text-xs font-medium tabular-nums text-slate-700">
+              <span className="font-mono text-xs font-medium tabular-nums text-muted">
                 {confidencePercent(candidate.confidence)}
               </span>
             </span>
@@ -84,17 +84,21 @@ function CandidateCompareCard({
       </div>
 
       <dl className="space-y-2">
-        <Fact label="CODPROD">
-          {candidate.internal_product_id === undefined ? <UnknownValue hint="sem CODPROD" /> : candidate.internal_product_id}
+        <Fact label="SKU HUB (CODPROD)">
+          {candidate.internal_product_id === undefined ? (
+            <UnknownValue hint="sem CODPROD" />
+          ) : (
+            <span className="font-mono">{candidate.internal_product_id}</span>
+          )}
         </Fact>
-        <Fact label="Descrição">
+        <Fact label="Produto sugerido">
           {candidate.internal_product_name ? candidate.internal_product_name : <UnknownValue hint="sem descrição no ERP" />}
         </Fact>
-        <Fact label="EAN/refforn">
+        <Fact label="GTIN / refforn">
           {candidate.internal_reference_code
-            ? candidate.internal_reference_code
+            ? <span className="font-mono">{candidate.internal_reference_code}</span>
             : candidate.match_input === "ean" && candidate.match_value
-              ? candidate.match_value
+              ? <span className="font-mono">{candidate.match_value}</span>
               : <UnknownValue />}
         </Fact>
         <Fact label="Entrada de match">{candidate.match_input}</Fact>
@@ -117,16 +121,16 @@ function CandidateCompareCard({
           ))}
         </ul>
       ) : (
-        <p className="mt-2 text-xs text-slate-400">Sem sinais de correspondência.</p>
+        <p className="mt-2 text-xs text-faint">Sem sinais de correspondência.</p>
       )}
 
       <button
         type="button"
         disabled={noCandidate || pending}
-        className="mt-3 w-full rounded-lg border border-blue-600 bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+        className="mt-3 w-full rounded-control bg-accent px-2.5 py-1.5 text-xs font-medium text-accent-ink hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
         onClick={() => onApprove(candidate)}
       >
-        Aprovar este candidato
+        Vincular este candidato
       </button>
     </section>
   );
@@ -149,7 +153,7 @@ export function VinculoDrawer({
   if (!selected) {
     return (
       <DetailPanel open onClose={onClose} closeLabel="Fechar painel" title="Candidato não encontrado">
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-muted">
           Este candidato não está mais na fila. Ele pode já ter sido resolvido ou removido.
         </p>
       </DetailPanel>
@@ -177,14 +181,14 @@ export function VinculoDrawer({
         <button
           type="button"
           disabled={pending}
-          className="w-full rounded-lg border border-red-200 px-2.5 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full rounded-control border border-warn/40 px-2.5 py-2 text-sm font-medium text-warn hover:bg-warn-soft disabled:cursor-not-allowed disabled:opacity-50"
           onClick={() => onReject(selected)}
         >
-          Rejeitar anúncio
+          Ignorar anúncio
         </button>
       }
     >
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-faint">
         Comparação campo a campo do anúncio com {ranked.length} candidato(s) ranqueado(s).
       </p>
       <div className="space-y-3">
