@@ -110,6 +110,7 @@ import (
 	profitabilitypostgres "marketplace-central/apps/server_core/internal/modules/profitability/adapters/postgres"
 	profitabilityapp "marketplace-central/apps/server_core/internal/modules/profitability/application"
 	profitabilitytransport "marketplace-central/apps/server_core/internal/modules/profitability/transport"
+	synccomposition "marketplace-central/apps/server_core/internal/modules/sync/composition"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 	"marketplace-central/apps/server_core/internal/platform/pgdb"
 
@@ -575,6 +576,10 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	go integrationsbg.NewRefreshTicker(authSessionRepo, authFlowSvc, 5*time.Minute).Start(context.Background())
 	go integrationsbg.NewStateCleanup(oauthStateRepo, time.Hour).Start(context.Background())
 	go integrationsbg.NewFeeSyncScheduler(installationSvc, providerSvc, feeSyncSvc, 15*time.Minute).Start(context.Background())
+	// MIS-006 M-01 additive-lock: sync_state scheduler skeleton (products entity,
+	// NO-OP placeholder job). Cadence-agnostic interval; M-03/M-04 connect the
+	// real sync body via the RegisterJob seam.
+	go synccomposition.NewProductsSkeletonScheduler(pool, cfg.DefaultTenantID, 15*time.Minute).Start(context.Background())
 
 	marketModuleRepo := marketpostgres.NewRepository(pool, cfg.DefaultTenantID)
 	marketReadSvc := marketapp.NewReadService(marketModuleRepo, marketModuleRepo, time.Now)

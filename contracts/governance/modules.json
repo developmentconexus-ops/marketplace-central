@@ -17,7 +17,8 @@
     { "id": "orders", "root": "apps/server_core/internal/modules/orders", "code_owner_path": "apps/server_core/internal/modules/orders", "composition_required": true, "openapi_prefixes": ["/orders"], "dependencies": ["connectors", "internal_read", "product_links"] },
     { "id": "pricing", "root": "apps/server_core/internal/modules/pricing", "code_owner_path": "apps/server_core/internal/modules/pricing", "composition_required": true, "openapi_prefixes": ["/pricing"], "dependencies": ["catalog", "internal_read", "marketplaces"] },
     { "id": "product_links", "root": "apps/server_core/internal/modules/product_links", "code_owner_path": "apps/server_core/internal/modules/product_links", "composition_required": true, "openapi_prefixes": ["/product-links"], "dependencies": ["connectors", "internal_read"] },
-    { "id": "profitability", "root": "apps/server_core/internal/modules/profitability", "code_owner_path": "apps/server_core/internal/modules/profitability", "composition_required": true, "openapi_prefixes": ["/profitability"], "dependencies": ["internal_read", "orders"] }
+    { "id": "profitability", "root": "apps/server_core/internal/modules/profitability", "code_owner_path": "apps/server_core/internal/modules/profitability", "composition_required": true, "openapi_prefixes": ["/profitability"], "dependencies": ["internal_read", "orders"] },
+    { "id": "sync", "root": "apps/server_core/internal/modules/sync", "code_owner_path": "apps/server_core/internal/modules/sync", "composition_required": true, "openapi_prefixes": [], "dependencies": [] }
   ],
   "temporary_exceptions": [
     {
