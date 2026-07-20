@@ -75,9 +75,17 @@ export function PricingPage() {
   });
   const profile = profileQuery.data ?? DEFAULT_PROFILE;
 
+  // The pricing matrix is only useful for products that carry market/price
+  // evidence. In this dataset those are the priced/listed block at the catalog's
+  // high-id tail (ids > 90000); the bulk of the catalog is ERP-only facts with no
+  // price and no market. The list endpoint has no "has-evidence" filter — only a
+  // keyset cursor on internal_product_id — so we keyset past the evidence-less
+  // bulk to the priced block. TODO(pricing): replace with a server-side
+  // listed/priced filter so this is not coupled to the id layout.
+  const PRICED_BLOCK_CURSOR = btoa("90000"); // base64("90000") = "OTAwMDA="
   const productsQuery = useQuery({
     queryKey: ["pricing", "catalog-facts"],
-    queryFn: () => client.listCatalogProductFacts({ limit: 50 }),
+    queryFn: () => client.listCatalogProductFacts({ cursor: PRICED_BLOCK_CURSOR, limit: 100 }),
   });
 
   const difalQuery = useQuery({
