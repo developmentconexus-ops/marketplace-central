@@ -87,7 +87,16 @@ eficiência em marketplace.
     DIFAL = `ALIQUFDEST − ALIQUOTA (+FCP)`. Modelar como tabela config por UF-par (já existe DIFAL por UF
     na tela) + valor realizado; **não** cravar alíquota no produto. `TGFICM` não é versionado → é config vigente.
   - Documentar `listing_kit_components` (BOM) como schema-alvo; **não** construir agora. Código não pode assumir vínculo 1:1.
-- **FIX-4 · Verificação:** garantir que nenhuma resolução de comissão usa `internal_product_id` — sempre transita pela `category_id` do anúncio.
+- **FIX-4 · Verificação — RODADA, achou 1 violação (auditoria read-only 2026-07-19):**
+  - ✅ Nenhuma comissão é chaveada por `internal_product_id`/codprod. Caminho decompose
+    (`calc_service` → `tarifflive/resolver.QuoteCommission`) resolve por `(category_id, listing_type)` da API ML — **correto**.
+    Profitability lê `SaleFeeAmount` do snapshot do pedido — correto. Fallbacks 0.16/0.22 só p/ categoria "default" (bootstrap).
+  - ❌ **VIOLAÇÃO — batch orchestrator (alimenta a matrix `/precos`):**
+    `pricing/application/batch_orchestrator.go:184,188` busca a comissão por `prod.CategoryID`, que vem de
+    `catalog/reader.go:37` = `TaxonomyNodeID` (**taxonomia do CATÁLOGO ERP do produto**), não a `category_id`
+    do **anúncio ML**. ERP category ≠ ML listing category → margem do simulador pode sair errada.
+    Correção estrutural: no batch, resolver categoria pela cadeia **vínculo → listing → category_id ML**
+    (como o decompose já faz), nunca pela taxonomia ERP do produto. Candidato a chip (Go backend).
 
 ## 8. Fatos autoritativos do Sankhya (especialista `local_ec787804`, 2026-07-19, read-only)
 
