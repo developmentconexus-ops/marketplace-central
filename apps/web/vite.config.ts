@@ -29,7 +29,20 @@ export default defineConfig({
     port: 5174,
     allowedHosts: additionalAllowedHosts(),
     proxy: {
-      "/catalog": proxyTarget,
+      "/catalog": {
+        // Prefix collides with the Portuguese page route /catalogo/* — a browser
+        // hard-nav/refresh there sends Accept: text/html and must get index.html
+        // (SPA fallback), while real /catalog API XHR (application/json) proxies.
+        // Mirrors the /orders bypass below.
+        target: proxyTarget,
+        bypass(req) {
+          if (req.headers.accept?.includes("text/html")) {
+            return req.url;
+          }
+
+          return undefined;
+        },
+      },
       "/classifications": proxyTarget,
       "/connectors": proxyTarget,
       "/healthz": proxyTarget,
