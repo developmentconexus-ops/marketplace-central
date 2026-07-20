@@ -60,3 +60,33 @@ func TestQueriesNewestCompletedAndTenantIsolation(t *testing.T) {
 		t.Fatalf("empty latest err=%v", err)
 	}
 }
+
+// Regression: a lenient client-catalog snapshot stores NULL custo/stock_physical
+// (ADR-17 honest-unknown). LatestCompletedSnapshot must read those NULLs back as
+// empty textual fields rather than failing the row scan (which previously surfaced
+// to callers as a masked source_unavailable and broke the whole catalog page).
+func TestLatestCompletedSnapshotReadsNullCostAndStock(t *testing.T) {
+	ctx := context.Background()
+	repo, tenant := integrationRepo(t)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	ean := "7891234567895"
+	snap := domain.ImportSnapshot{
+		ID: "99999999-9999-9999-9999-999999999999", Protocol: "#209-E",
+		FileSHA256: "null-cost-stock", ImportedAt: now, Source: domain.SourceCatalogoCliente,
+		Status:       domain.ImportStatusCompleted,
+		AcceptedRows: []domain.NormalizedRow{{Codprod: "500", Descrprod: "Faca sem custo", EAN: &ean}},
+	}
+	if err := repo.PersistSnapshotAtomically(ctx, tenant, snap); err != nil {
+		t.Fatal(err)
+	}
+	latest, err := repo.LatestCompletedSnapshot(ctx, tenant)
+	if err != nil {
+		t.Fatalf("read back NULL cost/stock snapshot errored: %v", err)
+	}
+	if len(latest.AcceptedRows) != 1 {
+		t.Fatalf("rows=%d", len(latest.AcceptedRows))
+	}
+	if got := latest.AcceptedRows[0]; got.Custo != "" || got.StockPhysical != "" {
+		t.Fatalf("NULL custo/stock must read back empty (honest-unknown), got custo=%q stock=%q", got.Custo, got.StockPhysical)
+	}
+}
