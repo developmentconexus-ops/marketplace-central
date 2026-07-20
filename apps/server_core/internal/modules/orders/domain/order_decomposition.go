@@ -66,3 +66,59 @@ func UnknownOrderProfitability() OrderProfitability {
 		},
 	}
 }
+
+// ProfitabilityInputs carries the already-resolved real facts the honest
+// decomposition is built from. A nil field means that component could not be
+// honestly sourced (ADR-17). Total is the order revenue.
+type ProfitabilityInputs struct {
+	Total    *float64
+	Comissao *float64
+	Custo    *float64
+	Frete    *float64
+	Imposto  *float64
+}
+
+// BuildProfitability assembles an OrderProfitability from real facts in hand.
+// Comissao/Custo/Frete/Imposto are surfaced verbatim when known. TaxaFixa,
+// Difal and TarifaFull need a pricing engine not yet wired, so they are always
+// honest-unknown (nil) and named in ComponentesDesconhecidos. Margem
+// (valor + pct) and RetornoLiquido derive ONLY when Total, Comissao, Frete,
+// Imposto and Custo are ALL known; any unknown input yields nil margins —
+// never a partial fabricated margin (ADR-17).
+func BuildProfitability(in ProfitabilityInputs) OrderProfitability {
+	dec := OrderDecomposition{
+		Comissao: in.Comissao,
+		Frete:    in.Frete,
+		Imposto:  in.Imposto,
+		Custo:    in.Custo,
+	}
+	var unknown []string
+	if in.Comissao == nil {
+		unknown = append(unknown, "comissao")
+	}
+	unknown = append(unknown, "taxa_fixa")
+	if in.Frete == nil {
+		unknown = append(unknown, "frete")
+	}
+	if in.Imposto == nil {
+		unknown = append(unknown, "imposto")
+	}
+	unknown = append(unknown, "difal", "tarifa_full")
+	if in.Custo == nil {
+		unknown = append(unknown, "custo")
+	}
+	dec.ComponentesDesconhecidos = unknown
+
+	if in.Total != nil && in.Comissao != nil && in.Frete != nil && in.Imposto != nil && in.Custo != nil {
+		margem := *in.Total - *in.Comissao - *in.Frete - *in.Imposto - *in.Custo
+		dec.MargemValor = &margem
+		var pctPtr *float64
+		if *in.Total != 0 {
+			pct := margem / *in.Total // FRACTION (0.18 = 18%); FE formatPercent multiplies by 100 — do NOT ×100 here
+			pctPtr = &pct
+			dec.MargemPct = &pct
+		}
+		return OrderProfitability{RetornoLiquido: &margem, MargemPct: pctPtr, Decomposition: dec}
+	}
+	return OrderProfitability{Decomposition: dec}
+}

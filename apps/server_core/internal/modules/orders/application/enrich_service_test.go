@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -44,7 +45,7 @@ func (f *fakeCostReader) GetCostAsOf(ctx context.Context, productID int, effecti
 // It never touches connectors; it lets callers script a ShipmentInfo or an
 // error per shipmentID and records how many times it was invoked.
 type fakeShipmentReader struct {
-	calls int
+	calls atomic.Int64
 	infos map[string]connectorsdomain.ShipmentInfo
 	errs  map[string]error
 }
@@ -54,7 +55,7 @@ func newFakeShipmentReader() *fakeShipmentReader {
 }
 
 func (f *fakeShipmentReader) GetShipment(ctx context.Context, installationID, shipmentID string) (connectorsdomain.ShipmentInfo, error) {
-	f.calls++
+	f.calls.Add(1)
 	if err := f.errs[shipmentID]; err != nil {
 		return connectorsdomain.ShipmentInfo{}, err
 	}
@@ -613,8 +614,8 @@ func TestEnrichServiceEnrich_Shipment(t *testing.T) {
 		svc := NewEnrichService(costReader, shipmentReader, testLogger())
 		got := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})
 		result := got[0]
-		if shipmentReader.calls != 1 {
-			t.Fatalf("shipment calls = %d, want 1", shipmentReader.calls)
+		if shipmentReader.calls.Load() != 1 {
+			t.Fatalf("shipment calls = %d, want 1", shipmentReader.calls.Load())
 		}
 		if result.Shipment == nil {
 			t.Fatalf("Shipment = nil, want populated")
@@ -702,8 +703,8 @@ func TestEnrichServiceEnrich_Shipment(t *testing.T) {
 			t.Fatalf("len(got) = %d, want 1 (order must not fail on shipment miss)", len(got))
 		}
 		result := got[0]
-		if shipmentReader.calls != 1 {
-			t.Fatalf("shipment calls = %d, want 1 (reader was called)", shipmentReader.calls)
+		if shipmentReader.calls.Load() != 1 {
+			t.Fatalf("shipment calls = %d, want 1 (reader was called)", shipmentReader.calls.Load())
 		}
 		if result.Shipment != nil {
 			t.Fatalf("Shipment = %+v, want nil", result.Shipment)
@@ -723,8 +724,8 @@ func TestEnrichServiceEnrich_Shipment(t *testing.T) {
 		svc := NewEnrichService(costReader, shipmentReader, testLogger())
 		got := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})
 		result := got[0]
-		if shipmentReader.calls != 0 {
-			t.Fatalf("shipment calls = %d, want 0 (reader must not be called)", shipmentReader.calls)
+		if shipmentReader.calls.Load() != 0 {
+			t.Fatalf("shipment calls = %d, want 0 (reader must not be called)", shipmentReader.calls.Load())
 		}
 		if result.Shipment != nil {
 			t.Fatalf("Shipment = %+v, want nil", result.Shipment)
@@ -800,4 +801,100 @@ func TestEnrichServiceEnrich_Shipment(t *testing.T) {
 			t.Fatalf("Shipment = %+v, want ShipmentID=SHIP-5", result.Shipment)
 		}
 	})
+}
+
+// TestEnrichParallelShipmentsPreservesOrderAndDegrades locks the perf fix:
+// Enrich resolves shipments concurrently (bounded by shipmentConcurrency) but
+// the returned slice stays in input order, and a per-order shipment error
+// degrades that one order to a nil Shipment without aborting the batch or
+// disturbing any other order's result.
+func TestEnrichParallelShipmentsPreservesOrderAndDegrades(t *testing.T) {
+	costReader := newFakeCostReader()
+	shipmentReader := newFakeShipmentReader()
+	uf1, city1 := "SP", "Sao Paulo"
+	uf2, city2 := "RJ", "Rio de Janeiro"
+	shipmentReader.infos["SHIP-A"] = connectorsdomain.ShipmentInfo{ID: "SHIP-A", Status: "shipped", DestinationUF: &uf1, DestinationCity: &city1}
+	shipmentReader.infos["SHIP-D"] = connectorsdomain.ShipmentInfo{ID: "SHIP-D", Status: "shipped", DestinationUF: &uf2, DestinationCity: &city2}
+	shipmentReader.errs["SHIP-C"] = errors.New("boom")
+
+	orders := []domain.OrderReadModel{
+		{ProviderOrderID: "ord-a", ShippingID: "SHIP-A"},
+		{ProviderOrderID: "ord-b", ShippingID: ""},
+		{ProviderOrderID: "ord-c", ShippingID: "SHIP-C"},
+		{ProviderOrderID: "ord-d", ShippingID: "SHIP-D"},
+	}
+	svc := NewEnrichService(costReader, shipmentReader, testLogger())
+	got := svc.Enrich(context.Background(), "install-1", orders)
+
+	if len(got) != len(orders) {
+		t.Fatalf("len(got) = %d, want %d", len(got), len(orders))
+	}
+	for i, order := range orders {
+		if got[i].Order.ProviderOrderID != order.ProviderOrderID {
+			t.Fatalf("got[%d].Order.ProviderOrderID = %q, want %q (order preservation broken)", i, got[i].Order.ProviderOrderID, order.ProviderOrderID)
+		}
+	}
+
+	// ord-a: shipment present, buyer UF/City filled.
+	if got[0].Shipment == nil || got[0].Shipment.ShipmentID != "SHIP-A" {
+		t.Fatalf("got[0].Shipment = %+v, want ShipmentID=SHIP-A", got[0].Shipment)
+	}
+	if got[0].Buyer.UF == nil || *got[0].Buyer.UF != "SP" {
+		t.Fatalf("got[0].Buyer.UF = %v, want SP", got[0].Buyer.UF)
+	}
+	if got[0].Buyer.City == nil || *got[0].Buyer.City != "Sao Paulo" {
+		t.Fatalf("got[0].Buyer.City = %v, want Sao Paulo", got[0].Buyer.City)
+	}
+
+	// ord-b: empty shipping id, reader skipped.
+	if got[1].Shipment != nil {
+		t.Fatalf("got[1].Shipment = %+v, want nil (empty shipping id)", got[1].Shipment)
+	}
+
+	// ord-c: reader error, honest degrade, order still present.
+	if got[2].Shipment != nil {
+		t.Fatalf("got[2].Shipment = %+v, want nil (reader error degrades)", got[2].Shipment)
+	}
+
+	// ord-d: shipment present, buyer UF/City filled.
+	if got[3].Shipment == nil || got[3].Shipment.ShipmentID != "SHIP-D" {
+		t.Fatalf("got[3].Shipment = %+v, want ShipmentID=SHIP-D", got[3].Shipment)
+	}
+	if got[3].Buyer.UF == nil || *got[3].Buyer.UF != "RJ" {
+		t.Fatalf("got[3].Buyer.UF = %v, want RJ", got[3].Buyer.UF)
+	}
+}
+
+// TestEnrichDecompositionFromRealData locks Goal C: with a nil Decomposer,
+// resolveProfitability surfaces the real, already-resolved comissão (sum of
+// item SaleFeeAmount) and frete (parsed sender cost) instead of an always-—
+// UnknownOrderProfitability.
+func TestEnrichDecompositionFromRealData(t *testing.T) {
+	costReader := newFakeCostReader()
+	shipmentReader := newFakeShipmentReader()
+	senderCost := &connectorsdomain.Money{Amount: "12.34", Currency: "BRL"}
+	shipmentReader.infos["SHIP-DEC"] = connectorsdomain.ShipmentInfo{
+		ID:     "SHIP-DEC",
+		Status: "shipped",
+		Costs:  &connectorsdomain.ShipmentCosts{SenderCost: senderCost},
+	}
+	saleFee := 22.95
+	order := domain.OrderReadModel{
+		ProviderOrderID: "ord-dec-1",
+		Total:           floatPtr(229.5),
+		ShippingID:      "SHIP-DEC",
+		Items: []domain.MarketplaceOrderItem{
+			{SellerSKU: "sku-dec-1", SaleFeeAmount: &saleFee, Quantity: 1},
+		},
+	}
+	svc := NewEnrichService(costReader, shipmentReader, testLogger())
+	got := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})
+	result := got[0]
+
+	if result.Profitability.Decomposition.Comissao == nil || *result.Profitability.Decomposition.Comissao != 22.95 {
+		t.Fatalf("Decomposition.Comissao = %v, want 22.95", result.Profitability.Decomposition.Comissao)
+	}
+	if result.Profitability.Decomposition.Frete == nil || *result.Profitability.Decomposition.Frete != 12.34 {
+		t.Fatalf("Decomposition.Frete = %v, want 12.34", result.Profitability.Decomposition.Frete)
+	}
 }

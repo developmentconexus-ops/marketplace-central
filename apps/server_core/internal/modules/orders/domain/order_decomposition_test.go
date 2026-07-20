@@ -62,3 +62,100 @@ func TestUnknownOrderProfitabilityComponentsAreIndependentSlices(t *testing.T) {
 		t.Fatalf("mutating one call's slice affected another: %v", b.Decomposition.ComponentesDesconhecidos)
 	}
 }
+
+// TestBuildProfitabilityGoldenOrder2000017276984774 pins the EXEMPLO order's
+// real comissão (22.95) surfaced verbatim and difal staying honest-unknown
+// ("—") because no pricing engine is wired yet (ADR-17).
+func TestBuildProfitabilityGoldenOrder2000017276984774(t *testing.T) {
+	total := 229.50
+	comissao := 22.95
+	got := BuildProfitability(ProfitabilityInputs{
+		Total:    &total,
+		Comissao: &comissao,
+	})
+	if got.Decomposition.Comissao == nil || *got.Decomposition.Comissao != 22.95 {
+		t.Fatalf("Decomposition.Comissao = %v, want 22.95", got.Decomposition.Comissao)
+	}
+	if got.Difal.Amount != nil {
+		t.Fatalf("Difal.Amount = %v, want nil (honest unknown)", *got.Difal.Amount)
+	}
+	found := false
+	for _, name := range got.Decomposition.ComponentesDesconhecidos {
+		if name == "difal" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("ComponentesDesconhecidos = %v, want to contain difal", got.Decomposition.ComponentesDesconhecidos)
+	}
+}
+
+// TestBuildProfitabilityAllKnownDerivesMargem verifies margem/retorno only
+// derive when every source input is known, and MargemPct is a fraction (not
+// pre-multiplied by 100 — the FE formatPercent does that).
+func TestBuildProfitabilityAllKnownDerivesMargem(t *testing.T) {
+	total, comissao, custo, frete, imposto := 100.0, 10.0, 40.0, 5.0, 3.0
+	got := BuildProfitability(ProfitabilityInputs{
+		Total:    &total,
+		Comissao: &comissao,
+		Custo:    &custo,
+		Frete:    &frete,
+		Imposto:  &imposto,
+	})
+	if got.Decomposition.MargemValor == nil || *got.Decomposition.MargemValor != 42 {
+		t.Fatalf("MargemValor = %v, want 42", got.Decomposition.MargemValor)
+	}
+	if got.Decomposition.MargemPct == nil || *got.Decomposition.MargemPct != 0.42 {
+		t.Fatalf("MargemPct = %v, want 0.42", got.Decomposition.MargemPct)
+	}
+	if got.RetornoLiquido == nil || *got.RetornoLiquido != 42 {
+		t.Fatalf("RetornoLiquido = %v, want 42", got.RetornoLiquido)
+	}
+	if got.MargemPct == nil || *got.MargemPct != 0.42 {
+		t.Fatalf("MargemPct (top-level) = %v, want 0.42", got.MargemPct)
+	}
+	wantUnknown := []string{"taxa_fixa", "difal", "tarifa_full"}
+	if len(got.Decomposition.ComponentesDesconhecidos) != len(wantUnknown) {
+		t.Fatalf("ComponentesDesconhecidos = %v, want %v", got.Decomposition.ComponentesDesconhecidos, wantUnknown)
+	}
+	for i, name := range wantUnknown {
+		if got.Decomposition.ComponentesDesconhecidos[i] != name {
+			t.Fatalf("ComponentesDesconhecidos[%d] = %q, want %q (full: %v)", i, got.Decomposition.ComponentesDesconhecidos[i], name, got.Decomposition.ComponentesDesconhecidos)
+		}
+	}
+}
+
+// TestBuildProfitabilityAnyUnknownInputSuppressesMargem asserts a single
+// unknown input (Imposto here) suppresses margem/retorno entirely — never a
+// partial/fabricated margin (ADR-17).
+func TestBuildProfitabilityAnyUnknownInputSuppressesMargem(t *testing.T) {
+	total, comissao, custo, frete := 100.0, 10.0, 40.0, 5.0
+	got := BuildProfitability(ProfitabilityInputs{
+		Total:    &total,
+		Comissao: &comissao,
+		Custo:    &custo,
+		Frete:    &frete,
+		Imposto:  nil,
+	})
+	if got.Decomposition.MargemValor != nil {
+		t.Fatalf("MargemValor = %v, want nil", *got.Decomposition.MargemValor)
+	}
+	if got.Decomposition.MargemPct != nil {
+		t.Fatalf("MargemPct = %v, want nil", *got.Decomposition.MargemPct)
+	}
+	if got.RetornoLiquido != nil {
+		t.Fatalf("RetornoLiquido = %v, want nil", *got.RetornoLiquido)
+	}
+	if got.MargemPct != nil {
+		t.Fatalf("MargemPct (top-level) = %v, want nil", *got.MargemPct)
+	}
+	found := false
+	for _, name := range got.Decomposition.ComponentesDesconhecidos {
+		if name == "imposto" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("ComponentesDesconhecidos = %v, want to contain imposto", got.Decomposition.ComponentesDesconhecidos)
+	}
+}
