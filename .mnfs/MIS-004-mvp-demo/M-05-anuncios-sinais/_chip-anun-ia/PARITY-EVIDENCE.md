@@ -82,3 +82,23 @@ vite :5199 — FE-only, no :8080/backend/.env.
 - `apps/web/src/pages/ListingsSummary.tsx` — counters-only compact strip (chips promoted
   to header).
 - Tests: AnunciosPage / AnunciosSelection / ListingsSummary / ListingDetailPanel `.test.tsx`.
+
+## P6 dual gate
+
+Two independent reviewers on commit 7226e39c:
+
+- **Cold gate** (harness:gate-reviewer, read-only): every content criterion PASS —
+  no hex/Inter/Roboto/gradient/emoji; "+Criar anúncio" inert (disabled, no handler);
+  no mutation/fetch/new-endpoint/SDK/backend touch; drawer inline 300px sticky
+  (not overlay); honest "0" for zero stock (ADR-17); Exportar client-side CSV
+  non-mutating; Corrigir/Simular/Pausar disabled (D-57). Its only NOT-EVIDENCED
+  items were write-set confinement (no git tool in that agent) — closed here by
+  `git show 7226e39c --name-only`: exactly the 7 write-set files + 3 evidence files,
+  AnunciosTable.tsx untouched, zero out-of-scope files.
+- **Adversarial refuter** (skeptic pass, read-only): "Diff achieves design parity.
+  Zero constraint violations." No refutation on any of the 6 attack vectors
+  (constraint break / hidden mutation / dishonest data / parity gap / overclaim / scope).
+
+Both reviewers agree: PASS. No disagreement to reconcile.
+
+P6-DUAL-GATE: AGREEMENT
