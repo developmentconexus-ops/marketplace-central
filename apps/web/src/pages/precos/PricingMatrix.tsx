@@ -44,12 +44,16 @@ function veredictoFor(agg: MarketPriceIntelAggregate | undefined): string {
   }
 }
 
+// Identidade do produto = CODPROD (ERP). internal_product_id É o CODPROD.
+// Nunca renderizar manufacturer_reference (REFFORN) nem id MLB como SKU:
+// no bloco demo o REFFORN carrega lixo (id MLB), e SKU=CODPROD é a regra
+// binding do modelo de domínio (docs/architecture/domain-model-marketplace.md §7 FIX-1).
 function productSku(p: CatalogProductFact): string {
-  return p.manufacturer_reference ?? `#${p.internal_product_id}`;
+  return String(p.internal_product_id);
 }
 
 function productDescription(p: CatalogProductFact): string {
-  return p.description ?? p.manufacturer_reference ?? `#${p.internal_product_id}`;
+  return p.description ?? `#${p.internal_product_id}`;
 }
 
 /** A decimal-string money value, or the honest "—" when absent (ADR-17: never 0). */
