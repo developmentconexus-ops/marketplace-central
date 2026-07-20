@@ -9,7 +9,6 @@ import type {
 import { useQuery } from "@tanstack/react-query";
 import {
   ConflictTag,
-  DetailPanel,
   ErrorState,
   FreshnessIndicator,
   LoadingState,
@@ -238,7 +237,8 @@ function IdentityRow({ detail }: { detail: ListingDetail }) {
         foto
       </div>
       <div className="min-w-0">
-        <p className="truncate text-xs text-faint">
+        <p className="text-[12.5px] font-semibold text-ink">{detail.title ?? detail.provider_listing_id}</p>
+        <p className="mt-0.5 truncate text-[11.5px] text-faint">
           {produtoNode}
           {modalidade ? ` · ${modalidade}` : ""}
         </p>
@@ -286,6 +286,8 @@ function DetailBody({ detail }: { detail: ListingDetail }) {
         </div>
       </section>
 
+      <FutureActions detail={detail} />
+
       <EvidenceSection detail={detail} />
 
       <section aria-labelledby="listing-detail-timeline-title">
@@ -311,33 +313,40 @@ function DetailBody({ detail }: { detail: ListingDetail }) {
   );
 }
 
-// Action row: kept intentionally inert (non-regression rule — no inline
-// edit affordance yet). Rendered in DetailPanel's footer slot, which already
-// gives the sticky bottom action-row placement the ratified drawer shows.
-function FutureActions() {
+// Action row: kept intentionally inert (D-57 — zero ML writes, no inline edit
+// affordance yet). Rendered in the drawer body right after the stat grid, where
+// the ratified prototype places Corrigir/Simular/Pausar. The primary action
+// label follows the listing's real state (error → corrigir, unlinked → vincular,
+// else editar) to mirror the prototype without wiring any mutation.
+function FutureActions({ detail }: { detail: ListingDetail }) {
+  const primaryLabel = detail.sync_error
+    ? "Corrigir anúncio"
+    : detail.link.state === "unresolved"
+      ? "Vincular produto"
+      : "Editar anúncio";
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-1.5">
       <button
         type="button"
         disabled
         title="disponível em breve"
-        className="rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+        className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
       >
-        Corrigir
+        {primaryLabel}
       </button>
       <button
         type="button"
         disabled
         title="disponível em breve"
-        className="rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted disabled:cursor-not-allowed disabled:opacity-50"
+        className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted disabled:cursor-not-allowed disabled:opacity-50"
       >
-        Simular
+        Simular preço
       </button>
       <button
         type="button"
         disabled
         title="disponível em breve"
-        className="rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted disabled:cursor-not-allowed disabled:opacity-50"
+        className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted disabled:cursor-not-allowed disabled:opacity-50"
       >
         Pausar
       </button>
@@ -345,6 +354,8 @@ function FutureActions() {
   );
 }
 
+// Inline detail drawer: a 300px sticky column beside the table (not an overlay),
+// matching the ratified prototype (design/handoff/Anuncios.dc.html:102-141).
 export function ListingDetailPanel({ listingId, onClose }: ListingDetailPanelProps) {
   const client = useClient();
   const query = useQuery({
@@ -357,18 +368,36 @@ export function ListingDetailPanel({ listingId, onClose }: ListingDetailPanelPro
   if (listingId === null) return null;
 
   const detail = query.data;
-  const title = detail?.title ?? detail?.provider_listing_id ?? listingId;
 
   return (
-    <DetailPanel
-      open={true}
-      onClose={onClose}
-      closeLabel="Fechar painel"
-      title={title}
-      subtitle={detail?.provider_listing_id}
-      footer={<FutureActions />}
+    <aside
+      aria-label="Detalhe do anúncio"
+      className="sticky top-4 w-[300px] flex-none overflow-hidden rounded-xl border border-border bg-surface"
     >
-      {query.isPending ? <LoadingState /> : query.isError ? <ErrorState onRetry={() => void query.refetch()} /> : detail ? <DetailBody detail={detail} /> : null}
-    </DetailPanel>
+      <div className="flex items-center gap-2 border-b border-border bg-surface-2 px-3.5 py-2.5">
+        <span className="flex-none font-mono text-[11.5px] text-faint">
+          {detail?.provider_listing_id ?? listingId}
+        </span>
+        {detail?.title ? (
+          <b data-testid="listing-detail-header-title" className="min-w-0 flex-1 truncate text-[13px] font-semibold text-ink">
+            {detail.title}
+          </b>
+        ) : (
+          <span className="flex-1" />
+        )}
+        <button type="button" onClick={onClose} aria-label="Fechar painel" className="flex-none text-faint hover:text-ink">
+          ✕
+        </button>
+      </div>
+      <div className="flex flex-col gap-3 p-3.5 text-[12.5px]">
+        {query.isPending ? (
+          <LoadingState />
+        ) : query.isError ? (
+          <ErrorState onRetry={() => void query.refetch()} />
+        ) : detail ? (
+          <DetailBody detail={detail} />
+        ) : null}
+      </div>
+    </aside>
   );
 }

@@ -77,7 +77,7 @@ describe("ListingDetailPanel", () => {
 
     renderPanel();
 
-    await screen.findByText("Camiseta azul");
+    await screen.findAllByText("Camiseta azul");
     expect(getListing).toHaveBeenCalledOnce();
     expect(getListing).toHaveBeenCalledWith("listing_1");
     expect(listListings).not.toHaveBeenCalled();
@@ -113,7 +113,7 @@ describe("ListingDetailPanel", () => {
 
     renderPanel();
 
-    await screen.findByText("Camiseta azul");
+    await screen.findAllByText("Camiseta azul");
     expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(3);
   });
 
@@ -121,10 +121,10 @@ describe("ListingDetailPanel", () => {
     getListing.mockResolvedValueOnce(detail);
 
     renderPanel();
-    await screen.findByText("Camiseta azul");
+    await screen.findAllByText("Camiseta azul");
     const callsBefore = getListing.mock.calls.length;
 
-    for (const name of ["Corrigir", "Simular", "Pausar"]) {
+    for (const name of ["Corrigir anúncio", "Simular preço", "Pausar"]) {
       const button = screen.getByRole("button", { name });
       expect(button).toBeDisabled();
       expect(button).toHaveAttribute("title", "disponível em breve");
@@ -139,7 +139,7 @@ describe("ListingDetailPanel", () => {
     const onClose = vi.fn();
 
     renderPanel("listing_1", onClose);
-    await screen.findByText("Camiseta azul");
+    await screen.findAllByText("Camiseta azul");
 
     fireEvent.click(screen.getByRole("button", { name: "Fechar painel" }));
     expect(onClose).toHaveBeenCalledOnce();
@@ -149,7 +149,7 @@ describe("ListingDetailPanel", () => {
     getListing.mockResolvedValueOnce({ ...detail, signal_status: "OK", market_signal: okSignal });
 
     renderPanel();
-    await screen.findByText("Camiseta azul");
+    await screen.findAllByText("Camiseta azul");
 
     expect(screen.getByText("2/5")).toBeInTheDocument();
     expect(screen.getByText("-7.5%")).toBeInTheDocument();
@@ -182,7 +182,7 @@ describe("ListingDetailPanel", () => {
     });
 
     renderPanel();
-    await screen.findByText("Camiseta azul");
+    await screen.findAllByText("Camiseta azul");
 
     // The faixa card is still present and labeled, but every bound reads "—".
     expect(screen.getByText("Faixa de mercado (concorrentes)")).toBeInTheDocument();
@@ -199,7 +199,7 @@ describe("ListingDetailPanel", () => {
     });
 
     renderPanel();
-    await screen.findByText("Camiseta azul");
+    await screen.findAllByText("Camiseta azul");
 
     expect(screen.getByText("2/5")).toBeInTheDocument();
     expect(screen.getByText(/desatualizada/i)).toBeInTheDocument();
@@ -209,7 +209,7 @@ describe("ListingDetailPanel", () => {
     getListing.mockResolvedValueOnce({ ...detail, signal_status: "NO_PRICE_EVIDENCE", market_signal: null });
 
     renderPanel();
-    await screen.findByText("Camiseta azul");
+    await screen.findAllByText("Camiseta azul");
 
     expect(screen.getByText("Sem evidência de preço de mercado")).toBeInTheDocument();
     expect(screen.queryByText("ACCEPT")).not.toBeInTheDocument();
@@ -225,7 +225,7 @@ describe("ListingDetailPanel", () => {
     });
 
     renderPanel();
-    await screen.findByText("Camiseta azul");
+    await screen.findAllByText("Camiseta azul");
 
     expect(screen.getByRole("link", { name: "Vincular produto" })).toHaveAttribute("href", "/vinculos");
     expect(screen.queryByText("ACCEPT")).not.toBeInTheDocument();
@@ -236,7 +236,7 @@ describe("ListingDetailPanel", () => {
     getListing.mockResolvedValueOnce({ ...detail });
 
     renderPanel();
-    await screen.findByText("Camiseta azul");
+    await screen.findAllByText("Camiseta azul");
 
     expect(screen.getByText("Sem evidência de preço de mercado")).toBeInTheDocument();
   });
@@ -245,7 +245,7 @@ describe("ListingDetailPanel", () => {
     getListing.mockResolvedValueOnce(detail);
 
     renderPanel();
-    await screen.findByText("Camiseta azul");
+    await screen.findAllByText("Camiseta azul");
 
     expect(screen.getByText("Preço")).toBeInTheDocument();
     expect(screen.getByText("Est. publicado")).toBeInTheDocument();
@@ -257,7 +257,7 @@ describe("ListingDetailPanel", () => {
     getListing.mockResolvedValueOnce(detail);
 
     renderPanel();
-    await screen.findByText("Camiseta azul");
+    await screen.findAllByText("Camiseta azul");
 
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(document.querySelector('input[type="text"]')).not.toBeInTheDocument();

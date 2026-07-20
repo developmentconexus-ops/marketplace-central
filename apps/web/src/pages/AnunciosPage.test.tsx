@@ -1,3 +1,4 @@
+import type { ListingSummary } from "@marketplace-central/sdk-runtime";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
@@ -6,13 +7,21 @@ import { AnunciosPage } from "./AnunciosPage";
 
 const listListings = vi.fn();
 const listListingsByProduct = vi.fn();
-const getListingsSummary = vi.fn(() =>
-  Promise.resolve({
-    total: 1,
-    active: 1,
-    paused: 0,
-    exceptions: { below_margin_worst_case: null, margin_unknown: null },
-  }),
+const getListingsSummary = vi.fn(
+  (): Promise<ListingSummary> =>
+    Promise.resolve({
+      total: 1,
+      active: 1,
+      paused: 0,
+      exceptions: {
+        sync_error: 0,
+        stale: 0,
+        unlinked: 0,
+        below_margin_worst_case: null,
+        margin_unknown: null,
+      },
+      as_of: "2026-07-16T12:00:00Z",
+    }),
 );
 
 const listingPage = {
@@ -147,7 +156,7 @@ describe("AnunciosPage exception summary chips", () => {
     });
     renderPage("?installation=inst_1");
 
-    const chip = await screen.findByRole("button", { name: "Sem vínculo: 4" });
+    const chip = await screen.findByRole("button", { name: "sem vínculo 4" });
     fireEvent.click(chip);
 
     await waitFor(() => {
@@ -158,6 +167,38 @@ describe("AnunciosPage exception summary chips", () => {
     });
     const search = new URLSearchParams(screen.getByTestId("location-search").textContent ?? "");
     expect(search.get("filter.exception")).toBe("sem_vinculo");
+    expect(await screen.findByText("Exceção: Sem vínculo")).toBeInTheDocument();
+  });
+
+  it("renders the header sem-vínculo chip from the real unlinked count and filters the table (EXEMPLO-IO)", async () => {
+    listListings.mockReset();
+    listListings.mockResolvedValue(listingPage);
+    getListingsSummary.mockReset();
+    getListingsSummary.mockResolvedValue({
+      total: 1284,
+      active: 1200,
+      paused: 40,
+      exceptions: {
+        sync_error: 0,
+        stale: 0,
+        unlinked: 3,
+        below_margin_worst_case: null,
+        margin_unknown: null,
+      },
+      as_of: "2026-07-16T12:00:00Z",
+    });
+    renderPage("?installation=inst_1");
+
+    // Honest count from the real `unlinked` field (no sem_vinculo alias present).
+    const chip = await screen.findByRole("button", { name: "sem vínculo 3" });
+    fireEvent.click(chip);
+
+    await waitFor(() => {
+      expect(listListings.mock.calls.at(-1)?.[0]).toEqual({
+        installation_id: "inst_1",
+        exception: "sem_vinculo",
+      });
+    });
     expect(await screen.findByText("Exceção: Sem vínculo")).toBeInTheDocument();
   });
 
@@ -181,7 +222,7 @@ describe("AnunciosPage exception summary chips", () => {
     });
     renderPage("?installation=inst_1&filter.exception=sem_vinculo");
 
-    expect(await screen.findByRole("button", { name: "Sem vínculo: 4" })).toHaveAttribute(
+    expect(await screen.findByRole("button", { name: "sem vínculo 4" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );

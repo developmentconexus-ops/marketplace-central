@@ -1,0 +1,17 @@
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m56 passed[39m[22m[90m (57)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m434 passed[39m[22m[90m (435)[39m
+[2m   Start at [22m 02:46:07
+[2m   Duration [22m 11.54s[2m (transform 3.48s, setup 13.49s, collect 37.74s, tests 19.91s, environment 69.78s, prepare 9.33s)[22m
+
+--- slice-only ---
+ [32m✓[39m src/pages/AnunciosPage.test.tsx [2m([22m[2m14 tests[22m[2m)[22m[33m 641[2mms[22m[39m
+ [32m✓[39m src/pages/AnunciosSelection.test.tsx [2m([22m[2m16 tests[22m[2m)[22m[33m 1196[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m4 passed[39m[22m[90m (4)[39m
+[2m      Tests [22m [1m[32m47 passed[39m[22m[90m (47)[39m
+[2m   Start at [22m 02:46:19
+[2m   Duration [22m 2.85s[2m (transform 405ms, setup 494ms, collect 2.06s, tests 2.36s, environment 2.26s, prepare 503ms)[22m
+
