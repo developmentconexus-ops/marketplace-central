@@ -8,10 +8,10 @@
 ## Markers
 
 P6-DUAL-GATE: AGREEMENT
-LIVE-VERIFIED: pending
+LIVE-VERIFIED: 2026-07-19 hub P7 live-drive on clean docker dev-stack (frontend :5174 + backend :8080 on the ANUN worktree mount; mount confirmed by AnunciosTable.tsx carrying "ERP est" — main lacks it). `/anuncios` → "Agrupar por produto" ON: 32 group-header rows, each = **▾ chevron + product title + "ERP est. —" + "N anúncio(s)" + "✓ ok" pill**. ADR-17 honesty proven live: `ERP est. —` on all 32 (fabricated "ERP est. 0" ABSENT from DOM — genuine unknown, not zero); pluralization correct ("1 anúncio"); error pill absent because the fixture is all `sincronizado` (errorCount=0 → accent "✓ ok", never a fabricated red). Chevron collapse exercised live: click ▾ → child listing row removed (67→66 rows), `aria-expanded` true→false, chevron ▾→▸, header row survives. Zero console errors. Theme paper `rgb(251,250,247)` + Instrument Sans; group header `bg-surface-2` = `rgb(244,242,234)`, ink `rgb(37,41,31)`. **Pre-merge pill-integrity concern RESOLVED by code** (adversarial ❓ "listing_count label vs listings.length errorCount could drift"): `read_service.go:365 finalizeGroups` sets `ListingCount = len(Listings)`, and the scanGroups filter path sets `group.ListingCount = len(survivors)` at :325 — label M and errorCount derive from the same reconciled set, no intra-group pagination; drift impossible by construction. Populated-error path (N erro(s) warn pill) is data-gated (no error sync_states in fixture) — covered by AnunciosTable.test.tsx golden "3 listings / 1 sync error → 1 erro".
 
 (cold Opus gate PASS + adversarial sonnet no-blocking-defect → agreement.
-LIVE-VERIFIED pending = hub drives P7 fresh browser QA; chip does not self-drive.)
+Hub drove P7 fresh browser QA; chip did not self-drive.)
 
 ## What shipped
 
