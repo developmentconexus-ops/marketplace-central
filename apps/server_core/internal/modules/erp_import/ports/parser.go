@@ -21,7 +21,11 @@ func (e *FileError) Error() string {
 	return fmt.Sprintf("%s: %s (%s)", e.Code, e.Detail, e.Column)
 }
 
+// Parser reads a workbook into normalized rows. The second return value carries
+// file-level issues that are not tied to a single data row (e.g. a worksheet
+// skipped for lacking a product header) — they are folded into the import
+// report alongside the per-row validation issues.
 type Parser interface {
-	Parse(ctx context.Context, source io.Reader) ([]domain.NormalizedRow, error)
-	ParseLenient(ctx context.Context, source io.Reader) ([]domain.NormalizedRow, error)
+	Parse(ctx context.Context, source io.Reader) ([]domain.NormalizedRow, []domain.Issue, error)
+	ParseLenient(ctx context.Context, source io.Reader) ([]domain.NormalizedRow, []domain.Issue, error)
 }

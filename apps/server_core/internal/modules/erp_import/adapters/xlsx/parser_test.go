@@ -29,7 +29,7 @@ func TestParserValidAndInvalidRows(t *testing.T) {
 		},
 	}})
 
-	rows, err := NewParser().Parse(context.Background(), bytes.NewReader(data))
+	rows, _, err := NewParser().Parse(context.Background(), bytes.NewReader(data))
 	if err != nil {
 		t.Fatalf("Parse() error = %v", err)
 	}
@@ -69,7 +69,7 @@ func TestParserCapturesGrupoColumns(t *testing.T) {
 		},
 	}})
 
-	rows, err := NewParser().Parse(context.Background(), bytes.NewReader(data))
+	rows, _, err := NewParser().Parse(context.Background(), bytes.NewReader(data))
 	if err != nil {
 		t.Fatalf("Parse() error = %v", err)
 	}
@@ -94,7 +94,7 @@ func TestParserGrupoHeaderFoldsAccentAndCase(t *testing.T) {
 		},
 	}})
 
-	rows, err := NewParser().Parse(context.Background(), bytes.NewReader(data))
+	rows, _, err := NewParser().Parse(context.Background(), bytes.NewReader(data))
 	if err != nil {
 		t.Fatalf("Parse() error = %v", err)
 	}
@@ -106,7 +106,11 @@ func TestParserGrupoHeaderFoldsAccentAndCase(t *testing.T) {
 	}
 }
 
-func TestParserHeaderFoldingAndFirstSheetOnly(t *testing.T) {
+// TestParserHeaderFoldingAndUnionsAllSheets pins the multi-sheet UNION contract
+// (M-01 defect fix: the parser previously read GetSheetList()[0] only and
+// silently dropped every other sheet). Header folding/case-insensitivity is
+// asserted on the first sheet; the second sheet's rows must also appear.
+func TestParserHeaderFoldingAndUnionsAllSheets(t *testing.T) {
 	data := xlsxBytes(t, []testSheet{
 		{
 			name: "First",
@@ -119,20 +123,23 @@ func TestParserHeaderFoldingAndFirstSheetOnly(t *testing.T) {
 			name: "Second",
 			rows: [][]string{
 				{"CODPROD", "DESCRPROD", "CUSTO", "ESTOQUE_FISICO"},
-				{"P2", "Ignored", "99", "99"},
+				{"P2", "Segundo", "99", "99"},
 			},
 		},
 	})
 
-	rows, err := NewParser().Parse(context.Background(), bytes.NewReader(data))
+	rows, _, err := NewParser().Parse(context.Background(), bytes.NewReader(data))
 	if err != nil {
 		t.Fatalf("Parse() error = %v", err)
 	}
-	if len(rows) != 1 {
-		t.Fatalf("Parse() rows = %d, want first-sheet row only", len(rows))
+	if len(rows) != 2 {
+		t.Fatalf("Parse() rows = %d, want 2 (union of both sheets)", len(rows))
 	}
 	if rows[0].Codprod != "P1" || rows[0].Descrprod != "Desc" || rows[0].Custo != domain.Decimal("10,50") || rows[0].StockPhysical != "3" {
-		t.Errorf("folded headers mapped incorrectly: %#v", rows[0])
+		t.Errorf("folded first-sheet headers mapped incorrectly: %#v", rows[0])
+	}
+	if rows[1].Codprod != "P2" || rows[1].Descrprod != "Segundo" {
+		t.Errorf("second sheet row missing from union: %#v", rows[1])
 	}
 }
 
@@ -145,7 +152,7 @@ func TestParserMissingRequiredColumn(t *testing.T) {
 		},
 	}})
 
-	rows, err := NewParser().Parse(context.Background(), bytes.NewReader(data))
+	rows, _, err := NewParser().Parse(context.Background(), bytes.NewReader(data))
 	if rows != nil {
 		t.Fatalf("Parse() rows = %#v, want nil on missing column", rows)
 	}
@@ -159,7 +166,7 @@ func TestParserMissingRequiredColumn(t *testing.T) {
 }
 
 func TestParserInvalidFile(t *testing.T) {
-	rows, err := NewParser().Parse(context.Background(), strings.NewReader("not an xlsx"))
+	rows, _, err := NewParser().Parse(context.Background(), strings.NewReader("not an xlsx"))
 	if rows != nil {
 		t.Fatalf("Parse() rows = %#v, want nil for corrupt input", rows)
 	}
@@ -190,7 +197,7 @@ func TestParserEmptyWorkbookOrFirstSheet(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			data := xlsxBytes(t, tt.sheets)
-			rows, err := NewParser().Parse(context.Background(), bytes.NewReader(data))
+			rows, _, err := NewParser().Parse(context.Background(), bytes.NewReader(data))
 			if rows != nil {
 				t.Fatalf("Parse() rows = %#v, want nil", rows)
 			}

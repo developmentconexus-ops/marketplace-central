@@ -1,0 +1,361 @@
+import type { ErpImportSourceInput } from "@marketplace-central/sdk-runtime";
+import { EmptyState, ErrorState, LoadingState } from "@marketplace-central/ui";
+import { type ActiveErpSource, useActiveErpSource } from "@marketplace-central/web-query";
+import { useId, useRef, useState, type ChangeEvent, type DragEvent } from "react";
+import { ImportacaoSection } from "../vinculos/ImportacaoSection";
+import { useErpImportDetail } from "../vinculos/useErpImports";
+import { useErpImportUpload, type ErpImportUploadError } from "./useErpImportUpload";
+
+type SourceOption = {
+  value: ErpImportSourceInput;
+  label: string;
+  hint: string;
+};
+
+// Catálogo do cliente is the lenient path (the customer's raw product export
+// carries no CUSTO/ESTOQUE_FISICO — those stay honest-unknown, ADR-17). Sankhya
+// is the strict cost+stock path that rejects a workbook missing required
+// columns. Default to the lenient path: it is the demo's live import.
+const SOURCE_OPTIONS: SourceOption[] = [
+  {
+    value: "catalogo_cliente",
+    label: "Catálogo do cliente",
+    hint: "Planilha de produtos do cliente (custo e estoque podem faltar — ficam como desconhecido).",
+  },
+  {
+    value: "xlsx",
+    label: "Sankhya (custo + estoque)",
+    hint: "Exportação Sankhya com colunas de custo e estoque obrigatórias.",
+  },
+];
+
+const ACCEPT = ".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+function isXlsx(file: File): boolean {
+  return file.name.toLowerCase().endsWith(".xlsx");
+}
+
+function uploadErrorMessage(error: ErpImportUploadError): string {
+  switch (error.kind) {
+    case "invalid_file":
+      return "Arquivo inválido. Envie um .xlsx exportado do ERP.";
+    case "missing_required_column":
+      return error.column
+        ? `Coluna obrigatória ausente: “${error.column}”. Selecione a fonte correta ou use “Catálogo do cliente”.`
+        : "Coluna obrigatória ausente. Selecione a fonte correta ou use “Catálogo do cliente”.";
+    case "duplicate_file":
+      return error.protocol
+        ? `Este arquivo já foi importado (protocolo ${error.protocol}). Nenhuma ação necessária.`
+        : "Este arquivo já foi importado. Nenhuma ação necessária.";
+    case "import_in_progress":
+      return "Outra importação está em andamento. Aguarde a conclusão e tente novamente.";
+    case "internal_error":
+      return "Falha inesperada ao importar. Tente novamente.";
+    case "network_error":
+    default:
+      return "Não foi possível conectar ao servidor. Verifique a conexão e tente novamente.";
+  }
+}
+
+function IssueList({ title, issues, testId }: { title: string; issues: { row: number; code: string; detail: string; offending_value?: string | null }[]; testId: string }) {
+  if (issues.length === 0) return null;
+  return (
+    <div className="mt-2">
+      <p className="text-xs font-semibold text-ink">{title}</p>
+      <ul className="mt-1 flex max-h-64 flex-col gap-1 overflow-auto" data-testid={testId}>
+        {issues.map((issue, index) => (
+          <li
+            key={`${issue.row}-${issue.code}-${index}`}
+            className="rounded-control border border-border bg-surface-2 px-2 py-1 text-xs text-muted"
+          >
+            <span className="font-medium">Linha {issue.row}</span> — {issue.code}: {issue.detail}
+            {issue.offending_value ? <span className="text-faint"> (valor: {issue.offending_value})</span> : null}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// ResultSummary loads the freshly-created import's detail so the operator sees
+// the real aceitos/rejeitados/avisos counts and the issue rows — the POST
+// response only carries the protocol/status, not the tallies.
+function ResultSummary({ importId, protocol }: { importId: string; protocol: string }) {
+  const detailQuery = useErpImportDetail(importId);
+
+  if (detailQuery.isPending) return <LoadingState />;
+  if (detailQuery.isError) return <ErrorState onRetry={() => void detailQuery.refetch()} />;
+  const detail = detailQuery.data;
+  if (!detail) return <EmptyState />;
+
+  return (
+    <div
+      className="mt-3 rounded-card border border-accent/40 bg-accent-soft p-3"
+      role="status"
+      data-testid="erp-import-result"
+    >
+      <p className="text-sm font-semibold text-accent-ink">
+        Importação concluída — protocolo <span className="font-mono">{protocol}</span>
+      </p>
+      <dl className="mt-2 grid grid-cols-3 gap-x-4 gap-y-1 text-xs text-muted">
+        <div>
+          <dt className="text-faint">Aceitos</dt>
+          <dd className="font-mono font-medium text-ink" data-testid="result-accepted">
+            {detail.accepted_count}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-faint">Rejeitados</dt>
+          <dd className="font-mono font-medium text-ink" data-testid="result-rejected">
+            {detail.rejected_count}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-faint">Avisos</dt>
+          <dd className="font-mono font-medium text-ink" data-testid="result-warnings">
+            {detail.warning_count}
+          </dd>
+        </div>
+      </dl>
+      <IssueList title="Rejeitados" issues={detail.rejected_rows} testId="result-rejected-rows" />
+      <IssueList title="Avisos" issues={detail.warnings} testId="result-warning-rows" />
+    </div>
+  );
+}
+
+function UploadCard() {
+  const [file, setFile] = useState<File | null>(null);
+  const [source, setSource] = useState<ErpImportSourceInput>("catalogo_cliente");
+  const [dragging, setDragging] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const fieldId = useId();
+
+  const upload = useErpImportUpload();
+  const created = upload.data;
+
+  function pickFile(next: File | null) {
+    setLocalError(null);
+    upload.reset();
+    if (next && !isXlsx(next)) {
+      setFile(null);
+      setLocalError("Formato não suportado. Envie um arquivo .xlsx.");
+      return;
+    }
+    setFile(next);
+  }
+
+  function onInputChange(event: ChangeEvent<HTMLInputElement>) {
+    pickFile(event.target.files?.[0] ?? null);
+  }
+
+  function onDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setDragging(false);
+    pickFile(event.dataTransfer.files?.[0] ?? null);
+  }
+
+  function onSubmit() {
+    if (!file) return;
+    upload.mutate({ file, source });
+  }
+
+  return (
+    <section aria-labelledby={`${fieldId}-title`} className="rounded-card border border-border bg-surface p-4">
+      <h2 id={`${fieldId}-title`} className="text-sm font-semibold text-ink">
+        Importar catálogo
+      </h2>
+      <p className="mt-1 text-xs text-faint">
+        Envie a planilha de produtos (.xlsx). Selecione a fonte para escolher entre a importação do catálogo
+        do cliente ou a exportação Sankhya com custo e estoque.
+      </p>
+
+      <fieldset className="mt-3">
+        <legend className="text-xs font-semibold text-ink">Fonte</legend>
+        <div className="mt-1 flex flex-col gap-2 sm:flex-row">
+          {SOURCE_OPTIONS.map((option) => (
+            <label
+              key={option.value}
+              className={`flex flex-1 cursor-pointer flex-col gap-0.5 rounded-control border p-2.5 text-xs ${
+                source === option.value ? "border-accent bg-accent-soft" : "border-border bg-surface-2"
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name={`${fieldId}-source`}
+                  value={option.value}
+                  checked={source === option.value}
+                  onChange={() => {
+                    setSource(option.value);
+                    upload.reset();
+                  }}
+                />
+                <span className="font-medium text-ink">{option.label}</span>
+              </span>
+              <span className="pl-6 text-faint">{option.hint}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      <div
+        className={`mt-3 flex flex-col items-center justify-center gap-2 rounded-card border border-dashed p-6 text-center ${
+          dragging ? "border-accent bg-accent-soft" : "border-border bg-surface-2"
+        }`}
+        onDragOver={(event) => {
+          event.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={onDrop}
+        data-testid="erp-import-dropzone"
+      >
+        <input
+          ref={inputRef}
+          type="file"
+          accept={ACCEPT}
+          className="sr-only"
+          onChange={onInputChange}
+          aria-label="Selecionar arquivo .xlsx"
+          data-testid="erp-import-file-input"
+        />
+        <p className="text-xs text-muted">
+          {file ? (
+            <span className="font-medium text-ink" data-testid="erp-import-file-name">
+              {file.name}
+            </span>
+          ) : (
+            "Arraste o arquivo aqui ou selecione"
+          )}
+        </p>
+        <button
+          type="button"
+          className="rounded-control border border-border bg-surface px-3 py-1.5 text-xs font-medium text-ink hover:bg-surface-2"
+          onClick={() => inputRef.current?.click()}
+        >
+          Selecionar arquivo
+        </button>
+      </div>
+
+      <div className="mt-3 flex items-center gap-3">
+        <button
+          type="button"
+          className="rounded-control bg-accent px-4 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={!file || upload.isPending}
+          onClick={onSubmit}
+          data-testid="erp-import-submit"
+        >
+          {upload.isPending ? "Importando…" : "Importar"}
+        </button>
+        {upload.isPending ? <span className="text-xs text-muted">Processando planilha…</span> : null}
+      </div>
+
+      {localError ? (
+        <p className="mt-2 text-xs text-warn" role="alert">
+          {localError}
+        </p>
+      ) : null}
+      {upload.isError && upload.error ? (
+        <p className="mt-2 rounded-control border border-warn/40 bg-warn-soft px-2 py-1.5 text-xs text-warn" role="alert" data-testid="erp-import-error">
+          {uploadErrorMessage(upload.error)}
+        </p>
+      ) : null}
+      {created ? <ResultSummary importId={created.import_id} protocol={created.protocol} /> : null}
+    </section>
+  );
+}
+
+// ActiveSourceCard picks which imported dataset the whole app reads (/catalogo
+// and downstream reads). It is the operator-visible face of the erp_source
+// toggle: xlsx = Sankhya ERP (custo + estoque), catalogo_cliente = the prospect
+// catalog just imported (custo/estoque honest-unknown, shown as "—"). The choice
+// persists in localStorage and drives the catalog data hooks live.
+const ACTIVE_SOURCE_OPTIONS: { value: ActiveErpSource; label: string; hint: string }[] = [
+  { value: "xlsx", label: "ERP Sankhya", hint: "Catálogo Sankhya com custo e estoque." },
+  { value: "catalogo_cliente", label: "Catálogo do cliente", hint: "Catálogo importado do cliente — custo e estoque aparecem como “—”." },
+];
+
+function ActiveSourceCard() {
+  const [activeSource, setActiveSource] = useActiveErpSource();
+  const fieldId = useId();
+  return (
+    <section aria-labelledby={`${fieldId}-active-title`} className="rounded-card border border-border bg-surface p-4">
+      <h2 id={`${fieldId}-active-title`} className="text-sm font-semibold text-ink">
+        Fonte ativa
+      </h2>
+      <p className="mt-1 text-xs text-faint">
+        Selecione qual catálogo o app exibe em /catalogo e nas telas que leem produtos.
+      </p>
+      <fieldset className="mt-3">
+        <legend className="sr-only">Fonte ativa de dados</legend>
+        <div className="flex flex-col gap-2 sm:flex-row" data-testid="active-source-selector">
+          {ACTIVE_SOURCE_OPTIONS.map((option) => (
+            <label
+              key={option.value}
+              className={`flex flex-1 cursor-pointer flex-col gap-0.5 rounded-control border p-2.5 text-xs ${
+                activeSource === option.value ? "border-accent bg-accent-soft" : "border-border bg-surface-2"
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name={`${fieldId}-active-source`}
+                  value={option.value}
+                  checked={activeSource === option.value}
+                  onChange={() => setActiveSource(option.value)}
+                  data-testid={`active-source-${option.value}`}
+                />
+                <span className="font-medium text-ink">{option.label}</span>
+              </span>
+              <span className="pl-6 text-faint">{option.hint}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+    </section>
+  );
+}
+
+// ProviderConnectCard is an inert affordance: Mercado Livre OAuth connect is out
+// of scope for this milestone. It renders a disabled control and never touches
+// the network — the connect flow ships later.
+function ProviderConnectCard() {
+  return (
+    <section aria-labelledby="provider-connect-title" className="rounded-card border border-border bg-surface p-4">
+      <h2 id="provider-connect-title" className="text-sm font-semibold text-ink">
+        Conectar marketplace
+      </h2>
+      <p className="mt-1 text-xs text-faint">Conecte uma conta de marketplace para sincronizar anúncios e pedidos.</p>
+      <div className="mt-3 flex items-center justify-between rounded-control border border-border bg-surface-2 p-3">
+        <span className="text-sm font-medium text-ink">Mercado Livre</span>
+        <button
+          type="button"
+          disabled
+          title="disponível em breve"
+          className="rounded-control border border-border px-3 py-1.5 text-xs font-medium text-muted disabled:cursor-not-allowed"
+          data-testid="provider-connect-ml"
+        >
+          Conectar — disponível em breve
+        </button>
+      </div>
+    </section>
+  );
+}
+
+export function IntegracoesPage() {
+  return (
+    <section aria-labelledby="integracoes-title" className="mx-auto flex max-w-5xl flex-col gap-[14px]">
+      <header>
+        <h1 id="integracoes-title" className="text-[22px] font-bold tracking-tight text-ink">
+          Configuração da plataforma
+        </h1>
+        <p className="mt-1 text-sm text-muted">Importe o catálogo de produtos e conecte marketplaces.</p>
+      </header>
+      <ActiveSourceCard />
+      <UploadCard />
+      <ProviderConnectCard />
+      <ImportacaoSection />
+    </section>
+  );
+}

@@ -7,19 +7,26 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	erpinternalread "marketplace-central/apps/server_core/internal/modules/erp_import/adapters/internalread"
+	erpdomain "marketplace-central/apps/server_core/internal/modules/erp_import/domain"
 	"marketplace-central/apps/server_core/internal/modules/market/application"
 	"marketplace-central/apps/server_core/internal/modules/market/domain"
 	"marketplace-central/apps/server_core/internal/modules/market/ports"
 )
 
 type fakeCollectionService struct {
-	summary    application.CollectionSummary
-	err        error
-	gotCodprod string
+	summary       application.CollectionSummary
+	err           error
+	gotCodprod    string
+	gotSource     erpdomain.ImportSource
+	gotSourceSeen bool
+	called        bool
 }
 
-func (f *fakeCollectionService) Collect(_ context.Context, codprod string) (application.CollectionSummary, error) {
+func (f *fakeCollectionService) Collect(ctx context.Context, codprod string) (application.CollectionSummary, error) {
+	f.called = true
 	f.gotCodprod = codprod
+	f.gotSource, f.gotSourceSeen = erpinternalread.ActiveSourceFromContext(ctx)
 	return f.summary, f.err
 }
 
@@ -141,4 +148,64 @@ func TestCollectMissingCodprodReturns400(t *testing.T) {
 	if got, want := rr.Code, http.StatusBadRequest; got != want {
 		t.Fatalf("status = %d, want %d, body=%s", got, want, rr.Body.String())
 	}
+}
+
+// GOAL C — erp_source resolves the codprod identity from the selected snapshot.
+
+func TestCollectThreadsActiveSourceIntoIdentityResolution(t *testing.T) {
+	t.Parallel()
+
+	service := &fakeCollectionService{summary: application.CollectionSummary{
+		Codprod: "123", Status: application.CollectionStatusCompleted,
+		Contagens: map[string]int{"ok": 1},
+	}}
+	h := NewHandlerWithCollections(&fakeReadService{}, service, &fakeEvidenceReader{})
+	req := httptest.NewRequest(http.MethodPost, "/market/collections?erp_source=catalogo_cliente", bytes.NewBufferString(`{"codprod":"123"}`))
+	rr := httptest.NewRecorder()
+
+	h.handleCollect(rr, req)
+
+	if got, want := rr.Code, http.StatusOK; got != want {
+		t.Fatalf("status = %d, want %d, body=%s", got, want, rr.Body.String())
+	}
+	if !service.gotSourceSeen || service.gotSource != erpdomain.SourceCatalogoCliente {
+		t.Fatalf("active source seen=%v value=%q, want catalogo_cliente", service.gotSourceSeen, service.gotSource)
+	}
+}
+
+func TestCollectAbsentActiveSourceIsByteStable(t *testing.T) {
+	t.Parallel()
+
+	service := &fakeCollectionService{summary: application.CollectionSummary{Codprod: "123", Status: application.CollectionStatusCompleted}}
+	h := NewHandlerWithCollections(&fakeReadService{}, service, &fakeEvidenceReader{})
+	req := httptest.NewRequest(http.MethodPost, "/market/collections", bytes.NewBufferString(`{"codprod":"123"}`))
+	rr := httptest.NewRecorder()
+
+	h.handleCollect(rr, req)
+
+	if got, want := rr.Code, http.StatusOK; got != want {
+		t.Fatalf("status = %d, want %d, body=%s", got, want, rr.Body.String())
+	}
+	if service.gotSourceSeen {
+		t.Fatalf("absent erp_source must leave the reader default (present=false), got %q", service.gotSource)
+	}
+}
+
+func TestCollectRejectsUnknownActiveSource(t *testing.T) {
+	t.Parallel()
+
+	service := &fakeCollectionService{}
+	h := NewHandlerWithCollections(&fakeReadService{}, service, &fakeEvidenceReader{})
+	req := httptest.NewRequest(http.MethodPost, "/market/collections?erp_source=bogus", bytes.NewBufferString(`{"codprod":"123"}`))
+	rr := httptest.NewRecorder()
+
+	h.handleCollect(rr, req)
+
+	if got, want := rr.Code, http.StatusBadRequest; got != want {
+		t.Fatalf("status = %d, want %d, body=%s", got, want, rr.Body.String())
+	}
+	if service.called {
+		t.Fatal("unknown erp_source reached the collection service (must 400 first, never silent fallback)")
+	}
+	assertBodyContains(t, rr.Body.Bytes(), `"key":"erp_source"`)
 }

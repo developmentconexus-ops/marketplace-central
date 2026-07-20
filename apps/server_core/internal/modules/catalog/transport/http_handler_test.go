@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	erpinternalread "marketplace-central/apps/server_core/internal/modules/erp_import/adapters/internalread"
+	erpdomain "marketplace-central/apps/server_core/internal/modules/erp_import/domain"
 	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
 	"marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
@@ -23,11 +25,20 @@ type fakeCatalogPageReader struct {
 	searchQueries   []string
 	searchLimits    []int
 	freshnessPolicy []internalreaddomain.FreshnessPolicy
+	activeSources   []erpdomain.ImportSource
+	sourcePresent   []bool
 	err             error
+}
+
+func (f *fakeCatalogPageReader) captureSource(ctx context.Context) {
+	source, present := erpinternalread.ActiveSourceFromContext(ctx)
+	f.activeSources = append(f.activeSources, source)
+	f.sourcePresent = append(f.sourcePresent, present)
 }
 
 func (f *fakeCatalogPageReader) ListCatalogProductFacts(ctx context.Context, cursor ports.Cursor, _ int) (ports.CatalogFactPage, error) {
 	f.listCursors = append(f.listCursors, cursor)
+	f.captureSource(ctx)
 	if policy, ok := FreshnessPolicyFromContext(ctx); ok {
 		f.freshnessPolicy = append(f.freshnessPolicy, policy)
 	}
@@ -40,6 +51,7 @@ func (f *fakeCatalogPageReader) ListCatalogProductFacts(ctx context.Context, cur
 func (f *fakeCatalogPageReader) SearchCatalogProductFacts(ctx context.Context, q string, limit int) (ports.CatalogFactPage, error) {
 	f.searchQueries = append(f.searchQueries, q)
 	f.searchLimits = append(f.searchLimits, limit)
+	f.captureSource(ctx)
 	if policy, ok := FreshnessPolicyFromContext(ctx); ok {
 		f.freshnessPolicy = append(f.freshnessPolicy, policy)
 	}
@@ -232,4 +244,61 @@ func trimJSON(body string) string {
 	}
 	encoded, _ := json.Marshal(value)
 	return string(encoded)
+}
+
+// GOAL C — erp_source active-source toggle on the catalog read seam.
+
+func TestCatalogPageThreadsActiveSourceToggle(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		path        string
+		wantSource  erpdomain.ImportSource
+		wantPresent bool
+	}{
+		{name: "list absent = default (byte-stable)", path: "/catalog/products?limit=1", wantPresent: false},
+		{name: "list catalogo_cliente", path: "/catalog/products?limit=1&erp_source=catalogo_cliente", wantSource: erpdomain.SourceCatalogoCliente, wantPresent: true},
+		{name: "list xlsx explicit", path: "/catalog/products?limit=1&erp_source=xlsx", wantSource: erpdomain.SourceXLSX, wantPresent: true},
+		{name: "search catalogo_cliente", path: "/catalog/products/search?q=PARAFUSO&limit=1&erp_source=catalogo_cliente", wantSource: erpdomain.SourceCatalogoCliente, wantPresent: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fake := &fakeCatalogPageReader{}
+			mux := httpx.NewRouteClassMux()
+			(Handler{PageReader: fake}).Register(mux)
+			recorder := httptest.NewRecorder()
+			mux.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, tc.path, nil))
+			if recorder.Code != http.StatusOK {
+				t.Fatalf("status = %d, body = %s", recorder.Code, recorder.Body.String())
+			}
+			t.Logf("GET %s -> %d", tc.path, recorder.Code)
+			if len(fake.sourcePresent) != 1 || fake.sourcePresent[0] != tc.wantPresent {
+				t.Fatalf("source present = %v, want [%v]", fake.sourcePresent, tc.wantPresent)
+			}
+			if tc.wantPresent && fake.activeSources[0] != tc.wantSource {
+				t.Fatalf("active source = %q, want %q", fake.activeSources[0], tc.wantSource)
+			}
+		})
+	}
+}
+
+func TestCatalogPageRejectsUnknownActiveSource(t *testing.T) {
+	for _, path := range []string{
+		"/catalog/products?limit=1&erp_source=bogus",
+		"/catalog/products/search?q=X&limit=1&erp_source=sankhya",
+	} {
+		fake := &fakeCatalogPageReader{}
+		mux := httpx.NewRouteClassMux()
+		(Handler{PageReader: fake}).Register(mux)
+		recorder := httptest.NewRecorder()
+		mux.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))
+		if recorder.Code != http.StatusBadRequest {
+			t.Fatalf("GET %s status = %d, want 400 (body %s)", path, recorder.Code, recorder.Body.String())
+		}
+		if trimJSON(recorder.Body.String()) != trimJSON(`{"error":"invalid_erp_source"}`) {
+			t.Fatalf("GET %s body = %s, want invalid_erp_source", path, trimJSON(recorder.Body.String()))
+		}
+		// Unknown value must never silently fall through to a dataset read.
+		if len(fake.listCursors) != 0 || len(fake.searchQueries) != 0 {
+			t.Fatalf("GET %s reached the page port on an invalid erp_source", path)
+		}
+	}
 }

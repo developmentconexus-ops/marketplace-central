@@ -6,6 +6,7 @@ import {
   createRefreshableFetch,
   createWebQueryClient,
   QUERY_STALE_TIME,
+  setActiveErpSource,
 } from "@marketplace-central/web-query";
 import { CatalogPage } from "./CatalogPage";
 
@@ -38,7 +39,13 @@ function renderPage(client: any, queryClient = createWebQueryClient()) {
 afterEach(() => {
   vi.useRealTimers();
   vi.setSystemTime();
+  setActiveErpSource("xlsx");
 });
+
+function requestUrl(call: unknown[]): string {
+  const input = call[0];
+  return typeof input === "string" ? input : String((input as Request).url);
+}
 
 describe("CatalogPage", () => {
   it("appends infinite pages and stops when next_cursor is null", async () => {
@@ -73,6 +80,26 @@ describe("CatalogPage", () => {
     first.unmount();
     renderPage({ ...sdk, withNoCache: transport.withNoCache }, queryClient);
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+  });
+
+  it("omits erp_source on the default source and sends it when catalogo_cliente is active", async () => {
+    // Default (xlsx) — byte-stable URL, no erp_source param.
+    const defaultFetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(page(1, null, "2026-07-14T10:11:12Z"))));
+    const defaultTransport = createRefreshableFetch(defaultFetch as unknown as typeof globalThis.fetch);
+    const defaultSdk = createMarketplaceCentralClient({ baseUrl: "", fetchImpl: defaultTransport.fetchImpl });
+    const first = renderPage({ ...defaultSdk, withNoCache: defaultTransport.withNoCache });
+    await screen.findByText("Product 1");
+    expect(requestUrl(defaultFetch.mock.calls[0])).not.toContain("erp_source");
+    first.unmount();
+
+    // catalogo_cliente active — the toggle travels as erp_source=catalogo_cliente.
+    setActiveErpSource("catalogo_cliente");
+    const clientFetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(page(2, null, "2026-07-14T10:12:13Z"))));
+    const clientTransport = createRefreshableFetch(clientFetch as unknown as typeof globalThis.fetch);
+    const clientSdk = createMarketplaceCentralClient({ baseUrl: "", fetchImpl: clientTransport.fetchImpl });
+    renderPage({ ...clientSdk, withNoCache: clientTransport.withNoCache });
+    await screen.findByText("Product 2");
+    expect(requestUrl(clientFetch.mock.calls[0])).toContain("erp_source=catalogo_cliente");
   });
 
   it("renders local as_of and sends no-cache on refresh", async () => {

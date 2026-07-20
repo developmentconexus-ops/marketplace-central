@@ -3,13 +3,14 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppRouter } from "./AppRouter";
 
-const { listIntegrationInstallations, getMutation, listMutationItems, getDashboardSummary, listOrders } =
+const { listIntegrationInstallations, getMutation, listMutationItems, getDashboardSummary, listOrders, listErpImports } =
   vi.hoisted(() => ({
     listIntegrationInstallations: vi.fn(),
     getMutation: vi.fn(),
     listMutationItems: vi.fn(),
     getDashboardSummary: vi.fn(),
     listOrders: vi.fn(),
+    listErpImports: vi.fn(),
   }));
 
 vi.mock("./ClientContext", () => ({
@@ -20,6 +21,7 @@ vi.mock("./ClientContext", () => ({
     listMutationItems,
     getDashboardSummary,
     listOrders,
+    listErpImports,
   }),
 }));
 
@@ -68,6 +70,8 @@ describe("AppRouter", () => {
       as_of: "2026-07-19T12:00:00Z",
     });
     listOrders.mockResolvedValue({ items: [], next_cursor: null });
+    listErpImports.mockReset();
+    listErpImports.mockResolvedValue({ items: [] });
     getMutation.mockResolvedValue({
       protocol_id: "MP-000042", installation_id: "inst_test", type: "listing_pause", state: "applied",
       actor: "operator_supplied_unverified", intent: {}, selection: {}, totals: {}, source_as_of: null,
@@ -85,10 +89,10 @@ describe("AppRouter", () => {
     expect(listIntegrationInstallations).toHaveBeenCalledTimes(1);
   });
 
-  it("mounts the em-construção stub at /integracoes with a single app-wide installation fetch", async () => {
+  it("mounts the plataforma-config screen at /integracoes with a single app-wide installation fetch", async () => {
     window.history.pushState({}, "", "/integracoes");
     renderAppRouter();
-    expect(await screen.findByText("Em construção — disponível em breve.")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Configuração da plataforma" })).toBeInTheDocument();
     expect(listIntegrationInstallations).toHaveBeenCalledTimes(1);
   });
 

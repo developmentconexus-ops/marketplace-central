@@ -5,6 +5,7 @@ import type { CatalogProductFact } from "@marketplace-central/sdk-runtime";
 import {
   catalogQueryKeys,
   FreshnessIndicator,
+  useActiveErpSource,
 } from "@marketplace-central/web-query";
 import { useCatalogFactsQuery, useCatalogSearchQuery, type CatalogQueriesClient } from "./catalogQueries";
 
@@ -34,6 +35,7 @@ function errorMessage(error: unknown): string {
 
 export function CatalogPage({ client }: CatalogPageProps) {
   const queryClient = useQueryClient();
+  const [activeSource] = useActiveErpSource();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [refreshing, setRefreshing] = useState(false);
@@ -43,8 +45,8 @@ export function CatalogPage({ client }: CatalogPageProps) {
     return () => window.clearTimeout(timer);
   }, [search]);
 
-  const factsQuery = useCatalogFactsQuery(client, !debouncedSearch);
-  const searchQuery = useCatalogSearchQuery(client, debouncedSearch);
+  const factsQuery = useCatalogFactsQuery(client, !debouncedSearch, activeSource);
+  const searchQuery = useCatalogSearchQuery(client, debouncedSearch, activeSource);
   const pages = factsQuery.data?.pages ?? [];
   const facts = useMemo(
     () => (debouncedSearch ? searchQuery.data?.items ?? [] : pages.flatMap((page) => page.items)),
@@ -60,9 +62,9 @@ export function CatalogPage({ client }: CatalogPageProps) {
     try {
       const run = async () => {
         if (debouncedSearch) {
-          await queryClient.refetchQueries({ queryKey: catalogQueryKeys.search(debouncedSearch) });
+          await queryClient.refetchQueries({ queryKey: catalogQueryKeys.search(debouncedSearch, { erp_source: activeSource }) });
         } else {
-          await queryClient.refetchQueries({ queryKey: catalogQueryKeys.facts({ limit: 50 }) });
+          await queryClient.refetchQueries({ queryKey: catalogQueryKeys.facts({ limit: 50, erp_source: activeSource }) });
         }
       };
       await (client.withNoCache ? client.withNoCache(run) : run());

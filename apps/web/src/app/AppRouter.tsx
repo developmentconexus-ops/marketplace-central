@@ -14,6 +14,7 @@ import { VinculosRoute } from "../routes/vinculos";
 import { ProdutoRoute } from "../routes/produto";
 import { PrecosRoute } from "../routes/precos";
 import { PedidosRoute } from "../routes/pedidos";
+import { IntegracoesRoute } from "../routes/integracoes";
 
 function CatalogPageWrapper() {
   const client = useClient();
@@ -45,7 +46,7 @@ export function AppRouter() {
             <Route path="/estoque" element={<StockSeguroPageWrapper />} />
             <Route path="/precos" element={<PrecosRoute />} />
             <Route path="/pedidos" element={<PedidosRoute />} />
-            <Route path="/integracoes" element={<WorkspacePlaceholder />} />
+            <Route path="/integracoes" element={<IntegracoesRoute />} />
             <Route path="/protocolos/:protocolId" element={<ProtocoloPage />} />
             <Route path="/classifications" element={<ClassificationsPageWrapper />} />
             <Route path="/marketplaces" element={<WorkspacePlaceholder />} />

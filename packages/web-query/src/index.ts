@@ -27,7 +27,12 @@ export const queryKeyNamespaces = {
 
 export const catalogQueryKeys = {
   facts: (params: Record<string, unknown> = {}) => ["catalog", "facts", { params }] as const,
-  search: (q: string) => ["catalog", "search", q] as const,
+  // The trailing params object is appended only when a caller supplies params,
+  // so the pre-toggle two-arg key shape (["catalog","search",q]) stays byte-stable.
+  search: (q: string, params?: Record<string, unknown>) =>
+    (params && Object.keys(params).length > 0 ? ["catalog", "search", q, { params }] : ["catalog", "search", q]) as
+      | readonly ["catalog", "search", string]
+      | readonly ["catalog", "search", string, { params: Record<string, unknown> }],
 };
 
 export const inventoryQueryKeys = {
@@ -140,3 +145,10 @@ export function FreshnessIndicator({ asOf }: { asOf: string | null | undefined }
 
 export { invalidateAfterMutation, UnknownMutationInvalidationTypeError, type MutationInvalidationType } from "./invalidation";
 export { failureCodes, failureCopy, type FailureCode } from "./failureCopy";
+export {
+  type ActiveErpSource,
+  DEFAULT_ERP_SOURCE,
+  getActiveErpSource,
+  setActiveErpSource,
+  useActiveErpSource,
+} from "./activeErpSource";

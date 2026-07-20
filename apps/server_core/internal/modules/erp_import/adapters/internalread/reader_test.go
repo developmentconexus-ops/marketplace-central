@@ -223,3 +223,93 @@ func TestCatalogPages(t *testing.T) {
 		t.Fatalf("err=%v", err)
 	}
 }
+
+// GOAL C — the active-source toggle selects which imported snapshot the reader
+// serves, and ParseActiveSource is the sole validated seam into it.
+
+func TestParseActiveSource(t *testing.T) {
+	for _, tc := range []struct {
+		raw         string
+		wantSource  erpdomain.ImportSource
+		wantPresent bool
+		wantErr     bool
+	}{
+		{raw: "", wantPresent: false},
+		{raw: "   ", wantPresent: false},
+		{raw: "xlsx", wantSource: erpdomain.SourceXLSX, wantPresent: true},
+		{raw: " catalogo_cliente ", wantSource: erpdomain.SourceCatalogoCliente, wantPresent: true},
+		{raw: "sankhya", wantErr: true},
+		{raw: "XLSX", wantErr: true}, // case-sensitive: only the exact dataset keys resolve
+	} {
+		source, present, err := ParseActiveSource(tc.raw)
+		if tc.wantErr {
+			if !errors.Is(err, ErrUnknownActiveSource) {
+				t.Fatalf("ParseActiveSource(%q) err = %v, want ErrUnknownActiveSource", tc.raw, err)
+			}
+			continue
+		}
+		if err != nil || present != tc.wantPresent || source != tc.wantSource {
+			t.Fatalf("ParseActiveSource(%q) = (%q,%v,%v), want (%q,%v,nil)", tc.raw, source, present, err, tc.wantSource, tc.wantPresent)
+		}
+	}
+}
+
+// sourceKeyedRepo returns a distinct snapshot per source so a test can prove the
+// context source actually drives which dataset the reader reads.
+type sourceKeyedRepo struct {
+	bySource  map[erpdomain.ImportSource]erpdomain.ImportSnapshot
+	gotSource erpdomain.ImportSource
+}
+
+func (r *sourceKeyedRepo) PersistSnapshotAtomically(context.Context, string, erpdomain.ImportSnapshot) error {
+	return nil
+}
+func (r *sourceKeyedRepo) FindByFileSHA256(context.Context, string, erpdomain.FileSHA256) (*erpdomain.ImportReport, error) {
+	return nil, nil
+}
+func (r *sourceKeyedRepo) ListImports(context.Context, string) ([]erpdomain.ImportReport, error) {
+	return nil, nil
+}
+func (r *sourceKeyedRepo) GetImport(context.Context, string, erpdomain.ImportID) (erpdomain.ImportReport, error) {
+	return erpdomain.ImportReport{}, nil
+}
+func (r *sourceKeyedRepo) LatestCompletedSnapshot(_ context.Context, _ string, source erpdomain.ImportSource) (erpdomain.ImportSnapshot, error) {
+	r.gotSource = source
+	snapshot, ok := r.bySource[source]
+	if !ok {
+		return erpdomain.ImportSnapshot{}, erpports.ErrImportNotFound
+	}
+	return snapshot, nil
+}
+
+var _ erpports.ImportRepository = (*sourceKeyedRepo)(nil)
+
+func TestReaderSelectsSnapshotByActiveSource(t *testing.T) {
+	xlsxRows := []erpdomain.NormalizedRow{{Codprod: "10", Descrprod: "Sankhya Widget", Custo: "12.30", StockPhysical: "9", StockReserved: ptr("1"), EAN: ptr("7894900011517"), NCM: ptr("12345678")}}
+	clientRows := []erpdomain.NormalizedRow{{Codprod: "20", Descrprod: "Prospect Widget", EAN: ptr("7891000315019")}}
+	repo := &sourceKeyedRepo{bySource: map[erpdomain.ImportSource]erpdomain.ImportSnapshot{
+		erpdomain.SourceXLSX:            {Status: erpdomain.ImportStatusCompleted, ImportedAt: importedAt, AcceptedRows: xlsxRows},
+		erpdomain.SourceCatalogoCliente: {Status: erpdomain.ImportStatusCompleted, ImportedAt: importedAt, AcceptedRows: clientRows},
+	}}
+	reader := NewReader(repo, "tenant-a", WithClock(func() time.Time { return fetchedAt }))
+
+	// Absent selection => xlsx default (byte-stable with prior callers).
+	defPage, err := reader.ListCatalogProductFacts(context.Background(), readports.Cursor{}, 10)
+	if err != nil || repo.gotSource != erpdomain.SourceXLSX || len(defPage.Items) != 1 || defPage.Items[0].InternalProductID != 10 {
+		t.Fatalf("default page = %+v gotSource=%q err=%v, want the xlsx snapshot", defPage.Items, repo.gotSource, err)
+	}
+
+	// catalogo_cliente selection => the prospect snapshot (honest-unknown cost/stock, ADR-17).
+	ctx := WithActiveSource(context.Background(), erpdomain.SourceCatalogoCliente)
+	clientPage, err := reader.ListCatalogProductFacts(ctx, readports.Cursor{}, 10)
+	if err != nil || repo.gotSource != erpdomain.SourceCatalogoCliente || len(clientPage.Items) != 1 || clientPage.Items[0].InternalProductID != 20 {
+		t.Fatalf("client page = %+v gotSource=%q err=%v, want the catalogo_cliente snapshot", clientPage.Items, repo.gotSource, err)
+	}
+	fact := clientPage.Items[0]
+	if fact.Cost.Amount != nil || len(fact.Cost.Quality) == 0 || fact.Cost.Quality[0] != string(readdomain.QualityMissingCost) {
+		t.Fatalf("prospect fact cost = %+v, want honest-unknown missing_cost (never fabricated)", fact.Cost)
+	}
+	if fact.SellableStock.Quantity != nil || len(fact.SellableStock.Quality) == 0 {
+		t.Fatalf("prospect fact stock = %+v, want honest-unknown missing_stock", fact.SellableStock)
+	}
+}

@@ -29,11 +29,44 @@ func WithActiveSource(ctx context.Context, source erpdomain.ImportSource) contex
 	return context.WithValue(ctx, activeSourceKey{}, source)
 }
 
-func activeSourceFromContext(ctx context.Context) erpdomain.ImportSource {
+// ActiveSourceFromContext reports the pinned dataset source and whether one was
+// set. Absent (present=false) the reader defaults to xlsx; the presence flag lets
+// transport tests confirm the toggle threaded through without asserting on the
+// default.
+func ActiveSourceFromContext(ctx context.Context) (erpdomain.ImportSource, bool) {
 	if source, ok := ctx.Value(activeSourceKey{}).(erpdomain.ImportSource); ok && source != "" {
+		return source, true
+	}
+	return "", false
+}
+
+func activeSourceFromContext(ctx context.Context) erpdomain.ImportSource {
+	if source, ok := ActiveSourceFromContext(ctx); ok {
 		return source
 	}
 	return erpdomain.SourceXLSX
+}
+
+// ErrUnknownActiveSource is returned by ParseActiveSource for a non-empty value
+// that names no known dataset. Transport maps it to 400 — never a silent
+// fallback to the default (which would hide a client bug behind ERP data).
+var ErrUnknownActiveSource = errors.New("unknown_erp_source")
+
+// ParseActiveSource maps a transport erp_source selector to an ImportSource.
+// Empty ("") means the caller made no selection: present=false, and the reader
+// keeps its xlsx default (so an absent param is byte-stable with prior clients).
+// A known value returns present=true. Anything else is ErrUnknownActiveSource.
+func ParseActiveSource(raw string) (erpdomain.ImportSource, bool, error) {
+	switch strings.TrimSpace(raw) {
+	case "":
+		return "", false, nil
+	case string(erpdomain.SourceXLSX):
+		return erpdomain.SourceXLSX, true, nil
+	case string(erpdomain.SourceCatalogoCliente):
+		return erpdomain.SourceCatalogoCliente, true, nil
+	default:
+		return "", false, ErrUnknownActiveSource
+	}
 }
 
 type ERPProductNotFoundError struct{ ProductID int }

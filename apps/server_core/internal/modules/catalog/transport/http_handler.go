@@ -12,6 +12,7 @@ import (
 
 	"marketplace-central/apps/server_core/internal/modules/catalog/application"
 	"marketplace-central/apps/server_core/internal/modules/catalog/domain"
+	erpinternalread "marketplace-central/apps/server_core/internal/modules/erp_import/adapters/internalread"
 	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
 	"marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
@@ -38,11 +39,23 @@ func FreshnessPolicyFromContext(ctx context.Context) (internalreaddomain.Freshne
 	return internalreaddomain.FreshnessPolicyFromContext(ctx)
 }
 
-func requestContext(r *http.Request) context.Context {
-	if !hasNoCacheDirective(r.Header.Get("Cache-Control")) {
-		return r.Context()
+func requestContext(r *http.Request) (context.Context, error) {
+	ctx := r.Context()
+	// erp_source selects which imported snapshot the reader serves (xlsx = Sankhya
+	// ERP, catalogo_cliente = prospect catalog). Absent = reader default (xlsx),
+	// so prior clients stay byte-stable; an unknown value is a 400, never a silent
+	// fallback to the default dataset.
+	source, present, err := erpinternalread.ParseActiveSource(r.URL.Query().Get("erp_source"))
+	if err != nil {
+		return nil, &catalogPageQueryError{code: "invalid_erp_source", allowedRange: "xlsx|catalogo_cliente"}
 	}
-	return internalreaddomain.WithFreshnessPolicy(r.Context(), internalreaddomain.FreshnessPolicy{MaxAge: 0})
+	if present {
+		ctx = erpinternalread.WithActiveSource(ctx, source)
+	}
+	if hasNoCacheDirective(r.Header.Get("Cache-Control")) {
+		ctx = internalreaddomain.WithFreshnessPolicy(ctx, internalreaddomain.FreshnessPolicy{MaxAge: 0})
+	}
+	return ctx, nil
 }
 
 func hasNoCacheDirective(header string) bool {
@@ -99,7 +112,12 @@ func (h Handler) handleProducts(w http.ResponseWriter, r *http.Request) {
 		writeCatalogPageError(w, errors.New("source_unavailable"))
 		return
 	}
-	page, err := h.PageReader.ListCatalogProductFacts(requestContext(r), cursor, limit)
+	ctx, err := requestContext(r)
+	if err != nil {
+		writeCatalogPageError(w, err)
+		return
+	}
+	page, err := h.PageReader.ListCatalogProductFacts(ctx, cursor, limit)
 	if err != nil {
 		writeCatalogPageError(w, err)
 		return
@@ -138,7 +156,12 @@ func (h Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
 		writeCatalogPageError(w, errors.New("source_unavailable"))
 		return
 	}
-	page, err := h.PageReader.SearchCatalogProductFacts(requestContext(r), q, limit)
+	ctx, err := requestContext(r)
+	if err != nil {
+		writeCatalogPageError(w, err)
+		return
+	}
+	page, err := h.PageReader.SearchCatalogProductFacts(ctx, q, limit)
 	if err != nil {
 		writeCatalogPageError(w, err)
 		return
