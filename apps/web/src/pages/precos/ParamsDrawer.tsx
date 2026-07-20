@@ -94,7 +94,7 @@ export function ParamsDrawer({
       <div
         data-testid="params-backdrop"
         onClick={onClose}
-        className="fixed inset-0 z-[40] bg-[rgba(22,24,20,0.35)]"
+        className="fixed inset-0 z-[40] bg-ink/35"
       />
       <aside
         role="dialog"
