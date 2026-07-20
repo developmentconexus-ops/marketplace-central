@@ -57,3 +57,9 @@ type OrderBucketCounts struct {
 type OrderBucketStore interface {
 	GetOrderBucketCounts(ctx context.Context, installationID string) (OrderBucketCounts, error)
 }
+
+// OrderFaturadoStore records the operator's "faturado" (invoiced) mark. Our-DB
+// only; idempotent; tenant+installation scoped.
+type OrderFaturadoStore interface {
+	MarkOrderFaturado(ctx context.Context, installationID, providerOrderID string) error
+}

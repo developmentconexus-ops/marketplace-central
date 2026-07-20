@@ -390,27 +390,38 @@ func TestHandleReadListEmitsDerivedBucket(t *testing.T) {
 	}
 }
 
-func TestMapEnrichedOrderDerivesBucketFromShippingID(t *testing.T) {
+func TestMapEnrichedOrderDerivesBucketFromFaturadoAt(t *testing.T) {
 	order := enrichedOrderModels()[1]
 	order.Status = "paid"
 	order.ShippingID = ""
+	order.FaturadoAt = nil
 
-	withoutShipping := application.EnrichedOrder{Order: order}
-	if dto := mapEnrichedOrder(withoutShipping); dto.Bucket != domain.BucketFaturar {
-		t.Fatalf("bucket = %q, want %q (paid, no shipping_id)", dto.Bucket, domain.BucketFaturar)
+	notFaturado := application.EnrichedOrder{Order: order}
+	if dto := mapEnrichedOrder(notFaturado); dto.Bucket != domain.BucketFaturar {
+		t.Fatalf("bucket = %q, want %q (paid, not faturado)", dto.Bucket, domain.BucketFaturar)
 	}
 
-	// shipping_id column present but the live shipment fetch failed (Shipment nil): the bucket
-	// must STILL be enviar, matching the summary by_status path (order_repo.go keys off the
-	// shipping_id column). The two paths must never diverge on the same order (P6 dual-gate finding).
-	shipped := order
-	shipped.ShippingID = "ship-col-1"
-	withShippingNoFetch := application.EnrichedOrder{Order: shipped}
-	if dto := mapEnrichedOrder(withShippingNoFetch); dto.Bucket != domain.BucketEnviar {
-		t.Fatalf("bucket = %q, want %q (paid, shipping_id present, live shipment fetch nil)", dto.Bucket, domain.BucketEnviar)
+	// shipping_id column presence alone no longer flips the bucket (goal B):
+	// only the persisted faturado_at fact does. The two paths (this enriched
+	// mapper and the SQL summary by_status path in order_repo.go) both key off
+	// faturado_at, so they must never diverge on the same order (P6 dual-gate
+	// finding carried forward).
+	shippingOnly := order
+	shippingOnly.ShippingID = "ship-col-1"
+	withShippingNoFaturado := application.EnrichedOrder{Order: shippingOnly}
+	if dto := mapEnrichedOrder(withShippingNoFaturado); dto.Bucket != domain.BucketFaturar {
+		t.Fatalf("bucket = %q, want %q (paid, shipping_id present but not faturado)", dto.Bucket, domain.BucketFaturar)
 	}
 
-	dtoJSON, err := json.Marshal(mapEnrichedOrder(withShippingNoFetch))
+	faturadoAt := time.Date(2026, 7, 20, 9, 0, 0, 0, time.UTC)
+	faturado := order
+	faturado.FaturadoAt = &faturadoAt
+	withFaturado := application.EnrichedOrder{Order: faturado}
+	if dto := mapEnrichedOrder(withFaturado); dto.Bucket != domain.BucketEnviar {
+		t.Fatalf("bucket = %q, want %q (paid, faturado_at set)", dto.Bucket, domain.BucketEnviar)
+	}
+
+	dtoJSON, err := json.Marshal(mapEnrichedOrder(withFaturado))
 	if err != nil {
 		t.Fatalf("marshal dto: %v", err)
 	}
@@ -942,5 +953,112 @@ func TestRegisterWiresSummaryRouteWithoutShadowingDetailRoute(t *testing.T) {
 	mux.ServeHTTP(rr2, req2)
 	if rr2.Code != http.StatusOK || !bytes.Contains(rr2.Body.Bytes(), []byte(`"provider_order_id":"order-1"`)) {
 		t.Fatalf("status=%d body=%s, want /orders/{id} route unaffected by /orders/summary", rr2.Code, rr2.Body.String())
+	}
+}
+
+// fakeOrderFaturador is the transport-level fake for OrderFaturador (goal B),
+// mirroring the fake*Store idiom already used in this package for summary.
+type fakeOrderFaturador struct {
+	err             error
+	called          bool
+	installationID  string
+	providerOrderID string
+}
+
+func (f *fakeOrderFaturador) MarkFaturado(_ context.Context, installationID, providerOrderID string) error {
+	f.called = true
+	f.installationID = installationID
+	f.providerOrderID = providerOrderID
+	return f.err
+}
+
+func TestHandleFaturadoMarksOrderAndReturns204(t *testing.T) {
+	fake := &fakeOrderFaturador{}
+	handler := NewHandlerWithReader(stubOrderImporter{}, stubOrderReadService{}).WithFaturador(fake)
+
+	body := bytes.NewBufferString(`{"installation_id":" inst-1 "}`)
+	req := httptest.NewRequest(http.MethodPost, "/orders/order-1/faturado", body)
+	req.SetPathValue("provider_order_id", " order-1 ")
+	rr := httptest.NewRecorder()
+
+	handler.handleFaturado(rr, req)
+
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("status=%d body=%s, want 204", rr.Code, rr.Body.String())
+	}
+	if !fake.called {
+		t.Fatal("handleFaturado did not call the faturador")
+	}
+	if fake.installationID != " inst-1 " {
+		t.Fatalf("installation ID passed through = %q", fake.installationID)
+	}
+	if fake.providerOrderID != "order-1" {
+		t.Fatalf("provider order ID = %q, want order-1 (trimmed from path)", fake.providerOrderID)
+	}
+}
+
+func TestHandleFaturadoWrongMethodReturns405(t *testing.T) {
+	fake := &fakeOrderFaturador{}
+	handler := NewHandlerWithReader(stubOrderImporter{}, stubOrderReadService{}).WithFaturador(fake)
+
+	req := httptest.NewRequest(http.MethodGet, "/orders/order-1/faturado", nil)
+	req.SetPathValue("provider_order_id", "order-1")
+	rr := httptest.NewRecorder()
+
+	handler.handleFaturado(rr, req)
+
+	if rr.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status=%d body=%s, want 405", rr.Code, rr.Body.String())
+	}
+	if fake.called {
+		t.Fatal("handleFaturado called the faturador on a GET")
+	}
+	if allow := rr.Header().Get("Allow"); allow != http.MethodPost {
+		t.Fatalf("Allow header = %q, want POST", allow)
+	}
+}
+
+func TestHandleFaturadoNotFoundReturns404(t *testing.T) {
+	fake := &fakeOrderFaturador{err: &ports.OrderNotFoundError{InstallationID: "inst-1", ProviderOrderID: "missing"}}
+	handler := NewHandlerWithReader(stubOrderImporter{}, stubOrderReadService{}).WithFaturador(fake)
+
+	body := bytes.NewBufferString(`{"installation_id":"inst-1"}`)
+	req := httptest.NewRequest(http.MethodPost, "/orders/missing/faturado", body)
+	req.SetPathValue("provider_order_id", "missing")
+	rr := httptest.NewRecorder()
+
+	handler.handleFaturado(rr, req)
+
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("status=%d body=%s, want 404", rr.Code, rr.Body.String())
+	}
+}
+
+func TestHandleFaturadoMalformedBodyReturns400(t *testing.T) {
+	fake := &fakeOrderFaturador{}
+	handler := NewHandlerWithReader(stubOrderImporter{}, stubOrderReadService{}).WithFaturador(fake)
+
+	req := httptest.NewRequest(http.MethodPost, "/orders/order-1/faturado", bytes.NewBufferString(`{not json`))
+	req.SetPathValue("provider_order_id", "order-1")
+	rr := httptest.NewRecorder()
+
+	handler.handleFaturado(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d body=%s, want 400", rr.Code, rr.Body.String())
+	}
+	if fake.called {
+		t.Fatal("handleFaturado called the faturador with a malformed body")
+	}
+}
+
+func TestRegisterOnlyWiresFaturadoRouteWhenBothReaderAndFaturadorSet(t *testing.T) {
+	// No readLister -> no faturado route, even with a faturador set.
+	mux := http.NewServeMux()
+	NewHandler(stubOrderImporter{}, stubOrderLister{}).WithFaturador(&fakeOrderFaturador{}).Register(mux)
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/orders/order-1/faturado", bytes.NewBufferString(`{}`)))
+	if rr.Code != http.StatusNotFound && rr.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status=%d body=%s, want 404 or 405 (no readLister => no faturado route)", rr.Code, rr.Body.String())
 	}
 }

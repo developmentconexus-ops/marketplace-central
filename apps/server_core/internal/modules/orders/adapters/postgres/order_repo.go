@@ -18,6 +18,7 @@ var (
 	_ ports.OrderStore        = (*OrderRepository)(nil)
 	_ ports.OrderSummaryStore = (*OrderRepository)(nil)
 	_ ports.OrderBucketStore  = (*OrderRepository)(nil)
+	_ ports.OrderFaturadoStore = (*OrderRepository)(nil)
 	_ ports.OrderLookup       = (*OrderRepository)(nil)
 	_ ports.OrderReadStore    = (*OrderReadRepository)(nil)
 )
@@ -56,7 +57,7 @@ func (r *OrderReadRepository) ListOrders(ctx context.Context, query ports.OrderL
 		       (SELECT SUM(COALESCE(p.total_paid_amount, p.transaction_amount))
 		        FROM orders_marketplace_order_payments p
 		        WHERE p.tenant_id=$1 AND p.installation_id=$2 AND p.provider_order_id=o.provider_order_id),
-		       o.shipping_id, o.tags_json
+		       o.shipping_id, o.tags_json, o.faturado_at
 		FROM orders_marketplace_orders o
 		WHERE o.tenant_id=$1 AND o.installation_id=$2
 		  AND o.provider_created_at IS NOT NULL
@@ -104,7 +105,7 @@ func (r *OrderReadRepository) GetOrder(ctx context.Context, installationID, prov
 		       o.provider_created_at, o.provider_closed_at, o.provider_updated_at,
 		       CASE WHEN EXISTS (SELECT 1 FROM orders_sankhya_linkage_events e WHERE e.tenant_id=$1 AND e.installation_id=$2 AND e.provider_order_id=o.provider_order_id AND e.evidence_state = 'exact') THEN 'linked'::text ELSE NULL::text END,
 		       (SELECT SUM(COALESCE(p.total_paid_amount,p.transaction_amount)) FROM orders_marketplace_order_payments p WHERE p.tenant_id=$1 AND p.installation_id=$2 AND p.provider_order_id=o.provider_order_id),
-		       o.shipping_id, o.tags_json
+		       o.shipping_id, o.tags_json, o.faturado_at
 		FROM orders_marketplace_orders o
 		WHERE o.tenant_id=$1 AND o.installation_id=$2 AND o.provider_order_id=$3
 	`, r.tenantID, strings.TrimSpace(installationID), strings.TrimSpace(providerOrderID))
@@ -130,12 +131,14 @@ func scanReadModel(scanner interface{ Scan(...any) error }) (ordersdomain.OrderR
 	var total pgtype.Float8
 	var shippingID pgtype.Text
 	var tagsJSON []byte
-	err := scanner.Scan(&model.ProviderOrderID, &model.ProviderCode, &model.Status, &model.ProviderStatusDetail, &created, &closed, &updated, &nf, &total, &shippingID, &tagsJSON)
+	var faturado pgtype.Timestamptz
+	err := scanner.Scan(&model.ProviderOrderID, &model.ProviderCode, &model.Status, &model.ProviderStatusDetail, &created, &closed, &updated, &nf, &total, &shippingID, &tagsJSON, &faturado)
 	if err != nil {
 		return model, err
 	}
 	model.ProviderCreatedAt, model.CreatedAt = scanTime(created), scanTime(created)
 	model.ProviderClosedAt, model.ProviderUpdatedAt = scanTime(closed), scanTime(updated)
+	model.FaturadoAt = scanTime(faturado)
 	if nf.Valid {
 		value := nf.String
 		model.NFState = &value
@@ -222,7 +225,7 @@ func (r *OrderRepository) GetOrderBucketCounts(ctx context.Context, installation
 	}
 
 	rows, err := r.pool.Query(ctx, `
-		SELECT provider_status, shipping_id, tags_json
+		SELECT provider_status, shipping_id, tags_json, faturado_at
 		FROM orders_marketplace_orders
 		WHERE tenant_id = $1
 		  AND installation_id = $2
@@ -238,7 +241,8 @@ func (r *OrderRepository) GetOrderBucketCounts(ctx context.Context, installation
 		var providerStatus string
 		var shippingID pgtype.Text
 		var tagsJSON []byte
-		if err := rows.Scan(&providerStatus, &shippingID, &tagsJSON); err != nil {
+		var faturadoAt pgtype.Timestamptz
+		if err := rows.Scan(&providerStatus, &shippingID, &tagsJSON, &faturadoAt); err != nil {
 			return ports.OrderBucketCounts{}, err
 		}
 		// The SQL summary carries no live shipment status (no shipment column;
@@ -250,7 +254,7 @@ func (r *OrderRepository) GetOrderBucketCounts(ctx context.Context, installation
 		if len(tagsJSON) > 0 {
 			_ = json.Unmarshal(tagsJSON, &tags)
 		}
-		switch ordersdomain.DeriveOrderBucket(providerStatus, "", tags, shippingID.Valid && shippingID.String != "") {
+		switch ordersdomain.DeriveOrderBucket(providerStatus, "", tags, faturadoAt.Valid) {
 		case ordersdomain.BucketNovo:
 			counts.Novo++
 		case ordersdomain.BucketFaturar:
@@ -268,6 +272,47 @@ func (r *OrderRepository) GetOrderBucketCounts(ctx context.Context, installation
 		return ports.OrderBucketCounts{}, err
 	}
 	return counts, nil
+}
+
+// MarkOrderFaturado records that the operator invoiced (faturou) the order.
+// OUR-DB ONLY — never a Mercado Livre write. Idempotent: first-write-wins via
+// the faturado_at IS NULL guard, so a repeat call is a no-op and preserves the
+// original timestamp. Tenant + installation scoped. Returns OrderNotFoundError
+// when no such order exists for this tenant/installation.
+func (r *OrderRepository) MarkOrderFaturado(ctx context.Context, installationID, providerOrderID string) error {
+	if r.pool == nil {
+		return errors.New("orders faturado repository: database is not configured")
+	}
+	installationID = strings.TrimSpace(installationID)
+	providerOrderID = strings.TrimSpace(providerOrderID)
+
+	tag, err := r.pool.Exec(ctx, `
+		UPDATE orders_marketplace_orders
+		SET faturado_at = now()
+		WHERE tenant_id = $1 AND installation_id = $2 AND provider_order_id = $3
+		  AND faturado_at IS NULL
+	`, r.tenantID, installationID, providerOrderID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() > 0 {
+		return nil
+	}
+
+	var exists bool
+	if err := r.pool.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM orders_marketplace_orders
+			WHERE tenant_id = $1 AND installation_id = $2 AND provider_order_id = $3
+		)
+	`, r.tenantID, installationID, providerOrderID).Scan(&exists); err != nil {
+		return err
+	}
+	if !exists {
+		return &ports.OrderNotFoundError{InstallationID: installationID, ProviderOrderID: providerOrderID}
+	}
+	// Row exists and faturado_at was already set — idempotent success.
+	return nil
 }
 
 func (r *OrderRepository) FindExactOrder(ctx context.Context, scope ordersdomain.LinkageScope) (ordersdomain.MarketplaceOrder, bool, error) {

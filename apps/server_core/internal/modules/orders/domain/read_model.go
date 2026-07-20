@@ -20,6 +20,11 @@ type OrderReadModel struct {
 	ProviderCreatedAt    *time.Time                `json:"provider_created_at"`
 	ProviderClosedAt     *time.Time                `json:"provider_closed_at"`
 	ProviderUpdatedAt    *time.Time                `json:"provider_updated_at"`
+	// FaturadoAt is when the operator recorded the order as invoiced
+	// ("Foi faturado"), our-DB only. nil = not yet marked invoiced, an
+	// honest unknown (ADR-17) -- never inferred from shipment presence.
+	// It drives DeriveOrderBucket bucket Faturar<->Enviar gate.
+	FaturadoAt           *time.Time                `json:"faturado_at"`
 	Items                []MarketplaceOrderItem    `json:"items"`
 	Payments             []MarketplaceOrderPayment `json:"payments"`
 	// Tags carries the provider order tags (e.g. "delivered", "paid"). It is a

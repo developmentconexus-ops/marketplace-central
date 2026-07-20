@@ -31,6 +31,12 @@ type OrderReadLister interface {
 	Get(ctx context.Context, installationID, providerOrderID string) (domain.OrderReadModel, error)
 }
 
+// OrderFaturador marks an order as invoiced ("Foi faturado", goal B).
+// Our-DB only — never a Mercado Livre write.
+type OrderFaturador interface {
+	MarkFaturado(ctx context.Context, installationID, providerOrderID string) error
+}
+
 var ErrInstallationRequired = errors.New("installation_required")
 
 type Handler struct {
@@ -39,6 +45,7 @@ type Handler struct {
 	readLister OrderReadLister
 	enricher   *application.EnrichService
 	summary    application.SummaryService
+	faturador  OrderFaturador
 }
 
 func NewHandler(importer OrderImporter, lister OrderLister) Handler {
@@ -69,12 +76,19 @@ func NewHandlerWithSummary(importer OrderImporter, reader OrderReadLister, enric
 	return Handler{importer: importer, readLister: reader, enricher: enricher, summary: summary}
 }
 
+// WithFaturador attaches the POST /orders/{id}/faturado writer. Additive: nil
+// faturador simply omits the route.
+func (h Handler) WithFaturador(f OrderFaturador) Handler { h.faturador = f; return h }
+
 func (h Handler) Register(mux httpx.RouteRegistrar) {
 	mux.HandleFunc("/orders/import", h.handleImport)
 	mux.HandleFunc("/orders", h.handleList)
 	mux.HandleFunc("/orders/summary", h.handleSummary)
 	if h.readLister != nil {
 		mux.HandleFunc("/orders/{provider_order_id}", h.handleGet)
+		if h.faturador != nil {
+			mux.HandleFunc("/orders/{provider_order_id}/faturado", h.handleFaturado)
+		}
 	}
 }
 
@@ -225,6 +239,51 @@ func (h Handler) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, model)
+}
+
+// handleFaturado implements POST /orders/{provider_order_id}/faturado, the
+// operator's "Foi faturado" action (goal B). OUR-DB ONLY — this never issues
+// a Mercado Livre write; it only records our own faturado_at fact so
+// DeriveOrderBucket can move the order from "A FATURAR" to "A ENVIAR".
+func (h Handler) handleFaturado(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		writeOrdersError(w, http.StatusMethodNotAllowed, "ORDERS_METHOD_NOT_ALLOWED", "method not allowed")
+		return
+	}
+	providerOrderID := strings.TrimSpace(r.PathValue("provider_order_id"))
+	var req struct {
+		InstallationID string `json:"installation_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeOrdersError(w, http.StatusBadRequest, "ORDERS_INVALID_REQUEST", "malformed request body")
+		return
+	}
+	if err := h.faturador.MarkFaturado(r.Context(), req.InstallationID, providerOrderID); err != nil {
+		status, code := mapFaturadoError(err)
+		slog.Error("orders.faturado", "action", "faturado", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
+		writeOrdersError(w, status, code, err.Error())
+		return
+	}
+	slog.Info("orders.faturado", "action", "faturado", "result", "204", "provider_order_id", providerOrderID, "duration_ms", time.Since(start).Milliseconds())
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// mapFaturadoError maps FaturadoService/OrderFaturadoStore errors to an HTTP
+// status + error code. ports.ErrOrderNotFound must map to 404: mapOrdersError
+// cannot be reused here because its "_NOT_FOUND" suffix match is
+// case-sensitive and ports.OrderNotFoundError.Error() renders lowercase
+// ("order_not_found"), so it falls through to 500 there.
+func mapFaturadoError(err error) (int, string) {
+	switch {
+	case errors.Is(err, ports.ErrOrderNotFound):
+		return http.StatusNotFound, "order_not_found"
+	case errors.Is(err, application.ErrFaturadoInvalidInput):
+		return http.StatusBadRequest, "ORDERS_INVALID_REQUEST"
+	default:
+		return http.StatusInternalServerError, "ORDERS_INTERNAL_ERROR"
+	}
 }
 
 // orderSummaryDTO is the response shape for GET /orders/summary. Keys are
@@ -469,13 +528,16 @@ func mapEnrichedOrder(e application.EnrichedOrder) enrichedOrderDTO {
 		Buyer:                    enrichedBuyerDTO{Display: e.Buyer.Display, City: e.Buyer.City, UF: e.Buyer.UF},
 		ComponentesDesconhecidos: e.ComponentesDesconhecidos,
 		// Bucket derives from provider_status + the order "delivered" tag + the live
-		// shipment status. The delivered tag (order_repo read-through) is the robust
-		// signal that survives a shipment-lookup failure; the live e.Shipment status
-		// refines shipped/delivered vs ready_to_ship when the tag is absent. hasShipment
-		// (shipping_id column) stays the pre-shipment faturar/enviar proxy. The SQL
-		// summary path shares the tag signal, and the KPI cards derive their counts from
-		// this same per-order bucket (FE), so KPI == Lista by construction.
-		Bucket:         domain.DeriveOrderBucket(e.Order.Status, shipmentStatusOf(e.Shipment), e.Order.Tags, e.Order.ShippingID != ""),
+		// shipment status + the persisted faturado_at fact. The delivered tag
+		// (order_repo read-through) is the robust signal that survives a
+		// shipment-lookup failure; the live e.Shipment status refines
+		// shipped/delivered when the tag is absent; both win over the faturado
+		// gate. faturado_at (not shipping_id presence) now gates the
+		// paid/confirmed faturar<->enviar split (goal B) — the operator's
+		// explicit "Foi faturado" mark, our-DB only. The SQL summary path shares
+		// the same signals, and the KPI cards derive their counts from this same
+		// per-order bucket (FE), so KPI == Lista by construction.
+		Bucket:         domain.DeriveOrderBucket(e.Order.Status, shipmentStatusOf(e.Shipment), e.Order.Tags, e.Order.FaturadoAt != nil),
 		RetornoLiquido: e.Profitability.RetornoLiquido,
 		MargemPct:      e.Profitability.MargemPct,
 		Decomposicao:   mapDecomposicao(e.Profitability.Decomposition),
