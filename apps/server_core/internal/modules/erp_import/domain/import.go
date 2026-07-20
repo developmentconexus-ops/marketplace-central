@@ -42,6 +42,8 @@ const (
 	CodeInvalidFile           IssueCode = "INVALID_FILE"
 	CodeImportInProgress      IssueCode = "IMPORT_IN_PROGRESS"
 	CodeDuplicateFile         IssueCode = "DUPLICATE_FILE"
+	CodeMissingCusto          IssueCode = "MISSING_CUSTO"
+	CodeMissingEstoque        IssueCode = "MISSING_ESTOQUE"
 )
 
 type Issue struct {
@@ -59,7 +61,10 @@ type FileSHA256 string
 
 type ImportSource string
 
-const SourceXLSX ImportSource = "xlsx"
+const (
+	SourceXLSX            ImportSource = "xlsx"
+	SourceCatalogoCliente ImportSource = "catalogo_cliente"
+)
 
 type ImportStatus string
 

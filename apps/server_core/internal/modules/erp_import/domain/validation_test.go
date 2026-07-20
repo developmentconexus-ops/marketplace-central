@@ -135,6 +135,50 @@ func TestValidateRowCleanProducesZeroIssues(t *testing.T) {
 	}
 }
 
+// TestValidateRowLenientAcceptsMissingCustoAndEstoqueStrictRejects proves the
+// client-catalog (lenient) path accepts a row with empty CUSTO/ESTOQUE_FISICO
+// as honest-unknown (warnings, not rejections, ADR-17), while the strict
+// ValidateRows path is untouched and still rejects the identical row.
+func TestValidateRowLenientAcceptsMissingCustoAndEstoqueStrictRejects(t *testing.T) {
+	row := NormalizedRow{Codprod: "P-1", Descrprod: "Produto sem custo/estoque", Custo: "", StockPhysical: ""}
+
+	lenientAccepted, lenientIssues, lenientRejected := ValidateRowsLenient([]NormalizedRow{row})
+	if lenientRejected != 0 || len(lenientAccepted) != 1 {
+		t.Fatalf("lenient: rejected=%d accepted=%d, want 0 rejected and 1 accepted", lenientRejected, len(lenientAccepted))
+	}
+	if lenientAccepted[0].Custo != "" || lenientAccepted[0].StockPhysical != "" {
+		t.Fatalf("lenient: custo/stock must stay honest-empty, got %#v", lenientAccepted[0])
+	}
+	if len(lenientIssues) != 2 {
+		t.Fatalf("lenient: got %d issues, want 2 warnings: %#v", len(lenientIssues), lenientIssues)
+	}
+	for _, issue := range lenientIssues {
+		if issue.Kind != Warning {
+			t.Fatalf("lenient: issue %#v must be a warning, not a rejection", issue)
+		}
+	}
+	codes := map[IssueCode]bool{}
+	for _, issue := range lenientIssues {
+		codes[issue.Code] = true
+	}
+	if !codes[CodeMissingCusto] || !codes[CodeMissingEstoque] {
+		t.Fatalf("lenient: want MISSING_CUSTO and MISSING_ESTOQUE codes, got %#v", lenientIssues)
+	}
+
+	strictAccepted, strictIssues, strictRejected := ValidateRows([]NormalizedRow{row})
+	if strictRejected != 1 || len(strictAccepted) != 0 {
+		t.Fatalf("strict: rejected=%d accepted=%d, want 1 rejected and 0 accepted (unchanged strict behavior)", strictRejected, len(strictAccepted))
+	}
+	for _, issue := range strictIssues {
+		if issue.Code != CodeInvalidCusto && issue.Code != CodeInvalidEstoque {
+			continue
+		}
+		if issue.Kind != Rejection {
+			t.Fatalf("strict: issue %#v must remain a rejection", issue)
+		}
+	}
+}
+
 func validRow(codprod, descrprod, custo, stockPhysical string) NormalizedRow {
 	return NormalizedRow{
 		Codprod:       codprod,

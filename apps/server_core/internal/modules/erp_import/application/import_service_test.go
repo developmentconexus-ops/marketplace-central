@@ -27,6 +27,11 @@ func (p *fakeParser) Parse(_ context.Context, source io.Reader) ([]domain.Normal
 	return p.rows, p.err
 }
 
+func (p *fakeParser) ParseLenient(_ context.Context, source io.Reader) ([]domain.NormalizedRow, error) {
+	p.input, _ = io.ReadAll(source)
+	return p.rows, p.err
+}
+
 type fakeImportRepository struct {
 	list              []domain.ImportReport
 	getReport         domain.ImportReport

@@ -18,11 +18,17 @@ import (
 )
 
 type fakeImportRunner struct {
-	report domain.ImportReport
-	err    error
+	report        domain.ImportReport
+	err           error
+	lenientCalled bool
 }
 
 func (f *fakeImportRunner) RunImport(_ context.Context, _ io.Reader) (domain.ImportReport, error) {
+	return f.report, f.err
+}
+
+func (f *fakeImportRunner) RunImportLenient(_ context.Context, _ io.Reader) (domain.ImportReport, error) {
+	f.lenientCalled = true
 	return f.report, f.err
 }
 
@@ -71,6 +77,55 @@ func TestHandlerPostImport(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestHandlerPostImportLenientTrigger(t *testing.T) {
+	tests := []struct {
+		name        string
+		extraFields map[string]string
+		wantLenient bool
+	}{
+		{name: "default strict", wantLenient: false},
+		{name: "source catalogo_cliente", extraFields: map[string]string{"source": "catalogo_cliente"}, wantLenient: true},
+		{name: "mode lenient", extraFields: map[string]string{"mode": "lenient"}, wantLenient: true},
+		{name: "unrelated field", extraFields: map[string]string{"source": "erp"}, wantLenient: false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			runner := &fakeImportRunner{report: importReport("imp-1", "proto-1", domain.ImportStatusCompleted)}
+			response := performRequest(t, runner, &fakeImportQuerier{}, multipartRequestWithFields(t, "payload.xlsx", tc.extraFields))
+			if response.Code != http.StatusCreated {
+				t.Fatalf("status = %d, want %d", response.Code, http.StatusCreated)
+			}
+			if runner.lenientCalled != tc.wantLenient {
+				t.Fatalf("lenientCalled = %v, want %v", runner.lenientCalled, tc.wantLenient)
+			}
+		})
+	}
+}
+
+func multipartRequestWithFields(t *testing.T, filename string, fields map[string]string) *http.Request {
+	t.Helper()
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	for key, value := range fields {
+		if err := writer.WriteField(key, value); err != nil {
+			t.Fatal(err)
+		}
+	}
+	part, err := writer.CreateFormFile("file", filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := part.Write([]byte("xlsx payload")); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequest(http.MethodPost, "/erp/imports", &body)
+	request.Header.Set("Content-Type", writer.FormDataContentType())
+	return request
 }
 
 func TestHandlerPostImportErrors(t *testing.T) {

@@ -44,12 +44,16 @@ func (r *Repository) PersistSnapshotAtomically(ctx context.Context, tenantID str
 	}
 
 	rejected, warnings := issueCounts(snapshot.Issues)
-	_, err = tx.Exec(ctx, `INSERT INTO erp_import_protocols (id,tenant_id,file_sha256,protocol,source,imported_at,status,accepted_count,rejected_count,warning_count) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`, snapshot.ID, tenantID, snapshot.FileSHA256, snapshot.Protocol, domain.SourceXLSX, snapshot.ImportedAt.UTC(), snapshot.Status, len(snapshot.AcceptedRows), rejected, warnings)
+	_, err = tx.Exec(ctx, `INSERT INTO erp_import_protocols (id,tenant_id,file_sha256,protocol,source,imported_at,status,accepted_count,rejected_count,warning_count) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`, snapshot.ID, tenantID, snapshot.FileSHA256, snapshot.Protocol, snapshot.Source, snapshot.ImportedAt.UTC(), snapshot.Status, len(snapshot.AcceptedRows), rejected, warnings)
 	if err != nil {
 		return fmt.Errorf("insert ERP import protocol: %w", err)
 	}
 	for _, product := range snapshot.AcceptedRows {
-		_, err = tx.Exec(ctx, `INSERT INTO erp_import_products (tenant_id,protocol_id,codprod,descrprod,custo,stock_physical,stock_reserved,ean,refforn,marca,ncm,grupo,descrgrupo) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`, tenantID, snapshot.ID, product.Codprod, product.Descrprod, product.Custo, product.StockPhysical, product.StockReserved, product.EAN, product.Refforn, product.Marca, product.NCM, product.Grupo, product.DescrGrupo)
+		// Honest-unknown custo/stock_physical (client-catalog lenient path, ADR-17)
+		// must land as SQL NULL, never a fabricated zero-valued string.
+		custo := nullableString(string(product.Custo))
+		stockPhysical := nullableString(product.StockPhysical)
+		_, err = tx.Exec(ctx, `INSERT INTO erp_import_products (tenant_id,protocol_id,codprod,descrprod,custo,stock_physical,stock_reserved,ean,refforn,marca,ncm,grupo,descrgrupo) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`, tenantID, snapshot.ID, product.Codprod, product.Descrprod, custo, stockPhysical, product.StockReserved, product.EAN, product.Refforn, product.Marca, product.NCM, product.Grupo, product.DescrGrupo)
 		if err != nil {
 			return fmt.Errorf("insert ERP import product: %w", err)
 		}
@@ -64,6 +68,15 @@ func (r *Repository) PersistSnapshotAtomically(ctx context.Context, tenantID str
 		return fmt.Errorf("commit ERP import: %w", err)
 	}
 	return nil
+}
+
+// nullableString maps an empty (honest-unknown) value to SQL NULL rather
+// than persisting a fabricated empty string into a numeric column (ADR-17).
+func nullableString(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
 }
 
 // issueCounts reports the number of distinct rejected rows (a row may carry

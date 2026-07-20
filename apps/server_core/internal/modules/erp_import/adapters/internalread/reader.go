@@ -105,7 +105,7 @@ func (r *Reader) GetSellableStock(ctx context.Context, input readports.SellableS
 		return readdomain.SellableStock{}, err
 	}
 	result := readdomain.SellableStock{ProductID: input.ProductID, Policy: input.Policy, Source: r.source(snapshot.ImportedAt)}
-	if row.StockReserved == nil {
+	if row.StockReserved == nil || strings.TrimSpace(row.StockPhysical) == "" {
 		result.QualityFlags = []readdomain.QualityFlag{readdomain.QualityMissingStock}
 		return result, nil
 	}
@@ -138,7 +138,13 @@ func (r *Reader) GetCostAsOf(ctx context.Context, input readports.CostAsOfInput)
 	if snapshot.ImportedAt.After(input.Policy.EffectiveAt) {
 		return readdomain.CostAsOf{}, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, "xlsx snapshot is newer than requested cost as-of", ErrNoErpSnapshot)
 	}
-	amount, err := parseNumber(string(row.Custo), "custo")
+	custo := strings.TrimSpace(string(row.Custo))
+	if custo == "" {
+		// Client-catalog (lenient) imports honestly omit custo (ADR-17); report
+		// the source as unavailable for this query rather than fabricating a cost.
+		return readdomain.CostAsOf{}, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, "custo is unknown for this product", nil)
+	}
+	amount, err := parseNumber(custo, "custo")
 	if err != nil {
 		return readdomain.CostAsOf{}, err
 	}
@@ -229,7 +235,7 @@ func catalogFact(id int64, row erpdomain.NormalizedRow, collisions map[string]in
 		quality[i] = string(flag)
 	}
 	fact := readports.CatalogProductFact{InternalProductID: id, Reference: copyTrimmed(row.Refforn), ManufacturerReference: copyTrimmed(row.Refforn), Description: copyTrimmed(&row.Descrprod), EAN: ean, BrandName: copyTrimmed(row.Marca), NCM: copyTrimmed(row.NCM), QualityFlags: quality, Active: true, CurrentPrice: readports.CatalogMoneyFact{Currency: "BRL", Quality: []string{string(readdomain.QualityMissingPrice)}}, Cost: readports.CatalogMoneyFact{Currency: "BRL"}}
-	if row.StockReserved == nil {
+	if row.StockReserved == nil || strings.TrimSpace(row.StockPhysical) == "" {
 		fact.SellableStock.Quality = []string{string(readdomain.QualityMissingStock)}
 	} else {
 		physical, err := parseNumber(row.StockPhysical, "stock_physical")
@@ -244,10 +250,15 @@ func catalogFact(id int64, row erpdomain.NormalizedRow, collisions map[string]in
 		fact.SellableStock.Quantity = &quantity
 	}
 	cost := strings.TrimSpace(string(row.Custo))
-	if _, err := parseNumber(cost, "custo"); err != nil {
+	if cost == "" {
+		// Client-catalog (lenient) imports honestly omit custo (ADR-17); never
+		// fabricate a cost value, just flag it as unknown.
+		fact.Cost.Quality = []string{string(readdomain.QualityMissingCost)}
+	} else if _, err := parseNumber(cost, "custo"); err != nil {
 		return fact, err
+	} else {
+		fact.Cost.Amount = &cost
 	}
-	fact.Cost.Amount = &cost
 	return fact, nil
 }
 

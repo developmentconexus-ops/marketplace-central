@@ -20,6 +20,18 @@ func NewParser() *Parser {
 }
 
 func (p *Parser) Parse(ctx context.Context, source io.Reader) ([]domain.NormalizedRow, error) {
+	return p.parseWithRequired(ctx, source, []string{"CODPROD", "DESCRPROD", "CUSTO", "ESTOQUE_FISICO"})
+}
+
+// ParseLenient parses a workbook that may omit CUSTO / ESTOQUE_FISICO (the
+// client-catalog use case). Missing columns yield honest-empty values rather
+// than a structural rejection; ValidateRowsLenient turns that into warnings
+// instead of fabricating zeros (ADR-17).
+func (p *Parser) ParseLenient(ctx context.Context, source io.Reader) ([]domain.NormalizedRow, error) {
+	return p.parseWithRequired(ctx, source, []string{"CODPROD", "DESCRPROD"})
+}
+
+func (p *Parser) parseWithRequired(ctx context.Context, source io.Reader, required []string) ([]domain.NormalizedRow, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -55,11 +67,11 @@ func (p *Parser) Parse(ctx context.Context, source io.Reader) ([]domain.Normaliz
 			columns[key] = index
 		}
 	}
-	for _, required := range []string{"CODPROD", "DESCRPROD", "CUSTO", "ESTOQUE_FISICO"} {
-		if _, ok := columns[normalizeHeader(required)]; !ok {
+	for _, requiredColumn := range required {
+		if _, ok := columns[normalizeHeader(requiredColumn)]; !ok {
 			return nil, &ports.FileError{
 				Code:   domain.CodeMissingRequiredColumn,
-				Column: required,
+				Column: requiredColumn,
 				Detail: "required column is missing",
 			}
 		}
@@ -68,10 +80,10 @@ func (p *Parser) Parse(ctx context.Context, source io.Reader) ([]domain.Normaliz
 	result := make([]domain.NormalizedRow, 0, len(rows)-1)
 	for _, row := range rows[1:] {
 		result = append(result, domain.NormalizedRow{
-			Codprod:       cell(row, columns[normalizeHeader("CODPROD")]),
-			Descrprod:     cell(row, columns[normalizeHeader("DESCRPROD")]),
-			Custo:         domain.Decimal(cell(row, columns[normalizeHeader("CUSTO")])),
-			StockPhysical: cell(row, columns[normalizeHeader("ESTOQUE_FISICO")]),
+			Codprod:       columnCell(row, columns, "CODPROD"),
+			Descrprod:     columnCell(row, columns, "DESCRPROD"),
+			Custo:         domain.Decimal(columnCell(row, columns, "CUSTO")),
+			StockPhysical: columnCell(row, columns, "ESTOQUE_FISICO"),
 			StockReserved: optionalCell(row, columns, "ESTOQUE_RESERVADO"),
 			EAN:           optionalCell(row, columns, "EAN"),
 			Refforn:       optionalCell(row, columns, "REFFORN"),
@@ -129,6 +141,18 @@ func cell(row []string, index int) string {
 		return ""
 	}
 	return row[index]
+}
+
+// columnCell reads a column that may be entirely absent from the header row
+// (the lenient path). When present it behaves exactly like the direct
+// columns[...] lookup the strict path used to perform inline, since required
+// columns are guaranteed present by the caller's required-column check above.
+func columnCell(row []string, columns map[string]int, name string) string {
+	index, ok := columns[normalizeHeader(name)]
+	if !ok {
+		return ""
+	}
+	return cell(row, index)
 }
 
 func optionalCell(row []string, columns map[string]int, name string) *string {

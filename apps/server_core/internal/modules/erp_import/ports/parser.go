@@ -23,4 +23,5 @@ func (e *FileError) Error() string {
 
 type Parser interface {
 	Parse(ctx context.Context, source io.Reader) ([]domain.NormalizedRow, error)
+	ParseLenient(ctx context.Context, source io.Reader) ([]domain.NormalizedRow, error)
 }

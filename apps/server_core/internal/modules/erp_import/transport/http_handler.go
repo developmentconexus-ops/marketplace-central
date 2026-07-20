@@ -16,6 +16,7 @@ const maxUploadBytes = 25 << 20
 
 type ImportRunner interface {
 	RunImport(ctx context.Context, source io.Reader) (domain.ImportReport, error)
+	RunImportLenient(ctx context.Context, source io.Reader) (domain.ImportReport, error)
 }
 
 type ImportQuerier interface {
@@ -65,7 +66,11 @@ func (h Handler) handlePostImport(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	report, err := h.importer.RunImport(r.Context(), file)
+	run := h.importer.RunImport
+	if isLenientImportRequest(r) {
+		run = h.importer.RunImportLenient
+	}
+	report, err := run(r.Context(), file)
 	if err != nil {
 		writeImportError(w, err)
 		return
@@ -75,6 +80,16 @@ func (h Handler) handlePostImport(w http.ResponseWriter, r *http.Request) {
 		Protocol: string(report.Protocol),
 		Status:   string(report.Status),
 	})
+}
+
+// isLenientImportRequest opts into the client-catalog (lenient) import path
+// when the multipart form declares source=catalogo_cliente or mode=lenient.
+// Default (no field, or any other value) stays on the strict path.
+func isLenientImportRequest(r *http.Request) bool {
+	if r.MultipartForm == nil {
+		return false
+	}
+	return r.FormValue("source") == "catalogo_cliente" || r.FormValue("mode") == "lenient"
 }
 
 func (h Handler) handleListImports(w http.ResponseWriter, r *http.Request) {

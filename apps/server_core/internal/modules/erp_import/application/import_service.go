@@ -56,6 +56,24 @@ func NewImportService(parser ports.Parser, repo ports.ImportRepository, tenantID
 }
 
 func (s *ImportService) RunImport(ctx context.Context, source io.Reader) (domain.ImportReport, error) {
+	return s.runImport(ctx, source, domain.SourceXLSX, s.parser.Parse, domain.ValidateRows)
+}
+
+// RunImportLenient runs the client-catalog import path: CUSTO and
+// ESTOQUE_FISICO may be absent from the workbook and are left as
+// honest-unknown (nil/empty) rather than rejected (ADR-17). The strict path
+// (RunImport) is untouched.
+func (s *ImportService) RunImportLenient(ctx context.Context, source io.Reader) (domain.ImportReport, error) {
+	return s.runImport(ctx, source, domain.SourceCatalogoCliente, s.parser.ParseLenient, domain.ValidateRowsLenient)
+}
+
+func (s *ImportService) runImport(
+	ctx context.Context,
+	source io.Reader,
+	importSource domain.ImportSource,
+	parse func(context.Context, io.Reader) ([]domain.NormalizedRow, error),
+	validate func([]domain.NormalizedRow) ([]domain.NormalizedRow, []domain.Issue, int),
+) (domain.ImportReport, error) {
 	buf, err := io.ReadAll(source)
 	if err != nil {
 		return domain.ImportReport{}, fmt.Errorf("read ERP import source: %w", err)
@@ -63,7 +81,7 @@ func (s *ImportService) RunImport(ctx context.Context, source io.Reader) (domain
 
 	digest := sha256.Sum256(buf)
 	fileSHA256 := domain.FileSHA256(hex.EncodeToString(digest[:]))
-	rows, err := s.parser.Parse(ctx, bytes.NewReader(buf))
+	rows, err := parse(ctx, bytes.NewReader(buf))
 	if err != nil {
 		var fileErr *ports.FileError
 		if errors.As(err, &fileErr) {
@@ -72,7 +90,7 @@ func (s *ImportService) RunImport(ctx context.Context, source io.Reader) (domain
 		return domain.ImportReport{}, fmt.Errorf("parse ERP import: %w", err)
 	}
 
-	accepted, issues, _ := domain.ValidateRows(rows)
+	accepted, issues, _ := validate(rows)
 	status := domain.ImportStatusCompleted
 	if len(accepted) == 0 {
 		status = domain.ImportStatusRejected
@@ -91,7 +109,7 @@ func (s *ImportService) RunImport(ctx context.Context, source io.Reader) (domain
 		ID:           id,
 		Protocol:     protocol,
 		FileSHA256:   fileSHA256,
-		Source:       domain.SourceXLSX,
+		Source:       importSource,
 		ImportedAt:   s.now().UTC(),
 		Status:       status,
 		AcceptedRows: accepted,
