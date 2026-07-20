@@ -62,9 +62,19 @@ Declared-but-unchanged: none.
 | L1 migration shape | `go test ./migrations/ -run TestSyncStateMigrationShapeE8` | PASS | ran |
 | L1 migrate runner | `go test ./internal/platform/migrate/` | ok (count 63) | ran |
 | L0 governance | `npm run harness:governance` | HUB-OWNED at acceptance (profile §2: hub re-runs on integrated branch; my `sync` modules.json entry satisfies GOV_MODULE_COVERAGE by inspection) | could-not-run (deferred to hub) |
-| L1 integration (C3/C4/C11/tenancy) | `npm run harness:integration` (sync/adapters/postgres) | REQUEST sent to hub (real Postgres; profile §4 hub-serialized for divergent migrations) | could-not-run (blocker: hub-serialized integration lane) |
+| L1 integration (C3/C4/C11/tenancy) | hub-ops ephemeral DB, round-1 | C4+C11+tenancy PASS; C3 FAILED on byte-exact assertion → fixed v2 (semantic compare); scoped re-run pending | ran hub-side (C4/C11/tenancy) / C3 re-run pending |
 
 Fresh-worktree bootstrap ran: `cd apps/server_core && GOMODCACHE=$(pwd)/.gomodcache go mod download all` (exit 0). gomodcache pollution check on `git status`: 0.
+
+### Hub integration lane — round 1 (ephemeral DB, hub-ops)
+
+Hub ran the 4 integration tests on `chip-m01` against an ephemeral DB (not the shared :5435 stack).
+- **C4** TestSyncStateFailureThenRecovery — **PASS** (consecutive_failures+1, last_error set, recovery clears both, nil cursor → SQL NULL).
+- **C11** TestSyncStateConcurrentCursorAppend (50 goroutines) — **PASS** (len==50, no lost update).
+- **tenancy** TestSyncStateTenantIsolation — **PASS**.
+- **C3** TestSyncStateCursorRoundTrip — **FAIL** at `:55` byte-exact string eq of a JSONB round-trip (`{"page": 3}` vs `{"page":3}` — Postgres JSONB normalizes whitespace). ASSERTION defect, not a code defect. **Fixed** (v2): unmarshal + assert `page==3`, code untouched. Re-run pending hub scoped lane.
+
+Baseline-red NOT mine (hub-owned): `tests/integration/aggregate_sync_read_test.go:261` fails to build (`not enough arguments to dashboardapp.NewService`) — pre-existing since dashboard S1 @95a45a12, my branch has an empty dashboard diff. Hub bypasses that pkg for the scoped re-run.
 
 ## Per-criterion verdicts (M01-C1..C11)
 
@@ -72,15 +82,15 @@ Fresh-worktree bootstrap ran: `cd apps/server_core && GOMODCACHE=$(pwd)/.gomodca
 |----|---------|----------------------|------|
 | M01-C1 | PASS | `migrations/0075_sync_sync_state.sql:19-30` full E8 shape + PK (tenant_id,installation_id,entity); asserted by `migrations/sync_state_test.go` TestSyncStateMigrationShapeE8 | ran |
 | M01-C2 | PASS | `internal/composition/root.go:579` new `go synccomposition…Start(ctx)` in ticker block; :575-577 NewRefreshTicker/NewStateCleanup/NewFeeSyncScheduler intact | ran |
-| M01-C3 | PENDING-HUB | `sync_state_repo.go:36-73` Read+RecordSuccess (last_full_sync_at set); proof = `sync_state_repo_integration_test.go` TestSyncStateCursorRoundTrip | could-not-run (hub lane) |
-| M01-C4 | PENDING-HUB (logic proven) | `sync_state_repo.go:78-95` single-statement `consecutive_failures+1`+last_error; scheduler isolation proven `scheduler_test.go` TestRunOnceFailureIsIsolatedPerEntity (ran); DB proof = TestSyncStateFailureThenRecovery | mixed: unit ran / DB could-not-run |
+| M01-C3 | PENDING-HUB (assertion fixed) | `sync_state_repo.go:36-73` Read+RecordSuccess (last_full_sync_at set); proof = `sync_state_repo_integration_test.go` TestSyncStateCursorRoundTrip. Hub lane round-1 FAILED on a byte-exact string eq of a JSONB round-trip (Postgres normalizes `{"page":3}`→`{"page": 3}`); corrective = assert SEMANTICALLY (unmarshal, assert page==3), code untouched — repo round-trips faithfully. Re-run pending hub scoped lane. | could-not-run (hub lane; assertion corrected) |
+| M01-C4 | PASS (hub lane) | `sync_state_repo.go:78-95` single-statement `consecutive_failures+1`+last_error; TestSyncStateFailureThenRecovery PASSED in hub integration lane round-1 (ephemeral DB); scheduler isolation also proven `scheduler_test.go` TestRunOnceFailureIsIsolatedPerEntity | ran (hub lane) |
 | M01-C5 | PASS | no import of connectors/mercado_livre/oracle in `internal/modules/sync/*`; job body `composition/scheduler.go` returns cursor unchanged (no external call) | ran (grep diff) |
 | M01-C6 | PASS | `scheduler.go` interval is a `time.Duration` ctor param; no "daily"/"diário"/cron literal (asserted negative in both migration + [gate]) | ran (grep) |
 | M01-C7 | PASS | `scheduler.go` ctor + `Start(ctx)` loop + `RunOnce` mirror `integrations/background/fee_sync_scheduler.go:31-81` | ran |
 | M01-C8 | PASS | `0075_sync_sync_state.sql` pure `CREATE TABLE IF NOT EXISTS`, no ALTER; 0075 < M-02 0076 | ran (diff) |
 | M01-C9 | PASS | `contracts/governance/modules.json` sync entry (id/root/code_owner_path/composition_required) | ran |
 | M01-C10 | PASS | every statement in `sync_state_repo.go` keys on `tenant_id=$1` (Read:44, RecordSuccess:60, RecordFailure:86, AppendPendingCodigo:110); tenancy DB proof = TestSyncStateTenantIsolation | ran (grep) / DB pending |
-| M01-C11 | PENDING-HUB (single-statement proven) | `sync_state_repo.go:100-118` single `INSERT…ON CONFLICT DO UPDATE SET cursor = jsonb_set(…|| to_jsonb($4))` — no app-side read-modify-write; concurrency proof = TestSyncStateConcurrentCursorAppend (50 goroutines) | inspection ran / DB could-not-run |
+| M01-C11 | PASS (hub lane) | `sync_state_repo.go:100-118` single `INSERT…ON CONFLICT DO UPDATE SET cursor = jsonb_set(…|| to_jsonb($4))` — no app-side read-modify-write; TestSyncStateConcurrentCursorAppend (50 goroutines, len==50) PASSED in hub integration lane round-1 (ephemeral DB) — no lost update proven | ran (hub lane) |
 
 ## Anti-criteria (all must be ABSENT)
 

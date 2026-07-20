@@ -51,8 +51,18 @@ func TestSyncStateCursorRoundTrip(t *testing.T) {
 	if state.LastIncrementalAt != nil {
 		t.Errorf("last_incremental_at must stay NULL after a full sync, got %v", state.LastIncrementalAt)
 	}
-	if string(state.Cursor) != `{"page":3}` {
-		t.Errorf("cursor = %q, want {\"page\":3}", state.Cursor)
+	// Assert the cursor SEMANTICALLY, not byte-exact: JSONB is a normalized store,
+	// so Postgres re-serializes `{"page":3}` as `{"page": 3}` (space after the
+	// colon). A raw string equality on a JSONB round-trip is inherently wrong — it
+	// tests Postgres' whitespace, not our fidelity. Unmarshal and compare the value.
+	var gotCursor struct {
+		Page int `json:"page"`
+	}
+	if err := json.Unmarshal(state.Cursor, &gotCursor); err != nil {
+		t.Fatalf("cursor %q not valid JSON: %v", state.Cursor, err)
+	}
+	if gotCursor.Page != 3 {
+		t.Errorf("cursor page = %d, want 3 (raw: %q)", gotCursor.Page, state.Cursor)
 	}
 	if state.ConsecutiveFailures != 0 {
 		t.Errorf("consecutive_failures = %d, want 0", state.ConsecutiveFailures)
