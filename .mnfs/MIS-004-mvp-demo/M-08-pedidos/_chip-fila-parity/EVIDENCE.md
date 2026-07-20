@@ -143,3 +143,22 @@ chip-side gate missed. Corrective #1 applied in full:
 
 vitest 25/25, 0 new pedidos tsc. Awaiting hub re-gate (cold + refuter). P6-DUAL-GATE marker
 + merge + P7 pixel/theme QA (incl. a real drawer-open live-drive) are the hub's.
+
+## HUB DUAL-GATE + P7 (hub-owned, D-119)
+
+**Independent hub P6 dual-gate** (separate from the chip's self-gate; both required to agree):
+- **Cold gate** (harness:gate-reviewer, read-only) on d213c75: PASS on all 6 substantive criteria (scope FE-only pedidos/**, ADR-17 honesty, provider_order_id in 3 list views, dead-code removed, structural parity 5-slot/KPI, test integrity) with file:line. The two FAIL items were non-code (missing literal LIVE-VERIFIED token; DIFAL-tone matrix overstatement) — both corrected in the pack (corrective #1).
+- **Adversarial refuter** (read-only skeptic) round 1 on d213c75: REFUTED — `PedidoDrawer.tsx:412` still rendered `provider_code || orderId` → drawer title = slug "mercado_livre" on real data. Same bug class as the 3 fixed list views; in-scope (pedidos/**) but untouched; both self-gates missed it (neither exercised the drawer render path). Sent back ACCEPT-WITH-CONDITIONS.
+- Chip corrective #1 → eccc0b5: drawer:415 `order?.provider_order_id || orderId` (4th surface fixed) + new load-bearing drawer-open test (revert-proved) + pack hygiene.
+- **Refuter round 2** on eccc0b5 corrective delta: NO-REFUTATION — all 3 vectors clean, traced through `packages/ui/src/DetailPanel.tsx` h3 (title render, test load-bearing confirmed); `provider_order_id` typed non-null → `|| orderId` fallback dead-safe. Definitive hub sweep: zero `provider_code` render surfaces remain in pedidos/** (only comments/test-fixtures/negative-assertions).
+
+**P7 live-drive** (hub, shared stack :5174/pedidos, real ML data 24 orders; DOM/computed inspection — screenshots infra-dead F-ENV-10):
+- Header re-lay: h1 Pedidos + período/logística disabled pills + Fila/Lista/Kanban tablist; "Workspace operacional" banner + "Fila de trabalho" heading GONE.
+- 5 KPI cards NOVOS(aguard.pagto)/A FATURAR/A ENVIAR/ENVIADOS(últimos 7d)/DIFAL A PAGAR(decomposição pendente) — all honest "—".
+- Fila 5-slot rows: date-tag · **order-number (not slug)** · comprador·valor · honest retorno tooltip · sem ação. Footer legend present.
+- **Drawer-open live-drive (the chip's stated gap):** deep-link ?order=2000012659424976 → drawer title = **"2000012659424976" (order number), NOT "mercado_livre"** — the corrective proven live. Decomposição/DIFAL all honest "—" ("Pendente… até a decomposição ser calculada", ADR-17); real fiscal/timeline; 2 inert D-57 actions + close button.
+- **Dark theme**: data-theme=dark, bg ink rgb(22,24,20)/text paper rgb(233,232,226) tokenized, drawer title still the order number. No breakage.
+
+Post-merge FE ladder GREEN: vitest pedidos 25/25 (incl new drawer guard), tsc 0 write-set errors (12 baseline elsewhere). Merged --no-ff into main.
+
+P6-DUAL-GATE: AGREEMENT
