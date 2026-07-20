@@ -58,7 +58,10 @@ describe("active-source SDK contract", () => {
     const fourHundreds = path.match(/"400":/g) ?? [];
     expect(fourHundreds).toHaveLength(2);
     for (const block of path.split(/"400":/).slice(1)) {
-      expect(block.slice(0, 200)).toContain("ActiveSourceError");
+      // Local window bounding to this 400's own response body; 300 covers the
+      // longest description (GET's fail-closed note) while still failing if the
+      // $ref were absent/wrong — the ref sits at ~char 209 after that description.
+      expect(block.slice(0, 300)).toContain("ActiveSourceError");
     }
   });
 });
