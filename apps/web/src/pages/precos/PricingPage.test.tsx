@@ -105,6 +105,9 @@ vi.mock("./SolverPanel", () => ({
 vi.mock("./MarketComparison", () => ({
   MarketComparison: () => <div data-testid="market-comparison-stub" />,
 }));
+vi.mock("./QuickChips", () => ({
+  QuickChips: () => <div data-testid="quick-chips-stub" />,
+}));
 vi.mock("./ApplyPriceAction", () => ({
   ApplyPriceAction: () => <div data-testid="apply-action-stub" />,
 }));
@@ -212,6 +215,21 @@ describe("PricingPage scaffold", () => {
     expect(await screen.findByTestId("scenario-reload-notice")).toBeInTheDocument();
   });
 
+  it("toggles the Produtos picker and lists the loaded catalog product", async () => {
+    renderPage();
+    const pill = await screen.findByTestId("produtos-pill");
+    // Count reflects the loaded catalog once it resolves (starts at 0).
+    await waitFor(() => expect(pill).toHaveTextContent("Produtos: 1"));
+
+    fireEvent.click(pill);
+    const dropdown = await screen.findByTestId("produtos-dropdown");
+    expect(dropdown).toHaveTextContent("Eletrodo 6013");
+
+    // Selecting the option closes the picker (product stays selected).
+    fireEvent.click(screen.getByTestId("produtos-option-90001"));
+    await waitFor(() => expect(screen.queryByTestId("produtos-dropdown")).toBeNull());
+  });
+
   it("opens the Parâmetros drawer on the ?params=1 deep link", async () => {
     renderPage("?params=1");
     expect(await screen.findByTestId("params-drawer")).toBeInTheDocument();
@@ -224,7 +242,7 @@ describe("PricingPage scaffold", () => {
     expect(drawer).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Alíquota"), { target: { value: "9.25" } });
-    fireEvent.click(screen.getByRole("button", { name: "Salvar parâmetros" }));
+    fireEvent.click(screen.getByRole("button", { name: "Concluído" }));
 
     await waitFor(() => expect(putPricingProfile).toHaveBeenCalledTimes(1));
     expect(putPricingProfile.mock.calls[0][0]).toMatchObject({ aliquota_pct: "9.25" });
@@ -285,9 +303,13 @@ describe("PricingPage scaffold", () => {
     expect(priceInput.value).toBe("150,00");
   });
 
-  it("opens the DIFAL drawer and lists the UF table with the disclaimer", async () => {
+  it("opens the DIFAL drawer via the Parâmetros drawer link and lists the UF table with the disclaimer", async () => {
     renderPage();
-    fireEvent.click(await screen.findByTestId("difal-trigger"));
+    // DIFAL is reached through the Parâmetros drawer's "ver tabela completa por UF"
+    // link (design parity: no standalone page button).
+    fireEvent.click(await screen.findByTestId("params-trigger"));
+    await screen.findByTestId("params-drawer");
+    fireEvent.click(screen.getByRole("button", { name: /ver tabela completa por UF/ }));
 
     expect(await screen.findByTestId("difal-drawer")).toBeInTheDocument();
     await waitFor(() => expect(listPricingDifal).toHaveBeenCalled());

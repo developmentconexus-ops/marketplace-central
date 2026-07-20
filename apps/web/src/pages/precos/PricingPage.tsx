@@ -13,6 +13,7 @@ import { SolverPanel } from "./SolverPanel";
 import { ParamsDrawer } from "./ParamsDrawer";
 import { DifalDrawer } from "./DifalDrawer";
 import { MarketComparison } from "./MarketComparison";
+import { QuickChips } from "./QuickChips";
 import { PricingMatrix } from "./PricingMatrix";
 import { ApplyPriceAction } from "./ApplyPriceAction";
 import { ScenariosPanel } from "./ScenariosPanel";
@@ -65,6 +66,8 @@ export function PricingPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [modalidade, setModalidade] = useState<ModalidadeKey>("premium");
   const [precoInput, setPrecoInput] = useState<string>("");
+  const [solverTarget, setSolverTarget] = useState<string>("");
+  const [pickerOpen, setPickerOpen] = useState<boolean>(false);
   // Deep link: /precos?params=1 opens the Parâmetros drawer on mount.
   const [paramsOpen, setParamsOpen] = useState<boolean>(searchParams.get("params") === "1");
   const [difalOpen, setDifalOpen] = useState<boolean>(false);
@@ -190,148 +193,278 @@ export function PricingPage() {
     enabled: decomposeInput !== null,
   });
 
+  // Header resumo — a compact echo of the profile that drives the calc surface
+  // (design §Simulador). Regime label + alíquota, plus a DIFAL flag when active.
+  const regimeLabel = profile.regime === "SIMPLES" ? "Simples" : "L. Presumido";
+  const resumoParams =
+    `custo ERP · comissões ML · frete por peso · ${regimeLabel} ${profile.aliquota_pct}%` +
+    (profile.difal_enabled ? " · DIFAL" : "");
+
+  // ML free-shipping rule (static, not fabricated): the seller pays freight at/above
+  // R$ 79; below it the buyer pays but a R$ 6,50 fixed fee applies.
+  const precoNum = Number.parseFloat(precoForApi);
+  const freteFreeTier = Number.isFinite(precoNum) && precoNum >= 79;
+  const freteNota = freteFreeTier
+    ? "≥ R$ 79: frete grátis obrigatório — o vendedor paga o envio."
+    : "< R$ 79: o comprador paga o frete, mas incide a taxa fixa de R$ 6,50.";
+
+  const simName = selected ? productLabel(selected) : "";
+  const simSku = selected?.reference ?? (selected ? `#${selected.internal_product_id}` : "");
+
   return (
-    <div className="flex gap-4 p-4">
-      <div className="flex min-w-0 flex-1 flex-col gap-4">
-        <header className="flex items-center justify-between">
-          <h1 className="text-lg font-semibold text-ink">Preços &amp; Simulador</h1>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              data-testid="params-trigger"
-              data-deep-linked={paramsOpen ? "1" : undefined}
-              onClick={() => setParamsOpen(true)}
-              className="rounded-md border border-border px-3 py-1.5 text-sm text-ink hover:bg-surface-2"
+    <div className="flex flex-col gap-3.5 p-6">
+      <header className="flex flex-wrap items-center gap-2.5">
+        <h1 className="text-[22px] font-bold tracking-tight text-ink">Preços &amp; Simulador</h1>
+
+        {/* Produtos picker pill — the products currently in the analysis; clicking
+            one selects it (mirrors the design's "Produtos: N ▾"). */}
+        <div className="relative">
+          <button
+            type="button"
+            data-testid="produtos-pill"
+            aria-expanded={pickerOpen}
+            onClick={() => setPickerOpen((v) => !v)}
+            className={`cursor-pointer whitespace-nowrap rounded-pill border px-3 py-1 text-[12.5px] font-semibold ${
+              pickerOpen ? "border-accent bg-accent-soft text-accent-ink" : "border-border bg-surface text-muted"
+            }`}
+          >
+            Produtos: {products.length} ▾
+          </button>
+          {pickerOpen ? (
+            <div
+              data-testid="produtos-dropdown"
+              className="absolute left-0 top-9 z-20 flex w-[340px] flex-col gap-2 rounded-card border border-border bg-surface p-3.5 shadow-lg"
             >
-              ⚙ Parâmetros de cálculo
-            </button>
-            <button
-              type="button"
-              data-testid="difal-trigger"
-              onClick={() => setDifalOpen(true)}
-              className="rounded-md border border-border px-3 py-1.5 text-sm text-ink hover:bg-surface-2"
-            >
-              DIFAL por UF
-            </button>
-          </div>
-        </header>
-
-        {profileQuery.isError ? (
-          <p role="alert" className="rounded-md bg-warn-soft px-3 py-2 text-sm text-warn">
-            Não foi possível carregar os parâmetros de cálculo — usando o padrão.
-          </p>
-        ) : null}
-
-        {productsQuery.isLoading ? (
-          <LoadingState />
-        ) : (
-          <PricingMatrix
-            products={products}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            modalidade={modalidade}
-            profile={profile}
-            installationId={installationId}
-          />
-        )}
-      </div>
-
-      {/* The simular panel is the PRESERVED single-product section, now a 380px side
-          panel opened by a matrix row-click. It renders while a product is selected
-          (products[0] on mount) OR when a reloaded scenario's product is missing —
-          so the honest "product not in list" notice is never swallowed. */}
-      {selected !== null || productMissing ? (
-        <aside
-          aria-label={`Simular · ${selected ? productLabel(selected) : ""}`}
-          className="flex w-[380px] shrink-0 flex-col gap-4"
-        >
-          {productMissing ? (
-              <p role="alert" data-testid="scenario-reload-notice" className="rounded-md bg-warn-soft px-3 py-2 text-sm text-warn">
-                O produto deste cenário não está na lista atual — selecione outro produto ou recarregue o catálogo.
-              </p>
-            ) : null}
-
-            <div className="flex flex-wrap items-end gap-4 rounded-lg border border-border bg-surface p-3">
-              <label className="flex flex-col text-xs text-muted">
-                Preço de venda
-                <span className="mt-1 flex items-center gap-1 text-ink">
-                  R$
-                  <input
-                    inputMode="decimal"
-                    value={precoInput}
-                    onChange={(e) => setPrecoInput(e.target.value)}
-                    placeholder={selected?.current_price.amount ?? "0,00"}
-                    className="w-28 rounded-md border border-border bg-surface px-2 py-1 font-mono text-sm text-ink"
-                    aria-label="Preço de venda"
-                  />
-                </span>
-              </label>
-
-              <fieldset className="flex flex-col text-xs text-muted">
-                <legend className="mb-1">Modalidade</legend>
-                <div className="flex gap-1">
-                  {MODALIDADES.map((m) => (
-                    <button
-                      key={m.key}
-                      type="button"
-                      onClick={() => setModalidade(m.key)}
-                      aria-pressed={modalidade === m.key}
-                      className={`rounded-md px-2 py-1 text-sm ${
-                        modalidade === m.key ? "bg-accent-soft text-accent-ink" : "text-ink hover:bg-surface-2"
-                      }`}
-                    >
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
-              </fieldset>
-            </div>
-
-            <div data-testid="region-decomposicao" className="rounded-lg border border-border bg-surface p-3">
-              {decomposeQuery.isLoading ? (
-                <LoadingState />
-              ) : decomposeQuery.isError ? (
-                <ErrorState onRetry={() => void decomposeQuery.refetch()} detail="Falha ao decompor o preço." />
-              ) : decomposeQuery.data ? (
-                <DecompositionPanel
-                  decomposition={decomposeQuery.data.decomposition}
-                  profile={profile}
-                  blockingState={decomposeQuery.data.blocking_state}
-                  difalUf={profile.difal_destino_uf}
-                  tarifa={decomposeQuery.data.tarifa}
-                />
+              <div className="text-[10.5px] font-semibold tracking-wider text-faint">NA ANÁLISE</div>
+              {products.length === 0 ? (
+                <p className="text-xs text-muted">Nenhum produto com evidência de preço no momento.</p>
               ) : (
-                <p className="text-sm text-muted">Selecione um produto e um preço para simular.</p>
+                products.map((p) => (
+                  <button
+                    key={p.internal_product_id}
+                    type="button"
+                    data-testid={`produtos-option-${p.internal_product_id}`}
+                    onClick={() => {
+                      setSelectedId(p.internal_product_id);
+                      setPickerOpen(false);
+                    }}
+                    className={`flex items-center gap-2 rounded-control px-1 py-0.5 text-left text-[12.5px] hover:bg-surface-2 ${
+                      selected?.internal_product_id === p.internal_product_id ? "text-accent-ink" : "text-ink"
+                    }`}
+                  >
+                    <span className="font-mono text-[11px] text-faint">{p.reference ?? `#${p.internal_product_id}`}</span>
+                    <span className="flex-1 truncate">{productLabel(p)}</span>
+                  </button>
+                ))
               )}
             </div>
+          ) : null}
+        </div>
 
-            <div data-testid="region-solver" className="rounded-lg border border-border bg-surface p-3">
-              <h3 className="mb-2 text-sm font-semibold text-ink">Margem alvo → preço</h3>
-              <SolverPanel
-                productId={selected ? selected.internal_product_id : null}
-                modalidade={modalidade}
-              />
-            </div>
+        {/* Shipping/destino context — honest: the DIFAL destino UF the calc uses,
+            or "—" when none is configured (never a fabricated CEP, ADR-17). */}
+        <span
+          data-testid="cep-chip"
+          className="whitespace-nowrap rounded-pill border border-border px-3 py-1 text-[12.5px] text-muted"
+        >
+          CEP → {profile.difal_destino_uf ?? "—"}
+        </span>
 
-            <div data-testid="region-comparacao" className="rounded-lg border border-border bg-surface p-3">
-              <MarketComparison productId={selected ? String(selected.internal_product_id) : null} />
-            </div>
+        <span className="ml-auto flex items-center gap-2">
+          <span className="whitespace-nowrap text-[11.5px] text-faint">{resumoParams}</span>
+          <button
+            type="button"
+            data-testid="params-trigger"
+            data-deep-linked={paramsOpen ? "1" : undefined}
+            onClick={() => setParamsOpen(true)}
+            className={`cursor-pointer whitespace-nowrap rounded-control border px-3 py-1.5 text-[12.5px] font-semibold ${
+              paramsOpen
+                ? "border-accent bg-accent-soft text-accent-ink"
+                : "border-border text-muted hover:border-accent hover:text-accent-ink"
+            }`}
+          >
+            ⚙ Parâmetros de cálculo
+          </button>
+        </span>
+      </header>
 
-            <div data-testid="region-aplicar" className="rounded-lg border border-border bg-surface p-3">
-              <ApplyPriceAction installationId={installationId} listingId={listingId} newPrice={precoForApi} />
-            </div>
-
-            <div data-testid="region-cenarios" className="rounded-lg border border-border bg-surface p-3">
-              <ScenariosPanel payload={scenarioPayload} onReload={applyScenario} />
-            </div>
-        </aside>
+      {profileQuery.isError ? (
+        <p role="alert" className="rounded-control bg-warn-soft px-3 py-2 text-sm text-warn">
+          Não foi possível carregar os parâmetros de cálculo — usando o padrão.
+        </p>
       ) : null}
+
+      <div className="flex flex-wrap items-start gap-3.5">
+        <div className="min-w-[480px] flex-1">
+          {productsQuery.isLoading ? (
+            <LoadingState />
+          ) : (
+            <PricingMatrix
+              products={products}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              modalidade={modalidade}
+              profile={profile}
+              installationId={installationId}
+            />
+          )}
+        </div>
+
+        {/* The simular panel is the PRESERVED single-product surface, now folded into
+            ONE 380px card (design parity). It renders while a product is selected
+            (products[0] on mount) OR when a reloaded scenario's product is missing —
+            so the honest "product not in list" notice is never swallowed. */}
+        {selected !== null || productMissing ? (
+          <aside
+            aria-label={`Simular · ${simName}`}
+            className="w-[380px] shrink-0 overflow-hidden rounded-card border border-border bg-surface"
+          >
+            <div className="flex items-center gap-2 border-b border-border bg-surface-2 px-4 py-2.5">
+              <b className="text-[13px] text-ink">Simular · {simName}</b>
+              <span className="ml-auto font-mono text-[11px] text-faint">{simSku}</span>
+            </div>
+
+            <div className="flex flex-col gap-3.5 px-4 py-3.5">
+              {productMissing ? (
+                <p role="alert" data-testid="scenario-reload-notice" className="rounded-control bg-warn-soft px-3 py-2 text-sm text-warn">
+                  O produto deste cenário não está na lista atual — selecione outro produto ou recarregue o catálogo.
+                </p>
+              ) : null}
+
+              {/* Preço + Margem desejada grid */}
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <div className="mb-1 text-[11px] text-faint">Preço de venda</div>
+                  <div className="flex items-center gap-1 rounded-control border-[1.5px] border-accent px-2.5 py-1.5">
+                    <span className="text-xs text-faint">R$</span>
+                    <input
+                      inputMode="decimal"
+                      value={precoInput}
+                      onChange={(e) => setPrecoInput(e.target.value)}
+                      placeholder={selected?.current_price.amount ?? "0,00"}
+                      aria-label="Preço de venda"
+                      className="w-full border-none bg-transparent font-mono text-[15px] font-semibold text-ink outline-none"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <div className="mb-1 text-[11px] text-faint">Margem desejada</div>
+                  <div className="flex items-center gap-1 rounded-control border border-border px-2.5 py-1.5">
+                    <input
+                      inputMode="decimal"
+                      value={solverTarget}
+                      onChange={(e) => setSolverTarget(e.target.value)}
+                      placeholder="0,0"
+                      aria-label="Margem alvo"
+                      className="w-full border-none bg-transparent text-right font-mono text-[15px] font-semibold text-ink outline-none"
+                    />
+                    <span className="text-xs text-faint">%</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick-seed chips (mediana / menor conc. / cobrir X%) */}
+              <QuickChips
+                productId={selected ? String(selected.internal_product_id) : null}
+                coverPct={profile.limiar_verde_pct}
+                onSeedPreco={(amount) => setPrecoInput(amount)}
+                onSeedTarget={(pct) => setSolverTarget(pct)}
+              />
+
+              {/* MODALIDADE segmented — active tier shows its resolved margin %,
+                  the others stay honest "—" (never a fabricated per-modalidade rate). */}
+              <div>
+                <div className="mb-1.5 text-[10.5px] font-semibold tracking-wider text-faint">MODALIDADE</div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {MODALIDADES.map((m) => {
+                    const active = modalidade === m.key;
+                    const pct = active ? decomposeQuery.data?.decomposition.margem_pct ?? null : null;
+                    return (
+                      <button
+                        key={m.key}
+                        type="button"
+                        onClick={() => setModalidade(m.key)}
+                        aria-pressed={active}
+                        className={`cursor-pointer rounded-control border-[1.5px] px-2 py-1.5 text-center ${
+                          active ? "border-accent bg-accent-soft" : "border-border-2 hover:bg-surface-2"
+                        }`}
+                      >
+                        <div className={`text-[11px] font-semibold ${active ? "text-accent-ink" : "text-muted"}`}>{m.label}</div>
+                        <div className="mt-0.5 font-mono text-xs font-bold text-ink">{pct !== null ? `${pct}%` : "—"}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Per-component decomposition (mono breakdown card) */}
+              <div data-testid="region-decomposicao">
+                {decomposeQuery.isLoading ? (
+                  <LoadingState />
+                ) : decomposeQuery.isError ? (
+                  <ErrorState onRetry={() => void decomposeQuery.refetch()} detail="Falha ao decompor o preço." />
+                ) : decomposeQuery.data ? (
+                  <DecompositionPanel
+                    decomposition={decomposeQuery.data.decomposition}
+                    profile={profile}
+                    blockingState={decomposeQuery.data.blocking_state}
+                    difalUf={profile.difal_destino_uf}
+                    tarifa={decomposeQuery.data.tarifa}
+                  />
+                ) : (
+                  <p className="text-sm text-muted">Selecione um produto e um preço para simular.</p>
+                )}
+              </div>
+
+              {/* Margem-alvo → preço solver (input lifted to the grid above) */}
+              <div data-testid="region-solver">
+                <SolverPanel
+                  productId={selected ? selected.internal_product_id : null}
+                  modalidade={modalidade}
+                  target={solverTarget}
+                  onTargetChange={setSolverTarget}
+                  hideInput
+                />
+              </div>
+
+              {/* ML free-shipping rule note */}
+              <div
+                data-testid="frete-nota"
+                className={`rounded-control px-2.5 py-1.5 text-[11.5px] ${
+                  freteFreeTier ? "bg-amber-soft text-amber" : "bg-accent-soft text-accent-ink"
+                }`}
+              >
+                {freteNota}
+              </div>
+
+              <div data-testid="region-comparacao">
+                <MarketComparison productId={selected ? String(selected.internal_product_id) : null} />
+              </div>
+
+              <div data-testid="region-aplicar">
+                <ApplyPriceAction installationId={installationId} listingId={listingId} newPrice={precoForApi} />
+              </div>
+
+              <div data-testid="region-cenarios">
+                <ScenariosPanel payload={scenarioPayload} onReload={applyScenario} />
+              </div>
+            </div>
+          </aside>
+        ) : null}
+      </div>
 
       <ParamsDrawer
         open={paramsOpen}
         profile={profile}
+        defaults={DEFAULT_PROFILE}
+        modalidade={modalidade}
+        comissaoTarifa={decomposeQuery.data?.tarifa?.comissao}
         onSave={(next) => saveProfile.mutate(next)}
         onClose={() => setParamsOpen(false)}
+        onOpenDifal={() => {
+          setParamsOpen(false);
+          setDifalOpen(true);
+        }}
         saving={saveProfile.isPending}
       />
 

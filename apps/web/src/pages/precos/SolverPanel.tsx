@@ -13,6 +13,16 @@ export interface SolverPanelProps {
   productId: number | null;
   /** Active modalidade key. */
   modalidade: string;
+  /**
+   * Controlled target margin (raw string). When provided together with
+   * `onTargetChange`, the margin field is lifted to the parent (the sim panel's
+   * Preço/Margem grid) and this panel renders only the action + result. Omit both
+   * to keep the panel's own internal target input (backward compatible).
+   */
+  target?: string;
+  onTargetChange?: (value: string) => void;
+  /** Hide the built-in margin input (it lives in the parent grid when controlled). */
+  hideInput?: boolean;
 }
 
 /** Response shape widened with the design §4.4 tarifa block (SDK type lags). */
@@ -27,9 +37,18 @@ type SolveResult = PricingSolveResponse & { tarifa?: TariffBlock | null };
  * when it is non-empty — a blank ceiling never renders as a lone "%". We NEVER
  * fabricate a price (ADR-17). Money/percentages stay decimal strings end-to-end.
  */
-export function SolverPanel({ productId, modalidade }: SolverPanelProps): JSX.Element {
+export function SolverPanel({
+  productId,
+  modalidade,
+  target: targetProp,
+  onTargetChange,
+  hideInput = false,
+}: SolverPanelProps): JSX.Element {
   const client = useClient();
-  const [target, setTarget] = useState<string>("");
+  const [targetState, setTargetState] = useState<string>("");
+  const controlled = onTargetChange !== undefined;
+  const target = controlled ? targetProp ?? "" : targetState;
+  const setTarget = controlled ? onTargetChange : setTargetState;
   const [result, setResult] = useState<SolveResult | null>(null);
 
   const solve = useMutation({
@@ -81,26 +100,28 @@ export function SolverPanel({ productId, modalidade }: SolverPanelProps): JSX.El
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-end gap-3">
-        <label className="flex flex-col text-xs text-muted">
-          Margem alvo
-          <span className="mt-1 flex items-center gap-1 text-ink">
-            <input
-              inputMode="decimal"
-              value={target}
-              onChange={(e) => setTarget(e.target.value)}
-              placeholder="0,0"
-              aria-label="Margem alvo"
-              className="w-24 rounded-md border border-border bg-surface px-2 py-1 font-mono text-sm text-ink"
-            />
-            %
-          </span>
-        </label>
+        {hideInput ? null : (
+          <label className="flex flex-col text-xs text-muted">
+            Margem alvo
+            <span className="mt-1 flex items-center gap-1 text-ink">
+              <input
+                inputMode="decimal"
+                value={target}
+                onChange={(e) => setTarget(e.target.value)}
+                placeholder="0,0"
+                aria-label="Margem alvo"
+                className="w-24 rounded-md border border-border bg-surface px-2 py-1 font-mono text-sm text-ink"
+              />
+              %
+            </span>
+          </label>
+        )}
         <button
           type="button"
           data-testid="solver-submit"
           disabled={disabled}
           onClick={() => solve.mutate()}
-          className="rounded-md border border-border px-3 py-1.5 text-sm text-ink hover:bg-surface-2 disabled:opacity-40"
+          className="rounded-control border border-border px-3 py-1.5 text-sm text-ink hover:bg-surface-2 disabled:opacity-40"
         >
           {solve.isPending ? "Calculando…" : "Calcular preço"}
         </button>
