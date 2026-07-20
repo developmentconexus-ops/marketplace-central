@@ -63,8 +63,32 @@ angles; flagged two non-blocking test-rigor gaps (assert positive error-hint tit
 
 **P6-DUAL-GATE: AGREEMENT** — both reviewers PASS on the hardened head `aeee4b53`.
 
-**LIVE-VERIFIED: pending** — hub-owned P7 browser QA. FE-only render slice reusing FROZEN
-endpoints; zero provider writes, no live integration in this diff. Chip does NOT self-drive P7.
+**LIVE-VERIFIED: 2026-07-19** hub P7 live-drive on clean docker dev-stack (frontend :5174 +
+backend :8080 on the SIM worktree mount; mount confirmed by PricingMatrix.tsx present in the
+container). `/precos` renders the **product matrix as the main surface** with the exact 7 design
+columns — `SKU · DESCRIÇÃO · CUSTO · NOSSO PREÇO · PREÇO MERCADO · MARGEM · VEREDICTO` (verified
+by DOM `th` extraction). 50 rows, one per ERP catalog product. ADR-17 honesty proven live: real
+`CUSTO` off the fact (R$ 42.1 for CHAVE COMBINADA 1B-6MM / internal_product_id 412, etc.); `NOSSO
+PREÇO`/`PREÇO MERCADO`/`MARGEM` = honest `—`; `VEREDICTO` = `SEM_EVIDENCIA` rendered in neutral
+ink `rgb(37,41,31)` (NOT dressed as a verde OK chip nor a red — no-evidence is not a verdict);
+`novo` tag on zero-listing products; **zero fabricated `R$ 0` margin** anywhere in the DOM. Row
+selection opens the 380px `<aside>` reusing the existing DecompositionPanel + SolverPanel +
+MarketComparison (snippet: "Preço de venda / Modalidade Clássico·Premium·Full / Margem alvo →
+preço / Comparação de mercado" — panels not rebuilt). Theme paper `rgb(251,250,247)` + Instrument
+Sans. Zero console errors.
+
+**Demo data FINDING (not a chip defect; operator/hub to weigh for T-0):** every catalog product
+in the fixture returns `NO_PRICE_EVIDENCE` from `GET /market/aggregates?codprod=<internal_product_id>`
+(verified: ids 412–511 all `NO_PRICE_EVIDENCE`). Real market evidence exists only under the ML
+listing codprod space (e.g. 90008 Papeleira, 16 offers) — **disjoint from the ERP
+`internal_product_id` space the matrix keys on**. So the `PREÇO MERCADO`/`MARGEM`/`VEREDICTO`
+columns render all-`—`/SEM_EVIDENCIA live, which is *honest and correct* for this fixture (same
+data-gating M-06 product 412 hit). The matrix faithfully renders what the endpoint returns; the
+populated OK/margin path is golden-tested (PricingMatrix.test.tsx (a)/(b)/(c), single-market-call,
+INSUFFICIENT_MARKET, error honesty). If the pricing demo needs populated market columns on
+`/precos`, the fixture must gain market aggregates keyed to ERP `internal_product_id`s (demo-data
+provisioning, ties to `demo-data-provisioned`) — OR demo market via `/produto/:id` and `/anuncios`,
+which already surface it. FE-only render slice reusing FROZEN endpoints; zero provider writes.
 
 ## FINDING (for hub ratification)
 `MarketPriceIntelAggregate` (SDK `packages/sdk-runtime/src/market.ts`) carries **no rank/position
