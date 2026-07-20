@@ -15,57 +15,7 @@ import (
 	"marketplace-central/apps/server_core/internal/platform/pgdb"
 )
 
-func TestERPSource(t *testing.T) {
-	for _, tc := range []struct {
-		name    string
-		env     string
-		want    string
-		wantErr bool
-	}{
-		{name: "empty defaults to oracle", want: "oracle"},
-		{name: "oracle", env: "oracle", want: "oracle"},
-		{name: "xlsx", env: "xlsx", want: "xlsx"},
-		{name: "uppercase oracle", env: "ORACLE", want: "oracle"},
-		{name: "trimmed xlsx", env: " xlsx ", want: "xlsx"},
-		{name: "postgres rejected", env: "postgres", wantErr: true},
-		{name: "garbage rejected", env: "garbage", wantErr: true},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			got, err := erpSource(func(key string) string {
-				if key == "MC_ERP_SOURCE" {
-					return tc.env
-				}
-				return ""
-			})
-			if tc.wantErr {
-				if err == nil {
-					t.Fatal("erpSource() error = nil, want error")
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("erpSource() error = %v", err)
-			}
-			if got != tc.want {
-				t.Fatalf("erpSource() = %q, want %q", got, tc.want)
-			}
-		})
-	}
-}
-
-func TestNewRootRuntimeRejectsInvalidERPSource(t *testing.T) {
-	t.Setenv("MC_ERP_SOURCE", "postgres")
-	_, err := NewRootRuntime(nil, pgdb.Config{
-		DefaultTenantID: "tenant_default",
-		EncryptionKey:   "0123456789abcdef0123456789abcdef",
-	})
-	if err == nil || !strings.Contains(err.Error(), "erp source") {
-		t.Fatalf("NewRootRuntime() error = %v, want invalid ERP source error", err)
-	}
-}
-
 func TestRootRuntimeRegistersERPImportRoutes(t *testing.T) {
-	t.Setenv("MC_ERP_SOURCE", "xlsx")
 	runtime, err := NewRootRuntime(nil, pgdb.Config{
 		DefaultTenantID: "tenant_default",
 		EncryptionKey:   "0123456789abcdef0123456789abcdef",

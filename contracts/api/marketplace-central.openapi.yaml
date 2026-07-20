@@ -3187,6 +3187,48 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErpImportError'
 
+  /config/active-source:
+    get:
+      summary: Get the tenant's active ERP/catalog source
+      operationId: getActiveSource
+      tags: [tenant-config]
+      responses:
+        "200":
+          description: Tenant active-source configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActiveSourceConfig'
+        "400":
+          description: Tenant has no active-source row (fail-closed, never a silent default)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActiveSourceError'
+    put:
+      summary: Set the tenant's active ERP/catalog source
+      operationId: setActiveSource
+      tags: [tenant-config]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetActiveSourceRequest'
+      responses:
+        "200":
+          description: Stored tenant active-source configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActiveSourceConfig'
+        "400":
+          description: Invalid active_source or malformed body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActiveSourceError'
+
 components:
   parameters:
     MutationProtocolId:
@@ -7936,4 +7978,49 @@ components:
         import_id:
           type: string
         protocol:
+          type: string
+
+    ActiveSourceConfig:
+      type: object
+      description: A tenant's active ERP/catalog source selection, as stored.
+      required: [active_source, source_kind, set_at]
+      properties:
+        active_source:
+          type: string
+          enum: [sankhya, xlsx, catalogo_cliente]
+        source_kind:
+          type: string
+          description: Server-derived from active_source (tenant_config.DefaultKind) — never client-supplied.
+          enum: [upload_snapshot, live_read_through]
+        set_at:
+          type: string
+          format: date-time
+        set_by:
+          type: string
+          nullable: true
+
+    SetActiveSourceRequest:
+      type: object
+      description: >-
+        Selects the tenant's active source. source_kind is intentionally absent:
+        it is always derived server-side from active_source and any client-supplied
+        value is ignored.
+      required: [active_source]
+      properties:
+        active_source:
+          type: string
+          enum: [sankhya, xlsx, catalogo_cliente]
+        set_by:
+          type: string
+          nullable: true
+
+    ActiveSourceError:
+      type: object
+      description: Flat active-source error body.
+      required: [error]
+      properties:
+        error:
+          type: string
+          enum: [unknown_erp_source, invalid_active_source, invalid_body, internal_error]
+        detail:
           type: string
