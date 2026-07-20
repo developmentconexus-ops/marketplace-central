@@ -3943,6 +3943,7 @@ components:
         - margin_percent
         - status
         - freight_source
+        - commission_source
       properties:
         product_id:
           type: string
@@ -3972,6 +3973,9 @@ components:
         status:
           type: string
           enum: [healthy, warning, critical]
+        commission_source:
+          type: string
+          enum: [resolver, override, policy, unknown]
         freight_source:
           type: string
           enum: [melhor_envio, fixed, no_dimensions, me_error, me_not_connected]

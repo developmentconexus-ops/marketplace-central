@@ -94,7 +94,6 @@ import (
 	orderstransport "marketplace-central/apps/server_core/internal/modules/orders/transport"
 	pricingcatalog "marketplace-central/apps/server_core/internal/modules/pricing/adapters/catalog"
 	pricingcostread "marketplace-central/apps/server_core/internal/modules/pricing/adapters/costread"
-	pricingfee "marketplace-central/apps/server_core/internal/modules/pricing/adapters/feeschedule"
 	pricingmarket "marketplace-central/apps/server_core/internal/modules/pricing/adapters/marketplace"
 	pricingpostgres "marketplace-central/apps/server_core/internal/modules/pricing/adapters/postgres"
 	pricingtariffcomposite "marketplace-central/apps/server_core/internal/modules/pricing/adapters/tariffcomposite"
@@ -712,10 +711,9 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	meOAuth := melhorenvio.NewOAuthHandlerFromEnv(meTokenStore) // nil if ME_CLIENT_ID unset
 
 	// Pricing batch orchestrator
-	feeAdapter := pricingfee.NewAdapter(feeSvc)
 	prodReader := pricingcatalog.NewReader(catalogSvc)
 	polReader := pricingmarket.NewReader(marketSvc)
-	batchOrch := pricingapp.NewBatchOrchestrator(prodReader, polReader, meClient, feeAdapter, cfg.DefaultTenantID)
+	batchOrch := pricingapp.NewBatchOrchestrator(prodReader, polReader, meClient, cfg.DefaultTenantID)
 
 	// IC-04 calculator (M-07): profile, DIFAL seed+override, scenarios, decompose,
 	// solve. Wired only when internal_read (cost facts) is available — mirrors the
@@ -745,6 +743,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 			liveResolver := pricingtarifflive.NewResolver(identityReader, categoryResolver, commissionQuoter)
 			tariffResolver = pricingtariffcomposite.NewResolver(calcTariffResolver, liveResolver)
 		}
+		batchOrch.WithTariffResolver(tariffResolver)
 		calcSvc := pricingapp.NewCalcService(calcRepo, calcCost, calcProducts, cfg.DefaultTenantID).
 			WithTariffStore(calcRepo).
 			WithTariffResolver(tariffResolver)
