@@ -8,10 +8,23 @@
 ## Markers
 
 P6-DUAL-GATE: AGREEMENT
-LIVE-VERIFIED: pending
-
-`LIVE-VERIFIED: pending` — this is a FE design-only change (no provider write, no live
-ML path). Live/browser QA (P7) is hub-driven; the chip does not self-drive it.
+LIVE-VERIFIED: 2026-07-19 hub P7 live-drive on clean docker dev-stack (frontend :5174 + backend
+:8080 on the VINC worktree mount; mount confirmed by ResolvidosTab.tsx present in the container).
+`/vinculos`: **P0 THEME** proven live — off-theme scan over `main *` for literal tailwind numbered
+palette classes returned **zero offenders**; body paper `rgb(251,250,247)`; Confiança bands map via
+`@theme` tokens (MEDIA = amber `rgb(138,109,31)`), never a literal palette color. **P1 REORIENT** —
+Fila table is the 9-col anúncio-cêntrica layout exactly (Selecionar · Anúncio ML · SKU ML · Produto
+sugerido · SKU HUB · GTIN · Confiança · Motivo · Ação), 20 pending rows. **GTIN honesty** proven:
+"✓ igual" renders ONLY on ean-corroborated rows (motivo "ean: ean corrobora…"), "—" on title-match
+rows (motivo "title: match por título") — never fabricated. **P2 RESOLVIDOS** — real, not a stub: 20
+rows from `listProductLinkWorkflows` (SKU HUB 90001/90002/90003/90006… = the D-95 EAN linkages),
+Estado "Vinculado ✓", real resolution timestamps (`2026-07-19T19:50:…Z`), and per-row "Desfazer"
+enabled (audit_id resolved). Desfazer was NOT clicked — it is a live `undoProductLinkResolution`
+mutation and triggering it would corrupt the demo fixture's 20 resolved links; presence + enabled +
+audit-wiring verified structurally. **M-09 fold** — default tab = "Fila" (`aria-selected=true`), so
+the `/vinculos` "sem vínculo" deep-link from Anúncios lands on the queue. Zero console errors.
+NO_CANDIDATE honest row is data-gated (all 20 fixture candidates have a suggested product) — covered
+by VinculosDesign.golden.test.tsx. FE design-only change (no provider write, no live ML path).
 
 ## Scope
 
