@@ -45,12 +45,18 @@ export function Header() {
         >
           Anúncios
         </NavLink>
-        <span className="inline-flex shrink-0 cursor-not-allowed items-center gap-1.5 rounded-pill px-3 py-1.5 text-sm font-medium text-faint">
+        <NavLink
+          to={{ pathname: "/mercado", search: location.search }}
+          className={({ isActive }) =>
+            `${enabledPillClass} ${
+              isActive
+                ? "bg-accent-soft text-accent-ink"
+                : "text-muted hover:bg-surface-2 hover:text-ink"
+            }`
+          }
+        >
           Mercado
-          <span className="rounded-pill bg-surface-2 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-faint">
-            em breve
-          </span>
-        </span>
+        </NavLink>
         <NavLink
           to={{ pathname: "/precos", search: location.search }}
           className={({ isActive }) =>
