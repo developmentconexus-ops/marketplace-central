@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	erpinternalread "marketplace-central/apps/server_core/internal/modules/erp_import/adapters/internalread"
+	erpdomain "marketplace-central/apps/server_core/internal/modules/erp_import/domain"
 	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
 	internalreadports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 	inventoryports "marketplace-central/apps/server_core/internal/modules/inventory/ports"
@@ -157,6 +159,90 @@ func (r *stagedCatalogReader) ListCatalogProductFacts(context.Context, internalr
 
 func (r *stagedCatalogReader) SearchCatalogProductFacts(context.Context, string, int) (internalreadports.CatalogFactPage, error) {
 	return internalreadports.CatalogFactPage{AsOf: r.clock.Now()}, nil
+}
+
+// sourceCountingCatalogReader records the active source seen per call and counts
+// downstream hits, so a test can prove the cache key partitions by erp_source.
+type sourceCountingCatalogReader struct {
+	clock      Clock
+	listCalls  atomic.Int64
+	listSeen   []erpdomain.ImportSource
+	searchSeen []erpdomain.ImportSource
+	mu         sync.Mutex
+}
+
+func (r *sourceCountingCatalogReader) record(ctx context.Context, search bool) {
+	source, _ := erpinternalread.ActiveSourceFromContext(ctx)
+	r.mu.Lock()
+	if search {
+		r.searchSeen = append(r.searchSeen, source)
+	} else {
+		r.listSeen = append(r.listSeen, source)
+	}
+	r.mu.Unlock()
+}
+
+func (r *sourceCountingCatalogReader) ListCatalogProductFacts(ctx context.Context, _ internalreadports.Cursor, _ int) (internalreadports.CatalogFactPage, error) {
+	r.listCalls.Add(1)
+	r.record(ctx, false)
+	return internalreadports.CatalogFactPage{AsOf: r.clock.Now()}, nil
+}
+
+func (r *sourceCountingCatalogReader) SearchCatalogProductFacts(ctx context.Context, _ string, _ int) (internalreadports.CatalogFactPage, error) {
+	r.record(ctx, true)
+	return internalreadports.CatalogFactPage{AsOf: r.clock.Now()}, nil
+}
+
+// TestCatalogCachePartitionsByActiveSource guards the cross-source pollution
+// defect: two requests differing ONLY in the ctx active source must each reach
+// downstream (different cache keys), while a repeat of the same source is served
+// from cache. Without erp_source in the key a catalogo_cliente request within the
+// TTL would be served the cached xlsx page.
+func TestCatalogCachePartitionsByActiveSource(t *testing.T) {
+	clock := &fakeClock{now: time.Date(2026, 7, 20, 12, 0, 0, 0, time.UTC)}
+	downstream := &sourceCountingCatalogReader{clock: clock}
+	catalog := NewCatalogPageReader(downstream, testCache(clock, 20, nil))
+
+	base := context.Background()
+	xlsxCtx := erpinternalread.WithActiveSource(base, erpdomain.SourceXLSX)
+	prospectCtx := erpinternalread.WithActiveSource(base, erpdomain.SourceCatalogoCliente)
+
+	// Default (absent) then xlsx-explicit then catalogo_cliente — all list, same limit/cursor.
+	if _, err := catalog.ListCatalogProductFacts(base, internalreadports.Cursor{}, 50); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := catalog.ListCatalogProductFacts(prospectCtx, internalreadports.Cursor{}, 50); err != nil {
+		t.Fatal(err)
+	}
+	// Repeat catalogo_cliente — must be a cache hit, no new downstream call.
+	if _, err := catalog.ListCatalogProductFacts(prospectCtx, internalreadports.Cursor{}, 50); err != nil {
+		t.Fatal(err)
+	}
+	if got := downstream.listCalls.Load(); got != 2 {
+		t.Fatalf("expected 2 downstream list calls (absent + catalogo_cliente, second catalogo_cliente cached), got %d", got)
+	}
+
+	// Explicit xlsx must NOT be served the catalogo_cliente page: distinct key → downstream hit.
+	if _, err := catalog.ListCatalogProductFacts(xlsxCtx, internalreadports.Cursor{}, 50); err != nil {
+		t.Fatal(err)
+	}
+	if got := downstream.listCalls.Load(); got != 3 {
+		t.Fatalf("expected xlsx-explicit to miss the catalogo_cliente cache entry, got %d list calls", got)
+	}
+
+	// Search partitions independently by source too.
+	if _, err := catalog.SearchCatalogProductFacts(xlsxCtx, "faca", 50); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := catalog.SearchCatalogProductFacts(prospectCtx, "faca", 50); err != nil {
+		t.Fatal(err)
+	}
+	downstream.mu.Lock()
+	searchSeen := append([]erpdomain.ImportSource(nil), downstream.searchSeen...)
+	downstream.mu.Unlock()
+	if len(searchSeen) != 2 || searchSeen[0] != erpdomain.SourceXLSX || searchSeen[1] != erpdomain.SourceCatalogoCliente {
+		t.Fatalf("search cache must partition by source; downstream saw %v", searchSeen)
+	}
 }
 
 type mutableBatchReader struct {
