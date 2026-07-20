@@ -1814,6 +1814,51 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /orders/{provider_order_id}/faturado:
+    post:
+      summary: Record that the operator invoiced (faturou) the order
+      description: >-
+        Marks the order as invoiced in our own database only (goal B). This is
+        NOT a Mercado Livre write — it records our faturado_at fact so the
+        order moves from the "A FATURAR" bucket to "A ENVIAR". Idempotent:
+        first-write-wins, a repeat call is a no-op.
+      operationId: markOrderFaturado
+      parameters:
+        - name: provider_order_id
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 200
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - installation_id
+              properties:
+                installation_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+      responses:
+        "204":
+          description: Order marked as invoiced (or already was — idempotent)
+        "400":
+          description: Installation scope or request body is missing or invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "404":
+          description: Order not found for this tenant/installation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /orders/{provider_order_id}/sankhya-linkage:
     get:
       summary: Get the current exact assisted Sankhya linkage

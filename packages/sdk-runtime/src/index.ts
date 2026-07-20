@@ -1774,6 +1774,18 @@ export function createMarketplaceCentralClient(options: {
     return data as T;
   }
 
+  async function postVoid(path: string, body: unknown): Promise<void> {
+    const response = await fetchImpl(`${options.baseUrl}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const data = await response.json();
+      throw { status: response.status, error: (data as ErrorResponse).error } satisfies MarketplaceCentralClientError;
+    }
+  }
+
   return {
     listCatalogProductFacts: (options: CatalogPageOptions = {}) =>
       getJson<CatalogProductFactPage>(
@@ -1929,6 +1941,12 @@ export function createMarketplaceCentralClient(options: {
       getJson<OrderRead>(
         `/orders/${encodeURIComponent(providerOrderId)}?installation_id=${encodeURIComponent(installationId)}`,
       ),
+    // Records our own faturado_at fact so the order moves from the "A FATURAR"
+    // bucket to "A ENVIAR" (goal B). OUR-DB only — never a Mercado Livre write.
+    markOrderFaturado: (installationId: string, providerOrderId: string) =>
+      postVoid(`/orders/${encodeURIComponent(providerOrderId)}/faturado`, {
+        installation_id: installationId,
+      }),
     getOrderSummary: (installationId: string, options?: { by?: "status" }) =>
       getJson<OrderSummary>(
         `/orders/summary?installation_id=${encodeURIComponent(installationId)}${options?.by ? `&by=${encodeURIComponent(options.by)}` : ""}`,
