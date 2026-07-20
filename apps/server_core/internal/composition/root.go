@@ -49,6 +49,7 @@ import (
 	internalreadcache "marketplace-central/apps/server_core/internal/modules/internal_read/adapters/cache"
 	internalreadoracle "marketplace-central/apps/server_core/internal/modules/internal_read/adapters/oracle"
 	"marketplace-central/apps/server_core/internal/modules/internal_read/adapters/oracle/oraclebatch"
+	routing "marketplace-central/apps/server_core/internal/modules/internal_read/adapters/routing"
 	internalreadapp "marketplace-central/apps/server_core/internal/modules/internal_read/application"
 	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
 	internalreadobservability "marketplace-central/apps/server_core/internal/modules/internal_read/observability"
@@ -111,6 +112,8 @@ import (
 	profitabilityapp "marketplace-central/apps/server_core/internal/modules/profitability/application"
 	profitabilitytransport "marketplace-central/apps/server_core/internal/modules/profitability/transport"
 	synccomposition "marketplace-central/apps/server_core/internal/modules/sync/composition"
+	"marketplace-central/apps/server_core/internal/modules/tenant_config"
+	tenantconfigtransport "marketplace-central/apps/server_core/internal/modules/tenant_config/transport"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 	"marketplace-central/apps/server_core/internal/platform/pgdb"
 
@@ -269,10 +272,6 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	if err != nil {
 		return nil, fmt.Errorf("observability config: %w", err)
 	}
-	source, err := erpSource(os.Getenv)
-	if err != nil {
-		return nil, fmt.Errorf("erp source: %w", err)
-	}
 	freshnessCache := internalreadcache.New(internalreadcache.ConfigFromEnv(os.Getenv))
 
 	mux := httpx.NewRouteClassMux()
@@ -417,18 +416,8 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	var internalReadAvailable bool
 	var oracleDB internalreadoracle.Database
 	var poolStats *internalreadobservability.PoolStatsLoop
-	if source == "xlsx" {
-		xlsxReader := erpinternalread.NewReader(erpRepo, cfg.DefaultTenantID)
-		cachedReader := internalreadcache.NewReader(xlsxReader, freshnessCache)
-		reader := internalreadobservability.NewTimingReader(
-			cachedReader,
-			slog.Default(),
-			observabilityCfg.SlowQueryThreshold,
-		)
-		internalReadSvc = internalreadapp.NewService(reader)
-		internalReadAvailable = true
-		productMatcher = internalReadSvc
-	} else if oracleCfg, err := internalreadoracle.LoadConfigFromEnv(os.Getenv); err != nil {
+	var liveReader internalreadports.Reader
+	if oracleCfg, err := internalreadoracle.LoadConfigFromEnv(os.Getenv); err != nil {
 		slog.Warn("product links oracle reader unavailable", "err", err)
 	} else if db, err := internalreadoracle.OpenDB(context.Background(), oracleCfg); err != nil {
 		slog.Warn("product links oracle connection failed", "err", err)
@@ -438,19 +427,31 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 			internalreadoracle.NewReader(oracleDB),
 			freshnessCache,
 		)
-		reader := internalreadobservability.NewTimingReader(
+		liveReader = internalreadobservability.NewTimingReader(
 			cachedReader,
 			slog.Default(),
 			observabilityCfg.SlowQueryThreshold,
 		)
-		internalReadSvc = internalreadapp.NewService(reader)
 		poolStats = internalreadobservability.NewPoolStatsLoop(oracleDB, slog.Default(), observabilityCfg.PoolStatsInterval)
-		internalReadAvailable = true
-		productMatcher = internalReadSvc
 		inventoryStockReader = internalreadcache.NewStockBatchReader(
 			internalreadoracle.NewBatchStockReader(oracleDB, oracleBatchSemaphore),
 			freshnessCache,
 		)
+	}
+	if pool != nil {
+		xlsxReader := erpinternalread.NewReader(erpRepo, cfg.DefaultTenantID)
+		cachedUploadReader := internalreadcache.NewReader(xlsxReader, freshnessCache)
+		uploadReader := internalreadobservability.NewTimingReader(
+			cachedUploadReader,
+			slog.Default(),
+			observabilityCfg.SlowQueryThreshold,
+		)
+		activeSourceRepo := tenant_config.NewRepository(pool)
+		routingReader := routing.NewReader(uploadReader, liveReader, activeSourceRepo, cfg.DefaultTenantID)
+		internalReadSvc = internalreadapp.NewService(routingReader)
+		tenantconfigtransport.NewHandler(activeSourceRepo, cfg.DefaultTenantID).Register(mux)
+		internalReadAvailable = true
+		productMatcher = internalReadSvc
 	}
 	var canonicalCatalogReader catalogports.CanonicalProductReader = cataloginternalread.UnavailableReader{Err: internalreaddomain.NewReadError(internalreaddomain.ReadErrorSourceUnavailable, "oracle catalog reader is unavailable", nil)}
 	if internalReadAvailable {
@@ -518,7 +519,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	linkageRepo := orderspostgres.NewSankhyaLinkageRepository(pool, cfg.DefaultTenantID)
 	var assistedLinkageApp orderstransport.AssistedSankhyaLinkageApplication
 	var assistedLinkageService *ordersapp.AssistedSankhyaLinkageService
-	if source == "oracle" {
+	if oracleDB != nil {
 		if runtimeConfig, err := internalreadoracle.LoadSankhyaLinkageRuntimeConfigFromEnv(os.Getenv); err != nil {
 			slog.Warn("assisted Sankhya linkage unavailable", "err", err)
 		} else if !internalReadAvailable || oracleDB == nil {
@@ -557,7 +558,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		Adjustments: profitabilityStore,
 		Snapshots:   profitabilityStore,
 	}
-	if source == "oracle" && internalReadAvailable {
+	if oracleDB != nil && internalReadAvailable {
 		profitabilityCfg.Internal = profitabilityinternalread.NewFactReader(
 			internalReadSvc,
 			internalreadcache.NewBatchReader(
@@ -772,18 +773,6 @@ func providerWritesEnabled(getenv func(string) string) bool {
 // to MPC_PROVIDER_WRITES_ENABLED and the mutations dispatcher.
 func mlCatalogOffersEnabled(getenv func(string) string) bool {
 	return strings.EqualFold(strings.TrimSpace(getenv("MPC_ML_CATALOG_OFFERS_ENABLED")), "true")
-}
-
-func erpSource(getenv func(string) string) (string, error) {
-	source := strings.ToLower(strings.TrimSpace(getenv("MC_ERP_SOURCE")))
-	switch source {
-	case "":
-		return "oracle", nil
-	case "oracle", "xlsx":
-		return source, nil
-	default:
-		return "", fmt.Errorf("unsupported MC_ERP_SOURCE %q", source)
-	}
 }
 
 func oracleBatchPermits(getenv func(string) string) int {

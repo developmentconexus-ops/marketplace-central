@@ -7,18 +7,40 @@ type Decimal string
 
 // NormalizedRow is the column-normalized ERP product row before validation.
 // Custo and stock values remain textual until validation accepts them.
+//
+// This carries the 10 E2 business fields (interface-contracts-mis006.md §E2.1)
+// that feed products_mirror:
+//
+//	codigo_produto → Codprod    descricao      → Descrprod
+//	custo          → Custo      preco_venda    → PrecoVenda
+//	estoque_total  → StockPhysical (+ StockReserved)
+//	ean            → EAN        referencia     → Refforn
+//	marca          → Marca      ncm            → NCM
+//	grupo_codigo   → Grupo      grupo_descricao → DescrGrupo
+//	local          → Local (per stock location, feeds products_mirror_stock_locations)
+//
+// Missing values stay nil/empty (honest-unknown, ADR-17) — never coerced to 0.
 type NormalizedRow struct {
 	Codprod       string  `json:"codprod"`
 	Descrprod     string  `json:"descrprod"`
 	Custo         Decimal `json:"custo"`
+	// PrecoVenda is the ERP sale price (E2.1). Textual until validation accepts
+	// it; empty means absent, kept honest-unknown (never 0).
+	PrecoVenda    Decimal `json:"preco_venda,omitempty"`
 	StockPhysical string  `json:"stock_physical"`
 	StockReserved *string `json:"stock_reserved,omitempty"`
 	EAN           *string `json:"ean,omitempty"`
 	Refforn       *string `json:"refforn,omitempty"`
 	Marca         *string `json:"marca,omitempty"`
 	NCM           *string `json:"ncm,omitempty"`
-	Grupo         *string `json:"grupo,omitempty"`
-	DescrGrupo    *string `json:"descrgrupo,omitempty"`
+	// Grupo is the ERP product group code (grupo_codigo, E2.1).
+	Grupo *string `json:"grupo,omitempty"`
+	// DescrGrupo is the ERP product group description (grupo_descricao, E2.1).
+	DescrGrupo *string `json:"descrgrupo,omitempty"`
+	// Local is the stock-location code the row's quantity belongs to (E2.1).
+	// Feeds products_mirror_stock_locations; nil when the source has no
+	// per-location breakdown.
+	Local *string `json:"local,omitempty"`
 }
 
 type IssueKind string

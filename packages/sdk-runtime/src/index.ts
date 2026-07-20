@@ -3,6 +3,7 @@ import type { ErpImportCreated, ErpImportDetail, ErpImportList, ErpImportSourceI
 export * from "./erpImport";
 export * from "./market";
 export * from "./dashboard";
+export * from "./activeSource";
 
 export interface CatalogProduct {
   product_id: string;
