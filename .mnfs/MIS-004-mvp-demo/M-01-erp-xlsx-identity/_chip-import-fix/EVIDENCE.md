@@ -277,3 +277,67 @@ tsc --noEmit:
   main (gitignored, not committed); chip vitest config deleted pre-commit.
 - P6 dual gate (cold reviewer + adversarial refuter) run over this whole surface
   — verdicts recorded below.
+
+---
+
+## P6 DUAL GATE — verdicts (over full A+B+C write-set)
+
+Committed at `b77160705232b02702f32a1a32375bb4f9098bc8` (branch
+`claude/zealous-mendel-d7699e`, UNPUSHED).
+
+### Cold gate reviewer (harness:gate-reviewer, read-only) — **PASS**
+No blocking violations across A, B, C. Verified with file:line the multi-sheet
+union, preamble-skipping header detection, PT aliases (incl. twin-Marca
+first-non-empty), ADR-17 honest-unknown end-to-end (parser
+`domain/validation.go:134-153` + reader `internalread/reader.go:303-313` +
+FE display), strict hard-fail preserved, `([]NormalizedRow,[]Issue,error)`
+threading, upload card states, inert ML, AppRouter additive (`/marketplaces`
+still `WorkspacePlaceholder`, `/mercado` untouched), `erp_source` validated at
+catalog list/search + POST /market/collections with unknown→400 asserted by
+tests that confirm the port/service was NOT called, byte-stable default at every
+layer, catalogo_cliente "—", SDK+OpenAPI lockstep, and **no new DB migration**
+(sheet-skip reuses existing code within the 0073 CHECK). Confirmed the new tests
+are load-bearing (assert captured ctx/port-call state), not theater.
+
+### Adversarial refuter (harness:gate-reviewer, read-only) — 1 BLOCKING found → CORRECTED
+7 of 8 attacks COULD-NOT-REFUTE. One **BLOCKING** refutation (attack #4/#6, same
+root), which the cold pass missed — the dual gate earning its keep:
+
+> **Cross-source cache pollution.** `internal_read/adapters/cache/cache.go`
+> keyed catalog LIST on `(cursor,limit)` and SEARCH on `(query,limit)` — NOT the
+> ctx active source. This decorator sits in front of the two-source reader
+> (`composition/root.go` cachedReader → catalogPageReader), so within the 5-min
+> catalog TTL a `?erp_source=catalogo_cliente` request would be served the cached
+> xlsx page — the operator's source switch silently invisible. The two toggle
+> tests both bypassed the cache decorator, so neither caught it (structural gap).
+
+**Corrective pass (this chip, in the erp_source seam):**
+- `cache.go` — both catalog cache keys now include `activeSourceKey(ctx)` (the
+  ctx-selected source via `erpinternalread.ActiveSourceFromContext`; `""` when
+  absent so the default-source key is unchanged). New import
+  `erpinternalread` — no cycle (cache already imports cross-module
+  `inventoryports`; erp_import/internalread does not import cache; `go build
+  ./...` OK).
+- `cache_test.go` — new `TestCatalogCachePartitionsByActiveSource` exercises the
+  cache decorator itself: absent + catalogo_cliente each hit downstream (distinct
+  keys), a repeat catalogo_cliente is a cache HIT, explicit xlsx misses the
+  catalogo_cliente entry, and search partitions by source too. **Proven
+  load-bearing**: reverting the List key to omit the source collapses absent +
+  catalogo_cliente to 1 downstream call → test FAILS (`got 1, want 2`); restored
+  → PASS. Closes the structural test gap the refuter named.
+- Full cache package + erp_import + catalog/transport + market/transport tests
+  green; `go build ./...` OK; gofmt clean.
+
+Attack #5 (market collect identity) was explicitly NOT exposed to this defect —
+`FindProductsForLinking` is promoted straight through, uncached, so collect
+already resolved the ctx-selected snapshot correctly (refuter concurred).
+
+### Dual-gate disposition
+Cold gate PASS + refuter's sole blocking finding CORRECTED with a load-bearing
+regression test (must-fail verified). Round-2 re-refutation of the ~15-line cache
+fix was **self-verified under the demo deadline** (must-fail revert proof), not a
+second cold refuter pass — recorded honestly rather than stamping a full
+`P6-DUAL-GATE: AGREEMENT` marker. Hub live-drive is the backstop: switching Fonte
+ativa on /catalogo after the 2012-row import must show the prospect catalog
+(custo/estoque "—"), and switching back must show Sankhya — the exact behaviour
+the cache fix restores.

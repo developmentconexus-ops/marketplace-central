@@ -15,6 +15,7 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
+	erpinternalread "marketplace-central/apps/server_core/internal/modules/erp_import/adapters/internalread"
 	"marketplace-central/apps/server_core/internal/modules/internal_read/domain"
 	internalreadports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 	inventoryports "marketplace-central/apps/server_core/internal/modules/inventory/ports"
@@ -279,6 +280,17 @@ func canonicalIDs(ids []int64) string {
 	return strings.Join(parts, ",")
 }
 
+// activeSourceKey returns the ctx-selected dataset source as a cache-key segment
+// ("" when none is set, so the default-source key is unchanged). Downstream the
+// same ctx value routes reads to a different snapshot, so it must partition the
+// cache.
+func activeSourceKey(ctx context.Context) string {
+	if source, ok := erpinternalread.ActiveSourceFromContext(ctx); ok {
+		return string(source)
+	}
+	return ""
+}
+
 type CatalogPageReader struct {
 	downstream internalreadports.CatalogPageReader
 	cache      *Cache
@@ -291,7 +303,11 @@ func NewCatalogPageReader(downstream internalreadports.CatalogPageReader, cache 
 }
 
 func (r CatalogPageReader) ListCatalogProductFacts(ctx context.Context, cursor internalreadports.Cursor, limit int) (internalreadports.CatalogFactPage, error) {
-	key := canonicalKey("ListCatalogProductFacts", strconv.FormatInt(cursor.InternalProductID, 10), strconv.Itoa(limit))
+	// The active dataset source travels in ctx (WithActiveSource) and picks a
+	// different snapshot downstream, so it MUST be part of the cache key — else a
+	// catalogo_cliente request within the catalog TTL would be served the cached
+	// xlsx page (cross-source pollution).
+	key := canonicalKey("ListCatalogProductFacts", activeSourceKey(ctx), strconv.FormatInt(cursor.InternalProductID, 10), strconv.Itoa(limit))
 	value, err := r.cache.load(ctx, ClassCatalog, key, func() (any, time.Time, error) {
 		page, err := r.downstream.ListCatalogProductFacts(ctx, cursor, limit)
 		return cloneCatalogPage(page), page.AsOf, err
@@ -303,7 +319,7 @@ func (r CatalogPageReader) ListCatalogProductFacts(ctx context.Context, cursor i
 }
 
 func (r CatalogPageReader) SearchCatalogProductFacts(ctx context.Context, query string, limit int) (internalreadports.CatalogFactPage, error) {
-	key := canonicalKey("SearchCatalogProductFacts", query, strconv.Itoa(limit))
+	key := canonicalKey("SearchCatalogProductFacts", activeSourceKey(ctx), query, strconv.Itoa(limit))
 	value, err := r.cache.load(ctx, ClassCatalog, key, func() (any, time.Time, error) {
 		page, err := r.downstream.SearchCatalogProductFacts(ctx, query, limit)
 		return cloneCatalogPage(page), page.AsOf, err
