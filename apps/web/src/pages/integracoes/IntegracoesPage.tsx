@@ -2,6 +2,7 @@ import type { ErpImportSourceInput } from "@marketplace-central/sdk-runtime";
 import { EmptyState, ErrorState, LoadingState } from "@marketplace-central/ui";
 import { type ActiveErpSource, useActiveErpSource } from "@marketplace-central/web-query";
 import { useId, useRef, useState, type ChangeEvent, type DragEvent } from "react";
+import { useClient } from "../../app/ClientContext";
 import { ImportacaoSection } from "../vinculos/ImportacaoSection";
 import { useErpImportDetail } from "../vinculos/useErpImports";
 import { useErpImportUpload, type ErpImportUploadError } from "./useErpImportUpload";
@@ -317,10 +318,47 @@ function ActiveSourceCard() {
   );
 }
 
-// ProviderConnectCard is an inert affordance: Mercado Livre OAuth connect is out
-// of scope for this milestone. It renders a disabled control and never touches
-// the network — the connect flow ships later.
+// ProviderConnectCard starts the Mercado Livre OAuth connect flow. A NEW
+// installation is created per connect (the reauth path pins the existing
+// installation to its original ML account via the account-mismatch guard, so a
+// different account MUST get its own installation); the browser is then sent to
+// the ML authorization URL and returns via the ngrok callback. Existing
+// installations and their data are untouched — the new account appears as an
+// extra entry in the installation selector.
 function ProviderConnectCard() {
+  const client = useClient();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function connect() {
+    setBusy(true);
+    setError(null);
+    try {
+      // Reuse an ML installation still waiting for its first authorization;
+      // otherwise create a fresh one so the new account never collides with an
+      // already-connected installation's account guard.
+      const existing = await client.listIntegrationInstallations();
+      const pending = existing.items.find(
+        (i) => i.provider_code === "mercado_livre" && i.state === "pending_connection",
+      );
+      let installationId = pending?.installation_id;
+      if (!installationId) {
+        installationId = `inst-mercado_livre-${crypto.randomUUID()}`;
+        await client.createIntegrationInstallation({
+          installation_id: installationId,
+          provider_code: "mercado_livre",
+          family: "marketplace",
+          display_name: "Mercado Livre (cliente)",
+        });
+      }
+      const start = await client.startIntegrationAuthorization(installationId);
+      window.location.href = start.auth_url;
+    } catch {
+      setError("Não foi possível iniciar a conexão. Tente novamente.");
+      setBusy(false);
+    }
+  }
+
   return (
     <section aria-labelledby="provider-connect-title" className="rounded-card border border-border bg-surface p-4">
       <h2 id="provider-connect-title" className="text-sm font-semibold text-ink">
@@ -331,14 +369,15 @@ function ProviderConnectCard() {
         <span className="text-sm font-medium text-ink">Mercado Livre</span>
         <button
           type="button"
-          disabled
-          title="disponível em breve"
-          className="rounded-control border border-border px-3 py-1.5 text-xs font-medium text-muted disabled:cursor-not-allowed"
+          disabled={busy}
+          onClick={connect}
+          className="rounded-control border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-ink hover:bg-surface-2 disabled:cursor-not-allowed disabled:text-muted"
           data-testid="provider-connect-ml"
         >
-          Conectar — disponível em breve
+          {busy ? "Redirecionando…" : "Conectar"}
         </button>
       </div>
+      {error ? <p className="mt-2 text-xs text-danger">{error}</p> : null}
     </section>
   );
 }
