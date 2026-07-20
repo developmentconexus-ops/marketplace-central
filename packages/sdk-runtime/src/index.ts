@@ -1,4 +1,4 @@
-import type { ErpImportDetail, ErpImportList } from "./erpImport";
+import type { ErpImportCreated, ErpImportDetail, ErpImportList, ErpImportSourceInput } from "./erpImport";
 
 export * from "./erpImport";
 export * from "./market";
@@ -237,11 +237,13 @@ export interface CatalogProductFactPage {
 export interface CatalogPageOptions {
   cursor?: string;
   limit?: number;
+  erp_source?: ErpImportSourceInput;
 }
 
 export interface CatalogSearchPageOptions {
   q: string;
   limit?: number;
+  erp_source?: ErpImportSourceInput;
 }
 
 export type ListingStatus = "active" | "paused" | "closed" | "unknown" | "under_review" | "inactive" | "payment_required" | "not_yet_active";
@@ -1790,14 +1792,36 @@ export function createMarketplaceCentralClient(options: {
     }
   }
 
+  // postMultipart posts a FormData body. The Content-Type header is intentionally
+  // NOT set so the runtime supplies the multipart boundary. Non-2xx bodies are
+  // the flat ERP error/conflict shape ({ error, detail?, column?, import_id?,
+  // protocol? }); the full object is surfaced on the thrown error so callers can
+  // branch on status (409 duplicate/in-progress, 422 missing column) and read
+  // the extra fields.
+  async function postMultipart<T>(path: string, body: FormData): Promise<T> {
+    const response = await fetchImpl(`${options.baseUrl}${path}`, {
+      method: "POST",
+      body,
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw {
+        status: response.status,
+        error: (data as ErrorResponse).error,
+        body: data,
+      } satisfies MarketplaceCentralClientError & { body: unknown };
+    }
+    return data as T;
+  }
+
   return {
     listCatalogProductFacts: (options: CatalogPageOptions = {}) =>
       getJson<CatalogProductFactPage>(
-        `/catalog/products${catalogQuery({ cursor: options.cursor, limit: options.limit })}`,
+        `/catalog/products${catalogQuery({ cursor: options.cursor, limit: options.limit, erp_source: options.erp_source })}`,
       ),
     searchCatalogProductFacts: (options: CatalogSearchPageOptions) =>
       getJson<CatalogProductFactPage>(
-        `/catalog/products/search${catalogQuery({ q: options.q, limit: options.limit })}`,
+        `/catalog/products/search${catalogQuery({ q: options.q, limit: options.limit, erp_source: options.erp_source })}`,
       ),
     listListings: (options: ListingListOptions) =>
       getJson<ListingPage>(`/listings${listingQuery(options)}`),
@@ -1822,6 +1846,12 @@ export function createMarketplaceCentralClient(options: {
       getJson<CatalogProductFactPage>(
         `/catalog/products${catalogQuery({ cursor: options.cursor, limit: options.limit })}`,
       ),
+    createErpImport: (file: File | Blob, source: ErpImportSourceInput, fileName?: string) => {
+      const form = new FormData();
+      form.append("file", file, fileName ?? (file instanceof File ? file.name : "import.xlsx"));
+      form.append("source", source);
+      return postMultipart<ErpImportCreated>("/erp/imports", form);
+    },
     listErpImports: () => getJson<ErpImportList>("/erp/imports"),
     getErpImport: (id: string) => getJson<ErpImportDetail>(`/erp/imports/${encodeURIComponent(id)}`),
     listMarketplaceAccounts: () => getJson<ListResponse<MarketplaceAccount>>("/marketplaces/accounts"),

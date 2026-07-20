@@ -19,29 +19,46 @@ func NewParser() *Parser {
 	return &Parser{}
 }
 
-func (p *Parser) Parse(ctx context.Context, source io.Reader) ([]domain.NormalizedRow, error) {
-	return p.parseWithRequired(ctx, source, []string{"CODPROD", "DESCRPROD", "CUSTO", "ESTOQUE_FISICO"})
+func (p *Parser) Parse(ctx context.Context, source io.Reader) ([]domain.NormalizedRow, []domain.Issue, error) {
+	return p.parseWithRequired(ctx, source, []string{"CODPROD", "DESCRPROD", "CUSTO", "ESTOQUE_FISICO"}, false)
 }
 
 // ParseLenient parses a workbook that may omit CUSTO / ESTOQUE_FISICO (the
 // client-catalog use case). Missing columns yield honest-empty values rather
 // than a structural rejection; ValidateRowsLenient turns that into warnings
-// instead of fabricating zeros (ADR-17).
-func (p *Parser) ParseLenient(ctx context.Context, source io.Reader) ([]domain.NormalizedRow, error) {
-	return p.parseWithRequired(ctx, source, []string{"CODPROD", "DESCRPROD"})
+// instead of fabricating zeros (ADR-17). It also injects the sheet name as the
+// product category (DescrGrupo) when the sheet carries no explicit group
+// column — the raw Sankhya "Produto" export groups products across FACAS /
+// FERRAMENTAS / MAQUINAS sheets with no in-sheet group code.
+func (p *Parser) ParseLenient(ctx context.Context, source io.Reader) ([]domain.NormalizedRow, []domain.Issue, error) {
+	return p.parseWithRequired(ctx, source, []string{"CODPROD", "DESCRPROD"}, true)
 }
 
-func (p *Parser) parseWithRequired(ctx context.Context, source io.Reader, required []string) ([]domain.NormalizedRow, error) {
+// parseWithRequired reads every worksheet in the workbook, detecting each
+// sheet's header row past any preamble rows and UNIONing the data rows across
+// sheets (GetSheetList order). Rows above a sheet's header are skipped; a sheet
+// with no detectable product header is skipped with a WARNING file-issue rather
+// than failing the whole import (ADR-17: a stray sheet never silently drops
+// products, and never hard-fails the sheets that DO carry data). The strict
+// required-column rejection still fires: a detected header missing a required
+// column returns a MISSING_REQUIRED_COLUMN FileError for the whole file.
+//
+// Displayed issue row numbers are the position of the row in the concatenated
+// cross-sheet stream (monotonic 1..N over accepted-order), not the original
+// spreadsheet row — the NormalizedRow carries no origin coordinate and adding
+// one is a schema change out of this seam's scope. File-level (sheet-skip)
+// warnings carry row 0.
+func (p *Parser) parseWithRequired(ctx context.Context, source io.Reader, required []string, sheetNameAsCategory bool) ([]domain.NormalizedRow, []domain.Issue, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if source == nil {
-		return nil, invalidFileError()
+		return nil, nil, invalidFileError()
 	}
 
 	workbook, err := excelize.OpenReader(source)
 	if err != nil {
-		return nil, invalidFileError()
+		return nil, nil, invalidFileError()
 	}
 	defer func() {
 		_ = workbook.Close()
@@ -49,51 +66,150 @@ func (p *Parser) parseWithRequired(ctx context.Context, source io.Reader, requir
 
 	sheets := workbook.GetSheetList()
 	if len(sheets) == 0 {
-		return nil, invalidFileError()
+		return nil, nil, invalidFileError()
 	}
 
-	rows, err := workbook.GetRows(sheets[0])
-	if err != nil {
-		return nil, invalidFileError()
-	}
-	if len(rows) < 2 {
-		return nil, invalidFileError()
-	}
-
-	columns := make(map[string]int, len(rows[0]))
-	for index, header := range rows[0] {
-		key := normalizeHeader(header)
-		if key != "" {
-			columns[key] = index
+	var (
+		result     []domain.NormalizedRow
+		fileIssues []domain.Issue
+	)
+	for _, sheetName := range sheets {
+		rows, err := workbook.GetRows(sheetName)
+		if err != nil {
+			fileIssues = append(fileIssues, sheetSkippedIssue(sheetName, "sheet could not be read; skipped"))
+			continue
 		}
-	}
-	for _, requiredColumn := range required {
-		if _, ok := columns[normalizeHeader(requiredColumn)]; !ok {
-			return nil, &ports.FileError{
-				Code:   domain.CodeMissingRequiredColumn,
-				Column: requiredColumn,
-				Detail: "required column is missing",
+
+		headerIndex, columns := detectHeader(rows)
+		if headerIndex < 0 {
+			fileIssues = append(fileIssues, sheetSkippedIssue(sheetName, "no product header row (CODPROD/DESCRPROD) found; sheet skipped"))
+			continue
+		}
+
+		// Strict required-column rejection: a detected header that is missing a
+		// required column fails the whole file (genuinely-wrong file guard).
+		for _, requiredColumn := range required {
+			if _, ok := columns[canonicalHeaderKey(requiredColumn)]; !ok {
+				return nil, nil, &ports.FileError{
+					Code:   domain.CodeMissingRequiredColumn,
+					Column: requiredColumn,
+					Detail: "required column is missing",
+				}
 			}
 		}
+
+		_, hasDescrGrupo := columns[canonicalHeaderKey("DESCRGRUPO")]
+		for _, row := range rows[headerIndex+1:] {
+			normalized := domain.NormalizedRow{
+				Codprod:       columnCell(row, columns, "CODPROD"),
+				Descrprod:     columnCell(row, columns, "DESCRPROD"),
+				Custo:         domain.Decimal(columnCell(row, columns, "CUSTO")),
+				StockPhysical: columnCell(row, columns, "ESTOQUE_FISICO"),
+				StockReserved: optionalCell(row, columns, "ESTOQUE_RESERVADO"),
+				EAN:           optionalCell(row, columns, "EAN"),
+				Refforn:       optionalCell(row, columns, "REFFORN"),
+				Marca:         optionalCell(row, columns, "MARCA"),
+				NCM:           optionalCell(row, columns, "NCM"),
+				Grupo:         optionalCell(row, columns, "GRUPO"),
+				DescrGrupo:    optionalCell(row, columns, "DESCRGRUPO"),
+			}
+			// Category from sheet name (lenient path only): only when the sheet
+			// has no explicit group column, so files that DO carry group columns
+			// keep their honest per-row values (empty cell stays nil, ADR-17).
+			if sheetNameAsCategory && !hasDescrGrupo {
+				category := sheetName
+				normalized.DescrGrupo = &category
+			}
+			result = append(result, normalized)
+		}
 	}
 
-	result := make([]domain.NormalizedRow, 0, len(rows)-1)
-	for _, row := range rows[1:] {
-		result = append(result, domain.NormalizedRow{
-			Codprod:       columnCell(row, columns, "CODPROD"),
-			Descrprod:     columnCell(row, columns, "DESCRPROD"),
-			Custo:         domain.Decimal(columnCell(row, columns, "CUSTO")),
-			StockPhysical: columnCell(row, columns, "ESTOQUE_FISICO"),
-			StockReserved: optionalCell(row, columns, "ESTOQUE_RESERVADO"),
-			EAN:           optionalCell(row, columns, "EAN"),
-			Refforn:       optionalCell(row, columns, "REFFORN"),
-			Marca:         optionalCell(row, columns, "MARCA"),
-			NCM:           optionalCell(row, columns, "NCM"),
-			Grupo:         optionalCell(row, columns, "GRUPO"),
-			DescrGrupo:    optionalCell(row, columns, "DESCRGRUPO"),
-		})
+	if len(result) == 0 {
+		return nil, nil, invalidFileError()
 	}
-	return result, nil
+	return result, fileIssues, nil
+}
+
+// detectHeader returns the index of the first row that carries both identity
+// columns (CODPROD and DESCRPROD, English or Portuguese Sankhya aliases) along
+// with that row's canonical column map. Rows above it (title / emission
+// preamble) are ignored. Returns -1 when no such row exists.
+func detectHeader(rows [][]string) (int, map[string][]int) {
+	for index, row := range rows {
+		columns := buildColumns(row)
+		_, hasCodprod := columns[canonicalHeaderKey("CODPROD")]
+		_, hasDescrprod := columns[canonicalHeaderKey("DESCRPROD")]
+		if hasCodprod && hasDescrprod {
+			return index, columns
+		}
+	}
+	return -1, nil
+}
+
+// buildColumns maps each canonical column key to the header indices carrying it.
+// A key can map to several indices (the raw export ships two "Marca" columns);
+// readers take the first non-empty. Unrecognized headers are ignored.
+func buildColumns(header []string) map[string][]int {
+	columns := make(map[string][]int, len(header))
+	for index, headerCell := range header {
+		key := canonicalHeaderKey(headerCell)
+		if key == "" {
+			continue
+		}
+		columns[key] = append(columns[key], index)
+	}
+	return columns
+}
+
+// canonicalHeaderKey folds a raw header label to a canonical column key,
+// resolving both the English strict-path headers and the Portuguese Sankhya
+// raw-export aliases to the same key. Unknown headers fold to "" (ignored).
+func canonicalHeaderKey(raw string) string {
+	switch normalizeHeader(raw) {
+	case "codprod", "codigo":
+		return "codprod"
+	case "descrprod", "descricao":
+		return "descrprod"
+	case "custo":
+		return "custo"
+	case "estoque_fisico":
+		return "estoque_fisico"
+	case "estoque_reservado":
+		return "estoque_reservado"
+	case "ean", "codigo de barra", "codigo de barras":
+		return "ean"
+	case "refforn", "referencia do fornecedor":
+		return "refforn"
+	case "marca":
+		return "marca"
+	case "ncm":
+		return "ncm"
+	case "grupo":
+		return "grupo"
+	case "descrgrupo":
+		return "descrgrupo"
+	default:
+		return ""
+	}
+}
+
+// sheetSkippedIssue records a skipped sheet as a WARNING. It reuses the
+// MISSING_REQUIRED_COLUMN code (truthful: the sheet lacks the required identity
+// header) with column set to the sheet name, so persistence stays within the
+// existing erp_import_issues code CHECK — a dedicated SHEET_SKIPPED code would
+// need a migration (hub-owned) and the skipped-sheet path must never hard-fail
+// the import, not even at the DB constraint.
+func sheetSkippedIssue(sheetName, detail string) domain.Issue {
+	column := sheetName
+	value := sheetName
+	return domain.Issue{
+		Row:            0,
+		Column:         &column,
+		Kind:           domain.Warning,
+		Code:           domain.CodeMissingRequiredColumn,
+		Detail:         detail,
+		OffendingValue: &value,
+	}
 }
 
 func normalizeHeader(value string) string {
@@ -143,28 +259,30 @@ func cell(row []string, index int) string {
 	return row[index]
 }
 
-// columnCell reads a column that may be entirely absent from the header row
-// (the lenient path). When present it behaves exactly like the direct
-// columns[...] lookup the strict path used to perform inline, since required
-// columns are guaranteed present by the caller's required-column check above.
-func columnCell(row []string, columns map[string]int, name string) string {
-	index, ok := columns[normalizeHeader(name)]
-	if !ok {
-		return ""
+// columnCell returns the first non-empty cell among the header indices mapped to
+// a column (raw value preserved untrimmed — validation owns trimming). Required
+// columns are guaranteed present by the caller's required-column check; an
+// absent or all-empty column yields "".
+func columnCell(row []string, columns map[string][]int, name string) string {
+	for _, index := range columns[canonicalHeaderKey(name)] {
+		if strings.TrimSpace(cell(row, index)) != "" {
+			return cell(row, index)
+		}
 	}
-	return cell(row, index)
+	return ""
 }
 
-func optionalCell(row []string, columns map[string]int, name string) *string {
-	index, ok := columns[normalizeHeader(name)]
-	if !ok {
-		return nil
+// optionalCell returns a pointer to the first non-empty cell among a column's
+// header indices ("first non-empty wins" across the raw export's twin Marca
+// columns), or nil when the column is absent or every mapped cell is empty.
+func optionalCell(row []string, columns map[string][]int, name string) *string {
+	for _, index := range columns[canonicalHeaderKey(name)] {
+		value := cell(row, index)
+		if strings.TrimSpace(value) != "" {
+			return &value
+		}
 	}
-	value := cell(row, index)
-	if strings.TrimSpace(value) == "" {
-		return nil
-	}
-	return &value
+	return nil
 }
 
 func invalidFileError() *ports.FileError {

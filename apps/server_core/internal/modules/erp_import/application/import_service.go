@@ -71,7 +71,7 @@ func (s *ImportService) runImport(
 	ctx context.Context,
 	source io.Reader,
 	importSource domain.ImportSource,
-	parse func(context.Context, io.Reader) ([]domain.NormalizedRow, error),
+	parse func(context.Context, io.Reader) ([]domain.NormalizedRow, []domain.Issue, error),
 	validate func([]domain.NormalizedRow) ([]domain.NormalizedRow, []domain.Issue, int),
 ) (domain.ImportReport, error) {
 	buf, err := io.ReadAll(source)
@@ -81,7 +81,7 @@ func (s *ImportService) runImport(
 
 	digest := sha256.Sum256(buf)
 	fileSHA256 := domain.FileSHA256(hex.EncodeToString(digest[:]))
-	rows, err := parse(ctx, bytes.NewReader(buf))
+	rows, fileIssues, err := parse(ctx, bytes.NewReader(buf))
 	if err != nil {
 		var fileErr *ports.FileError
 		if errors.As(err, &fileErr) {
@@ -90,7 +90,9 @@ func (s *ImportService) runImport(
 		return domain.ImportReport{}, fmt.Errorf("parse ERP import: %w", err)
 	}
 
-	accepted, issues, _ := validate(rows)
+	accepted, rowIssues, _ := validate(rows)
+	// File-level parse issues (e.g. a skipped worksheet) lead the per-row issues.
+	issues := append(fileIssues, rowIssues...)
 	status := domain.ImportStatusCompleted
 	if len(accepted) == 0 {
 		status = domain.ImportStatusRejected

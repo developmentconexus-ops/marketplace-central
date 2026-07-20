@@ -354,6 +354,17 @@ paths:
             minimum: 1
             maximum: 100
             default: 50
+        - name: erp_source
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [xlsx, catalogo_cliente]
+          description: >-
+            Selects the imported dataset the reader serves — xlsx (Sankhya ERP,
+            the default when omitted) or catalogo_cliente (client catalog import).
+            An unknown value is rejected with 400; omitting it is byte-stable with
+            pre-toggle clients.
         - name: Cache-Control
           in: header
           required: false
@@ -427,6 +438,17 @@ paths:
             minimum: 1
             maximum: 50
             default: 50
+        - name: erp_source
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [xlsx, catalogo_cliente]
+          description: >-
+            Selects the imported dataset the reader serves — xlsx (Sankhya ERP,
+            the default when omitted) or catalogo_cliente (client catalog import).
+            An unknown value is rejected with 400; omitting it is byte-stable with
+            pre-toggle clients.
         - name: Cache-Control
           in: header
           required: false
@@ -2865,6 +2887,18 @@ paths:
     post:
       summary: Run an on-demand price-intel collection for one product
       operationId: collectMarketPriceIntel
+      parameters:
+        - name: erp_source
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [xlsx, catalogo_cliente]
+          description: >-
+            Selects the imported dataset that resolves the codprod's local
+            identity — xlsx (Sankhya ERP, the default when omitted) or
+            catalogo_cliente (client catalog import). An unknown value is
+            rejected with 400; omitting it is byte-stable with pre-toggle clients.
       requestBody:
         required: true
         content:
@@ -2878,6 +2912,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MarketCollectionResponse'
+        "400":
+          description: Missing codprod or an unknown erp_source value
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         "404":
           description: codprod has no local identity row (PRODUCT_NOT_FOUND)
           content:
@@ -3056,6 +3096,14 @@ paths:
                 file:
                   type: string
                   format: binary
+                source:
+                  type: string
+                  description: >-
+                    Import path selector. "catalogo_cliente" runs the lenient
+                    client-catalog path (CUSTO/ESTOQUE_FISICO may be absent and
+                    stay honest-unknown); "xlsx" (default) runs the strict
+                    Sankhya cost+stock path that rejects missing required columns.
+                  enum: [xlsx, catalogo_cliente]
       responses:
         "201":
           description: ERP import created
@@ -7804,7 +7852,7 @@ components:
           type: string
         source:
           type: string
-          enum: [xlsx]
+          enum: [xlsx, catalogo_cliente]
         imported_at:
           type: string
           format: date-time
@@ -7820,7 +7868,7 @@ components:
 
     ErpImportIssueCode:
       type: string
-      enum: [EMPTY_CODPROD, DUPLICATE_CODPROD, EMPTY_DESCRPROD, INVALID_CUSTO, INVALID_ESTOQUE, INVALID_EAN, INVALID_NCM]
+      enum: [EMPTY_CODPROD, DUPLICATE_CODPROD, EMPTY_DESCRPROD, INVALID_CUSTO, INVALID_ESTOQUE, INVALID_EAN, INVALID_NCM, MISSING_CUSTO, MISSING_ESTOQUE, MISSING_REQUIRED_COLUMN]
 
     ErpImportIssue:
       type: object

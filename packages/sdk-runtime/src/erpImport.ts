@@ -7,7 +7,18 @@ export type ErpImportIssueCode =
   | "INVALID_CUSTO"
   | "INVALID_ESTOQUE"
   | "INVALID_EAN"
-  | "INVALID_NCM";
+  | "INVALID_NCM"
+  | "MISSING_CUSTO"
+  | "MISSING_ESTOQUE"
+  | "MISSING_REQUIRED_COLUMN";
+
+/**
+ * Import path selector sent as the multipart `source` field.
+ * - "catalogo_cliente" → lenient client-catalog path (CUSTO/ESTOQUE_FISICO may
+ *   be absent and stay honest-unknown, ADR-17).
+ * - "xlsx" → strict Sankhya cost+stock path (rejects missing required columns).
+ */
+export type ErpImportSourceInput = "xlsx" | "catalogo_cliente";
 
 export interface ErpImportIssue {
   row: number;
@@ -21,7 +32,7 @@ export interface ErpImportSummary {
   import_id: string;
   protocol: string;
   file_sha256: string;
-  source: "xlsx";
+  source: ErpImportSourceInput;
   imported_at: string;
   status: ErpImportStatus;
   accepted_count: number;

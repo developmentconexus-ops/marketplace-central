@@ -74,7 +74,7 @@ describe("ERP import SDK contract", () => {
     expect(summary).toContain("file_sha256:");
     expect(summary).toContain("source:");
     expect(summary).not.toContain("filename:");
-    expect(issueCodeSchema).toContain("enum: [EMPTY_CODPROD, DUPLICATE_CODPROD, EMPTY_DESCRPROD, INVALID_CUSTO, INVALID_ESTOQUE, INVALID_EAN, INVALID_NCM]");
+    expect(issueCodeSchema).toContain("enum: [EMPTY_CODPROD, DUPLICATE_CODPROD, EMPTY_DESCRPROD, INVALID_CUSTO, INVALID_ESTOQUE, INVALID_EAN, INVALID_NCM, MISSING_CUSTO, MISSING_ESTOQUE, MISSING_REQUIRED_COLUMN]");
     expect(error).toContain("enum: [invalid_file, missing_required_column, import_not_found, internal_error]");
     expect(error).not.toContain("$ref: '#/components/schemas/ErrorResponse'");
     expect(issue).toContain("required: [row, code, detail]");

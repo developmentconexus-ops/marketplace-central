@@ -17,19 +17,20 @@ import (
 )
 
 type fakeParser struct {
-	rows  []domain.NormalizedRow
-	err   error
-	input []byte
+	rows       []domain.NormalizedRow
+	fileIssues []domain.Issue
+	err        error
+	input      []byte
 }
 
-func (p *fakeParser) Parse(_ context.Context, source io.Reader) ([]domain.NormalizedRow, error) {
+func (p *fakeParser) Parse(_ context.Context, source io.Reader) ([]domain.NormalizedRow, []domain.Issue, error) {
 	p.input, _ = io.ReadAll(source)
-	return p.rows, p.err
+	return p.rows, p.fileIssues, p.err
 }
 
-func (p *fakeParser) ParseLenient(_ context.Context, source io.Reader) ([]domain.NormalizedRow, error) {
+func (p *fakeParser) ParseLenient(_ context.Context, source io.Reader) ([]domain.NormalizedRow, []domain.Issue, error) {
 	p.input, _ = io.ReadAll(source)
-	return p.rows, p.err
+	return p.rows, p.fileIssues, p.err
 }
 
 type fakeImportRepository struct {

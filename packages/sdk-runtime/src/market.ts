@@ -31,6 +31,10 @@ export interface MarketPriceIntelCollectionRequest {
   codprod: string;
 }
 
+// Active ERP snapshot selector for collection identity resolution. Declared
+// locally (D-F4-o) rather than imported from ./index.ts.
+export type MarketPriceIntelErpSource = "xlsx" | "catalogo_cliente";
+
 export type MarketPriceIntelMatchStatus = "ACCEPT" | "REVIEW" | "REJECT" | "NO_CANDIDATE";
 export type MarketPriceIntelPriceEvidenceStatus = "OK" | "INSUFFICIENT_MARKET" | "NO_PRICE_EVIDENCE";
 export type MarketPriceIntelBlockingState =
@@ -169,9 +173,13 @@ export function createMarketPriceIntelClient(options: {
 
   return {
     // Single-product synchronous collection (D-F4-p): no batch POST.
-    collectMarketPriceIntel: (codprod: string) => {
+    // erpSource selects which imported snapshot resolves the codprod identity
+    // (D-F4-o keeps this file independent of ./index.ts, so the source union is
+    // declared locally). Absent = backend default (xlsx), URL byte-stable.
+    collectMarketPriceIntel: (codprod: string, erpSource?: MarketPriceIntelErpSource) => {
       const body: MarketPriceIntelCollectionRequest = { codprod };
-      return postJson<MarketPriceIntelCollectionResponse>("/market/collections", body);
+      const query = erpSource ? `?erp_source=${encodeURIComponent(erpSource)}` : "";
+      return postJson<MarketPriceIntelCollectionResponse>(`/market/collections${query}`, body);
     },
     listMarketSignals: (listingIds: string[]) => {
       return getJson<MarketPriceIntelSignal[]>(`/market/signals${idsQuery("listing_ids", listingIds)}`);

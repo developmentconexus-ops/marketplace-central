@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	erpinternalread "marketplace-central/apps/server_core/internal/modules/erp_import/adapters/internalread"
 	"marketplace-central/apps/server_core/internal/modules/market/application"
 	"marketplace-central/apps/server_core/internal/modules/market/domain"
 	"marketplace-central/apps/server_core/internal/modules/market/ports"
@@ -23,7 +24,19 @@ func (h Handler) handleCollect(w http.ResponseWriter, r *http.Request) {
 		writeMarketQueryError(w, err)
 		return
 	}
-	summary, err := h.collections.Collect(r.Context(), req.Codprod)
+	// erp_source selects the imported snapshot that resolves the codprod identity
+	// (the product-identity reader shares the two-source reader). Absent = default
+	// (xlsx), so this stays byte-stable for prior clients; unknown = 400.
+	ctx := r.Context()
+	source, present, srcErr := erpinternalread.ParseActiveSource(r.URL.Query().Get("erp_source"))
+	if srcErr != nil {
+		writeMarketQueryError(w, &InvalidFilterError{Key: "erp_source"})
+		return
+	}
+	if present {
+		ctx = erpinternalread.WithActiveSource(ctx, source)
+	}
+	summary, err := h.collections.Collect(ctx, req.Codprod)
 	if err != nil {
 		writeCollectionError(w, err)
 		return
