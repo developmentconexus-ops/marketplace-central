@@ -72,6 +72,8 @@ The cold P6 gate caught real drift: `enrichedOrderDTO` (http_handler.go:478) ano
 
 ## 5. P6 dual gate (chip-side; final SHA 9ff1871d)
 
+**P6-DUAL-GATE: AGREEMENT** (chip-side — cold `harness:gate-reviewer` Opus + adversarial `general-purpose` sonnet refuter, agreement required and reached). *The AUTHORITATIVE mission-ledger P6-DUAL-GATE stamp is reserved to the hub (seam owner) at merge; this line records the chip-side reviewer verdict only.*
+
 Two independent reviewers over the **whole orders module surface** (not just the diff).
 
 **Cold gate** — `harness:gate-reviewer`, Opus, physically read-only:
