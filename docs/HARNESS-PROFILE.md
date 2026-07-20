@@ -18,8 +18,10 @@ now-retired file as it stood at ratification time).
 - Go backend (`apps/server_core`, Go workspaces) + React/TypeScript frontend (`apps/web`),
   npm monorepo.
 - OS/shell binding: Windows; **PowerShell for all stack ops — never bash, never WSL**.
-- Default branch: `master`. Hub checkout must be on `master` before every hub commit
-  (field gotcha: chip launch can switch the hub's working dir onto the scaffold branch).
+- Default branch: `main` (origin/HEAD → origin/main; no `master` ref exists — corrected
+  2026-07-20, D-120). Hub checkout must be on `main` before every hub commit (field gotcha:
+  chip launch or a nested worktree holding `main` can leave the primary dir on detached HEAD —
+  verify `git branch --show-current` == `main`, not just non-detached).
 - Contract-first: OpenAPI spec + generated SDK (`packages/sdk-runtime`).
 
 ## 2. Verification ladder bindings (core §5)
@@ -368,4 +370,5 @@ retroactive GPT-5.6 Sol medium review at mission closeout (operator's call).
 2026-07-18 · (upstream) · ratified · efficiency amendments landed in mnfs-harness 15001de (harness 0.3.1), re-vendored to docs/: REVIEW §8 targeted refuter, REVIEW §9 dual-gate delta re-verdict (D-34 field), CORE §4.1 seam-closure checklist + CORE §2(g) pre-authorized seam grants (M-04 D-29/D-32/D-35 field), CORE §5 selective re-verify PILOT (MIS-004 = pilot mission); operator-ratified 2026-07-18; plugin cache synced 0.3.1
 2026-07-18 · (upstream) · ratified · hub support crew landed in mnfs-harness c0fd334 (harness 0.3.2), CORE §1 + harness-hub skill, re-vendored to docs/: fixed cheap-subagent crew hub-ops (ladder/stack/governance/housekeeping) + hub-scribe (files hub-authored ledger/status/commits) + hub-analyst (read-only evidence checks); judgment (rulings, event replies, acceptance, collision calls) never delegated; crew never pushes/merges/authors doctrine; operator-ratified 2026-07-18; plugin cache synced 0.3.2
 2026-07-18 · (upstream) · ratified · Opus adversarial-gate remediation landed in mnfs-harness 8fa7ad8 (harness 0.3.3), re-vendored to docs/: crew ships as plugin agent definitions harness/agents/hub-{ops,scribe,analyst}.md (spawn via Agent tool, persistent via SendMessage, mandatory respawn at milestone boundary); CORE §2(g) grant does not waive §3 collision test; CORE §5 PILOT spot-check risk-weighted (integrity-critical/live-integration first, rotating); REVIEW §9 delta re-verdict = declared bounded exception to §8/§13 cold mandate (round-1 gates stay cold); REVIEW §8 refuter may escalate to general breadth on thin first-family pass (must say so); scribe fail-closed branch-guard; analyst base-SHA statement; worker SKILL pin 10 (grants bind as written, P5 follows §5 PILOT). Gate verdict PASS-WITH-CONDITIONS, all 12 findings remediated; plugin cache synced 0.3.3
+2026-07-20 · §1 · ratified · default branch corrected `master`→`main` (operator directive D-120: "be on default main"). No `master` ref ever existed (origin/HEAD → origin/main); the stale `master` binding masked a detached-HEAD boot anomaly where nested worktree `hub-erp-main` held `main` while the primary dir sat detached. Consolidated: freed `main` (detached hub-erp-main HEAD), checked out `main` in primary; hub-erp-main dir cleanup deferred (Windows "Function not implemented" on node_modules junction / .gomodcache read-only — `git worktree prune` after stack re-point)
 ```
