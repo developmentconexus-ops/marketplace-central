@@ -4,9 +4,10 @@
 id: M-02
 type: milestone
 mission: MIS-006
-status: draft
+status: done   # merged main @49ab3bdd (D-120); dual-gate AGREEMENT + spot-check 7/7 + P7 dev-stack live-drive GREEN @b70fe1b8
 depends_on: [M-01]   # SÓ o seam composition/root.go (additive-lock, bloco de tickers) — resto independente
 base_sha: 138aac3d
+merged_sha: 49ab3bdd
 validation_level: QA-0
 ```
 

@@ -3,6 +3,12 @@
 chip: local_014342cc · branch `claude/m02-mirror-port-active-source` · REBASED onto main @97e27859 (M-01 sync-state @18df2f44 + baseline-fix aggregate_sync_read arity). Original base 078caf12; rebase resolved 1 root.go import-hunk conflict ADDITIVE-KEEP-BOTH (M-01 synccomposition import + ticker line :583 kept alongside M-02 source-wiring :449-452) and bumped migration-count fixture 63→64 (0075 set 63, 0076 makes 64). Post-rebase build+affected-test GREEN.
 Codex quota-wall (reset 2026-07-25) → workers = Claude sonnet fallback (core §1), dispatched SYNC. Gate crews = 2 independent Claude cold passes (Sol-waiver, disclosed below).
 
+> **HUB RECONCILIATION (D-120, appended at accept).** This EVIDENCE.md is the 4f1bff70-generation copy (base 97e27859), so the body text above/below that says "F2 RE-CONFIRMED red" / "rebased @97e27859" is one rebase-generation stale. Corrections of record:
+> - **F2 (pricing NewBatchOrchestrator arity) is RESOLVED** on main @8de7f49e (hub baseline-hygiene commit; verified 70 unit tests + full `go test ./...` green). It is NOT red on the merged tree.
+> - **Merged**: hub merged 4f1bff70 --no-ff → main **@49ab3bdd** (over 8de7f49e, which already carried the F2 fix + M-01 done/F1 docs). Merged tree is a **superset** of the chip's later 74a30383 (8de7f49e-based) rebase — M-02 code is byte-equivalent; 74a30383 was not merged (redundant).
+> - **Acceptance**: hub read-only spot-check 7/7 PASS; base full ladder + `harness:integration` green pre-merge; post-merge P7 dev-stack live-drive GREEN @b70fe1b8 (vitest 75/75 after the 400-window test fix; lane count=64; 0076 `\d` honest-NULL money cols + CHECK enums + tenant_default seed; live GET→200 xlsx/upload_snapshot, PUT invalid→400 invalid_active_source, PUT sankhya→200 live_read_through).
+> - Non-blocking: `set_by` empty on PUT when no actor header is sent (awareness, not a contract defect).
+
 ## Deliverables (write-set)
 | File | Kind | Slice |
 |---|---|---|
