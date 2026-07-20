@@ -1421,6 +1421,7 @@ export interface BatchSimulationItem {
   margin_amount: number;
   margin_percent: number;
   status: string;
+  commission_source: string;
   freight_source: string;
 }
 

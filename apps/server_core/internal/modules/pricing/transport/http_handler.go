@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"marketplace-central/apps/server_core/internal/modules/pricing/application"
+	"marketplace-central/apps/server_core/internal/modules/pricing/domain"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 )
 
@@ -164,6 +165,7 @@ func (h Handler) handleBatch(w http.ResponseWriter, r *http.Request) {
 		DestCEP:        req.DestinationCEP,
 		PriceSource:    req.PriceSource,
 		PriceOverrides: req.PriceOverrides,
+		Modalidade:     domain.ModalidadeClassico,
 	})
 	if err != nil {
 		status, code := mapPricingError(err.Error())
