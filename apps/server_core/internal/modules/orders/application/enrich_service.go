@@ -3,12 +3,21 @@ package application
 import (
 	"context"
 	"log/slog"
+	"strconv"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 
 	connectorsdomain "marketplace-central/apps/server_core/internal/modules/connectors/domain"
 	"marketplace-central/apps/server_core/internal/modules/orders/domain"
 	"marketplace-central/apps/server_core/internal/modules/orders/ports"
 )
+
+// shipmentConcurrency bounds how many per-order shipment lookups (a live
+// network GET each) run in parallel during Enrich. Bounded, not unbounded,
+// so a large list page cannot fan out into an unbounded burst against the
+// provider.
+const shipmentConcurrency = 8
 
 // ItemCost is the per-item ERP unit cost resolved for a single order item.
 // UnitCost is nil when the cost could not be honestly resolved (ADR-17:
@@ -106,16 +115,29 @@ func NewEnrichServiceWithReaders(cost ports.CostReader, shipment ports.ShipmentR
 // list page (FINDING-M08-LIST-TIMEOUT). Every EnrichedOrder here carries a nil
 // BuyerFiscal; use EnrichOne on the detail path to resolve it.
 func (s EnrichService) Enrich(ctx context.Context, installationID string, orders []domain.OrderReadModel) []EnrichedOrder {
+	shipments := make([]*ShipmentEnrichment, len(orders))
+	var g errgroup.Group
+	g.SetLimit(shipmentConcurrency)
+	for index, order := range orders {
+		i, order := index, order
+		g.Go(func() error {
+			shipments[i] = s.fetchShipment(ctx, installationID, order)
+			return nil
+		})
+	}
+	_ = g.Wait()
+
 	enriched := make([]EnrichedOrder, 0, len(orders))
-	for _, order := range orders {
+	for i, order := range orders {
 		var nickname string
 		if order.BuyerNickname != nil {
 			nickname = *order.BuyerNickname
 		}
 		itemCosts, unknown := s.resolveItemCosts(ctx, order)
 		buyer := domain.MaskBuyer(nickname)
-		shipmentInfo := s.resolveShipment(ctx, installationID, order, &buyer)
-		profitability := s.resolveProfitability(ctx, order)
+		shipmentInfo := shipments[i]
+		applyShipmentToBuyer(shipmentInfo, &buyer)
+		profitability := s.resolveProfitability(ctx, order, itemCosts, shipmentInfo)
 		enriched = append(enriched, EnrichedOrder{
 			Order:                    order,
 			Buyer:                    buyer,
@@ -141,14 +163,15 @@ func (s EnrichService) EnrichOne(ctx context.Context, installationID string, ord
 	return enriched
 }
 
-// resolveShipment looks up the order's shipment via ShipmentReader and, when
-// found, fills buyer.UF from the shipment's honest DestinationUF. It never
+// fetchShipment looks up the order's shipment via ShipmentReader. It never
 // fabricates a value: an empty ShippingID skips the reader entirely (not an
 // error), and a reader error degrades to a nil ShipmentEnrichment plus a
 // structured warn — the order itself is still returned. A nil ShipmentReader
 // (real adapter not wired yet) is honest-unknown too: the lookup is skipped
-// exactly as an empty ShippingID would be, never a panic.
-func (s EnrichService) resolveShipment(ctx context.Context, installationID string, order domain.OrderReadModel, buyer *domain.MaskedBuyer) *ShipmentEnrichment {
+// exactly as an empty ShippingID would be, never a panic. It is pure: it never
+// mutates a buyer — see applyShipmentToBuyer — so it is safe to call
+// concurrently across orders as long as each call writes only its own result.
+func (s EnrichService) fetchShipment(ctx context.Context, installationID string, order domain.OrderReadModel) *ShipmentEnrichment {
 	if s.shipment == nil || order.ShippingID == "" {
 		return nil
 	}
@@ -161,14 +184,6 @@ func (s EnrichService) resolveShipment(ctx context.Context, installationID strin
 			"error", err,
 		)
 		return nil
-	}
-	if info.DestinationUF != nil {
-		uf := *info.DestinationUF
-		buyer.UF = &uf
-	}
-	if info.DestinationCity != nil {
-		city := *info.DestinationCity
-		buyer.City = &city
 	}
 	return &ShipmentEnrichment{
 		ShipmentID:      info.ID,
@@ -183,6 +198,23 @@ func (s EnrichService) resolveShipment(ctx context.Context, installationID strin
 		CarrierName:     info.CarrierName,
 		TrackingURL:     info.TrackingURL,
 		Costs:           info.Costs,
+	}
+}
+
+// applyShipmentToBuyer fills buyer.UF/City from the shipment's honest
+// DestinationUF/DestinationCity when present. A nil info leaves buyer
+// untouched (honest absence, never fabricated).
+func applyShipmentToBuyer(info *ShipmentEnrichment, buyer *domain.MaskedBuyer) {
+	if info == nil {
+		return
+	}
+	if info.DestinationUF != nil {
+		uf := *info.DestinationUF
+		buyer.UF = &uf
+	}
+	if info.DestinationCity != nil {
+		city := *info.DestinationCity
+		buyer.City = &city
 	}
 }
 
@@ -215,21 +247,79 @@ func (s EnrichService) resolveBuyerFiscal(ctx context.Context, installationID st
 }
 
 // resolveProfitability looks up the order's decomposição/DIFAL/retorno via
-// Decomposer. A nil Decomposer (real adapter not wired yet — C1) or a
-// not-ok result both degrade to domain.UnknownOrderProfitability(), the
-// honest-empty value (ADR-17: unknown != zero, never fabricated) — never a
-// panic. C1 does not populate Difal.UFRoute from destino: a route needs
-// both origin (seller UF, a tenant/engine fact not on the orders base) and
-// destino, so a decomposer-less path leaves UFRoute nil for C2 (which has
-// the engine's tenant origin) to fill.
-func (s EnrichService) resolveProfitability(ctx context.Context, order domain.OrderReadModel) domain.OrderProfitability {
-	if s.decomposer == nil {
-		return domain.UnknownOrderProfitability()
+// Decomposer when one is wired. When it is nil (real pricing-engine adapter
+// not wired yet), it falls back to domain.BuildProfitability assembled from
+// the real facts already resolved in this same enrich pass (comissão from
+// the order's own item sale fees, custo from the ERP unit costs, frete from
+// the shipment's sender cost) — taxa_fixa/difal/tarifa_full/imposto stay
+// honest-unknown until an engine is wired (ADR-17: unknown != zero, never
+// fabricated). C1 does not populate Difal.UFRoute from destino: a route
+// needs both origin (seller UF, a tenant/engine fact not on the orders base)
+// and destino, so a decomposer-less path leaves UFRoute nil for a future
+// slice (which has the engine's tenant origin) to fill.
+func (s EnrichService) resolveProfitability(ctx context.Context, order domain.OrderReadModel, itemCosts []ItemCost, shipment *ShipmentEnrichment) domain.OrderProfitability {
+	if s.decomposer != nil {
+		if p, ok := s.decomposer.Decompose(ctx, order); ok {
+			return p
+		}
 	}
-	if p, ok := s.decomposer.Decompose(ctx, order); ok {
-		return p
+	return domain.BuildProfitability(domain.ProfitabilityInputs{
+		Total:    order.Total,
+		Comissao: sumSaleFee(order.Items),
+		Custo:    sumItemCosts(itemCosts, order.Items),
+		Frete:    senderFreight(shipment),
+		Imposto:  nil, // not persisted on the order today — honest unknown (ADR-17); do NOT compute
+	})
+}
+
+// sumSaleFee sums the order's per-line SaleFeeAmount (already the per-line
+// fee, not per-unit — the connector mapper stores it raw without ×qty) into
+// the order comissão. Any nil-fee line or an empty item list makes the whole
+// sum honest-unknown (ADR-17: never a partial fabricated total).
+func sumSaleFee(items []domain.MarketplaceOrderItem) *float64 {
+	if len(items) == 0 {
+		return nil
 	}
-	return domain.UnknownOrderProfitability()
+	var sum float64
+	for _, item := range items {
+		if item.SaleFeeAmount == nil {
+			return nil
+		}
+		sum += *item.SaleFeeAmount
+	}
+	return &sum
+}
+
+// sumItemCosts sums the ERP per-unit cost (positionally zipped with items via
+// itemCosts, built in the same order) × quantity into the order custo. Any
+// unresolved unit cost or an empty item list makes the whole sum
+// honest-unknown (ADR-17: never a partial fabricated total).
+func sumItemCosts(itemCosts []ItemCost, items []domain.MarketplaceOrderItem) *float64 {
+	if len(items) == 0 {
+		return nil
+	}
+	var sum float64
+	for i := range items {
+		if i >= len(itemCosts) || itemCosts[i].UnitCost == nil {
+			return nil
+		}
+		sum += *itemCosts[i].UnitCost * float64(items[i].Quantity)
+	}
+	return &sum
+}
+
+// senderFreight extracts the seller's actual freight cost — the shipment's
+// SenderCost — as the order frete. Any missing shipment/costs/sender-cost or
+// an unparseable amount is honest-unknown (ADR-17), never a fabricated 0.
+func senderFreight(info *ShipmentEnrichment) *float64 {
+	if info == nil || info.Costs == nil || info.Costs.SenderCost == nil {
+		return nil
+	}
+	v, err := strconv.ParseFloat(info.Costs.SenderCost.Amount, 64)
+	if err != nil {
+		return nil
+	}
+	return &v
 }
 
 // resolveItemCosts looks up the per-unit ERP cost for every item on order.

@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type { OrderPage, OrderRead } from "@marketplace-central/sdk-runtime";
 import { EmptyState, ErrorState, LoadingState } from "@marketplace-central/ui";
 import { ordersQueryKeys, QUERY_STALE_TIME } from "@marketplace-central/web-query";
@@ -128,6 +128,15 @@ export function PedidosPage() {
     staleTime: QUERY_STALE_TIME.orders,
   });
 
+  // "Atualizar" re-runs the existing /orders/import (a READ from Mercado Livre into our DB — never
+  // an ML write), then refetches the list so new/changed orders appear. No new endpoint; the button
+  // owns only the loading state and an honest failure line.
+  const importMutation = useMutation({
+    mutationFn: () => client.importMarketplaceOrders({ installation_id: installationId }),
+    onSuccess: () => ordersQuery.refetch(),
+  });
+  const isRefreshing = importMutation.isPending || ordersQuery.isFetching;
+
   const allItems: OrderRead[] = ordersQuery.data?.items ?? [];
 
   // KPI counts derive from the fully-loaded list's per-order bucket (same source as the Lista
@@ -200,10 +209,24 @@ export function PedidosPage() {
             DIFAL: {difalResumo}
           </button>
         ) : null}
+        <button
+          type="button"
+          onClick={() => importMutation.mutate()}
+          disabled={isRefreshing}
+          aria-busy={isRefreshing}
+          className="ml-auto whitespace-nowrap rounded-pill border border-accent px-3 py-1 text-[12.5px] font-semibold text-accent-ink transition-colors hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {isRefreshing ? "Atualizando…" : "Atualizar"}
+        </button>
+        {importMutation.isError ? (
+          <small role="alert" className="text-[11.5px] text-warn">
+            Falha ao atualizar pedidos.
+          </small>
+        ) : null}
         <div
           role="tablist"
           aria-label="Alternar visualização de pedidos"
-          className="ml-auto inline-flex overflow-hidden rounded-[9px] border border-border text-[12.5px]"
+          className="inline-flex overflow-hidden rounded-[9px] border border-border text-[12.5px]"
         >
           {viewOptions.map((option) => (
             <button
