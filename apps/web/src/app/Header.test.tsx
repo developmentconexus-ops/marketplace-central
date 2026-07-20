@@ -50,25 +50,23 @@ describe("Header", () => {
     expect(renderedLabels).toEqual(labels);
   });
 
-  it("keeps Mercado and Repasses visible but non-navigable", () => {
+  it("keeps Repasses visible but non-navigable", () => {
     renderHeader();
 
     const navigation = screen.getByRole("navigation");
-    for (const label of ["Mercado", "Repasses"]) {
-      const pill = Array.from(navigation.children).find((el) =>
-        el.textContent?.includes(label),
-      ) as HTMLElement | undefined;
-      expect(pill).toBeDefined();
-      expect(pill!.tagName).toBe("SPAN"); // a disabled stub, never an <a> link
-      expect(pill!.querySelector("a")).toBeNull();
-      expect(within(pill!).getByText("em breve")).toBeInTheDocument();
-    }
+    const pill = Array.from(navigation.children).find((el) =>
+      el.textContent?.includes("Repasses"),
+    ) as HTMLElement | undefined;
+    expect(pill).toBeDefined();
+    expect(pill!.tagName).toBe("SPAN"); // a disabled stub, never an <a> link
+    expect(pill!.querySelector("a")).toBeNull();
+    expect(within(pill!).getByText("em breve")).toBeInTheDocument();
   });
 
   it("renders enabled pills as links", () => {
     renderHeader();
 
-    for (const label of ["Visão geral", "Anúncios", "Simulador", "Pedidos"]) {
+    for (const label of ["Visão geral", "Anúncios", "Mercado", "Simulador", "Pedidos"]) {
       expect(screen.getByRole("link", { name: label })).toBeInTheDocument();
     }
   });
