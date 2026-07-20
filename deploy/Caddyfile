@@ -1,0 +1,25 @@
+# TLS edge + API/SPA routing. Mirrors the dev proxy table in apps/web/vite.config.ts —
+# keep both in sync when a new backend route prefix appears.
+# /catalog and /orders collide with SPA hard-navs: browser requests (Accept: text/html)
+# must get index.html from the SPA; JSON/XHR goes to the backend.
+
+{$MPC_DOMAIN} {
+	encode zstd gzip
+
+	@catalog_api {
+		path /catalog /catalog/*
+		not header Accept *text/html*
+	}
+	@orders_api {
+		path /orders /orders/*
+		not header Accept *text/html*
+	}
+	@api {
+		path /classifications* /connectors* /healthz /integrations/auth* /integrations/installations* /integrations/providers* /inventory/stock-actions* /inventory/stock-risks* /marketplaces/accounts* /marketplaces/definitions* /marketplaces/fee-schedules* /marketplaces/policies* /pricing* /product-links/link-candidates* /product-links/link-resolutions* /product-links/link-workflows* /product-links/listing-snapshots* /listings* /mutations* /market /market/* /profitability* /dashboard* /sync*
+	}
+
+	reverse_proxy @catalog_api backend:8080
+	reverse_proxy @orders_api backend:8080
+	reverse_proxy @api backend:8080
+	reverse_proxy web:80
+}

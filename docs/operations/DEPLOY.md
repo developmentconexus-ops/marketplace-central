@@ -1,0 +1,121 @@
+# Production Deploy Runbook
+
+Binding architecture: [ADR-008](../architecture/decisions/008-production-deploy-topology.md).
+Artifacts: `docker/prod/` (images), `deploy/` (compose + Caddyfile + env template),
+`.github/workflows/release-images.yml` (CI publish).
+
+Flow in one line:
+
+```
+git push main → CI builds images → GHCR → host: docker compose pull && up -d
+```
+
+---
+
+## 1. One-time: provision the host (VPS variant)
+
+Target: Ubuntu Server 24.04 LTS, 2 vCPU / 4 GB (Magalu Cloud BV2-4-40 or Vultr São Paulo).
+
+```bash
+# as root on a fresh host
+adduser mpc && usermod -aG sudo mpc            # named sudo user, no root logins
+curl -fsSL https://get.docker.com | sh          # Docker Engine + compose plugin
+usermod -aG docker mpc
+curl -fsSL https://tailscale.com/install.sh | sh
+tailscale up                                    # join the tailnet
+```
+
+Harden SSH (`/etc/ssh/sshd_config`), then `systemctl restart ssh`:
+
+```
+PasswordAuthentication no
+PermitRootLogin no
+ListenAddress <tailscale-100.x.x.x-ip>   # SSH reachable only inside the tailnet
+```
+
+Firewall: allow 80/tcp and 443/tcp+udp only (`ufw allow 80,443/tcp && ufw allow 443/udp && ufw enable`).
+Port 22 stays closed publicly — operator access is via Tailscale.
+
+DNS: point `MPC_DOMAIN` (A record) at the VPS IP. Caddy provisions TLS automatically.
+
+### Oracle path (Sankhya)
+
+On any always-on machine inside the client network:
+install Tailscale, enable subnet routing for the Oracle host's subnet
+(`tailscale up --advertise-routes=<oracle-subnet>/24`), approve the route in
+the admin console. `SANKHYA_ORACLE_HOST` in `.env` then uses the Oracle
+host's LAN IP, reachable from the VPS through the tailnet. The database is
+never exposed to the internet.
+
+## 2. One-time: install the stack
+
+```bash
+mkdir -p ~/mpc && cd ~/mpc
+# copy from the repo: deploy/docker-compose.prod.yml (as docker-compose.prod.yml)
+#                     deploy/Caddyfile
+# create .env from deploy/env.production.example — fill every CHANGEME
+chmod 600 .env
+docker login ghcr.io -u <github-user>    # PAT with read:packages only
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
+curl -fsS https://<MPC_DOMAIN>/healthz
+```
+
+Register the production OAuth callback in the Mercado Livre app:
+`https://<MPC_DOMAIN>/integrations/auth/callback` (replaces the ngrok URL for prod).
+
+## 3. Recurring: deploy an update
+
+CI publishes `sha-<commit>` tags on every push to main. To ship one:
+
+```bash
+ssh mpc@<tailscale-ip>                 # via tailnet
+cd ~/mpc
+# 1. point .env MPC_IMAGE_TAG at the new sha-<commit>
+# 2. migrations run automatically on backend start (RUN_MIGRATIONS=1)
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d --remove-orphans
+# 3. smoke check
+curl -fsS https://<MPC_DOMAIN>/healthz
+docker compose -f docker-compose.prod.yml logs --tail=50 backend
+```
+
+**Rollback:** set `MPC_IMAGE_TAG` back to the previous sha tag, repeat pull/up.
+Seconds, no rebuild. (Caveat: only safe across migrations that are
+backward-compatible — prefer additive migrations.)
+
+## 4. Backups
+
+Daily `pg_dump` + offsite copy. On the host (`crontab -e` for the mpc user):
+
+```cron
+0 3 * * * docker compose -f /home/mpc/mpc/docker-compose.prod.yml exec -T postgres pg_dump -U marketplace marketplace_central | gzip > /home/mpc/backups/mpc-$(date +\%F).sql.gz
+30 3 * * * rclone copy /home/mpc/backups remote:mpc-backups --max-age 48h
+0 4 * * 0 find /home/mpc/backups -name '*.sql.gz' -mtime +30 -delete
+```
+
+`rclone` remote: Backblaze B2 or any S3-compatible bucket. **Test a restore
+once** (`gunzip -c dump.sql.gz | docker compose exec -T postgres psql -U
+marketplace marketplace_central` into a scratch database) before trusting it.
+
+## 5. On-prem variant (client-hosted)
+
+Same images, same compose, same runbook — differences only:
+
+- Host is a client machine: Linux + Docker Engine required. **Never Docker
+  Desktop on a server** (unsupported on Windows Server; paid license for
+  companies >250 employees / >US$10M revenue). Windows-only shop → provision a
+  Linux VM (Hyper-V) dedicated to the stack.
+- No public DNS needed if access is LAN-only: Caddy can serve the LAN
+  hostname with internal TLS (`tls internal` in the Caddyfile site block).
+- Oracle is on the same LAN — no subnet router needed; Tailscale stays for
+  operator SSH.
+
+## 6. Standing rules
+
+- Production hosts run **images only** — never source, never `--build`.
+- `.env` on hosts: `chmod 600`, never in git, never in chat/screenshots.
+- Pin `MPC_IMAGE_TAG` to sha tags; `latest` is for dev convenience only.
+- New backend route prefix ⇒ update BOTH `apps/web/vite.config.ts` proxy table
+  and `deploy/Caddyfile` (same PR).
+- Deploys are deliberate and attended; no auto-update agents.

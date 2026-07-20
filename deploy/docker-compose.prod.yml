@@ -1,0 +1,65 @@
+# Production stack: pre-built images from GHCR, TLS edge via Caddy.
+# Copy this file + Caddyfile + a filled .env (see .env.example) to the host, then:
+#   docker compose -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.prod.yml up -d
+# Only Caddy publishes host ports; postgres/backend/web stay on the internal network.
+
+services:
+  postgres:
+    image: postgres:16-bookworm
+    environment:
+      POSTGRES_DB: marketplace_central
+      POSTGRES_USER: marketplace
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+    volumes:
+      - mpc_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marketplace -d marketplace_central"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  backend:
+    image: ${MPC_IMAGE_SERVER:-ghcr.io/leandrotcawork/marketplace-central-server}:${MPC_IMAGE_TAG:?set in .env}
+    env_file:
+      - .env
+    environment:
+      API_PORT: "8080"
+      SERVER_ADDR: ":8080"
+      MC_DATABASE_URL: postgres://marketplace:${POSTGRES_PASSWORD}@postgres:5432/marketplace_central?sslmode=disable
+      MC_ERP_SOURCE: ${MC_ERP_SOURCE:-oracle}
+      MPC_ML_CATALOG_OFFERS_ENABLED: "true"
+      RUN_MIGRATIONS: "1"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    image: ${MPC_IMAGE_WEB:-ghcr.io/leandrotcawork/marketplace-central-web}:${MPC_IMAGE_TAG:?set in .env}
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      MPC_DOMAIN: ${MPC_DOMAIN:?set in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - backend
+    restart: unless-stopped
+
+volumes:
+  mpc_postgres_data:
+  caddy_data:
+  caddy_config:

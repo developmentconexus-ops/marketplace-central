@@ -1,6 +1,13 @@
 .git
 .gocache
 .worktrees
+.claude
+.mnfs
+.harness
+docs
+scripts/.runs
+**/.gomodcache
+**/node_modules
 node_modules
 apps/web/node_modules
 packages/*/node_modules
