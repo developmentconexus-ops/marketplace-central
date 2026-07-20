@@ -17,6 +17,10 @@ type InstallationAccount struct {
 type ListingPage struct {
 	ProviderItemCount int
 	Rows              []domain.Listing
+	// NextCursor is the provider-issued cursor for the next page (e.g. the ML
+	// scan scroll_id). Empty means the source pages by numeric offset — the
+	// ingestion loop then derives the next cursor from the running offset.
+	NextCursor string
 }
 
 type PageSource interface {

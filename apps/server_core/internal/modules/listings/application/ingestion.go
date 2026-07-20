@@ -39,13 +39,10 @@ func (i *Ingestion) Pull(ctx context.Context, account ports.InstallationAccount)
 	var rows []domain.Listing
 	seen := make(map[domain.ListingKey]struct{})
 	offset := 0
+	cursor := ""
 	for pages := 0; ; pages++ {
 		if pages >= maxIngestionPages {
 			return fmt.Errorf("listing ingestion exceeded %d pages without a final short page", maxIngestionPages)
-		}
-		cursor := ""
-		if offset > 0 {
-			cursor = strconv.Itoa(offset)
 		}
 		page, err := i.source.ReadPage(ctx, account, cursor, i.pageSize)
 		if err != nil {
@@ -64,6 +61,14 @@ func (i *Ingestion) Pull(ctx context.Context, account ports.InstallationAccount)
 		offset += page.ProviderItemCount
 		if page.ProviderItemCount < i.pageSize {
 			break
+		}
+		// Provider-issued cursor wins (ML scan scroll_id — offset paging is
+		// hard-capped at 1000 items by the provider); numeric offset is the
+		// fallback for offset-paged sources.
+		if page.NextCursor != "" {
+			cursor = page.NextCursor
+		} else {
+			cursor = strconv.Itoa(offset)
 		}
 	}
 

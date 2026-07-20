@@ -256,6 +256,52 @@ func (a *CapabilityAdapter) ListListings(ctx context.Context, input domain.ListL
 	return snapshots, nil
 }
 
+// ListListingsScanPage pages the seller's items with ML's search_type=scan,
+// which has no depth cap — plain offset paging on /users/{id}/items/search is
+// rejected by the provider past 1000 items, so accounts above that size can
+// only be fully ingested via scan. The returned cursor is the provider
+// scroll_id to pass back on the next call; the first call passes an empty
+// cursor. An empty result page ends the scan.
+func (a *CapabilityAdapter) ListListingsScanPage(ctx context.Context, input domain.ListListingsInput) ([]domain.ListingSnapshot, string, error) {
+	accountRef, err := normalizeAccountRef(input.AccountRef)
+	if err != nil {
+		return nil, "", err
+	}
+	token, err := a.accessToken(ctx, accountRef)
+	if err != nil {
+		return nil, "", err
+	}
+
+	query := url.Values{}
+	query.Set("search_type", "scan")
+	query.Set("limit", strconv.Itoa(limitOrDefault(input.Limit, 50)))
+	if cursor := strings.TrimSpace(input.Cursor); cursor != "" {
+		query.Set("scroll_id", cursor)
+	}
+
+	var response struct {
+		ScrollID string   `json:"scroll_id"`
+		Results  []string `json:"results"`
+	}
+	if err := a.doJSON(ctx, accountRef, token, http.MethodGet, "/users/"+url.PathEscape(accountRef.ProviderAccountID)+"/items/search?"+query.Encode(), nil, &response); err != nil {
+		return nil, "", err
+	}
+
+	snapshots := make([]domain.ListingSnapshot, 0, len(response.Results))
+	for _, itemID := range response.Results {
+		snapshot, err := a.ReadListing(ctx, domain.ProviderListingRef{
+			AccountRef:     accountRef,
+			ProviderItemID: itemID,
+		})
+		if err != nil {
+			return nil, "", err
+		}
+		snapshots = append(snapshots, snapshot)
+	}
+
+	return snapshots, strings.TrimSpace(response.ScrollID), nil
+}
+
 func (a *CapabilityAdapter) ReadListing(ctx context.Context, ref domain.ProviderListingRef) (domain.ListingSnapshot, error) {
 	accountRef, err := normalizeAccountRef(ref.AccountRef)
 	if err != nil {
