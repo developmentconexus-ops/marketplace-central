@@ -44,7 +44,14 @@ func (r *Repository) PersistSnapshotAtomically(ctx context.Context, tenantID str
 	}
 
 	rejected, warnings := issueCounts(snapshot.Issues)
-	_, err = tx.Exec(ctx, `INSERT INTO erp_import_protocols (id,tenant_id,file_sha256,protocol,source,imported_at,status,accepted_count,rejected_count,warning_count) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`, snapshot.ID, tenantID, snapshot.FileSHA256, snapshot.Protocol, snapshot.Source, snapshot.ImportedAt.UTC(), snapshot.Status, len(snapshot.AcceptedRows), rejected, warnings)
+	// An unset source defaults to the ERP (xlsx) dataset: the strict M-01 path and
+	// the pre-source integration fixtures leave it empty, and the source CHECK
+	// constraint rejects the empty string. The lenient path sets catalogo_cliente.
+	protocolSource := snapshot.Source
+	if protocolSource == "" {
+		protocolSource = domain.SourceXLSX
+	}
+	_, err = tx.Exec(ctx, `INSERT INTO erp_import_protocols (id,tenant_id,file_sha256,protocol,source,imported_at,status,accepted_count,rejected_count,warning_count) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`, snapshot.ID, tenantID, snapshot.FileSHA256, snapshot.Protocol, protocolSource, snapshot.ImportedAt.UTC(), snapshot.Status, len(snapshot.AcceptedRows), rejected, warnings)
 	if err != nil {
 		return fmt.Errorf("insert ERP import protocol: %w", err)
 	}

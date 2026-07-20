@@ -42,7 +42,7 @@ func TestQueriesNewestCompletedAndTenantIsolation(t *testing.T) {
 	if err != nil || found == nil || found.ID != completed.ID {
 		t.Fatalf("found=%#v err=%v", found, err)
 	}
-	latest, err := repo.LatestCompletedSnapshot(ctx, tenant)
+	latest, err := repo.LatestCompletedSnapshot(ctx, tenant, domain.SourceXLSX)
 	if err != nil || latest.ID != completed.ID || len(latest.AcceptedRows) != 1 {
 		t.Fatalf("latest=%#v err=%v", latest, err)
 	}
@@ -56,7 +56,7 @@ func TestQueriesNewestCompletedAndTenantIsolation(t *testing.T) {
 	if err != nil || missing != nil {
 		t.Fatalf("cross tenant find=%#v err=%v", missing, err)
 	}
-	if _, err := repo.LatestCompletedSnapshot(ctx, tenant+"-empty"); !errors.Is(err, ports.ErrImportNotFound) {
+	if _, err := repo.LatestCompletedSnapshot(ctx, tenant+"-empty", domain.SourceXLSX); !errors.Is(err, ports.ErrImportNotFound) {
 		t.Fatalf("empty latest err=%v", err)
 	}
 }
@@ -79,7 +79,7 @@ func TestLatestCompletedSnapshotReadsNullCostAndStock(t *testing.T) {
 	if err := repo.PersistSnapshotAtomically(ctx, tenant, snap); err != nil {
 		t.Fatal(err)
 	}
-	latest, err := repo.LatestCompletedSnapshot(ctx, tenant)
+	latest, err := repo.LatestCompletedSnapshot(ctx, tenant, domain.SourceCatalogoCliente)
 	if err != nil {
 		t.Fatalf("read back NULL cost/stock snapshot errored: %v", err)
 	}

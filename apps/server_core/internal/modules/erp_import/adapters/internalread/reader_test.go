@@ -34,7 +34,7 @@ func (f *fakeRepo) ListImports(context.Context, string) ([]erpdomain.ImportRepor
 func (f *fakeRepo) GetImport(context.Context, string, erpdomain.ImportID) (erpdomain.ImportReport, error) {
 	return erpdomain.ImportReport{}, nil
 }
-func (f *fakeRepo) LatestCompletedSnapshot(_ context.Context, tenant string) (erpdomain.ImportSnapshot, error) {
+func (f *fakeRepo) LatestCompletedSnapshot(_ context.Context, tenant string, _ erpdomain.ImportSource) (erpdomain.ImportSnapshot, error) {
 	f.tenant = tenant
 	return f.snapshot, f.err
 }

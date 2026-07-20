@@ -270,7 +270,7 @@ func (r *contractRepo) GetImport(_ context.Context, _ string, _ erpdomain.Import
 	return erpdomain.ImportReport{ID: r.snapshot.ID, Protocol: r.snapshot.Protocol, FileSHA256: r.snapshot.FileSHA256, Source: r.snapshot.Source, ImportedAt: r.snapshot.ImportedAt, Status: r.snapshot.Status, AcceptedCount: len(r.snapshot.AcceptedRows), RejectedCount: len(rejectedRows), WarningCount: warnings, Issues: r.snapshot.Issues}, nil
 }
 
-func (r *contractRepo) LatestCompletedSnapshot(context.Context, string) (erpdomain.ImportSnapshot, error) {
+func (r *contractRepo) LatestCompletedSnapshot(context.Context, string, erpdomain.ImportSource) (erpdomain.ImportSnapshot, error) {
 	if r.snapshot.Status != erpdomain.ImportStatusCompleted {
 		return erpdomain.ImportSnapshot{}, erpports.ErrImportNotFound
 	}

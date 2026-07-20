@@ -67,7 +67,7 @@ func (r *fakeImportRepository) GetImport(_ context.Context, tenantID string, id 
 	return r.getReport, r.getErr
 }
 
-func (r *fakeImportRepository) LatestCompletedSnapshot(context.Context, string) (domain.ImportSnapshot, error) {
+func (r *fakeImportRepository) LatestCompletedSnapshot(context.Context, string, domain.ImportSource) (domain.ImportSnapshot, error) {
 	return domain.ImportSnapshot{}, nil
 }
 

@@ -63,9 +63,13 @@ func (r *Repository) GetImport(ctx context.Context, tenantID string, importID do
 	return report, rows.Err()
 }
 
-func (r *Repository) LatestCompletedSnapshot(ctx context.Context, tenantID string) (domain.ImportSnapshot, error) {
+func (r *Repository) LatestCompletedSnapshot(ctx context.Context, tenantID string, source domain.ImportSource) (domain.ImportSnapshot, error) {
 	var s domain.ImportSnapshot
-	err := r.pool.QueryRow(ctx, `SELECT id,protocol,file_sha256,source,imported_at,status FROM erp_import_protocols WHERE tenant_id=$1 AND status='COMPLETED' ORDER BY imported_at DESC, id DESC LIMIT 1`, tenantID).Scan(&s.ID, &s.Protocol, &s.FileSHA256, &s.Source, &s.ImportedAt, &s.Status)
+	// Filter by the active dataset source (two-source toggle): xlsx = the Sankhya
+	// ERP snapshot, catalogo_cliente = a lenient prospect catalog. Without this
+	// filter the newest imported_at blindly wins, so importing a prospect catalog
+	// would hijack the active dataset and displace the real ERP snapshot.
+	err := r.pool.QueryRow(ctx, `SELECT id,protocol,file_sha256,source,imported_at,status FROM erp_import_protocols WHERE tenant_id=$1 AND source=$2 AND status='COMPLETED' ORDER BY imported_at DESC, id DESC LIMIT 1`, tenantID, source).Scan(&s.ID, &s.Protocol, &s.FileSHA256, &s.Source, &s.ImportedAt, &s.Status)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.ImportSnapshot{}, ports.ErrImportNotFound
 	}

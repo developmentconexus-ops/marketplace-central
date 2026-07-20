@@ -11,5 +11,5 @@ type ImportRepository interface {
 	FindByFileSHA256(ctx context.Context, tenantID string, fileSHA256 domain.FileSHA256) (*domain.ImportReport, error)
 	ListImports(ctx context.Context, tenantID string) ([]domain.ImportReport, error)
 	GetImport(ctx context.Context, tenantID string, importID domain.ImportID) (domain.ImportReport, error)
-	LatestCompletedSnapshot(ctx context.Context, tenantID string) (domain.ImportSnapshot, error)
+	LatestCompletedSnapshot(ctx context.Context, tenantID string, source domain.ImportSource) (domain.ImportSnapshot, error)
 }

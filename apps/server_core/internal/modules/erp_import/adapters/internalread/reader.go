@@ -18,6 +18,24 @@ import (
 
 var ErrNoErpSnapshot = errors.New("no_erp_snapshot")
 
+// activeSourceKey carries the caller-selected dataset source through the request
+// context. The two-source toggle (xlsx = Sankhya ERP, catalogo_cliente = prospect
+// catalog) is resolved here so every reader method observes the same dataset.
+type activeSourceKey struct{}
+
+// WithActiveSource pins the dataset source for the reader on this request. Absent
+// it, the reader defaults to the ERP (xlsx) snapshot so the demo opens on real data.
+func WithActiveSource(ctx context.Context, source erpdomain.ImportSource) context.Context {
+	return context.WithValue(ctx, activeSourceKey{}, source)
+}
+
+func activeSourceFromContext(ctx context.Context) erpdomain.ImportSource {
+	if source, ok := ctx.Value(activeSourceKey{}).(erpdomain.ImportSource); ok && source != "" {
+		return source
+	}
+	return erpdomain.SourceXLSX
+}
+
 type ERPProductNotFoundError struct{ ProductID int }
 
 func (e *ERPProductNotFoundError) Error() string {
@@ -48,7 +66,7 @@ func (r *Reader) snapshot(ctx context.Context, message string) (erpdomain.Import
 	if r == nil || r.repo == nil {
 		return erpdomain.ImportSnapshot{}, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, message, ErrNoErpSnapshot)
 	}
-	snapshot, err := r.repo.LatestCompletedSnapshot(ctx, r.tenantID)
+	snapshot, err := r.repo.LatestCompletedSnapshot(ctx, r.tenantID, activeSourceFromContext(ctx))
 	if err != nil || snapshot.Status != erpdomain.ImportStatusCompleted {
 		return erpdomain.ImportSnapshot{}, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, message, ErrNoErpSnapshot)
 	}
