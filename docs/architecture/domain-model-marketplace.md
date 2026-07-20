@@ -1,8 +1,8 @@
 # Modelo de Domínio — Operação de Venda em Marketplace
 
-> **Status:** RASCUNHO v0 (entrevista com operador 2026-07-19) — aguarda ratificação.
+> **Status:** RASCUNHO v1 (entrevista operador + pesquisa + especialista Sankhya, 2026-07-19) — aguarda ratificação.
 > Complementa [produto-anuncio-marketplace-identity.md](produto-anuncio-marketplace-identity.md).
-> Ponto N:N/kit e níveis catálogo-vs-item estão sob PESQUISA (external-researcher em curso).
+> N:N/kit e catálogo-vs-item resolvidos (§6). Fatos autoritativos do ERP em §8.
 
 ## 1. Glossário (linguagem do negócio)
 
@@ -43,7 +43,7 @@
 | Dado | Fonte | Nível |
 |---|---|---|
 | CODPROD, REFFORN, EAN, descrição, custo, estoque | **ERP (Sankhya)** ou planilha import | produto |
-| **ICMS alíquota** | **Sankhya** (tem por produto, calcula) — planilha atual não tem → manual/branco honesto | produto |
+| **ICMS alíquota** | **NÃO é atributo do produto.** Motor Sankhya `TGFICM` por par UForig×UFdest (+ST/DIFAL/FCP); realizado no item `TGFITE.ALIQICMS`. Produto só carrega identidade fiscal (`GRUPOICMS`, `NCM`, `TEMICMS`). Ver §8. | operação (UF-par) |
 | Comissão (%) | API ML `listing_prices` | anúncio (categoria + tipo) |
 | Frete | API ML shipping | anúncio (peso/dim + CEP destino) |
 | Tipo (Clássico/Premium/Full), tarifa Full | ML + config | anúncio |
@@ -80,6 +80,39 @@ eficiência em marketplace.
 - **FIX-2 · Dados demo:** trocar CODPROD sintético (90001..) + MLB-no-REFFORN pelos valores REAIS do Sankhya; MLB migra pro vínculo (`product_links.provider_item_id`). ← aguarda especialista.
 - **FIX-3 · Contrato aditivo (estrutura pronta, sem feature):**
   - `catalog_product_id TEXT NULL` em `listings` (persistir da sincronização ML).
-  - `icms_aliquota` (nullable, honesto) no contrato de produto — aguarda Sankhya; branco/manual até lá.
+  - **ICMS ≠ campo de produto** (corrigido pelo especialista §8): produto guarda só identidade fiscal
+    (`grupo_icms`, `ncm`, `tem_icms`). A carga tributária é resolvida por **operação** (par UForig→UFdest)
+    espelhando `TGFICM` (`ALIQUOTA` interestadual origem, `ALIQUFDEST` interna destino, `PERCICMSFCP`,
+    `ALIQSUBTRIB`/`MARGLUCRO` p/ ST). B2C EC 87/2015: carga vendedor = `ALIQUFDEST + FCP`;
+    DIFAL = `ALIQUFDEST − ALIQUOTA (+FCP)`. Modelar como tabela config por UF-par (já existe DIFAL por UF
+    na tela) + valor realizado; **não** cravar alíquota no produto. `TGFICM` não é versionado → é config vigente.
   - Documentar `listing_kit_components` (BOM) como schema-alvo; **não** construir agora. Código não pode assumir vínculo 1:1.
 - **FIX-4 · Verificação:** garantir que nenhuma resolução de comissão usa `internal_product_id` — sempre transita pela `category_id` do anúncio.
+
+## 8. Fatos autoritativos do Sankhya (especialista `local_ec787804`, 2026-07-19, read-only)
+
+### 8.1 Contrato de import — tabela.coluna exata (METALPRD)
+| Campo import | Fonte Sankhya | Nota |
+|---|---|---|
+| CODPROD | `TGFPRO.CODPROD` | inteiro real, PK — **não** sintetizar 90001+ |
+| EAN/GTIN | `TGFPRO.REFERENCIA` | neste ambiente o EAN mora aqui (`TGFBAR.CODBARRA` vazio) |
+| Ref. fornecedor | `TGFPRO.REFFORN` | cód. Docol/Deca — **não** é o MLB |
+| Descrição / NCM / Marca | `TGFPRO.DESCRPROD` / `.NCM` / `.CODMARCA→TGFMAR.DESCRICAO` | |
+| Identidade fiscal | `TGFPRO.GRUPOICMS(+2)`, `.TEMICMS` | chave p/ regra tributária (não é a alíquota) |
+| Custo | `TGFCUS.CUSSEMICM` **as-of** (CODPROD,CODEMP,DTATUAL≤ref) | **não** usar `TGFITE.CUSTO` |
+| ICMS / ST / DIFAL | `TGFICM` por UF-par; realizado em `TGFITE.*` | ver §3 e FIX-3 |
+
+### 8.2 Reconciliação demo→real (match por EAN em `TGFPRO.REFERENCIA`)
+| EAN | Produto | CODPROD real | REFFORN real | Custo as-of | Obs |
+|---|---|---|---|---|---|
+| 7898016503522 | Placa SINALIZE Diretoria 14x14 | **20317** | 500AA | 9,89 ⚠️ | custo defasado (2010) — não confiar p/ margem |
+| 7894200146179 | Papeleira DECA Flex 2020.C.FLX | **15956** | 2020.C.FLX | 91,57 | |
+| 7894200160885 | Misturador DECA Polo cromado | **22467** (canônico) | 1877.C33 | 691,13 | dup 44975 (re-cadastro 2026-07-18) → operador decide |
+| 7891461490355 | Torneira DOCOL Lift Ônix | **42519** (canônico) | 008720CE | 478,06 | dup 43534 quase morto → usar 42519 |
+| 7891461034580 | Torneira DOCOL Pressmatic Compact | **39563** | 90171606006 | 138,85 | |
+
+- **Bug de identidade confirmado (2 pontos):** demo usa CODPROD sintético (deve ser o real acima) **e** enfia
+  o id MLB no `REFFORN` (REFFORN é código do fornecedor). MLB é id externo do canal → tabela de link
+  anúncio↔produto (`product_links.provider_item_id`), **nunca** no REFFORN.
+- **2 EANs têm CODPROD duplicado** (mesmo EAN, cadastro dobrado) → escolha do operador; recomendação: 22467 e 42519 (canônicos com histórico de venda).
+- Especialista oferece gerar o SELECT batch de reconciliação para os 34 (EAN→CODPROD real + custo + carga por UFdest).
