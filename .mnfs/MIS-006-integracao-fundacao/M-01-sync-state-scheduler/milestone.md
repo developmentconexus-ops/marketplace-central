@@ -4,9 +4,10 @@
 id: M-01
 type: milestone
 mission: MIS-006
-status: draft
+status: done   # merged main @18df2f44 (D-120); dual-gate AGREEMENT + integration C3/C4/C11 PASS in-lane @8de7f49e
 depends_on: []   # Fase 0; coordena additive-lock em composition/root.go com M-02 (dono)
 base_sha: 138aac3d
+merged_sha: 18df2f44
 validation_level: QA-0
 ```
 

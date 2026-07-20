@@ -39,6 +39,29 @@ hipotetizado em `INTEGRATION-DATA-CONTRACT.md §E2` (marcado `[TESTAR-SKW]` linh
 o entrypoint de sync sobre um mapeamento não confirmado arrisca materializar `custo`/`preco_venda`
 errados no mirror compartilhado que M-05 (vínculo) e M-06 (telas) consomem — silenciosamente.
 
+## Pré-ativação — F1 (achado do refuter M-02, D-120 — VINCULANTE)
+
+Registrado pelo hub a partir do EVENT CLOSED de M-02 (`_chip-m02`, refuter verbatim). **Antes de
+M-04 tornar o oracle/sankhya reader efetivamente vivo em produção**, é OBRIGATÓRIO rotear pela
+`active_source` do tenant (ou selecionar equivalentes mirror-backed) os seguintes consumidores que
+hoje leem `oracleDB` DIRETO e **contornam** o `routing.Reader` de M-02:
+
+- `listingCostReader` (`root.go:602`)
+- `inventoryStockReader` (`root.go:410` / `:435`)
+- `profitabilityCfg.Internal` — batch cost/tax facts (`root.go:560`)
+- assisted-linkage gate (`root.go:521`)
+
+**Falha silenciosa evitada:** uma vez que o Oracle esteja alcançável enquanto o `active_source` de
+um tenant é `xlsx`/`catalogo_cliente`, esses consumidores servem dados Oracle LIVE para custo de
+anúncio / risco de inventário / rentabilidade daquele tenant, ENQUANTO o catálogo corretamente
+serve dados de upload — mistura cross-source, sem erro. INERTE na fundação M-02 (oracle não
+configurado); o `routing.Reader` core de M-02 É fail-closed. É seam de batch-reader, não do routing
+core. **Consequência para M-04:** a linha da matriz Ownership abaixo (`root.go` = "nenhuma edição")
+só vale para a implementação do adapter em si; a ATIVAÇÃO live de M-04 exige tocar esses 4 pontos
+de wiring (roteá-los por `active_source` ou apontá-los ao mirror) — a ser confirmado no P5 de M-04
+como escopo de wiring, não descoberto mid-flight. Referência cruzada: `mission.md` collision
+matrix / `interface-contracts-mis006.md` (E9 active_source consumers).
+
 ## Prerequisites
 
 Tabelas/colunas Sankhya a confirmar via db-consult ANTES de codar (checklist — cada item precisa
