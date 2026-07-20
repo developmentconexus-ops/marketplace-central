@@ -108,7 +108,7 @@ func (p *Parser) parseWithRequired(ctx context.Context, source io.Reader, requir
 				StockReserved: optionalCell(row, columns, "ESTOQUE_RESERVADO"),
 				EAN:           optionalCell(row, columns, "EAN"),
 				Refforn:       optionalCell(row, columns, "REFFORN"),
-				Marca:         optionalCell(row, columns, "MARCA"),
+				Marca:         brandCell(row, columns),
 				NCM:           optionalCell(row, columns, "NCM"),
 				Grupo:         optionalCell(row, columns, "GRUPO"),
 				DescrGrupo:    optionalCell(row, columns, "DESCRGRUPO"),
@@ -283,6 +283,33 @@ func optionalCell(row []string, columns map[string][]int, name string) *string {
 		}
 	}
 	return nil
+}
+
+// brandCell resolves MARCA across the raw export's twin "Marca" columns, where
+// the first carries the Sankhya brand CODE and the second the brand NAME. A
+// purely numeric value is the code, not a name — presenting it as the brand
+// contradicts marketplace catalogs (EAN matches were rejected on marca), so
+// the first non-empty NON-numeric value wins and an all-numeric/empty set is
+// an honest unknown (nil), never a fabricated name.
+func brandCell(row []string, columns map[string][]int) *string {
+	for _, index := range columns[canonicalHeaderKey("MARCA")] {
+		value := strings.TrimSpace(cell(row, index))
+		if value == "" || isAllDigits(value) {
+			continue
+		}
+		raw := cell(row, index)
+		return &raw
+	}
+	return nil
+}
+
+func isAllDigits(value string) bool {
+	for _, r := range value {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func invalidFileError() *ports.FileError {
