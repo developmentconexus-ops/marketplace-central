@@ -1,6 +1,6 @@
 import type { OrderBucket, OrderRead } from "@marketplace-central/sdk-runtime";
 import { UnknownValue } from "@marketplace-central/ui";
-import { actionLabelForBucket, formatMoney } from "./pedidosFormatters";
+import { actionLabelForBucket, formatMoney, orderComprador, orderItensLabel } from "./pedidosFormatters";
 
 export interface KanbanViewProps {
   items: OrderRead[];
@@ -17,11 +17,15 @@ const columnDefs: { bucket: OrderBucket; title: string }[] = [
 function KanbanCard({ item, onOpenOrder }: { item: OrderRead; onOpenOrder: (orderId: string) => void }) {
   const label = actionLabelForBucket(item.bucket);
   const money = formatMoney(item.total);
+  // Card description mirrors the design (comprador · itens); valor sits in the row above, destino
+  // lives in the drawer. Both parts null → honest UnknownValue (ADR-17).
+  const desc = [orderComprador(item), orderItensLabel(item)].filter(Boolean).join(" · ") || null;
+  const atrasado = item.sla?.atrasado === true;
   return (
     <div
       role="button"
       tabIndex={0}
-      aria-label={`Abrir detalhe do pedido ${item.provider_code || item.provider_order_id}`}
+      aria-label={`Abrir detalhe do pedido ${item.provider_order_id}`}
       onClick={() => onOpenOrder(item.provider_order_id)}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -29,15 +33,21 @@ function KanbanCard({ item, onOpenOrder }: { item: OrderRead; onOpenOrder: (orde
           onOpenOrder(item.provider_order_id);
         }
       }}
-      className="flex cursor-pointer flex-col gap-1 rounded-lg border border-border bg-surface p-3 text-xs hover:border-accent"
+      className={`flex cursor-pointer flex-col gap-1 rounded-lg border-[1.5px] bg-surface p-3 text-xs hover:border-accent ${
+        atrasado ? "border-warn" : "border-border"
+      }`}
     >
       <div className="flex items-center gap-2">
-        <span className="font-mono text-[11px] text-faint">{item.provider_code || item.provider_order_id}</span>
+        <span className="font-mono text-[11px] text-faint" title={item.provider_order_id}>
+          {item.provider_order_id}
+        </span>
         <span className="ml-auto font-mono font-semibold">{money ?? <UnknownValue />}</span>
       </div>
-      <span className="truncate text-muted">{item.buyer?.display ?? <UnknownValue />}</span>
-      <span className="text-[11px] text-faint">
-        {item.sla?.atrasado ? "SLA atrasado" : formatSlaLabel(item)}
+      <span className="truncate text-muted">
+        {desc ?? <UnknownValue hint="comprador/itens ainda não disponíveis" />}
+      </span>
+      <span className={`text-[11px] ${atrasado ? "font-semibold text-warn" : "text-faint"}`}>
+        {atrasado ? "SLA atrasado" : formatSlaLabel(item)}
       </span>
       {label ? (
         <button

@@ -409,7 +409,10 @@ export function PedidoDrawer({ orderId, onClose }: PedidoDrawerProps) {
   if (orderId === null) return null;
 
   const order = query.data;
-  const title = order?.provider_code || orderId;
+  // The drawer title is the order number. provider_code is the channel slug ("mercado_livre")
+  // on real ML data — never the order label (parity with the list views, which all render
+  // provider_order_id). orderId is already the provider_order_id the row passed in.
+  const title = order?.provider_order_id || orderId;
   const subtitle = order ? bucketStatusLabels[order.bucket] : undefined;
 
   return (

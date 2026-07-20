@@ -165,8 +165,10 @@ describe("PedidosPage", () => {
     renderPage();
 
     await screen.findByRole("heading", { name: "Pedidos" });
-    expect(await screen.findByText("ML-1001")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Fila de trabalho" })).toBeInTheDocument();
+    expect(await screen.findByText("PO1")).toBeInTheDocument();
+    // The Fila view is captioned (design has no "Fila de trabalho" heading; the view toggle sits
+    // in the title row), so assert the Fila tab is the selected view instead.
+    expect(screen.getByRole("tab", { name: "Fila", selected: true })).toBeInTheDocument();
 
     await goToLista();
     expect(screen.getByRole("tab", { name: "Lista", selected: true })).toBeInTheDocument();
@@ -269,14 +271,16 @@ describe("PedidosPage", () => {
     await screen.findByRole("heading", { name: "Pedidos" });
     await goToLista();
 
-    expect(await screen.findByText("ML-1001")).toBeInTheDocument();
-    expect(screen.queryByText("ML-1002")).not.toBeInTheDocument();
+    // Rows are labelled by the order number (provider_order_id), not the channel slug
+    // (provider_code), so filtering shows/hides by "PO1"/"PO2".
+    expect(await screen.findByText("PO1")).toBeInTheDocument();
+    expect(screen.queryByText("PO2")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab", { name: "A faturar 1" }));
 
     await waitFor(() => {
-      expect(screen.getByText("ML-1002")).toBeInTheDocument();
-      expect(screen.queryByText("ML-1001")).not.toBeInTheDocument();
+      expect(screen.getByText("PO2")).toBeInTheDocument();
+      expect(screen.queryByText("PO1")).not.toBeInTheDocument();
     });
   });
 
@@ -297,7 +301,7 @@ describe("PedidosPage", () => {
     await screen.findByRole("heading", { name: "Pedidos" });
     await goToLista();
 
-    expect(await screen.findByText("ML-1001")).toBeInTheDocument();
+    expect(await screen.findByText("PO1")).toBeInTheDocument();
     expect(screen.getByText("J. S.")).toBeInTheDocument();
     expect(screen.queryByText("JOAOSILVA123")).not.toBeInTheDocument();
 
@@ -328,7 +332,7 @@ describe("PedidosPage", () => {
     await screen.findByRole("heading", { name: "Pedidos" });
     await goToLista();
 
-    expect(await screen.findByText("ML-1001")).toBeInTheDocument();
+    expect(await screen.findByText("PO1")).toBeInTheDocument();
     expect(screen.getByText("R$ 123,45")).toBeInTheDocument();
     expect(screen.getByText("18.2%")).toBeInTheDocument();
     expect(screen.getByText("R$ 8,76")).toBeInTheDocument();
@@ -344,7 +348,7 @@ describe("PedidosPage", () => {
 
     await screen.findByRole("heading", { name: "Pedidos" });
     await goToLista();
-    await screen.findByText("ML-1001");
+    await screen.findByText("PO1");
 
     fireEvent.click(screen.getByRole("checkbox", { name: /Select row/ }));
 
@@ -381,9 +385,49 @@ describe("PedidosPage", () => {
 
     renderPage();
 
-    await screen.findByText("ML-1001");
+    await screen.findByText("PO1");
     expect(screen.getByText("sem ação")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Faturar" })).not.toBeInTheDocument();
+  });
+
+  it("renders the golden real Fila row (2000017336572246) from real payload with honest '—' for itens/retorno", async () => {
+    // Golden case from the chip contract: a real ML order whose items:[] is empty and whose cost
+    // components are all unknown. The Fila row description mirrors the design's descDe —
+    // comprador · itens · valor — so with no item titles it reads "Marcia Rocha · R$ 339,98"
+    // (destinatário is the recipient; buyer nickname is null by ML privacy). retorno is an honest
+    // "—" and there is no fabricated item count or margin. City/UF and status live in the drawer,
+    // not the Fila row (design parity).
+    const golden = {
+      ...baseOrder,
+      provider_order_id: "2000017336572246",
+      // Real payload: provider_code is the channel slug, not the order number — the num column must
+      // show provider_order_id (regression guard: live data showed "mercado_livre" here).
+      provider_code: "mercado_livre",
+      buyer: { display: "M. R.", city: "São Paulo", uf: "SP" },
+      destinatario: "Marcia Rocha",
+      destino_uf: "SP",
+      total: 339.98,
+      bucket: "enviado" as const,
+      sla: { due: "2026-07-11T00:00:00Z", atrasado: false },
+      items: [],
+      retorno_liquido: null,
+    };
+    listOrders.mockResolvedValue({ items: [golden], next_cursor: null });
+
+    renderPage();
+
+    // Fila is the default view — no tab switch needed.
+    await screen.findByRole("heading", { name: "Pedidos" });
+    // Composite description (comprador · valor); itens dropped honestly since items:[] is empty.
+    expect(await screen.findByText("Marcia Rocha · R$ 339,98")).toBeInTheDocument();
+    // retorno_liquido:null → honest "—" for retorno, scoped to THIS Fila row (not the page): the
+    // assertion must pin FilaRetorno's UnknownValue, not be satisfied by the unconditional DIFAL
+    // KPI dash elsewhere on the page. A regression to a fabricated "R$ 0,00" here must fail this.
+    const goldenRow = screen.getByRole("button", { name: "Abrir detalhe do pedido 2000017336572246" });
+    expect(within(goldenRow).getByText("—")).toBeInTheDocument();
+    // num column shows the order number, never the channel slug.
+    expect(within(goldenRow).getByText("2000017336572246")).toBeInTheDocument();
+    expect(screen.queryByText("mercado_livre")).not.toBeInTheDocument();
   });
 
   it("follows next_cursor to load the full order dataset across pages (F02-S5 #2)", async () => {
@@ -415,8 +459,8 @@ describe("PedidosPage", () => {
     await screen.findByRole("heading", { name: "Pedidos" });
     await goToLista();
 
-    expect(await screen.findByText("ML-1001")).toBeInTheDocument();
-    expect(await screen.findByText("ML-1002")).toBeInTheDocument();
+    expect(await screen.findByText("PO1")).toBeInTheDocument();
+    expect(await screen.findByText("PO2")).toBeInTheDocument();
     expect(listOrders.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 
@@ -457,7 +501,7 @@ describe("PedidosPage", () => {
 
     await screen.findByRole("heading", { name: "Pedidos" });
     await goToLista();
-    fireEvent.click(await screen.findByText("ML-1001"));
+    fireEvent.click(await screen.findByText("PO1"));
 
     expect(getOrder).toHaveBeenCalledWith("inst_1", "PO1");
     await waitFor(() => {
@@ -474,6 +518,31 @@ describe("PedidosPage", () => {
 
     expect(getOrder).toHaveBeenCalledWith("inst_1", "PO1");
     expect(await screen.findByText("J. S.")).toBeInTheDocument();
+  });
+
+  it("titles the drawer with the order number, never the channel slug (provider_code)", async () => {
+    // Regression guard (hub corrective #1): on real ML data provider_code is the channel slug
+    // "mercado_livre" — the drawer title must be the order number (provider_order_id), matching the
+    // 4 fixed views. A regression to `order?.provider_code || orderId` must fail this.
+    const goldenDetail = {
+      ...detailOrder,
+      provider_order_id: "2000017336572246",
+      provider_code: "mercado_livre",
+    };
+    listOrders.mockResolvedValue({ items: [goldenDetail], next_cursor: null });
+    getOrder.mockResolvedValue(goldenDetail);
+
+    renderPage("?order=2000017336572246");
+
+    const drawer = await screen.findByRole("complementary");
+    // Wait for order DETAIL to resolve — until then `title` falls back to orderId for EITHER code
+    // path, so the guard is only load-bearing once loaded data is present (buyer comes from getOrder).
+    await within(drawer).findByText("J. S.");
+    // The drawer body renders neither provider_code nor provider_order_id — only the title does — so
+    // the order number inside the drawer IS the title, and the slug can only appear if the title
+    // regressed to provider_code. Both assertions fail on a `provider_code || orderId` regression.
+    expect(within(drawer).getByText("2000017336572246")).toBeInTheDocument();
+    expect(screen.queryByText("mercado_livre")).not.toBeInTheDocument();
   });
 
   it("renders decomposição/DIFAL and buyer-doc/NF-number/tracking-code as honest '—', and a disabled footer action", async () => {

@@ -1,6 +1,12 @@
 import type { OrderRead } from "@marketplace-central/sdk-runtime";
 import { DataTable, UnknownValue, type DataTableColumn } from "@marketplace-central/ui";
-import { actionLabelForBucket, formatDateTime, formatMoney, formatPercent } from "./pedidosFormatters";
+import {
+  actionLabelForBucket,
+  formatDateTime,
+  formatMoney,
+  formatPercent,
+  marginBandClass,
+} from "./pedidosFormatters";
 
 export interface PedidosTableProps {
   items: OrderRead[];
@@ -19,10 +25,13 @@ function stateTag(label: string, className = "bg-slate-100 text-slate-700") {
 
 function renderSla(item: OrderRead) {
   const due = formatDateTime(item.sla?.due);
+  const atrasado = item.sla?.atrasado === true;
   return (
     <div className="flex flex-col gap-1">
-      <span>{due ?? <UnknownValue />}</span>
-      {item.sla?.atrasado ? stateTag("atrasado", "bg-red-100 text-red-800") : null}
+      <span className={atrasado ? "font-semibold text-warn" : undefined}>
+        {due ?? <UnknownValue />}
+      </span>
+      {atrasado ? stateTag("atrasado", "bg-warn-soft text-warn") : null}
     </div>
   );
 }
@@ -38,18 +47,34 @@ function renderItens(item: OrderRead) {
 // change once the decomposer lands.
 function renderRetorno(item: OrderRead) {
   const retorno = formatMoney(item.retorno_liquido);
-  const margem = formatPercent(item.margem_pct);
+  const ratio = item.margem_pct;
+  const margem = formatPercent(ratio);
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="flex items-center gap-1.5 whitespace-nowrap">
       <span className="font-mono">{retorno ?? <UnknownValue hint="decomposição de custos ainda não disponível (hub C2)" />}</span>
-      {margem ? <span className="text-[10.5px] text-faint">{margem}</span> : null}
+      {margem != null && ratio != null ? (
+        <span className={`rounded-pill px-1.5 py-0.5 text-[10.5px] font-semibold ${marginBandClass(ratio)}`}>
+          {margem}
+        </span>
+      ) : null}
     </div>
   );
 }
 
-// Real-ready wiring (F02-S6): reads order.difal?.amount — null renders UnknownValue honestly.
+// Real-ready wiring (F02-S6): reads order.difal — null amount renders UnknownValue honestly; a
+// real value renders a token-colored chip (pago ✓ / agendado / valor) mirroring the design.
 function renderDifal(item: OrderRead) {
-  return formatMoney(item.difal?.amount) ?? <UnknownValue hint="DIFAL ainda não decomposto (hub C2)" />;
+  const difal = item.difal;
+  if (!difal || difal.amount == null) {
+    return <UnknownValue hint="DIFAL ainda não decomposto (hub C2)" />;
+  }
+  if (difal.paid === true) {
+    return stateTag("pago ✓", "bg-accent-soft text-accent-ink");
+  }
+  const due = formatDateTime(difal.due_date);
+  const amount = formatMoney(difal.amount);
+  const label = due ? `ag. ${due}` : (amount ?? "agendado");
+  return stateTag(label, "bg-info-soft text-info");
 }
 
 function renderAcao(item: OrderRead) {
@@ -71,12 +96,10 @@ const columns: DataTableColumn<OrderRead>[] = [
   {
     key: "pedido",
     header: "Pedido",
-    render: (item) => (
-      <div className="flex flex-col">
-        <span className="font-medium">{item.provider_code || item.provider_order_id}</span>
-        <span className="text-xs text-faint">{item.provider_order_id}</span>
-      </div>
-    ),
+    // The order number is provider_order_id; provider_code is the channel slug ("mercado_livre")
+    // for this connector, so it is not shown as the order label (design parity — the Pedido cell is
+    // the order number).
+    render: (item) => <span className="font-mono text-[11.5px] text-faint">{item.provider_order_id}</span>,
   },
   {
     key: "data",
