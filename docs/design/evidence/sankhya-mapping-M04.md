@@ -197,3 +197,51 @@ from METALPRD.TGFITE i
 left join METALPRD.TGFDES d on d.NUPROMOCAO = i.NUPROMOCAO
 where i.NUNOTA = :nunota;
 ```
+
+## Estratégia de sync — RATIFICADA (full-snapshot v1, incremental v2 com chaves provadas)
+
+Consulta de change-tracking ao especialista (METALPRD 2026-07-22, tudo `ran`). Decisão de design,
+não improviso — registrada para M-04 (v1) e para a evolução (v2).
+
+### Matriz de change-tracking por tabela (provada ao vivo)
+
+| Tabela | Chave incremental | Verdict |
+|---|---|---|
+| TGFPRO | `DTALTER` (100% preenchida, 40.401/40.401, COM hora intraday) | ✅ confiável; cruzado c/ TSILGT (13.824 eventos/30d) |
+| TGFCUS | `DHALTER` / `DTATUAL` — série temporal APPEND-ONLY (produto top = 383 linhas, sem update in-place) | ✅ perfeito p/ incremental |
+| TGFEXC | `DHALTREG` (timestamp da linha) | ✅ MAS obrigatório: `DTVIGOR` sozinho PERDE ~4% (23/571 preços desde jun editados IN-PLACE depois da versão criada, `DHALTREG > DTVIGOR`) |
+| TGFEST | **NENHUMA** (DTVAL/DTFABRICACAO/DTENTRADA ≠ last-change) | ❌ incremental só via ledger TGFESE (~1,01M linhas, DTMOV) + recompute — não vale; full = 28.010 linhas, trivial |
+| TGFMAR | nenhuma (759 linhas) | full trivial |
+| TGFGRU | `DHALTER` (baixa freq) | ✅ ou full |
+| TSILGT (log nativo) | field-level, 24,9M linhas, MAS cobertura seletiva: só TGFPRO/TGFFIN/TGFPAR/TGFCTB | ❌ NÃO cobre TGFEST/TGFEXC/TGFTAB/TGFCUS → não serve de feed universal |
+
+Cadência real do cliente: preço ~business-daily (24 versões CODTAB=0/mês), custo intraday
+(append), cadastro ~1.000 produtos/30d intraday.
+
+### v1 (M-04) = FULL-SNAPSHOT por rodada — decisão ratificada
+
+Não é atalho; é o desenho correto para este dataset:
+1. **keep-absent (ADR-04) exige o conjunto completo** — delta não sabe marcar ausente. Qualquer
+   incremental ainda precisaria de sweep completo periódico só para ausência.
+2. **TGFEST não tem change-ts** — estoque força full de qualquer jeito; incremental não elimina o
+   full, só o complica.
+3. **Imune a update in-place** — snapshot relê o valor corrente (Q2/Q3 as-of) a cada rodada; os
+   ~4% de edições in-place em TGFEXC são capturados naturalmente. Incremental ingênuo (DTVIGOR)
+   os perderia em silêncio.
+4. **Volumetria minúscula**: 10.526 ativos × (2 point-lookups indexados) + 28.010 linhas TGFEST.
+   Rodada completa = segundos.
+
+Cadência v1: diária via scheduler M-01 (cadence-agnostic, D6) — cursor de sync_state registra a
+rodada, não filtra fonte.
+
+### v2 (futuro, se intraday/escala exigir) — desenho pré-aprovado
+
+Incremental liga APENAS nas 3 chaves provadas, mantendo estoque full:
+- TGFPRO: `WHERE DTALTER > :cursor` (pega inclusive flip `ATIVO='N'` — desativação toca DTALTER,
+  logo ausência de cadastro é detectável incrementalmente).
+- TGFCUS: `WHERE DHALTER > :cursor` (append-only).
+- TGFEXC: `WHERE DHALTREG > :cursor` — **NUNCA DTVIGOR** (perde in-place).
+- TGFEST: continua full (28k linhas).
+- Cursor por tabela em `sync_state` (M-01 já suporta), com overlap de segurança contra clock-skew
+  + upsert idempotente. Sweep full periódico (ex. 1×/dia) continua obrigatório p/ keep-absent de
+  produto deletado fisicamente (raro, não coberto por DTALTER).
