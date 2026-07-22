@@ -145,6 +145,84 @@ func TestReaderSankhyaWithNoLiveReaderFailsHonest(t *testing.T) {
 	}
 }
 
+// fakePagerReader is a fakeReader that also implements the optional
+// CatalogPageReader capability, mirroring the real upload/oracle chains.
+type fakePagerReader struct {
+	fakeReader
+	pageCalled   bool
+	searchCalled bool
+	pageCtx      context.Context
+}
+
+func (f *fakePagerReader) ListCatalogProductFacts(ctx context.Context, _ internalreadports.Cursor, _ int) (internalreadports.CatalogFactPage, error) {
+	f.pageCalled = true
+	f.pageCtx = ctx
+	return internalreadports.CatalogFactPage{}, nil
+}
+
+func (f *fakePagerReader) SearchCatalogProductFacts(ctx context.Context, _ string, _ int) (internalreadports.CatalogFactPage, error) {
+	f.searchCalled = true
+	f.pageCtx = ctx
+	return internalreadports.CatalogFactPage{}, nil
+}
+
+var _ internalreadports.CatalogPageReader = (*fakePagerReader)(nil)
+
+// Regression guard for the /catalog 503: wrapping the upload reader in the
+// routing Reader must NOT hide its CatalogPageReader capability from
+// internal_read/application.Service's type assertion.
+func TestReaderRoutesCatalogPageToUploadSource(t *testing.T) {
+	upload := &fakePagerReader{}
+	live := &fakePagerReader{}
+	lookup := fakeLookup{cfg: tenant_config.Config{TenantID: "t1", Source: tenant_config.SourceXLSX, SetAt: time.Now()}}
+	r := NewReader(upload, live, lookup, "t1")
+
+	if _, err := r.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 10); err != nil {
+		t.Fatalf("ListCatalogProductFacts() error = %v", err)
+	}
+	if !upload.pageCalled {
+		t.Fatal("expected upload pager to be invoked")
+	}
+	if live.pageCalled {
+		t.Fatal("expected live pager NOT to be invoked")
+	}
+	source, ok := erpinternalread.ActiveSourceFromContext(upload.pageCtx)
+	if !ok || source != erpdomain.SourceXLSX {
+		t.Fatalf("erp ActiveSourceFromContext() = (%v, %v), want (xlsx, true)", source, ok)
+	}
+	if _, err := r.SearchCatalogProductFacts(context.Background(), "q", 10); err != nil {
+		t.Fatalf("SearchCatalogProductFacts() error = %v", err)
+	}
+	if !upload.searchCalled {
+		t.Fatal("expected upload search pager to be invoked")
+	}
+}
+
+func TestReaderCatalogPageSankhyaNoLiveFailsHonest(t *testing.T) {
+	upload := &fakePagerReader{}
+	lookup := fakeLookup{cfg: tenant_config.Config{TenantID: "t1", Source: tenant_config.SourceSankhya, SetAt: time.Now()}}
+	r := NewReader(upload, nil, lookup, "t1")
+
+	_, err := r.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 10)
+	if !errors.Is(err, ErrActiveSourceUnavailable) {
+		t.Fatalf("ListCatalogProductFacts() error = %v, want ErrActiveSourceUnavailable", err)
+	}
+	if upload.pageCalled {
+		t.Fatal("expected upload pager NOT to be invoked (no fallback)")
+	}
+}
+
+func TestReaderCatalogPageNonPagerFailsHonest(t *testing.T) {
+	upload := &fakeReader{} // no CatalogPageReader capability
+	lookup := fakeLookup{cfg: tenant_config.Config{TenantID: "t1", Source: tenant_config.SourceXLSX, SetAt: time.Now()}}
+	r := NewReader(upload, nil, lookup, "t1")
+
+	_, err := r.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 10)
+	if !internalreaddomain.IsReadErrorCode(err, internalreaddomain.ReadErrorSourceUnavailable) {
+		t.Fatalf("ListCatalogProductFacts() error = %v, want ReadErrorSourceUnavailable", err)
+	}
+}
+
 func TestReaderUnknownActiveSourceFailsClosed(t *testing.T) {
 	upload := &fakeReader{}
 	live := &fakeReader{}

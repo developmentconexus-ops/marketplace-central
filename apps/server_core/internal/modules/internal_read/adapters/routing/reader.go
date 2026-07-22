@@ -110,4 +110,40 @@ func (r *Reader) GetTaxInputs(ctx context.Context, input internalreadports.TaxIn
 	return rd.GetTaxInputs(ctx, input)
 }
 
+// ListCatalogProductFacts routes catalog paging to the resolved source's
+// reader. The resolved reader must implement the optional CatalogPageReader
+// capability (both the upload chain and the oracle chain do); a reader
+// without it fails honest with source_unavailable rather than serving
+// another source's pages (ADR-17).
+func (r *Reader) ListCatalogProductFacts(ctx context.Context, cursor internalreadports.Cursor, limit int) (internalreadports.CatalogFactPage, error) {
+	pager, ctx, err := r.resolveCatalogPager(ctx)
+	if err != nil {
+		return internalreadports.CatalogFactPage{}, err
+	}
+	return pager.ListCatalogProductFacts(ctx, cursor, limit)
+}
+
+// SearchCatalogProductFacts routes catalog search to the resolved source's
+// reader, with the same honest-failure contract as ListCatalogProductFacts.
+func (r *Reader) SearchCatalogProductFacts(ctx context.Context, query string, limit int) (internalreadports.CatalogFactPage, error) {
+	pager, ctx, err := r.resolveCatalogPager(ctx)
+	if err != nil {
+		return internalreadports.CatalogFactPage{}, err
+	}
+	return pager.SearchCatalogProductFacts(ctx, query, limit)
+}
+
+func (r *Reader) resolveCatalogPager(ctx context.Context) (internalreadports.CatalogPageReader, context.Context, error) {
+	rd, ctx, err := r.resolve(ctx)
+	if err != nil {
+		return nil, ctx, err
+	}
+	pager, ok := rd.(internalreadports.CatalogPageReader)
+	if !ok {
+		return nil, ctx, internalreaddomain.NewReadError(internalreaddomain.ReadErrorSourceUnavailable, "active source's reader does not support catalog paging", nil)
+	}
+	return pager, ctx, nil
+}
+
 var _ internalreadports.Reader = (*Reader)(nil)
+var _ internalreadports.CatalogPageReader = (*Reader)(nil)
