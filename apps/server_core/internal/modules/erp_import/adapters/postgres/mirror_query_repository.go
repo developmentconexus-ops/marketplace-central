@@ -80,15 +80,15 @@ func (r *Repository) MirrorProductByCode(ctx context.Context, tenantID string, s
 
 // MirrorCatalogPage returns up to limit+1 rows when limit is positive so callers can detect a following page.
 func (r *Repository) MirrorCatalogPage(ctx context.Context, tenantID string, source domain.ImportSource, query string, afterInternalID int64, limit int) ([]domain.MirrorProduct, error) {
-	rows, err := r.pool.Query(ctx, `SELECT codigo_produto,descricao,referencia,ean,marca,grupo_codigo,grupo_descricao,ncm,custo::text,preco_venda::text,estoque_total::text,updated_at
+	rows, err := r.pool.Query(ctx, `SELECT DISTINCT ON (codigo_produto::bigint)
+  codigo_produto,descricao,referencia,ean,marca,grupo_codigo,grupo_descricao,ncm,
+  custo::text,preco_venda::text,estoque_total::text,updated_at
 FROM products_mirror
-WHERE tenant_id=$1
-  AND source=$2
-  AND absent_in_last_snapshot=false
+WHERE tenant_id=$1 AND source=$2 AND absent_in_last_snapshot=false
   AND codigo_produto ~ '^[0-9]{1,18}$'
   AND codigo_produto::bigint > $3
   AND ($4='' OR descricao ILIKE '%'||$4||'%')
-ORDER BY codigo_produto::bigint ASC
+ORDER BY codigo_produto::bigint ASC, updated_at DESC
 LIMIT CASE WHEN $5 > 0 THEN $5 + 1 END`, tenantID, source, afterInternalID, query, limit)
 	if err != nil {
 		return nil, fmt.Errorf("query mirror catalog page: %w", err)

@@ -26,7 +26,7 @@ func TestMirrorMergeKeepsAbsentIsTenantScopedAndResurrects(t *testing.T) {
 	})
 
 	now := time.Now().UTC()
-	x := mirrorSnapshot("61111111-1111-1111-1111-111111111111", "mirror-x-1", now, []domain.NormalizedRow{{Codprod: "X", Descrprod: "X one", StockPhysical: "8", StockReserved: stringPtr("3")}})
+	x := mirrorSnapshot("61111111-1111-1111-1111-111111111111", "mirror-x-1", now, []domain.NormalizedRow{{Codprod: "42", Descrprod: "X one", StockPhysical: "8", StockReserved: stringPtr("3")}})
 	if err := repo.PersistSnapshotAtomically(ctx, tenant, x); err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func TestMirrorMergeKeepsAbsentIsTenantScopedAndResurrects(t *testing.T) {
 	var flagged bool
 	var stale *time.Time
 	var cost, stock *string
-	if err := pool.QueryRow(ctx, `SELECT absent_in_last_snapshot,stale_since,custo::text,estoque_total::text FROM products_mirror WHERE tenant_id=$1 AND codigo_produto='X'`, tenant).Scan(&flagged, &stale, &cost, &stock); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT absent_in_last_snapshot,stale_since,custo::text,estoque_total::text FROM products_mirror WHERE tenant_id=$1 AND codigo_produto='42'`, tenant).Scan(&flagged, &stale, &cost, &stock); err != nil {
 		t.Fatal(err)
 	}
 	if !flagged || stale == nil {
@@ -55,20 +55,24 @@ func TestMirrorMergeKeepsAbsentIsTenantScopedAndResurrects(t *testing.T) {
 	if cost != nil || stock == nil || *stock != "5" {
 		t.Fatalf("honest numerics cost=%v stock=%v", cost, stock)
 	}
-	var links int
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM product_links WHERE tenant_id=$1 AND internal_product_id=42`, tenant).Scan(&links); err != nil || links != 1 {
-		t.Fatalf("links=%d err=%v", links, err)
+	var installationID, providerCode, providerItemID, state string
+	var internalProductID int64
+	if err := pool.QueryRow(ctx, `SELECT installation_id,provider_code,provider_item_id,state,internal_product_id FROM product_links WHERE tenant_id=$1 AND internal_product_id=42`, tenant).Scan(&installationID, &providerCode, &providerItemID, &state, &internalProductID); err != nil {
+		t.Fatal(err)
+	}
+	if installationID != "installation" || providerCode != "mercadolivre" || providerItemID != "item" || state != "linked" || internalProductID != 42 {
+		t.Fatalf("stale product link changed: installation=%q provider=%q item=%q state=%q internal_product_id=%d", installationID, providerCode, providerItemID, state, internalProductID)
 	}
 	var otherFlagged bool
 	if err := pool.QueryRow(ctx, `SELECT absent_in_last_snapshot FROM products_mirror WHERE tenant_id=$1 AND codigo_produto='X'`, otherTenant).Scan(&otherFlagged); err != nil || otherFlagged {
 		t.Fatalf("other tenant flagged=%v err=%v", otherFlagged, err)
 	}
 
-	resurrected := mirrorSnapshot("64444444-4444-4444-4444-444444444444", "mirror-x-3", now.Add(2*time.Second), []domain.NormalizedRow{{Codprod: "X", Descrprod: "X again"}})
+	resurrected := mirrorSnapshot("64444444-4444-4444-4444-444444444444", "mirror-x-3", now.Add(2*time.Second), []domain.NormalizedRow{{Codprod: "42", Descrprod: "X again"}})
 	if err := repo.PersistSnapshotAtomically(ctx, tenant, resurrected); err != nil {
 		t.Fatal(err)
 	}
-	if err := pool.QueryRow(ctx, `SELECT absent_in_last_snapshot,stale_since,custo::text,estoque_total::text FROM products_mirror WHERE tenant_id=$1 AND codigo_produto='X'`, tenant).Scan(&flagged, &stale, &cost, &stock); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT absent_in_last_snapshot,stale_since,custo::text,estoque_total::text FROM products_mirror WHERE tenant_id=$1 AND codigo_produto='42'`, tenant).Scan(&flagged, &stale, &cost, &stock); err != nil {
 		t.Fatal(err)
 	}
 	if flagged || stale != nil || cost != nil || stock != nil {
@@ -175,9 +179,31 @@ func TestSyncLatestCompletedSnapshotUsesSharedMerge(t *testing.T) {
 	if err != nil || processed != 1 {
 		t.Fatalf("processed=%d err=%v", processed, err)
 	}
-	var count int
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM products_mirror WHERE tenant_id=$1 AND codigo_produto='SYNC' AND protocol_id=$2`, tenant, snapshot.ID).Scan(&count); err != nil || count != 1 {
-		t.Fatalf("count=%d err=%v", count, err)
+	var countAfterFirst int
+	var descriptionAfterFirst, costAfterFirst, stockAfterFirst, protocolAfterFirst string
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM products_mirror WHERE tenant_id=$1 AND source='xlsx'`, tenant).Scan(&countAfterFirst); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT descricao,custo::text,estoque_total::text,protocol_id::text FROM products_mirror WHERE tenant_id=$1 AND source='xlsx' AND codigo_produto='SYNC'`, tenant).Scan(&descriptionAfterFirst, &costAfterFirst, &stockAfterFirst, &protocolAfterFirst); err != nil {
+		t.Fatal(err)
+	}
+	processed, err = repo.SyncLatestCompletedSnapshot(ctx, tenant, domain.SourceXLSX)
+	if err != nil || processed != 1 {
+		t.Fatalf("second processed=%d err=%v", processed, err)
+	}
+	var countAfterSecond int
+	var descriptionAfterSecond, costAfterSecond, stockAfterSecond, protocolAfterSecond string
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM products_mirror WHERE tenant_id=$1 AND source='xlsx'`, tenant).Scan(&countAfterSecond); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT descricao,custo::text,estoque_total::text,protocol_id::text FROM products_mirror WHERE tenant_id=$1 AND source='xlsx' AND codigo_produto='SYNC'`, tenant).Scan(&descriptionAfterSecond, &costAfterSecond, &stockAfterSecond, &protocolAfterSecond); err != nil {
+		t.Fatal(err)
+	}
+	if countAfterFirst != 1 || countAfterSecond != countAfterFirst {
+		t.Fatalf("mirror counts after first=%d after second=%d", countAfterFirst, countAfterSecond)
+	}
+	if descriptionAfterSecond != descriptionAfterFirst || costAfterSecond != costAfterFirst || stockAfterSecond != stockAfterFirst || protocolAfterSecond != protocolAfterFirst {
+		t.Fatalf("mirror row changed: first=(%q,%q,%q,%q) second=(%q,%q,%q,%q)", descriptionAfterFirst, costAfterFirst, stockAfterFirst, protocolAfterFirst, descriptionAfterSecond, costAfterSecond, stockAfterSecond, protocolAfterSecond)
 	}
 }
 
@@ -271,6 +297,48 @@ func TestMirrorCatalogPagesDoNotDuplicateOrSkip(t *testing.T) {
 	}
 	if first[1].Custo == nil || *first[1].Custo != "12.50" || first[1].EstoqueTotal == nil || *first[1].EstoqueTotal != "4" {
 		t.Fatalf("numeric text custo=%v estoque=%v", first[1].Custo, first[1].EstoqueTotal)
+	}
+}
+
+func TestMirrorCatalogPagesCollapseNumericIdentityWithoutSkipping(t *testing.T) {
+	ctx := context.Background()
+	repo, tenant := integrationRepo(t)
+	pool, _ := testpostgres.OpenPool(t, tenant)
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM products_mirror WHERE tenant_id=$1`, tenant)
+	})
+
+	older := time.Now().UTC().Add(-time.Minute)
+	newer := older.Add(time.Second)
+	_, err := pool.Exec(ctx, `INSERT INTO products_mirror
+		(tenant_id,source,codigo_produto,descricao,absent_in_last_snapshot,updated_at)
+		VALUES ($1,$2,'1','A',false,$3),($1,$2,'01','B',false,$4),($1,$2,'2','two',false,$4)`, tenant, domain.SourceXLSX, older, newer)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fetched, err := repo.MirrorCatalogPage(ctx, tenant, domain.SourceXLSX, "", 0, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fetched) != 2 {
+		t.Fatalf("first fetch length=%d codes=%v", len(fetched), mirrorCodes(fetched))
+	}
+	firstPage := fetched[:1]
+	if firstPage[0].CodigoProduto != "01" || firstPage[0].Descricao == nil || *firstPage[0].Descricao != "B" {
+		t.Fatalf("first page=%+v, want newer identity 1 row", firstPage[0])
+	}
+
+	secondFetched, err := repo.MirrorCatalogPage(ctx, tenant, domain.SourceXLSX, "", 1, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(mirrorCodes(secondFetched), []string{"2"}) {
+		t.Fatalf("second page codes=%v", mirrorCodes(secondFetched))
+	}
+	identities := map[int64]int{1: 1, 2: 1}
+	if len(firstPage)+len(secondFetched) != len(identities) {
+		t.Fatalf("distinct identities duplicated or lost: first=%v second=%v", mirrorCodes(firstPage), mirrorCodes(secondFetched))
 	}
 }
 
