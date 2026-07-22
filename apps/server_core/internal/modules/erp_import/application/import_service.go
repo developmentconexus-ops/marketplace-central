@@ -19,12 +19,25 @@ import (
 
 var protocolPattern = regexp.MustCompile(`^#([0-9]+)-E$`)
 
+// SyncEnqueuer enqueues accepted product codes into the market sync cursor for
+// every installation of the tenant and returns the installations it touched.
+type SyncEnqueuer interface {
+	EnqueueMarketProducts(ctx context.Context, productCodes []string) (installationIDs []string, err error)
+}
+
+// LinkCandidateGenerator generates link candidates for one installation.
+type LinkCandidateGenerator interface {
+	GenerateLinkCandidates(ctx context.Context, installationID string) error
+}
+
 type ImportService struct {
-	parser   ports.Parser
-	repo     ports.ImportRepository
-	tenantID string
-	now      func() time.Time
-	newID    func() (domain.ImportID, error)
+	parser    ports.Parser
+	repo      ports.ImportRepository
+	tenantID  string
+	now       func() time.Time
+	newID     func() (domain.ImportID, error)
+	enqueuer  SyncEnqueuer
+	generator LinkCandidateGenerator
 }
 
 type ImportServiceOption func(*ImportService)
@@ -41,6 +54,18 @@ func WithIDGenerator(newID func() (domain.ImportID, error)) ImportServiceOption 
 	}
 }
 
+func WithSyncEnqueuer(enqueuer SyncEnqueuer) ImportServiceOption {
+	return func(service *ImportService) {
+		service.enqueuer = enqueuer
+	}
+}
+
+func WithLinkCandidateGenerator(generator LinkCandidateGenerator) ImportServiceOption {
+	return func(service *ImportService) {
+		service.generator = generator
+	}
+}
+
 func NewImportService(parser ports.Parser, repo ports.ImportRepository, tenantID string, opts ...ImportServiceOption) *ImportService {
 	service := &ImportService{
 		parser:   parser,
@@ -53,6 +78,11 @@ func NewImportService(parser ports.Parser, repo ports.ImportRepository, tenantID
 		opt(service)
 	}
 	return service
+}
+
+func (s *ImportService) SetPostImportHooks(enqueuer SyncEnqueuer, generator LinkCandidateGenerator) {
+	s.enqueuer = enqueuer
+	s.generator = generator
 }
 
 func (s *ImportService) RunImport(ctx context.Context, source io.Reader) (domain.ImportReport, error) {
@@ -119,6 +149,22 @@ func (s *ImportService) runImport(
 	}
 	if err := s.repo.PersistSnapshotAtomically(ctx, s.tenantID, snapshot); err != nil {
 		return domain.ImportReport{}, fmt.Errorf("persist ERP import: %w", err)
+	}
+	if status == domain.ImportStatusCompleted && s.enqueuer != nil && s.generator != nil {
+		codes := make([]string, 0, len(accepted))
+		for _, row := range accepted {
+			codes = append(codes, row.Codprod)
+		}
+
+		installationIDs, err := s.enqueuer.EnqueueMarketProducts(ctx, codes)
+		if err != nil {
+			return domain.ImportReport{}, fmt.Errorf("enqueue market products after ERP import: %w", err)
+		}
+		for _, installationID := range installationIDs {
+			if err := s.generator.GenerateLinkCandidates(ctx, installationID); err != nil {
+				return domain.ImportReport{}, fmt.Errorf("generate link candidates for installation %q after ERP import: %w", installationID, err)
+			}
+		}
 	}
 	return s.repo.GetImport(ctx, s.tenantID, id)
 }
