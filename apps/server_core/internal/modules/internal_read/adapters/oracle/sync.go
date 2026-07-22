@@ -190,7 +190,10 @@ func (a *SankhyaAdapter) applyCost(ctx context.Context, dataRef time.Time, rows 
 			r.row.Custo = &v
 		}
 	}
-	return wrapOracleError("iterate sankhya cost", dbrows.Err())
+	if err := dbrows.Err(); err != nil {
+		return wrapOracleError("iterate sankhya cost", err)
+	}
+	return nil
 }
 
 // Q3 — PREÇO DE LISTA as-of (tabela de venda CODTAB=0). Set-based equivalent of the
@@ -225,7 +228,10 @@ func (a *SankhyaAdapter) applyPrice(ctx context.Context, dataRef time.Time, rows
 			r.row.PrecoVenda = &v
 		}
 	}
-	return wrapOracleError("iterate sankhya price", dbrows.Err())
+	if err := dbrows.Err(); err != nil {
+		return wrapOracleError("iterate sankhya price", err)
+	}
+	return nil
 }
 
 // Q4 — ESTOQUE por local (próprio, CODPARC=0). F-01 decision (mapping doc leaves it
