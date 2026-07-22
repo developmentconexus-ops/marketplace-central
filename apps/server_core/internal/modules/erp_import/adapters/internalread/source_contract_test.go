@@ -277,6 +277,10 @@ func (r *contractRepo) LatestCompletedSnapshot(context.Context, string, erpdomai
 	return r.snapshot, nil
 }
 
+func (r *contractRepo) SyncLatestCompletedSnapshot(context.Context, string, erpdomain.ImportSource) (int, error) {
+	return 0, nil
+}
+
 var _ erpports.ImportRepository = (*contractRepo)(nil)
 
 type oracleShapedReader struct {

@@ -38,6 +38,9 @@ func (f *fakeRepo) LatestCompletedSnapshot(_ context.Context, tenant string, _ e
 	f.tenant = tenant
 	return f.snapshot, f.err
 }
+func (f *fakeRepo) SyncLatestCompletedSnapshot(context.Context, string, erpdomain.ImportSource) (int, error) {
+	return 0, nil
+}
 
 var _ erpports.ImportRepository = (*fakeRepo)(nil)
 
@@ -280,6 +283,9 @@ func (r *sourceKeyedRepo) LatestCompletedSnapshot(_ context.Context, _ string, s
 		return erpdomain.ImportSnapshot{}, erpports.ErrImportNotFound
 	}
 	return snapshot, nil
+}
+func (r *sourceKeyedRepo) SyncLatestCompletedSnapshot(context.Context, string, erpdomain.ImportSource) (int, error) {
+	return 0, nil
 }
 
 var _ erpports.ImportRepository = (*sourceKeyedRepo)(nil)

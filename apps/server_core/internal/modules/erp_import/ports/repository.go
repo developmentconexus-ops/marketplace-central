@@ -12,4 +12,5 @@ type ImportRepository interface {
 	ListImports(ctx context.Context, tenantID string) ([]domain.ImportReport, error)
 	GetImport(ctx context.Context, tenantID string, importID domain.ImportID) (domain.ImportReport, error)
 	LatestCompletedSnapshot(ctx context.Context, tenantID string, source domain.ImportSource) (domain.ImportSnapshot, error)
+	SyncLatestCompletedSnapshot(ctx context.Context, tenantID string, source domain.ImportSource) (processed int, err error)
 }

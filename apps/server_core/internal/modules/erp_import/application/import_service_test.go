@@ -72,6 +72,10 @@ func (r *fakeImportRepository) LatestCompletedSnapshot(context.Context, string, 
 	return domain.ImportSnapshot{}, nil
 }
 
+func (r *fakeImportRepository) SyncLatestCompletedSnapshot(context.Context, string, domain.ImportSource) (int, error) {
+	return 0, nil
+}
+
 func TestImportServiceHappyPath(t *testing.T) {
 	clock := time.Date(2026, 7, 17, 13, 30, 0, 123, time.FixedZone("BRT", -3*60*60))
 	id := domain.ImportID("123e4567-e89b-42d3-a456-426614174000")
