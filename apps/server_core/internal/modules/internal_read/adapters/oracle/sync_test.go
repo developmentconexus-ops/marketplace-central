@@ -29,9 +29,11 @@ func TestSankhyaSyncMapsSnapshotHonestNull(t *testing.T) {
 	q := &dispatchQueryer{results: map[string]fakeResult{
 		"TGFPRO": {cols: 8, rows: [][]driver.Value{
 			// CODPROD, DESCRPROD, NCM, REFERENCIA(EAN), REFFORN, CODGRUPOPROD, DESCRGRUPOPROD, DESCRICAO(marca)
-			{int64(100), "Torneira", "84818090", "7894900011517", "DOCOL-99", int64(5), "Metais", "Docol"},
+			// 100's EAN is space-padded (Oracle CHAR) — must still resolve after trimming.
+			{int64(100), "Torneira", "84818090", "  7894900011517 ", "DOCOL-99", int64(5), "Metais", "Docol"},
 			{int64(200), "Parafuso", nil, "ABC123", nil, nil, nil, nil},
-			{int64(300), "Sifao Orfao", nil, nil, nil, nil, nil, nil},
+			// 300's description is whitespace-only → honest-NULL, not "".
+			{int64(300), "   ", nil, nil, nil, nil, nil, nil},
 		}},
 		"TGFCUS": {cols: 2, rows: [][]driver.Value{
 			{int64(100), 12.50},
@@ -69,12 +71,22 @@ func TestSankhyaSyncMapsSnapshotHonestNull(t *testing.T) {
 
 	// Bind order/count is load-bearing: a real Oracle rejects or mis-binds a
 	// swapped company/dataRef, but the fake ignores binds at execution — so these
-	// assertions are the only guard against a Q2/Q3 bind regression.
+	// assertions are the only guard against a Q2/Q3 Go-argument regression.
 	if a, ok := q.argsFor("TGFCUS"); !ok || len(a) != 2 || a[0] != sankhyaCompany || a[1] != fixed {
 		t.Errorf("cost binds = %v, want [%d %v] (CODEMP then data_ref)", a, sankhyaCompany, fixed)
 	}
 	if a, ok := q.argsFor("TGFEXC"); !ok || len(a) != 1 || a[0] != fixed {
 		t.Errorf("price binds = %v, want [%v] (data_ref only)", a, fixed)
+	}
+	// The Go-arg assertions above only lock argument ORDER; a swap of the SQL
+	// placeholders themselves (e.g. CODEMP=:2 AND DTATUAL<=:1) would keep the same
+	// arg slice and slip through. Assert the placeholder-to-column binding in the SQL
+	// text so both halves — argument order AND placeholder position — are guarded.
+	if s, ok := q.queryFor("TGFCUS"); !ok || !strings.Contains(s, "CODEMP = :1") || !strings.Contains(s, "DTATUAL <= :2") {
+		t.Errorf("cost SQL placeholder binding wrong; want CODEMP=:1 and DTATUAL<=:2\n%s", s)
+	}
+	if s, ok := q.queryFor("TGFEXC"); !ok || !strings.Contains(s, "DTVIGOR <= :1") {
+		t.Errorf("price SQL placeholder binding wrong; want DTVIGOR<=:1\n%s", s)
 	}
 
 	rows := indexRows(mw.rows)
@@ -122,6 +134,9 @@ func TestSankhyaSyncMapsSnapshotHonestNull(t *testing.T) {
 	p = rows["300"]
 	if p.Custo != nil || p.PrecoVenda != nil || p.EstoqueTotal != nil {
 		t.Errorf("300 should be honest-NULL, got custo=%v preco=%v estoque=%v", p.Custo, p.PrecoVenda, p.EstoqueTotal)
+	}
+	if p.Descricao != nil {
+		t.Errorf("300.Descricao = %q, want NULL (whitespace-only Oracle text is honest-unknown, not \"\")", strv(p.Descricao))
 	}
 
 	// Stock locations: 100×2 + 200×1 = 3; codprod 999 (not in base) excluded.
@@ -209,6 +224,17 @@ func (q *dispatchQueryer) argsFor(substr string) ([]any, bool) {
 		}
 	}
 	return nil, false
+}
+
+// queryFor returns the SQL text of the first captured query containing substr, so a
+// test can assert placeholder-to-column binding, not just Go argument order.
+func (q *dispatchQueryer) queryFor(substr string) (string, bool) {
+	for _, c := range q.calls {
+		if strings.Contains(c.query, substr) {
+			return c.query, true
+		}
+	}
+	return "", false
 }
 
 func (q *dispatchQueryer) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {

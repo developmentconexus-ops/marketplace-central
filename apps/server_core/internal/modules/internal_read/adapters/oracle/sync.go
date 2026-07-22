@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	catalogdomain "marketplace-central/apps/server_core/internal/modules/catalog/domain"
@@ -132,11 +133,17 @@ func (a *SankhyaAdapter) readBase(ctx context.Context) (map[int]*snapshotRow, er
 		}
 
 		// EAN lives in REFERENCIA but only when EAN-shaped; ~51% are not → NULL
-		// (honest-unknown, matches read-side FindProductsForLinking).
+		// (honest-unknown). Trim first: Oracle CHAR/space-padding would otherwise fail
+		// the digit check and drop a genuine EAN to NULL. Validate AND store the
+		// trimmed value so the mirror never persists a padded identifier. Shape rule =
+		// catalogdomain.IsValidGTIN, deliberately identical to read-side
+		// FindProductsForLinking (reader.go) so a product's EAN is the same fact whether
+		// served live-read or from the mirror snapshot (cross-source consistency).
 		var ean *string
-		if reference.Valid && catalogdomain.IsValidGTIN(reference.String) {
-			v := reference.String
-			ean = &v
+		if reference.Valid {
+			if trimmed := strings.TrimSpace(reference.String); catalogdomain.IsValidGTIN(trimmed) {
+				ean = &trimmed
+			}
 		}
 
 		out[codprod] = &snapshotRow{
@@ -288,11 +295,18 @@ func (a *SankhyaAdapter) applyStock(ctx context.Context, rows map[int]*snapshotR
 	return locs, nil
 }
 
+// nullStr maps an Oracle text column to *string with honest-NULL discipline: an
+// absent value, or one that is empty/whitespace-only after trimming (Oracle
+// CHAR-padding, blank cells), is unknown → nil, never a "" that would read as a
+// known-empty fact. The trimmed value is stored so no padding leaks into the mirror.
 func nullStr(v sql.NullString) *string {
 	if !v.Valid {
 		return nil
 	}
-	s := v.String
+	s := strings.TrimSpace(v.String)
+	if s == "" {
+		return nil
+	}
 	return &s
 }
 
