@@ -115,5 +115,38 @@ func TestSankhyaSyncLive(t *testing.T) {
 	fmt.Printf("MPC_C04_SANKHYA_MIRROR_ROWS=%d\n", persisted)
 	fmt.Printf("MPC_C04_EAN_NULLS=%d MPC_C04_CUSTO_NULLS=%d MPC_C04_FULLY_RESOLVED=%d MPC_C04_ZERO_CUSTO=%d\n",
 		eanNulls, custoNulls, fullyResolved, zeroCusto)
+
+	// Print a sample of the landed rows so the C04 stdout doubles as the
+	// `SELECT * FROM products_mirror WHERE source='sankhya'` inspection the hub wants —
+	// the probe tenant is cleaned up afterwards, so this dump is the durable evidence.
+	sample, err := pool.Query(ctx, `
+		SELECT codigo_produto, ean, custo::text, preco_venda::text, estoque_total::text, marca
+		FROM products_mirror WHERE tenant_id=$1 AND source='sankhya'
+		ORDER BY codigo_produto LIMIT 15`, tenant)
+	if err != nil {
+		t.Fatalf("sample rows: %v", err)
+	}
+	defer sample.Close()
+	for sample.Next() {
+		var cod string
+		var ean, custo, preco, est, marca *string
+		if err := sample.Scan(&cod, &ean, &custo, &preco, &est, &marca); err != nil {
+			t.Fatalf("scan sample: %v", err)
+		}
+		fmt.Printf("MPC_C04_ROW cod=%s ean=%s custo=%s preco=%s estoque=%s marca=%s\n",
+			cod, nullMark(ean), nullMark(custo), nullMark(preco), nullMark(est), nullMark(marca))
+	}
+	if err := sample.Err(); err != nil {
+		t.Fatalf("iterate sample: %v", err)
+	}
+
 	fmt.Println("MPC_C04_LIVE_SANKHYA_SYNC_OK=true")
+}
+
+// nullMark renders NULL explicitly so honest-NULL is visible in the C04 proof dump.
+func nullMark(p *string) string {
+	if p == nil || *p == "" {
+		return "NULL"
+	}
+	return *p
 }
