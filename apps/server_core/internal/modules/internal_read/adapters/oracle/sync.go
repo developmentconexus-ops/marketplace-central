@@ -197,9 +197,12 @@ func (a *SankhyaAdapter) applyCost(ctx context.Context, dataRef time.Time, rows 
 }
 
 // Q3 — PREÇO DE LISTA as-of (tabela de venda CODTAB=0). Set-based equivalent of the
-// per-product query; ORDER BY DTVIGOR DESC matches the doc, and NUTAB DESC is a
-// deterministic tiebreak (latest version wins) consistent with the read-side
-// GetCurrentPrice convention. No row → preco_venda stays NULL.
+// per-product query; ORDER BY DTVIGOR DESC matches the ratified query. NUTAB DESC is
+// an extra deterministic tiebreak (a higher NUTAB is the later-created version, so
+// the newest wins) — the ratified query, being per-product FETCH-FIRST-1, leaves a
+// same-DTVIGOR tie unspecified; in real data CODTAB=0 has ~one version/day (mapping
+// doc FATO 1) so the tie is practically absent, but pinning it keeps the snapshot
+// reproducible run-to-run. No row → preco_venda stays NULL.
 const sankhyaPriceSQL = `
 SELECT CODPROD, VLRVENDA FROM (
 	SELECT e.CODPROD, e.VLRVENDA,

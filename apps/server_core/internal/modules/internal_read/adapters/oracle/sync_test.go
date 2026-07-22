@@ -7,6 +7,7 @@ import (
 	"io"
 	"strings"
 	"testing"
+	"time"
 
 	"marketplace-central/apps/server_core/internal/modules/internal_read/adapters/mirror"
 	"marketplace-central/apps/server_core/internal/modules/sourcekind"
@@ -52,6 +53,8 @@ func TestSankhyaSyncMapsSnapshotHonestNull(t *testing.T) {
 	}}
 	mw := &fakeMirror{}
 	a := NewSankhyaAdapter(q, mw, "tenant_x")
+	fixed := time.Date(2026, 7, 22, 12, 0, 0, 0, time.UTC)
+	a.now = func() time.Time { return fixed }
 
 	res, err := a.Sync(context.Background())
 	if err != nil {
@@ -62,6 +65,16 @@ func TestSankhyaSyncMapsSnapshotHonestNull(t *testing.T) {
 	}
 	if mw.tenantID != "tenant_x" {
 		t.Fatalf("tenantID = %q, want tenant_x", mw.tenantID)
+	}
+
+	// Bind order/count is load-bearing: a real Oracle rejects or mis-binds a
+	// swapped company/dataRef, but the fake ignores binds at execution — so these
+	// assertions are the only guard against a Q2/Q3 bind regression.
+	if a, ok := q.argsFor("TGFCUS"); !ok || len(a) != 2 || a[0] != sankhyaCompany || a[1] != fixed {
+		t.Errorf("cost binds = %v, want [%d %v] (CODEMP then data_ref)", a, sankhyaCompany, fixed)
+	}
+	if a, ok := q.argsFor("TGFEXC"); !ok || len(a) != 1 || a[0] != fixed {
+		t.Errorf("price binds = %v, want [%v] (data_ref only)", a, fixed)
 	}
 
 	rows := indexRows(mw.rows)
@@ -166,8 +179,14 @@ type fakeResult struct {
 	rows [][]driver.Value
 }
 
+type capturedCall struct {
+	query string
+	args  []any
+}
+
 type dispatchQueryer struct {
 	results map[string]fakeResult
+	calls   []capturedCall
 	dbs     []*sql.DB
 }
 
@@ -182,7 +201,18 @@ func (q *dispatchQueryer) match(query string) fakeResult {
 	return fakeResult{cols: 1}
 }
 
-func (q *dispatchQueryer) QueryContext(ctx context.Context, query string, _ ...any) (*sql.Rows, error) {
+// argsFor returns the bound arguments of the first captured query containing substr.
+func (q *dispatchQueryer) argsFor(substr string) ([]any, bool) {
+	for _, c := range q.calls {
+		if strings.Contains(c.query, substr) {
+			return c.args, true
+		}
+	}
+	return nil, false
+}
+
+func (q *dispatchQueryer) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	q.calls = append(q.calls, capturedCall{query: query, args: args})
 	db := sql.OpenDB(dispatchConnector{res: q.match(query)})
 	q.dbs = append(q.dbs, db)
 	return db.QueryContext(ctx, query)
