@@ -30,11 +30,33 @@ nomear). Nenhum seam contra dependência real provado por stub sem autorização
 | M03-C11 | Leitura migrou de rescan-de-snapshot para mirror (`internalread/reader.go:84-107`) | diff mostra `FindProductsForLinking`/`GetSellableStock`/`GetCostAsOf`/`catalogPage` consultando `products_mirror`, não mais `LatestCompletedSnapshot`+rescan de `AcceptedRows` | L1 ran | F-02 |
 | M03-C11b | `catalogPage` mirror-backed declara sort estável (paginação determinística) | diff da query `catalogPage` inclui `ORDER BY codigo_produto` (ou chave estável equivalente); teste de paginação: 2 páginas consecutivas não duplicam/pulam row | L1 ran | F-02 |
 | M03-C12 | Consumidores (pricing, vínculo) compilam sem alteração de assinatura pós-refactor de leitura | `go build ./...` verde; `git diff` dos pacotes consumidores (fora de `erp_import`) = 0 hits | L1 ran | F-02 |
-| M03-C13 | `activeSourceFromContext` resolve via `active_source` (config de M-02), não via default de ctx | diff mostra a função consultando o repo/lookup de `active_source` (M-02) em vez de `ParseActiveSource(defaultParam)` hardcoded | L1 ran | F-03 |
+| M03-C13 | `activeSourceFromContext` não carrega mais default silencioso de fonte; a resolução de-record vem do `active_source` via routing.Reader de M-02 (RECONCILIADO pelo hub D-120 — ver nota abaixo da tabela) | diff mostra (a) o default silencioso `return erpdomain.SourceXLSX` de `reader.go:47` REMOVIDO e nenhuma resolução `ParseActiveSource(default)` hardcoded restante, (b) evidência de que o lookup-de-record é `routing/reader.go:46` (`tenant_config.Repository.Get`) + pin em `:53` (`WithActiveSource`), já landado por M-02; grep prova que nenhum caller que contorna o routing dependia do default xlsx antes da remoção | L1 ran | F-03 |
 | M03-C14 | Fail-closed preservado: tenant sem `active_source` não cai em default silencioso de xlsx | teste: tenant sem row em `active_source` → leitura retorna `ErrUnknownActiveSource`, nunca uma lista vazia disfarçada de "sem produtos" nem fallback mudo a `xlsx` | L1 ran | F-03 |
 | M03-C15 | XlsxAdapter implementa `ProductSourceAdapter` (port de M-02) e compila | `go build ./...` verde; tipo concreto satisfaz a interface (read-side de F-02 + `Sync()`/`Kind()`) | L1 ran | F-04 |
 | M03-C16 | `Kind()` do XlsxAdapter retorna exatamente `upload_snapshot` | leitura direta do código/teste unitário: `adapter.Kind() == SourceKind("upload_snapshot")` | L1 ran | F-04 |
 | M03-C17 | `Sync()` é idempotente: 2 chamadas com o mesmo snapshot não duplicam rows no mirror | teste: `Sync()` chamado 2× sobre o mesmo protocolo → `SELECT count(*) FROM products_mirror WHERE codigo_produto IN (...)` inalterado entre a 1ª e a 2ª chamada (upsert por PK, não insert) | L1 ran | F-04 |
+
+## Nota de reconciliação C13 (hub ruling D-120, 2026-07-22)
+
+Defeito de plano corrigido no artefato (mission-planning reconciliation rule — conflito
+resolvido ratificando NO plano, não empurrado à execução). C13 na redação original
+("`activeSourceFromContext` consultando o lookup de `active_source` DENTRO de internalread") é
+**arquiteturalmente impossível E redundante**:
+- **Impossível**: `tenant_config` já importa `internalread` (`tenant_config/active_source.go:11`,
+  alias de `ErrUnknownActiveSource`). `internalread` importar `tenant_config` = ciclo de import.
+- **Redundante**: M-02 já faz o lookup em `routing/reader.go:46` (`tenant_config.Repository.Get`,
+  fail-closed) e fixa o valor no ctx via `WithActiveSource` (`routing/reader.go:53`). O
+  `activeSourceFromContext` de internalread apenas LÊ o valor já fixado — o routing.Reader é o
+  lookup-de-record.
+
+Leitura ratificada de F-03: satisfeita por (a) o valor observado por `activeSourceFromContext`
+ser alimentado pelo `active_source` via pinning do routing de M-02 (JÁ verdadeiro), MAIS (b)
+remover o default silencioso `SourceXLSX` (`reader.go:47`) para que um ctx não-fixado falhe
+fechado (intenção real do EARS de F-03 + C14). Constraint da remoção: o chip DEVE provar por grep
+que nenhum caller que contorna o routing dependia do default xlsx antes de removê-lo (o routing
+sempre fixa o ctx; se existir caller bypass, surfar ao hub antes de remover). Atualizar também o
+comentário de doc de `WithActiveSource` (`reader.go:25-26`) que hoje diz "defaults to xlsx so the
+demo opens on real data" — passa a refletir fail-closed.
 
 ## Anti-critérios (falha se presente)
 
