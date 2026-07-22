@@ -44,3 +44,13 @@ provado por stub.
 Missão vira `planned` só com verdicts model-side Claude=Ready E Sol=Ready sobre o MESMO digest
 de manifesto. Sol rebind→Claude cold crew enquanto quota-wall codex (até 2026-07-25); se rebind
 não-autorizado pelo hub → `blocked`, nomear, escalar (nunca skip para planned).
+
+## AMENDMENT D-120 (2026-07-22, ratificado pelo operador) — user-drive obrigatório
+
+A validação de onda-1 "como usuário" pegou regressão que todos os gates de código perderam
+(/catalogo 503 — capability opcional CatalogPageReader apagada pelo wrapper routing.Reader;
+hub-fix @2567eb44). Regra permanente: TODO fechamento de milestone desta missão exige, além dos
+critérios do contrato, os critérios `M0X-U*` de user-drive (dirigir o dev stack como usuário —
+browser real, perfil limpo, telas EXISTENTES que tocam o seam, não só a superfície nova).
+Seções adicionadas em M-03..M-07/validation-contract.md. Sem user-drive, milestone não vira
+`validated`.

@@ -57,3 +57,14 @@ M-04 sozinho prova o lado Sankhya de MC-01 (feeding real) — o critério de mis
 é majoritariamente owned aqui: se `[TESTAR-SKW]` nunca for confirmado dentro do ciclo da missão,
 MC-09 fecha como `could-not-run` nomeado — isso é um resultado válido e honesto do processo, não
 um gap a esconder ou contornar com stub (AC-04, AC-07).
+
+## Critérios de user-drive (AMENDMENT D-120 — obrigatório, ratificado pelo operador)
+
+Mesma regra ratificada em M-03 (origem: regressão /catalogo 503 invisível aos gates de código,
+hub-fix @2567eb44): fechamento exige dirigir o dev stack como usuário nas telas EXISTENTES.
+
+| ID | Critério | Prova mínima inspecionável |
+|----|----------|----------------------------|
+| M04-U1 | Com Oracle alcançável ([TESTAR-SKW] PASS): flip active_source para sankhya faz /catalogo servir dados live na tela; SEM Oracle alcançável: erro honesto visível, NUNCA dados de outra fonte nem lista vazia muda | browser drive + body do erro/da página |
+| M04-U2 | Flip de volta para xlsx devolve o dataset upload byte-consistente na tela (as_of igual ao pré-flip) | 2 GETs + página |
+| M04-U3 | Pré-ativação F1 honrada NA TELA: /precos (custo/estoque) com fonte xlsx não exibe número vindo de Oracle (sem mix silencioso cross-source) | browser drive /precos + origem dos valores citada |

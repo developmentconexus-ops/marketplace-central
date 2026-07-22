@@ -287,3 +287,14 @@ features não compilam sem os tipos novos).
 - Attempts used/remaining: n/a.
 - Next artifact: n/a.
 - Revalidation evidence required: n/a.
+
+## Decisão do operador D-120 (2026-07-22) — toggle de fonte ativa
+
+- Regressão registrada: desde M-02 (@49ab3bdd) a fonte ativa é resolvida pelo BANCO
+  (routing.Reader sobrescreve o ctx vindo de query-param) — o rádio "Fonte ativa" de
+  /integracoes (localStorage) está MORTO. Operador decidiu: NENHUM bridge FE antes de M-06;
+  o wiring rádio→PUT /config/active-source fecha AQUI (ver M06-U1 no validation-contract).
+  Até lá, troca de fonte só via API — limitação conhecida e aceita.
+- Drift de contrato a corrigir no dispatch: F-02 cita GET/PUT `/tenants/{tenant_id}/active-source`,
+  mas o endpoint LANDADO por M-02 é `GET/PUT /config/active-source` (single-tenant, tenant fixo
+  server-side; OpenAPI :3207/:3230 + sdk-runtime activeSource.ts). O chip consome o landado.

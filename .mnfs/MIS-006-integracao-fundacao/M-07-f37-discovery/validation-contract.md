@@ -60,3 +60,12 @@ milestone nesse caso é **CLOSED-BY-DISPROOF**: objetivo cumprido (decisão toma
 entrega parcial (só link-path via M-05) é o resultado ESPERADO da condicionalidade, não uma
 falha de execução. `mission.md` §Outcome já antecipa este desfecho ("produto sem anúncio recebe
 só caminho de vínculo").
+
+## Critérios de user-drive (AMENDMENT D-120 — obrigatório, ratificado pelo operador)
+
+Mesma regra ratificada em M-03 (origem: regressão /catalogo 503 invisível aos gates de código,
+hub-fix @2567eb44).
+
+| ID | Critério | Prova mínima inspecionável |
+|----|----------|----------------------------|
+| M07-U1 | Se gate live T13-T16 PASS: produto SEM anúncio vinculado ganha caminho de mercado visível na UI (oportunidade/coleta aparece como o usuário veria); se CLOSED-BY-DISPROOF: n/a — gate FAIL nomeado, nunca omitido | browser drive de 1 produto sem vínculo OU registro explícito do disproof |

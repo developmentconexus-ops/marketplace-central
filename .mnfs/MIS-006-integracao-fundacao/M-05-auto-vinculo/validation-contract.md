@@ -58,3 +58,14 @@ M-05 fecha `validated` só com todos os M05-C1..C13 em `ran` (ou `could-not-run`
 bloqueio explícito, nunca silenciosamente pulado) E zero anti-critério presente. Evidência de
 IO A (90008) e do fixture EAN-duplicado deve citar dados reais de dev stack ou fixture versionada
 — nunca verdict assumido sem prova para MC-05/MC-06 (são L2/L1 `ran`, não `assumed`).
+
+## Critérios de user-drive (AMENDMENT D-120 — obrigatório, ratificado pelo operador)
+
+Mesma regra ratificada em M-03 (origem: regressão /catalogo 503 invisível aos gates de código,
+hub-fix @2567eb44): fechamento exige dirigir o dev stack como usuário nas telas EXISTENTES.
+
+| ID | Critério | Prova mínima inspecionável |
+|----|----------|----------------------------|
+| M05-U1 | Pós-import real: vínculos EAN-único-exato aparecem AUTO-APROVADOS na tela de vínculos como o usuário vê; contadores da tela batem com o DB | browser drive + SELECT de conferência |
+| M05-U2 | Produto sem EAN (ou EAN duplicado) aparece como pendente/sem vínculo na tela — nunca falso auto-vínculo | browser drive citando 1 caso real de cada |
+| M05-U3 | /anuncios reflete o vínculo novo (coluna produto/vs-mercado) sem intervenção manual além do import | browser drive /anuncios pós-import |

@@ -338,3 +338,15 @@ Owner: QA Validator
   `docs/design/evidence/` (screenshots light+dark, payload captures, `git show --stat`).
 - Blockers or open decisions: nenhum — dependências (M-01, M-02, M-05) e boundary (chain-viz aqui,
   Oportunidades backend-ization em missão futura) já explicitados.
+
+## Critérios de user-drive (AMENDMENT D-120 — obrigatório, ratificado pelo operador)
+
+Mesma regra ratificada em M-03 (origem: regressão /catalogo 503 invisível aos gates de código,
+hub-fix @2567eb44). M-06 é a milestone MAIS user-facing — estes critérios são o coração do gate.
+
+| ID | Critério | Prova mínima inspecionável |
+|----|----------|----------------------------|
+| M06-U1 | Toggle "Fonte ativa" em /integracoes grava via PUT /config/active-source NO BANCO e /catalogo reflete o flip imediatamente — fecha a regressão do toggle morto (D-120; decisão do operador 2026-07-22: bridge deferido para cá, nenhum wiring FE antes desta milestone) | browser drive flip completo ida-e-volta + row active_source no DB |
+| M06-U2 | /importacoes chain-viz mostra N-importado, N-vinculado, N-enfileirado com números REAIS batendo com o DB | browser drive + 3 SELECTs de conferência |
+| M06-U3 | Perfil limpo (localStorage vazio): todas as telas funcionam só com estado do banco — nenhum comportamento depende de localStorage para fonte ativa | browser drive em perfil/aba limpa |
+| M06-U4 | Zero regressão nas telas existentes: /catalogo, /integracoes, /anuncios, /precos, /pedidos, /mercado carregam e operam sem erro novo | browser drive (6 telas) light+dark |

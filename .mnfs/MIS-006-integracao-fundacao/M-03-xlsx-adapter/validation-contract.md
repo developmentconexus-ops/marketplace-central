@@ -65,3 +65,20 @@ milestone (ver `mission.md` §Milestone Strategy M-05, Dep: M-02+M-03).
 MC-01 pleno ("alimentado por AMBOS adapters") só fecha com M-04 também mergeado — M-03 sozinho
 prova só o lado xlsx (M03-C2), o `WHERE source IN ('xlsx','sankhya')` completo é
 `could-not-run` nomeado aqui até M-04 landar, igual à nota equivalente em M-02.
+
+## Critérios de user-drive (AMENDMENT D-120 — obrigatório, ratificado pelo operador)
+
+Origem: a validação de onda-1 "como usuário" pegou uma regressão que TODOS os gates de código
+perderam (/catalogo 503 — capability opcional apagada por wrapper; hub-fix @2567eb44). Regra
+ratificada pelo operador (2026-07-22): todo contrato de validação passa a exigir, além dos
+critérios acima, dirigir o programa NO DEV STACK COMO USUÁRIO (browser real + HTTP real, perfil
+limpo) cobrindo as telas EXISTENTES que tocam o seam da milestone — nunca só a superfície nova
+do changeset. Verdict binário; evidência = página renderizada (screenshot/page-text) + status
+HTTP + amostra de body. could-not-run só com bloqueio nomeado.
+
+| ID | Critério | Prova mínima inspecionável |
+|----|----------|----------------------------|
+| M03-U1 | /catalogo renderiza produtos reais mirror-backed nas DUAS fontes upload: flip xlsx/catalogo_cliente via PUT /config/active-source muda o dataset na tela (as_of/conteúdo), sem 503 e sem lista vazia disfarçada | browser drive + 2 GETs com as_of distintos |
+| M03-U2 | /integracoes: upload de xlsx real cria protocolo novo SEM apagar os anteriores (lista completa visível); re-upload do mesmo arquivo mostra 409 visível ao usuário | browser drive + lista de protocolos antes/depois |
+| M03-U3 | Jornada pós-import: candidatos de vínculo aparecem na tela de vínculos existente sem nenhuma chamada manual extra (hook interno provado na UI, não só no DB) | browser drive da tela de vínculos pós-import |
+| M03-U4 | Zero regressão nas telas existentes que leem produto: /catalogo, /precos, /anuncios, /pedidos carregam sem erro novo com a leitura mirror-backed | browser drive (4 telas) + console/network sem erro novo |
