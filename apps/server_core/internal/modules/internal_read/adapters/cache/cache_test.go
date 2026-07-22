@@ -17,6 +17,7 @@ import (
 	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
 	internalreadports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 	inventoryports "marketplace-central/apps/server_core/internal/modules/inventory/ports"
+	"marketplace-central/apps/server_core/internal/modules/tenant_config"
 )
 
 type fakeClock struct {
@@ -242,6 +243,47 @@ func TestCatalogCachePartitionsByActiveSource(t *testing.T) {
 	downstream.mu.Unlock()
 	if len(searchSeen) != 2 || searchSeen[0] != erpdomain.SourceXLSX || searchSeen[1] != erpdomain.SourceCatalogoCliente {
 		t.Fatalf("search cache must partition by source; downstream saw %v", searchSeen)
+	}
+}
+
+// TestCatalogCachePartitionsSankhyaVsXlsx is the M-04 must-fail guard (M04-C11):
+// a catalog page cached for a tenant on the xlsx source must NEVER be served to
+// the same tenant after it flips to the sankhya (live) source. sankhya is pinned
+// via tenant_config (routing.Reader.WithActiveSource), NOT via the erp ImportSource
+// toggle, so this specifically proves activeSourceKey reads the authoritative
+// active source. It is load-bearing: delete activeSourceKey(ctx) from the
+// canonicalKey composition (cache.go) and this test FAILS -- the sankhya request
+// is served the cached xlsx page (listCalls stays 1). See chip-import-fix-closed:
+// a new source without a simultaneous key-fix silently pollutes cross-source.
+func TestCatalogCachePartitionsSankhyaVsXlsx(t *testing.T) {
+	clock := &fakeClock{now: time.Date(2026, 7, 22, 12, 0, 0, 0, time.UTC)}
+	downstream := &sourceCountingCatalogReader{clock: clock}
+	catalog := NewCatalogPageReader(downstream, testCache(clock, 20, nil))
+
+	base := context.Background()
+	xlsxCtx := tenant_config.WithActiveSource(base, tenant_config.Config{TenantID: "tenant_default", Source: tenant_config.SourceXLSX})
+	sankhyaCtx := tenant_config.WithActiveSource(base, tenant_config.Config{TenantID: "tenant_default", Source: tenant_config.SourceSankhya})
+
+	if _, err := catalog.ListCatalogProductFacts(xlsxCtx, internalreadports.Cursor{}, 50); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := catalog.ListCatalogProductFacts(sankhyaCtx, internalreadports.Cursor{}, 50); err != nil {
+		t.Fatal(err)
+	}
+	if got := downstream.listCalls.Load(); got != 2 {
+		t.Fatalf("sankhya read was served the cached xlsx page (cross-source pollution): want 2 downstream list calls, got %d", got)
+	}
+	if _, err := catalog.ListCatalogProductFacts(sankhyaCtx, internalreadports.Cursor{}, 50); err != nil {
+		t.Fatal(err)
+	}
+	if got := downstream.listCalls.Load(); got != 2 {
+		t.Fatalf("second sankhya read did not hit cache: want 2 downstream list calls, got %d", got)
+	}
+	if _, err := catalog.ListCatalogProductFacts(xlsxCtx, internalreadports.Cursor{}, 50); err != nil {
+		t.Fatal(err)
+	}
+	if got := downstream.listCalls.Load(); got != 2 {
+		t.Fatalf("flip back to xlsx did not reuse the xlsx cache entry: want 2 downstream list calls, got %d", got)
 	}
 }
 
