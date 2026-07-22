@@ -4,12 +4,63 @@
 id: M-04
 type: milestone
 mission: MIS-006
-status: draft
+status: dispatched
 depends_on: [M-02]
-blocked_by: [TESTAR-SKW db-consult]
+blocked_by: []
 base_sha: 138aac3d
 validation_level: QA-0
 ```
+
+## `[TESTAR-SKW]` RESOLVIDO (db-consult retornou, D-120 2026-07-22)
+
+REQUEST db-consult relaiado ao especialista Oracle (sessão MNOS `local_ec787804`) RETORNOU,
+verificado ao vivo em METALPRD. Mapa ratificado (5/6) = base literal de SQL:
+`docs/design/evidence/sankhya-mapping-M04.md`. Resumo dos 6 itens do checklist §Prerequisites:
+
+1. **TGFPRO** ✅ — `CODPROD`/`DESCRPROD`/`NCM`; marca via `CODMARCA→TGFMAR.DESCRICAO` (join por
+   código). ⚠️ colisão de nome: **EAN = `TGFPRO.REFERENCIA`** (não TGFBAR); **`referencia` (E2.1) =
+   `TGFPRO.REFFORN`** (ref. de fornecedor).
+2. **TGFCUS** ✅ — `custo = CUSSEMICM` (custo médio SEM ICMS, base de precificação). TEMPORAL:
+   `DTATUAL ≤ ref → MAX(DTATUAL)`, `CODEMP=1`. Sem linha → NULL.
+3. **TGFEST** ✅ — `estoque_total = SUM(ESTOQUE)` `CODPARC=0` (próprio); disponível honesto =
+   `SUM(ESTOQUE − RESERVADO)`. Multi-local por `CODLOCAL` → `products_mirror_stock_locations`.
+4. **TGFBAR** ✅ (resolvido por negação) — **VAZIA nesta instância; NÃO usar `CODBARRA`**. EAN vem
+   de `TGFPRO.REFERENCIA` (item 1), match exato, sem multi-barcode.
+5. **TGFTAB/TGFEXC** ✅ **RESOLVIDO empiricamente** (prova de dados, não exigiu operador):
+   `preco_venda = TGFEXC.VLRVENDA`, **`CODTAB=0`** (provado por TGFITE: todos os NUTAB de venda
+   real 2026 mapeiam CODTAB=0; VLRVENDA==preço vendido exato). **As-of POR PRODUTO** (crítico):
+   última versão `TGFTAB.DTVIGOR ≤ data_ref` que contém o CODPROD (versões diárias são esparsas,
+   ~121 preços/versão → herdar da última que tem o produto). Prova: 96,3% match exato com VLRUNIT
+   vendido; resto = override manual (ALTPRECO). SQL literal em `sankhya-mapping-M04.md`. Sem linha
+   → NULL (nunca 0). NÃO usar AD_ECOM (vazio) nem outro CODTAB. **Override do operador possível se
+   preço de marketplace ≠ preço de nota** — aditivo depois; mirror grava CODTAB=0 como base.
+6. **TGFGRU** ✅ — grupo FOLHA (`ANALITICO='S'`); `grupo_codigo`/`grupo_descricao` via
+   `CODGRUPOPROD` (join por código, descrição não é única).
+
+Consequência: M-04 codifica AGORA sobre os **6/6 ratificados**; `preco_venda` = `CODTAB=0` as-of
+por produto (NULL só quando o produto não tem linha na tabela). Bloqueio de codificação (§BLOQUEIO
+abaixo) SATISFEITO — nenhum item é suposição; todo mapeamento tem prova de dados.
+
+## C4/MC-09 — prova real HABILITADA (operador: "oracle is reachable", D-120 2026-07-22)
+
+O operador confirmou que o **dev stack alcança um Sankhya vivo**. Logo **M04-C4 (feeding real
+`source='sankhya'`) e MC-09 são PROVÁVEIS** via live-drive — NÃO `could-not-run`. O chip envia
+REQUEST ao hub para rodar o Sync contra o Oracle real do dev stack e provar
+`SELECT ... FROM products_mirror WHERE source='sankhya'` com rows reais (AC-04: real, nunca stub).
+Credenciais Oracle NUNCA lidas/impressas pelo chip (M04-C14/AC-05); o chip não carrega `.env` nem
+fala com o MNOS — só pede live-drive ao hub.
+
+## F1 pré-ativação — NÃO MAIS INERTE (oracle reachable)
+
+Com o Oracle agora alcançável, o achado F1 (refuter M-02) deixa de ser inerte: os 4 consumidores
+que leem `oracleDB` DIRETO e contornam o `routing.Reader` (`root.go` listingCostReader,
+inventoryStockReader, profitability batch, assisted-linkage) passam a servir dados Oracle LIVE
+para custo/estoque/rentabilidade MESMO quando o `active_source` do tenant é `xlsx`/`catalogo_cliente`
+(seed default = xlsx) → **mistura cross-source silenciosa no stack deployado, sem erro**. Isto é
+**escopo de wiring root.go, HUB-OWNED**, disjunto do código de adapter de M-04, e NÃO entra no
+write-set do chip M-04 (evita colisão root.go com M-03 in-flight). Sequência: hub roteia os 4 por
+`active_source` (ou aponta ao mirror) como mudança root.go própria APÓS M-03 e M-04 mergearem.
+Até lá, o stack com oracle-reachable + tenant-xlsx tem o mix; flagged ao operador.
 
 ## Objective
 
