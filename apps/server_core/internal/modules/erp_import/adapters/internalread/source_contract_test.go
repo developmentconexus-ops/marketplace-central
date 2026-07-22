@@ -13,6 +13,8 @@ import (
 	"reflect"
 	"regexp"
 	"runtime"
+	"sort"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -59,7 +61,7 @@ func TestXLSXReaderSubstitutabilityContract(t *testing.T) {
 
 	xlsxReader := NewReader(exampleRepo, contractTenant, WithClock(func() time.Time { return contractFetchedAt }))
 	oracleReader := newOracleShapedReader()
-	ctx := context.Background()
+	ctx := WithActiveSource(context.Background(), erpdomain.SourceXLSX)
 	stockPolicy := readdomain.DefaultSellableStockPolicy()
 	costPolicy := readdomain.CostAsOfPolicy{CompanyID: 1, Basis: readdomain.CostBasisCUSSEMICM, EffectiveAt: contractClock}
 	taxPolicy := readdomain.TaxPolicy{EffectiveAt: contractClock}
@@ -202,8 +204,9 @@ func TestXLSXReaderSubstitutabilityContract(t *testing.T) {
 
 	noSnapshot := NewReader(&contractRepo{}, contractTenant)
 	_, err = noSnapshot.GetSellableStock(ctx, readports.SellableStockInput{ProductID: 1001})
-	if !errors.Is(err, ErrNoErpSnapshot) || !readdomain.IsReadErrorCode(err, readdomain.ReadErrorSourceUnavailable) {
-		t.Fatalf("unavailable snapshot error = %v", err)
+	var missing *ERPProductNotFoundError
+	if !errors.As(err, &missing) {
+		t.Fatalf("unavailable mirror product error = %v", err)
 	}
 }
 
@@ -271,26 +274,66 @@ func (r *contractRepo) GetImport(_ context.Context, _ string, _ erpdomain.Import
 }
 
 func (r *contractRepo) LatestCompletedSnapshot(context.Context, string, erpdomain.ImportSource) (erpdomain.ImportSnapshot, error) {
-	if r.snapshot.Status != erpdomain.ImportStatusCompleted {
-		return erpdomain.ImportSnapshot{}, erpports.ErrImportNotFound
-	}
-	return r.snapshot, nil
+	panic("reader must not rescan snapshots")
 }
 
 func (r *contractRepo) SyncLatestCompletedSnapshot(context.Context, string, erpdomain.ImportSource) (int, error) {
 	return 0, nil
 }
 func (r *contractRepo) MirrorRows(context.Context, string, erpdomain.ImportSource) ([]erpdomain.MirrorProduct, error) {
-	return nil, nil
+	return mirrorProductsFromSnapshot(r.snapshot), nil
 }
-func (r *contractRepo) MirrorProductByCode(context.Context, string, erpdomain.ImportSource, string) (erpdomain.MirrorProduct, bool, error) {
+func (r *contractRepo) MirrorProductByCode(_ context.Context, _ string, _ erpdomain.ImportSource, code string) (erpdomain.MirrorProduct, bool, error) {
+	for _, row := range mirrorProductsFromSnapshot(r.snapshot) {
+		if row.CodigoProduto == code {
+			return row, true, nil
+		}
+	}
 	return erpdomain.MirrorProduct{}, false, nil
 }
-func (r *contractRepo) MirrorCatalogPage(context.Context, string, erpdomain.ImportSource, string, int64, int) ([]erpdomain.MirrorProduct, error) {
-	return nil, nil
+func (r *contractRepo) MirrorCatalogPage(_ context.Context, _ string, _ erpdomain.ImportSource, query string, after int64, limit int) ([]erpdomain.MirrorProduct, error) {
+	rows := make([]erpdomain.MirrorProduct, 0)
+	for _, row := range mirrorProductsFromSnapshot(r.snapshot) {
+		id, err := strconv.ParseInt(row.CodigoProduto, 10, 64)
+		if err != nil || id <= after || query != "" && (row.Descricao == nil || !strings.Contains(strings.ToLower(*row.Descricao), strings.ToLower(query))) {
+			continue
+		}
+		rows = append(rows, row)
+	}
+	sort.Slice(rows, func(i, j int) bool {
+		a, _ := strconv.ParseInt(rows[i].CodigoProduto, 10, 64)
+		b, _ := strconv.ParseInt(rows[j].CodigoProduto, 10, 64)
+		return a < b
+	})
+	if limit > 0 && len(rows) > limit+1 {
+		rows = rows[:limit+1]
+	}
+	return rows, nil
 }
 func (r *contractRepo) MirrorEANCollisionCounts(context.Context, string, erpdomain.ImportSource) (map[string]int, error) {
-	return nil, nil
+	return validEANCounts(mirrorProductsFromSnapshot(r.snapshot)), nil
+}
+
+func mirrorProductsFromSnapshot(snapshot erpdomain.ImportSnapshot) []erpdomain.MirrorProduct {
+	rows := make([]erpdomain.MirrorProduct, 0, len(snapshot.AcceptedRows))
+	for _, row := range snapshot.AcceptedRows {
+		var stock *string
+		if row.StockReserved != nil && strings.TrimSpace(row.StockPhysical) != "" {
+			physical, physicalErr := strconv.ParseFloat(strings.TrimSpace(row.StockPhysical), 64)
+			reserved, reservedErr := strconv.ParseFloat(strings.TrimSpace(*row.StockReserved), 64)
+			if physicalErr == nil && reservedErr == nil {
+				value := strconv.FormatFloat(physical-reserved, 'f', -1, 64)
+				stock = &value
+			}
+		}
+		var cost *string
+		if value := strings.TrimSpace(string(row.Custo)); value != "" {
+			cost = &value
+		}
+		description := row.Descrprod
+		rows = append(rows, erpdomain.MirrorProduct{CodigoProduto: row.Codprod, Descricao: &description, Referencia: row.Refforn, EAN: row.EAN, Marca: row.Marca, NCM: row.NCM, Custo: cost, EstoqueTotal: stock, UpdatedAt: snapshot.ImportedAt})
+	}
+	return rows
 }
 
 var _ erpports.ImportRepository = (*contractRepo)(nil)
@@ -308,7 +351,7 @@ func newOracleShapedReader() *oracleShapedReader {
 	flags := []readdomain.QualityFlag{readdomain.QualityComplete, readdomain.QualityEANCollision}
 	return &oracleShapedReader{
 		candidates: map[int]readdomain.ProductCandidate{1001: {
-			InternalProductID: internalIDPointer(1001), ProductID: 1001, Name: "Example Product 1001", EAN: stringPointer(ean), ReferenceCode: stringPointer("REF-1001"), NCM: stringPointer("12345678"), BrandName: stringPointer("Synthetic Brand"), IsActive: true, Source: readdomain.SourceMetadata{System: "oracle", FetchedAt: contractFetchedAt}, QualityFlags: flags,
+			InternalProductID: internalIDPointer(1001), ProductID: 1001, Name: "Example Product 1001", EAN: stringPointer(ean), ReferenceCode: stringPointer("REF-1001"), NCM: stringPointer("12345678"), BrandName: stringPointer("Synthetic Brand"), IsActive: true, Source: readdomain.SourceMetadata{System: "oracle", FetchedAt: contractFetchedAt, ObservedAt: timePointer(contractClock)}, QualityFlags: flags,
 		}},
 		stocks: map[int]readdomain.SellableStock{
 			1001: {ProductID: 1001, Quantity: floatPointer(8), Policy: readdomain.DefaultSellableStockPolicy(), Source: readdomain.SourceMetadata{System: "oracle", FetchedAt: contractFetchedAt, ObservedAt: timePointer(contractClock)}},
