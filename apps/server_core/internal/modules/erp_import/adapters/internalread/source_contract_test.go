@@ -280,6 +280,18 @@ func (r *contractRepo) LatestCompletedSnapshot(context.Context, string, erpdomai
 func (r *contractRepo) SyncLatestCompletedSnapshot(context.Context, string, erpdomain.ImportSource) (int, error) {
 	return 0, nil
 }
+func (r *contractRepo) MirrorRows(context.Context, string, erpdomain.ImportSource) ([]erpdomain.MirrorProduct, error) {
+	return nil, nil
+}
+func (r *contractRepo) MirrorProductByCode(context.Context, string, erpdomain.ImportSource, string) (erpdomain.MirrorProduct, bool, error) {
+	return erpdomain.MirrorProduct{}, false, nil
+}
+func (r *contractRepo) MirrorCatalogPage(context.Context, string, erpdomain.ImportSource, string, int64, int) ([]erpdomain.MirrorProduct, error) {
+	return nil, nil
+}
+func (r *contractRepo) MirrorEANCollisionCounts(context.Context, string, erpdomain.ImportSource) (map[string]int, error) {
+	return nil, nil
+}
 
 var _ erpports.ImportRepository = (*contractRepo)(nil)
 

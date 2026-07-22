@@ -41,6 +41,18 @@ func (f *fakeRepo) LatestCompletedSnapshot(_ context.Context, tenant string, _ e
 func (f *fakeRepo) SyncLatestCompletedSnapshot(context.Context, string, erpdomain.ImportSource) (int, error) {
 	return 0, nil
 }
+func (f *fakeRepo) MirrorRows(context.Context, string, erpdomain.ImportSource) ([]erpdomain.MirrorProduct, error) {
+	return nil, nil
+}
+func (f *fakeRepo) MirrorProductByCode(context.Context, string, erpdomain.ImportSource, string) (erpdomain.MirrorProduct, bool, error) {
+	return erpdomain.MirrorProduct{}, false, nil
+}
+func (f *fakeRepo) MirrorCatalogPage(context.Context, string, erpdomain.ImportSource, string, int64, int) ([]erpdomain.MirrorProduct, error) {
+	return nil, nil
+}
+func (f *fakeRepo) MirrorEANCollisionCounts(context.Context, string, erpdomain.ImportSource) (map[string]int, error) {
+	return nil, nil
+}
 
 var _ erpports.ImportRepository = (*fakeRepo)(nil)
 
@@ -286,6 +298,18 @@ func (r *sourceKeyedRepo) LatestCompletedSnapshot(_ context.Context, _ string, s
 }
 func (r *sourceKeyedRepo) SyncLatestCompletedSnapshot(context.Context, string, erpdomain.ImportSource) (int, error) {
 	return 0, nil
+}
+func (r *sourceKeyedRepo) MirrorRows(context.Context, string, erpdomain.ImportSource) ([]erpdomain.MirrorProduct, error) {
+	return nil, nil
+}
+func (r *sourceKeyedRepo) MirrorProductByCode(context.Context, string, erpdomain.ImportSource, string) (erpdomain.MirrorProduct, bool, error) {
+	return erpdomain.MirrorProduct{}, false, nil
+}
+func (r *sourceKeyedRepo) MirrorCatalogPage(context.Context, string, erpdomain.ImportSource, string, int64, int) ([]erpdomain.MirrorProduct, error) {
+	return nil, nil
+}
+func (r *sourceKeyedRepo) MirrorEANCollisionCounts(context.Context, string, erpdomain.ImportSource) (map[string]int, error) {
+	return nil, nil
 }
 
 var _ erpports.ImportRepository = (*sourceKeyedRepo)(nil)
