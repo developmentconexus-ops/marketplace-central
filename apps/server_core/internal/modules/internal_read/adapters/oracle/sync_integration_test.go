@@ -1,4 +1,4 @@
-//go:build cgo
+//go:build integration && cgo
 
 package oracle
 
@@ -13,23 +13,27 @@ import (
 	testpostgres "marketplace-central/apps/server_core/internal/testsupport/postgres"
 )
 
-// TestSankhyaSyncLive is the M04-C4 real-provider proof: it drives the whole
-// SankhyaAdapter.Sync path against the REAL METALPRD Oracle (never a stub) and a
-// REAL migrated Postgres, then reads products_mirror back to confirm the snapshot
-// landed with source='sankhya' and honest-NULL facts. This is the entrypoint the hub
-// live-drives — the production scheduler wiring (root.go) is the HUB-OWNED F1 step
-// sequenced after M-03+M-04 merge, so the adapter is proven here through direct
+// TestSankhyaSyncIntegration is the M04-C4 real-provider driver the hub live-drives.
+// It wires NewSankhyaAdapter against the REAL METALPRD Oracle (godror needs cgo) plus
+// a REAL migrated Postgres, runs Sync once, and reads products_mirror back to prove
+// the snapshot landed with source='sankhya' and honest-NULL facts — never a stub
+// (AC-04). The production scheduler wiring (root.go) is the HUB-OWNED F1 step
+// sequenced after M-03+M-04 merge, so the adapter is proven here by direct
 // construction, not through the (still no-op) scheduler.
 //
-// Gating: needs BOTH real backends. Runs only with MPC_ORACLE_LIVE_TEST=1 and the
-// standard MPC_ORACLE_* / harness Postgres env (names only — never commit values).
+// Env var NAMES (values never printed): the Oracle connection uses the same names
+// root.go's LoadConfigFromEnv reads — MPC_ORACLE_USERNAME, MPC_ORACLE_PASSWORD,
+// MPC_ORACLE_CONNECT_STRING, MPC_ORACLE_LIB_DIR — and Postgres uses the harness
+// MPC_TEST_DATABASE_URL. Absent env → t.Skip, so the unit lane stays green.
 //
-//	MPC_ORACLE_LIVE_TEST=1 go test -tags cgo \
-//	  -run TestSankhyaSyncLive -v \
+// Run:
+//
+//	CGO_ENABLED=1 go test -tags "integration cgo" \
+//	  -run TestSankhyaSyncIntegration -v \
 //	  ./internal/modules/internal_read/adapters/oracle/
-func TestSankhyaSyncLive(t *testing.T) {
-	if os.Getenv("MPC_ORACLE_LIVE_TEST") != "1" {
-		t.Skip("set MPC_ORACLE_LIVE_TEST=1 (+ MPC_ORACLE_* and harness Postgres env) to run live Sankhya sync validation")
+func TestSankhyaSyncIntegration(t *testing.T) {
+	if os.Getenv("MPC_ORACLE_CONNECT_STRING") == "" || os.Getenv("MPC_TEST_DATABASE_URL") == "" {
+		t.Skip("set MPC_ORACLE_* (Oracle) and MPC_TEST_DATABASE_URL (harness Postgres) to run live Sankhya sync validation")
 	}
 
 	const tenant = "tenant_m04_sankhya_live_probe"
@@ -67,6 +71,7 @@ func TestSankhyaSyncLive(t *testing.T) {
 	if err != nil {
 		t.Fatalf("live Sync: %v", err)
 	}
+	t.Logf("SyncResult = %+v", res)
 	if res.Processed <= 0 || res.Errors != 0 {
 		t.Fatalf("SyncResult = %+v, want Processed>0 Errors=0", res)
 	}
@@ -103,10 +108,9 @@ func TestSankhyaSyncLive(t *testing.T) {
 		t.Errorf("no fully-resolved rows — a live snapshot must resolve at least some cost/price/stock")
 	}
 
-	// Sanity: no unresolvable fact was written as a 0/default sentinel (AC-03). A zero
-	// custo/preco/estoque must be a genuine balance, never a stand-in for unknown; the
-	// writer only ever gets a nil pointer for unknown, so the mirror should not contain
-	// a 0 custo unless Oracle truly returned 0. We surface the count for the hub to eyeball.
+	// AC-03 surface: a zero custo must be a genuine balance, never a stand-in for
+	// unknown; the writer only ever gets a nil pointer for unknown, so we surface the
+	// count for the hub to eyeball against the honest-NULL column.
 	var zeroCusto int
 	_ = pool.QueryRow(ctx,
 		`SELECT count(*) FROM products_mirror WHERE tenant_id=$1 AND source='sankhya' AND custo=0`, tenant,
