@@ -19,6 +19,7 @@ import (
 	"marketplace-central/apps/server_core/internal/modules/internal_read/domain"
 	internalreadports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 	inventoryports "marketplace-central/apps/server_core/internal/modules/inventory/ports"
+	"marketplace-central/apps/server_core/internal/modules/tenant_config"
 )
 
 const (
@@ -284,7 +285,19 @@ func canonicalIDs(ids []int64) string {
 // ("" when none is set, so the default-source key is unchanged). Downstream the
 // same ctx value routes reads to a different snapshot, so it must partition the
 // cache.
+//
+// The tenant's active source (E9, tenant_config) is authoritative and carries
+// all three values -- xlsx, catalogo_cliente AND sankhya. routing.Reader pins it
+// for every source (WithActiveSource), whereas the erp ImportSource toggle is
+// pinned only for the upload sources; a sankhya (live) read would otherwise fall
+// through to "" and collide with an xlsx page inside the catalog TTL. So prefer
+// tenant_config; fall back to the erp toggle for upload-only paths that pin only
+// that. Both agree in value when both are present (routing sets erp source =
+// ImportSource(cfg.Source)), so existing xlsx/catalogo keys are byte-stable.
 func activeSourceKey(ctx context.Context) string {
+	if cfg, ok := tenant_config.FromContext(ctx); ok && cfg.Source != "" {
+		return string(cfg.Source)
+	}
 	if source, ok := erpinternalread.ActiveSourceFromContext(ctx); ok {
 		return string(source)
 	}
