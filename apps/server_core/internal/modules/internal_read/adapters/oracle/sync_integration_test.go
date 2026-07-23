@@ -144,6 +144,57 @@ func TestSankhyaSyncIntegration(t *testing.T) {
 		t.Fatalf("iterate sample: %v", err)
 	}
 
+	// Estoque variance: the ORDER BY codigo_produto sample above can hit a run of
+	// same-balance small parts (e.g. all qty 1), which looks like a constant. Prove the
+	// snapshot actually varies — estoque_total must take >1 distinct value — and that
+	// per-CODLOCAL stock locations landed with real quantities (SUM(ESTOQUE-RESERVADO)
+	// per local, not a single rolled-up number).
+	var distinctEstoque, locRows, distinctLocQty int
+	var maxEstoque *string
+	if err := pool.QueryRow(ctx, `
+		SELECT count(DISTINCT estoque_total), max(estoque_total)::text
+		FROM products_mirror WHERE tenant_id=$1 AND source='sankhya' AND estoque_total IS NOT NULL`, tenant,
+	).Scan(&distinctEstoque, &maxEstoque); err != nil {
+		t.Fatalf("estoque variance: %v", err)
+	}
+	if err := pool.QueryRow(ctx, `
+		SELECT count(*), count(DISTINCT quantidade)
+		FROM products_mirror_stock_locations WHERE tenant_id=$1`, tenant,
+	).Scan(&locRows, &distinctLocQty); err != nil {
+		t.Fatalf("stock-location profile: %v", err)
+	}
+	if distinctEstoque <= 1 {
+		t.Errorf("estoque_total has %d distinct value(s) — a real snapshot must vary, not a constant", distinctEstoque)
+	}
+	if locRows == 0 {
+		t.Errorf("no products_mirror_stock_locations rows landed — per-CODLOCAL stock did not persist")
+	}
+	if distinctLocQty <= 1 {
+		t.Errorf("stock-location quantidade has %d distinct value(s) — expected real per-local variance", distinctLocQty)
+	}
+
+	// A few genuinely-stocked rows so the variance is visible in the proof, not just counted.
+	stocked, err := pool.Query(ctx, `
+		SELECT codigo_produto, estoque_total::text
+		FROM products_mirror WHERE tenant_id=$1 AND source='sankhya' AND estoque_total > 1
+		ORDER BY estoque_total DESC LIMIT 5`, tenant)
+	if err != nil {
+		t.Fatalf("stocked sample: %v", err)
+	}
+	defer stocked.Close()
+	for stocked.Next() {
+		var cod, est string
+		if err := stocked.Scan(&cod, &est); err != nil {
+			t.Fatalf("scan stocked: %v", err)
+		}
+		fmt.Printf("MPC_C04_STOCKED_ROW cod=%s estoque=%s\n", cod, est)
+	}
+	if err := stocked.Err(); err != nil {
+		t.Fatalf("iterate stocked: %v", err)
+	}
+
+	fmt.Printf("MPC_C04_DISTINCT_ESTOQUE=%d MPC_C04_MAX_ESTOQUE=%s MPC_C04_STOCK_LOC_ROWS=%d MPC_C04_DISTINCT_LOC_QTY=%d\n",
+		distinctEstoque, nullMark(maxEstoque), locRows, distinctLocQty)
 	fmt.Println("MPC_C04_LIVE_SANKHYA_SYNC_OK=true")
 }
 
