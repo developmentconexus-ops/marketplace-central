@@ -175,7 +175,7 @@ func TestSankhyaSyncIntegration(t *testing.T) {
 
 	// A few genuinely-stocked rows so the variance is visible in the proof, not just counted.
 	stocked, err := pool.Query(ctx, `
-		SELECT codigo_produto, estoque_total::text
+		SELECT codigo_produto, estoque_total::text AS estoque_txt
 		FROM products_mirror WHERE tenant_id=$1 AND source='sankhya' AND estoque_total > 1
 		ORDER BY estoque_total DESC LIMIT 5`, tenant)
 	if err != nil {
