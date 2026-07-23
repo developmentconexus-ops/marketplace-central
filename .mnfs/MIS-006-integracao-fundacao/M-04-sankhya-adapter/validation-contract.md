@@ -27,11 +27,20 @@ explícita (AC-04).
 | M04-C7 | `Kind()` retorna `live_read_through` para `SankhyaAdapter`, port compila | `go build ./...` verde; chamada a `Kind()` no `SankhyaAdapter` retorna `live_read_through` (teste unitário ou leitura direta do valor constante) | L1 ran | F-02 |
 | M04-C8 | `Sync()` implementado retornando `SyncResult` refletindo contagem processada/erros do F-01 | teste unitário/integração: `Sync(ctx)` retorna `SyncResult{Processed: N, Errors: M}` compatível com o resultado real da rodada | L1-L2 ran | F-02 |
 | M04-C9 | Read-side do `SankhyaAdapter` inalterado (assinaturas de `readports.Reader`) | diff mostra zero mudança de assinatura em `FindProductsForLinking`/`GetSellableStock`/`GetCostAsOf`/`GetTaxInputs`; consumidores existentes (pricing/vínculo) compilam sem alteração | L1 ran | F-02 |
-| M04-C10 | `canonicalKey()` estendida para incluir `source` (3 valores: xlsx, catalogo_cliente, sankhya) NO MESMO commit que adiciona sankhya ao domínio | `git show --stat <commit>` mostra `cache.go` (`canonicalKey`) E a extensão do domínio de source no MESMO commit; diff mostra `source` presente na composição da chave | L1 ran | F-03 |
+| M04-C10 | `canonicalKey()` estendida para incluir `source` (3 valores: xlsx, catalogo_cliente, sankhya); cache partition + must-fail test atômicos (RECONCILIADO pelo hub D-120 — ver nota abaixo da tabela) | diff mostra `source` presente na composição da chave (`activeSourceKey` preferindo `tenant_config`, cobrindo os 3 valores) e commit `18b278dc` atômico cache+must-fail-test; a metade "domínio de source no MESMO commit" é insatisfazível literalmente — `SourceSankhya` landou upstream no M-02 (`4f1bff70`, ancestral da base do M-04) | L1 ran | F-03 |
 | M04-C11 | Must-fail test prova isolamento cross-source (xlsx vs sankhya) na cache | teste: cache populado para `(tenant, xlsx)` NÃO retorna para `(tenant, sankhya)`; teste FALHA se `source` for removido da key manualmente (prova de que o teste é load-bearing, não decorativo — lição `chip-import-fix-closed`) | L1 ran | F-03 |
-| M04-C12 | Cache-key extension nunca split de outra mudança — landam juntas | mesma evidência de M04-C10 (commit único); se landarem separados, critério FALHA mesmo que ambas as metades existam eventualmente | L0 ran (diff) | F-03 |
+| M04-C12 | Cache-key extension nunca split do seu must-fail test — landam juntas (RECONCILIADO pelo hub D-120 junto com C10) | evidência de M04-C10: commit `18b278dc` carrega `cache.go` + `cache_test.go` (must-fail) juntos; o espírito do critério (nenhuma janela explorável entre partition e prova) está satisfeito — não existe janela pré-ativação pois nenhum read-path sankhya está roteado antes do F1 | L0 ran (diff) | F-03 |
 | M04-C13 | Nenhuma query tenant-scoped sem `tenant_id` no sync entrypoint | grep/leitura do SQL do sync entrypoint mostra filtro `tenant_id` presente em toda query nova | L0 ran (grep/leitura) | F-01 |
 | M04-C14 | Credenciais Oracle nunca lidas/impressas durante a prova (`.env*`, secrets) | transcript/evidência da rodada de validação não contém valor de credencial Oracle; leitura de var de ambiente feita via `printenv VAR` pontual se necessário, nunca dump completo | L0 (revisão de evidência) | F-01 |
+
+**Nota de reconciliação C10/C12 (hub, D-120, ratificada no merge `f4bcafe3`):** a cláusula
+"NO MESMO commit que adiciona sankhya ao domínio" é insatisfazível literalmente — o domínio
+(`SourceSankhya`) landou no M-02 (`4f1bff70`), ancestral de toda a branch M-04; nenhum commit
+M-04 pode conter aquela adição. O espírito (extensão de cache-key atômica com sua prova, sem
+janela de poluição cross-source explorável) está provado: `18b278dc` = cache partition +
+must-fail test no mesmo commit; pré-F1 nenhum read-path sankhya é roteado, logo não existe
+janela. Precedente: M-03 C13 (`7ba59c67`). Disposição: reconciled-pass. Ratificado pelo
+refuter round-2 (correção de ancestralidade via `git merge-base` incluída).
 
 ## Anti-critérios (falha se presente)
 

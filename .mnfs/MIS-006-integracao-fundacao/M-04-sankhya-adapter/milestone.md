@@ -4,7 +4,7 @@
 id: M-04
 type: milestone
 mission: MIS-006
-status: dispatched
+status: done   # merged main @f4bcafe3 (D-121); dual-gate AGREEMENT (cold + real Sol r1-REFUTED→r2-NO-REFUTATION); hub live-drive C4 PASS real Oracle (10529 rows, variance proven) + C5 PASS + U1/U2 PASS; U3 verify-after-F1; C10/C12 reconciled-pass
 depends_on: [M-02]
 blocked_by: []
 base_sha: 138aac3d
