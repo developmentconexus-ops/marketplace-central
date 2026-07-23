@@ -68,7 +68,7 @@ now-retired file as it stood at ratification time).
   server process, never bind the ports, never load `.env*` into session env vars (env is
   consumed by the container entrypoint, not the session). Smoke: target routes, error shapes,
   OpenAPI ↔ SDK ↔ handler parity; evidence captured to the mission's contract paths.
-- Post-merge ladder on integrated master MUST include the clean-worktree governance run.
+- Post-merge ladder on integrated main MUST include the clean-worktree governance run.
 
 ## 3. Fresh-workspace bootstrap
 `status: ratified` · `provenance: 2026-07-15 · M-01 field finding (hermetic lane)`
