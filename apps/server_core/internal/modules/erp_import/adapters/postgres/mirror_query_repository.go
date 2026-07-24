@@ -10,7 +10,7 @@ import (
 	"marketplace-central/apps/server_core/internal/modules/erp_import/domain"
 )
 
-const mirrorProductColumns = `codigo_produto,descricao,referencia,ean,marca,grupo_codigo,grupo_descricao,ncm,custo::text,preco_venda::text,estoque_total::text,updated_at`
+const mirrorProductColumns = `m.codigo_produto,m.descricao,m.referencia,m.ean,m.marca,m.grupo_codigo,m.grupo_descricao,m.ncm,m.custo::text,m.preco_venda::text,m.estoque_total::text,m.updated_at`
 
 type rowScanner interface {
 	Scan(dest ...any) error
@@ -20,9 +20,10 @@ func scanMirrorProduct(row rowScanner) (domain.MirrorProduct, error) {
 	var product domain.MirrorProduct
 	var descricao, referencia, ean, marca, grupoCodigo, grupoDescricao, ncm sql.NullString
 	var custo, precoVenda, estoqueTotal sql.NullString
+	var importedAt sql.NullTime
 	if err := row.Scan(
 		&product.CodigoProduto, &descricao, &referencia, &ean, &marca, &grupoCodigo,
-		&grupoDescricao, &ncm, &custo, &precoVenda, &estoqueTotal, &product.UpdatedAt,
+		&grupoDescricao, &ncm, &custo, &precoVenda, &estoqueTotal, &product.UpdatedAt, &importedAt,
 	); err != nil {
 		return domain.MirrorProduct{}, err
 	}
@@ -36,6 +37,9 @@ func scanMirrorProduct(row rowScanner) (domain.MirrorProduct, error) {
 	product.Custo = nullStringPointer(custo)
 	product.PrecoVenda = nullStringPointer(precoVenda)
 	product.EstoqueTotal = nullStringPointer(estoqueTotal)
+	if importedAt.Valid {
+		product.ImportedAt = &importedAt.Time
+	}
 	return product, nil
 }
 
@@ -47,7 +51,11 @@ func nullStringPointer(value sql.NullString) *string {
 }
 
 func (r *Repository) MirrorRows(ctx context.Context, tenantID string, source domain.ImportSource) ([]domain.MirrorProduct, error) {
-	rows, err := r.pool.Query(ctx, `SELECT `+mirrorProductColumns+` FROM products_mirror WHERE tenant_id=$1 AND source=$2 AND absent_in_last_snapshot=false ORDER BY codigo_produto`, tenantID, source)
+	rows, err := r.pool.Query(ctx, `SELECT `+mirrorProductColumns+`,p.imported_at
+FROM products_mirror m
+LEFT JOIN erp_import_protocols p ON p.tenant_id = m.tenant_id AND p.id = m.protocol_id
+WHERE m.tenant_id=$1 AND m.source=$2 AND m.absent_in_last_snapshot=false
+ORDER BY m.codigo_produto`, tenantID, source)
 	if err != nil {
 		return nil, fmt.Errorf("query current mirror rows: %w", err)
 	}
@@ -68,7 +76,10 @@ func (r *Repository) MirrorRows(ctx context.Context, tenantID string, source dom
 }
 
 func (r *Repository) MirrorProductByCode(ctx context.Context, tenantID string, source domain.ImportSource, codigo string) (domain.MirrorProduct, bool, error) {
-	product, err := scanMirrorProduct(r.pool.QueryRow(ctx, `SELECT `+mirrorProductColumns+` FROM products_mirror WHERE tenant_id=$1 AND source=$2 AND codigo_produto=$3 AND absent_in_last_snapshot=false`, tenantID, source, codigo))
+	product, err := scanMirrorProduct(r.pool.QueryRow(ctx, `SELECT `+mirrorProductColumns+`,p.imported_at
+FROM products_mirror m
+LEFT JOIN erp_import_protocols p ON p.tenant_id = m.tenant_id AND p.id = m.protocol_id
+WHERE m.tenant_id=$1 AND m.source=$2 AND m.codigo_produto=$3 AND m.absent_in_last_snapshot=false`, tenantID, source, codigo))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.MirrorProduct{}, false, nil
 	}
@@ -80,15 +91,15 @@ func (r *Repository) MirrorProductByCode(ctx context.Context, tenantID string, s
 
 // MirrorCatalogPage returns up to limit+1 rows when limit is positive so callers can detect a following page.
 func (r *Repository) MirrorCatalogPage(ctx context.Context, tenantID string, source domain.ImportSource, query string, afterInternalID int64, limit int) ([]domain.MirrorProduct, error) {
-	rows, err := r.pool.Query(ctx, `SELECT DISTINCT ON (codigo_produto::bigint)
-  codigo_produto,descricao,referencia,ean,marca,grupo_codigo,grupo_descricao,ncm,
-  custo::text,preco_venda::text,estoque_total::text,updated_at
-FROM products_mirror
-WHERE tenant_id=$1 AND source=$2 AND absent_in_last_snapshot=false
-  AND codigo_produto ~ '^[0-9]{1,18}$'
-  AND codigo_produto::bigint > $3
-  AND ($4='' OR descricao ILIKE '%'||$4||'%')
-ORDER BY codigo_produto::bigint ASC, updated_at DESC
+	rows, err := r.pool.Query(ctx, `SELECT DISTINCT ON (m.codigo_produto::bigint)
+  `+mirrorProductColumns+`,p.imported_at
+FROM products_mirror m
+LEFT JOIN erp_import_protocols p ON p.tenant_id = m.tenant_id AND p.id = m.protocol_id
+WHERE m.tenant_id=$1 AND m.source=$2 AND m.absent_in_last_snapshot=false
+  AND m.codigo_produto ~ '^[0-9]{1,18}$'
+  AND m.codigo_produto::bigint > $3
+  AND ($4='' OR m.descricao ILIKE '%'||$4||'%')
+ORDER BY m.codigo_produto::bigint ASC, m.updated_at DESC
 LIMIT CASE WHEN $5 > 0 THEN $5 + 1 END`, tenantID, source, afterInternalID, query, limit)
 	if err != nil {
 		return nil, fmt.Errorf("query mirror catalog page: %w", err)

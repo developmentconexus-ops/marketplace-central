@@ -13,9 +13,42 @@ import (
 	erpports "marketplace-central/apps/server_core/internal/modules/erp_import/ports"
 	readdomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
 	readports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
+	"marketplace-central/apps/server_core/internal/modules/sourcekind"
 )
 
 var ErrNoErpSnapshot = errors.New("no_erp_snapshot")
+
+// sourceKind classifies an active source into its data-shape (hub ruling
+// 2026-07-24). Kept local to the reader — the adapter is not imported. xlsx and
+// catalogo_cliente materialize a protocol snapshot (upload_snapshot); any other
+// source (sankhya, once F1 routes it here) is read through live.
+func sourceKind(source erpdomain.ImportSource) sourcekind.SourceKind {
+	switch source {
+	case erpdomain.SourceXLSX, erpdomain.SourceCatalogoCliente:
+		return sourcekind.UploadSnapshot
+	default:
+		return sourcekind.LiveReadThrough
+	}
+}
+
+// dataObservationTime resolves the honest data-observation time for a mirror
+// row, keyed on the active source's kind (hub ruling 2026-07-24):
+//   - upload_snapshot (xlsx, catalogo_cliente): the protocol imported_at carried
+//     on the row is the DATA time. A row with no resolvable protocol has an
+//     UNKNOWN data time (ok=false) and the caller must fail closed — never fall
+//     back to updated_at (the sync stamp), which would resurrect the drift bug.
+//   - live_read_through (sankhya): updated_at IS the observation time — the
+//     adapter read the live source at that instant, and such rows carry
+//     protocol_id=NULL by design (no import protocol).
+func dataObservationTime(source erpdomain.ImportSource, row erpdomain.MirrorProduct) (time.Time, bool) {
+	if sourceKind(source) == sourcekind.LiveReadThrough {
+		return row.UpdatedAt, true
+	}
+	if row.ImportedAt == nil {
+		return time.Time{}, false
+	}
+	return *row.ImportedAt, true
+}
 
 // activeSourceKey carries the caller-selected dataset source through the request
 // context. The two-source toggle (xlsx = Sankhya ERP, catalogo_cliente = prospect
@@ -157,7 +190,11 @@ func (r *Reader) GetSellableStock(ctx context.Context, input readports.SellableS
 	if !found {
 		return readdomain.SellableStock{}, &ERPProductNotFoundError{ProductID: input.ProductID}
 	}
-	result := readdomain.SellableStock{ProductID: input.ProductID, Policy: input.Policy, Source: r.source(source, row.UpdatedAt)}
+	dataAt, ok := dataObservationTime(source, row)
+	if !ok {
+		return readdomain.SellableStock{}, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, "product import time is unknown for sellable stock", ErrNoErpSnapshot)
+	}
+	result := readdomain.SellableStock{ProductID: input.ProductID, Policy: input.Policy, Source: r.source(source, dataAt)}
 	if row.EstoqueTotal == nil {
 		result.QualityFlags = []readdomain.QualityFlag{readdomain.QualityMissingStock}
 		return result, nil
@@ -186,7 +223,11 @@ func (r *Reader) GetCostAsOf(ctx context.Context, input readports.CostAsOfInput)
 	if !found {
 		return readdomain.CostAsOf{}, &ERPProductNotFoundError{ProductID: input.ProductID}
 	}
-	if row.UpdatedAt.After(input.Policy.EffectiveAt) {
+	dataAt, ok := dataObservationTime(source, row)
+	if !ok {
+		return readdomain.CostAsOf{}, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, "product import time is unknown for cost as-of", ErrNoErpSnapshot)
+	}
+	if dataAt.After(input.Policy.EffectiveAt) {
 		return readdomain.CostAsOf{}, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, "mirror row is newer than requested cost as-of", ErrNoErpSnapshot)
 	}
 	if row.Custo == nil {
@@ -196,7 +237,7 @@ func (r *Reader) GetCostAsOf(ctx context.Context, input readports.CostAsOfInput)
 	if err != nil {
 		return readdomain.CostAsOf{}, err
 	}
-	return readdomain.CostAsOf{ProductID: input.ProductID, CompanyID: input.Policy.CompanyID, Basis: input.Policy.Basis, EffectiveAt: input.Policy.EffectiveAt, Amount: &amount, AmountScope: readdomain.CostAmountScopePerUnit, Source: r.source(source, row.UpdatedAt)}, nil
+	return readdomain.CostAsOf{ProductID: input.ProductID, CompanyID: input.Policy.CompanyID, Basis: input.Policy.Basis, EffectiveAt: input.Policy.EffectiveAt, Amount: &amount, AmountScope: readdomain.CostAmountScopePerUnit, Source: r.source(source, dataAt)}, nil
 }
 
 func (r *Reader) GetSalesHistory(context.Context, readports.SalesHistoryInput) (readdomain.SalesHistory, error) {
@@ -215,7 +256,11 @@ func (r *Reader) GetTaxInputs(ctx context.Context, input readports.TaxInput) (re
 	if !found {
 		return readdomain.TaxInputs{}, &ERPProductNotFoundError{ProductID: input.ProductID}
 	}
-	result := readdomain.TaxInputs{ProductID: input.ProductID, EffectiveAt: input.Policy.EffectiveAt, IncidenceCode: input.Policy.IncidenceCode, SourceIdentity: input.Policy.Source, Source: r.source(source, row.UpdatedAt)}
+	dataAt, ok := dataObservationTime(source, row)
+	if !ok {
+		return readdomain.TaxInputs{}, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, "product import time is unknown for tax inputs", ErrNoErpSnapshot)
+	}
+	result := readdomain.TaxInputs{ProductID: input.ProductID, EffectiveAt: input.Policy.EffectiveAt, IncidenceCode: input.Policy.IncidenceCode, SourceIdentity: input.Policy.Source, Source: r.source(source, dataAt)}
 	if validNCM(row.NCM) {
 		result.NCM = copyTrimmed(row.NCM)
 	} else {
@@ -263,9 +308,12 @@ func (r *Reader) catalogPage(ctx context.Context, cursor readports.Cursor, query
 		}
 		items = append(items, fact)
 		lastID = id
-		if row.UpdatedAt.After(asOf) {
-			asOf = row.UpdatedAt
+		if dataAt, ok := dataObservationTime(source, row); ok && dataAt.After(asOf) {
+			asOf = dataAt
 		}
+	}
+	if len(rows) > 0 && asOf.IsZero() {
+		return readports.CatalogFactPage{}, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, "product import time is unknown for catalog page", ErrNoErpSnapshot)
 	}
 	page := readports.CatalogFactPage{Items: items, AsOf: asOf}
 	if hasMore {
@@ -284,7 +332,11 @@ func (r *Reader) candidate(id int, row erpdomain.MirrorProduct, collisions map[s
 	if row.Descricao != nil {
 		name = strings.TrimSpace(*row.Descricao)
 	}
-	return readdomain.ProductCandidate{InternalProductID: &canonical, ProductID: id, Name: name, EAN: ean, ReferenceCode: copyTrimmed(row.Referencia), NCM: copyTrimmed(row.NCM), BrandName: copyTrimmed(row.Marca), IsActive: true, Source: r.source(source, row.UpdatedAt), QualityFlags: flags}, nil
+	dataAt, ok := dataObservationTime(source, row)
+	if !ok {
+		return readdomain.ProductCandidate{}, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, "product import time is unknown for linking candidate", ErrNoErpSnapshot)
+	}
+	return readdomain.ProductCandidate{InternalProductID: &canonical, ProductID: id, Name: name, EAN: ean, ReferenceCode: copyTrimmed(row.Referencia), NCM: copyTrimmed(row.NCM), BrandName: copyTrimmed(row.Marca), IsActive: true, Source: r.source(source, dataAt), QualityFlags: flags}, nil
 }
 
 func catalogFact(id int64, row erpdomain.MirrorProduct, collisions map[string]int) (readports.CatalogProductFact, error) {

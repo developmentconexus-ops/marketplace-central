@@ -14,5 +14,6 @@ type MirrorProduct struct {
 	Custo          *string
 	PrecoVenda     *string
 	EstoqueTotal   *string
+	ImportedAt     *time.Time
 	UpdatedAt      time.Time
 }

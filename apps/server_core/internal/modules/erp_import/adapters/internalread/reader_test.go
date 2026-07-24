@@ -26,11 +26,13 @@ func ptr[T any](v T) *T { return &v }
 
 func mirrorRows() []erpdomain.MirrorProduct {
 	return []erpdomain.MirrorProduct{
-		{CodigoProduto: "1", Descricao: ptr("Blue Widget"), Custo: ptr("12.30"), EstoqueTotal: ptr("7"), EAN: ptr("7894900011517"), Referencia: ptr(" REF-1 "), Marca: ptr("Acme"), NCM: ptr("12345678"), UpdatedAt: importedAt},
-		{CodigoProduto: "2", Descricao: ptr("Blue Spare"), Custo: ptr("3.25"), EstoqueTotal: ptr("4"), EAN: ptr("7894900011517"), UpdatedAt: importedAt.Add(time.Minute)},
-		{CodigoProduto: "10", Descricao: ptr("Red Widget"), Custo: ptr("7"), EAN: ptr("bad"), UpdatedAt: importedAt.Add(2 * time.Minute)},
+		{CodigoProduto: "1", Descricao: ptr("Blue Widget"), Custo: ptr("12.30"), EstoqueTotal: ptr("7"), EAN: ptr("7894900011517"), Referencia: ptr(" REF-1 "), Marca: ptr("Acme"), NCM: ptr("12345678"), ImportedAt: timePtr(importedAt), UpdatedAt: importedAt.Add(time.Hour)},
+		{CodigoProduto: "2", Descricao: ptr("Blue Spare"), Custo: ptr("3.25"), EstoqueTotal: ptr("4"), EAN: ptr("7894900011517"), ImportedAt: timePtr(importedAt.Add(time.Minute)), UpdatedAt: importedAt.Add(time.Hour)},
+		{CodigoProduto: "10", Descricao: ptr("Red Widget"), Custo: ptr("7"), EAN: ptr("bad"), ImportedAt: timePtr(importedAt.Add(2 * time.Minute)), UpdatedAt: importedAt.Add(time.Hour)},
 	}
 }
+
+func timePtr(value time.Time) *time.Time { return &value }
 
 type fakeRepo struct {
 	rows           []erpdomain.MirrorProduct
@@ -120,7 +122,7 @@ func readerWith(rows []erpdomain.MirrorProduct) (*Reader, *fakeRepo, context.Con
 func TestMirrorBackedReads(t *testing.T) {
 	r, repo, ctx := readerWith(mirrorRows())
 	candidates, err := r.FindProductsForLinking(ctx, readports.FindProductsInput{Title: ptr("blue")})
-	if err != nil || len(candidates) != 2 || candidates[0].ProductID != 1 || !readdomain.HasQualityFlag(candidates[0].QualityFlags, readdomain.QualityEANCollision) || !readdomain.HasQualityFlag(candidates[0].QualityFlags, readdomain.QualityAmbiguousProduct) {
+	if err != nil || len(candidates) != 2 || candidates[0].ProductID != 1 || candidates[0].Source.ObservedAt == nil || !candidates[0].Source.ObservedAt.Equal(importedAt) || !readdomain.HasQualityFlag(candidates[0].QualityFlags, readdomain.QualityEANCollision) || !readdomain.HasQualityFlag(candidates[0].QualityFlags, readdomain.QualityAmbiguousProduct) {
 		t.Fatalf("candidates=%+v err=%v", candidates, err)
 	}
 	stock, err := r.GetSellableStock(ctx, readports.SellableStockInput{ProductID: 1})
@@ -128,11 +130,11 @@ func TestMirrorBackedReads(t *testing.T) {
 		t.Fatalf("stock=%+v err=%v", stock, err)
 	}
 	cost, err := r.GetCostAsOf(ctx, readports.CostAsOfInput{ProductID: 1, Policy: readdomain.CostAsOfPolicy{EffectiveAt: importedAt}})
-	if err != nil || cost.Amount == nil || *cost.Amount != 12.3 || cost.AmountScope != readdomain.CostAmountScopePerUnit {
+	if err != nil || cost.Amount == nil || *cost.Amount != 12.3 || cost.AmountScope != readdomain.CostAmountScopePerUnit || cost.Source.ObservedAt == nil || !cost.Source.ObservedAt.Equal(importedAt) {
 		t.Fatalf("cost=%+v err=%v", cost, err)
 	}
 	tax, err := r.GetTaxInputs(ctx, readports.TaxInput{ProductID: 1})
-	if err != nil || tax.NCM == nil || *tax.NCM != "12345678" {
+	if err != nil || tax.NCM == nil || *tax.NCM != "12345678" || tax.Source.ObservedAt == nil || !tax.Source.ObservedAt.Equal(importedAt) {
 		t.Fatalf("tax=%+v err=%v", tax, err)
 	}
 	page, err := r.ListCatalogProductFacts(ctx, readports.Cursor{}, 2)
@@ -170,6 +172,78 @@ func TestMirrorUnknownValuesRemainUnknown(t *testing.T) {
 func TestCostAsOfRejectsNewerMirrorRow(t *testing.T) {
 	r, _, ctx := readerWith(mirrorRows())
 	_, err := r.GetCostAsOf(ctx, readports.CostAsOfInput{ProductID: 1, Policy: readdomain.CostAsOfPolicy{EffectiveAt: importedAt.Add(-time.Second)}})
+	if !errors.Is(err, ErrNoErpSnapshot) || !readdomain.IsReadErrorCode(err, readdomain.ReadErrorSourceUnavailable) {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestLiveReadThroughUsesUpdatedAtAsObservationTime(t *testing.T) {
+	// live_read_through source (sankhya): the row carries protocol_id=NULL by
+	// design (ImportedAt nil) and updated_at IS the observation instant. sankhya
+	// is not yet a ParseActiveSource value — the wiring that routes it through
+	// this reader is F1 — so pin it directly to exercise the kind branch.
+	syncedAt := time.Date(2026, 7, 12, 8, 0, 0, 0, time.UTC)
+	row := erpdomain.MirrorProduct{CodigoProduto: "1", Descricao: ptr("Live Widget"), Custo: ptr("9.90"), EstoqueTotal: ptr("3"), NCM: ptr("12345678"), ImportedAt: nil, UpdatedAt: syncedAt}
+	repo := &fakeRepo{rows: []erpdomain.MirrorProduct{row}}
+	reader := NewReader(repo, "tenant-a", WithClock(func() time.Time { return fetchedAt }))
+	ctx := WithActiveSource(context.Background(), erpdomain.ImportSource("sankhya"))
+
+	cost, err := reader.GetCostAsOf(ctx, readports.CostAsOfInput{ProductID: 1, Policy: readdomain.CostAsOfPolicy{EffectiveAt: syncedAt}})
+	if err != nil || cost.Amount == nil || *cost.Amount != 9.9 || cost.Source.ObservedAt == nil || !cost.Source.ObservedAt.Equal(syncedAt) {
+		t.Fatalf("live cost must observe updated_at, not fail on nil imported_at: cost=%+v err=%v", cost, err)
+	}
+	if _, err := reader.GetCostAsOf(ctx, readports.CostAsOfInput{ProductID: 1, Policy: readdomain.CostAsOfPolicy{EffectiveAt: syncedAt.Add(-time.Second)}}); !errors.Is(err, ErrNoErpSnapshot) {
+		t.Fatalf("live as-of before the sync instant must reject: %v", err)
+	}
+	stock, err := reader.GetSellableStock(ctx, readports.SellableStockInput{ProductID: 1})
+	if err != nil || stock.Source.ObservedAt == nil || !stock.Source.ObservedAt.Equal(syncedAt) {
+		t.Fatalf("live stock=%+v err=%v", stock, err)
+	}
+	page, err := reader.ListCatalogProductFacts(ctx, readports.Cursor{}, 10)
+	if err != nil || len(page.Items) != 1 || !page.AsOf.Equal(syncedAt) {
+		t.Fatalf("live page must set AsOf from updated_at: page=%+v err=%v", page, err)
+	}
+}
+
+func TestUnknownImportTimeFailsHonestly(t *testing.T) {
+	rows := mirrorRows()
+	rows[0].ImportedAt = nil
+	r, _, ctx := readerWith(rows)
+	calls := map[string]func() error{
+		"find": func() error {
+			_, err := r.FindProductsForLinking(ctx, readports.FindProductsInput{ProductID: ptr(1)})
+			return err
+		},
+		"stock": func() error {
+			_, err := r.GetSellableStock(ctx, readports.SellableStockInput{ProductID: 1})
+			return err
+		},
+		"cost": func() error {
+			_, err := r.GetCostAsOf(ctx, readports.CostAsOfInput{ProductID: 1, Policy: readdomain.CostAsOfPolicy{EffectiveAt: importedAt}})
+			return err
+		},
+		"tax": func() error {
+			_, err := r.GetTaxInputs(ctx, readports.TaxInput{ProductID: 1})
+			return err
+		},
+	}
+	for name, call := range calls {
+		t.Run(name, func(t *testing.T) {
+			err := call()
+			if !errors.Is(err, ErrNoErpSnapshot) || !readdomain.IsReadErrorCode(err, readdomain.ReadErrorSourceUnavailable) {
+				t.Fatalf("err=%v", err)
+			}
+		})
+	}
+}
+
+func TestCatalogPageUnknownImportTimesFailHonestly(t *testing.T) {
+	rows := mirrorRows()
+	for i := range rows {
+		rows[i].ImportedAt = nil
+	}
+	r, _, ctx := readerWith(rows)
+	_, err := r.ListCatalogProductFacts(ctx, readports.Cursor{}, 10)
 	if !errors.Is(err, ErrNoErpSnapshot) || !readdomain.IsReadErrorCode(err, readdomain.ReadErrorSourceUnavailable) {
 		t.Fatalf("err=%v", err)
 	}

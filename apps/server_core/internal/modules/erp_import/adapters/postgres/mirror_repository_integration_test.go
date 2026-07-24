@@ -26,11 +26,11 @@ func TestMirrorMergeKeepsAbsentIsTenantScopedAndResurrects(t *testing.T) {
 	})
 
 	now := time.Now().UTC()
-	x := mirrorSnapshot("61111111-1111-1111-1111-111111111111", "mirror-x-1", now, []domain.NormalizedRow{{Codprod: "42", Descrprod: "X one", StockPhysical: "8", StockReserved: stringPtr("3")}})
+	x := mirrorSnapshot("61111111-1111-1111-1111-111111111111", "mirror-x-1", "#611-E", now, []domain.NormalizedRow{{Codprod: "42", Descrprod: "X one", StockPhysical: "8", StockReserved: stringPtr("3")}})
 	if err := repo.PersistSnapshotAtomically(ctx, tenant, x); err != nil {
 		t.Fatal(err)
 	}
-	other := mirrorSnapshot("62222222-2222-2222-2222-222222222222", "mirror-other", now, []domain.NormalizedRow{{Codprod: "X", Descrprod: "Other X", Custo: "9", StockPhysical: "2", StockReserved: stringPtr("1")}})
+	other := mirrorSnapshot("62222222-2222-2222-2222-222222222222", "mirror-other", "#612-E", now, []domain.NormalizedRow{{Codprod: "X", Descrprod: "Other X", Custo: "9", StockPhysical: "2", StockReserved: stringPtr("1")}})
 	if err := repo.PersistSnapshotAtomically(ctx, otherTenant, other); err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestMirrorMergeKeepsAbsentIsTenantScopedAndResurrects(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	absent := mirrorSnapshot("63333333-3333-3333-3333-333333333333", "mirror-x-2", now.Add(time.Second), nil)
+	absent := mirrorSnapshot("63333333-3333-3333-3333-333333333333", "mirror-x-2", "#613-E", now.Add(time.Second), nil)
 	if err := repo.PersistSnapshotAtomically(ctx, tenant, absent); err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +68,7 @@ func TestMirrorMergeKeepsAbsentIsTenantScopedAndResurrects(t *testing.T) {
 		t.Fatalf("other tenant flagged=%v err=%v", otherFlagged, err)
 	}
 
-	resurrected := mirrorSnapshot("64444444-4444-4444-4444-444444444444", "mirror-x-3", now.Add(2*time.Second), []domain.NormalizedRow{{Codprod: "42", Descrprod: "X again"}})
+	resurrected := mirrorSnapshot("64444444-4444-4444-4444-444444444444", "mirror-x-3", "#614-E", now.Add(2*time.Second), []domain.NormalizedRow{{Codprod: "42", Descrprod: "X again"}})
 	if err := repo.PersistSnapshotAtomically(ctx, tenant, resurrected); err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +89,7 @@ func TestMirrorMergeRollbackAndAcceptedCount(t *testing.T) {
 		_, _ = pool.Exec(context.Background(), `DELETE FROM products_mirror WHERE tenant_id=$1`, tenant)
 	})
 
-	bad := mirrorSnapshot("65555555-5555-5555-5555-555555555555", "mirror-bad", time.Now().UTC(), []domain.NormalizedRow{{Codprod: "BAD", Descrprod: "Bad", Custo: "1", PrecoVenda: "not-numeric", StockPhysical: "1"}})
+	bad := mirrorSnapshot("65555555-5555-5555-5555-555555555555", "mirror-bad", "#615-E", time.Now().UTC(), []domain.NormalizedRow{{Codprod: "BAD", Descrprod: "Bad", Custo: "1", PrecoVenda: "not-numeric", StockPhysical: "1"}})
 	if err := repo.PersistSnapshotAtomically(ctx, tenant, bad); err == nil {
 		t.Fatal("invalid mirror numeric succeeded")
 	}
@@ -105,7 +105,7 @@ func TestMirrorMergeRollbackAndAcceptedCount(t *testing.T) {
 	}
 
 	rejectedColumn := "codprod"
-	accepted := mirrorSnapshot("66666666-6666-6666-6666-666666666666", "mirror-accepted", time.Now().UTC().Add(time.Second), []domain.NormalizedRow{{Codprod: "OK", Descrprod: "Accepted", StockPhysical: "1", StockReserved: stringPtr("0")}})
+	accepted := mirrorSnapshot("66666666-6666-6666-6666-666666666666", "mirror-accepted", "#616-E", time.Now().UTC().Add(time.Second), []domain.NormalizedRow{{Codprod: "OK", Descrprod: "Accepted", StockPhysical: "1", StockReserved: stringPtr("0")}})
 	accepted.Issues = []domain.Issue{{Row: 3, Column: &rejectedColumn, Kind: domain.Rejection, Code: domain.CodeEmptyCodprod}}
 	if err := repo.PersistSnapshotAtomically(ctx, tenant, accepted); err != nil {
 		t.Fatal(err)
@@ -124,14 +124,14 @@ func TestMirrorMergeReplacesTouchedLocationsAndRetainsAbsentLocations(t *testing
 		_, _ = pool.Exec(context.Background(), `DELETE FROM products_mirror WHERE tenant_id=$1`, tenant)
 	})
 	now := time.Now().UTC()
-	first := mirrorSnapshot("67777777-7777-7777-7777-777777777777", "mirror-loc-1", now, []domain.NormalizedRow{
+	first := mirrorSnapshot("67777777-7777-7777-7777-777777777777", "mirror-loc-1", "#617-E", now, []domain.NormalizedRow{
 		{Codprod: "A", Descrprod: "A", StockPhysical: "7", StockReserved: stringPtr("2"), Local: stringPtr("OLD")},
 		{Codprod: "B", Descrprod: "B", StockPhysical: "4", StockReserved: stringPtr("1"), Local: stringPtr("KEEP")},
 	})
 	if err := repo.PersistSnapshotAtomically(ctx, tenant, first); err != nil {
 		t.Fatal(err)
 	}
-	second := mirrorSnapshot("68888888-8888-8888-8888-888888888888", "mirror-loc-2", now.Add(time.Second), []domain.NormalizedRow{{Codprod: "A", Descrprod: "A", StockPhysical: "9", StockReserved: stringPtr("3"), Local: stringPtr("NEW")}})
+	second := mirrorSnapshot("68888888-8888-8888-8888-888888888888", "mirror-loc-2", "#618-E", now.Add(time.Second), []domain.NormalizedRow{{Codprod: "A", Descrprod: "A", StockPhysical: "9", StockReserved: stringPtr("3"), Local: stringPtr("NEW")}})
 	if err := repo.PersistSnapshotAtomically(ctx, tenant, second); err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +168,7 @@ func TestSyncLatestCompletedSnapshotUsesSharedMerge(t *testing.T) {
 		_, _ = pool.Exec(context.Background(), `DELETE FROM products_mirror_stock_locations WHERE tenant_id=$1`, tenant)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM products_mirror WHERE tenant_id=$1`, tenant)
 	})
-	snapshot := mirrorSnapshot("69999999-9999-9999-9999-999999999999", "mirror-sync", time.Now().UTC(), []domain.NormalizedRow{{Codprod: "SYNC", Descrprod: "Sync", Custo: "3", StockPhysical: "5", StockReserved: stringPtr("2")}})
+	snapshot := mirrorSnapshot("69999999-9999-9999-9999-999999999999", "mirror-sync", "#619-E", time.Now().UTC(), []domain.NormalizedRow{{Codprod: "SYNC", Descrprod: "Sync", Custo: "3", StockPhysical: "5", StockReserved: stringPtr("2")}})
 	if err := repo.PersistSnapshotAtomically(ctx, tenant, snapshot); err != nil {
 		t.Fatal(err)
 	}
@@ -378,8 +378,8 @@ func mirrorCodes(rows []domain.MirrorProduct) []string {
 	return codes
 }
 
-func mirrorSnapshot(id, hash string, importedAt time.Time, rows []domain.NormalizedRow) domain.ImportSnapshot {
-	return domain.ImportSnapshot{ID: domain.ImportID(id), Protocol: domain.Protocol("#" + hash), FileSHA256: domain.FileSHA256(hash), Source: domain.SourceXLSX, ImportedAt: importedAt, Status: domain.ImportStatusCompleted, AcceptedRows: rows}
+func mirrorSnapshot(id, hash, protocol string, importedAt time.Time, rows []domain.NormalizedRow) domain.ImportSnapshot {
+	return domain.ImportSnapshot{ID: domain.ImportID(id), Protocol: domain.Protocol(protocol), FileSHA256: domain.FileSHA256(hash), Source: domain.SourceXLSX, ImportedAt: importedAt, Status: domain.ImportStatusCompleted, AcceptedRows: rows}
 }
 
 func stringPtr(value string) *string { return &value }

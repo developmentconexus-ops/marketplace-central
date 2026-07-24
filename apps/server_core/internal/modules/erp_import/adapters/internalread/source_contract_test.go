@@ -331,7 +331,8 @@ func mirrorProductsFromSnapshot(snapshot erpdomain.ImportSnapshot) []erpdomain.M
 			cost = &value
 		}
 		description := row.Descrprod
-		rows = append(rows, erpdomain.MirrorProduct{CodigoProduto: row.Codprod, Descricao: &description, Referencia: row.Refforn, EAN: row.EAN, Marca: row.Marca, NCM: row.NCM, Custo: cost, EstoqueTotal: stock, UpdatedAt: snapshot.ImportedAt})
+		importedAt := snapshot.ImportedAt
+		rows = append(rows, erpdomain.MirrorProduct{CodigoProduto: row.Codprod, Descricao: &description, Referencia: row.Refforn, EAN: row.EAN, Marca: row.Marca, NCM: row.NCM, Custo: cost, EstoqueTotal: stock, ImportedAt: &importedAt, UpdatedAt: snapshot.ImportedAt})
 	}
 	return rows
 }
