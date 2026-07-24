@@ -17,7 +17,7 @@ import (
 
 func TestReaderRealRepositoryCostReservedAsOfAndRejectedIgnored(t *testing.T) {
 	testpostgres.SkipWithoutTarget(t)
-	ctx := context.Background()
+	ctx := WithActiveSource(context.Background(), erpdomain.SourceXLSX)
 	tenant := "erp-internalread-" + time.Now().UTC().Format("150405.000000000")
 	pool, _ := testpostgres.OpenPool(t, tenant)
 	t.Cleanup(func() {
@@ -26,12 +26,15 @@ func TestReaderRealRepositoryCostReservedAsOfAndRejectedIgnored(t *testing.T) {
 	repo := erppostgres.NewRepository(pool)
 	imported := time.Now().UTC().Add(-time.Hour).Truncate(time.Microsecond)
 	reserved := "2"
-	completed := erpdomain.ImportSnapshot{ID: "61111111-1111-1111-1111-111111111111", Protocol: "#611-E", FileSHA256: "internalread-completed", Source: erpdomain.SourceXLSX, ImportedAt: imported, Status: erpdomain.ImportStatusCompleted, AcceptedRows: []erpdomain.NormalizedRow{{Codprod: "10", Descrprod: "Widget", Custo: "12.30", StockPhysical: "9", StockReserved: &reserved}}}
+	completed := erpdomain.ImportSnapshot{ID: "a1111111-1111-1111-1111-111111111111", Protocol: "#711-E", FileSHA256: "internalread-completed", Source: erpdomain.SourceXLSX, ImportedAt: imported, Status: erpdomain.ImportStatusCompleted, AcceptedRows: []erpdomain.NormalizedRow{{Codprod: "10", Descrprod: "Widget", Custo: "12.30", StockPhysical: "9", StockReserved: &reserved}}}
 	if err := repo.PersistSnapshotAtomically(ctx, tenant, completed); err != nil {
 		t.Fatal(err)
 	}
-	rejected := erpdomain.ImportSnapshot{ID: "62222222-2222-2222-2222-222222222222", Protocol: "#622-E", FileSHA256: "internalread-rejected", Source: erpdomain.SourceXLSX, ImportedAt: imported.Add(time.Minute), Status: erpdomain.ImportStatusRejected}
+	rejected := erpdomain.ImportSnapshot{ID: "a2222222-2222-2222-2222-222222222222", Protocol: "#722-E", FileSHA256: "internalread-rejected", Source: erpdomain.SourceXLSX, ImportedAt: imported.Add(time.Minute), Status: erpdomain.ImportStatusRejected}
 	if err := repo.PersistSnapshotAtomically(ctx, tenant, rejected); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.SyncLatestCompletedSnapshot(ctx, tenant, erpdomain.SourceXLSX); err != nil {
 		t.Fatal(err)
 	}
 	r := NewReader(repo, tenant)

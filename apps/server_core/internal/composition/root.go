@@ -29,6 +29,8 @@ import (
 	dashboardtransport "marketplace-central/apps/server_core/internal/modules/dashboard/transport"
 	erpinternalread "marketplace-central/apps/server_core/internal/modules/erp_import/adapters/internalread"
 	erppostgres "marketplace-central/apps/server_core/internal/modules/erp_import/adapters/postgres"
+	erpproductlinks "marketplace-central/apps/server_core/internal/modules/erp_import/adapters/productlinks"
+	erpsync "marketplace-central/apps/server_core/internal/modules/erp_import/adapters/sync"
 	erpxlsx "marketplace-central/apps/server_core/internal/modules/erp_import/adapters/xlsx"
 	erpapp "marketplace-central/apps/server_core/internal/modules/erp_import/application"
 	erptransport "marketplace-central/apps/server_core/internal/modules/erp_import/transport"
@@ -111,6 +113,7 @@ import (
 	profitabilitypostgres "marketplace-central/apps/server_core/internal/modules/profitability/adapters/postgres"
 	profitabilityapp "marketplace-central/apps/server_core/internal/modules/profitability/application"
 	profitabilitytransport "marketplace-central/apps/server_core/internal/modules/profitability/transport"
+	syncpg "marketplace-central/apps/server_core/internal/modules/sync/adapters/postgres"
 	synccomposition "marketplace-central/apps/server_core/internal/modules/sync/composition"
 	"marketplace-central/apps/server_core/internal/modules/tenant_config"
 	tenantconfigtransport "marketplace-central/apps/server_core/internal/modules/tenant_config/transport"
@@ -483,6 +486,10 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		Now:        time.Now,
 	})
 	productlinkstransport.NewHandlerWithBatchPreview(productLinkImportSvc, productLinkGenerationSvc, productLinkGenerationSvc, productLinkResolutionSvc, productLinkResolutionSvc, productLinkBatchSvc).Register(mux)
+	erpImportSvc.SetPostImportHooks(
+		erpsync.NewMarketEnqueuer(installationSvc, syncpg.NewSyncStateRepository(pool, cfg.DefaultTenantID)),
+		erpproductlinks.NewLinkCandidateGenerator(productLinkGenerationSvc),
+	)
 
 	inventoryActionRepo := inventorypostgres.NewStockActionRepository(pool, cfg.DefaultTenantID)
 	inventoryRiskSvc := inventoryapp.NewStockRiskService(

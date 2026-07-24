@@ -44,12 +44,16 @@ type fakeImportRepository struct {
 	getTenant         string
 	getID             domain.ImportID
 	persistedSnapshot domain.ImportSnapshot
+	callLog           *[]string
 }
 
 func (r *fakeImportRepository) PersistSnapshotAtomically(_ context.Context, tenantID string, snapshot domain.ImportSnapshot) error {
 	r.persistCalls++
 	r.persistTenant = tenantID
 	r.persistedSnapshot = snapshot
+	if r.callLog != nil {
+		*r.callLog = append(*r.callLog, "persist")
+	}
 	return r.persistErr
 }
 
@@ -70,6 +74,136 @@ func (r *fakeImportRepository) GetImport(_ context.Context, tenantID string, id 
 
 func (r *fakeImportRepository) LatestCompletedSnapshot(context.Context, string, domain.ImportSource) (domain.ImportSnapshot, error) {
 	return domain.ImportSnapshot{}, nil
+}
+
+func (r *fakeImportRepository) SyncLatestCompletedSnapshot(context.Context, string, domain.ImportSource) (int, error) {
+	return 0, nil
+}
+func (r *fakeImportRepository) MirrorRows(context.Context, string, domain.ImportSource) ([]domain.MirrorProduct, error) {
+	return nil, nil
+}
+func (r *fakeImportRepository) MirrorProductByCode(context.Context, string, domain.ImportSource, string) (domain.MirrorProduct, bool, error) {
+	return domain.MirrorProduct{}, false, nil
+}
+func (r *fakeImportRepository) MirrorCatalogPage(context.Context, string, domain.ImportSource, string, int64, int) ([]domain.MirrorProduct, error) {
+	return nil, nil
+}
+func (r *fakeImportRepository) MirrorEANCollisionCounts(context.Context, string, domain.ImportSource) (map[string]int, error) {
+	return nil, nil
+}
+
+type fakeSyncEnqueuer struct {
+	installationIDs []string
+	err             error
+	codes           [][]string
+	callLog         *[]string
+}
+
+func (e *fakeSyncEnqueuer) EnqueueMarketProducts(_ context.Context, productCodes []string) ([]string, error) {
+	e.codes = append(e.codes, append([]string(nil), productCodes...))
+	if e.callLog != nil {
+		*e.callLog = append(*e.callLog, "enqueue")
+	}
+	return e.installationIDs, e.err
+}
+
+type fakeLinkCandidateGenerator struct {
+	installationIDs []string
+	err             error
+	callLog         *[]string
+}
+
+func (g *fakeLinkCandidateGenerator) GenerateLinkCandidates(_ context.Context, installationID string) error {
+	g.installationIDs = append(g.installationIDs, installationID)
+	if g.callLog != nil {
+		*g.callLog = append(*g.callLog, "generate:"+installationID)
+	}
+	return g.err
+}
+
+func TestImportServicePostImportHooksFireOnCompleted(t *testing.T) {
+	var callLog []string
+	repo := &fakeImportRepository{getReport: domain.ImportReport{AcceptedCount: 2}, callLog: &callLog}
+	enqueuer := &fakeSyncEnqueuer{installationIDs: []string{"inst-a", "inst-b"}, callLog: &callLog}
+	generator := &fakeLinkCandidateGenerator{callLog: &callLog}
+	service := deterministicImportService(
+		&fakeParser{rows: []domain.NormalizedRow{validImportRow("P-1"), validImportRow("P-2")}},
+		repo,
+		WithSyncEnqueuer(enqueuer),
+		WithLinkCandidateGenerator(generator),
+	)
+
+	if _, err := service.RunImport(context.Background(), strings.NewReader("data")); err != nil {
+		t.Fatalf("RunImport() error = %v", err)
+	}
+
+	if !reflect.DeepEqual(enqueuer.codes, [][]string{{"P-1", "P-2"}}) {
+		t.Fatalf("enqueued codes = %#v, want one exact accepted-code batch", enqueuer.codes)
+	}
+	if !reflect.DeepEqual(generator.installationIDs, []string{"inst-a", "inst-b"}) {
+		t.Fatalf("generated installation IDs = %#v, want both installations in order", generator.installationIDs)
+	}
+	if !reflect.DeepEqual(callLog, []string{"persist", "enqueue", "generate:inst-a", "generate:inst-b"}) {
+		t.Fatalf("call order = %#v, want persist before post-import hooks", callLog)
+	}
+}
+
+func TestImportServiceRejectedSkipsHooks(t *testing.T) {
+	enqueuer := &fakeSyncEnqueuer{installationIDs: []string{"inst-a"}}
+	generator := &fakeLinkCandidateGenerator{}
+	service := deterministicImportService(
+		&fakeParser{rows: []domain.NormalizedRow{{Descrprod: "bad", Custo: "0", StockPhysical: "-1"}}},
+		&fakeImportRepository{},
+		WithSyncEnqueuer(enqueuer),
+		WithLinkCandidateGenerator(generator),
+	)
+
+	if _, err := service.RunImport(context.Background(), strings.NewReader("data")); err != nil {
+		t.Fatalf("RunImport() error = %v", err)
+	}
+	if len(enqueuer.codes) != 0 || len(generator.installationIDs) != 0 {
+		t.Fatalf("hooks called for rejected import: enqueued=%#v generated=%#v", enqueuer.codes, generator.installationIDs)
+	}
+}
+
+func TestImportServiceEnqueueFailurePropagatesAndSkipsGeneration(t *testing.T) {
+	wantErr := errors.New("enqueue unavailable")
+	enqueuer := &fakeSyncEnqueuer{err: wantErr}
+	generator := &fakeLinkCandidateGenerator{}
+	service := deterministicImportService(
+		&fakeParser{rows: []domain.NormalizedRow{validImportRow("P-1")}},
+		&fakeImportRepository{},
+		WithSyncEnqueuer(enqueuer),
+		WithLinkCandidateGenerator(generator),
+	)
+
+	_, err := service.RunImport(context.Background(), strings.NewReader("data"))
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("RunImport() error = %v, want wrapped enqueue error", err)
+	}
+	if len(generator.installationIDs) != 0 {
+		t.Fatalf("generator calls = %#v, want none after enqueue failure", generator.installationIDs)
+	}
+}
+
+func TestImportServiceGenerationFailurePropagates(t *testing.T) {
+	wantErr := errors.New("candidate generation unavailable")
+	enqueuer := &fakeSyncEnqueuer{installationIDs: []string{"inst-a", "inst-b"}}
+	generator := &fakeLinkCandidateGenerator{err: wantErr}
+	service := deterministicImportService(
+		&fakeParser{rows: []domain.NormalizedRow{validImportRow("P-1")}},
+		&fakeImportRepository{},
+		WithSyncEnqueuer(enqueuer),
+		WithLinkCandidateGenerator(generator),
+	)
+
+	_, err := service.RunImport(context.Background(), strings.NewReader("data"))
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("RunImport() error = %v, want wrapped generation error", err)
+	}
+	if !reflect.DeepEqual(generator.installationIDs, []string{"inst-a"}) {
+		t.Fatalf("generated installation IDs = %#v, want fail-fast after first installation", generator.installationIDs)
+	}
 }
 
 func TestImportServiceHappyPath(t *testing.T) {
@@ -234,8 +368,12 @@ func TestNewUUIDv4IsCanonicalV4(t *testing.T) {
 	}
 }
 
-func deterministicImportService(parser ports.Parser, repo ports.ImportRepository) *ImportService {
-	return NewImportService(parser, repo, "tenant-test", WithClock(func() time.Time { return time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC) }), WithIDGenerator(func() (domain.ImportID, error) { return "123e4567-e89b-42d3-a456-426614174000", nil }))
+func deterministicImportService(parser ports.Parser, repo ports.ImportRepository, opts ...ImportServiceOption) *ImportService {
+	baseOpts := []ImportServiceOption{
+		WithClock(func() time.Time { return time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC) }),
+		WithIDGenerator(func() (domain.ImportID, error) { return "123e4567-e89b-42d3-a456-426614174000", nil }),
+	}
+	return NewImportService(parser, repo, "tenant-test", append(baseOpts, opts...)...)
 }
 
 func validImportRow(codprod string) domain.NormalizedRow {

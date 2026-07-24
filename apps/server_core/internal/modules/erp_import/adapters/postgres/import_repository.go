@@ -65,6 +65,11 @@ func (r *Repository) PersistSnapshotAtomically(ctx context.Context, tenantID str
 			return fmt.Errorf("insert ERP import product: %w", err)
 		}
 	}
+	if snapshot.Status == domain.ImportStatusCompleted {
+		if _, err := r.mergeSnapshotTx(ctx, tx, tenantID, protocolSource, snapshot.ID, snapshot.AcceptedRows); err != nil {
+			return fmt.Errorf("merge ERP import mirror: %w", err)
+		}
+	}
 	for _, issue := range snapshot.Issues {
 		_, err = tx.Exec(ctx, `INSERT INTO erp_import_issues (tenant_id,protocol_id,row_number,column_name,kind,code,detail,offending_value) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, tenantID, snapshot.ID, issue.Row, issue.Column, issue.Kind, issue.Code, issue.Detail, issue.OffendingValue)
 		if err != nil {
