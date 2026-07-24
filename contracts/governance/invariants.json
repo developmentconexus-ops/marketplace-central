@@ -45,6 +45,14 @@
       "occurrences": [{ "path": "apps/server_core/internal/modules/pricing/domain/difal.go", "symbol": "computeEfetivoPct", "fingerprint": "panic(err)", "count": 2 }],
       "reason": "computeEfetivoPct feeds domain.DifalForUF, the frozen S3 IC-04 read port (no error in its signature, consumed by M-08) via ports.DifalForUF and transport; its inputs are DB-NUMERIC-typed (interna_pct/interestadual_pct) or rateInRange-gated override writes, with no verified client-input path (hub-analyst verified @594d7a48). Threading an error would break the frozen port and its four call sites.",
       "removal_owner": "M-10"
+    },
+    {
+      "id": "postgres-driver-erp-import-database-sql",
+      "rule_id": "postgres-driver",
+      "paths": ["apps/server_core/internal/modules/erp_import/adapters/postgres/query_repository.go", "apps/server_core/internal/modules/erp_import/adapters/postgres/mirror_query_repository.go", "apps/server_core/internal/modules/erp_import/adapters/postgres/mirror_repository.go"],
+      "occurrences": [],
+      "reason": "erp_import postgres adapters import database/sql only for driver-neutral scan helpers (sql.NullString/sql.NullTime) over pgx connections; no database/sql driver is opened. Migrating the scans to pgx-native types is the removal path.",
+      "removal_owner": "F1"
     }
   ]
 }
