@@ -52,7 +52,7 @@
       "paths": ["apps/server_core/internal/modules/erp_import/adapters/postgres/query_repository.go", "apps/server_core/internal/modules/erp_import/adapters/postgres/mirror_query_repository.go", "apps/server_core/internal/modules/erp_import/adapters/postgres/mirror_repository.go"],
       "occurrences": [],
       "reason": "erp_import postgres adapters import database/sql only for driver-neutral scan helpers (sql.NullString/sql.NullTime) over pgx connections; no database/sql driver is opened. Migrating the scans to pgx-native types is the removal path.",
-      "removal_owner": "F1"
+      "removal_owner": "F-01"
     }
   ]
 }
