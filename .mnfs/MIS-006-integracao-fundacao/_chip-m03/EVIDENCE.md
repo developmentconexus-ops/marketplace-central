@@ -27,7 +27,7 @@ milestone: M-03-xlsx-adapter
 mission: MIS-006-integracao-fundacao
 branch: claude/m03-xlsx-adapter
 base_sha: 78f02ac9        # M-02 merged main (DAG root); milestone diff = 78f02ac9..HEAD
-head_sha: c727a164
+head_sha: 71b34c5         # S9 corrective (D4 fixture + D5 per-source-kind data-time); code tip. Docs tip d85038b = ledger only.
 validation_contract: M-03-xlsx-adapter/validation-contract.md (M03-C1..C17, AC-01..08, U1..U4)
 ```
 
@@ -85,3 +85,16 @@ Both agree the DB/browser-dependent criteria (C2–C10, C11b runtime, C17 runtim
 Mission `interface-contracts-mis006.md:46-49` defines an EXEMPLO-IO golden fixture (Sankhya 90008 / xlsx 74606). No M-03 test asserts that named golden case (tests use synthetic codprods `SYNC`/`42`/`X`/`1`/`01`/`2`). Not an M-03-VC criterion; hub/QA should confirm coverage at a later mission-level gate.
 
 Gate artifacts: `scratchpad/agent__gate2-sol-m03.last.md` (GPT); cold Claude verdict in chip transcript. Round-1: `scratchpad/agent__gate-sol-m03.last.md`.
+
+### P6 DUAL-GATE DELTA (S9 corrective @`71b34c5`, delta `fff4128..71b34c5`) = **AGREEMENT / GATE: PASS**
+
+S9 fixes the hub's real-Postgres integration-lane RED (@fff41288): **D4** protocol-fixture CHECK violation (all 4 integration tests died at setup, never ran) + **D5** real semantic regression (reader gated cost-as-of / reported ObservedAt on `row.UpdatedAt`, which the merge stamps `now()` every sync → wrong as-of failures + fabricated sync-time ObservedAt). Fix = data-time carried per-source-kind (upload→ImportedAt honest-fail on unknown; live→UpdatedAt honest live observation), per hub ruling. Real 2nd refuter pass (both reviewers independent, NO self-substitution; Sol was the round-1 FAIL reviewer):
+
+| Reviewer | Path | Verdict |
+|----------|------|---------|
+| GPT-5.6 Sol-medium (round-1 FAIL reviewer) | codex OS-process, read-only | **GATE: PASS** — D4 FIXED (helper explicit protocol; `#611-E`..`#619-E` regex-valid + unique; distinct FileSHA256; no assertion weakened), D5 FIXED (ImportedAt pointer + 3-read LEFT JOIN `p.imported_at` via sql.NullTime; per-source-kind at reader.go:25-51; all 6 sites via `dataObservationTime`, no bare `row.UpdatedAt`; honest fail-closed; live-branch honestly unit-covered, F1-labeled), MirrorCatalogPage KEEP-EXACT verbatim, KEEP-ABSOLUTE clean, NEW defects: none. |
+| Cold Claude gate-reviewer | Agent, physically read-only | **GATE: PASS** — same fixes verified w/ file:line; column-order integrity of added JOIN hand-checked (12+1 cols ↔ 13 scan dests, no shift); nil-deref guarded reader.go:47-50; only `row.UpdatedAt` use is INSIDE `dataObservationTime` (reader.go:45), all 6 consumers route through it; regression tests updated honestly (ObservedAt.Equal(importedAt), not deleted); compile-asserts survive reader.go:445-446; NEW defects: none. |
+
+Both agree DB integration (C2–C10, C17 runtime) + U1–U4 browser = honest `could-not-run` → hub P7 (S9 does NOT newly claim they ran; inherited from round-2 AGREEMENT). D4's own fix means those integration tests can now ACTUALLY execute against real PG — hub re-runs the lane before merge. EXEMPLO-IO golden still unasserted at M-03 level (carried non-blocking → mission/hub QA, not an M-03-VC criterion, not S9-scoped). Delta-gate artifacts: `scratchpad/agent__gate3-sol-m03.last.md` (GPT); cold Claude verdict in chip transcript.
+
+**M-03 chip-side DELTA gate GREEN. Emitting new tip `71b34c5` to hub for real-PG integration re-run + P7.**
