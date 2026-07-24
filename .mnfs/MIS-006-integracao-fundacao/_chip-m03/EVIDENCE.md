@@ -27,7 +27,7 @@ milestone: M-03-xlsx-adapter
 mission: MIS-006-integracao-fundacao
 branch: claude/m03-xlsx-adapter
 base_sha: 78f02ac9        # M-02 merged main (DAG root); milestone diff = 78f02ac9..HEAD
-head_sha: 71b34c5         # S9 corrective (D4 fixture + D5 per-source-kind data-time); code tip. Docs tip d85038b = ledger only.
+head_sha: 3734717         # S10 test-hygiene (D6 cross-test protocol collisions). Code tip. S9 code was 71b34c5; docs tips are ledger/evidence only.
 validation_contract: M-03-xlsx-adapter/validation-contract.md (M03-C1..C17, AC-01..08, U1..U4)
 ```
 
