@@ -22,7 +22,7 @@ func TestMirrorMergeKeepsAbsentIsTenantScopedAndResurrects(t *testing.T) {
 		_, _ = pool.Exec(context.Background(), `DELETE FROM product_links WHERE tenant_id IN ($1,$2)`, tenant, otherTenant)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM products_mirror_stock_locations WHERE tenant_id IN ($1,$2)`, tenant, otherTenant)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM products_mirror WHERE tenant_id IN ($1,$2)`, tenant, otherTenant)
-		_, _ = pool.Exec(context.Background(), `DELETE FROM erp_import_protocols WHERE tenant_id=$1`, otherTenant)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM erp_import_protocols WHERE tenant_id IN ($1,$2)`, tenant, otherTenant)
 	})
 
 	now := time.Now().UTC()
@@ -87,6 +87,7 @@ func TestMirrorMergeRollbackAndAcceptedCount(t *testing.T) {
 	t.Cleanup(func() {
 		_, _ = pool.Exec(context.Background(), `DELETE FROM products_mirror_stock_locations WHERE tenant_id=$1`, tenant)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM products_mirror WHERE tenant_id=$1`, tenant)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM erp_import_protocols WHERE tenant_id=$1`, tenant)
 	})
 
 	bad := mirrorSnapshot("65555555-5555-5555-5555-555555555555", "mirror-bad", "#615-E", time.Now().UTC(), []domain.NormalizedRow{{Codprod: "BAD", Descrprod: "Bad", Custo: "1", PrecoVenda: "not-numeric", StockPhysical: "1"}})
@@ -105,7 +106,7 @@ func TestMirrorMergeRollbackAndAcceptedCount(t *testing.T) {
 	}
 
 	rejectedColumn := "codprod"
-	accepted := mirrorSnapshot("66666666-6666-6666-6666-666666666666", "mirror-accepted", "#616-E", time.Now().UTC().Add(time.Second), []domain.NormalizedRow{{Codprod: "OK", Descrprod: "Accepted", StockPhysical: "1", StockReserved: stringPtr("0")}})
+	accepted := mirrorSnapshot("6a666666-6666-6666-6666-666666666666", "mirror-accepted", "#616-E", time.Now().UTC().Add(time.Second), []domain.NormalizedRow{{Codprod: "OK", Descrprod: "Accepted", StockPhysical: "1", StockReserved: stringPtr("0")}})
 	accepted.Issues = []domain.Issue{{Row: 3, Column: &rejectedColumn, Kind: domain.Rejection, Code: domain.CodeEmptyCodprod}}
 	if err := repo.PersistSnapshotAtomically(ctx, tenant, accepted); err != nil {
 		t.Fatal(err)
@@ -122,6 +123,7 @@ func TestMirrorMergeReplacesTouchedLocationsAndRetainsAbsentLocations(t *testing
 	t.Cleanup(func() {
 		_, _ = pool.Exec(context.Background(), `DELETE FROM products_mirror_stock_locations WHERE tenant_id=$1`, tenant)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM products_mirror WHERE tenant_id=$1`, tenant)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM erp_import_protocols WHERE tenant_id=$1`, tenant)
 	})
 	now := time.Now().UTC()
 	first := mirrorSnapshot("67777777-7777-7777-7777-777777777777", "mirror-loc-1", "#617-E", now, []domain.NormalizedRow{
@@ -167,6 +169,7 @@ func TestSyncLatestCompletedSnapshotUsesSharedMerge(t *testing.T) {
 	t.Cleanup(func() {
 		_, _ = pool.Exec(context.Background(), `DELETE FROM products_mirror_stock_locations WHERE tenant_id=$1`, tenant)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM products_mirror WHERE tenant_id=$1`, tenant)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM erp_import_protocols WHERE tenant_id=$1`, tenant)
 	})
 	snapshot := mirrorSnapshot("69999999-9999-9999-9999-999999999999", "mirror-sync", "#619-E", time.Now().UTC(), []domain.NormalizedRow{{Codprod: "SYNC", Descrprod: "Sync", Custo: "3", StockPhysical: "5", StockReserved: stringPtr("2")}})
 	if err := repo.PersistSnapshotAtomically(ctx, tenant, snapshot); err != nil {
