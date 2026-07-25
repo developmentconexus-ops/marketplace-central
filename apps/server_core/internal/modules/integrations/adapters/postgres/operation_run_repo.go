@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -107,6 +108,33 @@ func (r *OperationRunRepository) SaveOperationRun(ctx context.Context, run domai
 		run.ResultCode, run.FailureCode, run.TranslatedErrorCode, run.AttemptCount, run.ActorType, run.ActorID,
 		marshalJSONObject(run.ProviderEvidence), run.DurationMs, timestamptzArg(run.StartedAt), timestamptzArg(run.CompletedAt), run.CreatedAt, run.UpdatedAt)
 	return err
+}
+
+// FailInterruptedRuns closes out runs left behind by a previous process.
+//
+// An operation run executes in-process: nothing outside this server advances
+// one. So a run still sitting in queued/running when the server starts cannot
+// finish — its goroutine died with the old process. Left alone it is worse than
+// noise, because BeginExclusive treats any queued/running row as the active run
+// and refuses every later request for that installation and operation type: one
+// restart mid-refresh permanently disables the button.
+//
+// The row is recorded as failed with an "interrupted" failure code, which is
+// what actually happened — never succeeded, and never a completion time we did
+// not observe. completed_at stays NULL for the same reason; updated_at carries
+// the moment we noticed.
+func (r *OperationRunRepository) FailInterruptedRuns(ctx context.Context, noticedAt time.Time) (int64, error) {
+	tag, err := r.pool.Exec(ctx, `
+		UPDATE integration_operation_runs
+		SET status = 'failed',
+			failure_code = CASE WHEN failure_code = '' THEN 'interrupted' ELSE failure_code END,
+			updated_at = $2
+		WHERE tenant_id = $1 AND status IN ('queued', 'running')
+	`, r.tenantID, noticedAt)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
 }
 
 func (r *OperationRunRepository) ListByInstallation(ctx context.Context, installationID string) ([]domain.OperationRun, error) {

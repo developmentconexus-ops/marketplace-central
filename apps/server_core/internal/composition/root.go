@@ -319,6 +319,18 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	capabilityStateRepo := integrationspostgres.NewCapabilityStateRepository(pool, cfg.DefaultTenantID)
 	capabilitySvc := integrationsapp.NewCapabilityService(capabilityStateRepo, cfg.DefaultTenantID)
 	operationRunRepo := integrationspostgres.NewOperationRunRepository(pool, cfg.DefaultTenantID)
+	// Runs execute in this process, so anything still queued/running at boot died
+	// with the previous one. Closing them out here is what keeps a restart in the
+	// middle of a refresh from permanently blocking that operation: BeginExclusive
+	// would otherwise keep answering "já em andamento" against a run nobody owns.
+	reapCtx, cancelReap := context.WithTimeout(context.Background(), 10*time.Second)
+	reaped, reapErr := operationRunRepo.FailInterruptedRuns(reapCtx, time.Now().UTC())
+	cancelReap()
+	if reapErr != nil {
+		slog.Default().Error("integrations: could not close interrupted operation runs", "error", reapErr)
+	} else if reaped > 0 {
+		slog.Default().Warn("integrations: closed operation runs interrupted by a restart", "runs", reaped)
+	}
 	operationSvc := integrationsapp.NewOperationService(operationRunRepo, cfg.DefaultTenantID)
 	oauthStateRepo := integrationspostgres.NewOAuthStateRepository(pool, cfg.DefaultTenantID)
 	feeRepo := marketplacespostgres.NewFeeScheduleRepository(pool)
