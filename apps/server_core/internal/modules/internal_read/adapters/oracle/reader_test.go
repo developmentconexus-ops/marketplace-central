@@ -233,3 +233,49 @@ func (r *identityRows) Next(dest []driver.Value) error {
 	r.index++
 	return nil
 }
+
+// M05-C18 (F-04, D-121): on Mercado Livre the operator registers the ERP
+// CODPROD in the listing's SKU field. Matching REFFORN — the manufacturer
+// reference — meant the strong anchor never fired against the real cadastro.
+func TestFindProductsQueryMatchesSellerSKUAgainstCodprod(t *testing.T) {
+	sku := "100002"
+	query, args, err := buildFindProductsQuery(ports.FindProductsInput{SellerSKU: &sku})
+	if err != nil {
+		t.Fatalf("seller_sku query error = %v", err)
+	}
+	if !strings.Contains(query, "p.CODPROD = :1") {
+		t.Fatalf("seller_sku was not matched against CODPROD: query=%q", query)
+	}
+	if strings.Contains(query, "p.REFFORN = :") {
+		t.Fatalf("seller_sku still matches REFFORN: query=%q", query)
+	}
+	if len(args) != 1 || args[0] != sku {
+		t.Fatalf("seller_sku args = %v, want [%q]", args, sku)
+	}
+}
+
+// M05-C19: a seller_sku that is not CODPROD-shaped (a legacy REFFORN) is not
+// an anchor — same discipline as a non-GTIN barcode. It must not widen the
+// query, and on its own it must not run one at all.
+func TestFindProductsQueryDropsANonCodprodSellerSKU(t *testing.T) {
+	sku := "ZP1704.1."
+	query, args, err := buildFindProductsQuery(ports.FindProductsInput{SellerSKU: &sku})
+	if !errors.Is(err, errNoMatchableInput) {
+		t.Fatalf("non-CODPROD seller_sku query error = %v, want errNoMatchableInput", err)
+	}
+	if strings.Contains(query, "p.CODPROD = :") || len(args) != 0 {
+		t.Fatalf("non-CODPROD seller_sku leaked into the query: query=%q args=%v", query, args)
+	}
+
+	ean := "7894900011517"
+	query, args, err = buildFindProductsQuery(ports.FindProductsInput{SellerSKU: &sku, EAN: &ean})
+	if err != nil {
+		t.Fatalf("seller_sku+EAN query error = %v", err)
+	}
+	if strings.Contains(query, "p.CODPROD = :") {
+		t.Fatalf("non-CODPROD seller_sku added a clause beside a valid EAN: query=%q", query)
+	}
+	if !strings.Contains(query, "TRIM(p.REFERENCIA) = :1") || len(args) != 1 || args[0] != ean {
+		t.Fatalf("the valid EAN did not survive alone: query=%q args=%v", query, args)
+	}
+}

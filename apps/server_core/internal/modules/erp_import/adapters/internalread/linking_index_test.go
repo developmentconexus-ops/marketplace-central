@@ -2,6 +2,7 @@ package internalread
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -81,6 +82,24 @@ func TestLinkingIndexIsRebuiltWhenTheActiveSourceChanges(t *testing.T) {
 	}
 	if repo.mirrorRowsCalls != 2 || repo.source != erpdomain.SourceXLSX {
 		t.Fatalf("reads=%d last source=%q, want a per-source snapshot", repo.mirrorRowsCalls, repo.source)
+	}
+}
+
+// Narrowing selects through a map, whose iteration order Go randomizes. The
+// rows must still come back in mirror order, or the same request answers in a
+// different order on every call — which is how this surfaced: a caller reading
+// candidates[0] passed or failed by luck.
+func TestNarrowedCandidateRowsKeepMirrorOrder(t *testing.T) {
+	rows := mirrorRows()
+	index := buildIndex(t, rows)
+	for attempt := 0; attempt < 50; attempt++ {
+		got := make([]string, 0, len(rows))
+		for _, row := range index.candidateRows(readports.FindProductsInput{Title: ptr("blue")}) {
+			got = append(got, row.CodigoProduto)
+		}
+		if strings.Join(got, ",") != "1,2" {
+			t.Fatalf("attempt %d: order = %v, want mirror order [1 2]", attempt, got)
+		}
 	}
 }
 

@@ -44,6 +44,10 @@ func (s stubWorkflowStore) ListAuditByBatch(context.Context, string) ([]productl
 	return nil, nil
 }
 
+func (s stubWorkflowStore) ListDecisionsForLink(context.Context, productlinksdomain.ListingIdentity) ([]productlinksdomain.ProductLinkDecision, error) {
+	return nil, nil
+}
+
 type stubCandidateStore struct {
 	candidates []productlinksdomain.LinkCandidate
 }

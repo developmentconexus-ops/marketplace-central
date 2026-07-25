@@ -67,6 +67,12 @@ type ProductLinkAuditEntry struct {
 type ProductLinkTransition struct {
 	Link  ProductLink
 	Audit ProductLinkAuditEntry
+	// Decision is the E10 row this transition also writes, in the SAME
+	// transaction as Link and Audit. A rejection and an undo carry one too:
+	// they name no anchor, but they DO settle the link, and omitting them
+	// would leave the decision they overrule reading as the one in force.
+	// nil only where the caller stated no rule at all.
+	Decision *ProductLinkDecision
 }
 
 // ProductLinkBatchStatus is the aggregate outcome of a batch-apply run (S3).

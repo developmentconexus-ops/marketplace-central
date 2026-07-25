@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -43,14 +44,38 @@ func NewProductsScheduler(
 	interval time.Duration,
 	lookup tenant_config.ActiveSourceLookup,
 	adapters map[tenant_config.ActiveSource]readports.ProductSourceAdapter,
+	opts ...ProductsJobOption,
 ) *syncapp.Scheduler {
 	repo := syncpg.NewSyncStateRepository(pool, tenantID)
 	scheduler := syncapp.NewScheduler(repo, InstallationScopeERP, interval, time.Now)
 
 	// products is a valid entity and the first registration, so RegisterJob
 	// cannot fail here; the error is intentionally not surfaced from wiring.
-	_ = scheduler.RegisterJob(domain.EntityProducts, NewProductsJob(tenantID, lookup, adapters, time.Now))
+	_ = scheduler.RegisterJob(domain.EntityProducts, NewProductsJob(tenantID, lookup, adapters, time.Now, opts...))
 	return scheduler
+}
+
+// LinkCandidateRefresher regenerates link candidates after product data
+// changed. Product data changing is exactly when the answer to "which product
+// is this anúncio?" can change, so the sync that brought the data in is what
+// asks the question again (M-05 F-01).
+type LinkCandidateRefresher interface {
+	RefreshLinkCandidates(ctx context.Context) error
+}
+
+type ProductsJobOption func(*productsJobConfig)
+
+type productsJobConfig struct {
+	refresher LinkCandidateRefresher
+}
+
+// WithLinkCandidateRefresh registers the post-sync link candidate regeneration.
+// Absent, the job syncs products and nothing else — the same behavior it had
+// before M-05.
+func WithLinkCandidateRefresh(refresher LinkCandidateRefresher) ProductsJobOption {
+	return func(cfg *productsJobConfig) {
+		cfg.refresher = refresher
+	}
 }
 
 // NewProductsJob builds the products sync body. It is separate from the
@@ -61,9 +86,14 @@ func NewProductsJob(
 	lookup tenant_config.ActiveSourceLookup,
 	adapters map[tenant_config.ActiveSource]readports.ProductSourceAdapter,
 	now func() time.Time,
+	opts ...ProductsJobOption,
 ) syncapp.JobFunc {
 	if now == nil {
 		now = time.Now
+	}
+	jobCfg := productsJobConfig{}
+	for _, opt := range opts {
+		opt(&jobCfg)
 	}
 	return func(ctx context.Context, cursor json.RawMessage) (json.RawMessage, error) {
 		cfg, err := lookup.Get(ctx, tenantID)
@@ -77,6 +107,18 @@ func NewProductsJob(
 		result, err := adapter.Sync(ctx)
 		if err != nil {
 			return cursor, fmt.Errorf("products sync (%s): %w", cfg.Source, err)
+		}
+		// The sync already landed. A refresh that fails is logged and left for
+		// the next cycle (or the generation endpoint) — reporting the cycle as
+		// failed would claim the product data did not arrive, which is false
+		// (M05-C11).
+		if jobCfg.refresher != nil {
+			if err := jobCfg.refresher.RefreshLinkCandidates(ctx); err != nil {
+				slog.ErrorContext(ctx, "link candidate refresh after products sync failed",
+					"source", string(cfg.Source),
+					"processed", result.Processed,
+					"error", err)
+			}
 		}
 		next, err := json.Marshal(ProductsCursor{
 			Source:      string(cfg.Source),

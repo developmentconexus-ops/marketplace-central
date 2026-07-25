@@ -26,4 +26,10 @@ type ProductLinkWorkflowStore interface {
 	// ListAuditByBatch returns every audit row tagged with the given
 	// batch_id, newest first (S4 batch-undo fan-out).
 	ListAuditByBatch(ctx context.Context, batchID string) ([]domain.ProductLinkAuditEntry, error)
+	// ListDecisionsForLink returns the E10 decision history of one link,
+	// oldest first — including superseded rows, since the point of the trail
+	// is that an override never erases what it replaced. The decision in force
+	// is the one with an empty SupersededBy; the automatic path reads it to
+	// stay off links an operator already decided (M05-C10).
+	ListDecisionsForLink(ctx context.Context, identity domain.ListingIdentity) ([]domain.ProductLinkDecision, error)
 }

@@ -82,8 +82,8 @@ func (r *Reader) linkingIndex(ctx context.Context, source erpdomain.ImportSource
 // the answer is identical to scanning the whole mirror, only cheaper. An input
 // with no anchor at all keeps the historical meaning: every row.
 func (i *linkingIndex) candidateRows(input readports.FindProductsInput) []erpdomain.MirrorProduct {
-	productID, sku, ean, title := input.ProductID, trimmed(input.SellerSKU), trimmed(input.EAN), trimmed(input.Title)
-	if productID == nil && sku == nil && ean == nil && title == nil {
+	productID, sku, ean, title := input.ProductID, matchableSellerSKU(input), trimmed(input.EAN), trimmed(input.Title)
+	if !hasSuppliedAnchor(input) {
 		return i.rows
 	}
 
@@ -111,9 +111,16 @@ func (i *linkingIndex) candidateRows(input readports.FindProductsInput) []erpdom
 		}
 	}
 
+	// Walk the mirror in its own order rather than the selection map's: map
+	// iteration is randomized, so the narrowed answer would come back in a
+	// different order on every call while a full scan always returns mirror
+	// order. Callers rank candidates themselves, but "same input, same order"
+	// is the whole claim this narrowing makes.
 	rows := make([]erpdomain.MirrorProduct, 0, len(selected))
-	for index := range selected {
-		rows = append(rows, i.rows[index])
+	for index := range i.rows {
+		if _, ok := selected[index]; ok {
+			rows = append(rows, i.rows[index])
+		}
 	}
 	return rows
 }

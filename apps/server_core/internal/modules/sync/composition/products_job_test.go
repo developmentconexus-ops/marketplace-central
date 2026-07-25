@@ -158,6 +158,78 @@ func TestProductsJobFailsClosedOnANilAdapter(t *testing.T) {
 	}
 }
 
+type stubRefresher struct {
+	calls int
+	err   error
+}
+
+func (r *stubRefresher) RefreshLinkCandidates(ctx context.Context) error {
+	r.calls++
+	return r.err
+}
+
+// M05-C11 (sync half): the ERP sync that brought new product data in is what
+// asks "which product is this anúncio?" again — the operator does not have to
+// press a button for a codprod that arrived minutes ago to become a candidate.
+func TestProductsJobRefreshesLinkCandidatesAfterASuccessfulSync(t *testing.T) {
+	refresher := &stubRefresher{}
+	job := synccomposition.NewProductsJob(jobTenant,
+		stubLookup{source: tenant_config.SourceSankhya},
+		map[tenant_config.ActiveSource]readports.ProductSourceAdapter{
+			tenant_config.SourceSankhya: &stubAdapter{result: readports.SyncResult{Processed: 10529}},
+		}, nil, synccomposition.WithLinkCandidateRefresh(refresher))
+
+	if _, err := job(context.Background(), nil); err != nil {
+		t.Fatal(err)
+	}
+	if refresher.calls != 1 {
+		t.Fatalf("refresh calls=%d want 1", refresher.calls)
+	}
+}
+
+// M05-C11: the products landed. A matcher that fails afterwards is logged and
+// retried next cycle — reporting the cycle as failed would claim the product
+// data did not arrive, which is false, and would erase the cursor with it.
+func TestProductsJobSurvivesALinkCandidateRefreshFailure(t *testing.T) {
+	refresher := &stubRefresher{err: errors.New("candidate generation exploded")}
+	at := time.Date(2026, 7, 25, 9, 0, 0, 0, time.UTC)
+	job := synccomposition.NewProductsJob(jobTenant,
+		stubLookup{source: tenant_config.SourceSankhya},
+		map[tenant_config.ActiveSource]readports.ProductSourceAdapter{
+			tenant_config.SourceSankhya: &stubAdapter{result: readports.SyncResult{Processed: 42}},
+		}, fixedClock(at), synccomposition.WithLinkCandidateRefresh(refresher))
+
+	next, err := job(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("refresh failure must not fail the sync cycle: %v", err)
+	}
+	var cursor synccomposition.ProductsCursor
+	if err := json.Unmarshal(next, &cursor); err != nil {
+		t.Fatal(err)
+	}
+	if cursor.Processed != 42 {
+		t.Fatalf("cursor processed=%d want the sync that actually landed (42)", cursor.Processed)
+	}
+}
+
+// Nothing new arrived, so there is nothing new to match: a failed sync must not
+// trigger a regeneration over stale data.
+func TestProductsJobDoesNotRefreshWhenTheSyncFailed(t *testing.T) {
+	refresher := &stubRefresher{}
+	job := synccomposition.NewProductsJob(jobTenant,
+		stubLookup{source: tenant_config.SourceSankhya},
+		map[tenant_config.ActiveSource]readports.ProductSourceAdapter{
+			tenant_config.SourceSankhya: &stubAdapter{err: errors.New("oracle unreachable")},
+		}, nil, synccomposition.WithLinkCandidateRefresh(refresher))
+
+	if _, err := job(context.Background(), nil); err == nil {
+		t.Fatal("want the adapter error surfaced")
+	}
+	if refresher.calls != 0 {
+		t.Fatalf("refresh calls=%d want 0 after a failed sync", refresher.calls)
+	}
+}
+
 // An adapter failure keeps the stored cursor: the scheduler records last_error,
 // and the next cycle must resume from real progress, not from an erased cursor.
 func TestProductsJobKeepsTheCursorWhenTheAdapterFails(t *testing.T) {

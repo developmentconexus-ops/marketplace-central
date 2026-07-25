@@ -335,6 +335,47 @@ func TestUnpinnedReadsFailClosed(t *testing.T) {
 	}
 }
 
+func TestSellerSKUMatchesTheProductCode(t *testing.T) {
+	r, _, ctx := readerWith(mirrorRows())
+	candidates, err := r.FindProductsForLinking(ctx, readports.FindProductsInput{SellerSKU: ptr("10")})
+	if err != nil {
+		t.Fatalf("err=%v", err)
+	}
+	if len(candidates) != 1 || candidates[0].ProductID != 10 {
+		t.Fatalf("candidates=%+v", candidates)
+	}
+}
+
+// A seller_sku that is not CODPROD-shaped is a legacy REFFORN, not an anchor.
+// It must narrow to nothing — and, the trap, must not be read as "no anchor was
+// supplied", which would answer with the entire mirror as candidates.
+func TestNonCodprodSellerSKUAnchorsNothingAndDoesNotReturnTheWholeMirror(t *testing.T) {
+	r, _, ctx := readerWith(mirrorRows())
+	candidates, err := r.FindProductsForLinking(ctx, readports.FindProductsInput{SellerSKU: ptr("ZP1704.1.")})
+	if err != nil {
+		t.Fatalf("an unmatchable seller_sku is an empty result, not an error: %v", err)
+	}
+	if len(candidates) != 0 {
+		t.Fatalf("candidates=%+v", candidates)
+	}
+}
+
+func TestNonCodprodSellerSKULeavesTheEANAnchorStanding(t *testing.T) {
+	r, _, ctx := readerWith(mirrorRows())
+	candidates, err := r.FindProductsForLinking(ctx, readports.FindProductsInput{SellerSKU: ptr("ZP1704.1."), EAN: ptr("7894900011517")})
+	if err != nil {
+		t.Fatalf("err=%v", err)
+	}
+	if len(candidates) != 2 {
+		t.Fatalf("candidates=%+v", candidates)
+	}
+	for _, candidate := range candidates {
+		if candidate.ProductID != 1 && candidate.ProductID != 2 {
+			t.Fatalf("the dropped seller_sku widened the match: %+v", candidates)
+		}
+	}
+}
+
 func TestUnsupportedQueries(t *testing.T) {
 	r, _, _ := readerWith(mirrorRows())
 	_, err := r.GetCurrentPrice(context.Background(), readports.CurrentPriceInput{})

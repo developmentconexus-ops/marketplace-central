@@ -12,17 +12,19 @@ import (
 )
 
 type ResolutionService struct {
-	candidates ports.LinkCandidateStore
-	workflows  ports.ProductLinkWorkflowStore
-	now        func() time.Time
-	newAuditID func() string
+	candidates    ports.LinkCandidateStore
+	workflows     ports.ProductLinkWorkflowStore
+	now           func() time.Time
+	newAuditID    func() string
+	newDecisionID func() string
 }
 
 type ResolutionServiceConfig struct {
-	Candidates ports.LinkCandidateStore
-	Workflows  ports.ProductLinkWorkflowStore
-	Now        func() time.Time
-	NewAuditID func() string
+	Candidates    ports.LinkCandidateStore
+	Workflows     ports.ProductLinkWorkflowStore
+	Now           func() time.Time
+	NewAuditID    func() string
+	NewDecisionID func() string
 }
 
 type ApproveCandidateInput struct {
@@ -118,17 +120,29 @@ func NewResolutionService(cfg ResolutionServiceConfig) *ResolutionService {
 	if newAuditID == nil {
 		newAuditID = func() string { return fmt.Sprintf("pla_%d", now().UTC().UnixNano()) }
 	}
+	newDecisionID := cfg.NewDecisionID
+	if newDecisionID == nil {
+		newDecisionID = func() string { return fmt.Sprintf("pld_%d", now().UTC().UnixNano()) }
+	}
 	return &ResolutionService{
-		candidates: cfg.Candidates,
-		workflows:  cfg.Workflows,
-		now:        now,
-		newAuditID: newAuditID,
+		candidates:    cfg.Candidates,
+		workflows:     cfg.Workflows,
+		now:           now,
+		newAuditID:    newAuditID,
+		newDecisionID: newDecisionID,
 	}
 }
 
 func (s *ResolutionService) ApproveCandidate(ctx context.Context, input ApproveCandidateInput) (domain.ProductLinkResolutionResult, error) {
 	if s.candidates == nil || s.workflows == nil {
 		return domain.ProductLinkResolutionResult{}, errors.New("PRODUCT_LINKS_RESOLUTION_NOT_CONFIGURED")
+	}
+	// AutoApproveCandidate is the only door a machine may come through, and it
+	// does not come through this one: it states rule=concordant_codprod_ean for
+	// itself. Anything reaching here with actor_type=system is an automation
+	// pressing the operator's button, and this path would file it as a human.
+	if err := errSystemActorNotPermitted(input.Actor); err != nil {
+		return domain.ProductLinkResolutionResult{}, err
 	}
 	candidateID := strings.TrimSpace(input.CandidateID)
 	if candidateID == "" {
@@ -173,6 +187,11 @@ func (s *ResolutionService) ApproveCandidate(ctx context.Context, input ApproveC
 		Reason:                input.Reason,
 		Actor:                 input.Actor,
 		BatchID:               input.BatchID,
+		// A human is approving, whatever the anchor was. The collision count
+		// is not read here: it was the generator's reading at candidate time,
+		// and re-deriving it now would record a different moment's fact.
+		DecisionRule:  decisionRuleForCandidate(candidate),
+		DecisionActor: domain.DecisionActorOperator,
 	})
 	if err := s.workflows.ApplyProductLinkTransition(ctx, result); err != nil {
 		return domain.ProductLinkResolutionResult{}, err
@@ -180,9 +199,99 @@ func (s *ResolutionService) ApproveCandidate(ctx context.Context, input ApproveC
 	return domain.ProductLinkResolutionResult{Link: result.Link, Audit: result.Audit}, nil
 }
 
+// AutoApproveCandidateInput is the corroborated candidate the generator judged
+// automatic, plus the collision count IT read when it judged so. The count is
+// carried, never re-derived: re-reading the ERP now would record a different
+// moment's fact in a row that claims to describe the decision.
+// The count is a POINTER because a caller that did not read one must be able
+// to say so. A plain int forces the absent case to 0, and 0 reads as "the
+// anchor matched nothing" — a fact nobody established, and one the E10 CHECK
+// rejects outright (ADR-17 / AC-03).
+type AutoApproveCandidateInput struct {
+	Candidate            domain.LinkCandidate
+	CollisionsAtDecision *int
+}
+
+// AutoApproveCandidate applies the single automatic path (D-121-2, ADR-05
+// amended): CODPROD and EAN resolving the same product, with no hard negative.
+// It runs the SAME transition machine as ApproveCandidate — same link, same
+// audit row, same E10 write in the same transaction — and differs only in who
+// decided: actor=system, rule=concordant_codprod_ean.
+//
+// It never overrides a decision already in force. A link the operator resolved
+// keeps their answer (M05-C10), and a re-run over an already auto-approved link
+// writes nothing rather than a fresh row per sync. Reports whether it approved.
+func (s *ResolutionService) AutoApproveCandidate(ctx context.Context, input AutoApproveCandidateInput) (bool, error) {
+	if s.workflows == nil {
+		return false, errors.New("PRODUCT_LINKS_RESOLUTION_NOT_CONFIGURED")
+	}
+	candidate := input.Candidate
+	if candidate.MatchStatus != domain.LinkCandidateMatchStatusAccept {
+		return false, errors.New("PRODUCT_LINKS_AUTO_APPROVE_NOT_CORROBORATED")
+	}
+	if candidate.InternalProductID == nil {
+		return false, errors.New("PRODUCT_LINKS_CANDIDATE_NOT_RESOLVABLE")
+	}
+	if err := domain.ValidateInternalProductID(*candidate.InternalProductID); err != nil {
+		return false, err
+	}
+	identity := domain.ListingIdentity{
+		InstallationID:      candidate.InstallationID,
+		ProviderItemID:      candidate.ProviderItemID,
+		ProviderVariationID: candidate.ProviderVariationID,
+	}
+	current, found, err := s.workflows.GetProductLink(ctx, identity)
+	if err != nil {
+		return false, err
+	}
+	// A listing the operator already settled is settled. The link's own state is
+	// what proves it: a rejection does write an E10 row, but links resolved
+	// before E10 existed carry no decision at all, so the trail alone would
+	// report those as undecided and the automatic path would reopen them.
+	if found && (current.State == domain.ProductLinkStateRejected || current.State == domain.ProductLinkStateResolved) {
+		return false, nil
+	}
+	decisions, err := s.workflows.ListDecisionsForLink(ctx, identity)
+	if err != nil {
+		return false, err
+	}
+	for _, decision := range decisions {
+		if decision.SupersededBy == "" {
+			return false, nil
+		}
+	}
+	fallbackState := domain.ProductLinkStateNone
+	if !found {
+		fallbackState = candidateStateToProductLinkState(candidate.State)
+	}
+	result := s.buildTransition(current, found, fallbackState, buildResolvedLinkInput{
+		InstallationID:        candidate.InstallationID,
+		ProviderCode:          candidate.ProviderCode,
+		ProviderItemID:        candidate.ProviderItemID,
+		ProviderVariationID:   candidate.ProviderVariationID,
+		SourceCandidateID:     candidate.CandidateID,
+		InternalProductID:     candidate.InternalProductID,
+		InternalProductName:   candidate.InternalProductName,
+		InternalReferenceCode: candidate.InternalReferenceCode,
+		Action:                domain.ProductLinkActionApproveCandidate,
+		Reason:                "auto-vínculo: CODPROD e EAN concordantes",
+		Actor:                 domain.ActorMetadata{ActorType: "system", ActorID: "auto_linker"},
+		DecisionRule:          domain.DecisionRuleConcordantCodprodEAN,
+		DecisionActor:         domain.DecisionActorSystem,
+		CollisionsAtDecision:  input.CollisionsAtDecision,
+	})
+	if err := s.workflows.ApplyProductLinkTransition(ctx, result); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 func (s *ResolutionService) RejectListing(ctx context.Context, input RejectListingInput) (domain.ProductLinkResolutionResult, error) {
 	if s.workflows == nil {
 		return domain.ProductLinkResolutionResult{}, errors.New("PRODUCT_LINKS_RESOLUTION_NOT_CONFIGURED")
+	}
+	if err := errSystemActorNotPermitted(input.Actor); err != nil {
+		return domain.ProductLinkResolutionResult{}, err
 	}
 	identity, providerCode, err := normalizeIdentity(input.InstallationID, input.ProviderCode, input.ProviderItemID, input.ProviderVariationID)
 	if err != nil {
@@ -211,6 +320,9 @@ func (s *ResolutionService) ManualResolve(ctx context.Context, input ManualResol
 	if s.workflows == nil {
 		return domain.ProductLinkResolutionResult{}, errors.New("PRODUCT_LINKS_RESOLUTION_NOT_CONFIGURED")
 	}
+	if err := errSystemActorNotPermitted(input.Actor); err != nil {
+		return domain.ProductLinkResolutionResult{}, err
+	}
 	if err := domain.ValidateInternalProductID(input.InternalProductID); err != nil {
 		return domain.ProductLinkResolutionResult{}, err
 	}
@@ -234,6 +346,10 @@ func (s *ResolutionService) ManualResolve(ctx context.Context, input ManualResol
 		Action:                domain.ProductLinkActionManualResolve,
 		Reason:                input.Reason,
 		Actor:                 input.Actor,
+		// The operator named the product themselves — no anchor decided this,
+		// so no collision count was read.
+		DecisionRule:  domain.DecisionRuleManual,
+		DecisionActor: domain.DecisionActorOperator,
 	})
 	if err := s.workflows.ApplyProductLinkTransition(ctx, result); err != nil {
 		return domain.ProductLinkResolutionResult{}, err
@@ -399,6 +515,9 @@ func (s *ResolutionService) UndoBatch(ctx context.Context, batchID string) (Undo
 // the reversal transition. Shared by UndoResolution and UndoBatch so both
 // paths agree on the exact same ordering decision.
 func (s *ResolutionService) undoAuditEntry(ctx context.Context, target domain.ProductLinkAuditEntry, actor domain.ActorMetadata, reason string) (domain.ProductLinkResolutionResult, error) {
+	if err := errSystemActorNotPermitted(actor); err != nil {
+		return domain.ProductLinkResolutionResult{}, err
+	}
 	identity := domain.ListingIdentity{
 		InstallationID:      target.InstallationID,
 		ProviderItemID:      target.ProviderItemID,
@@ -473,7 +592,14 @@ func (s *ResolutionService) undoAuditEntry(ctx context.Context, target domain.Pr
 		BatchID:                   target.BatchID,
 		CreatedAt:                 now,
 	}
-	transition := domain.ProductLinkTransition{Link: link, Audit: audit}
+	// An undo is a decision too: it says the link that stood should not. Left
+	// out of the trail, the decision it reverts keeps reading as in force, and
+	// the automatic path would be blocked by a row nobody stands behind — with
+	// nothing anywhere saying why. Recording it supersedes that row and names
+	// who took it back.
+	// errSystemActorNotPermitted turned any system caller away above.
+	decision := s.newDecisionRow(identity, domain.DecisionRuleManual, domain.DecisionActorOperator, nil, now)
+	transition := domain.ProductLinkTransition{Link: link, Audit: audit, Decision: decision}
 	if err := s.workflows.ApplyProductLinkTransition(ctx, transition); err != nil {
 		return domain.ProductLinkResolutionResult{}, err
 	}
@@ -503,6 +629,12 @@ type buildResolvedLinkInput struct {
 	Reason                string
 	Actor                 domain.ActorMetadata
 	BatchID               string
+	// DecisionRule/DecisionActor/CollisionsAtDecision carry the E10 row this
+	// approval writes alongside the transition. CollisionsAtDecision stays nil
+	// unless a collision count was actually read for this decision (ADR-17).
+	DecisionRule         domain.ProductLinkDecisionRule
+	DecisionActor        string
+	CollisionsAtDecision *int
 }
 
 type buildRejectedLinkInput struct {
@@ -541,7 +673,8 @@ func (s *ResolutionService) buildTransition(current domain.ProductLink, found bo
 			UpdatedAt:             now,
 		}
 		return domain.ProductLinkTransition{
-			Link: link,
+			Link:     link,
+			Decision: s.buildDecision(typed, now),
 			Audit: domain.ProductLinkAuditEntry{
 				AuditID:                   s.newAuditID(),
 				InstallationID:            typed.InstallationID,
@@ -572,6 +705,24 @@ func (s *ResolutionService) buildTransition(current domain.ProductLink, found bo
 		}
 		return domain.ProductLinkTransition{
 			Link: link,
+			// A rejection is a decision too. It names no anchor — there is no
+			// rule behind "this anúncio is not ours" — but leaving it out of
+			// the trail lets the decision it overrules keep reading as the one
+			// in force, so the live row would report the system as still
+			// standing behind a link the operator killed. `manual` is the
+			// honest name for a call a human made on no anchor.
+			// errSystemActorNotPermitted turned any system caller away above.
+			Decision: s.newDecisionRow(
+				domain.ListingIdentity{
+					InstallationID:      typed.InstallationID,
+					ProviderItemID:      typed.ProviderItemID,
+					ProviderVariationID: typed.ProviderVariationID,
+				},
+				domain.DecisionRuleManual,
+				domain.DecisionActorOperator,
+				nil,
+				now,
+			),
 			Audit: domain.ProductLinkAuditEntry{
 				AuditID:                   s.newAuditID(),
 				InstallationID:            typed.InstallationID,
@@ -590,6 +741,117 @@ func (s *ResolutionService) buildTransition(current domain.ProductLink, found bo
 	default:
 		panic("unsupported product link transition input")
 	}
+}
+
+// newDecisionRow is the ONE place an E10 row is assembled. Approve, undo and
+// reject all reach it, so a path added later inherits the row's shape instead
+// of restating it — the three defects this milestone's gates found were each a
+// different hand-built literal disagreeing with the others.
+//
+// It does NOT decide the (rule, actor) pair. The caller states it, and
+// migration 0082's CHECK stays the single authority on which pairs are legal:
+// re-deriving that policy here would put a second copy of it in Go, free to
+// drift from the one the database enforces.
+func (s *ResolutionService) newDecisionRow(identity domain.ListingIdentity, rule domain.ProductLinkDecisionRule, actor string, collisions *int, now time.Time) *domain.ProductLinkDecision {
+	return &domain.ProductLinkDecision{
+		DecisionID:           s.newDecisionID(),
+		InstallationID:       identity.InstallationID,
+		ProviderItemID:       identity.ProviderItemID,
+		ProviderVariationID:  identity.ProviderVariationID,
+		LinkID:               domain.LinkID(identity.InstallationID, identity.ProviderItemID, identity.ProviderVariationID),
+		RuleMatched:          rule,
+		Actor:                actor,
+		CollisionsAtDecision: collisions,
+		CreatedAt:            now,
+	}
+}
+
+// buildDecision produces the E10 row for an approving transition. A transition
+// that names no rule writes no decision: the trail records decisions actually
+// taken, and inventing a rule for a caller that did not state one would be the
+// fabrication E10 exists to prevent.
+//
+// An unstated actor is NOT defaulted. It used to become 'operator', which is
+// the one wrong answer available — a caller that forgot to say who decided got
+// a row asserting a human did. Passed through empty, 0082's actor CHECK turns
+// the row down and the caller learns; there is no honest guess to make here.
+func (s *ResolutionService) buildDecision(input buildResolvedLinkInput, now time.Time) *domain.ProductLinkDecision {
+	if input.DecisionRule == "" {
+		return nil
+	}
+	identity := domain.ListingIdentity{
+		InstallationID:      input.InstallationID,
+		ProviderItemID:      input.ProviderItemID,
+		ProviderVariationID: input.ProviderVariationID,
+	}
+	return s.newDecisionRow(identity, input.DecisionRule, input.DecisionActor, input.CollisionsAtDecision, now)
+}
+
+// decisionRuleForCandidate reads the rule off the anchor the candidate was
+// built from. A human approving a single-anchor candidate is exactly what the
+// confirmation queue asks for, and the trail must keep saying which anchor
+// carried it — a candidate approved on no anchor at all is a manual call.
+//
+// Only an anchor the generator found UNIQUE may name itself in the trail. A
+// collision (one EAN, four produtos) or a conflict (CODPROD and EAN
+// disagreeing) reaches the operator precisely because no anchor resolved it;
+// recording `exact_ean_unique` for a decision taken over a four-way collision
+// would assert a uniqueness nobody established (ADR-17) and would read as
+// though an anchor had won (AC-08). The operator's judgement is what carried
+// those, and `manual` is the honest name for it.
+func decisionRuleForCandidate(candidate domain.LinkCandidate) domain.ProductLinkDecisionRule {
+	switch candidate.MatchStatus {
+	case domain.LinkCandidateMatchStatusAccept:
+		// Corroborated: CODPROD and EAN both named this product. Who pressed
+		// the button does not change what carried the decision, and the
+		// automatic path is not the only way an ACCEPT candidate gets
+		// approved — a listing the operator rejected earlier is blocked from
+		// it, batch-approve goes through here, and the AutoApprover is an
+		// optional wiring. Filing those as a single-anchor rule would
+		// under-claim the evidence exactly as naming an anchor over a
+		// collision over-claims it.
+		return domain.DecisionRuleConcordantCodprodEAN
+	case domain.LinkCandidateMatchStatusConfirm:
+	default:
+		return domain.DecisionRuleManual
+	}
+	switch candidate.MatchInput {
+	case domain.LinkCandidateMatchInputSellerSKU:
+		return domain.DecisionRuleExactCodprodUnique
+	case domain.LinkCandidateMatchInputEAN:
+		return domain.DecisionRuleExactEANUnique
+	default:
+		return domain.DecisionRuleManual
+	}
+}
+
+// errSystemActorNotPermitted refuses a system actor on every operator path:
+// approve, manual resolve, reject and undo. AutoApproveCandidate is the one
+// door a machine may use, and it does not pass through here.
+//
+// Two different failures are being closed. Reject and undo write
+// rule_matched='manual', and the E10 CHECK admits exactly one rule a system
+// actor may take — concordant_codprod_ean — so the row is one the schema turns
+// down INSIDE the transition's transaction: the whole call rolled back and the
+// caller got a 500 naming nothing. Approve and manual resolve had the opposite
+// problem: they hardcode actor='operator', so a machine driving them was not
+// refused at all, it was RECORDED AS A HUMAN. The trail asserted a person
+// decided when nobody had.
+//
+// Refusing rather than widening the schema is the operator's ruling (D-121-2
+// follow-up): a machine may corroborate, and nothing else. Automation that
+// needs to reject or undo goes through a person.
+//
+// Not covered, and it cannot be from here: UndoBatch hardcodes an operator
+// actor of its own (see its call to undoAuditEntry), so this guard is
+// unreachable on that path and every batch reversal is still signed by an
+// operator who was never named. Fixing it means giving a published operation a
+// request body — a seam decision, reported to the hub.
+func errSystemActorNotPermitted(actor domain.ActorMetadata) error {
+	if actor.ActorType == domain.DecisionActorSystem {
+		return errors.New("PRODUCT_LINKS_SYSTEM_ACTOR_NOT_PERMITTED")
+	}
+	return nil
 }
 
 func candidateStateToProductLinkState(state domain.LinkCandidateState) domain.ProductLinkState {

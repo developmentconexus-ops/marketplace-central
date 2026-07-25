@@ -448,18 +448,27 @@ WHERE 1 = 1`
 		args = append(args, *value)
 		matchClauses = append(matchClauses, fmt.Sprintf("TRIM(p.REFERENCIA) = :%d", len(args)))
 	}
-	if value := trimmedPointer(input.SellerSKU); value != nil {
+	// The provider's seller_sku carries the ERP CODPROD, not REFFORN (D-121,
+	// operator-ratified): on Mercado Livre the operator registers the CODPROD in
+	// the listing's SKU field, so matching REFFORN — the manufacturer reference —
+	// meant the strong anchor never fired and every link fell back to the EAN.
+	// A seller_sku that is not CODPROD-shaped is not a CODPROD and never becomes
+	// a match clause, exactly as a non-GTIN barcode never becomes one above.
+	if value := trimmedPointer(input.SellerSKU); value != nil && domain.IsValidCodprod(*value) {
 		args = append(args, *value)
-		matchClauses = append(matchClauses, fmt.Sprintf("p.REFFORN = :%d", len(args)))
+		matchClauses = append(matchClauses, fmt.Sprintf("p.CODPROD = :%d", len(args)))
 	}
 	if value := trimmedPointer(input.Title); value != nil {
 		args = append(args, "%"+strings.ToUpper(*value)+"%")
 		matchClauses = append(matchClauses, fmt.Sprintf("UPPER(p.DESCRPROD) LIKE :%d", len(args)))
 	}
-	if trimmedPointer(input.EAN) != nil && len(matchClauses) == 0 {
-		// The only input was a barcode that is not GTIN-shaped. That is a
-		// no-match, not a failed lookup: refusing here aborted the caller's whole
-		// linking run over one malformed provider barcode.
+	if len(matchClauses) == 0 && (trimmedPointer(input.EAN) != nil || trimmedPointer(input.SellerSKU) != nil) {
+		// Every anchor the caller supplied was malformed (a barcode that is not
+		// GTIN-shaped, a seller_sku that is not CODPROD-shaped, or both). That is
+		// a no-match, not a failed lookup: refusing here aborted the caller's whole
+		// linking run over one malformed provider identifier. Falling through
+		// instead would run the query with NO match clause at all and return the
+		// entire catalog as candidates.
 		return "", nil, errNoMatchableInput
 	}
 	if len(matchClauses) > 0 {

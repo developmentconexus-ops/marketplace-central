@@ -104,6 +104,7 @@ import (
 	pricingtransport "marketplace-central/apps/server_core/internal/modules/pricing/transport"
 	productlinkspostgres "marketplace-central/apps/server_core/internal/modules/product_links/adapters/postgres"
 	productlinksapp "marketplace-central/apps/server_core/internal/modules/product_links/application"
+	productlinkscomposition "marketplace-central/apps/server_core/internal/modules/product_links/composition"
 	productlinkstransport "marketplace-central/apps/server_core/internal/modules/product_links/transport"
 	profitabilityinternalread "marketplace-central/apps/server_core/internal/modules/profitability/adapters/internalread"
 	profitabilityorders "marketplace-central/apps/server_core/internal/modules/profitability/adapters/orders"
@@ -526,14 +527,18 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	}
 	catalogtransport.Handler{Service: catalogapp.NewCanonicalService(canonicalCatalogReader), CompatibilityService: catalogSvc, PageReader: catalogPageReader}.Register(mux)
 
-	productLinkGenerationSvc := productlinksapp.NewGenerationService(productlinksapp.GenerationServiceConfig{
-		Snapshots: productLinkSnapshotRepo,
-		Matcher:   productMatcher,
-		Store:     productLinkCandidateRepo,
-	})
+	// Resolution is built first because generation hands it the corroborated
+	// candidates to auto-approve (M-05 F-02): the single automatic path runs
+	// through the same transition/audit machine as an operator approval.
 	productLinkResolutionSvc := productlinksapp.NewResolutionService(productlinksapp.ResolutionServiceConfig{
 		Candidates: productLinkCandidateRepo,
 		Workflows:  productLinkCandidateRepo,
+	})
+	productLinkGenerationSvc := productlinksapp.NewGenerationService(productlinksapp.GenerationServiceConfig{
+		Snapshots:    productLinkSnapshotRepo,
+		Matcher:      productMatcher,
+		Store:        productLinkCandidateRepo,
+		AutoApprover: productLinkResolutionSvc,
 	})
 	productLinkSummarySvc := productlinksapp.NewSummaryService(productlinkspostgres.NewSummaryReader(pool, cfg.DefaultTenantID))
 	productLinkBatchSvc := productlinksapp.NewBatchService(productlinksapp.BatchServiceConfig{
@@ -656,7 +661,15 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	// product data never refreshed on its own. The real job resolves the tenant's
 	// active source each cycle and runs that source's adapter.
 	if activeSourceLookup != nil {
-		go synccomposition.NewProductsScheduler(pool, cfg.DefaultTenantID, 15*time.Minute, activeSourceLookup, productSyncAdapters).Start(context.Background())
+		// Every sync that lands new product data re-asks the linking question
+		// (M-05 F-01): a codprod that arrives today is what makes yesterday's
+		// unlinked anúncio linkable.
+		go synccomposition.NewProductsScheduler(
+			pool, cfg.DefaultTenantID, 15*time.Minute, activeSourceLookup, productSyncAdapters,
+			synccomposition.WithLinkCandidateRefresh(
+				productlinkscomposition.NewLinkCandidateRefresher(installationSvc, productLinkGenerationSvc),
+			),
+		).Start(context.Background())
 	}
 
 	marketModuleRepo := marketpostgres.NewRepository(pool, cfg.DefaultTenantID)

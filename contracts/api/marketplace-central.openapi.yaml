@@ -1505,6 +1505,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProductLinkResolutionResult'
+        "400":
+          description: >-
+            PRODUCT_LINKS_SYSTEM_ACTOR_NOT_PERMITTED — actor.actor_type is
+            'system'. Approving a candidate is an operator's call; the machine's
+            only path is the corroborated auto-approve, which does not use this
+            operation (D-121-2). Note that the batch form itemizes this refusal
+            as a per-item cause and still answers 200.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /product-links/link-resolutions/reject-listing:
     post:
       summary: Reject a listing identity for product linking
@@ -1522,6 +1533,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProductLinkResolutionResult'
+        "400":
+          description: >-
+            PRODUCT_LINKS_SYSTEM_ACTOR_NOT_PERMITTED — actor.actor_type is
+            'system'. Rejecting names no anchor, and the decision trail admits a
+            system actor on exactly one rule, the corroborated auto-approve
+            (D-121-2). A machine may not reject a listing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /product-links/link-resolutions/manual-resolve:
     post:
       summary: Manually resolve a listing identity to an internal product
@@ -1539,6 +1560,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProductLinkResolutionResult'
+        "400":
+          description: >-
+            PRODUCT_LINKS_SYSTEM_ACTOR_NOT_PERMITTED — actor.actor_type is
+            'system'. Naming the product by hand is precisely the operator's
+            judgement; no anchor carries it, so no machine may sign it
+            (D-121-2). Also returned as invalid_identity when
+            internal_product_id is not positive — the transport validates that
+            field before the service runs, so the domain code
+            PRODUCT_LINKS_INTERNAL_PRODUCT_INVALID never reaches the wire here.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /product-links/link-resolutions/batch-preview:
     post:
       summary: Dry-run preview of a batch of product link candidate approvals
@@ -1609,6 +1643,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProductLinkResolutionResult'
+        "400":
+          description: >-
+            PRODUCT_LINKS_SYSTEM_ACTOR_NOT_PERMITTED — actor.actor_type is
+            'system'. An undo names no anchor, and the decision trail admits a
+            system actor on exactly one rule, the corroborated auto-approve
+            (D-121-2). A machine may not take back a resolution.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         "404":
           description: PRODUCT_LINKS_AUDIT_NOT_FOUND — no audit row for the given id
           content:
@@ -6456,7 +6500,7 @@ components:
           enum: [ALTA, MEDIA, BAIXA]
         match_status:
           type: string
-          enum: [ACCEPT, REVIEW, REJECT, NO_CANDIDATE]
+          enum: [ACCEPT, REVIEW, REJECT, NO_CANDIDATE, CONFIRM]
         reasons:
           type: array
           items:
