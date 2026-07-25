@@ -4,7 +4,7 @@
 id: M-05
 type: milestone
 mission: MIS-006
-status: draft
+status: merged   # merged main @f49c20f7 (D-121); NÃO é `done`: o código passou (6 rodadas de dual-gate, C1-C22 ran com must-fail em C10/C17/C18/C21/C22, ladder pós-merge 106 pacotes zero FAIL), mas o user-drive não. U1/U2/U3 = could-not-run (conta ML em `pending_connection`, `listings`=0 — não existe anúncio real para auto-aprovar) e U4 = tela, seam do M-06. M-06 está desbloqueado; M-05 só vira `done` depois do re-drive do hub com a conta conectada
 depends_on: [M-02, M-03]
 base_sha: 138aac3d
 validation_level: QA-0

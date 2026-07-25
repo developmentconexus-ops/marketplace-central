@@ -299,3 +299,45 @@ string, which generates nothing.
 14. **RETRO (round 5, mine)** — I defended skipping an OpenAPI change with a factual claim I had not checked, and the claim was false; the commit message of `27fcdfac` carries it into the permanent record. A scope argument is only as good as the fact under it, and "I looked and there is nothing there" is a claim requiring the same evidence as any other. Second instance in this milestone of asserting more than I had verified — rounds 1–3 did it in code comments, this one did it in prose.
 15. **RETRO (mine)** — the round-2 refuter's D1 was a hole I had reasoned myself into: round 1's fix wrote a decision for undo and explicitly declined to for reject, on the ground that "there is no rule to record". `superseded_by` is a fact, not a rule, and I had written a test (`TestRejectingAListingWritesNoDecision`) that encoded the wrong belief — so it could never have caught it. A test written to confirm a decision is not evidence about that decision.
 16. **RETRO (round 6, mine)** — I documented an error code in the OpenAPI contract by reading the layer that *defines* the error rather than the layer that *writes the response*. `handleManualResolve` validates `internal_product_id` itself and never lets the domain code reach the wire. Third instance in this milestone of the same failure shape: round 5's was a false scope fact, rounds 1–3's were false code comments, this one is a false contract. The general rule the milestone keeps re-teaching: **a claim about observable behaviour must be read off the code path that produces the observation, not off the code path that names it.** A test asserting the true value (`invalid_identity`) was already sitting in the same package.
+
+---
+
+## Aceitação do hub — D-121, merge `f49c20f7`
+
+Merge `--no-ff` de `claude/elated-albattani-323511` (tip `f3dd9747`, código `9ca81428`) em main.
+Ladder pós-merge no main integrado: `go build ./...` limpo, `go vet ./...` limpo,
+`go test ./...` **zero FAIL**, com `product_links/{application,composition,domain,transport}` e
+`internal_read/*` todos `ok`. Branch deletada com `-d` (aceitou, logo estava mergeada). O
+diretório do worktree ficou para trás — `Permission denied` no lock do `.gomodcache`, gotcha
+conhecida; o registro do git já saiu.
+
+Spot-check independente do hub, além do pack: `root.go` (deviation 2) é aditivo e a reordenação
+é a única forma de a resolução ser o `AutoApprover` da geração; `0082` é `CREATE TABLE` + dois
+índices, zero `ALTER TABLE product_links`; `applySingleAnchorScore` emite `CONFIRM` com o aviso
+nomeando a âncora ausente nos dois sentidos, e `applyConflictScore` não elege vencedor. Bate com
+D-121-2 linha a linha.
+
+### Rulings nas escalações
+
+| # | Escalação | Ruling |
+|---|-----------|--------|
+| 1 | **M05-C5** — o código emite `NO_CANDIDATE`, o critério pedia a palavra `REVIEW` | **Critério emendado, chip estava certo.** `/vinculos` chaveia a linha "sem candidato" e o guard do batch-select em `NO_CANDIDATE`; emitir `REVIEW` faria um anúncio sem âncora virar linha aprovável em massa. A redação do critério é que estava errada, não o código. Emenda registrada no validation-contract como D-121-3. |
+| 2 | **`UndoBatch` assina `actor=operator` sem operador** (`resolution_service.go:491`, endpoint sem body) | **Defeito real, aceito como dívida nomeada, passa para M-06.** A trilha afirma que um humano agiu sem poder atribuir quem — é a mesma classe que o chip corrigiu em toda parte, e sobrou aqui só porque o conserto muda a assinatura de uma operação publicada e do SDK. Esse é exatamente o seam do M-06 (telas + SDK), que já vai reeditar o contrato. Não bloqueia o merge: nada de errado é escrito, o que falta é a atribuição. |
+| 3 | **TOCTOU nos guards de precedência** (leitura fora da transação) | **Aceito como limitação conhecida, sem trabalho agora.** O pior caso é duas linhas `actor=system` corroboradas e concordantes para o mesmo link, a segunda superseding a primeira: a trilha continua honesta e nenhum vínculo errado nasce. O conserto é `SELECT … FOR UPDATE` dentro de `ApplyProductLinkTransition`, camada de repositório, fora do write-set deste milestone. Fica registrado aqui como follow-up de missão. |
+| 4 | **`applyProductLinkBatch` responde 200 com falhas itemizadas** (`batch_service.go:195-197`) | **Comportamento mantido.** É a semântica que todo batch do módulo já tem, e mudá-la num milestone de vínculo seria alterar um contrato publicado por consistência estética. Nada é escrito nos itens que falham, e o `approve-candidate` diz explicitamente que a forma batch não responde o `400` — as duas não podem ser lidas como iguais. |
+| 5 | **N5 — `collisions_at_decision` é sempre 1 no caminho ACCEPT** | **Coluna mantida como está.** É degenerada por construção *no caminho automático* (ACCEPT exige exatamente um produto), mas não nos caminhos de operador, que é onde a contagem informa alguma coisa. Um valor previsível não é um valor falso; trocar o que a coluna conta seria emenda de contrato sem ninguém pedindo. |
+| 6 | **M05-U4 — `/vinculos` não separa CONFIRM de REVIEW** | **Confirmado como escopo do M-06.** O estado chega à tela e o aviso está no detalhe do candidato; falta o agrupamento visual. `apps/web` está fora do write-set deste milestone por desenho. |
+
+### Findings de profile ratificados
+
+- **L2 `summary.txt` não distingue verde de tudo-skipado** (finding 8). Ratificado: enquanto o lane
+  rodar `go test -tags=integration` sem `-v` e gravar só `target`/`status`/`run_id`, **nenhum
+  critério L2 fecha só com esse artefato** — exige a prova must-fail junto, como este chip fez.
+  Vai para as amarrações de ladder do profile.
+- **O lane exige pwsh 7** (finding 5). Ratificado para a lista de falso-alarme do profile §3: sob
+  5.1 o lane morre em `RandomNumberGenerator.Fill` e reporta `status=blocked`, o que se lê como
+  falha do lane e não é.
+- **Must-fail via `git checkout -- <file>` destrói trabalho não commitado** (finding 6). Ratificado:
+  a prova must-fail se faz num único editar-e-restaurar, ou commita-se a fatia antes.
+- **Escrever o evidence pack ANTES de despachar o gate** (finding 7). Ratificado: a rodada 1 gastou
+  um gate inteiro com um blocker que era só o arquivo ainda não existir quando o gate leu a árvore.
