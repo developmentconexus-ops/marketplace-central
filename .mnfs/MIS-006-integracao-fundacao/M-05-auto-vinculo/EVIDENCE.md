@@ -1,14 +1,14 @@
 # M-05 auto-vínculo produto↔anúncio — Evidence Pack
 
 Branch `claude/elated-albattani-323511`, worktree `.claude/worktrees/trusting-mayer-a5c8f6`.
-BASE-SHA `e3c081ae43b72af070185939253b745080acf68b`. Chip tip **`27fcdfac`**.
+BASE-SHA `e3c081ae43b72af070185939253b745080acf68b`. Chip tip **`275f4299`**.
 
 This pack is updated in place and committed on top of the code it describes, so the tip named
 here is always the last CODE commit; the commit carrying this file is the tip of the branch.
 (Round 2's cold gate raised the mismatch as a blocker — the pack said `5807d634` while the branch
 was at `a4a0ad89`, the docs commit. Naming both is the fix.)
 
-Commits (`git log e3c081ae..27fcdfac`, all ten, zero files under `apps/web`):
+Commits (`git log e3c081ae..275f4299`, all eleven, zero files under `apps/web`):
 
 - `124cd9e8` F-04 — `seller_sku` anchored on `p.CODPROD`, not `p.REFFORN`, with an `IsValidCodprod` validity guard, mirrored in `erp_import/adapters/internalread/`
 - `100f0343` F-03 — E10 decision trail, migration `0082_product_link_decisions.sql`, written in the same transition as the state change
@@ -20,6 +20,7 @@ Commits (`git log e3c081ae..27fcdfac`, all ten, zero files under `apps/web`):
 - `057462b6` docs — round 2 recorded, including the proof that a green lane had not been proven green
 - `e8c4a13e` correctives — round 3 (see **Round-3** below)
 - `27fcdfac` **revert** — round 4 established that two rounds of work on the pending counter rested on a premise that cannot occur; `summary_reader.go` is byte-identical to BASE-SHA again (see **Round-4** below)
+- `275f4299` correctives — round 5, plus the operator's ruling that a machine may corroborate and nothing else (see **Round-5** below)
 
 Ruling applied throughout: where any other artifact still says "auto-approve is exclusive to the
 EAN-exact-unique path" or "CODPROD-único auto-aprova", `milestone.md` at BASE-SHA wins
