@@ -1,6 +1,7 @@
 import { Link, NavLink, useLocation } from "react-router-dom";
 import type { IntegrationInstallation } from "@marketplace-central/sdk-runtime";
 import { useInstallation } from "./InstallationContext";
+import { selectableInstallations } from "./installationSelection";
 import { useTheme } from "./theme/useTheme";
 
 // Every Mercado Livre installation carries the same display_name, so the selector
@@ -16,24 +17,6 @@ function installationLabel(installation: IntegrationInstallation): string {
     return `${installation.display_name} (não conectada)`;
   }
   return installation.display_name;
-}
-
-// An installation that never completed its authorization has no account, no
-// listings and no orders — selecting it can only show empty screens. Those rows
-// stay on /integracoes (where the operator resumes or gives up on them) but are
-// kept out of the account selector. The selected one is always kept so the
-// control can never lose its own value.
-function selectableInstallations(
-  installations: IntegrationInstallation[],
-  selectedId: string,
-): IntegrationInstallation[] {
-  const neverAuthorized = new Set(["draft", "pending_connection"]);
-  return installations.filter(
-    (installation) =>
-      installation.installation_id === selectedId ||
-      !installation.status ||
-      !neverAuthorized.has(installation.status),
-  );
 }
 
 const enabledPillClass =

@@ -110,6 +110,21 @@ describe("AppRouter", () => {
     expect(listIntegrationInstallations).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps never-authorized installations out of the stock seguro account selector", async () => {
+    // An abandoned authorization has no listings to compare, so offering it in
+    // the per-screen selector can only produce an empty screen — the header
+    // already hides it and both selectors must show the same account list.
+    listIntegrationInstallations.mockResolvedValue({
+      items: [
+        { installation_id: "inst_test", status: "connected" },
+        { installation_id: "inst_abandoned", status: "pending_connection" },
+      ],
+    });
+    window.history.pushState({}, "", "/estoque");
+    renderAppRouter();
+    expect(await screen.findByText("Stock Seguro route: inst_test")).toBeInTheDocument();
+  });
+
   it("mounts the pedidos workspace at /pedidos with a single app-wide installation fetch", async () => {
     window.history.pushState({}, "", "/pedidos");
     renderAppRouter();

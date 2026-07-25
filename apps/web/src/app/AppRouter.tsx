@@ -8,6 +8,7 @@ import { ProtocoloPage } from "../pages/mutations/ProtocoloPage";
 import { WorkspacePlaceholder } from "../pages/WorkspacePlaceholder";
 import { useClient } from "./ClientContext";
 import { InstallationProvider, useInstallation } from "./InstallationContext";
+import { selectableInstallations } from "./installationSelection";
 import { LegacyRedirect } from "./LegacyRedirect";
 import { DashboardRoute } from "../routes/dashboard";
 import { AnunciosRoute } from "../routes/anuncios";
@@ -33,8 +34,15 @@ function ClassificationsPageWrapper() {
 
 function StockSeguroPageWrapper() {
   const client = useClient();
-  const { installations } = useInstallation();
-  return <StockSeguroPage client={client} installations={installations} />;
+  const { installationId, installations } = useInstallation();
+  // Same account list as the header: an abandoned authorization has no listings
+  // to compare, so offering it here can only produce an empty screen.
+  return (
+    <StockSeguroPage
+      client={client}
+      installations={selectableInstallations(installations, installationId)}
+    />
+  );
 }
 
 export function AppRouter() {
