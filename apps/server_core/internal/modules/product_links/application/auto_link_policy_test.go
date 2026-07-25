@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -440,5 +441,85 @@ func TestAutoApproveRefusesACandidateItDidNotCorroborate(t *testing.T) {
 	}
 	if len(workflows.applied) != 0 {
 		t.Fatalf("applied = %#v, want nothing written", workflows.applied)
+	}
+}
+
+// failingApprover records every listing it was offered and fails the ones it
+// was told to, so a batch that abandons its remainder is visible as a listing
+// that was never offered at all.
+type failingApprover struct {
+	failOn  map[string]bool
+	offered []string
+}
+
+func (f *failingApprover) AutoApproveCandidate(_ context.Context, input AutoApproveCandidateInput) (bool, error) {
+	f.offered = append(f.offered, input.Candidate.ProviderItemID)
+	if f.failOn[input.Candidate.ProviderItemID] {
+		return false, fmt.Errorf("approval refused for %s", input.Candidate.ProviderItemID)
+	}
+	return true, nil
+}
+
+// One listing that cannot be approved is not a reason to leave the rest of the
+// run unlinked. Before the batch continued, the first failure returned and
+// every corroborated candidate behind it stayed pending with nothing saying
+// why — on a 10k-listing sync that is the whole batch lost to one bad row.
+func TestAFailedApprovalDoesNotAbandonTheRestOfTheBatch(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 7, 25, 10, 0, 0, 0, time.UTC)
+	approver := &failingApprover{failOn: map[string]bool{"MLB-FAIL": true}}
+	svc := NewGenerationService(GenerationServiceConfig{
+		Snapshots: &stubSnapshotReader{snapshots: []productlinksdomain.ListingSnapshot{
+			concordantSnapshot("MLB-FAIL", now),
+			concordantSnapshot("MLB-OK", now),
+		}},
+		Matcher:      concordantMatcher(),
+		Store:        &stubCandidateStore{},
+		AutoApprover: approver,
+		Now:          func() time.Time { return now },
+	})
+
+	_, err := svc.GenerateLinkCandidates(context.Background(), GenerateLinkCandidatesInput{InstallationID: "inst-m05"})
+	if err == nil {
+		t.Fatal("GenerateLinkCandidates() error = nil, want the refused approval reported")
+	}
+	if !strings.Contains(err.Error(), "MLB-FAIL") {
+		t.Errorf("error = %v, want it to name the listing that failed", err)
+	}
+	if len(approver.offered) != 2 {
+		t.Fatalf("offered = %v, want both listings attempted", approver.offered)
+	}
+	if approver.offered[1] != "MLB-OK" {
+		t.Errorf("offered = %v, want MLB-OK attempted after MLB-FAIL failed", approver.offered)
+	}
+}
+
+// The E10 CHECK lets a system actor write exactly one rule:
+// concordant_codprod_ean. A reject names no anchor, so a system reject is a row
+// Postgres refuses INSIDE the transition's transaction — the rejection itself
+// rolls back and the caller sees a 500 that names nothing. Refuse it up front.
+func TestRejectingAsSystemIsRefusedBeforeItReachesTheDatabase(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 7, 25, 10, 0, 0, 0, time.UTC)
+	workflows := &stubWorkflowStore{}
+	svc := NewResolutionService(ResolutionServiceConfig{
+		Candidates: &stubCandidateStore{},
+		Workflows:  workflows,
+		Now:        func() time.Time { return now },
+		NewAuditID: func() string { return "audit-1" },
+	})
+
+	_, err := svc.RejectListing(context.Background(), RejectListingInput{
+		InstallationID: "inst-m05",
+		ProviderCode:   "mercado_livre",
+		ProviderItemID: "MLB-SYS",
+		Actor:          productlinksdomain.ActorMetadata{ActorType: productlinksdomain.DecisionActorSystem},
+		Reason:         "scripted sweep",
+	})
+	if err == nil || err.Error() != "PRODUCT_LINKS_SYSTEM_ACTOR_NOT_PERMITTED" {
+		t.Fatalf("error = %v, want PRODUCT_LINKS_SYSTEM_ACTOR_NOT_PERMITTED", err)
+	}
+	if len(workflows.applied) != 0 {
+		t.Errorf("applied = %#v, want nothing written", workflows.applied)
 	}
 }

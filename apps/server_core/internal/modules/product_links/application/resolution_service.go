@@ -284,6 +284,9 @@ func (s *ResolutionService) RejectListing(ctx context.Context, input RejectListi
 	if s.workflows == nil {
 		return domain.ProductLinkResolutionResult{}, errors.New("PRODUCT_LINKS_RESOLUTION_NOT_CONFIGURED")
 	}
+	if err := errSystemActorNotPermitted(input.Actor); err != nil {
+		return domain.ProductLinkResolutionResult{}, err
+	}
 	identity, providerCode, err := normalizeIdentity(input.InstallationID, input.ProviderCode, input.ProviderItemID, input.ProviderVariationID)
 	if err != nil {
 		return domain.ProductLinkResolutionResult{}, err
@@ -503,6 +506,9 @@ func (s *ResolutionService) UndoBatch(ctx context.Context, batchID string) (Undo
 // the reversal transition. Shared by UndoResolution and UndoBatch so both
 // paths agree on the exact same ordering decision.
 func (s *ResolutionService) undoAuditEntry(ctx context.Context, target domain.ProductLinkAuditEntry, actor domain.ActorMetadata, reason string) (domain.ProductLinkResolutionResult, error) {
+	if err := errSystemActorNotPermitted(actor); err != nil {
+		return domain.ProductLinkResolutionResult{}, err
+	}
 	identity := domain.ListingIdentity{
 		InstallationID:      target.InstallationID,
 		ProviderItemID:      target.ProviderItemID,
@@ -795,6 +801,21 @@ func decisionRuleForCandidate(candidate domain.LinkCandidate) domain.ProductLink
 	default:
 		return domain.DecisionRuleManual
 	}
+}
+
+// errSystemActorNotPermitted refuses a system actor on a transition that names
+// no anchor. The E10 CHECK admits exactly one rule a system actor may write —
+// concordant_codprod_ean — so a system reject or undo is a row the schema turns
+// down, and it turns it down inside the transition's transaction: the whole
+// rejection rolls back and the caller gets a 500 with nothing naming the cause.
+// Failing closed here keeps the schema's rule and says which actor was refused.
+// Filing the call as `operator` instead would be worse — it would assert a human
+// decided when none did.
+func errSystemActorNotPermitted(actor domain.ActorMetadata) error {
+	if actor.ActorType == domain.DecisionActorSystem {
+		return errors.New("PRODUCT_LINKS_SYSTEM_ACTOR_NOT_PERMITTED")
+	}
+	return nil
 }
 
 // decisionActorFor names the trail's actor from the audit actor that took the
