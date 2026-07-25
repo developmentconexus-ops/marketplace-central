@@ -1,4 +1,5 @@
 export * from "./Button";
+export * from "./money";
 export * from "./SurfaceCard";
 export * from "./Badge";
 export * from "./StatCard";

@@ -157,16 +157,16 @@ describe("ListingDetailPanel", () => {
     expect(screen.getByText("5")).toBeInTheDocument();
     expect(screen.getByText("3")).toBeInTheDocument();
     expect(screen.getByText("buybox_api")).toBeInTheDocument();
-    expect(screen.getByText(/R\$ 119\.90/)).toBeInTheDocument();
+    expect(screen.getByText(/R\$\s119,90/)).toBeInTheDocument();
     // Honest label rename: the ML target is "Alvo buybox (ML)", not the
     // operator-misleading "Preço p/ vencer".
     expect(screen.getByText("Alvo buybox (ML)")).toBeInTheDocument();
     expect(screen.queryByText("Preço p/ vencer")).not.toBeInTheDocument();
     // Faixa de mercado (min — mediana — máx), competitor-only.
     expect(screen.getByText("Faixa de mercado (concorrentes)")).toBeInTheDocument();
-    expect(screen.getByText(/R\$ 110\.00/)).toBeInTheDocument();
-    expect(screen.getByText(/R\$ 135\.50/)).toBeInTheDocument();
-    expect(screen.getByText(/R\$ 149\.90/)).toBeInTheDocument();
+    expect(screen.getByText(/R\$\s110,00/)).toBeInTheDocument();
+    expect(screen.getByText(/R\$\s135,50/)).toBeInTheDocument();
+    expect(screen.getByText(/R\$\s149,90/)).toBeInTheDocument();
     // Own-seller exclusion means the seller count is competitor-only.
     expect(screen.getByText("Concorrentes")).toBeInTheDocument();
     expect(
@@ -186,9 +186,9 @@ describe("ListingDetailPanel", () => {
 
     // The faixa card is still present and labeled, but every bound reads "—".
     expect(screen.getByText("Faixa de mercado (concorrentes)")).toBeInTheDocument();
-    expect(screen.queryByText(/R\$ 110\.00/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/R\$ 135\.50/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/R\$ 149\.90/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/R\$\s110,00/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/R\$\s135,50/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/R\$\s149,90/)).not.toBeInTheDocument();
   });
 
   it("shows STALE evidence numbers marked with a freshness indicator, not silently hidden", async () => {

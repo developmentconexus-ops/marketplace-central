@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Tags, Plus, Trash2 } from "lucide-react";
-import { Button, PaginatedTable } from "@marketplace-central/ui";
+import { Button, formatMoneyOr, PaginatedTable } from "@marketplace-central/ui";
 import type {
   CatalogProductFact,
   CatalogProductFactPage,
@@ -39,10 +39,7 @@ function factId(fact: CatalogProductFact): string {
 // Catalog fact money amounts arrive as decimal strings; null means the source
 // value is unknown (ADR-17) \u2014 render an honest em dash, never a fabricated 0.
 function formatCurrency(value: string | null | undefined): string {
-  if (value == null) return "\u2014";
-  const amount = Number(value);
-  if (Number.isNaN(amount)) return "\u2014";
-  return `R$ ${amount.toFixed(2)}`;
+  return formatMoneyOr(value);
 }
 
 // Fact pages are cursor-paginated (max 100/page); drain every page so the

@@ -7,10 +7,11 @@ interface Atalho {
 }
 
 // Static shortcuts per the design screen's rail. Targets verified against the routes actually
-// registered in AppRouter.tsx (no /simulador — the pricing route is /precos; vínculos import
-// entry lives at /vinculos per R-02 nav, not a standalone route).
+// registered in AppRouter.tsx (no /simulador — the pricing route is /precos). The spreadsheet
+// upload lives on /integracoes; /vinculos only shows what a completed import produced, so
+// pointing "Importar planilha" there left the operator on a screen with no way to import.
 const atalhos: Atalho[] = [
-  { key: "importar", label: "Importar planilha", href: "/vinculos" },
+  { key: "importar", label: "Importar planilha", href: "/integracoes" },
   { key: "simular", label: "Simular", href: "/precos" },
   { key: "vinculos", label: "Vínculos", href: "/vinculos" },
 ];

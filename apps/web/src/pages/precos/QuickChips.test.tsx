@@ -47,7 +47,7 @@ describe("QuickChips", () => {
   it("renders mediana + menor conc. + cobrir chips and seeds the price from the median", async () => {
     const { onSeedPreco } = renderChips();
     const mediana = await screen.findByTestId("quick-chip-mediana");
-    expect(mediana).toHaveTextContent("mediana R$ 75.40");
+    expect(mediana).toHaveTextContent("mediana R$ 75,40");
     fireEvent.click(mediana);
     expect(onSeedPreco).toHaveBeenCalledWith("75.40");
   });

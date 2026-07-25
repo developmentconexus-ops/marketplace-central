@@ -36,16 +36,25 @@ export function InstallationProvider({ children }: { children: ReactNode }) {
   const requestedInstallationExists = installations.some(
     (installation) => installation.installation_id === requestedInstallationId,
   );
+  // An authorization that was started and abandoned leaves a pending_connection
+  // installation behind, and those sort ahead of the real accounts. Defaulting to
+  // the first item therefore opened the workspace on an account with no listings,
+  // no orders and no links — the whole product looked empty until the operator
+  // knew to change the selector. Default to a connected account; fall back to the
+  // first one only when nothing is connected (then the empty screens are honest).
+  const defaultInstallation =
+    installations.find((installation) => installation.status === "connected") ?? installations[0];
   const installationId = requestedInstallationExists
     ? requestedInstallationId ?? ""
-    : installations[0]?.installation_id ?? "";
+    : defaultInstallation?.installation_id ?? "";
 
   useEffect(() => {
-    if (!query.isSuccess || installations.length === 0 || requestedInstallationExists) return;
+    if (!query.isSuccess || !defaultInstallation || requestedInstallationExists) return;
     const nextParams = new URLSearchParams(searchParams);
-    nextParams.set("installation", installations[0].installation_id);
+    nextParams.set("installation", defaultInstallation.installation_id);
     setSearchParams(nextParams, { replace: true });
   }, [
+    defaultInstallation,
     installations,
     query.isSuccess,
     requestedInstallationExists,

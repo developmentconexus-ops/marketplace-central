@@ -7,7 +7,7 @@ import type {
   ListingReadModel,
   ListingSyncState,
 } from "@marketplace-central/sdk-runtime";
-import { ConflictTag, UnknownValue } from "@marketplace-central/ui";
+import { ConflictTag, formatMoney, UnknownValue } from "@marketplace-central/ui";
 import { FreshnessIndicator } from "@marketplace-central/web-query";
 
 export interface AnunciosTableProps {
@@ -87,7 +87,8 @@ function formatMarketDeltaPct(signal: ListingMarketSignal): string | null {
 // signal_status (optional field) is treated as the honest absent state.
 // NUNCA dupla sublinha na célula: exactly one of {chip, freshness link, plain value}.
 function renderPriceCell(item: ListingReadModel) {
-  const priceValue = item.price === null ? <UnknownValue /> : `R$ ${item.price.amount}`;
+  const formattedPrice = item.price === null ? null : formatMoney(item.price.amount, item.price.currency);
+  const priceValue = formattedPrice === null ? <UnknownValue /> : formattedPrice;
   const status = item.signal_status ?? "NO_PRICE_EVIDENCE";
 
   if (status === "SEM_VINCULO") {

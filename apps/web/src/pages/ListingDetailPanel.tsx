@@ -10,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   ConflictTag,
   ErrorState,
+  formatMoney as formatBRL,
   FreshnessIndicator,
   LoadingState,
   UnknownValue,
@@ -94,11 +95,13 @@ function renderEvidenceCount(value: number | null) {
 }
 
 function formatPriceToWin(signal: ListingMarketSignal) {
-  return signal.price_to_win === null ? <UnknownValue /> : `R$ ${signal.price_to_win.amount}`;
+  const formatted = signal.price_to_win === null ? null : formatBRL(signal.price_to_win.amount, signal.price_to_win.currency);
+  return formatted === null ? <UnknownValue /> : formatted;
 }
 
 function formatMoney(money: ListingMoney | null) {
-  return money === null ? <UnknownValue /> : `R$ ${money.amount}`;
+  const formatted = money === null ? null : formatBRL(money.amount, money.currency);
+  return formatted === null ? <UnknownValue /> : formatted;
 }
 
 // Faixa de mercado: competitor price range min — mediana — max, our own offer
@@ -279,7 +282,7 @@ function DetailBody({ detail }: { detail: ListingDetail }) {
 
       <section aria-label="Dados do anúncio">
         <div className="grid grid-cols-2 gap-2">
-          <InfoCard label="Preço">{detail.price === null ? <UnknownValue /> : `R$ ${detail.price.amount}`}</InfoCard>
+          <InfoCard label="Preço">{formatMoney(detail.price)}</InfoCard>
           <InfoCard label="Est. publicado">{renderFactValue(detail.published_quantity)}</InfoCard>
           <InfoCard label="Margem est.">{renderMargin(detail)}</InfoCard>
           <InfoCard label="Qualidade">{detail.quality_score === null ? <UnknownValue /> : `${detail.quality_score}%`}</InfoCard>

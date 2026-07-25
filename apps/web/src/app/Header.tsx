@@ -1,6 +1,22 @@
 import { Link, NavLink, useLocation } from "react-router-dom";
+import type { IntegrationInstallation } from "@marketplace-central/sdk-runtime";
 import { useInstallation } from "./InstallationContext";
 import { useTheme } from "./theme/useTheme";
+
+// Every Mercado Livre installation carries the same display_name, so the selector
+// showed a list of identical entries and the operator could not tell which
+// account was selected — or that some of them were abandoned authorizations with
+// no data at all. Name the connected account, and say so when it is not connected.
+function installationLabel(installation: IntegrationInstallation): string {
+  const account = installation.external_account_name?.trim();
+  if (account) return account;
+  // Only claim "não conectada" when the API actually reported a non-connected
+  // status; an absent status is unknown, and stamping it would be a fabrication.
+  if (installation.status && installation.status !== "connected") {
+    return `${installation.display_name} (não conectada)`;
+  }
+  return installation.display_name;
+}
 
 const enabledPillClass =
   "inline-flex items-center rounded-pill px-3 py-1.5 text-sm font-medium transition-colors";
@@ -110,7 +126,7 @@ export function Header() {
             >
               {installations.map((installation) => (
                 <option key={installation.installation_id} value={installation.installation_id}>
-                  {installation.display_name}
+                  {installationLabel(installation)}
                 </option>
               ))}
             </select>

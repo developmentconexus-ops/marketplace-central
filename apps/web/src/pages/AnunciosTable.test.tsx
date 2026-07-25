@@ -67,7 +67,7 @@ describe("AnunciosTable", () => {
     expect(screen.getByText("Camiseta azul")).toBeInTheDocument();
     expect(screen.getByText("MLB123456789")).toBeInTheDocument();
     expect(screen.getByText("product_1")).toBeInTheDocument();
-    expect(screen.getByText("R$ 129.90")).toBeInTheDocument();
+    expect(screen.getByText("R$ 129,90")).toBeInTheDocument();
     expect(screen.getByText("7")).toBeInTheDocument();
     expect(screen.getByText("sincronizado")).toBeInTheDocument();
     // quality_score is an int 0–100 — 92 must render "92%", never "9200%".
@@ -145,7 +145,7 @@ describe("AnunciosTable", () => {
         <AnunciosTable items={[{ ...listing, signal_status: "OK", market_signal: okSignal }]} {...tableSelectionProps} />,
       );
 
-      expect(screen.getByText("R$ 129.90")).toBeInTheDocument();
+      expect(screen.getByText("R$ 129,90")).toBeInTheDocument();
       expect(screen.getByText("+8.34%")).toBeInTheDocument();
     });
 
@@ -168,7 +168,7 @@ describe("AnunciosTable", () => {
         />,
       );
 
-      expect(screen.getByText("R$ 129.90")).toBeInTheDocument();
+      expect(screen.getByText("R$ 129,90")).toBeInTheDocument();
       expect(screen.getByText("+8.34%")).toBeInTheDocument();
       expect(screen.getByLabelText("Data freshness")).toBeInTheDocument();
     });
@@ -181,7 +181,7 @@ describe("AnunciosTable", () => {
         />,
       );
 
-      expect(screen.getByText("R$ 129.90")).toBeInTheDocument();
+      expect(screen.getByText("R$ 129,90")).toBeInTheDocument();
       expect(within(screen.getByTestId("preco-cell")).queryByText(/%/)).not.toBeInTheDocument();
     });
 
@@ -193,7 +193,7 @@ describe("AnunciosTable", () => {
         />,
       );
 
-      expect(screen.getByText("R$ 129.90")).toBeInTheDocument();
+      expect(screen.getByText("R$ 129,90")).toBeInTheDocument();
       const link = screen.getByRole("link", { name: "sem vínculo" });
       expect(link).toHaveAttribute("href", "/vinculos");
       expect(within(screen.getByTestId("preco-cell")).queryByText(/%/)).not.toBeInTheDocument();
@@ -206,7 +206,7 @@ describe("AnunciosTable", () => {
         ),
       ).not.toThrow();
 
-      expect(screen.getByText("R$ 129.90")).toBeInTheDocument();
+      expect(screen.getByText("R$ 129,90")).toBeInTheDocument();
       expect(within(screen.getByTestId("preco-cell")).queryByText(/%/)).not.toBeInTheDocument();
     });
 

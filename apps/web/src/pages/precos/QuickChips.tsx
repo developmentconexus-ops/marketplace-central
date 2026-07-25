@@ -5,6 +5,7 @@ import {
   createMarketPriceIntelClient,
   type MarketPriceIntelMoney,
 } from "@marketplace-central/sdk-runtime";
+import { formatMoneyOr } from "@marketplace-central/ui";
 import { apiBaseUrl, type MarketAggregatesClient } from "./MarketComparison";
 
 export interface QuickChipsProps {
@@ -66,7 +67,7 @@ export function QuickChips({
     </button>
   );
 
-  const money = (m: MarketPriceIntelMoney) => `R$ ${m.amount}`;
+  const money = (m: MarketPriceIntelMoney) => formatMoneyOr(m.amount, "—", m.currency);
 
   return (
     <div data-testid="quick-chips" className="flex flex-wrap gap-1.5">

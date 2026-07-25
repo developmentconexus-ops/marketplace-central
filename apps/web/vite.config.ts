@@ -28,6 +28,14 @@ export default defineConfig({
     host: "0.0.0.0",
     port: 5174,
     allowedHosts: additionalAllowedHosts(),
+    // The dev server runs in a container over a Windows bind mount, which does
+    // not deliver inotify events: without polling, an edit on the host never
+    // reaches Vite and the page keeps serving the previous build until the
+    // container is restarted by hand.
+    watch: {
+      usePolling: true,
+      interval: 400,
+    },
     proxy: {
       "/catalog": {
         // Prefix collides with the Portuguese page route /catalogo/* — a browser
@@ -44,6 +52,7 @@ export default defineConfig({
         },
       },
       "/classifications": proxyTarget,
+      "/config": proxyTarget,
       "/connectors": proxyTarget,
       "/healthz": proxyTarget,
       "/integrations/auth": proxyTarget,
