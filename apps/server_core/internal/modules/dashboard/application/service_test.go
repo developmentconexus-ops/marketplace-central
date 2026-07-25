@@ -76,7 +76,7 @@ func healthySources() (installationSourceStub, listingsSourceStub, linkageSource
 	margin := 7
 	lastSync := summaryReferenceTime.Add(-time.Hour)
 	return installationSourceStub{found: true},
-		listingsSourceStub{row: listingsports.ListingSummaryRow{SyncError: 2, Active: 42, BelowMarginWorstCase: &margin}},
+		listingsSourceStub{row: listingsports.ListingSummaryRow{SyncError: 2, Active: 42, Unlinked: 9, BelowMarginWorstCase: &margin}},
 		linkageSourceStub{summary: linkageports.LinkageSummary{PendingLinks: 3, MissingGTIN: 4}},
 		ordersSourceStub{summary: ordersports.OrderSummary{Today: 5, SevenDays: 11}},
 		syncSourceStub{runs: []integrationports.LatestRunByModule{{OperationType: "listings_refresh", LatestAttemptedAt: &lastSync}}},
@@ -96,7 +96,7 @@ func newTestService(
 	return NewService(installation, listings, linkage, orders, sync, erp, func() time.Time { return summaryReferenceTime })
 }
 
-func TestSummaryOneFailedLinkageSourceReturnsPendingLinksNull(t *testing.T) {
+func TestSummaryOneFailedLinkageSourceReturnsMissingGTINNull(t *testing.T) {
 	installation, listings, _, orders, sync, erp := healthySources()
 	service := newTestService(installation, listings, linkageSourceStub{err: errors.New("linkage unavailable")}, orders, sync, erp)
 
@@ -104,8 +104,10 @@ func TestSummaryOneFailedLinkageSourceReturnsPendingLinksNull(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Summary() error = %v", err)
 	}
-	if got.PendingLinks != nil {
-		t.Fatalf("PendingLinks = %v, want nil", *got.PendingLinks)
+	// PendingLinks comes from the LISTINGS source (the /anuncios "sem vínculo"
+	// predicate), so a down linkage source must not null it.
+	if got.PendingLinks == nil || *got.PendingLinks != 9 {
+		t.Fatalf("PendingLinks = %v, want 9", got.PendingLinks)
 	}
 	if got.MissingGTIN != nil {
 		t.Fatalf("MissingGTIN = %v, want nil", *got.MissingGTIN)
@@ -303,5 +305,30 @@ func TestSummaryAnunciosAtivosMapsFromListingsActiveAndNullsOnListingsDown(t *te
 	}
 	if gotDown.AnunciosAtivos != nil {
 		t.Fatalf("AnunciosAtivos = %v, want nil when listings degraded", gotDown.AnunciosAtivos)
+	}
+}
+
+func TestSummaryPendingLinksCountsUnlinkedListingsAndNullsOnListingsDown(t *testing.T) {
+	installation, listings, linkage, orders, sync, erp := healthySources()
+	// The linkage source reports a DIFFERENT (smaller) number on purpose: the
+	// dashboard must answer with the listings predicate, not the workflow rows.
+	service := newTestService(installation, listings, linkage, orders, sync, erp)
+
+	got, err := service.Summary(context.Background(), "installation-1")
+	if err != nil {
+		t.Fatalf("Summary() error = %v", err)
+	}
+	if got.PendingLinks == nil || *got.PendingLinks != int64(listings.row.Unlinked) {
+		t.Fatalf("PendingLinks = %v, want %v", got.PendingLinks, listings.row.Unlinked)
+	}
+
+	downListings := listingsSourceStub{err: errors.New("listings unavailable")}
+	serviceDown := newTestService(installation, downListings, linkage, orders, sync, erp)
+	gotDown, err := serviceDown.Summary(context.Background(), "installation-1")
+	if err != nil {
+		t.Fatalf("Summary() error = %v", err)
+	}
+	if gotDown.PendingLinks != nil {
+		t.Fatalf("PendingLinks = %v, want nil when listings degraded", gotDown.PendingLinks)
 	}
 }

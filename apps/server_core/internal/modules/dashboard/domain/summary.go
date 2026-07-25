@@ -15,7 +15,9 @@ func (e *InstallationNotFoundError) Error() string { return ErrInstallationNotFo
 func (e *InstallationNotFoundError) Unwrap() error { return ErrInstallationNotFound }
 
 type Summary struct {
-	SyncErrors     *int64                `json:"sync_errors"`
+	SyncErrors *int64 `json:"sync_errors"`
+	// PendingLinks counts the LISTINGS with no resolved product link — the same
+	// "sem vínculo" predicate /anuncios shows, so the two screens never disagree.
 	PendingLinks   *int64                `json:"pending_links"`
 	BelowMargin    *int64                `json:"below_margin"`
 	MissingGTIN    *int64                `json:"missing_gtin"`

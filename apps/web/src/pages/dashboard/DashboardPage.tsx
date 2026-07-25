@@ -167,9 +167,9 @@ export function DashboardPage() {
             />
             <KpiCard
               config={{
-                label: "Produtos sem vínculo",
+                label: "Anúncios sem vínculo",
                 value: query.data.pending_links,
-                source: "linkage",
+                source: "listings",
               }}
               degraded={query.data.degraded}
               onRetry={() => void query.refetch()}

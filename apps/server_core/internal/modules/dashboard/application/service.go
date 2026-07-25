@@ -73,6 +73,11 @@ func (s Service) Summary(ctx context.Context, installationID string) (domain.Sum
 		result.SyncErrors = int64Pointer(int64(row.SyncError))
 		result.BelowMargin = intPointer(row.BelowMarginWorstCase)
 		result.AnunciosAtivos = int64Pointer(int64(row.Active))
+		// Same predicate /anuncios counts as "sem vínculo". The linkage summary
+		// counts pending link/candidate ROWS instead, which silently drops every
+		// listing that never entered the workflow — the two screens disagreed by
+		// ~300 on live data, and the smaller (friendlier) number was the wrong one.
+		result.PendingLinks = int64Pointer(int64(row.Unlinked))
 	}
 
 	if s.linkage == nil {
@@ -80,7 +85,6 @@ func (s Service) Summary(ctx context.Context, installationID string) (domain.Sum
 	} else if summary, sourceErr := s.linkage.Summary(ctx, installationID); sourceErr != nil {
 		failed["linkage"] = true
 	} else {
-		result.PendingLinks = int64Pointer(summary.PendingLinks)
 		result.MissingGTIN = int64Pointer(summary.MissingGTIN)
 	}
 

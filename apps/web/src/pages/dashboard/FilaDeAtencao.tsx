@@ -33,7 +33,7 @@ function buildItems(summary: DashboardOverview): AttentionItem[] {
   if (summary.pending_links !== null && summary.pending_links > 0) {
     items.push({
       key: "pending_links",
-      label: "Produtos sem vínculo",
+      label: "Anúncios sem vínculo",
       count: summary.pending_links,
       // Bare /vinculos defaults to the Pendentes/fila tab (verified in vinculos route).
       href: "/vinculos",
