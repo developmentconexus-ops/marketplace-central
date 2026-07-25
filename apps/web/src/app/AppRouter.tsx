@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Outlet, Route, Routes } from "react-router-dom";
 import { ClassificationsPage } from "@marketplace-central/feature-classifications";
 import { StockSeguroPage } from "@marketplace-central/feature-inventory";
 import { CatalogPage } from "@marketplace-central/feature-products";
@@ -7,7 +7,7 @@ import { Layout } from "./Layout";
 import { ProtocoloPage } from "../pages/mutations/ProtocoloPage";
 import { WorkspacePlaceholder } from "../pages/WorkspacePlaceholder";
 import { useClient } from "./ClientContext";
-import { InstallationProvider, useInstallation } from "./InstallationContext";
+import { InstallationGate, InstallationProvider, useInstallation } from "./InstallationContext";
 import { selectableInstallations } from "./installationSelection";
 import { LegacyRedirect } from "./LegacyRedirect";
 import { DashboardRoute } from "../routes/dashboard";
@@ -45,25 +45,42 @@ function StockSeguroPageWrapper() {
   );
 }
 
+function InstallationGatedRoutes() {
+  return (
+    <InstallationGate>
+      <Outlet />
+    </InstallationGate>
+  );
+}
+
 export function AppRouter() {
   return (
     <BrowserRouter>
       <InstallationProvider>
         <Routes>
           <Route element={<Layout />}>
-            <Route index element={<DashboardRoute />} />
-            <Route path="/anuncios" element={<AnunciosRoute />} />
-            <Route path="/mercado" element={<MercadoRoute />} />
+            {/* Setup and ERP-side screens must render with no marketplace account
+                connected: /integracoes is where the account is connected, and the
+                catalog, stock and import screens read the ERP mirror, which exists
+                before any marketplace does. */}
+            <Route path="/integracoes" element={<IntegracoesRoute />} />
             <Route path="/catalogo" element={<CatalogPageWrapper />} />
             <Route path="/catalogo/produtos/:productId" element={<ProdutoRoute />} />
-            <Route path="/vinculos" element={<VinculosRoute />} />
-            <Route path="/estoque" element={<StockSeguroPageWrapper />} />
-            <Route path="/precos" element={<PrecosRoute />} />
-            <Route path="/pedidos" element={<PedidosRoute />} />
-            <Route path="/integracoes" element={<IntegracoesRoute />} />
             <Route path="/protocolos/:protocolId" element={<ProtocoloPage />} />
             <Route path="/classifications" element={<ClassificationsPageWrapper />} />
             <Route path="/marketplaces" element={<WorkspacePlaceholder />} />
+            {/* Everything below reads listings, orders or market data, which only
+                exist per connected account — without one they can only render an
+                empty screen, so the gate answers for them. */}
+            <Route element={<InstallationGatedRoutes />}>
+              <Route index element={<DashboardRoute />} />
+              <Route path="/anuncios" element={<AnunciosRoute />} />
+              <Route path="/mercado" element={<MercadoRoute />} />
+              <Route path="/vinculos" element={<VinculosRoute />} />
+              <Route path="/estoque" element={<StockSeguroPageWrapper />} />
+              <Route path="/precos" element={<PrecosRoute />} />
+              <Route path="/pedidos" element={<PedidosRoute />} />
+            </Route>
             <Route path="/products" element={<LegacyRedirect to="/catalogo" />} />
             <Route path="/product-links" element={<LegacyRedirect to="/vinculos" />} />
             <Route path="/inventory/stock-seguro" element={<LegacyRedirect to="/estoque" />} />

@@ -281,11 +281,27 @@ const ACTIVE_SOURCE_OPTIONS: { value: ActiveSourceName; label: string; hint: str
   { value: "catalogo_cliente", label: "Catálogo do cliente", hint: "Catálogo importado do cliente — custo e estoque aparecem como “—”." },
 ];
 
+// A workspace that never chose a source has no row at all, and the server fails
+// closed on the read (400 unknown_erp_source). That is not a broken platform,
+// it is the first state of every install — and this card is the only place the
+// source gets chosen, so it must stay usable and say what is missing instead of
+// reporting a read failure.
+function isSourceUnsetError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const { status, error: code } = error as { status?: number; error?: unknown };
+  return status === 400 && code === "unknown_erp_source";
+}
+
 function ActiveSourceCard() {
   const client = useClient();
   const activeSourceQuery = useActiveSourceQuery(client);
   const setActiveSource = useSetActiveSourceMutation(client);
   const activeSource = activeSourceQuery.data?.active_source;
+  const readFailed = activeSourceQuery.isError && !isSourceUnsetError(activeSourceQuery.error);
+  // "No source" is any settled state that produced no source: the fail-closed
+  // 400, and also a read that ended without data or a reportable error. Both
+  // mean the same thing to the operator — nothing is configured, choose one.
+  const sourceUnset = !activeSource && !activeSourceQuery.isFetching && !readFailed;
   const fieldId = useId();
   return (
     <section aria-labelledby={`${fieldId}-active-title`} className="rounded-card border border-border bg-surface p-4">
@@ -295,7 +311,10 @@ function ActiveSourceCard() {
       <p className="mt-1 text-xs text-faint">
         Selecione a fonte que o app inteiro lê: catálogo, custo, estoque, preço e a sincronização automática.
       </p>
-      <fieldset className="mt-3" disabled={activeSourceQuery.isPending || setActiveSource.isPending}>
+      {/* Disabled only while a request is actually in flight: keying this off
+          `isPending` kept the selector dead forever once the read failed, which
+          is exactly the state a fresh workspace starts in. */}
+      <fieldset className="mt-3" disabled={activeSourceQuery.isFetching || setActiveSource.isPending}>
         <legend className="sr-only">Fonte ativa de dados</legend>
         <div className="flex flex-col gap-2 sm:flex-row" data-testid="active-source-selector">
           {ACTIVE_SOURCE_OPTIONS.map((option) => (
@@ -324,10 +343,15 @@ function ActiveSourceCard() {
       {/* No selection is shown until the server answers, and a failed read or
           write says so: guessing a source here would tell the operator the app
           is reading data it is not. */}
-      {activeSourceQuery.isPending ? (
+      {activeSourceQuery.isFetching && !activeSourceQuery.data ? (
         <p className="mt-2 text-xs text-faint">Carregando fonte ativa…</p>
       ) : null}
-      {activeSourceQuery.isError ? (
+      {sourceUnset ? (
+        <p className="mt-2 text-xs text-faint" data-testid="active-source-unset">
+          Nenhuma fonte definida ainda — escolha a fonte que o app vai ler.
+        </p>
+      ) : null}
+      {readFailed ? (
         <p className="mt-2 text-xs text-warn" role="alert">
           Não foi possível ler a fonte ativa configurada.
         </p>

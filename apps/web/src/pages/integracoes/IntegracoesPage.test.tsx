@@ -178,6 +178,25 @@ describe("IntegracoesPage", () => {
     expect(xlsx.checked).toBe(true);
   });
 
+  // A workspace that never chose a source has no row, and the server fails
+  // closed with 400 unknown_erp_source. That is the FIRST state of every
+  // install, so this card has to stay usable: it is the only place the source
+  // gets chosen, and a disabled selector leaves the whole platform unreadable.
+  it("lets the operator choose the source when the tenant has none configured yet", async () => {
+    getActiveSource.mockRejectedValue({ status: 400, error: "unknown_erp_source" });
+    setActiveSource.mockResolvedValue(activeSourceConfig("sankhya"));
+    renderPage();
+
+    const sankhya = (await screen.findByTestId("active-source-sankhya")) as HTMLInputElement;
+    await waitFor(() => expect(screen.getByTestId("active-source-unset")).toBeInTheDocument());
+    expect(sankhya.closest("fieldset")).not.toBeDisabled();
+    expect(sankhya.checked).toBe(false);
+
+    fireEvent.click(sankhya);
+
+    await waitFor(() => expect(setActiveSource).toHaveBeenCalledWith({ active_source: "sankhya" }));
+  });
+
   it("offers the Mercado Livre connect button and starts no flow until it is clicked", () => {
     renderPage();
     const connect = screen.getByTestId("provider-connect-ml");

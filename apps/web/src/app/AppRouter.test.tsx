@@ -196,6 +196,34 @@ describe("AppRouter", () => {
     expect(listIntegrationInstallations).toHaveBeenCalledTimes(1);
   });
 
+  // A workspace with no connected account is the very first state every operator
+  // sees. Gating the whole shell also gated the screen that connects an account,
+  // which left that operator with a dead end: the empty state told them to go to
+  // Integrações while standing on Integrações.
+  it("keeps /integracoes usable when no account is connected yet", async () => {
+    listIntegrationInstallations.mockResolvedValue({ items: [] });
+    window.history.pushState({}, "", "/integracoes");
+
+    renderAppRouter();
+
+    // The gate replaces the whole page with an empty state, so the page's own
+    // sections rendering is what proves it is not gated. (Asserting the gate's
+    // sentence is absent would not: the header shows the same sentence, and this
+    // page has empty states of its own while nothing is connected.)
+    expect(await screen.findByRole("heading", { name: "Configuração da plataforma" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Conectar marketplace" })).toBeInTheDocument();
+  });
+
+  it("still gates the marketplace screens when no account is connected yet", async () => {
+    listIntegrationInstallations.mockResolvedValue({ items: [] });
+    window.history.pushState({}, "", "/anuncios");
+
+    renderAppRouter();
+
+    expect(await screen.findByText("Nenhum registro encontrado.")).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Todos" })).not.toBeInTheDocument();
+  });
+
   it("does not render workspace content for an unknown path", () => {
     window.history.pushState({}, "", "/unknown");
     renderAppRouter();

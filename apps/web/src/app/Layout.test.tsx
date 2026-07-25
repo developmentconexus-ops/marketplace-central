@@ -98,14 +98,17 @@ describe("Layout", () => {
     );
   });
 
-  it("keeps the shell visible and gates page content when there are no installations", async () => {
+  // The shell itself no longer decides who may render: gating it also gated
+  // /integracoes, the screen that connects the first account. The shell keeps
+  // reporting the missing account in the header; which routes require one is a
+  // routing decision, asserted in AppRouter.test.tsx.
+  it("keeps the shell and the page visible when there are no installations", async () => {
     listIntegrationInstallations.mockResolvedValue({ items: [] });
-    renderLayout("/anuncios");
+    renderLayout("/integracoes");
 
-    expect(await screen.findAllByText("Conecte uma conta em Integrações")).not.toHaveLength(0);
-    expect(screen.getByText("Nenhum registro encontrado.")).toBeInTheDocument();
+    expect(await screen.findByText("Conecte uma conta em Integrações")).toBeInTheDocument();
     expect(screen.getByRole("navigation")).toBeInTheDocument();
     expect(screen.queryByRole("combobox", { name: "Selecionar instalação" })).not.toBeInTheDocument();
-    expect(screen.queryByTestId("page-content")).not.toBeInTheDocument();
+    expect(screen.getByTestId("page-content")).toBeInTheDocument();
   });
 });
