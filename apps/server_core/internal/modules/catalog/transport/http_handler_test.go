@@ -27,6 +27,8 @@ type fakeCatalogPageReader struct {
 	freshnessPolicy []internalreaddomain.FreshnessPolicy
 	activeSources   []erpdomain.ImportSource
 	sourcePresent   []bool
+	idAsks          [][]int64
+	idPage          ports.CatalogFactPage
 	err             error
 }
 
@@ -48,6 +50,14 @@ func (f *fakeCatalogPageReader) ListCatalogProductFacts(ctx context.Context, cur
 	return f.listPages[cursor.InternalProductID], nil
 }
 
+func (f *fakeCatalogPageReader) CatalogProductFactsByIDs(ctx context.Context, ids []int64) (ports.CatalogFactPage, error) {
+	f.idAsks = append(f.idAsks, ids)
+	f.captureSource(ctx)
+	if f.err != nil {
+		return ports.CatalogFactPage{}, f.err
+	}
+	return f.idPage, nil
+}
 func (f *fakeCatalogPageReader) SearchCatalogProductFacts(ctx context.Context, q string, limit int) (ports.CatalogFactPage, error) {
 	f.searchQueries = append(f.searchQueries, q)
 	f.searchLimits = append(f.searchLimits, limit)
@@ -59,6 +69,65 @@ func (f *fakeCatalogPageReader) SearchCatalogProductFacts(ctx context.Context, q
 		return ports.CatalogFactPage{}, f.err
 	}
 	return f.searchPage, nil
+}
+
+// A screen that already knows which products it needs asks for exactly those.
+// The ids it asks for reach the reader verbatim, and an id the active source
+// does not carry is simply missing from the answer — the caller can tell which
+// products the source knows nothing about.
+func TestCatalogProductsByIDsAsksForExactlyTheRequestedProducts(t *testing.T) {
+	fake := &fakeCatalogPageReader{idPage: ports.CatalogFactPage{
+		Items: []ports.CatalogProductFact{catalogFact(17413), catalogFact(90034)},
+		AsOf:  time.Date(2026, 7, 25, 3, 0, 0, 0, time.UTC),
+	}}
+	mux := httpx.NewRouteClassMux()
+	(Handler{PageReader: fake}).Register(mux)
+
+	recorder := httptest.NewRecorder()
+	mux.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/catalog/products?ids=17413,90034,24864", nil))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", recorder.Code, recorder.Body.String())
+	}
+	if !reflect.DeepEqual(fake.idAsks, [][]int64{{17413, 90034, 24864}}) {
+		t.Fatalf("id asks = %+v", fake.idAsks)
+	}
+	if len(fake.listCursors) != 0 {
+		t.Fatalf("an id ask must not fall through to the keyset page: %+v", fake.listCursors)
+	}
+
+	var response catalogPageEnvelope
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if len(response.Items) != 2 || response.Items[0].InternalProductID != 17413 {
+		t.Fatalf("items = %+v", response.Items)
+	}
+	// The answer is a set, not a page of a longer sequence.
+	if response.NextCursor != nil {
+		t.Fatalf("next_cursor = %q, want null", *response.NextCursor)
+	}
+}
+
+func TestCatalogProductsByIDsRejectsAnUnusableIDList(t *testing.T) {
+	for _, path := range []string{
+		"/catalog/products?ids=",
+		"/catalog/products?ids=abc",
+		"/catalog/products?ids=0",
+		"/catalog/products?ids=-3",
+		"/catalog/products?ids=1&ids=2",
+	} {
+		fake := &fakeCatalogPageReader{}
+		mux := httpx.NewRouteClassMux()
+		(Handler{PageReader: fake}).Register(mux)
+		recorder := httptest.NewRecorder()
+		mux.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))
+		if recorder.Code != http.StatusBadRequest {
+			t.Fatalf("GET %s status = %d, body = %s", path, recorder.Code, recorder.Body.String())
+		}
+		if len(fake.idAsks) != 0 {
+			t.Fatalf("GET %s reached the port with %+v", path, fake.idAsks)
+		}
+	}
 }
 
 func TestCatalogPageRoutesFollowThreePageCursorChain(t *testing.T) {

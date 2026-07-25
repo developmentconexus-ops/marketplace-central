@@ -90,4 +90,12 @@ type CatalogMoneyFact struct {
 type CatalogPageReader interface {
 	ListCatalogProductFacts(context.Context, Cursor, int) (CatalogFactPage, error)
 	SearchCatalogProductFacts(context.Context, string, int) (CatalogFactPage, error)
+	// CatalogProductFactsByIDs answers "the facts for exactly these products".
+	// A screen that works on a known set — the products linked to listings, say —
+	// cannot express that as a keyset page: the ids are scattered across the whole
+	// catalog, so paging to them means reading everything in between. An id with
+	// no row in the active source is simply absent from the result; the caller
+	// learns which products the source does not know rather than being handed a
+	// fabricated blank.
+	CatalogProductFactsByIDs(context.Context, []int64) (CatalogFactPage, error)
 }

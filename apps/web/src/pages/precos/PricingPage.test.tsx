@@ -72,7 +72,27 @@ const difalList: PricingDifalListResponse = {
 };
 
 const getPricingProfile = vi.fn(() => Promise.resolve(profile));
-const listCatalogProductFacts = vi.fn(() => Promise.resolve(productFactsPage));
+// /precos asks for exactly the ids its resolved links name — the page never
+// keysets a page of the catalog, so the fake answers the ids ask.
+const catalogProductFactsByIds = vi.fn((options: { ids: number[] }) =>
+  Promise.resolve({
+    ...productFactsPage,
+    items: productFactsPage.items.filter((p) => options.ids.includes(p.internal_product_id)),
+  }),
+);
+// One ML listing resolved to product 90001 = the analysis set.
+const listListings = vi.fn(() =>
+  Promise.resolve({
+    items: [
+      {
+        listing_id: "MLB3758134295",
+        link: { state: "resolved", product_id: "90001", seller_sku: null },
+      },
+    ],
+    next_cursor: null,
+    page_size: 1,
+  }),
+);
 const pricingDecompose = vi.fn((_req: unknown) => Promise.resolve(decompose));
 const pricingSolveTarget = vi.fn();
 const putPricingProfile = vi.fn((next: PricingCalcProfile) => Promise.resolve(next));
@@ -147,10 +167,22 @@ vi.mock("./ScenariosPanel", () => ({
   ),
 }));
 
+// The page reads the workspace account from the installation context (which
+// prefers a CONNECTED installation) — never from listIntegrationInstallations[0].
+vi.mock("../../app/InstallationContext", () => ({
+  useInstallation: () => ({
+    installationId: "inst_test",
+    setInstallationId: () => undefined,
+    installations: [],
+    status: "ready",
+  }),
+}));
+
 vi.mock("../../app/ClientContext", () => ({
   useClient: () => ({
     getPricingProfile,
-    listCatalogProductFacts,
+    catalogProductFactsByIds,
+    listListings,
     pricingDecompose,
     pricingSolveTarget,
     putPricingProfile,
@@ -315,5 +347,25 @@ describe("PricingPage scaffold", () => {
     await waitFor(() => expect(listPricingDifal).toHaveBeenCalled());
     expect(await screen.findByTestId("difal-disclaimer")).toHaveTextContent("não é orientação fiscal");
     expect(screen.getByRole("row", { name: /^SP/ })).toBeInTheDocument();
+  });
+
+  it("asks the catalog for exactly the linked product ids, deep link included", async () => {
+    catalogProductFactsByIds.mockClear();
+    renderPage("?produto=90001");
+    await screen.findByText("Preços & Simulador");
+
+    await waitFor(() => expect(catalogProductFactsByIds).toHaveBeenCalled());
+    // The deep-linked id and the linked listing's id are the SAME product here, so
+    // the ask must carry it once — never a keyset page of the whole catalog.
+    expect(catalogProductFactsByIds.mock.calls.at(-1)![0]).toEqual({ ids: [90001] });
+  });
+
+  it("says why there is nothing to price instead of rendering an empty matrix", async () => {
+    listListings.mockResolvedValueOnce({ items: [], next_cursor: null, page_size: 0 });
+    renderPage();
+
+    const empty = await screen.findByTestId("pricing-empty");
+    expect(empty).toHaveTextContent("Nenhum anúncio vinculado a um produto");
+    expect(screen.queryByTestId("pricing-matrix-stub")).toBeNull();
   });
 });

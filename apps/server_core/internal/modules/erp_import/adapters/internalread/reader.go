@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -292,6 +293,61 @@ func (r *Reader) ListCatalogProductFacts(ctx context.Context, cursor readports.C
 
 func (r *Reader) SearchCatalogProductFacts(ctx context.Context, query string, limit int) (readports.CatalogFactPage, error) {
 	return r.catalogPage(ctx, readports.Cursor{}, query, limit)
+}
+
+// CatalogProductFactsByIDs answers for an explicit set of products. An id the
+// active source has no row for is left out of the page rather than returned
+// blank: "this source does not carry that product" is a different fact from
+// "this product has no data".
+func (r *Reader) CatalogProductFactsByIDs(ctx context.Context, ids []int64) (readports.CatalogFactPage, error) {
+	source, err := r.sourceFor(ctx, "active ERP source is unavailable")
+	if err != nil {
+		return readports.CatalogFactPage{}, err
+	}
+	codes := make([]string, 0, len(ids))
+	seen := make(map[int64]struct{}, len(ids))
+	for _, id := range ids {
+		if id <= 0 {
+			continue
+		}
+		if _, duplicate := seen[id]; duplicate {
+			continue
+		}
+		seen[id] = struct{}{}
+		codes = append(codes, strconv.FormatInt(id, 10))
+	}
+	if len(codes) == 0 {
+		return readports.CatalogFactPage{Items: []readports.CatalogProductFact{}}, nil
+	}
+	rows, err := r.repo.MirrorProductsByCodes(ctx, r.tenantID, source, codes)
+	if err != nil {
+		return readports.CatalogFactPage{}, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, "product mirror is unavailable", err)
+	}
+	collisions, err := r.repo.MirrorEANCollisionCounts(ctx, r.tenantID, source)
+	if err != nil {
+		return readports.CatalogFactPage{}, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, "EAN collision data is unavailable", err)
+	}
+	items := make([]readports.CatalogProductFact, 0, len(rows))
+	var asOf time.Time
+	for _, row := range rows {
+		id, parseErr := strconv.ParseInt(strings.TrimSpace(row.CodigoProduto), 10, 64)
+		if parseErr != nil || id <= 0 {
+			return readports.CatalogFactPage{}, fmt.Errorf("parse codigo_produto: %w", parseErr)
+		}
+		fact, buildErr := catalogFact(id, row, collisions)
+		if buildErr != nil {
+			return readports.CatalogFactPage{}, buildErr
+		}
+		items = append(items, fact)
+		if dataAt, ok := dataObservationTime(source, row); ok && dataAt.After(asOf) {
+			asOf = dataAt
+		}
+	}
+	if len(rows) > 0 && asOf.IsZero() {
+		return readports.CatalogFactPage{}, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, "product import time is unknown for catalog page", ErrNoErpSnapshot)
+	}
+	sort.Slice(items, func(a, b int) bool { return items[a].InternalProductID < items[b].InternalProductID })
+	return readports.CatalogFactPage{Items: items, AsOf: asOf}, nil
 }
 
 func (r *Reader) catalogPage(ctx context.Context, cursor readports.Cursor, query string, limit int) (readports.CatalogFactPage, error) {

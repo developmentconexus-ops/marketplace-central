@@ -119,6 +119,20 @@ func (r *TimingReader) SearchCatalogProductFacts(ctx context.Context, q string, 
 	return result, err
 }
 
+func (r *TimingReader) CatalogProductFactsByIDs(ctx context.Context, ids []int64) (ports.CatalogFactPage, error) {
+	var result ports.CatalogFactPage
+	err := r.observe("CatalogProductFactsByIDs", func() error {
+		reader, ok := r.next.(ports.CatalogPageReader)
+		if !ok {
+			return domain.NewReadError(domain.ReadErrorSourceUnavailable, "oracle catalog page reader is unavailable", nil)
+		}
+		var err error
+		result, err = reader.CatalogProductFactsByIDs(ctx, ids)
+		return err
+	})
+	return result, err
+}
+
 var _ ports.CatalogPageReader = (*TimingReader)(nil)
 
 func (r *TimingReader) observe(method string, call func() error) error {

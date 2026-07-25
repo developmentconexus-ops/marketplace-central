@@ -155,11 +155,18 @@ type fakePagerReader struct {
 	fakeReader
 	pageCalled   bool
 	searchCalled bool
+	byIDsCalled  bool
 	pageCtx      context.Context
 }
 
 func (f *fakePagerReader) ListCatalogProductFacts(ctx context.Context, _ internalreadports.Cursor, _ int) (internalreadports.CatalogFactPage, error) {
 	f.pageCalled = true
+	f.pageCtx = ctx
+	return internalreadports.CatalogFactPage{}, nil
+}
+
+func (f *fakePagerReader) CatalogProductFactsByIDs(ctx context.Context, _ []int64) (internalreadports.CatalogFactPage, error) {
+	f.byIDsCalled = true
 	f.pageCtx = ctx
 	return internalreadports.CatalogFactPage{}, nil
 }

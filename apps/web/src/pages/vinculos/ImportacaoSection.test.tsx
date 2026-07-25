@@ -120,8 +120,36 @@ describe("ImportacaoSection", () => {
     });
 
     expect(await screen.findByTestId("erp-import-rejected-rows")).toHaveTextContent(
-      "Linha 7 — EMPTY_CODPROD: CODPROD ausente",
+      "EMPTY_CODPROD — CODPROD ausente",
     );
+    expect(screen.getByTestId("erp-import-rejected-rows")).toHaveTextContent("1 linha: 7");
+  });
+
+  it("summarises a repeated issue by code instead of listing every row", async () => {
+    listErpImports.mockResolvedValue({
+      items: [summary({ import_id: "imp_3", protocol: "#003-E", warning_count: 12 })],
+    });
+    getErpImport.mockResolvedValue(
+      detail({
+        import_id: "imp_3",
+        protocol: "#003-E",
+        warnings: Array.from({ length: 12 }, (_unused, index) => ({
+          row: index + 1,
+          code: "MISSING_CUSTO",
+          detail: "custo is unknown",
+          offending_value: "",
+        })),
+      }),
+    );
+
+    renderSection();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Ver detalhes" }));
+
+    const warnings = await screen.findByTestId("erp-import-warnings");
+    // The total is exact; only the row sample is bounded.
+    expect(warnings).toHaveTextContent("12 linhas: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 e mais 2");
+    expect(warnings.querySelectorAll("li")).toHaveLength(1);
   });
 
   it("renders an honest empty state when there is no import history", async () => {

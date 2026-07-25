@@ -133,6 +133,16 @@ func (r *Reader) SearchCatalogProductFacts(ctx context.Context, query string, li
 	return pager.SearchCatalogProductFacts(ctx, query, limit)
 }
 
+// CatalogProductFactsByIDs routes an explicit-id catalog read to the resolved
+// source's reader, with the same honest-failure contract as the paged reads.
+func (r *Reader) CatalogProductFactsByIDs(ctx context.Context, ids []int64) (internalreadports.CatalogFactPage, error) {
+	pager, ctx, err := r.resolveCatalogPager(ctx)
+	if err != nil {
+		return internalreadports.CatalogFactPage{}, err
+	}
+	return pager.CatalogProductFactsByIDs(ctx, ids)
+}
+
 func (r *Reader) resolveCatalogPager(ctx context.Context) (internalreadports.CatalogPageReader, context.Context, error) {
 	rd, ctx, err := r.resolve(ctx)
 	if err != nil {

@@ -242,6 +242,12 @@ export interface CatalogPageOptions {
   erp_source?: ErpImportSourceInput;
 }
 
+export interface CatalogProductFactsByIdsOptions {
+  /** 1..100 internal_product_ids. Ids the active source does not carry come back absent. */
+  ids: number[];
+  erp_source?: ErpImportSourceInput;
+}
+
 export interface CatalogSearchPageOptions {
   q: string;
   limit?: number;
@@ -1832,6 +1838,10 @@ export function createMarketplaceCentralClient(options: {
     listCatalogProductFacts: (options: CatalogPageOptions = {}) =>
       getJson<CatalogProductFactPage>(
         `/catalog/products${catalogQuery({ cursor: options.cursor, limit: options.limit, erp_source: options.erp_source })}`,
+      ),
+    catalogProductFactsByIds: (options: CatalogProductFactsByIdsOptions) =>
+      getJson<CatalogProductFactPage>(
+        `/catalog/products${catalogQuery({ ids: options.ids.join(","), erp_source: options.erp_source })}`,
       ),
     searchCatalogProductFacts: (options: CatalogSearchPageOptions) =>
       getJson<CatalogProductFactPage>(

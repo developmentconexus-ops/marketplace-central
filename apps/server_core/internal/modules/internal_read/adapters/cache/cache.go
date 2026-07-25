@@ -343,6 +343,23 @@ func (r CatalogPageReader) SearchCatalogProductFacts(ctx context.Context, query 
 	return cloneCatalogPage(value.(internalreadports.CatalogFactPage)), nil
 }
 
+func (r CatalogPageReader) CatalogProductFactsByIDs(ctx context.Context, ids []int64) (internalreadports.CatalogFactPage, error) {
+	parts := make([]string, 0, len(ids)+1)
+	parts = append(parts, activeSourceKey(ctx))
+	for _, id := range ids {
+		parts = append(parts, strconv.FormatInt(id, 10))
+	}
+	key := canonicalKey("CatalogProductFactsByIDs", parts...)
+	value, err := r.cache.load(ctx, ClassCatalog, key, func() (any, time.Time, error) {
+		page, err := r.downstream.CatalogProductFactsByIDs(ctx, ids)
+		return cloneCatalogPage(page), page.AsOf, err
+	})
+	if err != nil {
+		return internalreadports.CatalogFactPage{}, err
+	}
+	return cloneCatalogPage(value.(internalreadports.CatalogFactPage)), nil
+}
+
 type Reader struct {
 	internalreadports.Reader
 	pages internalreadports.CatalogPageReader
@@ -362,6 +379,10 @@ func (r Reader) ListCatalogProductFacts(ctx context.Context, cursor internalread
 
 func (r Reader) SearchCatalogProductFacts(ctx context.Context, query string, limit int) (internalreadports.CatalogFactPage, error) {
 	return r.pages.SearchCatalogProductFacts(ctx, query, limit)
+}
+
+func (r Reader) CatalogProductFactsByIDs(ctx context.Context, ids []int64) (internalreadports.CatalogFactPage, error) {
+	return r.pages.CatalogProductFactsByIDs(ctx, ids)
 }
 
 type BatchReader struct {

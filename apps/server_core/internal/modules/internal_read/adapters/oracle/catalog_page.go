@@ -45,6 +45,39 @@ func (r *Reader) SearchCatalogProductFacts(ctx context.Context, q string, limit 
 	return r.readCatalogPage(ctx, query, args, limit, false)
 }
 
+func (r *Reader) CatalogProductFactsByIDs(ctx context.Context, ids []int64) (ports.CatalogFactPage, error) {
+	if len(ids) == 0 {
+		return ports.CatalogFactPage{Items: []ports.CatalogProductFact{}, AsOf: r.now().UTC()}, nil
+	}
+	if len(ids) > catalogListMaxLimit {
+		return ports.CatalogFactPage{}, fmt.Errorf("invalid catalog id count: %d", len(ids))
+	}
+	if err := r.ensureAvailable(ctx); err != nil {
+		return ports.CatalogFactPage{}, err
+	}
+
+	query, args := buildCatalogPageQuery(ports.Cursor{}, len(ids), "")
+	query, args = withCatalogIDFilter(query, args, ids)
+	return r.readCatalogPage(ctx, query, args, len(ids), false)
+}
+
+// withCatalogIDFilter splices an explicit id list into the page query. The
+// FETCH FIRST clause is already the last line, so the predicate goes in front
+// of the ORDER BY that precedes it.
+func withCatalogIDFilter(query string, args []any, ids []int64) (string, []any) {
+	placeholders := make([]string, 0, len(ids))
+	for _, id := range ids {
+		args = append(args, id)
+		placeholders = append(placeholders, fmt.Sprintf(":%d", len(args)))
+	}
+	filter := "\n  AND p.CODPROD IN (" + strings.Join(placeholders, ",") + ")"
+	orderIndex := strings.LastIndex(query, "\nORDER BY p.CODPROD")
+	if orderIndex < 0 {
+		return query + filter, args
+	}
+	return query[:orderIndex] + filter + query[orderIndex:], args
+}
+
 func (r *Reader) readCatalogPage(ctx context.Context, query string, args []any, limit int, paginate bool) (ports.CatalogFactPage, error) {
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {

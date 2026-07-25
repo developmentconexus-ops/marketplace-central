@@ -55,4 +55,12 @@ func (s Service) SearchCatalogProductFacts(ctx context.Context, q string, limit 
 	return reader.SearchCatalogProductFacts(ctx, q, limit)
 }
 
+func (s Service) CatalogProductFactsByIDs(ctx context.Context, ids []int64) (ports.CatalogFactPage, error) {
+	reader, ok := s.reader.(ports.CatalogPageReader)
+	if !ok {
+		return ports.CatalogFactPage{}, domain.NewReadError(domain.ReadErrorSourceUnavailable, "oracle catalog page reader is unavailable", nil)
+	}
+	return reader.CatalogProductFactsByIDs(ctx, ids)
+}
+
 var _ ports.CatalogPageReader = Service{}

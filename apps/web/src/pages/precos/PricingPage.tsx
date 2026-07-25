@@ -8,6 +8,7 @@ import type {
   PricingCalcProfile,
 } from "@marketplace-central/sdk-runtime";
 import { useClient } from "../../app/ClientContext";
+import { useInstallation } from "../../app/InstallationContext";
 import { DecompositionPanel } from "./DecompositionPanel";
 import { SolverPanel } from "./SolverPanel";
 import { ParamsDrawer } from "./ParamsDrawer";
@@ -44,6 +45,9 @@ export const MODALIDADES = [
 ] as const;
 
 export type ModalidadeKey = (typeof MODALIDADES)[number]["key"];
+
+/** Server-side cap on the explicit-ids catalog ask (OpenAPI `ids`: 1..100). */
+const CATALOG_IDS_MAX = 100;
 
 function productLabel(p: CatalogProductFact): string {
   return p.description ?? p.manufacturer_reference ?? `#${p.internal_product_id}`;
@@ -84,17 +88,42 @@ export function PricingPage() {
   });
   const profile = profileQuery.data ?? DEFAULT_PROFILE;
 
-  // The pricing matrix is only useful for products that carry market/price
-  // evidence. In this dataset those are the priced/listed block at the catalog's
-  // high-id tail (ids > 90000); the bulk of the catalog is ERP-only facts with no
-  // price and no market. The list endpoint has no "has-evidence" filter — only a
-  // keyset cursor on internal_product_id — so we keyset past the evidence-less
-  // bulk to the priced block. TODO(pricing): replace with a server-side
-  // listed/priced filter so this is not coupled to the id layout.
-  const PRICED_BLOCK_CURSOR = btoa("90000"); // base64("90000") = "OTAwMDA="
+  // The workspace's selected account (never items[0]: an abandoned authorization
+  // leaves a pending_connection installation that sorts first and carries no
+  // listings, which would empty this whole screen). See InstallationProvider.
+  const { installationId, status: installationStatus } = useInstallation();
+
+  // The analysis set is exactly the products that HAVE a market to be priced
+  // against: those carrying a resolved link to an ML listing. It is derived from
+  // the links (the domain fact), never from the catalog id layout.
+  const linkedListingsQuery = useQuery({
+    queryKey: ["pricing", "linked-listings", installationId],
+    queryFn: () =>
+      client.listListings({ installation_id: installationId, link_state: "resolved", limit: 100 }),
+    enabled: installationId !== "",
+  });
+
+  // Deep-linked ids ride along in the same ask so /mercado's "Simular" resolves
+  // even for a product with no listing yet — one request, no id-layout tricks.
+  const analysisIds = useMemo<number[]>(() => {
+    const ids: number[] = [];
+    const seen = new Set<number>();
+    const add = (raw: number) => {
+      if (!Number.isFinite(raw) || raw <= 0 || seen.has(raw)) return;
+      seen.add(raw);
+      ids.push(raw);
+    };
+    if (requestedProductId !== null) add(requestedProductId);
+    for (const listing of linkedListingsQuery.data?.items ?? []) {
+      add(Number.parseInt(listing.link.product_id ?? "", 10));
+    }
+    return ids.slice(0, CATALOG_IDS_MAX);
+  }, [linkedListingsQuery.data, requestedProductId]);
+
   const productsQuery = useQuery({
-    queryKey: ["pricing", "catalog-facts"],
-    queryFn: () => client.listCatalogProductFacts({ cursor: PRICED_BLOCK_CURSOR, limit: 100 }),
+    queryKey: ["pricing", "catalog-facts", analysisIds],
+    queryFn: () => client.catalogProductFactsByIds({ ids: analysisIds }),
+    enabled: analysisIds.length > 0,
   });
 
   const difalQuery = useQuery({
@@ -126,28 +155,10 @@ export function PricingPage() {
     },
   });
 
-  // A deep-linked product usually is NOT in the priced block above. The list
-  // endpoint is keyset on internal_product_id, so asking for one page of size 1
-  // starting just below the target lands exactly on it — no new endpoint needed.
-  // If the id does not exist, the page comes back with a different (or no)
-  // product and the guard below keeps it out, so the operator gets the honest
-  // "produto não encontrado" instead of another product's decomposition.
-  const deepLinkQuery = useQuery({
-    queryKey: ["pricing", "catalog-fact", requestedProductId],
-    queryFn: () => client.listCatalogProductFacts({ cursor: btoa(String(requestedProductId! - 1)), limit: 1 }),
-    enabled: requestedProductId !== null,
-  });
-  const deepLinkProduct =
-    deepLinkQuery.data?.items.find((p) => p.internal_product_id === requestedProductId) ?? null;
-
-  const listedProducts = productsQuery.data?.items ?? [];
-  const products = useMemo<CatalogProductFact[]>(() => {
-    if (deepLinkProduct === null) return listedProducts;
-    if (listedProducts.some((p) => p.internal_product_id === deepLinkProduct.internal_product_id)) {
-      return listedProducts;
-    }
-    return [deepLinkProduct, ...listedProducts];
-  }, [listedProducts, deepLinkProduct]);
+  // The ids ask answers with exactly the products the ACTIVE source carries: an
+  // id with no row there is simply absent, which is what makes the "produto fora
+  // da lista" notice below honest instead of a silent substitution.
+  const products = productsQuery.data?.items ?? [];
 
   const selected = useMemo<CatalogProductFact | null>(() => {
     if (products.length === 0) return null;
@@ -158,14 +169,7 @@ export function PricingPage() {
     return products.find((p) => p.internal_product_id === selectedId) ?? null;
   }, [products, selectedId]);
 
-  // "Aplicar preço" targets an ML listing under an installation — resolve both
-  // (installation app-wide, listing by the selected product) for the action.
-  const installationsQuery = useQuery({
-    queryKey: ["pricing", "installations"],
-    queryFn: () => client.listIntegrationInstallations(),
-  });
-  const installationId = installationsQuery.data?.items[0]?.installation_id ?? "";
-
+  // "Aplicar preço" targets the ML listing of the selected product.
   const listingQuery = useQuery({
     queryKey: ["pricing", "listing", installationId, selected?.internal_product_id ?? null],
     queryFn: () =>
@@ -199,15 +203,17 @@ export function PricingPage() {
     if (typeof payload.preco === "string") setPrecoInput(payload.preco);
   };
 
-  // An explicit product pick that the loaded catalog can't resolve (e.g. a
-  // scenario reloaded for a product outside the fetched page) ⇒ tell the
+  // An explicit product pick the active source can't answer for (a deep link to a
+  // product outside it, or a scenario reloaded after a source flip) ⇒ tell the
   // operator instead of silently decomposing a different product at this price.
   // Derived (not stored) so it can't go stale against a still-loading catalog.
-  // While the deep-link lookup is still in flight the product is unknown, not
-  // missing — claiming "não encontrado" there would be a lie that resolves itself.
-  const deepLinkPending = requestedProductId !== null && deepLinkQuery.isPending;
-  const productMissing =
-    selectedId !== null && products.length > 0 && selected === null && !deepLinkPending;
+  // While the lookup is in flight the product is unknown, not missing — claiming
+  // "não encontrado" there would be a lie that resolves itself.
+  const analysisPending =
+    installationStatus === "loading" ||
+    (installationId !== "" && linkedListingsQuery.isPending) ||
+    (analysisIds.length > 0 && productsQuery.isPending);
+  const productMissing = selectedId !== null && selected === null && !analysisPending;
 
   // comissao_pct is deliberately OMITTED so the backend resolver chain runs
   // (live COTACAO degrau 3 → PADRAO degrau 4). Sending it = MANUAL override.
@@ -269,7 +275,7 @@ export function PricingPage() {
             >
               <div className="text-[10.5px] font-semibold tracking-wider text-faint">NA ANÁLISE</div>
               {products.length === 0 ? (
-                <p className="text-xs text-muted">Nenhum produto com evidência de preço no momento.</p>
+                <p className="text-xs text-muted">Nenhum produto vinculado a um anúncio no momento.</p>
               ) : (
                 products.map((p) => (
                   <button
@@ -328,8 +334,20 @@ export function PricingPage() {
 
       <div className="flex flex-wrap items-start gap-3.5">
         <div className="min-w-[480px] flex-1">
-          {productsQuery.isLoading ? (
+          {analysisPending ? (
             <LoadingState />
+          ) : products.length === 0 ? (
+            /* No product to price is a FACT, not a blank table: say which of the
+               two causes it is instead of rendering empty headers (ADR-17). */
+            <p
+              role="status"
+              data-testid="pricing-empty"
+              className="rounded-card border border-border bg-surface px-4 py-6 text-sm text-muted"
+            >
+              {analysisIds.length === 0
+                ? "Nenhum anúncio vinculado a um produto — vincule em Vínculos para simular preços."
+                : "Os produtos vinculados não estão na fonte ativa do catálogo — troque a fonte em Integrações ou reimporte."}
+            </p>
           ) : (
             <PricingMatrix
               products={products}
@@ -359,7 +377,7 @@ export function PricingPage() {
             <div className="flex flex-col gap-3.5 px-4 py-3.5">
               {productMissing ? (
                 <p role="alert" data-testid="scenario-reload-notice" className="rounded-control bg-warn-soft px-3 py-2 text-sm text-warn">
-                  O produto deste cenário não está na lista atual — selecione outro produto ou recarregue o catálogo.
+                  Este produto não está na fonte ativa do catálogo — selecione outro produto ou troque a fonte em Integrações.
                 </p>
               ) : null}
 

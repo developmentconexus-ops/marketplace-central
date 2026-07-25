@@ -84,3 +84,39 @@ func TestBatchStockFailsClosedWithoutAnActiveSource(t *testing.T) {
 		t.Fatal("expected an unavailable-source error without an active source pin")
 	}
 }
+
+// The pricing screen works on the products that are linked to listings, and
+// those ids are scattered across the whole catalog. Asking for them by id must
+// return exactly the ones the active source carries, in id order, with the
+// snapshot's own observation time.
+func TestCatalogFactsByIDsReturnsOnlyTheProductsTheActiveSourceCarries(t *testing.T) {
+	repo := &fakeRepo{rows: mirrorRows()}
+	reader := NewReader(repo, "tenant-a", WithClock(func() time.Time { return fetchedAt }))
+	ctx := WithActiveSource(context.Background(), erpdomain.SourceXLSX)
+
+	page, err := reader.CatalogProductFactsByIDs(ctx, []int64{10, 1, 999, 1})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(page.Items) != 2 {
+		t.Fatalf("expected the 2 known products, got %+v", page.Items)
+	}
+	if page.Items[0].InternalProductID != 1 || page.Items[1].InternalProductID != 10 {
+		t.Fatalf("expected id order, got %d then %d", page.Items[0].InternalProductID, page.Items[1].InternalProductID)
+	}
+	// A set is not a page of a longer sequence.
+	if page.NextCursor != nil {
+		t.Fatalf("next cursor = %+v, want none", page.NextCursor)
+	}
+	// as_of is the snapshot's data time, never the moment of the read.
+	if !page.AsOf.Equal(importedAt.Add(2 * time.Minute)) {
+		t.Fatalf("as_of = %s, want the newest observed row", page.AsOf)
+	}
+}
+
+func TestCatalogFactsByIDsFailsClosedWithoutAnActiveSource(t *testing.T) {
+	reader := NewReader(&fakeRepo{rows: mirrorRows()}, "tenant-a")
+	if _, err := reader.CatalogProductFactsByIDs(context.Background(), []int64{1}); err == nil {
+		t.Fatal("expected an honest failure without an active source")
+	}
+}

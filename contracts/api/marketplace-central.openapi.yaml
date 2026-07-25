@@ -340,6 +340,19 @@ paths:
       summary: List paginated catalog product facts
       operationId: listCatalogProductFacts
       parameters:
+        - name: ids
+          in: query
+          required: false
+          schema:
+            type: string
+          description: >-
+            Comma-separated internal_product_ids. Answers the facts for exactly
+            these products instead of a keyset page — a caller that already knows
+            its product set (the products linked to listings, say) cannot reach
+            scattered ids through the cursor without reading the whole catalog.
+            Ids the active source does not carry are absent from the response,
+            and no next_cursor is emitted. cursor/limit are ignored when present.
+            Rejected with 400 unless it is 1..100 positive integers.
         - name: cursor
           in: query
           required: false

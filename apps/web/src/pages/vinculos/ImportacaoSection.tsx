@@ -22,23 +22,52 @@ function StatusBadge({ status }: { status: ErpImportStatus }) {
   );
 }
 
+// A real catalog import produces one issue per missing column per row, so a
+// single protocol can carry thousands of them — and rendering that list raw
+// buries the three distinct problems it actually describes under 4000 identical
+// lines. Group by code so the operator reads "what went wrong, on how many
+// rows" first, and show a bounded sample of the affected rows underneath. The
+// counts are the exact totals, never a truncated one.
+const ISSUE_SAMPLE_SIZE = 10;
+
+function groupIssuesByCode(issues: ErpImportIssue[]): { code: string; issues: ErpImportIssue[] }[] {
+  const groups = new Map<string, ErpImportIssue[]>();
+  for (const issue of issues) {
+    const bucket = groups.get(issue.code);
+    if (bucket) bucket.push(issue);
+    else groups.set(issue.code, [issue]);
+  }
+  return [...groups.entries()]
+    .map(([code, codeIssues]) => ({ code, issues: codeIssues }))
+    .sort((a, b) => b.issues.length - a.issues.length);
+}
+
 function IssueList({ title, issues, testId }: { title: string; issues: ErpImportIssue[]; testId: string }) {
   if (issues.length === 0) return null;
+  const groups = groupIssuesByCode(issues);
   return (
     <div className="mt-2">
-      <p className="text-xs font-semibold text-ink">{title}</p>
-      <ul className="mt-1 flex flex-col gap-1" data-testid={testId}>
-        {issues.map((issue, index) => (
-          <li
-            key={`${issue.row}-${issue.code}-${index}`}
-            className="rounded-control border border-border bg-surface-2 px-2 py-1 text-xs text-muted"
-          >
-            <span className="font-medium">Linha {issue.row}</span> — {issue.code}: {issue.detail}
-            {issue.offending_value ? (
-              <span className="text-faint"> (valor: {issue.offending_value})</span>
-            ) : null}
-          </li>
-        ))}
+      <p className="text-xs font-semibold text-ink">
+        {title} <span className="font-mono font-normal text-faint">({issues.length})</span>
+      </p>
+      <ul className="mt-1 flex flex-col gap-2" data-testid={testId}>
+        {groups.map((group) => {
+          const sample = group.issues.slice(0, ISSUE_SAMPLE_SIZE);
+          const remaining = group.issues.length - sample.length;
+          return (
+            <li key={group.code} className="rounded-control border border-border bg-surface-2 px-2 py-1.5 text-xs">
+              <p className="text-ink">
+                <span className="font-mono font-medium">{group.code}</span>
+                <span className="text-muted"> — {group.issues[0].detail}</span>
+              </p>
+              <p className="mt-0.5 text-faint">
+                {group.issues.length === 1 ? "1 linha" : `${group.issues.length} linhas`}:{" "}
+                <span className="font-mono">{sample.map((issue) => issue.row).join(", ")}</span>
+                {remaining > 0 ? ` e mais ${remaining}` : null}
+              </p>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

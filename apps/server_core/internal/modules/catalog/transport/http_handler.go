@@ -103,6 +103,10 @@ func registerInteractiveRoute(mux httpx.RouteRegistrar, pattern string, handler 
 
 func (h Handler) handleProducts(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
+	if _, asked := r.URL.Query()["ids"]; asked {
+		h.handleProductsByIDs(w, r, start)
+		return
+	}
 	cursor, limit, err := parseCatalogPageQuery(r, catalogMaxLimit)
 	if err != nil {
 		writeCatalogPageError(w, err)
@@ -124,6 +128,57 @@ func (h Handler) handleProducts(w http.ResponseWriter, r *http.Request) {
 	}
 	slog.Info("catalog.products", "action", "list", "result", "200", "duration_ms", time.Since(start).Milliseconds())
 	httpx.WriteJSON(w, http.StatusOK, newCatalogPageResponse(page, false))
+}
+
+// handleProductsByIDs serves ?ids=1,2,3. A screen that already knows which
+// products it needs — the ones linked to listings, for instance — cannot reach
+// them through the keyset cursor without reading the entire catalog in between,
+// so it asks for them by id. Ids the active source does not carry come back
+// absent, never as blank rows.
+func (h Handler) handleProductsByIDs(w http.ResponseWriter, r *http.Request, start time.Time) {
+	ids, err := parseCatalogIDs(r.URL.Query()["ids"])
+	if err != nil {
+		writeCatalogPageError(w, err)
+		return
+	}
+	if h.PageReader == nil {
+		writeCatalogPageError(w, errors.New("source_unavailable"))
+		return
+	}
+	ctx, err := requestContext(r)
+	if err != nil {
+		writeCatalogPageError(w, err)
+		return
+	}
+	page, err := h.PageReader.CatalogProductFactsByIDs(ctx, ids)
+	if err != nil {
+		writeCatalogPageError(w, err)
+		return
+	}
+	slog.Info("catalog.products", "action", "by_ids", "result", "200", "asked", len(ids), "found", len(page.Items), "duration_ms", time.Since(start).Milliseconds())
+	// The response is the exact set asked for, not a page of a larger sequence:
+	// emitting a next_cursor would invite a caller to page past the end of it.
+	httpx.WriteJSON(w, http.StatusOK, newCatalogPageResponse(page, true))
+}
+
+func parseCatalogIDs(raw []string) ([]int64, error) {
+	invalid := &catalogPageQueryError{code: "invalid_ids", allowedRange: "1.." + strconv.Itoa(catalogMaxLimit) + " positive integers"}
+	if len(raw) != 1 {
+		return nil, invalid
+	}
+	fields := strings.Split(raw[0], ",")
+	ids := make([]int64, 0, len(fields))
+	for _, field := range fields {
+		value, convErr := strconv.ParseInt(strings.TrimSpace(field), 10, 64)
+		if convErr != nil || value <= 0 {
+			return nil, invalid
+		}
+		ids = append(ids, value)
+	}
+	if len(ids) == 0 || len(ids) > catalogMaxLimit {
+		return nil, invalid
+	}
+	return ids, nil
 }
 
 // handleLegacyProducts remains only for direct legacy mux compatibility. The

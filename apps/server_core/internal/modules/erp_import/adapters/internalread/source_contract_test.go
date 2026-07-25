@@ -427,6 +427,15 @@ func (r *oracleShapedReader) ListCatalogProductFacts(_ context.Context, cursor r
 	}
 	return page, nil
 }
+func (r *oracleShapedReader) CatalogProductFactsByIDs(_ context.Context, ids []int64) (readports.CatalogFactPage, error) {
+	items := make([]readports.CatalogProductFact, 0, len(ids))
+	for _, id := range ids {
+		if fact, ok := r.facts[id]; ok {
+			items = append(items, fact)
+		}
+	}
+	return readports.CatalogFactPage{Items: items, AsOf: contractClock}, nil
+}
 func (r *oracleShapedReader) SearchCatalogProductFacts(_ context.Context, query string, _ int) (readports.CatalogFactPage, error) {
 	if !strings.Contains(strings.ToLower("Example Product 1001"), strings.ToLower(query)) {
 		return readports.CatalogFactPage{Items: []readports.CatalogProductFact{}, AsOf: contractClock}, nil

@@ -41,6 +41,7 @@ type fakeReader struct {
 	clock        Clock
 	listCalls    atomic.Int64
 	searchCalls  atomic.Int64
+	byIDsCalls   atomic.Int64
 	linkCalls    atomic.Int64
 	blockStart   chan struct{}
 	blockRelease chan struct{}
@@ -64,6 +65,14 @@ func (r *fakeReader) ListCatalogProductFacts(context.Context, internalreadports.
 		return internalreadports.CatalogFactPage{}, r.err
 	}
 	return internalreadports.CatalogFactPage{Items: []internalreadports.CatalogProductFact{{InternalProductID: r.listCalls.Load()}}, AsOf: r.clock.Now()}, nil
+}
+
+func (r *fakeReader) CatalogProductFactsByIDs(context.Context, []int64) (internalreadports.CatalogFactPage, error) {
+	r.byIDsCalls.Add(1)
+	if r.err != nil {
+		return internalreadports.CatalogFactPage{}, r.err
+	}
+	return internalreadports.CatalogFactPage{AsOf: r.clock.Now()}, nil
 }
 
 func (r *fakeReader) SearchCatalogProductFacts(context.Context, string, int) (internalreadports.CatalogFactPage, error) {
@@ -142,6 +151,10 @@ func (r *staticCatalogReader) ListCatalogProductFacts(context.Context, internalr
 	return r.page, nil
 }
 
+func (r *staticCatalogReader) CatalogProductFactsByIDs(context.Context, []int64) (internalreadports.CatalogFactPage, error) {
+	return r.page, nil
+}
+
 func (r *staticCatalogReader) SearchCatalogProductFacts(context.Context, string, int) (internalreadports.CatalogFactPage, error) {
 	return r.page, nil
 }
@@ -156,6 +169,10 @@ func (r *stagedCatalogReader) ListCatalogProductFacts(context.Context, internalr
 		<-r.firstRelease
 	}
 	return internalreadports.CatalogFactPage{AsOf: r.clock.Now().Add(time.Duration(call) * time.Nanosecond)}, nil
+}
+
+func (r *stagedCatalogReader) CatalogProductFactsByIDs(context.Context, []int64) (internalreadports.CatalogFactPage, error) {
+	return internalreadports.CatalogFactPage{AsOf: r.clock.Now()}, nil
 }
 
 func (r *stagedCatalogReader) SearchCatalogProductFacts(context.Context, string, int) (internalreadports.CatalogFactPage, error) {
@@ -186,6 +203,11 @@ func (r *sourceCountingCatalogReader) record(ctx context.Context, search bool) {
 func (r *sourceCountingCatalogReader) ListCatalogProductFacts(ctx context.Context, _ internalreadports.Cursor, _ int) (internalreadports.CatalogFactPage, error) {
 	r.listCalls.Add(1)
 	r.record(ctx, false)
+	return internalreadports.CatalogFactPage{AsOf: r.clock.Now()}, nil
+}
+
+func (r *sourceCountingCatalogReader) CatalogProductFactsByIDs(ctx context.Context, _ []int64) (internalreadports.CatalogFactPage, error) {
+	r.record(ctx, true)
 	return internalreadports.CatalogFactPage{AsOf: r.clock.Now()}, nil
 }
 

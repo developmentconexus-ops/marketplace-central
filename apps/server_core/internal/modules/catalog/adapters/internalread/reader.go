@@ -46,6 +46,9 @@ func (r UnavailableReader) ListCatalogProductFacts(context.Context, readports.Cu
 func (r UnavailableReader) SearchCatalogProductFacts(context.Context, string, int) (readports.CatalogFactPage, error) {
 	return readports.CatalogFactPage{}, r.Err
 }
+func (r UnavailableReader) CatalogProductFactsByIDs(context.Context, []int64) (readports.CatalogFactPage, error) {
+	return readports.CatalogFactPage{}, r.Err
+}
 
 func NewReader(reader readports.Reader) *Reader { return &Reader{reader: reader} }
 
@@ -97,6 +100,14 @@ func (r *Reader) SearchCatalogProductFacts(ctx context.Context, q string, limit 
 		return readports.CatalogFactPage{}, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, "oracle catalog page reader is unavailable", nil)
 	}
 	return reader.SearchCatalogProductFacts(ctx, q, limit)
+}
+
+func (r *Reader) CatalogProductFactsByIDs(ctx context.Context, ids []int64) (readports.CatalogFactPage, error) {
+	reader, ok := r.reader.(readports.CatalogPageReader)
+	if !ok {
+		return readports.CatalogFactPage{}, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, "oracle catalog page reader is unavailable", nil)
+	}
+	return reader.CatalogProductFactsByIDs(ctx, ids)
 }
 
 func canonicalProductsFromPage(page readports.CatalogFactPage) ([]catalogdomain.CanonicalProduct, error) {
