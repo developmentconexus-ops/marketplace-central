@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -48,6 +49,7 @@ type stubCandidateEngine struct {
 	items            []domain.LinkCandidate
 	workflowItems    []domain.ProductLinkWorkflowItem
 	resolutionResult domain.ProductLinkResolutionResult
+	rejectErr        error
 	undoInput        application.UndoResolutionInput
 	undoResult       domain.ProductLinkResolutionResult
 	undoErr          error
@@ -142,6 +144,9 @@ func (s *stubCandidateEngine) ApproveCandidate(_ context.Context, input applicat
 }
 
 func (s *stubCandidateEngine) RejectListing(_ context.Context, _ application.RejectListingInput) (domain.ProductLinkResolutionResult, error) {
+	if s.rejectErr != nil {
+		return domain.ProductLinkResolutionResult{}, s.rejectErr
+	}
 	return domain.ProductLinkResolutionResult{
 		Link:  domain.ProductLink{InstallationID: "inst-1", ProviderCode: "mercado_livre", ProviderItemID: "MLB123", State: domain.ProductLinkStateRejected},
 		Audit: domain.ProductLinkAuditEntry{AuditID: "audit-2", Action: domain.ProductLinkActionRejectListing, PreviousState: domain.ProductLinkStateResolved, NextState: domain.ProductLinkStateRejected},
@@ -395,4 +400,47 @@ func TestHandleManualResolveRejectsNonPositiveInternalProductID(t *testing.T) {
 			t.Fatalf("id=%d status=%d body=%s", id, rr.Code, rr.Body.String())
 		}
 	}
+}
+
+// A refused system actor must reach the caller as a 400 naming the refusal, not
+// as the generic 500 the same call produced before the guard existed. Nothing
+// maps this code explicitly: mapProductLinksError routes it by the
+// `PRODUCT_LINKS_` prefix alone, so a future _NOT_FOUND-style suffix rule or an
+// early return would silently move it to another status with no test noticing.
+// The status and the body code are asserted together — a 400 carrying
+// PRODUCT_LINKS_INTERNAL_ERROR would satisfy either check alone.
+func TestARefusedSystemActorSurfacesAsFourHundredNotFiveHundred(t *testing.T) {
+	t.Parallel()
+
+	const code = "PRODUCT_LINKS_SYSTEM_ACTOR_NOT_PERMITTED"
+
+	t.Run("reject-listing", func(t *testing.T) {
+		t.Parallel()
+		engine := &stubCandidateEngine{rejectErr: errors.New(code)}
+		handler := NewHandler(&stubImporter{}, engine, engine, engine, engine)
+		body := `{"installation_id":"inst-1","provider_code":"mercado_livre","provider_item_id":"MLB1","actor":{"actor_type":"system","actor_id":"nightly_sweep"}}`
+		req := httptest.NewRequest(http.MethodPost, "/product-links/link-resolutions/reject-listing", bytes.NewReader([]byte(body)))
+		rr := httptest.NewRecorder()
+
+		handler.handleRejectListing(rr, req)
+
+		if rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), code) {
+			t.Fatalf("status=%d body=%s, want 400 naming %s", rr.Code, rr.Body.String(), code)
+		}
+	})
+
+	t.Run("undo", func(t *testing.T) {
+		t.Parallel()
+		engine := &stubCandidateEngine{undoErr: errors.New(code)}
+		handler := NewHandler(&stubImporter{}, engine, engine, engine, engine)
+		body := `{"actor":{"actor_type":"system","actor_id":"nightly_sweep"}}`
+		req := httptest.NewRequest(http.MethodPost, "/product-links/link-resolutions/audit-1/undo", bytes.NewReader([]byte(body)))
+		rr := httptest.NewRecorder()
+
+		handler.handleUndoResolution(rr, req)
+
+		if rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), code) {
+			t.Fatalf("status=%d body=%s, want 400 naming %s", rr.Code, rr.Body.String(), code)
+		}
+	})
 }

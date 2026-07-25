@@ -1,21 +1,25 @@
 # M-05 auto-vínculo produto↔anúncio — Evidence Pack
 
 Branch `claude/elated-albattani-323511`, worktree `.claude/worktrees/trusting-mayer-a5c8f6`.
-BASE-SHA `e3c081ae43b72af070185939253b745080acf68b`. Chip tip **`f9dbc868`**.
+BASE-SHA `e3c081ae43b72af070185939253b745080acf68b`. Chip tip **`27fcdfac`**.
 
 This pack is updated in place and committed on top of the code it describes, so the tip named
 here is always the last CODE commit; the commit carrying this file is the tip of the branch.
 (Round 2's cold gate raised the mismatch as a blocker — the pack said `5807d634` while the branch
 was at `a4a0ad89`, the docs commit. Naming both is the fix.)
 
-Commits (`git diff e3c081ae..f9dbc868`, zero files under `apps/web`):
+Commits (`git log e3c081ae..27fcdfac`, all ten, zero files under `apps/web`):
 
 - `124cd9e8` F-04 — `seller_sku` anchored on `p.CODPROD`, not `p.REFFORN`, with an `IsValidCodprod` validity guard, mirrored in `erp_import/adapters/internalread/`
 - `100f0343` F-03 — E10 decision trail, migration `0082_product_link_decisions.sql`, written in the same transition as the state change
 - `b01a2579` F-02 — corroborated auto-approve + CONFIRM queue (D-121-2), OpenAPI + sdk-runtime enum in the same changeset
 - `84323d0a` F-01 — generation wired to the products sync, and the xlsx import's existing call changed from fail-hard to logged-and-isolated (the import already called it at BASE-SHA; this commit did not introduce that call)
 - `5807d634` correctives — the four defects the round-1 dual gate found
+- `a4a0ad89` docs — this pack, first filing
 - `f9dbc868` correctives — the three defects the round-2 dual gate found, plus two it raised as non-blocking (see **Round-2 dual gate** below)
+- `057462b6` docs — round 2 recorded, including the proof that a green lane had not been proven green
+- `e8c4a13e` correctives — round 3 (see **Round-3** below)
+- `27fcdfac` **revert** — round 4 established that two rounds of work on the pending counter rested on a premise that cannot occur; `summary_reader.go` is byte-identical to BASE-SHA again (see **Round-4** below)
 
 Ruling applied throughout: where any other artifact still says "auto-approve is exclusive to the
 EAN-exact-unique path" or "CODPROD-único auto-aprova", `milestone.md` at BASE-SHA wins
@@ -29,7 +33,7 @@ EAN-exact-unique path" or "CODPROD-único auto-aprova", `milestone.md` at BASE-S
 | L1 Go tests | `go test ./...` | **106 packages ok, zero FAIL** |
 | L1 product_links | `go test -count=1 ./internal/modules/product_links/... -v` | **all PASS**, zero FAIL (69 tests at round 1, 86 after the round-1 correctives, more after round 2) |
 | L1 tsc | from the MAIN checkout root: `npx --no-install tsc -p .claude/worktrees/trusting-mayer-a5c8f6/packages/sdk-runtime/tsconfig.json --noEmit` | exit 0 (run from the main root deliberately — a worktree-local `npx --no-install tsc` is a vacuous pass, D-120 finding) |
-| L2 integration (hermetic PG) | `pwsh -NoProfile -File scripts/harness.ps1 -Command integration` | **status=passed**, `migrations_first=69`, `migrations_second=0`, `run_id=847fa06f6784412eb38ba74ea7fc8cf7`, `run_dir=scripts/.runs/847fa06f6784412eb38ba74ea7fc8cf7` — **and proven non-vacuous**, see below |
+| L2 integration (hermetic PG) | `pwsh -NoProfile -File scripts/harness.ps1 -Command integration` | **status=passed**, `migrations_first=69`, `migrations_second=0`, `run_id=0b46ce7230254ea2adc89dc171a5bf4f` (round 5; round 2's was `847fa06f6784412eb38ba74ea7fc8cf7`, where the non-vacuity proof below was executed) — **and proven non-vacuous**, see below |
 | gofmt (CRLF-aware) | `tr -d '\r' < FILE \| gofmt -d` over every touched `.go` | zero diff (a bare `gofmt -l` false-alarms on CRLF, profile §3) |
 
 **The lane's `status=passed` is proven to mean the E10 tests RAN.** Both round-2 gates raised the
@@ -148,15 +152,97 @@ round, and it was correct. Disposition:
 | Refuter **D1**: a rejection writes no decision, so the `actor=system` row it overrules stays in force | **Fixed** in `f9dbc868`. Round 1 fixed this for undo and left it open for reject; the reasoning that excused it ("no rule to record") was wrong — `superseded_by` is a fact, not a rule. `TestRejectingAListingSupersedesTheDecisionItOverrules`. |
 | Refuter **D2**: an ACCEPT candidate approved by hand is filed as a single-anchor rule | **Fixed.** Under-claiming the evidence is the same defect as over-claiming it. `TestOperatorApprovingACorroboratedCandidateRecordsCorroboration`. |
 | Refuter **D3**: `CollisionsAtDecision int` forces an unread count to 0 (AC-03) | **Fixed** — `*int` from the generator through to the row. `TestAnAutomaticApprovalWithoutACountRecordsNoCount`. |
-| Cold **NB-1**: a CONFIRM candidate appears in no aggregate counter | **Fixed** — `summary_reader.go` now counts the confirmation queue as pending. New L2 test `TestPendingLinksCountsTheConfirmationQueue`. A *separate* CONFIRM counter would be a new API field and is M-06's to render; reported, not built. |
+| Cold **NB-1**: a CONFIRM candidate appears in no aggregate counter | **REVERTED in `27fcdfac` — the premise was false.** Rounds 2 and 3 changed `summary_reader.go` to count the queue; round 4 established that `LinkageSummary.PendingLinks` reaches no screen. `dashboard/application/service.go:80` overwrites it with the LISTINGS count and reads only `MissingGTIN` from this summary (`:88`), and the comment at `:76-79` records that this was a deliberate earlier fix. The symptom "an installation with a full queue reports zero pending" cannot occur, because the number an operator reads comes from `listings/adapters/postgres/repository.go:315`, where a CONFIRM candidate has no `product_links` row and so counts as `unresolved` already. The test cited in earlier revisions of this row, `TestPendingLinksCountsTheConfirmationQueue`, no longer exists. |
 | Cold **NB-2**: one failing auto-approval abandons the rest of the batch | **Fixed** — `errors.Join`, all attempted, failures still reported. |
 | Refuter NIT: corrective #3's commit message overstates its effect | **Accepted, recorded here.** The undo's own row still blocks re-auto-linking (correctly — an operator taking a link back should not have it re-created by the next sync). Only the trail improved; the message claims more. |
 | Cold **B2** (M05-C5 wording) and **B4** (M05-U4) | **Hub adjudication.** Both gates agree the chip's argument is factually right and that a chip may not ratify an amendment to its own contract. Unchanged; see the ledger. |
 | Refuter NIT: TOCTOU — the precedence guards read outside the transition's transaction | **Recorded as a FINDING**, not fixed. The scheduler and a live generation call can interleave and both pass the guards, yielding two `actor=system` rows for one link (the second superseding the first). Both rows are corroborated and agree, so the trail stays honest, but the fix belongs in the repository layer. Hub call. |
 | Refuter: EVIDENCE citation drift (4 of 8 sampled imprecise) | **Fixed below**, and recorded as a finding about how this pack was written. |
 
-**Round 3** runs a focused refuter over `git diff 5807d634..f9dbc868` — the corrective slice is
-where new defects enter, and per the D-120 lesson correctives never close on self-verification.
+## Round-3 dual gate (against `057462b6` = code `f9dbc868` + pack) → correctives `e8c4a13e`
+
+Focused refuter over `git diff 5807d634..f9dbc868` — the corrective slice is where new defects
+enter, and per the D-120 lesson correctives never close on self-verification.
+
+| Raised | Disposition |
+|--------|-------------|
+| **B1**: the round-2 confirmation branch counted every CONFIRM candidate forever. Nothing retires a candidate when its listing is settled — approve and reject write `product_links` and leave the candidate row alone, and regeneration rebuilds it from the same anchors. The operator answers the queue and the number does not move. | **Fixed then WITHDRAWN.** `e8c4a13e` added a `settled` CTE excluding listings whose link is resolved or rejected, on both candidate branches and the pre-existing state branch. `27fcdfac` reverted all of it — see Round-4. The defect was real *within* the round-2 code; the round-2 code should not have existed. |
+| **B1's second half** (mine): the branch's own comment asserted the listing "is not linked yet", which is exactly the predicate the SQL never tested | **RETRO.** Third round running with the same defect class: the comment claimed more than the code did. Rounds 1, 2 and 3 each found one instance. |
+| **B2**: a system actor on reject/undo hits 0082's CHECK *inside* the transition's transaction — the whole call rolls back and returns a 500 naming nothing | **Fixed, and it is the one thing from this round that survives.** `errSystemActorNotPermitted` (`resolution_service.go:818`) refuses up front. Recording the call as `operator` instead would assert a human decided when none did. |
+| **B3**: the round-2 batch-continuation change had no test | **Fixed** — an approver that fails the first listing, asserting the second was still offered. |
+| **N5**: `collisions_at_decision` is degenerate on the ACCEPT path — it is always 1, because ACCEPT requires `len(skuMatches.Products) == 1` | **NOT fixed, deliberately.** Changing what the field counts is a contract amendment; a chip may not ratify one. Escalated. |
+
+Must-fail proofs, each patched and restored in place: removing the settled guard made the lane
+report `failure_token=test=TestPendingLinksCountsTheConfirmationQueue`; removing the actor guard
+and reverting `errors.Join` each failed their own test.
+
+## Round-4 dual gate (against `e8c4a13e`) → revert `27fcdfac`
+
+| Raised | Disposition |
+|--------|-------------|
+| **B1**: rounds 2 and 3 both rested on "the only number an operator reads to know there is work to do". `LinkageSummary.PendingLinks` is read by nobody. | **REVERTED.** `dashboard/application/service.go:80` overwrites it with the LISTINGS count; `:88` takes only `MissingGTIN` from this summary; the comment at `:76-79` records that the row-based count was rejected earlier *because* it drops every listing that never entered the workflow — the two screens disagreed by ~300 on live data. No route exposes the linkage summary, no frontend reads it. `summary_reader.go` returns to base; the integration test that asserted the branch goes with it. |
+| **B1 root cause (mine)** | **RETRO.** I took a cold-gate observation (round-2 NB-1) as a work order without testing its premise — *who reads this number?* Two rounds of work, net zero, and the pack asserted the false premise until this revision. |
+| **S3**: the guard's doc claimed a module-wide policy the module does not hold | **Fixed.** `ManualResolve` and `ApproveCandidate` still file a system caller as `operator`. Wrong, wider than this write-set, escalated — and now **decided by the operator (D-121-2 follow-up, this session): refuse the machine everywhere; the 0082 enum is NOT to be widened.** Being carried out under Round-5. |
+| **S4**: `decisionActorFor` was dead once both call sites sat behind the guard | **Deleted.** Its system branch was unreachable and its comment described a path the code could no longer take. |
+| **S5**: two round-3 tests did not prove what they claimed | **Fixed.** The undo half of the guard had no test at all — deleting the guard left everything green. The batch test now seeds two failing listings, so `errors.Join` is load-bearing; with one failure, keeping only the last error was indistinguishable from joining them. |
+
+**CORRECTION to `27fcdfac`'s own commit message.** It closes with "no product-links operation
+documents any error response in OpenAPI, so the new 400 joins several undocumented ones". That is
+false, and round 5 caught it: `contracts/api/marketplace-central.openapi.yaml:1613-1622`
+documents `404` and `409` on `undoProductLinkResolution` — the very operation the new 400 fires
+on — plus a `404` on `undoProductLinkBatch` (`:1641`) and two `422`s elsewhere in the block. The
+scope defence built on that claim does not stand; the `400` is documented under Round-5. The
+commit message is left as written (history is not rewritten); this row is the correction of record.
+
+## Round-5 dual gate (against `27fcdfac`) + an operator ruling
+
+The round-5 refuter returned **REFUTED**: it attacked M05-C1/C3/C4/C5/C6 and every one survived,
+including mutation-tested non-vacuity proofs. What it did find was not in the code — it was in
+this pack, and in a scope argument that rested on a false fact.
+
+| Raised | Disposition |
+|--------|-------------|
+| **B1/B2**: the pack is stale and asserts a premise known false — it names tip `f9dbc868`, lists 6 of 10 commits, has no round-3 or round-4 section, cites a deleted test (`TestPendingLinksCountsTheConfirmationQueue`) as evidence, and still states "invisible to the only number an operator reads" | **Fixed in this revision.** Header, commit list, both missing rounds, and the NB-1 disposition. A pack that cites a test which does not exist is worse than a pack with a gap: the gap is visible. |
+| **S1**: the scope defence for skipping the OpenAPI `400` claimed no product-links operation documents any error response | **False, and fixed.** `openapi.yaml:1613-1622` documents `404`+`409` on `undoProductLinkResolution` — the operation the 400 fires on — plus a `404` on the batch undo and two `422`s. The 400 is now documented on `rejectProductLinkListing`, `undoProductLinkResolution`, `approveProductLinkCandidate` and `manualResolveProductLink`. |
+| **N3**: nothing proved the refusal surfaces as 400 rather than 500 | **Fixed.** `TestARefusedSystemActorSurfacesAsFourHundredNotFiveHundred` (transport, two subtests). The mapping is by generic prefix — `http_handler.go:135-139` — so a future `_NOT_FOUND`-style suffix rule would move the status silently. Must-fail: replacing that `StatusBadRequest` with the generic 500 fails both subtests; restored, `git diff` of the file empty. |
+
+**Operator ruling taken during this round (D-121-2 follow-up).** Asked what a machine may do when
+it rejects or undoes a link, the operator ruled: **refuse the machine everywhere; do not widen
+0082's actor/rule enum.** A machine may corroborate, and nothing else. Automation that needs to
+reject or undo goes through a person.
+
+**Design review before implementing it.** The change first proposed was a domain constructor
+`NewDecision(kind DecisionKind, actor, …) (ProductLinkDecision, error)`, on the evidence that
+three rounds each found a different wrong `(rule, actor)` pair. The operator required an
+independent judgement on whether that was good practice or redundant abstraction, and an
+adversarial reviewer (GPT-5.6 Sol, briefed to argue AGAINST adding abstraction) **rejected it**:
+
+- `DecisionKind` would be a third parallel encoding of facts already carried by
+  `domain.ProductLinkAction` and the `decisionRuleForCandidate` switch (`resolution_service.go:781`).
+- Migration `0082`'s CHECK is authoritative. Re-deriving the same policy in Go creates a second
+  source of truth free to drift from the one the database enforces.
+- It could not structurally guarantee anything anyway: `ProductLinkDecision` is a plain exported
+  struct, so a future literal bypasses the constructor entirely.
+- It would push `(T, error)` into five call sites that currently cannot fail.
+
+Its counter-verdict, adopted: the defect is **a missing guard call plus missing funnel discipline
+plus missing test coverage — not a missing type**. Implemented as:
+
+| Change | Where |
+|--------|-------|
+| `errSystemActorNotPermitted` extended to `ApproveCandidate` and `ManualResolve` | `resolution_service.go` — these hardcoded `actor='operator'`, so a machine driving them was never refused, it was FILED AS A HUMAN. That is the opposite failure from reject/undo, where the CHECK produced a rolled-back 500. |
+| `newDecisionRow` — one private funnel assembling every E10 row | The two hand-built `ProductLinkDecision{}` literals (undo, reject) are gone; `buildDecision` delegates. It deliberately does NOT decide the pair: the caller states it and 0082 remains the authority. |
+| The silent actor default removed | `buildDecision` used to turn an unstated actor into `operator` — the one wrong answer available. Passed through empty, 0082's actor CHECK turns the row down and the caller learns. |
+| `TestEveryOperatorPathRefusesASystemActor` — one table, four entry points | Replaces the two single-path tests. Each case is fed input that would ALSO fail a later validation, so a run reporting the later error proves the guard is not first. |
+
+Must-fail, and it proves two things at once: removing all three `input.Actor` guards makes the
+table report **three different downstream errors** —
+`PRODUCT_LINKS_CANDIDATE_REQUIRED` (approve), `PRODUCT_LINKS_INTERNAL_PRODUCT_INVALID`
+(manual resolve), `PRODUCT_LINKS_LISTING_IDENTITY_REQUIRED` (reject) — so each guard is
+load-bearing *and* each runs before any other validation, read or write. Restored in place;
+`go build`, `go vet`, `go vet -tags=integration` clean and 106 packages ok afterwards.
+(The `undo` case does not move: its guard sits inside `undoAuditEntry` on a different parameter
+and was proven separately in round 4.)
 
 ## Deviations reported to the hub
 
@@ -168,7 +254,10 @@ where new defects enter, and per the D-120 lesson correctives never close on sel
 6. **FINDING (method)** — a must-fail proof executed as `git checkout -- <file>` on a file carrying uncommitted work silently destroys that work; the revert and the restore look symmetric but are not. Must-fail proofs belong in one edit-and-restore command, or the slice gets committed first. Candidate for the core §5 verification-ladder notes.
 7. **FINDING (method)** — write the evidence pack **before** dispatching the gate. Round 1's cold gate raised "no evidence pack" as a blocker purely because this file did not exist yet when it read the tree; that costs a whole gate round.
 8. **FINDING (tooling, high value)** — the integration lane cannot be closed on `summary.txt` alone: it runs `go test -tags=integration` without `-v`, every DB test opens with `SkipWithoutTarget`, and the artifact records only `target`/`status`/`run_id`. A fully-skipped run and a fully-green run are byte-identical in the evidence. Both round-2 gates flagged it independently. Until the lane records executed/skipped counts, an L2 claim needs the must-fail proof shown above. Candidate for the profile's ladder bindings.
-9. **DEVIATION (round 2)** — `summary_reader.go` now counts the CONFIRMAÇÃO queue as pending work. Not named in the write-set plan, but the queue is M-05's own creation and it was invisible to the only number an operator reads to know there is work to do. A *separate* CONFIRM counter would be a new API field and belongs to M-06 with the screen that renders it; reported, not built.
-10. **FINDING (not fixed — hub call)** — TOCTOU on the precedence guards: `GetProductLink`/`ListDecisionsForLink` read outside the transaction `ApplyProductLinkTransition` opens, so the 15-minute scheduler and a live `POST …/generations` can interleave and both pass, writing two `actor=system` rows for one link (the second superseding the first). Both rows are corroborated and agree, so the trail stays honest and no wrong link is created — but the fix belongs in the repository layer, not in this milestone's write-set.
-11. **OBSERVATION** — `product_links/domain/product_link.go` is not gofmt-clean at BASE-SHA (struct alignment in `ProductLinkAuditEntry`). Pre-existing, verified against `e3c081ae`; left alone rather than reformatting a file this chip only touched a doc comment in.
-12. **RETRO (mine)** — the round-2 refuter's D1 was a hole I had reasoned myself into: round 1's fix wrote a decision for undo and explicitly declined to for reject, on the ground that "there is no rule to record". `superseded_by` is a fact, not a rule, and I had written a test (`TestRejectingAListingWritesNoDecision`) that encoded the wrong belief — so it could never have caught it. A test written to confirm a decision is not evidence about that decision.
+9. **WITHDRAWN (was a round-2 deviation, reverted in round 4)** — `summary_reader.go` is byte-identical to BASE-SHA; `git diff e3c081ae 27fcdfac -- <that file>` is empty. The deviation was justified by "invisible to the only number an operator reads to know there is work to do", and that claim is false: `LinkageSummary.PendingLinks` has no consumer (`dashboard/application/service.go:80` overwrites it). See **Round-4** and the NB-1 row above. Recorded rather than deleted, because the wrong claim was in this pack for two rounds.
+10. **FINDING (round 5, not fixed — hub call)** — `UndoBatch` takes no actor. `resolution_service.go:491` hardcodes `domain.ActorMetadata{ActorType: "operator"}` for every entry, and `undoProductLinkBatch` has no request body at all, so the endpoint cannot carry one. Two consequences: the `errSystemActorNotPermitted` guard is unreachable on this path (a machine driving batch undo is never refused), and every batch reversal is signed `operator` with no operator identity behind it — the audit trail asserts a human took an action nobody can attribute. Under the operator's D-121-2 follow-up ruling (refuse the machine everywhere) this is a real defect, but fixing it adds a request body to a published operation and changes the SDK call signature. That is a seam decision, not a chip's. **Reported, not taken.** The `400` was deliberately NOT documented on this operation because it cannot occur there — documenting it would have been a contract that lies.
+11. **FINDING (not fixed — hub call)** — TOCTOU on the precedence guards: `GetProductLink`/`ListDecisionsForLink` read outside the transaction `ApplyProductLinkTransition` opens, so the 15-minute scheduler and a live `POST …/generations` can interleave and both pass, writing two `actor=system` rows for one link (the second superseding the first). Both rows are corroborated and agree, so the trail stays honest and no wrong link is created — but the fix belongs in the repository layer, not in this milestone's write-set.
+12. **OBSERVATION** — `product_links/domain/product_link.go` is not gofmt-clean at BASE-SHA (struct alignment in `ProductLinkAuditEntry`). Pre-existing, verified against `e3c081ae`; left alone rather than reformatting a file this chip only touched a doc comment in.
+13. **OBSERVATION (round 5)** — `applyProductLinkBatch` does NOT return the new `400`. `batch_service.go:195-197` itemizes the refusal as a per-item `failed.cause` and still answers `200`. Nothing is written, so the behaviour is safe, but a machine driving the batch form gets a success status with every item failed. The `400` was deliberately not documented on that operation; the `approve-candidate` description says so explicitly, so the two forms cannot be read as behaving alike.
+14. **RETRO (round 5, mine)** — I defended skipping an OpenAPI change with a factual claim I had not checked, and the claim was false; the commit message of `27fcdfac` carries it into the permanent record. A scope argument is only as good as the fact under it, and "I looked and there is nothing there" is a claim requiring the same evidence as any other. Second instance in this milestone of asserting more than I had verified — rounds 1–3 did it in code comments, this one did it in prose.
+15. **RETRO (mine)** — the round-2 refuter's D1 was a hole I had reasoned myself into: round 1's fix wrote a decision for undo and explicitly declined to for reject, on the ground that "there is no rule to record". `superseded_by` is a fact, not a rule, and I had written a test (`TestRejectingAListingWritesNoDecision`) that encoded the wrong belief — so it could never have caught it. A test written to confirm a decision is not evidence about that decision.

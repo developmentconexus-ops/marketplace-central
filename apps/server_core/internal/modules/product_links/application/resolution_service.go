@@ -137,6 +137,13 @@ func (s *ResolutionService) ApproveCandidate(ctx context.Context, input ApproveC
 	if s.candidates == nil || s.workflows == nil {
 		return domain.ProductLinkResolutionResult{}, errors.New("PRODUCT_LINKS_RESOLUTION_NOT_CONFIGURED")
 	}
+	// AutoApproveCandidate is the only door a machine may come through, and it
+	// does not come through this one: it states rule=concordant_codprod_ean for
+	// itself. Anything reaching here with actor_type=system is an automation
+	// pressing the operator's button, and this path would file it as a human.
+	if err := errSystemActorNotPermitted(input.Actor); err != nil {
+		return domain.ProductLinkResolutionResult{}, err
+	}
 	candidateID := strings.TrimSpace(input.CandidateID)
 	if candidateID == "" {
 		return domain.ProductLinkResolutionResult{}, errors.New("PRODUCT_LINKS_CANDIDATE_REQUIRED")
@@ -312,6 +319,9 @@ func (s *ResolutionService) RejectListing(ctx context.Context, input RejectListi
 func (s *ResolutionService) ManualResolve(ctx context.Context, input ManualResolveInput) (domain.ProductLinkResolutionResult, error) {
 	if s.workflows == nil {
 		return domain.ProductLinkResolutionResult{}, errors.New("PRODUCT_LINKS_RESOLUTION_NOT_CONFIGURED")
+	}
+	if err := errSystemActorNotPermitted(input.Actor); err != nil {
+		return domain.ProductLinkResolutionResult{}, err
 	}
 	if err := domain.ValidateInternalProductID(input.InternalProductID); err != nil {
 		return domain.ProductLinkResolutionResult{}, err
@@ -587,17 +597,8 @@ func (s *ResolutionService) undoAuditEntry(ctx context.Context, target domain.Pr
 	// the automatic path would be blocked by a row nobody stands behind — with
 	// nothing anywhere saying why. Recording it supersedes that row and names
 	// who took it back.
-	decision := &domain.ProductLinkDecision{
-		DecisionID:          s.newDecisionID(),
-		InstallationID:      target.InstallationID,
-		ProviderItemID:      target.ProviderItemID,
-		ProviderVariationID: target.ProviderVariationID,
-		LinkID:              domain.LinkID(target.InstallationID, target.ProviderItemID, target.ProviderVariationID),
-		RuleMatched:         domain.DecisionRuleManual,
-		// errSystemActorNotPermitted turned any system caller away above.
-		Actor:     domain.DecisionActorOperator,
-		CreatedAt: now,
-	}
+	// errSystemActorNotPermitted turned any system caller away above.
+	decision := s.newDecisionRow(identity, domain.DecisionRuleManual, domain.DecisionActorOperator, nil, now)
 	transition := domain.ProductLinkTransition{Link: link, Audit: audit, Decision: decision}
 	if err := s.workflows.ApplyProductLinkTransition(ctx, transition); err != nil {
 		return domain.ProductLinkResolutionResult{}, err
@@ -710,17 +711,18 @@ func (s *ResolutionService) buildTransition(current domain.ProductLink, found bo
 			// in force, so the live row would report the system as still
 			// standing behind a link the operator killed. `manual` is the
 			// honest name for a call a human made on no anchor.
-			Decision: &domain.ProductLinkDecision{
-				DecisionID:          s.newDecisionID(),
-				InstallationID:      typed.InstallationID,
-				ProviderItemID:      typed.ProviderItemID,
-				ProviderVariationID: typed.ProviderVariationID,
-				LinkID:              domain.LinkID(typed.InstallationID, typed.ProviderItemID, typed.ProviderVariationID),
-				RuleMatched:         domain.DecisionRuleManual,
-				// errSystemActorNotPermitted turned any system caller away above.
-				Actor:     domain.DecisionActorOperator,
-				CreatedAt: now,
-			},
+			// errSystemActorNotPermitted turned any system caller away above.
+			Decision: s.newDecisionRow(
+				domain.ListingIdentity{
+					InstallationID:      typed.InstallationID,
+					ProviderItemID:      typed.ProviderItemID,
+					ProviderVariationID: typed.ProviderVariationID,
+				},
+				domain.DecisionRuleManual,
+				domain.DecisionActorOperator,
+				nil,
+				now,
+			),
 			Audit: domain.ProductLinkAuditEntry{
 				AuditID:                   s.newAuditID(),
 				InstallationID:            typed.InstallationID,
@@ -741,29 +743,48 @@ func (s *ResolutionService) buildTransition(current domain.ProductLink, found bo
 	}
 }
 
+// newDecisionRow is the ONE place an E10 row is assembled. Approve, undo and
+// reject all reach it, so a path added later inherits the row's shape instead
+// of restating it — the three defects this milestone's gates found were each a
+// different hand-built literal disagreeing with the others.
+//
+// It does NOT decide the (rule, actor) pair. The caller states it, and
+// migration 0082's CHECK stays the single authority on which pairs are legal:
+// re-deriving that policy here would put a second copy of it in Go, free to
+// drift from the one the database enforces.
+func (s *ResolutionService) newDecisionRow(identity domain.ListingIdentity, rule domain.ProductLinkDecisionRule, actor string, collisions *int, now time.Time) *domain.ProductLinkDecision {
+	return &domain.ProductLinkDecision{
+		DecisionID:           s.newDecisionID(),
+		InstallationID:       identity.InstallationID,
+		ProviderItemID:       identity.ProviderItemID,
+		ProviderVariationID:  identity.ProviderVariationID,
+		LinkID:               domain.LinkID(identity.InstallationID, identity.ProviderItemID, identity.ProviderVariationID),
+		RuleMatched:          rule,
+		Actor:                actor,
+		CollisionsAtDecision: collisions,
+		CreatedAt:            now,
+	}
+}
+
 // buildDecision produces the E10 row for an approving transition. A transition
 // that names no rule writes no decision: the trail records decisions actually
 // taken, and inventing a rule for a caller that did not state one would be the
 // fabrication E10 exists to prevent.
+//
+// An unstated actor is NOT defaulted. It used to become 'operator', which is
+// the one wrong answer available — a caller that forgot to say who decided got
+// a row asserting a human did. Passed through empty, 0082's actor CHECK turns
+// the row down and the caller learns; there is no honest guess to make here.
 func (s *ResolutionService) buildDecision(input buildResolvedLinkInput, now time.Time) *domain.ProductLinkDecision {
 	if input.DecisionRule == "" {
 		return nil
 	}
-	actor := input.DecisionActor
-	if actor == "" {
-		actor = domain.DecisionActorOperator
+	identity := domain.ListingIdentity{
+		InstallationID:      input.InstallationID,
+		ProviderItemID:      input.ProviderItemID,
+		ProviderVariationID: input.ProviderVariationID,
 	}
-	return &domain.ProductLinkDecision{
-		DecisionID:           s.newDecisionID(),
-		InstallationID:       input.InstallationID,
-		ProviderItemID:       input.ProviderItemID,
-		ProviderVariationID:  input.ProviderVariationID,
-		LinkID:               domain.LinkID(input.InstallationID, input.ProviderItemID, input.ProviderVariationID),
-		RuleMatched:          input.DecisionRule,
-		Actor:                actor,
-		CollisionsAtDecision: input.CollisionsAtDecision,
-		CreatedAt:            now,
-	}
+	return s.newDecisionRow(identity, input.DecisionRule, input.DecisionActor, input.CollisionsAtDecision, now)
 }
 
 // decisionRuleForCandidate reads the rule off the anchor the candidate was
@@ -804,17 +825,28 @@ func decisionRuleForCandidate(candidate domain.LinkCandidate) domain.ProductLink
 	}
 }
 
-// errSystemActorNotPermitted refuses a system actor on reject and undo. Both
-// write rule_matched='manual', and the E10 CHECK admits exactly one rule a
-// system actor may take — concordant_codprod_ean — so the row is one the schema
-// turns down INSIDE the transition's transaction: the whole call rolls back and
-// the caller gets a 500 naming nothing. Failing closed here keeps the schema's
-// rule and says which actor was refused.
+// errSystemActorNotPermitted refuses a system actor on every operator path:
+// approve, manual resolve, reject and undo. AutoApproveCandidate is the one
+// door a machine may use, and it does not pass through here.
 //
-// This covers only the two paths the CHECK rejects. ManualResolve and
-// ApproveCandidate hardcode actor='operator', so a system caller on those is
-// filed as a human rather than refused — wrong, but a wider fix than this
-// milestone's write-set and reported to the hub rather than taken here.
+// Two different failures are being closed. Reject and undo write
+// rule_matched='manual', and the E10 CHECK admits exactly one rule a system
+// actor may take — concordant_codprod_ean — so the row is one the schema turns
+// down INSIDE the transition's transaction: the whole call rolled back and the
+// caller got a 500 naming nothing. Approve and manual resolve had the opposite
+// problem: they hardcode actor='operator', so a machine driving them was not
+// refused at all, it was RECORDED AS A HUMAN. The trail asserted a person
+// decided when nobody had.
+//
+// Refusing rather than widening the schema is the operator's ruling (D-121-2
+// follow-up): a machine may corroborate, and nothing else. Automation that
+// needs to reject or undo goes through a person.
+//
+// Not covered, and it cannot be from here: UndoBatch hardcodes an operator
+// actor of its own (see its call to undoAuditEntry), so this guard is
+// unreachable on that path and every batch reversal is still signed by an
+// operator who was never named. Fixing it means giving a published operation a
+// request body — a seam decision, reported to the hub.
 func errSystemActorNotPermitted(actor domain.ActorMetadata) error {
 	if actor.ActorType == domain.DecisionActorSystem {
 		return errors.New("PRODUCT_LINKS_SYSTEM_ACTOR_NOT_PERMITTED")

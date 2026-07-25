@@ -500,65 +500,107 @@ func TestAFailedApprovalDoesNotAbandonTheRestOfTheBatch(t *testing.T) {
 	}
 }
 
-// The undo path carries more blast radius than reject — UndoBatch fans out over
-// it — and the E10 CHECK refuses a system actor there for the same reason.
-func TestUndoingAsSystemIsRefusedBeforeItReachesTheDatabase(t *testing.T) {
+// Every operator-facing entry point refuses a machine. AutoApproveCandidate is
+// the sole exception and is covered by its own tests — a machine may
+// corroborate, and nothing else (D-121-2 follow-up, operator ruling).
+//
+// The two failure modes being closed are opposites, which is why one table
+// covers them rather than two suites. Reject and undo write
+// rule_matched='manual', a pair the E10 CHECK turns down INSIDE the
+// transition's transaction: the call rolled back with a 500 naming nothing.
+// Approve and manual-resolve hardcode actor='operator', so a machine there was
+// never refused — it was FILED AS A HUMAN, and the trail asserted a person
+// decided when nobody had.
+//
+// Each case is given input that would ALSO fail a later validation (a blank
+// candidate id, a zero product id, a blank item id). A run that reports the
+// later error instead proves the guard is not first, which is the whole claim:
+// nothing is validated, read or written on behalf of a caller that may not act.
+func TestEveryOperatorPathRefusesASystemActor(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 7, 25, 10, 0, 0, 0, time.UTC)
-	workflows := &stubWorkflowStore{audits: []productlinksdomain.ProductLinkAuditEntry{{
-		AuditID:        "audit-target",
-		InstallationID: "inst-m05",
-		ProviderCode:   "mercado_livre",
-		ProviderItemID: "MLB-SYS-UNDO",
-		Action:         productlinksdomain.ProductLinkActionApproveCandidate,
-		NextState:      productlinksdomain.ProductLinkStateResolved,
-		CreatedAt:      now,
-	}}}
-	svc := NewResolutionService(ResolutionServiceConfig{
-		Candidates: &stubCandidateStore{},
-		Workflows:  workflows,
-		Now:        func() time.Time { return now },
-		NewAuditID: func() string { return "audit-undo" },
-	})
+	system := productlinksdomain.ActorMetadata{ActorType: productlinksdomain.DecisionActorSystem, ActorID: "nightly_sweep"}
 
-	_, err := svc.UndoResolution(context.Background(), UndoResolutionInput{
-		AuditID: "audit-target",
-		Actor:   productlinksdomain.ActorMetadata{ActorType: productlinksdomain.DecisionActorSystem},
-	})
-	if err == nil || err.Error() != "PRODUCT_LINKS_SYSTEM_ACTOR_NOT_PERMITTED" {
-		t.Fatalf("error = %v, want PRODUCT_LINKS_SYSTEM_ACTOR_NOT_PERMITTED", err)
+	newService := func(workflows *stubWorkflowStore) *ResolutionService {
+		return NewResolutionService(ResolutionServiceConfig{
+			Candidates: &stubCandidateStore{},
+			Workflows:  workflows,
+			Now:        func() time.Time { return now },
+			NewAuditID: func() string { return "audit-1" },
+		})
 	}
-	if len(workflows.applied) != 0 {
-		t.Errorf("applied = %#v, want nothing written", workflows.applied)
-	}
-}
 
-// The E10 CHECK lets a system actor write exactly one rule:
-// concordant_codprod_ean. A reject names no anchor, so a system reject is a row
-// Postgres refuses INSIDE the transition's transaction — the rejection itself
-// rolls back and the caller sees a 500 that names nothing. Refuse it up front.
-func TestRejectingAsSystemIsRefusedBeforeItReachesTheDatabase(t *testing.T) {
-	t.Parallel()
-	now := time.Date(2026, 7, 25, 10, 0, 0, 0, time.UTC)
-	workflows := &stubWorkflowStore{}
-	svc := NewResolutionService(ResolutionServiceConfig{
-		Candidates: &stubCandidateStore{},
-		Workflows:  workflows,
-		Now:        func() time.Time { return now },
-		NewAuditID: func() string { return "audit-1" },
-	})
-
-	_, err := svc.RejectListing(context.Background(), RejectListingInput{
-		InstallationID: "inst-m05",
-		ProviderCode:   "mercado_livre",
-		ProviderItemID: "MLB-SYS",
-		Actor:          productlinksdomain.ActorMetadata{ActorType: productlinksdomain.DecisionActorSystem},
-		Reason:         "scripted sweep",
-	})
-	if err == nil || err.Error() != "PRODUCT_LINKS_SYSTEM_ACTOR_NOT_PERMITTED" {
-		t.Fatalf("error = %v, want PRODUCT_LINKS_SYSTEM_ACTOR_NOT_PERMITTED", err)
+	cases := []struct {
+		name      string
+		workflows *stubWorkflowStore
+		call      func(*ResolutionService) error
+	}{
+		{
+			name:      "approve candidate",
+			workflows: &stubWorkflowStore{},
+			call: func(s *ResolutionService) error {
+				_, err := s.ApproveCandidate(context.Background(), ApproveCandidateInput{CandidateID: "", Actor: system})
+				return err
+			},
+		},
+		{
+			name:      "manual resolve",
+			workflows: &stubWorkflowStore{},
+			call: func(s *ResolutionService) error {
+				_, err := s.ManualResolve(context.Background(), ManualResolveInput{
+					InstallationID:    "inst-m05",
+					ProviderCode:      "mercado_livre",
+					ProviderItemID:    "MLB-SYS-MANUAL",
+					InternalProductID: 0,
+					Actor:             system,
+				})
+				return err
+			},
+		},
+		{
+			name:      "reject listing",
+			workflows: &stubWorkflowStore{},
+			call: func(s *ResolutionService) error {
+				_, err := s.RejectListing(context.Background(), RejectListingInput{
+					InstallationID: "inst-m05",
+					ProviderCode:   "mercado_livre",
+					ProviderItemID: "",
+					Actor:          system,
+					Reason:         "scripted sweep",
+				})
+				return err
+			},
+		},
+		{
+			// Undo's guard sits inside undoAuditEntry, past the audit lookup, so
+			// this case needs a real target to reach it at all.
+			name: "undo resolution",
+			workflows: &stubWorkflowStore{audits: []productlinksdomain.ProductLinkAuditEntry{{
+				AuditID:        "audit-target",
+				InstallationID: "inst-m05",
+				ProviderCode:   "mercado_livre",
+				ProviderItemID: "MLB-SYS-UNDO",
+				Action:         productlinksdomain.ProductLinkActionApproveCandidate,
+				NextState:      productlinksdomain.ProductLinkStateResolved,
+				CreatedAt:      now,
+			}}},
+			call: func(s *ResolutionService) error {
+				_, err := s.UndoResolution(context.Background(), UndoResolutionInput{AuditID: "audit-target", Actor: system})
+				return err
+			},
+		},
 	}
-	if len(workflows.applied) != 0 {
-		t.Errorf("applied = %#v, want nothing written", workflows.applied)
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			err := tc.call(newService(tc.workflows))
+			if err == nil || err.Error() != "PRODUCT_LINKS_SYSTEM_ACTOR_NOT_PERMITTED" {
+				t.Fatalf("error = %v, want PRODUCT_LINKS_SYSTEM_ACTOR_NOT_PERMITTED", err)
+			}
+			if len(tc.workflows.applied) != 0 {
+				t.Errorf("applied = %#v, want nothing written", tc.workflows.applied)
+			}
+		})
 	}
 }
