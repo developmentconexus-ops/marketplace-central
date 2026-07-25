@@ -467,10 +467,11 @@ func (f *failingApprover) AutoApproveCandidate(_ context.Context, input AutoAppr
 func TestAFailedApprovalDoesNotAbandonTheRestOfTheBatch(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 7, 25, 10, 0, 0, 0, time.UTC)
-	approver := &failingApprover{failOn: map[string]bool{"MLB-FAIL": true}}
+	approver := &failingApprover{failOn: map[string]bool{"MLB-FAIL": true, "MLB-ALSO-FAIL": true}}
 	svc := NewGenerationService(GenerationServiceConfig{
 		Snapshots: &stubSnapshotReader{snapshots: []productlinksdomain.ListingSnapshot{
 			concordantSnapshot("MLB-FAIL", now),
+			concordantSnapshot("MLB-ALSO-FAIL", now),
 			concordantSnapshot("MLB-OK", now),
 		}},
 		Matcher:      concordantMatcher(),
@@ -483,14 +484,52 @@ func TestAFailedApprovalDoesNotAbandonTheRestOfTheBatch(t *testing.T) {
 	if err == nil {
 		t.Fatal("GenerateLinkCandidates() error = nil, want the refused approval reported")
 	}
-	if !strings.Contains(err.Error(), "MLB-FAIL") {
-		t.Errorf("error = %v, want it to name the listing that failed", err)
+	// Two failures, so the join is load-bearing: keeping only the last error
+	// would still report a failure and still continue the batch, and a single
+	// failing listing could not tell the two apart.
+	for _, want := range []string{"MLB-FAIL", "MLB-ALSO-FAIL"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error = %v, want it to name %s", err, want)
+		}
 	}
-	if len(approver.offered) != 2 {
-		t.Fatalf("offered = %v, want both listings attempted", approver.offered)
+	if len(approver.offered) != 3 {
+		t.Fatalf("offered = %v, want every listing attempted", approver.offered)
 	}
-	if approver.offered[1] != "MLB-OK" {
-		t.Errorf("offered = %v, want MLB-OK attempted after MLB-FAIL failed", approver.offered)
+	if approver.offered[2] != "MLB-OK" {
+		t.Errorf("offered = %v, want MLB-OK attempted after both failures", approver.offered)
+	}
+}
+
+// The undo path carries more blast radius than reject — UndoBatch fans out over
+// it — and the E10 CHECK refuses a system actor there for the same reason.
+func TestUndoingAsSystemIsRefusedBeforeItReachesTheDatabase(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 7, 25, 10, 0, 0, 0, time.UTC)
+	workflows := &stubWorkflowStore{audits: []productlinksdomain.ProductLinkAuditEntry{{
+		AuditID:        "audit-target",
+		InstallationID: "inst-m05",
+		ProviderCode:   "mercado_livre",
+		ProviderItemID: "MLB-SYS-UNDO",
+		Action:         productlinksdomain.ProductLinkActionApproveCandidate,
+		NextState:      productlinksdomain.ProductLinkStateResolved,
+		CreatedAt:      now,
+	}}}
+	svc := NewResolutionService(ResolutionServiceConfig{
+		Candidates: &stubCandidateStore{},
+		Workflows:  workflows,
+		Now:        func() time.Time { return now },
+		NewAuditID: func() string { return "audit-undo" },
+	})
+
+	_, err := svc.UndoResolution(context.Background(), UndoResolutionInput{
+		AuditID: "audit-target",
+		Actor:   productlinksdomain.ActorMetadata{ActorType: productlinksdomain.DecisionActorSystem},
+	})
+	if err == nil || err.Error() != "PRODUCT_LINKS_SYSTEM_ACTOR_NOT_PERMITTED" {
+		t.Fatalf("error = %v, want PRODUCT_LINKS_SYSTEM_ACTOR_NOT_PERMITTED", err)
+	}
+	if len(workflows.applied) != 0 {
+		t.Errorf("applied = %#v, want nothing written", workflows.applied)
 	}
 }
 

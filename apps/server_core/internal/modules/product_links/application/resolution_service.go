@@ -237,11 +237,10 @@ func (s *ResolutionService) AutoApproveCandidate(ctx context.Context, input Auto
 	if err != nil {
 		return false, err
 	}
-	// A listing the operator already settled is settled. Rejection writes no
-	// E10 row — there is no rule to record for "this anúncio is not ours" — so
-	// the decision trail alone would report a rejected listing as undecided and
-	// the automatic path would reopen it. The link's own state is the fact that
-	// covers both that case and links resolved before E10 existed.
+	// A listing the operator already settled is settled. The link's own state is
+	// what proves it: a rejection does write an E10 row, but links resolved
+	// before E10 existed carry no decision at all, so the trail alone would
+	// report those as undecided and the automatic path would reopen them.
 	if found && (current.State == domain.ProductLinkStateRejected || current.State == domain.ProductLinkStateResolved) {
 		return false, nil
 	}
@@ -595,8 +594,9 @@ func (s *ResolutionService) undoAuditEntry(ctx context.Context, target domain.Pr
 		ProviderVariationID: target.ProviderVariationID,
 		LinkID:              domain.LinkID(target.InstallationID, target.ProviderItemID, target.ProviderVariationID),
 		RuleMatched:         domain.DecisionRuleManual,
-		Actor:               decisionActorFor(actor),
-		CreatedAt:           now,
+		// errSystemActorNotPermitted turned any system caller away above.
+		Actor:     domain.DecisionActorOperator,
+		CreatedAt: now,
 	}
 	transition := domain.ProductLinkTransition{Link: link, Audit: audit, Decision: decision}
 	if err := s.workflows.ApplyProductLinkTransition(ctx, transition); err != nil {
@@ -717,8 +717,9 @@ func (s *ResolutionService) buildTransition(current domain.ProductLink, found bo
 				ProviderVariationID: typed.ProviderVariationID,
 				LinkID:              domain.LinkID(typed.InstallationID, typed.ProviderItemID, typed.ProviderVariationID),
 				RuleMatched:         domain.DecisionRuleManual,
-				Actor:               decisionActorFor(typed.Actor),
-				CreatedAt:           now,
+				// errSystemActorNotPermitted turned any system caller away above.
+				Actor:     domain.DecisionActorOperator,
+				CreatedAt: now,
 			},
 			Audit: domain.ProductLinkAuditEntry{
 				AuditID:                   s.newAuditID(),
@@ -803,28 +804,22 @@ func decisionRuleForCandidate(candidate domain.LinkCandidate) domain.ProductLink
 	}
 }
 
-// errSystemActorNotPermitted refuses a system actor on a transition that names
-// no anchor. The E10 CHECK admits exactly one rule a system actor may write —
-// concordant_codprod_ean — so a system reject or undo is a row the schema turns
-// down, and it turns it down inside the transition's transaction: the whole
-// rejection rolls back and the caller gets a 500 with nothing naming the cause.
-// Failing closed here keeps the schema's rule and says which actor was refused.
-// Filing the call as `operator` instead would be worse — it would assert a human
-// decided when none did.
+// errSystemActorNotPermitted refuses a system actor on reject and undo. Both
+// write rule_matched='manual', and the E10 CHECK admits exactly one rule a
+// system actor may take — concordant_codprod_ean — so the row is one the schema
+// turns down INSIDE the transition's transaction: the whole call rolls back and
+// the caller gets a 500 naming nothing. Failing closed here keeps the schema's
+// rule and says which actor was refused.
+//
+// This covers only the two paths the CHECK rejects. ManualResolve and
+// ApproveCandidate hardcode actor='operator', so a system caller on those is
+// filed as a human rather than refused — wrong, but a wider fix than this
+// milestone's write-set and reported to the hub rather than taken here.
 func errSystemActorNotPermitted(actor domain.ActorMetadata) error {
 	if actor.ActorType == domain.DecisionActorSystem {
 		return errors.New("PRODUCT_LINKS_SYSTEM_ACTOR_NOT_PERMITTED")
 	}
 	return nil
-}
-
-// decisionActorFor names the trail's actor from the audit actor that took the
-// action, so a scripted undo is not filed as an operator's judgement.
-func decisionActorFor(actor domain.ActorMetadata) string {
-	if actor.ActorType == domain.DecisionActorSystem {
-		return domain.DecisionActorSystem
-	}
-	return domain.DecisionActorOperator
 }
 
 func candidateStateToProductLinkState(state domain.LinkCandidateState) domain.ProductLinkState {
