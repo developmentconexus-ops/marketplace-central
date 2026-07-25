@@ -1,5 +1,6 @@
 import type { ProductLinkWorkflowItem } from "@marketplace-central/sdk-runtime";
 import { EmptyState, ErrorState, LoadingState, UnknownValue } from "@marketplace-central/ui";
+import { formatDateTime } from "../pedidos/pedidosFormatters";
 import { resolutionAuditId, useVinculosResolved } from "./useVinculosResolved";
 
 export interface ResolvidosTabProps {
@@ -49,7 +50,9 @@ function ResolvidoRow({
       {/* Resolvido em */}
       <td className="px-3 py-3">
         <span className="text-xs text-muted">
-          {link?.updated_at ? link.updated_at : <UnknownValue />}
+          {/* The wire carries RFC-3339 UTC; the operator reads pt-BR local time.
+              An unparseable/absent timestamp stays honest (—), never fabricated. */}
+          {formatDateTime(link?.updated_at) ?? <UnknownValue />}
         </span>
       </td>
 

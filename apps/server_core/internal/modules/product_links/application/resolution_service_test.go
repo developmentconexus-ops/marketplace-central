@@ -367,14 +367,14 @@ func TestUndoResolutionRevertsCandidateToQueue(t *testing.T) {
 	productID := 701
 	candidateStore := &stubCandidateStore{
 		candidates: []productlinksdomain.LinkCandidate{{
-			CandidateID:        "cand-undo-1",
-			InstallationID:     "inst-1",
-			ProviderCode:       "mercado_livre",
-			ProviderItemID:     "MLB701",
-			InternalProductID:  &productID,
-			State:              productlinksdomain.LinkCandidateStateUnresolved,
-			CreatedAt:          now.Add(-time.Hour),
-			UpdatedAt:          now.Add(-time.Hour),
+			CandidateID:       "cand-undo-1",
+			InstallationID:    "inst-1",
+			ProviderCode:      "mercado_livre",
+			ProviderItemID:    "MLB701",
+			InternalProductID: &productID,
+			State:             productlinksdomain.LinkCandidateStateUnresolved,
+			CreatedAt:         now.Add(-time.Hour),
+			UpdatedAt:         now.Add(-time.Hour),
 		}},
 	}
 	workflowStore := &stubWorkflowStore{}
@@ -441,6 +441,136 @@ func TestUndoResolutionRevertsCandidateToQueue(t *testing.T) {
 	}
 	if !originalStillPresent {
 		t.Fatalf("original approve audit row missing after undo — history must be preserved, not deleted")
+	}
+}
+
+// Reverting onto the SAME internal product the link already carries must keep
+// that product's descriptors. The audit chain stores only the product ID, so a
+// naive reversal blanked internal_product_name and the Resolvidos table showed
+// "—" for a listing that was still linked to a named product.
+func TestUndoResolutionKeepsProductDescriptorsWhenRevertingToTheSameProduct(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 7, 25, 4, 30, 0, 0, time.UTC)
+	productID := 24864
+	candidateStore := &stubCandidateStore{
+		candidates: []productlinksdomain.LinkCandidate{{
+			CandidateID:           "cand-redo-1",
+			InstallationID:        "inst-1",
+			ProviderCode:          "mercado_livre",
+			ProviderItemID:        "MLB701",
+			InternalProductID:     &productID,
+			InternalProductName:   "CHAVE P/ TUBO 36\" GEDORE RED",
+			InternalReferenceCode: "R27160030",
+			State:                 productlinksdomain.LinkCandidateStateUnresolved,
+			CreatedAt:             now.Add(-time.Hour),
+			UpdatedAt:             now.Add(-time.Hour),
+		}},
+	}
+	// The listing is ALREADY resolved to that same product, so approving the
+	// candidate again records previous_state=resolved / previous product=24864.
+	workflowStore := &stubWorkflowStore{
+		linkFound: true,
+		currentLink: productlinksdomain.ProductLink{
+			InstallationID:        "inst-1",
+			ProviderCode:          "mercado_livre",
+			ProviderItemID:        "MLB701",
+			State:                 productlinksdomain.ProductLinkStateResolved,
+			InternalProductID:     &productID,
+			InternalProductName:   "CHAVE P/ TUBO 36\" GEDORE RED",
+			InternalReferenceCode: "R27160030",
+			CreatedAt:             now.Add(-72 * time.Hour),
+			UpdatedAt:             now.Add(-72 * time.Hour),
+		},
+	}
+	auditSeq := 0
+	svc := NewResolutionService(ResolutionServiceConfig{
+		Candidates: candidateStore,
+		Workflows:  workflowStore,
+		Now:        func() time.Time { return now },
+		NewAuditID: func() string {
+			auditSeq++
+			return "audit-redo-" + string(rune('0'+auditSeq))
+		},
+	})
+
+	approveResult, err := svc.ApproveCandidate(context.Background(), ApproveCandidateInput{
+		CandidateID: "cand-redo-1",
+		Actor:       productlinksdomain.ActorMetadata{ActorType: "operator", ActorID: "user-1"},
+	})
+	if err != nil {
+		t.Fatalf("ApproveCandidate() error = %v", err)
+	}
+
+	undoResult, err := svc.UndoResolution(context.Background(), UndoResolutionInput{
+		AuditID: approveResult.Audit.AuditID,
+		Actor:   productlinksdomain.ActorMetadata{ActorType: "operator", ActorID: "user-1"},
+	})
+	if err != nil {
+		t.Fatalf("UndoResolution() error = %v", err)
+	}
+	if undoResult.Link.InternalProductID == nil || *undoResult.Link.InternalProductID != productID {
+		t.Fatalf("internal product id after undo = %#v, want %d", undoResult.Link.InternalProductID, productID)
+	}
+	if undoResult.Link.InternalProductName != "CHAVE P/ TUBO 36\" GEDORE RED" {
+		t.Fatalf("internal product name after undo = %q, want it preserved", undoResult.Link.InternalProductName)
+	}
+	if undoResult.Link.InternalReferenceCode != "R27160030" {
+		t.Fatalf("internal reference code after undo = %q, want it preserved", undoResult.Link.InternalReferenceCode)
+	}
+}
+
+// Reverting to a DIFFERENT product (here: to none) must NOT inherit the old
+// product's descriptors — the reverted row would claim a name it no longer has.
+func TestUndoResolutionDoesNotInheritDescriptorsOfADifferentProduct(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 7, 25, 4, 40, 0, 0, time.UTC)
+	productID := 702
+	candidateStore := &stubCandidateStore{
+		candidates: []productlinksdomain.LinkCandidate{{
+			CandidateID:         "cand-undo-desc",
+			InstallationID:      "inst-1",
+			ProviderCode:        "mercado_livre",
+			ProviderItemID:      "MLB702",
+			InternalProductID:   &productID,
+			InternalProductName: "PRODUTO 702",
+			State:               productlinksdomain.LinkCandidateStateUnresolved,
+			CreatedAt:           now.Add(-time.Hour),
+			UpdatedAt:           now.Add(-time.Hour),
+		}},
+	}
+	workflowStore := &stubWorkflowStore{}
+	auditSeq := 0
+	svc := NewResolutionService(ResolutionServiceConfig{
+		Candidates: candidateStore,
+		Workflows:  workflowStore,
+		Now:        func() time.Time { return now },
+		NewAuditID: func() string {
+			auditSeq++
+			return "audit-desc-" + string(rune('0'+auditSeq))
+		},
+	})
+
+	approveResult, err := svc.ApproveCandidate(context.Background(), ApproveCandidateInput{
+		CandidateID: "cand-undo-desc",
+		Actor:       productlinksdomain.ActorMetadata{ActorType: "operator", ActorID: "user-1"},
+	})
+	if err != nil {
+		t.Fatalf("ApproveCandidate() error = %v", err)
+	}
+	undoResult, err := svc.UndoResolution(context.Background(), UndoResolutionInput{
+		AuditID: approveResult.Audit.AuditID,
+		Actor:   productlinksdomain.ActorMetadata{ActorType: "operator", ActorID: "user-1"},
+	})
+	if err != nil {
+		t.Fatalf("UndoResolution() error = %v", err)
+	}
+	if undoResult.Link.InternalProductID != nil {
+		t.Fatalf("internal product id after undo = %#v, want nil", undoResult.Link.InternalProductID)
+	}
+	if undoResult.Link.InternalProductName != "" {
+		t.Fatalf("internal product name after undo = %q, want empty (no product to name)", undoResult.Link.InternalProductName)
 	}
 }
 

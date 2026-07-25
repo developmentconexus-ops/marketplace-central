@@ -434,6 +434,14 @@ func (s *ResolutionService) undoAuditEntry(ctx context.Context, target domain.Pr
 		prevProductForAudit = current.InternalProductID
 	}
 
+	// The audit chain carries the previous product ID but not its descriptive
+	// fields (name / reference code / source candidate). When the reversal
+	// lands back on the SAME internal product the link already points at,
+	// those descriptors are still true, so carry them over instead of
+	// blanking the row (the operator saw "—" where a product name belonged).
+	// When the reversal points at a DIFFERENT product — or at none — we have
+	// no honest source for its name here, so it stays empty (ADR-17) rather
+	// than inheriting the previous product's description.
 	link := domain.ProductLink{
 		InstallationID:      target.InstallationID,
 		ProviderCode:        target.ProviderCode,
@@ -443,6 +451,11 @@ func (s *ResolutionService) undoAuditEntry(ctx context.Context, target domain.Pr
 		InternalProductID:   target.PreviousInternalProductID,
 		CreatedAt:           createdAt,
 		UpdatedAt:           now,
+	}
+	if foundLink && sameInternalProduct(current.InternalProductID, target.PreviousInternalProductID) {
+		link.InternalProductName = current.InternalProductName
+		link.InternalReferenceCode = current.InternalReferenceCode
+		link.SourceCandidateID = current.SourceCandidateID
 	}
 	audit := domain.ProductLinkAuditEntry{
 		AuditID:                   s.newAuditID(),
@@ -465,6 +478,16 @@ func (s *ResolutionService) undoAuditEntry(ctx context.Context, target domain.Pr
 		return domain.ProductLinkResolutionResult{}, err
 	}
 	return domain.ProductLinkResolutionResult{Link: link, Audit: audit}, nil
+}
+
+// sameInternalProduct compares two optional internal product IDs by VALUE.
+// Two absent IDs are "the same" only in the sense that neither carries a
+// product, and that case never reaches the descriptor carry-over above.
+func sameInternalProduct(a, b *int) bool {
+	if a == nil || b == nil {
+		return false
+	}
+	return *a == *b
 }
 
 type buildResolvedLinkInput struct {
