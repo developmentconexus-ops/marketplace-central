@@ -359,8 +359,13 @@ function ProviderConnectCard() {
       // otherwise create a fresh one so the new account never collides with an
       // already-connected installation's account guard.
       const existing = await client.listIntegrationInstallations();
+      // The never-authorized states are carried by `status` — there is no
+      // top-level `state` field, so the old lookup never matched and every
+      // click minted another installation the operator could not get rid of.
       const pending = existing.items.find(
-        (i) => i.provider_code === "mercado_livre" && i.state === "pending_connection",
+        (i) =>
+          i.provider_code === "mercado_livre" &&
+          (i.status === "pending_connection" || i.status === "draft"),
       );
       let installationId = pending?.installation_id;
       if (!installationId) {

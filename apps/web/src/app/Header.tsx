@@ -18,6 +18,24 @@ function installationLabel(installation: IntegrationInstallation): string {
   return installation.display_name;
 }
 
+// An installation that never completed its authorization has no account, no
+// listings and no orders — selecting it can only show empty screens. Those rows
+// stay on /integracoes (where the operator resumes or gives up on them) but are
+// kept out of the account selector. The selected one is always kept so the
+// control can never lose its own value.
+function selectableInstallations(
+  installations: IntegrationInstallation[],
+  selectedId: string,
+): IntegrationInstallation[] {
+  const neverAuthorized = new Set(["draft", "pending_connection"]);
+  return installations.filter(
+    (installation) =>
+      installation.installation_id === selectedId ||
+      !installation.status ||
+      !neverAuthorized.has(installation.status),
+  );
+}
+
 const enabledPillClass =
   "inline-flex items-center rounded-pill px-3 py-1.5 text-sm font-medium transition-colors";
 
@@ -124,7 +142,7 @@ export function Header() {
               value={installationId}
               onChange={(event) => setInstallationId(event.target.value)}
             >
-              {installations.map((installation) => (
+              {selectableInstallations(installations, installationId).map((installation) => (
                 <option key={installation.installation_id} value={installation.installation_id}>
                   {installationLabel(installation)}
                 </option>

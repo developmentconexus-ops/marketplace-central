@@ -103,6 +103,46 @@ describe("Header", () => {
     expect(screen.queryByText("Vínculos")).not.toBeInTheDocument();
   });
 
+  it("keeps never-authorized installations out of the account selector", async () => {
+    listIntegrationInstallations.mockResolvedValue({
+      items: [
+        {
+          installation_id: "inst-connected",
+          provider_code: "mercado_livre",
+          display_name: "Mercado Livre (cliente)",
+          external_account_name: "WORLDSEG EPIS_MRO",
+          status: "connected",
+        },
+        {
+          installation_id: "inst-abandoned",
+          provider_code: "mercado_livre",
+          display_name: "Mercado Livre (cliente)",
+          status: "pending_connection",
+        },
+        {
+          installation_id: "inst-draft",
+          provider_code: "mercado_livre",
+          display_name: "Mercado Livre (cliente)",
+          status: "draft",
+        },
+        {
+          installation_id: "inst-disconnected",
+          provider_code: "mercado_livre",
+          display_name: "Conta antiga",
+          status: "disconnected",
+        },
+      ],
+    });
+
+    renderHeader();
+
+    const selector = await screen.findByRole("combobox", { name: "Selecionar instalação" });
+    const options = within(selector).getAllByRole("option").map((option) => option.textContent);
+    // The abandoned authorizations carry no account and no data; a previously
+    // connected account that dropped off stays selectable so it can be inspected.
+    expect(options).toEqual(["WORLDSEG EPIS_MRO", "Conta antiga (não conectada)"]);
+  });
+
   it("wires the theme control to useTheme", () => {
     renderHeader();
 
