@@ -38,11 +38,19 @@ const MAX_ORDER_PAGES = 20;
 // shipment-status-blind (pure SQL over provider_status+shipping_id) and disagreed with the list.
 // This accumulator follows OrderPage.next_cursor until it is exhausted (or the safety cap is hit)
 // so the single read query returns the complete dataset — no pagination UI, no second query.
-async function fetchAllOrders(client: Client, installationId: string): Promise<OrderPage> {
+async function fetchAllOrders(
+  client: Client,
+  installationId: string,
+  dateFrom?: string,
+): Promise<OrderPage> {
   const items: OrderRead[] = [];
   let cursor: string | undefined;
   for (let page = 0; page < MAX_ORDER_PAGES; page += 1) {
-    const result = await client.listOrders({ installation_id: installationId, cursor });
+    const result = await client.listOrders({
+      installation_id: installationId,
+      cursor,
+      date_from: dateFrom,
+    });
     items.push(...result.items);
     if (!result.next_cursor) {
       return { items, next_cursor: null };
@@ -54,6 +62,17 @@ async function fetchAllOrders(client: Client, installationId: string): Promise<O
   console.warn("[pedidos] order list pagination hit MAX_ORDER_PAGES, dataset may be incomplete");
   return { items, next_cursor: null };
 }
+
+// The header period control filters the read-list server-side through the
+// already-supported date_from filter (orders are filtered on
+// provider_created_at, the marketplace's own creation moment). "todo o período"
+// sends no filter at all instead of an arbitrary far-past date.
+const periodOptions: { value: string; days: number | null; label: string; kpiSub: string }[] = [
+  { value: "7", days: 7, label: "período: 7 dias", kpiSub: "últimos 7d" },
+  { value: "30", days: 30, label: "período: 30 dias", kpiSub: "últimos 30d" },
+  { value: "90", days: 90, label: "período: 90 dias", kpiSub: "últimos 90d" },
+  { value: "all", days: null, label: "período: todo o período", kpiSub: "todo o período" },
+];
 
 type KpiTone = "default" | "amber";
 
@@ -122,9 +141,19 @@ export function PedidosPage() {
     setSearchParams(next, { replace: true });
   };
 
+  // Default "todo o período": the screen must show the orders that exist, not an
+  // empty table under a window the operator never chose.
+  const [period, setPeriod] = useState("all");
+  const periodOption = periodOptions.find((option) => option.value === period) ?? periodOptions[3];
+  const dateFrom = periodOption.days == null
+    ? undefined
+    : new Date(Date.now() - periodOption.days * 24 * 60 * 60 * 1000).toISOString();
+
   const ordersQuery = useQuery({
-    queryKey: ordersQueryKeys.list(installationId, {}),
-    queryFn: () => fetchAllOrders(client, installationId),
+    // date_from is part of the identity of the result, so it belongs in the key —
+    // otherwise switching periods would serve the previous window from cache.
+    queryKey: ordersQueryKeys.list(installationId, { date_from: periodOption.value }),
+    queryFn: () => fetchAllOrders(client, installationId, dateFrom),
     staleTime: QUERY_STALE_TIME.orders,
   });
 
@@ -184,22 +213,23 @@ export function PedidosPage() {
         <h1 id="pedidos-title" className="text-[22px] font-bold tracking-tight text-ink">
           Pedidos
         </h1>
-        <button
-          type="button"
-          disabled
-          title="filtro de período em breve"
-          className="whitespace-nowrap rounded-pill border border-border px-3 py-1 text-[12.5px] text-muted disabled:cursor-not-allowed"
+        <select
+          aria-label="Período dos pedidos"
+          value={period}
+          onChange={(event) => setPeriod(event.target.value)}
+          className="whitespace-nowrap rounded-pill border border-border bg-surface px-3 py-1 text-[12.5px] text-muted"
         >
-          período: 7 dias ▾
-        </button>
-        <button
-          type="button"
-          disabled
-          title="filtro de logística em breve"
-          className="whitespace-nowrap rounded-pill border border-border px-3 py-1 text-[12.5px] text-muted disabled:cursor-not-allowed"
-        >
-          logística: todas ▾
-        </button>
+          {periodOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        {/* The logistics chip was a permanently disabled placeholder: the read
+            model carries no fulfillment facet and the read-list rejects the
+            filter outright (unsupported_filter), so the control could never do
+            anything. A dead control on the header reads as a filter the screen
+            is applying. */}
         {showDifalBanner ? (
           <button
             type="button"
@@ -251,7 +281,14 @@ export function PedidosPage() {
         <KpiCard label="NOVOS" value={kpiValue("novo")} sub="aguard. pagto" onSelect={goToListaTab("novo")} />
         <KpiCard label="A FATURAR" value={kpiValue("faturar")} onSelect={goToListaTab("faturar")} />
         <KpiCard label="A ENVIAR" value={kpiValue("enviar")} onSelect={goToListaTab("enviar")} />
-        <KpiCard label="ENVIADOS" value={kpiValue("enviado")} sub="últimos 7d" onSelect={goToListaTab("enviado")} />
+        {/* The subtitle names the window actually queried — it used to claim
+            "últimos 7d" over an unfiltered list. */}
+        <KpiCard
+          label="ENVIADOS"
+          value={kpiValue("enviado")}
+          sub={periodOption.kpiSub}
+          onSelect={goToListaTab("enviado")}
+        />
         <KpiCard
           label="DIFAL A PAGAR"
           value={UNKNOWN_KPI_VALUE}

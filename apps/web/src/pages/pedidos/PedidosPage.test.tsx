@@ -104,6 +104,42 @@ describe("PedidosPage", () => {
     });
   });
 
+  it("lists every order by default, sending no date filter", async () => {
+    listOrders.mockResolvedValue({ items: [], next_cursor: null });
+
+    renderPage();
+
+    await screen.findByRole("heading", { name: "Pedidos" });
+    // "todo o período" must not invent a window: date_from stays undefined so the
+    // read-list returns the orders that exist.
+    await waitFor(() => expect(listOrders).toHaveBeenCalled());
+    expect(listOrders.mock.calls[0][0]).toMatchObject({
+      installation_id: "inst_1",
+      date_from: undefined,
+    });
+    expect(screen.getByRole("button", { name: /ENVIADOS/ })).toHaveTextContent("todo o período");
+  });
+
+  it("applies the chosen period as a date_from filter and relabels the ENVIADOS window", async () => {
+    listOrders.mockResolvedValue({ items: [], next_cursor: null });
+
+    renderPage();
+    await screen.findByRole("heading", { name: "Pedidos" });
+    await waitFor(() => expect(listOrders).toHaveBeenCalled());
+
+    fireEvent.change(screen.getByLabelText("Período dos pedidos"), { target: { value: "7" } });
+
+    await waitFor(() => {
+      const last = listOrders.mock.calls[listOrders.mock.calls.length - 1][0];
+      expect(typeof last.date_from).toBe("string");
+      // Seven days back from now, so the filter matches the label the KPI claims.
+      const days = (Date.now() - Date.parse(last.date_from)) / 86_400_000;
+      expect(days).toBeGreaterThan(6.9);
+      expect(days).toBeLessThan(7.1);
+    });
+    expect(screen.getByRole("button", { name: /ENVIADOS/ })).toHaveTextContent("últimos 7d");
+  });
+
   it("renders the header, KPI row and default Fila view", async () => {
     listOrders.mockResolvedValue({ items: [], next_cursor: null });
 
