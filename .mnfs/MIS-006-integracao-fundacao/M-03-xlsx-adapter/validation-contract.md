@@ -117,4 +117,4 @@ HTTP + amostra de body. could-not-run só com bloqueio nomeado.
 Findings (não-bloqueantes, follow-up F-01/M-06):
 1. Upload 2012 produtos devolveu **504 deadline_exceeded ao cliente** com processamento concluído server-side (#008-E COMPLETED) — timeout de request < duração import+hooks; UX engana o usuário.
 2. Toggle "Fonte ativa" em /integracoes é localStorage-only (sem bridge p/ PUT /config/active-source) — deferido p/ M-06 conforme plano; radio não altera o backend.
-3. "Feirão 1.xlsx" (export Sankhya real) rejeitado `invalid_file`: headers reais ("Código", "Descrição Produto", "Custo Médio sem ICMS", "Estoque") não batem aliases do parser (exige CUSTO/ESTOQUE_FISICO no strict path) — candidato a alias novo ou template oficial p/ cliente (EXEMPLO-IMPORT-SANKHYA.xlsx entregue ao operador).
+3. RETIFICADO pelo operador (D-121): "Feirão 1.xlsx" NÃO é template/export do fluxo — arquivo avulso, irrelevante p/ a integração; rejeição `invalid_file` foi comportamento correto do parser, sem follow-up. Template oficial da fonte xlsx = EXEMPLO-IMPORT-SANKHYA.xlsx (entregue ao operador, importado live #009-E).
