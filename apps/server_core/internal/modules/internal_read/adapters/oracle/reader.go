@@ -13,6 +13,12 @@ import (
 	"marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 )
 
+// errNoMatchableInput means the caller's input carried nothing this query can
+// filter on, so the honest answer is an empty candidate list. It is internal:
+// it never escapes FindProductsForLinking, and it exists only so the query
+// builder can refuse to run an unfiltered table scan.
+var errNoMatchableInput = errors.New("no matchable product lookup input")
+
 type queryer interface {
 	PingContext(ctx context.Context) error
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
@@ -37,6 +43,9 @@ func (r *Reader) FindProductsForLinking(ctx context.Context, input ports.FindPro
 	}
 
 	query, args, err := buildFindProductsQuery(input)
+	if errors.Is(err, errNoMatchableInput) {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -428,8 +437,17 @@ WHERE 1 = 1`
 		args = append(args, *input.ProductID)
 		matchClauses = append(matchClauses, fmt.Sprintf("p.CODPROD = :%d", len(args)))
 	}
-	// EAN is intentionally not matched against TGFPRO.REFERENCIA. Until a
-	// governed barcode source is added, EAN-only linking remains unproved.
+	// TGFPRO.REFERENCIA IS the governed barcode source: this same query already
+	// projects it as the candidate's EAN and counts its active collisions, and
+	// the mirror sync (sankhyaBaseSQL) writes products_mirror.ean from it under
+	// exactly the GTIN shape rule applied here. Matching on it is therefore the
+	// same fact the reader already publishes, not a new inference. A value that
+	// is not GTIN-shaped is not an EAN and never becomes a match clause, so a
+	// junk barcode can never widen the query.
+	if value := trimmedPointer(input.EAN); value != nil && catalogdomain.IsValidGTIN(*value) {
+		args = append(args, *value)
+		matchClauses = append(matchClauses, fmt.Sprintf("TRIM(p.REFERENCIA) = :%d", len(args)))
+	}
 	if value := trimmedPointer(input.SellerSKU); value != nil {
 		args = append(args, *value)
 		matchClauses = append(matchClauses, fmt.Sprintf("p.REFFORN = :%d", len(args)))
@@ -439,7 +457,10 @@ WHERE 1 = 1`
 		matchClauses = append(matchClauses, fmt.Sprintf("UPPER(p.DESCRPROD) LIKE :%d", len(args)))
 	}
 	if trimmedPointer(input.EAN) != nil && len(matchClauses) == 0 {
-		return "", nil, domain.NewReadError(domain.ReadErrorUnsupportedQuery, "oracle product lookup has no governed EAN source", nil)
+		// The only input was a barcode that is not GTIN-shaped. That is a
+		// no-match, not a failed lookup: refusing here aborted the caller's whole
+		// linking run over one malformed provider barcode.
+		return "", nil, errNoMatchableInput
 	}
 	if len(matchClauses) > 0 {
 		query += " AND (" + strings.Join(matchClauses, " OR ") + ")"

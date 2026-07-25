@@ -68,19 +68,48 @@ func TestBuildTaxInputsQueryUsesExactSaleLinePredicates(t *testing.T) {
 	}
 }
 
-func TestFindProductsQueryKeepsEANSeparateFromTGFPROReference(t *testing.T) {
-	ean := "7890000000000"
+func TestFindProductsQueryMatchesGTINEANAgainstTGFPROReference(t *testing.T) {
+	// REFERENCIA is the governed barcode source: the same query projects it as
+	// the candidate's EAN and the mirror sync writes products_mirror.ean from it
+	// under this exact GTIN rule.
+	ean := "7894900011517"
 	query, args, err := buildFindProductsQuery(ports.FindProductsInput{EAN: &ean})
-	if !domain.IsReadErrorCode(err, domain.ReadErrorUnsupportedQuery) {
-		t.Fatalf("EAN-only query error = %v, want unsupported query", err)
+	if err != nil {
+		t.Fatalf("EAN-only query error = %v", err)
 	}
-	if strings.Contains(query, "p.REFERENCIA =") || len(args) != 0 {
-		t.Fatalf("EAN was incorrectly mapped to TGFPRO.REFERENCIA: query=%q args=%v", query, args)
+	if !strings.Contains(query, "TRIM(p.REFERENCIA) = :1") || len(args) != 1 || args[0] != ean {
+		t.Fatalf("EAN was not matched against the governed reference: query=%q args=%v", query, args)
 	}
+}
+
+func TestFindProductsQueryTreatsANonGTINBarcodeAsNoMatch(t *testing.T) {
+	// A malformed provider barcode is a no-match, never a widened query and
+	// never a failure that aborts the caller's whole linking run.
+	barcode := "not-a-gtin"
+	query, args, err := buildFindProductsQuery(ports.FindProductsInput{EAN: &barcode})
+	if !errors.Is(err, errNoMatchableInput) {
+		t.Fatalf("non-GTIN EAN-only query error = %v, want errNoMatchableInput", err)
+	}
+	if strings.Contains(query, "TRIM(p.REFERENCIA) = :") || len(args) != 0 {
+		t.Fatalf("non-GTIN barcode leaked into the query: query=%q args=%v", query, args)
+	}
+
 	title := "produto"
-	query, _, err = buildFindProductsQuery(ports.FindProductsInput{EAN: &ean, Title: &title})
-	if err != nil || !strings.Contains(query, "p.REFERENCIA,") || strings.Contains(query, "p.REFERENCIA =") {
-		t.Fatalf("governed reference selection/search separation failed: query=%q err=%v", query, err)
+	query, _, err = buildFindProductsQuery(ports.FindProductsInput{EAN: &barcode, Title: &title})
+	if err != nil || strings.Contains(query, "TRIM(p.REFERENCIA) = :") || !strings.Contains(query, "UPPER(p.DESCRPROD) LIKE") {
+		t.Fatalf("non-GTIN barcode must not add a clause beside title: query=%q err=%v", query, err)
+	}
+}
+
+func TestFindProductsReturnsNoCandidatesForANonGTINBarcode(t *testing.T) {
+	barcode := "not-a-gtin"
+	db := &identityQueryer{}
+	candidates, err := NewReader(db).FindProductsForLinking(context.Background(), ports.FindProductsInput{EAN: &barcode})
+	if err != nil {
+		t.Fatalf("FindProductsForLinking() error = %v, want an honest empty result", err)
+	}
+	if len(candidates) != 0 {
+		t.Fatalf("candidates = %+v, want none", candidates)
 	}
 }
 
