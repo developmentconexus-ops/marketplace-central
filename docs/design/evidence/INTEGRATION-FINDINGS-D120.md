@@ -87,3 +87,57 @@ catalog, pricing, billing) · camada mapper DTO→domínio (`mapListing :753`, `
 a camada ACIMA (sync engine, sync_state, scheduler, persistir enrich no ingest). Adapter só
 ganha: backoff/429, tarifa live, `Raw` nos DTOs. Padrão de DTO vira regra:
 tipado-nos-campos-usados + Raw cru guardado.
+
+---
+
+## F-LINK-1 — vínculo produto↔anúncio: 3 defeitos de código + 1 fato de dados (D-121)
+
+Sintoma do operador: "a integração com o Sankhya não acha porra nenhuma". Quatro causas
+distintas, três de código (corrigidas) e uma de dados (aberta, decisão do operador).
+
+**D1 — cobertura de snapshot (corrigido `af03c36`).** O sync de anúncios buscava
+`ean`/`seller_sku` do provider e os descartava no mapeamento canônico (a tabela `listings` não
+tem essas colunas); o linker fazia a própria coleta, com paginação rasa. Agora o Source entrega
+os snapshots que JÁ buscou ao `ImportService` (`AbsorbProviderSnapshots`) antes do mapeamento:
+uma busca no provider, dois consumidores. Live: 627 → 1933 snapshots, EAN não-vazio 35 → 649.
+
+**D2 — geração truncada (corrigido `756d14a`).** `GenerateLinkCandidates` sem limite usava o
+default de 20 linhas da listagem. Como a geração SUBSTITUI o conjunto de candidatos das
+identidades que processou, um run limitado deixava milhares de anúncios sem candidato — que a
+tela lê como "sem vínculo". Ausência de limite agora = instalação inteira.
+
+**D3 — EAN não era critério de busca (corrigido `108c770`).** O reader Oracle recusava consulta
+por EAN (`unsupported query`), o que abortava o run inteiro no primeiro anúncio com EAN. EAN
+válido (GTIN) agora casa contra `TGFPRO.REFERENCIA` — a MESMA regra que o sync usa para
+preencher `products_mirror.ean`. Código de barras malformado = sem correspondência, nunca
+consulta alargada.
+
+**D4 — geração não cabia no deadline (corrigido `2ec7b1e`).** O matcher perguntava ao ERP ao
+vivo uma vez por anúncio: 1899 anúncios × até 3 round-trips = timeout de 2min sem produzir nada.
+O matcher agora lê o mirror (mesmas linhas que o sync ao vivo escreve, mesma fonte ativa), com
+um snapshot memoizado + índices por código/EAN/descrição. Live: **2min timeout → 1,0s, 1899
+candidatos**.
+
+### Fato de dados aberto — o Oracle conectado NÃO é o catálogo que o cliente vende
+
+Com as 4 correções, a conta ML conectada (`bb9d3c31`) casa por EAN:
+
+| fonte ativa | anúncios com EAN | casam | resultado da geração |
+|---|---|---|---|
+| `sankhya` (Oracle ao vivo, 10 529 produtos) | 618 | **0** | 1898 sem vínculo |
+| `xlsx` (export #003-E, 1845 produtos) | 618 | **191** | 153 REVIEW + 25 REJECT (hard-negative) + 27 conflito |
+
+Não é bug de matcher — os dois catálogos são populações diferentes. Mesmo CODPROD, produto
+diferente:
+
+| codprod | Oracle ao vivo | export #003-E |
+|---|---|---|
+| 10332 | PUXADOR M0461 CROMADO | CHAVETA RETA B-20X12X500 |
+| 11077 | TORN.COZ.ME LINK 90 GRAUS CR | CHAVETA RETA B-14X9X500 |
+| 11171 | FECH.820-02 EP | CHAVE CANHAO 11.0MM GEDORE |
+
+Só 80 dos 1811 CODPRODs reais do export existem no Oracle conectado, e onde existem o EAN
+diverge (11511: `7891504248806` no export vs `7891896305651` em `REFERENCIA`). Duas leituras
+possíveis, ambas exigem o operador: (a) o Oracle conectado é outra empresa/instância Sankhya;
+(b) o EAN do cliente não mora em `TGFPRO.REFERENCIA` na instância dele. Enquanto não decidido,
+a fonte ativa fica em `xlsx` — a única que reflete o que a conta ML realmente vende.
