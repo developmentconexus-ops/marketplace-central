@@ -118,6 +118,42 @@ describe("InstallationContext", () => {
     expect(screen.getByTestId("shell")).toBeInTheDocument();
   });
 
+  it("keeps the gate closed when the only installation was never authorized", async () => {
+    // Clicking "Conectar" creates the installation before the operator
+    // authorizes anything, so an abandoned authorization leaves this row behind.
+    // Counting rows opened the workspace on it and reported 0 sales, 0 listings
+    // and "tudo em dia" — an all-clear nothing ever measured.
+    listIntegrationInstallations.mockResolvedValue({
+      items: [
+        {
+          installation_id: "inst_pending",
+          display_name: "Mercado Livre (cliente)",
+          status: "pending_connection",
+        },
+      ],
+    });
+    renderContext("/anuncios");
+
+    expect(await screen.findByText("Conecte uma conta em Integrações")).toBeInTheDocument();
+    expect(screen.queryByTestId("installation")).not.toBeInTheDocument();
+  });
+
+  it("opens the workspace for an account that needs re-auth but still holds data", async () => {
+    listIntegrationInstallations.mockResolvedValue({
+      items: [
+        {
+          installation_id: "inst_expired",
+          display_name: "Mercado Livre (cliente)",
+          status: "requires_reauth",
+        },
+      ],
+    });
+    renderContext("/anuncios");
+
+    expect(await screen.findByTestId("installation")).toHaveTextContent("inst_expired");
+    expect(screen.getByTestId("status")).toHaveTextContent("ready");
+  });
+
   it("reports an error and recovers with exactly one retry request", async () => {
     listIntegrationInstallations
       .mockRejectedValueOnce(new Error("indisponível"))

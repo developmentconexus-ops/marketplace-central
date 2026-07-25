@@ -34,16 +34,27 @@ export function InstallationProvider({ children }: { children: ReactNode }) {
   const installations = query.data?.items ?? [];
   const requestedInstallationId = searchParams.get("installation");
   const requestedInstallationExists = installations.some(
-    (installation) => installation.installation_id === requestedInstallationId,
+    (installation) =>
+      installation.installation_id === requestedInstallationId &&
+      installation.status !== "draft" &&
+      installation.status !== "pending_connection",
   );
-  // An authorization that was started and abandoned leaves a pending_connection
-  // installation behind, and those sort ahead of the real accounts. Defaulting to
-  // the first item therefore opened the workspace on an account with no listings,
-  // no orders and no links — the whole product looked empty until the operator
-  // knew to change the selector. Default to a connected account; fall back to the
-  // first one only when nothing is connected (then the empty screens are honest).
+  // Row existence is not an account. "Conectar" creates the installation BEFORE
+  // the operator authorizes anything, so an abandoned authorization leaves a
+  // pending_connection row behind — and with only that row the workspace opened
+  // and reported 0 sales, 0 listings, 0 sync errors and "tudo em dia", an
+  // all-clear nothing had measured. Only a state that was authorized at least
+  // once counts; degraded and requires_reauth accounts still hold real data and
+  // render their own warnings, so they keep the workspace open. Among those,
+  // default to a connected one — pending rows sort ahead of the real accounts,
+  // so taking the first item opened the workspace on an empty account.
+  const authorizedInstallations = installations.filter(
+    (installation) =>
+      installation.status !== "draft" && installation.status !== "pending_connection",
+  );
   const defaultInstallation =
-    installations.find((installation) => installation.status === "connected") ?? installations[0];
+    authorizedInstallations.find((installation) => installation.status === "connected") ??
+    authorizedInstallations[0];
   const installationId = requestedInstallationExists
     ? requestedInstallationId ?? ""
     : defaultInstallation?.installation_id ?? "";
@@ -73,7 +84,7 @@ export function InstallationProvider({ children }: { children: ReactNode }) {
 
   let status: InstallationStatus = "loading";
   if (query.isError) status = "error";
-  else if (query.isSuccess && installations.length === 0) status = "empty";
+  else if (query.isSuccess && authorizedInstallations.length === 0) status = "empty";
   else if (query.isSuccess) status = "ready";
 
   const value = useMemo(
