@@ -14,6 +14,23 @@ const statusClasses: Record<ErpImportStatus, string> = {
   REJECTED: "bg-warn-soft text-warn",
 };
 
+// Duas fontes de arquivo alimentam o espelho e carregam campos diferentes
+// (a exportação Sankhya traz custo e estoque; o catálogo do cliente traz marca e
+// NCM). Sem a fonte no histórico, dois protocolos de tamanho parecido são
+// indistinguíveis — e é justamente a fonte que explica por que um campo está "—".
+const sourceLabels: Record<string, string> = {
+  xlsx: "Planilha Sankhya",
+  catalogo_cliente: "Catálogo do cliente",
+};
+
+function SourceBadge({ source }: { source: string }) {
+  return (
+    <span className="inline-flex whitespace-nowrap rounded-full bg-surface-2 px-2 py-0.5 text-xs font-medium text-muted">
+      {sourceLabels[source] ?? source}
+    </span>
+  );
+}
+
 function StatusBadge({ status }: { status: ErpImportStatus }) {
   return (
     <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${statusClasses[status]}`}>
@@ -47,8 +64,14 @@ function IssueList({ title, issues, testId }: { title: string; issues: ErpImport
   const groups = groupIssuesByCode(issues);
   return (
     <div className="mt-2">
+      {/* A contagem aqui é de PROBLEMAS, não de linhas: uma linha sem codprod e sem
+          descrição rende dois. Dizer "(6)" ao lado de um KPI "Rejeitados 3" lê como
+          contradição, então o número vem rotulado. */}
       <p className="text-xs font-semibold text-ink">
-        {title} <span className="font-mono font-normal text-faint">({issues.length})</span>
+        {title}{" "}
+        <span className="font-mono font-normal text-faint">
+          ({issues.length} {issues.length === 1 ? "problema" : "problemas"})
+        </span>
       </p>
       <ul className="mt-1 flex flex-col gap-2" data-testid={testId}>
         {groups.map((group) => {
@@ -109,6 +132,7 @@ function ImportRow({ item }: { item: ErpImportSummary }) {
         <div className="flex items-center gap-2">
           <span className="font-mono font-medium text-ink">{item.protocol}</span>
           <StatusBadge status={item.status} />
+          <SourceBadge source={item.source} />
         </div>
         <button
           type="button"

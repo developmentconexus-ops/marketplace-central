@@ -85,6 +85,22 @@ describe("ImportacaoSection", () => {
     expect(screen.getByText("3")).toBeInTheDocument();
   });
 
+  // A fonte é o que explica por que um campo do espelho está "—": a exportação
+  // Sankhya carrega custo e estoque, o catálogo do cliente não.
+  it("names the source of each import so two similar protocols are distinguishable", async () => {
+    listErpImports.mockResolvedValue({
+      items: [
+        summary({ import_id: "imp_1", protocol: "#001-E", source: "xlsx" }),
+        summary({ import_id: "imp_2", protocol: "#002-E", source: "catalogo_cliente" }),
+      ],
+    });
+
+    renderSection();
+
+    expect(await screen.findByText("Planilha Sankhya")).toBeInTheDocument();
+    expect(screen.getByText("Catálogo do cliente")).toBeInTheDocument();
+  });
+
   it("expands a row to fetch and list rejected rows", async () => {
     listErpImports.mockResolvedValue({
       items: [
