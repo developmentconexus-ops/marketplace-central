@@ -69,6 +69,11 @@ export function ListingsRefreshControl({ installationId }: { installationId: str
     queryKey: syncQueryKeys.runs(installationId, { operation_run_id: observedRunId }),
     queryFn: () => client.listIntegrationOperationRuns(installationId),
     enabled: observedRunId !== null,
+    // React Query pauses polling while the document is hidden, and the app
+    // disables refetch-on-focus — so a user who switched tabs mid-refresh came
+    // back to a status pill frozen at "na fila" and listings that never
+    // invalidated. The run keeps going server-side; keep watching it.
+    refetchIntervalInBackground: true,
     refetchInterval: (query) => {
       const observedRun = query.state.data?.items.find(
         (item) => item.operation_run_id === observedRunId,
