@@ -55,7 +55,7 @@ func (r *composedCatalogOracleReader) CatalogProductFactsByIDs(context.Context, 
 	return internalreadports.CatalogFactPage{AsOf: r.clock.Now()}, nil
 }
 
-func (r *composedCatalogOracleReader) SearchCatalogProductFacts(context.Context, string, int) (internalreadports.CatalogFactPage, error) {
+func (r *composedCatalogOracleReader) SearchCatalogProductFacts(context.Context, string, internalreadports.Cursor, int) (internalreadports.CatalogFactPage, error) {
 	r.searchCalls.Add(1)
 	return internalreadports.CatalogFactPage{AsOf: r.clock.Now()}, nil
 }

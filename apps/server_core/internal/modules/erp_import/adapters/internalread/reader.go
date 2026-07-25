@@ -291,8 +291,11 @@ func (r *Reader) ListCatalogProductFacts(ctx context.Context, cursor readports.C
 	return r.catalogPage(ctx, cursor, "", limit)
 }
 
-func (r *Reader) SearchCatalogProductFacts(ctx context.Context, query string, limit int) (readports.CatalogFactPage, error) {
-	return r.catalogPage(ctx, readports.Cursor{}, query, limit)
+func (r *Reader) SearchCatalogProductFacts(ctx context.Context, query string, cursor readports.Cursor, limit int) (readports.CatalogFactPage, error) {
+	if cursor.InternalProductID < 0 {
+		return readports.CatalogFactPage{}, readports.NewInvalidCursorError()
+	}
+	return r.catalogPage(ctx, cursor, query, limit)
 }
 
 // CatalogProductFactsByIDs answers for an explicit set of products. An id the

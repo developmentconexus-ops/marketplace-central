@@ -75,7 +75,7 @@ func (r *fakeReader) CatalogProductFactsByIDs(context.Context, []int64) (interna
 	return internalreadports.CatalogFactPage{AsOf: r.clock.Now()}, nil
 }
 
-func (r *fakeReader) SearchCatalogProductFacts(context.Context, string, int) (internalreadports.CatalogFactPage, error) {
+func (r *fakeReader) SearchCatalogProductFacts(context.Context, string, internalreadports.Cursor, int) (internalreadports.CatalogFactPage, error) {
 	r.searchCalls.Add(1)
 	if r.err != nil {
 		return internalreadports.CatalogFactPage{}, r.err
@@ -155,7 +155,7 @@ func (r *staticCatalogReader) CatalogProductFactsByIDs(context.Context, []int64)
 	return r.page, nil
 }
 
-func (r *staticCatalogReader) SearchCatalogProductFacts(context.Context, string, int) (internalreadports.CatalogFactPage, error) {
+func (r *staticCatalogReader) SearchCatalogProductFacts(context.Context, string, internalreadports.Cursor, int) (internalreadports.CatalogFactPage, error) {
 	return r.page, nil
 }
 
@@ -175,7 +175,7 @@ func (r *stagedCatalogReader) CatalogProductFactsByIDs(context.Context, []int64)
 	return internalreadports.CatalogFactPage{AsOf: r.clock.Now()}, nil
 }
 
-func (r *stagedCatalogReader) SearchCatalogProductFacts(context.Context, string, int) (internalreadports.CatalogFactPage, error) {
+func (r *stagedCatalogReader) SearchCatalogProductFacts(context.Context, string, internalreadports.Cursor, int) (internalreadports.CatalogFactPage, error) {
 	return internalreadports.CatalogFactPage{AsOf: r.clock.Now()}, nil
 }
 
@@ -211,7 +211,7 @@ func (r *sourceCountingCatalogReader) CatalogProductFactsByIDs(ctx context.Conte
 	return internalreadports.CatalogFactPage{AsOf: r.clock.Now()}, nil
 }
 
-func (r *sourceCountingCatalogReader) SearchCatalogProductFacts(ctx context.Context, _ string, _ int) (internalreadports.CatalogFactPage, error) {
+func (r *sourceCountingCatalogReader) SearchCatalogProductFacts(ctx context.Context, _ string, _ internalreadports.Cursor, _ int) (internalreadports.CatalogFactPage, error) {
 	r.record(ctx, true)
 	return internalreadports.CatalogFactPage{AsOf: r.clock.Now()}, nil
 }
@@ -254,10 +254,10 @@ func TestCatalogCachePartitionsByActiveSource(t *testing.T) {
 	}
 
 	// Search partitions independently by source too.
-	if _, err := catalog.SearchCatalogProductFacts(xlsxCtx, "faca", 50); err != nil {
+	if _, err := catalog.SearchCatalogProductFacts(xlsxCtx, "faca", internalreadports.Cursor{}, 50); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := catalog.SearchCatalogProductFacts(prospectCtx, "faca", 50); err != nil {
+	if _, err := catalog.SearchCatalogProductFacts(prospectCtx, "faca", internalreadports.Cursor{}, 50); err != nil {
 		t.Fatal(err)
 	}
 	downstream.mu.Lock()

@@ -52,15 +52,15 @@ export function CatalogPage({ client, erpSource }: CatalogPageProps) {
 
   const factsQuery = useCatalogFactsQuery(client, !debouncedSearch, erpSource);
   const searchQuery = useCatalogSearchQuery(client, debouncedSearch, erpSource);
-  const pages = factsQuery.data?.pages ?? [];
-  const facts = useMemo(
-    () => (debouncedSearch ? searchQuery.data?.items ?? [] : pages.flatMap((page) => page.items)),
-    [debouncedSearch, pages, searchQuery.data?.items],
-  );
-  const activePage = debouncedSearch ? searchQuery.data : pages[pages.length - 1];
-  const isLoading = debouncedSearch ? searchQuery.isPending : factsQuery.isPending;
-  const error = debouncedSearch ? searchQuery.error : factsQuery.error;
-  const asOf = activePage?.as_of;
+  // Both reads page the same way, so the screen drives whichever one is active
+  // through one set of controls. Search used to be capped at its first page with
+  // no "Carregar mais", which hid every match past the 50th.
+  const activeQuery = debouncedSearch ? searchQuery : factsQuery;
+  const pages = activeQuery.data?.pages ?? [];
+  const facts = useMemo(() => pages.flatMap((page) => page.items), [pages]);
+  const isLoading = activeQuery.isPending;
+  const error = activeQuery.error;
+  const asOf = pages[pages.length - 1]?.as_of;
 
   async function refresh() {
     setRefreshing(true);
@@ -167,21 +167,20 @@ export function CatalogPage({ client, erpSource }: CatalogPageProps) {
         />
       ) : null}
 
-      {!debouncedSearch && factsQuery.hasNextPage ? (
+      {activeQuery.hasNextPage ? (
         <Button
           variant="secondary"
-          disabled={factsQuery.isFetchingNextPage}
-          loading={factsQuery.isFetchingNextPage}
-          onClick={() => void factsQuery.fetchNextPage()}
+          disabled={activeQuery.isFetchingNextPage}
+          loading={activeQuery.isFetchingNextPage}
+          onClick={() => void activeQuery.fetchNextPage()}
         >
           Carregar mais
         </Button>
       ) : null}
-      {!debouncedSearch && !factsQuery.hasNextPage && facts.length > 0 ? (
-        <p className="text-sm text-muted">Fim da lista</p>
-      ) : null}
-      {debouncedSearch && searchQuery.data ? (
-        <p className="text-sm text-muted">A busca mostra apenas a primeira página de resultados.</p>
+      {!activeQuery.hasNextPage && facts.length > 0 ? (
+        <p className="text-sm text-muted">
+          {debouncedSearch ? "Fim dos resultados" : "Fim da lista"}
+        </p>
       ) : null}
     </div>
   );

@@ -47,12 +47,12 @@ func (s Service) ListCatalogProductFacts(ctx context.Context, cursor ports.Curso
 	return reader.ListCatalogProductFacts(ctx, cursor, limit)
 }
 
-func (s Service) SearchCatalogProductFacts(ctx context.Context, q string, limit int) (ports.CatalogFactPage, error) {
+func (s Service) SearchCatalogProductFacts(ctx context.Context, q string, cursor ports.Cursor, limit int) (ports.CatalogFactPage, error) {
 	reader, ok := s.reader.(ports.CatalogPageReader)
 	if !ok {
 		return ports.CatalogFactPage{}, domain.NewReadError(domain.ReadErrorSourceUnavailable, "oracle catalog page reader is unavailable", nil)
 	}
-	return reader.SearchCatalogProductFacts(ctx, q, limit)
+	return reader.SearchCatalogProductFacts(ctx, q, cursor, limit)
 }
 
 func (s Service) CatalogProductFactsByIDs(ctx context.Context, ids []int64) (ports.CatalogFactPage, error) {

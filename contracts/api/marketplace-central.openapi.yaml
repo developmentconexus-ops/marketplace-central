@@ -443,6 +443,16 @@ paths:
           schema:
             type: string
           description: Search query string
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: >-
+            Opaque base64 keyset cursor returned by the previous page of matches.
+            Search pages the same way the list read does: a response whose
+            next_cursor is set has more matches than the page holds, and omitting
+            the cursor asks for the first page.
         - name: limit
           in: query
           required: false
@@ -476,7 +486,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/CatalogProductFactPage'
         "400":
-          description: Invalid limit
+          description: Invalid cursor or limit
           content:
             application/json:
               schema:

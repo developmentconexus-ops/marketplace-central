@@ -171,7 +171,7 @@ func (f *fakePagerReader) CatalogProductFactsByIDs(ctx context.Context, _ []int6
 	return internalreadports.CatalogFactPage{}, nil
 }
 
-func (f *fakePagerReader) SearchCatalogProductFacts(ctx context.Context, _ string, _ int) (internalreadports.CatalogFactPage, error) {
+func (f *fakePagerReader) SearchCatalogProductFacts(ctx context.Context, _ string, _ internalreadports.Cursor, _ int) (internalreadports.CatalogFactPage, error) {
 	f.searchCalled = true
 	f.pageCtx = ctx
 	return internalreadports.CatalogFactPage{}, nil
@@ -201,7 +201,7 @@ func TestReaderRoutesCatalogPageToUploadSource(t *testing.T) {
 	if !ok || source != erpdomain.SourceXLSX {
 		t.Fatalf("erp ActiveSourceFromContext() = (%v, %v), want (xlsx, true)", source, ok)
 	}
-	if _, err := r.SearchCatalogProductFacts(context.Background(), "q", 10); err != nil {
+	if _, err := r.SearchCatalogProductFacts(context.Background(), "q", internalreadports.Cursor{}, 10); err != nil {
 		t.Fatalf("SearchCatalogProductFacts() error = %v", err)
 	}
 	if !upload.searchCalled {

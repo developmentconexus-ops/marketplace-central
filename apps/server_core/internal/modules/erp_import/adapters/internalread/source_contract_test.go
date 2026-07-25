@@ -162,11 +162,11 @@ func TestXLSXReaderSubstitutabilityContract(t *testing.T) {
 	}
 	assertCatalogPageShapeParity(t, xlsxPage, oraclePage)
 
-	xlsxSearch, err := xlsxReader.SearchCatalogProductFacts(ctx, "Example Product 1001", 1)
+	xlsxSearch, err := xlsxReader.SearchCatalogProductFacts(ctx, "Example Product 1001", readports.Cursor{}, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
-	oracleSearch, err := oracleReader.SearchCatalogProductFacts(ctx, "Example Product 1001", 1)
+	oracleSearch, err := oracleReader.SearchCatalogProductFacts(ctx, "Example Product 1001", readports.Cursor{}, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -436,7 +436,7 @@ func (r *oracleShapedReader) CatalogProductFactsByIDs(_ context.Context, ids []i
 	}
 	return readports.CatalogFactPage{Items: items, AsOf: contractClock}, nil
 }
-func (r *oracleShapedReader) SearchCatalogProductFacts(_ context.Context, query string, _ int) (readports.CatalogFactPage, error) {
+func (r *oracleShapedReader) SearchCatalogProductFacts(_ context.Context, query string, _ readports.Cursor, _ int) (readports.CatalogFactPage, error) {
 	if !strings.Contains(strings.ToLower("Example Product 1001"), strings.ToLower(query)) {
 		return readports.CatalogFactPage{Items: []readports.CatalogProductFact{}, AsOf: contractClock}, nil
 	}

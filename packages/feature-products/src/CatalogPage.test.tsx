@@ -62,6 +62,29 @@ describe("CatalogPage", () => {
     expect(screen.getByText("Fim da lista")).toBeInTheDocument();
   });
 
+  // Search used to render its first page and a line saying only the first page
+  // was shown — every match past the 50th was unreachable. It now walks the
+  // cursor like the list read, and the cursor must reach the search endpoint.
+  it("pages search results past the first page", async () => {
+    const fetch = vi.fn()
+      // Call 0 is the list read the mount fires before the search debounce lands.
+      .mockResolvedValueOnce(new Response(JSON.stringify(page(1, null, "2026-07-14T10:10:11Z"))))
+      .mockResolvedValueOnce(new Response(JSON.stringify(page(11, "cursor-s2", "2026-07-14T10:11:12Z"))))
+      .mockResolvedValueOnce(new Response(JSON.stringify(page(12, null, "2026-07-14T10:12:13Z"))));
+    const transport = createRefreshableFetch(fetch as unknown as typeof globalThis.fetch);
+    const sdk = createMarketplaceCentralClient({ baseUrl: "", fetchImpl: transport.fetchImpl });
+    renderPage({ ...sdk, withNoCache: transport.withNoCache });
+
+    fireEvent.change(screen.getByLabelText("Buscar no catálogo"), { target: { value: "CUBA" } });
+
+    expect(await screen.findByText("Product 11")).toBeInTheDocument();
+    expect(requestUrl(fetch.mock.calls[1])).toContain("/catalog/products/search?q=CUBA");
+    fireEvent.click(screen.getByRole("button", { name: "Carregar mais" }));
+    expect(await screen.findByText("Product 12")).toBeInTheDocument();
+    expect(requestUrl(fetch.mock.calls[2])).toContain("cursor=cursor-s2");
+    expect(screen.getByText("Fim dos resultados")).toBeInTheDocument();
+  });
+
   it("uses catalog staleTime across remounts and refetches after it expires", async () => {
     const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(page(1, null, "2026-07-14T10:11:12Z"))));
     const transport = createRefreshableFetch(fetch as unknown as typeof globalThis.fetch);

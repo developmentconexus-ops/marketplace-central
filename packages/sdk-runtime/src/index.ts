@@ -250,6 +250,8 @@ export interface CatalogProductFactsByIdsOptions {
 
 export interface CatalogSearchPageOptions {
   q: string;
+  /** Opaque cursor from the previous page of matches. Search pages like the list read. */
+  cursor?: string;
   limit?: number;
   erp_source?: ErpImportSourceInput;
 }
@@ -1845,7 +1847,7 @@ export function createMarketplaceCentralClient(options: {
       ),
     searchCatalogProductFacts: (options: CatalogSearchPageOptions) =>
       getJson<CatalogProductFactPage>(
-        `/catalog/products/search${catalogQuery({ q: options.q, limit: options.limit, erp_source: options.erp_source })}`,
+        `/catalog/products/search${catalogQuery({ q: options.q, cursor: options.cursor, limit: options.limit, erp_source: options.erp_source })}`,
       ),
     listListings: (options: ListingListOptions) =>
       getJson<ListingPage>(`/listings${listingQuery(options)}`),

@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import type { ActiveSourceName, CatalogProductFactPage } from "@marketplace-central/sdk-runtime";
 import {
   catalogQueryKeys,
@@ -8,7 +8,11 @@ import {
 
 export interface CatalogQueriesClient extends RefreshableClient {
   listCatalogProductFacts: (options?: { cursor?: string; limit?: number }) => Promise<CatalogProductFactPage>;
-  searchCatalogProductFacts: (options: { q: string; limit?: number }) => Promise<CatalogProductFactPage>;
+  searchCatalogProductFacts: (options: {
+    q: string;
+    cursor?: string;
+    limit?: number;
+  }) => Promise<CatalogProductFactPage>;
 }
 
 // The source is NOT sent as a request parameter. The reader resolves the
@@ -33,14 +37,21 @@ export function useCatalogFactsQuery(
   });
 }
 
+// Search pages like the list read. It used to be a single useQuery, which could
+// only ever hold the first 50 matches: a query with more matches than that
+// showed a full table with no way to reach the rest, and the response gave the
+// screen nothing to say so with.
 export function useCatalogSearchQuery(
   client: CatalogQueriesClient,
   query: string,
   erpSource: ActiveSourceName | undefined,
 ) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: catalogQueryKeys.search(query, { erp_source: erpSource ?? null }),
-    queryFn: () => client.searchCatalogProductFacts({ q: query, limit: 50 }),
+    queryFn: ({ pageParam }) =>
+      client.searchCatalogProductFacts({ q: query, cursor: pageParam, limit: 50 }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
     staleTime: QUERY_STALE_TIME.catalog,
     enabled: Boolean(query),
   });

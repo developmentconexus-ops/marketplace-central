@@ -33,7 +33,10 @@ func (r *Reader) ListCatalogProductFacts(ctx context.Context, cursor ports.Curso
 	return r.readCatalogPage(ctx, query, args, limit, true)
 }
 
-func (r *Reader) SearchCatalogProductFacts(ctx context.Context, q string, limit int) (ports.CatalogFactPage, error) {
+func (r *Reader) SearchCatalogProductFacts(ctx context.Context, q string, cursor ports.Cursor, limit int) (ports.CatalogFactPage, error) {
+	if cursor.InternalProductID < 0 {
+		return ports.CatalogFactPage{}, ports.NewInvalidCursorError()
+	}
 	if limit < catalogListMinLimit || limit > catalogSearchMaxLimit {
 		return ports.CatalogFactPage{}, fmt.Errorf("invalid catalog search limit: %d", limit)
 	}
@@ -41,8 +44,11 @@ func (r *Reader) SearchCatalogProductFacts(ctx context.Context, q string, limit 
 		return ports.CatalogFactPage{}, err
 	}
 
-	query, args := buildCatalogPageQuery(ports.Cursor{}, limit, q)
-	return r.readCatalogPage(ctx, query, args, limit, false)
+	// limit+1 with paginate: the extra row is what proves there are more matches.
+	// Fetching exactly `limit` made a truncated result indistinguishable from a
+	// complete one.
+	query, args := buildCatalogPageQuery(cursor, limit+1, q)
+	return r.readCatalogPage(ctx, query, args, limit, true)
 }
 
 func (r *Reader) CatalogProductFactsByIDs(ctx context.Context, ids []int64) (ports.CatalogFactPage, error) {

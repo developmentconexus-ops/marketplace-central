@@ -202,7 +202,10 @@ func (h Handler) handleLegacyProducts(w http.ResponseWriter, r *http.Request) {
 func (h Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	q := r.URL.Query().Get("q")
-	limit, err := parseLimit(r, searchMaxLimit)
+	// Search is a page of a longer sequence, exactly like the list read, so it
+	// accepts the same cursor. Without it the response could only ever be the
+	// first page and a caller had no way to reach the rest of the matches.
+	cursor, limit, err := parseCatalogPageQuery(r, searchMaxLimit)
 	if err != nil {
 		writeCatalogPageError(w, err)
 		return
@@ -216,13 +219,13 @@ func (h Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
 		writeCatalogPageError(w, err)
 		return
 	}
-	page, err := h.PageReader.SearchCatalogProductFacts(ctx, q, limit)
+	page, err := h.PageReader.SearchCatalogProductFacts(ctx, q, cursor, limit)
 	if err != nil {
 		writeCatalogPageError(w, err)
 		return
 	}
-	slog.Info("catalog.search", "action", "search", "result", "200", "duration_ms", time.Since(start).Milliseconds())
-	httpx.WriteJSON(w, http.StatusOK, newCatalogPageResponse(page, true))
+	slog.Info("catalog.search", "action", "search", "result", "200", "items", len(page.Items), "has_more", page.NextCursor != nil, "duration_ms", time.Since(start).Milliseconds())
+	httpx.WriteJSON(w, http.StatusOK, newCatalogPageResponse(page, false))
 }
 
 // handleLegacySearch remains only for direct legacy mux compatibility.
@@ -314,7 +317,11 @@ type catalogMoneyFactResponse struct {
 	Quality  []string `json:"quality"`
 }
 
-func newCatalogPageResponse(page ports.CatalogFactPage, search bool) catalogPageEnvelope {
+// suppressCursor is for reads that are NOT a page of a longer sequence — the
+// explicit-id read answers exactly the set asked for, so a next_cursor would
+// invite paging past the end of it. Paged reads (list and search) must emit
+// theirs: withholding it makes a truncated page look complete.
+func newCatalogPageResponse(page ports.CatalogFactPage, suppressCursor bool) catalogPageEnvelope {
 	items := make([]catalogProductFactResponse, 0, len(page.Items))
 	for _, item := range page.Items {
 		items = append(items, catalogProductFactResponse{
@@ -344,7 +351,7 @@ func newCatalogPageResponse(page ports.CatalogFactPage, search bool) catalogPage
 		})
 	}
 	response := catalogPageEnvelope{Items: items, PageSize: len(items), AsOf: page.AsOf.UTC()}
-	if !search && page.NextCursor != nil {
+	if !suppressCursor && page.NextCursor != nil {
 		if encoded, err := page.NextCursor.Encode(); err == nil {
 			response.NextCursor = &encoded
 		}

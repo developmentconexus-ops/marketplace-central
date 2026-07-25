@@ -89,7 +89,12 @@ type CatalogMoneyFact struct {
 
 type CatalogPageReader interface {
 	ListCatalogProductFacts(context.Context, Cursor, int) (CatalogFactPage, error)
-	SearchCatalogProductFacts(context.Context, string, int) (CatalogFactPage, error)
+	// SearchCatalogProductFacts pages the matches for a query the same way
+	// ListCatalogProductFacts pages the whole catalog. It takes a cursor because
+	// a search that only ever returned the first page could not distinguish
+	// "these are all the matches" from "these are the first 50 of many" — the
+	// caller got a full page with no next cursor and no way to ask for the rest.
+	SearchCatalogProductFacts(context.Context, string, Cursor, int) (CatalogFactPage, error)
 	// CatalogProductFactsByIDs answers "the facts for exactly these products".
 	// A screen that works on a known set — the products linked to listings, say —
 	// cannot express that as a keyset page: the ids are scattered across the whole

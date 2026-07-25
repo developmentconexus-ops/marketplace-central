@@ -331,10 +331,13 @@ func (r CatalogPageReader) ListCatalogProductFacts(ctx context.Context, cursor i
 	return cloneCatalogPage(value.(internalreadports.CatalogFactPage)), nil
 }
 
-func (r CatalogPageReader) SearchCatalogProductFacts(ctx context.Context, query string, limit int) (internalreadports.CatalogFactPage, error) {
-	key := canonicalKey("SearchCatalogProductFacts", activeSourceKey(ctx), query, strconv.Itoa(limit))
+func (r CatalogPageReader) SearchCatalogProductFacts(ctx context.Context, query string, cursor internalreadports.Cursor, limit int) (internalreadports.CatalogFactPage, error) {
+	// The cursor selects a different page of the same query, so it belongs in the
+	// key for the same reason it does on the list read — without it, page 2 of a
+	// search would be served page 1 from the cache.
+	key := canonicalKey("SearchCatalogProductFacts", activeSourceKey(ctx), query, strconv.FormatInt(cursor.InternalProductID, 10), strconv.Itoa(limit))
 	value, err := r.cache.load(ctx, ClassCatalog, key, func() (any, time.Time, error) {
-		page, err := r.downstream.SearchCatalogProductFacts(ctx, query, limit)
+		page, err := r.downstream.SearchCatalogProductFacts(ctx, query, cursor, limit)
 		return cloneCatalogPage(page), page.AsOf, err
 	})
 	if err != nil {
@@ -377,8 +380,8 @@ func (r Reader) ListCatalogProductFacts(ctx context.Context, cursor internalread
 	return r.pages.ListCatalogProductFacts(ctx, cursor, limit)
 }
 
-func (r Reader) SearchCatalogProductFacts(ctx context.Context, query string, limit int) (internalreadports.CatalogFactPage, error) {
-	return r.pages.SearchCatalogProductFacts(ctx, query, limit)
+func (r Reader) SearchCatalogProductFacts(ctx context.Context, query string, cursor internalreadports.Cursor, limit int) (internalreadports.CatalogFactPage, error) {
+	return r.pages.SearchCatalogProductFacts(ctx, query, cursor, limit)
 }
 
 func (r Reader) CatalogProductFactsByIDs(ctx context.Context, ids []int64) (internalreadports.CatalogFactPage, error) {

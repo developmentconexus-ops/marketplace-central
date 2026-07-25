@@ -143,9 +143,14 @@ describe("sdk runtime", () => {
 
     const page = await client.listCatalogProductFacts({ cursor: "MTIz", limit: 25 });
     const searchPage = await client.searchCatalogProductFacts({ q: "PARAFUSO", limit: 50 });
+    // Search pages: the cursor from a previous page of matches must reach the wire.
+    await client.searchCatalogProductFacts({ q: "PARAFUSO", cursor: "NDU2", limit: 50 });
 
     expect(String(requests[0].input)).toBe("http://localhost:8080/catalog/products?cursor=MTIz&limit=25");
     expect(String(requests[1].input)).toBe("http://localhost:8080/catalog/products/search?q=PARAFUSO&limit=50");
+    expect(String(requests[2].input)).toBe(
+      "http://localhost:8080/catalog/products/search?q=PARAFUSO&cursor=NDU2&limit=50",
+    );
     expect(requests[0].init?.method).toBe("GET");
     expect(page.next_cursor).toBeNull();
     expect(searchPage.page_size).toBe(0);

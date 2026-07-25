@@ -185,10 +185,10 @@ func TestCatalogPageInvalidCursorDoesNotTouchOracle(t *testing.T) {
 	}
 }
 
-func TestCatalogSearchUsesOneBoundedQueryAndNoCursor(t *testing.T) {
+func TestCatalogSearchUsesOneBoundedQuery(t *testing.T) {
 	queryer := &fakeCatalogQueryer{rows: [][]driver.Value{catalogDriverRow(4)}}
 	reader := NewReader(queryer)
-	page, err := reader.SearchCatalogProductFacts(context.Background(), "bolt", 50)
+	page, err := reader.SearchCatalogProductFacts(context.Background(), "bolt", ports.Cursor{}, 50)
 	if err != nil {
 		t.Fatalf("SearchCatalogProductFacts() error = %v", err)
 	}
@@ -197,6 +197,46 @@ func TestCatalogSearchUsesOneBoundedQueryAndNoCursor(t *testing.T) {
 	}
 	if !strings.Contains(queryer.queries[0], "UPPER(p.DESCRPROD) LIKE") {
 		t.Fatalf("search predicate missing: %s", queryer.queries[0])
+	}
+}
+
+// Search used to fetch exactly `limit` rows and never set NextCursor, so a query
+// matching more products than the page held returned a full page with
+// next_cursor: null — byte-identical to "that is all there is". The operator saw
+// 50 results and no way to ask for the 51st.
+func TestCatalogSearchReportsMoreMatchesAndWalksThem(t *testing.T) {
+	queryer := &fakeCatalogQueryer{rows: [][]driver.Value{catalogDriverRow(4), catalogDriverRow(9)}}
+	reader := NewReader(queryer)
+
+	first, err := reader.SearchCatalogProductFacts(context.Background(), "bolt", ports.Cursor{}, 1)
+	if err != nil {
+		t.Fatalf("SearchCatalogProductFacts() error = %v", err)
+	}
+	if len(first.Items) != 1 {
+		t.Fatalf("items = %d, want 1", len(first.Items))
+	}
+	if first.NextCursor == nil || first.NextCursor.InternalProductID != 4 {
+		t.Fatalf("next_cursor = %+v, want cursor at 4", first.NextCursor)
+	}
+
+	if _, err := reader.SearchCatalogProductFacts(context.Background(), "bolt", *first.NextCursor, 1); err != nil {
+		t.Fatalf("second page error = %v", err)
+	}
+	second := queryer.queries[1]
+	if !strings.Contains(second, "p.CODPROD > :1") || !strings.Contains(second, "UPPER(p.DESCRPROD) LIKE :2") {
+		t.Fatalf("second page must carry both the cursor and the search predicate: %s", second)
+	}
+}
+
+func TestCatalogSearchRejectsNegativeCursorWithoutTouchingOracle(t *testing.T) {
+	queryer := &fakeCatalogQueryer{}
+	reader := NewReader(queryer)
+	_, err := reader.SearchCatalogProductFacts(context.Background(), "bolt", ports.Cursor{InternalProductID: -1}, 50)
+	if !errors.Is(err, ports.ErrInvalidCursor) {
+		t.Fatalf("error = %v, want ErrInvalidCursor", err)
+	}
+	if queryer.queryCount != 0 {
+		t.Fatalf("query count = %d, want 0", queryer.queryCount)
 	}
 }
 

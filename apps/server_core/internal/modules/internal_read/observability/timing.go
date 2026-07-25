@@ -105,7 +105,7 @@ func (r *TimingReader) ListCatalogProductFacts(ctx context.Context, cursor ports
 	return result, err
 }
 
-func (r *TimingReader) SearchCatalogProductFacts(ctx context.Context, q string, limit int) (ports.CatalogFactPage, error) {
+func (r *TimingReader) SearchCatalogProductFacts(ctx context.Context, q string, cursor ports.Cursor, limit int) (ports.CatalogFactPage, error) {
 	var result ports.CatalogFactPage
 	err := r.observe("SearchCatalogProductFacts", func() error {
 		reader, ok := r.next.(ports.CatalogPageReader)
@@ -113,7 +113,7 @@ func (r *TimingReader) SearchCatalogProductFacts(ctx context.Context, q string, 
 			return domain.NewReadError(domain.ReadErrorSourceUnavailable, "oracle catalog page reader is unavailable", nil)
 		}
 		var err error
-		result, err = reader.SearchCatalogProductFacts(ctx, q, limit)
+		result, err = reader.SearchCatalogProductFacts(ctx, q, cursor, limit)
 		return err
 	})
 	return result, err

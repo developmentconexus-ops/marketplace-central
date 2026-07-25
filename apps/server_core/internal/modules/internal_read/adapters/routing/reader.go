@@ -125,12 +125,12 @@ func (r *Reader) ListCatalogProductFacts(ctx context.Context, cursor internalrea
 
 // SearchCatalogProductFacts routes catalog search to the resolved source's
 // reader, with the same honest-failure contract as ListCatalogProductFacts.
-func (r *Reader) SearchCatalogProductFacts(ctx context.Context, query string, limit int) (internalreadports.CatalogFactPage, error) {
+func (r *Reader) SearchCatalogProductFacts(ctx context.Context, query string, cursor internalreadports.Cursor, limit int) (internalreadports.CatalogFactPage, error) {
 	pager, ctx, err := r.resolveCatalogPager(ctx)
 	if err != nil {
 		return internalreadports.CatalogFactPage{}, err
 	}
-	return pager.SearchCatalogProductFacts(ctx, query, limit)
+	return pager.SearchCatalogProductFacts(ctx, query, cursor, limit)
 }
 
 // CatalogProductFactsByIDs routes an explicit-id catalog read to the resolved

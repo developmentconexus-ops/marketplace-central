@@ -23,6 +23,7 @@ type fakeCatalogPageReader struct {
 	searchPage      ports.CatalogFactPage
 	listCursors     []ports.Cursor
 	searchQueries   []string
+	searchCursors   []ports.Cursor
 	searchLimits    []int
 	freshnessPolicy []internalreaddomain.FreshnessPolicy
 	activeSources   []erpdomain.ImportSource
@@ -58,8 +59,9 @@ func (f *fakeCatalogPageReader) CatalogProductFactsByIDs(ctx context.Context, id
 	}
 	return f.idPage, nil
 }
-func (f *fakeCatalogPageReader) SearchCatalogProductFacts(ctx context.Context, q string, limit int) (ports.CatalogFactPage, error) {
+func (f *fakeCatalogPageReader) SearchCatalogProductFacts(ctx context.Context, q string, cursor ports.Cursor, limit int) (ports.CatalogFactPage, error) {
 	f.searchQueries = append(f.searchQueries, q)
+	f.searchCursors = append(f.searchCursors, cursor)
 	f.searchLimits = append(f.searchLimits, limit)
 	f.captureSource(ctx)
 	if policy, ok := FreshnessPolicyFromContext(ctx); ok {
@@ -219,14 +221,36 @@ func TestCatalogSearchPageEnvelopeAndNoCachePolicy(t *testing.T) {
 	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
 		t.Fatal(err)
 	}
-	if response.NextCursor != nil || response.PageSize != 1 || response.AsOf.IsZero() {
+	// Search is a page of a longer sequence. Withholding its cursor made a
+	// truncated result byte-identical to a complete one, and left the caller no
+	// way to reach the matches beyond the page.
+	if response.NextCursor == nil || response.PageSize != 1 || response.AsOf.IsZero() {
 		t.Fatalf("response = %+v", response)
 	}
 	if !reflect.DeepEqual(fake.searchQueries, []string{"PARAFUSO"}) || !reflect.DeepEqual(fake.searchLimits, []int{50}) {
 		t.Fatalf("search calls = %v/%v", fake.searchQueries, fake.searchLimits)
 	}
+	if !reflect.DeepEqual(fake.searchCursors, []ports.Cursor{{}}) {
+		t.Fatalf("search cursors = %+v, want the first page", fake.searchCursors)
+	}
 	if !reflect.DeepEqual(fake.freshnessPolicy, []internalreaddomain.FreshnessPolicy{{MaxAge: 0}}) {
 		t.Fatalf("freshness policy = %+v", fake.freshnessPolicy)
+	}
+
+	// The cursor the response handed out must come back as the next page's ask.
+	next := httptest.NewRecorder()
+	mux.ServeHTTP(next, httptest.NewRequest(http.MethodGet, "/catalog/products/search?q=PARAFUSO&limit=50&cursor="+*response.NextCursor, nil))
+	if next.Code != http.StatusOK {
+		t.Fatalf("second page status = %d, body = %s", next.Code, next.Body.String())
+	}
+	if !reflect.DeepEqual(fake.searchCursors, []ports.Cursor{{}, {InternalProductID: 11}}) {
+		t.Fatalf("search cursors = %+v, want the round-tripped cursor", fake.searchCursors)
+	}
+
+	bad := httptest.NewRecorder()
+	mux.ServeHTTP(bad, httptest.NewRequest(http.MethodGet, "/catalog/products/search?q=PARAFUSO&cursor=not-base64", nil))
+	if bad.Code != http.StatusBadRequest {
+		t.Fatalf("invalid cursor status = %d, body = %s", bad.Code, bad.Body.String())
 	}
 }
 
