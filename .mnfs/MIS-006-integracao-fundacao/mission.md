@@ -134,13 +134,50 @@ Accepted assumptions (reversíveis):
 - Trade-off: linhas stale acumulam (mitigado por flag + filtro na UI).
 - Validation impact: produto some do snapshot → mirror mantém row flagada (IO Fase 5).
 
-### ADR-05: auto-aprovar vínculo só EAN-exato-ÚNICO; reusar sinal de colisão existente
-- Decisão: `collisions[ean]==1` + match exato → auto-approve com audit E10; senão REVIEW.
-  Sinal reusado de `validEANCounts`/`identityQuality` (não reimplementar).
-- Prevents: auto-aprovação errada em EAN ambíguo; reimplementação de sinal já testado.
-- Must preserve: override manual do operador vence (idempotência A8).
-- Trade-off: EANs colidentes ficam manuais (aceito — segurança > cobertura).
-- Validation impact: IO A auto-aprova (EAN único); EAN duplicado fica REVIEW.
+### ADR-05: auto-aprovar vínculo em âncora não-ambígua (CODPROD e/ou EAN)
+`AMENDADO 2026-07-25 (D-121) · RATIFIED-BY-OPERATOR` — supersede a redação original
+("só EAN-exato-ÚNICO; reusar `validEANCounts`"), que contradizia o motor de match já
+ratificado (IC-01 A2) e assumia uma semântica errada de `seller_sku`. Entrevista de
+alinhamento com o operador, evidência real do mirror Sankhya (10529 produtos, 7361 com EAN,
+91 EANs colidentes cobrindo 188 produtos).
+
+- **Semântica de `seller_sku` (D-121-1):** no Mercado Livre o SKU do anúncio É o CODPROD do
+  ERP — o operador cadastra assim, e todos os anúncios já carregam o código. O matcher hoje
+  compara `seller_sku` com `p.REFFORN` (código do FABRICANTE, ex. `L.87.22`) —
+  `internal_read/adapters/oracle/reader.go:451`. Isso está errado para este tenant e passa a
+  casar `p.CODPROD`. REFFORN sai como âncora de SKU (decisão do operador: "esquece REFFORN").
+  CODPROD é a chave primária do ERP: não colide por definição, e é a âncora mais forte
+  disponível — mais forte que o EAN, que é digitado pelo vendedor e tem 91 colisões reais.
+- **Decisão (política de auto-approve):** auto-aprova quando a âncora é não-ambígua —
+  (a) CODPROD resolve para 1 produto, com ou sem EAN presente; (b) EAN resolve para 1
+  produto; (c) ambos concordando no mesmo produto. Qualquer outro caminho é REVIEW.
+- **Conflito CODPROD≠EAN → REVIEW** (nunca auto-resolve por precedência): sinais
+  contraditórios são sintoma de cadastro errado no anúncio; auto-resolver esconderia isso.
+- **Contradição de título vence tudo:** `detectHardNegative` (kit/combo/cor/voltagem
+  divergente entre título do anúncio e nome do produto) rebaixa a REJECT/REVIEW mesmo com
+  CODPROD ou EAN batendo. Caso motivador: anúncio-kit cadastrado com o EAN da peça avulsa →
+  vínculo silenciosamente errado que distorce estoque e margem.
+- **Um produto ↔ N anúncios:** sem limite e sem sinalização. Mesmo codprod anunciado várias
+  vezes é operação normal.
+- Prevents: auto-aprovação em EAN ambíguo (91 EANs, 188 produtos); vínculo de anúncio-kit a
+  peça avulsa; automatizar o sinal fraco enquanto o forte espera na fila manual.
+- Must preserve: override manual do operador vence auto-aprovação e nunca é revertido pelo
+  automático; título nunca aceita sozinho.
+- Trade-off: CODPROD digitado errado no anúncio que caia em outro código VÁLIDO vincula
+  errado sem revisão (aceito — o operador é dono do cadastro nos dois lados).
+- Validation impact: IO A auto-aprova; EAN colidente, conflito CODPROD≠EAN e hard-negative
+  ficam REVIEW.
+
+**Defeitos do plano original corrigidos junto (achados na entrevista, não são decisão de
+negócio):**
+- *A8*: o plano pedia unique em `(internal_product_id, provider_listing_id)`. Essa coluna não
+  existe em `product_links` (é `provider_item_id`), e a PK atual
+  `(tenant_id, installation_id, provider_item_id, provider_variation_id)` já garante
+  idempotência — e respeita variação, que a chave proposta perderia. A8 = satisfeita pela PK
+  existente; nenhum índice novo.
+- *`collisions[ean]`*: `len(eanMatches.Products)==1` no gerador JÁ é a contagem de colisão do
+  lado ERP. `validEANCounts` mede duplicidade dentro do arquivo xlsx — outro fato. O
+  auto-approve usa a contagem do gerador; `collisions_at_decision` em E10 grava esse número.
 
 ### ADR-06: 3 buracos do adapter ML (F-ADAPTER-1) fora da fundação
 - Decisão: backoff/429 + tarifa live entram na missão que os exercita (backfill em lote).
@@ -159,7 +196,7 @@ Accepted assumptions (reversíveis):
 | D1 | Arquitetura de fonte | **RATIFICADO** (adapters convergentes, ADR-02) | contrato §3 |
 | D2 | Mecanismo incremental | **RATIFICADO** scheduler-first; MIS-006 = skeleton cadence-agnostic | contrato §3 |
 | D3 | Campos fiscais obrigatórios | **RESOLVIDO = N/A à E2.** Tabela 10-campos ratificada NÃO tem campo fiscal; fiscal (CPF/CNPJ/IE) vive em E5/Pedido (non-scope). `ncm` fica como passthrough opcional (honesto-desconhecido) pois já existe em `NormalizedRow`. Nenhum campo fiscal novo em products_mirror. | contrato §E2/§3; research |
-| D4 | Auto-aprovar EAN-exato-único | **RATIFICADO** (ADR-05 + audit E10 + tela de cadeia) | contrato §3 |
+| D4 | Auto-aprovar vínculo em âncora não-ambígua | **RATIFICADO + AMENDADO 2026-07-25 (D-121)** — CODPROD-único, EAN-único ou ambos concordantes auto-aprovam; conflito/colisão/hard-negative ficam REVIEW; `seller_sku`→CODPROD (não REFFORN). Ver ADR-05 amendado. | contrato §3; entrevista operador D-121 |
 | D5 | Horizonte backfill pedidos | RATIFICADO 12 meses — **non-scope** (pedidos) | contrato §3 |
 | D6 | Cadência coleta | **RESOLVIDO = sync_state cadence-agnostic.** MIS-006 guarda `schedule` genérico por entity; não hardcoda "diário". Valor real ratifica na missão mercado sem mudar shape E8. | research; SYSTEM-BLUEPRINT §4 |
 | D7 | Snapshot leve p/ fonte-banco | **RESOLVIDO = SIM.** SankhyaAdapter escreve snapshot no mirror (mirror é o join target compartilhado). Não é read-through puro. | STORAGE-SCHEMA §products_mirror |

@@ -14,10 +14,29 @@ validation_level: QA-0
 
 Fechar o caminho de vínculo automático produto↔anúncio sem reimplementar nada que já existe e
 já funciona: REFACTOR de wiring em `generation_service.go` (trigger interno pós-import/sync, hoje
-só alcançável por endpoint órfão) + REUSE do sinal de unicidade de EAN já calculado
-(`validEANCounts`/`identityQuality`) + REFACTOR de `resolution_service.go` para uma transição
-auto-approve que reusa a máquina de audit existente, formalizada como E10 (trail nova). Handlers
-HTTP órfãos são KEPT (não removidos) — ganham um caminho de invocação interna adicional.
+só alcançável por endpoint órfão) + REFACTOR da âncora de SKU do matcher para `p.CODPROD`
+(D-121-1 — o SKU do anúncio no ML É o CODPROD; contra `p.REFFORN` a âncora forte do operador
+nunca casaria) + REUSE da contagem de colisão que o próprio gerador já calcula + REFACTOR de
+`resolution_service.go` para uma transição auto-approve que reusa a máquina de audit existente,
+formalizada como E10 (trail nova). Handlers HTTP órfãos são KEPT (não removidos) — ganham um
+caminho de invocação interna adicional.
+
+Política de auto-approve ratificada pelo operador em D-121 (ADR-05 amendado,
+`RATIFIED-BY-OPERATOR`), e é ela que os briefs abaixo implementam:
+
+| Sinal no anúncio | Resultado |
+|---|---|
+| CODPROD válido **e** EAN, mesmo produto | auto-aprova (`concordant_codprod_ean`) |
+| CODPROD válido, sem EAN | auto-aprova (`exact_codprod_unique`) |
+| EAN único, sem CODPROD | auto-aprova (`exact_ean_unique`) |
+| CODPROD e EAN apontam produtos diferentes | REVIEW — conflito, sem regra de precedência |
+| EAN colidente (>1 produto no ERP) | REVIEW |
+| só título | REVIEW, nunca auto-aprova |
+| título contradiz (kit/combo/cor/voltagem) | bloqueia tudo acima — hard-negative vence |
+
+Trade-off aceito pelo operador: um CODPROD digitado errado que caia sobre outro código VÁLIDO
+vincula no produto errado sem passar por revisão. Aceito porque o cadastro é governado pelo
+próprio operador.
 
 Ver `mission.md` §Milestone Strategy (linha M-05), ADR-05, `interface-contracts-mis006.md` §E4
 (E4.1)/§E10, `architecture-map.md` (M-05 depende de M-02+M-03; alimenta M-06),
@@ -28,19 +47,37 @@ Ver `mission.md` §Milestone Strategy (linha M-05), ADR-05, `interface-contracts
 - REFACTOR `product_links/application/generation_service.go:60-78` (`GenerateLinkCandidates`):
   ADD chamada interna (não-HTTP) disparada ao final de import xlsx (hook de M-03) e de sync
   Sankhya (M-04, quando existir) — lógica de geração em si NÃO muda, só ganha caller automático.
-- REUSE sinal de colisão de EAN já implementado e testado: `validEANCounts`/`identityQuality`
-  (`erp_import/adapters/internalread/reader.go:344-366`) do lado xlsx; equivalente já existe
-  simétrico em `internal_read/adapters/oracle/reader.go:70-76` do lado Sankhya. NÃO reimplementar
-  a contagem de colisão — só consumir o `QualityFlags` resultante no momento da geração.
+- REFACTOR `internal_read/adapters/oracle/reader.go:451` (D-121-1, `RATIFIED-BY-OPERATOR`):
+  `seller_sku` casa `p.CODPROD`, não `p.REFFORN`. No Mercado Livre o SKU do anúncio É o CODPROD
+  do ERP — o operador cadastra assim e todos os anúncios já carregam o código. REFFORN (código
+  do fabricante) sai como âncora de SKU. O `seller_sku` que não for um CODPROD válido não vira
+  cláusula de match (mesma disciplina do EAN não-GTIN em `reader.go:448` — junk nunca alarga a
+  query). Rebate no fake reader e no mirror reader do `erp_import` para os dois lados da
+  routing manterem a mesma semântica.
+- REUSE a contagem de colisão que o gerador JÁ calcula (`len(eanMatches.Products)` /
+  `len(skuMatches.Products)` em `buildExactCandidates`, `generation_service.go:194-222`) — é o
+  número que a política precisa. NÃO reimplementar, e NÃO reusar `validEANCounts`
+  (`erp_import/.../reader.go:344-366`): aquele mede duplicidade de EAN dentro do ARQUIVO xlsx,
+  não colisão no ERP — fato diferente (correção de plano D-121).
 - REFACTOR `product_links/application/resolution_service.go:129-149` (`ApproveCandidate`): ADD
-  transição interna de auto-approve (`collisions[ean]==1` + match exato por EAN) que reusa a
-  MESMA máquina de transição/audit hoje só acionada por operador manual via transport.
+  transição interna de auto-approve reusando a MESMA máquina de transição/audit hoje só
+  acionada por operador manual via transport. Política ratificada (ADR-05 amendado): auto-aprova
+  CODPROD-único (com ou sem EAN), EAN-único, e ambos concordantes; conflito CODPROD≠EAN,
+  colisão (>1 produto) e hard-negative ficam REVIEW.
 - CREATE E10 audit trail (tabela nova, migração bloco B+ — após bloco B de M-02): toda decisão de
   vínculo (manual ou automática) grava linha `rule_matched`, `actor`, `collisions_at_decision`,
-  `superseded_by`.
-- CREATE idempotência A8: chave única `(internal_product_id, provider_listing_id)` em
-  `product_links` — re-run do trigger não duplica vínculo; override manual do operador vence
-  auto-aprovação prévia e nunca é sobrescrito de volta pelo automático.
+  `superseded_by`. `rule_matched` cobre a política ratificada:
+  `exact_codprod_unique | exact_ean_unique | concordant_codprod_ean | manual`.
+- A8 idempotência: **já satisfeita pela PK existente** de `product_links`
+  `(tenant_id, installation_id, provider_item_id, provider_variation_id)` — re-run do trigger
+  faz upsert na mesma identidade, não duplica. NÃO criar a chave que o plano original pedia,
+  `(internal_product_id, provider_listing_id)`: essa coluna não existe nessa tabela (é
+  `provider_item_id`) e a chave proposta perderia a variação, colidindo entre duas variações do
+  mesmo anúncio (correção de plano D-121). O que M-05 ADD é a regra de precedência: override
+  manual do operador vence auto-aprovação prévia e nunca é sobrescrito de volta pelo automático.
+- Um produto ↔ N anúncios sem limite e sem sinalização (D-121, ratificado): mesmo codprod
+  anunciado várias vezes é operação normal; auto-approve não checa nada além da identidade do
+  anúncio.
 - KEEP `product_links/transport/http_handler.go:89-90` (os dois endpoints órfãos) — permanecem
   registrados e curl-acessíveis; ganham companhia do caller interno, não são removidos nem
   substituídos.
@@ -54,8 +91,13 @@ Ver `mission.md` §Milestone Strategy (linha M-05), ADR-05, `interface-contracts
 - Telas de vínculo / badge auto-aprovado na UI (`VinculosPage`, M-06) — M-05 é 100% backend.
 - Qualquer execução de coleta de mercado — MIS-006 só ENFILEIRA (boundary MC-11); auto-vínculo
   não dispara chamada a ML API nenhuma.
-- Mudança de política de match (fuzzy, SKU, título) — só o caminho EAN-exato-único ganha
-  auto-approve; qualquer outro critério permanece manual (fora de escopo desta milestone).
+- Match fuzzy / por título — o caminho de título continua existindo e continua SEMPRE em REVIEW;
+  nenhuma heurística nova de similaridade entra nesta milestone. (A âncora de SKU passou a ser
+  ESCOPO em D-121: ver F-04. O que segue fora de escopo é qualquer critério novo além das três
+  âncoras já implementadas — sku, ean, título.)
+- Correção do cadastro de SKU no Mercado Livre (anúncios cujo SKU não é um CODPROD) — é ação do
+  operador no painel do ML, não código. M-05 só garante que um SKU não-CODPROD não vira cláusula
+  de match e o candidato cai em REVIEW.
 
 ## Feature Briefs
 
@@ -99,36 +141,52 @@ chama `product_links/application`, nunca o inverso).
 
 ---
 
-### F-02 — Auto-approve EAN-exato-único (REUSE sinal de colisão)
+### F-02 — Auto-approve por âncora não-ambígua (CODPROD e/ou EAN)
 
 **EARS:**
-- WHEN a geração de candidatos produz um candidato com match exato por EAN E
-  `collisions[ean] == 1` (sinal de `validEANCounts`/`identityQuality`,
-  `reader.go:344-366`, já calculado — NÃO recalculado aqui) THEN o candidato transiciona
-  automaticamente para aprovado, reusando a máquina de transição de
-  `resolution_service.go:129-149` (`ApproveCandidate`), com `actor=system`.
-- WHEN `collisions[ean] > 1` (EAN duplicado/ambíguo entre produtos) THEN o candidato permanece
-  em REVIEW — auto-approve NUNCA dispara em ambiguidade (segurança > cobertura, ADR-05).
-- WHEN o listing não tem EAN (`ean` ausente/vazio) THEN o candidato fica em REVIEW com motivo
-  visível (`"sem EAN"` ou equivalente honesto) — comportamento hoje inalterado, só formalizado
-  como caso negativo explícito desta milestone.
-- IF o match não é exato por EAN (ex. candidato por título/SKU futuro) THEN nunca auto-aprova,
-  independentemente de colisão — auto-approve é EXCLUSIVO do caminho EAN-exato-único.
+- WHEN a geração produz um candidato cujo `seller_sku` casa exatamente 1 produto (CODPROD único)
+  E o EAN casa o MESMO produto THEN o candidato transiciona automaticamente para aprovado,
+  reusando a máquina de transição de `resolution_service.go:129-149` (`ApproveCandidate`), com
+  `actor=system` e `rule_matched=concordant_codprod_ean`.
+- WHEN o `seller_sku` casa exatamente 1 produto E o anúncio não tem EAN válido THEN auto-aprova
+  com `rule_matched=exact_codprod_unique` — CODPROD é âncora governada pelo operador e não
+  precisa de corroboração.
+- WHEN o anúncio não tem `seller_sku` utilizável E o EAN casa exatamente 1 produto THEN
+  auto-aprova com `rule_matched=exact_ean_unique`.
+- WHEN `seller_sku` e EAN casam produtos DIFERENTES THEN o candidato fica em REVIEW como
+  conflito — nenhuma das duas âncoras tem precedência sobre a outra (D-121, ratificado).
+- WHEN qualquer âncora casa mais de 1 produto (colisão no ERP) THEN o candidato fica em REVIEW —
+  auto-approve NUNCA dispara em ambiguidade (segurança > cobertura, ADR-05).
+- WHEN o match é só por título THEN nunca auto-aprova, qualquer que seja o score.
+- IF `detectHardNegative` acusa contradição (kit/combo/cor/voltagem) entre título do anúncio e
+  nome do produto THEN o candidato é REJECT/REVIEW mesmo com CODPROD e EAN concordantes — a
+  contradição vence todas as regras acima (D-121, ratificado).
+- WHEN o par produto↔anúncio já tem vínculo ativo com `actor=operator` THEN auto-approve não
+  roda (ver F-03, override do operador vence).
 
 **Inputs/Outputs (MUST have):**
-- Consumo do `QualityFlags`/contagem de colisão já produzido por
-  `erp_import/adapters/internalread/reader.go:344-366` (lado xlsx) e
-  `internal_read/adapters/oracle/reader.go:70-76` (lado Sankhya) — nenhuma nova lógica de
-  contagem de EAN é escrita nesta milestone.
+- A contagem de colisão vem do próprio gerador: `len(skuMatches.Products)` /
+  `len(eanMatches.Products)` em `buildExactCandidates`
+  (`generation_service.go:194-222`) — já é o número de produtos que a âncora casou no ERP.
+  NÃO consumir `validEANCounts`/`identityQuality` (`erp_import/.../reader.go:344-366`): aquele
+  conta EANs repetidos DENTRO do arquivo xlsx, não colisão no catálogo — usá-lo aqui seria medir
+  o fato errado (correção de plano D-121).
+- `collisions_at_decision` gravado em E10 é exatamente esse número (1 nos caminhos de
+  auto-approve).
 - Extensão de `resolution_service.go` com uma transição de auto-approve que reusa o MESMO
   código de mudança de estado + escrita de audit hoje usado pelo caminho manual
   (`ApproveCandidate`), diferindo só no `actor` gravado.
 
 **Negative Scenarios:**
-- EAN com `collisions[ean] == 2` → candidato fica REVIEW, mesmo que um dos dois produtos "pareça"
-  o certo — sem heurística de desempate automática.
-- Reimplementação de contagem de colisão dentro de `product_links` (em vez de consumir o sinal
-  existente) = falha de design (viola ADR-05 "não reimplementar sinal já testado").
+- EAN casando 2 produtos → candidato fica REVIEW, mesmo que um dos dois "pareça" o certo — sem
+  heurística de desempate automática. (Dado real do ERP do operador: 91 EANs colidem,
+  ex. `7896902180697` casa 4 produtos.)
+- `seller_sku` preenchido com algo que não é um CODPROD válido → não vira cláusula de match
+  (F-04); se sobrar só o EAN, decide pelo EAN; se não sobrar âncora, REVIEW `unresolved`.
+- Anúncio com CODPROD e EAN concordantes MAS título "KIT 2 UN" contra produto unitário →
+  hard-negative bloqueia, não auto-aprova.
+- Reimplementação de contagem de colisão dentro de `product_links` (em vez de consumir a que o
+  gerador já calcula) = falha de design (ADR-05 "não reimplementar sinal já testado").
 - Auto-approve tenta rodar sobre candidato já em estado terminal (aprovado/rejeitado
   manualmente) → não regride nem sobrescreve (ver F-03, override do operador vence).
 
@@ -143,18 +201,23 @@ transição ao final da geração, condicional ao sinal de colisão).
 
 **EARS:**
 - WHEN qualquer vínculo é aprovado (automático ou manual) THEN uma linha E10 é gravada:
-  `link_id, rule_matched (exact_ean_unique|manual|...), actor (system|operator),
-  collisions_at_decision, created_at, superseded_by NULL`.
-- WHEN a aprovação é automática (F-02) THEN `rule_matched=exact_ean_unique`, `actor=system`,
-  `collisions_at_decision=1`.
+  `link_id, rule_matched, actor (system|operator), collisions_at_decision, created_at,
+  superseded_by NULL`.
+- WHEN a aprovação é automática (F-02) THEN `actor=system`, `collisions_at_decision=1`, e
+  `rule_matched` é uma de
+  `exact_codprod_unique | exact_ean_unique | concordant_codprod_ean` — o valor diz QUAL âncora
+  decidiu, para o operador auditar depois qual regra o cadastro dele está exercendo.
 - WHEN o operador aprova/sobrescreve manualmente um vínculo (inclusive um já auto-aprovado) THEN
   uma NOVA linha E10 é gravada com `actor=operator`, e a linha anterior recebe `superseded_by`
   apontando para a nova — o override do operador VENCE e nunca é revertido de volta pelo caminho
   automático.
-- WHEN o mesmo par `(internal_product_id, provider_listing_id)` é processado de novo (re-run de
-  import/sync, F-01 disparando geração outra vez) THEN a constraint única de `product_links`
-  impede duplicação — a geração/approve é idempotente, não cria segundo vínculo nem segunda
-  linha de audit redundante para o mesmo estado.
+- WHEN a mesma identidade de anúncio
+  `(tenant_id, installation_id, provider_item_id, provider_variation_id)` é processada de novo
+  (re-run de import/sync, F-01 disparando geração outra vez) THEN a PK JÁ EXISTENTE de
+  `product_links` impede duplicação — a geração/approve é idempotente, não cria segundo vínculo
+  nem segunda linha de audit redundante para o mesmo estado. Nenhum índice novo é criado
+  (correção de plano D-121: a chave que o plano pedia,
+  `(internal_product_id, provider_listing_id)`, nomeia coluna inexistente e perderia a variação).
 - IF `product_links` já tem vínculo ativo para o par E o novo candidato geraria o MESMO resultado
   (mesmo `rule_matched`) THEN nenhuma escrita nova ocorre (no-op idempotente, não erro).
 
@@ -162,7 +225,11 @@ transição ao final da geração, condicional ao sinal de colisão).
 - Tabela E10 nova (migração bloco B+, após bloco B de M-02): shape exata do
   `interface-contracts-mis006.md` §E10 (`link_id, rule_matched, actor, collisions_at_decision,
   created_at, superseded_by NULL`).
-- Constraint única em `product_links`: `(internal_product_id, provider_listing_id)` — chave A8.
+- A8 satisfeita pela PK existente
+  `(tenant_id, installation_id, provider_item_id, provider_variation_id)` — a milestone PROVA a
+  idempotência (teste de re-run), não cria constraint nova. Um produto pode ter N vínculos ativos
+  para N anúncios distintos, sem limite (D-121, ratificado) — qualquer unique sobre
+  `internal_product_id` sozinho seria um defeito.
 - Escrita de audit acoplada à MESMA transação da transição de estado do vínculo (aprovação e
   audit não podem divergir — sem vínculo aprovado sem linha E10 correspondente).
 
@@ -171,7 +238,10 @@ transição ao final da geração, condicional ao sinal de colisão).
   (`system` superseded, `operator` vigente) — nunca 1 linha só sobrescrita in-place (histórico
   imutável, mesmo padrão de `erp_import_protocols`).
 - Re-run do trigger duas vezes seguidas sobre o mesmo snapshot → `SELECT count(*) FROM
-  product_links WHERE (internal_product_id, provider_listing_id) = (...)` retorna 1, não 2.
+  product_links WHERE (tenant_id, installation_id, provider_item_id, provider_variation_id) =
+  (...)` retorna 1, não 2.
+- Duas variações do MESMO anúncio (`provider_variation_id` diferente) → 2 vínculos, e isso é
+  correto; a chave do plano original teria colapsado as duas em uma.
 - Tentativa de auto-approve escrever por cima de vínculo com `actor=operator` já vigente → é
   bloqueada pela regra de precedência (F-02 nunca chama a transição se já existe vínculo ativo
   com `actor=operator` no par).
@@ -179,17 +249,54 @@ transição ao final da geração, condicional ao sinal de colisão).
   novas desta milestone são tenant-scoped via o vínculo pai).
 
 **Write-set:** `apps/server_core/migrations/09xx_product_links_audit.{up,down}.sql` (bloco B+,
-tabela E10 + constraint única A8 em `product_links`), `internal/modules/product_links/domain`
-(tipo de audit row), `internal/modules/product_links/application/resolution_service.go` (escrita
-de audit acoplada à transição, manual E automática).
+tabela E10 SOMENTE — nenhuma alteração em `product_links`),
+`internal/modules/product_links/domain` (tipo de audit row),
+`internal/modules/product_links/application/resolution_service.go` (escrita de audit acoplada à
+transição, manual E automática).
+
+---
+
+### F-04 — Âncora de SKU passa de REFFORN para CODPROD
+
+Brief criado em D-121 pela entrevista com o operador (`RATIFIED-BY-OPERATOR`). Sem ele, F-02 é
+inerte no cadastro real: hoje `seller_sku` é comparado com `p.REFFORN` (referência do
+fabricante, ex. `L.87.22`), enquanto todo anúncio do operador carrega o CODPROD no campo SKU —
+a âncora forte nunca casaria e todo vínculo cairia no caminho fraco do EAN.
+
+**EARS:**
+- WHEN o input de match traz `seller_sku` THEN a cláusula gerada é `p.CODPROD = :n`, nunca
+  `p.REFFORN = :n` (`internal_read/adapters/oracle/reader.go:451`).
+- WHEN `seller_sku` não é um CODPROD sintaticamente válido (não-numérico, vazio, lixo) THEN
+  nenhuma cláusula de SKU é adicionada à query — mesma disciplina que `IsValidGTIN` já aplica ao
+  EAN em `reader.go:448`; entrada suja nunca alarga a busca.
+- WHEN o candidato é gerado a partir do mirror (lado xlsx / routing por `active_source`) THEN a
+  mesma semântica vale — os dois readers concordam sobre o que "SKU" significa.
+- IF nenhum produto casa o CODPROD informado THEN o resultado é zero matches por SKU (não erro),
+  e a decisão recai sobre o EAN ou vira `unresolved`.
+
+**Inputs/Outputs (MUST have):**
+- `internal_read/adapters/oracle/reader.go:451` — troca de coluna + guarda de validade.
+- Reader espelho do `erp_import` e o fake reader usado nos testes alinhados à mesma coluna, senão
+  a suite prova o comportamento errado.
+- REFFORN deixa de ser âncora de match; nenhuma outra leitura de REFFORN é removida.
+
+**Negative Scenarios:**
+- Anúncio com SKU `L.87.22` (REFFORN legado, não-CODPROD) → sem cláusula de SKU, cai no EAN ou
+  em REVIEW; nunca casa por engano.
+- Um CODPROD digitado errado que exista como outro produto válido → vincula errado sem revisão.
+  Risco explicitamente aceito pelo operador em D-121 (o cadastro do SKU é governado por ele).
+- Teste que continue provando `p.REFFORN` = falha de F-04, não baseline.
+
+**Write-set:** `internal/modules/internal_read/adapters/oracle/reader.go`, reader espelho em
+`internal/modules/erp_import/adapters/internalread/`, fakes/testes de matcher dos dois pacotes.
 
 ## Ownership & Concurrency (six-axis)
 
 | Eixo | M-05 |
 |------|------|
-| Migração | bloco B+ (E10 audit trail + constraint A8 em `product_links`) — após bloco B de M-02 (`products_mirror`/`active_source`) |
-| DB shape | `product_links` (constraint nova A8), tabela de audit E10 — dono |
-| Módulo Go | `internal/modules/product_links/*` (application: generation_service.go, resolution_service.go; transport: http_handler.go KEPT sem mudança de assinatura) — dono |
+| Migração | bloco B+ (E10 audit trail SOMENTE) — após bloco B de M-02 (`products_mirror`/`active_source`); `product_links` NÃO é alterada (A8 já satisfeita pela PK existente) |
+| DB shape | tabela de audit E10 — dono; `product_links` lida/escrita sem mudança de shape |
+| Módulo Go | `internal/modules/product_links/*` (application: generation_service.go, resolution_service.go; transport: http_handler.go KEPT sem mudança de assinatura) — dono. Além disso, edição PONTUAL da cláusula de match de SKU em `internal_read/adapters/oracle/reader.go` + reader espelho de `erp_import` (F-04) — surface de M-02/M-04 já mergeada, nenhuma wave concorrente escreve nesses arquivos; se alguma abrir, vira additive-lock grant do hub |
 | `root.go` | nenhuma mudança de wiring de composição nova (consome geração/resolution já compostos) |
 | Contrato/SDK | nenhum endpoint novo nesta milestone (auto-approve é 100% interno; M-06 consome o RESULTADO via chain-read, seção própria) |
 | FE surface | nenhuma (M-06 consome via SDK/chain-read) |
@@ -214,8 +321,9 @@ M-02 (mirror/active_source já aplicado antes de M-05 rodar).
 
 Critérios de missão que M-05 é dono (`validation-contract.md` da missão):
 
-- **MC-05**: cadeia de vínculo automática — import dispara geração; EAN-exato-único auto-aprova
-  com audit; EAN duplicado → REVIEW.
+- **MC-05**: cadeia de vínculo automática — import dispara geração; âncora não-ambígua
+  (CODPROD-único, EAN-único, ou ambos concordantes) auto-aprova com audit; colisão, conflito
+  CODPROD≠EAN e hard-negative → REVIEW.
 - **MC-06**: idempotência — re-run não duplica vínculo; override manual vence.
 
 Detalhe binário → `M-05-auto-vinculo/validation-contract.md`.
