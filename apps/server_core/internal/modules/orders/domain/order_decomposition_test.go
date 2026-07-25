@@ -95,12 +95,15 @@ func TestBuildProfitabilityGoldenOrder2000017276984774(t *testing.T) {
 // pre-multiplied by 100 — the FE formatPercent does that).
 func TestBuildProfitabilityAllKnownDerivesMargem(t *testing.T) {
 	total, comissao, custo, frete, imposto := 100.0, 10.0, 40.0, 5.0, 3.0
+	// DIFAL switched off on the tenant profile is an explicit 0, not an unknown.
+	difal := 0.0
 	got := BuildProfitability(ProfitabilityInputs{
 		Total:    &total,
 		Comissao: &comissao,
 		Custo:    &custo,
 		Frete:    &frete,
 		Imposto:  &imposto,
+		Difal:    &difal,
 	})
 	if got.Decomposition.MargemValor == nil || *got.Decomposition.MargemValor != 42 {
 		t.Fatalf("MargemValor = %v, want 42", got.Decomposition.MargemValor)
@@ -114,7 +117,7 @@ func TestBuildProfitabilityAllKnownDerivesMargem(t *testing.T) {
 	if got.MargemPct == nil || *got.MargemPct != 0.42 {
 		t.Fatalf("MargemPct (top-level) = %v, want 0.42", got.MargemPct)
 	}
-	wantUnknown := []string{"taxa_fixa", "difal", "tarifa_full"}
+	wantUnknown := []string{"taxa_fixa", "tarifa_full"}
 	if len(got.Decomposition.ComponentesDesconhecidos) != len(wantUnknown) {
 		t.Fatalf("ComponentesDesconhecidos = %v, want %v", got.Decomposition.ComponentesDesconhecidos, wantUnknown)
 	}
@@ -157,5 +160,31 @@ func TestBuildProfitabilityAnyUnknownInputSuppressesMargem(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("ComponentesDesconhecidos = %v, want to contain imposto", got.Decomposition.ComponentesDesconhecidos)
+	}
+}
+
+// TestBuildProfitabilityUnknownDifalSuppressesMargem pins that a DIFAL we could
+// not source (destino state unknown while the tenant HAS DIFAL switched on) is
+// not quietly treated as zero: the whole margem stays "—" (ADR-17).
+func TestBuildProfitabilityUnknownDifalSuppressesMargem(t *testing.T) {
+	total, comissao, custo, frete, imposto := 100.0, 10.0, 40.0, 5.0, 3.0
+	got := BuildProfitability(ProfitabilityInputs{
+		Total:    &total,
+		Comissao: &comissao,
+		Custo:    &custo,
+		Frete:    &frete,
+		Imposto:  &imposto,
+	})
+	if got.RetornoLiquido != nil {
+		t.Fatalf("RetornoLiquido = %v, want nil when difal is unknown", *got.RetornoLiquido)
+	}
+	found := false
+	for _, name := range got.Decomposition.ComponentesDesconhecidos {
+		if name == "difal" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("ComponentesDesconhecidos = %v, want to contain difal", got.Decomposition.ComponentesDesconhecidos)
 	}
 }

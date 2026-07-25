@@ -94,6 +94,7 @@ import (
 	ordersintegrations "marketplace-central/apps/server_core/internal/modules/orders/adapters/integrations"
 	ordersinternalread "marketplace-central/apps/server_core/internal/modules/orders/adapters/internalread"
 	orderspostgres "marketplace-central/apps/server_core/internal/modules/orders/adapters/postgres"
+	orderspricingtax "marketplace-central/apps/server_core/internal/modules/orders/adapters/pricingtax"
 	ordersproductlinks "marketplace-central/apps/server_core/internal/modules/orders/adapters/productlinks"
 	ordersapp "marketplace-central/apps/server_core/internal/modules/orders/application"
 	orderstransport "marketplace-central/apps/server_core/internal/modules/orders/transport"
@@ -568,8 +569,13 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	ordersCostReader := newOrdersCostReaderAdapter(internalReadSvc, internalReadAvailable)
 	ordersShipmentReader := newOrdersShipmentReaderAdapter(mercadoLivreCapabilities, installationSvc, cfg.DefaultTenantID)
 	ordersBuyerFiscalReader := newOrdersBuyerFiscalReaderAdapter(mercadoLivreCapabilities, installationSvc, cfg.DefaultTenantID)
+	// Imposto/DIFAL for a sold order come from the same tenant pricing profile
+	// the Simulador calculates with (pricingpostgres.NewCalcRepository), so the
+	// two screens can never quote different tax on the same money.
+	ordersTaxReader := orderspricingtax.NewReader(pricingpostgres.NewCalcRepository(pool), cfg.DefaultTenantID)
 	ordersEnrichSvc := ordersapp.NewEnrichServiceWithReaders(ordersCostReader, ordersShipmentReader, nil, ordersBuyerFiscalReader, slog.Default()).
-		WithLinkRefresh(ordersLinkReader)
+		WithLinkRefresh(ordersLinkReader).
+		WithTaxes(ordersTaxReader)
 	ordersFaturadoSvc := ordersapp.NewFaturadoService(ordersRepo)
 	orderstransport.NewHandlerWithSummary(ordersImportSvc, ordersReadSvc, &ordersEnrichSvc, ordersSummarySvc).WithFaturador(ordersFaturadoSvc).Register(mux)
 

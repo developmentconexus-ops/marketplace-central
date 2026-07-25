@@ -76,20 +76,26 @@ type ProfitabilityInputs struct {
 	Custo    *float64
 	Frete    *float64
 	Imposto  *float64
+	// Difal is the destination-state tax differential. A pointer to 0 is an
+	// explicit zero (the tenant has DIFAL switched off), which is a different
+	// fact from nil (no honest way to work it out) — only nil blocks the margin.
+	Difal *float64
 }
 
 // BuildProfitability assembles an OrderProfitability from real facts in hand.
-// Comissao/Custo/Frete/Imposto are surfaced verbatim when known. TaxaFixa,
-// Difal and TarifaFull need a pricing engine not yet wired, so they are always
-// honest-unknown (nil) and named in ComponentesDesconhecidos. Margem
+// Comissao/Custo/Frete/Imposto/Difal are surfaced verbatim when known. TaxaFixa
+// and TarifaFull are already inside the marketplace's own sale fee for a sold
+// order, so breaking them back out needs a pricing engine that is not wired;
+// they stay honest-unknown (nil) and named in ComponentesDesconhecidos. Margem
 // (valor + pct) and RetornoLiquido derive ONLY when Total, Comissao, Frete,
-// Imposto and Custo are ALL known; any unknown input yields nil margins —
+// Imposto, Difal and Custo are ALL known; any unknown input yields nil margins —
 // never a partial fabricated margin (ADR-17).
 func BuildProfitability(in ProfitabilityInputs) OrderProfitability {
 	dec := OrderDecomposition{
 		Comissao: in.Comissao,
 		Frete:    in.Frete,
 		Imposto:  in.Imposto,
+		Difal:    in.Difal,
 		Custo:    in.Custo,
 	}
 	var unknown []string
@@ -103,14 +109,17 @@ func BuildProfitability(in ProfitabilityInputs) OrderProfitability {
 	if in.Imposto == nil {
 		unknown = append(unknown, "imposto")
 	}
-	unknown = append(unknown, "difal", "tarifa_full")
+	if in.Difal == nil {
+		unknown = append(unknown, "difal")
+	}
+	unknown = append(unknown, "tarifa_full")
 	if in.Custo == nil {
 		unknown = append(unknown, "custo")
 	}
 	dec.ComponentesDesconhecidos = unknown
 
-	if in.Total != nil && in.Comissao != nil && in.Frete != nil && in.Imposto != nil && in.Custo != nil {
-		margem := *in.Total - *in.Comissao - *in.Frete - *in.Imposto - *in.Custo
+	if in.Total != nil && in.Comissao != nil && in.Frete != nil && in.Imposto != nil && in.Difal != nil && in.Custo != nil {
+		margem := *in.Total - *in.Comissao - *in.Frete - *in.Imposto - *in.Difal - *in.Custo
 		dec.MargemValor = &margem
 		var pctPtr *float64
 		if *in.Total != 0 {

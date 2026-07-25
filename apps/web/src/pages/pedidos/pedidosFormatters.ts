@@ -28,7 +28,7 @@ export function frontTier(item: OrderRead): { text: string; className: string } 
   if (item.sla?.atrasado === true) {
     return { text: "ATRASADO", className: "text-warn" };
   }
-  const due = formatDateTime(item.sla?.due);
+  const due = formatDate(item.sla?.due);
   if (due) {
     return { text: due, className: "text-muted" };
   }
@@ -71,6 +71,16 @@ export function orderFilaDesc(item: OrderRead): string | null {
 export function formatMoney(value: number | null | undefined): string | null {
   if (value === null || value === undefined) return null;
   return currencyFormatter.format(value);
+}
+
+// The ML dispatch SLA is a deadline DAY — its wire value is midnight local, so
+// rendering it with a time printed "23/03/2026, 00:00" on every row and read as
+// a real hour the seller had to hit. Date only says exactly what ML gave us.
+export function formatDate(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString("pt-BR", { dateStyle: "short" });
 }
 
 export function formatDateTime(value: string | null | undefined): string | null {

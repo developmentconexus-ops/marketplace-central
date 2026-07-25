@@ -87,7 +87,18 @@ type EnrichService struct {
 	decomposer  ports.Decomposer
 	buyerFiscal ports.BuyerFiscalReader
 	links       ports.LinkReader
+	taxes       ports.TaxReader
 	logger      *slog.Logger
+}
+
+// WithTaxes wires the tenant tax reader behind the imposto/DIFAL components of
+// the decomposição. Without it those two are permanently unknown, which alone
+// keeps retorno_liquido at "—" on every order however complete the rest is —
+// the reason /pedidos showed "decomposição pendente" for orders whose comissão,
+// frete and custo were all in hand. A nil reader keeps that older behaviour.
+func (s EnrichService) WithTaxes(taxes ports.TaxReader) EnrichService {
+	s.taxes = taxes
+	return s
 }
 
 // WithLinkRefresh wires the read-time link refresher. The item↔produto link on
@@ -365,13 +376,39 @@ func (s EnrichService) resolveProfitability(ctx context.Context, order domain.Or
 			return p
 		}
 	}
+	taxes := s.resolveTaxes(ctx, order, shipment)
 	return domain.BuildProfitability(domain.ProfitabilityInputs{
 		Total:    order.Total,
 		Comissao: sumSaleFee(order.Items),
 		Custo:    sumItemCosts(itemCosts, order.Items),
 		Frete:    senderFreight(shipment),
-		Imposto:  nil, // not persisted on the order today — honest unknown (ADR-17); do NOT compute
+		Imposto:  taxes.Imposto,
+		Difal:    taxes.Difal,
 	})
+}
+
+// resolveTaxes asks the tenant tax reader for the order's imposto/DIFAL,
+// applied to the order's own revenue and shipped-to state. No reader, no
+// revenue, or a reader error all degrade to both components unknown (ADR-17) —
+// a tax we could not source is never reported as zero.
+func (s EnrichService) resolveTaxes(ctx context.Context, order domain.OrderReadModel, shipment *ShipmentEnrichment) ports.OrderTaxes {
+	if s.taxes == nil || order.Total == nil {
+		return ports.OrderTaxes{}
+	}
+	var destinoUF string
+	if shipment != nil && shipment.DestinationUF != nil {
+		destinoUF = *shipment.DestinationUF
+	}
+	taxes, err := s.taxes.TaxesForOrder(ctx, *order.Total, destinoUF)
+	if err != nil {
+		s.logger.Warn("orders: tax lookup failed",
+			"provider_order_id", order.ProviderOrderID,
+			"destino_uf", destinoUF,
+			"error", err,
+		)
+		return ports.OrderTaxes{}
+	}
+	return taxes
 }
 
 // sumSaleFee sums the order's per-line SaleFeeAmount (already the per-line
