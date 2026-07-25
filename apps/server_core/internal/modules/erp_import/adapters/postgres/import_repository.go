@@ -55,15 +55,30 @@ func (r *Repository) PersistSnapshotAtomically(ctx context.Context, tenantID str
 	if err != nil {
 		return fmt.Errorf("insert ERP import protocol: %w", err)
 	}
-	for _, product := range snapshot.AcceptedRows {
-		// Honest-unknown custo/stock_physical (client-catalog lenient path, ADR-17)
-		// must land as SQL NULL, never a fabricated zero-valued string.
-		custo := nullableString(string(product.Custo))
-		precoVenda := nullableString(string(product.PrecoVenda))
-		stockPhysical := nullableString(product.StockPhysical)
-		_, err = tx.Exec(ctx, `INSERT INTO erp_import_products (tenant_id,protocol_id,codprod,descrprod,custo,preco_venda,stock_physical,stock_reserved,ean,refforn,marca,ncm,grupo,descrgrupo) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`, tenantID, snapshot.ID, product.Codprod, product.Descrprod, custo, precoVenda, stockPhysical, product.StockReserved, product.EAN, product.Refforn, product.Marca, product.NCM, product.Grupo, product.DescrGrupo)
+	// COPY, not a statement per row: a real catalog is a couple of thousand
+	// rows, and one round trip each is what pushed the upload past the batch
+	// deadline and returned a 504 to the operator. Honest-unknown
+	// custo/preco_venda/stock_physical (client-catalog lenient path, ADR-17)
+	// still land as SQL NULL, never a fabricated zero-valued string.
+	if len(snapshot.AcceptedRows) > 0 {
+		rows := snapshot.AcceptedRows
+		_, err = tx.CopyFrom(ctx,
+			pgx.Identifier{"erp_import_products"},
+			[]string{"tenant_id", "protocol_id", "codprod", "descrprod", "custo", "preco_venda", "stock_physical", "stock_reserved", "ean", "refforn", "marca", "ncm", "grupo", "descrgrupo"},
+			pgx.CopyFromSlice(len(rows), func(i int) ([]any, error) {
+				product := rows[i]
+				return []any{
+					tenantID, snapshot.ID, product.Codprod, product.Descrprod,
+					nullableString(string(product.Custo)),
+					nullableString(string(product.PrecoVenda)),
+					nullableString(product.StockPhysical),
+					product.StockReserved, product.EAN, product.Refforn,
+					product.Marca, product.NCM, product.Grupo, product.DescrGrupo,
+				}, nil
+			}),
+		)
 		if err != nil {
-			return fmt.Errorf("insert ERP import product: %w", err)
+			return fmt.Errorf("insert ERP import products: %w", err)
 		}
 	}
 	if snapshot.Status == domain.ImportStatusCompleted {
@@ -71,10 +86,18 @@ func (r *Repository) PersistSnapshotAtomically(ctx context.Context, tenantID str
 			return fmt.Errorf("merge ERP import mirror: %w", err)
 		}
 	}
-	for _, issue := range snapshot.Issues {
-		_, err = tx.Exec(ctx, `INSERT INTO erp_import_issues (tenant_id,protocol_id,row_number,column_name,kind,code,detail,offending_value) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, tenantID, snapshot.ID, issue.Row, issue.Column, issue.Kind, issue.Code, issue.Detail, issue.OffendingValue)
+	if len(snapshot.Issues) > 0 {
+		issues := snapshot.Issues
+		_, err = tx.CopyFrom(ctx,
+			pgx.Identifier{"erp_import_issues"},
+			[]string{"tenant_id", "protocol_id", "row_number", "column_name", "kind", "code", "detail", "offending_value"},
+			pgx.CopyFromSlice(len(issues), func(i int) ([]any, error) {
+				issue := issues[i]
+				return []any{tenantID, snapshot.ID, issue.Row, issue.Column, issue.Kind, issue.Code, issue.Detail, issue.OffendingValue}, nil
+			}),
+		)
 		if err != nil {
-			return fmt.Errorf("insert ERP import issue: %w", err)
+			return fmt.Errorf("insert ERP import issues: %w", err)
 		}
 	}
 	if err := tx.Commit(ctx); err != nil {

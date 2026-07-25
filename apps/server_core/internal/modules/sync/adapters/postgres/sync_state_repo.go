@@ -130,6 +130,35 @@ func (r *SyncStateRepository) AppendPendingCodigo(ctx context.Context, installat
 	return err
 }
 
+// AppendPendingCodigos is the batch form of AppendPendingCodigo: it appends the
+// whole slice in ONE statement, preserving order and the same lost-update-free
+// concatenation (M01-C11). An ERP import enqueues a code per accepted row, and
+// a couple of thousand single-row round trips is what pushed the upload past the
+// batch deadline.
+func (r *SyncStateRepository) AppendPendingCodigos(ctx context.Context, installationID string, entity domain.Entity, codigos []string) error {
+	if !entity.Valid() {
+		return domain.ErrUnknownEntity
+	}
+	if len(codigos) == 0 {
+		return nil
+	}
+	_, err := r.pool.Exec(ctx, `
+		INSERT INTO sync_state (
+			tenant_id, installation_id, entity, cursor, consecutive_failures
+		) VALUES (
+			$1, $2, $3, jsonb_build_object('pending', to_jsonb($4::text[])), 0
+		)
+		ON CONFLICT (tenant_id, installation_id, entity) DO UPDATE SET
+			cursor = jsonb_set(
+				COALESCE(sync_state.cursor, '{}'::jsonb),
+				'{pending}',
+				COALESCE(sync_state.cursor -> 'pending', '[]'::jsonb) || to_jsonb($4::text[]),
+				true
+			)
+	`, r.tenantID, installationID, string(entity), codigos)
+	return err
+}
+
 // jsonbArg maps a nil/empty RawMessage to a SQL NULL param (ADR-17) and a
 // non-empty one to its bytes.
 func jsonbArg(raw json.RawMessage) any {

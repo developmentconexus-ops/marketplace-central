@@ -14,7 +14,7 @@ type installationLister interface {
 }
 
 type marketCursorAppender interface {
-	AppendPendingCodigo(ctx context.Context, installationID string, entity syncdomain.Entity, codigo string) error
+	AppendPendingCodigos(ctx context.Context, installationID string, entity syncdomain.Entity, codigos []string) error
 }
 
 type MarketEnqueuer struct {
@@ -39,10 +39,10 @@ func (e *MarketEnqueuer) EnqueueMarketProducts(ctx context.Context, productCodes
 	installationIDs := make([]string, 0, len(installations))
 	seen := make(map[string]struct{}, len(installations))
 	for _, installation := range installations {
-		for _, code := range productCodes {
-			if err := e.cursor.AppendPendingCodigo(ctx, installation.InstallationID, syncdomain.EntityMarket, code); err != nil {
-				return nil, fmt.Errorf("append market product %q for installation %q: %w", code, installation.InstallationID, err)
-			}
+		// One statement per installation, not one per code: an ERP import carries a
+		// couple of thousand codes and the per-code round trips dominated the upload.
+		if err := e.cursor.AppendPendingCodigos(ctx, installation.InstallationID, syncdomain.EntityMarket, productCodes); err != nil {
+			return nil, fmt.Errorf("append %d market products for installation %q: %w", len(productCodes), installation.InstallationID, err)
 		}
 		if _, ok := seen[installation.InstallationID]; !ok {
 			seen[installation.InstallationID] = struct{}{}

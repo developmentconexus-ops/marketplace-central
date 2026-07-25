@@ -22,7 +22,7 @@ func (f *fakeInstallationLister) List(context.Context) ([]integrationsdomain.Ins
 type appendCall struct {
 	installationID string
 	entity         syncdomain.Entity
-	codigo         string
+	codigos        []string
 }
 
 type fakeMarketCursorAppender struct {
@@ -31,8 +31,8 @@ type fakeMarketCursorAppender struct {
 	failErr error
 }
 
-func (f *fakeMarketCursorAppender) AppendPendingCodigo(_ context.Context, installationID string, entity syncdomain.Entity, codigo string) error {
-	f.calls = append(f.calls, appendCall{installationID: installationID, entity: entity, codigo: codigo})
+func (f *fakeMarketCursorAppender) AppendPendingCodigos(_ context.Context, installationID string, entity syncdomain.Entity, codigos []string) error {
+	f.calls = append(f.calls, appendCall{installationID: installationID, entity: entity, codigos: append([]string(nil), codigos...)})
 	if f.failAt > 0 && len(f.calls) == f.failAt {
 		return f.failErr
 	}
@@ -56,13 +56,10 @@ func TestMarketEnqueuerEnqueuesEveryCodeForEveryInstallation(t *testing.T) {
 		t.Fatalf("installationIDs = %#v, want %#v", installationIDs, wantIDs)
 	}
 
+	// One batched append per installation carrying every code, in order.
 	wantCalls := []appendCall{
-		{installationID: "inst-a", entity: syncdomain.EntityMarket, codigo: "100"},
-		{installationID: "inst-a", entity: syncdomain.EntityMarket, codigo: "200"},
-		{installationID: "inst-a", entity: syncdomain.EntityMarket, codigo: "300"},
-		{installationID: "inst-b", entity: syncdomain.EntityMarket, codigo: "100"},
-		{installationID: "inst-b", entity: syncdomain.EntityMarket, codigo: "200"},
-		{installationID: "inst-b", entity: syncdomain.EntityMarket, codigo: "300"},
+		{installationID: "inst-a", entity: syncdomain.EntityMarket, codigos: []string{"100", "200", "300"}},
+		{installationID: "inst-b", entity: syncdomain.EntityMarket, codigos: []string{"100", "200", "300"}},
 	}
 	if !reflect.DeepEqual(appender.calls, wantCalls) {
 		t.Fatalf("append calls = %#v, want %#v", appender.calls, wantCalls)

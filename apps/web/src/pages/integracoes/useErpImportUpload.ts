@@ -29,6 +29,7 @@ export interface ErpImportUploadError {
     | "missing_required_column"
     | "duplicate_file"
     | "import_in_progress"
+    | "deadline_exceeded"
     | "internal_error"
     | "network_error";
   /** The missing column name, when the backend reports one (422). */
@@ -52,12 +53,18 @@ function classifyUploadError(err: unknown): ErpImportUploadError {
       return { kind: "import_in_progress", protocol: body?.protocol };
     case "internal_error":
       return { kind: "internal_error" };
+    // The route deadline aborts the request at 120s and answers 504. That is not
+    // an internal error: the file was too large for the synchronous path, and the
+    // operator needs to be told that rather than "erro interno".
+    case "deadline_exceeded":
+      return { kind: "deadline_exceeded" };
     default:
       // A thrown Response-shaped error with a known status but unmapped body,
       // or a genuine transport failure with no body at all.
       if (maybe?.status === 422) return { kind: "missing_required_column", column: body?.column };
       if (maybe?.status === 409) return { kind: "duplicate_file", protocol: body?.protocol };
       if (maybe?.status === 400) return { kind: "invalid_file" };
+      if (maybe?.status === 504) return { kind: "deadline_exceeded" };
       if (typeof maybe?.status === "number") return { kind: "internal_error" };
       return { kind: "network_error" };
   }

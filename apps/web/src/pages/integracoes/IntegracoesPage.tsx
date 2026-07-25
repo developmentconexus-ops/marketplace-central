@@ -50,6 +50,8 @@ function uploadErrorMessage(error: ErpImportUploadError): string {
         : "Este arquivo já foi importado. Nenhuma ação necessária.";
     case "import_in_progress":
       return "Outra importação está em andamento. Aguarde a conclusão e tente novamente.";
+    case "deadline_exceeded":
+      return "A importação passou do tempo limite do servidor. O arquivo não foi importado — divida a planilha e tente novamente.";
     case "internal_error":
       return "Falha inesperada ao importar. Tente novamente.";
     case "network_error":
