@@ -631,9 +631,12 @@ func TestCase7VoltageHardNegativeCapsBaixaReject(t *testing.T) {
 }
 
 // Case 8 — NO ANCHOR RESOLVED: seller_sku/ean/title all fail to resolve.
-// M05-C5: the listing goes to review with the reasons spelled out — the
-// operator has to see WHY the matcher had nothing, never an empty row.
-func TestCase8NoAnchorResolvedYieldsZeroConfidenceReview(t *testing.T) {
+// M05-C5: the listing carries the reasons spelled out — the operator has to
+// see WHY the matcher had nothing, never an empty row. The status stays
+// NO_CANDIDATE because /vinculos keys its "sem candidato / Criar produto /
+// Ignorar" affordance and its batch-select guard off that value, and apps/web
+// is M-06's seam (reconciliation flagged to the hub).
+func TestCase8NoAnchorResolvedYieldsZeroConfidenceNoCandidateWithReasons(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 7, 18, 9, 35, 0, 0, time.UTC)
 	snapshot := productlinksdomain.ListingSnapshot{
@@ -647,8 +650,11 @@ func TestCase8NoAnchorResolvedYieldsZeroConfidenceReview(t *testing.T) {
 	if candidate.Confidence != 0 {
 		t.Fatalf("confidence=%d, want 0", candidate.Confidence)
 	}
-	if candidate.MatchStatus != productlinksdomain.LinkCandidateMatchStatusReview {
-		t.Fatalf("match_status=%s, want REVIEW", candidate.MatchStatus)
+	if candidate.MatchStatus != productlinksdomain.LinkCandidateMatchStatusNoCandidate {
+		t.Fatalf("match_status=%s, want NO_CANDIDATE", candidate.MatchStatus)
+	}
+	if len(candidate.Reasons) == 0 {
+		t.Fatal("reasons are empty: M05-C5 requires the operator to see WHY nothing matched")
 	}
 	if _, ok := findReason(candidate.Reasons, "seller_sku", productlinksdomain.LinkCandidateReasonDirectionUnavailable); !ok {
 		t.Fatalf("reasons=%#v, want seller_sku UNAVAILABLE", candidate.Reasons)

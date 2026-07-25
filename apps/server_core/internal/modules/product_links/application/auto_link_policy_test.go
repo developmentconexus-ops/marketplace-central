@@ -377,6 +377,40 @@ func TestAutoApprovalNeverOverridesAnOperatorDecision(t *testing.T) {
 	}
 }
 
+// M05-C10, second half: "não é meu anúncio" is an operator answer too, and
+// rejection writes no E10 row — there is no rule to record for it. The link's
+// own terminal state is what keeps the automatic path from quietly reopening a
+// listing the operator closed on the next sync.
+func TestAutoApprovalNeverReopensAListingTheOperatorRejected(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 7, 25, 10, 0, 0, 0, time.UTC)
+	svc, workflows, _ := autoLinkingServices(t, []productlinksdomain.ListingSnapshot{concordantSnapshot("MLB-C", now)}, concordantMatcher(), now)
+
+	rejected := productlinksdomain.ProductLink{
+		InstallationID: "inst-m05",
+		ProviderCode:   "mercado_livre",
+		ProviderItemID: "MLB-C",
+		State:          productlinksdomain.ProductLinkStateRejected,
+		CreatedAt:      now.Add(-time.Hour),
+		UpdatedAt:      now.Add(-time.Hour),
+	}
+	workflows.links = []productlinksdomain.ProductLink{rejected}
+	workflows.currentLink = rejected
+	workflows.linkFound = true
+
+	generateAll(t, svc, "inst-m05")
+
+	if len(workflows.applied) != 0 {
+		t.Fatalf("applied = %#v, want the operator's rejection left standing", workflows.applied)
+	}
+	if got := decisionsFor(t, workflows, "MLB-C"); len(got) != 0 {
+		t.Fatalf("decisions = %#v, want none — the automatic path decided nothing", got)
+	}
+	if workflows.links[0].State != productlinksdomain.ProductLinkStateRejected {
+		t.Fatalf("state = %q, want the listing still rejected", workflows.links[0].State)
+	}
+}
+
 // The automatic path is closed by construction: a caller handing
 // AutoApproveCandidate anything the generator did not mark corroborated is
 // refused rather than quietly approved.

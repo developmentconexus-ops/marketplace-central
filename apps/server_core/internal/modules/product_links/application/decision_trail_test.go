@@ -39,7 +39,22 @@ func singleAnchorCandidate(id string, anchor productlinksdomain.LinkCandidateMat
 		State:               state,
 		MatchInput:          anchor,
 		MatchValue:          "100001",
+		// A single UNIQUE anchor is exactly what generation puts in the
+		// confirmation queue; the rule may name that anchor only because the
+		// generator found it unique.
+		MatchStatus: productlinksdomain.LinkCandidateMatchStatusConfirm,
 	}
+}
+
+// ambiguousCandidate is what the operator sees when NO anchor resolved the
+// listing — a colliding EAN or a CODPROD≠EAN conflict. It still carries the
+// anchor it was built from, which is precisely why the trail must not read
+// that anchor as the rule that decided it.
+func ambiguousCandidate(id string, anchor productlinksdomain.LinkCandidateMatchInput, productID *int) productlinksdomain.LinkCandidate {
+	candidate := singleAnchorCandidate(id, anchor, productID)
+	candidate.State = productlinksdomain.LinkCandidateStateConflict
+	candidate.MatchStatus = productlinksdomain.LinkCandidateMatchStatusReview
+	return candidate
 }
 
 func operator(id string) productlinksdomain.ActorMetadata {
@@ -86,6 +101,76 @@ func TestOperatorConfirmationRecordsTheAnchorItWasTakenOn(t *testing.T) {
 				t.Errorf("link_id = %q", decision.LinkID)
 			}
 		})
+	}
+}
+
+// AC-08/ADR-17: approving a candidate that reached the operator BECAUSE no
+// anchor resolved it must not record that anchor as the rule. `exact_ean_unique`
+// on the operator's real 4-way collision would assert a uniqueness nobody
+// established and would read as though an anchor had won.
+func TestApprovingAnAmbiguousCandidateIsRecordedAsAManualCall(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 7, 25, 12, 0, 0, 0, time.UTC)
+	productID := 100001
+	for name, anchor := range map[string]productlinksdomain.LinkCandidateMatchInput{
+		"colliding EAN":   productlinksdomain.LinkCandidateMatchInputEAN,
+		"conflicting SKU": productlinksdomain.LinkCandidateMatchInputSellerSKU,
+	} {
+		t.Run(name, func(t *testing.T) {
+			svc, store := decisionServiceWith(t, []productlinksdomain.LinkCandidate{ambiguousCandidate("cand-1", anchor, &productID)}, now)
+			if _, err := svc.ApproveCandidate(context.Background(), ApproveCandidateInput{CandidateID: "cand-1", Actor: operator("user-1")}); err != nil {
+				t.Fatalf("ApproveCandidate() error = %v", err)
+			}
+			decisions, _ := store.ListDecisionsForLink(context.Background(), productlinksdomain.ListingIdentity{InstallationID: "inst-1", ProviderItemID: "MLB123"})
+			if len(decisions) != 1 {
+				t.Fatalf("decisions = %d, want 1", len(decisions))
+			}
+			if decisions[0].RuleMatched != productlinksdomain.DecisionRuleManual {
+				t.Errorf("rule_matched = %q, want manual: no anchor resolved this listing", decisions[0].RuleMatched)
+			}
+			if decisions[0].Actor != productlinksdomain.DecisionActorOperator {
+				t.Errorf("actor = %q, want operator", decisions[0].Actor)
+			}
+		})
+	}
+}
+
+// An undo is a decision too: it says the link that stood should not. Left out
+// of the trail, the decision it reverts keeps reading as in force — and the
+// automatic path stays blocked by a row nobody stands behind, with nothing
+// saying why.
+func TestUndoSupersedesTheDecisionItReverts(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 7, 25, 12, 0, 0, 0, time.UTC)
+	productID := 100001
+	svc, store := decisionServiceWith(t, []productlinksdomain.LinkCandidate{singleAnchorCandidate("cand-1", productlinksdomain.LinkCandidateMatchInputEAN, &productID)}, now)
+	result, err := svc.ApproveCandidate(context.Background(), ApproveCandidateInput{CandidateID: "cand-1", Actor: operator("user-1")})
+	if err != nil {
+		t.Fatalf("ApproveCandidate() error = %v", err)
+	}
+	if _, err := svc.UndoResolution(context.Background(), UndoResolutionInput{
+		AuditID: result.Audit.AuditID,
+		Reason:  "vínculo errado",
+		Actor:   operator("user-1"),
+	}); err != nil {
+		t.Fatalf("UndoResolution() error = %v", err)
+	}
+
+	decisions, _ := store.ListDecisionsForLink(context.Background(), productlinksdomain.ListingIdentity{InstallationID: "inst-1", ProviderItemID: "MLB123"})
+	if len(decisions) != 2 {
+		t.Fatalf("decisions = %d, want the undo recorded alongside what it reverted", len(decisions))
+	}
+	if decisions[0].SupersededBy != decisions[1].DecisionID {
+		t.Errorf("the reverted decision still reads as in force: superseded_by = %q", decisions[0].SupersededBy)
+	}
+	if decisions[1].RuleMatched != productlinksdomain.DecisionRuleManual {
+		t.Errorf("undo rule = %q, want manual", decisions[1].RuleMatched)
+	}
+	if decisions[1].Actor != productlinksdomain.DecisionActorOperator {
+		t.Errorf("undo actor = %q, want operator", decisions[1].Actor)
+	}
+	if decisions[1].CollisionsAtDecision != nil {
+		t.Errorf("collisions_at_decision = %d, want unknown: an undo reads no collision count", *decisions[1].CollisionsAtDecision)
 	}
 }
 

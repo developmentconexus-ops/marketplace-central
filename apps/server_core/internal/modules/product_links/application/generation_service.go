@@ -550,13 +550,18 @@ func applyAmbiguousCorroborationScore(candidate *domain.LinkCandidate, ownAnchor
 	candidate.Reasons = append(reasons, mandatoryUnavailableReasons()...)
 }
 
-// applyUnresolvedScore scores a listing no anchor could resolve. It is REVIEW
-// with the reason spelled out (M05-C5): the operator has to see WHY the
-// matcher had nothing to offer, never a silent empty row.
+// applyUnresolvedScore scores a listing no anchor could resolve. What M05-C5
+// asks for is the REASON: the operator has to see WHY the matcher had nothing
+// to offer, never a silent empty row. The status stays NO_CANDIDATE because
+// /vinculos keys the ADR-17 affordance off it — the "sem candidato / Criar
+// produto / Ignorar" row, and the batch-select guard that stops an operator
+// from bulk-approving a listing with no product to approve. Reclassifying it
+// as REVIEW would have made those branches dead code on a screen this
+// milestone may not edit (apps/web is M-06's seam). Flagged to the hub.
 func applyUnresolvedScore(candidate *domain.LinkCandidate) {
 	candidate.Confidence = 0
 	candidate.ConfidenceBand = domain.LinkCandidateConfidenceBandBaixa
-	candidate.MatchStatus = domain.LinkCandidateMatchStatusReview
+	candidate.MatchStatus = domain.LinkCandidateMatchStatusNoCandidate
 	reasons := []domain.LinkCandidateReason{
 		{Anchor: "seller_sku", Direction: domain.LinkCandidateReasonDirectionUnavailable, Detail: "seller_sku sem correspondência"},
 		{Anchor: "ean", Direction: domain.LinkCandidateReasonDirectionUnavailable, Detail: "ean sem correspondência"},

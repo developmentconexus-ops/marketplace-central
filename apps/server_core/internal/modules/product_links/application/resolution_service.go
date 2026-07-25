@@ -229,6 +229,18 @@ func (s *ResolutionService) AutoApproveCandidate(ctx context.Context, input Auto
 		ProviderItemID:      candidate.ProviderItemID,
 		ProviderVariationID: candidate.ProviderVariationID,
 	}
+	current, found, err := s.workflows.GetProductLink(ctx, identity)
+	if err != nil {
+		return false, err
+	}
+	// A listing the operator already settled is settled. Rejection writes no
+	// E10 row — there is no rule to record for "this anúncio is not ours" — so
+	// the decision trail alone would report a rejected listing as undecided and
+	// the automatic path would reopen it. The link's own state is the fact that
+	// covers both that case and links resolved before E10 existed.
+	if found && (current.State == domain.ProductLinkStateRejected || current.State == domain.ProductLinkStateResolved) {
+		return false, nil
+	}
 	decisions, err := s.workflows.ListDecisionsForLink(ctx, identity)
 	if err != nil {
 		return false, err
@@ -237,10 +249,6 @@ func (s *ResolutionService) AutoApproveCandidate(ctx context.Context, input Auto
 		if decision.SupersededBy == "" {
 			return false, nil
 		}
-	}
-	current, found, err := s.workflows.GetProductLink(ctx, identity)
-	if err != nil {
-		return false, err
 	}
 	fallbackState := domain.ProductLinkStateNone
 	if !found {
@@ -566,7 +574,22 @@ func (s *ResolutionService) undoAuditEntry(ctx context.Context, target domain.Pr
 		BatchID:                   target.BatchID,
 		CreatedAt:                 now,
 	}
-	transition := domain.ProductLinkTransition{Link: link, Audit: audit}
+	// An undo is a decision too: it says the link that stood should not. Left
+	// out of the trail, the decision it reverts keeps reading as in force, and
+	// the automatic path would be blocked by a row nobody stands behind — with
+	// nothing anywhere saying why. Recording it supersedes that row and names
+	// who took it back.
+	decision := &domain.ProductLinkDecision{
+		DecisionID:          s.newDecisionID(),
+		InstallationID:      target.InstallationID,
+		ProviderItemID:      target.ProviderItemID,
+		ProviderVariationID: target.ProviderVariationID,
+		LinkID:              domain.LinkID(target.InstallationID, target.ProviderItemID, target.ProviderVariationID),
+		RuleMatched:         domain.DecisionRuleManual,
+		Actor:               decisionActorFor(actor),
+		CreatedAt:           now,
+	}
+	transition := domain.ProductLinkTransition{Link: link, Audit: audit, Decision: decision}
 	if err := s.workflows.ApplyProductLinkTransition(ctx, transition); err != nil {
 		return domain.ProductLinkResolutionResult{}, err
 	}
@@ -721,7 +744,20 @@ func (s *ResolutionService) buildDecision(input buildResolvedLinkInput, now time
 // built from. A human approving a single-anchor candidate is exactly what the
 // confirmation queue asks for, and the trail must keep saying which anchor
 // carried it — a candidate approved on no anchor at all is a manual call.
+//
+// Only an anchor the generator found UNIQUE may name itself in the trail. A
+// collision (one EAN, four produtos) or a conflict (CODPROD and EAN
+// disagreeing) reaches the operator precisely because no anchor resolved it;
+// recording `exact_ean_unique` for a decision taken over a four-way collision
+// would assert a uniqueness nobody established (ADR-17) and would read as
+// though an anchor had won (AC-08). The operator's judgement is what carried
+// those, and `manual` is the honest name for it.
 func decisionRuleForCandidate(candidate domain.LinkCandidate) domain.ProductLinkDecisionRule {
+	switch candidate.MatchStatus {
+	case domain.LinkCandidateMatchStatusAccept, domain.LinkCandidateMatchStatusConfirm:
+	default:
+		return domain.DecisionRuleManual
+	}
 	switch candidate.MatchInput {
 	case domain.LinkCandidateMatchInputSellerSKU:
 		return domain.DecisionRuleExactCodprodUnique
@@ -730,6 +766,15 @@ func decisionRuleForCandidate(candidate domain.LinkCandidate) domain.ProductLink
 	default:
 		return domain.DecisionRuleManual
 	}
+}
+
+// decisionActorFor names the trail's actor from the audit actor that took the
+// action, so a scripted undo is not filed as an operator's judgement.
+func decisionActorFor(actor domain.ActorMetadata) string {
+	if actor.ActorType == domain.DecisionActorSystem {
+		return domain.DecisionActorSystem
+	}
+	return domain.DecisionActorOperator
 }
 
 func candidateStateToProductLinkState(state domain.LinkCandidateState) domain.ProductLinkState {
