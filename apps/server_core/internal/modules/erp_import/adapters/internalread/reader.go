@@ -171,7 +171,10 @@ func (r *Reader) FindProductsForLinking(ctx context.Context, input readports.Fin
 		}
 		results = append(results, candidate)
 	}
-	if len(results) == 0 && (input.ProductID != nil || trimmed(input.SellerSKU) != nil) {
+	// An unmatchable seller_sku is an empty result, never a not-found error: the
+	// oracle side answers the same input with an empty list (errNoMatchableInput),
+	// and the two readers must agree on what "SKU" means (F-04).
+	if len(results) == 0 && (input.ProductID != nil || matchableSellerSKU(input) != nil) {
 		productID := 0
 		if input.ProductID != nil {
 			productID = *input.ProductID
@@ -450,7 +453,7 @@ func matches(row erpdomain.MirrorProduct, input readports.FindProductsInput) boo
 	if input.ProductID != nil && strings.TrimSpace(row.CodigoProduto) == strconv.Itoa(*input.ProductID) {
 		return true
 	}
-	if sku := trimmed(input.SellerSKU); sku != nil && strings.TrimSpace(row.CodigoProduto) == *sku {
+	if sku := matchableSellerSKU(input); sku != nil && strings.TrimSpace(row.CodigoProduto) == *sku {
 		return true
 	}
 	if ean := trimmed(input.EAN); ean != nil && row.EAN != nil && catalogdomain.IsValidGTIN(*row.EAN) && strings.TrimSpace(*row.EAN) == *ean {
@@ -459,7 +462,30 @@ func matches(row erpdomain.MirrorProduct, input readports.FindProductsInput) boo
 	if title := trimmed(input.Title); title != nil && row.Descricao != nil && strings.Contains(strings.ToLower(*row.Descricao), strings.ToLower(*title)) {
 		return true
 	}
-	return input.ProductID == nil && trimmed(input.SellerSKU) == nil && trimmed(input.EAN) == nil && trimmed(input.Title) == nil
+	return !hasSuppliedAnchor(input)
+}
+
+// matchableSellerSKU is the mirror-side twin of the oracle reader's seller_sku
+// clause guard (D-121): seller_sku carries the ERP CODPROD, and a value that is
+// not CODPROD-shaped (a legacy REFFORN like "ZP1704.1.") is not an anchor. It
+// must never match, and — the trap this guard closes — it must never be mistaken
+// for "no anchor was supplied", which would hand the caller the whole mirror.
+func matchableSellerSKU(input readports.FindProductsInput) *string {
+	sku := trimmed(input.SellerSKU)
+	if sku == nil || !readdomain.IsValidCodprod(*sku) {
+		return nil
+	}
+	return sku
+}
+
+// hasSuppliedAnchor reports whether the caller named any anchor at all,
+// regardless of whether it turned out to be matchable. Only a request that
+// names none keeps the historical "every row" meaning.
+func hasSuppliedAnchor(input readports.FindProductsInput) bool {
+	return input.ProductID != nil ||
+		trimmed(input.SellerSKU) != nil ||
+		trimmed(input.EAN) != nil ||
+		trimmed(input.Title) != nil
 }
 func validEANCounts(rows []erpdomain.MirrorProduct) map[string]int {
 	out := map[string]int{}

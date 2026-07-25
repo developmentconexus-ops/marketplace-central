@@ -82,8 +82,8 @@ func (r *Reader) linkingIndex(ctx context.Context, source erpdomain.ImportSource
 // the answer is identical to scanning the whole mirror, only cheaper. An input
 // with no anchor at all keeps the historical meaning: every row.
 func (i *linkingIndex) candidateRows(input readports.FindProductsInput) []erpdomain.MirrorProduct {
-	productID, sku, ean, title := input.ProductID, trimmed(input.SellerSKU), trimmed(input.EAN), trimmed(input.Title)
-	if productID == nil && sku == nil && ean == nil && title == nil {
+	productID, sku, ean, title := input.ProductID, matchableSellerSKU(input), trimmed(input.EAN), trimmed(input.Title)
+	if !hasSuppliedAnchor(input) {
 		return i.rows
 	}
 
