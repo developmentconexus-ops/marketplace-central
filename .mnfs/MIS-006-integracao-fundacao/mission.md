@@ -148,11 +148,21 @@ alinhamento com o operador, evidência real do mirror Sankhya (10529 produtos, 7
   casar `p.CODPROD`. REFFORN sai como âncora de SKU (decisão do operador: "esquece REFFORN").
   CODPROD é a chave primária do ERP: não colide por definição, e é a âncora mais forte
   disponível — mais forte que o EAN, que é digitado pelo vendedor e tem 91 colisões reais.
-- **Decisão (política de auto-approve):** auto-aprova quando a âncora é não-ambígua —
-  (a) CODPROD resolve para 1 produto, com ou sem EAN presente; (b) EAN resolve para 1
-  produto; (c) ambos concordando no mesmo produto. Qualquer outro caminho é REVIEW.
+- **Decisão (política de auto-approve) — REVISADA 2026-07-25 (D-121-2), `RATIFIED-BY-OPERATOR`:**
+  auto-aprova SOMENTE com **corroboração** — CODPROD válido E EAN resolvendo o MESMO produto.
+  Uma âncora sozinha não basta.
+  - Âncora única (CODPROD sem EAN, ou EAN único sem CODPROD) → **CONFIRMAÇÃO**: o vínculo é
+    proposto com o produto já escolhido, carrega um aviso dizendo o que falta corroborar, e
+    espera um clique do operador. **Não é REVIEW.** São duas filas diferentes e a distinção é a
+    decisão: confirmação = "achei, faltou a segunda âncora, confirma?"; revisão = "não sei qual
+    é". Existe produto legítimo cadastrado só com uma das âncoras — ele precisa de aprovação
+    manual barata, não de investigação.
+  - Motivo da revisão (D-121-2): a âncora única sozinha pode errar de forma silenciosa —
+    CODPROD digitado errado que caia em outro código válido vincula o produto errado. Com
+    corroboração das duas âncoras, o erro teria que acontecer duas vezes de forma coerente.
 - **Conflito CODPROD≠EAN → REVIEW** (nunca auto-resolve por precedência): sinais
   contraditórios são sintoma de cadastro errado no anúncio; auto-resolver esconderia isso.
+  Conflito vai para REVIEW, não para confirmação — aqui não se sabe qual produto é.
 - **Contradição de título vence tudo:** `detectHardNegative` (kit/combo/cor/voltagem
   divergente entre título do anúncio e nome do produto) rebaixa a REJECT/REVIEW mesmo com
   CODPROD ou EAN batendo. Caso motivador: anúncio-kit cadastrado com o EAN da peça avulsa →
@@ -160,13 +170,15 @@ alinhamento com o operador, evidência real do mirror Sankhya (10529 produtos, 7
 - **Um produto ↔ N anúncios:** sem limite e sem sinalização. Mesmo codprod anunciado várias
   vezes é operação normal.
 - Prevents: auto-aprovação em EAN ambíguo (91 EANs, 188 produtos); vínculo de anúncio-kit a
-  peça avulsa; automatizar o sinal fraco enquanto o forte espera na fila manual.
+  peça avulsa; automatizar o sinal fraco enquanto o forte espera na fila manual; e (D-121-2)
+  vínculo errado por âncora única digitada errada, que ninguém revisaria.
 - Must preserve: override manual do operador vence auto-aprovação e nunca é revertido pelo
-  automático; título nunca aceita sozinho.
-- Trade-off: CODPROD digitado errado no anúncio que caia em outro código VÁLIDO vincula
-  errado sem revisão (aceito — o operador é dono do cadastro nos dois lados).
-- Validation impact: IO A auto-aprova; EAN colidente, conflito CODPROD≠EAN e hard-negative
-  ficam REVIEW.
+  automático; título nunca aceita sozinho; CONFIRMAÇÃO e REVIEW são estados distintos e
+  contáveis separadamente — colapsar os dois em "pendente" apaga a decisão.
+- Trade-off: cobertura do automático cai — só o anúncio com as duas âncoras entra sozinho. O
+  resto vira 1 clique. Aceito pelo operador: erro silencioso custa mais que clique.
+- Validation impact: IO C (concordante) auto-aprova; CODPROD-sem-EAN e EAN-sem-CODPROD viram
+  CONFIRMAÇÃO com aviso; EAN colidente, conflito CODPROD≠EAN e hard-negative ficam REVIEW.
 
 **Defeitos do plano original corrigidos junto (achados na entrevista, não são decisão de
 negócio):**
@@ -196,7 +208,7 @@ negócio):**
 | D1 | Arquitetura de fonte | **RATIFICADO** (adapters convergentes, ADR-02) | contrato §3 |
 | D2 | Mecanismo incremental | **RATIFICADO** scheduler-first; MIS-006 = skeleton cadence-agnostic | contrato §3 |
 | D3 | Campos fiscais obrigatórios | **RESOLVIDO = N/A à E2.** Tabela 10-campos ratificada NÃO tem campo fiscal; fiscal (CPF/CNPJ/IE) vive em E5/Pedido (non-scope). `ncm` fica como passthrough opcional (honesto-desconhecido) pois já existe em `NormalizedRow`. Nenhum campo fiscal novo em products_mirror. | contrato §E2/§3; research |
-| D4 | Auto-aprovar vínculo em âncora não-ambígua | **RATIFICADO + AMENDADO 2026-07-25 (D-121)** — CODPROD-único, EAN-único ou ambos concordantes auto-aprovam; conflito/colisão/hard-negative ficam REVIEW; `seller_sku`→CODPROD (não REFFORN). Ver ADR-05 amendado. | contrato §3; entrevista operador D-121 |
+| D4 | Auto-aprovar vínculo | **RATIFICADO + AMENDADO 2026-07-25 (D-121 → revisado D-121-2)** — auto-aprova SÓ com corroboração (CODPROD **e** EAN no mesmo produto); âncora única vira **CONFIRMAÇÃO** (proposta + aviso + 1 clique), estado distinto de REVIEW; conflito/colisão/hard-negative ficam REVIEW; `seller_sku`→CODPROD (não REFFORN). Ver ADR-05 amendado. | contrato §3; entrevista operador D-121 |
 | D5 | Horizonte backfill pedidos | RATIFICADO 12 meses — **non-scope** (pedidos) | contrato §3 |
 | D6 | Cadência coleta | **RESOLVIDO = sync_state cadence-agnostic.** MIS-006 guarda `schedule` genérico por entity; não hardcoda "diário". Valor real ratifica na missão mercado sem mudar shape E8. | research; SYSTEM-BLUEPRINT §4 |
 | D7 | Snapshot leve p/ fonte-banco | **RESOLVIDO = SIM.** SankhyaAdapter escreve snapshot no mirror (mirror é o join target compartilhado). Não é read-through puro. | STORAGE-SCHEMA §products_mirror |

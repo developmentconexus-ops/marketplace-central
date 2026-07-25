@@ -19,8 +19,10 @@ function installationLabel(installation: IntegrationInstallation): string {
   return installation.display_name;
 }
 
+// shrink-0 + whitespace-nowrap keep each pill on one line: the nav scrolls
+// horizontally when they no longer fit, it does not wrap them.
 const enabledPillClass =
-  "inline-flex items-center rounded-pill px-3 py-1.5 text-sm font-medium transition-colors";
+  "inline-flex shrink-0 items-center whitespace-nowrap rounded-pill px-3 py-1.5 text-sm font-medium transition-colors";
 
 export function Header() {
   const location = useLocation();
@@ -30,13 +32,20 @@ export function Header() {
     (installation) => installation.installation_id === installationId,
   );
 
+  // The header must not scroll on either axis: `overflow-x-auto` on it also
+  // clipped the vertical axis, trapping the gear dropdown inside the 56px bar
+  // and giving it a scrollbar instead of letting it hang below. The pill row
+  // owns the horizontal scroll on narrow viewports (see the nav below).
   return (
-    <header className="flex h-14 shrink-0 items-center gap-4 overflow-x-auto border-b border-border bg-surface px-4 lg:px-6">
+    <header className="flex h-14 shrink-0 items-center gap-4 border-b border-border bg-surface px-4 lg:px-6">
       <span className="shrink-0 text-sm font-semibold tracking-wide text-ink">
         Marketplace Central
       </span>
 
-      <nav aria-label="Navegação principal" className="flex shrink-0 items-center gap-2 overflow-x-auto">
+      <nav
+        aria-label="Navegação principal"
+        className="flex min-w-0 shrink items-center gap-2 overflow-x-auto"
+      >
         <NavLink
           to={{ pathname: "/", search: location.search }}
           end

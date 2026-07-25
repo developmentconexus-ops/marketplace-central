@@ -26,17 +26,28 @@ Política de auto-approve ratificada pelo operador em D-121 (ADR-05 amendado,
 
 | Sinal no anúncio | Resultado |
 |---|---|
-| CODPROD válido **e** EAN, mesmo produto | auto-aprova (`concordant_codprod_ean`) |
-| CODPROD válido, sem EAN | auto-aprova (`exact_codprod_unique`) |
-| EAN único, sem CODPROD | auto-aprova (`exact_ean_unique`) |
+| CODPROD válido **e** EAN, mesmo produto | **auto-aprova** (`concordant_codprod_ean`) |
+| CODPROD válido, sem EAN | **CONFIRMAÇÃO** — produto proposto + aviso, 1 clique (`exact_codprod_unique`) |
+| EAN único, sem CODPROD | **CONFIRMAÇÃO** — produto proposto + aviso, 1 clique (`exact_ean_unique`) |
 | CODPROD e EAN apontam produtos diferentes | REVIEW — conflito, sem regra de precedência |
 | EAN colidente (>1 produto no ERP) | REVIEW |
 | só título | REVIEW, nunca auto-aprova |
 | título contradiz (kit/combo/cor/voltagem) | bloqueia tudo acima — hard-negative vence |
 
-Trade-off aceito pelo operador: um CODPROD digitado errado que caia sobre outro código VÁLIDO
-vincula no produto errado sem passar por revisão. Aceito porque o cadastro é governado pelo
-próprio operador.
+**CONFIRMAÇÃO ≠ REVIEW** (D-121-2, ratificado). São dois estados distintos, contados e filtrados
+separadamente:
+
+- *confirmação* = "achei o produto, faltou a segunda âncora para corroborar — confirma?". O
+  produto já vem escolhido; o operador aprova em 1 clique. Existe produto legítimo cadastrado só
+  com CODPROD ou só com EAN, e ele não pode cair na mesma fila de investigação.
+- *revisão* = "não sei qual produto é" (colisão, conflito, só título). Exige investigação.
+
+Colapsar os dois em um genérico "pendente" apaga a decisão e é falha de contrato (AC-10).
+
+Por que âncora única deixou de auto-aprovar (D-121-2 revisa D-121): sozinha, ela erra em
+silêncio — um CODPROD digitado errado que caia sobre outro código VÁLIDO vincula o produto
+errado e ninguém revisa. Com as duas âncoras concordando, o erro teria que acontecer duas vezes
+de forma coerente. Trade-off aceito: a cobertura do automático cai e o resto vira 1 clique.
 
 Ver `mission.md` §Milestone Strategy (linha M-05), ADR-05, `interface-contracts-mis006.md` §E4
 (E4.1)/§E10, `architecture-map.md` (M-05 depende de M-02+M-03; alimenta M-06),
@@ -61,9 +72,14 @@ Ver `mission.md` §Milestone Strategy (linha M-05), ADR-05, `interface-contracts
   não colisão no ERP — fato diferente (correção de plano D-121).
 - REFACTOR `product_links/application/resolution_service.go:129-149` (`ApproveCandidate`): ADD
   transição interna de auto-approve reusando a MESMA máquina de transição/audit hoje só
-  acionada por operador manual via transport. Política ratificada (ADR-05 amendado): auto-aprova
-  CODPROD-único (com ou sem EAN), EAN-único, e ambos concordantes; conflito CODPROD≠EAN,
-  colisão (>1 produto) e hard-negative ficam REVIEW.
+  acionada por operador manual via transport. Política ratificada (ADR-05 amendado, D-121-2):
+  auto-aprova SÓ o concordante (CODPROD e EAN no mesmo produto); âncora única vira CONFIRMAÇÃO
+  (proposta + aviso, 1 clique); conflito CODPROD≠EAN, colisão (>1 produto) e hard-negative ficam
+  REVIEW.
+- ADD o estado de CONFIRMAÇÃO ao domínio de candidatos + um motivo de aviso honesto por caso
+  (`sem EAN para corroborar o CODPROD` / `sem CODPROD para corroborar o EAN`). Não invente
+  texto genérico: o aviso diz exatamente qual âncora faltou (ADR-17). O transport de
+  `product_links` expõe o estado para M-06 filtrar; nenhuma tela é escrita aqui.
 - CREATE E10 audit trail (tabela nova, migração bloco B+ — após bloco B de M-02): toda decisão de
   vínculo (manual ou automática) grava linha `rule_matched`, `actor`, `collisions_at_decision`,
   `superseded_by`. `rule_matched` cobre a política ratificada:
@@ -141,26 +157,32 @@ chama `product_links/application`, nunca o inverso).
 
 ---
 
-### F-02 — Auto-approve por âncora não-ambígua (CODPROD e/ou EAN)
+### F-02 — Auto-approve corroborado + fila de CONFIRMAÇÃO
 
 **EARS:**
 - WHEN a geração produz um candidato cujo `seller_sku` casa exatamente 1 produto (CODPROD único)
   E o EAN casa o MESMO produto THEN o candidato transiciona automaticamente para aprovado,
   reusando a máquina de transição de `resolution_service.go:129-149` (`ApproveCandidate`), com
-  `actor=system` e `rule_matched=concordant_codprod_ean`.
-- WHEN o `seller_sku` casa exatamente 1 produto E o anúncio não tem EAN válido THEN auto-aprova
-  com `rule_matched=exact_codprod_unique` — CODPROD é âncora governada pelo operador e não
-  precisa de corroboração.
-- WHEN o anúncio não tem `seller_sku` utilizável E o EAN casa exatamente 1 produto THEN
-  auto-aprova com `rule_matched=exact_ean_unique`.
+  `actor=system` e `rule_matched=concordant_codprod_ean`. Este é o ÚNICO caminho automático.
+- WHEN o `seller_sku` casa exatamente 1 produto E o anúncio não tem EAN válido THEN o candidato
+  fica em CONFIRMAÇÃO com o produto já proposto e o aviso `sem EAN para corroborar o CODPROD`
+  — NÃO auto-aprova, NÃO cai na fila de revisão.
+- WHEN o anúncio não tem `seller_sku` utilizável E o EAN casa exatamente 1 produto THEN o
+  candidato fica em CONFIRMAÇÃO com o aviso `sem CODPROD para corroborar o EAN`.
+- WHEN o operador confirma um candidato em CONFIRMAÇÃO THEN o vínculo é aprovado com
+  `actor=operator` e `rule_matched` = a âncora única que o propôs
+  (`exact_codprod_unique`/`exact_ean_unique`) — a linha E10 registra que houve aprovação humana
+  sobre âncora não-corroborada.
 - WHEN `seller_sku` e EAN casam produtos DIFERENTES THEN o candidato fica em REVIEW como
   conflito — nenhuma das duas âncoras tem precedência sobre a outra (D-121, ratificado).
 - WHEN qualquer âncora casa mais de 1 produto (colisão no ERP) THEN o candidato fica em REVIEW —
   auto-approve NUNCA dispara em ambiguidade (segurança > cobertura, ADR-05).
-- WHEN o match é só por título THEN nunca auto-aprova, qualquer que seja o score.
+- WHEN o match é só por título THEN vai para REVIEW, nunca para CONFIRMAÇÃO nem auto-approve,
+  qualquer que seja o score — título não é âncora.
 - IF `detectHardNegative` acusa contradição (kit/combo/cor/voltagem) entre título do anúncio e
-  nome do produto THEN o candidato é REJECT/REVIEW mesmo com CODPROD e EAN concordantes — a
-  contradição vence todas as regras acima (D-121, ratificado).
+  nome do produto THEN o candidato é REJECT/REVIEW mesmo com CODPROD e EAN concordantes, e
+  mesmo no caminho de CONFIRMAÇÃO — a contradição vence todas as regras acima (D-121,
+  ratificado).
 - WHEN o par produto↔anúncio já tem vínculo ativo com `actor=operator` THEN auto-approve não
   roda (ver F-03, override do operador vence).
 
@@ -171,8 +193,10 @@ chama `product_links/application`, nunca o inverso).
   NÃO consumir `validEANCounts`/`identityQuality` (`erp_import/.../reader.go:344-366`): aquele
   conta EANs repetidos DENTRO do arquivo xlsx, não colisão no catálogo — usá-lo aqui seria medir
   o fato errado (correção de plano D-121).
-- `collisions_at_decision` gravado em E10 é exatamente esse número (1 nos caminhos de
-  auto-approve).
+- `collisions_at_decision` gravado em E10 é exatamente esse número (1 no caminho concordante e
+  nas confirmações de âncora única).
+- Estado de CONFIRMAÇÃO no domínio de candidatos + motivo de aviso por caso, legível pelo
+  transport para M-06 filtrar. Contável separado de REVIEW.
 - Extensão de `resolution_service.go` com uma transição de auto-approve que reusa o MESMO
   código de mudança de estado + escrita de audit hoje usado pelo caminho manual
   (`ApproveCandidate`), diferindo só no `actor` gravado.
@@ -182,9 +206,12 @@ chama `product_links/application`, nunca o inverso).
   heurística de desempate automática. (Dado real do ERP do operador: 91 EANs colidem,
   ex. `7896902180697` casa 4 produtos.)
 - `seller_sku` preenchido com algo que não é um CODPROD válido → não vira cláusula de match
-  (F-04); se sobrar só o EAN, decide pelo EAN; se não sobrar âncora, REVIEW `unresolved`.
+  (F-04); se sobrar só o EAN, vira CONFIRMAÇÃO por EAN; se não sobrar âncora, REVIEW
+  `unresolved`.
 - Anúncio com CODPROD e EAN concordantes MAS título "KIT 2 UN" contra produto unitário →
   hard-negative bloqueia, não auto-aprova.
+- Candidato de âncora única entrando na MESMA fila/contador de REVIEW = falha (AC-10): o
+  operador não consegue distinguir "confirma?" de "investiga".
 - Reimplementação de contagem de colisão dentro de `product_links` (em vez de consumir a que o
   gerador já calcula) = falha de design (ADR-05 "não reimplementar sinal já testado").
 - Auto-approve tenta rodar sobre candidato já em estado terminal (aprovado/rejeitado
@@ -203,10 +230,11 @@ transição ao final da geração, condicional ao sinal de colisão).
 - WHEN qualquer vínculo é aprovado (automático ou manual) THEN uma linha E10 é gravada:
   `link_id, rule_matched, actor (system|operator), collisions_at_decision, created_at,
   superseded_by NULL`.
-- WHEN a aprovação é automática (F-02) THEN `actor=system`, `collisions_at_decision=1`, e
-  `rule_matched` é uma de
-  `exact_codprod_unique | exact_ean_unique | concordant_codprod_ean` — o valor diz QUAL âncora
-  decidiu, para o operador auditar depois qual regra o cadastro dele está exercendo.
+- WHEN a aprovação é automática (F-02) THEN `actor=system`, `collisions_at_decision=1`,
+  `rule_matched=concordant_codprod_ean` — é o único caminho automático (D-121-2).
+- WHEN o operador confirma um candidato de âncora única THEN `actor=operator` e `rule_matched` é
+  `exact_codprod_unique` ou `exact_ean_unique` — a trilha distingue vínculo corroborado por duas
+  âncoras de vínculo aceito por humano sobre uma só.
 - WHEN o operador aprova/sobrescreve manualmente um vínculo (inclusive um já auto-aprovado) THEN
   uma NOVA linha E10 é gravada com `actor=operator`, e a linha anterior recebe `superseded_by`
   apontando para a nova — o override do operador VENCE e nunca é revertido de volta pelo caminho
