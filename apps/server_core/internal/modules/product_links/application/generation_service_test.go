@@ -71,6 +71,26 @@ func (s *stubCandidateStore) GetLinkCandidate(_ context.Context, candidateID str
 	return productlinksdomain.LinkCandidate{}, false, nil
 }
 
+func TestGenerateLinkCandidatesWithoutLimitReadsEverySnapshot(t *testing.T) {
+	t.Parallel()
+	// A capped generation run leaves every listing beyond the cap without a
+	// candidate, which the operator reads as "sem vínculo" — so an absent limit
+	// asks the reader for the whole installation (0), not a 20-row page.
+	snapshots := &stubSnapshotReader{}
+	svc := NewGenerationService(GenerationServiceConfig{
+		Snapshots: snapshots,
+		Matcher:   &stubProductMatcher{},
+		Store:     &stubCandidateStore{},
+	})
+
+	if _, err := svc.GenerateLinkCandidates(context.Background(), GenerateLinkCandidatesInput{InstallationID: "inst-1"}); err != nil {
+		t.Fatalf("GenerateLinkCandidates() error = %v", err)
+	}
+	if snapshots.limit != 0 {
+		t.Fatalf("snapshot reader limit = %d, want 0 (unbounded)", snapshots.limit)
+	}
+}
+
 func TestGenerateLinkCandidatesUsesExactSKUFirst(t *testing.T) {
 	t.Parallel()
 

@@ -76,7 +76,10 @@ func (r *ListingSnapshotRepository) ListListingSnapshots(ctx context.Context, in
 	if r.pool == nil {
 		return nil, nil
 	}
-	rows, err := r.pool.Query(ctx, `
+	// limit <= 0 means EVERY snapshot of the installation, not a default page:
+	// candidate generation has to see the whole catalog, and a silent cap there
+	// leaves the uncapped remainder reported as "sem vínculo" forever.
+	const selectSnapshots = `
 		SELECT
 			installation_id, provider_code, provider_item_id, provider_variation_id,
 			provider_status, seller_sku, ean, title, available_quantity,
@@ -84,9 +87,14 @@ func (r *ListingSnapshotRepository) ListListingSnapshots(ctx context.Context, in
 		FROM product_link_listing_snapshots
 		WHERE tenant_id = $1
 		  AND installation_id = $2
-		ORDER BY updated_at DESC, provider_item_id DESC, provider_variation_id DESC
-		LIMIT $3
-	`, r.tenantID, strings.TrimSpace(installationID), limit)
+		ORDER BY updated_at DESC, provider_item_id DESC, provider_variation_id DESC`
+	query := selectSnapshots + "\n\t\tLIMIT $3"
+	args := []any{r.tenantID, strings.TrimSpace(installationID), limit}
+	if limit <= 0 {
+		query = selectSnapshots
+		args = args[:2]
+	}
+	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

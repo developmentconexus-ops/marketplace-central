@@ -67,12 +67,12 @@ func (s *GenerationService) GenerateLinkCandidates(ctx context.Context, input Ge
 		return domain.LinkCandidateGenerationResult{}, errors.New("PRODUCT_LINKS_INSTALLATION_REQUIRED")
 	}
 
-	limit := input.Limit
-	if limit <= 0 {
-		limit = 20
-	}
-
-	snapshots, err := s.snapshots.ListListingSnapshots(ctx, installationID, limit)
+	// An absent limit means the WHOLE installation, never a 20-row default page.
+	// Generation replaces the candidate set for the identities it processed, so a
+	// capped run leaves every uncapped listing without a candidate — the operator
+	// then reads thousands of anúncios as "sem vínculo" when the matcher was
+	// simply never asked about them. Callers that want a sample pass one.
+	snapshots, err := s.snapshots.ListListingSnapshots(ctx, installationID, input.Limit)
 	if err != nil {
 		return domain.LinkCandidateGenerationResult{}, err
 	}
