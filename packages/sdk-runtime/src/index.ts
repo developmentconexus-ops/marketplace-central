@@ -601,6 +601,11 @@ export interface OrderReadItem {
   link_quality: OrderLinkQuality;
   internal_product_id?: number;
   custo_unitario?: number;
+  /** The ERP source observed this cost at another instant than the order date
+   * (single snapshot, no cost history): the amount is the closest honest
+   * observation, taken at custo_observado_em — not an exact as-of answer. */
+  custo_aproximado?: boolean;
+  custo_observado_em?: string;
 }
 
 export interface OrderReadPayment {

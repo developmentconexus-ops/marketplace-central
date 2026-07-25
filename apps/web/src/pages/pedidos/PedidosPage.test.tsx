@@ -552,6 +552,44 @@ describe("PedidosPage", () => {
     expect(await screen.findByText("Parafuso M8x40 cx100")).toBeInTheDocument();
   });
 
+  it("marks a snapshot-observed cost as approximate and says when it was observed", async () => {
+    // The ERP source keeps one snapshot per product, so a cost read for a past
+    // sale is the closest observation, not the cost on the sale date. The drawer
+    // must show the caveat (≈ + the observation instant) instead of passing the
+    // amount off as exact.
+    const approximate = {
+      ...detailOrder,
+      items: [
+        {
+          ...detailOrder.items[0],
+          custo_aproximado: true,
+          custo_observado_em: "2026-07-18T12:30:00Z",
+        },
+      ],
+    };
+    listOrders.mockResolvedValue({ items: [approximate], next_cursor: null });
+    getOrder.mockResolvedValue(approximate);
+
+    renderPage("?order=PO1");
+
+    const drawer = await screen.findByRole("complementary");
+    await within(drawer).findByText("J. S.");
+    expect(within(drawer).getByText(/custo unit\.:\s*≈\s*R\$\s?21,10/)).toBeInTheDocument();
+    expect(within(drawer).getByText(/snapshot ERP de 18\/07\/2026/)).toBeInTheDocument();
+  });
+
+  it("shows an exact cost without the approximation marker", async () => {
+    listOrders.mockResolvedValue({ items: [detailOrder], next_cursor: null });
+    getOrder.mockResolvedValue(detailOrder);
+
+    renderPage("?order=PO1");
+
+    const drawer = await screen.findByRole("complementary");
+    await within(drawer).findByText("J. S.");
+    expect(within(drawer).queryByText(/snapshot ERP de/)).not.toBeInTheDocument();
+    expect(within(drawer).queryByText(/≈/)).not.toBeInTheDocument();
+  });
+
   it("opening with a ?order= URL opens the drawer with real detail data", async () => {
     listOrders.mockResolvedValue({ items: [detailOrder], next_cursor: null });
     getOrder.mockResolvedValue(detailOrder);

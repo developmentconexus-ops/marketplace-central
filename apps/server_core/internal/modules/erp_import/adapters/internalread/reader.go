@@ -241,9 +241,6 @@ func (r *Reader) GetCostAsOf(ctx context.Context, input readports.CostAsOfInput)
 	if !ok {
 		return readdomain.CostAsOf{}, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, "product import time is unknown for cost as-of", ErrNoErpSnapshot)
 	}
-	if dataAt.After(input.Policy.EffectiveAt) {
-		return readdomain.CostAsOf{}, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, "mirror row is newer than requested cost as-of", ErrNoErpSnapshot)
-	}
 	if row.Custo == nil {
 		return readdomain.CostAsOf{}, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, "custo is unknown for this product", nil)
 	}
@@ -251,7 +248,18 @@ func (r *Reader) GetCostAsOf(ctx context.Context, input readports.CostAsOfInput)
 	if err != nil {
 		return readdomain.CostAsOf{}, err
 	}
-	return readdomain.CostAsOf{ProductID: input.ProductID, CompanyID: input.Policy.CompanyID, Basis: input.Policy.Basis, EffectiveAt: input.Policy.EffectiveAt, Amount: &amount, AmountScope: readdomain.CostAmountScopePerUnit, Source: r.source(source, dataAt)}, nil
+	result := readdomain.CostAsOf{ProductID: input.ProductID, CompanyID: input.Policy.CompanyID, Basis: input.Policy.Basis, EffectiveAt: input.Policy.EffectiveAt, Amount: &amount, AmountScope: readdomain.CostAmountScopePerUnit, Source: r.source(source, dataAt)}
+	// The mirror holds ONE observation per product, not a cost history, so it
+	// cannot answer "cost as of <past date>" exactly. Refusing outright would
+	// kill the fact for every past order (every snapshot is newer than every
+	// closed sale). Instead the observed cost is returned FLAGGED stale: the
+	// amount is real, the temporal caveat travels with it (Source.ObservedAt +
+	// QualityStaleSource) and callers render it as an approximation — nothing
+	// about the as-of date is fabricated.
+	if dataAt.After(input.Policy.EffectiveAt) {
+		result.QualityFlags = []readdomain.QualityFlag{readdomain.QualityStaleSource}
+	}
+	return result, nil
 }
 
 func (r *Reader) GetSalesHistory(context.Context, readports.SalesHistoryInput) (readdomain.SalesHistory, error) {

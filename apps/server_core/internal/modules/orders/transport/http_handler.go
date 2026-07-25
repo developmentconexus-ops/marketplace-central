@@ -412,6 +412,12 @@ type freteRealDTO struct {
 type enrichedItemDTO struct {
 	domain.MarketplaceOrderItem
 	CustoUnitario *float64 `json:"custo_unitario,omitempty"`
+	// CustoAproximado marks a cost the ERP source observed at another instant
+	// than the order date (single-snapshot source, no cost history); when true
+	// CustoObservadoEm carries that instant so the UI can say WHEN, instead of
+	// passing the amount off as an exact as-of answer.
+	CustoAproximado  bool       `json:"custo_aproximado,omitempty"`
+	CustoObservadoEm *time.Time `json:"custo_observado_em,omitempty"`
 }
 
 // decomposicaoDTO is the response shape for the order-level cost/fee
@@ -517,6 +523,8 @@ func mapEnrichedOrder(e application.EnrichedOrder) enrichedOrderDTO {
 		dto := enrichedItemDTO{MarketplaceOrderItem: item}
 		if i < len(e.ItemCosts) {
 			dto.CustoUnitario = e.ItemCosts[i].UnitCost
+			dto.CustoAproximado = e.ItemCosts[i].Approximate
+			dto.CustoObservadoEm = e.ItemCosts[i].ObservedAt
 		}
 		items[i] = dto
 	}

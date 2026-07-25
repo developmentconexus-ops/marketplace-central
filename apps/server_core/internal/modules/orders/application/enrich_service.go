@@ -9,6 +9,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	connectorsdomain "marketplace-central/apps/server_core/internal/modules/connectors/domain"
+	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
 	"marketplace-central/apps/server_core/internal/modules/orders/domain"
 	"marketplace-central/apps/server_core/internal/modules/orders/ports"
 )
@@ -26,6 +27,13 @@ const shipmentConcurrency = 8
 type ItemCost struct {
 	ItemIdentifier string
 	UnitCost       *float64
+	// ObservedAt is the instant the source actually observed this cost, and
+	// Approximate says that instant is NOT the order date: the ERP source holds
+	// a single snapshot, not a cost history, so the amount is the closest honest
+	// observation rather than an exact as-of answer. Both stay nil/false when the
+	// source answered exactly at the order date.
+	ObservedAt  *time.Time
+	Approximate bool
 }
 
 // ShipmentEnrichment carries the per-order shipment facts sourced via
@@ -78,7 +86,21 @@ type EnrichService struct {
 	shipment    ports.ShipmentReader
 	decomposer  ports.Decomposer
 	buyerFiscal ports.BuyerFiscalReader
+	links       ports.LinkReader
 	logger      *slog.Logger
+}
+
+// WithLinkRefresh wires the read-time link refresher. The item↔produto link on
+// a stored order is a SNAPSHOT of what was known when the order was imported:
+// an order imported before its anúncio was linked keeps link_quality=unresolved
+// forever, so its custo — and therefore the whole retorno — stayed "—" even
+// after the operator resolved that anúncio in /vinculos. Re-reading the current
+// links at enrich time makes an order pick up a link the moment it exists,
+// with no re-import. One batched lookup per Enrich call, not one per item.
+// A nil reader keeps the stored snapshot exactly as before.
+func (s EnrichService) WithLinkRefresh(links ports.LinkReader) EnrichService {
+	s.links = links
+	return s
 }
 
 // NewEnrichService keeps constructing an EnrichService with a nil decomposer
@@ -115,6 +137,7 @@ func NewEnrichServiceWithReaders(cost ports.CostReader, shipment ports.ShipmentR
 // list page (FINDING-M08-LIST-TIMEOUT). Every EnrichedOrder here carries a nil
 // BuyerFiscal; use EnrichOne on the detail path to resolve it.
 func (s EnrichService) Enrich(ctx context.Context, installationID string, orders []domain.OrderReadModel) []EnrichedOrder {
+	orders = s.refreshLinks(ctx, installationID, orders)
 	shipments := make([]*ShipmentEnrichment, len(orders))
 	var g errgroup.Group
 	g.SetLimit(shipmentConcurrency)
@@ -161,6 +184,85 @@ func (s EnrichService) EnrichOne(ctx context.Context, installationID string, ord
 	enriched := s.Enrich(ctx, installationID, []domain.OrderReadModel{order})[0]
 	enriched.BuyerFiscal = s.resolveBuyerFiscal(ctx, installationID, order)
 	return enriched
+}
+
+// refreshLinks re-resolves each item's produto interno against the CURRENT
+// links and returns copies of the orders carrying whatever is newer. It only
+// ever UPGRADES an item — a resolved link that the stored snapshot missed —
+// and never downgrades one on a lookup miss: an identity absent from the
+// refresh map keeps the stored value rather than being blanked. A reader
+// error degrades to the stored snapshot plus a warn; the orders still render
+// (their custo simply stays honest-unknown). Copies are made per order so the
+// caller's read models — and any cache behind them — stay untouched.
+func (s EnrichService) refreshLinks(ctx context.Context, installationID string, orders []domain.OrderReadModel) []domain.OrderReadModel {
+	if s.links == nil || len(orders) == 0 {
+		return orders
+	}
+	identities := make([]domain.ListingIdentity, 0)
+	seen := map[string]struct{}{}
+	for _, order := range orders {
+		for _, item := range order.Items {
+			if item.ProviderItemID == "" || item.InternalProductID != nil {
+				continue
+			}
+			identity := domain.ListingIdentity{
+				InstallationID:      installationID,
+				ProviderItemID:      item.ProviderItemID,
+				ProviderVariationID: item.ProviderVariationID,
+			}
+			key := linkRefreshKey(identity)
+			if _, ok := seen[key]; ok {
+				continue
+			}
+			seen[key] = struct{}{}
+			identities = append(identities, identity)
+		}
+	}
+	if len(identities) == 0 {
+		return orders
+	}
+	links, err := s.links.ResolveLinks(ctx, installationID, identities)
+	if err != nil {
+		s.logger.Warn("orders: link refresh failed",
+			"installation_id", installationID,
+			"identities", len(identities),
+			"error", err,
+		)
+		return orders
+	}
+
+	refreshed := make([]domain.OrderReadModel, len(orders))
+	copy(refreshed, orders)
+	for i := range refreshed {
+		var items []domain.MarketplaceOrderItem
+		for j, item := range refreshed[i].Items {
+			if item.ProviderItemID == "" || item.InternalProductID != nil {
+				continue
+			}
+			link, ok := links[linkRefreshKey(domain.ListingIdentity{
+				InstallationID:      installationID,
+				ProviderItemID:      item.ProviderItemID,
+				ProviderVariationID: item.ProviderVariationID,
+			})]
+			if !ok || link.InternalProductID == nil {
+				continue
+			}
+			if items == nil {
+				items = make([]domain.MarketplaceOrderItem, len(refreshed[i].Items))
+				copy(items, refreshed[i].Items)
+			}
+			items[j].InternalProductID = link.InternalProductID
+			items[j].LinkQuality = link.Quality
+		}
+		if items != nil {
+			refreshed[i].Items = items
+		}
+	}
+	return refreshed
+}
+
+func linkRefreshKey(identity domain.ListingIdentity) string {
+	return identity.InstallationID + "|" + identity.ProviderItemID + "|" + identity.ProviderVariationID
 }
 
 // fetchShipment looks up the order's shipment via ShipmentReader. It never
@@ -350,7 +452,17 @@ func (s EnrichService) resolveItemCosts(ctx context.Context, order domain.OrderR
 		}
 
 		amount := *cost.Amount
-		itemCosts = append(itemCosts, ItemCost{ItemIdentifier: identifier, UnitCost: &amount})
+		resolved := ItemCost{ItemIdentifier: identifier, UnitCost: &amount}
+		// A stale_source answer is a real observation taken at another instant —
+		// carry the caveat instead of dropping the amount or hiding the gap.
+		if internalreaddomain.HasQualityFlag(cost.QualityFlags, internalreaddomain.QualityStaleSource) {
+			resolved.Approximate = true
+		}
+		if cost.Source.ObservedAt != nil {
+			observedAt := *cost.Source.ObservedAt
+			resolved.ObservedAt = &observedAt
+		}
+		itemCosts = append(itemCosts, resolved)
 	}
 	return itemCosts, unknown
 }

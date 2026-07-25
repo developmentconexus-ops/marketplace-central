@@ -46,8 +46,8 @@ func TestReaderRealRepositoryCostReservedAsOfAndRejectedIgnored(t *testing.T) {
 	if err != nil || cost.Amount == nil || *cost.Amount != 12.3 || cost.Source.ObservedAt == nil || !cost.Source.ObservedAt.Equal(imported) {
 		t.Fatalf("cost=%+v err=%v", cost, err)
 	}
-	_, err = r.GetCostAsOf(ctx, readports.CostAsOfInput{ProductID: 10, Policy: readdomain.CostAsOfPolicy{EffectiveAt: imported.Add(-time.Second)}})
-	if !errors.Is(err, ErrNoErpSnapshot) {
-		t.Fatalf("as-of err=%v", err)
+	stale, err := r.GetCostAsOf(ctx, readports.CostAsOfInput{ProductID: 10, Policy: readdomain.CostAsOfPolicy{EffectiveAt: imported.Add(-time.Second)}})
+	if err != nil || stale.Amount == nil || !readdomain.HasQualityFlag(stale.QualityFlags, readdomain.QualityStaleSource) {
+		t.Fatalf("as-of before the snapshot must answer flagged stale: cost=%+v err=%v", stale, err)
 	}
 }

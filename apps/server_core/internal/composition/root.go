@@ -537,9 +537,13 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	inventorytransport.NewHandler(inventoryRiskSvc, inventoryManualAction).Register(mux)
 
 	ordersRepo := orderspostgres.NewOrderRepository(pool, cfg.DefaultTenantID)
+	// One link reader for BOTH the import (write-time snapshot) and the enrich
+	// read path (refresh): an order imported before its anúncio was linked
+	// picks the link up on the next read instead of waiting for a re-import.
+	ordersLinkReader := ordersproductlinks.NewLinkReader(productLinkCandidateRepo, productLinkCandidateRepo)
 	ordersImportSvc := ordersapp.NewImportService(ordersapp.ImportServiceConfig{
 		Source: ordersintegrations.NewOrderSource(providerOperationSvc),
-		Links:  ordersproductlinks.NewLinkReader(productLinkCandidateRepo, productLinkCandidateRepo),
+		Links:  ordersLinkReader,
 		Store:  ordersRepo,
 	})
 	ordersListSvc := ordersapp.NewListService(ordersRepo)
@@ -549,7 +553,8 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	ordersCostReader := newOrdersCostReaderAdapter(internalReadSvc, internalReadAvailable)
 	ordersShipmentReader := newOrdersShipmentReaderAdapter(mercadoLivreCapabilities, installationSvc, cfg.DefaultTenantID)
 	ordersBuyerFiscalReader := newOrdersBuyerFiscalReaderAdapter(mercadoLivreCapabilities, installationSvc, cfg.DefaultTenantID)
-	ordersEnrichSvc := ordersapp.NewEnrichServiceWithReaders(ordersCostReader, ordersShipmentReader, nil, ordersBuyerFiscalReader, slog.Default())
+	ordersEnrichSvc := ordersapp.NewEnrichServiceWithReaders(ordersCostReader, ordersShipmentReader, nil, ordersBuyerFiscalReader, slog.Default()).
+		WithLinkRefresh(ordersLinkReader)
 	ordersFaturadoSvc := ordersapp.NewFaturadoService(ordersRepo)
 	orderstransport.NewHandlerWithSummary(ordersImportSvc, ordersReadSvc, &ordersEnrichSvc, ordersSummarySvc).WithFaturador(ordersFaturadoSvc).Register(mux)
 

@@ -171,11 +171,24 @@ func TestMirrorUnknownValuesRemainUnknown(t *testing.T) {
 	}
 }
 
-func TestCostAsOfRejectsNewerMirrorRow(t *testing.T) {
+// The mirror is one observation, not a cost history: an as-of older than the
+// snapshot still gets the observed amount, flagged stale so the caller can
+// render it as an approximation instead of an exact as-of answer.
+func TestCostAsOfOlderThanTheMirrorRowIsFlaggedStale(t *testing.T) {
 	r, _, ctx := readerWith(mirrorRows())
-	_, err := r.GetCostAsOf(ctx, readports.CostAsOfInput{ProductID: 1, Policy: readdomain.CostAsOfPolicy{EffectiveAt: importedAt.Add(-time.Second)}})
-	if !errors.Is(err, ErrNoErpSnapshot) || !readdomain.IsReadErrorCode(err, readdomain.ReadErrorSourceUnavailable) {
-		t.Fatalf("err=%v", err)
+	cost, err := r.GetCostAsOf(ctx, readports.CostAsOfInput{ProductID: 1, Policy: readdomain.CostAsOfPolicy{EffectiveAt: importedAt.Add(-time.Second)}})
+	if err != nil || cost.Amount == nil || *cost.Amount != 12.3 {
+		t.Fatalf("cost=%+v err=%v", cost, err)
+	}
+	if !readdomain.HasQualityFlag(cost.QualityFlags, readdomain.QualityStaleSource) {
+		t.Fatalf("cost older than the snapshot must carry stale_source: %+v", cost.QualityFlags)
+	}
+	if cost.Source.ObservedAt == nil || !cost.Source.ObservedAt.Equal(importedAt) {
+		t.Fatalf("the observation instant must travel with the amount: %+v", cost.Source)
+	}
+	exact, err := r.GetCostAsOf(ctx, readports.CostAsOfInput{ProductID: 1, Policy: readdomain.CostAsOfPolicy{EffectiveAt: importedAt}})
+	if err != nil || readdomain.HasQualityFlag(exact.QualityFlags, readdomain.QualityStaleSource) {
+		t.Fatalf("an as-of at the observation instant is not stale: %+v err=%v", exact.QualityFlags, err)
 	}
 }
 
@@ -194,8 +207,9 @@ func TestLiveReadThroughUsesUpdatedAtAsObservationTime(t *testing.T) {
 	if err != nil || cost.Amount == nil || *cost.Amount != 9.9 || cost.Source.ObservedAt == nil || !cost.Source.ObservedAt.Equal(syncedAt) {
 		t.Fatalf("live cost must observe updated_at, not fail on nil imported_at: cost=%+v err=%v", cost, err)
 	}
-	if _, err := reader.GetCostAsOf(ctx, readports.CostAsOfInput{ProductID: 1, Policy: readdomain.CostAsOfPolicy{EffectiveAt: syncedAt.Add(-time.Second)}}); !errors.Is(err, ErrNoErpSnapshot) {
-		t.Fatalf("live as-of before the sync instant must reject: %v", err)
+	stale, err := reader.GetCostAsOf(ctx, readports.CostAsOfInput{ProductID: 1, Policy: readdomain.CostAsOfPolicy{EffectiveAt: syncedAt.Add(-time.Second)}})
+	if err != nil || stale.Amount == nil || !readdomain.HasQualityFlag(stale.QualityFlags, readdomain.QualityStaleSource) {
+		t.Fatalf("live as-of before the sync instant must answer flagged stale: cost=%+v err=%v", stale, err)
 	}
 	stock, err := reader.GetSellableStock(ctx, readports.SellableStockInput{ProductID: 1})
 	if err != nil || stock.Source.ObservedAt == nil || !stock.Source.ObservedAt.Equal(syncedAt) {

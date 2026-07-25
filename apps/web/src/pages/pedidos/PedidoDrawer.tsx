@@ -73,7 +73,18 @@ function ItemRow({ item }: { item: OrderReadItem }) {
       </div>
       <div className="flex flex-wrap items-center gap-2 text-[11px] text-faint">
         {stateTag(linkQualityLabels[item.link_quality], linkQualityClasses[item.link_quality])}
-        <span>custo unit.: {custo ?? <UnknownValue hint="sem custo ERP no vínculo" />}</span>
+        <span>
+          {/* "≈" is not decoration: the ERP source keeps one snapshot per
+              product, so a cost read for a past sale is the closest observation,
+              not the cost on that date. The instant is spelled out rather than
+              letting the number pass as exact. */}
+          custo unit.: {custo === null ? <UnknownValue hint="sem custo ERP no vínculo" /> : item.custo_aproximado ? `≈ ${custo}` : custo}
+        </span>
+        {custo !== null && item.custo_aproximado ? (
+          <span>
+            snapshot ERP de {formatDateTime(item.custo_observado_em) ?? <UnknownValue />}
+          </span>
+        ) : null}
         {item.internal_product_id !== undefined ? <span>CODPROD {item.internal_product_id}</span> : null}
       </div>
     </div>

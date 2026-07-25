@@ -5282,6 +5282,16 @@ components:
         custo_unitario:
           type: number
           format: double
+        custo_aproximado:
+          type: boolean
+          description: >-
+            True when the ERP source observed this cost at another instant than
+            the order date (single snapshot, no cost history). The amount is the
+            closest honest observation, taken at custo_observado_em — never an
+            exact as-of answer.
+        custo_observado_em:
+          type: string
+          format: date-time
 
     OrderReadPayment:
       type: object
