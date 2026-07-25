@@ -74,8 +74,7 @@ INSERT INTO products_mirror
 	 grupo_codigo, grupo_descricao, ncm, custo, preco_venda, estoque_total,
 	 absent_in_last_snapshot, stale_since, updated_at)
 VALUES ($1, 'sankhya', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, false, NULL, now())
-ON CONFLICT (tenant_id, codigo_produto) DO UPDATE SET
-	source = 'sankhya',
+ON CONFLICT (tenant_id, source, codigo_produto) DO UPDATE SET
 	descricao = EXCLUDED.descricao,
 	referencia = EXCLUDED.referencia,
 	ean = EXCLUDED.ean,
@@ -90,29 +89,31 @@ ON CONFLICT (tenant_id, codigo_produto) DO UPDATE SET
 	stale_since = NULL,
 	updated_at = now()`
 
-// keepAbsentSQL implements ADR-04: rows present in the mirror for this tenant but
+// keepAbsentSQL implements ADR-04: rows present in the mirror for this source but
 // absent from the current snapshot are flagged (never physically deleted, and their
-// last-known values + source are preserved). stale_since is stamped once on the
-// present→absent transition (COALESCE keeps the original). Scope is the whole
-// tenant regardless of prior source (hub ruling): the mirror reflects the active
-// source's complete current view.
+// last-known values are preserved). stale_since is stamped once on the
+// present→absent transition (COALESCE keeps the original). Scope is THIS source
+// only: since 0078 each source owns its own rows, so a Sankhya sync must never
+// mark an xlsx-sourced product as absent — that product simply is not part of
+// this source's snapshot.
 const keepAbsentSQL = `
 UPDATE products_mirror
 SET absent_in_last_snapshot = true,
 	stale_since = COALESCE(stale_since, now()),
 	updated_at = now()
 WHERE tenant_id = $1
+	AND source = 'sankhya'
 	AND absent_in_last_snapshot = false
 	AND codigo_produto <> ALL($2::text[])`
 
 const deleteLocationsSQL = `
 DELETE FROM products_mirror_stock_locations
-WHERE tenant_id = $1 AND codigo_produto = ANY($2::text[])`
+WHERE tenant_id = $1 AND source = 'sankhya' AND codigo_produto = ANY($2::text[])`
 
 const insertLocationSQL = `
 INSERT INTO products_mirror_stock_locations
-	(tenant_id, codigo_produto, local_codigo, local_descricao, quantidade)
-VALUES ($1, $2, $3, $4, $5)`
+	(tenant_id, source, codigo_produto, local_codigo, local_descricao, quantidade)
+VALUES ($1, 'sankhya', $2, $3, $4, $5)`
 
 // ApplySnapshot upserts every row, replaces the stock-location children for the
 // products in the snapshot, and runs the keep-absent sweep — all in one

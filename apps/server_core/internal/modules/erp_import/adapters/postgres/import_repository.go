@@ -59,8 +59,9 @@ func (r *Repository) PersistSnapshotAtomically(ctx context.Context, tenantID str
 		// Honest-unknown custo/stock_physical (client-catalog lenient path, ADR-17)
 		// must land as SQL NULL, never a fabricated zero-valued string.
 		custo := nullableString(string(product.Custo))
+		precoVenda := nullableString(string(product.PrecoVenda))
 		stockPhysical := nullableString(product.StockPhysical)
-		_, err = tx.Exec(ctx, `INSERT INTO erp_import_products (tenant_id,protocol_id,codprod,descrprod,custo,stock_physical,stock_reserved,ean,refforn,marca,ncm,grupo,descrgrupo) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`, tenantID, snapshot.ID, product.Codprod, product.Descrprod, custo, stockPhysical, product.StockReserved, product.EAN, product.Refforn, product.Marca, product.NCM, product.Grupo, product.DescrGrupo)
+		_, err = tx.Exec(ctx, `INSERT INTO erp_import_products (tenant_id,protocol_id,codprod,descrprod,custo,preco_venda,stock_physical,stock_reserved,ean,refforn,marca,ncm,grupo,descrgrupo) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`, tenantID, snapshot.ID, product.Codprod, product.Descrprod, custo, precoVenda, stockPhysical, product.StockReserved, product.EAN, product.Refforn, product.Marca, product.NCM, product.Grupo, product.DescrGrupo)
 		if err != nil {
 			return fmt.Errorf("insert ERP import product: %w", err)
 		}

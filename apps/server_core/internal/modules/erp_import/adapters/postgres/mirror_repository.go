@@ -27,20 +27,23 @@ func (r *Repository) SyncLatestCompletedSnapshot(ctx context.Context, tenantID s
 		return 0, fmt.Errorf("load latest completed ERP protocol: %w", err)
 	}
 
-	productRows, err := tx.Query(ctx, `SELECT codprod,descrprod,custo::text,stock_physical,stock_reserved,ean,refforn,marca,ncm,grupo,descrgrupo FROM erp_import_products WHERE tenant_id=$1 AND protocol_id=$2 ORDER BY codprod`, tenantID, protocolID)
+	productRows, err := tx.Query(ctx, `SELECT codprod,descrprod,custo::text,preco_venda::text,stock_physical,stock_reserved,ean,refforn,marca,ncm,grupo,descrgrupo FROM erp_import_products WHERE tenant_id=$1 AND protocol_id=$2 ORDER BY codprod`, tenantID, protocolID)
 	if err != nil {
 		return 0, fmt.Errorf("load latest completed ERP products: %w", err)
 	}
 	rows := make([]domain.NormalizedRow, 0)
 	for productRows.Next() {
 		var row domain.NormalizedRow
-		var custo, stockPhysical sql.NullString
-		if err := productRows.Scan(&row.Codprod, &row.Descrprod, &custo, &stockPhysical, &row.StockReserved, &row.EAN, &row.Refforn, &row.Marca, &row.NCM, &row.Grupo, &row.DescrGrupo); err != nil {
+		var custo, precoVenda, stockPhysical sql.NullString
+		if err := productRows.Scan(&row.Codprod, &row.Descrprod, &custo, &precoVenda, &stockPhysical, &row.StockReserved, &row.EAN, &row.Refforn, &row.Marca, &row.NCM, &row.Grupo, &row.DescrGrupo); err != nil {
 			productRows.Close()
 			return 0, fmt.Errorf("scan latest completed ERP product: %w", err)
 		}
 		if custo.Valid {
 			row.Custo = domain.Decimal(custo.String)
+		}
+		if precoVenda.Valid {
+			row.PrecoVenda = domain.Decimal(precoVenda.String)
 		}
 		if stockPhysical.Valid {
 			row.StockPhysical = stockPhysical.String
@@ -101,20 +104,28 @@ func (r *Repository) mergeSnapshotTx(ctx context.Context, tx pgx.Tx, tenantID st
 		return 0, err
 	}
 
+	// estoque_total is sellable stock = physical MINUS reserved. A snapshot that
+	// carries physical stock but no reserved value is NOT unknown stock: the
+	// source simply reports no reservation for that product, so the sellable
+	// quantity is the physical one. Physical unknown stays NULL (ADR-17), and
+	// both components are stored so a reader can show the breakdown instead of
+	// only the derived number.
 	_, err = tx.Exec(ctx, `INSERT INTO products_mirror (
 		tenant_id,source,codigo_produto,descricao,referencia,ean,marca,grupo_codigo,
-		grupo_descricao,ncm,custo,preco_venda,estoque_total,protocol_id
+		grupo_descricao,ncm,custo,preco_venda,estoque_fisico,estoque_reservado,estoque_total,protocol_id
 	)
 	SELECT $1,$2,codigo_produto,descricao,referencia,ean,marca,grupo_codigo,
 		grupo_descricao,ncm,custo::numeric,preco_venda::numeric,
-		CASE WHEN stock_physical IS NOT NULL AND stock_reserved IS NOT NULL
-			THEN stock_physical::numeric-stock_reserved::numeric END,$3
+		stock_physical::numeric,stock_reserved::numeric,
+		CASE WHEN stock_physical IS NOT NULL
+			THEN stock_physical::numeric-COALESCE(stock_reserved::numeric,0) END,$3
 	FROM erp_import_mirror_stage
-	ON CONFLICT (tenant_id,codigo_produto) DO UPDATE SET
-		source=EXCLUDED.source,descricao=EXCLUDED.descricao,referencia=EXCLUDED.referencia,
+	ON CONFLICT (tenant_id,source,codigo_produto) DO UPDATE SET
+		descricao=EXCLUDED.descricao,referencia=EXCLUDED.referencia,
 		ean=EXCLUDED.ean,marca=EXCLUDED.marca,grupo_codigo=EXCLUDED.grupo_codigo,
 		grupo_descricao=EXCLUDED.grupo_descricao,ncm=EXCLUDED.ncm,custo=EXCLUDED.custo,
-		preco_venda=EXCLUDED.preco_venda,estoque_total=EXCLUDED.estoque_total,
+		preco_venda=EXCLUDED.preco_venda,estoque_fisico=EXCLUDED.estoque_fisico,
+		estoque_reservado=EXCLUDED.estoque_reservado,estoque_total=EXCLUDED.estoque_total,
 		protocol_id=EXCLUDED.protocol_id,absent_in_last_snapshot=false,stale_since=NULL,
 		updated_at=now()`, tenantID, source, protocolID)
 	if err != nil {
@@ -129,23 +140,25 @@ func (r *Repository) mergeSnapshotTx(ctx context.Context, tx pgx.Tx, tenantID st
 		return 0, err
 	}
 
+	// Locations are replaced per (source, product): another source's breakdown
+	// for the same CODPROD is untouched (0078 keys the child table by source).
 	_, err = tx.Exec(ctx, `DELETE FROM products_mirror_stock_locations AS locations
-	WHERE locations.tenant_id=$1 AND EXISTS (
+	WHERE locations.tenant_id=$1 AND locations.source=$2 AND EXISTS (
 		SELECT 1 FROM erp_import_mirror_stage AS stage WHERE stage.codigo_produto=locations.codigo_produto
-	)`, tenantID)
+	)`, tenantID, source)
 	if err != nil {
 		return 0, err
 	}
 
 	_, err = tx.Exec(ctx, `INSERT INTO products_mirror_stock_locations (
-		tenant_id,codigo_produto,local_codigo,local_descricao,quantidade
+		tenant_id,source,codigo_produto,local_codigo,local_descricao,quantidade
 	)
-	SELECT $1,codigo_produto,local_codigo,NULL,
-		CASE WHEN stock_physical IS NOT NULL AND stock_reserved IS NOT NULL
-			THEN stock_physical::numeric-stock_reserved::numeric END
+	SELECT $1,$2,codigo_produto,local_codigo,NULL,
+		CASE WHEN stock_physical IS NOT NULL
+			THEN stock_physical::numeric-COALESCE(stock_reserved::numeric,0) END
 	FROM erp_import_mirror_stage WHERE local_codigo IS NOT NULL AND local_codigo<>''
-	ON CONFLICT (tenant_id,codigo_produto,local_codigo) DO UPDATE SET
-		local_descricao=EXCLUDED.local_descricao,quantidade=EXCLUDED.quantidade`, tenantID)
+	ON CONFLICT (tenant_id,source,codigo_produto,local_codigo) DO UPDATE SET
+		local_descricao=EXCLUDED.local_descricao,quantidade=EXCLUDED.quantidade`, tenantID, source)
 	if err != nil {
 		return 0, err
 	}
