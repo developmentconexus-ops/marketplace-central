@@ -13,6 +13,30 @@ const statusCopy: Record<RunStatus, string> = {
   cancelled: "cancelado",
 };
 
+const REFRESH_OPERATION_TYPE = "listings_refresh";
+
+function isRefreshRun(run: { operation_type: string }): boolean {
+  return run.operation_type === REFRESH_OPERATION_TYPE;
+}
+
+function isActive(status: string | undefined): boolean {
+  return status === "queued" || status === "running";
+}
+
+/**
+ * "em andamento" alone reads as stuck on an account whose full pull takes
+ * minutes. Elapsed time is derived from the run's own started_at — a fact the
+ * server reported — and is omitted entirely when the run has no start stamp.
+ */
+function elapsedLabel(startedAt: string | undefined, now: number): string | null {
+  if (startedAt === undefined) return null;
+  const started = Date.parse(startedAt);
+  if (!Number.isFinite(started)) return null;
+  const seconds = Math.max(0, Math.floor((now - started) / 1000));
+  if (seconds < 60) return `há ${seconds}s`;
+  return `há ${Math.floor(seconds / 60)} min`;
+}
+
 function attachedRunId(error: unknown): string | null {
   if (typeof error !== "object" || error === null) return null;
   const candidate = error as {
@@ -65,44 +89,65 @@ export function ListingsRefreshControl({ installationId }: { installationId: str
     },
   });
 
+  // A full pull of a large account takes minutes. The run lives server-side, so
+  // the control watches the runs list even before this tab started one: a reload
+  // (or landing here from another screen) during a refresh must show the run in
+  // progress instead of an idle button that 409s on the next click.
   const runsQuery = useQuery({
     queryKey: syncQueryKeys.runs(installationId, { operation_run_id: observedRunId }),
     queryFn: () => client.listIntegrationOperationRuns(installationId),
-    enabled: observedRunId !== null,
+    enabled: installationId !== "",
     // React Query pauses polling while the document is hidden, and the app
     // disables refetch-on-focus — so a user who switched tabs mid-refresh came
     // back to a status pill frozen at "na fila" and listings that never
     // invalidated. The run keeps going server-side; keep watching it.
     refetchIntervalInBackground: true,
     refetchInterval: (query) => {
-      const observedRun = query.state.data?.items.find(
-        (item) => item.operation_run_id === observedRunId,
-      );
-      return observedRun?.status === "succeeded" ||
-        observedRun?.status === "failed" ||
-        observedRun?.status === "cancelled"
-        ? false
-        : 2_000;
+      const items = query.state.data?.items ?? [];
+      if (observedRunId !== null) {
+        const observedRun = items.find((item) => item.operation_run_id === observedRunId);
+        return isActive(observedRun?.status) || observedRun === undefined ? 2_000 : false;
+      }
+      // Nothing started here: keep polling only while somebody else's run is live.
+      return items.some((item) => isRefreshRun(item) && isActive(item.status)) ? 2_000 : false;
     },
   });
 
-  const observedRun = observedRunId === null
+  const runs = runsQuery.data?.items ?? [];
+  // A run this tab did not start still belongs to this account — adopt it so the
+  // button is disabled and the pill honest while it finishes.
+  const adoptedRunId =
+    runs.find((item) => isRefreshRun(item) && isActive(item.status))?.operation_run_id ?? null;
+  const trackedRunId = observedRunId ?? adoptedRunId;
+  const observedRun = trackedRunId === null
     ? undefined
-    : runsQuery.data?.items.find((item) => item.operation_run_id === observedRunId);
-  const status: RunStatus | null = observedRunId === null ? null : observedRun?.status ?? "queued";
+    : runs.find((item) => item.operation_run_id === trackedRunId);
+  const status: RunStatus | null = trackedRunId === null ? null : observedRun?.status ?? "queued";
 
   useEffect(() => {
     if (
-      observedRunId !== null &&
+      trackedRunId !== null &&
       status === "succeeded" &&
-      invalidatedRunId.current !== observedRunId
+      invalidatedRunId.current !== trackedRunId
     ) {
-      invalidatedRunId.current = observedRunId;
+      invalidatedRunId.current = trackedRunId;
       void queryClient.invalidateQueries({ queryKey: queryKeyNamespaces.listings });
     }
-  }, [observedRunId, queryClient, status]);
+  }, [queryClient, status, trackedRunId]);
 
-  const runIsActive = status === "queued" || status === "running";
+  const runIsActive = isActive(status ?? undefined);
+
+  // Ticks only while a run is live, so the elapsed label stays truthful without
+  // re-rendering an idle screen.
+  const [now, setNow] = useState<number>(() => Date.now());
+  useEffect(() => {
+    if (!runIsActive) return;
+    setNow(Date.now());
+    const timer = setInterval(() => setNow(Date.now()), 1_000);
+    return () => clearInterval(timer);
+  }, [runIsActive]);
+  const elapsed = runIsActive ? elapsedLabel(observedRun?.started_at, now) : null;
+
   const terminalError = status === "failed"
     ? "Atualização falhou."
     : status === "cancelled"
@@ -122,7 +167,12 @@ export function ListingsRefreshControl({ installationId }: { installationId: str
       >
         Atualizar
       </button>
-      {status !== null ? <small className="text-muted">{statusCopy[status]}</small> : null}
+      {status !== null ? (
+        <small className="text-muted">
+          {statusCopy[status]}
+          {elapsed !== null ? ` ${elapsed}` : ""}
+        </small>
+      ) : null}
       {startError !== null ? <small role="alert" className="text-warn">{startError}</small> : null}
       {terminalError !== null ? <small role="alert" className="text-warn">{terminalError}</small> : null}
     </div>
