@@ -461,7 +461,18 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		internalReadSvc = internalreadapp.NewService(routingReader)
 		tenantconfigtransport.NewHandler(activeSourceRepo, cfg.DefaultTenantID).Register(mux)
 		internalReadAvailable = true
-		productMatcher = internalReadSvc
+		// Linking reads the mirror for EVERY source, including the live ones. The
+		// routing reader is right for a single product question but wrong for
+		// candidate generation: that asks about every listing in an account, and one
+		// live ERP round-trip per listing cannot finish inside a request. The mirror
+		// is the same data the live sync writes, so the answer is unchanged — only
+		// the number of round-trips is. Its own reader instance keeps the linking
+		// snapshot out of the catalog reader's caches.
+		productMatcher = routing.NewMirrorMatcher(
+			erpinternalread.NewReader(erpRepo, cfg.DefaultTenantID),
+			activeSourceRepo,
+			cfg.DefaultTenantID,
+		)
 
 		activeSourceLookup = activeSourceRepo
 		// Both upload sources mirror their own protocol history; the reader they

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	catalogdomain "marketplace-central/apps/server_core/internal/modules/catalog/domain"
@@ -113,6 +114,19 @@ type Reader struct {
 	repo     erpports.ImportRepository
 	tenantID string
 	now      func() time.Time
+
+	// Linking reads the whole mirror; a candidate-generation run asks about every
+	// listing in an account, so the snapshot is memoized instead of re-read per
+	// question. See linking_index.go.
+	linkingMu    sync.Mutex
+	linkingTTL   time.Duration
+	linkingCache *linkingIndex
+}
+
+// WithLinkingIndexTTL bounds how long a loaded mirror snapshot serves linking
+// lookups. Zero keeps the default.
+func WithLinkingIndexTTL(ttl time.Duration) Option {
+	return func(r *Reader) { r.linkingTTL = ttl }
 }
 
 func NewReader(repo erpports.ImportRepository, tenantID string, opts ...Option) *Reader {
@@ -139,11 +153,11 @@ func (r *Reader) FindProductsForLinking(ctx context.Context, input readports.Fin
 	if err != nil {
 		return nil, err
 	}
-	rows, err := r.repo.MirrorRows(ctx, r.tenantID, source)
+	index, err := r.linkingIndex(ctx, source)
 	if err != nil {
-		return nil, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, "product mirror is unavailable", err)
+		return nil, err
 	}
-	collisions := validEANCounts(rows)
+	rows, collisions := index.candidateRows(input), index.collisions
 	results := make([]readdomain.ProductCandidate, 0)
 	for _, row := range rows {
 		if !matches(row, input) {

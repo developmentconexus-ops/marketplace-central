@@ -35,11 +35,12 @@ func mirrorRows() []erpdomain.MirrorProduct {
 func timePtr(value time.Time) *time.Time { return &value }
 
 type fakeRepo struct {
-	rows           []erpdomain.MirrorProduct
-	err            error
-	tenant         string
-	source         erpdomain.ImportSource
-	snapshotCalled bool
+	rows            []erpdomain.MirrorProduct
+	err             error
+	tenant          string
+	source          erpdomain.ImportSource
+	snapshotCalled  bool
+	mirrorRowsCalls int
 }
 
 func (f *fakeRepo) PersistSnapshotAtomically(context.Context, string, erpdomain.ImportSnapshot) error {
@@ -66,6 +67,7 @@ func (f *fakeRepo) record(tenant string, source erpdomain.ImportSource) {
 }
 func (f *fakeRepo) MirrorRows(_ context.Context, tenant string, source erpdomain.ImportSource) ([]erpdomain.MirrorProduct, error) {
 	f.record(tenant, source)
+	f.mirrorRowsCalls++
 	return f.rows, f.err
 }
 func (f *fakeRepo) MirrorProductByCode(_ context.Context, tenant string, source erpdomain.ImportSource, code string) (erpdomain.MirrorProduct, bool, error) {
