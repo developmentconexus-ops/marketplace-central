@@ -190,23 +190,33 @@ func TestImportServiceEnqueueFailurePropagatesAndSkipsGeneration(t *testing.T) {
 	}
 }
 
-func TestImportServiceGenerationFailurePropagates(t *testing.T) {
-	wantErr := errors.New("candidate generation unavailable")
+// M05-C11: candidate generation runs AFTER the snapshot is persisted, so a
+// matcher that is down cannot turn a landed import into a failed one. The
+// import reports its own outcome and every installation is still attempted —
+// generation is re-runnable through the endpoint that stays registered.
+func TestImportServiceGenerationFailureDoesNotFailTheImport(t *testing.T) {
 	enqueuer := &fakeSyncEnqueuer{installationIDs: []string{"inst-a", "inst-b"}}
-	generator := &fakeLinkCandidateGenerator{err: wantErr}
+	generator := &fakeLinkCandidateGenerator{err: errors.New("candidate generation unavailable")}
+	repo := &fakeImportRepository{getReport: domain.ImportReport{Status: domain.ImportStatusCompleted}}
 	service := deterministicImportService(
 		&fakeParser{rows: []domain.NormalizedRow{validImportRow("P-1")}},
-		&fakeImportRepository{},
+		repo,
 		WithSyncEnqueuer(enqueuer),
 		WithLinkCandidateGenerator(generator),
 	)
 
-	_, err := service.RunImport(context.Background(), strings.NewReader("data"))
-	if !errors.Is(err, wantErr) {
-		t.Fatalf("RunImport() error = %v, want wrapped generation error", err)
+	report, err := service.RunImport(context.Background(), strings.NewReader("data"))
+	if err != nil {
+		t.Fatalf("RunImport() error = %v, want the import to stand on its own", err)
 	}
-	if !reflect.DeepEqual(generator.installationIDs, []string{"inst-a"}) {
-		t.Fatalf("generated installation IDs = %#v, want fail-fast after first installation", generator.installationIDs)
+	if report.Status != domain.ImportStatusCompleted {
+		t.Fatalf("status = %q, want completed", report.Status)
+	}
+	if repo.persistedSnapshot.Status != domain.ImportStatusCompleted {
+		t.Fatalf("persisted status = %q, want the snapshot kept as completed", repo.persistedSnapshot.Status)
+	}
+	if !reflect.DeepEqual(generator.installationIDs, []string{"inst-a", "inst-b"}) {
+		t.Fatalf("generated installation IDs = %#v, want every installation attempted", generator.installationIDs)
 	}
 }
 

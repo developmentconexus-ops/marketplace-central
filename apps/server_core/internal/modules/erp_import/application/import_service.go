@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"regexp"
 	"strconv"
 	"time"
@@ -161,8 +162,16 @@ func (s *ImportService) runImport(
 			return domain.ImportReport{}, fmt.Errorf("enqueue market products after ERP import: %w", err)
 		}
 		for _, installationID := range installationIDs {
+			// Candidate generation is a consequence of the import, not part of
+			// it: the snapshot is already persisted and correct. A matcher that
+			// fails here must be visible in the log and re-runnable (the
+			// generation endpoint stays live), never a reason to report an
+			// import that landed as failed (M05-C11).
 			if err := s.generator.GenerateLinkCandidates(ctx, installationID); err != nil {
-				return domain.ImportReport{}, fmt.Errorf("generate link candidates for installation %q after ERP import: %w", installationID, err)
+				slog.ErrorContext(ctx, "link candidate generation after ERP import failed",
+					"installation_id", installationID,
+					"protocol", string(snapshot.Protocol),
+					"error", err)
 			}
 		}
 	}
