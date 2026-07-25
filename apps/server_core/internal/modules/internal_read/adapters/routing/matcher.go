@@ -2,6 +2,7 @@ package routing
 
 import (
 	"context"
+	"errors"
 
 	erpinternalread "marketplace-central/apps/server_core/internal/modules/erp_import/adapters/internalread"
 	erpdomain "marketplace-central/apps/server_core/internal/modules/erp_import/domain"
@@ -41,5 +42,18 @@ func (m *MirrorMatcher) FindProductsForLinking(ctx context.Context, input intern
 	}
 	ctx = tenant_config.WithActiveSource(ctx, cfg)
 	ctx = erpinternalread.WithActiveSource(ctx, erpdomain.ImportSource(cfg.Source))
-	return m.mirror.FindProductsForLinking(ctx, input)
+	candidates, err := m.mirror.FindProductsForLinking(ctx, input)
+	// A linking anchor that resolves to no product is "sem correspondência" for
+	// THAT listing, not a failed run: the reader reports an absent codprod as a
+	// not-found error (right for "show me this product", wrong for "search"), and
+	// letting it out would abort generation for the whole account on the first
+	// unmatched seller_sku.
+	var notFound *erpinternalread.ERPProductNotFoundError
+	if errors.As(err, &notFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return candidates, nil
 }

@@ -19,11 +19,15 @@ type fakeReader struct {
 	called  bool
 	gotCtx  context.Context
 	product internalreaddomain.ProductCandidate
+	err     error
 }
 
 func (f *fakeReader) FindProductsForLinking(ctx context.Context, _ internalreadports.FindProductsInput) ([]internalreaddomain.ProductCandidate, error) {
 	f.called = true
 	f.gotCtx = ctx
+	if f.err != nil {
+		return nil, f.err
+	}
 	return []internalreaddomain.ProductCandidate{f.product}, nil
 }
 

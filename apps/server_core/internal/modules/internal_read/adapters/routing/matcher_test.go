@@ -52,6 +52,20 @@ func TestMirrorMatcherRefusesAnUnknownActiveSource(t *testing.T) {
 	}
 }
 
+// An anchor that resolves to nothing is "sem correspondência" for that listing;
+// it must not abort generation for the whole account.
+func TestMirrorMatcherTreatsAnAbsentProductAsNoCandidates(t *testing.T) {
+	mirror := &fakeReader{err: &erpinternalread.ERPProductNotFoundError{ProductID: 0}}
+	lookup := fakeLookup{cfg: tenant_config.Config{TenantID: "t1", Source: tenant_config.SourceSankhya, SetAt: time.Now()}}
+
+	got, err := NewMirrorMatcher(mirror, lookup, "t1").FindProductsForLinking(context.Background(), internalreadports.FindProductsInput{SellerSKU: ptrString("81")})
+	if err != nil || len(got) != 0 {
+		t.Fatalf("candidates=%+v err=%v, want an empty result", got, err)
+	}
+}
+
+func ptrString(v string) *string { return &v }
+
 func TestMirrorMatcherPropagatesLookupFailure(t *testing.T) {
 	mirror := &fakeReader{}
 	wantErr := errors.New("config unavailable")
