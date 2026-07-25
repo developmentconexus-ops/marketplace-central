@@ -88,7 +88,11 @@ function CollectionNote({ state }: { state: ReturnType<typeof useMarketCollectio
   const { attempted, skipped, contagens, failed }: MarketCollectionSummary = state.summary;
   const parts = [
     `${contagens.ok} com preço de mercado`,
-    `${contagens.no_candidate} sem anúncio equivalente`,
+    // NO_CANDIDATE é o estado de bloqueio de TODO match que não chegou a ACCEPT:
+    // busca sem candidato, mas também REVIEW (candidato achado, âncoras fracas) e
+    // REJECT. Chamar isso de "sem anúncio equivalente" mente para o operador quando
+    // o ML devolveu um candidato — o rótulo diz o que o pipeline de fato sabe.
+    `${contagens.no_candidate} sem match de catálogo aceito`,
     `${contagens.insufficient_market} com mercado insuficiente`,
     `${contagens.no_price_evidence} sem evidência de preço`,
     `${contagens.sem_custo} sem custo`,

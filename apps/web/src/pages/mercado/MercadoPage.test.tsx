@@ -169,6 +169,21 @@ describe("MercadoPage", () => {
     );
   });
 
+  // Um anúncio com variações chega como várias linhas de mesmo MLB e mesmo título;
+  // sem o rótulo da variação o operador não sabe qual delas está reprecificando.
+  it("labels the variation on rows that carry one, so sibling variations are distinguishable", async () => {
+    listListings.mockReset().mockResolvedValue({
+      ...listingsPage,
+      items: [
+        { ...listing9001, listing_id: "L-var-a", variation_id: "174181786332" },
+        { ...listing9001, listing_id: "L-var-b", variation_id: "174181786333" },
+      ],
+    });
+    renderPage();
+    expect(await screen.findByText("var. 174181786332")).toBeInTheDocument();
+    expect(screen.getByText("var. 174181786333")).toBeInTheDocument();
+  });
+
   it("keeps Simular inert for a listing with no resolved product link", async () => {
     listListings.mockReset().mockResolvedValue({
       ...listingsPage,
@@ -224,7 +239,7 @@ describe("MercadoPage", () => {
     await waitFor(() => expect(marketClient.collectMarketPriceIntel).toHaveBeenCalledWith("90001"));
     // The summary names what came back per cause — never a bare "pronto".
     expect(await screen.findByText(/1 com preço de mercado/)).toBeInTheDocument();
-    expect(screen.getByText(/0 sem anúncio equivalente/)).toBeInTheDocument();
+    expect(screen.getByText(/0 sem match de catálogo aceito/)).toBeInTheDocument();
   });
 
   it("counts a failed collection instead of aborting the sweep", async () => {

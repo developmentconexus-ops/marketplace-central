@@ -70,9 +70,15 @@ export function RepricingTable({ rows }: RepricingTableProps): JSX.Element {
                 className="grid items-center border-t border-border-2 px-[14px] py-[10px] text-[12.5px]"
                 style={{ gridTemplateColumns: GRID_COLS }}
               >
+                {/* A variação é o que distingue linhas que compartilham MLB e título: sem ela um
+                    anúncio com 4 variações lê como 4 linhas idênticas e o operador não sabe qual
+                    reprecificar. Mesmo rótulo de AnunciosTable para os dois lerem igual. */}
                 <span className="overflow-hidden text-ellipsis whitespace-nowrap pr-2">
                   <span className="font-mono text-[11px] text-faint">{r.provider_listing_id}</span>{" "}
                   {r.title}
+                  {r.variation_id ? (
+                    <span className="ml-1 font-mono text-[11px] text-faint">var. {r.variation_id}</span>
+                  ) : null}
                 </span>
                 <MoneyCell value={meu} />
                 <MoneyCell value={menor} muted />
