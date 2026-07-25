@@ -2,6 +2,7 @@ package composition
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -436,7 +437,10 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	if oracleCfg, err := internalreadoracle.LoadConfigFromEnv(os.Getenv); err != nil {
 		slog.Warn("product links oracle reader unavailable", "err", err)
 	} else if db, err := internalreadoracle.OpenDB(context.Background(), oracleCfg); err != nil {
-		slog.Warn("product links oracle connection failed", "err", err)
+		// ReadError.Error() only renders its message, so the wrapped cause — the
+		// scrubbed Oracle error code, which is the whole diagnosis — never reaches
+		// the log unless it is unwrapped here.
+		slog.Warn("product links oracle connection failed", "err", err, "cause", errors.Unwrap(err))
 	} else {
 		oracleDB = db
 		cachedReader := internalreadcache.NewReader(
