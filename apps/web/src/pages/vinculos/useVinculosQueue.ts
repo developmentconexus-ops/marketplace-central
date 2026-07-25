@@ -17,6 +17,16 @@ import { vinculosQueryKeys } from "./vinculosQueryKeys";
 export const PRODUCT_LINKS_ROOT = ["product-links"] as const;
 
 /**
+ * How many candidates the queue loads at once. The SDK default (20) is a sample,
+ * not a work list: a generation run over a whole account produces thousands of
+ * rows, so 20 showed one anúncio's variations and hid every real suggestion. The
+ * backend ranks by confidence, so this page carries the actionable ones — and the
+ * UI says so when the list is capped instead of implying the account has exactly
+ * this many pending.
+ */
+export const VINCULOS_QUEUE_PAGE_SIZE = 200;
+
+/**
  * UI-supplied, unverified operator actor (no auth context in the demo shell).
  * Exported so batch flows (useVinculosBatch) mirror the same actor instead of
  * redefining it.
@@ -77,7 +87,7 @@ export function useVinculosQueue(installationId: string) {
 
   const queueQuery = useQuery({
     queryKey: vinculosQueryKeys.queue(installationId),
-    queryFn: () => client.listProductLinkCandidates(installationId),
+    queryFn: () => client.listProductLinkCandidates(installationId, VINCULOS_QUEUE_PAGE_SIZE),
     staleTime: QUERY_STALE_TIME.listings,
   });
 

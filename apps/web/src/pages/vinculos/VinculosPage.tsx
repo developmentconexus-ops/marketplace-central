@@ -8,6 +8,7 @@ import { useInstallation } from "../../app/InstallationContext";
 import { ImportacaoSection } from "./ImportacaoSection";
 import { QueueTab } from "./QueueTab";
 import { ResolvidosTab } from "./ResolvidosTab";
+import { VINCULOS_QUEUE_PAGE_SIZE } from "./useVinculosQueue";
 import { vinculosQueryKeys } from "./vinculosQueryKeys";
 
 type VinculosTab = "fila" | "resolvidos";
@@ -54,7 +55,7 @@ export function VinculosPage() {
 
   const queueQuery = useQuery({
     queryKey: vinculosQueryKeys.queue(installationId),
-    queryFn: () => client.listProductLinkCandidates(installationId),
+    queryFn: () => client.listProductLinkCandidates(installationId, VINCULOS_QUEUE_PAGE_SIZE),
     staleTime: QUERY_STALE_TIME.listings,
   });
 
@@ -70,8 +71,15 @@ export function VinculosPage() {
   const altaConfiancaCount = countHighConfidence(queueItems);
   const resolvidosHojeCount = resolvedItems.filter(isResolvedToday).length;
 
-  const kpiValue = (query: { isPending: boolean; isError: boolean }, value: number) =>
-    query.isPending ? "…" : query.isError ? "—" : value;
+  // The queue is a capped page, so its length is a floor, not a total: say "200+"
+  // rather than claiming the account has exactly 200 pending (ADR-17).
+  const queueIsCapped = queueItems.length >= VINCULOS_QUEUE_PAGE_SIZE;
+  const pendentesLabel = queueIsCapped ? `${pendentesCount}+` : pendentesCount;
+
+  const kpiValue = (
+    query: { isPending: boolean; isError: boolean },
+    value: string | number,
+  ) => (query.isPending ? "…" : query.isError ? "—" : value);
 
   return (
     <section aria-labelledby="vinculos-title" className="mx-auto flex max-w-7xl flex-col gap-6">
@@ -90,7 +98,7 @@ export function VinculosPage() {
           Resumo
         </h2>
         <dl className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Kpi label="Pendentes" value={kpiValue(queueQuery, pendentesCount)} />
+          <Kpi label="Pendentes" value={kpiValue(queueQuery, pendentesLabel)} />
           <Kpi label="Alta confiança" value={kpiValue(queueQuery, altaConfiancaCount)} />
           <Kpi label="Resolvidos hoje" value={kpiValue(resolvedQuery, resolvidosHojeCount)} />
         </dl>
@@ -124,6 +132,11 @@ export function VinculosPage() {
           <h2 id="vinculos-fila-title" className="text-sm font-semibold text-ink">
             Fila de candidatos
           </h2>
+          {queueIsCapped ? (
+            <p className="mt-1 text-xs text-muted">
+              Mostrando os {VINCULOS_QUEUE_PAGE_SIZE} candidatos de maior confiança. Há mais na fila.
+            </p>
+          ) : null}
           {queueQuery.isPending ? (
             <LoadingState />
           ) : queueQuery.isError ? (

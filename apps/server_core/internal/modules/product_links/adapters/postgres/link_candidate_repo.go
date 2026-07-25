@@ -116,10 +116,27 @@ func (r *LinkCandidateRepository) ListLinkCandidates(ctx context.Context, instal
 			candidate_id, installation_id, provider_code, provider_item_id, provider_variation_id,
 			internal_product_id, internal_product_name, internal_reference_code, state, match_input, match_value,
 			source_snapshot_fetched_at, confidence, confidence_band, match_status, reasons, created_at, updated_at
-		FROM product_link_candidates
-		WHERE tenant_id = $1
-		  AND installation_id = $2
-		ORDER BY updated_at DESC, candidate_id DESC
+		FROM product_link_candidates c
+		WHERE c.tenant_id = $1
+		  AND c.installation_id = $2
+		  -- An anúncio the operator already decided leaves the queue. Candidates
+		  -- outlive the decision (they are only rewritten by the next generation
+		  -- run), so without this the row the operator just resolved sat in the
+		  -- fila as if nothing had happened.
+		  AND NOT EXISTS (
+			SELECT 1 FROM product_links l
+			WHERE l.tenant_id = c.tenant_id
+			  AND l.installation_id = c.installation_id
+			  AND l.provider_item_id = c.provider_item_id
+			  AND l.provider_variation_id = c.provider_variation_id
+		  )
+		-- Actionable first. The queue is a work list, not a log: a run over a whole
+		-- account produces mostly NO_CANDIDATE rows, and ordering by recency buried
+		-- every real suggestion behind thousands of variations nobody can act on.
+		-- Confidence already encodes the priority (ACCEPT > REVIEW > REJECT/conflict
+		-- > no candidate), so ranking by it puts the decisions the operator can make
+		-- on the first page.
+		ORDER BY confidence DESC, updated_at DESC, candidate_id DESC
 		LIMIT $3
 	`, r.tenantID, strings.TrimSpace(installationID), limit)
 	if err != nil {
