@@ -33,6 +33,7 @@ import (
 	erpsync "marketplace-central/apps/server_core/internal/modules/erp_import/adapters/sync"
 	erpxlsx "marketplace-central/apps/server_core/internal/modules/erp_import/adapters/xlsx"
 	erpapp "marketplace-central/apps/server_core/internal/modules/erp_import/application"
+	erpdomain "marketplace-central/apps/server_core/internal/modules/erp_import/domain"
 	erptransport "marketplace-central/apps/server_core/internal/modules/erp_import/transport"
 	_ "marketplace-central/apps/server_core/internal/modules/integrations/adapters/amazon"
 	integrationscrypto "marketplace-central/apps/server_core/internal/modules/integrations/adapters/crypto"
@@ -49,6 +50,7 @@ import (
 	integrationsdomain "marketplace-central/apps/server_core/internal/modules/integrations/domain"
 	integrationstransport "marketplace-central/apps/server_core/internal/modules/integrations/transport"
 	internalreadcache "marketplace-central/apps/server_core/internal/modules/internal_read/adapters/cache"
+	"marketplace-central/apps/server_core/internal/modules/internal_read/adapters/mirror"
 	internalreadoracle "marketplace-central/apps/server_core/internal/modules/internal_read/adapters/oracle"
 	"marketplace-central/apps/server_core/internal/modules/internal_read/adapters/oracle/oraclebatch"
 	routing "marketplace-central/apps/server_core/internal/modules/internal_read/adapters/routing"
@@ -441,6 +443,11 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 			freshnessCache,
 		)
 	}
+	// Product sync wiring: the scheduler below needs the active-source lookup and
+	// one adapter per configured source. Both are only available once the pool
+	// exists, so they are declared here and filled in the pool-scoped block.
+	var activeSourceLookup tenant_config.ActiveSourceLookup
+	productSyncAdapters := map[tenant_config.ActiveSource]internalreadports.ProductSourceAdapter{}
 	if pool != nil {
 		xlsxReader := erpinternalread.NewReader(erpRepo, cfg.DefaultTenantID)
 		cachedUploadReader := internalreadcache.NewReader(xlsxReader, freshnessCache)
@@ -455,6 +462,18 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		tenantconfigtransport.NewHandler(activeSourceRepo, cfg.DefaultTenantID).Register(mux)
 		internalReadAvailable = true
 		productMatcher = internalReadSvc
+
+		activeSourceLookup = activeSourceRepo
+		// Both upload sources mirror their own protocol history; the reader they
+		// carry is the upload reader because that is the source they represent.
+		productSyncAdapters[tenant_config.SourceXLSX] = erpxlsx.NewUploadAdapter(uploadReader, erpRepo, cfg.DefaultTenantID, erpdomain.SourceXLSX)
+		productSyncAdapters[tenant_config.SourceCatalogoCliente] = erpxlsx.NewUploadAdapter(uploadReader, erpRepo, cfg.DefaultTenantID, erpdomain.SourceCatalogoCliente)
+		if oracleDB != nil {
+			// Registered only when the ERP connection actually exists: an absent
+			// adapter makes the scheduler fail closed with a named error instead of
+			// pretending a Sankhya sync ran.
+			productSyncAdapters[tenant_config.SourceSankhya] = internalreadoracle.NewSankhyaAdapter(oracleDB, mirror.NewPgWriter(pool), cfg.DefaultTenantID)
+		}
 	}
 	var canonicalCatalogReader catalogports.CanonicalProductReader = cataloginternalread.UnavailableReader{Err: internalreaddomain.NewReadError(internalreaddomain.ReadErrorSourceUnavailable, "oracle catalog reader is unavailable", nil)}
 	if internalReadAvailable {
@@ -584,10 +603,13 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	go integrationsbg.NewRefreshTicker(authSessionRepo, authFlowSvc, 5*time.Minute).Start(context.Background())
 	go integrationsbg.NewStateCleanup(oauthStateRepo, time.Hour).Start(context.Background())
 	go integrationsbg.NewFeeSyncScheduler(installationSvc, providerSvc, feeSyncSvc, 15*time.Minute).Start(context.Background())
-	// MIS-006 M-01 additive-lock: sync_state scheduler skeleton (products entity,
-	// NO-OP placeholder job). Cadence-agnostic interval; M-03/M-04 connect the
-	// real sync body via the RegisterJob seam.
-	go synccomposition.NewProductsSkeletonScheduler(pool, cfg.DefaultTenantID, 15*time.Minute).Start(context.Background())
+	// MIS-006: products sync. M-01 built the scheduler seam and M-03/M-04 built the
+	// adapters, but nothing connected them, so the scheduler ticked a NO-OP job and
+	// product data never refreshed on its own. The real job resolves the tenant's
+	// active source each cycle and runs that source's adapter.
+	if activeSourceLookup != nil {
+		go synccomposition.NewProductsScheduler(pool, cfg.DefaultTenantID, 15*time.Minute, activeSourceLookup, productSyncAdapters).Start(context.Background())
+	}
 
 	marketModuleRepo := marketpostgres.NewRepository(pool, cfg.DefaultTenantID)
 	marketReadSvc := marketapp.NewReadService(marketModuleRepo, marketModuleRepo, time.Now)
