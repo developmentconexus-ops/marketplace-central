@@ -18,10 +18,8 @@ import (
 	classpostgres "marketplace-central/apps/server_core/internal/modules/classifications/adapters/postgres"
 	classapp "marketplace-central/apps/server_core/internal/modules/classifications/application"
 	classtransport "marketplace-central/apps/server_core/internal/modules/classifications/transport"
-	_ "marketplace-central/apps/server_core/internal/modules/connectors/adapters/magalu"
 	melhorenvio "marketplace-central/apps/server_core/internal/modules/connectors/adapters/melhorenvio"
 	mercadolivreconnector "marketplace-central/apps/server_core/internal/modules/connectors/adapters/mercado_livre"
-	_ "marketplace-central/apps/server_core/internal/modules/connectors/adapters/shopee"
 	connectorsapp "marketplace-central/apps/server_core/internal/modules/connectors/application"
 	connectorsdomain "marketplace-central/apps/server_core/internal/modules/connectors/domain"
 	connectorstransport "marketplace-central/apps/server_core/internal/modules/connectors/transport"
@@ -35,16 +33,11 @@ import (
 	erpapp "marketplace-central/apps/server_core/internal/modules/erp_import/application"
 	erpdomain "marketplace-central/apps/server_core/internal/modules/erp_import/domain"
 	erptransport "marketplace-central/apps/server_core/internal/modules/erp_import/transport"
-	_ "marketplace-central/apps/server_core/internal/modules/integrations/adapters/amazon"
 	integrationscrypto "marketplace-central/apps/server_core/internal/modules/integrations/adapters/crypto"
 	integrationsfeesync "marketplace-central/apps/server_core/internal/modules/integrations/adapters/feesync"
-	_ "marketplace-central/apps/server_core/internal/modules/integrations/adapters/leroymerlin"
-	_ "marketplace-central/apps/server_core/internal/modules/integrations/adapters/madeiramadeira"
-	_ "marketplace-central/apps/server_core/internal/modules/integrations/adapters/magalu"
 	_ "marketplace-central/apps/server_core/internal/modules/integrations/adapters/mercadolivre"
 	integrationspostgres "marketplace-central/apps/server_core/internal/modules/integrations/adapters/postgres"
 	integrationsproviders "marketplace-central/apps/server_core/internal/modules/integrations/adapters/providers"
-	_ "marketplace-central/apps/server_core/internal/modules/integrations/adapters/shopee"
 	integrationsapp "marketplace-central/apps/server_core/internal/modules/integrations/application"
 	integrationsbg "marketplace-central/apps/server_core/internal/modules/integrations/background"
 	integrationsdomain "marketplace-central/apps/server_core/internal/modules/integrations/domain"
@@ -323,13 +316,15 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	// with the previous one. Closing them out here is what keeps a restart in the
 	// middle of a refresh from permanently blocking that operation: BeginExclusive
 	// would otherwise keep answering "já em andamento" against a run nobody owns.
-	reapCtx, cancelReap := context.WithTimeout(context.Background(), 10*time.Second)
-	reaped, reapErr := operationRunRepo.FailInterruptedRuns(reapCtx, time.Now().UTC())
-	cancelReap()
-	if reapErr != nil {
-		slog.Default().Error("integrations: could not close interrupted operation runs", "error", reapErr)
-	} else if reaped > 0 {
-		slog.Default().Warn("integrations: closed operation runs interrupted by a restart", "runs", reaped)
+	if pool != nil {
+		reapCtx, cancelReap := context.WithTimeout(context.Background(), 10*time.Second)
+		reaped, reapErr := operationRunRepo.FailInterruptedRuns(reapCtx, time.Now().UTC())
+		cancelReap()
+		if reapErr != nil {
+			slog.Default().Error("integrations: could not close interrupted operation runs", "error", reapErr)
+		} else if reaped > 0 {
+			slog.Default().Warn("integrations: closed operation runs interrupted by a restart", "runs", reaped)
+		}
 	}
 	operationSvc := integrationsapp.NewOperationService(operationRunRepo, cfg.DefaultTenantID)
 	oauthStateRepo := integrationspostgres.NewOAuthStateRepository(pool, cfg.DefaultTenantID)

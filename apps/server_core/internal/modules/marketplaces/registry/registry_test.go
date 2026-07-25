@@ -38,8 +38,10 @@ func TestRegistry_AllPluginsHaveRequiredFields(t *testing.T) {
 	}
 }
 
+// Mercado Livre is the only registered plugin: the other five carried no
+// working connector, only a definition that advertised them as connectable.
 func TestRegistry_AllPluginsNewConnectorReturnsErrNotImplemented(t *testing.T) {
-	codes := []string{"mercado_livre", "shopee", "magalu", "amazon", "leroy_merlin", "madeira_madeira"}
+	codes := []string{"mercado_livre"}
 	for _, code := range codes {
 		p, ok := registry.Get(code)
 		if !ok {
@@ -57,8 +59,9 @@ func TestRegistry_AllPluginsNewConnectorReturnsErrNotImplemented(t *testing.T) {
 }
 
 func TestRegistry_SeedFees_NoopForLegacyPlugins(t *testing.T) {
-	// ML, Shopee, Magalu SeedFees must return nil without hitting DB (no pool).
-	for _, code := range []string{"mercado_livre", "shopee", "magalu"} {
+	// ML SeedFees must return nil without hitting the DB (no pool): its fees
+	// come from the ML Fees API, never from a seeded rate.
+	for _, code := range []string{"mercado_livre"} {
 		p, ok := registry.Get(code)
 		if !ok {
 			t.Fatalf("plugin %q not registered", code)

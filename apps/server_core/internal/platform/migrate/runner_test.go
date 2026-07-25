@@ -22,8 +22,8 @@ func TestCanonicalSourceListsEveryMigrationByFullFilename(t *testing.T) {
 		want = append(want, filepath.Base(path))
 	}
 	sort.Strings(want)
-	if len(want) != 67 {
-		t.Fatalf("fixture inventory drift: got %d canonical migrations, want 67", len(want))
+	if len(want) != 68 {
+		t.Fatalf("fixture inventory drift: got %d canonical migrations, want 68", len(want))
 	}
 
 	got, err := migrate.Filenames(canonical.Source())
@@ -61,7 +61,7 @@ func TestCanonicalSourceDoesNotDependOnCallerWorkingDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list embedded migrations from foreign CWD: %v", err)
 	}
-	if len(got) != 67 {
-		t.Fatalf("foreign CWD returned %d migrations, want 67", len(got))
+	if len(got) != 68 {
+		t.Fatalf("foreign CWD returned %d migrations, want 68", len(got))
 	}
 }

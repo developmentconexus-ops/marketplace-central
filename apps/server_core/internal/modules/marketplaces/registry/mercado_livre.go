@@ -43,7 +43,8 @@ func (p *MercadoLivrePlugin) Definition() domain.MarketplaceDefinition {
 	}
 }
 
-// SeedFees is a no-op — ML fees are seeded by connectors/adapters/mercado_livre.FeeSyncer.
+// SeedFees is a no-op: ML fees are read per listing from the Fees API (sale_fee,
+// per unit), never seeded as a flat rate.
 func (p *MercadoLivrePlugin) SeedFees(_ context.Context, _ *pgxpool.Pool) error { return nil }
 
 func (p *MercadoLivrePlugin) NewConnector(_ map[string]string) (MarketplaceConnector, error) {

@@ -106,7 +106,11 @@ func TestMarketplaceExecutorReturnsUnsupportedForAPISourceWithoutSyncer(t *testi
 	}
 }
 
-func TestMarketplaceExecutorSeedsDeterministicallyWhenSeedSourceHasNoSyncer(t *testing.T) {
+// A fee_source of "seed" with no syncer writes nothing at all. It used to write
+// a hardcoded per-marketplace rate (Amazon 12%, Madeira 15%, Leroy 18%) for
+// marketplaces this platform never integrated with — a commission nobody quoted,
+// presented as synced fee data.
+func TestMarketplaceExecutorWritesNothingWhenSeedSourceHasNoSyncer(t *testing.T) {
 	t.Parallel()
 
 	repo := &stubFeeScheduleRepo{}
@@ -119,26 +123,14 @@ func TestMarketplaceExecutorSeedsDeterministicallyWhenSeedSourceHasNoSyncer(t *t
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
 	}
-	if got, want := result.ResultCode, "INTEGRATIONS_FEE_SYNC_OK"; got != want {
+	if got, want := result.ResultCode, "INTEGRATIONS_FEE_SYNC_UNSUPPORTED"; got != want {
 		t.Fatalf("ResultCode = %q, want %q", got, want)
 	}
-	if result.RowsSynced <= 0 {
-		t.Fatalf("RowsSynced = %d, want > 0", result.RowsSynced)
+	if result.RowsSynced != 0 {
+		t.Fatalf("RowsSynced = %d, want 0", result.RowsSynced)
 	}
-	if len(repo.upserted) != 1 {
-		t.Fatalf("UpsertSchedules rows = %d, want 1", len(repo.upserted))
-	}
-	if got, want := repo.upserted[0].MarketplaceCode, "amazon"; got != want {
-		t.Fatalf("MarketplaceCode = %q, want %q", got, want)
-	}
-	if got, want := repo.upserted[0].CategoryID, "default"; got != want {
-		t.Fatalf("CategoryID = %q, want %q", got, want)
-	}
-	if got, want := repo.upserted[0].CommissionPercent, 0.12; got != want {
-		t.Fatalf("CommissionPercent = %v, want %v", got, want)
-	}
-	if got, want := repo.upserted[0].Source, "seeded"; got != want {
-		t.Fatalf("Source = %q, want %q", got, want)
+	if len(repo.upserted) != 0 {
+		t.Fatalf("UpsertSchedules rows = %d, want 0", len(repo.upserted))
 	}
 }
 
