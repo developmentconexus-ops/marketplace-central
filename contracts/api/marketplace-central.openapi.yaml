@@ -6855,6 +6855,13 @@ components:
         internal_observed_at:
           type: string
           format: date-time
+        internal_source_kind:
+          description: >-
+            How the internal quantity was produced. A live_read_through source is
+            expected to be minutes old; an upload_snapshot is only as new as the
+            last import, and the freshness policy judges each by its own cadence.
+          type: string
+          enum: [upload_snapshot, live_read_through]
         provider_observed_at:
           type: string
           format: date-time

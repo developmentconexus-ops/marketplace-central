@@ -1,12 +1,22 @@
 package domain
 
-import "time"
+import (
+	"time"
+
+	"marketplace-central/apps/server_core/internal/modules/sourcekind"
+)
 
 const (
 	DefaultStockFormula               = "SUM(ESTOQUE - RESERVADO)"
 	StockScopeResale       StockScope = "resale"
 	StockScopeCustom       StockScope = "custom"
 	DefaultFreshnessMaxAge            = 30 * time.Minute
+	// DefaultSnapshotFreshnessMaxAge bounds a snapshot-shaped source (an xlsx or
+	// catalogo_cliente upload). Its data is only as new as the last import, so the
+	// live 30-minute bar would mark EVERY row stale minutes after a successful
+	// import and Stock Seguro could never act — the operator's cadence is the
+	// upload, and a snapshot older than a day no longer describes today's stock.
+	DefaultSnapshotFreshnessMaxAge = 24 * time.Hour
 )
 
 type StockScope string
@@ -42,7 +52,7 @@ func DefaultStockPolicy() StockPolicy {
 			Scope:               StockScopeResale,
 		},
 		Buffer:    StockBuffer{Quantity: 1},
-		Freshness: FreshnessPolicy{MaxAge: DefaultFreshnessMaxAge},
+		Freshness: FreshnessPolicy{MaxAge: DefaultFreshnessMaxAge, SnapshotMaxAge: DefaultSnapshotFreshnessMaxAge},
 	}
 }
 
@@ -60,6 +70,10 @@ func (p StockPolicy) RecommendedProviderQuantity(internalSellableQuantity int) i
 
 type SourceEvidence struct {
 	ObservedAt *time.Time
+	// Kind says whether the observation came from a live read or from an uploaded
+	// snapshot; the freshness bar differs because the cadences differ. An empty
+	// kind is read as live (the stricter bar), never as the lenient one.
+	Kind sourcekind.SourceKind
 }
 
 type SourceFreshnessState string
@@ -70,7 +84,19 @@ const (
 )
 
 type FreshnessPolicy struct {
+	// MaxAge bounds a live source (the ERP read through, the marketplace API).
 	MaxAge time.Duration
+	// SnapshotMaxAge bounds an upload-snapshot source. Zero falls back to MaxAge,
+	// so a policy that does not distinguish the two keeps its old behaviour.
+	SnapshotMaxAge time.Duration
+}
+
+// maxAgeFor picks the bar that matches how the observation was produced.
+func (p FreshnessPolicy) maxAgeFor(kind sourcekind.SourceKind) time.Duration {
+	if kind == sourcekind.UploadSnapshot && p.SnapshotMaxAge > 0 {
+		return p.SnapshotMaxAge
+	}
+	return p.MaxAge
 }
 
 type FreshnessResult struct {
@@ -82,7 +108,7 @@ func (p FreshnessPolicy) Evaluate(source SourceEvidence, now time.Time) Freshnes
 	if source.ObservedAt == nil {
 		return FreshnessResult{State: SourceFreshnessStale, Reason: "missing_source_timestamp"}
 	}
-	if p.MaxAge > 0 && now.Sub(*source.ObservedAt) > p.MaxAge {
+	if maxAge := p.maxAgeFor(source.Kind); maxAge > 0 && now.Sub(*source.ObservedAt) > maxAge {
 		return FreshnessResult{State: SourceFreshnessStale, Reason: "source_older_than_policy"}
 	}
 	return FreshnessResult{State: SourceFreshnessFresh}

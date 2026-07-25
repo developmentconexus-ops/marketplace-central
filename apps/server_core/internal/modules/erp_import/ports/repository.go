@@ -18,4 +18,7 @@ type ImportRepository interface {
 	// MirrorCatalogPage returns up to limit+1 rows when limit is positive so callers can detect a following page.
 	MirrorCatalogPage(ctx context.Context, tenantID string, source domain.ImportSource, query string, afterInternalID int64, limit int) ([]domain.MirrorProduct, error)
 	MirrorEANCollisionCounts(ctx context.Context, tenantID string, source domain.ImportSource) (map[string]int, error)
+	// MirrorProductsByCodes answers one batch stock/price question per page of
+	// listings; codes with no mirror row are simply absent from the result.
+	MirrorProductsByCodes(ctx context.Context, tenantID string, source domain.ImportSource, codigos []string) ([]domain.MirrorProduct, error)
 }

@@ -416,6 +416,9 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	var inventoryStockReader inventoryports.InternalStockBatchReader = inventoryinternalread.UnavailableStockBatchReader{
 		Err: internalreaddomain.NewReadError(internalreaddomain.ReadErrorSourceUnavailable, "oracle inventory stock reader is unavailable", nil),
 	}
+	// Kept apart from inventoryStockReader so the routing reader below can offer
+	// it as the live-source path while still serving the upload sources.
+	var liveStockBatchReader internalreadports.StockBatchReader
 	oracleBatchSemaphore := oraclebatch.NewSemaphore(oracleBatchPermits(os.Getenv))
 	var internalReadSvc internalreadapp.Service
 	var internalReadAvailable bool
@@ -438,10 +441,11 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 			observabilityCfg.SlowQueryThreshold,
 		)
 		poolStats = internalreadobservability.NewPoolStatsLoop(oracleDB, slog.Default(), observabilityCfg.PoolStatsInterval)
-		inventoryStockReader = internalreadcache.NewStockBatchReader(
+		liveStockBatchReader = internalreadcache.NewStockBatchReader(
 			internalreadoracle.NewBatchStockReader(oracleDB, oracleBatchSemaphore),
 			freshnessCache,
 		)
+		inventoryStockReader = liveStockBatchReader
 	}
 	// Product sync wiring: the scheduler below needs the active-source lookup and
 	// one adapter per configured source. Both are only available once the pool
@@ -470,6 +474,17 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		// snapshot out of the catalog reader's caches.
 		productMatcher = routing.NewMirrorMatcher(
 			erpinternalread.NewReader(erpRepo, cfg.DefaultTenantID),
+			activeSourceRepo,
+			cfg.DefaultTenantID,
+		)
+
+		// Stock Seguro asks for the stock of every linked listing at once. Only the
+		// oracle path had a batch reader, so upload-source tenants saw "o ERP não
+		// informou o estoque" on every row while the mirror held the quantity; the
+		// mirror reader closes that gap for the sources it owns.
+		inventoryStockReader = routing.NewStockBatchReader(
+			erpinternalread.NewBatchStockReader(erpinternalread.NewReader(erpRepo, cfg.DefaultTenantID)),
+			liveStockBatchReader,
 			activeSourceRepo,
 			cfg.DefaultTenantID,
 		)

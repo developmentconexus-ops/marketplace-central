@@ -39,3 +39,16 @@ func (k SourceKind) Valid() bool {
 
 // String returns the wire form of the kind.
 func (k SourceKind) String() string { return string(k) }
+
+// Of classifies a source by its wire name ("xlsx", "catalogo_cliente",
+// "sankhya"). The two upload sources are the only snapshot-shaped ones; every
+// other source is read through live. Consumers that only carry the source name
+// (e.g. a read fact's Source.System) use this instead of restating the list.
+func Of(system string) SourceKind {
+	switch system {
+	case "xlsx", "catalogo_cliente":
+		return UploadSnapshot
+	default:
+		return LiveReadThrough
+	}
+}

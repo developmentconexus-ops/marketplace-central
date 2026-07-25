@@ -89,6 +89,38 @@ WHERE m.tenant_id=$1 AND m.source=$2 AND m.codigo_produto=$3 AND m.absent_in_las
 	return product, true, nil
 }
 
+// MirrorProductsByCodes reads the mirror rows for a set of product codes in a
+// single round-trip. A code with no row is absent from the result — the caller
+// decides whether that is an unknown product or an honest "not in this source",
+// and never reads it as a zero (ADR-17).
+func (r *Repository) MirrorProductsByCodes(ctx context.Context, tenantID string, source domain.ImportSource, codigos []string) ([]domain.MirrorProduct, error) {
+	if len(codigos) == 0 {
+		return []domain.MirrorProduct{}, nil
+	}
+	rows, err := r.pool.Query(ctx, `SELECT `+mirrorProductColumns+`,p.imported_at
+FROM products_mirror m
+LEFT JOIN erp_import_protocols p ON p.tenant_id = m.tenant_id AND p.id = m.protocol_id
+WHERE m.tenant_id=$1 AND m.source=$2 AND m.absent_in_last_snapshot=false
+  AND m.codigo_produto = ANY($3)`, tenantID, source, codigos)
+	if err != nil {
+		return nil, fmt.Errorf("query mirror products by codes: %w", err)
+	}
+	defer rows.Close()
+
+	products := make([]domain.MirrorProduct, 0, len(codigos))
+	for rows.Next() {
+		product, err := scanMirrorProduct(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan mirror product by code: %w", err)
+		}
+		products = append(products, product)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate mirror products by codes: %w", err)
+	}
+	return products, nil
+}
+
 // MirrorCatalogPage returns up to limit+1 rows when limit is positive so callers can detect a following page.
 //
 // The search term matches description, reference, product code and EAN — the

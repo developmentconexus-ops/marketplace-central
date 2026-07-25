@@ -148,12 +148,25 @@ const blockingReasonCopy: Record<string, string> = {
   ineligible_product: "Produto fora da política de Stock Seguro.",
 };
 
-function blockingReasonText(reason: { code?: string; message?: string } | undefined): string | null {
+function blockingReasonText(item: InventoryStockRiskItem): string | null {
+  const reason = item.blocking_reason;
   if (!reason) {
     return null;
   }
   const mapped = reason.code ? blockingReasonCopy[reason.code] : undefined;
-  return mapped ?? reason.message ?? null;
+  const text = mapped ?? reason.message ?? null;
+  if (!text) {
+    return null;
+  }
+  // "Mais antigo que o permitido" alone leaves the operator guessing how old the
+  // data is and which side to refresh — name the observation it was judged on.
+  const observedAt =
+    reason.code === "stale_internal_source"
+      ? formatDateTime(item.internal_observed_at)
+      : reason.code === "stale_provider_source"
+        ? formatDateTime(item.provider_observed_at)
+        : null;
+  return observedAt ? `${text} Observado em ${observedAt}.` : text;
 }
 
 function itemKey(item: InventoryStockRiskItem): string {
@@ -525,9 +538,9 @@ export function StockSeguroPage({ client, installations }: StockSeguroPageProps)
                     </div>
                   ) : null}
 
-                  {blockingReasonText(item.blocking_reason) ? (
+                  {blockingReasonText(item) ? (
                     <div className="rounded-card border border-border bg-surface-2 px-4 py-3 text-sm text-muted">
-                      <strong className="text-ink">Bloqueado:</strong> {blockingReasonText(item.blocking_reason)}
+                      <strong className="text-ink">Bloqueado:</strong> {blockingReasonText(item)}
                     </div>
                   ) : null}
                 </SurfaceCard>

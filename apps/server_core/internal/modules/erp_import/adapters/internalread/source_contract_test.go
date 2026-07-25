@@ -314,6 +314,20 @@ func (r *contractRepo) MirrorEANCollisionCounts(context.Context, string, erpdoma
 	return validEANCounts(mirrorProductsFromSnapshot(r.snapshot)), nil
 }
 
+func (r *contractRepo) MirrorProductsByCodes(_ context.Context, _ string, _ erpdomain.ImportSource, codes []string) ([]erpdomain.MirrorProduct, error) {
+	wanted := make(map[string]struct{}, len(codes))
+	for _, code := range codes {
+		wanted[code] = struct{}{}
+	}
+	rows := make([]erpdomain.MirrorProduct, 0, len(codes))
+	for _, row := range mirrorProductsFromSnapshot(r.snapshot) {
+		if _, ok := wanted[strings.TrimSpace(row.CodigoProduto)]; ok {
+			rows = append(rows, row)
+		}
+	}
+	return rows, nil
+}
+
 func mirrorProductsFromSnapshot(snapshot erpdomain.ImportSnapshot) []erpdomain.MirrorProduct {
 	rows := make([]erpdomain.MirrorProduct, 0, len(snapshot.AcceptedRows))
 	for _, row := range snapshot.AcceptedRows {

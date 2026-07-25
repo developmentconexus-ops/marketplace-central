@@ -24,12 +24,7 @@ var ErrNoErpSnapshot = errors.New("no_erp_snapshot")
 // catalogo_cliente materialize a protocol snapshot (upload_snapshot); any other
 // source (sankhya, once F1 routes it here) is read through live.
 func sourceKind(source erpdomain.ImportSource) sourcekind.SourceKind {
-	switch source {
-	case erpdomain.SourceXLSX, erpdomain.SourceCatalogoCliente:
-		return sourcekind.UploadSnapshot
-	default:
-		return sourcekind.LiveReadThrough
-	}
+	return sourcekind.Of(string(source))
 }
 
 // dataObservationTime resolves the honest data-observation time for a mirror

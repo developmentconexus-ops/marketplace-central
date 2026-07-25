@@ -1,6 +1,10 @@
 package domain
 
-import "time"
+import (
+	"time"
+
+	"marketplace-central/apps/server_core/internal/modules/sourcekind"
+)
 
 type StockRiskActionability string
 
@@ -54,6 +58,11 @@ type StockRiskListItem struct {
 	RecommendedQuantity   *int                   `json:"recommended_quantity,omitempty"`
 	PolicyID              string                 `json:"policy_id"`
 	InternalObservedAt    *time.Time             `json:"internal_observed_at,omitempty"`
+	// InternalSourceKind says whether the internal quantity came from a live ERP
+	// read or from an uploaded snapshot. The freshness bar differs between the
+	// two, so both the screen and the manual-apply path need it to reach the same
+	// verdict the list did.
+	InternalSourceKind sourcekind.SourceKind `json:"internal_source_kind,omitempty"`
 	ProviderObservedAt    *time.Time             `json:"provider_observed_at,omitempty"`
 	BlockingReason        BlockingReason         `json:"blocking_reason,omitempty"`
 	QualityFlags          []string               `json:"quality,omitempty"`

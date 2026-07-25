@@ -6,6 +6,7 @@ import (
 
 	"marketplace-central/apps/server_core/internal/modules/inventory/domain"
 	"marketplace-central/apps/server_core/internal/modules/inventory/ports"
+	"marketplace-central/apps/server_core/internal/modules/sourcekind"
 )
 
 type ListStockRisksInput struct {
@@ -100,6 +101,10 @@ func (s StockRiskService) classifySnapshot(snapshot domain.ListingSnapshot, link
 		if fact, ok := stockFacts[productID]; ok && fact != nil {
 			input.InternalStock.Quantity = stockQuantityToInt(fact.Quantity)
 			input.InternalStock.Source.ObservedAt = stockObservedAt(fact)
+			// The freshness bar depends on how the source produces data: a live ERP
+			// read is expected to be minutes old, an uploaded snapshot only as new
+			// as the last import.
+			input.InternalStock.Source.Kind = sourcekind.Of(fact.Source.System)
 		}
 	}
 	input.Now = time.Now().UTC()
@@ -128,6 +133,7 @@ func (s StockRiskService) classifySnapshot(snapshot domain.ListingSnapshot, link
 		RecommendedQuantity:   row.RecommendedQuantity,
 		PolicyID:              row.PolicyID,
 		InternalObservedAt:    row.InternalObservedAt,
+		InternalSourceKind:    input.InternalStock.Source.Kind,
 		ProviderObservedAt:    row.ProviderObservedAt,
 		BlockingReason:        row.BlockingReason,
 	}

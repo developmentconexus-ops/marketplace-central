@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	"marketplace-central/apps/server_core/internal/modules/sourcekind"
 )
 
 func TestDefaultStockPolicyPreservesMissionDefaults(t *testing.T) {
@@ -58,6 +60,37 @@ func TestNegativeBufferCannotIncreaseRecommendedQuantity(t *testing.T) {
 
 	if got := policy.RecommendedProviderQuantity(8); got != 8 {
 		t.Fatalf("negative buffer should not increase recommendation, got %d", got)
+	}
+}
+
+func TestFreshnessPolicyJudgesAnUploadSnapshotByItsOwnCadence(t *testing.T) {
+	now := time.Date(2026, 7, 25, 12, 0, 0, 0, time.UTC)
+	policy := DefaultStockPolicy().Freshness
+	// Hours old: stale for a live read, still the current snapshot for an upload.
+	observedAt := now.Add(-4 * time.Hour)
+
+	live := policy.Evaluate(SourceEvidence{ObservedAt: &observedAt, Kind: sourcekind.LiveReadThrough}, now)
+	if live.State != SourceFreshnessStale {
+		t.Fatalf("a 4h-old live read is stale, got %s", live.State)
+	}
+	snapshot := policy.Evaluate(SourceEvidence{ObservedAt: &observedAt, Kind: sourcekind.UploadSnapshot}, now)
+	if snapshot.State != SourceFreshnessFresh {
+		t.Fatalf("a 4h-old upload snapshot is still the current one, got %s", snapshot.State)
+	}
+	// A snapshot older than a day no longer describes today's stock.
+	lastWeek := now.Add(-7 * 24 * time.Hour)
+	if got := policy.Evaluate(SourceEvidence{ObservedAt: &lastWeek, Kind: sourcekind.UploadSnapshot}, now); got.State != SourceFreshnessStale {
+		t.Fatalf("a week-old snapshot is stale, got %s", got.State)
+	}
+}
+
+func TestFreshnessPolicyWithoutASnapshotBarKeepsTheLiveBarForEveryKind(t *testing.T) {
+	now := time.Date(2026, 7, 25, 12, 0, 0, 0, time.UTC)
+	observedAt := now.Add(-time.Hour)
+	policy := FreshnessPolicy{MaxAge: 30 * time.Minute}
+
+	if got := policy.Evaluate(SourceEvidence{ObservedAt: &observedAt, Kind: sourcekind.UploadSnapshot}, now); got.State != SourceFreshnessStale {
+		t.Fatalf("no snapshot bar configured means the live bar applies, got %s", got.State)
 	}
 }
 

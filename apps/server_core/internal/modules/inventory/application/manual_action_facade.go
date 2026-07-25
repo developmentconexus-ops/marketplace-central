@@ -75,7 +75,7 @@ func (f ManualActionFacade) Apply(ctx context.Context, input ApplyManualActionIn
 			},
 			InternalStock: domain.InternalStockEvidence{
 				Quantity: risk.InternalQuantity,
-				Source:   domain.SourceEvidence{ObservedAt: risk.InternalObservedAt},
+				Source:   domain.SourceEvidence{ObservedAt: risk.InternalObservedAt, Kind: risk.InternalSourceKind},
 			},
 			ProviderStock: domain.ProviderStockEvidence{
 				AvailableQuantity: risk.ProviderQuantity,

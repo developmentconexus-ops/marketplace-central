@@ -165,6 +165,30 @@ describe("StockSeguroPage", () => {
     expect(screen.getAllByText("Desatualizado").length).toBeGreaterThan(0);
   });
 
+  it("names the observation a stale-source block was judged on", async () => {
+    render(
+      <MemoryRouter initialEntries={["/inventory/stock-seguro?installation=inst-1"]}>
+        <StockSeguroPage
+          client={makeClient([
+            {
+              ...oversellItem,
+              state: "stale",
+              actionability: "blocked",
+              actionable: false,
+              internal_observed_at: "2026-07-18T20:23:27Z",
+              blocking_reason: { code: "stale_internal_source", message: "source_older_than_policy" },
+            },
+          ])}
+          installations={installations}
+        />
+      </MemoryRouter>,
+    );
+
+    // Without the date the operator cannot tell whether the snapshot is an hour
+    // or a week old, nor which side to refresh.
+    expect(await screen.findByText(/Observado em 18\/07\/2026/)).toBeInTheDocument();
+  });
+
   it("renders healthy, undersell, and ineligible states and counts all blocked rows", async () => {
     render(
       <MemoryRouter initialEntries={["/inventory/stock-seguro?installation=inst-1"]}>

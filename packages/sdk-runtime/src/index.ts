@@ -1218,6 +1218,11 @@ export interface InventoryStockRiskItem {
   recommended_quantity?: number | null;
   policy_id: string;
   internal_observed_at?: string | null;
+  /**
+   * How the internal quantity was produced: a live ERP read, or an uploaded
+   * snapshot whose data is only as new as the last import.
+   */
+  internal_source_kind?: "upload_snapshot" | "live_read_through";
   provider_observed_at?: string | null;
   blocking_reason?: InventoryBlockingReason;
 }

@@ -92,6 +92,10 @@ func (r *fakeImportRepository) MirrorEANCollisionCounts(context.Context, string,
 	return nil, nil
 }
 
+func (r *fakeImportRepository) MirrorProductsByCodes(context.Context, string, domain.ImportSource, []string) ([]domain.MirrorProduct, error) {
+	return nil, nil
+}
+
 type fakeSyncEnqueuer struct {
 	installationIDs []string
 	err             error

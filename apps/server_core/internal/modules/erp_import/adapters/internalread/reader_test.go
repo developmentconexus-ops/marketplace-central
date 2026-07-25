@@ -82,6 +82,23 @@ func (f *fakeRepo) MirrorProductByCode(_ context.Context, tenant string, source 
 	}
 	return erpdomain.MirrorProduct{}, false, nil
 }
+func (f *fakeRepo) MirrorProductsByCodes(_ context.Context, tenant string, source erpdomain.ImportSource, codes []string) ([]erpdomain.MirrorProduct, error) {
+	f.record(tenant, source)
+	if f.err != nil {
+		return nil, f.err
+	}
+	wanted := make(map[string]struct{}, len(codes))
+	for _, code := range codes {
+		wanted[code] = struct{}{}
+	}
+	rows := make([]erpdomain.MirrorProduct, 0, len(codes))
+	for _, row := range f.rows {
+		if _, ok := wanted[strings.TrimSpace(row.CodigoProduto)]; ok {
+			rows = append(rows, row)
+		}
+	}
+	return rows, nil
+}
 func (f *fakeRepo) MirrorCatalogPage(_ context.Context, tenant string, source erpdomain.ImportSource, query string, after int64, limit int) ([]erpdomain.MirrorProduct, error) {
 	f.record(tenant, source)
 	if f.err != nil {
