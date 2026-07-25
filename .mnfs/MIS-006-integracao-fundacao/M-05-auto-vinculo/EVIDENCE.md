@@ -35,7 +35,7 @@ EAN-exact-unique path" or "CODPROD-único auto-aprova", `milestone.md` at BASE-S
 | L1 Go tests | `go test ./...` | **106 packages ok, zero FAIL** |
 | L1 product_links | `go test -count=1 ./internal/modules/product_links/... -v` | **all PASS**, zero FAIL (69 tests at round 1, 86 after the round-1 correctives, more after round 2) |
 | L1 tsc | from the MAIN checkout root: `npx --no-install tsc -p .claude/worktrees/trusting-mayer-a5c8f6/packages/sdk-runtime/tsconfig.json --noEmit` | exit 0 (run from the main root deliberately — a worktree-local `npx --no-install tsc` is a vacuous pass, D-120 finding) |
-| L2 integration (hermetic PG) | `pwsh -NoProfile -File scripts/harness.ps1 -Command integration` | **status=passed**, `migrations_first=69`, `migrations_second=0`, `run_id=0b46ce7230254ea2adc89dc171a5bf4f` (round 5; round 2's was `847fa06f6784412eb38ba74ea7fc8cf7`, where the non-vacuity proof below was executed) — **and proven non-vacuous**, see below |
+| L2 integration (hermetic PG) | `pwsh -NoProfile -File scripts/harness.ps1 -Command integration` | **status=passed**, `migrations_first=69`, `migrations_second=0`, `run_id=d7aa35930d6f44d1ae4a66170ec1c4db` — re-run at the round-6 tip `9ca81428`, not carried over (round 5 was `0b46ce7230254ea2adc89dc171a5bf4f`; round 2's was `847fa06f6784412eb38ba74ea7fc8cf7`, where the non-vacuity proof below was executed) — **and proven non-vacuous**, see below |
 | gofmt (CRLF-aware) | `tr -d '\r' < FILE \| gofmt -d` over every touched `.go` | zero diff (a bare `gofmt -l` false-alarms on CRLF, profile §3) |
 
 **The lane's `status=passed` is proven to mean the E10 tests RAN.** Both round-2 gates raised the
