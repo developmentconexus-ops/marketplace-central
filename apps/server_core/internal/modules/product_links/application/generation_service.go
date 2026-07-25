@@ -114,13 +114,20 @@ func (s *GenerationService) GenerateLinkCandidates(ctx context.Context, input Ge
 	// writes points at a candidate row, and approving against a candidate set
 	// that failed to store would leave a link whose evidence does not exist.
 	if s.autoApprover != nil {
+		// Every corroborated candidate is attempted. One listing that fails to
+		// approve is not a reason to leave the rest of the batch unlinked, and
+		// the failures are still reported rather than swallowed.
+		var approvalErr error
 		for _, approval := range pendingApprovals {
 			if _, err := s.autoApprover.AutoApproveCandidate(ctx, AutoApproveCandidateInput{
 				Candidate:            approval.Candidate,
 				CollisionsAtDecision: approval.Collisions,
 			}); err != nil {
-				return domain.LinkCandidateGenerationResult{}, err
+				approvalErr = errors.Join(approvalErr, err)
 			}
+		}
+		if approvalErr != nil {
+			return domain.LinkCandidateGenerationResult{}, approvalErr
 		}
 	}
 
@@ -179,8 +186,11 @@ func (s *GenerationService) generateForSnapshot(ctx context.Context, snapshot do
 // autoApproval is a candidate the generator judged corroborated, carrying the
 // collision count the generator itself read at that moment.
 type autoApproval struct {
-	Candidate  domain.LinkCandidate
-	Collisions int
+	Candidate domain.LinkCandidate
+	// Pointer so "did not read a count" stays distinguishable from "counted
+	// nothing". Only the generator that actually read the anchor's match set
+	// may fill it (ADR-17).
+	Collisions *int
 }
 
 // autoApprovals selects the candidates eligible for the automatic path. ACCEPT
@@ -195,7 +205,8 @@ func autoApprovals(candidates []domain.LinkCandidate, skuMatches productMatchRes
 		if candidate.MatchStatus != domain.LinkCandidateMatchStatusAccept {
 			continue
 		}
-		approvals = append(approvals, autoApproval{Candidate: candidate, Collisions: len(skuMatches.Products)})
+		collisions := len(skuMatches.Products)
+		approvals = append(approvals, autoApproval{Candidate: candidate, Collisions: &collisions})
 	}
 	return approvals
 }

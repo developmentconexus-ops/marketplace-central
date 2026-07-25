@@ -40,6 +40,17 @@ func (r *SummaryReader) GetLinkageSummary(ctx context.Context, installationID st
 			WHERE tenant_id = $1
 			  AND installation_id = $2
 			  AND state IN ($5, $6)
+			UNION
+			-- A candidate awaiting CONFIRMAÇÃO is pending too. It resolved an
+			-- anchor, so its STATE is exact_sku/exact_ean and the branches
+			-- above cannot see it — but nothing is linked until the operator
+			-- answers, and a counter that reads zero would report that work as
+			-- done (D-121-2).
+			SELECT provider_item_id, provider_variation_id
+			FROM product_link_candidates
+			WHERE tenant_id = $1
+			  AND installation_id = $2
+			  AND match_status = $7
 		)
 		SELECT
 			(SELECT COUNT(*) FROM pending_links),
@@ -56,6 +67,7 @@ func (r *SummaryReader) GetLinkageSummary(ctx context.Context, installationID st
 		domain.ProductLinkStateConflict,
 		domain.LinkCandidateStateUnresolved,
 		domain.LinkCandidateStateConflict,
+		domain.LinkCandidateMatchStatusConfirm,
 	).Scan(&summary.PendingLinks, &summary.MissingGTIN)
 	if err != nil {
 		return ports.LinkageSummary{}, err

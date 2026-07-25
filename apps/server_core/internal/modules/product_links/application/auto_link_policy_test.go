@@ -424,6 +424,7 @@ func TestAutoApproveRefusesACandidateItDidNotCorroborate(t *testing.T) {
 		Now:        func() time.Time { return now },
 	})
 	productID := 100001
+	oneCollision := 1
 	approved, err := svc.AutoApproveCandidate(context.Background(), AutoApproveCandidateInput{
 		Candidate: productlinksdomain.LinkCandidate{
 			InstallationID: "inst-m05", ProviderCode: "mercado_livre", ProviderItemID: "MLB-B",
@@ -432,7 +433,7 @@ func TestAutoApproveRefusesACandidateItDidNotCorroborate(t *testing.T) {
 			MatchInput:        productlinksdomain.LinkCandidateMatchInputSellerSKU,
 			MatchStatus:       productlinksdomain.LinkCandidateMatchStatusConfirm,
 		},
-		CollisionsAtDecision: 1,
+		CollisionsAtDecision: &oneCollision,
 	})
 	if err == nil || approved {
 		t.Fatalf("AutoApproveCandidate() = %v, %v; want a refusal for a confirmation-queue candidate", approved, err)

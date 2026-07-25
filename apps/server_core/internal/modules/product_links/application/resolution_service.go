@@ -196,9 +196,13 @@ func (s *ResolutionService) ApproveCandidate(ctx context.Context, input ApproveC
 // automatic, plus the collision count IT read when it judged so. The count is
 // carried, never re-derived: re-reading the ERP now would record a different
 // moment's fact in a row that claims to describe the decision.
+// The count is a POINTER because a caller that did not read one must be able
+// to say so. A plain int forces the absent case to 0, and 0 reads as "the
+// anchor matched nothing" — a fact nobody established, and one the E10 CHECK
+// rejects outright (ADR-17 / AC-03).
 type AutoApproveCandidateInput struct {
 	Candidate            domain.LinkCandidate
-	CollisionsAtDecision int
+	CollisionsAtDecision *int
 }
 
 // AutoApproveCandidate applies the single automatic path (D-121-2, ADR-05
@@ -254,7 +258,6 @@ func (s *ResolutionService) AutoApproveCandidate(ctx context.Context, input Auto
 	if !found {
 		fallbackState = candidateStateToProductLinkState(candidate.State)
 	}
-	collisions := input.CollisionsAtDecision
 	result := s.buildTransition(current, found, fallbackState, buildResolvedLinkInput{
 		InstallationID:        candidate.InstallationID,
 		ProviderCode:          candidate.ProviderCode,
@@ -269,7 +272,7 @@ func (s *ResolutionService) AutoApproveCandidate(ctx context.Context, input Auto
 		Actor:                 domain.ActorMetadata{ActorType: "system", ActorID: "auto_linker"},
 		DecisionRule:          domain.DecisionRuleConcordantCodprodEAN,
 		DecisionActor:         domain.DecisionActorSystem,
-		CollisionsAtDecision:  &collisions,
+		CollisionsAtDecision:  input.CollisionsAtDecision,
 	})
 	if err := s.workflows.ApplyProductLinkTransition(ctx, result); err != nil {
 		return false, err
@@ -695,6 +698,22 @@ func (s *ResolutionService) buildTransition(current domain.ProductLink, found bo
 		}
 		return domain.ProductLinkTransition{
 			Link: link,
+			// A rejection is a decision too. It names no anchor — there is no
+			// rule behind "this anúncio is not ours" — but leaving it out of
+			// the trail lets the decision it overrules keep reading as the one
+			// in force, so the live row would report the system as still
+			// standing behind a link the operator killed. `manual` is the
+			// honest name for a call a human made on no anchor.
+			Decision: &domain.ProductLinkDecision{
+				DecisionID:          s.newDecisionID(),
+				InstallationID:      typed.InstallationID,
+				ProviderItemID:      typed.ProviderItemID,
+				ProviderVariationID: typed.ProviderVariationID,
+				LinkID:              domain.LinkID(typed.InstallationID, typed.ProviderItemID, typed.ProviderVariationID),
+				RuleMatched:         domain.DecisionRuleManual,
+				Actor:               decisionActorFor(typed.Actor),
+				CreatedAt:           now,
+			},
 			Audit: domain.ProductLinkAuditEntry{
 				AuditID:                   s.newAuditID(),
 				InstallationID:            typed.InstallationID,
@@ -754,7 +773,17 @@ func (s *ResolutionService) buildDecision(input buildResolvedLinkInput, now time
 // those, and `manual` is the honest name for it.
 func decisionRuleForCandidate(candidate domain.LinkCandidate) domain.ProductLinkDecisionRule {
 	switch candidate.MatchStatus {
-	case domain.LinkCandidateMatchStatusAccept, domain.LinkCandidateMatchStatusConfirm:
+	case domain.LinkCandidateMatchStatusAccept:
+		// Corroborated: CODPROD and EAN both named this product. Who pressed
+		// the button does not change what carried the decision, and the
+		// automatic path is not the only way an ACCEPT candidate gets
+		// approved — a listing the operator rejected earlier is blocked from
+		// it, batch-approve goes through here, and the AutoApprover is an
+		// optional wiring. Filing those as a single-anchor rule would
+		// under-claim the evidence exactly as naming an anchor over a
+		// collision over-claims it.
+		return domain.DecisionRuleConcordantCodprodEAN
+	case domain.LinkCandidateMatchStatusConfirm:
 	default:
 		return domain.DecisionRuleManual
 	}
