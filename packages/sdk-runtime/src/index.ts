@@ -344,6 +344,8 @@ export interface ListingReadModel {
   installation_id: string;
   provider: string;
   provider_listing_id: string;
+  /** Provider variation id; null when the listing has no variations. */
+  variation_id: string | null;
   title: string;
   listing_type: ListingType | null;
   status: ListingStatus;

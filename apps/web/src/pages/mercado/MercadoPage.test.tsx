@@ -25,6 +25,7 @@ const listing9001: ListingReadModel = {
   installation_id: "inst_1",
   provider: "mercado_livre",
   provider_listing_id: "MLB-9001",
+  variation_id: null,
   title: "Kit Parafuso M8 Premium",
   listing_type: null,
   status: "active",

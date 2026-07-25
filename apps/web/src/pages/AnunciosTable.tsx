@@ -8,7 +8,7 @@ import type {
   ListingSyncState,
 } from "@marketplace-central/sdk-runtime";
 import { ConflictTag, formatMoney, UnknownValue } from "@marketplace-central/ui";
-import { FreshnessIndicator } from "@marketplace-central/web-query";
+import { formatAsOf, FreshnessIndicator } from "@marketplace-central/web-query";
 
 export interface AnunciosTableProps {
   items?: ListingReadModel[];
@@ -186,7 +186,13 @@ export function AnunciosTable({ items, groups, asOf, selectedIds, onToggle, onTo
             aria-label={`Selecionar anúncio ${item.title}`}
           />
         </td>
-        <td className="px-3 py-3 font-mono text-xs text-faint">{item.provider_listing_id}</td>
+        {/* Variations share one MLB, so the id alone makes N rows look
+            identical. The variation goes under it instead of a 10th column
+            (the 9-column set is ratified). */}
+        <td className="px-3 py-3 font-mono text-xs text-faint">
+          <div>{item.provider_listing_id}</div>
+          {item.variation_id ? <div className="text-[11px]">var. {item.variation_id}</div> : null}
+        </td>
         <td className="px-3 py-3">
           <button
             type="button"
@@ -263,7 +269,9 @@ export function AnunciosTable({ items, groups, asOf, selectedIds, onToggle, onTo
   return (
     <div className="mt-3 overflow-x-auto">
       <table className="w-full min-w-[820px] border-collapse text-left text-sm">
-        <caption className="sr-only">Anúncios{asOf ? `, dados de ${asOf}` : ""}</caption>
+        {/* The API sends a nanosecond ISO timestamp; the shared pt-BR formatter
+            is what the rest of the app reads, so the caption uses it too. */}
+        <caption className="sr-only">Anúncios{asOf ? `, ${formatAsOf(asOf)}` : ""}</caption>
         <thead className="border-b border-border text-xs font-medium text-faint">
           <tr>
             <th className="px-3 py-3" scope="col">

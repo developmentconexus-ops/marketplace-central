@@ -19,6 +19,7 @@ const listing: ListingReadModel = {
   installation_id: "installation_1",
   provider: "mercado_livre",
   provider_listing_id: "MLB123456789",
+  variation_id: null,
   title: "Camiseta azul",
   listing_type: { code: "gold_special", label: "Clássico" },
   status: "active",
@@ -50,6 +51,29 @@ const okSignal: ListingMarketSignal = {
 const belowMarketSignal: ListingMarketSignal = { ...okSignal, delta_pct: "-4.20" };
 
 describe("AnunciosTable", () => {
+  it("tells variations of the same MLB apart", () => {
+    const variationA: ListingReadModel = { ...listing, listing_id: "l~a", variation_id: "111" };
+    const variationB: ListingReadModel = { ...listing, listing_id: "l~b", variation_id: "222" };
+    renderTable(<AnunciosTable items={[variationA, variationB]} {...tableSelectionProps} />);
+
+    expect(screen.getByText("var. 111")).toBeInTheDocument();
+    expect(screen.getByText("var. 222")).toBeInTheDocument();
+  });
+
+  it("omits the variation line when the listing has none", () => {
+    renderTable(<AnunciosTable items={[listing]} {...tableSelectionProps} />);
+
+    expect(screen.queryByText(/^var\./)).not.toBeInTheDocument();
+  });
+
+  it("captions freshness in pt-BR, never the raw API timestamp", () => {
+    renderTable(<AnunciosTable items={[listing]} asOf="2026-07-25T02:06:53.030122091Z" {...tableSelectionProps} />);
+
+    const caption = screen.getByText(/^Anúncios,/);
+    expect(caption.textContent).not.toContain("2026-07-25T02:06:53.030122091Z");
+    expect(caption.textContent).toMatch(/^Anúncios, dados de \d{2}:\d{2}:\d{2}$/);
+  });
+
   it("renders the ratified 9-column header, no dropped columns", () => {
     renderTable(<AnunciosTable items={[listing]} {...tableSelectionProps} />);
 

@@ -124,6 +124,11 @@ type ListingReadModel struct {
 	InstallationID       string              `json:"installation_id"`
 	Provider             string              `json:"provider"`
 	ProviderListingID    string              `json:"provider_listing_id"`
+	// A provider listing with variations produces one row per variation, all
+	// carrying the same provider_listing_id. Without the variation the screen
+	// shows N identical-looking rows the operator cannot tell apart. Absent
+	// (NoVariationID) stays null instead of a fabricated "-".
+	VariationID          *string             `json:"variation_id"`
 	Title                string              `json:"title"`
 	ListingType          *ListingType        `json:"listing_type"`
 	Status               ListingStatus       `json:"status"`

@@ -3310,7 +3310,7 @@ components:
 
     ListingReadModel:
       type: object
-      required: [listing_id, installation_id, provider, provider_listing_id, title, listing_type, status, link, price, published_quantity, sync_state, sync_error, quality_score, pending_issue, sales_30d, cost, below_margin_worst_case, icms_worst_case_by_uf, fetched_at]
+      required: [listing_id, installation_id, provider, provider_listing_id, variation_id, title, listing_type, status, link, price, published_quantity, sync_state, sync_error, quality_score, pending_issue, sales_30d, cost, below_margin_worst_case, icms_worst_case_by_uf, fetched_at]
       properties:
         listing_id:
           type: string
@@ -3320,6 +3320,10 @@ components:
           type: string
         provider_listing_id:
           type: string
+        variation_id:
+          type: string
+          nullable: true
+          description: Provider variation identifier; null when the listing has no variations.
         title:
           type: string
         listing_type:

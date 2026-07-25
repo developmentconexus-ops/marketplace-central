@@ -29,6 +29,7 @@ const fullSignalListing: ListingReadModel = {
   installation_id: "inst_1",
   provider: "mercadolivre",
   provider_listing_id: "MLB1",
+  variation_id: null,
   title: "Anúncio com sinal",
   listing_type: null,
   status: "active",
@@ -63,6 +64,7 @@ const noSignalListing: ListingReadModel = {
   ...fullSignalListing,
   listing_id: "l2",
   provider_listing_id: "MLB2",
+  variation_id: null,
   title: "Anúncio sem vínculo",
   market_signal: { ...fullSignalListing.market_signal!, status: "SEM_VINCULO" },
 };

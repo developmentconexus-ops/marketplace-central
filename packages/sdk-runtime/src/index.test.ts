@@ -159,6 +159,7 @@ describe("sdk runtime", () => {
       installation_id: "install/1",
       provider: "mercado_livre",
       provider_listing_id: "MLB1",
+      variation_id: null,
       title: "Parafuso sextavado M6",
       listing_type: null,
       status: "active",

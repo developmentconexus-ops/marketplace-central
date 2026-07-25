@@ -51,6 +51,10 @@ func scanListingReadModel(row listingRowScanner) (domain.ListingReadModel, error
 		return domain.ListingReadModel{}, err
 	}
 	m.ListingID = domain.ListingID{InstallationID: m.InstallationID, ProviderListingID: m.ProviderListingID, VariationID: variation}.String()
+	if variation != "" && variation != domain.NoVariationID {
+		v := variation
+		m.VariationID = &v
+	}
 	m.Link.State = linkState
 	if typeCode != nil {
 		if typ, ok := domain.ListingTypeForCode(*typeCode); ok {

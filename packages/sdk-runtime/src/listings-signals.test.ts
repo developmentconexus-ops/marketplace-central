@@ -18,6 +18,7 @@ function baseListing(overrides: Partial<ListingReadModel>): ListingReadModel {
     installation_id: "inst1",
     provider: "mercado_livre",
     provider_listing_id: "MLB1",
+    variation_id: null,
     title: "Produto Teste",
     listing_type: null,
     status: "active",

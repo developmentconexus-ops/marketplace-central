@@ -30,6 +30,7 @@ const listingPage = {
     installation_id: "inst_1",
     provider: "mercado_livre",
     provider_listing_id: "MLB123456789",
+    variation_id: null,
     title: "Camiseta azul",
     listing_type: { code: "gold_special", label: "Clássico" },
     status: "active",
