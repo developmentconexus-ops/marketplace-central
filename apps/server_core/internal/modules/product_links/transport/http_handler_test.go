@@ -49,6 +49,8 @@ type stubCandidateEngine struct {
 	items            []domain.LinkCandidate
 	workflowItems    []domain.ProductLinkWorkflowItem
 	resolutionResult domain.ProductLinkResolutionResult
+	approveErr       error
+	manualErr        error
 	rejectErr        error
 	undoInput        application.UndoResolutionInput
 	undoResult       domain.ProductLinkResolutionResult
@@ -118,6 +120,9 @@ func (s *stubCandidateEngine) ListLinkWorkflows(_ context.Context, input applica
 }
 
 func (s *stubCandidateEngine) ApproveCandidate(_ context.Context, input application.ApproveCandidateInput) (domain.ProductLinkResolutionResult, error) {
+	if s.approveErr != nil {
+		return domain.ProductLinkResolutionResult{}, s.approveErr
+	}
 	if s.resolutionResult.Link.InstallationID == "" {
 		productID := 10
 		s.resolutionResult = domain.ProductLinkResolutionResult{
@@ -154,6 +159,9 @@ func (s *stubCandidateEngine) RejectListing(_ context.Context, _ application.Rej
 }
 
 func (s *stubCandidateEngine) ManualResolve(_ context.Context, input application.ManualResolveInput) (domain.ProductLinkResolutionResult, error) {
+	if s.manualErr != nil {
+		return domain.ProductLinkResolutionResult{}, s.manualErr
+	}
 	productID := input.InternalProductID
 	return domain.ProductLinkResolutionResult{
 		Link:  domain.ProductLink{InstallationID: input.InstallationID, ProviderCode: input.ProviderCode, ProviderItemID: input.ProviderItemID, ProviderVariationID: input.ProviderVariationID, State: domain.ProductLinkStateResolved, InternalProductID: &productID},
@@ -423,6 +431,40 @@ func TestARefusedSystemActorSurfacesAsFourHundredNotFiveHundred(t *testing.T) {
 		rr := httptest.NewRecorder()
 
 		handler.handleRejectListing(rr, req)
+
+		if rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), code) {
+			t.Fatalf("status=%d body=%s, want 400 naming %s", rr.Code, rr.Body.String(), code)
+		}
+	})
+
+	t.Run("approve-candidate", func(t *testing.T) {
+		t.Parallel()
+		engine := &stubCandidateEngine{approveErr: errors.New(code)}
+		handler := NewHandler(&stubImporter{}, engine, engine, engine, engine)
+		body := `{"candidate_id":"cand-1","actor":{"actor_type":"system","actor_id":"nightly_sweep"}}`
+		req := httptest.NewRequest(http.MethodPost, "/product-links/link-resolutions/approve-candidate", bytes.NewReader([]byte(body)))
+		rr := httptest.NewRecorder()
+
+		handler.handleApproveCandidate(rr, req)
+
+		if rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), code) {
+			t.Fatalf("status=%d body=%s, want 400 naming %s", rr.Code, rr.Body.String(), code)
+		}
+	})
+
+	// internal_product_id is deliberately positive: the transport validates that
+	// field before it ever calls the service (http_handler.go, handleManualResolve),
+	// so a zero here would short-circuit to invalid_identity and this subtest would
+	// pass on a 400 that has nothing to do with the actor guard.
+	t.Run("manual-resolve", func(t *testing.T) {
+		t.Parallel()
+		engine := &stubCandidateEngine{manualErr: errors.New(code)}
+		handler := NewHandler(&stubImporter{}, engine, engine, engine, engine)
+		body := `{"installation_id":"inst-1","provider_code":"mercado_livre","provider_item_id":"MLB1","internal_product_id":10,"actor":{"actor_type":"system","actor_id":"nightly_sweep"}}`
+		req := httptest.NewRequest(http.MethodPost, "/product-links/link-resolutions/manual-resolve", bytes.NewReader([]byte(body)))
+		rr := httptest.NewRecorder()
+
+		handler.handleManualResolve(rr, req)
 
 		if rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), code) {
 			t.Fatalf("status=%d body=%s, want 400 naming %s", rr.Code, rr.Body.String(), code)

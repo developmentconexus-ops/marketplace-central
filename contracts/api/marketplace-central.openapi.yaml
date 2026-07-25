@@ -1565,8 +1565,10 @@ paths:
             PRODUCT_LINKS_SYSTEM_ACTOR_NOT_PERMITTED — actor.actor_type is
             'system'. Naming the product by hand is precisely the operator's
             judgement; no anchor carries it, so no machine may sign it
-            (D-121-2). Also returned as PRODUCT_LINKS_INTERNAL_PRODUCT_INVALID
-            when internal_product_id is not positive.
+            (D-121-2). Also returned as invalid_identity when
+            internal_product_id is not positive — the transport validates that
+            field before the service runs, so the domain code
+            PRODUCT_LINKS_INTERNAL_PRODUCT_INVALID never reaches the wire here.
           content:
             application/json:
               schema:
