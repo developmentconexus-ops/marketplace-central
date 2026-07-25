@@ -104,6 +104,7 @@ func (p *Parser) parseWithRequired(ctx context.Context, source io.Reader, requir
 				Codprod:       columnCell(row, columns, "CODPROD"),
 				Descrprod:     columnCell(row, columns, "DESCRPROD"),
 				Custo:         domain.Decimal(columnCell(row, columns, "CUSTO")),
+				PrecoVenda:    domain.Decimal(columnCell(row, columns, "PRECO_VENDA")),
 				StockPhysical: columnCell(row, columns, "ESTOQUE_FISICO"),
 				StockReserved: optionalCell(row, columns, "ESTOQUE_RESERVADO"),
 				EAN:           optionalCell(row, columns, "EAN"),
@@ -172,6 +173,8 @@ func canonicalHeaderKey(raw string) string {
 		return "descrprod"
 	case "custo":
 		return "custo"
+	case "preco_venda", "preco de venda", "preco venda", "preco", "vlrvenda", "valor de venda":
+		return "preco_venda"
 	case "estoque_fisico":
 		return "estoque_fisico"
 	case "estoque_reservado":

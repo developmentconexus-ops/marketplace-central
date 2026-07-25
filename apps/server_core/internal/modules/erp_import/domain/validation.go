@@ -48,6 +48,8 @@ func ValidateRow(row NormalizedRow, seenCodprod map[string]struct{}) RowValidati
 		issues = append(issues, issue("ESTOQUE_FISICO", Rejection, CodeInvalidEstoque, "estoque_fisico must be a non-negative integer", row.StockPhysical))
 	}
 
+	row.PrecoVenda, issues = normalizeOptionalPrice(row.PrecoVenda, issues)
+
 	row.StockReserved = normalizeOptionalInteger(row.StockReserved)
 	row.Refforn = normalizeOptionalString(row.Refforn)
 	row.Marca = normalizeOptionalString(row.Marca)
@@ -142,6 +144,8 @@ func ValidateRowLenient(row NormalizedRow, seenCodprod map[string]struct{}) RowV
 		row.Custo = ""
 	}
 
+	row.PrecoVenda, issues = normalizeOptionalPrice(row.PrecoVenda, issues)
+
 	if strings.TrimSpace(row.StockPhysical) == "" {
 		issues = append(issues, issue("ESTOQUE_FISICO", Warning, CodeMissingEstoque, "estoque_fisico is unknown", row.StockPhysical))
 		row.StockPhysical = ""
@@ -214,6 +218,24 @@ func ValidateRowsLenient(rows []NormalizedRow) (accepted []NormalizedRow, issues
 		accepted = append(accepted, *result.Row)
 	}
 	return accepted, issues, rejected
+}
+
+// normalizeOptionalPrice normalizes the optional ERP sale price. The column is
+// never required: an absent value stays empty (honest-unknown, ADR-17) with no
+// issue, and a present-but-unparseable value is cleared and reported as a
+// WARNING so the operator sees it instead of the value silently vanishing.
+// The warning reuses CodeInvalidCusto (the erp_import_issues code CHECK admits
+// no PRECO_VENDA code; a dedicated one needs a hub-owned migration) and carries
+// Column "PRECO_VENDA", the same precedent as the skipped-sheet warning.
+func normalizeOptionalPrice(value Decimal, issues []Issue) (Decimal, []Issue) {
+	if strings.TrimSpace(string(value)) == "" {
+		return "", issues
+	}
+	if price, valid := normalizeDecimal(value); valid {
+		return price, issues
+	}
+	raw := string(value)
+	return "", append(issues, issue("PRECO_VENDA", Warning, CodeInvalidCusto, "preco_venda must be a positive decimal", raw))
 }
 
 func normalizeDecimal(value Decimal) (Decimal, bool) {
