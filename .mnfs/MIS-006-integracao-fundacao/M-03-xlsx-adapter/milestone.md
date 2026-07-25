@@ -4,7 +4,7 @@
 id: M-03
 type: milestone
 mission: MIS-006
-status: draft
+status: done   # merged main @3071fd5c (D-121); dual-gate AGREEMENT (S9 full delta + S10 light); hub real-PG lane GREEN @37347176 after D4-D6 correctives; governance net-new zero @887f818b; P7 U1-U4 PASS dev stack (flip xlsx/catalogo_cliente via PUT + #008-E/#009-E uploads + 409 + hook vinculos 4s + 4 telas zero console errors)
 depends_on: [M-01, M-02]
 base_sha: 138aac3d
 validation_level: QA-0

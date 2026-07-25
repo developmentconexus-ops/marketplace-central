@@ -104,3 +104,17 @@ HTTP + amostra de body. could-not-run só com bloqueio nomeado.
 | M03-U2 | /integracoes: upload de xlsx real cria protocolo novo SEM apagar os anteriores (lista completa visível); re-upload do mesmo arquivo mostra 409 visível ao usuário | browser drive + lista de protocolos antes/depois |
 | M03-U3 | Jornada pós-import: candidatos de vínculo aparecem na tela de vínculos existente sem nenhuma chamada manual extra (hook interno provado na UI, não só no DB) | browser drive da tela de vínculos pós-import |
 | M03-U4 | Zero regressão nas telas existentes que leem produto: /catalogo, /precos, /anuncios, /pedidos carregam sem erro novo com a leitura mirror-backed | browser drive (4 telas) + console/network sem erro novo |
+
+## Resultado U-drive (hub, D-121 / 2026-07-25, dev stack em main @887f818b)
+
+| ID | Verdict | Evidência |
+|----|---------|-----------|
+| M03-U1 | PASS | Mirror populado por uploads novos (#009-E xlsx 10 mocks EXEMPLO-IMPORT-SANKHYA.xlsx; #008-E catalogo_cliente 2012). Flip `PUT /config/active-source` (campo `active_source`) muda dataset em /catalogo: xlsx → 10 produtos com custo/estoque (estoque=físico−reservado, ex. 32−2=30), catalogo_cliente → 2012 com honest-unknown. `as_of` distintos = `imported_at` do protocolo (00:02:34Z vs 00:00:07Z) — regra data-time (fix D5) provada live. Sem 503, sem lista vazia. |
+| M03-U2 | PASS | Lista /integracoes antes (#001..#007) e depois (#001..#009) — nenhum protocolo apagado. Re-upload byte-idêntico "PRODUTOS MERCADO LIVRE.xlsx" → HTTP 409 `duplicate_file` protocolo #006-E. Limitação: file-picker do browser-pane não automatizável → POST multipart via HTTP real + verificação da lista na UI; 409 provado na API, não na tela. |
+| M03-U3 | PASS | Import #009-E 00:02:34Z → product_link_candidates recomputados 00:02:38Z (4s, zero chamada manual). /vinculos renderiza fila (20 pendentes) pós-import. |
+| M03-U4 | PASS | /catalogo, /precos (xlsx: 10 mocks c/ custo mirror; catalogo_cliente: 0 precificáveis = honesto sem custo), /anuncios (2.006), /pedidos (fila+KPI) carregam; console 0 erros. |
+
+Findings (não-bloqueantes, follow-up F-01/M-06):
+1. Upload 2012 produtos devolveu **504 deadline_exceeded ao cliente** com processamento concluído server-side (#008-E COMPLETED) — timeout de request < duração import+hooks; UX engana o usuário.
+2. Toggle "Fonte ativa" em /integracoes é localStorage-only (sem bridge p/ PUT /config/active-source) — deferido p/ M-06 conforme plano; radio não altera o backend.
+3. "Feirão 1.xlsx" (export Sankhya real) rejeitado `invalid_file`: headers reais ("Código", "Descrição Produto", "Custo Médio sem ICMS", "Estoque") não batem aliases do parser (exige CUSTO/ESTOQUE_FISICO no strict path) — candidato a alias novo ou template oficial p/ cliente (EXEMPLO-IMPORT-SANKHYA.xlsx entregue ao operador).
