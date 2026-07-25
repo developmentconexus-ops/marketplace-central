@@ -90,6 +90,11 @@ WHERE m.tenant_id=$1 AND m.source=$2 AND m.codigo_produto=$3 AND m.absent_in_las
 }
 
 // MirrorCatalogPage returns up to limit+1 rows when limit is positive so callers can detect a following page.
+//
+// The search term matches description, reference, product code and EAN — the
+// four identifiers an operator actually has at hand — and both sides of the
+// text comparison are unaccented (migration 0080), because the ERP stores
+// "VÁLVULA" while the operator types "valvula".
 func (r *Repository) MirrorCatalogPage(ctx context.Context, tenantID string, source domain.ImportSource, query string, afterInternalID int64, limit int) ([]domain.MirrorProduct, error) {
 	rows, err := r.pool.Query(ctx, `SELECT DISTINCT ON (m.codigo_produto::bigint)
   `+mirrorProductColumns+`,p.imported_at
@@ -98,7 +103,10 @@ LEFT JOIN erp_import_protocols p ON p.tenant_id = m.tenant_id AND p.id = m.proto
 WHERE m.tenant_id=$1 AND m.source=$2 AND m.absent_in_last_snapshot=false
   AND m.codigo_produto ~ '^[0-9]{1,18}$'
   AND m.codigo_produto::bigint > $3
-  AND ($4='' OR m.descricao ILIKE '%'||$4||'%')
+  AND ($4='' OR unaccent(m.descricao) ILIKE '%'||unaccent($4)||'%'
+       OR unaccent(coalesce(m.referencia,'')) ILIKE '%'||unaccent($4)||'%'
+       OR m.codigo_produto ILIKE '%'||$4||'%'
+       OR coalesce(m.ean,'') ILIKE '%'||$4||'%')
 ORDER BY m.codigo_produto::bigint ASC, m.updated_at DESC
 LIMIT CASE WHEN $5 > 0 THEN $5 + 1 END`, tenantID, source, afterInternalID, query, limit)
 	if err != nil {

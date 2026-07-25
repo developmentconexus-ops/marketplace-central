@@ -4,7 +4,6 @@ package internalread
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
