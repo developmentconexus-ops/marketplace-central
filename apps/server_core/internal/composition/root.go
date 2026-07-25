@@ -656,7 +656,11 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		time.Now,
 	)
 	dashboardtransport.NewHandler(dashboardSvc).Register(mux)
-	listingIngestion := listingsapp.NewIngestion(listingsconnectors.NewSource(marketplaceCapabilities), listingRepo, 100, time.Now)
+	// The listings sync is the ONLY path that walks the seller's whole catalog,
+	// so it is also where the link matcher gets its snapshots: the observer
+	// upserts the provider EAN/seller-SKU the canonical listing row cannot hold.
+	listingIngestionSource := listingsconnectors.NewSourceWithObserver(marketplaceCapabilities, productLinkImportSvc)
+	listingIngestion := listingsapp.NewIngestion(listingIngestionSource, listingRepo, 100, time.Now)
 	listingRefreshGateway := listingsintegrations.NewGateway(installationSvc, operationSvc)
 	listingRefreshSvc := listingsapp.NewRefreshService(
 		listingRefreshGateway, listingIngestion, func(task func()) { go task() }, time.Now,
@@ -672,7 +676,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		stockWriter := installationStockWriter{capabilities: marketplaceCapabilities, installations: installationSvc, tenantID: cfg.DefaultTenantID}
 		listingWriter := mutationsconnectors.NewListingWriter(marketplaceCapabilities, cfg.DefaultTenantID, "mercado_livre")
 		linkageWriter := mutationsproductlinks.NewWriter(productLinkResolutionSvc)
-		resyncWriter := installationResyncWriter{source: listingsconnectors.NewSource(marketplaceCapabilities), store: listingRepo, installations: installationSvc, tenantID: cfg.DefaultTenantID}
+		resyncWriter := installationResyncWriter{source: listingIngestionSource, store: listingRepo, installations: installationSvc, tenantID: cfg.DefaultTenantID}
 		policyPresent := func(ctx context.Context, listingID string) (bool, error) {
 			parsed, err := listingsdomain.ParseListingID(listingID)
 			if err != nil {

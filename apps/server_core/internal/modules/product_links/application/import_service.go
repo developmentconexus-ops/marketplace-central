@@ -71,6 +71,30 @@ func (s *ImportService) ImportListingSnapshots(ctx context.Context, input Import
 	}, nil
 }
 
+// AbsorbProviderSnapshots upserts snapshots the CALLER already fetched from the
+// provider, instead of fetching them again. The listings sync already walks the
+// seller's whole catalog (ML scan paging, no depth cap) and holds the very same
+// ListingSnapshot values — including EAN and SellerSKU, which the canonical
+// listings table has no column for and therefore discarded. Without this seam
+// the only way a listing ever got a product_link snapshot was the manual POST
+// path below, whose HTTP default of limit=20 left the linker seeing a fraction
+// of the catalog: the operator then saw thousands of anúncios "sem vínculo"
+// that had simply never been offered to the matcher. One provider fetch, two
+// consumers; the linker's coverage is now the sync's coverage.
+func (s *ImportService) AbsorbProviderSnapshots(ctx context.Context, installationID string, listings []connectorsdomain.ListingSnapshot) error {
+	if s.store == nil {
+		return errors.New("PRODUCT_LINKS_IMPORT_NOT_CONFIGURED")
+	}
+	installationID = strings.TrimSpace(installationID)
+	if installationID == "" {
+		return errors.New("PRODUCT_LINKS_INSTALLATION_REQUIRED")
+	}
+	if len(listings) == 0 {
+		return nil
+	}
+	return s.store.UpsertListingSnapshots(ctx, normalizeListingSnapshots(installationID, listings, s.now()))
+}
+
 func normalizeListingSnapshots(installationID string, listings []connectorsdomain.ListingSnapshot, now time.Time) []domain.ListingSnapshot {
 	snapshots := make([]domain.ListingSnapshot, 0, len(listings))
 	for _, listing := range listings {
