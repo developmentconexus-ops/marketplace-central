@@ -189,7 +189,8 @@ describe("PricingMatrix (EXEMPLO-IO golden)", () => {
     renderMatrix({ listMarketAggregates });
 
     const row = await screen.findByTestId("matrix-row-90001");
-    expect(within(row).getByText("SKU-A")).toBeInTheDocument();
+    // SKU = CODPROD (internal_product_id), never REFFORN — domain-model §7 FIX-1.
+    expect(within(row).getByText("90001")).toBeInTheDocument();
     expect(within(row).getByText("Produto A")).toBeInTheDocument();
     // CUSTO + NOSSO PREÇO from the fact.
     expect(within(row).getByText(/120[.,]00/)).toBeInTheDocument();

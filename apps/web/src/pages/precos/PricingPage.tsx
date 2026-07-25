@@ -63,7 +63,13 @@ export function PricingPage() {
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
 
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  // Deep link: /precos?produto=<codprod> opens the simulator on that product —
+  // this is where /mercado's "Simular" lands. The id may sit outside the priced
+  // block the list query fetches, so it is resolved on its own below.
+  const deepLinkProductId = Number.parseInt(searchParams.get("produto") ?? "", 10);
+  const requestedProductId = Number.isFinite(deepLinkProductId) ? deepLinkProductId : null;
+
+  const [selectedId, setSelectedId] = useState<number | null>(requestedProductId);
   const [modalidade, setModalidade] = useState<ModalidadeKey>("premium");
   const [precoInput, setPrecoInput] = useState<string>("");
   const [solverTarget, setSolverTarget] = useState<string>("");
@@ -120,7 +126,29 @@ export function PricingPage() {
     },
   });
 
-  const products = productsQuery.data?.items ?? [];
+  // A deep-linked product usually is NOT in the priced block above. The list
+  // endpoint is keyset on internal_product_id, so asking for one page of size 1
+  // starting just below the target lands exactly on it — no new endpoint needed.
+  // If the id does not exist, the page comes back with a different (or no)
+  // product and the guard below keeps it out, so the operator gets the honest
+  // "produto não encontrado" instead of another product's decomposition.
+  const deepLinkQuery = useQuery({
+    queryKey: ["pricing", "catalog-fact", requestedProductId],
+    queryFn: () => client.listCatalogProductFacts({ cursor: btoa(String(requestedProductId! - 1)), limit: 1 }),
+    enabled: requestedProductId !== null,
+  });
+  const deepLinkProduct =
+    deepLinkQuery.data?.items.find((p) => p.internal_product_id === requestedProductId) ?? null;
+
+  const listedProducts = productsQuery.data?.items ?? [];
+  const products = useMemo<CatalogProductFact[]>(() => {
+    if (deepLinkProduct === null) return listedProducts;
+    if (listedProducts.some((p) => p.internal_product_id === deepLinkProduct.internal_product_id)) {
+      return listedProducts;
+    }
+    return [deepLinkProduct, ...listedProducts];
+  }, [listedProducts, deepLinkProduct]);
+
   const selected = useMemo<CatalogProductFact | null>(() => {
     if (products.length === 0) return null;
     // No explicit pick yet ⇒ default to the first product. An explicit id that
@@ -175,7 +203,11 @@ export function PricingPage() {
   // scenario reloaded for a product outside the fetched page) ⇒ tell the
   // operator instead of silently decomposing a different product at this price.
   // Derived (not stored) so it can't go stale against a still-loading catalog.
-  const productMissing = selectedId !== null && products.length > 0 && selected === null;
+  // While the deep-link lookup is still in flight the product is unknown, not
+  // missing — claiming "não encontrado" there would be a lie that resolves itself.
+  const deepLinkPending = requestedProductId !== null && deepLinkQuery.isPending;
+  const productMissing =
+    selectedId !== null && products.length > 0 && selected === null && !deepLinkPending;
 
   // comissao_pct is deliberately OMITTED so the backend resolver chain runs
   // (live COTACAO degrau 3 → PADRAO degrau 4). Sending it = MANUAL override.

@@ -1,5 +1,5 @@
-import { useState, type JSX, type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useCallback, useState, type JSX, type ReactNode } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ListingReadModel } from "@marketplace-central/sdk-runtime";
 import { EmptyState, ErrorState, LoadingState } from "@marketplace-central/ui";
 import { QUERY_STALE_TIME } from "@marketplace-central/web-query";
@@ -11,6 +11,7 @@ import { MonitoradosTab } from "./MonitoradosTab";
 import { buildOppRows, chunk } from "./oportunidades";
 import { useMercadoMarketClient, type MercadoMarketClient } from "./marketClient";
 import { DASH, formatCollectedAt, MARGIN_MIN_PCT } from "./mercadoFormatters";
+import { COLLECTION_CEILING, useMarketCollection, type MarketCollectionSummary } from "./useMarketCollection";
 
 type MercadoTab = "reprice" | "opp" | "mon";
 
@@ -70,17 +71,52 @@ function TruncationNote(): JSX.Element {
 }
 
 /**
+ * Result of the last "Atualizar agora" sweep, in the collector's own vocabulary:
+ * how many products answered with usable price evidence and, for the rest, WHY
+ * (no candidate on ML, market too thin, no price, no cost). A product that came
+ * back empty is reported as empty — the radar never fills the gap itself.
+ */
+function CollectionNote({ state }: { state: ReturnType<typeof useMarketCollection>["state"] }): JSX.Element | null {
+  if (state.nothingToCollect) {
+    return (
+      <p role="status" className="rounded-card border border-border bg-surface-2 px-3 py-2 text-[12px] text-muted">
+        Nenhum produto vinculado nesta aba para coletar.
+      </p>
+    );
+  }
+  if (state.running || state.summary === null) return null;
+  const { attempted, skipped, contagens, failed }: MarketCollectionSummary = state.summary;
+  const parts = [
+    `${contagens.ok} com preço de mercado`,
+    `${contagens.no_candidate} sem anúncio equivalente`,
+    `${contagens.insufficient_market} com mercado insuficiente`,
+    `${contagens.no_price_evidence} sem evidência de preço`,
+    `${contagens.sem_custo} sem custo`,
+  ];
+  if (failed > 0) parts.push(`${failed} com falha na coleta`);
+  return (
+    <p role="status" className="rounded-card border border-border bg-surface-2 px-3 py-2 text-[12px] text-muted">
+      Coleta concluída em {attempted} produto(s): {parts.join(" · ")}.
+      {skipped > 0 &&
+        ` ${skipped} produto(s) ficaram de fora — cada coleta consulta o ML ao vivo, então uma rodada cobre no máximo ${COLLECTION_CEILING}.`}
+    </p>
+  );
+}
+
+/**
  * MercadoPage is the /mercado "radar": three underline-active tabs
  * (Reprecificação default · Oportunidades · Monitorados) over the ML market
  * evidence. It composes the central useClient() seam (our listings + ERP catalog
  * facts) with the standalone IC-03 market client (aggregates + verdicts). Every
- * unbacked value renders an honest "—" (ADR-17) and every write control is an
- * inert demo affordance (D-57) — the page performs no live Mercado Livre write.
+ * unbacked value renders an honest "—" (ADR-17). "Atualizar agora" runs a real
+ * collection sweep over the codprods on the active tab — a READ of the public ML
+ * search per product; the page still performs no live Mercado Livre write (D-57).
  */
 export function MercadoPage({ marketClient: injectedMarket }: MercadoPageProps = {}): JSX.Element {
   const client = useClient();
   const { installationId } = useInstallation();
   const marketClient = useMercadoMarketClient(injectedMarket);
+  const queryClient = useQueryClient();
   const [tab, setTab] = useState<MercadoTab>("reprice");
 
   const listingsQuery = useQuery({
@@ -156,6 +192,24 @@ export function MercadoPage({ marketClient: injectedMarket }: MercadoPageProps =
     : false;
   const oppTruncated = oppQuery.data?.truncated ?? false;
 
+  // "Atualizar agora" collects fresh market evidence for the codprods on the
+  // active tab: the ERP products behind our anúncios on Reprecificação, the
+  // catalog products on Oportunidades. Monitorados has no collectable set.
+  const onCollected = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ["mercado"] });
+  }, [queryClient]);
+  const { state: collection, collect } = useMarketCollection({
+    client: marketClient,
+    onFinished: onCollected,
+  });
+  const collectTargets =
+    tab === "reprice"
+      ? rawListingRows.map((r) => r.link.product_id ?? "").filter((code) => code !== "")
+      : tab === "opp"
+        ? oppRows.map((r) => r.sku)
+        : [];
+  const collectDisabled = collection.running || tab === "mon" || collectTargets.length === 0;
+
   const tabs: { key: MercadoTab; label: string }[] = [
     { key: "reprice", label: `Reprecificação · nossos anúncios ${fmtCount(repriceCount)}` },
     { key: "opp", label: `Oportunidades · não vendemos ${fmtCount(oppCount)}` },
@@ -227,14 +281,28 @@ export function MercadoPage({ marketClient: injectedMarket }: MercadoPageProps =
           </span>
           <button
             type="button"
-            disabled
-            title="nova coleta de mercado — em breve"
-            className="cursor-not-allowed whitespace-nowrap rounded-control border border-border px-3 py-[7px] text-[12.5px] text-muted"
+            disabled={collectDisabled}
+            onClick={() => void collect(collectTargets)}
+            title={
+              tab === "mon"
+                ? "sem produtos para coletar nesta aba"
+                : collectTargets.length === 0
+                  ? "nenhum produto vinculado para coletar"
+                  : `coletar evidência de mercado para ${collectTargets.length} produto(s)`
+            }
+            className={`whitespace-nowrap rounded-control border border-border px-3 py-[7px] text-[12.5px] ${
+              collectDisabled ? "cursor-not-allowed text-muted" : "text-ink hover:bg-surface-2"
+            }`}
           >
-            Atualizar agora
+            {collection.running
+              ? `Coletando ${collection.done}/${collection.total}…`
+              : "Atualizar agora"}
           </button>
         </span>
       </div>
+
+      <CollectionNote state={collection} />
+
 
       {/* Underline-active tabs */}
       <div role="tablist" aria-label="Seções do radar" className="flex gap-[2px] overflow-x-auto border-b border-border text-[13px]">

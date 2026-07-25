@@ -1,4 +1,5 @@
 import type { JSX } from "react";
+import { Link } from "react-router-dom";
 import type { ListingReadModel } from "@marketplace-central/sdk-runtime";
 import { UnknownValue } from "@marketplace-central/ui";
 import { DASH, formatMoney, formatPosition } from "./mercadoFormatters";
@@ -101,14 +102,28 @@ export function RepricingTable({ rows }: RepricingTableProps): JSX.Element {
                   >
                     Aplicar
                   </button>
-                  <button
-                    type="button"
-                    disabled
-                    title="simulador — em breve"
-                    className="cursor-not-allowed whitespace-nowrap rounded-[7px] border border-border px-[10px] py-1 text-[11.5px] text-muted"
-                  >
-                    Simular
-                  </button>
+                  {/* "Simular" hands the linked ERP product to the /precos
+                      simulator. A listing with no resolved product link has
+                      nothing to simulate, so the control stays inert there
+                      rather than opening the simulator on the wrong product. */}
+                  {r.link.product_id ? (
+                    <Link
+                      to={`/precos?produto=${encodeURIComponent(r.link.product_id)}`}
+                      title="abrir no simulador de preços"
+                      className="whitespace-nowrap rounded-[7px] border border-border px-[10px] py-1 text-[11.5px] text-ink hover:bg-surface-2"
+                    >
+                      Simular
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      title="anúncio sem produto vinculado — nada a simular"
+                      className="cursor-not-allowed whitespace-nowrap rounded-[7px] border border-border px-[10px] py-1 text-[11.5px] text-muted"
+                    >
+                      Simular
+                    </button>
+                  )}
                 </span>
               </div>
             );

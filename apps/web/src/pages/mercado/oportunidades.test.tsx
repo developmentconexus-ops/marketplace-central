@@ -130,6 +130,6 @@ describe("OportunidadesTable — EXEMPLO-IO 90008 render", () => {
     expect(within(row).getByRole("button", { name: "Criar anúncio" })).toBeDisabled();
     // Footer must describe the ACTUAL ordering (by observed competition = n_sellers), not a
     // claim the sort doesn't honor — locks the copy so it can't silently drift from the key.
-    expect(screen.getByText(/ordenado por concorrência observada/)).toBeInTheDocument();
+    expect(screen.getByText(/ordenado por diferença mediana − custo/)).toBeInTheDocument();
   });
 });

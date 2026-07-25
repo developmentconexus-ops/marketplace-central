@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   CatalogProductFactPage,
@@ -119,7 +120,11 @@ function renderPage(marketClient = makeMarketClient()) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const utils = render(
     <QueryClientProvider client={queryClient}>
-      <MercadoPage marketClient={marketClient} />
+      {/* The reprice table links a listing's product into /precos, so the page
+          needs a router context to render. */}
+      <MemoryRouter>
+        <MercadoPage marketClient={marketClient} />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
   return { ...utils, marketClient };
@@ -155,8 +160,27 @@ describe("MercadoPage", () => {
     expect(within(row).getByText("63")).toBeInTheDocument(); // VENDAS 30D
     // MARGEM ATUAL / SE IGUALAR MENOR / SUGESTÃO have no backing field → honest dash (ADR-17)
     expect(within(row).getAllByText("—").length).toBeGreaterThanOrEqual(3);
-    // Inert demo affordances — no live ML write (D-57)
+    // "Aplicar" writes to ML and stays inert (D-57); "Simular" only navigates,
+    // so it is a real link carrying the listing's linked ERP product.
     expect(within(row).getByRole("button", { name: "Aplicar" })).toBeDisabled();
+    expect(within(row).getByRole("link", { name: "Simular" })).toHaveAttribute(
+      "href",
+      "/precos?produto=90001",
+    );
+  });
+
+  it("keeps Simular inert for a listing with no resolved product link", async () => {
+    listListings.mockReset().mockResolvedValue({
+      ...listingsPage,
+      items: listingsPage.items.map((item) => ({
+        ...item,
+        link: { state: "unresolved", product_id: null, seller_sku: null },
+      })),
+    });
+    renderPage();
+    const cell = await screen.findByText("Kit Parafuso M8 Premium");
+    const row = cell.closest("div")!;
+    expect(within(row).queryByRole("link", { name: "Simular" })).not.toBeInTheDocument();
     expect(within(row).getByRole("button", { name: "Simular" })).toBeDisabled();
   });
 
@@ -185,13 +209,42 @@ describe("MercadoPage", () => {
     expect(screen.getByRole("button", { name: "Todos" })).toBeDisabled();
   });
 
-  it("performs no live ML write across tab interaction (D-57)", async () => {
+  it("collects market evidence for the codprods on the active tab and reports the causes honestly", async () => {
     const { marketClient } = renderPage();
     await screen.findByText("Kit Parafuso M8 Premium");
+    marketClient.collectMarketPriceIntel.mockResolvedValue({
+      status: "COMPLETED",
+      "decisões": [],
+      contagens: { ok: 1, no_price_evidence: 0, insufficient_market: 0, no_candidate: 0, sem_custo: 0 },
+      causas: [],
+    });
+
     fireEvent.click(screen.getByRole("button", { name: "Atualizar agora" }));
+
+    await waitFor(() => expect(marketClient.collectMarketPriceIntel).toHaveBeenCalledWith("90001"));
+    // The summary names what came back per cause — never a bare "pronto".
+    expect(await screen.findByText(/1 com preço de mercado/)).toBeInTheDocument();
+    expect(screen.getByText(/0 sem anúncio equivalente/)).toBeInTheDocument();
+  });
+
+  it("counts a failed collection instead of aborting the sweep", async () => {
+    const { marketClient } = renderPage();
+    await screen.findByText("Kit Parafuso M8 Premium");
+    marketClient.collectMarketPriceIntel.mockRejectedValue({ status: 409, error: { code: "collection_in_progress" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Atualizar agora" }));
+
+    expect(await screen.findByText(/1 com falha na coleta/)).toBeInTheDocument();
+  });
+
+  it("performs no live ML write across tab interaction (D-57)", async () => {
+    renderPage();
+    const cell = await screen.findByText("Kit Parafuso M8 Premium");
+    // Collection is a READ of the public ML search; "Aplicar" is the only
+    // control that would write a price, and it stays inert.
+    expect(within(cell.closest("div")!).getByRole("button", { name: "Aplicar" })).toBeDisabled();
     fireEvent.click(screen.getByRole("tab", { name: /Oportunidades/ }));
     await screen.findByText("PAPELEIRA DECA FLEX");
-    expect(marketClient.collectMarketPriceIntel).not.toHaveBeenCalled();
   });
 
   it("uses theme tokens (not hardcoded hex) so light/dark both resolve", async () => {
