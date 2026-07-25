@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -57,7 +58,7 @@ func (r *OrderReadRepository) ListOrders(ctx context.Context, query ports.OrderL
 		       (SELECT SUM(COALESCE(p.total_paid_amount, p.transaction_amount))
 		        FROM orders_marketplace_order_payments p
 		        WHERE p.tenant_id=$1 AND p.installation_id=$2 AND p.provider_order_id=o.provider_order_id),
-		       o.shipping_id, o.tags_json, o.faturado_at
+		       o.shipping_id, o.tags_json, o.faturado_at, o.buyer_nickname
 		FROM orders_marketplace_orders o
 		WHERE o.tenant_id=$1 AND o.installation_id=$2
 		  AND o.provider_created_at IS NOT NULL
@@ -93,7 +94,122 @@ func (r *OrderReadRepository) ListOrders(ctx context.Context, query ports.OrderL
 		last := page.Items[len(page.Items)-1]
 		page.NextCursor = &ports.OrderCursor{Timestamp: *last.ProviderCreatedAt, ProviderOrderID: last.ProviderOrderID}
 	}
+	// The list used to emit an empty item slice for every order. Downstream that
+	// is not merely a missing column: the enrichment derives vinculo_status,
+	// comissao (the ML sale_fee lives on the line) and custo (the ERP cost is
+	// keyed by the line's internal product) from these items, so the whole list
+	// reported "sem vínculo" and an unknown return. Loaded in ONE query over the
+	// page's ids, never per row.
+	if err := attachLines(ctx, r.pool, r.tenantID, strings.TrimSpace(query.InstallationID), page.Items); err != nil {
+		return ports.OrderPage{}, err
+	}
 	return page, nil
+}
+
+// attachLines fills Items/Payments for a whole page of read models with two
+// queries, keeping the list off the N+1 path GetOrder can afford for one order.
+func attachLines(ctx context.Context, pool *pgxpool.Pool, tenantID, installationID string, models []ordersdomain.OrderReadModel) error {
+	if pool == nil || len(models) == 0 {
+		return nil
+	}
+	orderIDs := make([]string, 0, len(models))
+	for i := range models {
+		orderIDs = append(orderIDs, models[i].ProviderOrderID)
+	}
+
+	itemsByOrder, err := listItemsForOrders(ctx, pool, tenantID, installationID, orderIDs)
+	if err != nil {
+		return err
+	}
+	paymentsByOrder, err := listPaymentsForOrders(ctx, pool, tenantID, installationID, orderIDs)
+	if err != nil {
+		return err
+	}
+	for i := range models {
+		if items, ok := itemsByOrder[models[i].ProviderOrderID]; ok {
+			models[i].Items = items
+		}
+		if payments, ok := paymentsByOrder[models[i].ProviderOrderID]; ok {
+			models[i].Payments = payments
+		}
+	}
+	return nil
+}
+
+func listItemsForOrders(ctx context.Context, pool *pgxpool.Pool, tenantID, installationID string, orderIDs []string) (map[string][]ordersdomain.MarketplaceOrderItem, error) {
+	rows, err := pool.Query(ctx, `
+		SELECT provider_order_id, mpc_line_id, reconciliation_state, provider_item_id, provider_variation_id,
+		       seller_sku, title, quantity, unit_price, sale_fee_amount, link_quality, internal_product_id
+		FROM orders_marketplace_order_items
+		WHERE tenant_id = $1 AND installation_id = $2 AND provider_order_id = ANY($3)
+		ORDER BY provider_order_id ASC, line_no ASC
+	`, tenantID, installationID, orderIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	byOrder := make(map[string][]ordersdomain.MarketplaceOrderItem, len(orderIDs))
+	for rows.Next() {
+		var providerOrderID string
+		var item ordersdomain.MarketplaceOrderItem
+		var unitPrice, saleFeeAmount pgtype.Float8
+		var internalProductID pgtype.Int4
+		if err := rows.Scan(
+			&providerOrderID,
+			&item.MPCLineID,
+			&item.ReconciliationState,
+			&item.ProviderItemID,
+			&item.ProviderVariationID,
+			&item.SellerSKU,
+			&item.Title,
+			&item.Quantity,
+			&unitPrice,
+			&saleFeeAmount,
+			&item.LinkQuality,
+			&internalProductID,
+		); err != nil {
+			return nil, err
+		}
+		item.UnitPrice = scanFloat8(unitPrice)
+		item.SaleFeeAmount = scanFloat8(saleFeeAmount)
+		item.InternalProductID = scanInt4(internalProductID)
+		byOrder[providerOrderID] = append(byOrder[providerOrderID], item)
+	}
+	return byOrder, rows.Err()
+}
+
+func listPaymentsForOrders(ctx context.Context, pool *pgxpool.Pool, tenantID, installationID string, orderIDs []string) (map[string][]ordersdomain.MarketplaceOrderPayment, error) {
+	rows, err := pool.Query(ctx, `
+		SELECT provider_order_id, provider_payment_id, provider_status, transaction_amount, total_paid_amount
+		FROM orders_marketplace_order_payments
+		WHERE tenant_id = $1 AND installation_id = $2 AND provider_order_id = ANY($3)
+		ORDER BY provider_order_id ASC, line_no ASC
+	`, tenantID, installationID, orderIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	byOrder := make(map[string][]ordersdomain.MarketplaceOrderPayment, len(orderIDs))
+	for rows.Next() {
+		var providerOrderID string
+		var payment ordersdomain.MarketplaceOrderPayment
+		var transactionAmount, totalPaidAmount pgtype.Float8
+		if err := rows.Scan(
+			&providerOrderID,
+			&payment.ProviderPaymentID,
+			&payment.ProviderStatus,
+			&transactionAmount,
+			&totalPaidAmount,
+		); err != nil {
+			return nil, err
+		}
+		payment.TransactionAmount = scanFloat8(transactionAmount)
+		payment.TotalPaidAmount = scanFloat8(totalPaidAmount)
+		byOrder[providerOrderID] = append(byOrder[providerOrderID], payment)
+	}
+	return byOrder, rows.Err()
 }
 
 func (r *OrderReadRepository) GetOrder(ctx context.Context, installationID, providerOrderID string) (ordersdomain.OrderReadModel, error) {
@@ -105,7 +221,7 @@ func (r *OrderReadRepository) GetOrder(ctx context.Context, installationID, prov
 		       o.provider_created_at, o.provider_closed_at, o.provider_updated_at,
 		       CASE WHEN EXISTS (SELECT 1 FROM orders_sankhya_linkage_events e WHERE e.tenant_id=$1 AND e.installation_id=$2 AND e.provider_order_id=o.provider_order_id AND e.evidence_state = 'exact') THEN 'linked'::text ELSE NULL::text END,
 		       (SELECT SUM(COALESCE(p.total_paid_amount,p.transaction_amount)) FROM orders_marketplace_order_payments p WHERE p.tenant_id=$1 AND p.installation_id=$2 AND p.provider_order_id=o.provider_order_id),
-		       o.shipping_id, o.tags_json, o.faturado_at
+		       o.shipping_id, o.tags_json, o.faturado_at, o.buyer_nickname
 		FROM orders_marketplace_orders o
 		WHERE o.tenant_id=$1 AND o.installation_id=$2 AND o.provider_order_id=$3
 	`, r.tenantID, strings.TrimSpace(installationID), strings.TrimSpace(providerOrderID))
@@ -132,9 +248,14 @@ func scanReadModel(scanner interface{ Scan(...any) error }) (ordersdomain.OrderR
 	var shippingID pgtype.Text
 	var tagsJSON []byte
 	var faturado pgtype.Timestamptz
-	err := scanner.Scan(&model.ProviderOrderID, &model.ProviderCode, &model.Status, &model.ProviderStatusDetail, &created, &closed, &updated, &nf, &total, &shippingID, &tagsJSON, &faturado)
+	var buyerNickname pgtype.Text
+	err := scanner.Scan(&model.ProviderOrderID, &model.ProviderCode, &model.Status, &model.ProviderStatusDetail, &created, &closed, &updated, &nf, &total, &shippingID, &tagsJSON, &faturado, &buyerNickname)
 	if err != nil {
 		return model, err
+	}
+	if buyerNickname.Valid && strings.TrimSpace(buyerNickname.String) != "" {
+		value := buyerNickname.String
+		model.BuyerNickname = &value
 	}
 	model.ProviderCreatedAt, model.CreatedAt = scanTime(created), scanTime(created)
 	model.ProviderClosedAt, model.ProviderUpdatedAt = scanTime(closed), scanTime(updated)
@@ -362,6 +483,19 @@ func (r *OrderRepository) UpsertOrders(ctx context.Context, orders []ordersdomai
 		}
 		if !won {
 			skipped++
+			// The header upsert only wins when the provider bumped
+			// provider_updated_at, so an order stored before its lines were ever
+			// persisted would stay line-less forever — no items means no
+			// vínculo, no comissão and no custo on every screen that reads it.
+			// Backfill the lines in that case; a losing snapshot never
+			// OVERWRITES lines that are already there.
+			backfilled, err := r.backfillMissingLines(ctx, tx, order)
+			if err != nil {
+				return 0, 0, err
+			}
+			if backfilled {
+				slog.Info("orders.import", "action", "backfill_lines", "provider_order_id", order.ProviderOrderID, "items", len(order.Items))
+			}
 			continue
 		}
 		if err := r.replaceItems(ctx, tx, order); err != nil {
@@ -377,6 +511,41 @@ func (r *OrderRepository) UpsertOrders(ctx context.Context, orders []ordersdomai
 		return 0, 0, err
 	}
 	return imported, skipped, nil
+}
+
+// backfillMissingLines writes the snapshot's items/payments for an order whose
+// header upsert did not win, but only while the stored order carries none —
+// the newer stored lines always win over an older snapshot's.
+func (r *OrderRepository) backfillMissingLines(ctx context.Context, tx pgx.Tx, order ordersdomain.MarketplaceOrder) (bool, error) {
+	if len(order.Items) == 0 && len(order.Payments) == 0 {
+		return false, nil
+	}
+	var storedItems, storedPayments int
+	err := tx.QueryRow(ctx, `
+		SELECT
+			(SELECT count(*) FROM orders_marketplace_order_items
+			  WHERE tenant_id=$1 AND installation_id=$2 AND provider_order_id=$3),
+			(SELECT count(*) FROM orders_marketplace_order_payments
+			  WHERE tenant_id=$1 AND installation_id=$2 AND provider_order_id=$3)
+	`, r.tenantID, strings.TrimSpace(order.InstallationID), strings.TrimSpace(order.ProviderOrderID)).
+		Scan(&storedItems, &storedPayments)
+	if err != nil {
+		return false, err
+	}
+	wrote := false
+	if storedItems == 0 && len(order.Items) > 0 {
+		if err := r.replaceItems(ctx, tx, order); err != nil {
+			return false, err
+		}
+		wrote = true
+	}
+	if storedPayments == 0 && len(order.Payments) > 0 {
+		if err := r.replacePayments(ctx, tx, order); err != nil {
+			return false, err
+		}
+		wrote = true
+	}
+	return wrote, nil
 }
 
 func (r *OrderRepository) ListOrders(ctx context.Context, installationID string, limit int) ([]ordersdomain.MarketplaceOrder, error) {
@@ -434,11 +603,13 @@ func (r *OrderRepository) upsertOrder(ctx context.Context, tx pgx.Tx, order orde
 		INSERT INTO orders_marketplace_orders (
 			tenant_id, installation_id, provider_code, provider_order_id, provider_status, provider_status_detail,
 			provider_created_at, provider_closed_at, provider_updated_at, fetched_at,
-			shipping_id, cancellation_detail, tags_json, raw_provider_ref, created_at, updated_at
+			shipping_id, cancellation_detail, tags_json, raw_provider_ref, created_at, updated_at,
+			buyer_nickname
 		) VALUES (
 			$1, $2, $3, $4, $5, $6,
 			$7, $8, $9, $10,
-			$11, $12, $13, $14, $15, $16
+			$11, $12, $13, $14, $15, $16,
+			NULLIF($17, '')
 		)
 		ON CONFLICT (tenant_id, installation_id, provider_order_id) DO UPDATE SET
 			provider_code = EXCLUDED.provider_code,
@@ -452,6 +623,9 @@ func (r *OrderRepository) upsertOrder(ctx context.Context, tx pgx.Tx, order orde
 			cancellation_detail = EXCLUDED.cancellation_detail,
 			tags_json = EXCLUDED.tags_json,
 			raw_provider_ref = EXCLUDED.raw_provider_ref,
+			-- A payload without a buyer block must not erase a nickname we
+			-- already learned.
+			buyer_nickname = COALESCE(EXCLUDED.buyer_nickname, orders_marketplace_orders.buyer_nickname),
 			updated_at = EXCLUDED.updated_at
 		WHERE orders_marketplace_orders.provider_updated_at IS NULL
 		   OR (
@@ -460,7 +634,8 @@ func (r *OrderRepository) upsertOrder(ctx context.Context, tx pgx.Tx, order orde
 		   )
 	`, r.tenantID, order.InstallationID, order.ProviderCode, order.ProviderOrderID, order.ProviderStatus, order.ProviderStatusDetail,
 		nullableTime(order.ProviderCreatedAt), nullableTime(order.ProviderClosedAt), nullableTime(order.ProviderUpdatedAt), order.FetchedAt,
-		order.ShippingID, order.CancellationDetail, tagsJSON, rawRefJSON, order.CreatedAt, order.UpdatedAt)
+		order.ShippingID, order.CancellationDetail, tagsJSON, rawRefJSON, order.CreatedAt, order.UpdatedAt,
+		order.BuyerNickname)
 	if err != nil {
 		return false, err
 	}

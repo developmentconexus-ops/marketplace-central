@@ -256,6 +256,10 @@ type OrderSnapshot struct {
 	ShippingID           string                 `json:"shipping_id,omitempty"`
 	CancellationDetail   string                 `json:"cancellation_detail,omitempty"`
 	Tags                 []string               `json:"tags,omitempty"`
+	// BuyerNickname is the provider's public buyer handle. Empty when the
+	// payload carries no buyer block — the screens render an unknown, never a
+	// placeholder name.
+	BuyerNickname string `json:"buyer_nickname,omitempty"`
 }
 
 type OrderItemSnapshot struct {

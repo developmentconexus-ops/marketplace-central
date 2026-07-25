@@ -810,6 +810,9 @@ func (a *CapabilityAdapter) mapOrder(order mlOrderResponse) domain.OrderSnapshot
 		CancellationDetail:   order.StatusDetail,
 		Tags:                 trimStrings(order.Tags),
 	}
+	if order.Buyer != nil {
+		snapshot.BuyerNickname = strings.TrimSpace(order.Buyer.Nickname)
+	}
 
 	var saleFeeSum float64
 	var hasSaleFee bool
@@ -1039,9 +1042,9 @@ type mlOrderResponse struct {
 	Buyer *mlOrderBuyer `json:"buyer"`
 }
 
-// mlOrderBuyer is the subset of the ML order `buyer` object the fiscal flow needs.
-// nickname is NOT surfaced past the adapter (the masked buyer identity is derived
-// elsewhere from the read model); only billing_info.id feeds the step-2 call.
+// mlOrderBuyer is the subset of the ML order `buyer` object we consume: nickname
+// is the only buyer identity the list can show (it is persisted and then masked
+// on the read path), and billing_info.id feeds the step-2 fiscal call.
 type mlOrderBuyer struct {
 	ID          any                  `json:"id"`
 	Nickname    string               `json:"nickname"`

@@ -119,6 +119,7 @@ func normalizeOrders(installationID string, snapshots []domain.OrderIngestionSna
 			ProviderUpdatedAt:    snapshot.ProviderUpdatedAt,
 			FetchedAt:            snapshot.FetchedAt.UTC(),
 			ShippingID:           strings.TrimSpace(snapshot.ShippingID),
+			BuyerNickname:        strings.TrimSpace(snapshot.BuyerNickname),
 			CancellationDetail:   strings.TrimSpace(snapshot.CancellationDetail),
 			Tags:                 trimNonEmpty(snapshot.Tags),
 			RawProviderRef:       safeOrderProviderReference(snapshot.ProviderCode, snapshot.ProviderOrderID),

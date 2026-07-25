@@ -40,6 +40,7 @@ func (s OrderSource) ListOrders(ctx context.Context, installationID string, limi
 			ShippingID:           snapshot.ShippingID,
 			CancellationDetail:   snapshot.CancellationDetail,
 			Tags:                 snapshot.Tags,
+			BuyerNickname:        snapshot.BuyerNickname,
 		}
 		for _, item := range snapshot.Items {
 			order.Items = append(order.Items, ordersdomain.OrderIngestionItem{

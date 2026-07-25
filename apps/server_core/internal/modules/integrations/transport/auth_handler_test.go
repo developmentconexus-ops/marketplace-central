@@ -304,7 +304,10 @@ func TestAuthHandlerRejectsWrongMethod(t *testing.T) {
 }
 
 func TestAuthHandlerCallbackAcceptsProviderCodeAndStateOnly(t *testing.T) {
-	t.Parallel()
+	// Pin the origin env vars so an ambient MPC_WEB_ORIGIN / MPC_OAUTH_REDIRECT_URI
+	// (set in the dev backend container) cannot change the expected relative redirect.
+	t.Setenv("MPC_WEB_ORIGIN", "")
+	t.Setenv("MPC_OAUTH_REDIRECT_URI", "")
 
 	flow := &stubAuthFlow{}
 	handler := NewAuthHandler(flow)
@@ -386,6 +389,8 @@ func TestAuthHandlerCallbackPrefersShopeeShopID(t *testing.T) {
 
 func TestAuthHandlerCallbackRedirectsToWebOriginWhenConfigured(t *testing.T) {
 	t.Setenv("MPC_WEB_ORIGIN", "https://app.example")
+	// Callback origin wins over web origin, so it must be empty for this expectation.
+	t.Setenv("MPC_OAUTH_REDIRECT_URI", "")
 
 	flow := &stubAuthFlow{}
 	handler := NewAuthHandler(flow)

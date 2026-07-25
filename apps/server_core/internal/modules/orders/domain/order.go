@@ -53,6 +53,7 @@ type MarketplaceOrder struct {
 	ShippingID           string                    `json:"shipping_id,omitempty"`
 	CancellationDetail   string                    `json:"cancellation_detail,omitempty"`
 	Tags                 []string                  `json:"tags,omitempty"`
+	BuyerNickname        string                    `json:"buyer_nickname,omitempty"`
 	RawProviderRef       string                    `json:"raw_provider_ref,omitempty"`
 	Items                []MarketplaceOrderItem    `json:"items"`
 	Payments             []MarketplaceOrderPayment `json:"payments"`

@@ -18,6 +18,7 @@ type OrderIngestionSnapshot struct {
 	ShippingID           string                  `json:"shipping_id,omitempty"`
 	CancellationDetail   string                  `json:"cancellation_detail,omitempty"`
 	Tags                 []string                `json:"tags,omitempty"`
+	BuyerNickname        string                  `json:"buyer_nickname,omitempty"`
 }
 
 type OrderIngestionItem struct {
