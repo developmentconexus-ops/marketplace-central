@@ -67,6 +67,10 @@ type ProductLinkAuditEntry struct {
 type ProductLinkTransition struct {
 	Link  ProductLink
 	Audit ProductLinkAuditEntry
+	// Decision is the E10 row this transition also writes, in the SAME
+	// transaction as Link and Audit. nil for transitions that approve nothing
+	// (reject, undo): there is no decision rule to record.
+	Decision *ProductLinkDecision
 }
 
 // ProductLinkBatchStatus is the aggregate outcome of a batch-apply run (S3).

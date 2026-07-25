@@ -111,9 +111,16 @@ func (i *linkingIndex) candidateRows(input readports.FindProductsInput) []erpdom
 		}
 	}
 
+	// Walk the mirror in its own order rather than the selection map's: map
+	// iteration is randomized, so the narrowed answer would come back in a
+	// different order on every call while a full scan always returns mirror
+	// order. Callers rank candidates themselves, but "same input, same order"
+	// is the whole claim this narrowing makes.
 	rows := make([]erpdomain.MirrorProduct, 0, len(selected))
-	for index := range selected {
-		rows = append(rows, i.rows[index])
+	for index := range i.rows {
+		if _, ok := selected[index]; ok {
+			rows = append(rows, i.rows[index])
+		}
 	}
 	return rows
 }

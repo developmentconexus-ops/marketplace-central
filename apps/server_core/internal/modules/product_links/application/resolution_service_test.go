@@ -23,6 +23,10 @@ type stubWorkflowStore struct {
 	// (e.g. re-evaluating a just-applied candidate now reports
 	// ALREADY_RESOLVED, without clobbering other identities' state).
 	linksByIdentity map[string]productlinksdomain.ProductLink
+	// decisions is the E10 trail, oldest first, with the same supersede rule
+	// the postgres adapter applies — application tests assert the trail, so a
+	// stub that only appended would prove nothing about override precedence.
+	decisions []productlinksdomain.ProductLinkDecision
 }
 
 func (s *stubWorkflowStore) GetProductLink(_ context.Context, identity productlinksdomain.ListingIdentity) (productlinksdomain.ProductLink, bool, error) {
@@ -50,7 +54,26 @@ func (s *stubWorkflowStore) ApplyProductLinkTransition(_ context.Context, transi
 	}
 	key := identityKey(transition.Link.InstallationID, transition.Link.ProviderItemID, transition.Link.ProviderVariationID)
 	s.linksByIdentity[key] = transition.Link
+	if transition.Decision != nil {
+		for i := range s.decisions {
+			if s.decisions[i].LinkID == transition.Decision.LinkID && s.decisions[i].SupersededBy == "" {
+				s.decisions[i].SupersededBy = transition.Decision.DecisionID
+			}
+		}
+		s.decisions = append(s.decisions, *transition.Decision)
+	}
 	return nil
+}
+
+func (s *stubWorkflowStore) ListDecisionsForLink(_ context.Context, identity productlinksdomain.ListingIdentity) ([]productlinksdomain.ProductLinkDecision, error) {
+	linkID := productlinksdomain.LinkID(identity.InstallationID, identity.ProviderItemID, identity.ProviderVariationID)
+	items := make([]productlinksdomain.ProductLinkDecision, 0, len(s.decisions))
+	for _, decision := range s.decisions {
+		if decision.LinkID == linkID {
+			items = append(items, decision)
+		}
+	}
+	return items, nil
 }
 
 func (s *stubWorkflowStore) ListProductLinks(_ context.Context, installationID string, _ int) ([]productlinksdomain.ProductLink, error) {

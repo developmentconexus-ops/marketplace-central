@@ -12,17 +12,19 @@ import (
 )
 
 type ResolutionService struct {
-	candidates ports.LinkCandidateStore
-	workflows  ports.ProductLinkWorkflowStore
-	now        func() time.Time
-	newAuditID func() string
+	candidates    ports.LinkCandidateStore
+	workflows     ports.ProductLinkWorkflowStore
+	now           func() time.Time
+	newAuditID    func() string
+	newDecisionID func() string
 }
 
 type ResolutionServiceConfig struct {
-	Candidates ports.LinkCandidateStore
-	Workflows  ports.ProductLinkWorkflowStore
-	Now        func() time.Time
-	NewAuditID func() string
+	Candidates    ports.LinkCandidateStore
+	Workflows     ports.ProductLinkWorkflowStore
+	Now           func() time.Time
+	NewAuditID    func() string
+	NewDecisionID func() string
 }
 
 type ApproveCandidateInput struct {
@@ -118,11 +120,16 @@ func NewResolutionService(cfg ResolutionServiceConfig) *ResolutionService {
 	if newAuditID == nil {
 		newAuditID = func() string { return fmt.Sprintf("pla_%d", now().UTC().UnixNano()) }
 	}
+	newDecisionID := cfg.NewDecisionID
+	if newDecisionID == nil {
+		newDecisionID = func() string { return fmt.Sprintf("pld_%d", now().UTC().UnixNano()) }
+	}
 	return &ResolutionService{
-		candidates: cfg.Candidates,
-		workflows:  cfg.Workflows,
-		now:        now,
-		newAuditID: newAuditID,
+		candidates:    cfg.Candidates,
+		workflows:     cfg.Workflows,
+		now:           now,
+		newAuditID:    newAuditID,
+		newDecisionID: newDecisionID,
 	}
 }
 
@@ -173,6 +180,11 @@ func (s *ResolutionService) ApproveCandidate(ctx context.Context, input ApproveC
 		Reason:                input.Reason,
 		Actor:                 input.Actor,
 		BatchID:               input.BatchID,
+		// A human is approving, whatever the anchor was. The collision count
+		// is not read here: it was the generator's reading at candidate time,
+		// and re-deriving it now would record a different moment's fact.
+		DecisionRule:  decisionRuleForCandidate(candidate),
+		DecisionActor: domain.DecisionActorOperator,
 	})
 	if err := s.workflows.ApplyProductLinkTransition(ctx, result); err != nil {
 		return domain.ProductLinkResolutionResult{}, err
@@ -234,6 +246,10 @@ func (s *ResolutionService) ManualResolve(ctx context.Context, input ManualResol
 		Action:                domain.ProductLinkActionManualResolve,
 		Reason:                input.Reason,
 		Actor:                 input.Actor,
+		// The operator named the product themselves — no anchor decided this,
+		// so no collision count was read.
+		DecisionRule:  domain.DecisionRuleManual,
+		DecisionActor: domain.DecisionActorOperator,
 	})
 	if err := s.workflows.ApplyProductLinkTransition(ctx, result); err != nil {
 		return domain.ProductLinkResolutionResult{}, err
@@ -503,6 +519,12 @@ type buildResolvedLinkInput struct {
 	Reason                string
 	Actor                 domain.ActorMetadata
 	BatchID               string
+	// DecisionRule/DecisionActor/CollisionsAtDecision carry the E10 row this
+	// approval writes alongside the transition. CollisionsAtDecision stays nil
+	// unless a collision count was actually read for this decision (ADR-17).
+	DecisionRule         domain.ProductLinkDecisionRule
+	DecisionActor        string
+	CollisionsAtDecision *int
 }
 
 type buildRejectedLinkInput struct {
@@ -541,7 +563,8 @@ func (s *ResolutionService) buildTransition(current domain.ProductLink, found bo
 			UpdatedAt:             now,
 		}
 		return domain.ProductLinkTransition{
-			Link: link,
+			Link:     link,
+			Decision: s.buildDecision(typed, now),
 			Audit: domain.ProductLinkAuditEntry{
 				AuditID:                   s.newAuditID(),
 				InstallationID:            typed.InstallationID,
@@ -589,6 +612,46 @@ func (s *ResolutionService) buildTransition(current domain.ProductLink, found bo
 		}
 	default:
 		panic("unsupported product link transition input")
+	}
+}
+
+// buildDecision produces the E10 row for an approving transition. A transition
+// that names no rule writes no decision: the trail records decisions actually
+// taken, and inventing a rule for a caller that did not state one would be the
+// fabrication E10 exists to prevent.
+func (s *ResolutionService) buildDecision(input buildResolvedLinkInput, now time.Time) *domain.ProductLinkDecision {
+	if input.DecisionRule == "" {
+		return nil
+	}
+	actor := input.DecisionActor
+	if actor == "" {
+		actor = domain.DecisionActorOperator
+	}
+	return &domain.ProductLinkDecision{
+		DecisionID:           s.newDecisionID(),
+		InstallationID:       input.InstallationID,
+		ProviderItemID:       input.ProviderItemID,
+		ProviderVariationID:  input.ProviderVariationID,
+		LinkID:               domain.LinkID(input.InstallationID, input.ProviderItemID, input.ProviderVariationID),
+		RuleMatched:          input.DecisionRule,
+		Actor:                actor,
+		CollisionsAtDecision: input.CollisionsAtDecision,
+		CreatedAt:            now,
+	}
+}
+
+// decisionRuleForCandidate reads the rule off the anchor the candidate was
+// built from. A human approving a single-anchor candidate is exactly what the
+// confirmation queue asks for, and the trail must keep saying which anchor
+// carried it — a candidate approved on no anchor at all is a manual call.
+func decisionRuleForCandidate(candidate domain.LinkCandidate) domain.ProductLinkDecisionRule {
+	switch candidate.MatchInput {
+	case domain.LinkCandidateMatchInputSellerSKU:
+		return domain.DecisionRuleExactCodprodUnique
+	case domain.LinkCandidateMatchInputEAN:
+		return domain.DecisionRuleExactEANUnique
+	default:
+		return domain.DecisionRuleManual
 	}
 }
 

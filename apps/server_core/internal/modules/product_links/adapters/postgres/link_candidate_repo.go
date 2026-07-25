@@ -366,7 +366,88 @@ func (r *LinkCandidateRepository) ApplyProductLinkTransition(ctx context.Context
 	if err != nil {
 		return err
 	}
+
+	if transition.Decision != nil {
+		if err := insertDecision(ctx, tx, r.tenantID, *transition.Decision); err != nil {
+			return err
+		}
+	}
 	return tx.Commit(ctx)
+}
+
+// insertDecision appends one E10 row and stamps whatever decision it replaces.
+// Both statements run inside the transition's transaction: a decision that
+// landed without its link, or a link approved without its decision, would make
+// the trail a claim rather than a record.
+func insertDecision(ctx context.Context, tx pgx.Tx, tenantID string, decision domain.ProductLinkDecision) error {
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO product_link_decisions (
+			tenant_id, decision_id, installation_id, provider_item_id, provider_variation_id,
+			rule_matched, actor, collisions_at_decision, created_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+	`, tenantID,
+		decision.DecisionID,
+		decision.InstallationID,
+		decision.ProviderItemID,
+		decision.ProviderVariationID,
+		decision.RuleMatched,
+		decision.Actor,
+		decision.CollisionsAtDecision,
+		decision.CreatedAt,
+	); err != nil {
+		return err
+	}
+	// Stamp the rows this one replaces only after it exists — superseded_by
+	// references a real decision, so the other order fails the foreign key.
+	// Excluding the new row keeps it from stamping itself.
+	_, err := tx.Exec(ctx, `
+		UPDATE product_link_decisions
+		SET superseded_by = $3
+		WHERE tenant_id = $1 AND link_id = $2 AND superseded_by IS NULL AND decision_id <> $3
+	`, tenantID, decision.LinkID, decision.DecisionID)
+	return err
+}
+
+func (r *LinkCandidateRepository) ListDecisionsForLink(ctx context.Context, identity domain.ListingIdentity) ([]domain.ProductLinkDecision, error) {
+	if r.pool == nil {
+		return nil, nil
+	}
+	rows, err := r.pool.Query(ctx, `
+		SELECT decision_id, installation_id, provider_item_id, provider_variation_id, link_id,
+		       rule_matched, actor, collisions_at_decision, created_at, COALESCE(superseded_by, '')
+		FROM product_link_decisions
+		WHERE tenant_id = $1 AND link_id = $2
+		ORDER BY created_at ASC, decision_id ASC
+	`, r.tenantID, domain.LinkID(identity.InstallationID, identity.ProviderItemID, identity.ProviderVariationID))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	decisions := make([]domain.ProductLinkDecision, 0)
+	for rows.Next() {
+		var decision domain.ProductLinkDecision
+		var collisions pgtype.Int4
+		var createdAt pgtype.Timestamptz
+		if err := rows.Scan(
+			&decision.DecisionID,
+			&decision.InstallationID,
+			&decision.ProviderItemID,
+			&decision.ProviderVariationID,
+			&decision.LinkID,
+			&decision.RuleMatched,
+			&decision.Actor,
+			&collisions,
+			&createdAt,
+			&decision.SupersededBy,
+		); err != nil {
+			return nil, err
+		}
+		decision.CollisionsAtDecision = scanInt4Ptr(collisions)
+		decision.CreatedAt = createdAt.Time.UTC()
+		decisions = append(decisions, decision)
+	}
+	return decisions, rows.Err()
 }
 
 // InsertBatch persists the module-owned batch audit row for a completed
