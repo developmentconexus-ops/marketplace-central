@@ -92,5 +92,6 @@ export function formatDateTime(value: string | null | undefined): string | null 
 // Never fabricate a value for null (ADR-17).
 export function formatPercent(value: number | null | undefined): string | null {
   if (value === null || value === undefined) return null;
-  return `${(value * 100).toFixed(1)}%`;
+  // pt-BR decimal separator: the operator reads "18,0%", never "18.0%".
+  return `${(value * 100).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
 }

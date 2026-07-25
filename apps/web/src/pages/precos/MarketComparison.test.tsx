@@ -42,8 +42,8 @@ describe("MarketComparison", () => {
 
     await waitFor(() => expect(client.listMarketAggregates).toHaveBeenCalledWith(["90001"]));
     const panel = await screen.findByTestId("market-comparison");
-    expect(panel).toHaveTextContent("95.00");
-    expect(panel).toHaveTextContent("88.00");
+    expect(panel).toHaveTextContent("95,00");
+    expect(panel).toHaveTextContent("88,00");
     expect(panel).toHaveTextContent("12");
     expect(panel).toHaveTextContent("5");
     expect(panel).toHaveTextContent("ml_sale_price");

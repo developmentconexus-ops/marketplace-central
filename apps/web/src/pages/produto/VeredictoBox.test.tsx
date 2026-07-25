@@ -86,8 +86,9 @@ describe("VeredictoBox", () => {
 
     renderBox(client);
 
-    expect(await screen.findByText("R$ 100.00")).toBeInTheDocument();
-    expect(screen.getByText("R$ 120.00")).toBeInTheDocument();
+    // pt-BR through the shared formatter; the regex tolerates the nbsp Intl puts after "R$".
+    expect(await screen.findByText(/^R\$\s100,00$/)).toBeInTheDocument();
+    expect(screen.getByText(/^R\$\s120,00$/)).toBeInTheDocument();
     expect(screen.getByText("6")).toBeInTheDocument();
     expect(screen.getByText("ml")).toBeInTheDocument();
     expect(screen.getByText("2026-07-15T10:00:00Z")).toBeInTheDocument();

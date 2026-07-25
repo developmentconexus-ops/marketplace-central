@@ -61,7 +61,7 @@ describe("SolverPanel — margem-alvo → preço", () => {
     // comissao_pct must be OMITTED so the backend resolver chain runs (COTACAO/PADRAO),
     // never a hardcoded pct that forces a MANUAL override.
     expect(solveArg).not.toHaveProperty("comissao_pct");
-    expect(await screen.findByTestId("solver-price")).toHaveTextContent("104.50");
+    expect(await screen.findByTestId("solver-price")).toHaveTextContent("104,50");
     expect(screen.queryByTestId("solver-unreachable")).toBeNull();
   });
 
@@ -81,7 +81,7 @@ describe("SolverPanel — margem-alvo → preço", () => {
     fireEvent.click(screen.getByTestId("solver-submit"));
 
     const unreachable = await screen.findByTestId("solver-unreachable");
-    expect(unreachable).toHaveTextContent("12.80");
+    expect(unreachable).toHaveTextContent("12,80");
     expect(screen.queryByTestId("solver-price")).toBeNull();
   });
 
@@ -229,10 +229,10 @@ describe("SolverPanel — margem-alvo → preço", () => {
     fireEvent.change(screen.getByLabelText("Margem alvo"), { target: { value: "20" } });
     fireEvent.click(screen.getByTestId("solver-submit"));
 
-    expect(await screen.findByTestId("solver-price")).toHaveTextContent("104.50");
+    expect(await screen.findByTestId("solver-price")).toHaveTextContent("104,50");
 
     const comissao = screen.getByTestId("tarifa-comissao");
-    expect(comissao).toHaveTextContent("13.00%");
+    expect(comissao).toHaveTextContent("13,00%");
     expect(comissao).toHaveTextContent("Padrão");
     expect(comissao).toHaveTextContent("degrau 4");
     expect(comissao).toHaveTextContent("ESTIMATIVA");
@@ -309,7 +309,7 @@ describe("SolverPanel — margem-alvo → preço", () => {
     fireEvent.change(screen.getByLabelText("Margem alvo"), { target: { value: "20" } });
     fireEvent.click(screen.getByTestId("solver-submit"));
 
-    expect(await screen.findByTestId("solver-price")).toHaveTextContent("95.00");
+    expect(await screen.findByTestId("solver-price")).toHaveTextContent("95,00");
     expect(screen.queryByTestId("solver-sem-frete")).toBeNull();
   });
 
@@ -326,7 +326,7 @@ describe("SolverPanel — margem-alvo → preço", () => {
 
     fireEvent.change(screen.getByLabelText("Margem alvo"), { target: { value: "20" } });
     fireEvent.click(screen.getByTestId("solver-submit"));
-    expect(await screen.findByTestId("solver-price")).toHaveTextContent("104.50");
+    expect(await screen.findByTestId("solver-price")).toHaveTextContent("104,50");
 
     rerender(
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
@@ -351,7 +351,7 @@ describe("SolverPanel — margem-alvo → preço", () => {
     fireEvent.change(screen.getByLabelText("Margem alvo"), { target: { value: "20" } });
     fireEvent.click(screen.getByTestId("solver-submit"));
 
-    expect(await screen.findByTestId("solver-price")).toHaveTextContent("88.00");
+    expect(await screen.findByTestId("solver-price")).toHaveTextContent("88,00");
     expect(screen.queryByTestId("tarifa-comissao")).toBeNull();
     expect(screen.queryByTestId("tarifa-frete")).toBeNull();
   });

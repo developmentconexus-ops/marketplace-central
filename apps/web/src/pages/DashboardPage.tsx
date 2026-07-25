@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useClient } from "../app/ClientContext";
-import { StatCard } from "@marketplace-central/ui";
+import { StatCard, formatPercent } from "@marketplace-central/ui";
 import type { MarketplaceAccount, PricingSimulation } from "@marketplace-central/sdk-runtime";
 
 type LoadState = "loading" | "error" | "ready";
@@ -70,7 +70,7 @@ export function DashboardPage() {
 
   const avgMargin =
     simulations.length > 0
-      ? (simulations.reduce((s, sim) => s + sim.margin_percent, 0) / simulations.length).toFixed(1) + "%"
+      ? formatPercent(simulations.reduce((s, sim) => s + sim.margin_percent, 0) / simulations.length, 1) ?? "—"
       : "—";
 
   return (
@@ -147,7 +147,7 @@ export function DashboardPage() {
                         : "text-red-600"
                     }`}
                   >
-                    {s.margin_percent.toFixed(1)}%
+                    {formatPercent(s.margin_percent, 1)}
                   </p>
                 </li>
               ))}

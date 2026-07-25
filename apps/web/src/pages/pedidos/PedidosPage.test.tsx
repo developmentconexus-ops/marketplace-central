@@ -376,7 +376,7 @@ describe("PedidosPage", () => {
 
     expect(await screen.findByText("PO1")).toBeInTheDocument();
     expect(screen.getByText("R$ 123,45")).toBeInTheDocument();
-    expect(screen.getByText("18.2%")).toBeInTheDocument();
+    expect(screen.getByText("18,2%")).toBeInTheDocument();
     expect(screen.getByText("R$ 8,76")).toBeInTheDocument();
   });
 
@@ -688,7 +688,7 @@ describe("PedidosPage", () => {
     // real-ready path (same components, no UI change, once the hub wires the decomposer).
     expect(drawer.getByText("R$ 145,67")).toBeInTheDocument(); // retorno_liquido
     expect(drawer.getByText("R$ 154,20")).toBeInTheDocument(); // margem_valor
-    expect(drawer.getByText("23.4%")).toBeInTheDocument(); // margem_pct
+    expect(drawer.getByText("23,4%")).toBeInTheDocument(); // margem_pct
     expect(drawer.getByText("R$ 8,76")).toBeInTheDocument(); // difal.amount
     expect(drawer.getByText("R$ 4,12")).toBeInTheDocument(); // decomposicao.difal (cost component)
     expect(drawer.getByText("SC → SP")).toBeInTheDocument(); // difal.uf_route

@@ -2,7 +2,7 @@ import type { JSX } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import type { ListingGroupPage, ListingMarketSignal, ListingMoney, ListingReadModel } from "@marketplace-central/sdk-runtime";
-import { DataTable, EmptyState, ErrorState, LoadingState, UnknownValue, type DataTableColumn } from "@marketplace-central/ui";
+import { DataTable, EmptyState, ErrorState, LoadingState, UnknownValue, formatMoney, formatSignedPercent, type DataTableColumn } from "@marketplace-central/ui";
 import { FreshnessIndicator, listingsQueryKeys } from "@marketplace-central/web-query";
 import { useClient, type Client } from "../../app/ClientContext";
 import { useInstallation } from "../../app/InstallationContext";
@@ -22,8 +22,9 @@ function usableSignal(item: ListingReadModel): ListingMarketSignal | null {
 }
 
 function Money({ value }: { value: ListingMoney | null }): JSX.Element {
-  if (value === null) return <UnknownValue />;
-  return <span className="font-mono tabular-nums">R$ {value.amount}</span>;
+  const formatted = value === null ? null : formatMoney(value.amount, value.currency);
+  if (formatted === null) return <UnknownValue />;
+  return <span className="font-mono tabular-nums">{formatted}</span>;
 }
 
 function PositionCell({ item }: { item: ListingReadModel }): JSX.Element {
@@ -39,8 +40,7 @@ function PositionCell({ item }: { item: ListingReadModel }): JSX.Element {
 function DeltaCell({ item }: { item: ListingReadModel }): JSX.Element {
   const signal = usableSignal(item);
   if (!signal || signal.delta_pct === null) return <UnknownValue />;
-  const sign = signal.delta_pct.startsWith("-") ? "" : "+";
-  return <span className="font-mono tabular-nums">{`${sign}${signal.delta_pct}%`}</span>;
+  return <span className="font-mono tabular-nums">{formatSignedPercent(signal.delta_pct)}</span>;
 }
 
 function FreshnessCell({ item }: { item: ListingReadModel }): JSX.Element {

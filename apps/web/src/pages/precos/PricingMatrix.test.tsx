@@ -203,7 +203,7 @@ describe("PricingMatrix (EXEMPLO-IO golden)", () => {
     expect(within(row).getByTestId("matrix-veredicto-90001")).toHaveTextContent("OK");
     // MARGEM: retorno/un + chip %.
     await waitFor(() => expect(within(row).getByText(/11[.,]01/)).toBeInTheDocument());
-    expect(within(row).getByText("5.83%")).toBeInTheDocument();
+    expect(within(row).getByText("5,83%")).toBeInTheDocument();
   });
 
   it("(b) no market evidence: PREÇO MERCADO — , VEREDICTO SEM_EVIDENCIA, margem still computed", async () => {

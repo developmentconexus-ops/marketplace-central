@@ -28,6 +28,38 @@ export function formatMoney(amount: string | number | null | undefined, currency
  * formatMoneyOr renders formatMoney's result, falling back to the given
  * placeholder (default the em dash the design uses for unknown values).
  */
+/**
+ * formatPercent renders a rate in pt-BR ("12.80" → "12,80%"). Rates arrive as
+ * decimal STRINGS whose precision is itself information — a comissão quoted as
+ * "13.00" is not the same statement as "13" — so a string keeps exactly the
+ * decimal places the API sent and only the separator changes. A numeric rate has
+ * no such source precision, so it is rounded to at most `fractionDigits` and
+ * trailing zeros are dropped (25 → "25%", -65.49 → "-65,49%"). Absent or
+ * unparseable returns null: the caller renders "—", never a fabricated "0%".
+ */
+export function formatPercent(rate: string | number | null | undefined, fractionDigits = 2): string | null {
+  if (rate === null || rate === undefined || rate === "") return null;
+  const value = typeof rate === "number" ? rate : Number(rate);
+  if (!Number.isFinite(value)) return null;
+  if (typeof rate === "string") return `${rate.trim().replace(".", ",")}%`;
+  const digits = new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: fractionDigits,
+  }).format(value);
+  return `${digits}%`;
+}
+
+/**
+ * formatSignedPercent renders a delta-vs-market rate in pt-BR with an explicit
+ * "+" on non-negative values ("-3.2" → "-3,2%", "3.2" → "+3,2%"). Null for an
+ * absent/unparseable rate, same honest-unknown contract as formatPercent.
+ */
+export function formatSignedPercent(rate: string | number | null | undefined, fractionDigits = 1): string | null {
+  const formatted = formatPercent(rate, fractionDigits);
+  if (formatted === null) return null;
+  return formatted.startsWith("-") ? formatted : `+${formatted}`;
+}
+
 export function formatMoneyOr(
   amount: string | number | null | undefined,
   fallback = "—",

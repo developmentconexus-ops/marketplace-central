@@ -91,8 +91,9 @@ describe("AnunciosVinculadosTab", () => {
 
     expect(await screen.findByText("Anúncio com sinal")).toBeInTheDocument();
     expect(screen.getByText("2/9")).toBeInTheDocument();
-    expect(screen.getByText("R$ 169.90")).toBeInTheDocument();
-    expect(screen.getByText("-3.2%")).toBeInTheDocument();
+    // pt-BR through the shared formatter; the regex tolerates the nbsp Intl puts after "R$".
+    expect(screen.getByText(/^R\$\s169,90$/)).toBeInTheDocument();
+    expect(screen.getByText("-3,2%")).toBeInTheDocument();
 
     const secondRow = screen.getByText("Anúncio sem vínculo").closest("tr");
     expect(secondRow).not.toBeNull();

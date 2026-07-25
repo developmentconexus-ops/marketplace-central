@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { JSX } from "react";
-import { UnknownValue } from "@marketplace-central/ui";
+import { UnknownValue, formatPercent } from "@marketplace-central/ui";
 import type { PricingCalcProfile } from "@marketplace-central/sdk-runtime";
 import { ptBrRateToDot } from "./ptbrDecimal";
 import type { TariffComponent } from "./tariffBadge";
@@ -322,7 +322,7 @@ function ModalidadeRow({ label, active, tarifa }: {
     <div className="flex items-center gap-2.5">
       <span className="flex-1 text-muted">{label}</span>
       {show ? (
-        <span className="font-mono font-semibold text-ink">{tarifa!.valor}%</span>
+        <span className="font-mono font-semibold text-ink">{formatPercent(tarifa!.valor) ?? `${tarifa!.valor}%`}</span>
       ) : (
         <UnknownValue />
       )}

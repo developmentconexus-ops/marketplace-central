@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { UnknownValue, FreshnessIndicator } from "@marketplace-central/ui";
+import { UnknownValue, FreshnessIndicator, formatMoney, formatPercent } from "@marketplace-central/ui";
 
 /**
  * Tarifa carimbo carried per component in the /pricing/solve and /pricing/decompose
@@ -90,7 +90,10 @@ export function TariffBadge({ testId, label, comp, percent }: TariffBadgeProps):
         <UnknownValue hint="Sem dados — cadastre dimensões ou vincule um anúncio ML" />
       ) : (
         <>
-          <span className="font-mono text-ink">{percent ? `${comp.valor}%` : `R$ ${comp.valor}`}</span>
+          {/* pt-BR through the shared formatters — the API sends raw decimals. */}
+          <span className="font-mono text-ink">
+            {(percent ? formatPercent(comp.valor) : formatMoney(comp.valor)) ?? comp.valor}
+          </span>
           <TariffCarimbo comp={comp} />
         </>
       )}

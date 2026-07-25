@@ -11,6 +11,7 @@ import {
   ConflictTag,
   ErrorState,
   formatMoney as formatBRL,
+  formatSignedPercent,
   FreshnessIndicator,
   LoadingState,
   UnknownValue,
@@ -131,7 +132,7 @@ function formatPosition(signal: ListingMarketSignal) {
 function formatDelta(signal: ListingMarketSignal) {
   return signal.delta_pct === null
     ? <UnknownValue />
-    : `${signal.delta_pct.startsWith("-") ? "" : "+"}${signal.delta_pct}%`;
+    : formatSignedPercent(signal.delta_pct);
 }
 
 // 2x2 (and evidence-grid) bordered card idiom from the ratified drawer:

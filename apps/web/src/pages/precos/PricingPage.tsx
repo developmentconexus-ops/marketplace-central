@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
-import { ErrorState, LoadingState } from "@marketplace-central/ui";
+import { ErrorState, LoadingState, formatPercent } from "@marketplace-central/ui";
 import type {
   CatalogProductFact,
   PricingCalcInput,
@@ -422,7 +422,7 @@ export function PricingPage() {
                         }`}
                       >
                         <div className={`text-[11px] font-semibold ${active ? "text-accent-ink" : "text-muted"}`}>{m.label}</div>
-                        <div className="mt-0.5 font-mono text-xs font-bold text-ink">{pct !== null ? `${pct}%` : "—"}</div>
+                        <div className="mt-0.5 font-mono text-xs font-bold text-ink">{formatPercent(pct) ?? "—"}</div>
                       </button>
                     );
                   })}

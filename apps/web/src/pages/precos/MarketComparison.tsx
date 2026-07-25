@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { JSX } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ErrorState, LoadingState } from "@marketplace-central/ui";
+import { ErrorState, LoadingState, formatMoney } from "@marketplace-central/ui";
 import {
   createMarketPriceIntelClient,
   type MarketPriceIntelAggregate,
@@ -33,8 +33,9 @@ export interface MarketComparisonProps {
 
 /** ADR-17: a missing market price is unknown, never a fabricated 0. */
 function Money({ value }: { value: MarketPriceIntelMoney | null }): JSX.Element {
-  if (value === null) return <span className="text-faint">—</span>;
-  return <span className="font-mono text-ink">R$ {value.amount}</span>;
+  const formatted = value === null ? null : formatMoney(value.amount, value.currency);
+  if (formatted === null) return <span className="text-faint">—</span>;
+  return <span className="font-mono text-ink">{formatted}</span>;
 }
 
 /**

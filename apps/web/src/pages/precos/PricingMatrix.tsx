@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { JSX } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
-import { MarginChip, UnknownValue } from "@marketplace-central/ui";
+import { MarginChip, UnknownValue, formatMoney } from "@marketplace-central/ui";
 import {
   createMarketPriceIntelClient,
   type CatalogProductFact,
@@ -56,10 +56,16 @@ function productDescription(p: CatalogProductFact): string {
   return p.description ?? `#${p.internal_product_id}`;
 }
 
-/** A decimal-string money value, or the honest "—" when absent (ADR-17: never 0). */
+/**
+ * A decimal-string money value, or the honest "—" when absent (ADR-17: never 0).
+ * Formatted through the shared pt-BR formatter — the API sends raw decimals like
+ * "285.1779", and interpolating those straight into the cell rendered a price no
+ * Brazilian operator reads as money ("R$ 285.1779" instead of "R$ 285,18").
+ */
 function Money({ amount }: { amount: string | null }): JSX.Element {
-  if (amount === null) return <UnknownValue />;
-  return <span className="font-mono text-ink">R$ {amount}</span>;
+  const formatted = formatMoney(amount);
+  if (formatted === null) return <UnknownValue />;
+  return <span className="font-mono text-ink">{formatted}</span>;
 }
 
 /**
@@ -227,7 +233,7 @@ export function PricingMatrix({
                     <UnknownValue hint="margem: falha ao calcular" />
                   ) : margemValor !== null ? (
                     <span className="flex items-center justify-end gap-1.5">
-                      <span className="font-mono text-ink">{margemValor}</span>
+                      <Money amount={margemValor} />
                       <MarginChip marginPct={pctNum} thresholds={thresholds} />
                     </span>
                   ) : decomposeResolved || !hasPrice ? (

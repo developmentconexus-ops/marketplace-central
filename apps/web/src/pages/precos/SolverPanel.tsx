@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { JSX } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { ErrorState } from "@marketplace-central/ui";
+import { ErrorState, formatMoneyOr, formatPercent } from "@marketplace-central/ui";
 import type { PricingCalcInput, PricingSolveResponse } from "@marketplace-central/sdk-runtime";
 import { useClient } from "../../app/ClientContext";
 import { ptBrRateToDot } from "./ptbrDecimal";
@@ -141,7 +141,7 @@ export function SolverPanel({
       ) : unreachable ? (
         <div data-testid="solver-unreachable" className="rounded-md bg-amber-soft px-3 py-2 text-sm text-amber">
           Alvo inatingível — a melhor margem possível para este produto é{" "}
-          <span className="font-mono">{ceiling}%</span>.
+          <span className="font-mono">{formatPercent(ceiling) ?? `${ceiling}%`}</span>.
         </div>
       ) : incomplete ? (
         <p role="alert" data-testid="solver-incomplete" className="rounded-md bg-warn-soft px-3 py-2 text-sm text-warn">
@@ -152,7 +152,7 @@ export function SolverPanel({
           <div className="flex items-baseline gap-2">
             <span className="text-xs text-muted">Preço sugerido</span>
             <span data-testid="solver-price" className="font-mono text-base text-ink">
-              R$ {result.preco}
+              {formatMoneyOr(result.preco)}
             </span>
           </div>
           {result.tarifa ? (

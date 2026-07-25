@@ -170,7 +170,7 @@ describe("AnunciosTable", () => {
       );
 
       expect(screen.getByText("R$ 129,90")).toBeInTheDocument();
-      expect(screen.getByText("+8.34%")).toBeInTheDocument();
+      expect(screen.getByText("+8,34%")).toBeInTheDocument();
     });
 
     it("OK below market: renders a negative %chip", () => {
@@ -181,7 +181,7 @@ describe("AnunciosTable", () => {
         />,
       );
 
-      expect(screen.getByText("-4.20%")).toBeInTheDocument();
+      expect(screen.getByText("-4,20%")).toBeInTheDocument();
     });
 
     it("STALE: shows the value, an âmbar %chip, and a freshness age marker — never a double underline", () => {
@@ -193,7 +193,7 @@ describe("AnunciosTable", () => {
       );
 
       expect(screen.getByText("R$ 129,90")).toBeInTheDocument();
-      expect(screen.getByText("+8.34%")).toBeInTheDocument();
+      expect(screen.getByText("+8,34%")).toBeInTheDocument();
       expect(screen.getByLabelText("Data freshness")).toBeInTheDocument();
     });
 
@@ -244,7 +244,7 @@ describe("AnunciosTable", () => {
 
       expect(() => renderTable(<AnunciosTable items={items} {...tableSelectionProps} />)).not.toThrow();
 
-      expect(screen.getAllByText("+8.34%")).toHaveLength(2);
+      expect(screen.getAllByText("+8,34%")).toHaveLength(2);
       expect(screen.getByRole("link", { name: "sem vínculo" })).toBeInTheDocument();
     });
   });
@@ -267,7 +267,7 @@ describe("AnunciosTable", () => {
       );
 
       expect(screen.getByText("Grupo Camisetas")).toBeInTheDocument();
-      expect(screen.getByText("+8.34%")).toBeInTheDocument();
+      expect(screen.getByText("+8,34%")).toBeInTheDocument();
     });
 
     it("renders a 1-listing group as a normal group, no special collapse", () => {

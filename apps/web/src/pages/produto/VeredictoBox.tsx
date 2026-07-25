@@ -1,7 +1,7 @@
 import type { JSX } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CanonicalNumericSourceFact, MarketPriceIntelVerdict } from "@marketplace-central/sdk-runtime";
-import { Button, ErrorState, LoadingState, UnknownValue } from "@marketplace-central/ui";
+import { Button, ErrorState, LoadingState, UnknownValue, formatMoney } from "@marketplace-central/ui";
 import { useProdutoMarketClient, type ProdutoMarketClient } from "./marketClient";
 
 const BLOCKING_STATE_COPY: Record<string, string> = {
@@ -19,8 +19,9 @@ export interface VeredictoBoxProps {
 }
 
 function Money({ value }: { value: { amount: string; currency: string } | null }): JSX.Element {
-  if (value === null) return <UnknownValue />;
-  return <span className="font-mono text-ink">R$ {value.amount}</span>;
+  const formatted = value === null ? null : formatMoney(value.amount, value.currency);
+  if (formatted === null) return <UnknownValue />;
+  return <span className="font-mono text-ink">{formatted}</span>;
 }
 
 function Headline({ verdict }: { verdict: MarketPriceIntelVerdict }): JSX.Element {

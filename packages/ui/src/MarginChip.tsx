@@ -1,4 +1,5 @@
 import type { JSX } from "react";
+import { formatPercent } from "./money";
 
 export interface MarginChipProps {
   marginPct: number | null;
@@ -40,7 +41,7 @@ export function MarginChip({ marginPct, thresholds }: MarginChipProps): JSX.Elem
 
   return (
     <span className={`inline-flex items-center rounded-pill px-2 py-0.5 text-xs font-mono font-medium ${bandClasses[band]}`}>
-      {band === "unknown" ? "—" : `${marginPct}%`}
+      {band === "unknown" ? "—" : formatPercent(marginPct) ?? "—"}
     </span>
   );
 }

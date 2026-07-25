@@ -153,7 +153,7 @@ describe("ListingDetailPanel", () => {
     await screen.findAllByText("Camiseta azul");
 
     expect(screen.getByText("2/5")).toBeInTheDocument();
-    expect(screen.getByText("-7.5%")).toBeInTheDocument();
+    expect(screen.getByText("-7,5%")).toBeInTheDocument();
     expect(screen.getByText("ACCEPT")).toBeInTheDocument();
     expect(screen.getByText("5")).toBeInTheDocument();
     expect(screen.getByText("3")).toBeInTheDocument();

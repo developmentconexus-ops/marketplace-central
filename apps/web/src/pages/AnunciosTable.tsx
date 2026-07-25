@@ -7,7 +7,7 @@ import type {
   ListingReadModel,
   ListingSyncState,
 } from "@marketplace-central/sdk-runtime";
-import { ConflictTag, formatMoney, UnknownValue } from "@marketplace-central/ui";
+import { ConflictTag, formatMoney, formatSignedPercent, UnknownValue } from "@marketplace-central/ui";
 import { formatAsOf, FreshnessIndicator } from "@marketplace-central/web-query";
 
 export interface AnunciosTableProps {
@@ -78,7 +78,7 @@ function renderProductCell(item: ListingReadModel) {
 
 function formatMarketDeltaPct(signal: ListingMarketSignal): string | null {
   if (signal.delta_pct === null) return null;
-  return `${signal.delta_pct.startsWith("-") ? "" : "+"}${signal.delta_pct}%`;
+  return formatSignedPercent(signal.delta_pct);
 }
 
 // PREÇO cell: valor R$ (mono) + a compact %-chip vs mercado folded in from
