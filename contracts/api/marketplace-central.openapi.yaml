@@ -6456,7 +6456,7 @@ components:
           enum: [ALTA, MEDIA, BAIXA]
         match_status:
           type: string
-          enum: [ACCEPT, REVIEW, REJECT, NO_CANDIDATE]
+          enum: [ACCEPT, REVIEW, REJECT, NO_CANDIDATE, CONFIRM]
         reasons:
           type: array
           items:

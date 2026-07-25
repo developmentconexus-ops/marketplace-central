@@ -377,8 +377,8 @@ func TestCase1ConcordantSKUAndEANYieldsAltaAccept(t *testing.T) {
 		SellerSKU: "MLB-SKU-1", EAN: "7891234567895", Title: "Furadeira Bosch 550W", FetchedAt: now,
 	}
 	matcher := &stubProductMatcher{results: map[string][]internalreaddomain.ProductCandidate{
-		"sku:MLB-SKU-1":       {{InternalProductID: canonicalIDPtr(100), Name: "Furadeira Bosch 550W"}},
-		"ean:7891234567895":   {{InternalProductID: canonicalIDPtr(100), Name: "Furadeira Bosch 550W"}},
+		"sku:MLB-SKU-1":     {{InternalProductID: canonicalIDPtr(100), Name: "Furadeira Bosch 550W"}},
+		"ean:7891234567895": {{InternalProductID: canonicalIDPtr(100), Name: "Furadeira Bosch 550W"}},
 	}}
 
 	candidate := generateSingle(t, snapshot, matcher, now)
@@ -398,9 +398,11 @@ func TestCase1ConcordantSKUAndEANYieldsAltaAccept(t *testing.T) {
 	assertMandatoryUnavailableReasons(t, candidate.Reasons)
 }
 
-// Case 2 — SKU-ALONE-MEDIA: seller_sku matches, EAN absent from the
-// snapshot ⇒ máximo REVIEW (EAN-absent binding, never auto-ACCEPT).
-func TestCase2SellerSKUAloneWithoutEANYieldsMediaReview(t *testing.T) {
+// Case 2 — SKU-ALONE: seller_sku matches, EAN absent from the snapshot. D-121-2
+// moved this to the confirmation queue: one anchor resolved one product and
+// nothing contradicts it, but nothing corroborates it either, so a human says
+// yes — never the machine.
+func TestCase2SellerSKUAloneWithoutEANYieldsMediaConfirm(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 7, 18, 9, 5, 0, 0, time.UTC)
 	snapshot := productlinksdomain.ListingSnapshot{
@@ -416,8 +418,8 @@ func TestCase2SellerSKUAloneWithoutEANYieldsMediaReview(t *testing.T) {
 	if candidate.ConfidenceBand != productlinksdomain.LinkCandidateConfidenceBandMedia {
 		t.Fatalf("confidence_band=%s, want MEDIA", candidate.ConfidenceBand)
 	}
-	if candidate.MatchStatus != productlinksdomain.LinkCandidateMatchStatusReview {
-		t.Fatalf("match_status=%s, want REVIEW", candidate.MatchStatus)
+	if candidate.MatchStatus != productlinksdomain.LinkCandidateMatchStatusConfirm {
+		t.Fatalf("match_status=%s, want CONFIRM", candidate.MatchStatus)
 	}
 	if _, ok := findReason(candidate.Reasons, "seller_sku", productlinksdomain.LinkCandidateReasonDirectionFor); !ok {
 		t.Fatalf("reasons=%#v, want seller_sku FOR", candidate.Reasons)
@@ -426,15 +428,17 @@ func TestCase2SellerSKUAloneWithoutEANYieldsMediaReview(t *testing.T) {
 	if !ok {
 		t.Fatalf("reasons=%#v, want ean UNAVAILABLE", candidate.Reasons)
 	}
-	if !strings.Contains(eanReason.Detail, "ausente") {
-		t.Fatalf("ean reason detail=%q, want it to explain EAN ausente ⇒ máximo REVIEW", eanReason.Detail)
+	// M05-C14/AC-11: the warning names the anchor that is missing. A generic
+	// "sem corroboração" would not tell the operator what confirming supplies.
+	if eanReason.Detail != "sem EAN para corroborar o CODPROD" {
+		t.Fatalf("ean reason detail=%q, want the missing anchor named", eanReason.Detail)
 	}
 	assertMandatoryUnavailableReasons(t, candidate.Reasons)
 }
 
 // Case 3 — EAN-ALONE-MEDIA: seller_sku has no match, EAN corroborates
 // (unproved) a single codprod.
-func TestCase3EANAloneYieldsMediaReview(t *testing.T) {
+func TestCase3EANAloneYieldsMediaConfirm(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 7, 18, 9, 10, 0, 0, time.UTC)
 	snapshot := productlinksdomain.ListingSnapshot{
@@ -450,14 +454,18 @@ func TestCase3EANAloneYieldsMediaReview(t *testing.T) {
 	if candidate.ConfidenceBand != productlinksdomain.LinkCandidateConfidenceBandMedia {
 		t.Fatalf("confidence_band=%s, want MEDIA", candidate.ConfidenceBand)
 	}
-	if candidate.MatchStatus != productlinksdomain.LinkCandidateMatchStatusReview {
-		t.Fatalf("match_status=%s, want REVIEW", candidate.MatchStatus)
+	if candidate.MatchStatus != productlinksdomain.LinkCandidateMatchStatusConfirm {
+		t.Fatalf("match_status=%s, want CONFIRM", candidate.MatchStatus)
 	}
 	if _, ok := findReason(candidate.Reasons, "ean", productlinksdomain.LinkCandidateReasonDirectionFor); !ok {
 		t.Fatalf("reasons=%#v, want ean FOR (unproved)", candidate.Reasons)
 	}
-	if _, ok := findReason(candidate.Reasons, "seller_sku", productlinksdomain.LinkCandidateReasonDirectionUnavailable); !ok {
+	skuReason, ok := findReason(candidate.Reasons, "seller_sku", productlinksdomain.LinkCandidateReasonDirectionUnavailable)
+	if !ok {
 		t.Fatalf("reasons=%#v, want seller_sku UNAVAILABLE", candidate.Reasons)
+	}
+	if !strings.HasPrefix(skuReason.Detail, "sem CODPROD para corroborar o EAN") {
+		t.Fatalf("seller_sku reason detail=%q, want the missing anchor named", skuReason.Detail)
 	}
 	assertMandatoryUnavailableReasons(t, candidate.Reasons)
 }
@@ -498,7 +506,7 @@ func TestCase4TitleOnlyYieldsBaixaReview(t *testing.T) {
 // Case 5 — SKU-EAN-CONFLICT-REJECT: seller_sku and ean point at different
 // codprod. Both candidates are BAIXA/REJECT; each cites its own anchor FOR
 // and the other anchor AGAINST.
-func TestCase5SKUEANConflictYieldsBaixaRejectBothSides(t *testing.T) {
+func TestCase5SKUEANConflictYieldsBaixaReviewBothSides(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 7, 18, 9, 20, 0, 0, time.UTC)
 	snapshot := productlinksdomain.ListingSnapshot{
@@ -527,8 +535,10 @@ func TestCase5SKUEANConflictYieldsBaixaRejectBothSides(t *testing.T) {
 		if candidate.ConfidenceBand != productlinksdomain.LinkCandidateConfidenceBandBaixa {
 			t.Fatalf("candidate=%#v, want BAIXA", candidate)
 		}
-		if candidate.MatchStatus != productlinksdomain.LinkCandidateMatchStatusReject {
-			t.Fatalf("candidate=%#v, want REJECT", candidate)
+		// AC-08 (D-121): in a conflict neither anchor wins — both products go to
+		// the operator, and neither side is quietly discarded as REJECT.
+		if candidate.MatchStatus != productlinksdomain.LinkCandidateMatchStatusReview {
+			t.Fatalf("candidate=%#v, want REVIEW", candidate)
 		}
 		assertMandatoryUnavailableReasons(t, candidate.Reasons)
 		switch *candidate.InternalProductID {
@@ -620,9 +630,10 @@ func TestCase7VoltageHardNegativeCapsBaixaReject(t *testing.T) {
 	assertMandatoryUnavailableReasons(t, candidate.Reasons)
 }
 
-// Case 8 — NO-CANDIDATE: seller_sku/ean/title all fail to resolve. Honest,
-// non-empty reasons — never an empty row.
-func TestCase8NoCandidateYieldsZeroConfidenceNoCandidate(t *testing.T) {
+// Case 8 — NO ANCHOR RESOLVED: seller_sku/ean/title all fail to resolve.
+// M05-C5: the listing goes to review with the reasons spelled out — the
+// operator has to see WHY the matcher had nothing, never an empty row.
+func TestCase8NoAnchorResolvedYieldsZeroConfidenceReview(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 7, 18, 9, 35, 0, 0, time.UTC)
 	snapshot := productlinksdomain.ListingSnapshot{
@@ -636,8 +647,8 @@ func TestCase8NoCandidateYieldsZeroConfidenceNoCandidate(t *testing.T) {
 	if candidate.Confidence != 0 {
 		t.Fatalf("confidence=%d, want 0", candidate.Confidence)
 	}
-	if candidate.MatchStatus != productlinksdomain.LinkCandidateMatchStatusNoCandidate {
-		t.Fatalf("match_status=%s, want NO_CANDIDATE", candidate.MatchStatus)
+	if candidate.MatchStatus != productlinksdomain.LinkCandidateMatchStatusReview {
+		t.Fatalf("match_status=%s, want REVIEW", candidate.MatchStatus)
 	}
 	if _, ok := findReason(candidate.Reasons, "seller_sku", productlinksdomain.LinkCandidateReasonDirectionUnavailable); !ok {
 		t.Fatalf("reasons=%#v, want seller_sku UNAVAILABLE", candidate.Reasons)

@@ -1046,7 +1046,16 @@ export type ProductLinkCandidateMatchInput = "manual" | "seller_sku" | "ean" | "
 
 export type ProductLinkConfidenceBand = "ALTA" | "MEDIA" | "BAIXA";
 
-export type ProductLinkMatchStatus = "ACCEPT" | "REVIEW" | "REJECT" | "NO_CANDIDATE";
+/** CONFIRM is the confirmation queue (D-121-2): one anchor resolved a single
+ * product with nothing against it and nothing corroborating it, so it waits for
+ * a human yes. Distinct from REVIEW, which means the anchors disagree or are
+ * ambiguous — the two are counted and filtered separately. */
+export type ProductLinkMatchStatus =
+  | "ACCEPT"
+  | "REVIEW"
+  | "REJECT"
+  | "NO_CANDIDATE"
+  | "CONFIRM";
 
 export type ProductLinkReasonDirection = "FOR" | "AGAINST" | "UNAVAILABLE";
 

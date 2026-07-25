@@ -192,6 +192,83 @@ func (s *ResolutionService) ApproveCandidate(ctx context.Context, input ApproveC
 	return domain.ProductLinkResolutionResult{Link: result.Link, Audit: result.Audit}, nil
 }
 
+// AutoApproveCandidateInput is the corroborated candidate the generator judged
+// automatic, plus the collision count IT read when it judged so. The count is
+// carried, never re-derived: re-reading the ERP now would record a different
+// moment's fact in a row that claims to describe the decision.
+type AutoApproveCandidateInput struct {
+	Candidate            domain.LinkCandidate
+	CollisionsAtDecision int
+}
+
+// AutoApproveCandidate applies the single automatic path (D-121-2, ADR-05
+// amended): CODPROD and EAN resolving the same product, with no hard negative.
+// It runs the SAME transition machine as ApproveCandidate — same link, same
+// audit row, same E10 write in the same transaction — and differs only in who
+// decided: actor=system, rule=concordant_codprod_ean.
+//
+// It never overrides a decision already in force. A link the operator resolved
+// keeps their answer (M05-C10), and a re-run over an already auto-approved link
+// writes nothing rather than a fresh row per sync. Reports whether it approved.
+func (s *ResolutionService) AutoApproveCandidate(ctx context.Context, input AutoApproveCandidateInput) (bool, error) {
+	if s.workflows == nil {
+		return false, errors.New("PRODUCT_LINKS_RESOLUTION_NOT_CONFIGURED")
+	}
+	candidate := input.Candidate
+	if candidate.MatchStatus != domain.LinkCandidateMatchStatusAccept {
+		return false, errors.New("PRODUCT_LINKS_AUTO_APPROVE_NOT_CORROBORATED")
+	}
+	if candidate.InternalProductID == nil {
+		return false, errors.New("PRODUCT_LINKS_CANDIDATE_NOT_RESOLVABLE")
+	}
+	if err := domain.ValidateInternalProductID(*candidate.InternalProductID); err != nil {
+		return false, err
+	}
+	identity := domain.ListingIdentity{
+		InstallationID:      candidate.InstallationID,
+		ProviderItemID:      candidate.ProviderItemID,
+		ProviderVariationID: candidate.ProviderVariationID,
+	}
+	decisions, err := s.workflows.ListDecisionsForLink(ctx, identity)
+	if err != nil {
+		return false, err
+	}
+	for _, decision := range decisions {
+		if decision.SupersededBy == "" {
+			return false, nil
+		}
+	}
+	current, found, err := s.workflows.GetProductLink(ctx, identity)
+	if err != nil {
+		return false, err
+	}
+	fallbackState := domain.ProductLinkStateNone
+	if !found {
+		fallbackState = candidateStateToProductLinkState(candidate.State)
+	}
+	collisions := input.CollisionsAtDecision
+	result := s.buildTransition(current, found, fallbackState, buildResolvedLinkInput{
+		InstallationID:        candidate.InstallationID,
+		ProviderCode:          candidate.ProviderCode,
+		ProviderItemID:        candidate.ProviderItemID,
+		ProviderVariationID:   candidate.ProviderVariationID,
+		SourceCandidateID:     candidate.CandidateID,
+		InternalProductID:     candidate.InternalProductID,
+		InternalProductName:   candidate.InternalProductName,
+		InternalReferenceCode: candidate.InternalReferenceCode,
+		Action:                domain.ProductLinkActionApproveCandidate,
+		Reason:                "auto-vínculo: CODPROD e EAN concordantes",
+		Actor:                 domain.ActorMetadata{ActorType: "system", ActorID: "auto_linker"},
+		DecisionRule:          domain.DecisionRuleConcordantCodprodEAN,
+		DecisionActor:         domain.DecisionActorSystem,
+		CollisionsAtDecision:  &collisions,
+	})
+	if err := s.workflows.ApplyProductLinkTransition(ctx, result); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 func (s *ResolutionService) RejectListing(ctx context.Context, input RejectListingInput) (domain.ProductLinkResolutionResult, error) {
 	if s.workflows == nil {
 		return domain.ProductLinkResolutionResult{}, errors.New("PRODUCT_LINKS_RESOLUTION_NOT_CONFIGURED")

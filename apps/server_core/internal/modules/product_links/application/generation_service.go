@@ -20,18 +20,28 @@ type ProductMatcher interface {
 	FindProductsForLinking(ctx context.Context, input internalreadports.FindProductsInput) ([]internalreaddomain.ProductCandidate, error)
 }
 
+// LinkAutoApprover applies the one automatic path (D-121-2): a candidate whose
+// CODPROD and EAN resolved the same product. It is an interface so generation
+// stays testable without a workflow store, and optional so a deployment that
+// has not wired it still generates candidates — it just approves none.
+type LinkAutoApprover interface {
+	AutoApproveCandidate(ctx context.Context, input AutoApproveCandidateInput) (bool, error)
+}
+
 type GenerationService struct {
-	snapshots ports.ListingSnapshotReader
-	matcher   ProductMatcher
-	store     ports.LinkCandidateStore
-	now       func() time.Time
+	snapshots    ports.ListingSnapshotReader
+	matcher      ProductMatcher
+	store        ports.LinkCandidateStore
+	autoApprover LinkAutoApprover
+	now          func() time.Time
 }
 
 type GenerationServiceConfig struct {
-	Snapshots ports.ListingSnapshotReader
-	Matcher   ProductMatcher
-	Store     ports.LinkCandidateStore
-	Now       func() time.Time
+	Snapshots    ports.ListingSnapshotReader
+	Matcher      ProductMatcher
+	Store        ports.LinkCandidateStore
+	AutoApprover LinkAutoApprover
+	Now          func() time.Time
 }
 
 type GenerateLinkCandidatesInput struct {
@@ -50,10 +60,11 @@ func NewGenerationService(cfg GenerationServiceConfig) *GenerationService {
 		now = func() time.Time { return time.Now().UTC() }
 	}
 	return &GenerationService{
-		snapshots: cfg.Snapshots,
-		matcher:   cfg.Matcher,
-		store:     cfg.Store,
-		now:       now,
+		snapshots:    cfg.Snapshots,
+		matcher:      cfg.Matcher,
+		store:        cfg.Store,
+		autoApprover: cfg.AutoApprover,
+		now:          now,
 	}
 }
 
@@ -79,6 +90,7 @@ func (s *GenerationService) GenerateLinkCandidates(ctx context.Context, input Ge
 
 	identities := make([]domain.ListingIdentity, 0, len(snapshots))
 	candidates := make([]domain.LinkCandidate, 0, len(snapshots))
+	pendingApprovals := make([]autoApproval, 0, len(snapshots))
 	for _, snapshot := range snapshots {
 		identities = append(identities, domain.ListingIdentity{
 			InstallationID:      installationID,
@@ -86,15 +98,30 @@ func (s *GenerationService) GenerateLinkCandidates(ctx context.Context, input Ge
 			ProviderVariationID: snapshot.ProviderVariationID,
 		})
 
-		generated, err := s.generateForSnapshot(ctx, snapshot)
+		generated, approvals, err := s.generateForSnapshot(ctx, snapshot)
 		if err != nil {
 			return domain.LinkCandidateGenerationResult{}, classifyMatcherError(err)
 		}
 		candidates = append(candidates, generated...)
+		pendingApprovals = append(pendingApprovals, approvals...)
 	}
 
 	if err := s.store.ReplaceLinkCandidates(ctx, installationID, identities, candidates); err != nil {
 		return domain.LinkCandidateGenerationResult{}, err
+	}
+
+	// Auto-approval runs only after the candidates are persisted: the link it
+	// writes points at a candidate row, and approving against a candidate set
+	// that failed to store would leave a link whose evidence does not exist.
+	if s.autoApprover != nil {
+		for _, approval := range pendingApprovals {
+			if _, err := s.autoApprover.AutoApproveCandidate(ctx, AutoApproveCandidateInput{
+				Candidate:            approval.Candidate,
+				CollisionsAtDecision: approval.Collisions,
+			}); err != nil {
+				return domain.LinkCandidateGenerationResult{}, err
+			}
+		}
 	}
 
 	return domain.LinkCandidateGenerationResult{
@@ -119,34 +146,58 @@ func (s *GenerationService) ListLinkCandidates(ctx context.Context, input ListLi
 	return s.store.ListLinkCandidates(ctx, installationID, limit)
 }
 
-func (s *GenerationService) generateForSnapshot(ctx context.Context, snapshot domain.ListingSnapshot) ([]domain.LinkCandidate, error) {
+func (s *GenerationService) generateForSnapshot(ctx context.Context, snapshot domain.ListingSnapshot) ([]domain.LinkCandidate, []autoApproval, error) {
 	now := s.now().UTC()
 
 	skuMatches, err := s.findProducts(ctx, snapshot.SellerSKU, domain.LinkCandidateMatchInputSellerSKU)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	eanMatches, err := s.findProducts(ctx, snapshot.EAN, domain.LinkCandidateMatchInputEAN)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	exactCandidates := buildExactCandidates(snapshot, skuMatches, eanMatches, now)
 	if len(exactCandidates) > 0 {
-		return exactCandidates, nil
+		return exactCandidates, autoApprovals(exactCandidates, skuMatches), nil
 	}
 
 	titleMatches, err := s.findProducts(ctx, snapshot.Title, domain.LinkCandidateMatchInputTitle)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if len(titleMatches.Products) > 0 {
-		return buildCandidatesFromProducts(snapshot, titleMatches.Products, domain.LinkCandidateStateTitleMatch, domain.LinkCandidateMatchInputTitle, snapshot.Title, now), nil
+		return buildCandidatesFromProducts(snapshot, titleMatches.Products, domain.LinkCandidateStateTitleMatch, domain.LinkCandidateMatchInputTitle, snapshot.Title, now), nil, nil
 	}
 
 	unresolved := newCandidate(snapshot, domain.LinkCandidateStateUnresolved, domain.LinkCandidateMatchInputNone, "", internalreaddomain.ProductCandidate{}, now)
-	applyNoCandidateScore(&unresolved)
-	return []domain.LinkCandidate{unresolved}, nil
+	applyUnresolvedScore(&unresolved)
+	return []domain.LinkCandidate{unresolved}, nil, nil
+}
+
+// autoApproval is a candidate the generator judged corroborated, carrying the
+// collision count the generator itself read at that moment.
+type autoApproval struct {
+	Candidate  domain.LinkCandidate
+	Collisions int
+}
+
+// autoApprovals selects the candidates eligible for the automatic path. ACCEPT
+// is reachable only from buildConcordantCandidate — CODPROD and EAN resolving
+// the SAME single product with no hard negative — so this reads the generator's
+// own verdict instead of re-deriving it. The collision count is likewise the
+// generator's own reading (len of the anchor's match set at candidate time),
+// never a second count computed here.
+func autoApprovals(candidates []domain.LinkCandidate, skuMatches productMatchResult) []autoApproval {
+	approvals := make([]autoApproval, 0, len(candidates))
+	for _, candidate := range candidates {
+		if candidate.MatchStatus != domain.LinkCandidateMatchStatusAccept {
+			continue
+		}
+		approvals = append(approvals, autoApproval{Candidate: candidate, Collisions: len(skuMatches.Products)})
+	}
+	return approvals
 }
 
 type productMatchResult struct {
@@ -207,8 +258,7 @@ func buildExactCandidates(snapshot domain.ListingSnapshot, skuMatches, eanMatche
 	}
 
 	if len(skuMatches.Products) > 1 || len(eanMatches.Products) > 1 {
-		conflictProducts := uniqueProducts(append(slices.Clone(skuMatches.Products), eanMatches.Products...))
-		return buildConflictCandidates(snapshot, conflictProducts, skuMatches, eanMatches, now)
+		return buildCollisionCandidates(snapshot, skuMatches, eanMatches, now)
 	}
 
 	if len(skuMatches.Products) == 1 {
@@ -242,7 +292,46 @@ func buildConflictCandidates(snapshot domain.ListingSnapshot, products []interna
 	}
 	if len(candidates) == 0 {
 		candidate := newCandidate(snapshot, domain.LinkCandidateStateConflict, domain.LinkCandidateMatchInputNone, "", internalreaddomain.ProductCandidate{}, now)
-		applyNoCandidateScore(&candidate)
+		applyUnresolvedScore(&candidate)
+		candidates = append(candidates, candidate)
+	}
+	return candidates
+}
+
+// buildCollisionCandidates handles an anchor that resolved MORE than one
+// product. The anchor decided nothing — it named a set — so every product in
+// that set is offered for review and none of them is corroborated (D-121:
+// segurança > cobertura). A second anchor that did resolve a single product is
+// still offered, but blocked from confirmation: corroboration against an
+// ambiguous anchor is not corroboration.
+func buildCollisionCandidates(snapshot domain.ListingSnapshot, skuMatches, eanMatches productMatchResult, now time.Time) []domain.LinkCandidate {
+	anchors := []struct {
+		result     productMatchResult
+		matchInput domain.LinkCandidateMatchInput
+		state      domain.LinkCandidateState
+		name       string
+		other      string
+	}{
+		{skuMatches, domain.LinkCandidateMatchInputSellerSKU, domain.LinkCandidateStateExactSKU, "seller_sku", "ean"},
+		{eanMatches, domain.LinkCandidateMatchInputEAN, domain.LinkCandidateStateExactEAN, "ean", "seller_sku"},
+	}
+	candidates := make([]domain.LinkCandidate, 0, len(skuMatches.Products)+len(eanMatches.Products))
+	for index, anchor := range anchors {
+		otherCount := len(anchors[1-index].result.Products)
+		for _, product := range uniqueProducts(anchor.result.Products) {
+			productID, _ := canonicalProductID(product)
+			candidate := newCandidate(snapshot, domain.LinkCandidateStateConflict, anchor.matchInput, anchor.result.InputValue, product, now)
+			if len(anchor.result.Products) > 1 {
+				applyCollisionScore(&candidate, anchor.name, len(anchor.result.Products), productIDsExcept(anchor.result.Products, productID))
+			} else {
+				applyAmbiguousCorroborationScore(&candidate, anchor.name, productID, anchor.other, otherCount)
+			}
+			candidates = append(candidates, candidate)
+		}
+	}
+	if len(candidates) == 0 {
+		candidate := newCandidate(snapshot, domain.LinkCandidateStateUnresolved, domain.LinkCandidateMatchInputNone, "", internalreaddomain.ProductCandidate{}, now)
+		applyUnresolvedScore(&candidate)
 		candidates = append(candidates, candidate)
 	}
 	return candidates
@@ -373,20 +462,29 @@ func applySingleAnchorScore(candidate *domain.LinkCandidate, snapshot domain.Lis
 
 	switch state {
 	case domain.LinkCandidateStateExactSKU:
-		confidence, band, status = 70, domain.LinkCandidateConfidenceBandMedia, domain.LinkCandidateMatchStatusReview
-		eanDetail := "EAN ausente ⇒ máximo REVIEW"
+		// D-121-2: one anchor resolved one product and nothing contradicts it,
+		// but nothing corroborates it either — that is the confirmation queue,
+		// not an automatic link and not a review. The warning names the anchor
+		// that is missing, so the operator knows what they are supplying by
+		// confirming.
+		confidence, band, status = 70, domain.LinkCandidateConfidenceBandMedia, domain.LinkCandidateMatchStatusConfirm
+		eanDetail := "sem EAN para corroborar o CODPROD"
 		if strings.TrimSpace(snapshot.EAN) != "" {
-			eanDetail = "EAN presente mas sem correspondência ⇒ máximo REVIEW"
+			eanDetail = "sem EAN para corroborar o CODPROD: o EAN do anúncio não casa nenhum produto"
 		}
 		reasons = []domain.LinkCandidateReason{
 			{Anchor: "seller_sku", Direction: domain.LinkCandidateReasonDirectionFor, Detail: "seller_sku resolve exato para codprod"},
 			{Anchor: "ean", Direction: domain.LinkCandidateReasonDirectionUnavailable, Detail: eanDetail},
 		}
 	case domain.LinkCandidateStateExactEAN:
-		confidence, band, status = 60, domain.LinkCandidateConfidenceBandMedia, domain.LinkCandidateMatchStatusReview
+		confidence, band, status = 60, domain.LinkCandidateConfidenceBandMedia, domain.LinkCandidateMatchStatusConfirm
+		skuDetail := "sem CODPROD para corroborar o EAN"
+		if strings.TrimSpace(snapshot.SellerSKU) != "" {
+			skuDetail = "sem CODPROD para corroborar o EAN: o seller_sku do anúncio não casa nenhum produto"
+		}
 		reasons = []domain.LinkCandidateReason{
 			{Anchor: "ean", Direction: domain.LinkCandidateReasonDirectionFor, Detail: "ean corrobora codprod (unproved)"},
-			{Anchor: "seller_sku", Direction: domain.LinkCandidateReasonDirectionUnavailable, Detail: "seller_sku sem correspondência"},
+			{Anchor: "seller_sku", Direction: domain.LinkCandidateReasonDirectionUnavailable, Detail: skuDetail},
 		}
 	case domain.LinkCandidateStateTitleMatch:
 		confidence, band, status = 35, domain.LinkCandidateConfidenceBandBaixa, domain.LinkCandidateMatchStatusReview
@@ -396,7 +494,7 @@ func applySingleAnchorScore(candidate *domain.LinkCandidate, snapshot domain.Lis
 			{Anchor: "ean", Direction: domain.LinkCandidateReasonDirectionUnavailable, Detail: "ean sem correspondência"},
 		}
 	default:
-		applyNoCandidateScore(candidate)
+		applyUnresolvedScore(candidate)
 		return
 	}
 
@@ -411,21 +509,54 @@ func applySingleAnchorScore(candidate *domain.LinkCandidate, snapshot domain.Lis
 	candidate.Reasons = append(reasons, mandatoryUnavailableReasons()...)
 }
 
+// applyConflictScore scores the CODPROD≠EAN conflict. Neither anchor wins
+// (AC-08, ratified by the operator): both products are offered for review with
+// the disagreement spelled out, and the decision is the operator's.
 func applyConflictScore(candidate *domain.LinkCandidate, ownAnchor, conflictAnchor string, ownProductID int, conflictingIDs []int) {
 	candidate.Confidence = 20
 	candidate.ConfidenceBand = domain.LinkCandidateConfidenceBandBaixa
-	candidate.MatchStatus = domain.LinkCandidateMatchStatusReject
+	candidate.MatchStatus = domain.LinkCandidateMatchStatusReview
 	reasons := []domain.LinkCandidateReason{
 		{Anchor: ownAnchor, Direction: domain.LinkCandidateReasonDirectionFor, Detail: fmt.Sprintf("%s aponta codprod %d", ownAnchor, ownProductID)},
-		{Anchor: conflictAnchor, Direction: domain.LinkCandidateReasonDirectionAgainst, Detail: fmt.Sprintf("%s aponta codprod %s (conflito)", conflictAnchor, formatProductIDs(conflictingIDs))},
+		{Anchor: conflictAnchor, Direction: domain.LinkCandidateReasonDirectionAgainst, Detail: fmt.Sprintf("%s aponta codprod %s (conflito, nenhuma âncora vence)", conflictAnchor, formatProductIDs(conflictingIDs))},
 	}
 	candidate.Reasons = append(reasons, mandatoryUnavailableReasons()...)
 }
 
-func applyNoCandidateScore(candidate *domain.LinkCandidate) {
+// applyCollisionScore scores one product out of a set an ambiguous anchor
+// matched. The anchor named N products, so it identified none of them.
+func applyCollisionScore(candidate *domain.LinkCandidate, anchor string, matchCount int, otherIDs []int) {
+	candidate.Confidence = 20
+	candidate.ConfidenceBand = domain.LinkCandidateConfidenceBandBaixa
+	candidate.MatchStatus = domain.LinkCandidateMatchStatusReview
+	reasons := []domain.LinkCandidateReason{
+		{Anchor: anchor, Direction: domain.LinkCandidateReasonDirectionAgainst, Detail: fmt.Sprintf("%s casa %d produtos no ERP (colisão: também codprod %s) ⇒ âncora ambígua", anchor, matchCount, formatProductIDs(otherIDs))},
+	}
+	candidate.Reasons = append(reasons, mandatoryUnavailableReasons()...)
+}
+
+// applyAmbiguousCorroborationScore scores the anchor that DID resolve a single
+// product on a listing whose other anchor collided. The single anchor is real,
+// but there is nothing to corroborate it against — an ambiguous anchor
+// corroborates nothing — so it is review, never confirmation.
+func applyAmbiguousCorroborationScore(candidate *domain.LinkCandidate, ownAnchor string, ownProductID int, otherAnchor string, otherCount int) {
+	candidate.Confidence = 40
+	candidate.ConfidenceBand = domain.LinkCandidateConfidenceBandBaixa
+	candidate.MatchStatus = domain.LinkCandidateMatchStatusReview
+	reasons := []domain.LinkCandidateReason{
+		{Anchor: ownAnchor, Direction: domain.LinkCandidateReasonDirectionFor, Detail: fmt.Sprintf("%s aponta codprod %d", ownAnchor, ownProductID)},
+		{Anchor: otherAnchor, Direction: domain.LinkCandidateReasonDirectionAgainst, Detail: fmt.Sprintf("%s casa %d produtos no ERP ⇒ não corrobora", otherAnchor, otherCount)},
+	}
+	candidate.Reasons = append(reasons, mandatoryUnavailableReasons()...)
+}
+
+// applyUnresolvedScore scores a listing no anchor could resolve. It is REVIEW
+// with the reason spelled out (M05-C5): the operator has to see WHY the
+// matcher had nothing to offer, never a silent empty row.
+func applyUnresolvedScore(candidate *domain.LinkCandidate) {
 	candidate.Confidence = 0
 	candidate.ConfidenceBand = domain.LinkCandidateConfidenceBandBaixa
-	candidate.MatchStatus = domain.LinkCandidateMatchStatusNoCandidate
+	candidate.MatchStatus = domain.LinkCandidateMatchStatusReview
 	reasons := []domain.LinkCandidateReason{
 		{Anchor: "seller_sku", Direction: domain.LinkCandidateReasonDirectionUnavailable, Detail: "seller_sku sem correspondência"},
 		{Anchor: "ean", Direction: domain.LinkCandidateReasonDirectionUnavailable, Detail: "ean sem correspondência"},
