@@ -1,14 +1,14 @@
 # M-05 auto-vínculo produto↔anúncio — Evidence Pack
 
 Branch `claude/elated-albattani-323511`, worktree `.claude/worktrees/trusting-mayer-a5c8f6`.
-BASE-SHA `e3c081ae43b72af070185939253b745080acf68b`. Chip tip **`275f4299`**.
+BASE-SHA `e3c081ae43b72af070185939253b745080acf68b`. Chip tip **`9ca81428`**.
 
 This pack is updated in place and committed on top of the code it describes, so the tip named
 here is always the last CODE commit; the commit carrying this file is the tip of the branch.
 (Round 2's cold gate raised the mismatch as a blocker — the pack said `5807d634` while the branch
 was at `a4a0ad89`, the docs commit. Naming both is the fix.)
 
-Commits (`git log e3c081ae..275f4299`, all eleven, zero files under `apps/web`):
+Commits (`git log e3c081ae..9ca81428`, all twelve, zero files under `apps/web`):
 
 - `124cd9e8` F-04 — `seller_sku` anchored on `p.CODPROD`, not `p.REFFORN`, with an `IsValidCodprod` validity guard, mirrored in `erp_import/adapters/internalread/`
 - `100f0343` F-03 — E10 decision trail, migration `0082_product_link_decisions.sql`, written in the same transition as the state change
@@ -21,6 +21,7 @@ Commits (`git log e3c081ae..275f4299`, all eleven, zero files under `apps/web`):
 - `e8c4a13e` correctives — round 3 (see **Round-3** below)
 - `27fcdfac` **revert** — round 4 established that two rounds of work on the pending counter rested on a premise that cannot occur; `summary_reader.go` is byte-identical to BASE-SHA again (see **Round-4** below)
 - `275f4299` correctives — round 5, plus the operator's ruling that a machine may corroborate and nothing else (see **Round-5** below)
+- `9ca81428` correctives — round 6: the one defect the refuter found, and the cold gate's NB-1 (see **Round-6** below)
 
 Ruling applied throughout: where any other artifact still says "auto-approve is exclusive to the
 EAN-exact-unique path" or "CODPROD-único auto-aprova", `milestone.md` at BASE-SHA wins
@@ -245,6 +246,41 @@ load-bearing *and* each runs before any other validation, read or write. Restore
 (The `undo` case does not move: its guard sits inside `undoAuditEntry` on a different parameter
 and was proven separately in round 4.)
 
+## Round-6 dual gate (against `275f4299`) → correctives `9ca81428`
+
+**Cold gate: PASS, zero blockers.** Two non-blocking observations, both taken.
+
+| Raised | Disposition |
+|--------|-------------|
+| **NB-1**: `TestARefusedSystemActorSurfacesAsFourHundredNotFiveHundred` covers two of the four operations that now document a `400` (reject, undo) | **Fixed.** All four covered: `approve-candidate`, `manual-resolve`, `reject-listing`, `undo`. 4/4 PASS, each asserting `400` naming `PRODUCT_LINKS_SYSTEM_ACTOR_NOT_PERMITTED`. The manual-resolve case carries `internal_product_id: 10` deliberately — the transport validates that field *before* calling the service, so a zero would short-circuit to `invalid_identity` and the subtest would pass on a 400 with nothing to do with the actor guard. A comment in the test says so. |
+| **NB-2**: it could not do the requested byte-for-byte diff of the two deleted `ProductLinkDecision{}` literals against `newDecisionRow`, having no Bash/git tool, and flagged that as a methodology gap for the hub | **Executed by the chip, since the gate could not.** `git show 27fcdfac:<path>` against HEAD, field by field. Result below. |
+
+**NB-2 — the literal diff, field by field.** Faithful refactor; no field lost, no value changed.
+
+| Field | Old literal (`27fcdfac`) | HEAD |
+|-------|--------------------------|------|
+| identity (undo, `:590-600`) | `target.InstallationID` / `target.ProviderItemID` / `target.ProviderVariationID` | `identity` built from the same three `target.*` fields at `resolution_service.go:523-527`, passed to `newDecisionRow` |
+| identity (reject, `:713-723`) | `typed.InstallationID` / `typed.ProviderItemID` / `typed.ProviderVariationID` | `domain.ListingIdentity{}` built from the same three `typed.*` fields |
+| `LinkID` | `domain.LinkID(...)` over those three values | unchanged, same three values |
+| `CollisionsAtDecision` | **omitted** on both literals → zero value `nil` | `nil` passed explicitly on both paths — the "must stay nil" requirement is preserved, now stated instead of implied |
+| `SupersededBy` | zero | zero |
+| `RuleMatched` / `Actor` | `manual` / `operator` on both | same, now stated at the call site |
+
+**Refuter: REFUTED, with one defect found — and it was mine, in the contract.**
+
+| Raised | Disposition |
+|--------|-------------|
+| **DEFECT**: `openapi.yaml:1568` said a non-positive `internal_product_id` returns `PRODUCT_LINKS_INTERNAL_PRODUCT_INVALID`. It does not. | **Confirmed at source and fixed.** `handleManualResolve` validates the field itself and answers **`invalid_identity`** (`http_handler.go:354-355`) before `ManualResolve` is ever called; the domain code exists but is discarded on this route, and `TestHandleManualResolveRejectsNonPositiveInternalProductID:399` has always asserted `invalid_identity`. I wrote the description from the domain layer without checking what the transport puts on the wire. The description now names the code a client actually receives and says why the domain code does not appear. |
+| Mutation test it ran on its own initiative: `if false { … }` around the `ApproveCandidate` guard | `TestEveryOperatorPathRefusesASystemActor` **failed** with `PRODUCT_LINKS_CANDIDATE_REQUIRED` — an independent reproduction of the chip's own must-fail proof, by a party with no stake in it. Reverted in place, `git diff` clean. |
+| M05-C1..C7 otherwise | Survived. |
+
+Ladders re-run at `9ca81428`: `go build ./...`, `go vet ./...` clean; `go test ./...` 106 packages ok,
+zero FAIL; gofmt clean on the write-set via the CRLF-stripping method (profile §3). The YAML parses
+and the response set for `manualResolveProductLink` is still exactly `['200','400']`; the file
+decodes as UTF-8 with zero replacement characters (24 em-dashes intact) — the `?` glyphs in console
+output are the Windows codepage, not the file. No SDK regeneration: the edit is a `description`
+string, which generates nothing.
+
 ## Deviations reported to the hub
 
 1. **OpenAPI + SDK enum widened** (`marketplace-central.openapi.yaml:6459`, `sdk-runtime/src/index.ts`). M05-C21 requires CONFIRM and REVIEW to be distinct *at the transport read*, so the state must be in the contract; the repo rule that spec and generated SDK land together made this a same-changeset edit. No new endpoint, no FE change, no other enum touched (the market-domain enums at 3447/7618/7777 are deliberately untouched).
@@ -262,3 +298,4 @@ and was proven separately in round 4.)
 13. **OBSERVATION (round 5)** — `applyProductLinkBatch` does NOT return the new `400`. `batch_service.go:195-197` itemizes the refusal as a per-item `failed.cause` and still answers `200`. Nothing is written, so the behaviour is safe, but a machine driving the batch form gets a success status with every item failed. The `400` was deliberately not documented on that operation; the `approve-candidate` description says so explicitly, so the two forms cannot be read as behaving alike.
 14. **RETRO (round 5, mine)** — I defended skipping an OpenAPI change with a factual claim I had not checked, and the claim was false; the commit message of `27fcdfac` carries it into the permanent record. A scope argument is only as good as the fact under it, and "I looked and there is nothing there" is a claim requiring the same evidence as any other. Second instance in this milestone of asserting more than I had verified — rounds 1–3 did it in code comments, this one did it in prose.
 15. **RETRO (mine)** — the round-2 refuter's D1 was a hole I had reasoned myself into: round 1's fix wrote a decision for undo and explicitly declined to for reject, on the ground that "there is no rule to record". `superseded_by` is a fact, not a rule, and I had written a test (`TestRejectingAListingWritesNoDecision`) that encoded the wrong belief — so it could never have caught it. A test written to confirm a decision is not evidence about that decision.
+16. **RETRO (round 6, mine)** — I documented an error code in the OpenAPI contract by reading the layer that *defines* the error rather than the layer that *writes the response*. `handleManualResolve` validates `internal_product_id` itself and never lets the domain code reach the wire. Third instance in this milestone of the same failure shape: round 5's was a false scope fact, rounds 1–3's were false code comments, this one is a false contract. The general rule the milestone keeps re-teaching: **a claim about observable behaviour must be read off the code path that produces the observation, not off the code path that names it.** A test asserting the true value (`invalid_identity`) was already sitting in the same package.
