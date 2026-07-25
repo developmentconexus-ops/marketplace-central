@@ -8,6 +8,7 @@ import type {
   InventoryStockRiskItem,
 } from "@marketplace-central/sdk-runtime";
 import {
+  formatDateTime,
   FreshnessIndicator,
   inventoryQueryKeys,
   queryKeyNamespaces,
@@ -60,6 +61,8 @@ function normalizeError(error: unknown, fallback: string): string {
   return fallback;
 }
 
+// "Oversell"/"Undersell" stay as-is: they are the operator's working vocabulary
+// for the drift direction. Everything else reads in pt-BR.
 function stateLabel(state: InventoryStockRiskItem["state"]): string {
   switch (state) {
     case "oversell":
@@ -67,43 +70,90 @@ function stateLabel(state: InventoryStockRiskItem["state"]): string {
     case "undersell":
       return "Undersell";
     case "stale":
-      return "Stale";
+      return "Desatualizado";
     case "conflict":
       return "Conflito";
     case "unresolved":
-      return "Sem vinculo";
+      return "Sem vínculo";
     case "ineligible":
-      return "Ineligivel";
+      return "Inelegível";
     case "unsupported":
       return "Sem suporte";
     default:
-      return "Healthy";
+      return "Saudável";
   }
 }
 
 function stateTone(state: InventoryStockRiskItem["state"]): string {
   switch (state) {
     case "oversell":
-      return "bg-red-100 text-red-700";
-    case "undersell":
-      return "bg-amber-100 text-amber-800";
-    case "stale":
-      return "bg-slate-200 text-slate-700";
     case "conflict":
-      return "bg-rose-100 text-rose-700";
+      return "bg-warn-soft text-warn";
+    case "undersell":
     case "unresolved":
-      return "bg-orange-100 text-orange-700";
+      return "bg-warn-soft text-warn";
+    case "stale":
     case "ineligible":
-      return "bg-violet-100 text-violet-700";
     case "unsupported":
-      return "bg-slate-100 text-slate-700";
+      return "bg-surface-2 text-muted";
     default:
-      return "bg-emerald-100 text-emerald-700";
+      return "bg-accent-soft text-accent-ink";
+  }
+}
+
+function linkStateLabel(linkState: InventoryStockRiskItem["link_state"]): string {
+  switch (linkState) {
+    case "resolved":
+      return "Vinculado";
+    case "conflict":
+      return "Conflito";
+    case "rejected":
+      return "Rejeitado";
+    default:
+      return "Sem vínculo";
   }
 }
 
 function actionabilityLabel(actionable: boolean): string {
-  return actionable ? "Actionable" : "Blocked";
+  return actionable ? "Acionável" : "Bloqueado";
+}
+
+// The action state comes from the backend enum; an unmapped value is shown raw
+// rather than guessed at.
+function actionStateLabel(state: string): string {
+  switch (state) {
+    case "applied":
+      return "aplicada";
+    case "failed":
+      return "falhou";
+    case "pending":
+      return "pendente";
+    default:
+      return state;
+  }
+}
+
+// The API's blocking reason carries a stable code plus an English engineering
+// message. The code is the contract, so the screen translates it; an unmapped
+// code falls back to the API message instead of inventing copy.
+const blockingReasonCopy: Record<string, string> = {
+  unresolved_link: "Anúncio sem vínculo com um produto do ERP.",
+  rejected_link: "O vínculo com o produto do ERP foi rejeitado.",
+  conflict_link: "O vínculo com o produto do ERP está em conflito.",
+  missing_internal_product_link: "O vínculo está resolvido mas não aponta para um produto do ERP.",
+  missing_internal_stock: "O ERP não informou o estoque disponível deste produto.",
+  missing_provider_quantity: "O Mercado Livre não informou a quantidade deste anúncio.",
+  stale_internal_source: "O estoque do ERP está mais antigo que o permitido pela política.",
+  stale_provider_source: "O estoque do Mercado Livre está mais antigo que o permitido pela política.",
+  ineligible_product: "Produto fora da política de Stock Seguro.",
+};
+
+function blockingReasonText(reason: { code?: string; message?: string } | undefined): string | null {
+  if (!reason) {
+    return null;
+  }
+  const mapped = reason.code ? blockingReasonCopy[reason.code] : undefined;
+  return mapped ?? reason.message ?? null;
 }
 
 function itemKey(item: InventoryStockRiskItem): string {
@@ -124,8 +174,10 @@ export function StockSeguroPage({ client, installations }: StockSeguroPageProps)
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [openConfirmKey, setOpenConfirmKey] = useState<string | null>(null);
-  const [operatorName, setOperatorName] = useState("Leandro");
-  const [reason, setReason] = useState("Stock Seguro manual apply");
+  // The apply is audited under whoever approves it, so the operator types their
+  // own name — a prefilled one would attribute the action to someone else.
+  const [operatorName, setOperatorName] = useState("");
+  const [reason, setReason] = useState("Aplicação manual Stock Seguro");
 
   const selectedInstallationID = searchParams.get("installation") ?? "";
   const selectedState = (searchParams.get("state") ?? "") as InventoryStockRiskItem["state"] | "";
@@ -159,13 +211,15 @@ export function StockSeguroPage({ client, installations }: StockSeguroPageProps)
       setState("ready");
     }
     if (riskQuery.error) {
-      setError(normalizeError(riskQuery.error, "Failed to load stock risks."));
+      setError(normalizeError(riskQuery.error, "Não foi possível carregar os riscos de estoque."));
       setState("error");
     }
   }, [riskQuery.data, riskQuery.error]);
 
   const displayedItems = riskQuery.data?.items ?? items;
-  const displayedError = error ?? (riskQuery.error ? normalizeError(riskQuery.error, "Failed to load stock risks.") : null);
+  const displayedError =
+    error ??
+    (riskQuery.error ? normalizeError(riskQuery.error, "Não foi possível carregar os riscos de estoque.") : null);
   const displayedState: LoadState = riskQuery.error
     ? "error"
     : riskQuery.data
@@ -194,7 +248,7 @@ export function StockSeguroPage({ client, installations }: StockSeguroPageProps)
   const selected = displayedItems[0];
 
   async function applyAction(item: InventoryStockRiskItem) {
-    if (item.recommended_quantity == null) {
+    if (item.recommended_quantity == null || !operatorName.trim()) {
       return;
     }
     const key = itemKey(item);
@@ -219,10 +273,10 @@ export function StockSeguroPage({ client, installations }: StockSeguroPageProps)
           },
         },
       });
-      setActionMessage(`Action ${result.action.state} for ${item.identity.provider_item_id}.`);
+      setActionMessage(`Ação ${actionStateLabel(result.action.state)} para ${item.identity.provider_item_id}.`);
       setOpenConfirmKey(null);
     } catch (runError) {
-      setActionError(normalizeError(runError, "Failed to apply stock action."));
+      setActionError(normalizeError(runError, "Não foi possível aplicar a ação de estoque."));
     } finally {
       setPendingKey(null);
     }
@@ -250,99 +304,133 @@ export function StockSeguroPage({ client, installations }: StockSeguroPageProps)
     setSearchParams(next);
   }
 
+  const selectClass = "w-full rounded-control border border-border bg-surface px-3 py-2 text-sm text-ink";
+
   return (
-    <div className="space-y-6">
-      <section className="rounded-[28px] border border-slate-200 bg-[linear-gradient(135deg,#10233f_0%,#17325a_50%,#234c7f_100%)] px-6 py-7 text-white shadow-sm">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-2xl space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-cyan-200">Inventory</p>
-            <h1 className="text-3xl font-semibold tracking-tight">Stock Seguro</h1>
-            <p className="text-sm leading-6 text-slate-200">
-              Scan persisted Mercado Livre stock drift, inspect source evidence, and only apply explicit manual corrections.
-            </p>
-            <p className="text-sm text-cyan-100"><FreshnessIndicator asOf={riskQuery.data?.as_of} /></p>
-          </div>
-          <div className="grid gap-3 rounded-2xl border border-white/15 bg-white/8 p-4 sm:grid-cols-2 xl:min-w-[460px]">
-            <Button variant="secondary" disabled={!selectedInstallationID || riskQuery.isFetching} loading={riskQuery.isFetching} onClick={() => void refreshRisks()}>Refresh</Button>
-            <label className="space-y-1 text-sm">
-              <span className="block text-slate-300">Installation</span>
-              <select
-                aria-label="Installation"
-                className="w-full rounded-xl border border-white/15 bg-slate-950/40 px-3 py-2 text-sm text-white"
-                value={selectedInstallationID}
-                onChange={(event) => updateFilters({ installation: event.target.value })}
-              >
-                {installations.map((installation) => (
-                  <option key={installation.installation_id} value={installation.installation_id} className="text-slate-900">
-                    {installation.display_name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="space-y-1 text-sm">
-              <span className="block text-slate-300">Risk</span>
-              <select
-                aria-label="Risk filter"
-                className="w-full rounded-xl border border-white/15 bg-slate-950/40 px-3 py-2 text-sm text-white"
-                value={selectedState}
-                onChange={(event) => updateFilters({ state: event.target.value })}
-              >
-                <option value="" className="text-slate-900">All</option>
-                <option value="oversell" className="text-slate-900">Oversell</option>
-                <option value="undersell" className="text-slate-900">Undersell</option>
-                <option value="healthy" className="text-slate-900">Healthy</option>
-                <option value="stale" className="text-slate-900">Stale</option>
-                <option value="conflict" className="text-slate-900">Conflito</option>
-                <option value="unresolved" className="text-slate-900">Sem vinculo</option>
-                <option value="ineligible" className="text-slate-900">Ineligivel</option>
-                <option value="unsupported" className="text-slate-900">Sem suporte</option>
-              </select>
-            </label>
-            <label className="space-y-1 text-sm">
-              <span className="block text-slate-300">Link</span>
-              <select
-                aria-label="Link filter"
-                className="w-full rounded-xl border border-white/15 bg-slate-950/40 px-3 py-2 text-sm text-white"
-                value={selectedLinkState}
-                onChange={(event) => updateFilters({ link_state: event.target.value })}
-              >
-                <option value="" className="text-slate-900">All</option>
-                <option value="resolved" className="text-slate-900">Resolved</option>
-                <option value="conflict" className="text-slate-900">Conflito</option>
-                <option value="unresolved" className="text-slate-900">Sem vinculo</option>
-                <option value="rejected" className="text-slate-900">Rejected</option>
-              </select>
-            </label>
-            <label className="space-y-1 text-sm">
-              <span className="block text-slate-300">Actionability</span>
-              <select
-                aria-label="Actionability filter"
-                className="w-full rounded-xl border border-white/15 bg-slate-950/40 px-3 py-2 text-sm text-white"
-                value={selectedActionability}
-                onChange={(event) => updateFilters({ actionability: event.target.value })}
-              >
-                <option value="" className="text-slate-900">All</option>
-                <option value="actionable" className="text-slate-900">Actionable</option>
-                <option value="blocked" className="text-slate-900">Blocked</option>
-              </select>
-            </label>
-          </div>
+    <div className="space-y-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="max-w-2xl">
+          <p className="text-xs uppercase tracking-[0.2em] text-faint">Estoque</p>
+          <h1 className="text-2xl font-semibold text-ink">Stock Seguro</h1>
+          <p className="text-sm text-muted">
+            Compara o estoque publicado no Mercado Livre com o estoque interno e aplica correções manuais explícitas.
+          </p>
+          <p className="text-sm text-muted">
+            <FreshnessIndicator asOf={riskQuery.data?.as_of} />
+          </p>
         </div>
-      </section>
+        <Button
+          variant="secondary"
+          disabled={!selectedInstallationID || riskQuery.isFetching}
+          loading={riskQuery.isFetching}
+          onClick={() => void refreshRisks()}
+        >
+          Atualizar
+        </Button>
+      </div>
+
+      <SurfaceCard className="rounded-card">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <label className="space-y-1 text-sm text-ink">
+            <span className="block font-medium">Conta</span>
+            <select
+              aria-label="Conta"
+              className={selectClass}
+              value={selectedInstallationID}
+              onChange={(event) => updateFilters({ installation: event.target.value })}
+            >
+              {installations.map((installation) => (
+                <option key={installation.installation_id} value={installation.installation_id}>
+                  {installation.external_account_name?.trim() || installation.display_name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1 text-sm text-ink">
+            <span className="block font-medium">Risco</span>
+            <select
+              aria-label="Filtro de risco"
+              className={selectClass}
+              value={selectedState}
+              onChange={(event) => updateFilters({ state: event.target.value })}
+            >
+              <option value="">Todos</option>
+              <option value="oversell">Oversell</option>
+              <option value="undersell">Undersell</option>
+              <option value="healthy">Saudável</option>
+              <option value="stale">Desatualizado</option>
+              <option value="conflict">Conflito</option>
+              <option value="unresolved">Sem vínculo</option>
+              <option value="ineligible">Inelegível</option>
+              <option value="unsupported">Sem suporte</option>
+            </select>
+          </label>
+          <label className="space-y-1 text-sm text-ink">
+            <span className="block font-medium">Vínculo</span>
+            <select
+              aria-label="Filtro de vínculo"
+              className={selectClass}
+              value={selectedLinkState}
+              onChange={(event) => updateFilters({ link_state: event.target.value })}
+            >
+              <option value="">Todos</option>
+              <option value="resolved">Vinculado</option>
+              <option value="conflict">Conflito</option>
+              <option value="unresolved">Sem vínculo</option>
+              <option value="rejected">Rejeitado</option>
+            </select>
+          </label>
+          <label className="space-y-1 text-sm text-ink">
+            <span className="block font-medium">Ação</span>
+            <select
+              aria-label="Filtro de ação"
+              className={selectClass}
+              value={selectedActionability}
+              onChange={(event) => updateFilters({ actionability: event.target.value })}
+            >
+              <option value="">Todos</option>
+              <option value="actionable">Acionável</option>
+              <option value="blocked">Bloqueado</option>
+            </select>
+          </label>
+        </div>
+      </SurfaceCard>
 
       <section className="grid gap-4 md:grid-cols-4">
-        <SurfaceCard><p className="text-xs uppercase tracking-[0.18em] text-slate-500">Rows</p><p data-testid="stock-summary-total" className="mt-2 text-3xl font-semibold text-slate-900">{summary.total}</p></SurfaceCard>
-        <SurfaceCard><p className="text-xs uppercase tracking-[0.18em] text-slate-500">Actionable</p><p data-testid="stock-summary-actionable" className="mt-2 text-3xl font-semibold text-slate-900">{summary.actionable}</p></SurfaceCard>
-        <SurfaceCard><p className="text-xs uppercase tracking-[0.18em] text-slate-500">Oversell</p><p data-testid="stock-summary-oversell" className="mt-2 text-3xl font-semibold text-slate-900">{summary.oversell}</p></SurfaceCard>
-        <SurfaceCard><p className="text-xs uppercase tracking-[0.18em] text-slate-500">Blockers</p><p data-testid="stock-summary-blockers" className="mt-2 text-3xl font-semibold text-slate-900">{summary.blockers}</p></SurfaceCard>
+        <SurfaceCard>
+          <p className="text-xs uppercase tracking-[0.18em] text-faint">Linhas</p>
+          <p data-testid="stock-summary-total" className="mt-2 text-3xl font-semibold text-ink">{summary.total}</p>
+        </SurfaceCard>
+        <SurfaceCard>
+          <p className="text-xs uppercase tracking-[0.18em] text-faint">Acionáveis</p>
+          <p data-testid="stock-summary-actionable" className="mt-2 text-3xl font-semibold text-ink">{summary.actionable}</p>
+        </SurfaceCard>
+        <SurfaceCard>
+          <p className="text-xs uppercase tracking-[0.18em] text-faint">Oversell</p>
+          <p data-testid="stock-summary-oversell" className="mt-2 text-3xl font-semibold text-ink">{summary.oversell}</p>
+        </SurfaceCard>
+        <SurfaceCard>
+          <p className="text-xs uppercase tracking-[0.18em] text-faint">Bloqueadas</p>
+          <p data-testid="stock-summary-blockers" className="mt-2 text-3xl font-semibold text-ink">{summary.blockers}</p>
+        </SurfaceCard>
       </section>
 
-      {actionError ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{actionError}</div> : null}
-      {actionMessage ? <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{actionMessage}</div> : null}
+      {actionError ? (
+        <div className="rounded-card border border-border bg-warn-soft px-4 py-3 text-sm text-warn">{actionError}</div>
+      ) : null}
+      {actionMessage ? (
+        <div className="rounded-card border border-border bg-accent-soft px-4 py-3 text-sm text-accent-ink">{actionMessage}</div>
+      ) : null}
 
-      {displayedState === "loading" ? <SurfaceCard><p className="text-sm text-slate-600">Loading Stock Seguro...</p></SurfaceCard> : null}
-      {displayedState === "error" && displayedError ? <SurfaceCard><p className="text-sm text-red-700">{displayedError}</p></SurfaceCard> : null}
-      {displayedState === "ready" && displayedItems.length === 0 ? <SurfaceCard><p className="text-sm text-slate-600">No Stock Seguro rows for the selected filters.</p></SurfaceCard> : null}
+      {displayedState === "loading" ? (
+        <SurfaceCard><p className="text-sm text-muted">Carregando Stock Seguro...</p></SurfaceCard>
+      ) : null}
+      {displayedState === "error" && displayedError ? (
+        <SurfaceCard><p className="text-sm text-warn">{displayedError}</p></SurfaceCard>
+      ) : null}
+      {displayedState === "ready" && displayedItems.length === 0 ? (
+        <SurfaceCard><p className="text-sm text-muted">Nenhuma linha de Stock Seguro para os filtros selecionados.</p></SurfaceCard>
+      ) : null}
 
       {displayedState === "ready" && displayedItems.length > 0 ? (
         <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
@@ -351,16 +439,16 @@ export function StockSeguroPage({ client, installations }: StockSeguroPageProps)
               const key = itemKey(item);
               const confirmOpen = openConfirmKey === key;
               return (
-                <SurfaceCard key={key} className="space-y-4 rounded-[24px]">
+                <SurfaceCard key={key} className="space-y-4 rounded-card">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${stateTone(item.state)}`}>{stateLabel(item.state)}</span>
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{actionabilityLabel(item.actionable)}</span>
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{item.link_state}</span>
+                        <span className={`rounded-pill px-3 py-1 text-xs font-semibold ${stateTone(item.state)}`}>{stateLabel(item.state)}</span>
+                        <span className="rounded-pill bg-surface-2 px-3 py-1 text-xs font-semibold text-muted">{actionabilityLabel(item.actionable)}</span>
+                        <span className="rounded-pill bg-surface-2 px-3 py-1 text-xs font-semibold text-muted">{linkStateLabel(item.link_state)}</span>
                       </div>
-                      <h2 className="text-lg font-semibold text-slate-900">{item.title || item.identity.provider_item_id}</h2>
-                      <p className="text-sm text-slate-600">
+                      <h2 className="text-lg font-semibold text-ink">{item.title || item.identity.provider_item_id}</h2>
+                      <p className="text-sm text-muted">
                         {item.identity.provider_item_id}
                         {item.identity.provider_variation_id ? ` / ${item.identity.provider_variation_id}` : ""}
                         {item.internal_reference_code ? ` · ${item.internal_reference_code}` : ""}
@@ -372,54 +460,74 @@ export function StockSeguroPage({ client, installations }: StockSeguroPageProps)
                         disabled={!item.actionable || item.recommended_quantity == null}
                         onClick={() => setOpenConfirmKey(confirmOpen ? null : key)}
                       >
-                        Apply recommended quantity
+                        Aplicar quantidade recomendada
                       </Button>
                     </div>
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-2xl bg-slate-50 p-4">
-                      <p className="text-xs uppercase tracking-[0.16em] text-slate-500">ML quantity</p>
-                      <p className="mt-2 text-2xl font-semibold text-slate-900">{item.provider_quantity ?? "-"}</p>
+                    <div className="rounded-card bg-surface-2 p-4">
+                      <p className="text-xs uppercase tracking-[0.16em] text-faint">Qtd. no ML</p>
+                      <p className="mt-2 text-2xl font-semibold text-ink">{item.provider_quantity ?? "—"}</p>
                     </div>
-                    <div className="rounded-2xl bg-slate-50 p-4">
-                      <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Internal sellable</p>
-                      <p className="mt-2 text-2xl font-semibold text-slate-900">{item.internal_quantity ?? "-"}</p>
+                    <div className="rounded-card bg-surface-2 p-4">
+                      <p className="text-xs uppercase tracking-[0.16em] text-faint">Estoque interno</p>
+                      <p className="mt-2 text-2xl font-semibold text-ink">{item.internal_quantity ?? "—"}</p>
                     </div>
-                    <div className="rounded-2xl bg-slate-50 p-4">
-                      <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Recommended</p>
-                      <p className="mt-2 text-2xl font-semibold text-slate-900">{item.recommended_quantity ?? "-"}</p>
+                    <div className="rounded-card bg-surface-2 p-4">
+                      <p className="text-xs uppercase tracking-[0.16em] text-faint">Recomendado</p>
+                      <p className="mt-2 text-2xl font-semibold text-ink">{item.recommended_quantity ?? "—"}</p>
                     </div>
                   </div>
 
                   {confirmOpen ? (
-                    <div className="rounded-[24px] border border-blue-100 bg-blue-50 p-4">
-                      <p className="text-sm font-medium text-slate-900">Confirm manual apply</p>
-                      <p className="mt-1 text-sm text-slate-600">
-                        This will request ML quantity <strong>{item.recommended_quantity ?? "-"}</strong> for this listing using the current policy evidence.
+                    <div className="rounded-card border border-border bg-surface-2 p-4">
+                      <p className="text-sm font-medium text-ink">Confirmar aplicação manual</p>
+                      <p className="mt-1 text-sm text-muted">
+                        Isto vai pedir ao Mercado Livre a quantidade <strong>{item.recommended_quantity ?? "—"}</strong> para
+                        este anúncio, usando a evidência da política atual.
                       </p>
                       <div className="mt-4 grid gap-3 md:grid-cols-2">
-                        <label className="space-y-1 text-sm text-slate-700">
-                          <span className="block font-medium">Operator</span>
-                          <input className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2" value={operatorName} onChange={(event) => setOperatorName(event.target.value)} />
+                        <label className="space-y-1 text-sm text-ink">
+                          <span className="block font-medium">Operador</span>
+                          <input
+                            className="w-full rounded-control border border-border bg-surface px-3 py-2"
+                            placeholder="Seu nome"
+                            value={operatorName}
+                            onChange={(event) => setOperatorName(event.target.value)}
+                          />
                         </label>
-                        <label className="space-y-1 text-sm text-slate-700">
-                          <span className="block font-medium">Reason</span>
-                          <input className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2" value={reason} onChange={(event) => setReason(event.target.value)} />
+                        <label className="space-y-1 text-sm text-ink">
+                          <span className="block font-medium">Motivo</span>
+                          <input
+                            className="w-full rounded-control border border-border bg-surface px-3 py-2"
+                            value={reason}
+                            onChange={(event) => setReason(event.target.value)}
+                          />
                         </label>
                       </div>
+                      {!operatorName.trim() ? (
+                        <p className="mt-2 text-xs text-muted">
+                          A ação fica registrada no nome de quem aprova — informe o operador para confirmar.
+                        </p>
+                      ) : null}
                       <div className="mt-4 flex justify-end gap-2">
-                        <Button variant="secondary" onClick={() => setOpenConfirmKey(null)}>Cancel</Button>
-                        <Button variant="primary" loading={pendingKey === key} onClick={() => void applyAction(item)}>
-                          Confirm apply
+                        <Button variant="secondary" onClick={() => setOpenConfirmKey(null)}>Cancelar</Button>
+                        <Button
+                          variant="primary"
+                          disabled={!operatorName.trim()}
+                          loading={pendingKey === key}
+                          onClick={() => void applyAction(item)}
+                        >
+                          Confirmar aplicação
                         </Button>
                       </div>
                     </div>
                   ) : null}
 
-                  {item.blocking_reason?.message ? (
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                      <strong className="text-slate-900">Blocked:</strong> {item.blocking_reason.message}
+                  {blockingReasonText(item.blocking_reason) ? (
+                    <div className="rounded-card border border-border bg-surface-2 px-4 py-3 text-sm text-muted">
+                      <strong className="text-ink">Bloqueado:</strong> {blockingReasonText(item.blocking_reason)}
                     </div>
                   ) : null}
                 </SurfaceCard>
@@ -428,18 +536,18 @@ export function StockSeguroPage({ client, installations }: StockSeguroPageProps)
           </div>
 
           {selected ? (
-            <SurfaceCard className="space-y-4 rounded-[24px]">
+            <SurfaceCard className="space-y-4 rounded-card">
               <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Row detail</p>
-                <h2 className="mt-2 text-xl font-semibold text-slate-900">{selected.title || selected.identity.provider_item_id}</h2>
+                <p className="text-xs uppercase tracking-[0.18em] text-faint">Detalhe da linha</p>
+                <h2 className="mt-2 text-xl font-semibold text-ink">{selected.title || selected.identity.provider_item_id}</h2>
               </div>
-              <div className="grid gap-3 text-sm text-slate-700">
-                <p><strong>Policy:</strong> {selected.policy_id}</p>
-                <p><strong>Provider observed:</strong> {selected.provider_observed_at ?? "-"}</p>
-                <p><strong>Internal observed:</strong> {selected.internal_observed_at ?? "-"}</p>
-                <p><strong>Internal product:</strong> {selected.internal_product_name || selected.internal_reference_code || "-"}</p>
-                <p><strong>Seller SKU:</strong> {selected.seller_sku || "-"}</p>
-                <p><strong>EAN:</strong> {selected.ean || "-"}</p>
+              <div className="grid gap-3 text-sm text-muted">
+                <p><strong className="text-ink">Política:</strong> {selected.policy_id}</p>
+                <p><strong className="text-ink">Observado no ML:</strong> {formatDateTime(selected.provider_observed_at) ?? "—"}</p>
+                <p><strong className="text-ink">Observado no ERP:</strong> {formatDateTime(selected.internal_observed_at) ?? "—"}</p>
+                <p><strong className="text-ink">Produto interno:</strong> {selected.internal_product_name || selected.internal_reference_code || "—"}</p>
+                <p><strong className="text-ink">SKU:</strong> {selected.seller_sku || "—"}</p>
+                <p><strong className="text-ink">EAN:</strong> {selected.ean || "—"}</p>
               </div>
             </SurfaceCard>
           ) : null}

@@ -73,7 +73,33 @@ func (h Handler) handleStockRisks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	slog.Info("inventory.stock_risks", "action", "list", "result", "200", "count", len(items), "duration_ms", time.Since(start).Milliseconds())
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": items})
+	body := map[string]any{"items": items}
+	// as_of is the age of the DATA, not the age of the request: the newest
+	// observation behind the returned rows. Absent when nothing was observed,
+	// so the screen says "desconhecido" instead of stamping now().
+	if asOf := newestObservation(items); asOf != nil {
+		body["as_of"] = asOf.UTC().Format(time.RFC3339Nano)
+	}
+	httpx.WriteJSON(w, http.StatusOK, body)
+}
+
+// newestObservation returns the most recent moment any of the returned rows was
+// observed (provider or internal side), or nil when none carries one.
+func newestObservation(items []domain.StockRiskListItem) *time.Time {
+	var newest *time.Time
+	consider := func(at *time.Time) {
+		if at == nil {
+			return
+		}
+		if newest == nil || at.After(*newest) {
+			newest = at
+		}
+	}
+	for i := range items {
+		consider(items[i].ProviderObservedAt)
+		consider(items[i].InternalObservedAt)
+	}
+	return newest
 }
 
 func (h Handler) handleManualApply(w http.ResponseWriter, r *http.Request) {

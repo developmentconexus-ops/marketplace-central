@@ -106,6 +106,29 @@ export function formatAsOf(asOf: string | null | undefined): string {
   })}`;
 }
 
+/**
+ * pt-BR date + time for a timestamp the operator reads as a point in history
+ * (an import, a run). Returns null for absent/unparseable input so the caller
+ * renders an honest unknown instead of "Invalid Date" or the raw ISO string.
+ */
+export function formatDateTime(value: string | null | undefined): string | null {
+  if (!value) {
+    return null;
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date.toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
 export type WithNoCache = <T>(operation: () => Promise<T>) => Promise<T>;
 
 export interface RefreshableClient {

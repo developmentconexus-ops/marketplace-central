@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"marketplace-central/apps/server_core/internal/modules/inventory/application"
 	"marketplace-central/apps/server_core/internal/modules/inventory/domain"
@@ -65,6 +66,45 @@ func TestHandleStockRisksReturnsJSONList(t *testing.T) {
 	}
 	if len(payload.Items) != 1 || payload.Items[0].State != domain.StockRiskOversell {
 		t.Fatalf("payload=%+v", payload.Items)
+	}
+}
+
+func TestHandleStockRisksReportsNewestObservationAsOf(t *testing.T) {
+	older := time.Date(2026, 7, 16, 17, 7, 2, 0, time.UTC)
+	newer := time.Date(2026, 7, 18, 9, 30, 0, 0, time.UTC)
+	handler := NewHandler(stubRiskLister{items: []domain.StockRiskListItem{
+		{Identity: domain.ListingIdentity{InstallationID: "inst-1", ProviderItemID: "MLB1"}, ProviderObservedAt: &newer},
+		{Identity: domain.ListingIdentity{InstallationID: "inst-1", ProviderItemID: "MLB2"}, ProviderObservedAt: &older, InternalObservedAt: &older},
+	}}, stubManualActionApplier{})
+
+	rr := httptest.NewRecorder()
+	handler.handleStockRisks(rr, httptest.NewRequest(http.MethodGet, "/inventory/stock-risks?installation_id=inst-1", nil))
+
+	var payload struct {
+		AsOf string `json:"as_of"`
+	}
+	if err := json.NewDecoder(rr.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if got, want := payload.AsOf, newer.Format(time.RFC3339Nano); got != want {
+		t.Fatalf("as_of=%q, want %q", got, want)
+	}
+}
+
+func TestHandleStockRisksOmitsAsOfWithoutObservations(t *testing.T) {
+	handler := NewHandler(stubRiskLister{items: []domain.StockRiskListItem{
+		{Identity: domain.ListingIdentity{InstallationID: "inst-1", ProviderItemID: "MLB1"}},
+	}}, stubManualActionApplier{})
+
+	rr := httptest.NewRecorder()
+	handler.handleStockRisks(rr, httptest.NewRequest(http.MethodGet, "/inventory/stock-risks?installation_id=inst-1", nil))
+
+	var payload map[string]any
+	if err := json.NewDecoder(rr.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if _, present := payload["as_of"]; present {
+		t.Fatalf("as_of present without any observation: %+v", payload)
 	}
 }
 

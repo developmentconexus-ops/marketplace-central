@@ -6860,6 +6860,12 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/InventoryStockRiskItem'
+        as_of:
+          type: string
+          format: date-time
+          description: >-
+            Newest observation behind the returned rows (provider or internal
+            side). Absent when no row carries an observation timestamp.
 
     InventoryStockActionOperator:
       type: object

@@ -1,5 +1,6 @@
 import type { ErpImportIssue, ErpImportStatus, ErpImportSummary } from "@marketplace-central/sdk-runtime";
 import { EmptyState, ErrorState, LoadingState } from "@marketplace-central/ui";
+import { formatDateTime } from "@marketplace-central/web-query";
 import { useState } from "react";
 import { useErpImportDetail, useErpImportsList } from "./useErpImports";
 
@@ -104,7 +105,7 @@ function ImportRow({ item }: { item: ErpImportSummary }) {
         </div>
         <div>
           <dt className="text-faint">Importado em</dt>
-          <dd className="font-medium text-ink">{item.imported_at}</dd>
+          <dd className="font-medium text-ink">{formatDateTime(item.imported_at) ?? "—"}</dd>
         </div>
       </dl>
       {expanded ? <ImportRowDetail importId={item.import_id} /> : null}
