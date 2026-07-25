@@ -6,7 +6,6 @@ import {
   createRefreshableFetch,
   createWebQueryClient,
   QUERY_STALE_TIME,
-  setActiveErpSource,
 } from "@marketplace-central/web-query";
 import { CatalogPage } from "./CatalogPage";
 
@@ -28,10 +27,10 @@ function page(id: number, next_cursor: string | null, as_of: string) {
   };
 }
 
-function renderPage(client: any, queryClient = createWebQueryClient()) {
+function renderPage(client: any, queryClient = createWebQueryClient(), erpSource?: any) {
   return render(
     <QueryClientProvider client={queryClient}>
-      <CatalogPage client={client} />
+      <CatalogPage client={client} erpSource={erpSource} />
     </QueryClientProvider>,
   );
 }
@@ -39,7 +38,6 @@ function renderPage(client: any, queryClient = createWebQueryClient()) {
 afterEach(() => {
   vi.useRealTimers();
   vi.setSystemTime();
-  setActiveErpSource("xlsx");
 });
 
 function requestUrl(call: unknown[]): string {
@@ -57,8 +55,8 @@ describe("CatalogPage", () => {
     renderPage({ ...sdk, withNoCache: transport.withNoCache });
 
     expect(await screen.findByText("Product 1")).toBeInTheDocument();
-    expect(screen.getByText("unknown (missing_cost)")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Load next page" }));
+    expect(screen.getByText("— (missing_cost)")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Carregar mais" }));
     expect(await screen.findByText("Product 2")).toBeInTheDocument();
     expect(fetch).toHaveBeenCalledTimes(2);
     expect(screen.getByText("Fim da lista")).toBeInTheDocument();
@@ -82,24 +80,37 @@ describe("CatalogPage", () => {
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
   });
 
-  it("omits erp_source on the default source and sends it when catalogo_cliente is active", async () => {
-    // Default (xlsx) — byte-stable URL, no erp_source param.
-    const defaultFetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(page(1, null, "2026-07-14T10:11:12Z"))));
-    const defaultTransport = createRefreshableFetch(defaultFetch as unknown as typeof globalThis.fetch);
-    const defaultSdk = createMarketplaceCentralClient({ baseUrl: "", fetchImpl: defaultTransport.fetchImpl });
-    const first = renderPage({ ...defaultSdk, withNoCache: defaultTransport.withNoCache });
+  it("never sends erp_source: the server resolves the tenant's active source", async () => {
+    // The routing reader looks the active source up per tenant and pins it on
+    // the request context, overwriting anything the client sends. A request
+    // parameter here would be a no-op that makes the screen look source-aware
+    // while reading whatever the database says.
+    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(page(1, null, "2026-07-14T10:11:12Z"))));
+    const transport = createRefreshableFetch(fetch as unknown as typeof globalThis.fetch);
+    const sdk = createMarketplaceCentralClient({ baseUrl: "", fetchImpl: transport.fetchImpl });
+    renderPage({ ...sdk, withNoCache: transport.withNoCache }, createWebQueryClient(), "catalogo_cliente");
     await screen.findByText("Product 1");
-    expect(requestUrl(defaultFetch.mock.calls[0])).not.toContain("erp_source");
+    expect(requestUrl(fetch.mock.calls[0])).not.toContain("erp_source");
+  });
+
+  it("keeps one source's rows out of the other source's cache entry", async () => {
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(page(1, null, "2026-07-14T10:11:12Z"))))
+      .mockResolvedValueOnce(new Response(JSON.stringify(page(2, null, "2026-07-14T10:12:13Z"))));
+    const transport = createRefreshableFetch(fetch as unknown as typeof globalThis.fetch);
+    const sdk = createMarketplaceCentralClient({ baseUrl: "", fetchImpl: transport.fetchImpl });
+    const client = { ...sdk, withNoCache: transport.withNoCache };
+    const queryClient = createWebQueryClient();
+
+    const first = renderPage(client, queryClient, "xlsx");
+    await screen.findByText("Product 1");
     first.unmount();
 
-    // catalogo_cliente active — the toggle travels as erp_source=catalogo_cliente.
-    setActiveErpSource("catalogo_cliente");
-    const clientFetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(page(2, null, "2026-07-14T10:12:13Z"))));
-    const clientTransport = createRefreshableFetch(clientFetch as unknown as typeof globalThis.fetch);
-    const clientSdk = createMarketplaceCentralClient({ baseUrl: "", fetchImpl: clientTransport.fetchImpl });
-    renderPage({ ...clientSdk, withNoCache: clientTransport.withNoCache });
+    // Same query client, different active source: a shared key would have
+    // served Product 1 (the other source's row) with no request at all.
+    renderPage(client, queryClient, "catalogo_cliente");
     await screen.findByText("Product 2");
-    expect(requestUrl(clientFetch.mock.calls[0])).toContain("erp_source=catalogo_cliente");
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 
   it("renders local as_of and sends no-cache on refresh", async () => {
@@ -112,7 +123,7 @@ describe("CatalogPage", () => {
 
     const indicator = await screen.findByLabelText("Data freshness");
     await waitFor(() => expect(indicator.textContent).toMatch(/^dados de \d{2}:\d{2}:\d{2}$/));
-    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    fireEvent.click(screen.getByRole("button", { name: "Atualizar" }));
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
     const headers = new Headers(fetch.mock.calls[1][1]?.headers);
     expect(headers.get("Cache-Control")).toBe("no-cache");

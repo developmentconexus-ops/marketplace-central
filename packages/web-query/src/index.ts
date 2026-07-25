@@ -146,9 +146,8 @@ export function FreshnessIndicator({ asOf }: { asOf: string | null | undefined }
 export { invalidateAfterMutation, UnknownMutationInvalidationTypeError, type MutationInvalidationType } from "./invalidation";
 export { failureCodes, failureCopy, type FailureCode } from "./failureCopy";
 export {
-  type ActiveErpSource,
-  DEFAULT_ERP_SOURCE,
-  getActiveErpSource,
-  setActiveErpSource,
-  useActiveErpSource,
-} from "./activeErpSource";
+  type ActiveSourceClient,
+  activeSourceQueryKeys,
+  useActiveSourceQuery,
+  useSetActiveSourceMutation,
+} from "./activeSource";

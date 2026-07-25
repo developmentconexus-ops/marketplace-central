@@ -1,3 +1,4 @@
+import type { ActiveSourceConfig, SetActiveSourceRequest } from "./activeSource";
 import type { ErpImportCreated, ErpImportDetail, ErpImportList, ErpImportSourceInput } from "./erpImport";
 
 export * from "./erpImport";
@@ -1853,6 +1854,13 @@ export function createMarketplaceCentralClient(options: {
       form.append("source", source);
       return postMultipart<ErpImportCreated>("/erp/imports", form);
     },
+    // The tenant's active source lives in the database and drives every
+    // mirror-backed read server-side. The client reads and writes it here so the
+    // "Fonte ativa" toggle changes what the platform actually reads, instead of
+    // a browser-local preference the backend never sees.
+    getActiveSource: () => getJson<ActiveSourceConfig>("/config/active-source"),
+    setActiveSource: (req: SetActiveSourceRequest) =>
+      putJson<ActiveSourceConfig>("/config/active-source", req),
     listErpImports: () => getJson<ErpImportList>("/erp/imports"),
     getErpImport: (id: string) => getJson<ErpImportDetail>(`/erp/imports/${encodeURIComponent(id)}`),
     listMarketplaceAccounts: () => getJson<ListResponse<MarketplaceAccount>>("/marketplaces/accounts"),

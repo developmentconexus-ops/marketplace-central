@@ -1,6 +1,6 @@
-import type { ErpImportSourceInput } from "@marketplace-central/sdk-runtime";
+import type { ActiveSourceName, ErpImportSourceInput } from "@marketplace-central/sdk-runtime";
 import { EmptyState, ErrorState, LoadingState } from "@marketplace-central/ui";
-import { type ActiveErpSource, useActiveErpSource } from "@marketplace-central/web-query";
+import { useActiveSourceQuery, useSetActiveSourceMutation } from "@marketplace-central/web-query";
 import { useId, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { useClient } from "../../app/ClientContext";
 import { ImportacaoSection } from "../vinculos/ImportacaoSection";
@@ -267,18 +267,23 @@ function UploadCard() {
   );
 }
 
-// ActiveSourceCard picks which imported dataset the whole app reads (/catalogo
-// and downstream reads). It is the operator-visible face of the erp_source
-// toggle: xlsx = Sankhya ERP (custo + estoque), catalogo_cliente = the prospect
-// catalog just imported (custo/estoque honest-unknown, shown as "—"). The choice
-// persists in localStorage and drives the catalog data hooks live.
-const ACTIVE_SOURCE_OPTIONS: { value: ActiveErpSource; label: string; hint: string }[] = [
-  { value: "xlsx", label: "ERP Sankhya", hint: "Catálogo Sankhya com custo e estoque." },
+// ActiveSourceCard picks which source the whole platform reads: every
+// mirror-backed read resolves it per tenant from the database, and the product
+// sync scheduler runs the adapter it names. The selection is therefore server
+// state (PUT /config/active-source), not a browser preference — while it lived
+// in localStorage the labels changed here and the API kept serving the other
+// source.
+const ACTIVE_SOURCE_OPTIONS: { value: ActiveSourceName; label: string; hint: string }[] = [
+  { value: "sankhya", label: "Sankhya (ao vivo)", hint: "Lê o ERP Sankhya direto, sem planilha." },
+  { value: "xlsx", label: "Planilha Sankhya", hint: "Última planilha Sankhya importada — custo e estoque." },
   { value: "catalogo_cliente", label: "Catálogo do cliente", hint: "Catálogo importado do cliente — custo e estoque aparecem como “—”." },
 ];
 
 function ActiveSourceCard() {
-  const [activeSource, setActiveSource] = useActiveErpSource();
+  const client = useClient();
+  const activeSourceQuery = useActiveSourceQuery(client);
+  const setActiveSource = useSetActiveSourceMutation(client);
+  const activeSource = activeSourceQuery.data?.active_source;
   const fieldId = useId();
   return (
     <section aria-labelledby={`${fieldId}-active-title`} className="rounded-card border border-border bg-surface p-4">
@@ -286,9 +291,9 @@ function ActiveSourceCard() {
         Fonte ativa
       </h2>
       <p className="mt-1 text-xs text-faint">
-        Selecione qual catálogo o app exibe em /catalogo e nas telas que leem produtos.
+        Selecione a fonte que o app inteiro lê: catálogo, custo, estoque, preço e a sincronização automática.
       </p>
-      <fieldset className="mt-3">
+      <fieldset className="mt-3" disabled={activeSourceQuery.isPending || setActiveSource.isPending}>
         <legend className="sr-only">Fonte ativa de dados</legend>
         <div className="flex flex-col gap-2 sm:flex-row" data-testid="active-source-selector">
           {ACTIVE_SOURCE_OPTIONS.map((option) => (
@@ -304,7 +309,7 @@ function ActiveSourceCard() {
                   name={`${fieldId}-active-source`}
                   value={option.value}
                   checked={activeSource === option.value}
-                  onChange={() => setActiveSource(option.value)}
+                  onChange={() => setActiveSource.mutate(option.value)}
                   data-testid={`active-source-${option.value}`}
                 />
                 <span className="font-medium text-ink">{option.label}</span>
@@ -314,6 +319,22 @@ function ActiveSourceCard() {
           ))}
         </div>
       </fieldset>
+      {/* No selection is shown until the server answers, and a failed read or
+          write says so: guessing a source here would tell the operator the app
+          is reading data it is not. */}
+      {activeSourceQuery.isPending ? (
+        <p className="mt-2 text-xs text-faint">Carregando fonte ativa…</p>
+      ) : null}
+      {activeSourceQuery.isError ? (
+        <p className="mt-2 text-xs text-warn" role="alert">
+          Não foi possível ler a fonte ativa configurada.
+        </p>
+      ) : null}
+      {setActiveSource.isError ? (
+        <p className="mt-2 text-xs text-warn" role="alert" data-testid="active-source-error">
+          Não foi possível trocar a fonte ativa. A seleção continua a anterior.
+        </p>
+      ) : null}
     </section>
   );
 }

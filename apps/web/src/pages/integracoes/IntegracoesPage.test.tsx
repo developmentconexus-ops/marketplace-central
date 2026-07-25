@@ -1,20 +1,29 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getActiveErpSource, setActiveErpSource } from "@marketplace-central/web-query";
 import { IntegracoesPage } from "./IntegracoesPage";
 
 const createErpImport = vi.fn();
 const getErpImport = vi.fn();
 const listErpImports = vi.fn();
+const getActiveSource = vi.fn();
+const setActiveSource = vi.fn();
+const listIntegrationInstallations = vi.fn();
 
 vi.mock("../../app/ClientContext", () => ({
   useClient: () => ({
     createErpImport: (...args: unknown[]) => createErpImport(...args),
     getErpImport: (...args: unknown[]) => getErpImport(...args),
     listErpImports: (...args: unknown[]) => listErpImports(...args),
+    getActiveSource: (...args: unknown[]) => getActiveSource(...args),
+    setActiveSource: (...args: unknown[]) => setActiveSource(...args),
+    listIntegrationInstallations: (...args: unknown[]) => listIntegrationInstallations(...args),
   }),
 }));
+
+function activeSourceConfig(source: string) {
+  return { active_source: source, source_kind: source === "sankhya" ? "live_read_through" : "upload_snapshot", set_at: "2026-07-24T10:00:00Z", set_by: null };
+}
 
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -54,7 +63,18 @@ describe("IntegracoesPage", () => {
     getErpImport.mockReset();
     listErpImports.mockReset();
     listErpImports.mockResolvedValue({ items: [] });
-    setActiveErpSource("xlsx");
+    getActiveSource.mockReset();
+    setActiveSource.mockReset();
+    listIntegrationInstallations.mockReset();
+    // Stateful like the server: a successful PUT changes what the next GET
+    // returns, so the blanket post-write invalidation re-reads the new source.
+    let stored = "xlsx";
+    getActiveSource.mockImplementation(() => Promise.resolve(activeSourceConfig(stored)));
+    setActiveSource.mockImplementation((req: { active_source: string }) => {
+      stored = req.active_source;
+      return Promise.resolve(activeSourceConfig(stored));
+    });
+    listIntegrationInstallations.mockResolvedValue({ items: [] });
   });
 
   it("renders the plataforma-config heading", () => {
@@ -125,25 +145,44 @@ describe("IntegracoesPage", () => {
     expect(createErpImport).not.toHaveBeenCalled();
   });
 
-  it("defaults the Fonte ativa selector to Sankhya and persists a switch to Catálogo do cliente", () => {
+  it("shows the source the server reports and writes a switch back to the server", async () => {
     renderPage();
-    const xlsx = screen.getByTestId("active-source-xlsx") as HTMLInputElement;
+    const xlsx = (await screen.findByTestId("active-source-xlsx")) as HTMLInputElement;
     const catalogo = screen.getByTestId("active-source-catalogo_cliente") as HTMLInputElement;
-    expect(xlsx.checked).toBe(true);
+    await waitFor(() => expect(xlsx.checked).toBe(true));
     expect(catalogo.checked).toBe(false);
 
     fireEvent.click(catalogo);
 
-    expect(catalogo.checked).toBe(true);
+    // The write goes to the server; the selection only moves once it succeeds,
+    // because the source decides what the whole platform reads.
+    await waitFor(() => expect(setActiveSource).toHaveBeenCalledWith({ active_source: "catalogo_cliente" }));
+    await waitFor(() => expect(catalogo.checked).toBe(true));
     expect(xlsx.checked).toBe(false);
-    expect(getActiveErpSource()).toBe("catalogo_cliente");
   });
 
-  it("keeps the Mercado Livre connect affordance inert (disabled, no network)", () => {
+  it("offers the live Sankhya source, not only the two upload snapshots", async () => {
+    renderPage();
+    expect(await screen.findByTestId("active-source-sankhya")).toBeInTheDocument();
+  });
+
+  it("keeps the previous source selected and says so when the write fails", async () => {
+    setActiveSource.mockRejectedValue({ status: 400, error: { code: "unknown_erp_source" } });
+    renderPage();
+    const xlsx = (await screen.findByTestId("active-source-xlsx")) as HTMLInputElement;
+    await waitFor(() => expect(xlsx.checked).toBe(true));
+
+    fireEvent.click(screen.getByTestId("active-source-catalogo_cliente"));
+
+    expect(await screen.findByTestId("active-source-error")).toBeInTheDocument();
+    expect(xlsx.checked).toBe(true);
+  });
+
+  it("offers the Mercado Livre connect button and starts no flow until it is clicked", () => {
     renderPage();
     const connect = screen.getByTestId("provider-connect-ml");
-    expect(connect).toBeDisabled();
-    expect(connect).toHaveTextContent("disponível em breve");
-    expect(createErpImport).not.toHaveBeenCalled();
+    expect(connect).toBeEnabled();
+    expect(connect).toHaveTextContent("Conectar");
+    expect(listIntegrationInstallations).not.toHaveBeenCalled();
   });
 });

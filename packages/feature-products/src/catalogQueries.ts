@@ -1,29 +1,31 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import type { CatalogProductFactPage, ErpImportSourceInput } from "@marketplace-central/sdk-runtime";
+import type { ActiveSourceName, CatalogProductFactPage } from "@marketplace-central/sdk-runtime";
 import {
-  type ActiveErpSource,
   catalogQueryKeys,
-  DEFAULT_ERP_SOURCE,
   QUERY_STALE_TIME,
   type RefreshableClient,
 } from "@marketplace-central/web-query";
 
 export interface CatalogQueriesClient extends RefreshableClient {
-  listCatalogProductFacts: (options?: { cursor?: string; limit?: number; erp_source?: ErpImportSourceInput }) => Promise<CatalogProductFactPage>;
-  searchCatalogProductFacts: (options: { q: string; limit?: number; erp_source?: ErpImportSourceInput }) => Promise<CatalogProductFactPage>;
+  listCatalogProductFacts: (options?: { cursor?: string; limit?: number }) => Promise<CatalogProductFactPage>;
+  searchCatalogProductFacts: (options: { q: string; limit?: number }) => Promise<CatalogProductFactPage>;
 }
 
-// The default source (xlsx) is omitted from the request so a default-view URL
-// stays byte-stable with clients that predate the toggle; only an explicit
-// non-default selection travels as erp_source.
-function sourceParam(source: ActiveErpSource): ErpImportSourceInput | undefined {
-  return source === DEFAULT_ERP_SOURCE ? undefined : source;
-}
+// The source is NOT sent as a request parameter. The reader resolves the
+// tenant's configured active source from the database and pins it on the
+// request context (routing.Reader), which overwrites any client-supplied
+// erp_source — so the screen could label one source while reading another. It
+// stays in the query KEY so a flip cannot serve the previous source's cached
+// page under the new label.
 
-export function useCatalogFactsQuery(client: CatalogQueriesClient, enabled: boolean, erpSource: ActiveErpSource) {
+export function useCatalogFactsQuery(
+  client: CatalogQueriesClient,
+  enabled: boolean,
+  erpSource: ActiveSourceName | undefined,
+) {
   return useInfiniteQuery({
-    queryKey: catalogQueryKeys.facts({ limit: 50, erp_source: erpSource }),
-    queryFn: ({ pageParam }) => client.listCatalogProductFacts({ cursor: pageParam, limit: 50, erp_source: sourceParam(erpSource) }),
+    queryKey: catalogQueryKeys.facts({ limit: 50, erp_source: erpSource ?? null }),
+    queryFn: ({ pageParam }) => client.listCatalogProductFacts({ cursor: pageParam, limit: 50 }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
     staleTime: QUERY_STALE_TIME.catalog,
@@ -31,10 +33,14 @@ export function useCatalogFactsQuery(client: CatalogQueriesClient, enabled: bool
   });
 }
 
-export function useCatalogSearchQuery(client: CatalogQueriesClient, query: string, erpSource: ActiveErpSource) {
+export function useCatalogSearchQuery(
+  client: CatalogQueriesClient,
+  query: string,
+  erpSource: ActiveSourceName | undefined,
+) {
   return useQuery({
-    queryKey: catalogQueryKeys.search(query, { erp_source: erpSource }),
-    queryFn: () => client.searchCatalogProductFacts({ q: query, limit: 50, erp_source: sourceParam(erpSource) }),
+    queryKey: catalogQueryKeys.search(query, { erp_source: erpSource ?? null }),
+    queryFn: () => client.searchCatalogProductFacts({ q: query, limit: 50 }),
     staleTime: QUERY_STALE_TIME.catalog,
     enabled: Boolean(query),
   });

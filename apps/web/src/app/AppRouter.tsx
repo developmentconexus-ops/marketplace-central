@@ -2,6 +2,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { ClassificationsPage } from "@marketplace-central/feature-classifications";
 import { StockSeguroPage } from "@marketplace-central/feature-inventory";
 import { CatalogPage } from "@marketplace-central/feature-products";
+import { useActiveSourceQuery } from "@marketplace-central/web-query";
 import { Layout } from "./Layout";
 import { ProtocoloPage } from "../pages/mutations/ProtocoloPage";
 import { WorkspacePlaceholder } from "../pages/WorkspacePlaceholder";
@@ -19,7 +20,10 @@ import { IntegracoesRoute } from "../routes/integracoes";
 
 function CatalogPageWrapper() {
   const client = useClient();
-  return <CatalogPage client={client} />;
+  // The tenant's active source is server state; the page only needs it to keep
+  // one source's rows out of the other's cache entry.
+  const activeSource = useActiveSourceQuery(client);
+  return <CatalogPage client={client} erpSource={activeSource.data?.active_source} />;
 }
 
 function ClassificationsPageWrapper() {
