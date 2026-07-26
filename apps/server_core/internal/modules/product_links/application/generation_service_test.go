@@ -383,6 +383,33 @@ func TestGenerateLinkCandidatesResolvesIdentityAnchorsOncePerProvider(t *testing
 	}
 }
 
+// An unconfigured identity-anchor reader must refuse BEFORE any work, including on an
+// empty snapshot batch. Empty is the case that hides the defect: the resolve loop never
+// runs, so a missing guard returns a clean zero result and the caller reads "nothing to
+// link" instead of "this engine was never wired". A non-empty batch would deref nil and
+// at least announce itself.
+func TestGenerateLinkCandidatesRefusesWithoutIdentityAnchorReader(t *testing.T) {
+	t.Parallel()
+	store := &stubCandidateStore{}
+	svc := NewGenerationService(GenerationServiceConfig{
+		Snapshots:       &stubSnapshotReader{snapshots: nil},
+		Matcher:         &stubProductMatcher{},
+		Store:           store,
+		IdentityAnchors: nil,
+	})
+
+	result, err := svc.GenerateLinkCandidates(context.Background(), GenerateLinkCandidatesInput{InstallationID: "inst-unwired"})
+	if err == nil {
+		t.Fatalf("GenerateLinkCandidates() error = nil, want PRODUCT_LINKS_CANDIDATE_ENGINE_NOT_CONFIGURED (result=%#v)", result)
+	}
+	if err.Error() != "PRODUCT_LINKS_CANDIDATE_ENGINE_NOT_CONFIGURED" {
+		t.Fatalf("GenerateLinkCandidates() error = %q, want PRODUCT_LINKS_CANDIDATE_ENGINE_NOT_CONFIGURED", err.Error())
+	}
+	if store.installationID != "" {
+		t.Fatalf("store written with installationID=%q, want no write at all", store.installationID)
+	}
+}
+
 func TestGenerateLinkCandidatesFailsWhenIdentityAnchorDeclarationUnavailable(t *testing.T) {
 	t.Parallel()
 	reader := &stubIdentityAnchorReader{
