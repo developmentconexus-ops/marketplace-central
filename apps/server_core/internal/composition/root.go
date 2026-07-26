@@ -537,11 +537,11 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		Workflows:  productLinkCandidateRepo,
 	})
 	productLinkGenerationSvc := productlinksapp.NewGenerationService(productlinksapp.GenerationServiceConfig{
-		Snapshots:    productLinkSnapshotRepo,
-		Matcher:      productMatcher,
-		Store:        productLinkCandidateRepo,
+		Snapshots:       productLinkSnapshotRepo,
+		Matcher:         productMatcher,
+		Store:           productLinkCandidateRepo,
 		IdentityAnchors: productLinkIdentityAnchorReader,
-		AutoApprover: productLinkResolutionSvc,
+		AutoApprover:    productLinkResolutionSvc,
 	})
 	productLinkSummarySvc := productlinksapp.NewSummaryService(productlinkspostgres.NewSummaryReader(pool, cfg.DefaultTenantID))
 	productLinkBatchSvc := productlinksapp.NewBatchService(productlinksapp.BatchServiceConfig{
