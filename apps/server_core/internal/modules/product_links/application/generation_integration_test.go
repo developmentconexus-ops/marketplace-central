@@ -71,6 +71,13 @@ func TestGenerateLinkCandidatesPersistsDeterministicPostgresResult(t *testing.T)
 	if result.GeneratedCount != 1 || len(result.Items) != 1 || result.Items[0].State != productlinksdomain.LinkCandidateStateExactSKU {
 		t.Fatalf("unexpected generation result: %#v", result)
 	}
+	seenReasonAnchors := make(map[string]struct{}, len(result.Items[0].Reasons))
+	for _, reason := range result.Items[0].Reasons {
+		if _, exists := seenReasonAnchors[reason.Anchor]; exists {
+			t.Fatalf("generated reasons contain duplicate anchor %q: %#v", reason.Anchor, result.Items[0].Reasons)
+		}
+		seenReasonAnchors[reason.Anchor] = struct{}{}
+	}
 	persisted, err := svc.ListLinkCandidates(ctx, ListLinkCandidatesInput{InstallationID: installationID, Limit: 20})
 	if err != nil {
 		t.Fatalf("list persisted candidates: %v", err)

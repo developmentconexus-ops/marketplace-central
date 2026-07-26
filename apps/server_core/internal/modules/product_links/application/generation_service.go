@@ -613,16 +613,38 @@ func applyUnresolvedScore(candidate *domain.LinkCandidate, identityAnchors []por
 }
 
 func appendProviderDeclaredUnavailableReasons(reasons []domain.LinkCandidateReason, identityAnchors []ports.ProviderIdentityAnchor) []domain.LinkCandidateReason {
-	finalized := slices.Clone(reasons)
+	finalized := make([]domain.LinkCandidateReason, 0, len(reasons)+len(identityAnchors))
+	reasonIndexes := make(map[string]int, len(reasons)+len(identityAnchors))
+	for _, reason := range reasons {
+		index, exists := reasonIndexes[reason.Anchor]
+		if !exists {
+			reasonIndexes[reason.Anchor] = len(finalized)
+			finalized = append(finalized, reason)
+			continue
+		}
+		if finalized[index].Direction == domain.LinkCandidateReasonDirectionUnavailable &&
+			reason.Direction != domain.LinkCandidateReasonDirectionUnavailable {
+			finalized[index] = reason
+		}
+	}
 	for _, anchor := range identityAnchors {
 		if anchor.Supplied {
 			continue
 		}
-		finalized = append(finalized, domain.LinkCandidateReason{
+		declarationReason := domain.LinkCandidateReason{
 			Anchor:    anchor.Anchor,
 			Direction: domain.LinkCandidateReasonDirectionUnavailable,
 			Detail:    fmt.Sprintf("provider não fornece a âncora %s", anchor.Anchor),
-		})
+		}
+		index, exists := reasonIndexes[anchor.Anchor]
+		if !exists {
+			reasonIndexes[anchor.Anchor] = len(finalized)
+			finalized = append(finalized, declarationReason)
+			continue
+		}
+		if finalized[index].Direction == domain.LinkCandidateReasonDirectionUnavailable {
+			finalized[index] = declarationReason
+		}
 	}
 	return finalized
 }
@@ -723,35 +745,8 @@ func hardNegativeDimension(original string) (string, string, bool) {
 	pairs := make([]dimensionPair, 0, len(tokenIndexes))
 	for _, index := range tokenIndexes {
 		originalToken := strings.TrimSpace(original[index[0]:index[1]])
-		token := strings.ToLower(originalToken)
-		token = strings.ReplaceAll(token, " ", "")
-		token = strings.ReplaceAll(token, ",", ".")
-		if strings.Contains(token, "x") {
-			pairs = append(pairs, dimensionPair{key: token, display: originalToken})
-			continue
-		}
-
-		unit := ""
-		for _, candidate := range []string{"pol", "mm", "cm", `"`, "m"} {
-			if strings.HasSuffix(token, candidate) {
-				unit = candidate
-				break
-			}
-		}
-		value, ok := new(big.Rat).SetString(strings.TrimSuffix(token, unit))
-		if !ok {
-			pairs = append(pairs, dimensionPair{key: token, display: originalToken})
-			continue
-		}
-		switch unit {
-		case "cm":
-			value.Mul(value, big.NewRat(10, 1))
-		case "m":
-			value.Mul(value, big.NewRat(1000, 1))
-		case "pol", `"`:
-			value.Mul(value, big.NewRat(127, 5))
-		}
-		pairs = append(pairs, dimensionPair{key: "mm:" + value.RatString(), display: originalToken})
+		key, _ := normalizeDimensionToken(originalToken)
+		pairs = append(pairs, dimensionPair{key: key, display: originalToken})
 	}
 	for _, size := range hardNegativeSizePattern.FindAllString(original, -1) {
 		pairs = append(pairs, dimensionPair{key: strings.ToLower(size), display: size})
@@ -772,6 +767,36 @@ func hardNegativeDimension(original string) (string, string, bool) {
 		display = append(display, pair.display)
 	}
 	return strings.Join(keys, "|"), strings.Join(display, "|"), true
+}
+
+func normalizeDimensionToken(originalToken string) (string, bool) {
+	token := strings.ToLower(strings.TrimSpace(originalToken))
+	token = strings.ReplaceAll(token, " ", "")
+	token = strings.ReplaceAll(token, ",", ".")
+	if strings.Contains(token, "x") {
+		return token, true
+	}
+
+	unit := ""
+	for _, candidate := range []string{"pol", "mm", "cm", `"`, "m"} {
+		if strings.HasSuffix(token, candidate) {
+			unit = candidate
+			break
+		}
+	}
+	value, ok := new(big.Rat).SetString(strings.TrimSuffix(token, unit))
+	if !ok {
+		return token, false
+	}
+	switch unit {
+	case "cm":
+		value.Mul(value, big.NewRat(10, 1))
+	case "m":
+		value.Mul(value, big.NewRat(1000, 1))
+	case "pol", `"`:
+		value.Mul(value, big.NewRat(127, 5))
+	}
+	return "mm:" + value.RatString(), true
 }
 
 func hardNegativeColor(text string) (string, bool) {

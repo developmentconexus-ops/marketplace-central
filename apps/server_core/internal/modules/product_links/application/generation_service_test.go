@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -137,7 +138,7 @@ func TestGenerateLinkCandidatesUsesProviderDeclarationForUnavailableReasons(t *t
 	now := time.Date(2026, 7, 26, 9, 0, 0, 0, time.UTC)
 	reader := &stubIdentityAnchorReader{declarations: map[string][]productlinksports.ProviderIdentityAnchor{
 		"provider-a": {
-			{Anchor: "seller_sku", Supplied: true},
+			{Anchor: "seller_sku", Supplied: false},
 			{Anchor: "ean", Supplied: true},
 			{Anchor: "title", Supplied: true},
 			{Anchor: "marca", Supplied: true},
@@ -167,6 +168,7 @@ func TestGenerateLinkCandidatesUsesProviderDeclarationForUnavailableReasons(t *t
 		t.Fatalf("result.Items=%#v, want exactly one candidate", result.Items)
 	}
 	reasons := result.Items[0].Reasons
+	assertUniqueReasonAnchors(t, reasons)
 	if _, ok := findReason(reasons, "marca", productlinksdomain.LinkCandidateReasonDirectionUnavailable); ok {
 		t.Fatalf("reasons=%#v, want supplied marca without UNAVAILABLE reason", reasons)
 	}
@@ -180,6 +182,110 @@ func TestGenerateLinkCandidatesUsesProviderDeclarationForUnavailableReasons(t *t
 	}
 	if refforn.Detail == ean.Detail {
 		t.Fatalf("refforn and ean details are equal: %q", refforn.Detail)
+	}
+}
+
+func TestProviderUnavailableReasonPrecedenceKeepsObservedEvidence(t *testing.T) {
+	t.Parallel()
+	reasons := appendProviderDeclaredUnavailableReasons(
+		[]productlinksdomain.LinkCandidateReason{{
+			Anchor: "ean", Direction: productlinksdomain.LinkCandidateReasonDirectionFor, Detail: "ean observado",
+		}},
+		[]productlinksports.ProviderIdentityAnchor{{Anchor: "ean", Supplied: false}},
+	)
+
+	want := []productlinksdomain.LinkCandidateReason{{
+		Anchor: "ean", Direction: productlinksdomain.LinkCandidateReasonDirectionFor, Detail: "ean observado",
+	}}
+	if !reflect.DeepEqual(reasons, want) {
+		t.Fatalf("reasons=%#v, want observed evidence %#v", reasons, want)
+	}
+}
+
+func TestProviderUnavailableReasonPrecedenceKeepsDeclarationOverSeedUnavailable(t *testing.T) {
+	t.Parallel()
+	reasons := appendProviderDeclaredUnavailableReasons(
+		[]productlinksdomain.LinkCandidateReason{{
+			Anchor: "ean", Direction: productlinksdomain.LinkCandidateReasonDirectionUnavailable, Detail: "ean sem correspondência",
+		}},
+		[]productlinksports.ProviderIdentityAnchor{{Anchor: "ean", Supplied: false}},
+	)
+
+	want := []productlinksdomain.LinkCandidateReason{{
+		Anchor: "ean", Direction: productlinksdomain.LinkCandidateReasonDirectionUnavailable, Detail: "provider não fornece a âncora ean",
+	}}
+	if !reflect.DeepEqual(reasons, want) {
+		t.Fatalf("reasons=%#v, want declaration reason %#v", reasons, want)
+	}
+}
+
+func TestProviderUnavailableReasonEmitsDeclarationWithoutSeed(t *testing.T) {
+	t.Parallel()
+	reasons := appendProviderDeclaredUnavailableReasons(
+		nil,
+		[]productlinksports.ProviderIdentityAnchor{{Anchor: "marca", Supplied: false}},
+	)
+
+	want := []productlinksdomain.LinkCandidateReason{{
+		Anchor: "marca", Direction: productlinksdomain.LinkCandidateReasonDirectionUnavailable, Detail: "provider não fornece a âncora marca",
+	}}
+	if !reflect.DeepEqual(reasons, want) {
+		t.Fatalf("reasons=%#v, want declaration reason %#v", reasons, want)
+	}
+}
+
+func TestProviderSuppliedDeclarationLeavesReasonsUnchanged(t *testing.T) {
+	t.Parallel()
+	seed := []productlinksdomain.LinkCandidateReason{
+		{Anchor: "seller_sku", Direction: productlinksdomain.LinkCandidateReasonDirectionFor, Detail: "seller_sku observado"},
+		{Anchor: "ean", Direction: productlinksdomain.LinkCandidateReasonDirectionUnavailable, Detail: "ean sem correspondência"},
+	}
+	reasons := appendProviderDeclaredUnavailableReasons(
+		seed,
+		[]productlinksports.ProviderIdentityAnchor{
+			{Anchor: "seller_sku", Supplied: true},
+			{Anchor: "ean", Supplied: true},
+		},
+	)
+
+	if !reflect.DeepEqual(reasons, seed) {
+		t.Fatalf("reasons=%#v, want byte-identical seed %#v", reasons, seed)
+	}
+}
+
+func TestProviderUnavailableReasonOrderingIsStable(t *testing.T) {
+	t.Parallel()
+	reasons := appendProviderDeclaredUnavailableReasons(
+		[]productlinksdomain.LinkCandidateReason{
+			{Anchor: "ean", Direction: productlinksdomain.LinkCandidateReasonDirectionUnavailable, Detail: "ean sem correspondência"},
+			{Anchor: "title", Direction: productlinksdomain.LinkCandidateReasonDirectionFor, Detail: "title observado"},
+		},
+		[]productlinksports.ProviderIdentityAnchor{
+			{Anchor: "marca", Supplied: false},
+			{Anchor: "ean", Supplied: false},
+			{Anchor: "refforn", Supplied: false},
+		},
+	)
+
+	want := []productlinksdomain.LinkCandidateReason{
+		{Anchor: "ean", Direction: productlinksdomain.LinkCandidateReasonDirectionUnavailable, Detail: "provider não fornece a âncora ean"},
+		{Anchor: "title", Direction: productlinksdomain.LinkCandidateReasonDirectionFor, Detail: "title observado"},
+		{Anchor: "marca", Direction: productlinksdomain.LinkCandidateReasonDirectionUnavailable, Detail: "provider não fornece a âncora marca"},
+		{Anchor: "refforn", Direction: productlinksdomain.LinkCandidateReasonDirectionUnavailable, Detail: "provider não fornece a âncora refforn"},
+	}
+	if !reflect.DeepEqual(reasons, want) {
+		t.Fatalf("reasons=%#v, want stable order %#v", reasons, want)
+	}
+}
+
+func TestNormalizeDimensionTokenFailsClosed(t *testing.T) {
+	t.Parallel()
+	key, parsed := normalizeDimensionToken("abcmm")
+	if parsed {
+		t.Fatal("normalizeDimensionToken(abcmm) parsed=true, want false")
+	}
+	if key != "abcmm" {
+		t.Fatalf("normalizeDimensionToken(abcmm) key=%q, want raw token", key)
 	}
 }
 
@@ -553,6 +659,17 @@ func findReason(reasons []productlinksdomain.LinkCandidateReason, anchor string,
 		}
 	}
 	return productlinksdomain.LinkCandidateReason{}, false
+}
+
+func assertUniqueReasonAnchors(t *testing.T, reasons []productlinksdomain.LinkCandidateReason) {
+	t.Helper()
+	seen := make(map[string]struct{}, len(reasons))
+	for _, reason := range reasons {
+		if _, exists := seen[reason.Anchor]; exists {
+			t.Fatalf("reasons=%#v, anchor %q appears more than once", reasons, reason.Anchor)
+		}
+		seen[reason.Anchor] = struct{}{}
+	}
 }
 
 func assertProviderDeclaredUnavailableReasons(t *testing.T, reasons []productlinksdomain.LinkCandidateReason) {
