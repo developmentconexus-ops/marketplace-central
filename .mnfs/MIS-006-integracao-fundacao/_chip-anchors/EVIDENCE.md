@@ -44,6 +44,7 @@ the verdict/output artifact afterwards.
 | D16 | P3 | Implementer S7 (R5 coverage for 3 reachable guards + clamped-formula row) | gpt-5.6-luna / high | OS-process codex | `scratchpad/prompt-s7.md` | `scratchpad/agent__s7-impl.last.md` + `.log` | GREEN; worker **could not commit** (sandbox `index.lock: Permission denied`, profile §3 class) — chip verified and committed `e1195806` |
 | D13 | P4 | Re-reviewer, feature F-01 over `f92ca9c7` | Claude sonnet subagent | Agent tool, async | inline brief | `tasks/ad9c0421c9c2a538c.output` | completed — **PASS**, zero findings |
 | D17 | P3 | Implementer S8 (hub rulings R-6 dedup/precedence + R-7 parser seam) | gpt-5.6-sol / low (complex slice) | OS-process codex | `scratchpad/prompt-s8.md` | `scratchpad/agent__s8-impl.last.md` + `.log` | committed `d9952509`; **R-7 accepted, R-6 REGRESSES the TitleMatch path** — chip-verified by differential probe, `ESCALATION` sent, corrective pending the hub ruling |
+| D18 | P3 | Implementer S9 (hub ruling R-6a: UNAVAILABLE exclusive, FOR+AGAINST coexist) | gpt-5.6-sol / low (complex slice) | OS-process codex | `scratchpad/prompt-s9.md` | `scratchpad/agent__s9-impl.last.md` + `.log` | dispatched |
 
 ## Slice S3 — chip verification, and a defect in the chip's own slice card
 
@@ -600,7 +601,59 @@ explicit `if len(candidates) == 0 { t.Fatalf }` guard. Same family as the confou
 already recorded on this chip: the assertion has to be able to fail before its passing means
 anything.
 
-### ESCALATED, not decided in-chip
+### THE FINDING — the hard-negative suite could not see the TitleMatch path
+
+Recorded as the finding in its own right, at the hub's direction, because the code defect was the
+smaller half. The larger half is a COVERAGE hole that predates this chip:
+
+**Every hard-negative test in this package drives a state where `title` is not in the reason seed.**
+The suite exercises `buildConcordantCandidate` (SKU and EAN concordant) and the ExactSKU / ExactEAN
+branches of `applySingleAnchorScore`. In all of those the seed names `seller_sku` and `ean`, and the
+hard-negative branch appends `{title, AGAINST}` — a fresh anchor, no collision. The one state whose
+seed already contains `title` is `TitleMatch` (`generation_service.go:534-535`), and no
+hard-negative test drives it.
+
+So the whole class of "what happens when the hard-negative anchor is ALREADY in the seed" was
+untested before this chip touched anything. That is why a change to reason finalisation could delete
+an operator-facing reason on a REJECT and leave the suite green. The defect S8 introduced was
+detectable in principle by reading the code; it was undetectable by running the tests, and the
+second fact is the one worth carrying forward.
+
+What closes it is the regression test mandated by R-6a — `title` FOR and `title` AGAINST surviving
+together on a REJECT — not merely the precedence fix. A fix without that test would leave the hole
+exactly as wide as it was.
+
+### METHOD — the differential probe, second time it decided a question argument could not
+
+Recorded at the hub's direction as a reusable technique and an upstream amendment candidate.
+
+**Shape:** hold the fixture, the probe and the command fixed; swap ONE file between two commits; run
+the same probe twice. The delta is then attributable to that file and nothing else.
+
+Both uses on this chip settled a question that had resisted argument:
+
+| Use | Question that would not settle by reasoning | What the differential showed |
+|---|---|---|
+| governance lane | is the lane red because of this chip, or red already? | identical 53 violations at chip tip and at BASE, line for line → red already |
+| R-6 regression | is the dropped `title AGAINST` a real behaviour change, or was it never emitted? | pre-S8 emits `hard-negative: kit/combo divergente…`; post-S8 does not → clean regression |
+
+Why it works where argument does not: both questions are of the form "did MY change cause X", and
+the honest answer requires observing the counterfactual. Reading the diff tells you what changed;
+it does not tell you what the change DID. Reviewers on this chip — including both P6 gates and the
+chip itself — repeatedly produced confident, plausible, opposite readings of the same diff. The
+probe produced one output.
+
+Cost is low enough that it should be reached for early rather than as a last resort: two `git show`
+redirections, one throwaway `_test.go`, two runs, then restore. The whole R-6 differential took
+minutes and replaced an argument nobody could win.
+
+**Preconditions, learned the hard way here.** The probe must be able to FAIL — the first R-6 probe
+PASSED while ranging over an empty candidate slice and reported success, and was only caught by
+adding `if len(candidates) == 0 { t.Fatalf }`. And when the swapped file has a test file that
+references new symbols, that test file must be swapped to the same commit or the package will not
+build; a build failure is not a result.
+
+### ESCALATED, not decided in-chip — RESOLVED by hub ruling R-6a
 
 Two readings of R-6 are defensible and they differ exactly on this case:
 
@@ -619,7 +672,34 @@ BLOCKED with evidence, never a unilateral decision".
 as a SINGLE precedence rung and never said what happens when both land on the same anchor. The
 worker had no rule to follow at exactly the point where the regression occurred. That gap is the
 chip's, not the worker's, and it is the second time on this chip that a defective card instruction
-produced a defective slice (see S3).
+produced a defective slice (see S3). The hub traced it one step further at ruling time: the card
+inherited the gap from R-6's own wording, which was broader than the defect it was written for. So
+the chain is ruling → card → slice, and the chip's card is the middle link rather than the origin.
+
+### HUB RULING R-6a — reading (b), amending R-6 (`main@1be1aa9`)
+
+The hub upheld the chip's recommendation and characterised the defect as its own wording, not the
+implementation: R-6 said "no máximo um motivo por âncora" while its rationale said "dois motivos
+**contraditórios**", and S8 implemented the sentence. **The invariant below REPLACES the R-6
+wording.**
+
+1. **`UNAVAILABLE` is exclusive per anchor** — emitted only if that anchor has no `FOR` and no
+   `AGAINST`, and then at most once. Asserting "there is no signal" beside an actual signal is the
+   real contradiction. This is A8.
+2. **`FOR` and `AGAINST` coexist** on one anchor when both are fact. Zero dedup.
+3. **Two `UNAVAILABLE` on one anchor** collapse to one, with deterministic tested precedence —
+   declaration-derived beats seed-derived.
+
+Note this is STRICTLY STRONGER than "at most one UNAVAILABLE per anchor", which is how the chip
+phrased reading (b) when it escalated. Rule 1 additionally SUPPRESSES a declaration-derived
+`UNAVAILABLE` on an anchor that already carries a `FOR` or `AGAINST` — a case the chip's own
+formulation left open. S8's code happens to satisfy that half already; the ruling makes it a stated
+invariant with a test rather than an accident of ordering.
+
+**Both tests are mandatory by ruling**, and the hub was explicit about why the second one is not
+optional: "o buraco é de cobertura, não só de código". Implemented in slice S9, dispatched with the
+full collision matrix written out so no case is left to the worker's judgement — the specific
+failure that produced this round.
 
 ### Not yet verified
 
