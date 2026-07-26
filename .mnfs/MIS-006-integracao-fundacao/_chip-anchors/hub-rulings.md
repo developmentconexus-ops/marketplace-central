@@ -380,3 +380,101 @@ Chave de comparação e todo veredicto intactos; é detalhe voltado ao operador.
 e eu também. Vai para backlog do hub junto com `refforn` — anotado para não ser redescoberto.
 
 `:168`→`:157`, `:643-656`→`:640` e o nit `:634-639` entram junto com as demais correções.
+
+---
+
+# R5 fechado, e o corretivo demonstrou a classe contra si mesmo
+
+Os três guards têm mutação observada. O do `:76` foi feito com lote VAZIO de propósito, que é o
+caso que **esconde** o defeito: o laço não roda, ninguém deref, e o chamador lê um "nada a
+vincular" limpo em vez de "esta engine nunca foi ligada". Lote não-vazio ao menos anuncia com
+panic. Escolher o caso silencioso é o que torna a mutação prova.
+
+O guard de `marketplace_capability_service.go:134-136` desligado devolve **declaração vazia, sem
+erro** — ou seja, "este provider não fornece âncora nenhuma", que é exatamente o comportamento
+UNAVAILABLE-para-tudo que o F-01 existe para remover. O guard é load-bearing para a feature, não
+só para o tipo. Isso eleva a linha de must-fail de formalidade a prova de propósito.
+
+Verifiquei o fato que sustenta o achado, em `2921d563`:
+
+```
+773: func TestGoldenToalheiroDimensionUnitEquivalenceYieldsConfirm(t *testing.T) {
+804: func TestEquivalentDimensionUnitsDoNotRejectConcordantCandidate(t *testing.T) {
+828: func TestDimensionCanonicalizationUsesExactMillimetres(t *testing.T) {
+899: func TestDifferentCanonicalDimensionsStillRejectConcordantCandidate(t *testing.T) {
+928: func TestDimensionPresenceAndGradeRulesRemainNonBlocking(t *testing.T) {
+```
+
+Todas caem em cima do `func Test…`. **O pack estava certo. O corretivo que o gate mandou fazer é
+que o tornou errado** — 27 linhas inseridas, 40+ citações decaídas.
+
+## R-19 — o remédio nunca esteve errado; a PRÉ-CONDIÇÃO dele nunca foi satisfeita
+
+D21 prescreveu regeneração mecânica **no tip final**, depois que o juiz rejeitou citar por símbolo.
+A prescrição está certa. O que falhou quatro vezes foi outra coisa: **"final" foi afirmado, nunca
+verificado.** Todo round regenerou num tip que parecia final e não era, porque o gate seguinte
+mandou um corretivo de código.
+
+"Final" não é propriedade que se afirme sobre um tip em que ainda se trabalha. Ou se sabe em
+retrospecto, ou se torna verdade por regra. A ordem que termina, ratificada:
+
+1. pousa **todo** corretivo de código;
+2. congela o tip de código;
+3. regenera **toda** citação a partir dele;
+4. congela o pack;
+5. despacha.
+
+**Partição entre os dois remédios, porque nenhum cobre o outro.** O R-14 ("aponte, não copie")
+cobre fato derivado DO PACK — contagem, multiplicidade, lista. Ele **não se aplica a citação**: o
+valor inteiro de uma citação é ser coordenada, não dá para descoordenar, e o juiz já rejeitou
+citar por símbolo. Para citação o único remédio é gerar por último, mecanicamente, de um tip
+congelado. Fato derivado do pack → ponteiro. Fato derivado do código → sequenciamento. Os dois,
+sem sobreposição.
+
+## A condição de parada que declarei continua valendo, e explico por quê
+
+Declarei que o round 5 é o último desta forma. Mantenho, porque o que eu declarei morto foi o
+**loop de conserto à mão** — e é esse que este achado mata por construção.
+
+Se o round 5 mandar corretivo de código, isso **não** reabre o loop: custa **uma** regeneração
+mecânica e um re-freeze, e o gate seguinte confere o corretivo mais o recibo da regeneração. Um
+script, sem julgamento. O que não convergia era humano remendando citação que outro corretivo
+decaía; regeneração total converge trivialmente porque não tem estado parcial. Consistente com o
+R-15: prefira a estrutura que não precisa da disciplina.
+
+## R-20 — inferência tem de ser visível COMO inferência
+
+Ratificado o desenho do chip. Citação nua herda o arquivo da prosa acima, e isso é **inferência**.
+Ferramenta que resolvesse calada fabricaria exatamente a falsa confiança que este artefato existe
+para remover — a classe do round inteiro, agora dentro da ferramenta. Imprimir o arquivo inferido
+e a distância até a herança, e sinalizar em vez de descartar, é o certo.
+
+Reconciliação com o R-17, que baniu citação nua: os dois valem e a ordem importa. Estender pega as
+**89 que existem hoje**; o banimento impede as próximas; e com o banimento em vigor a maquinaria de
+inferência vira **ferramenta de migração, não muleta permanente**. Estado final: o passe reporta
+zero nuas. Se reportar não-zero depois do banimento, o não-zero **é** a violação. A ferramenta vira
+o fiscal da regra.
+
+## R-21 — citação que resolve para conteúdo plausível é invisível à leitura
+
+`EVIDENCE.md:1621` cita `:448` herdando `resolution_service.go` em vez do `_test.go`, e `:448`
+resolve para `//  2. Load the latest audit entry…` — um comentário. **Nada nele parece errado.**
+Esta é a forma que sobrevive a toda revisão humana, porque revisão humana compara a frase com a
+expectativa, não com o conteúdo real da linha.
+
+Consequência: **a auditoria imprime PARA O QUE cada citação resolveu — todas, não só as
+inferidas.** Sem o conteúdo resolvido ao lado da alegação, ler o pack não pode pegar esta classe,
+em nenhuma quantidade de rounds. Com ele, pega na hora.
+
+Corolários que o chip achou e ficam registrados: linhas de tabela são **contextos independentes** —
+a convenção de herança não atravessa linha, o que sozinho já justifica o banimento. E o `:8080` é
+porta, não citação: conserta na fonte reescrevendo, **não** ensinando a ferramenta a ignorar. Toda
+exceção ensinada a uma ferramenta torna a frase de cobertura dela condicional de novo, que é a
+classe deste round chegando pela porta dos fundos.
+
+## Candidato upstream — aceito, e é mais forte que o 4b
+
+**Um pack só é citável contra um tip de código CONGELADO, e toda edição de código posterior à
+escrita do pack o invalida por atacado.** Mais forte que o 4b porque não é sobre nomear: o pack
+nomeou o tip dele corretamente e ainda assim foi falsificado por uma edição que o próprio gate
+mandou fazer. Nomear o SHA não protege de o SHA mudar de baixo.
