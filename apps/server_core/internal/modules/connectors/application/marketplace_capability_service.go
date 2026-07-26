@@ -8,15 +8,16 @@ import (
 )
 
 type ProviderCapabilitySet struct {
-	ProviderCode  string
-	AccountProbes ports.AccountProber
-	Listings      ports.ListingReader
-	FeeQuotes     ports.FeeQuoteReader
-	StockReads    ports.StockReader
-	StockWrites   ports.StockWriter
-	PriceWrites   ports.PriceWriter
-	ListingWrites ports.ListingWriter
-	Orders        ports.OrderReader
+	ProviderCode    string
+	AccountProbes   ports.AccountProber
+	Listings        ports.ListingReader
+	FeeQuotes       ports.FeeQuoteReader
+	StockReads      ports.StockReader
+	StockWrites     ports.StockWriter
+	PriceWrites     ports.PriceWriter
+	ListingWrites   ports.ListingWriter
+	Orders          ports.OrderReader
+	IdentityAnchors []ports.IdentityAnchor
 }
 
 type MarketplaceCapabilityService struct {
@@ -123,6 +124,35 @@ func (s *MarketplaceCapabilityService) OrderReader(providerCode string) (ports.O
 		return nil, unsupported(providerCode, ports.CapabilityOrderRead)
 	}
 	return capability.Orders, nil
+}
+
+func (s *MarketplaceCapabilityService) IdentityAnchors(providerCode string) ([]ports.IdentityAnchor, error) {
+	capability, err := s.provider(providerCode)
+	if err != nil {
+		return nil, err
+	}
+	if capability.IdentityAnchors == nil {
+		return nil, unsupported(providerCode, "identity anchors")
+	}
+
+	known := make(map[ports.IdentityAnchor]struct{}, len(ports.KnownIdentityAnchors()))
+	for _, anchor := range ports.KnownIdentityAnchors() {
+		known[anchor] = struct{}{}
+	}
+	seen := make(map[ports.IdentityAnchor]struct{}, len(capability.IdentityAnchors))
+	for _, anchor := range capability.IdentityAnchors {
+		if _, ok := known[anchor]; !ok {
+			return nil, unsupported(providerCode, "identity anchor "+string(anchor))
+		}
+		if _, ok := seen[anchor]; ok {
+			return nil, unsupported(providerCode, "duplicate identity anchor "+string(anchor))
+		}
+		seen[anchor] = struct{}{}
+	}
+
+	clone := make([]ports.IdentityAnchor, len(capability.IdentityAnchors))
+	copy(clone, capability.IdentityAnchors)
+	return clone, nil
 }
 
 func (s *MarketplaceCapabilityService) provider(providerCode string) (ProviderCapabilitySet, error) {

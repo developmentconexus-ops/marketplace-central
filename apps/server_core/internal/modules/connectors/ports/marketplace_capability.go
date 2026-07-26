@@ -19,6 +19,28 @@ const (
 	CapabilityQuestionPlaceholder = "question_read"
 )
 
+type IdentityAnchor string
+
+const (
+	IdentityAnchorSellerSKU IdentityAnchor = "seller_sku"
+	IdentityAnchorEAN       IdentityAnchor = "ean"
+	IdentityAnchorTitle     IdentityAnchor = "title"
+	IdentityAnchorMarca     IdentityAnchor = "marca"
+	IdentityAnchorRefforn   IdentityAnchor = "refforn"
+)
+
+var knownIdentityAnchors = []IdentityAnchor{
+	IdentityAnchorSellerSKU,
+	IdentityAnchorEAN,
+	IdentityAnchorTitle,
+	IdentityAnchorMarca,
+	IdentityAnchorRefforn,
+}
+
+func KnownIdentityAnchors() []IdentityAnchor {
+	return append([]IdentityAnchor(nil), knownIdentityAnchors...)
+}
+
 type AccountProber interface {
 	ProbeAccount(ctx context.Context, ref domain.ProviderAccountRef) (domain.AccountSnapshot, error)
 }

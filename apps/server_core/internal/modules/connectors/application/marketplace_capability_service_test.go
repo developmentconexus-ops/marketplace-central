@@ -309,6 +309,60 @@ func TestMarketplaceCapabilityServiceFeeQuoteReaderUnsupported(t *testing.T) {
 	}
 }
 
+func TestMarketplaceCapabilityServiceIdentityAnchorsRequiresExplicitDeclaration(t *testing.T) {
+	t.Parallel()
+
+	withoutDeclaration := NewMarketplaceCapabilityService([]ProviderCapabilitySet{{
+		ProviderCode: "provider-without-declaration",
+	}})
+	if got, err := withoutDeclaration.IdentityAnchors("provider-without-declaration"); err == nil {
+		t.Fatalf("IdentityAnchors() = %#v, nil error; want an explicit-declaration error", got)
+	}
+
+	emptyDeclaration := NewMarketplaceCapabilityService([]ProviderCapabilitySet{{
+		ProviderCode:    "provider-with-empty-declaration",
+		IdentityAnchors: []ports.IdentityAnchor{},
+	}})
+	got, err := emptyDeclaration.IdentityAnchors("provider-with-empty-declaration")
+	if err != nil {
+		t.Fatalf("IdentityAnchors() error = %v, want nil", err)
+	}
+	if got == nil || len(got) != 0 {
+		t.Fatalf("IdentityAnchors() = %#v, want non-nil empty slice", got)
+	}
+
+	declared := []ports.IdentityAnchor{ports.IdentityAnchorSellerSKU, ports.IdentityAnchorEAN}
+	withDeclaration := NewMarketplaceCapabilityService([]ProviderCapabilitySet{{
+		ProviderCode:    "provider-with-declaration",
+		IdentityAnchors: declared,
+	}})
+	got, err = withDeclaration.IdentityAnchors("provider-with-declaration")
+	if err != nil {
+		t.Fatalf("IdentityAnchors() error = %v, want nil", err)
+	}
+	got[0] = ports.IdentityAnchorTitle
+	got, err = withDeclaration.IdentityAnchors("provider-with-declaration")
+	if err != nil {
+		t.Fatalf("IdentityAnchors() second error = %v, want nil", err)
+	}
+	if got[0] != ports.IdentityAnchorSellerSKU {
+		t.Fatalf("IdentityAnchors() registry state changed after result mutation: %#v", got)
+	}
+}
+
+func TestMarketplaceCapabilityServiceRejectsUnknownIdentityAnchor(t *testing.T) {
+	t.Parallel()
+
+	svc := NewMarketplaceCapabilityService([]ProviderCapabilitySet{{
+		ProviderCode:    "provider",
+		IdentityAnchors: []ports.IdentityAnchor{"seller_sku", "misspelled"},
+	}})
+
+	if _, err := svc.IdentityAnchors("provider"); err == nil {
+		t.Fatal("IdentityAnchors() error = nil, want unknown-anchor error")
+	}
+}
+
 func intPtr(value int) *int {
 	return &value
 }
