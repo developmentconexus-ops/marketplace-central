@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	connectorsports "marketplace-central/apps/server_core/internal/modules/connectors/ports"
 	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
 	internalreadports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 	"marketplace-central/apps/server_core/internal/modules/product_links/domain"
@@ -149,10 +148,6 @@ func (s *GenerationService) GenerateLinkCandidates(ctx context.Context, input Ge
 
 func (s *GenerationService) resolveIdentityAnchors(snapshots []domain.ListingSnapshot) (map[string][]ports.ProviderIdentityAnchor, error) {
 	resolved := make(map[string][]ports.ProviderIdentityAnchor, len(snapshots))
-	known := make(map[string]struct{}, len(connectorsports.KnownIdentityAnchors()))
-	for _, anchor := range connectorsports.KnownIdentityAnchors() {
-		known[string(anchor)] = struct{}{}
-	}
 	for _, snapshot := range snapshots {
 		providerCode := strings.TrimSpace(snapshot.ProviderCode)
 		if _, ok := resolved[providerCode]; ok {
@@ -167,11 +162,6 @@ func (s *GenerationService) resolveIdentityAnchors(snapshots []domain.ListingSna
 		}
 		if declaration == nil {
 			return nil, unavailableIdentityAnchorsError(providerCode, errors.New("identity anchor declaration is nil"))
-		}
-		for _, anchor := range declaration {
-			if _, ok := known[anchor.Anchor]; !ok {
-				return nil, unavailableIdentityAnchorsError(providerCode, fmt.Errorf("unknown identity anchor %q", anchor.Anchor))
-			}
 		}
 		resolved[providerCode] = slices.Clone(declaration)
 	}
@@ -660,9 +650,9 @@ var (
 	hardNegativeVoltagePattern = regexp.MustCompile(`(\d+)\s*v\b`)
 	hardNegativeColorTokens    = []string{"azul", "verde", "vermelho", "preto", "branco", "amarelo", "cinza", "prata", "dourado", "rosa", "laranja", "roxo"}
 	// Dimension tokens: NxM(xK) patterns and numeric measurements with a
-	// unit (mm/cm/pol/" and bare metre "m"). Matched on the lowercased
-	// title.
-	hardNegativeDimensionPattern = regexp.MustCompile(`\d+\s*x\s*\d+(?:\s*x\s*\d+)?|\d+(?:[.,]\d+)?\s*(?:inches|inch|pol|mm|cm|in|")|\d+(?:[.,]\d+)?\s*m\b`)
+	// unit (mm/cm/pol/" and bare metre "m"). Matched case-insensitively
+	// against the original title so match offsets remain valid UTF-8 offsets.
+	hardNegativeDimensionPattern = regexp.MustCompile(`(?i)\d+\s*x\s*\d+(?:\s*x\s*\d+)?|\d+(?:[.,]\d+)?\s*(?:mm|cm|pol|")|\d+(?:[.,]\d+)?\s*m\b`)
 	// Clothing/grade sizes are matched CASE-SENSITIVELY on the original
 	// title so the metre abbreviation "m" (lowercase, caught above as a
 	// measurement) never collides with the "M" grade size.
@@ -695,8 +685,8 @@ func detectHardNegative(snapshotTitle, internalName string) (bool, string) {
 		}
 	}
 
-	if stDim, stDisplay, ok := hardNegativeDimension(st, stOriginal); ok {
-		if inDim, inDisplay, ok2 := hardNegativeDimension(in, inOriginal); ok2 && stDim != inDim {
+	if stDim, stDisplay, ok := hardNegativeDimension(stOriginal); ok {
+		if inDim, inDisplay, ok2 := hardNegativeDimension(inOriginal); ok2 && stDim != inDim {
 			return true, fmt.Sprintf("hard-negative: medida/dimensão divergente %s≠%s", stDisplay, inDisplay)
 		}
 	}
@@ -723,21 +713,26 @@ func hardNegativeVoltage(text string) (string, bool) {
 // dimension contradiction only when BOTH carry dimension tokens and the
 // signatures differ — normal titles without measurements are never flagged
 // (symmetrical to the voltage/color checks, no false positives).
-func hardNegativeDimension(lowered, original string) (string, string, bool) {
-	tokenIndexes := hardNegativeDimensionPattern.FindAllStringIndex(lowered, -1)
-	keys := make([]string, 0, len(tokenIndexes))
-	display := make([]string, 0, len(tokenIndexes))
+func hardNegativeDimension(original string) (string, string, bool) {
+	type dimensionPair struct {
+		key     string
+		display string
+	}
+
+	tokenIndexes := hardNegativeDimensionPattern.FindAllStringIndex(original, -1)
+	pairs := make([]dimensionPair, 0, len(tokenIndexes))
 	for _, index := range tokenIndexes {
-		token := strings.ReplaceAll(lowered[index[0]:index[1]], " ", "")
+		originalToken := strings.TrimSpace(original[index[0]:index[1]])
+		token := strings.ToLower(originalToken)
+		token = strings.ReplaceAll(token, " ", "")
 		token = strings.ReplaceAll(token, ",", ".")
-		display = append(display, strings.TrimSpace(original[index[0]:index[1]]))
 		if strings.Contains(token, "x") {
-			keys = append(keys, token)
+			pairs = append(pairs, dimensionPair{key: token, display: originalToken})
 			continue
 		}
 
 		unit := ""
-		for _, candidate := range []string{"inches", "inch", "pol", "mm", "cm", "in", `"`, "m"} {
+		for _, candidate := range []string{"pol", "mm", "cm", `"`, "m"} {
 			if strings.HasSuffix(token, candidate) {
 				unit = candidate
 				break
@@ -745,27 +740,38 @@ func hardNegativeDimension(lowered, original string) (string, string, bool) {
 		}
 		value, ok := new(big.Rat).SetString(strings.TrimSuffix(token, unit))
 		if !ok {
-			return "", "", false
+			pairs = append(pairs, dimensionPair{key: token, display: originalToken})
+			continue
 		}
 		switch unit {
 		case "cm":
 			value.Mul(value, big.NewRat(10, 1))
 		case "m":
 			value.Mul(value, big.NewRat(1000, 1))
-		case "pol", `"`, "in", "inch", "inches":
+		case "pol", `"`:
 			value.Mul(value, big.NewRat(127, 5))
 		}
-		keys = append(keys, "mm:"+value.RatString())
+		pairs = append(pairs, dimensionPair{key: "mm:" + value.RatString(), display: originalToken})
 	}
 	for _, size := range hardNegativeSizePattern.FindAllString(original, -1) {
-		keys = append(keys, strings.ToLower(size))
-		display = append(display, size)
+		pairs = append(pairs, dimensionPair{key: strings.ToLower(size), display: size})
 	}
-	if len(keys) == 0 {
+	if len(pairs) == 0 {
 		return "", "", false
 	}
-	slices.Sort(keys)
-	return strings.Join(slices.Compact(keys), "|"), strings.Join(display, "|"), true
+	slices.SortFunc(pairs, func(a, b dimensionPair) int {
+		return strings.Compare(a.key, b.key)
+	})
+	pairs = slices.CompactFunc(pairs, func(a, b dimensionPair) bool {
+		return a.key == b.key
+	})
+	keys := make([]string, 0, len(pairs))
+	display := make([]string, 0, len(pairs))
+	for _, pair := range pairs {
+		keys = append(keys, pair.key)
+		display = append(display, pair.display)
+	}
+	return strings.Join(keys, "|"), strings.Join(display, "|"), true
 }
 
 func hardNegativeColor(text string) (string, bool) {

@@ -595,6 +595,61 @@ func TestDimensionCanonicalizationUsesExactMillimetres(t *testing.T) {
 	}
 }
 
+func TestNInOneTitleIsNotReadAsADimension(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 7, 26, 9, 7, 0, 0, time.UTC)
+	snapshot := productlinksdomain.ListingSnapshot{
+		InstallationID: "inst-n-in-one", ProviderCode: "mercado_livre", ProviderItemID: "MLB-N-IN-ONE",
+		SellerSKU: "ESCOVA-5-EM-1", EAN: "7890000000126",
+		Title: "Escova Secadora Modeladora 5 in 1 30mm Rosa", FetchedAt: now,
+	}
+	product := internalreaddomain.ProductCandidate{
+		InternalProductID: canonicalIDPtr(126),
+		Name:              "Escova Secadora 5 em 1 30mm Rosa",
+	}
+	matcher := &stubProductMatcher{results: map[string][]internalreaddomain.ProductCandidate{
+		"sku:ESCOVA-5-EM-1": {product},
+		"ean:7890000000126": {product},
+	}}
+
+	candidate := generateSingle(t, snapshot, matcher, now)
+
+	if candidate.MatchStatus == productlinksdomain.LinkCandidateMatchStatusReject ||
+		candidate.ConfidenceBand == productlinksdomain.LinkCandidateConfidenceBandBaixa {
+		reason, _ := findReason(candidate.Reasons, "title", productlinksdomain.LinkCandidateReasonDirectionAgainst)
+		t.Fatalf("candidate=%#v, fabricated dimension contradiction=%q", candidate, reason.Detail)
+	}
+}
+
+func TestDimensionDisplaySurvivesLengthChangingCaseFold(t *testing.T) {
+	t.Parallel()
+
+	hardNegative, detail := detectHardNegative("İnox 50cm", "İnox 40cm")
+
+	if !hardNegative {
+		t.Fatal("detectHardNegative()=false, want dimension contradiction")
+	}
+	if !strings.Contains(detail, "50cm") || !strings.Contains(detail, "40cm") {
+		t.Fatalf("detail=%q, want original 50cm and 40cm tokens", detail)
+	}
+	if strings.Contains(detail, "mm:") || strings.Contains(detail, "ox 5") || strings.Contains(detail, "ox 4") {
+		t.Fatalf("detail=%q, want no canonical or truncated fragment", detail)
+	}
+}
+
+func TestRepeatedMeasurementIsNotRepeatedInTheDetail(t *testing.T) {
+	t.Parallel()
+
+	hardNegative, detail := detectHardNegative("Produto 50cm por 50cm", "Produto 40cm")
+
+	if !hardNegative {
+		t.Fatal("detectHardNegative()=false, want dimension contradiction")
+	}
+	if strings.Count(detail, "50cm") != 1 {
+		t.Fatalf("detail=%q, want 50cm exactly once", detail)
+	}
+}
+
 func TestDifferentCanonicalDimensionsStillRejectConcordantCandidate(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 7, 26, 9, 10, 0, 0, time.UTC)
