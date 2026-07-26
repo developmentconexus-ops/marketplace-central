@@ -341,3 +341,56 @@ D-121-2 linha a linha.
   a prova must-fail se faz num único editar-e-restaurar, ou commita-se a fatia antes.
 - **Escrever o evidence pack ANTES de despachar o gate** (finding 7). Ratificado: a rodada 1 gastou
   um gate inteiro com um blocker que era só o arquivo ainda não existir quando o gate leu a árvore.
+
+## Re-drive do user-drive pelo hub — D-121, conta ML conectada
+
+Conta `METALNOBREACABAMENTOS` autorizada pelo operador (`integration_installations` = `connected`),
+ngrok no ar para o callback. `POST /listings/refresh` trouxe **34 anúncios**;
+`product_link_listing_snapshots` = 34, todos com `seller_sku`, 31 com EAN.
+
+**Censo SQL independente ANTES de gerar** (para ter expectativa contra a qual comparar, em vez de
+ler o resultado e declará-lo correto): 29 concordantes, 3 só-CODPROD, 2 com EAN colidente.
+
+`POST /product-links/link-candidates/generations` gerou 38 candidatos:
+
+| Estado | N | Confere? |
+|--------|---|----------|
+| ACCEPT | 29 | = os 29 concordantes previstos |
+| CONFIRM | 2 | 2 dos 3 só-CODPROD |
+| REJECT | 1 | o 3º só-CODPROD, bloqueado por hard-negative — **falso positivo, ver D-A** |
+| REVIEW | 6 | os 2 anúncios de EAN colidente, 3 candidatos cada |
+
+| ID | Verdict | Evidência |
+|----|---------|-----------|
+| M05-U1 | **PASS** | 29 `product_links` em `resolved` e 29 linhas E10, TODAS `actor=system`, `rule_matched=concordant_codprod_ean`, `collisions_at_decision=1`. Zero linha `actor=system` com qualquer outra regra. O número bate com o censo independente, não com o que o código disse de si mesmo. Dados reais: `seller_sku` = CODPROD do ERP (ex. 15956/7894200146179, 20291/7898016500118), exatamente a âncora que o F-04 consertou. |
+| M05-U2 | **PASS** | Nada além dos 29 foi aprovado. Os 2 EAN-colidentes ofereceram os dois produtos com motivo honesto nomeando o codprod concorrente (`ean casa 2 produtos no ERP (colisão: também codprod 44975) ⇒ âncora ambígua`) e nenhuma âncora venceu — AC-08 confirmado em dado real, não em fixture. Os 2 CONFIRM trazem o aviso `sem EAN para corroborar o CODPROD` e esperam clique. |
+| M05-U3 | **PASS** | `/anuncios` mostra o CODPROD na coluna PRODUTO dos 29 vinculados (26909, 41912, 39587, 15956, 20308…) e o cabeçalho diz `34 · sem vínculo 5` — 34 − 29 = 5, isto é os 2 CONFIRM + 1 REJECT + 2 colisões. Os CONFIRM aparecem como "Produto não vinculado", correto: confirmação não é vínculo. |
+| M05-U4 | **BLOCKED — M-06**, confirmado na tela | `/vinculos` renderiza os 9 pendentes numa fila única, sem separar os 2 CONFIRM dos 6 REVIEW e do 1 REJECT. Os avisos APARECEM no motivo de cada linha; falta só o agrupamento. Escopo de `apps/web` = M-06. |
+
+### Dois defeitos PRÉ-EXISTENTES revelados pelo volume real
+
+Ambos verificados contra o BASE-SHA `e3c081ae`: existiam antes do M-05. O M-05 não os causou — ele
+os tornou visíveis, porque antes havia 1 vínculo na base e agora há 29.
+
+**D-A — o hard-negative de dimensão compara números sem normalizar unidade.**
+`hardNegativeDimension` (`generation_service.go:680-696`) monta uma assinatura textual dos tokens de
+medida. O anúncio `Toalheiro Simples Soul Zen 50cm …` contra o produto `SOUL TOALHEIRO SIMPLES 500MM
+CR/POLIDO` produz `50cm` ≠ `500mm` e o par é rejeitado com
+`hard-negative: medida/dimensão divergente 50cm≠500mm`. **50cm e 500mm são a mesma medida.** O
+CODPROD 33698 casa exato e o anúncio não tem EAN, então sem o defeito este seria o terceiro CONFIRM.
+Falha fail-closed (nada errado é gravado, o par vai para a fila), mas rejeita um vínculo correto e o
+operador tem de resolvê-lo à mão. Conserto: converter para uma unidade canônica (mm) antes de
+comparar — cm×10, m×1000, pol×25.4.
+
+**D-B — `/product-links/link-workflows` mostra 20 de 29 vínculos e chama isso de total.**
+`ListLinkWorkflows` (`resolution_service.go:368-380`) aplica UM MESMO `limit` — default 20, vindo do
+transport em `http_handler.go:251` — a duas listas independentes: `ListLinkCandidates` e
+`ListProductLinks`. Com 29 links resolvidos, 9 nunca chegam à resposta:
+`MLB4834408374, MLB4834408376, MLB4834408384, MLB4834419602, MLB4834419634, MLB4834419648,
+MLB6896003262, MLB6896003832, MLB6896039640`. A API devolve 34 items e só 20 com `current_link`,
+provado por diff contra `SELECT provider_item_id FROM product_links WHERE state='resolved'`.
+O front está fiel ao que recebe — `VinculosPage.tsx:72` conta o que veio e o KPI mostra
+`Resolvidos hoje 20`. A fila tem guard de truncamento (`queueIsCapped`, mostra "200+"); a lista de
+resolvidos não tem nenhum. É a mesma classe do truncamento silencioso de página-1 do `/mercado`
+(D-120), e agora é pior: o operador não vê 9 vínculos que ele possui, sem nada na tela dizendo que
+falta algo.
