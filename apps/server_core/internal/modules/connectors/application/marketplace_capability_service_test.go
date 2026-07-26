@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -360,6 +361,19 @@ func TestMarketplaceCapabilityServiceRejectsUnknownIdentityAnchor(t *testing.T) 
 
 	if _, err := svc.IdentityAnchors("provider"); err == nil {
 		t.Fatal("IdentityAnchors() error = nil, want unknown-anchor error")
+	}
+}
+
+func TestMarketplaceCapabilityServiceRejectsDuplicateIdentityAnchor(t *testing.T) {
+	t.Parallel()
+
+	svc := NewMarketplaceCapabilityService([]ProviderCapabilitySet{{
+		ProviderCode:    "provider",
+		IdentityAnchors: []ports.IdentityAnchor{"seller_sku", "seller_sku"},
+	}})
+
+	if _, err := svc.IdentityAnchors("provider"); err == nil || !strings.Contains(err.Error(), "duplicate identity anchor seller_sku") {
+		t.Fatalf("IdentityAnchors() error = %v, want duplicate seller_sku error", err)
 	}
 }
 

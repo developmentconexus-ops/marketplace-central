@@ -240,6 +240,68 @@ func TestGenerateLinkCandidatesFailsWhenIdentityAnchorDeclarationUnavailable(t *
 	}
 }
 
+func TestGenerateLinkCandidatesFailsWhenProviderCodeIsEmpty(t *testing.T) {
+	t.Parallel()
+
+	reader := &stubIdentityAnchorReader{
+		declarations: map[string][]productlinksports.ProviderIdentityAnchor{},
+		errors:       map[string]error{},
+	}
+	store := &stubCandidateStore{}
+	approver := &recordingAutoApprover{}
+	svc := NewGenerationService(GenerationServiceConfig{
+		Snapshots: &stubSnapshotReader{snapshots: []productlinksdomain.ListingSnapshot{{
+			InstallationID: "inst-empty-provider", ProviderCode: "", ProviderItemID: "item-empty-provider",
+		}}},
+		Matcher:         &stubProductMatcher{},
+		Store:           store,
+		AutoApprover:    approver,
+		IdentityAnchors: reader,
+	})
+
+	_, err := svc.GenerateLinkCandidates(context.Background(), GenerateLinkCandidatesInput{InstallationID: "inst-empty-provider"})
+	if err == nil || !strings.Contains(err.Error(), "PRODUCT_LINKS_PROVIDER_IDENTITY_ANCHORS_UNAVAILABLE") || !strings.Contains(err.Error(), "provider code is empty") {
+		t.Fatalf("GenerateLinkCandidates() error = %v, want empty provider code failure", err)
+	}
+	if store.installationID != "" {
+		t.Fatalf("store installationID=%q, want no persistence", store.installationID)
+	}
+	if len(approver.candidates) != 0 {
+		t.Fatalf("auto-approved candidates=%#v, want none", approver.candidates)
+	}
+}
+
+func TestGenerateLinkCandidatesFailsWhenIdentityAnchorDeclarationIsNil(t *testing.T) {
+	t.Parallel()
+
+	reader := &stubIdentityAnchorReader{
+		declarations: map[string][]productlinksports.ProviderIdentityAnchor{},
+		errors:       map[string]error{},
+	}
+	store := &stubCandidateStore{}
+	approver := &recordingAutoApprover{}
+	svc := NewGenerationService(GenerationServiceConfig{
+		Snapshots: &stubSnapshotReader{snapshots: []productlinksdomain.ListingSnapshot{{
+			InstallationID: "inst-nil-declaration", ProviderCode: "provider-missing", ProviderItemID: "item-missing-declaration",
+		}}},
+		Matcher:         &stubProductMatcher{},
+		Store:           store,
+		AutoApprover:    approver,
+		IdentityAnchors: reader,
+	})
+
+	_, err := svc.GenerateLinkCandidates(context.Background(), GenerateLinkCandidatesInput{InstallationID: "inst-nil-declaration"})
+	if err == nil || !strings.Contains(err.Error(), "PRODUCT_LINKS_PROVIDER_IDENTITY_ANCHORS_UNAVAILABLE") || !strings.Contains(err.Error(), "identity anchor declaration is nil") {
+		t.Fatalf("GenerateLinkCandidates() error = %v, want nil declaration failure", err)
+	}
+	if store.installationID != "" {
+		t.Fatalf("store installationID=%q, want no persistence", store.installationID)
+	}
+	if len(approver.candidates) != 0 {
+		t.Fatalf("auto-approved candidates=%#v, want none", approver.candidates)
+	}
+}
+
 func TestGenerateLinkCandidatesUsesExactSKUFirst(t *testing.T) {
 	t.Parallel()
 

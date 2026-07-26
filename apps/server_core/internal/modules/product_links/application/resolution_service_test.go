@@ -413,6 +413,7 @@ func TestListLinkWorkflowsDefaultsDoNotVaryWithLimit(t *testing.T) {
 		{name: "limit_5", limit: 5},
 		{name: "limit_20", limit: 20},
 		{name: "limit_500", limit: 500},
+		{name: "limit_5000", limit: 5000},
 	}
 	for _, tc := range limits {
 		t.Run(tc.name, func(t *testing.T) {
