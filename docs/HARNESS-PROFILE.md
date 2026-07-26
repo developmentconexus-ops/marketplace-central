@@ -279,6 +279,55 @@ verification conflicts against this list.
   implementation conversation. GPT flags NEVER retyped from memory — resolve via the
   `codex-dispatch` skill; `--effort` always explicit.
 
+### Third-round rule — a third defect of the same shape stops the patching
+`status: ratified` · `provenance: 2026-07-25 · operator ruling, D-121 · field evidence CHIP-M05 (6 dual-gate rounds)`
+
+**Trigger (either one fires it):**
+1. A gate round finds a defect of the **same shape** as a defect already corrected in two
+   earlier rounds of the same chip — same failure mechanism, even if a different file,
+   layer or artifact; or
+2. a chip reaches its **third correction round** on any one criterion.
+
+Shape, not location. CHIP-M05's three instances were a code comment, a scope argument in
+prose, and an OpenAPI description — three artifacts, one mechanism: *a claim about
+observable behaviour written from the layer that NAMES the value instead of the layer that
+PRODUCES it.* Each was point-fixed, each time correctly, and nobody swept for the class
+until the sixth round. Two of the three had contradicting evidence already sitting in the
+repository.
+
+**What the chip must do instead of emitting a fourth point-fix:**
+
+- **Name the shape in one sentence** — the mechanism, not the instance. If the sentence
+  cannot be written, the root cause is not understood yet and the fix is premature.
+- **Sweep the whole class, exhaustively and by tool.** Enumerate every site in the write-set
+  where that mechanism could occur, `grep`-anchored, with `file:line` for each, and record
+  the full list in the evidence pack — including the sites found CLEAN. An unbounded
+  "I looked and it's fine" is not a sweep; the enumeration is the artifact.
+- **Classify each site** as correct / defective / not-applicable-because-<reason>. Fix every
+  defective one in the same round.
+- **Prove the class closed, not the instance.** Must-fail on a representative site, or an
+  enumeration a reviewer can re-run.
+- **Ask whether the remedy is structural or informational** — a guard, a funnel, a type, a
+  lint rule, or just a corrected sentence. **Before adding any abstraction, get an
+  independent adversarial judgement briefed to argue AGAINST it** (YAGNI/DRY rule-of-three,
+  §11 standard). In CHIP-M05 that judgement killed the proposed domain constructor: the
+  database CHECK was already the single authority, and a Go copy of the same policy would
+  have been a second source of truth free to drift. The real defect was a guard nobody
+  called, plus missing funnel discipline, plus missing coverage — not a missing type.
+- **Record it as a `ROUND-N FULL ANALYSIS` section** in the evidence pack, and name it in the
+  `CLOSED` event.
+
+**Binding on the reviewers and the hub:** a third-round point-fix arriving WITHOUT the class
+sweep is not acceptable evidence — the gate returns it, and the hub does not merge on it. The
+cost of the sweep is one round; the cost of skipping it was three extra rounds and a wrong
+description shipped into a published contract.
+
+**Why this is not just "review harder":** rounds 1-3 of CHIP-M05 each PASSED their own gate on
+the fix in front of them. Every individual verdict was correct. The failure is that a gate
+scoped to the reported defect cannot see a class, and neither can a chip that keeps answering
+the question it was asked. Only an explicit trip-wire on repetition catches it — this is the
+local-maximum guard (§11 G1-G3) applied to the correction loop itself.
+
 ## 12. Implementer dispatch bindings (core §4 instantiation)
 `status: ratified` · `provenance: 2026-07-16 · operator-ratified alt-D+ design session (4 adversarial Opus×Sol rounds + MIS-003 field evidence: hub + CHIP-SAT/CHIP-M02/CHIP-M03)`
 
@@ -371,4 +420,5 @@ retroactive GPT-5.6 Sol medium review at mission closeout (operator's call).
 2026-07-18 · (upstream) · ratified · hub support crew landed in mnfs-harness c0fd334 (harness 0.3.2), CORE §1 + harness-hub skill, re-vendored to docs/: fixed cheap-subagent crew hub-ops (ladder/stack/governance/housekeeping) + hub-scribe (files hub-authored ledger/status/commits) + hub-analyst (read-only evidence checks); judgment (rulings, event replies, acceptance, collision calls) never delegated; crew never pushes/merges/authors doctrine; operator-ratified 2026-07-18; plugin cache synced 0.3.2
 2026-07-18 · (upstream) · ratified · Opus adversarial-gate remediation landed in mnfs-harness 8fa7ad8 (harness 0.3.3), re-vendored to docs/: crew ships as plugin agent definitions harness/agents/hub-{ops,scribe,analyst}.md (spawn via Agent tool, persistent via SendMessage, mandatory respawn at milestone boundary); CORE §2(g) grant does not waive §3 collision test; CORE §5 PILOT spot-check risk-weighted (integrity-critical/live-integration first, rotating); REVIEW §9 delta re-verdict = declared bounded exception to §8/§13 cold mandate (round-1 gates stay cold); REVIEW §8 refuter may escalate to general breadth on thin first-family pass (must say so); scribe fail-closed branch-guard; analyst base-SHA statement; worker SKILL pin 10 (grants bind as written, P5 follows §5 PILOT). Gate verdict PASS-WITH-CONDITIONS, all 12 findings remediated; plugin cache synced 0.3.3
 2026-07-20 · §1 · ratified · default branch corrected `master`→`main` (operator directive D-120: "be on default main"). No `master` ref ever existed (origin/HEAD → origin/main); the stale `master` binding masked a detached-HEAD boot anomaly where nested worktree `hub-erp-main` held `main` while the primary dir sat detached. Consolidated: freed `main` (detached hub-erp-main HEAD), checked out `main` in primary; hub-erp-main dir cleanup deferred (Windows "Function not implemented" on node_modules junction / .gomodcache read-only — `git worktree prune` after stack re-point)
+2026-07-25 · §11 (new subsection) · ratified · third-round rule: a third defect of the SAME SHAPE (or a third correction round on one criterion) stops point-fixing and requires a named mechanism + tool-anchored exhaustive class sweep (clean sites listed too) + class-level must-fail + independent anti-abstraction judgement before any new type, filed as ROUND-N FULL ANALYSIS; a third-round point-fix without the sweep is not acceptable evidence and the hub does not merge on it (operator ruling D-121; field evidence CHIP-M05 — same mechanism point-fixed in a code comment, a scope argument and an OpenAPI description across 6 rounds, each round passing its own gate)
 ```
