@@ -667,7 +667,7 @@ Base is `917f7bb58e385847fba5612201823f9db48791c6` throughout.
 | C8 | **PASS** | `resolution_service.go:369-381` three independent literals; `TestListLinkWorkflowsUsesIndependentDefaultLimitsAndReturnsAll29Links` (`resolution_service_test.go:361`) asserts `len(links)==29` on a 29-link fixture; `TestListLinkWorkflowsDefaultsDoNotVaryWithLimit` (`:406`) pins the independence at 5/20/500; `TestListLinkWorkflowsHonorsIndependentExplicitLimits` (`:447`). Must-fail below |
 | C9 | **PASS** | `git diff --name-only <base>..HEAD \| grep -i migration` → **zero**; the C10 list contains no `migrations/` path and no `product_links/adapters/postgres/` file at all, so the chip writes no `UPDATE` and no backfill. Characterised honestly: a pre-existing `ON CONFLICT … DO UPDATE SET reasons = EXCLUDED.reasons` does exist at `link_candidate_repo.go:79`, but it is the candidate **regeneration** upsert, untouched by this chip and depended on by the hub's own U1 ("depois de regerar candidatos"). R3 forbids retro-editing persisted motivos; it does not forbid regeneration from producing fresh ones |
 | C10 | **PASS** | full `git diff --name-only <base>..HEAD` pasted in the C10 block above — 17 paths, of which 2 are this evidence pack. `grep -c '^apps/web/'` = **0** |
-| C11 | **PASS on L0+L1 · governance rung OPEN (hub-run per ruling R-b)** | see the Ladder section below |
+| C11 | **PASS** — L0+L1 green chip-side; governance rung hub-run per R-b, **differential PASS** (53 violations at chip tip == 53 at BASE, outputs identical line for line; lane is red on `main` and not green here — see the honesty note) | see the Ladder section below + hub evidence `main@d36d89a` |
 | C12 | **PASS** | `git diff -w <base>..HEAD -- internal/composition/root.go` → **0 removed lines**, exactly 3 added, quoted verbatim in the C12 block above and in the CLOSED payload; `gofmt -l` clean (proven CR-stripped per the ROUND-1 analysis — the naive file-scoped check is uninformative on this checkout) |
 
 ## Ladder
@@ -722,6 +722,43 @@ correction rather than a closure blocker. The P6 gate judges what is the chip's.
 other in *any* chip that carries a governance rung. C11's text should read "hub-run" from dispatch
 rather than leaving the chip to discover the conflict in flight. Hub's characterisation: a doctrine
 defect, not a code defect.
+
+### Governance rung — RUN BY THE HUB, differential PASS
+
+Hub evidence, committed to `main` @ `d36d89a`: `_chip-anchors/hub-governance-lane.md`. Cited here,
+**not re-proven** — the chip did not run the lane and does not own it.
+
+Method: clean detached worktree created OUTSIDE `.claude/worktrees/` (the scanner sweeps that
+directory and falsifies its own result), and the SAME lane run twice — once at chip tip `8e37958a`,
+once at BASE-SHA `917f7bb5…`.
+
+| Run | Result |
+|---|---|
+| chip tip `8e37958a` | `status=failed`, exit 1, **53 violations** |
+| BASE-SHA `917f7bb5…` | `status=failed`, exit 1, **53 violations** |
+| `Compare-Object` of the two outputs (175 lines each) | **empty — identical line for line**, including all 14 `baseline_exception` entries |
+
+No violation names a file this chip wrote. `GOV_MODULE_COVERAGE` fires on `sourcekind` +
+`tenant_config` (M-02 debt, no `modules.json` entry); `RCFG_*` fires on the legacy
+magalu/amazon/shopee adapters and `MC_ERP_SOURCE` in `root.go`.
+
+**Hub verdict: C11's governance rung PASSES on the differential reading — zero new violations
+introduced.**
+
+**Honesty note, at the hub's explicit instruction and not buried:** this is **NOT a green lane**.
+The lane is red on `main` and was red before this chip existed. Accepting a chip over a red lane is
+legitimate here *only* because the difference is null and the nullity is proven by a line-for-line
+comparison of two runs — not because the red was waved through. The 53 violations are the hub's
+debt, not this chip's, and they remain outstanding.
+
+**Synchrony check (hub asked, chip verified by tool rather than asserting).** The hub measured at
+`8e37958a`; the branch is now at `b954783d`. `git diff --name-only 8e37958..b954783` returns exactly
+one path — this `EVIDENCE.md`. Zero `.go` files, and `git diff --stat 8e37958..b954783 -- apps/` is
+empty, so the entire code tree is byte-identical between the measured tip and the current one. The
+two intervening commits (`078ae7be`, `b954783d`) are both documentation. The differential therefore
+still holds and **no re-run is needed before merge**. One correction to the hub's framing: S4
+(`030fa58c`) sits far below `8e37958a` and was already inside the measured tip — nothing after that
+tip is code at all.
 
 ## Dual gate
 
