@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	connectorsports "marketplace-central/apps/server_core/internal/modules/connectors/ports"
 	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
 	internalreadports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 	"marketplace-central/apps/server_core/internal/modules/product_links/domain"
@@ -29,19 +30,21 @@ type LinkAutoApprover interface {
 }
 
 type GenerationService struct {
-	snapshots    ports.ListingSnapshotReader
-	matcher      ProductMatcher
-	store        ports.LinkCandidateStore
-	autoApprover LinkAutoApprover
-	now          func() time.Time
+	snapshots       ports.ListingSnapshotReader
+	matcher         ProductMatcher
+	store           ports.LinkCandidateStore
+	identityAnchors ports.ProviderIdentityAnchorReader
+	autoApprover    LinkAutoApprover
+	now             func() time.Time
 }
 
 type GenerationServiceConfig struct {
-	Snapshots    ports.ListingSnapshotReader
-	Matcher      ProductMatcher
-	Store        ports.LinkCandidateStore
-	AutoApprover LinkAutoApprover
-	Now          func() time.Time
+	Snapshots       ports.ListingSnapshotReader
+	Matcher         ProductMatcher
+	Store           ports.LinkCandidateStore
+	IdentityAnchors ports.ProviderIdentityAnchorReader
+	AutoApprover    LinkAutoApprover
+	Now             func() time.Time
 }
 
 type GenerateLinkCandidatesInput struct {
@@ -60,16 +63,17 @@ func NewGenerationService(cfg GenerationServiceConfig) *GenerationService {
 		now = func() time.Time { return time.Now().UTC() }
 	}
 	return &GenerationService{
-		snapshots:    cfg.Snapshots,
-		matcher:      cfg.Matcher,
-		store:        cfg.Store,
-		autoApprover: cfg.AutoApprover,
-		now:          now,
+		snapshots:       cfg.Snapshots,
+		matcher:         cfg.Matcher,
+		store:           cfg.Store,
+		identityAnchors: cfg.IdentityAnchors,
+		autoApprover:    cfg.AutoApprover,
+		now:             now,
 	}
 }
 
 func (s *GenerationService) GenerateLinkCandidates(ctx context.Context, input GenerateLinkCandidatesInput) (domain.LinkCandidateGenerationResult, error) {
-	if s.snapshots == nil || s.matcher == nil || s.store == nil {
+	if s.snapshots == nil || s.matcher == nil || s.store == nil || s.identityAnchors == nil {
 		return domain.LinkCandidateGenerationResult{}, errors.New("PRODUCT_LINKS_CANDIDATE_ENGINE_NOT_CONFIGURED")
 	}
 
@@ -87,6 +91,10 @@ func (s *GenerationService) GenerateLinkCandidates(ctx context.Context, input Ge
 	if err != nil {
 		return domain.LinkCandidateGenerationResult{}, err
 	}
+	identityAnchors, err := s.resolveIdentityAnchors(snapshots)
+	if err != nil {
+		return domain.LinkCandidateGenerationResult{}, err
+	}
 
 	identities := make([]domain.ListingIdentity, 0, len(snapshots))
 	candidates := make([]domain.LinkCandidate, 0, len(snapshots))
@@ -98,7 +106,7 @@ func (s *GenerationService) GenerateLinkCandidates(ctx context.Context, input Ge
 			ProviderVariationID: snapshot.ProviderVariationID,
 		})
 
-		generated, approvals, err := s.generateForSnapshot(ctx, snapshot)
+		generated, approvals, err := s.generateForSnapshot(ctx, snapshot, identityAnchors[strings.TrimSpace(snapshot.ProviderCode)])
 		if err != nil {
 			return domain.LinkCandidateGenerationResult{}, classifyMatcherError(err)
 		}
@@ -138,6 +146,41 @@ func (s *GenerationService) GenerateLinkCandidates(ctx context.Context, input Ge
 	}, nil
 }
 
+func (s *GenerationService) resolveIdentityAnchors(snapshots []domain.ListingSnapshot) (map[string][]ports.ProviderIdentityAnchor, error) {
+	resolved := make(map[string][]ports.ProviderIdentityAnchor, len(snapshots))
+	known := make(map[string]struct{}, len(connectorsports.KnownIdentityAnchors()))
+	for _, anchor := range connectorsports.KnownIdentityAnchors() {
+		known[string(anchor)] = struct{}{}
+	}
+	for _, snapshot := range snapshots {
+		providerCode := strings.TrimSpace(snapshot.ProviderCode)
+		if _, ok := resolved[providerCode]; ok {
+			continue
+		}
+		if providerCode == "" {
+			return nil, unavailableIdentityAnchorsError(providerCode, errors.New("provider code is empty"))
+		}
+		declaration, err := s.identityAnchors.ProviderIdentityAnchors(providerCode)
+		if err != nil {
+			return nil, unavailableIdentityAnchorsError(providerCode, err)
+		}
+		if declaration == nil {
+			return nil, unavailableIdentityAnchorsError(providerCode, errors.New("identity anchor declaration is nil"))
+		}
+		for _, anchor := range declaration {
+			if _, ok := known[anchor.Anchor]; !ok {
+				return nil, unavailableIdentityAnchorsError(providerCode, fmt.Errorf("unknown identity anchor %q", anchor.Anchor))
+			}
+		}
+		resolved[providerCode] = slices.Clone(declaration)
+	}
+	return resolved, nil
+}
+
+func unavailableIdentityAnchorsError(providerCode string, cause error) error {
+	return fmt.Errorf("PRODUCT_LINKS_PROVIDER_IDENTITY_ANCHORS_UNAVAILABLE for provider %q: %w", providerCode, cause)
+}
+
 func (s *GenerationService) ListLinkCandidates(ctx context.Context, input ListLinkCandidatesInput) ([]domain.LinkCandidate, error) {
 	if s.store == nil {
 		return nil, errors.New("PRODUCT_LINKS_CANDIDATE_ENGINE_NOT_CONFIGURED")
@@ -153,7 +196,7 @@ func (s *GenerationService) ListLinkCandidates(ctx context.Context, input ListLi
 	return s.store.ListLinkCandidates(ctx, installationID, limit)
 }
 
-func (s *GenerationService) generateForSnapshot(ctx context.Context, snapshot domain.ListingSnapshot) ([]domain.LinkCandidate, []autoApproval, error) {
+func (s *GenerationService) generateForSnapshot(ctx context.Context, snapshot domain.ListingSnapshot, identityAnchors []ports.ProviderIdentityAnchor) ([]domain.LinkCandidate, []autoApproval, error) {
 	now := s.now().UTC()
 
 	skuMatches, err := s.findProducts(ctx, snapshot.SellerSKU, domain.LinkCandidateMatchInputSellerSKU)
@@ -165,7 +208,7 @@ func (s *GenerationService) generateForSnapshot(ctx context.Context, snapshot do
 		return nil, nil, err
 	}
 
-	exactCandidates := buildExactCandidates(snapshot, skuMatches, eanMatches, now)
+	exactCandidates := buildExactCandidates(snapshot, skuMatches, eanMatches, identityAnchors, now)
 	if len(exactCandidates) > 0 {
 		return exactCandidates, autoApprovals(exactCandidates, skuMatches), nil
 	}
@@ -175,11 +218,11 @@ func (s *GenerationService) generateForSnapshot(ctx context.Context, snapshot do
 		return nil, nil, err
 	}
 	if len(titleMatches.Products) > 0 {
-		return buildCandidatesFromProducts(snapshot, titleMatches.Products, domain.LinkCandidateStateTitleMatch, domain.LinkCandidateMatchInputTitle, snapshot.Title, now), nil, nil
+		return buildCandidatesFromProducts(snapshot, titleMatches.Products, domain.LinkCandidateStateTitleMatch, domain.LinkCandidateMatchInputTitle, snapshot.Title, identityAnchors, now), nil, nil
 	}
 
 	unresolved := newCandidate(snapshot, domain.LinkCandidateStateUnresolved, domain.LinkCandidateMatchInputNone, "", internalreaddomain.ProductCandidate{}, now)
-	applyUnresolvedScore(&unresolved)
+	applyUnresolvedScore(&unresolved, identityAnchors)
 	return []domain.LinkCandidate{unresolved}, nil, nil
 }
 
@@ -255,33 +298,33 @@ func (s *GenerationService) findProducts(ctx context.Context, value string, matc
 	}, nil
 }
 
-func buildExactCandidates(snapshot domain.ListingSnapshot, skuMatches, eanMatches productMatchResult, now time.Time) []domain.LinkCandidate {
+func buildExactCandidates(snapshot domain.ListingSnapshot, skuMatches, eanMatches productMatchResult, identityAnchors []ports.ProviderIdentityAnchor, now time.Time) []domain.LinkCandidate {
 	if len(skuMatches.Products) == 1 && len(eanMatches.Products) == 1 {
 		skuProductID, _ := canonicalProductID(skuMatches.Products[0])
 		eanProductID, _ := canonicalProductID(eanMatches.Products[0])
 		if skuProductID != eanProductID {
 			conflictProducts := uniqueProducts(append(slices.Clone(skuMatches.Products), eanMatches.Products...))
-			return buildConflictCandidates(snapshot, conflictProducts, skuMatches, eanMatches, now)
+			return buildConflictCandidates(snapshot, conflictProducts, skuMatches, eanMatches, identityAnchors, now)
 		}
 		// seller_sku + ean concordant on the same codprod: IC-01 A2's viable
 		// auto-ACCEPT pair (proxy for "2 independent anchors").
-		return []domain.LinkCandidate{buildConcordantCandidate(snapshot, skuMatches, eanMatches, now)}
+		return []domain.LinkCandidate{buildConcordantCandidate(snapshot, skuMatches, eanMatches, identityAnchors, now)}
 	}
 
 	if len(skuMatches.Products) > 1 || len(eanMatches.Products) > 1 {
-		return buildCollisionCandidates(snapshot, skuMatches, eanMatches, now)
+		return buildCollisionCandidates(snapshot, skuMatches, eanMatches, identityAnchors, now)
 	}
 
 	if len(skuMatches.Products) == 1 {
-		return buildCandidatesFromProducts(snapshot, skuMatches.Products, domain.LinkCandidateStateExactSKU, domain.LinkCandidateMatchInputSellerSKU, skuMatches.InputValue, now)
+		return buildCandidatesFromProducts(snapshot, skuMatches.Products, domain.LinkCandidateStateExactSKU, domain.LinkCandidateMatchInputSellerSKU, skuMatches.InputValue, identityAnchors, now)
 	}
 	if len(eanMatches.Products) == 1 {
-		return buildCandidatesFromProducts(snapshot, eanMatches.Products, domain.LinkCandidateStateExactEAN, domain.LinkCandidateMatchInputEAN, eanMatches.InputValue, now)
+		return buildCandidatesFromProducts(snapshot, eanMatches.Products, domain.LinkCandidateStateExactEAN, domain.LinkCandidateMatchInputEAN, eanMatches.InputValue, identityAnchors, now)
 	}
 	return nil
 }
 
-func buildConflictCandidates(snapshot domain.ListingSnapshot, products []internalreaddomain.ProductCandidate, skuMatches, eanMatches productMatchResult, now time.Time) []domain.LinkCandidate {
+func buildConflictCandidates(snapshot domain.ListingSnapshot, products []internalreaddomain.ProductCandidate, skuMatches, eanMatches productMatchResult, identityAnchors []ports.ProviderIdentityAnchor, now time.Time) []domain.LinkCandidate {
 	candidates := make([]domain.LinkCandidate, 0, len(products))
 	for _, product := range products {
 		productID, _ := canonicalProductID(product)
@@ -298,12 +341,12 @@ func buildConflictCandidates(snapshot domain.ListingSnapshot, products []interna
 			conflictingIDs = productIDsExcept(skuMatches.Products, productID)
 		}
 		candidate := newCandidate(snapshot, domain.LinkCandidateStateConflict, matchInput, matchValue, product, now)
-		applyConflictScore(&candidate, ownAnchor, conflictAnchor, productID, conflictingIDs)
+		applyConflictScore(&candidate, ownAnchor, conflictAnchor, productID, conflictingIDs, identityAnchors)
 		candidates = append(candidates, candidate)
 	}
 	if len(candidates) == 0 {
 		candidate := newCandidate(snapshot, domain.LinkCandidateStateConflict, domain.LinkCandidateMatchInputNone, "", internalreaddomain.ProductCandidate{}, now)
-		applyUnresolvedScore(&candidate)
+		applyUnresolvedScore(&candidate, identityAnchors)
 		candidates = append(candidates, candidate)
 	}
 	return candidates
@@ -315,7 +358,7 @@ func buildConflictCandidates(snapshot domain.ListingSnapshot, products []interna
 // segurança > cobertura). A second anchor that did resolve a single product is
 // still offered, but blocked from confirmation: corroboration against an
 // ambiguous anchor is not corroboration.
-func buildCollisionCandidates(snapshot domain.ListingSnapshot, skuMatches, eanMatches productMatchResult, now time.Time) []domain.LinkCandidate {
+func buildCollisionCandidates(snapshot domain.ListingSnapshot, skuMatches, eanMatches productMatchResult, identityAnchors []ports.ProviderIdentityAnchor, now time.Time) []domain.LinkCandidate {
 	anchors := []struct {
 		result     productMatchResult
 		matchInput domain.LinkCandidateMatchInput
@@ -333,26 +376,26 @@ func buildCollisionCandidates(snapshot domain.ListingSnapshot, skuMatches, eanMa
 			productID, _ := canonicalProductID(product)
 			candidate := newCandidate(snapshot, domain.LinkCandidateStateConflict, anchor.matchInput, anchor.result.InputValue, product, now)
 			if len(anchor.result.Products) > 1 {
-				applyCollisionScore(&candidate, anchor.name, len(anchor.result.Products), productIDsExcept(anchor.result.Products, productID))
+				applyCollisionScore(&candidate, anchor.name, len(anchor.result.Products), productIDsExcept(anchor.result.Products, productID), identityAnchors)
 			} else {
-				applyAmbiguousCorroborationScore(&candidate, anchor.name, productID, anchor.other, otherCount)
+				applyAmbiguousCorroborationScore(&candidate, anchor.name, productID, anchor.other, otherCount, identityAnchors)
 			}
 			candidates = append(candidates, candidate)
 		}
 	}
 	if len(candidates) == 0 {
 		candidate := newCandidate(snapshot, domain.LinkCandidateStateUnresolved, domain.LinkCandidateMatchInputNone, "", internalreaddomain.ProductCandidate{}, now)
-		applyUnresolvedScore(&candidate)
+		applyUnresolvedScore(&candidate, identityAnchors)
 		candidates = append(candidates, candidate)
 	}
 	return candidates
 }
 
-func buildCandidatesFromProducts(snapshot domain.ListingSnapshot, products []internalreaddomain.ProductCandidate, state domain.LinkCandidateState, matchInput domain.LinkCandidateMatchInput, matchValue string, now time.Time) []domain.LinkCandidate {
+func buildCandidatesFromProducts(snapshot domain.ListingSnapshot, products []internalreaddomain.ProductCandidate, state domain.LinkCandidateState, matchInput domain.LinkCandidateMatchInput, matchValue string, identityAnchors []ports.ProviderIdentityAnchor, now time.Time) []domain.LinkCandidate {
 	candidates := make([]domain.LinkCandidate, 0, len(products))
 	for _, product := range uniqueProducts(products) {
 		candidate := newCandidate(snapshot, state, matchInput, matchValue, product, now)
-		applySingleAnchorScore(&candidate, snapshot, state, product)
+		applySingleAnchorScore(&candidate, snapshot, state, product, identityAnchors)
 		candidates = append(candidates, candidate)
 	}
 	return candidates
@@ -436,14 +479,12 @@ func canonicalProductID(product internalreaddomain.ProductCandidate) (int, bool)
 // --- IC-01 Amendment A2 scoring (confidence/band/status/reasons) ---
 //
 // seller_sku and ean are the only cross-side anchors available against
-// provider data (A2); title ranks only, never accepts. marca/refforn exist
-// solely on the internal side and are therefore ALWAYS surfaced as
-// UNAVAILABLE reasons (ADR-17 — motivo sempre visível, never silently
-// dropped). Hard-negative title lexical checks (kit/combo/cor/voltagem) cap
+// provider data (A2); title ranks only, never accepts. Hard-negative title
+// lexical checks (kit/combo/cor/voltagem) cap
 // any match at BAIXA/REJECT even when EAN/SKU agree ("contradição vence
 // EAN").
 
-func buildConcordantCandidate(snapshot domain.ListingSnapshot, skuMatches, eanMatches productMatchResult, now time.Time) domain.LinkCandidate {
+func buildConcordantCandidate(snapshot domain.ListingSnapshot, skuMatches, eanMatches productMatchResult, identityAnchors []ports.ProviderIdentityAnchor, now time.Time) domain.LinkCandidate {
 	product := skuMatches.Products[0]
 	candidate := newCandidate(snapshot, domain.LinkCandidateStateExactSKU, domain.LinkCandidateMatchInputSellerSKU, skuMatches.InputValue, product, now)
 
@@ -461,11 +502,11 @@ func buildConcordantCandidate(snapshot domain.ListingSnapshot, skuMatches, eanMa
 		candidate.ConfidenceBand = domain.LinkCandidateConfidenceBandAlta
 		candidate.MatchStatus = domain.LinkCandidateMatchStatusAccept
 	}
-	candidate.Reasons = append(reasons, mandatoryUnavailableReasons()...)
+	candidate.Reasons = appendProviderDeclaredUnavailableReasons(reasons, identityAnchors)
 	return candidate
 }
 
-func applySingleAnchorScore(candidate *domain.LinkCandidate, snapshot domain.ListingSnapshot, state domain.LinkCandidateState, product internalreaddomain.ProductCandidate) {
+func applySingleAnchorScore(candidate *domain.LinkCandidate, snapshot domain.ListingSnapshot, state domain.LinkCandidateState, product internalreaddomain.ProductCandidate, identityAnchors []ports.ProviderIdentityAnchor) {
 	var reasons []domain.LinkCandidateReason
 	var confidence int
 	var band domain.LinkCandidateConfidenceBand
@@ -505,7 +546,7 @@ func applySingleAnchorScore(candidate *domain.LinkCandidate, snapshot domain.Lis
 			{Anchor: "ean", Direction: domain.LinkCandidateReasonDirectionUnavailable, Detail: "ean sem correspondência"},
 		}
 	default:
-		applyUnresolvedScore(candidate)
+		applyUnresolvedScore(candidate, identityAnchors)
 		return
 	}
 
@@ -517,13 +558,13 @@ func applySingleAnchorScore(candidate *domain.LinkCandidate, snapshot domain.Lis
 	candidate.Confidence = confidence
 	candidate.ConfidenceBand = band
 	candidate.MatchStatus = status
-	candidate.Reasons = append(reasons, mandatoryUnavailableReasons()...)
+	candidate.Reasons = appendProviderDeclaredUnavailableReasons(reasons, identityAnchors)
 }
 
 // applyConflictScore scores the CODPROD≠EAN conflict. Neither anchor wins
 // (AC-08, ratified by the operator): both products are offered for review with
 // the disagreement spelled out, and the decision is the operator's.
-func applyConflictScore(candidate *domain.LinkCandidate, ownAnchor, conflictAnchor string, ownProductID int, conflictingIDs []int) {
+func applyConflictScore(candidate *domain.LinkCandidate, ownAnchor, conflictAnchor string, ownProductID int, conflictingIDs []int, identityAnchors []ports.ProviderIdentityAnchor) {
 	candidate.Confidence = 20
 	candidate.ConfidenceBand = domain.LinkCandidateConfidenceBandBaixa
 	candidate.MatchStatus = domain.LinkCandidateMatchStatusReview
@@ -531,26 +572,26 @@ func applyConflictScore(candidate *domain.LinkCandidate, ownAnchor, conflictAnch
 		{Anchor: ownAnchor, Direction: domain.LinkCandidateReasonDirectionFor, Detail: fmt.Sprintf("%s aponta codprod %d", ownAnchor, ownProductID)},
 		{Anchor: conflictAnchor, Direction: domain.LinkCandidateReasonDirectionAgainst, Detail: fmt.Sprintf("%s aponta codprod %s (conflito, nenhuma âncora vence)", conflictAnchor, formatProductIDs(conflictingIDs))},
 	}
-	candidate.Reasons = append(reasons, mandatoryUnavailableReasons()...)
+	candidate.Reasons = appendProviderDeclaredUnavailableReasons(reasons, identityAnchors)
 }
 
 // applyCollisionScore scores one product out of a set an ambiguous anchor
 // matched. The anchor named N products, so it identified none of them.
-func applyCollisionScore(candidate *domain.LinkCandidate, anchor string, matchCount int, otherIDs []int) {
+func applyCollisionScore(candidate *domain.LinkCandidate, anchor string, matchCount int, otherIDs []int, identityAnchors []ports.ProviderIdentityAnchor) {
 	candidate.Confidence = 20
 	candidate.ConfidenceBand = domain.LinkCandidateConfidenceBandBaixa
 	candidate.MatchStatus = domain.LinkCandidateMatchStatusReview
 	reasons := []domain.LinkCandidateReason{
 		{Anchor: anchor, Direction: domain.LinkCandidateReasonDirectionAgainst, Detail: fmt.Sprintf("%s casa %d produtos no ERP (colisão: também codprod %s) ⇒ âncora ambígua", anchor, matchCount, formatProductIDs(otherIDs))},
 	}
-	candidate.Reasons = append(reasons, mandatoryUnavailableReasons()...)
+	candidate.Reasons = appendProviderDeclaredUnavailableReasons(reasons, identityAnchors)
 }
 
 // applyAmbiguousCorroborationScore scores the anchor that DID resolve a single
 // product on a listing whose other anchor collided. The single anchor is real,
 // but there is nothing to corroborate it against — an ambiguous anchor
 // corroborates nothing — so it is review, never confirmation.
-func applyAmbiguousCorroborationScore(candidate *domain.LinkCandidate, ownAnchor string, ownProductID int, otherAnchor string, otherCount int) {
+func applyAmbiguousCorroborationScore(candidate *domain.LinkCandidate, ownAnchor string, ownProductID int, otherAnchor string, otherCount int, identityAnchors []ports.ProviderIdentityAnchor) {
 	candidate.Confidence = 40
 	candidate.ConfidenceBand = domain.LinkCandidateConfidenceBandBaixa
 	candidate.MatchStatus = domain.LinkCandidateMatchStatusReview
@@ -558,7 +599,7 @@ func applyAmbiguousCorroborationScore(candidate *domain.LinkCandidate, ownAnchor
 		{Anchor: ownAnchor, Direction: domain.LinkCandidateReasonDirectionFor, Detail: fmt.Sprintf("%s aponta codprod %d", ownAnchor, ownProductID)},
 		{Anchor: otherAnchor, Direction: domain.LinkCandidateReasonDirectionAgainst, Detail: fmt.Sprintf("%s casa %d produtos no ERP ⇒ não corrobora", otherAnchor, otherCount)},
 	}
-	candidate.Reasons = append(reasons, mandatoryUnavailableReasons()...)
+	candidate.Reasons = appendProviderDeclaredUnavailableReasons(reasons, identityAnchors)
 }
 
 // applyUnresolvedScore scores a listing no anchor could resolve. What M05-C5
@@ -569,7 +610,7 @@ func applyAmbiguousCorroborationScore(candidate *domain.LinkCandidate, ownAnchor
 // from bulk-approving a listing with no product to approve. Reclassifying it
 // as REVIEW would have made those branches dead code on a screen this
 // milestone may not edit (apps/web is M-06's seam). Flagged to the hub.
-func applyUnresolvedScore(candidate *domain.LinkCandidate) {
+func applyUnresolvedScore(candidate *domain.LinkCandidate, identityAnchors []ports.ProviderIdentityAnchor) {
 	candidate.Confidence = 0
 	candidate.ConfidenceBand = domain.LinkCandidateConfidenceBandBaixa
 	candidate.MatchStatus = domain.LinkCandidateMatchStatusNoCandidate
@@ -577,18 +618,22 @@ func applyUnresolvedScore(candidate *domain.LinkCandidate) {
 		{Anchor: "seller_sku", Direction: domain.LinkCandidateReasonDirectionUnavailable, Detail: "seller_sku sem correspondência"},
 		{Anchor: "ean", Direction: domain.LinkCandidateReasonDirectionUnavailable, Detail: "ean sem correspondência"},
 	}
-	candidate.Reasons = append(reasons, mandatoryUnavailableReasons()...)
+	candidate.Reasons = appendProviderDeclaredUnavailableReasons(reasons, identityAnchors)
 }
 
-// mandatoryUnavailableReasons always surfaces marca/refforn as UNAVAILABLE:
-// they exist only on the internal side and can never be computed against
-// provider data, but ADR-17 forbids silently omitting the fact (never
-// silent zero/default).
-func mandatoryUnavailableReasons() []domain.LinkCandidateReason {
-	return []domain.LinkCandidateReason{
-		{Anchor: "marca", Direction: domain.LinkCandidateReasonDirectionUnavailable, Detail: "marca inexistente no lado provider"},
-		{Anchor: "refforn", Direction: domain.LinkCandidateReasonDirectionUnavailable, Detail: "refforn inexistente no lado provider"},
+func appendProviderDeclaredUnavailableReasons(reasons []domain.LinkCandidateReason, identityAnchors []ports.ProviderIdentityAnchor) []domain.LinkCandidateReason {
+	finalized := slices.Clone(reasons)
+	for _, anchor := range identityAnchors {
+		if anchor.Supplied {
+			continue
+		}
+		finalized = append(finalized, domain.LinkCandidateReason{
+			Anchor:    anchor.Anchor,
+			Direction: domain.LinkCandidateReasonDirectionUnavailable,
+			Detail:    fmt.Sprintf("provider não fornece a âncora %s", anchor.Anchor),
+		})
 	}
+	return finalized
 }
 
 func productIDsExcept(products []internalreaddomain.ProductCandidate, exclude int) []int {

@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -9,6 +10,7 @@ import (
 	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
 	internalreadports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 	productlinksdomain "marketplace-central/apps/server_core/internal/modules/product_links/domain"
+	productlinksports "marketplace-central/apps/server_core/internal/modules/product_links/ports"
 )
 
 type stubSnapshotReader struct {
@@ -51,6 +53,44 @@ type stubCandidateStore struct {
 	candidates     []productlinksdomain.LinkCandidate
 }
 
+type stubIdentityAnchorReader struct {
+	declarations map[string][]productlinksports.ProviderIdentityAnchor
+	calls        map[string]int
+	errors       map[string]error
+}
+
+type recordingAutoApprover struct {
+	candidates []productlinksdomain.LinkCandidate
+}
+
+func (a *recordingAutoApprover) AutoApproveCandidate(_ context.Context, input AutoApproveCandidateInput) (bool, error) {
+	a.candidates = append(a.candidates, input.Candidate)
+	return true, nil
+}
+
+func (s *stubIdentityAnchorReader) ProviderIdentityAnchors(providerCode string) ([]productlinksports.ProviderIdentityAnchor, error) {
+	if s.calls == nil {
+		s.calls = map[string]int{}
+	}
+	s.calls[providerCode]++
+	if err := s.errors[providerCode]; err != nil {
+		return nil, err
+	}
+	return s.declarations[providerCode], nil
+}
+
+func mercadoLivreIdentityAnchorReader() *stubIdentityAnchorReader {
+	return &stubIdentityAnchorReader{declarations: map[string][]productlinksports.ProviderIdentityAnchor{
+		"mercado_livre": {
+			{Anchor: "seller_sku", Supplied: true},
+			{Anchor: "ean", Supplied: true},
+			{Anchor: "title", Supplied: true},
+			{Anchor: "marca", Supplied: false},
+			{Anchor: "refforn", Supplied: false},
+		},
+	}}
+}
+
 func (s *stubCandidateStore) ReplaceLinkCandidates(_ context.Context, installationID string, identities []productlinksdomain.ListingIdentity, candidates []productlinksdomain.LinkCandidate) error {
 	s.installationID = installationID
 	s.identities = append([]productlinksdomain.ListingIdentity(nil), identities...)
@@ -78,9 +118,10 @@ func TestGenerateLinkCandidatesWithoutLimitReadsEverySnapshot(t *testing.T) {
 	// asks the reader for the whole installation (0), not a 20-row page.
 	snapshots := &stubSnapshotReader{}
 	svc := NewGenerationService(GenerationServiceConfig{
-		Snapshots: snapshots,
-		Matcher:   &stubProductMatcher{},
-		Store:     &stubCandidateStore{},
+		Snapshots:       snapshots,
+		Matcher:         &stubProductMatcher{},
+		Store:           &stubCandidateStore{},
+		IdentityAnchors: mercadoLivreIdentityAnchorReader(),
 	})
 
 	if _, err := svc.GenerateLinkCandidates(context.Background(), GenerateLinkCandidatesInput{InstallationID: "inst-1"}); err != nil {
@@ -88,6 +129,114 @@ func TestGenerateLinkCandidatesWithoutLimitReadsEverySnapshot(t *testing.T) {
 	}
 	if snapshots.limit != 0 {
 		t.Fatalf("snapshot reader limit = %d, want 0 (unbounded)", snapshots.limit)
+	}
+}
+
+func TestGenerateLinkCandidatesUsesProviderDeclarationForUnavailableReasons(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 7, 26, 9, 0, 0, 0, time.UTC)
+	reader := &stubIdentityAnchorReader{declarations: map[string][]productlinksports.ProviderIdentityAnchor{
+		"provider-a": {
+			{Anchor: "seller_sku", Supplied: true},
+			{Anchor: "ean", Supplied: true},
+			{Anchor: "title", Supplied: true},
+			{Anchor: "marca", Supplied: true},
+			{Anchor: "refforn", Supplied: false},
+		},
+	}}
+	snapshot := productlinksdomain.ListingSnapshot{
+		InstallationID: "inst-declaration", ProviderCode: "provider-a", ProviderItemID: "item-a",
+		SellerSKU: "SKU-A", Title: "Produto A", FetchedAt: now,
+	}
+	matcher := &stubProductMatcher{results: map[string][]internalreaddomain.ProductCandidate{
+		"sku:SKU-A": {{InternalProductID: canonicalIDPtr(101), Name: "Produto A"}},
+	}}
+	svc := NewGenerationService(GenerationServiceConfig{
+		Snapshots:       &stubSnapshotReader{snapshots: []productlinksdomain.ListingSnapshot{snapshot}},
+		Matcher:         matcher,
+		Store:           &stubCandidateStore{},
+		IdentityAnchors: reader,
+		Now:             func() time.Time { return now },
+	})
+
+	result, err := svc.GenerateLinkCandidates(context.Background(), GenerateLinkCandidatesInput{InstallationID: snapshot.InstallationID})
+	if err != nil {
+		t.Fatalf("GenerateLinkCandidates() error = %v", err)
+	}
+	if len(result.Items) != 1 {
+		t.Fatalf("result.Items=%#v, want exactly one candidate", result.Items)
+	}
+	reasons := result.Items[0].Reasons
+	if _, ok := findReason(reasons, "marca", productlinksdomain.LinkCandidateReasonDirectionUnavailable); ok {
+		t.Fatalf("reasons=%#v, want supplied marca without UNAVAILABLE reason", reasons)
+	}
+	refforn, ok := findReason(reasons, "refforn", productlinksdomain.LinkCandidateReasonDirectionUnavailable)
+	if !ok || refforn.Detail != "provider não fornece a âncora refforn" {
+		t.Fatalf("refforn reason=%#v, want provider declaration detail", refforn)
+	}
+	ean, ok := findReason(reasons, "ean", productlinksdomain.LinkCandidateReasonDirectionUnavailable)
+	if !ok || ean.Detail != "sem EAN para corroborar o CODPROD" {
+		t.Fatalf("ean reason=%#v, want supported-but-empty detail", ean)
+	}
+	if refforn.Detail == ean.Detail {
+		t.Fatalf("refforn and ean details are equal: %q", refforn.Detail)
+	}
+}
+
+func TestGenerateLinkCandidatesResolvesIdentityAnchorsOncePerProvider(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 7, 26, 9, 5, 0, 0, time.UTC)
+	reader := &stubIdentityAnchorReader{declarations: map[string][]productlinksports.ProviderIdentityAnchor{
+		"provider-a": {{Anchor: "seller_sku", Supplied: true}},
+		"provider-b": {{Anchor: "seller_sku", Supplied: true}},
+	}}
+	svc := NewGenerationService(GenerationServiceConfig{
+		Snapshots: &stubSnapshotReader{snapshots: []productlinksdomain.ListingSnapshot{
+			{InstallationID: "inst-memo", ProviderCode: " provider-a ", ProviderItemID: "item-a", FetchedAt: now},
+			{InstallationID: "inst-memo", ProviderCode: "provider-a", ProviderItemID: "item-a2", FetchedAt: now},
+			{InstallationID: "inst-memo", ProviderCode: "provider-b", ProviderItemID: "item-b", FetchedAt: now},
+		}},
+		Matcher:         &stubProductMatcher{},
+		Store:           &stubCandidateStore{},
+		IdentityAnchors: reader,
+		Now:             func() time.Time { return now },
+	})
+
+	if _, err := svc.GenerateLinkCandidates(context.Background(), GenerateLinkCandidatesInput{InstallationID: "inst-memo"}); err != nil {
+		t.Fatalf("GenerateLinkCandidates() error = %v", err)
+	}
+	if reader.calls["provider-a"] != 1 || reader.calls["provider-b"] != 1 {
+		t.Fatalf("identity anchor calls=%#v, want one lookup for each distinct trimmed provider", reader.calls)
+	}
+}
+
+func TestGenerateLinkCandidatesFailsWhenIdentityAnchorDeclarationUnavailable(t *testing.T) {
+	t.Parallel()
+	reader := &stubIdentityAnchorReader{
+		declarations: map[string][]productlinksports.ProviderIdentityAnchor{},
+		errors:       map[string]error{"provider-failed": fmt.Errorf("declaration backend unavailable")},
+	}
+	store := &stubCandidateStore{}
+	approver := &recordingAutoApprover{}
+	svc := NewGenerationService(GenerationServiceConfig{
+		Snapshots: &stubSnapshotReader{snapshots: []productlinksdomain.ListingSnapshot{{
+			InstallationID: "inst-failure", ProviderCode: "provider-failed", ProviderItemID: "item-failed",
+		}}},
+		Matcher:         &stubProductMatcher{},
+		Store:           store,
+		AutoApprover:    approver,
+		IdentityAnchors: reader,
+	})
+
+	_, err := svc.GenerateLinkCandidates(context.Background(), GenerateLinkCandidatesInput{InstallationID: "inst-failure"})
+	if err == nil || !strings.Contains(err.Error(), "PRODUCT_LINKS_PROVIDER_IDENTITY_ANCHORS_UNAVAILABLE") || !strings.Contains(err.Error(), "provider-failed") {
+		t.Fatalf("GenerateLinkCandidates() error = %v, want named provider declaration failure", err)
+	}
+	if store.installationID != "" {
+		t.Fatalf("store installationID=%q, want no persistence", store.installationID)
+	}
+	if len(approver.candidates) != 0 {
+		t.Fatalf("auto-approved candidates=%#v, want none", approver.candidates)
 	}
 }
 
@@ -109,7 +258,7 @@ func TestGenerateLinkCandidatesUsesExactSKUFirst(t *testing.T) {
 		"ean:789":   {{InternalProductID: canonicalIDPtr(101), ProductID: 9002, Name: "Produto Interno", QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}}},
 	}}
 	store := &stubCandidateStore{}
-	svc := NewGenerationService(GenerationServiceConfig{Snapshots: snapshots, Matcher: matcher, Store: store, Now: func() time.Time { return now }})
+	svc := NewGenerationService(GenerationServiceConfig{Snapshots: snapshots, Matcher: matcher, Store: store, IdentityAnchors: mercadoLivreIdentityAnchorReader(), Now: func() time.Time { return now }})
 
 	result, err := svc.GenerateLinkCandidates(context.Background(), GenerateLinkCandidatesInput{InstallationID: "inst-1", Limit: 5})
 	if err != nil {
@@ -146,8 +295,9 @@ func TestGenerateLinkCandidatesFallsBackToExactEAN(t *testing.T) {
 		Matcher: &stubProductMatcher{results: map[string][]internalreaddomain.ProductCandidate{
 			"ean:999": {{InternalProductID: canonicalIDPtr(202), ProductID: 9202, Name: "Produto EAN", QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}}},
 		}},
-		Store: &stubCandidateStore{},
-		Now:   func() time.Time { return now },
+		Store:           &stubCandidateStore{},
+		IdentityAnchors: mercadoLivreIdentityAnchorReader(),
+		Now:             func() time.Time { return now },
 	})
 
 	result, err := svc.GenerateLinkCandidates(context.Background(), GenerateLinkCandidatesInput{InstallationID: "inst-1"})
@@ -178,8 +328,9 @@ func TestGenerateLinkCandidatesProducesConflictWhenExactSignalsDisagree(t *testi
 			"sku:SKU-X": {{InternalProductID: canonicalIDPtr(301), ProductID: 999, Name: "Produto SKU", QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}}},
 			"ean:EAN-X": {{InternalProductID: canonicalIDPtr(302), ProductID: 999, Name: "Produto EAN", QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}}},
 		}},
-		Store: store,
-		Now:   func() time.Time { return now },
+		Store:           store,
+		IdentityAnchors: mercadoLivreIdentityAnchorReader(),
+		Now:             func() time.Time { return now },
 	})
 
 	result, err := svc.GenerateLinkCandidates(context.Background(), GenerateLinkCandidatesInput{InstallationID: "inst-1"})
@@ -217,8 +368,9 @@ func TestGenerateLinkCandidatesFallsBackToTitleMatches(t *testing.T) {
 				{InternalProductID: canonicalIDPtr(402), ProductID: 9402, Name: "Produto D 2", QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}},
 			},
 		}},
-		Store: &stubCandidateStore{},
-		Now:   func() time.Time { return now },
+		Store:           &stubCandidateStore{},
+		IdentityAnchors: mercadoLivreIdentityAnchorReader(),
+		Now:             func() time.Time { return now },
 	})
 
 	result, err := svc.GenerateLinkCandidates(context.Background(), GenerateLinkCandidatesInput{InstallationID: "inst-1"})
@@ -247,9 +399,10 @@ func TestGenerateLinkCandidatesProducesUnresolvedWhenNothingMatches(t *testing.T
 			Title:          "Sem Match",
 			FetchedAt:      now.Add(-time.Minute),
 		}}},
-		Matcher: &stubProductMatcher{results: map[string][]internalreaddomain.ProductCandidate{}},
-		Store:   &stubCandidateStore{},
-		Now:     func() time.Time { return now },
+		Matcher:         &stubProductMatcher{results: map[string][]internalreaddomain.ProductCandidate{}},
+		Store:           &stubCandidateStore{},
+		IdentityAnchors: mercadoLivreIdentityAnchorReader(),
+		Now:             func() time.Time { return now },
 	})
 
 	result, err := svc.GenerateLinkCandidates(context.Background(), GenerateLinkCandidatesInput{InstallationID: "inst-1"})
@@ -283,8 +436,9 @@ func TestGenerateLinkCandidatesRejectsLegacyOnlyAndInvalidCanonicalIDs(t *testin
 				Matcher: &stubProductMatcher{results: map[string][]internalreaddomain.ProductCandidate{
 					"sku:LEGACY-ONLY": {{InternalProductID: tc.canonicalID, ProductID: 777, Name: "Legacy product", QualityFlags: []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete}}},
 				}},
-				Store: store,
-				Now:   func() time.Time { return now },
+				Store:           store,
+				IdentityAnchors: mercadoLivreIdentityAnchorReader(),
+				Now:             func() time.Time { return now },
 			})
 
 			result, err := svc.GenerateLinkCandidates(context.Background(), GenerateLinkCandidatesInput{InstallationID: "inst-legacy"})
@@ -312,7 +466,7 @@ func TestCanonicalIdentityControlsDeduplicationAndCandidateID(t *testing.T) {
 		{InternalProductID: canonicalIDPtr(501), ProductID: 2, Name: "Duplicate canonical identity"},
 	}
 
-	candidates := buildCandidatesFromProducts(snapshot, products, productlinksdomain.LinkCandidateStateTitleMatch, productlinksdomain.LinkCandidateMatchInputTitle, "stable", now)
+	candidates := buildCandidatesFromProducts(snapshot, products, productlinksdomain.LinkCandidateStateTitleMatch, productlinksdomain.LinkCandidateMatchInputTitle, "stable", mercadoLivreIdentityAnchorReader().declarations["mercado_livre"], now)
 	if len(candidates) != 1 || candidates[0].InternalProductID == nil || *candidates[0].InternalProductID != 501 {
 		t.Fatalf("candidates=%#v, want one canonical candidate 501", candidates)
 	}
@@ -339,23 +493,26 @@ func findReason(reasons []productlinksdomain.LinkCandidateReason, anchor string,
 	return productlinksdomain.LinkCandidateReason{}, false
 }
 
-func assertMandatoryUnavailableReasons(t *testing.T, reasons []productlinksdomain.LinkCandidateReason) {
+func assertProviderDeclaredUnavailableReasons(t *testing.T, reasons []productlinksdomain.LinkCandidateReason) {
 	t.Helper()
-	if _, ok := findReason(reasons, "marca", productlinksdomain.LinkCandidateReasonDirectionUnavailable); !ok {
-		t.Fatalf("reasons=%#v, want marca UNAVAILABLE (ADR-17, always emitted)", reasons)
+	marca, ok := findReason(reasons, "marca", productlinksdomain.LinkCandidateReasonDirectionUnavailable)
+	if !ok || marca.Detail != "provider não fornece a âncora marca" {
+		t.Fatalf("reasons=%#v, want provider-declared marca UNAVAILABLE", reasons)
 	}
-	if _, ok := findReason(reasons, "refforn", productlinksdomain.LinkCandidateReasonDirectionUnavailable); !ok {
-		t.Fatalf("reasons=%#v, want refforn UNAVAILABLE (ADR-17, always emitted)", reasons)
+	refforn, ok := findReason(reasons, "refforn", productlinksdomain.LinkCandidateReasonDirectionUnavailable)
+	if !ok || refforn.Detail != "provider não fornece a âncora refforn" {
+		t.Fatalf("reasons=%#v, want provider-declared refforn UNAVAILABLE", reasons)
 	}
 }
 
 func generateSingle(t *testing.T, snapshot productlinksdomain.ListingSnapshot, matcher *stubProductMatcher, now time.Time) productlinksdomain.LinkCandidate {
 	t.Helper()
 	svc := NewGenerationService(GenerationServiceConfig{
-		Snapshots: &stubSnapshotReader{snapshots: []productlinksdomain.ListingSnapshot{snapshot}},
-		Matcher:   matcher,
-		Store:     &stubCandidateStore{},
-		Now:       func() time.Time { return now },
+		Snapshots:       &stubSnapshotReader{snapshots: []productlinksdomain.ListingSnapshot{snapshot}},
+		Matcher:         matcher,
+		Store:           &stubCandidateStore{},
+		IdentityAnchors: mercadoLivreIdentityAnchorReader(),
+		Now:             func() time.Time { return now },
 	})
 	result, err := svc.GenerateLinkCandidates(context.Background(), GenerateLinkCandidatesInput{InstallationID: snapshot.InstallationID})
 	if err != nil {
@@ -395,7 +552,7 @@ func TestCase1ConcordantSKUAndEANYieldsAltaAccept(t *testing.T) {
 	if _, ok := findReason(candidate.Reasons, "ean", productlinksdomain.LinkCandidateReasonDirectionFor); !ok {
 		t.Fatalf("reasons=%#v, want ean FOR", candidate.Reasons)
 	}
-	assertMandatoryUnavailableReasons(t, candidate.Reasons)
+	assertProviderDeclaredUnavailableReasons(t, candidate.Reasons)
 }
 
 // Case 2 — SKU-ALONE: seller_sku matches, EAN absent from the snapshot. D-121-2
@@ -433,7 +590,7 @@ func TestCase2SellerSKUAloneWithoutEANYieldsMediaConfirm(t *testing.T) {
 	if eanReason.Detail != "sem EAN para corroborar o CODPROD" {
 		t.Fatalf("ean reason detail=%q, want the missing anchor named", eanReason.Detail)
 	}
-	assertMandatoryUnavailableReasons(t, candidate.Reasons)
+	assertProviderDeclaredUnavailableReasons(t, candidate.Reasons)
 }
 
 // Case 3 — EAN-ALONE-MEDIA: seller_sku has no match, EAN corroborates
@@ -467,7 +624,7 @@ func TestCase3EANAloneYieldsMediaConfirm(t *testing.T) {
 	if !strings.HasPrefix(skuReason.Detail, "sem CODPROD para corroborar o EAN") {
 		t.Fatalf("seller_sku reason detail=%q, want the missing anchor named", skuReason.Detail)
 	}
-	assertMandatoryUnavailableReasons(t, candidate.Reasons)
+	assertProviderDeclaredUnavailableReasons(t, candidate.Reasons)
 }
 
 // Case 4 — TITLE-ONLY-BAIXA: seller_sku/ean have no match; title is
@@ -500,7 +657,7 @@ func TestCase4TitleOnlyYieldsBaixaReview(t *testing.T) {
 	if _, ok := findReason(candidate.Reasons, "ean", productlinksdomain.LinkCandidateReasonDirectionUnavailable); !ok {
 		t.Fatalf("reasons=%#v, want ean UNAVAILABLE", candidate.Reasons)
 	}
-	assertMandatoryUnavailableReasons(t, candidate.Reasons)
+	assertProviderDeclaredUnavailableReasons(t, candidate.Reasons)
 }
 
 // Case 5 — SKU-EAN-CONFLICT-REJECT: seller_sku and ean point at different
@@ -518,10 +675,11 @@ func TestCase5SKUEANConflictYieldsBaixaReviewBothSides(t *testing.T) {
 		"ean:7899999999994": {{InternalProductID: canonicalIDPtr(501), Name: "Serra Circular 501"}},
 	}}
 	svc := NewGenerationService(GenerationServiceConfig{
-		Snapshots: &stubSnapshotReader{snapshots: []productlinksdomain.ListingSnapshot{snapshot}},
-		Matcher:   matcher,
-		Store:     &stubCandidateStore{},
-		Now:       func() time.Time { return now },
+		Snapshots:       &stubSnapshotReader{snapshots: []productlinksdomain.ListingSnapshot{snapshot}},
+		Matcher:         matcher,
+		Store:           &stubCandidateStore{},
+		IdentityAnchors: mercadoLivreIdentityAnchorReader(),
+		Now:             func() time.Time { return now },
 	})
 
 	result, err := svc.GenerateLinkCandidates(context.Background(), GenerateLinkCandidatesInput{InstallationID: snapshot.InstallationID})
@@ -540,7 +698,7 @@ func TestCase5SKUEANConflictYieldsBaixaReviewBothSides(t *testing.T) {
 		if candidate.MatchStatus != productlinksdomain.LinkCandidateMatchStatusReview {
 			t.Fatalf("candidate=%#v, want REVIEW", candidate)
 		}
-		assertMandatoryUnavailableReasons(t, candidate.Reasons)
+		assertProviderDeclaredUnavailableReasons(t, candidate.Reasons)
 		switch *candidate.InternalProductID {
 		case 500:
 			if _, ok := findReason(candidate.Reasons, "seller_sku", productlinksdomain.LinkCandidateReasonDirectionFor); !ok {
@@ -592,7 +750,7 @@ func TestCase6DokaKitHardNegativeCapsBaixaReject(t *testing.T) {
 	if !ok || !strings.Contains(titleAgainst.Detail, "kit/combo") {
 		t.Fatalf("reasons=%#v, want title AGAINST citing kit/combo divergence", candidate.Reasons)
 	}
-	assertMandatoryUnavailableReasons(t, candidate.Reasons)
+	assertProviderDeclaredUnavailableReasons(t, candidate.Reasons)
 }
 
 // Case 7 — VOLTAGE-HARD-NEGATIVE-REJECT: seller_sku + ean would be ALTA,
@@ -627,7 +785,7 @@ func TestCase7VoltageHardNegativeCapsBaixaReject(t *testing.T) {
 	if !ok || !strings.Contains(titleAgainst.Detail, "voltagem") {
 		t.Fatalf("reasons=%#v, want title AGAINST citing voltagem divergence", candidate.Reasons)
 	}
-	assertMandatoryUnavailableReasons(t, candidate.Reasons)
+	assertProviderDeclaredUnavailableReasons(t, candidate.Reasons)
 }
 
 // Case 8 — NO ANCHOR RESOLVED: seller_sku/ean/title all fail to resolve.
@@ -662,14 +820,14 @@ func TestCase8NoAnchorResolvedYieldsZeroConfidenceNoCandidateWithReasons(t *test
 	if _, ok := findReason(candidate.Reasons, "ean", productlinksdomain.LinkCandidateReasonDirectionUnavailable); !ok {
 		t.Fatalf("reasons=%#v, want ean UNAVAILABLE", candidate.Reasons)
 	}
-	assertMandatoryUnavailableReasons(t, candidate.Reasons)
+	assertProviderDeclaredUnavailableReasons(t, candidate.Reasons)
 }
 
 // Case 9 — MARCA-REFFORN-UNAVAILABLE (explicit): marca/refforn must appear
 // as UNAVAILABLE regardless of band/status (ADR-17, motivo sempre
 // visível). Bound to case 1's ALTA/ACCEPT payload with a dedicated
 // assertion, per PLAN-M04 §4.
-func TestCase9MarcaAndReffornAlwaysUnavailableOnConcordantPayload(t *testing.T) {
+func TestCase9ProviderDeclaredUnavailableAnchorsOnConcordantPayload(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 7, 18, 9, 40, 0, 0, time.UTC)
 	snapshot := productlinksdomain.ListingSnapshot{
@@ -683,16 +841,7 @@ func TestCase9MarcaAndReffornAlwaysUnavailableOnConcordantPayload(t *testing.T) 
 
 	candidate := generateSingle(t, snapshot, matcher, now)
 
-	marca, ok := findReason(candidate.Reasons, "marca", productlinksdomain.LinkCandidateReasonDirectionUnavailable)
-	if !ok {
-		t.Fatalf("reasons=%#v, want {anchor:marca,direction:UNAVAILABLE}", candidate.Reasons)
-	}
-	refforn, ok := findReason(candidate.Reasons, "refforn", productlinksdomain.LinkCandidateReasonDirectionUnavailable)
-	if !ok {
-		t.Fatalf("reasons=%#v, want {anchor:refforn,direction:UNAVAILABLE}", candidate.Reasons)
-	}
-	_ = marca
-	_ = refforn
+	assertProviderDeclaredUnavailableReasons(t, candidate.Reasons)
 }
 
 // Case 10 — MEDIDA-HARD-NEGATIVE-REJECT: EAN matches the same codprod, but
@@ -728,5 +877,5 @@ func TestCase10DimensionHardNegativeCapsBaixaReject(t *testing.T) {
 	if !strings.Contains(titleAgainst.Detail, "300x150") || !strings.Contains(titleAgainst.Detail, "220x100") {
 		t.Fatalf("title AGAINST detail=%q, want it to cite both divergent dimensions", titleAgainst.Detail)
 	}
-	assertMandatoryUnavailableReasons(t, candidate.Reasons)
+	assertProviderDeclaredUnavailableReasons(t, candidate.Reasons)
 }

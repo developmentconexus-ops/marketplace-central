@@ -41,11 +41,12 @@ func autoLinkingServices(t *testing.T, snapshots []productlinksdomain.ListingSna
 		NewDecisionID: func() string { return fmt.Sprintf("decision-%d", issued) },
 	})
 	generation := NewGenerationService(GenerationServiceConfig{
-		Snapshots:    &stubSnapshotReader{snapshots: snapshots},
-		Matcher:      matcher,
-		Store:        candidateStore,
-		AutoApprover: resolution,
-		Now:          func() time.Time { return now },
+		Snapshots:       &stubSnapshotReader{snapshots: snapshots},
+		Matcher:         matcher,
+		Store:           candidateStore,
+		IdentityAnchors: mercadoLivreIdentityAnchorReader(),
+		AutoApprover:    resolution,
+		Now:             func() time.Time { return now },
 	})
 	return generation, workflowStore, candidateStore
 }
@@ -474,10 +475,11 @@ func TestAFailedApprovalDoesNotAbandonTheRestOfTheBatch(t *testing.T) {
 			concordantSnapshot("MLB-ALSO-FAIL", now),
 			concordantSnapshot("MLB-OK", now),
 		}},
-		Matcher:      concordantMatcher(),
-		Store:        &stubCandidateStore{},
-		AutoApprover: approver,
-		Now:          func() time.Time { return now },
+		Matcher:         concordantMatcher(),
+		Store:           &stubCandidateStore{},
+		AutoApprover:    approver,
+		IdentityAnchors: mercadoLivreIdentityAnchorReader(),
+		Now:             func() time.Time { return now },
 	})
 
 	_, err := svc.GenerateLinkCandidates(context.Background(), GenerateLinkCandidatesInput{InstallationID: "inst-m05"})
