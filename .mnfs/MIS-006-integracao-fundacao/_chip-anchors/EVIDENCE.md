@@ -667,7 +667,7 @@ Base is `917f7bb58e385847fba5612201823f9db48791c6` throughout.
 | C8 | **PASS** | `resolution_service.go:369-381` three independent literals; `TestListLinkWorkflowsUsesIndependentDefaultLimitsAndReturnsAll29Links` (`resolution_service_test.go:361`) asserts `len(links)==29` on a 29-link fixture; `TestListLinkWorkflowsDefaultsDoNotVaryWithLimit` (`:406`) pins the independence at 5/20/500; `TestListLinkWorkflowsHonorsIndependentExplicitLimits` (`:447`). Must-fail below |
 | C9 | **PASS** | `git diff --name-only <base>..HEAD \| grep -i migration` → **zero**; the C10 list contains no `migrations/` path and no `product_links/adapters/postgres/` file at all, so the chip writes no `UPDATE` and no backfill. Characterised honestly: a pre-existing `ON CONFLICT … DO UPDATE SET reasons = EXCLUDED.reasons` does exist at `link_candidate_repo.go:79`, but it is the candidate **regeneration** upsert, untouched by this chip and depended on by the hub's own U1 ("depois de regerar candidatos"). R3 forbids retro-editing persisted motivos; it does not forbid regeneration from producing fresh ones |
 | C10 | **PASS** | full `git diff --name-only <base>..HEAD` pasted in the C10 block above — 17 paths, of which 2 are this evidence pack. `grep -c '^apps/web/'` = **0** |
-| C11 | **PASS (L0+L1) · governance lane BLOCKED on a hub ruling** | see the Ladder section below |
+| C11 | **PASS on L0+L1 · governance rung OPEN (hub-run per ruling R-b)** | see the Ladder section below |
 | C12 | **PASS** | `git diff -w <base>..HEAD -- internal/composition/root.go` → **0 removed lines**, exactly 3 added, quoted verbatim in the C12 block above and in the CLOSED payload; `gofmt -l` clean (proven CR-stripped per the ROUND-1 analysis — the naive file-scoped check is uninformative on this checkout) |
 
 ## Ladder
@@ -694,14 +694,34 @@ different claims and the contract asks for the citation only when the former app
 lanes are not owed: zero web files in the diff (C10), so the `TS2688` allowlist entry is likewise
 untouched here.
 
-**Governance lane — NOT run by the chip; REQUEST sent to the hub.** §2 and C11 both require it from
-a **clean detached worktree** with the 40-hex BaseSha, because a main checkout sweeps
-`.claude/worktrees/*` and false-fails. The dispatch prompt independently forbids this chip from
-creating another worktree or running `git checkout` in the primary repo, naming it the mission's
-most-recurring launch hazard (4/4 chips). The two instructions cannot both be satisfied by the chip.
-Per "disagreement = BLOCKED with evidence, never a unilateral decision", the chip did not decide
-which reading wins: a `REQUEST governance-lane` went to the hub with both readings and the exact
-command. C11 is therefore PASS on L0+L1 and OPEN on the governance rung, not claimed.
+**Governance rung: REQUEST ao hub por R-b; L0+L1 PASS chip-side com as saídas acima.**
+
+The conflict, for the record: §2 and C11 both require the lane from a **clean detached worktree**
+with the 40-hex BaseSha, because a main checkout sweeps `.claude/worktrees/*` and false-fails. The
+dispatch prompt independently forbids this chip from creating another worktree or running
+`git checkout` in the primary repo, naming it the mission's most-recurring launch hazard (4/4
+chips). Both cannot be satisfied by the chip. Per "disagreement = BLOCKED with evidence, never a
+unilateral decision", the chip sent `REQUEST governance-lane` with both readings and the exact
+command rather than picking one.
+
+**HUB RULING (received 2026-07-26): R-b — the hub runs the lane.** Decided on ownership, not on the
+literal reading of the ban. Three reasons, in the hub's order of weight: (1) the governance lane is
+already a hub seam by charter — `hub-ops` carries "governance-lane runs in a clean worktree" in its
+own description, same family as the dev stack; (2) worktree topology is hub-owned (profile §6), and
+the ban is the barrier that stops a chip discovering the safe path wrongly — "barreira não vira
+permissão só porque existe um caminho seguro dentro dela"; (3) provisioning cost — a fresh worktree
+inherits neither `node_modules` nor `.gomodcache` (profile §3 forbids the junction), so the chip
+would pay a full `npm ci` to run one scan, while the hub's setup already exists.
+
+Consequences, as directed: C11 is **OPEN** on this rung from the chip's side — **not** PASS, **not**
+BLOCKED. The hub runs the lane in parallel on tip `8e37958` and attaches the result at acceptance.
+CLOSED is explicitly **not** held for it; drift, if the lane reports any, returns as a post-CLOSED
+correction rather than a closure blocker. The P6 gate judges what is the chip's.
+
+**Upstream amendment candidate, registered by the hub:** the dispatch prompt and C11 contradict each
+other in *any* chip that carries a governance rung. C11's text should read "hub-run" from dispatch
+rather than leaving the chip to discover the conflict in flight. Hub's characterisation: a doctrine
+defect, not a code defect.
 
 ## Dual gate
 
@@ -720,8 +740,9 @@ is the tighter check on the contract, and the Opus side is the better check on w
 own declarations survive a reader who was not told where to look. A disagreement between them about
 a declared item is therefore informative, not noise.
 
-Neither reviewer can run the governance lane either — same worktree constraint — so C11's governance
-rung stays OPEN across the gate regardless of the verdicts.
+Neither reviewer can run the governance lane either — same worktree constraint, and hub ruling R-b
+has since made that rung hub-owned outright — so C11's governance rung stays OPEN across the gate
+regardless of the verdicts, by ruling rather than by omission.
 
 (verdicts + reconciliation — pending)
 
