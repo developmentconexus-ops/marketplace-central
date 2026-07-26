@@ -296,3 +296,87 @@ opção de mudar de ideia depois de ver o resultado.
 Os dois gates recebem os RULINGS junto com o tip. Congelar tip sem congelar ruling gateia código
 contra critério velho — foi assim que o round 2 queimou. Brief nomeia R-6a, R-9, R-10, R-11, R-12
 por SHA.
+
+---
+
+# ROUND 4, segunda metade — cold FAIL. Round 4 = FAIL/FAIL, e os dois acharam coisas DISJUNTAS
+
+Confirmei os três fatos disputados em `ac72eb82` / `2921d563`:
+
+```
+$ git ls-tree -r --name-only ac72eb82 -- contracts/api packages/sdk-runtime | wc -l   → 14   (pack colou 4)
+$ sed -n '157p'  → return nil, unavailableIdentityAnchorsError(... "provider code is empty")
+$ sed -n '168p'  → return resolved, nil          ← caminho de SUCESSO, citado como falha
+$ sed -n '640p'  → if anchor.Supplied || hasSignal[anchor.Anchor] {     ← o skip, não :643-656
+```
+
+## R-16 — o desacordo do C5 se resolve partindo ele, e os dois lados estão certos sobre coisas diferentes
+
+**O GPT está certo sobre o R-10.** O propósito da testemunha é provar que o alvo EXISTE — porque
+o defeito que o R-10 existe para matar é `openapi/`, vazio-porque-inexistente. Existência se prova
+com UM arquivo. Quatro provam. O R-10 está quitado.
+
+**O cold está certo sobre o artefato.** Colar 4 de 14 e apresentar como a listagem é **truncamento
+silencioso** — violação de uma regra mais velha e diferente: a proibição de omissão silenciosa
+(primo do ADR-17, já nomeada neste chip; precedente CHIP-MERCADO, truncamento silencioso de
+página 1 que os dois self-gates deixaram passar). Bloqueia por mérito próprio, não como falha do
+R-10.
+
+A distinção não é acadêmica — **é exatamente a pergunta de escopo que você fez.** Não é "re-rode
+toda testemunha R-10 auditando completude". É: **toda listagem colada no pack ou é completa, ou
+declara do que é amostra.** Escopo diferente: mais largo num eixo (vale para toda colagem, não só
+testemunhas R-10) e mais estreito noutro (não invalida as outras testemunhas enquanto testemunhas).
+
+## R-14, discriminador — a regra proíbe número DERIVADO DO PACK, não número
+
+Guarda contra o erro oposto, que seria aplicar o R-14 demais e arrancar número legítimo.
+`65 citações` é derivado do texto do pack: editar o pack move. `17→19 paths` incluía path de pack:
+commitar artefato move. **`14` não pode se mover** — sai de `git ls-tree` num tip de CÓDIGO
+congelado, e commit de `.mnfs/` não acrescenta arquivo em `contracts/api`. É o mecanismo 2 do R-14
+(escopo num eixo que o trabalho restante não move).
+
+Então: colar as 14 é legítimo e o número pode ser dito. O que não pode é colar 4 calado.
+
+## R-17 — o defeito do regex não é a estreiteza, é o silêncio
+
+`cite-audit.py:42` exige nome com extensão, logo citação nua `:NNN` é invisível para ele. Duas
+sobreviventes reais, verificadas acima. Mas repare na forma: **uma ferramenta que pula em silêncio
+faz a frase de fecho superestimar por construção.** Não importa quão bom fique o regex — enquanto
+o skip for mudo, a frase "toda citação" é falsa e ninguém consegue ver.
+
+Duas exigências, e a segunda é a que fecha a classe:
+
+1. **O script RELATA o que não resolveu.** A saída passa a ter `resolvidas` e
+   `não-resolvíveis (citação nua, sem arquivo)`. Cobertura declarada pela própria ferramenta.
+2. **Citação nua `:NNN` é banida do pack.** Toda citação carrega o arquivo. Aí a cobertura vira
+   total **por construção**, não por regex melhor — e o script vira o verificador disso.
+
+Mesmo movimento de "aponte, não copie": conserta a estrutura para a disciplina não ser necessária.
+
+## A classe deste round, e ela nomeia os quatro defeitos de uma vez
+
+Listagem truncada sem marcador. Regex que pula sem relatar. Contagem restatada sem dizer que decai.
+**Todos são omissão silenciosa dentro de um artefato de prova.** Não é mentira em nenhum dos casos —
+é o artefato calando sobre o próprio alcance. Tarefa do round 5, em uma frase: **todo artefato de
+prova declara a própria cobertura.**
+
+## R-18 — o valor do dual gate aqui foi COBERTURA, não redundância
+
+Os dois conjuntos de defeito são disjuntos. O GPT achou os must-fail faltando e o drift de
+contagem; o cold achou o truncamento da testemunha e a cegueira do regex; **nenhum achou o do
+outro.** O dual gate é sempre justificado como redundância — dois olhares no mesmo objeto, acordo
+como sinal. Neste round ele não entregou redundância nenhuma: entregou área. E entregou porque o
+R-11 apontou os dois para coisas diferentes de propósito.
+
+Fica registrado: quando os dois lados divergem em ACHADO (disjunto) e não em VEREDICTO, isso não é
+falha de calibração dos reviewers — é o gate cobrindo mais superfície. Acordo entre gates que
+olham a mesma coisa vale menos que desacordo entre gates que olham coisas diferentes.
+
+## Não bloqueante, aceito como o cold classificou
+
+`generation_service.go:764-769` — `slices.SortFunc` (documentado não estável) + `CompactFunc`: para
+título com a mesma medida em duas unidades, qual string `display` sobrevive é não-especificado.
+Chave de comparação e todo veredicto intactos; é detalhe voltado ao operador. Cold recusou pontuar
+e eu também. Vai para backlog do hub junto com `refforn` — anotado para não ser redescoberto.
+
+`:168`→`:157`, `:643-656`→`:640` e o nit `:634-639` entram junto com as demais correções.
