@@ -47,3 +47,35 @@ depois deste chip. Aceitar o chip sobre uma lane vermelha só é legítimo porqu
 está provada aqui; o débito de governance continua aberto e é do hub, não deste chip.
 
 Saídas cruas: `scratchpad/gov-tip.txt`, `scratchpad/gov-base.txt` (sessão do hub).
+
+## Re-run no tip de código final (`2921d563`)
+
+A medição acima cobria `8e37958a` **e nada depois**. O pack afirmou sincronia ("nenhum `.go`
+mudou desde então"), e essa afirmação ficou FALSA quando S7/S8/S9 pousaram. O lado GPT do round-2
+pegou; o chip re-derivou e mandou `REQUEST`. Cinco arquivos mudaram entre as duas medições,
+incluindo `generation_service.go`, que é justamente um arquivo que a lane varre:
+
+```
+$ git diff --name-only 8e37958a..2921d563 -- apps/server_core
+apps/server_core/internal/modules/connectors/application/marketplace_capability_service_test.go
+apps/server_core/internal/modules/product_links/application/generation_integration_test.go
+apps/server_core/internal/modules/product_links/application/generation_service.go
+apps/server_core/internal/modules/product_links/application/generation_service_test.go
+apps/server_core/internal/modules/product_links/application/resolution_service_test.go
+```
+
+Re-rodada com o mesmo método, worktree limpo detached em `2921d563`
+(`fix(product-links): preserve complementary reasons`), BaseSha idêntico:
+
+- `status=failed`, 53 violações, 175 linhas — de novo;
+- `diff` contra a saída da base: **IDENTICAL**;
+- `diff` contra a saída da primeira medição (`8e37958a`): **IDENTICAL**.
+
+**Veredicto mantido: zero violação nova, agora medido no tip que vai ser mergeado.** A conclusão
+anterior sobreviveu, mas ela estava apoiada numa premissa que expirou — o que valia era o
+resultado em `8e37958a`, não em "o tip do chip".
+
+Lição, e é do hub: eu escrevi "se S4 mexeu em código de produção, me diga" e depois aceitei um
+`git diff` que provava sincronia entre DOIS commits de pack, não entre a medição e o tip final. A
+janela certa é sempre `<sha medido>..<sha a mergear>`. Rung de lane hub-run **re-mede no tip
+final por padrão**, não sob pedido — a medição vale para um SHA, nunca para um branch.
