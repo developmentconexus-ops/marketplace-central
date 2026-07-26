@@ -208,3 +208,91 @@ despacho meu, não achado dele.
 Os dois gates recebem os RULINGS junto com o tip. Congelar tip sem congelar ruling gateia código
 contra critério velho — foi assim que o round 2 queimou. Brief nomeia R-6a, R-9, R-10, R-11, R-12
 por SHA.
+
+---
+
+# ROUND 4 — GPT FAIL/6 blocking. Duas achadas de CÓDIGO, quatro do ponto fixo
+
+## R-13 — o R-11 pagou, e isso ratifica a divisão de trabalho como doutrina, não sorte
+
+Três achadas de código, as primeiras desde o round 1. Não apareceram porque o reviewer melhorou;
+apareceram porque **pararam de gastá-lo em coordenada**. Três rounds de gate leram por cima de
+três guards sem must-fail porque três rounds foram gastos em citação. Apontar um reviewer para
+semântica em vez de coordenadas achou as três em uma passada.
+
+Fica ratificado: quando a validade de citação é mecanizável, ela **sai** do escopo do reviewer —
+não por economia, mas porque reviewer gasto em coordenada é reviewer que não olha o código.
+
+Verifiquei a pior na minha ponta, em `2921d563`:
+
+```
+:76   if s.snapshots == nil || s.matcher == nil || s.store == nil || s.identityAnchors == nil {
+:94   identityAnchors, err := s.resolveIdentityAnchors(snapshots)     ← incondicional
+:159  declaration, err := s.identityAnchors.ProviderIdentityAnchors(providerCode)  ← dentro do laço
+```
+
+Lote vazio: laço não roda, deref não acontece, apagar o disjunto **passa em silêncio**. Lote
+não-vazio: nil panic. A mutação must-fail é satisfazível e exige lote não-vazio — é essa a linha
+que faltava. Idem os dois guards de `marketplace_capability_service.go:134-136` e `:144-146`:
+têm teste direto, **não têm mutação registrada**. Ter teste e ter must-fail não é a mesma
+propriedade; o pack afirmou a segunda tendo só a primeira, o que é R-12 outra vez.
+
+**Ruling: as três linhas entram. É o produto, é barato, e é a única parte deste round que mergeia.**
+
+## R-14 — R-13 vale para QUANTIDADE, não só posição. Aponte, não copie
+
+O chip está certo e a emenda é dele. Eu escrevi que artefato de prova derivado do pack não pode
+ser endereçado **posicionalmente**. Ele mostrou que a regra é mais larga: **contagem é
+coordenada**. `17→19` paths, `55→65` citações, "duas vezes cada"→três — as três eram VERDADE
+quando escritas e foram falsificadas **pelo commit que instalou o remédio**. O remédio da classe
+gerou quatro instâncias da classe, no mesmo commit.
+
+Forma geral: **todo fato derivado que o pack COPIA de um artefato gerado a partir do pack é
+auto-invalidante.** Não importa se é linha, contagem, multiplicidade ou lista.
+
+Duas saídas, e elas são mecanismos diferentes — vale saber qual você está usando:
+
+1. **Apontar em vez de copiar.** A alegação referencia o artefato; quem lê, lê o artefato. Mata a
+   classe inteira, porque não existe cópia para decair. Aprovado — proposta 1 do chip.
+2. **Escopar num eixo que o trabalho restante não move.** C10 reancorado no tip de CÓDIGO
+   `2921d563` e só em paths de código: commit de `.mnfs/` não pode, por construção, acrescentar
+   path de código. Aprovado — proposta 2.
+
+Legitimidade do (2), porque a mesma forma pode ser fuga: **é o mesmo movimento da emenda C12** —
+não estou estreitando o critério para escapar da prova, estou nomeando o escopo que o critério
+sempre teve. C10 é sobre eixo de colisão de código; path de pack nunca foi objeto dele. Se o
+critério fosse sobre o write set inteiro, reancorar seria fuga e eu negaria.
+
+`:1057` é miss comum, não a forma de ponto fixo. Conserta direto — proposta 3 aprovada.
+
+## R-15 — negado o "patcha os números e congela"
+
+Você ofereceu a alternativa e ela é honesta, então nego com o motivo, não com a preferência.
+
+Congelamento é **disciplina**: uma promessa sobre comportamento futuro que ninguém aplica.
+Ponteiro é **estrutura**: não decai porque não há cópia. Depois de quatro rounds em que a mesma
+classe reapareceu — inclusive dentro do próprio remédio — apostar em disciplina é apostar na
+opção que já perdeu quatro vezes na minha frente.
+
+Ordem de trabalho, e é a parte operacional deste ruling:
+
+1. **Correções de código primeiro** (as três must-fail + o que o cold trouxer).
+2. **Auditoria regenerada por último**, depois que o texto do pack parar de mudar.
+3. **Texto do pack aponta**, não cita número.
+
+Toda mudança de código move citação; toda edição de pack move a auditoria. Existe ordem de
+dependência real. Mas repare no que o (3) faz com o (1) e (2): **se você aponta em vez de copiar,
+a ordem deixa de ser load-bearing.** Prefira sempre a estrutura que não precisa da disciplina —
+a ordem vira otimização, não requisito.
+
+## Condição de parada, declarada agora e não depois
+
+Round 5 é o último com esta forma. O que o torna decidível: derivados viram ponteiro (não podem
+decair), código entra antes, auditoria regenera por último. Se o round 5 ainda achar número
+decaído, **a estrutura falhou, não a execução** — e aí a resposta não é round 6, é remover do
+pack as alegações derivadas e deixar só o artefato. Declaro isso antes de rodar para não ter a
+opção de mudar de ideia depois de ver o resultado.
+
+Os dois gates recebem os RULINGS junto com o tip. Congelar tip sem congelar ruling gateia código
+contra critério velho — foi assim que o round 2 queimou. Brief nomeia R-6a, R-9, R-10, R-11, R-12
+por SHA.
