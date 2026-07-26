@@ -43,7 +43,7 @@ the verdict/output artifact afterwards.
 | D15 | P6 | Gate reviewer, COLD Opus side | Opus, `harness:gate-reviewer` (no Edit/Write/Bash by construction) | Agent tool, async | inline brief | `tasks/a93b3ffaca9b176b7.output` | completed — **FAIL** (2 BLOCKING, incl. the false provenance claim; 1 SHOULD-FIX, 3 NIT) |
 | D16 | P3 | Implementer S7 (R5 coverage for 3 reachable guards + clamped-formula row) | gpt-5.6-luna / high | OS-process codex | `scratchpad/prompt-s7.md` | `scratchpad/agent__s7-impl.last.md` + `.log` | GREEN; worker **could not commit** (sandbox `index.lock: Permission denied`, profile §3 class) — chip verified and committed `e1195806` |
 | D13 | P4 | Re-reviewer, feature F-01 over `f92ca9c7` | Claude sonnet subagent | Agent tool, async | inline brief | `tasks/ad9c0421c9c2a538c.output` | completed — **PASS**, zero findings |
-| D17 | P3 | Implementer S8 (hub rulings R-6 dedup/precedence + R-7 parser seam) | gpt-5.6-sol / low (complex slice) | OS-process codex | `scratchpad/prompt-s8.md` | `scratchpad/agent__s8-impl.last.md` + `.log` | dispatched |
+| D17 | P3 | Implementer S8 (hub rulings R-6 dedup/precedence + R-7 parser seam) | gpt-5.6-sol / low (complex slice) | OS-process codex | `scratchpad/prompt-s8.md` | `scratchpad/agent__s8-impl.last.md` + `.log` | committed `d9952509`; **R-7 accepted, R-6 REGRESSES the TitleMatch path** — chip-verified by differential probe, `ESCALATION` sent, corrective pending the hub ruling |
 
 ## Slice S3 — chip verification, and a defect in the chip's own slice card
 
@@ -526,6 +526,107 @@ is the profile §3 sandbox class, now recorded a fifth time on this chip. The ch
 working tree and committed on the worker's behalf as `e1195806`; the ledger row (D16) says so
 rather than implying the worker committed.
 
+## Slice S8 — chip verification (hub rulings R-6 + R-7, `d9952509`)
+
+Implemented `gpt-5.6-sol`/low. Verified by the chip, and the verification found a regression the
+worker's own report did not — recorded here in full because the failure mode is instructive.
+
+### R-7 — accepted
+
+`normalizeDimensionToken` extracted from `hardNegativeDimension` (`generation_service.go:772-798`),
+which now calls it per token. The extraction is behaviour-preserving by inspection: the moved body
+is character-identical apart from returning `(key, parsed)` instead of appending to `pairs`, and the
+`x`-token early return keeps its position. `TestNormalizeDimensionTokenFailsClosed` calls the helper
+directly with `"abcmm"` — a token the alternation cannot emit — and asserts the raw normalised token
+is KEPT as the signature key. Must-fail observed: changing the fallback to drop the key returns
+`key=""` against expected `"abcmm"` → RED. That is the seam R-7 asked for, and it now exists where
+none was possible before.
+
+The public-path half is still unreachable, and the worker said so instead of contriving it: two
+titles carrying different UNPARSEABLE tokens cannot be built through the current regexp. Correct
+call — the card explicitly permitted reporting that rather than manufacturing a case.
+
+### R-6 — implemented, and it REGRESSES a path the ruling did not consider
+
+The dedup itself is real: `appendProviderDeclaredUnavailableReasons` now indexes reasons by anchor
+and collapses duplicates, seed positions are preserved, new declaration anchors append in
+declaration order, and the ordering test survives `-count=5`. The `seller_sku`/`ean` contradiction
+the hub ruled on is gone.
+
+But "at most one motivo per anchor", applied literally, also fires on a pair that is not
+contradictory at all. In `applySingleAnchorScore` state `TitleMatch`, the seed carries
+`{title, FOR}` (`generation_service.go:534-535`) and the hard-negative branch then appends
+`{title, AGAINST}` (`:546`). Same anchor, so the new dedup drops one — and since it keeps the first
+unless that first is `UNAVAILABLE`, the one it drops is the **AGAINST**.
+
+**Differential proof — chip-run, same probe and fixture, only `generation_service.go` swapped
+between the two commits.** Listing title `"Kit 3 Toalheiro Simples 50cm Cromado"` against ERP
+`"SOUL TOALHEIRO SIMPLES 500MM CR/POLIDO"`, state `TitleMatch`:
+
+```
+pre-S8  (08308afb)  status=REJECT confidence=25
+  title       FOR         match por título (ranking-only, nunca ACCEPT)
+  seller_sku  UNAVAILABLE seller_sku sem correspondência
+  ean         UNAVAILABLE ean sem correspondência
+  title       AGAINST     hard-negative: kit/combo divergente entre título do anúncio e produto interno
+  marca       UNAVAILABLE provider não fornece a âncora marca
+  refforn     UNAVAILABLE provider não fornece a âncora refforn
+
+post-S8 (d9952509)  status=REJECT confidence=25
+  ...identical, MINUS the `title AGAINST` line.
+```
+
+The candidate is still rejected and still scored 25 — the verdict is right. What is lost is the
+REASON: an operator reading `/vinculos` sees a rejection whose only `title` reason is FOR, with no
+contradiction stated anywhere. That is the ADR-17 shape this chip exists to remove, reintroduced by
+the fix for a different instance of it.
+
+Reachable in ordinary use: a title-only match that also trips kit/combo/cor/voltagem/dimensão. **No
+existing test caught it** because every hard-negative test drives a concordant SKU+EAN state, where
+`title` is not in the seed and so never collides — the suite was green through the regression.
+
+**How the chip found it, since the method is the transferable part.** The gate briefs for round 2
+had already been written, and one of the attacks they instruct is "does the fix silently DROP a
+reason that should have survived? Losing that would quietly undo F-01 while looking like a dedup
+fix." Writing that attack down is what made it obvious to run it against the chip's own tip before
+dispatching anyone. The probe was then run twice against the two commits rather than reasoned about,
+which is what turned a suspicion into a differential.
+
+**One vacuous-probe near-miss, recorded because it nearly produced a false clean.** The first probe
+run PASSED — with no output, because `buildCandidatesFromProducts` returned zero candidates
+(`canonicalProductID` requires a non-nil `InternalProductID`, which the fixture lacked). A test that
+asserts over an empty slice asserts nothing and reports success. It was caught only by adding an
+explicit `if len(candidates) == 0 { t.Fatalf }` guard. Same family as the confounded-assertion class
+already recorded on this chip: the assertion has to be able to fail before its passing means
+anything.
+
+### ESCALATED, not decided in-chip
+
+Two readings of R-6 are defensible and they differ exactly on this case:
+
+- **(a) literal** — "no máximo um motivo por âncora por candidato", which is what S8 built. Then only
+  precedence is open, and `AGAINST` must outrank `FOR` so a REJECT keeps its explanation.
+- **(b) narrow** — the hub's rationale said "dois motivos **contraditórios** pra mesma âncora".
+  `title` FOR + `title` AGAINST are not contradictory; they are complementary facts about one anchor.
+  Under this reading the rule is "at most one UNAVAILABLE reason per anchor", the ruled-on
+  `seller_sku`/`ean` duplication is still fixed, and this path is untouched.
+
+The chip recommends (b) and sent `ESCALATION` with the differential above rather than choosing.
+Picking either one IS the decision, and it changes persisted operator-facing data — "disagreement =
+BLOCKED with evidence, never a unilateral decision".
+
+**A defect in the chip's own slice card, stated plainly.** The S8 card listed "`FOR` or `AGAINST`"
+as a SINGLE precedence rung and never said what happens when both land on the same anchor. The
+worker had no rule to follow at exactly the point where the regression occurred. That gap is the
+chip's, not the worker's, and it is the second time on this chip that a defective card instruction
+produced a defective slice (see S3).
+
+### Not yet verified
+
+The integration-test duplicate-anchor assertion was ADDED but **NOT RUN** — no database is
+provisioned and the dev stack is a hub seam this chip may not boot. Recorded as NOT RUN. It is not
+being counted as passing, and the worker reported it the same way rather than quietly omitting it.
+
 ## P4 round 2 — re-review of F-02 over the corrective
 
 `f92ca9c7` reopened F-02, so the feature was re-reviewed end-to-end rather than spot-checked.
@@ -798,11 +899,27 @@ svc := NewGenerationService(GenerationServiceConfig{
 ```
 
 That is a test ARRANGING data and wiring the real adapter — the provider code is an input value in a
-fixture, not a branch in a code path. The three properties that make it safe are checkable: the file
-carries `//go:build integration` (`:1`), so it is not in the production build at all; the string
-`"mercado_livre"` appears only as a struct field value, never in a comparison; and no `if`/`switch`
-anywhere in `product_links` reads `ProviderCode`, which is what the production-scoped grep above
-proves. The layering rule the chip enforced separately — that `product_links/application`
+fixture, not a branch in a code path. The three properties that make it safe are checkable, and each
+was checked rather than asserted:
+
+```
+$ git show 08308afb:…/generation_integration_test.go | sed -n 1p
+//go:build integration                       <-- not in the production build at all
+
+$ git grep -n 'mercado_livre' 08308afb -- 'apps/server_core/internal/modules/product_links/**/*.go'
+  86 hits, ALL in *_test.go — ZERO in production source.
+  Every one is a DATA position: a struct field value (`ProviderCode: "mercado_livre"`),
+  a map key (generation_service_test.go:84,:531) or a JSON request body
+  (transport/http_handler_test.go:401,:429,:463). None is a comparison.
+
+$ git grep -nE 'ProviderCode *(==|!=)|switch .*[Pp]roviderCode' 08308afb \
+    -- 'apps/server_core/internal/modules/product_links/**/*.go'
+  ZERO HITS — production and test alike.
+```
+
+The last one is the load-bearing check for R2, and it is stronger than the production-only grep
+higher up: not merely "production does not branch on provider", but "nothing in this module branches
+on provider anywhere, so there is no test pinning a branch that production could grow back". The layering rule the chip enforced separately — that `product_links/application`
 **production** code must not import the connectors vocabulary type — also holds: the only production
 connectors import in the package is `connectors/domain` in `import_service.go`, pre-existing and
 unrelated.
