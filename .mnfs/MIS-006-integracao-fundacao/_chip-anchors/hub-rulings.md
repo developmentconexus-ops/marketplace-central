@@ -70,6 +70,50 @@ ele tem de **listar esses dois imports novos e classificá-los explicitamente** 
 por teste de integração não é ramificação por provider, mas isso precisa estar escrito e provado,
 não subentendido. Era o ponto exato onde a prosa substituiu a prova.
 
+## R-6a — EMENDA a R-6: a regra que escrevi era larga demais
+
+O chip implementou R-6 ao pé da letra, verificou, e achou uma **regressão que a minha própria
+frase causa**. Ele está certo e a emenda é minha.
+
+R-6 disse "no máximo um motivo por âncora por candidato". Isso mata, no caminho `TitleMatch` com
+hard negative, um par que não é contraditório: o seed já traz `{title, FOR, "match por título"}` e
+o branch de hard-negative acrescenta `{title, AGAINST, "hard-negative: kit/combo divergente"}`. A
+precedência do S8 preservou o primeiro, então o operador recebe um **REJECT cuja única razão de
+título é FOR, sem contradição declarada** — provado por diferencial no mesmo fixture, trocando só
+`generation_service.go` (pre-S8 `08308afb` × post-S8 `d9952509`). É a forma ADR-17 que o chip
+existe para remover, chegando **através** do conserto.
+
+**Ruling: leitura (b), a narrow.** O que o meu racional nomeou foi "dois motivos **contraditórios**
+para a mesma âncora"; `title` FOR + `title` AGAINST não são contraditórios, são **complementares** —
+casou lexicalmente E carrega hard negative. As duas coisas são verdade e o operador precisa das
+duas para entender a reprovação.
+
+Invariante que passa a valer, mais afiada que a minha primeira redação:
+
+- **`UNAVAILABLE` é exclusivo por âncora.** Só pode aparecer se aquela âncora não tem nenhum `FOR`
+  nem `AGAINST`, e no máximo uma vez. Dizer "não há sinal" ao lado de um sinal é a contradição
+  real — é o defeito A8.
+- **`FOR` e `AGAINST` coexistem** na mesma âncora quando os dois são fato. Nada de dedup aqui.
+- Duas `UNAVAILABLE` para a mesma âncora: dedup com precedência determinística e testada.
+
+Testes exigidos: o caso A8 (declaração só `title`) **e** o caso da regressão que ele achou —
+`title` FOR e `title` AGAINST sobrevivendo juntos num REJECT. O segundo é obrigatório porque
+nenhum teste existente o pegava: todos os testes de hard-negative usam estados com SKU+EAN
+concordantes, onde `title` nem entra no seed, logo não há colisão, logo verde. Esse é o buraco de
+cobertura, não só o bug.
+
+Nota de método que fica: o achado veio de **probe diferencial** — mesmo fixture, mesma sonda,
+trocando só um arquivo. É a mesma técnica que tornou a lane vermelha de governance decidível.
+Duas vezes no mesmo chip; é a forma de prova que este repo deveria usar por padrão quando a
+pergunta é "de quem é isto".
+
+O chip também declarou defeito próprio: o card do S8 colapsou FOR e AGAINST numa rung só de
+precedência e não disse o que acontece quando os dois caem na mesma âncora. Aceito a declaração;
+a lacuna original era da minha frase, o card só a herdou.
+
+Segurar o round 2 do dual-gate foi certo — gatear tip com regressão conhecida queima os dois
+reviewers.
+
 ## Não sujeito a ruling (do chip, aceito como plano)
 
 Shape A (4 blocos de evidência citados mas nunca escritos no arquivo), os 3 testes R5 dos guards
