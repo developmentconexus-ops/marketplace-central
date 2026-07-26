@@ -234,6 +234,24 @@ func TestProviderUnavailableReasonEmitsDeclarationWithoutSeed(t *testing.T) {
 	}
 }
 
+func TestProviderUnavailableReasonKeepsFirstSeedUnavailable(t *testing.T) {
+	t.Parallel()
+	reasons := appendProviderDeclaredUnavailableReasons(
+		[]productlinksdomain.LinkCandidateReason{
+			{Anchor: "ean", Direction: productlinksdomain.LinkCandidateReasonDirectionUnavailable, Detail: "first"},
+			{Anchor: "ean", Direction: productlinksdomain.LinkCandidateReasonDirectionUnavailable, Detail: "second"},
+		},
+		[]productlinksports.ProviderIdentityAnchor{{Anchor: "ean", Supplied: true}},
+	)
+
+	want := []productlinksdomain.LinkCandidateReason{{
+		Anchor: "ean", Direction: productlinksdomain.LinkCandidateReasonDirectionUnavailable, Detail: "first",
+	}}
+	if !reflect.DeepEqual(reasons, want) {
+		t.Fatalf("reasons=%#v, want first seed UNAVAILABLE %#v", reasons, want)
+	}
+}
+
 func TestProviderSuppliedDeclarationLeavesReasonsUnchanged(t *testing.T) {
 	t.Parallel()
 	seed := []productlinksdomain.LinkCandidateReason{
@@ -275,6 +293,55 @@ func TestProviderUnavailableReasonOrderingIsStable(t *testing.T) {
 	}
 	if !reflect.DeepEqual(reasons, want) {
 		t.Fatalf("reasons=%#v, want stable order %#v", reasons, want)
+	}
+}
+
+func TestTitleMatchHardNegativeKeepsTitleForAndAgainstInSeedOrder(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 7, 26, 9, 10, 0, 0, time.UTC)
+	snapshot := productlinksdomain.ListingSnapshot{
+		InstallationID: "inst-title-hard-negative", ProviderCode: "mercado_livre", ProviderItemID: "MLB-TITLE-HARD-NEGATIVE",
+		Title: "Kit 3 Toalheiro Simples 50cm Cromado",
+	}
+	products := []internalreaddomain.ProductCandidate{{
+		InternalProductID: canonicalIDPtr(90001), ProductID: 90001,
+		Name: "SOUL TOALHEIRO SIMPLES 500MM CR/POLIDO",
+	}}
+
+	candidates := buildCandidatesFromProducts(
+		snapshot,
+		products,
+		productlinksdomain.LinkCandidateStateTitleMatch,
+		productlinksdomain.LinkCandidateMatchInputTitle,
+		"toalheiro simples",
+		mercadoLivreIdentityAnchorReader().declarations["mercado_livre"],
+		now,
+	)
+	if len(candidates) == 0 {
+		t.Fatal("buildCandidatesFromProducts() returned zero candidates, want the canonical product candidate")
+	}
+	candidate := candidates[0]
+	if candidate.MatchStatus != productlinksdomain.LinkCandidateMatchStatusReject {
+		t.Fatalf("match status=%q, want REJECT", candidate.MatchStatus)
+	}
+
+	var titleReasons []productlinksdomain.LinkCandidateReason
+	for _, reason := range candidate.Reasons {
+		if reason.Anchor == "title" {
+			titleReasons = append(titleReasons, reason)
+		}
+	}
+	if len(titleReasons) != 2 {
+		t.Fatalf("title reasons=%#v, want FOR then AGAINST", titleReasons)
+	}
+	if titleReasons[0].Direction != productlinksdomain.LinkCandidateReasonDirectionFor {
+		t.Fatalf("first title reason=%#v, want FOR", titleReasons[0])
+	}
+	if titleReasons[1].Direction != productlinksdomain.LinkCandidateReasonDirectionAgainst {
+		t.Fatalf("second title reason=%#v, want AGAINST", titleReasons[1])
+	}
+	if !strings.Contains(titleReasons[1].Detail, "kit") {
+		t.Fatalf("title AGAINST detail=%q, want hard negative named", titleReasons[1].Detail)
 	}
 }
 

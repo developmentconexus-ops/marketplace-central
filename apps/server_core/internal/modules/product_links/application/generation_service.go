@@ -614,21 +614,30 @@ func applyUnresolvedScore(candidate *domain.LinkCandidate, identityAnchors []por
 
 func appendProviderDeclaredUnavailableReasons(reasons []domain.LinkCandidateReason, identityAnchors []ports.ProviderIdentityAnchor) []domain.LinkCandidateReason {
 	finalized := make([]domain.LinkCandidateReason, 0, len(reasons)+len(identityAnchors))
-	reasonIndexes := make(map[string]int, len(reasons)+len(identityAnchors))
+	hasSignal := make(map[string]bool, len(reasons))
 	for _, reason := range reasons {
-		index, exists := reasonIndexes[reason.Anchor]
-		if !exists {
-			reasonIndexes[reason.Anchor] = len(finalized)
+		if reason.Direction == domain.LinkCandidateReasonDirectionFor ||
+			reason.Direction == domain.LinkCandidateReasonDirectionAgainst {
+			hasSignal[reason.Anchor] = true
+		}
+	}
+
+	unavailableIndexes := make(map[string]int, len(reasons)+len(identityAnchors))
+	for _, reason := range reasons {
+		if reason.Direction != domain.LinkCandidateReasonDirectionUnavailable {
 			finalized = append(finalized, reason)
 			continue
 		}
-		if finalized[index].Direction == domain.LinkCandidateReasonDirectionUnavailable &&
-			reason.Direction != domain.LinkCandidateReasonDirectionUnavailable {
-			finalized[index] = reason
+		if hasSignal[reason.Anchor] {
+			continue
+		}
+		if _, exists := unavailableIndexes[reason.Anchor]; !exists {
+			unavailableIndexes[reason.Anchor] = len(finalized)
+			finalized = append(finalized, reason)
 		}
 	}
 	for _, anchor := range identityAnchors {
-		if anchor.Supplied {
+		if anchor.Supplied || hasSignal[anchor.Anchor] {
 			continue
 		}
 		declarationReason := domain.LinkCandidateReason{
@@ -636,15 +645,13 @@ func appendProviderDeclaredUnavailableReasons(reasons []domain.LinkCandidateReas
 			Direction: domain.LinkCandidateReasonDirectionUnavailable,
 			Detail:    fmt.Sprintf("provider não fornece a âncora %s", anchor.Anchor),
 		}
-		index, exists := reasonIndexes[anchor.Anchor]
+		index, exists := unavailableIndexes[anchor.Anchor]
 		if !exists {
-			reasonIndexes[anchor.Anchor] = len(finalized)
+			unavailableIndexes[anchor.Anchor] = len(finalized)
 			finalized = append(finalized, declarationReason)
 			continue
 		}
-		if finalized[index].Direction == domain.LinkCandidateReasonDirectionUnavailable {
-			finalized[index] = declarationReason
-		}
+		finalized[index] = declarationReason
 	}
 	return finalized
 }
