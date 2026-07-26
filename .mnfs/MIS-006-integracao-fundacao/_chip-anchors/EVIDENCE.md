@@ -10,7 +10,14 @@ status: in-progress
 
 BASE-SHA: 917f7bb58e385847fba5612201823f9db48791c6
 CONTRATO: .mnfs/MIS-006-integracao-fundacao/_chip-anchors/validation-contract.md
-EXEMPLO-IO: MLB4735326915 · "SOUL TOALHEIRO SIMPLES 500MM CR/POLIDO" vs ERP product written in cm
+EXEMPLO-IO: MLB4735326915 · listing "Toalheiro Simples Soul Zen 50cm Cromado" (cm)
+            vs ERP product "SOUL TOALHEIRO SIMPLES 500MM CR/POLIDO" (mm) → CONFIRM/MEDIA/70
+            asserted by TestGoldenToalheiroDimensionUnitEquivalenceYieldsConfirm
+            (generation_service_test.go:773)
+            NOTE: the dispatch prompt states this pair the other way round — the 500MM name as the
+            LISTING title. Adjudication A3 records the prompt's orientation as the error; the ERP
+            product is the all-caps 500MM one. This header line still carried the inverted form
+            after A3 corrected the C6 cell; fixed in ROUND 3, flagged by the cold P6 gate.
 
 ## Note on the pack location
 
@@ -45,6 +52,9 @@ the verdict/output artifact afterwards.
 | D13 | P4 | Re-reviewer, feature F-01 over `f92ca9c7` | Claude sonnet subagent | Agent tool, async | inline brief | `tasks/ad9c0421c9c2a538c.output` | completed — **PASS**, zero findings |
 | D17 | P3 | Implementer S8 (hub rulings R-6 dedup/precedence + R-7 parser seam) | gpt-5.6-sol / low (complex slice) | OS-process codex | `scratchpad/prompt-s8.md` | `scratchpad/agent__s8-impl.last.md` + `.log` | committed `d9952509`; **R-7 accepted, R-6 REGRESSES the TitleMatch path** — chip-verified by differential probe, `ESCALATION` sent, corrective pending the hub ruling |
 | D18 | P3 | Implementer S9 (hub ruling R-6a: UNAVAILABLE exclusive, FOR+AGAINST coexist) | gpt-5.6-sol / low (complex slice) | OS-process codex | `scratchpad/prompt-s9.md` | `scratchpad/agent__s9-impl.last.md` + `.log` | committed `2921d563`; matrix reported total, no uncovered case; **chip-verified** — regression closed by own probe, rule-2 must-fail re-run by hand, L0+L1 green at tip |
+| D19 | P6 | Dual gate round 2 — COLD Opus side (`harness:gate-reviewer`, Read/Grep/Glob only, no Bash) | Opus / cold | Agent tool, async | `scratchpad/prompt-p6-opus-r2.md` | verdict transcribed below | completed — **FAIL** on the pack, not on the behaviour: "the code is in materially better shape than the pack" |
+| D20 | P6 | Dual gate round 2 — GPT side | gpt-5.6-sol / medium | OS-process codex | `scratchpad/prompt-p6-sol-r2.md` | `scratchpad/agent__p6-sol-r2.last.md` + `.log` | completed — **FAIL**; C6/C8/C11 FAIL, 3 BLOCKING, all three about evidence decay, none about code |
+| D21 | §11 | Independent adversarial judgement — structural vs informational (briefed AGAINST the abstraction; "change no rule" set as the default verdict) | Claude sonnet subagent | Agent tool, async | inline brief, quoted in ROUND-3 | `scratchpad/agent__p11-judge-r3.md` | completed — **REJECT-IN-FAVOUR-OF-mechanical-table-regeneration-at-final-tip**; the chip's own proposal was refused |
 
 ## Slice S3 — chip verification, and a defect in the chip's own slice card
 
@@ -1014,8 +1024,14 @@ files, with `.gitattributes`, in a commit that touches nothing else.
 
 ## Criteria table
 
-All evidence below is against the final tip `1df627f8` (code).
+**Every `file:line` below is against CODE TIP `2921d563`** — the last commit that touches code. Pack
+commits after it modify only `.mnfs/…/_chip-anchors/`, so code line numbers do not move again.
 Base is `917f7bb58e385847fba5612201823f9db48791c6` throughout.
+
+This line previously read "against the final tip `1df627f8`" and was left standing through three
+correctives while S7, S8 and S9 shifted the code underneath it. Both round-2 gates blocked on it. See
+the ROUND-3 FULL ANALYSIS for the sweep that re-anchored every citation and for the classification of
+each one; a citation being right is recorded there as explicitly as a citation being wrong.
 
 ### Evidence blocks the criteria table cites
 
@@ -1111,9 +1127,12 @@ allowed to reach for both because its job is to prove the real wiring works; pro
 Nothing here is implied — the build tag, the usage sites and the grep are each independently
 checkable above.
 
-**C10 — the full diff name list**, pasted whole as the criterion demands
-(`git diff --name-only 917f7bb5..1df627f8`, i.e. the CODE tip; the two `_chip-anchors/` paths that
-appear at later pack tips are this evidence file and the unit sweep, and carry no code):
+**C10 — the full diff name list**, pasted whole as the criterion demands. RE-RUN in ROUND 3 at the
+reviewed tip — `git diff --name-only 917f7bb5..93c90330` returns **17 paths**: the 15 code paths
+below, plus two `.mnfs/…/_chip-anchors/` paths (this evidence file and the unit sweep) which carry no
+code. The list below is byte-identical to the one produced at `1df627f8`, because S7/S8/S9 modified
+existing files and added none — so the CONTENT was always true, but the command it was labelled with
+was pinned to a superseded tip. Classified in ROUND 3 as *stale label, true content*:
 
 ```
 apps/server_core/internal/composition/root.go
@@ -1158,17 +1177,17 @@ independently against base — base literal had 4 keys at `root.go:537-542`, non
 
 | ID | Verdict | Evidence |
 |----|---------|----------|
-| C1 | **PASS** | declaration `connectors/ports/marketplace_capability.go:22-41` (`IdentityAnchor` type, the five constants, `KnownIdentityAnchors()`); product_links' own port `product_links/ports/provider_identity_anchor_reader.go`; adapter `product_links/adapters/connectors/identity_anchor_adapter.go:9-23`; wiring `internal/composition/root.go:387` + `:543` |
-| C2 | **PASS on the *prova mínima*, with a declared divergence — see below** | `git grep -n mandatoryUnavailableReasons -- 'apps/server_core/**/*.go'` = **0** in tracked source (base had **8**, all in `generation_service.go`). `"marca"`/`"refforn"` in `product_links/application` production code = **0**; the 8 remaining hits are all in `generation_service_test.go` (`:88,:89,:143,:144,:170,:173,:498,:502`), which the criterion permits and which are the tests that PROVE the names now arrive from the declaration |
+| C1 | **PASS** | declaration `connectors/ports/marketplace_capability.go:22-42` (`IdentityAnchor` type `:22`, the five constants `:25-29`, the backing slice `:32-38`, `KnownIdentityAnchors()` `:40-42` returning a copy); product_links' own port `product_links/ports/provider_identity_anchor_reader.go:3-10`; adapter `product_links/adapters/connectors/identity_anchor_adapter.go` — constructor `:13`, method `:17-38`, **compile-time assert `:39`**; wiring `internal/composition/root.go:105` (import) + `:387` (construction) + `:543` (`IdentityAnchors` field) |
+| C2 | **PASS on the *prova mínima*, with a declared divergence — see below** | `git grep -n mandatoryUnavailableReasons -- 'apps/server_core/**/*.go'` = **0** in tracked source (base had **8**, all in `generation_service.go`). `"marca"`/`"refforn"` in `product_links` production code = **0** (swept across the whole module, not just `application/`). The remaining hits are all in TEST files, which the criterion permits and which are the tests that PROVE the names now arrive from the declaration: **14** quoted-literal lines in `generation_service_test.go` (`:89,:90,:144,:145,:172,:175,:226,:230,:282,:284,:291,:292,:744,:748`) plus **2** in `identity_anchor_adapter_test.go` (`:33,:34`). The earlier cell said "8, all in `generation_service_test.go`" — both the count and the single-file claim were false at this tip; corrected in ROUND 3. Counting method stated because it changes the number: this is `grep '"marca"\|"refforn"'`, quoted literals only. A bare-word grep returns more lines (identifiers and prose), which is why the cold gate reported 25 |
 | C3 | **PASS** | `git grep 'mercado_livre\|ProviderCode *==\|ProviderCode *!=\|switch .*[Pp]rovider' -- 'product_links/**/*.go' ':!*_test.go'` = **ZERO HITS**, over the **34 tracked `.go` files** listed in the C3 evidence block above (the criterion requires the swept list, not just the count) |
-| C4 | **PASS** | the two details are distinct and both present: `generation_service.go:536-537` / `:609-610` emit `"<anchor> sem correspondência"` (provider supplies it, this listing has no value) and `:624` emits `"provider não fornece a âncora %s"` (provider does not supply it). Tests `generation_service_test.go:135` and `:1005`. Per R1 the distinction is carried in `Detail`; no 4th enum value exists |
+| C4 | **PASS** | the two details are distinct and both present: `generation_service.go:536-537` / `:609-610` emit `"<anchor> sem correspondência"` (provider supplies it, this listing has no value) and `:646` emits `"provider não fornece a âncora %s"` (provider does not supply it). Tests: `TestGenerateLinkCandidatesUsesProviderDeclarationForUnavailableReasons` (`generation_service_test.go:136`, asserting the declaration detail at `:176`) and the precedence tests at `:215`, `:230`, `:289`, `:291`. Per R1 the distinction is carried in `Detail`; no 4th enum value exists. **Both detail forms are also visible side by side in the S9 probe output** (S9 section): `seller_sku`/`ean` carry the seed form, `marca`/`refforn` the declaration form, on one candidate. The earlier cell cited `:624` and test `:1005`; neither resolves at this tip |
 | C5 | **PASS** | `git diff --stat <base>..HEAD -- openapi/ packages/sdk-runtime/` → **empty**. Output pasted in the C5 evidence block above; also visible in the C10 list, where no path under either tree appears |
-| C6 | **PASS** | `TestGoldenToalheiroDimensionUnitEquivalenceYieldsConfirm` (`:527`, the real M-05 golden: listing `Toalheiro Simples Soul Zen 50cm Cromado` (**cm**) vs ERP `SOUL TOALHEIRO SIMPLES 500MM CR/POLIDO` (**mm**) → CONFIRM/MEDIA/70 — orientation per adjudication A3, NOT the dispatch prompt's EXEMPLO-IO, which has the two swapped), `TestEquivalentDimensionUnitsDoNotRejectConcordantCandidate` (`:558`), `TestDimensionCanonicalizationUsesExactMillimetres` (`:582`). Contradiction still fires: `TestDifferentCanonicalDimensionsStillRejectConcordantCandidate` (`:653`). Must-fail below |
-| C7 | **PASS** | corroborated path still blocked: `TestCase6DokaKitHardNegativeCapsBaixaReject` (`:902`), `TestCase7VoltageHardNegativeCapsBaixaReject` (`:933`), `TestCase10DimensionHardNegativeCapsBaixaReject` (`:1026`), `TestDimensionPresenceAndGradeRulesRemainNonBlocking` (`:682`) — all with CODPROD+EAN concordant |
-| C8 | **PASS** | `resolution_service.go:369-381` three independent literals; `TestListLinkWorkflowsUsesIndependentDefaultLimitsAndReturnsAll29Links` (`resolution_service_test.go:361`) asserts `len(links)==29` on a 29-link fixture; `TestListLinkWorkflowsDefaultsDoNotVaryWithLimit` (`:406`) pins the independence at 5/20/500; `TestListLinkWorkflowsHonorsIndependentExplicitLimits` (`:447`). Must-fail below |
+| C6 | **PASS** | `TestGoldenToalheiroDimensionUnitEquivalenceYieldsConfirm` (`generation_service_test.go:773`, asserting at `:787`; the real M-05 golden: listing `Toalheiro Simples Soul Zen 50cm Cromado` (**cm**) vs ERP `SOUL TOALHEIRO SIMPLES 500MM CR/POLIDO` (**mm**) → CONFIRM/MEDIA/70 — orientation per adjudication A3, NOT the dispatch prompt's EXEMPLO-IO, which has the two swapped), `TestEquivalentDimensionUnitsDoNotRejectConcordantCandidate` (`:804`), `TestDimensionCanonicalizationUsesExactMillimetres` (`:828`, four subtests: decimal comma, decimal point, inches, metres). Inch factor is `big.NewRat(127, 5)` — exact, `generation_service.go:804`. Suffix order `{"pol","mm","cm","\"","m"}` at `:788` puts `m` LAST, so it cannot shadow `mm`/`cm`. Contradiction still fires: `TestDifferentCanonicalDimensionsStillRejectConcordantCandidate` (`:899`). Must-fail run and PASTED below. The earlier cell cited `:527,:558,:582,:653` — all four wrong at this tip |
+| C7 | **PASS** | corroborated path still blocked: `TestCase7VoltageHardNegativeCapsBaixaReject` (`generation_service_test.go:1179`, SKU+EAN concordant → BAIXA/REJECT) and `TestDifferentCanonicalDimensionsStillRejectConcordantCandidate` (`:899`, SKU+EAN concordant, dimension). `TestCase6DokaKitHardNegativeCapsBaixaReject` (`:1148`) and `TestCase10DimensionHardNegativeCapsBaixaReject` (`:1272`) are EAN-only paths — real coverage, but NOT the corroborated path, and the earlier cell wrongly presented all four as corroborated. `TestDimensionPresenceAndGradeRulesRemainNonBlocking` (`:928`). The earlier cell cited `:902,:933,:1026,:682` — all four wrong at this tip. Two gaps declared, not papered over: the `cor` branch (`generation_service.go:723-727`, `hardNegativeColor:809-816`) has NO test at all, and the grade-token finding below |
+| C8 | **PASS** | `resolution_service.go:370-381` — three literals off three independent input fields (`Limit`→20 `:372`, `LinkLimit`→2000 `:376`, `AuditLimit`→10000 `:380`), no shared derivation; `TestListLinkWorkflowsUsesIndependentDefaultLimitsAndReturnsAll29Links` (`resolution_service_test.go:361`) asserts `len(links)==29` on a 29-link fixture; `TestListLinkWorkflowsDefaultsDoNotVaryWithLimit` (`:406`) pins independence at 5/20/500/**5000**; `TestListLinkWorkflowsHonorsIndependentExplicitLimits` (`:448`). Must-fail run and PASTED below. (This file was untouched by S7/S8/S9, so only the `:369`→`:370` and `:447`→`:448` off-by-ones needed correcting — recorded because ROUND 3 classifies clean sites too) |
 | C9 | **PASS** | `git diff --name-only <base>..HEAD \| grep -i migration` → **zero**; the C10 evidence block contains no `migrations/` path and no `product_links/adapters/postgres/` file at all, so the chip writes no `UPDATE` and no backfill. Characterised honestly: a pre-existing `ON CONFLICT … DO UPDATE SET reasons = EXCLUDED.reasons` does exist at `link_candidate_repo.go:79`, but it is the candidate **regeneration** upsert, untouched by this chip and depended on by the hub's own U1 ("depois de regerar candidatos"). R3 forbids retro-editing persisted motivos; it does not forbid regeneration from producing fresh ones |
 | C10 | **PASS** | full `git diff --name-only <base>..HEAD` pasted whole in the C10 evidence block above — **15 code paths**. `grep -c '^apps/web/'` = **0** |
-| C11 | **PASS** — L0+L1 green chip-side; governance rung hub-run per R-b, **differential PASS** (53 violations at chip tip == 53 at BASE, outputs identical line for line; lane is red on `main` and not green here — see the honesty note) | see the Ladder section below + hub evidence `main@d36d89a` |
+| C11 | **PARTIAL — L0+L1 PASS, governance rung OPEN at the final tip** | L0+L1 re-run by the chip at code tip `2921d563`: `go build ./...` clean (no VCS-stamping artifact on the chip's own run), `go vet` clean, `go test -count=10` → `EXIT=0`, 9 packages ok. Governance: the differential PASS (53 == 53, line for line) was measured at `8e37958a`, and **five code files changed between that tip and the reviewed one**, so it does NOT cover the final tip — see the struck-through synchrony check in the Ladder. Rung is hub-owned per R-b; CLOSED payload carries a `REQUEST` for a re-run at `2921d563`. Not claimed as PASS |
 | C12 | **PASS** | `git diff -w <base>..HEAD -- internal/composition/root.go` → **0 removed lines**, exactly 3 added, quoted verbatim in the C12 evidence block above and in the CLOSED payload; `gofmt -l` clean (proven CR-stripped per the ROUND-1 analysis — the naive file-scoped check is uninformative on this checkout) |
 
 ### C2 — the criterion's statement and its *prova mínima* do not cover the same set
@@ -1302,14 +1321,169 @@ legitimate here *only* because the difference is null and the nullity is proven 
 comparison of two runs — not because the red was waved through. The 53 violations are the hub's
 debt, not this chip's, and they remain outstanding.
 
-**Synchrony check (hub asked, chip verified by tool rather than asserting).** The hub measured at
-`8e37958a`; the branch is now at `b954783d`. `git diff --name-only 8e37958..b954783` returns exactly
-one path — this `EVIDENCE.md`. Zero `.go` files, and `git diff --stat 8e37958..b954783 -- apps/` is
-empty, so the entire code tree is byte-identical between the measured tip and the current one. The
-two intervening commits (`078ae7be`, `b954783d`) are both documentation. The differential therefore
-still holds and **no re-run is needed before merge**. One correction to the hub's framing: S4
-(`030fa58c`) sits far below `8e37958a` and was already inside the measured tip — nothing after that
-tip is code at all.
+**~~Synchrony check (hub asked, chip verified by tool rather than asserting).~~ SUPERSEDED — the
+claim below was true when written and is FALSE at the reviewed tip. Struck through in place rather
+than rewritten, because how it went stale is the point of ROUND 3.**
+
+> ~~The hub measured at `8e37958a`; the branch is now at `b954783d`. `git diff --name-only
+> 8e37958..b954783` returns exactly one path — this `EVIDENCE.md`. Zero `.go` files … The
+> differential therefore still holds and **no re-run is needed before merge**.~~
+
+**Correction (ROUND 3).** That was verified against `b954783d`. S7, S8 and S9 landed afterwards.
+At the reviewed tip the same command tells the opposite story — run by the chip, pasted:
+
+```
+$ git diff --name-only 8e37958a..93c9033052f896712a209cbfb35016ea0ea2c5f1 -- apps/server_core
+apps/server_core/internal/modules/connectors/application/marketplace_capability_service_test.go
+apps/server_core/internal/modules/product_links/application/generation_integration_test.go
+apps/server_core/internal/modules/product_links/application/generation_service.go
+apps/server_core/internal/modules/product_links/application/generation_service_test.go
+apps/server_core/internal/modules/product_links/application/resolution_service_test.go
+```
+
+Five code files, `generation_service.go` among them — the very file the governance lane would scan.
+**The governance differential does NOT cover the reviewed tip, and "no re-run is needed before merge"
+is withdrawn.** Found by the GPT gate in round 2, verified by the chip with the command above before
+being accepted.
+
+Consequence, stated rather than smoothed over: **the governance rung is OPEN at the final tip.** It
+is not being counted as PASS. The rung is hub-owned by ruling R-b, so the chip cannot close it
+itself; the CLOSED payload carries a `REQUEST` for a governance re-run at the final code tip
+`2921d563`. The earlier differential result (53 == 53 at `8e37958a`) stands as evidence about
+`8e37958a` and nothing later.
+
+## ROUND-3 FULL ANALYSIS — evidence pinned to a tip that has moved (profile §11, hub ruling R4)
+
+Triggered by clause 1 for the third time on this chip. Both round-2 gates failed the chip
+independently, and both named the same root cause.
+
+### The shape, in one sentence
+
+**The pack's evidence is pinned to a tip that has since moved, and nobody re-anchored it — so a
+citation that was true when written now points at something else, while still reading as proof.**
+
+This is a genuinely different shape from ROUND 2, and the difference is why ROUND 2's fix did not
+prevent it. ROUND 2 was *a check asserted but never run* — the evidence never existed. ROUND 3 is
+*evidence that existed and was correct, then silently decayed* because the thing it pointed at moved
+underneath it. A sweep for missing evidence does not find decayed evidence: every ROUND-3 instance
+looked complete, cited a real file, and named a real command. That is exactly what made it survive
+two previous sweeps.
+
+### Why it recurred despite ROUND 2 declaring the class closed
+
+`EVIDENCE.md` carried the line *"All evidence below is against the final tip `1df627f8`"*. It was
+accurate when written. Then S7 (`e1195806`), S8 (`d9952509`) and S9 (`2921d563`) each inserted tests
+and code ABOVE the cited lines, shifting everything below. ROUND 2 fixed the four individual cells it
+was told about and never touched the anchor line — so the table kept declaring a superseded tip while
+being corrected cell by cell. Fixing instances is not closing a class; that is the lesson, and it is
+the second time on this chip that a class was declared closed after fixing only its known instances.
+
+### The sweep — exhaustive, by tool, INCLUDING the clean sites
+
+Every citation in the criteria table and its evidence blocks, checked against code tip `2921d563`.
+Clean sites are listed too, because "I checked it and it was right" is a result.
+
+| Citation | Claimed | Actual at `2921d563` | Class |
+|---|---|---|---|
+| C1 `marketplace_capability.go:22-41` | 22-41 | 22-42 (range cut the closing brace of `KnownIdentityAnchors()`) | **DECAYED** |
+| C1 `identity_anchor_adapter.go:9-23` | 9-23 | ctor `:13`, method `:17-38`, **assert `:39`** — range excluded the compile-time assert, the load-bearing part | **DECAYED** |
+| C1 `provider_identity_anchor_reader.go` | no line cited | file exists, `:3-10` | CLEAN (nothing to decay) |
+| C1 `root.go:387`, `:543` | 387, 543 | both correct; import at `:105` was missing | CLEAN + incomplete |
+| C2 production `marca`/`refforn` = 0 | 0 | 0 | **CLEAN** |
+| C2 "8 test hits, all in `generation_service_test.go`" | 8, one file | 14 in that file + 2 in `identity_anchor_adapter_test.go` | **DECAYED** (count and locus both false) |
+| C3 34-file sweep list | 34 | 34, unchanged — no files added after `1df627f8` | **CLEAN** |
+| C4 `:536-537`, `:609-610` | as cited | correct | **CLEAN** |
+| C4 `:624` declaration detail | 624 | `:646` | **DECAYED** |
+| C4 test `:135`, `:1005` | as cited | `:136`, and the declaration assertions at `:176`/`:215`/`:230`/`:289` | **DECAYED** |
+| C5 OpenAPI/SDK empty diff | at `1df627f8` | re-run at reviewed tip → still empty | **STALE LABEL, TRUE CONTENT** |
+| C6 tests `:527,:558,:582,:653` | as cited | `:773,:804,:828,:899` — all four wrong | **DECAYED** |
+| C7 tests `:902,:933,:1026,:682` | as cited | `:1148,:1179,:1272,:928` — all four wrong; ALSO two of them are EAN-only, not the corroborated path the cell claimed | **DECAYED + overclaimed** |
+| C8 `resolution_service.go:369-381`, tests `:361,:406,:447` | as cited | `:370-381`, `:361`, `:406`, `:448` — off-by-one only; file untouched by S7/S8/S9 | **NEAR-CLEAN** |
+| C9 no migration path | at `1df627f8` | re-run at reviewed tip → 0 | **STALE LABEL, TRUE CONTENT** |
+| C10 15 code paths | at `1df627f8` | re-run at reviewed tip → 17 total = 15 code + 2 pack; the pasted list is byte-identical | **STALE LABEL, TRUE CONTENT** |
+| C11 governance synchrony "no re-run needed" | verified at `b954783d` | **FALSE at the reviewed tip** — 5 code files changed since `8e37958a` | **DECAYED INTO A FALSE CLAIM** |
+| C12 `root.go` 3 added / 0 removed | as cited | re-verified: 3 added at `:105`,`:387`,`:543`, 0 removed under `-w` | **CLEAN** |
+| `EXEMPLO-IO` header line | 500MM as the LISTING | test has 500MM as the ERP product | **NEVER TRUE** — inverted since day 1, corrected in the C6 cell by A3 but not in the header |
+
+Four classes, and they need different fixes — which is the finding:
+
+1. **DECAYED** — pointed somewhere real, now points elsewhere. Re-anchored.
+2. **STALE LABEL, TRUE CONTENT** — the claim holds, the command was labelled with a superseded tip.
+   Re-run at the reviewed tip and relabelled; content unchanged because it never changed.
+3. **DECAYED INTO A FALSE CLAIM** — the dangerous one. C11's synchrony check did not merely go stale,
+   it inverted: it asserts no re-run is needed, and a re-run is now exactly what is needed. Struck
+   through in place, corrected, and the rung reopened.
+4. **NEVER TRUE** — `EXEMPLO-IO` was inverted from the start and survived a correction that fixed the
+   same error one section away.
+
+### Class closed — the proof, not the assertion
+
+Every `file:line` in the criteria table was re-derived by grep at code tip `2921d563` and pasted into
+the cells above; the three command-based criteria (C5, C9, C10) were RE-RUN at the reviewed tip with
+their outputs above. The anchor line now names the CODE tip `2921d563` rather than a pack tip, and
+states why: pack commits after it touch only `.mnfs/`, so code line numbers cannot move again. That
+is the structural half — the anchor is now pinned to the last commit that can invalidate it, instead
+of to whatever tip happened to be current when the sentence was typed.
+
+### Remedy — structural or informational?
+
+The informational remedy is "re-anchor the table each time". It has now failed three times, so
+recording it again would be recording a habit that does not hold.
+
+The structural candidate: **cite by SYMBOL, not by line.** Test names and function names do not shift
+when code is inserted above them; `TestGoldenToalheiroDimensionUnitEquivalenceYieldsConfirm` was
+correct in every round while its line number was wrong in three. Line numbers become a convenience
+for the reader rather than the identity of the evidence, and a reviewer who greps the symbol finds it
+regardless of what landed above it. This chip's C6/C7 cells are the whole argument: four citations
+each, all four wrong, every symbol name right.
+
+Per §11 this must not be self-adjudicated. An independent judgement was dispatched (ledger **D21**),
+briefed AGAINST the abstraction and told that "record nothing, change no rule" is the default verdict.
+Its verdict, not this section's preference, is what goes to the hub.
+
+### The independent judgement — REJECT, in favour of a different structural remedy
+
+**Verdict: `REJECT-IN-FAVOUR-OF-mechanical-table-regeneration-at-final-tip`.** Verbatim in
+`scratchpad/agent__p11-judge-r3.md`; the load-bearing part of the reasoning:
+
+> Symbol-citation treats the symptom (a citation format that can go stale) rather than the mechanism
+> (the table was authored once, early, at commit A, then silently invalidated by three rounds of
+> correctives inserted above it) — it changes what reviewers read, not when the pack is generated.
+
+It granted the observation that made me propose the abstraction — the symbol was right in all three
+failures while the line was wrong, and a renamed symbol fails LOUD (zero-hit grep) where a shifted
+line fails silent — and still refused the conclusion, on four grounds I could not answer:
+
+1. **A meaningful fraction of criteria are not symbol-shaped.** A claim about a line RANGE inside one
+   function; a claim that a struct literal lost no fields; a pasted command output; a whole-file
+   claim; and worst, a NEGATIVE claim ("this pattern appears nowhere") which by definition has no
+   symbol to anchor to. This chip's C2, C3, C5, C9, C10 and C12 are exactly those rows. Under the
+   proposal they fall back to hand-typed line numbers — reproducing the original bug precisely on the
+   criteria that most need protection.
+2. **A mixed scheme is worse than either pure one.** The reviewer must first work out which rule
+   governs which row before trusting either.
+3. **It taxes the reviewer**, who on the cold side has Read/Grep/Glob and no shell: O(1) line lookup
+   becomes grep-then-scan-the-function-body.
+4. **Symbols duplicate** — subtests, same-named helpers across packages — so the grep becomes a
+   disambiguation the reviewer now owns.
+
+**What it recorded instead, and what this chip carries to the hub as the structural remedy:**
+regenerate every C1–C12 citation MECHANICALLY, from a script, against the final tip, as the literal
+last action before the pack goes to review — never hand-anchored mid-chip. Symbol names serve as the
+script's internal resolution key where one naturally exists; range / absence / whole-file / pasted-
+output rows are handled by the same script RE-RUNNING the underlying command against HEAD rather
+than trusting a stale line. The symbol observation is an input to that tool's design, not a
+reviewer-facing convention.
+
+**Why I am not implementing that script in this chip:** it is harness tooling, not
+`product_links` code, and building it here would be exactly the scope leak the dispatch forbids.
+It goes out in the CLOSED payload as an upstream amendment candidate. What this chip DID apply is
+the manual instance of the same remedy — the whole table re-derived at the code tip in one pass as
+the last act before re-gating, which is the hand-run version of what the script would do.
+
+**Recorded honestly against my own proposal:** the judge also called three failures inside one chip
+thin evidence for a repo-wide format change. That is a fair hit on the abstraction, not on the
+finding — the finding is the authoring ORDER, and it survives.
 
 ## ROUND-2 FULL ANALYSIS — the pack asserting a check that never happened (profile §11, hub ruling R4)
 
@@ -1404,8 +1578,9 @@ it only before ADDING an abstraction). The rules, carried to the hub as amendmen
 
 ## Dual gate
 
-Two reviewers on the fixed-SHA diff `917f7bb5..1df627f8`, dispatched concurrently and blind to each
-other: the GPT side (`gpt-5.6-sol` / medium, OS-process, `--sandbox read-only`) and a COLD Opus side
+Two reviewers on a fixed-SHA diff, dispatched concurrently and blind to each other. **Round 1 ran on
+`917f7bb5..1df627f8`; round 2 on `917f7bb5..93c90330` over code tip `2921d563`** — the SHA in this
+paragraph is round 1's, and every round-1 finding below is scoped to it. The GPT side (`gpt-5.6-sol` / medium, OS-process, `--sandbox read-only`) and a COLD Opus side
 on `harness:gate-reviewer`, which has no Edit/Write/Bash **by construction** rather than by
 instruction.
 
@@ -1499,7 +1674,44 @@ Frozen tip: the pack commit recorded below. Both gates run blind to each other, 
 pack at that one SHA, with R-6a, R-7 and R-8 stated as authority rather than open questions — and
 with the instruction that a ruling in the chip's favour is not evidence the code is right.
 
-Verdicts land here.
+Frozen tip: `93c9033052f896712a209cbfb35016ea0ea2c5f1` (pack) over code tip `2921d563`. Both briefs
+were amended before dispatch: the round-1 briefs still stated **R-6**, which S9 no longer implements.
+Dispatched unpatched, both reviewers would have failed the chip for keeping same-anchor
+`FOR`+`AGAINST` — the exact behaviour R-6a now mandates. Both were re-pinned to R-6a, told to hunt
+the DROP direction (a collapsed `FOR`+`AGAINST` pair; a declaration-unsupplied anchor losing its
+reason), and told to run the ordering test at `-count=10` because the map-iteration mutation only
+reddened on run 7 of 10. Recorded as an upstream candidate: **re-dispatching a gate after a
+corrective re-pins BOTH the tip and every ruling the corrective changed**, not just the SHA.
+
+| Gate | Verdict | Where it failed |
+|---|---|---|
+| COLD Opus (`harness:gate-reviewer`) — D19 | **FAIL** | the PACK, explicitly not the behaviour: "the code is in materially better shape than the pack… The chip fails on evidence, not on behaviour." Six stale `file:line` citations; the criteria table still pinned to `1df627f8`; C11's synchrony claim now false; must-fail rows asserted without artifacts; the obsolete R-7 "no proof possible" paragraph; the inverted `EXEMPLO-IO` header |
+| GPT side (`gpt-5.6-sol`/medium) — D20 | **FAIL** | C6, C8 and C11 FAIL; 3 BLOCKING, verbatim in `scratchpad/agent__p6-sol-r2.last.md`. C1–C5, C7, C9, C10, C12 PASS |
+
+**Both gates AGREE, and that is the reconciliation.** Neither found a defect in the code. Neither
+disputed R-6a's implementation, the finalizer, the unit canonicalisation or the independence of the
+three limits — the Opus side having been given no open-items list and having had to find its own
+targets. Every blocking finding on both sides reduces to one shape: *the pack's evidence is pinned to
+a tip that has moved.* There is nothing to reconcile between them; there was a defect to fix, and it
+was mine.
+
+Concrete claims the GPT side made that the chip re-derived rather than accepted:
+
+- `git diff --stat 8e37958a..93c90330 -- apps/server_core` → **five** changed code files. Verified;
+  this is what falsified C11's synchrony claim, and the governance rung was reopened because of it.
+- the full final diff has **17** paths, not the 15 the C10 cell called "the full final diff".
+  Verified: 15 code + 2 pack.
+- `go build ./...` returning `error obtaining VCS status: exit status 128` — a worktree/VCS-stamp
+  condition, profile §3 class, not a compile failure; `go vet ./...` and the 27-package L1 lane are
+  green at the same tip and are what the ladder rung actually rests on.
+
+Both FAILs triggered profile §11 for the **third** time on this chip, on the shape recorded in
+ROUND-3 above. Per hub ruling R4 the patching stops there: the class was swept exhaustively, every
+citation re-derived at the code tip, and the structural-vs-informational question sent to an
+independent judgement (D21) rather than self-adjudicated. **No third gate round is claimed.** The
+chip goes to the hub with both round-2 verdicts standing as FAIL-on-evidence, the sweep that answers
+them, and the hub's own decision on whether the re-anchored pack now clears — which is the hub's
+call, not a verdict the chip may issue about itself.
 
 ## Must-fail proofs (R5)
 
@@ -1508,9 +1720,9 @@ reasoned about.
 
 | Guard | Mutation applied | Observed |
 |---|---|---|
-| C6 unit canonicalisation | remove the mm/cm/m/pol scaling so tokens compare lexically | golden `TestGoldenToalheiroDimensionUnitEquivalenceYieldsConfirm` goes RED (`500MM` vs `50cm` reads as a contradiction again) |
+| C6 unit canonicalisation | disable the mm/cm/m/pol scaling in `normalizeDimensionToken` so tokens compare lexically | RED — **chip-re-run in ROUND 3, output pasted below the table** |
 | C6 contradiction still fires | — (inverse check, no mutation) | `50cm` vs `40CM` still REJECTs, so the canonicalisation did not simply disable the rule |
-| C8 independent limits | restore the shared `limit*5` derivation | the 29-link fixture returns fewer than 29 → RED |
+| C8 independent limits | restore the shared `limit*5` derivation (`linkLimit = candidateLimit * 5`) | RED on the 29-link test AND on all four independence rows — **chip-re-run in ROUND 3, output pasted below the table** |
 | C8 defaults independent of `Limit` | `linkLimit = candidateLimit*100`, `auditLimit = candidateLimit*500` | new test RED on the `5` and `500` rows, `20` row still green, **and both pre-existing default tests stay GREEN** — proving the old net was blind to the class |
 | F-02 display offsets | (proved by the reviewer, not the author) rebuilt the pre-corrective function standalone | returned `display="50c"`, truncated, for `"İnox 50cm"` — the guard is load-bearing |
 | **S7** duplicate identity anchor (`marketplace_capability_service.go:146-148`) | delete the `seen[anchor]` check | `error = <nil>` → `TestMarketplaceCapabilityServiceRejectsDuplicateIdentityAnchor` RED |
@@ -1518,9 +1730,9 @@ reasoned about.
 | **S7** nil declaration (`generation_service.go:163-165`) | delete the `declaration == nil` check | `error = <nil>` → `TestGenerateLinkCandidatesFailsWhenIdentityAnchorDeclarationIsNil` RED |
 | **S7** clamped limit formula (`resolution_service.go`) | apply `linkLimit = max(2000, candidateLimit*4)` | `limit_5000` row RED (`link limit = 20000, want 2000`) **while `limit_5`, `limit_20` and `limit_500` all stay GREEN** — the contrast is the proof that the old 3-row table was blind to the clamped class |
 | **S9** R-6a rule 2, `FOR`+`AGAINST` coexist (`generation_service.go:626-641`) | restore blanket per-anchor dedup on the signal side | `TestTitleMatchHardNegativeKeepsTitleForAndAgainstInSeedOrder` RED — **re-run by the chip itself**, observed verbatim: `title reasons=[]domain.LinkCandidateReason{...Anchor:"title", Direction:"FOR"...}, want FOR then AGAINST`. Not confounded: the message names the missing `AGAINST` |
-| **S9** R-6a rule 1, `UNAVAILABLE` exclusive | emit the declaration `UNAVAILABLE` beside a `FOR` | reported RED by S9 (both `ean FOR` and declaration `ean UNAVAILABLE` in output) — worker-observed, not chip-re-run |
-| **S9** R-6a rule 3, declaration beats seed | invert precedence | reported RED by S9 (`"ean sem correspondência"` survived) — worker-observed, not chip-re-run |
-| **S9** ordering determinism | process declarations through map iteration | reported RED by S9 **on run 7 of 10** — worker-observed. A `-count=5` lane would have passed a genuinely non-deterministic ordering; see the S9 section |
+| **S9** R-6a rule 1, `UNAVAILABLE` exclusive | drop `hasSignal` from the declaration skip so the declaration `UNAVAILABLE` is emitted beside a `FOR` | RED — **chip-re-run in ROUND 3, output pasted below** |
+| **S9** R-6a rule 3, declaration beats seed | invert precedence so the seed `UNAVAILABLE` is kept | RED — **chip-re-run in ROUND 3, output pasted below** |
+| **S9** ordering determinism | range the declarations through a map instead of the slice | RED **on 3 of 10 runs** — **chip-re-run in ROUND 3, output pasted below**. Seven runs passed under a genuinely broken ordering; see the note on `-count` |
 
 **Honesty note on the empty-provider-code proof — it is weaker than the other two, and the
 difference matters.** Deleting the duplicate-anchor and nil-declaration guards makes the error go
@@ -1540,8 +1752,83 @@ confounded-assertion shape this mission has hit before (CHIP-PED-FILA); the chip
 specific mutation by hand rather than accepting the worker's report, precisely because the worker's
 summary said the mutation "produced a downstream error" without saying whether the test reddened.
 
-**One guard has NO must-fail proof, and this is stated rather than faked:** the fail-closed parse
-fallback in `hardNegativeDimension` is unreachable by construction with the five-token alternation,
-so no input reddens it. Both the implementing worker and the F-02 re-reviewer reached the same
-conclusion independently. R5 asks for a proof per guard TOUCHED; the honest report is that this
-branch cannot be exercised, not that it was exercised.
+**~~One guard has NO must-fail proof~~ — SUPERSEDED by R-7.** This paragraph said the fail-closed
+parse fallback could not be proven because it was unreachable through the public alternation. That
+was true before S8. R-7 ordered the per-token conversion extracted into `normalizeDimensionToken` so
+the fallback became directly callable, and the seam test now exists at
+`generation_service_test.go:348-357`. It calls `normalizeDimensionToken("abcmm")` — a token the
+alternation at `generation_service.go:684` cannot emit, since every branch requires a leading `\d` —
+and asserts `key == "abcmm"`, i.e. the unparseable token is KEPT as the signature key. That is
+fail-closed as a *discriminating* key: two titles with different unparseable tokens still differ,
+rather than collapsing to equal. The obsolete paragraph survived the R-7 corrective; flagged by the
+GPT gate in round 2 and corrected here.
+
+### Pasted must-fail outputs — the ROUND-3 re-runs
+
+Five proofs the pack previously ASSERTED without an artifact. Each mutation was applied by the chip,
+run, observed, and reverted from a byte copy taken beforehand; `git status --porcelain` is empty
+afterwards and the full suite returns `EXIT=0`.
+
+**C6 — disable unit scaling.** Three tests RED, and the failure text shows the exact
+pre-canonicalisation behaviour F-02 exists to remove:
+
+```
+--- FAIL: TestGoldenToalheiroDimensionUnitEquivalenceYieldsConfirm (0.00s)
+    generation_service_test.go:787: match_status=REJECT, want CONFIRM
+--- FAIL: TestEquivalentDimensionUnitsDoNotRejectConcordantCandidate (0.00s)
+    ... Detail:"hard-negative: medida/dimensão divergente 50cm≠500MM"}, ... want ALTA/ACCEPT
+--- FAIL: TestDimensionCanonicalizationUsesExactMillimetres/decimal_comma
+    detectHardNegative("Produto 1,5m", "Produto 150cm")=(true, "…1,5m≠150cm"), want equivalent
+--- FAIL: TestDimensionCanonicalizationUsesExactMillimetres/inches
+    detectHardNegative("Produto 2pol", "Produto 50.8mm")=(true, "…2pol≠50.8mm"), want equivalent
+--- FAIL: TestDimensionCanonicalizationUsesExactMillimetres/metres
+    detectHardNegative("Produto 1m", "Produto 100cm")=(true, "…1m≠100cm"), want equivalent
+```
+
+**C8 — restore the shared `candidateLimit * 5` derivation.** RED on the 29-link test and on every
+independence row, including 5000 — so the guard is load-bearing across the whole table, not one row:
+
+```
+--- FAIL: TestListLinkWorkflowsUsesIndependentDefaultLimitsAndReturnsAll29Links (0.00s)
+    resolution_service_test.go:391: link limit = 100, want 2000
+--- FAIL: TestListLinkWorkflowsDefaultsDoNotVaryWithLimit/limit_5
+    resolution_service_test.go:439: link limit = 25, want 2000
+--- FAIL: .../limit_20    link limit = 100, want 2000
+--- FAIL: .../limit_500   link limit = 2500, want 2000
+--- FAIL: .../limit_5000  link limit = 25000, want 2000
+```
+
+**R-6a rule 1 — declaration `UNAVAILABLE` no longer suppressed by a `FOR`.** RED, and the output is
+literally the contradiction the rule forbids — a `FOR` and an "anchor not supplied" on one anchor:
+
+```
+--- FAIL: TestProviderUnavailableReasonPrecedenceKeepsObservedEvidence (0.00s)
+    generation_service_test.go:201: reasons=[{Anchor:"ean", Direction:"FOR", Detail:"ean observado"},
+    {Anchor:"ean", Direction:"UNAVAILABLE", Detail:"provider não fornece a âncora ean"}],
+    want observed evidence [{Anchor:"ean", Direction:"FOR", Detail:"ean observado"}]
+```
+
+**R-6a rule 3 — precedence inverted so the seed beats the declaration.** RED:
+
+```
+--- FAIL: TestProviderUnavailableReasonPrecedenceKeepsDeclarationOverSeedUnavailable (0.00s)
+    generation_service_test.go:218: reasons=[{Anchor:"ean", Direction:"UNAVAILABLE",
+    Detail:"ean sem correspondência"}], want declaration reason [{Anchor:"ean",
+    Direction:"UNAVAILABLE", Detail:"provider não fornece a âncora ean"}]
+```
+
+**Ordering — declarations ranged through a map.** RED on **3 of 10** runs, `refforn` before `marca`:
+
+```
+--- FAIL: TestProviderUnavailableReasonOrderingIsStable (0.00s)
+    generation_service_test.go:295: reasons=[… {Anchor:"refforn", …}, {Anchor:"marca", …}],
+    want stable order [… {Anchor:"marca", …}, {Anchor:"refforn", …}]
+    (3 of 10 runs RED; 7 PASSED under the broken ordering)
+```
+
+**Why that last number matters, and why it is stated instead of rounded up to "RED".** Seven of ten
+runs passed with output order driven by Go map iteration. A `-count=5` lane — the convention used
+earlier on this chip — could have reported this guard GREEN while the ordering of PERSISTED reason
+rows was genuinely non-deterministic. The proof is probabilistic, so it is labelled probabilistic.
+Carried into the CLOSED payload as an upstream candidate: guards pinning the order of persisted data
+run at `-count=10` minimum, and a pass at a lower count is not evidence.
