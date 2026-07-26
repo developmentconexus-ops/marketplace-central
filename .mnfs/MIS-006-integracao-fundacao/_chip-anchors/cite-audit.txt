@@ -1,0 +1,67 @@
+EVIDENCE.md citations resolved against the code tip: 65
+
+pack:99    `generation_service.go:745-777`                            | func hardNegativeDimension(original string) (string, string, bool) {  ..  ->777: }
+pack:155   `generation_service.go:615-657`                            | func appendProviderDeclaredUnavailableReasons(reasons []domain.LinkCandidateReason, identi  ..  ->657: }
+pack:235   `connectors/application/marketplace_capability_service.go:129-155` | func (s *MarketplaceCapabilityService) IdentityAnchors(providerCode string) ([]ports.Ident  ..  ->155: return clone, nil
+pack:239   `connectors/adapters/mercado_livre/capability_adapter.go:79-91` | func (a *CapabilityAdapter) ProviderCapabilitySet() connectorsapp.ProviderCapabilitySet {  ..  ->91: }
+pack:245   `inventory/adapters/connectors/stock_writer.go:12`         | AMBIGUOUS-OR-UNKNOWN2 candidates
+pack:260   `generation_service.go:626`                                | for _, reason := range reasons {
+pack:369   `generation_service_test.go:831`                           | "inches":        {"Produto 2pol", "Produto 50.8mm"},
+pack:376   `generation_service.go:14`                                 | internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/do
+pack:405   `resolution_service.go:370-381`                            | candidateLimit := input.Limit  ..  ->381: }
+pack:428   `generation_integration_test.go:11`                        | connectorsports "marketplace-central/apps/server_core/internal/modules/connectors/ports"
+pack:453   `generation_integration_test.go:11`                        | connectorsports "marketplace-central/apps/server_core/internal/modules/connectors/ports"
+pack:479   `import_service.go:9`                                      | AMBIGUOUS-OR-UNKNOWN3 candidates
+pack:562   `generation_service.go:779-807`                            | func normalizeDimensionToken(originalToken string) (string, bool) {  ..  ->807: }
+pack:584   `generation_service.go:534-535`                            | reasons = []domain.LinkCandidateReason{  ..  ->535: {Anchor: "title", Direction: domain.LinkCandidateReasonDirec
+pack:638   `generation_service.go:534-535`                            | reasons = []domain.LinkCandidateReason{  ..  ->535: {Anchor: "title", Direction: domain.LinkCandidateReasonDirec
+pack:746   `generation_service.go:615-657`                            | func appendProviderDeclaredUnavailableReasons(reasons []domain.LinkCandidateReason, identi  ..  ->657: }
+pack:875   `generation_service.go:684`                                | hardNegativeDimensionPattern = regexp.MustCompile(`(?i)\d+\s*x\s*\d+(?:\s*x\s*\d+)?|\d+(?:
+pack:1103  `generation_integration_test.go:10`                        | connectorsapp "marketplace-central/apps/server_core/internal/modules/connectors/applicatio
+pack:1104  `generation_integration_test.go:11`                        | connectorsports "marketplace-central/apps/server_core/internal/modules/connectors/ports"
+pack:1105  `import_service.go:9`                                      | AMBIGUOUS-OR-UNKNOWN3 candidates
+pack:1106  `import_service_test.go:8`                                 | AMBIGUOUS-OR-UNKNOWN3 candidates
+pack:1109  `generation_integration_test.go:54-64`                     | capabilities := connectorsapp.NewMarketplaceCapabilityService([]connectorsapp.ProviderCapa  ..  ->64: IdentityAnchors: productlinksconnectors.NewIdentityAnchorAda
+pack:1228  `link_candidate_repo.go:79`                                | reasons = EXCLUDED.reasons,
+pack:1281  `root.go:537-542`                                          | Workflows:  productLinkCandidateRepo,  ..  ->542: Store:           productLinkCandidateRepo,
+pack:1285  `connectors/ports/marketplace_capability.go:22-42`         | type IdentityAnchor string  ..  ->42: }
+pack:1285  `product_links/ports/provider_identity_anchor_reader.go:3-10` | type ProviderIdentityAnchor struct {  ..  ->10: }
+pack:1285  `internal/composition/root.go:105`                         | productlinksconnectors "marketplace-central/apps/server_core/internal/modules/product_link
+pack:1288  `generation_service.go:536-537`                            | {Anchor: "seller_sku", Direction: domain.LinkCandidateReasonDirectionUnavailable, Detail:   ..  ->537: {Anchor: "ean", Direction: domain.LinkCandidateReasonDirecti
+pack:1288  `generation_service_test.go:136`                           | func TestGenerateLinkCandidatesUsesProviderDeclarationForUnavailableReasons(t *testing.T) 
+pack:1290  `generation_service_test.go:773`                           | func TestGoldenToalheiroDimensionUnitEquivalenceYieldsConfirm(t *testing.T) {
+pack:1290  `generation_service.go:804`                                | value.Mul(value, big.NewRat(127, 5))
+pack:1291  `generation_service_test.go:1179`                          | func TestCase7VoltageHardNegativeCapsBaixaReject(t *testing.T) {
+pack:1291  `generation_service.go:717-721`                            | if stDim, stDisplay, ok := hardNegativeDimension(stOriginal); ok {  ..  ->721: }
+pack:1291  `auto_link_policy_test.go:274-303`                         | func TestHardNegativeKindsBlockConcordantSKUAndEAN(t *testing.T) {  ..  ->303: }
+pack:1292  `resolution_service.go:370-381`                            | candidateLimit := input.Limit  ..  ->381: }
+pack:1292  `resolution_service_test.go:361`                           | func TestListLinkWorkflowsUsesIndependentDefaultLimitsAndReturnsAll29Links(t *testing.T) {
+pack:1293  `link_candidate_repo.go:79`                                | reasons = EXCLUDED.reasons,
+pack:1311  `generation_service.go:483-484`                            | {Anchor: "seller_sku", Direction: domain.LinkCandidateReasonDirectionFor, Detail: "seller_  ..  ->484: {Anchor: "ean", Direction: domain.LinkCandidateReasonDirecti
+pack:1323  `generation_service.go:470-476`                            | // --- IC-01 Amendment A2 scoring (confidence/band/status/reasons) ---  ..  ->476: // EAN").
+pack:1349  `generation_service.go:639-655`                            | for _, anchor := range identityAnchors {  ..  ->655: }
+pack:1403  `capability_adapter.go:90`                                 | IdentityAnchors: []ports.IdentityAnchor{ports.IdentityAnchorSellerSKU, ports.IdentityAncho
+pack:1421  `generation_service.go:639`                                | for _, anchor := range identityAnchors {
+pack:1436  `capability_adapter.go:90`                                 | IdentityAnchors: []ports.IdentityAnchor{ports.IdentityAnchorSellerSKU, ports.IdentityAncho
+pack:1608  `marketplace_capability.go:22-41`                          | type IdentityAnchor string  ..  ->41: return append([]IdentityAnchor(nil), knownIdentityAnchors...
+pack:1609  `identity_anchor_adapter.go:9-23`                          | type IdentityAnchorAdapter struct {  ..  ->23: declaredSet := make(map[connectorsports.IdentityAnchor]struc
+pack:1611  `root.go:387`                                              | productLinkIdentityAnchorReader := productlinksconnectors.NewIdentityAnchorAdapter(marketp
+pack:1621  `resolution_service.go:370-381`                            | candidateLimit := input.Limit  ..  ->381: }
+pack:1672  `auto_link_policy_test.go:273-303`                         |   ..  ->303: }
+pack:1684  `inventory/adapters/connectors/stock_writer.go:12`         | AMBIGUOUS-OR-UNKNOWN2 candidates
+pack:1686  `import_service.go:9`                                      | AMBIGUOUS-OR-UNKNOWN3 candidates
+pack:1686  `import_service_test.go:8`                                 | AMBIGUOUS-OR-UNKNOWN3 candidates
+pack:1690  `auto_link_policy_test.go:273-303`                         |   ..  ->303: }
+pack:1798  `generation_integration_test.go:11`                        | connectorsports "marketplace-central/apps/server_core/internal/modules/connectors/ports"
+pack:1912  `marketplace_capability_service_test.go:322-332`           |   ..  ->332: t.Fatalf("IdentityAnchors() = %#v, want non-nil empty slice"
+pack:1913  `identity_anchor_adapter.go:28-35`                         | anchors := make([]productlinksports.ProviderIdentityAnchor, 0, len(connectorsports.KnownId  ..  ->35: }
+pack:1916  `capability_adapter.go:90`                                 | IdentityAnchors: []ports.IdentityAnchor{ports.IdentityAnchorSellerSKU, ports.IdentityAncho
+pack:1932  `capability_adapter.go:90`                                 | IdentityAnchors: []ports.IdentityAnchor{ports.IdentityAnchorSellerSKU, ports.IdentityAncho
+pack:1940  `generation_integration_test.go:54-64`                     | capabilities := connectorsapp.NewMarketplaceCapabilityService([]connectorsapp.ProviderCapa  ..  ->64: IdentityAnchors: productlinksconnectors.NewIdentityAnchorAda
+pack:2072  `auto_link_policy_test.go:274-303`                         | func TestHardNegativeKindsBlockConcordantSKUAndEAN(t *testing.T) {  ..  ->303: }
+pack:2090  `marketplace_capability_service.go:146-148`                | }  ..  ->148: return nil, unsupported(providerCode, "duplicate identity an
+pack:2091  `generation_service.go:156-158`                            | if providerCode == "" {  ..  ->158: }
+pack:2092  `generation_service.go:163-165`                            | if declaration == nil {  ..  ->165: }
+pack:2094  `generation_service.go:626-641`                            | for _, reason := range reasons {  ..  ->641: continue
+pack:2121  `generation_service_test.go:348-357`                       | func TestNormalizeDimensionTokenFailsClosed(t *testing.T) {  ..  ->357: }
+pack:2122  `generation_service.go:684`                                | hardNegativeDimensionPattern = regexp.MustCompile(`(?i)\d+\s*x\s*\d+(?:\s*x\s*\d+)?|\d+(?:
