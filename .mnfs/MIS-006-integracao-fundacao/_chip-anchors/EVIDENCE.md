@@ -39,9 +39,11 @@ the verdict/output artifact afterwards.
 | D10 | P3 | Implementer S5 (corrective: F-02 blocking + F-01 layering) | gpt-5.6-sol / low (complex slice) | OS-process codex | `scratchpad/prompt-s5.md` | `scratchpad/agent__s5-impl.last.md` + `.log` | GREEN, committed `f92ca9c7`, chip-verified independently |
 | D11 | P3 | Implementer S6 (F-03 test hardening) | gpt-5.6-luna / high | OS-process codex | `scratchpad/prompt-s6.md` | `scratchpad/agent__s6-impl.last.md` + `.log` | GREEN, committed `1df627f8`, chip-verified independently |
 | D12 | P4 | Re-reviewer, feature F-02 over `f92ca9c7` | Claude sonnet subagent | Agent tool, async | inline brief | `tasks/af63a82825465373b.output` | completed — **PASS-WITH-FINDINGS** (2 SHOULD-FIX both pre-existing, 1 NIT); blocking defect confirmed closed |
-| D14 | P6 | Gate reviewer, GPT side of the dual gate | gpt-5.6-sol / medium | OS-process codex, `--sandbox read-only` | `scratchpad/prompt-p6-sol.md` | `scratchpad/agent__p6-sol.last.md` + `.log` | dispatched |
-| D15 | P6 | Gate reviewer, COLD Opus side | Opus, `harness:gate-reviewer` (no Edit/Write/Bash by construction) | Agent tool, async | inline brief | `tasks/a93b3ffaca9b176b7.output` | dispatched |
+| D14 | P6 | Gate reviewer, GPT side of the dual gate | gpt-5.6-sol / medium | OS-process codex, `--sandbox read-only` | `scratchpad/prompt-p6-sol.md` | `scratchpad/agent__p6-sol.last.md` + `.log` | completed — **FAIL** (2 BLOCKING; 1 of them a stale-sha artifact of the chip's own dispatch) |
+| D15 | P6 | Gate reviewer, COLD Opus side | Opus, `harness:gate-reviewer` (no Edit/Write/Bash by construction) | Agent tool, async | inline brief | `tasks/a93b3ffaca9b176b7.output` | completed — **FAIL** (2 BLOCKING, incl. the false provenance claim; 1 SHOULD-FIX, 3 NIT) |
+| D16 | P3 | Implementer S7 (R5 coverage for 3 reachable guards + clamped-formula row) | gpt-5.6-luna / high | OS-process codex | `scratchpad/prompt-s7.md` | `scratchpad/agent__s7-impl.last.md` + `.log` | GREEN; worker **could not commit** (sandbox `index.lock: Permission denied`, profile §3 class) — chip verified and committed `e1195806` |
 | D13 | P4 | Re-reviewer, feature F-01 over `f92ca9c7` | Claude sonnet subagent | Agent tool, async | inline brief | `tasks/ad9c0421c9c2a538c.output` | completed — **PASS**, zero findings |
+| D17 | P3 | Implementer S8 (hub rulings R-6 dedup/precedence + R-7 parser seam) | gpt-5.6-sol / low (complex slice) | OS-process codex | `scratchpad/prompt-s8.md` | `scratchpad/agent__s8-impl.last.md` + `.log` | dispatched |
 
 ## Slice S3 — chip verification, and a defect in the chip's own slice card
 
@@ -397,7 +399,7 @@ Worker returned GREEN. Verified independently of every claim it made.
 | A2 — fail CLOSED | read the `SetString` branch | on parse failure appends `{key: token, display: originalToken}` and `continue`s — the side's other tokens survive; the old `return "", "", false` is gone |
 | A3 — no offset aliasing | read the match loop | matches `original` directly; `originalToken` sliced with offsets native to that same string; lowering is per-token, not whole-string |
 | A4 — key/display correspondence | read the tail | one `dimensionPair` per token, `slices.SortFunc` + `slices.CompactFunc` both keyed on `key`, then the two slices are projected from the SAME compacted pairs — they cannot diverge |
-| B1 — layering leak closed | `grep -rn 'connectors/ports' product_links/application/*.go` | only `generation_integration_test.go:11`, a PRE-EXISTING test-only import; zero hits in production code |
+| B1 — layering leak closed | `grep -rn 'connectors/ports' product_links/application/*.go` | ~~only `generation_integration_test.go:11`, a PRE-EXISTING test-only import; zero hits in production code~~ — **THIS ROW WAS FALSE. See the correction below.** The production half (zero hits) holds; the provenance half does not |
 | L0 build | `go build ./...` (plain, no `-buildvcs=false`) | **exit 0** |
 | L0 vet | `go vet ./...` (full tree) | exit 0 |
 | L1 tests | `go test -count=1 ./internal/modules/{product_links,connectors,mutations}/... ./internal/composition/...` | all `ok`, exit 0, 0 failures |
@@ -412,8 +414,52 @@ makes it a real guard against the offset bug rather than a smoke test.
 **Honest limitations the worker reported, verified true and accepted:**
 - the fail-closed fallback is unreachable by construction with the five-token alternation, so
   there is NO must-fail proof for it — stated, not faked;
-- the `connectors/ports` grep is not zero directory-wide because a pre-existing test file imports
-  it; changing that file was outside the frozen write set. Correct call.
+- ~~the `connectors/ports` grep is not zero directory-wide because a pre-existing test file imports
+  it; changing that file was outside the frozen write set. Correct call.~~ **FALSE — corrected
+  immediately below.**
+
+### CORRECTION — the "pre-existing import" claim above was false, and I authored it
+
+Found by the cold Opus P6 gate, re-verified by me against base. Recorded here as a correction rather
+than fixed by editing the original rows, because a pack that quietly repairs its own false
+statements is worth less than one that shows them.
+
+What the two rows above claimed: the `connectors/ports` import at `generation_integration_test.go:11`
+was pre-existing, and the file was outside the frozen write set.
+
+What is actually true, by tool:
+
+| Check | Result |
+|---|---|
+| `git show 917f7bb5:…/generation_integration_test.go` imports | `internal_read` domain+ports, `product_links` adapters/postgres + domain, `testsupport/postgres`. **Neither connectors package.** |
+| tip imports | adds `connectorsapp` (`:10`) and `connectorsports` (`:11`) |
+| `git diff --stat 917f7bb5..HEAD -- <that file>` | **10 insertions, 2 deletions — the file IS in the chip write set** |
+
+So **this chip introduced the connectors vocabulary into `product_links/application`**, in a
+build-tagged integration test, and the pack then explained away the resulting grep hit by
+attributing it to someone else. The row sat under a heading that reads "Verified independently of
+every claim it made." It was not: the worker's claim was promoted to chip-verified without being
+checked against base. That is the failure mode this chip's whole method exists to prevent, and it
+is the CHIP-IMPORT-FIX class already in the mission ledger (self-exculpating prose in an evidence
+pack).
+
+**The code is fine; only the justification was false.** An integration test that wires the real
+`IdentityAnchorAdapter` to the real `MarketplaceCapabilityService` genuinely needs both imports —
+the P6 gate that caught the false claim says so explicitly, calling the shape defensible. The
+production-code half of the B1 claim also still holds: zero `connectors/ports` hits in
+`product_links/application` production code.
+
+**The full truth, which neither the worker nor I stated correctly:** there IS a genuinely
+pre-existing connectors import in that package's PRODUCTION code — `import_service.go:9`, importing
+`connectors/domain`, present at base and untouched. It is simply not the import the B1 row cited.
+Verified both ends:
+
+```
+TIP:  generation_integration_test.go:10,11  (connectors/application, connectors/ports)  <- CHIP-ADDED
+      import_service.go:9                   (connectors/domain)                          <- pre-existing
+      import_service_test.go:8              (connectors/domain)                          <- pre-existing
+BASE: import_service.go:9, import_service_test.go:8 only
+```
 
 **Worker sandbox artifact, third occurrence:** plain `go build ./...` again reported VCS-stamping
 exit 128 inside codex and passed only with `-buildvcs=false`. Chip-side it is exit 0, as it was for
@@ -445,6 +491,40 @@ restored the file through git, so checkout re-materialised CRLF where S4's worke
 Resolved with `git add`, which normalised CRLF→LF, produced a blob identical to HEAD, staged nothing
 and left the tree clean. `git checkout --` / discard was deliberately NOT used — doctrine forbids
 deleting unknown state, and at diagnosis time the 898 bytes were not yet known to be inert.
+
+## Slice S7 — chip verification (P6 corrective, `e1195806`)
+
+Test-only slice closing the R5 coverage gap both gates converged on. Verified by the chip, not
+accepted on the worker's report.
+
+| Claim | Chip's check | Result |
+|---|---|---|
+| tests green | `go test -count=1 ./internal/modules/product_links/... ./internal/modules/connectors/...` re-run by the chip | all `ok`, zero failures |
+| production untouched | `git diff --stat` over the three production files the mutations touched | **empty** |
+| formatting | CR-stripped `gofmt -l` per file (the only informative form on this checkout — ROUND-1) | `[]` for all three |
+| the 1b must-fail actually reddens | chip re-applied the mutation and ran the test itself | RED, output pasted in the must-fail table |
+
+**Two things the worker got right that are worth recording, because both were live traps.**
+
+First, the stub. The card told it to verify that `stubIdentityAnchorReader` really returns
+`(nil, nil)` for an unregistered provider code before relying on that, and to extend the stub if it
+did not. It checked and reported "stub already returned `(nil, nil)`; no stub change was needed" —
+which is the difference between a test that drives the nil-declaration guard and a test that quietly
+drives some other path.
+
+Second, it caught its own EOL damage. Its must-fail mutations left `\r` differences in two
+production files even after the semantic revert, and it normalised them back to the exact `HEAD`
+blobs before staging rather than declaring victory on an empty `git diff`. Worth being precise about
+why that was diligence rather than necessity: with `core.autocrlf=true` those worktree-only EOL
+differences would have been normalised on commit anyway, so the blob was never at risk. But the
+worker could not know that from inside its sandbox, and cleaning up is the right instinct — the
+ROUND-1 lesson on this repo is exactly that EOL state hides signal.
+
+**The worker could not commit.** `fatal: Unable to create …\.git\worktrees\chip-anchors\index.lock:
+Permission denied` — the codex workspace-write sandbox cannot write the worktree's git index. This
+is the profile §3 sandbox class, now recorded a fifth time on this chip. The chip verified the
+working tree and committed on the worker's behalf as `e1195806`; the ledger row (D16) says so
+rather than implying the worker committed.
 
 ## P4 round 2 — re-review of F-02 over the corrective
 
@@ -652,23 +732,185 @@ files, with `.gitattributes`, in a commit that touches nothing else.
 
 ## Criteria table
 
-All evidence below is against the final tip `1df627f8` (code) with the pack filed at `8e37958`.
+All evidence below is against the final tip `1df627f8` (code).
 Base is `917f7bb58e385847fba5612201823f9db48791c6` throughout.
+
+### Evidence blocks the criteria table cites
+
+Written 2026-07-26 as a ROUND-2 correction. The first draft of the criteria table cited these four
+blocks as if they were in this pack; they were only ever in the chip's session transcript. Both P6
+gates caught it. The outputs below are the real thing, pasted, so each criterion's *prova mínima* is
+actually satisfiable by reading this file.
+
+**C3 — the swept-file list.** The criterion requires "com a lista dos arquivos varridos", not just a
+count. `git ls-files 'apps/server_core/internal/modules/product_links/**/*.go'` → **34 files**:
+
+```
+adapters/connectors/identity_anchor_adapter.go          adapters/connectors/identity_anchor_adapter_test.go
+adapters/postgres/link_candidate_repo.go                adapters/postgres/listing_snapshot_repo.go
+adapters/postgres/summary_reader.go                     adapters/postgres/summary_reader_integration_test.go
+application/auto_link_policy_test.go                    application/batch_service.go
+application/batch_service_test.go                       application/decision_trail_test.go
+application/generation_integration_test.go              application/generation_service.go
+application/generation_service_test.go                  application/import_service.go
+application/import_service_test.go                      application/resolution_service.go
+application/resolution_service_test.go                  application/summary_service.go
+application/summary_service_test.go                     composition/refresher.go
+composition/refresher_test.go                           domain/internal_product_id.go
+domain/internal_product_id_test.go                      domain/link_candidate.go
+domain/listing_snapshot.go                              domain/product_link.go
+domain/product_link_decision.go                         ports/link_candidate_store.go
+ports/listing_snapshot_store.go                         ports/provider_identity_anchor_reader.go
+ports/summary_reader.go                                 ports/workflow_store.go
+transport/http_handler.go                               transport/http_handler_test.go
+```
+
+```
+$ git grep -n 'mercado_livre\|ProviderCode *==\|ProviderCode *!=\|switch .*[Pp]rovider' \
+    -- 'apps/server_core/internal/modules/product_links/**/*.go' ':!*_test.go'
+  ZERO HITS
+```
+
+**The two chip-added connectors imports, listed and classified — hub instruction of 2026-07-26.**
+The false provenance row corrected above was covering *precisely* this spot, so the C3 block must
+carry it explicitly rather than let a production-only grep imply it away. Every connectors reference
+inside `product_links/application`, at tip:
+
+| Site | Import | Origin | Classification |
+|---|---|---|---|
+| `generation_integration_test.go:10` | `connectors/application` | **CHIP-ADDED** | test fixture — builds a real `MarketplaceCapabilityService` |
+| `generation_integration_test.go:11` | `connectors/ports` | **CHIP-ADDED** | test fixture — names one anchor constant, `IdentityAnchorSellerSKU` |
+| `import_service.go:9` | `connectors/domain` | pre-existing at base | production, unrelated to anchors, untouched |
+| `import_service_test.go:8` | `connectors/domain` | pre-existing at base | test, untouched |
+
+Why the two chip-added ones are **not** an R2 violation, proven rather than asserted. R2 forbids
+*branching by provider inside `product_links`*. The usage is (`generation_integration_test.go:54-64`):
+
+```go
+capabilities := connectorsapp.NewMarketplaceCapabilityService([]connectorsapp.ProviderCapabilitySet{{
+    ProviderCode:    "mercado_livre",
+    IdentityAnchors: []connectorsports.IdentityAnchor{connectorsports.IdentityAnchorSellerSKU},
+}})
+svc := NewGenerationService(GenerationServiceConfig{
+    …
+    IdentityAnchors: productlinksconnectors.NewIdentityAnchorAdapter(capabilities),
+})
+```
+
+That is a test ARRANGING data and wiring the real adapter — the provider code is an input value in a
+fixture, not a branch in a code path. The three properties that make it safe are checkable: the file
+carries `//go:build integration` (`:1`), so it is not in the production build at all; the string
+`"mercado_livre"` appears only as a struct field value, never in a comparison; and no `if`/`switch`
+anywhere in `product_links` reads `ProviderCode`, which is what the production-scoped grep above
+proves. The layering rule the chip enforced separately — that `product_links/application`
+**production** code must not import the connectors vocabulary type — also holds: the only production
+connectors import in the package is `connectors/domain` in `import_service.go`, pre-existing and
+unrelated.
+
+Honest note on scope: this is the seam where R2's letter (no provider branching) and the layering
+concern (no connectors vocabulary in the application layer) come apart. An integration test is
+allowed to reach for both because its job is to prove the real wiring works; production code is not.
+Nothing here is implied — the build tag, the usage sites and the grep are each independently
+checkable above.
+
+**C10 — the full diff name list**, pasted whole as the criterion demands
+(`git diff --name-only 917f7bb5..1df627f8`, i.e. the CODE tip; the two `_chip-anchors/` paths that
+appear at later pack tips are this evidence file and the unit sweep, and carry no code):
+
+```
+apps/server_core/internal/composition/root.go
+apps/server_core/internal/modules/connectors/adapters/mercado_livre/capability_adapter.go
+apps/server_core/internal/modules/connectors/adapters/mercado_livre/capability_adapter_test.go
+apps/server_core/internal/modules/connectors/application/marketplace_capability_service.go
+apps/server_core/internal/modules/connectors/application/marketplace_capability_service_test.go
+apps/server_core/internal/modules/connectors/ports/marketplace_capability.go
+apps/server_core/internal/modules/product_links/adapters/connectors/identity_anchor_adapter.go
+apps/server_core/internal/modules/product_links/adapters/connectors/identity_anchor_adapter_test.go
+apps/server_core/internal/modules/product_links/application/auto_link_policy_test.go
+apps/server_core/internal/modules/product_links/application/generation_integration_test.go
+apps/server_core/internal/modules/product_links/application/generation_service.go
+apps/server_core/internal/modules/product_links/application/generation_service_test.go
+apps/server_core/internal/modules/product_links/application/resolution_service.go
+apps/server_core/internal/modules/product_links/application/resolution_service_test.go
+apps/server_core/internal/modules/product_links/ports/provider_identity_anchor_reader.go
+```
+
+15 code paths. `grep -c '^apps/web/'` → **0**. No `migrations/` path (also serves C9). No
+`contracts/` or `packages/sdk-runtime/` path (also serves C5).
+
+**C5 — OpenAPI / SDK byte-identity:**
+
+```
+$ git diff --stat 917f7bb5..1df627f8 -- contracts/ packages/sdk-runtime/
+  (empty)
+```
+
+**C12 — the root.go grant region**, quoted verbatim. `git diff -w 917f7bb5..1df627f8 --
+apps/server_core/internal/composition/root.go` → **0 removed lines**, 3 added:
+
+```diff
++	productlinksconnectors "marketplace-central/apps/server_core/internal/modules/product_links/adapters/connectors"
++	productLinkIdentityAnchorReader := productlinksconnectors.NewIdentityAnchorAdapter(marketplaceCapabilities)
++		IdentityAnchors: productLinkIdentityAnchorReader,
+```
+
+(The `-w` matters: the third line joins a struct literal whose four pre-existing keys were
+realigned, which is whitespace-only and therefore not a token removal. The cold gate verified this
+independently against base — base literal had 4 keys at `root.go:537-542`, none removed.)
 
 | ID | Verdict | Evidence |
 |----|---------|----------|
 | C1 | **PASS** | declaration `connectors/ports/marketplace_capability.go:22-41` (`IdentityAnchor` type, the five constants, `KnownIdentityAnchors()`); product_links' own port `product_links/ports/provider_identity_anchor_reader.go`; adapter `product_links/adapters/connectors/identity_anchor_adapter.go:9-23`; wiring `internal/composition/root.go:387` + `:543` |
-| C2 | **PASS** | `git grep -n mandatoryUnavailableReasons -- 'apps/server_core/**/*.go'` = **0** in tracked source (base had **8**, all in `generation_service.go`). `"marca"`/`"refforn"` in `product_links/application` production code = **0**; the 8 remaining hits are all in `generation_service_test.go` (`:88,:89,:143,:144,:170,:173,:498,:502`), which the criterion permits and which are the tests that PROVE the names now arrive from the declaration |
-| C3 | **PASS** | `git grep 'mercado_livre\|ProviderCode *==\|ProviderCode *!=\|switch .*[Pp]rovider' -- 'product_links/**/*.go' ':!*_test.go'` = **ZERO HITS**, over the **34 tracked `.go` files** listed in the C3 sweep block above (the criterion requires the swept list, not just the count) |
+| C2 | **PASS on the *prova mínima*, with a declared divergence — see below** | `git grep -n mandatoryUnavailableReasons -- 'apps/server_core/**/*.go'` = **0** in tracked source (base had **8**, all in `generation_service.go`). `"marca"`/`"refforn"` in `product_links/application` production code = **0**; the 8 remaining hits are all in `generation_service_test.go` (`:88,:89,:143,:144,:170,:173,:498,:502`), which the criterion permits and which are the tests that PROVE the names now arrive from the declaration |
+| C3 | **PASS** | `git grep 'mercado_livre\|ProviderCode *==\|ProviderCode *!=\|switch .*[Pp]rovider' -- 'product_links/**/*.go' ':!*_test.go'` = **ZERO HITS**, over the **34 tracked `.go` files** listed in the C3 evidence block above (the criterion requires the swept list, not just the count) |
 | C4 | **PASS** | the two details are distinct and both present: `generation_service.go:536-537` / `:609-610` emit `"<anchor> sem correspondência"` (provider supplies it, this listing has no value) and `:624` emits `"provider não fornece a âncora %s"` (provider does not supply it). Tests `generation_service_test.go:135` and `:1005`. Per R1 the distinction is carried in `Detail`; no 4th enum value exists |
-| C5 | **PASS** | `git diff --stat <base>..HEAD -- openapi/ packages/sdk-runtime/` → **empty**. Also visible in the C10 name list: no path under either tree appears |
-| C6 | **PASS** | `TestGoldenToalheiroDimensionUnitEquivalenceYieldsConfirm` (`:527`, the EXEMPLO-IO golden: `500MM` listing vs `50cm` ERP → CONFIRM/MEDIA/70), `TestEquivalentDimensionUnitsDoNotRejectConcordantCandidate` (`:558`), `TestDimensionCanonicalizationUsesExactMillimetres` (`:582`). Contradiction still fires: `TestDifferentCanonicalDimensionsStillRejectConcordantCandidate` (`:653`). Must-fail below |
+| C5 | **PASS** | `git diff --stat <base>..HEAD -- openapi/ packages/sdk-runtime/` → **empty**. Output pasted in the C5 evidence block above; also visible in the C10 list, where no path under either tree appears |
+| C6 | **PASS** | `TestGoldenToalheiroDimensionUnitEquivalenceYieldsConfirm` (`:527`, the real M-05 golden: listing `Toalheiro Simples Soul Zen 50cm Cromado` (**cm**) vs ERP `SOUL TOALHEIRO SIMPLES 500MM CR/POLIDO` (**mm**) → CONFIRM/MEDIA/70 — orientation per adjudication A3, NOT the dispatch prompt's EXEMPLO-IO, which has the two swapped), `TestEquivalentDimensionUnitsDoNotRejectConcordantCandidate` (`:558`), `TestDimensionCanonicalizationUsesExactMillimetres` (`:582`). Contradiction still fires: `TestDifferentCanonicalDimensionsStillRejectConcordantCandidate` (`:653`). Must-fail below |
 | C7 | **PASS** | corroborated path still blocked: `TestCase6DokaKitHardNegativeCapsBaixaReject` (`:902`), `TestCase7VoltageHardNegativeCapsBaixaReject` (`:933`), `TestCase10DimensionHardNegativeCapsBaixaReject` (`:1026`), `TestDimensionPresenceAndGradeRulesRemainNonBlocking` (`:682`) — all with CODPROD+EAN concordant |
 | C8 | **PASS** | `resolution_service.go:369-381` three independent literals; `TestListLinkWorkflowsUsesIndependentDefaultLimitsAndReturnsAll29Links` (`resolution_service_test.go:361`) asserts `len(links)==29` on a 29-link fixture; `TestListLinkWorkflowsDefaultsDoNotVaryWithLimit` (`:406`) pins the independence at 5/20/500; `TestListLinkWorkflowsHonorsIndependentExplicitLimits` (`:447`). Must-fail below |
-| C9 | **PASS** | `git diff --name-only <base>..HEAD \| grep -i migration` → **zero**; the C10 list contains no `migrations/` path and no `product_links/adapters/postgres/` file at all, so the chip writes no `UPDATE` and no backfill. Characterised honestly: a pre-existing `ON CONFLICT … DO UPDATE SET reasons = EXCLUDED.reasons` does exist at `link_candidate_repo.go:79`, but it is the candidate **regeneration** upsert, untouched by this chip and depended on by the hub's own U1 ("depois de regerar candidatos"). R3 forbids retro-editing persisted motivos; it does not forbid regeneration from producing fresh ones |
-| C10 | **PASS** | full `git diff --name-only <base>..HEAD` pasted in the C10 block above — 17 paths, of which 2 are this evidence pack. `grep -c '^apps/web/'` = **0** |
+| C9 | **PASS** | `git diff --name-only <base>..HEAD \| grep -i migration` → **zero**; the C10 evidence block contains no `migrations/` path and no `product_links/adapters/postgres/` file at all, so the chip writes no `UPDATE` and no backfill. Characterised honestly: a pre-existing `ON CONFLICT … DO UPDATE SET reasons = EXCLUDED.reasons` does exist at `link_candidate_repo.go:79`, but it is the candidate **regeneration** upsert, untouched by this chip and depended on by the hub's own U1 ("depois de regerar candidatos"). R3 forbids retro-editing persisted motivos; it does not forbid regeneration from producing fresh ones |
+| C10 | **PASS** | full `git diff --name-only <base>..HEAD` pasted whole in the C10 evidence block above — **15 code paths**. `grep -c '^apps/web/'` = **0** |
 | C11 | **PASS** — L0+L1 green chip-side; governance rung hub-run per R-b, **differential PASS** (53 violations at chip tip == 53 at BASE, outputs identical line for line; lane is red on `main` and not green here — see the honesty note) | see the Ladder section below + hub evidence `main@d36d89a` |
-| C12 | **PASS** | `git diff -w <base>..HEAD -- internal/composition/root.go` → **0 removed lines**, exactly 3 added, quoted verbatim in the C12 block above and in the CLOSED payload; `gofmt -l` clean (proven CR-stripped per the ROUND-1 analysis — the naive file-scoped check is uninformative on this checkout) |
+| C12 | **PASS** | `git diff -w <base>..HEAD -- internal/composition/root.go` → **0 removed lines**, exactly 3 added, quoted verbatim in the C12 evidence block above and in the CLOSED payload; `gofmt -l` clean (proven CR-stripped per the ROUND-1 analysis — the naive file-scoped check is uninformative on this checkout) |
+
+### C2 — the criterion's statement and its *prova mínima* do not cover the same set
+
+Found by the chip on 2026-07-26 while scoping R-6, after both gates had passed C2. Disclosed rather
+than resolved in-chip, because resolving it is a scope decision that is the hub's.
+
+C2 reads, in two parts:
+
+> `mandatoryUnavailableReasons()` não existe mais e **nenhum nome de âncora** está hardcoded no
+> gerador | grep do símbolo = 0 hits; grep de `"marca"`/`"refforn"` em `product_links/application` =
+> 0 hits em código de produção
+
+The *prova mínima* names `marca` and `refforn`. Both are zero, so C2 passes as written and as gated.
+But the STATEMENT says "nenhum nome de âncora", and the generator does still contain hardcoded anchor
+names — `"seller_sku"` and `"ean"`, as reason seeds at `generation_service.go:483-484`, `:519-520`,
+`:529-530`, `:536-537`, `:609-610`, plus `"title"` at `:490`, `:535`, `:546`. Read literally, the
+statement is not satisfied.
+
+The chip's reading — offered as reasoning, not as a ruling — is that the *prova mínima* is the
+operative one, because the two name groups are different kinds of thing:
+
+- `marca` / `refforn` were **fabrications about the provider**. The old
+  `mandatoryUnavailableReasons()` asserted "the provider does not supply `marca`" for every provider,
+  unconditionally, having never asked. That is the ADR-17 violation F-01 exists to delete, and it is
+  gone.
+- `seller_sku` / `ean` / `title` are the **core's own search vocabulary**, fixed by IC-01 Amendment
+  A2 (`generation_service.go:470-476`): these are the only cross-side anchors the matcher searches
+  on. Naming them in a reason that reports *what the matcher itself did* is a statement about our own
+  behaviour, not an unasked claim about the provider's.
+
+The distinction is exactly what R-6's precedence encodes: where the two collide, the provider's
+declaration outranks the core's "I searched and missed", because only one of them is a fact about the
+provider. After S8, the core never claims to have searched an anchor the provider does not supply.
+
+What the chip did NOT do: widen F-01 to make the core's search vocabulary provider-declared too.
+That is a real design question — it would mean the matcher's anchor loop is driven by the
+declaration rather than by A2 — and it is well outside this chip's contract. Flagged to the hub as a
+finding, not actioned. **C2 stands as PASS on its stated proof; the hub decides whether the
+statement wants amending or the scope wants widening.**
 
 ## Ladder
 
@@ -681,6 +923,17 @@ on Windows (echoed into the transcript:
 | L0a | `go build ./...` (full tree, plain — no `-buildvcs=false`) | **exit 0** |
 | L0b | `go vet ./...` (full tree) | **exit 0** |
 | L1 | `go test -count=1 ./internal/modules/product_links/... ./internal/modules/connectors/... ./internal/modules/mutations/... ./internal/composition/...` | **exit 0**, 27 packages, all `ok`, zero failures |
+| GOV | `npm run harness:governance -- -BaseSha 917f7bb5…` from a clean detached worktree | **hub-run per R-b**, differential PASS — see below |
+| LIVE | U1–U3 browser live-drive on the connected ML account | **OPEN — hub-run, ruling R-8** — see below |
+
+**Rung LIVE — `hub-run, U1-U3, ruling R-8`, recorded OPEN.** The cold Opus gate raised a SHOULD-FIX:
+the diff touches provider-adapter scope (`capability_adapter.go:90`) with no `LIVE-VERIFIED:` or
+`LIVE-WAIVED-BY-OPERATOR:` marker. The chip requested a waiver — the change is a static declaration
+with no provider I/O, and U1–U3 are hub-run by dispatch — and **the hub DENIED it**, ruling R-8: the
+waiver is not needed because the rung is not the chip's to close. The chip records it OPEN; the hub
+fills it at acceptance once U1–U3 pass; **no merge before that**. The chip did not attempt U1–U3
+and did not self-grant the waiver. Same shape as the governance rung under R-b: a rung the chip
+cannot close honestly is recorded OPEN and named, never inferred PASS and never silently omitted.
 
 L1 scope is touched-packages-plus-guard-suites, not a full sweep, per §2: "full sweep only when
 migrations/platform touched" — and this chip has **zero** migrations (C9). The four trees are the
@@ -760,6 +1013,97 @@ still holds and **no re-run is needed before merge**. One correction to the hub'
 (`030fa58c`) sits far below `8e37958a` and was already inside the measured tip — nothing after that
 tip is code at all.
 
+## ROUND-2 FULL ANALYSIS — the pack asserting a check that never happened (profile §11, hub ruling R4)
+
+Triggered by clause 1: a third defect of the same shape, found by the P6 dual gate. Both gates
+failed the chip, and between them they surfaced six instances that reduce to one shape.
+
+### The shape, in one sentence
+
+**The pack states that a verification was performed when the artifact proving it does not exist —
+either because the output stayed in the chip's session and was never written into the file, or
+because the check was never run at all and a worker's word was recorded as the chip's own.**
+
+### The three surfaces, and every site in each
+
+**Surface 1 — citations to evidence blocks that were never written.** The criteria table was
+composed from session recollection. Each cited block existed only in the transcript.
+
+| Site | Cited | Present in pack before ROUND-2 | Class |
+|---|---|---|---|
+| C3 cell | "the C3 sweep block above", "34 tracked `.go` files" | **NO** — grep returns only the self-reference | defective |
+| C10 cell | "the C10 block above — 17 paths" | **NO** — same | defective |
+| C5 cell | "Also visible in the C10 name list" | **NO** — leans on the missing C10 block | defective |
+| C12 cell | "quoted verbatim in the C12 block above" | **NO** — same | defective |
+| C1, C2, C4, C6, C7, C8, C9, C11 cells | `file:line` or inline output | **YES** — all resolve | clean |
+
+Four defective of twelve. The count matters: the gates found three, the exhaustive sweep found four.
+
+**Surface 2 — a worker claim recorded as chip-verified without checking base.** Swept all 10
+provenance assertions in the pack by tool.
+
+| Site | Claim | Verified against base | Class |
+|---|---|---|---|
+| S5 table B1 + honest-limitations bullet | `connectors/ports` import at `generation_integration_test.go:11` is pre-existing and outside the write set | **FALSE** — base imports neither connectors package; file is in the write set (10 insertions) | defective |
+| C2 cell | base had 8 `mandatoryUnavailableReasons` hits | TRUE — `git grep -c` on base = 8 | clean |
+| C9 cell | `link_candidate_repo.go` untouched by the chip | TRUE — empty diff | clean |
+| A10 | `pol` unbounded at base | TRUE — cold gate independently confirmed the base alternation | clean |
+| S3 note `:143` | `PRODUCT_LINKS_CANDIDATE_ENGINE_NOT_CONFIGURED` pre-existing | TRUE — 2 hits on base | clean |
+| S1 note `:136` | direction enum untouched | TRUE — gate confirmed against OpenAPI | clean |
+| S2 note `:181` | root.go leaves neighbours untouched | TRUE — C12 | clean |
+| S6 table | production file untouched across S6 | TRUE — empty diff | clean |
+| S6 / must-fail rows | "both pre-existing default tests stay GREEN" | TRUE — they predate S6 | clean |
+| ROUND-1 `:591` | CRLF endings "pre-existing on main" | **already self-corrected in-pack** before either gate ran | previously fixed |
+
+One defective of ten.
+
+**Surface 3 — described test content not reread.** Every `Test*` name the pack cites was checked for
+existence in the tree: **13 cited, 13 resolve, zero missing.** One content description was wrong:
+the C6 cell had the golden pair inverted (claimed `500MM` listing vs `50cm` ERP; the test has the
+listing in cm and the ERP product in mm). That inversion reproduced the dispatch prompt's EXEMPLO-IO
+— and contradicted this pack's own adjudication A3, which exists precisely to record that the
+prompt has the two swapped. The cold gate caught the table contradicting the pack.
+
+### Class closed
+
+All six defective sites fixed in this round: the four blocks are now pasted in full under
+"Evidence blocks the criteria table cites"; the false provenance claim is struck through in place
+with a correction subsection stating what is actually true, rather than silently rewritten; the C6
+cell now describes the test as written and names A3.
+
+### Root cause, and why the gates found it and the chip did not
+
+The pack is written for a reader who was not in the session. "The block above" resolved perfectly
+for me, because I had just run the command; it resolves to nothing for anyone else. The same
+mechanism produced the false provenance row: the worker asserted it, I recognised the shape as
+plausible, and plausibility substituted for the `git show` I never ran.
+
+Testing for this therefore requires a reader **without** the session. Both P6 gates were that
+reader. The P4 per-feature reviewers were not — they were pointed at code and commits, and were
+never asked to read the pack at all. That is the gap in this chip's own method: the pack was
+reviewed for the first time at P6, after being treated as settled through three features.
+
+### Remedy: informational, not structural
+
+Asked as §11 requires. The structural option would be a doc-lint over `_chip-anchors/` that flags
+relative citations ("the block above", "see above") with no resolvable anchor. Rejected: it is
+tooling built for one pack, with no second named consumer, and it would catch surface 1 only —
+neither the false provenance claim nor the inverted golden pair has a lexical signature a linter
+could find. A checker that catches a third of the class while implying the class is covered is worse
+than none.
+
+Because the remedy is informational, no adversarial anti-abstraction dispatch is owed (§11 requires
+it only before ADDING an abstraction). The rules, carried to the hub as amendment candidates:
+
+1. **An evidence pack may only assert a check whose artifact is in the pack.** Ran it in session?
+   Paste it. No relative references — inline the output at the point of claim.
+2. **A verification table may not record a worker's claim as verified without the chip re-running
+   it.** Specifically: any assertion about what is "pre-existing" requires a `git show <base>` in the
+   chip's own hands, because that is the exact claim a worker has the strongest incentive to get
+   wrong and the least ability to check.
+3. **Have the pack read by someone outside the session before the gate**, not for the first time at
+   the gate.
+
 ## Dual gate
 
 Two reviewers on the fixed-SHA diff `917f7bb5..1df627f8`, dispatched concurrently and blind to each
@@ -781,7 +1125,73 @@ Neither reviewer can run the governance lane either — same worktree constraint
 has since made that rung hub-owned outright — so C11's governance rung stays OPEN across the gate
 regardless of the verdicts, by ruling rather than by omission.
 
-(verdicts + reconciliation — pending)
+### ROUND 1 — both gates FAIL
+
+| Gate | Verdict | Headline |
+|---|---|---|
+| GPT side (`gpt-5.6-sol`/medium) | **FAIL** | C4 + C11 marked FAIL; 2 BLOCKING (stale pack tail; R5 gap on reachable guards); ruled 2 of 4 declared open items blocking |
+| Cold Opus (`harness:gate-reviewer`) | **FAIL** | C3 FAIL on form, C10 FAIL as unevidenced, C11 FAIL as unrun; 2 BLOCKING (missing evidence blocks; **false provenance claim**); 1 SHOULD-FIX, 3 NIT |
+
+The asymmetry designed into the briefs paid off exactly where predicted — on the declared open
+items, where the two gates split:
+
+| Declared item | GPT (told to rule) | Opus (found it cold) | Resolution |
+|---|---|---|---|
+| `pol` unbounded prefix | acceptable — pre-existing, classified, correctly referred out | acceptable — **independently re-derived** that base already has unbounded `pol`, and that canonicalisation does not worsen the verdict (762 vs 1016 mm diverge exactly as `30pol` vs `40pol` did) | **agreed, deferred** |
+| A8 duplicate contradictory reasons | **BLOCKING** — subset declarations are valid data, so the generic path must not emit contradictions | acceptable — dormant, R1 forbids the 4th-enum fix, cases distinguishable via `Detail` | **DISAGREEMENT → hub ruling requested** |
+| unreachable parse fallback | **BLOCKING** — honest disclosure does not satisfy R5; remove or restructure | acceptable — and **proved** unreachability: every token the alternation emits reduces to `\d+([.,]\d+)?`, which `big.Rat.SetString` always accepts | **DISAGREEMENT → hub ruling requested**; chip leans Opus, which demonstrated where GPT asserted |
+| governance rung | acceptable handling, correct ownership escalation | acceptable as a deferral, blocking as a criterion | agreed on handling; resolved separately by hub ruling R-b |
+
+**Chip's own dispatch defect, recorded because it corrupts one gate's input.** The GPT gate's first
+BLOCKING — that the pack tail is placeholders — is TRUE at `8e37958`, the sha the chip pinned it to.
+Both gates were dispatched while the criteria and ladder sections were still uncommitted in the
+working tree. The Opus gate read the working tree and saw them; the GPT gate read the pinned commit
+and did not. That finding is an artifact of the chip's dispatch, not a defect in the pack as it
+stands, and the re-gate runs against a frozen tip. Its OTHER blocking finding (the R5 gap) was
+derived from code and is real.
+
+**Findings accepted and fixed this round:** the four missing evidence blocks; the false provenance
+claim; the C6 golden-pair inversion; the R5 coverage gap on three reachable guards (S7); the
+clamped-formula hole in the limits table (S7).
+
+**Findings accepted as accurate but not acted on:** the Opus NIT that a non-nil EMPTY declaration is
+accepted where `nil` errors. Correct, and correctly classed non-blocking — it is silence rather than
+a fabricated fact, the connectors layer deliberately makes empty legal
+(`marketplace_capability_service_test.go:322-332`), and the real adapter cannot produce it
+(`identity_anchor_adapter.go:28-35` always returns the full vocabulary). Recorded for the hub.
+
+**Open request to the hub:** the Opus gate's SHOULD-FIX that the diff touches provider-adapter scope
+(`capability_adapter.go:90`) with no `LIVE-VERIFIED:` / `LIVE-WAIVED-BY-OPERATOR:` marker. The
+change is a static declaration with no provider I/O and U1–U3 are hub-run, so a waiver appears
+right — but the gate's point stands that it must be recorded rather than inferred. Waiver requested;
+not self-granted.
+
+### Hub rulings on the two disagreements — R-6, R-7, R-8
+
+Both gate disagreements went to the hub with evidence rather than being decided in-chip
+("disagreement = BLOCKED with evidence, never a unilateral decision"). The hub ruled at
+`main@56de5b8`, filed in `_chip-anchors/hub-rulings.md`. The hub went AGAINST the chip's stated lean
+on both, and both rulings stand.
+
+| Ruling | Disagreement | Hub's decision | Chip's lean before the ruling |
+|---|---|---|---|
+| **R-6** | A8 duplicate contradictory reasons | GPT side upheld. It is a **dedup/precedence bug in the generation loop**, not a wire-shape problem. Rule: at most one reason per anchor per candidate, precedence deterministic and tested. Impossible without a wire change ⇒ BLOCKED to the hub, not a chip decision. | leaned Opus (dormant, distinguishable via `Detail`) — **overruled** |
+| **R-7** | unreachable parse fallback | GPT side upheld in outcome, Opus in method: **keep** the fail-closed fallback, and add a **direct seam test on the helper** — call the parser with a value the current alternation cannot produce and assert fail-closed. | leaned Opus (unreachability proved, disclosure sufficient) — **overruled** |
+| **R-8** | live-verification waiver on `capability_adapter.go:90` | **Waiver DENIED and not needed.** The chip records `rung LIVE: hub-run, U1-U3, ruling R-8` as OPEN on its side; the hub fills it at acceptance once U1–U3 pass. No merge before that. | waiver requested, not self-granted — **request refused, handling upheld** |
+
+Why the chip's lean was wrong on R-6, stated plainly because the reasoning error is the reusable
+part: the chip weighed the defect as *dormant* (Mercado Livre supplies all three anchors, so no
+production candidate hits it today) and let that dormancy carry the decision. Dormancy is a fact
+about today's only provider, not about the code. F-01 exists precisely to make the anchor set
+provider-declared DATA — so a subset declaration is not an exotic input, it is the feature's whole
+point, and the first provider that declares a subset would have shipped contradictions. Worse, the
+chip's own `generation_integration_test.go:54-64` already declares a subset (`seller_sku` only), so
+the defect was live in the chip's own fixture and simply unasserted. "Dormant" was measured against
+the wrong thing.
+
+R-6 and R-7 are implemented in slice S8. R-8 is recorded on the ladder, not implemented.
+
+### ROUND 2 — pending, on a frozen tip
 
 ## Must-fail proofs (R5)
 
@@ -795,6 +1205,28 @@ reasoned about.
 | C8 independent limits | restore the shared `limit*5` derivation | the 29-link fixture returns fewer than 29 → RED |
 | C8 defaults independent of `Limit` | `linkLimit = candidateLimit*100`, `auditLimit = candidateLimit*500` | new test RED on the `5` and `500` rows, `20` row still green, **and both pre-existing default tests stay GREEN** — proving the old net was blind to the class |
 | F-02 display offsets | (proved by the reviewer, not the author) rebuilt the pre-corrective function standalone | returned `display="50c"`, truncated, for `"İnox 50cm"` — the guard is load-bearing |
+| **S7** duplicate identity anchor (`marketplace_capability_service.go:146-148`) | delete the `seen[anchor]` check | `error = <nil>` → `TestMarketplaceCapabilityServiceRejectsDuplicateIdentityAnchor` RED |
+| **S7** empty provider code (`generation_service.go:156-158`) | delete the `providerCode == ""` check | `TestGenerateLinkCandidatesFailsWhenProviderCodeIsEmpty` RED — **re-run by the chip itself**, observed verbatim: `error = PRODUCT_LINKS_PROVIDER_IDENTITY_ANCHORS_UNAVAILABLE for provider "": identity anchor declaration is nil, want empty provider code failure`. See the honesty note below — this proof says less than the other two |
+| **S7** nil declaration (`generation_service.go:163-165`) | delete the `declaration == nil` check | `error = <nil>` → `TestGenerateLinkCandidatesFailsWhenIdentityAnchorDeclarationIsNil` RED |
+| **S7** clamped limit formula (`resolution_service.go`) | apply `linkLimit = max(2000, candidateLimit*4)` | `limit_5000` row RED (`link limit = 20000, want 2000`) **while `limit_5`, `limit_20` and `limit_500` all stay GREEN** — the contrast is the proof that the old 3-row table was blind to the clamped class |
+
+**Honesty note on the empty-provider-code proof — it is weaker than the other two, and the
+difference matters.** Deleting the duplicate-anchor and nil-declaration guards makes the error go
+`<nil>`: those guards are the only thing standing between the input and a silent success, so they
+are load-bearing for SAFETY. Deleting the empty-provider-code guard does NOT produce a silent
+success — the request still fails closed, because the nil-declaration guard downstream catches it
+(no declaration is registered under `""`). What is lost is the DIAGNOSTIC: the operator is told
+"identity anchor declaration is nil" for a listing whose actual problem is that it carries no
+provider code at all.
+
+So the honest claim is: this guard is load-bearing for the error message, not for fail-closed
+behaviour. The test still goes RED when it is removed only because it asserts the
+`"provider code is empty"` substring in addition to the error code. Had it asserted the
+`PRODUCT_LINKS_PROVIDER_IDENTITY_ANCHORS_UNAVAILABLE` code alone — the obvious way to write it —
+it would have stayed GREEN through the mutation and the proof would have been vacuous. That is the
+confounded-assertion shape this mission has hit before (CHIP-PED-FILA); the chip re-ran this
+specific mutation by hand rather than accepting the worker's report, precisely because the worker's
+summary said the mutation "produced a downstream error" without saying whether the test reddened.
 
 **One guard has NO must-fail proof, and this is stated rather than faked:** the fail-closed parse
 fallback in `hardNegativeDimension` is unreachable by construction with the five-token alternation,
