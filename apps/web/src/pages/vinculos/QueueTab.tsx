@@ -124,7 +124,7 @@ export function QueueTab({ installationId, onViewResolved }: QueueTabProps) {
       <BulkBar selectedCount={selectedIds.size} onPreview={openBatchPreview} onClear={clearSelection} />
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[900px] border-collapse text-left text-sm">
+        <table className="w-full min-w-[860px] border-collapse text-left text-sm">
           <caption className="sr-only">Fila de candidatos de vínculo (anúncio → produto sugerido)</caption>
           <thead className="border-b border-border bg-surface-2 text-xs font-medium tracking-[0.04em] text-faint">
             <tr>
@@ -138,7 +138,9 @@ export function QueueTab({ installationId, onViewResolved }: QueueTabProps) {
               <th className="px-3 py-3" scope="col">GTIN</th>
               <th className="px-3 py-3" scope="col">Confiança</th>
               <th className="px-3 py-3" scope="col">Motivo</th>
-              <th className="px-3 py-3 text-right" scope="col">Ação</th>
+              <th className="sticky right-0 border-l border-border bg-surface-2 px-3 py-3 text-right" scope="col">
+                Ação
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border-2">

@@ -5,6 +5,7 @@ import type {
   ProductLinkReasonDirection,
 } from "@marketplace-central/sdk-runtime";
 import { UnknownValue } from "@marketplace-central/ui";
+import { useState } from "react";
 
 export interface QueueRowProps {
   candidate: ProductLinkCandidateItem;
@@ -58,18 +59,130 @@ function reasonChipLabel(reason: ProductLinkReason): string {
   return reason.detail ? `${reason.anchor}: ${reason.detail}` : reason.anchor;
 }
 
+// The wire anchors are machine names (`seller_sku`, `refforn`); the table shows
+// the operator-facing short form. Unknown anchors fall through verbatim — never
+// hidden, never renamed into something the wire didn't say.
+const anchorShortLabels: Record<string, string> = {
+  seller_sku: "SKU",
+  ean: "EAN",
+  title: "Título",
+  marca: "Marca",
+  refforn: "Ref. forn.",
+};
+
+// Direction is carried by colour AND by a glyph, so the FOR/AGAINST/sem-dado
+// distinction survives without relying on colour alone.
+const directionGlyphs: Record<ProductLinkReasonDirection, string> = {
+  FOR: "✓",
+  AGAINST: "✕",
+  UNAVAILABLE: "–",
+};
+
+function anchorShortLabel(anchor: string): string {
+  return anchorShortLabels[anchor] ?? anchor;
+}
+
+/**
+ * Compact chip label for the table. FOR/UNAVAILABLE motivos restate the anchor
+ * ("seller_sku resolve exato para codprod") so the detail adds nothing at a
+ * glance and lives in the tooltip. An AGAINST detail is the *reason the vínculo
+ * is blocked* — it stays inline (CSS-truncated to one line, full text in the
+ * tooltip and in the expanded view).
+ */
+function compactChipLabel(reason: ProductLinkReason): string {
+  const head = `${directionGlyphs[reason.direction]} ${anchorShortLabel(reason.anchor)}`;
+  if (reason.direction === "AGAINST" && reason.detail) {
+    return `${head}: ${reason.detail}`;
+  }
+  return head;
+}
+
+function compactChip(reason: ProductLinkReason) {
+  return (
+    <span
+      title={reasonChipLabel(reason)}
+      className={`inline-flex max-w-[12rem] items-center truncate whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${directionClasses[reason.direction]}`}
+    >
+      {compactChipLabel(reason)}
+    </span>
+  );
+}
+
+const COMPACT_CHIP_LIMIT = 2;
+
+/**
+ * Motivo cell. Collapsed by default to keep the row one line tall (a 4-chip
+ * stack of full sentences made every row ~5 lines and pushed the Ação column
+ * off-screen). AGAINST motivos are ranked first — a blocking contradiction is
+ * what the operator must read — and nothing is silently dropped: the remainder
+ * is behind a "+N" toggle that renders every motivo in its full wire form.
+ */
 function AnchorChips({ reasons }: { reasons: ProductLinkReason[] }) {
+  const [expanded, setExpanded] = useState(false);
+
   if (reasons.length === 0) {
     return <UnknownValue hint="sem sinais de correspondência" />;
   }
+
+  if (expanded) {
+    return (
+      <div className="flex flex-col items-start gap-1">
+        <ul className="flex flex-col items-start gap-1">
+          {reasons.map((reason, index) => (
+            <li key={`${reason.anchor}-${index}`}>
+              {/* Expandido: o texto integral do motivo pode quebrar linha — o
+                  chip nowrap do modo compacto seria cortado pelo limite do td. */}
+              <span
+                className={`inline-block rounded-2xl px-2 py-0.5 text-xs font-medium ${directionClasses[reason.direction]}`}
+              >
+                {reasonChipLabel(reason)}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <button
+          type="button"
+          className="rounded-control px-1 text-xs font-medium text-muted underline hover:text-ink"
+          onClick={() => setExpanded(false)}
+        >
+          menos
+        </button>
+      </div>
+    );
+  }
+
+  // Rank AGAINST → FOR → UNAVAILABLE and slice. Ranking (never filtering) is
+  // what keeps at least one motivo on screen even for a row whose only signals
+  // are UNAVAILABLE ones (ADR-17 — motivo sempre visível).
+  const byDirection = (direction: ProductLinkReasonDirection) =>
+    reasons.filter((reason) => reason.direction === direction);
+  const shown = [...byDirection("AGAINST"), ...byDirection("FOR"), ...byDirection("UNAVAILABLE")].slice(
+    0,
+    COMPACT_CHIP_LIMIT,
+  );
+  const hidden = reasons.length - shown.length;
+
   return (
-    <ul className="flex flex-wrap gap-1">
-      {reasons.map((reason, index) => (
-        <li key={`${reason.anchor}-${index}`}>
-          {pill(reasonChipLabel(reason), directionClasses[reason.direction])}
-        </li>
-      ))}
-    </ul>
+    <div className="flex min-w-0 items-center gap-1">
+      <ul className="flex min-w-0 items-center gap-1">
+        {shown.map((reason, index) => (
+          <li key={`${reason.anchor}-${index}`} className="min-w-0">
+            {compactChip(reason)}
+          </li>
+        ))}
+      </ul>
+      {hidden > 0 ? (
+        <button
+          type="button"
+          aria-label={`Mostrar todos os ${reasons.length} motivos`}
+          title={reasons.map(reasonChipLabel).join(" · ")}
+          className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs font-medium text-muted hover:bg-surface-2 hover:text-ink"
+          onClick={() => setExpanded(true)}
+        >
+          +{hidden}
+        </button>
+      ) : null}
+    </div>
   );
 }
 
@@ -165,8 +278,9 @@ export function QueueRow({ candidate, onOpen, onApprove, onReject, pending, sele
         <AnchorChips reasons={candidate.reasons} />
       </td>
 
-      {/* AÇÃO */}
-      <td className="px-3 py-3">
+      {/* AÇÃO — sticky à direita: as ações nunca saem da tela quando a tabela
+          rola horizontalmente. */}
+      <td className="sticky right-0 border-l border-border bg-surface px-3 py-3">
         <div className="flex justify-end gap-2">
           {noCandidate ? (
             <>

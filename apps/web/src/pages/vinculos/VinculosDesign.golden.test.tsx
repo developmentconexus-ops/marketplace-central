@@ -99,7 +99,12 @@ describe("Vínculos design golden", () => {
     expect(cells.getByText("1001")).toBeInTheDocument(); // SKU HUB
     expect(cells.getByText("✓ igual")).toBeInTheDocument(); // GTIN
     expect(cells.getByText("92%")).toBeInTheDocument(); // CONFIANÇA
-    expect(cells.getByText("EAN idêntico: 100%")).toBeInTheDocument(); // MOTIVO
+    // MOTIVO — compact chip: motivo (anchor) sempre visível, detail no tooltip
+    // (IC-01: % nunca aparece sozinho). Forma completa fica no title e na
+    // expansão "+N" / no drawer.
+    const motivoChip = cells.getByText("✓ EAN idêntico");
+    expect(motivoChip).toBeInTheDocument();
+    expect(motivoChip).toHaveAttribute("title", "EAN idêntico: 100%");
     expect(cells.getByRole("button", { name: "Vincular" })).toBeInTheDocument(); // AÇÃO
 
     // Column headers present (anúncio-cêntrica order).
