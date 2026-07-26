@@ -1134,6 +1134,20 @@ code. The list below is byte-identical to the one produced at `1df627f8`, becaus
 existing files and added none — so the CONTENT was always true, but the command it was labelled with
 was pinned to a superseded tip. Classified in ROUND 3 as *stale label, true content*:
 
+**Diff SIZE, per SHA, because the path count is stable and the line count is not.** The hub measured
+2817 insertions at the code tip while the chip's CLOSED reported 3219; both are right about different
+SHAs, and the pack states which is which rather than picking one:
+
+| Range | Insertions | What it measures |
+|---|---|---|
+| `917f7bb5..2921d563` | 2817 (+167 del) | the CODE tip — the SHA the lane and both gates read |
+| `917f7bb5..dc0d6308` | 3219 (+167 del) | the pack tip at CLOSED; the delta is `EVIDENCE.md` growing |
+| `917f7bb5..HEAD` | 3246 (+167 del) | after the governance-rung amendment, still `.mnfs`-only |
+| `917f7bb5..HEAD -- apps/server_core` | **1329 (+167 del)** | production + test code alone, no pack |
+
+The path count (17) is identical across all of them; only lines move. Same lesson as the lane rung:
+**a measurement names a SHA, or it names nothing** — and for a size figure, the range as well.
+
 ```
 apps/server_core/internal/composition/root.go
 apps/server_core/internal/modules/connectors/adapters/mercado_livre/capability_adapter.go
@@ -1228,6 +1242,38 @@ That is a real design question — it would mean the matcher's anchor loop is dr
 declaration rather than by A2 — and it is well outside this chip's contract. Flagged to the hub as a
 finding, not actioned. **C2 stands as PASS on its stated proof; the hub decides whether the
 statement wants amending or the scope wants widening.**
+
+#### Hub ruling at acceptance — C2 PASS, the criterion's PROSE was the defect
+
+The hub ruled on this at acceptance, having read the code at the tip rather than accepting the
+description. **C2 PASS as it stands; no corrective.** The hub named the defect as its own and as the
+same shape as R-6 — a ruling/criterion whose WORDING is wider than the invariant it meant to state.
+
+The invariant, restated by the hub and narrower than C2's prose, is **unidirectional**: *no assertion
+ABOUT THE PROVIDER that does not derive from the provider's own declaration.* Hardcoded
+`seller_sku`/`ean`/`title` are the core's comparison vocabulary — what it knows how to compare
+against the ERP — not claims about the provider, so they do not touch the invariant.
+
+Proof the hub cited and the chip re-read at code tip `2921d563`
+(`generation_service.go:639-655`, the `identityAnchors` loop): when an anchor is not `Supplied`, the
+core-seeded reason is **overwritten** — `finalized[index] = declarationReason` — by
+`provider não fornece a âncora %s`. The core's "I searched and missed" cannot outlive the provider's
+declaration. That was A8, and it is closed.
+
+#### Hub finding, NOT this chip's, referred to the mission backlog
+
+Raised by the hub at acceptance, verified in the code, explicitly **not** a corrective on this diff:
+
+`appendProviderDeclaredUnavailableReasons` opens its declaration loop with
+`if anchor.Supplied || hasSignal[anchor.Anchor] { continue }`. So an anchor the provider **declares
+it supplies** but which the core has no comparison for — an `mpn`, a second marketplace's `gtin14` —
+yields **no reason at all**. Chip-verified at `2921d563`: the seeding paths only ever emit
+`seller_sku`, `ean` and `title`, so nothing else can reach `hasSignal`, and the `Supplied` branch
+then skips it.
+
+Not a fabricated value, so not an ADR-17 violation — it is silent OMISSION: the screen says nothing
+about an anchor that exists on the provider's side. The hub's characterisation: a cousin of ADR-17
+and the next hole on this trail. Filed to the mission backlog, out of scope here.
 
 ## Ladder
 
