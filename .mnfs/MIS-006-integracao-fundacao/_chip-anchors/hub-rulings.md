@@ -120,3 +120,91 @@ Shape A (4 blocos de evidência citados mas nunca escritos no arquivo), os 3 tes
 alcançáveis, a 4ª linha acima de 500 no teste de limites (a atual não mata fórmula clampada), a
 inversão do par golden no C6, e o re-gate em tip congelado. O erro de despachar gate com pack
 não commitado é dele e o conserto é o certo: congela e re-despacha os DOIS.
+
+---
+
+# ROUND 3 — split (cold PASS-with-findings × GPT FAIL/3-blocking), zero defeito de código
+
+Os dois lados sustentaram o código de novo. As quatro achadas blocking são **de pack**. O chip
+verificou as quatro sozinho, aceitou três e refutou uma. Confirmei na minha ponta as duas que
+decidem, com comando, no tip congelado `ac72eb82`:
+
+```
+$ ls -d openapi                                              → No such file or directory
+$ git diff --stat 917f7bb5..ac72eb82 -- contracts/ packages/sdk-runtime/   → vazio
+$ git diff --stat 917f7bb5..ac72eb82                         → 17 files, 3292 ins, 167 del
+$ git show ac72eb82:.../auto_link_policy_test.go | sed -n '270,305p'
+    TestHardNegativeKindsBlockConcordantSKUAndEAN … "cor": {"PUXADOR DHARMA AZUL", "PUXADOR DHARMA PRETO"}
+```
+
+A terceira linha é a que importa e é a que faltava no pack: ela prova que o comando de diff
+**produz saída em algum lugar**, logo o vazio da segunda é "inalterado" e não "não existe".
+
+## R-9 — round 4. E a opção que você me ofereceu não existe na minha autoridade
+
+Você ofereceu duas saídas: round 4, ou aceitar o código nos dois veredictos code-clean + U1-U3 e
+tratar o pack como dívida. **A segunda não está no menu**, e a razão é mecânica antes de ser
+doutrinária: `merge-gate.sh` exige a string `P6-DUAL-GATE: AGREEMENT` no pack. Sem round que a
+produza, só existem dois jeitos de mergear — eu cunhar a string, ou passar por cima do hook. Um
+eu recusei há duas mensagens; o outro é a mesma coisa com outro nome. Barreira não vira permissão
+só porque existe um caminho conveniente dentro dela.
+
+Mas eu escolheria round 4 mesmo sem o hook, e a razão é a que você mesmo nomeou: **o pack é a
+metade durável da entrega**. O código mergeia uma vez e depois vive nos testes. O pack é o que o
+próximo chip copia como forma. Pack com prova vacuosa não fica parado sendo dívida — ele ensina a
+provar vacuamente. O ledger desta missão já carrega essa exata classe (CHIP-IMPORT-FIX,
+"fake-gate integrity violation"). Segunda vez é padrão, não azar.
+
+## R-10 — prova por vazio exige testemunha de existência
+
+Generalização da pior achada, e vale além deste chip. Todo critério cuja forma de PASS é
+**ausência de saída** — `git diff` vazio, `gofmt -l` silencioso, `grep` sem match, `ls` sem
+resultado — é indistinguível de alvo errado. Vazio-porque-inalterado e vazio-porque-inexistente
+são o mesmo byte na tela.
+
+**Regra: toda prova por vazio vem em par com uma testemunha.** (a) que o alvo existe, e (b) onde
+for barato, um controle mostrando que o mesmo comando produz saída em outro escopo. Sem isso a
+linha não é evidência fraca, é evidência **nenhuma** — ela passa igual se o path estiver
+digitado errado, que foi exatamente o que aconteceu.
+
+Aplica retroativo, inclusive contra mim: **a emenda C12 que eu escrevi tem o mesmo buraco.**
+`git diff -w <base>..HEAD -- internal/composition/root.go` sem linha removida é prova por vazio
+num path. Se eu tivesse errado o path, a linha passava idêntica. Corrige junto — o C12 ganha a
+testemunha de existência como os outros.
+
+## R-11 — o gate cold é estruturalmente cego pra essa classe; pare de pedir que ele enxergue
+
+O split do round 3 não foi divergência de julgamento, foi **acesso a ferramenta**. O lado cold
+roda com Read/Grep/Glob e sem Bash: não pode testar existência de path nem rodar comando. Todas
+as blocking do lado GPT precisavam de shell. O overlap entre os dois gates nesse eixo era falso —
+não é que o cold discordou, é que ele não tinha como olhar.
+
+Consequência, e é a que faz o round 4 convergir em vez de virar round 5: **validade de citação
+não é tarefa de reviewer, é propriedade mecânica.** A saída do `cite-audit` vira **artefato
+commitado do pack**, re-rodado no tip congelado do round 4. O trabalho do gate deixa de ser
+re-derivar 55 citações à mão e passa a ser verificar que a auditoria rodou naquele tip e saiu
+limpa. Isso troca uma tarefa de leitura ilimitada por uma checagem. Cold briefado explicitamente:
+citações estão cobertas pela auditoria, **revise semântica**.
+
+## R-12 — frase de fecho declara o escopo que varreu
+
+"every citation re-derived at the code tip" quando a varredura cobriu só a tabela de critérios é
+a própria classe chegando na frase que declara a classe fechada. Regra: **frase de fecho nomeia o
+escopo varrido e a ferramenta que o produziu, ou não existe.** "Toda citação da tabela de
+critérios, resolvida por `cite-audit.py` no tip X" é uma frase verificável. "Toda citação" não é.
+
+## Refutação: sustentada
+
+O lado GPT leu errado. O pack diz o oposto, literal em `EVIDENCE.md:24-28` — que `chip.md` e o
+`validation-contract.md` chegam pelo merge do hub, não pelo diff do chip. `git ls-tree` do
+reviewer está certo e o pack já divulgava exatamente isso. Não é defeito.
+
+O derivado que você tirou dela é bom e adota: ponteiro explícito pro `main@f81b8975` no cabeçalho.
+Reviewer pinado no tip não consegue ler o contrato contra o qual está julgando — isso é buraco de
+despacho meu, não achado dele.
+
+## Briefing do round 4 (4b, instância B)
+
+Os dois gates recebem os RULINGS junto com o tip. Congelar tip sem congelar ruling gateia código
+contra critério velho — foi assim que o round 2 queimou. Brief nomeia R-6a, R-9, R-10, R-11, R-12
+por SHA.
