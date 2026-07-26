@@ -25,7 +25,7 @@ explícito, nunca como PASS otimista.
 | C9 | R3 provada: nenhum `UPDATE`/backfill de motivo já persistido, nenhuma migração | grep por `UPDATE` em motivos = 0; `git diff --stat` sem arquivo em `migrations/` |
 | C10 | Non-scope respeitado: **zero** arquivo `apps/web/` no diff | `git diff --name-only <base>..HEAD` colado inteiro |
 | C11 | Ladder L0+L1 por profile §2 (GOCACHE absoluto) + governance de worktree limpo detached com BaseSha 40-hex | saídas citadas; falha pré-existente = citar allowlist, não re-provar |
-| C12 | Grant de `root.go` foi **additive-only** | diff da região citado no payload do CLOSED |
+| C12 | Grant de `root.go` foi **additive-only em tokens**, e o arquivo fica `gofmt`-limpo | `git diff -w <base>..HEAD -- internal/composition/root.go` **sem nenhuma linha removida** (o `-w` ignora o realinhamento de whitespace) + `gofmt -l internal/composition/root.go` sem saída + diff da região citado no payload do CLOSED |
 
 ## U — user-drive (rodado pelo HUB na stack, conta ML conectada)
 
