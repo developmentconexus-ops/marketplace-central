@@ -365,7 +365,7 @@ func TestListLinkWorkflowsUsesIndependentDefaultLimitsAndReturnsAll29Links(t *te
 	for i := range links {
 		links[i] = productlinksdomain.ProductLink{
 			InstallationID: "inst-29",
-			ProviderCode:    "mercado_livre",
+			ProviderCode:   "mercado_livre",
 			ProviderItemID: fmt.Sprintf("MLB-%d", i),
 			State:          productlinksdomain.ProductLinkStateResolved,
 		}
@@ -410,7 +410,7 @@ func TestListLinkWorkflowsHonorsIndependentExplicitLimits(t *testing.T) {
 	for i := range links {
 		links[i] = productlinksdomain.ProductLink{
 			InstallationID: "inst-explicit",
-			ProviderCode:    "mercado_livre",
+			ProviderCode:   "mercado_livre",
 			ProviderItemID: fmt.Sprintf("MLB-%d", i),
 			State:          productlinksdomain.ProductLinkStateResolved,
 		}
