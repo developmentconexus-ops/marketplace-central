@@ -4,7 +4,7 @@
 id: M-05
 type: milestone
 mission: MIS-006
-status: merged   # merged main @f49c20f7 (D-121); NÃO é `done`: o código passou (6 rodadas de dual-gate, C1-C22 ran com must-fail em C10/C17/C18/C21/C22, ladder pós-merge 106 pacotes zero FAIL), mas o user-drive não. U1/U2/U3 = could-not-run (conta ML em `pending_connection`, `listings`=0 — não existe anúncio real para auto-aprovar) e U4 = tela, seam do M-06. M-06 está desbloqueado; M-05 só vira `done` depois do re-drive do hub com a conta conectada
+status: done   # merged main @f49c20f7 (D-121); código: 6 rodadas de dual-gate, C1-C22 ran com must-fail em C10/C17/C18/C21/C22, ladder pós-merge 106 pacotes zero FAIL. User-drive re-drivado pelo hub com a conta ML conectada @30fc7c9: U1 PASS (29 vínculos, 29 linhas E10 todas actor=system/rule=concordant_codprod_ean/collisions=1, censo SQL previsto 29/3/2 ANTES de gerar), U2 PASS, U3 PASS (`34 · sem vínculo 5`). U4 = tela, seam do M-06 (confirmado em tela, não é dívida de M-05). Dois defeitos PRE-EXISTENTES (verificados no BASE-SHA e3c081ae) que M-05 só tornou visíveis ao criar 29 vínculos onde havia 1 — D-A (hard-negative de dimensão reprova 50cm vs 500MM) e D-B (`/product-links/link-workflows` devolve 20 de 29 e a KPI apresenta como total) — roteados para CHIP-ANCHORS, NÃO reabrem M-05
 depends_on: [M-02, M-03]
 base_sha: 138aac3d
 validation_level: QA-0
