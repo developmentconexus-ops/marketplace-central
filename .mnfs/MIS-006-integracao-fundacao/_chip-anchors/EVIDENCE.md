@@ -39,6 +39,8 @@ the verdict/output artifact afterwards.
 | D10 | P3 | Implementer S5 (corrective: F-02 blocking + F-01 layering) | gpt-5.6-sol / low (complex slice) | OS-process codex | `scratchpad/prompt-s5.md` | `scratchpad/agent__s5-impl.last.md` + `.log` | GREEN, committed `f92ca9c7`, chip-verified independently |
 | D11 | P3 | Implementer S6 (F-03 test hardening) | gpt-5.6-luna / high | OS-process codex | `scratchpad/prompt-s6.md` | `scratchpad/agent__s6-impl.last.md` + `.log` | GREEN, committed `1df627f8`, chip-verified independently |
 | D12 | P4 | Re-reviewer, feature F-02 over `f92ca9c7` | Claude sonnet subagent | Agent tool, async | inline brief | `tasks/af63a82825465373b.output` | completed — **PASS-WITH-FINDINGS** (2 SHOULD-FIX both pre-existing, 1 NIT); blocking defect confirmed closed |
+| D14 | P6 | Gate reviewer, GPT side of the dual gate | gpt-5.6-sol / medium | OS-process codex, `--sandbox read-only` | `scratchpad/prompt-p6-sol.md` | `scratchpad/agent__p6-sol.last.md` + `.log` | dispatched |
+| D15 | P6 | Gate reviewer, COLD Opus side | Opus, `harness:gate-reviewer` (no Edit/Write/Bash by construction) | Agent tool, async | inline brief | `tasks/a93b3ffaca9b176b7.output` | dispatched |
 | D13 | P4 | Re-reviewer, feature F-01 over `f92ca9c7` | Claude sonnet subagent | Agent tool, async | inline brief | `tasks/ad9c0421c9c2a538c.output` | completed — **PASS**, zero findings |
 
 ## Slice S3 — chip verification, and a defect in the chip's own slice card
@@ -650,16 +652,94 @@ files, with `.gitattributes`, in a commit that touches nothing else.
 
 ## Criteria table
 
-(filled per criterion as slices land — C1..C12)
+All evidence below is against the final tip `1df627f8` (code) with the pack filed at `8e37958`.
+Base is `917f7bb58e385847fba5612201823f9db48791c6` throughout.
+
+| ID | Verdict | Evidence |
+|----|---------|----------|
+| C1 | **PASS** | declaration `connectors/ports/marketplace_capability.go:22-41` (`IdentityAnchor` type, the five constants, `KnownIdentityAnchors()`); product_links' own port `product_links/ports/provider_identity_anchor_reader.go`; adapter `product_links/adapters/connectors/identity_anchor_adapter.go:9-23`; wiring `internal/composition/root.go:387` + `:543` |
+| C2 | **PASS** | `git grep -n mandatoryUnavailableReasons -- 'apps/server_core/**/*.go'` = **0** in tracked source (base had **8**, all in `generation_service.go`). `"marca"`/`"refforn"` in `product_links/application` production code = **0**; the 8 remaining hits are all in `generation_service_test.go` (`:88,:89,:143,:144,:170,:173,:498,:502`), which the criterion permits and which are the tests that PROVE the names now arrive from the declaration |
+| C3 | **PASS** | `git grep 'mercado_livre\|ProviderCode *==\|ProviderCode *!=\|switch .*[Pp]rovider' -- 'product_links/**/*.go' ':!*_test.go'` = **ZERO HITS**, over the **34 tracked `.go` files** listed in the C3 sweep block above (the criterion requires the swept list, not just the count) |
+| C4 | **PASS** | the two details are distinct and both present: `generation_service.go:536-537` / `:609-610` emit `"<anchor> sem correspondência"` (provider supplies it, this listing has no value) and `:624` emits `"provider não fornece a âncora %s"` (provider does not supply it). Tests `generation_service_test.go:135` and `:1005`. Per R1 the distinction is carried in `Detail`; no 4th enum value exists |
+| C5 | **PASS** | `git diff --stat <base>..HEAD -- openapi/ packages/sdk-runtime/` → **empty**. Also visible in the C10 name list: no path under either tree appears |
+| C6 | **PASS** | `TestGoldenToalheiroDimensionUnitEquivalenceYieldsConfirm` (`:527`, the EXEMPLO-IO golden: `500MM` listing vs `50cm` ERP → CONFIRM/MEDIA/70), `TestEquivalentDimensionUnitsDoNotRejectConcordantCandidate` (`:558`), `TestDimensionCanonicalizationUsesExactMillimetres` (`:582`). Contradiction still fires: `TestDifferentCanonicalDimensionsStillRejectConcordantCandidate` (`:653`). Must-fail below |
+| C7 | **PASS** | corroborated path still blocked: `TestCase6DokaKitHardNegativeCapsBaixaReject` (`:902`), `TestCase7VoltageHardNegativeCapsBaixaReject` (`:933`), `TestCase10DimensionHardNegativeCapsBaixaReject` (`:1026`), `TestDimensionPresenceAndGradeRulesRemainNonBlocking` (`:682`) — all with CODPROD+EAN concordant |
+| C8 | **PASS** | `resolution_service.go:369-381` three independent literals; `TestListLinkWorkflowsUsesIndependentDefaultLimitsAndReturnsAll29Links` (`resolution_service_test.go:361`) asserts `len(links)==29` on a 29-link fixture; `TestListLinkWorkflowsDefaultsDoNotVaryWithLimit` (`:406`) pins the independence at 5/20/500; `TestListLinkWorkflowsHonorsIndependentExplicitLimits` (`:447`). Must-fail below |
+| C9 | **PASS** | `git diff --name-only <base>..HEAD \| grep -i migration` → **zero**; the C10 list contains no `migrations/` path and no `product_links/adapters/postgres/` file at all, so the chip writes no `UPDATE` and no backfill. Characterised honestly: a pre-existing `ON CONFLICT … DO UPDATE SET reasons = EXCLUDED.reasons` does exist at `link_candidate_repo.go:79`, but it is the candidate **regeneration** upsert, untouched by this chip and depended on by the hub's own U1 ("depois de regerar candidatos"). R3 forbids retro-editing persisted motivos; it does not forbid regeneration from producing fresh ones |
+| C10 | **PASS** | full `git diff --name-only <base>..HEAD` pasted in the C10 block above — 17 paths, of which 2 are this evidence pack. `grep -c '^apps/web/'` = **0** |
+| C11 | **PASS (L0+L1) · governance lane BLOCKED on a hub ruling** | see the Ladder section below |
+| C12 | **PASS** | `git diff -w <base>..HEAD -- internal/composition/root.go` → **0 removed lines**, exactly 3 added, quoted verbatim in the C12 block above and in the CLOSED payload; `gofmt -l` clean (proven CR-stripped per the ROUND-1 analysis — the naive file-scoped check is uninformative on this checkout) |
 
 ## Ladder
 
-(L0/L1 outputs; pre-existing failures cite profile §2 allowlist)
+Profile §2 bindings. `GOCACHE`/`GOMODCACHE` bound ABSOLUTE before every Go command, as §2 requires
+on Windows (echoed into the transcript:
+`GOCACHE=/c/…/.claude/worktrees/chip-anchors/apps/server_core/.gocache`).
+
+| Rung | Command | Result |
+|---|---|---|
+| L0a | `go build ./...` (full tree, plain — no `-buildvcs=false`) | **exit 0** |
+| L0b | `go vet ./...` (full tree) | **exit 0** |
+| L1 | `go test -count=1 ./internal/modules/product_links/... ./internal/modules/connectors/... ./internal/modules/mutations/... ./internal/composition/...` | **exit 0**, 27 packages, all `ok`, zero failures |
+
+L1 scope is touched-packages-plus-guard-suites, not a full sweep, per §2: "full sweep only when
+migrations/platform touched" — and this chip has **zero** migrations (C9). The four trees are the
+complete set the diff reaches: `product_links` (owner), `connectors` (the declaration side),
+`mutations` (the only external consumer of `ListLinkWorkflowsInput`, via
+`adapters/productlinks/writer.go:163,191`), and `composition` (the root.go grant).
+
+**No allowlist entry was needed.** Zero failures, so profile §2's known-failure list is not being
+leaned on. Recorded explicitly because a GREEN-with-allowlist run and a genuinely green run are
+different claims and the contract asks for the citation only when the former applies. `apps/web`
+lanes are not owed: zero web files in the diff (C10), so the `TS2688` allowlist entry is likewise
+untouched here.
+
+**Governance lane — NOT run by the chip; REQUEST sent to the hub.** §2 and C11 both require it from
+a **clean detached worktree** with the 40-hex BaseSha, because a main checkout sweeps
+`.claude/worktrees/*` and false-fails. The dispatch prompt independently forbids this chip from
+creating another worktree or running `git checkout` in the primary repo, naming it the mission's
+most-recurring launch hazard (4/4 chips). The two instructions cannot both be satisfied by the chip.
+Per "disagreement = BLOCKED with evidence, never a unilateral decision", the chip did not decide
+which reading wins: a `REQUEST governance-lane` went to the hub with both readings and the exact
+command. C11 is therefore PASS on L0+L1 and OPEN on the governance rung, not claimed.
 
 ## Dual gate
 
-(P6 verdicts + reconciliation)
+Two reviewers on the fixed-SHA diff `917f7bb5..1df627f8`, dispatched concurrently and blind to each
+other: the GPT side (`gpt-5.6-sol` / medium, OS-process, `--sandbox read-only`) and a COLD Opus side
+on `harness:gate-reviewer`, which has no Edit/Write/Bash **by construction** rather than by
+instruction.
+
+**The two briefs are deliberately not identical, and the asymmetry is recorded so the reconciliation
+can be read correctly.** Both got the same contract, the same attack list and the same hub rulings.
+The GPT side was additionally handed the four already-declared open items (the `pol` token, the
+dormant duplicate reasons, the unprovable fail-closed branch, the un-run governance lane) with an
+instruction to RULE on the chip's handling rather than re-report them as discoveries. The Opus side
+was given no such list: it has to find them in the pack itself and judge them cold. So the GPT side
+is the tighter check on the contract, and the Opus side is the better check on whether the pack's
+own declarations survive a reader who was not told where to look. A disagreement between them about
+a declared item is therefore informative, not noise.
+
+Neither reviewer can run the governance lane either — same worktree constraint — so C11's governance
+rung stays OPEN across the gate regardless of the verdicts.
+
+(verdicts + reconciliation — pending)
 
 ## Must-fail proofs (R5)
 
-(per guard touched)
+Every guard this chip touched, with the mutation that must redden it. Each was run and observed, not
+reasoned about.
+
+| Guard | Mutation applied | Observed |
+|---|---|---|
+| C6 unit canonicalisation | remove the mm/cm/m/pol scaling so tokens compare lexically | golden `TestGoldenToalheiroDimensionUnitEquivalenceYieldsConfirm` goes RED (`500MM` vs `50cm` reads as a contradiction again) |
+| C6 contradiction still fires | — (inverse check, no mutation) | `50cm` vs `40CM` still REJECTs, so the canonicalisation did not simply disable the rule |
+| C8 independent limits | restore the shared `limit*5` derivation | the 29-link fixture returns fewer than 29 → RED |
+| C8 defaults independent of `Limit` | `linkLimit = candidateLimit*100`, `auditLimit = candidateLimit*500` | new test RED on the `5` and `500` rows, `20` row still green, **and both pre-existing default tests stay GREEN** — proving the old net was blind to the class |
+| F-02 display offsets | (proved by the reviewer, not the author) rebuilt the pre-corrective function standalone | returned `display="50c"`, truncated, for `"İnox 50cm"` — the guard is load-bearing |
+
+**One guard has NO must-fail proof, and this is stated rather than faked:** the fail-closed parse
+fallback in `hardNegativeDimension` is unreachable by construction with the five-token alternation,
+so no input reddens it. Both the implementing worker and the F-02 re-reviewer reached the same
+conclusion independently. R5 asks for a proof per guard TOUCHED; the honest report is that this
+branch cannot be exercised, not that it was exercised.
