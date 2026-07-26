@@ -61,6 +61,8 @@ type ManualResolveInput struct {
 type ListLinkWorkflowsInput struct {
 	InstallationID string
 	Limit          int
+	LinkLimit      int
+	AuditLimit     int
 }
 
 // UndoResolutionInput is the S4 single-resolution undo request: the audit
@@ -365,19 +367,27 @@ func (s *ResolutionService) ListLinkWorkflows(ctx context.Context, input ListLin
 	if installationID == "" {
 		return nil, errors.New("PRODUCT_LINKS_INSTALLATION_REQUIRED")
 	}
-	limit := input.Limit
-	if limit <= 0 {
-		limit = 20
+	candidateLimit := input.Limit
+	if candidateLimit <= 0 {
+		candidateLimit = 20
 	}
-	candidates, err := s.candidates.ListLinkCandidates(ctx, installationID, limit)
+	linkLimit := input.LinkLimit
+	if linkLimit <= 0 {
+		linkLimit = 2000
+	}
+	auditLimit := input.AuditLimit
+	if auditLimit <= 0 {
+		auditLimit = 10000
+	}
+	candidates, err := s.candidates.ListLinkCandidates(ctx, installationID, candidateLimit)
 	if err != nil {
 		return nil, err
 	}
-	links, err := s.workflows.ListProductLinks(ctx, installationID, limit)
+	links, err := s.workflows.ListProductLinks(ctx, installationID, linkLimit)
 	if err != nil {
 		return nil, err
 	}
-	audits, err := s.workflows.ListProductLinkAuditEntries(ctx, installationID, limit*5)
+	audits, err := s.workflows.ListProductLinkAuditEntries(ctx, installationID, auditLimit)
 	if err != nil {
 		return nil, err
 	}
