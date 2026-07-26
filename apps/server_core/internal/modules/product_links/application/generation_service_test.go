@@ -524,6 +524,126 @@ func generateSingle(t *testing.T, snapshot productlinksdomain.ListingSnapshot, m
 	return result.Items[0]
 }
 
+func TestGoldenToalheiroDimensionUnitEquivalenceYieldsConfirm(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 7, 26, 9, 0, 0, 0, time.UTC)
+	snapshot := productlinksdomain.ListingSnapshot{
+		InstallationID: "inst-m05", ProviderCode: "mercado_livre", ProviderItemID: "MLB4735326915",
+		SellerSKU: "33698", EAN: "", Title: "Toalheiro Simples Soul Zen 50cm Cromado", FetchedAt: now,
+	}
+	matcher := &stubProductMatcher{results: map[string][]internalreaddomain.ProductCandidate{
+		"sku:33698": {{InternalProductID: canonicalIDPtr(33698), Name: "SOUL TOALHEIRO SIMPLES 500MM CR/POLIDO"}},
+	}}
+
+	candidate := generateSingle(t, snapshot, matcher, now)
+
+	if candidate.MatchStatus != productlinksdomain.LinkCandidateMatchStatusConfirm {
+		t.Fatalf("match_status=%s, want CONFIRM", candidate.MatchStatus)
+	}
+	if candidate.Confidence != 70 {
+		t.Fatalf("confidence=%d, want 70", candidate.Confidence)
+	}
+	if candidate.ConfidenceBand != productlinksdomain.LinkCandidateConfidenceBandMedia {
+		t.Fatalf("confidence_band=%s, want MEDIA", candidate.ConfidenceBand)
+	}
+	if reason, ok := findReason(candidate.Reasons, "title", productlinksdomain.LinkCandidateReasonDirectionAgainst); ok {
+		t.Fatalf("title AGAINST reason=%#v, want none", reason)
+	}
+	eanReason, ok := findReason(candidate.Reasons, "ean", productlinksdomain.LinkCandidateReasonDirectionUnavailable)
+	if !ok || eanReason.Detail != "sem EAN para corroborar o CODPROD" {
+		t.Fatalf("ean reason=%#v, want exact missing-EAN detail", eanReason)
+	}
+}
+
+func TestEquivalentDimensionUnitsDoNotRejectConcordantCandidate(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 7, 26, 9, 5, 0, 0, time.UTC)
+	snapshot := productlinksdomain.ListingSnapshot{
+		InstallationID: "inst-dimension", ProviderCode: "mercado_livre", ProviderItemID: "MLB-DIM-EQUIV",
+		SellerSKU: "DIM-500", EAN: "7890000000508", Title: "Toalheiro Soul 50cm", FetchedAt: now,
+	}
+	product := internalreaddomain.ProductCandidate{InternalProductID: canonicalIDPtr(500), Name: "TOALHEIRO SOUL 500MM"}
+	matcher := &stubProductMatcher{results: map[string][]internalreaddomain.ProductCandidate{
+		"sku:DIM-500":       {product},
+		"ean:7890000000508": {product},
+	}}
+
+	candidate := generateSingle(t, snapshot, matcher, now)
+
+	if candidate.MatchStatus != productlinksdomain.LinkCandidateMatchStatusAccept ||
+		candidate.ConfidenceBand != productlinksdomain.LinkCandidateConfidenceBandAlta {
+		t.Fatalf("candidate=%#v, want ALTA/ACCEPT", candidate)
+	}
+	if reason, ok := findReason(candidate.Reasons, "title", productlinksdomain.LinkCandidateReasonDirectionAgainst); ok {
+		t.Fatalf("title AGAINST reason=%#v, want none", reason)
+	}
+}
+
+func TestDimensionCanonicalizationUsesExactMillimetres(t *testing.T) {
+	t.Parallel()
+	for name, titles := range map[string][2]string{
+		"inches":        {"Produto 2pol", "Produto 50.8mm"},
+		"metres":        {"Produto 1m", "Produto 100cm"},
+		"decimal comma": {"Produto 1,5m", "Produto 150cm"},
+		"decimal point": {"Produto 1.5m", "Produto 150cm"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if hardNegative, detail := detectHardNegative(titles[0], titles[1]); hardNegative {
+				t.Fatalf("detectHardNegative(%q, %q)=(true, %q), want equivalent dimensions", titles[0], titles[1], detail)
+			}
+		})
+	}
+}
+
+func TestDifferentCanonicalDimensionsStillRejectConcordantCandidate(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 7, 26, 9, 10, 0, 0, time.UTC)
+	snapshot := productlinksdomain.ListingSnapshot{
+		InstallationID: "inst-dimension", ProviderCode: "mercado_livre", ProviderItemID: "MLB-DIM-DIFF",
+		SellerSKU: "DIM-DIFF", EAN: "7890000000409", Title: "Toalheiro Soul 50cm", FetchedAt: now,
+	}
+	product := internalreaddomain.ProductCandidate{InternalProductID: canonicalIDPtr(400), Name: "TOALHEIRO SOUL 40cm"}
+	matcher := &stubProductMatcher{results: map[string][]internalreaddomain.ProductCandidate{
+		"sku:DIM-DIFF":      {product},
+		"ean:7890000000409": {product},
+	}}
+
+	candidate := generateSingle(t, snapshot, matcher, now)
+
+	if candidate.MatchStatus != productlinksdomain.LinkCandidateMatchStatusReject ||
+		candidate.ConfidenceBand != productlinksdomain.LinkCandidateConfidenceBandBaixa {
+		t.Fatalf("candidate=%#v, want BAIXA/REJECT", candidate)
+	}
+	reason, ok := findReason(candidate.Reasons, "title", productlinksdomain.LinkCandidateReasonDirectionAgainst)
+	if !ok || !strings.Contains(reason.Detail, "medida/dimensão") ||
+		!strings.Contains(reason.Detail, "50cm") || !strings.Contains(reason.Detail, "40cm") {
+		t.Fatalf("title AGAINST reason=%#v, want readable original dimensions", reason)
+	}
+	if strings.Contains(reason.Detail, "mm:") || strings.Contains(reason.Detail, "/1") {
+		t.Fatalf("title AGAINST detail=%q, want no canonical representation", reason.Detail)
+	}
+}
+
+func TestDimensionPresenceAndGradeRulesRemainNonBlocking(t *testing.T) {
+	t.Parallel()
+	for name, titles := range map[string][2]string{
+		"neither side":       {"Camisa lisa", "Camisa básica"},
+		"listing side only":  {"Mesa 50cm", "Mesa"},
+		"internal side only": {"Mesa", "Mesa 50cm"},
+		"lowercase metre":    {"Tecido 1m", "Tecido 100cm"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if hardNegative, detail := detectHardNegative(titles[0], titles[1]); hardNegative {
+				t.Fatalf("detectHardNegative(%q, %q)=(true, %q), want non-blocking", titles[0], titles[1], detail)
+			}
+		})
+	}
+	hardNegative, detail := detectHardNegative("Camisa M", "Camisa G")
+	if !hardNegative || !strings.Contains(detail, "medida/dimensão") {
+		t.Fatalf("detectHardNegative grade result=(%t, %q), want uppercase grades compared", hardNegative, detail)
+	}
+}
+
 // Case 1 — CONCORDANT-ALTA: seller_sku + ean agree on the same codprod, no
 // hard-negative. Also the primary auto-ACCEPT proxy.
 func TestCase1ConcordantSKUAndEANYieldsAltaAccept(t *testing.T) {

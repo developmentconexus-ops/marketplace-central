@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"regexp"
 	"slices"
 	"strconv"
@@ -661,7 +662,7 @@ var (
 	// Dimension tokens: NxM(xK) patterns and numeric measurements with a
 	// unit (mm/cm/pol/" and bare metre "m"). Matched on the lowercased
 	// title.
-	hardNegativeDimensionPattern = regexp.MustCompile(`\d+\s*x\s*\d+(?:\s*x\s*\d+)?|\d+(?:[.,]\d+)?\s*(?:mm|cm|pol|")|\d+(?:[.,]\d+)?\s*m\b`)
+	hardNegativeDimensionPattern = regexp.MustCompile(`\d+\s*x\s*\d+(?:\s*x\s*\d+)?|\d+(?:[.,]\d+)?\s*(?:inches|inch|pol|mm|cm|in|")|\d+(?:[.,]\d+)?\s*m\b`)
 	// Clothing/grade sizes are matched CASE-SENSITIVELY on the original
 	// title so the metre abbreviation "m" (lowercase, caught above as a
 	// measurement) never collides with the "M" grade size.
@@ -694,9 +695,9 @@ func detectHardNegative(snapshotTitle, internalName string) (bool, string) {
 		}
 	}
 
-	if stDim, ok := hardNegativeDimension(st, stOriginal); ok {
-		if inDim, ok2 := hardNegativeDimension(in, inOriginal); ok2 && stDim != inDim {
-			return true, fmt.Sprintf("hard-negative: medida/dimensão divergente %s≠%s", stDim, inDim)
+	if stDim, stDisplay, ok := hardNegativeDimension(st, stOriginal); ok {
+		if inDim, inDisplay, ok2 := hardNegativeDimension(in, inOriginal); ok2 && stDim != inDim {
+			return true, fmt.Sprintf("hard-negative: medida/dimensão divergente %s≠%s", stDisplay, inDisplay)
 		}
 	}
 
@@ -722,22 +723,49 @@ func hardNegativeVoltage(text string) (string, bool) {
 // dimension contradiction only when BOTH carry dimension tokens and the
 // signatures differ — normal titles without measurements are never flagged
 // (symmetrical to the voltage/color checks, no false positives).
-func hardNegativeDimension(lowered, original string) (string, bool) {
-	tokens := hardNegativeDimensionPattern.FindAllString(lowered, -1)
-	normalized := make([]string, 0, len(tokens))
-	for _, token := range tokens {
-		token = strings.ReplaceAll(token, " ", "")
+func hardNegativeDimension(lowered, original string) (string, string, bool) {
+	tokenIndexes := hardNegativeDimensionPattern.FindAllStringIndex(lowered, -1)
+	keys := make([]string, 0, len(tokenIndexes))
+	display := make([]string, 0, len(tokenIndexes))
+	for _, index := range tokenIndexes {
+		token := strings.ReplaceAll(lowered[index[0]:index[1]], " ", "")
 		token = strings.ReplaceAll(token, ",", ".")
-		normalized = append(normalized, token)
+		display = append(display, strings.TrimSpace(original[index[0]:index[1]]))
+		if strings.Contains(token, "x") {
+			keys = append(keys, token)
+			continue
+		}
+
+		unit := ""
+		for _, candidate := range []string{"inches", "inch", "pol", "mm", "cm", "in", `"`, "m"} {
+			if strings.HasSuffix(token, candidate) {
+				unit = candidate
+				break
+			}
+		}
+		value, ok := new(big.Rat).SetString(strings.TrimSuffix(token, unit))
+		if !ok {
+			return "", "", false
+		}
+		switch unit {
+		case "cm":
+			value.Mul(value, big.NewRat(10, 1))
+		case "m":
+			value.Mul(value, big.NewRat(1000, 1))
+		case "pol", `"`, "in", "inch", "inches":
+			value.Mul(value, big.NewRat(127, 5))
+		}
+		keys = append(keys, "mm:"+value.RatString())
 	}
 	for _, size := range hardNegativeSizePattern.FindAllString(original, -1) {
-		normalized = append(normalized, strings.ToLower(size))
+		keys = append(keys, strings.ToLower(size))
+		display = append(display, size)
 	}
-	if len(normalized) == 0 {
-		return "", false
+	if len(keys) == 0 {
+		return "", "", false
 	}
-	slices.Sort(normalized)
-	return strings.Join(slices.Compact(normalized), "|"), true
+	slices.Sort(keys)
+	return strings.Join(slices.Compact(keys), "|"), strings.Join(display, "|"), true
 }
 
 func hardNegativeColor(text string) (string, bool) {
