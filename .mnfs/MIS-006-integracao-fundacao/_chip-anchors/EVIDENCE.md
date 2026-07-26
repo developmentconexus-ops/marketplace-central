@@ -1187,7 +1187,7 @@ independently against base — base literal had 4 keys at `root.go:537-542`, non
 | C8 | **PASS** | `resolution_service.go:370-381` — three literals off three independent input fields (`Limit`→20 `:372`, `LinkLimit`→2000 `:376`, `AuditLimit`→10000 `:380`), no shared derivation; `TestListLinkWorkflowsUsesIndependentDefaultLimitsAndReturnsAll29Links` (`resolution_service_test.go:361`) asserts `len(links)==29` on a 29-link fixture; `TestListLinkWorkflowsDefaultsDoNotVaryWithLimit` (`:406`) pins independence at 5/20/500/**5000**; `TestListLinkWorkflowsHonorsIndependentExplicitLimits` (`:448`). Must-fail run and PASTED below. (This file was untouched by S7/S8/S9, so only the `:369`→`:370` and `:447`→`:448` off-by-ones needed correcting — recorded because ROUND 3 classifies clean sites too) |
 | C9 | **PASS** | `git diff --name-only <base>..HEAD \| grep -i migration` → **zero**; the C10 evidence block contains no `migrations/` path and no `product_links/adapters/postgres/` file at all, so the chip writes no `UPDATE` and no backfill. Characterised honestly: a pre-existing `ON CONFLICT … DO UPDATE SET reasons = EXCLUDED.reasons` does exist at `link_candidate_repo.go:79`, but it is the candidate **regeneration** upsert, untouched by this chip and depended on by the hub's own U1 ("depois de regerar candidatos"). R3 forbids retro-editing persisted motivos; it does not forbid regeneration from producing fresh ones |
 | C10 | **PASS** | full `git diff --name-only <base>..HEAD` pasted whole in the C10 evidence block above — **15 code paths**. `grep -c '^apps/web/'` = **0** |
-| C11 | **PARTIAL — L0+L1 PASS, governance rung OPEN at the final tip** | L0+L1 re-run by the chip at code tip `2921d563`: `go build ./...` clean (no VCS-stamping artifact on the chip's own run), `go vet` clean, `go test -count=10` → `EXIT=0`, 9 packages ok. Governance: the differential PASS (53 == 53, line for line) was measured at `8e37958a`, and **five code files changed between that tip and the reviewed one**, so it does NOT cover the final tip — see the struck-through synchrony check in the Ladder. Rung is hub-owned per R-b; CLOSED payload carries a `REQUEST` for a re-run at `2921d563`. Not claimed as PASS |
+| C11 | **PASS** | L0+L1 re-run by the chip at code tip `2921d563`: `go build ./...` clean (no VCS-stamping artifact on the chip's own run), `go vet` clean, `go test -count=10` → `EXIT=0`, 9 packages ok. Governance rung: hub-owned per R-b, was OPEN and is now **CLOSED** — the hub re-ran the lane at code tip `2921d563` on the `REQUEST` this pack carried, 53 violations, output IDENTICAL to BASE and to the `8e37958a` measurement. Evidence `main` @ `7c54bef`, `_chip-anchors/hub-governance-lane.md`. Cited, not re-proven; the struck-through synchrony check in the Ladder is why the re-run was needed |
 | C12 | **PASS** | `git diff -w <base>..HEAD -- internal/composition/root.go` → **0 removed lines**, exactly 3 added, quoted verbatim in the C12 evidence block above and in the CLOSED payload; `gofmt -l` clean (proven CR-stripped per the ROUND-1 analysis — the naive file-scoped check is uninformative on this checkout) |
 
 ### C2 — the criterion's statement and its *prova mínima* do not cover the same set
@@ -1283,6 +1283,9 @@ permissão só porque existe um caminho seguro dentro dela"; (3) provisioning co
 inherits neither `node_modules` nor `.gomodcache` (profile §3 forbids the junction), so the chip
 would pay a full `npm ci` to run one scan, while the hub's setup already exists.
 
+*(State as of the ownership handover. The rung went OPEN → hub PASS at `8e37958a` → reopened in
+ROUND 3 → hub PASS at the final code tip `2921d563`. Final state is two sections below.)*
+
 Consequences, as directed: C11 is **OPEN** on this rung from the chip's side — **not** PASS, **not**
 BLOCKED. The hub runs the lane in parallel on tip `8e37958` and attaches the result at acceptance.
 CLOSED is explicitly **not** held for it; drift, if the lane reports any, returns as a post-CLOSED
@@ -1346,11 +1349,35 @@ Five code files, `generation_service.go` among them — the very file the govern
 is withdrawn.** Found by the GPT gate in round 2, verified by the chip with the command above before
 being accepted.
 
-Consequence, stated rather than smoothed over: **the governance rung is OPEN at the final tip.** It
-is not being counted as PASS. The rung is hub-owned by ruling R-b, so the chip cannot close it
-itself; the CLOSED payload carries a `REQUEST` for a governance re-run at the final code tip
-`2921d563`. The earlier differential result (53 == 53 at `8e37958a`) stands as evidence about
-`8e37958a` and nothing later.
+Consequence, stated rather than smoothed over: **the governance rung was OPEN at the final tip.** It
+was not counted as PASS. The rung is hub-owned by ruling R-b, so the chip could not close it itself;
+a `REQUEST` for a re-run at the final code tip `2921d563` went to the hub. The earlier differential
+result (53 == 53 at `8e37958a`) stands as evidence about `8e37958a` and nothing later.
+
+### Rung CLOSED — hub re-ran the lane at the final code tip
+
+Hub evidence, committed to `main` @ `7c54bef`: `_chip-anchors/hub-governance-lane.md`, updated.
+Cited here, **not re-proven** — same ownership as before. Identical method: clean detached worktree
+outside `.claude/worktrees/`, same BaseSha `917f7bb5…`, measured at `2921d563` — the SHA that gets
+merged.
+
+| Run | Result |
+|---|---|
+| code tip `2921d563` | `status=failed`, exit 1, **53 violations**, 175 lines |
+| vs BASE-SHA output | **IDENTICAL** |
+| vs the first measurement at `8e37958a` | **IDENTICAL** — nothing in S7/S8/S9 touched a surface the lane measures |
+
+**Hub verdict: C11's governance rung PASSES on the differential reading, now anchored to the SHA
+that will be merged.** The honesty note above still applies in full — the lane is red on `main`, was
+red before this chip existed, and 53 violations remain the hub's outstanding debt.
+
+**The premise was dead and the conclusion survived anyway — which is why this is recorded and not
+quietly dropped.** The re-run confirmed what the withdrawn synchrony claim had asserted. That does
+not retroactively make the claim evidence: it was proven between two PACK commits, so it never
+covered S7/S8/S9 regardless of how the re-run came out. The hub named the defect in its own
+instruction (`<sha medido>..<sha a mergear>` is the only valid window) and made the fix a standing
+rule rather than a request: **a hub-run lane rung re-measures at the final tip by default — a
+measurement is valid for a SHA, never for a branch.** Carried upstream with the C11 amendment.
 
 ## ROUND-3 FULL ANALYSIS — evidence pinned to a tip that has moved (profile §11, hub ruling R4)
 
