@@ -44,7 +44,7 @@ the verdict/output artifact afterwards.
 | D16 | P3 | Implementer S7 (R5 coverage for 3 reachable guards + clamped-formula row) | gpt-5.6-luna / high | OS-process codex | `scratchpad/prompt-s7.md` | `scratchpad/agent__s7-impl.last.md` + `.log` | GREEN; worker **could not commit** (sandbox `index.lock: Permission denied`, profile §3 class) — chip verified and committed `e1195806` |
 | D13 | P4 | Re-reviewer, feature F-01 over `f92ca9c7` | Claude sonnet subagent | Agent tool, async | inline brief | `tasks/ad9c0421c9c2a538c.output` | completed — **PASS**, zero findings |
 | D17 | P3 | Implementer S8 (hub rulings R-6 dedup/precedence + R-7 parser seam) | gpt-5.6-sol / low (complex slice) | OS-process codex | `scratchpad/prompt-s8.md` | `scratchpad/agent__s8-impl.last.md` + `.log` | committed `d9952509`; **R-7 accepted, R-6 REGRESSES the TitleMatch path** — chip-verified by differential probe, `ESCALATION` sent, corrective pending the hub ruling |
-| D18 | P3 | Implementer S9 (hub ruling R-6a: UNAVAILABLE exclusive, FOR+AGAINST coexist) | gpt-5.6-sol / low (complex slice) | OS-process codex | `scratchpad/prompt-s9.md` | `scratchpad/agent__s9-impl.last.md` + `.log` | dispatched |
+| D18 | P3 | Implementer S9 (hub ruling R-6a: UNAVAILABLE exclusive, FOR+AGAINST coexist) | gpt-5.6-sol / low (complex slice) | OS-process codex | `scratchpad/prompt-s9.md` | `scratchpad/agent__s9-impl.last.md` + `.log` | committed `2921d563`; matrix reported total, no uncovered case; **chip-verified** — regression closed by own probe, rule-2 must-fail re-run by hand, L0+L1 green at tip |
 
 ## Slice S3 — chip verification, and a defect in the chip's own slice card
 
@@ -706,6 +706,107 @@ failure that produced this round.
 The integration-test duplicate-anchor assertion was ADDED but **NOT RUN** — no database is
 provisioned and the dev stack is a hub seam this chip may not boot. Recorded as NOT RUN. It is not
 being counted as passing, and the worker reported it the same way rather than quietly omitting it.
+
+## Slice S9 — chip verification (hub ruling R-6a, `2921d563`)
+
+Dispatched with the 11-row collision matrix written out in full, because the two preceding slices on
+this same function each broke on exactly one case their card left undefined. S9 reported the matrix
+total and found no uncovered case.
+
+Write set respected — `git show 2921d563 --stat` lists exactly the two permitted files, 20
+insertions / 13 deletions in production. Zero migration, zero `apps/web`, zero contract/SDK.
+
+### The implementation, read against the matrix
+
+`generation_service.go:615-657`. Three passes, none of which ranges a map for output:
+
+1. `:617-623` — a PRE-PASS builds `hasSignal[anchor]` over all reasons. Because it is a pre-pass, rule
+   1 is **order-independent**: a seed `UNAVAILABLE` that PRECEDES the `FOR` on the same anchor is
+   still suppressed. The chip verified this case directly (below); S9's own tests do not pin it.
+2. `:626-641` — non-`UNAVAILABLE` reasons are appended verbatim with **zero dedup**, so same-anchor
+   `FOR` and `AGAINST` both survive in seed order (rule 2). `UNAVAILABLE` reasons are skipped when
+   `hasSignal`, else the first is kept and its index recorded (rule 3, second half).
+3. `:643-656` — declarations skip on `anchor.Supplied || hasSignal[anchor.Anchor]`, else replace at
+   the recorded seed index or append in declaration order (rule 3, declaration wins).
+
+All eleven matrix rows are satisfied by reading. Output order derives from slice iteration only.
+
+### Chip-run probe — the regression is gone
+
+Independent of S9's tests. A throwaway probe (`zz_chip_probe_test.go`, run then deleted, never
+committed) drove state `TitleMatch` with a hard negative through the public
+`buildCandidatesFromProducts` path and printed every reason. Verbatim:
+
+```
+=== RUN   TestChipProbeTitleForAndAgainstSurvive
+    status="REJECT"
+    reason[0] anchor="title"      direction="FOR"         detail="match por título (ranking-only, nunca ACCEPT)"
+    reason[1] anchor="seller_sku" direction="UNAVAILABLE" detail="seller_sku sem correspondência"
+    reason[2] anchor="ean"        direction="UNAVAILABLE" detail="ean sem correspondência"
+    reason[3] anchor="title"      direction="AGAINST"     detail="hard-negative: kit/combo divergente entre título do anúncio e produto interno"
+    reason[4] anchor="marca"      direction="UNAVAILABLE" detail="provider não fornece a âncora marca"
+    reason[5] anchor="refforn"    direction="UNAVAILABLE" detail="provider não fornece a âncora refforn"
+--- PASS
+```
+
+`title FOR` at index 0 and `title AGAINST` at index 3 both survive on a REJECT. The S8 regression —
+a REJECT with no stated contradiction and a `FOR` on the contradicting anchor — is closed.
+
+The same output independently re-proves **R1** at the wire level: `seller_sku`/`ean` carry the SEED
+detail ("sem correspondência" = the provider supplies this anchor, this listing has no value) while
+`marca`/`refforn` carry the DECLARATION detail ("provider não fornece"). The distinction lives in
+`detail`, with no 4th enum value — and it survives the finalizer rather than being flattened by it.
+
+The probe asserted `len(candidates) == 0` as a hard failure before reading anything, per the vacuous
+pass that already happened once on this chip.
+
+### Chip-run probe — rule 1 is order-independent
+
+Second probe, calling the choke point directly with the `UNAVAILABLE` seeded BEFORE the `FOR`:
+
+```
+=== RUN   TestChipProbeUnavailableBeforeForIsSuppressed
+    reason[0] anchor="ean" direction="FOR" detail="EAN confere"
+--- PASS
+```
+
+One reason out, the `FOR`. This is matrix row "1 × `UNAVAILABLE` + 1 × `FOR` | either", which S9's
+suite covers only in the opposite seed order.
+
+### Chip-run must-fail — the rule-2 mutation, re-run by the chip
+
+S8's report was clean while its code regressed, so the highest-value proof was re-run by hand rather
+than accepted. Mutation: restore blanket per-anchor dedup on the signal side of pass 2.
+
+```
+--- FAIL: TestTitleMatchHardNegativeKeepsTitleForAndAgainstInSeedOrder (0.00s)
+    generation_service_test.go:335: title reasons=[]domain.LinkCandidateReason{domain.LinkCandidateReason{Anchor:"title", Direction:"FOR", Detail:"match por título (ranking-only, nunca ACCEPT)"}}, want FOR then AGAINST
+```
+
+RED, and **not confounded** — the failure message names the missing `AGAINST` specifically, so the
+test is pinning the regression itself and not some incidental difference. Mutation reverted from a
+byte copy taken before it was applied; `git diff --stat` on the file is empty afterwards.
+
+### Reported by S9, not independently re-run by the chip
+
+Stated as the worker's observation, not as chip-verified fact: the rule-1 suppression mutation, the
+rule-3 precedence inversion, and the map-iteration ordering mutation. The last one is worth carrying
+forward — S9 reports it went **RED on run 7 of 10**, so a `-count=5` lane would have passed a
+genuinely non-deterministic ordering. The `-count=10` in the card was load-bearing by luck, and a
+future ordering guard on persisted rows should not be run at a lower count.
+
+The integration-test assertion remains **NOT RUN** — no database, dev stack is a hub seam.
+
+### Ladder at the frozen tip
+
+Run by the chip at `2921d563`, GOCACHE/GOMODCACHE absolute:
+
+- `go build ./...` — clean, no output, no VCS-stamping artifact this run.
+- `go vet ./internal/modules/product_links/... ./internal/modules/connectors/...` — clean.
+- `go test -count=10 ./internal/modules/product_links/... ./internal/modules/connectors/...` —
+  `EXIT=0`, 9 packages `ok`, including `product_links/application` (6.878s) and
+  `connectors/application` (5.949s).
+- `git status --porcelain` — empty. Tip frozen for the round-2 gates.
 
 ## P4 round 2 — re-review of F-02 over the corrective
 
@@ -1388,7 +1489,17 @@ the wrong thing.
 
 R-6 and R-7 are implemented in slice S8. R-8 is recorded on the ladder, not implemented.
 
-### ROUND 2 — pending, on a frozen tip
+### ROUND 2 — dispatched on the frozen tip
+
+Round 2 was deliberately HELD while S8's regression was open, rather than dispatched against a tip
+the chip already knew to be defective. The hub endorsed holding it. Both gates were dispatched only
+after S9 landed, the chip verified it independently, and the tree went clean.
+
+Frozen tip: the pack commit recorded below. Both gates run blind to each other, both over code AND
+pack at that one SHA, with R-6a, R-7 and R-8 stated as authority rather than open questions — and
+with the instruction that a ruling in the chip's favour is not evidence the code is right.
+
+Verdicts land here.
 
 ## Must-fail proofs (R5)
 
@@ -1406,6 +1517,10 @@ reasoned about.
 | **S7** empty provider code (`generation_service.go:156-158`) | delete the `providerCode == ""` check | `TestGenerateLinkCandidatesFailsWhenProviderCodeIsEmpty` RED — **re-run by the chip itself**, observed verbatim: `error = PRODUCT_LINKS_PROVIDER_IDENTITY_ANCHORS_UNAVAILABLE for provider "": identity anchor declaration is nil, want empty provider code failure`. See the honesty note below — this proof says less than the other two |
 | **S7** nil declaration (`generation_service.go:163-165`) | delete the `declaration == nil` check | `error = <nil>` → `TestGenerateLinkCandidatesFailsWhenIdentityAnchorDeclarationIsNil` RED |
 | **S7** clamped limit formula (`resolution_service.go`) | apply `linkLimit = max(2000, candidateLimit*4)` | `limit_5000` row RED (`link limit = 20000, want 2000`) **while `limit_5`, `limit_20` and `limit_500` all stay GREEN** — the contrast is the proof that the old 3-row table was blind to the clamped class |
+| **S9** R-6a rule 2, `FOR`+`AGAINST` coexist (`generation_service.go:626-641`) | restore blanket per-anchor dedup on the signal side | `TestTitleMatchHardNegativeKeepsTitleForAndAgainstInSeedOrder` RED — **re-run by the chip itself**, observed verbatim: `title reasons=[]domain.LinkCandidateReason{...Anchor:"title", Direction:"FOR"...}, want FOR then AGAINST`. Not confounded: the message names the missing `AGAINST` |
+| **S9** R-6a rule 1, `UNAVAILABLE` exclusive | emit the declaration `UNAVAILABLE` beside a `FOR` | reported RED by S9 (both `ean FOR` and declaration `ean UNAVAILABLE` in output) — worker-observed, not chip-re-run |
+| **S9** R-6a rule 3, declaration beats seed | invert precedence | reported RED by S9 (`"ean sem correspondência"` survived) — worker-observed, not chip-re-run |
+| **S9** ordering determinism | process declarations through map iteration | reported RED by S9 **on run 7 of 10** — worker-observed. A `-count=5` lane would have passed a genuinely non-deterministic ordering; see the S9 section |
 
 **Honesty note on the empty-provider-code proof — it is weaker than the other two, and the
 difference matters.** Deleting the duplicate-anchor and nil-declaration guards makes the error go
