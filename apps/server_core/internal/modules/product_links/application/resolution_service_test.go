@@ -403,6 +403,47 @@ func TestListLinkWorkflowsUsesIndependentDefaultLimitsAndReturnsAll29Links(t *te
 	}
 }
 
+func TestListLinkWorkflowsDefaultsDoNotVaryWithLimit(t *testing.T) {
+	t.Parallel()
+
+	limits := []struct {
+		name  string
+		limit int
+	}{
+		{name: "limit_5", limit: 5},
+		{name: "limit_20", limit: 20},
+		{name: "limit_500", limit: 500},
+	}
+	for _, tc := range limits {
+		t.Run(tc.name, func(t *testing.T) {
+			limit := tc.limit
+			candidateStore := &limitingCandidateStore{stubCandidateStore: &stubCandidateStore{}}
+			workflowStore := &limitingWorkflowStore{stubWorkflowStore: &stubWorkflowStore{}}
+			svc := NewResolutionService(ResolutionServiceConfig{
+				Candidates: candidateStore,
+				Workflows:  workflowStore,
+			})
+
+			_, err := svc.ListLinkWorkflows(context.Background(), ListLinkWorkflowsInput{
+				InstallationID: "inst-defaults",
+				Limit:          limit,
+			})
+			if err != nil {
+				t.Fatalf("ListLinkWorkflows() error = %v", err)
+			}
+			if candidateStore.observedLimit != limit {
+				t.Fatalf("candidate limit = %d, want %d", candidateStore.observedLimit, limit)
+			}
+			if workflowStore.observedLinkLimit != 2000 {
+				t.Fatalf("link limit = %d, want 2000", workflowStore.observedLinkLimit)
+			}
+			if workflowStore.observedAuditLimit != 10000 {
+				t.Fatalf("audit limit = %d, want 10000", workflowStore.observedAuditLimit)
+			}
+		})
+	}
+}
+
 func TestListLinkWorkflowsHonorsIndependentExplicitLimits(t *testing.T) {
 	t.Parallel()
 
