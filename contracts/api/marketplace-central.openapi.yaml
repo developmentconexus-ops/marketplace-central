@@ -6522,7 +6522,10 @@ components:
           type: string
         direction:
           type: string
-          enum: [FOR, AGAINST, UNAVAILABLE]
+          enum: [FOR, AGAINST, UNAVAILABLE, INCOMPARABLE]
+        side:
+          type: string
+          enum: [provider, erp, both]
         detail:
           type: string
 

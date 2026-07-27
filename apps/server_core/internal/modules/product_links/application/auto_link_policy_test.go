@@ -121,6 +121,46 @@ func TestConcordantAnchorsAreTheOnlyAutomaticPath(t *testing.T) {
 	}
 }
 
+func TestIncomparableReasonsDoNotChangeAutomaticOrConfirmationPolicy(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 7, 27, 10, 0, 0, 0, time.UTC)
+
+	concordant := concordantSnapshot("MLB-INCOMPARABLE-ACCEPT", now)
+	concordant.Title = ""
+	svc, workflows, _ := autoLinkingServices(t, []productlinksdomain.ListingSnapshot{concordant}, concordantMatcher(), now)
+	candidates := generateAll(t, svc, "inst-m05")
+	if len(candidates) != 1 || candidates[0].MatchStatus != productlinksdomain.LinkCandidateMatchStatusAccept {
+		t.Fatalf("concordant candidates=%#v, want ACCEPT despite incomparable title", candidates)
+	}
+	titleReason, ok := findReason(candidates[0].Reasons, "title", productlinksdomain.LinkCandidateReasonDirectionIncomparable)
+	if !ok || titleReason.Side != productlinksdomain.LinkCandidateReasonSideProvider {
+		t.Fatalf("concordant reasons=%#v, want title INCOMPARABLE/provider", candidates[0].Reasons)
+	}
+	if len(workflows.applied) != 1 {
+		t.Fatalf("applied transitions=%d, want one automatic approval", len(workflows.applied))
+	}
+
+	single := productlinksdomain.ListingSnapshot{
+		InstallationID: "inst-m05", ProviderCode: "mercado_livre", ProviderItemID: "MLB-INCOMPARABLE-CONFIRM",
+		SellerSKU: goldenSKUOnly, Title: "", FetchedAt: now,
+	}
+	singleMatcher := &stubProductMatcher{results: map[string][]internalreaddomain.ProductCandidate{
+		"sku:" + goldenSKUOnly: {{InternalProductID: canonicalIDPtr(100001), Name: "PUXADOR DHARMA PONTO CR"}},
+	}}
+	singleSvc, singleWorkflows, _ := autoLinkingServices(t, []productlinksdomain.ListingSnapshot{single}, singleMatcher, now)
+	singleCandidates := generateAll(t, singleSvc, "inst-m05")
+	if len(singleCandidates) != 1 || singleCandidates[0].MatchStatus != productlinksdomain.LinkCandidateMatchStatusConfirm {
+		t.Fatalf("single-anchor candidates=%#v, want CONFIRM despite incomparable reasons", singleCandidates)
+	}
+	eanReason, ok := findReason(singleCandidates[0].Reasons, "ean", productlinksdomain.LinkCandidateReasonDirectionIncomparable)
+	if !ok || eanReason.Side != productlinksdomain.LinkCandidateReasonSideBoth {
+		t.Fatalf("single-anchor reasons=%#v, want ean INCOMPARABLE/both", singleCandidates[0].Reasons)
+	}
+	if len(singleWorkflows.applied) != 0 {
+		t.Fatalf("single-anchor applied=%#v, want no automatic approval", singleWorkflows.applied)
+	}
+}
+
 // M05-C2 and M05-C14: a single anchor resolves one product, but nothing
 // corroborates it — so it waits for a human, and the warning names the anchor
 // that is missing (AC-11 forbids a generic one).
@@ -165,7 +205,7 @@ func TestSingleAnchorGoesToConfirmationNeverAutoApproved(t *testing.T) {
 			if candidates[0].MatchStatus != productlinksdomain.LinkCandidateMatchStatusConfirm {
 				t.Fatalf("match_status = %q, want CONFIRM", candidates[0].MatchStatus)
 			}
-			reason, ok := findReason(candidates[0].Reasons, tc.anchor, productlinksdomain.LinkCandidateReasonDirectionUnavailable)
+			reason, ok := findReason(candidates[0].Reasons, tc.anchor, productlinksdomain.LinkCandidateReasonDirectionIncomparable)
 			if !ok || reason.Detail != tc.warning {
 				t.Fatalf("reasons=%#v, want %q on the %s anchor", candidates[0].Reasons, tc.warning, tc.anchor)
 			}
@@ -337,7 +377,7 @@ func TestConfirmationAndReviewAreCountedSeparately(t *testing.T) {
 	if len(confirmations) != 1 || len(reviews) != 2 {
 		t.Fatalf("confirmations=%d reviews=%d, want 1 and 2", len(confirmations), len(reviews))
 	}
-	reason, ok := findReason(confirmations[0].Reasons, "ean", productlinksdomain.LinkCandidateReasonDirectionUnavailable)
+	reason, ok := findReason(confirmations[0].Reasons, "ean", productlinksdomain.LinkCandidateReasonDirectionIncomparable)
 	if !ok || reason.Detail != "sem EAN para corroborar o CODPROD" {
 		t.Fatalf("confirmation reasons=%#v, want the missing-anchor warning preserved", confirmations[0].Reasons)
 	}

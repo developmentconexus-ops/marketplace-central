@@ -1057,11 +1057,13 @@ export type ProductLinkMatchStatus =
   | "NO_CANDIDATE"
   | "CONFIRM";
 
-export type ProductLinkReasonDirection = "FOR" | "AGAINST" | "UNAVAILABLE";
+export type ProductLinkReasonDirection = "FOR" | "AGAINST" | "UNAVAILABLE" | "INCOMPARABLE";
+export type ProductLinkReasonSide = "provider" | "erp" | "both";
 
 export interface ProductLinkReason {
   anchor: string;
   direction: ProductLinkReasonDirection;
+  side?: ProductLinkReasonSide;
   detail?: string;
 }
 

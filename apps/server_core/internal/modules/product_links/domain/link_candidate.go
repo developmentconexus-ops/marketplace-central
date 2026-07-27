@@ -7,6 +7,7 @@ type LinkCandidateMatchInput string
 type LinkCandidateConfidenceBand string
 type LinkCandidateMatchStatus string
 type LinkCandidateReasonDirection string
+type LinkCandidateReasonSide string
 
 const (
 	LinkCandidateStateManual     LinkCandidateState = "manual"
@@ -50,9 +51,16 @@ const (
 )
 
 const (
-	LinkCandidateReasonDirectionFor         LinkCandidateReasonDirection = "FOR"
-	LinkCandidateReasonDirectionAgainst     LinkCandidateReasonDirection = "AGAINST"
-	LinkCandidateReasonDirectionUnavailable LinkCandidateReasonDirection = "UNAVAILABLE"
+	LinkCandidateReasonDirectionFor          LinkCandidateReasonDirection = "FOR"
+	LinkCandidateReasonDirectionAgainst      LinkCandidateReasonDirection = "AGAINST"
+	LinkCandidateReasonDirectionUnavailable  LinkCandidateReasonDirection = "UNAVAILABLE"
+	LinkCandidateReasonDirectionIncomparable LinkCandidateReasonDirection = "INCOMPARABLE"
+)
+
+const (
+	LinkCandidateReasonSideProvider LinkCandidateReasonSide = "provider"
+	LinkCandidateReasonSideERP      LinkCandidateReasonSide = "erp"
+	LinkCandidateReasonSideBoth     LinkCandidateReasonSide = "both"
 )
 
 // LinkCandidateReason records one anchor's contribution (or unavailability)
@@ -61,6 +69,7 @@ const (
 type LinkCandidateReason struct {
 	Anchor    string                       `json:"anchor"`
 	Direction LinkCandidateReasonDirection `json:"direction"`
+	Side      LinkCandidateReasonSide      `json:"side,omitempty"`
 	Detail    string                       `json:"detail,omitempty"`
 }
 
