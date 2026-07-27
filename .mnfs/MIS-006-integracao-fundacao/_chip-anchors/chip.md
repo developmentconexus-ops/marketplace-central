@@ -4,11 +4,21 @@
 id: CHIP-ANCHORS
 type: chip
 mission: MIS-006 (hardening — NÃO é milestone da DAG)
-status: dispatched
+status: merged
 base_sha: 917f7bb58e385847fba5612201823f9db48791c6
-branch: (chip cria a sua, prefixo `chip/`)
+branch: chip/anchors (removida após merge, `-d`)
+chip_tip: cbe045bb7dcf10303714e6c8014041aa6e589529
+frozen_code_tip: 85b6c367
+merged_at: main 89ddf22e (--no-ff)
 validation_level: QA-0
 ```
+
+> **FECHADO.** P6-DUAL-GATE: AGREEMENT — marcador do hub em
+> [`_hub-gate-anchors/EVIDENCE.md`](../_hub-gate-anchors/EVIDENCE.md), com o ledger de quitação dos
+> cinco blockers de round 6 e o limite honesto ao lado (dois fecharam por observação do hub, não por
+> gate; não há veredicto de modelo sobre o tip final). Rulings R-1…R-26 em
+> [`hub-rulings.md`](hub-rulings.md). Ladder pós-merge em `main`: `go build`, `go vet`, `go test` e
+> `go test -count=10 ./internal/modules/product_links/...` todos exit 0.
 
 ## Por que este chip existe
 
