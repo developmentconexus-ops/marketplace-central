@@ -659,15 +659,6 @@ func appendProviderDeclaredUnavailableReasons(reasons []domain.LinkCandidateReas
 
 		direction, side, detail, emit := classifyProviderIdentityAnchor(anchor, comparison)
 		if !emit {
-			if index, exists := absenceIndexes[anchor.Anchor]; exists {
-				finalized = append(finalized[:index], finalized[index+1:]...)
-				for name, current := range absenceIndexes {
-					if current > index {
-						absenceIndexes[name] = current - 1
-					}
-				}
-				delete(absenceIndexes, anchor.Anchor)
-			}
 			continue
 		}
 
@@ -699,16 +690,15 @@ func classifyProviderIdentityAnchor(anchor ports.ProviderIdentityAnchor, compari
 
 	// ListingSnapshot has no provider-side brand field. Do not infer an empty
 	// provider value from that missing model surface (ADR-17).
-	if anchor.Anchor == "marca" {
+	listingValue, productValue, readable := identityAnchorValues(anchor.Anchor, comparison.listing, comparison.product)
+	if !readable {
 		return domain.LinkCandidateReasonDirectionIncomparable, "", fmt.Sprintf("não foi possível comparar a âncora %s", anchor.Anchor), true
 	}
 	if comparison.product == nil {
-		return domain.LinkCandidateReasonDirectionIncomparable, "", fmt.Sprintf("não foi possível comparar a âncora %s sem produto ERP", anchor.Anchor), true
-	}
-
-	listingValue, productValue, readable := identityAnchorValues(anchor.Anchor, comparison.listing, *comparison.product)
-	if !readable {
-		return domain.LinkCandidateReasonDirectionIncomparable, "", fmt.Sprintf("não foi possível comparar a âncora %s", anchor.Anchor), true
+		if listingValue == "" {
+			return domain.LinkCandidateReasonDirectionIncomparable, domain.LinkCandidateReasonSideProvider, fmt.Sprintf("anúncio sem %s", anchor.Anchor), true
+		}
+		return "", "", "", false
 	}
 	if listingValue != "" && productValue != "" {
 		return "", "", "", false
@@ -722,22 +712,24 @@ func classifyProviderIdentityAnchor(anchor ports.ProviderIdentityAnchor, compari
 	return domain.LinkCandidateReasonDirectionIncomparable, domain.LinkCandidateReasonSideERP, fmt.Sprintf("produto ERP sem %s cadastrado", anchor.Anchor), true
 }
 
-func identityAnchorValues(anchor string, listing domain.ListingSnapshot, product internalreaddomain.ProductCandidate) (string, string, bool) {
+func identityAnchorValues(anchor string, listing domain.ListingSnapshot, product *internalreaddomain.ProductCandidate) (string, string, bool) {
 	var listingValue, productValue string
 	switch anchor {
 	case "seller_sku":
 		listingValue = listing.SellerSKU
-		if product.ReferenceCode != nil {
+		if product != nil && product.ReferenceCode != nil {
 			productValue = *product.ReferenceCode
 		}
 	case "ean":
 		listingValue = listing.EAN
-		if product.EAN != nil {
+		if product != nil && product.EAN != nil {
 			productValue = *product.EAN
 		}
 	case "title":
 		listingValue = listing.Title
-		productValue = product.Name
+		if product != nil {
+			productValue = product.Name
+		}
 	default:
 		return "", "", false
 	}
