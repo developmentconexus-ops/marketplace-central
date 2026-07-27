@@ -133,7 +133,7 @@ unsupported                                                      apps/server_cor
 
   anchors resolved  49
   ambiguous         4
-  UNRESOLVED        73
+  UNRESOLVED        74
 
 ----------------------------------------------------------------------------------------------------------------
 UNRESOLVED — recognized as an anchor in the prose, no declaration under the code roots above.
@@ -191,6 +191,7 @@ dimensionPair                                                    named on 1 line
 display                                                          named on 3 lines
 e1195806                                                         named on 3 lines
 exact_sku                                                        named on 1 line
+f1397cf7                                                         named on 1 line
 f6736d0                                                          named on 2 lines
 f81b8975                                                         named on 2 lines
 f92ca9c7                                                         named on 5 lines
