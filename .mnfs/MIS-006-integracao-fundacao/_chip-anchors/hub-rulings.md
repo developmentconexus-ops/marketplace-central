@@ -657,3 +657,143 @@ defeito nunca é a estreiteza, é o silêncio). `cite-audit.py/.txt` superseded 
 deletados — são o registro do que o round 4 achou, e a linha D24 aponta para eles. Observação de
 árvore de trabalho substituída por propriedade verificável em vez de maquiada como reproduzível:
 é a leitura certa do R-22(b).
+
+---
+
+# ROUND 6 — os gates PARTIRAM. Cold PASS (semântica), GPT FAIL (derivação + aparato, 5 blockers)
+
+Verifiquei eu mesmo os dois blockers de prosa antes de decidir qualquer coisa. Os dois são
+verdadeiros, exatos:
+
+```
+$ git grep -c connectorsports 85b6c367 -- .../product_links/application
+85b6c367:.../generation_integration_test.go:2      exit=0        (pack diz que nao retorna nada)
+
+$ git log --oneline 917f7bb5..633bf9fa
+633bf9fa Format the composition root…   11e68f6f S3   b9da6d2e S2   5bc55219 S1
+$ git diff --name-only 917f7bb5 633bf9fa -- apps/ contracts/ packages/ | wc -l   → 13
+$ git diff --name-only 917f7bb5 b9da6d2e -- apps/ contracts/ packages/ | wc -l   → 13
+```
+
+O range chamado de S1+S2 contém S1, S2, S3 e um commit de formatação. As 13 batem **por
+coincidência** — S3 só tocou caminhos já na lista. Contagem certa pelo motivo errado é pior que
+contagem errada, porque ela não avisa.
+
+## O que eu vejo e nenhum dos dois gates podia ver, porque cada um enxerga a própria metade
+
+**Nenhum dos dois veredictos sobre o CÓDIGO depende da `cite-table.py`.**
+
+O cold chegou a PASS em C1, C2, C3, C4, C6, C7, C8 **lendo o fonte**. O GPT chegou a PASS em C2,
+C3, C5, C9, C10, C12 **re-derivando do git**. Nenhum dos dois usou a ferramenta para chegar ao
+veredicto sobre o código.
+
+Os três blockers de aparato são, todos os três, alegações que a ferramenta faz **sobre a própria
+cobertura**. Ela gateia nada além de si mesma.
+
+## R-24 — RULING: o aparato deixa de ser GATE e vira RELATÓRIO
+
+Primeiro, o que o R-22 conseguiu e o que ele fez: rounds 2-5 falharam em coordenada de prosa
+decaindo. **O round 6 tem zero disso** — cold amostrou ~25 linhas da tabela mais os 20 nomes de
+teste em backtick e todos resolvem; a classe sumiu do que ele checou. O round 6 falha nas alegações
+de cobertura da FERRAMENTA — um lugar que o próprio R-22 criou ao fazer da ferramenta a fiscal da
+regra. Progresso real, e defeito novo real. Não vou re-rotular a segunda metade para fazer sumir.
+
+Mas **"cada round falha num lugar novo" é a regressão infinita**, e conceder round 7 com esse
+argumento é como isso nunca acaba. O R-22 disse que a resposta a um aparato auto-referente não é
+mais aparato. Eu apliquei isso à PROSA e **não apliquei à ferramenta**. Aplicar agora é o que
+termina.
+
+**Regra:** artefato de verificação só sustenta as alegações que consegue fazer **totalmente**.
+Alegação que ele não consegue fazer total vira **relatório**, não portão.
+
+Um relatório que diz "isto eu resolvi, isto eu não resolvi" **não tem alegação de totalidade para
+ser falsificada**. Os três blockers deixam de existir **por construção, não por perdão** — a
+alegação falsa é REMOVIDA, não desculpada. É o ADR-17 honest-unknown apontado para o nosso próprio
+aparato de prova, a mesma doutrina que o produto usa para dado que não tem.
+
+Na prática:
+
+1. `cite-table.py` gera a tabela e **imprime o que não resolveu** (`if not locs: continue` → conta e
+   lista). **R-17 ratificado pela 4ª vez — o cold perguntou explicitamente se eu o tornava
+   bloqueante de novo: sim, a exigência fica.** O que muda é a consequência: linha de relatório, não
+   código de saída.
+2. **O rung PACK sai da ladder.** Deixa de ser bloqueio de merge.
+3. A prosa do pack para de afirmar totalidade em qualquer lugar ("resolve TODA âncora" → "resolve as
+   âncoras listadas; as não resolvidas estão abaixo").
+4. **Nada de alargar**: não estenda `TOPLEVEL` para `var (…)` agrupado, não enumere mais verbos de
+   git, não opere o lookbehind. **Não se alarga reconhecedor cuja saída não gateia mais nada.**
+
+## R-11 morreu junto com o objeto dele, e isso é bom
+
+O R-11 disse que validade de citação é mecânica porque o gate cold não tem shell. Era sobre validar
+alegação feita **em prosa**. O R-22 tirou essas alegações. A tabela agora é **navegação, não
+evidência**: linha errada custa a um leitor um salto errado, não uma prova falsa. A amostra de 25/53
+do cold é proporcional a essa aposta. Aposento a **consequência** do R-11 (portão mecânico), não a
+percepção dele.
+
+## Sobre a convergência — é o achado mais forte que este dual gate já produziu
+
+Os dois gates acharam o blocker 3 (âncora nomeada some em silêncio) **independentemente, por
+direções opostas, com métodos que não se tocam**: o cold lendo símbolos, com duas instâncias
+rastreadas; o GPT atacando a ferramenta, com prova por nome injetado.
+
+O R-18 disse: achado disjunto = cobertura. Isto acrescenta: **convergência entre gates de escopo
+diferente é o sinal mais forte que um dual gate consegue emitir** — mais forte que acordo entre
+gates que olham a mesma coisa, porque as duas lentes não compartilham método, logo o achado não pode
+ser artefato de nenhuma delas. É por isso que o blocker 3 é o que eu trato **estruturalmente** em
+vez de dissolver junto com o resto do aparato.
+
+E repare a direção do desacordo: o cold arquivou SHOULD-FIX, o GPT arquivou BLOCKING. **Os dois
+estão certos sobre a própria metade.** A divergência de severidade não é descalibragem — é cada gate
+pontuando o achado contra o próprio escopo. Só o hub vê os dois escopos.
+
+## O NIT é meu, e conserto do jeito certo
+
+Verificado: o golden põe `500MM` no lado ERP (`sku:33698`) e `50cm` no título do anúncio. Meu
+`hub-live-drive-u1-u3.md:40,47` invertia. Corrigido no primary.
+
+Vale nomear o mecanismo: o pack **pina** `main@40623b57`. Corrigir cria um SHA novo; **o pin
+continua válido porque pin nomeia SHA**. É o R-14 e o R-20 funcionando exatamente como desenhados —
+a resposta certa para artefato pinado que está errado é **commit novo**, nunca edição que faz o pin
+mentir.
+
+## Merge: o que fecha, e por que isto não é o R-9 disfarçado
+
+Preciso me testar contra mim mesmo aqui. No R-9 eu neguei "mergear nos veredictos limpos de código e
+carregar o pack como dívida". Isto é diferente **em quê**?
+
+No R-9 o defeito de pack **ficava no lugar**, como dívida. Aqui os defeitos de pack **são
+consertados**: as duas correções de prosa pousam, as alegações falsas de totalidade são REMOVIDAS.
+Nada vira dívida. O que eu recuso é **round de gate adicional sobre o pack corrigido**, não o
+conserto.
+
+Mas não posso escrever AGREEMENT por cima de um FAIL entregue. Então:
+
+**O corretivo é gateado no eixo que ele toca, e só nele.** Quem arquivou o FAIL re-checa os
+próprios cinco blockers no tip corrigido. Não é round 7 — é re-checagem de um FAIL entregue, pelo
+gate que o entregou, no escopo exato do que ele arquivou. **O cold não re-roda**: ele PASSOU, e a
+área dele (semântica/código) não é tocada pelo corretivo — re-rodar gate que passou sobre área
+intacta é a redundância que o R-18 já desvalorizou.
+
+**Condição que eu mesmo verifico antes de qualquer AGREEMENT**, e é a que mantém o PASS do cold vivo
+sem re-rodá-lo:
+
+```
+git diff --name-only 85b6c367..<tip corretivo> -- apps contracts packages   →  tem de dar 0
+```
+
+Se o corretivo tocar código de produção, o PASS do cold decai e o cold volta. É o R-19 aplicado como
+condição de merge em vez de descoberta pós-fato.
+
+**O terminador é estrutural, não uma promessa:** depois disto o rung PACK não está na ladder, logo
+nenhum round futuro consegue falhar nele.
+
+## Escopo do corretivo — fechado, e nada além
+
+1. As duas correções de prosa (`connectorsports`, endpoint S1+S2 → `b9da6d2e`).
+2. Ferramenta: relata o que não resolveu; para de alegar totalidade; **sem alargamento**.
+3. Rung PACK sai da ladder.
+4. R-23 registrado no pack.
+5. NIT U2 do lado do chip (o do hub já está corrigido).
+
+Zero código de produção. É o que torna a re-checagem estreita legítima.

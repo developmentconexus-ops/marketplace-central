@@ -37,14 +37,15 @@ desaparece sozinha — que era o ponto do chip.
 
 ## U2 — toalheiro deixa de ser reprovado por contradição de dimensão — **PASS**
 
-`MLB4735326915` / `SOUL TOALHEIRO SIMPLES 500MM CR/POLIDO`:
+Anúncio `MLB4735326915` "Toalheiro Simples Soul Zen 50cm Cromado" × produto ERP `sku:33698`
+"SOUL TOALHEIRO SIMPLES 500MM CR/POLIDO":
 
 | | estado | banda | conf. | motivo dominante |
 |---|---|---|---|---|
 | antes | rejeitado | BAIXA | 25% | `Título hard-negative: medidas` |
 | agora | `exact_sku` CONFIRM | MEDIA | 70% | `✓ SKU — seller_sku resolve exato para codprod` |
 
-`500MM` (anúncio) e `50cm` (ERP) pararam de ler como contradição. O guard continua bloqueante —
+`50cm` (anúncio) e `500MM` (ERP) pararam de ler como contradição. O guard continua bloqueante —
 as linhas de EAN ambíguo do mesmo print seguem `BAIXA 20%` com `âncora ambígua`.
 
 ## U3 — `/vinculos` → Resolvidos mostra os 29, KPI concorda com o banco — **PASS**
