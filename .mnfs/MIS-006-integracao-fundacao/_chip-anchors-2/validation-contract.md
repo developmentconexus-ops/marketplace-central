@@ -13,7 +13,13 @@ declaradas ao gerador.
 `refforn` continua existindo do lado ERP. Um grep em `erp_import_products` / `products_mirror`
 mostrando o campo intacto é parte da prova: a remoção é da lista, não do dado.
 
-## C2 — nenhuma âncora declarada some calada (F-02)
+## C2 — âncora declarada cujo VALOR falta de algum lado não some calada (F-02)
+
+> Reescrito pelo hub em A2-R1/A2-R2. O título anterior era *"nenhuma âncora declarada some calada"*,
+> e alegava mais do que a tabela abaixo verifica: o caso "declarada e presente dos dois lados"
+> continua não emitindo nada, porque o classificador compara PRESENÇA e nunca estabeleceu que os
+> dois lados concordam. Estreitar a alegação é o remédio de R-24; alargar o código para emitir um
+> `FOR` não verificado seria o defeito que R-24 existe para impedir.
 
 Teste de unidade sobre a geração, com um provider que **declara** uma âncora, cobrindo os quatro
 casos da tabela do pack:
@@ -104,13 +110,36 @@ O `tsc` vermelho de `apps/web` causado por F-02 é **declarado** no EVIDENCE, co
 compilador e o nome do chip da onda 2 que fecha (CHIP-VINC-NEUTRO). Declarar não é consertar: um
 diff que toca `QueueRow.tsx` reprova este critério mesmo que o conserto esteja certo.
 
+## C11 — `UNAVAILABLE` volta a ter um sentido só (A2-R1)
+
+Acrescentado pelo hub ao conceder o grant de A2-R1. Leia a ruling antes deste critério.
+
+**(a) Reclassificação.** Nos sítios nomeados em A2-R1 — localizados por STRING — um motivo cujo
+valor falta de algum lado sai como `INCOMPARABLE` com o `side` da tabela da ruling, não como
+`UNAVAILABLE`. O `detail` de cada sítio permanece.
+
+**(b) Ausência provada por string.** Depois da reclassificação, nenhum `UNAVAILABLE` sobra em
+`generation_service.go` fora do caminho `!anchor.Supplied`. Cole o grep. Se sobrar algum, ele é
+nomeado um a um com a razão — um grep com exceções explicadas é evidência; um grep com exceções
+silenciosas é o defeito que R-24 descreve.
+
+**(c) Ramo excluído intocado.** Teste que prova que o ramo de A2-R1 — anúncio com valor e produto
+ERP com valor **não-vazio e diferente** — continua produzindo exatamente o motivo de hoje. Sem este
+teste a exclusão é intenção, não fato. O ramo vai ao EVIDENCE como FINDING, com evidência por
+string, para o hub levar ao operador; **não** vira `INCOMPARABLE` (seria trocar uma afirmação errada
+por outra) e **não** vira `AGAINST` (mexeria em D-121, que é decisão do operador).
+
+**(d) C4 revalidado.** A política de auto-aprovação D-121 continua intacta DEPOIS da
+reclassificação, não só antes. Rode C4 de novo no tip final e cole a saída — este grant toca os
+caminhos `ExactSKU` e `ExactEAN`, que são a fila de confirmação.
+
 ---
 
 ## Condições de merge
 
 1. L0 verde: `go build ./...`, `go vet ./...`, lane de governança.
 2. L1 verde: `go test ./...` mais o guard de F-03 em `-count=10`, com a prova de must-fail (C5b).
-3. C1–C10 com evidência citada por **string**, nunca por linha.
+3. C1–C11 com evidência citada por **string**, nunca por linha.
 4. Fecho com `AGREEMENT — P6 discharged` e o ledger de discharge ao lado. A linha
    `P6-DUAL-GATE:` é do hub — o chip não a escreve.
 5. Nenhum push. O merge é do hub.
