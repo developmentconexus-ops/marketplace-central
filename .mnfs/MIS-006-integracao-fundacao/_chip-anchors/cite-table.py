@@ -336,7 +336,13 @@ generated = "\n".join(table_lines)
 committed = None
 if os.path.exists(TABLE):
     with io.open(TABLE, encoding="utf-8", newline="") as fh:
-        committed = fh.read()
+        # Line endings are normalized before comparing, and this is not laxity. Git is configured to
+        # convert on checkout here, so a fresh clone gets CRLF while this tool writes LF — the guard
+        # would then be red on every machine but the author's, for a reason having nothing to do with
+        # what it guards. A guard that cries wolf is a guard someone turns off, and this pack cannot
+        # afford another check that is technically present and practically ignored. Round 1 of this
+        # chip lost a real gofmt violation inside exactly this noise.
+        committed = fh.read().replace("\r\n", "\n")
 drift = committed is not None and committed != generated
 missing = committed is None
 

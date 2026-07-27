@@ -2089,6 +2089,21 @@ byte copy taken beforehand.
 Baseline before and after all four: **exit 0**. Both mutated files were compared byte-for-byte
 against their pre-mutation copies afterwards and are identical.
 
+A fifth proof runs the other way — a guard must also NOT fire when it should not, and this one was
+about to fire everywhere. Git is configured to convert line endings on checkout in this repository,
+so a fresh clone receives the generated table as CRLF while the tool writes LF; the drift guard would
+have been red on every machine except the one that wrote it, for a reason having nothing to do with
+drift. The comparison now normalizes line endings, and both directions were observed:
+
+| Condition | Observed |
+|---|---|
+| the whole table converted to CRLF, contents otherwise identical | `coordinate table CURRENT`, **exit 0** — the guard correctly stays silent |
+| one line appended by hand to that same CRLF copy | `coordinate table DRIFTED`, **exit 1** — tolerance did not cost detection |
+
+Recorded because the failure mode is social rather than technical. A check that cries wolf is a check
+someone turns off, and this pack cannot afford another guard that is technically present and
+practically ignored — round 1 of this chip lost a real `gofmt` violation inside exactly this noise.
+
 The third row is the one worth reading twice, because the guard did not exist when the prose
 describing it was first written. The tool regenerated `coordinates.txt` on every run, `--strict`
 included — so a hand-edit would have been silently overwritten and the run would have reported
