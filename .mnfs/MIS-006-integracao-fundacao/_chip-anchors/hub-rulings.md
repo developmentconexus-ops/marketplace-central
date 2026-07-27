@@ -797,3 +797,113 @@ nenhum round futuro consegue falhar nele.
 5. NIT U2 do lado do chip (o do hub já está corrigido).
 
 Zero código de produção. É o que torna a re-checagem estreita legítima.
+
+---
+
+# RE-CHECK do round 6 — 3 de 5 fecham, 2 ficam. E os 2 são UM defeito
+
+Verifiquei tudo **por string, não por linha** — de propósito, porque coordenada de gate é alegação
+como qualquer outra e o gate citou `:1028` onde o texto está em `:1030` e `:1057`:
+
+```
+$ git diff --name-only 85b6c367 60bcde9b -- apps contracts packages          → 0
+$ git grep -n "Banned outright|lane check|preceding character class is NOT restricted" 60bcde9b
+EVIDENCE.md:1030   … Banned outright, grep-checkable
+EVIDENCE.md:1057   … a mutable-axis ban is a lane check now …
+cite-table.py:240  # THE SUPERSET … The preceding character class is NOT
+cite-table.py:241  # restricted, because restricting it is exactly how the last three blind spots were built.
+cite-table.py:242  CANDIDATE = re.compile(r"(?<![0-9]):(\d+)…")
+```
+
+O comentário afirma que a classe precedente **não** está restrita, e a linha imediatamente abaixo a
+restringe. Pior: a cláusula de motivo — "porque restringir é exatamente como os três últimos pontos
+cegos foram construídos" — **nomeia o erro que ela mesma comete**.
+
+## R-25(a) — §11 NÃO dispara. E não é porque me convém
+
+A regra do §11 dispara quando um remédio foi **aplicado** e o defeito **voltou** noutro disfarce.
+Aqui o remédio foi aplicado a **um de três detentores** da mesma alegação. Isso é **aplicação
+incompleta, não recorrência** — o gate traçou a distinção e ela está certa.
+
+Diagnósticos diferentes pedem respostas diferentes: recorrência pede remédio melhor; incompletude
+pede o remédio **terminado**. Tratar incompletude como recorrência produz um remédio novo para um
+problema que o remédio velho já resolve, que é como se constrói aparato.
+
+O tell independente de que a leitura é certa: **o remédio do §11 é mais aparato, e o R-24 decidiu um
+ruling atrás que a resposta não é mais aparato.** Regra cujo remédio contradiz o ruling que governa
+este round não dispara neste round. Registro isto explicitamente porque "a regra é inconveniente,
+então pulo" é o raciocínio que recusei o chip inteiro — não estou pulando o §11, estou constatando
+que a condição de gatilho dele não ocorreu e que o remédio dele está sob proibição vigente.
+
+## R-25(b) — o achado mais afiado, e é do corretivo: ele DIVULGOU as falsidades em vez de removê-las
+
+`EVIDENCE.md:2097-2104` diz, com precisão, que as duas frases e o comentário continuam lá e estão
+errados. É honesto. E é o **instrumento errado**.
+
+**RULING: honest-unknown vale para LACUNA, não para FALSIDADE.**
+
+Divulga-se o que não se sabe. **Deleta-se o que está errado.** Anotar uma frase falsa como falsa
+deixa duas frases onde cabia uma e transfere ao leitor o trabalho de arbitrar entre elas — e quem
+cair primeiro na falsa não tem sinal nenhum de que deveria continuar lendo.
+
+O R-24 disse que a alegação falsa é **REMOVIDA, não desculpada**. Divulgação é uma forma de
+desculpar. O chip aplicou ADR-17 corretamente à cobertura da ferramenta (que é lacuna) e **um passo
+além do certo** a duas frases falsas (que não são lacuna).
+
+Esta é a regra que fica deste round.
+
+## R-25(c) — o patch pousa, restrito para que alegação nova falsa seja impossível
+
+O buraco de eu verificar sozinho seria a **reescrita** introduzir uma falsidade nova que nenhum gate
+pega. Fecho o buraco pela forma do remédio, não pela confiança:
+
+1. **`cite-table.py:240-241` → DELETAR o comentário. Não reescrever.** Comentário deletado não pode
+   ser falso. A regex abaixo é a verdade e não precisa de glosa.
+2. **`EVIDENCE.md:1030` e `:1057`** → as frases passam a dizer **o que o relatório imprime**, e o
+   gate já certificou a saída impressa como exata ("correctly discloses all five holes"). A
+   reescrita ganha **alvo fixo já certificado por gate**, em vez de depender do meu julgamento.
+3. **`EVIDENCE.md:2097-2104`** → o parágrafo de divulgação sai junto com as falsidades que ele
+   divulga. Sem as alegações não há o que divulgar, e deixá-lo faria o pack descrever um estado em
+   que ele não está mais — a classe do decaimento, mais uma vez.
+
+## R-25(d) — eu verifico a quitação, e por que isso NÃO é o round 7
+
+O remédio é **inteiramente determinado pelo achado**: dois arquivos, linhas exatas, strings exatas,
+e alvo de substituição já certificado. Não sobrou discricionariedade.
+
+**Quando um remédio é inteiramente determinado pelo achado, a verificação é uma checagem de
+ausência — um bit — e isso pede um shell, não um segundo modelo.** Eu tenho o shell. Já rodei o
+grep que prova as três strings PRESENTES em `60bcde9b`; o mesmo grep no tip final prova que sumiram.
+
+**Limite honesto, declarado e não vendido como mais do que é:** o GPT não re-roda e não certifica o
+tip final. Eu tenho (a) o veredicto dele de que estas duas linhas são o defeito restante INTEIRO e
+de que o corretivo não introduziu nenhum novo, e (b) minha própria observação de ausência. **Não
+tenho veredicto de modelo sobre o tip final.** Aceito a lacuna deliberadamente: a alternativa é um
+round cujo conteúdo inteiro é "confirmar que três strings sumiram" — e esse round precisaria de
+outro se achasse um typo. Essa regressão é o que o R-24 encerrou.
+
+## Condições de merge — todas verificadas por MIM no tip final
+
+```
+git diff --name-only 85b6c367..<final> -- apps contracts packages   →  0
+git grep "Banned outright|lane check|preceding character class"     →  ausente
+python cite-table.py --strict                                       →  exit 0, PACK fora da ladder
+```
+
+## A string de AGREEMENT, e o que ela NÃO pode omitir
+
+Ao lado dela o pack carrega o **ledger de quitação**: qual dos cinco achados fechou por qual meio,
+incluindo os dois que fecharam por observação do hub e não por gate, mais o limite honesto acima.
+
+**Frase de fechamento que omite COMO se chegou ao fechamento é a classe de omissão silenciosa do
+round 4 cometida na última linha do documento.** Seria grotesco cometê-la ali.
+
+## Backlog e nota de procedimento
+
+FOREIGN-fence SHOULD-FIX → backlog do hub, não bloqueio: é buraco de proveniência num artefato que
+não gateia mais nada — mesma razão pela qual os outros três dissolveram.
+
+Filei minhas cópias do veredicto cold e do re-check (R-23). **Não filei cópia separada do FAIL do
+round 6** — e digo em vez de deixar a ausência passar: o re-check reenuncia os cinco achados com o
+status de cada um, logo carrega o conteúdo operativo do veredicto superado. Isso é razão, não
+conveniência; nomeá-la é a diferença.
