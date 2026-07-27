@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"slices"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -14,6 +16,109 @@ import (
 	productlinksdomain "marketplace-central/apps/server_core/internal/modules/product_links/domain"
 	productlinksports "marketplace-central/apps/server_core/internal/modules/product_links/ports"
 )
+
+func TestHardNegativeDimensionStableEquivalentDisplay(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		title       string
+		wantKey     string
+		wantDisplay string
+	}{
+		{title: "Produto 50cm 500MM", wantKey: "mm:500", wantDisplay: "50cm ≡ 500MM"},
+		{title: "Produto 50cm 50cm", wantKey: "mm:500", wantDisplay: "50cm"},
+		{title: "Produto 50cm 500MM 50cm", wantKey: "mm:500", wantDisplay: "50cm ≡ 500MM"},
+	} {
+		gotKey, gotDisplay, ok := hardNegativeDimension(tc.title)
+		if !ok || gotKey != tc.wantKey || gotDisplay != tc.wantDisplay {
+			t.Errorf("hardNegativeDimension(%q)=(%q, %q, %t), want (%q, %q, true)", tc.title, gotKey, gotDisplay, ok, tc.wantKey, tc.wantDisplay)
+		}
+	}
+
+	base := []string{
+		"50cm", "500MM", "1m", "1000mm", "2cm", "20MM", "3cm", "30MM",
+		"4cm", "40MM", "5cm", "50MM", "6cm", "60MM", "7cm", "70MM",
+		"8cm", "80MM", "9cm", "90MM", "10cm", "100MM", "11cm", "110MM",
+		"12cm", "120MM", "13cm", "130MM", "14cm", "140MM", "15cm", "150MM",
+	}
+
+	corpus := make([][]string, 0, 8)
+	corpus = append(corpus, slices.Clone(base))
+	corpus = append(corpus, []string{"50cm", "500MM", "50cm"})
+	reversed := slices.Clone(base)
+	slices.Reverse(reversed)
+	corpus = append(corpus, reversed)
+	for _, offset := range []int{1, 7, 13} {
+		rotated := append(slices.Clone(base[offset:]), base[:offset]...)
+		corpus = append(corpus, rotated)
+	}
+	evenThenOdd := make([]string, 0, len(base))
+	for parity := 0; parity < 2; parity++ {
+		for i := parity; i < len(base); i += 2 {
+			evenThenOdd = append(evenThenOdd, base[i])
+		}
+	}
+	corpus = append(corpus, evenThenOdd)
+	interleaved := make([]string, 0, len(base))
+	for i, j := 0, len(base)-1; i <= j; i, j = i+1, j-1 {
+		interleaved = append(interleaved, base[i])
+		if i != j {
+			interleaved = append(interleaved, base[j])
+		}
+	}
+	corpus = append(corpus, interleaved)
+	secondHalfFirst := append(slices.Clone(base[len(base)/2:]), base[:len(base)/2]...)
+	corpus = append(corpus, secondHalfFirst)
+
+	for _, tokens := range corpus {
+		tokens := tokens
+		wantKey, wantDisplay := expectedDimensionSignatureFromSource(t, tokens)
+		title := "Produto " + strings.Join(tokens, " ")
+		gotKey, gotDisplay, ok := hardNegativeDimension(title)
+		if !ok || gotKey != wantKey || gotDisplay != wantDisplay {
+			t.Fatalf("hardNegativeDimension(%q)=(%q, %q, %t), want (%q, %q, true)", title, gotKey, gotDisplay, ok, wantKey, wantDisplay)
+		}
+	}
+}
+
+func expectedDimensionSignatureFromSource(t *testing.T, tokens []string) (string, string) {
+	t.Helper()
+	type dimensionGroup struct {
+		key      string
+		displays []string
+	}
+
+	groups := make([]dimensionGroup, 0, len(tokens))
+	for _, token := range tokens {
+		key, ok := normalizeDimensionToken(token)
+		if !ok {
+			t.Fatalf("normalizeDimensionToken(%q) failed", token)
+		}
+		groupIndex := -1
+		for i := range groups {
+			if groups[i].key == key {
+				groupIndex = i
+				break
+			}
+		}
+		if groupIndex < 0 {
+			groups = append(groups, dimensionGroup{key: key, displays: []string{token}})
+			continue
+		}
+		if !slices.Contains(groups[groupIndex].displays, token) {
+			groups[groupIndex].displays = append(groups[groupIndex].displays, token)
+		}
+	}
+	sort.Slice(groups, func(i, j int) bool { return groups[i].key < groups[j].key })
+
+	keys := make([]string, 0, len(groups))
+	displays := make([]string, 0, len(groups))
+	for _, group := range groups {
+		keys = append(keys, group.key)
+		displays = append(displays, strings.Join(group.displays, " ≡ "))
+	}
+	return strings.Join(keys, "|"), strings.Join(displays, "|")
+}
 
 type stubSnapshotReader struct {
 	installationID string

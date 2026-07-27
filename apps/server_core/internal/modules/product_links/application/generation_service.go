@@ -824,8 +824,9 @@ func hardNegativeVoltage(text string) (string, bool) {
 // (symmetrical to the voltage/color checks, no false positives).
 func hardNegativeDimension(original string) (string, string, bool) {
 	type dimensionPair struct {
-		key     string
-		display string
+		key      string
+		display  string
+		displays []string
 	}
 
 	tokenIndexes := hardNegativeDimensionPattern.FindAllStringIndex(original, -1)
@@ -833,20 +834,30 @@ func hardNegativeDimension(original string) (string, string, bool) {
 	for _, index := range tokenIndexes {
 		originalToken := strings.TrimSpace(original[index[0]:index[1]])
 		key, _ := normalizeDimensionToken(originalToken)
-		pairs = append(pairs, dimensionPair{key: key, display: originalToken})
+		pairs = append(pairs, dimensionPair{key: key, display: originalToken, displays: []string{originalToken}})
 	}
 	for _, size := range hardNegativeSizePattern.FindAllString(original, -1) {
-		pairs = append(pairs, dimensionPair{key: strings.ToLower(size), display: size})
+		pairs = append(pairs, dimensionPair{key: strings.ToLower(size), display: size, displays: []string{size}})
 	}
 	if len(pairs) == 0 {
 		return "", "", false
 	}
-	slices.SortFunc(pairs, func(a, b dimensionPair) int {
+	slices.SortStableFunc(pairs, func(a, b dimensionPair) int {
 		return strings.Compare(a.key, b.key)
 	})
-	pairs = slices.CompactFunc(pairs, func(a, b dimensionPair) bool {
-		return a.key == b.key
-	})
+	coalesced := pairs[:0]
+	for _, pair := range pairs {
+		if len(coalesced) == 0 || coalesced[len(coalesced)-1].key != pair.key {
+			coalesced = append(coalesced, pair)
+			continue
+		}
+		last := &coalesced[len(coalesced)-1]
+		if !slices.Contains(last.displays, pair.display) {
+			last.displays = append(last.displays, pair.display)
+			last.display += " ≡ " + pair.display
+		}
+	}
+	pairs = coalesced
 	keys := make([]string, 0, len(pairs))
 	display := make([]string, 0, len(pairs))
 	for _, pair := range pairs {
