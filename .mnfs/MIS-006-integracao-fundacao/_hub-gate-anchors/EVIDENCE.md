@@ -81,7 +81,11 @@ claim-holders or expect the count of 2.
 
 - FOREIGN-fence provenance hole: a pack author can still exempt authored text by tagging it
   `quoted-verdict`; the tool checks the tag, never the provenance. SHOULD-FIX in an artifact that no
-  longer gates anything — the same reason three other blockers dissolved.
+  longer gates anything — the same reason three other blockers dissolved. **Carried with its
+  provenance, because the provenance is the argument:** the hole landed as a real defect in the HUB's
+  own copies on the same day it sat backlogged as a theoretical defect in the chip's tool. It cost an
+  honest party who was not trying to exploit it, which is the objection *"nobody would actually do
+  this"* answered by observation rather than by argument.
 - `refforn` does not belong in the cross-side anchor vocabulary.
 - Declared-but-incomparable anchors vanish silently (`generation_service.go` ~`:639`).
 - `slices.SortFunc` + `CompactFunc` display nondeterminism at `:764-769`.
