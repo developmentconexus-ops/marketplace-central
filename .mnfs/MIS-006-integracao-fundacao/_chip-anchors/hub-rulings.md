@@ -584,3 +584,76 @@ Ele reportou que a **própria tabela de completude do R-16** estava errada — c
 de "git facts at a frozen SHA" quando uma delas usa `git ls-files`, que não aceita tree-ish. Terceira
 vez nesta missão que ele denuncia defeito próprio que nenhum gate tinha nomeado ainda. É a melhor
 propriedade deste chip e é o que tornou cinco rounds decidíveis em vez de opinativos.
+
+---
+
+# ROUND 6 despachado — R-22 aplicado, e a pré-condição do R-19 satisfeita pela primeira vez
+
+```
+$ git diff --name-only 85b6c367..a23aee3a -- apps contracts packages | wc -l   → 0
+```
+
+Tip de código de fato congelado entre o tip de código e o tip de pack. Quatro rounds isso foi
+afirmado; este é o primeiro em que é verdade verificada.
+
+## R-23 — assimetria de durabilidade entre os dois gates. Aceito o remédio e acrescento um segundo detentor
+
+O chip achou uma assimetria que não é dele nem minha, é da ferramenta: o gate GPT despacha como
+processo de SO e deixa `.last.md`; o gate cold roda pelo Agent tool, cujo arquivo de saída por
+tarefa veio **vazio nas doze execuções deste chip**. Consequência dura: veredicto cold só existe em
+transcript de sessão, e **o veredicto cold do round 5 já é irrecuperável** — o que o pack diz sobre
+ele é o relato do chip, marcado como relato e não como citação.
+
+O remédio dele (D30: transcrever no instante em que chega, e assinar como transcrição própria) está
+certo e aceito. Não há alternativa dentro da ferramenta: `gate-reviewer` não tem Write **por
+construção**, e é isso que o faz cold. Dar Write ao reviewer para resolver durabilidade destruiria a
+propriedade que o torna útil.
+
+**Acrescento uma exigência, porque o remédio sozinho deixa o transcritor com controle unilateral
+sobre o texto que o julga.** É a forma CHIP-IMPORT-FIX (prosa auto-exculpatória) chegando por um
+caminho novo — não por má-fé, mas porque a estrutura permite.
+
+**O veredicto cold vem para o hub verbatim no evento, e eu commito a cópia do lado do hub.** Duas
+cópias, dois detentores, dois carimbos de tempo. Divergência posterior vira detectável.
+
+**Limite honesto disto, declarado e não vendido como mais do que é:** isso **não** torna a
+transcrição verificável contra o original — o original morre quando o transcript compacta. O que
+ele remove é o **controle unilateral**. É menos do que se quer e é o máximo que a ferramenta
+permite hoje.
+
+Candidato upstream: **o arquivo de saída por tarefa do Agent tool vem vazio, logo veredicto de
+reviewer rodado por Agent não tem artefato durável.** Lacuna de ferramenta, não defeito de chip.
+Doze execuções, zero bytes.
+
+## Sobre o item 1 — o guard não existia quando a prosa que o descreve foi escrita
+
+Vale registrar porque é a forma mais afiada que apareceu no arco inteiro. A ferramenta regenerava
+`coordinates.txt` em toda execução, `--strict` inclusive: uma edição à mão seria **sobrescrita em
+silêncio** e a execução reportaria sucesso. A alegação era verdadeira sobre a intenção e falsa
+sobre o código.
+
+E o que a expôs foi **escrever o must-fail** — a distinção do R-13 (ter teste ≠ ter must-fail)
+batendo dentro do conserto do R-22. Quarta vez neste chip que uma regra pega defeito dentro do
+remédio de outra regra.
+
+Regra que fica: **gerar e conferir são modos separados; conferidor não escreve.** Verificador com
+acesso de escrita ao que ele verifica não é verificador — ele não consegue reprovar.
+
+## Sobre o item 2 — CRLF, e por que isso não é frescura
+
+O guard ia nascer vermelho em toda máquina que não a dele: git converte fim de linha no checkout
+aqui, clone novo pega CRLF, a ferramenta escreve LF. Normalizar a comparação e provar as duas
+direções foi certo.
+
+O argumento dele é o que importa e eu ratifico: **check que grita lobo é check que alguém
+desliga** — e o round 1 deste chip perdeu uma violação real de `gofmt` dentro exatamente desse
+ruído. Regra: **rung novo tem de nascer verde em clone limpo, senão não é rung, é treinamento para
+ignorar a lane.**
+
+## Aceito sem ruling
+
+Exemções contadas e impressas (alargar exemção é a direção perigosa; a lição do round 4 é que o
+defeito nunca é a estreiteza, é o silêncio). `cite-audit.py/.txt` superseded com banner e não
+deletados — são o registro do que o round 4 achou, e a linha D24 aponta para eles. Observação de
+árvore de trabalho substituída por propriedade verificável em vez de maquiada como reproduzível:
+é a leitura certa do R-22(b).
