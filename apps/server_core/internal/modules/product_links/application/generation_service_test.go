@@ -87,7 +87,6 @@ func mercadoLivreIdentityAnchorReader() *stubIdentityAnchorReader {
 			{Anchor: "ean", Supplied: true},
 			{Anchor: "title", Supplied: true},
 			{Anchor: "marca", Supplied: false},
-			{Anchor: "refforn", Supplied: false},
 		},
 	}}
 }
@@ -141,8 +140,7 @@ func TestGenerateLinkCandidatesUsesProviderDeclarationForUnavailableReasons(t *t
 			{Anchor: "seller_sku", Supplied: false},
 			{Anchor: "ean", Supplied: true},
 			{Anchor: "title", Supplied: true},
-			{Anchor: "marca", Supplied: true},
-			{Anchor: "refforn", Supplied: false},
+			{Anchor: "marca", Supplied: false},
 		},
 	}}
 	snapshot := productlinksdomain.ListingSnapshot{
@@ -169,19 +167,19 @@ func TestGenerateLinkCandidatesUsesProviderDeclarationForUnavailableReasons(t *t
 	}
 	reasons := result.Items[0].Reasons
 	assertUniqueReasonAnchors(t, reasons)
-	if _, ok := findReason(reasons, "marca", productlinksdomain.LinkCandidateReasonDirectionUnavailable); ok {
-		t.Fatalf("reasons=%#v, want supplied marca without UNAVAILABLE reason", reasons)
+	if _, ok := findReason(reasons, "title", productlinksdomain.LinkCandidateReasonDirectionUnavailable); ok {
+		t.Fatalf("reasons=%#v, want supplied title without UNAVAILABLE reason", reasons)
 	}
-	refforn, ok := findReason(reasons, "refforn", productlinksdomain.LinkCandidateReasonDirectionUnavailable)
-	if !ok || refforn.Detail != "provider não fornece a âncora refforn" {
-		t.Fatalf("refforn reason=%#v, want provider declaration detail", refforn)
+	marca, ok := findReason(reasons, "marca", productlinksdomain.LinkCandidateReasonDirectionUnavailable)
+	if !ok || marca.Detail != "provider não fornece a âncora marca" {
+		t.Fatalf("marca reason=%#v, want provider declaration detail", marca)
 	}
 	ean, ok := findReason(reasons, "ean", productlinksdomain.LinkCandidateReasonDirectionUnavailable)
 	if !ok || ean.Detail != "sem EAN para corroborar o CODPROD" {
 		t.Fatalf("ean reason=%#v, want supported-but-empty detail", ean)
 	}
-	if refforn.Detail == ean.Detail {
-		t.Fatalf("refforn and ean details are equal: %q", refforn.Detail)
+	if marca.Detail == ean.Detail {
+		t.Fatalf("marca and ean details are equal: %q", marca.Detail)
 	}
 }
 
@@ -281,7 +279,7 @@ func TestProviderUnavailableReasonOrderingIsStable(t *testing.T) {
 		[]productlinksports.ProviderIdentityAnchor{
 			{Anchor: "marca", Supplied: false},
 			{Anchor: "ean", Supplied: false},
-			{Anchor: "refforn", Supplied: false},
+			{Anchor: "seller_sku", Supplied: false},
 		},
 	)
 
@@ -289,7 +287,7 @@ func TestProviderUnavailableReasonOrderingIsStable(t *testing.T) {
 		{Anchor: "ean", Direction: productlinksdomain.LinkCandidateReasonDirectionUnavailable, Detail: "provider não fornece a âncora ean"},
 		{Anchor: "title", Direction: productlinksdomain.LinkCandidateReasonDirectionFor, Detail: "title observado"},
 		{Anchor: "marca", Direction: productlinksdomain.LinkCandidateReasonDirectionUnavailable, Detail: "provider não fornece a âncora marca"},
-		{Anchor: "refforn", Direction: productlinksdomain.LinkCandidateReasonDirectionUnavailable, Detail: "provider não fornece a âncora refforn"},
+		{Anchor: "seller_sku", Direction: productlinksdomain.LinkCandidateReasonDirectionUnavailable, Detail: "provider não fornece a âncora seller_sku"},
 	}
 	if !reflect.DeepEqual(reasons, want) {
 		t.Fatalf("reasons=%#v, want stable order %#v", reasons, want)
@@ -743,8 +741,9 @@ func TestCanonicalIdentityControlsDeduplicationAndCandidateID(t *testing.T) {
 //
 // Each fixture drives GenerateLinkCandidates end-to-end and asserts the
 // deterministic confidence_band + match_status + key reasons[] entries from
-// the anchor model. marca/refforn must ALWAYS appear as UNAVAILABLE
-// (ADR-17) regardless of band/status.
+// the anchor model. marca must ALWAYS appear as UNAVAILABLE (ADR-17)
+// regardless of band/status. `refforn` used to sit beside it and left the
+// cross-side vocabulary in D-A (D-122) — no marketplace ever supplies it.
 
 func findReason(reasons []productlinksdomain.LinkCandidateReason, anchor string, direction productlinksdomain.LinkCandidateReasonDirection) (productlinksdomain.LinkCandidateReason, bool) {
 	for _, reason := range reasons {
@@ -771,10 +770,6 @@ func assertProviderDeclaredUnavailableReasons(t *testing.T, reasons []productlin
 	marca, ok := findReason(reasons, "marca", productlinksdomain.LinkCandidateReasonDirectionUnavailable)
 	if !ok || marca.Detail != "provider não fornece a âncora marca" {
 		t.Fatalf("reasons=%#v, want provider-declared marca UNAVAILABLE", reasons)
-	}
-	refforn, ok := findReason(reasons, "refforn", productlinksdomain.LinkCandidateReasonDirectionUnavailable)
-	if !ok || refforn.Detail != "provider não fornece a âncora refforn" {
-		t.Fatalf("reasons=%#v, want provider-declared refforn UNAVAILABLE", reasons)
 	}
 }
 
@@ -1271,7 +1266,7 @@ func TestCase8NoAnchorResolvedYieldsZeroConfidenceNoCandidateWithReasons(t *test
 	assertProviderDeclaredUnavailableReasons(t, candidate.Reasons)
 }
 
-// Case 9 — MARCA-REFFORN-UNAVAILABLE (explicit): marca/refforn must appear
+// Case 9 — MARCA-UNAVAILABLE (explicit): marca must appear
 // as UNAVAILABLE regardless of band/status (ADR-17, motivo sempre
 // visível). Bound to case 1's ALTA/ACCEPT payload with a dedicated
 // assertion, per PLAN-M04 §4.
