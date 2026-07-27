@@ -1,4 +1,36 @@
-"""Coordinate table generator and pack-hygiene lane for EVIDENCE.md — hub ruling R-22.
+"""Coordinate table generator and pack REPORT for EVIDENCE.md — hub rulings R-22 and R-24.
+
+WHAT R-24 CHANGED, AND READ IT BEFORE THE R-22 HISTORY BELOW
+===========================================================
+Round 6 failed here, not in the prose: the three blocking findings were all claims THIS TOOL MADE
+ABOUT ITS OWN COVERAGE. The prose scan called itself a SUPERSET and a negative lookbehind made
+`123:456` invisible. The mutable-axis ban called itself a ban and did not see bare `HEAD`,
+`git rev-parse`, or a mutable named ref. The table claimed to resolve every anchor the prose names
+and silently dropped the ones it could not find. Each claim was false in the same shape: TOTAL in
+the wording, PARTIAL in the code.
+
+The hub's ruling did not widen any recognizer. It removed the totality:
+
+    A VERIFICATION ARTIFACT KEEPS ONLY THE CLAIMS IT CAN MAKE TOTALLY.
+    A CLAIM IT CANNOT MAKE TOTALLY BECOMES A REPORT, NOT A GATE.
+
+A report saying "this I resolved, this I did not" has no totality claim left to falsify. So the
+three findings cease to exist BY CONSTRUCTION rather than by pardon — the false claim is removed,
+not excused. This is ADR-17's honest-unknown rule turned on our own evidence apparatus: the same
+discipline the product uses for data it does not have.
+
+What follows from that, and what this file must NOT drift back into:
+
+  * THE PACK RUNG IS OFF THE LADDER. Nothing merges or fails on this tool's exit code. It is a
+    report the author runs and the reader may re-run.
+  * NO WIDENING. TOPLEVEL is not taught grouped `var (…)`. The git-verb list is not extended. The
+    lookbehind is not touched. Widening a recognizer whose output no longer gates anything buys
+    nothing and is precisely the move that produced rounds 3, 4, 5 and 6.
+  * The table is NAVIGATION, not evidence. A wrong row costs a reader a wrong jump, not a false
+    proof; R-11's mechanism is retired with its object, its insight kept.
+  * Every pass says what it does NOT see, in the same breath as what it does.
+
+Coordinate table generator and pack-hygiene lane for EVIDENCE.md — hub ruling R-22.
 
 WHAT R-22 CHANGED, AND WHY THIS TOOL IS SMALL
 =============================================
@@ -27,22 +59,31 @@ the symbol — but it lives HERE, generated from the code, regenerated and diffe
 removed is the DUPLICATION of coordinates into prose: R-14 applied to the last place a copy still
 lived.
 
-THIS TOOL THEREFORE DOES THREE THINGS AND NOTHING ELSE
-======================================================
+THIS TOOL THEREFORE DOES FOUR THINGS AND NOTHING ELSE
+=====================================================
 1. GENERATE the coordinate table, from the CODE, keyed by the anchors the prose names. If the prose
    says `TestGoldenToalheiroDimensionUnitEquivalenceYieldsConfirm`, this resolves that symbol in the
    tree and emits its file and line. Drift is then a diff in a generated artifact, not a defect a
    reviewer has to notice.
-2. PROVE NO COORDINATE LEAKED BACK INTO PROSE. The scan is deliberately a SUPERSET — every
-   `:<digits>` anywhere, inside or outside backticks and fences. Coverage is total because the
-   recognizer over-matches and every hit must be accounted for, not because the recognizer finally
-   got wide enough. Three forms were invisible in round 5; they are not taught to this parser, they
-   are violations. Teaching the parser one more form is what produced rounds 3, 4 and 5.
-3. BAN MUTABLE-AXIS COMMANDS. Freezing a SHA in prose does not freeze the command. `917f7bb5..HEAD`
+2. LOOK FOR COORDINATES LEFT IN PROSE. What it sees: `:<digits>` not preceded by another digit,
+   anywhere on a line, inside or outside backticks and fences. What it therefore does NOT see:
+   a colon-digits pair whose left neighbour is a digit, so `123:456` is invisible to it. That is a
+   real hole and it is written here rather than papered over, because the claim that this scan was
+   a SUPERSET is the exact sentence R-24 struck.
+3. LOOK FOR MUTABLE-AXIS COMMANDS. Freezing a SHA in prose does not freeze the command. `..HEAD`
    numstat rows in this pack decayed from 13 files to 20, and a listing was called a frozen-SHA fact
-   while its command was `git ls-files`, which reads the index and accepts no tree-ish
-   (`git ls-files 85b6c367` returns nothing). Every evidence command names its own tree-ish or it is
-   not evidence.
+   while its command was `git ls-files`, which reads the index and accepts no tree-ish. What this
+   pass sees: `..HEAD`, `HEAD~`, `git ls-files`, `git status`, and `git diff|grep|ls-tree|show|log`
+   on a line carrying no hex-ish token. What it does NOT see: bare `HEAD`, `git rev-parse`, a
+   mutable named ref such as `main`, an ordinary worktree `grep`, or a line where an unrelated SHA
+   elsewhere satisfies the hex-ish test. The principle stands whole — every evidence command names
+   its own tree-ish or it is not evidence — and this pass is a partial reading of it, not the thing
+   itself.
+4. REPORT WHAT IT COULD NOT RESOLVE. Anchors recognized in the prose with no matching declaration,
+   and backticked spans carrying a call suffix that were never treated as anchors at all. R-17 is
+   ratified a fourth time by R-24: the requirement to say what could not be resolved stands. What
+   R-24 changed is the CONSEQUENCE — a report line, not an exit code. And this report does not
+   claim to be complete either; see its own footnote where it prints.
 
 NO DECLARATION MAY BE A PACK LINE RANGE
 =======================================
@@ -52,8 +93,13 @@ paragraph above it, and then it silently excuses the wrong lines. Ratified by th
 declaration TRAVELS WITH THE CONTENT it describes.
 
   historical citation   carries its SHA inline           `generation_service.go:88@2921d563`
-  quoted program output fence tagged ```quoted-output    (`file.go:12:` there is the QUOTATION)
+  text the chip quotes  ANY ```quoted-* fence tag        (`file.go:12:` there is the QUOTATION)
   literal non-citation  listed in cite-regions.txt       (a literal is not a coordinate)
+
+The middle row is written as the code behaves, not as an earlier draft described it. Round 6 found
+the prose naming `quoted-output` specifically while the check honoured every `quoted-*` tag; the
+sentence was corrected rather than the check narrowed, because a tag is a declaration the author
+makes in the open and an unaudited tag is visible in the diff that adds it.
 
 WHAT THIS TOOL DOES NOT DECIDE
 ==============================
@@ -62,12 +108,14 @@ test asserts. That is the cold reviewer's seat, and moving prose onto test names
 checkable — `go test -run <name>` either exists and passes or does not.
 
     python cite-table.py                 # GENERATE: rewrite coordinates.txt from the code
-    python cite-table.py --strict        # CHECK: write nothing, exit 1 on a violation OR on drift
+    python cite-table.py --strict        # CHECK: write nothing, exit 1 on a finding OR on drift
     python cite-table.py --show          # also dump the table to stdout
     python cite-table.py --suggest       # for each coordinate still in prose, its enclosing symbol
 
 The two modes are separate on purpose. A checker that regenerated the artifact could never detect
-drift in it — it would overwrite the evidence and report success. So `--strict` cannot write.
+drift in it — it would overwrite the evidence and report success. So `--strict` cannot write. The
+exit code survives R-24 because it is useful to the author; what does not survive is anything
+depending on it. The rung is off the ladder, and the unresolved report never touches the exit code.
 """
 import io
 import os
@@ -197,6 +245,12 @@ HISTORICAL = re.compile(r"`[A-Za-z0-9_./-]+\.[A-Za-z]+:\d+(?:\s*[-–]\s*\d+)?@[
 FENCE = re.compile(r"^\s*```\s*(\S+)?")
 # Anchors the prose names: backticked Go-ish identifiers. Tests are the load-bearing ones.
 ANCHOR = re.compile(r"`([A-Z][A-Za-z0-9_]{3,}|[a-z][A-Za-z0-9_]{5,})`")
+# REPORT ONLY, and it gates nothing. A backticked identifier carrying a call suffix — `Foo()` — is
+# not an anchor to ANCHOR, which requires the whole span to be a bare identifier. The cold gate found
+# `ProviderCapabilitySet()` sitting in the prose, real and invisible. R-24 forbids widening ANCHOR to
+# swallow it, because a wider recognizer feeding a table that gates nothing buys nothing. It does
+# require saying the span was seen and not resolved, which is what this pattern is for.
+CALLSPAN = re.compile(r"`([A-Za-z_][A-Za-z0-9_]{2,})\(\)`")
 
 MUTABLE = [
     (re.compile(r"\.\.HEAD\b"), "`..HEAD` — the range moves with every commit"),
@@ -214,6 +268,7 @@ FOREIGN = ("quoted-contract", "quoted-verdict")
 violations = []
 mutable_hits = []
 anchors_seen = {}
+callspans_seen = {}
 exempted = {}
 
 in_fence = None
@@ -255,6 +310,8 @@ for pack_no, line in enumerate(pack_lines, 1):
     if not quoted:
         for m in ANCHOR.finditer(line):
             anchors_seen.setdefault(m.group(1), []).append(pack_no)
+        for m in CALLSPAN.finditer(line):
+            callspans_seen.setdefault(m.group(1), []).append(pack_no)
 
     # --- job 2: no coordinate in prose
     if quoted:
@@ -277,9 +334,14 @@ for pack_no, line in enumerate(pack_lines, 1):
 # ---------------------------------------------------------------------------
 # job 1: the table
 rows = []
+unresolved = []      # recognized as an anchor, no declaration found in the scanned roots
 for name in sorted(anchors_seen):
     locs = symbols.get(name)
     if not locs:
+        # R-24 / R-17: the drop is recorded, not swallowed. `if not locs: continue` was the whole
+        # defect — the name left the pipeline and the footer still printed a resolved count as if
+        # the table covered everything the prose named.
+        unresolved.append((name, anchors_seen[name]))
         continue
     if len(locs) > 1:
         rows.append((name, "AMBIGUOUS", "; ".join("%s:%d" % l for l in locs), ""))
@@ -302,10 +364,16 @@ out("  declarations    %s" % (os.path.relpath(REGIONS, REPO).replace(os.sep, "/"
 out("  code roots      %s" % "  ".join(os.path.relpath(r, REPO).replace(os.sep, "/") for r in ROOTS))
 out("")
 out("Coordinates live HERE and nowhere else. The prose names behaviour and test names; this table")
-out("resolves them to positions. Regenerated and diffed by the lane, so drift is a failing diff")
-out("rather than something a reviewer has to notice. R-22 does not overturn the §11 judge — the")
-out("anchor's TYPE is still a coordinate, and it is still mechanical; what is gone is the COPY of it")
-out("into prose, which is the last place a decaying duplicate still lived.")
+out("resolves them to positions. R-22 does not overturn the §11 judge — the anchor's TYPE is still a")
+out("coordinate, and it is still mechanical; what is gone is the COPY of it into prose, which is the")
+out("last place a decaying duplicate still lived.")
+out("")
+out("THIS TABLE IS NAVIGATION, NOT EVIDENCE, and that is R-24. It resolves THE ANCHORS LISTED BELOW.")
+out("It does not resolve every anchor the prose names, and the ones it could not resolve are printed")
+out("under UNRESOLVED rather than dropped. A wrong or missing row costs a reader a wrong jump; it")
+out("cannot cost anyone a false proof, because nothing gates on this file. The claim it used to make")
+out("— every anchor, resolved — was total in the wording and partial in the code, and R-24's remedy")
+out("was to delete the claim rather than to widen the recognizer underneath it.")
 out("")
 out("AMBIGUOUS is a resolution, not a failure. A name carried by more than one declaration in the")
 out("scanned roots resolves to ALL of them, printed. Narrowing it — by guessing the package the prose")
@@ -321,6 +389,51 @@ for name, rel, no, body in rows:
 out("")
 out("  anchors resolved  %d" % len([r for r in rows if r[1] != "AMBIGUOUS"]))
 out("  ambiguous         %d" % len([r for r in rows if r[1] == "AMBIGUOUS"]))
+out("  UNRESOLVED        %d" % len(unresolved))
+out("")
+if unresolved:
+    out("-" * 112)
+    out("UNRESOLVED — recognized as an anchor in the prose, no declaration under the code roots above.")
+    out("-" * 112)
+    out("")
+    out("Not a failure and not a pardon. A name lands here for ordinary reasons: it is declared inside")
+    out("a grouped `var (…)` or `const (…)` block, which the column-0 matcher does not see; it lives")
+    out("outside the scanned roots; or it is prose that merely looks like an identifier. R-24 forbids")
+    out("widening the matcher to chase the first case, because a wider matcher feeding a table that")
+    out("gates nothing buys nothing. What it requires is that the name appear here instead of leaving")
+    out("the pipeline in silence. Resolve one by hand with `git grep -n '<name>'`.")
+    out("")
+    for name, at in unresolved:
+        out("%-64s named on %d line%s" % (name, len(at), "" if len(at) == 1 else "s"))
+    out("")
+
+if callspans_seen:
+    out("-" * 112)
+    out("NOT TREATED AS ANCHORS — backticked spans carrying a call suffix, `Foo()`.")
+    out("-" * 112)
+    out("")
+    out("The anchor pattern requires the whole backticked span to be a bare identifier, so these were")
+    out("never anchors and never reached the table. The cold gate found one such span in the prose,")
+    out("real in the code and invisible here. They are LISTED rather than RECOGNIZED, because R-24")
+    out("forbids widening. Where the bare name does resolve, its position is shown — as a courtesy to")
+    out("a reader, not as a row of the table above.")
+    out("")
+    for name in sorted(callspans_seen):
+        locs = symbols.get(name) or []
+        where = "; ".join("%s:%d" % l for l in locs) if locs else "(no declaration under the code roots)"
+        out("%-40s %s" % (name + "()", where[:70]))
+    out("")
+
+out("-" * 112)
+out("WHAT THIS TABLE DOES NOT COVER — R-24 requires the limit to travel with the artifact")
+out("-" * 112)
+out("")
+out("Only backticked spans are considered at all, so an anchor named in bare prose is not seen. Only")
+out("column-0 `func`/`type`/`var`/`const` declarations are indexed, so grouped-block declarations are")
+out("absent. Only the code roots printed at the top are walked. This list of gaps is itself written")
+out("by hand and is not guaranteed complete. None of that is a defect to be fixed by widening: it is")
+out("the honest extent of a navigation aid, stated so that no reader mistakes its silence for a")
+out("finding of absence.")
 out("")
 
 # Two modes, and the split is what makes drift a real failure rather than a sentence.
@@ -375,11 +488,14 @@ if "--show" in sys.argv:
 print("")
 
 print("=" * 112)
-print("LANE — pack hygiene. Both checks fail closed; --strict exits 1.")
+print("REPORT — pack hygiene. NOT A LADDER RUNG (R-24). --strict still exits 1 for the author.")
 print("=" * 112)
 print("")
-print("  coordinates leaked into prose      %d   (must be 0 — R-22)" % len(violations))
-print("  mutable-axis commands in the pack  %d   (must be 0)" % len(mutable_hits))
+print("  coordinates found in prose         %d   (target 0 — R-22)" % len(violations))
+print("  mutable-axis commands found        %d   (target 0)" % len(mutable_hits))
+print("  anchors this tool could not resolve %d  (a report, never an exit code — R-24)" % len(unresolved))
+print("  backticked call spans not anchored %d   (listed in the table, not recognized)"
+      % len(callspans_seen))
 if REGION_PROBLEMS:
     for p in REGION_PROBLEMS:
         print("  DECLARATION: %s" % p)
@@ -389,10 +505,23 @@ print("  chip may not edit. Printed so no exemption can be silent; an unused one
 for tag in FOREIGN:
     print("    ```%-18s %4d lines" % (tag, exempted.get(tag, 0)))
 print("")
-print("The prose scan is a SUPERSET: every `:<digits>` anywhere, inside or outside backticks and")
-print("fences. Exempt only by carrying a SHA inline, by sitting in a ```quoted-output fence, or by")
-print("being a declared literal — and each of those travels with the content it describes, so no")
-print("exemption can drift away from what it excuses.")
+print("WHAT THESE TWO PASSES SEE, AND WHAT THEY DO NOT. R-24 struck the sentence that used to stand")
+print("here, which called the prose scan a SUPERSET; it was total in the wording and partial in the")
+print("code, and that gap was a round-6 blocking finding.")
+print("")
+print("  coordinates   sees `:<digits>` NOT preceded by another digit, anywhere on a line, inside or")
+print("                outside backticks and fences. Does NOT see `123:456`, where the left neighbour")
+print("                is a digit. Exempt: an inline SHA, a declared literal, or ANY ```quoted-* fence")
+print("                — every such tag, not only ```quoted-output. Each exemption travels with the")
+print("                content it describes, so none can drift away from what it excuses.")
+print("  mutable axis  sees `..HEAD`, `HEAD~`, `git ls-files`, `git status`, and a bare")
+print("                `git diff|grep|ls-tree|show|log` on a line carrying no hex-ish token. Does NOT")
+print("                see bare `HEAD`, `git rev-parse`, a mutable named ref such as `main`, a plain")
+print("                worktree `grep`, or a line where an unrelated SHA satisfies the hex-ish test.")
+print("")
+print("The RULE is whole and is not what narrowed: every evidence command names its own tree-ish or")
+print("it is not evidence. These passes are a partial reading of that rule, and the reading is now")
+print("written down instead of being implied to be complete.")
 print("")
 
 if violations:

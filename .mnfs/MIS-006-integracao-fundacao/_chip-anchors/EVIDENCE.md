@@ -60,14 +60,15 @@ the verdict/output artifact afterwards.
 | D20 | P6 | Dual gate round 2 — GPT side | gpt-5.6-sol / medium | OS-process codex | `scratchpad/prompt-p6-sol-r2.md` | `scratchpad/agent__p6-sol-r2.last.md` + `.log` | completed — **FAIL**; C6/C8/C11 FAIL, 3 BLOCKING, all three about evidence decay, none about code |
 | D22 | P6 | Dual gate round 3 — COLD Opus side (`harness:gate-reviewer`, Read/Grep/Glob only, no Bash) | Opus / cold | Agent tool, async | `scratchpad/prompt-p6-opus-r3.md` | verdict transcribed in ROUND-4 below | completed — **FAIL** on the pack; found the ROUND-3 closure sentence overclaiming its own scope |
 | D23 | P6 | Dual gate round 3 — GPT side | gpt-5.6-sol / medium | OS-process codex, `--sandbox read-only` | `scratchpad/prompt-p6-sol-r3.md` | `scratchpad/agent__p6-sol-r3.last.md` + `.log` | completed — **FAIL**; C5 FAIL, 3 BLOCKING; C1–C4, C6–C12 PASS, all re-anchoring samples resolved |
-| D24 | P6 | Mechanical citation audit — the D21 remedy executed, not restated | chip, `cite-audit.py` (deterministic, no model) | local script, read-only | `_chip-anchors/cite-audit.py` (committed pack artifact per R-11) | `_chip-anchors/cite-audit.txt` — the artifact carries its own COVERAGE block (resolved / unresolvable); this row does not restate the number, per R-14 | completed, then **SUPERSEDED** — round 5 showed the coverage total counted unresolved rows as resolved and whole citation forms fell outside the regex. Replaced by ladder rung PACK (`cite-table.py --strict` + `coordinates.txt`). Both files stay in the pack, each carrying a SUPERSEDED banner in its own first lines |
+| D24 | P6 | Mechanical citation audit — the D21 remedy executed, not restated | chip, `cite-audit.py` (deterministic, no model) | local script, read-only | `_chip-anchors/cite-audit.py` (committed pack artifact per R-11) | `_chip-anchors/cite-audit.txt` — the artifact carries its own COVERAGE block (resolved / unresolvable); this row does not restate the number, per R-14 | completed, then **SUPERSEDED** — round 5 showed the coverage total counted unresolved rows as resolved and whole citation forms fell outside the regex. Replaced by `cite-table.py` + `coordinates.txt`, which round 6 then put on the ladder as rung PACK and R-24 took back off — it is a report, not a gate. Both round-4 files stay in the pack, each carrying a SUPERSEDED banner in its own first lines |
 | D25 | P6 | Dual gate round 4 — both sides re-pinned to rulings R-6a, R-9, R-10, R-11, R-12 @ `main 371c91d` | COLD Opus + gpt-5.6-sol / medium | Agent tool + OS-process codex | `scratchpad/prompt-p6-opus-r4.md`, `scratchpad/prompt-p6-sol-r4.md` | transcribed / `scratchpad/agent__p6-sol-r4.last.md` | see ROUND-4 below |
 | D21 | §11 | Independent adversarial judgement — structural vs informational (briefed AGAINST the abstraction; "change no rule" set as the default verdict) | Claude sonnet subagent | Agent tool, async | inline brief, quoted in ROUND-3 | `scratchpad/agent__p11-judge-r3.md` | completed — **REJECT-IN-FAVOUR-OF-mechanical-table-regeneration-at-final-tip**; the chip's own proposal was refused |
 | D26 | P6 | Dual gate round 5 — COLD Opus side. **Area: SEMANTICS** per R-18 (the two sides are given DIFFERENT areas, because agreement between gates looking at the same thing is worth less than disagreement between gates looking at different things). Does the PROSE match the line the audit printed, and is the behaviour in the production code | Opus, `harness:gate-reviewer` (Read/Grep/Glob only, no Bash by construction) | Agent tool, async | `scratchpad/prompt-p6-opus-r5.md` | verdict transcribed below by the chip — the Agent tool's own output file is EMPTY, so no artifact exists to point at | completed — **FAIL** on the pack, code cleared |
 | D27 | P6 | Dual gate round 5 — GPT side. **Area: DERIVATION** per R-18. Re-derive every count and listing from `git` at the frozen SHAs, re-run the audit, attack the R-14 pointer discipline | gpt-5.6-sol / medium | OS-process codex, `--sandbox read-only` | `scratchpad/prompt-p6-sol-r5.md` | `scratchpad/agent__p6-sol-r5.last.md` + `.log` | completed — **FAIL**, four BLOCKING, all structural: false coverage total, decayed unpinned counts, a wrong count at a frozen SHA, and a listing whose command binds no tree-ish |
-| D28 | P6 | Dual gate round 6 — COLD Opus side. **Area: SEMANTICS.** The prose was rewritten wholesale under R-22 and now claims BEHAVIOUR anchored to test and symbol names; the question is whether each named test asserts what the sentence says, and whether the behaviour is in the production code | Opus, `harness:gate-reviewer` (Read/Grep/Glob only, no Bash by construction) | Agent tool, async | `scratchpad/prompt-p6-opus-r6.md` | `_chip-anchors/verdict-r6-cold.md` — transcribed by the chip on arrival, because the Agent tool leaves an empty output file (D30) | dispatched |
-| D29 | P6 | Dual gate round 6 — GPT side. **Area: DERIVATION AND THE APPARATUS.** Re-derive every frozen-SHA fact; then turn on the tool that now carries the coverage claim — run the PACK rung, re-run every recorded mutation (four that must FAIL, one that must NOT fire, and one proving tolerance did not cost detection), and try to find text the checks cannot see | gpt-5.6-sol / medium | OS-process codex, `--sandbox read-only` | `scratchpad/prompt-p6-sol-r6.md` | `scratchpad/agent__p6-sol-r6.last.md` + `.log` | dispatched |
-| D30 | P6 | Cold verdict transcription — the remedy for the artifact asymmetry found in round 5. Not a dispatch: a chip step the ledger names so it can be checked | chip | direct write | — | `_chip-anchors/verdict-r6-cold.md` | pending the round-6 cold verdict |
+| D28 | P6 | Dual gate round 6 — COLD Opus side. **Area: SEMANTICS.** The prose was rewritten wholesale under R-22 and now claims BEHAVIOUR anchored to test and symbol names; the question is whether each named test asserts what the sentence says, and whether the behaviour is in the production code | Opus, `harness:gate-reviewer` (Read/Grep/Glob only, no Bash by construction) | Agent tool, async | `scratchpad/prompt-p6-opus-r6.md` | `_chip-anchors/verdict-r6-cold.md` — transcribed by the chip on arrival, because the Agent tool leaves an empty output file (D30) | completed — **PASS**. No BLOCKING semantic finding: no test cited as proving what it does not assert, no guard described as covering what it does not cover. Sampled ~25 table rows plus all 20 backticked `Test*` names; every one resolved to the stated file AND line. One SHOULD-FIX (the tool's silent anchor drops), one NIT (the U2 inversion) |
+| D29 | P6 | Dual gate round 6 — GPT side. **Area: DERIVATION AND THE APPARATUS.** Re-derive every frozen-SHA fact; then turn on the tool that now carries the coverage claim — run the PACK rung, re-run every recorded mutation (four that must FAIL, one that must NOT fire, and one proving tolerance did not cost detection), and try to find text the checks cannot see | gpt-5.6-sol / medium | OS-process codex, `--sandbox read-only` | `scratchpad/prompt-p6-sol-r6.md` | `scratchpad/agent__p6-sol-r6.last.md` + `.log`, transcribed into `_chip-anchors/verdict-r6-gpt.md` | completed — **FAIL**, five BLOCKING. Two were pack errors (a frozen-SHA grep sentence omitting its test exclusion; a write-set range pinned two commits past the slices it names, whose count matched anyway by coincidence); three were the tool's own coverage claims being total in the wording and partial in the code. Every frozen-SHA count in the pack re-derived correctly, including the round-5 corrections |
+| D30 | P6 | Cold verdict transcription — the remedy for the artifact asymmetry found in round 5. Not a dispatch: a chip step the ledger names so it can be checked | chip | direct write | — | `_chip-anchors/verdict-r6-cold.md` | completed on arrival. R-23 then added a second holder: the same text travelled to the hub VERBATIM in the event, and the hub commits its own copy. The GPT verdict was given the same treatment for the same reason — its codex `-o` artifact is real but lives in a session-scoped scratchpad that dies exactly when a transcript does |
+| D31 | P6 | Round-6 corrective under R-24. Two prose corrections; the tool reports what it could not resolve and stops claiming totality, WITHOUT widening any recognizer; the PACK rung leaves the ladder; R-23 and R-24 recorded; the U2 inversion fixed chip-side. ZERO production code — that is the property the hub verifies before any AGREEMENT, not one it takes on trust | chip | direct edit | hub ruling R-24, `main@874d00e5` | this pack + `cite-table.py` + `coordinates.txt` | dispatched |
 
 ## Slice S3 — chip verification, and a defect in the chip's own slice card
 
@@ -140,7 +141,7 @@ uses.
 
 | Check | Command | Result |
 |---|---|---|
-| Write-set exactness | `git diff --name-only 917f7bb5 633bf9fa` | 13 files, all declared across S1+S2, zero undeclared |
+| Write-set exactness | `git diff --name-only 917f7bb5 b9da6d2e` | 13 files, all declared across S1+S2, zero undeclared |
 | L0 build | `go build ./...` | exit 0 |
 | L0 vet | `go vet ./...` (full tree) | exit 0 |
 | L1 tests | `go test ./internal/modules/product_links/... ./internal/modules/connectors/... ./internal/composition` | all `ok`, exit 0 |
@@ -148,6 +149,16 @@ uses.
 | C2 anchor literals | `grep -rn '"marca"\|"refforn"' .../application` (production only) | **0 hits** |
 | C3 provider branch | `grep -rn 'mercado_livre\|ProviderCode ==' product_links` (production only) | **0 hits** |
 | C12 additive-only | `git diff --unified=0 917f7bb5 633bf9fa -- root.go \| grep '^-'` | **no removed lines** |
+
+**The write-set row above was re-pinned in the round-6 corrective, and the reason is worth more than
+the fix.** It previously ended the range at `633bf9fa`, which is not where S2 ends: that range walks
+S1 `5bc55219`, S2 `b9da6d2e`, S3 `11e68f6f`, and then the composition-formatting commit. It
+nevertheless returned 13 paths — the same 13 — because S3 only touched paths S1 and S2 had already
+written. So the number was right while the range was wrong, and nothing in the output could say so.
+A count that is correct for the wrong reason does not announce itself; it reads exactly like a
+correct one, which is why the round-6 derivation gate filed it as blocking and why the hub verified
+it before ruling. Both endpoints are stated here rather than the wrong one being quietly swapped
+out, because the coincidence is the finding.
 
 The worker again reported plain `go build ./...` blocked by VCS stamping; again it does not
 reproduce chip-side (exit 0). Profile §3 (2026-07-17, CHIP-M03 F-ENV) already ratifies that the
@@ -402,10 +413,22 @@ offset aliasing, and key/display pair compaction.
 **Cited at the state that MOTIVATED the ruling, not at the reviewed tip — the ruling's whole point is
 that this no longer exists.** At `f92ca9c7^`, `generation_service.go` imported `connectorsports` into the
 product_links APPLICATION layer and `resolveIdentityAnchors` re-validated anchor names against
-`connectorsports.KnownIdentityAnchors()`. At the reviewed tip both are GONE, and the proof is an
-absence with a control: `git grep -c connectorsports 85b6c367 -- <the application package>` returns
-nothing, while the same command at `f92ca9c7^` returns hits — so the emptiness is the fix, not a
-mistyped pattern. `product_links/ports/provider_identity_anchor_reader.go` types its
+`connectorsports.KnownIdentityAnchors()`. At the reviewed tip both are GONE from PRODUCTION, and the
+proof is an absence with a control:
+`git grep -c connectorsports 85b6c367 -- <the application package> ':!*_test.go'` returns nothing,
+while the same command at `f92ca9c7^` returns hits — so the emptiness is the fix, not a mistyped
+pattern.
+
+**That sentence used to omit the test-file exclusion, and the omission made it false.** Without
+`':!*_test.go'` the command reports two hits in `generation_integration_test.go` and exits 0: the integration
+fixture legitimately names `connectorsports.IdentityAnchorSellerSKU` to build its input, which is a
+test constructing a value, not the application layer reaching for the connectors vocabulary. The
+pack disclosed those two occurrences in its own import table further down while this paragraph
+claimed the grep was empty, so the document contradicted itself — a reader believing either half
+was misled by the other. The round-6 derivation gate filed it, the hub re-ran it before ruling, and
+the fix is to state the command that was actually run rather than the tidier one.
+
+`product_links/ports/provider_identity_anchor_reader.go` types its
 anchor as a plain `string` precisely so product_links does not depend on the connectors vocabulary
 type — this validation reaches around that decoupling. It is also dead three times over: the
 connectors service already rejects unknown and duplicate anchors, and the adapter BUILDS its result
@@ -1351,9 +1374,18 @@ verified this independently against base — that literal carried exactly four k
 still present at the tip, none removed.)
 
 Every cell states BEHAVIOUR and names the test or symbol that carries it. Positions are not repeated
-here: `coordinates.txt` resolves every anchor below to its file and line, generated from the code and
-diffed by the lane. That split is R-22 — the anchor's type is still a coordinate, but the coordinate
-is no longer duplicated into prose, which is the last place a decaying copy lived.
+here: `coordinates.txt` resolves THE ANCHORS IT LISTS to file and line, generated from the code, and
+prints under UNRESOLVED the anchors it could not resolve. That split is R-22 — the anchor's type is
+still a coordinate, but the coordinate is no longer duplicated into prose, which is the last place a
+decaying copy lived.
+
+**This paragraph used to say the table resolves EVERY anchor below, and R-24 struck that word.** The
+generator dropped a name it could not find and its footer still printed a resolved count, so the
+claim was total in the wording and partial in the code — the same shape as the two recognizer claims
+struck alongside it. The remedy is not a wider matcher: the table is NAVIGATION, so a name it misses
+costs a reader one manual lookup by name and cannot cost anyone a false proof. Where a cell's anchor is
+absent from the table, resolve it by name; the UNRESOLVED and NOT-TREATED-AS-ANCHORS sections say
+which those are instead of leaving the reader to discover the silence.
 
 | ID | Verdict | Evidence |
 |----|---------|----------|
@@ -1457,34 +1489,56 @@ on Windows (echoed into the transcript:
 | L1 | `go test -count=1 ./internal/modules/product_links/... ./internal/modules/connectors/... ./internal/modules/mutations/... ./internal/composition/...` | **exit 0**, 27 packages, all `ok`, zero failures |
 | GOV | `npm run harness:governance -- -BaseSha 917f7bb5…` from a clean detached worktree | **hub-run per R-b**, differential PASS — see below |
 | LIVE | U1–U3 browser live-drive on the connected ML account | **PASS — hub-run, ruling R-8** — see below |
-| PACK | `python cite-table.py --strict` from the pack directory | **exit 0** — see below |
 
-### Rung PACK — the R-22 lane check
+**The PACK rung was on this ladder and R-24 took it off.** It is not a rung, it is a report, and the
+row is removed rather than annotated because a row in a ladder table is a merge gate by position.
+See the section below for what the tool does now and why nothing depends on its exit code.
 
-R-22 made the coordinate table a generated artifact and required the lane to regenerate it and fail
-on drift. This rung is that check. It is deterministic, model-free, and runs in under a second, which
-is the point: the apparatus that verifies the pack has to cost less than the pack.
+### `cite-table.py` — a report, not a rung (R-24)
 
-What the rung enforces, all fail-closed, all reported whether or not they fire:
+R-22 made the coordinate table a generated artifact and put the check on the ladder. Round 6 then
+failed on that check — not on the code, and not on the prose it was built to police. All three
+blocking findings were claims THE TOOL MADE ABOUT ITS OWN COVERAGE: a prose scan that called itself a
+SUPERSET while a negative lookbehind hid `123:456`; a mutable-axis ban that called itself a ban and
+did not see bare `HEAD`, `git rev-parse`, or a mutable named ref; a table that claimed to resolve
+every anchor and silently dropped the ones it could not find. Same shape three times — total in the
+wording, partial in the code.
 
-- **No coordinate in prose.** Every `:<digits>` in EVIDENCE.md, inside backticks and fences as well
-  as outside. Exempt only by carrying a SHA inline, by sitting in a fence tagged as quotation, or by
-  being a literal declared in `cite-regions.txt`. Each of those declarations travels with the content
-  it describes, so no exemption can drift away from what it excuses.
-- **No mutable-axis command.** A command naming no tree-ish cannot be re-run against the tree it
-  read, so it is not evidence. Foreign text is exempt — a criterion the hub wrote, a verdict a gate
-  returned — because there the pack is recording what someone else said, not offering the command as
-  its own proof. **Every exempted line is counted and printed**, so an exemption can never be silent.
-  That is the round-4 lesson applied to the tool's own escape hatches: the defect was never
-  narrowness, it was silence.
-- **Drift.** The rung rewrites `coordinates.txt` from the code on every run. If the committed copy
-  and the regenerated one differ, the difference is a lane failure rather than something a reviewer
-  has to notice. A hand-edit to the artifact is therefore reverted with a red lane, not believed.
+The hub's ruling widened nothing. It removed the totality:
 
-The exit code is the claim; the artifact carries the numbers. This section deliberately restates
-neither the anchor count nor the exemption counts, because a count copied out of a generated artifact
-is the R-14 defect, and reproducing it inside R-22's own remedy is precisely the recurrence rounds 3,
-4 and 5 kept demonstrating.
+> A VERIFICATION ARTIFACT KEEPS ONLY THE CLAIMS IT CAN MAKE TOTALLY.
+> A CLAIM IT CANNOT MAKE TOTALLY BECOMES A REPORT, NOT A GATE.
+
+A report that says *this I resolved, this I did not* has no totality claim left to falsify, so the
+three findings cease to exist by construction rather than by pardon — the false claim is deleted, not
+excused. It is ADR-17's honest-unknown rule turned on our own evidence apparatus: the same discipline
+this product applies to data it does not have.
+
+What the tool does now:
+
+- **Coordinates in prose, mutable-axis commands.** Both passes still run and both still print. What
+  changed is that each states what it does NOT see, in the same output as what it does — the
+  lookbehind, the exact git verbs, the fact that ANY `quoted-*` tag is honoured and not only
+  `quoted-output`. The RULE is untouched and whole: every evidence command names its own tree-ish or
+  it is not evidence. The pass is a partial reading of it and now says so.
+- **Unresolved anchors are reported.** `if not locs: continue` was the defect; the name now lands in
+  an UNRESOLVED section of the generated table with the number of prose lines that name it. Backticked
+  spans carrying a call suffix — never anchors to the recognizer, one of them real and found by the
+  cold gate — are listed too. **R-17 is ratified a fourth time**: the requirement to say what could
+  not be resolved stands. What R-24 changed is the CONSEQUENCE — a report line, never an exit code.
+- **No widening.** `TOPLEVEL` is not taught grouped `var (…)`. The git-verb list is not extended. The
+  lookbehind is untouched. Widening a recognizer whose output no longer gates anything buys nothing,
+  and it is the exact move that produced rounds 3, 4, 5 and 6.
+- **Drift still fails, for the author.** The two modes stay split — a checker that regenerated the
+  artifact could never detect drift in it. `--strict` still exits 1. Nothing merges on that exit code.
+
+R-11's mechanism retires with its object. It made citation validity mechanical because the cold gate
+has no shell, and that was about claims made IN PROSE, which R-22 removed. The table is navigation
+now: a wrong row costs a reader a wrong jump, not a false proof. The insight survives, the enforcement
+does not.
+
+This section restates no count from the generated artifact. That is R-14, and reproducing it inside
+R-22's own remedy is the recurrence rounds 3, 4 and 5 kept demonstrating.
 
 `cite-audit.py` and `cite-audit.txt` — the round-4 apparatus — are **superseded** by this rung. They
 stay in the pack, and are not deleted: the D24 ledger row points at them, and they are the record of
@@ -1512,12 +1566,21 @@ and the chip's tree was not written to. Connected ML account, 34 listings, candi
 | Rung | Result | What was actually driven |
 |---|---|---|
 | **U1** — F-01 reaches the screen | **PASS** | Before: `marca inexistente no lado provider` — the CORE asserting a fact about the provider. Now: `marca: provider não fornece a âncora marca`, derived from the ML adapter's declaration of `[seller_sku, ean, title]`. A second provider that declares `marca` makes the row disappear on its own, with no code change — which is what "capability is data" means in the screen rather than in the type system |
-| **U2** — F-02 reaches the verdict | **PASS** | `MLB4735326915` "SOUL TOALHEIRO SIMPLES 500MM CR/POLIDO" went from **BAIXA 25%, rejected by `Título hard-negative: medidas`** to **`exact_sku` CONFIRM, MEDIA 70%**. The EXEMPLO-IO case from the dispatch, live. **And the guard did not loosen**: ambiguous-EAN rows in the same view stay BAIXA 20% with `âncora ambígua` |
+| **U2** — F-02 reaches the verdict | **PASS** | Listing `MLB4735326915` "Toalheiro Simples Soul Zen 50cm Cromado" (**cm**), matched against ERP product "SOUL TOALHEIRO SIMPLES 500MM CR/POLIDO" (**mm**), went from **BAIXA 25%, rejected by `Título hard-negative: medidas`** to **`exact_sku` CONFIRM, MEDIA 70%**. The EXEMPLO-IO case from the dispatch, live, in the orientation adjudication A3 fixed. **And the guard did not loosen**: ambiguous-EAN rows in the same view stay BAIXA 20% with `âncora ambígua` |
 | **U3** — F-03 reaches the list | **PASS** | Three independent sources agree on 29: `select count(*)` = 29 resolved; `GET /link-workflows` with NO `limit` = 29 items carrying `current_link`; `document.querySelectorAll('table tbody tr').length` on the Resolvidos tab = 29. KPI "Resolvidos hoje" = 29. The 9 that the old shared default of 20 was eating are back |
 
 U2 is the strongest single result in this chip: the golden case named in the dispatch on day 1,
 driven end to end on the real account, moving in the intended direction **while the hard negative it
 could have broken stays blocking**. A pass that only showed the CONFIRM would not have proved that.
+
+**The U2 cell above was corrected in the round-6 corrective, and the same inversion was in the hub's
+own live artifact.** It attached the ERP description to the listing ID — the inversion adjudication
+A3 had already fixed once, in the header, reappearing later in the same document. The golden test is
+the authority: it sets the listing title to the `50cm` form and puts the all-caps `500MM` name on the
+ERP side under `sku:33698`. The chip flagged the hub-owned copy rather than editing it, and the hub
+corrected it on `main` in the same changeset as R-24 — by a NEW COMMIT, never by an edit under the
+existing pin, because a pin names its SHA and editing beneath one makes the pin lie. The pack's
+pointer to the earlier SHA therefore stays valid and stays where it is.
 
 **Hub findings from the drive — three, none blocking, none this chip's.** Recorded because the hub
 raised them, and explicitly NOT actioned here: acting on them would be the scope leak the dispatch
@@ -1958,12 +2021,60 @@ it arrives, and the ledger row points at that file. The reviewer cannot do it �
 has no Write tool by construction, which is what makes it cold — so the write is the chip's step, and
 naming it as the chip's is what keeps it honest.
 
-## The rulings rounds 4 and 5 produced — R-13 through R-22
+### ROUND 6 — dispatched on pack tip `a23aee3a`, code tip `85b6c367` unchanged (D28, D29)
+
+Gates split by area for the second time, and further apart than in round 5: cold took SEMANTICS
+against a prose rewritten wholesale under R-22, GPT took DERIVATION **and the apparatus itself** —
+because the pack's coverage claim now rested entirely on `cite-table.py`, and five rounds had died on
+checks that were narrow and silent about being narrow.
+
+**The gates did not agree, and no AGREEMENT string was authored.** Both verdicts went to the hub raw
+and verbatim, and both are committed here in full, one file each, unedited inside a fence:
+[verdict-r6-cold.md](verdict-r6-cold.md) and [verdict-r6-gpt.md](verdict-r6-gpt.md).
+
+| Gate | Area | Verdict | Where it landed |
+|---|---|---|---|
+| COLD Opus (`harness:gate-reviewer`, Read/Grep/Glob, no Bash) | SEMANTICS | **PASS** | No BLOCKING semantic mismatch. Sampled ~25 coordinate rows plus all 20 backticked `Test*` names; every one resolved to the stated file AND line, production symbols to production files — the round-5 defect class is gone from what it checked. One SHOULD-FIX, one NIT |
+| GPT side (`gpt-5.6-sol`/medium) | DERIVATION + THE APPARATUS | **FAIL** | Five BLOCKING. Every frozen-SHA count re-derived correctly, including the round-5 corrections. Two blockers were pack errors; three were the tool's claims about its own coverage |
+
+**The two pack errors, re-derived by the chip before relaying and by the hub before ruling.** A
+frozen-SHA grep sentence claimed an empty result while omitting the test-file exclusion that makes it
+empty — and the pack disclosed those same two test occurrences elsewhere, so the document contradicted
+itself. And a write-set range labelled S1+S2 ran two commits past S2, returning the right count for
+the wrong reason because the intervening slice touched only paths already listed. Both are corrected
+above, at the rows that carried them, with the coincidence stated rather than quietly swapped out.
+
+**The three apparatus blockers are the subject of R-24** and are not fixed by widening anything; see
+the `cite-table.py` section under the ladder for what replaced them.
+
+#### The convergence, which is the round's most useful result
+
+Both gates found the silent anchor drop INDEPENDENTLY, from opposite directions and by methods that
+do not touch: cold reading symbols and noticing two load-bearing sentences whose anchors were absent
+from the table, GPT attacking the tool and proving an injected name changes nothing. The hub's
+addition to R-18 came from that: **convergence across differently-scoped gates is the strongest signal
+a dual gate can emit**, stronger than agreement between gates looking at the same thing, because the
+two lenses share no method and the finding cannot be an artifact of either.
+
+Note also the SEVERITY split — cold filed SHOULD-FIX where GPT filed BLOCKING. The hub's reading is
+that this is not miscalibration: each gate scored the finding against its own scope, both were right
+about their own half, and only the hub sees both.
+
+#### What round 6 proved about round 5's remedy
+
+R-22 moved coordinates out of the prose. Rounds 2 through 5 all failed on those coordinates decaying;
+**round 6 has none of that class**. It failed instead on the tool R-22 created to enforce the rule —
+real progress and a real new defect, and the hub declined to relabel either half as the other. What it
+refused was a seventh round on the same reasoning: *"each round fails somewhere new" IS the infinite
+regress.* The stop is structural, not a resolution — the rung is off the ladder, so there is nothing
+left there to fail.
+
+## The rulings rounds 4, 5 and 6 produced — R-13 through R-24
 
 R-9…R-12 were issued *before* round 4 ran. What round 4 then found forced nine more, in three
-batches, and round 5 forced the last one. They are transcribed here because the reasoning is the
-durable half. Each is the hub's, not the chip's; where the chip disagreed the hub's text is what
-stands.
+batches, round 5 forced R-22, and round 6 forced the last two. They are transcribed here because the
+reasoning is the durable half. Each is the hub's, not the chip's; where the chip disagreed the hub's
+text is what stands.
 
 | Ruling | What it establishes |
 |---|---|
@@ -1977,6 +2088,20 @@ stands.
 | **R-20** | **An inference must be visible as an inference.** The audit's bare-citation pass prints the file it inferred and the distance it inherited over, so a wrong inference can be READ. It is a **migration tool, not a permanent crutch**: end state is zero bare citations, and a non-zero count after the ban **is** the violation |
 | **R-21** | A citation resolving to plausible-but-wrong content is **invisible to reading** — the reader compares the sentence to an expectation, never to the actual line. Therefore the audit prints what **every** citation resolved to. Found live on this chip: a bare line-448 citation inherited the wrong file and landed IN RANGE on `//  2. Load the latest audit entry…`. Written out in words here rather than in citation form, because R-17 bans the form from the pack and the audit would flag a quotation of it as a live violation |
 | **R-22** | **An evidence apparatus that costs more to verify than the thing it evidences has inverted its purpose, and the answer to that is not more apparatus.** The hub's finding, and no gate could have made it: each gate sees one round, and the shape only appears across five. Mechanics: (1) prose claims become **behavioural, anchored to test and symbol names**, checkable by running the named test; (2) the coordinate table **stays** and is generated mechanically into a separate artifact; (3) the lane regenerates it and **fails on the diff**. This does NOT overturn the §11 judge, who banned cite-by-symbol as the anchor TYPE — what R-22 bans is COPYING the coordinate into prose. Landing with it: the **mutable-axis ban whole**, grep-checkable and fail-closed; **tool inversion adopted with its role demoted**; **declarations travelling with content ratified**. Round 6 authorised ONCE, gates split by area, in this order: *code first and all of it, then the frozen tip, then the table* |
+| **R-23** | On the cold gate's verdict having **no durable artifact**: D30 accepted as written, and the reasoning is the part to keep — *`gate-reviewer` has no Write BY CONSTRUCTION, and that absence is exactly what makes it cold. Granting it Write to solve durability would destroy the property that makes it worth running.* One requirement added: **the cold verdict ALSO travels to the hub VERBATIM in the closing event, and the hub commits its own copy.** Two copies, two holders, two timestamps. The honest limit, in the hub's words: *this does NOT make the transcription verifiable against the original — the original dies when the transcript compacts. What it removes is UNILATERAL CONTROL.* Two general rules kept: **generate and check are separate modes; a checker does not write**, and **a new rung must be green on a clean clone, or it is not a rung, it is training to ignore the lane** |
+| **R-24** | **A verification artifact keeps only the claims it can make TOTALLY. A claim it cannot make totally becomes a REPORT, not a gate.** Round 6's three blocking findings were all claims the pack's own tool made about its own coverage — total in the wording, partial in the code. The remedy deletes the claim instead of widening the recognizer, so the findings *cease to exist BY CONSTRUCTION, NOT BY PARDON*. ADR-17's honest-unknown rule turned on our own evidence apparatus. Mechanics: (1) the tool **prints what it could not resolve** — **R-17 ratified a FOURTH time**, with the CONSEQUENCE changed from an exit code to a report line; (2) **the PACK rung leaves the ladder**, so no future round can fail on it; (3) the prose **stops asserting totality anywhere**; (4) **NO WIDENING** — *do not widen a recognizer whose output no longer gates anything*. R-11's mechanism retires with its object: the table is **navigation, not evidence**, so a wrong row costs a reader a wrong jump rather than a false proof. Added to R-18: **convergence across differently-scoped gates is the strongest signal a dual gate can emit**, stronger than agreement between gates looking at the same thing, because the two lenses share no method and the finding cannot be an artifact of either. And on the severity split — cold filed SHOULD-FIX where GPT filed BLOCKING — *both are right about their own half; only the hub sees both scopes* |
+
+**R-24 is where the regress stops, and it stops structurally rather than by promise.** The hub tested
+it against its own R-9, which had denied "merge on code-clean verdicts and carry the pack as debt":
+there the pack defects STAYED IN PLACE as debt, here they are FIXED — the two prose errors corrected,
+the false totality claims removed, nothing carried. What was declined is a further gate ROUND over
+the corrected pack, not the correction. And the terminator is not a resolution to do better: the PACK
+rung is off the ladder, so there is no longer a rung there for a seventh round to fail on.
+
+The hub's own observation, which neither gate could make because each sees one half:
+**neither verdict on the CODE depended on this tool.** Cold reached PASS on C1/C2/C3/C4/C6/C7/C8 by
+reading source; GPT reached PASS on C2/C3/C5/C9/C10/C12 by re-deriving from git. Neither used the
+table to reach a verdict about the code. All three apparatus blockers were the tool gating itself.
 
 **R-20 and R-21 caught the remedy for R-17 in the act, which is the strongest evidence either of
 them is right.** Qualifying the bare citations meant giving each one a file, and the file had to be
@@ -2076,11 +2201,18 @@ fail-closed as a *discriminating* key: two titles with different unparseable tok
 rather than collapsing to equal. The obsolete paragraph survived the R-7 corrective; flagged by the
 GPT gate in round 2 and corrected here.
 
-### Must-fail — the PACK rung's four guards, each mutated and observed
+### Must-fail — `cite-table.py`'s four checks, each mutated and observed
 
-A check that has never failed is indistinguishable from a check that cannot fail. Every guard in the
-rung was disabled or violated one at a time, the exit code observed, and the mutation reverted from a
-byte copy taken beforehand.
+**These four were proved while the tool was a ladder rung, and R-24 has since taken it off the
+ladder.** The proofs are kept and are not restated as gate evidence: they record that the checks do
+what they say, which is now a property of a report rather than of a merge gate. The round-6 derivation
+gate independently re-ran all six mutations below against the committed script and reproduced every
+exit code, which is the first time a must-fail table in this pack has been replayed by someone other
+than its author.
+
+A check that has never failed is indistinguishable from a check that cannot fail. Every check was
+disabled or violated one at a time, the exit code observed, and the mutation reverted from a byte copy
+taken beforehand.
 
 | Guard | Mutation | Observed |
 |---|---|---|
@@ -2107,8 +2239,24 @@ Recorded because the failure mode is social rather than technical. A check that 
 someone turns off, and this pack cannot afford another guard that is technically present and
 practically ignored — round 1 of this chip lost a real `gofmt` violation inside exactly this noise.
 
-The third row is the one worth reading twice, because the guard did not exist when the prose
-describing it was first written. The tool regenerated `coordinates.txt` on every run, `--strict`
+**A sixth proof, added by the R-24 corrective, replays the exact attack that used to vanish.** The
+round-6 derivation gate injected a backticked name that exists nowhere in the tree and observed that
+the generated table did not change and the run exited 0 — the drop was silent, which was the finding.
+The same injection now, plus a call-suffix span of the kind the anchor recognizer never sees at all:
+
+| Condition | Observed |
+|---|---|
+| a bare name declared nowhere, injected into the prose | appears under **UNRESOLVED** in the regenerated table; the report count rises by one |
+| a `Name()` span declared nowhere, injected into the prose | appears under **NOT TREATED AS ANCHORS**; that count rises by one |
+| `--strict` with both probes present and the table regenerated | **exit 0** — the report is a report; it does not gate, which is the R-24 property being proved |
+
+Both files were compared byte-for-byte against pre-mutation copies afterwards and are identical;
+baseline `--strict` before and after is exit 0. Note what the third row proves and what it does not:
+the drop is now VISIBLE, and it is deliberately not FATAL. Making it fatal would rebuild the totality
+claim R-24 struck, one exit code lower down.
+
+The third row of the first table is the one worth reading twice, because the guard did not exist when
+the prose describing it was first written. The tool regenerated `coordinates.txt` on every run, `--strict`
 included — so a hand-edit would have been silently overwritten and the run would have reported
 success. The claim "the lane regenerates and diffs, and drift fails" was true of the intent and false
 of the code. Split into two modes, where the checker writes nothing, it is now true of both; and the

@@ -10,10 +10,16 @@ is reverted with a red lane rather than believed. Regenerate with `python cite-t
   code roots      apps/server_core/internal  contracts
 
 Coordinates live HERE and nowhere else. The prose names behaviour and test names; this table
-resolves them to positions. Regenerated and diffed by the lane, so drift is a failing diff
-rather than something a reviewer has to notice. R-22 does not overturn the §11 judge — the
-anchor's TYPE is still a coordinate, and it is still mechanical; what is gone is the COPY of it
-into prose, which is the last place a decaying duplicate still lived.
+resolves them to positions. R-22 does not overturn the §11 judge — the anchor's TYPE is still a
+coordinate, and it is still mechanical; what is gone is the COPY of it into prose, which is the
+last place a decaying duplicate still lived.
+
+THIS TABLE IS NAVIGATION, NOT EVIDENCE, and that is R-24. It resolves THE ANCHORS LISTED BELOW.
+It does not resolve every anchor the prose names, and the ones it could not resolve are printed
+under UNRESOLVED rather than dropped. A wrong or missing row costs a reader a wrong jump; it
+cannot cost anyone a false proof, because nothing gates on this file. The claim it used to make
+— every anchor, resolved — was total in the wording and partial in the code, and R-24's remedy
+was to delete the claim rather than to widen the recognizer underneath it.
 
 AMBIGUOUS is a resolution, not a failure. A name carried by more than one declaration in the
 scanned roots resolves to ALL of them, printed. Narrowing it — by guessing the package the prose
@@ -127,3 +133,115 @@ unsupported                                                      apps/server_cor
 
   anchors resolved  49
   ambiguous         4
+  UNRESOLVED        73
+
+----------------------------------------------------------------------------------------------------------------
+UNRESOLVED — recognized as an anchor in the prose, no declaration under the code roots above.
+----------------------------------------------------------------------------------------------------------------
+
+Not a failure and not a pardon. A name lands here for ordinary reasons: it is declared inside
+a grouped `var (…)` or `const (…)` block, which the column-0 matcher does not see; it lives
+outside the scanned roots; or it is prose that merely looks like an identifier. R-24 forbids
+widening the matcher to chase the first case, because a wider matcher feeding a table that
+gates nothing buys nothing. What it requires is that the name appear here instead of leaving
+the pipeline in silence. Resolve one by hand with `git grep -n '<name>'`.
+
+AGAINST                                                          named on 11 lines
+AuditLimit                                                       named on 2 lines
+CompactFunc                                                      named on 1 line
+Detail                                                           named on 5 lines
+ESCALATION                                                       named on 2 lines
+GOCACHE                                                          named on 1 line
+GOMODCACHE                                                       named on 1 line
+GOV_MODULE_COVERAGE                                              named on 1 line
+HEAD                                                             named on 2 lines
+IdentityAnchorSellerSKU                                          named on 1 line
+Limit                                                            named on 4 lines
+LinkLimit                                                        named on 2 lines
+MC_ERP_SOURCE                                                    named on 1 line
+MLB4735326915                                                    named on 1 line
+POLIDO                                                           named on 1 line
+PRODUCT_LINKS_CANDIDATE_ENGINE_NOT_CONFIGURED                    named on 1 line
+PRODUCT_LINKS_PROVIDER_IDENTITY_ANCHORS_UNAVAILABLE              named on 1 line
+REQUEST                                                          named on 2 lines
+SetString                                                        named on 1 line
+Supplied                                                         named on 3 lines
+TOPLEVEL                                                         named on 1 line
+TS2688                                                           named on 1 line
+TitleMatch                                                       named on 4 lines
+UNAVAILABLE                                                      named on 15 lines
+UPDATE                                                           named on 2 lines
+a23aee3a                                                         named on 1 line
+ac72eb82                                                         named on 2 lines
+b954783d                                                         named on 2 lines
+b9da6d2                                                          named on 2 lines
+b9da6d2e                                                         named on 1 line
+baseline_exception                                               named on 1 line
+c9fecbc                                                          named on 2 lines
+composition                                                      named on 1 line
+connectors                                                       named on 1 line
+connectorsapp                                                    named on 2 lines
+connectorsports                                                  named on 3 lines
+continue                                                         named on 2 lines
+current_link                                                     named on 1 line
+d36d89a                                                          named on 1 line
+d9952509                                                         named on 2 lines
+detail                                                           named on 1 line
+dimensionPair                                                    named on 1 line
+display                                                          named on 3 lines
+e1195806                                                         named on 3 lines
+exact_sku                                                        named on 1 line
+f6736d0                                                          named on 2 lines
+f81b8975                                                         named on 2 lines
+f92ca9c7                                                         named on 5 lines
+gtin14                                                           named on 1 line
+hardNegativeDimensionPattern                                     named on 4 lines
+hasSignal                                                        named on 3 lines
+identityAnchors                                                  named on 1 line
+inches                                                           named on 1 line
+internal_read                                                    named on 1 line
+limit_20                                                         named on 1 line
+limit_5                                                          named on 1 line
+limit_500                                                        named on 1 line
+limit_5000                                                       named on 1 line
+local_99feb041                                                   named on 1 line
+lowered                                                          named on 2 lines
+mandatoryUnavailableReasons                                      named on 1 line
+mutations                                                        named on 1 line
+node_modules                                                     named on 1 line
+original                                                         named on 3 lines
+originalToken                                                    named on 1 line
+product_links                                                    named on 7 lines
+providerCode                                                     named on 1 line
+provider_code                                                    named on 1 line
+refforn                                                          named on 7 lines
+seller_sku                                                       named on 10 lines
+sourcekind                                                       named on 1 line
+string                                                           named on 1 line
+tenant_config                                                    named on 1 line
+
+----------------------------------------------------------------------------------------------------------------
+NOT TREATED AS ANCHORS — backticked spans carrying a call suffix, `Foo()`.
+----------------------------------------------------------------------------------------------------------------
+
+The anchor pattern requires the whole backticked span to be a bare identifier, so these were
+never anchors and never reached the table. The cold gate found one such span in the prose,
+real in the code and invisible here. They are LISTED rather than RECOGNIZED, because R-24
+forbids widening. Where the bare name does resolve, its position is shown — as a courtesy to
+a reader, not as a row of the table above.
+
+KnownIdentityAnchors()                   apps/server_core/internal/modules/connectors/ports/marketplace_capabil
+Name()                                   (no declaration under the code roots)
+ProviderCapabilitySet()                  apps/server_core/internal/modules/connectors/adapters/mercado_livre/ca
+mandatoryUnavailableReasons()            (no declaration under the code roots)
+
+----------------------------------------------------------------------------------------------------------------
+WHAT THIS TABLE DOES NOT COVER — R-24 requires the limit to travel with the artifact
+----------------------------------------------------------------------------------------------------------------
+
+Only backticked spans are considered at all, so an anchor named in bare prose is not seen. Only
+column-0 `func`/`type`/`var`/`const` declarations are indexed, so grouped-block declarations are
+absent. Only the code roots printed at the top are walked. This list of gaps is itself written
+by hand and is not guaranteed complete. None of that is a defect to be fixed by widening: it is
+the honest extent of a navigation aid, stated so that no reader mistakes its silence for a
+finding of absence.

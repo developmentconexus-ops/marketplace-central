@@ -14,3 +14,4 @@
 NOTACITE mm:500/1  canonical dimension key in the A1 example — a rational value, not a file line
 NOTACITE mm:400/1  canonical dimension key in the A1 example — a rational value, not a file line
 NOTACITE GeneratedCount:0  a Go struct field and its value in quoted probe output
+NOTACITE sku:33698  the ERP anchor KEY in the golden fixture — a SKU, not a file line
