@@ -4,10 +4,20 @@
 chip: CHIP-ANCHORS-2
 mission: MIS-006-integracao-fundacao
 branch: chip/anchors-2
-base_sha: d51a27b665e91132427a0efa1877e9a5df2f11bf
+base_sha: d51a27b665e91132427a0efa1877e9a5df2f11bf   # commit que trouxe este pack; ver nota abaixo
 wave: 1 (única — os dois chips de FE são a onda 2 e dependem deste)
 authority: .mnfs/MIS-006-integracao-fundacao/DECISOES-D122-anchors-telas.md
 ```
+
+**Sobre o `base_sha`.** Ele nomeia o commit que trouxe este pack. Ramifique do **tip de `main` no
+momento do despacho**, que pode estar um ou dois commits à frente — todos pack-only, nenhum tocando
+`apps/` ou `contracts/`. Confira antes de começar:
+`git diff --name-only d51a27b6 HEAD -- apps contracts packages` tem de sair vazio. Se sair alguma
+coisa, pare e mande `REQUEST` ao hub: o pack foi escrito contra um código que mudou.
+
+Este `base_sha` não pode se apontar sozinho — o commit que o corrige é sempre posterior a ele. Em
+vez de perseguir o ponto fixo, o pin nomeia o piso e o comando acima prova que o teto é equivalente
+para efeito de código.
 
 Este chip é o **dono do contrato** desta onda. Comportamento, OpenAPI e SDK saem no MESMO commit
 (profile §7). Os dois chips de FE da onda 2 consomem o que sai daqui e não editam nada disto.
