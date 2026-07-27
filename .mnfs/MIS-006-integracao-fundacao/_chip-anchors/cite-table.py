@@ -237,8 +237,6 @@ with io.open(PACK, encoding="utf-8", newline="") as fh:
     pack_lines = fh.read().split("\n")
 
 # ---------------------------------------------------------------------------
-# THE SUPERSET. Any colon followed by digits, anywhere. The preceding character class is NOT
-# restricted, because restricting it is exactly how the last three blind spots were built.
 CANDIDATE = re.compile(r"(?<![0-9]):(\d+)(?:\s*[-–]\s*(\d+))?")
 # A historical citation declares its own SHA inline and is exempt BY CARRYING IT.
 HISTORICAL = re.compile(r"`[A-Za-z0-9_./-]+\.[A-Za-z]+:\d+(?:\s*[-–]\s*\d+)?@[0-9a-f]{7,40}`")

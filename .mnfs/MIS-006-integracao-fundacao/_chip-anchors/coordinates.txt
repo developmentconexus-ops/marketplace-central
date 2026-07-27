@@ -133,7 +133,7 @@ unsupported                                                      apps/server_cor
 
   anchors resolved  49
   ambiguous         4
-  UNRESOLVED        74
+  UNRESOLVED        75
 
 ----------------------------------------------------------------------------------------------------------------
 UNRESOLVED — recognized as an anchor in the prose, no declaration under the code roots above.
@@ -154,7 +154,7 @@ ESCALATION                                                       named on 2 line
 GOCACHE                                                          named on 1 line
 GOMODCACHE                                                       named on 1 line
 GOV_MODULE_COVERAGE                                              named on 1 line
-HEAD                                                             named on 2 lines
+HEAD                                                             named on 3 lines
 IdentityAnchorSellerSKU                                          named on 1 line
 Limit                                                            named on 4 lines
 LinkLimit                                                        named on 2 lines
@@ -164,6 +164,7 @@ POLIDO                                                           named on 1 line
 PRODUCT_LINKS_CANDIDATE_ENGINE_NOT_CONFIGURED                    named on 1 line
 PRODUCT_LINKS_PROVIDER_IDENTITY_ANCHORS_UNAVAILABLE              named on 1 line
 REQUEST                                                          named on 2 lines
+SETS_EQUAL                                                       named on 1 line
 SetString                                                        named on 1 line
 Supplied                                                         named on 3 lines
 TOPLEVEL                                                         named on 1 line
@@ -181,7 +182,7 @@ c9fecbc                                                          named on 2 line
 composition                                                      named on 1 line
 connectors                                                       named on 1 line
 connectorsapp                                                    named on 2 lines
-connectorsports                                                  named on 4 lines
+connectorsports                                                  named on 5 lines
 continue                                                         named on 2 lines
 current_link                                                     named on 1 line
 d36d89a                                                          named on 1 line

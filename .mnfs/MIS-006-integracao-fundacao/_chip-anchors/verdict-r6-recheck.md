@@ -10,22 +10,22 @@ returns nothing).
 - Corrected pack tip re-checked: `56598bea`. Frozen code tip, unchanged: `85b6c367`.
 - Prompt: `scratchpad/prompt-p6-sol-recheck.md`. Artifacts: `agent__p6-sol-recheck.last.md` + `.log`.
 
-**Outcome: FAIL.** Three of the five closed — two RESOLVED on the facts, one DISSOLVED-BY-R-24 and
-accepted as such. Two STAND, and both for the same reason: the corrective removed the totality claims
-from what the tool *prints* and left them standing in what the pack and the implementation *say*.
-`EVIDENCE.md:1030` still calls the mutable-axis pass "Banned outright", `EVIDENCE.md:1057` still calls
-it "a lane check", and `cite-table.py:240` still carries the comment "THE SUPERSET ... the preceding
-character class is NOT restricted" on the line directly above the `(?<![0-9])` that restricts it.
+**Outcome at `56598bea`: FAIL.** Three of the five closed — two RESOLVED on the facts, one
+DISSOLVED-BY-R-24 and accepted as such. Two stood, and both for the same reason: the corrective removed
+the totality claims from what the tool *prints* and left them standing in what the pack and the
+implementation *say*. Three holders of the same claim, one of them reached.
 
 The chip verified all three lines itself before relaying, rather than forwarding the verdict as a
-postbox. They are as reported.
+postbox. They were as reported.
 
-One distinction the gate drew and the chip is not entitled to resolve: *"The two blocking survivor
-lines already existed in `f1397cf7^`; they were omitted by the corrective rather than introduced by
-it."* So these are not a third fresh instance of the shape — they are the first instance, incompletely
-removed. Whether profile §11's third-round rule is triggered by that is a hub call, and the chip has
-NOT patched the three lines while it is open. Doing so would author the seventh round the hub said
-does not exist.
+**Both were then closed by DELETION under R-25, and the hub verified their absence itself.** The exact
+strings are quoted inside the fence below and are deliberately not restated in this preamble: a false
+sentence repeated as a live description is the thing R-25 removed. R-25 also fixed the instrument —
+*honest-unknown is for gaps, not for falsehoods; you disclose what you do not know, you DELETE what is
+wrong* — and ruled that §11 did not fire, because the gate's own observation (*"the two blocking
+survivor lines already existed in `f1397cf7^`; they were omitted by the corrective rather than
+introduced by it"*) makes this incomplete application rather than recurrence. The two want opposite
+responses: recurrence wants a better remedy, incompleteness wants the remedy finished.
 
 Transcribed verbatim below. The chip wrote this file; the gate wrote the text inside the fence, and
 none of it was edited to read better. Its own stated limit is the last section: it re-checked five

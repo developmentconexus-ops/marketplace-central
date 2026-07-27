@@ -70,6 +70,7 @@ the verdict/output artifact afterwards.
 | D30 | P6 | Cold verdict transcription — the remedy for the artifact asymmetry found in round 5. Not a dispatch: a chip step the ledger names so it can be checked | chip | direct write | — | `_chip-anchors/verdict-r6-cold.md` | completed on arrival. R-23 then added a second holder: the same text travelled to the hub VERBATIM in the event, and the hub commits its own copy. The GPT verdict was given the same treatment for the same reason — its codex `-o` artifact is real but lives in a session-scoped scratchpad that dies exactly when a transcript does |
 | D31 | P6 | Round-6 corrective under R-24. Two prose corrections; the tool reports what it could not resolve and stops claiming totality, WITHOUT widening any recognizer; the PACK rung leaves the ladder; R-23 and R-24 recorded; the U2 inversion fixed chip-side. ZERO production code — that is the property the hub verifies before any AGREEMENT, not one it takes on trust | chip | direct edit | hub ruling R-24, `main@874d00e5` | this pack + `cite-table.py` + `coordinates.txt` | completed — corrective tip `f1397cf7`; `git diff --name-only 85b6c367 f1397cf7 -- apps contracts packages` returns **nothing** |
 | D32 | P6 | **Narrow re-check of a delivered FAIL — not a seventh round.** The gate that filed the five blockers re-checks ITS OWN five at the corrected tip, scoped to exactly what it filed. There is no new surface, because the corrective REMOVES claims rather than adding them. The cold gate does NOT re-run: it passed, its area is untouched, and re-running a passing gate over an unchanged area is the redundancy R-18 devalued | gpt-5.6-sol / medium | OS-process codex, `--sandbox read-only` | `scratchpad/prompt-p6-sol-recheck.md` | `scratchpad/agent__p6-sol-recheck.last.md` + `.log`, transcribed verbatim into `_chip-anchors/verdict-r6-recheck.md` because the codex `-o` artifact lives in a scratchpad that dies with the session | completed — **FAIL**. Three of five closed: two RESOLVED on re-derived facts, one DISSOLVED-BY-R-24 and accepted as closure by the gate that filed it. Two STAND, for one reason: the corrective removed the totality claims from what the tool PRINTS and left them in what the pack and the implementation SAY. No new defect introduced by the corrective; the gate states the survivors predate it. Sent to the hub raw, no AGREEMENT string authored, the three lines deliberately NOT patched while §11 is a live question |
+| D33 | P6 | **Discharge of the two survivors under R-25.** Not a round and not a dispatch: a remedy fully determined by its finding — two files, exact strings, replacement target already certified accurate by the gate. *When a remedy is fully determined by its finding, verification is a check of ABSENCE — one bit — and that wants a shell, not a second model.* The comment DELETED rather than reworded, so no rewrite could introduce a fresh falsehood; the two sentences re-aimed at what the report prints; the disclosure paragraph removed with the falsehoods it disclosed | chip, under hub ruling R-25 | direct edit | hub ruling R-25, `main@4e9c5ca4` | this pack + `cite-table.py` + `verdict-r6-recheck.md` | completed — the hub verifies absence itself at the final tip, **by string and not by line**, having found the gate's own coordinate two lines off from the text it cited |
 
 ## Slice S3 — chip verification, and a defect in the chip's own slice card
 
@@ -1027,8 +1028,10 @@ Three further rules landed with it, all ratified by the hub:
 
 - **Mutable-axis commands are not evidence.** Freezing a SHA in prose does not freeze the command.
   This pack carried write-set counts derived from a range ending at the current branch tip; they were
-  true when written and had decayed to different numbers by round 5. Banned outright, grep-checkable
-  in the lane: every evidence command names its own tree-ish or it is not evidence.
+  true when written and had decayed to different numbers by round 5. The rule: every evidence command
+  names its own tree-ish or it is not evidence. The report reads part of that rule and prints, beside
+  its count, the forms it does not see — a bare `HEAD`, `git rev-parse`, a mutable named ref, a plain
+  worktree `grep`, and a line where an unrelated SHA satisfies its hex-ish test.
 - **Declarations travel with the content they describe.** The first draft of the round-5 tool declared
   its exemptions as pack line ranges — which is the same defect one level down, since such a
   declaration decays the moment a corrective inserts a paragraph above it and then silently excuses
@@ -1054,8 +1057,8 @@ three or more repository paths. All four are complete; none samples:
 The first row is a correction the round-5 derivation gate earned. The pack previously named
 the index-reading listing form for it and called the result a fact at a frozen SHA. It is not: that
 form reads the index, takes no tree-ish at all, and so can bind no SHA. The pasted content was correct and the
-stated mechanism was wrong — which is precisely why the mutable-axis ban is a lane check now and not
-a matter of care. I reported this defect against my own table; no gate had reached it.
+stated mechanism was wrong — which is precisely why the mutable-axis rule is read by a report now and
+not left to care. I reported this defect against my own table; no gate had reached it.
 
 ### Method that outlived the rounds
 
@@ -2091,32 +2094,86 @@ The verdict is transcribed in full, unedited inside a fence:
 | 1 | The `connectorsports` frozen-SHA sentence claimed an empty result without the exclusion that makes it empty | **RESOLVED** — both forms re-run at the frozen tip and at the control; the corrected sentence is true and no longer contradicts the pack's own import table |
 | 2 | The S1+S2 write set ran two commits past S2 | **RESOLVED** — the re-pinned range covers exactly S1 and S2, returns the stated 13, and the gate confirmed the two sets are equal, which is the coincidence the pack now states out loud |
 | 3 | The tool silently discarded anchors it could not resolve | **DISSOLVED-BY-R-24, and the gate accepted that as closure** — its own injected name and call span both surface now, and `--strict` still exits 0 with them present |
-| 4 | The mutable-axis pass called itself a ban and is not one | **STANDS** |
-| 5 | The prose scan called itself a SUPERSET and is not one | **STANDS** |
+| 4 | The mutable-axis pass called itself a ban and is not one | STOOD at `56598bea` — **closed under R-25 by deletion**, hub-verified absent |
+| 5 | The prose scan called itself a SUPERSET and is not one | STOOD at `56598bea` — **closed under R-25 by deletion**, hub-verified absent |
 
-**Why the last two stand, which is one reason and not two.** The corrective removed the totality claims
-from what the tool *prints* and left them standing in what the pack and the implementation *say*. Two
-sentences in this document still call the mutable-axis pass "Banned outright" and "a lane check", and
-`cite-table.py` still carries the comment "THE SUPERSET ... the preceding character class is NOT
-restricted" on the line directly above the `(?<![0-9])` that restricts it — a comment refuted by the
-expression beneath it. The gate's verdict carries the coordinates; this paragraph deliberately does
-not, because hand-written coordinates in prose are the class R-22 removed. The chip re-read all three
-lines itself before relaying, rather than forwarding a verdict it had not checked.
+**Both survivors were one defect: the corrective removed the totality claims from what the tool
+*prints* and left them standing in what the pack and the implementation *say*.** Three holders of the
+same claim, one of them reached. The gate's verdict, transcribed unedited, carries the exact strings
+and coordinates; they are not restated here, because a false sentence quoted as a live description is
+the thing being removed.
 
-**The distinction the chip is not entitled to resolve.** In the gate's words: *"The two blocking
-survivor lines already existed in `f1397cf7^`; they were omitted by the corrective rather than
-introduced by it."* So this is not a third fresh instance of the shape — it is the first instance,
-incompletely removed. Whether profile §11's third-round rule fires on that is a hub call, and while it
-is open the chip has NOT patched the three lines. Patching them unbidden would author exactly the
-seventh round the hub said does not exist, and the reflex to reach for one more patch is what §11 was
-written to stop.
+**R-25 is the rule this round produced, and it corrects the chip.** The first draft of this section
+ANNOTATED the two false sentences as false and left them in place, reasoning from ADR-17. The hub
+rejected that instrument: *honest-unknown is for gaps, not for falsehoods. You disclose what you do
+not know. You DELETE what is wrong.* Annotating leaves two sentences where one belongs and makes the
+reader arbitrate — and whoever meets the false one first gets no signal to keep reading. R-24 said the
+false claim is removed, not excused, and **disclosure is a way of excusing**. ADR-17 applied correctly
+to the tool's coverage, which is a gap; one step too far to two sentences, which were simply wrong.
+
+**§11 did not fire, and the reason is the distinction the gate drew:** *"The two blocking survivor
+lines already existed in `f1397cf7^`; they were omitted by the corrective rather than introduced by
+it."* §11 fires on a remedy APPLIED and a defect RECURRED in a new disguise. This was incomplete
+application, not recurrence — and the two want opposite responses: recurrence wants a better remedy,
+incompleteness wants the remedy finished. The hub recorded a second, independent tell: **§11's own
+remedy is more apparatus, and R-24 had ruled one ruling earlier that the answer is not more
+apparatus.** A rule whose remedy contradicts the ruling governing the round does not fire in it. The
+hub recorded this explicitly rather than quietly, because *"the rule is inconvenient, so I skip it"* is
+the reasoning refused all chip long.
+
+**The remedy was shaped so a fresh falsehood could not enter it.** The comment was DELETED, not
+reworded — a deleted comment cannot be false, and the regex beneath it is the truth and needs no
+gloss. The two sentences were re-aimed at what the report PRINTS, a target the gate had already
+certified accurate (*"correctly discloses all five holes"*), so the rewrite answered to a fixed
+external standard rather than to the author's judgement. And the disclosure paragraph left with the
+falsehoods it disclosed: with the claims gone there was nothing to disclose, and keeping it would have
+made the pack describe a state it is no longer in — the decay class, one last time.
 
 The FOREIGN-fence SHOULD-FIX survives untouched and the gate says so rather than counting it against
 the corrective: a pack author can still exempt authored text by labelling it `quoted-verdict`, because
 the tool checks the tag and never the provenance. Out of the corrective's scope, still true, still
 open.
 
-## The rulings rounds 4, 5 and 6 produced — R-13 through R-24
+### P6 DISCHARGE — the gate closes, and how each finding closed
+
+**AGREEMENT — P6 discharged.** The cold gate returned PASS on SEMANTICS at `85b6c367` and did not
+re-run, because the corrective touches no code and `git diff --name-only 85b6c367..<final tip> -- apps
+contracts packages` returns nothing — verified by the chip, re-derived by the GPT gate, and verified
+again by the hub at the final tip. The GPT gate's five DERIVATION blockers are all discharged, three by
+the gate itself and two by hub observation after a remedy fully determined by the finding.
+
+**This sentence does not stand alone, and that is deliberate.** A closing line that omits HOW the close
+was reached is round 4's silent-omission class committed in the last line of the document. The ledger
+is the sentence's other half:
+
+| # | Finding | Closed by | Means |
+|---|---|---|---|
+| 1 | `connectorsports` sentence claimed an empty result without the exclusion that makes it empty | **the GPT gate**, at the corrected tip | Re-derived both grep forms at the frozen tip and at the control. Sentence true, no longer contradicts the pack's own import table |
+| 2 | S1+S2 write set ran two commits past S2 | **the GPT gate**, at the corrected tip | Range re-pinned; `SETS_EQUAL` confirmed; the coincidence stated in the pack rather than the SHA quietly swapped |
+| 3 | The tool silently discarded anchors it could not resolve | **the GPT gate**, which had filed it BLOCKING | DISSOLVED-BY-R-24 and accepted as closure by its own filer: injected name and call span both surface, `--strict` still exits 0 with them present, and the non-fatality read as intended rather than as an oversight |
+| 4 | The mutable-axis pass called itself a ban | **HUB OBSERVATION, not a gate** | Sentence re-aimed at what the report prints — a target the gate had already certified accurate — then absence verified by string |
+| 5 | The prose scan called itself a SUPERSET | **HUB OBSERVATION, not a gate** | Comment DELETED, not reworded; absence verified by string |
+
+**The honest limit, in the hub's words and not softened:** *GPT does not re-run and does not certify
+the final tip. I hold (a) its verdict that these two lines are the ENTIRE remaining defect and that the
+corrective introduced none, and (b) my own observation of absence. I DO NOT HOLD A MODEL-SIDE VERDICT
+ON THE FINAL TIP.* That gap is accepted deliberately: the alternative is a round whose entire content
+is confirming three strings are absent, and that round would need another if it found a typo — the
+regress R-24 ended.
+
+**One string class survives the hub's grep on purpose.** The exact false sentences still appear inside
+`verdict-r6-recheck.md`, within the `quoted-verdict` fence, because that is the GPT gate's text
+transcribed verbatim under R-23 and the chip may not edit it. A false claim quoted as the report of the
+gate that found it is not the pack asserting it. The chip's own preamble around that fence was
+rewritten, since it *had* decayed into describing a state no longer true — the same class, caught on
+the same day it was ruled.
+
+Backlogged, not blocking: the FOREIGN-fence SHOULD-FIX. A pack author can still exempt authored text
+by labelling it `quoted-verdict`, because the tool checks the tag and never the provenance. It is a
+provenance hole in an artifact that no longer gates anything, which is the same reason the other three
+dissolved.
+
+## The rulings rounds 4, 5 and 6 produced — R-13 through R-25
 
 R-9…R-12 were issued *before* round 4 ran. What round 4 then found forced nine more, in three
 batches, round 5 forced R-22, and round 6 forced the last two. They are transcribed here because the
@@ -2137,6 +2194,7 @@ text is what stands.
 | **R-22** | **An evidence apparatus that costs more to verify than the thing it evidences has inverted its purpose, and the answer to that is not more apparatus.** The hub's finding, and no gate could have made it: each gate sees one round, and the shape only appears across five. Mechanics: (1) prose claims become **behavioural, anchored to test and symbol names**, checkable by running the named test; (2) the coordinate table **stays** and is generated mechanically into a separate artifact; (3) the lane regenerates it and **fails on the diff**. This does NOT overturn the §11 judge, who banned cite-by-symbol as the anchor TYPE — what R-22 bans is COPYING the coordinate into prose. Landing with it: the **mutable-axis ban whole**, grep-checkable and fail-closed; **tool inversion adopted with its role demoted**; **declarations travelling with content ratified**. Round 6 authorised ONCE, gates split by area, in this order: *code first and all of it, then the frozen tip, then the table* |
 | **R-23** | On the cold gate's verdict having **no durable artifact**: D30 accepted as written, and the reasoning is the part to keep — *`gate-reviewer` has no Write BY CONSTRUCTION, and that absence is exactly what makes it cold. Granting it Write to solve durability would destroy the property that makes it worth running.* One requirement added: **the cold verdict ALSO travels to the hub VERBATIM in the closing event, and the hub commits its own copy.** Two copies, two holders, two timestamps. The honest limit, in the hub's words: *this does NOT make the transcription verifiable against the original — the original dies when the transcript compacts. What it removes is UNILATERAL CONTROL.* Two general rules kept: **generate and check are separate modes; a checker does not write**, and **a new rung must be green on a clean clone, or it is not a rung, it is training to ignore the lane** |
 | **R-24** | **A verification artifact keeps only the claims it can make TOTALLY. A claim it cannot make totally becomes a REPORT, not a gate.** Round 6's three blocking findings were all claims the pack's own tool made about its own coverage — total in the wording, partial in the code. The remedy deletes the claim instead of widening the recognizer, so the findings *cease to exist BY CONSTRUCTION, NOT BY PARDON*. ADR-17's honest-unknown rule turned on our own evidence apparatus. Mechanics: (1) the tool **prints what it could not resolve** — **R-17 ratified a FOURTH time**, with the CONSEQUENCE changed from an exit code to a report line; (2) **the PACK rung leaves the ladder**, so no future round can fail on it; (3) the prose **stops asserting totality anywhere**; (4) **NO WIDENING** — *do not widen a recognizer whose output no longer gates anything*. R-11's mechanism retires with its object: the table is **navigation, not evidence**, so a wrong row costs a reader a wrong jump rather than a false proof. Added to R-18: **convergence across differently-scoped gates is the strongest signal a dual gate can emit**, stronger than agreement between gates looking at the same thing, because the two lenses share no method and the finding cannot be an artifact of either. And on the severity split — cold filed SHOULD-FIX where GPT filed BLOCKING — *both are right about their own half; only the hub sees both scopes* |
+| **R-25** | **HONEST-UNKNOWN IS FOR GAPS, NOT FOR FALSEHOODS. You disclose what you do not know; you DELETE what is wrong.** The chip had annotated two false sentences as false and left them standing, reasoning from ADR-17. The hub rejected the instrument: annotating leaves TWO sentences where ONE belongs and hands the reader the job of arbitrating — *and whoever lands on the false one first gets no signal to keep reading*. R-24 said the false claim is REMOVED, not excused, and **disclosure is a way of excusing**. ADR-17 was applied correctly to the tool's coverage, which IS a gap, and one step too far to two sentences, which were not. **§11 does not fire**, and not for convenience: it triggers on a remedy APPLIED and a defect RECURRED in a new disguise, whereas this remedy reached one of three holders of the same claim — *incomplete application, not recurrence*. The two want opposite responses: **recurrence wants a BETTER remedy; incompleteness wants the remedy FINISHED**, and treating the second as the first invents a new remedy for something the old one already solves, *which is precisely how apparatus gets built*. Independent tell that the reading is right: **§11's own remedy is more apparatus, and R-24 ruled one ruling earlier that the answer is not more apparatus** — a rule whose remedy contradicts the ruling governing the round does not fire in it. Recorded explicitly, because *"the rule is inconvenient, so I skip it"* is the reasoning refused all chip long. The remedy was **shaped so a fresh falsehood could not enter it**: the comment DELETED rather than reworded (a deleted comment cannot be false); the two sentences re-aimed at what the report PRINTS, a target the gate had ALREADY certified accurate, so the rewrite answered to a fixed external standard and not to the author's judgement; the disclosure paragraph leaving with the falsehoods it disclosed. And the last mechanic: **when a remedy is FULLY DETERMINED BY ITS FINDING, verification is a check of ABSENCE — one bit — and that wants a SHELL, NOT A SECOND MODEL.** The hub also verified the three strings **by string, not by line**, deliberately: *a gate's coordinate is a claim like any other*, and this one cited a line two off from where the text lived |
 
 **R-24 is where the regress stops, and it stops structurally rather than by promise.** The hub tested
 it against its own R-9, which had denied "merge on code-clean verdicts and carry the pack as debt":
