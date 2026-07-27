@@ -4,7 +4,7 @@
 chip: CHIP-ANCHORS-2
 mission: MIS-006-integracao-fundacao
 branch: chip/anchors-2
-base_sha: c7f1c2e90371ddaeb9ca55f893d3dd24fd8d037a
+base_sha: d51a27b665e91132427a0efa1877e9a5df2f11bf
 wave: 1 (única — os dois chips de FE são a onda 2 e dependem deste)
 authority: .mnfs/MIS-006-integracao-fundacao/DECISOES-D122-anchors-telas.md
 ```
