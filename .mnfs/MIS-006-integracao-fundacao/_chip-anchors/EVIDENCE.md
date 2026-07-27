@@ -69,7 +69,7 @@ the verdict/output artifact afterwards.
 | D29 | P6 | Dual gate round 6 — GPT side. **Area: DERIVATION AND THE APPARATUS.** Re-derive every frozen-SHA fact; then turn on the tool that now carries the coverage claim — run the PACK rung, re-run every recorded mutation (four that must FAIL, one that must NOT fire, and one proving tolerance did not cost detection), and try to find text the checks cannot see | gpt-5.6-sol / medium | OS-process codex, `--sandbox read-only` | `scratchpad/prompt-p6-sol-r6.md` | `scratchpad/agent__p6-sol-r6.last.md` + `.log`, transcribed into `_chip-anchors/verdict-r6-gpt.md` | completed — **FAIL**, five BLOCKING. Two were pack errors (a frozen-SHA grep sentence omitting its test exclusion; a write-set range pinned two commits past the slices it names, whose count matched anyway by coincidence); three were the tool's own coverage claims being total in the wording and partial in the code. Every frozen-SHA count in the pack re-derived correctly, including the round-5 corrections |
 | D30 | P6 | Cold verdict transcription — the remedy for the artifact asymmetry found in round 5. Not a dispatch: a chip step the ledger names so it can be checked | chip | direct write | — | `_chip-anchors/verdict-r6-cold.md` | completed on arrival. R-23 then added a second holder: the same text travelled to the hub VERBATIM in the event, and the hub commits its own copy. The GPT verdict was given the same treatment for the same reason — its codex `-o` artifact is real but lives in a session-scoped scratchpad that dies exactly when a transcript does |
 | D31 | P6 | Round-6 corrective under R-24. Two prose corrections; the tool reports what it could not resolve and stops claiming totality, WITHOUT widening any recognizer; the PACK rung leaves the ladder; R-23 and R-24 recorded; the U2 inversion fixed chip-side. ZERO production code — that is the property the hub verifies before any AGREEMENT, not one it takes on trust | chip | direct edit | hub ruling R-24, `main@874d00e5` | this pack + `cite-table.py` + `coordinates.txt` | completed — corrective tip `f1397cf7`; `git diff --name-only 85b6c367 f1397cf7 -- apps contracts packages` returns **nothing** |
-| D32 | P6 | **Narrow re-check of a delivered FAIL — not a seventh round.** The gate that filed the five blockers re-checks ITS OWN five at the corrected tip, scoped to exactly what it filed. There is no new surface, because the corrective REMOVES claims rather than adding them. The cold gate does NOT re-run: it passed, its area is untouched, and re-running a passing gate over an unchanged area is the redundancy R-18 devalued | gpt-5.6-sol / medium | OS-process codex, `--sandbox read-only` | `scratchpad/prompt-p6-sol-recheck.md` | `scratchpad/agent__p6-sol-recheck.last.md` + `.log` | dispatched |
+| D32 | P6 | **Narrow re-check of a delivered FAIL — not a seventh round.** The gate that filed the five blockers re-checks ITS OWN five at the corrected tip, scoped to exactly what it filed. There is no new surface, because the corrective REMOVES claims rather than adding them. The cold gate does NOT re-run: it passed, its area is untouched, and re-running a passing gate over an unchanged area is the redundancy R-18 devalued | gpt-5.6-sol / medium | OS-process codex, `--sandbox read-only` | `scratchpad/prompt-p6-sol-recheck.md` | `scratchpad/agent__p6-sol-recheck.last.md` + `.log`, transcribed verbatim into `_chip-anchors/verdict-r6-recheck.md` because the codex `-o` artifact lives in a scratchpad that dies with the session | completed — **FAIL**. Three of five closed: two RESOLVED on re-derived facts, one DISSOLVED-BY-R-24 and accepted as closure by the gate that filed it. Two STAND, for one reason: the corrective removed the totality claims from what the tool PRINTS and left them in what the pack and the implementation SAY. No new defect introduced by the corrective; the gate states the survivors predate it. Sent to the hub raw, no AGREEMENT string authored, the three lines deliberately NOT patched while §11 is a live question |
 
 ## Slice S3 — chip verification, and a defect in the chip's own slice card
 
@@ -2069,6 +2069,52 @@ real progress and a real new defect, and the hub declined to relabel either half
 refused was a seventh round on the same reasoning: *"each round fails somewhere new" IS the infinite
 regress.* The stop is structural, not a resolution — the rung is off the ladder, so there is nothing
 left there to fail.
+
+### ROUND-6 RE-CHECK — the gate that filed the FAIL, on its own five (D32)
+
+Not a seventh round, and the hub fixed the scope in its own words: *"Whoever filed the FAIL re-checks
+its own five blockers at the corrected tip ... by the gate that delivered it, scoped to exactly what
+it filed. There is no new surface, because the corrective REMOVES claims rather than adding them."*
+The cold gate did not re-run — *"it passed; its area is untouched by the corrective; re-running a
+passing gate over an unchanged area is the redundancy R-18 already devalued."* That licence holds only
+if the corrective touched no code, so the chip verified the condition instead of asserting it:
+`git diff --name-only 85b6c367 56598bea -- apps contracts packages` returns nothing, and the gate
+re-derived the same zero independently.
+
+The verdict is transcribed in full, unedited inside a fence:
+[verdict-r6-recheck.md](verdict-r6-recheck.md).
+
+**Outcome: FAIL.** Three of five closed; two stand.
+
+| # | The blocker as filed | Re-check |
+|---|---|---|
+| 1 | The `connectorsports` frozen-SHA sentence claimed an empty result without the exclusion that makes it empty | **RESOLVED** — both forms re-run at the frozen tip and at the control; the corrected sentence is true and no longer contradicts the pack's own import table |
+| 2 | The S1+S2 write set ran two commits past S2 | **RESOLVED** — the re-pinned range covers exactly S1 and S2, returns the stated 13, and the gate confirmed the two sets are equal, which is the coincidence the pack now states out loud |
+| 3 | The tool silently discarded anchors it could not resolve | **DISSOLVED-BY-R-24, and the gate accepted that as closure** — its own injected name and call span both surface now, and `--strict` still exits 0 with them present |
+| 4 | The mutable-axis pass called itself a ban and is not one | **STANDS** |
+| 5 | The prose scan called itself a SUPERSET and is not one | **STANDS** |
+
+**Why the last two stand, which is one reason and not two.** The corrective removed the totality claims
+from what the tool *prints* and left them standing in what the pack and the implementation *say*. Two
+sentences in this document still call the mutable-axis pass "Banned outright" and "a lane check", and
+`cite-table.py` still carries the comment "THE SUPERSET ... the preceding character class is NOT
+restricted" on the line directly above the `(?<![0-9])` that restricts it — a comment refuted by the
+expression beneath it. The gate's verdict carries the coordinates; this paragraph deliberately does
+not, because hand-written coordinates in prose are the class R-22 removed. The chip re-read all three
+lines itself before relaying, rather than forwarding a verdict it had not checked.
+
+**The distinction the chip is not entitled to resolve.** In the gate's words: *"The two blocking
+survivor lines already existed in `f1397cf7^`; they were omitted by the corrective rather than
+introduced by it."* So this is not a third fresh instance of the shape — it is the first instance,
+incompletely removed. Whether profile §11's third-round rule fires on that is a hub call, and while it
+is open the chip has NOT patched the three lines. Patching them unbidden would author exactly the
+seventh round the hub said does not exist, and the reflex to reach for one more patch is what §11 was
+written to stop.
+
+The FOREIGN-fence SHOULD-FIX survives untouched and the gate says so rather than counting it against
+the corrective: a pack author can still exempt authored text by labelling it `quoted-verdict`, because
+the tool checks the tag and never the provenance. Out of the corrective's scope, still true, still
+open.
 
 ## The rulings rounds 4, 5 and 6 produced — R-13 through R-24
 
