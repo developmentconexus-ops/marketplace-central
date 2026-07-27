@@ -1,3 +1,12 @@
+"""SUPERSEDED — round-4 apparatus, kept as the record of what round 4 found.
+
+Do not run this to check the pack. The live check is `cite-table.py --strict` (ladder rung PACK), and
+the coordinate table it generates is `coordinates.txt`. This script's coverage claim was itself found
+false by the round-5 derivation gate: its total counted unresolved rows as resolved, and whole
+citation forms were outside its regex. That finding is why R-22 exists, so the file is evidence and
+not a tool.
+"""
+
 """Mechanical citation audit for EVIDENCE.md — committed pack artifact (hub ruling R-11).
 
 Why this exists. Three consecutive P6 rounds on CHIP-ANCHORS failed on the same class: a `file:line`
