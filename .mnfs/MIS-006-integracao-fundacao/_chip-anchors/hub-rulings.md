@@ -478,3 +478,109 @@ classe deste round chegando pela porta dos fundos.
 escrita do pack o invalida por atacado.** Mais forte que o 4b porque não é sobre nomear: o pack
 nomeou o tip dele corretamente e ainda assim foi falsificado por uma edição que o próprio gate
 mandou fazer. Nomear o SHA não protege de o SHA mudar de baixo.
+
+---
+
+# ROUND 5 — a condição de parada disparou. Honro, e a leitura é minha, não do chip
+
+Verifiquei os dois fatos mecânicos antes de decidir:
+
+```
+$ git grep -n mercado_livre 08308afb -- 'apps/server_core/internal/modules/product_links/**/*.go' | wc -l   → 82   (pack diz 86)
+$ git ls-files 85b6c367 | wc -l                                                                            → 0    (nao aceita tree-ish)
+```
+
+## Primeiro, precisão: os três não são a mesma coisa, e só um é a classe
+
+O chip achou três causas-raiz e é importante não colapsá-las, porque a condição que declarei era
+sobre **uma** delas.
+
+- **(a) o reconhecedor define a cobertura.** Terceira recorrência, terceiro disfarce — agora
+  backtick. **É a classe.** É por ela que declarei a parada.
+- **(b) comando de eixo mutável.** NOVA, e é a mais importante das três. Congelar um SHA **na
+  prosa** não congela o **comando**: `917f7bb5..HEAD` continua andando, e `git ls-files` lê o
+  ÍNDICE e não aceita tree-ish. Conteúdo bate, mecanismo declarado não vincula. Barata de matar.
+- **(c) erro de derivação num SHA congelado.** 86 onde eram 82 — não é decaimento nem silêncio,
+  estava errado quando foi digitado. Irredutível: só re-rodar detecta.
+
+Então (b) e (c) não são a classe. (a) é, e (a) sozinha basta para disparar o que declarei.
+
+## O achado que é meu, e nenhum gate podia tê-lo feito
+
+Cinco rounds falharam **na prestação de contas do pack sobre si mesmo, nunca no código**. O código
+está limpo desde o round 1: cold leu o fonte de produção e diz F-01/F-02/F-03 reais, testados,
+guards load-bearing; U1-U3 rodaram live na conta ML real; L0/L1 verdes.
+
+Enquanto isso o pack criou um aparato de verificação auto-referente — auditoria de citação dentro
+do documento que contém a auditoria, exemções declaradas por faixa de linha do próprio documento,
+contagem de citações do texto que enuncia a contagem.
+
+**Verificar o pack passou a custar mais do que verificar o código.** Isso inverte o propósito da
+coisa: pack existe para tornar a verificação MAIS BARATA que refazer o trabalho. Este virou mais
+caro que o trabalho. Nenhum gate podia reportar isso, porque cada gate vê um round.
+
+Regra que fica, e vale muito além deste chip: **aparato de evidência que custa mais para verificar
+do que aquilo que ele evidencia inverteu o próprio propósito.** Quando isso acontece, a resposta
+não é mais aparato.
+
+## R-22 — RULING: a coordenada sai da PROSA. A tabela sobrevive
+
+Cumpro o que pré-declarei: alegação derivada sai do pack. Mas "sai" precisa ser exato, porque há um
+ruling de juiz em vigor que eu **não** estou revogando.
+
+1. **A prosa para de citar coordenada.** Alegação em prosa passa a ser comportamental e ancorada em
+   **nome de teste** — identificador estável, que não desloca com inserção de linha e que
+   `go test -run` verifica mecanicamente.
+2. **A tabela de coordenadas continua existindo**, gerada mecanicamente, como artefato à parte,
+   regenerada pela lane no merge. Coordenada continua sendo coordenada.
+3. **A lane regenera e diffa. Drift reprova.** Deixa de ser trabalho de reviewer.
+
+**Preservação explícita do ruling do juiz** (§11, 3ª vez): ele rejeitou **substituir a coordenada
+pelo símbolo**. Não é o que estou fazendo. A tabela permanece coordenada e mecânica; o que removo é
+a **duplicação** da coordenada dentro da prosa. Eixo diferente: ele proibiu trocar o tipo da
+âncora, eu proíbo copiá-la para um segundo lugar que decai. É o R-14 aplicado ao último lugar onde
+ainda havia cópia.
+
+## O que adoto do chip, e em que papel
+
+**(b) proibição de eixo mutável: adotada inteira, independente de tudo.** Todo comando de evidência
+nomeia o próprio tree-ish ou não é evidência. `..HEAD`, `git ls-files`, `git diff` pelado,
+`git status` — banidos do pack. Grep-checkável, fail-closed, na lane. É barata, é correta, e mata
+uma classe que ninguém tinha visto até agora.
+
+**Inversão da ferramenta: adotada, com o papel REBAIXADO.** Superset (`:<dígitos>` em qualquer
+lugar) + toda ocorrência tem de cair numa classe fechada + UNCLASSIFIED é violação com saída
+não-zero — isso é genuinamente inversão e não quarto alargamento, e o chip está certo nisso.
+Mas sob o R-22 a superfície dela encolhe muito: ela **gera a tabela** e **verifica que nenhuma
+coordenada vazou de volta para a prosa**. Não é mais a coisa da qual a validade do pack depende.
+
+**Declaração viaja com o conteúdo: ratificada.** O chip pegou o R-14 **um nível abaixo, dentro do
+conserto do R-14** — exemção declarada como faixa de linha do pack decai no instante em que um
+corretivo insere parágrafo acima. Citação histórica carrega o SHA inline, região de saída colada se
+identifica pela tag da fence. Nada de posição, nunca.
+
+**(c): nada estrutural ajuda, e é exatamente o argumento** para o artefato ser regenerado e diffado
+na lane em vez de merecer confiança.
+
+## Round 6 — sim, UM, e não é a mesma forma
+
+Não é extensão disfarçada, e o motivo é verificável: os rounds 2-5 gatearam um pack que **continha**
+a classe, tentando policiá-la melhor a cada vez. O round 6 gateia um pack do qual a classe foi
+**removida** — não há coordenada em prosa para decair. Se o round 6 falhar, falhará em outra coisa.
+
+Estruturalmente também não há saída: `merge-gate.sh` exige `P6-DUAL-GATE: AGREEMENT`, e recusei
+cunhar e recusei burlar. Algum round tem de produzir. Mantidos os gates **partidos por área** — o
+R-18 provou que é o que gera achado disjunto.
+
+## Custo honesto do que estou aceitando
+
+Isto é perda real, e não vou vendê-la como ganho: um leitor futuro perde a navegação por coordenada
+direto da prosa, e vai ter de abrir a tabela. Aceito porque a alternativa custou cinco rounds, dois
+reviewers por round, e ainda não se sustenta. Precisão que não converge não é precisão.
+
+## Nota sobre o comportamento do chip
+
+Ele reportou que a **própria tabela de completude do R-16** estava errada — chamou quatro listagens
+de "git facts at a frozen SHA" quando uma delas usa `git ls-files`, que não aceita tree-ish. Terceira
+vez nesta missão que ele denuncia defeito próprio que nenhum gate tinha nomeado ainda. É a melhor
+propriedade deste chip e é o que tornou cinco rounds decidíveis em vez de opinativos.
