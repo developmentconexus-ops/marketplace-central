@@ -533,7 +533,7 @@ func applySingleAnchorScore(candidate *domain.LinkCandidate, state domain.LinkCa
 		}
 		reasons = []domain.LinkCandidateReason{
 			{Anchor: "seller_sku", Direction: domain.LinkCandidateReasonDirectionFor, Detail: "seller_sku resolve exato para codprod"},
-			{Anchor: "ean", Direction: domain.LinkCandidateReasonDirectionUnavailable, Detail: eanDetail},
+			missingMatchedAnchorReason("ean", eanDetail, snapshot, &product),
 		}
 	case domain.LinkCandidateStateExactEAN:
 		confidence, band, status = 60, domain.LinkCandidateConfidenceBandMedia, domain.LinkCandidateMatchStatusConfirm
@@ -543,14 +543,14 @@ func applySingleAnchorScore(candidate *domain.LinkCandidate, state domain.LinkCa
 		}
 		reasons = []domain.LinkCandidateReason{
 			{Anchor: "ean", Direction: domain.LinkCandidateReasonDirectionFor, Detail: "ean corrobora codprod (unproved)"},
-			{Anchor: "seller_sku", Direction: domain.LinkCandidateReasonDirectionUnavailable, Detail: skuDetail},
+			missingMatchedAnchorReason("seller_sku", skuDetail, snapshot, &product),
 		}
 	case domain.LinkCandidateStateTitleMatch:
 		confidence, band, status = 35, domain.LinkCandidateConfidenceBandBaixa, domain.LinkCandidateMatchStatusReview
 		reasons = []domain.LinkCandidateReason{
 			{Anchor: "title", Direction: domain.LinkCandidateReasonDirectionFor, Detail: "match por título (ranking-only, nunca ACCEPT)"},
-			{Anchor: "seller_sku", Direction: domain.LinkCandidateReasonDirectionUnavailable, Detail: "seller_sku sem correspondência"},
-			{Anchor: "ean", Direction: domain.LinkCandidateReasonDirectionUnavailable, Detail: "ean sem correspondência"},
+			missingMatchedAnchorReason("seller_sku", "seller_sku sem correspondência", snapshot, &product),
+			missingMatchedAnchorReason("ean", "ean sem correspondência", snapshot, &product),
 		}
 	default:
 		applyUnresolvedScore(candidate, comparison)
@@ -622,10 +622,26 @@ func applyUnresolvedScore(candidate *domain.LinkCandidate, comparison providerId
 	candidate.ConfidenceBand = domain.LinkCandidateConfidenceBandBaixa
 	candidate.MatchStatus = domain.LinkCandidateMatchStatusNoCandidate
 	reasons := []domain.LinkCandidateReason{
-		{Anchor: "seller_sku", Direction: domain.LinkCandidateReasonDirectionUnavailable, Detail: "seller_sku sem correspondência"},
-		{Anchor: "ean", Direction: domain.LinkCandidateReasonDirectionUnavailable, Detail: "ean sem correspondência"},
+		missingMatchedAnchorReason("seller_sku", "seller_sku sem correspondência", comparison.listing, nil),
+		missingMatchedAnchorReason("ean", "ean sem correspondência", comparison.listing, nil),
 	}
 	candidate.Reasons = appendProviderDeclaredUnavailableReasons(reasons, comparison)
+}
+
+func missingMatchedAnchorReason(anchor, detail string, listing domain.ListingSnapshot, product *internalreaddomain.ProductCandidate) domain.LinkCandidateReason {
+	listingValue, productValue, _ := identityAnchorValues(anchor, listing, product)
+	reason := domain.LinkCandidateReason{Anchor: anchor, Detail: detail}
+	switch {
+	case listingValue == "":
+		reason.Direction = domain.LinkCandidateReasonDirectionIncomparable
+		reason.Side = domain.LinkCandidateReasonSideProvider
+	case product == nil || productValue == "":
+		reason.Direction = domain.LinkCandidateReasonDirectionIncomparable
+		reason.Side = domain.LinkCandidateReasonSideERP
+	default:
+		reason.Direction = domain.LinkCandidateReasonDirectionUnavailable
+	}
+	return reason
 }
 
 func appendProviderDeclaredUnavailableReasons(reasons []domain.LinkCandidateReason, comparison providerIdentityAnchorComparison) []domain.LinkCandidateReason {

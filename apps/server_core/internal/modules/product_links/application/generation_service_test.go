@@ -378,12 +378,88 @@ func TestExactSKUWithUnmatchedListingEANKeepsSeededEANReason(t *testing.T) {
 		"sku:SKU-D1": {product},
 	}}, now)
 
-	for _, reason := range candidate.Reasons {
-		if reason.Anchor == "ean" {
-			return
-		}
+	reason, ok := findReason(candidate.Reasons, "ean", productlinksdomain.LinkCandidateReasonDirectionUnavailable)
+	if !ok {
+		t.Fatalf("reasons=%#v, want excluded ean UNAVAILABLE reason", candidate.Reasons)
 	}
-	t.Fatalf("reasons=%#v, want ean anchor to remain present", candidate.Reasons)
+	if reason.Side != "" || reason.Detail != "sem EAN para corroborar o CODPROD: o EAN do anúncio não casa nenhum produto" {
+		t.Fatalf("ean reason=%#v, want excluded branch unchanged", reason)
+	}
+}
+
+func TestNamedMissingAnchorSitesAreIncomparableWithCorrectSide(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		state    productlinksdomain.LinkCandidateState
+		snapshot productlinksdomain.ListingSnapshot
+		product  *internalreaddomain.ProductCandidate
+		anchor   string
+		detail   string
+		side     productlinksdomain.LinkCandidateReasonSide
+	}{
+		"exact SKU listing EAN empty": {
+			state:    productlinksdomain.LinkCandidateStateExactSKU,
+			snapshot: productlinksdomain.ListingSnapshot{SellerSKU: "SKU-1"},
+			product:  &internalreaddomain.ProductCandidate{},
+			anchor:   "ean", detail: "sem EAN para corroborar o CODPROD",
+			side: productlinksdomain.LinkCandidateReasonSideProvider,
+		},
+		"exact SKU ERP EAN empty": {
+			state:    productlinksdomain.LinkCandidateStateExactSKU,
+			snapshot: productlinksdomain.ListingSnapshot{SellerSKU: "SKU-1", EAN: "EAN-1"},
+			product:  &internalreaddomain.ProductCandidate{},
+			anchor:   "ean", detail: "sem EAN para corroborar o CODPROD: o EAN do anúncio não casa nenhum produto",
+			side: productlinksdomain.LinkCandidateReasonSideERP,
+		},
+		"exact EAN listing seller SKU empty": {
+			state:    productlinksdomain.LinkCandidateStateExactEAN,
+			snapshot: productlinksdomain.ListingSnapshot{EAN: "EAN-1"},
+			product:  &internalreaddomain.ProductCandidate{},
+			anchor:   "seller_sku", detail: "sem CODPROD para corroborar o EAN",
+			side: productlinksdomain.LinkCandidateReasonSideProvider,
+		},
+		"exact EAN ERP seller SKU empty": {
+			state:    productlinksdomain.LinkCandidateStateExactEAN,
+			snapshot: productlinksdomain.ListingSnapshot{SellerSKU: "SKU-1", EAN: "EAN-1"},
+			product:  &internalreaddomain.ProductCandidate{},
+			anchor:   "seller_sku", detail: "sem CODPROD para corroborar o EAN: o seller_sku do anúncio não casa nenhum produto",
+			side: productlinksdomain.LinkCandidateReasonSideERP,
+		},
+		"title match listing anchors empty": {
+			state:    productlinksdomain.LinkCandidateStateTitleMatch,
+			snapshot: productlinksdomain.ListingSnapshot{Title: "Produto"},
+			product:  &internalreaddomain.ProductCandidate{Name: "Produto"},
+			anchor:   "seller_sku", detail: "seller_sku sem correspondência",
+			side: productlinksdomain.LinkCandidateReasonSideProvider,
+		},
+		"title match ERP EAN empty": {
+			state:    productlinksdomain.LinkCandidateStateTitleMatch,
+			snapshot: productlinksdomain.ListingSnapshot{EAN: "EAN-1", Title: "Produto"},
+			product:  &internalreaddomain.ProductCandidate{Name: "Produto"},
+			anchor:   "ean", detail: "ean sem correspondência",
+			side: productlinksdomain.LinkCandidateReasonSideERP,
+		},
+		"unresolved listing seller SKU empty": {
+			snapshot: productlinksdomain.ListingSnapshot{EAN: "EAN-1"},
+			anchor:   "seller_sku", detail: "seller_sku sem correspondência",
+			side: productlinksdomain.LinkCandidateReasonSideProvider,
+		},
+		"unresolved listing EAN present": {
+			snapshot: productlinksdomain.ListingSnapshot{EAN: "EAN-1"},
+			anchor:   "ean", detail: "ean sem correspondência",
+			side: productlinksdomain.LinkCandidateReasonSideERP,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			candidate := productlinksdomain.LinkCandidate{}
+			applySingleAnchorScore(&candidate, tc.state, newProviderIdentityAnchorComparison(tc.snapshot, nil, tc.product))
+
+			reason, ok := findReason(candidate.Reasons, tc.anchor, productlinksdomain.LinkCandidateReasonDirectionIncomparable)
+			if !ok || reason.Side != tc.side || reason.Detail != tc.detail {
+				t.Fatalf("reason=%#v, ok=%v, want anchor=%q direction=INCOMPARABLE side=%q detail=%q", reason, ok, tc.anchor, tc.side, tc.detail)
+			}
+		})
+	}
 }
 
 func TestUnresolvedDeclaredAnchorReadsProviderValueWithoutERPProduct(t *testing.T) {
@@ -398,7 +474,8 @@ func TestUnresolvedDeclaredAnchorReadsProviderValueWithoutERPProduct(t *testing.
 			wantSide:         productlinksdomain.LinkCandidateReasonSideProvider,
 		},
 		"listing value present": {
-			ean: "EAN-D2", wantIncomparable: false,
+			ean: "EAN-D2", wantIncomparable: true,
+			wantSide: productlinksdomain.LinkCandidateReasonSideERP,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -430,13 +507,6 @@ func TestUnresolvedDeclaredAnchorReadsProviderValueWithoutERPProduct(t *testing.
 					t.Fatalf("reasons=%#v, want ean INCOMPARABLE with side %q", result.Items[0].Reasons, tc.wantSide)
 				}
 				return
-			}
-			if _, ok := findReason(result.Items[0].Reasons, "ean", productlinksdomain.LinkCandidateReasonDirectionIncomparable); ok {
-				t.Fatalf("reasons=%#v, want seeded ean sem correspondência reason to stand", result.Items[0].Reasons)
-			}
-			seeded, ok := findReason(result.Items[0].Reasons, "ean", productlinksdomain.LinkCandidateReasonDirectionUnavailable)
-			if !ok || seeded.Detail != "ean sem correspondência" {
-				t.Fatalf("reasons=%#v, want seeded ean sem correspondência reason", result.Items[0].Reasons)
 			}
 		})
 	}
@@ -1565,11 +1635,13 @@ func TestCase8NoAnchorResolvedYieldsZeroConfidenceNoCandidateWithReasons(t *test
 	if len(candidate.Reasons) == 0 {
 		t.Fatal("reasons are empty: M05-C5 requires the operator to see WHY nothing matched")
 	}
-	if _, ok := findReason(candidate.Reasons, "seller_sku", productlinksdomain.LinkCandidateReasonDirectionUnavailable); !ok {
-		t.Fatalf("reasons=%#v, want seller_sku UNAVAILABLE sem correspondência", candidate.Reasons)
+	skuReason, ok := findReason(candidate.Reasons, "seller_sku", productlinksdomain.LinkCandidateReasonDirectionIncomparable)
+	if !ok || skuReason.Side != productlinksdomain.LinkCandidateReasonSideERP {
+		t.Fatalf("reasons=%#v, want seller_sku INCOMPARABLE/erp sem correspondência", candidate.Reasons)
 	}
-	if _, ok := findReason(candidate.Reasons, "ean", productlinksdomain.LinkCandidateReasonDirectionUnavailable); !ok {
-		t.Fatalf("reasons=%#v, want ean UNAVAILABLE sem correspondência", candidate.Reasons)
+	eanReason, ok := findReason(candidate.Reasons, "ean", productlinksdomain.LinkCandidateReasonDirectionIncomparable)
+	if !ok || eanReason.Side != productlinksdomain.LinkCandidateReasonSideERP {
+		t.Fatalf("reasons=%#v, want ean INCOMPARABLE/erp sem correspondência", candidate.Reasons)
 	}
 	assertProviderDeclaredUnavailableReasons(t, candidate.Reasons)
 }
