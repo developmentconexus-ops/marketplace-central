@@ -102,6 +102,7 @@ import (
 	pricingapp "marketplace-central/apps/server_core/internal/modules/pricing/application"
 	pricingports "marketplace-central/apps/server_core/internal/modules/pricing/ports"
 	pricingtransport "marketplace-central/apps/server_core/internal/modules/pricing/transport"
+	productlinksconnectors "marketplace-central/apps/server_core/internal/modules/product_links/adapters/connectors"
 	productlinkspostgres "marketplace-central/apps/server_core/internal/modules/product_links/adapters/postgres"
 	productlinksapp "marketplace-central/apps/server_core/internal/modules/product_links/application"
 	productlinkscomposition "marketplace-central/apps/server_core/internal/modules/product_links/composition"
@@ -383,6 +384,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	marketplaceCapabilities := connectorsapp.NewMarketplaceCapabilityService([]connectorsapp.ProviderCapabilitySet{
 		mercadoLivreCapabilities.ProviderCapabilitySet(),
 	})
+	productLinkIdentityAnchorReader := productlinksconnectors.NewIdentityAnchorAdapter(marketplaceCapabilities)
 	installationSvc.SetStateReconciler(integrationsapp.NewInstallationStateReconciler(integrationsapp.InstallationStateReconcilerConfig{
 		TenantID:      cfg.DefaultTenantID,
 		Installations: installationSvc,
@@ -535,10 +537,11 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		Workflows:  productLinkCandidateRepo,
 	})
 	productLinkGenerationSvc := productlinksapp.NewGenerationService(productlinksapp.GenerationServiceConfig{
-		Snapshots:    productLinkSnapshotRepo,
-		Matcher:      productMatcher,
-		Store:        productLinkCandidateRepo,
-		AutoApprover: productLinkResolutionSvc,
+		Snapshots:       productLinkSnapshotRepo,
+		Matcher:         productMatcher,
+		Store:           productLinkCandidateRepo,
+		IdentityAnchors: productLinkIdentityAnchorReader,
+		AutoApprover:    productLinkResolutionSvc,
 	})
 	productLinkSummarySvc := productlinksapp.NewSummaryService(productlinkspostgres.NewSummaryReader(pool, cfg.DefaultTenantID))
 	productLinkBatchSvc := productlinksapp.NewBatchService(productlinksapp.BatchServiceConfig{

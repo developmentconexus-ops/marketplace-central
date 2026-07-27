@@ -7,12 +7,28 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	"marketplace-central/apps/server_core/internal/modules/connectors/domain"
+	"marketplace-central/apps/server_core/internal/modules/connectors/ports"
 )
+
+func TestProviderCapabilitySetDeclaresMercadoLivreIdentityAnchors(t *testing.T) {
+	t.Parallel()
+
+	got := NewCapabilityAdapter(CapabilityAdapterConfig{}).ProviderCapabilitySet().IdentityAnchors
+	want := []ports.IdentityAnchor{
+		ports.IdentityAnchorSellerSKU,
+		ports.IdentityAnchorEAN,
+		ports.IdentityAnchorTitle,
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("IdentityAnchors = %#v, want %#v", got, want)
+	}
+}
 
 func TestCapabilityAdapterReadListingPublishesCanonicalFactsWithoutProviderPayload(t *testing.T) {
 	t.Parallel()

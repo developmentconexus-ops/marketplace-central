@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -92,6 +93,53 @@ func (s *stubWorkflowStore) ListProductLinkAuditEntries(_ context.Context, insta
 		if item.InstallationID == installationID {
 			items = append(items, item)
 		}
+	}
+	return items, nil
+}
+
+type limitingCandidateStore struct {
+	*stubCandidateStore
+	observedLimit int
+}
+
+func (s *limitingCandidateStore) ListLinkCandidates(ctx context.Context, installationID string, limit int) ([]productlinksdomain.LinkCandidate, error) {
+	s.observedLimit = limit
+	items, err := s.stubCandidateStore.ListLinkCandidates(ctx, installationID, limit)
+	if err != nil {
+		return nil, err
+	}
+	if len(items) > limit {
+		items = items[:limit]
+	}
+	return items, nil
+}
+
+type limitingWorkflowStore struct {
+	*stubWorkflowStore
+	observedLinkLimit  int
+	observedAuditLimit int
+}
+
+func (s *limitingWorkflowStore) ListProductLinks(ctx context.Context, installationID string, limit int) ([]productlinksdomain.ProductLink, error) {
+	s.observedLinkLimit = limit
+	items, err := s.stubWorkflowStore.ListProductLinks(ctx, installationID, limit)
+	if err != nil {
+		return nil, err
+	}
+	if len(items) > limit {
+		items = items[:limit]
+	}
+	return items, nil
+}
+
+func (s *limitingWorkflowStore) ListProductLinkAuditEntries(ctx context.Context, installationID string, limit int) ([]productlinksdomain.ProductLinkAuditEntry, error) {
+	s.observedAuditLimit = limit
+	items, err := s.stubWorkflowStore.ListProductLinkAuditEntries(ctx, installationID, limit)
+	if err != nil {
+		return nil, err
+	}
+	if len(items) > limit {
+		items = items[:limit]
 	}
 	return items, nil
 }
@@ -307,6 +355,148 @@ func TestManualResolveRejectsNonPositiveInternalProductID(t *testing.T) {
 		if !errors.Is(err, productlinksdomain.ErrInvalidInternalProductID) {
 			t.Fatalf("ManualResolve(%d) error = %v", id, err)
 		}
+	}
+}
+
+func TestListLinkWorkflowsUsesIndependentDefaultLimitsAndReturnsAll29Links(t *testing.T) {
+	t.Parallel()
+
+	links := make([]productlinksdomain.ProductLink, 29)
+	for i := range links {
+		links[i] = productlinksdomain.ProductLink{
+			InstallationID: "inst-29",
+			ProviderCode:   "mercado_livre",
+			ProviderItemID: fmt.Sprintf("MLB-%d", i),
+			State:          productlinksdomain.ProductLinkStateResolved,
+		}
+	}
+	candidateStore := &limitingCandidateStore{stubCandidateStore: &stubCandidateStore{}}
+	workflowStore := &limitingWorkflowStore{stubWorkflowStore: &stubWorkflowStore{links: links}}
+	svc := NewResolutionService(ResolutionServiceConfig{
+		Candidates: candidateStore,
+		Workflows:  workflowStore,
+	})
+
+	items, err := svc.ListLinkWorkflows(context.Background(), ListLinkWorkflowsInput{
+		InstallationID: "inst-29",
+		Limit:          20,
+	})
+	if err != nil {
+		t.Fatalf("ListLinkWorkflows() error = %v", err)
+	}
+	if candidateStore.observedLimit != 20 {
+		t.Fatalf("candidate limit = %d, want 20", candidateStore.observedLimit)
+	}
+	if workflowStore.observedLinkLimit != 2000 {
+		t.Fatalf("link limit = %d, want 2000", workflowStore.observedLinkLimit)
+	}
+	if workflowStore.observedAuditLimit != 10000 {
+		t.Fatalf("audit limit = %d, want 10000", workflowStore.observedAuditLimit)
+	}
+	if len(items) != 29 {
+		t.Fatalf("items = %d, want 29", len(items))
+	}
+	for i, item := range items {
+		if item.CurrentLink == nil {
+			t.Fatalf("item %d current link is nil", i)
+		}
+	}
+}
+
+func TestListLinkWorkflowsDefaultsDoNotVaryWithLimit(t *testing.T) {
+	t.Parallel()
+
+	limits := []struct {
+		name  string
+		limit int
+	}{
+		{name: "limit_5", limit: 5},
+		{name: "limit_20", limit: 20},
+		{name: "limit_500", limit: 500},
+		{name: "limit_5000", limit: 5000},
+	}
+	for _, tc := range limits {
+		t.Run(tc.name, func(t *testing.T) {
+			limit := tc.limit
+			candidateStore := &limitingCandidateStore{stubCandidateStore: &stubCandidateStore{}}
+			workflowStore := &limitingWorkflowStore{stubWorkflowStore: &stubWorkflowStore{}}
+			svc := NewResolutionService(ResolutionServiceConfig{
+				Candidates: candidateStore,
+				Workflows:  workflowStore,
+			})
+
+			_, err := svc.ListLinkWorkflows(context.Background(), ListLinkWorkflowsInput{
+				InstallationID: "inst-defaults",
+				Limit:          limit,
+			})
+			if err != nil {
+				t.Fatalf("ListLinkWorkflows() error = %v", err)
+			}
+			if candidateStore.observedLimit != limit {
+				t.Fatalf("candidate limit = %d, want %d", candidateStore.observedLimit, limit)
+			}
+			if workflowStore.observedLinkLimit != 2000 {
+				t.Fatalf("link limit = %d, want 2000", workflowStore.observedLinkLimit)
+			}
+			if workflowStore.observedAuditLimit != 10000 {
+				t.Fatalf("audit limit = %d, want 10000", workflowStore.observedAuditLimit)
+			}
+		})
+	}
+}
+
+func TestListLinkWorkflowsHonorsIndependentExplicitLimits(t *testing.T) {
+	t.Parallel()
+
+	links := make([]productlinksdomain.ProductLink, 29)
+	for i := range links {
+		links[i] = productlinksdomain.ProductLink{
+			InstallationID: "inst-explicit",
+			ProviderCode:   "mercado_livre",
+			ProviderItemID: fmt.Sprintf("MLB-%d", i),
+			State:          productlinksdomain.ProductLinkStateResolved,
+		}
+	}
+	candidateStore := &limitingCandidateStore{stubCandidateStore: &stubCandidateStore{}}
+	workflowStore := &limitingWorkflowStore{stubWorkflowStore: &stubWorkflowStore{links: links}}
+	svc := NewResolutionService(ResolutionServiceConfig{
+		Candidates: candidateStore,
+		Workflows:  workflowStore,
+	})
+
+	input := ListLinkWorkflowsInput{
+		InstallationID: "inst-explicit",
+		Limit:          7,
+		LinkLimit:      11,
+		AuditLimit:     13,
+	}
+	list := func() {
+		t.Helper()
+		if _, err := svc.ListLinkWorkflows(context.Background(), input); err != nil {
+			t.Fatalf("ListLinkWorkflows() error = %v", err)
+		}
+	}
+	list()
+	if candidateStore.observedLimit != 7 || workflowStore.observedLinkLimit != 11 || workflowStore.observedAuditLimit != 13 {
+		t.Fatalf("observed limits = %d / %d / %d, want 7 / 11 / 13", candidateStore.observedLimit, workflowStore.observedLinkLimit, workflowStore.observedAuditLimit)
+	}
+
+	input.Limit = 17
+	list()
+	if candidateStore.observedLimit != 17 || workflowStore.observedLinkLimit != 11 || workflowStore.observedAuditLimit != 13 {
+		t.Fatalf("changing candidate limit observed = %d / %d / %d, want 17 / 11 / 13", candidateStore.observedLimit, workflowStore.observedLinkLimit, workflowStore.observedAuditLimit)
+	}
+
+	input = ListLinkWorkflowsInput{InstallationID: "inst-explicit", Limit: 7, LinkLimit: 19, AuditLimit: 13}
+	list()
+	if candidateStore.observedLimit != 7 || workflowStore.observedLinkLimit != 19 || workflowStore.observedAuditLimit != 13 {
+		t.Fatalf("changing link limit observed = %d / %d / %d, want 7 / 19 / 13", candidateStore.observedLimit, workflowStore.observedLinkLimit, workflowStore.observedAuditLimit)
+	}
+
+	input = ListLinkWorkflowsInput{InstallationID: "inst-explicit", Limit: 7, LinkLimit: 11, AuditLimit: 23}
+	list()
+	if candidateStore.observedLimit != 7 || workflowStore.observedLinkLimit != 11 || workflowStore.observedAuditLimit != 23 {
+		t.Fatalf("changing audit limit observed = %d / %d / %d, want 7 / 11 / 23", candidateStore.observedLimit, workflowStore.observedLinkLimit, workflowStore.observedAuditLimit)
 	}
 }
 

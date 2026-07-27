@@ -7,8 +7,11 @@ import (
 	"testing"
 	"time"
 
+	connectorsapp "marketplace-central/apps/server_core/internal/modules/connectors/application"
+	connectorsports "marketplace-central/apps/server_core/internal/modules/connectors/ports"
 	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
 	internalreadports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
+	productlinksconnectors "marketplace-central/apps/server_core/internal/modules/product_links/adapters/connectors"
 	productlinkspostgres "marketplace-central/apps/server_core/internal/modules/product_links/adapters/postgres"
 	productlinksdomain "marketplace-central/apps/server_core/internal/modules/product_links/domain"
 	testpostgres "marketplace-central/apps/server_core/internal/testsupport/postgres"
@@ -48,13 +51,18 @@ func TestGenerateLinkCandidatesPersistsDeterministicPostgresResult(t *testing.T)
 
 	reference := "FAB-2020.C.FLX"
 	canonicalProductID := internalreaddomain.InternalProductID(4242)
+	capabilities := connectorsapp.NewMarketplaceCapabilityService([]connectorsapp.ProviderCapabilitySet{{
+		ProviderCode:    "mercado_livre",
+		IdentityAnchors: []connectorsports.IdentityAnchor{connectorsports.IdentityAnchorSellerSKU},
+	}})
 	svc := NewGenerationService(GenerationServiceConfig{
 		Snapshots: snapshotRepo,
 		Matcher: deterministicProductMatcher{product: internalreaddomain.ProductCandidate{
 			InternalProductID: &canonicalProductID, ProductID: 99, Name: "Deterministic product", ReferenceCode: &reference, IsActive: true,
 		}},
-		Store: candidateRepo,
-		Now:   func() time.Time { return now },
+		Store:           candidateRepo,
+		IdentityAnchors: productlinksconnectors.NewIdentityAnchorAdapter(capabilities),
+		Now:             func() time.Time { return now },
 	})
 	result, err := svc.GenerateLinkCandidates(ctx, GenerateLinkCandidatesInput{InstallationID: installationID, Limit: 20})
 	if err != nil {
@@ -62,6 +70,13 @@ func TestGenerateLinkCandidatesPersistsDeterministicPostgresResult(t *testing.T)
 	}
 	if result.GeneratedCount != 1 || len(result.Items) != 1 || result.Items[0].State != productlinksdomain.LinkCandidateStateExactSKU {
 		t.Fatalf("unexpected generation result: %#v", result)
+	}
+	seenReasonAnchors := make(map[string]struct{}, len(result.Items[0].Reasons))
+	for _, reason := range result.Items[0].Reasons {
+		if _, exists := seenReasonAnchors[reason.Anchor]; exists {
+			t.Fatalf("generated reasons contain duplicate anchor %q: %#v", reason.Anchor, result.Items[0].Reasons)
+		}
+		seenReasonAnchors[reason.Anchor] = struct{}{}
 	}
 	persisted, err := svc.ListLinkCandidates(ctx, ListLinkCandidatesInput{InstallationID: installationID, Limit: 20})
 	if err != nil {

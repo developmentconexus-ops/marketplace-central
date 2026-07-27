@@ -41,11 +41,12 @@ func autoLinkingServices(t *testing.T, snapshots []productlinksdomain.ListingSna
 		NewDecisionID: func() string { return fmt.Sprintf("decision-%d", issued) },
 	})
 	generation := NewGenerationService(GenerationServiceConfig{
-		Snapshots:    &stubSnapshotReader{snapshots: snapshots},
-		Matcher:      matcher,
-		Store:        candidateStore,
-		AutoApprover: resolution,
-		Now:          func() time.Time { return now },
+		Snapshots:       &stubSnapshotReader{snapshots: snapshots},
+		Matcher:         matcher,
+		Store:           candidateStore,
+		IdentityAnchors: mercadoLivreIdentityAnchorReader(),
+		AutoApprover:    resolution,
+		Now:             func() time.Time { return now },
 	})
 	return generation, workflowStore, candidateStore
 }
@@ -270,6 +271,37 @@ func TestHardNegativeBlocksTheAutomaticPathEvenWithBothAnchors(t *testing.T) {
 	}
 }
 
+func TestHardNegativeKindsBlockConcordantSKUAndEAN(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 7, 26, 9, 15, 0, 0, time.UTC)
+	for name, titles := range map[string][2]string{
+		"kit/combo": {"KIT 2 UN PUXADOR DHARMA", "PUXADOR DHARMA"},
+		"cor":       {"PUXADOR DHARMA AZUL", "PUXADOR DHARMA PRETO"},
+		"voltagem":  {"FURADEIRA DHARMA 110V", "FURADEIRA DHARMA 220V"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			snapshot := productlinksdomain.ListingSnapshot{
+				InstallationID: "inst-m05", ProviderCode: "mercado_livre", ProviderItemID: "MLB-HARD-" + name,
+				SellerSKU: "HARD-SKU", EAN: "7890000000001", Title: titles[0], FetchedAt: now,
+			}
+			product := internalreaddomain.ProductCandidate{InternalProductID: canonicalIDPtr(700), Name: titles[1]}
+			matcher := &stubProductMatcher{results: map[string][]internalreaddomain.ProductCandidate{
+				"sku:HARD-SKU":      {product},
+				"ean:7890000000001": {product},
+			}}
+			svc, workflows, _ := autoLinkingServices(t, []productlinksdomain.ListingSnapshot{snapshot}, matcher, now)
+
+			candidates := generateAll(t, svc, snapshot.InstallationID)
+			if len(candidates) != 1 || candidates[0].MatchStatus != productlinksdomain.LinkCandidateMatchStatusReject {
+				t.Fatalf("candidates=%#v, want one REJECT", candidates)
+			}
+			if len(workflows.applied) != 0 {
+				t.Fatalf("applied=%#v, want no automatic link", workflows.applied)
+			}
+		})
+	}
+}
+
 // M05-C21: confirmation and review are separate queues. A count by status
 // returns two groups, and the confirmation warning survives the split —
 // mapping CONFIRM onto REVIEW collapses this to one group and fails here.
@@ -474,10 +506,11 @@ func TestAFailedApprovalDoesNotAbandonTheRestOfTheBatch(t *testing.T) {
 			concordantSnapshot("MLB-ALSO-FAIL", now),
 			concordantSnapshot("MLB-OK", now),
 		}},
-		Matcher:      concordantMatcher(),
-		Store:        &stubCandidateStore{},
-		AutoApprover: approver,
-		Now:          func() time.Time { return now },
+		Matcher:         concordantMatcher(),
+		Store:           &stubCandidateStore{},
+		AutoApprover:    approver,
+		IdentityAnchors: mercadoLivreIdentityAnchorReader(),
+		Now:             func() time.Time { return now },
 	})
 
 	_, err := svc.GenerateLinkCandidates(context.Background(), GenerateLinkCandidatesInput{InstallationID: "inst-m05"})

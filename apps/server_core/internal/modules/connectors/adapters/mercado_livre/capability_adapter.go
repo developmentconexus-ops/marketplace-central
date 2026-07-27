@@ -78,15 +78,16 @@ func NewCapabilityAdapter(cfg CapabilityAdapterConfig) *CapabilityAdapter {
 
 func (a *CapabilityAdapter) ProviderCapabilitySet() connectorsapp.ProviderCapabilitySet {
 	return connectorsapp.ProviderCapabilitySet{
-		ProviderCode:  "mercado_livre",
-		AccountProbes: a,
-		Listings:      a,
-		FeeQuotes:     a,
-		StockReads:    a,
-		Orders:        a,
-		PriceWrites:   a,
-		StockWrites:   a,
-		ListingWrites: a,
+		ProviderCode:    "mercado_livre",
+		AccountProbes:   a,
+		Listings:        a,
+		FeeQuotes:       a,
+		StockReads:      a,
+		Orders:          a,
+		PriceWrites:     a,
+		StockWrites:     a,
+		ListingWrites:   a,
+		IdentityAnchors: []ports.IdentityAnchor{ports.IdentityAnchorSellerSKU, ports.IdentityAnchorEAN, ports.IdentityAnchorTitle},
 	}
 }
 
