@@ -1,23 +1,32 @@
 # Hub copy — round-6 COLD verdict (Opus, `harness:gate-reviewer`, area SEMANTICS)
 
-**Provenance.** Received VERBATIM in the chip's BLOCKED event. **Hub's own copy**, filed per R-23.
-The cold reviewer runs through the Agent tool, whose per-task output file came back EMPTY on all
-twelve runs of this chip — so without a transcription this verdict would exist only in a session
-transcript, exactly as the round-5 cold verdict did before it became unrecoverable. The chip holds
-`_chip-anchors/verdict-r6-cold.md`; this is the second holder.
+**Provenance.** Transcribed by the HUB from the chip's BLOCKED event body, filed per R-23. The cold
+reviewer runs through the Agent tool, whose per-task output file came back EMPTY on all twelve runs
+of this chip — without a transcription this verdict would exist only in a session transcript, exactly
+as the round-5 cold verdict did before it became unrecoverable. The chip holds
+`_chip-anchors/verdict-r6-cold.md`; this is the second holder, written independently from the same
+source.
 
-`gate-reviewer` has no Write **by construction** — that absence is what makes it cold — so the
-transcription is necessarily someone else's act, and naming whose act it is, is what keeps it
-honest. This copy was written by the hub from the event body.
+`harness:gate-reviewer` has no Write **by construction** — that absence is what makes it cold — so
+the transcription is necessarily someone else's act, and naming whose act it is, is what keeps it
+honest. This copy is the hub's act.
 
 **Honest limit** (R-23): two holders do not make either copy verifiable against the vanished
 original. They remove unilateral control.
+
+**Correction, R-26.** The first version of this file was labelled VERBATIM and was not. I had escaped
+the pipe characters inside the C3 cell's grep pattern (`|` → `\|`) so the markdown table would not
+break, and collapsed an absolute path to a bare filename. Both edits were mine. The pipe escape was
+forced by the container, not by carelessness — and that is the lesson rather than the excuse: WHEN
+FAITHFUL REPRODUCTION IS IMPOSSIBLE IN THE CHOSEN CONTAINER, CHANGE THE CONTAINER, NOT THE TEXT. The
+body below now sits inside a fence, where pipes need no escaping, and every word of mine is above it.
 
 - Pack tip reviewed: `a23aee3a` · Code tip: `85b6c367`
 - Verdict: **PASS** (cold half only; C5, C9, C10, C11, C12 NOT-CHECKED — no shell)
 
 ---
 
+`````quoted-verdict
 ## 1. VERDICT
 
 **VERDICT: PASS** — cold side, area SEMANTICS. No BLOCKING finding stands. One SHOULD-FIX (apparatus recognizer drops anchors silently), one NIT. The verdict covers only the criteria marked PASS below; C5, C9, C10, C11, C12 are NOT-CHECKED and the gate as a whole cannot close on my half alone.
@@ -28,7 +37,7 @@ original. They remove unilateral control.
 |---|---|---|---|
 | C1 | Provider **declares** anchors off capability registry; `product_links` consumes via own port + composition wiring | **PASS** | Declaration `connectors/adapters/mercado_livre/capability_adapter.go:90` (`IdentityAnchorSellerSKU, IdentityAnchorEAN, IdentityAnchorTitle`); vocabulary `connectors/ports/marketplace_capability.go:22-42`; service gate `connectors/application/marketplace_capability_service.go:129-155` (nil→`unsupported`, unknown/dup fail closed, returns clone); own port `product_links/ports/provider_identity_anchor_reader.go:3-8`; adapter + compile-time assert `product_links/adapters/connectors/identity_anchor_adapter.go:39`; wiring `composition/root.go:105,387,543` |
 | C2 | `mandatoryUnavailableReasons()` gone; no anchor name hardcoded in the generator | **PASS** | Grep `mandatoryUnavailableReasons` over `apps/server_core/internal/modules/**/*.go` → 0 hits. Anchor names now come from the declaration loop `generation_service.go:640-654`. The pack's own disclosure that `"seller_sku"/"ean"/"title"` still appear as reason **seeds** in exactly five functions is accurate: `buildConflictCandidates:324-331`, `buildCollisionCandidates:360-361`, `buildConcordantCandidate:483`, `applySingleAnchorScore:519-537`, `applyUnresolvedScore:609`. Hub already ruled the criterion's prose was the defect; the code state matches the ruling |
-| C3 | R2: zero provider branching inside `product_links` | **PASS** | Grep `mercado_livre\|ProviderCode ==\|ProviderCode !=\|switch .*Provider` over `product_links/` → 8 files, **all `_test.go`**. Zero production hits. Adapter carries no provider literal |
+| C3 | R2: zero provider branching inside `product_links` | **PASS** | Grep `mercado_livre|ProviderCode ==|ProviderCode !=|switch .*Provider` over `product_links/` → 8 files, **all `_test.go`**. Zero production hits. Adapter carries no provider literal |
 | C4 | `UNAVAILABLE` distinguishes "provider doesn't supply" from "supplies it, no value" via `detail` | **PASS** | `generation_service.go:646` `fmt.Sprintf("provider não fornece a âncora %s", anchor.Anchor)`; asserted with two distinct details **in one test** at `generation_service_test.go:136` — `refforn.Detail == "provider não fornece a âncora refforn"`, `ean.Detail == "sem EAN para corroborar o CODPROD"`, plus an explicit `if refforn.Detail == ean.Detail { t.Fatalf }`. Enum still three values: `domain/link_candidate.go:53-55` |
 | C5 | R1: OpenAPI + `packages/sdk-runtime` byte-identical to BASE-SHA, `git diff --stat` pasted | **NOT-CHECKED** | Needs `git diff --stat BASE..85b6c367 -- contracts/ packages/sdk-runtime` at the frozen SHAs. No Bash. Derivation side owns it. I did confirm no wire-shape change in the Go types (`{Anchor, Direction, Detail}`, three directions) |
 | C6 | D-A: `50cm` vs `500MM` not a contradiction, `50cm` vs `40cm` still is, + must-fail | **PASS** | Exact rationals `normalizeDimensionToken:779-807`, `big.NewRat(127,5)` at `:803-804`, suffix list `:788` with `"m"` last, fail-closed `:795-797`. Tests: golden `TestGoldenToalheiroDimensionUnitEquivalenceYieldsConfirm:800` (asserts CONFIRM/70/MEDIA and **no** `title AGAINST` — the match, not just the parser), `TestEquivalentDimensionUnitsDoNotRejectConcordantCandidate:831`, `TestDimensionCanonicalizationUsesExactMillimetres:855`, `TestDifferentCanonicalDimensionsStillRejectConcordantCandidate:926`, `TestNormalizeDimensionTokenFailsClosed:348`. Must-fail states observed failure modes, not "a proof was done" |
@@ -39,7 +48,7 @@ original. They remove unilateral control.
 | C11 | Ladder L0+L1 (absolute GOCACHE) + governance from clean detached worktree, 40-hex BaseSha | **NOT-CHECKED** | Needs the Go ladder and governance lane executed. Pack records L0a/L0b/L1/GOV rungs and a 53==53 differential at tip and BASE; verifying that is the derivation side's assignment |
 | C12 | `root.go` grant additive-only in tokens, file gofmt-clean | **NOT-CHECKED** | Needs `git diff -w` and `gofmt -l`. What I can state from reading: the grant is exactly three lines — `root.go:105` (import), `:387` (`productLinkIdentityAnchorReader := productlinksconnectors.NewIdentityAnchorAdapter(marketplaceCapabilities)`), `:543` (`IdentityAnchors: productLinkIdentityAnchorReader,`). Whether anything was **removed** requires the diff |
 
-Markers: `EXEMPLO-IO:` present at EVIDENCE.md:17-20 and asserted by a real test (`generation_service_test.go:800`). `LIVE-VERIFIED:` present at EVIDENCE.md:1496, backed by the hub artifact `hub-live-drive-u1-u3.md` with U1–U3 detail. `P6-DUAL-GATE:` is being produced by this round; not fabricated here.
+Markers: `EXEMPLO-IO:` present at EVIDENCE.md:17-20 and asserted by a real test (`generation_service_test.go:800`). `LIVE-VERIFIED:` present at EVIDENCE.md:1496, backed by the hub artifact `C:/Users/leandro.theodoro/Documents/marketplace-central/.mnfs/MIS-006-integracao-fundacao/_chip-anchors/hub-live-drive-u1-u3.md` with U1–U3 detail. `P6-DUAL-GATE:` is being produced by this round; not fabricated here.
 
 ## 3. Findings
 
@@ -75,3 +84,4 @@ No BLOCKING semantic mismatch found: no test is cited as proving something it do
 - **`coordinates.txt` completeness not audited.** I found the silent-drop path by inspection of the generator plus two spot instances; I did not enumerate every backticked span in a 2187-line pack to bound how many anchors are missing.
 - **Scope excluded by the brief:** `slices.SortFunc` stability, `refforn`, `package-lock.json`, and the superseded `cite-audit.*` round-4 artifacts.
 - **U1–U3 not re-driven.** Hub-run criteria; I read the artifact, did not exercise the account.
+`````

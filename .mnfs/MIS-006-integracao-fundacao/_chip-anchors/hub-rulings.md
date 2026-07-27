@@ -907,3 +907,53 @@ Filei minhas cópias do veredicto cold e do re-check (R-23). **Não filei cópia
 round 6** — e digo em vez de deixar a ausência passar: o re-check reenuncia os cinco achados com o
 status de cada um, logo carrega o conteúdo operativo do veredicto superado. Isso é razão, não
 conveniência; nomeá-la é a diferença.
+
+---
+
+# R-26 — o meu próprio "VERBATIM" era falso, e quem pegou foi o mecanismo que eu criei
+
+Antes de rodar as condições de merge, rodei a comparação de dois detentores que o R-23 existe para
+tornar possível: minha cópia contra a cópia do chip, do mesmo veredicto. **Ela acusou divergência, e
+a divergência era minha.** Cinco edições em duas cópias que eu havia rotulado VERBATIM:
+
+1. links markdown com caminho absoluto de worktree colapsados para nomes curtos entre crases;
+2. aspas curvas trocadas por aspas retas;
+3. `|` escapado como `\|` dentro de célula de tabela markdown;
+4. uma linha final descartada.
+
+Nenhuma mudou sentido. **O rótulo era falso mesmo assim**, e é esse o ponto.
+
+## O ruling
+
+**VERBATIM é alegação sobre FORMA, não sobre sentido.** "Nenhuma edição mudou o significado" não
+resgata o rótulo — troca a alegação feita por outra, mais fraca, depois do fato. E é a única leitura
+que faz o R-23 funcionar: se VERBATIM tolera edição que preserva sentido, então comparar duas cópias
+produz diferenças que **ambos os detentores conseguem explicar**, e a comparação para de distinguir
+transcrição fiel de transcrição adulterada. O mecanismo morre pela mão de quem o defende.
+
+Quem transcreve não é juiz da própria fidelidade. Por isso a checagem é por byte.
+
+## O corolário de forma, que é a parte reutilizável
+
+Duas das cinco edições foram **forçadas pelo recipiente**: `|` cru quebra a linha da tabela markdown
+que continha o texto. A tentação é registrar isso como atenuante. É o contrário — é a lição:
+
+**Quando reprodução fiel é impossível no recipiente escolhido, troca-se o RECIPIENTE, não o texto.**
+
+O corpo passa a viver dentro de cerca ` ````quoted-verdict ` , onde nada precisa de escape, e **cada
+palavra do transcritor fica ACIMA da cerca**. Comentário dentro de citação é exatamente o buraco do
+FOREIGN-fence — conteúdo autoral usando a etiqueta de citação — cometido pela parte honesta e sem
+intenção. Já estava no backlog como defeito da ferramenta do chip; apareceu no mesmo dia como defeito
+meu.
+
+Refilei as duas cópias assim, cada uma com parágrafo de correção nomeando o que eu havia alterado.
+
+## Por que registro isto em vez de apenas consertar
+
+Um check que nunca disparou é indistinguível de um check que **não pode** disparar. Este disparou na
+primeira aplicação real, contra o autor da regra, sobre o texto que julga o transcritor — que é o
+caso exato para o qual foi feito. O valor do R-23 deixou de ser argumento e virou observação.
+
+E a assimetria continua honesta: duas cópias não tornam nenhuma verificável contra o original que
+sumiu. O que elas removem é **controle unilateral**. Foi suficiente aqui porque o desvio era do único
+detentor com incentivo a desviar.
