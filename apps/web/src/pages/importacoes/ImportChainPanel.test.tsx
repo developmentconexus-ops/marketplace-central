@@ -170,7 +170,7 @@ describe("ImportChainPanel", () => {
     renderPanel();
 
     const error = await screen.findByTestId("erp-import-chain-error");
-    expect(error).toHaveTextContent("Não foi possível carregar a cadeia da importação.");
+    expect(error).toHaveTextContent("Não foi possível carregar o estado da importação.");
     expect(error).not.toHaveTextContent("não encontrada");
   });
 
@@ -183,7 +183,7 @@ describe("ImportChainPanel", () => {
     // do QueryClient do teste não vale: a opção do próprio hook prevalece). O
     // estado de erro só assenta depois do retryDelay de ~1s.
     const error = await screen.findByTestId("erp-import-chain-error", {}, { timeout: 5000 });
-    expect(error).toHaveTextContent("Não foi possível carregar a cadeia da importação.");
+    expect(error).toHaveTextContent("Não foi possível carregar o estado da importação.");
     expect(error).not.toHaveTextContent("não encontrada");
     expect(screen.queryByTestId("erp-import-chain")).toBeNull();
   });

@@ -3262,7 +3262,7 @@ paths:
 
   /erp/imports/{id}/chain:
     get:
-      summary: Get the current processing chain for an ERP import
+      summary: Get three independent measures for an ERP import
       operationId: getErpImportChain
       tags: [erp-imports]
       parameters:
@@ -3275,7 +3275,7 @@ paths:
             format: uuid
       responses:
         "200":
-          description: Current ERP import processing chain
+          description: Three independent measures over the import, read at queue_read_at
           content:
             application/json:
               schema:
@@ -8089,20 +8089,37 @@ components:
 
     ErpImportChain:
       type: object
+      description: >-
+        Three independent measures over one ERP import — not stages of a funnel and not one
+        population decomposed. They are read from different sources (import rows, resolved
+        product links, the market sync queue) and in two different units: importados and
+        enfileirados count import ROWS, vinculados counts internal PRODUCTS. A product can sit
+        in the queue with no link at all, so enfileirados > vinculados is a normal state and
+        not an error; so is vinculados = 0 with both others non-zero. Comparing them as
+        successive stages will always be wrong.
       required: [protocol, importados, vinculados, enfileirados, queue_read_at]
       properties:
         protocol:
           type: string
         importados:
           type: integer
+          description: >-
+            Rows of this import (erp_import_products). Counts ROWS, not distinct products:
+            a file that names the same product twice contributes two.
         vinculados:
           type: integer
+          description: >-
+            DISTINCT internal products of this import that carry a resolved product link.
+            Counts PRODUCTS, not rows — two import rows naming the same internal product are
+            one linked product — so it is not a subset of importados and the two are not
+            comparable as a ratio.
         enfileirados:
           type: integer
           description: >-
-            Current market queue at queue_read_at, never an import-history total:
-            the number falls as the queue is consumed. No consumer is wired yet,
-            so today it only grows — a later drop is drainage, never data loss.
+            Rows of this import present in the market sync queue (cursor->'pending') at
+            queue_read_at. Counts ROWS. This is the current queue, never an import-history
+            total: the number falls as the queue is consumed. No consumer is wired yet, so
+            today it only grows — a later drop is drainage, never data loss.
         queue_read_at:
           type: string
           format: date-time

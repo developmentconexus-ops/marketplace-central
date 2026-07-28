@@ -45,10 +45,18 @@ export interface ErpImportDetail extends ErpImportSummary {
   warnings: ErpImportIssue[];
 }
 
+/**
+ * Three independent measures over one ERP import — not stages of a funnel and not one
+ * population decomposed. Two units: `importados` and `enfileirados` count import ROWS,
+ * `vinculados` counts internal PRODUCTS. `enfileirados > vinculados` is a normal state.
+ */
 export interface ErpImportChain {
   protocol: string;
+  /** Rows of this import. A file naming the same product twice contributes two. */
   importados: number;
+  /** DISTINCT internal products with a resolved link — not a subset of `importados`. */
   vinculados: number;
+  /** Rows of this import in the market sync queue at `queue_read_at`; falls as it drains. */
   enfileirados: number;
   queue_read_at: string;
 }

@@ -31,6 +31,8 @@ gate_round_5: REFUTED — 1 BLOCKING, achado pelos DOIS assentos independentemen
 round_6_reparo: ltrim dos dois lados era CANONICALIZACAO PERDEDORA. vinculados agora compara numerico exato com ordem de avaliacao garantida por CASE e conta links.internal_product_id; a FILA volta a igualdade CRUA porque os dois lados sao a mesma string do mesmo slice (cadeia estabelecida por STRING). 2 fixtures de regressao novos.
 must_fail_sql: lane de integracao com o ltrim REPOSTO = status=blocked, failure_token=test=TestGetImportChainCountsCollidingCodprodsOnce E failure_token=test=TestGetImportChainQueueMatchesCodprodExactly; restaurado = status=passed. A forma test= e atribuivel (finding 1 estreitado, ea919c06), entao os dois testes novos EXECUTARAM — status=passed sozinho nao provaria isso (§11 item 4).
 ordem_f5: painel /importacoes prometia funil (importados -> vinculados -> enfileirados) sobre tres numeros de DUAS unidades e populacoes independentes; 55/0/55 e estado normal. Legenda, titulo e rotulos reescritos em ImportChainPanel.tsx (unico arquivo concedido). vitest importacoes 18 passed EXIT 0; tsc apps/web EXIT 2 com 20 erros pre-existentes, ZERO em importacoes. Contrato (summary/description "processing chain") e cópia de erro fixada por teste alheio: propostos ao hub, NAO tocados. Drive em navegador PENDENTE de stack.
+ordem_f5_contrato: hub concedeu escopo MAIOR que o pedido — summary e description 200 reescritos (prosa livre nao quebra nada; deixar "processing chain" ao lado de descriptions verdadeiras seria anotar a falsidade ao lado da verdade, R-25). grep -c "processing chain" = 0. Path/operationId/ref/schema ficam: RESIDUO DECLARADO — o identificador continua afirmando sequencia, a prosa nao; divida conhecida, nao lacuna (sao QUATRO sitios, nao dois: operationId nao estava na tabela do hub). Delta prosa-pura provado: sdk-runtime 8+/0-, zero linha adicionada nao-comentario, sha256 identico com comentarios removidos; OpenAPI inteiro carregado com yaml.safe_load nas duas revisoes e IDENTICO removendo toda description/summary. sdk tsc EXIT 0, sdk vitest 77 passed.
+ordem_f5_correcao: eu publiquei "20 erros pre-existentes" no tsc de apps/web em b91c7507. 20 e a contagem de LINHAS da saida; erros TS sao 15 em 10 arquivos (grep -c "error TS"). Conjunto byte-identico antes/depois, zero em importacoes nas duas medicoes. Confundi unidade de saida com unidade de erro no mesmo dia em que a ordem era sobre unidades nao nomeadas.
 status: NAO FECHADO PELO CHIP. Sem AGREEMENT em 5 rounds; a linha P6-DUAL-GATE e o merge sao do hub. Todo achado dos dois lados verificado por STRING pelo chip, um recusado com motivo.
 authority: .mnfs/MIS-006-integracao-fundacao/_hub-gate-anchors-2/p6-reconciliation-r1.md
 contract: .mnfs/MIS-006-integracao-fundacao/_chip-anchors-3/validation-contract.md
@@ -824,9 +826,102 @@ mais `mutations/`, `produto/`, `anuncios`); **nenhum** dos 20 erros é de `impor
 string e não por leitura. Registrar o EXIT 2 inteiro é a forma honesta: dizer "FE verde" seria falso, e
 omitir o vermelho seria pior.
 
+### Contrato — concedido pelo hub com escopo MAIOR que o meu pedido, e ele estava certo
+
+Eu propus `description`-only por campo e **parei antes de aplicar a minha própria análise ao artefato**.
+Tinha escrito que "o que afirma ordem é a palavra *chain*" e depois deixei `summary: Get the current
+processing chain` intacto logo acima das `description`s novas. Isso é **anotar a falsidade ao lado da
+verdade** — R-25. Falsidade que não custa quebra **se deleta**, não se contextualiza.
+
+Reescrito (prosa livre, zero identificador):
+
+| Antes | Depois |
+|---|---|
+| `summary: Get the current processing chain for an ERP import` | `Get three independent measures for an ERP import` |
+| 200 `description: Current ERP import processing chain` | `Three independent measures over the import, read at queue_read_at` |
+
+Mais `description` por campo nomeando a **unidade** (`importados`: linhas de `erp_import_products`;
+`vinculados`: produtos internos DISTINCT com vínculo resolvido, **não** subconjunto de `importados`;
+`enfileirados`: linhas deste import em `cursor->'pending'` em `queue_read_at`, fila corrente e não
+total histórico — o texto que já existia foi preservado e recebeu a unidade na frente), e a frase de
+schema que o hub pediu: populações independentes, duas unidades, **`enfileirados > vinculados` é
+estado normal**, `vinculados = 0` com os outros dois não-zero também. Essa frase sozinha teria evitado
+o F-5.
+
+`grep -c -i "processing chain"` no OpenAPI = **0**.
+
+**Resíduo declarado, nas palavras do hub:** *o identificador continua afirmando sequência; a prosa não.
+Dívida conhecida, não lacuna.* Ficam `/erp/imports/{id}/chain`, `getErpImportChain`, o `$ref` e o schema
+`ErpImportChain` — quebra dura por nomenclatura não se paga agora.
+
+Uma correção ao levantamento do hub, verificada por string: `grep -n -i chain` devolve **quatro linhas**,
+mas as quatro **não** são "path, schema, summary, description". Depois da reescrita da prosa sobram
+`:3263` path, `:3266` **`operationId: getErpImportChain`**, `:3282` `$ref`, `:8090` schema. O
+`operationId` não estava na tabela do hub e é da classe que quebra: é o nome do método do SDK
+(`client.getErpImportChain`). Ou seja, a dívida de identificador tem **quatro** sítios, não dois.
+
+### Prova de que o delta é prosa pura
+
+O hub condicionou: delta de `sdk-runtime` **comentário puro**, provado por string.
+
+```
+git diff --numstat packages/sdk-runtime/src/erpImport.ts   → 8  0   (8 adicionadas, 0 removidas)
+linhas adicionadas que NÃO são comentário                  → 0
+linhas removidas                                           → 0
+sha256 do arquivo com comentários removidos e espaços colapsados:
+  HEAD      35165c82e69927cd   1319 bytes
+  worktree  35165c82e69927cd   1319 bytes   IDENTICAL = True
+```
+
+E a mesma prova, um nível acima, para o **OpenAPI inteiro** — não só o bloco do chain: carregado com
+`yaml.safe_load` nas duas revisões e comparado depois de remover **toda** chave `description` e
+`summary` do documento recursivamente:
+
+```
+SHAPE_IDENTICAL_IGNORING_PROSE = True
+required: ['protocol','importados','vinculados','enfileirados','queue_read_at']   (inalterado)
+props: protocol:string, importados:integer, vinculados:integer, enfileirados:integer,
+       queue_read_at:string/date-time                                             (inalterado)
+operationId: getErpImportChain                                                    (inalterado)
+```
+
+Nenhum tipo mudou, em lugar nenhum do contrato. O `sdk-runtime` não é gerado — é TypeScript escrito à
+mão (`packages/sdk-runtime/package.json`: `"main": "src/index.ts"`, sem script de codegen), e a
+interface `ErpImportChain` não carregava **nenhum** comentário: a `description` de `enfileirados` que já
+existia no OpenAPI nunca tinha chegado ao consumidor. Agora chega como TSDoc, que é onde o dev de FE
+efetivamente lê a unidade — no hover de `chain.vinculados`, não no YAML.
+
+### Micro-grant aplicado
+
+`ImportChainPanel.test.tsx:173` e `:186`: `"Não foi possível carregar a cadeia da importação."` →
+`"…o estado da importação."`, junto com a cópia no painel. Duas strings, o grant exato.
+
+### Correção de um número que EU publiquei
+
+No commit `b91c7507` e na seção acima eu escrevi **"20 erros pré-existentes"** no `tsc` de `apps/web`.
+Errado: **20 é a contagem de LINHAS da saída**; erro TS ocupa 1 ou 2 linhas (a segunda é a explicação
+indentada). O número certo é **15 erros em 10 arquivos**. Medido com `grep -c 'error TS'`, não com
+`wc -l` — foi exatamente a confusão entre a unidade "linha de saída" e a unidade "erro", no mesmo dia em
+que a ordem F-5 era sobre três números em duas unidades sem dizer quais. Registro em vez de reescrever o
+commit.
+
+Conjunto de erros **byte-idêntico** antes e depois desta rodada (`diff` das linhas `error TS` = EXIT 0),
+e `grep -c importacoes` = 0 nas duas medições.
+
+### Lane depois do contrato
+
+```
+sdk-runtime  tsc --noEmit                        EXIT 0
+sdk-runtime  vitest run                          5 files, 77 passed        EXIT 0
+apps/web     vitest run src/pages/importacoes    4 files, 18 passed        EXIT 0
+apps/web     tsc --noEmit                        15 erros PRÉ-EXISTENTES   EXIT 2
+             (10 arquivos: vinculos ×3, produto ×5, anuncios ×4, mutations ×2 — zero em importacoes)
+```
+
+
 ### Drive em navegador real
 
-**PENDENTE** — o critério de aceite desta ordem é o texto renderizado de `/importacoes/<id>`, e o chip não sobe stack. `REQUEST` enviado ao hub pedindo URL, o `<id>` com dado real e a confirmação de qual build está sendo servido (o compose monta a raiz cwd-relativa; se estiver apontado para o checkout do hub, o drive não veria esta mudança). Sem o drive, esta seção é reparo declarado e **não** critério descarregado.
+**PENDENTE, e o procedimento agora é do hub.** O critério de aceite desta ordem é o texto renderizado de `/importacoes/eac3ac9e-b87b-43be-959c-7bf1f11a07f1` (protocolo #001-E, 55/0/55). O chip nao sobe stack, e o diagnostico do REQUEST estava certo: o compose monta `.:/workspace` cwd-relativo e estava apontado pro checkout primario, entao um drive meu nao veria esta mudanca. Concedido: eu commito e mando o sha, o hub re-aponta o compose pra `happy-montalcini-b010c0`, dirige, devolve o texto **verbatim**, re-aponta pro primario. O drive e do hub e o build e meu — nao e auto-certificacao, e o texto volta pra eu conferir contra o que escrevi. Ate ele chegar, esta secao e reparo declarado e **nao** criterio descarregado.
 
 ---
 

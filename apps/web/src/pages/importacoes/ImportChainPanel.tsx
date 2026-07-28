@@ -36,7 +36,7 @@ export function ImportChainPanel({ importId }: ImportChainPanelProps) {
   const chainQuery = useErpImportChain(importId);
   const errorDetail = isImportNotFoundError(chainQuery.error)
     ? "Importação não encontrada."
-    : "Não foi possível carregar a cadeia da importação.";
+    : "Não foi possível carregar o estado da importação.";
 
   return (
     <section className="rounded-card border border-border bg-surface p-4">
