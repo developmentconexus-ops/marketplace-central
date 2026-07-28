@@ -18,6 +18,10 @@ gate_round_1: REFUTED dos DOIS lados
 sweep_do_autor: rodada sobre o EVIDENCE inteiro (745 linhas, 71 hits); 4 alegacoes minhas corrigidas, 2 delas eram o universal do codigo escrito em prosa
 r4_execucao: must-fail da segunda metade REPRODUZIDO pelo assento executor do hub em 0264ba84, contra Postgres real (failure_token=test=... blocked → status=passed). Unico criterio que dependia so da minha palavra.
 finding_1: ESTREITADO pelo hub — falhou-vs-verde E distinguivel via failure_token; so pulado-vs-verde e byte-identico. Ratificado em ea919c06.
+merge_main: 65fbfe7b — main 678a6d51 mergeada (nao rebase). ANTES: 10 arquivos com 0 insercoes vs main = revert de /importacoes (45b887b3) + cmd/mlprobe. DEPOIS: 11 arquivos, NENHUM com 0 insercoes; apps/web byte-identico a main. Zero conflito.
+lane_pos_merge: go build ./... EXIT 0 · go vet ./... EXIT 0 · go test product_links + erp_import EXIT 0 com 199 funcoes / 304 com subtestes EXECUTADAS, 0 SKIP, 0 FAIL, 13 pacotes ok.
+reclassificacao_round_4: os 3 bloqueantes viram REPORT por regua filada do hub (3f8560b1): BLOQUEIA = observavel errado; prosa/contagem/metadado = REPORT. Ja corrigidos; nao reabrem.
+round_5_forma: f19793d7 — assento leitor recebe o DIFF vs tip da main, o contrato e as saidas cruas da lane; o pack e custodia do hub. Corolario: derivacao que importa pro codigo mora NO codigo.
 ruling_round_4: ESCADA ENCERRADA pelo hub. Sem round 5, sem assento novo, instrumento por sentenca CANCELADO. Tabela de reconciliacao RETIRADA (nao republicada). 6 nao-bloqueantes + 5 universais pre-existentes = REPORT, sem segurar o close.
 fechamento: evidencia EXECUTADA sobre o codigo — go build ./... EXIT 0, go vet ./... EXIT 0, suite product_links EXIT 0 com 115 funcoes de teste / 168 com subtestes EXECUTADAS (0 SKIP, 0 FAIL); must-fail do CORR-1 VERMELHO em 2 testes, restaurado, git diff --quiet HEAD EXIT 0.
 status: NAO FECHADO PELO CHIP. Sem AGREEMENT em 4 rounds; a linha P6-DUAL-GATE e o merge sao do hub. Todo achado dos dois lados verificado por STRING pelo chip, um recusado com motivo.
@@ -776,6 +780,88 @@ a milestone não fecha sobre este pack como está. Repasso sem atenuar.
 
 ---
 
+## Merge de `main` — o REVERT que quatro rounds não podiam ver (`65fbfe7b`)
+
+O hub mediu contra o **tip da `main`**, não contra a base de despacho, e achou o que nenhum dos
+quatro rounds podia achar: **um diff contra base velha não mostra um revert.** Medido por mim antes
+de mexer, `main` em `678a6d51`, chip em `91fa1f2a`, merge-base `bcab8269`:
+
+```
+git diff --numstat main HEAD -- apps contracts packages     (ANTES)
+  0  133  apps/server_core/cmd/mlprobe/followup.go
+  0  681  apps/server_core/cmd/mlprobe/main.go
+  0  190  apps/web/src/pages/importacoes/ImportChainPanel.test.tsx
+  0   85  apps/web/src/pages/importacoes/ImportChainPanel.tsx
+  0   43  apps/web/src/pages/importacoes/ImportacaoDetailPage.test.tsx
+  0   29  apps/web/src/pages/importacoes/ImportacaoDetailPage.tsx
+  0   60  apps/web/src/pages/importacoes/ImportacoesPage.test.tsx
+  0   15  apps/web/src/pages/importacoes/ImportacoesPage.tsx
+  0   30  apps/web/src/pages/importacoes/useErpImportChain.ts
+  0   10  apps/web/src/routes/importacoes.tsx
+```
+
+Dez arquivos com **zero inserções**: mergear assim apagaria a tela `/importacoes` inteira
+(CHIP-IMPORT-CHAIN, `45b887b3`) e o `cmd/mlprobe`. Nenhum deles é meu para apagar.
+
+**`git merge main --no-edit`, não rebase** — quatro rounds de história com veredito não se reescreve.
+**Zero conflito** (`git diff --name-only --diff-filter=U` vazio). Merge em `65fbfe7b`.
+
+**Re-medido depois, que é a prova que o hub pediu:**
+
+```
+git diff --numstat main HEAD -- apps contracts packages     (DEPOIS)
+  15    9  .../connectors/ports/marketplace_capability.go
+ 184    0  .../erp_import/adapters/postgres/chain_query_repository_integration_test.go
+  32    3  .../erp_import/adapters/postgres/query_repository.go
+  29    0  .../erp_import/domain/import.go
+  22    2  .../erp_import/transport/http_handler.go
+  47    9  .../erp_import/transport/http_handler_test.go
+  24    3  .../product_links/application/generation_service.go
+ 238   14  .../product_links/application/generation_service_test.go
+  13    1  contracts/api/marketplace-central.openapi.yaml
+  13    1  packages/sdk-runtime/src/erpImport.test.ts
+  12    1  packages/sdk-runtime/src/erpImport.ts
+```
+
+**Nenhuma linha com `0` na coluna de inserções.** Onze arquivos, todos com conteúdo meu somado ao da
+`main`. `apps/web/` sumiu do delta inteiro — está **byte-idêntico à `main`**, que é o certo: este chip
+nunca teve arquivo lá. `cmd/mlprobe` idem.
+
+**O seam que só um merge limpo poderia ter estragado em silêncio, conferido por leitura e não por
+exit code.** `http_handler.go` é o pior caso: eu escrevi o guard do `{id}` e a `main` trouxe a rota
+`/erp/imports/{id}/chain`. O resultado do merge é o correto, e é correto porque as duas metades
+sobreviveram — `readImportID` (meu) agora protege **os dois** handlers, incluindo o
+`handleGetImportChain` que veio da `main`:
+
+```go
+func (h Handler) handleGetImportChain(w http.ResponseWriter, r *http.Request) {
+	importID, ok := readImportID(w, r)   // meu, CORR-3
+	if !ok { return }
+	chain, err := h.queries.GetImportChain(r.Context(), importID)   // da main, import-chain
+```
+
+O contrato acompanha: o `400 invalid_import_id` está declarado nas **duas** rotas `{id}` do OpenAPI e
+no enum do `sdk-runtime`, no mesmo commit, como a doutrina exige.
+
+**Lane pós-merge, contada:**
+
+```
+go build ./...  EXIT 0 · go vet ./...  EXIT 0
+go test ./internal/modules/product_links/... ./internal/modules/erp_import/... -count=1 -v  EXIT 0
+  199 funções de teste / 304 com subtestes EXECUTADAS · 0 SKIP · 0 FAIL
+  16 pacotes: 13 ok, 3 [no test files]
+```
+
+**FINDING 14, e é o achado que mais vale desta rodada inteira.** *Diff contra a base de despacho não
+consegue exibir um REVERT.* A base é ponto fixo; a `main` andou; tudo que a `main` ganhou depois
+aparece como **ausência** no meu lado, e ausência não tem linha no diff que o gate lê. Quatro rounds
+de gate, com dois assentos cada, leram esse pack com rigor e nenhum podia ter visto — não é falha de
+atenção, é a pergunta errada feita com precisão. **A base do gate de MERGE é o tip do alvo**; o
+`base_sha` de 40 hex continua sendo PISO para o drift gate de governança. Duas perguntas, dois
+instrumentos — ratificado pelo hub em `678a6d51`.
+
+---
+
 ## Gate P6 — round 4 (delta re-verdict): os DOIS lados REFUTARAM de novo
 
 | Lado | Assento | Veredito | Artefato | Persistido em |
@@ -1250,7 +1336,11 @@ redação anterior de R4/R5/R6/A11, é por isso — e a redação anterior era a
    universal foi falsificado pela própria rodada que o escreveu, e escapou da minha varredura porque
    está **fora da população carimbada** — eu parei a contagem em 915 linhas e esta seção veio depois.
    Achado pelo lado A. O terceiro verificador com Bash da "candidato a emenda" **já existe**: é o
-   assento executor do hub. O que falta é ele estar no laço por doutrina, não por eu pedir.
+   assento executor do hub. **E ele já está no laço por doutrina, não por eu pedir** — o hub apontou
+   o que eu não tinha lido: §11 *"The dual gate has a THIRD seat: an independent EXECUTOR"*, ratificado
+   em `5ec83724` em 2026-07-28. A última frase deste achado nasceu vencida; fica corrigida aqui, e a
+   lição é a mesma que este chip já levou duas vezes: **conferir a doutrina vigente por STRING antes de
+   propor emenda** — pedir o que já existe é ruído com forma de achado.
 5. **`go build ./...` verde não implica pacotes de teste linkáveis**, e OOM de host aparece como
    `[build failed]` — indistinguível de erro de compilação numa leitura rápida do resumo. Ver A12.
 6. **Mandar o assento read-only escrever o próprio veredito não persiste nada, nos DOIS lados e por
@@ -1326,4 +1416,14 @@ redação anterior de R4/R5/R6/A11, é por isso — e a redação anterior era a
     é a mesma do profile: afirmar que a população é não-vazia (`=== RUN` > 0) antes de ler qualquer
     contagem filtrada. Candidato a emenda do §2: gravar `GOCACHE=<abs>/apps/server_core/.gocache`,
     com a nota de que o caminho é do WORKTREE (ver FINDING 12) e continua coberto por
-    `.gitignore:10`.
+    `.gitignore:10`. **Confirmado pelo hub do outro lado:** nada foi escrito no checkout dele.
+14. **Diff contra a base de despacho não consegue exibir um REVERT — e foi o que quatro rounds
+    leram.** A base é ponto fixo; a `main` andou. Tudo que a `main` ganhou depois da base aparece no
+    meu lado como **ausência**, e ausência não gera linha no diff que o assento lê. Este pack estava
+    a um merge de apagar a tela `/importacoes` inteira (`45b887b3`) e o `cmd/mlprobe`: dez arquivos
+    com `0` na coluna de inserções contra o tip da `main`, invisíveis contra `5441fe18`. Dois
+    assentos por rodada, quatro rodadas, rigor exemplar, pergunta errada. O sintoma é diagnosticável
+    em um comando (`git diff --numstat <tip-do-alvo> <chip> -- apps contracts packages`, procurar
+    inserção zero em arquivo que o chip não criou) e o custo de não rodá-lo é uma feature entregue.
+    **A base do gate de MERGE é o tip do alvo; o `base_sha` de 40 hex continua PISO para o drift gate
+    de governança.** Duas perguntas, dois instrumentos — ratificado em `678a6d51`.
