@@ -527,6 +527,31 @@ unions, but it will drift the day the backend's rule changes and the FE's copy d
 collapse the duplication to a read. Contract + SDK + backend = one writer, not this chip. Filed as
 a maintenance note, not a defect: nothing today is wrong.
 
+**REPORT-2 — the invariant the "Identificado por" column silently depends on, filed for ratification
+at the hub's instruction.**
+
+The column renders `CODPROD + EAN` for every `ACCEPT`. That is a READING of the backend, not a
+guess, and it is honest for exactly one reason:
+
+> `LinkCandidateMatchStatusAccept` has **exactly one assignment site** in the whole server:
+> `apps/server_core/internal/modules/product_links/application/generation_service.go:505`, inside
+> `buildConcordantCandidate`, whose candidate is built from a `seller_sku` FOR reason and an `ean`
+> FOR reason resolving the **same** codprod (`:493-497`), reachable only from `:293-303`.
+
+Verified by grep across `apps/server_core/` — one site, not "the sites I found". Both the Sol side
+and the Opus side re-derived it independently and reached the same single site.
+
+**The invariant, stated so it can be broken loudly instead of quietly:** *any second route to
+`ACCEPT` makes the column assert a corroboration that did not happen.* No test fails, no type
+breaks, and no reviewer sees it — the FE keeps saying `CODPROD + EAN` about a candidate that only
+one anchor decided. That is precisely the ADR-17 class of defect D-122 exists to kill, arriving
+silently.
+
+The hub is taking this to its backlog as a candidate compile-time assertion, on the M-02 doctrine:
+there, an optional port erased by a decorator was only caught later because nothing pinned it. This
+REPORT is the pin's paperwork — a chip cannot add the guard (it lives in `apps/server_core/`, zero
+Go in this write-set), so it names the site, the invariant, and the failure mode instead.
+
 ---
 
 ## Dispatch ledger
@@ -570,7 +595,54 @@ resolution_service.go:812"*. V11 flipped to PASS on the persisted baseline. One 
 |---|---|
 | **V6 FAIL** — keeping `Canal` overrides D-122:136's requirement that the new column replace **both** former slots | **NOT resolved by this chip. ESCALATED to the hub** (see below). |
 
-**Why I am not grading this PASS.** Two independent cold reviewers read D-122:136 literally and
+### HUB RULING — the escalation is CLOSED, and it closed by correcting the source
+
+**Decision: option 1. The code stays as shipped.** Delivered by the hub after it verified both
+sides against `5441fe18` and against the wire. Recorded here verbatim in substance, with the four
+facts it turned on, because a pack that leaves two contested REFUTED verdicts standing is worse
+than one that is wrong and says so.
+
+| # | Fact the hub verified itself | Where |
+|---|---|---|
+| 1 | `ProductLinkCandidateItem` carries **no seller-SKU field** at all — the full field list was enumerated. The chip's premise holds. | `packages/sdk-runtime/src/index.ts:1070-1089` |
+| 2 | The cell under the `SKU ML` header rendered `candidate.provider_code` raw — the slug `"mercado_livre"` reaching the operator under a label promising a SKU. **The sixth surface of the `provider_code` trap**: four in CHIP-PED-FILA, one in `PedidosTable.tsx:101`, this one now. | `QueueRow.tsx:218` @ `5441fe18` |
+| 3 | The old `GTIN` cell rendered `✓ igual` or `—` — a **derived boolean, never a GTIN**. Replacing it erases no datum; it swaps a poor derivation for a better one. | `QueueRow.tsx:253-260` @ `5441fe18` |
+| 4 | **The column count did not change.** Nine `th` before (select · Anúncio ML · SKU ML · Produto sugerido · SKU HUB · GTIN · Confiança · Motivo · Ação), nine after (select · Anúncio · Canal · Produto sugerido · SKU HUB · Identificado por · Confiança · Motivo · Ação). Two columns renamed **in place** — nothing added, nothing retained extra. | both trees |
+
+Fact 4 is the one that dissolves the finding. Both reviewers wrote that the chip "kept" a slot and
+"overrode a two-column replacement" — language that describes a table that got **wider**, and it did
+not. The count is identical on both sides.
+
+**Why D-122:136 did not mandate what the reviewers read.** The frozen line is
+`Coluna "Identificado por" (/vinculos, substitui "SKU ML"/"GTIN"):` — a **parenthetical locator**
+("where on the screen this goes"), followed by three bullets that are entirely about the column's
+CONTENT: the anchors that decided joined by ` + `, the distinction against Motivo, and double
+corroboration as the D-121 explanation. **No bullet concerns column count.** The normative part is
+satisfied whole. Two cold reviewers promoted the hub's parenthetical to a clause — a defensible
+reading of a block marked frozen, which is why the hub did not fault them for it, and wrong.
+
+And the parenthetical carried the falsehood: it was written believing `SKU ML` held a seller SKU.
+It never did. **Under R-25 a false sentence in an authority artifact is CORRECTED, not annotated** —
+the hub corrects D-122 on its own side, with the two `file:line` above. This chip does not touch the
+decisions file.
+
+**Why not option 3, which was my own reading.** The hub judged the relocation good engineering and
+refused it on economy, not merit: the branch is closed and awaiting the Opus gate side, so changing
+the `Anúncio` cell's shape would invalidate the golden's already-measured `within(row)` assertions
+and leave the gate reviewing a different diff than the one that was closed; and with a single
+installation `Canal` is constant on every row, so the gain is marginal until a second provider
+exists — at which point relocation becomes its own chip and pays the golden cost once. The hub's
+closing note on this is the rule I want on record, because it is the one I was applying:
+
+> Você fez a chamada certa ao não fazer sem pedir. Grant de write-set não é grant de design.
+
+**So the divergence was resolved by correcting the normative source, not by a chip override.** That
+distinction is the whole point: had I shipped option 1 on my own reading, I would have been right
+about the facts and wrong about the authority. The facts were mine to establish; the ruling was not.
+
+---
+
+**Why I did not grade this PASS myself.** Two independent cold reviewers read D-122:136 literally and
 called the retained `Canal` an override of a frozen decision. My counter-argument is in V6 and
 FINDING-4 and I still think it is correct on the merits — D-122's "substitui 'SKU ML'" is founded on
 the belief that the cell held a seller SKU, and it never did. But a chip does not get to overrule a
@@ -660,7 +732,7 @@ since verified the same scope independently and said so.
 | V3 must-fail of V2 | PASS |
 | V4 `side` reaches the operator | PASS |
 | V5 `tsc` write-set clean, 12 baseline declared | PASS |
-| V6 "Identificado por" | derivation **PASS** (all three gates confirm it mirrors the backend, the Opus side walking all 25 status×input pairs) · column **placement ESCALATED** — hub tie-break between D-122:136 and V10 |
+| V6 "Identificado por" | derivation **PASS** (all three gates confirm it mirrors the backend, the Opus side walking all 25 status×input pairs) · column placement **RULED — PASS**: hub decided option 1, code unchanged, D-122:136's parenthetical corrected at the source (see the ruling above) |
 | V7 auto-approved badge, 3 DOM cases | PASS |
 | V8 F-04 brief correction recorded | PASS |
 | V9 `refforn` decision declared | PASS (KEPT) |
@@ -673,15 +745,20 @@ count being the two regression tests the Opus gate forced.
 
 **P6 status — NOT self-declared discharged.** The earlier `AGREEMENT` in this file was written when
 both gate rounds were `gpt-5.6-sol`; the hub refused it, on two grounds that were both right: there
-was no Opus side, and a REFUTED round with an open finding is not an agreement. The Opus side has
-now run and came back REFUTED with three real code defects, all fixed here. What remains open is
-the single item this chip has said from the start it will not decide for itself:
+was no Opus side, and a REFUTED round with an open finding is not an agreement. The Opus side then
+ran and came back REFUTED with three real code defects, all fixed in `394c83c`.
 
-> the `Identificado por` column placement — D-122:136 literal vs V10.
+The escalated item is now **closed by hub ruling** (option 1, code unchanged, the false parenthetical
+in D-122:136 corrected at its source — full record above). So nothing is open on the contract side.
 
-Three independent cold reviewers have now looked at it. The third verified my factual premise on its
-own and still declined to bless the deviation, on the same reasoning I used to escalate it. So the
-disagreement is not about the facts; it is about who gets to rule, and that is the hub.
+What is open is verification of the fixes themselves, and that is deliberate: `394c83c` is new code
+that was again written in-session, so closing it on my own say-so would repeat the mistake the hub
+just corrected. Both sides are running on that commit against one frozen prompt
+(`evidence/PROMPT-gate-vincneutro-rev3.md`), attacking specifically whether the fixes introduced new
+defects — above all whether the runtime guard loosened the compile-time exhaustiveness this chip is
+built on. That last one is already answered by construction rather than by argument, before either
+reviewer reports: widening the union by one member makes the compiler name the missing member
+(`evidence/V-compiletime-guard-still-bites.txt`).
 
-The `P6-DUAL-GATE:` line and the `AGREEMENT` marker are the hub's to write once that ruling lands
-and the re-verification of these fixes closes. Not this chip's.
+The `P6-DUAL-GATE:` line and the `AGREEMENT` marker are the hub's to write once those two rounds
+close. Not this chip's.
