@@ -18,7 +18,7 @@ import { PrecosRoute } from "../routes/precos";
 import { PedidosRoute } from "../routes/pedidos";
 import { MercadoRoute } from "../routes/mercado";
 import { IntegracoesRoute } from "../routes/integracoes";
-import { ImportacoesRoute } from "../routes/importacoes";
+import { ImportacaoDetailRoute, ImportacoesRoute } from "../routes/importacoes";
 
 function CatalogPageWrapper() {
   const client = useClient();
@@ -66,6 +66,7 @@ export function AppRouter() {
                 before any marketplace does. */}
             <Route path="/integracoes" element={<IntegracoesRoute />} />
             <Route path="/importacoes" element={<ImportacoesRoute />} />
+            <Route path="/importacoes/:importId" element={<ImportacaoDetailRoute />} />
             <Route path="/catalogo" element={<CatalogPageWrapper />} />
             <Route path="/catalogo/produtos/:productId" element={<ProdutoRoute />} />
             <Route path="/protocolos/:protocolId" element={<ProtocoloPage />} />
