@@ -1,5 +1,12 @@
 # EXHAUSTIVE FIXTURE SWEEP — "fixture not producible by the wire"
 
+> **SUPERSEDED IN PART — READ `## CORRECTION` AT THE END BEFORE ANY VERDICT BELOW.**
+> This document's title claim ("EXHAUSTIVE") and its per-fixture verdicts are REFUTED. A machine
+> re-sweep found **13 of 18** fixtures in `QueueTab.test.tsx` unproducible where this sweep reported
+> two. The verdicts below are kept verbatim, not edited into correctness, because what they got
+> wrong is the finding: they are the record of a method failing, and rewriting them would delete
+> the evidence for why the method was replaced.
+
 Hub precondition for round 5. The class has recurred: round 3 claimed it closed, round 4 found two
 more — one of them in the very file round 3 edited. That is occurrence 2, and a point-fix per
 occurrence is what let it recur. The `Record`-indexed-by-union class was discharged by a
@@ -129,3 +136,51 @@ Two findings, both in class C, both found by this sweep and not by four reviewer
 is **not** declared closed by assertion — it is declared swept, with the sweep's own boundary stated
 above. If round 5 finds a third instance INSIDE the write-set, the hub's rule applies: not a
 point-fix, but a named mechanism plus exhaustive re-sweep.
+
+## CORRECTION (round 5, this chip, at source per R-24)
+
+Round 5 found the third instance, and then the fourth and fifth. The hub's pre-written rule fired.
+This section corrects the false sentences in this document rather than filing a separate note,
+because a reader who stops at the verdicts above would be misled by them.
+
+**What was false here, stated as falsity and not as incompleteness:**
+
+1. **The word EXHAUSTIVE in the title, and the claim of 28 fixtures swept (line 8).** The machine
+   re-sweep — pointing every fixture at `wireCandidate`, which throws — returned **13 failed / 5
+   passed** in `QueueTab.test.tsx` alone. This document reported **two** findings in that file.
+2. **Every class-C "CLEAN" verdict in `## VERDICTS — QueueTab.test.tsx`.** They were not
+   conservative or partial; they were wrong. The distinct violations the builder named:
+   - `anchor "SKU idêntico"` not in the vocabulary (×2)
+   - `anchor "refforn"` not in the vocabulary — the anchor D-A REMOVED
+   - `no marca reason` (×6) — the very invariant this sweep was built to enforce
+   - `mercado_livre`'s `marca` INCOMPARABLE instead of UNAVAILABLE
+   - `no scoring path assigns (95, ALTA, REVIEW)`
+   - `no scoring path assigns (72, CRITICA, REVIEW)` (×2 — these two are legitimate drift probes)
+3. **The enumeration run to prove exhaustiveness.** It used `grep -oh 'anchor: "[a-z_]*"'`, whose
+   character class silently excluded every capitalized and accented anchor. It reported ONE
+   violation where there were FIVE. So the check built to prove the sweep complete was broken by
+   the same class of narrow reading as the sweep, and the sweep as the original defect. Three
+   layers, one error.
+
+**Why the count is 13 failures and not 13 defects.** Three of the 13 are fixtures whose
+unproducible shape IS the assertion (wire-drift probes for an unknown `match_status`, an unknown
+`direction`, and an unknown `confidence_band`). Those were never defects — but they were never
+LABELLED either, which is its own problem: an unproducible fixture and a deliberate drift probe were
+indistinguishable by reading. They now go through `driftCandidate(why, …)`, which requires the
+reason in the test. Two more (`cand_inc`, `cand_noside`) were carrying a comment claiming they were
+"producible under a capability declaration" — the Opus seat called that **a dodge, not an honest
+degrade**, and it was right: `resolveIdentityAnchors` aborts generation unless the declaration
+resolves (:149-169), so those reason arrays are unreachable under EVERY declaration, not merely
+under today's. Those comments were false, and are replaced by a stated `why`.
+
+**What replaced this document.** `apps/web/src/pages/vinculos/wireFixtures.ts` — an impossible
+candidate is now UNWRITEABLE rather than detectable, and `wireFixtures.guard.test.ts` reads the Go
+source so the FE's copy of the vocabulary cannot drift from `knownIdentityAnchors` in silence
+(closing F-07, filed above as an accepted residual risk — an acceptance that was itself just
+deferring the work to the next reader).
+
+**The lesson, in the form that generalizes past this chip:** the failure was never carelessness
+about a field. Every one of these checks was a human reading a generator while looking for one
+thing, and each reading narrowed the world to what it was already looking for. A sweep performed by
+the same faculty that produced the defect inherits the defect. That is why the mechanism is a
+throwing constructor and a Go-source-reading guard, and not a sixth checklist.

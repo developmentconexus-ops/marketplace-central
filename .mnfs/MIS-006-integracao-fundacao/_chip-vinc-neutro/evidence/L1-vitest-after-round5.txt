@@ -1,0 +1,89 @@
+
+[1m[46m RUN [49m[22m [36mv3.2.4 [39m[90mC:/Users/leandro.theodoro/Documents/marketplace-central/.claude/worktrees/gifted-dhawan-5049f6/apps/web[39m
+
+ [32m✓[39m src/pages/ListingsRefreshControl.test.tsx [2m([22m[2m9 tests[22m[2m)[22m[33m 681[2mms[22m[39m
+ [32m✓[39m src/pages/ListingDetailPanel.test.tsx [2m([22m[2m14 tests[22m[2m)[22m[33m 538[2mms[22m[39m
+ [32m✓[39m src/pages/precos/PricingMatrix.test.tsx [2m([22m[2m10 tests[22m[2m)[22m[33m 412[2mms[22m[39m
+ [32m✓[39m ../../packages/feature-products/src/CatalogPage.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[33m 731[2mms[22m[39m
+   [33m[2m✓[22m[39m CatalogPage[2m > [22mpages search results past the first page [33m 362[2mms[22m[39m
+ [32m✓[39m src/pages/integracoes/IntegracoesPage.test.tsx [2m([22m[2m11 tests[22m[2m)[22m[33m 509[2mms[22m[39m
+ [32m✓[39m src/pages/precos/DifalDrawer.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[33m 567[2mms[22m[39m
+ [32m✓[39m src/pages/precos/PricingPage.test.tsx [2m([22m[2m11 tests[22m[2m)[22m[33m 818[2mms[22m[39m
+ [32m✓[39m src/pages/mutations/MutationPreviewModal.test.tsx [2m([22m[2m15 tests[22m[2m)[22m[33m 785[2mms[22m[39m
+ [32m✓[39m src/pages/produto/ProdutoPage.deeplink.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 366[2mms[22m[39m
+ [32m✓[39m src/pages/mercado/MercadoPage.test.tsx [2m([22m[2m17 tests[22m[2m)[22m[33m 1049[2mms[22m[39m
+ [32m✓[39m src/pages/AnunciosPage.test.tsx [2m([22m[2m14 tests[22m[2m)[22m[33m 1333[2mms[22m[39m
+ [32m✓[39m src/pages/vinculos/QueueTab.test.tsx [2m([22m[2m19 tests[22m[2m)[22m[33m 1204[2mms[22m[39m
+ [32m✓[39m src/pages/precos/ParamsDrawer.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 383[2mms[22m[39m
+ [32m✓[39m src/pages/AnunciosSelection.test.tsx [2m([22m[2m16 tests[22m[2m)[22m[33m 2367[2mms[22m[39m
+   [33m[2m✓[22m[39m AnunciosPage selection and pagination[2m > [22maccumulates opaque listing ids across pages and preserves them when going back [33m 396[2mms[22m[39m
+ [32m✓[39m src/pages/pedidos/PedidosPage.test.tsx [2m([22m[2m32 tests[22m[2m)[22m[33m 2526[2mms[22m[39m
+ [32m✓[39m ../../packages/ui/src/ProductPicker.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[32m 248[2mms[22m[39m
+(node:28096) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m src/pages/vinculos/ImportacaoSection.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 417[2mms[22m[39m
+ [32m✓[39m src/pages/produto/ProdutoPage.partialFailure.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 378[2mms[22m[39m
+ [32m✓[39m src/pages/produto/VeredictoBox.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[33m 426[2mms[22m[39m
+ [32m✓[39m src/pages/vinculos/VinculosDesign.golden.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 409[2mms[22m[39m
+ [32m✓[39m src/pages/vinculos/VinculosPage.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 464[2mms[22m[39m
+ [32m✓[39m src/pages/produto/EstoqueTab.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[32m 292[2mms[22m[39m
+(node:9224) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m src/pages/mutations/ProtocoloPage.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[33m 645[2mms[22m[39m
+   [33m[2m✓[22m[39m ProtocoloPage[2m > [22musa os estados compartilhados ao carregar e ao falhar [33m 368[2mms[22m[39m
+ [32m✓[39m src/app/Layout.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 465[2mms[22m[39m
+[90mstderr[2m | src/app/AppRouter.test.tsx[2m > [22m[2mAppRouter[2m > [22m[2mdoes not render workspace content for an unknown path
+[22m[39mNo routes matched location "/unknown" 
+
+ [32m✓[39m src/app/AppRouter.test.tsx [2m([22m[2m22 tests[22m[2m)[22m[33m 1197[2mms[22m[39m
+(node:19932) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m src/app/Header.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 373[2mms[22m[39m
+ [32m✓[39m src/app/InstallationContext.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 475[2mms[22m[39m
+ [32m✓[39m src/pages/AnunciosTable.test.tsx [2m([22m[2m23 tests[22m[2m)[22m[33m 504[2mms[22m[39m
+ [32m✓[39m src/pages/produto/AnunciosVinculadosTab.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 256[2mms[22m[39m
+ [32m✓[39m src/pages/dashboard/DashboardPage.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 438[2mms[22m[39m
+ [32m✓[39m src/pages/produto/ProdutoPage.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 335[2mms[22m[39m
+ [32m✓[39m ../../packages/ui/src/DataTable.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[32m 222[2mms[22m[39m
+ [32m✓[39m ../../packages/ui/src/PaginatedTable.test.tsx [2m([22m[2m9 tests[22m[2m)[22m[32m 242[2mms[22m[39m
+ [32m✓[39m src/pages/precos/ApplyPrice.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[32m 213[2mms[22m[39m
+ [32m✓[39m src/pages/precos/SolverPanel.test.tsx [2m([22m[2m16 tests[22m[2m)[22m[33m 364[2mms[22m[39m
+ [32m✓[39m src/pages/vinculos/BatchPreviewModal.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 257[2mms[22m[39m
+ [32m✓[39m src/pages/precos/MarketComparison.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[32m 243[2mms[22m[39m
+ [32m✓[39m src/pages/precos/ScenariosPanel.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[33m 313[2mms[22m[39m
+ [32m✓[39m src/pages/precos/DecompositionPanel.test.tsx [2m([22m[2m13 tests[22m[2m)[22m[32m 173[2mms[22m[39m
+ [32m✓[39m src/pages/vinculos/ResolvidosTab.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 218[2mms[22m[39m
+ [32m✓[39m ../../packages/ui/src/Badge.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[32m 67[2mms[22m[39m
+ [32m✓[39m ../../packages/ui/src/MarginChip.test.tsx [2m([22m[2m11 tests[22m[2m)[22m[32m 80[2mms[22m[39m
+ [32m✓[39m ../../packages/ui/src/LoadStates.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 141[2mms[22m[39m
+ [32m✓[39m src/pages/mutations/useMutationProtocol.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 46[2mms[22m[39m
+ [32m✓[39m ../../packages/ui/src/FactStates.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[32m 97[2mms[22m[39m
+ [32m✓[39m ../../packages/ui/src/BasePrimitives.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[32m 232[2mms[22m[39m
+ [32m✓[39m src/pages/mercado/oportunidades.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[32m 128[2mms[22m[39m
+ [32m✓[39m src/pages/ListingsSummary.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 167[2mms[22m[39m
+ [32m✓[39m src/pages/precos/QuickChips.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 168[2mms[22m[39m
+ [32m✓[39m ../../packages/ui/src/DetailPanel.test.tsx [2m([22m[2m9 tests[22m[2m)[22m[32m 230[2mms[22m[39m
+ [32m✓[39m src/pages/dashboard/FilaDeAtencao.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 234[2mms[22m[39m
+ [32m✓[39m ../../packages/ui/src/DetailDrawer.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[32m 229[2mms[22m[39m
+ [32m✓[39m src/pages/produto/ProdutoHeader.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 242[2mms[22m[39m
+ [32m✓[39m src/pages/vinculos/wireFixtures.guard.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m src/pages/mercado/mercadoFormatters.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+(node:20524) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:27584) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ [32m✓[39m src/app/theme/theme.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+ [32m✓[39m src/app/viteProxy.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m ../../packages/web-query/src/failureCopy.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m ../../packages/web-query/src/invalidation.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m src/pages/anunciosQueryState.test.ts [2m([22m[2m21 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m src/pages/produto/productQueryState.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m src/pages/precos/ptbrDecimal.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m ../../packages/web-query/src/index.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m src/app/ClientContext.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 2[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m64 passed[39m[22m[90m (64)[39m
+[2m      Tests [22m [1m[32m530 passed[39m[22m[90m (530)[39m
+[2m   Start at [22m 15:18:08
+[2m   Duration [22m 22.94s[2m (transform 24.25s, setup 17.41s, collect 169.19s, tests 26.00s, environment 86.57s, prepare 11.55s)[22m
+

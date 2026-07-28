@@ -1,9 +1,6 @@
-import type {
-  ProductLinkCandidateItem,
-  ProductLinkConfidenceBand,
-} from "@marketplace-central/sdk-runtime";
+import type { ProductLinkCandidateItem } from "@marketplace-central/sdk-runtime";
 import { DetailPanel, UnknownValue } from "@marketplace-central/ui";
-import { directionClass, providerDisplayName, reasonChipLabel } from "./QueueRow";
+import { bandClass, bandLabel, directionClass, providerDisplayName, reasonChipLabel } from "./QueueRow";
 
 export interface VinculoDrawerProps {
   candidateId: string | null;
@@ -14,16 +11,16 @@ export interface VinculoDrawerProps {
   pending?: boolean;
 }
 
-const bandClasses: Record<ProductLinkConfidenceBand, string> = {
-  ALTA: "bg-accent-soft text-accent-ink",
-  MEDIA: "bg-amber-soft text-amber",
-  BAIXA: "bg-warn-soft text-warn",
-};
-
-// Direction tokens come from QueueRow, the one place that owns them: the drawer
-// used to keep a second copy, which is why the third state could be added to one
-// map and silently missed here. One `Record<ProductLinkReasonDirection, …>` for
-// the screen means a future direction breaks the build once, not zero times.
+// Direction AND band tokens come from QueueRow, the one place that owns them.
+// The drawer used to keep a second copy of each, which is why the third
+// direction could be added to one map and silently missed here.
+//
+// The band copy outlived the direction one, and that is the whole lesson: when
+// `direction` was consolidated, this file's comment was updated to celebrate it
+// while the band table sat ten lines above, still raw-indexed, still writing the
+// literal `undefined` into a class attribute for any band the wire ships before
+// the SDK is regenerated. A grep scoped to the OTHER file reported the class
+// closed. One reader per value for the whole screen is what actually closes it.
 
 function pill(label: string, className: string) {
   return (
@@ -75,7 +72,7 @@ function CandidateCompareCard({
           ? pill("Sem candidato", "bg-surface-2 text-faint")
           : (
             <span className="flex items-center gap-1">
-              {pill(candidate.confidence_band, bandClasses[candidate.confidence_band])}
+              {pill(bandLabel(candidate.confidence_band), bandClass(candidate.confidence_band))}
               <span className="font-mono text-xs font-medium tabular-nums text-muted">
                 {confidencePercent(candidate.confidence)}
               </span>

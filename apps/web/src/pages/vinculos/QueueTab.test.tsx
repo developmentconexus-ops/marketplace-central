@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QueueTab } from "./QueueTab";
+import { MARCA_UNAVAILABLE_DETAIL, driftCandidate, wireCandidate } from "./wireFixtures";
 
 const listProductLinkCandidates = vi.fn();
 const approveProductLinkCandidate = vi.fn();
@@ -21,23 +22,12 @@ vi.mock("../../app/ClientContext", () => ({
   }),
 }));
 
-function candidate(overrides: Partial<ProductLinkCandidateItem>): ProductLinkCandidateItem {
-  return {
-    candidate_id: "cand_x",
-    installation_id: "inst_1",
-    provider_code: "mercado_livre",
-    provider_item_id: "MLB_X",
-    state: "title_match",
-    match_input: "title",
-    confidence: 50,
-    confidence_band: "MEDIA",
-    match_status: "REVIEW",
-    reasons: [],
-    created_at: "2026-07-18T12:00:00Z",
-    updated_at: "2026-07-18T12:00:00Z",
-    ...overrides,
-  };
-}
+// Every fixture below is built through `wireCandidate`, which THROWS on a
+// candidate the generator cannot emit (see wireFixtures.ts for why the previous
+// arrangement — a hand-written literal per test — failed four reviewer rounds).
+// A deliberately impossible shape goes through `driftCandidate`, which requires
+// the reason to be written down.
+const candidate = wireCandidate;
 
 function renderTab(initialEntries: string[] = ["/"]) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -67,25 +57,41 @@ describe("QueueTab", () => {
           provider_item_id: "MLB1",
           internal_product_id: 111,
           internal_product_name: "Parafuso A",
+          state: "exact_sku",
+          match_status: "ACCEPT",
+          match_input: "seller_sku",
           confidence: 95,
           confidence_band: "ALTA",
-          reasons: [{ anchor: "SKU idêntico", direction: "FOR", detail: "100%" }],
+          reasons: [
+            { anchor: "seller_sku", direction: "FOR", detail: "100%" },
+            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
+          ],
         }),
         candidate({
           candidate_id: "cand_2",
           provider_item_id: "MLB2",
           internal_product_id: 222,
+          state: "exact_ean",
+          match_status: "CONFIRM",
+          match_input: "ean",
           confidence: 60,
           confidence_band: "MEDIA",
-          reasons: [{ anchor: "Título parcial", direction: "AGAINST", detail: "62%" }],
+          reasons: [
+            { anchor: "title", direction: "AGAINST", detail: "62%" },
+            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
+          ],
         }),
         candidate({
           candidate_id: "cand_3",
           provider_item_id: "MLB3",
           internal_product_id: 333,
-          confidence: 30,
+          state: "conflict",
+          confidence: 20,
           confidence_band: "BAIXA",
-          reasons: [{ anchor: "EAN", direction: "UNAVAILABLE", detail: "sem EAN" }],
+          reasons: [
+            { anchor: "ean", direction: "UNAVAILABLE", detail: "sem EAN" },
+            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
+          ],
         }),
       ],
     });
@@ -105,11 +111,11 @@ describe("QueueTab", () => {
     // FOR/UNAVAILABLE detail lives in the tooltip (the % is already its own
     // column), while an AGAINST detail — the reason the vínculo is blocked —
     // stays inline. A bare % never renders on its own either way.
-    expect(screen.getByText("✓ SKU idêntico")).toHaveAttribute("title", "SKU idêntico: 100%");
-    expect(screen.getByText("✕ Título parcial: 62%")).toBeInTheDocument();
-    // A row whose only signal is UNAVAILABLE still shows that motivo — ranking,
+    expect(screen.getByText("✓ SKU")).toHaveAttribute("title", "seller_sku: 100%");
+    expect(screen.getByText("✕ Título: 62%")).toBeInTheDocument();
+    // A row whose only signals are UNAVAILABLE still shows them — ranking,
     // never filtering (never blank / never a bare value).
-    expect(screen.getByText("– EAN")).toHaveAttribute("title", "EAN: sem EAN");
+    expect(screen.getByText("– EAN")).toHaveAttribute("title", "ean: sem EAN");
 
     // Regression guard: confidence is already an integer 0-100 percentage (OpenAPI
     // ProductLinkCandidate.confidence). A candidate with confidence: 95 must render
@@ -119,9 +125,11 @@ describe("QueueTab", () => {
   });
 
   it("collapses extra motivos behind +N and drops none of them (expansion shows the full wire form)", async () => {
-    // The real CONFIRM shape: 2 corroborating anchors + the 2 internal-only
-    // anchors that are always UNAVAILABLE. Four full sentences per row is what
-    // made the table unreadable; only the two decisive ones stay on screen.
+    // A four-anchor row, which is the full width of the vocabulary: the anchor
+    // that resolved, the one that found nothing on the ERP side, the one with no
+    // value to compare, and the one `mercado_livre` never supplies. Four full
+    // sentences per row is what made the table unreadable; only the two
+    // highest-ranked stay on screen.
     listProductLinkCandidates.mockResolvedValue({
       items: [
         candidate({
@@ -129,11 +137,16 @@ describe("QueueTab", () => {
           provider_item_id: "MLB4",
           internal_product_id: 10741,
           internal_product_name: "PUXADOR FENG",
+          state: "exact_sku",
+          match_status: "CONFIRM",
+          match_input: "seller_sku",
+          confidence: 70,
+          confidence_band: "MEDIA",
           reasons: [
             { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
+            { anchor: "title", direction: "INCOMPARABLE", side: "erp", detail: "produto ERP sem título comparável" },
             { anchor: "ean", direction: "UNAVAILABLE", detail: "sem EAN para corroborar o CODPROD" },
-            { anchor: "marca", direction: "UNAVAILABLE", detail: "marca inexistente no lado provider" },
-            { anchor: "refforn", direction: "UNAVAILABLE", detail: "refforn inexistente no lado provider" },
+            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
           ],
         }),
       ],
@@ -144,7 +157,7 @@ describe("QueueTab", () => {
     const row = await screen.findByTestId("queue-row");
     // Collapsed: the FOR anchor plus the highest-ranked remaining one, then +2.
     expect(screen.getByText("✓ SKU")).toBeInTheDocument();
-    expect(screen.queryByText(/marca inexistente/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/sem EAN para corroborar/)).not.toBeInTheDocument();
     const toggle = screen.getByRole("button", { name: "Mostrar todos os 4 motivos" });
     expect(toggle).toHaveTextContent("+2");
 
@@ -153,15 +166,53 @@ describe("QueueTab", () => {
     // Expanded: every motivo, in its full wire form — nothing was dropped.
     for (const full of [
       "seller_sku: seller_sku resolve exato para codprod",
+      "title (falta no ERP): produto ERP sem título comparável",
       "ean: sem EAN para corroborar o CODPROD",
-      "marca: marca inexistente no lado provider",
-      "refforn: refforn inexistente no lado provider",
+      `marca: ${MARCA_UNAVAILABLE_DETAIL}`,
     ]) {
       expect(screen.getByText(full)).toBeInTheDocument();
     }
 
     // And the action stays reachable in the same row.
     expect(within(row).getByRole("button", { name: "Vincular" })).toBeInTheDocument();
+  });
+
+  // `anchorShortLabels` still carries an entry for `refforn`, an anchor D-A
+  // REMOVED from the vocabulary. That entry is not dead code and it is not a
+  // leftover: D-A decided that already-persisted reasons are not migrated, so a
+  // row decided before the removal still holds a `refforn` motivo, and dropping
+  // the label would degrade real audit data to a raw machine name.
+  //
+  // This is the test that makes that argument checkable. It is a drift fixture
+  // rather than a wire one because the GENERATOR can no longer emit this — only
+  // the database can — and `wireCandidate` is right to reject it: the previous
+  // arrangement had `refforn` inside a fixture captioned "the real CONFIRM
+  // shape", which asserted the opposite of the truth.
+  it("keeps the label of an anchor D-A removed, for rows decided before the removal", async () => {
+    listProductLinkCandidates.mockResolvedValue({
+      items: [
+        driftCandidate(
+          "persisted audit data, not generator output: D-A removed `refforn` from knownIdentityAnchors " +
+            "without migrating reasons already written, so this row can be read from the DB and never re-emitted.",
+          {
+            candidate_id: "cand_legacy",
+            provider_item_id: "MLB_LEGACY",
+            internal_product_id: 10741,
+            reasons: [
+              { anchor: "refforn", direction: "UNAVAILABLE", detail: "refforn inexistente no lado provider" },
+            ],
+          },
+        ),
+      ],
+    });
+
+    renderTab();
+
+    const row = await screen.findByTestId("queue-row");
+    // The historical anchor is typeset, not printed raw...
+    expect(within(row).getByText("– Ref. forn.")).toBeInTheDocument();
+    // ...and the machine name never reaches the operator.
+    expect(row.textContent).not.toContain("refforn:");
   });
 
   // V2 — the criterion this chip is judged on. `QueueRow` used to build the
@@ -174,31 +225,38 @@ describe("QueueTab", () => {
   //
   // The assertions below are on the RENDERED DOM, never on the internal `shown`
   // array: an assertion about a variable does not prove a screen.
-  // PRODUCIBILITY NOTE for the test below, found by the exhaustive fixture sweep
-  // (evidence/V-fixture-producibility-sweep.md) and stated rather than left
-  // implied: an all-INCOMPARABLE row requires a provider that DECLARES `marca`
-  // as supplied, because `marca` has no case in `identityAnchorValues` and then
-  // classifies INCOMPARABLE (generation_service.go:711). `mercado_livre`
-  // declares only seller_sku/ean/title (capability_adapter.go:90), so for the
-  // one provider with an adapter in this tree `marca` is UNAVAILABLE and a
-  // 100%-INCOMPARABLE row cannot occur. The fixture is producible under a
-  // capability declaration, not under today's only declaration.
+  // This one is a DRIFT fixture, and saying so is the correction of an earlier
+  // claim. `resolveIdentityAnchors` aborts generation unless the declaration
+  // resolves (generation_service.go:149-169), and `identity_anchor_adapter.go`
+  // walks all four anchors, so EVERY candidate of EVERY provider carries a
+  // `marca` reason — UNAVAILABLE when unsupplied, INCOMPARABLE when supplied. A
+  // row with only two reasons, both INCOMPARABLE, is therefore not emitted by
+  // any declaration: the earlier note calling it "producible under a capability
+  // declaration" was false about THIS reason array, not merely incomplete.
   //
-  // That is why the test immediately after it exists: it drives the SAME defect
-  // from a reason set today's backend really emits.
+  // It is kept, and kept unproducible, because it is the boundary of the V2
+  // invariant — the extreme where a filter wearing a ranking's comment leaves
+  // the cell empty. The test immediately after it drives the SAME defect from a
+  // reason set today's backend really emits, which is what actually discharges
+  // the criterion.
   it("keeps a motivo on screen for a row whose reasons are ALL INCOMPARABLE (ADR-17)", async () => {
     listProductLinkCandidates.mockResolvedValue({
       items: [
-        candidate({
-          candidate_id: "cand_inc",
-          provider_item_id: "MLB_INC",
-          internal_product_id: 444,
-          internal_product_name: "PUXADOR FENG",
-          reasons: [
-            { anchor: "seller_sku", direction: "INCOMPARABLE", side: "provider", detail: "anúncio sem seller_sku" },
-            { anchor: "ean", direction: "INCOMPARABLE", side: "erp", detail: "produto ERP sem ean cadastrado" },
-          ],
-        }),
+        driftCandidate(
+          "the all-INCOMPARABLE boundary of V2. No declaration emits it: every candidate carries a `marca` " +
+            "reason (resolveIdentityAnchors :149-169 + identity_anchor_adapter.go:28-35), so a two-reason " +
+            "all-INCOMPARABLE array is unreachable. Held as the extreme case of the ranking invariant.",
+          {
+            candidate_id: "cand_inc",
+            provider_item_id: "MLB_INC",
+            internal_product_id: 444,
+            internal_product_name: "PUXADOR FENG",
+            reasons: [
+              { anchor: "seller_sku", direction: "INCOMPARABLE", side: "provider", detail: "anúncio sem seller_sku" },
+              { anchor: "ean", direction: "INCOMPARABLE", side: "erp", detail: "produto ERP sem ean cadastrado" },
+            ],
+          },
+        ),
       ],
     });
 
@@ -296,8 +354,13 @@ describe("QueueTab", () => {
           candidate_id: "cand_mixed",
           provider_item_id: "MLB_MIX",
           internal_product_id: 555,
+          // `marca` is the UNAVAILABLE one, and it has to be: mercado_livre
+          // DECLARES title supplied (capability_adapter.go:90), so a `title`
+          // UNAVAILABLE carrying "provider não fornece a âncora title" — which
+          // is what this fixture said before — contradicts the one declaration
+          // in the tree. `marca` is the anchor that sentence is true of.
           reasons: [
-            { anchor: "title", direction: "UNAVAILABLE", detail: "provider não fornece a âncora title" },
+            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
             { anchor: "ean", direction: "INCOMPARABLE", side: "both", detail: "anúncio e produto ERP sem ean" },
             { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
           ],
@@ -315,7 +378,7 @@ describe("QueueTab", () => {
     expect(chips[1]).toHaveTextContent("? EAN (falta nos dois lados)");
     // Nothing was dropped — the remainder is behind the toggle, in full form.
     fireEvent.click(within(row).getByRole("button", { name: "Mostrar todos os 3 motivos" }));
-    expect(screen.getByText("title: provider não fornece a âncora title")).toBeInTheDocument();
+    expect(screen.getByText(`marca: ${MARCA_UNAVAILABLE_DETAIL}`)).toBeInTheDocument();
     expect(screen.getByText("ean (falta nos dois lados): anúncio e produto ERP sem ean")).toBeInTheDocument();
   });
 
@@ -327,23 +390,20 @@ describe("QueueTab", () => {
     // there would forge the exact datum D-B was created to carry (ADR-17).
     listProductLinkCandidates.mockResolvedValue({
       items: [
-        candidate({
-          candidate_id: "cand_noside",
-          provider_item_id: "MLB_NOSIDE",
-          internal_product_id: 666,
-          // PRODUCIBILITY: this requires a provider that DECLARES `marca` as
-          // supplied — then `marca` reaches `classifyProviderIdentityAnchor`
-          // with `Supplied: true`, has no case in `identityAnchorValues`, and
-          // classifies INCOMPARABLE with no side (generation_service.go:706-708).
-          // `mercado_livre` declares only seller_sku/ean/title
-          // (capability_adapter.go:90), so for it `marca` arrives UNAVAILABLE
-          // instead. Producible under a capability declaration, not under
-          // today's only one — stated because the fixture otherwise reads as
-          // "this is what the wire sends".
-          reasons: [
-            { anchor: "marca", direction: "INCOMPARABLE", detail: "não foi possível comparar a âncora marca" },
-          ],
-        }),
+        driftCandidate(
+          "the side-less INCOMPARABLE branch (generation_service.go:706-708) fires only for an anchor a " +
+            "provider DECLARES supplied but `identityAnchorValues` cannot read — `marca` is the live case, " +
+            "and mercado_livre, the only adapter here, declares it unsupplied. No declaration in this tree " +
+            "emits it; the SDK marks `side` optional, and the screen must not fill the gap in.",
+          {
+            candidate_id: "cand_noside",
+            provider_item_id: "MLB_NOSIDE",
+            internal_product_id: 666,
+            reasons: [
+              { anchor: "marca", direction: "INCOMPARABLE", detail: "não foi possível comparar a âncora marca" },
+            ],
+          },
+        ),
       ],
     });
 
@@ -362,10 +422,20 @@ describe("QueueTab", () => {
         candidate({
           candidate_id: "cand_nc",
           provider_item_id: "MLB_NC",
+          // NO_CANDIDATE comes only from applyUnresolvedScore, reached only
+          // through newCandidate(..., Unresolved, MatchInputNone, ...), so the
+          // state and the match_input follow from the status rather than being
+          // free fields — and the row still carries reasons: `reasons: []` was
+          // the shape of a candidate no path builds.
+          state: "unresolved",
           match_status: "NO_CANDIDATE",
+          match_input: "none",
           confidence: 0,
           confidence_band: "BAIXA",
-          reasons: [],
+          reasons: [
+            { anchor: "seller_sku", direction: "INCOMPARABLE", side: "erp", detail: "seller_sku sem correspondência" },
+            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
+          ],
         }),
       ],
     });
@@ -477,8 +547,19 @@ describe("QueueTab", () => {
             candidate_id: "cand_1",
             provider_item_id: "MLB1",
             internal_product_id: 111,
+            // 95/ALTA is assigned at exactly one site — buildConcordantCandidate
+            // (:503-505) — and only on the ACCEPT path, so the band cannot be
+            // raised without the status that earns it.
+            state: "exact_ean",
+            match_status: "ACCEPT",
+            match_input: "ean",
             confidence: 95,
             confidence_band: "ALTA",
+            reasons: [
+              { anchor: "ean", direction: "FOR", detail: "EAN idêntico" },
+              { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
+              { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
+            ],
           }),
         ],
       })
@@ -513,9 +594,15 @@ describe("QueueTab", () => {
           provider_item_id: "MLB1",
           internal_product_id: 111,
           internal_product_name: "Parafuso A",
+          state: "exact_sku",
+          match_status: "ACCEPT",
+          match_input: "seller_sku",
           confidence: 95,
           confidence_band: "ALTA",
-          reasons: [{ anchor: "SKU idêntico", direction: "FOR", detail: "100%" }],
+          reasons: [
+            { anchor: "seller_sku", direction: "FOR", detail: "100%" },
+            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
+          ],
         }),
       ],
     });
@@ -615,7 +702,12 @@ describe("QueueTab", () => {
           match_status: "ACCEPT",
           match_input: "ean",
           match_value: "7890000000001",
-          reasons: [{ anchor: "ean", direction: "FOR", detail: "EAN idêntico" }],
+          confidence: 95,
+          confidence_band: "ALTA",
+          reasons: [
+            { anchor: "ean", direction: "FOR", detail: "EAN idêntico" },
+            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
+          ],
         }),
         // Single anchor resolved a single product → confirmation queue, one anchor.
         candidate({
@@ -624,7 +716,12 @@ describe("QueueTab", () => {
           state: "exact_sku",
           match_status: "CONFIRM",
           match_input: "seller_sku",
-          reasons: [{ anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato" }],
+          confidence: 70,
+          confidence_band: "MEDIA",
+          reasons: [
+            { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato" },
+            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
+          ],
         }),
         // Title match: a FOR reason on screen, but nothing decided.
         candidate({
@@ -633,7 +730,10 @@ describe("QueueTab", () => {
           state: "title_match",
           match_status: "REVIEW",
           match_input: "title",
-          reasons: [{ anchor: "title", direction: "FOR", detail: "match por título" }],
+          reasons: [
+            { anchor: "title", direction: "FOR", detail: "match por título" },
+            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
+          ],
         }),
       ],
     });
@@ -665,19 +765,19 @@ describe("QueueTab", () => {
   it("survives a match_status the SDK union does not know, degrading one cell instead of the table", async () => {
     listProductLinkCandidates.mockResolvedValue({
       items: [
-        candidate({
-          candidate_id: "cand_drift",
-          provider_item_id: "MLB_DRIFT",
-          internal_product_id: 111,
-          internal_product_name: "Parafuso A",
-          // Wire drift: the API ships a sixth status before the SDK is
-          // regenerated. The cast is the POINT of the test — the compile-time
-          // exhaustiveness of the maps cannot see a value the wire invents at
-          // runtime, so the runtime has to stay honest on its own.
-          match_status: "PENDING_REVIEW" as ProductLinkCandidateItem["match_status"],
-          match_input: "ean",
-          reasons: [{ anchor: "ean", direction: "FOR", detail: "EAN idêntico" }],
-        }),
+        driftCandidate(
+          "the API ships a sixth match_status before the SDK is regenerated. The cast is the POINT: " +
+            "compile-time exhaustiveness cannot see a value the wire invents at runtime.",
+          {
+            candidate_id: "cand_drift",
+            provider_item_id: "MLB_DRIFT",
+            internal_product_id: 111,
+            internal_product_name: "Parafuso A",
+            match_status: "PENDING_REVIEW" as ProductLinkCandidateItem["match_status"],
+            match_input: "ean",
+            reasons: [{ anchor: "ean", direction: "FOR", detail: "EAN idêntico" }],
+          },
+        ),
       ],
     });
 
@@ -701,16 +801,20 @@ describe("QueueTab", () => {
   it("survives a reason direction the SDK union does not know, without printing undefined", async () => {
     listProductLinkCandidates.mockResolvedValue({
       items: [
-        candidate({
-          candidate_id: "cand_dir",
-          provider_item_id: "MLB_DIR",
-          internal_product_id: 111,
-          internal_product_name: "Parafuso A",
-          reasons: [
-            { anchor: "ean", direction: "PARTIAL" as ProductLinkCandidateItem["reasons"][number]["direction"], detail: "ean parcial" },
-            { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato" },
-          ],
-        }),
+        driftCandidate(
+          "the API ships a fifth reason direction before the SDK is regenerated — the exact failure a " +
+            "Record<Union, …> is blind to, one layer down from the one this chip fixes.",
+          {
+            candidate_id: "cand_dir",
+            provider_item_id: "MLB_DIR",
+            internal_product_id: 111,
+            internal_product_name: "Parafuso A",
+            reasons: [
+              { anchor: "ean", direction: "PARTIAL" as ProductLinkCandidateItem["reasons"][number]["direction"], detail: "ean parcial" },
+              { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato" },
+            ],
+          },
+        ),
       ],
     });
 
@@ -743,14 +847,19 @@ describe("QueueTab", () => {
   it("survives a confidence_band the SDK union does not know, without printing undefined", async () => {
     listProductLinkCandidates.mockResolvedValue({
       items: [
-        candidate({
-          candidate_id: "cand_band",
-          provider_item_id: "MLB_BAND",
-          internal_product_id: 111,
-          internal_product_name: "Parafuso A",
-          confidence: 72,
-          confidence_band: "CRITICA" as ProductLinkCandidateItem["confidence_band"],
-        }),
+        driftCandidate(
+          "the API ships a fourth confidence_band before the SDK is regenerated. 72/CRITICA is unreachable " +
+            "by construction — ALTA is assigned at one site and only with ACCEPT — which is the point: the " +
+            "band the screen must survive is one no scoring path here can produce.",
+          {
+            candidate_id: "cand_band",
+            provider_item_id: "MLB_BAND",
+            internal_product_id: 111,
+            internal_product_name: "Parafuso A",
+            confidence: 72,
+            confidence_band: "CRITICA" as ProductLinkCandidateItem["confidence_band"],
+          },
+        ),
       ],
     });
 
@@ -767,5 +876,70 @@ describe("QueueTab", () => {
     for (const el of Array.from(row.querySelectorAll<HTMLElement>("[class]"))) {
       expect(el.getAttribute("class") ?? "").not.toContain("undefined");
     }
+  });
+
+  // The row degrading honestly is HALF the surface. The drawer renders the same
+  // band from its own component, and a second copy of a lookup table is exactly
+  // how the first `direction` drift survived: hardening one copy and declaring
+  // the class closed. The operator reaches this by clicking the row they just
+  // read, so the two surfaces disagreeing is the normal path, not a corner.
+  it("survives the same unknown confidence_band in the DRAWER, not only in the row", async () => {
+    listProductLinkCandidates.mockResolvedValue({
+      items: [
+        driftCandidate(
+          "the API ships a fourth confidence_band before the SDK is regenerated. 72/CRITICA is unreachable " +
+            "by construction — ALTA is assigned at one site and only with ACCEPT — which is the point: the " +
+            "band the screen must survive is one no scoring path here can produce.",
+          {
+            candidate_id: "cand_band",
+            provider_item_id: "MLB_BAND",
+            internal_product_id: 111,
+            internal_product_name: "Parafuso A",
+            confidence: 72,
+            confidence_band: "CRITICA" as ProductLinkCandidateItem["confidence_band"],
+          },
+        ),
+      ],
+    });
+
+    renderTab(["/?candidate=cand_band"]);
+
+    const drawer = await screen.findByTestId("drawer-candidate");
+    expect(within(drawer).getByText("CRITICA")).toBeInTheDocument();
+    expect(within(drawer).getByText("72%")).toBeInTheDocument();
+    expect(drawer.textContent).not.toContain("undefined");
+    for (const el of Array.from(drawer.querySelectorAll<HTMLElement>("[class]"))) {
+      expect(el.getAttribute("class") ?? "").not.toContain("undefined");
+    }
+  });
+
+  // Injectivity has to hold on what the OPERATOR sees, not on the intermediate
+  // string. HTML collapses runs of whitespace and trims the edges, so a typeset
+  // form that differs only by spacing is one name on screen — and `registry.go`
+  // `buildDefinitions` dedupes provider codes by exact string equality, so
+  // `amazon_marketplace` and `amazon__marketplace` are both registrable at the
+  // same time. Two marketplaces wearing one name is wrong information.
+  it("does not let two provider codes collapse onto one name through whitespace", async () => {
+    listProductLinkCandidates.mockResolvedValue({
+      items: [
+        candidate({ candidate_id: "cand_a", provider_item_id: "MLB_A", provider_code: "amazon_marketplace" }),
+        candidate({ candidate_id: "cand_b", provider_item_id: "MLB_B", provider_code: "amazon__marketplace" }),
+        candidate({ candidate_id: "cand_c", provider_item_id: "MLB_C", provider_code: "_amazon" }),
+        candidate({ candidate_id: "cand_d", provider_item_id: "MLB_D", provider_code: "amazon" }),
+      ],
+    });
+
+    renderTab();
+    await screen.findAllByTestId("queue-row");
+
+    // `getAllByText` normalizes whitespace exactly the way the browser paints
+    // it, which is the whole point: if two codes reach the same painted string,
+    // this returns two nodes for a name that should identify one provider.
+    expect(screen.getAllByText("Amazon Marketplace")).toHaveLength(1);
+    expect(screen.getAllByText("Amazon")).toHaveLength(1);
+    // The forms that cannot be typeset injectively stay verbatim — an ugly slug
+    // the operator can act on beats a pretty name that may be another provider.
+    expect(screen.getByText("amazon__marketplace")).toBeInTheDocument();
+    expect(screen.getByText("_amazon")).toBeInTheDocument();
   });
 });

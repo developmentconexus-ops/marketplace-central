@@ -4,6 +4,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { VinculosPage } from "./VinculosPage";
+import { MARCA_UNAVAILABLE_DETAIL, wireCandidate } from "./wireFixtures";
 
 // GOLDEN (day-1, MIS-004-C10 gap #2). Locks the design contract for /vinculos:
 //   1. anúncio-cêntrica 9-col table (ANÚNCIO·CANAL·PRODUTO SUGERIDO·SKU HUB·
@@ -39,8 +40,14 @@ vi.mock("../../app/InstallationContext", () => ({
   useInstallation: () => ({ installationId: "inst_1" }),
 }));
 
+// Every row this golden locks goes through `wireCandidate`, which THROWS on a
+// candidate the generator cannot emit. A design gate is the surface where an
+// impossible fixture costs the most: it does not fail, it silently ratifies a
+// layout for a row no operator will ever see. The corrections written into the
+// comments below were made by hand in an earlier round; routing them through the
+// builder is what makes them CHECKED rather than asserted.
 function base(overrides: Partial<ProductLinkCandidateItem>): ProductLinkCandidateItem {
-  return {
+  return wireCandidate({
     candidate_id: "cand_x",
     installation_id: "inst_1",
     provider_code: "mercado_livre",
@@ -83,12 +90,12 @@ function base(overrides: Partial<ProductLinkCandidateItem>): ProductLinkCandidat
       // `Supplied: false` and classifies UNAVAILABLE at generation_service.go:704.
       // Every mercado_livre candidate has it. A fixture without it locks a row
       // the backend never emits.
-      { anchor: "marca", direction: "UNAVAILABLE", detail: "provider não fornece a âncora marca" },
+      { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
     ],
     created_at: "2026-07-19T12:00:00Z",
     updated_at: "2026-07-19T12:00:00Z",
     ...overrides,
-  };
+  });
 }
 
 function renderPage() {
@@ -207,7 +214,7 @@ describe("Vínculos design golden", () => {
               detail: "seller_sku sem correspondência",
             },
             { anchor: "ean", direction: "INCOMPARABLE", side: "erp", detail: "ean sem correspondência" },
-            { anchor: "marca", direction: "UNAVAILABLE", detail: "provider não fornece a âncora marca" },
+            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
           ],
         }),
       ],
@@ -250,7 +257,7 @@ describe("Vínculos design golden", () => {
             // Same always-declared `marca` as in base(): `buildConcordantCandidate`
             // (generation_service.go:493-507) also finalizes through
             // `appendProviderDeclaredUnavailableReasons`.
-            { anchor: "marca", direction: "UNAVAILABLE", detail: "provider não fornece a âncora marca" },
+            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
           ],
         }),
         base({
@@ -272,7 +279,7 @@ describe("Vínculos design golden", () => {
               detail: "seller_sku sem correspondência",
             },
             { anchor: "ean", direction: "INCOMPARABLE", side: "erp", detail: "ean sem correspondência" },
-            { anchor: "marca", direction: "UNAVAILABLE", detail: "provider não fornece a âncora marca" },
+            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
           ],
         }),
       ],

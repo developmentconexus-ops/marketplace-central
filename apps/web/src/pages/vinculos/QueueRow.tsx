@@ -45,14 +45,22 @@ const unknownValueClasses = "border border-border bg-surface text-muted";
 // member before the SDK was regenerated": at runtime the index is simply
 // missing, and an unguarded `Record` lookup then puts the literal string
 // `undefined` in the cell text and at the end of the class attribute.
-function bandLabel(band: ProductLinkConfidenceBand): string {
+//
+// Both are EXPORTED, and that is load-bearing rather than convenience: the
+// drawer paints the same band from its own component, and it used to keep a
+// private second copy of this table. A second copy is how the `direction` drift
+// survived its first fix — one copy hardened, the class declared closed, the
+// other still writing the literal `undefined` into a class attribute. One
+// reader per value for the whole screen means the next unknown band degrades
+// the same way in every surface, or in none.
+export function bandLabel(band: ProductLinkConfidenceBand): string {
   const label = bandLabels[band];
   // Verbatim, never one of the three we know — same rule as an unknown anchor
   // (V9): never hidden, never renamed into something the wire didn't say.
   return label ?? band;
 }
 
-function bandClass(band: ProductLinkConfidenceBand): string {
+export function bandClass(band: ProductLinkConfidenceBand): string {
   return bandClasses[band] ?? unknownValueClasses;
 }
 
@@ -113,12 +121,20 @@ export function providerDisplayName(providerCode: string): string {
   if (mapped) return mapped;
 
   const typeset = typesetSlug(providerCode);
-  // The round-trip IS the injectivity check: if lowering the typeset form and
-  // restoring the separators does not reproduce the wire code byte for byte,
-  // then some other code could typeset to the same string, and the display
-  // would be ambiguous. Ambiguous loses to verbatim.
-  const restored = typeset.toLowerCase().split(" ").join("_");
-  return restored === providerCode ? typeset : providerCode;
+  // The round-trip IS the injectivity check: if lowering the form and restoring
+  // the separators does not reproduce the wire code byte for byte, then some
+  // other code could typeset to the same string, and the display would be
+  // ambiguous. Ambiguous loses to verbatim.
+  //
+  // It has to run on what the browser PAINTS, not on the string we just built.
+  // HTML collapses runs of whitespace and trims the edges, so `amazon__market`
+  // typesets to "Amazon  Market" — two spaces — and reaches the operator as
+  // "Amazon Market", the same pixels as `amazon_market`, while a round-trip of
+  // the intermediate string returns the input unchanged and calls it injective.
+  // Checking the pre-layout form is checking a string nobody ever sees.
+  const painted = typeset.replace(/\s+/g, " ").trim();
+  const restored = painted.toLowerCase().split(" ").join("_");
+  return restored === providerCode ? painted : providerCode;
 }
 
 /**

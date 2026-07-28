@@ -537,6 +537,42 @@ route it as its own slice.** The cheapest honest version is a generator-side tes
 canonical candidate per status to a checked-in JSON, which the FE golden then reads instead of
 hand-writing — moving the coupling from "a comment claims it" to "the build breaks".
 
+> **F-07 CLOSED in round 5 — and the paragraph above is why it should not have been left open.**
+> The Opus seat raised this same coupling as a finding, which is the correct answer to a risk this
+> chip filed as "accepted": *accepted residual risk* was, here, a way of deferring the work to the
+> next reader. It is closed by `apps/web/src/pages/vinculos/wireFixtures.guard.test.ts`, which reads
+> `connectors/ports/marketplace_capability.go` and `mercado_livre/capability_adapter.go` at test
+> time and asserts set equality with the FE's constants **in both directions** — a vocabulary that
+> only grew and one that only shrank are different failures and both are real (`refforn` is the one
+> that actually shrank, and it left a fixture asserting a reason no provider can emit).
+>
+> The correction to the recommendation above: **no backend seam was needed.** The paragraph
+> concluded "outside this chip's write-set" from the assumption that closing the gap required the
+> generator to EMIT something. Reading the declaration is a FE-side test file and touches no Go. The
+> reasoning was sound about a dump-based design and wrong about the cheapest one, which is how a
+> real constraint (write-set) came to justify not doing work that was inside it.
+>
+> What it still does not prove, stated so a green build is not over-read: it compares against the
+> declaration **in this checkout**, not against a deployed server. The generator-side JSON dump
+> remains the stronger form, and remains a hub call.
+
+**FINDING-8 — a cold read of two Go files once blew vitest's 5s `testTimeout`, and the cause was
+NOT established.** The first run of `wireFixtures.guard.test.ts` hung and timed out on
+`readFileSync` of `marketplace_capability.go`, while the very next test in the same file read the
+same two files in 2ms. Isolating the regexes in plain node was instant.
+
+Reported as a FINDING and not as a fix, because the honest state is unresolved: I formed a
+hypothesis about which `expect` form inside a `.map()` was hanging, tested all three candidate
+forms, and **all three passed** — the hypothesis was wrong. Three later runs, including a probe
+built to reproduce the hang, all came back in single-digit milliseconds.
+
+The reads now happen at MODULE scope. That is a **mitigation, not a diagnosis**: module-load time is
+not charged to `testTimeout`, so a slow cold read cannot turn a passing guard into a red lane. The
+comment in the file says exactly this rather than claiming a cause. **For the hub:** if another chip
+sees a first-touch filesystem read outside the vitest root time out under this runner on Windows,
+that is a second data point and the pattern is worth a profile §3 false-alarm entry. One occurrence
+with a refuted hypothesis is not.
+
 ## REQUESTS (to the hub — no edit made)
 
 **REQUEST-1 (optional, no longer blocking) — consider surfacing `rule_matched` on the wire.** V6 is
@@ -584,8 +620,8 @@ Go in this write-set), so it names the site, the invariant, and the failure mode
 | 4 | **Dual gate, OPUS side** (commits `fa6ca3a2` + `7a343fea`) | `harness:gate-reviewer` subagent, **opus**, read-only seat (Read/Grep/Glob; no Bash, no Write) | Agent tool, synchronous, frozen prompt read from disk | prompt `evidence/PROMPT-gate-vincneutro-opus.md` · verdict `evidence/REVIEW-gate-vincneutro-opus.md` | **REFUTED** — 9 PASS, 2 NOT-PROVEN (both seat limits), 4 findings. Three fixed in `394c83c`; the fourth is the standing escalation. |
 | 5 | **Re-gate of the fixes, GPT side** (commit `394c83c`) | `gpt-5.6-sol` / `medium` | OS-process, stdin closed, `--sandbox read-only` | prompt `evidence/PROMPT-gate-vincneutro-rev3.md` · verdict `evidence/REVIEW-gate-vincneutro-rev3.md` (`.last.md` 2218 B, non-zero, copied verbatim) | **REFUTED** — **V10 FAIL**. Caught what the Opus side explicitly cleared: `providerDisplayName` was lossy, colliding two registrable provider codes onto one name. Both findings accepted and fixed. |
 | 6 | **Re-gate of the fixes, OPUS side** (commit `394c83c`) | cold Opus subagent, read-only seat (no Bash / Edit / Write) | Agent tool, background, same frozen prompt as row 5 | verdict `evidence/REVIEW-gate-vincneutro-opus-rev2.md` — **transcribed, not captured: the task `.output` artifact came back 0 bytes** | **REFUTED** — 8 PASS, 3 NOT-PROVEN (all seat limits: no Bash, no EVIDENCE.md), 4 findings, all four verified independently and fixed. Its `V10: PASS` is **wrong** — it reviewed the pre-injectivity function and explicitly cleared the collision row 5 found. |
-| 7 | **Round 5 delta gate, GPT side** (range `394c83c..3915f33b`) | `gpt-5.6-sol` / `medium` | OS-process, stdin closed, `--sandbox read-only`, `-o` straight into `evidence/` | prompt `evidence/PROMPT-gate-round5-delta-sol.md` · verdict `evidence/REVIEW-gate-vincneutro-sol-rev4.md` · log `evidence/agent__gate-r5-sol.log` | *(row written at dispatch time — outcome filed on return)* |
-| 8 | **Round 5 delta gate, OPUS side** (same range) | `harness:gate-reviewer` subagent, **opus**, read-only seat (Read/Grep/Glob; no Bash, no Write) | Agent tool, background, frozen prompt read from disk | prompt `evidence/PROMPT-gate-round5-delta.md` · verdict `evidence/REVIEW-gate-vincneutro-opus-rev3.md` — **will be transcribed**, the seat has no Write by construction | *(row written at dispatch time — outcome filed on return)* |
+| 7 | **Round 5 delta gate, GPT side** (range `394c83c..3915f33b`) | `gpt-5.6-sol` / `medium` | OS-process, stdin closed, `--sandbox read-only`, `-o` straight into `evidence/` | prompt `evidence/PROMPT-gate-round5-delta-sol.md` · verdict `evidence/REVIEW-gate-vincneutro-sol-rev4.md` (**captured** by `-o`, non-zero) · log `evidence/agent__gate-r5-sol.log` | **REFUTED** — V10 FAIL, 4 findings, all four verified against primary source and fixed. Caught the drawer's PRIVATE second copy of `bandClasses` — the structure round 4 hardened in `QueueRow` and declared closed — and the injectivity check running on the built string rather than the painted one. |
+| 8 | **Round 5 delta gate, OPUS side** (same range) | `harness:gate-reviewer` subagent, **opus**, read-only seat (Read/Grep/Glob; no Bash, no Write) | Agent tool, background, frozen prompt read from disk | prompt `evidence/PROMPT-gate-round5-delta.md` · verdict `evidence/REVIEW-gate-vincneutro-opus-rev3.md` — **transcribed**, the seat has no Write by construction, provenance declared at the artifact's head | **REFUTED** — 9 PASS, V5/V11 NOT-PROVEN (as its prompt instructed for those two items), 4 findings, all verified and fixed. It did **not** reaffirm the refuted `V10: PASS`. Its finding 1 killed this chip's "producible under a capability declaration" disposition outright, citing `resolveIdentityAnchors`'s abort — **"a dodge, not an honest degrade"**, a classification accepted as stated. |
 
 **Round 5 is a DELTA round, not a fifth of the same** (hub ruling). Scope is the code no reviewer
 has read: the round-4 fixes (`ebb309ac`) and the fixture sweep (`3915f33b`). Two seat-specific
@@ -805,6 +841,61 @@ confidence/band/status of the fixture, while its reasons array stayed a plausibl
 generator was read for the scoring fields and not for the finalizing step
 (`appendProviderDeclaredUnavailableReasons`) that runs after every one of them.
 
+### ROUND 5 — the delta re-gate — **both sides REFUTED, both were right, and the class broke open**
+
+Two seats on the delta `394c83c..ebb309ac`, each with its own frozen prompt
+(`evidence/PROMPT-gate-round5-delta.md` for Opus, `…-sol.md` for the GPT side, which had V5 and V11
+removed from its scope). Verdicts: `evidence/REVIEW-gate-vincneutro-opus-rev3.md` (transcribed —
+that seat has no Write by construction, provenance declared at its head) and
+`evidence/REVIEW-gate-vincneutro-sol-rev4.md` (captured by `-o`).
+
+Eight findings between them. All eight verified against primary source before anything moved.
+
+| # | Source | Finding | Disposition |
+|---|---|---|---|
+| 1 | Opus rev3 | `cand_inc` / `cand_noside` carry a comment claiming they are "producible under a capability declaration" — but `resolveIdentityAnchors` ABORTS generation unless the declaration resolves (`generation_service.go:149-169`), so those reason arrays are unreachable under EVERY declaration, not merely today's. Called **"a dodge, not an honest degrade."** | **CONFIRMED.** The classification is accepted as stated. Both are now `driftCandidate(why, …)` with the reason written in the test. |
+| 2–4 | Opus rev3 / Sol rev4 | three further fixture defects of the same class | **CONFIRMED, all fixed** — see the mechanism below rather than four more point-fixes. |
+| 5 | Sol rev4 | `VinculoDrawer` keeps a PRIVATE second copy of `bandClasses`, raw-indexed — the exact structure round 4 hardened in `QueueRow` and declared closed | **CONFIRMED and FIXED.** The drawer's copy is deleted; `bandClass`/`bandLabel` are exported from `QueueRow` and imported. Red captured first: `class="… font-medium undefined"` in the drawer pill. |
+| 6 | Sol rev4 | `providerDisplayName`'s injectivity check runs on the string it just built, not on what the browser PAINTS (HTML collapses whitespace runs) | **CONFIRMED and FIXED.** The round-trip now runs on the painted form. New test drives four codes, including `amazon__marketplace` and `_amazon`. |
+| 7 | Opus rev3 | nothing links `wireFixtures.ts`'s copy of the anchor vocabulary to the Go source it mirrors — filed by this chip as accepted residual risk F-07 | **CONFIRMED and CLOSED.** `wireFixtures.guard.test.ts` reads `marketplace_capability.go` and `mercado_livre/capability_adapter.go` at test time and asserts set equality in BOTH directions. Must-failed both ways (vocabulary grown — using `refforn`, the anchor that actually shrank out; and shrunk — dropping `marca`). |
+| 8 | both | V5/V11 unscorable from a read-only seat | **NOT-PROVEN**, as instructed. Recorded, not converted into a PASS. |
+
+**The third occurrence fired the hub's pre-written rule.** Round 5 found the third instance of the
+unproducible-fixture class, and then the fourth and fifth. Per the hub: *"não é point-fix: é
+mecanismo nomeado + varredura exaustiva, regra da terceira rodada."*
+
+**Mechanism:** `apps/web/src/pages/vinculos/wireFixtures.ts`. An impossible candidate is now
+UNWRITEABLE rather than detectable — `wireCandidate` THROWS in the test that builds it, naming the
+generator line the fixture contradicts. A deliberately impossible shape goes through
+`driftCandidate(why, …)`, which requires the reason to be written next to the fixture. Backed by
+`wireFixtures.guard.test.ts` (finding 7), which is the compiler that was missing from the seam.
+
+**Exhaustive re-sweep, by machine.** Pointing `QueueTab.test.tsx`'s factory at the builder returned
+**13 failed / 5 passed (18)** on the first run. This chip's own hand sweep
+(`evidence/V-fixture-producibility-sweep.md`) had reported **two** findings in that file and called
+itself EXHAUSTIVE in its title. Distinct violations: prose anchors outside the vocabulary (×2),
+`refforn` (the anchor D-A REMOVED), **no `marca` reason (×6)** — the very invariant that sweep was
+built to enforce — a `marca` INCOMPARABLE where mercado_livre can only emit UNAVAILABLE,
+`(95, ALTA, REVIEW)`, and `(72, CRITICA, REVIEW)` (×2, the legitimate drift probes).
+
+That document has been **corrected at source** per R-24: a banner at its head and a `## CORRECTION`
+section naming each false sentence, including the enumeration that "proved" it exhaustive — a grep
+whose `[a-z_]*` character class silently excluded every capitalized and accented anchor and reported
+ONE violation where there were FIVE. Its verdicts are kept verbatim rather than edited into
+correctness, because what they got wrong IS the finding.
+
+`VinculosDesign.golden.test.tsx` was then routed through the same builder. Its four fixtures passed
+unchanged — the hand corrections from round 4 were complete — and the wiring was must-failed
+(`61/MEDIA/CONFIRM` → `wireCandidate: no scoring path assigns (61, MEDIA, CONFIRM)`) so that "green"
+could not mean "never called".
+
+**FINDING (lane, for hub ratification).** One cold run of `wireFixtures.guard.test.ts` blew the 5s
+`testTimeout` reading two Go files, while the very next test read the same two files in 2ms. **The
+cause was not established** — three later runs, including a probe built to reproduce it, all came
+back in single-digit ms, and the hypothesis about which `expect` form hung was tested and proved
+WRONG. The reads were moved to module scope, which is a **mitigation, not a diagnosis**: module-load
+time is not charged to `testTimeout`, so a slow cold read can no longer turn a passing guard red.
+
 ## Verdict roll-up
 
 | Criterion | Verdict |
@@ -821,10 +912,11 @@ generator was read for the scoring fields and not for the finalizing step
 | V10 neutral vocabulary, provider data intact | PASS — and now for a provider the map does not know, which is what the Opus side caught |
 | V11 no collateral damage | PASS |
 
-**Lanes, final.** `tsc` **15 → 12, and 3 → 0 under `pages/vinculos/`**
-(`evidence/L0-tsc-baseline.txt` → `evidence/L0-tsc-after-round4.txt`); vitest 62/511 → **63/524**
-(`evidence/L1-vitest-after-round4.txt`), the +13 over the baseline being the regression tests the
-four gate rounds forced, the last two being the `direction` and `confidence_band` wire-drift tests.
+**Lanes, final (after round 5).** `tsc` **15 → 12, and 3 → 0 under `pages/vinculos/`**
+(`evidence/L0-tsc-baseline.txt` → `evidence/L0-tsc-after-round5.txt`); vitest 62/511 →
+**64/530** (`evidence/L1-vitest-after-round5.txt`). The +19 over the baseline are the regression
+tests the five gate rounds forced; the new file is `wireFixtures.guard.test.ts`, the Go-source guard
+that closes F-07.
 
 > **CORRECTION (R-24), made at the source rather than annotated.** An earlier version of this line
 > read *"the same 12 as the baseline; this chip neither added nor removed one."* That was FALSE.
