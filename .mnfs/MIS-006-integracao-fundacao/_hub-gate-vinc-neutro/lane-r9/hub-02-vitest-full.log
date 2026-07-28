@@ -1,0 +1,94 @@
+
+ RUN  v3.2.4 C:/Users/leandro.theodoro/Documents/marketplace-central/.claude/worktrees/hub-exec-vinc/apps/web
+
+ ✓ src/pages/ListingsRefreshControl.test.tsx (9 tests) 831ms
+ ✓ src/pages/precos/ParamsDrawer.test.tsx (12 tests) 465ms
+ ✓ src/pages/AnunciosTable.test.tsx (23 tests) 548ms
+ ✓ src/pages/precos/PricingMatrix.test.tsx (10 tests) 840ms
+ ✓ ../../packages/feature-products/src/CatalogPage.test.tsx (6 tests) 1005ms
+   ✓ CatalogPage > pages search results past the first page  434ms
+ ✓ src/pages/precos/PricingPage.test.tsx (11 tests) 1121ms
+ ✓ src/pages/ListingDetailPanel.test.tsx (14 tests) 1040ms
+ ✓ src/pages/mutations/MutationPreviewModal.test.tsx (15 tests) 1047ms
+ ✓ src/pages/importacoes/ImportChainPanel.test.tsx (11 tests) 1459ms
+   ✓ ImportChainPanel > renders a generic error for server failures without a chain  1014ms
+ ✓ src/pages/mercado/MercadoPage.test.tsx (17 tests) 1306ms
+ ✓ src/pages/AnunciosPage.test.tsx (14 tests) 1414ms
+ ✓ src/pages/vinculos/QueueTab.test.tsx (20 tests) 1449ms
+(node:29972) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/pages/AnunciosSelection.test.tsx (16 tests) 2672ms
+   ✓ AnunciosPage selection and pagination > accumulates opaque listing ids across pages and preserves them when going back  401ms
+stderr | src/app/AppRouter.test.tsx > AppRouter > does not render workspace content for an unknown path
+No routes matched location "/unknown" 
+
+ ✓ src/app/AppRouter.test.tsx (22 tests) 1158ms
+ ✓ src/pages/pedidos/PedidosPage.test.tsx (32 tests) 2918ms
+(node:23884) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/app/InstallationContext.test.tsx (8 tests) 643ms
+ ✓ src/pages/precos/ScenariosPanel.test.tsx (6 tests) 470ms
+ ✓ ../../packages/ui/src/ProductPicker.test.tsx (7 tests) 369ms
+ ✓ ../../packages/ui/src/DataTable.test.tsx (8 tests) 434ms
+ ✓ src/app/Layout.test.tsx (5 tests) 599ms
+ ✓ ../../packages/ui/src/PaginatedTable.test.tsx (9 tests) 451ms
+ ✓ src/pages/integracoes/IntegracoesPage.test.tsx (11 tests) 790ms
+ ✓ src/pages/precos/DifalDrawer.test.tsx (6 tests) 842ms
+ ✓ src/pages/importacoes/ImportacaoSection.test.tsx (5 tests) 440ms
+ ✓ src/pages/precos/DecompositionPanel.test.tsx (13 tests) 275ms
+ ✓ src/pages/produto/VeredictoBox.test.tsx (6 tests) 363ms
+ ✓ src/pages/produto/ProdutoPage.test.tsx (5 tests) 377ms
+(node:5272) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/app/Header.test.tsx (8 tests) 477ms
+ ✓ src/pages/produto/ProdutoPage.partialFailure.test.tsx (3 tests) 400ms
+ ✓ src/pages/precos/SolverPanel.test.tsx (16 tests) 621ms
+ ✓ ../../packages/ui/src/BasePrimitives.test.tsx (6 tests) 274ms
+ ✓ src/pages/produto/EstoqueTab.test.tsx (6 tests) 328ms
+ ✓ src/pages/produto/ProdutoPage.deeplink.test.tsx (4 tests) 349ms
+ ✓ src/pages/produto/AnunciosVinculadosTab.test.tsx (4 tests) 358ms
+ ✓ src/pages/dashboard/DashboardPage.test.tsx (8 tests) 490ms
+ ✓ src/pages/precos/ApplyPrice.test.tsx (6 tests) 324ms
+ ✓ src/pages/precos/MarketComparison.test.tsx (7 tests) 314ms
+ ✓ src/pages/vinculos/VinculosDesign.golden.test.tsx (3 tests) 409ms
+ ✓ src/pages/mutations/ProtocoloPage.test.tsx (6 tests) 591ms
+   ✓ ProtocoloPage > usa os estados compartilhados ao carregar e ao falhar  336ms
+ ✓ src/pages/vinculos/VinculosPage.test.tsx (4 tests) 485ms
+ ✓ ../../packages/ui/src/DetailPanel.test.tsx (9 tests) 187ms
+ ✓ src/pages/vinculos/BatchPreviewModal.test.tsx (2 tests) 304ms
+ ✓ ../../packages/ui/src/DetailDrawer.test.tsx (6 tests) 267ms
+ ✓ src/pages/vinculos/ResolvidosTab.test.tsx (4 tests) 318ms
+ ✓ src/pages/produto/ProdutoHeader.test.tsx (4 tests) 316ms
+ ✓ src/pages/dashboard/FilaDeAtencao.test.tsx (4 tests) 255ms
+ ✓ ../../packages/ui/src/LoadStates.test.tsx (4 tests) 237ms
+ ✓ src/pages/importacoes/ImportacoesPage.test.tsx (1 test) 232ms
+ ✓ ../../packages/ui/src/Badge.test.tsx (5 tests) 55ms
+ ✓ src/pages/mercado/oportunidades.test.tsx (5 tests) 147ms
+ ✓ src/pages/mercado/mercadoFormatters.test.ts (4 tests) 23ms
+ ✓ src/pages/ListingsSummary.test.tsx (3 tests) 202ms
+ ✓ src/pages/importacoes/ImportacaoDetailPage.test.tsx (1 test) 122ms
+ ✓ ../../packages/ui/src/FactStates.test.tsx (5 tests) 94ms
+ ✓ src/pages/precos/QuickChips.test.tsx (4 tests) 141ms
+ ✓ ../../packages/ui/src/MarginChip.test.tsx (11 tests) 77ms
+ ✓ src/pages/mutations/useMutationProtocol.test.tsx (3 tests) 50ms
+ ✓ src/pages/anunciosQueryState.test.ts (21 tests) 22ms
+ ✓ src/pages/vinculos/wireFixtures.guard.test.ts (9 tests) 10ms
+(node:13496) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ src/app/viteProxy.test.ts (1 test) 8ms
+ ✓ ../../packages/web-query/src/invalidation.test.ts (8 tests) 13ms
+(node:25312) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/app/theme/theme.test.ts (9 tests) 27ms
+ ✓ src/pages/precos/ptbrDecimal.test.ts (9 tests) 5ms
+ ✓ src/pages/produto/productQueryState.test.ts (7 tests) 11ms
+ ✓ ../../packages/web-query/src/failureCopy.test.ts (3 tests) 5ms
+ ✓ ../../packages/web-query/src/index.test.ts (4 tests) 5ms
+ ✓ src/app/ClientContext.test.tsx (3 tests) 4ms
+
+ Test Files  67 passed (67)
+      Tests  551 passed (551)
+   Start at  20:24:59
+   Duration  23.77s (transform 7.15s, setup 32.92s, collect 76.27s, tests 33.88s, environment 148.33s, prepare 17.74s)
+
+EXIT(vitest)=0

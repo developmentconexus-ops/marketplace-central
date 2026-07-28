@@ -1,0 +1,22 @@
+"mercado_livre"          -> "Mercado Livre"
+"amazon"                 -> "Amazon"
+"Amazon"                 -> "Amazon"
+"amazon-marketplace"     -> "amazon-marketplace"
+"amazon_marketplace"     -> "Amazon Marketplace"
+"Amazon_Marketplace"     -> "Amazon_Marketplace"
+"amazon__market"         -> "amazon__market"
+"_amazon"                -> "_amazon"
+"amazon_"                -> "amazon_"
+"shopee"                 -> "Shopee"
+"Shopee"                 -> "Shopee"
+"AMAZON"                 -> "AMAZON"
+"amazon marketplace"     -> "amazon marketplace"
+"amazon2"                -> "Amazon2"
+"2amazon"                -> "2amazon"
+"Amazon Marketplace"     -> "Amazon Marketplace"
+--- COLISOES: mesma saida, entradas distintas ---
+"Amazon" <- ["amazon","Amazon"]
+"Amazon Marketplace" <- ["amazon_marketplace","Amazon Marketplace"]
+"Shopee" <- ["shopee","Shopee"]
+total de classes em colisao: 3
+EXIT=0

@@ -1,0 +1,67 @@
+bdf56153adcdcf8824075cd7190ad078 *apps/web/src/pages/vinculos/wireFixtures.ts
+--- DIFF DA MUTACAO ---
+diff --git a/apps/web/src/pages/vinculos/wireFixtures.ts b/apps/web/src/pages/vinculos/wireFixtures.ts
+index f4cb7d94..eeb3e593 100644
+--- a/apps/web/src/pages/vinculos/wireFixtures.ts
++++ b/apps/web/src/pages/vinculos/wireFixtures.ts
+@@ -291,7 +291,7 @@ function assertProducibleReasons(reasons: ProductLinkReason[], providerCode: str
+     }
+     // `side` binds on EVERY direction, so it is checked before the split below.
+     // Putting the split first would have silently exempted FOR/AGAINST from it.
+-    if (reason.side !== undefined && reason.direction !== "INCOMPARABLE") {
++    if (false && reason.side !== undefined && reason.direction !== "INCOMPARABLE") {
+       fail(
+         `${reason.anchor} carries a side on a ${reason.direction} reason.`,
+         "Only INCOMPARABLE branches set a side (:637, :640, :715, :723, :726, :728); UNAVAILABLE leaves it empty at both of its " +
+
+ RUN  v3.2.4 C:/Users/leandro.theodoro/Documents/marketplace-central/.claude/worktrees/hub-exec-vinc/apps/web
+
+ ❯ src/pages/vinculos/wireFixtures.guard.test.ts (9 tests | 1 failed) 23ms
+   ✓ wireFixtures vocabulary vs the Go source it mirrors > can still SEE the Go declarations it claims to guard 2ms
+   ✓ wireFixtures vocabulary vs the Go source it mirrors > KNOWN_IDENTITY_ANCHORS is exactly knownIdentityAnchors 1ms
+   ✓ wireFixtures vocabulary vs the Go source it mirrors > MERCADO_LIVRE_SUPPLIED_ANCHORS is exactly what its capability adapter declares 2ms
+   ✓ wireCandidate rejects what generation_service.go cannot emit > MUST-FAIL 1 — ACCEPT exists only as (exact_sku, seller_sku) 2ms
+   ✓ wireCandidate rejects what generation_service.go cannot emit > MUST-FAIL 2 — a provider with no capability declaration is not producible 1ms
+   ✓ wireCandidate rejects what generation_service.go cannot emit > MUST-FAIL 3 — a producible tuple with a signal set no site emits 1ms
+   ✓ wireCandidate rejects what generation_service.go cannot emit > MUST-FAIL 4 — one anchor cannot carry a signal and an absence at once 0ms
+   ✓ wireCandidate rejects what generation_service.go cannot emit > MUST-PASS — `title` FOR and `title` AGAINST on one candidate is real, and stays accepted 0ms
+   × wireCandidate rejects what generation_service.go cannot emit > MUST-FAIL 5 — an UNAVAILABLE absence cannot carry a `side` 13ms
+     → expected [Function] to throw an error
+ ✓ src/pages/vinculos/ResolvidosTab.test.tsx (4 tests) 174ms
+ ✓ src/pages/vinculos/BatchPreviewModal.test.tsx (2 tests) 197ms
+ ✓ src/pages/vinculos/VinculosPage.test.tsx (4 tests) 247ms
+ ✓ src/pages/vinculos/VinculosDesign.golden.test.tsx (3 tests) 265ms
+ ✓ src/pages/vinculos/QueueTab.test.tsx (20 tests) 809ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/pages/vinculos/wireFixtures.guard.test.ts > wireCandidate rejects what generation_service.go cannot emit > MUST-FAIL 5 — an UNAVAILABLE absence cannot carry a `side`
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ src/pages/vinculos/wireFixtures.guard.test.ts:343:7
+    341|         ],
+    342|       }),
+    343|     ).toThrow(/Only INCOMPARABLE branches set a side/);
+       |       ^
+    344|   });
+    345| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 5 passed (6)
+      Tests  1 failed | 41 passed (42)
+   Start at  20:25:40
+   Duration  4.36s (transform 455ms, setup 1.55s, collect 7.41s, tests 1.72s, environment 5.76s, prepare 1.43s)
+
+EXIT(vitest mutado)=1
+--- RESTORE ---
+bdf56153adcdcf8824075cd7190ad078 *apps/web/src/pages/vinculos/wireFixtures.ts
+git diff --quiet HEAD exit: 0
+porcelain untracked-all:
