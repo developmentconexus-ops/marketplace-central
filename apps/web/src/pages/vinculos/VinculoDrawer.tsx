@@ -3,7 +3,7 @@ import type {
   ProductLinkConfidenceBand,
 } from "@marketplace-central/sdk-runtime";
 import { DetailPanel, UnknownValue } from "@marketplace-central/ui";
-import { directionClasses, providerDisplayName, reasonChipLabel } from "./QueueRow";
+import { directionClass, providerDisplayName, reasonChipLabel } from "./QueueRow";
 
 export interface VinculoDrawerProps {
   candidateId: string | null;
@@ -118,7 +118,7 @@ function CandidateCompareCard({
               {/* IC-01: motivo (anchor) sempre visível; detail (com %) anexado — % nunca sozinho.
                   `reasonChipLabel` também carrega o `side` de um INCOMPARABLE (D-122/D-B),
                   que é o lado onde o operador vai preencher o dado que faltou. */}
-              {pill(reasonChipLabel(reason), directionClasses[reason.direction])}
+              {pill(reasonChipLabel(reason), directionClass(reason.direction))}
             </li>
           ))}
         </ul>

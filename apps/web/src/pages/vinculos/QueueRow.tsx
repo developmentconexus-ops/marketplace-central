@@ -34,6 +34,28 @@ const bandClasses: Record<ProductLinkConfidenceBand, string> = {
   BAIXA: "bg-warn-soft text-warn",
 };
 
+// The tokens for a value the WIRE invented and the SDK has no member for. It
+// is deliberately none of the semantic pairs: painting an unknown band amber
+// would assert a confidence reading nobody computed (ADR-17).
+const unknownValueClasses = "border border-border bg-surface text-muted";
+
+// Wire drift is a DIFFERENT failure from SDK growth, and only one of the two is
+// visible to a compiler. `Record<Union, …>` above catches "the SDK grew a
+// member" at build time and must stay. These readers catch "the API shipped a
+// member before the SDK was regenerated": at runtime the index is simply
+// missing, and an unguarded `Record` lookup then puts the literal string
+// `undefined` in the cell text and at the end of the class attribute.
+function bandLabel(band: ProductLinkConfidenceBand): string {
+  const label = bandLabels[band];
+  // Verbatim, never one of the three we know — same rule as an unknown anchor
+  // (V9): never hidden, never renamed into something the wire didn't say.
+  return label ?? band;
+}
+
+function bandClass(band: ProductLinkConfidenceBand): string {
+  return bandClasses[band] ?? unknownValueClasses;
+}
+
 // INCOMPARABLE gets its OWN token pair (info), never accent (FOR — corroborates)
 // and never warn (AGAINST — blocks) and never the muted surface of UNAVAILABLE.
 // D-122/D-B created the state precisely to separate "the provider does not
@@ -53,29 +75,50 @@ export const directionClasses: Record<ProductLinkReasonDirection, string> = {
  * ("mercado_livre"); rendering it raw is the bug that hit CHIP-PED-FILA across
  * four surfaces.
  *
- * An unknown provider is TYPESET, not passed through: `mercado_livre` is the
- * only mapped code today, so the next marketplace onboarded would otherwise put
- * a raw slug back on screen — the same defect V10 names, just waiting for data
- * that does not exist yet. Typesetting is not renaming: separators become
- * spaces and words are capitalised, so every character the wire sent is still
- * legible in order ("shopee" → "Shopee", "xyz-9" → "Xyz 9"). Nothing is
- * invented, which is what separates this from `anchorShortLabel` — there the
- * unknown value is operator vocabulary that only the ERP can name, so it stays
- * verbatim; here it is a machine identifier that never belonged on screen in
- * that form.
+ * An unmapped provider is TYPESET rather than passed through — `mercado_livre`
+ * is the only mapped code today, so the next marketplace onboarded would
+ * otherwise put a raw slug back on screen — but only when the typeset form
+ * ROUND-TRIPS back to the exact wire code.
+ *
+ * That condition is the whole design, and it exists because the obvious version
+ * of this function is wrong. Collapsing every separator into a space maps
+ * `amazon_marketplace` and `amazon-marketplace` onto the same "Amazon
+ * Marketplace", and `registry.go:100-114` dedupes provider codes by exact
+ * string equality, so both are legal, distinct, simultaneously-registered
+ * providers. Two different marketplaces would render identically and the
+ * operator could not tell whose listing they were looking at. A slug that is
+ * merely ugly is a cosmetic problem; two providers wearing one name is wrong
+ * information, which is worse.
+ *
+ * So the transform is applied only where it is INJECTIVE: lower-case
+ * underscore slugs, where `"amazon_marketplace" → "Amazon Marketplace" →
+ * "amazon_marketplace"` returns the input unchanged. Anything else — hyphens,
+ * mixed case, embedded spaces, anything that would lose a character — renders
+ * verbatim, because an ugly identifier the operator can act on beats a pretty
+ * name that might be the wrong provider.
  */
 const providerDisplayNames: Record<string, string> = {
   mercado_livre: "Mercado Livre",
 };
 
+function typesetSlug(providerCode: string): string {
+  return providerCode
+    .split("_")
+    .map((word) => (word.length > 0 ? word.charAt(0).toUpperCase() + word.slice(1) : word))
+    .join(" ");
+}
+
 export function providerDisplayName(providerCode: string): string {
   const mapped = providerDisplayNames[providerCode];
   if (mapped) return mapped;
-  return providerCode
-    .split(/[_\-\s]+/)
-    .filter((word) => word.length > 0)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+
+  const typeset = typesetSlug(providerCode);
+  // The round-trip IS the injectivity check: if lowering the typeset form and
+  // restoring the separators does not reproduce the wire code byte for byte,
+  // then some other code could typeset to the same string, and the display
+  // would be ambiguous. Ambiguous loses to verbatim.
+  const restored = typeset.toLowerCase().split(" ").join("_");
+  return restored === providerCode ? typeset : providerCode;
 }
 
 /**
@@ -211,6 +254,32 @@ const directionGlyphs: Record<ProductLinkReasonDirection, string> = {
   INCOMPARABLE: "?",
 };
 
+/**
+ * Glyph for a direction, with the wire value itself standing in for one we have
+ * no glyph for.
+ *
+ * The wire-drift readers below matter MORE for `direction` than anywhere else
+ * on this row, because the V2 fix made the path reachable. The compact cell
+ * used to be `[...byDirection("AGAINST"), ...byDirection("FOR"),
+ * ...byDirection("UNAVAILABLE")]`, which silently DROPPED an unknown direction;
+ * the total ranking that replaced it keeps every reason, correctly. Undoing a
+ * silent filter must not install a literal "undefined" in its place — that
+ * would trade one invisible defect for a visible-but-meaningless one.
+ *
+ * Falling back to a KNOWN direction is not an option: "–" would read as
+ * UNAVAILABLE ("nothing to compare, ever") and "?" as INCOMPARABLE ("go
+ * register the value"), which are opposite operator actions. The wire word is
+ * the only honest thing to show (ADR-17).
+ */
+export function directionGlyph(direction: ProductLinkReasonDirection): string {
+  const glyph = directionGlyphs[direction];
+  return glyph ?? direction;
+}
+
+export function directionClass(direction: ProductLinkReasonDirection): string {
+  return directionClasses[direction] ?? unknownValueClasses;
+}
+
 function anchorShortLabel(anchor: string): string {
   return anchorShortLabels[anchor] ?? anchor;
 }
@@ -227,7 +296,7 @@ function compactChipLabel(reason: ProductLinkReason): string {
   // The side rides inline, not only in the tooltip: "where do I go fix it" is
   // the whole point of an INCOMPARABLE, and a tooltip is not readable on a scan.
   const anchor = side ? `${anchorShortLabel(reason.anchor)} (${side})` : anchorShortLabel(reason.anchor);
-  const head = `${directionGlyphs[reason.direction]} ${anchor}`;
+  const head = `${directionGlyph(reason.direction)} ${anchor}`;
   if (reason.direction === "AGAINST" && reason.detail) {
     return `${head}: ${reason.detail}`;
   }
@@ -240,7 +309,7 @@ function compactChip(reason: ProductLinkReason) {
       data-testid="motivo-chip"
       data-direction={reason.direction}
       title={reasonChipLabel(reason)}
-      className={`inline-flex max-w-[12rem] items-center truncate whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${directionClasses[reason.direction]}`}
+      className={`inline-flex max-w-[12rem] items-center truncate whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${directionClass(reason.direction)}`}
     >
       {compactChipLabel(reason)}
     </span>
@@ -260,6 +329,16 @@ const directionRank: Record<ProductLinkReasonDirection, number> = {
   INCOMPARABLE: 2,
   UNAVAILABLE: 3,
 };
+
+// A direction we cannot interpret ranks after all four we can, so it never
+// displaces an actionable signal out of the two compact slots. It is still
+// RANKED, not filtered — the whole point of the ordering being total.
+const UNKNOWN_DIRECTION_RANK = 4;
+
+function directionRankOf(direction: ProductLinkReasonDirection): number {
+  const rank = directionRank[direction];
+  return rank ?? UNKNOWN_DIRECTION_RANK;
+}
 
 /**
  * Motivo cell. Collapsed by default to keep the row one line tall (a 4-chip
@@ -284,7 +363,7 @@ function AnchorChips({ reasons }: { reasons: ProductLinkReason[] }) {
               {/* Expandido: o texto integral do motivo pode quebrar linha — o
                   chip nowrap do modo compacto seria cortado pelo limite do td. */}
               <span
-                className={`inline-block rounded-2xl px-2 py-0.5 text-xs font-medium ${directionClasses[reason.direction]}`}
+                className={`inline-block rounded-2xl px-2 py-0.5 text-xs font-medium ${directionClass(reason.direction)}`}
               >
                 {reasonChipLabel(reason)}
               </span>
@@ -321,7 +400,7 @@ function AnchorChips({ reasons }: { reasons: ProductLinkReason[] }) {
     .map((reason, index) => ({ reason, index }))
     // The index tiebreak keeps the wire order inside a direction, so the cell
     // does not reshuffle between renders for reasons that rank equally.
-    .sort((a, b) => directionRank[a.reason.direction] - directionRank[b.reason.direction] || a.index - b.index)
+    .sort((a, b) => directionRankOf(a.reason.direction) - directionRankOf(b.reason.direction) || a.index - b.index)
     .slice(0, COMPACT_CHIP_LIMIT)
     .map((entry) => entry.reason);
   const hidden = reasons.length - shown.length;
@@ -440,7 +519,7 @@ export function QueueRow({ candidate, onOpen, onApprove, onReject, pending, sele
           <UnknownValue hint="sem confiança sem candidato" />
         ) : (
           <div className="flex items-center gap-2">
-            {pill(bandLabels[candidate.confidence_band], bandClasses[candidate.confidence_band])}
+            {pill(bandLabel(candidate.confidence_band), bandClass(candidate.confidence_band))}
             <span className="font-mono text-xs font-medium tabular-nums text-muted">
               {confidencePercent(candidate.confidence)}
             </span>

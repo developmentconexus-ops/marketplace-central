@@ -561,12 +561,22 @@ Go in this write-set), so it names the site, the invariant, and the failure mode
 | 1 | Adversarial gate reviewer, round 1 (commit `fa6ca3a2`) | `gpt-5.6-sol` / `medium` | OS-process, explicit 0.144.4 binary, stdin closed, `--sandbox read-only` | prompt `evidence/PROMPT-gate-vincneutro-rev1.md` · verdict `evidence/REVIEW-gate-vincneutro-rev1.md` (3053 B) | **REFUTED** — V6 FAIL, V11 NOT-PROVEN. Both accepted; both fixed. |
 | 2 | Adversarial gate reviewer, round 2 (commit `7a343fea`, the fix) | `gpt-5.6-sol` / `medium` | same | prompt `evidence/PROMPT-gate-vincneutro-rev2.md` · verdict `evidence/REVIEW-gate-vincneutro-rev2.md` (2573 B) | **REFUTED**, 10/11 PASS. Derivation confirmed faithful; one finding (column placement) ESCALATED to the hub, not self-graded. |
 | 3 | Implementation + planning of the slice | **Opus, in-session — `inline (DESVIO §4.2)`** | none | — | Not dispatched. Hub ruling: do not re-do it, do not launder the ledger row, and make the Opus gate name these hunks as its priority target. Done — see `PROMPT-gate-vincneutro-opus.md` §PRIORITY TARGET. |
-| 4 | **Dual gate, OPUS side** (commits `fa6ca3a2` + `7a343fea`) | `harness:gate-reviewer` subagent, **opus**, read-only seat (Read/Grep/Glob; no Bash, no Write) | Agent tool, synchronous, frozen prompt read from disk | prompt `evidence/PROMPT-gate-vincneutro-opus.md` · verdict `evidence/REVIEW-gate-vincneutro-opus.md` | **REFUTED** — 9 PASS, 2 NOT-PROVEN (both seat limits), 4 findings. Three fixed in `<this commit>`; the fourth is the standing escalation. |
+| 4 | **Dual gate, OPUS side** (commits `fa6ca3a2` + `7a343fea`) | `harness:gate-reviewer` subagent, **opus**, read-only seat (Read/Grep/Glob; no Bash, no Write) | Agent tool, synchronous, frozen prompt read from disk | prompt `evidence/PROMPT-gate-vincneutro-opus.md` · verdict `evidence/REVIEW-gate-vincneutro-opus.md` | **REFUTED** — 9 PASS, 2 NOT-PROVEN (both seat limits), 4 findings. Three fixed in `394c83c`; the fourth is the standing escalation. |
+| 5 | **Re-gate of the fixes, GPT side** (commit `394c83c`) | `gpt-5.6-sol` / `medium` | OS-process, stdin closed, `--sandbox read-only` | prompt `evidence/PROMPT-gate-vincneutro-rev3.md` · verdict `evidence/REVIEW-gate-vincneutro-rev3.md` (`.last.md` 2218 B, non-zero, copied verbatim) | **REFUTED** — **V10 FAIL**. Caught what the Opus side explicitly cleared: `providerDisplayName` was lossy, colliding two registrable provider codes onto one name. Both findings accepted and fixed. |
+| 6 | **Re-gate of the fixes, OPUS side** (commit `394c83c`) | cold Opus subagent, read-only seat (no Bash / Edit / Write) | Agent tool, background, same frozen prompt as row 5 | verdict `evidence/REVIEW-gate-vincneutro-opus-rev2.md` — **transcribed, not captured: the task `.output` artifact came back 0 bytes** | **REFUTED** — 8 PASS, 3 NOT-PROVEN (all seat limits: no Bash, no EVIDENCE.md), 4 findings, all four verified independently and fixed. Its `V10: PASS` is **wrong** — it reviewed the pre-injectivity function and explicitly cleared the collision row 5 found. |
 
 Artifacts are copied **into the repo** under `evidence/`, not left in the session scratchpad — the
-scratchpad is temp-dir and does not survive. Both `.last.md` files were checked non-zero before
-being filed (streaming is not persisting: the three CHIP-ANCHORS-2 reviewers left 0-byte `.output`
-files and those verdicts are irrecoverable).
+scratchpad is temp-dir and does not survive. Every `.last.md` was checked non-zero before being
+filed (streaming is not persisting: the three CHIP-ANCHORS-2 reviewers left 0-byte `.output` files
+and those verdicts are irrecoverable).
+
+**Row 6 is the exception and is labelled as one.** The Opus re-gate's on-disk `.output` came back
+**0 bytes** — the same failure mode as CHIP-ANCHORS-2 — so its verdict reached this session only
+through the completion notification and is *transcribed*, not captured. It is filed as transcribed,
+with the provenance stated at the top of the artifact, rather than presented as a captured file.
+What keeps the round auditable is not the transcription: all four of its findings were re-derived
+independently against the named backend sources before any fix was written, and that derivation is
+in `evidence/V-round4-must-fail.txt` with file:line. The findings stand on that, not on the text.
 
 Planning and implementation ran **in-session (Opus, this chip session)**, not dispatched: the slice
 is one screen module inside an already-authored pack, and the pack named the defect and its
@@ -723,6 +733,39 @@ since verified the same scope independently and said so.
 
 ---
 
+### ROUND 4 — the re-gate of the fixes — **both sides REFUTED, both were right**
+
+Both sides ran on the same frozen input (`394c83c`) and the same frozen prompt
+(`evidence/PROMPT-gate-vincneutro-rev3.md`). Both came back REFUTED. Six findings between them, all
+six verified independently before any code moved, all six fixed. Full verbatim trail with the red
+runs: `evidence/V-round4-must-fail.txt`.
+
+**The two sides did not overlap on the thing that mattered, and that is the argument for the dual
+gate as a mechanism, not as a ritual.** The GPT side's single FAIL (V10, `providerDisplayName` is
+lossy) is precisely the point the Opus side had just cleared *by name* — attack 2, "the split
+`/[_\-\s]+/` only collapses separators, so no registered `provider_code` typesets into another
+provider's name." That sentence is false. `registry.go` `buildDefinitions` dedupes provider codes by
+exact string equality only, so `amazon_marketplace` and `amazon-marketplace` are both legal and can
+be registered simultaneously — and both rendered "Amazon Marketplace". Two providers wearing one
+name is wrong information; the raw slug it replaced was only ugly. One reviewer asserted the
+property; the other tested it.
+
+| # | Source | Finding | Verified against | Disposition |
+|---|---|---|---|---|
+| 1 | GPT rev3 | `providerDisplayName` collapses distinct registrable codes onto one display name | `integrations/adapters/providers/registry.go` `buildDefinitions` — dedupe is exact string equality | **FIXED.** Typeset applied only where it is INJECTIVE: the form must round-trip to the exact wire code, else verbatim. |
+| 2 | GPT rev3 | the unmapped-provider test proves one hard-coded pair and survives a constant fallback | the test itself | **FIXED.** Now renders three codes in one pass and asserts two stay distinct. Proven red against BOTH implementations the reviewer named — the lossy collapse *and* the fabricated `return "Shopee"`. |
+| 3 | Opus rev2 | drift hardening covered `match_status` only; `direction` is an unchecked `Record` index **and the V2 fix made it reachable** | `QueueRow.tsx` by grep-by-STRING | **FIXED, and extended.** The reviewer's reachability argument is exactly right: the old literal enumeration silently DROPPED an unknown direction, the new total sort keeps it. The same grep found a **fourth** site the reviewer did not name — `bandLabels`/`bandClasses` on `confidence_band` — whose pill renders with a class attribute ending in the literal `undefined`. Both hardened; fall-through is the wire value verbatim, never a known member. |
+| 4 | Opus rev2 | both "made honest" golden fixtures are still not producible — the `marca` motivo is missing | `KnownIdentityAnchors` (4 anchors) → `identity_anchor_adapter.go:28-35` (declares all 4) → `mercado_livre/capability_adapter.go:90` (declares 3 ⇒ `marca` unsupplied) → `classifyProviderIdentityAnchor` (:700-702, UNAVAILABLE, emit=true) | **CONFIRMED and FIXED.** Every mercado_livre candidate carries `marca` UNAVAILABLE. With 3 reasons and a 2-chip cap, production renders two chips **plus a "+1" toggle** — the golden was locking a layout the backend never emits. It now asserts the toggle. |
+| 5 | Opus rev2 | the NO_CANDIDATE fixtures carry `state: "exact_ean"` with `reasons: []` — same class, same file, left untouched by the previous fix | `applyUnresolvedScore` is the only NO_CANDIDATE path and is reached via `LinkCandidateStateUnresolved` (:215, :379), always seeding two absence reasons (:620-628) | **CONFIRMED and FIXED.** `state: "unresolved"` + the two INCOMPARABLE/erp reasons + `marca`. That fixture's `provider_code: "xyz-9"` also went to `mercado_livre`: no capability declaration exists for `xyz-9`, so no reason array could be claimed producible for it. |
+| 6 | Opus rev2 | after the swap the band pill has no positive assertion; only the negative off-theme sweep covers it | `git show bcab8269:…golden.test.tsx` | **FIXED, with one correction to the finding.** The finding left "did the pre-swap golden assert it?" NOT-PROVEN. It did not — pre-swap asserted `92%` and no band pill, and its only `ALTA` mention was a *negative* assertion in the NO_CANDIDATE row. So the swap did not LOSE the coverage; it never existed. The finding is still right that it should exist, and it now does on both bands. |
+
+**What round 4 cost the chip, stated plainly.** Two of the six findings (#4, #5) are the *same
+defect class the previous round's fix claimed to have closed*, one of them in the very file that fix
+edited. "I made the fixture honest" was an overclaim: what was actually done was to correct the
+confidence/band/status of the fixture, while its reasons array stayed a plausible invention. The
+generator was read for the scoring fields and not for the finalizing step
+(`appendProviderDeclaredUnavailableReasons`) that runs after every one of them.
+
 ## Verdict roll-up
 
 | Criterion | Verdict |
@@ -739,9 +782,11 @@ since verified the same scope independently and said so.
 | V10 neutral vocabulary, provider data intact | PASS — and now for a provider the map does not know, which is what the Opus side caught |
 | V11 no collateral damage | PASS |
 
-**Lanes, final.** `tsc` 15 → **12, zero under `pages/vinculos/`** (`evidence/L0-tsc-after-opus-fixes.txt`);
-vitest 62/511 → **63/522** (`evidence/L1-vitest-after-opus-fixes.txt`), the +2 over the previous
-count being the two regression tests the Opus gate forced.
+**Lanes, final.** `tsc` 15 → **12, zero under `pages/vinculos/`**
+(`evidence/L0-tsc-after-round4.txt` — the same 12 as the baseline; this chip neither added nor
+removed one); vitest 62/511 → **63/524** (`evidence/L1-vitest-after-round4.txt`), the +13 over the
+baseline being the regression tests the four gate rounds forced, the last two being the `direction`
+and `confidence_band` wire-drift tests.
 
 **P6 status — NOT self-declared discharged.** The earlier `AGREEMENT` in this file was written when
 both gate rounds were `gpt-5.6-sol`; the hub refused it, on two grounds that were both right: there
@@ -751,14 +796,26 @@ ran and came back REFUTED with three real code defects, all fixed in `394c83c`.
 The escalated item is now **closed by hub ruling** (option 1, code unchanged, the false parenthetical
 in D-122:136 corrected at its source — full record above). So nothing is open on the contract side.
 
-What is open is verification of the fixes themselves, and that is deliberate: `394c83c` is new code
-that was again written in-session, so closing it on my own say-so would repeat the mistake the hub
-just corrected. Both sides are running on that commit against one frozen prompt
-(`evidence/PROMPT-gate-vincneutro-rev3.md`), attacking specifically whether the fixes introduced new
-defects — above all whether the runtime guard loosened the compile-time exhaustiveness this chip is
-built on. That last one is already answered by construction rather than by argument, before either
-reviewer reports: widening the union by one member makes the compiler name the missing member
-(`evidence/V-compiletime-guard-still-bites.txt`).
+Both sides then re-gated `394c83c` against one frozen prompt
+(`evidence/PROMPT-gate-vincneutro-rev3.md`) and **both returned REFUTED** — six findings, all
+verified independently, all fixed in this commit (round 4 above). The prompt's first attack, whether
+the runtime guard loosened the compile-time exhaustiveness this chip is built on, was answered by
+construction before either reviewer reported: widening the union by one member makes the compiler
+name the missing member (`evidence/V-compiletime-guard-still-bites.txt`), and both sides
+independently reached the same conclusion.
 
-The `P6-DUAL-GATE:` line and the `AGREEMENT` marker are the hub's to write once those two rounds
-close. Not this chip's.
+**Where that leaves P6, honestly: no round of this gate has yet returned APPROVED on the code as it
+now stands.** Four rounds have run, each found real defects, each was fixed — but the fixes to
+rounds 3 and 4 have themselves not been reviewed by anyone but their author. The last two rounds are
+the reason not to wave that away: round 4 found that two of round 3's fixes were the *same* defect
+class round 3 claimed to have closed. This chip is not in a position to certify that round 4 broke
+that pattern, because it is the same author.
+
+So this file does **not** declare P6 discharged and does not carry an `AGREEMENT` marker. What it
+asserts is narrower and checkable: V1–V11 hold on the current tree, the lanes are green
+(`L0-tsc-after-round4.txt`, `L1-vitest-after-round4.txt`), and every finding raised by any reviewer
+is either fixed with a red-first artifact or recorded as a REPORT/REQUEST.
+
+Whether one more round is required, and whether the ledger's row-6 provenance gap (a transcribed
+rather than captured Opus verdict) is acceptable, are the hub's calls. The `P6-DUAL-GATE:` line and
+the `AGREEMENT` marker remain the hub's to write. Not this chip's.

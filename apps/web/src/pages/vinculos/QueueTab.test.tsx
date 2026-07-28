@@ -337,7 +337,7 @@ describe("QueueTab", () => {
     expect(container.textContent).not.toContain("mercado_livre");
   });
 
-  it("does not leak the raw slug of a provider it has no display name for", async () => {
+  it("typesets an unmapped provider without ever collapsing two distinct codes onto one name", async () => {
     listProductLinkCandidates.mockResolvedValue({
       items: [
         candidate({
@@ -350,14 +350,44 @@ describe("QueueTab", () => {
           internal_product_id: 111,
           internal_product_name: "Parafuso A",
         }),
+        // Two codes that a naive "split on any separator" would render
+        // identically. `registry.go:100-114` dedupes provider codes by exact
+        // string equality, so both can be registered at once — and then the
+        // operator cannot tell whose listing they are looking at.
+        candidate({
+          candidate_id: "cand_2",
+          provider_item_id: "AMZ1",
+          provider_code: "amazon_marketplace",
+          internal_product_id: 222,
+          internal_product_name: "Parafuso B",
+        }),
+        candidate({
+          candidate_id: "cand_3",
+          provider_item_id: "AMZ2",
+          provider_code: "amazon-marketplace",
+          internal_product_id: 333,
+          internal_product_name: "Parafuso C",
+        }),
       ],
     });
 
     const { container } = renderTab();
-    const row = await screen.findByTestId("queue-row");
+    const rows = await screen.findAllByTestId("queue-row");
+    const [shopee, underscored, hyphenated] = rows;
 
-    expect(within(row).getByText("Shopee")).toBeInTheDocument();
+    // The clean underscore slug is typeset...
+    expect(within(shopee).getByText("Shopee")).toBeInTheDocument();
+    expect(within(underscored).getByText("Amazon Marketplace")).toBeInTheDocument();
+
+    // ...and the hyphenated code keeps its hyphen, so the two providers never
+    // wear the same name. This is the assertion neither a constant fallback
+    // ("always Shopee") nor a separator-collapsing typeset can survive.
+    expect(within(hyphenated).getByText("Amazon-marketplace")).toBeInTheDocument();
+    expect(within(hyphenated).queryByText("Amazon Marketplace")).not.toBeInTheDocument();
+
+    // No lower-case slug of a provider we CAN name reaches the screen.
     expect(container.textContent).not.toContain("shopee");
+    expect(container.textContent).not.toContain("amazon_marketplace");
   });
 
   it("removes the item from the queue after an approve + page-local invalidation", async () => {
@@ -581,5 +611,82 @@ describe("QueueTab", () => {
     // And the cell says "unknown" rather than naming an anchor it cannot know.
     expect(within(row).queryByTestId("identificado-por")).not.toBeInTheDocument();
     expect(row.querySelectorAll("td")[5].textContent).toBe("—");
+  });
+
+  // Same wire-drift class as the test above, on the OTHER two unions the row
+  // indexes by Record. `direction` matters most: the compact cell used to
+  // enumerate three literals, which silently DROPPED an unknown direction; the
+  // ranking sort that replaced it (the V2 fix) keeps every reason, so the fix
+  // made this path reachable. Undoing a silent filter must not install a
+  // literal "undefined" in its place.
+  it("survives a reason direction the SDK union does not know, without printing undefined", async () => {
+    listProductLinkCandidates.mockResolvedValue({
+      items: [
+        candidate({
+          candidate_id: "cand_dir",
+          provider_item_id: "MLB_DIR",
+          internal_product_id: 111,
+          internal_product_name: "Parafuso A",
+          reasons: [
+            { anchor: "ean", direction: "PARTIAL" as ProductLinkCandidateItem["reasons"][number]["direction"], detail: "ean parcial" },
+            { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato" },
+          ],
+        }),
+      ],
+    });
+
+    renderTab();
+
+    const row = await screen.findByTestId("queue-row");
+    const chips = within(row).getAllByTestId("motivo-chip");
+
+    // Both reasons keep their place — an unknown direction is not filtered out.
+    expect(chips).toHaveLength(2);
+
+    // The known one is unaffected...
+    expect(within(row).getByText("✓ SKU")).toBeInTheDocument();
+
+    // ...and the unknown one falls through VERBATIM, exactly as an unknown
+    // anchor does (V9): the wire word instead of a glyph we do not have.
+    // Never the string "undefined", in the text or in the class attribute.
+    expect(within(row).getByText("PARTIAL EAN")).toBeInTheDocument();
+    expect(row.textContent).not.toContain("undefined");
+    for (const chip of chips) {
+      expect(chip.getAttribute("class") ?? "").not.toContain("undefined");
+    }
+
+    // The unknown direction ranks LAST, so it never displaces a signal the
+    // operator can act on out of the two compact slots.
+    expect(chips[0].textContent).toBe("✓ SKU");
+    expect(chips[1].textContent).toBe("PARTIAL EAN");
+  });
+
+  it("survives a confidence_band the SDK union does not know, without printing undefined", async () => {
+    listProductLinkCandidates.mockResolvedValue({
+      items: [
+        candidate({
+          candidate_id: "cand_band",
+          provider_item_id: "MLB_BAND",
+          internal_product_id: 111,
+          internal_product_name: "Parafuso A",
+          confidence: 72,
+          confidence_band: "CRITICA" as ProductLinkCandidateItem["confidence_band"],
+        }),
+      ],
+    });
+
+    renderTab();
+
+    const row = await screen.findByTestId("queue-row");
+
+    // The band the wire actually sent, verbatim — not a blank pill, and not a
+    // band we would be inventing by falling back to one of the three we know.
+    expect(within(row).getByText("CRITICA")).toBeInTheDocument();
+    // The confidence itself is a number and is unaffected by the band drift.
+    expect(within(row).getByText("72%")).toBeInTheDocument();
+    expect(row.textContent).not.toContain("undefined");
+    for (const el of Array.from(row.querySelectorAll<HTMLElement>("[class]"))) {
+      expect(el.getAttribute("class") ?? "").not.toContain("undefined");
+    }
   });
 });

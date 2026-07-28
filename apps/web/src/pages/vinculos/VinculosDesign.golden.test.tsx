@@ -71,6 +71,19 @@ function base(overrides: Partial<ProductLinkCandidateItem>): ProductLinkCandidat
         side: "provider",
         detail: "sem CODPROD para corroborar o EAN",
       },
+      // The THIRD reason every candidate carries, and the one that makes this
+      // fixture producible instead of merely plausible.
+      // `appendProviderDeclaredUnavailableReasons` walks the provider's DECLARED
+      // anchors (generation_service.go:671-698) and emits one for every anchor
+      // with no FOR/AGAINST signal. `marca` is always in `KnownIdentityAnchors`
+      // (connectors/ports/marketplace_capability.go:40-45), so the adapter always
+      // declares it (identity_anchor_adapter.go:28-35) — and `mercado_livre`
+      // declares only seller_sku/ean/title as supplied
+      // (mercado_livre/capability_adapter.go:90), so `marca` arrives
+      // `Supplied: false` and classifies UNAVAILABLE at generation_service.go:704.
+      // Every mercado_livre candidate has it. A fixture without it locks a row
+      // the backend never emits.
+      { anchor: "marca", direction: "UNAVAILABLE", detail: "provider não fornece a âncora marca" },
     ],
     created_at: "2026-07-19T12:00:00Z",
     updated_at: "2026-07-19T12:00:00Z",
@@ -131,7 +144,12 @@ describe("Vínculos design golden", () => {
     // single product is the confirmation queue (D-121), so it names EAN alone;
     // "CODPROD + EAN" is reserved for the corroborated ACCEPT.
     expect(cells.getByTestId("identificado-por")).toHaveTextContent("EAN");
-    expect(cells.getByText("60%")).toBeInTheDocument(); // CONFIANÇA
+    // CONFIANÇA — banda E %. The band pill is asserted POSITIVELY, with its
+    // token pair: the off-theme sweep below is a negative test and would still
+    // pass if the pill lost its tokens entirely.
+    expect(cells.getByText("60%")).toBeInTheDocument();
+    const bandPill = cells.getByText("MEDIA");
+    expect(bandPill).toHaveClass("bg-amber-soft", "text-amber");
     // MOTIVO — compact chip: motivo (anchor) sempre visível, detail no tooltip
     // (IC-01: % nunca aparece sozinho). Forma completa fica no title e na
     // expansão "+N" / no drawer.
@@ -143,6 +161,11 @@ describe("Vínculos design golden", () => {
     const incomparableChip = cells.getByText("? SKU (falta no anúncio)");
     expect(incomparableChip).toBeInTheDocument();
     expect(incomparableChip).toHaveAttribute("data-direction", "INCOMPARABLE");
+    // ...and the third reason (the always-present `marca`) does NOT get a third
+    // chip: the cell caps at two and offers the rest behind "+1". This is the
+    // layout the backend actually produces, which is the point of a golden.
+    expect(cells.getAllByTestId("motivo-chip")).toHaveLength(2);
+    expect(cells.getByRole("button", { name: "Mostrar todos os 3 motivos" })).toBeInTheDocument();
     expect(cells.getByRole("button", { name: "Vincular" })).toBeInTheDocument(); // AÇÃO
 
     // Column headers present (anúncio-cêntrica order).
@@ -157,7 +180,6 @@ describe("Vínculos design golden", () => {
         base({
           candidate_id: "cand_nc",
           provider_item_id: "MLB999",
-          provider_code: "xyz-9",
           match_status: "NO_CANDIDATE",
           match_input: "none",
           match_value: undefined,
@@ -165,7 +187,28 @@ describe("Vínculos design golden", () => {
           confidence_band: "BAIXA",
           internal_product_id: undefined,
           internal_product_name: undefined,
-          reasons: [],
+          // `applyUnresolvedScore` (generation_service.go:620-628) is the ONLY
+          // path that emits NO_CANDIDATE, and it is reached through
+          // `newCandidate(..., LinkCandidateStateUnresolved, ...MatchInputNone, ...)`
+          // at :215/:379. So `state` is `unresolved` — the fixture inherited
+          // `exact_ean` from base(), a pair the generator cannot produce.
+          state: "unresolved",
+          // And it is never reason-less: the two anchors that found nothing are
+          // named (INCOMPARABLE on the ERP side, because no ERP product matched
+          // at all — missingMatchedAnchorReason with a nil product,
+          // generation_service.go:631-645), plus the always-declared `marca`.
+          // "sem candidato" with an empty Motivo cell is exactly the silent row
+          // M05-C5 forbids.
+          reasons: [
+            {
+              anchor: "seller_sku",
+              direction: "INCOMPARABLE",
+              side: "erp",
+              detail: "seller_sku sem correspondência",
+            },
+            { anchor: "ean", direction: "INCOMPARABLE", side: "erp", detail: "ean sem correspondência" },
+            { anchor: "marca", direction: "UNAVAILABLE", detail: "provider não fornece a âncora marca" },
+          ],
         }),
       ],
     });
@@ -204,6 +247,10 @@ describe("Vínculos design golden", () => {
           reasons: [
             { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
             { anchor: "ean", direction: "FOR", detail: "ean corrobora o mesmo codprod (unproved)" },
+            // Same always-declared `marca` as in base(): `buildConcordantCandidate`
+            // (generation_service.go:493-507) also finalizes through
+            // `appendProviderDeclaredUnavailableReasons`.
+            { anchor: "marca", direction: "UNAVAILABLE", detail: "provider não fornece a âncora marca" },
           ],
         }),
         base({
@@ -211,15 +258,33 @@ describe("Vínculos design golden", () => {
           provider_item_id: "MLB999",
           match_status: "NO_CANDIDATE",
           match_input: "none",
+          match_value: undefined,
           confidence: 0,
           confidence_band: "BAIXA",
-          reasons: [],
+          internal_product_id: undefined,
+          internal_product_name: undefined,
+          state: "unresolved",
+          reasons: [
+            {
+              anchor: "seller_sku",
+              direction: "INCOMPARABLE",
+              side: "erp",
+              detail: "seller_sku sem correspondência",
+            },
+            { anchor: "ean", direction: "INCOMPARABLE", side: "erp", detail: "ean sem correspondência" },
+            { anchor: "marca", direction: "UNAVAILABLE", detail: "provider não fornece a âncora marca" },
+          ],
         }),
       ],
     });
 
     const { container } = renderPage();
-    await screen.findAllByTestId("queue-row");
+    const [accept] = await screen.findAllByTestId("queue-row");
+
+    // Positive ALTA coverage. The sweep below only proves no OFF-theme class is
+    // present; it would pass just as well if the pill rendered with no tokens
+    // at all, so the accent pair is asserted here, on the row that carries it.
+    expect(within(accept).getByText("ALTA")).toHaveClass("bg-accent-soft", "text-accent-ink");
 
     const offenders = Array.from(container.querySelectorAll<HTMLElement>("[class]"))
       .map((el) => el.getAttribute("class") ?? "")
