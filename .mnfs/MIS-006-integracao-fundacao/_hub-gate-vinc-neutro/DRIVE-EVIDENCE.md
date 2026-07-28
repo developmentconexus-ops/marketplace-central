@@ -75,6 +75,39 @@ de exibir.
 O comentário imediatamente acima da expressão afirma *"Ranking (never filtering) is what keeps at
 least one motivo on screen"*. Com a quarta direção existindo, essa frase é **falsa na `main`**.
 
+### (b2) O raio de alcance do fix: **3 das 9 linhas**, não as nove
+
+Extraído por CHIP-VINC-NEUTRO da tabela acima, contra o próprio interesse dele. Rodando o rank NOVO
+(`AGAINST 0 · FOR 1 · INCOMPARABLE 2 · UNAVAILABLE 3`) nas mesmas nove linhas:
+
+| linha | velho | novo | muda? |
+|---|---|---|---|
+| 70% (×3) | `[FOR, UNAVAILABLE]` | `[FOR, INCOMPARABLE]` | **SIM** |
+| 40% (×2) | `[AGAINST, FOR]` | `[AGAINST, FOR]` | não |
+| 20% (×4) | `[AGAINST, UNAVAILABLE]` | `[AGAINST, UNAVAILABLE]` | não |
+
+**Seis das nove renderizam idênticas.** Esse é o tamanho real do fix na tela de hoje. As seis não são
+desperdício: são as que o rank velho já ordenava certo **por acidente**, por não conterem
+INCOMPARABLE — e um guard que só acerta por ausência do caso não é guard.
+
+O `hidden` fecha junto: nas três de 70% o `+1` velho contava o INCOMPARABLE, **inominável em limite
+nenhum**; o `+1` novo conta o `marca UNAVAILABLE`, que a expansão nomeia. Mesmo botão, mesmo número,
+só que agora promete o que a célula consegue entregar.
+
+Corroboração independente da origem das linhas de 20%: só DUAS razões ⇒ AGAINST solitário ⇒
+`applyCollisionScore`, não `applyConflictScore` (que emite dois sinais) — coerente com o F-1 ser
+duplicação de colisão entre âncoras.
+
+### (b3) O que este artefato NÃO cobre — limite escrito pelo próprio chip
+
+O drive testemunha **3 dos 16 sítios** da `PRODUCIBLE_SITES` do mecanismo. Os outros 13 seguem
+**producíveis e não-testemunhados**. O drive não torna o mecanismo mais forte; torna-o mais bem
+DELIMITADO — separa o que é descrito por MEDIÇÃO do que é descrito por DEDUÇÃO.
+
+**Tratar estas nove linhas como cobertura do wire é super-leitura**: são 9 linhas, 1 provider, 1
+instalação, 1 dia. Um assento que concluir "o wire está coberto" a partir daqui está errado, e o
+erro é do assento, não do artefato.
+
 ### (c) `side` colapsa: dois fatos, um texto
 
 Os três `ean INCOMPARABLE` vivos, com o `detail` do wire:
