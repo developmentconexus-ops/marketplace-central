@@ -1,3 +1,7 @@
+> **CORRECTED AT SOURCE (R-24) — the population below was measured with `grep -c`, which counts
+> LINES, not matches. It read 51; there are 53. Read `## CORRECTION` at the end before using any
+> number in this file. The two counts and the residual are restated there.**
+
 # Count reconciliation, run by this chip against its OWN pack
 
 Binding: `docs/HARNESS-PROFILE.md` §11, amendment `0cb6d7e` — *"a sweep is only as wide as its
@@ -86,3 +90,76 @@ the same drift exposure `driftCandidate` exists for, in a union the mechanism ne
 never claimed to. Filed as a REPORT to the hub, not fixed here — the hub ordered one freeze per
 round, and widening the freeze to a component outside the round's delta is the chip deciding
 its own scope.
+
+---
+
+## CORRECTION (hub executor seat, round 6 pre-dispatch, per R-24)
+
+The hub's executor seat verified this artifact instead of accepting it, and the population above is
+**wrong**. Everything after this heading supersedes the numbers before it.
+
+### The defect: `grep -c` counts LINES
+
+```
+grep -rc 'candidate_id:' … | sum   →  51    ← the number reported above
+grep -roh 'candidate_id:' | wc -l  →  53    ← occurrences, which is what was CLAIMED
+```
+
+The claim was a count of THINGS (fixture sites). The instrument was a count of LINES. The two
+diverge exactly when two sites share a line, and two do:
+
+```
+pages/vinculos/BatchPreviewModal.test.tsx:46  x2  approvals: [{ candidate_id: "cand_1" }, { candidate_id: "cand_2" }],
+pages/vinculos/QueueTab.test.tsx:656          x2  approvals: [{ candidate_id: "cand_1" }, { candidate_id: "cand_2" }],
+```
+
+### `soma_confere=True` did not save it, and that is the finding
+
+The original run printed `51 = 36 + 15, soma_confere=True`. The corrected run prints
+`53 = 36 + 17, soma_confere=True`. **Both reconcile.** Consistent arithmetic over the wrong
+population is still consistent — a reconciliation can close and remain short by exactly as much as
+the instrument cannot see. The hub's sentence, kept because it is the lesson: *"uma reconciliação
+pode fechar e ainda estar curta exatamente do tanto que o instrumento não enxerga."*
+
+### Corrected counts
+
+| | count | what it is |
+|---|---|---|
+| population (occurrences) | **53** | every `candidate_id:` MATCH in a test file |
+| extraction | **36** | candidate objects built through the throwing constructor — unchanged |
+| residual | **17** | batch payload refs; both extra occurrences land here, on `approvals:` lines |
+| | 36 + 17 = 53 | |
+
+Per file: `QueueTab.test.tsx` 30 built / 8 refs · `BatchPreviewModal.test.tsx` 0 / 9 ·
+`VinculosDesign.golden.test.tsx` 5 / 0 · `VinculosPage.test.tsx` 1 / 0.
+
+### Must-fail of the CORRECTED instrument, three arms
+
+Arm C is new and exists only because of this defect: a raw fixture with **two occurrences on one
+line** — the exact shape the old instrument could not count.
+
+```
+baseline                     POPULACAO=53  EXTRACAO=36  REFS=17
+arm A  raw candidate, known file      -> NAO-CONSTRUIDO, QueueTab.test.tsx:947
+arm B  raw candidate, unnamed file    -> NAO-CONSTRUIDO, ArmB.test.tsx:1
+arm C  two occurrences on one line    -> NAO-CONSTRUIDO, ArmC.test.tsx:1  (counted x2)
+with all three                POPULACAO=57  EXTRACAO=36  REFS=21
+```
+
+And the discriminating run — the OLD instrument against the SAME mutated tree:
+
+```
+old (per line)        POPULACAO=54  EXTRACAO=36  REFS=18  soma_confere=True
+corrected (per match) POPULACAO=57  EXTRACAO=36  REFS=21  soma_confere=True
+```
+
+Three short: the two pre-existing double lines plus arm C's second occurrence. The old instrument
+reports `soma_confere=True` while missing all three, which is why the arm exists.
+
+### Where this sits in the sequence
+
+Third instance of one class inside this chip's own work, all three an instrument wider or narrower
+than the fact: `[a-z_]` dropping capitals and accents (round 5), `status:` matching `match_status:`
+(caught by this chip's own must-fail), and now `grep -c` counting lines. The first two were caught
+by this chip; this one was not. It was caught by a seat that verified the artifact instead of
+reading its conclusion — which is the entire argument for the executor seat existing.

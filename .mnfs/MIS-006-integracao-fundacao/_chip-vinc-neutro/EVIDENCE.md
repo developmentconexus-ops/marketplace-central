@@ -622,8 +622,8 @@ Go in this write-set), so it names the site, the invariant, and the failure mode
 | 6 | **Re-gate of the fixes, OPUS side** (commit `394c83c`) | cold Opus subagent, read-only seat (no Bash / Edit / Write) | Agent tool, background, same frozen prompt as row 5 | verdict `evidence/REVIEW-gate-vincneutro-opus-rev2.md` — **transcribed, not captured: the task `.output` artifact came back 0 bytes** | **REFUTED** — 8 PASS, 3 NOT-PROVEN (all seat limits: no Bash, no EVIDENCE.md), 4 findings, all four verified independently and fixed. Its `V10: PASS` is **wrong** — it reviewed the pre-injectivity function and explicitly cleared the collision row 5 found. |
 | 7 | **Round 5 delta gate, GPT side** (range `394c83c..3915f33b`) | `gpt-5.6-sol` / `medium` | OS-process, stdin closed, `--sandbox read-only`, `-o` straight into `evidence/` | prompt `evidence/PROMPT-gate-round5-delta-sol.md` · verdict `evidence/REVIEW-gate-vincneutro-sol-rev4.md` (**captured** by `-o`, non-zero) · log `evidence/agent__gate-r5-sol.log` | **REFUTED** — V10 FAIL, 4 findings, all four verified against primary source and fixed. Caught the drawer's PRIVATE second copy of `bandClasses` — the structure round 4 hardened in `QueueRow` and declared closed — and the injectivity check running on the built string rather than the painted one. |
 | 8 | **Round 5 delta gate, OPUS side** (same range) | `harness:gate-reviewer` subagent, **opus**, read-only seat (Read/Grep/Glob; no Bash, no Write) | Agent tool, background, frozen prompt read from disk | prompt `evidence/PROMPT-gate-round5-delta.md` · verdict `evidence/REVIEW-gate-vincneutro-opus-rev3.md` — **transcribed**, the seat has no Write by construction, provenance declared at the artifact's head | **REFUTED** — 9 PASS, V5/V11 NOT-PROVEN (as its prompt instructed for those two items), 4 findings, all verified and fixed. It did **not** reaffirm the refuted `V10: PASS`. Its finding 1 killed this chip's "producible under a capability declaration" disposition outright, citing `resolveIdentityAnchors`'s abort — **"a dodge, not an honest degrade"**, a classification accepted as stated. |
-| 9 | **Round 6 delta gate, GPT side** (range `4c000a04..7b5c18eb`) | `gpt-5.6-sol` / `medium` | OS-process, stdin closed, `--sandbox read-only`, `-o` to `agent__r6-sol.last.md` | prompt `evidence/PROMPT-gate-vincneutro-round6.md` (frozen at `5d2b905a`, before either dispatch) · log `agent__r6-sol.log` | **DISPATCHED** — row filed at dispatch time, outcome not yet known. First attempt died: `&` inside an already-backgrounded shell, log 0 bytes, sentinel absent. Re-dispatched without it. |
-| 10 | **Round 6 delta gate, OPUS side** (same range) | `harness:gate-reviewer` subagent, **opus**, read-only seat (Read/Grep/Glob; no Bash, no Write) | Agent tool, background, same frozen prompt read from disk | prompt `evidence/PROMPT-gate-vincneutro-round6.md` | **DISPATCHED** — row filed at dispatch time, outcome not yet known. |
+| 9 | **Round 6 delta gate, GPT side** (range `4c000a04..7b5c18eb`) | `gpt-5.6-sol` / `medium` | OS-process, stdin closed, `--sandbox read-only`, `-o` to `agent__r6-sol.last.md` | prompt `evidence/PROMPT-gate-vincneutro-round6.md` (frozen at `5d2b905a`, before either dispatch) · log `agent__r6-sol.log` | **ABORTED before reading** — dispatched at `7b5c18eb`, then STOPPED by this chip when the hub's executor seat found the population count short by two. No verdict was produced and none is claimed. (An earlier attempt had also died on `&` inside an already-backgrounded shell: exit 0 on the wrapper, log 0 bytes, sentinel absent.) Re-dispatch after the re-freeze. |
+| 10 | **Round 6 delta gate, OPUS side** (same range) | `harness:gate-reviewer` subagent, **opus**, read-only seat (Read/Grep/Glob; no Bash, no Write) | Agent tool, background, same frozen prompt read from disk | prompt `evidence/PROMPT-gate-vincneutro-round6.md` | **ABORTED before reading** — stopped with the GPT side; the seat had read only the brief's first lines. No verdict produced, none claimed. Re-dispatch after the re-freeze. |
 | — | **Executor seat, round 6** | the HUB, own detached worktree `.claude/worktrees/hub-exec-vinc`, own `npm ci` | not this chip's dispatch | reported in-message; lanes, four must-fail arms, merge-of-proof | **RAN at `2e5331b6`** — lanes confirmed independently (12 / 0-in-vinculos, 64 / 531), merge proven clean (0 conflicts, merged tree 67 / 544 green), and **found the sentinel defect this chip had not**. Re-run at `7b5c18eb` offered by the hub. |
 
 **Round 5 is a DELTA round, not a fifth of the same** (hub ruling). Scope is the code no reviewer
@@ -977,8 +977,21 @@ onto the implementer: *"você roda a mesma varredura contra o próprio pack ante
 at `2e5331b6`, before the freeze. Both counts printed, as the amendment requires:
 
 ```
-POPULACAO=51  EXTRACAO=36  REFS=15  soma_confere=True
+POPULACAO=51  EXTRACAO=36  REFS=15  soma_confere=True      <- WRONG, corrected below
+POPULACAO=53  EXTRACAO=36  REFS=17  soma_confere=True      <- occurrences, not lines
 ```
+
+**The first line is short by two, and the hub's executor seat found it rather than accepting it.**
+`grep -c` counts LINES, not matches; the claim was a count of fixture SITES. Two sites share a line
+in each of `BatchPreviewModal.test.tsx:46` and `QueueTab.test.tsx:656`, both `approvals: [{…}, {…}]`.
+Both extra occurrences land in the batch-ref residual, so extraction is unchanged at 36.
+
+`soma_confere=True` printed on BOTH runs, and that is the finding, not a footnote: consistent
+arithmetic over the wrong population is still consistent. A reconciliation can close and remain
+short by exactly the amount the instrument cannot see. Arm C was added for it — a raw fixture with
+two occurrences on ONE line — and run against both instruments on the same mutated tree: the old
+one reports 54, the corrected one 57, and the old one still says `soma_confere=True` while missing
+all three.
 
 Population anchored loosely — `candidate_id:` across **every** `*.test.ts*` in `apps/web/src`, not
 only under `pages/vinculos/`, because the 29th fixture survived four rounds by living outside the
