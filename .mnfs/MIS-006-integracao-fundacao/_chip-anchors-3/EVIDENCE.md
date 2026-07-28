@@ -34,6 +34,8 @@ ordem_f5: painel /importacoes prometia funil (importados -> vinculados -> enfile
 ordem_f5_contrato: hub concedeu escopo MAIOR que o pedido — summary e description 200 reescritos (prosa livre nao quebra nada; deixar "processing chain" ao lado de descriptions verdadeiras seria anotar a falsidade ao lado da verdade, R-25). grep -c "processing chain" = 0. Path/operationId/ref/schema ficam: RESIDUO DECLARADO — o identificador continua afirmando sequencia, a prosa nao; divida conhecida, nao lacuna (sao QUATRO sitios, nao dois: operationId nao estava na tabela do hub). Delta prosa-pura provado: sdk-runtime 8+/0-, zero linha adicionada nao-comentario, sha256 identico com comentarios removidos; OpenAPI inteiro carregado com yaml.safe_load nas duas revisoes e IDENTICO removendo toda description/summary. sdk tsc EXIT 0, sdk vitest 77 passed.
 ordem_f5_correcao: eu publiquei "20 erros pre-existentes" no tsc de apps/web em b91c7507. 20 e a contagem de LINHAS da saida; erros TS sao 15 em 10 arquivos (grep -c "error TS"). Conjunto byte-identico antes/depois, zero em importacoes nas duas medicoes. Confundi unidade de saida com unidade de erro no mesmo dia em que a ordem era sobre unidades nao nomeadas.
 ordem_f5_drive: DESCARREGADO. Hub dirigiu /importacoes/eac3ac9e-b87b-43be-959c-7bf1f11a07f1 (#001-E) no build de b91c7507, registro 5da4b013, ZERO erro de console. Renderizou "Estado da importacao" + "Tres medidas independentes... nao sao etapas de um funil." + Linhas importadas 55 / Produtos vinculados 0 / Linhas na fila de sync 55. Conferido por string contra o fonte; seta no fonte = False. O drive e de b91c7507 e o tip e b97cd9a8: o unico delta renderizavel e a copia de ERRO (errorDetail), que so aparece no ramo de erro e esta coberta por vitest, nao por navegador — declarado, nao escondido. Mecanismo (§6): compose resolve env_file: contra o diretorio do projeto e worktree nao tem .env; criar .env no worktree e PROIBIDO (credencial viva em arvore de chip); hub faz git checkout do arquivo do grant na arvore dele, dirige, e reverte.
+gate_round_7: SEM AGREEMENT — Opus BLOCKED, Sol CLEAR. VERDICTS-round7.md (5236ca0d). 1 problema meu (o link Ver cadeia em ImportacaoSection.tsx:151, chamador que eu nao varri), 2 de redacao de criterio do hub (F5-3 nao dizia ONDE o residuo mora; F5-4 nao nomeava o par de revisoes) — e foram esses dois que fizeram os assentos divergirem.
+rodada_8: rotulo Ver cadeia -> Ver estado no chamador + asserção do nome acessivel; must-fail prova que o teste falha PELO NOME quando o defeito volta. Varredura de apps/web/src INTEIRO entregue verbatim: uma unica superficie leva a /importacoes/<id>, o resto de chain e identificador que nao renderiza, e o chain de precos/ e homonimo (resolver COTACAO->PADRAO). F5-3: divida declarada no OpenAPI (description do schema) E no TSDoc do SDK — pack nao conta. F5-4: delta vs main POR CLASSE, 4 sitios de TIPO todos de CORR-3 (invalid_import_id + 400 nas duas rotas), ZERO do F-5; ErpImportChain igual a main ignorando prosa.
 status: NAO FECHADO PELO CHIP. Sem AGREEMENT em 5 rounds; a linha P6-DUAL-GATE e o merge sao do hub. Todo achado dos dois lados verificado por STRING pelo chip, um recusado com motivo.
 authority: .mnfs/MIS-006-integracao-fundacao/_hub-gate-anchors-2/p6-reconciliation-r1.md
 contract: .mnfs/MIS-006-integracao-fundacao/_chip-anchors-3/validation-contract.md
@@ -953,6 +955,142 @@ Os mesmos `55 / 0 / 55` que liam como funil quebrado leem como três medidas. Co
 
 ---
 
+
+## Rodada 8 — o bloqueante do Opus: a porta de entrada ainda prometia a cadeia
+
+Veredito da rodada 7: **sem AGREEMENT** (Opus BLOCKED, Sol CLEAR), `_hub-gate-anchors-3/VERDICTS-round7.md`
+(`5236ca0d`). Dos três problemas, **um é meu**; os outros dois são de redação de critério do hub
+(F5-3 não dizia ONDE o resíduo tem que morar; F5-4 não nomeava o par de revisões) e foram a razão de os
+assentos divergirem.
+
+**O meu:** eu escopei o F-5 no painel e **não olhei o chamador**. O link que leva ao painel se chamava
+`Ver cadeia` — a porta de entrada afirmando a sequência que o destino nega, na mesma jornada, a um
+clique. A alegação era TOTAL sobre a **jornada**, não sobre o arquivo.
+
+### Varredura — `apps/web/src` INTEIRO, verbatim, não "varri e está limpo"
+
+```
+=== 1. 'cadeia' (case-insensitive), TODO apps/web/src ===
+./pages/importacoes/ImportacaoSection.test.tsx:89:  ...getAllByRole("link", { name: "Ver cadeia" })[0]...
+./pages/importacoes/ImportacaoSection.tsx:151:            Ver cadeia
+
+=== 2. 'chain' (case-insensitive), fora de ImportChainPanel* ===
+./pages/importacoes/ImportacaoDetailPage.test.tsx:7,11,16,20,21,40,41   getErpImportChain / testid erp-import-chain
+./pages/importacoes/ImportacaoDetailPage.tsx:2,21                        import ImportChainPanel
+./pages/importacoes/useErpImportChain.ts:5,6,15,19,20                    hook, queryKey ["erp-imports","chain",id]
+./pages/precos/PricingMatrix.{tsx,test.tsx} · PricingPage.{tsx,test.tsx} · SolverPanel.{tsx,test.tsx}
+                                                                         "backend resolver chain" (COTACAO→PADRAO)
+
+=== 3. superfícies que levam a /importacoes/<id> ===
+./app/AppRouter.tsx:69                    <Route path="/importacoes/:importId" …>
+./pages/importacoes/ImportacaoSection.tsx:148   to={`/importacoes/${item.import_id}`}
+./pages/integracoes/IntegracoesPage.tsx:6       importa ImportacaoSection
+./routes/importacoes.tsx:1,2                    wiring de rota
+```
+
+O que a varredura decide, e é por isso que ela vai verbatim:
+
+1. **Existe exatamente UMA superfície que leva a `/importacoes/<id>`** e nomeia o destino:
+   `ImportacaoSection.tsx:148` + o rótulo em `:151`. `AppRouter` e `routes/importacoes.tsx` são fiação,
+   não nomeiam nada ao operador; `IntegracoesPage` monta a seção sem rotular.
+2. **As ocorrências de `chain` que sobram são todas identificador** — `getErpImportChain`,
+   `ImportChainPanel`, `queryKey ["erp-imports","chain",…]`, `data-testid="erp-import-chain"`. É a
+   dívida declarada, não texto de operador. **Nenhuma delas renderiza.**
+3. **As de `precos/` são homônimo, não a mesma coisa**: "backend resolver chain" é a cadeia de
+   resolução COTACAO→PADRAO de comissão, não tem relação com importação. Ficam.
+
+### O reparo, sob o grant (duas cadeias)
+
+```
+ImportacaoSection.tsx:151        "Ver cadeia"  →  "Ver estado"
+ImportacaoSection.test.tsx:89    name: "Ver cadeia"  →  name: "Ver estado"
+```
+
+`Ver estado` e não `Ver detalhes`: o botão vizinho (`:145`) já é `Ver detalhes` e expande a linha
+**inline** — dois controles com o mesmo nome acessível, um expandindo e outro navegando, seria trocar
+uma falsidade por uma ambiguidade. `Ver estado` casa com o destino, que se chama `Estado da importação`.
+
+### Must-fail, porque asserção de rótulo não pode se certificar sozinha
+
+```
+# rótulo revertido para "Ver cadeia" no FONTE, teste intacto
+vitest run ImportacaoSection.test.tsx
+  FAIL  ImportacaoSection > renders import rows with protocol, status, and counts
+  TestingLibraryElementError: Unable to find an accessible element with the role "link"
+                              and name "Ver estado"
+  Tests  1 failed | 4 passed (5)                                          EXIT 1
+
+# restaurado
+vitest run ImportacaoSection.test.tsx    Tests  5 passed (5)              EXIT 0
+```
+
+O teste falha **pelo nome acessível**, que é o que o operador lê — não por `data-testid`, que
+sobreviveria à falsidade.
+
+### F5-3 respondido: a dívida agora está onde o CONSUMIDOR lê
+
+O defeito de critério que o hub reconheceu é mais fundo que redação, e ele tem razão: **dívida declarada
+só no pack não está declarada para ninguém.** Quem gera SDK vê `getErpImportChain` e nada mais.
+Declarada nas duas superfícies que o consumidor lê:
+
+- `contracts/api/marketplace-central.openapi.yaml`, `description` do schema `ErpImportChain`: o
+  identificador `chain` sobrevive no path, no `operationId` e no nome do schema **só porque renomear
+  quebraria consumidores publicados** — não afirma sequência, e nenhuma ordem entre as três medidas
+  deve ser inferida dele.
+- `packages/sdk-runtime/src/erpImport.ts`, TSDoc de `ErpImportChain`: a mesma frase, onde o dev de FE
+  a lê no hover.
+
+### F5-4 respondido: delta do SDK contra a `main`, POR CLASSE, com a linha de tipo nomeada
+
+A alegação total morre (R-24 aplicado ao critério). Os dois assentos estavam certos sobre perguntas
+diferentes: Sol mediu `b91c7507..b97cd9a8` (comment-only **verdadeiro**), Opus mediu contra a `main`
+(**mudança de tipo**, correta). Enumeração contra a `main`:
+
+| Classe | Sítio | O quê |
+|---|---|---|
+| **TIPO** | `sdk-runtime/src/erpImport.ts` | `\| "invalid_import_id"` acrescentado à união `ErpImportError.error` |
+| **TIPO** | OpenAPI `ErpImportError.error` | `enum` passa de 4 para 5 membros (`invalid_import_id`) |
+| **TIPO** | OpenAPI `/erp/imports/{id}` | respostas `[200,404,500]` → `[200,400,404,500]` |
+| **TIPO** | OpenAPI `/erp/imports/{id}/chain` | respostas `[200,404,500]` → `[200,400,404,500]` |
+| comentário | `sdk-runtime/src/erpImport.ts` | TSDoc de `ErpImportChain` (unidades + dívida) |
+| teste | `sdk-runtime/src/erpImport.test.ts` | `+13/−1`, asserção do enum e do 400 nas DUAS rotas |
+| prosa | OpenAPI `ErpImportChain` | **igual à `main` ignorando `description`/`summary`** |
+
+As quatro linhas de tipo são **todas de CORR-3** (o `400 invalid_import_id`), já julgado em rodadas
+anteriores; **nenhuma** é do F-5. Medido: `strip(ErpImportChain) == strip(main:ErpImportChain)` = **True**,
+`strip(ErpImportError)` = **False**. O trabalho do F-5 é integralmente prosa; o que muda tipo veio antes
+dele.
+
+### Registro superseded do drive — DATADO, não deletado (ruling do hub)
+
+A seção do F-5 acima diz que o drive é de `b91c7507` e que o tip é `b97cd9a8`. **Isso era verdade em
+`b97cd9a8` e deixou de ser** quando o hub redirigiu no tip. Não se deleta: R-25 manda apagar falsidade
+sem custo de quebra, e registro do que era verdade num commit é **história** — apagá-lo sumiria com o
+rastro de que o primeiro drive foi no commit errado, e esse rastro não é meu. O que a tornaria mentira é
+lê-la no presente. Então fica com a data:
+
+> **SUPERSEDED em 2026-07-28 por `120bce9` (`_hub-gate-anchors-3/DRIVE-EVIDENCE-f5.md`).** O hub
+> redirigiu no tip `57666417`, com três telas e a captura completa (a primeira estava faltando a última
+> linha renderizada, `Fila lida em: 28/07/2026, 18:47`). O drive é **PARCIAL**: FE e SDK vêm do tip, o
+> **backend é o binário da `main`** — todo veredito que dependa de resposta de servidor vale contra a
+> `main`. E o drive de erro que eu havia proposto (`uuid` válido inexistente) teria exercitado
+> `404 import_not_found`, que renderiza **outra** string, não a que eu mudei: escolher o drive é escolher
+> uma população, e escolher a errada tem a mesma forma do fixture inalcançável da rodada 5.
+
+### Lane da rodada 8
+
+```
+vitest run src/pages/importacoes src/pages/integracoes   5 files, 29 passed        EXIT 0
+must-fail do rótulo                                      1 failed / 4 passed       EXIT 1  (defeito reposto)
+restaurado                                               5 passed                  EXIT 0
+sdk-runtime tsc --noEmit                                 EXIT 0
+sdk-runtime vitest                                       5 files, 77 passed        EXIT 0
+apps/web tsc --noEmit                                    15 erros PRÉ-EXISTENTES   EXIT 2
+                                                         conjunto byte-idêntico ao da rodada anterior
+                                                         (diff das linhas `error TS` EXIT 0), 0 em importacoes
+```
+
+---
 
 ## REPORTs — o que este chip NÃO fechou
 

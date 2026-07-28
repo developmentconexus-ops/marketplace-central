@@ -49,6 +49,10 @@ export interface ErpImportDetail extends ErpImportSummary {
  * Three independent measures over one ERP import — not stages of a funnel and not one
  * population decomposed. Two units: `importados` and `enfileirados` count import ROWS,
  * `vinculados` counts internal PRODUCTS. `enfileirados > vinculados` is a normal state.
+ *
+ * The name "chain" — here, in `getErpImportChain` and in the `/chain` path — survives only
+ * because renaming it would break published consumers. It asserts no sequence: infer no
+ * ordering between the three measures from it.
  */
 export interface ErpImportChain {
   protocol: string;

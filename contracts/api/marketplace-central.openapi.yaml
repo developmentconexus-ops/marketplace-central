@@ -8096,7 +8096,10 @@ components:
         enfileirados count import ROWS, vinculados counts internal PRODUCTS. A product can sit
         in the queue with no link at all, so enfileirados > vinculados is a normal state and
         not an error; so is vinculados = 0 with both others non-zero. Comparing them as
-        successive stages will always be wrong.
+        successive stages will always be wrong. The identifier "chain" survives in the path
+        /erp/imports/{id}/chain, in operationId getErpImportChain and in this schema name only
+        because renaming them would break published consumers — it does NOT assert a sequence,
+        and no ordering between the three measures should be inferred from it.
       required: [protocol, importados, vinculados, enfileirados, queue_read_at]
       properties:
         protocol:
