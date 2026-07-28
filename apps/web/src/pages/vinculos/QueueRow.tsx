@@ -410,9 +410,26 @@ function AnchorChips({ reasons }: { reasons: ProductLinkReason[] }) {
   // This USED to be `[...byDirection("AGAINST"), ...byDirection("FOR"),
   // ...byDirection("UNAVAILABLE")]` — an enumeration by string literal. It is
   // type-correct, so the compiler said nothing when D-B added a fourth
-  // direction, and the "ranking" quietly became a FILTER: a row whose motivos
-  // are all INCOMPARABLE produced an empty `shown` and rendered a lone "+N"
-  // button with zero chips — the exact opposite of the invariant above.
+  // direction, and the "ranking" quietly became a FILTER: INCOMPARABLE matched
+  // no branch, so it was not merely ranked last, it was UNDISPLAYABLE.
+  //
+  // What that costs on real data, stated at the size it actually is. The
+  // headline case — every motivo INCOMPARABLE, `shown` empty, a lone "+N" over
+  // zero chips — is PRODUCIBLE but NOT REACHABLE in this tree, and the
+  // difference matters. `resolveIdentityAnchors` (:149-169) aborts unless the
+  // declaration resolves, and the only declaration here is `mercado_livre`,
+  // which does not supply `marca`; so every live row carries a `marca`
+  // UNAVAILABLE, which the old expression DID match. The empty cell needs a
+  // provider that supplies all four anchors. None exists yet.
+  //
+  // The reachable half is smaller and real, and it is the one that pays for
+  // this change: with COMPACT_CHIP_LIMIT === 2, a row holding a FOR, an `ean`
+  // INCOMPARABLE and the `marca` UNAVAILABLE spent both slots on the FOR and on
+  // `marca` — permanent, actionable by no one — while the INCOMPARABLE, which
+  // the operator CAN act on, could not be shown at any limit. `directionRank`
+  // puts INCOMPARABLE (2) ahead of UNAVAILABLE (3), so those rows now surface
+  // the actionable absence and push `marca` behind the "+N". Rows of exactly
+  // that shape are on the screen today.
   //
   // A sort over a Record<Direction, number> is total by construction: every
   // reason keeps a place in the ordering, so `shown` is empty only when

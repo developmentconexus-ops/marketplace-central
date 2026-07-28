@@ -43,9 +43,30 @@ const shown = [...byDirection("AGAINST"), ...byDirection("FOR"), ...byDirection(
 ```
 
 Enumeration by string literal: type-correct, therefore silent when D-B added a fourth direction.
-A row whose motivos are all `INCOMPARABLE` fell through every branch — `shown` empty, `hidden > 0`
-— and the cell rendered a lone `+2` with zero chips. A filter wearing a ranking's comment, against
-the ADR-17 invariant the file documents at `:154-156`.
+`INCOMPARABLE` matched no branch, so it was not ranked last — it was UNDISPLAYABLE. A filter
+wearing a ranking's comment, against the ADR-17 invariant the file documents at `:154-156`.
+
+> **CORREÇÃO (rodada 8, escrita depois do drive do hub em dado real).** Este parágrafo dizia antes
+> que *"uma linha cujos motivos são todos `INCOMPARABLE` … renderiza um `+2` sozinho com zero
+> chips"*, e apresentava isso como o defeito. Como afirmação sobre a TELA, é falsa, e o erro é meu:
+> confundi **producível** com **alcançável**.
+>
+> `resolveIdentityAnchors` (`:149-169`) aborta a geração se a declaração não resolve, e a única
+> declaração desta árvore é `mercado_livre`, que **não** supre `marca`. Logo toda linha viva carrega
+> um `marca` UNAVAILABLE — direção que a expressão velha **casava**. A célula vazia exige um provider
+> que supra as quatro âncoras; nenhum existe. O hub confirmou dirigindo: nenhuma linha sem chip.
+>
+> O meu próprio mecanismo já tinha registrado metade disso antes do drive — a fixture do teste é
+> `driftCandidate` com a razão escrita *"No declaration emits it … unreachable"*. O que eu não fiz
+> foi propagar essa conclusão para cá, onde a alegação de valor mora. Guard corrigido, prosa
+> mantida: mesma classe do chip inteiro, um nível acima do código.
+>
+> **O defeito ALCANÇÁVEL, que é o que este fix compra**, é menor e real: com `COMPACT_CHIP_LIMIT`
+> = 2, uma linha com um FOR, um `ean` INCOMPARABLE e o `marca` UNAVAILABLE gastava os dois slots no
+> FOR e no `marca` — permanente, acionável por ninguém — enquanto o INCOMPARABLE, sobre o qual o
+> operador PODE agir, não aparecia em limite nenhum. `directionRank` põe INCOMPARABLE (2) à frente
+> de UNAVAILABLE (3), então essas linhas passam a mostrar a ausência acionável. O drive do hub achou
+> **três** linhas exatamente dessa forma, vivas hoje.
 
 **The fix** — ranking that is total by construction, not by enumeration:
 
@@ -83,8 +104,15 @@ enumeration and re-ran the file:
 
 The motivo cell's DOM in the failing run, quoted from the artifact — **how many chips appeared and
 what the button said**: the `<ul class="flex min-w-0 items-center gap-1" />` is EMPTY (zero chips),
-next to `<button aria-label="Mostrar todos os 2 motivos" …>+2</button>`. Exactly the screen the
-contract forbids. `Tests 1 failed | 9 skipped (10)`. Fix restored, file green.
+next to `<button aria-label="Mostrar todos os 2 motivos" …>+2</button>`. `Tests 1 failed | 9 skipped
+(10)`. Fix restored, file green.
+
+> **ESCOPO deste must-fail, corrigido junto com o de cima.** Ele roda sobre a fixture INALCANÇÁVEL,
+> logo prova que o guard DISCRIMINA — a expressão velha volta, o teste fica vermelho — e **não**
+> prova que a tela de hoje mostrava a célula vazia. Não mostrava. O must-fail que fala do dado vivo
+> é o vizinho, `ranks INCOMPARABLE above UNAVAILABLE without dropping either`, que dirige o mesmo
+> defeito a partir de um conjunto de motivos que o backend realmente emite. Dizer "exatamente a tela
+> que o contrato proíbe" era emprestar ao artefato inalcançável a autoridade do alcançável.
 
 ## V4 — the `side` of `INCOMPARABLE` reaches the operator — **PASS**
 
@@ -103,6 +131,21 @@ export function reasonSideLabel(reason: ProductLinkReason): string | undefined {
 Rendered inline in the compact chip (`QueueRow.tsx:156`) and in the drawer pill via the shared
 `reasonChipLabel`. Asserted at `QueueTab.test.tsx:206-207`:
 `"? SKU (falta no anúncio)"` and `"? EAN (falta no ERP)"`.
+
+**Confirmado em dado vivo pelo hub (rodada 8), e é aqui que o valor deste chip está.** O drive achou
+três `ean INCOMPARABLE` na tela, com `detail` **byte-idêntico** e sides diferentes:
+
+```
+side=both      detail=sem EAN para corroborar o CODPROD
+side=both      detail=sem EAN para corroborar o CODPROD
+side=provider  detail=sem EAN para corroborar o CODPROD
+```
+
+`both` = nenhum dos dois lados tem EAN; `provider` = o ERP tem, o anúncio não. Fatos operacionais
+diferentes — um manda cadastrar no ERP, o outro manda corrigir o anúncio — com texto igual. Quem
+separa é `reasonSideLabel`, lendo o campo. Sem ele a distinção **não existe na tela**, e a única
+alternativa seria adivinhar pelo português do `detail`, que é o mesmo nos três. Este é o defeito
+alcançável do chip, medido em dado real, e não é o que o critério V-1 descreve.
 
 **The side-less path is named, not invented.** `generation_service.go:711` returns
 `(DirectionIncomparable, "", "não foi possível comparar a âncora %s", true)` — an `INCOMPARABLE`
