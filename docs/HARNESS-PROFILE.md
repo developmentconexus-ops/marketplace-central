@@ -741,6 +741,31 @@ zero hand-written exceptions, and the sentence becomes true.
   MIS-003 W1). `Test-HarnessPreflight.ps1` surfaces `git-index-lock` as an advisory check
   before writer dispatch.
 
+### The hub ANNOUNCES the cut — a freeze the chip cannot observe is not a freeze
+
+The gate's input is frozen the moment the hub generates the diff, and until that moment the chip
+is working normally and correctly. A chip cannot honour a freeze whose start it was never told.
+Every round where a chip "violated the freeze" by committing after dispatch is first a round
+where the hub cut the patch in silence.
+
+- The hub sends the chip a CUT message naming the tip the patch was generated from, in the same
+  act as generating it. From that tip the chip writes nothing until the verdict returns.
+- A chip commit that arrives after the cut does not automatically void the round. The hub
+  measures the delta and applies one discriminator: **does it touch production code, or anything
+  a returned verdict rests on?** No to both → the round stands, and the delta is recorded as
+  HUB-verified rather than seat-verified, stated in exactly those words. Yes to either → re-cut
+  and re-dispatch.
+- The residual is named, not hidden: for a standing round, some lines were verified by one
+  reader instead of two. Burning two fresh seats over a dead-mock deletion is the point-fix the
+  third-round rule exists to prevent; pretending the patch was current is the falsity R-25 bans.
+
+Field evidence (CHIP-VINC-NEUTRO round 7): the hub cut a 2,662-line patch at `293c1485` and told
+nobody. The chip then landed `2b956e19`, deleting a genuinely dead mock and the comment that had
+predicted its own falsity — a correction the cold seat independently filed as a REPORT on the
+same locus. Delta measured: one test file, 18/20, zero production lines. Round stood. The chip
+reported the collision itself and refused to decide the hub's question for it, which is the
+behaviour the rule is written to preserve.
+
 ### An automated gate must name the tree it measured, or its verdict is unattributable
 
 A hook, script or lane that reports on "the repo" without naming WHICH checkout it read produces
@@ -845,3 +870,4 @@ retroactive GPT-5.6 Sol medium review at mission closeout (operator's call).
 2026-07-28 · §11 (new subsection) · ratified · GATE CUSTODY, two failures in one round (CHIP-ANCHORS-3 round 3, findings 6+8). (a) PERSISTENCE IS THE ORCHESTRATOR'S STEP, never delegated to the seat: a brief telling the seat to write its own verdict persists nothing and fails differently per side — the cold Opus seat has no Write BY CONSTRUCTION (same property that makes it a reading seat) and the Sol sandbox refuses outright (`patch rejected: writing is blocked by read-only sandbox`); the orchestrator pastes verbatim in the same act the verdict arrives, before analysis, and a refused `apply_patch` is RECOVERABLE from the rollout (strip the `+` prefix — "208 lines, zero unprefixed lines" is checkable, "transcribed" is not). Residual risk is OMISSION, unfalsifiable from the artifact, which is why the paste comes first. (b) `git status --porcelain .mnfs/<pack>` CLEAN belongs in the gate brief: the chip ran six commits with EVIDENCE.md, dispatches/ and six p6-*.patch UNTRACKED (`git check-ignore` exits 1 — omission, not a rule), and the seat reads the pack FROM DISK so nothing in the review surfaces it; for six commits both gate verdicts existed only inside a DISPOSABLE worktree. The hub checks the same before teardown — a merge is not proof, it carries tracked files only
 2026-07-28 · §11 (new subsection) · ratified · AN AUTOMATED GATE MUST NAME THE TREE IT MEASURED. Second occurrence in one session of the Stop hook reporting `CLOSED claimed but no evidence pack exists in this worktree (.mnfs/**/_chip-*/EVIDENCE.md)` against a tree that is not the hub's checkout: the primary carries 15 `_chip-*/EVIDENCE.md` and each in-flight chip carries its own on its branch, while `.claude/worktrees/epic-lehmann-4ffbad/.mnfs/` holds MIS-001..004 and no MIS-006 pack at all. BOTH halves of the accusation were false — no `CLOSED` was sent either (the token appeared inside ORDERS to chips). Binds: an automated verdict about repo state prints the absolute path and tip SHA it measured, in the same message as the verdict; without both it is `unknown`, not `fail`, and does not license a human-visible accusation. Reader re-measures in the NAMED checkout before acting. The cost is not the wasted check but that an alarm wrong twice trains its reader to skip the third — the hub named this trigger on the first occurrence and this is the second
 2026-07-28 · §2 · corrected · the profile printed the COPYABLE line `GOCACHE=.gocache` three times (L0, L1, and the §7 pre-pass), the first of them three lines above the rule requiring an ABSOLUTE path. A chip copied it and got an 83-byte EXIT 1 with zero `=== RUN` — the sixth instance of vacuous green, and the only one the doctrine itself handed over. Relative literals removed from all three sites and replaced with a pointer to the rule; the rule now carries both the pwsh and the bash binding, extends to `GOMODCACHE`, and states that this file prints no copyable relative form. A doctrine artifact that hands you the line it forbids is worse than one that says nothing (CHIP-ANCHORS-3 field REPORT on a hub-owned file — the chip measured it instead of working around it in silence)
+2026-07-28 · §11 (new subsection) · ratified · THE HUB ANNOUNCES THE CUT. A chip cannot honour a freeze whose start it was never told, so every "the chip wrote during the gate" round is first a round where the hub generated the diff in silence. Binds: the hub sends a CUT message naming the tip the patch came from, in the same act as generating it; a later chip commit does not automatically void the round — the hub measures the delta and asks whether it touches production code or anything a returned verdict rests on, standing the round with the delta recorded as HUB-verified rather than seat-verified (in those words) when the answer is no to both, re-cutting when it is yes to either. CHIP-VINC-NEUTRO r7: hub cut 2,662 lines at `293c1485` and told nobody; the chip then landed `2b956e19` deleting a genuinely dead mock and the comment that had predicted its own falsity — a correction the cold seat independently filed as a REPORT on the same locus. Delta: one test file, 18/20, zero production lines; round stood. Second hub-side instance of the same shape as the mid-wave merge (`678a6d51`): the hub changed shared state and did not tell the party it bound
