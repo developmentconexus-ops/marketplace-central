@@ -217,7 +217,8 @@ Required: Yes
 Status: Pending
 Evidence:
 - Command: diff do OpenAPI spec — comparar path/schema da seção chain-read (M-06) contra a seção
-  active-source (M-02, `/tenants/{tenant_id}/active-source`)
+  active-source (M-02, `/config/active-source` — a redação original citava
+  `/tenants/{tenant_id}/active-source`, path que nunca landou)
 - Expected: nenhum overlap de path ou schema entre as duas seções
 - Actual:
 - Artifact:
