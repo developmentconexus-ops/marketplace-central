@@ -444,6 +444,39 @@ Binding on the executing seat:
 - **Skips are a result, not a footnote.** A lane that can skip must report the skip count, or
   its artifact cannot distinguish ran-and-passed from never-ran.
 
+### The gate's artifacts are the orchestrator's to persist, and the pack must be IN GIT
+`status: ratified` · `provenance: 2026-07-28 · CHIP-ANCHORS-3 round 3, findings 6 and 8`
+
+Two failures of custody, same round, same pack. Neither is about review quality — both are about the
+verdict surviving long enough to be read.
+
+**Persistence is a step of the ORCHESTRATOR, never delegated to the seat.** A brief that tells the
+seat to write its own verdict to a path persists nothing, and it fails differently on each side:
+the cold Opus seat has **no Write tool by construction** (§11 third seat — that is the same property
+that makes it a reading seat), and the Sol seat's sandbox refused the write outright —
+`patch rejected: writing is blocked by read-only sandbox`. So the brief asks for something one seat
+cannot do and the other is forbidden to do, and the failure is silent in both cases: the verdict
+arrives in the completion notification and nowhere else.
+
+- The orchestrator writes the artifact **in the same act in which the verdict arrives**, before any
+  analysis. Verbatim paste first; reading second.
+- A refused `apply_patch` is **recoverable**: its payload is in the rollout, and stripping the `+`
+  prefix yields the seat's literal intended file. State that provenance in the artifact head, plus
+  the seat's tool-set. `208 lines, zero unprefixed lines` is a checkable claim; "transcribed" is not.
+- The residual risk is OMISSION, not fabrication, and it is unfalsifiable from the artifact. That is
+  why the paste comes first.
+
+**`git status --porcelain .mnfs/<pack>` clean belongs in the gate brief.** CHIP-ANCHORS-3 ran six
+commits with `EVIDENCE.md`, `dispatches/` and six `p6-*.patch` files **untracked** — `git check-ignore`
+exits 1, so no rule ignored them; it was omission. The seat reads the pack **from disk** and cannot
+tell the difference, so nothing in the review surfaces it. For six commits the two verdicts that cost
+the most to obtain existed only in the filesystem of a **disposable worktree** — and the hub destroys
+those routinely on close.
+
+The hub checks the same thing before it destroys anything: a worktree teardown after an untracked
+pack is a silent, permanent loss of the gate record, and the merge is not proof (a merge carries
+tracked files only).
+
 ### Third-round rule — a third defect of the same shape stops the patching
 `status: ratified` · `provenance: 2026-07-25 · operator ruling, D-121 · field evidence CHIP-M05 (6 dual-gate rounds)`
 
@@ -597,3 +630,4 @@ retroactive GPT-5.6 Sol medium review at mission closeout (operator's call).
 2026-07-28 · §11 (new subsection) · ratified · a DELTA brief must order a CLASS sweep, or the second occurrence is structurally invisible: a brief that NAMES the site to re-examine teaches the seat to stop at it. CHIP-ANCHORS-3 round 2 — the Sol seat checked the named site, found it corrected, returned `Findings: None` on a file carrying the same false universal 83 lines below, findable by a one-line `grep`; the Opus seat swept on its own initiative and returned REFUTED with it. The seat that returned None did literally what the brief asked, so the defect is the BRIEF's. Binds: give the class as searchable tokens (`never`/`always`/`only`/`unreachable`/`cannot`/`no longer`/`every` for false-totality prose), a verdict with no SWEEP section is incomplete on its face, and the AUTHOR runs the same sweep against their own pack before publishing. Hub corollary: an approving verdict corroborates only within the scope it declares having swept — `Findings: None` with no declared scope does not out-vote a REFUTED verified by string, so splits of this shape are not ties (chip-authored field finding, ratified verbatim)
 2026-07-28 · §11 (new subsection) · ratified · VACUOUS GREEN — an instrument that passes for a reason unrelated to the code; sibling of stable-but-non-discriminating (§3), except it never looked at either world. Exit 0 is not evidence that anything ran. Four instances in one afternoon of the hub's executing seat on CHIP-ANCHORS-3: (1) `-run 'TestX'` naming the CONTEXT function of a patch hunk header instead of the added test → `no tests to run`, PASS; (2) the target file carries `//go:build integration`, so a green `go test ./...` (153 packages, 107 `ok`) never compiled it; (3) `-tags integration` without `MPC_TEST_DATABASE_URL` → every DB test skips → `ok`; (4) the integration lane runs without `-v` and records only target/status/run_id, so a fully skipped run and a fully green run are byte-identical in `summary.txt` (CHIP-IMPORT-CHAIN field finding #1, independent). Binds the executing seat: COUNT never tail (`ok=N`, `no test files=N`, `FAIL=N`), prove the command can go red before believing a green, name tests by grepping `^func Test` (the `@@` context line names the PRECEDING function), and report skip counts as a result rather than a footnote
 2026-07-28 · §11 (new subsection) · ratified · A SWEEP IS ONLY AS WIDE AS ITS PATTERN — the members an extraction cannot MATCH are not reported as unchecked, they are not reported at all, so the instrument's blind spot is invisible in its own output. Verified by string at the hub on `3915f33b`: a document titled `EXHAUSTIVE FIXTURE SWEEP` proved its exhaustiveness with `grep -oh 'anchor: "[a-z_]*"'` against a population of `grep -c 'anchor: "'` = 23; the character class cannot match a capital or an accent, so `"SKU idêntico"` (×2), `"Título parcial"` and `"EAN"` were invisible — ONE violation reported where there were five, and a machine re-sweep of the same file returned 13 failed / 5 passed against the document's two findings. Binds any sweep offered as class-closure evidence: reconcile population count against extraction count and PRINT BOTH (unequal without a stated reason = the sweep reports its own blind spot, one extra `grep`); must-fail the pattern against a known member; after a sweep has failed twice the next artifact is a MECHANISM, not a wider regex. Corollary: a sweep run by the same faculty that produced the defect inherits the defect — here the narrow reading appeared in three layers (the fixtures, the sweep, and the proof the sweep was exhaustive), and the count reconciliation is cheap precisely because it does not depend on that faculty (CHIP-VINC-NEUTRO round 5 field finding)
+2026-07-28 · §11 (new subsection) · ratified · GATE CUSTODY, two failures in one round (CHIP-ANCHORS-3 round 3, findings 6+8). (a) PERSISTENCE IS THE ORCHESTRATOR'S STEP, never delegated to the seat: a brief telling the seat to write its own verdict persists nothing and fails differently per side — the cold Opus seat has no Write BY CONSTRUCTION (same property that makes it a reading seat) and the Sol sandbox refuses outright (`patch rejected: writing is blocked by read-only sandbox`); the orchestrator pastes verbatim in the same act the verdict arrives, before analysis, and a refused `apply_patch` is RECOVERABLE from the rollout (strip the `+` prefix — "208 lines, zero unprefixed lines" is checkable, "transcribed" is not). Residual risk is OMISSION, unfalsifiable from the artifact, which is why the paste comes first. (b) `git status --porcelain .mnfs/<pack>` CLEAN belongs in the gate brief: the chip ran six commits with EVIDENCE.md, dispatches/ and six p6-*.patch UNTRACKED (`git check-ignore` exits 1 — omission, not a rule), and the seat reads the pack FROM DISK so nothing in the review surfaces it; for six commits both gate verdicts existed only inside a DISPOSABLE worktree. The hub checks the same before teardown — a merge is not proof, it carries tracked files only
