@@ -14,7 +14,23 @@ merge lê, porque o hook varre a working tree de `main` antes de o branch do chi
 
 ---
 
-P6-DUAL-GATE: AGREEMENT
+P6-DUAL-GATE: REFUTED — round 1 do gate real, ver `p6-reconciliation-r1.md`
+
+> **Este marcador foi corrigido em 2026-07-28, depois do merge.** Ele dizia `AGREEMENT` com uma
+> declaração honesta de que faltava o verdict do lado GPT. O operador determinou que declarar a
+> lacuna não é o mesmo que fechá-la, e exigiu o dual gate que a harness prescreve — Opus e Sol
+> medium, adversarial, específico sobre o que foi implementado e o que impacta. O gate rodou e
+> **os dois lados REPROVARAM, independentemente, por caminhos diferentes**, sobre o mesmo input
+> congelado (`p6-input-r1.patch`, sha256 `0762d05f…dd32`).
+>
+> O merge `dbdcdfb1` fica registrado como **mergeado e NÃO aprovado por gate**. Os corretivos
+> CORR-1..CORR-6 estão nomeados na reconciliação e caem em `main`. O bloqueante que ninguém
+> tinha visto — nem os dois gates anteriores do chip, nem este hub na leitura pré-merge — é o
+> B-01: o classificador decide se o lado ERP tem a âncora `seller_sku` lendo `refforn`, e emite
+> um motivo que afirma que o produto ERP não tem CODPROD.
+>
+> A seção "O que este AGREEMENT cobre" abaixo fica como está, porque descreve com precisão o que
+> aconteceu antes desta correção. Ela está SUPERSEDIDA como veredito e preservada como registro.
 
 LIVE-WAIVED-BY-OPERATOR: waiver dado pelo operador em 2026-07-28, com a alternativa e o risco
 declarados antes da escolha. F-04 é o único item com superfície live e não tem tela até a onda 2; o
