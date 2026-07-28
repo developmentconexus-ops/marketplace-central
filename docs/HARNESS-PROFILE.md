@@ -430,6 +430,10 @@ Four instances, one afternoon:
 4. The integration lane runs `go test -tags=integration` **without `-v`** and its artifact
    records only `target`/`status`/`run_id`, so a fully skipped run and a fully green run are
    **byte-identical** in `summary.txt` (CHIP-IMPORT-CHAIN field finding #1, independent).
+5. `grep -E "^ *(Test Files|Tests)"` over vitest output returns **empty, exit 0** — vitest emits
+   ANSI colour escapes BEFORE the leading whitespace, so `^ *` never anchors. The command ran,
+   the tests ran, and the *measuring instrument* saw nothing. Hit independently by the hub
+   executing seat and by CHIP-VINC-NEUTRO on the same day, 2026-07-28.
 
 Binding on the executing seat:
 
@@ -443,6 +447,10 @@ Binding on the executing seat:
   context line names the PRECEDING function.
 - **Skips are a result, not a footnote.** A lane that can skip must report the skip count, or
   its artifact cannot distinguish ran-and-passed from never-ran.
+- **An empty filter is a failed measurement, not a clean result.** Before grepping any captured
+  output, print its byte and line count; a non-empty file whose filter yields zero lines means
+  the PATTERN failed, not the run. On any coloured tool (vitest, vite, npm), strip escapes first
+  — `sed 's/\x1b\[[0-9;]*m//g'` — because `^`-anchored patterns cannot see past them.
 
 ### The gate's artifacts are the orchestrator's to persist, and the pack must be IN GIT
 `status: ratified` · `provenance: 2026-07-28 · CHIP-ANCHORS-3 round 3, findings 6 and 8`
