@@ -629,6 +629,68 @@ CHIP-VINC-NEUTRO round 6 returned both seats REFUTED with three findings that we
 in the chip's own write-set, and all confirmed by the hub by string. That is the gate on target.
 Rigor stays on behaviour, mutation, and execution; it leaves prose-about-prose.
 
+### The reading seats are given the DIFF, not the pack
+`status: ratified` · `provenance: 2026-07-28 · D-122 · field evidence CHIP-ANCHORS-3 r1-r4 (4 rounds, 0 AGREEMENT, last one comment-only)`
+
+The subsection above asks the seats for discipline. This one removes the need for it. A rule that
+depends on a reviewer choosing not to report what is in front of them is informational; the
+structural form is to stop putting it in front of them. Four rounds were spent amending the rules
+of the gate while feeding it the same input.
+
+**Reading-seat input, exhaustive:**
+1. the code diff, `<base-sha>..<tip-sha>`, with `.mnfs/` excluded — the paths that ship;
+2. the milestone/chip validation contract, criteria verbatim;
+3. the executing seat's RAW lane outputs (ladder, must-fail, fixtures) — measurements, not prose
+   about measurements.
+
+**The evidence pack is not reviewer input.** It is hub custody: it records what happened, for the
+hub and for whoever reads this in six months. The hub reads it once, for acceptance. Two seats
+reading 10-20k lines of it at review depth is how a 605-line change bought four rounds.
+
+A seat MAY request a **named, bounded** pack section when a CODE finding turns on the chip's
+stated rationale ("§4 of the pack, the derivation for `:379`"). Named and bounded — never the
+tree, never "read the pack".
+
+**What this buys:** a seat cannot file a pack-prose blocking finding, because it cannot see the
+pack. The BLOCKING/REPORT split stops being a judgement call and becomes a property of the setup.
+
+**The cost, stated honestly:** a seat reading only the diff will sometimes re-derive something the
+pack already settled. That is accepted and it is the right trade — re-deriving from the code is
+cheap and is exactly the work we want done twice, while re-reading prose is the work that was
+expensive. It also means the pack must stop being where an argument LIVES: if a derivation matters
+to the code, it belongs in the code as a comment, where the next reader is standing.
+
+### A total guarantee in a docstring is a claim about EVERY input
+`status: ratified` · `provenance: 2026-07-28 · D-122 · field evidence CHIP-VINC-NEUTRO r6 F1/F2 (both seats, blind to each other)`
+
+R-24 ("a claim is TOTAL or it is a report") was ratified against pack prose. It fires in CODE too,
+and the code instance is worse, because a docstring compiles, passes the lane, and is what the
+next author greps.
+
+`wireFixtures.ts:202` reads `/** A candidate the backend can actually emit. Throws if it is not
+one. */` — a total guarantee. The implementation is partial in two independent axes:
+`assertProducibleScore:153-170` validates the score triple but imposes SHAPE for exactly one
+status (`NO_CANDIDATE`, `:164-169`), and `assertProducibleReasons:110-151` gates its capability
+check behind `if (providerCode === "mercado_livre")` at `:142`. Nine fixtures were written
+trusting the sentence; three were wrong.
+
+**The tell, and it is general: both seats found this by reading the implementation, neither by
+reading the docstring. A false total guarantee does not fail the reader — it fails the believer.**
+No amount of review attention on the sentence finds it, because the sentence is not where the
+defect is.
+
+**Binding.** A docstring stating a total guarantee (`always`, `never`, `every`, `throws if it is
+not`) must be true for every input the function accepts, or state its scope in the same sentence.
+When the guard is table-driven, the guarantee points at the TABLE and the table carries the full
+tuple — then a partial table is visible as a hole instead of hiding behind a total sentence.
+Verify a guarantee by finding the guard's most restrictive gate (`if (x === "literal")`, a shape
+check on one branch, a `find` over a partial tuple), never by reading the sentence.
+
+The structural remedy is the same one the chip proposed and the hub ratified: widen the table,
+delete the exemptions. `PRODUCIBLE_SCORES` carrying `(state, match_input)` per producer site
+dissolves BOTH the `NO_CANDIDATE` special case and the `mercado_livre` gate — one mechanism,
+zero hand-written exceptions, and the sentence becomes true.
+
 ## 12. Implementer dispatch bindings (core §4 instantiation)
 `status: ratified` · `provenance: 2026-07-16 · operator-ratified alt-D+ design session (4 adversarial Opus×Sol rounds + MIS-003 field evidence: hub + CHIP-SAT/CHIP-M02/CHIP-M03)`
 
@@ -735,6 +797,8 @@ retroactive GPT-5.6 Sol medium review at mission closeout (operator's call).
 2026-07-28 · §11 (new subsection) · ratified · a scripted edit on an authority artifact must show its `git diff` before the commit: "edited correctly" and "edited correctly AND destroyed something else" share exit 0. Same row: `git ls-tree` WITHOUT `-r` counts tree entries, not files (4 vs 40 on the same pack) — a right count of the wrong thing, which is why a reader reports it in good faith; and a count without its tip SHA rots the moment it is quoted (the same pack measured 38/39/40 files at three different SHAs, none of them a miscount) — commit `25716bdb`
 2026-07-28 · §11 + `scripts/harness/pack-measure.sh` (new) · ratified · the self-reference class gets a mechanical corrector: numbers about a pack are GENERATED from OUTSIDE at a named SHA, never typed into the file they describe (four defects in one day came from a document measuring itself — the fixed point does not exist). Every figure carries its SHA and its UNIT, because bytes ≠ characters (a 598-figure "discrepancy" between two seats was neither side's arithmetic: 20737 bytes vs 20536 chars, neither naming the unit) and LF-terminated lines ≠ `split('\n')` parts. The corrector shipped the defect it exists to kill and was caught by validation against a known answer: `wc -m` without a UTF-8 locale silently returns BYTES, so both columns agreed on accented prose; fixed with `tr -d '\200-\277'` — commit `c66ea7c7`
 2026-07-28 · §11 (new subsection) · ratified · BLOCKING is reserved for a wrong OBSERVABLE (behaviour, security, data, published contract); prose, counts, metadata, citation drift and pack hygiene file as REPORT — corrected in the same round, never holding the merge or opening a new one. Discriminator: ship the code with the finding untouched, and name what a user, operator, caller or stored row does differently; no answer = REPORT. Reclassification is the HUB's with string-level verification, never the seat's (a seat still reports everything — softening at the seat is the falsity R-25 bans), and three REPORTs of one shape fire the third-round rule. Field evidence: CHIP-ANCHORS-3 r4 returned both seats REFUTED with 3 blocking findings over a diff its own reading seat measured as "40 insertions, 12 deletions, all `//` text; no behavior changed", while the wave-2 packs stood at 9,730 / 11,502 / 21,788 evidence lines against 605 / 1,811 / 1,318 code lines — the gate had begun reviewing its own paperwork (operator ruling: "não nos deixar levar pelo que já temos, mas o que deve ser")
+2026-07-28 · §11 (new subsection) · ratified · STRUCTURAL half of the row above: the reading seats are given the DIFF, not the pack. Input is exhaustively (1) `<base>..<tip>` with `.mnfs/` excluded, (2) the validation contract verbatim, (3) the executing seat's raw lane outputs; a seat may request a NAMED, BOUNDED pack section when a code finding turns on the chip's rationale, never the tree. The pack is hub custody, read once at acceptance — two seats reading it at review depth is how a 605-line change bought four rounds with zero AGREEMENT. A seat then cannot file a pack-prose blocking finding because it cannot see the pack: the BLOCKING/REPORT split stops being a judgement call. Accepted cost, stated: a diff-only seat sometimes re-derives what the pack settled — cheap, and the right work to do twice; corollary is that a derivation which matters to the code belongs IN the code
+2026-07-28 · §11 (new subsection) · ratified · R-24 fires in CODE: a docstring stating a total guarantee (`always`/`never`/`every`/`throws if it is not`) is a claim about every input the function accepts, or it states its scope in the same sentence. `wireFixtures.ts:202` promises "Throws if it is not one" while `assertProducibleScore:164-169` imposes shape for exactly ONE status and `assertProducibleReasons:142` gates its capability check behind `if (providerCode === "mercado_livre")` — nine fixtures were written trusting the sentence, three were wrong. Both gate seats found it by reading the IMPLEMENTATION, neither by reading the docstring: a false total guarantee does not fail the reader, it fails the believer, so review attention on the sentence can never find it. Verify by locating the guard's most restrictive gate; when table-driven, the guarantee points at the table and the table carries the FULL tuple, so a partial table is a visible hole instead of a total sentence. Trigger named by the hub on 2026-07-27 ("the day this shows up in CODE it is an amendment on the spot") and satisfied by CHIP-VINC-NEUTRO r6 F1/F2
 2026-07-28 · §11 (new subsection) · ratified · a DELTA brief must order a CLASS sweep, or the second occurrence is structurally invisible: a brief that NAMES the site to re-examine teaches the seat to stop at it. CHIP-ANCHORS-3 round 2 — the Sol seat checked the named site, found it corrected, returned `Findings: None` on a file carrying the same false universal 83 lines below, findable by a one-line `grep`; the Opus seat swept on its own initiative and returned REFUTED with it. The seat that returned None did literally what the brief asked, so the defect is the BRIEF's. Binds: give the class as searchable tokens (`never`/`always`/`only`/`unreachable`/`cannot`/`no longer`/`every` for false-totality prose), a verdict with no SWEEP section is incomplete on its face, and the AUTHOR runs the same sweep against their own pack before publishing. Hub corollary: an approving verdict corroborates only within the scope it declares having swept — `Findings: None` with no declared scope does not out-vote a REFUTED verified by string, so splits of this shape are not ties (chip-authored field finding, ratified verbatim)
 2026-07-28 · §11 (new subsection) · ratified · VACUOUS GREEN — an instrument that passes for a reason unrelated to the code; sibling of stable-but-non-discriminating (§3), except it never looked at either world. Exit 0 is not evidence that anything ran. Four instances in one afternoon of the hub's executing seat on CHIP-ANCHORS-3: (1) `-run 'TestX'` naming the CONTEXT function of a patch hunk header instead of the added test → `no tests to run`, PASS; (2) the target file carries `//go:build integration`, so a green `go test ./...` (153 packages, 107 `ok`) never compiled it; (3) `-tags integration` without `MPC_TEST_DATABASE_URL` → every DB test skips → `ok`; (4) the integration lane runs without `-v` and records only target/status/run_id, so a fully skipped run and a fully green run are byte-identical in `summary.txt` (CHIP-IMPORT-CHAIN field finding #1, independent). Binds the executing seat: COUNT never tail (`ok=N`, `no test files=N`, `FAIL=N`), prove the command can go red before believing a green, name tests by grepping `^func Test` (the `@@` context line names the PRECEDING function), and report skip counts as a result rather than a footnote
 2026-07-28 · §11 (new subsection) · ratified · A SWEEP IS ONLY AS WIDE AS ITS PATTERN — the members an extraction cannot MATCH are not reported as unchecked, they are not reported at all, so the instrument's blind spot is invisible in its own output. Verified by string at the hub on `3915f33b`: a document titled `EXHAUSTIVE FIXTURE SWEEP` proved its exhaustiveness with `grep -oh 'anchor: "[a-z_]*"'` against a population of `grep -c 'anchor: "'` = 23; the character class cannot match a capital or an accent, so `"SKU idêntico"` (×2), `"Título parcial"` and `"EAN"` were invisible — ONE violation reported where there were five, and a machine re-sweep of the same file returned 13 failed / 5 passed against the document's two findings. Binds any sweep offered as class-closure evidence: reconcile population count against extraction count and PRINT BOTH (unequal without a stated reason = the sweep reports its own blind spot, one extra `grep`); must-fail the pattern against a known member; after a sweep has failed twice the next artifact is a MECHANISM, not a wider regex. Corollary: a sweep run by the same faculty that produced the defect inherits the defect — here the narrow reading appeared in three layers (the fixtures, the sweep, and the proof the sweep was exhaustive), and the count reconciliation is cheap precisely because it does not depend on that faculty (CHIP-VINC-NEUTRO round 5 field finding)
