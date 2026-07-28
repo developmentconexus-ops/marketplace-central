@@ -31,7 +31,6 @@ func TestIdentityAnchorAdapterProjectsCompleteVocabulary(t *testing.T) {
 		{Anchor: "ean", Supplied: true},
 		{Anchor: "title", Supplied: true},
 		{Anchor: "marca", Supplied: false},
-		{Anchor: "refforn", Supplied: false},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("len(ProviderIdentityAnchors()) = %d, want %d: %#v", len(got), len(want), got)

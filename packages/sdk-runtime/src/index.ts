@@ -1,5 +1,5 @@
 import type { ActiveSourceConfig, SetActiveSourceRequest } from "./activeSource";
-import type { ErpImportCreated, ErpImportDetail, ErpImportList, ErpImportSourceInput } from "./erpImport";
+import type { ErpImportChain, ErpImportCreated, ErpImportDetail, ErpImportList, ErpImportSourceInput } from "./erpImport";
 
 export * from "./erpImport";
 export * from "./market";
@@ -1057,11 +1057,13 @@ export type ProductLinkMatchStatus =
   | "NO_CANDIDATE"
   | "CONFIRM";
 
-export type ProductLinkReasonDirection = "FOR" | "AGAINST" | "UNAVAILABLE";
+export type ProductLinkReasonDirection = "FOR" | "AGAINST" | "UNAVAILABLE" | "INCOMPARABLE";
+export type ProductLinkReasonSide = "provider" | "erp" | "both";
 
 export interface ProductLinkReason {
   anchor: string;
   direction: ProductLinkReasonDirection;
+  side?: ProductLinkReasonSide;
   detail?: string;
 }
 
@@ -1896,6 +1898,7 @@ export function createMarketplaceCentralClient(options: {
       putJson<ActiveSourceConfig>("/config/active-source", req),
     listErpImports: () => getJson<ErpImportList>("/erp/imports"),
     getErpImport: (id: string) => getJson<ErpImportDetail>(`/erp/imports/${encodeURIComponent(id)}`),
+    getErpImportChain: (id: string) => getJson<ErpImportChain>(`/erp/imports/${encodeURIComponent(id)}/chain`),
     listMarketplaceAccounts: () => getJson<ListResponse<MarketplaceAccount>>("/marketplaces/accounts"),
     listMarketplacePolicies: () => getJson<ListResponse<MarketplacePolicy>>("/marketplaces/policies"),
     listMarketplaceDefinitions: () => getJson<ListResponse<MarketplaceDefinition>>("/marketplaces/definitions"),

@@ -119,3 +119,20 @@ type ImportReport struct {
 	WarningCount  int
 	Issues        []Issue
 }
+
+// ImportChain answers what became of an import, read from the live tables
+// rather than from the counters frozen at import time.
+//
+// Enfileirados is the CURRENT market queue, not a historical total: it falls as
+// the queue is consumed. No consumer is registered today — the scheduler runs a
+// products job only — so the count only grows until one is wired, and a later
+// drop is drainage rather than data loss. QueueReadAt is the database clock of the same
+// statement that produced the counts, so a reader can tell when that snapshot
+// was taken instead of inferring a trend from two unrelated instants.
+type ImportChain struct {
+	Protocol     Protocol
+	Importados   int
+	Vinculados   int
+	Enfileirados int
+	QueueReadAt  time.Time
+}

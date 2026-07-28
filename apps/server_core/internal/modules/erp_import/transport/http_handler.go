@@ -22,6 +22,7 @@ type ImportRunner interface {
 type ImportQuerier interface {
 	ListImports(ctx context.Context) ([]domain.ImportReport, error)
 	GetImport(ctx context.Context, id domain.ImportID) (domain.ImportReport, error)
+	GetImportChain(ctx context.Context, id domain.ImportID) (domain.ImportChain, error)
 }
 
 type Handler struct {
@@ -40,6 +41,7 @@ func (h Handler) Register(mux httpx.RouteRegistrar) {
 	mux.HandleFunc("POST /erp/imports", h.handlePostImport)
 	mux.HandleFunc("GET /erp/imports", h.handleListImports)
 	registerInteractiveRoute(mux, "/erp/imports/{id}", h.handleGetImport)
+	registerInteractiveRoute(mux, "/erp/imports/{id}/chain", h.handleGetImportChain)
 }
 
 type routeClassRegistrar interface {
@@ -118,6 +120,25 @@ func (h Handler) handleGetImport(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, newImportDetailResponse(report))
 }
 
+func (h Handler) handleGetImportChain(w http.ResponseWriter, r *http.Request) {
+	chain, err := h.queries.GetImportChain(r.Context(), domain.ImportID(r.PathValue("id")))
+	if err != nil {
+		if errors.Is(err, ports.ErrImportNotFound) {
+			writeError(w, http.StatusNotFound, "import_not_found", "")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "internal_error", "")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, importChainResponse{
+		Protocol:     string(chain.Protocol),
+		Importados:   chain.Importados,
+		Vinculados:   chain.Vinculados,
+		Enfileirados: chain.Enfileirados,
+		QueueReadAt:  chain.QueueReadAt.UTC().Format(time.RFC3339),
+	})
+}
+
 func writeImportError(w http.ResponseWriter, err error) {
 	var fileErr *ports.FileError
 	if errors.As(err, &fileErr) {
@@ -185,6 +206,14 @@ type importDetailResponse struct {
 	importSummaryResponse
 	RejectedRows []issueResponse `json:"rejected_rows"`
 	Warnings     []issueResponse `json:"warnings"`
+}
+
+type importChainResponse struct {
+	Protocol     string `json:"protocol"`
+	Importados   int    `json:"importados"`
+	Vinculados   int    `json:"vinculados"`
+	Enfileirados int    `json:"enfileirados"`
+	QueueReadAt  string `json:"queue_read_at"`
 }
 
 type issueResponse struct {

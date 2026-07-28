@@ -213,7 +213,7 @@ func (s *GenerationService) generateForSnapshot(ctx context.Context, snapshot do
 	}
 
 	unresolved := newCandidate(snapshot, domain.LinkCandidateStateUnresolved, domain.LinkCandidateMatchInputNone, "", internalreaddomain.ProductCandidate{}, now)
-	applyUnresolvedScore(&unresolved, identityAnchors)
+	applyUnresolvedScore(&unresolved, newProviderIdentityAnchorComparison(snapshot, identityAnchors, nil))
 	return []domain.LinkCandidate{unresolved}, nil, nil
 }
 
@@ -299,7 +299,8 @@ func buildExactCandidates(snapshot domain.ListingSnapshot, skuMatches, eanMatche
 		}
 		// seller_sku + ean concordant on the same codprod: IC-01 A2's viable
 		// auto-ACCEPT pair (proxy for "2 independent anchors").
-		return []domain.LinkCandidate{buildConcordantCandidate(snapshot, skuMatches, eanMatches, identityAnchors, now)}
+		product := skuMatches.Products[0]
+		return []domain.LinkCandidate{buildConcordantCandidate(snapshot, skuMatches, eanMatches, newProviderIdentityAnchorComparison(snapshot, identityAnchors, &product), now)}
 	}
 
 	if len(skuMatches.Products) > 1 || len(eanMatches.Products) > 1 {
@@ -332,12 +333,12 @@ func buildConflictCandidates(snapshot domain.ListingSnapshot, products []interna
 			conflictingIDs = productIDsExcept(skuMatches.Products, productID)
 		}
 		candidate := newCandidate(snapshot, domain.LinkCandidateStateConflict, matchInput, matchValue, product, now)
-		applyConflictScore(&candidate, ownAnchor, conflictAnchor, productID, conflictingIDs, identityAnchors)
+		applyConflictScore(&candidate, ownAnchor, conflictAnchor, productID, conflictingIDs, newProviderIdentityAnchorComparison(snapshot, identityAnchors, &product))
 		candidates = append(candidates, candidate)
 	}
 	if len(candidates) == 0 {
 		candidate := newCandidate(snapshot, domain.LinkCandidateStateConflict, domain.LinkCandidateMatchInputNone, "", internalreaddomain.ProductCandidate{}, now)
-		applyUnresolvedScore(&candidate, identityAnchors)
+		applyUnresolvedScore(&candidate, newProviderIdentityAnchorComparison(snapshot, identityAnchors, nil))
 		candidates = append(candidates, candidate)
 	}
 	return candidates
@@ -367,16 +368,16 @@ func buildCollisionCandidates(snapshot domain.ListingSnapshot, skuMatches, eanMa
 			productID, _ := canonicalProductID(product)
 			candidate := newCandidate(snapshot, domain.LinkCandidateStateConflict, anchor.matchInput, anchor.result.InputValue, product, now)
 			if len(anchor.result.Products) > 1 {
-				applyCollisionScore(&candidate, anchor.name, len(anchor.result.Products), productIDsExcept(anchor.result.Products, productID), identityAnchors)
+				applyCollisionScore(&candidate, anchor.name, len(anchor.result.Products), productIDsExcept(anchor.result.Products, productID), newProviderIdentityAnchorComparison(snapshot, identityAnchors, &product))
 			} else {
-				applyAmbiguousCorroborationScore(&candidate, anchor.name, productID, anchor.other, otherCount, identityAnchors)
+				applyAmbiguousCorroborationScore(&candidate, anchor.name, productID, anchor.other, otherCount, newProviderIdentityAnchorComparison(snapshot, identityAnchors, &product))
 			}
 			candidates = append(candidates, candidate)
 		}
 	}
 	if len(candidates) == 0 {
 		candidate := newCandidate(snapshot, domain.LinkCandidateStateUnresolved, domain.LinkCandidateMatchInputNone, "", internalreaddomain.ProductCandidate{}, now)
-		applyUnresolvedScore(&candidate, identityAnchors)
+		applyUnresolvedScore(&candidate, newProviderIdentityAnchorComparison(snapshot, identityAnchors, nil))
 		candidates = append(candidates, candidate)
 	}
 	return candidates
@@ -386,7 +387,7 @@ func buildCandidatesFromProducts(snapshot domain.ListingSnapshot, products []int
 	candidates := make([]domain.LinkCandidate, 0, len(products))
 	for _, product := range uniqueProducts(products) {
 		candidate := newCandidate(snapshot, state, matchInput, matchValue, product, now)
-		applySingleAnchorScore(&candidate, snapshot, state, product, identityAnchors)
+		applySingleAnchorScore(&candidate, state, newProviderIdentityAnchorComparison(snapshot, identityAnchors, &product))
 		candidates = append(candidates, candidate)
 	}
 	return candidates
@@ -475,8 +476,18 @@ func canonicalProductID(product internalreaddomain.ProductCandidate) (int, bool)
 // any match at BAIXA/REJECT even when EAN/SKU agree ("contradição vence
 // EAN").
 
-func buildConcordantCandidate(snapshot domain.ListingSnapshot, skuMatches, eanMatches productMatchResult, identityAnchors []ports.ProviderIdentityAnchor, now time.Time) domain.LinkCandidate {
-	product := skuMatches.Products[0]
+type providerIdentityAnchorComparison struct {
+	declared []ports.ProviderIdentityAnchor
+	listing  domain.ListingSnapshot
+	product  *internalreaddomain.ProductCandidate
+}
+
+func newProviderIdentityAnchorComparison(snapshot domain.ListingSnapshot, declared []ports.ProviderIdentityAnchor, product *internalreaddomain.ProductCandidate) providerIdentityAnchorComparison {
+	return providerIdentityAnchorComparison{declared: declared, listing: snapshot, product: product}
+}
+
+func buildConcordantCandidate(snapshot domain.ListingSnapshot, skuMatches, eanMatches productMatchResult, comparison providerIdentityAnchorComparison, now time.Time) domain.LinkCandidate {
+	product := *comparison.product
 	candidate := newCandidate(snapshot, domain.LinkCandidateStateExactSKU, domain.LinkCandidateMatchInputSellerSKU, skuMatches.InputValue, product, now)
 
 	reasons := []domain.LinkCandidateReason{
@@ -493,11 +504,16 @@ func buildConcordantCandidate(snapshot domain.ListingSnapshot, skuMatches, eanMa
 		candidate.ConfidenceBand = domain.LinkCandidateConfidenceBandAlta
 		candidate.MatchStatus = domain.LinkCandidateMatchStatusAccept
 	}
-	candidate.Reasons = appendProviderDeclaredUnavailableReasons(reasons, identityAnchors)
+	candidate.Reasons = appendProviderDeclaredUnavailableReasons(reasons, comparison)
 	return candidate
 }
 
-func applySingleAnchorScore(candidate *domain.LinkCandidate, snapshot domain.ListingSnapshot, state domain.LinkCandidateState, product internalreaddomain.ProductCandidate, identityAnchors []ports.ProviderIdentityAnchor) {
+func applySingleAnchorScore(candidate *domain.LinkCandidate, state domain.LinkCandidateState, comparison providerIdentityAnchorComparison) {
+	snapshot := comparison.listing
+	product := internalreaddomain.ProductCandidate{}
+	if comparison.product != nil {
+		product = *comparison.product
+	}
 	var reasons []domain.LinkCandidateReason
 	var confidence int
 	var band domain.LinkCandidateConfidenceBand
@@ -517,7 +533,7 @@ func applySingleAnchorScore(candidate *domain.LinkCandidate, snapshot domain.Lis
 		}
 		reasons = []domain.LinkCandidateReason{
 			{Anchor: "seller_sku", Direction: domain.LinkCandidateReasonDirectionFor, Detail: "seller_sku resolve exato para codprod"},
-			{Anchor: "ean", Direction: domain.LinkCandidateReasonDirectionUnavailable, Detail: eanDetail},
+			missingMatchedAnchorReason("ean", eanDetail, snapshot, &product),
 		}
 	case domain.LinkCandidateStateExactEAN:
 		confidence, band, status = 60, domain.LinkCandidateConfidenceBandMedia, domain.LinkCandidateMatchStatusConfirm
@@ -527,17 +543,17 @@ func applySingleAnchorScore(candidate *domain.LinkCandidate, snapshot domain.Lis
 		}
 		reasons = []domain.LinkCandidateReason{
 			{Anchor: "ean", Direction: domain.LinkCandidateReasonDirectionFor, Detail: "ean corrobora codprod (unproved)"},
-			{Anchor: "seller_sku", Direction: domain.LinkCandidateReasonDirectionUnavailable, Detail: skuDetail},
+			missingMatchedAnchorReason("seller_sku", skuDetail, snapshot, &product),
 		}
 	case domain.LinkCandidateStateTitleMatch:
 		confidence, band, status = 35, domain.LinkCandidateConfidenceBandBaixa, domain.LinkCandidateMatchStatusReview
 		reasons = []domain.LinkCandidateReason{
 			{Anchor: "title", Direction: domain.LinkCandidateReasonDirectionFor, Detail: "match por título (ranking-only, nunca ACCEPT)"},
-			{Anchor: "seller_sku", Direction: domain.LinkCandidateReasonDirectionUnavailable, Detail: "seller_sku sem correspondência"},
-			{Anchor: "ean", Direction: domain.LinkCandidateReasonDirectionUnavailable, Detail: "ean sem correspondência"},
+			missingMatchedAnchorReason("seller_sku", "seller_sku sem correspondência", snapshot, &product),
+			missingMatchedAnchorReason("ean", "ean sem correspondência", snapshot, &product),
 		}
 	default:
-		applyUnresolvedScore(candidate, identityAnchors)
+		applyUnresolvedScore(candidate, comparison)
 		return
 	}
 
@@ -549,13 +565,13 @@ func applySingleAnchorScore(candidate *domain.LinkCandidate, snapshot domain.Lis
 	candidate.Confidence = confidence
 	candidate.ConfidenceBand = band
 	candidate.MatchStatus = status
-	candidate.Reasons = appendProviderDeclaredUnavailableReasons(reasons, identityAnchors)
+	candidate.Reasons = appendProviderDeclaredUnavailableReasons(reasons, comparison)
 }
 
 // applyConflictScore scores the CODPROD≠EAN conflict. Neither anchor wins
 // (AC-08, ratified by the operator): both products are offered for review with
 // the disagreement spelled out, and the decision is the operator's.
-func applyConflictScore(candidate *domain.LinkCandidate, ownAnchor, conflictAnchor string, ownProductID int, conflictingIDs []int, identityAnchors []ports.ProviderIdentityAnchor) {
+func applyConflictScore(candidate *domain.LinkCandidate, ownAnchor, conflictAnchor string, ownProductID int, conflictingIDs []int, comparison providerIdentityAnchorComparison) {
 	candidate.Confidence = 20
 	candidate.ConfidenceBand = domain.LinkCandidateConfidenceBandBaixa
 	candidate.MatchStatus = domain.LinkCandidateMatchStatusReview
@@ -563,26 +579,26 @@ func applyConflictScore(candidate *domain.LinkCandidate, ownAnchor, conflictAnch
 		{Anchor: ownAnchor, Direction: domain.LinkCandidateReasonDirectionFor, Detail: fmt.Sprintf("%s aponta codprod %d", ownAnchor, ownProductID)},
 		{Anchor: conflictAnchor, Direction: domain.LinkCandidateReasonDirectionAgainst, Detail: fmt.Sprintf("%s aponta codprod %s (conflito, nenhuma âncora vence)", conflictAnchor, formatProductIDs(conflictingIDs))},
 	}
-	candidate.Reasons = appendProviderDeclaredUnavailableReasons(reasons, identityAnchors)
+	candidate.Reasons = appendProviderDeclaredUnavailableReasons(reasons, comparison)
 }
 
 // applyCollisionScore scores one product out of a set an ambiguous anchor
 // matched. The anchor named N products, so it identified none of them.
-func applyCollisionScore(candidate *domain.LinkCandidate, anchor string, matchCount int, otherIDs []int, identityAnchors []ports.ProviderIdentityAnchor) {
+func applyCollisionScore(candidate *domain.LinkCandidate, anchor string, matchCount int, otherIDs []int, comparison providerIdentityAnchorComparison) {
 	candidate.Confidence = 20
 	candidate.ConfidenceBand = domain.LinkCandidateConfidenceBandBaixa
 	candidate.MatchStatus = domain.LinkCandidateMatchStatusReview
 	reasons := []domain.LinkCandidateReason{
 		{Anchor: anchor, Direction: domain.LinkCandidateReasonDirectionAgainst, Detail: fmt.Sprintf("%s casa %d produtos no ERP (colisão: também codprod %s) ⇒ âncora ambígua", anchor, matchCount, formatProductIDs(otherIDs))},
 	}
-	candidate.Reasons = appendProviderDeclaredUnavailableReasons(reasons, identityAnchors)
+	candidate.Reasons = appendProviderDeclaredUnavailableReasons(reasons, comparison)
 }
 
 // applyAmbiguousCorroborationScore scores the anchor that DID resolve a single
 // product on a listing whose other anchor collided. The single anchor is real,
 // but there is nothing to corroborate it against — an ambiguous anchor
 // corroborates nothing — so it is review, never confirmation.
-func applyAmbiguousCorroborationScore(candidate *domain.LinkCandidate, ownAnchor string, ownProductID int, otherAnchor string, otherCount int, identityAnchors []ports.ProviderIdentityAnchor) {
+func applyAmbiguousCorroborationScore(candidate *domain.LinkCandidate, ownAnchor string, ownProductID int, otherAnchor string, otherCount int, comparison providerIdentityAnchorComparison) {
 	candidate.Confidence = 40
 	candidate.ConfidenceBand = domain.LinkCandidateConfidenceBandBaixa
 	candidate.MatchStatus = domain.LinkCandidateMatchStatusReview
@@ -590,7 +606,7 @@ func applyAmbiguousCorroborationScore(candidate *domain.LinkCandidate, ownAnchor
 		{Anchor: ownAnchor, Direction: domain.LinkCandidateReasonDirectionFor, Detail: fmt.Sprintf("%s aponta codprod %d", ownAnchor, ownProductID)},
 		{Anchor: otherAnchor, Direction: domain.LinkCandidateReasonDirectionAgainst, Detail: fmt.Sprintf("%s casa %d produtos no ERP ⇒ não corrobora", otherAnchor, otherCount)},
 	}
-	candidate.Reasons = appendProviderDeclaredUnavailableReasons(reasons, identityAnchors)
+	candidate.Reasons = appendProviderDeclaredUnavailableReasons(reasons, comparison)
 }
 
 // applyUnresolvedScore scores a listing no anchor could resolve. What M05-C5
@@ -601,59 +617,139 @@ func applyAmbiguousCorroborationScore(candidate *domain.LinkCandidate, ownAnchor
 // from bulk-approving a listing with no product to approve. Reclassifying it
 // as REVIEW would have made those branches dead code on a screen this
 // milestone may not edit (apps/web is M-06's seam). Flagged to the hub.
-func applyUnresolvedScore(candidate *domain.LinkCandidate, identityAnchors []ports.ProviderIdentityAnchor) {
+func applyUnresolvedScore(candidate *domain.LinkCandidate, comparison providerIdentityAnchorComparison) {
 	candidate.Confidence = 0
 	candidate.ConfidenceBand = domain.LinkCandidateConfidenceBandBaixa
 	candidate.MatchStatus = domain.LinkCandidateMatchStatusNoCandidate
 	reasons := []domain.LinkCandidateReason{
-		{Anchor: "seller_sku", Direction: domain.LinkCandidateReasonDirectionUnavailable, Detail: "seller_sku sem correspondência"},
-		{Anchor: "ean", Direction: domain.LinkCandidateReasonDirectionUnavailable, Detail: "ean sem correspondência"},
+		missingMatchedAnchorReason("seller_sku", "seller_sku sem correspondência", comparison.listing, nil),
+		missingMatchedAnchorReason("ean", "ean sem correspondência", comparison.listing, nil),
 	}
-	candidate.Reasons = appendProviderDeclaredUnavailableReasons(reasons, identityAnchors)
+	candidate.Reasons = appendProviderDeclaredUnavailableReasons(reasons, comparison)
 }
 
-func appendProviderDeclaredUnavailableReasons(reasons []domain.LinkCandidateReason, identityAnchors []ports.ProviderIdentityAnchor) []domain.LinkCandidateReason {
-	finalized := make([]domain.LinkCandidateReason, 0, len(reasons)+len(identityAnchors))
+func missingMatchedAnchorReason(anchor, detail string, listing domain.ListingSnapshot, product *internalreaddomain.ProductCandidate) domain.LinkCandidateReason {
+	listingValue, productValue, _ := identityAnchorValues(anchor, listing, product)
+	reason := domain.LinkCandidateReason{Anchor: anchor, Detail: detail}
+	switch {
+	case listingValue == "":
+		reason.Direction = domain.LinkCandidateReasonDirectionIncomparable
+		reason.Side = domain.LinkCandidateReasonSideProvider
+	case product == nil || productValue == "":
+		reason.Direction = domain.LinkCandidateReasonDirectionIncomparable
+		reason.Side = domain.LinkCandidateReasonSideERP
+	default:
+		reason.Direction = domain.LinkCandidateReasonDirectionUnavailable
+	}
+	return reason
+}
+
+func appendProviderDeclaredUnavailableReasons(reasons []domain.LinkCandidateReason, comparison providerIdentityAnchorComparison) []domain.LinkCandidateReason {
+	finalized := make([]domain.LinkCandidateReason, 0, len(reasons)+len(comparison.declared))
 	hasSignal := make(map[string]bool, len(reasons))
+	absenceIndexes := make(map[string]int, len(reasons)+len(comparison.declared))
 	for _, reason := range reasons {
 		if reason.Direction == domain.LinkCandidateReasonDirectionFor ||
 			reason.Direction == domain.LinkCandidateReasonDirectionAgainst {
 			hasSignal[reason.Anchor] = true
 		}
 	}
-
-	unavailableIndexes := make(map[string]int, len(reasons)+len(identityAnchors))
 	for _, reason := range reasons {
-		if reason.Direction != domain.LinkCandidateReasonDirectionUnavailable {
+		if reason.Direction != domain.LinkCandidateReasonDirectionUnavailable &&
+			reason.Direction != domain.LinkCandidateReasonDirectionIncomparable {
 			finalized = append(finalized, reason)
 			continue
 		}
 		if hasSignal[reason.Anchor] {
 			continue
 		}
-		if _, exists := unavailableIndexes[reason.Anchor]; !exists {
-			unavailableIndexes[reason.Anchor] = len(finalized)
+		if _, exists := absenceIndexes[reason.Anchor]; !exists {
+			absenceIndexes[reason.Anchor] = len(finalized)
 			finalized = append(finalized, reason)
 		}
 	}
-	for _, anchor := range identityAnchors {
-		if anchor.Supplied || hasSignal[anchor.Anchor] {
+	for _, anchor := range comparison.declared {
+		if hasSignal[anchor.Anchor] {
 			continue
 		}
-		declarationReason := domain.LinkCandidateReason{
+
+		direction, side, detail, emit := classifyProviderIdentityAnchor(anchor, comparison)
+		if !emit {
+			continue
+		}
+
+		reason := domain.LinkCandidateReason{
 			Anchor:    anchor.Anchor,
-			Direction: domain.LinkCandidateReasonDirectionUnavailable,
-			Detail:    fmt.Sprintf("provider não fornece a âncora %s", anchor.Anchor),
+			Direction: direction,
+			Side:      side,
+			Detail:    detail,
 		}
-		index, exists := unavailableIndexes[anchor.Anchor]
-		if !exists {
-			unavailableIndexes[anchor.Anchor] = len(finalized)
-			finalized = append(finalized, declarationReason)
+		if index, exists := absenceIndexes[anchor.Anchor]; exists {
+			// A seeded absence sentence contains domain context; promote only its
+			// classification and retain that sentence for the operator.
+			if direction == domain.LinkCandidateReasonDirectionIncomparable {
+				reason.Detail = finalized[index].Detail
+			}
+			finalized[index] = reason
 			continue
 		}
-		finalized[index] = declarationReason
+		absenceIndexes[anchor.Anchor] = len(finalized)
+		finalized = append(finalized, reason)
 	}
 	return finalized
+}
+
+func classifyProviderIdentityAnchor(anchor ports.ProviderIdentityAnchor, comparison providerIdentityAnchorComparison) (domain.LinkCandidateReasonDirection, domain.LinkCandidateReasonSide, string, bool) {
+	if !anchor.Supplied {
+		return domain.LinkCandidateReasonDirectionUnavailable, "", fmt.Sprintf("provider não fornece a âncora %s", anchor.Anchor), true
+	}
+
+	// ListingSnapshot has no provider-side brand field. Do not infer an empty
+	// provider value from that missing model surface (ADR-17).
+	listingValue, productValue, readable := identityAnchorValues(anchor.Anchor, comparison.listing, comparison.product)
+	if !readable {
+		return domain.LinkCandidateReasonDirectionIncomparable, "", fmt.Sprintf("não foi possível comparar a âncora %s", anchor.Anchor), true
+	}
+	if comparison.product == nil {
+		if listingValue == "" {
+			return domain.LinkCandidateReasonDirectionIncomparable, domain.LinkCandidateReasonSideProvider, fmt.Sprintf("anúncio sem %s", anchor.Anchor), true
+		}
+		return "", "", "", false
+	}
+	if listingValue != "" && productValue != "" {
+		return "", "", "", false
+	}
+	if listingValue == "" && productValue == "" {
+		return domain.LinkCandidateReasonDirectionIncomparable, domain.LinkCandidateReasonSideBoth, fmt.Sprintf("anúncio e produto ERP sem %s", anchor.Anchor), true
+	}
+	if listingValue == "" {
+		return domain.LinkCandidateReasonDirectionIncomparable, domain.LinkCandidateReasonSideProvider, fmt.Sprintf("anúncio sem %s", anchor.Anchor), true
+	}
+	return domain.LinkCandidateReasonDirectionIncomparable, domain.LinkCandidateReasonSideERP, fmt.Sprintf("produto ERP sem %s cadastrado", anchor.Anchor), true
+}
+
+func identityAnchorValues(anchor string, listing domain.ListingSnapshot, product *internalreaddomain.ProductCandidate) (string, string, bool) {
+	var listingValue, productValue string
+	switch anchor {
+	case "seller_sku":
+		listingValue = listing.SellerSKU
+		if product != nil && product.ReferenceCode != nil {
+			productValue = *product.ReferenceCode
+		}
+	case "ean":
+		listingValue = listing.EAN
+		if product != nil && product.EAN != nil {
+			productValue = *product.EAN
+		}
+	case "title":
+		listingValue = listing.Title
+		if product != nil {
+			productValue = product.Name
+		}
+	default:
+		return "", "", false
+	}
+	return strings.TrimSpace(listingValue), strings.TrimSpace(productValue), true
 }
 
 func productIDsExcept(products []internalreaddomain.ProductCandidate, exclude int) []int {
@@ -744,8 +840,9 @@ func hardNegativeVoltage(text string) (string, bool) {
 // (symmetrical to the voltage/color checks, no false positives).
 func hardNegativeDimension(original string) (string, string, bool) {
 	type dimensionPair struct {
-		key     string
-		display string
+		key      string
+		display  string
+		displays []string
 	}
 
 	tokenIndexes := hardNegativeDimensionPattern.FindAllStringIndex(original, -1)
@@ -753,20 +850,30 @@ func hardNegativeDimension(original string) (string, string, bool) {
 	for _, index := range tokenIndexes {
 		originalToken := strings.TrimSpace(original[index[0]:index[1]])
 		key, _ := normalizeDimensionToken(originalToken)
-		pairs = append(pairs, dimensionPair{key: key, display: originalToken})
+		pairs = append(pairs, dimensionPair{key: key, display: originalToken, displays: []string{originalToken}})
 	}
 	for _, size := range hardNegativeSizePattern.FindAllString(original, -1) {
-		pairs = append(pairs, dimensionPair{key: strings.ToLower(size), display: size})
+		pairs = append(pairs, dimensionPair{key: strings.ToLower(size), display: size, displays: []string{size}})
 	}
 	if len(pairs) == 0 {
 		return "", "", false
 	}
-	slices.SortFunc(pairs, func(a, b dimensionPair) int {
+	slices.SortStableFunc(pairs, func(a, b dimensionPair) int {
 		return strings.Compare(a.key, b.key)
 	})
-	pairs = slices.CompactFunc(pairs, func(a, b dimensionPair) bool {
-		return a.key == b.key
-	})
+	coalesced := pairs[:0]
+	for _, pair := range pairs {
+		if len(coalesced) == 0 || coalesced[len(coalesced)-1].key != pair.key {
+			coalesced = append(coalesced, pair)
+			continue
+		}
+		last := &coalesced[len(coalesced)-1]
+		if !slices.Contains(last.displays, pair.display) {
+			last.displays = append(last.displays, pair.display)
+			last.display += " ≡ " + pair.display
+		}
+	}
+	pairs = coalesced
 	keys := make([]string, 0, len(pairs))
 	display := make([]string, 0, len(pairs))
 	for _, pair := range pairs {

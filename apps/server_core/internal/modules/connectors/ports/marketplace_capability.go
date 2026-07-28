@@ -26,15 +26,22 @@ const (
 	IdentityAnchorEAN       IdentityAnchor = "ean"
 	IdentityAnchorTitle     IdentityAnchor = "title"
 	IdentityAnchorMarca     IdentityAnchor = "marca"
-	IdentityAnchorRefforn   IdentityAnchor = "refforn"
 )
 
+// knownIdentityAnchors is the cross-side identity vocabulary: every entry is a
+// question a marketplace could answer. D-A (D-122) removed `refforn` from it —
+// it is the supplier reference INSIDE the ERP (`ZP1704.1.`), so "do you supply
+// refforn?" answers `no` for every provider present and future, and keeping it
+// here minted one permanent never-changing reason per candidate row. It stays a
+// field on the ERP side (`erp_import_products.refforn`); what left is the list,
+// not the datum. A marketplace that one day exposes a manufacturer reference
+// enters as a NEW anchor with its own name, not by reusing a term that means
+// something else on the ERP side.
 var knownIdentityAnchors = []IdentityAnchor{
 	IdentityAnchorSellerSKU,
 	IdentityAnchorEAN,
 	IdentityAnchorTitle,
 	IdentityAnchorMarca,
-	IdentityAnchorRefforn,
 }
 
 func KnownIdentityAnchors() []IdentityAnchor {

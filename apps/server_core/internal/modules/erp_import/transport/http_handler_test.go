@@ -33,10 +33,13 @@ func (f *fakeImportRunner) RunImportLenient(_ context.Context, _ io.Reader) (dom
 }
 
 type fakeImportQuerier struct {
-	items   []domain.ImportReport
-	item    domain.ImportReport
-	listErr error
-	getErr  error
+	items    []domain.ImportReport
+	item     domain.ImportReport
+	chain    domain.ImportChain
+	listErr  error
+	getErr   error
+	chainErr error
+	chainID  domain.ImportID
 }
 
 func (f *fakeImportQuerier) ListImports(context.Context) ([]domain.ImportReport, error) {
@@ -45,6 +48,11 @@ func (f *fakeImportQuerier) ListImports(context.Context) ([]domain.ImportReport,
 
 func (f *fakeImportQuerier) GetImport(context.Context, domain.ImportID) (domain.ImportReport, error) {
 	return f.item, f.getErr
+}
+
+func (f *fakeImportQuerier) GetImportChain(_ context.Context, id domain.ImportID) (domain.ImportChain, error) {
+	f.chainID = id
+	return f.chain, f.chainErr
 }
 
 func TestHandlerPostImport(t *testing.T) {
@@ -305,6 +313,43 @@ func TestHandlerImportedAtIsRFC3339UTC(t *testing.T) {
 	decodeJSON(t, response, &body)
 	if body.ImportedAt != "2026-07-17T15:34:56Z" {
 		t.Fatalf("imported_at = %q, want UTC RFC3339 2026-07-17T15:34:56Z", body.ImportedAt)
+	}
+}
+
+func TestHandlerGetImportChainMapsServiceErrorsAndUTCResponse(t *testing.T) {
+	querier := &fakeImportQuerier{chain: domain.ImportChain{
+		Protocol:     "#001-E",
+		Importados:   4,
+		Vinculados:   2,
+		Enfileirados: 3,
+		QueueReadAt:  time.Date(2026, 7, 27, 12, 34, 56, 0, time.FixedZone("BRT", -3*60*60)),
+	}}
+	response := performRequest(t, &fakeImportRunner{}, querier, httptest.NewRequest(http.MethodGet, "/erp/imports/id-with-path/chain", nil))
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", response.Code, response.Body.String())
+	}
+	if querier.chainID != "id-with-path" {
+		t.Fatalf("service id = %q, want id-with-path", querier.chainID)
+	}
+	if got, want := response.Body.String(), "{\"protocol\":\"#001-E\",\"importados\":4,\"vinculados\":2,\"enfileirados\":3,\"queue_read_at\":\"2026-07-27T15:34:56Z\"}\n"; got != want {
+		t.Fatalf("body = %q, want %q", got, want)
+	}
+
+	for _, tc := range []struct {
+		name       string
+		err        error
+		wantStatus int
+		wantBody   string
+	}{
+		{name: "not found", err: ports.ErrImportNotFound, wantStatus: http.StatusNotFound, wantBody: "{\"error\":\"import_not_found\"}\n"},
+		{name: "internal", err: errors.New("database details must not escape"), wantStatus: http.StatusInternalServerError, wantBody: "{\"error\":\"internal_error\"}\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := performRequest(t, &fakeImportRunner{}, &fakeImportQuerier{chainErr: tc.err}, httptest.NewRequest(http.MethodGet, "/erp/imports/missing/chain", nil))
+			if got.Code != tc.wantStatus || got.Body.String() != tc.wantBody {
+				t.Fatalf("status/body = %d/%q, want %d/%q", got.Code, got.Body.String(), tc.wantStatus, tc.wantBody)
+			}
+		})
 	}
 }
 
