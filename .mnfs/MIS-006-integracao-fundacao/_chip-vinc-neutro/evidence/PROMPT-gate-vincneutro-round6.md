@@ -97,9 +97,15 @@ identical whether or not `git` has ever heard of it, which is the whole failure 
 If you do have a shell, report the output of both, verbatim:
 
 ```
-git ls-tree HEAD -- .mnfs/MIS-006-integracao-fundacao/_chip-vinc-neutro/ | wc -l
+git ls-tree -r HEAD -- .mnfs/MIS-006-integracao-fundacao/_chip-vinc-neutro/ | wc -l
 git status --porcelain .mnfs/MIS-006-integracao-fundacao/_chip-vinc-neutro/
 ```
+
+The `-r` is load-bearing and it is not a style preference: without it `ls-tree` lists tree
+ENTRIES, so a pack whose files sit in subdirectories reports a single-digit number that looks
+like a file count and is not one. This brief shipped the non-recursive form for one commit. Same
+class as C2 in the sweep table — a measurement wider or narrower than the fact it names — which
+is why you are being told rather than quietly handed the corrected command.
 
 The second must be empty. An evidence pack that lives only in a working tree is one worktree
 teardown away from never having existed — a prior chip in this mission lost six commits' worth of
