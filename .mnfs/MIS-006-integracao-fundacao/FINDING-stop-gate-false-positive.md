@@ -1,6 +1,7 @@
 # FINDING — `stop-gate.sh` bloqueia turnos que não reivindicaram CLOSED
 
-`status: upstream-candidate` · `provenance: 2026-07-28 · D-122 · relatado por CHIP-ANCHORS-3, e disparado no HUB no mesmo dia`
+`status: upstream-candidate · CAUSA ATRIBUÍDA nos dois casos (2026-07-28, medido)`
+`provenance: 2026-07-28 · D-122 · relatado por CHIP-ANCHORS-3, e disparado no HUB no mesmo dia`
 `locus: mnfs-harness/harness/0.4.0/hooks/stop-gate.sh:32-43`
 `destino: HARNESS-CORE upstream (Documents\mnfs-harness). NÃO editar o cache do plugin — sync é gate do operador.`
 
@@ -45,21 +46,55 @@ que ele não faz — o hub não emite `CLOSED`, ele o **recebe**.
 
 **Forma do conserto:** classificar por papel declarado, não por forma de caminho.
 
-## O que NÃO é a causa — duas hipóteses testadas e refutadas
+## Defeito 3 — `$CWD/.mnfs` é resolvido do cwd do turno, não da raiz do repo (EXPLICA o caso do chip)
+
+Medido pelo CHIP-ANCHORS-3: com `cwd` mais FUNDO que a raiz do repo (`apps/web`,
+`packages/sdk-runtime`, `apps/server_core`), a linha 39 procura `$CWD/.mnfs`, que não existe →
+**packs = 0** → guard dispara, com o pack intacto na raiz.
+
+**O `cwd` do disparo, extraído pelo HUB (o chip não leu o próprio transcript):**
+
+```
+21:45:36.830Z  type=hook_blocking_error  cwd=…\happy-montalcini-b010c0\.mnfs\MIS-006-…\_chip-anchors-3
+21:45:36.831Z  type=system               cwd=…\happy-montalcini-b010c0
+21:46:09.922Z  type=message              cwd=…\happy-montalcini-b010c0
+21:46:27.976Z  type=message              cwd=…\happy-montalcini-b010c0
+```
+
+Há **um** disparo, não cinco: só o registro `hook_blocking_error` é o hook. Os outros três são o
+chip citando o texto depois, já de volta na raiz — é daí que vinha a impressão de que o `cwd` era a
+raiz. **O `cwd` do disparo era o diretório do próprio pack**, então a linha 39 procurou
+`…/_chip-anchors-3/.mnfs` e achou zero.
+
+E o pack estava lá: `EVIDENCE.md` com mtime `21:43:34Z`, **dois minutos antes** do bloqueio.
+"Pack ausente" está refutado por dois instrumentos independentes.
+
+**Nenhum defeito sozinho explica o caso.** O defeito 1 armou o guard (o chip nunca emitiu `CLOSED`);
+o defeito 3 fez a checagem de existência falhar. Precisa dos dois.
+
+**Limite do instrumento, dito:** o `cwd` lido é o campo do REGISTRO que o hook produziu, não o
+stdin do hook. É o cwd de sessão carimbado no próprio registro do bloqueio — o mais apertado que
+este instrumento chega, e não é identidade.
+
+**Defeitos 2 e 3 são o mesmo erro de raiz:** o hook trata `cwd` como se fosse a raiz do repo. Um
+conserto cobre os dois — resolver a raiz (`git rev-parse --show-toplevel`) e classificar por papel
+declarado, nunca por forma de caminho nem por cwd do turno.
+
+## O que NÃO é a causa — três hipóteses testadas e refutadas
 
 1. **"O `**` do glob exige ≥2 níveis"** (hipótese do CHIP-ANCHORS-3). Refutada: a linha 39 é
    `find "$CWD/.mnfs" -name EVIDENCE.md -path '*_chip*'`, agnóstica a profundidade. O
    `.mnfs/**/_chip-*/EVIDENCE.md` existe só na string de mensagem, não no mecanismo.
 2. **"`find` falha com path Windows"** (hipótese do hub). Refutada por execução: `find` com
    `C:\Users\…\.mnfs` resolve e lista normalmente no Git Bash desta máquina.
+3. **"Todo Bash meu carrega `cd <absoluto>`, então o cwd do disparo era a raiz"** — contra-indício
+   que o próprio CHIP-ANCHORS-3 ofereceu CONTRA o mecanismo dele. Refutado pela medição acima: o
+   cwd do registro do disparo é o diretório do pack. O chip estava certo no mecanismo e errado no
+   contra-indício que ele mesmo levantou contra si.
 
-## O que continua SEM explicação, e é honesto dizer
+## Sobre a regra de não ler transcript
 
-O bloqueio do CHIP-ANCHORS-3 **não** é explicado pelo defeito 2. Rodando a linha 39 verbatim contra
-o worktree dele agora: **35** packs. A checagem de existência passa ali, então ele não deveria ter
-recebido a mensagem de "no evidence pack".
-
-Duas leituras sobrevivem e nenhuma está medida: (a) o `$CWD` do payload do hook não era o worktree
-dele no momento do disparo; (b) o `.mnfs` dele estava em outro estado naquele instante. O dado que
-decide é uma coisa só — o `cwd` que o hook recebeu naquele turno. Enquanto não existir, isto fica
-**não fechado**, e o defeito 1 (certo) não deve ser usado para dar o caso por explicado.
+O chip pediu liberação da regra para este campo, ou o finding ABERTO. **Nenhuma das duas.** A regra
+existe contra AUTO-certificação: o chip lendo o próprio transcript para provar a própria alegação.
+Quem extraiu foi o hub, para quem a regra nunca foi sobre isso. A regra fica intacta e o dado
+existe.
