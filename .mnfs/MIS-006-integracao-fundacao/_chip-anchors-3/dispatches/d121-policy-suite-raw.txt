@@ -1,0 +1,128 @@
+=== RUN   TestConcordantAnchorsAreTheOnlyAutomaticPath
+=== PAUSE TestConcordantAnchorsAreTheOnlyAutomaticPath
+=== RUN   TestIncomparableReasonsDoNotChangeAutomaticOrConfirmationPolicy
+=== PAUSE TestIncomparableReasonsDoNotChangeAutomaticOrConfirmationPolicy
+=== RUN   TestSingleAnchorGoesToConfirmationNeverAutoApproved
+=== PAUSE TestSingleAnchorGoesToConfirmationNeverAutoApproved
+=== RUN   TestCollidingAnchorGoesToReviewAndApprovesNothing
+=== PAUSE TestCollidingAnchorGoesToReviewAndApprovesNothing
+=== RUN   TestConflictingAnchorsApproveNothingAndElectNoWinner
+=== PAUSE TestConflictingAnchorsApproveNothingAndElectNoWinner
+=== RUN   TestHardNegativeBlocksTheAutomaticPathEvenWithBothAnchors
+=== PAUSE TestHardNegativeBlocksTheAutomaticPathEvenWithBothAnchors
+=== RUN   TestHardNegativeKindsBlockConcordantSKUAndEAN
+=== PAUSE TestHardNegativeKindsBlockConcordantSKUAndEAN
+=== RUN   TestConfirmationAndReviewAreCountedSeparately
+=== PAUSE TestConfirmationAndReviewAreCountedSeparately
+=== RUN   TestOneProductAutoLinksToManyListings
+=== PAUSE TestOneProductAutoLinksToManyListings
+=== RUN   TestRerunningGenerationDoesNotDuplicateTheAutomaticLink
+=== PAUSE TestRerunningGenerationDoesNotDuplicateTheAutomaticLink
+=== RUN   TestAutoApprovalNeverOverridesAnOperatorDecision
+=== PAUSE TestAutoApprovalNeverOverridesAnOperatorDecision
+=== RUN   TestAutoApprovalNeverReopensAListingTheOperatorRejected
+=== PAUSE TestAutoApprovalNeverReopensAListingTheOperatorRejected
+=== RUN   TestAutoApproveRefusesACandidateItDidNotCorroborate
+=== PAUSE TestAutoApproveRefusesACandidateItDidNotCorroborate
+=== RUN   TestAFailedApprovalDoesNotAbandonTheRestOfTheBatch
+=== PAUSE TestAFailedApprovalDoesNotAbandonTheRestOfTheBatch
+=== RUN   TestEveryOperatorPathRefusesASystemActor
+=== PAUSE TestEveryOperatorPathRefusesASystemActor
+=== RUN   TestCase1ConcordantSKUAndEANYieldsAltaAccept
+=== PAUSE TestCase1ConcordantSKUAndEANYieldsAltaAccept
+=== RUN   TestCase2SellerSKUAloneWithoutEANYieldsMediaConfirm
+=== PAUSE TestCase2SellerSKUAloneWithoutEANYieldsMediaConfirm
+=== RUN   TestCase3EANAloneYieldsMediaConfirm
+=== PAUSE TestCase3EANAloneYieldsMediaConfirm
+=== RUN   TestCase4TitleOnlyYieldsBaixaReview
+=== PAUSE TestCase4TitleOnlyYieldsBaixaReview
+=== RUN   TestCase5SKUEANConflictYieldsBaixaReviewBothSides
+=== PAUSE TestCase5SKUEANConflictYieldsBaixaReviewBothSides
+=== RUN   TestCase6DokaKitHardNegativeCapsBaixaReject
+=== PAUSE TestCase6DokaKitHardNegativeCapsBaixaReject
+=== RUN   TestCase7VoltageHardNegativeCapsBaixaReject
+=== PAUSE TestCase7VoltageHardNegativeCapsBaixaReject
+=== RUN   TestCase8NoAnchorResolvedYieldsZeroConfidenceNoCandidateWithReasons
+=== PAUSE TestCase8NoAnchorResolvedYieldsZeroConfidenceNoCandidateWithReasons
+=== RUN   TestCase9ProviderDeclaredUnavailableAnchorsOnConcordantPayload
+=== PAUSE TestCase9ProviderDeclaredUnavailableAnchorsOnConcordantPayload
+=== RUN   TestCase10DimensionHardNegativeCapsBaixaReject
+=== PAUSE TestCase10DimensionHardNegativeCapsBaixaReject
+=== CONT  TestConcordantAnchorsAreTheOnlyAutomaticPath
+=== CONT  TestAFailedApprovalDoesNotAbandonTheRestOfTheBatch
+=== CONT  TestConfirmationAndReviewAreCountedSeparately
+--- PASS: TestAFailedApprovalDoesNotAbandonTheRestOfTheBatch (0.00s)
+=== CONT  TestSingleAnchorGoesToConfirmationNeverAutoApproved
+=== CONT  TestAutoApproveRefusesACandidateItDidNotCorroborate
+--- PASS: TestConcordantAnchorsAreTheOnlyAutomaticPath (0.00s)
+=== CONT  TestHardNegativeBlocksTheAutomaticPathEvenWithBothAnchors
+--- PASS: TestAutoApproveRefusesACandidateItDidNotCorroborate (0.00s)
+=== CONT  TestCollidingAnchorGoesToReviewAndApprovesNothing
+=== RUN   TestSingleAnchorGoesToConfirmationNeverAutoApproved/CODPROD_sem_EAN
+--- PASS: TestHardNegativeBlocksTheAutomaticPathEvenWithBothAnchors (0.00s)
+=== CONT  TestCase2SellerSKUAloneWithoutEANYieldsMediaConfirm
+--- PASS: TestConfirmationAndReviewAreCountedSeparately (0.00s)
+=== CONT  TestRerunningGenerationDoesNotDuplicateTheAutomaticLink
+=== RUN   TestSingleAnchorGoesToConfirmationNeverAutoApproved/EAN_sem_CODPROD
+--- PASS: TestCollidingAnchorGoesToReviewAndApprovesNothing (0.00s)
+=== CONT  TestCase4TitleOnlyYieldsBaixaReview
+--- PASS: TestSingleAnchorGoesToConfirmationNeverAutoApproved (0.00s)
+    --- PASS: TestSingleAnchorGoesToConfirmationNeverAutoApproved/CODPROD_sem_EAN (0.00s)
+    --- PASS: TestSingleAnchorGoesToConfirmationNeverAutoApproved/EAN_sem_CODPROD (0.00s)
+=== CONT  TestIncomparableReasonsDoNotChangeAutomaticOrConfirmationPolicy
+=== CONT  TestCase1ConcordantSKUAndEANYieldsAltaAccept
+=== CONT  TestEveryOperatorPathRefusesASystemActor
+=== RUN   TestEveryOperatorPathRefusesASystemActor/approve_candidate
+=== CONT  TestOneProductAutoLinksToManyListings
+=== PAUSE TestEveryOperatorPathRefusesASystemActor/approve_candidate
+=== RUN   TestEveryOperatorPathRefusesASystemActor/manual_resolve
+=== CONT  TestCase10DimensionHardNegativeCapsBaixaReject
+=== PAUSE TestEveryOperatorPathRefusesASystemActor/manual_resolve
+=== CONT  TestCase9ProviderDeclaredUnavailableAnchorsOnConcordantPayload
+--- PASS: TestCase2SellerSKUAloneWithoutEANYieldsMediaConfirm (0.00s)
+--- PASS: TestCase1ConcordantSKUAndEANYieldsAltaAccept (0.00s)
+--- PASS: TestRerunningGenerationDoesNotDuplicateTheAutomaticLink (0.00s)
+--- PASS: TestCase9ProviderDeclaredUnavailableAnchorsOnConcordantPayload (0.00s)
+=== CONT  TestCase7VoltageHardNegativeCapsBaixaReject
+=== CONT  TestCase6DokaKitHardNegativeCapsBaixaReject
+=== CONT  TestConflictingAnchorsApproveNothingAndElectNoWinner
+=== CONT  TestHardNegativeKindsBlockConcordantSKUAndEAN
+=== CONT  TestAutoApprovalNeverOverridesAnOperatorDecision
+=== CONT  TestCase5SKUEANConflictYieldsBaixaReviewBothSides
+=== CONT  TestCase3EANAloneYieldsMediaConfirm
+--- PASS: TestCase4TitleOnlyYieldsBaixaReview (0.00s)
+--- PASS: TestIncomparableReasonsDoNotChangeAutomaticOrConfirmationPolicy (0.00s)
+=== CONT  TestCase8NoAnchorResolvedYieldsZeroConfidenceNoCandidateWithReasons
+--- PASS: TestCase8NoAnchorResolvedYieldsZeroConfidenceNoCandidateWithReasons (0.00s)
+=== CONT  TestAutoApprovalNeverReopensAListingTheOperatorRejected
+=== RUN   TestHardNegativeKindsBlockConcordantSKUAndEAN/kit/combo
+--- PASS: TestCase7VoltageHardNegativeCapsBaixaReject (0.00s)
+--- PASS: TestOneProductAutoLinksToManyListings (0.00s)
+--- PASS: TestCase10DimensionHardNegativeCapsBaixaReject (0.00s)
+--- PASS: TestCase6DokaKitHardNegativeCapsBaixaReject (0.00s)
+--- PASS: TestConflictingAnchorsApproveNothingAndElectNoWinner (0.00s)
+=== RUN   TestEveryOperatorPathRefusesASystemActor/reject_listing
+--- PASS: TestAutoApprovalNeverOverridesAnOperatorDecision (0.00s)
+=== PAUSE TestEveryOperatorPathRefusesASystemActor/reject_listing
+--- PASS: TestCase3EANAloneYieldsMediaConfirm (0.00s)
+--- PASS: TestCase5SKUEANConflictYieldsBaixaReviewBothSides (0.00s)
+--- PASS: TestAutoApprovalNeverReopensAListingTheOperatorRejected (0.00s)
+=== RUN   TestEveryOperatorPathRefusesASystemActor/undo_resolution
+=== PAUSE TestEveryOperatorPathRefusesASystemActor/undo_resolution
+=== CONT  TestEveryOperatorPathRefusesASystemActor/approve_candidate
+=== CONT  TestEveryOperatorPathRefusesASystemActor/undo_resolution
+=== CONT  TestEveryOperatorPathRefusesASystemActor/reject_listing
+=== CONT  TestEveryOperatorPathRefusesASystemActor/manual_resolve
+=== RUN   TestHardNegativeKindsBlockConcordantSKUAndEAN/cor
+--- PASS: TestEveryOperatorPathRefusesASystemActor (0.00s)
+    --- PASS: TestEveryOperatorPathRefusesASystemActor/approve_candidate (0.00s)
+    --- PASS: TestEveryOperatorPathRefusesASystemActor/undo_resolution (0.00s)
+    --- PASS: TestEveryOperatorPathRefusesASystemActor/reject_listing (0.00s)
+    --- PASS: TestEveryOperatorPathRefusesASystemActor/manual_resolve (0.00s)
+=== RUN   TestHardNegativeKindsBlockConcordantSKUAndEAN/voltagem
+--- PASS: TestHardNegativeKindsBlockConcordantSKUAndEAN (0.00s)
+    --- PASS: TestHardNegativeKindsBlockConcordantSKUAndEAN/kit/combo (0.00s)
+    --- PASS: TestHardNegativeKindsBlockConcordantSKUAndEAN/cor (0.00s)
+    --- PASS: TestHardNegativeKindsBlockConcordantSKUAndEAN/voltagem (0.00s)
+PASS
+ok  	marketplace-central/apps/server_core/internal/modules/product_links/application	0.996s
