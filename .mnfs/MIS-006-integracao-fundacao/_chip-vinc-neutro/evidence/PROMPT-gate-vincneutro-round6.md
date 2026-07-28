@@ -88,10 +88,16 @@ tool built to enforce the clause. Assume it will catch yours.
 
 ## MANDATORY SECTION 3 — pack custody
 
-Report the output of both, verbatim:
+**Only if you have a shell.** One of the two seats does; the other is physically read-only
+(`Read`/`Grep`/`Glob`, no shell at all). If you are the read-only seat, write exactly *"no shell —
+custody routed to the executor seat"* and move on. That is a complete answer and costs you
+nothing. Do not infer custody from what you can read: a file you can open through `Read` looks
+identical whether or not `git` has ever heard of it, which is the whole failure mode below.
+
+If you do have a shell, report the output of both, verbatim:
 
 ```
-git ls-tree <HEAD> -- .mnfs/MIS-006-integracao-fundacao/_chip-vinc-neutro/ | wc -l
+git ls-tree HEAD -- .mnfs/MIS-006-integracao-fundacao/_chip-vinc-neutro/ | wc -l
 git status --porcelain .mnfs/MIS-006-integracao-fundacao/_chip-vinc-neutro/
 ```
 
@@ -99,6 +105,10 @@ The second must be empty. An evidence pack that lives only in a working tree is 
 teardown away from never having existed — a prior chip in this mission lost six commits' worth of
 artifacts to exactly that, and it is why this clause exists. If the pack is dirty, that is a
 finding on its own, regardless of what the code says.
+
+This clause is ALSO held by the hub's executor seat, so it is not discharged by your silence and
+it is not discharged by your saying you cannot run it. Both of those are correct answers here
+precisely because a third seat with a shell owns the same clause.
 
 ## MANDATORY SECTION 4 — the two adversarial questions
 
@@ -130,7 +140,7 @@ Open with **APPROVED** or **REFUTED** on its own line. Then:
 - every finding with `file:line` and the string you read, quoted;
 - severity, and what breaks in the running product if it ships;
 - the `## SWEEP` section (section 1) and the reconciliation counts (section 2);
-- the two custody commands (section 3), output verbatim;
+- section 3 — the custody output verbatim, or the one-line routing sentence;
 - Q1 and Q2 answered;
 - anything you could not settle without execution, named and routed.
 
