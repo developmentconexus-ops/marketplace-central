@@ -231,6 +231,17 @@ owns the action (chips never touch containers); only the approval ceremony is re
   (live/operator-provisioned env). Composition roots never ship permanent stub/nil wiring on a
   live path — stub only with dated deferral naming the replacing slice. Mission planning must
   declare real-integration bindings (seam + env) up front.
+- **No command that dumps a container's or process's whole environment.** `docker inspect`,
+  `docker exec … env`, bare `printenv`/`Get-ChildItem Env:` and equivalents print every secret the
+  target holds straight into the transcript. Diagnose a variable by NAME and one at a time
+  (`printenv THE_VAR`, `docker exec … printenv THE_VAR`), never by dumping the set. This binds
+  WORKERS too, so it belongs in the dispatch prompt denylist and not only here — the chip reads
+  the profile, the worker does not. It holds even when the target is throwaway: a session
+  Postgres container's password is CSPRNG-generated per container by
+  `scripts/harness/Postgres.psm1` and dies with it, so there is nothing to rotate, and that is
+  exactly why the rule cannot be argued down case by case — "it was disposable" is available
+  every time (CHIP-ANCHORS-3 R4 worker, 2026-07-28; the module already passes the value in
+  `-RedactionCandidates` for its own process calls, so the leak came from a path outside it).
 
 ## 8. Truth order (core §6)
 `status: ratified` · `provenance: 2026-07-15 · AGENTS.md + docs/HARNESS.md §6`
@@ -488,4 +499,5 @@ retroactive GPT-5.6 Sol medium review at mission closeout (operator's call).
 2026-07-28 · §11 · noted · a gate seat can FABRICATE a file:line citation — the Sol side of the CHIP-IMPORT-CHAIN gate reported `apps/web/vitest.chip.config.ts` as existing on disk and quoted its `:4` and `:16`, for a file present in no tree and tracked nowhere; probable origin is `chip.md:113-114`, which ORDERS the file deleted, read as an observation. Existence claims from a reading seat are verifiable by the hub in seconds and should be, before they enter a pack
 2026-07-28 · §3 · ratified · the FE vitest lane's `cd apps/web` is PART OF THE LANE: the same command from the worktree root adds `packages/sdk-runtime`, whose contract tests resolve `../../contracts/openapi.yaml` from `process.cwd()` and go red on a path that does not exist there; from the repo root it globs ~1260 files and returns ~94 failed. Both reds are the instrument. Third instance of stable-but-non-discriminating (hub executing-seat finding, first backend-independent run of the §11 third seat, on CHIP-VINC-NEUTRO @`ebb309ac`)
 2026-07-28 · §11 · noted · a physically read-only Opus seat has NO Write, so its task `.output` is 0 bytes BY CONSTRUCTION and the verdict exists only in the completion notification — observed twice (CHIP-ANCHORS-2, CHIP-VINC-NEUTRO). "Transcribed, not captured" with declared provenance is therefore the honest and the ONLY available form for that seat; demanding on-disk capture demands what the instrument does not offer. The residual risk is not fabrication but OMISSION (a finding emitted and not carried over), and it is unfalsifiable from the artifact — mitigation is verbatim paste as the FIRST act after the notification arrives, before any analysis, plus the seat's tool-set named in the header
+2026-07-28 · §7 · ratified · no command that dumps a whole environment (`docker inspect`, `docker exec … env`, bare `printenv`) — diagnose by variable NAME, one at a time; binds WORKERS, so it goes in the dispatch-prompt denylist, not only in the profile the chip reads. Holds for throwaway targets: the session Postgres password is CSPRNG-generated per container and dies with it, so there is nothing to rotate — which is precisely why "it was disposable" cannot be a case-by-case exemption (CHIP-ANCHORS-3 R4 worker field finding)
 2026-07-28 · (upstream) · accepted · CHIP-IMPORT-CHAIN F-3 (`New-DispatchPrompt.ps1` assembles an unknown role string cleanly, failing only later at `Invoke-CodexDispatch.ps1` with `ROLE-UNKNOWN` — validate against `roles.psd1` at assembly time) and F-4 (vitest in a junction-only worktree needs an absolute `setupFiles` path plus `server.fs.strict: false`; the junction realpath resolves outside the vite root) belong to `mnfs-harness`, not this profile — routed upstream, not filed here
