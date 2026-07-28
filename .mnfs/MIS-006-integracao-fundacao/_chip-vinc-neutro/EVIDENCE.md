@@ -889,6 +889,77 @@ unchanged — the hand corrections from round 4 were complete — and the wiring
 (`61/MEDIA/CONFIRM` → `wireCandidate: no scoring path assigns (61, MEDIA, CONFIRM)`) so that "green"
 could not mean "never called".
 
+### ROUND 5 — hub ruling, and the correction it forced
+
+**The guard as first written had the defect it was built to catch.** The hub's item 2: reading Go
+with regexes is string-scraping, and a rename, a moved file, or a literal replaced by a generated
+`const` makes every pattern match NOTHING — *and a guard that finds nothing PASSES.* Green with the
+Go intact, green with the Go gone. That is the same non-discriminating observable as the 15 tsc
+errors, the `.bin`, and the gate that judged a phantom tree. My version asserted set equality and
+never asserted that it could still SEE its subject.
+
+Corrected as mandated, with all four arms must-failed and captured
+(`evidence/V-guard-mustfail-round5.txt`):
+
+| arm | what was broken | result |
+|---|---|---|
+| (a1) | FE vocabulary GREW (`refforn` added back) | RED — set inequality named |
+| (a2) | FE vocabulary SHRANK (`marca` dropped) | RED |
+| (b1) | Go source moved/renamed away | **RED, 3/3 tests** — `the file this guard reads for the identity-anchor vocabulary itself is gone or moved` |
+| (b2) | Go source READABLE but the symbol renamed out of it | **RED, 3/3** — `no longer contains \`var knownIdentityAnchors\` … every assertion after this one would pass vacuously`, plus two `expected 0 to be greater than 0` from the extraction tests |
+
+Arm (b2) is the one worth naming: the file opens, the guard reads it, and the vocabulary is simply
+not in there. Before the fix that was a silent pass. The zero-extraction assertions now sit in three
+places, because "extracted nothing" and "there is nothing to extract" are the two states this guard
+exists to tell apart.
+
+**What it is, stated so the pack does not overstate it (hub's words, adopted).** It is NOT a
+compiler. It is a divergence detector that knows how to recognize its own blindness. It cannot prove
+the FE matches a DEPLOYED server and does not try; it proves the FE's copy matches the declaration
+in THIS checkout, and refuses to answer at all when it can no longer read that declaration. With arm
+(b) it CLOSES F-07; without arm (b) it would only have MOVED it.
+
+### PROCESS RULE, from the hub — the one thing `wireCandidate()` does not fix
+
+> *"Artefato de varredura não é anunciado como fechando nada até um assento que não seja você ter
+> lido. Você produz, congela, dispara, e SÓ ENTÃO escreve o que ele fechou."*
+
+The hub located the failure precisely, and not where I had located it. My error was **not** in
+reading the Go. It was in **announcing the sweep as a result in the same message that produced it** —
+authority prose born and published in one act, with nothing between. In the next message its "two
+findings four reviewer rounds missed" had become two false claims of mine. A throwing constructor
+fixes fixtures; it cannot fix that. The rule that does is cheaper than any constructor, and it is
+the same shape as `P6-DUAL-GATE:` being the hub's line and not mine.
+
+Binding from here, not retroactive.
+
+### The grant, and what measuring it changed
+
+`VinculosPage.test.tsx` granted without reservation — the boundary I respected stopped existing
+while I was writing, CHIP-IMPORT-CHAIN having merged at `45b887b3` and been torn down. The hub then
+measured the companion rather than leaving me its hypothesis, and **retracted half of its own
+concern** when the measurement came back benign: one occurrence, in a comment, supporting no
+assertion.
+
+The 29th fixture is corrected through the mechanism: `95/ALTA` + `match_status: "REVIEW"` +
+`reasons: []` — three impossibilities at once, and the reason it matters is where it was. It
+survived four reviewer rounds AND this chip's own hand sweep by living in a file that sweep did not
+own. A checklist has a scope; the fixture was outside it.
+
+**One correction to my own first draft of that work, caught by measuring instead of trusting the
+handover.** I wrote a comment saying the Importação section "is no longer on this page and the
+component file is gone". That is true on `main` and **false in this worktree**: this branch is based
+at `5441fe18`, `VinculosPage.tsx:159` still renders `<ImportacaoSection />` here, and the component
+and its test both still exist. The hub's fact was correct and correctly scoped to the integrated
+tree; I restated it as if it described mine. Corrected in place — the mock is load-bearing HERE, and
+the comment is removed because it describes a seam whose removal is already decided and simply has
+not reached this checkout, which is a different and honest reason.
+
+Checked while there, because a deleted component with a surviving test is a live merge hazard:
+local `main` deleted **both** `ImportacaoSection.tsx` and `ImportacaoSection.test.tsx`, so this
+merge leaves no orphan test. (`origin/main` still shows both — it is stale; nothing has been
+pushed.)
+
 **FINDING (lane, for hub ratification).** One cold run of `wireFixtures.guard.test.ts` blew the 5s
 `testTimeout` reading two Go files, while the very next test read the same two files in 2ms. **The
 cause was not established** — three later runs, including a probe built to reproduce it, all came
@@ -914,9 +985,10 @@ time is not charged to `testTimeout`, so a slow cold read can no longer turn a p
 
 **Lanes, final (after round 5).** `tsc` **15 → 12, and 3 → 0 under `pages/vinculos/`**
 (`evidence/L0-tsc-baseline.txt` → `evidence/L0-tsc-after-round5.txt`); vitest 62/511 →
-**64/530** (`evidence/L1-vitest-after-round5.txt`). The +19 over the baseline are the regression
+**64/531** (`evidence/L1-vitest-after-round5.txt`). The +20 over the baseline are the regression
 tests the five gate rounds forced; the new file is `wireFixtures.guard.test.ts`, the Go-source guard
-that closes F-07.
+that closes F-07 — its third test is the arm the hub's ruling required, the one that fails when the
+guard can no longer see its own subject.
 
 > **CORRECTION (R-24), made at the source rather than annotated.** An earlier version of this line
 > read *"the same 12 as the baseline; this chip neither added nor removed one."* That was FALSE.

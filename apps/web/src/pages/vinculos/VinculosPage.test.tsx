@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { VinculosPage } from "./VinculosPage";
+import { MARCA_UNAVAILABLE_DETAIL, wireCandidate } from "./wireFixtures";
 
 const listProductLinkCandidates = vi.fn();
 const listProductLinkWorkflows = vi.fn();
@@ -34,28 +35,48 @@ function renderPage() {
 describe("VinculosPage", () => {
   beforeEach(() => {
     listErpImports.mockReset();
-    // Default: the read-only Importação section (S9) has its own empty history —
-    // pre-existing Fila/Resolvidos tests below are not exercising that section.
+    // The mock is load-bearing in THIS tree: `VinculosPage.tsx:159` still
+    // renders `<ImportacaoSection />` here, because this worktree branched at
+    // `5441fe18` and CHIP-IMPORT-CHAIN's removal landed on `main` afterwards
+    // (`45b887b3`, which deleted the component AND its test — measured, not
+    // assumed). So the mock stays.
+    //
+    // What was deleted here is the COMMENT that described that section, and the
+    // distinction matters: it was accurate when written and accurate right now,
+    // and it becomes wrong the moment this branch merges. Removing it is not
+    // doc-rot cleanup — it is not describing a seam whose removal is already
+    // decided and simply has not reached this checkout yet.
     listErpImports.mockResolvedValue({ items: [] });
   });
 
   it("renders tabs and shows the queue KPIs once loaded", async () => {
     listProductLinkCandidates.mockResolvedValue({
       items: [
-        {
+        // The 29th fixture, and the last one outside the mechanism. It carried
+        // `95/ALTA` with `match_status: "REVIEW"` and `reasons: []` — three
+        // impossibilities at once: ALTA is assigned at exactly one site and only
+        // on the ACCEPT path (generation_service.go:503-505), and no candidate
+        // is reason-less, because every declared anchor without a FOR/AGAINST
+        // signal is emitted by the finalizer.
+        //
+        // It survived four reviewer rounds and this chip's own hand sweep by
+        // living in a file the sweep did not own. That is the argument for a
+        // throwing constructor over a checklist: the checklist has a scope, and
+        // the fixture was outside it.
+        wireCandidate({
           candidate_id: "cand_1",
-          installation_id: "inst_1",
-          provider_code: "mercado_livre",
           provider_item_id: "MLB1",
           state: "exact_sku",
           match_input: "seller_sku",
+          match_status: "ACCEPT",
           confidence: 95,
           confidence_band: "ALTA",
-          match_status: "REVIEW",
-          reasons: [],
-          created_at: "2026-07-18T12:00:00Z",
-          updated_at: "2026-07-18T12:00:00Z",
-        },
+          reasons: [
+            { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
+            { anchor: "ean", direction: "FOR", detail: "ean corrobora o mesmo codprod" },
+            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
+          ],
+        }),
       ],
     });
     listProductLinkWorkflows.mockResolvedValue({ items: [] });
