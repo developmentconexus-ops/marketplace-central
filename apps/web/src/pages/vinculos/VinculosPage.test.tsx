@@ -1,19 +1,17 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { VinculosPage } from "./VinculosPage";
 import { MARCA_UNAVAILABLE_DETAIL, wireCandidate } from "./wireFixtures";
 
 const listProductLinkCandidates = vi.fn();
 const listProductLinkWorkflows = vi.fn();
-const listErpImports = vi.fn();
 
 vi.mock("../../app/ClientContext", () => ({
   useClient: () => ({
     listProductLinkCandidates: (...args: unknown[]) => listProductLinkCandidates(...args),
     listProductLinkWorkflows: (...args: unknown[]) => listProductLinkWorkflows(...args),
-    listErpImports: (...args: unknown[]) => listErpImports(...args),
   }),
 }));
 
@@ -33,23 +31,23 @@ function renderPage() {
 }
 
 describe("VinculosPage", () => {
-  beforeEach(() => {
-    listErpImports.mockReset();
-    // The mock is load-bearing in THIS tree: `VinculosPage.tsx:159` still
-    // renders `<ImportacaoSection />` here, because this branch forked at
-    // `bcab8269` (`git merge-base main HEAD`, measured by the hub's executor
-    // seat — an earlier draft of this comment said `5441fe18`, which is an
-    // ancestor of the fork point, not the fork point) and CHIP-IMPORT-CHAIN's
-    // removal landed on `main` afterwards (`45b887b3`, which deleted the
-    // component AND its test). So the mock stays.
-    //
-    // What was deleted here is the COMMENT that described that section, and the
-    // distinction matters: it was accurate when written and accurate right now,
-    // and it becomes wrong the moment this branch merges. Removing it is not
-    // doc-rot cleanup — it is not describing a seam whose removal is already
-    // decided and simply has not reached this checkout yet.
-    listErpImports.mockResolvedValue({ items: [] });
-  });
+  // The `listErpImports` mock that stood here was load-bearing until this branch
+  // merged `main`: `VinculosPage.tsx` rendered `<ImportacaoSection />`, and the
+  // previous comment said so — and said, in the same breath, that it "becomes
+  // wrong the moment this branch merges". That moment is the merge commit
+  // `293c1485`, which brought CHIP-IMPORT-CHAIN's move of the component to
+  // `pages/importacoes/` (`4b76a287`) and took the two render lines out of
+  // `VinculosPage.tsx` with it. Nothing under `pages/vinculos/` reaches
+  // `useErpImports` any more; the only importers are `pages/importacoes/` and
+  // `pages/integracoes/`.
+  //
+  // So the mock was deleted, not re-worded, and the deletion is the measurement:
+  // a mock that is genuinely dead cannot turn this file red by leaving. It did
+  // not.
+  //
+  // The `beforeEach` went with it rather than being kept and re-purposed: the
+  // two surviving mocks were never reset here, and adding resets for them would
+  // be a behaviour change smuggled in under a comment fix.
 
   it("renders tabs and shows the queue KPIs once loaded", async () => {
     listProductLinkCandidates.mockResolvedValue({
