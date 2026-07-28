@@ -1126,3 +1126,140 @@ is either fixed with a red-first artifact or recorded as a REPORT/REQUEST.
 Whether one more round is required, and whether the ledger's row-6 provenance gap (a transcribed
 rather than captured Opus verdict) is acceptable, are the hub's calls. The `P6-DUAL-GATE:` line and
 the `AGREEMENT` marker remain the hub's to write. Not this chip's.
+
+---
+
+## ROUND 6 — the mechanism was refuted, and replaced. Fix commit `26c0ad10`
+
+Both seats REFUTED, blind to each other, on the frozen input dispatched at `2e9e9ce3`
+(brief blob `524d8ce2`, unchanged since dispatch). Verdicts captured in
+`evidence/REVIEW-gate-vincneutro-sol-rev5.md` (blob `b34d8dbf`, `-o` capture) and
+`evidence/REVIEW-gate-vincneutro-opus-rev4.md` (blob `bd360345`, transcribed — that seat has no
+`Write`; the banner declares the one mechanical transform applied).
+
+The hub reclassified under a rubric it stated mid-round: **BLOCKING is reserved to behavior,
+security, data, contract; prose, count, metadata and citation are REPORT.** Three findings blocked.
+
+### What was actually wrong: a PARTIAL guard under a TOTAL sentence
+
+`wireCandidate` said *"A candidate the backend can actually emit. Throws if it is not one."* It
+validated `(confidence, band, status)` plus one hardcoded NO_CANDIDATE shape rule, and it asked
+about exactly one `provider_code`. That is not a weaker guard than advertised — it is a guard whose
+advertisement was false, which is worse than none: five rounds of reviewers read the sentence and
+stopped, because the sentence said the class was closed.
+
+The two lists were the fiction. `state`/`match_input` are decided at `newCandidate`, the triple is
+decided afterwards by a scorer, so a fixture assembled from a real state and a real triple can still
+be impossible. `ACCEPT` is assigned at ONE non-test site — `generation_service.go:505`, inside
+`buildConcordantCandidate` — and that function builds its candidate at `:491` with
+`LinkCandidateStateExactSKU` / `LinkCandidateMatchInputSellerSKU`. The ACCEPT branch `:503-505`
+touches confidence/band/status only. **Every ACCEPT in the product is `(exact_sku, seller_sku)`.**
+
+### The replacement, one mechanism and not nine patches
+
+`PRODUCIBLE_TUPLES` — 15 rows, one per producing site, each carrying
+`(confidence, band, status, state, match_input, from)`, every row read out of the Go one site at a
+time rather than derived from the band thresholds in the design doc.
+
+Two consequences that were not point-fixes but deletions:
+
+- **the NO_CANDIDATE special case is gone**, and it was WRONG in the strict direction as well as
+  the loose one. It required `state === "unresolved"`. `buildConflictCandidates:340-341` builds
+  with `LinkCandidateStateConflict` and then calls `applyUnresolvedScore`, so the backend emits
+  `NO_CANDIDATE` with `state === "conflict"`. The old check would have REJECTED a producible
+  candidate. Found by this chip's own measurement while building the table; found by neither seat.
+- **the `providerCode === "mercado_livre"` gate is gone**, replaced by
+  `DECLARED_PROVIDER_CAPABILITIES`. The hub's reading of that gate is the finding, kept verbatim
+  because the inversion is the whole lesson: *"o guard checa exatamente o provider onde ele não pode
+  errar, e libera todos os providers cuja producibilidade é desconhecida."* A provider with no row
+  is not producible at all — `resolveIdentityAnchors:149-169` ABORTS generation when a declaration
+  does not resolve, so an undeclared provider emits no candidate rather than a defaulted one.
+
+Also generalized: the unsupplied-anchor rule is now `unavailableDetail(anchor)`, mirroring
+`fmt.Sprintf("provider não fornece a âncora %s", anchor.Anchor)` at `:704`. The previous form was a
+`marca`-only constant, so it could only ever check one anchor of one provider.
+
+`reasonSideLabel` (`QueueRow.tsx:230`) gains `?? reason.side`. It was the only member of its family
+— `bandLabels ?? band` (`:60`), `directionLabels ?? direction` (`:292`), `anchorShortLabels ?? anchor`
+(`:300`), the ranking map `?? UNKNOWN_DIRECTION_RANK` (`:356`) — that discarded an unknown wire
+value instead of showing it verbatim, so a `side` shipped ahead of an SDK regen vanished from the
+chip entirely.
+
+### A TENTH impossible fixture, found by the table and by nobody in six rounds
+
+`QueueTab.test.tsx` `cand_3` overrode `state: "conflict"` and INHERITED `match_input: "title"` from
+`defaultCandidate()`. No conflict site can pair those: `buildConflictCandidates:329-333` and
+`buildCollisionCandidates:360-362` set `match_input` to `seller_sku` or `ean`, because the conflict
+IS between those two anchors. Six rounds of reading did not see it; the table saw it on first run.
+That is the argument for the table over the checklist, stated as a measurement rather than a hope.
+
+### A rule CONSIDERED AND REJECTED
+
+"A supplied anchor is never UNAVAILABLE" reads as an obvious tightening from `:703-704`
+(`classifyProviderIdentityAnchor` returns UNAVAILABLE only under `!anchor.Supplied`). It is **false**.
+`missingMatchedAnchorReason:642` sets `Direction = Unavailable` on its `default:` branch — supplied
+anchor, both sides carrying a value, and it still matched nothing. Adding the rule would have been
+the exact class this chip keeps finding: an instrument wider than the fact it measures. Recorded
+because the near-miss is the evidence, and because the rule was rejected by reading the third
+UNAVAILABLE site rather than by stopping at the first two.
+
+### Executed evidence — counted, not tailed
+
+| lane | result | artifact |
+|---|---|---|
+| MUST-FAIL, before the fix | **3 failed \| 22 skipped (25)** | `evidence/V-mustfail-round6-RED.log` (117 lines, full) |
+| MUST-FAIL, after the fix | **3 passed \| 22 skipped (25)** | `evidence/V-mustfail-round6-GREEN.log` |
+| vitest, whole web suite | **64 files / 534 tests passed**, exit 0 | `evidence/V-vitest-round6-GREEN.log` |
+| vitest, the run that found the tenth | 1 failed / 533 passed — `no producing site emits (20, BAIXA, REVIEW, state=conflict, match_input=title)` | `evidence/V-vitest-round6-fix.log` |
+| tsc | **12 errors, 0 under `pages/vinculos/`** | `evidence/V-tsc-round6.log` |
+| sentinel arm (suffix rename of `knownIdentityAnchors`, port only) | **2 failed \| 3 passed (5)**, sentinel ✗ | `evidence/V-sentinel-mustfail-round6.log` |
+
+All six measured on the tree committed as **`26c0ad10`** (§11, amendment `25716bdb`). The sentinel
+arm moved from the hub executor's `2 failed / 1 passed (3)` to `2 failed / 3 passed (5)` by exactly
+the two tests this round added, both of which are Go-independent — the residual is named, not slack.
+The mutated Go file was restored from a copy held OUTSIDE the repo and proved identical with
+`git diff --quiet HEAD -- <file>`; no `checkout`, `reset` or `stash` was used.
+
+The three must-fails, verbatim from the guard and the tab:
+
+1. `MUST-FAIL 1 — ACCEPT exists only as (exact_sku, seller_sku)` — the `(exact_ean, ACCEPT, ean)`
+   fixture that survived five rounds now throws `no producing site emits`.
+2. `MUST-FAIL 2 — a provider with no capability declaration is not producible` —
+   `wireCandidate({ provider_code: "shopee" })` throws, and the message routes to `driftCandidate`.
+3. `MUST-FAIL 3 — an INCOMPARABLE 'side' outside the SDK union renders VERBATIM` — the chip shows
+   `? SKU (fornecedor)` instead of swallowing the value.
+
+### Fixtures converted
+
+Nine fixtures the mechanism now rejects were corrected rather than exempted, plus the tenth above:
+two impossible ACCEPTs (`state`/`match_input` corrected; the `identificado-por` assertion is
+unaffected because `statusDecidingAnchors.ACCEPT` at `QueueRow.tsx:175` ignores `match_input` and
+names both anchors by definition of corroboration), and seven undeclared-provider fixtures moved to
+`driftCandidate(NO_DECLARATION_HERE, …)` — case 2, which is what they always were.
+
+### Pack corrections filed this round (R-24, at source)
+
+- `V-count-reconciliation-self.md` — the superseded `POPULACAO=51` line now carries an INLINE
+  supersession marker. A correction that only reaches a reader who started at the top is ordering,
+  not correction: `grep POPULACAO=` landed on a wrong number carrying its own `soma_confere=True`.
+- the same file's published commands were elided (`…`) and read the working tree, so they could not
+  reproduce the numbers printed beside them — run as printed at the fix tip the old one yields 52,
+  not 51. Both are now `git grep` forms anchored to `2e5331b6`, and both were run verbatim and
+  reproduce `51` and `53`. Re-measured across every tip the number has been quoted at:
+  `2e5331b6 → 53`, `7b5c18eb → 53`, `2e9e9ce3 → 53`, `26c0ad10 → 54` (the `+1` is
+  `cand_drift_side`, MUST-FAIL 3's fixture).
+
+### Still REPORT, not fixed here
+
+- **F5** — `wireFixtures.ts` cited `(:700-702)` / `(:706-708)` for `classifyProviderIdentityAnchor`;
+  the real sites are `:704` (UNAVAILABLE) and `:711`/`:715`/`:723`/`:726`/`:728` (the INCOMPARABLE
+  branches). Corrected in the rewritten doc block, since that block was being replaced anyway.
+- **the freeze violation is mine** — `EVIDENCE.md` was edited after dispatch, and the Opus seat read
+  the transient clobber window. "Frozen" was a claim, not a state. The correct form is to have
+  nothing to remember: no pack writes between dispatch and verdict, ledger commit afterwards.
+- `BatchPreviewModal.tsx:44/46/94` — `ProductLinkBatchPreviewItem.status` enumerated by string
+  literal in three places that disagree under drift. Not a defect today (the union is total at two
+  members); the union the mechanism never covered and never claimed to.
+- `scripts/harness/pack-measure.sh` (`c66ea7c7`) is not on this branch, so the reconciliation
+  commands above are hand-written rather than generated. They are SHA-anchored and were run
+  verbatim, which is the property that matters; replacing them with the script is the hub's merge.

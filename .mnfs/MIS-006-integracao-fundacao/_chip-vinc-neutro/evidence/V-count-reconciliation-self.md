@@ -22,7 +22,9 @@ only under `pages/vinculos/`, because the 29th fixture survived four rounds prec
 in a file the sweep did not own.
 
 ```
-POPULACAO=51  EXTRACAO=36  REFS=15  soma_confere=True
+POPULACAO=51  EXTRACAO=36  REFS=15  soma_confere=True   <-- SUPERSEDED, WRONG (51 counts
+                                                            LINES; there are 53). See
+                                                            `## CORRECTION` below.
 ```
 
 | | count | what it is |
@@ -101,8 +103,22 @@ The hub's executor seat verified this artifact instead of accepting it, and the 
 ### The defect: `grep -c` counts LINES
 
 ```
-grep -rc 'candidate_id:' … | sum   →  51    ← the number reported above
-grep -roh 'candidate_id:' | wc -l  →  53    ← occurrences, which is what was CLAIMED
+# the instrument that was used — counts LINES. Shown here reading a named SHA,
+# because the working-tree form it was actually run as prints 52 at the round-6
+# fix tip: a command whose output moves with the tree cannot reproduce a number
+# written in a file. That is the same defect one level up, and it was caught by
+# running the line as printed instead of trusting it.
+git grep -c 'candidate_id:' 2e5331b6 -- 'apps/web/src/**/*.test.ts' \
+    'apps/web/src/**/*.test.tsx' | awk -F: '{s+=$NF} END {print s}'         ->  51
+
+# the instrument the CLAIM required — counts occurrences, same named SHA
+git grep -oh 'candidate_id:' 2e5331b6 -- 'apps/web/src/**/*.test.ts' \
+    'apps/web/src/**/*.test.tsx' | wc -l                                   ->  53
+
+# re-measured across every tip this number has been quoted at:
+#   2e5331b6 -> 53    7b5c18eb -> 53    2e9e9ce3 -> 53    26c0ad10 -> 54
+# 26c0ad10 is the round-6 fix commit; the +1 is `cand_drift_side`, the
+# driftCandidate fixture added by MUST-FAIL 3. Named, so it is not slack.
 ```
 
 The claim was a count of THINGS (fixture sites). The instrument was a count of LINES. The two

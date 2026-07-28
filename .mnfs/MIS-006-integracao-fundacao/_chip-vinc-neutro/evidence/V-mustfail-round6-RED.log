@@ -1,0 +1,117 @@
+
+[1m[46m RUN [49m[22m [36mv3.2.4 [39m[90mC:/Users/leandro.theodoro/Documents/marketplace-central/.claude/worktrees/gifted-dhawan-5049f6/apps/web[39m
+
+[1m[43m DEPRECATED [49m[22m [33m'basic' reporter is deprecated and will be removed in Vitest v3.
+Remove 'basic' from 'reporters' option. To match 'basic' reporter 100%, use configuration:
+{
+  "test": {
+    "reporters": [
+      [
+        "default",
+        {
+          "summary": false
+        }
+      ]
+    ]
+  }
+}[39m
+ [31m❯[39m src/pages/vinculos/wireFixtures.guard.test.ts [2m([22m[2m5 tests[22m[2m | [22m[31m2 failed[39m[2m | [22m[33m3 skipped[39m[2m)[22m[32m 8[2mms[22m[39m
+   [2m[90m↓[39m[22m wireFixtures vocabulary vs the Go source it mirrors[2m > [22mcan still SEE the Go declarations it claims to guard
+   [2m[90m↓[39m[22m wireFixtures vocabulary vs the Go source it mirrors[2m > [22mKNOWN_IDENTITY_ANCHORS is exactly knownIdentityAnchors
+   [2m[90m↓[39m[22m wireFixtures vocabulary vs the Go source it mirrors[2m > [22mMERCADO_LIVRE_SUPPLIED_ANCHORS is exactly what its capability adapter declares
+[31m   [31m×[31m wireCandidate rejects what generation_service.go cannot emit[2m > [22mMUST-FAIL 1 — ACCEPT exists only as (exact_sku, seller_sku)[39m[32m 7[2mms[22m[39m
+[31m     → expected [Function] to throw an error[39m
+[31m   [31m×[31m wireCandidate rejects what generation_service.go cannot emit[2m > [22mMUST-FAIL 2 — a provider with no capability declaration is not producible[39m[32m 0[2mms[22m[39m
+[31m     → expected [Function] to throw an error[39m
+ [31m❯[39m src/pages/vinculos/QueueTab.test.tsx [2m([22m[2m20 tests[22m[2m | [22m[31m1 failed[39m[2m | [22m[33m19 skipped[39m[2m)[22m[32m 59[2mms[22m[39m
+   [2m[90m↓[39m[22m QueueTab[2m > [22mrenders rows with distinct bands and anchor chips showing motivo together with the %
+   [2m[90m↓[39m[22m QueueTab[2m > [22mcollapses extra motivos behind +N and drops none of them (expansion shows the full wire form)
+   [2m[90m↓[39m[22m QueueTab[2m > [22mkeeps the label of an anchor D-A removed, for rows decided before the removal
+   [2m[90m↓[39m[22m QueueTab[2m > [22mkeeps a motivo on screen for a row whose reasons are ALL INCOMPARABLE (ADR-17)
+   [2m[90m↓[39m[22m QueueTab[2m > [22mpromotes the actionable absences over the permanent one, on a reason set the backend really emits
+   [2m[90m↓[39m[22m QueueTab[2m > [22mranks INCOMPARABLE above UNAVAILABLE without dropping either (ranking, never filtering)
+[31m   [31m×[31m QueueTab[2m > [22mMUST-FAIL 3 — an INCOMPARABLE `side` outside the SDK union renders VERBATIM[39m[32m 58[2mms[22m[39m
+[31m     → [2mexpect([22m[31melement[31m[2m).toHaveTextContent()[22m
+
+Expected element to have text content:
+[32m  ? SKU (fornecedor)[31m
+Received:
+[31m  ? SKU[31m[39m
+   [2m[90m↓[39m[22m QueueTab[2m > [22mrenders an INCOMPARABLE with no `side` on the wire without inventing one
+   [2m[90m↓[39m[22m QueueTab[2m > [22mrenders an honest NO_CANDIDATE row instead of a blank row
+   [2m[90m↓[39m[22m QueueTab[2m > [22mneutralizes the structural labels while keeping WHICH provider the anúncio is on
+   [2m[90m↓[39m[22m QueueTab[2m > [22mtypesets an unmapped provider without ever collapsing two distinct codes onto one name
+   [2m[90m↓[39m[22m QueueTab[2m > [22mremoves the item from the queue after an approve + page-local invalidation
+   [2m[90m↓[39m[22m QueueTab[2m > [22mopens the drawer from a ?candidate= deep link (survives F5)
+   [2m[90m↓[39m[22m QueueTab[2m > [22mbulk selects rows, previews as a pure dry-run, applies the valid subset, and clears selection + refetches the queue
+   [2m[90m↓[39m[22m QueueTab[2m > [22mnames only the anchors that decided, and names none for a title-only REVIEW row
+   [2m[90m↓[39m[22m QueueTab[2m > [22msurvives a match_status the SDK union does not know, degrading one cell instead of the table
+   [2m[90m↓[39m[22m QueueTab[2m > [22msurvives a reason direction the SDK union does not know, without printing undefined
+   [2m[90m↓[39m[22m QueueTab[2m > [22msurvives a confidence_band the SDK union does not know, without printing undefined
+   [2m[90m↓[39m[22m QueueTab[2m > [22msurvives the same unknown confidence_band in the DRAWER, not only in the row
+   [2m[90m↓[39m[22m QueueTab[2m > [22mdoes not let two provider codes collapse onto one name through whitespace
+
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 3 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/pages/vinculos/QueueTab.test.tsx[2m > [22mQueueTab[2m > [22mMUST-FAIL 3 — an INCOMPARABLE `side` outside the SDK union renders VERBATIM
+[31m[1mError[22m: [2mexpect([22m[31melement[31m[2m).toHaveTextContent()[22m
+
+Expected element to have text content:
+[32m  ? SKU (fornecedor)[31m
+Received:
+[31m  ? SKU[31m[39m
+[36m [2m❯[22m src/pages/vinculos/QueueTab.test.tsx:[2m416:22[22m[39m
+    [90m414| [39m    [35mconst[39m row [33m=[39m [35mawait[39m screen[33m.[39m[34mfindByTestId[39m([32m"queue-row"[39m)[33m;[39m
+    [90m415| [39m    [35mconst[39m chips [33m=[39m [34mwithin[39m(row)[33m.[39m[34mgetAllByTestId[39m([32m"motivo-chip"[39m)[33m;[39m
+    [90m416| [39m    [34mexpect[39m(chips[[34m0[39m])[33m.[39m[34mtoHaveTextContent[39m([32m"? SKU (fornecedor)"[39m)[33m;[39m
+    [90m   | [39m                     [31m^[39m
+    [90m417| [39m  })[33m;[39m
+    [90m418| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/pages/vinculos/wireFixtures.guard.test.ts[2m > [22mwireCandidate rejects what generation_service.go cannot emit[2m > [22mMUST-FAIL 1 — ACCEPT exists only as (exact_sku, seller_sku)
+[31m[1mAssertionError[22m: expected [Function] to throw an error[39m
+
+[32m- Expected:[39m 
+null
+
+[31m+ Received:[39m 
+undefined
+
+[36m [2m❯[22m src/pages/vinculos/wireFixtures.guard.test.ts:[2m234:7[22m[39m
+    [90m232| [39m        ][33m,[39m
+    [90m233| [39m      })[33m,[39m
+    [90m234| [39m    )[33m.[39m[34mtoThrow[39m([36m/no producing site emits/[39m)[33m;[39m
+    [90m   | [39m      [31m^[39m
+    [90m235| [39m  })[33m;[39m
+    [90m236| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/pages/vinculos/wireFixtures.guard.test.ts[2m > [22mwireCandidate rejects what generation_service.go cannot emit[2m > [22mMUST-FAIL 2 — a provider with no capability declaration is not producible
+[31m[1mAssertionError[22m: expected [Function] to throw an error[39m
+
+[32m- Expected:[39m 
+null
+
+[31m+ Received:[39m 
+undefined
+
+[36m [2m❯[22m src/pages/vinculos/wireFixtures.guard.test.ts:[2m242:62[22m[39m
+    [90m240| [39m    // exactly one declaration (mercado_livre, capability_adapter.go:9…
+    [90m241| [39m    [90m// `shopee` candidate is not a wire row here at all.[39m
+    [90m242| [39m    expect(() => wireCandidate({ provider_code: "shopee" })).toThrow(/…
+    [90m   | [39m                                                             [31m^[39m
+    [90m243| [39m    expect(() => wireCandidate({ provider_code: "shopee" })).toThrow(/…
+    [90m244| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m2 failed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[31m3 failed[39m[22m[2m | [22m[33m22 skipped[39m[90m (25)[39m
+[2m   Start at [22m 16:45:45
+[2m   Duration [22m 2.48s[2m (transform 219ms, setup 286ms, collect 1.47s, tests 67ms, environment 667ms, prepare 580ms)[22m
+
