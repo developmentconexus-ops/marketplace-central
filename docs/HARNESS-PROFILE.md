@@ -133,12 +133,28 @@ another checkout's `node_modules`: npm workspace symlinks would resolve workspac
   during browser QA is an ENV failure, not a UI defect. Visual QA evidence = computed-style
   captures (getComputedStyle assertions) + accessibility-tree reads instead of pixels
   (CHIP-M03 field finding F-ENV-10, 2026-07-18).
+- A `node_modules` that is MID-`npm ci` (or left half-installed by an interrupted one) makes
+  `tsc` emit module-resolution errors that impersonate real defects — and the count is STABLE,
+  so running `tsc` twice and getting the same output proves nothing. The only discriminating
+  observable is the `npm ci` PROCESS EXIT: do not read a single `tsc` result out of a worktree
+  whose install has not exited 0. Sibling of the stable-but-non-discriminating trap in the
+  review note below: an observable can be reproducible and still not tell the two worlds apart
+  (CHIP-IMPORT-CHAIN field finding, 2026-07-28).
 
 **Review-process note (F-ENV-8, 2026-07-18):** isolated per-slice reviews cannot see test
 responsibilities MOVED between files (e.g. nav assertions relocating Layout.test → Header.test
 reads as deletion in one diff and addition in another). The full-suite L0 run at milestone
 close is the backstop that proves net coverage — never waive it for FE milestones on the
 grounds that each slice was reviewed.
+
+**Sandbox vitest blindness has TEETH (CHIP-IMPORT-CHAIN, 2026-07-28).** The
+`--sandbox workspace-write` clause above says the chip's re-run is the verification of record;
+this is the instance that shows why it is not a formality. A codex slice added a `<Link>`, which
+made a moved component require router context and turned two unrelated test files red. The
+worker could not run vitest, so it reported "typecheck clean, committed" — accurately, over a
+red suite. The chip's post-dispatch re-run caught 2 broken files plus 1 genuine timing defect.
+A worker's "committed" is a claim about what it could OBSERVE, not about the suite; a chip that
+forwards it as green is laundering blindness into evidence.
 
 ## 4. Test database / integration strategy
 `status: ratified` · `provenance: 2026-07-15 · docs/HARNESS.md §5 (integration lane hardening + session container)`
@@ -421,4 +437,6 @@ retroactive GPT-5.6 Sol medium review at mission closeout (operator's call).
 2026-07-18 · (upstream) · ratified · Opus adversarial-gate remediation landed in mnfs-harness 8fa7ad8 (harness 0.3.3), re-vendored to docs/: crew ships as plugin agent definitions harness/agents/hub-{ops,scribe,analyst}.md (spawn via Agent tool, persistent via SendMessage, mandatory respawn at milestone boundary); CORE §2(g) grant does not waive §3 collision test; CORE §5 PILOT spot-check risk-weighted (integrity-critical/live-integration first, rotating); REVIEW §9 delta re-verdict = declared bounded exception to §8/§13 cold mandate (round-1 gates stay cold); REVIEW §8 refuter may escalate to general breadth on thin first-family pass (must say so); scribe fail-closed branch-guard; analyst base-SHA statement; worker SKILL pin 10 (grants bind as written, P5 follows §5 PILOT). Gate verdict PASS-WITH-CONDITIONS, all 12 findings remediated; plugin cache synced 0.3.3
 2026-07-20 · §1 · ratified · default branch corrected `master`→`main` (operator directive D-120: "be on default main"). No `master` ref ever existed (origin/HEAD → origin/main); the stale `master` binding masked a detached-HEAD boot anomaly where nested worktree `hub-erp-main` held `main` while the primary dir sat detached. Consolidated: freed `main` (detached hub-erp-main HEAD), checked out `main` in primary; hub-erp-main dir cleanup deferred (Windows "Function not implemented" on node_modules junction / .gomodcache read-only — `git worktree prune` after stack re-point)
 2026-07-25 · §11 (new subsection) · ratified · third-round rule: a third defect of the SAME SHAPE (or a third correction round on one criterion) stops point-fixing and requires a named mechanism + tool-anchored exhaustive class sweep (clean sites listed too) + class-level must-fail + independent anti-abstraction judgement before any new type, filed as ROUND-N FULL ANALYSIS; a third-round point-fix without the sweep is not acceptable evidence and the hub does not merge on it (operator ruling D-121; field evidence CHIP-M05 — same mechanism point-fixed in a code comment, a scope argument and an OpenAPI description across 6 rounds, each round passing its own gate)
-```
+2026-07-28 · §3 · ratified · mid-`npm ci` `node_modules` fabricates `tsc` module-resolution errors that impersonate real defects, and the error count is STABLE across repeated runs — reproducibility is not discrimination; the only discriminating observable is the `npm ci` process exit (CHIP-IMPORT-CHAIN field finding; sibling of the 15-error trap, where the expected error COMPOSITION also failed to prove which tree was read)
+2026-07-28 · §3 (review-process note) · ratified · sandbox vitest blindness has teeth: a codex worker's "typecheck clean, committed" is a claim about what it could OBSERVE, not about the suite — one dispatch added a `<Link>`, requiring router context in a moved component, and turned 2 unrelated test files red invisibly; the chip's post-dispatch vitest re-run (already the verification of record under the workspace-write clause) caught them plus a genuine timing defect. A chip forwarding a worker's "committed" as green is laundering blindness into evidence (CHIP-IMPORT-CHAIN field finding)
+2026-07-28 · (upstream) · accepted · CHIP-IMPORT-CHAIN F-3 (`New-DispatchPrompt.ps1` assembles an unknown role string cleanly, failing only later at `Invoke-CodexDispatch.ps1` with `ROLE-UNKNOWN` — validate against `roles.psd1` at assembly time) and F-4 (vitest in a junction-only worktree needs an absolute `setupFiles` path plus `server.fs.strict: false`; the junction realpath resolves outside the vite root) belong to `mnfs-harness`, not this profile — routed upstream, not filed here
