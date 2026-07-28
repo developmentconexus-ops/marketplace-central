@@ -38,11 +38,37 @@ O código original era
 const shown = [...byDirection("AGAINST"), ...byDirection("FOR"), ...byDirection("UNAVAILABLE")].slice(
 ```
 
-Type-correct, e o compilador não avisa. Numa linha cujos motivos são TODOS `INCOMPARABLE` — a linha
-que a mudança de backend criou — `shown` fica vazio, `hidden = reasons.length - 0 > 0`, e a célula
-renderiza **um botão `+2` sozinho, com zero chips**. Viola a invariante que o próprio arquivo
-documenta: *"Ranking (never filtering) is what keeps at least one motivo on screen"*. Com a quarta
-direção existindo, a expressão VIROU filtragem.
+Type-correct, e o compilador não avisa. `INCOMPARABLE` **não está na enumeração**, logo é
+inalcançável em `shown` a QUALQUER limite — subir `COMPACT_CHIP_LIMIT` não o exibe. Não é
+"rankeado por último": é inexibível. E `hidden = reasons.length - shown.length` o CONTA, então o
+operador vê um `+N` que promete um motivo que nenhum chip pode nomear.
+
+O comentário logo acima da expressão afirma *"Ranking (never filtering) is what keeps at least one
+motivo on screen"*. Com a quarta direção existindo, essa frase é **falsa na `main`**: a expressão
+filtra por omissão. É a mesma forma R-24 que este chip caça, no arquivo que ele conserta.
+
+**O custo em dado vivo**, medido em navegador na `main` de hoje (drive do hub, `04983aab`), não
+argumentado. Três candidatos reais têm a forma `seller_sku FOR` + `ean INCOMPARABLE` +
+`marca UNAVAILABLE`. Com `COMPACT_CHIP_LIMIT = 2`:
+
+```
+shown  = [] ++ [seller_sku FOR] ++ [marca UNAVAILABLE]  → ✓ SKU · – Marca
+hidden = 3 − 2 = 1                                       → +1
+```
+
+A tela renderizou exatamente `✓ SKU · – Marca · +1`. O `+1` **é** o `ean INCOMPARABLE`. Os dois
+slots foram para um FOR e para uma ausência **permanente e acionável por ninguém** (`mercado_livre`
+não supre `marca`, e é a única declaração da árvore), enquanto o motivo sobre o qual o operador PODE
+agir — cadastrar o EAN no ERP, ou corrigir o anúncio — não aparece.
+
+> **Corrigido em 2026-07-28.** A redação anterior deste critério apoiava-se numa linha cujos motivos
+> fossem TODOS `INCOMPARABLE`, rendendo `shown` vazio e um `+2` sozinho. Essa linha é
+> **improdutível**: `mercado_livre` é a única declaração de capability da árvore e não supre `marca`,
+> então `resolveIdentityAnchors:149-169` põe `marca` UNAVAILABLE em TODO candidato, e UNAVAILABLE
+> está na enumeração velha. Célula vazia exigiria um provider que suprisse as quatro âncoras; não
+> existe. A premissa falsa foi removida, não anotada (R-25). O critério acima reprova o código velho
+> pelo MESMO observável e é verdadeiro sobre a tela. Achado pelo drive ao vivo do hub; a forma
+> verdadeira foi proposta pelo próprio chip contra o seu argumento de sete rodadas.
 
 **Explicitamente no contrato:** *"Consertar os 3 erros que o `tsc` reporta deixa este defeito
 calado. Seu gate falha se você fechar o `tsc` e não fechar isto."* `tsc` verde NÃO é o critério.

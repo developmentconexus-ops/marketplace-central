@@ -491,6 +491,41 @@ rejected real candidates, because `TitleMatch` seeds `title` FOR and the hard-ne
 `title` AGAINST to the same candidate (`generation_service.go:551` + `:560-562`), and the finalizer
 dedupes only absences (`:657-661`). Verified at the hub by string before ratification.
 
+### PRODUCIBLE is closed over the generator's SITES; REACHABLE is closed over the DECLARATIONS that exist
+`status: ratified` · `provenance: 2026-07-28 · CHIP-VINC-NEUTRO round 8, discriminator supplied by the chip against its own seven-round argument`
+
+Two different questions, and a guard that answers one must not be written up as answering the other.
+
+- **Producibility** asks whether SOME site in the generator emits this shape. It is closed over the
+  code paths, and a fixture-vs-generator mechanism can decide it.
+- **Reachability** asks whether the shape occurs given the DECLARATIONS the tree actually carries —
+  configured providers, capability tables, seeded rows. It is closed over data, and no amount of
+  reading the generator decides it.
+
+CHIP-VINC-NEUTRO defended defect V-1 for seven rounds: a queue row whose motivos are ALL
+`INCOMPARABLE`, rendering an overflow button with zero chips. Producible — the generator has sites
+that emit it. Unreachable — `mercado_livre` is the tree's only capability declaration and does not
+supply `marca`, so every candidate carries a `marca UNAVAILABLE`, which the old expression DID
+enumerate. The empty cell needs a provider supplying all four anchors; none exists. Seven rounds of
+dual gates, all reading the generator, could not see it. One live drive did, immediately.
+
+The sharpest part is where the falsehood sat. The chip's own fixture already carried the words
+*"No declaration emits it … unreachable"*. The instrument knew. The prose beside it — where the
+VALUE CLAIM lives — still said the screen was broken. **A mechanism being right does not make the
+text that sells it right**, and only the text reaches the operator. Restate the value claim in the
+terms the mechanism actually decided, or the mechanism is laundering a claim it never tested.
+
+Binding consequences:
+
+- A must-fail arm running on an UNREACHABLE fixture proves the guard DISCRIMINATES. It does not
+  prove the live screen was broken. Wording it as "exactly the screen the contract forbids" lends
+  the unreachable artifact the authority of the reachable one.
+- A gate criterion asserting a screen state must be discharged against DATA, not against the
+  generator. The hub owes the chip that seam; withholding it is what let this survive.
+- When the true criterion is found, the false premise is REMOVED from the gate artifact, not
+  annotated beside it (R-25) — and the replacement must still fail the old code on the same
+  observable, or the criterion was not corrected but abandoned.
+
 ### The gate's artifacts are the orchestrator's to persist, and the pack must be IN GIT
 `status: ratified` · `provenance: 2026-07-28 · CHIP-ANCHORS-3 round 3, findings 6 and 8`
 
@@ -928,3 +963,4 @@ retroactive GPT-5.6 Sol medium review at mission closeout (operator's call).
 2026-07-28 · §11 (existing subsection extended) · corrected · "IT ARRIVED IN THE NOTIFICATION" IS NOT CUSTODY. The rule already said the orchestrator writes the artifact in the same act in which the verdict arrives — the hub broke its own rule and lost a verdict. A seat return is delivered in two shapes by SIZE: short verdicts are inlined in the completion notification and survive in the transcript; long ones go to `tasks/<id>.output` with only a summary inlined. Measured after the fact: four seat output files, all `0 bytes`, and no block of the seat's text anywhere in the transcript. CHIP-VINC-NEUTRO r7 — Sol survived at 5,625 chars because it was inlined; the Opus verdict of the same round is GONE, leaving only the hub's paraphrase, which is not verbatim and does not become one by being the last copy standing. The window was between ARRIVING and BEING PASTED and it was crossed by a context compaction, so nothing signalled the loss. Binds: the bigger and more valuable the verdict, the likelier it is the one that vanishes — paste on the turn it lands, not on the turn the ruling is written; a lost verdict is DECLARED in the pack with the measurement that established the loss, and findings that existed only in the paraphrase do not become orders; and recovery by SIZE picks the wrong round — the hub grepped for the largest matching block and pasted CHIP-ANCHORS-2's `refforn`/`RouteClassMux` gate under this round's heading before checking the header. Match on the seat's task id, never on size
 2026-07-28 · §11 (existing subsection extended) · ratified · THE POPULATION IS SET BY THE FACT, NEVER BY THE EDIT FOOTPRINT. The commonest way a sweep pattern comes out narrow is that nobody chose one — it silently runs over the files already open. CHIP-VINC-NEUTRO r7: a merge moved `ImportacaoSection` out of `pages/vinculos/` and killed a `listErpImports` mock in TWO test files; the chip deleted the one in the file it was editing, the second survived a full round, and the hub caught it with `grep -rn` over the directory (`VinculosDesign.golden.test.tsx:25,31,120,121`). The cause was a moved component, so the population is every file that mocked the port, tree-wide; the edit footprint has no bearing on it. Binds: ask what KILLED the thing and let that answer pick the search root — a sweep whose root is the diff is reporting the diff back to you. Chip-side field finding, named by the chip against its own work (`1fcf7f1a`) and verified at the hub by string before ratification
 2026-07-28 · §11 (new subsection) · ratified · A MUST-FAIL ARM PROVES ONLY WHAT ITS MUTATION ISOLATES, AND NEVER CATCHES AN OVER-STRICT GUARD. Two limits of the instrument, both found chip-side by CHIP-VINC-NEUTRO r8 against its own arms. (1) A mutation that breaks several rules at once goes red without telling you which rule the arm measures: deleting a whole `if` line turned FOUR arms red because signals then reached an absence-only check and threw the wrong message there; the chip discarded it for a two-line reorder that moves exactly one arm, and declined to report the four-red result as stronger evidence. Narrow until one arm moves. (2) A guard that rejects too much makes EVERY must-fail greener, never redder — no arm in the wall can catch over-strictness, only a MUST-PASS on a demonstrably producible input asserted not to throw. Corollary supplied the same round: a guard wider than the fact is the same defect as one narrower, pointing the other way (`anchor appears twice` would have rejected real candidates — `generation_service.go:551` seeds `title` FOR and `:560-562` appends `title` AGAINST to the same candidate, and the finalizer at `:657-661` dedupes only absences). All three loci verified at the hub by string before ratification
+2026-07-28 · §11 (new subsection) · ratified · PRODUCIBLE IS CLOSED OVER THE GENERATOR SITES; REACHABLE IS CLOSED OVER THE DECLARATIONS THAT EXIST. CHIP-VINC-NEUTRO defended V-1 (a row whose motivos are all INCOMPARABLE, rendering an overflow button with zero chips) for seven rounds. Producible — sites emit the shape. Unreachable — `mercado_livre` is the tree's only capability declaration and does not supply `marca`, so every candidate carries a `marca UNAVAILABLE`, which the old enumeration DID cover; the empty cell needs a provider supplying all four anchors and none exists. Seven dual gates reading the generator could not see it; one live drive did, immediately. The falsehood sat in the prose, not the instrument: the chip's own fixture already read "No declaration emits it … unreachable" while the value claim beside it still said the screen was broken — a mechanism being right does not make the text that sells it right, and only the text reaches the operator. Binds: a must-fail on an unreachable fixture proves the guard DISCRIMINATES, never that the live screen was broken; a gate criterion asserting a screen state is discharged against DATA, and the hub owes the chip that seam; the false premise is REMOVED from the gate artifact (R-25), and the replacement must still fail the old code on the same observable or the criterion was abandoned rather than corrected. Discriminator supplied by the chip against its own seven-round argument; corroborated at the hub by string (`QueueRow.tsx:159` on main omits INCOMPARABLE from the enumeration entirely, so it is unshowable at ANY limit, and `hidden` counts it) and by the live drive arithmetic (`04983aab`)
