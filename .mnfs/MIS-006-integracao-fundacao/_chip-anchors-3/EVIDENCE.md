@@ -18,6 +18,8 @@ gate_round_1: REFUTED dos DOIS lados
 sweep_do_autor: rodada sobre o EVIDENCE inteiro (745 linhas, 71 hits); 4 alegacoes minhas corrigidas, 2 delas eram o universal do codigo escrito em prosa
 r4_execucao: must-fail da segunda metade REPRODUZIDO pelo assento executor do hub em 0264ba84, contra Postgres real (failure_token=test=... blocked → status=passed). Unico criterio que dependia so da minha palavra.
 finding_1: ESTREITADO pelo hub — falhou-vs-verde E distinguivel via failure_token; so pulado-vs-verde e byte-identico. Ratificado em ea919c06.
+medicao_pack: GERADA por scripts/harness/pack-measure.sh no tip congelado f8363839 — 40 arquivos, EVIDENCE.md 104029 bytes / 101343 chars / 1429 linhas LF, 0 nao-versionados. Numeros valem para f8363839 e so para ele.
+finding_13: NAO e emenda — 6a instancia de classe ja fechada (§2:35-37 GOCACHE absoluto, D-14 2026-07-16; §11 a9dc6caa populacao nao-vazia). Registrado como instancia.
 merge_main: 65fbfe7b — main 678a6d51 mergeada (nao rebase). ANTES: 10 arquivos com 0 insercoes vs main = revert de /importacoes (45b887b3) + cmd/mlprobe. DEPOIS: 11 arquivos, NENHUM com 0 insercoes; apps/web byte-identico a main. Zero conflito.
 lane_pos_merge: go build ./... EXIT 0 · go vet ./... EXIT 0 · go test product_links + erp_import EXIT 0 com 199 funcoes / 304 com subtestes EXECUTADAS, 0 SKIP, 0 FAIL, 13 pacotes ok.
 reclassificacao_round_4: os 3 bloqueantes viram REPORT por regua filada do hub (3f8560b1): BLOQUEIA = observavel errado; prosa/contagem/metadado = REPORT. Ja corrigidos; nao reabrem.
@@ -1088,8 +1090,35 @@ próprio script declara o contrato de saída — cada figura sai com o SHA em qu
 unidade — porque `bytes ≠ chars ≠ linhas-LF ≠ partes de `split('\n')``: cinco das discrepâncias
 desta rodada foram confusão de unidade, nenhuma foi aritmética.
 
-**`<sha>` é lacuna declarada, não chute:** o SHA que interessa é o tip deste chip no fechamento, que
-só existe depois do commit que você está lendo. Quem o nomeia é o hub, no merge. É a mesma lacuna que
+**Rodado, agora que o merge da `main` trouxe o script para esta árvore** (`65fbfe7b`). Saída gerada,
+não digitada, sobre os blobs do tip **congelado** `f8363839`:
+
+```
+# MEDIÇÃO DO PACK — gerada, não digitada
+tip            = f83638397308aae47fa99ad5f36542b15ba98eb9
+pack           = .mnfs/MIS-006-integracao-fundacao/_chip-anchors-3
+gerado por     = scripts/harness/pack-measure.sh
+
+arquivos       = 40   [unidade: ARQUIVOS, recursivo]
+entradas raiz  = 12   [unidade: ENTRADAS DE ÁRVORE — não é contagem de arquivo]
+
+arquivo                    bytes      chars   linhas
+EVIDENCE.md               104029     101343     1429
+chip.md                     9791       9557      167
+validation-contract.md      5644       5467      116
+… (37 arquivos, tabela completa na saída do script)
+
+unidades: bytes = git cat-file -s · chars = wc -m (multibyte conta 1) · linhas = terminadas por LF
+não versionados = 0   [linhas '??' de git status --porcelain -uall]
+```
+
+**Estes números descrevem `f8363839`, e só ele.** O commit que os traz para dentro do pack aumenta o
+`EVIDENCE.md` — é a auto-referência de sempre, e é exatamente por isso que cada figura carrega o SHA:
+com o SHA, o número é uma alegação sobre um blob imutável; sem ele, seria uma alegação sobre um
+arquivo que o ato de escrever já mudou. Reproduzir é uma linha de comando, não confiança em mim.
+
+**O `<sha>` do fechamento continua sendo do hub, e é lacuna declarada, não chute:** o tip que fecha só
+existe depois do commit que você está lendo. Quem o nomeia é o hub, no merge. É a mesma lacuna que
 esta seção já declarava antes de ser retirada, e ela fecha do lado de fora — nunca daqui.
 
 **O que sobrevive da seção, porque não é número sobre si mesma:**
@@ -1407,16 +1436,31 @@ redação anterior de R4/R5/R6/A11, é por isso — e a redação anterior era a
     conhecidos. Mas foi um comando meu num seam que não é meu, e ele **teria** sido destrutivo com
     qualquer flag de escrita. Regra: caminho absoluto do worktree no mesmo comando, `||` nunca como
     fallback de diretório, e conferir `pwd` antes de qualquer lane.
-13. **`GOCACHE=.gocache` relativo NÃO roda, e o modo como ele falha se parece com suíte vermelha.** O
-    profile §2 grava a variável na forma relativa; o Go a recusa: `build cache is required, but could
-    not be located: GOCACHE is not an absolute path`. A corrida sai com **EXIT 1** e o arquivo de
-    captura tem 83 bytes — nenhum `=== RUN`, nenhum `--- FAIL`. Quem só olhar o código de saída lê
-    "suíte quebrada"; quem só contar `--- FAIL` lê "zero falhas". É a classe do verde vacuoso
-    (`a9dc6caa`) com o sinal trocado: **medição que não aconteceu, não resultado**. Guarda barata, e
-    é a mesma do profile: afirmar que a população é não-vazia (`=== RUN` > 0) antes de ler qualquer
-    contagem filtrada. Candidato a emenda do §2: gravar `GOCACHE=<abs>/apps/server_core/.gocache`,
-    com a nota de que o caminho é do WORKTREE (ver FINDING 12) e continua coberto por
-    `.gitignore:10`. **Confirmado pelo hub do outro lado:** nada foi escrito no checkout dele.
+13. **`GOCACHE` relativo não roda — INSTÂNCIA de classe já fechada, não emenda.** Emiti
+    `GOCACHE=.gocache`; o Go recusou (`build cache is required, but could not be located: GOCACHE is
+    not an absolute path`), a corrida saiu **EXIT 1** e a captura tinha **83 bytes**: nenhum
+    `=== RUN`, nenhum `--- FAIL`. Por código de saída parece suíte quebrada; por contagem de falha
+    parece limpa. É o verde vacuoso com o sinal trocado — **medição que não aconteceu, não
+    resultado.**
+
+    **Eu propus emenda e a emenda já existia, em DOIS lugares, os dois anteriores ao meu achado —
+    conferidos por STRING no profile deste worktree:** §2:35-37 *"GOCACHE must resolve to an ABSOLUTE
+    path on Windows/pwsh (D-14, M-01)"*, ratificado em 2026-07-16 (linha 773 do log de emendas); e
+    §11 linha 804, `a9dc6caa`, *"An empty filter is a failed measurement, not a clean result"* — 83
+    bytes com zero `=== RUN` **é** população vazia. Sexta instância da mesma classe. Pela third-round
+    rule do hub, a sexta instância **não ganha linha nova**: dar linha seria point-fix numa classe já
+    varrida, que é o que a regra proíbe. Registrado como instância, sem emenda. **Segunda vez nesta
+    rodada que eu peço o que já é doutrina** (a outra está no FINDING 4) — e é o mesmo remédio:
+    conferir a doutrina vigente por STRING antes de escrever "candidato a emenda".
+
+    **O que continua sendo observação, e é do hub decidir:** o próprio §2 escreve a linha de comando
+    copiável como `GOCACHE=.gocache` em três lugares (`:30`, `:44`, `:296`), três linhas acima da
+    regra que exige caminho absoluto. Quem copia a linha, como eu copiei, colide com a regra. Isso é
+    REPORT sobre um arquivo de doutrina que não é meu; não proponho redação.
+
+    **O mecanismo que fecha isso já está rodado no item 2 do pacote de fechamento:** contar unidade
+    EXECUTADA (`=== RUN` / `--- PASS`), nunca ler exit code sozinho, e afirmar população não-vazia
+    antes de qualquer contagem filtrada. **Confirmado pelo hub do outro lado:** nada foi escrito no checkout dele.
 14. **Diff contra a base de despacho não consegue exibir um REVERT — e foi o que quatro rounds
     leram.** A base é ponto fixo; a `main` andou. Tudo que a `main` ganhou depois da base aparece no
     meu lado como **ausência**, e ausência não gera linha no diff que o assento lê. Este pack estava
