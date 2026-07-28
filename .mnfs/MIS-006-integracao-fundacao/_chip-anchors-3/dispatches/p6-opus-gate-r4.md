@@ -14,10 +14,22 @@ Seat continuity: content, not session — the round-3 session could not be resum
 
 Seat-reported usage: 136037 tokens, 27 tool uses, 631747 ms.
 
-Payload measured after writing, at this file's own tip: the verbatim section below the `---` is
-**135 lines / 19086 chars**; the whole file including this header is **153 lines / 20139 chars**.
-Measured with `python -c` over the file on disk, splitting at the literal `---\n\nVERDICT: REFUTED`.
-An empty or truncated payload here would mean the pass did not happen — streaming is not persisting.
+**Payload measurement — corrected, with the unit named, on the committed blob.** The verbatim
+section below the `---` separator is **134 LF-terminated lines / 19086 characters / 19272 bytes**,
+measured on blob `09a67875` (commit `13a09177`) via `git cat-file -p … | python`, splitting at the
+literal `---\n\nVERDICT: REFUTED`. The payload does not change when this header is edited, so these
+three figures are stable. An empty or truncated payload here would mean the pass did not happen —
+streaming is not persisting.
+
+**What this header no longer claims, and why.** The first version of this paragraph asserted
+*"153 lines / 20139 chars"* for the whole file. That was measured on disk **before** the paragraph
+itself was appended, so it described a file that was never committed — the same self-reference the
+hub ratified at `9f8a6ec1` for custody, in a second place: a file cannot state its own size, because
+the statement changes the size. The whole-file figure therefore lives in the commit message and in
+the hub's own measurement of the blob, never in this file. For the record, at `13a09177` the blob is
+**157 LF-terminated lines / 20536 characters / 20737 bytes**; characters and bytes differ by 201
+because the payload carries 316 non-ASCII bytes, and that unnamed-unit gap is exactly what RULING B
+is about.
 
 ---
 
