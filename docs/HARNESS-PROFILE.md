@@ -485,6 +485,23 @@ The hub checks the same thing before it destroys anything: a worktree teardown a
 pack is a silent, permanent loss of the gate record, and the merge is not proof (a merge carries
 tracked files only).
 
+**But `--porcelain` alone is the wrong instrument, and it is the hub's to run, not the chip's.**
+Two corrections found the same day the rule was ratified:
+
+- **It false-positives on this platform.** With `core.autocrlf=true`, `git status --porcelain`
+  reports ` M` for a file whose content is byte-identical — the stat cache saw a touched mtime and
+  reports possibly-modified without re-hashing. Measured on CHIP-ANCHORS-3's worktree at
+  `13a09177`: `generation_service.go` shows ` M`, while `git diff --quiet` exits 0, the blob hash is
+  the same on both sides (`45438316`), and the byte counts match (41615 = 41615). A freeze-violation
+  alarm from ` M` alone is unfounded. Worse than the false alarm is the habituation: once ` M` is
+  routine noise, a real modification hides inside it. **Ask the two questions with two instruments** —
+  `git diff --quiet HEAD` for content drift, `git status --porcelain --untracked-files=all` read for
+  `??` lines only, for unversioned files. `--porcelain` conflates them.
+- **A pack cannot assert its own tracked-ness.** The claim is self-referential by construction: the
+  file carrying the assertion must be committed *after* the sentence is written, so the state the
+  sentence describes is not the state that ends up in the commit. The chip may report what it saw;
+  only the hub's executing seat, reading the tip from outside the worktree, discharges it.
+
 ### Third-round rule — a third defect of the same shape stops the patching
 `status: ratified` · `provenance: 2026-07-25 · operator ruling, D-121 · field evidence CHIP-M05 (6 dual-gate rounds)`
 
