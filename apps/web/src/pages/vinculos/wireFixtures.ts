@@ -40,9 +40,12 @@ import type { ProductLinkCandidateItem, ProductLinkReason } from "@marketplace-c
  *     emits anchors from `connectors/ports/marketplace_capability.go`'s
  *     `knownIdentityAnchors`. `wireFixtures.guard.test.ts` reads that Go source
  *     and fails if this list drifts from it.
- *  2. One reason per anchor. `appendProviderDeclaredUnavailableReasons` keys its
- *     absence bookkeeping by anchor and overwrites in place (:687-697), so an
- *     anchor cannot appear twice.
+ *  2. One ABSENCE per anchor, and never an absence beside a signal on the same
+ *     anchor. `appendProviderDeclaredUnavailableReasons` keys its absence
+ *     bookkeeping by anchor and overwrites in place (:666-669, :687-697), and
+ *     drops any absence whose anchor already carries a FOR/AGAINST (:652-655,
+ *     :663-664). Signals themselves are NOT deduped — `title` FOR and `title`
+ *     AGAINST ride the same candidate out of the hard-negative path.
  *  3. `side` only on INCOMPARABLE. `classifyProviderIdentityAnchor` sets a side
  *     only on INCOMPARABLE branches (:715, :723, :726, :728); UNAVAILABLE (:704)
  *     and the `!readable` INCOMPARABLE (:711) leave it empty, and
@@ -56,9 +59,13 @@ import type { ProductLinkCandidateItem, ProductLinkReason } from "@marketplace-c
  *     exactly `provider não fornece a âncora <anchor>` — `classifyProviderIdentityAnchor`
  *     returns that sentence by `fmt.Sprintf` over the anchor name (:704), so the
  *     rule is per-anchor and not a `marca` special case.
- *  6. The producible tuple. Every `(confidence, band, status, state, match_input)`
- *     the generator can assign is enumerated below, one row per producing site;
- *     anything else is unreachable. This subsumes the old NO_CANDIDATE shape
+ *  6. The producible tuple AND its signal set. Every
+ *     `(confidence, band, status, state, match_input)` the generator can assign
+ *     is enumerated below, one row per producing site, each row carrying the
+ *     FOR/AGAINST reasons that site writes; anything else is unreachable. The
+ *     signal set is part of the row because the same block that assigns the
+ *     score writes the signals — a tuple alone does not identify the site when
+ *     two sites share it. This subsumes the old NO_CANDIDATE shape
  *     rule, which was also WRONG: it demanded `state === "unresolved"`, and
  *     `buildConflictCandidates` emits NO_CANDIDATE with `state === "conflict"`
  *     when the conflict set comes back empty (:340-341). The old check would
@@ -69,9 +76,13 @@ import type { ProductLinkCandidateItem, ProductLinkReason } from "@marketplace-c
  *
  *  - the `detail` wording of non-declared-absence reasons (they are built with
  *    runtime values — codprod ids, match counts — so there is no closed set);
- *  - that the seeded FOR/AGAINST set matches `state` (e.g. `exact_sku` implying
- *    a `seller_sku` FOR). The tuple pins the score and the identity fields; the
- *    reasons array beside them is still checked only by the rules above;
+ *  - the DIRECTION and `side` of an absence on a SUPPLIED anchor. Rule 6 pins
+ *    which anchors carry signals; which of INCOMPARABLE/UNAVAILABLE the
+ *    finalizer then picks for the rest, and with which side, depends on listing
+ *    and product values no fixture here carries (:631-645, :702-729). Note in
+ *    particular that UNAVAILABLE is NOT exclusive to the unsupplied-anchor
+ *    branch: `missingMatchedAnchorReason:642` emits it for a supplied anchor on
+ *    its `default:` arm;
  *  - the `title` suppression condition (:719-721 needs listing and product values
  *    this side cannot see), so a MISSING `title` reason is accepted.
  *
@@ -112,14 +123,33 @@ export const DECLARED_PROVIDER_CAPABILITIES: Record<string, { supplied: readonly
   },
 };
 
-type ProducibleTuple = {
+/**
+ * One FOR/AGAINST reason a producing site emits. These are the SIGNALS: the
+ * reasons the site writes itself, as opposed to the absences the finalizer adds
+ * for anchors that carry no signal.
+ *
+ * The split is the finalizer's, not a convenience: `:652-655` builds `hasSignal`
+ * from FOR/AGAINST only, and `:663-664` then DROPS every absence reason whose
+ * anchor has a signal. So the signal set is fixed by the scoring site and the
+ * absence set is whatever is left of the declared anchors.
+ */
+type ReasonSignal = {
+  anchor: string;
+  direction: "FOR" | "AGAINST";
+};
+
+type ProducibleSite = {
   confidence: number;
   band: ProductLinkCandidateItem["confidence_band"];
   status: ProductLinkCandidateItem["match_status"];
   state: ProductLinkCandidateItem["state"];
   matchInput: ProductLinkCandidateItem["match_input"];
+  signals: readonly ReasonSignal[];
   from: string;
 };
+
+const FOR = "FOR" as const;
+const AGAINST = "AGAINST" as const;
 
 /**
  * Every `(confidence, band, status, state, match_input)` `generation_service.go`
@@ -135,40 +165,96 @@ type ProducibleTuple = {
  * rounds. `ACCEPT` is assigned at ONE site (`buildConcordantCandidate` :505) and
  * that site's `newCandidate` (:491) hardcodes `ExactSKU`/`SellerSKU`, so the
  * pairing is the fact and the two lists were the fiction.
+ *
+ * `signals` extends the same argument one step further, and for the same reason.
+ * Validating the tuple while leaving `reasons[]` free let two impossible
+ * fixtures through the round-6 guard LEGALLY — a `title/AGAINST` under
+ * `60/MEDIA/CONFIRM`, when the only site that appends `title/AGAINST` (:562)
+ * rewrites the triple to `25/BAIXA/REJECT` in the same statement, and a
+ * `20/BAIXA/REVIEW` with no signal at all, when both sites that assign that
+ * triple emit one or two. Score and reasons are not independent: at every
+ * scoring site they are written by the same block, so a table that constrains
+ * one and not the other is a partial guard again, just one level down.
+ *
+ * NOTE the same tuple can appear on more than one row. `25/BAIXA/REJECT` with
+ * `exact_sku`/`seller_sku` is reachable both from the concordant hard-negative
+ * (:497-501, which already carried an `ean` FOR) and from the single-anchor
+ * hard-negative (:560-562, which never did). The tuple does not distinguish
+ * them; the signals do, so producibility is "some site matches BOTH", never
+ * "some site matches the tuple".
  */
-const PRODUCIBLE_TUPLES: ProducibleTuple[] = [
-  // buildConcordantCandidate — the only ACCEPT in the tree.
-  { confidence: 95, band: "ALTA", status: "ACCEPT", state: "exact_sku", matchInput: "seller_sku", from: "buildConcordantCandidate :491 + :503-505" },
-  { confidence: 25, band: "BAIXA", status: "REJECT", state: "exact_sku", matchInput: "seller_sku", from: "buildConcordantCandidate hard-negative :491 + :498-500" },
+const PRODUCIBLE_SITES: ProducibleSite[] = [
+  // buildConcordantCandidate — the only ACCEPT in the tree. Both anchors resolve
+  // the same product, so both are FOR (:493-496).
+  { confidence: 95, band: "ALTA", status: "ACCEPT", state: "exact_sku", matchInput: "seller_sku",
+    signals: [{ anchor: "seller_sku", direction: FOR }, { anchor: "ean", direction: FOR }],
+    from: "buildConcordantCandidate :491 + :493-496 + :503-505" },
+  { confidence: 25, band: "BAIXA", status: "REJECT", state: "exact_sku", matchInput: "seller_sku",
+    signals: [{ anchor: "seller_sku", direction: FOR }, { anchor: "ean", direction: FOR }, { anchor: "title", direction: AGAINST }],
+    from: "buildConcordantCandidate hard-negative :491 + :497-501" },
 
   // buildCandidatesFromProducts (:389) → applySingleAnchorScore (:390). The
   // switch keys off the same `state` the candidate was built with, so state and
-  // match_input travel together from :212 / :311 / :314.
-  { confidence: 70, band: "MEDIA", status: "CONFIRM", state: "exact_sku", matchInput: "seller_sku", from: "applySingleAnchorScore ExactSKU :529" },
-  { confidence: 60, band: "MEDIA", status: "CONFIRM", state: "exact_ean", matchInput: "ean", from: "applySingleAnchorScore ExactEAN :539" },
-  { confidence: 35, band: "BAIXA", status: "REVIEW", state: "title_match", matchInput: "title", from: "applySingleAnchorScore TitleMatch :549" },
-  // The hard-negative override at :560 replaces the triple of any of the three
-  // above and leaves state/match_input untouched.
-  { confidence: 25, band: "BAIXA", status: "REJECT", state: "exact_ean", matchInput: "ean", from: "applySingleAnchorScore hard-negative :560 + :565-567" },
-  { confidence: 25, band: "BAIXA", status: "REJECT", state: "title_match", matchInput: "title", from: "applySingleAnchorScore hard-negative :560 + :565-567" },
+  // match_input travel together from :212 / :311 / :314. One anchor resolved, so
+  // one FOR; the anchors that did not are ABSENCES, not signals, and the
+  // finalizer decides their direction.
+  { confidence: 70, band: "MEDIA", status: "CONFIRM", state: "exact_sku", matchInput: "seller_sku",
+    signals: [{ anchor: "seller_sku", direction: FOR }], from: "applySingleAnchorScore ExactSKU :529 + :534-537" },
+  { confidence: 60, band: "MEDIA", status: "CONFIRM", state: "exact_ean", matchInput: "ean",
+    signals: [{ anchor: "ean", direction: FOR }], from: "applySingleAnchorScore ExactEAN :539 + :544-547" },
+  { confidence: 35, band: "BAIXA", status: "REVIEW", state: "title_match", matchInput: "title",
+    signals: [{ anchor: "title", direction: FOR }], from: "applySingleAnchorScore TitleMatch :549 + :550-554" },
+  // The hard-negative override at :560-562 replaces the triple of any of the
+  // three above, leaves state/match_input untouched, and APPENDS `title AGAINST`
+  // to whatever signals that case had already written. On the TitleMatch case
+  // that means `title` carries a FOR and an AGAINST at once — the finalizer
+  // appends both (:657-661) and dedups only absences.
+  { confidence: 25, band: "BAIXA", status: "REJECT", state: "exact_sku", matchInput: "seller_sku",
+    signals: [{ anchor: "seller_sku", direction: FOR }, { anchor: "title", direction: AGAINST }],
+    from: "applySingleAnchorScore ExactSKU + hard-negative :534-537 + :560-562" },
+  { confidence: 25, band: "BAIXA", status: "REJECT", state: "exact_ean", matchInput: "ean",
+    signals: [{ anchor: "ean", direction: FOR }, { anchor: "title", direction: AGAINST }],
+    from: "applySingleAnchorScore ExactEAN + hard-negative :544-547 + :560-562" },
+  { confidence: 25, band: "BAIXA", status: "REJECT", state: "title_match", matchInput: "title",
+    signals: [{ anchor: "title", direction: FOR }, { anchor: "title", direction: AGAINST }],
+    from: "applySingleAnchorScore TitleMatch + hard-negative :550-554 + :560-562" },
 
-  // buildConflictCandidates (:335) → applyConflictScore (:575-577). `matchInput`
-  // is whichever anchor points at this product; the loop swaps both at :329-333.
-  { confidence: 20, band: "BAIXA", status: "REVIEW", state: "conflict", matchInput: "seller_sku", from: "applyConflictScore :335-336 + :575-577" },
-  { confidence: 20, band: "BAIXA", status: "REVIEW", state: "conflict", matchInput: "ean", from: "applyConflictScore :335-336 + :575-577" },
+  // buildConflictCandidates (:335) → applyConflictScore (:575-577). `ownAnchor`
+  // and `matchInput` are assigned together in the same branch (:322-333), so the
+  // FOR is always the match_input anchor and the AGAINST is always the other of
+  // the two — the conflict IS between seller_sku and ean.
+  { confidence: 20, band: "BAIXA", status: "REVIEW", state: "conflict", matchInput: "seller_sku",
+    signals: [{ anchor: "seller_sku", direction: FOR }, { anchor: "ean", direction: AGAINST }],
+    from: "applyConflictScore :322-336 + :575-581" },
+  { confidence: 20, band: "BAIXA", status: "REVIEW", state: "conflict", matchInput: "ean",
+    signals: [{ anchor: "ean", direction: FOR }, { anchor: "seller_sku", direction: AGAINST }],
+    from: "applyConflictScore :322-336 + :575-581" },
 
   // buildCollisionCandidates (:369) → applyCollisionScore (:588-590) when the
   // anchor matched >1 product, applyAmbiguousCorroborationScore (:602-604) when
-  // it matched exactly one. Both are built with StateConflict at :369.
-  { confidence: 20, band: "BAIXA", status: "REVIEW", state: "conflict", matchInput: "seller_sku", from: "applyCollisionScore :369 + :371 + :588-590" },
-  { confidence: 20, band: "BAIXA", status: "REVIEW", state: "conflict", matchInput: "ean", from: "applyCollisionScore :369 + :371 + :588-590" },
-  { confidence: 40, band: "BAIXA", status: "REVIEW", state: "conflict", matchInput: "seller_sku", from: "applyAmbiguousCorroborationScore :369 + :373 + :602-604" },
-  { confidence: 40, band: "BAIXA", status: "REVIEW", state: "conflict", matchInput: "ean", from: "applyAmbiguousCorroborationScore :369 + :373 + :602-604" },
+  // it matched exactly one. Both are built with StateConflict, and `anchor.name`
+  // travels with `anchor.matchInput` out of the same struct literal (:360-362).
+  // The collision site emits a LONE AGAINST: the anchor named a set, so it
+  // corroborates nothing, and there is no FOR to pair it with.
+  { confidence: 20, band: "BAIXA", status: "REVIEW", state: "conflict", matchInput: "seller_sku",
+    signals: [{ anchor: "seller_sku", direction: AGAINST }], from: "applyCollisionScore :369-371 + :588-593" },
+  { confidence: 20, band: "BAIXA", status: "REVIEW", state: "conflict", matchInput: "ean",
+    signals: [{ anchor: "ean", direction: AGAINST }], from: "applyCollisionScore :369-371 + :588-593" },
+  { confidence: 40, band: "BAIXA", status: "REVIEW", state: "conflict", matchInput: "seller_sku",
+    signals: [{ anchor: "seller_sku", direction: FOR }, { anchor: "ean", direction: AGAINST }],
+    from: "applyAmbiguousCorroborationScore :369-373 + :602-608" },
+  { confidence: 40, band: "BAIXA", status: "REVIEW", state: "conflict", matchInput: "ean",
+    signals: [{ anchor: "ean", direction: FOR }, { anchor: "seller_sku", direction: AGAINST }],
+    from: "applyAmbiguousCorroborationScore :369-373 + :602-608" },
 
   // applyUnresolvedScore (:621-623) is reached from THREE sites, and they do not
   // agree on `state` — which is the defect the old NO_CANDIDATE special case had.
-  { confidence: 0, band: "BAIXA", status: "NO_CANDIDATE", state: "unresolved", matchInput: "none", from: "no anchor resolved :215-216 / collision set empty :379-380" },
-  { confidence: 0, band: "BAIXA", status: "NO_CANDIDATE", state: "conflict", matchInput: "none", from: "conflict set empty :340-341 — state stays conflict" },
+  // It writes NO signal: both seeded reasons are absences (:624-627), which is
+  // the whole point — nothing resolved, so nothing argues either way.
+  { confidence: 0, band: "BAIXA", status: "NO_CANDIDATE", state: "unresolved", matchInput: "none",
+    signals: [], from: "applyUnresolvedScore :215-216 / :379-380 + :620-627" },
+  { confidence: 0, band: "BAIXA", status: "NO_CANDIDATE", state: "conflict", matchInput: "none",
+    signals: [], from: "applyUnresolvedScore via conflict set empty :340-341 — state stays conflict" },
 ];
 
 function fail(rule: string, detail: string): never {
@@ -191,7 +277,10 @@ function assertProducibleReasons(reasons: ProductLinkReason[], providerCode: str
     );
   }
 
-  const seen = new Set<string>();
+  const signalAnchors = new Set(
+    reasons.filter((reason) => reason.direction === "FOR" || reason.direction === "AGAINST").map((reason) => reason.anchor),
+  );
+  const seenAbsence = new Set<string>();
   for (const reason of reasons) {
     if (!(KNOWN_IDENTITY_ANCHORS as readonly string[]).includes(reason.anchor)) {
       fail(
@@ -200,17 +289,40 @@ function assertProducibleReasons(reasons: ProductLinkReason[], providerCode: str
           "`refforn` in particular was REMOVED by D-A because the question answers `no` for every provider present and future.",
       );
     }
-    if (seen.has(reason.anchor)) {
-      fail(`anchor ${JSON.stringify(reason.anchor)} appears twice.`, "The finalizer keys absences by anchor and overwrites in place (:687-697).");
-    }
-    seen.add(reason.anchor);
-
+    // `side` binds on EVERY direction, so it is checked before the split below.
+    // Putting the split first would have silently exempted FOR/AGAINST from it.
     if (reason.side !== undefined && reason.direction !== "INCOMPARABLE") {
       fail(
         `${reason.anchor} carries a side on a ${reason.direction} reason.`,
-        "Only INCOMPARABLE branches of classifyProviderIdentityAnchor set a side (:715, :723, :726, :728).",
+        "Only INCOMPARABLE branches set a side (:637, :640, :715, :723, :726, :728); UNAVAILABLE leaves it empty at both of its " +
+          "sites (:642 and :704), and no FOR/AGAINST site writes the field at all.",
       );
     }
+
+    // Absences dedup by anchor; SIGNALS do not. The previous form of this rule
+    // rejected any repeated anchor, which is wider than the fact: the
+    // TitleMatch hard-negative emits `title` FOR and `title` AGAINST on the same
+    // candidate, because :560-562 appends to the signals :550-554 already wrote
+    // and the finalizer passes both through untouched (:657-661). A guard that
+    // cannot express that site cannot check it either.
+    if (reason.direction === "FOR" || reason.direction === "AGAINST") continue;
+
+    if (seenAbsence.has(reason.anchor)) {
+      fail(
+        `anchor ${JSON.stringify(reason.anchor)} carries two absence reasons.`,
+        "The finalizer keys absences by anchor in `absenceIndexes` and overwrites in place (:666-669, :687-697), so at most one survives per anchor.",
+      );
+    }
+    seenAbsence.add(reason.anchor);
+
+    if (signalAnchors.has(reason.anchor)) {
+      fail(
+        `${reason.anchor} carries both a signal and a ${reason.direction} absence.`,
+        "`hasSignal` is built from the FOR/AGAINST reasons (:652-655) and every absence for an anchor in it is DROPPED (:663-664), " +
+          "so no emitted candidate pairs the two on one anchor.",
+      );
+    }
+
   }
 
   // Every anchor the provider DECLARES but does not SUPPLY is emitted, with a
@@ -239,23 +351,49 @@ function assertProducibleReasons(reasons: ProductLinkReason[], providerCode: str
   }
 }
 
-function assertProducibleTuple(item: ProductLinkCandidateItem): void {
-  const match = PRODUCIBLE_TUPLES.find(
-    (tuple) =>
-      tuple.confidence === item.confidence &&
-      tuple.band === item.confidence_band &&
-      tuple.status === item.match_status &&
-      tuple.state === item.state &&
-      tuple.matchInput === item.match_input,
+/** Order-insensitive, multiplicity-sensitive — `title` FOR + `title` AGAINST is a set of two. */
+function signalKeys(signals: readonly ReasonSignal[]): string[] {
+  return signals.map((signal) => `${signal.anchor}/${signal.direction}`).sort();
+}
+
+function sameSignals(a: readonly ReasonSignal[], b: readonly ReasonSignal[]): boolean {
+  const left = signalKeys(a);
+  const right = signalKeys(b);
+  return left.length === right.length && left.every((key, index) => key === right[index]);
+}
+
+function assertProducibleCandidate(item: ProductLinkCandidateItem): void {
+  const signals = item.reasons
+    .filter((reason) => reason.direction === "FOR" || reason.direction === "AGAINST")
+    .map((reason) => ({ anchor: reason.anchor, direction: reason.direction as "FOR" | "AGAINST" }));
+
+  const tupleMatches = PRODUCIBLE_SITES.filter(
+    (site) =>
+      site.confidence === item.confidence &&
+      site.band === item.confidence_band &&
+      site.status === item.match_status &&
+      site.state === item.state &&
+      site.matchInput === item.match_input,
   );
-  if (!match) {
+
+  if (tupleMatches.length === 0) {
     fail(
       `no producing site emits (${item.confidence}, ${item.confidence_band}, ${item.match_status}, ` +
         `state=${item.state}, match_input=${item.match_input}).`,
       "Producible tuples: " +
-        PRODUCIBLE_TUPLES.map(
-          (tuple) => `(${tuple.confidence}, ${tuple.band}, ${tuple.status}, ${tuple.state}, ${tuple.matchInput}) ${tuple.from}`,
+        PRODUCIBLE_SITES.map(
+          (site) => `(${site.confidence}, ${site.band}, ${site.status}, ${site.state}, ${site.matchInput}) ${site.from}`,
         ).join("; "),
+    );
+  }
+
+  if (!tupleMatches.some((site) => sameSignals(site.signals, signals))) {
+    fail(
+      `no producing site emits (${item.confidence}, ${item.confidence_band}, ${item.match_status}, ` +
+        `state=${item.state}, match_input=${item.match_input}) WITH signals [${signalKeys(signals).join(", ") || "none"}].`,
+      `That tuple is producible, but only from ${tupleMatches.length === 1 ? "one site" : `${tupleMatches.length} sites`}, and the ` +
+        "FOR/AGAINST reasons are written by the same block that assigns the score, so they are not free to vary: " +
+        tupleMatches.map((site) => `[${signalKeys(site.signals).join(", ") || "none"}] ${site.from}`).join("; "),
     );
   }
 }
@@ -290,11 +428,33 @@ function defaultCandidate(): ProductLinkCandidateItem {
   };
 }
 
-/** A candidate the backend can actually emit. Throws if it is not one. */
+/**
+ * A candidate the backend can actually emit.
+ *
+ * Scope, stated rather than implied — the guarantee is TOTAL over what it names
+ * and silent about the rest, and the naming is the point (§11, `f19793d7`: a
+ * total guarantee in a docstring is a claim about every input). It throws unless
+ * ALL of:
+ *
+ *  - the provider has a capability declaration in this tree, and every anchor it
+ *    declares-but-does-not-supply carries the UNAVAILABLE sentence for that
+ *    anchor;
+ *  - every reason's anchor is in the identity vocabulary, no anchor carries two
+ *    absences, no anchor carries a signal and an absence at once, and no
+ *    non-INCOMPARABLE reason carries a `side`;
+ *  - `(confidence, band, status, state, match_input)` is a tuple some producing
+ *    site assigns, AND that site's FOR/AGAINST signal set is exactly this
+ *    fixture's.
+ *
+ * What it does NOT check, and what would therefore pass: the `detail` sentences
+ * of signals, the direction/side of an absence on a SUPPLIED anchor (the
+ * finalizer picks those from listing/product values this fixture does not carry),
+ * and anything about fields outside the candidate.
+ */
 export function wireCandidate(overrides: Partial<ProductLinkCandidateItem> = {}): ProductLinkCandidateItem {
   const item = { ...defaultCandidate(), ...overrides };
   assertProducibleReasons(item.reasons, item.provider_code);
-  assertProducibleTuple(item);
+  assertProducibleCandidate(item);
   return item;
 }
 

@@ -74,8 +74,14 @@ describe("QueueTab", () => {
           match_input: "seller_sku",
           confidence: 95,
           confidence_band: "ALTA",
+          // buildConcordantCandidate emits BOTH anchors FOR (:493-496) — the
+          // ACCEPT exists because they agree, so a lone `seller_sku` FOR under
+          // 95/ALTA/ACCEPT was never producible. The round-6 table validated the
+          // tuple and left `reasons[]` free, so this passed; the signal sets
+          // close that.
           reasons: [
             { anchor: "seller_sku", direction: "FOR", detail: "100%" },
+            { anchor: "ean", direction: "FOR", detail: "ean corrobora o mesmo codprod (unproved)" },
             { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
           ],
         }),
@@ -83,13 +89,20 @@ describe("QueueTab", () => {
           candidate_id: "cand_2",
           provider_item_id: "MLB2",
           internal_product_id: 222,
-          state: "exact_ean",
+          // Was `60/MEDIA/CONFIRM exact_ean` carrying a lone `title` AGAINST.
+          // Impossible: the only site that appends `title` AGAINST (:560-562)
+          // rewrites the triple to 25/BAIXA/REJECT in the same statement, so
+          // that reason and that band cannot coexist. This is the MEDIA row the
+          // test needs, taken from the site that really assigns MEDIA with an
+          // EAN that did not corroborate (:529 + :534-537).
+          state: "exact_sku",
           match_status: "CONFIRM",
-          match_input: "ean",
-          confidence: 60,
+          match_input: "seller_sku",
+          confidence: 70,
           confidence_band: "MEDIA",
           reasons: [
-            { anchor: "title", direction: "AGAINST", detail: "62%" },
+            { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
+            { anchor: "ean", direction: "UNAVAILABLE", detail: "sem EAN para corroborar o CODPROD" },
             { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
           ],
         }),
@@ -97,18 +110,22 @@ describe("QueueTab", () => {
           candidate_id: "cand_3",
           provider_item_id: "MLB3",
           internal_product_id: 333,
-          state: "conflict",
-          // Found by the tuple table, by no reviewer in six rounds: this row
-          // overrode `state` to `conflict` and INHERITED `match_input: "title"`
-          // from the default. No conflict site can produce that pairing —
-          // buildConflictCandidates (:329-333) and buildCollisionCandidates
-          // (:360-362) both set match_input to seller_sku or ean, because the
-          // conflict IS between those two anchors. `title` never conflicts.
-          match_input: "seller_sku",
-          confidence: 20,
+          // Round 6 found this row overriding `state` to `conflict` while
+          // INHERITING `match_input: "title"` from the default — a pairing no
+          // conflict site produces, because the conflict IS between seller_sku
+          // and ean. Round 8 found the rest of it: with `20/BAIXA/REVIEW` it
+          // carried NO signal at all, and both sites that assign that triple
+          // emit one (`applyCollisionScore`) or two (`applyConflictScore`).
+          // Rebuilt on the hard-negative site, which is where an AGAINST title
+          // actually comes from, and which keeps this row BAIXA.
+          state: "exact_ean",
+          match_status: "REJECT",
+          match_input: "ean",
+          confidence: 25,
           confidence_band: "BAIXA",
           reasons: [
-            { anchor: "ean", direction: "UNAVAILABLE", detail: "sem EAN" },
+            { anchor: "ean", direction: "FOR", detail: "ean corrobora codprod (unproved)" },
+            { anchor: "title", direction: "AGAINST", detail: "62%" },
             { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
           ],
         }),
@@ -126,15 +143,28 @@ describe("QueueTab", () => {
     expect(screen.getByText("MEDIA")).toBeInTheDocument();
     expect(screen.getByText("BAIXA")).toBeInTheDocument();
 
+    // Per-ROW from here down. The previous form asked `screen.getByText("✓ SKU")`
+    // globally, which only ever resolved because the fixtures were sparse — and
+    // they were sparse because they were unproducible. Producible rows carry the
+    // signals their site really emits, so the same chip text now appears on more
+    // than one row and a global query is ambiguous by construction.
+    const rows = screen.getAllByTestId("queue-row");
+    // Indexing rows assumes the table renders in wire order. Asserted, not
+    // assumed — a reorder would otherwise silently move every assertion below to
+    // a different row and still pass.
+    expect(within(rows[0]).getByText("95%")).toBeInTheDocument();
+    expect(within(rows[1]).getByText("70%")).toBeInTheDocument();
+    expect(within(rows[2]).getByText("25%")).toBeInTheDocument();
+
     // IC-01: the motivo (anchor) is always on screen. In the compact table cell a
     // FOR/UNAVAILABLE detail lives in the tooltip (the % is already its own
     // column), while an AGAINST detail — the reason the vínculo is blocked —
     // stays inline. A bare % never renders on its own either way.
-    expect(screen.getByText("✓ SKU")).toHaveAttribute("title", "seller_sku: 100%");
-    expect(screen.getByText("✕ Título: 62%")).toBeInTheDocument();
-    // A row whose only signals are UNAVAILABLE still shows them — ranking,
-    // never filtering (never blank / never a bare value).
-    expect(screen.getByText("– EAN")).toHaveAttribute("title", "ean: sem EAN");
+    expect(within(rows[0]).getByText("✓ SKU")).toHaveAttribute("title", "seller_sku: 100%");
+    expect(within(rows[2]).getByText("✕ Título: 62%")).toBeInTheDocument();
+    // An absence still shows — ranking, never filtering (never blank / never a
+    // bare value). The sentence is the generator's own (:530), not a placeholder.
+    expect(within(rows[1]).getByText("– EAN")).toHaveAttribute("title", "ean: sem EAN para corroborar o CODPROD");
 
     // Regression guard: confidence is already an integer 0-100 percentage (OpenAPI
     // ProductLinkCandidate.confidence). A candidate with confidence: 95 must render
@@ -378,9 +408,26 @@ describe("QueueTab", () => {
           // UNAVAILABLE carrying "provider não fornece a âncora title" — which
           // is what this fixture said before — contradicts the one declaration
           // in the tree. `marca` is the anchor that sentence is true of.
+          //
+          // The tuple was the default's (35/BAIXA/REVIEW title_match), whose
+          // only signal is `title` FOR — so a lone `seller_sku` FOR under it was
+          // unproducible. Moved to the site that really emits one seller_sku FOR
+          // plus an `ean` absence (:529 + :534-537).
+          //
+          // The `ean` sentence is the SEEDED one, not classify's own. The seed
+          // goes into `absenceIndexes` (:666-669); classify then overwrites the
+          // classification but :690-692 keeps the seeded sentence, because it
+          // carries the domain context. "anúncio e produto ERP sem ean" — which
+          // this fixture said before — is what classify writes when there is NO
+          // seed, and this site always seeds.
+          state: "exact_sku",
+          match_input: "seller_sku",
+          match_status: "CONFIRM",
+          confidence: 70,
+          confidence_band: "MEDIA",
           reasons: [
             { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
-            { anchor: "ean", direction: "INCOMPARABLE", side: "both", detail: "anúncio e produto ERP sem ean" },
+            { anchor: "ean", direction: "INCOMPARABLE", side: "both", detail: "sem EAN para corroborar o CODPROD" },
             { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
           ],
         }),
@@ -398,7 +445,7 @@ describe("QueueTab", () => {
     // Nothing was dropped — the remainder is behind the toggle, in full form.
     fireEvent.click(within(row).getByRole("button", { name: "Mostrar todos os 3 motivos" }));
     expect(screen.getByText(`marca: ${MARCA_UNAVAILABLE_DETAIL}`)).toBeInTheDocument();
-    expect(screen.getByText("ean (falta nos dois lados): anúncio e produto ERP sem ean")).toBeInTheDocument();
+    expect(screen.getByText("ean (falta nos dois lados): sem EAN para corroborar o CODPROD")).toBeInTheDocument();
   });
 
   it("MUST-FAIL 3 — an INCOMPARABLE `side` outside the SDK union renders VERBATIM", async () => {
@@ -655,8 +702,14 @@ describe("QueueTab", () => {
           match_input: "seller_sku",
           confidence: 95,
           confidence_band: "ALTA",
+          // Same correction as the first test's `cand_1`: ACCEPT is the two
+          // anchors AGREEING, so `buildConcordantCandidate` writes both FOR
+          // (:493-496). The drawer assertions below do not read the reasons at
+          // all, which is why this copy went unnoticed — the fixture was wrong
+          // in a field the test never looked at.
           reasons: [
             { anchor: "seller_sku", direction: "FOR", detail: "100%" },
+            { anchor: "ean", direction: "FOR", detail: "ean corrobora o mesmo codprod (unproved)" },
             { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
           ],
         }),

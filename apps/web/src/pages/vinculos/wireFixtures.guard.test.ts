@@ -242,4 +242,77 @@ describe("wireCandidate rejects what generation_service.go cannot emit", () => {
     expect(() => wireCandidate({ provider_code: "shopee" })).toThrow(/driftCandidate/);
     expect(() => wireCandidate({ provider_code: "shopee" })).toThrow(/declares no marketplace capability/);
   });
+
+  it("MUST-FAIL 3 — a producible tuple with a signal set no site emits", () => {
+    // The score triple and the FOR/AGAINST reasons are written by the SAME block
+    // (buildConcordantCandidate assigns 95/ALTA/ACCEPT at :503-505 after
+    // recording both anchors FOR at :495-499), so they are not free to vary
+    // independently. This fixture takes a tuple that IS producible and gives it a
+    // signal set no site pairs with it — the exact hole the tuple table left open
+    // until this round, and the one that let three more impossible fixtures
+    // through after round 6 closed the triple.
+    expect(() =>
+      wireCandidate({
+        state: "exact_sku",
+        match_input: "seller_sku",
+        match_status: "ACCEPT",
+        confidence: 95,
+        confidence_band: "ALTA",
+        reasons: [
+          { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
+          { anchor: "ean", direction: "INCOMPARABLE", side: "erp", detail: "ean sem correspondência" },
+          { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
+        ],
+      }),
+    ).toThrow(/WITH signals \[seller_sku\/FOR\]/);
+  });
+
+  it("MUST-FAIL 4 — one anchor cannot carry a signal and an absence at once", () => {
+    // `hasSignal` is built from the FOR/AGAINST reasons (:652-655) and every
+    // absence whose anchor is in it is DROPPED (:663-664). So a candidate that
+    // shows `✓ SKU` and `– SKU` side by side is not a rendering question: it
+    // never leaves the generator.
+    expect(() =>
+      wireCandidate({
+        state: "exact_sku",
+        match_input: "seller_sku",
+        match_status: "CONFIRM",
+        confidence: 70,
+        confidence_band: "MEDIA",
+        reasons: [
+          { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
+          { anchor: "seller_sku", direction: "UNAVAILABLE", detail: "sem seller_sku" },
+          { anchor: "ean", direction: "UNAVAILABLE", detail: "sem EAN para corroborar o CODPROD" },
+          { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
+        ],
+      }),
+    ).toThrow(/seller_sku carries both a signal and a UNAVAILABLE absence/);
+  });
+
+  it("MUST-PASS — `title` FOR and `title` AGAINST on one candidate is real, and stays accepted", () => {
+    // This arm exists because the rule above was WIDER than the fact when first
+    // written: it rejected any repeated anchor, and applySingleAnchorScore's
+    // hard-negative path emits `title` FOR (:550-554) and `title` AGAINST
+    // (:560-562) on the same candidate, both passed through by :657-661. A guard
+    // that rejects a producible candidate is the same defect as one that accepts
+    // an impossible one, pointing the other way — and it is the direction no
+    // must-fail arm can catch, because a stricter guard makes every must-fail
+    // greener.
+    expect(() =>
+      wireCandidate({
+        state: "title_match",
+        match_input: "title",
+        match_status: "REJECT",
+        confidence: 25,
+        confidence_band: "BAIXA",
+        reasons: [
+          { anchor: "title", direction: "FOR", detail: "match por título (ranking-only, nunca ACCEPT)" },
+          { anchor: "title", direction: "AGAINST", detail: "similaridade de título 62%" },
+          { anchor: "seller_sku", direction: "INCOMPARABLE", side: "erp", detail: "seller_sku sem correspondência" },
+          { anchor: "ean", direction: "INCOMPARABLE", side: "erp", detail: "ean sem correspondência" },
+          { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
+        ],
+      }),
+    ).not.toThrow();
+  });
 });
