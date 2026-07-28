@@ -1,0 +1,96 @@
+
+[1m[46m RUN [49m[22m [36mv3.2.4 [39m[90mC:/Users/leandro.theodoro/Documents/marketplace-central/.claude/worktrees/gifted-dhawan-5049f6/apps/web[39m
+
+[1m[43m DEPRECATED [49m[22m [33m'basic' reporter is deprecated and will be removed in Vitest v3.
+Remove 'basic' from 'reporters' option. To match 'basic' reporter 100%, use configuration:
+{
+  "test": {
+    "reporters": [
+      [
+        "default",
+        {
+          "summary": false
+        }
+      ]
+    ]
+  }
+}[39m
+ [31m❯[39m src/pages/vinculos/QueueTab.test.tsx [2m([22m[2m20 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[33m 699[2mms[22m[39m
+   [32m✓[39m QueueTab[2m > [22mrenders rows with distinct bands and anchor chips showing motivo together with the %[32m 58[2mms[22m[39m
+   [32m✓[39m QueueTab[2m > [22mcollapses extra motivos behind +N and drops none of them (expansion shows the full wire form)[32m 60[2mms[22m[39m
+   [32m✓[39m QueueTab[2m > [22mkeeps the label of an anchor D-A removed, for rows decided before the removal[32m 24[2mms[22m[39m
+   [32m✓[39m QueueTab[2m > [22mkeeps a motivo on screen for a row whose reasons are ALL INCOMPARABLE (ADR-17)[32m 32[2mms[22m[39m
+   [32m✓[39m QueueTab[2m > [22mpromotes the actionable absences over the permanent one, on a reason set the backend really emits[32m 31[2mms[22m[39m
+[31m   [31m×[31m QueueTab[2m > [22mranks INCOMPARABLE above UNAVAILABLE without dropping either (ranking, never filtering)[39m[32m 5[2mms[22m[39m
+[31m     → wireCandidate: no producing site emits (35, BAIXA, REVIEW, state=title_match, match_input=title) WITH signals [seller_sku/FOR].
+  That tuple is producible, but only from one site, and the FOR/AGAINST reasons are written by the same block that assigns the score, so they are not free to vary: [title/FOR] applySingleAnchorScore TitleMatch :549 + :550-554
+  This fixture cannot be produced by the backend. Either correct it, or — if the
+  unproducible shape IS the assertion (a wire-drift probe) — build it with
+  driftCandidate(why, overrides), which records why in the test itself.[39m
+   [32m✓[39m QueueTab[2m > [22mMUST-FAIL 3 — an INCOMPARABLE `side` outside the SDK union renders VERBATIM[32m 22[2mms[22m[39m
+   [32m✓[39m QueueTab[2m > [22mrenders an INCOMPARABLE with no `side` on the wire without inventing one[32m 30[2mms[22m[39m
+   [32m✓[39m QueueTab[2m > [22mrenders an honest NO_CANDIDATE row instead of a blank row[32m 35[2mms[22m[39m
+   [32m✓[39m QueueTab[2m > [22mneutralizes the structural labels while keeping WHICH provider the anúncio is on[32m 23[2mms[22m[39m
+   [32m✓[39m QueueTab[2m > [22mtypesets an unmapped provider without ever collapsing two distinct codes onto one name[32m 17[2mms[22m[39m
+   [32m✓[39m QueueTab[2m > [22mremoves the item from the queue after an approve + page-local invalidation[32m 61[2mms[22m[39m
+[31m   [31m×[31m QueueTab[2m > [22mopens the drawer from a ?candidate= deep link (survives F5)[39m[32m 0[2mms[22m[39m
+[31m     → wireCandidate: no producing site emits (95, ALTA, ACCEPT, state=exact_sku, match_input=seller_sku) WITH signals [seller_sku/FOR].
+  That tuple is producible, but only from one site, and the FOR/AGAINST reasons are written by the same block that assigns the score, so they are not free to vary: [ean/FOR, seller_sku/FOR] buildConcordantCandidate :491 + :493-496 + :503-505
+  This fixture cannot be produced by the backend. Either correct it, or — if the
+  unproducible shape IS the assertion (a wire-drift probe) — build it with
+  driftCandidate(why, overrides), which records why in the test itself.[39m
+   [32m✓[39m QueueTab[2m > [22mbulk selects rows, previews as a pure dry-run, applies the valid subset, and clears selection + refetches the queue[32m 139[2mms[22m[39m
+   [32m✓[39m QueueTab[2m > [22mnames only the anchors that decided, and names none for a title-only REVIEW row[32m 36[2mms[22m[39m
+   [32m✓[39m QueueTab[2m > [22msurvives a match_status the SDK union does not know, degrading one cell instead of the table[32m 25[2mms[22m[39m
+   [32m✓[39m QueueTab[2m > [22msurvives a reason direction the SDK union does not know, without printing undefined[32m 31[2mms[22m[39m
+   [32m✓[39m QueueTab[2m > [22msurvives a confidence_band the SDK union does not know, without printing undefined[32m 20[2mms[22m[39m
+   [32m✓[39m QueueTab[2m > [22msurvives the same unknown confidence_band in the DRAWER, not only in the row[32m 25[2mms[22m[39m
+   [32m✓[39m QueueTab[2m > [22mdoes not let two provider codes collapse onto one name through whitespace[32m 21[2mms[22m[39m
+
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 2 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/pages/vinculos/QueueTab.test.tsx[2m > [22mQueueTab[2m > [22mranks INCOMPARABLE above UNAVAILABLE without dropping either (ranking, never filtering)
+[31m[1mError[22m: wireCandidate: no producing site emits (35, BAIXA, REVIEW, state=title_match, match_input=title) WITH signals [seller_sku/FOR].
+  That tuple is producible, but only from one site, and the FOR/AGAINST reasons are written by the same block that assigns the score, so they are not free to vary: [title/FOR] applySingleAnchorScore TitleMatch :549 + :550-554
+  This fixture cannot be produced by the backend. Either correct it, or — if the
+  unproducible shape IS the assertion (a wire-drift probe) — build it with
+  driftCandidate(why, overrides), which records why in the test itself.[39m
+[36m [2m❯[22m fail src/pages/vinculos/wireFixtures.ts:[2m250:9[22m[39m
+    [90m248| [39m
+    [90m249| [39m[35mfunction[39m [34mfail[39m(rule[33m:[39m string[33m,[39m detail[33m:[39m string)[33m:[39m never {
+    [90m250| [39m  [35mthrow[39m [35mnew[39m [33mError[39m(
+    [90m   | [39m        [31m^[39m
+    [90m251| [39m    [32m`wireCandidate: [39m[36m${[39mrule[36m}[39m[32m\n  [39m[36m${[39mdetail[36m}[39m[32m\n`[39m [33m+[39m
+    [90m252| [39m      "  This fixture cannot be produced by the backend. Either correc…
+[90m [2m❯[22m assertProducibleCandidate src/pages/vinculos/wireFixtures.ts:[2m380:5[22m[39m
+[90m [2m❯[22m wireCandidate src/pages/vinculos/wireFixtures.ts:[2m446:3[22m[39m
+[90m [2m❯[22m src/pages/vinculos/QueueTab.test.tsx:[2m402:9[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/pages/vinculos/QueueTab.test.tsx[2m > [22mQueueTab[2m > [22mopens the drawer from a ?candidate= deep link (survives F5)
+[31m[1mError[22m: wireCandidate: no producing site emits (95, ALTA, ACCEPT, state=exact_sku, match_input=seller_sku) WITH signals [seller_sku/FOR].
+  That tuple is producible, but only from one site, and the FOR/AGAINST reasons are written by the same block that assigns the score, so they are not free to vary: [ean/FOR, seller_sku/FOR] buildConcordantCandidate :491 + :493-496 + :503-505
+  This fixture cannot be produced by the backend. Either correct it, or — if the
+  unproducible shape IS the assertion (a wire-drift probe) — build it with
+  driftCandidate(why, overrides), which records why in the test itself.[39m
+[36m [2m❯[22m fail src/pages/vinculos/wireFixtures.ts:[2m250:9[22m[39m
+    [90m248| [39m
+    [90m249| [39m[35mfunction[39m [34mfail[39m(rule[33m:[39m string[33m,[39m detail[33m:[39m string)[33m:[39m never {
+    [90m250| [39m  [35mthrow[39m [35mnew[39m [33mError[39m(
+    [90m   | [39m        [31m^[39m
+    [90m251| [39m    [32m`wireCandidate: [39m[36m${[39mrule[36m}[39m[32m\n  [39m[36m${[39mdetail[36m}[39m[32m\n`[39m [33m+[39m
+    [90m252| [39m      "  This fixture cannot be produced by the backend. Either correc…
+[90m [2m❯[22m assertProducibleCandidate src/pages/vinculos/wireFixtures.ts:[2m380:5[22m[39m
+[90m [2m❯[22m wireCandidate src/pages/vinculos/wireFixtures.ts:[2m446:3[22m[39m
+[90m [2m❯[22m src/pages/vinculos/QueueTab.test.tsx:[2m678:9[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m18 passed[39m[22m[90m (20)[39m
+[2m   Start at [22m 17:39:52
+[2m   Duration [22m 3.49s[2m (transform 284ms, setup 276ms, collect 1.01s, tests 699ms, environment 995ms, prepare 139ms)[22m
+
