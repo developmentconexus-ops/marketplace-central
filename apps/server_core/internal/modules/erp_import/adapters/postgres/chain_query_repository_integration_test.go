@@ -239,9 +239,9 @@ func TestGetImportChainMissingAndProtocolWithoutSyncState(t *testing.T) {
 // TestGetImportChainCountsLeadingZeroCodprod pins the resolved_products join
 // fix: erp_import_products.codprod keeps the raw spreadsheet string
 // ('00101'), while product_links.internal_product_id is a ParseInt'd integer
-// column (101). Before the ltrim-both-sides fix, '00101' = '101' compared
-// false and this fixture's linked product silently dropped out of
-// vinculados.
+// column (101). Compared as text, '00101' = '101' is false and this fixture's
+// linked product silently dropped out of vinculados. The comparison is
+// numeric, so the padding is irrelevant without any key being folded.
 func TestGetImportChainCountsLeadingZeroCodprod(t *testing.T) {
 	ctx := context.Background()
 	repo, tenant := integrationRepo(t)
@@ -284,24 +284,77 @@ func TestGetImportChainCountsLeadingZeroCodprod(t *testing.T) {
 	}
 }
 
-// TestGetImportChainCountsLeadingZeroCodprodInQueue pins the queued_products
-// join fix. importados, vinculados and enfileirados are read on one screen as
-// a decomposition of the same population, so the two joined counters have to
-// agree on what makes two CODPRODs the same product. resolved_products already
-// compares canonically; while queued_products compared raw, a padded '00101'
-// was counted as vinculados and NOT as enfileirados, and the operator read the
-// gap between the two numbers as a queue that had stalled.
+// TestGetImportChainCountsCollidingCodprodsOnce pins the resolved_products
+// OVERCOUNT that canonicalizing BOTH sides created. An ERP file can carry
+// '101' and '00101' as two rows — erp_import_products.codprod is TEXT and its
+// primary key treats them as distinct — while product_links carries ONE link,
+// to internal product 101. Under ltrim-both-sides the two rows folded onto one
+// join key and both matched: vinculados = 2 for a single linked product. The
+// truth is 1, and it is 1 only because the counted key is the link's
+// internal_product_id; exact numeric comparison alone still matches both rows.
+func TestGetImportChainCountsCollidingCodprodsOnce(t *testing.T) {
+	ctx := context.Background()
+	repo, tenant := integrationRepo(t)
+	pool, _ := testpostgres.OpenPool(t, tenant)
+	importID := domain.ImportID("67000000-0000-0000-0000-000000000001")
+
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM product_links WHERE tenant_id=$1`, tenant)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM erp_import_products WHERE tenant_id=$1`, tenant)
+	})
+
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO erp_import_protocols
+			(id, tenant_id, file_sha256, protocol, source, imported_at, status, accepted_count, rejected_count, warning_count)
+		VALUES ($1, $2, 'chain-colliding-codprod-hash', '#670-E', 'xlsx', now(), 'COMPLETED', 2, 0, 0);
+	`, importID, tenant); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO erp_import_products (tenant_id, protocol_id, codprod, descrprod, custo, stock_physical)
+		VALUES
+			($2, $1, '101', 'Product 101', 1, 0),
+			($2, $1, '00101', 'Product 00101', 1, 0);
+	`, importID, tenant); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO product_links
+			(tenant_id, installation_id, provider_code, provider_item_id, state, internal_product_id)
+		VALUES ($1, 'installation-a', 'mercadolivre', 'item-101', 'resolved', 101);
+	`, tenant); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := repo.GetImportChain(ctx, tenant, importID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// importados counts rows and vinculados counts linked products, so 2 and 1
+	// are both exact here — the numbers are allowed to differ, but only when
+	// the file really did name one product twice.
+	if got.Protocol != "#670-E" || got.Importados != 2 || got.Vinculados != 1 {
+		t.Fatalf("chain=%#v", got)
+	}
+}
+
+// TestGetImportChainQueueMatchesCodprodExactly pins the queued_products join
+// as EXACT string equality, and the overcount that canonicalizing it produced.
 //
-// The fixture drives the mismatch from the cursor side — '00101' imported, the
-// cursor carrying the unpadded "101" — because that is how it enters: the
-// post-import hook writes the accepted rows' raw CODPROD straight back into
-// the cursor (erp_import/adapters/sync.MarketEnqueuer), so that producer can
-// never disagree with itself; the padding is lost by any other producer that
-// sources codes from the integer-keyed product side, which is the same loss
-// resolved_products already had to canonicalize. The second row ("00102"
-// pending against a raw '102') pins the symmetric direction, so the fix cannot
-// be half-applied to one side of the comparison.
-func TestGetImportChainCountsLeadingZeroCodprodInQueue(t *testing.T) {
+// Both sides of that join are the same raw string out of the same slice:
+// import_service builds `codes` from the accepted rows' Codprod and passes it
+// to MarketEnqueuer.EnqueueMarketProducts → AppendPendingCodigos, which writes
+// it verbatim into cursor->'pending'; those same accepted rows are what
+// CopyFrom writes as erp_import_products.codprod. No other writer exists —
+// AppendPendingCodigo (singular) has zero callers, and ProductsCursor has no
+// pending field. Raw equality is therefore already the exact comparison, and
+// ltrim only bought collisions: 'ABC' and '00ABC' are two import rows, and the
+// single pending "ABC" counted both.
+//
+// The fixture holds all three cases at once: a padded codprod queued under its
+// own padded value ('00101'), the ltrim collision pair, and a pending entry
+// that belongs to no row of this import ("OUTSIDE").
+func TestGetImportChainQueueMatchesCodprodExactly(t *testing.T) {
 	ctx := context.Background()
 	repo, tenant := integrationRepo(t)
 	pool, _ := testpostgres.OpenPool(t, tenant)
@@ -316,7 +369,7 @@ func TestGetImportChainCountsLeadingZeroCodprodInQueue(t *testing.T) {
 	if _, err := pool.Exec(ctx, `
 		INSERT INTO erp_import_protocols
 			(id, tenant_id, file_sha256, protocol, source, imported_at, status, accepted_count, rejected_count, warning_count)
-		VALUES ($1, $2, 'chain-queue-leading-zero-hash', '#660-E', 'xlsx', now(), 'COMPLETED', 3, 0, 0);
+		VALUES ($1, $2, 'chain-queue-exact-hash', '#660-E', 'xlsx', now(), 'COMPLETED', 3, 0, 0);
 	`, importID, tenant); err != nil {
 		t.Fatal(err)
 	}
@@ -324,14 +377,14 @@ func TestGetImportChainCountsLeadingZeroCodprodInQueue(t *testing.T) {
 		INSERT INTO erp_import_products (tenant_id, protocol_id, codprod, descrprod, custo, stock_physical)
 		VALUES
 			($2, $1, '00101', 'Product 00101', 1, 0),
-			($2, $1, '102', 'Product 102', 1, 0),
-			($2, $1, '103', 'Product 103', 1, 0);
+			($2, $1, 'ABC', 'Product ABC', 1, 0),
+			($2, $1, '00ABC', 'Product 00ABC', 1, 0);
 	`, importID, tenant); err != nil {
 		t.Fatal(err)
 	}
-	// '00101' is linked, so vinculados counts it. enfileirados has to count the
-	// same row from the same cursor entry, or the two numbers stop describing
-	// the same product.
+	// '00101' is linked as internal product 101, which vinculados reaches by
+	// numeric comparison. 'ABC' and '00ABC' are non-numeric and can never be
+	// linked, which is correct: internal_product_id is an integer column.
 	if _, err := pool.Exec(ctx, `
 		INSERT INTO product_links
 			(tenant_id, installation_id, provider_code, provider_item_id, state, internal_product_id)
@@ -341,7 +394,7 @@ func TestGetImportChainCountsLeadingZeroCodprodInQueue(t *testing.T) {
 	}
 	if _, err := pool.Exec(ctx, `
 		INSERT INTO sync_state (tenant_id, installation_id, entity, cursor)
-		VALUES ($1, 'installation-a', 'market', '{"pending":["101","00102","OUTSIDE"]}'::jsonb);
+		VALUES ($1, 'installation-a', 'market', '{"pending":["00101","ABC","OUTSIDE"]}'::jsonb);
 	`, tenant); err != nil {
 		t.Fatal(err)
 	}
@@ -350,6 +403,8 @@ func TestGetImportChainCountsLeadingZeroCodprodInQueue(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// enfileirados = 2: '00101' and 'ABC'. '00ABC' is a different row that was
+	// never queued (ltrim made it a third), "OUTSIDE" belongs to no row here.
 	if got.Protocol != "#660-E" || got.Importados != 3 || got.Vinculados != 1 || got.Enfileirados != 2 {
 		t.Fatalf("chain=%#v", got)
 	}

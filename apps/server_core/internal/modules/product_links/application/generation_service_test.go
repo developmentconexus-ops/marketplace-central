@@ -410,8 +410,8 @@ func TestNamedMissingAnchorSitesAreIncomparableWithCorrectSide(t *testing.T) {
 		//   - generation_service.go:215, unresolved. Live, and driven end to end
 		//     by TestUnresolvedListingSellerSKUIsIncomparableOnTheERPSide, whose
 		//     empty matcher leaves every findProducts result empty.
-		//   - generation_service.go:497, where buildConcordantCandidate zeroes a
-		//     nil comparison.product and passes it on at :501. That is the site
+		//   - buildConcordantCandidate's nil-product arm, which builds over a
+		//     ProductCandidate{} and degrades it there. That is the site
 		//     TestConcordantCandidateDoesNotDerefNilProduct pins, by calling
 		//     buildConcordantCandidate directly.
 		//
@@ -566,20 +566,14 @@ func TestSellerSKUAnchorReadsCanonicalCodprodNotSupplierReference(t *testing.T) 
 // never nil — so production reachability is NOT proven. This test is the other
 // call site, and it passes nil deliberately.
 //
-// What is proven is that this scorer no longer panics on a nil product. Two
-// things that are NOT proven, because they are not true:
-//
-//   - It does not nil-CHECK like both siblings. applySingleAnchorScore:523-526
-//     carries the same guard, but applyUnresolvedScore checks nothing — it
-//     hard-codes nil into missingMatchedAnchorReason (:635-636) and lets the
-//     `product == nil` arm absorb it.
-//   - It does not degrade like them. applyUnresolvedScore degrades into pure
-//     absence (confidence 0, NO_CANDIDATE). applySingleAnchorScore degrades
-//     only its product-READING reason into absence and still emits its own
-//     anchor FOR reason — e.g. seller_sku FOR at :545, at 70/MEDIA/CONFIRM.
-//     This scorer degrades into full CORROBORATION over a zeroed
-//     ProductCandidate{}: seller_sku and ean FOR at Confidence 95, band ALTA,
-//     status ACCEPT, asserted below.
+// It asserts the DEGRADE, not merely the absence of a panic. The first version
+// of this test asserted 95 / ALTA / ACCEPT with both anchors FOR, which is what
+// the code then did — corroboration claimed over a zeroed ProductCandidate{},
+// on a row whose internal_product_id is null and which autoApprovals would read
+// as auto-approvable. A test that pins the wrong degrade is worse than no test:
+// it converts a defect into a contract. The scorer now degrades like its
+// sibling applyUnresolvedScore — confidence 0, band BAIXA, NO_CANDIDATE, both
+// anchors as ABSENCE and not as corroboration — and that is what is asserted.
 func TestConcordantCandidateDoesNotDerefNilProduct(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 7, 28, 9, 30, 0, 0, time.UTC)
@@ -599,20 +593,29 @@ func TestConcordantCandidateDoesNotDerefNilProduct(t *testing.T) {
 	if candidate.InternalProductID != nil {
 		t.Fatalf("internal_product_id=%v, want nil for a nil product", *candidate.InternalProductID)
 	}
-	if _, ok := findReason(candidate.Reasons, "seller_sku", productlinksdomain.LinkCandidateReasonDirectionFor); !ok {
-		t.Fatalf("reasons=%#v, want the concordant seller_sku FOR reason", candidate.Reasons)
+	// The listing carries both values and there is no ERP product, so both
+	// anchors read INCOMPARABLE on the ERP side — the same reasons
+	// applyUnresolvedScore emits, and not one FOR among them.
+	for _, anchor := range []string{"seller_sku", "ean"} {
+		if _, ok := findReason(candidate.Reasons, anchor, productlinksdomain.LinkCandidateReasonDirectionFor); ok {
+			t.Fatalf("reasons=%#v, want NO %s FOR reason: there is no product to corroborate", candidate.Reasons, anchor)
+		}
+		reason, ok := findReason(candidate.Reasons, anchor, productlinksdomain.LinkCandidateReasonDirectionIncomparable)
+		if !ok {
+			t.Fatalf("reasons=%#v, want the %s absence reason applyUnresolvedScore emits", candidate.Reasons, anchor)
+		}
+		if reason.Side != productlinksdomain.LinkCandidateReasonSideERP {
+			t.Fatalf("%s side=%q, want %q: the value that is missing is the ERP one", anchor, reason.Side, productlinksdomain.LinkCandidateReasonSideERP)
+		}
 	}
-	if _, ok := findReason(candidate.Reasons, "ean", productlinksdomain.LinkCandidateReasonDirectionFor); !ok {
-		t.Fatalf("reasons=%#v, want the concordant ean FOR reason", candidate.Reasons)
+	if candidate.Confidence != 0 {
+		t.Fatalf("confidence=%d, want 0 — the same degrade as applyUnresolvedScore", candidate.Confidence)
 	}
-	if candidate.Confidence != 95 {
-		t.Fatalf("confidence=%d, want 95 for a nil-product concordant candidate", candidate.Confidence)
+	if candidate.ConfidenceBand != productlinksdomain.LinkCandidateConfidenceBandBaixa {
+		t.Fatalf("confidence_band=%q, want %q", candidate.ConfidenceBand, productlinksdomain.LinkCandidateConfidenceBandBaixa)
 	}
-	if candidate.ConfidenceBand != productlinksdomain.LinkCandidateConfidenceBandAlta {
-		t.Fatalf("confidence_band=%q, want %q", candidate.ConfidenceBand, productlinksdomain.LinkCandidateConfidenceBandAlta)
-	}
-	if candidate.MatchStatus != productlinksdomain.LinkCandidateMatchStatusAccept {
-		t.Fatalf("match_status=%q, want %q", candidate.MatchStatus, productlinksdomain.LinkCandidateMatchStatusAccept)
+	if candidate.MatchStatus != productlinksdomain.LinkCandidateMatchStatusNoCandidate {
+		t.Fatalf("match_status=%q, want %q: an ACCEPT here is auto-approvable with a null internal_product_id", candidate.MatchStatus, productlinksdomain.LinkCandidateMatchStatusNoCandidate)
 	}
 }
 

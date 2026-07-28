@@ -488,16 +488,19 @@ func newProviderIdentityAnchorComparison(snapshot domain.ListingSnapshot, declar
 
 func buildConcordantCandidate(snapshot domain.ListingSnapshot, skuMatches, eanMatches productMatchResult, comparison providerIdentityAnchorComparison, now time.Time) domain.LinkCandidate {
 	// Both sibling scorers nil-check this pointer; an unconditional deref here
-	// made this the one site that panics instead of degrading. What it degrades
-	// INTO is not the siblings' absence reasons: on the zeroed candidate this
-	// function still emits seller_sku FOR and ean FOR at 95 / ALTA / ACCEPT,
-	// asserting corroboration for a CODPROD that is not there. The row carries a
-	// null internal_product_id and autoApprovals still reads that ACCEPT as
-	// auto-approvable.
-	product := internalreaddomain.ProductCandidate{}
-	if comparison.product != nil {
-		product = *comparison.product
+	// made this the one site that panics instead of degrading. Not panicking is
+	// not enough: a zeroed product with the normal scoring below emits seller_sku
+	// FOR and ean FOR at 95 / ALTA / ACCEPT, asserting corroboration for a CODPROD
+	// that is not there, on a row whose internal_product_id is null — and
+	// autoApprovals reads that ACCEPT as auto-approvable. There is no product to
+	// corroborate, so it degrades exactly like applyUnresolvedScore does: 0 /
+	// BAIXA / NO_CANDIDATE with the absence reasons.
+	if comparison.product == nil {
+		candidate := newCandidate(snapshot, domain.LinkCandidateStateExactSKU, domain.LinkCandidateMatchInputSellerSKU, skuMatches.InputValue, internalreaddomain.ProductCandidate{}, now)
+		applyUnresolvedScore(&candidate, comparison)
+		return candidate
 	}
+	product := *comparison.product
 	candidate := newCandidate(snapshot, domain.LinkCandidateStateExactSKU, domain.LinkCandidateMatchInputSellerSKU, skuMatches.InputValue, product, now)
 
 	reasons := []domain.LinkCandidateReason{

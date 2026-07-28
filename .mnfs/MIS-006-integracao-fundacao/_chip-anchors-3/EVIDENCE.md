@@ -7,7 +7,7 @@ base_sha: 5441fe18f64171ef61cb03b51b5bf66e2922e4eb
 code_head: 590efdc8   # ultimo commit que toca apps/ ANTES do round 4; o reparo do BLOCKING 1 e 1ef419f3
 content_head: 90dab174   # tip de conteudo congelado que os DOIS assentos do round 4 julgaram
 head: RETIRADO — um campo so nao consegue nomear dois tips, e o valor antigo (590efdc8) estava velho no round 4 (lado B, blocking 3)
-gate_round: 4 fechado — REFUTED dos DOIS lados (A 2 blocking, B 3 blocking). Sem AGREEMENT em 4 rounds.
+gate_round: 5 fechado — REFUTED, 1 BLOCKING convergente. Sem AGREEMENT em 5 rounds. Reparo do round 6 abaixo.
 gate_round_4_convergencia: BLOCKING 1 identico nos dois assentos por derivacoes diferentes; BLOCKING 2 com numeros identicos nos dois e reproduzidos por mim
 gate_round_4_artefatos: dispatches/p6-opus-gate-r4.md (13a09177) e dispatches/p6-sol-gate-r4.md (a4709d43), os dois persistidos pelo orquestrador
 gate_round_3: REFUTED dos DOIS lados (A 2 blocking, B 5 blocking)
@@ -26,7 +26,10 @@ reclassificacao_round_4: os 3 bloqueantes viram REPORT por regua filada do hub (
 round_5_forma: f19793d7 — assento leitor recebe o DIFF vs tip da main, o contrato e as saidas cruas da lane; o pack e custodia do hub. Corolario: derivacao que importa pro codigo mora NO codigo.
 ruling_round_4: ESCADA ENCERRADA pelo hub. Sem round 5, sem assento novo, instrumento por sentenca CANCELADO. Tabela de reconciliacao RETIRADA (nao republicada). 6 nao-bloqueantes + 5 universais pre-existentes = REPORT, sem segurar o close.
 fechamento: evidencia EXECUTADA sobre o codigo — go build ./... EXIT 0, go vet ./... EXIT 0, suite product_links EXIT 0 com 115 funcoes de teste / 168 com subtestes EXECUTADAS (0 SKIP, 0 FAIL); must-fail do CORR-1 VERMELHO em 2 testes, restaurado, git diff --quiet HEAD EXIT 0.
-status: NAO FECHADO PELO CHIP. Sem AGREEMENT em 4 rounds; a linha P6-DUAL-GATE e o merge sao do hub. Todo achado dos dois lados verificado por STRING pelo chip, um recusado com motivo.
+gate_round_5: REFUTED — 1 BLOCKING, achado pelos DOIS assentos independentemente por cenarios diferentes (A: vinculados=2 com '101'+'00101' e um link; B: enfileirados=2 com 'ABC'+'00ABC' e pending ["ABC"]). Vereditos em _hub-gate-anchors-3/VERDICTS-round5.md (f8a1ed3d).
+round_6_reparo: ltrim dos dois lados era CANONICALIZACAO PERDEDORA. vinculados agora compara numerico exato com ordem de avaliacao garantida por CASE e conta links.internal_product_id; a FILA volta a igualdade CRUA porque os dois lados sao a mesma string do mesmo slice (cadeia estabelecida por STRING). 2 fixtures de regressao novos.
+must_fail_sql: lane de integracao com o ltrim REPOSTO = status=blocked, failure_token=test=TestGetImportChainCountsCollidingCodprodsOnce E failure_token=test=TestGetImportChainQueueMatchesCodprodExactly; restaurado = status=passed. A forma test= e atribuivel (finding 1 estreitado, ea919c06), entao os dois testes novos EXECUTARAM — status=passed sozinho nao provaria isso (§11 item 4).
+status: NAO FECHADO PELO CHIP. Sem AGREEMENT em 5 rounds; a linha P6-DUAL-GATE e o merge sao do hub. Todo achado dos dois lados verificado por STRING pelo chip, um recusado com motivo.
 authority: .mnfs/MIS-006-integracao-fundacao/_hub-gate-anchors-2/p6-reconciliation-r1.md
 contract: .mnfs/MIS-006-integracao-fundacao/_chip-anchors-3/validation-contract.md
 ```
@@ -602,6 +605,160 @@ Escopo do cumulativo reconferido em `0264ba84`: 11 arquivos, zero `apps/web`, ze
 `platform/httpx`.
 
 ---
+
+## Gate P6 — round 5: **REFUTED**, um BLOCKING, e os dois assentos acharam a MESMA linha
+
+Vereditos: `.mnfs/MIS-006-integracao-fundacao/_hub-gate-anchors-3/VERDICTS-round5.md` (`f8a1ed3d`),
+persistidos pelo orquestrador.
+
+O BLOCKING não é uma discordância entre assentos: os dois chegaram na mesma linha por cenários
+diferentes, o que é a forma mais forte de convergência que este gate produziu em cinco rodadas.
+
+- Assento A, pelo lado de `vinculados`: uma importação com `codprod='101'` **e** `codprod='00101'`
+  são duas linhas distintas (`erp_import_products.codprod` é TEXT e a PK de `0046` as separa), com
+  **um** link `internal_product_id=101`. Sob `ltrim` dos dois lados as duas linhas viram uma chave
+  só e as duas casam ⇒ `vinculados=2`. A verdade é 1.
+- Assento B, pelo lado da fila: `'ABC'` e `'00ABC'` são duas linhas; o cursor tem `pending:["ABC"]`.
+  Sob `ltrim` a única entrada pendente casa as duas ⇒ `enfileirados=2`. A verdade é 1.
+
+**A correção do round 1 estava certa no diagnóstico e errada no instrumento.** `'00101' = '101'`
+comparado como texto é falso e derrubava um vínculo real de `vinculados` — isso era verdade e
+continua sendo. Mas o conserto foi dobrar os dois lados numa forma canônica, e **canonicalização que
+funde chaves distintas não corrige uma comparação: troca subcontagem por supercontagem.** Um número
+operacional errado para menos virou um número operacional errado para mais, e a segunda forma é pior
+porque parece "mais vínculos".
+
+### `vinculados`: comparação numérica exata, com a ordem de avaliação garantida
+
+```sql
+SELECT DISTINCT links.internal_product_id AS internal_product_id
+FROM import_products AS products
+JOIN product_links AS links
+  ON links.internal_product_id = CASE
+         WHEN products.codprod ~ '^[0-9]+$'
+          AND length(ltrim(products.codprod, '0')) <= 18
+         THEN products.codprod::bigint
+     END
+WHERE links.tenant_id = $1 AND links.state = 'resolved'
+```
+
+Três decisões, e o **porquê** de cada uma, que é o que o hub pediu:
+
+1. **Numérica, não textual.** O link não guarda o CODPROD em lugar nenhum como texto. A única
+   identidade que ele carrega para o produto do ERP é `internal_product_id integer` (`0025:9`);
+   `internal_reference_code` (`0025:11`) guarda o **refforn**, não o codprod — verificado por STRING
+   em `generation_service.go` `newCandidate`, que preenche esse campo com `product.ReferenceCode`.
+   Não existe coluna de texto para uma igualdade crua entre os dois lados; a comparação exata
+   disponível é a numérica: um codprod nomeia o produto interno N quando, lido como número, **é** N.
+2. **`CASE`, não `AND` no `ON`.** `codprod ~ '^[0-9]+$' AND codprod::bigint = id` num predicado de
+   junção **não garante** que o filtro roda antes do cast — o planner pode avaliar o cast primeiro e
+   um codprod não-numérico levanta 22P02 em tempo de consulta, derrubando o endpoint inteiro para o
+   tenant. `CASE` avalia `WHEN` antes de `THEN` **por definição da linguagem**, não por escolha do
+   planner. O limite de dígitos é medido depois de tirar o zero à esquerda (só dígitos
+   significativos) e evita 22003; 18 cobre qualquer valor que uma coluna `integer` possa guardar.
+3. **A chave contada mudou para `links.internal_product_id`.** Isto é o que de fato mata a
+   supercontagem: comparação exata sozinha **não** resolve o cenário do assento A, porque
+   `'101'::bigint` e `'00101'::bigint` são os dois 101 e as duas linhas continuam casando o link 101.
+   Duas linhas de importação que nomeiam o mesmo produto interno são **um** produto vinculado.
+
+Consequência declarada, e registrada no próprio SQL: `importados` e `enfileirados` contam **linhas**
+de importação, `vinculados` conta **produtos** vinculados. Eles divergem exatamente quando um
+arquivo nomeia o mesmo produto duas vezes — e aí divergem dizendo a verdade. A prosa antiga sobre
+"decomposição de uma população só" tratava as três como a mesma unidade; não são, e fingir que eram
+foi o que justificou canonicalizar a fila.
+
+### Fila: igualdade CRUA restaurada, e por que a crua já era a exata
+
+O hub mandou estabelecer **por string** quem escreve `cursor->'pending'` e com que valor. Cadeia
+completa, cada elo lido:
+
+| Elo | Sítio | Valor |
+|---|---|---|
+| origem | `erp_import/application/import_service.go` | `codes` montado com `row.Codprod` sobre `accepted` |
+| porta | mesma função | `s.enqueuer.EnqueueMarketProducts(ctx, codes)` |
+| adapter | `erp_import/adapters/sync/enqueuer.go` | passa `productCodes` **sem transformação** |
+| escrita | `sync/adapters/postgres/sync_state_repo.go` `AppendPendingCodigos` | `to_jsonb($4::text[])` em `cursor->'pending'` |
+| outro lado | `erp_import/adapters/postgres/import_repository.go` | `CopyFrom` grava `product.Codprod` das **mesmas** linhas `accepted` |
+
+Não há outro escritor: `AppendPendingCodigo` (singular) tem **zero chamadores** fora da própria
+definição, e `ProductsCursor` (`products_job.go`) não tem campo `pending`.
+
+Os dois lados da junção são portanto a **mesma string do mesmo slice**. A igualdade crua já era a
+comparação exata; o `ltrim` ali não corrigia nada e só comprava colisões — foi ele que produziu o
+`enfileirados=2` do assento B. Restaurada a igualdade crua.
+
+**E o teste que sustentava o `ltrim` da fila era falso.** `TestGetImportChainCountsLeadingZeroCodprodInQueue`
+fixava um cursor com `"101"` contra uma importação com `'00101'`, justificado por um produtor "que
+busca códigos do lado do produto, com chave inteira". Esse produtor **não existe** — é a mesma
+cadeia acima, e o comentário do próprio teste já admitia que o produtor real "nunca pode discordar
+de si mesmo". Fixture retirada e substituída, não remendada: um teste que pina um cenário que o
+código não consegue produzir é forma de evidência, não evidência.
+
+### Fixtures de regressão
+
+- `TestGetImportChainCountsCollidingCodprodsOnce` (`#670-E`): `'101'` **e** `'00101'` importados, um
+  link `101`. `Importados=2`, `Vinculados=1`. É o cenário do assento A — duas linhas que colidem sob
+  `ltrim`, uma só sob exato.
+- `TestGetImportChainQueueMatchesCodprodExactly` (`#660-E`, substitui a fixture retirada): `'00101'`,
+  `'ABC'`, `'00ABC'` importados; cursor `["00101","ABC","OUTSIDE"]`; link `101`. `Vinculados=1`
+  (o numérico alcança o padding), `Enfileirados=2` — `'00ABC'` é outra linha e nunca foi enfileirada
+  (sob `ltrim` virava a terceira), `"OUTSIDE"` não pertence a esta importação.
+
+### Must-fail, porque `status=passed` da lane não prova execução
+
+A lane de integração roda sem `-v` e o artefato guarda só `target`/`status`/`run_id`: rodada toda
+pulada e rodada toda verde são **byte-idênticas** (§11 item 4). Então o verde não é a evidência — o
+vermelho é:
+
+```
+# ltrim REPOSTO nas duas junções, testes novos intactos
+npm run harness:integration
+  failure_token=package=marketplace-central/apps/server_core/internal/modules/erp_import/adapters/postgres
+  failure_token=test=TestGetImportChainCountsCollidingCodprodsOnce
+  failure_token=test=TestGetImportChainQueueMatchesCodprodExactly
+  status=blocked · postgres lifecycle failed reasons=HPG_TEST_FAILED exit_code=1   EXIT 1
+
+# restaurado
+npm run harness:integration
+  status=passed   run_id=7fc3ccc1145b4b4a8dbbcc61645b1938   EXIT 0
+```
+
+A forma `failure_token=test=` é atribuível (finding 1 estreitado pelo hub, `ea919c06`), e um teste
+pulado não consegue ficar vermelho. Os dois testes novos **executaram** contra Postgres real, e
+discriminam exatamente o defeito que o gate achou. Sem essa metade o `status=passed` seria compatível
+com nunca terem compilado — o arquivo tem `//go:build integration` e a lane unitária não o toca.
+
+### Lane depois do reparo
+
+```
+go build ./...                                                          EXIT 0
+go vet ./...                                                            EXIT 0
+go vet -tags=integration ./internal/modules/erp_import/...              EXIT 0
+go test ./internal/modules/product_links/... ./internal/modules/erp_import/... -count=1 -v
+  → 304 EXECUTADOS (=== RUN), 304 --- PASS, 0 --- FAIL, 0 --- SKIP, 13 pacotes ok   EXIT 0
+npm run harness:integration                                             status=passed  EXIT 0
+```
+
+### REPORTs do round 5, corrigidos ou registrados na mesma rodada
+
+- **CORR-6 — o degrade estava errado, e o teste fixava o erro.** `buildConcordantCandidate` com
+  `comparison.product == nil` não entrava mais em panic, mas seguia para o caminho normal sobre um
+  `ProductCandidate{}` zerado e emitia `seller_sku` FOR + `ean` FOR em **95 / ALTA / ACCEPT** — ou
+  seja, afirmava corroboração de um CODPROD que não existe, numa linha com `internal_product_id`
+  nulo que `autoApprovals` lê como auto-aprovável. Agora degrada como o irmão `applyUnresolvedScore`:
+  **0 / BAIXA / NO_CANDIDATE**, com as duas âncoras como INCOMPARABLE do lado ERP. O teste
+  `TestConcordantCandidateDoesNotDerefNilProduct` asseverava 95/ALTA/ACCEPT — isto é, tinha
+  convertido o defeito em contrato. Reescrito para asserir o degrade.
+- **CORR-1 — a âncora some de `reasons[]` no caminho de colisão. Comportamento conhecido, sítio
+  nomeado.** Em `buildCollisionCandidates`, quando `len(anchor.result.Products) > 1` a pontuação vai
+  para `applyCollisionScore`, que monta `reasons` só com a razão AGAINST da âncora ambígua. A razão
+  de ausência do `seller_sku` não é emitida ali, e `appendProviderDeclaredUnavailableReasons` não a
+  inventa: ela só reordena e deduplica o que recebeu. Então numa colisão o operador não vê linha de
+  `seller_sku` explicando o lado ERP. Não é observável errado — é observável **ausente**, e mudar
+  isso mexe no que `/vinculos` renderiza (seam do M-06). Registrado, não alterado.
+- **CORR-1 — `INCOMPARABLE/erp` continua `INCOMPARABLE/erp`, não vira `UNAVAILABLE/side=""`.**
+  Decisão mantida; o hub confirmou que a escolha é do operador e não minha.
+- **CORR-3 — `IsValid` mais estrito que a coluna `uuid`.** REPORT, sem ação, conforme a régua.
 
 ## REPORTs — o que este chip NÃO fechou
 
