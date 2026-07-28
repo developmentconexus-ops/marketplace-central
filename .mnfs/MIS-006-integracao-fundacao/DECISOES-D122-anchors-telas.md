@@ -133,7 +133,23 @@ Motivo de vínculo, forma final:
 - `INCOMPARABLE` significa: **o provider fornece, o valor faltou neste caso**, e `side` diz de que
   lado.
 
-Coluna "Identificado por" (`/vinculos`, substitui "SKU ML"/"GTIN"):
+Coluna "Identificado por" (`/vinculos`, ocupa o lugar da coluna "GTIN"):
+
+> **Correção de 2026-07-28 (R-25).** A redação original dizia "substitui `SKU ML`/`GTIN`" e era
+> falsa sobre a primeira das duas. Verificado contra `5441fe18` pelo hub, a pedido de uma
+> ESCALATION do CHIP-VINC-NEUTRO:
+>
+> - `ProductLinkCandidateItem` (`packages/sdk-runtime/src/index.ts:1070-1089`) **não carrega campo
+>   de seller SKU**. A coluna rotulada `SKU ML` renderizava `candidate.provider_code` cru
+>   (`apps/web/src/pages/vinculos/QueueRow.tsx:218`) — o slug `"mercado_livre"` vazando para o
+>   operador sob um rótulo que prometia SKU. Mesma armadilha que já queimou o CHIP-PED-FILA.
+> - A coluna `GTIN` (`QueueRow.tsx:253-260`) renderizava `✓ igual` ou `—`: booleano derivado,
+>   nunca um GTIN. Substituí-la não apaga dado.
+>
+> Logo o parêntese é **localizador, não mandato de contagem de colunas**: o normativo desta
+> decisão são os três bullets abaixo, todos sobre o CONTEÚDO da coluna. A identidade de provider
+> permanece na tela como DADO, sob rótulo neutro (`Canal`) e com nome de exibição, não com o slug —
+> apagá-la seria violar a própria regra de neutralidade do F-05, que proíbe neutralizar o valor.
 
 - mostra **todas as âncoras que decidiram**, unidas por ` + ` — ex. `CODPROD + EAN`;
 - é diferente da coluna Motivo, que mostra tudo o que opinou. Uma âncora `UNAVAILABLE` ou

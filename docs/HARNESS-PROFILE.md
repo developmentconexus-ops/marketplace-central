@@ -133,12 +133,37 @@ another checkout's `node_modules`: npm workspace symlinks would resolve workspac
   during browser QA is an ENV failure, not a UI defect. Visual QA evidence = computed-style
   captures (getComputedStyle assertions) + accessibility-tree reads instead of pixels
   (CHIP-M03 field finding F-ENV-10, 2026-07-18).
+- A `node_modules` that is MID-`npm ci` (or left half-installed by an interrupted one) makes
+  `tsc` emit module-resolution errors that impersonate real defects — and the count is STABLE,
+  so running `tsc` twice and getting the same output proves nothing. The only discriminating
+  observable is the `npm ci` PROCESS EXIT: do not read a single `tsc` result out of a worktree
+  whose install has not exited 0. Sibling of the stable-but-non-discriminating trap in the
+  review note below: an observable can be reproducible and still not tell the two worlds apart
+  (CHIP-IMPORT-CHAIN field finding, 2026-07-28).
+- The FE vitest lane is **`cd apps/web && npx --no-install vitest run`**, and the `cd` is part of
+  the lane, not shell convenience. The same command from the WORKTREE ROOT silently changes the
+  project set (adds `packages/sdk-runtime`) and turns its contract tests RED, because they
+  resolve `resolve(process.cwd(), "../../contracts/openapi.yaml")` — from the worktree root that
+  path lands in `.claude/contracts/` and does not exist. From the REPO root the same command
+  globs ~1260 files including installed packages and returns ~94 failed. Both reds are the
+  instrument, not the code. Third instance of the class: an observable that is stable, cheap and
+  wrong about which world you are in (hub executing-seat finding on CHIP-VINC-NEUTRO,
+  2026-07-28).
 
 **Review-process note (F-ENV-8, 2026-07-18):** isolated per-slice reviews cannot see test
 responsibilities MOVED between files (e.g. nav assertions relocating Layout.test → Header.test
 reads as deletion in one diff and addition in another). The full-suite L0 run at milestone
 close is the backstop that proves net coverage — never waive it for FE milestones on the
 grounds that each slice was reviewed.
+
+**Sandbox vitest blindness has TEETH (CHIP-IMPORT-CHAIN, 2026-07-28).** The
+`--sandbox workspace-write` clause above says the chip's re-run is the verification of record;
+this is the instance that shows why it is not a formality. A codex slice added a `<Link>`, which
+made a moved component require router context and turned two unrelated test files red. The
+worker could not run vitest, so it reported "typecheck clean, committed" — accurately, over a
+red suite. The chip's post-dispatch re-run caught 2 broken files plus 1 genuine timing defect.
+A worker's "committed" is a claim about what it could OBSERVE, not about the suite; a chip that
+forwards it as green is laundering blindness into evidence.
 
 ## 4. Test database / integration strategy
 `status: ratified` · `provenance: 2026-07-15 · docs/HARNESS.md §5 (integration lane hardening + session container)`
@@ -206,6 +231,17 @@ owns the action (chips never touch containers); only the approval ceremony is re
   (live/operator-provisioned env). Composition roots never ship permanent stub/nil wiring on a
   live path — stub only with dated deferral naming the replacing slice. Mission planning must
   declare real-integration bindings (seam + env) up front.
+- **No command that dumps a container's or process's whole environment.** `docker inspect`,
+  `docker exec … env`, bare `printenv`/`Get-ChildItem Env:` and equivalents print every secret the
+  target holds straight into the transcript. Diagnose a variable by NAME and one at a time
+  (`printenv THE_VAR`, `docker exec … printenv THE_VAR`), never by dumping the set. This binds
+  WORKERS too, so it belongs in the dispatch prompt denylist and not only here — the chip reads
+  the profile, the worker does not. It holds even when the target is throwaway: a session
+  Postgres container's password is CSPRNG-generated per container by
+  `scripts/harness/Postgres.psm1` and dies with it, so there is nothing to rotate, and that is
+  exactly why the rule cannot be argued down case by case — "it was disposable" is available
+  every time (CHIP-ANCHORS-3 R4 worker, 2026-07-28; the module already passes the value in
+  `-RedactionCandidates` for its own process calls, so the leak came from a path outside it).
 
 ## 8. Truth order (core §6)
 `status: ratified` · `provenance: 2026-07-15 · AGENTS.md + docs/HARNESS.md §6`
@@ -279,6 +315,232 @@ verification conflicts against this list.
   implementation conversation. GPT flags NEVER retyped from memory — resolve via the
   `codex-dispatch` skill; `--effort` always explicit.
 
+### The dual gate has a THIRD seat: an independent EXECUTOR
+`status: ratified` · `provenance: 2026-07-28 · CHIP-ANCHORS-3 field finding, exercised on
+CHIP-IMPORT-CHAIN before ratification`
+
+A physically read-only gate seat cannot discharge an execution criterion, by construction. This
+is not a reviewer failing; it is the seat. Field evidence, same day, two chips:
+
+- CHIP-ANCHORS-3 round 1: the Opus seat has no Bash and no git; the Sol seat was denied Go's
+  temporary work directory and a Postgres test database. Its two blocking findings were
+  *"the read-only environment denied creation of Go's temporary work directory"* and
+  *"I could not provision or write to a PostgreSQL test database"* — no code defect at all.
+  Every must-fail, every ladder number, every `git` fact and the patch `sha256` ended up
+  certified **only by the implementer**, which is exactly what the brief tells the reviewer not
+  to accept.
+- CHIP-IMPORT-CHAIN: BOTH seats independently returned `I9 — NOT-PROVEN` with the same reason,
+  and the Opus side wrote it plainly: *"the chip's word is not the instrument."*
+
+So the gate is **three seats, not two**:
+
+1. two READING seats — cold Opus + GPT-5.6 Sol medium, blind to each other (unchanged);
+2. one EXECUTING seat — runs the ladder, the must-fail, the fixture reproduction, and the `git`
+   facts. **The hub owns it.** It is independent of the implementer, which is the property that
+   matters; it is not independent of the reviewer, which does not matter because it produces
+   measurements, not verdicts.
+
+Corollaries that bind:
+- A reading seat that reports a blocking finding whose content is *"I could not run X"* has
+  found nothing. Route the criterion to the executing seat; do not spend a correction round.
+- Scope execution criteria OUT of the reading seats' prompts, so they stop burning findings on
+  a sandbox they were never going to get.
+- The executor states what it ran, verbatim, and against which SHA. First run of record:
+  `_hub-gate-import-chain/GATE-P6.md` §I9 (tsc 15/0-in-scope, vitest 65 files / 521 tests, at
+  the chip's own HEAD, matching the chip's declaration — true before, verified after).
+- The FE analogue already existed and is the same idea: the hub's live browser drive (L2). This
+  generalises it to the backend.
+
+### A delta brief must order a CLASS sweep, or the second occurrence is invisible
+`status: ratified` · `provenance: 2026-07-28 · CHIP-ANCHORS-3 field finding, round 2`
+
+A delta-scoped round is cheap and should stay the default. But a brief that NAMES the site to
+re-examine teaches the seat to stop at it.
+
+Field evidence, one round, two seats, same brief: CHIP-ANCHORS-3's round-2 brief named the site
+where round 1 had found a false universal. The Sol seat checked that site, found it corrected,
+and returned `Findings: None` — on a file that carried the same false universal 83 lines below,
+findable by a one-line `grep`. The Opus seat swept the file on its own initiative and returned
+REFUTED with it. **The seat that returned None did literally what the brief asked.** The defect
+is the brief's, not the model's.
+
+So every delta brief binds:
+
+- **Order the sweep explicitly**: re-examine the named site AND sweep both changed files end to
+  end for other occurrences of the same CLASS. Give the seat the class as searchable tokens —
+  for false-totality prose that is `never`, `always`, `only`, `unreachable`, `cannot`,
+  `no longer`, `every`.
+- **A verdict with no SWEEP section is incomplete on its face**, and the hub returns it as
+  incomplete rather than reading it as a PASS.
+- **The author runs the same sweep against their own pack before publishing.** If only the
+  reviewers sweep, the chip keeps producing the class and outsourcing detection. It is a `grep`.
+- Corollary for the hub: **an approving verdict corroborates only within the scope it declares
+  having swept.** `Findings: None` with no declared scope does not contradict a REFUTED that was
+  verified by string — a smaller reading does not out-vote a larger one, it sits underneath it.
+  Splits of this shape are not ties and are not adjudicated as ties.
+
+### A sweep is only as wide as its pattern — reconcile the extraction against the population
+`status: ratified` · `provenance: 2026-07-28 · CHIP-VINC-NEUTRO round 5 field finding, verified by string at the hub`
+
+The section above orders the sweep. This one is about the sweep lying to the person who ran it.
+
+A sweep proves a class closed by extracting every member and checking each one. If the extraction
+pattern cannot MATCH part of the population, the members it drops are not reported as unchecked —
+they are not reported at all, and the sweep reads as complete. The instrument's blind spot is
+invisible in its own output.
+
+Field evidence, measured at the hub on `3915f33b`: a document titled `EXHAUSTIVE FIXTURE SWEEP`
+proved its own exhaustiveness with `grep -oh 'anchor: "[a-z_]*"'`. The population is
+`grep -c 'anchor: "'` = **23**; the character class `[a-z_]` cannot match a capital or an accent,
+so four sites were invisible — `"SKU idêntico"` (×2), `"Título parcial"`, `"EAN"`. The sweep
+reported ONE violation of the class where there were five, and a machine re-sweep of the same file
+returned **13 failed / 5 passed** against the document's **two** findings. The extraction was
+narrower than the population and nothing in the output said so.
+
+So any sweep offered as evidence that a class is closed binds:
+
+- **Reconcile two counts, and print both.** Population (the loose anchor: `grep -c` on the
+  bare marker) against extraction (what the pattern actually yielded). Unequal without a stated
+  reason = the sweep reports its own blind spot instead of a verdict. This is one extra `grep`.
+- **Must-fail the pattern against a known member**, the same obligation a test carries. A pattern
+  that has never been shown to match something is not known to match anything.
+- **Prefer the checker the language already has.** `wireFixtures.ts` replaced this whole class by
+  making the impossible fixture UNWRITEABLE — a throwing constructor plus a guard that reads the
+  Go declaration — rather than detectable by a sixth `grep`. When a sweep has failed twice, the
+  next artifact is a mechanism, not a wider regex (third-round rule, below).
+- Corollary, and the reason this is not merely a `grep` tip: **a sweep run by the same faculty
+  that produced the defect inherits the defect.** Here the narrow reading appeared in three
+  layers — the fixtures, the sweep of the fixtures, and the proof that the sweep was exhaustive.
+  The count reconciliation is cheap precisely because it does not depend on that faculty.
+
+### Vacuous green — an instrument that passes for a reason unrelated to the code
+`status: ratified` · `provenance: 2026-07-28 · hub executing seat, CHIP-ANCHORS-3 · CHIP-IMPORT-CHAIN field finding #1`
+
+Sibling of stability ≠ discrimination (§3). There the instrument was stable across both worlds;
+here it never looked at either. **Exit 0 is not evidence that anything ran.**
+
+Four instances, one afternoon:
+
+1. `go test -run 'TestX'` where `TestX` is the CONTEXT function of a patch hunk header, not the
+   added test → `no tests to run`, **PASS**, exit 0.
+2. The target file carries `//go:build integration`, so a green `go test ./...` — 153 packages,
+   107 `ok` — **never compiled it**. Package-count green is not lane coverage.
+3. `-tags integration` without `MPC_TEST_DATABASE_URL` → every DB test `SkipWithoutTarget` →
+   `ok` in the summary.
+4. The integration lane runs `go test -tags=integration` **without `-v`** and its artifact
+   records only `target`/`status`/`run_id`, so a fully skipped run and a fully green run are
+   **byte-identical** in `summary.txt` (CHIP-IMPORT-CHAIN field finding #1, independent).
+5. `grep -E "^ *(Test Files|Tests)"` over vitest output returns **empty, exit 0** — vitest emits
+   ANSI colour escapes BEFORE the leading whitespace, so `^ *` never anchors. The command ran,
+   the tests ran, and the *measuring instrument* saw nothing. Hit independently by the hub
+   executing seat and by CHIP-VINC-NEUTRO on the same day, 2026-07-28.
+
+Binding on the executing seat:
+
+- **Count, never tail.** Report packages/tests/assertions actually executed — `ok=N`,
+  `no test files=N`, `FAIL=N` — not the last lines of the output. A tail can be empty and read
+  as clean.
+- **A must-fail that does not go red is not a must-fail.** Before believing a green, prove the
+  command can go red at all: wrong-name, wrong-tag and skipped-target all produce the same
+  green as a correct run.
+- **Name the test by grepping `^func Test` in the file**, never from a hunk header — the `@@`
+  context line names the PRECEDING function.
+- **Skips are a result, not a footnote.** A lane that can skip must report the skip count, or
+  its artifact cannot distinguish ran-and-passed from never-ran.
+- **An empty filter is a failed measurement, not a clean result.** Before grepping any captured
+  output, print its byte and line count; a non-empty file whose filter yields zero lines means
+  the PATTERN failed, not the run. On any coloured tool (vitest, vite, npm), strip escapes first
+  — `sed 's/\x1b\[[0-9;]*m//g'` — because `^`-anchored patterns cannot see past them.
+
+### The gate's artifacts are the orchestrator's to persist, and the pack must be IN GIT
+`status: ratified` · `provenance: 2026-07-28 · CHIP-ANCHORS-3 round 3, findings 6 and 8`
+
+Two failures of custody, same round, same pack. Neither is about review quality — both are about the
+verdict surviving long enough to be read.
+
+**Persistence is a step of the ORCHESTRATOR, never delegated to the seat.** A brief that tells the
+seat to write its own verdict to a path persists nothing, and it fails differently on each side:
+the cold Opus seat has **no Write tool by construction** (§11 third seat — that is the same property
+that makes it a reading seat), and the Sol seat's sandbox refused the write outright —
+`patch rejected: writing is blocked by read-only sandbox`. So the brief asks for something one seat
+cannot do and the other is forbidden to do, and the failure is silent in both cases: the verdict
+arrives in the completion notification and nowhere else.
+
+- The orchestrator writes the artifact **in the same act in which the verdict arrives**, before any
+  analysis. Verbatim paste first; reading second.
+- A refused `apply_patch` is **recoverable**: its payload is in the rollout, and stripping the `+`
+  prefix yields the seat's literal intended file. State that provenance in the artifact head, plus
+  the seat's tool-set. `208 lines, zero unprefixed lines` is a checkable claim; "transcribed" is not.
+- The residual risk is OMISSION, not fabrication, and it is unfalsifiable from the artifact. That is
+  why the paste comes first.
+
+**`git status --porcelain .mnfs/<pack>` clean belongs in the gate brief.** CHIP-ANCHORS-3 ran six
+commits with `EVIDENCE.md`, `dispatches/` and six `p6-*.patch` files **untracked** — `git check-ignore`
+exits 1, so no rule ignored them; it was omission. The seat reads the pack **from disk** and cannot
+tell the difference, so nothing in the review surfaces it. For six commits the two verdicts that cost
+the most to obtain existed only in the filesystem of a **disposable worktree** — and the hub destroys
+those routinely on close.
+
+The hub checks the same thing before it destroys anything: a worktree teardown after an untracked
+pack is a silent, permanent loss of the gate record, and the merge is not proof (a merge carries
+tracked files only).
+
+**But `--porcelain` alone is the wrong instrument, and it is the hub's to run, not the chip's.**
+Two corrections found the same day the rule was ratified:
+
+- **It false-positives on this platform.** With `core.autocrlf=true`, `git status --porcelain`
+  reports ` M` for a file whose content is byte-identical — the stat cache saw a touched mtime and
+  reports possibly-modified without re-hashing. Measured on CHIP-ANCHORS-3's worktree at
+  `13a09177`: `generation_service.go` shows ` M`, while `git diff --quiet` exits 0, the blob hash is
+  the same on both sides (`45438316`), and the byte counts match (41615 = 41615). A freeze-violation
+  alarm from ` M` alone is unfounded. Worse than the false alarm is the habituation: once ` M` is
+  routine noise, a real modification hides inside it. **Ask the two questions with two instruments** —
+  `git diff --quiet HEAD` for content drift, `git status --porcelain --untracked-files=all` read for
+  `??` lines only, for unversioned files. `--porcelain` conflates them.
+- **A pack cannot assert its own tracked-ness.** The claim is self-referential by construction: the
+  file carrying the assertion must be committed *after* the sentence is written, so the state the
+  sentence describes is not the state that ends up in the commit. The chip may report what it saw;
+  only the hub's executing seat, reading the tip from outside the worktree, discharges it.
+- **`git ls-tree` without `-r` counts tree entries, not files.** On CHIP-VINC-NEUTRO's pack the
+  non-recursive form returns `4` (two blobs and a subtree at the root) where `-r` returns `40`. `4`
+  is not a wrong file count — it is a right count of something else, which is why a seat would fill
+  the mandatory section with it and be telling the truth. The custody clause that exists *because* a
+  pack went untracked shipped an instrument that could not tell 40 files from 4.
+- **A count without its tip rots.** The hub published `38` for this pack; the tree says `38` at
+  `ea856c32`, `39` at `7b5c18eb`, `40` at the dispatch tip. The measurement was right where it was
+  taken and became false the moment it was quoted against a later tip. Same shape as `base_sha` is a
+  FLOOR: every count carries the SHA it was measured at, or it is unfalsifiable.
+
+### A scripted edit on an authority artifact must show its `git diff` before the commit
+`status: ratified` · `provenance: 2026-07-28 · CHIP-VINC-NEUTRO, round 6 dispatch`
+
+Re-filing two ledger rows was scripted on the anchor `line.startswith("| 9 |")`. `EVIDENCE.md`
+carries **two** tables numbered that way, so the script rewrote both and **deleted** rows 9 and 10 of
+the tsc error inventory:
+
+```
+- | 9  | ProdutoPage.partialFailure.test.tsx(40,45) | TS2322 same |
+- | 10 | ProdutoPage.partialFailure.test.tsx(41,46) | TS2322 same |
+```
+
+The script reported success. What exposed it was `grep -c "DISPATCHED"` returning `4` for two
+rows — a count disagreeing with the fact it was checking — and only then did `git diff` name the
+victims.
+
+This is the vacuous-green family with the damage inverted: **"edited correctly" and "edited
+correctly AND destroyed something else" produce the same exit 0.** And it is worse than a
+miscount, because a wrong count leaves residue to reconcile against, while a silent deletion leaves
+none — the deleted rows belong to no population any sweep anchors, so nothing downstream could
+miss them. R-25: honest-unknown is for a gap; deleting is falsity.
+
+- Every scripted or programmatic edit of an authority artifact (pack, ledger, doctrine, contract)
+  runs `git diff` and the diff is **read** before the commit. The diff's file and line counts are
+  the receipt; "the script said OK" is not.
+- **Prove the anchor is unique before using it.** `grep -c '<anchor>'` over the target; more than one
+  hit stops the edit. An anchor chosen from the row you are looking at has never been tested against
+  the rows you are not.
+- The check belongs at edit time, not sweep time. There is no later instrument that finds this.
+
 ### Third-round rule — a third defect of the same shape stops the patching
 `status: ratified` · `provenance: 2026-07-25 · operator ruling, D-121 · field evidence CHIP-M05 (6 dual-gate rounds)`
 
@@ -327,6 +589,116 @@ the fix in front of them. Every individual verdict was correct. The failure is t
 scoped to the reported defect cannot see a class, and neither can a chip that keeps answering
 the question it was asked. Only an explicit trip-wire on repetition catches it — this is the
 local-maximum guard (§11 G1-G3) applied to the correction loop itself.
+
+### A finding BLOCKS only when it names a wrong observable; everything else is a REPORT
+`status: ratified` · `provenance: 2026-07-28 · operator ruling ("não nos deixar levar pelo que já temos, mas o que deve ser"), D-122 · field evidence CHIP-ANCHORS-3 r4 + CHIP-VINC-NEUTRO r6`
+
+The gate drifted off the code. CHIP-ANCHORS-3 round 4 returned **both seats REFUTED with three
+blocking findings, over a diff the reading seat itself measured as "40 insertions, 12 deletions,
+all `//` text; no behavior changed"** (`p6-sol-gate-r4.md`, `a4709d43`). Zero of the three
+findings touched behaviour. Meanwhile the wave-2 packs had grown to 9,730 / 11,502 / 21,788 lines
+of evidence against 605 / 1,811 / 1,318 lines of code. The gate had stopped reviewing the code and
+started reviewing its own paperwork — and a gate that reviews paperwork produces more paperwork,
+which is the loop, not the exit.
+
+**The rule.** A finding is `BLOCKING` only if it names a wrong **observable**: behaviour,
+security, data, or a published contract. Everything else — prose, counts, metadata, citation
+drift, formatting, pack hygiene, self-consistency of the evidence document — files as `REPORT`:
+recorded in the pack, corrected in the same round, **does not hold the merge and does not open a
+new round**.
+
+**The discriminator is one question, and it is answered before the class is assigned:** *leave
+this finding exactly as it is, ship the code — what does a user, an operator, a caller, or a
+stored row do differently?* No answer is a REPORT. This is a question about the world, not about
+the document, which is precisely why a document-shaped finding cannot pass it.
+
+**Reclassification is the HUB's, never the seat's.** A seat reports everything it finds, at the
+severity it believes; suppressing or softening a finding at the seat is the falsity R-25 already
+bans. The hub assigns the class, in writing, with the string-level verification it used — the
+same verification a merge would need. Reclassifying without re-reading the code is the same
+defect one layer up.
+
+**The escape hatch is trip-wired.** Three REPORTs of the same shape fire the third-round rule
+above: the shape gets named, the class gets swept, and the class becomes blocking as a class. A
+pattern cannot be shipped one waived instance at a time.
+
+**What this preserves.** The instrument works — it is the aim that drifted. The same dual gate
+caught `seller_sku` reading `refforn` in ANCHORS-2 round 1, and the executing seat caught a
+substring-blind guard by RUNNING a mutation: both executable, both binary, both cheap.
+CHIP-VINC-NEUTRO round 6 returned both seats REFUTED with three findings that were all code, all
+in the chip's own write-set, and all confirmed by the hub by string. That is the gate on target.
+Rigor stays on behaviour, mutation, and execution; it leaves prose-about-prose.
+
+### The reading seats are given the DIFF, not the pack
+`status: ratified` · `provenance: 2026-07-28 · D-122 · field evidence CHIP-ANCHORS-3 r1-r4 (4 rounds, 0 AGREEMENT, last one comment-only)`
+
+The subsection above asks the seats for discipline. This one removes the need for it. A rule that
+depends on a reviewer choosing not to report what is in front of them is informational; the
+structural form is to stop putting it in front of them. Four rounds were spent amending the rules
+of the gate while feeding it the same input.
+
+**Reading-seat input, exhaustive:**
+1. the code diff **against the merge target's CURRENT tip** — `git diff main <chip-tip> -- <code paths>`,
+   `.mnfs/` excluded. Not the chip's dispatch base: a diff against a stale base cannot show a
+   REVERT, and reverting a shipped feature is the most expensive thing a merge can do. (This is
+   the same two-questions-two-instruments split as pack custody: the governance DRIFT gate keeps
+   using the milestone's accepted 40-hex base — `base_sha` is a floor — while the MERGE decision
+   reads current-tip. Different questions.) Measured on CHIP-ANCHORS-3 `a02be7f2`: against its
+   dispatch base the delta reads `+629/-43` across 11 files and looks clean; against current
+   `main` the same branch DELETES 10 files and 462 lines of the `/importacoes` feature that
+   CHIP-IMPORT-CHAIN merged at `45b887b3`, plus `cmd/mlprobe`. Four gate rounds never saw it,
+   because none of them were looking at that diff;
+2. the milestone/chip validation contract, criteria verbatim;
+3. the executing seat's RAW lane outputs (ladder, must-fail, fixtures) — measurements, not prose
+   about measurements.
+
+**The evidence pack is not reviewer input.** It is hub custody: it records what happened, for the
+hub and for whoever reads this in six months. The hub reads it once, for acceptance. Two seats
+reading 10-20k lines of it at review depth is how a 605-line change bought four rounds.
+
+A seat MAY request a **named, bounded** pack section when a CODE finding turns on the chip's
+stated rationale ("§4 of the pack, the derivation for `:379`"). Named and bounded — never the
+tree, never "read the pack".
+
+**What this buys:** a seat cannot file a pack-prose blocking finding, because it cannot see the
+pack. The BLOCKING/REPORT split stops being a judgement call and becomes a property of the setup.
+
+**The cost, stated honestly:** a seat reading only the diff will sometimes re-derive something the
+pack already settled. That is accepted and it is the right trade — re-deriving from the code is
+cheap and is exactly the work we want done twice, while re-reading prose is the work that was
+expensive. It also means the pack must stop being where an argument LIVES: if a derivation matters
+to the code, it belongs in the code as a comment, where the next reader is standing.
+
+### A total guarantee in a docstring is a claim about EVERY input
+`status: ratified` · `provenance: 2026-07-28 · D-122 · field evidence CHIP-VINC-NEUTRO r6 F1/F2 (both seats, blind to each other)`
+
+R-24 ("a claim is TOTAL or it is a report") was ratified against pack prose. It fires in CODE too,
+and the code instance is worse, because a docstring compiles, passes the lane, and is what the
+next author greps.
+
+`wireFixtures.ts:202` reads `/** A candidate the backend can actually emit. Throws if it is not
+one. */` — a total guarantee. The implementation is partial in two independent axes:
+`assertProducibleScore:153-170` validates the score triple but imposes SHAPE for exactly one
+status (`NO_CANDIDATE`, `:164-169`), and `assertProducibleReasons:110-151` gates its capability
+check behind `if (providerCode === "mercado_livre")` at `:142`. Nine fixtures were written
+trusting the sentence; three were wrong.
+
+**The tell, and it is general: both seats found this by reading the implementation, neither by
+reading the docstring. A false total guarantee does not fail the reader — it fails the believer.**
+No amount of review attention on the sentence finds it, because the sentence is not where the
+defect is.
+
+**Binding.** A docstring stating a total guarantee (`always`, `never`, `every`, `throws if it is
+not`) must be true for every input the function accepts, or state its scope in the same sentence.
+When the guard is table-driven, the guarantee points at the TABLE and the table carries the full
+tuple — then a partial table is visible as a hole instead of hiding behind a total sentence.
+Verify a guarantee by finding the guard's most restrictive gate (`if (x === "literal")`, a shape
+check on one branch, a `find` over a partial tuple), never by reading the sentence.
+
+The structural remedy is the same one the chip proposed and the hub ratified: widen the table,
+delete the exemptions. `PRODUCIBLE_SCORES` carrying `(state, match_input)` per producer site
+dissolves BOTH the `NO_CANDIDATE` special case and the `mercado_livre` gate — one mechanism,
+zero hand-written exceptions, and the sentence becomes true.
 
 ## 12. Implementer dispatch bindings (core §4 instantiation)
 `status: ratified` · `provenance: 2026-07-16 · operator-ratified alt-D+ design session (4 adversarial Opus×Sol rounds + MIS-003 field evidence: hub + CHIP-SAT/CHIP-M02/CHIP-M03)`
@@ -421,4 +793,22 @@ retroactive GPT-5.6 Sol medium review at mission closeout (operator's call).
 2026-07-18 · (upstream) · ratified · Opus adversarial-gate remediation landed in mnfs-harness 8fa7ad8 (harness 0.3.3), re-vendored to docs/: crew ships as plugin agent definitions harness/agents/hub-{ops,scribe,analyst}.md (spawn via Agent tool, persistent via SendMessage, mandatory respawn at milestone boundary); CORE §2(g) grant does not waive §3 collision test; CORE §5 PILOT spot-check risk-weighted (integrity-critical/live-integration first, rotating); REVIEW §9 delta re-verdict = declared bounded exception to §8/§13 cold mandate (round-1 gates stay cold); REVIEW §8 refuter may escalate to general breadth on thin first-family pass (must say so); scribe fail-closed branch-guard; analyst base-SHA statement; worker SKILL pin 10 (grants bind as written, P5 follows §5 PILOT). Gate verdict PASS-WITH-CONDITIONS, all 12 findings remediated; plugin cache synced 0.3.3
 2026-07-20 · §1 · ratified · default branch corrected `master`→`main` (operator directive D-120: "be on default main"). No `master` ref ever existed (origin/HEAD → origin/main); the stale `master` binding masked a detached-HEAD boot anomaly where nested worktree `hub-erp-main` held `main` while the primary dir sat detached. Consolidated: freed `main` (detached hub-erp-main HEAD), checked out `main` in primary; hub-erp-main dir cleanup deferred (Windows "Function not implemented" on node_modules junction / .gomodcache read-only — `git worktree prune` after stack re-point)
 2026-07-25 · §11 (new subsection) · ratified · third-round rule: a third defect of the SAME SHAPE (or a third correction round on one criterion) stops point-fixing and requires a named mechanism + tool-anchored exhaustive class sweep (clean sites listed too) + class-level must-fail + independent anti-abstraction judgement before any new type, filed as ROUND-N FULL ANALYSIS; a third-round point-fix without the sweep is not acceptable evidence and the hub does not merge on it (operator ruling D-121; field evidence CHIP-M05 — same mechanism point-fixed in a code comment, a scope argument and an OpenAPI description across 6 rounds, each round passing its own gate)
-```
+2026-07-28 · §3 · ratified · mid-`npm ci` `node_modules` fabricates `tsc` module-resolution errors that impersonate real defects, and the error count is STABLE across repeated runs — reproducibility is not discrimination; the only discriminating observable is the `npm ci` process exit (CHIP-IMPORT-CHAIN field finding; sibling of the 15-error trap, where the expected error COMPOSITION also failed to prove which tree was read)
+2026-07-28 · §3 (review-process note) · ratified · sandbox vitest blindness has teeth: a codex worker's "typecheck clean, committed" is a claim about what it could OBSERVE, not about the suite — one dispatch added a `<Link>`, requiring router context in a moved component, and turned 2 unrelated test files red invisibly; the chip's post-dispatch vitest re-run (already the verification of record under the workspace-write clause) caught them plus a genuine timing defect. A chip forwarding a worker's "committed" as green is laundering blindness into evidence (CHIP-IMPORT-CHAIN field finding)
+2026-07-28 · §11 (new subsection) · ratified · the dual gate gains a THIRD seat, an independent EXECUTOR owned by the hub: a physically read-only reading seat cannot discharge an execution criterion by construction, so ladder/must-fail/fixture/`git` facts move to a seat that is independent of the IMPLEMENTER (independence from the reviewer is irrelevant — it produces measurements, not verdicts). A reading seat whose blocking finding reads "I could not run X" has found nothing; route it, do not spend a correction round, and scope execution criteria out of reading prompts. Field evidence CHIP-ANCHORS-3 round 1 (Sol side refuted on a denied Go tmpdir and a denied Postgres, zero code findings) + CHIP-IMPORT-CHAIN (both seats returned I9 NOT-PROVEN independently). Exercised BEFORE ratification: `_hub-gate-import-chain/GATE-P6.md` §I9
+2026-07-28 · §11 · noted · a gate seat can FABRICATE a file:line citation — the Sol side of the CHIP-IMPORT-CHAIN gate reported `apps/web/vitest.chip.config.ts` as existing on disk and quoted its `:4` and `:16`, for a file present in no tree and tracked nowhere; probable origin is `chip.md:113-114`, which ORDERS the file deleted, read as an observation. Existence claims from a reading seat are verifiable by the hub in seconds and should be, before they enter a pack
+2026-07-28 · §3 · ratified · the FE vitest lane's `cd apps/web` is PART OF THE LANE: the same command from the worktree root adds `packages/sdk-runtime`, whose contract tests resolve `../../contracts/openapi.yaml` from `process.cwd()` and go red on a path that does not exist there; from the repo root it globs ~1260 files and returns ~94 failed. Both reds are the instrument. Third instance of stable-but-non-discriminating (hub executing-seat finding, first backend-independent run of the §11 third seat, on CHIP-VINC-NEUTRO @`ebb309ac`)
+2026-07-28 · §11 · noted · a physically read-only Opus seat has NO Write, so its task `.output` is 0 bytes BY CONSTRUCTION and the verdict exists only in the completion notification — observed twice (CHIP-ANCHORS-2, CHIP-VINC-NEUTRO). "Transcribed, not captured" with declared provenance is therefore the honest and the ONLY available form for that seat; demanding on-disk capture demands what the instrument does not offer. The residual risk is not fabrication but OMISSION (a finding emitted and not carried over), and it is unfalsifiable from the artifact — mitigation is verbatim paste as the FIRST act after the notification arrives, before any analysis, plus the seat's tool-set named in the header
+2026-07-28 · §7 · ratified · no command that dumps a whole environment (`docker inspect`, `docker exec … env`, bare `printenv`) — diagnose by variable NAME, one at a time; binds WORKERS, so it goes in the dispatch-prompt denylist, not only in the profile the chip reads. Holds for throwaway targets: the session Postgres password is CSPRNG-generated per container and dies with it, so there is nothing to rotate — which is precisely why "it was disposable" cannot be a case-by-case exemption (CHIP-ANCHORS-3 R4 worker field finding)
+2026-07-28 · (upstream) · accepted · CHIP-IMPORT-CHAIN F-3 (`New-DispatchPrompt.ps1` assembles an unknown role string cleanly, failing only later at `Invoke-CodexDispatch.ps1` with `ROLE-UNKNOWN` — validate against `roles.psd1` at assembly time) and F-4 (vitest in a junction-only worktree needs an absolute `setupFiles` path plus `server.fs.strict: false`; the junction realpath resolves outside the vite root) belong to `mnfs-harness`, not this profile — routed upstream, not filed here
+2026-07-28 · §11 (vacuous green) · ratified · fifth instance, and the first where the MEASURING FILTER was itself vacuous: `go test` writes ANSI colour escapes BEFORE the leading whitespace, so a `^ *` anchor matches nothing and the count comes back 0 — reported as "clean". An empty filter is a failed measurement, not a clean result; strip escapes first (`sed 's/\x1b\[[0-9;]*m//g'`) and assert the population is non-empty before reading the filtered count (hub executing-seat finding) — commit `a9dc6caa`
+2026-07-28 · §11 (pack custody) · ratified · custody is TWO questions and needs TWO instruments: content drift = `git diff --quiet HEAD` (exit code), untracked = `git status --porcelain --untracked-files=all` read for `??` lines ONLY. `git status --porcelain` alone false-positives with `core.autocrlf=true` — the stat cache reports ` M` for a byte-identical file (blob equal both sides, 41615 = 41615 bytes), and the hub nearly reported a freeze violation from it. Corollary: a pack cannot assert its own tracked-ness — the file carrying the sentence is committed after the sentence exists — commit `9f8a6ec1`
+2026-07-28 · §11 (new subsection) · ratified · a scripted edit on an authority artifact must show its `git diff` before the commit: "edited correctly" and "edited correctly AND destroyed something else" share exit 0. Same row: `git ls-tree` WITHOUT `-r` counts tree entries, not files (4 vs 40 on the same pack) — a right count of the wrong thing, which is why a reader reports it in good faith; and a count without its tip SHA rots the moment it is quoted (the same pack measured 38/39/40 files at three different SHAs, none of them a miscount) — commit `25716bdb`
+2026-07-28 · §11 + `scripts/harness/pack-measure.sh` (new) · ratified · the self-reference class gets a mechanical corrector: numbers about a pack are GENERATED from OUTSIDE at a named SHA, never typed into the file they describe (four defects in one day came from a document measuring itself — the fixed point does not exist). Every figure carries its SHA and its UNIT, because bytes ≠ characters (a 598-figure "discrepancy" between two seats was neither side's arithmetic: 20737 bytes vs 20536 chars, neither naming the unit) and LF-terminated lines ≠ `split('\n')` parts. The corrector shipped the defect it exists to kill and was caught by validation against a known answer: `wc -m` without a UTF-8 locale silently returns BYTES, so both columns agreed on accented prose; fixed with `tr -d '\200-\277'` — commit `c66ea7c7`
+2026-07-28 · §11 (new subsection) · ratified · BLOCKING is reserved for a wrong OBSERVABLE (behaviour, security, data, published contract); prose, counts, metadata, citation drift and pack hygiene file as REPORT — corrected in the same round, never holding the merge or opening a new one. Discriminator: ship the code with the finding untouched, and name what a user, operator, caller or stored row does differently; no answer = REPORT. Reclassification is the HUB's with string-level verification, never the seat's (a seat still reports everything — softening at the seat is the falsity R-25 bans), and three REPORTs of one shape fire the third-round rule. Field evidence: CHIP-ANCHORS-3 r4 returned both seats REFUTED with 3 blocking findings over a diff its own reading seat measured as "40 insertions, 12 deletions, all `//` text; no behavior changed", while the wave-2 packs stood at 9,730 / 11,502 / 21,788 evidence lines against 605 / 1,811 / 1,318 code lines — the gate had begun reviewing its own paperwork (operator ruling: "não nos deixar levar pelo que já temos, mas o que deve ser")
+2026-07-28 · §11 (new subsection) · ratified · STRUCTURAL half of the row above: the reading seats are given the DIFF, not the pack. Input is exhaustively (1) `<base>..<tip>` with `.mnfs/` excluded, (2) the validation contract verbatim, (3) the executing seat's raw lane outputs; a seat may request a NAMED, BOUNDED pack section when a code finding turns on the chip's rationale, never the tree. The pack is hub custody, read once at acceptance — two seats reading it at review depth is how a 605-line change bought four rounds with zero AGREEMENT. A seat then cannot file a pack-prose blocking finding because it cannot see the pack: the BLOCKING/REPORT split stops being a judgement call. Accepted cost, stated: a diff-only seat sometimes re-derives what the pack settled — cheap, and the right work to do twice; corollary is that a derivation which matters to the code belongs IN the code
+2026-07-28 · §11 (new subsection) · ratified · R-24 fires in CODE: a docstring stating a total guarantee (`always`/`never`/`every`/`throws if it is not`) is a claim about every input the function accepts, or it states its scope in the same sentence. `wireFixtures.ts:202` promises "Throws if it is not one" while `assertProducibleScore:164-169` imposes shape for exactly ONE status and `assertProducibleReasons:142` gates its capability check behind `if (providerCode === "mercado_livre")` — nine fixtures were written trusting the sentence, three were wrong. Both gate seats found it by reading the IMPLEMENTATION, neither by reading the docstring: a false total guarantee does not fail the reader, it fails the believer, so review attention on the sentence can never find it. Verify by locating the guard's most restrictive gate; when table-driven, the guarantee points at the table and the table carries the FULL tuple, so a partial table is a visible hole instead of a total sentence. Trigger named by the hub on 2026-07-27 ("the day this shows up in CODE it is an amendment on the spot") and satisfied by CHIP-VINC-NEUTRO r6 F1/F2
+2026-07-28 · §11 (new subsection) · ratified · a DELTA brief must order a CLASS sweep, or the second occurrence is structurally invisible: a brief that NAMES the site to re-examine teaches the seat to stop at it. CHIP-ANCHORS-3 round 2 — the Sol seat checked the named site, found it corrected, returned `Findings: None` on a file carrying the same false universal 83 lines below, findable by a one-line `grep`; the Opus seat swept on its own initiative and returned REFUTED with it. The seat that returned None did literally what the brief asked, so the defect is the BRIEF's. Binds: give the class as searchable tokens (`never`/`always`/`only`/`unreachable`/`cannot`/`no longer`/`every` for false-totality prose), a verdict with no SWEEP section is incomplete on its face, and the AUTHOR runs the same sweep against their own pack before publishing. Hub corollary: an approving verdict corroborates only within the scope it declares having swept — `Findings: None` with no declared scope does not out-vote a REFUTED verified by string, so splits of this shape are not ties (chip-authored field finding, ratified verbatim)
+2026-07-28 · §11 (new subsection) · ratified · VACUOUS GREEN — an instrument that passes for a reason unrelated to the code; sibling of stable-but-non-discriminating (§3), except it never looked at either world. Exit 0 is not evidence that anything ran. Four instances in one afternoon of the hub's executing seat on CHIP-ANCHORS-3: (1) `-run 'TestX'` naming the CONTEXT function of a patch hunk header instead of the added test → `no tests to run`, PASS; (2) the target file carries `//go:build integration`, so a green `go test ./...` (153 packages, 107 `ok`) never compiled it; (3) `-tags integration` without `MPC_TEST_DATABASE_URL` → every DB test skips → `ok`; (4) the integration lane runs without `-v` and records only target/status/run_id, so a fully skipped run and a fully green run are byte-identical in `summary.txt` (CHIP-IMPORT-CHAIN field finding #1, independent). Binds the executing seat: COUNT never tail (`ok=N`, `no test files=N`, `FAIL=N`), prove the command can go red before believing a green, name tests by grepping `^func Test` (the `@@` context line names the PRECEDING function), and report skip counts as a result rather than a footnote
+2026-07-28 · §11 (new subsection) · ratified · A SWEEP IS ONLY AS WIDE AS ITS PATTERN — the members an extraction cannot MATCH are not reported as unchecked, they are not reported at all, so the instrument's blind spot is invisible in its own output. Verified by string at the hub on `3915f33b`: a document titled `EXHAUSTIVE FIXTURE SWEEP` proved its exhaustiveness with `grep -oh 'anchor: "[a-z_]*"'` against a population of `grep -c 'anchor: "'` = 23; the character class cannot match a capital or an accent, so `"SKU idêntico"` (×2), `"Título parcial"` and `"EAN"` were invisible — ONE violation reported where there were five, and a machine re-sweep of the same file returned 13 failed / 5 passed against the document's two findings. Binds any sweep offered as class-closure evidence: reconcile population count against extraction count and PRINT BOTH (unequal without a stated reason = the sweep reports its own blind spot, one extra `grep`); must-fail the pattern against a known member; after a sweep has failed twice the next artifact is a MECHANISM, not a wider regex. Corollary: a sweep run by the same faculty that produced the defect inherits the defect — here the narrow reading appeared in three layers (the fixtures, the sweep, and the proof the sweep was exhaustive), and the count reconciliation is cheap precisely because it does not depend on that faculty (CHIP-VINC-NEUTRO round 5 field finding)
+2026-07-28 · §11 (new subsection) · ratified · GATE CUSTODY, two failures in one round (CHIP-ANCHORS-3 round 3, findings 6+8). (a) PERSISTENCE IS THE ORCHESTRATOR'S STEP, never delegated to the seat: a brief telling the seat to write its own verdict persists nothing and fails differently per side — the cold Opus seat has no Write BY CONSTRUCTION (same property that makes it a reading seat) and the Sol sandbox refuses outright (`patch rejected: writing is blocked by read-only sandbox`); the orchestrator pastes verbatim in the same act the verdict arrives, before analysis, and a refused `apply_patch` is RECOVERABLE from the rollout (strip the `+` prefix — "208 lines, zero unprefixed lines" is checkable, "transcribed" is not). Residual risk is OMISSION, unfalsifiable from the artifact, which is why the paste comes first. (b) `git status --porcelain .mnfs/<pack>` CLEAN belongs in the gate brief: the chip ran six commits with EVIDENCE.md, dispatches/ and six p6-*.patch UNTRACKED (`git check-ignore` exits 1 — omission, not a rule), and the seat reads the pack FROM DISK so nothing in the review surfaces it; for six commits both gate verdicts existed only inside a DISPOSABLE worktree. The hub checks the same before teardown — a merge is not proof, it carries tracked files only

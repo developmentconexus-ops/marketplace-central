@@ -18,7 +18,13 @@ Componente e teste no diretório novo; `pages/vinculos/` não o contém mais.
 O teste que existe hoje continua verde no lugar novo. Se você o reescreveu, diga o que mudou de
 asserção — um teste "adaptado" que perdeu cobertura na mudança é regressão disfarçada de refactor.
 
-Declare o que `/vinculos` mostra agora no lugar dele.
+Declare o destino de **AMBOS** os sítios de render. O pack original citou só
+`VinculosPage.tsx:159` e perdeu `IntegracoesPage.tsx:449` (import em `:6`) — achado do chip,
+2026-07-28. Resolução aprovada pelo hub: **sai de `/vinculos`, FICA em `/integracoes`** (a tela de
+upload, onde o histórico é o recibo do upload que o operador acabou de fazer), e `/importacoes` passa
+a ser a dona da cadeia. `pages/integracoes/` já é seu pela matriz — sem grant novo.
+
+Uma tela que some sem registro é regressão. Duas, pior. O EVIDENCE nomeia os dois sítios.
 
 ## I3 — `VinculosPage.tsx` foi tocado em duas linhas e nada mais
 

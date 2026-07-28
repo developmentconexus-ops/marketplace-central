@@ -176,6 +176,12 @@ export function Header() {
               Integrações
             </Link>
             <Link
+              to="/importacoes"
+              className="block rounded-control px-3 py-2 text-ink hover:bg-surface-2"
+            >
+              Importações
+            </Link>
+            <Link
               to="/catalogo"
               className="block rounded-control px-3 py-2 text-ink hover:bg-surface-2"
             >
