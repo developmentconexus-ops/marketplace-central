@@ -235,3 +235,116 @@ func TestGetImportChainMissingAndProtocolWithoutSyncState(t *testing.T) {
 		t.Fatalf("chain=%#v", got)
 	}
 }
+
+// TestGetImportChainCountsLeadingZeroCodprod pins the resolved_products join
+// fix: erp_import_products.codprod keeps the raw spreadsheet string
+// ('00101'), while product_links.internal_product_id is a ParseInt'd integer
+// column (101). Before the ltrim-both-sides fix, '00101' = '101' compared
+// false and this fixture's linked product silently dropped out of
+// vinculados.
+func TestGetImportChainCountsLeadingZeroCodprod(t *testing.T) {
+	ctx := context.Background()
+	repo, tenant := integrationRepo(t)
+	pool, _ := testpostgres.OpenPool(t, tenant)
+	importID := domain.ImportID("64000000-0000-0000-0000-000000000001")
+
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM sync_state WHERE tenant_id=$1`, tenant)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM product_links WHERE tenant_id=$1`, tenant)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM erp_import_products WHERE tenant_id=$1`, tenant)
+	})
+
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO erp_import_protocols
+			(id, tenant_id, file_sha256, protocol, source, imported_at, status, accepted_count, rejected_count, warning_count)
+		VALUES ($1, $2, 'chain-leading-zero-hash', '#640-E', 'xlsx', now(), 'COMPLETED', 1, 0, 0);
+	`, importID, tenant); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO erp_import_products (tenant_id, protocol_id, codprod, descrprod, custo, stock_physical)
+		VALUES ($2, $1, '00101', 'Product 00101', 1, 0);
+	`, importID, tenant); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO product_links
+			(tenant_id, installation_id, provider_code, provider_item_id, state, internal_product_id)
+		VALUES ($1, 'installation-a', 'mercadolivre', 'item-00101', 'resolved', 101);
+	`, tenant); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := repo.GetImportChain(ctx, tenant, importID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Protocol != "#640-E" || got.Importados != 1 || got.Vinculados != 1 || got.Enfileirados != 0 {
+		t.Fatalf("chain=%#v", got)
+	}
+}
+
+// TestGetImportChainNonArrayPendingCursorDoesNotFailQuery pins the
+// queued_products CASE guard: sync_state.cursor->'pending' is normally a
+// JSON array, but a malformed or partial cursor write can leave it as an
+// object or a scalar. Before the jsonb_typeof guard,
+// jsonb_array_elements_text raised at query time (not a valid JSON array)
+// and took the whole chain endpoint down for the tenant instead of reading
+// as an empty queue.
+func TestGetImportChainNonArrayPendingCursorDoesNotFailQuery(t *testing.T) {
+	ctx := context.Background()
+	repo, tenant := integrationRepo(t)
+	pool, _ := testpostgres.OpenPool(t, tenant)
+
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM sync_state WHERE tenant_id=$1`, tenant)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM erp_import_products WHERE tenant_id=$1`, tenant)
+	})
+
+	cases := []struct {
+		name           string
+		cursor         string
+		importID       domain.ImportID
+		protocol       string
+		installationID string
+	}{
+		{name: "pending as object", cursor: `{"pending":{"foo":"bar"}}`, importID: domain.ImportID("65000000-0000-0000-0000-000000000001"), protocol: "#651-E", installationID: "installation-non-array-object"},
+		{name: "pending as scalar", cursor: `{"pending":"501"}`, importID: domain.ImportID("65000000-0000-0000-0000-000000000002"), protocol: "#652-E", installationID: "installation-non-array-scalar"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			importID := tc.importID
+			if _, err := pool.Exec(ctx, `
+				INSERT INTO erp_import_protocols
+					(id, tenant_id, file_sha256, protocol, source, imported_at, status, accepted_count, rejected_count, warning_count)
+				VALUES ($1, $2, $3, $4, 'xlsx', now(), 'COMPLETED', 1, 0, 0);
+			`, importID, tenant, "chain-non-array-hash-"+tc.name, tc.protocol); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := pool.Exec(ctx, `
+				INSERT INTO erp_import_products (tenant_id, protocol_id, codprod, descrprod, custo, stock_physical)
+				VALUES ($2, $1, '501', 'Product 501', 1, 0);
+			`, importID, tenant); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := pool.Exec(ctx, `
+				INSERT INTO sync_state (tenant_id, installation_id, entity, cursor)
+				VALUES ($1, $3, 'market', $2::jsonb);
+			`, tenant, tc.cursor, tc.installationID); err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				_, _ = pool.Exec(context.Background(), `DELETE FROM erp_import_protocols WHERE id=$1 AND tenant_id=$2`, importID, tenant)
+			})
+
+			got, err := repo.GetImportChain(ctx, tenant, importID)
+			if err != nil {
+				t.Fatalf("expected a valid response, got query error: %v", err)
+			}
+			if got.Protocol != domain.Protocol(tc.protocol) || got.Importados != 1 || got.Enfileirados != 0 {
+				t.Fatalf("chain=%#v", got)
+			}
+		})
+	}
+}

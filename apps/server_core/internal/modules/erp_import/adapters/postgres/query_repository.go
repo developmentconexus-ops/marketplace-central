@@ -83,18 +83,36 @@ func (r *Repository) GetImportChain(ctx context.Context, tenantID string, import
 			WHERE products.tenant_id = $1
 		),
 		resolved_products AS (
+			-- The two sides reach this join through different pipelines:
+			-- erp_import_products.codprod keeps the raw spreadsheet string (a human
+			-- types it, and IsValidCodprod accepts leading zeros), while
+			-- product_links.internal_product_id is a ParseInt'd integer column. A
+			-- raw '00101' therefore linked as 101 and compared '101' = '00101' →
+			-- false, silently undercounting an operator-facing number. Strip the
+			-- padding on BOTH sides so the comparison is one canonical form.
+			-- Text-to-text on purpose: codprod is not guaranteed numeric, and a
+			-- ::integer cast on junk would raise 22P02 at query time.
 			SELECT DISTINCT products.codprod AS codprod
 			FROM import_products AS products
 			JOIN product_links AS links
-			  ON links.internal_product_id::text = products.codprod
+			  ON ltrim(links.internal_product_id::text, '0') = ltrim(products.codprod, '0')
 			WHERE links.tenant_id = $1
 			  AND links.state = 'resolved'
 		),
 		queued_products AS (
+			-- COALESCE only defends against NULL. A cursor whose 'pending' is an
+			-- object or a scalar makes jsonb_array_elements_text raise at query
+			-- time and takes the whole endpoint down for the tenant, so the type
+			-- is checked before expansion. CASE (not AND) because a join/filter
+			-- predicate gives no evaluation-order guarantee.
 			SELECT DISTINCT products.codprod AS codprod
 			FROM sync_state AS state
 			CROSS JOIN LATERAL jsonb_array_elements_text(
-				COALESCE(state.cursor -> 'pending', '[]'::jsonb)
+				CASE
+					WHEN jsonb_typeof(state.cursor -> 'pending') = 'array'
+						THEN state.cursor -> 'pending'
+					ELSE '[]'::jsonb
+				END
 			) AS pending(codprod)
 			JOIN import_products AS products ON products.codprod = pending.codprod
 			WHERE state.tenant_id = $1
