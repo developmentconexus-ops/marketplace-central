@@ -1,11 +1,14 @@
 # EVIDENCE — CHIP-IMPORT-CHAIN (MIS-006 · M-06 · wave 2)
 
 Branch `chip/import-chain`. Base floor `5441fe18f64171ef61cb03b51b5bf66e2922e4eb`.
-**Last code commit `aceff011`** — everything after it is evidence only, so the reviewable diff ends
+**Last code commit `1e4c297e`** — everything after it is evidence only, so the reviewable diff ends
 there. Scope: `apps/web` only — screens `/importacoes` (new) and `/integracoes` (verification only).
 
-**Status: P6 gate PENDING (hub's). This document claims no verdict** — see Close. One cold review ran
-and returned REPROVA on the close-out; a single pass is not a dual gate.
+**Status: P6 dual gate RAN — both sides APROVA, no blocker, with 3 conditions. All three are
+discharged in `1e4c297e`.** The gate is the hub's: record at
+`.mnfs/MIS-006-integracao-fundacao/_hub-gate-import-chain/GATE-P6.md` @ `43d7ee5c` (both verdicts
+verbatim). This document still writes no `P6-DUAL-GATE:` line — that remains the hub's to write. See
+"P6 gate outcome" below.
 
 Companion artifacts, all on disk: `REVIEW-ADVERSARIAL.md` (cold reviewer, verbatim),
 `DISPATCH-LEDGER.md` (every dispatch + artifact bytes), `HUB-RULINGS.md` (R1–R5),
@@ -19,6 +22,7 @@ Companion artifacts, all on disk: `REVIEW-ADVERSARIAL.md` (cold reviewer, verbat
 | `1bffdcfd` | dispatch #2 (codex gpt-5.6-luna/high) | `feat(web): wire ERP import chain detail` |
 | `67e4a3d5` | **chip session (glue, disclosed)** | `test(importacoes): repair the suites the chain link turned red` |
 | `aceff011` | dispatch #3 (codex gpt-5.6-luna/high) | `fix(web): guard import chain protocol` |
+| `1e4c297e` | dispatch #4 (codex gpt-5.6-luna/high) | `fix(web): harden import chain reads` — the 3 P6 gate conditions |
 
 `67e4a3d5` is the only code this orchestrating session wrote: ~16 lines across three test files. See I9.
 
@@ -27,7 +31,7 @@ Companion artifacts, all on disk: `REVIEW-ADVERSARIAL.md` (cold reviewer, verbat
 | Level | Type | Result |
 |---|---|---|
 | L0 typecheck | `ran` | `npx --no-install tsc --noEmit -p apps/web/tsconfig.json` → **15 errors**, the exact pre-existing set, **NONE in any file this chip touched**, none outside `apps/web/src/`. Identical across consecutive runs. |
-| L1 unit | `ran` | `npx --no-install vitest run` (stock `apps/web/vitest.config.ts`) → **65 files / 521 tests, all passing**. Base was 62 files / 511 tests. |
+| L1 unit | `ran` | `npx --no-install vitest run` (stock `apps/web/vitest.config.ts`) → **65 files / 524 tests, all passing** at `1e4c297e` (65 / 521 at `c2229f26`, the tree the gate read). Base was 62 files / 511 tests. |
 | L2 live drive | `ran` (**by the HUB, not by this chip**) | Executed 2026-07-28, report committed to `main` at `7099d9f`: `.mnfs/MIS-006-integracao-fundacao/_chip-import-chain/L2-hub-live-drive.md`. Cited by path below per R-14, never recopied. **The waiver's named risk is paid: the wiring stands up.** |
 | L3/L4 | n/a | No Go, no migrations, no contract change in this chip. |
 
@@ -179,8 +183,22 @@ message for a missing `importId` rather than a dash-filled shell.
 `protocol` was rendered raw at first — a `200` without it would have shown blank space while its
 three siblings showed `—`. Found by the cold reviewer, fixed in `aceff011` via `renderProtocol`
 (unknown = not a non-empty string, so empty/whitespace-only also renders `—`; a real protocol renders
-byte-for-byte with no output-side normalisation). `queue_read_at` was already guarded through
-`formatDateTime(...) ?? <UnknownValue />`.
+byte-for-byte with no output-side normalisation).
+
+**CORRECTION — an earlier revision of this line said `queue_read_at` was "already guarded through
+`formatDateTime(...) ?? <UnknownValue />`". That was FALSE, and the P6 gate refuted it.** Both gate
+sides, blind to each other, flagged the same thing and both noted that the cold review's claim
+`queue_read_at is guarded correctly` did not hold. `formatDateTime`
+(`packages/web-query/src/index.ts:114`) guards `!value` and `Number.isNaN(getTime())` — it never
+checks `typeof`, and `new Date(true)` is a VALID date, so the `??` never fired. The GPT side proved it
+by execution rather than argument: `true → 1970-01-01T00:00:00.001Z`, `1 → 1970-01-01T00:00:00.001Z`.
+A wrong-typed timestamp did not render `—`; it rendered a date that looked fine.
+
+That is the ADR-17 failure in its most dangerous form — not a blank, not a zero, but `01/01/1970`
+carrying the same confidence as a real reading. And the shape is the one the third-round rule exists
+to catch: I hardened `protocol` by type in `aceff011` while its sibling kept an inherited guard I had
+accepted by reading its name instead of its body. Fixed under gate condition 1 in `1e4c297e` via
+`renderQueueReadAt`, which type-checks BEFORE delegating to `formatDateTime`.
 
 **Scope note, and it is the one place where the two evidence halves do not overlap.** The OpenAPI
 declares all five fields `required` and non-nullable
@@ -279,7 +297,7 @@ apps/web/src/routes/importacoes.tsx
   `VinculosPage.tsx` — exactly what I9 permits. `QueueRow.tsx`, `VinculoDrawer.tsx`, `QueueTab.tsx`,
   `ResolvidosTab.tsx`, `useVinculosResolved.ts` untouched.
 - tsc: 15 before, 15 after, none in this chip's files.
-- vitest: 62 files / 511 tests before → **65 files / 521 tests** after, all green.
+- vitest: 62 files / 511 tests before → **65 files / 524 tests** after, all green (521 before the gate conditions).
 - `apps/web/vitest.chip.config.ts`: deleted, and proven never to have entered git —
   `git log --all -- apps/web/vitest.chip.config.ts` empty, `git ls-files` empty. The reviewer flagged
   that if it were tracked this would be a hard FAIL; it never was.
@@ -368,7 +386,7 @@ convention, not invention).
 
 The waiver's named risk is settled and should not be carried forward as open. `GET
 /erp/imports/{id}/chain` had never been driven live by anyone; the risk was a composition-root wiring
-defect of the M-02 catalog-503 class, invisible to all 521 tests because **every test in this diff
+defect of the M-02 catalog-503 class, invisible to all 524 tests because **every test in this diff
 mocks `useClient` directly**. The hub drove it: `200 OK` on the wire, counters matching direct SQL.
 **The wiring stands up.** With it, the runtime halves of I1, I2, I4, I6 and I7 are no longer open.
 
@@ -393,9 +411,63 @@ Stated plainly, because a close that hides this is worth less than one that does
 - The `—` path for `protocol` and `queue_read_at` likewise: guarded and unit-tested, never observed
   live, because the server always sends them.
 
+## P6 gate outcome — both sides APROVA, 3 conditions, all discharged
+
+Run by the hub: Opus on a physically read-only seat pointed at THIS worktree, and GPT-5.6 Sol medium
+under `codex exec --sandbox read-only`. Single frozen prompt, neither saw the other. No blocker.
+Verdicts verbatim at `_hub-gate-import-chain/GATE-P6.md` @ `43d7ee5c`.
+
+**The convergence is the finding.** Two blind readers wrote the SAME ressalva — `queue_read_at` has
+no type guard — and both independently flagged that my cold review's `queue_read_at is guarded
+correctly` was false. Independent convergence on a claim I had already accepted is worth more than
+either verdict on its own. See the correction under I5.
+
+All three conditions implemented by dispatched worker (codex `gpt-5.6-luna/high`) in **`1e4c297e`
+"fix(web): harden import chain reads"** — 2 files, 52 insertions, 2 deletions, write_set respected.
+
+| # | Condition | Implementation | Must-fail |
+|---|---|---|---|
+| 1 | `queue_read_at` gets a type guard | `renderQueueReadAt` — type-checks first, then delegates to `formatDateTime`, `null` → `UnknownValue` | **FAILS before** on `not.toHaveTextContent("1970")` |
+| 2 | Unit lock for known zero | test: `enfileirados: 0` → `toHaveTextContent("0")` AND `not.toHaveTextContent("—")` | passes in BOTH worlds, correctly — it locks behavior rather than fixing it |
+| 3 | 404 attributed by BODY, not status | `candidate.status === 404 ||` removed | **FAILS before** on `not.toHaveTextContent("não encontrada")` |
+
+**Must-fail run is mine, and it mattered here.** The worker reported vitest `could-not-run (sandbox)`
+— finding F-2 again — so it never watched its own tests fail, and a test nobody has seen fail proves
+nothing. I restored the two pre-condition lines in the working tree, ran the file, and observed
+`Tests 2 failed | 9 passed (11)`, each failing on the discriminating assertion rather than on shape.
+Then restored byte-exact (`git status` clean on tracked files) and re-ran green.
+
+Condition 3's safety was verified independently before dispatch, not taken on the gate's word: the
+server emits a flat `{"error":"import_not_found"}` — `erp_import/transport/http_handler.go:114` and
+`:127`, with `http_handler_test.go:344` asserting that exact body — and the SDK rethrows
+`{ status, error }` (`packages/sdk-runtime/src/index.ts:1715`). So an import-not-found 404 always
+carries the body; a route-not-mounted 404 does not. The old `status === 404 ||` short-circuited before
+the body was ever consulted, which meant **the worst 404 — broken wiring — was the one disguised as
+"Importação não encontrada."** That is the catalog-503 class speaking with the wrong confidence.
+
+**What the hub REJECTED, and I did not implement:** tightening `Number.isFinite` to non-negative
+integers (a GPT-side ressalva). It would invent a domain rule the contract does not have and turn a
+real number from the server into `—` — the other ADR-17 lie. Counters come from `count(*)`; if one
+arrives negative the defect is the backend's and the FE shows what arrived.
+
+**I9 discharged by the hub, not by me.** Both gate seats left it NOT-PROVEN for the same structural
+reason — a review seat runs nothing. The hub ran both lanes against `c2229f26` and got tsc 15 / vitest
+65 files / 521 tests, matching this document's declaration. It was true; now it is verified by someone
+who did not write the code.
+
+**Two reviewer errors, recorded so nobody chases them.** (a) The Sol side's `I7 — FAIL
+(NOT-EVIDENCED)` and `I8 — NOT-EVIDENCED` rest on "there is no EVIDENCE.md in `_chip-import-chain/`"
+— an artifact of being pointed at the main checkout, where this uncommitted-to-main worktree file
+does not exist. The hub owns that error; the Opus side, pointed here, read it and passed both.
+(b) The Sol side reported `apps/web/vitest.chip.config.ts` as existing on disk and cited content at
+`:4` and `:16`. It exists in no tree — `git ls-tree c2229f26` has no such path. Likely origin: it read
+the DELETION ORDER at `chip.md:113-114` and reported it as an observation. A fabricated file:line
+citation. It does not touch the date-coercion finding, which that same reviewer proved by executing.
+
 ## Close
 
-**P6 GATE PENDING — hub's side. This chip claims no verdict.**
+**P6 dual gate RAN — both APROVA, conditions discharged. The `P6-DUAL-GATE:` line is still the
+hub's.**
 
 **Correction of form, on the hub's ruling and it is right.** An earlier revision of this section led
 with `AGREEMENT — P6 discharged` while its own next sentence said the `P6-DUAL-GATE:` line belongs to
@@ -408,16 +480,27 @@ CHIP-VINC-NEUTRO was returned the same day for the mirror-image defect, two pass
 `gpt-5.6-sol` medium with no Opus side. R-26: verbatim is a claim about FORM, and that header claimed
 a verdict that does not exist. Substance below is unchanged — only the claim about it is corrected.
 
-What this chip actually delivers: **ladder complete, gate not run.** L0 `ran` (15 errors, none mine),
-L1 `ran` (65 files / 521 tests green), L2 `ran` **by the hub** (`7099d9f`, re-confirmed against this
-chip's final HEAD — see below). Adversarial review dispatched, persisted verbatim, verdict REPROVA on
-the close-out; all three of its blockers now closed, two by this chip and the third by the hub's
-drive. That is a single cold pass, not a dual gate, and it does not become one by being good.
+That retraction stood until the gate actually ran. It has now run, both sides APROVA with three
+conditions, and the conditions are discharged in `1e4c297e` — so the sentence that was true when
+written ("gate not run") is superseded by fact, not withdrawn as wrong. The record keeps both, because
+the order matters: the chip did not get to write `AGREEMENT`; the hub ran a real gate and it came back
+with three things the chip had missed.
+
+**Ladder at this HEAD:** L0 `ran` (15 errors, none in my files — verified again after `1e4c297e`),
+L1 `ran` (**65 files / 524 tests** green, +3 for the conditions), L2 `ran` **by the hub** (`7099d9f`,
+re-confirmed against `42d7c2d1` — see below). The earlier cold review (verdict REPROVA on the
+close-out) had all three of its blockers closed before the gate; it was one pass, and it did not
+become a dual gate by being good.
 
 Two things stay open by their nature and are named above rather than buried: `vinculados` non-zero,
-and the absent-field half of I5. The dual gate — Opus full + GPT-5.6 Sol medium, independent — is the
-hub's to run and to write, and the side that implemented does not review: all four code commits came
-from codex `gpt-5.6-luna/high`, so the Opus side must be a cold session, never this one.
+and the absent-field half of I5. A third is now named by the gate itself: mounting with literally
+zero installations was NOT proven — the hub concedes the Sol side is right that the clean `href`s
+show the routing decision, not the no-marketplace state. Both gate sides proved it by reading
+(`InstallationProvider` always renders children; only `InstallationGate` blocks; `/importacoes` sits
+outside the block), and it stays declared rather than claimed.
+
+The side that implemented does not review: all five code commits came from codex
+`gpt-5.6-luna/high`, and the Opus gate seat was a cold session, never this one.
 
 ### L2 re-confirmed against the final HEAD
 
