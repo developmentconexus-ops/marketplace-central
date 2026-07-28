@@ -735,6 +735,31 @@ zero hand-written exceptions, and the sentence becomes true.
   MIS-003 W1). `Test-HarnessPreflight.ps1` surfaces `git-index-lock` as an advisory check
   before writer dispatch.
 
+### An automated gate must name the tree it measured, or its verdict is unattributable
+
+A hook, script or lane that reports on "the repo" without naming WHICH checkout it read produces
+a verdict that cannot be believed OR disbelieved. In a worktree-per-chip topology the hub session's
+shell cwd is not the hub's checkout: the two differ by an arbitrary amount of history, and a gate
+that resolves paths relative to cwd is measuring a tree nobody is working in.
+
+- Any automated verdict about repository state PRINTS the absolute path it measured and the tip
+  SHA it measured at, in the same message as the verdict. A verdict without both is `unknown`,
+  not `fail` — and specifically it does not license a human-visible accusation.
+- The reader's obligation on receiving such a verdict is to re-measure in the NAMED checkout
+  before acting. Two instruments, not one: the claim and the tree it was made about.
+- Corollary for the hub: a `cd` in a hub command is not optional hygiene. Every hub command
+  states its checkout in the same invocation, because PowerShell and the Bash tool both reset
+  cwd between calls and the reset destination is the stale worktree.
+
+Field evidence, twice in one session: the Stop hook fired
+`CLOSED claimed but no evidence pack exists in this worktree (.mnfs/**/_chip-*/EVIDENCE.md)`
+while `C:\…\marketplace-central\.mnfs\` carried 15 `_chip-*/EVIDENCE.md` files and each in-flight
+chip carried its own on its branch. Both halves of the accusation were false: no `CLOSED` had been
+sent (the token appeared inside ORDERS to chips), and the packs existed. The hook had resolved
+`.mnfs/**` against `.claude/worktrees/epic-lehmann-4ffbad`, whose `.mnfs/` holds MIS-001..004 and
+no MIS-006 pack at all. The cost is not the wasted check — it is that an alarm which is wrong
+twice trains its reader to skip the third.
+
 ### Contingency lane — codex quota outage (TEMPORARY, ratified 2026-07-18, D-23)
 `status: ratified` · `expiry: codex quota return (2026-07-25) or MIS-004 demo close, whichever first`
 
@@ -812,3 +837,4 @@ retroactive GPT-5.6 Sol medium review at mission closeout (operator's call).
 2026-07-28 · §11 (new subsection) · ratified · VACUOUS GREEN — an instrument that passes for a reason unrelated to the code; sibling of stable-but-non-discriminating (§3), except it never looked at either world. Exit 0 is not evidence that anything ran. Four instances in one afternoon of the hub's executing seat on CHIP-ANCHORS-3: (1) `-run 'TestX'` naming the CONTEXT function of a patch hunk header instead of the added test → `no tests to run`, PASS; (2) the target file carries `//go:build integration`, so a green `go test ./...` (153 packages, 107 `ok`) never compiled it; (3) `-tags integration` without `MPC_TEST_DATABASE_URL` → every DB test skips → `ok`; (4) the integration lane runs without `-v` and records only target/status/run_id, so a fully skipped run and a fully green run are byte-identical in `summary.txt` (CHIP-IMPORT-CHAIN field finding #1, independent). Binds the executing seat: COUNT never tail (`ok=N`, `no test files=N`, `FAIL=N`), prove the command can go red before believing a green, name tests by grepping `^func Test` (the `@@` context line names the PRECEDING function), and report skip counts as a result rather than a footnote
 2026-07-28 · §11 (new subsection) · ratified · A SWEEP IS ONLY AS WIDE AS ITS PATTERN — the members an extraction cannot MATCH are not reported as unchecked, they are not reported at all, so the instrument's blind spot is invisible in its own output. Verified by string at the hub on `3915f33b`: a document titled `EXHAUSTIVE FIXTURE SWEEP` proved its exhaustiveness with `grep -oh 'anchor: "[a-z_]*"'` against a population of `grep -c 'anchor: "'` = 23; the character class cannot match a capital or an accent, so `"SKU idêntico"` (×2), `"Título parcial"` and `"EAN"` were invisible — ONE violation reported where there were five, and a machine re-sweep of the same file returned 13 failed / 5 passed against the document's two findings. Binds any sweep offered as class-closure evidence: reconcile population count against extraction count and PRINT BOTH (unequal without a stated reason = the sweep reports its own blind spot, one extra `grep`); must-fail the pattern against a known member; after a sweep has failed twice the next artifact is a MECHANISM, not a wider regex. Corollary: a sweep run by the same faculty that produced the defect inherits the defect — here the narrow reading appeared in three layers (the fixtures, the sweep, and the proof the sweep was exhaustive), and the count reconciliation is cheap precisely because it does not depend on that faculty (CHIP-VINC-NEUTRO round 5 field finding)
 2026-07-28 · §11 (new subsection) · ratified · GATE CUSTODY, two failures in one round (CHIP-ANCHORS-3 round 3, findings 6+8). (a) PERSISTENCE IS THE ORCHESTRATOR'S STEP, never delegated to the seat: a brief telling the seat to write its own verdict persists nothing and fails differently per side — the cold Opus seat has no Write BY CONSTRUCTION (same property that makes it a reading seat) and the Sol sandbox refuses outright (`patch rejected: writing is blocked by read-only sandbox`); the orchestrator pastes verbatim in the same act the verdict arrives, before analysis, and a refused `apply_patch` is RECOVERABLE from the rollout (strip the `+` prefix — "208 lines, zero unprefixed lines" is checkable, "transcribed" is not). Residual risk is OMISSION, unfalsifiable from the artifact, which is why the paste comes first. (b) `git status --porcelain .mnfs/<pack>` CLEAN belongs in the gate brief: the chip ran six commits with EVIDENCE.md, dispatches/ and six p6-*.patch UNTRACKED (`git check-ignore` exits 1 — omission, not a rule), and the seat reads the pack FROM DISK so nothing in the review surfaces it; for six commits both gate verdicts existed only inside a DISPOSABLE worktree. The hub checks the same before teardown — a merge is not proof, it carries tracked files only
+2026-07-28 · §11 (new subsection) · ratified · AN AUTOMATED GATE MUST NAME THE TREE IT MEASURED. Second occurrence in one session of the Stop hook reporting `CLOSED claimed but no evidence pack exists in this worktree (.mnfs/**/_chip-*/EVIDENCE.md)` against a tree that is not the hub's checkout: the primary carries 15 `_chip-*/EVIDENCE.md` and each in-flight chip carries its own on its branch, while `.claude/worktrees/epic-lehmann-4ffbad/.mnfs/` holds MIS-001..004 and no MIS-006 pack at all. BOTH halves of the accusation were false — no `CLOSED` was sent either (the token appeared inside ORDERS to chips). Binds: an automated verdict about repo state prints the absolute path and tip SHA it measured, in the same message as the verdict; without both it is `unknown`, not `fail`, and does not license a human-visible accusation. Reader re-measures in the NAMED checkout before acting. The cost is not the wasted check but that an alarm wrong twice trains its reader to skip the third — the hub named this trigger on the first occurrence and this is the second
