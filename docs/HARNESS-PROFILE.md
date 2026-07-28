@@ -418,6 +418,15 @@ So any sweep offered as evidence that a class is closed binds:
   that produced the defect inherits the defect.** Here the narrow reading appeared in three
   layers — the fixtures, the sweep of the fixtures, and the proof that the sweep was exhaustive.
   The count reconciliation is cheap precisely because it does not depend on that faculty.
+- **The population is set by the FACT, never by the edit's footprint.** The most common way the
+  pattern comes out narrow is that nobody chose one: the sweep silently runs over *the files that
+  were already open*. CHIP-VINC-NEUTRO r7 — a merge moved `ImportacaoSection` out of
+  `pages/vinculos/`, killing a `listErpImports` mock in TWO test files; the chip deleted the one
+  in the file it was editing and the second survived a full round, caught by the hub with
+  `grep -rn` over the directory. The cause was a moved component, so the population is *every
+  file that mocked the port*, tree-wide — the edit's footprint has no bearing on it. Ask what
+  KILLED the thing, and let that answer pick the search root; a sweep whose root is the diff is
+  reporting the diff back to you.
 
 ### Vacuous green — an instrument that passes for a reason unrelated to the code
 `status: ratified` · `provenance: 2026-07-28 · hub executing seat, CHIP-ANCHORS-3 · CHIP-IMPORT-CHAIN field finding #1`
@@ -479,6 +488,27 @@ arrives in the completion notification and nowhere else.
   the seat's tool-set. `208 lines, zero unprefixed lines` is a checkable claim; "transcribed" is not.
 - The residual risk is OMISSION, not fabrication, and it is unfalsifiable from the artifact. That is
   why the paste comes first.
+
+**"It arrived in the notification" is not custody, and the hub broke this rule itself**
+(2026-07-28, CHIP-VINC-NEUTRO round 7). A seat return is delivered in two shapes depending on its
+SIZE: a short verdict is inlined in the completion notification and survives in the transcript; a
+long one is written to `tasks/<id>.output` and the notification carries only a summary. Measured
+after the fact: **four seat output files, all `0 bytes`**, and no block of the seat's text anywhere
+in the transcript. The Sol verdict survived at 5.625 chars because it was inlined; the Opus verdict
+of the same round is **gone** — the only trace is the hub's own paraphrase, which is not verbatim
+and does not become one by being the last copy standing. The window that killed it was between
+ARRIVING and BEING PASTED, and it was crossed by a context compaction, so nothing signalled the
+loss. Corollaries, both binding:
+
+- The bigger and more valuable the verdict, the more likely it is the one that vanishes. Paste on
+  the turn it lands — not on the turn the ruling is written.
+- A lost verdict is declared in the pack, with what was measured to establish the loss, and the
+  findings that existed only in the paraphrase **do not become orders**. Re-deriving from memory
+  what a seat "would have said" is fabrication with extra steps.
+- Recovering a verdict by size (`grep` for the largest matching block) picks up the WRONG round:
+  the hub did exactly this and pasted a different chip's gate — `CHIP-ANCHORS-2`'s `refforn` /
+  `RouteClassMux` verdict — under this round's heading before checking the header. Match on the
+  seat's task id, never on size.
 
 **`git status --porcelain .mnfs/<pack>` clean belongs in the gate brief.** CHIP-ANCHORS-3 ran six
 commits with `EVIDENCE.md`, `dispatches/` and six `p6-*.patch` files **untracked** — `git check-ignore`
@@ -871,3 +901,5 @@ retroactive GPT-5.6 Sol medium review at mission closeout (operator's call).
 2026-07-28 · §11 (new subsection) · ratified · AN AUTOMATED GATE MUST NAME THE TREE IT MEASURED. Second occurrence in one session of the Stop hook reporting `CLOSED claimed but no evidence pack exists in this worktree (.mnfs/**/_chip-*/EVIDENCE.md)` against a tree that is not the hub's checkout: the primary carries 15 `_chip-*/EVIDENCE.md` and each in-flight chip carries its own on its branch, while `.claude/worktrees/epic-lehmann-4ffbad/.mnfs/` holds MIS-001..004 and no MIS-006 pack at all. BOTH halves of the accusation were false — no `CLOSED` was sent either (the token appeared inside ORDERS to chips). Binds: an automated verdict about repo state prints the absolute path and tip SHA it measured, in the same message as the verdict; without both it is `unknown`, not `fail`, and does not license a human-visible accusation. Reader re-measures in the NAMED checkout before acting. The cost is not the wasted check but that an alarm wrong twice trains its reader to skip the third — the hub named this trigger on the first occurrence and this is the second
 2026-07-28 · §2 · corrected · the profile printed the COPYABLE line `GOCACHE=.gocache` three times (L0, L1, and the §7 pre-pass), the first of them three lines above the rule requiring an ABSOLUTE path. A chip copied it and got an 83-byte EXIT 1 with zero `=== RUN` — the sixth instance of vacuous green, and the only one the doctrine itself handed over. Relative literals removed from all three sites and replaced with a pointer to the rule; the rule now carries both the pwsh and the bash binding, extends to `GOMODCACHE`, and states that this file prints no copyable relative form. A doctrine artifact that hands you the line it forbids is worse than one that says nothing (CHIP-ANCHORS-3 field REPORT on a hub-owned file — the chip measured it instead of working around it in silence)
 2026-07-28 · §11 (new subsection) · ratified · THE HUB ANNOUNCES THE CUT. A chip cannot honour a freeze whose start it was never told, so every "the chip wrote during the gate" round is first a round where the hub generated the diff in silence. Binds: the hub sends a CUT message naming the tip the patch came from, in the same act as generating it; a later chip commit does not automatically void the round — the hub measures the delta and asks whether it touches production code or anything a returned verdict rests on, standing the round with the delta recorded as HUB-verified rather than seat-verified (in those words) when the answer is no to both, re-cutting when it is yes to either. CHIP-VINC-NEUTRO r7: hub cut 2,662 lines at `293c1485` and told nobody; the chip then landed `2b956e19` deleting a genuinely dead mock and the comment that had predicted its own falsity — a correction the cold seat independently filed as a REPORT on the same locus. Delta: one test file, 18/20, zero production lines; round stood. Second hub-side instance of the same shape as the mid-wave merge (`678a6d51`): the hub changed shared state and did not tell the party it bound
+2026-07-28 · §11 (existing subsection extended) · corrected · "IT ARRIVED IN THE NOTIFICATION" IS NOT CUSTODY. The rule already said the orchestrator writes the artifact in the same act in which the verdict arrives — the hub broke its own rule and lost a verdict. A seat return is delivered in two shapes by SIZE: short verdicts are inlined in the completion notification and survive in the transcript; long ones go to `tasks/<id>.output` with only a summary inlined. Measured after the fact: four seat output files, all `0 bytes`, and no block of the seat's text anywhere in the transcript. CHIP-VINC-NEUTRO r7 — Sol survived at 5,625 chars because it was inlined; the Opus verdict of the same round is GONE, leaving only the hub's paraphrase, which is not verbatim and does not become one by being the last copy standing. The window was between ARRIVING and BEING PASTED and it was crossed by a context compaction, so nothing signalled the loss. Binds: the bigger and more valuable the verdict, the likelier it is the one that vanishes — paste on the turn it lands, not on the turn the ruling is written; a lost verdict is DECLARED in the pack with the measurement that established the loss, and findings that existed only in the paraphrase do not become orders; and recovery by SIZE picks the wrong round — the hub grepped for the largest matching block and pasted CHIP-ANCHORS-2's `refforn`/`RouteClassMux` gate under this round's heading before checking the header. Match on the seat's task id, never on size
+2026-07-28 · §11 (existing subsection extended) · ratified · THE POPULATION IS SET BY THE FACT, NEVER BY THE EDIT FOOTPRINT. The commonest way a sweep pattern comes out narrow is that nobody chose one — it silently runs over the files already open. CHIP-VINC-NEUTRO r7: a merge moved `ImportacaoSection` out of `pages/vinculos/` and killed a `listErpImports` mock in TWO test files; the chip deleted the one in the file it was editing, the second survived a full round, and the hub caught it with `grep -rn` over the directory (`VinculosDesign.golden.test.tsx:25,31,120,121`). The cause was a moved component, so the population is every file that mocked the port, tree-wide; the edit footprint has no bearing on it. Binds: ask what KILLED the thing and let that answer pick the search root — a sweep whose root is the diff is reporting the diff back to you. Chip-side field finding, named by the chip against its own work (`1fcf7f1a`) and verified at the hub by string before ratification
