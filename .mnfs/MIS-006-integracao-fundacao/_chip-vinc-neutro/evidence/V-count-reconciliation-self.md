@@ -163,3 +163,51 @@ than the fact: `[a-z_]` dropping capitals and accents (round 5), `status:` match
 (caught by this chip's own must-fail), and now `grep -c` counting lines. The first two were caught
 by this chip; this one was not. It was caught by a seat that verified the artifact instead of
 reading its conclusion — which is the entire argument for the executor seat existing.
+
+---
+
+## Two more instances of the class, both in the dispatch machinery itself
+
+Recorded because the class has now appeared five times in this chip's own work and the count is
+the point: it is not a mistake that gets made once and learned. Neither of these reached a seat —
+both were caught by looking at what the command DID instead of what it was for.
+
+### `git ls-tree` without `-r` counts tree entries
+
+The custody clause was committed ordering `git ls-tree HEAD -- <pack>/ | wc -l`. Run:
+
+```
+git ls-tree    HEAD -- <pack>/ | wc -l   ->   4
+git ls-tree -r HEAD -- <pack>/ | wc -l   ->  40
+```
+
+Four is not a wrong file count, it is a correct count of something else: two blobs and one
+subtree at the pack root. A seat filling a MANDATORY section would have written `4` truthfully.
+The clause exists because a prior chip's pack sat untracked for six commits; the instrument it
+shipped with could not have distinguished 40 tracked files from 4.
+
+Also reconciled while here: the hub's executor seat reported **38**; the tree says **39** at
+`7b5c18eb` and **40** at the dispatch tip. The +1 is the round-6 brief, added after the freeze.
+The 38-vs-39 gap is the executor's measurement and is reported to the hub, not corrected here.
+
+### `"| 9 |"` matched a different table
+
+Re-filing ledger rows 9 and 10 was scripted as `line.startswith("| 9 |")`. `EVIDENCE.md` holds
+two tables with those row numbers, and the script rewrote **both** — silently destroying the tsc
+error inventory's rows 9 and 10:
+
+```
+- | 9  | `src/pages/produto/ProdutoPage.partialFailure.test.tsx(40,45)` | TS2322 same |
+- | 10 | `src/pages/produto/ProdutoPage.partialFailure.test.tsx(41,46)` | TS2322 same |
+```
+
+The script reported success. `grep -c "DISPATCHED"` returned 4 for two rows, and that discrepancy
+— a count that did not match the fact it was checking — is what exposed it; `git diff` then named
+the two victims. Restored verbatim, verified by diff: 2 insertions, 2 deletions, both in the
+dispatch ledger.
+
+This one is worse than the others in kind. The previous four made a measurement wrong. This one
+made an EDIT wrong, and an edit that deletes has no residual to reconcile against — had the
+`grep -c` not disagreed, the loss would have been invisible in every subsequent count, because
+the deleted rows are not in any population the sweep anchors on. R-25: honest-unknown is for
+gaps; a silent deletion is falsity.
