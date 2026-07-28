@@ -379,6 +379,40 @@ So every delta brief binds:
   verified by string — a smaller reading does not out-vote a larger one, it sits underneath it.
   Splits of this shape are not ties and are not adjudicated as ties.
 
+### A sweep is only as wide as its pattern — reconcile the extraction against the population
+`status: ratified` · `provenance: 2026-07-28 · CHIP-VINC-NEUTRO round 5 field finding, verified by string at the hub`
+
+The section above orders the sweep. This one is about the sweep lying to the person who ran it.
+
+A sweep proves a class closed by extracting every member and checking each one. If the extraction
+pattern cannot MATCH part of the population, the members it drops are not reported as unchecked —
+they are not reported at all, and the sweep reads as complete. The instrument's blind spot is
+invisible in its own output.
+
+Field evidence, measured at the hub on `3915f33b`: a document titled `EXHAUSTIVE FIXTURE SWEEP`
+proved its own exhaustiveness with `grep -oh 'anchor: "[a-z_]*"'`. The population is
+`grep -c 'anchor: "'` = **23**; the character class `[a-z_]` cannot match a capital or an accent,
+so four sites were invisible — `"SKU idêntico"` (×2), `"Título parcial"`, `"EAN"`. The sweep
+reported ONE violation of the class where there were five, and a machine re-sweep of the same file
+returned **13 failed / 5 passed** against the document's **two** findings. The extraction was
+narrower than the population and nothing in the output said so.
+
+So any sweep offered as evidence that a class is closed binds:
+
+- **Reconcile two counts, and print both.** Population (the loose anchor: `grep -c` on the
+  bare marker) against extraction (what the pattern actually yielded). Unequal without a stated
+  reason = the sweep reports its own blind spot instead of a verdict. This is one extra `grep`.
+- **Must-fail the pattern against a known member**, the same obligation a test carries. A pattern
+  that has never been shown to match something is not known to match anything.
+- **Prefer the checker the language already has.** `wireFixtures.ts` replaced this whole class by
+  making the impossible fixture UNWRITEABLE — a throwing constructor plus a guard that reads the
+  Go declaration — rather than detectable by a sixth `grep`. When a sweep has failed twice, the
+  next artifact is a mechanism, not a wider regex (third-round rule, below).
+- Corollary, and the reason this is not merely a `grep` tip: **a sweep run by the same faculty
+  that produced the defect inherits the defect.** Here the narrow reading appeared in three
+  layers — the fixtures, the sweep of the fixtures, and the proof that the sweep was exhaustive.
+  The count reconciliation is cheap precisely because it does not depend on that faculty.
+
 ### Vacuous green — an instrument that passes for a reason unrelated to the code
 `status: ratified` · `provenance: 2026-07-28 · hub executing seat, CHIP-ANCHORS-3 · CHIP-IMPORT-CHAIN field finding #1`
 
@@ -562,3 +596,4 @@ retroactive GPT-5.6 Sol medium review at mission closeout (operator's call).
 2026-07-28 · (upstream) · accepted · CHIP-IMPORT-CHAIN F-3 (`New-DispatchPrompt.ps1` assembles an unknown role string cleanly, failing only later at `Invoke-CodexDispatch.ps1` with `ROLE-UNKNOWN` — validate against `roles.psd1` at assembly time) and F-4 (vitest in a junction-only worktree needs an absolute `setupFiles` path plus `server.fs.strict: false`; the junction realpath resolves outside the vite root) belong to `mnfs-harness`, not this profile — routed upstream, not filed here
 2026-07-28 · §11 (new subsection) · ratified · a DELTA brief must order a CLASS sweep, or the second occurrence is structurally invisible: a brief that NAMES the site to re-examine teaches the seat to stop at it. CHIP-ANCHORS-3 round 2 — the Sol seat checked the named site, found it corrected, returned `Findings: None` on a file carrying the same false universal 83 lines below, findable by a one-line `grep`; the Opus seat swept on its own initiative and returned REFUTED with it. The seat that returned None did literally what the brief asked, so the defect is the BRIEF's. Binds: give the class as searchable tokens (`never`/`always`/`only`/`unreachable`/`cannot`/`no longer`/`every` for false-totality prose), a verdict with no SWEEP section is incomplete on its face, and the AUTHOR runs the same sweep against their own pack before publishing. Hub corollary: an approving verdict corroborates only within the scope it declares having swept — `Findings: None` with no declared scope does not out-vote a REFUTED verified by string, so splits of this shape are not ties (chip-authored field finding, ratified verbatim)
 2026-07-28 · §11 (new subsection) · ratified · VACUOUS GREEN — an instrument that passes for a reason unrelated to the code; sibling of stable-but-non-discriminating (§3), except it never looked at either world. Exit 0 is not evidence that anything ran. Four instances in one afternoon of the hub's executing seat on CHIP-ANCHORS-3: (1) `-run 'TestX'` naming the CONTEXT function of a patch hunk header instead of the added test → `no tests to run`, PASS; (2) the target file carries `//go:build integration`, so a green `go test ./...` (153 packages, 107 `ok`) never compiled it; (3) `-tags integration` without `MPC_TEST_DATABASE_URL` → every DB test skips → `ok`; (4) the integration lane runs without `-v` and records only target/status/run_id, so a fully skipped run and a fully green run are byte-identical in `summary.txt` (CHIP-IMPORT-CHAIN field finding #1, independent). Binds the executing seat: COUNT never tail (`ok=N`, `no test files=N`, `FAIL=N`), prove the command can go red before believing a green, name tests by grepping `^func Test` (the `@@` context line names the PRECEDING function), and report skip counts as a result rather than a footnote
+2026-07-28 · §11 (new subsection) · ratified · A SWEEP IS ONLY AS WIDE AS ITS PATTERN — the members an extraction cannot MATCH are not reported as unchecked, they are not reported at all, so the instrument's blind spot is invisible in its own output. Verified by string at the hub on `3915f33b`: a document titled `EXHAUSTIVE FIXTURE SWEEP` proved its exhaustiveness with `grep -oh 'anchor: "[a-z_]*"'` against a population of `grep -c 'anchor: "'` = 23; the character class cannot match a capital or an accent, so `"SKU idêntico"` (×2), `"Título parcial"` and `"EAN"` were invisible — ONE violation reported where there were five, and a machine re-sweep of the same file returned 13 failed / 5 passed against the document's two findings. Binds any sweep offered as class-closure evidence: reconcile population count against extraction count and PRINT BOTH (unequal without a stated reason = the sweep reports its own blind spot, one extra `grep`); must-fail the pattern against a known member; after a sweep has failed twice the next artifact is a MECHANISM, not a wider regex. Corollary: a sweep run by the same faculty that produced the defect inherits the defect — here the narrow reading appeared in three layers (the fixtures, the sweep, and the proof the sweep was exhaustive), and the count reconciliation is cheap precisely because it does not depend on that faculty (CHIP-VINC-NEUTRO round 5 field finding)
