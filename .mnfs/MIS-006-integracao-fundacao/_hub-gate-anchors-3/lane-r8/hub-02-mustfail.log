@@ -1,0 +1,861 @@
+d240bc9a357c5e12228e04de85b5fb08 *apps/web/src/pages/importacoes/ImportacaoSection.tsx
+diff --git a/apps/web/src/pages/importacoes/ImportacaoSection.tsx b/apps/web/src/pages/importacoes/ImportacaoSection.tsx
+index 794c21d9..33380892 100644
+--- a/apps/web/src/pages/importacoes/ImportacaoSection.tsx
++++ b/apps/web/src/pages/importacoes/ImportacaoSection.tsx
+@@ -148,7 +148,7 @@ function ImportRow({ item }: { item: ErpImportSummary }) {
+             to={`/importacoes/${item.import_id}`}
+             className="rounded-control border border-border px-2.5 py-1.5 text-xs font-medium text-muted hover:bg-surface-2 hover:text-ink"
+           >
+-            Ver estado
++            Ver cadeia
+           </Link>
+         </div>
+       </div>
+
+ RUN  v3.2.4 C:/Users/leandro.theodoro/Documents/marketplace-central/.claude/worktrees/hub-exec-vinc/apps/web
+
+ ✓ src/pages/importacoes/ImportacaoDetailPage.test.tsx (1 test) 78ms
+ ✓ src/pages/importacoes/ImportacoesPage.test.tsx (1 test) 136ms
+ ❯ src/pages/importacoes/ImportacaoSection.test.tsx (5 tests | 1 failed) 358ms
+   × ImportacaoSection > renders import rows with protocol, status, and counts 215ms
+     → Unable to find an accessible element with the role "link" and name "Ver estado"
+
+Here are the accessible roles:
+
+  region:
+
+  Name "Importação":
+  <section
+    aria-labelledby="importacao-title"
+    class="rounded-card border border-border bg-surface p-4"
+  />
+
+  --------------------------------------------------
+  heading:
+
+  Name "Importação":
+  <h2
+    class="text-sm font-semibold text-ink"
+    id="importacao-title"
+  />
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  <p
+    class="mt-1 text-xs text-faint"
+  />
+
+  --------------------------------------------------
+  list:
+
+  Name "":
+  <ul
+    class="flex flex-col gap-2"
+  />
+
+  --------------------------------------------------
+  listitem:
+
+  Name "":
+  <li
+    class="rounded-card border border-border bg-surface p-3"
+  />
+
+  Name "":
+  <li
+    class="rounded-card border border-border bg-surface p-3"
+  />
+
+  --------------------------------------------------
+  button:
+
+  Name "Ver detalhes":
+  <button
+    aria-expanded="false"
+    class="rounded-control border border-border px-2.5 py-1.5 text-xs font-medium text-muted hover:bg-surface-2 hover:text-ink"
+    type="button"
+  />
+
+  Name "Ver detalhes":
+  <button
+    aria-expanded="false"
+    class="rounded-control border border-border px-2.5 py-1.5 text-xs font-medium text-muted hover:bg-surface-2 hover:text-ink"
+    type="button"
+  />
+
+  --------------------------------------------------
+  link:
+
+  Name "Ver cadeia":
+  <a
+    class="rounded-control border border-border px-2.5 py-1.5 text-xs font-medium text-muted hover:bg-surface-2 hover:text-ink"
+    data-discover="true"
+    href="/importacoes/imp_1"
+  />
+
+  Name "Ver cadeia":
+  <a
+    class="rounded-control border border-border px-2.5 py-1.5 text-xs font-medium text-muted hover:bg-surface-2 hover:text-ink"
+    data-discover="true"
+    href="/importacoes/imp_2"
+  />
+
+  --------------------------------------------------
+  term:
+
+  Name "":
+  <dt
+    class="text-faint"
+  />
+
+  Name "":
+  <dt
+    class="text-faint"
+  />
+
+  Name "":
+  <dt
+    class="text-faint"
+  />
+
+  Name "":
+  <dt
+    class="text-faint"
+  />
+
+  Name "":
+  <dt
+    class="text-faint"
+  />
+
+  Name "":
+  <dt
+    class="text-faint"
+  />
+
+  Name "":
+  <dt
+    class="text-faint"
+  />
+
+  Name "":
+  <dt
+    class="text-faint"
+  />
+
+  --------------------------------------------------
+  definition:
+
+  Name "":
+  <dd
+    class="font-mono font-medium text-ink"
+  />
+
+  Name "":
+  <dd
+    class="font-mono font-medium text-ink"
+  />
+
+  Name "":
+  <dd
+    class="font-mono font-medium text-ink"
+  />
+
+  Name "":
+  <dd
+    class="font-medium text-ink"
+  />
+
+  Name "":
+  <dd
+    class="font-mono font-medium text-ink"
+  />
+
+  Name "":
+  <dd
+    class="font-mono font-medium text-ink"
+  />
+
+  Name "":
+  <dd
+    class="font-mono font-medium text-ink"
+  />
+
+  Name "":
+  <dd
+    class="font-medium text-ink"
+  />
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <section
+      aria-labelledby="importacao-title"
+      class="rounded-card border border-border bg-surface p-4"
+    >
+      <h2
+        class="text-sm font-semibold text-ink"
+        id="importacao-title"
+      >
+        Importação
+      </h2>
+      <p
+        class="mt-1 text-xs text-faint"
+      >
+        Histórico de importações do ERP (protocolo). Somente leitura — sem upload nesta seção.
+      </p>
+      <div
+        class="mt-3"
+      >
+        <ul
+          class="flex flex-col gap-2"
+        >
+          <li
+            class="rounded-card border border-border bg-surface p-3"
+          >
+            <div
+              class="flex flex-wrap items-center justify-between gap-2"
+            >
+              <div
+                class="flex items-center gap-2"
+              >
+                <span
+                  class="font-mono font-medium text-ink"
+                >
+                  #001-E
+                </span>
+                <span
+                  class="inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium bg-accent-soft text-accent-ink"
+                >
+                  Concluída
+                </span>
+                <span
+                  class="inline-flex whitespace-nowrap rounded-full bg-surface-2 px-2 py-0.5 text-xs font-medium text-muted"
+                >
+                  Planilha Sankhya
+                </span>
+              </div>
+              <div
+                class="flex items-center gap-2"
+              >
+                <button
+                  aria-expanded="false"
+                  class="rounded-control border border-border px-2.5 py-1.5 text-xs font-medium text-muted hover:bg-surface-2 hover:text-ink"
+                  type="button"
+                >
+                  Ver detalhes
+                </button>
+                <a
+                  class="rounded-control border border-border px-2.5 py-1.5 text-xs font-medium text-muted hover:bg-surface-2 hover:text-ink"
+                  data-discover="true"
+                  href="/importacoes/imp_1"
+                >
+                  Ver cadeia
+                </a>
+              </div>
+            </div>
+            <dl
+              class="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted sm:grid-cols-4"
+            >
+              <div>
+                <dt
+                  class="text-faint"
+                >
+                  Aceitos
+                </dt>
+                <dd
+                  class="font-mono font-medium text-ink"
+                >
+                  42
+                </dd>
+              </div>
+              <div>
+                <dt
+                  class="text-faint"
+                >
+                  Rejeitados
+                </dt>
+                <dd
+                  class="font-mono font-medium text-ink"
+                >
+                  0
+                </dd>
+              </div>
+              <div>
+                <dt
+                  class="text-faint"
+                >
+                  Avisos
+                </dt>
+                <dd
+                  class="font-mono font-medium text-ink"
+                >
+                  2
+                </dd>
+              </div>
+              <div>
+                <dt
+                  class="text-faint"
+                >
+                  Importado em
+                </dt>
+                <dd
+                  class="font-medium text-ink"
+                >
+                  18/07/2026, 09:00
+                </dd>
+              </div>
+            </dl>
+          </li>
+          <li
+            class="rounded-card border border-border bg-surface p-3"
+          >
+            <div
+              class="flex flex-wrap items-center justify-between gap-2"
+            >
+              <div
+                class="flex items-center gap-2"
+              >
+                <span
+                  class="font-mono font-medium text-ink"
+                >
+                  #002-E
+                </span>
+                <span
+                  class="inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium bg-warn-soft text-warn"
+                >
+                  Rejeitada
+                </span>
+                <span
+                  class="inline-flex whitespace-nowrap rounded-full bg-surface-2 px-2 py-0.5 text-xs font-medium text-muted"
+                >
+                  Planilha Sankhya
+                </span>
+              </div>
+              <div
+                class="flex items-center gap-2"
+              >
+                <button
+                  aria-expanded="false"
+                  class="rounded-control border border-border px-2.5 py-1.5 text-xs font-medium text-muted hover:bg-surface-2 hover:text-ink"
+                  type="button"
+                >
+                  Ver detalhes
+                </button>
+                <a
+                  class="rounded-control border border-border px-2.5 py-1.5 text-xs font-medium text-muted hover:bg-surface-2 hover:text-ink"
+                  data-discover="true"
+                  href="/importacoes/imp_2"
+                >
+                  Ver cadeia
+                </a>
+              </div>
+            </div>
+            <dl
+              class="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted sm:grid-cols-4"
+            >
+              <div>
+                <dt
+                  class="text-faint"
+                >
+                  Aceitos
+                </dt>
+                <dd
+                  class="font-mono font-medium text-ink"
+                >
+                  5
+                </dd>
+              </div>
+              <div>
+                <dt
+                  class="text-faint"
+                >
+                  Rejeitados
+                </dt>
+                <dd
+                  class="font-mono font-medium text-ink"
+                >
+                  3
+                </dd>
+              </div>
+              <div>
+                <dt
+                  class="text-faint"
+                >
+                  Avisos
+                </dt>
+                <dd
+                  class="font-mono font-medium text-ink"
+                >
+                  0
+                </dd>
+              </div>
+              <div>
+                <dt
+                  class="text-faint"
+                >
+                  Importado em
+                </dt>
+                <dd
+                  class="font-medium text-ink"
+                >
+                  18/07/2026, 09:00
+                </dd>
+              </div>
+            </dl>
+          </li>
+        </ul>
+      </div>
+    </section>
+  </div>
+</body>
+   ✓ ImportacaoSection > names the source of each import so two similar protocols are distinguishable 37ms
+   ✓ ImportacaoSection > expands a row to fetch and list rejected rows 63ms
+   ✓ ImportacaoSection > summarises a repeated issue by code instead of listing every row 29ms
+   ✓ ImportacaoSection > renders an honest empty state when there is no import history 12ms
+ ✓ src/pages/integracoes/IntegracoesPage.test.tsx (11 tests) 389ms
+ ✓ src/pages/importacoes/ImportChainPanel.test.tsx (11 tests) 1349ms
+   ✓ ImportChainPanel > renders a generic error for server failures without a chain  1036ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/pages/importacoes/ImportacaoSection.test.tsx > ImportacaoSection > renders import rows with protocol, status, and counts
+TestingLibraryElementError: Unable to find an accessible element with the role "link" and name "Ver estado"
+
+Here are the accessible roles:
+
+  region:
+
+  Name "Importação":
+  <section
+    aria-labelledby="importacao-title"
+    class="rounded-card border border-border bg-surface p-4"
+  />
+
+  --------------------------------------------------
+  heading:
+
+  Name "Importação":
+  <h2
+    class="text-sm font-semibold text-ink"
+    id="importacao-title"
+  />
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  <p
+    class="mt-1 text-xs text-faint"
+  />
+
+  --------------------------------------------------
+  list:
+
+  Name "":
+  <ul
+    class="flex flex-col gap-2"
+  />
+
+  --------------------------------------------------
+  listitem:
+
+  Name "":
+  <li
+    class="rounded-card border border-border bg-surface p-3"
+  />
+
+  Name "":
+  <li
+    class="rounded-card border border-border bg-surface p-3"
+  />
+
+  --------------------------------------------------
+  button:
+
+  Name "Ver detalhes":
+  <button
+    aria-expanded="false"
+    class="rounded-control border border-border px-2.5 py-1.5 text-xs font-medium text-muted hover:bg-surface-2 hover:text-ink"
+    type="button"
+  />
+
+  Name "Ver detalhes":
+  <button
+    aria-expanded="false"
+    class="rounded-control border border-border px-2.5 py-1.5 text-xs font-medium text-muted hover:bg-surface-2 hover:text-ink"
+    type="button"
+  />
+
+  --------------------------------------------------
+  link:
+
+  Name "Ver cadeia":
+  <a
+    class="rounded-control border border-border px-2.5 py-1.5 text-xs font-medium text-muted hover:bg-surface-2 hover:text-ink"
+    data-discover="true"
+    href="/importacoes/imp_1"
+  />
+
+  Name "Ver cadeia":
+  <a
+    class="rounded-control border border-border px-2.5 py-1.5 text-xs font-medium text-muted hover:bg-surface-2 hover:text-ink"
+    data-discover="true"
+    href="/importacoes/imp_2"
+  />
+
+  --------------------------------------------------
+  term:
+
+  Name "":
+  <dt
+    class="text-faint"
+  />
+
+  Name "":
+  <dt
+    class="text-faint"
+  />
+
+  Name "":
+  <dt
+    class="text-faint"
+  />
+
+  Name "":
+  <dt
+    class="text-faint"
+  />
+
+  Name "":
+  <dt
+    class="text-faint"
+  />
+
+  Name "":
+  <dt
+    class="text-faint"
+  />
+
+  Name "":
+  <dt
+    class="text-faint"
+  />
+
+  Name "":
+  <dt
+    class="text-faint"
+  />
+
+  --------------------------------------------------
+  definition:
+
+  Name "":
+  <dd
+    class="font-mono font-medium text-ink"
+  />
+
+  Name "":
+  <dd
+    class="font-mono font-medium text-ink"
+  />
+
+  Name "":
+  <dd
+    class="font-mono font-medium text-ink"
+  />
+
+  Name "":
+  <dd
+    class="font-medium text-ink"
+  />
+
+  Name "":
+  <dd
+    class="font-mono font-medium text-ink"
+  />
+
+  Name "":
+  <dd
+    class="font-mono font-medium text-ink"
+  />
+
+  Name "":
+  <dd
+    class="font-mono font-medium text-ink"
+  />
+
+  Name "":
+  <dd
+    class="font-medium text-ink"
+  />
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <section
+      aria-labelledby="importacao-title"
+      class="rounded-card border border-border bg-surface p-4"
+    >
+      <h2
+        class="text-sm font-semibold text-ink"
+        id="importacao-title"
+      >
+        Importação
+      </h2>
+      <p
+        class="mt-1 text-xs text-faint"
+      >
+        Histórico de importações do ERP (protocolo). Somente leitura — sem upload nesta seção.
+      </p>
+      <div
+        class="mt-3"
+      >
+        <ul
+          class="flex flex-col gap-2"
+        >
+          <li
+            class="rounded-card border border-border bg-surface p-3"
+          >
+            <div
+              class="flex flex-wrap items-center justify-between gap-2"
+            >
+              <div
+                class="flex items-center gap-2"
+              >
+                <span
+                  class="font-mono font-medium text-ink"
+                >
+                  #001-E
+                </span>
+                <span
+                  class="inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium bg-accent-soft text-accent-ink"
+                >
+                  Concluída
+                </span>
+                <span
+                  class="inline-flex whitespace-nowrap rounded-full bg-surface-2 px-2 py-0.5 text-xs font-medium text-muted"
+                >
+                  Planilha Sankhya
+                </span>
+              </div>
+              <div
+                class="flex items-center gap-2"
+              >
+                <button
+                  aria-expanded="false"
+                  class="rounded-control border border-border px-2.5 py-1.5 text-xs font-medium text-muted hover:bg-surface-2 hover:text-ink"
+                  type="button"
+                >
+                  Ver detalhes
+                </button>
+                <a
+                  class="rounded-control border border-border px-2.5 py-1.5 text-xs font-medium text-muted hover:bg-surface-2 hover:text-ink"
+                  data-discover="true"
+                  href="/importacoes/imp_1"
+                >
+                  Ver cadeia
+                </a>
+              </div>
+            </div>
+            <dl
+              class="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted sm:grid-cols-4"
+            >
+              <div>
+                <dt
+                  class="text-faint"
+                >
+                  Aceitos
+                </dt>
+                <dd
+                  class="font-mono font-medium text-ink"
+                >
+                  42
+                </dd>
+              </div>
+              <div>
+                <dt
+                  class="text-faint"
+                >
+                  Rejeitados
+                </dt>
+                <dd
+                  class="font-mono font-medium text-ink"
+                >
+                  0
+                </dd>
+              </div>
+              <div>
+                <dt
+                  class="text-faint"
+                >
+                  Avisos
+                </dt>
+                <dd
+                  class="font-mono font-medium text-ink"
+                >
+                  2
+                </dd>
+              </div>
+              <div>
+                <dt
+                  class="text-faint"
+                >
+                  Importado em
+                </dt>
+                <dd
+                  class="font-medium text-ink"
+                >
+                  18/07/2026, 09:00
+                </dd>
+              </div>
+            </dl>
+          </li>
+          <li
+            class="rounded-card border border-border bg-surface p-3"
+          >
+            <div
+              class="flex flex-wrap items-center justify-between gap-2"
+            >
+              <div
+                class="flex items-center gap-2"
+              >
+                <span
+                  class="font-mono font-medium text-ink"
+                >
+                  #002-E
+                </span>
+                <span
+                  class="inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium bg-warn-soft text-warn"
+                >
+                  Rejeitada
+                </span>
+                <span
+                  class="inline-flex whitespace-nowrap rounded-full bg-surface-2 px-2 py-0.5 text-xs font-medium text-muted"
+                >
+                  Planilha Sankhya
+                </span>
+              </div>
+              <div
+                class="flex items-center gap-2"
+              >
+                <button
+                  aria-expanded="false"
+                  class="rounded-control border border-border px-2.5 py-1.5 text-xs font-medium text-muted hover:bg-surface-2 hover:text-ink"
+                  type="button"
+                >
+                  Ver detalhes
+                </button>
+                <a
+                  class="rounded-control border border-border px-2.5 py-1.5 text-xs font-medium text-muted hover:bg-surface-2 hover:text-ink"
+                  data-discover="true"
+                  href="/importacoes/imp_2"
+                >
+                  Ver cadeia
+                </a>
+              </div>
+            </div>
+            <dl
+              class="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted sm:grid-cols-4"
+            >
+              <div>
+                <dt
+                  class="text-faint"
+                >
+                  Aceitos
+                </dt>
+                <dd
+                  class="font-mono font-medium text-ink"
+                >
+                  5
+                </dd>
+              </div>
+              <div>
+                <dt
+                  class="text-faint"
+                >
+                  Rejeitados
+                </dt>
+                <dd
+                  class="font-mono font-medium text-ink"
+                >
+                  3
+                </dd>
+              </div>
+              <div>
+                <dt
+                  class="text-faint"
+                >
+                  Avisos
+                </dt>
+                <dd
+                  class="font-mono font-medium text-ink"
+                >
+                  0
+                </dd>
+              </div>
+              <div>
+                <dt
+                  class="text-faint"
+                >
+                  Importado em
+                </dt>
+                <dd
+                  class="font-medium text-ink"
+                >
+                  18/07/2026, 09:00
+                </dd>
+              </div>
+            </dl>
+          </li>
+        </ul>
+      </div>
+    </section>
+  </div>
+</body>
+ ❯ Object.getElementError ../../node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ ../../node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ ../../node_modules/@testing-library/dom/dist/query-helpers.js:109:15
+ ❯ src/pages/importacoes/ImportacaoSection.test.tsx:89:19
+     87|     expect(screen.getByText("42")).toBeInTheDocument();
+     88|     expect(screen.getByText("3")).toBeInTheDocument();
+     89|     expect(screen.getAllByRole("link", { name: "Ver estado" })[0]).toH…
+       |                   ^
+     90|   });
+     91| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 4 passed (5)
+      Tests  1 failed | 28 passed (29)
+   Start at  20:29:21
+   Duration  4.99s (transform 469ms, setup 1.58s, collect 6.57s, tests 2.31s, environment 6.64s, prepare 1.35s)
+
+EXIT(vitest mutado)=1
+--- RESTORE ---
+d240bc9a357c5e12228e04de85b5fb08 *apps/web/src/pages/importacoes/ImportacaoSection.tsx
+git diff --quiet HEAD exit: 0
+
+ RUN  v3.2.4 C:/Users/leandro.theodoro/Documents/marketplace-central/.claude/worktrees/hub-exec-vinc/apps/web
+
+ ✓ src/pages/importacoes/ImportacaoDetailPage.test.tsx (1 test) 69ms
+ ✓ src/pages/importacoes/ImportacoesPage.test.tsx (1 test) 125ms
+ ✓ src/pages/importacoes/ImportacaoSection.test.tsx (5 tests) 308ms
+ ✓ src/pages/integracoes/IntegracoesPage.test.tsx (11 tests) 416ms
+ ✓ src/pages/importacoes/ImportChainPanel.test.tsx (11 tests) 1368ms
+   ✓ ImportChainPanel > renders a generic error for server failures without a chain  1049ms
+
+ Test Files  5 passed (5)
+      Tests  29 passed (29)
+   Start at  20:29:36
+   Duration  5.77s (transform 570ms, setup 3.76s, collect 7.93s, tests 2.29s, environment 6.03s, prepare 1.20s)
+
+EXIT(vitest restaurado)=0

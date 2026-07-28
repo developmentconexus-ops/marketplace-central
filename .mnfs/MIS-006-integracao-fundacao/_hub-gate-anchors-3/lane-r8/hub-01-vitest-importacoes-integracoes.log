@@ -1,0 +1,16 @@
+
+ RUN  v3.2.4 C:/Users/leandro.theodoro/Documents/marketplace-central/.claude/worktrees/hub-exec-vinc/apps/web
+
+ ✓ src/pages/importacoes/ImportacaoDetailPage.test.tsx (1 test) 69ms
+ ✓ src/pages/importacoes/ImportacoesPage.test.tsx (1 test) 118ms
+ ✓ src/pages/importacoes/ImportacaoSection.test.tsx (5 tests) 316ms
+ ✓ src/pages/integracoes/IntegracoesPage.test.tsx (11 tests) 464ms
+ ✓ src/pages/importacoes/ImportChainPanel.test.tsx (11 tests) 1364ms
+   ✓ ImportChainPanel > renders a generic error for server failures without a chain  1050ms
+
+ Test Files  5 passed (5)
+      Tests  29 passed (29)
+   Start at  20:29:07
+   Duration  4.42s (transform 512ms, setup 1.29s, collect 4.51s, tests 2.33s, environment 6.05s, prepare 1.21s)
+
+EXIT(vitest)=0
