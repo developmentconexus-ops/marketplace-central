@@ -11,6 +11,8 @@ gate_round_3_artefatos: os DOIS persistidos pelo orquestrador (A nao tem Write; 
 gate_round_2: SPLIT — lado A REFUTED (4 blocking), lado B CONFIRMED (Findings None)
 gate_round_1: REFUTED dos DOIS lados
 sweep_do_autor: rodada sobre o EVIDENCE inteiro (745 linhas, 71 hits); 4 alegacoes minhas corrigidas, 2 delas eram o universal do codigo escrito em prosa
+r4_execucao: must-fail da segunda metade REPRODUZIDO pelo assento executor do hub em 0264ba84, contra Postgres real (failure_token=test=... blocked → status=passed). Unico criterio que dependia so da minha palavra.
+finding_1: ESTREITADO pelo hub — falhou-vs-verde E distinguivel via failure_token; so pulado-vs-verde e byte-identico. Ratificado em ea919c06.
 status: NAO FECHADO. Sem AGREEMENT. Todo achado dos dois lados verificado por STRING pelo chip, um recusado com motivo.
 authority: .mnfs/MIS-006-integracao-fundacao/_hub-gate-anchors-2/p6-reconciliation-r1.md
 contract: .mnfs/MIS-006-integracao-fundacao/_chip-anchors-3/validation-contract.md
@@ -620,7 +622,42 @@ chain=domain.ImportChain{Protocol:"#660-E", Importados:3, Vinculados:1, Enfileir
 ```
 
 `Vinculados:1` e `Enfileirados:0` **para o mesmo CODPROD** — a decomposição quebrando, com número.
-Restaurado por edição para a frente. Não fechado no artefato da lane (FINDING 1).
+Restaurado por edição para a frente.
+
+**DESCARREGADO POR EXECUÇÃO INDEPENDENTE — assento executor do hub, em `0264ba84`.** Este era o
+único critério do pack que dependia inteiramente da minha palavra: eu produzi a mutação, rodei e
+relatei. O hub repetiu em worktree destacado dele, `git diff` = 0 bytes, contra Postgres real, 69
+migrações aplicadas. Junção crua restaurada:
+
+```
+migrations_first=69
+failure_token=test=TestGetImportChainCountsLeadingZeroCodprodInQueue
+status=blocked
+postgres lifecycle failed reasons=HPG_TEST_FAILED exit_code=1
+```
+
+Restaurada a canonicalização, mesma lane:
+
+```
+migrations_first=69
+status=passed
+run_id=3191c4b7e8664a42971f61e3b8013bde
+```
+
+Vermelho com a junção crua, verde com a canonicalizada, **medido por quem não é o autor**. O ladder
+do mesmo `0264ba84` no worktree dele: `go build` EXIT 0, `go vet ./...` EXIT 0, `go test ./...` 153
+pacotes com `ok=107` / `no-test-files=46` / `FAIL=0` — o `ok=107` bate com o meu número, contado e
+não lido no rabo da saída.
+
+**Achado colateral, do hub e não meu:** a run mutada derrubou quatro pacotes
+(`erp_import/adapters/postgres`, `market/adapters/postgres`, `mutations/application`,
+`orders/adapters/postgres`), e a mutação é uma linha num CTE do `GetImportChain`, sem alcance sobre
+`market`, `mutations` ou `orders`. `Postgres.psm1:209` dá **um** banco por run
+(`mpc_test_$RunId`) e os pacotes de integração rodam em paralelo contra ele, então contaminação
+cruzada é estruturalmente possível. Qual dos dois — contaminação ou flake independente — não foi
+isolado, e o hub não inventou. Consequência que já vale para mim: **`failure_token=package=` não é
+atribuível sozinho** (o pacote listado pode ser vítima); citar sempre `failure_token=test=`, que é
+específico.
 
 Latente nos dois sentidos, com a razão achada e não suposta: o hook de import
 (`import_service.go:153-158` → `enqueuer.go:44`) escreve o codprod **cru** de volta, então aquele
@@ -827,10 +864,18 @@ redação anterior de R4/R5/R6/A11, é por isso — e a redação anterior era a
 
 ## FINDINGS de campo, para ratificação (core §0)
 
-1. **A lane de integração não consegue provar que rodou.** `npm run harness:integration` invoca
-   `go test -tags=integration` **sem `-v`**, todo teste de DB abre com `SkipWithoutTarget`, e o
-   artefato grava só `target`/`status`/`run_id`. Uma run totalmente pulada e uma totalmente verde são
-   **byte-idênticas** no `summary.txt`. Este chip fechou A5/A6/A7/A10 por run direta com `-v`.
+1. **A lane de integração não distingue PULADO de VERDE** — ratificado nesta redação estreita
+   (profile `ea919c06`), depois que o hub refutou a minha, que era mais larga. O que eu escrevi era
+   "a lane não consegue provar que rodou": falso na metade que importa para must-fail. O `summary.txt`
+   grava mesmo só `target`/`status`/`run_id`, mas o **stdout da lane** emite em falha
+   `failure_token=package=<pacote>` e `failure_token=test=<teste>`, então **falhou-vs-verde é
+   distinguível e citável** — foi com esse token que o hub descarregou o must-fail do R4. O que
+   continua byte-idêntico é **pulado-vs-verde**: `go test -tags=integration` roda sem `-v` e todo
+   teste de DB abre com `SkipWithoutTarget`. Consequência prática, e ela me dá ferramenta a mais:
+   must-fail de integração **não precisa** de run direta com `-v` fora da lane — roda a lane com a
+   mutação e cita o `failure_token=test=`, que é mais barato e mais auditável do que o que eu fiz em
+   A5/A6/A7/A10. Citar `failure_token=package=` sozinho, não: ver o achado colateral do hub em R4, o
+   pacote listado pode ser vítima de contaminação por banco compartilhado.
 2. **Asserção de bracket temporal contra relógio de container é frágil** e o diagnóstico fácil
    ("skew") não sobrevive à aritmética. Ver A7/R2.
 3. **`git commit -F` com `$TMPDIR`** falha silenciosamente neste ambiente — `$TMPDIR` vem vazio no
@@ -855,7 +900,9 @@ redação anterior de R4/R5/R6/A11, é por isso — e a redação anterior era a
 7. **A varredura de classe tem que ser rodada pelo AUTOR contra o próprio pack, não só pelo
    revisor.** Das quatro alegações minhas que a varredura desta rodada pegou, **duas eram a mesma
    alegação do código escrita em português no EVIDENCE**. Um gate que varre só o código deixa a
-   falsidade viva no documento que o gate lê. Custo: um `grep`.
+   falsidade viva no documento que o gate lê. Custo: um `grep`. **RATIFICADO** no profile em
+   `ea919c06`, na minha redação: o brief de delta manda varrer a CLASSE, e "veredito sem seção de
+   SWEEP é incompleto na cara".
 8. **O pack de evidência ficou UNTRACKED por seis commits deste chip.** `chip.md` e
    `validation-contract.md` entraram pela mão do hub em `af61c5e8`; `EVIDENCE.md`, `dispatches/` e os
    seis `p6-*.patch` nunca entraram em commit nenhum — `git check-ignore` sai 1 (nenhuma regra os
