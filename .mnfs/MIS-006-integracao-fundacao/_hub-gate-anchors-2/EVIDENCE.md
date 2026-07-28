@@ -67,7 +67,7 @@ tip, citado por string:
 | write-set fora de `.mnfs/` | 20 arquivos, **0** sob `apps/web/`, **0** migrations (C10) |
 | `IdentityAnchorRefforn` em `apps/server_core` | nenhuma ocorrência (C1) |
 | `DirectionUnavailable` em `generation_service.go` | 3 sítios: `:704` é o caminho `!anchor.Supplied`; `:658` é comparação, não semeadura; `:642` é o ramo EXCLUÍDO por A2-R1 (C11b) |
-| ramo excluído de A2-R1 | `missingMatchedAnchorReason`, `default:` só alcançável com valor não-vazio dos DOIS lados — exatamente o que a ruling mandou não tocar, e nada além disso |
+| ramo excluído de A2-R1 | `missingMatchedAnchorReason`, `default:` só alcançável com valor não-vazio dos DOIS lados — **CORR-5, corrigido 2026-07-28:** isto CONTÉM o ramo que a ruling mandou não tocar, mas é estritamente mais largo que ele. A2-R1 excluiu both-present-e-DIFERENTE; o `default:` dispara em both-present, diferentes **ou iguais**. A afirmação original ("e nada além disso") era falsa e está deletada, não anotada (R-25). O achado é o B-06 do gate |
 | SQL do chain-read | as três CTEs escopadas por `tenant_id`, `DISTINCT` em `resolved_products` e `queued_products`, `entity = 'market'`, `COALESCE(cursor -> 'pending', '[]')`, **sem `ORDER BY`** — a armadilha do `::text` sem alias não é alcançável |
 
 O hub é Opus e leu no tip; o reviewer adversarial é sonnet e leu nos tips de feature; o implementador
