@@ -138,7 +138,7 @@ export function QueueTab({ installationId, onViewResolved }: QueueTabProps) {
               <th className="px-3 py-3" scope="col">Canal</th>
               <th className="px-3 py-3" scope="col">Produto sugerido</th>
               <th className="px-3 py-3" scope="col">SKU HUB</th>
-              <th className="px-3 py-3" scope="col">GTIN</th>
+              <th className="px-3 py-3" scope="col">Identificado por</th>
               <th className="px-3 py-3" scope="col">Confiança</th>
               <th className="px-3 py-3" scope="col">Motivo</th>
               <th className="sticky right-0 border-l border-border bg-surface-2 px-3 py-3 text-right" scope="col">

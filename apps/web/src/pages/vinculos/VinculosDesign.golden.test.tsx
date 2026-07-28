@@ -7,15 +7,17 @@ import { VinculosPage } from "./VinculosPage";
 
 // GOLDEN (day-1, MIS-004-C10 gap #2). Locks the design contract for /vinculos:
 //   1. anúncio-cêntrica 9-col table (ANÚNCIO·CANAL·PRODUTO SUGERIDO·SKU HUB·
-//      GTIN·CONFIANÇA·MOTIVO·AÇÃO) with the EXEMPLO-IO row.
+//      IDENTIFICADO POR·CONFIANÇA·MOTIVO·AÇÃO) with the EXEMPLO-IO row.
 //   2. honest NO_CANDIDATE row (conf 0, "sem candidato", Criar produto / Ignorar) — ADR-17.
 //   3. paper+green tokens only — never literal slate/blue/emerald/red/amber-<n> off-theme.
 //
-// F-05 (D-122) renamed two of those headers. "ANÚNCIO ML" → "ANÚNCIO" is the
+// F-05 (D-122) renamed three of those headers. "ANÚNCIO ML" → "ANÚNCIO" is the
 // neutral structural label. "SKU ML" → "CANAL" is a correction as much as a
 // neutralization: that cell has always rendered `provider_code`, which the wire
 // fills with the marketplace SLUG ("mercado_livre") — the candidate contract
-// carries no seller SKU at all. The column count and order are unchanged.
+// carries no seller SKU at all. "GTIN" → "IDENTIFICADO POR" replaces a
+// single-anchor reading with the SET of anchors that decided, which supersedes
+// it. The column count and order are unchanged.
 
 const listProductLinkCandidates = vi.fn();
 const listProductLinkWorkflows = vi.fn();
@@ -48,7 +50,10 @@ function base(overrides: Partial<ProductLinkCandidateItem>): ProductLinkCandidat
     match_value: "7890000000001",
     confidence: 92,
     confidence_band: "ALTA",
-    match_status: "REVIEW",
+    // A single EAN resolving a single product is the CONFIRM queue under D-121
+    // — it waits for a human yes. The fixture said REVIEW, which is the
+    // anchors-disagree state and would have named no deciding anchor at all.
+    match_status: "CONFIRM",
     reasons: [{ anchor: "EAN idêntico", direction: "FOR", detail: "100%" }],
     created_at: "2026-07-19T12:00:00Z",
     updated_at: "2026-07-19T12:00:00Z",
@@ -105,7 +110,10 @@ describe("Vínculos design golden", () => {
     expect(cells.queryByText("mercado_livre")).not.toBeInTheDocument();
     expect(cells.getByText("Produto Y")).toBeInTheDocument(); // PRODUTO SUGERIDO
     expect(cells.getByText("1001")).toBeInTheDocument(); // SKU HUB
-    expect(cells.getByText("✓ igual")).toBeInTheDocument(); // GTIN
+    // IDENTIFICADO POR — the anchor that decided. A single EAN resolving a
+    // single product is the confirmation queue (D-121), so it names EAN alone;
+    // "CODPROD + EAN" is reserved for the corroborated ACCEPT.
+    expect(cells.getByTestId("identificado-por")).toHaveTextContent("EAN");
     expect(cells.getByText("92%")).toBeInTheDocument(); // CONFIANÇA
     // MOTIVO — compact chip: motivo (anchor) sempre visível, detail no tooltip
     // (IC-01: % nunca aparece sozinho). Forma completa fica no title e na
@@ -116,7 +124,7 @@ describe("Vínculos design golden", () => {
     expect(cells.getByRole("button", { name: "Vincular" })).toBeInTheDocument(); // AÇÃO
 
     // Column headers present (anúncio-cêntrica order).
-    for (const header of ["Anúncio", "Canal", "Produto sugerido", "SKU HUB", "GTIN", "Confiança", "Motivo", "Ação"]) {
+    for (const header of ["Anúncio", "Canal", "Produto sugerido", "SKU HUB", "Identificado por", "Confiança", "Motivo", "Ação"]) {
       expect(screen.getByRole("columnheader", { name: header })).toBeInTheDocument();
     }
   });
@@ -145,8 +153,8 @@ describe("Vínculos design golden", () => {
     const row = await screen.findByTestId("queue-row");
     const cells = within(row);
     expect(cells.getByText("Sem candidato")).toBeInTheDocument();
-    // GTIN unknown → "—", never fabricated.
-    expect(cells.queryByText("✓ igual")).not.toBeInTheDocument();
+    // Nothing decided a NO_CANDIDATE row → "—", never a fabricated anchor.
+    expect(cells.queryByTestId("identificado-por")).not.toBeInTheDocument();
     // No fabricated confidence: never a "0%" verde chip; band chip absent.
     expect(cells.queryByText("ALTA")).not.toBeInTheDocument();
     // Negative actions only.

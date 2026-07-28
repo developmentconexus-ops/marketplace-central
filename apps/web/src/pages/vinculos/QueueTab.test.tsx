@@ -462,4 +462,71 @@ describe("QueueTab", () => {
     expect(screen.queryByText("MLB1")).not.toBeInTheDocument();
     expect(screen.getByText("MLB2")).toBeInTheDocument();
   });
+
+  // V6 / D-122 — "Identificado por" shows the anchors that DECIDED, ` + `-joined.
+  //
+  // The negative case is the one that matters and the one A2-R2 named: `title`
+  // produces a FOR reason in the base (generation_service.go:551, "match por
+  // título (ranking-only, nunca ACCEPT)") and D-121 routes title-only to REVIEW.
+  // Deriving this column from `direction === "FOR"` would print "Título" as the
+  // deciding anchor for a candidate title explicitly did NOT decide. The source
+  // is the same pair the backend files the decision from — match_status +
+  // match_input (resolution_service.go:812-835).
+  it("names only the anchors that decided, and names none for a title-only REVIEW row", async () => {
+    listProductLinkCandidates.mockResolvedValue({
+      items: [
+        // Corroborated → both anchors, joined.
+        candidate({
+          candidate_id: "cand_accept",
+          provider_item_id: "MLB_ACCEPT",
+          state: "exact_ean",
+          match_status: "ACCEPT",
+          match_input: "ean",
+          match_value: "7890000000001",
+          reasons: [{ anchor: "ean", direction: "FOR", detail: "EAN idêntico" }],
+        }),
+        // Single anchor resolved a single product → confirmation queue, one anchor.
+        candidate({
+          candidate_id: "cand_confirm_sku",
+          provider_item_id: "MLB_CONFIRM",
+          state: "exact_sku",
+          match_status: "CONFIRM",
+          match_input: "seller_sku",
+          reasons: [{ anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato" }],
+        }),
+        // Title match: a FOR reason on screen, but nothing decided.
+        candidate({
+          candidate_id: "cand_title",
+          provider_item_id: "MLB_TITLE",
+          state: "title_match",
+          match_status: "REVIEW",
+          match_input: "title",
+          reasons: [{ anchor: "title", direction: "FOR", detail: "match por título" }],
+        }),
+      ],
+    });
+
+    renderTab();
+
+    const rows = await screen.findAllByTestId("queue-row");
+    const [accept, confirm, title] = rows;
+
+    expect(within(accept).getByTestId("identificado-por")).toHaveTextContent("CODPROD + EAN");
+    expect(within(confirm).getByTestId("identificado-por")).toHaveTextContent("CODPROD");
+    expect(within(confirm).getByTestId("identificado-por")).not.toHaveTextContent("EAN");
+
+    // The negative case: the title row shows its motivo but names NO anchor.
+    expect(within(title).queryByTestId("identificado-por")).not.toBeInTheDocument();
+    expect(within(title).getByText("✓ Título")).toBeInTheDocument();
+    // ...and the column slot itself is the honest unknown, not a blank cell:
+    // index 5 is IDENTIFICADO POR (0 seleção, 1 anúncio, 2 canal, 3 produto,
+    // 4 SKU HUB, 5 identificado por). Read positionally because "—" also
+    // renders in the SKU HUB cell of this same row.
+    expect(title.querySelectorAll("td")[5].textContent).toBe("—");
+    expect(title.textContent).not.toContain("Título +");
+
+    // Header renamed per D-122: the single-anchor GTIN reading is superseded.
+    expect(screen.getByRole("columnheader", { name: "Identificado por" })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "GTIN" })).not.toBeInTheDocument();
+  });
 });

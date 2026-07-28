@@ -1,6 +1,8 @@
 import type {
   ProductLinkCandidateItem,
+  ProductLinkCandidateMatchInput,
   ProductLinkConfidenceBand,
+  ProductLinkMatchStatus,
   ProductLinkReason,
   ProductLinkReasonDirection,
   ProductLinkReasonSide,
@@ -58,6 +60,53 @@ const providerDisplayNames: Record<string, string> = {
 
 export function providerDisplayName(providerCode: string): string {
   return providerDisplayNames[providerCode] ?? providerCode;
+}
+
+/**
+ * "Identificado por" (D-122): the anchors that DECIDED, joined by ` + `.
+ *
+ * This is not a new rule invented on the screen. `decisionRuleForCandidate`
+ * (resolution_service.go:812-835) is a PURE function of `match_status` and
+ * `match_input` — both already on the wire — and it is the same function that
+ * writes `rule_matched` into the decision trail. Reading the same two inputs
+ * lands on the same rule, so the column says what the trail will say.
+ *
+ * Anything that is not an ACCEPT or a single-anchor CONFIRM files as `manual`:
+ * no anchor carried it, so the column names none. That is what separates this
+ * column from Motivo — Motivo lists everything that OPINED (including every
+ * UNAVAILABLE and INCOMPARABLE), this lists only what DECIDED. A `title FOR`
+ * candidate (state TitleMatch → REVIEW, ranking-only and never ACCEPT under
+ * D-121) therefore keeps its motivo and shows NOTHING here.
+ *
+ * Both maps are keyed by the full union rather than switched on string
+ * literals: a sixth match_status or a new match_input has to fail the compiler,
+ * not fall silently through a `default` — the QueueRow:159 lesson.
+ */
+const confirmDecidingAnchors: Record<ProductLinkCandidateMatchInput, string[]> = {
+  seller_sku: ["CODPROD"],
+  ean: ["EAN"],
+  title: [],
+  manual: [],
+  none: [],
+};
+
+const statusDecidingAnchors: Record<
+  ProductLinkMatchStatus,
+  (matchInput: ProductLinkCandidateMatchInput) => string[]
+> = {
+  // Corroborated: CODPROD and EAN both named this product. Hiding the second
+  // anchor would erase from the screen the very thing that separates
+  // auto-approved from sent-to-confirmation (D-121).
+  ACCEPT: () => ["CODPROD", "EAN"],
+  CONFIRM: (matchInput) => confirmDecidingAnchors[matchInput],
+  // The anchors disagreed, collided, or never ran. Nothing decided.
+  REVIEW: () => [],
+  REJECT: () => [],
+  NO_CANDIDATE: () => [],
+};
+
+export function decidingAnchors(candidate: ProductLinkCandidateItem): string[] {
+  return statusDecidingAnchors[candidate.match_status](candidate.match_input);
 }
 
 function pill(label: string, className: string) {
@@ -279,10 +328,7 @@ function AnchorChips({ reasons }: { reasons: ProductLinkReason[] }) {
 
 export function QueueRow({ candidate, onOpen, onApprove, onReject, pending, selected, onToggleSelect }: QueueRowProps) {
   const noCandidate = candidate.match_status === "NO_CANDIDATE";
-  // GTIN "✓ igual" is only honest when the listing matched the product on EAN
-  // (match_input === "ean"); otherwise the GTIN relationship is UNKNOWN → "—",
-  // never fabricated (ADR-17).
-  const gtinEqual = candidate.match_input === "ean" && Boolean(candidate.match_value);
+  const decided = decidingAnchors(candidate);
 
   return (
     <tr className="align-top text-ink" data-testid="queue-row" data-match-status={candidate.match_status}>
@@ -346,10 +392,19 @@ export function QueueRow({ candidate, onOpen, onApprove, onReject, pending, sele
         </span>
       </td>
 
-      {/* GTIN ("✓ igual" | "—") */}
+      {/* IDENTIFICADO POR — as âncoras que DECIDIRAM, unidas por " + " (D-122).
+          Substitui a coluna GTIN: "✓ igual" era a leitura de UMA âncora, e o
+          conjunto que decidiu é a informação que a supera. Vazio (REVIEW,
+          REJECT, NO_CANDIDATE, CONFIRM por título) é "—": nada decidiu ainda,
+          e inventar uma âncora aqui seria afirmar uma decisão que não houve. */}
       <td className="px-3 py-3">
-        {gtinEqual ? (
-          <span className="whitespace-nowrap text-xs font-medium text-accent-ink">✓ igual</span>
+        {decided.length > 0 ? (
+          <span
+            className="whitespace-nowrap text-xs font-medium text-accent-ink"
+            data-testid="identificado-por"
+          >
+            {decided.join(" + ")}
+          </span>
         ) : (
           <UnknownValue />
         )}
