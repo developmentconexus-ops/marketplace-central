@@ -404,12 +404,23 @@ func TestNamedMissingAnchorSitesAreIncomparableWithCorrectSide(t *testing.T) {
 		// a zeroed ProductCandidate{} here would pin a shape the matcher cannot
 		// produce (B-01).
 		//
-		// The zero value itself is NOT unreachable in production: newCandidate
-		// takes it literally on the unresolved, conflict and collision paths
-		// (generation_service.go:215, :340, :379). Those paths carry no product
-		// at all, and they are pinned by
-		// TestUnresolvedListingSellerSKUIsIncomparableOnTheERPSide and
-		// TestConcordantCandidateDoesNotDerefNilProduct, not here.
+		// The zero value itself still reaches newCandidate, on one live path and
+		// one path this table does not exercise:
+		//
+		//   - generation_service.go:215, unresolved. Live, and driven end to end
+		//     by TestUnresolvedListingSellerSKUIsIncomparableOnTheERPSide, whose
+		//     empty matcher leaves every findProducts result empty.
+		//   - generation_service.go:497, where buildConcordantCandidate zeroes a
+		//     nil comparison.product and passes it on at :501. That is the site
+		//     TestConcordantCandidateDoesNotDerefNilProduct pins, by calling
+		//     buildConcordantCandidate directly.
+		//
+		// The literal zeros at :340 and :379 are defensive fallbacks for an empty
+		// candidate slice, and no test covers them because no caller can reach
+		// them: findProducts:277-283 keeps only products with a canonical id, so
+		// uniqueProducts:437-452 drops none of them, and both loops append one
+		// candidate per product from an input the callers at :298 and :307 have
+		// already proved non-empty.
 		"exact SKU listing EAN empty": {
 			state:    productlinksdomain.LinkCandidateStateExactSKU,
 			snapshot: productlinksdomain.ListingSnapshot{SellerSKU: "SKU-1"},
