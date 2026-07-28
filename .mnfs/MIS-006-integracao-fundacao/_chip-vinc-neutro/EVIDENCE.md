@@ -535,6 +535,8 @@ a maintenance note, not a defect: nothing today is wrong.
 |---|---|---|---|---|---|
 | 1 | Adversarial gate reviewer, round 1 (commit `fa6ca3a2`) | `gpt-5.6-sol` / `medium` | OS-process, explicit 0.144.4 binary, stdin closed, `--sandbox read-only` | prompt `evidence/PROMPT-gate-vincneutro-rev1.md` · verdict `evidence/REVIEW-gate-vincneutro-rev1.md` (3053 B) | **REFUTED** — V6 FAIL, V11 NOT-PROVEN. Both accepted; both fixed. |
 | 2 | Adversarial gate reviewer, round 2 (commit `7a343fea`, the fix) | `gpt-5.6-sol` / `medium` | same | prompt `evidence/PROMPT-gate-vincneutro-rev2.md` · verdict `evidence/REVIEW-gate-vincneutro-rev2.md` (2573 B) | **REFUTED**, 10/11 PASS. Derivation confirmed faithful; one finding (column placement) ESCALATED to the hub, not self-graded. |
+| 3 | Implementation + planning of the slice | **Opus, in-session — `inline (DESVIO §4.2)`** | none | — | Not dispatched. Hub ruling: do not re-do it, do not launder the ledger row, and make the Opus gate name these hunks as its priority target. Done — see `PROMPT-gate-vincneutro-opus.md` §PRIORITY TARGET. |
+| 4 | **Dual gate, OPUS side** (commits `fa6ca3a2` + `7a343fea`) | `harness:gate-reviewer` subagent, **opus**, read-only seat (Read/Grep/Glob; no Bash, no Write) | Agent tool, synchronous, frozen prompt read from disk | prompt `evidence/PROMPT-gate-vincneutro-opus.md` · verdict `evidence/REVIEW-gate-vincneutro-opus.md` | **REFUTED** — 9 PASS, 2 NOT-PROVEN (both seat limits), 4 findings. Three fixed in `<this commit>`; the fourth is the standing escalation. |
 
 Artifacts are copied **into the repo** under `evidence/`, not left in the session scratchpad — the
 scratchpad is temp-dir and does not survive. Both `.last.md` files were checked non-zero before
@@ -589,6 +591,64 @@ the tie-break is the hub's.
    count drops by one as D-122 implies. This is the option I would take, but it is a visible design
    change to a golden-locked layout at close time, which is the hub's call, not a chip's.
 
+### The OPUS side of the dual gate — `REVIEW-gate-vincneutro-opus.md` — **REFUTED**
+
+Rounds 1 and 2 were both `gpt-5.6-sol`. The hub caught that: two Sol rounds are **two rounds of the
+same side**, not a dual gate, and this session cannot be the Opus side of a gate on code it wrote
+(§4 item 3, implementer ≠ reviewer). Correct, and it is the mirror image of what happened to
+CHIP-ANCHORS-2 in the other direction. So a cold Opus reviewer ran on the frozen input, in a
+**physically read-only seat**, forbidden by its prompt from reading this EVIDENCE or either Sol
+verdict, and pointed at the inline-written hunks as priority target per the hub's §4.2 ruling.
+
+It came back **REFUTED with four findings, and three of them were real code defects that two Sol
+rounds had not caught.** Dispositions:
+
+| # | Finding | Disposition |
+|---|---|---|
+| A | D-122:136 vs the retained `Canal` — the chip closed a conflict with a frozen decision by itself | **STANDING ESCALATION.** The reviewer independently verified my premise (`ProductLinkCandidateItem` carries no seller-SKU field, `sdk-runtime/src/index.ts:1070-1089`; the hub's own live drive recorded the cell rendering `provider_code`) and judged the deviation *defensible on the merits* — and still refused to bless it, because "the frozen premise is factually wrong" is a hub ruling. That is exactly my position. Third independent reviewer, same conclusion: not a chip's call. |
+| B | `VinculosDesign.golden.test.tsx` — the corrected fixture is still not producible: `CONFIRM` with `confidence: 92`/`ALTA` | **ACCEPTED, fixed.** Verified myself first: `exact_ean` CONFIRM emits 60/MEDIA (`generation_service.go:538`), `exact_sku` CONFIRM 70/MEDIA (`:529`), and `ALTA` is emitted at exactly ONE place — 95, ACCEPT, `buildConcordantCandidate` (`:503-505`). So 92/ALTA was unreachable for any status. My REVIEW→CONFIRM fix in the previous round was half a fix. |
+| C | `providerDisplayName` falls through verbatim → an unmapped provider puts a raw slug on screen | **ACCEPTED, fixed.** Latent, not live (only `mercado_livre` is mapped today), which is precisely why it would have shipped: the defect waits for the second marketplace. |
+| D | `decidingAnchors` invokes an unchecked map lookup → a wire `match_status` outside the SDK union throws `undefined is not a function` **during render** | **ACCEPTED, fixed.** The most severe of the four: it does not degrade a cell, it unmounts the queue table. |
+
+**On B, C and D I did not take the reviewer's word.** B was checked against the generator's own
+`switch` before touching the fixture; C and D were reproduced as failing tests before the fix. D
+reproduced verbatim:
+
+```
+TypeError: statusDecidingAnchors[candidate.match_status] is not a function
+ ❯ decidingAnchors src/pages/vinculos/QueueRow.tsx:109:54
+ ❯ QueueRow src/pages/vinculos/QueueRow.tsx:331:19
+```
+
+Full run in `evidence/V-opus-findings-must-fail.txt` — 2 failed / 11 passed, written before the fix,
+green after. This is the same discipline as V3 and V6: the guard is proven by the failure it
+catches, not by the passing run.
+
+**The two NOT-PROVEN are seat limits, not defects, and I am not flipping them to PASS myself.**
+V8 asks for a correction recorded *in this EVIDENCE*, which the reviewer was forbidden to open — it
+corroborated the substance independently instead (`rule_matched` absent from `contracts/` and
+`sdk-runtime`, and the `0082` CHECK reading `actor <> 'system' OR rule_matched =
+'concordant_codprod_ean'`). V11's scope half needs `git`, and the seat has no Bash; the hub has
+since verified the same scope independently and said so.
+
+### What the three fixes changed
+
+- `QueueRow.tsx` — `providerDisplayName` now TYPESETS an unmapped code instead of passing it
+  through: separators to spaces, words capitalised, every character the wire sent still legible in
+  order (`shopee` → `Shopee`). That is deliberately different from `anchorShortLabel`, which still
+  returns an unknown anchor verbatim, and the docblock says why: an anchor is operator vocabulary
+  only the ERP can name, a `provider_code` is a machine identifier that never belonged on screen in
+  that form.
+- `QueueRow.tsx` — `decidingAnchors` guards the lookup and returns `[]`, which renders the honest
+  `—`. The `Record<Union, …>` above it is untouched and still fails the build on a sixth status:
+  the compile-time guard answers "the SDK grew", the runtime guard answers "the wire grew first".
+  Two different failures, and only one of them can be caught by a compiler.
+- `VinculosDesign.golden.test.tsx` — the EXEMPLO-IO row is now the producible `exact_ean` CONFIRM
+  (60/MEDIA) *with its second anchor as INCOMPARABLE on the provider side*, which is the state this
+  whole chip exists to render, so the design golden now gates it too. The ALTA/accent token path
+  did not lose coverage: the off-theme sweep's first row became the producible ACCEPT (95/ALTA,
+  `buildConcordantCandidate` verbatim).
+
 ---
 
 ## Verdict roll-up
@@ -600,15 +660,28 @@ the tie-break is the hub's.
 | V3 must-fail of V2 | PASS |
 | V4 `side` reaches the operator | PASS |
 | V5 `tsc` write-set clean, 12 baseline declared | PASS |
-| V6 "Identificado por" | derivation **PASS** (both gates confirm it mirrors the backend) · column **placement ESCALATED** — hub tie-break between D-122:136 and V10 |
+| V6 "Identificado por" | derivation **PASS** (all three gates confirm it mirrors the backend, the Opus side walking all 25 status×input pairs) · column **placement ESCALATED** — hub tie-break between D-122:136 and V10 |
 | V7 auto-approved badge, 3 DOM cases | PASS |
 | V8 F-04 brief correction recorded | PASS |
 | V9 `refforn` decision declared | PASS (KEPT) |
-| V10 neutral vocabulary, provider data intact | PASS |
+| V10 neutral vocabulary, provider data intact | PASS — and now for a provider the map does not know, which is what the Opus side caught |
 | V11 no collateral damage | PASS |
 
-**AGREEMENT — P6 discharged**, with one open item escalated rather than closed: the
-`Identificado por` column placement (D-122:136 literal vs V10). The chip does not claim that
-decision. Everything else is PASS with artifacts on disk.
+**Lanes, final.** `tsc` 15 → **12, zero under `pages/vinculos/`** (`evidence/L0-tsc-after-opus-fixes.txt`);
+vitest 62/511 → **63/522** (`evidence/L1-vitest-after-opus-fixes.txt`), the +2 over the previous
+count being the two regression tests the Opus gate forced.
 
-The `P6-DUAL-GATE:` line is the hub's to write, not this chip's.
+**P6 status — NOT self-declared discharged.** The earlier `AGREEMENT` in this file was written when
+both gate rounds were `gpt-5.6-sol`; the hub refused it, on two grounds that were both right: there
+was no Opus side, and a REFUTED round with an open finding is not an agreement. The Opus side has
+now run and came back REFUTED with three real code defects, all fixed here. What remains open is
+the single item this chip has said from the start it will not decide for itself:
+
+> the `Identificado por` column placement — D-122:136 literal vs V10.
+
+Three independent cold reviewers have now looked at it. The third verified my factual premise on its
+own and still declined to bless the deviation, on the same reasoning I used to escalate it. So the
+disagreement is not about the facts; it is about who gets to rule, and that is the hub.
+
+The `P6-DUAL-GATE:` line and the `AGREEMENT` marker are the hub's to write once that ruling lands
+and the re-verification of these fixes closes. Not this chip's.

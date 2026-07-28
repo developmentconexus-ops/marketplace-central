@@ -48,13 +48,30 @@ function base(overrides: Partial<ProductLinkCandidateItem>): ProductLinkCandidat
     state: "exact_ean",
     match_input: "ean",
     match_value: "7890000000001",
-    confidence: 92,
-    confidence_band: "ALTA",
     // A single EAN resolving a single product is the CONFIRM queue under D-121
     // — it waits for a human yes. The fixture said REVIEW, which is the
     // anchors-disagree state and would have named no deciding anchor at all.
+    //
+    // The rest of the row is the SAME producible case, taken from the generator
+    // that emits it (`applySingleAnchorScore`, state `exact_ean`,
+    // generation_service.go:538-547): 60/MEDIA, an `ean` FOR, and the missing
+    // corroborating anchor as INCOMPARABLE on the provider side. The old
+    // 92/ALTA was not reachable for any status — ALTA is emitted at exactly one
+    // place (95, `buildConcordantCandidate`, generation_service.go:503-505) and
+    // only for ACCEPT — so the golden was locking a row the backend could never
+    // produce. A design gate whose example cannot occur gates a fiction.
+    confidence: 60,
+    confidence_band: "MEDIA",
     match_status: "CONFIRM",
-    reasons: [{ anchor: "EAN idêntico", direction: "FOR", detail: "100%" }],
+    reasons: [
+      { anchor: "ean", direction: "FOR", detail: "ean corrobora codprod (unproved)" },
+      {
+        anchor: "seller_sku",
+        direction: "INCOMPARABLE",
+        side: "provider",
+        detail: "sem CODPROD para corroborar o EAN",
+      },
+    ],
     created_at: "2026-07-19T12:00:00Z",
     updated_at: "2026-07-19T12:00:00Z",
     ...overrides,
@@ -114,13 +131,18 @@ describe("Vínculos design golden", () => {
     // single product is the confirmation queue (D-121), so it names EAN alone;
     // "CODPROD + EAN" is reserved for the corroborated ACCEPT.
     expect(cells.getByTestId("identificado-por")).toHaveTextContent("EAN");
-    expect(cells.getByText("92%")).toBeInTheDocument(); // CONFIANÇA
+    expect(cells.getByText("60%")).toBeInTheDocument(); // CONFIANÇA
     // MOTIVO — compact chip: motivo (anchor) sempre visível, detail no tooltip
     // (IC-01: % nunca aparece sozinho). Forma completa fica no title e na
     // expansão "+N" / no drawer.
-    const motivoChip = cells.getByText("✓ EAN idêntico");
+    const motivoChip = cells.getByText("✓ EAN");
     expect(motivoChip).toBeInTheDocument();
-    expect(motivoChip).toHaveAttribute("title", "EAN idêntico: 100%");
+    expect(motivoChip).toHaveAttribute("title", "ean: ean corrobora codprod (unproved)");
+    // ...and the anchor that is MISSING rides beside it with the side that says
+    // where to go fix it (D-122/D-B), in its own tokens.
+    const incomparableChip = cells.getByText("? SKU (falta no anúncio)");
+    expect(incomparableChip).toBeInTheDocument();
+    expect(incomparableChip).toHaveAttribute("data-direction", "INCOMPARABLE");
     expect(cells.getByRole("button", { name: "Vincular" })).toBeInTheDocument(); // AÇÃO
 
     // Column headers present (anúncio-cêntrica order).
@@ -166,11 +188,29 @@ describe("Vínculos design golden", () => {
   it("uses paper+green tokens only — no off-theme literal color classes anywhere on the page", async () => {
     listProductLinkCandidates.mockResolvedValue({
       items: [
-        base({ candidate_id: "cand_1", internal_product_id: 1001, internal_product_name: "Produto Y" }),
+        // The corroborated ACCEPT, verbatim from `buildConcordantCandidate`
+        // (generation_service.go:495-505). It is here so the sweep still covers
+        // the ALTA/accent token path: the EXEMPLO-IO row above is a MEDIA row
+        // now, because 92/ALTA was never a producible CONFIRM.
+        base({
+          candidate_id: "cand_1",
+          internal_product_id: 1001,
+          internal_product_name: "Produto Y",
+          state: "exact_sku",
+          match_input: "seller_sku",
+          match_status: "ACCEPT",
+          confidence: 95,
+          confidence_band: "ALTA",
+          reasons: [
+            { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
+            { anchor: "ean", direction: "FOR", detail: "ean corrobora o mesmo codprod (unproved)" },
+          ],
+        }),
         base({
           candidate_id: "cand_nc",
           provider_item_id: "MLB999",
           match_status: "NO_CANDIDATE",
+          match_input: "none",
           confidence: 0,
           confidence_band: "BAIXA",
           reasons: [],

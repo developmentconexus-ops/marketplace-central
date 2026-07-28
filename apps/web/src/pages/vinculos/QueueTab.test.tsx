@@ -337,6 +337,29 @@ describe("QueueTab", () => {
     expect(container.textContent).not.toContain("mercado_livre");
   });
 
+  it("does not leak the raw slug of a provider it has no display name for", async () => {
+    listProductLinkCandidates.mockResolvedValue({
+      items: [
+        candidate({
+          candidate_id: "cand_1",
+          provider_item_id: "SHP1",
+          // A provider with no entry in the display-name map. Today only
+          // `mercado_livre` is mapped, so the very next marketplace lands here —
+          // and V10's rule is about the SCREEN, not about which slug it is.
+          provider_code: "shopee",
+          internal_product_id: 111,
+          internal_product_name: "Parafuso A",
+        }),
+      ],
+    });
+
+    const { container } = renderTab();
+    const row = await screen.findByTestId("queue-row");
+
+    expect(within(row).getByText("Shopee")).toBeInTheDocument();
+    expect(container.textContent).not.toContain("shopee");
+  });
+
   it("removes the item from the queue after an approve + page-local invalidation", async () => {
     listProductLinkCandidates
       .mockResolvedValueOnce({
@@ -528,5 +551,35 @@ describe("QueueTab", () => {
     // Header renamed per D-122: the single-anchor GTIN reading is superseded.
     expect(screen.getByRole("columnheader", { name: "Identificado por" })).toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: "GTIN" })).not.toBeInTheDocument();
+  });
+
+  it("survives a match_status the SDK union does not know, degrading one cell instead of the table", async () => {
+    listProductLinkCandidates.mockResolvedValue({
+      items: [
+        candidate({
+          candidate_id: "cand_drift",
+          provider_item_id: "MLB_DRIFT",
+          internal_product_id: 111,
+          internal_product_name: "Parafuso A",
+          // Wire drift: the API ships a sixth status before the SDK is
+          // regenerated. The cast is the POINT of the test — the compile-time
+          // exhaustiveness of the maps cannot see a value the wire invents at
+          // runtime, so the runtime has to stay honest on its own.
+          match_status: "PENDING_REVIEW" as ProductLinkCandidateItem["match_status"],
+          match_input: "ean",
+          reasons: [{ anchor: "ean", direction: "FOR", detail: "EAN idêntico" }],
+        }),
+      ],
+    });
+
+    renderTab();
+
+    // The table still renders: an unknown status must not take the queue down.
+    const row = await screen.findByTestId("queue-row");
+    expect(within(row).getByText("Parafuso A")).toBeInTheDocument();
+
+    // And the cell says "unknown" rather than naming an anchor it cannot know.
+    expect(within(row).queryByTestId("identificado-por")).not.toBeInTheDocument();
+    expect(row.querySelectorAll("td")[5].textContent).toBe("—");
   });
 });

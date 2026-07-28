@@ -51,15 +51,31 @@ export const directionClasses: Record<ProductLinkReasonDirection, string> = {
 /**
  * Provider display name for a wire `provider_code`. The wire value is a slug
  * ("mercado_livre"); rendering it raw is the bug that hit CHIP-PED-FILA across
- * four surfaces. An unknown provider falls through verbatim — same honesty rule
- * as `anchorShortLabel`: never rename a value into something the wire did not say.
+ * four surfaces.
+ *
+ * An unknown provider is TYPESET, not passed through: `mercado_livre` is the
+ * only mapped code today, so the next marketplace onboarded would otherwise put
+ * a raw slug back on screen — the same defect V10 names, just waiting for data
+ * that does not exist yet. Typesetting is not renaming: separators become
+ * spaces and words are capitalised, so every character the wire sent is still
+ * legible in order ("shopee" → "Shopee", "xyz-9" → "Xyz 9"). Nothing is
+ * invented, which is what separates this from `anchorShortLabel` — there the
+ * unknown value is operator vocabulary that only the ERP can name, so it stays
+ * verbatim; here it is a machine identifier that never belonged on screen in
+ * that form.
  */
 const providerDisplayNames: Record<string, string> = {
   mercado_livre: "Mercado Livre",
 };
 
 export function providerDisplayName(providerCode: string): string {
-  return providerDisplayNames[providerCode] ?? providerCode;
+  const mapped = providerDisplayNames[providerCode];
+  if (mapped) return mapped;
+  return providerCode
+    .split(/[_\-\s]+/)
+    .filter((word) => word.length > 0)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 }
 
 /**
@@ -106,7 +122,15 @@ const statusDecidingAnchors: Record<
 };
 
 export function decidingAnchors(candidate: ProductLinkCandidateItem): string[] {
-  return statusDecidingAnchors[candidate.match_status](candidate.match_input);
+  // The `Record<Union, …>` above is the COMPILE-time guard: a sixth status in
+  // the SDK breaks the build here, which is the whole point. This runtime guard
+  // answers a different failure — the wire shipping a status the SDK does not
+  // have yet, where the map lookup is `undefined` and calling it takes down the
+  // entire queue table instead of one cell. An unknown status means we do not
+  // know what decided, so the column renders the honest unknown (ADR-17).
+  const rule = statusDecidingAnchors[candidate.match_status];
+  if (!rule) return [];
+  return rule(candidate.match_input) ?? [];
 }
 
 function pill(label: string, className: string) {
