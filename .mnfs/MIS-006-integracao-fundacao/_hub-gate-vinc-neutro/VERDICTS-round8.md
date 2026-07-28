@@ -85,6 +85,11 @@ hub.
 
 **Gatilho de expiração:** vira BLOQUEANTE no dia em que um segundo adapter registrar capacidade.
 
+> **CORR-2 · 2026-07-28 · a CLASSE aqui está estreita demais.** "Colapso por caixa" é uma
+> instância. A medição do hub na rodada 9 achou uma segunda (`"Amazon Marketplace"` colide com
+> `"amazon_marketplace"`), então a classe é *código não-mapeado cuja string literal iguala a saída
+> tipografada de outro código*. Alcance e gatilho não mudam. Reescrito em `HUB-VERIFY-round9.md`.
+
 ## R-2 · REPORT — o guard não descobre adapter novo
 
 **Os dois assentos**, mesma coisa: `DECLARED_PROVIDER_CAPABILITIES` / `GO_SEAM` leem só o adapter do
@@ -117,6 +122,12 @@ corroborada por medição independente, e o número bate na casa.
    restringir a aplicação ao domínio onde a transformação É injetiva (`^[a-z0-9]+(_[a-z0-9]+)*$`),
    o que faz caixa e hífen caírem em verbatim e torna a frase verdadeira sem reescrevê-la; ou
    DELETAR a frase falsa (R-25) e declarar o escopo real. A primeira fecha B-1 e R-1 juntos.
+   > **CORR-1 · 2026-07-28 · a última frase é FALSA.** O chip mediu antes de aceitar e o hub
+   > confirmou por execução em `HUB-VERIFY-round9.md`: a restrição de domínio fecha B-1 e **não**
+   > fecha R-1. Verbatim é a IDENTIDADE, e a identidade divide contradomínio com a transformação —
+   > `Amazon` sai do domínio e continua pintando `Amazon`, que é o que `amazon` produz. Estreitar o
+   > domínio move a entrada para o ramo onde o parceiro da colisão mora; não separa nada. A frase
+   > fica registrada porque foi ela que a rodada 9 executou; o veredito dela não fica.
 2. **B-2** — a cláusula do buraco declarado, com as três células acima decididas por string.
 3. **R-1 e R-2** não são ordem. Se a saída escolhida em B-1 fechar R-1, diga; se não, R-1 fica
    registrado com o gatilho.
