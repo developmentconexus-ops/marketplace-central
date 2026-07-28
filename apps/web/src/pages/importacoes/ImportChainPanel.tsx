@@ -40,8 +40,12 @@ export function ImportChainPanel({ importId }: ImportChainPanelProps) {
 
   return (
     <section className="rounded-card border border-border bg-surface p-4">
-      <h2 className="text-sm font-semibold text-ink">Cadeia da importação</h2>
-      <p className="mt-1 text-xs text-faint">importados → vinculados → enfileirados, lidos do servidor.</p>
+      <h2 className="text-sm font-semibold text-ink">Estado da importação</h2>
+      {/* Sem seta entre os três: o servidor os apura de populações independentes e em duas
+          unidades (linhas do arquivo / produtos internos), então 55 · 0 · 55 é estado normal. */}
+      <p className="mt-1 text-xs text-faint">
+        Três medidas independentes, lidas do servidor — não são etapas de um funil.
+      </p>
       <div className="mt-3">
         {chainQuery.isPending ? (
           <LoadingState />
@@ -56,21 +60,21 @@ export function ImportChainPanel({ importId }: ImportChainPanelProps) {
             </p>
             <dl className="mt-3 grid grid-cols-3 gap-3">
               <div>
-                <dt className="text-xs text-faint">Produtos do import</dt>
+                <dt className="text-xs text-faint">Linhas importadas</dt>
                 <dd data-testid="erp-import-chain-importados" className="mt-0.5 font-mono text-sm font-semibold text-ink">
-                  {renderCounter(chainQuery.data.importados, "produtos do import desconhecidos")}
+                  {renderCounter(chainQuery.data.importados, "linhas importadas desconhecidas")}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-faint">Vinculados</dt>
+                <dt className="text-xs text-faint">Produtos vinculados</dt>
                 <dd data-testid="erp-import-chain-vinculados" className="mt-0.5 font-mono text-sm font-semibold text-ink">
                   {renderCounter(chainQuery.data.vinculados, "produtos vinculados desconhecidos")}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-faint">Enfileirados</dt>
+                <dt className="text-xs text-faint">Linhas na fila de sync</dt>
                 <dd data-testid="erp-import-chain-enfileirados" className="mt-0.5 font-mono text-sm font-semibold text-ink">
-                  {renderCounter(chainQuery.data.enfileirados, "produtos enfileirados desconhecidos")}
+                  {renderCounter(chainQuery.data.enfileirados, "linhas na fila desconhecidas")}
                 </dd>
               </div>
             </dl>

@@ -30,6 +30,7 @@ fechamento: evidencia EXECUTADA sobre o codigo — go build ./... EXIT 0, go vet
 gate_round_5: REFUTED — 1 BLOCKING, achado pelos DOIS assentos independentemente por cenarios diferentes (A: vinculados=2 com '101'+'00101' e um link; B: enfileirados=2 com 'ABC'+'00ABC' e pending ["ABC"]). Vereditos em _hub-gate-anchors-3/VERDICTS-round5.md (f8a1ed3d).
 round_6_reparo: ltrim dos dois lados era CANONICALIZACAO PERDEDORA. vinculados agora compara numerico exato com ordem de avaliacao garantida por CASE e conta links.internal_product_id; a FILA volta a igualdade CRUA porque os dois lados sao a mesma string do mesmo slice (cadeia estabelecida por STRING). 2 fixtures de regressao novos.
 must_fail_sql: lane de integracao com o ltrim REPOSTO = status=blocked, failure_token=test=TestGetImportChainCountsCollidingCodprodsOnce E failure_token=test=TestGetImportChainQueueMatchesCodprodExactly; restaurado = status=passed. A forma test= e atribuivel (finding 1 estreitado, ea919c06), entao os dois testes novos EXECUTARAM — status=passed sozinho nao provaria isso (§11 item 4).
+ordem_f5: painel /importacoes prometia funil (importados -> vinculados -> enfileirados) sobre tres numeros de DUAS unidades e populacoes independentes; 55/0/55 e estado normal. Legenda, titulo e rotulos reescritos em ImportChainPanel.tsx (unico arquivo concedido). vitest importacoes 18 passed EXIT 0; tsc apps/web EXIT 2 com 20 erros pre-existentes, ZERO em importacoes. Contrato (summary/description "processing chain") e cópia de erro fixada por teste alheio: propostos ao hub, NAO tocados. Drive em navegador PENDENTE de stack.
 status: NAO FECHADO PELO CHIP. Sem AGREEMENT em 5 rounds; a linha P6-DUAL-GATE e o merge sao do hub. Todo achado dos dois lados verificado por STRING pelo chip, um recusado com motivo.
 authority: .mnfs/MIS-006-integracao-fundacao/_hub-gate-anchors-2/p6-reconciliation-r1.md
 contract: .mnfs/MIS-006-integracao-fundacao/_chip-anchors-3/validation-contract.md
@@ -760,6 +761,75 @@ npm run harness:integration                                             status=p
 - **CORR-1 — `INCOMPARABLE/erp` continua `INCOMPARABLE/erp`, não vira `UNAVAILABLE/side=""`.**
   Decisão mantida; o hub confirmou que a escolha é do operador e não minha.
 - **CORR-3 — `IsValid` mais estrito que a coluna `uuid`.** REPORT, sem ação, conforme a régua.
+
+## Ordem F-5 — o painel prometia um funil que não existe
+
+Achado pelo hub **dirigindo `/importacoes` com dado real**, não por teste: no protocolo `#001-E` a tela
+renderiza `Produtos do import 55 / Vinculados 0 / Enfileirados 55` sob a legenda
+`importados → vinculados → enfileirados, lidos do servidor.` As setas afirmam sequência. **Não há
+sequência** — e a prova disso é o meu próprio SQL do round 6: `resolved_products` e `queued_products`
+são construídos de populações independentes, uma pelo `product_links` resolvido, outra pelo
+`cursor->'pending'`. Um produto pode estar na fila sem vínculo nenhum, e é exatamente o que 55/0/55 é:
+estado **normal**. Sob a seta, o operador lê "55 entraram, 0 passaram do segundo estágio, e mesmo assim
+55 chegaram no terceiro" e conclui que um dos números está quebrado.
+
+Eu não causei a seta — ela é anterior a este chip. Eu a **agravei**: foi o round 6 que declarou, no
+próprio SQL, que `importados` e `enfileirados` contam **linhas** de importação e `vinculados` conta
+**produtos** internos. Três números, **duas unidades**, uma seta afirmando que são um funil só. A
+legenda ficou mais falsa depois do meu reparo do que antes dele.
+
+### O que mudou, no único arquivo concedido
+
+Grant: `apps/web/src/pages/importacoes/ImportChainPanel.tsx`, additive, específico a esse arquivo.
+
+| Antes | Depois | Por quê |
+|---|---|---|
+| `<h2>Cadeia da importação</h2>` | `<h2>Estado da importação</h2>` | "cadeia" é a mesma afirmação de ordem que a seta |
+| `importados → vinculados → enfileirados, lidos do servidor.` | `Três medidas independentes, lidas do servidor — não são etapas de um funil.` | remove a sequência e **nomeia** a relação real |
+| `dt` `Produtos do import` | `Linhas importadas` | conta linhas de `erp_import_products`, não produtos |
+| `dt` `Vinculados` | `Produtos vinculados` | conta `DISTINCT links.internal_product_id` |
+| `dt` `Enfileirados` | `Linhas na fila de sync` | conta linhas deste import presentes em `cursor->'pending'` |
+
+Os `hint` de `UnknownValue` acompanharam a unidade (`"linhas importadas desconhecidas"`,
+`"produtos vinculados desconhecidos"`, `"linhas na fila desconhecidas"`). Nomear a unidade **no rótulo**
+é a metade que a seta escondia: sem isso a legenda diria "independentes" e a tela continuaria
+convidando a comparar 55 com 0 como se fossem a mesma coisa contada duas vezes.
+
+Zero mudança de dado, zero mudança de query, `data-testid` intactos
+(`erp-import-chain-importados`/`-vinculados`/`-enfileirados`), nenhum outro arquivo de `apps/web/` tocado.
+
+### O que eu NÃO mexi, de propósito
+
+- **Contrato.** `contracts/api/marketplace-central.openapi.yaml` publica a rota
+  `/erp/imports/{id}/chain` com `summary: Get the current processing chain for an ERP import` e a 200
+  `description: Current ERP import processing chain`. "processing chain" é a **mesma** falsidade da seta,
+  num artefato publicado. Proposto ao hub e **não tocado**: minha recomendação é não renomear campos nem
+  rota (quebra dura, e os nomes dos campos não afirmam ordem — quem afirma é a palavra *chain* e a
+  ausência de unidade), e sim `description`-only nomeando a unidade de cada campo. Mexer em OpenAPI +
+  `sdk-runtime` é seam; sem palavra do hub, não.
+- **Cópia de erro.** `ImportChainPanel.test.tsx:173` e `:186` fixam
+  `"Não foi possível carregar a cadeia da importação."`. Troquei por "estado" e **revertei** — o arquivo
+  de teste não está no grant, e não quebro assertion alheia para caber no meu escopo. Micro-grant pedido.
+
+### Lane FE
+
+```
+vitest run src/pages/importacoes   → 4 files, 18 passed, 0 failed        EXIT 0
+tsc --noEmit -p apps/web           → 20 erros PRÉ-EXISTENTES             EXIT 2
+    grep -c "importacoes" na saída → 0
+```
+
+O `tsc` de `apps/web` está vermelho desde antes desta ordem (vinculos = seam do CHIP-VINC-NEUTRO,
+mais `mutations/`, `produto/`, `anuncios`); **nenhum** dos 20 erros é de `importacoes`, verificado por
+string e não por leitura. Registrar o EXIT 2 inteiro é a forma honesta: dizer "FE verde" seria falso, e
+omitir o vermelho seria pior.
+
+### Drive em navegador real
+
+**PENDENTE** — o critério de aceite desta ordem é o texto renderizado de `/importacoes/<id>`, e o chip não sobe stack. `REQUEST` enviado ao hub pedindo URL, o `<id>` com dado real e a confirmação de qual build está sendo servido (o compose monta a raiz cwd-relativa; se estiver apontado para o checkout do hub, o drive não veria esta mudança). Sem o drive, esta seção é reparo declarado e **não** critério descarregado.
+
+---
+
 
 ## REPORTs — o que este chip NÃO fechou
 
