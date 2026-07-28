@@ -487,7 +487,12 @@ func newProviderIdentityAnchorComparison(snapshot domain.ListingSnapshot, declar
 }
 
 func buildConcordantCandidate(snapshot domain.ListingSnapshot, skuMatches, eanMatches productMatchResult, comparison providerIdentityAnchorComparison, now time.Time) domain.LinkCandidate {
-	product := *comparison.product
+	// Both sibling scorers nil-check this pointer; an unconditional deref here
+	// made this the one site that panics instead of degrading.
+	product := internalreaddomain.ProductCandidate{}
+	if comparison.product != nil {
+		product = *comparison.product
+	}
 	candidate := newCandidate(snapshot, domain.LinkCandidateStateExactSKU, domain.LinkCandidateMatchInputSellerSKU, skuMatches.InputValue, product, now)
 
 	reasons := []domain.LinkCandidateReason{
@@ -733,8 +738,19 @@ func identityAnchorValues(anchor string, listing domain.ListingSnapshot, product
 	switch anchor {
 	case "seller_sku":
 		listingValue = listing.SellerSKU
-		if product != nil && product.ReferenceCode != nil {
-			productValue = *product.ReferenceCode
+		// The ERP counterpart of a provider seller_sku is the canonical CODPROD
+		// (D-121: the operator registers the CODPROD in the listing's SKU field),
+		// never `refforn` — refforn is the SUPPLIER reference inside the ERP, and
+		// D-A removed it from the cross-side vocabulary in this same mission.
+		// A product that reaches this comparison always carries a CODPROD (it is
+		// part of the primary key of erp_import_products, and generation filters
+		// out candidates without a canonical id before any candidate exists), so
+		// "produto ERP sem CODPROD" is a claim this side can never truthfully
+		// make — reading refforn here minted exactly that false claim.
+		if product != nil {
+			if productID, ok := canonicalProductID(*product); ok {
+				productValue = strconv.Itoa(productID)
+			}
 		}
 	case "ean":
 		listingValue = listing.EAN

@@ -28,15 +28,21 @@ const (
 	IdentityAnchorMarca     IdentityAnchor = "marca"
 )
 
-// knownIdentityAnchors is the cross-side identity vocabulary: every entry is a
-// question a marketplace could answer. D-A (D-122) removed `refforn` from it —
-// it is the supplier reference INSIDE the ERP (`ZP1704.1.`), so "do you supply
-// refforn?" answers `no` for every provider present and future, and keeping it
-// here minted one permanent never-changing reason per candidate row. It stays a
-// field on the ERP side (`erp_import_products.refforn`); what left is the list,
-// not the datum. A marketplace that one day exposes a manufacturer reference
-// enters as a NEW anchor with its own name, not by reusing a term that means
-// something else on the ERP side.
+// knownIdentityAnchors is the identity vocabulary THIS file governs: the
+// anchors a connector declares for the product_links candidate generator. D-A
+// (D-122) removed `refforn` from it — it is the supplier reference INSIDE the
+// ERP (`ZP1704.1.`), no connector declares it, and keeping it here minted one
+// permanent never-changing reason per candidate row. It stays a field on the
+// ERP side (`erp_import_products.refforn`); what left is this list, not the
+// datum.
+//
+// Deliberately NOT a claim that no marketplace datum ever compares against
+// refforn. The catalog matcher in `market/domain/identity_resolver.go` scores
+// the ERP `RefForn` against a candidate's `MODEL` attribute under the anchor
+// name "refforn" today, and that resolver is wired; it runs on the market
+// module's own vocabulary and never reads this list. A marketplace field that
+// one day belongs HERE enters as a NEW anchor with its own name, not by
+// reusing a term that means something else on the ERP side.
 var knownIdentityAnchors = []IdentityAnchor{
 	IdentityAnchorSellerSKU,
 	IdentityAnchorEAN,

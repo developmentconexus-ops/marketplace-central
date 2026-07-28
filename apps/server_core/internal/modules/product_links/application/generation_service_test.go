@@ -397,45 +397,47 @@ func TestNamedMissingAnchorSitesAreIncomparableWithCorrectSide(t *testing.T) {
 		detail   string
 		side     productlinksdomain.LinkCandidateReasonSide
 	}{
+		// Every product fixture below carries a canonical id, because
+		// generation_service.go's findProducts drops candidates without one before
+		// any candidate exists: a `ProductCandidate{}` is unreachable in
+		// production, and an assertion over it pins nothing (B-01).
 		"exact SKU listing EAN empty": {
 			state:    productlinksdomain.LinkCandidateStateExactSKU,
 			snapshot: productlinksdomain.ListingSnapshot{SellerSKU: "SKU-1"},
-			product:  &internalreaddomain.ProductCandidate{},
+			product:  &internalreaddomain.ProductCandidate{InternalProductID: canonicalIDPtr(901)},
 			anchor:   "ean", detail: "sem EAN para corroborar o CODPROD",
 			side: productlinksdomain.LinkCandidateReasonSideProvider,
 		},
 		"exact SKU ERP EAN empty": {
 			state:    productlinksdomain.LinkCandidateStateExactSKU,
 			snapshot: productlinksdomain.ListingSnapshot{SellerSKU: "SKU-1", EAN: "EAN-1"},
-			product:  &internalreaddomain.ProductCandidate{},
+			product:  &internalreaddomain.ProductCandidate{InternalProductID: canonicalIDPtr(902)},
 			anchor:   "ean", detail: "sem EAN para corroborar o CODPROD: o EAN do anúncio não casa nenhum produto",
 			side: productlinksdomain.LinkCandidateReasonSideERP,
 		},
+		// The ERP side of seller_sku is the CODPROD, which a resolved product
+		// always has — so side=erp is reachable for seller_sku only through the
+		// listing, never through the product. The mirror case (listing HAS a
+		// seller_sku) is pinned by
+		// TestSellerSKUAnchorReadsCanonicalCodprodNotSupplierReference.
 		"exact EAN listing seller SKU empty": {
 			state:    productlinksdomain.LinkCandidateStateExactEAN,
 			snapshot: productlinksdomain.ListingSnapshot{EAN: "EAN-1"},
-			product:  &internalreaddomain.ProductCandidate{},
+			product:  &internalreaddomain.ProductCandidate{InternalProductID: canonicalIDPtr(903)},
 			anchor:   "seller_sku", detail: "sem CODPROD para corroborar o EAN",
 			side: productlinksdomain.LinkCandidateReasonSideProvider,
-		},
-		"exact EAN ERP seller SKU empty": {
-			state:    productlinksdomain.LinkCandidateStateExactEAN,
-			snapshot: productlinksdomain.ListingSnapshot{SellerSKU: "SKU-1", EAN: "EAN-1"},
-			product:  &internalreaddomain.ProductCandidate{},
-			anchor:   "seller_sku", detail: "sem CODPROD para corroborar o EAN: o seller_sku do anúncio não casa nenhum produto",
-			side: productlinksdomain.LinkCandidateReasonSideERP,
 		},
 		"title match listing anchors empty": {
 			state:    productlinksdomain.LinkCandidateStateTitleMatch,
 			snapshot: productlinksdomain.ListingSnapshot{Title: "Produto"},
-			product:  &internalreaddomain.ProductCandidate{Name: "Produto"},
+			product:  &internalreaddomain.ProductCandidate{InternalProductID: canonicalIDPtr(904), Name: "Produto"},
 			anchor:   "seller_sku", detail: "seller_sku sem correspondência",
 			side: productlinksdomain.LinkCandidateReasonSideProvider,
 		},
 		"title match ERP EAN empty": {
 			state:    productlinksdomain.LinkCandidateStateTitleMatch,
 			snapshot: productlinksdomain.ListingSnapshot{EAN: "EAN-1", Title: "Produto"},
-			product:  &internalreaddomain.ProductCandidate{Name: "Produto"},
+			product:  &internalreaddomain.ProductCandidate{InternalProductID: canonicalIDPtr(905), Name: "Produto"},
 			anchor:   "ean", detail: "ean sem correspondência",
 			side: productlinksdomain.LinkCandidateReasonSideERP,
 		},
@@ -459,6 +461,105 @@ func TestNamedMissingAnchorSitesAreIncomparableWithCorrectSide(t *testing.T) {
 				t.Fatalf("reason=%#v, ok=%v, want anchor=%q direction=INCOMPARABLE side=%q detail=%q", reason, ok, tc.anchor, tc.side, tc.detail)
 			}
 		})
+	}
+}
+
+// TestSellerSKUAnchorReadsCanonicalCodprodNotSupplierReference drives the whole
+// generator, not the internal classifier, so the product it asserts over is the
+// production shape: it went through findProducts, which filters out any
+// candidate without a canonical id.
+//
+// B-01: the ERP side of the seller_sku anchor used to be `product.ReferenceCode`
+// = refforn, the SUPPLIER reference. With refforn absent the generator emitted
+// INCOMPARABLE/side=erp with the detail "sem CODPROD para corroborar o EAN" — a
+// claim that the ERP product has no CODPROD, which is impossible: CODPROD is
+// part of the primary key of erp_import_products. The ERP side is now the
+// canonical CODPROD, so the outcome no longer depends on refforn at all.
+func TestSellerSKUAnchorReadsCanonicalCodprodNotSupplierReference(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 7, 28, 9, 0, 0, 0, time.UTC)
+	for name, tc := range map[string]struct {
+		listingSellerSKU string
+		referenceCode    *string
+		wantDirection    productlinksdomain.LinkCandidateReasonDirection
+		wantSide         productlinksdomain.LinkCandidateReasonSide
+		wantDetail       string
+	}{
+		// Discriminating case: refforn absent. Before the fix this produced
+		// INCOMPARABLE/erp — the ERP product accused of having no CODPROD.
+		"listing has a seller_sku, ERP product has no refforn": {
+			listingSellerSKU: "SKU-NAO-CASA",
+			wantDirection:    productlinksdomain.LinkCandidateReasonDirectionUnavailable,
+			wantSide:         "",
+			wantDetail:       "sem CODPROD para corroborar o EAN: o seller_sku do anúncio não casa nenhum produto",
+		},
+		// Same product, refforn present: same verdict. That equality is the
+		// point — refforn is no longer read on this side.
+		"listing has a seller_sku, ERP product has a refforn": {
+			listingSellerSKU: "SKU-NAO-CASA",
+			referenceCode:    stringPtr("ZP1704.1."),
+			wantDirection:    productlinksdomain.LinkCandidateReasonDirectionUnavailable,
+			wantSide:         "",
+			wantDetail:       "sem CODPROD para corroborar o EAN: o seller_sku do anúncio não casa nenhum produto",
+		},
+		// side=erp is unreachable for seller_sku now, so the only honest
+		// INCOMPARABLE is the provider side: the ANÚNCIO carries no SKU.
+		"listing has no seller_sku": {
+			wantDirection: productlinksdomain.LinkCandidateReasonDirectionIncomparable,
+			wantSide:      productlinksdomain.LinkCandidateReasonSideProvider,
+			wantDetail:    "sem CODPROD para corroborar o EAN",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			snapshot := productlinksdomain.ListingSnapshot{
+				InstallationID: "inst-b01", ProviderCode: "mercado_livre", ProviderItemID: "item-b01",
+				SellerSKU: tc.listingSellerSKU, EAN: "EAN-B01", Title: "Produto B01", FetchedAt: now,
+			}
+			product := internalreaddomain.ProductCandidate{
+				InternalProductID: canonicalIDPtr(101), Name: "Produto B01",
+				EAN: stringPtr("EAN-B01"), ReferenceCode: tc.referenceCode,
+			}
+			candidate := generateSingle(t, snapshot, &stubProductMatcher{results: map[string][]internalreaddomain.ProductCandidate{
+				"ean:EAN-B01": {product},
+			}}, now)
+
+			reason, ok := findReasonByAnchor(candidate.Reasons, "seller_sku")
+			if !ok {
+				t.Fatalf("reasons=%#v, want a seller_sku reason", candidate.Reasons)
+			}
+			if reason.Direction != tc.wantDirection || reason.Side != tc.wantSide || reason.Detail != tc.wantDetail {
+				t.Fatalf("seller_sku reason=%#v, want direction=%q side=%q detail=%q",
+					reason, tc.wantDirection, tc.wantSide, tc.wantDetail)
+			}
+		})
+	}
+}
+
+// TestConcordantCandidateDoesNotDerefNilProduct pins the guard, not a
+// production path: the single call site (buildExactCandidates) always passes a
+// non-nil pointer, so production reachability is NOT proven. What is proven is
+// that this scorer now degrades like both of its siblings instead of panicking.
+func TestConcordantCandidateDoesNotDerefNilProduct(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 7, 28, 9, 30, 0, 0, time.UTC)
+	snapshot := productlinksdomain.ListingSnapshot{
+		InstallationID: "inst-nil-product", ProviderCode: "mercado_livre", ProviderItemID: "item-nil",
+		SellerSKU: "SKU-NIL", EAN: "EAN-NIL", Title: "Produto Nil", FetchedAt: now,
+	}
+
+	candidate := buildConcordantCandidate(
+		snapshot,
+		productMatchResult{InputValue: "SKU-NIL"},
+		productMatchResult{InputValue: "EAN-NIL"},
+		newProviderIdentityAnchorComparison(snapshot, nil, nil),
+		now,
+	)
+
+	if candidate.InternalProductID != nil {
+		t.Fatalf("internal_product_id=%v, want nil for a nil product", *candidate.InternalProductID)
+	}
+	if _, ok := findReason(candidate.Reasons, "seller_sku", productlinksdomain.LinkCandidateReasonDirectionFor); !ok {
+		t.Fatalf("reasons=%#v, want the concordant seller_sku FOR reason", candidate.Reasons)
 	}
 }
 
@@ -1132,6 +1233,18 @@ func findReason(reasons []productlinksdomain.LinkCandidateReason, anchor string,
 	return productlinksdomain.LinkCandidateReason{}, false
 }
 
+// findReasonByAnchor looks the anchor up WITHOUT presuming a direction, so a
+// failure reports the direction that actually came out instead of an empty
+// "not found".
+func findReasonByAnchor(reasons []productlinksdomain.LinkCandidateReason, anchor string) (productlinksdomain.LinkCandidateReason, bool) {
+	for _, reason := range reasons {
+		if reason.Anchor == anchor {
+			return reason, true
+		}
+	}
+	return productlinksdomain.LinkCandidateReason{}, false
+}
+
 func assertUniqueReasonAnchors(t *testing.T, reasons []productlinksdomain.LinkCandidateReason) {
 	t.Helper()
 	seen := make(map[string]struct{}, len(reasons))
@@ -1438,9 +1551,19 @@ func TestCase3EANAloneYieldsMediaConfirm(t *testing.T) {
 	if _, ok := findReason(candidate.Reasons, "ean", productlinksdomain.LinkCandidateReasonDirectionFor); !ok {
 		t.Fatalf("reasons=%#v, want ean FOR (unproved)", candidate.Reasons)
 	}
-	skuReason, ok := findReason(candidate.Reasons, "seller_sku", productlinksdomain.LinkCandidateReasonDirectionIncomparable)
+	// UNAVAILABLE, not INCOMPARABLE: the ERP product resolved by the EAN always
+	// carries a CODPROD, so the seller_sku comparison has a value on BOTH sides
+	// (they simply disagree) and the seeded reason falls to the excluded branch.
+	// This is the same shape TestExactSKUWithUnmatchedListingEANKeepsSeededEANReason
+	// already pins for `ean` — seller_sku was the outlier only because it read
+	// `refforn` (B-01). Which direction both-present-and-DIFFERENT should carry is
+	// the open AGAINST branch of A2-R1, the operator's decision, not this chip's.
+	skuReason, ok := findReason(candidate.Reasons, "seller_sku", productlinksdomain.LinkCandidateReasonDirectionUnavailable)
 	if !ok {
-		t.Fatalf("reasons=%#v, want seller_sku INCOMPARABLE", candidate.Reasons)
+		t.Fatalf("reasons=%#v, want seller_sku UNAVAILABLE (excluded branch)", candidate.Reasons)
+	}
+	if skuReason.Side != "" {
+		t.Fatalf("seller_sku reason=%#v, want side empty on the excluded branch", skuReason)
 	}
 	if !strings.HasPrefix(skuReason.Detail, "sem CODPROD para corroborar o EAN") {
 		t.Fatalf("seller_sku reason detail=%q, want the missing anchor named", skuReason.Detail)
