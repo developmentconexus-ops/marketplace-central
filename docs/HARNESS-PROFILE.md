@@ -27,21 +27,27 @@ now-retired file as it stood at ratification time).
 ## 2. Verification ladder bindings (core §5)
 `status: ratified` · `provenance: 2026-07-15 · docs/HARNESS.md §5 + field finding (governance lane, 2026-07-15)`
 
-- **L0** — `go build ./...` with `GOCACHE=.gocache` · web `tsc`/typecheck ·
+- **L0** — `go build ./...` with `GOCACHE` bound ABSOLUTE (next bullet — never the bare
+  relative literal) · web `tsc`/typecheck ·
   governance lanes: `npm run harness:governance -- -BaseSha <sha>` — run from a **clean
   detached worktree** (main checkout sweeps `.claude/worktrees/*` and false-fails until the
   scanner exclusion lands) and pass the **full 40-hex** BaseSha (short sha =
   `GOV_SEMANTIC_DRIFT id=base-sha-invalid`).
 - **GOCACHE must resolve to an ABSOLUTE path on Windows/pwsh** (D-14, M-01): relative
   `.gocache` breaks when the working dir shifts mid-pipeline — bind it as
-  `$env:GOCACHE = (Join-Path (Get-Location) '.gocache')` (or equivalent) before Go commands.
+  `$env:GOCACHE = (Join-Path (Get-Location) '.gocache')` (pwsh) or
+  `export GOCACHE="$(pwd)/.gocache"` (bash) before Go commands. Same for `GOMODCACHE`.
+  **This file prints no copyable relative form**: it did, three times, three lines above this
+  rule, and a chip copied one and got an 83-byte EXIT 1 with zero `=== RUN` — a doctrine
+  artifact that hands you the line it forbids is worse than one that says nothing
+  (CHIP-ANCHORS-3 field REPORT, 2026-07-28).
 - **Governance base anchor (per milestone):** the drift gate's BaseSha for a chip is the
   milestone's ACCEPTED BASE SHA (40-hex, carried in the chip prompt) — on a long-lived
   worktree, drift REDs computed against any other base are not the chip's defect
   (M-01 field, 2×: Slice 7 `base-sha-invalid`, P5 tool-vs-validate topology). The chip
   records the anchor in its evidence; the hub re-runs governance on the integrated default
   branch at acceptance.
-- **L1** — `GOCACHE=.gocache go test ./...` (touched packages + guard suites; full sweep only
+- **L1** — `go test ./...` with `GOCACHE` absolute (touched packages + guard suites; full sweep only
   when migrations/platform touched) · web vitest · integration lane
   `npm run harness:integration` (see §4).
 - **Known pre-existing failure allowlist (L1):** verdicts CITE this list instead of
@@ -293,7 +299,7 @@ verification conflicts against this list.
   `Documents/mnfs-harness/harness/REVIEW-STANDARD.md`, loaded by the harness skills; NOT
   vendored in-repo) — binds per-feature adversarial review, dual gate, hub spot-check.
 - Deterministic pre-pass (§7) = L0 lane: `go build ./...` + `go vet ./...` (both
-  `GOCACHE=.gocache`) · web `tsc` · governance lane (clean worktree, 40-hex BaseSha). Review
+  with `GOCACHE` absolute, §2) · web `tsc` · governance lane (clean worktree, 40-hex BaseSha). Review
   dispatch only after L0 green; reviewer receives the L0/governance report as input.
   Candidate additions (staticcheck, dupl, gocognit) = dependency gate: `REQUEST` to hub first.
 - Learnings file: `docs/REVIEW-LEARNINGS.md` — loaded into every code-review dispatch.
@@ -838,3 +844,4 @@ retroactive GPT-5.6 Sol medium review at mission closeout (operator's call).
 2026-07-28 · §11 (new subsection) · ratified · A SWEEP IS ONLY AS WIDE AS ITS PATTERN — the members an extraction cannot MATCH are not reported as unchecked, they are not reported at all, so the instrument's blind spot is invisible in its own output. Verified by string at the hub on `3915f33b`: a document titled `EXHAUSTIVE FIXTURE SWEEP` proved its exhaustiveness with `grep -oh 'anchor: "[a-z_]*"'` against a population of `grep -c 'anchor: "'` = 23; the character class cannot match a capital or an accent, so `"SKU idêntico"` (×2), `"Título parcial"` and `"EAN"` were invisible — ONE violation reported where there were five, and a machine re-sweep of the same file returned 13 failed / 5 passed against the document's two findings. Binds any sweep offered as class-closure evidence: reconcile population count against extraction count and PRINT BOTH (unequal without a stated reason = the sweep reports its own blind spot, one extra `grep`); must-fail the pattern against a known member; after a sweep has failed twice the next artifact is a MECHANISM, not a wider regex. Corollary: a sweep run by the same faculty that produced the defect inherits the defect — here the narrow reading appeared in three layers (the fixtures, the sweep, and the proof the sweep was exhaustive), and the count reconciliation is cheap precisely because it does not depend on that faculty (CHIP-VINC-NEUTRO round 5 field finding)
 2026-07-28 · §11 (new subsection) · ratified · GATE CUSTODY, two failures in one round (CHIP-ANCHORS-3 round 3, findings 6+8). (a) PERSISTENCE IS THE ORCHESTRATOR'S STEP, never delegated to the seat: a brief telling the seat to write its own verdict persists nothing and fails differently per side — the cold Opus seat has no Write BY CONSTRUCTION (same property that makes it a reading seat) and the Sol sandbox refuses outright (`patch rejected: writing is blocked by read-only sandbox`); the orchestrator pastes verbatim in the same act the verdict arrives, before analysis, and a refused `apply_patch` is RECOVERABLE from the rollout (strip the `+` prefix — "208 lines, zero unprefixed lines" is checkable, "transcribed" is not). Residual risk is OMISSION, unfalsifiable from the artifact, which is why the paste comes first. (b) `git status --porcelain .mnfs/<pack>` CLEAN belongs in the gate brief: the chip ran six commits with EVIDENCE.md, dispatches/ and six p6-*.patch UNTRACKED (`git check-ignore` exits 1 — omission, not a rule), and the seat reads the pack FROM DISK so nothing in the review surfaces it; for six commits both gate verdicts existed only inside a DISPOSABLE worktree. The hub checks the same before teardown — a merge is not proof, it carries tracked files only
 2026-07-28 · §11 (new subsection) · ratified · AN AUTOMATED GATE MUST NAME THE TREE IT MEASURED. Second occurrence in one session of the Stop hook reporting `CLOSED claimed but no evidence pack exists in this worktree (.mnfs/**/_chip-*/EVIDENCE.md)` against a tree that is not the hub's checkout: the primary carries 15 `_chip-*/EVIDENCE.md` and each in-flight chip carries its own on its branch, while `.claude/worktrees/epic-lehmann-4ffbad/.mnfs/` holds MIS-001..004 and no MIS-006 pack at all. BOTH halves of the accusation were false — no `CLOSED` was sent either (the token appeared inside ORDERS to chips). Binds: an automated verdict about repo state prints the absolute path and tip SHA it measured, in the same message as the verdict; without both it is `unknown`, not `fail`, and does not license a human-visible accusation. Reader re-measures in the NAMED checkout before acting. The cost is not the wasted check but that an alarm wrong twice trains its reader to skip the third — the hub named this trigger on the first occurrence and this is the second
+2026-07-28 · §2 · corrected · the profile printed the COPYABLE line `GOCACHE=.gocache` three times (L0, L1, and the §7 pre-pass), the first of them three lines above the rule requiring an ABSOLUTE path. A chip copied it and got an 83-byte EXIT 1 with zero `=== RUN` — the sixth instance of vacuous green, and the only one the doctrine itself handed over. Relative literals removed from all three sites and replaced with a pointer to the rule; the rule now carries both the pwsh and the bash binding, extends to `GOMODCACHE`, and states that this file prints no copyable relative form. A doctrine artifact that hands you the line it forbids is worse than one that says nothing (CHIP-ANCHORS-3 field REPORT on a hub-owned file — the chip measured it instead of working around it in silence)
