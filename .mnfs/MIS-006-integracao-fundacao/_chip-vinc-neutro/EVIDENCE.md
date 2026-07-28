@@ -584,6 +584,25 @@ Go in this write-set), so it names the site, the invariant, and the failure mode
 | 4 | **Dual gate, OPUS side** (commits `fa6ca3a2` + `7a343fea`) | `harness:gate-reviewer` subagent, **opus**, read-only seat (Read/Grep/Glob; no Bash, no Write) | Agent tool, synchronous, frozen prompt read from disk | prompt `evidence/PROMPT-gate-vincneutro-opus.md` · verdict `evidence/REVIEW-gate-vincneutro-opus.md` | **REFUTED** — 9 PASS, 2 NOT-PROVEN (both seat limits), 4 findings. Three fixed in `394c83c`; the fourth is the standing escalation. |
 | 5 | **Re-gate of the fixes, GPT side** (commit `394c83c`) | `gpt-5.6-sol` / `medium` | OS-process, stdin closed, `--sandbox read-only` | prompt `evidence/PROMPT-gate-vincneutro-rev3.md` · verdict `evidence/REVIEW-gate-vincneutro-rev3.md` (`.last.md` 2218 B, non-zero, copied verbatim) | **REFUTED** — **V10 FAIL**. Caught what the Opus side explicitly cleared: `providerDisplayName` was lossy, colliding two registrable provider codes onto one name. Both findings accepted and fixed. |
 | 6 | **Re-gate of the fixes, OPUS side** (commit `394c83c`) | cold Opus subagent, read-only seat (no Bash / Edit / Write) | Agent tool, background, same frozen prompt as row 5 | verdict `evidence/REVIEW-gate-vincneutro-opus-rev2.md` — **transcribed, not captured: the task `.output` artifact came back 0 bytes** | **REFUTED** — 8 PASS, 3 NOT-PROVEN (all seat limits: no Bash, no EVIDENCE.md), 4 findings, all four verified independently and fixed. Its `V10: PASS` is **wrong** — it reviewed the pre-injectivity function and explicitly cleared the collision row 5 found. |
+| 7 | **Round 5 delta gate, GPT side** (range `394c83c..3915f33b`) | `gpt-5.6-sol` / `medium` | OS-process, stdin closed, `--sandbox read-only`, `-o` straight into `evidence/` | prompt `evidence/PROMPT-gate-round5-delta-sol.md` · verdict `evidence/REVIEW-gate-vincneutro-sol-rev4.md` · log `evidence/agent__gate-r5-sol.log` | *(row written at dispatch time — outcome filed on return)* |
+| 8 | **Round 5 delta gate, OPUS side** (same range) | `harness:gate-reviewer` subagent, **opus**, read-only seat (Read/Grep/Glob; no Bash, no Write) | Agent tool, background, frozen prompt read from disk | prompt `evidence/PROMPT-gate-round5-delta.md` · verdict `evidence/REVIEW-gate-vincneutro-opus-rev3.md` — **will be transcribed**, the seat has no Write by construction | *(row written at dispatch time — outcome filed on return)* |
+
+**Round 5 is a DELTA round, not a fifth of the same** (hub ruling). Scope is the code no reviewer
+has read: the round-4 fixes (`ebb309ac`) and the fixture sweep (`3915f33b`). Two seat-specific
+instructions, both in the frozen prompts:
+
+- The Opus prompt **quotes the previous Opus round's `V10: PASS` verbatim, with the reason it was
+  refuted** (`registry.go` dedupes provider codes by exact string equality, so `amazon_marketplace`
+  and `amazon-marketplace` coexist), so it cannot be reaffirmed by habit.
+- The Sol prompt has **V5 and V11 removed from its scope**, with the reason stated in it: both were
+  discharged by measurement from a seat that ran the commands, and a reading seat that answers
+  "could not run it" has found nothing and burned a round (§11).
+
+**Range extended from the hub's `394c83c..ebb309ac` to `394c83c..3915f33b`, declared to the hub
+before any verdict returned.** The hub named the first because it was HEAD at ruling time; the sweep
+landed afterwards and carries a new test plus two fixture annotations. Sending reviewers to a range
+that excludes the one commit nobody but the author has read would hand them the reviewed part and
+hide the new part.
 
 Artifacts are copied **into the repo** under `evidence/`, not left in the session scratchpad — the
 scratchpad is temp-dir and does not survive. Every `.last.md` was checked non-zero before being
