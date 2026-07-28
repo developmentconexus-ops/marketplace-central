@@ -298,3 +298,35 @@ features não compilam sem os tipos novos).
 - Drift de contrato a corrigir no dispatch: F-02 cita GET/PUT `/tenants/{tenant_id}/active-source`,
   mas o endpoint LANDADO por M-02 é `GET/PUT /config/active-source` (single-tenant, tenant fixo
   server-side; OpenAPI :3207/:3230 + sdk-runtime activeSource.ts). O chip consome o landado.
+
+## Correção do hub D-122 (2026-07-28) — briefs desatualizados, verificados no repo
+
+Este milestone é de D-120. O repo andou. Três afirmações acima **não são mais verdade em
+`5441fe18`**, e ficam corrigidas aqui em vez de anotadas (R-25) — quem despacha consome esta seção,
+não o brief original.
+
+- **F-04, predicado impossível.** O EARS pede `rule_matched=exact_ean_unique` **E** `actor=system`.
+  A CHECK de `migrations/0082_product_link_decisions.sql:54` é
+  `CHECK (actor <> 'system' OR rule_matched = 'concordant_codprod_ean')` — ator `system` só admite
+  `concordant_codprod_ean`. O brief é da política D-120; **D-121 estreitou** (só CODPROD+EAN
+  concordantes auto-aprovam) e o brief não acompanhou.
+- **F-04, campo fora do wire.** `rule_matched` não existe em `contracts/marketplace-central.openapi.yaml`
+  nem em `packages/sdk-runtime/src/`. Vive só no DB e num read per-link
+  (`link_candidate_repo.go:411 ListDecisionsForLink`) que rota nenhuma expõe. **O caminho que existe**
+  custa zero backend: a auto-aprovação grava a auditoria com
+  `ActorType: "system", ActorID: "auto_linker"` (`resolution_service.go:280`) e
+  `item.audit[].actor.actor_type` já está no wire. Predicado do badge = a entrada de auditoria que
+  resolveu tem `actor_type === "system"`.
+- **F-02 já está descarregado.** `packages/web-query/src/activeSource.ts` e
+  `pages/integracoes/IntegracoesPage.tsx:297-346` já implementam active-source do DB sobre
+  `GET/PUT /config/active-source`. A decisão de operador D-120 acima descreve uma regressão **já
+  corrigida**; o chip da onda 2 **verifica e declara**, não reconstrói.
+- **Blocker de F-03 resolvido.** "endpoint exato de chain-read fica a definir na implementação" está
+  fechado: `GET /erp/imports/{id}/chain` landou no CHIP-ANCHORS-2 com OpenAPI e SDK
+  (`getErpImportChain`, `sdk-runtime/src/index.ts:1901`). Falta o **consumo no FE**, que é o F-01.
+- **Ponteiro de linha podre:** F-04 cita `QueueRow.tsx:155` como o padrão de pill; hoje `:155` é o
+  comentário do ranking ADR-17 e os pills estão em `:20-38`. Verifique por string, nunca por linha.
+
+**D-E fatia este milestone por TELA, não por camada** (ver `DECISOES-D122-anchors-telas.md`):
+`/vinculos` (F-04 + F-05) = CHIP-VINC-NEUTRO; `/importacoes` + `/integracoes` (F-01 + F-03) =
+CHIP-IMPORT-CHAIN. Os packs são a autoridade de dispatch; este arquivo é o contexto deles.
