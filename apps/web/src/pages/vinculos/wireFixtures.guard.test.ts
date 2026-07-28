@@ -3,7 +3,12 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { KNOWN_IDENTITY_ANCHORS, MERCADO_LIVRE_SUPPLIED_ANCHORS } from "./wireFixtures";
+import {
+  KNOWN_IDENTITY_ANCHORS,
+  MARCA_UNAVAILABLE_DETAIL,
+  MERCADO_LIVRE_SUPPLIED_ANCHORS,
+  wireCandidate,
+} from "./wireFixtures";
 
 /**
  * A divergence detector for the seam that has no compiler.
@@ -190,5 +195,51 @@ describe("wireFixtures vocabulary vs the Go source it mirrors", () => {
     // anchor mercado_livre does NOT supply is the one every one of its
     // candidates carries as UNAVAILABLE.
     expect(declared).not.toContain("marca");
+  });
+});
+
+/**
+ * MUST-FAIL arms for the producibility mechanism itself.
+ *
+ * The guard above proves the VOCABULARY still mirrors Go. These two prove the
+ * CONSTRUCTOR rejects what the generator cannot emit — a distinct claim, and the
+ * one round 6 refuted: `wireCandidate` documented itself as making an impossible
+ * candidate unwriteable while validating only the score triple, so a
+ * `(exact_ean, ACCEPT, ean)` fixture and seven undeclared-provider fixtures went
+ * through it unchallenged.
+ *
+ * Both arms were RED before the tuple table landed and are GREEN after. A guard
+ * whose must-fail was never run red is an assertion about a guard, not a guard.
+ */
+describe("wireCandidate rejects what generation_service.go cannot emit", () => {
+  it("MUST-FAIL 1 — ACCEPT exists only as (exact_sku, seller_sku)", () => {
+    // buildConcordantCandidate is the ONLY non-test site assigning
+    // LinkCandidateMatchStatusAccept (generation_service.go:505), and it builds
+    // its candidate at :491 with StateExactSKU / MatchInputSellerSKU. The ACCEPT
+    // branch at :503-505 touches confidence/band/status only, so no ACCEPT can
+    // carry any other state or match_input.
+    expect(() =>
+      wireCandidate({
+        state: "exact_ean",
+        match_input: "ean",
+        match_status: "ACCEPT",
+        confidence: 95,
+        confidence_band: "ALTA",
+        reasons: [
+          { anchor: "ean", direction: "FOR", detail: "EAN idêntico" },
+          { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
+          { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
+        ],
+      }),
+    ).toThrow(/no producing site emits/);
+  });
+
+  it("MUST-FAIL 2 — a provider with no capability declaration is not producible", () => {
+    // resolveIdentityAnchors ABORTS generation when a provider's declaration
+    // does not resolve (generation_service.go:149-169), and this tree holds
+    // exactly one declaration (mercado_livre, capability_adapter.go:90). So a
+    // `shopee` candidate is not a wire row here at all.
+    expect(() => wireCandidate({ provider_code: "shopee" })).toThrow(/driftCandidate/);
+    expect(() => wireCandidate({ provider_code: "shopee" })).toThrow(/declares no marketplace capability/);
   });
 });

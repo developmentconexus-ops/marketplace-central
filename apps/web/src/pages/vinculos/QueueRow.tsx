@@ -227,7 +227,13 @@ const incomparableSideLabels: Record<ProductLinkReasonSide, string> = {
  */
 export function reasonSideLabel(reason: ProductLinkReason): string | undefined {
   if (reason.direction !== "INCOMPARABLE") return undefined;
-  return reason.side ? incomparableSideLabels[reason.side] : undefined;
+  // `?? reason.side` is the fallback every sibling map already has — bandLabels
+  // (:60), directionLabels (:292), anchorShortLabels (:300), the ranking map
+  // (:356). This was the one member that did not, so a `side` the SDK has not
+  // been regenerated for rendered as NOTHING: the operator is not told the
+  // datum exists. Unknown falls through verbatim — never hidden, never renamed
+  // into something the wire didn't say.
+  return reason.side ? (incomparableSideLabels[reason.side] ?? reason.side) : undefined;
 }
 
 /**

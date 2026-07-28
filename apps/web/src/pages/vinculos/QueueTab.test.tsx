@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { ProductLinkCandidateItem } from "@marketplace-central/sdk-runtime";
+import type { ProductLinkCandidateItem, ProductLinkReason } from "@marketplace-central/sdk-runtime";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -28,6 +28,18 @@ vi.mock("../../app/ClientContext", () => ({
 // A deliberately impossible shape goes through `driftCandidate`, which requires
 // the reason to be written down.
 const candidate = wireCandidate;
+
+// driftCandidate case 2, shared by the provider-display tests below. Every
+// provider_code other than `mercado_livre` is in this class: this tree holds
+// exactly one capability declaration (capability_adapter.go:90), and
+// resolveIdentityAnchors ABORTS generation when a declaration does not resolve
+// (generation_service.go:149-169) - so an undeclared provider emits no candidate
+// at all, rather than one with defaults. The assertion is about how the SCREEN
+// renders a provider_code it does not know, which is what the operator sees the
+// day a second marketplace lands; the row itself is not a wire row here.
+const NO_DECLARATION_HERE =
+  "no declaration here: this provider_code has no capability adapter in this tree, so generation aborts " +
+  "for it (generation_service.go:149-169). The assertion is about the provider column on screen.";
 
 function renderTab(initialEntries: string[] = ["/"]) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -86,6 +98,13 @@ describe("QueueTab", () => {
           provider_item_id: "MLB3",
           internal_product_id: 333,
           state: "conflict",
+          // Found by the tuple table, by no reviewer in six rounds: this row
+          // overrode `state` to `conflict` and INHERITED `match_input: "title"`
+          // from the default. No conflict site can produce that pairing —
+          // buildConflictCandidates (:329-333) and buildCollisionCandidates
+          // (:360-362) both set match_input to seller_sku or ean, because the
+          // conflict IS between those two anchors. `title` never conflicts.
+          match_input: "seller_sku",
           confidence: 20,
           confidence_band: "BAIXA",
           reasons: [
@@ -382,6 +401,40 @@ describe("QueueTab", () => {
     expect(screen.getByText("ean (falta nos dois lados): anúncio e produto ERP sem ean")).toBeInTheDocument();
   });
 
+  it("MUST-FAIL 3 — an INCOMPARABLE `side` outside the SDK union renders VERBATIM", async () => {
+    // The whole `reasonSideLabel` family falls back to the wire word when the
+    // wire says something the FE map does not know: bandLabels `?? band`
+    // (QueueRow.tsx:60), directionLabels `?? direction` (:292), anchorShortLabels
+    // `?? anchor` (:300), the ranking map `?? UNKNOWN_DIRECTION_RANK` (:356).
+    // `reasonSideLabel` was the one member that returned `undefined` instead, so
+    // a `side` the SDK has not been regenerated for DISAPPEARED from the chip —
+    // the operator reads "SKU" and is not told the value exists. Drift, silent,
+    // type-correct: the exact class this chip exists to close.
+    listProductLinkCandidates.mockResolvedValue({
+      items: [
+        driftCandidate("wire drift: the API ships a fourth `side` member before the SDK is regenerated", {
+          candidate_id: "cand_drift_side",
+          provider_item_id: "MLB_DRIFT_SIDE",
+          reasons: [
+            {
+              anchor: "seller_sku",
+              direction: "INCOMPARABLE",
+              side: "fornecedor" as ProductLinkReason["side"],
+              detail: "âncora sem correspondência",
+            },
+            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
+          ],
+        }),
+      ],
+    });
+
+    renderTab();
+
+    const row = await screen.findByTestId("queue-row");
+    const chips = within(row).getAllByTestId("motivo-chip");
+    expect(chips[0]).toHaveTextContent("? SKU (fornecedor)");
+  });
+
   it("renders an INCOMPARABLE with no `side` on the wire without inventing one", async () => {
     // Real path: classifyProviderIdentityAnchor's `!readable` branch
     // (generation_service.go:711) emits INCOMPARABLE with an EMPTY side, which
@@ -489,7 +542,7 @@ describe("QueueTab", () => {
   it("typesets an unmapped provider without ever collapsing two distinct codes onto one name", async () => {
     listProductLinkCandidates.mockResolvedValue({
       items: [
-        candidate({
+        driftCandidate(NO_DECLARATION_HERE, {
           candidate_id: "cand_1",
           provider_item_id: "SHP1",
           // A provider with no entry in the display-name map. Today only
@@ -503,14 +556,14 @@ describe("QueueTab", () => {
         // identically. `registry.go:100-114` dedupes provider codes by exact
         // string equality, so both can be registered at once — and then the
         // operator cannot tell whose listing they are looking at.
-        candidate({
+        driftCandidate(NO_DECLARATION_HERE, {
           candidate_id: "cand_2",
           provider_item_id: "AMZ1",
           provider_code: "amazon_marketplace",
           internal_product_id: 222,
           internal_product_name: "Parafuso B",
         }),
-        candidate({
+        driftCandidate(NO_DECLARATION_HERE, {
           candidate_id: "cand_3",
           provider_item_id: "AMZ2",
           provider_code: "amazon-marketplace",
@@ -549,10 +602,13 @@ describe("QueueTab", () => {
             internal_product_id: 111,
             // 95/ALTA is assigned at exactly one site — buildConcordantCandidate
             // (:503-505) — and only on the ACCEPT path, so the band cannot be
-            // raised without the status that earns it.
-            state: "exact_ean",
+            // raised without the status that earns it. That same site builds its
+            // candidate at :491 with StateExactSKU / MatchInputSellerSKU, so ACCEPT
+            // carries those two and no others; this fixture said `exact_ean`/`ean`
+            // for five rounds because the guard only checked the score triple.
+            state: "exact_sku",
             match_status: "ACCEPT",
-            match_input: "ean",
+            match_input: "seller_sku",
             confidence: 95,
             confidence_band: "ALTA",
             reasons: [
@@ -698,14 +754,20 @@ describe("QueueTab", () => {
         candidate({
           candidate_id: "cand_accept",
           provider_item_id: "MLB_ACCEPT",
-          state: "exact_ean",
+          // ACCEPT exists only as (exact_sku, seller_sku) — buildConcordantCandidate
+          // :491 + :505. The "CODPROD + EAN" this test asserts does not come from
+          // match_input: statusDecidingAnchors.ACCEPT (QueueRow.tsx:175) ignores it
+          // and names both anchors, because corroboration by BOTH is what ACCEPT
+          // means. So the assertion is unchanged and the row is now producible.
+          state: "exact_sku",
           match_status: "ACCEPT",
-          match_input: "ean",
-          match_value: "7890000000001",
+          match_input: "seller_sku",
+          match_value: "CODPROD-991",
           confidence: 95,
           confidence_band: "ALTA",
           reasons: [
-            { anchor: "ean", direction: "FOR", detail: "EAN idêntico" },
+            { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
+            { anchor: "ean", direction: "FOR", detail: "ean corrobora o mesmo codprod (unproved)" },
             { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
           ],
         }),
@@ -922,10 +984,10 @@ describe("QueueTab", () => {
   it("does not let two provider codes collapse onto one name through whitespace", async () => {
     listProductLinkCandidates.mockResolvedValue({
       items: [
-        candidate({ candidate_id: "cand_a", provider_item_id: "MLB_A", provider_code: "amazon_marketplace" }),
-        candidate({ candidate_id: "cand_b", provider_item_id: "MLB_B", provider_code: "amazon__marketplace" }),
-        candidate({ candidate_id: "cand_c", provider_item_id: "MLB_C", provider_code: "_amazon" }),
-        candidate({ candidate_id: "cand_d", provider_item_id: "MLB_D", provider_code: "amazon" }),
+        driftCandidate(NO_DECLARATION_HERE, { candidate_id: "cand_a", provider_item_id: "MLB_A", provider_code: "amazon_marketplace" }),
+        driftCandidate(NO_DECLARATION_HERE, { candidate_id: "cand_b", provider_item_id: "MLB_B", provider_code: "amazon__marketplace" }),
+        driftCandidate(NO_DECLARATION_HERE, { candidate_id: "cand_c", provider_item_id: "MLB_C", provider_code: "_amazon" }),
+        driftCandidate(NO_DECLARATION_HERE, { candidate_id: "cand_d", provider_item_id: "MLB_D", provider_code: "amazon" }),
       ],
     });
 
