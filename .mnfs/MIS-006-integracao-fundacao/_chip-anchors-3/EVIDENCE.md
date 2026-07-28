@@ -134,8 +134,11 @@ As duas metades são falsas, verificadas no código por mim antes de qualquer co
 - "never through the product" — `:643` `case product == nil || productValue == "":` põe em
   `SideERP`, e `product == nil` **é caminho de produção**: `generation_service.go:216`
   `applyUnresolvedScore(&unresolved, newProviderIdentityAnchorComparison(snapshot, identityAnchors, nil))`.
-  Qualquer anúncio cujo seller_sku, EAN e título não casem nada emite `seller_sku`/`INCOMPARABLE`/
-  `side=erp` hoje, em produção.
+  Um anúncio que **traga** um `seller_sku` não vazio e cujo seller_sku, EAN e título não casem nada
+  emite `seller_sku`/`INCOMPARABLE`/`side=erp` hoje, em produção. Com `seller_sku` vazio o ramo é
+  outro — `case listingValue == "":` (`:645-647`) → `SideProvider` — e a frase não o cobre.
+  (Estreitado na reconciliação da rodada 4: dizia "Qualquer anúncio", com maiúscula, e por isso
+  escapou do padrão case-sensitive da varredura da rodada 3.)
 
 Efeito líquido antes do conserto: **um caso de teste foi apagado justificado por uma frase que o
 código refuta.** **Um chip cujo CORR-4 existe para apagar um universal falso tinha escrito um
@@ -301,9 +304,12 @@ Os dois lados do gate chegaram independentemente ao mesmo grau. **Um** call site
 endereço de local, nunca nil. Função não exportada, sem despacho dinâmico.
 
 Varredura da rodada 3 sobre esta frase: ela dizia "sem segundo caminho", e isso é falso lido ao pé
-da letra — `grep buildConcordantCandidate apps/server_core` devolve **dois** call sites, `:303`
-(produção, `&product`) e `generation_service_test.go:568` (teste, `nil` de propósito). O segundo é
-o guard, não um caminho de produção; a frase agora diz o que se sustenta.
+da letra — `buildConcordantCandidate` tem **dois** call sites, `:303` (produção, `&product`) e
+`generation_service_test.go:580` (teste, `nil` de propósito), além da definição em `:489` e de duas
+menções em comentário (`generation_service.go:231`, `auto_link_policy_test.go:290`). O segundo call
+site é o guard, não um caminho de produção; a frase agora diz o que se sustenta. Linha reconferida
+na reconciliação da rodada 4 — era `:568` e virou `:580` por causa dos meus próprios comentários em
+`590efdc8`.
 
 O guard **tem** teste direto: `TestConcordantCandidateDoesNotDerefNilProduct` chama
 `buildConcordantCandidate(...)` sem service, com `newProviderIdentityAnchorComparison(snapshot, nil, nil)`.
@@ -457,7 +463,9 @@ nenhum. Isso não é atenuante do meu lado — é FINDING 4 sobre a forma do gat
 Registro porque um gate REFUTED cuja cobertura fica implícita vira alegação inflada ao contrário.
 
 - **Execução de qualquer teste.** O lado A é fisicamente read-only sem Bash; o lado B teve o
-  diretório de trabalho do Go negado. Todo `PASS (derivado)` do lado A é hand-trace de semântica
+  diretório de trabalho do Go negado. Os **quatro** `PASS (derived)` do lado A (contagem por
+  `grep -o "PASS ([a-z]*)" dispatches/p6-opus-gate-r1.md`, e o round 3 não emitiu nenhum) são
+  hand-trace de semântica
   determinística de Go/SQL mais leitura do fonte, cruzado com stdout colado — não é prova
   executada. A5, A6, os 9 runs do A7, A10, a suíte D-121, os 107 pacotes e o `vitest` 4/4
   descansam todos em saída que **eu** produzi.
@@ -784,7 +792,15 @@ que este teste acrescenta sobre ele (o `Detail`), em vez de reivindicar exclusiv
 **REPORT ao hub (não é meu, não está no meu diff):** os quatro universais pré-existentes
 (`generation_service.go:85-89`, `:697-699`, `:858-861`, `generation_service_test.go:222-224`,
 `:1636-1637`). São da mesma classe e são reais, mas consertá-los é ampliar escopo num arquivo cujo
-texto eu não escrevi. Ficam nomeados com `file:line` para o hub decidir.
+texto eu não escrevi.
+
+**DONO: o hub** (RULING 2). Vão para um commit dele na `main` **depois** do meu merge, e estão
+**FORA do escopo do veredito** do round 4 — declarado nessa forma no brief dos dois assentos, para
+que um assento frio não os leia como achado aberto. O hub mediu dois deles antes de assumir e
+confirmou as duas refutações: em `:85-89` o `DELETE` de `link_candidate_repo.go:38-48` é escopado às
+identidades fornecidas, e o que fica no lugar da frase falsa é pior — anúncio fora do cap **retém o
+candidato antigo**, em silêncio, e isso virou tarefa de produto na fila dele; em `:697-699` a
+promessa incondicional é condicional no código. Os dois são defeito de **prosa**, não de código.
 
 ### SWEEP do autor sobre o próprio pack — obrigação imposta pelo hub
 
@@ -802,7 +818,7 @@ escopo que a própria frase declara. **Quatro eram minhas e carregavam a classe*
 |---|---|---|---|
 | A2 "efeito líquido" | "a **única** asserção de `seller_sku`/`side=erp` da suíte tinha sido removida" | Falso pelo mesmo `TestCase8` — era o universal do `:642` vestido de prosa | **Corrigido no lugar**, com a anterioridade do Case 8 provada por `grep MLB-FX8` |
 | A2 conserto | "cobertura **restaurada** como teste separado" | Não foi restauração: a direção nunca deixou de ser coberta | **Corrigido**; agora diz corroboração + o `Detail` que o Case 8 não assere |
-| A11 | "sem segundo caminho" | `grep buildConcordantCandidate apps/server_core` → **2** call sites: `:303` (produção) e `generation_service_test.go:568` (teste, nil de propósito) | **Estreitado** para "call site de produção" |
+| A11 | "sem segundo caminho" | `buildConcordantCandidate` → **2** call sites: `:303` (produção) e `generation_service_test.go:580` (teste, nil de propósito) | **Estreitado** para "call site de produção" |
 | A2-R1 | "agora cai **sempre** que o anúncio traz um `seller_sku`" | Só com produto resolvido; sem produto o ramo é `case product == nil` → `INCOMPARABLE`/`erp`, não `UNAVAILABLE` | **Estreitado**, com o `switch` citado |
 
 Duas outras frases minhas foram conferidas e **ficam**: "põe em `SideProvider`, nunca `SideERP`" é
@@ -813,6 +829,73 @@ statement_timestamp` = **0**.
 O que essa varredura ensina, e que eu não teria aprendido consertando sítios: **das quatro, duas
 eram a MESMA alegação do código, escrita em português no pack.** Varrer só o código teria deixado a
 falsidade viva no documento que o gate lê.
+
+### Reconciliação de contagem da varredura — exigida pelo RULING 1, item 3
+
+A pergunta do hub é a certa: **71 de quantos?** Um número sem população, sem o padrão e sem o
+momento não é auditável. As duas contagens, com o buraco que elas revelam.
+
+**População.** Os cinco arquivos do pack que **eu** escrevi — o resto de `dispatches/` é retorno de
+worker ou de assento, texto que não é meu para varrer:
+
+| Arquivo | Linhas | P1 como rodado (case-sensitive) | P1 + maiúscula | P1 + maiúscula + sem acento | P2 (tokens extras pt/en) |
+|---|---|---|---|---|---|
+| `EVIDENCE.md` | 916 | 103 | 116 | 120 | 136 |
+| `dispatches/p6-gate-brief.md` | 131 | 16 | 16 | 16 | 19 |
+| `dispatches/p6-gate-brief-r2.md` | 136 | 14 | 14 | 14 | 14 |
+| `dispatches/p6-gate-brief-r3.md` | 143 | 16 | 16 | 16 | 17 |
+| `dispatches/a2-assertion-before-after.md` | 72 | 4 | 4 | 4 | 4 |
+| **TOTAL** | **1398** | **153** | **166** | **170** | **190** |
+
+Ocorrências do token (não linhas): **220** em P1, **254** em P2.
+
+**Onde foram os 71.** A varredura da rodada 3 rodou sobre o `EVIDENCE.md` de então, 745 linhas,
+antes de eu escrever as seções da rodada 3. Essa região ainda existe e ainda são exatamente 745
+linhas: hoje ela dá **65** hits com o mesmo padrão. 71 → 65 porque **os consertos da própria
+varredura apagaram seis linhas de hit** — a varredura derruba o próprio número, que é o
+comportamento esperado. Da linha 746 ao fim (as seções da rodada 3, que citam verbatim cada
+universal ofensivo) vêm mais 38. 65 + 38 = 103, o total de hoje do `EVIDENCE.md` em P1.
+Consequência de método: **contagem de varredura só significa alguma coisa carimbada com arquivo,
+faixa de linhas, padrão e commit.** A minha estava carimbada com um número solto.
+
+**O padrão cobria o português — mas não cobria MAIÚSCULA.** O padrão registrado já trazia
+`nunca|sempre|apenas|todo |nenhum|única|único|…` ao lado de `never|always|only|…`, então a metade
+pt estava dentro da população (foi ela que pegou as duas alegações em português). O buraco era
+outro e era meu: **rodei `grep -E` sem `-i`**. Diferença medida: **13 linhas** só no `EVIDENCE.md`,
+mais 4 por acento e 20 por token que eu não tinha listado.
+
+**Triagem das 48 linhas de delta, e o que mudou por causa delas:**
+
+| Bucket | N | Triagem | Ação |
+|---|---|---|---|
+| Só maiúscula | 24 | 10 são imperativo dos briefs para o assento ("Only this brief binds you", "NEVER pass `-mod=mod`") — instrução, não alegação sobre o código. 2 citam o universal falso já tachado. 9 são alegação minha verdadeira e verificável (`Nunca houve AGREEMENT`, `Nenhum dos dois tem git`, `Nenhuma mutação foi no-op`). **3 exigiram ação** | ver abaixo |
+| Só acento | 4 | Todas prosa de cabeçalho/seção (`não pôde`, `Unico criterio` no yaml) | nenhuma |
+| Só token novo | 20 | 13 são `zero` como número contado (`zero hits`, `zero migrações`, `zero CR`) — fato de `grep`, não universal. 5 são `ninguém rodou`, que é honest-unknown declarado como tal. 2 são `exclusividade` já corrigida | nenhuma |
+
+As três que exigiram ação, todas minhas, todas verificadas por STRING antes de mexer:
+
+1. **`EVIDENCE.md:137`** — *"**Qualquer** anúncio cujo seller_sku, EAN e título não casem nada emite
+   `seller_sku`/`INCOMPARABLE`/`side=erp`"*. Falso na borda: com `seller_sku` vazio o ramo é
+   `case listingValue == "":` (`:645-647`) → `SideProvider`. **Estreitado** para "anúncio que traga
+   um `seller_sku` não vazio", com o outro ramo nomeado. É irmã exata da frase A2-R1 que a rodada 3
+   já tinha estreitado — escapou porque começa a sentença, com `Q` maiúsculo.
+2. **`EVIDENCE.md:460`** — *"**Todo** `PASS (derivado)` do lado A é hand-trace"*. Universal sobre
+   nota alheia. **Estreitado** para os **quatro** `PASS (derived)`, com a contagem e o comando que a
+   produz, e com o registro de que o round 3 não emitiu nenhum.
+3. **`EVIDENCE.md:305` e `:805`** — citação `generation_service_test.go:568` **envelhecida para
+   `:580`** pelos meus próprios comentários em `590efdc8`. Reconferida por string e corrigida, com
+   os dois call sites, a definição e as duas menções em comentário separados. É a prova de que
+   `file:line` de teste dentro do pack apodrece a cada commit de comentário do próprio chip.
+
+**`EVIDENCE.md:335` conferida e MANTIDA:** *"Inalcançável hoje"* para o cenário nil-product da
+concordante. A enumeração é total — `buildConcordantCandidate` tem dois call sites, o de produção
+(`:303`) passa `&product`, endereço de local; o outro é o guard. A frase se sustenta, e a distinção
+com o comentário do teste (que diz "reachability NOT proven", mais fraca) é deliberada: aqui eu
+afirmo a enumeração, lá eu não afirmo alcance.
+
+**Pack limpo (RULING 1, item 2):** `git status --porcelain .mnfs/MIS-006-integracao-fundacao/_chip-anchors-3`
+sai **vazio** em `de4e940c` e sai vazio de novo no tip congelado deste round — nenhum arquivo do
+pack fora do git.
 
 ### Ladder depois destes consertos (`0264ba84` + delta de comentários)
 
