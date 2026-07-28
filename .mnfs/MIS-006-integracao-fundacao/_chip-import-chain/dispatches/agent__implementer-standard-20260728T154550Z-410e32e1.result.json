@@ -1,0 +1,24 @@
+{
+  "dispatchId": "implementer-standard-20260728T154550Z-410e32e1",
+  "role": "implementer-standard",
+  "model": "gpt-5.6-luna",
+  "effort": "high",
+  "sandbox": "workspace-write",
+  "codexVersion": "codex-cli 0.144.4",
+  "dispatcherPid": 9388,
+  "startedUtc": "2026-07-28T15:46:03.3563592Z",
+  "endedUtc": "2026-07-28T15:54:52.4037605Z",
+  "exitCode": 0,
+  "promptFile": "C:\\Users\\leandro.theodoro\\Documents\\marketplace-central\\.claude\\worktrees\\sharp-pike-3387c1\\.mnfs\\MIS-006-integracao-fundacao\\_chip-import-chain\\dispatches\\prompt-s1.md",
+  "promptSha256": "e0d3de0306d9ebaf321eedb581098868cb59a551911beccfd0d609abdc087481",
+  "log": ".mnfs\\MIS-006-integracao-fundacao\\_chip-import-chain\\dispatches\\agent__implementer-standard-20260728T154550Z-410e32e1.log",
+  "logSha256": "3dc2046888184586af41ad848c8bba88726e315acdad20ae18b062bf8cc96bfa",
+  "lastMessage": ".mnfs\\MIS-006-integracao-fundacao\\_chip-import-chain\\dispatches\\agent__implementer-standard-20260728T154550Z-410e32e1.last.md",
+  "lastSha256": "c4eefb131da98329ff4ec383d0af9d6305c48cf1e0f3f4bb31a79f2456dd5658",
+  "verdict": "FORM-COMPLETE — merit, truth, adequacy and ambiguity not assessed",
+  "notProven": [
+    "output correctness",
+    "plan adherence",
+    "evidence truth beyond exit code and file hashes"
+  ]
+}

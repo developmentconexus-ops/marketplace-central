@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ErpImportDetail, ErpImportSummary } from "@marketplace-central/sdk-runtime";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ImportacaoSection } from "./ImportacaoSection";
 
@@ -41,9 +42,11 @@ function detail(overrides: Partial<ErpImportDetail>): ErpImportDetail {
 function renderSection() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <QueryClientProvider client={queryClient}>
-      <ImportacaoSection />
-    </QueryClientProvider>,
+    <MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <ImportacaoSection />
+      </QueryClientProvider>
+    </MemoryRouter>,
   );
 }
 
@@ -83,6 +86,7 @@ describe("ImportacaoSection", () => {
     expect(screen.getByText("Rejeitada")).toBeInTheDocument();
     expect(screen.getByText("42")).toBeInTheDocument();
     expect(screen.getByText("3")).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Ver cadeia" })[0]).toHaveAttribute("href", "/importacoes/imp_1");
   });
 
   // A fonte é o que explica por que um campo do espelho está "—": a exportação

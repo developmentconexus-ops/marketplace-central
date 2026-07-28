@@ -3,7 +3,7 @@ import { EmptyState, ErrorState, LoadingState } from "@marketplace-central/ui";
 import { useActiveSourceQuery, useSetActiveSourceMutation } from "@marketplace-central/web-query";
 import { useId, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { useClient } from "../../app/ClientContext";
-import { ImportacaoSection } from "../vinculos/ImportacaoSection";
+import { ImportacaoSection } from "../importacoes/ImportacaoSection";
 import { useErpImportDetail } from "../vinculos/useErpImports";
 import { useErpImportUpload, type ErpImportUploadError } from "./useErpImportUpload";
 

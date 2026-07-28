@@ -18,6 +18,7 @@ import { PrecosRoute } from "../routes/precos";
 import { PedidosRoute } from "../routes/pedidos";
 import { MercadoRoute } from "../routes/mercado";
 import { IntegracoesRoute } from "../routes/integracoes";
+import { ImportacaoDetailRoute, ImportacoesRoute } from "../routes/importacoes";
 
 function CatalogPageWrapper() {
   const client = useClient();
@@ -61,9 +62,11 @@ export function AppRouter() {
           <Route element={<Layout />}>
             {/* Setup and ERP-side screens must render with no marketplace account
                 connected: /integracoes is where the account is connected, and the
-                catalog, stock and import screens read the ERP mirror, which exists
+                catalog, stock and import (/importacoes) screens read the ERP mirror, which exists
                 before any marketplace does. */}
             <Route path="/integracoes" element={<IntegracoesRoute />} />
+            <Route path="/importacoes" element={<ImportacoesRoute />} />
+            <Route path="/importacoes/:importId" element={<ImportacaoDetailRoute />} />
             <Route path="/catalogo" element={<CatalogPageWrapper />} />
             <Route path="/catalogo/produtos/:productId" element={<ProdutoRoute />} />
             <Route path="/protocolos/:protocolId" element={<ProtocoloPage />} />

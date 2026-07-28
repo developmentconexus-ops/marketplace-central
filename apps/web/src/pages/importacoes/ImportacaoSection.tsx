@@ -2,7 +2,8 @@ import type { ErpImportIssue, ErpImportStatus, ErpImportSummary } from "@marketp
 import { EmptyState, ErrorState, LoadingState } from "@marketplace-central/ui";
 import { formatDateTime } from "@marketplace-central/web-query";
 import { useState } from "react";
-import { useErpImportDetail, useErpImportsList } from "./useErpImports";
+import { Link } from "react-router-dom";
+import { useErpImportDetail, useErpImportsList } from "../vinculos/useErpImports";
 
 const statusLabels: Record<ErpImportStatus, string> = {
   COMPLETED: "Concluída",
@@ -134,14 +135,22 @@ function ImportRow({ item }: { item: ErpImportSummary }) {
           <StatusBadge status={item.status} />
           <SourceBadge source={item.source} />
         </div>
-        <button
-          type="button"
-          className="rounded-control border border-border px-2.5 py-1.5 text-xs font-medium text-muted hover:bg-surface-2 hover:text-ink"
-          aria-expanded={expanded}
-          onClick={() => setExpanded((value) => !value)}
-        >
-          {expanded ? "Ocultar detalhes" : "Ver detalhes"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="rounded-control border border-border px-2.5 py-1.5 text-xs font-medium text-muted hover:bg-surface-2 hover:text-ink"
+            aria-expanded={expanded}
+            onClick={() => setExpanded((value) => !value)}
+          >
+            {expanded ? "Ocultar detalhes" : "Ver detalhes"}
+          </button>
+          <Link
+            to={`/importacoes/${item.import_id}`}
+            className="rounded-control border border-border px-2.5 py-1.5 text-xs font-medium text-muted hover:bg-surface-2 hover:text-ink"
+          >
+            Ver cadeia
+          </Link>
+        </div>
       </div>
       <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted sm:grid-cols-4">
         <div>
