@@ -517,6 +517,26 @@ rendered a BOOLEAN summary (`✓ igual` when `match_input === "ean" && match_val
 `internal_reference_code`, falling back to `match_value` on the same EAN condition. The operator
 therefore still reaches the GTIN, in a strictly richer form than the cell that was replaced.
 
+**FINDING-7 — the FE's golden fixtures are coupled to a BACKEND capability declaration, and nothing
+on the FE side can detect it drifting.** Class A of `evidence/V-fixture-producibility-sweep.md`
+proves each golden fixture producible by reading the generator: `KnownIdentityAnchors()` has four
+members, `mercado_livre` declares three, so `marca` arrives UNAVAILABLE and every candidate carries
+that reason. That proof is a **point-in-time read of Go code from a TypeScript test.** If someone
+adds a fifth known anchor, or has `mercado_livre` declare `marca`, every class-A fixture silently
+goes back to non-producible and the golden goes back to gating a fiction — with the FE suite fully
+green, because nothing in `apps/web` imports any of it.
+
+That is the same shape as the defect this chip exists to fix (`QueueRow.tsx:159` enumerated a union
+by string literal: type-correct, and therefore invisible), one layer up: a cross-language coupling
+with no compiler and no test on the seam.
+
+Not fixed here, and deliberately: a contract test that asserts the FE's fixtures against the
+generator's real output would need a Go-side fixture dump or a golden JSON emitted by the backend —
+both are backend seams, outside this chip's write-set, and neither is a rename. **Recommend the hub
+route it as its own slice.** The cheapest honest version is a generator-side test emitting one
+canonical candidate per status to a checked-in JSON, which the FE golden then reads instead of
+hand-writing — moving the coupling from "a comment claims it" to "the build breaks".
+
 ## REQUESTS (to the hub — no edit made)
 
 **REQUEST-1 (optional, no longer blocking) — consider surfacing `rule_matched` on the wire.** V6 is
@@ -782,11 +802,22 @@ generator was read for the scoring fields and not for the finalizing step
 | V10 neutral vocabulary, provider data intact | PASS — and now for a provider the map does not know, which is what the Opus side caught |
 | V11 no collateral damage | PASS |
 
-**Lanes, final.** `tsc` 15 → **12, zero under `pages/vinculos/`**
-(`evidence/L0-tsc-after-round4.txt` — the same 12 as the baseline; this chip neither added nor
-removed one); vitest 62/511 → **63/524** (`evidence/L1-vitest-after-round4.txt`), the +13 over the
-baseline being the regression tests the four gate rounds forced, the last two being the `direction`
-and `confidence_band` wire-drift tests.
+**Lanes, final.** `tsc` **15 → 12, and 3 → 0 under `pages/vinculos/`**
+(`evidence/L0-tsc-baseline.txt` → `evidence/L0-tsc-after-round4.txt`); vitest 62/511 → **63/524**
+(`evidence/L1-vitest-after-round4.txt`), the +13 over the baseline being the regression tests the
+four gate rounds forced, the last two being the `direction` and `confidence_band` wire-drift tests.
+
+> **CORRECTION (R-24), made at the source rather than annotated.** An earlier version of this line
+> read *"the same 12 as the baseline; this chip neither added nor removed one."* That was FALSE.
+> `evidence/L0-tsc-baseline.txt` carries **15** errors, and the 3 under `pages/vinculos/` are inside
+> it — the three `INCOMPARABLE` ones this chip was dispatched to fix. Baseline 15/3 → HEAD 12/0:
+> **this chip removed 3.** The hub's executor seat caught it and also measured `main` at `4852649d`,
+> which still carries all 15 including those 3.
+>
+> The error understated this chip's own contribution, which does not make it less false. It is
+> recorded because of what it would have cost operationally: the hub's post-merge check must expect
+> **15 → 12**, not 12 → 12. Had "12 = 12" been accepted, a 15 read on integrated `main` would have
+> been misread as a regression introduced by this chip.
 
 **P6 status — NOT self-declared discharged.** The earlier `AGREEMENT` in this file was written when
 both gate rounds were `gpt-5.6-sol`; the hub refused it, on two grounds that were both right: there

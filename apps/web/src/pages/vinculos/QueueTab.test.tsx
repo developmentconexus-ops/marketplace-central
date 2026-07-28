@@ -174,6 +174,18 @@ describe("QueueTab", () => {
   //
   // The assertions below are on the RENDERED DOM, never on the internal `shown`
   // array: an assertion about a variable does not prove a screen.
+  // PRODUCIBILITY NOTE for the test below, found by the exhaustive fixture sweep
+  // (evidence/V-fixture-producibility-sweep.md) and stated rather than left
+  // implied: an all-INCOMPARABLE row requires a provider that DECLARES `marca`
+  // as supplied, because `marca` has no case in `identityAnchorValues` and then
+  // classifies INCOMPARABLE (generation_service.go:711). `mercado_livre`
+  // declares only seller_sku/ean/title (capability_adapter.go:90), so for the
+  // one provider with an adapter in this tree `marca` is UNAVAILABLE and a
+  // 100%-INCOMPARABLE row cannot occur. The fixture is producible under a
+  // capability declaration, not under today's only declaration.
+  //
+  // That is why the test immediately after it exists: it drives the SAME defect
+  // from a reason set today's backend really emits.
   it("keeps a motivo on screen for a row whose reasons are ALL INCOMPARABLE (ADR-17)", async () => {
     listProductLinkCandidates.mockResolvedValue({
       items: [
@@ -219,6 +231,64 @@ describe("QueueTab", () => {
     }
   });
 
+  // The V2 defect, driven from a reason set `mercado_livre` REALLY EMITS today —
+  // no hypothetical capability declaration anywhere in it.
+  //
+  // This is verbatim what `applyUnresolvedScore` produces for a listing no
+  // anchor could resolve (generation_service.go:620-628): the two anchors that
+  // found nothing, INCOMPARABLE on the ERP side because no ERP product matched
+  // at all, then the always-declared `marca` arriving UNAVAILABLE because ML
+  // does not supply it. It is the single most common row on this screen.
+  //
+  // Against the old string-literal enumeration the cell showed exactly ONE chip
+  // — "– Marca", the one thing nothing can ever be done about — and buried BOTH
+  // actionable signals behind "+2". That is the same defect as the empty-cell
+  // case, in the form the operator actually meets it: not "no motivo", but "the
+  // only useless motivo, promoted".
+  it("promotes the actionable absences over the permanent one, on a reason set the backend really emits", async () => {
+    listProductLinkCandidates.mockResolvedValue({
+      items: [
+        candidate({
+          candidate_id: "cand_unresolved",
+          provider_item_id: "MLB_UNRES",
+          state: "unresolved",
+          match_status: "NO_CANDIDATE",
+          match_input: "none",
+          confidence: 0,
+          confidence_band: "BAIXA",
+          reasons: [
+            {
+              anchor: "seller_sku",
+              direction: "INCOMPARABLE",
+              side: "erp",
+              detail: "seller_sku sem correspondência",
+            },
+            { anchor: "ean", direction: "INCOMPARABLE", side: "erp", detail: "ean sem correspondência" },
+            { anchor: "marca", direction: "UNAVAILABLE", detail: "provider não fornece a âncora marca" },
+          ],
+        }),
+      ],
+    });
+
+    renderTab();
+
+    const row = await screen.findByTestId("queue-row");
+    const chips = within(row).getAllByTestId("motivo-chip");
+
+    // Two chips, and they are the two the operator can act on.
+    expect(chips).toHaveLength(2);
+    expect(chips[0]).toHaveTextContent("? SKU (falta no ERP)");
+    expect(chips[1]).toHaveTextContent("? EAN (falta no ERP)");
+    for (const chip of chips) {
+      expect(chip).toHaveAttribute("data-direction", "INCOMPARABLE");
+    }
+
+    // The permanent absence is not dropped — it is RANKED, and lives behind the
+    // toggle. Ranking, never filtering.
+    expect(within(row).getByRole("button", { name: "Mostrar todos os 3 motivos" })).toBeInTheDocument();
+    expect(within(row).queryByText("– Marca")).not.toBeInTheDocument();
+  });
+
   it("ranks INCOMPARABLE above UNAVAILABLE without dropping either (ranking, never filtering)", async () => {
     listProductLinkCandidates.mockResolvedValue({
       items: [
@@ -261,6 +331,15 @@ describe("QueueTab", () => {
           candidate_id: "cand_noside",
           provider_item_id: "MLB_NOSIDE",
           internal_product_id: 666,
+          // PRODUCIBILITY: this requires a provider that DECLARES `marca` as
+          // supplied — then `marca` reaches `classifyProviderIdentityAnchor`
+          // with `Supplied: true`, has no case in `identityAnchorValues`, and
+          // classifies INCOMPARABLE with no side (generation_service.go:706-708).
+          // `mercado_livre` declares only seller_sku/ean/title
+          // (capability_adapter.go:90), so for it `marca` arrives UNAVAILABLE
+          // instead. Producible under a capability declaration, not under
+          // today's only one — stated because the fixture otherwise reads as
+          // "this is what the wire sends".
           reasons: [
             { anchor: "marca", direction: "INCOMPARABLE", detail: "não foi possível comparar a âncora marca" },
           ],

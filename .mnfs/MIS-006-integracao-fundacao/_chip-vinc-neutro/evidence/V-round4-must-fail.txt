@@ -162,9 +162,15 @@ LANES AFTER ALL OF THE ABOVE
 ================================================================================
 
   npx --no-install tsc -p apps/web --noEmit    → 12 errors, ZERO under pages/vinculos
-                                                 (evidence/L0-tsc-after-round4.txt; same 12 as
-                                                 the baseline — this chip neither added nor
-                                                 removed one)
+                                                 (evidence/L0-tsc-after-round4.txt)
+
+    CORRECTION (R-24). This line read "same 12 as the baseline — this chip neither added nor
+    removed one". FALSE. evidence/L0-tsc-baseline.txt carries 15 errors, 3 of them under
+    pages/vinculos (the three INCOMPARABLE TS2741/TS7053 this chip exists to fix). The real
+    movement is 15 → 12 and 3 → 0: this chip REMOVED 3. Caught by the hub's executor seat, which
+    also measured main at 4852649d and found all 15 still there. The error understated this
+    chip's own contribution; that does not make it less false, and it would have made the hub
+    read a 15 on integrated main as a regression.
   npx --no-install vitest run                  → 63 files / 524 tests, all green
                                                  (evidence/L1-vitest-after-round4.txt; was
                                                  522/63 at 394c83c, +2 drift tests)
