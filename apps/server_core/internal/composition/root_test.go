@@ -29,6 +29,12 @@ func TestRootRuntimeRegistersERPImportRoutes(t *testing.T) {
 	if recorder.Code == http.StatusNotFound || recorder.Code == http.StatusMethodNotAllowed {
 		t.Fatalf("ERP import route is not mounted: status=%d body=%s", recorder.Code, recorder.Body.String())
 	}
+
+	chainRecorder := httptest.NewRecorder()
+	runtime.Handler.ServeHTTP(chainRecorder, httptest.NewRequest(http.MethodPost, "/erp/imports/missing/chain", nil))
+	if chainRecorder.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("ERP import chain route is not mounted: status=%d body=%s", chainRecorder.Code, chainRecorder.Body.String())
+	}
 }
 
 func TestRootWiresERPImportWithoutRepositoryTenant(t *testing.T) {

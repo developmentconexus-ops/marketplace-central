@@ -4,12 +4,18 @@ package postgres_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
+	"marketplace-central/apps/server_core/internal/modules/erp_import/application"
 	"marketplace-central/apps/server_core/internal/modules/erp_import/domain"
 	"marketplace-central/apps/server_core/internal/modules/erp_import/ports"
+	"marketplace-central/apps/server_core/internal/modules/erp_import/transport"
 	testpostgres "marketplace-central/apps/server_core/internal/testsupport/postgres"
 )
 
@@ -72,6 +78,98 @@ func TestGetImportChainCountsCurrentQueueAcrossInstallations(t *testing.T) {
 	}
 	if got.QueueReadAt.Before(before) || got.QueueReadAt.After(after) {
 		t.Fatalf("queue_read_at=%s outside [%s,%s]", got.QueueReadAt, before, after)
+	}
+}
+
+func TestGetImportChainHTTPIntegration(t *testing.T) {
+	ctx := context.Background()
+	repo, tenant := integrationRepo(t)
+	pool, _ := testpostgres.OpenPool(t, tenant)
+	importID := domain.ImportID("63000000-0000-0000-0000-000000000001")
+	emptyImportID := domain.ImportID("63000000-0000-0000-0000-000000000002")
+
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM sync_state WHERE tenant_id=$1`, tenant)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM product_links WHERE tenant_id=$1`, tenant)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM erp_import_products WHERE tenant_id=$1`, tenant)
+	})
+
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO erp_import_protocols
+			(id, tenant_id, file_sha256, protocol, source, imported_at, status, accepted_count, rejected_count, warning_count)
+		VALUES
+			($1, $2, 'chain-http-hash', '#630-E', 'xlsx', now(), 'COMPLETED', 4, 0, 0),
+			($3, $2, 'chain-http-empty-hash', '#631-E', 'xlsx', now(), 'COMPLETED', 1, 0, 0);
+	`, importID, tenant, emptyImportID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO erp_import_products (tenant_id, protocol_id, codprod, descrprod, custo, stock_physical)
+		VALUES
+			($2, $1, '301', 'Product 301', 1, 0),
+			($2, $1, '302', 'Product 302', 1, 0),
+			($2, $1, '303', 'Product 303', 1, 0),
+			($2, $1, '304', 'Product 304', 1, 0),
+			($2, $3, '399', 'Product 399', 1, 0);
+	`, importID, tenant, emptyImportID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO product_links
+			(tenant_id, installation_id, provider_code, provider_item_id, state, internal_product_id)
+		VALUES
+			($1, 'installation-a', 'mercadolivre', 'item-301', 'resolved', 301),
+			($1, 'installation-a', 'mercadolivre', 'item-302', 'resolved', 302);
+	`, tenant); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO sync_state (tenant_id, installation_id, entity, cursor)
+		VALUES
+			($1, 'installation-a', 'market', '{"pending":["301","302"]}'::jsonb),
+			($1, 'installation-b', 'market', '{"pending":["301","303"]}'::jsonb);
+	`, tenant); err != nil {
+		t.Fatal(err)
+	}
+
+	mux := http.NewServeMux()
+	queries := application.NewQueryService(repo, tenant)
+	transport.NewHandler(nil, queries).Register(mux)
+
+	response := httptest.NewRecorder()
+	mux.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/erp/imports/"+string(importID)+"/chain", nil))
+	if response.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+	}
+	body := response.Body.String()
+	for _, want := range []string{`"protocol":"#630-E"`, `"importados":4`, `"vinculados":2`, `"enfileirados":3`} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("body=%s missing %s", body, want)
+		}
+	}
+	if !strings.Contains(body, `"queue_read_at":"`) {
+		t.Fatalf("body=%s missing queue_read_at", body)
+	}
+	var decoded struct {
+		QueueReadAt string `json:"queue_read_at"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := time.Parse(time.RFC3339, decoded.QueueReadAt); err != nil {
+		t.Fatalf("queue_read_at=%q is not RFC3339: %v", decoded.QueueReadAt, err)
+	}
+
+	missing := httptest.NewRecorder()
+	mux.ServeHTTP(missing, httptest.NewRequest(http.MethodGet, "/erp/imports/63000000-0000-0000-0000-000000000099/chain", nil))
+	if missing.Code != http.StatusNotFound {
+		t.Fatalf("missing status=%d body=%s", missing.Code, missing.Body.String())
+	}
+
+	empty := httptest.NewRecorder()
+	mux.ServeHTTP(empty, httptest.NewRequest(http.MethodGet, "/erp/imports/"+string(emptyImportID)+"/chain", nil))
+	if empty.Code != http.StatusOK || !strings.Contains(empty.Body.String(), `"enfileirados":0`) {
+		t.Fatalf("empty status=%d body=%s, want numeric enfileirados zero", empty.Code, empty.Body.String())
 	}
 }
 

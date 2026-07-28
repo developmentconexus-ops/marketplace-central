@@ -11,6 +11,11 @@ import (
 	"marketplace-central/apps/server_core/internal/modules/erp_import/ports"
 )
 
+// GetImportChain is discovered by type assertion at composition time, so a
+// signature drift here would surface only as a missing capability at request
+// time. Assert it at build time instead.
+var _ ports.ImportChainRepository = (*Repository)(nil)
+
 func (r *Repository) FindByFileSHA256(ctx context.Context, tenantID string, hash domain.FileSHA256) (*domain.ImportReport, error) {
 	report, err := r.report(ctx, tenantID, `SELECT id,protocol,file_sha256,source,imported_at,status,accepted_count,rejected_count,warning_count FROM erp_import_protocols WHERE tenant_id=$1 AND file_sha256=$2`, hash)
 	if errors.Is(err, pgx.ErrNoRows) {

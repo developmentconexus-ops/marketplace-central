@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import type {
   ErpImportConflict,
   ErpImportCreated,
+  ErpImportChain,
   ErpImportDetail,
   ErpImportError,
   ErpImportIssue,
@@ -46,6 +47,13 @@ describe("ERP import SDK contract", () => {
       protocol: summary.protocol,
       status,
     };
+    const chain: ErpImportChain = {
+      protocol: "#101-E",
+      importados: 4,
+      vinculados: 2,
+      enfileirados: 3,
+      queue_read_at: "2026-07-27T15:34:56Z",
+    };
     const error: ErpImportError = { error: "invalid_file", detail: "not an xlsx file" };
     const conflict: ErpImportConflict = {
       error: "duplicate_file",
@@ -56,6 +64,7 @@ describe("ERP import SDK contract", () => {
     expect(detail.warnings[0]).toEqual(issue);
     expect(list.items[0]).toEqual(summary);
     expect(created.status).toBe("COMPLETED");
+    expect(chain.queue_read_at).toBe("2026-07-27T15:34:56Z");
     expect(error.error).toBe("invalid_file");
     expect(conflict.protocol).toBe(summary.protocol);
   });
@@ -88,9 +97,9 @@ describe("ERP import SDK contract", () => {
   it("declares a flat 500 ErpImportError on every erp import operation", () => {
     const openapi = readFileSync(resolve(process.cwd(), "../../contracts/api/marketplace-central.openapi.yaml"), "utf8");
     const paths = openapi.slice(openapi.indexOf("  /erp/imports:"), openapi.indexOf("\ncomponents:"));
-    // handler emits {"error":"internal_error"} (500) on POST, list, and detail — spec must cover all three.
+    // handler emits {"error":"internal_error"} (500) on POST, list, detail, and chain — spec must cover all four.
     const fiveHundreds = paths.match(/"500":/g) ?? [];
-    expect(fiveHundreds).toHaveLength(3);
+    expect(fiveHundreds).toHaveLength(4);
     // no 500 may resolve to the legacy nested ErrorResponse — erp errors are flat.
     expect(paths).not.toContain("ErrorResponse");
     for (const block of paths.split(/"500":/).slice(1)) {

@@ -29,6 +29,29 @@ import type {
 } from "./index";
 
 describe("sdk runtime", () => {
+  it("requests an encoded ERP import chain path", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        protocol: "#101-E",
+        importados: 4,
+        vinculados: 2,
+        enfileirados: 3,
+        queue_read_at: "2026-07-27T15:34:56Z",
+      }),
+    });
+    const client = createMarketplaceCentralClient({ baseUrl: "http://localhost:8080", fetchImpl });
+
+    const chain = await client.getErpImportChain("id/with space");
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "http://localhost:8080/erp/imports/id%2Fwith%20space/chain",
+      expect.any(Object),
+    );
+    expect(chain.enfileirados).toBe(3);
+    expect(chain.queue_read_at).toBe("2026-07-27T15:34:56Z");
+  });
+
   it("models canonical CODPROD products with nullable source facts", () => {
     const unknown: CanonicalCatalogProduct = {
       internal_product_id: 1001,

@@ -45,6 +45,14 @@ export interface ErpImportDetail extends ErpImportSummary {
   warnings: ErpImportIssue[];
 }
 
+export interface ErpImportChain {
+  protocol: string;
+  importados: number;
+  vinculados: number;
+  enfileirados: number;
+  queue_read_at: string;
+}
+
 export interface ErpImportList {
   items: ErpImportSummary[];
 }

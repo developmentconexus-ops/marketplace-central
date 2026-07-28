@@ -3254,6 +3254,39 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErpImportError'
 
+  /erp/imports/{id}/chain:
+    get:
+      summary: Get the current processing chain for an ERP import
+      operationId: getErpImportChain
+      tags: [erp-imports]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ERP import UUID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Current ERP import processing chain
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErpImportChain'
+        "404":
+          description: ERP import not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErpImportError'
+        "500":
+          description: Unexpected ERP import failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErpImportError'
+
   /config/active-source:
     get:
       summary: Get the tenant's active ERP/catalog source
@@ -6526,6 +6559,7 @@ components:
         side:
           type: string
           enum: [provider, erp, both]
+          description: Emitted only when direction is INCOMPARABLE.
         detail:
           type: string
 
@@ -8040,6 +8074,23 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/ErpImportIssue'
+
+    ErpImportChain:
+      type: object
+      required: [protocol, importados, vinculados, enfileirados, queue_read_at]
+      properties:
+        protocol:
+          type: string
+        importados:
+          type: integer
+        vinculados:
+          type: integer
+        enfileirados:
+          type: integer
+          description: Current queue count; the number falls as the scheduler drains it.
+        queue_read_at:
+          type: string
+          format: date-time
 
     ErpImportList:
       type: object
