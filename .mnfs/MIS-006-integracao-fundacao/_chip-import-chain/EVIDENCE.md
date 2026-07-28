@@ -1,7 +1,11 @@
 # EVIDENCE — CHIP-IMPORT-CHAIN (MIS-006 · M-06 · wave 2)
 
-Branch `chip/import-chain`. Base floor `5441fe18f64171ef61cb03b51b5bf66e2922e4eb`. HEAD `aceff011`.
-Scope: `apps/web` only — screens `/importacoes` (new) and `/integracoes` (verification only).
+Branch `chip/import-chain`. Base floor `5441fe18f64171ef61cb03b51b5bf66e2922e4eb`.
+**Last code commit `aceff011`** — everything after it is evidence only, so the reviewable diff ends
+there. Scope: `apps/web` only — screens `/importacoes` (new) and `/integracoes` (verification only).
+
+**Status: P6 gate PENDING (hub's). This document claims no verdict** — see Close. One cold review ran
+and returned REPROVA on the close-out; a single pass is not a dual gate.
 
 Companion artifacts, all on disk: `REVIEW-ADVERSARIAL.md` (cold reviewer, verbatim),
 `DISPATCH-LEDGER.md` (every dispatch + artifact bytes), `HUB-RULINGS.md` (R1–R5),
@@ -391,12 +395,61 @@ Stated plainly, because a close that hides this is worth less than one that does
 
 ## Close
 
-**AGREEMENT — P6 discharged.** Ladder: L0 `ran` (15, none mine), L1 `ran` (65 files / 521 tests
-green), L2 `ran` **by the hub** (`7099d9f`). Adversarial review dispatched, persisted, and all three
-of its blockers now closed — two by this chip, the third by the hub's drive. Two things stay open by
-their nature and are named above rather than buried: `vinculados` non-zero, and the absent-field half
-of I5. The `P6-DUAL-GATE:` line is the hub's to write, not this chip's, and the side that implemented
-does not review.
+**P6 GATE PENDING — hub's side. This chip claims no verdict.**
+
+**Correction of form, on the hub's ruling and it is right.** An earlier revision of this section led
+with `AGREEMENT — P6 discharged` while its own next sentence said the `P6-DUAL-GATE:` line belongs to
+the hub. Those cannot both be true. `AGREEMENT` is a verdict word — it means two independent sides
+converged — and this chip had ONE side, a cold Claude gate-reviewer, which returned **REPROVA**. A
+header that promises more than the body delivers is the exact shape this mission's failures keep
+taking: CHIP-ANCHORS-2 sent `AGREEMENT` on three Claude passes and zero GPT, and the real gate later
+refuted BOTH sides and produced CORR-1..CORR-6 including a blocker no earlier pass had seen;
+CHIP-VINC-NEUTRO was returned the same day for the mirror-image defect, two passes both
+`gpt-5.6-sol` medium with no Opus side. R-26: verbatim is a claim about FORM, and that header claimed
+a verdict that does not exist. Substance below is unchanged — only the claim about it is corrected.
+
+What this chip actually delivers: **ladder complete, gate not run.** L0 `ran` (15 errors, none mine),
+L1 `ran` (65 files / 521 tests green), L2 `ran` **by the hub** (`7099d9f`, re-confirmed against this
+chip's final HEAD — see below). Adversarial review dispatched, persisted verbatim, verdict REPROVA on
+the close-out; all three of its blockers now closed, two by this chip and the third by the hub's
+drive. That is a single cold pass, not a dual gate, and it does not become one by being good.
+
+Two things stay open by their nature and are named above rather than buried: `vinculados` non-zero,
+and the absent-field half of I5. The dual gate — Opus full + GPT-5.6 Sol medium, independent — is the
+hub's to run and to write, and the side that implemented does not review: all four code commits came
+from codex `gpt-5.6-luna/high`, so the Opus side must be a cold session, never this one.
+
+### L2 re-confirmed against the final HEAD
+
+The hub's first drive ran against the tree at `67e4a3d`/`aceff011` while this branch was still
+moving; the CLOSED event was sent at `42d7c2d1`. The hub re-drove with the worktree confirmed at
+`42d7c2d11d7bbd5d1cbceeb45380e5e980220d80` and got byte-identical numbers (`#001-E · 55 · 0 · 55`,
+`Fila lida em: 28/07/2026, 13:42`). So `aceff011`'s `protocol` guard regressed nothing the first
+drive had measured, and `42d7c2d1` is evidence-only. **L2 holds for the HEAD this chip actually
+closed** — which is the claim that matters, and it was not the claim the first report could support.
+Recorded because it is the live-drive form of `base_sha` is a FLOOR: a drive has a floor too, and the
+hub disclosed that its own was unanchored.
+
+**The `protocol` guard cannot be exercised live, confirmed by the hub against the schema:** the column
+is `NOT NULL` with `CHECK (protocol ~ '^#[0-9]{3,}-E$')`, so a conforming server cannot return `200`
+without one. The unit test is the only possible proof and the hub accepted it as such. Same shape as
+the I5 scope note — declared, not inflated.
+
+### Findings, as ratified by the hub
+
+**F-1 RATIFIED into profile §3** (mid-install `node_modules` fabricates errors that impersonate real
+defects) — the hub's note is worth keeping attached: it is the sibling of the 15-error trap, since in
+both cases the observable is STABLE and still does not discriminate. **F-2 RATIFIED** (sandbox vitest
+blindness; a codex slice reporting "typecheck clean, committed" over a red suite is blind, not
+dishonest, and the chip's re-run is the verification of record). **F-3/F-4 ACCEPTED as upstream** —
+they belong to `mnfs-harness`, not this repo's profile. **F-5 withdrawal ACCEPTED.** **F-6 noted, not
+blocking.**
+
+REPORT 4 (contract drift) was **corrected by the hub at `79b5967`** across all five sites, and it was
+worse than reported: `milestone.md:137` did not merely cite the phantom path, it instructed a future
+chip to refactor `useActiveErpSource` off `localStorage` — work that had already landed as
+`activeSource.ts`. That line would have ordered a rebuild of existing code, which is the failure this
+chip's pack had to pre-empt by hand for F-02.
 
 Two items from the hub's report that concern method rather than this chip's code, recorded so they
 survive the transcript: an **unreproduced** anomaly where a radio click checked the DOM input without
