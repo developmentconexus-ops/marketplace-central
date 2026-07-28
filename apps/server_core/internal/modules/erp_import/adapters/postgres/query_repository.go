@@ -63,6 +63,63 @@ func (r *Repository) GetImport(ctx context.Context, tenantID string, importID do
 	return report, rows.Err()
 }
 
+func (r *Repository) GetImportChain(ctx context.Context, tenantID string, importID domain.ImportID) (domain.ImportChain, error) {
+	const query = `
+		WITH import_target AS (
+			SELECT eip.id AS import_id, eip.protocol AS protocol
+			FROM erp_import_protocols AS eip
+			WHERE eip.tenant_id = $1
+			  AND eip.id = $2
+		),
+		import_products AS (
+			SELECT products.codprod AS codprod
+			FROM erp_import_products AS products
+			JOIN import_target AS target ON target.import_id = products.protocol_id
+			WHERE products.tenant_id = $1
+		),
+		resolved_products AS (
+			SELECT DISTINCT products.codprod AS codprod
+			FROM import_products AS products
+			JOIN product_links AS links
+			  ON links.internal_product_id::text = products.codprod
+			WHERE links.tenant_id = $1
+			  AND links.state = 'resolved'
+		),
+		queued_products AS (
+			SELECT DISTINCT products.codprod AS codprod
+			FROM sync_state AS state
+			CROSS JOIN LATERAL jsonb_array_elements_text(
+				COALESCE(state.cursor -> 'pending', '[]'::jsonb)
+			) AS pending(codprod)
+			JOIN import_products AS products ON products.codprod = pending.codprod
+			WHERE state.tenant_id = $1
+			  AND state.entity = 'market'
+		)
+		SELECT target.protocol AS protocol,
+		       (SELECT count(*) FROM import_products) AS importados,
+		       (SELECT count(*) FROM resolved_products) AS vinculados,
+		       (SELECT count(*) FROM queued_products) AS enfileirados,
+		       statement_timestamp() AS queue_read_at
+		FROM import_target AS target
+	`
+
+	var chain domain.ImportChain
+	err := r.pool.QueryRow(ctx, query, tenantID, importID).Scan(
+		&chain.Protocol,
+		&chain.Importados,
+		&chain.Vinculados,
+		&chain.Enfileirados,
+		&chain.QueueReadAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.ImportChain{}, ports.ErrImportNotFound
+	}
+	if err != nil {
+		return domain.ImportChain{}, fmt.Errorf("get ERP import chain: %w", err)
+	}
+	return chain, nil
+}
+
 func (r *Repository) LatestCompletedSnapshot(ctx context.Context, tenantID string, source domain.ImportSource) (domain.ImportSnapshot, error) {
 	var s domain.ImportSnapshot
 	// Filter by the active dataset source (two-source toggle): xlsx = the Sankhya
