@@ -100,6 +100,16 @@ func (r *Repository) GetImportChain(ctx context.Context, tenantID string, import
 			  AND links.state = 'resolved'
 		),
 		queued_products AS (
+			-- importados / vinculados / enfileirados are read on one screen as a
+			-- decomposition of a single population, so the two joined counters have
+			-- to agree on what makes two CODPRODs the same product. resolved_products
+			-- already answers that canonically; leaving this side raw would let one
+			-- padded CODPROD be linked but not queued, and the operator would read
+			-- the gap between two numbers as a stalled queue that never existed. The
+			-- counted key stays the raw codprod, which is what importados counts —
+			-- only the identity test is canonicalized. Text-to-text for the same
+			-- reason as above: codprod is not guaranteed numeric.
+			--
 			-- COALESCE only defends against NULL. A cursor whose 'pending' is an
 			-- object or a scalar makes jsonb_array_elements_text raise at query
 			-- time and takes the whole endpoint down for the tenant, so the type
@@ -114,7 +124,8 @@ func (r *Repository) GetImportChain(ctx context.Context, tenantID string, import
 					ELSE '[]'::jsonb
 				END
 			) AS pending(codprod)
-			JOIN import_products AS products ON products.codprod = pending.codprod
+			JOIN import_products AS products
+			  ON ltrim(products.codprod, '0') = ltrim(pending.codprod, '0')
 			WHERE state.tenant_id = $1
 			  AND state.entity = 'market'
 		)

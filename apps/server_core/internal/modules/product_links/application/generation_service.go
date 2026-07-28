@@ -488,7 +488,12 @@ func newProviderIdentityAnchorComparison(snapshot domain.ListingSnapshot, declar
 
 func buildConcordantCandidate(snapshot domain.ListingSnapshot, skuMatches, eanMatches productMatchResult, comparison providerIdentityAnchorComparison, now time.Time) domain.LinkCandidate {
 	// Both sibling scorers nil-check this pointer; an unconditional deref here
-	// made this the one site that panics instead of degrading.
+	// made this the one site that panics instead of degrading. What it degrades
+	// INTO is not the siblings' absence reasons: on the zeroed candidate this
+	// function still emits seller_sku FOR and ean FOR at 95 / ALTA / ACCEPT,
+	// asserting corroboration for a CODPROD that is not there. The row carries a
+	// null internal_product_id and autoApprovals still reads that ACCEPT as
+	// auto-approvable.
 	product := internalreaddomain.ProductCandidate{}
 	if comparison.product != nil {
 		product = *comparison.product

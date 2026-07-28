@@ -284,6 +284,77 @@ func TestGetImportChainCountsLeadingZeroCodprod(t *testing.T) {
 	}
 }
 
+// TestGetImportChainCountsLeadingZeroCodprodInQueue pins the queued_products
+// join fix. importados, vinculados and enfileirados are read on one screen as
+// a decomposition of the same population, so the two joined counters have to
+// agree on what makes two CODPRODs the same product. resolved_products already
+// compares canonically; while queued_products compared raw, a padded '00101'
+// was counted as vinculados and NOT as enfileirados, and the operator read the
+// gap between the two numbers as a queue that had stalled.
+//
+// The fixture drives the mismatch from the cursor side — '00101' imported, the
+// cursor carrying the unpadded "101" — because that is how it enters: the
+// post-import hook writes the accepted rows' raw CODPROD straight back into
+// the cursor (erp_import/adapters/sync.MarketEnqueuer), so that producer can
+// never disagree with itself; the padding is lost by any other producer that
+// sources codes from the integer-keyed product side, which is the same loss
+// resolved_products already had to canonicalize. The second row ("00102"
+// pending against a raw '102') pins the symmetric direction, so the fix cannot
+// be half-applied to one side of the comparison.
+func TestGetImportChainCountsLeadingZeroCodprodInQueue(t *testing.T) {
+	ctx := context.Background()
+	repo, tenant := integrationRepo(t)
+	pool, _ := testpostgres.OpenPool(t, tenant)
+	importID := domain.ImportID("66000000-0000-0000-0000-000000000001")
+
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM sync_state WHERE tenant_id=$1`, tenant)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM product_links WHERE tenant_id=$1`, tenant)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM erp_import_products WHERE tenant_id=$1`, tenant)
+	})
+
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO erp_import_protocols
+			(id, tenant_id, file_sha256, protocol, source, imported_at, status, accepted_count, rejected_count, warning_count)
+		VALUES ($1, $2, 'chain-queue-leading-zero-hash', '#660-E', 'xlsx', now(), 'COMPLETED', 3, 0, 0);
+	`, importID, tenant); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO erp_import_products (tenant_id, protocol_id, codprod, descrprod, custo, stock_physical)
+		VALUES
+			($2, $1, '00101', 'Product 00101', 1, 0),
+			($2, $1, '102', 'Product 102', 1, 0),
+			($2, $1, '103', 'Product 103', 1, 0);
+	`, importID, tenant); err != nil {
+		t.Fatal(err)
+	}
+	// '00101' is linked, so vinculados counts it. enfileirados has to count the
+	// same row from the same cursor entry, or the two numbers stop describing
+	// the same product.
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO product_links
+			(tenant_id, installation_id, provider_code, provider_item_id, state, internal_product_id)
+		VALUES ($1, 'installation-a', 'mercadolivre', 'item-00101', 'resolved', 101);
+	`, tenant); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO sync_state (tenant_id, installation_id, entity, cursor)
+		VALUES ($1, 'installation-a', 'market', '{"pending":["101","00102","OUTSIDE"]}'::jsonb);
+	`, tenant); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := repo.GetImportChain(ctx, tenant, importID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Protocol != "#660-E" || got.Importados != 3 || got.Vinculados != 1 || got.Enfileirados != 2 {
+		t.Fatalf("chain=%#v", got)
+	}
+}
+
 // TestGetImportChainNonArrayPendingCursorDoesNotFailQuery pins the
 // queued_products CASE guard: sync_state.cursor->'pending' is normally a
 // JSON array, but a malformed or partial cursor write can leave it as an
