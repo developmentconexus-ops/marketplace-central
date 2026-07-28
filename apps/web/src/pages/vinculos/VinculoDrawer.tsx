@@ -3,6 +3,7 @@ import type {
   ProductLinkConfidenceBand,
 } from "@marketplace-central/sdk-runtime";
 import { DetailPanel, UnknownValue } from "@marketplace-central/ui";
+import { directionClasses, providerDisplayName, reasonChipLabel } from "./QueueRow";
 
 export interface VinculoDrawerProps {
   candidateId: string | null;
@@ -19,11 +20,10 @@ const bandClasses: Record<ProductLinkConfidenceBand, string> = {
   BAIXA: "bg-warn-soft text-warn",
 };
 
-const directionClasses = {
-  FOR: "bg-accent-soft text-accent-ink",
-  AGAINST: "bg-warn-soft text-warn",
-  UNAVAILABLE: "bg-surface-2 text-faint",
-} as const;
+// Direction tokens come from QueueRow, the one place that owns them: the drawer
+// used to keep a second copy, which is why the third state could be added to one
+// map and silently missed here. One `Record<ProductLinkReasonDirection, …>` for
+// the screen means a future direction breaks the build once, not zero times.
 
 function pill(label: string, className: string) {
   return (
@@ -94,7 +94,10 @@ function CandidateCompareCard({
         <Fact label="Produto sugerido">
           {candidate.internal_product_name ? candidate.internal_product_name : <UnknownValue hint="sem descrição no ERP" />}
         </Fact>
-        <Fact label="GTIN / refforn">
+        {/* `internal_reference_code` é a referência do lado ERP; `refforn` é o
+            nome da coluna no ERP, não vocabulário de tela (D-A tirou o termo do
+            vocabulário cross-side). */}
+        <Fact label="GTIN / Ref. interna">
           {candidate.internal_reference_code
             ? <span className="font-mono">{candidate.internal_reference_code}</span>
             : candidate.match_input === "ean" && candidate.match_value
@@ -112,11 +115,10 @@ function CandidateCompareCard({
         <ul className="mt-2 flex flex-wrap gap-1">
           {candidate.reasons.map((reason, index) => (
             <li key={`${reason.anchor}-${index}`}>
-              {/* IC-01: motivo (anchor) sempre visível; detail (com %) anexado — % nunca sozinho. */}
-              {pill(
-                reason.detail ? `${reason.anchor}: ${reason.detail}` : reason.anchor,
-                directionClasses[reason.direction],
-              )}
+              {/* IC-01: motivo (anchor) sempre visível; detail (com %) anexado — % nunca sozinho.
+                  `reasonChipLabel` também carrega o `side` de um INCOMPARABLE (D-122/D-B),
+                  que é o lado onde o operador vai preencher o dado que faltou. */}
+              {pill(reasonChipLabel(reason), directionClasses[reason.direction])}
             </li>
           ))}
         </ul>
@@ -175,7 +177,9 @@ export function VinculoDrawer({
       onClose={onClose}
       closeLabel="Fechar painel"
       title={selected.provider_item_id}
-      subtitle={selected.provider_code}
+      // `provider_code` é o SLUG do marketplace no wire ("mercado_livre") — o
+      // subtítulo mostra o nome de exibição, nunca o slug cru.
+      subtitle={providerDisplayName(selected.provider_code)}
       width={360}
       footer={
         <button

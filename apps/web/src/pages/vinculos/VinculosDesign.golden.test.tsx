@@ -6,10 +6,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { VinculosPage } from "./VinculosPage";
 
 // GOLDEN (day-1, MIS-004-C10 gap #2). Locks the design contract for /vinculos:
-//   1. anúncio-cêntrica 9-col table (ANÚNCIO ML·SKU ML·PRODUTO SUGERIDO·SKU HUB·
+//   1. anúncio-cêntrica 9-col table (ANÚNCIO·CANAL·PRODUTO SUGERIDO·SKU HUB·
 //      GTIN·CONFIANÇA·MOTIVO·AÇÃO) with the EXEMPLO-IO row.
 //   2. honest NO_CANDIDATE row (conf 0, "sem candidato", Criar produto / Ignorar) — ADR-17.
 //   3. paper+green tokens only — never literal slate/blue/emerald/red/amber-<n> off-theme.
+//
+// F-05 (D-122) renamed two of those headers. "ANÚNCIO ML" → "ANÚNCIO" is the
+// neutral structural label. "SKU ML" → "CANAL" is a correction as much as a
+// neutralization: that cell has always rendered `provider_code`, which the wire
+// fills with the marketplace SLUG ("mercado_livre") — the candidate contract
+// carries no seller SKU at all. The column count and order are unchanged.
 
 const listProductLinkCandidates = vi.fn();
 const listProductLinkWorkflows = vi.fn();
@@ -35,7 +41,7 @@ function base(overrides: Partial<ProductLinkCandidateItem>): ProductLinkCandidat
   return {
     candidate_id: "cand_x",
     installation_id: "inst_1",
-    provider_code: "abc-1",
+    provider_code: "mercado_livre",
     provider_item_id: "MLB123",
     state: "exact_ean",
     match_input: "ean",
@@ -82,7 +88,7 @@ describe("Vínculos design golden", () => {
         base({
           candidate_id: "cand_1",
           provider_item_id: "MLB123",
-          provider_code: "abc-1",
+          provider_code: "mercado_livre",
           internal_product_id: 1001,
           internal_product_name: "Produto Y",
         }),
@@ -93,8 +99,10 @@ describe("Vínculos design golden", () => {
 
     const row = await screen.findByTestId("queue-row");
     const cells = within(row);
-    expect(cells.getByText("MLB123")).toBeInTheDocument(); // ANÚNCIO ML
-    expect(cells.getByText("abc-1")).toBeInTheDocument(); // SKU ML
+    expect(cells.getByText("MLB123")).toBeInTheDocument(); // ANÚNCIO
+    // CANAL — the provider, by display name. The raw wire slug never renders.
+    expect(cells.getByText("Mercado Livre")).toBeInTheDocument();
+    expect(cells.queryByText("mercado_livre")).not.toBeInTheDocument();
     expect(cells.getByText("Produto Y")).toBeInTheDocument(); // PRODUTO SUGERIDO
     expect(cells.getByText("1001")).toBeInTheDocument(); // SKU HUB
     expect(cells.getByText("✓ igual")).toBeInTheDocument(); // GTIN
@@ -108,7 +116,7 @@ describe("Vínculos design golden", () => {
     expect(cells.getByRole("button", { name: "Vincular" })).toBeInTheDocument(); // AÇÃO
 
     // Column headers present (anúncio-cêntrica order).
-    for (const header of ["Anúncio ML", "SKU ML", "Produto sugerido", "SKU HUB", "GTIN", "Confiança", "Motivo", "Ação"]) {
+    for (const header of ["Anúncio", "Canal", "Produto sugerido", "SKU HUB", "GTIN", "Confiança", "Motivo", "Ação"]) {
       expect(screen.getByRole("columnheader", { name: header })).toBeInTheDocument();
     }
   });

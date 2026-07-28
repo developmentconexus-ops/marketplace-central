@@ -164,6 +164,119 @@ describe("QueueTab", () => {
     expect(within(row).getByRole("button", { name: "Vincular" })).toBeInTheDocument();
   });
 
+  // V2 — the criterion this chip is judged on. `QueueRow` used to build the
+  // collapsed cell by enumerating the directions as string literals
+  // (`[...byDirection("AGAINST"), ...byDirection("FOR"),
+  // ...byDirection("UNAVAILABLE")]`), which is type-correct and therefore silent
+  // once D-B added a fourth direction: a row whose motivos are ALL INCOMPARABLE
+  // fell through every branch, `shown` came out empty, and the cell rendered a
+  // lone "+2" with zero chips — a filter wearing a ranking's comment (ADR-17).
+  //
+  // The assertions below are on the RENDERED DOM, never on the internal `shown`
+  // array: an assertion about a variable does not prove a screen.
+  it("keeps a motivo on screen for a row whose reasons are ALL INCOMPARABLE (ADR-17)", async () => {
+    listProductLinkCandidates.mockResolvedValue({
+      items: [
+        candidate({
+          candidate_id: "cand_inc",
+          provider_item_id: "MLB_INC",
+          internal_product_id: 444,
+          internal_product_name: "PUXADOR FENG",
+          reasons: [
+            { anchor: "seller_sku", direction: "INCOMPARABLE", side: "provider", detail: "anúncio sem seller_sku" },
+            { anchor: "ean", direction: "INCOMPARABLE", side: "erp", detail: "produto ERP sem ean cadastrado" },
+          ],
+        }),
+      ],
+    });
+
+    renderTab();
+
+    const row = await screen.findByTestId("queue-row");
+    const chips = within(row).getAllByTestId("motivo-chip");
+
+    // The invariant itself: at least one motivo visible. Never a bare "+N".
+    expect(chips.length).toBeGreaterThan(0);
+    expect(chips).toHaveLength(2);
+    expect(within(row).queryByRole("button", { name: /Mostrar todos os/ })).not.toBeInTheDocument();
+
+    // V4 — `side` is what D-B added on top of the direction: it says WHERE the
+    // operator goes to fix the missing value. It reaches the screen from the
+    // FIELD, not parsed out of the Portuguese `detail`.
+    expect(chips[0]).toHaveTextContent("? SKU (falta no anúncio)");
+    expect(chips[1]).toHaveTextContent("? EAN (falta no ERP)");
+
+    // V1 — INCOMPARABLE carries its own glyph and its own token pair. Reusing
+    // AGAINST's (warn) would say "blocks"; reusing UNAVAILABLE's (surface-2/
+    // faint) would say "the provider never supplies this" — both false here.
+    for (const chip of chips) {
+      expect(chip).toHaveAttribute("data-direction", "INCOMPARABLE");
+      expect(chip.className).toContain("bg-info-soft");
+      expect(chip.className).toContain("text-info");
+      expect(chip.className).not.toContain("bg-warn-soft");
+      expect(chip.className).not.toContain("bg-accent-soft");
+      expect(chip.className).not.toContain("bg-surface-2");
+    }
+  });
+
+  it("ranks INCOMPARABLE above UNAVAILABLE without dropping either (ranking, never filtering)", async () => {
+    listProductLinkCandidates.mockResolvedValue({
+      items: [
+        candidate({
+          candidate_id: "cand_mixed",
+          provider_item_id: "MLB_MIX",
+          internal_product_id: 555,
+          reasons: [
+            { anchor: "title", direction: "UNAVAILABLE", detail: "provider não fornece a âncora title" },
+            { anchor: "ean", direction: "INCOMPARABLE", side: "both", detail: "anúncio e produto ERP sem ean" },
+            { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
+          ],
+        }),
+      ],
+    });
+
+    renderTab();
+
+    const row = await screen.findByTestId("queue-row");
+    const chips = within(row).getAllByTestId("motivo-chip");
+    // FOR outranks the two absence states; INCOMPARABLE (actionable) outranks
+    // UNAVAILABLE (permanent), so the UNAVAILABLE one is the one deferred to +N.
+    expect(chips.map((chip) => chip.getAttribute("data-direction"))).toEqual(["FOR", "INCOMPARABLE"]);
+    expect(chips[1]).toHaveTextContent("? EAN (falta nos dois lados)");
+    // Nothing was dropped — the remainder is behind the toggle, in full form.
+    fireEvent.click(within(row).getByRole("button", { name: "Mostrar todos os 3 motivos" }));
+    expect(screen.getByText("title: provider não fornece a âncora title")).toBeInTheDocument();
+    expect(screen.getByText("ean (falta nos dois lados): anúncio e produto ERP sem ean")).toBeInTheDocument();
+  });
+
+  it("renders an INCOMPARABLE with no `side` on the wire without inventing one", async () => {
+    // Real path: classifyProviderIdentityAnchor's `!readable` branch
+    // (generation_service.go:711) emits INCOMPARABLE with an EMPTY side, which
+    // `json:"side,omitempty"` drops from the payload — `marca` is the live case,
+    // since ListingSnapshot has no provider-side brand field. Fabricating a side
+    // there would forge the exact datum D-B was created to carry (ADR-17).
+    listProductLinkCandidates.mockResolvedValue({
+      items: [
+        candidate({
+          candidate_id: "cand_noside",
+          provider_item_id: "MLB_NOSIDE",
+          internal_product_id: 666,
+          reasons: [
+            { anchor: "marca", direction: "INCOMPARABLE", detail: "não foi possível comparar a âncora marca" },
+          ],
+        }),
+      ],
+    });
+
+    renderTab();
+
+    const row = await screen.findByTestId("queue-row");
+    const [chip] = within(row).getAllByTestId("motivo-chip");
+    expect(chip).toHaveTextContent("? Marca");
+    expect(chip.textContent).not.toMatch(/falta n/);
+    expect(chip).toHaveAttribute("title", "marca: não foi possível comparar a âncora marca");
+  });
+
   it("renders an honest NO_CANDIDATE row instead of a blank row", async () => {
     listProductLinkCandidates.mockResolvedValue({
       items: [
@@ -188,6 +301,40 @@ describe("QueueTab", () => {
     expect(screen.queryByRole("button", { name: "Vincular" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Criar produto" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Ignorar" })).toBeEnabled();
+  });
+
+  // V10 — neutral vocabulary must not cost the operator the provider datum.
+  // Both halves are asserted here because neutralizing the VALUE would be a lie,
+  // not neutrality: the anúncio really is on one specific marketplace.
+  it("neutralizes the structural labels while keeping WHICH provider the anúncio is on", async () => {
+    listProductLinkCandidates.mockResolvedValue({
+      items: [
+        candidate({
+          candidate_id: "cand_1",
+          provider_item_id: "MLB1",
+          provider_code: "mercado_livre",
+          internal_product_id: 111,
+          internal_product_name: "Parafuso A",
+        }),
+      ],
+    });
+
+    const { container } = renderTab();
+    const row = await screen.findByTestId("queue-row");
+
+    // Structural labels: no provider name in a column header.
+    expect(screen.getByRole("columnheader", { name: "Anúncio" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Canal" })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Anúncio ML" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "SKU ML" })).not.toBeInTheDocument();
+
+    // Data value: the provider is still on screen — by display name.
+    expect(within(row).getByText("Mercado Livre")).toBeInTheDocument();
+
+    // And never the raw wire slug. This is the trap that got CHIP-PED-FILA on
+    // four surfaces; the "SKU ML" column was rendering `provider_code`, which
+    // the wire fills with the marketplace slug, never a SKU.
+    expect(container.textContent).not.toContain("mercado_livre");
   });
 
   it("removes the item from the queue after an approve + page-local invalidation", async () => {

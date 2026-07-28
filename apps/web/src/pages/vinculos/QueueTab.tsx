@@ -131,8 +131,11 @@ export function QueueTab({ installationId, onViewResolved }: QueueTabProps) {
               <th className="px-3 py-3" scope="col">
                 <span className="sr-only">Selecionar</span>
               </th>
-              <th className="px-3 py-3" scope="col">Anúncio ML</th>
-              <th className="px-3 py-3" scope="col">SKU ML</th>
+              {/* Rótulos ESTRUTURAIS são neutros de provider (F-05): a tela
+                  serve qualquer marketplace. De qual provider o anúncio é
+                  continua na tela — como DADO, na coluna Canal. */}
+              <th className="px-3 py-3" scope="col">Anúncio</th>
+              <th className="px-3 py-3" scope="col">Canal</th>
               <th className="px-3 py-3" scope="col">Produto sugerido</th>
               <th className="px-3 py-3" scope="col">SKU HUB</th>
               <th className="px-3 py-3" scope="col">GTIN</th>
