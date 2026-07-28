@@ -351,6 +351,65 @@ Corollaries that bind:
 - The FE analogue already existed and is the same idea: the hub's live browser drive (L2). This
   generalises it to the backend.
 
+### A delta brief must order a CLASS sweep, or the second occurrence is invisible
+`status: ratified` · `provenance: 2026-07-28 · CHIP-ANCHORS-3 field finding, round 2`
+
+A delta-scoped round is cheap and should stay the default. But a brief that NAMES the site to
+re-examine teaches the seat to stop at it.
+
+Field evidence, one round, two seats, same brief: CHIP-ANCHORS-3's round-2 brief named the site
+where round 1 had found a false universal. The Sol seat checked that site, found it corrected,
+and returned `Findings: None` — on a file that carried the same false universal 83 lines below,
+findable by a one-line `grep`. The Opus seat swept the file on its own initiative and returned
+REFUTED with it. **The seat that returned None did literally what the brief asked.** The defect
+is the brief's, not the model's.
+
+So every delta brief binds:
+
+- **Order the sweep explicitly**: re-examine the named site AND sweep both changed files end to
+  end for other occurrences of the same CLASS. Give the seat the class as searchable tokens —
+  for false-totality prose that is `never`, `always`, `only`, `unreachable`, `cannot`,
+  `no longer`, `every`.
+- **A verdict with no SWEEP section is incomplete on its face**, and the hub returns it as
+  incomplete rather than reading it as a PASS.
+- **The author runs the same sweep against their own pack before publishing.** If only the
+  reviewers sweep, the chip keeps producing the class and outsourcing detection. It is a `grep`.
+- Corollary for the hub: **an approving verdict corroborates only within the scope it declares
+  having swept.** `Findings: None` with no declared scope does not contradict a REFUTED that was
+  verified by string — a smaller reading does not out-vote a larger one, it sits underneath it.
+  Splits of this shape are not ties and are not adjudicated as ties.
+
+### Vacuous green — an instrument that passes for a reason unrelated to the code
+`status: ratified` · `provenance: 2026-07-28 · hub executing seat, CHIP-ANCHORS-3 · CHIP-IMPORT-CHAIN field finding #1`
+
+Sibling of stability ≠ discrimination (§3). There the instrument was stable across both worlds;
+here it never looked at either. **Exit 0 is not evidence that anything ran.**
+
+Four instances, one afternoon:
+
+1. `go test -run 'TestX'` where `TestX` is the CONTEXT function of a patch hunk header, not the
+   added test → `no tests to run`, **PASS**, exit 0.
+2. The target file carries `//go:build integration`, so a green `go test ./...` — 153 packages,
+   107 `ok` — **never compiled it**. Package-count green is not lane coverage.
+3. `-tags integration` without `MPC_TEST_DATABASE_URL` → every DB test `SkipWithoutTarget` →
+   `ok` in the summary.
+4. The integration lane runs `go test -tags=integration` **without `-v`** and its artifact
+   records only `target`/`status`/`run_id`, so a fully skipped run and a fully green run are
+   **byte-identical** in `summary.txt` (CHIP-IMPORT-CHAIN field finding #1, independent).
+
+Binding on the executing seat:
+
+- **Count, never tail.** Report packages/tests/assertions actually executed — `ok=N`,
+  `no test files=N`, `FAIL=N` — not the last lines of the output. A tail can be empty and read
+  as clean.
+- **A must-fail that does not go red is not a must-fail.** Before believing a green, prove the
+  command can go red at all: wrong-name, wrong-tag and skipped-target all produce the same
+  green as a correct run.
+- **Name the test by grepping `^func Test` in the file**, never from a hunk header — the `@@`
+  context line names the PRECEDING function.
+- **Skips are a result, not a footnote.** A lane that can skip must report the skip count, or
+  its artifact cannot distinguish ran-and-passed from never-ran.
+
 ### Third-round rule — a third defect of the same shape stops the patching
 `status: ratified` · `provenance: 2026-07-25 · operator ruling, D-121 · field evidence CHIP-M05 (6 dual-gate rounds)`
 
@@ -501,3 +560,5 @@ retroactive GPT-5.6 Sol medium review at mission closeout (operator's call).
 2026-07-28 · §11 · noted · a physically read-only Opus seat has NO Write, so its task `.output` is 0 bytes BY CONSTRUCTION and the verdict exists only in the completion notification — observed twice (CHIP-ANCHORS-2, CHIP-VINC-NEUTRO). "Transcribed, not captured" with declared provenance is therefore the honest and the ONLY available form for that seat; demanding on-disk capture demands what the instrument does not offer. The residual risk is not fabrication but OMISSION (a finding emitted and not carried over), and it is unfalsifiable from the artifact — mitigation is verbatim paste as the FIRST act after the notification arrives, before any analysis, plus the seat's tool-set named in the header
 2026-07-28 · §7 · ratified · no command that dumps a whole environment (`docker inspect`, `docker exec … env`, bare `printenv`) — diagnose by variable NAME, one at a time; binds WORKERS, so it goes in the dispatch-prompt denylist, not only in the profile the chip reads. Holds for throwaway targets: the session Postgres password is CSPRNG-generated per container and dies with it, so there is nothing to rotate — which is precisely why "it was disposable" cannot be a case-by-case exemption (CHIP-ANCHORS-3 R4 worker field finding)
 2026-07-28 · (upstream) · accepted · CHIP-IMPORT-CHAIN F-3 (`New-DispatchPrompt.ps1` assembles an unknown role string cleanly, failing only later at `Invoke-CodexDispatch.ps1` with `ROLE-UNKNOWN` — validate against `roles.psd1` at assembly time) and F-4 (vitest in a junction-only worktree needs an absolute `setupFiles` path plus `server.fs.strict: false`; the junction realpath resolves outside the vite root) belong to `mnfs-harness`, not this profile — routed upstream, not filed here
+2026-07-28 · §11 (new subsection) · ratified · a DELTA brief must order a CLASS sweep, or the second occurrence is structurally invisible: a brief that NAMES the site to re-examine teaches the seat to stop at it. CHIP-ANCHORS-3 round 2 — the Sol seat checked the named site, found it corrected, returned `Findings: None` on a file carrying the same false universal 83 lines below, findable by a one-line `grep`; the Opus seat swept on its own initiative and returned REFUTED with it. The seat that returned None did literally what the brief asked, so the defect is the BRIEF's. Binds: give the class as searchable tokens (`never`/`always`/`only`/`unreachable`/`cannot`/`no longer`/`every` for false-totality prose), a verdict with no SWEEP section is incomplete on its face, and the AUTHOR runs the same sweep against their own pack before publishing. Hub corollary: an approving verdict corroborates only within the scope it declares having swept — `Findings: None` with no declared scope does not out-vote a REFUTED verified by string, so splits of this shape are not ties (chip-authored field finding, ratified verbatim)
+2026-07-28 · §11 (new subsection) · ratified · VACUOUS GREEN — an instrument that passes for a reason unrelated to the code; sibling of stable-but-non-discriminating (§3), except it never looked at either world. Exit 0 is not evidence that anything ran. Four instances in one afternoon of the hub's executing seat on CHIP-ANCHORS-3: (1) `-run 'TestX'` naming the CONTEXT function of a patch hunk header instead of the added test → `no tests to run`, PASS; (2) the target file carries `//go:build integration`, so a green `go test ./...` (153 packages, 107 `ok`) never compiled it; (3) `-tags integration` without `MPC_TEST_DATABASE_URL` → every DB test skips → `ok`; (4) the integration lane runs without `-v` and records only target/status/run_id, so a fully skipped run and a fully green run are byte-identical in `summary.txt` (CHIP-IMPORT-CHAIN field finding #1, independent). Binds the executing seat: COUNT never tail (`ok=N`, `no test files=N`, `FAIL=N`), prove the command can go red before believing a green, name tests by grepping `^func Test` (the `@@` context line names the PRECEDING function), and report skip counts as a result rather than a footnote
