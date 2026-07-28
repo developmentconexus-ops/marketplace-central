@@ -1003,6 +1003,47 @@ defect today: the union has exactly two members and the partition is total. It i
 `driftCandidate` exists for, in a union the mechanism never covered. **Not fixed here** — one freeze
 per round, and widening it to a component outside the round's delta is the chip choosing its own scope.
 
+### THE SENTINEL HAD THE SHAPE IT NAMES — hub executor seat, `evidence/V-sentinel-substring-blindness.md`
+
+The hub took the third seat (profile §11, executor) in its own detached worktree at `2e5331b6`,
+confirmed the lanes independently (12 / 0-in-vinculos, 64 / 531), proved the merge clean
+(`main` @ `0cb6d7e` + `2e5331b6` → 0 conflicts, merged tree 67 files / 544 tests green), and found
+one defect this chip had not: the guard's sentinel asserted `.toContain("var knownIdentityAnchors")`,
+and `var knownIdentityAnchorsXX` **satisfies that**. Substring containment is not symbol presence.
+A rename that appends left the sentinel green while the extraction below it matched nothing.
+
+Verified against source before acting, then fixed red-first. Count and mutation declared together,
+per §11 — the pack's `RED, 3/3` was true only of mutating BOTH seams:
+
+| mutation | before | after | sentinel |
+|---|---|---|---|
+| suffix rename, port only | **1 failed / 2 passed** | **2 failed / 1 passed** | was ✓ **blind** → ✗ |
+| total rename, port only | 2 / 1 | 2 / 1 | ✗ |
+| mercado_livre seam only | — | 2 / 1 | ✗ |
+| both seams | 3 failed | 3 failed | ✗ — this is the `3/3` |
+
+`git diff --stat apps/server_core` = 0 lines after every arm. Suffix and total rename now agree,
+which is the fix: they are one class, and the guard used to answer differently for them. The
+extraction pattern moved INTO `GO_SEAM` as `extract`, and the sentinel asserts with that same
+object — sentinel and extraction cannot drift apart by construction. A tighter second pattern would
+have gone red too, and left two patterns free to diverge again.
+
+Reconciled, both counts printed: 7 regex literals matched, **2 are false positives** — `/../` and
+`/../s`, from the path STRING on line 37. Real population 5: two seam locators in `GO_SEAM.extract`
+(3 uses), three secondary extractions inside an already-located block, each guarded; zero unguarded.
+The false positives are the class again inside the tool measuring the class, and they are printed
+rather than quietly subtracted.
+
+Same category, same hour: the first run of all four arms used `grep -E "^ *(Test Files|Tests)"` and
+returned **empty with exit 0** — vitest emits an ANSI escape before the leading space, so `^ *` never
+matches. The hub's executor seat reported hitting the identical trap independently, and said so
+first. Silence read as clean, one hour after ratifying the amendment that names it.
+
+Merge-base corrected while there: `git merge-base main HEAD` = `bcab8269`, not `5441fe18` (an
+ancestor of it). The comment at `VinculosPage.test.tsx:38` cited the wrong point; fixed in place.
+The hub also confirmed independently that local `main` deleted BOTH `ImportacaoSection.tsx` and its
+test, so this merge leaves no orphan — the measurement this chip reported was right.
+
 ## Verdict roll-up
 
 | Criterion | Verdict |

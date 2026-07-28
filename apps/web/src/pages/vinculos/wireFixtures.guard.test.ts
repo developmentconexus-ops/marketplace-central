@@ -37,18 +37,31 @@ const here = dirname(fileURLToPath(import.meta.url));
 const serverModules = resolve(here, "../../../../server_core/internal/modules");
 
 /**
- * The seam, as paths and symbol names. Both halves are asserted: the path is
- * where the fact lives, the symbol is what makes the extraction meaningful.
+ * The seam, as paths and the EXTRACTION ITSELF. `extract` is not a description
+ * of the pattern used below — it is the pattern used below, and the sentinel
+ * asserts with the same object.
+ *
+ * It was two fields before, a `symbol` string for the sentinel and a separate
+ * regex inside each test, and the hub's executor seat measured what that costs:
+ * the sentinel asserted `.toContain("var knownIdentityAnchors")`, which
+ * `var knownIdentityAnchorsXX` SATISFIES. A rename that appends leaves the
+ * substring intact, so the sentinel passed while the extraction found nothing —
+ * the guard was wider than the fact it claimed to check, which is the class this
+ * chip keeps finding one layer down. Sharing the object is what makes sentinel
+ * and extraction unable to disagree; a tighter second pattern would only have
+ * moved the disagreement somewhere harder to see.
  */
 const GO_SEAM = {
   capabilityPort: {
     path: "connectors/ports/marketplace_capability.go",
-    symbol: "var knownIdentityAnchors",
+    symbol: "var knownIdentityAnchors = []IdentityAnchor{…}",
+    extract: /var knownIdentityAnchors = \[\]IdentityAnchor\{([^}]*)\}/,
     what: "the identity-anchor vocabulary itself",
   },
   mercadoLivreCapability: {
     path: "connectors/adapters/mercado_livre/capability_adapter.go",
-    symbol: "IdentityAnchors:",
+    symbol: "IdentityAnchors: []ports.IdentityAnchor{…}",
+    extract: /IdentityAnchors:\s*\[\]ports\.IdentityAnchor\{([^}]*)\}/,
     what: "which anchors mercado_livre declares supplied",
   },
 } as const;
@@ -117,14 +130,17 @@ describe("wireFixtures vocabulary vs the Go source it mirrors", () => {
       expect(SOURCES[key].error, `${path} — the file this guard reads for ${what} is gone or moved`).toBeNull();
       expect(SOURCES[key].text.length, `${path} is empty`).toBeGreaterThan(0);
 
-      // The path existing is not enough: the FACT has to still be in it under
-      // the name the extraction looks for. A rename leaves the file readable
-      // and the guard blind, which is the failure mode worth naming.
+      // The path existing is not enough: the FACT has to still be in it, in the
+      // form the extraction reads. Asserted with `extract` — the same object the
+      // tests below run — because a sentinel with its own looser pattern is a
+      // sentinel that can be satisfied while the extraction comes back empty,
+      // which is precisely how a suffix rename went undetected here.
       expect(
-        SOURCES[key].text,
-        `${path} no longer contains \`${symbol}\` — the seam moved, so this guard is reading a file that ` +
-          `no longer declares ${what}, and every assertion after this one would pass vacuously`,
-      ).toContain(symbol);
+        GO_SEAM[key].extract.test(SOURCES[key].text),
+        `${path} no longer matches \`${symbol}\` — the seam moved or was renamed, so this guard is ` +
+          `reading a file that no longer declares ${what}, and every assertion after this one would ` +
+          "pass vacuously",
+      ).toBe(true);
     }
   });
 
@@ -133,7 +149,7 @@ describe("wireFixtures vocabulary vs the Go source it mirrors", () => {
     const constants = identityAnchorConstants(capabilityPort);
     expect(constants.size, "no `IdentityAnchor… = \"…\"` constants found — the declaration form changed").toBeGreaterThan(0);
 
-    const block = capabilityPort.match(/var knownIdentityAnchors = \[\]IdentityAnchor\{([^}]*)\}/);
+    const block = capabilityPort.match(GO_SEAM.capabilityPort.extract);
     if (block === null) {
       throw new Error("could not find `var knownIdentityAnchors` — the declaration moved or was renamed");
     }
@@ -157,9 +173,7 @@ describe("wireFixtures vocabulary vs the Go source it mirrors", () => {
     const constants = identityAnchorConstants(sourceOf("capabilityPort"));
     expect(constants.size, "no IdentityAnchor constants to resolve the declaration against").toBeGreaterThan(0);
 
-    const declaration = sourceOf("mercadoLivreCapability").match(
-      /IdentityAnchors:\s*\[\]ports\.IdentityAnchor\{([^}]*)\}/,
-    );
+    const declaration = sourceOf("mercadoLivreCapability").match(GO_SEAM.mercadoLivreCapability.extract);
     expect(declaration, "could not find mercado_livre's IdentityAnchors declaration").not.toBeNull();
 
     const declared = Array.from((declaration as RegExpMatchArray)[1].matchAll(/ports\.(IdentityAnchor\w+)/g)).map(

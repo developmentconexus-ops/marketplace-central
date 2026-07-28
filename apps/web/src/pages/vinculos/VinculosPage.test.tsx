@@ -36,10 +36,12 @@ describe("VinculosPage", () => {
   beforeEach(() => {
     listErpImports.mockReset();
     // The mock is load-bearing in THIS tree: `VinculosPage.tsx:159` still
-    // renders `<ImportacaoSection />` here, because this worktree branched at
-    // `5441fe18` and CHIP-IMPORT-CHAIN's removal landed on `main` afterwards
-    // (`45b887b3`, which deleted the component AND its test — measured, not
-    // assumed). So the mock stays.
+    // renders `<ImportacaoSection />` here, because this branch forked at
+    // `bcab8269` (`git merge-base main HEAD`, measured by the hub's executor
+    // seat — an earlier draft of this comment said `5441fe18`, which is an
+    // ancestor of the fork point, not the fork point) and CHIP-IMPORT-CHAIN's
+    // removal landed on `main` afterwards (`45b887b3`, which deleted the
+    // component AND its test). So the mock stays.
     //
     // What was deleted here is the COMMENT that described that section, and the
     // distinction matters: it was accurate when written and accurate right now,
