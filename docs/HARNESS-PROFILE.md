@@ -295,6 +295,42 @@ verification conflicts against this list.
   implementation conversation. GPT flags NEVER retyped from memory — resolve via the
   `codex-dispatch` skill; `--effort` always explicit.
 
+### The dual gate has a THIRD seat: an independent EXECUTOR
+`status: ratified` · `provenance: 2026-07-28 · CHIP-ANCHORS-3 field finding, exercised on
+CHIP-IMPORT-CHAIN before ratification`
+
+A physically read-only gate seat cannot discharge an execution criterion, by construction. This
+is not a reviewer failing; it is the seat. Field evidence, same day, two chips:
+
+- CHIP-ANCHORS-3 round 1: the Opus seat has no Bash and no git; the Sol seat was denied Go's
+  temporary work directory and a Postgres test database. Its two blocking findings were
+  *"the read-only environment denied creation of Go's temporary work directory"* and
+  *"I could not provision or write to a PostgreSQL test database"* — no code defect at all.
+  Every must-fail, every ladder number, every `git` fact and the patch `sha256` ended up
+  certified **only by the implementer**, which is exactly what the brief tells the reviewer not
+  to accept.
+- CHIP-IMPORT-CHAIN: BOTH seats independently returned `I9 — NOT-PROVEN` with the same reason,
+  and the Opus side wrote it plainly: *"the chip's word is not the instrument."*
+
+So the gate is **three seats, not two**:
+
+1. two READING seats — cold Opus + GPT-5.6 Sol medium, blind to each other (unchanged);
+2. one EXECUTING seat — runs the ladder, the must-fail, the fixture reproduction, and the `git`
+   facts. **The hub owns it.** It is independent of the implementer, which is the property that
+   matters; it is not independent of the reviewer, which does not matter because it produces
+   measurements, not verdicts.
+
+Corollaries that bind:
+- A reading seat that reports a blocking finding whose content is *"I could not run X"* has
+  found nothing. Route the criterion to the executing seat; do not spend a correction round.
+- Scope execution criteria OUT of the reading seats' prompts, so they stop burning findings on
+  a sandbox they were never going to get.
+- The executor states what it ran, verbatim, and against which SHA. First run of record:
+  `_hub-gate-import-chain/GATE-P6.md` §I9 (tsc 15/0-in-scope, vitest 65 files / 521 tests, at
+  the chip's own HEAD, matching the chip's declaration — true before, verified after).
+- The FE analogue already existed and is the same idea: the hub's live browser drive (L2). This
+  generalises it to the backend.
+
 ### Third-round rule — a third defect of the same shape stops the patching
 `status: ratified` · `provenance: 2026-07-25 · operator ruling, D-121 · field evidence CHIP-M05 (6 dual-gate rounds)`
 
@@ -439,4 +475,6 @@ retroactive GPT-5.6 Sol medium review at mission closeout (operator's call).
 2026-07-25 · §11 (new subsection) · ratified · third-round rule: a third defect of the SAME SHAPE (or a third correction round on one criterion) stops point-fixing and requires a named mechanism + tool-anchored exhaustive class sweep (clean sites listed too) + class-level must-fail + independent anti-abstraction judgement before any new type, filed as ROUND-N FULL ANALYSIS; a third-round point-fix without the sweep is not acceptable evidence and the hub does not merge on it (operator ruling D-121; field evidence CHIP-M05 — same mechanism point-fixed in a code comment, a scope argument and an OpenAPI description across 6 rounds, each round passing its own gate)
 2026-07-28 · §3 · ratified · mid-`npm ci` `node_modules` fabricates `tsc` module-resolution errors that impersonate real defects, and the error count is STABLE across repeated runs — reproducibility is not discrimination; the only discriminating observable is the `npm ci` process exit (CHIP-IMPORT-CHAIN field finding; sibling of the 15-error trap, where the expected error COMPOSITION also failed to prove which tree was read)
 2026-07-28 · §3 (review-process note) · ratified · sandbox vitest blindness has teeth: a codex worker's "typecheck clean, committed" is a claim about what it could OBSERVE, not about the suite — one dispatch added a `<Link>`, requiring router context in a moved component, and turned 2 unrelated test files red invisibly; the chip's post-dispatch vitest re-run (already the verification of record under the workspace-write clause) caught them plus a genuine timing defect. A chip forwarding a worker's "committed" as green is laundering blindness into evidence (CHIP-IMPORT-CHAIN field finding)
+2026-07-28 · §11 (new subsection) · ratified · the dual gate gains a THIRD seat, an independent EXECUTOR owned by the hub: a physically read-only reading seat cannot discharge an execution criterion by construction, so ladder/must-fail/fixture/`git` facts move to a seat that is independent of the IMPLEMENTER (independence from the reviewer is irrelevant — it produces measurements, not verdicts). A reading seat whose blocking finding reads "I could not run X" has found nothing; route it, do not spend a correction round, and scope execution criteria out of reading prompts. Field evidence CHIP-ANCHORS-3 round 1 (Sol side refuted on a denied Go tmpdir and a denied Postgres, zero code findings) + CHIP-IMPORT-CHAIN (both seats returned I9 NOT-PROVEN independently). Exercised BEFORE ratification: `_hub-gate-import-chain/GATE-P6.md` §I9
+2026-07-28 · §11 · noted · a gate seat can FABRICATE a file:line citation — the Sol side of the CHIP-IMPORT-CHAIN gate reported `apps/web/vitest.chip.config.ts` as existing on disk and quoted its `:4` and `:16`, for a file present in no tree and tracked nowhere; probable origin is `chip.md:113-114`, which ORDERS the file deleted, read as an observation. Existence claims from a reading seat are verifiable by the hub in seconds and should be, before they enter a pack
 2026-07-28 · (upstream) · accepted · CHIP-IMPORT-CHAIN F-3 (`New-DispatchPrompt.ps1` assembles an unknown role string cleanly, failing only later at `Invoke-CodexDispatch.ps1` with `ROLE-UNKNOWN` — validate against `roles.psd1` at assembly time) and F-4 (vitest in a junction-only worktree needs an absolute `setupFiles` path plus `server.fs.strict: false`; the junction realpath resolves outside the vite root) belong to `mnfs-harness`, not this profile — routed upstream, not filed here
