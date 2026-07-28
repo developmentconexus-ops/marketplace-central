@@ -502,8 +502,13 @@ func TestSellerSKUAnchorReadsCanonicalCodprodNotSupplierReference(t *testing.T) 
 			wantSide:         "",
 			wantDetail:       "sem CODPROD para corroborar o EAN: o seller_sku do anúncio não casa nenhum produto",
 		},
-		// side=erp is unreachable for seller_sku now, so the only honest
-		// INCOMPARABLE is the provider side: the ANÚNCIO carries no SKU.
+		// Every case in this table runs with a product present (product
+		// above always carries a canonical id). The ERP side of seller_sku
+		// is the CODPROD, and findProducts drops any candidate without one
+		// — so with a product present, side=erp cannot arise for
+		// seller_sku here. It arises on the nil-product (unresolved) path
+		// instead, pinned by
+		// TestUnresolvedListingSellerSKUIsIncomparableOnTheERPSide.
 		"listing has no seller_sku": {
 			wantDirection: productlinksdomain.LinkCandidateReasonDirectionIncomparable,
 			wantSide:      productlinksdomain.LinkCandidateReasonSideProvider,
@@ -538,7 +543,11 @@ func TestSellerSKUAnchorReadsCanonicalCodprodNotSupplierReference(t *testing.T) 
 // TestConcordantCandidateDoesNotDerefNilProduct pins the guard, not a
 // production path: the single call site (buildExactCandidates) always passes a
 // non-nil pointer, so production reachability is NOT proven. What is proven is
-// that this scorer now degrades like both of its siblings instead of panicking.
+// that this scorer nil-checks the product like both of its siblings, so it no
+// longer panics. It does NOT degrade like them: the siblings degrade into
+// ABSENCE reasons, while this scorer degrades into CORROBORATION over a
+// zeroed ProductCandidate{} — seller_sku and ean FOR reasons at
+// Confidence 95, band ALTA, status ACCEPT.
 func TestConcordantCandidateDoesNotDerefNilProduct(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 7, 28, 9, 30, 0, 0, time.UTC)
@@ -560,6 +569,18 @@ func TestConcordantCandidateDoesNotDerefNilProduct(t *testing.T) {
 	}
 	if _, ok := findReason(candidate.Reasons, "seller_sku", productlinksdomain.LinkCandidateReasonDirectionFor); !ok {
 		t.Fatalf("reasons=%#v, want the concordant seller_sku FOR reason", candidate.Reasons)
+	}
+	if _, ok := findReason(candidate.Reasons, "ean", productlinksdomain.LinkCandidateReasonDirectionFor); !ok {
+		t.Fatalf("reasons=%#v, want the concordant ean FOR reason", candidate.Reasons)
+	}
+	if candidate.Confidence != 95 {
+		t.Fatalf("confidence=%d, want 95 for a nil-product concordant candidate", candidate.Confidence)
+	}
+	if candidate.ConfidenceBand != productlinksdomain.LinkCandidateConfidenceBandAlta {
+		t.Fatalf("confidence_band=%q, want %q", candidate.ConfidenceBand, productlinksdomain.LinkCandidateConfidenceBandAlta)
+	}
+	if candidate.MatchStatus != productlinksdomain.LinkCandidateMatchStatusAccept {
+		t.Fatalf("match_status=%q, want %q", candidate.MatchStatus, productlinksdomain.LinkCandidateMatchStatusAccept)
 	}
 }
 
