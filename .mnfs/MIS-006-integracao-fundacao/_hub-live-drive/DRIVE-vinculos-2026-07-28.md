@@ -102,6 +102,40 @@ físico duplicado no ERP. A coluna "Produto sugerido" — a coluna de decisão �
 exatamente onde discriminar é o trabalho do operador. Não é bug nosso; é achado para o operador
 levar ao cliente, e é argumento a favor de exibir refforn na fila.
 
+### F-5 — funil falso na cadeia da importação (superfície do ANCHORS-3)
+
+`/importacoes/eac3ac9e-…`, protocolo #001-E, na `main` de hoje (ANCHORS-3 ainda **não** mergeado,
+então isto é o SQL antigo em `erp_import/adapters/postgres/query_repository.go:74-108`):
+
+```
+Produtos do import  55
+Vinculados           0
+Enfileirados        55
+```
+
+`ImportChainPanel.tsx:44` legenda os três assim:
+
+```tsx
+<p …>importados → vinculados → enfileirados, lidos do servidor.</p>
+```
+
+A seta afirma que são estágios de um funil. Não são. No SQL de hoje:
+
+- `resolved_products` (:86-89) = produtos do import que TÊM link;
+- `queued_products` (:94-100) = produtos do import presentes no array pendente de `sync_state`.
+
+São populações independentes — um produto pode estar enfileirado para sync e não ter vínculo
+nenhum, que é literalmente o estado atual. O funil renderiza **55 → 0 → 55**: o último estágio
+excede o do meio em 55. Um operador que leia a seta lê um número errado; a seta é que é falsa.
+
+O ANCHORS-3 agrava, não causa: o próprio enquadramento entregue pelo chip é que
+`importados`/`enfileirados` contam **linhas** e `vinculados` conta **produtos**. Três números,
+duas unidades, uma seta. A correção do chip está certa no que ela mede; o que falta é a tela
+parar de prometer sequência entre elas.
+
+Vira ordem no ruling do ANCHORS-3: o chip é dono deste SQL e acabou de reescrever os três
+contadores.
+
 ## O que isto diz sobre as ~18 rodadas
 
 Os gates leram o WIRE e o RENDER. Nenhum leu o CONJUNTO de linhas de um anúncio — que é como o
