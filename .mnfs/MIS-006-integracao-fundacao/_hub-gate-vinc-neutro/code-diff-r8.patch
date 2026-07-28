@@ -1,0 +1,3016 @@
+diff --git a/apps/web/src/pages/vinculos/QueueRow.tsx b/apps/web/src/pages/vinculos/QueueRow.tsx
+index 152aaf7a..44391636 100644
+--- a/apps/web/src/pages/vinculos/QueueRow.tsx
++++ b/apps/web/src/pages/vinculos/QueueRow.tsx
+@@ -1,8 +1,11 @@
+ import type {
+   ProductLinkCandidateItem,
++  ProductLinkCandidateMatchInput,
+   ProductLinkConfidenceBand,
++  ProductLinkMatchStatus,
+   ProductLinkReason,
+   ProductLinkReasonDirection,
++  ProductLinkReasonSide,
+ } from "@marketplace-central/sdk-runtime";
+ import { UnknownValue } from "@marketplace-central/ui";
+ import { useState } from "react";
+@@ -31,12 +34,164 @@ const bandClasses: Record<ProductLinkConfidenceBand, string> = {
+   BAIXA: "bg-warn-soft text-warn",
+ };
+ 
+-const directionClasses: Record<ProductLinkReasonDirection, string> = {
++// The tokens for a value the WIRE invented and the SDK has no member for. It
++// is deliberately none of the semantic pairs: painting an unknown band amber
++// would assert a confidence reading nobody computed (ADR-17).
++const unknownValueClasses = "border border-border bg-surface text-muted";
++
++// Wire drift is a DIFFERENT failure from SDK growth, and only one of the two is
++// visible to a compiler. `Record<Union, …>` above catches "the SDK grew a
++// member" at build time and must stay. These readers catch "the API shipped a
++// member before the SDK was regenerated": at runtime the index is simply
++// missing, and an unguarded `Record` lookup then puts the literal string
++// `undefined` in the cell text and at the end of the class attribute.
++//
++// Both are EXPORTED, and that is load-bearing rather than convenience: the
++// drawer paints the same band from its own component, and it used to keep a
++// private second copy of this table. A second copy is how the `direction` drift
++// survived its first fix — one copy hardened, the class declared closed, the
++// other still writing the literal `undefined` into a class attribute. One
++// reader per value for the whole screen means the next unknown band degrades
++// the same way in every surface, or in none.
++export function bandLabel(band: ProductLinkConfidenceBand): string {
++  const label = bandLabels[band];
++  // Verbatim, never one of the three we know — same rule as an unknown anchor
++  // (V9): never hidden, never renamed into something the wire didn't say.
++  return label ?? band;
++}
++
++export function bandClass(band: ProductLinkConfidenceBand): string {
++  return bandClasses[band] ?? unknownValueClasses;
++}
++
++// INCOMPARABLE gets its OWN token pair (info), never accent (FOR — corroborates)
++// and never warn (AGAINST — blocks) and never the muted surface of UNAVAILABLE.
++// D-122/D-B created the state precisely to separate "the provider does not
++// supply this anchor, ever" (UNAVAILABLE, nothing to do) from "the provider does
++// supply it and the value is missing HERE" (INCOMPARABLE, go register it):
++// opposite operator actions, so painting them alike would erase the distinction
++// the state exists to show.
++export const directionClasses: Record<ProductLinkReasonDirection, string> = {
+   FOR: "bg-accent-soft text-accent-ink",
+   AGAINST: "bg-warn-soft text-warn",
+   UNAVAILABLE: "bg-surface-2 text-faint",
++  INCOMPARABLE: "bg-info-soft text-info",
++};
++
++/**
++ * Provider display name for a wire `provider_code`. The wire value is a slug
++ * ("mercado_livre"); rendering it raw is the bug that hit CHIP-PED-FILA across
++ * four surfaces.
++ *
++ * An unmapped provider is TYPESET rather than passed through — `mercado_livre`
++ * is the only mapped code today, so the next marketplace onboarded would
++ * otherwise put a raw slug back on screen — but only when the typeset form
++ * ROUND-TRIPS back to the exact wire code.
++ *
++ * That condition is the whole design, and it exists because the obvious version
++ * of this function is wrong. Collapsing every separator into a space maps
++ * `amazon_marketplace` and `amazon-marketplace` onto the same "Amazon
++ * Marketplace", and `registry.go:100-114` dedupes provider codes by exact
++ * string equality, so both are legal, distinct, simultaneously-registered
++ * providers. Two different marketplaces would render identically and the
++ * operator could not tell whose listing they were looking at. A slug that is
++ * merely ugly is a cosmetic problem; two providers wearing one name is wrong
++ * information, which is worse.
++ *
++ * So the transform is applied only where it is INJECTIVE: lower-case
++ * underscore slugs, where `"amazon_marketplace" → "Amazon Marketplace" →
++ * "amazon_marketplace"` returns the input unchanged. Anything else — hyphens,
++ * mixed case, embedded spaces, anything that would lose a character — renders
++ * verbatim, because an ugly identifier the operator can act on beats a pretty
++ * name that might be the wrong provider.
++ */
++const providerDisplayNames: Record<string, string> = {
++  mercado_livre: "Mercado Livre",
++};
++
++function typesetSlug(providerCode: string): string {
++  return providerCode
++    .split("_")
++    .map((word) => (word.length > 0 ? word.charAt(0).toUpperCase() + word.slice(1) : word))
++    .join(" ");
++}
++
++export function providerDisplayName(providerCode: string): string {
++  const mapped = providerDisplayNames[providerCode];
++  if (mapped) return mapped;
++
++  const typeset = typesetSlug(providerCode);
++  // The round-trip IS the injectivity check: if lowering the form and restoring
++  // the separators does not reproduce the wire code byte for byte, then some
++  // other code could typeset to the same string, and the display would be
++  // ambiguous. Ambiguous loses to verbatim.
++  //
++  // It has to run on what the browser PAINTS, not on the string we just built.
++  // HTML collapses runs of whitespace and trims the edges, so `amazon__market`
++  // typesets to "Amazon  Market" — two spaces — and reaches the operator as
++  // "Amazon Market", the same pixels as `amazon_market`, while a round-trip of
++  // the intermediate string returns the input unchanged and calls it injective.
++  // Checking the pre-layout form is checking a string nobody ever sees.
++  const painted = typeset.replace(/\s+/g, " ").trim();
++  const restored = painted.toLowerCase().split(" ").join("_");
++  return restored === providerCode ? painted : providerCode;
++}
++
++/**
++ * "Identificado por" (D-122): the anchors that DECIDED, joined by ` + `.
++ *
++ * This is not a new rule invented on the screen. `decisionRuleForCandidate`
++ * (resolution_service.go:812-835) is a PURE function of `match_status` and
++ * `match_input` — both already on the wire — and it is the same function that
++ * writes `rule_matched` into the decision trail. Reading the same two inputs
++ * lands on the same rule, so the column says what the trail will say.
++ *
++ * Anything that is not an ACCEPT or a single-anchor CONFIRM files as `manual`:
++ * no anchor carried it, so the column names none. That is what separates this
++ * column from Motivo — Motivo lists everything that OPINED (including every
++ * UNAVAILABLE and INCOMPARABLE), this lists only what DECIDED. A `title FOR`
++ * candidate (state TitleMatch → REVIEW, ranking-only and never ACCEPT under
++ * D-121) therefore keeps its motivo and shows NOTHING here.
++ *
++ * Both maps are keyed by the full union rather than switched on string
++ * literals: a sixth match_status or a new match_input has to fail the compiler,
++ * not fall silently through a `default` — the QueueRow:159 lesson.
++ */
++const confirmDecidingAnchors: Record<ProductLinkCandidateMatchInput, string[]> = {
++  seller_sku: ["CODPROD"],
++  ean: ["EAN"],
++  title: [],
++  manual: [],
++  none: [],
++};
++
++const statusDecidingAnchors: Record<
++  ProductLinkMatchStatus,
++  (matchInput: ProductLinkCandidateMatchInput) => string[]
++> = {
++  // Corroborated: CODPROD and EAN both named this product. Hiding the second
++  // anchor would erase from the screen the very thing that separates
++  // auto-approved from sent-to-confirmation (D-121).
++  ACCEPT: () => ["CODPROD", "EAN"],
++  CONFIRM: (matchInput) => confirmDecidingAnchors[matchInput],
++  // The anchors disagreed, collided, or never ran. Nothing decided.
++  REVIEW: () => [],
++  REJECT: () => [],
++  NO_CANDIDATE: () => [],
+ };
+ 
++export function decidingAnchors(candidate: ProductLinkCandidateItem): string[] {
++  // The `Record<Union, …>` above is the COMPILE-time guard: a sixth status in
++  // the SDK breaks the build here, which is the whole point. This runtime guard
++  // answers a different failure — the wire shipping a status the SDK does not
++  // have yet, where the map lookup is `undefined` and calling it takes down the
++  // entire queue table instead of one cell. An unknown status means we do not
++  // know what decided, so the column renders the honest unknown (ADR-17).
++  const rule = statusDecidingAnchors[candidate.match_status];
++  if (!rule) return [];
++  return rule(candidate.match_input) ?? [];
++}
++
+ function pill(label: string, className: string) {
+   return (
+     <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${className}`}>
+@@ -50,18 +205,58 @@ function confidencePercent(confidence: number): string {
+   return `${Math.round(confidence)}%`;
+ }
+ 
++// `side` is the second half of D-122/D-B: WHICH side is missing the value, and
++// therefore where the operator has to go fix it. Read from the field, never
++// parsed out of `detail` — parsing a Portuguese sentence breaks silently the day
++// someone rewrites the sentence, which is exactly why D-B put it in the data.
++const incomparableSideLabels: Record<ProductLinkReasonSide, string> = {
++  provider: "falta no anúncio",
++  erp: "falta no ERP",
++  both: "falta nos dois lados",
++};
++
++/**
++ * The `side` text for a reason, or undefined when there is none to tell.
++ *
++ * The direction is checked FIRST: the frozen D-122 contract emits `side` only
++ * for INCOMPARABLE, so a stray value on any other direction is wire noise, not
++ * a fact to render. And an INCOMPARABLE whose `side` is absent stays silent —
++ * `classifyProviderIdentityAnchor` has a real path that emits INCOMPARABLE with
++ * no side (the `!readable` branch, generation_service.go:711, e.g. `marca`),
++ * and inventing a side there would fabricate the one thing D-B added (ADR-17).
++ */
++export function reasonSideLabel(reason: ProductLinkReason): string | undefined {
++  if (reason.direction !== "INCOMPARABLE") return undefined;
++  // `?? reason.side` is the fallback every sibling map already has — bandLabels
++  // (:60), directionLabels (:292), anchorShortLabels (:300), the ranking map
++  // (:356). This was the one member that did not, so a `side` the SDK has not
++  // been regenerated for rendered as NOTHING: the operator is not told the
++  // datum exists. Unknown falls through verbatim — never hidden, never renamed
++  // into something the wire didn't say.
++  return reason.side ? (incomparableSideLabels[reason.side] ?? reason.side) : undefined;
++}
++
+ /**
+  * IC-01 presentation rule: a reason chip ALWAYS shows its motivo (anchor) text.
+  * When a `detail` (which may carry a %) is present it is rendered joined to the
+  * motivo — so a bare % is never shown on its own; the motivo is always visible.
+  */
+-function reasonChipLabel(reason: ProductLinkReason): string {
+-  return reason.detail ? `${reason.anchor}: ${reason.detail}` : reason.anchor;
++export function reasonChipLabel(reason: ProductLinkReason): string {
++  const side = reasonSideLabel(reason);
++  const head = side ? `${reason.anchor} (${side})` : reason.anchor;
++  return reason.detail ? `${head}: ${reason.detail}` : head;
+ }
+ 
+ // The wire anchors are machine names (`seller_sku`, `refforn`); the table shows
+ // the operator-facing short form. Unknown anchors fall through verbatim — never
+ // hidden, never renamed into something the wire didn't say.
++//
++// `refforn` is KEPT even though D-A (D-122) removed it from the cross-side
++// anchor vocabulary, so no candidate generated today carries it. D-A also
++// decided that already-persisted reasons are NOT migrated, so a decided
++// candidate can still hold a `refforn` motivo — audit data that is meant to
++// survive verbatim. Dropping the entry would degrade that historical row from
++// "Ref. forn." to the raw machine name for no gain.
+ const anchorShortLabels: Record<string, string> = {
+   seller_sku: "SKU",
+   ean: "EAN",
+@@ -71,13 +266,42 @@ const anchorShortLabels: Record<string, string> = {
+ };
+ 
+ // Direction is carried by colour AND by a glyph, so the FOR/AGAINST/sem-dado
+-// distinction survives without relying on colour alone.
++// distinction survives without relying on colour alone. INCOMPARABLE is "?":
++// the comparison could not be made — distinct from "–" (UNAVAILABLE: there is
++// nothing to compare, and never will be).
+ const directionGlyphs: Record<ProductLinkReasonDirection, string> = {
+   FOR: "✓",
+   AGAINST: "✕",
+   UNAVAILABLE: "–",
++  INCOMPARABLE: "?",
+ };
+ 
++/**
++ * Glyph for a direction, with the wire value itself standing in for one we have
++ * no glyph for.
++ *
++ * The wire-drift readers below matter MORE for `direction` than anywhere else
++ * on this row, because the V2 fix made the path reachable. The compact cell
++ * used to be `[...byDirection("AGAINST"), ...byDirection("FOR"),
++ * ...byDirection("UNAVAILABLE")]`, which silently DROPPED an unknown direction;
++ * the total ranking that replaced it keeps every reason, correctly. Undoing a
++ * silent filter must not install a literal "undefined" in its place — that
++ * would trade one invisible defect for a visible-but-meaningless one.
++ *
++ * Falling back to a KNOWN direction is not an option: "–" would read as
++ * UNAVAILABLE ("nothing to compare, ever") and "?" as INCOMPARABLE ("go
++ * register the value"), which are opposite operator actions. The wire word is
++ * the only honest thing to show (ADR-17).
++ */
++export function directionGlyph(direction: ProductLinkReasonDirection): string {
++  const glyph = directionGlyphs[direction];
++  return glyph ?? direction;
++}
++
++export function directionClass(direction: ProductLinkReasonDirection): string {
++  return directionClasses[direction] ?? unknownValueClasses;
++}
++
+ function anchorShortLabel(anchor: string): string {
+   return anchorShortLabels[anchor] ?? anchor;
+ }
+@@ -90,7 +314,11 @@ function anchorShortLabel(anchor: string): string {
+  * tooltip and in the expanded view).
+  */
+ function compactChipLabel(reason: ProductLinkReason): string {
+-  const head = `${directionGlyphs[reason.direction]} ${anchorShortLabel(reason.anchor)}`;
++  const side = reasonSideLabel(reason);
++  // The side rides inline, not only in the tooltip: "where do I go fix it" is
++  // the whole point of an INCOMPARABLE, and a tooltip is not readable on a scan.
++  const anchor = side ? `${anchorShortLabel(reason.anchor)} (${side})` : anchorShortLabel(reason.anchor);
++  const head = `${directionGlyph(reason.direction)} ${anchor}`;
+   if (reason.direction === "AGAINST" && reason.detail) {
+     return `${head}: ${reason.detail}`;
+   }
+@@ -100,8 +328,10 @@ function compactChipLabel(reason: ProductLinkReason): string {
+ function compactChip(reason: ProductLinkReason) {
+   return (
+     <span
++      data-testid="motivo-chip"
++      data-direction={reason.direction}
+       title={reasonChipLabel(reason)}
+-      className={`inline-flex max-w-[12rem] items-center truncate whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${directionClasses[reason.direction]}`}
++      className={`inline-flex max-w-[12rem] items-center truncate whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${directionClass(reason.direction)}`}
+     >
+       {compactChipLabel(reason)}
+     </span>
+@@ -110,6 +340,28 @@ function compactChip(reason: ProductLinkReason) {
+ 
+ const COMPACT_CHIP_LIMIT = 2;
+ 
++// Display priority for the collapsed cell. AGAINST first (a blocking
++// contradiction is what the operator must read), then FOR (what corroborates),
++// then INCOMPARABLE — actionable absence, the operator CAN go register the
++// value — and last UNAVAILABLE, the only permanent one and therefore the only
++// one nothing can be done about.
++const directionRank: Record<ProductLinkReasonDirection, number> = {
++  AGAINST: 0,
++  FOR: 1,
++  INCOMPARABLE: 2,
++  UNAVAILABLE: 3,
++};
++
++// A direction we cannot interpret ranks after all four we can, so it never
++// displaces an actionable signal out of the two compact slots. It is still
++// RANKED, not filtered — the whole point of the ordering being total.
++const UNKNOWN_DIRECTION_RANK = 4;
++
++function directionRankOf(direction: ProductLinkReasonDirection): number {
++  const rank = directionRank[direction];
++  return rank ?? UNKNOWN_DIRECTION_RANK;
++}
++
+ /**
+  * Motivo cell. Collapsed by default to keep the row one line tall (a 4-chip
+  * stack of full sentences made every row ~5 lines and pushed the Ação column
+@@ -133,7 +385,7 @@ function AnchorChips({ reasons }: { reasons: ProductLinkReason[] }) {
+               {/* Expandido: o texto integral do motivo pode quebrar linha — o
+                   chip nowrap do modo compacto seria cortado pelo limite do td. */}
+               <span
+-                className={`inline-block rounded-2xl px-2 py-0.5 text-xs font-medium ${directionClasses[reason.direction]}`}
++                className={`inline-block rounded-2xl px-2 py-0.5 text-xs font-medium ${directionClass(reason.direction)}`}
+               >
+                 {reasonChipLabel(reason)}
+               </span>
+@@ -151,15 +403,45 @@ function AnchorChips({ reasons }: { reasons: ProductLinkReason[] }) {
+     );
+   }
+ 
+-  // Rank AGAINST → FOR → UNAVAILABLE and slice. Ranking (never filtering) is
+-  // what keeps at least one motivo on screen even for a row whose only signals
+-  // are UNAVAILABLE ones (ADR-17 — motivo sempre visível).
+-  const byDirection = (direction: ProductLinkReasonDirection) =>
+-    reasons.filter((reason) => reason.direction === direction);
+-  const shown = [...byDirection("AGAINST"), ...byDirection("FOR"), ...byDirection("UNAVAILABLE")].slice(
+-    0,
+-    COMPACT_CHIP_LIMIT,
+-  );
++  // Rank and slice. Ranking (never filtering) is what keeps at least one motivo
++  // on screen even for a row whose only signals are absence ones (ADR-17 —
++  // motivo sempre visível).
++  //
++  // This USED to be `[...byDirection("AGAINST"), ...byDirection("FOR"),
++  // ...byDirection("UNAVAILABLE")]` — an enumeration by string literal. It is
++  // type-correct, so the compiler said nothing when D-B added a fourth
++  // direction, and the "ranking" quietly became a FILTER: INCOMPARABLE matched
++  // no branch, so it was not merely ranked last, it was UNDISPLAYABLE.
++  //
++  // What that costs on real data, stated at the size it actually is. The
++  // headline case — every motivo INCOMPARABLE, `shown` empty, a lone "+N" over
++  // zero chips — is PRODUCIBLE but NOT REACHABLE in this tree, and the
++  // difference matters. `resolveIdentityAnchors` (:149-169) aborts unless the
++  // declaration resolves, and the only declaration here is `mercado_livre`,
++  // which does not supply `marca`; so every live row carries a `marca`
++  // UNAVAILABLE, which the old expression DID match. The empty cell needs a
++  // provider that supplies all four anchors. None exists yet.
++  //
++  // The reachable half is smaller and real, and it is the one that pays for
++  // this change: with COMPACT_CHIP_LIMIT === 2, a row holding a FOR, an `ean`
++  // INCOMPARABLE and the `marca` UNAVAILABLE spent both slots on the FOR and on
++  // `marca` — permanent, actionable by no one — while the INCOMPARABLE, which
++  // the operator CAN act on, could not be shown at any limit. `directionRank`
++  // puts INCOMPARABLE (2) ahead of UNAVAILABLE (3), so those rows now surface
++  // the actionable absence and push `marca` behind the "+N". Rows of exactly
++  // that shape are on the screen today.
++  //
++  // A sort over a Record<Direction, number> is total by construction: every
++  // reason keeps a place in the ordering, so `shown` is empty only when
++  // `reasons` is, and a future fifth direction stops COMPILING here instead of
++  // disappearing from the cell.
++  const shown = reasons
++    .map((reason, index) => ({ reason, index }))
++    // The index tiebreak keeps the wire order inside a direction, so the cell
++    // does not reshuffle between renders for reasons that rank equally.
++    .sort((a, b) => directionRankOf(a.reason.direction) - directionRankOf(b.reason.direction) || a.index - b.index)
++    .slice(0, COMPACT_CHIP_LIMIT)
++    .map((entry) => entry.reason);
+   const hidden = reasons.length - shown.length;
+ 
+   return (
+@@ -188,10 +470,7 @@ function AnchorChips({ reasons }: { reasons: ProductLinkReason[] }) {
+ 
+ export function QueueRow({ candidate, onOpen, onApprove, onReject, pending, selected, onToggleSelect }: QueueRowProps) {
+   const noCandidate = candidate.match_status === "NO_CANDIDATE";
+-  // GTIN "✓ igual" is only honest when the listing matched the product on EAN
+-  // (match_input === "ean"); otherwise the GTIN relationship is UNKNOWN → "—",
+-  // never fabricated (ADR-17).
+-  const gtinEqual = candidate.match_input === "ean" && Boolean(candidate.match_value);
++  const decided = decidingAnchors(candidate);
+ 
+   return (
+     <tr className="align-top text-ink" data-testid="queue-row" data-match-status={candidate.match_status}>
+@@ -207,15 +486,20 @@ export function QueueRow({ candidate, onOpen, onApprove, onReject, pending, sele
+         />
+       </td>
+ 
+-      {/* ANÚNCIO ML (listing) */}
++      {/* ANÚNCIO (id do anúncio no provider) — rótulo estrutural neutro; de QUAL
++          provider ele é fica na coluna Canal, que é onde esse dado mora. */}
+       <td className="px-3 py-3">
+         <div className="font-mono text-sm font-medium text-ink">{candidate.provider_item_id}</div>
+       </td>
+ 
+-      {/* SKU ML (código do anúncio no provider) */}
++      {/* CANAL (provider do anúncio). A célula mostrava `provider_code` cru sob
++          um cabeçalho "SKU ML": o wire carrega aqui o SLUG do marketplace
++          ("mercado_livre"), nunca um SKU — o SKU do vendedor não está no
++          contrato do candidato. Rótulo agora diz o que o dado é, e o valor sai
++          pelo nome de exibição em vez do slug. */}
+       <td className="px-3 py-3">
+-        <span className="font-mono text-xs text-muted">
+-          {candidate.provider_code ? candidate.provider_code : <UnknownValue />}
++        <span className="text-xs text-muted">
++          {candidate.provider_code ? providerDisplayName(candidate.provider_code) : <UnknownValue />}
+         </span>
+       </td>
+ 
+@@ -250,10 +534,19 @@ export function QueueRow({ candidate, onOpen, onApprove, onReject, pending, sele
+         </span>
+       </td>
+ 
+-      {/* GTIN ("✓ igual" | "—") */}
++      {/* IDENTIFICADO POR — as âncoras que DECIDIRAM, unidas por " + " (D-122).
++          Substitui a coluna GTIN: "✓ igual" era a leitura de UMA âncora, e o
++          conjunto que decidiu é a informação que a supera. Vazio (REVIEW,
++          REJECT, NO_CANDIDATE, CONFIRM por título) é "—": nada decidiu ainda,
++          e inventar uma âncora aqui seria afirmar uma decisão que não houve. */}
+       <td className="px-3 py-3">
+-        {gtinEqual ? (
+-          <span className="whitespace-nowrap text-xs font-medium text-accent-ink">✓ igual</span>
++        {decided.length > 0 ? (
++          <span
++            className="whitespace-nowrap text-xs font-medium text-accent-ink"
++            data-testid="identificado-por"
++          >
++            {decided.join(" + ")}
++          </span>
+         ) : (
+           <UnknownValue />
+         )}
+@@ -265,7 +558,7 @@ export function QueueRow({ candidate, onOpen, onApprove, onReject, pending, sele
+           <UnknownValue hint="sem confiança sem candidato" />
+         ) : (
+           <div className="flex items-center gap-2">
+-            {pill(bandLabels[candidate.confidence_band], bandClasses[candidate.confidence_band])}
++            {pill(bandLabel(candidate.confidence_band), bandClass(candidate.confidence_band))}
+             <span className="font-mono text-xs font-medium tabular-nums text-muted">
+               {confidencePercent(candidate.confidence)}
+             </span>
+diff --git a/apps/web/src/pages/vinculos/QueueTab.test.tsx b/apps/web/src/pages/vinculos/QueueTab.test.tsx
+index af385479..530bde08 100644
+--- a/apps/web/src/pages/vinculos/QueueTab.test.tsx
++++ b/apps/web/src/pages/vinculos/QueueTab.test.tsx
+@@ -1,9 +1,10 @@
+ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+-import type { ProductLinkCandidateItem } from "@marketplace-central/sdk-runtime";
++import type { ProductLinkCandidateItem, ProductLinkReason } from "@marketplace-central/sdk-runtime";
+ import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+ import { MemoryRouter } from "react-router-dom";
+ import { beforeEach, describe, expect, it, vi } from "vitest";
+ import { QueueTab } from "./QueueTab";
++import { MARCA_UNAVAILABLE_DETAIL, driftCandidate, wireCandidate } from "./wireFixtures";
+ 
+ const listProductLinkCandidates = vi.fn();
+ const approveProductLinkCandidate = vi.fn();
+@@ -21,23 +22,24 @@ vi.mock("../../app/ClientContext", () => ({
+   }),
+ }));
+ 
+-function candidate(overrides: Partial<ProductLinkCandidateItem>): ProductLinkCandidateItem {
+-  return {
+-    candidate_id: "cand_x",
+-    installation_id: "inst_1",
+-    provider_code: "mercado_livre",
+-    provider_item_id: "MLB_X",
+-    state: "title_match",
+-    match_input: "title",
+-    confidence: 50,
+-    confidence_band: "MEDIA",
+-    match_status: "REVIEW",
+-    reasons: [],
+-    created_at: "2026-07-18T12:00:00Z",
+-    updated_at: "2026-07-18T12:00:00Z",
+-    ...overrides,
+-  };
+-}
++// Every fixture below is built through `wireCandidate`, which THROWS on a
++// candidate the generator cannot emit (see wireFixtures.ts for why the previous
++// arrangement — a hand-written literal per test — failed four reviewer rounds).
++// A deliberately impossible shape goes through `driftCandidate`, which requires
++// the reason to be written down.
++const candidate = wireCandidate;
++
++// driftCandidate case 2, shared by the provider-display tests below. Every
++// provider_code other than `mercado_livre` is in this class: this tree holds
++// exactly one capability declaration (capability_adapter.go:90), and
++// resolveIdentityAnchors ABORTS generation when a declaration does not resolve
++// (generation_service.go:149-169) - so an undeclared provider emits no candidate
++// at all, rather than one with defaults. The assertion is about how the SCREEN
++// renders a provider_code it does not know, which is what the operator sees the
++// day a second marketplace lands; the row itself is not a wire row here.
++const NO_DECLARATION_HERE =
++  "no declaration here: this provider_code has no capability adapter in this tree, so generation aborts " +
++  "for it (generation_service.go:149-169). The assertion is about the provider column on screen.";
+ 
+ function renderTab(initialEntries: string[] = ["/"]) {
+   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+@@ -67,25 +69,65 @@ describe("QueueTab", () => {
+           provider_item_id: "MLB1",
+           internal_product_id: 111,
+           internal_product_name: "Parafuso A",
++          state: "exact_sku",
++          match_status: "ACCEPT",
++          match_input: "seller_sku",
+           confidence: 95,
+           confidence_band: "ALTA",
+-          reasons: [{ anchor: "SKU idêntico", direction: "FOR", detail: "100%" }],
++          // buildConcordantCandidate emits BOTH anchors FOR (:493-496) — the
++          // ACCEPT exists because they agree, so a lone `seller_sku` FOR under
++          // 95/ALTA/ACCEPT was never producible. The round-6 table validated the
++          // tuple and left `reasons[]` free, so this passed; the signal sets
++          // close that.
++          reasons: [
++            { anchor: "seller_sku", direction: "FOR", detail: "100%" },
++            { anchor: "ean", direction: "FOR", detail: "ean corrobora o mesmo codprod (unproved)" },
++            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
++          ],
+         }),
+         candidate({
+           candidate_id: "cand_2",
+           provider_item_id: "MLB2",
+           internal_product_id: 222,
+-          confidence: 60,
++          // Was `60/MEDIA/CONFIRM exact_ean` carrying a lone `title` AGAINST.
++          // Impossible: the only site that appends `title` AGAINST (:560-562)
++          // rewrites the triple to 25/BAIXA/REJECT in the same statement, so
++          // that reason and that band cannot coexist. This is the MEDIA row the
++          // test needs, taken from the site that really assigns MEDIA with an
++          // EAN that did not corroborate (:529 + :534-537).
++          state: "exact_sku",
++          match_status: "CONFIRM",
++          match_input: "seller_sku",
++          confidence: 70,
+           confidence_band: "MEDIA",
+-          reasons: [{ anchor: "Título parcial", direction: "AGAINST", detail: "62%" }],
++          reasons: [
++            { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
++            { anchor: "ean", direction: "UNAVAILABLE", detail: "sem EAN para corroborar o CODPROD" },
++            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
++          ],
+         }),
+         candidate({
+           candidate_id: "cand_3",
+           provider_item_id: "MLB3",
+           internal_product_id: 333,
+-          confidence: 30,
++          // Round 6 found this row overriding `state` to `conflict` while
++          // INHERITING `match_input: "title"` from the default — a pairing no
++          // conflict site produces, because the conflict IS between seller_sku
++          // and ean. Round 8 found the rest of it: with `20/BAIXA/REVIEW` it
++          // carried NO signal at all, and both sites that assign that triple
++          // emit one (`applyCollisionScore`) or two (`applyConflictScore`).
++          // Rebuilt on the hard-negative site, which is where an AGAINST title
++          // actually comes from, and which keeps this row BAIXA.
++          state: "exact_ean",
++          match_status: "REJECT",
++          match_input: "ean",
++          confidence: 25,
+           confidence_band: "BAIXA",
+-          reasons: [{ anchor: "EAN", direction: "UNAVAILABLE", detail: "sem EAN" }],
++          reasons: [
++            { anchor: "ean", direction: "FOR", detail: "ean corrobora codprod (unproved)" },
++            { anchor: "title", direction: "AGAINST", detail: "62%" },
++            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
++          ],
+         }),
+       ],
+     });
+@@ -101,15 +143,28 @@ describe("QueueTab", () => {
+     expect(screen.getByText("MEDIA")).toBeInTheDocument();
+     expect(screen.getByText("BAIXA")).toBeInTheDocument();
+ 
++    // Per-ROW from here down. The previous form asked `screen.getByText("✓ SKU")`
++    // globally, which only ever resolved because the fixtures were sparse — and
++    // they were sparse because they were unproducible. Producible rows carry the
++    // signals their site really emits, so the same chip text now appears on more
++    // than one row and a global query is ambiguous by construction.
++    const rows = screen.getAllByTestId("queue-row");
++    // Indexing rows assumes the table renders in wire order. Asserted, not
++    // assumed — a reorder would otherwise silently move every assertion below to
++    // a different row and still pass.
++    expect(within(rows[0]).getByText("95%")).toBeInTheDocument();
++    expect(within(rows[1]).getByText("70%")).toBeInTheDocument();
++    expect(within(rows[2]).getByText("25%")).toBeInTheDocument();
++
+     // IC-01: the motivo (anchor) is always on screen. In the compact table cell a
+     // FOR/UNAVAILABLE detail lives in the tooltip (the % is already its own
+     // column), while an AGAINST detail — the reason the vínculo is blocked —
+     // stays inline. A bare % never renders on its own either way.
+-    expect(screen.getByText("✓ SKU idêntico")).toHaveAttribute("title", "SKU idêntico: 100%");
+-    expect(screen.getByText("✕ Título parcial: 62%")).toBeInTheDocument();
+-    // A row whose only signal is UNAVAILABLE still shows that motivo — ranking,
+-    // never filtering (never blank / never a bare value).
+-    expect(screen.getByText("– EAN")).toHaveAttribute("title", "EAN: sem EAN");
++    expect(within(rows[0]).getByText("✓ SKU")).toHaveAttribute("title", "seller_sku: 100%");
++    expect(within(rows[2]).getByText("✕ Título: 62%")).toBeInTheDocument();
++    // An absence still shows — ranking, never filtering (never blank / never a
++    // bare value). The sentence is the generator's own (:530), not a placeholder.
++    expect(within(rows[1]).getByText("– EAN")).toHaveAttribute("title", "ean: sem EAN para corroborar o CODPROD");
+ 
+     // Regression guard: confidence is already an integer 0-100 percentage (OpenAPI
+     // ProductLinkCandidate.confidence). A candidate with confidence: 95 must render
+@@ -119,9 +174,11 @@ describe("QueueTab", () => {
+   });
+ 
+   it("collapses extra motivos behind +N and drops none of them (expansion shows the full wire form)", async () => {
+-    // The real CONFIRM shape: 2 corroborating anchors + the 2 internal-only
+-    // anchors that are always UNAVAILABLE. Four full sentences per row is what
+-    // made the table unreadable; only the two decisive ones stay on screen.
++    // A four-anchor row, which is the full width of the vocabulary: the anchor
++    // that resolved, the one that found nothing on the ERP side, the one with no
++    // value to compare, and the one `mercado_livre` never supplies. Four full
++    // sentences per row is what made the table unreadable; only the two
++    // highest-ranked stay on screen.
+     listProductLinkCandidates.mockResolvedValue({
+       items: [
+         candidate({
+@@ -129,11 +186,16 @@ describe("QueueTab", () => {
+           provider_item_id: "MLB4",
+           internal_product_id: 10741,
+           internal_product_name: "PUXADOR FENG",
++          state: "exact_sku",
++          match_status: "CONFIRM",
++          match_input: "seller_sku",
++          confidence: 70,
++          confidence_band: "MEDIA",
+           reasons: [
+             { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
++            { anchor: "title", direction: "INCOMPARABLE", side: "erp", detail: "produto ERP sem título comparável" },
+             { anchor: "ean", direction: "UNAVAILABLE", detail: "sem EAN para corroborar o CODPROD" },
+-            { anchor: "marca", direction: "UNAVAILABLE", detail: "marca inexistente no lado provider" },
+-            { anchor: "refforn", direction: "UNAVAILABLE", detail: "refforn inexistente no lado provider" },
++            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
+           ],
+         }),
+       ],
+@@ -144,7 +206,7 @@ describe("QueueTab", () => {
+     const row = await screen.findByTestId("queue-row");
+     // Collapsed: the FOR anchor plus the highest-ranked remaining one, then +2.
+     expect(screen.getByText("✓ SKU")).toBeInTheDocument();
+-    expect(screen.queryByText(/marca inexistente/)).not.toBeInTheDocument();
++    expect(screen.queryByText(/sem EAN para corroborar/)).not.toBeInTheDocument();
+     const toggle = screen.getByRole("button", { name: "Mostrar todos os 4 motivos" });
+     expect(toggle).toHaveTextContent("+2");
+ 
+@@ -153,9 +215,9 @@ describe("QueueTab", () => {
+     // Expanded: every motivo, in its full wire form — nothing was dropped.
+     for (const full of [
+       "seller_sku: seller_sku resolve exato para codprod",
++      "title (falta no ERP): produto ERP sem título comparável",
+       "ean: sem EAN para corroborar o CODPROD",
+-      "marca: marca inexistente no lado provider",
+-      "refforn: refforn inexistente no lado provider",
++      `marca: ${MARCA_UNAVAILABLE_DETAIL}`,
+     ]) {
+       expect(screen.getByText(full)).toBeInTheDocument();
+     }
+@@ -164,16 +226,316 @@ describe("QueueTab", () => {
+     expect(within(row).getByRole("button", { name: "Vincular" })).toBeInTheDocument();
+   });
+ 
++  // `anchorShortLabels` still carries an entry for `refforn`, an anchor D-A
++  // REMOVED from the vocabulary. That entry is not dead code and it is not a
++  // leftover: D-A decided that already-persisted reasons are not migrated, so a
++  // row decided before the removal still holds a `refforn` motivo, and dropping
++  // the label would degrade real audit data to a raw machine name.
++  //
++  // This is the test that makes that argument checkable. It is a drift fixture
++  // rather than a wire one because the GENERATOR can no longer emit this — only
++  // the database can — and `wireCandidate` is right to reject it: the previous
++  // arrangement had `refforn` inside a fixture captioned "the real CONFIRM
++  // shape", which asserted the opposite of the truth.
++  it("keeps the label of an anchor D-A removed, for rows decided before the removal", async () => {
++    listProductLinkCandidates.mockResolvedValue({
++      items: [
++        driftCandidate(
++          "persisted audit data, not generator output: D-A removed `refforn` from knownIdentityAnchors " +
++            "without migrating reasons already written, so this row can be read from the DB and never re-emitted.",
++          {
++            candidate_id: "cand_legacy",
++            provider_item_id: "MLB_LEGACY",
++            internal_product_id: 10741,
++            reasons: [
++              { anchor: "refforn", direction: "UNAVAILABLE", detail: "refforn inexistente no lado provider" },
++            ],
++          },
++        ),
++      ],
++    });
++
++    renderTab();
++
++    const row = await screen.findByTestId("queue-row");
++    // The historical anchor is typeset, not printed raw...
++    expect(within(row).getByText("– Ref. forn.")).toBeInTheDocument();
++    // ...and the machine name never reaches the operator.
++    expect(row.textContent).not.toContain("refforn:");
++  });
++
++  // V2 — the criterion this chip is judged on. `QueueRow` used to build the
++  // collapsed cell by enumerating the directions as string literals
++  // (`[...byDirection("AGAINST"), ...byDirection("FOR"),
++  // ...byDirection("UNAVAILABLE")]`), which is type-correct and therefore silent
++  // once D-B added a fourth direction: a row whose motivos are ALL INCOMPARABLE
++  // fell through every branch, `shown` came out empty, and the cell rendered a
++  // lone "+2" with zero chips — a filter wearing a ranking's comment (ADR-17).
++  //
++  // The assertions below are on the RENDERED DOM, never on the internal `shown`
++  // array: an assertion about a variable does not prove a screen.
++  // This one is a DRIFT fixture, and saying so is the correction of an earlier
++  // claim. `resolveIdentityAnchors` aborts generation unless the declaration
++  // resolves (generation_service.go:149-169), and `identity_anchor_adapter.go`
++  // walks all four anchors, so EVERY candidate of EVERY provider carries a
++  // `marca` reason — UNAVAILABLE when unsupplied, INCOMPARABLE when supplied. A
++  // row with only two reasons, both INCOMPARABLE, is therefore not emitted by
++  // any declaration: the earlier note calling it "producible under a capability
++  // declaration" was false about THIS reason array, not merely incomplete.
++  //
++  // It is kept, and kept unproducible, because it is the boundary of the V2
++  // invariant — the extreme where a filter wearing a ranking's comment leaves
++  // the cell empty. The test immediately after it drives the SAME defect from a
++  // reason set today's backend really emits, which is what actually discharges
++  // the criterion.
++  it("keeps a motivo on screen for a row whose reasons are ALL INCOMPARABLE (ADR-17)", async () => {
++    listProductLinkCandidates.mockResolvedValue({
++      items: [
++        driftCandidate(
++          "the all-INCOMPARABLE boundary of V2. No declaration emits it: every candidate carries a `marca` " +
++            "reason (resolveIdentityAnchors :149-169 + identity_anchor_adapter.go:28-35), so a two-reason " +
++            "all-INCOMPARABLE array is unreachable. Held as the extreme case of the ranking invariant.",
++          {
++            candidate_id: "cand_inc",
++            provider_item_id: "MLB_INC",
++            internal_product_id: 444,
++            internal_product_name: "PUXADOR FENG",
++            reasons: [
++              { anchor: "seller_sku", direction: "INCOMPARABLE", side: "provider", detail: "anúncio sem seller_sku" },
++              { anchor: "ean", direction: "INCOMPARABLE", side: "erp", detail: "produto ERP sem ean cadastrado" },
++            ],
++          },
++        ),
++      ],
++    });
++
++    renderTab();
++
++    const row = await screen.findByTestId("queue-row");
++    const chips = within(row).getAllByTestId("motivo-chip");
++
++    // The invariant itself: at least one motivo visible. Never a bare "+N".
++    expect(chips.length).toBeGreaterThan(0);
++    expect(chips).toHaveLength(2);
++    expect(within(row).queryByRole("button", { name: /Mostrar todos os/ })).not.toBeInTheDocument();
++
++    // V4 — `side` is what D-B added on top of the direction: it says WHERE the
++    // operator goes to fix the missing value. It reaches the screen from the
++    // FIELD, not parsed out of the Portuguese `detail`.
++    expect(chips[0]).toHaveTextContent("? SKU (falta no anúncio)");
++    expect(chips[1]).toHaveTextContent("? EAN (falta no ERP)");
++
++    // V1 — INCOMPARABLE carries its own glyph and its own token pair. Reusing
++    // AGAINST's (warn) would say "blocks"; reusing UNAVAILABLE's (surface-2/
++    // faint) would say "the provider never supplies this" — both false here.
++    for (const chip of chips) {
++      expect(chip).toHaveAttribute("data-direction", "INCOMPARABLE");
++      expect(chip.className).toContain("bg-info-soft");
++      expect(chip.className).toContain("text-info");
++      expect(chip.className).not.toContain("bg-warn-soft");
++      expect(chip.className).not.toContain("bg-accent-soft");
++      expect(chip.className).not.toContain("bg-surface-2");
++    }
++  });
++
++  // The V2 defect, driven from a reason set `mercado_livre` REALLY EMITS today —
++  // no hypothetical capability declaration anywhere in it.
++  //
++  // This is verbatim what `applyUnresolvedScore` produces for a listing no
++  // anchor could resolve (generation_service.go:620-628): the two anchors that
++  // found nothing, INCOMPARABLE on the ERP side because no ERP product matched
++  // at all, then the always-declared `marca` arriving UNAVAILABLE because ML
++  // does not supply it. It is the single most common row on this screen.
++  //
++  // Against the old string-literal enumeration the cell showed exactly ONE chip
++  // — "– Marca", the one thing nothing can ever be done about — and buried BOTH
++  // actionable signals behind "+2". That is the same defect as the empty-cell
++  // case, in the form the operator actually meets it: not "no motivo", but "the
++  // only useless motivo, promoted".
++  it("promotes the actionable absences over the permanent one, on a reason set the backend really emits", async () => {
++    listProductLinkCandidates.mockResolvedValue({
++      items: [
++        candidate({
++          candidate_id: "cand_unresolved",
++          provider_item_id: "MLB_UNRES",
++          state: "unresolved",
++          match_status: "NO_CANDIDATE",
++          match_input: "none",
++          confidence: 0,
++          confidence_band: "BAIXA",
++          reasons: [
++            {
++              anchor: "seller_sku",
++              direction: "INCOMPARABLE",
++              side: "erp",
++              detail: "seller_sku sem correspondência",
++            },
++            { anchor: "ean", direction: "INCOMPARABLE", side: "erp", detail: "ean sem correspondência" },
++            { anchor: "marca", direction: "UNAVAILABLE", detail: "provider não fornece a âncora marca" },
++          ],
++        }),
++      ],
++    });
++
++    renderTab();
++
++    const row = await screen.findByTestId("queue-row");
++    const chips = within(row).getAllByTestId("motivo-chip");
++
++    // Two chips, and they are the two the operator can act on.
++    expect(chips).toHaveLength(2);
++    expect(chips[0]).toHaveTextContent("? SKU (falta no ERP)");
++    expect(chips[1]).toHaveTextContent("? EAN (falta no ERP)");
++    for (const chip of chips) {
++      expect(chip).toHaveAttribute("data-direction", "INCOMPARABLE");
++    }
++
++    // The permanent absence is not dropped — it is RANKED, and lives behind the
++    // toggle. Ranking, never filtering.
++    expect(within(row).getByRole("button", { name: "Mostrar todos os 3 motivos" })).toBeInTheDocument();
++    expect(within(row).queryByText("– Marca")).not.toBeInTheDocument();
++  });
++
++  it("ranks INCOMPARABLE above UNAVAILABLE without dropping either (ranking, never filtering)", async () => {
++    listProductLinkCandidates.mockResolvedValue({
++      items: [
++        candidate({
++          candidate_id: "cand_mixed",
++          provider_item_id: "MLB_MIX",
++          internal_product_id: 555,
++          // `marca` is the UNAVAILABLE one, and it has to be: mercado_livre
++          // DECLARES title supplied (capability_adapter.go:90), so a `title`
++          // UNAVAILABLE carrying "provider não fornece a âncora title" — which
++          // is what this fixture said before — contradicts the one declaration
++          // in the tree. `marca` is the anchor that sentence is true of.
++          //
++          // The tuple was the default's (35/BAIXA/REVIEW title_match), whose
++          // only signal is `title` FOR — so a lone `seller_sku` FOR under it was
++          // unproducible. Moved to the site that really emits one seller_sku FOR
++          // plus an `ean` absence (:529 + :534-537).
++          //
++          // The `ean` sentence is the SEEDED one, not classify's own. The seed
++          // goes into `absenceIndexes` (:666-669); classify then overwrites the
++          // classification but :690-692 keeps the seeded sentence, because it
++          // carries the domain context. "anúncio e produto ERP sem ean" — which
++          // this fixture said before — is what classify writes when there is NO
++          // seed, and this site always seeds.
++          state: "exact_sku",
++          match_input: "seller_sku",
++          match_status: "CONFIRM",
++          confidence: 70,
++          confidence_band: "MEDIA",
++          reasons: [
++            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
++            { anchor: "ean", direction: "INCOMPARABLE", side: "both", detail: "sem EAN para corroborar o CODPROD" },
++            { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
++          ],
++        }),
++      ],
++    });
++
++    renderTab();
++
++    const row = await screen.findByTestId("queue-row");
++    const chips = within(row).getAllByTestId("motivo-chip");
++    // FOR outranks the two absence states; INCOMPARABLE (actionable) outranks
++    // UNAVAILABLE (permanent), so the UNAVAILABLE one is the one deferred to +N.
++    expect(chips.map((chip) => chip.getAttribute("data-direction"))).toEqual(["FOR", "INCOMPARABLE"]);
++    expect(chips[1]).toHaveTextContent("? EAN (falta nos dois lados)");
++    // Nothing was dropped — the remainder is behind the toggle, in full form.
++    fireEvent.click(within(row).getByRole("button", { name: "Mostrar todos os 3 motivos" }));
++    expect(screen.getByText(`marca: ${MARCA_UNAVAILABLE_DETAIL}`)).toBeInTheDocument();
++    expect(screen.getByText("ean (falta nos dois lados): sem EAN para corroborar o CODPROD")).toBeInTheDocument();
++  });
++
++  it("MUST-FAIL 3 — an INCOMPARABLE `side` outside the SDK union renders VERBATIM", async () => {
++    // The whole `reasonSideLabel` family falls back to the wire word when the
++    // wire says something the FE map does not know: bandLabels `?? band`
++    // (QueueRow.tsx:60), directionLabels `?? direction` (:292), anchorShortLabels
++    // `?? anchor` (:300), the ranking map `?? UNKNOWN_DIRECTION_RANK` (:356).
++    // `reasonSideLabel` was the one member that returned `undefined` instead, so
++    // a `side` the SDK has not been regenerated for DISAPPEARED from the chip —
++    // the operator reads "SKU" and is not told the value exists. Drift, silent,
++    // type-correct: the exact class this chip exists to close.
++    listProductLinkCandidates.mockResolvedValue({
++      items: [
++        driftCandidate("wire drift: the API ships a fourth `side` member before the SDK is regenerated", {
++          candidate_id: "cand_drift_side",
++          provider_item_id: "MLB_DRIFT_SIDE",
++          reasons: [
++            {
++              anchor: "seller_sku",
++              direction: "INCOMPARABLE",
++              side: "fornecedor" as ProductLinkReason["side"],
++              detail: "âncora sem correspondência",
++            },
++            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
++          ],
++        }),
++      ],
++    });
++
++    renderTab();
++
++    const row = await screen.findByTestId("queue-row");
++    const chips = within(row).getAllByTestId("motivo-chip");
++    expect(chips[0]).toHaveTextContent("? SKU (fornecedor)");
++  });
++
++  it("renders an INCOMPARABLE with no `side` on the wire without inventing one", async () => {
++    // Real path: classifyProviderIdentityAnchor's `!readable` branch
++    // (generation_service.go:711) emits INCOMPARABLE with an EMPTY side, which
++    // `json:"side,omitempty"` drops from the payload — `marca` is the live case,
++    // since ListingSnapshot has no provider-side brand field. Fabricating a side
++    // there would forge the exact datum D-B was created to carry (ADR-17).
++    listProductLinkCandidates.mockResolvedValue({
++      items: [
++        driftCandidate(
++          "the side-less INCOMPARABLE branch (generation_service.go:706-708) fires only for an anchor a " +
++            "provider DECLARES supplied but `identityAnchorValues` cannot read — `marca` is the live case, " +
++            "and mercado_livre, the only adapter here, declares it unsupplied. No declaration in this tree " +
++            "emits it; the SDK marks `side` optional, and the screen must not fill the gap in.",
++          {
++            candidate_id: "cand_noside",
++            provider_item_id: "MLB_NOSIDE",
++            internal_product_id: 666,
++            reasons: [
++              { anchor: "marca", direction: "INCOMPARABLE", detail: "não foi possível comparar a âncora marca" },
++            ],
++          },
++        ),
++      ],
++    });
++
++    renderTab();
++
++    const row = await screen.findByTestId("queue-row");
++    const [chip] = within(row).getAllByTestId("motivo-chip");
++    expect(chip).toHaveTextContent("? Marca");
++    expect(chip.textContent).not.toMatch(/falta n/);
++    expect(chip).toHaveAttribute("title", "marca: não foi possível comparar a âncora marca");
++  });
++
+   it("renders an honest NO_CANDIDATE row instead of a blank row", async () => {
+     listProductLinkCandidates.mockResolvedValue({
+       items: [
+         candidate({
+           candidate_id: "cand_nc",
+           provider_item_id: "MLB_NC",
++          // NO_CANDIDATE comes only from applyUnresolvedScore, reached only
++          // through newCandidate(..., Unresolved, MatchInputNone, ...), so the
++          // state and the match_input follow from the status rather than being
++          // free fields — and the row still carries reasons: `reasons: []` was
++          // the shape of a candidate no path builds.
++          state: "unresolved",
+           match_status: "NO_CANDIDATE",
++          match_input: "none",
+           confidence: 0,
+           confidence_band: "BAIXA",
+-          reasons: [],
++          reasons: [
++            { anchor: "seller_sku", direction: "INCOMPARABLE", side: "erp", detail: "seller_sku sem correspondência" },
++            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
++          ],
+         }),
+       ],
+     });
+@@ -190,6 +552,93 @@ describe("QueueTab", () => {
+     expect(screen.getByRole("button", { name: "Ignorar" })).toBeEnabled();
+   });
+ 
++  // V10 — neutral vocabulary must not cost the operator the provider datum.
++  // Both halves are asserted here because neutralizing the VALUE would be a lie,
++  // not neutrality: the anúncio really is on one specific marketplace.
++  it("neutralizes the structural labels while keeping WHICH provider the anúncio is on", async () => {
++    listProductLinkCandidates.mockResolvedValue({
++      items: [
++        candidate({
++          candidate_id: "cand_1",
++          provider_item_id: "MLB1",
++          provider_code: "mercado_livre",
++          internal_product_id: 111,
++          internal_product_name: "Parafuso A",
++        }),
++      ],
++    });
++
++    const { container } = renderTab();
++    const row = await screen.findByTestId("queue-row");
++
++    // Structural labels: no provider name in a column header.
++    expect(screen.getByRole("columnheader", { name: "Anúncio" })).toBeInTheDocument();
++    expect(screen.getByRole("columnheader", { name: "Canal" })).toBeInTheDocument();
++    expect(screen.queryByRole("columnheader", { name: "Anúncio ML" })).not.toBeInTheDocument();
++    expect(screen.queryByRole("columnheader", { name: "SKU ML" })).not.toBeInTheDocument();
++
++    // Data value: the provider is still on screen — by display name.
++    expect(within(row).getByText("Mercado Livre")).toBeInTheDocument();
++
++    // And never the raw wire slug. This is the trap that got CHIP-PED-FILA on
++    // four surfaces; the "SKU ML" column was rendering `provider_code`, which
++    // the wire fills with the marketplace slug, never a SKU.
++    expect(container.textContent).not.toContain("mercado_livre");
++  });
++
++  it("typesets an unmapped provider without ever collapsing two distinct codes onto one name", async () => {
++    listProductLinkCandidates.mockResolvedValue({
++      items: [
++        driftCandidate(NO_DECLARATION_HERE, {
++          candidate_id: "cand_1",
++          provider_item_id: "SHP1",
++          // A provider with no entry in the display-name map. Today only
++          // `mercado_livre` is mapped, so the very next marketplace lands here —
++          // and V10's rule is about the SCREEN, not about which slug it is.
++          provider_code: "shopee",
++          internal_product_id: 111,
++          internal_product_name: "Parafuso A",
++        }),
++        // Two codes that a naive "split on any separator" would render
++        // identically. `registry.go:100-114` dedupes provider codes by exact
++        // string equality, so both can be registered at once — and then the
++        // operator cannot tell whose listing they are looking at.
++        driftCandidate(NO_DECLARATION_HERE, {
++          candidate_id: "cand_2",
++          provider_item_id: "AMZ1",
++          provider_code: "amazon_marketplace",
++          internal_product_id: 222,
++          internal_product_name: "Parafuso B",
++        }),
++        driftCandidate(NO_DECLARATION_HERE, {
++          candidate_id: "cand_3",
++          provider_item_id: "AMZ2",
++          provider_code: "amazon-marketplace",
++          internal_product_id: 333,
++          internal_product_name: "Parafuso C",
++        }),
++      ],
++    });
++
++    const { container } = renderTab();
++    const rows = await screen.findAllByTestId("queue-row");
++    const [shopee, underscored, hyphenated] = rows;
++
++    // The clean underscore slug is typeset...
++    expect(within(shopee).getByText("Shopee")).toBeInTheDocument();
++    expect(within(underscored).getByText("Amazon Marketplace")).toBeInTheDocument();
++
++    // ...and the hyphenated code keeps its hyphen, so the two providers never
++    // wear the same name. This is the assertion neither a constant fallback
++    // ("always Shopee") nor a separator-collapsing typeset can survive.
++    expect(within(hyphenated).getByText("Amazon-marketplace")).toBeInTheDocument();
++    expect(within(hyphenated).queryByText("Amazon Marketplace")).not.toBeInTheDocument();
++
++    // No lower-case slug of a provider we CAN name reaches the screen.
++    expect(container.textContent).not.toContain("shopee");
++    expect(container.textContent).not.toContain("amazon_marketplace");
++  });
++
+   it("removes the item from the queue after an approve + page-local invalidation", async () => {
+     listProductLinkCandidates
+       .mockResolvedValueOnce({
+@@ -198,8 +647,22 @@ describe("QueueTab", () => {
+             candidate_id: "cand_1",
+             provider_item_id: "MLB1",
+             internal_product_id: 111,
++            // 95/ALTA is assigned at exactly one site — buildConcordantCandidate
++            // (:503-505) — and only on the ACCEPT path, so the band cannot be
++            // raised without the status that earns it. That same site builds its
++            // candidate at :491 with StateExactSKU / MatchInputSellerSKU, so ACCEPT
++            // carries those two and no others; this fixture said `exact_ean`/`ean`
++            // for five rounds because the guard only checked the score triple.
++            state: "exact_sku",
++            match_status: "ACCEPT",
++            match_input: "seller_sku",
+             confidence: 95,
+             confidence_band: "ALTA",
++            reasons: [
++              { anchor: "ean", direction: "FOR", detail: "EAN idêntico" },
++              { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
++              { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
++            ],
+           }),
+         ],
+       })
+@@ -234,9 +697,21 @@ describe("QueueTab", () => {
+           provider_item_id: "MLB1",
+           internal_product_id: 111,
+           internal_product_name: "Parafuso A",
++          state: "exact_sku",
++          match_status: "ACCEPT",
++          match_input: "seller_sku",
+           confidence: 95,
+           confidence_band: "ALTA",
+-          reasons: [{ anchor: "SKU idêntico", direction: "FOR", detail: "100%" }],
++          // Same correction as the first test's `cand_1`: ACCEPT is the two
++          // anchors AGREEING, so `buildConcordantCandidate` writes both FOR
++          // (:493-496). The drawer assertions below do not read the reasons at
++          // all, which is why this copy went unnoticed — the fixture was wrong
++          // in a field the test never looked at.
++          reasons: [
++            { anchor: "seller_sku", direction: "FOR", detail: "100%" },
++            { anchor: "ean", direction: "FOR", detail: "ean corrobora o mesmo codprod (unproved)" },
++            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
++          ],
+         }),
+       ],
+     });
+@@ -315,4 +790,271 @@ describe("QueueTab", () => {
+     expect(screen.queryByText("MLB1")).not.toBeInTheDocument();
+     expect(screen.getByText("MLB2")).toBeInTheDocument();
+   });
++
++  // V6 / D-122 — "Identificado por" shows the anchors that DECIDED, ` + `-joined.
++  //
++  // The negative case is the one that matters and the one A2-R2 named: `title`
++  // produces a FOR reason in the base (generation_service.go:551, "match por
++  // título (ranking-only, nunca ACCEPT)") and D-121 routes title-only to REVIEW.
++  // Deriving this column from `direction === "FOR"` would print "Título" as the
++  // deciding anchor for a candidate title explicitly did NOT decide. The source
++  // is the same pair the backend files the decision from — match_status +
++  // match_input (resolution_service.go:812-835).
++  it("names only the anchors that decided, and names none for a title-only REVIEW row", async () => {
++    listProductLinkCandidates.mockResolvedValue({
++      items: [
++        // Corroborated → both anchors, joined.
++        candidate({
++          candidate_id: "cand_accept",
++          provider_item_id: "MLB_ACCEPT",
++          // ACCEPT exists only as (exact_sku, seller_sku) — buildConcordantCandidate
++          // :491 + :505. The "CODPROD + EAN" this test asserts does not come from
++          // match_input: statusDecidingAnchors.ACCEPT (QueueRow.tsx:175) ignores it
++          // and names both anchors, because corroboration by BOTH is what ACCEPT
++          // means. So the assertion is unchanged and the row is now producible.
++          state: "exact_sku",
++          match_status: "ACCEPT",
++          match_input: "seller_sku",
++          match_value: "CODPROD-991",
++          confidence: 95,
++          confidence_band: "ALTA",
++          reasons: [
++            { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
++            { anchor: "ean", direction: "FOR", detail: "ean corrobora o mesmo codprod (unproved)" },
++            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
++          ],
++        }),
++        // Single anchor resolved a single product → confirmation queue, one anchor.
++        candidate({
++          candidate_id: "cand_confirm_sku",
++          provider_item_id: "MLB_CONFIRM",
++          state: "exact_sku",
++          match_status: "CONFIRM",
++          match_input: "seller_sku",
++          confidence: 70,
++          confidence_band: "MEDIA",
++          reasons: [
++            { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato" },
++            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
++          ],
++        }),
++        // Title match: a FOR reason on screen, but nothing decided.
++        candidate({
++          candidate_id: "cand_title",
++          provider_item_id: "MLB_TITLE",
++          state: "title_match",
++          match_status: "REVIEW",
++          match_input: "title",
++          reasons: [
++            { anchor: "title", direction: "FOR", detail: "match por título" },
++            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
++          ],
++        }),
++      ],
++    });
++
++    renderTab();
++
++    const rows = await screen.findAllByTestId("queue-row");
++    const [accept, confirm, title] = rows;
++
++    expect(within(accept).getByTestId("identificado-por")).toHaveTextContent("CODPROD + EAN");
++    expect(within(confirm).getByTestId("identificado-por")).toHaveTextContent("CODPROD");
++    expect(within(confirm).getByTestId("identificado-por")).not.toHaveTextContent("EAN");
++
++    // The negative case: the title row shows its motivo but names NO anchor.
++    expect(within(title).queryByTestId("identificado-por")).not.toBeInTheDocument();
++    expect(within(title).getByText("✓ Título")).toBeInTheDocument();
++    // ...and the column slot itself is the honest unknown, not a blank cell:
++    // index 5 is IDENTIFICADO POR (0 seleção, 1 anúncio, 2 canal, 3 produto,
++    // 4 SKU HUB, 5 identificado por). Read positionally because "—" also
++    // renders in the SKU HUB cell of this same row.
++    expect(title.querySelectorAll("td")[5].textContent).toBe("—");
++    expect(title.textContent).not.toContain("Título +");
++
++    // Header renamed per D-122: the single-anchor GTIN reading is superseded.
++    expect(screen.getByRole("columnheader", { name: "Identificado por" })).toBeInTheDocument();
++    expect(screen.queryByRole("columnheader", { name: "GTIN" })).not.toBeInTheDocument();
++  });
++
++  it("survives a match_status the SDK union does not know, degrading one cell instead of the table", async () => {
++    listProductLinkCandidates.mockResolvedValue({
++      items: [
++        driftCandidate(
++          "the API ships a sixth match_status before the SDK is regenerated. The cast is the POINT: " +
++            "compile-time exhaustiveness cannot see a value the wire invents at runtime.",
++          {
++            candidate_id: "cand_drift",
++            provider_item_id: "MLB_DRIFT",
++            internal_product_id: 111,
++            internal_product_name: "Parafuso A",
++            match_status: "PENDING_REVIEW" as ProductLinkCandidateItem["match_status"],
++            match_input: "ean",
++            reasons: [{ anchor: "ean", direction: "FOR", detail: "EAN idêntico" }],
++          },
++        ),
++      ],
++    });
++
++    renderTab();
++
++    // The table still renders: an unknown status must not take the queue down.
++    const row = await screen.findByTestId("queue-row");
++    expect(within(row).getByText("Parafuso A")).toBeInTheDocument();
++
++    // And the cell says "unknown" rather than naming an anchor it cannot know.
++    expect(within(row).queryByTestId("identificado-por")).not.toBeInTheDocument();
++    expect(row.querySelectorAll("td")[5].textContent).toBe("—");
++  });
++
++  // Same wire-drift class as the test above, on the OTHER two unions the row
++  // indexes by Record. `direction` matters most: the compact cell used to
++  // enumerate three literals, which silently DROPPED an unknown direction; the
++  // ranking sort that replaced it (the V2 fix) keeps every reason, so the fix
++  // made this path reachable. Undoing a silent filter must not install a
++  // literal "undefined" in its place.
++  it("survives a reason direction the SDK union does not know, without printing undefined", async () => {
++    listProductLinkCandidates.mockResolvedValue({
++      items: [
++        driftCandidate(
++          "the API ships a fifth reason direction before the SDK is regenerated — the exact failure a " +
++            "Record<Union, …> is blind to, one layer down from the one this chip fixes.",
++          {
++            candidate_id: "cand_dir",
++            provider_item_id: "MLB_DIR",
++            internal_product_id: 111,
++            internal_product_name: "Parafuso A",
++            reasons: [
++              { anchor: "ean", direction: "PARTIAL" as ProductLinkCandidateItem["reasons"][number]["direction"], detail: "ean parcial" },
++              { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato" },
++            ],
++          },
++        ),
++      ],
++    });
++
++    renderTab();
++
++    const row = await screen.findByTestId("queue-row");
++    const chips = within(row).getAllByTestId("motivo-chip");
++
++    // Both reasons keep their place — an unknown direction is not filtered out.
++    expect(chips).toHaveLength(2);
++
++    // The known one is unaffected...
++    expect(within(row).getByText("✓ SKU")).toBeInTheDocument();
++
++    // ...and the unknown one falls through VERBATIM, exactly as an unknown
++    // anchor does (V9): the wire word instead of a glyph we do not have.
++    // Never the string "undefined", in the text or in the class attribute.
++    expect(within(row).getByText("PARTIAL EAN")).toBeInTheDocument();
++    expect(row.textContent).not.toContain("undefined");
++    for (const chip of chips) {
++      expect(chip.getAttribute("class") ?? "").not.toContain("undefined");
++    }
++
++    // The unknown direction ranks LAST, so it never displaces a signal the
++    // operator can act on out of the two compact slots.
++    expect(chips[0].textContent).toBe("✓ SKU");
++    expect(chips[1].textContent).toBe("PARTIAL EAN");
++  });
++
++  it("survives a confidence_band the SDK union does not know, without printing undefined", async () => {
++    listProductLinkCandidates.mockResolvedValue({
++      items: [
++        driftCandidate(
++          "the API ships a fourth confidence_band before the SDK is regenerated. 72/CRITICA is unreachable " +
++            "by construction — ALTA is assigned at one site and only with ACCEPT — which is the point: the " +
++            "band the screen must survive is one no scoring path here can produce.",
++          {
++            candidate_id: "cand_band",
++            provider_item_id: "MLB_BAND",
++            internal_product_id: 111,
++            internal_product_name: "Parafuso A",
++            confidence: 72,
++            confidence_band: "CRITICA" as ProductLinkCandidateItem["confidence_band"],
++          },
++        ),
++      ],
++    });
++
++    renderTab();
++
++    const row = await screen.findByTestId("queue-row");
++
++    // The band the wire actually sent, verbatim — not a blank pill, and not a
++    // band we would be inventing by falling back to one of the three we know.
++    expect(within(row).getByText("CRITICA")).toBeInTheDocument();
++    // The confidence itself is a number and is unaffected by the band drift.
++    expect(within(row).getByText("72%")).toBeInTheDocument();
++    expect(row.textContent).not.toContain("undefined");
++    for (const el of Array.from(row.querySelectorAll<HTMLElement>("[class]"))) {
++      expect(el.getAttribute("class") ?? "").not.toContain("undefined");
++    }
++  });
++
++  // The row degrading honestly is HALF the surface. The drawer renders the same
++  // band from its own component, and a second copy of a lookup table is exactly
++  // how the first `direction` drift survived: hardening one copy and declaring
++  // the class closed. The operator reaches this by clicking the row they just
++  // read, so the two surfaces disagreeing is the normal path, not a corner.
++  it("survives the same unknown confidence_band in the DRAWER, not only in the row", async () => {
++    listProductLinkCandidates.mockResolvedValue({
++      items: [
++        driftCandidate(
++          "the API ships a fourth confidence_band before the SDK is regenerated. 72/CRITICA is unreachable " +
++            "by construction — ALTA is assigned at one site and only with ACCEPT — which is the point: the " +
++            "band the screen must survive is one no scoring path here can produce.",
++          {
++            candidate_id: "cand_band",
++            provider_item_id: "MLB_BAND",
++            internal_product_id: 111,
++            internal_product_name: "Parafuso A",
++            confidence: 72,
++            confidence_band: "CRITICA" as ProductLinkCandidateItem["confidence_band"],
++          },
++        ),
++      ],
++    });
++
++    renderTab(["/?candidate=cand_band"]);
++
++    const drawer = await screen.findByTestId("drawer-candidate");
++    expect(within(drawer).getByText("CRITICA")).toBeInTheDocument();
++    expect(within(drawer).getByText("72%")).toBeInTheDocument();
++    expect(drawer.textContent).not.toContain("undefined");
++    for (const el of Array.from(drawer.querySelectorAll<HTMLElement>("[class]"))) {
++      expect(el.getAttribute("class") ?? "").not.toContain("undefined");
++    }
++  });
++
++  // Injectivity has to hold on what the OPERATOR sees, not on the intermediate
++  // string. HTML collapses runs of whitespace and trims the edges, so a typeset
++  // form that differs only by spacing is one name on screen — and `registry.go`
++  // `buildDefinitions` dedupes provider codes by exact string equality, so
++  // `amazon_marketplace` and `amazon__marketplace` are both registrable at the
++  // same time. Two marketplaces wearing one name is wrong information.
++  it("does not let two provider codes collapse onto one name through whitespace", async () => {
++    listProductLinkCandidates.mockResolvedValue({
++      items: [
++        driftCandidate(NO_DECLARATION_HERE, { candidate_id: "cand_a", provider_item_id: "MLB_A", provider_code: "amazon_marketplace" }),
++        driftCandidate(NO_DECLARATION_HERE, { candidate_id: "cand_b", provider_item_id: "MLB_B", provider_code: "amazon__marketplace" }),
++        driftCandidate(NO_DECLARATION_HERE, { candidate_id: "cand_c", provider_item_id: "MLB_C", provider_code: "_amazon" }),
++        driftCandidate(NO_DECLARATION_HERE, { candidate_id: "cand_d", provider_item_id: "MLB_D", provider_code: "amazon" }),
++      ],
++    });
++
++    renderTab();
++    await screen.findAllByTestId("queue-row");
++
++    // `getAllByText` normalizes whitespace exactly the way the browser paints
++    // it, which is the whole point: if two codes reach the same painted string,
++    // this returns two nodes for a name that should identify one provider.
++    expect(screen.getAllByText("Amazon Marketplace")).toHaveLength(1);
++    expect(screen.getAllByText("Amazon")).toHaveLength(1);
++    // The forms that cannot be typeset injectively stay verbatim — an ugly slug
++    // the operator can act on beats a pretty name that may be another provider.
++    expect(screen.getByText("amazon__marketplace")).toBeInTheDocument();
++    expect(screen.getByText("_amazon")).toBeInTheDocument();
++  });
+ });
+diff --git a/apps/web/src/pages/vinculos/QueueTab.tsx b/apps/web/src/pages/vinculos/QueueTab.tsx
+index 61f90b3c..63e394b4 100644
+--- a/apps/web/src/pages/vinculos/QueueTab.tsx
++++ b/apps/web/src/pages/vinculos/QueueTab.tsx
+@@ -131,11 +131,14 @@ export function QueueTab({ installationId, onViewResolved }: QueueTabProps) {
+               <th className="px-3 py-3" scope="col">
+                 <span className="sr-only">Selecionar</span>
+               </th>
+-              <th className="px-3 py-3" scope="col">Anúncio ML</th>
+-              <th className="px-3 py-3" scope="col">SKU ML</th>
++              {/* Rótulos ESTRUTURAIS são neutros de provider (F-05): a tela
++                  serve qualquer marketplace. De qual provider o anúncio é
++                  continua na tela — como DADO, na coluna Canal. */}
++              <th className="px-3 py-3" scope="col">Anúncio</th>
++              <th className="px-3 py-3" scope="col">Canal</th>
+               <th className="px-3 py-3" scope="col">Produto sugerido</th>
+               <th className="px-3 py-3" scope="col">SKU HUB</th>
+-              <th className="px-3 py-3" scope="col">GTIN</th>
++              <th className="px-3 py-3" scope="col">Identificado por</th>
+               <th className="px-3 py-3" scope="col">Confiança</th>
+               <th className="px-3 py-3" scope="col">Motivo</th>
+               <th className="sticky right-0 border-l border-border bg-surface-2 px-3 py-3 text-right" scope="col">
+diff --git a/apps/web/src/pages/vinculos/ResolvidosTab.test.tsx b/apps/web/src/pages/vinculos/ResolvidosTab.test.tsx
+new file mode 100644
+index 00000000..41cff618
+--- /dev/null
++++ b/apps/web/src/pages/vinculos/ResolvidosTab.test.tsx
+@@ -0,0 +1,147 @@
++import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
++import type {
++  ProductLinkAuditEntry,
++  ProductLinkWorkflowItem,
++} from "@marketplace-central/sdk-runtime";
++import { render, screen, within } from "@testing-library/react";
++import { beforeEach, describe, expect, it, vi } from "vitest";
++import { ResolvidosTab } from "./ResolvidosTab";
++
++const listProductLinkWorkflows = vi.fn();
++const undoProductLinkResolution = vi.fn();
++
++vi.mock("../../app/ClientContext", () => ({
++  useClient: () => ({
++    listProductLinkWorkflows: (...args: unknown[]) => listProductLinkWorkflows(...args),
++    undoProductLinkResolution: (...args: unknown[]) => undoProductLinkResolution(...args),
++  }),
++}));
++
++function auditEntry(overrides: Partial<ProductLinkAuditEntry>): ProductLinkAuditEntry {
++  return {
++    audit_id: "aud_1",
++    installation_id: "inst_1",
++    provider_code: "mercado_livre",
++    provider_item_id: "MLB1",
++    action: "approve_candidate",
++    actor: { actor_type: "operator", actor_id: "op_1" },
++    previous_state: "unresolved",
++    next_state: "resolved",
++    created_at: "2026-07-20T12:00:00Z",
++    ...overrides,
++  } as ProductLinkAuditEntry;
++}
++
++function workflow(
++  providerItemId: string,
++  audit: ProductLinkAuditEntry[],
++): ProductLinkWorkflowItem {
++  return {
++    identity: { installation_id: "inst_1", provider_item_id: providerItemId },
++    current_link: {
++      installation_id: "inst_1",
++      provider_code: "mercado_livre",
++      provider_item_id: providerItemId,
++      state: "resolved",
++      internal_product_id: 1001,
++      internal_product_name: "Produto Y",
++      created_at: "2026-07-20T12:00:00Z",
++      updated_at: "2026-07-20T12:00:00Z",
++    },
++    candidates: [],
++    audit,
++  };
++}
++
++function renderTab() {
++  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
++  return render(
++    <QueryClientProvider client={queryClient}>
++      <ResolvidosTab installationId="inst_1" />
++    </QueryClientProvider>,
++  );
++}
++
++beforeEach(() => {
++  listProductLinkWorkflows.mockReset();
++  undoProductLinkResolution.mockReset();
++});
++
++/**
++ * F-04 — the auto-approved badge.
++ *
++ * The predicate is `actor.actor_type === "system"` on the audit entry that
++ * RESOLVED the link, not the `rule_matched = exact_ean_unique AND actor =
++ * system` pair the M-06 brief names: `rule_matched` is absent from the wire, and
++ * that exact pair is forbidden by the CHECK at 0082_product_link_decisions.sql:54.
++ * Full reasoning lives on `isAutoResolved` in useVinculosResolved.ts.
++ */
++describe("ResolvidosTab — badge de auto-aprovado", () => {
++  it("shows the badge for a link resolved by the system", async () => {
++    listProductLinkWorkflows.mockResolvedValue({
++      items: [
++        workflow("MLB_AUTO", [
++          auditEntry({
++            audit_id: "aud_auto",
++            provider_item_id: "MLB_AUTO",
++            actor: { actor_type: "system", actor_id: "auto_linker" },
++          }),
++        ]),
++      ],
++    });
++
++    renderTab();
++
++    const row = await screen.findByTestId("resolvido-row");
++    expect(within(row).getByTestId("auto-resolved-badge")).toHaveTextContent("Automático");
++    // The state chip is not replaced by the badge — both facts stay on screen.
++    expect(within(row).getByText("Vinculado ✓")).toBeInTheDocument();
++  });
++
++  it("shows NO badge for a link resolved by an operator", async () => {
++    listProductLinkWorkflows.mockResolvedValue({
++      items: [
++        workflow("MLB_MANUAL", [
++          auditEntry({
++            audit_id: "aud_manual",
++            provider_item_id: "MLB_MANUAL",
++            actor: { actor_type: "operator", actor_id: "op_1", actor_name: "Operador" },
++          }),
++        ]),
++      ],
++    });
++
++    renderTab();
++
++    const row = await screen.findByTestId("resolvido-row");
++    expect(within(row).queryByTestId("auto-resolved-badge")).not.toBeInTheDocument();
++    expect(within(row).getByText("Vinculado ✓")).toBeInTheDocument();
++  });
++
++  it("shows NO badge, and does not crash or print undefined, for a pre-M-05 link with no resolving audit entry", async () => {
++    // milestone.md:213's pre-M-05 record: the link is resolved but nothing in the
++    // audit trail moved it there. Absence of the badge reads "not automatic",
++    // which is the truth available; a fabricated badge would not be (ADR-17).
++    listProductLinkWorkflows.mockResolvedValue({
++      items: [workflow("MLB_LEGACY", [])],
++    });
++
++    renderTab();
++
++    const row = await screen.findByTestId("resolvido-row");
++    expect(within(row).queryByTestId("auto-resolved-badge")).not.toBeInTheDocument();
++    expect(row.textContent).not.toContain("undefined");
++    // Desfazer is honestly disabled — there is no resolution to reverse.
++    expect(within(row).getByRole("button", { name: "Desfazer" })).toBeDisabled();
++  });
++
++  it("keeps the structural column label neutral of provider (F-05)", async () => {
++    listProductLinkWorkflows.mockResolvedValue({ items: [workflow("MLB1", [])] });
++
++    renderTab();
++
++    await screen.findByTestId("resolvido-row");
++    expect(screen.getByRole("columnheader", { name: "Anúncio" })).toBeInTheDocument();
++    expect(screen.queryByRole("columnheader", { name: "Anúncio ML" })).not.toBeInTheDocument();
++  });
++});
+diff --git a/apps/web/src/pages/vinculos/ResolvidosTab.tsx b/apps/web/src/pages/vinculos/ResolvidosTab.tsx
+index 408b2f7e..dfb8c8ed 100644
+--- a/apps/web/src/pages/vinculos/ResolvidosTab.tsx
++++ b/apps/web/src/pages/vinculos/ResolvidosTab.tsx
+@@ -1,7 +1,7 @@
+ import type { ProductLinkWorkflowItem } from "@marketplace-central/sdk-runtime";
+ import { EmptyState, ErrorState, LoadingState, UnknownValue } from "@marketplace-central/ui";
+ import { formatDateTime } from "../pedidos/pedidosFormatters";
+-import { resolutionAuditId, useVinculosResolved } from "./useVinculosResolved";
++import { isAutoResolved, resolutionAuditId, useVinculosResolved } from "./useVinculosResolved";
+ 
+ export interface ResolvidosTabProps {
+   installationId: string;
+@@ -18,6 +18,7 @@ function ResolvidoRow({
+ }) {
+   const link = item.current_link;
+   const auditId = resolutionAuditId(item);
++  const autoResolved = isAutoResolved(item);
+ 
+   return (
+     <tr className="align-top text-ink" data-testid="resolvido-row">
+@@ -40,11 +41,25 @@ function ResolvidoRow({
+         </span>
+       </td>
+ 
+-      {/* Estado */}
++      {/* Estado (+ badge de auto-aprovado, F-04) */}
+       <td className="px-3 py-3">
+-        <span className="inline-flex whitespace-nowrap rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent-ink">
+-          Vinculado ✓
+-        </span>
++        <div className="flex flex-wrap items-center gap-1">
++          <span className="inline-flex whitespace-nowrap rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent-ink">
++            Vinculado ✓
++          </span>
++          {/* Ausência do badge significa "não foi automático" — verdade para
++              todo vínculo manual e para todo registro anterior ao M-05, que não
++              tem entrada de auditoria resolvedora. Nunca um badge fabricado. */}
++          {autoResolved ? (
++            <span
++              data-testid="auto-resolved-badge"
++              title="Vínculo resolvido automaticamente pelo sistema"
++              className="inline-flex whitespace-nowrap rounded-full border border-border bg-surface-2 px-2 py-0.5 text-xs font-medium text-muted"
++            >
++              Automático
++            </span>
++          ) : null}
++        </div>
+       </td>
+ 
+       {/* Resolvido em */}
+@@ -85,7 +100,8 @@ export function ResolvidosTab({ installationId }: ResolvidosTabProps) {
+         <caption className="sr-only">Vínculos resolvidos</caption>
+         <thead className="border-b border-border bg-surface-2 text-xs font-medium tracking-[0.04em] text-faint">
+           <tr>
+-            <th className="px-3 py-3" scope="col">Anúncio ML</th>
++            {/* Rótulo estrutural neutro de provider (F-05). */}
++            <th className="px-3 py-3" scope="col">Anúncio</th>
+             <th className="px-3 py-3" scope="col">Produto</th>
+             <th className="px-3 py-3" scope="col">SKU HUB</th>
+             <th className="px-3 py-3" scope="col">Estado</th>
+diff --git a/apps/web/src/pages/vinculos/VinculoDrawer.tsx b/apps/web/src/pages/vinculos/VinculoDrawer.tsx
+index 19dd83a1..76d7baca 100644
+--- a/apps/web/src/pages/vinculos/VinculoDrawer.tsx
++++ b/apps/web/src/pages/vinculos/VinculoDrawer.tsx
+@@ -1,8 +1,6 @@
+-import type {
+-  ProductLinkCandidateItem,
+-  ProductLinkConfidenceBand,
+-} from "@marketplace-central/sdk-runtime";
++import type { ProductLinkCandidateItem } from "@marketplace-central/sdk-runtime";
+ import { DetailPanel, UnknownValue } from "@marketplace-central/ui";
++import { bandClass, bandLabel, directionClass, providerDisplayName, reasonChipLabel } from "./QueueRow";
+ 
+ export interface VinculoDrawerProps {
+   candidateId: string | null;
+@@ -13,17 +11,16 @@ export interface VinculoDrawerProps {
+   pending?: boolean;
+ }
+ 
+-const bandClasses: Record<ProductLinkConfidenceBand, string> = {
+-  ALTA: "bg-accent-soft text-accent-ink",
+-  MEDIA: "bg-amber-soft text-amber",
+-  BAIXA: "bg-warn-soft text-warn",
+-};
+-
+-const directionClasses = {
+-  FOR: "bg-accent-soft text-accent-ink",
+-  AGAINST: "bg-warn-soft text-warn",
+-  UNAVAILABLE: "bg-surface-2 text-faint",
+-} as const;
++// Direction AND band tokens come from QueueRow, the one place that owns them.
++// The drawer used to keep a second copy of each, which is why the third
++// direction could be added to one map and silently missed here.
++//
++// The band copy outlived the direction one, and that is the whole lesson: when
++// `direction` was consolidated, this file's comment was updated to celebrate it
++// while the band table sat ten lines above, still raw-indexed, still writing the
++// literal `undefined` into a class attribute for any band the wire ships before
++// the SDK is regenerated. A grep scoped to the OTHER file reported the class
++// closed. One reader per value for the whole screen is what actually closes it.
+ 
+ function pill(label: string, className: string) {
+   return (
+@@ -75,7 +72,7 @@ function CandidateCompareCard({
+           ? pill("Sem candidato", "bg-surface-2 text-faint")
+           : (
+             <span className="flex items-center gap-1">
+-              {pill(candidate.confidence_band, bandClasses[candidate.confidence_band])}
++              {pill(bandLabel(candidate.confidence_band), bandClass(candidate.confidence_band))}
+               <span className="font-mono text-xs font-medium tabular-nums text-muted">
+                 {confidencePercent(candidate.confidence)}
+               </span>
+@@ -94,7 +91,10 @@ function CandidateCompareCard({
+         <Fact label="Produto sugerido">
+           {candidate.internal_product_name ? candidate.internal_product_name : <UnknownValue hint="sem descrição no ERP" />}
+         </Fact>
+-        <Fact label="GTIN / refforn">
++        {/* `internal_reference_code` é a referência do lado ERP; `refforn` é o
++            nome da coluna no ERP, não vocabulário de tela (D-A tirou o termo do
++            vocabulário cross-side). */}
++        <Fact label="GTIN / Ref. interna">
+           {candidate.internal_reference_code
+             ? <span className="font-mono">{candidate.internal_reference_code}</span>
+             : candidate.match_input === "ean" && candidate.match_value
+@@ -112,11 +112,10 @@ function CandidateCompareCard({
+         <ul className="mt-2 flex flex-wrap gap-1">
+           {candidate.reasons.map((reason, index) => (
+             <li key={`${reason.anchor}-${index}`}>
+-              {/* IC-01: motivo (anchor) sempre visível; detail (com %) anexado — % nunca sozinho. */}
+-              {pill(
+-                reason.detail ? `${reason.anchor}: ${reason.detail}` : reason.anchor,
+-                directionClasses[reason.direction],
+-              )}
++              {/* IC-01: motivo (anchor) sempre visível; detail (com %) anexado — % nunca sozinho.
++                  `reasonChipLabel` também carrega o `side` de um INCOMPARABLE (D-122/D-B),
++                  que é o lado onde o operador vai preencher o dado que faltou. */}
++              {pill(reasonChipLabel(reason), directionClass(reason.direction))}
+             </li>
+           ))}
+         </ul>
+@@ -175,7 +174,9 @@ export function VinculoDrawer({
+       onClose={onClose}
+       closeLabel="Fechar painel"
+       title={selected.provider_item_id}
+-      subtitle={selected.provider_code}
++      // `provider_code` é o SLUG do marketplace no wire ("mercado_livre") — o
++      // subtítulo mostra o nome de exibição, nunca o slug cru.
++      subtitle={providerDisplayName(selected.provider_code)}
+       width={360}
+       footer={
+         <button
+diff --git a/apps/web/src/pages/vinculos/VinculosDesign.golden.test.tsx b/apps/web/src/pages/vinculos/VinculosDesign.golden.test.tsx
+index 300eba4e..8fac1673 100644
+--- a/apps/web/src/pages/vinculos/VinculosDesign.golden.test.tsx
++++ b/apps/web/src/pages/vinculos/VinculosDesign.golden.test.tsx
+@@ -4,22 +4,36 @@ import { render, screen, waitFor, within } from "@testing-library/react";
+ import { MemoryRouter } from "react-router-dom";
+ import { beforeEach, describe, expect, it, vi } from "vitest";
+ import { VinculosPage } from "./VinculosPage";
++import { MARCA_UNAVAILABLE_DETAIL, wireCandidate } from "./wireFixtures";
+ 
+ // GOLDEN (day-1, MIS-004-C10 gap #2). Locks the design contract for /vinculos:
+-//   1. anúncio-cêntrica 9-col table (ANÚNCIO ML·SKU ML·PRODUTO SUGERIDO·SKU HUB·
+-//      GTIN·CONFIANÇA·MOTIVO·AÇÃO) with the EXEMPLO-IO row.
++//   1. anúncio-cêntrica 9-col table (ANÚNCIO·CANAL·PRODUTO SUGERIDO·SKU HUB·
++//      IDENTIFICADO POR·CONFIANÇA·MOTIVO·AÇÃO) with the EXEMPLO-IO row.
+ //   2. honest NO_CANDIDATE row (conf 0, "sem candidato", Criar produto / Ignorar) — ADR-17.
+ //   3. paper+green tokens only — never literal slate/blue/emerald/red/amber-<n> off-theme.
++//
++// F-05 (D-122) renamed three of those headers. "ANÚNCIO ML" → "ANÚNCIO" is the
++// neutral structural label. "SKU ML" → "CANAL" is a correction as much as a
++// neutralization: that cell has always rendered `provider_code`, which the wire
++// fills with the marketplace SLUG ("mercado_livre") — the candidate contract
++// carries no seller SKU at all. "GTIN" → "IDENTIFICADO POR" replaces a
++// single-anchor reading with the SET of anchors that decided, which supersedes
++// it. The column count and order are unchanged.
+ 
+ const listProductLinkCandidates = vi.fn();
+ const listProductLinkWorkflows = vi.fn();
+-const listErpImports = vi.fn();
+ 
++// The `listErpImports` mock this file carried died with the same merge that
++// killed the one in `VinculosPage.test.tsx` (`293c1485`, CHIP-IMPORT-CHAIN's
++// `4b76a287` moving `ImportacaoSection` to `pages/importacoes/`). It outlived
++// that deletion by one round because the sweep that found the first one was
++// "the file I had open" — a pattern narrower than the fact, which is the class
++// this chip spent the milestone closing. Deleted here for the same reason and
++// with the same proof: a dead mock cannot turn its file red by leaving.
+ vi.mock("../../app/ClientContext", () => ({
+   useClient: () => ({
+     listProductLinkCandidates: (...a: unknown[]) => listProductLinkCandidates(...a),
+     listProductLinkWorkflows: (...a: unknown[]) => listProductLinkWorkflows(...a),
+-    listErpImports: (...a: unknown[]) => listErpImports(...a),
+     approveProductLinkCandidate: vi.fn(),
+     rejectProductLinkListing: vi.fn(),
+     previewProductLinkBatch: vi.fn(),
+@@ -31,23 +45,62 @@ vi.mock("../../app/InstallationContext", () => ({
+   useInstallation: () => ({ installationId: "inst_1" }),
+ }));
+ 
++// Every row this golden locks goes through `wireCandidate`, which THROWS on a
++// candidate the generator cannot emit. A design gate is the surface where an
++// impossible fixture costs the most: it does not fail, it silently ratifies a
++// layout for a row no operator will ever see. The corrections written into the
++// comments below were made by hand in an earlier round; routing them through the
++// builder is what makes them CHECKED rather than asserted.
+ function base(overrides: Partial<ProductLinkCandidateItem>): ProductLinkCandidateItem {
+-  return {
++  return wireCandidate({
+     candidate_id: "cand_x",
+     installation_id: "inst_1",
+-    provider_code: "abc-1",
++    provider_code: "mercado_livre",
+     provider_item_id: "MLB123",
+     state: "exact_ean",
+     match_input: "ean",
+     match_value: "7890000000001",
+-    confidence: 92,
+-    confidence_band: "ALTA",
+-    match_status: "REVIEW",
+-    reasons: [{ anchor: "EAN idêntico", direction: "FOR", detail: "100%" }],
++    // A single EAN resolving a single product is the CONFIRM queue under D-121
++    // — it waits for a human yes. The fixture said REVIEW, which is the
++    // anchors-disagree state and would have named no deciding anchor at all.
++    //
++    // The rest of the row is the SAME producible case, taken from the generator
++    // that emits it (`applySingleAnchorScore`, state `exact_ean`,
++    // generation_service.go:538-547): 60/MEDIA, an `ean` FOR, and the missing
++    // corroborating anchor as INCOMPARABLE on the provider side. The old
++    // 92/ALTA was not reachable for any status — ALTA is emitted at exactly one
++    // place (95, `buildConcordantCandidate`, generation_service.go:503-505) and
++    // only for ACCEPT — so the golden was locking a row the backend could never
++    // produce. A design gate whose example cannot occur gates a fiction.
++    confidence: 60,
++    confidence_band: "MEDIA",
++    match_status: "CONFIRM",
++    reasons: [
++      { anchor: "ean", direction: "FOR", detail: "ean corrobora codprod (unproved)" },
++      {
++        anchor: "seller_sku",
++        direction: "INCOMPARABLE",
++        side: "provider",
++        detail: "sem CODPROD para corroborar o EAN",
++      },
++      // The THIRD reason every candidate carries, and the one that makes this
++      // fixture producible instead of merely plausible.
++      // `appendProviderDeclaredUnavailableReasons` walks the provider's DECLARED
++      // anchors (generation_service.go:671-698) and emits one for every anchor
++      // with no FOR/AGAINST signal. `marca` is always in `KnownIdentityAnchors`
++      // (connectors/ports/marketplace_capability.go:40-45), so the adapter always
++      // declares it (identity_anchor_adapter.go:28-35) — and `mercado_livre`
++      // declares only seller_sku/ean/title as supplied
++      // (mercado_livre/capability_adapter.go:90), so `marca` arrives
++      // `Supplied: false` and classifies UNAVAILABLE at generation_service.go:704.
++      // Every mercado_livre candidate has it. A fixture without it locks a row
++      // the backend never emits.
++      { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
++    ],
+     created_at: "2026-07-19T12:00:00Z",
+     updated_at: "2026-07-19T12:00:00Z",
+     ...overrides,
+-  };
++  });
+ }
+ 
+ function renderPage() {
+@@ -69,8 +122,6 @@ const OFF_THEME = /\b(?:bg|text|border|ring|divide|from|to|hover:bg|hover:text|h
+ 
+ describe("Vínculos design golden", () => {
+   beforeEach(() => {
+-    listErpImports.mockReset();
+-    listErpImports.mockResolvedValue({ items: [] });
+     listProductLinkWorkflows.mockReset();
+     listProductLinkWorkflows.mockResolvedValue({ items: [] });
+     listProductLinkCandidates.mockReset();
+@@ -82,7 +133,7 @@ describe("Vínculos design golden", () => {
+         base({
+           candidate_id: "cand_1",
+           provider_item_id: "MLB123",
+-          provider_code: "abc-1",
++          provider_code: "mercado_livre",
+           internal_product_id: 1001,
+           internal_product_name: "Produto Y",
+         }),
+@@ -93,22 +144,42 @@ describe("Vínculos design golden", () => {
+ 
+     const row = await screen.findByTestId("queue-row");
+     const cells = within(row);
+-    expect(cells.getByText("MLB123")).toBeInTheDocument(); // ANÚNCIO ML
+-    expect(cells.getByText("abc-1")).toBeInTheDocument(); // SKU ML
++    expect(cells.getByText("MLB123")).toBeInTheDocument(); // ANÚNCIO
++    // CANAL — the provider, by display name. The raw wire slug never renders.
++    expect(cells.getByText("Mercado Livre")).toBeInTheDocument();
++    expect(cells.queryByText("mercado_livre")).not.toBeInTheDocument();
+     expect(cells.getByText("Produto Y")).toBeInTheDocument(); // PRODUTO SUGERIDO
+     expect(cells.getByText("1001")).toBeInTheDocument(); // SKU HUB
+-    expect(cells.getByText("✓ igual")).toBeInTheDocument(); // GTIN
+-    expect(cells.getByText("92%")).toBeInTheDocument(); // CONFIANÇA
++    // IDENTIFICADO POR — the anchor that decided. A single EAN resolving a
++    // single product is the confirmation queue (D-121), so it names EAN alone;
++    // "CODPROD + EAN" is reserved for the corroborated ACCEPT.
++    expect(cells.getByTestId("identificado-por")).toHaveTextContent("EAN");
++    // CONFIANÇA — banda E %. The band pill is asserted POSITIVELY, with its
++    // token pair: the off-theme sweep below is a negative test and would still
++    // pass if the pill lost its tokens entirely.
++    expect(cells.getByText("60%")).toBeInTheDocument();
++    const bandPill = cells.getByText("MEDIA");
++    expect(bandPill).toHaveClass("bg-amber-soft", "text-amber");
+     // MOTIVO — compact chip: motivo (anchor) sempre visível, detail no tooltip
+     // (IC-01: % nunca aparece sozinho). Forma completa fica no title e na
+     // expansão "+N" / no drawer.
+-    const motivoChip = cells.getByText("✓ EAN idêntico");
++    const motivoChip = cells.getByText("✓ EAN");
+     expect(motivoChip).toBeInTheDocument();
+-    expect(motivoChip).toHaveAttribute("title", "EAN idêntico: 100%");
++    expect(motivoChip).toHaveAttribute("title", "ean: ean corrobora codprod (unproved)");
++    // ...and the anchor that is MISSING rides beside it with the side that says
++    // where to go fix it (D-122/D-B), in its own tokens.
++    const incomparableChip = cells.getByText("? SKU (falta no anúncio)");
++    expect(incomparableChip).toBeInTheDocument();
++    expect(incomparableChip).toHaveAttribute("data-direction", "INCOMPARABLE");
++    // ...and the third reason (the always-present `marca`) does NOT get a third
++    // chip: the cell caps at two and offers the rest behind "+1". This is the
++    // layout the backend actually produces, which is the point of a golden.
++    expect(cells.getAllByTestId("motivo-chip")).toHaveLength(2);
++    expect(cells.getByRole("button", { name: "Mostrar todos os 3 motivos" })).toBeInTheDocument();
+     expect(cells.getByRole("button", { name: "Vincular" })).toBeInTheDocument(); // AÇÃO
+ 
+     // Column headers present (anúncio-cêntrica order).
+-    for (const header of ["Anúncio ML", "SKU ML", "Produto sugerido", "SKU HUB", "GTIN", "Confiança", "Motivo", "Ação"]) {
++    for (const header of ["Anúncio", "Canal", "Produto sugerido", "SKU HUB", "Identificado por", "Confiança", "Motivo", "Ação"]) {
+       expect(screen.getByRole("columnheader", { name: header })).toBeInTheDocument();
+     }
+   });
+@@ -119,7 +190,6 @@ describe("Vínculos design golden", () => {
+         base({
+           candidate_id: "cand_nc",
+           provider_item_id: "MLB999",
+-          provider_code: "xyz-9",
+           match_status: "NO_CANDIDATE",
+           match_input: "none",
+           match_value: undefined,
+@@ -127,7 +197,28 @@ describe("Vínculos design golden", () => {
+           confidence_band: "BAIXA",
+           internal_product_id: undefined,
+           internal_product_name: undefined,
+-          reasons: [],
++          // `applyUnresolvedScore` (generation_service.go:620-628) is the ONLY
++          // path that emits NO_CANDIDATE, and it is reached through
++          // `newCandidate(..., LinkCandidateStateUnresolved, ...MatchInputNone, ...)`
++          // at :215/:379. So `state` is `unresolved` — the fixture inherited
++          // `exact_ean` from base(), a pair the generator cannot produce.
++          state: "unresolved",
++          // And it is never reason-less: the two anchors that found nothing are
++          // named (INCOMPARABLE on the ERP side, because no ERP product matched
++          // at all — missingMatchedAnchorReason with a nil product,
++          // generation_service.go:631-645), plus the always-declared `marca`.
++          // "sem candidato" with an empty Motivo cell is exactly the silent row
++          // M05-C5 forbids.
++          reasons: [
++            {
++              anchor: "seller_sku",
++              direction: "INCOMPARABLE",
++              side: "erp",
++              detail: "seller_sku sem correspondência",
++            },
++            { anchor: "ean", direction: "INCOMPARABLE", side: "erp", detail: "ean sem correspondência" },
++            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
++          ],
+         }),
+       ],
+     });
+@@ -137,8 +228,8 @@ describe("Vínculos design golden", () => {
+     const row = await screen.findByTestId("queue-row");
+     const cells = within(row);
+     expect(cells.getByText("Sem candidato")).toBeInTheDocument();
+-    // GTIN unknown → "—", never fabricated.
+-    expect(cells.queryByText("✓ igual")).not.toBeInTheDocument();
++    // Nothing decided a NO_CANDIDATE row → "—", never a fabricated anchor.
++    expect(cells.queryByTestId("identificado-por")).not.toBeInTheDocument();
+     // No fabricated confidence: never a "0%" verde chip; band chip absent.
+     expect(cells.queryByText("ALTA")).not.toBeInTheDocument();
+     // Negative actions only.
+@@ -150,20 +241,60 @@ describe("Vínculos design golden", () => {
+   it("uses paper+green tokens only — no off-theme literal color classes anywhere on the page", async () => {
+     listProductLinkCandidates.mockResolvedValue({
+       items: [
+-        base({ candidate_id: "cand_1", internal_product_id: 1001, internal_product_name: "Produto Y" }),
++        // The corroborated ACCEPT, verbatim from `buildConcordantCandidate`
++        // (generation_service.go:495-505). It is here so the sweep still covers
++        // the ALTA/accent token path: the EXEMPLO-IO row above is a MEDIA row
++        // now, because 92/ALTA was never a producible CONFIRM.
++        base({
++          candidate_id: "cand_1",
++          internal_product_id: 1001,
++          internal_product_name: "Produto Y",
++          state: "exact_sku",
++          match_input: "seller_sku",
++          match_status: "ACCEPT",
++          confidence: 95,
++          confidence_band: "ALTA",
++          reasons: [
++            { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
++            { anchor: "ean", direction: "FOR", detail: "ean corrobora o mesmo codprod (unproved)" },
++            // Same always-declared `marca` as in base(): `buildConcordantCandidate`
++            // (generation_service.go:493-507) also finalizes through
++            // `appendProviderDeclaredUnavailableReasons`.
++            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
++          ],
++        }),
+         base({
+           candidate_id: "cand_nc",
+           provider_item_id: "MLB999",
+           match_status: "NO_CANDIDATE",
++          match_input: "none",
++          match_value: undefined,
+           confidence: 0,
+           confidence_band: "BAIXA",
+-          reasons: [],
++          internal_product_id: undefined,
++          internal_product_name: undefined,
++          state: "unresolved",
++          reasons: [
++            {
++              anchor: "seller_sku",
++              direction: "INCOMPARABLE",
++              side: "erp",
++              detail: "seller_sku sem correspondência",
++            },
++            { anchor: "ean", direction: "INCOMPARABLE", side: "erp", detail: "ean sem correspondência" },
++            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
++          ],
+         }),
+       ],
+     });
+ 
+     const { container } = renderPage();
+-    await screen.findAllByTestId("queue-row");
++    const [accept] = await screen.findAllByTestId("queue-row");
++
++    // Positive ALTA coverage. The sweep below only proves no OFF-theme class is
++    // present; it would pass just as well if the pill rendered with no tokens
++    // at all, so the accent pair is asserted here, on the row that carries it.
++    expect(within(accept).getByText("ALTA")).toHaveClass("bg-accent-soft", "text-accent-ink");
+ 
+     const offenders = Array.from(container.querySelectorAll<HTMLElement>("[class]"))
+       .map((el) => el.getAttribute("class") ?? "")
+diff --git a/apps/web/src/pages/vinculos/VinculosPage.test.tsx b/apps/web/src/pages/vinculos/VinculosPage.test.tsx
+index f2fdbc37..45277c73 100644
+--- a/apps/web/src/pages/vinculos/VinculosPage.test.tsx
++++ b/apps/web/src/pages/vinculos/VinculosPage.test.tsx
+@@ -1,18 +1,17 @@
+ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+ import { MemoryRouter } from "react-router-dom";
+-import { beforeEach, describe, expect, it, vi } from "vitest";
++import { describe, expect, it, vi } from "vitest";
+ import { VinculosPage } from "./VinculosPage";
++import { MARCA_UNAVAILABLE_DETAIL, wireCandidate } from "./wireFixtures";
+ 
+ const listProductLinkCandidates = vi.fn();
+ const listProductLinkWorkflows = vi.fn();
+-const listErpImports = vi.fn();
+ 
+ vi.mock("../../app/ClientContext", () => ({
+   useClient: () => ({
+     listProductLinkCandidates: (...args: unknown[]) => listProductLinkCandidates(...args),
+     listProductLinkWorkflows: (...args: unknown[]) => listProductLinkWorkflows(...args),
+-    listErpImports: (...args: unknown[]) => listErpImports(...args),
+   }),
+ }));
+ 
+@@ -32,30 +31,52 @@ function renderPage() {
+ }
+ 
+ describe("VinculosPage", () => {
+-  beforeEach(() => {
+-    listErpImports.mockReset();
+-    // Default: the read-only Importação section (S9) has its own empty history —
+-    // pre-existing Fila/Resolvidos tests below are not exercising that section.
+-    listErpImports.mockResolvedValue({ items: [] });
+-  });
++  // The `listErpImports` mock that stood here was load-bearing until this branch
++  // merged `main`: `VinculosPage.tsx` rendered `<ImportacaoSection />`, and the
++  // previous comment said so — and said, in the same breath, that it "becomes
++  // wrong the moment this branch merges". That moment is the merge commit
++  // `293c1485`, which brought CHIP-IMPORT-CHAIN's move of the component to
++  // `pages/importacoes/` (`4b76a287`) and took the two render lines out of
++  // `VinculosPage.tsx` with it. Nothing under `pages/vinculos/` reaches
++  // `useErpImports` any more; the only importers are `pages/importacoes/` and
++  // `pages/integracoes/`.
++  //
++  // So the mock was deleted, not re-worded, and the deletion is the measurement:
++  // a mock that is genuinely dead cannot turn this file red by leaving. It did
++  // not.
++  //
++  // The `beforeEach` went with it rather than being kept and re-purposed: the
++  // two surviving mocks were never reset here, and adding resets for them would
++  // be a behaviour change smuggled in under a comment fix.
+ 
+   it("renders tabs and shows the queue KPIs once loaded", async () => {
+     listProductLinkCandidates.mockResolvedValue({
+       items: [
+-        {
++        // The 29th fixture, and the last one outside the mechanism. It carried
++        // `95/ALTA` with `match_status: "REVIEW"` and `reasons: []` — three
++        // impossibilities at once: ALTA is assigned at exactly one site and only
++        // on the ACCEPT path (generation_service.go:503-505), and no candidate
++        // is reason-less, because every declared anchor without a FOR/AGAINST
++        // signal is emitted by the finalizer.
++        //
++        // It survived four reviewer rounds and this chip's own hand sweep by
++        // living in a file the sweep did not own. That is the argument for a
++        // throwing constructor over a checklist: the checklist has a scope, and
++        // the fixture was outside it.
++        wireCandidate({
+           candidate_id: "cand_1",
+-          installation_id: "inst_1",
+-          provider_code: "mercado_livre",
+           provider_item_id: "MLB1",
+           state: "exact_sku",
+           match_input: "seller_sku",
++          match_status: "ACCEPT",
+           confidence: 95,
+           confidence_band: "ALTA",
+-          match_status: "REVIEW",
+-          reasons: [],
+-          created_at: "2026-07-18T12:00:00Z",
+-          updated_at: "2026-07-18T12:00:00Z",
+-        },
++          reasons: [
++            { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
++            { anchor: "ean", direction: "FOR", detail: "ean corrobora o mesmo codprod" },
++            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
++          ],
++        }),
+       ],
+     });
+     listProductLinkWorkflows.mockResolvedValue({ items: [] });
+diff --git a/apps/web/src/pages/vinculos/useVinculosResolved.ts b/apps/web/src/pages/vinculos/useVinculosResolved.ts
+index ec6ed44e..73f300a7 100644
+--- a/apps/web/src/pages/vinculos/useVinculosResolved.ts
++++ b/apps/web/src/pages/vinculos/useVinculosResolved.ts
+@@ -1,5 +1,5 @@
+ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+-import type { ProductLinkWorkflowItem } from "@marketplace-central/sdk-runtime";
++import type { ProductLinkAuditEntry, ProductLinkWorkflowItem } from "@marketplace-central/sdk-runtime";
+ import { invalidateAfterMutation, QUERY_STALE_TIME } from "@marketplace-central/web-query";
+ import { useClient } from "../../app/ClientContext";
+ import { PRODUCT_LINKS_ROOT, WEB_OPERATOR_ACTOR } from "./useVinculosQueue";
+@@ -15,11 +15,39 @@ function isResolved(item: ProductLinkWorkflowItem): boolean {
+  * Undo is a genuine reversal of that specific resolution — never a fabricated
+  * id. Returns undefined when no such entry exists (desfazer then unavailable).
+  */
+-export function resolutionAuditId(item: ProductLinkWorkflowItem): string | undefined {
+-  const resolving = item.audit
++export function resolutionAuditEntry(item: ProductLinkWorkflowItem): ProductLinkAuditEntry | undefined {
++  const resolving = (item.audit ?? [])
+     .filter((entry) => entry.next_state === "resolved")
+     .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+-  return resolving[0]?.audit_id;
++  return resolving[0];
++}
++
++export function resolutionAuditId(item: ProductLinkWorkflowItem): string | undefined {
++  return resolutionAuditEntry(item)?.audit_id;
++}
++
++/**
++ * Whether the vínculo was resolved BY THE SYSTEM rather than by an operator.
++ *
++ * The predicate is the resolving audit entry's `actor.actor_type === "system"`.
++ * The auto-linker writes that entry with `ActorType: "system", ActorID:
++ * "auto_linker"` (resolution_service.go:280) and `audit[].actor.actor_type` is
++ * already on the wire, so the badge costs no contract change.
++ *
++ * It is deliberately NOT the `rule_matched = exact_ean_unique AND actor =
++ * system` predicate the M-06 brief asks for: `rule_matched` is not on the wire
++ * at all (zero hits in `contracts/` and `packages/sdk-runtime/src/` — it exists
++ * only in the DB and in a per-link repo read no route exposes), and that exact
++ * pair is forbidden by the CHECK at 0082_product_link_decisions.sql:54
++ * (`actor <> 'system' OR rule_matched = 'concordant_codprod_ean'`) — the brief
++ * predates D-121, which narrowed auto-approval to concordant CODPROD+EAN.
++ *
++ * A pre-M-05 link with no resolving audit entry returns false: no badge, which
++ * says "not automatic" — true for every manual vínculo — instead of fabricating
++ * one (ADR-17).
++ */
++export function isAutoResolved(item: ProductLinkWorkflowItem): boolean {
++  return resolutionAuditEntry(item)?.actor?.actor_type === "system";
+ }
+ 
+ export function useVinculosResolved(installationId: string) {
+diff --git a/apps/web/src/pages/vinculos/wireFixtures.guard.test.ts b/apps/web/src/pages/vinculos/wireFixtures.guard.test.ts
+new file mode 100644
+index 00000000..fa732dad
+--- /dev/null
++++ b/apps/web/src/pages/vinculos/wireFixtures.guard.test.ts
+@@ -0,0 +1,318 @@
++// @vitest-environment node
++import { readFileSync } from "node:fs";
++import { dirname, resolve } from "node:path";
++import { fileURLToPath } from "node:url";
++import { describe, expect, it } from "vitest";
++import {
++  KNOWN_IDENTITY_ANCHORS,
++  MARCA_UNAVAILABLE_DETAIL,
++  MERCADO_LIVRE_SUPPLIED_ANCHORS,
++  wireCandidate,
++} from "./wireFixtures";
++
++/**
++ * A divergence detector for the seam that has no compiler.
++ *
++ * `wireFixtures.ts` decides which candidates are producible by encoding facts
++ * that live in Go. Nothing links the two: the FE type system cannot see the
++ * generator, and the Go build cannot see these fixtures. That gap is exactly the
++ * shape of the defect this whole chip exists to fix (a union enumerated as
++ * string literals: type-correct, and therefore silent when the union grows), one
++ * layer up.
++ *
++ * WHAT THIS IS NOT, said first so the pack cannot over-read a green run: it is
++ * NOT a compiler, and reading Go with regexes is string-scraping. A rename, a
++ * moved file, or a literal replaced by a generated `const` makes the patterns
++ * below match NOTHING — and a guard that finds nothing would otherwise PASS,
++ * green with the Go intact and green with the Go gone. That is the same stable
++ * observable that fails to discriminate as the defects this chip has been
++ * fixing all week.
++ *
++ * So the first test exists to make that failure loud: the sources must be where
++ * this file expects them, non-empty, and still carrying the symbols by name. A
++ * guard that cannot see its subject FAILS instead of passing vacuously. What
++ * that buys is narrower than a compiler and worth stating exactly: this is a
++ * detector that knows how to recognize its own blindness. It cannot prove the
++ * FE matches a DEPLOYED server, and it does not try to; it proves the FE's copy
++ * matches the declaration in THIS checkout, and refuses to answer at all when
++ * it can no longer read that declaration.
++ */
++
++const here = dirname(fileURLToPath(import.meta.url));
++const serverModules = resolve(here, "../../../../server_core/internal/modules");
++
++/**
++ * The seam, as paths and the EXTRACTION ITSELF. `extract` is not a description
++ * of the pattern used below — it is the pattern used below, and the sentinel
++ * asserts with the same object.
++ *
++ * It was two fields before, a `symbol` string for the sentinel and a separate
++ * regex inside each test, and the hub's executor seat measured what that costs:
++ * the sentinel asserted `.toContain("var knownIdentityAnchors")`, which
++ * `var knownIdentityAnchorsXX` SATISFIES. A rename that appends leaves the
++ * substring intact, so the sentinel passed while the extraction found nothing —
++ * the guard was wider than the fact it claimed to check, which is the class this
++ * chip keeps finding one layer down. Sharing the object is what makes sentinel
++ * and extraction unable to disagree; a tighter second pattern would only have
++ * moved the disagreement somewhere harder to see.
++ */
++const GO_SEAM = {
++  capabilityPort: {
++    path: "connectors/ports/marketplace_capability.go",
++    symbol: "var knownIdentityAnchors = []IdentityAnchor{…}",
++    extract: /var knownIdentityAnchors = \[\]IdentityAnchor\{([^}]*)\}/,
++    what: "the identity-anchor vocabulary itself",
++  },
++  mercadoLivreCapability: {
++    path: "connectors/adapters/mercado_livre/capability_adapter.go",
++    symbol: "IdentityAnchors: []ports.IdentityAnchor{…}",
++    extract: /IdentityAnchors:\s*\[\]ports\.IdentityAnchor\{([^}]*)\}/,
++    what: "which anchors mercado_livre declares supplied",
++  },
++} as const;
++
++type SeamKey = keyof typeof GO_SEAM;
++
++// Read at MODULE scope, not inside the tests. These are the only files in this
++// suite outside the vitest root, and the first of these reads once blew the 5s
++// per-test budget while the very next test read the same two files in 2ms. The
++// cause was not established — three later runs, including a probe built to
++// reproduce it, all came back in single-digit milliseconds — so this is a
++// mitigation, not a diagnosis: module-load time is not charged to testTimeout,
++// so a slow cold read cannot turn a passing guard into a red lane.
++//
++// A read FAILURE is captured rather than thrown, so it surfaces as the named
++// assertion below instead of an ENOENT that takes the whole file down with a
++// message about a path and nothing about what the path was for.
++const SOURCES: Record<SeamKey, { text: string; error: string | null }> = {
++  capabilityPort: readSeam("capabilityPort"),
++  mercadoLivreCapability: readSeam("mercadoLivreCapability"),
++};
++
++function readSeam(key: SeamKey): { text: string; error: string | null } {
++  try {
++    return { text: readFileSync(resolve(serverModules, GO_SEAM[key].path), "utf8"), error: null };
++  } catch (cause) {
++    return { text: "", error: String(cause) };
++  }
++}
++
++/**
++ * Every later test goes through this. An unreadable source must never reach an
++ * extraction as an empty string, because "extracted nothing" and "there is
++ * nothing to extract" are the two states this guard exists to tell apart.
++ */
++function sourceOf(key: SeamKey): string {
++  const source = SOURCES[key];
++  if (source.error !== null || source.text.length === 0) {
++    throw new Error(
++      `the Go source for ${GO_SEAM[key].what} could not be read at ${GO_SEAM[key].path} — ` +
++        "this guard cannot answer, and an unreadable source is a FAILURE here rather than a skip. " +
++        `Underlying: ${source.error ?? "file was empty"}`,
++    );
++  }
++  return source.text;
++}
++
++/** `IdentityAnchorSellerSKU IdentityAnchor = "seller_sku"` → { IdentityAnchorSellerSKU: "seller_sku" } */
++function identityAnchorConstants(source: string): Map<string, string> {
++  const constants = new Map<string, string>();
++  for (const match of source.matchAll(/(IdentityAnchor\w+)\s+IdentityAnchor\s*=\s*"([^"]+)"/g)) {
++    constants.set(match[1], match[2]);
++  }
++  return constants;
++}
++
++describe("wireFixtures vocabulary vs the Go source it mirrors", () => {
++  // ARM (b) of the must-fail. Without this test, every assertion below can be
++  // satisfied by a vocabulary that moved out from under them: the patterns stop
++  // matching, the extraction comes back empty, and an empty guard reports no
++  // divergence. This is the test that turns "I found nothing" into red.
++  it("can still SEE the Go declarations it claims to guard", () => {
++    for (const key of Object.keys(GO_SEAM) as SeamKey[]) {
++      const { path, symbol, what } = GO_SEAM[key];
++
++      expect(SOURCES[key].error, `${path} — the file this guard reads for ${what} is gone or moved`).toBeNull();
++      expect(SOURCES[key].text.length, `${path} is empty`).toBeGreaterThan(0);
++
++      // The path existing is not enough: the FACT has to still be in it, in the
++      // form the extraction reads. Asserted with `extract` — the same object the
++      // tests below run — because a sentinel with its own looser pattern is a
++      // sentinel that can be satisfied while the extraction comes back empty,
++      // which is precisely how a suffix rename went undetected here.
++      expect(
++        GO_SEAM[key].extract.test(SOURCES[key].text),
++        `${path} no longer matches \`${symbol}\` — the seam moved or was renamed, so this guard is ` +
++          `reading a file that no longer declares ${what}, and every assertion after this one would ` +
++          "pass vacuously",
++      ).toBe(true);
++    }
++  });
++
++  it("KNOWN_IDENTITY_ANCHORS is exactly knownIdentityAnchors", () => {
++    const capabilityPort = sourceOf("capabilityPort");
++    const constants = identityAnchorConstants(capabilityPort);
++    expect(constants.size, "no `IdentityAnchor… = \"…\"` constants found — the declaration form changed").toBeGreaterThan(0);
++
++    const block = capabilityPort.match(GO_SEAM.capabilityPort.extract);
++    if (block === null) {
++      throw new Error("could not find `var knownIdentityAnchors` — the declaration moved or was renamed");
++    }
++
++    const anchors = Array.from(block[1].matchAll(/(IdentityAnchor\w+)/g)).map((entry) => {
++      const value = constants.get(entry[1]);
++      if (value === undefined) throw new Error(`no constant found for ${entry[1]}`);
++      return value;
++    });
++    expect(anchors.length, "the knownIdentityAnchors block parsed to zero anchors").toBeGreaterThan(0);
++
++    // Order matters as little as the Go slice's does, so compare as sets — but
++    // compare BOTH directions, because a vocabulary that only grew and a
++    // vocabulary that only shrank are different failures and both are real.
++    // `refforn` shrank out of this list (D-A) and left one fixture asserting a
++    // reason no provider can ever emit.
++    expect([...anchors].sort()).toEqual([...KNOWN_IDENTITY_ANCHORS].sort());
++  });
++
++  it("MERCADO_LIVRE_SUPPLIED_ANCHORS is exactly what its capability adapter declares", () => {
++    const constants = identityAnchorConstants(sourceOf("capabilityPort"));
++    expect(constants.size, "no IdentityAnchor constants to resolve the declaration against").toBeGreaterThan(0);
++
++    const declaration = sourceOf("mercadoLivreCapability").match(GO_SEAM.mercadoLivreCapability.extract);
++    expect(declaration, "could not find mercado_livre's IdentityAnchors declaration").not.toBeNull();
++
++    const declared = Array.from((declaration as RegExpMatchArray)[1].matchAll(/ports\.(IdentityAnchor\w+)/g)).map(
++      (entry) => {
++        const value = constants.get(entry[1]);
++        if (value === undefined) throw new Error(`no constant found for ${entry[1]}`);
++        return value;
++      },
++    );
++    expect(declared.length, "the IdentityAnchors declaration parsed to zero anchors").toBeGreaterThan(0);
++
++    expect([...declared].sort()).toEqual([...MERCADO_LIVRE_SUPPLIED_ANCHORS].sort());
++    // The consequence the fixtures depend on, asserted rather than assumed: the
++    // anchor mercado_livre does NOT supply is the one every one of its
++    // candidates carries as UNAVAILABLE.
++    expect(declared).not.toContain("marca");
++  });
++});
++
++/**
++ * MUST-FAIL arms for the producibility mechanism itself.
++ *
++ * The guard above proves the VOCABULARY still mirrors Go. These two prove the
++ * CONSTRUCTOR rejects what the generator cannot emit — a distinct claim, and the
++ * one round 6 refuted: `wireCandidate` documented itself as making an impossible
++ * candidate unwriteable while validating only the score triple, so a
++ * `(exact_ean, ACCEPT, ean)` fixture and seven undeclared-provider fixtures went
++ * through it unchallenged.
++ *
++ * Both arms were RED before the tuple table landed and are GREEN after. A guard
++ * whose must-fail was never run red is an assertion about a guard, not a guard.
++ */
++describe("wireCandidate rejects what generation_service.go cannot emit", () => {
++  it("MUST-FAIL 1 — ACCEPT exists only as (exact_sku, seller_sku)", () => {
++    // buildConcordantCandidate is the ONLY non-test site assigning
++    // LinkCandidateMatchStatusAccept (generation_service.go:505), and it builds
++    // its candidate at :491 with StateExactSKU / MatchInputSellerSKU. The ACCEPT
++    // branch at :503-505 touches confidence/band/status only, so no ACCEPT can
++    // carry any other state or match_input.
++    expect(() =>
++      wireCandidate({
++        state: "exact_ean",
++        match_input: "ean",
++        match_status: "ACCEPT",
++        confidence: 95,
++        confidence_band: "ALTA",
++        reasons: [
++          { anchor: "ean", direction: "FOR", detail: "EAN idêntico" },
++          { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
++          { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
++        ],
++      }),
++    ).toThrow(/no producing site emits/);
++  });
++
++  it("MUST-FAIL 2 — a provider with no capability declaration is not producible", () => {
++    // resolveIdentityAnchors ABORTS generation when a provider's declaration
++    // does not resolve (generation_service.go:149-169), and this tree holds
++    // exactly one declaration (mercado_livre, capability_adapter.go:90). So a
++    // `shopee` candidate is not a wire row here at all.
++    expect(() => wireCandidate({ provider_code: "shopee" })).toThrow(/driftCandidate/);
++    expect(() => wireCandidate({ provider_code: "shopee" })).toThrow(/declares no marketplace capability/);
++  });
++
++  it("MUST-FAIL 3 — a producible tuple with a signal set no site emits", () => {
++    // The score triple and the FOR/AGAINST reasons are written by the SAME block
++    // (buildConcordantCandidate assigns 95/ALTA/ACCEPT at :503-505 after
++    // recording both anchors FOR at :495-499), so they are not free to vary
++    // independently. This fixture takes a tuple that IS producible and gives it a
++    // signal set no site pairs with it — the exact hole the tuple table left open
++    // until this round, and the one that let three more impossible fixtures
++    // through after round 6 closed the triple.
++    expect(() =>
++      wireCandidate({
++        state: "exact_sku",
++        match_input: "seller_sku",
++        match_status: "ACCEPT",
++        confidence: 95,
++        confidence_band: "ALTA",
++        reasons: [
++          { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
++          { anchor: "ean", direction: "INCOMPARABLE", side: "erp", detail: "ean sem correspondência" },
++          { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
++        ],
++      }),
++    ).toThrow(/WITH signals \[seller_sku\/FOR\]/);
++  });
++
++  it("MUST-FAIL 4 — one anchor cannot carry a signal and an absence at once", () => {
++    // `hasSignal` is built from the FOR/AGAINST reasons (:652-655) and every
++    // absence whose anchor is in it is DROPPED (:663-664). So a candidate that
++    // shows `✓ SKU` and `– SKU` side by side is not a rendering question: it
++    // never leaves the generator.
++    expect(() =>
++      wireCandidate({
++        state: "exact_sku",
++        match_input: "seller_sku",
++        match_status: "CONFIRM",
++        confidence: 70,
++        confidence_band: "MEDIA",
++        reasons: [
++          { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
++          { anchor: "seller_sku", direction: "UNAVAILABLE", detail: "sem seller_sku" },
++          { anchor: "ean", direction: "UNAVAILABLE", detail: "sem EAN para corroborar o CODPROD" },
++          { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
++        ],
++      }),
++    ).toThrow(/seller_sku carries both a signal and a UNAVAILABLE absence/);
++  });
++
++  it("MUST-PASS — `title` FOR and `title` AGAINST on one candidate is real, and stays accepted", () => {
++    // This arm exists because the rule above was WIDER than the fact when first
++    // written: it rejected any repeated anchor, and applySingleAnchorScore's
++    // hard-negative path emits `title` FOR (:550-554) and `title` AGAINST
++    // (:560-562) on the same candidate, both passed through by :657-661. A guard
++    // that rejects a producible candidate is the same defect as one that accepts
++    // an impossible one, pointing the other way — and it is the direction no
++    // must-fail arm can catch, because a stricter guard makes every must-fail
++    // greener.
++    expect(() =>
++      wireCandidate({
++        state: "title_match",
++        match_input: "title",
++        match_status: "REJECT",
++        confidence: 25,
++        confidence_band: "BAIXA",
++        reasons: [
++          { anchor: "title", direction: "FOR", detail: "match por título (ranking-only, nunca ACCEPT)" },
++          { anchor: "title", direction: "AGAINST", detail: "similaridade de título 62%" },
++          { anchor: "seller_sku", direction: "INCOMPARABLE", side: "erp", detail: "seller_sku sem correspondência" },
++          { anchor: "ean", direction: "INCOMPARABLE", side: "erp", detail: "ean sem correspondência" },
++          { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
++        ],
++      }),
++    ).not.toThrow();
++  });
++});
+diff --git a/apps/web/src/pages/vinculos/wireFixtures.ts b/apps/web/src/pages/vinculos/wireFixtures.ts
+new file mode 100644
+index 00000000..9e6b75cf
+--- /dev/null
++++ b/apps/web/src/pages/vinculos/wireFixtures.ts
+@@ -0,0 +1,495 @@
++import type { ProductLinkCandidateItem, ProductLinkReason } from "@marketplace-central/sdk-runtime";
++
++/**
++ * Test-only fixture builder for `/vinculos`.
++ *
++ * WHY THIS EXISTS. Five reviewer rounds and two author sweeps kept finding the
++ * same defect class: a fixture asserting a layout off a candidate the backend
++ * cannot emit. Each occurrence was point-fixed, and each fix was followed by
++ * another instance — one of them inside the file the previous fix had edited,
++ * two of them found by the sweep built to end the class, two more found by the
++ * round that reviewed that sweep, and nine more found by the round that reviewed
++ * THIS FILE. The failure was never carelessness about a particular field; it was
++ * the METHOD. Every check was a human reading the Go generator looking for one
++ * thing, and each reading narrowed the world to what it was already looking for:
++ *
++ *   - the first read stopped at the scoring switch and missed the finalizing step;
++ *   - the sweep built to catch that checked one anchor (`marca`) and called the
++ *     whole array swept, missing a removed anchor and an impossible sentence;
++ *   - the enumeration run to prove the sweep exhaustive used `anchor: "[a-z_]*"`,
++ *     whose character class silently dropped every capitalized and accented
++ *     anchor, and reported one violation where there were five;
++ *   - and the first version of THIS FILE validated the score triple only, so a
++ *     `(exact_ean, ACCEPT, ean)` fixture — a combination no site can produce —
++ *     passed the constructor that documented itself as making it unwriteable.
++ *
++ * That last one is the reason for the shape below. A PARTIAL tuple is a partial
++ * guard, and a partial guard under a total sentence is worse than no guard: it
++ * spends the reader's trust on a claim it does not discharge. So the table now
++ * carries the WHOLE producible tuple per producing site, read one site at a time
++ * out of `generation_service.go` — `(confidence, band, status, state,
++ * match_input)` — and the constructor matches all five together. Every rule that
++ * used to be a hand-written special case is a row: the `NO_CANDIDATE` shape
++ * check and the `mercado_livre` provider check are both gone, dissolved into
++ * data. A fixture fixed by hand comes back next round; a table does not.
++ *
++ * WHAT IT CHECKS, and each rule's source (paths relative to
++ * `apps/server_core/internal/modules/`):
++ *
++ *  1. Anchor vocabulary. `product_links/.../generation_service.go` only ever
++ *     emits anchors from `connectors/ports/marketplace_capability.go`'s
++ *     `knownIdentityAnchors`. `wireFixtures.guard.test.ts` reads that Go source
++ *     and fails if this list drifts from it.
++ *  2. One ABSENCE per anchor, and never an absence beside a signal on the same
++ *     anchor. `appendProviderDeclaredUnavailableReasons` keys its absence
++ *     bookkeeping by anchor and overwrites in place (:666-669, :687-697), and
++ *     drops any absence whose anchor already carries a FOR/AGAINST (:652-655,
++ *     :663-664). Signals themselves are NOT deduped — `title` FOR and `title`
++ *     AGAINST ride the same candidate out of the hard-negative path.
++ *  3. `side` only on INCOMPARABLE. `classifyProviderIdentityAnchor` sets a side
++ *     only on INCOMPARABLE branches (:715, :723, :726, :728); UNAVAILABLE (:704)
++ *     and the `!readable` INCOMPARABLE (:711) leave it empty, and
++ *     `json:"side,omitempty"` drops it from the payload.
++ *  4. Provider capability. `resolveIdentityAnchors` ABORTS generation when a
++ *     provider's declaration does not resolve (:149-169), so a provider with no
++ *     declaration in this tree produces NO candidate at all — not a candidate
++ *     with defaults. `DECLARED_PROVIDER_CAPABILITIES` below is the whole set of
++ *     declarations that exist, and a `provider_code` absent from it is rejected.
++ *  5. Every anchor the declaring provider does NOT supply is UNAVAILABLE with
++ *     exactly `provider não fornece a âncora <anchor>` — `classifyProviderIdentityAnchor`
++ *     returns that sentence by `fmt.Sprintf` over the anchor name (:704), so the
++ *     rule is per-anchor and not a `marca` special case.
++ *  6. The producible tuple AND its signal set. Every
++ *     `(confidence, band, status, state, match_input)` the generator can assign
++ *     is enumerated below, one row per producing site, each row carrying the
++ *     FOR/AGAINST reasons that site writes; anything else is unreachable. The
++ *     signal set is part of the row because the same block that assigns the
++ *     score writes the signals — a tuple alone does not identify the site when
++ *     two sites share it. This subsumes the old NO_CANDIDATE shape
++ *     rule, which was also WRONG: it demanded `state === "unresolved"`, and
++ *     `buildConflictCandidates` emits NO_CANDIDATE with `state === "conflict"`
++ *     when the conflict set comes back empty (:340-341). The old check would
++ *     have rejected a candidate the backend really does emit.
++ *
++ * WHAT IT DOES NOT CHECK — stated so the next reader does not mistake a green
++ * build for a proof this file cannot give:
++ *
++ *  - the `detail` wording of non-declared-absence reasons (they are built with
++ *    runtime values — codprod ids, match counts — so there is no closed set);
++ *  - the DIRECTION and `side` of an absence on a SUPPLIED anchor. Rule 6 pins
++ *    which anchors carry signals; which of INCOMPARABLE/UNAVAILABLE the
++ *    finalizer then picks for the rest, and with which side, depends on listing
++ *    and product values no fixture here carries (:631-645, :702-729). Note in
++ *    particular that UNAVAILABLE is NOT exclusive to the unsupplied-anchor
++ *    branch: `missingMatchedAnchorReason:642` emits it for a supplied anchor on
++ *    its `default:` arm;
++ *  - the `title` suppression condition (:719-721 needs listing and product values
++ *    this side cannot see), so a MISSING `title` reason is accepted.
++ *
++ * Those are gaps, not guarantees. They are the honest remainder after the rules
++ * that can be stated exactly.
++ */
++
++/** Mirrors `knownIdentityAnchors`; the guard test proves it still does. */
++export const KNOWN_IDENTITY_ANCHORS = ["seller_sku", "ean", "title", "marca"] as const;
++
++/** `mercado_livre` declares these three supplied; `marca` is the one it does not. */
++export const MERCADO_LIVRE_SUPPLIED_ANCHORS = ["seller_sku", "ean", "title"] as const;
++
++/**
++ * The sentence `classifyProviderIdentityAnchor` emits for a declared-but-unsupplied
++ * anchor, `fmt.Sprintf("provider não fornece a âncora %s", anchor.Anchor)` (:704).
++ * Per-anchor by construction — the previous constant was `marca`-only, which is
++ * why the rule that used it could only ever check one anchor.
++ */
++export function unavailableDetail(anchor: string): string {
++  return `provider não fornece a âncora ${anchor}`;
++}
++
++/** Kept for the fixtures that name it; it is `unavailableDetail("marca")`. */
++export const MARCA_UNAVAILABLE_DETAIL = unavailableDetail("marca");
++
++/**
++ * Every capability declaration that EXISTS in this tree. Not a list of providers
++ * the screen supports — a list of adapters that declare `IdentityAnchors`, which
++ * is the precondition `resolveIdentityAnchors` (:149-169) enforces before any
++ * candidate is generated at all. A provider missing here is not "unchecked"; it
++ * is a provider whose generation aborts, so no wire row of it can exist.
++ */
++export const DECLARED_PROVIDER_CAPABILITIES: Record<string, { supplied: readonly string[]; from: string }> = {
++  mercado_livre: {
++    supplied: MERCADO_LIVRE_SUPPLIED_ANCHORS,
++    from: "connectors/adapters/mercado_livre/capability_adapter.go:90",
++  },
++};
++
++/**
++ * One FOR/AGAINST reason a producing site emits. These are the SIGNALS: the
++ * reasons the site writes itself, as opposed to the absences the finalizer adds
++ * for anchors that carry no signal.
++ *
++ * The split is the finalizer's, not a convenience: `:652-655` builds `hasSignal`
++ * from FOR/AGAINST only, and `:663-664` then DROPS every absence reason whose
++ * anchor has a signal. So the signal set is fixed by the scoring site and the
++ * absence set is whatever is left of the declared anchors.
++ */
++type ReasonSignal = {
++  anchor: string;
++  direction: "FOR" | "AGAINST";
++};
++
++type ProducibleSite = {
++  confidence: number;
++  band: ProductLinkCandidateItem["confidence_band"];
++  status: ProductLinkCandidateItem["match_status"];
++  state: ProductLinkCandidateItem["state"];
++  matchInput: ProductLinkCandidateItem["match_input"];
++  signals: readonly ReasonSignal[];
++  from: string;
++};
++
++const FOR = "FOR" as const;
++const AGAINST = "AGAINST" as const;
++
++/**
++ * Every `(confidence, band, status, state, match_input)` `generation_service.go`
++ * can assign, one row per PRODUCING SITE — the `newCandidate(...)` call that
++ * fixes `state`/`match_input` paired with the scoring call that fixes the triple.
++ * Lifted from the assignment sites, never inferred from the band thresholds in
++ * the design doc: the code is what ships.
++ *
++ * Why site-paired rather than two independent lists: `state` and `match_input`
++ * are decided at `newCandidate` and the triple is decided afterwards by the
++ * scorer, so a fixture can be built from a real state and a real triple and
++ * still be impossible — which is exactly the ACCEPT fixture that survived five
++ * rounds. `ACCEPT` is assigned at ONE site (`buildConcordantCandidate` :505) and
++ * that site's `newCandidate` (:491) hardcodes `ExactSKU`/`SellerSKU`, so the
++ * pairing is the fact and the two lists were the fiction.
++ *
++ * `signals` extends the same argument one step further, and for the same reason.
++ * Validating the tuple while leaving `reasons[]` free let two impossible
++ * fixtures through the round-6 guard LEGALLY — a `title/AGAINST` under
++ * `60/MEDIA/CONFIRM`, when the only site that appends `title/AGAINST` (:562)
++ * rewrites the triple to `25/BAIXA/REJECT` in the same statement, and a
++ * `20/BAIXA/REVIEW` with no signal at all, when both sites that assign that
++ * triple emit one or two. Score and reasons are not independent: at every
++ * scoring site they are written by the same block, so a table that constrains
++ * one and not the other is a partial guard again, just one level down.
++ *
++ * NOTE the same tuple can appear on more than one row. `25/BAIXA/REJECT` with
++ * `exact_sku`/`seller_sku` is reachable both from the concordant hard-negative
++ * (:497-501, which already carried an `ean` FOR) and from the single-anchor
++ * hard-negative (:560-562, which never did). The tuple does not distinguish
++ * them; the signals do, so producibility is "some site matches BOTH", never
++ * "some site matches the tuple".
++ */
++const PRODUCIBLE_SITES: ProducibleSite[] = [
++  // buildConcordantCandidate — the only ACCEPT in the tree. Both anchors resolve
++  // the same product, so both are FOR (:493-496).
++  { confidence: 95, band: "ALTA", status: "ACCEPT", state: "exact_sku", matchInput: "seller_sku",
++    signals: [{ anchor: "seller_sku", direction: FOR }, { anchor: "ean", direction: FOR }],
++    from: "buildConcordantCandidate :491 + :493-496 + :503-505" },
++  { confidence: 25, band: "BAIXA", status: "REJECT", state: "exact_sku", matchInput: "seller_sku",
++    signals: [{ anchor: "seller_sku", direction: FOR }, { anchor: "ean", direction: FOR }, { anchor: "title", direction: AGAINST }],
++    from: "buildConcordantCandidate hard-negative :491 + :497-501" },
++
++  // buildCandidatesFromProducts (:389) → applySingleAnchorScore (:390). The
++  // switch keys off the same `state` the candidate was built with, so state and
++  // match_input travel together from :212 / :311 / :314. One anchor resolved, so
++  // one FOR; the anchors that did not are ABSENCES, not signals, and the
++  // finalizer decides their direction.
++  { confidence: 70, band: "MEDIA", status: "CONFIRM", state: "exact_sku", matchInput: "seller_sku",
++    signals: [{ anchor: "seller_sku", direction: FOR }], from: "applySingleAnchorScore ExactSKU :529 + :534-537" },
++  { confidence: 60, band: "MEDIA", status: "CONFIRM", state: "exact_ean", matchInput: "ean",
++    signals: [{ anchor: "ean", direction: FOR }], from: "applySingleAnchorScore ExactEAN :539 + :544-547" },
++  { confidence: 35, band: "BAIXA", status: "REVIEW", state: "title_match", matchInput: "title",
++    signals: [{ anchor: "title", direction: FOR }], from: "applySingleAnchorScore TitleMatch :549 + :550-554" },
++  // The hard-negative override at :560-562 replaces the triple of any of the
++  // three above, leaves state/match_input untouched, and APPENDS `title AGAINST`
++  // to whatever signals that case had already written. On the TitleMatch case
++  // that means `title` carries a FOR and an AGAINST at once — the finalizer
++  // appends both (:657-661) and dedups only absences.
++  { confidence: 25, band: "BAIXA", status: "REJECT", state: "exact_sku", matchInput: "seller_sku",
++    signals: [{ anchor: "seller_sku", direction: FOR }, { anchor: "title", direction: AGAINST }],
++    from: "applySingleAnchorScore ExactSKU + hard-negative :534-537 + :560-562" },
++  { confidence: 25, band: "BAIXA", status: "REJECT", state: "exact_ean", matchInput: "ean",
++    signals: [{ anchor: "ean", direction: FOR }, { anchor: "title", direction: AGAINST }],
++    from: "applySingleAnchorScore ExactEAN + hard-negative :544-547 + :560-562" },
++  { confidence: 25, band: "BAIXA", status: "REJECT", state: "title_match", matchInput: "title",
++    signals: [{ anchor: "title", direction: FOR }, { anchor: "title", direction: AGAINST }],
++    from: "applySingleAnchorScore TitleMatch + hard-negative :550-554 + :560-562" },
++
++  // buildConflictCandidates (:335) → applyConflictScore (:575-577). `ownAnchor`
++  // and `matchInput` are assigned together in the same branch (:322-333), so the
++  // FOR is always the match_input anchor and the AGAINST is always the other of
++  // the two — the conflict IS between seller_sku and ean.
++  { confidence: 20, band: "BAIXA", status: "REVIEW", state: "conflict", matchInput: "seller_sku",
++    signals: [{ anchor: "seller_sku", direction: FOR }, { anchor: "ean", direction: AGAINST }],
++    from: "applyConflictScore :322-336 + :575-581" },
++  { confidence: 20, band: "BAIXA", status: "REVIEW", state: "conflict", matchInput: "ean",
++    signals: [{ anchor: "ean", direction: FOR }, { anchor: "seller_sku", direction: AGAINST }],
++    from: "applyConflictScore :322-336 + :575-581" },
++
++  // buildCollisionCandidates (:369) → applyCollisionScore (:588-590) when the
++  // anchor matched >1 product, applyAmbiguousCorroborationScore (:602-604) when
++  // it matched exactly one. Both are built with StateConflict, and `anchor.name`
++  // travels with `anchor.matchInput` out of the same struct literal (:360-362).
++  // The collision site emits a LONE AGAINST: the anchor named a set, so it
++  // corroborates nothing, and there is no FOR to pair it with.
++  { confidence: 20, band: "BAIXA", status: "REVIEW", state: "conflict", matchInput: "seller_sku",
++    signals: [{ anchor: "seller_sku", direction: AGAINST }], from: "applyCollisionScore :369-371 + :588-593" },
++  { confidence: 20, band: "BAIXA", status: "REVIEW", state: "conflict", matchInput: "ean",
++    signals: [{ anchor: "ean", direction: AGAINST }], from: "applyCollisionScore :369-371 + :588-593" },
++  { confidence: 40, band: "BAIXA", status: "REVIEW", state: "conflict", matchInput: "seller_sku",
++    signals: [{ anchor: "seller_sku", direction: FOR }, { anchor: "ean", direction: AGAINST }],
++    from: "applyAmbiguousCorroborationScore :369-373 + :602-608" },
++  { confidence: 40, band: "BAIXA", status: "REVIEW", state: "conflict", matchInput: "ean",
++    signals: [{ anchor: "ean", direction: FOR }, { anchor: "seller_sku", direction: AGAINST }],
++    from: "applyAmbiguousCorroborationScore :369-373 + :602-608" },
++
++  // applyUnresolvedScore (:621-623) is reached from THREE sites, and they do not
++  // agree on `state` — which is the defect the old NO_CANDIDATE special case had.
++  // It writes NO signal: both seeded reasons are absences (:624-627), which is
++  // the whole point — nothing resolved, so nothing argues either way.
++  { confidence: 0, band: "BAIXA", status: "NO_CANDIDATE", state: "unresolved", matchInput: "none",
++    signals: [], from: "applyUnresolvedScore :215-216 / :379-380 + :620-627" },
++  { confidence: 0, band: "BAIXA", status: "NO_CANDIDATE", state: "conflict", matchInput: "none",
++    signals: [], from: "applyUnresolvedScore via conflict set empty :340-341 — state stays conflict" },
++];
++
++function fail(rule: string, detail: string): never {
++  throw new Error(
++    `wireCandidate: ${rule}\n  ${detail}\n` +
++      "  This fixture cannot be produced by the backend. Either correct it, or — if the\n" +
++      "  unproducible shape IS the assertion (a wire-drift probe) — build it with\n" +
++      "  driftCandidate(why, overrides), which records why in the test itself.",
++  );
++}
++
++function assertProducibleReasons(reasons: ProductLinkReason[], providerCode: string): void {
++  const capability = DECLARED_PROVIDER_CAPABILITIES[providerCode];
++  if (!capability) {
++    fail(
++      `provider ${JSON.stringify(providerCode)} declares no marketplace capability in this tree.`,
++      `resolveIdentityAnchors aborts generation when a provider's declaration does not resolve (:149-169), so this ` +
++        `provider emits no candidate at all. Declared here: ${Object.keys(DECLARED_PROVIDER_CAPABILITIES).join(", ")}. ` +
++        "A fixture about how the SCREEN renders an unknown provider is legitimate — it is driftCandidate's case 2.",
++    );
++  }
++
++  const signalAnchors = new Set(
++    reasons.filter((reason) => reason.direction === "FOR" || reason.direction === "AGAINST").map((reason) => reason.anchor),
++  );
++  const seenAbsence = new Set<string>();
++  for (const reason of reasons) {
++    if (!(KNOWN_IDENTITY_ANCHORS as readonly string[]).includes(reason.anchor)) {
++      fail(
++        `anchor ${JSON.stringify(reason.anchor)} is not in the identity vocabulary.`,
++        `Emitted anchors are ${KNOWN_IDENTITY_ANCHORS.join(", ")} (marketplace_capability.go knownIdentityAnchors). ` +
++          "`refforn` in particular was REMOVED by D-A because the question answers `no` for every provider present and future.",
++      );
++    }
++    // `side` binds on EVERY direction, so it is checked before the split below.
++    // Putting the split first would have silently exempted FOR/AGAINST from it.
++    if (reason.side !== undefined && reason.direction !== "INCOMPARABLE") {
++      fail(
++        `${reason.anchor} carries a side on a ${reason.direction} reason.`,
++        "Only INCOMPARABLE branches set a side (:637, :640, :715, :723, :726, :728); UNAVAILABLE leaves it empty at both of its " +
++          "sites (:642 and :704), and no FOR/AGAINST site writes the field at all.",
++      );
++    }
++
++    // Absences dedup by anchor; SIGNALS do not. The previous form of this rule
++    // rejected any repeated anchor, which is wider than the fact: the
++    // TitleMatch hard-negative emits `title` FOR and `title` AGAINST on the same
++    // candidate, because :560-562 appends to the signals :550-554 already wrote
++    // and the finalizer passes both through untouched (:657-661). A guard that
++    // cannot express that site cannot check it either.
++    if (reason.direction === "FOR" || reason.direction === "AGAINST") continue;
++
++    if (seenAbsence.has(reason.anchor)) {
++      fail(
++        `anchor ${JSON.stringify(reason.anchor)} carries two absence reasons.`,
++        "The finalizer keys absences by anchor in `absenceIndexes` and overwrites in place (:666-669, :687-697), so at most one survives per anchor.",
++      );
++    }
++    seenAbsence.add(reason.anchor);
++
++    if (signalAnchors.has(reason.anchor)) {
++      fail(
++        `${reason.anchor} carries both a signal and a ${reason.direction} absence.`,
++        "`hasSignal` is built from the FOR/AGAINST reasons (:652-655) and every absence for an anchor in it is DROPPED (:663-664), " +
++          "so no emitted candidate pairs the two on one anchor.",
++      );
++    }
++
++  }
++
++  // Every anchor the provider DECLARES but does not SUPPLY is emitted, with a
++  // sentence fixed by the anchor's name. Per-anchor, so a second adapter with a
++  // different supplied set is checked by the same rule instead of falling
++  // through it — the previous form asked only about `mercado_livre`, which
++  // exempted exactly the providers whose producibility is unknown.
++  for (const anchor of KNOWN_IDENTITY_ANCHORS) {
++    if (capability.supplied.includes(anchor)) continue;
++    const reason = reasons.find((candidateReason) => candidateReason.anchor === anchor);
++    if (!reason) {
++      fail(
++        `no \`${anchor}\` reason.`,
++        `${providerCode} declares ${capability.supplied.join("/")} supplied (${capability.from}), so ${anchor} is ` +
++          "declared-and-unsupplied and the finalizer emits it on every candidate. resolveIdentityAnchors aborts " +
++          "generation when the declaration does not resolve (:149-169), so there is no candidate anywhere without it.",
++      );
++    }
++    if (reason.direction !== "UNAVAILABLE" || reason.detail !== unavailableDetail(anchor)) {
++      fail(
++        `${providerCode}'s \`${anchor}\` is ${reason.direction} ${JSON.stringify(reason.detail)}.`,
++        `${anchor} is unsupplied per ${capability.from}, so classifyProviderIdentityAnchor returns UNAVAILABLE with ` +
++          `${JSON.stringify(unavailableDetail(anchor))} (:704).`,
++      );
++    }
++  }
++}
++
++/** Order-insensitive, multiplicity-sensitive — `title` FOR + `title` AGAINST is a set of two. */
++function signalKeys(signals: readonly ReasonSignal[]): string[] {
++  return signals.map((signal) => `${signal.anchor}/${signal.direction}`).sort();
++}
++
++function sameSignals(a: readonly ReasonSignal[], b: readonly ReasonSignal[]): boolean {
++  const left = signalKeys(a);
++  const right = signalKeys(b);
++  return left.length === right.length && left.every((key, index) => key === right[index]);
++}
++
++function assertProducibleCandidate(item: ProductLinkCandidateItem): void {
++  const signals = item.reasons
++    .filter((reason) => reason.direction === "FOR" || reason.direction === "AGAINST")
++    .map((reason) => ({ anchor: reason.anchor, direction: reason.direction as "FOR" | "AGAINST" }));
++
++  const tupleMatches = PRODUCIBLE_SITES.filter(
++    (site) =>
++      site.confidence === item.confidence &&
++      site.band === item.confidence_band &&
++      site.status === item.match_status &&
++      site.state === item.state &&
++      site.matchInput === item.match_input,
++  );
++
++  if (tupleMatches.length === 0) {
++    fail(
++      `no producing site emits (${item.confidence}, ${item.confidence_band}, ${item.match_status}, ` +
++        `state=${item.state}, match_input=${item.match_input}).`,
++      "Producible tuples: " +
++        PRODUCIBLE_SITES.map(
++          (site) => `(${site.confidence}, ${site.band}, ${site.status}, ${site.state}, ${site.matchInput}) ${site.from}`,
++        ).join("; "),
++    );
++  }
++
++  if (!tupleMatches.some((site) => sameSignals(site.signals, signals))) {
++    fail(
++      `no producing site emits (${item.confidence}, ${item.confidence_band}, ${item.match_status}, ` +
++        `state=${item.state}, match_input=${item.match_input}) WITH signals [${signalKeys(signals).join(", ") || "none"}].`,
++      `That tuple is producible, but only from ${tupleMatches.length === 1 ? "one site" : `${tupleMatches.length} sites`}, and the ` +
++        "FOR/AGAINST reasons are written by the same block that assigns the score, so they are not free to vary: " +
++        tupleMatches.map((site) => `[${signalKeys(site.signals).join(", ") || "none"}] ${site.from}`).join("; "),
++    );
++  }
++}
++
++/**
++ * The default is the `title_match` row, verbatim from `applySingleAnchorScore`
++ * (:548-554): the title FOR that ranks but never accepts, the two anchors that
++ * found nothing, and `marca`. A default has to be producible too — the previous
++ * shared default was `(50, MEDIA, REVIEW)` with `reasons: []`, and MEDIA is only
++ * ever assigned with CONFIRM, so every fixture that inherited it was impossible
++ * before its own overrides were even applied.
++ */
++function defaultCandidate(): ProductLinkCandidateItem {
++  return {
++    candidate_id: "cand_x",
++    installation_id: "inst_1",
++    provider_code: "mercado_livre",
++    provider_item_id: "MLB_X",
++    state: "title_match",
++    match_input: "title",
++    confidence: 35,
++    confidence_band: "BAIXA",
++    match_status: "REVIEW",
++    reasons: [
++      { anchor: "title", direction: "FOR", detail: "match por título (ranking-only, nunca ACCEPT)" },
++      { anchor: "seller_sku", direction: "INCOMPARABLE", side: "erp", detail: "seller_sku sem correspondência" },
++      { anchor: "ean", direction: "INCOMPARABLE", side: "erp", detail: "ean sem correspondência" },
++      { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
++    ],
++    created_at: "2026-07-18T12:00:00Z",
++    updated_at: "2026-07-18T12:00:00Z",
++  };
++}
++
++/**
++ * A candidate the backend can actually emit.
++ *
++ * Scope, stated rather than implied — the guarantee is TOTAL over what it names
++ * and silent about the rest, and the naming is the point (§11, `f19793d7`: a
++ * total guarantee in a docstring is a claim about every input). It throws unless
++ * ALL of:
++ *
++ *  - the provider has a capability declaration in this tree, and every anchor it
++ *    declares-but-does-not-supply carries the UNAVAILABLE sentence for that
++ *    anchor;
++ *  - every reason's anchor is in the identity vocabulary, no anchor carries two
++ *    absences, no anchor carries a signal and an absence at once, and no
++ *    non-INCOMPARABLE reason carries a `side`;
++ *  - `(confidence, band, status, state, match_input)` is a tuple some producing
++ *    site assigns, AND that site's FOR/AGAINST signal set is exactly this
++ *    fixture's.
++ *
++ * What it does NOT check, and what would therefore pass: the `detail` sentences
++ * of signals, the direction/side of an absence on a SUPPLIED anchor (the
++ * finalizer picks those from listing/product values this fixture does not carry),
++ * and anything about fields outside the candidate.
++ */
++export function wireCandidate(overrides: Partial<ProductLinkCandidateItem> = {}): ProductLinkCandidateItem {
++  const item = { ...defaultCandidate(), ...overrides };
++  assertProducibleReasons(item.reasons, item.provider_code);
++  assertProducibleCandidate(item);
++  return item;
++}
++
++/**
++ * A candidate THIS CHECKOUT's backend cannot emit, on purpose.
++ *
++ * Two distinct legitimate uses, and the distinction is worth keeping because
++ * they expire differently:
++ *
++ *  1. WIRE DRIFT — the API ships a union member before the SDK is regenerated.
++ *     This is precisely the failure a `Record<Union, …>` cannot see, so the
++ *     unproducible shape IS the assertion; validating it away deletes the test.
++ *     It never expires: the SDK is always regenerated after the API moves.
++ *  2. NO DECLARATION HERE — the shape follows from the generator, but only under
++ *     a capability declaration no adapter in this tree makes. `mercado_livre` is
++ *     the only one, so every `marca`-supplied branch of the generator is in this
++ *     class, and so is every candidate of any other provider_code: a provider
++ *     with no declaration aborts generation (:149-169) rather than emitting
++ *     defaults. It expires the day a second adapter lands, the adapter gets a
++ *     row in `DECLARED_PROVIDER_CAPABILITIES`, and the fixture becomes a
++ *     `wireCandidate`.
++ *
++ * `why` is required and unused at runtime by design: it forces the reason to be
++ * written next to the fixture instead of assumed. The rule it enforces is that
++ * "this cannot occur" must be a deliberate, stated choice — the fixtures that
++ * started this were unproducible SILENTLY, and read as wire rows. A previous
++ * round tried to discharge case 2 with a comment claiming the row was
++ * "producible under a capability declaration"; the reviewer's answer was that
++ * this is a dodge rather than an honest degrade, because it asserts producible
++ * while the finalizer says otherwise. Saying "not producible here, and here is
++ * what would have to change" is the honest form of the same fact.
++ */
++export function driftCandidate(why: string, overrides: Partial<ProductLinkCandidateItem> = {}): ProductLinkCandidateItem {
++  if (why.trim().length === 0) {
++    throw new Error("driftCandidate: `why` is required — say what drift this fixture stands for.");
++  }
++  return { ...defaultCandidate(), ...overrides };
++}
