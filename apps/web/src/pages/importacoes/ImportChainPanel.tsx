@@ -16,6 +16,14 @@ function renderCounter(value: unknown, hint: string) {
   return typeof value === "number" && Number.isFinite(value) ? value : <UnknownValue hint={hint} />;
 }
 
+function renderProtocol(value: unknown) {
+  return typeof value === "string" && value.trim().length > 0 ? (
+    <span className="font-mono font-medium text-ink">{value}</span>
+  ) : (
+    <UnknownValue hint="protocolo desconhecido" />
+  );
+}
+
 export function ImportChainPanel({ importId }: ImportChainPanelProps) {
   const chainQuery = useErpImportChain(importId);
   const errorDetail = isImportNotFoundError(chainQuery.error)
@@ -36,7 +44,7 @@ export function ImportChainPanel({ importId }: ImportChainPanelProps) {
         ) : (
           <div data-testid="erp-import-chain">
             <p className="text-xs text-muted">
-              Protocolo <span className="font-mono font-medium text-ink">{chainQuery.data.protocol}</span>
+              Protocolo {renderProtocol(chainQuery.data.protocol)}
             </p>
             <dl className="mt-3 grid grid-cols-3 gap-3">
               <div>

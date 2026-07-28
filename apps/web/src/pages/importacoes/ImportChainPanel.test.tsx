@@ -26,6 +26,20 @@ beforeEach(() => {
 });
 
 describe("ImportChainPanel", () => {
+  it("renders a known protocol verbatim", async () => {
+    getErpImportChain.mockResolvedValue({
+      protocol: "#001-E",
+      importados: 1,
+      vinculados: 1,
+      enfileirados: 1,
+      queue_read_at: "2026-07-18T12:00:00Z",
+    });
+
+    renderPanel();
+
+    expect(await screen.findByText("#001-E", { exact: true })).toBeInTheDocument();
+  });
+
   it("consumes the chain returned by the server", async () => {
     getErpImportChain.mockResolvedValue({
       protocol: "#137-E",
@@ -76,6 +90,37 @@ describe("ImportChainPanel", () => {
     expect(screen.getByTestId("erp-import-chain-enfileirados")).not.toHaveTextContent("0");
     expect(screen.getByTestId("erp-import-chain-importados")).toHaveTextContent("139");
     expect(screen.getByTestId("erp-import-chain-vinculados")).toHaveTextContent("41");
+  });
+
+  it("renders an absent protocol as unknown without blanking the counters", async () => {
+    const chain = {
+      importados: 140,
+      vinculados: 40,
+      enfileirados: 7,
+      queue_read_at: "2026-07-18T12:00:00Z",
+    } as Partial<ErpImportChain> as ErpImportChain;
+    getErpImportChain.mockResolvedValue(chain);
+
+    renderPanel();
+
+    expect(await screen.findByText("—", { exact: true })).toBeInTheDocument();
+    expect(screen.getByTestId("erp-import-chain-importados")).toHaveTextContent("140");
+    expect(screen.getByTestId("erp-import-chain-vinculados")).toHaveTextContent("40");
+    expect(screen.getByTestId("erp-import-chain-enfileirados")).toHaveTextContent("7");
+  });
+
+  it("renders an empty or whitespace protocol as unknown", async () => {
+    getErpImportChain.mockResolvedValue({
+      protocol: "   ",
+      importados: 1,
+      vinculados: 1,
+      enfileirados: 1,
+      queue_read_at: "2026-07-18T12:00:00Z",
+    });
+
+    renderPanel();
+
+    expect(await screen.findByText("—", { exact: true })).toBeInTheDocument();
   });
 
   it("renders a not-found error without a chain", async () => {
