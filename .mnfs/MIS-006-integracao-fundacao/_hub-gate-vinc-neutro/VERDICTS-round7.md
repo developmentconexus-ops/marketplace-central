@@ -223,3 +223,51 @@ inteiro. Um veredito que só existe no contexto do hub não existe.
 
 **Veredito: sem bloqueante sobrevivente. Não merge ainda** — trava de ordem (item 6) e as três
 ordens dos itens 3/4/5 entram antes, sem abrir rodada nova de gate.
+
+---
+
+## RESÍDUO PÓS-RULING — o patch de uma rodada FECHADA não se re-corta
+
+A rodada foi julgada com o chip em `8271991b`. Depois disso o chip andou para `fa040538`.
+O chip perguntou explicitamente: re-cortar o `code-diff.patch` ou registrar o resíduo — e disse
+que não trataria silêncio como nenhuma das duas. Certo, e a resposta é a segunda.
+
+**Decisão: não re-corto.** O `code-diff.patch` de `293c1485` é artefato de uma rodada **decidida**.
+Defasagem de patch de rodada fechada não é defeito, é história — o que faltava era alguém dizer
+por escrito de quanto ela é. Aplicado o discriminador de `979be178` (toca código de produção, ou
+algo em que um veredito devolvido se apoia?):
+
+| delta pós-corte | arquivo | linhas de produção | veredito que se apoia nele |
+|---|---|---|---|
+| `2b956e19` | `VinculosPage.test.tsx` | 0 | nenhum |
+| `1fcf7f1a` | `VinculosDesign.golden.test.tsx` | 0 | nenhum |
+
+Os dois são deleção do mesmo mock morto (`listErpImports`), morto pela mesma causa (`4b76a287`
+tirando `ImportacaoSection` de `pages/vinculos/`). Nenhum assento apoiou veredito em qualquer dos
+dois arquivos: os REPORTs do Sol citam `QueueTab.test.tsx` e `wireFixtures.ts`; a varredura parcial
+do golden test foi achado **meu**, por string, não de assento.
+
+Ambos ficam registrados nestas palavras: **verificado-pelo-HUB, não verificado-por-assento.**
+
+Re-medido pelo hub em `fa040538`, contra a `main` de agora (`0bda36bb`):
+
+```
+git diff --numstat 0bda36bb fa040538 -- apps contracts packages
+  11 arquivos, TODOS em apps/web/src/pages/vinculos/
+  linhas com 0 inserções (revert)                    -> nenhuma
+git show fa040538:.../VinculosDesign.golden.test.tsx | grep -n listErpImports
+  -> só o comentário :26; zero mock
+  beforeEach preservado (:124) com os dois resets vivos
+```
+
+**O-3 estava descarregado antes da ordem chegar** (`1fcf7f1a`, mensagens cruzadas). Terceira
+convergência cega desta onda. Restam **O-1** (duas fixtures improdutíveis) e **O-2** (estender o
+mecanismo aos motivos).
+
+### O que o chip achou sobre a própria varredura, e vale mais que o mock
+
+O chip nomeou por que a primeira varredura não pegou o segundo mock: o padrão foi
+**"o arquivo que eu tinha aberto"**. A população virou a pegada da EDIÇÃO em vez da pegada do
+FATO — e o fato era um merge que moveu um componente para fora do diretório, cuja população
+correta é *todo arquivo que mocava a porta*, na árvore inteira. Instância do §11
+("A sweep is only as wide as its pattern"), com o gatilho específico nomeado. Levado para lá.
