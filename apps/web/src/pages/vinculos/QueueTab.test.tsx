@@ -628,10 +628,19 @@ describe("QueueTab", () => {
     expect(within(shopee).getByText("Shopee")).toBeInTheDocument();
     expect(within(underscored).getByText("Amazon Marketplace")).toBeInTheDocument();
 
-    // ...and the hyphenated code keeps its hyphen, so the two providers never
-    // wear the same name. This is the assertion neither a constant fallback
-    // ("always Shopee") nor a separator-collapsing typeset can survive.
-    expect(within(hyphenated).getByText("Amazon-marketplace")).toBeInTheDocument();
+    // ...and the hyphenated code is not typeset at all, so the two providers
+    // never wear the same name. This is the assertion neither a constant
+    // fallback ("always Shopee") nor a separator-collapsing typeset survives.
+    //
+    // It used to read `Amazon-marketplace`, and that expectation was WRONG in a
+    // way a green test hid: the old guard split on `_` only, so a hyphenated
+    // code was one token that got capitalised and then round-tripped back to
+    // itself — the round-trip APPROVED the very transformation the function
+    // documented itself as refusing, and this test wrote down its output as the
+    // requirement. A hyphen is outside the injective domain, so the correct
+    // render is the wire code, untouched.
+    expect(within(hyphenated).getByText("amazon-marketplace")).toBeInTheDocument();
+    expect(within(hyphenated).queryByText("Amazon-marketplace")).not.toBeInTheDocument();
     expect(within(hyphenated).queryByText("Amazon Marketplace")).not.toBeInTheDocument();
 
     // No lower-case slug of a provider we CAN name reaches the screen.
@@ -1034,13 +1043,29 @@ describe("QueueTab", () => {
   // `buildDefinitions` dedupes provider codes by exact string equality, so
   // `amazon_marketplace` and `amazon__marketplace` are both registrable at the
   // same time. Two marketplaces wearing one name is wrong information.
-  it("does not let two provider codes collapse onto one name through whitespace", async () => {
+  it("does not let two provider codes collapse onto one name", async () => {
     listProductLinkCandidates.mockResolvedValue({
       items: [
         driftCandidate(NO_DECLARATION_HERE, { candidate_id: "cand_a", provider_item_id: "MLB_A", provider_code: "amazon_marketplace" }),
         driftCandidate(NO_DECLARATION_HERE, { candidate_id: "cand_b", provider_item_id: "MLB_B", provider_code: "amazon__marketplace" }),
         driftCandidate(NO_DECLARATION_HERE, { candidate_id: "cand_c", provider_item_id: "MLB_C", provider_code: "_amazon" }),
         driftCandidate(NO_DECLARATION_HERE, { candidate_id: "cand_d", provider_item_id: "MLB_D", provider_code: "amazon" }),
+        // The hyphen case, found by the round-8 gate and invisible to this test
+        // before it: the old guard inferred injectivity from a round-trip rather
+        // than checking a domain, and `typesetSlug` splits on `_` only, so a
+        // hyphenated code was ONE token that survived the round-trip untouched
+        // and got capitalised. Whitespace variants alone could never surface it.
+        driftCandidate(NO_DECLARATION_HERE, { candidate_id: "cand_f", provider_item_id: "MLB_F", provider_code: "amazon-marketplace" }),
+        // What is deliberately NOT a fixture here: a code differing from another
+        // only by CASE, e.g. `Amazon` beside `amazon`. That collision is real and
+        // is NOT closed — `amazon` is inside the domain and typesets to "Amazon",
+        // `Amazon` is outside it and renders verbatim as "Amazon", so the two
+        // paint the same name. It is not closable by narrowing the domain either,
+        // because the collision partner is the verbatim fallback, which is the
+        // identity. See `providerDisplayName`; it is an open REPORT whose trigger
+        // is the second registered adapter. An assertion here would only write
+        // down today's output, and a test that records a defect as the
+        // requirement is what made the hyphen case survive this long.
       ],
     });
 
@@ -1051,10 +1076,16 @@ describe("QueueTab", () => {
     // it, which is the whole point: if two codes reach the same painted string,
     // this returns two nodes for a name that should identify one provider.
     expect(screen.getAllByText("Amazon Marketplace")).toHaveLength(1);
-    expect(screen.getAllByText("Amazon")).toHaveLength(1);
     // The forms that cannot be typeset injectively stay verbatim — an ugly slug
     // the operator can act on beats a pretty name that may be another provider.
     expect(screen.getByText("amazon__marketplace")).toBeInTheDocument();
     expect(screen.getByText("_amazon")).toBeInTheDocument();
+    // A single group is inside the domain too — the regex must not require a
+    // separator to be present.
+    expect(screen.getByText("Amazon")).toBeInTheDocument();
+    // Hyphen: outside the domain, so untouched. "Amazon-marketplace" — what the
+    // old round-trip produced and approved — must not be on screen at all.
+    expect(screen.getByText("amazon-marketplace")).toBeInTheDocument();
+    expect(screen.queryByText("Amazon-marketplace")).not.toBeInTheDocument();
   });
 });

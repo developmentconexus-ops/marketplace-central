@@ -1327,3 +1327,68 @@ names both anchors by definition of corroboration), and seven undeclared-provide
 - `scripts/harness/pack-measure.sh` (`c66ea7c7`) is not on this branch, so the reconciliation
   commands above are hand-written rather than generated. They are SHA-anchored and were run
   verbatim, which is the property that matters; replacing them with the script is the hub's merge.
+
+## ROUND 9 — the round-8 gate BLOCKED on two false sentences, both mine, both in docstrings
+
+Verdict `6098bef9`: BLOCKED with AGREEMENT, two seats by different paths, and **no blocker
+touched the central fix**. Both blockers were the same defect class this chip was dispatched to
+hunt: a sentence in an authority artifact that is wider than the code beside it.
+
+### B-1 — a false universal in `providerDisplayName`, and the remedy that did not remedy
+
+The docstring said unmapped codes are typeset only when the result round-trips back to the wire
+code, so hyphens and case fall through verbatim. The hub proved otherwise BY EXECUTION:
+`"amazon-marketplace" -> "Amazon-marketplace"`. `typesetSlug` splits on `_` only, so a hyphenated
+code is ONE token — it capitalised, and the round-trip restored it, so the round-trip APPROVED the
+transformation the paragraph said it refused. A round-trip can only see what survives it.
+
+Fixed by the hub's option 1: apply the transform only on `^[a-z0-9]+(_[a-z0-9]+)*$`, checked
+BEFORE transforming. There is deliberately no round-trip left behind it — on that domain the
+round-trip cannot fail, and a check that cannot fail is not a check.
+
+**The hub's ruling "A primeira fecha B-1 e R-1 juntos" is FALSE, and I measured it rather than
+inheriting it.** Executed: `amazon` is inside the domain and paints `Amazon`; `Amazon` is outside
+it and paints `Amazon` VERBATIM. The domain makes the TRANSFORM injective; it cannot make the
+FUNCTION injective, because the function is two branches sharing a codomain and the second branch
+is the IDENTITY — every string the transform can produce is one the fallback can produce too.
+Narrowing only moves codes into the branch where the collision partner lives. R-1 did not close;
+it relocated, from inside the transform to the seam between the transform and its own escape
+hatch. R-1 keeps its trigger: the second registered adapter. Full execution table:
+`evidence/V-round9-B1-execution.md`.
+
+### B-2 — the declared gap was false in one cell
+
+`wireFixtures.ts` listed the `side` of an absence among what `wireCandidate` does NOT check, and
+`:294` checks it. Corrected at source; the gap paragraph now names only the DIRECTION, and a
+following paragraph states that `side` IS checked and names the rule. The hub sided with Sol
+against the Opus steelman, and the reason generalises: the "does not check" list is the place a
+reader consults precisely so they do not have to read the guard, so a false cell there is worse
+than an absent one.
+
+**A comment fix alone would have been the same bet that just lost.** Prose drifts silently, so the
+corrected sentence is now backed by `MUST-FAIL 5 — an UNAVAILABLE absence cannot carry a side`.
+Attributability proven by neutering `:294` alone: exactly one arm red, and it is the new one —
+`evidence/V-round9-B2-mustfail5.md`, with md5-verified restore.
+
+### The test that recorded the defect as the requirement
+
+The V10 name test asserted `getByText("Amazon-marketplace")` — the OLD, BUGGY output — and was
+green for it across every prior round. That is how the hyphen case survived: a passing test is only
+as good as the expectation it encodes, and this one encoded the bug. Corrected to
+`getByText("amazon-marketplace")` plus negatives on `Amazon-marketplace` and `Amazon Marketplace`.
+
+For the same reason there is **no case fixture and no case assertion** in the collapse test.
+Asserting today's output for `amazon`/`Amazon` would write the surviving R-1 defect down as the
+requirement — the identical mistake, one round later. The omission is stated in the test, with the
+reason, so a reader does not read it as coverage.
+
+### Lanes, this tree
+
+```
+vitest src/pages/vinculos   6 files, 42 tests, all pass
+vitest (full apps/web)      67 files, 550 tests, all pass
+tsc --noEmit                12 errors, 0 in pages/vinculos
+```
+
+`12` reconciles with the baseline the hub corroborated: main carries 15, of which 3 are in
+`pages/vinculos`. This chip removes its three and adds none.

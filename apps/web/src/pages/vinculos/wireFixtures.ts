@@ -447,9 +447,18 @@ function defaultCandidate(): ProductLinkCandidateItem {
  *    fixture's.
  *
  * What it does NOT check, and what would therefore pass: the `detail` sentences
- * of signals, the direction/side of an absence on a SUPPLIED anchor (the
- * finalizer picks those from listing/product values this fixture does not carry),
- * and anything about fields outside the candidate.
+ * of signals, the DIRECTION an absence takes on a SUPPLIED anchor (the finalizer
+ * picks INCOMPARABLE or UNAVAILABLE from listing/product values this fixture does
+ * not carry — `:631-645`, `:702-729`), and anything about fields outside the
+ * candidate.
+ *
+ * The `side` of an absence is NOT in that list, and an earlier version of this
+ * paragraph put it there — a false sentence about the very guard it documents,
+ * in the place a reader consults precisely so they do not have to read the
+ * guard. `side` is checked, per the second bullet above: INCOMPARABLE may carry
+ * one and nothing else may, so a `side` on an UNAVAILABLE absence THROWS at the
+ * rule that reads `reason.direction !== "INCOMPARABLE"`. Only which of the two
+ * DIRECTIONS the finalizer picks is unchecked.
  */
 export function wireCandidate(overrides: Partial<ProductLinkCandidateItem> = {}): ProductLinkCandidateItem {
   const item = { ...defaultCandidate(), ...overrides };

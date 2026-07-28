@@ -315,4 +315,31 @@ describe("wireCandidate rejects what generation_service.go cannot emit", () => {
       }),
     ).not.toThrow();
   });
+
+  it("MUST-FAIL 5 — an UNAVAILABLE absence cannot carry a `side`", () => {
+    // This arm exists because of what the round-8 gate found: the header of
+    // `wireCandidate` listed the `side` of an absence among the things the guard
+    // does NOT check, and the guard checks it — a docstring contradicting the
+    // code beside it, in the place a reader goes so they do not have to read the
+    // code. The sentence is corrected at source (R-24); the arm is what stops it
+    // going false again, because prose drifts silently and an arm does not.
+    //
+    // The fact: `classifyProviderIdentityAnchor` sets a side only on
+    // INCOMPARABLE branches, and UNAVAILABLE leaves it empty at both of its.
+    // A `side` on UNAVAILABLE therefore claims a comparison that never ran.
+    expect(() =>
+      wireCandidate({
+        state: "exact_sku",
+        match_input: "seller_sku",
+        match_status: "CONFIRM",
+        confidence: 70,
+        confidence_band: "MEDIA",
+        reasons: [
+          { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
+          { anchor: "ean", direction: "UNAVAILABLE", side: "erp", detail: "sem EAN para corroborar o CODPROD" },
+          { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
+        ],
+      }),
+    ).toThrow(/Only INCOMPARABLE branches set a side/);
+  });
 });

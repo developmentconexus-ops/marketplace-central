@@ -85,8 +85,8 @@ export const directionClasses: Record<ProductLinkReasonDirection, string> = {
  *
  * An unmapped provider is TYPESET rather than passed through — `mercado_livre`
  * is the only mapped code today, so the next marketplace onboarded would
- * otherwise put a raw slug back on screen — but only when the typeset form
- * ROUND-TRIPS back to the exact wire code.
+ * otherwise put a raw slug back on screen — but only when the wire code lies
+ * inside a DOMAIN on which typesetting is injective.
  *
  * That condition is the whole design, and it exists because the obvious version
  * of this function is wrong. Collapsing every separator into a space maps
@@ -98,21 +98,68 @@ export const directionClasses: Record<ProductLinkReasonDirection, string> = {
  * merely ugly is a cosmetic problem; two providers wearing one name is wrong
  * information, which is worse.
  *
- * So the transform is applied only where it is INJECTIVE: lower-case
- * underscore slugs, where `"amazon_marketplace" → "Amazon Marketplace" →
- * "amazon_marketplace"` returns the input unchanged. Anything else — hyphens,
- * mixed case, embedded spaces, anything that would lose a character — renders
- * verbatim, because an ugly identifier the operator can act on beats a pretty
- * name that might be the wrong provider.
+ * So the transform is applied only on a DOMAIN where it is injective:
+ * `^[a-z0-9]+(_[a-z0-9]+)*$` — lower-case alphanumeric groups separated by
+ * single underscores. Anything else — hyphens, upper-case, embedded or repeated
+ * separators, anything that would lose a character — renders verbatim, because
+ * an ugly identifier the operator can act on beats a pretty name that might be
+ * the wrong provider.
+ *
+ * The domain is CHECKED, and that is the correction of an earlier version of
+ * this function whose sentence said the same thing while the code did not. It
+ * inferred injectivity from a round-trip — typeset the code, lower it, restore
+ * the separators, compare — and a round-trip can only see what survives it.
+ * Two codes fell through:
+ *
+ *  - `amazon-marketplace`: `typesetSlug` splits on `_` only, so a hyphenated
+ *    code is ONE token. It capitalized to `Amazon-marketplace` and restored to
+ *    itself, so the round-trip APPROVED the transformation this paragraph said
+ *    it refused;
+ *  - `Amazon` vs `amazon`: the comparison ran `painted.toLowerCase()`, which
+ *    destroys case before comparing, so both paint `Amazon` — the two-providers-
+ *    one-name failure named above, from the guard meant to prevent it. This one
+ *    the domain check does NOT close; see the last paragraph.
+ *
+ * A domain test cannot have that shape: it rejects BEFORE transforming, so
+ * there is no lossy step for it to be blind to. The whitespace reasoning that
+ * earned the old round-trip is preserved as the reason `__` is outside the
+ * domain: HTML collapses runs of whitespace, so `amazon__market` would paint
+ * `Amazon Market` — the same pixels as `amazon_market` — and a comparison of
+ * the pre-layout string would call that injective. What the browser paints is
+ * the thing that must be unambiguous.
+ *
+ * The hyphen case is closed by that domain. THE CASE ONE IS NOT, and the claim
+ * this paragraph is here to refuse is the tempting one that a domain on which
+ * the TRANSFORM is injective makes the FUNCTION injective. It does not, because
+ * the function is two branches and the branches share a codomain. Executed:
+ * `amazon` is inside the domain and paints `Amazon`; `Amazon` is outside it and
+ * therefore paints `Amazon` VERBATIM. Same pixels, two wire codes — the exact
+ * failure named at the top, relocated from inside the transform to the seam
+ * between the transform and its own escape hatch. Narrowing the domain cannot
+ * fix it: the fallback is identity, so every string a transform can produce is
+ * also a string the fallback can produce. Only two shapes actually close it —
+ * render every unmapped code verbatim (injective, uglier), or require a display
+ * name in the registry beside the code (injective, and a contract change). Both
+ * are outside this chip's write-set; it is an open REPORT with a trigger, and
+ * the trigger is the second registered adapter. Until then `mercado_livre` is
+ * mapped, it is the only declaration that exists, and no live row reaches
+ * either branch.
  */
 const providerDisplayNames: Record<string, string> = {
   mercado_livre: "Mercado Livre",
 };
 
+// The domain on which capitalising underscore groups is injective. Every group
+// is non-empty, so no run of separators can collapse; every character is already
+// lower-case, so nothing is lost by upper-casing an initial; and `_` is the only
+// separator, so no other punctuation can survive untouched into the display.
+const INJECTIVE_PROVIDER_SLUG = /^[a-z0-9]+(_[a-z0-9]+)*$/;
+
 function typesetSlug(providerCode: string): string {
+  // Callers must have checked the domain, which guarantees non-empty groups.
   return providerCode
     .split("_")
-    .map((word) => (word.length > 0 ? word.charAt(0).toUpperCase() + word.slice(1) : word))
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 }
 
@@ -120,21 +167,13 @@ export function providerDisplayName(providerCode: string): string {
   const mapped = providerDisplayNames[providerCode];
   if (mapped) return mapped;
 
-  const typeset = typesetSlug(providerCode);
-  // The round-trip IS the injectivity check: if lowering the form and restoring
-  // the separators does not reproduce the wire code byte for byte, then some
-  // other code could typeset to the same string, and the display would be
-  // ambiguous. Ambiguous loses to verbatim.
-  //
-  // It has to run on what the browser PAINTS, not on the string we just built.
-  // HTML collapses runs of whitespace and trims the edges, so `amazon__market`
-  // typesets to "Amazon  Market" — two spaces — and reaches the operator as
-  // "Amazon Market", the same pixels as `amazon_market`, while a round-trip of
-  // the intermediate string returns the input unchanged and calls it injective.
-  // Checking the pre-layout form is checking a string nobody ever sees.
-  const painted = typeset.replace(/\s+/g, " ").trim();
-  const restored = painted.toLowerCase().split(" ").join("_");
-  return restored === providerCode ? painted : providerCode;
+  // Reject BEFORE transforming. The old form typeset first and then asked
+  // whether the result could be reversed, which is only as strong as the
+  // reversal — and the reversal lower-cased, so it could not see case at all.
+  // There is deliberately no round-trip left behind this: on this domain the
+  // round-trip cannot fail, and a check that cannot fail is not a check.
+  if (!INJECTIVE_PROVIDER_SLUG.test(providerCode)) return providerCode;
+  return typesetSlug(providerCode);
 }
 
 /**
