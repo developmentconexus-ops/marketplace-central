@@ -1,0 +1,24 @@
+--- SAIDA POR RAMO ---
+"Amazon"                 -> "Amazon"                 VERBATIM
+"Amazon Marketplace"     -> "Amazon Marketplace"     VERBATIM
+"MERCADO_LIVRE"          -> "MERCADO_LIVRE"          VERBATIM
+"Mercado Livre"          -> "Mercado Livre"          VERBATIM
+"Shopee"                 -> "Shopee"                 VERBATIM
+"amazon"                 -> "Amazon"                 TYPESET
+"amazon-marketplace"     -> "amazon-marketplace"     VERBATIM
+"amazon__market"         -> "amazon__market"         VERBATIM
+"amazon_marketplace"     -> "Amazon Marketplace"     TYPESET
+"mercado livre"          -> "mercado livre"          VERBATIM
+"mercado_livre"          -> "Mercado Livre"          MAPPED
+"shopee"                 -> "Shopee"                 TYPESET
+--- COLISOES, com o RAMO de cada origem ---
+COLLIDE "Amazon" <- Amazon [VERBATIM] | amazon [TYPESET]
+COLLIDE "Amazon Marketplace" <- Amazon Marketplace [VERBATIM] | amazon_marketplace [TYPESET]
+COLLIDE "Mercado Livre" <- Mercado Livre [VERBATIM] | mercado_livre [MAPPED]
+COLLIDE "Shopee" <- Shopee [VERBATIM] | shopee [TYPESET]
+classes em colisao: 4
+
+--- OPCAO (a) do docstring: "render every unmapped code verbatim (injective, uglier)" ---
+COLLIDE "Mercado Livre" <- Mercado Livre [VERBATIM] | mercado_livre [MAPPED]
+classes em colisao sob a OPCAO (a): 1
+opcao (a) NAO e injetiva — o docstring chama de injetiva
