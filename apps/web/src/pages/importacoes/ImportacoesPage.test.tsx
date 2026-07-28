@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ErpImportSummary } from "@marketplace-central/sdk-runtime";
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ImportacoesPage } from "./ImportacoesPage";
 
@@ -32,9 +33,11 @@ function summary(overrides: Partial<ErpImportSummary>): ErpImportSummary {
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <QueryClientProvider client={queryClient}>
-      <ImportacoesPage />
-    </QueryClientProvider>,
+    <MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <ImportacoesPage />
+      </QueryClientProvider>
+    </MemoryRouter>,
   );
 }
 
