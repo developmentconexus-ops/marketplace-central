@@ -967,6 +967,42 @@ back in single-digit ms, and the hypothesis about which `expect` form hung was t
 WRONG. The reads were moved to module scope, which is a **mitigation, not a diagnosis**: module-load
 time is not charged to `testTimeout`, so a slow cold read can no longer turn a passing guard red.
 
+### COUNT RECONCILIATION, run against this chip's own pack — `evidence/V-count-reconciliation-self.md`
+
+Amendment `0cb6d7e` (profile §11) came out of this chip's round-5 failure, and the hub bound it back
+onto the implementer: *"você roda a mesma varredura contra o próprio pack antes de publicar."* Run
+at `2e5331b6`, before the freeze. Both counts printed, as the amendment requires:
+
+```
+POPULACAO=51  EXTRACAO=36  REFS=15  soma_confere=True
+```
+
+Population anchored loosely — `candidate_id:` across **every** `*.test.ts*` in `apps/web/src`, not
+only under `pages/vinculos/`, because the 29th fixture survived four rounds by living outside the
+sweep's scope. Extraction = candidate objects built through the throwing constructor. The 15-site
+residual is named, not slack: batch payload refs, a different union with a different producer.
+
+**The must-fail found a defect in this sweep, too.** First run of both arms moved the population
+51→53 and printed **nothing**: the classifier bucketed both injected candidates as batch refs,
+because its pattern was `status:` and `match_status:` contains `status:`. Identical in form to round
+5's `grep -oh 'anchor: "[a-z_]*"'`, which dropped capitals and accents and reported 1 violation where
+there were 5. Word boundary applied; both arms then red — arm A (raw candidate in a file the sweep
+names) and arm B (raw candidate in a file no sweep ever named). A second, smaller one: a 6-line
+lookback window marked `QueueTab.test.tsx:633-634` as *built* because a real `candidate({…})` sits
+four lines above. **Having two counts is what surfaced both; one number would have been reported as
+fact.** Run on a scratchpad copy, diffed back against the tree afterwards — the tree was never dirtied.
+
+**REPORT — the residual named a second union with no mechanism.** `ProductLinkBatchPreviewItem.status:
+"OK" | "FAILED"` (`packages/sdk-runtime/src/index.ts:1160-1164`; `cause` beside it is free-form
+`string`, so no typeset can constrain it). `BatchPreviewModal.tsx` enumerates it by string literal in
+three places that disagree under drift: `:44` builds the **apply payload**, `:46` feeds the counter at
+`:87`, `:94` renders the row. A third member would be **not applied**, **counted in neither** chip —
+so `:84`/`:87` stop summing to `items.length` — and yet **rendered as a failure** by the ternary's
+else branch at `:97`. Three inconsistent readings of one item, all silent, all type-correct. Not a
+defect today: the union has exactly two members and the partition is total. It is the drift exposure
+`driftCandidate` exists for, in a union the mechanism never covered. **Not fixed here** — one freeze
+per round, and widening it to a component outside the round's delta is the chip choosing its own scope.
+
 ## Verdict roll-up
 
 | Criterion | Verdict |
