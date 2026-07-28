@@ -8087,7 +8087,10 @@ components:
           type: integer
         enfileirados:
           type: integer
-          description: Current queue count; the number falls as the scheduler drains it.
+          description: >-
+            Current market queue at queue_read_at, never an import-history total:
+            the number falls as the queue is consumed. No consumer is wired yet,
+            so today it only grows — a later drop is drainage, never data loss.
         queue_read_at:
           type: string
           format: date-time

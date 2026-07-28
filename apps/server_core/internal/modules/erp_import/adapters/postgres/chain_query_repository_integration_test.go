@@ -48,11 +48,15 @@ func TestGetImportChainCountsCurrentQueueAcrossInstallations(t *testing.T) {
 	`, importID, tenant); err != nil {
 		t.Fatal(err)
 	}
+	// codprod 101 is resolved TWICE — one listing per installation. Vinculados must
+	// still count it once, so dropping the DISTINCT from the vinculados CTE turns
+	// this fixture's 2 into 3 and fails the assertion below.
 	if _, err := pool.Exec(ctx, `
 		INSERT INTO product_links
 			(tenant_id, installation_id, provider_code, provider_item_id, state, internal_product_id)
 		VALUES
 			($1, 'installation-a', 'mercadolivre', 'item-101', 'resolved', 101),
+			($1, 'installation-b', 'mercadolivre', 'item-101-b', 'resolved', 101),
 			($1, 'installation-a', 'mercadolivre', 'item-102', 'resolved', 102),
 			($1, 'installation-a', 'mercadolivre', 'item-103', 'pending', 103);
 	`, tenant); err != nil {
