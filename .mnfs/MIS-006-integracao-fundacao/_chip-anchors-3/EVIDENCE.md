@@ -18,7 +18,9 @@ gate_round_1: REFUTED dos DOIS lados
 sweep_do_autor: rodada sobre o EVIDENCE inteiro (745 linhas, 71 hits); 4 alegacoes minhas corrigidas, 2 delas eram o universal do codigo escrito em prosa
 r4_execucao: must-fail da segunda metade REPRODUZIDO pelo assento executor do hub em 0264ba84, contra Postgres real (failure_token=test=... blocked → status=passed). Unico criterio que dependia so da minha palavra.
 finding_1: ESTREITADO pelo hub — falhou-vs-verde E distinguivel via failure_token; so pulado-vs-verde e byte-identico. Ratificado em ea919c06.
-status: NAO FECHADO. Sem AGREEMENT. Todo achado dos dois lados verificado por STRING pelo chip, um recusado com motivo.
+ruling_round_4: ESCADA ENCERRADA pelo hub. Sem round 5, sem assento novo, instrumento por sentenca CANCELADO. Tabela de reconciliacao RETIRADA (nao republicada). 6 nao-bloqueantes + 5 universais pre-existentes = REPORT, sem segurar o close.
+fechamento: evidencia EXECUTADA sobre o codigo — go build ./... EXIT 0, go vet ./... EXIT 0, suite product_links EXIT 0 com 115 funcoes de teste / 168 com subtestes EXECUTADAS (0 SKIP, 0 FAIL); must-fail do CORR-1 VERMELHO em 2 testes, restaurado, git diff --quiet HEAD EXIT 0.
+status: NAO FECHADO PELO CHIP. Sem AGREEMENT em 4 rounds; a linha P6-DUAL-GATE e o merge sao do hub. Todo achado dos dois lados verificado por STRING pelo chip, um recusado com motivo.
 authority: .mnfs/MIS-006-integracao-fundacao/_hub-gate-anchors-2/p6-reconciliation-r1.md
 contract: .mnfs/MIS-006-integracao-fundacao/_chip-anchors-3/validation-contract.md
 ```
@@ -53,6 +55,12 @@ B-03, B-07, B-09 (R-14/A13). Uma segunda cópia divergiria.
 | `2bed7d9d` | R4 — uma só regra de identidade para os três contadores + o que o guard nil PRODUZ | gate round 1, não-bloqueantes 6 e 4 |
 | `0264ba84` | R7 — varre a **classe**, não o sítio que o gate nomeou: segundo universal falso + o teste passa a asserir 95/ALTA/ACCEPT | gate round 2, blocking 1 e 2 |
 | `590efdc8` | Estreita os três comentários que a varredura refutou + **entra com o pack no git** (ver FINDING 8) | gate round 3, blocking A1/A2/B1 e não-bloqueantes A1/A2 |
+| `13a09177` / `a4709d43` | Persiste os dois vereditos do round 4 (o assento não escreve — `189a8ce`) | round 4, custódia dos artefatos |
+| `1ef419f3` | Troca o universal de **cobertura** por enumeração medida sítio a sítio, comentário-só | round 4, BLOCKING 1 (dos DOIS lados) |
+| `0caa75a2` / `49a997c8` / `a02be7f2` | Reconciliação corrigida + `head` dividido em `code_head`/`content_head` + FINDINGS 9–12 + instrumentos versionados | round 4, BLOCKING 2 e 3 |
+
+O último commit deste chip retira a tabela de reconciliação por ruling do hub e traz o pacote de
+fechamento executado (build/vet/suíte/must-fail). Ele não se auto-nomeia: o SHA é do hub, no merge.
 
 CORR-5 é do hub, e não está aqui.
 
@@ -811,9 +819,14 @@ cobertura que existia; no round 4 afirmei cobertura que não existe. Negar e afi
 
 **BLOCKING 2 — a reconciliação de contagem, com números idênticos nos dois vereditos.** População
 `1476`, `149` linhas-hit CS, `175` CI, per-file `110/12/11/12/4` — reproduzido por mim em terceiro
-lugar. Os quatro defeitos e a causa medida de cada um estão na seção "Reconciliação de contagem",
-reescrita. O lado B achou um terceiro defeito que o lado A não achou e eu não tinha: a identidade
+lugar. O lado B achou um terceiro defeito que o lado A não achou e eu não tinha: a identidade
 `65 + 38 = 103` é `65 + 45 = 110`.
+
+**Desfecho, por ruling do hub: a tabela foi RETIRADA, não reescrita de novo.** Eu a republiquei
+corrigida em `0caa75a2`, antes do ruling chegar; o ruling encerrou a escada. A seção
+"Reconciliação de contagem da varredura — RETIRADA" registra a retirada, a razão e a linha de comando
+que **gera** a medição de fora, num SHA nomeado, no lugar de qualquer número redigitado aqui. Os
+números retirados continuam legíveis em `0caa75a2` e `a02be7f2`.
 
 ### Onde os dois divergiram, e por que eu sigo o lado A
 
@@ -841,6 +854,30 @@ cinco itens casa zero. `"Those paths … are pinned by X and Y"` casa zero. Nenh
 sinônimo, nenhuma largura de regex pega essas duas — não é buraco de vocabulário, é propriedade
 estrutural da sentença. Foi o que os rounds 3 e 4 falharam, os dois. É o argumento do RULING B: a
 condição de fechamento é por **sentença medida**, não por padrão maior.
+
+### Ruling do hub sobre o round 4: a escada acabou — o resto é REPORT
+
+O hub encerrou o ciclo de reparo. Não há round 5, não há assento novo, e o instrumento por sentença
+do RULING B foi **CANCELADO** (não foi construído; o que existe é o padrão P3, registrado). O que
+fica classificado, aqui, sem segurar nada:
+
+| Item | Classificação | Onde está |
+|---|---|---|
+| NON-BLOCKING 1–6 do lado A (enumeração `os quatro`; citação apodrecida; auto-citações vencidas; ~82 linhas não varridas; nits de `file:line`; pack não nomeia o tip) | **REPORT** | corrigidos em `0caa75a2`/`a02be7f2`; nenhum segura o close |
+| Os cinco universais pré-existentes (do hub, fora do delta) | **REPORT** | R2 desta seção de REPORTs; **não são deste chip** |
+| Recusa em `generation_service.go:473` (lado B aceita no mérito, lado A retira parcialmente o TRUE) | **REPORT** | divergência de leitura registrada acima; nenhum assento a converteu em blocking |
+
+A regra que o hub aplicou, e que vale além deste chip: **BLOCKING é para OBSERVÁVEL errado**
+(comportamento, segurança, dado, contrato publicado). Prosa, contagem, metadado, deriva de citação e
+higiene de pack são REPORT — corrigidos na mesma rodada, nunca abrindo outra. Discriminador: mande o
+código com o achado intocado e nomeie o que um usuário, operador, chamador ou linha gravada faz de
+diferente; sem resposta, é REPORT. Medida contra este próprio round: dos três blocking do round 4,
+um é comentário de teste (BLOCKING 1), um é contagem (BLOCKING 2) e um é metadado de cabeçalho
+(BLOCKING 3) — **nenhum é observável errado**, e mesmo assim seguraram o close. É a evidência de
+campo que o profile ratificou em `c66ea7c7`/§11.
+
+O que substitui a escada é medida binária sobre o corretivo: o must-fail do CORR-1, na seção
+"Pacote de fechamento" acima. Ele prova mais sobre o B-01 do que quatro rodadas de prosa provaram.
 
 ---
 
@@ -932,118 +969,67 @@ O que essa varredura ensina, e que eu não teria aprendido consertando sítios: 
 eram a MESMA alegação do código, escrita em português no pack.** Varrer só o código teria deixado a
 falsidade viva no documento que o gate lê.
 
-### Reconciliação de contagem da varredura — exigida pelo RULING 1, item 3
+### Reconciliação de contagem da varredura — RETIRADA
 
-A pergunta do hub é a certa: **71 de quantos?** Um número sem população, sem o padrão e sem o
-momento não é auditável. As duas contagens, com o buraco que elas revelam.
+**Retirada declarada, por ruling do hub no round 4.** Esta seção publicava duas tabelas de contagem
+(tip `90dab174` e momento da varredura `de4e940c`), a lista dos quatro defeitos da tabela anterior, a
+identidade `65 + 45 = 110` e as contagens da varredura de autor (P1/P3) sobre as linhas do próprio
+reparo. **Nada disso é republicado aqui.**
 
-**A tabela abaixo substitui a que foi publicada aqui no round 4.** A publicada estava errada em
-quatro colunas e os dois assentos do gate a reprovaram. O que ela dizia, preservado para leitura
-(R-24 — o número velho fica, não some): população `1398`, P1 case-sensitive `153`, ocorrências
-`220`, e uma coluna P2 com `190`/`254`. As correções e a causa de cada uma estão logo abaixo.
+Por quê, em duas razões que são a mesma:
 
-**Instrumento, e por que ele mudou.** Medido **sobre os blobs de um commit nomeado**, nunca sobre a
-árvore de trabalho — `git cat-file -p <commit>:<path> | python`. A razão é a que o hub ratificou em
-`9f8a6ec1` para custódia e que me pegou três vezes: **um número medido em disco e depois escrito em
-disco descreve um arquivo que nunca foi commitado.** Commit é imutável; medir commit elimina a
-auto-referência em vez de administrá-la. Script: `scripts/measure_frozen.py` (versionado **dentro do
-pack** neste reparo — um instrumento que mora no scratchpad de uma worktree descartável não é
-reproduzível por ninguém, que é o defeito do P2 outra vez), argumento = commit.
+1. **A escada acabou.** O hub encerrou o reparo sobre papelada: contagem, prosa e metadado são
+   REPORT, não BLOCKING (profile §11, `c66ea7c7`/ruling do round 4). Cada rodada de reconciliação
+   produziu números novos para o round seguinte reprovar — quatro rounds, zero `AGREEMENT`, e o
+   gate tinha passado a revisar a própria papelada em vez do código.
+2. **Qualquer número sobre este pack, digitado dentro deste pack, é auto-referente por
+   construção.** Foi a causa medida de quatro defeitos num dia só. O ponto fixo não existe.
 
-**Unidades, nomeadas porque a falta do nome já custou duas discrepâncias hoje:**
+**Retirada declarada não é ocultação; é reduzir superfície de mentira.** Os números retirados não
+sumiram do mundo: continuam legíveis nos commits `0caa75a2` e `a02be7f2` desta branch, que é onde um
+número velho fica auditável (R-24) sem ficar de pé como alegação corrente.
 
-- `linhas` = linhas terminadas em LF. Newline final **não** cria linha vazia extra. (`split('\n')`
-  devolve uma parte a mais; foi de onde vieram `916` e `1398`.)
-- `sentenças` = corte em `[.!?:;]` + espaço, e em quebra de linha; fragmento vazio descartado.
-- `chars` = `len()` do texto decodificado em UTF-8. `bytes` = `len()` do blob cru. Os dois diferem
-  em todo arquivo com acento, e nenhum dos dois é "o tamanho" sem o rótulo.
-
-**População:** os cinco arquivos do pack que **eu** escrevi. O resto de `dispatches/` é retorno de
-worker ou de assento — texto que não é meu para varrer.
-
-**Tip congelado do round 4, `90dab174`:**
-
-| Arquivo | linhas | linhas-hit CS | linhas-hit CI | sentenças | sent-hit CS | sent-hit CI | ocorr. CS | ocorr. CI |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| `EVIDENCE.md` | 998 | 110 | 125 | 1326 | 114 | 131 | 159 | 183 |
-| `dispatches/p6-gate-brief.md` | 130 | 12 | 16 | 155 | 12 | 16 | 13 | 17 |
-| `dispatches/p6-gate-brief-r2.md` | 135 | 11 | 14 | 170 | 11 | 14 | 13 | 16 |
-| `dispatches/p6-gate-brief-r3.md` | 142 | 12 | 16 | 178 | 12 | 16 | 21 | 25 |
-| `dispatches/a2-assertion-before-after.md` | 71 | 4 | 4 | 74 | 4 | 4 | 4 | 4 |
-| **TOTAL** | **1476** | **149** | **175** | **1903** | **153** | **181** | **210** | **245** |
-
-**Momento em que a varredura rodou, `de4e940c`:**
-
-| Arquivo | linhas | linhas-hit CS | linhas-hit CI | sentenças | sent-hit CS | sent-hit CI | ocorr. CS | ocorr. CI |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| `EVIDENCE.md` | 915 | 103 | 116 | 1216 | 107 | 121 | 142 | 158 |
-| **TOTAL (5 arquivos)** | **1393** | **142** | **166** | **1793** | **146** | **171** | **193** | **220** |
-
-**Os quatro defeitos da tabela anterior, cada um com a causa medida, não estimada:**
-
-1. **`153` não contava coisa nenhuma.** Era `103` (case-**sensitive**, `EVIDENCE.md`) somado a
-   `16+14+16+4` (case-**insensitive**, os outros quatro). Mistura de modo dentro de uma linha só.
-   Correto: **142** em `de4e940c`, **149** em `90dab174`. O `166` estava certo — é CI de verdade.
-2. **`220` era a contagem case-INSENSITIVE de ocorrências**, publicada na coluna P1, que é CS. A
-   tabela de `de4e940c` mostra isso ao lado: CS `193`, CI `220`. Mesmo defeito do item 1, em outra
-   coluna. Correto: **193** no momento da varredura, **210** no tip congelado.
-3. **`1398` e `916` eram partes-de-`split`**, não linhas LF-terminadas: uma a mais por arquivo,
-   cinco no total. Correto: **1393** e **915**.
-4. **P2 sai da tabela inteira.** Publiquei `190` e `254` para um padrão estendido cuja regex exata
-   **não está registrada em lugar nenhum do pack** — logo os dois números são irreproduzíveis por
-   construção, e "irreproduzível" não é um resultado fraco, é ausência de resultado. Apago em vez de
-   defender. Se P2 voltar, volta com a regex escrita ao lado do número. É a mesma regra que eu já
-   tinha aplicado contra outros: **check que não acha nada PASSA**, e contagem sem padrão é isso.
-
-**Onde foram os 71, corrigido.** A varredura da rodada 3 rodou sobre o `EVIDENCE.md` de então, 745
-linhas. Essa região ainda existe e hoje dá **65** hits CS — reproduzido pelos dois assentos do round
-4, é o único número da seção original que sobreviveu intacto. 71 → 65 porque **os consertos da
-própria varredura apagaram seis linhas de hit**; a varredura derruba o próprio número, que é o
-comportamento esperado.
-
-A segunda metade da identidade estava errada e foi o lado B que a pegou: eu publiquei "da linha 746
-ao fim vêm mais **38**; 65 + 38 = 103". Medido no tip congelado, as linhas 746–998 trazem **45**, e a
-identidade é **65 + 45 = 110**. O `38` foi medido quando o arquivo tinha 915 linhas — **antes desta
-seção existir**. A seção contou o arquivo que ela estava no ato de aumentar. É a terceira aparição
-da mesma auto-referência: a custódia (pega pelo lado A), o cabeçalho do veredito (pega pelo hub) e
-aqui. Não é descuido repetido: é que medir e depois escrever torna a escrita a própria mutação, e a
-única saída estrutural é medir commit, que é o que a tabela acima faz.
-
-**Varredura da própria prosa do reparo, antes de commitar** (a obrigação do hub vale para o autor, e
-a classe que os rounds 3 e 4 falharam é a que P1 não vê). População: as **276 linhas** que este
-reparo adiciona ao `EVIDENCE.md`, extraídas por `git diff -U0 | grep '^+'`. Instrumento:
-`scripts/sweep_new.py` (também versionado no pack, com `scripts/verify_claims.py`, que é o que rodou
-o item 3 da triagem abaixo), com os dois padrões escritos ao lado do número — P1 como registrado, e
-**P3 registrado aqui pela primeira vez**, cobrindo a classe cega:
+**O que substitui a tabela: medição GERADA, de fora, num SHA nomeado.**
 
 ```
-os (dois|tr[eê]s|quatro|cinco|seis)|as (duas|tr[eê]s|quatro|cinco)|pinned by|cobre|coberto|
-cobertura|garante|prova que|exclusiv|ningu[eé]m|\bzero\b|nothing|none\b|each |all
+scripts/harness/pack-measure.sh <sha> .mnfs/MIS-006-integracao-fundacao/_chip-anchors-3
 ```
 
-Resultado: **42 linhas-hit P1 (CI), 57 linhas-hit P3.** Triagem das P3: a grande maioria é "os dois
-lados / os dois assentos" — enumeração de dois objetos nomeados e contáveis, verdadeira por
-construção. **Quatro exigiram verificação antes de eu deixar a frase de pé**, e as quatro foram
-medidas, não julgadas:
+O script mora em `scripts/harness/pack-measure.sh` **na `main`** (ratificado em `c66ea7c7`); ele não
+existe nesta branch — verificado por `git ls-tree -r --name-only main`, que o devolve, e pelo
+`git ls-files` daqui, que não. Logo ele roda no checkout do hub, ou depois do merge. O cabeçalho do
+próprio script declara o contrato de saída — cada figura sai com o SHA em que foi medida e com a
+unidade — porque `bytes ≠ chars ≠ linhas-LF ≠ partes de `split('\n')``: cinco das discrepâncias
+desta rodada foram confusão de unidade, nenhuma foi aritmética.
 
-1. *"não entra em `newCandidate` por nenhum dos três"* e *"`uniqueProducts` não descarta nenhum"* —
-   derivadas do filtro `:277-283` e do corpo `:437-452`, lidas linha a linha. De pé.
-2. *"Nenhum teste cobre, e nenhum pode"* para `:340`/`:379` — a segunda metade é mais forte que a
-   primeira e é a que importa: decorre da inalcançabilidade, não de eu ter procurado teste. De pé.
-3. *"`os quatro universais` casa zero; `Those paths … are pinned by X and Y` casa zero"* — rodado:
-   `cs=[] ci=[]` nas duas strings, e o controle `The zero value itself is NOT unreachable in
-   production` devolve `['unreachable']`, provando que o padrão está vivo e o zero é do texto, não
-   do instrumento. De pé, e é a evidência de que a classe é estrutural.
-4. *"a regex de P2 não aparece em lugar nenhum do pack"* — `grep` por `P2` no pack inteiro devolve
-   quatro linhas minhas descrevendo a ausência e duas do veredito do lado B apontando a ausência.
-   Nenhuma definição. De pé.
+**`<sha>` é lacuna declarada, não chute:** o SHA que interessa é o tip deste chip no fechamento, que
+só existe depois do commit que você está lendo. Quem o nomeia é o hub, no merge. É a mesma lacuna que
+esta seção já declarava antes de ser retirada, e ela fecha do lado de fora — nunca daqui.
 
-**O que ficou por medir, dito como lacuna e não escondido:** não publico contagem do tip ATUAL deste
-pack. Qualquer número que eu escrevesse aqui para o tip atual mudaria o tip ao ser escrito. O tip
-atual é medível — pelo assento do hub, de fora, sobre o blob, com o mesmo script — e é assim que
-essa lacuna fecha. Sentença continua sendo a unidade mais alta das duas (`1903` sentenças contra
-`1476` linhas; `153` contra `149` em CS), então **toda contagem por linha deste pack é piso, nunca
-teto.**
+**O que sobrevive da seção, porque não é número sobre si mesma:**
+
+- **P3, registrado com a regex exata**, para a classe que P1 é cego por construção (enumeração
+  fechada e cobertura não carregam token de totalidade):
+
+  ```
+  os (dois|tr[eê]s|quatro|cinco|seis)|as (duas|tr[eê]s|quatro|cinco)|pinned by|cobre|coberto|
+  cobertura|garante|prova que|exclusiv|ningu[eé]m|\bzero\b|nothing|none\b|each |all
+  ```
+
+- **Os instrumentos versionados dentro do pack** — `scripts/measure_frozen.py`, `scripts/sweep_new.py`,
+  `scripts/verify_claims.py` — que medem **blobs de commit nomeado** (`git cat-file -p <commit>:<path>`),
+  nunca a árvore de trabalho. Instrumento no scratchpad de uma worktree descartável é tão
+  irreproduzível quanto o P2 que esta seção apagou.
+- **As quatro alegações que a triagem exigiu verificar**, todas medidas e todas de pé: o filtro
+  `:277-283` + corpo `:437-452` para "não entra em `newCandidate`"; a inalcançabilidade (não a
+  ausência de busca) para `:340`/`:379`; o par zero-match `os quatro universais` / `pinned by X and Y`
+  **com controle que casa** (`unreachable`), provando que o zero é do texto e não do instrumento; e a
+  ausência de definição da regex do P2 em todo o pack.
+- **A lição, que dura mais que os números que a produziram:** medir e depois escrever torna a escrita a própria
+  mutação (FINDING 9), e contagem sem o padrão que a produziu é forma de evidência, não evidência
+  (FINDING 11).
+
+### Buraco do padrão da varredura (round 3), e as três frases minhas que ele deixou passar
 
 **O padrão cobria o português — mas não cobria MAIÚSCULA.** O padrão registrado já trazia
 `nunca|sempre|apenas|todo |nenhum|única|único|…` ao lado de `never|always|only|…`, então a metade
@@ -1117,6 +1103,82 @@ go test ./internal/modules/product_links/... -count=1
   connectors 2.820s ok · application 2.796s ok · composition 2.323s ok
   domain 2.361s ok · transport 3.148s ok      → EXIT 0
 ```
+
+### Pacote de fechamento — evidência EXECUTADA sobre o código (ruling do round 4)
+
+O hub encerrou a escada de reparo sobre papelada e pediu medida binária sobre o corretivo que
+importa. Rodado no worktree `happy-montalcini-b010c0`, caminho absoluto no mesmo comando, com
+`GOCACHE` **absoluto** (ver FINDING 13).
+
+**1. Build e vet, população inteira do módulo Go:**
+
+```
+go build ./...   → EXIT 0
+go vet   ./...   → EXIT 0
+```
+
+**2. Suíte `product_links`, contagem de TESTES EXECUTADOS — não de pacotes `ok`:**
+
+```
+go test ./internal/modules/product_links/... -count=1 -v   → EXIT 0
+  === RUN de topo (funções Test*)        = 115   [unidade: FUNÇÕES DE TESTE]
+  === RUN total (com subtestes)          = 168   [unidade: TESTES + SUBTESTES]
+  --- PASS                               = 168   --- FAIL = 0   --- SKIP = 0
+  pacotes: connectors ok · application ok · composition ok · domain ok · transport ok
+           adapters/postgres e ports = [no test files]
+```
+
+**Lacuna declarada, não escondida:** `generation_integration_test.go` está atrás de
+`//go:build integration` (linha 1 do arquivo) e **não entrou nesta corrida** — nenhum teste foi
+pulado em runtime (`--- SKIP = 0`), ele foi excluído em tempo de compilação. A lane de integração
+com Postgres real é do assento executor do hub, não deste chip (profile §11).
+
+**3. Must-fail sobre o CORR-1, que é a medida binária que o hub pediu.** Mutação: em
+`generation_service.go`, `identityAnchorValues`, `case "seller_sku"`, o lado ERP volta a ler o
+`refforn` (`product.ReferenceCode`) no lugar do CODPROD canônico — exatamente a falha que o B-01 do
+gate do CHIP-ANCHORS-2 descreveu.
+
+```
+- if product != nil {
+-     if productID, ok := canonicalProductID(*product); ok {
+-         productValue = strconv.Itoa(productID)
+-     }
+- }
++ if product != nil && product.ReferenceCode != nil {
++     productValue = *product.ReferenceCode
++ }
+```
+
+Resultado — **VERMELHO, e vermelho pelo motivo certo** (`go test ./internal/modules/product_links/...
+-count=1` → EXIT 1):
+
+```
+--- FAIL: TestSellerSKUAnchorReadsCanonicalCodprodNotSupplierReference
+    --- FAIL: .../listing_has_no_seller_sku
+        generation_service_test.go:556: side="both", want side="provider"
+    --- FAIL: .../listing_has_a_seller_sku,_ERP_product_has_no_refforn
+        generation_service_test.go:556: direction="INCOMPARABLE" side="erp",
+                                        want direction="UNAVAILABLE"
+--- FAIL: TestCase3EANAloneYieldsMediaConfirm
+    generation_service_test.go:1664: want seller_sku UNAVAILABLE (excluded branch)
+FAIL  .../product_links/application
+```
+
+Os dois `INCOMPARABLE`/`side=erp` que a mutação faz aparecer são a alegação falsa em pessoa: "produto
+ERP sem CODPROD" para um produto que **tem** CODPROD. A mutação não é no-op, e o teste não é teatro:
+ele cai, nomeia a direção e o lado errados, e um segundo teste independente (`TestCase3…`) cai junto.
+
+**Restaurado por edição reversa** (nunca `git checkout --`), e a restauração é provada, não alegada:
+
+```
+go test ./internal/modules/product_links/... -count=1                  → EXIT 0 (5 pacotes ok)
+git diff --quiet HEAD                                                  → EXIT 0   (zero byte de drift)
+git status --porcelain --untracked-files=all | grep '^??'              → zero linha
+```
+
+Dois instrumentos para duas perguntas, conforme a emenda `9f8a6ec1`: `--quiet HEAD` responde
+conteúdo, `??` responde não-rastreado. `git status --porcelain` sozinho seria a ferramenta errada
+(stat-cache do `autocrlf` emite ` M` com conteúdo byte-idêntico).
 
 ---
 
@@ -1255,3 +1317,13 @@ redação anterior de R4/R5/R6/A11, é por isso — e a redação anterior era a
     conhecidos. Mas foi um comando meu num seam que não é meu, e ele **teria** sido destrutivo com
     qualquer flag de escrita. Regra: caminho absoluto do worktree no mesmo comando, `||` nunca como
     fallback de diretório, e conferir `pwd` antes de qualquer lane.
+13. **`GOCACHE=.gocache` relativo NÃO roda, e o modo como ele falha se parece com suíte vermelha.** O
+    profile §2 grava a variável na forma relativa; o Go a recusa: `build cache is required, but could
+    not be located: GOCACHE is not an absolute path`. A corrida sai com **EXIT 1** e o arquivo de
+    captura tem 83 bytes — nenhum `=== RUN`, nenhum `--- FAIL`. Quem só olhar o código de saída lê
+    "suíte quebrada"; quem só contar `--- FAIL` lê "zero falhas". É a classe do verde vacuoso
+    (`a9dc6caa`) com o sinal trocado: **medição que não aconteceu, não resultado**. Guarda barata, e
+    é a mesma do profile: afirmar que a população é não-vazia (`=== RUN` > 0) antes de ler qualquer
+    contagem filtrada. Candidato a emenda do §2: gravar `GOCACHE=<abs>/apps/server_core/.gocache`,
+    com a nota de que o caminho é do WORKTREE (ver FINDING 12) e continua coberto por
+    `.gitignore:10`.
