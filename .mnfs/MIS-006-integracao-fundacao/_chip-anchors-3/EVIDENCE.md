@@ -33,6 +33,7 @@ must_fail_sql: lane de integracao com o ltrim REPOSTO = status=blocked, failure_
 ordem_f5: painel /importacoes prometia funil (importados -> vinculados -> enfileirados) sobre tres numeros de DUAS unidades e populacoes independentes; 55/0/55 e estado normal. Legenda, titulo e rotulos reescritos em ImportChainPanel.tsx (unico arquivo concedido). vitest importacoes 18 passed EXIT 0; tsc apps/web EXIT 2 com 20 erros pre-existentes, ZERO em importacoes. Contrato (summary/description "processing chain") e cópia de erro fixada por teste alheio: propostos ao hub, NAO tocados. Drive em navegador PENDENTE de stack.
 ordem_f5_contrato: hub concedeu escopo MAIOR que o pedido — summary e description 200 reescritos (prosa livre nao quebra nada; deixar "processing chain" ao lado de descriptions verdadeiras seria anotar a falsidade ao lado da verdade, R-25). grep -c "processing chain" = 0. Path/operationId/ref/schema ficam: RESIDUO DECLARADO — o identificador continua afirmando sequencia, a prosa nao; divida conhecida, nao lacuna (sao QUATRO sitios, nao dois: operationId nao estava na tabela do hub). Delta prosa-pura provado: sdk-runtime 8+/0-, zero linha adicionada nao-comentario, sha256 identico com comentarios removidos; OpenAPI inteiro carregado com yaml.safe_load nas duas revisoes e IDENTICO removendo toda description/summary. sdk tsc EXIT 0, sdk vitest 77 passed.
 ordem_f5_correcao: eu publiquei "20 erros pre-existentes" no tsc de apps/web em b91c7507. 20 e a contagem de LINHAS da saida; erros TS sao 15 em 10 arquivos (grep -c "error TS"). Conjunto byte-identico antes/depois, zero em importacoes nas duas medicoes. Confundi unidade de saida com unidade de erro no mesmo dia em que a ordem era sobre unidades nao nomeadas.
+ordem_f5_drive: DESCARREGADO. Hub dirigiu /importacoes/eac3ac9e-b87b-43be-959c-7bf1f11a07f1 (#001-E) no build de b91c7507, registro 5da4b013, ZERO erro de console. Renderizou "Estado da importacao" + "Tres medidas independentes... nao sao etapas de um funil." + Linhas importadas 55 / Produtos vinculados 0 / Linhas na fila de sync 55. Conferido por string contra o fonte; seta no fonte = False. O drive e de b91c7507 e o tip e b97cd9a8: o unico delta renderizavel e a copia de ERRO (errorDetail), que so aparece no ramo de erro e esta coberta por vitest, nao por navegador — declarado, nao escondido. Mecanismo (§6): compose resolve env_file: contra o diretorio do projeto e worktree nao tem .env; criar .env no worktree e PROIBIDO (credencial viva em arvore de chip); hub faz git checkout do arquivo do grant na arvore dele, dirige, e reverte.
 status: NAO FECHADO PELO CHIP. Sem AGREEMENT em 5 rounds; a linha P6-DUAL-GATE e o merge sao do hub. Todo achado dos dois lados verificado por STRING pelo chip, um recusado com motivo.
 authority: .mnfs/MIS-006-integracao-fundacao/_hub-gate-anchors-2/p6-reconciliation-r1.md
 contract: .mnfs/MIS-006-integracao-fundacao/_chip-anchors-3/validation-contract.md
@@ -921,7 +922,34 @@ apps/web     tsc --noEmit                        15 erros PRÉ-EXISTENTES   EXIT
 
 ### Drive em navegador real
 
-**PENDENTE, e o procedimento agora é do hub.** O critério de aceite desta ordem é o texto renderizado de `/importacoes/eac3ac9e-b87b-43be-959c-7bf1f11a07f1` (protocolo #001-E, 55/0/55). O chip nao sobe stack, e o diagnostico do REQUEST estava certo: o compose monta `.:/workspace` cwd-relativo e estava apontado pro checkout primario, entao um drive meu nao veria esta mudanca. Concedido: eu commito e mando o sha, o hub re-aponta o compose pra `happy-montalcini-b010c0`, dirige, devolve o texto **verbatim**, re-aponta pro primario. O drive e do hub e o build e meu — nao e auto-certificacao, e o texto volta pra eu conferir contra o que escrevi. Ate ele chegar, esta secao e reparo declarado e **nao** criterio descarregado.
+**DESCARREGADO.** Dirigido pelo **hub** em navegador real, `/importacoes/eac3ac9e-b87b-43be-959c-7bf1f11a07f1`, protocolo `#001-E`, sobre o build do commit `b91c7507` deste branch. Registro do hub: `5da4b013`. **Zero erro de console.** Texto renderizado, verbatim como o hub devolveu:
+
+```
+Detalhe da importação
+Voltar para importações
+Estado da importação
+
+Três medidas independentes, lidas do servidor — não são etapas de um funil.
+
+Protocolo #001-E
+
+Linhas importadas
+55
+Produtos vinculados
+0
+Linhas na fila de sync
+55
+
+Fila lida em: 28/07/2026, 18:38
+```
+
+Os mesmos `55 / 0 / 55` que liam como funil quebrado leem como três medidas. Conferido por string contra o fonte: as seis cadeias renderizadas (`Estado da importação`, a legenda inteira, os três rótulos, `Fila lida em:`) existem em `ImportChainPanel.tsx`; `→` no fonte = **False**; `cadeia` no fonte = **False**.
+
+**O drive é de `b91c7507`, e o tip é `b97cd9a8` — o que o drive NÃO cobre.** O único delta de superfície renderizável entre os dois é uma string: `errorDetail`, `"Não foi possível carregar a cadeia da importação."` → `"…o estado da importação."`. Ela só renderiza no **ramo de erro**, e o drive percorreu o ramo de sucesso. Então: o texto acima vale para o caminho feliz do tip (esse código é byte-idêntico nos dois commits, `git diff b91c7507 b97cd9a8 -- ImportChainPanel.tsx` mostra **uma** linha, e é essa), e a cópia de erro está coberta por `vitest` (`ImportChainPanel.test.tsx:173` e `:186`), **não** por navegador. Declarado em vez de deixar o drive parecer que certificou o tip inteiro.
+
+**Mecanismo do drive, porque vira doutrina (§6 do hub).** Re-apontar o compose pro worktree do chip **não funciona**: compose resolve o `env_file:` de cada serviço contra o diretório do projeto, o worktree não tem `.env`, e `--env-file` não sobrepõe `env_file:` de serviço. A gambiarra óbvia — criar `.env` no worktree — é **proibida**: poria credencial viva de provider dentro de árvore alcançável por sessão de chip, o que é pior do que não dirigir. O que o hub fez: `git checkout chip/anchors-3 -- <arquivo do grant>` na árvore **dele**, dirigiu o stack já rodando, capturou, e `git checkout HEAD -- <mesmo arquivo>` para reverter, com `git status --porcelain` verificado dos dois lados. Drive do hub, build do chip, texto de volta **verbatim** e não parafraseado: o chip não certifica a própria tela e o hub não resume o que o chip tem que conferir.
+
+**A ordem mirou melhor do que foi escrita.** O hub mandou tirar a seta; o que descarregou o critério foi **nomear a unidade** nos rótulos — a metade que a seta escondia. Tirar a seta sozinho deixaria três números anônimos lado a lado e o operador continuaria comparando 55 com 0.
 
 ---
 
