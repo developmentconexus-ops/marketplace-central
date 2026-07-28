@@ -133,9 +133,13 @@ atualizado pro novo caminho), `apps/web/src/pages/vinculos/VinculosPage.tsx` (id
   nunca assume a troca como aplicada.
 
 **Inputs/Outputs (MUST have):**
-- `useActiveErpSource` (`@marketplace-central/web-query`): hoje só lê/escreve `localStorage`
+- `useActiveErpSource` (`@marketplace-central/web-query`): ~~hoje só lê/escreve `localStorage`
   (`refactor-inventory-frontend.md` §3 linha 28); REFACTOR para GET `/tenants/{tenant_id}/active-source`
-  no mount e PUT no mesmo path na troca (path exato = o publicado por M-02 F-04).
+  no mount e PUT no mesmo path na troca~~ — **JÁ FEITO e o path estava errado.** O que existe é
+  `packages/web-query/src/activeSource.ts` sobre `GET/PUT /config/active-source` (single-tenant,
+  tenant fixo server-side), com invalidação global no sucesso. Provado ao vivo pelo L2 do hub em
+  2026-07-28: virar o rádio persiste no DB e `/catalogo` inteiro troca de fonte
+  (`_chip-import-chain/L2-hub-live-drive.md`).
 - `ActiveSourceCard` (`IntegracoesPage.tsx:280-319`): mesma UI, troca só a fonte de dado
   (hook atualizado); nenhuma mudança visual fora de estado de loading/erro.
 
@@ -185,7 +189,8 @@ pertence a M-02; F-02 só consome.
 - Novo método de chain-read (ex. `getImportChain(protocolId)` ou equivalente ao path real de
   M-06 no OpenAPI) — consumido por F-01.
 - OpenAPI: seção nova para os endpoints acima que M-06 publica (chain-read); path exato definido
-  na implementação, mas DEVE ser disjunto de `/tenants/{tenant_id}/active-source` (path de M-02).
+  na implementação, mas DEVE ser disjunto de `/config/active-source` (o path que M-02 realmente
+  landou; a redação original dizia `/tenants/{tenant_id}/active-source`, que nunca existiu).
 
 **Negative Scenarios:**
 - Commit que só toca `sdk-runtime` sem o OpenAPI correspondente (ou vice-versa) = falha de MC-12,

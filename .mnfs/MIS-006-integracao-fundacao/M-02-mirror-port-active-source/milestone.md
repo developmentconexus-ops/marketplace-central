@@ -171,6 +171,8 @@ consolidada na mesma migração do mirror).
 **Inputs/Outputs (MUST have):**
 - OpenAPI: path novo (ex. `GET/PUT /tenants/{tenant_id}/active-source` ou equivalente já
   ratificado no schema real do repo) com schema `{active_source, source_kind, set_at, set_by}`.
+  **Landou como `GET/PUT /config/active-source`** (single-tenant, tenant fixo server-side) —
+  o exemplo acima nunca existiu e não deve ser citado como path.
 - `sdk-runtime`: cliente gerado/atualizado no mesmo diff.
 
 **Negative Scenarios:**

@@ -110,8 +110,16 @@ Se não faltar nada, **declare F-03 já satisfeito** em vez de inventar trabalho
 - L1: `vitest` — baseline citada antes e depois.
 - L2: **do hub**, e este é o L2 mais importante da onda. Ver o contrato de validação.
 
-O worktree do chip não tem `node_modules`. Junction para o do repo principal + config de vitest do
-chip, **deletada antes do commit**. `npx --no-install tsc` no worktree passa vazio — pass vacuoso;
-rode o `tsc` da raiz principal apontando para o worktree.
+O worktree do chip não tem `node_modules`. Rode **`npm ci` na raiz do worktree** antes de qualquer
+lane de `tsc`/`vitest` — profile §3, `ratified`: install fiel ao lockfile é preparo de ambiente, não
+mudança de dependência, e não pede REQUEST. **Nunca reuse o `node_modules` de outro checkout**: os
+symlinks de workspace do npm resolveriam `packages/*` para a OUTRA árvore e a suíte validaria o
+código errado em silêncio. Se o `npm ci` falhar, é REQUEST — não workaround.
+
+`npx --no-install tsc` no worktree passa vazio — pass vacuoso.
+
+E cuidado com o observável: contar 15 erros de `tsc` com a composição esperada NÃO prova que você leu
+a árvore certa, porque os 3 erros de `/vinculos` também existem em `main` desde `dbdcdfb1`. Ler a
+árvore errada dá a mesma contagem.
 
 Este chip não sobe servidor, não liga em `:8080`, não lê `.env*`. O drive ao vivo é REQUEST ao hub.
