@@ -4,8 +4,20 @@ You are a cold, independent gate seat. You have not seen this chip's conversatio
 not get it. Another seat is reviewing the same frozen input, blind to you and you to it. Do not
 try to guess what it found.
 
-**Frozen tip: `7b5c18ebaee6c7d816817a9f61191ce713083c94`.**
-**Delta under review: `4c000a04..7b5c18eb`** — four commits (`git log --oneline 4c000a04..7b5c18eb | wc -l` = 4):
+**Code under review: `4c000a04..7b5c18eb`** — four commits
+(`git log --oneline 4c000a04..7b5c18eb | wc -l` = 4). That range is the CODE delta, and it is the
+range the hub's executor seat measured.
+
+**Read the pack at the current `HEAD`, not at `7b5c18eb`.** Commits after `7b5c18eb` touch
+`.mnfs/` only — they carry corrections the executor seat forced into the evidence, including one
+that restates a count the pack originally got wrong. The invariant that makes this safe is
+checkable in one command, and you should run it rather than trust this sentence:
+
+```
+git diff --stat 7b5c18eb..HEAD -- apps/     →  empty
+```
+
+If that is not empty, stop and say so: the brief is lying to you about what you are reviewing.
 
 ```
 6e0e9ea4  round 5 — both gate sides REFUTED; make the impossible fixture unwriteable
@@ -74,7 +86,21 @@ result unverified rather than clean.
 This clause has already caught three real defects in this chip's own sweeps, one of them in the
 tool built to enforce the clause. Assume it will catch yours.
 
-## MANDATORY SECTION 3 — the two adversarial questions
+## MANDATORY SECTION 3 — pack custody
+
+Report the output of both, verbatim:
+
+```
+git ls-tree <HEAD> -- .mnfs/MIS-006-integracao-fundacao/_chip-vinc-neutro/ | wc -l
+git status --porcelain .mnfs/MIS-006-integracao-fundacao/_chip-vinc-neutro/
+```
+
+The second must be empty. An evidence pack that lives only in a working tree is one worktree
+teardown away from never having existed — a prior chip in this mission lost six commits' worth of
+artifacts to exactly that, and it is why this clause exists. If the pack is dirty, that is a
+finding on its own, regardless of what the code says.
+
+## MANDATORY SECTION 4 — the two adversarial questions
 
 Answer both explicitly. "No finding" is an acceptable answer; silence is not.
 
@@ -104,6 +130,7 @@ Open with **APPROVED** or **REFUTED** on its own line. Then:
 - every finding with `file:line` and the string you read, quoted;
 - severity, and what breaks in the running product if it ships;
 - the `## SWEEP` section (section 1) and the reconciliation counts (section 2);
+- the two custody commands (section 3), output verbatim;
 - Q1 and Q2 answered;
 - anything you could not settle without execution, named and routed.
 
