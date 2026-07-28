@@ -143,6 +143,33 @@ UNTOUCHED by this chip:
 `tsc` green was never the criterion. V2 is, and V2 is proven by a must-fail (V3), not by the
 compiler — the compiler could not see this defect at all.
 
+### Tree provenance of the L0 lane (addendum, after `main` moved to `81457e4f`)
+
+`main@81457e4f` corrected this chip's own pack with a warning that lands exactly here: *"contar 15
+erros de `tsc` com a composição esperada NÃO prova que você leu a árvore certa, porque os 3 erros de
+`/vinculos` também existem em `main` desde `dbdcdfb1`. Ler a árvore errada dá a mesma contagem."*
+
+The warning is right, and my two original artifacts do not answer it on their own — the baseline was
+captured with `cwd` at an `apps/web`, so its paths are relative (`src/pages/…`) and name no tree.
+So I re-ran the after-lane in a form that **cannot** read another tree, and persisted it:
+
+- `evidence/L0-tsc-after-worktree-selfcontained.txt` — `npx --no-install tsc -p apps/web --noEmit`
+  run from the **worktree root**, with the worktree's own `node_modules` (from `npm ci` here).
+  **12 errors, 0 under `pages/vinculos/`.**
+
+That run is non-vacuous *because* `npm ci` ran in this worktree: `node_modules/@marketplace-central/*`
+resolve to `…/gifted-dhawan-5049f6/packages/*` and `…/apps/web` — verified by
+`ls -l node_modules/@marketplace-central/`. Under the old junction approach the same command would
+have been the vacuous pass the pack warns about.
+
+**What is proven, and what is not.** The after-state (12, zero in `vinculos`) is now proven against
+*this* tree by two independent invocations. The before-state (15) is a claim about `main`, and its
+artifact carries no tree marker; it is corroborated by the pack's own statement that `main` has
+carried 3 `/vinculos` errors since `dbdcdfb1`, and by V3's must-fail, which shows the three sites are
+real code in this branch's parent. I am not upgrading that to "proven" — it is a corroborated claim.
+Immaterial to the verdict either way: V5 asks that the write-set close and the baseline be declared,
+and 0 errors under `pages/vinculos/` is a self-contained measurement of the write-set.
+
 ## V6 — "Identificado por" — **IMPLEMENTED, PASS** *(after the gate refuted my REPORT)*
 
 **I filed this as a REPORT and I was wrong. The round-1 gate reviewer refuted it and the
@@ -398,6 +425,22 @@ Run against the BASE-SHA floor, the same diff additionally shows 8 `.mnfs/` path
 wave-2 commits `af61c5e8` and `bcab8269` (the three wave-2 packs, the M-06 milestone correction,
 and `_hub-gate-anchors-2/EVIDENCE.md`). **Those are not mine**; they are what `main` gained while
 this chip ran, which is exactly why the contract calls the base a floor.
+
+**Re-checked at close, after `main` moved again to `81457e4f`.** The floor moved a third time. The
+only honest way to state scope is to separate the two directions:
+
+```
+git diff --name-only bcab8269 HEAD   → 8 write-set paths + 11 of my own .mnfs/ evidence paths
+git diff --name-only bcab8269 main   → 3 paths, all .mnfs/ pack files, none of them mine
+comm -12 (mine) (main's)             → EMPTY
+```
+
+Zero intersection, so this branch merges into `81457e4f` without touching anything the hub changed
+after `bcab8269`. `main@81457e4f` rewrote `_chip-vinc-neutro/chip.md` §L0 — replacing the junction
+instruction with `npm ci` at the worktree root, plus the tree-provenance warning answered in the V5
+addendum above. That correction ratifies what this chip had already done in the field and recorded
+as FINDING-2; nothing in it changes a verdict, and no work is owed. The other two changed paths are
+CHIP-IMPORT-CHAIN's pack and contract, which I do not read or touch.
 
 ---
 
