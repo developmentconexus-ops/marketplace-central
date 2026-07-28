@@ -17,6 +17,13 @@ import (
 	"marketplace-central/apps/server_core/internal/modules/erp_import/ports"
 )
 
+// Both {id} routes validate the path value before the query, so request paths
+// in these tests carry real UUIDs — the shape erp_import_protocols.id holds.
+const (
+	validImportID   = "11111111-1111-1111-1111-111111111111"
+	missingImportID = "22222222-2222-2222-2222-222222222222"
+)
+
 type fakeImportRunner struct {
 	report        domain.ImportReport
 	err           error
@@ -39,6 +46,7 @@ type fakeImportQuerier struct {
 	listErr  error
 	getErr   error
 	chainErr error
+	getID    domain.ImportID
 	chainID  domain.ImportID
 }
 
@@ -46,7 +54,8 @@ func (f *fakeImportQuerier) ListImports(context.Context) ([]domain.ImportReport,
 	return f.items, f.listErr
 }
 
-func (f *fakeImportQuerier) GetImport(context.Context, domain.ImportID) (domain.ImportReport, error) {
+func (f *fakeImportQuerier) GetImport(_ context.Context, id domain.ImportID) (domain.ImportReport, error) {
+	f.getID = id
 	return f.item, f.getErr
 }
 
@@ -230,7 +239,7 @@ func TestHandlerGetImportDetailSplitsIssuesAndEmitsEmptyArrays(t *testing.T) {
 		{Row: 2, Kind: domain.Rejection, Code: domain.CodeEmptyCodprod, Detail: "missing product code"},
 		{Row: 3, Kind: domain.Warning, Code: domain.CodeInvalidEAN, Detail: "invalid EAN", Column: &column},
 	}
-	response := performRequest(t, &fakeImportRunner{}, &fakeImportQuerier{item: report}, httptest.NewRequest(http.MethodGet, "/erp/imports/imp-1", nil))
+	response := performRequest(t, &fakeImportRunner{}, &fakeImportQuerier{item: report}, httptest.NewRequest(http.MethodGet, "/erp/imports/"+validImportID, nil))
 	if response.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", response.Code)
 	}
@@ -257,7 +266,7 @@ func TestHandlerGetImportDetailSplitsIssuesAndEmitsEmptyArrays(t *testing.T) {
 	}
 
 	emptyReport := importReport("empty", "p-empty", domain.ImportStatusCompleted)
-	emptyResponse := performRequest(t, &fakeImportRunner{}, &fakeImportQuerier{item: emptyReport}, httptest.NewRequest(http.MethodGet, "/erp/imports/empty", nil))
+	emptyResponse := performRequest(t, &fakeImportRunner{}, &fakeImportQuerier{item: emptyReport}, httptest.NewRequest(http.MethodGet, "/erp/imports/"+validImportID, nil))
 	var emptyBody struct {
 		RejectedRows []any `json:"rejected_rows"`
 		Warnings     []any `json:"warnings"`
@@ -269,7 +278,7 @@ func TestHandlerGetImportDetailSplitsIssuesAndEmitsEmptyArrays(t *testing.T) {
 }
 
 func TestHandlerGetImportDetailUnknownID(t *testing.T) {
-	response := performRequest(t, &fakeImportRunner{}, &fakeImportQuerier{getErr: ports.ErrImportNotFound}, httptest.NewRequest(http.MethodGet, "/erp/imports/missing", nil))
+	response := performRequest(t, &fakeImportRunner{}, &fakeImportQuerier{getErr: ports.ErrImportNotFound}, httptest.NewRequest(http.MethodGet, "/erp/imports/"+missingImportID, nil))
 	if response.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", response.Code)
 	}
@@ -303,7 +312,7 @@ func TestHandlerPostImportOversizeRejected(t *testing.T) {
 func TestHandlerImportedAtIsRFC3339UTC(t *testing.T) {
 	// Fixture ImportedAt is 12:34:56 in BRT (-03:00); the wire must carry its UTC instant.
 	report := importReport("imp-1", "proto-1", domain.ImportStatusCompleted)
-	response := performRequest(t, &fakeImportRunner{}, &fakeImportQuerier{item: report}, httptest.NewRequest(http.MethodGet, "/erp/imports/imp-1", nil))
+	response := performRequest(t, &fakeImportRunner{}, &fakeImportQuerier{item: report}, httptest.NewRequest(http.MethodGet, "/erp/imports/"+validImportID, nil))
 	if response.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", response.Code)
 	}
@@ -324,12 +333,12 @@ func TestHandlerGetImportChainMapsServiceErrorsAndUTCResponse(t *testing.T) {
 		Enfileirados: 3,
 		QueueReadAt:  time.Date(2026, 7, 27, 12, 34, 56, 0, time.FixedZone("BRT", -3*60*60)),
 	}}
-	response := performRequest(t, &fakeImportRunner{}, querier, httptest.NewRequest(http.MethodGet, "/erp/imports/id-with-path/chain", nil))
+	response := performRequest(t, &fakeImportRunner{}, querier, httptest.NewRequest(http.MethodGet, "/erp/imports/"+validImportID+"/chain", nil))
 	if response.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200; body=%s", response.Code, response.Body.String())
 	}
-	if querier.chainID != "id-with-path" {
-		t.Fatalf("service id = %q, want id-with-path", querier.chainID)
+	if querier.chainID != domain.ImportID(validImportID) {
+		t.Fatalf("service id = %q, want %q", querier.chainID, validImportID)
 	}
 	if got, want := response.Body.String(), "{\"protocol\":\"#001-E\",\"importados\":4,\"vinculados\":2,\"enfileirados\":3,\"queue_read_at\":\"2026-07-27T15:34:56Z\"}\n"; got != want {
 		t.Fatalf("body = %q, want %q", got, want)
@@ -345,9 +354,38 @@ func TestHandlerGetImportChainMapsServiceErrorsAndUTCResponse(t *testing.T) {
 		{name: "internal", err: errors.New("database details must not escape"), wantStatus: http.StatusInternalServerError, wantBody: "{\"error\":\"internal_error\"}\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := performRequest(t, &fakeImportRunner{}, &fakeImportQuerier{chainErr: tc.err}, httptest.NewRequest(http.MethodGet, "/erp/imports/missing/chain", nil))
+			got := performRequest(t, &fakeImportRunner{}, &fakeImportQuerier{chainErr: tc.err}, httptest.NewRequest(http.MethodGet, "/erp/imports/"+missingImportID+"/chain", nil))
 			if got.Code != tc.wantStatus || got.Body.String() != tc.wantBody {
 				t.Fatalf("status/body = %d/%q, want %d/%q", got.Code, got.Body.String(), tc.wantStatus, tc.wantBody)
+			}
+		})
+	}
+}
+
+func TestHandlerMalformedImportIDRejectedOnBothRoutesBeforeQuery(t *testing.T) {
+	const malformedID = "not-a-uuid"
+	tests := []struct {
+		name string
+		path string
+	}{
+		{name: "get import", path: "/erp/imports/" + malformedID},
+		{name: "get import chain", path: "/erp/imports/" + malformedID + "/chain"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			querier := &fakeImportQuerier{}
+			response := performRequest(t, &fakeImportRunner{}, querier, httptest.NewRequest(http.MethodGet, tc.path, nil))
+			if response.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want 400", response.Code)
+			}
+			if got, want := response.Body.String(), "{\"error\":\"invalid_import_id\"}\n"; got != want {
+				t.Fatalf("body = %q, want %q", got, want)
+			}
+			if querier.getID != "" {
+				t.Fatalf("GetImport ran with id %q; the malformed path value must be rejected before any query", querier.getID)
+			}
+			if querier.chainID != "" {
+				t.Fatalf("GetImportChain ran with id %q; the malformed path value must be rejected before any query", querier.chainID)
 			}
 		})
 	}

@@ -84,7 +84,7 @@ describe("ERP import SDK contract", () => {
     expect(summary).toContain("source:");
     expect(summary).not.toContain("filename:");
     expect(issueCodeSchema).toContain("enum: [EMPTY_CODPROD, DUPLICATE_CODPROD, EMPTY_DESCRPROD, INVALID_CUSTO, INVALID_ESTOQUE, INVALID_EAN, INVALID_NCM, MISSING_CUSTO, MISSING_ESTOQUE, MISSING_REQUIRED_COLUMN]");
-    expect(error).toContain("enum: [invalid_file, missing_required_column, import_not_found, internal_error]");
+    expect(error).toContain("enum: [invalid_file, missing_required_column, invalid_import_id, import_not_found, internal_error]");
     expect(error).not.toContain("$ref: '#/components/schemas/ErrorResponse'");
     expect(issue).toContain("required: [row, code, detail]");
     expect(issue).toMatch(/column:\s*\n\s*type: string\s*\n\s*nullable: true/);
@@ -103,6 +103,18 @@ describe("ERP import SDK contract", () => {
     // no 500 may resolve to the legacy nested ErrorResponse — erp errors are flat.
     expect(paths).not.toContain("ErrorResponse");
     for (const block of paths.split(/"500":/).slice(1)) {
+      expect(block.slice(0, 200)).toContain("ErpImportError");
+    }
+  });
+
+  it("declares the malformed-id 400 on BOTH {id} routes", () => {
+    const openapi = readFileSync(resolve(process.cwd(), "../../contracts/api/marketplace-central.openapi.yaml"), "utf8");
+    // handler validates {id} before the query and emits {"error":"invalid_import_id"} (400)
+    // on GET /erp/imports/{id} and GET /erp/imports/{id}/chain — both must be declared.
+    const idRoutes = openapi.slice(openapi.indexOf("  /erp/imports/{id}:"), openapi.indexOf("  /config/active-source:"));
+    const fourHundreds = idRoutes.match(/"400":/g) ?? [];
+    expect(fourHundreds).toHaveLength(2);
+    for (const block of idRoutes.split(/"400":/).slice(1)) {
       expect(block.slice(0, 200)).toContain("ErpImportError");
     }
   });

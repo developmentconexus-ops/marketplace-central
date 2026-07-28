@@ -107,8 +107,24 @@ func (h Handler) handleListImports(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, importListResponse{Items: items})
 }
 
+// readImportID validates the {id} path value before it can reach a query.
+// Both {id} routes share this one site so the two cannot drift apart: an
+// invalid uuid used to travel into the `uuid` column and come back as a 500.
+func readImportID(w http.ResponseWriter, r *http.Request) (domain.ImportID, bool) {
+	importID := domain.ImportID(r.PathValue("id"))
+	if !importID.IsValid() {
+		writeError(w, http.StatusBadRequest, "invalid_import_id", "")
+		return "", false
+	}
+	return importID, true
+}
+
 func (h Handler) handleGetImport(w http.ResponseWriter, r *http.Request) {
-	report, err := h.queries.GetImport(r.Context(), domain.ImportID(r.PathValue("id")))
+	importID, ok := readImportID(w, r)
+	if !ok {
+		return
+	}
+	report, err := h.queries.GetImport(r.Context(), importID)
 	if err != nil {
 		if errors.Is(err, ports.ErrImportNotFound) {
 			writeError(w, http.StatusNotFound, "import_not_found", "")
@@ -121,7 +137,11 @@ func (h Handler) handleGetImport(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) handleGetImportChain(w http.ResponseWriter, r *http.Request) {
-	chain, err := h.queries.GetImportChain(r.Context(), domain.ImportID(r.PathValue("id")))
+	importID, ok := readImportID(w, r)
+	if !ok {
+		return
+	}
+	chain, err := h.queries.GetImportChain(r.Context(), importID)
 	if err != nil {
 		if errors.Is(err, ports.ErrImportNotFound) {
 			writeError(w, http.StatusNotFound, "import_not_found", "")

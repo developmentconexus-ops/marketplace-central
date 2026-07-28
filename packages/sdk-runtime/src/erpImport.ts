@@ -64,7 +64,18 @@ export interface ErpImportCreated {
 }
 
 export interface ErpImportError {
-  error: "invalid_file" | "missing_required_column" | "import_not_found" | "internal_error";
+  /**
+   * "invalid_import_id" (400) is the malformed-`{id}` answer on both `{id}`
+   * routes: the path value is not a UUID, so it never reaches the query. It
+   * exists so a caller can tell a bad request from a server failure, which a
+   * blanket 500 hid.
+   */
+  error:
+    | "invalid_file"
+    | "missing_required_column"
+    | "invalid_import_id"
+    | "import_not_found"
+    | "internal_error";
   detail?: string;
   column?: string;
 }

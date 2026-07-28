@@ -3241,6 +3241,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErpImportDetail'
+        "400":
+          description: Malformed ERP import id (not a UUID)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErpImportError'
         "404":
           description: ERP import not found
           content:
@@ -3274,6 +3280,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErpImportChain'
+        "400":
+          description: Malformed ERP import id (not a UUID)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErpImportError'
         "404":
           description: ERP import not found
           content:
@@ -8112,7 +8124,7 @@ components:
       properties:
         error:
           type: string
-          enum: [invalid_file, missing_required_column, import_not_found, internal_error]
+          enum: [invalid_file, missing_required_column, invalid_import_id, import_not_found, internal_error]
         detail:
           type: string
         column:
