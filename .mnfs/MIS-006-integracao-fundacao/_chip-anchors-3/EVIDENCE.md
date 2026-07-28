@@ -4,7 +4,7 @@
 chip: CHIP-ANCHORS-3
 branch: chip/anchors-3
 base_sha: 5441fe18f64171ef61cb03b51b5bf66e2922e4eb
-head: 0264ba84
+head: 590efdc8
 gate_round: 3 fechado — REFUTED dos DOIS lados (A 2 blocking, B 5 blocking)
 gate_round_3_reparo: 2 blocking + 2 nao-bloqueantes de autoria do chip corrigidos; 5 universais pre-existentes viram REPORT
 gate_round_3_artefatos: os DOIS persistidos pelo orquestrador (A nao tem Write; B teve o apply_patch recusado pelo sandbox)
@@ -35,6 +35,7 @@ B-03, B-07, B-09 (R-14/A13). Uma segunda cópia divergiria.
 | `54342331` | R2 — apaga o universal falso que **este chip** escreveu | gate round 1, blocking 1 e 2 |
 | `2bed7d9d` | R4 — uma só regra de identidade para os três contadores + o que o guard nil PRODUZ | gate round 1, não-bloqueantes 6 e 4 |
 | `0264ba84` | R7 — varre a **classe**, não o sítio que o gate nomeou: segundo universal falso + o teste passa a asserir 95/ALTA/ACCEPT | gate round 2, blocking 1 e 2 |
+| `590efdc8` | Estreita os três comentários que a varredura refutou + **entra com o pack no git** (ver FINDING 8) | gate round 3, blocking A1/A2/B1 e não-bloqueantes A1/A2 |
 
 CORR-5 é do hub, e não está aqui.
 
