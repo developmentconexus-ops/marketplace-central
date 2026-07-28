@@ -22,13 +22,18 @@ import { MARCA_UNAVAILABLE_DETAIL, wireCandidate } from "./wireFixtures";
 
 const listProductLinkCandidates = vi.fn();
 const listProductLinkWorkflows = vi.fn();
-const listErpImports = vi.fn();
 
+// The `listErpImports` mock this file carried died with the same merge that
+// killed the one in `VinculosPage.test.tsx` (`293c1485`, CHIP-IMPORT-CHAIN's
+// `4b76a287` moving `ImportacaoSection` to `pages/importacoes/`). It outlived
+// that deletion by one round because the sweep that found the first one was
+// "the file I had open" — a pattern narrower than the fact, which is the class
+// this chip spent the milestone closing. Deleted here for the same reason and
+// with the same proof: a dead mock cannot turn its file red by leaving.
 vi.mock("../../app/ClientContext", () => ({
   useClient: () => ({
     listProductLinkCandidates: (...a: unknown[]) => listProductLinkCandidates(...a),
     listProductLinkWorkflows: (...a: unknown[]) => listProductLinkWorkflows(...a),
-    listErpImports: (...a: unknown[]) => listErpImports(...a),
     approveProductLinkCandidate: vi.fn(),
     rejectProductLinkListing: vi.fn(),
     previewProductLinkBatch: vi.fn(),
@@ -117,8 +122,6 @@ const OFF_THEME = /\b(?:bg|text|border|ring|divide|from|to|hover:bg|hover:text|h
 
 describe("Vínculos design golden", () => {
   beforeEach(() => {
-    listErpImports.mockReset();
-    listErpImports.mockResolvedValue({ items: [] });
     listProductLinkWorkflows.mockReset();
     listProductLinkWorkflows.mockResolvedValue({ items: [] });
     listProductLinkCandidates.mockReset();
