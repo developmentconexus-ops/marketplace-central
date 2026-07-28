@@ -501,6 +501,45 @@ Two corrections found the same day the rule was ratified:
   file carrying the assertion must be committed *after* the sentence is written, so the state the
   sentence describes is not the state that ends up in the commit. The chip may report what it saw;
   only the hub's executing seat, reading the tip from outside the worktree, discharges it.
+- **`git ls-tree` without `-r` counts tree entries, not files.** On CHIP-VINC-NEUTRO's pack the
+  non-recursive form returns `4` (two blobs and a subtree at the root) where `-r` returns `40`. `4`
+  is not a wrong file count — it is a right count of something else, which is why a seat would fill
+  the mandatory section with it and be telling the truth. The custody clause that exists *because* a
+  pack went untracked shipped an instrument that could not tell 40 files from 4.
+- **A count without its tip rots.** The hub published `38` for this pack; the tree says `38` at
+  `ea856c32`, `39` at `7b5c18eb`, `40` at the dispatch tip. The measurement was right where it was
+  taken and became false the moment it was quoted against a later tip. Same shape as `base_sha` is a
+  FLOOR: every count carries the SHA it was measured at, or it is unfalsifiable.
+
+### A scripted edit on an authority artifact must show its `git diff` before the commit
+`status: ratified` · `provenance: 2026-07-28 · CHIP-VINC-NEUTRO, round 6 dispatch`
+
+Re-filing two ledger rows was scripted on the anchor `line.startswith("| 9 |")`. `EVIDENCE.md`
+carries **two** tables numbered that way, so the script rewrote both and **deleted** rows 9 and 10 of
+the tsc error inventory:
+
+```
+- | 9  | ProdutoPage.partialFailure.test.tsx(40,45) | TS2322 same |
+- | 10 | ProdutoPage.partialFailure.test.tsx(41,46) | TS2322 same |
+```
+
+The script reported success. What exposed it was `grep -c "DISPATCHED"` returning `4` for two
+rows — a count disagreeing with the fact it was checking — and only then did `git diff` name the
+victims.
+
+This is the vacuous-green family with the damage inverted: **"edited correctly" and "edited
+correctly AND destroyed something else" produce the same exit 0.** And it is worse than a
+miscount, because a wrong count leaves residue to reconcile against, while a silent deletion leaves
+none — the deleted rows belong to no population any sweep anchors, so nothing downstream could
+miss them. R-25: honest-unknown is for a gap; deleting is falsity.
+
+- Every scripted or programmatic edit of an authority artifact (pack, ledger, doctrine, contract)
+  runs `git diff` and the diff is **read** before the commit. The diff's file and line counts are
+  the receipt; "the script said OK" is not.
+- **Prove the anchor is unique before using it.** `grep -c '<anchor>'` over the target; more than one
+  hit stops the edit. An anchor chosen from the row you are looking at has never been tested against
+  the rows you are not.
+- The check belongs at edit time, not sweep time. There is no later instrument that finds this.
 
 ### Third-round rule — a third defect of the same shape stops the patching
 `status: ratified` · `provenance: 2026-07-25 · operator ruling, D-121 · field evidence CHIP-M05 (6 dual-gate rounds)`
