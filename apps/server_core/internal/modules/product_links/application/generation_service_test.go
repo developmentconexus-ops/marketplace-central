@@ -415,11 +415,11 @@ func TestNamedMissingAnchorSitesAreIncomparableWithCorrectSide(t *testing.T) {
 			anchor:   "ean", detail: "sem EAN para corroborar o CODPROD: o EAN do anúncio não casa nenhum produto",
 			side: productlinksdomain.LinkCandidateReasonSideERP,
 		},
-		// The ERP side of seller_sku is the CODPROD, which a resolved product
-		// always has — so side=erp is reachable for seller_sku only through the
-		// listing, never through the product. The mirror case (listing HAS a
-		// seller_sku) is pinned by
-		// TestSellerSKUAnchorReadsCanonicalCodprodNotSupplierReference.
+		// The ERP side of seller_sku is the CODPROD, and findProducts drops any
+		// candidate without one — so with a product present, side=erp cannot
+		// arise for seller_sku. It arises on the nil-product (unresolved) path
+		// instead, pinned by
+		// TestUnresolvedListingSellerSKUIsIncomparableOnTheERPSide.
 		"exact EAN listing seller SKU empty": {
 			state:    productlinksdomain.LinkCandidateStateExactEAN,
 			snapshot: productlinksdomain.ListingSnapshot{EAN: "EAN-1"},
@@ -610,6 +610,47 @@ func TestUnresolvedDeclaredAnchorReadsProviderValueWithoutERPProduct(t *testing.
 				return
 			}
 		})
+	}
+}
+
+// TestUnresolvedListingSellerSKUIsIncomparableOnTheERPSide drives the whole
+// generator down the unresolved path, whose production call site passes a nil
+// ERP product (generation_service.go: `applyUnresolvedScore(&unresolved,
+// newProviderIdentityAnchorComparison(snapshot, identityAnchors, nil))`). A
+// listing that carries a seller_sku matching no product has a provider value
+// and no ERP counterpart at all, so the honest side is erp — the one direction
+// no other seller_sku assertion in this file covers.
+//
+// The provider here DOES declare seller_sku (mercadoLivreIdentityAnchorReader),
+// so this also pins that the declared-anchor pass leaves the seeded side
+// intact: classifyProviderIdentityAnchor emits nothing when the product is nil
+// and the listing value is present.
+func TestUnresolvedListingSellerSKUIsIncomparableOnTheERPSide(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 7, 28, 11, 0, 0, 0, time.UTC)
+	snapshot := productlinksdomain.ListingSnapshot{
+		InstallationID: "inst-unres-sku", ProviderCode: "mercado_livre", ProviderItemID: "item-unres-sku",
+		SellerSKU: "SKU-SEM-PRODUTO", EAN: "EAN-SEM-PRODUTO", Title: "Produto sem correspondência", FetchedAt: now,
+	}
+	candidate := generateSingle(t, snapshot, &stubProductMatcher{
+		results: map[string][]internalreaddomain.ProductCandidate{},
+	}, now)
+
+	if candidate.MatchStatus != productlinksdomain.LinkCandidateMatchStatusNoCandidate {
+		t.Fatalf("candidate=%#v, want the unresolved (NO_CANDIDATE) path", candidate)
+	}
+	reason, ok := findReasonByAnchor(candidate.Reasons, "seller_sku")
+	if !ok {
+		t.Fatalf("reasons=%#v, want a seller_sku reason", candidate.Reasons)
+	}
+	if reason.Direction != productlinksdomain.LinkCandidateReasonDirectionIncomparable ||
+		reason.Side != productlinksdomain.LinkCandidateReasonSideERP ||
+		reason.Detail != "seller_sku sem correspondência" {
+		t.Fatalf("seller_sku reason=%#v, want direction=%q side=%q detail=%q",
+			reason,
+			productlinksdomain.LinkCandidateReasonDirectionIncomparable,
+			productlinksdomain.LinkCandidateReasonSideERP,
+			"seller_sku sem correspondência")
 	}
 }
 
