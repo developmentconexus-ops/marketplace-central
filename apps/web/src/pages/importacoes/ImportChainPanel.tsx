@@ -9,7 +9,7 @@ interface ImportChainPanelProps {
 function isImportNotFoundError(error: unknown): boolean {
   if (typeof error !== "object" || error === null) return false;
   const candidate = error as { status?: unknown; error?: unknown };
-  return candidate.status === 404 || candidate.error === "import_not_found";
+  return candidate.error === "import_not_found";
 }
 
 function renderCounter(value: unknown, hint: string) {
@@ -22,6 +22,14 @@ function renderProtocol(value: unknown) {
   ) : (
     <UnknownValue hint="protocolo desconhecido" />
   );
+}
+
+function renderQueueReadAt(value: unknown) {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return <UnknownValue hint="momento da leitura da fila desconhecido" />;
+  }
+
+  return formatDateTime(value) ?? <UnknownValue hint="momento da leitura da fila desconhecido" />;
 }
 
 export function ImportChainPanel({ importId }: ImportChainPanelProps) {
@@ -67,7 +75,7 @@ export function ImportChainPanel({ importId }: ImportChainPanelProps) {
               </div>
             </dl>
             <p className="mt-3 text-xs text-faint">
-              Fila lida em: {formatDateTime(chainQuery.data.queue_read_at) ?? <UnknownValue hint="momento da leitura da fila desconhecido" />}
+              Fila lida em: {renderQueueReadAt(chainQuery.data.queue_read_at)}
             </p>
           </div>
         )}

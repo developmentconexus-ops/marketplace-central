@@ -123,6 +123,38 @@ describe("ImportChainPanel", () => {
     expect(await screen.findByText("—", { exact: true })).toBeInTheDocument();
   });
 
+  it("renders a wrongly typed queue read time as unknown", async () => {
+    getErpImportChain.mockResolvedValue({
+      protocol: "#140-E",
+      importados: 140,
+      vinculados: 40,
+      enfileirados: 7,
+      queue_read_at: true,
+    });
+
+    renderPanel();
+
+    const queueRead = await screen.findByText(/Fila lida em:/);
+    expect(queueRead).toHaveTextContent("—");
+    expect(queueRead).not.toHaveTextContent("1970");
+  });
+
+  it("keeps a known zero counter as zero", async () => {
+    getErpImportChain.mockResolvedValue({
+      protocol: "#141-E",
+      importados: 141,
+      vinculados: 41,
+      enfileirados: 0,
+      queue_read_at: "2026-07-18T12:00:00Z",
+    });
+
+    renderPanel();
+
+    const enqueued = await screen.findByTestId("erp-import-chain-enfileirados");
+    expect(enqueued).toHaveTextContent("0");
+    expect(enqueued).not.toHaveTextContent("—");
+  });
+
   it("renders a not-found error without a chain", async () => {
     getErpImportChain.mockRejectedValue({ status: 404, error: "import_not_found" });
 
@@ -130,6 +162,16 @@ describe("ImportChainPanel", () => {
 
     expect(await screen.findByTestId("erp-import-chain-error")).toHaveTextContent("não encontrada");
     expect(screen.queryByTestId("erp-import-chain")).toBeNull();
+  });
+
+  it("renders a generic error when a 404 has no not-found body", async () => {
+    getErpImportChain.mockRejectedValue({ status: 404 });
+
+    renderPanel();
+
+    const error = await screen.findByTestId("erp-import-chain-error");
+    expect(error).toHaveTextContent("Não foi possível carregar a cadeia da importação.");
+    expect(error).not.toHaveTextContent("não encontrada");
   });
 
   it("renders a generic error for server failures without a chain", async () => {
