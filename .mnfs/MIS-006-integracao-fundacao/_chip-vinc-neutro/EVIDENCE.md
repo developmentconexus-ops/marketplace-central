@@ -114,6 +114,27 @@ next to `<button aria-label="Mostrar todos os 2 motivos" …>+2</button>`. `Test
 > defeito a partir de um conjunto de motivos que o backend realmente emite. Dizer "exatamente a tela
 > que o contrato proíbe" era emprestar ao artefato inalcançável a autoridade do alcançável.
 
+## V3-b — must-fail sobre a linha **ALCANÇÁVEL** — **PASS**
+
+`evidence/V-mustfail-reachable-row.log`, verbatim. O V3 acima roda sobre a fixture inalcançável, logo
+prova discriminação e não sintoma vivo. Este roda sobre a forma que o drive do hub achou na tela —
+`seller_sku FOR` + `ean INCOMPARABLE (side=both)` + `marca UNAVAILABLE`, `COMPACT_CHIP_LIMIT = 2` —
+com o `shown` revertido para a enumeração de três direções da `main`:
+
+```
+ ❯ src/pages/vinculos/QueueTab.test.tsx (20 tests | 1 failed | 19 skipped) 52ms
+   × QueueTab > ranks INCOMPARABLE above UNAVAILABLE without dropping either (ranking, never filtering) 51ms
+     → expected [ 'FOR', 'UNAVAILABLE' ] to deeply equal [ 'FOR', 'INCOMPARABLE' ]
+```
+
+`[FOR, UNAVAILABLE]` nos dois slots é, em `data-direction`, exatamente o `✓ SKU · – Marca · +1` que
+o hub viu no browser: o segundo slot foi para a ausência PERMANENTE e o `+1` é o INCOMPARABLE
+acionável — motivo que o botão CONTA (`hidden = 3 − 2`) e que nenhum chip pode nomear, em limite
+nenhum, porque a direção não está na enumeração. Subir `COMPACT_CHIP_LIMIT` não o traz.
+
+Restaurado: md5 de `QueueRow.tsx` antes da mutação e depois do restore = `876dd5a821b2182a4e495deaaeac6b72`,
+as duas vezes; backup fora do worktree, restore por `cp`. Suíte pós-restore 67 arquivos / 550 testes.
+
 ## V4 — the `side` of `INCOMPARABLE` reaches the operator — **PASS**
 
 `side` is read from the **field**, never parsed out of the Portuguese `detail`:
