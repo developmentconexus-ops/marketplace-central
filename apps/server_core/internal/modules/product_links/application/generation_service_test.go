@@ -569,14 +569,14 @@ func TestSellerSKUAnchorReadsCanonicalCodprodNotSupplierReference(t *testing.T) 
 // What is proven is that this scorer no longer panics on a nil product. Two
 // things that are NOT proven, because they are not true:
 //
-//   - It does not nil-CHECK like both siblings. applySingleAnchorScore:522-524
+//   - It does not nil-CHECK like both siblings. applySingleAnchorScore:523-526
 //     carries the same guard, but applyUnresolvedScore checks nothing — it
 //     hard-codes nil into missingMatchedAnchorReason (:635-636) and lets the
 //     `product == nil` arm absorb it.
 //   - It does not degrade like them. applyUnresolvedScore degrades into pure
 //     absence (confidence 0, NO_CANDIDATE). applySingleAnchorScore degrades
 //     only its product-READING reason into absence and still emits its own
-//     anchor FOR reason — e.g. seller_sku FOR at :544, at 70/MEDIA/CONFIRM.
+//     anchor FOR reason — e.g. seller_sku FOR at :545, at 70/MEDIA/CONFIRM.
 //     This scorer degrades into full CORROBORATION over a zeroed
 //     ProductCandidate{}: seller_sku and ean FOR at Confidence 95, band ALTA,
 //     status ACCEPT, asserted below.
