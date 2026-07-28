@@ -638,7 +638,16 @@ structural form is to stop putting it in front of them. Four rounds were spent a
 of the gate while feeding it the same input.
 
 **Reading-seat input, exhaustive:**
-1. the code diff, `<base-sha>..<tip-sha>`, with `.mnfs/` excluded — the paths that ship;
+1. the code diff **against the merge target's CURRENT tip** — `git diff main <chip-tip> -- <code paths>`,
+   `.mnfs/` excluded. Not the chip's dispatch base: a diff against a stale base cannot show a
+   REVERT, and reverting a shipped feature is the most expensive thing a merge can do. (This is
+   the same two-questions-two-instruments split as pack custody: the governance DRIFT gate keeps
+   using the milestone's accepted 40-hex base — `base_sha` is a floor — while the MERGE decision
+   reads current-tip. Different questions.) Measured on CHIP-ANCHORS-3 `a02be7f2`: against its
+   dispatch base the delta reads `+629/-43` across 11 files and looks clean; against current
+   `main` the same branch DELETES 10 files and 462 lines of the `/importacoes` feature that
+   CHIP-IMPORT-CHAIN merged at `45b887b3`, plus `cmd/mlprobe`. Four gate rounds never saw it,
+   because none of them were looking at that diff;
 2. the milestone/chip validation contract, criteria verbatim;
 3. the executing seat's RAW lane outputs (ladder, must-fail, fixtures) — measurements, not prose
    about measurements.
