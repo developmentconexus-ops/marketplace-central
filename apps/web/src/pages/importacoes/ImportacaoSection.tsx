@@ -2,7 +2,7 @@ import type { ErpImportIssue, ErpImportStatus, ErpImportSummary } from "@marketp
 import { EmptyState, ErrorState, LoadingState } from "@marketplace-central/ui";
 import { formatDateTime } from "@marketplace-central/web-query";
 import { useState } from "react";
-import { useErpImportDetail, useErpImportsList } from "./useErpImports";
+import { useErpImportDetail, useErpImportsList } from "../vinculos/useErpImports";
 
 const statusLabels: Record<ErpImportStatus, string> = {
   COMPLETED: "Concluída",
