@@ -1,0 +1,15 @@
+
+ RUN  v3.2.4 C:/Users/leandro.theodoro/Documents/marketplace-central/.claude/worktrees/happy-montalcini-b010c0/apps/web
+
+ ✓ src/pages/importacoes/ImportacaoDetailPage.test.tsx (1 test) 72ms
+ ✓ src/pages/importacoes/ImportacoesPage.test.tsx (1 test) 118ms
+ ✓ src/pages/importacoes/ImportacaoSection.test.tsx (5 tests) 301ms
+ ✓ src/pages/integracoes/IntegracoesPage.test.tsx (11 tests) 439ms
+ ✓ src/pages/importacoes/ImportChainPanel.test.tsx (11 tests) 1350ms
+   ✓ ImportChainPanel > renders a generic error for server failures without a chain  1042ms
+
+ Test Files  5 passed (5)
+      Tests  29 passed (29)
+   Start at  19:50:40
+   Duration  4.29s (transform 530ms, setup 1.14s, collect 5.13s, tests 2.28s, environment 5.25s, prepare 1.07s)
+

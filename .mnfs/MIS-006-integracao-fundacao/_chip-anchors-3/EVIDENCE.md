@@ -36,6 +36,7 @@ ordem_f5_correcao: eu publiquei "20 erros pre-existentes" no tsc de apps/web em 
 ordem_f5_drive: DESCARREGADO. Hub dirigiu /importacoes/eac3ac9e-b87b-43be-959c-7bf1f11a07f1 (#001-E) no build de b91c7507, registro 5da4b013, ZERO erro de console. Renderizou "Estado da importacao" + "Tres medidas independentes... nao sao etapas de um funil." + Linhas importadas 55 / Produtos vinculados 0 / Linhas na fila de sync 55. Conferido por string contra o fonte; seta no fonte = False. O drive e de b91c7507 e o tip e b97cd9a8: o unico delta renderizavel e a copia de ERRO (errorDetail), que so aparece no ramo de erro e esta coberta por vitest, nao por navegador — declarado, nao escondido. Mecanismo (§6): compose resolve env_file: contra o diretorio do projeto e worktree nao tem .env; criar .env no worktree e PROIBIDO (credencial viva em arvore de chip); hub faz git checkout do arquivo do grant na arvore dele, dirige, e reverte.
 gate_round_7: SEM AGREEMENT — Opus BLOCKED, Sol CLEAR. VERDICTS-round7.md (5236ca0d). 1 problema meu (o link Ver cadeia em ImportacaoSection.tsx:151, chamador que eu nao varri), 2 de redacao de criterio do hub (F5-3 nao dizia ONDE o residuo mora; F5-4 nao nomeava o par de revisoes) — e foram esses dois que fizeram os assentos divergirem.
 rodada_8: rotulo Ver cadeia -> Ver estado no chamador + asserção do nome acessivel; must-fail prova que o teste falha PELO NOME quando o defeito volta. Varredura de apps/web/src INTEIRO entregue verbatim: uma unica superficie leva a /importacoes/<id>, o resto de chain e identificador que nao renderiza, e o chain de precos/ e homonimo (resolver COTACAO->PADRAO). F5-3: divida declarada no OpenAPI (description do schema) E no TSDoc do SDK — pack nao conta. F5-4: delta vs main POR CLASSE, 4 sitios de TIPO todos de CORR-3 (invalid_import_id + 400 nas duas rotas), ZERO do F-5; ErpImportChain igual a main ignorando prosa.
+rodada_8_lane_crua: lane-r8/ com 6 runs, texto cru sem edicao, NO_COLOR=1, um arquivo por run. Manifesto de atribuicao (comando + cwd + exit + sha256) no corpo, porque o arquivo cru nao pode dizer com que comando nasceu sem deixar de ser cru. 05 = defeito reposto (EXIT 1, "Unable to find an accessible element ... name Ver estado" em 05:6 e 05:409), 06 = restaurado (EXIT 0, 5 passed). 03 tem ZERO bytes: e o sha256 da string vazia, entao esta vazio e nao truncado, mas vazio e o que "nao rodei" tambem produz — quem prova o SDK e 04, com 77 testes nomeados. 02 reexecutado e byte-identico (diff EXIT 0); os de vitest carregam duracao/hora e nao sao reproduziveis assim. Pos-captura: git diff --quiet HEAD EXIT 0 contra c3acf62b, unico nao-versionado era lane-r8/.
 status: NAO FECHADO PELO CHIP. Sem AGREEMENT em 5 rounds; a linha P6-DUAL-GATE e o merge sao do hub. Todo achado dos dois lados verificado por STRING pelo chip, um recusado com motivo.
 authority: .mnfs/MIS-006-integracao-fundacao/_hub-gate-anchors-2/p6-reconciliation-r1.md
 contract: .mnfs/MIS-006-integracao-fundacao/_chip-anchors-3/validation-contract.md
@@ -1089,6 +1090,43 @@ apps/web tsc --noEmit                                    15 erros PRÉ-EXISTENTE
                                                          conjunto byte-idêntico ao da rodada anterior
                                                          (diff das linhas `error TS` EXIT 0), 0 em importacoes
 ```
+
+### Saída CRUA versionada — `lane-r8/`, e o manifesto que a atribui
+
+A tabela acima é **prosa minha sobre uma execução**. Prosa de chip não é evidência: o assento recebe
+diff e lane crua, nunca o meu resumo. Os seis runs estão em `_chip-anchors-3/lane-r8/`, um arquivo por
+run, **texto cru, sem edição** — redirecionamento direto de stdout+stderr, `NO_COLOR=1` para que a
+saída não carregue escape de terminal.
+
+O arquivo cru não pode dizer com que comando nasceu (isso o tornaria editado), então a atribuição
+mora aqui. Todos com `cwd` = `apps/web` no worktree, exceto onde indicado:
+
+| arquivo | comando | exit | sha256[16] |
+|---|---|---|---|
+| `01-vitest-importacoes-integracoes.txt` | `vitest run src/pages/importacoes src/pages/integracoes` | 0 | `96c8b8e6b0b09393` |
+| `02-web-tsc.txt` | `tsc --noEmit -p tsconfig.json` | 2 | `6dcf909494d36205` |
+| `03-sdk-tsc.txt` | `tsc --noEmit` (cwd `packages/sdk-runtime`) | 0 | `e3b0c44298fc1c14` |
+| `04-sdk-vitest.txt` | `vitest run` (cwd `packages/sdk-runtime`) | 0 | `af452933d196fdf0` |
+| `05-mustfail-VERMELHO.txt` | `vitest run src/pages/importacoes/ImportacaoSection.test.tsx`, com `Ver cadeia` reposto em `ImportacaoSection.tsx:151` | 1 | `db10135ad04f1b32` |
+| `06-mustfail-VERDE-restaurado.txt` | idem, `Ver estado` restaurado | 0 | `94d1b584d47a477c` |
+
+Binário: `../../node_modules/.bin/vitest` e `.../tsc` — os do worktree, nunca `npx`, que instalaria.
+
+A atribuição de `02` não é palavra minha: reexecutei o comando da tabela e a saída voltou
+**byte-idêntica** ao arquivo (`diff` EXIT 0, EXIT 2 de novo). É o único run reproduzível assim — as
+saídas de vitest carregam duração e hora de início, então para `01`, `04`, `05` e `06` a tabela
+continua sendo atribuição declarada, não reproduzida.
+
+Três coisas que os arquivos não dizem sozinhos e por isso vão ditas:
+
+1. **`03` tem ZERO bytes** — `e3b0c442…` é o sha256 da string vazia, então ele está de fato vazio e
+   não truncado. Mas vazio é exatamente o que "não rodei" também produz: **`03` sozinho não prova
+   execução**. O que prova o SDK é `04`, com 77 testes nomeados na saída.
+2. **`05` é o defeito REPOSTO por mim no fonte**, teste intacto — a linha
+   `Unable to find an accessible element with the role "link" and name "Ver estado"` está em `05:6`
+   (resumo) e `05:409` (stack). O par vermelho→verde percorre `:151`, e só `:151`.
+3. **A árvore voltou ao commit depois de `06`**: `git diff --quiet HEAD` EXIT 0 contra `c3acf62b`,
+   e o único não-versionado era `lane-r8/` — o defeito de `05` não sobreviveu à captura.
 
 ---
 
