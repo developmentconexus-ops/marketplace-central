@@ -1,8 +1,6 @@
-import type {
-  ProductLinkCandidateItem,
-  ProductLinkConfidenceBand,
-} from "@marketplace-central/sdk-runtime";
+import type { ProductLinkCandidateItem } from "@marketplace-central/sdk-runtime";
 import { DetailPanel, UnknownValue } from "@marketplace-central/ui";
+import { bandClass, bandLabel, directionClass, providerDisplayName, reasonChipLabel } from "./QueueRow";
 
 export interface VinculoDrawerProps {
   candidateId: string | null;
@@ -13,17 +11,16 @@ export interface VinculoDrawerProps {
   pending?: boolean;
 }
 
-const bandClasses: Record<ProductLinkConfidenceBand, string> = {
-  ALTA: "bg-accent-soft text-accent-ink",
-  MEDIA: "bg-amber-soft text-amber",
-  BAIXA: "bg-warn-soft text-warn",
-};
-
-const directionClasses = {
-  FOR: "bg-accent-soft text-accent-ink",
-  AGAINST: "bg-warn-soft text-warn",
-  UNAVAILABLE: "bg-surface-2 text-faint",
-} as const;
+// Direction AND band tokens come from QueueRow, the one place that owns them.
+// The drawer used to keep a second copy of each, which is why the third
+// direction could be added to one map and silently missed here.
+//
+// The band copy outlived the direction one, and that is the whole lesson: when
+// `direction` was consolidated, this file's comment was updated to celebrate it
+// while the band table sat ten lines above, still raw-indexed, still writing the
+// literal `undefined` into a class attribute for any band the wire ships before
+// the SDK is regenerated. A grep scoped to the OTHER file reported the class
+// closed. One reader per value for the whole screen is what actually closes it.
 
 function pill(label: string, className: string) {
   return (
@@ -75,7 +72,7 @@ function CandidateCompareCard({
           ? pill("Sem candidato", "bg-surface-2 text-faint")
           : (
             <span className="flex items-center gap-1">
-              {pill(candidate.confidence_band, bandClasses[candidate.confidence_band])}
+              {pill(bandLabel(candidate.confidence_band), bandClass(candidate.confidence_band))}
               <span className="font-mono text-xs font-medium tabular-nums text-muted">
                 {confidencePercent(candidate.confidence)}
               </span>
@@ -94,7 +91,10 @@ function CandidateCompareCard({
         <Fact label="Produto sugerido">
           {candidate.internal_product_name ? candidate.internal_product_name : <UnknownValue hint="sem descrição no ERP" />}
         </Fact>
-        <Fact label="GTIN / refforn">
+        {/* `internal_reference_code` é a referência do lado ERP; `refforn` é o
+            nome da coluna no ERP, não vocabulário de tela (D-A tirou o termo do
+            vocabulário cross-side). */}
+        <Fact label="GTIN / Ref. interna">
           {candidate.internal_reference_code
             ? <span className="font-mono">{candidate.internal_reference_code}</span>
             : candidate.match_input === "ean" && candidate.match_value
@@ -112,11 +112,10 @@ function CandidateCompareCard({
         <ul className="mt-2 flex flex-wrap gap-1">
           {candidate.reasons.map((reason, index) => (
             <li key={`${reason.anchor}-${index}`}>
-              {/* IC-01: motivo (anchor) sempre visível; detail (com %) anexado — % nunca sozinho. */}
-              {pill(
-                reason.detail ? `${reason.anchor}: ${reason.detail}` : reason.anchor,
-                directionClasses[reason.direction],
-              )}
+              {/* IC-01: motivo (anchor) sempre visível; detail (com %) anexado — % nunca sozinho.
+                  `reasonChipLabel` também carrega o `side` de um INCOMPARABLE (D-122/D-B),
+                  que é o lado onde o operador vai preencher o dado que faltou. */}
+              {pill(reasonChipLabel(reason), directionClass(reason.direction))}
             </li>
           ))}
         </ul>
@@ -175,7 +174,9 @@ export function VinculoDrawer({
       onClose={onClose}
       closeLabel="Fechar painel"
       title={selected.provider_item_id}
-      subtitle={selected.provider_code}
+      // `provider_code` é o SLUG do marketplace no wire ("mercado_livre") — o
+      // subtítulo mostra o nome de exibição, nunca o slug cru.
+      subtitle={providerDisplayName(selected.provider_code)}
       width={360}
       footer={
         <button

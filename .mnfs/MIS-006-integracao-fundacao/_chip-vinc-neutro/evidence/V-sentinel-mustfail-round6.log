@@ -1,0 +1,51 @@
+
+[1m[46m RUN [49m[22m [36mv3.2.4 [39m[90mC:/Users/leandro.theodoro/Documents/marketplace-central/.claude/worktrees/gifted-dhawan-5049f6/apps/web[39m
+
+ [31m×[39m src/pages/vinculos/wireFixtures.guard.test.ts[2m > [22mwireFixtures vocabulary vs the Go source it mirrors[2m > [22mcan still SEE the Go declarations it claims to guard[32m 8[2mms[22m[39m
+[31m   → connectors/ports/marketplace_capability.go no longer matches `var knownIdentityAnchors = []IdentityAnchor{…}` — the seam moved or was renamed, so this guard is reading a file that no longer declares the identity-anchor vocabulary itself, and every assertion after this one would pass vacuously: expected false to be true // Object.is equality[39m
+ [31m×[39m src/pages/vinculos/wireFixtures.guard.test.ts[2m > [22mwireFixtures vocabulary vs the Go source it mirrors[2m > [22mKNOWN_IDENTITY_ANCHORS is exactly knownIdentityAnchors[32m 1[2mms[22m[39m
+[31m   → could not find `var knownIdentityAnchors` — the declaration moved or was renamed[39m
+ [32m✓[39m src/pages/vinculos/wireFixtures.guard.test.ts[2m > [22mwireFixtures vocabulary vs the Go source it mirrors[2m > [22mMERCADO_LIVRE_SUPPLIED_ANCHORS is exactly what its capability adapter declares[32m 1[2mms[22m[39m
+ [32m✓[39m src/pages/vinculos/wireFixtures.guard.test.ts[2m > [22mwireCandidate rejects what generation_service.go cannot emit[2m > [22mMUST-FAIL 1 — ACCEPT exists only as (exact_sku, seller_sku)[32m 1[2mms[22m[39m
+ [32m✓[39m src/pages/vinculos/wireFixtures.guard.test.ts[2m > [22mwireCandidate rejects what generation_service.go cannot emit[2m > [22mMUST-FAIL 2 — a provider with no capability declaration is not producible[32m 0[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 2 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/pages/vinculos/wireFixtures.guard.test.ts[2m > [22mwireFixtures vocabulary vs the Go source it mirrors[2m > [22mcan still SEE the Go declarations it claims to guard
+[31m[1mAssertionError[22m: connectors/ports/marketplace_capability.go no longer matches `var knownIdentityAnchors = []IdentityAnchor{…}` — the seam moved or was renamed, so this guard is reading a file that no longer declares the identity-anchor vocabulary itself, and every assertion after this one would pass vacuously: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m src/pages/vinculos/wireFixtures.guard.test.ts:[2m148:9[22m[39m
+    [90m146| [39m          `reading a file that no longer declares ${what}, and every a…
+    [90m147| [39m          [32m"pass vacuously"[39m[33m,[39m
+    [90m148| [39m      )[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m   | [39m        [31m^[39m
+    [90m149| [39m    }
+    [90m150| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/pages/vinculos/wireFixtures.guard.test.ts[2m > [22mwireFixtures vocabulary vs the Go source it mirrors[2m > [22mKNOWN_IDENTITY_ANCHORS is exactly knownIdentityAnchors
+[31m[1mError[22m: could not find `var knownIdentityAnchors` — the declaration moved or was renamed[39m
+[36m [2m❯[22m src/pages/vinculos/wireFixtures.guard.test.ts:[2m159:13[22m[39m
+    [90m157| [39m    [35mconst[39m block [33m=[39m capabilityPort[33m.[39m[34mmatch[39m([33mGO_SEAM[39m[33m.[39mcapabilityPort[33m.[39mextract)[33m;[39m
+    [90m158| [39m    [35mif[39m (block [33m===[39m [35mnull[39m) {
+    [90m159| [39m      throw new Error("could not find `var knownIdentityAnchors` — the…
+    [90m   | [39m            [31m^[39m
+    [90m160| [39m    }
+    [90m161| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m3 passed[39m[22m[90m (5)[39m
+[2m   Start at [22m 16:54:19
+[2m   Duration [22m 769ms[2m (transform 41ms, setup 157ms, collect 33ms, tests 12ms, environment 0ms, prepare 149ms)[22m
+
+EXIT=1

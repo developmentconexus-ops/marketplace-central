@@ -1,0 +1,176 @@
+MUST-FAIL — round 4 (the fixes for Sol rev3 finding #1/#2 and Opus rev2 findings #1/#2/#3/#4).
+
+Every fix below was written test-first: the test was run against the CODE AS IT STOOD and the
+verbatim red is reproduced here. A test that has never been red proves nothing.
+
+================================================================================
+A. WIRE DRIFT ON `direction` AND `confidence_band` (Opus rev2 finding #2, extended)
+================================================================================
+
+Opus rev2 reported that the drift hardening had been applied to `match_status` ONLY, and that the
+V2 fix had made the `direction` path newly REACHABLE: the old compact cell was
+
+    [...byDirection("AGAINST"), ...byDirection("FOR"), ...byDirection("UNAVAILABLE")]
+
+which silently DROPPED a direction it did not enumerate; the total ranking sort that replaced it
+keeps every reason. Correct, and the right severity — undoing a silent filter must not install a
+literal "undefined" in its place.
+
+A grep-by-STRING over the write-set for the same shape (`Record` indexed by a union, then
+deref'd) found a FOURTH site the reviewer did not name: `bandLabels[candidate.confidence_band]`
+and `bandClasses[candidate.confidence_band]` at the CONFIANÇA cell. Same defect, same file.
+
+Two tests added, run BEFORE any code change:
+
+    npx --no-install vitest run src/pages/vinculos/QueueTab.test.tsx
+
+    ×  QueueTab > survives a reason direction the SDK union does not know, without printing undefined
+       → Unable to find an element with the text: PARTIAL EAN. This could be because the text is
+         broken up by multiple elements. [...]
+
+    ×  QueueTab > survives a confidence_band the SDK union does not know, without printing undefined
+       → Unable to find an element with the text: CRITICA. This could be because the text is
+         broken up by multiple elements. [...]
+
+    Tests  3 failed | 12 passed (15)
+
+The rendered DOM in the second failure carries the defect verbatim — the class attribute ENDS in
+the literal string `undefined`:
+
+    <span
+      class="inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium undefined"
+    />
+    <span class="font-mono text-xs font-medium tabular-nums text-muted">
+      72%
+    </span>
+
+That is an empty pill with a broken class list next to a live confidence number: the operator
+reads "72%" with no band at all.
+
+FIX: `directionGlyph` / `directionClass` / `directionRankOf` / `bandLabel` / `bandClass`, each
+falling through to the WIRE VALUE verbatim (never to a known member — "–" would read as
+UNAVAILABLE and "?" as INCOMPARABLE, which are opposite operator actions) and to a neutral token
+pair that asserts none of the semantic readings. The five raw index sites (QueueRow ×4 +
+VinculoDrawer ×1) were replaced. The `Record<Union, …>` annotations are UNTOUCHED — they remain
+the compile-time guard, per evidence/V-compiletime-guard-still-bites.txt.
+
+Unknown direction ranks 4, after all four known ones, so it can never displace an actionable
+signal out of the two compact slots. It is RANKED, not filtered — that is the V2 invariant.
+
+After: 33/33 green in src/pages/vinculos/.
+
+================================================================================
+B. `providerDisplayName` INJECTIVITY (Sol rev3 finding #1) AND THE TEST THAT PROVES IT
+================================================================================
+
+Sol rev3 refuted the previous fix: the typeset collapsed every separator, so `amazon_marketplace`
+and `amazon-marketplace` — both legal, distinct, simultaneously-registrable codes, since
+`registry.go` `buildDefinitions` dedupes by exact string equality only — rendered as one
+"Amazon Marketplace". Two providers wearing one name is WRONG INFORMATION; a raw slug is merely
+ugly. The refutation was accepted.
+
+Sol rev3's SECOND finding was about the test, not the code: the old test asserted a single
+hard-coded pair (`shopee` → `Shopee`) and would pass against a fabricated constant fallback.
+
+The strengthened test asserts three codes in one render and that two of them stay DISTINCT. It was
+run against BOTH broken implementations Sol named:
+
+--- B.1 against the lossy collapse (the implementation Sol refuted) ---
+
+    return providerCode.split(/[_\-\s]+/).map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : w)).join(" ");
+
+    ×  QueueTab > typesets an unmapped provider without ever collapsing two distinct codes onto one name
+       → Unable to find an element with the text: Amazon-marketplace. [...]
+          Amazon Marketplace          <-- the collision, on screen
+    Tests  1 failed | 14 skipped (15)
+
+--- B.2 against the fabricated constant fallback (the implementation Sol described) ---
+
+    return "Shopee";
+
+    ×  QueueTab > typesets an unmapped provider without ever collapsing two distinct codes onto one name
+       → Unable to find an element with the text: Amazon Marketplace. [...]
+    Tests  1 failed | 14 skipped (15)
+
+Both probes were reverted from a saved copy of the file; `npx --no-install vitest run
+src/pages/vinculos/` came back 33/33 green afterwards, and the shipped body is the round-trip
+version.
+
+CORRECTION, recorded because it changed an assertion and not only a comment: the first draft of
+this test asserted the hyphenated code would render VERBATIM (`amazon-marketplace`). It renders
+`Amazon-marketplace` — `typesetSlug` splits on `_` only, so the hyphen survives, the form
+round-trips, and the injectivity check passes it. The two forms are therefore distinct, which is
+the property that matters; the assertion was wrong, not the code, and was corrected to the
+observed output.
+
+================================================================================
+C. GOLDEN FIXTURE PRODUCIBILITY (Opus rev2 findings #1 and #3)
+================================================================================
+
+Opus rev2 reported that the fixtures "made honest" in 394c83c were STILL not producible, because
+every candidate of every provider carries a `marca` reason the fixtures omit. Verified
+independently against the generator, not taken on the reviewer's word:
+
+  - `KnownIdentityAnchors()` is `[seller_sku, ean, title, marca]`
+    (connectors/ports/marketplace_capability.go:40-45).
+  - `IdentityAnchorAdapter.ProviderIdentityAnchors` walks ALL of them and returns one entry each,
+    with `Supplied` set from the provider's declaration (identity_anchor_adapter.go:28-35). The
+    list length does not depend on the provider.
+  - `mercado_livre` declares `{seller_sku, ean, title}` (mercado_livre/capability_adapter.go:90).
+    So `marca` arrives with `Supplied: false`.
+  - `appendProviderDeclaredUnavailableReasons` walks `comparison.declared` and emits for every
+    anchor with no FOR/AGAINST signal (generation_service.go:671-698). `marca` never has one.
+  - `classifyProviderIdentityAnchor` with `!anchor.Supplied` returns
+    (UNAVAILABLE, "", "provider não fornece a âncora marca", emit=true) at :700-702.
+
+⇒ EVERY mercado_livre candidate carries `{anchor: "marca", direction: "UNAVAILABLE", detail:
+"provider não fornece a âncora marca"}`. The finding is CONFIRMED. Added to all three fixtures.
+
+Consequence, and the reason this was a real defect and not bookkeeping: with three reasons and
+COMPACT_CHIP_LIMIT = 2, production renders two chips PLUS a "+1" toggle. The golden was locking a
+two-chip cell with no toggle — a layout the backend never produces. The golden now asserts the
+toggle (`Mostrar todos os 3 motivos`) and the two-chip cap, i.e. the real layout.
+
+Finding #3, same class, in the same file the previous fix edited and left untouched: both
+NO_CANDIDATE fixtures inherited `state: "exact_ean"` from `base()` while carrying
+`match_status: "NO_CANDIDATE"` and `reasons: []`. `applyUnresolvedScore` is the only path that
+emits NO_CANDIDATE and it is reached through `newCandidate(..., LinkCandidateStateUnresolved,
+MatchInputNone, ...)` (generation_service.go:215, :379), and it always seeds two absence reasons
+(:620-628). Both fixtures corrected to `state: "unresolved"` with the two INCOMPARABLE/erp
+reasons (product is nil on that path ⇒ `missingMatchedAnchorReason` takes the
+`product == nil` branch, :631-645) plus `marca`.
+
+Also corrected: that fixture's `provider_code: "xyz-9"`. The reason set depends on the provider's
+capability declaration, and there is no declaration in the tree for `xyz-9`, so no reason array
+could be claimed producible for it. It is now `mercado_livre`, the one provider with a real
+declaration. Nothing was asserted about `xyz-9` in that test; the unmapped-provider path is
+covered by name in QueueTab.test.tsx (section B).
+
+================================================================================
+D. POSITIVE BAND-TOKEN COVERAGE (Opus rev2 finding #4)
+================================================================================
+
+The reviewer's point stands: after the 394c83c swap, the EXEMPLO-IO row asserted only "60%", so
+the band pill's tokens were covered ONLY by the off-theme sweep — a NEGATIVE test that passes
+just as well if the pill loses its tokens entirely. Two positive assertions added:
+
+  - EXEMPLO-IO: `getByText("MEDIA")` has `bg-amber-soft text-amber`.
+  - the sweep's ACCEPT row: `getByText("ALTA")` has `bg-accent-soft text-accent-ink`.
+
+================================================================================
+LANES AFTER ALL OF THE ABOVE
+================================================================================
+
+  npx --no-install tsc -p apps/web --noEmit    → 12 errors, ZERO under pages/vinculos
+                                                 (evidence/L0-tsc-after-round4.txt)
+
+    CORRECTION (R-24). This line read "same 12 as the baseline — this chip neither added nor
+    removed one". FALSE. evidence/L0-tsc-baseline.txt carries 15 errors, 3 of them under
+    pages/vinculos (the three INCOMPARABLE TS2741/TS7053 this chip exists to fix). The real
+    movement is 15 → 12 and 3 → 0: this chip REMOVED 3. Caught by the hub's executor seat, which
+    also measured main at 4852649d and found all 15 still there. The error understated this
+    chip's own contribution; that does not make it less false, and it would have made the hub
+    read a 15 on integrated main as a regression.
+  npx --no-install vitest run                  → 63 files / 524 tests, all green
+                                                 (evidence/L1-vitest-after-round4.txt; was
+                                                 522/63 at 394c83c, +2 drift tests)

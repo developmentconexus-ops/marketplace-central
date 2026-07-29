@@ -1,0 +1,29 @@
+MUST-FAIL DO GUARD — wireFixtures.guard.test.ts (round 5, apos a correcao do hub)
+Capturado verbatim. Cada arm quebra UMA coisa, roda, e e restaurada.
+
+=== ARM (a1) vocabulario do FE CRESCEU (refforn de volta) ===
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected [ 'ean', 'marca', 'seller_sku', …(1) ] to deeply equal [ 'ean', 'marca', 'refforn', …(2) ]
+      Tests  1 failed | 2 passed (3)
+
+=== ARM (a2) vocabulario do FE ENCOLHEU (marca fora) ===
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected [ 'ean', 'marca', 'seller_sku', …(1) ] to deeply equal [ 'ean', 'seller_sku', 'title' ]
+      Tests  1 failed | 2 passed (3)
+
+=== ARM (b1) fonte Go MOVIDA/RENOMEADA ===
+     → connectors/ports/marketplace_capability_RENAMED.go — the file this guard reads for the identity-anchor vocabulary itself is gone or moved: expected 'Error: ENOENT: no such file or direct…' to be null
+     → the Go source for the identity-anchor vocabulary itself could not be read at connectors/ports/marketplace_capability_RENAMED.go — this guard cannot answer, and an unreadable source is a FAILURE here rather than a skip. Underlying: Error: ENOENT: no such file or directory, open 'C:\Users\leandro.theodoro\Documents\marketplace-central\.claude\worktrees\gifted-dhawan-5049f6\apps\server_core\internal\modules\connectors\ports\marketplace_capability_RENAMED.go'
+     → the Go source for the identity-anchor vocabulary itself could not be read at connectors/ports/marketplace_capability_RENAMED.go — this guard cannot answer, and an unreadable source is a FAILURE here rather than a skip. Underlying: Error: ENOENT: no such file or directory, open 'C:\Users\leandro.theodoro\Documents\marketplace-central\.claude\worktrees\gifted-dhawan-5049f6\apps\server_core\internal\modules\connectors\ports\marketplace_capability_RENAMED.go'
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  3 failed (3)
+
+=== ARM (b2) fonte LEGIVEL mas simbolo renomeado (o pass silencioso de antes) ===
+     → connectors/adapters/mercado_livre/capability_adapter.go no longer contains `var knownIdentityAnchors` — the seam moved, so this guard is reading a file that no longer declares the identity-anchor vocabulary itself, and every assertion after this one would pass vacuously: expected 'package mercadolivre\r\n\r\nimport (\…' to contain 'var knownIdentityAnchors'
+     → no `IdentityAnchor… = "…"` constants found — the declaration form changed: expected 0 to be greater than 0
+     → no IdentityAnchor constants to resolve the declaration against: expected 0 to be greater than 0
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  3 failed (3)
+
+=== RESTAURADO — verde ===
+      Tests  3 passed (3)

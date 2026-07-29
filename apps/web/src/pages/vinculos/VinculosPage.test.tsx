@@ -1,18 +1,17 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { VinculosPage } from "./VinculosPage";
+import { MARCA_UNAVAILABLE_DETAIL, wireCandidate } from "./wireFixtures";
 
 const listProductLinkCandidates = vi.fn();
 const listProductLinkWorkflows = vi.fn();
-const listErpImports = vi.fn();
 
 vi.mock("../../app/ClientContext", () => ({
   useClient: () => ({
     listProductLinkCandidates: (...args: unknown[]) => listProductLinkCandidates(...args),
     listProductLinkWorkflows: (...args: unknown[]) => listProductLinkWorkflows(...args),
-    listErpImports: (...args: unknown[]) => listErpImports(...args),
   }),
 }));
 
@@ -32,30 +31,52 @@ function renderPage() {
 }
 
 describe("VinculosPage", () => {
-  beforeEach(() => {
-    listErpImports.mockReset();
-    // Default: the read-only Importação section (S9) has its own empty history —
-    // pre-existing Fila/Resolvidos tests below are not exercising that section.
-    listErpImports.mockResolvedValue({ items: [] });
-  });
+  // The `listErpImports` mock that stood here was load-bearing until this branch
+  // merged `main`: `VinculosPage.tsx` rendered `<ImportacaoSection />`, and the
+  // previous comment said so — and said, in the same breath, that it "becomes
+  // wrong the moment this branch merges". That moment is the merge commit
+  // `293c1485`, which brought CHIP-IMPORT-CHAIN's move of the component to
+  // `pages/importacoes/` (`4b76a287`) and took the two render lines out of
+  // `VinculosPage.tsx` with it. Nothing under `pages/vinculos/` reaches
+  // `useErpImports` any more; the only importers are `pages/importacoes/` and
+  // `pages/integracoes/`.
+  //
+  // So the mock was deleted, not re-worded, and the deletion is the measurement:
+  // a mock that is genuinely dead cannot turn this file red by leaving. It did
+  // not.
+  //
+  // The `beforeEach` went with it rather than being kept and re-purposed: the
+  // two surviving mocks were never reset here, and adding resets for them would
+  // be a behaviour change smuggled in under a comment fix.
 
   it("renders tabs and shows the queue KPIs once loaded", async () => {
     listProductLinkCandidates.mockResolvedValue({
       items: [
-        {
+        // The 29th fixture, and the last one outside the mechanism. It carried
+        // `95/ALTA` with `match_status: "REVIEW"` and `reasons: []` — three
+        // impossibilities at once: ALTA is assigned at exactly one site and only
+        // on the ACCEPT path (generation_service.go:503-505), and no candidate
+        // is reason-less, because every declared anchor without a FOR/AGAINST
+        // signal is emitted by the finalizer.
+        //
+        // It survived four reviewer rounds and this chip's own hand sweep by
+        // living in a file the sweep did not own. That is the argument for a
+        // throwing constructor over a checklist: the checklist has a scope, and
+        // the fixture was outside it.
+        wireCandidate({
           candidate_id: "cand_1",
-          installation_id: "inst_1",
-          provider_code: "mercado_livre",
           provider_item_id: "MLB1",
           state: "exact_sku",
           match_input: "seller_sku",
+          match_status: "ACCEPT",
           confidence: 95,
           confidence_band: "ALTA",
-          match_status: "REVIEW",
-          reasons: [],
-          created_at: "2026-07-18T12:00:00Z",
-          updated_at: "2026-07-18T12:00:00Z",
-        },
+          reasons: [
+            { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
+            { anchor: "ean", direction: "FOR", detail: "ean corrobora o mesmo codprod" },
+            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
+          ],
+        }),
       ],
     });
     listProductLinkWorkflows.mockResolvedValue({ items: [] });

@@ -1,7 +1,7 @@
 import type { ProductLinkWorkflowItem } from "@marketplace-central/sdk-runtime";
 import { EmptyState, ErrorState, LoadingState, UnknownValue } from "@marketplace-central/ui";
 import { formatDateTime } from "../pedidos/pedidosFormatters";
-import { resolutionAuditId, useVinculosResolved } from "./useVinculosResolved";
+import { isAutoResolved, resolutionAuditId, useVinculosResolved } from "./useVinculosResolved";
 
 export interface ResolvidosTabProps {
   installationId: string;
@@ -18,6 +18,7 @@ function ResolvidoRow({
 }) {
   const link = item.current_link;
   const auditId = resolutionAuditId(item);
+  const autoResolved = isAutoResolved(item);
 
   return (
     <tr className="align-top text-ink" data-testid="resolvido-row">
@@ -40,11 +41,25 @@ function ResolvidoRow({
         </span>
       </td>
 
-      {/* Estado */}
+      {/* Estado (+ badge de auto-aprovado, F-04) */}
       <td className="px-3 py-3">
-        <span className="inline-flex whitespace-nowrap rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent-ink">
-          Vinculado ✓
-        </span>
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="inline-flex whitespace-nowrap rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent-ink">
+            Vinculado ✓
+          </span>
+          {/* Ausência do badge significa "não foi automático" — verdade para
+              todo vínculo manual e para todo registro anterior ao M-05, que não
+              tem entrada de auditoria resolvedora. Nunca um badge fabricado. */}
+          {autoResolved ? (
+            <span
+              data-testid="auto-resolved-badge"
+              title="Vínculo resolvido automaticamente pelo sistema"
+              className="inline-flex whitespace-nowrap rounded-full border border-border bg-surface-2 px-2 py-0.5 text-xs font-medium text-muted"
+            >
+              Automático
+            </span>
+          ) : null}
+        </div>
       </td>
 
       {/* Resolvido em */}
@@ -85,7 +100,8 @@ export function ResolvidosTab({ installationId }: ResolvidosTabProps) {
         <caption className="sr-only">Vínculos resolvidos</caption>
         <thead className="border-b border-border bg-surface-2 text-xs font-medium tracking-[0.04em] text-faint">
           <tr>
-            <th className="px-3 py-3" scope="col">Anúncio ML</th>
+            {/* Rótulo estrutural neutro de provider (F-05). */}
+            <th className="px-3 py-3" scope="col">Anúncio</th>
             <th className="px-3 py-3" scope="col">Produto</th>
             <th className="px-3 py-3" scope="col">SKU HUB</th>
             <th className="px-3 py-3" scope="col">Estado</th>

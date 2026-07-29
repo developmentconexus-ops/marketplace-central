@@ -1,8 +1,11 @@
 import type {
   ProductLinkCandidateItem,
+  ProductLinkCandidateMatchInput,
   ProductLinkConfidenceBand,
+  ProductLinkMatchStatus,
   ProductLinkReason,
   ProductLinkReasonDirection,
+  ProductLinkReasonSide,
 } from "@marketplace-central/sdk-runtime";
 import { UnknownValue } from "@marketplace-central/ui";
 import { useState } from "react";
@@ -31,11 +34,219 @@ const bandClasses: Record<ProductLinkConfidenceBand, string> = {
   BAIXA: "bg-warn-soft text-warn",
 };
 
-const directionClasses: Record<ProductLinkReasonDirection, string> = {
+// The tokens for a value the WIRE invented and the SDK has no member for. It
+// is deliberately none of the semantic pairs: painting an unknown band amber
+// would assert a confidence reading nobody computed (ADR-17).
+const unknownValueClasses = "border border-border bg-surface text-muted";
+
+// Wire drift is a DIFFERENT failure from SDK growth, and only one of the two is
+// visible to a compiler. `Record<Union, …>` above catches "the SDK grew a
+// member" at build time and must stay. These readers catch "the API shipped a
+// member before the SDK was regenerated": at runtime the index is simply
+// missing, and an unguarded `Record` lookup then puts the literal string
+// `undefined` in the cell text and at the end of the class attribute.
+//
+// Both are EXPORTED, and that is load-bearing rather than convenience: the
+// drawer paints the same band from its own component, and it used to keep a
+// private second copy of this table. A second copy is how the `direction` drift
+// survived its first fix — one copy hardened, the class declared closed, the
+// other still writing the literal `undefined` into a class attribute. One
+// reader per value for the whole screen means the next unknown band degrades
+// the same way in every surface, or in none.
+export function bandLabel(band: ProductLinkConfidenceBand): string {
+  const label = bandLabels[band];
+  // Verbatim, never one of the three we know — same rule as an unknown anchor
+  // (V9): never hidden, never renamed into something the wire didn't say.
+  return label ?? band;
+}
+
+export function bandClass(band: ProductLinkConfidenceBand): string {
+  return bandClasses[band] ?? unknownValueClasses;
+}
+
+// INCOMPARABLE gets its OWN token pair (info), never accent (FOR — corroborates)
+// and never warn (AGAINST — blocks) and never the muted surface of UNAVAILABLE.
+// D-122/D-B created the state precisely to separate "the provider does not
+// supply this anchor, ever" (UNAVAILABLE, nothing to do) from "the provider does
+// supply it and the value is missing HERE" (INCOMPARABLE, go register it):
+// opposite operator actions, so painting them alike would erase the distinction
+// the state exists to show.
+export const directionClasses: Record<ProductLinkReasonDirection, string> = {
   FOR: "bg-accent-soft text-accent-ink",
   AGAINST: "bg-warn-soft text-warn",
   UNAVAILABLE: "bg-surface-2 text-faint",
+  INCOMPARABLE: "bg-info-soft text-info",
 };
+
+/**
+ * Provider display name for a wire `provider_code`. The wire value is a slug
+ * ("mercado_livre"); rendering it raw is the bug that hit CHIP-PED-FILA across
+ * four surfaces.
+ *
+ * An unmapped provider is TYPESET rather than passed through — `mercado_livre`
+ * is the only mapped code today, so the next marketplace onboarded would
+ * otherwise put a raw slug back on screen — but only when the wire code lies
+ * inside a DOMAIN on which typesetting is injective.
+ *
+ * That condition is the whole design, and it exists because the obvious version
+ * of this function is wrong. Collapsing every separator into a space maps
+ * `amazon_marketplace` and `amazon-marketplace` onto the same "Amazon
+ * Marketplace", and `registry.go:100-114` dedupes provider codes by exact
+ * string equality, so both are legal, distinct, simultaneously-registered
+ * providers. Two different marketplaces would render identically and the
+ * operator could not tell whose listing they were looking at. A slug that is
+ * merely ugly is a cosmetic problem; two providers wearing one name is wrong
+ * information, which is worse.
+ *
+ * So the transform is applied only on a DOMAIN where it is injective:
+ * `^[a-z0-9]+(_[a-z0-9]+)*$` — lower-case alphanumeric groups separated by
+ * single underscores. Anything else — hyphens, upper-case, embedded or repeated
+ * separators, anything that would lose a character — renders verbatim, because
+ * an ugly identifier the operator can act on beats a pretty name that might be
+ * the wrong provider.
+ *
+ * The domain is CHECKED, and that is the correction of an earlier version of
+ * this function whose sentence said the same thing while the code did not. It
+ * inferred injectivity from a round-trip — typeset the code, lower it, restore
+ * the separators, compare — and a round-trip can only see what survives it.
+ * Two codes fell through:
+ *
+ *  - `amazon-marketplace`: `typesetSlug` splits on `_` only, so a hyphenated
+ *    code is ONE token. It capitalized to `Amazon-marketplace` and restored to
+ *    itself, so the round-trip APPROVED the transformation this paragraph said
+ *    it refused;
+ *  - `Amazon` vs `amazon`: the comparison ran `painted.toLowerCase()`, which
+ *    destroys case before comparing, so both paint `Amazon` — the two-providers-
+ *    one-name failure named above, from the guard meant to prevent it. This one
+ *    the domain check does NOT close; see the last paragraph.
+ *
+ * A domain test cannot have that shape: it rejects BEFORE transforming, so
+ * there is no lossy step for it to be blind to. The whitespace reasoning that
+ * earned the old round-trip is preserved as the reason `__` is outside the
+ * domain: HTML collapses runs of whitespace, so `amazon__market` would paint
+ * `Amazon Market` — the same pixels as `amazon_market` — and a comparison of
+ * the pre-layout string would call that injective. What the browser paints is
+ * the thing that must be unambiguous.
+ *
+ * The hyphen case is closed by that domain. THE CASE ONE IS NOT, and the claim
+ * this paragraph is here to refuse is the tempting one that a domain on which
+ * the TRANSFORM is injective makes the FUNCTION injective. It does not, because
+ * the function is two branches and the branches share a codomain. Executed:
+ * `amazon` is inside the domain and paints `Amazon`; `Amazon` is outside it and
+ * therefore paints `Amazon` VERBATIM. Same pixels, two wire codes — the exact
+ * failure named at the top, relocated from inside the transform to the seam
+ * between the transform and its own escape hatch.
+ *
+ * Narrowing the domain cannot fix it, and the reason is about the CODOMAIN
+ * rather than about either branch. Every branch here PRODUCES a string; none of
+ * them RESERVES one. Narrowing only moves codes from the transform branch into
+ * the verbatim branch, and verbatim is the identity, so any code whose literal
+ * spelling equals another code's typeset output collides — `Amazon` against
+ * `amazon`, `Amazon Marketplace` against `amazon_marketplace`. Enumerating the
+ * pairs by hand under-reports; grouping the codes BY RENDERED OUTPUT is the
+ * instrument, and it also surfaces the pair neither the mapped table nor the
+ * transform is usually suspected of: `Mercado Livre` as a literal wire code
+ * renders verbatim and collides with `mercado_livre`, which the table maps.
+ *
+ * That last pair is also why the obvious escape hatch is not one: rendering
+ * every unmapped code verbatim leaves the mapped table colliding with it. The
+ * shape that does close it is a display name required in the registry beside
+ * the code, which is a contract change and outside this chip's write-set. It is
+ * an open REPORT with a trigger, and the trigger is the second registered
+ * adapter. Until then `mercado_livre` is mapped, it is the only declaration
+ * that exists, and no live row reaches either branch.
+ */
+const providerDisplayNames: Record<string, string> = {
+  mercado_livre: "Mercado Livre",
+};
+
+// The domain on which capitalising underscore groups is injective. Every group
+// is non-empty, so no run of separators can collapse; every character is already
+// lower-case, so nothing is lost by upper-casing an initial; and `_` is the only
+// separator, so no other punctuation can survive untouched into the display.
+const INJECTIVE_PROVIDER_SLUG = /^[a-z0-9]+(_[a-z0-9]+)*$/;
+
+function typesetSlug(providerCode: string): string {
+  // Callers must have checked the domain, which guarantees non-empty groups.
+  return providerCode
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+export function providerDisplayName(providerCode: string): string {
+  // `Object.hasOwn`, not a bare index: a plain object literal inherits from
+  // `Object.prototype`, so `providerDisplayNames["toString"]` is a FUNCTION that
+  // the declared `: string` return type does not catch — the index signature
+  // types the lookup as `string` and TypeScript never models the prototype
+  // chain here. Unreachable today (`provider_code` is a Go literal at
+  // `capability_adapter.go:81`), which is exactly why it would have survived.
+  const mapped = Object.hasOwn(providerDisplayNames, providerCode) ? providerDisplayNames[providerCode] : undefined;
+  if (mapped) return mapped;
+
+  // Reject BEFORE transforming. The old form typeset first and then asked
+  // whether the result could be reversed, which is only as strong as the
+  // reversal — and the reversal lower-cased, so it could not see case at all.
+  // There is deliberately no round-trip left behind this: on this domain the
+  // round-trip cannot fail, and a check that cannot fail is not a check.
+  if (!INJECTIVE_PROVIDER_SLUG.test(providerCode)) return providerCode;
+  return typesetSlug(providerCode);
+}
+
+/**
+ * "Identificado por" (D-122): the anchors that DECIDED, joined by ` + `.
+ *
+ * This is not a new rule invented on the screen. `decisionRuleForCandidate`
+ * (resolution_service.go:812-835) is a PURE function of `match_status` and
+ * `match_input` — both already on the wire — and it is the same function that
+ * writes `rule_matched` into the decision trail. Reading the same two inputs
+ * lands on the same rule, so the column says what the trail will say.
+ *
+ * Anything that is not an ACCEPT or a single-anchor CONFIRM files as `manual`:
+ * no anchor carried it, so the column names none. That is what separates this
+ * column from Motivo — Motivo lists everything that OPINED (including every
+ * UNAVAILABLE and INCOMPARABLE), this lists only what DECIDED. A `title FOR`
+ * candidate (state TitleMatch → REVIEW, ranking-only and never ACCEPT under
+ * D-121) therefore keeps its motivo and shows NOTHING here.
+ *
+ * Both maps are keyed by the full union rather than switched on string
+ * literals: a sixth match_status or a new match_input has to fail the compiler,
+ * not fall silently through a `default` — the QueueRow:159 lesson.
+ */
+const confirmDecidingAnchors: Record<ProductLinkCandidateMatchInput, string[]> = {
+  seller_sku: ["CODPROD"],
+  ean: ["EAN"],
+  title: [],
+  manual: [],
+  none: [],
+};
+
+const statusDecidingAnchors: Record<
+  ProductLinkMatchStatus,
+  (matchInput: ProductLinkCandidateMatchInput) => string[]
+> = {
+  // Corroborated: CODPROD and EAN both named this product. Hiding the second
+  // anchor would erase from the screen the very thing that separates
+  // auto-approved from sent-to-confirmation (D-121).
+  ACCEPT: () => ["CODPROD", "EAN"],
+  CONFIRM: (matchInput) => confirmDecidingAnchors[matchInput],
+  // The anchors disagreed, collided, or never ran. Nothing decided.
+  REVIEW: () => [],
+  REJECT: () => [],
+  NO_CANDIDATE: () => [],
+};
+
+export function decidingAnchors(candidate: ProductLinkCandidateItem): string[] {
+  // The `Record<Union, …>` above is the COMPILE-time guard: a sixth status in
+  // the SDK breaks the build here, which is the whole point. This runtime guard
+  // answers a different failure — the wire shipping a status the SDK does not
+  // have yet, where the map lookup is `undefined` and calling it takes down the
+  // entire queue table instead of one cell. An unknown status means we do not
+  // know what decided, so the column renders the honest unknown (ADR-17).
+  const rule = statusDecidingAnchors[candidate.match_status];
+  if (!rule) return [];
+  return rule(candidate.match_input) ?? [];
+}
 
 function pill(label: string, className: string) {
   return (
@@ -50,18 +261,58 @@ function confidencePercent(confidence: number): string {
   return `${Math.round(confidence)}%`;
 }
 
+// `side` is the second half of D-122/D-B: WHICH side is missing the value, and
+// therefore where the operator has to go fix it. Read from the field, never
+// parsed out of `detail` — parsing a Portuguese sentence breaks silently the day
+// someone rewrites the sentence, which is exactly why D-B put it in the data.
+const incomparableSideLabels: Record<ProductLinkReasonSide, string> = {
+  provider: "falta no anúncio",
+  erp: "falta no ERP",
+  both: "falta nos dois lados",
+};
+
+/**
+ * The `side` text for a reason, or undefined when there is none to tell.
+ *
+ * The direction is checked FIRST: the frozen D-122 contract emits `side` only
+ * for INCOMPARABLE, so a stray value on any other direction is wire noise, not
+ * a fact to render. And an INCOMPARABLE whose `side` is absent stays silent —
+ * `classifyProviderIdentityAnchor` has a real path that emits INCOMPARABLE with
+ * no side (the `!readable` branch, generation_service.go:711, e.g. `marca`),
+ * and inventing a side there would fabricate the one thing D-B added (ADR-17).
+ */
+export function reasonSideLabel(reason: ProductLinkReason): string | undefined {
+  if (reason.direction !== "INCOMPARABLE") return undefined;
+  // `?? reason.side` is the fallback every sibling map already has — bandLabels
+  // (:60), directionLabels (:292), anchorShortLabels (:300), the ranking map
+  // (:356). This was the one member that did not, so a `side` the SDK has not
+  // been regenerated for rendered as NOTHING: the operator is not told the
+  // datum exists. Unknown falls through verbatim — never hidden, never renamed
+  // into something the wire didn't say.
+  return reason.side ? (incomparableSideLabels[reason.side] ?? reason.side) : undefined;
+}
+
 /**
  * IC-01 presentation rule: a reason chip ALWAYS shows its motivo (anchor) text.
  * When a `detail` (which may carry a %) is present it is rendered joined to the
  * motivo — so a bare % is never shown on its own; the motivo is always visible.
  */
-function reasonChipLabel(reason: ProductLinkReason): string {
-  return reason.detail ? `${reason.anchor}: ${reason.detail}` : reason.anchor;
+export function reasonChipLabel(reason: ProductLinkReason): string {
+  const side = reasonSideLabel(reason);
+  const head = side ? `${reason.anchor} (${side})` : reason.anchor;
+  return reason.detail ? `${head}: ${reason.detail}` : head;
 }
 
 // The wire anchors are machine names (`seller_sku`, `refforn`); the table shows
 // the operator-facing short form. Unknown anchors fall through verbatim — never
 // hidden, never renamed into something the wire didn't say.
+//
+// `refforn` is KEPT even though D-A (D-122) removed it from the cross-side
+// anchor vocabulary, so no candidate generated today carries it. D-A also
+// decided that already-persisted reasons are NOT migrated, so a decided
+// candidate can still hold a `refforn` motivo — audit data that is meant to
+// survive verbatim. Dropping the entry would degrade that historical row from
+// "Ref. forn." to the raw machine name for no gain.
 const anchorShortLabels: Record<string, string> = {
   seller_sku: "SKU",
   ean: "EAN",
@@ -71,12 +322,41 @@ const anchorShortLabels: Record<string, string> = {
 };
 
 // Direction is carried by colour AND by a glyph, so the FOR/AGAINST/sem-dado
-// distinction survives without relying on colour alone.
+// distinction survives without relying on colour alone. INCOMPARABLE is "?":
+// the comparison could not be made — distinct from "–" (UNAVAILABLE: there is
+// nothing to compare, and never will be).
 const directionGlyphs: Record<ProductLinkReasonDirection, string> = {
   FOR: "✓",
   AGAINST: "✕",
   UNAVAILABLE: "–",
+  INCOMPARABLE: "?",
 };
+
+/**
+ * Glyph for a direction, with the wire value itself standing in for one we have
+ * no glyph for.
+ *
+ * The wire-drift readers below matter MORE for `direction` than anywhere else
+ * on this row, because the V2 fix made the path reachable. The compact cell
+ * used to be `[...byDirection("AGAINST"), ...byDirection("FOR"),
+ * ...byDirection("UNAVAILABLE")]`, which silently DROPPED an unknown direction;
+ * the total ranking that replaced it keeps every reason, correctly. Undoing a
+ * silent filter must not install a literal "undefined" in its place — that
+ * would trade one invisible defect for a visible-but-meaningless one.
+ *
+ * Falling back to a KNOWN direction is not an option: "–" would read as
+ * UNAVAILABLE ("nothing to compare, ever") and "?" as INCOMPARABLE ("go
+ * register the value"), which are opposite operator actions. The wire word is
+ * the only honest thing to show (ADR-17).
+ */
+export function directionGlyph(direction: ProductLinkReasonDirection): string {
+  const glyph = directionGlyphs[direction];
+  return glyph ?? direction;
+}
+
+export function directionClass(direction: ProductLinkReasonDirection): string {
+  return directionClasses[direction] ?? unknownValueClasses;
+}
 
 function anchorShortLabel(anchor: string): string {
   return anchorShortLabels[anchor] ?? anchor;
@@ -90,7 +370,11 @@ function anchorShortLabel(anchor: string): string {
  * tooltip and in the expanded view).
  */
 function compactChipLabel(reason: ProductLinkReason): string {
-  const head = `${directionGlyphs[reason.direction]} ${anchorShortLabel(reason.anchor)}`;
+  const side = reasonSideLabel(reason);
+  // The side rides inline, not only in the tooltip: "where do I go fix it" is
+  // the whole point of an INCOMPARABLE, and a tooltip is not readable on a scan.
+  const anchor = side ? `${anchorShortLabel(reason.anchor)} (${side})` : anchorShortLabel(reason.anchor);
+  const head = `${directionGlyph(reason.direction)} ${anchor}`;
   if (reason.direction === "AGAINST" && reason.detail) {
     return `${head}: ${reason.detail}`;
   }
@@ -100,8 +384,10 @@ function compactChipLabel(reason: ProductLinkReason): string {
 function compactChip(reason: ProductLinkReason) {
   return (
     <span
+      data-testid="motivo-chip"
+      data-direction={reason.direction}
       title={reasonChipLabel(reason)}
-      className={`inline-flex max-w-[12rem] items-center truncate whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${directionClasses[reason.direction]}`}
+      className={`inline-flex max-w-[12rem] items-center truncate whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${directionClass(reason.direction)}`}
     >
       {compactChipLabel(reason)}
     </span>
@@ -109,6 +395,28 @@ function compactChip(reason: ProductLinkReason) {
 }
 
 const COMPACT_CHIP_LIMIT = 2;
+
+// Display priority for the collapsed cell. AGAINST first (a blocking
+// contradiction is what the operator must read), then FOR (what corroborates),
+// then INCOMPARABLE — actionable absence, the operator CAN go register the
+// value — and last UNAVAILABLE, the only permanent one and therefore the only
+// one nothing can be done about.
+const directionRank: Record<ProductLinkReasonDirection, number> = {
+  AGAINST: 0,
+  FOR: 1,
+  INCOMPARABLE: 2,
+  UNAVAILABLE: 3,
+};
+
+// A direction we cannot interpret ranks after all four we can, so it never
+// displaces an actionable signal out of the two compact slots. It is still
+// RANKED, not filtered — the whole point of the ordering being total.
+const UNKNOWN_DIRECTION_RANK = 4;
+
+function directionRankOf(direction: ProductLinkReasonDirection): number {
+  const rank = directionRank[direction];
+  return rank ?? UNKNOWN_DIRECTION_RANK;
+}
 
 /**
  * Motivo cell. Collapsed by default to keep the row one line tall (a 4-chip
@@ -133,7 +441,7 @@ function AnchorChips({ reasons }: { reasons: ProductLinkReason[] }) {
               {/* Expandido: o texto integral do motivo pode quebrar linha — o
                   chip nowrap do modo compacto seria cortado pelo limite do td. */}
               <span
-                className={`inline-block rounded-2xl px-2 py-0.5 text-xs font-medium ${directionClasses[reason.direction]}`}
+                className={`inline-block rounded-2xl px-2 py-0.5 text-xs font-medium ${directionClass(reason.direction)}`}
               >
                 {reasonChipLabel(reason)}
               </span>
@@ -151,15 +459,45 @@ function AnchorChips({ reasons }: { reasons: ProductLinkReason[] }) {
     );
   }
 
-  // Rank AGAINST → FOR → UNAVAILABLE and slice. Ranking (never filtering) is
-  // what keeps at least one motivo on screen even for a row whose only signals
-  // are UNAVAILABLE ones (ADR-17 — motivo sempre visível).
-  const byDirection = (direction: ProductLinkReasonDirection) =>
-    reasons.filter((reason) => reason.direction === direction);
-  const shown = [...byDirection("AGAINST"), ...byDirection("FOR"), ...byDirection("UNAVAILABLE")].slice(
-    0,
-    COMPACT_CHIP_LIMIT,
-  );
+  // Rank and slice. Ranking (never filtering) is what keeps at least one motivo
+  // on screen even for a row whose only signals are absence ones (ADR-17 —
+  // motivo sempre visível).
+  //
+  // This USED to be `[...byDirection("AGAINST"), ...byDirection("FOR"),
+  // ...byDirection("UNAVAILABLE")]` — an enumeration by string literal. It is
+  // type-correct, so the compiler said nothing when D-B added a fourth
+  // direction, and the "ranking" quietly became a FILTER: INCOMPARABLE matched
+  // no branch, so it was not merely ranked last, it was UNDISPLAYABLE.
+  //
+  // What that costs on real data, stated at the size it actually is. The
+  // headline case — every motivo INCOMPARABLE, `shown` empty, a lone "+N" over
+  // zero chips — is PRODUCIBLE but NOT REACHABLE in this tree, and the
+  // difference matters. `resolveIdentityAnchors` (:149-169) aborts unless the
+  // declaration resolves, and the only declaration here is `mercado_livre`,
+  // which does not supply `marca`; so every live row carries a `marca`
+  // UNAVAILABLE, which the old expression DID match. The empty cell needs a
+  // provider that supplies all four anchors. None exists yet.
+  //
+  // The reachable half is smaller and real, and it is the one that pays for
+  // this change: with COMPACT_CHIP_LIMIT === 2, a row holding a FOR, an `ean`
+  // INCOMPARABLE and the `marca` UNAVAILABLE spent both slots on the FOR and on
+  // `marca` — permanent, actionable by no one — while the INCOMPARABLE, which
+  // the operator CAN act on, could not be shown at any limit. `directionRank`
+  // puts INCOMPARABLE (2) ahead of UNAVAILABLE (3), so those rows now surface
+  // the actionable absence and push `marca` behind the "+N". Rows of exactly
+  // that shape are on the screen today.
+  //
+  // A sort over a Record<Direction, number> is total by construction: every
+  // reason keeps a place in the ordering, so `shown` is empty only when
+  // `reasons` is, and a future fifth direction stops COMPILING here instead of
+  // disappearing from the cell.
+  const shown = reasons
+    .map((reason, index) => ({ reason, index }))
+    // The index tiebreak keeps the wire order inside a direction, so the cell
+    // does not reshuffle between renders for reasons that rank equally.
+    .sort((a, b) => directionRankOf(a.reason.direction) - directionRankOf(b.reason.direction) || a.index - b.index)
+    .slice(0, COMPACT_CHIP_LIMIT)
+    .map((entry) => entry.reason);
   const hidden = reasons.length - shown.length;
 
   return (
@@ -188,10 +526,7 @@ function AnchorChips({ reasons }: { reasons: ProductLinkReason[] }) {
 
 export function QueueRow({ candidate, onOpen, onApprove, onReject, pending, selected, onToggleSelect }: QueueRowProps) {
   const noCandidate = candidate.match_status === "NO_CANDIDATE";
-  // GTIN "✓ igual" is only honest when the listing matched the product on EAN
-  // (match_input === "ean"); otherwise the GTIN relationship is UNKNOWN → "—",
-  // never fabricated (ADR-17).
-  const gtinEqual = candidate.match_input === "ean" && Boolean(candidate.match_value);
+  const decided = decidingAnchors(candidate);
 
   return (
     <tr className="align-top text-ink" data-testid="queue-row" data-match-status={candidate.match_status}>
@@ -207,15 +542,20 @@ export function QueueRow({ candidate, onOpen, onApprove, onReject, pending, sele
         />
       </td>
 
-      {/* ANÚNCIO ML (listing) */}
+      {/* ANÚNCIO (id do anúncio no provider) — rótulo estrutural neutro; de QUAL
+          provider ele é fica na coluna Canal, que é onde esse dado mora. */}
       <td className="px-3 py-3">
         <div className="font-mono text-sm font-medium text-ink">{candidate.provider_item_id}</div>
       </td>
 
-      {/* SKU ML (código do anúncio no provider) */}
+      {/* CANAL (provider do anúncio). A célula mostrava `provider_code` cru sob
+          um cabeçalho "SKU ML": o wire carrega aqui o SLUG do marketplace
+          ("mercado_livre"), nunca um SKU — o SKU do vendedor não está no
+          contrato do candidato. Rótulo agora diz o que o dado é, e o valor sai
+          pelo nome de exibição em vez do slug. */}
       <td className="px-3 py-3">
-        <span className="font-mono text-xs text-muted">
-          {candidate.provider_code ? candidate.provider_code : <UnknownValue />}
+        <span className="text-xs text-muted">
+          {candidate.provider_code ? providerDisplayName(candidate.provider_code) : <UnknownValue />}
         </span>
       </td>
 
@@ -250,10 +590,19 @@ export function QueueRow({ candidate, onOpen, onApprove, onReject, pending, sele
         </span>
       </td>
 
-      {/* GTIN ("✓ igual" | "—") */}
+      {/* IDENTIFICADO POR — as âncoras que DECIDIRAM, unidas por " + " (D-122).
+          Substitui a coluna GTIN: "✓ igual" era a leitura de UMA âncora, e o
+          conjunto que decidiu é a informação que a supera. Vazio (REVIEW,
+          REJECT, NO_CANDIDATE, CONFIRM por título) é "—": nada decidiu ainda,
+          e inventar uma âncora aqui seria afirmar uma decisão que não houve. */}
       <td className="px-3 py-3">
-        {gtinEqual ? (
-          <span className="whitespace-nowrap text-xs font-medium text-accent-ink">✓ igual</span>
+        {decided.length > 0 ? (
+          <span
+            className="whitespace-nowrap text-xs font-medium text-accent-ink"
+            data-testid="identificado-por"
+          >
+            {decided.join(" + ")}
+          </span>
         ) : (
           <UnknownValue />
         )}
@@ -265,7 +614,7 @@ export function QueueRow({ candidate, onOpen, onApprove, onReject, pending, sele
           <UnknownValue hint="sem confiança sem candidato" />
         ) : (
           <div className="flex items-center gap-2">
-            {pill(bandLabels[candidate.confidence_band], bandClasses[candidate.confidence_band])}
+            {pill(bandLabel(candidate.confidence_band), bandClass(candidate.confidence_band))}
             <span className="font-mono text-xs font-medium tabular-nums text-muted">
               {confidencePercent(candidate.confidence)}
             </span>
