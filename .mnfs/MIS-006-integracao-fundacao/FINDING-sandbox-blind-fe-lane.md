@@ -17,6 +17,11 @@ VC-7 (`No test files found` nunca é verde) segurou sob uma falha que o brief n�
 cego mesmo assim embarcou: a lane que ele não pôde rodar era exatamente a que o teria parado —
 o defeito só apareceu no P4 do chip.
 
+**Estreitamento (S9, 2026-07-29):** o worker da S9 roda lanes Go no MESMO sandbox sem
+problema — a cegueira é específica de `packages/*` (esbuild sobe a árvore para resolver
+`vitest.config.ts` e cruza a fronteira do sandbox). A regra abaixo se aplica portanto a lanes
+vitest de `packages/*`, não a todo worker despachado.
+
 ## Regra (chip-local por A-19; candidata a profile)
 
 Brief de fatia que toca `packages/*` (ou qualquer lane que o sandbox do worker não executa):
