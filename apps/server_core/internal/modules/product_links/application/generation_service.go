@@ -487,6 +487,19 @@ func newProviderIdentityAnchorComparison(snapshot domain.ListingSnapshot, declar
 }
 
 func buildConcordantCandidate(snapshot domain.ListingSnapshot, skuMatches, eanMatches productMatchResult, comparison providerIdentityAnchorComparison, now time.Time) domain.LinkCandidate {
+	// Both sibling scorers nil-check this pointer; an unconditional deref here
+	// made this the one site that panics instead of degrading. Not panicking is
+	// not enough: a zeroed product with the normal scoring below emits seller_sku
+	// FOR and ean FOR at 95 / ALTA / ACCEPT, asserting corroboration for a CODPROD
+	// that is not there, on a row whose internal_product_id is null — and
+	// autoApprovals reads that ACCEPT as auto-approvable. There is no product to
+	// corroborate, so it degrades exactly like applyUnresolvedScore does: 0 /
+	// BAIXA / NO_CANDIDATE with the absence reasons.
+	if comparison.product == nil {
+		candidate := newCandidate(snapshot, domain.LinkCandidateStateExactSKU, domain.LinkCandidateMatchInputSellerSKU, skuMatches.InputValue, internalreaddomain.ProductCandidate{}, now)
+		applyUnresolvedScore(&candidate, comparison)
+		return candidate
+	}
 	product := *comparison.product
 	candidate := newCandidate(snapshot, domain.LinkCandidateStateExactSKU, domain.LinkCandidateMatchInputSellerSKU, skuMatches.InputValue, product, now)
 
@@ -539,7 +552,7 @@ func applySingleAnchorScore(candidate *domain.LinkCandidate, state domain.LinkCa
 		confidence, band, status = 60, domain.LinkCandidateConfidenceBandMedia, domain.LinkCandidateMatchStatusConfirm
 		skuDetail := "sem CODPROD para corroborar o EAN"
 		if strings.TrimSpace(snapshot.SellerSKU) != "" {
-			skuDetail = "sem CODPROD para corroborar o EAN: o seller_sku do anúncio não casa nenhum produto"
+			skuDetail = "o seller_sku do anúncio não casa este produto, então não corrobora o EAN"
 		}
 		reasons = []domain.LinkCandidateReason{
 			{Anchor: "ean", Direction: domain.LinkCandidateReasonDirectionFor, Detail: "ean corrobora codprod (unproved)"},
@@ -733,8 +746,19 @@ func identityAnchorValues(anchor string, listing domain.ListingSnapshot, product
 	switch anchor {
 	case "seller_sku":
 		listingValue = listing.SellerSKU
-		if product != nil && product.ReferenceCode != nil {
-			productValue = *product.ReferenceCode
+		// The ERP counterpart of a provider seller_sku is the canonical CODPROD
+		// (D-121: the operator registers the CODPROD in the listing's SKU field),
+		// never `refforn` — refforn is the SUPPLIER reference inside the ERP, and
+		// D-A removed it from the cross-side vocabulary in this same mission.
+		// A product that reaches this comparison always carries a CODPROD (it is
+		// part of the primary key of erp_import_products, and generation filters
+		// out candidates without a canonical id before any candidate exists), so
+		// "produto ERP sem CODPROD" is a claim this side can never truthfully
+		// make — reading refforn here minted exactly that false claim.
+		if product != nil {
+			if productID, ok := canonicalProductID(*product); ok {
+				productValue = strconv.Itoa(productID)
+			}
 		}
 	case "ean":
 		listingValue = listing.EAN

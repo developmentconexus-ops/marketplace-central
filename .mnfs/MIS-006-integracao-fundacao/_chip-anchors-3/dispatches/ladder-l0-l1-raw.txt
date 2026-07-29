@@ -1,0 +1,154 @@
+?   	marketplace-central/apps/server_core/cmd/migrate	[no test files]
+?   	marketplace-central/apps/server_core/cmd/server	[no test files]
+?   	marketplace-central/apps/server_core/cmd/testdb	[no test fi107
+
+ok  	marketplace-central/apps/server_core/internal/composition	17.807s
+ok  	marketplace-central/apps/server_core/internal/modules/catalog/adapters/internalread	2.682s
+ok  	marketplace-central/apps/server_core/internal/modules/catalog/adapters/postgres	3.153s
+ok  	marketplace-central/apps/server_core/internal/modules/catalog/application	2.654s
+ok  	marketplace-central/apps/server_core/internal/modules/catalog/domain	2.909s
+?   	marketplace-central/apps/server_core/internal/modules/catalog/events	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/catalog/ports	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/catalog/readmodel	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/catalog/transport	4.579s
+ok  	marketplace-central/apps/server_core/internal/modules/classifications/adapters/postgres	3.572s
+?   	marketplace-central/apps/server_core/internal/modules/classifications/application	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/classifications/domain	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/classifications/ports	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/classifications/transport	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/connectors/adapters/melhorenvio	7.277s
+ok  	marketplace-central/apps/server_core/internal/modules/connectors/adapters/mercado_livre	7.753s
+ok  	marketplace-central/apps/server_core/internal/modules/connectors/application	3.641s
+ok  	marketplace-central/apps/server_core/internal/modules/connectors/domain	2.700s
+?   	marketplace-central/apps/server_core/internal/modules/connectors/events	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/connectors/ports	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/connectors/readmodel	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/connectors/transport	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/dashboard/application	2.820s
+?   	marketplace-central/apps/server_core/internal/modules/dashboard/domain	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/dashboard/ports	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/dashboard/transport	4.342s
+ok  	marketplace-central/apps/server_core/internal/modules/erp_import/adapters/internalread	4.746s
+ok  	marketplace-central/apps/server_core/internal/modules/erp_import/adapters/postgres	3.441s
+ok  	marketplace-central/apps/server_core/internal/modules/erp_import/adapters/productlinks	2.734s
+ok  	marketplace-central/apps/server_core/internal/modules/erp_import/adapters/sync	2.782s
+ok  	marketplace-central/apps/server_core/internal/modules/erp_import/adapters/xlsx	5.648s
+ok  	marketplace-central/apps/server_core/internal/modules/erp_import/application	3.188s
+ok  	marketplace-central/apps/server_core/internal/modules/erp_import/domain	2.797s
+?   	marketplace-central/apps/server_core/internal/modules/erp_import/ports	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/erp_import/transport	4.568s
+ok  	marketplace-central/apps/server_core/internal/modules/integrations/adapters/crypto	3.065s
+ok  	marketplace-central/apps/server_core/internal/modules/integrations/adapters/feesync	3.673s
+ok  	marketplace-central/apps/server_core/internal/modules/integrations/adapters/mercadolivre	7.121s
+ok  	marketplace-central/apps/server_core/internal/modules/integrations/adapters/postgres	7.276s
+ok  	marketplace-central/apps/server_core/internal/modules/integrations/adapters/providers	3.911s
+ok  	marketplace-central/apps/server_core/internal/modules/integrations/application	4.194s
+ok  	marketplace-central/apps/server_core/internal/modules/integrations/background	3.587s
+ok  	marketplace-central/apps/server_core/internal/modules/integrations/domain	2.661s
+ok  	marketplace-central/apps/server_core/internal/modules/integrations/ports	2.761s
+ok  	marketplace-central/apps/server_core/internal/modules/integrations/transport	4.636s
+ok  	marketplace-central/apps/server_core/internal/modules/internal_read/adapters/cache	3.538s
+ok  	marketplace-central/apps/server_core/internal/modules/internal_read/adapters/fake	2.555s
+ok  	marketplace-central/apps/server_core/internal/modules/internal_read/adapters/mirror	3.379s
+ok  	marketplace-central/apps/server_core/internal/modules/internal_read/adapters/oracle	3.560s
+ok  	marketplace-central/apps/server_core/internal/modules/internal_read/adapters/oracle/oraclebatch	2.480s
+ok  	marketplace-central/apps/server_core/internal/modules/internal_read/adapters/routing	2.750s
+ok  	marketplace-central/apps/server_core/internal/modules/internal_read/application	2.376s
+ok  	marketplace-central/apps/server_core/internal/modules/internal_read/domain	4.239s
+ok  	marketplace-central/apps/server_core/internal/modules/internal_read/observability	6.032s
+ok  	marketplace-central/apps/server_core/internal/modules/internal_read/ports	4.581s
+?   	marketplace-central/apps/server_core/internal/modules/inventory/adapters/connectors	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/inventory/adapters/integrations	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/inventory/adapters/internalread	4.594s
+ok  	marketplace-central/apps/server_core/internal/modules/inventory/adapters/mutations	5.097s
+?   	marketplace-central/apps/server_core/internal/modules/inventory/adapters/postgres	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/inventory/adapters/productlinks	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/inventory/application	5.161s
+ok  	marketplace-central/apps/server_core/internal/modules/inventory/domain	5.064s
+?   	marketplace-central/apps/server_core/internal/modules/inventory/ports	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/inventory/transport	8.783s
+ok  	marketplace-central/apps/server_core/internal/modules/listings/adapters/connectors	7.872s
+ok  	marketplace-central/apps/server_core/internal/modules/listings/adapters/integrations	7.429s
+?   	marketplace-central/apps/server_core/internal/modules/listings/adapters/internalread	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/listings/adapters/marketplaces	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/listings/adapters/postgres	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/listings/application	3.356s
+ok  	marketplace-central/apps/server_core/internal/modules/listings/domain	6.282s
+ok  	marketplace-central/apps/server_core/internal/modules/listings/ports	6.165s
+ok  	marketplace-central/apps/server_core/internal/modules/listings/transport	9.504s
+?   	marketplace-central/apps/server_core/internal/modules/market/adapters/postgres	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/market/application	6.637s
+ok  	marketplace-central/apps/server_core/internal/modules/market/domain	6.579s
+?   	marketplace-central/apps/server_core/internal/modules/market/ports	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/market/transport	8.189s
+?   	marketplace-central/apps/server_core/internal/modules/marketplaces/adapters/postgres	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/marketplaces/application	7.087s
+?   	marketplace-central/apps/server_core/internal/modules/marketplaces/domain	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/marketplaces/events	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/marketplaces/ports	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/marketplaces/readmodel	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/marketplaces/registry	7.033s
+ok  	marketplace-central/apps/server_core/internal/modules/marketplaces/transport	8.749s
+ok  	marketplace-central/apps/server_core/internal/modules/mutations/adapters/connectors	7.276s
+ok  	marketplace-central/apps/server_core/internal/modules/mutations/adapters/listings	7.355s
+ok  	marketplace-central/apps/server_core/internal/modules/mutations/adapters/marketplaces	5.297s
+?   	marketplace-central/apps/server_core/internal/modules/mutations/adapters/postgres	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/mutations/adapters/productlinks	5.353s
+ok  	marketplace-central/apps/server_core/internal/modules/mutations/adapters/stub	5.376s
+ok  	marketplace-central/apps/server_core/internal/modules/mutations/application	5.551s
+ok  	marketplace-central/apps/server_core/internal/modules/mutations/background	4.771s
+ok  	marketplace-central/apps/server_core/internal/modules/mutations/domain	4.122s
+?   	marketplace-central/apps/server_core/internal/modules/mutations/ports	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/mutations/transport	7.547s
+ok  	marketplace-central/apps/server_core/internal/modules/orders/adapters/integrations	2.061s
+ok  	marketplace-central/apps/server_core/internal/modules/orders/adapters/internalread	5.828s
+ok  	marketplace-central/apps/server_core/internal/modules/orders/adapters/postgres	5.631s
+ok  	marketplace-central/apps/server_core/internal/modules/orders/adapters/pricingtax	3.525s
+ok  	marketplace-central/apps/server_core/internal/modules/orders/adapters/productlinks	3.578s
+ok  	marketplace-central/apps/server_core/internal/modules/orders/application	3.857s
+ok  	marketplace-central/apps/server_core/internal/modules/orders/domain	3.541s
+ok  	marketplace-central/apps/server_core/internal/modules/orders/ports	3.417s
+ok  	marketplace-central/apps/server_core/internal/modules/orders/transport	5.510s
+ok  	marketplace-central/apps/server_core/internal/modules/pricing/adapters/catalog	3.418s
+ok  	marketplace-central/apps/server_core/internal/modules/pricing/adapters/costread	3.045s
+ok  	marketplace-central/apps/server_core/internal/modules/pricing/adapters/marketplace	3.423s
+ok  	marketplace-central/apps/server_core/internal/modules/pricing/adapters/postgres	2.993s
+ok  	marketplace-central/apps/server_core/internal/modules/pricing/adapters/tariffcomposite	2.610s
+ok  	marketplace-central/apps/server_core/internal/modules/pricing/adapters/tariffdefaults	2.926s
+ok  	marketplace-central/apps/server_core/internal/modules/pricing/adapters/tarifflive	2.734s
+ok  	marketplace-central/apps/server_core/internal/modules/pricing/application	3.335s
+ok  	marketplace-central/apps/server_core/internal/modules/pricing/domain	101.298s
+?   	marketplace-central/apps/server_core/internal/modules/pricing/events	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/pricing/ports	3.366s
+?   	marketplace-central/apps/server_core/internal/modules/pricing/readmodel	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/pricing/transport	5.982s
+ok  	marketplace-central/apps/server_core/internal/modules/product_links/adapters/connectors	1.483s
+?   	marketplace-central/apps/server_core/internal/modules/product_links/adapters/postgres	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/product_links/application	2.423s
+ok  	marketplace-central/apps/server_core/internal/modules/product_links/composition	2.105s
+ok  	marketplace-central/apps/server_core/internal/modules/product_links/domain	1.713s
+?   	marketplace-central/apps/server_core/internal/modules/product_links/ports	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/product_links/transport	3.129s
+?   	marketplace-central/apps/server_core/internal/modules/profitability/adapters/internalread	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/profitability/adapters/orders	2.400s
+?   	marketplace-central/apps/server_core/internal/modules/profitability/adapters/postgres	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/profitability/application	2.500s
+?   	marketplace-central/apps/server_core/internal/modules/profitability/domain	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/profitability/ports	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/profitability/transport	6.289s
+ok  	marketplace-central/apps/server_core/internal/modules/sourcekind	3.733s
+?   	marketplace-central/apps/server_core/internal/modules/sync/adapters/postgres	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/sync/application	3.776s
+ok  	marketplace-central/apps/server_core/internal/modules/sync/composition	4.252s
+?   	marketplace-central/apps/server_core/internal/modules/sync/domain	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/tenant_config	5.512s
+ok  	marketplace-central/apps/server_core/internal/modules/tenant_config/transport	4.857s
+?   	marketplace-central/apps/server_core/internal/platform/config	[no test files]
+ok  	marketplace-central/apps/server_core/internal/platform/httpx	3.455s
+?   	marketplace-central/apps/server_core/internal/platform/logging	[no test files]
+ok  	marketplace-central/apps/server_core/internal/platform/migrate	3.289s
+ok  	marketplace-central/apps/server_core/internal/platform/pgdb	2.928s
+ok  	marketplace-central/apps/server_core/internal/testsupport/postgres	2.849s
+ok  	marketplace-central/apps/server_core/migrations	3.767s
+ok  	marketplace-central/apps/server_core/tests/integration	4.687s
+ok  	marketplace-central/apps/server_core/tests/unit	4.463s

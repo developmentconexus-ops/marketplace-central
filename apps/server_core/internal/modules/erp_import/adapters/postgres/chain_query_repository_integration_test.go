@@ -235,3 +235,242 @@ func TestGetImportChainMissingAndProtocolWithoutSyncState(t *testing.T) {
 		t.Fatalf("chain=%#v", got)
 	}
 }
+
+// TestGetImportChainCountsLeadingZeroCodprod pins the resolved_products join
+// fix: erp_import_products.codprod keeps the raw spreadsheet string
+// ('00101'), while product_links.internal_product_id is a ParseInt'd integer
+// column (101). Compared as text, '00101' = '101' is false and this fixture's
+// linked product silently dropped out of vinculados. The comparison is
+// numeric, so the padding is irrelevant without any key being folded.
+func TestGetImportChainCountsLeadingZeroCodprod(t *testing.T) {
+	ctx := context.Background()
+	repo, tenant := integrationRepo(t)
+	pool, _ := testpostgres.OpenPool(t, tenant)
+	importID := domain.ImportID("64000000-0000-0000-0000-000000000001")
+
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM sync_state WHERE tenant_id=$1`, tenant)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM product_links WHERE tenant_id=$1`, tenant)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM erp_import_products WHERE tenant_id=$1`, tenant)
+	})
+
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO erp_import_protocols
+			(id, tenant_id, file_sha256, protocol, source, imported_at, status, accepted_count, rejected_count, warning_count)
+		VALUES ($1, $2, 'chain-leading-zero-hash', '#640-E', 'xlsx', now(), 'COMPLETED', 1, 0, 0);
+	`, importID, tenant); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO erp_import_products (tenant_id, protocol_id, codprod, descrprod, custo, stock_physical)
+		VALUES ($2, $1, '00101', 'Product 00101', 1, 0);
+	`, importID, tenant); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO product_links
+			(tenant_id, installation_id, provider_code, provider_item_id, state, internal_product_id)
+		VALUES ($1, 'installation-a', 'mercadolivre', 'item-00101', 'resolved', 101);
+	`, tenant); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := repo.GetImportChain(ctx, tenant, importID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Protocol != "#640-E" || got.Importados != 1 || got.Vinculados != 1 || got.Enfileirados != 0 {
+		t.Fatalf("chain=%#v", got)
+	}
+}
+
+// TestGetImportChainCountsCollidingCodprodsOnce pins the resolved_products
+// OVERCOUNT that canonicalizing BOTH sides created. An ERP file can carry
+// '101' and '00101' as two rows — erp_import_products.codprod is TEXT and its
+// primary key treats them as distinct — while product_links carries ONE link,
+// to internal product 101. Under ltrim-both-sides the two rows folded onto one
+// join key and both matched: vinculados = 2 for a single linked product. The
+// truth is 1, and it is 1 only because the counted key is the link's
+// internal_product_id; exact numeric comparison alone still matches both rows.
+func TestGetImportChainCountsCollidingCodprodsOnce(t *testing.T) {
+	ctx := context.Background()
+	repo, tenant := integrationRepo(t)
+	pool, _ := testpostgres.OpenPool(t, tenant)
+	importID := domain.ImportID("67000000-0000-0000-0000-000000000001")
+
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM product_links WHERE tenant_id=$1`, tenant)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM erp_import_products WHERE tenant_id=$1`, tenant)
+	})
+
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO erp_import_protocols
+			(id, tenant_id, file_sha256, protocol, source, imported_at, status, accepted_count, rejected_count, warning_count)
+		VALUES ($1, $2, 'chain-colliding-codprod-hash', '#670-E', 'xlsx', now(), 'COMPLETED', 2, 0, 0);
+	`, importID, tenant); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO erp_import_products (tenant_id, protocol_id, codprod, descrprod, custo, stock_physical)
+		VALUES
+			($2, $1, '101', 'Product 101', 1, 0),
+			($2, $1, '00101', 'Product 00101', 1, 0);
+	`, importID, tenant); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO product_links
+			(tenant_id, installation_id, provider_code, provider_item_id, state, internal_product_id)
+		VALUES ($1, 'installation-a', 'mercadolivre', 'item-101', 'resolved', 101);
+	`, tenant); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := repo.GetImportChain(ctx, tenant, importID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// importados counts rows and vinculados counts linked products, so 2 and 1
+	// are both exact here — the numbers are allowed to differ, but only when
+	// the file really did name one product twice.
+	if got.Protocol != "#670-E" || got.Importados != 2 || got.Vinculados != 1 {
+		t.Fatalf("chain=%#v", got)
+	}
+}
+
+// TestGetImportChainQueueMatchesCodprodExactly pins the queued_products join
+// as EXACT string equality, and the overcount that canonicalizing it produced.
+//
+// Both sides of that join are the same raw string out of the same slice:
+// import_service builds `codes` from the accepted rows' Codprod and passes it
+// to MarketEnqueuer.EnqueueMarketProducts → AppendPendingCodigos, which writes
+// it verbatim into cursor->'pending'; those same accepted rows are what
+// CopyFrom writes as erp_import_products.codprod. No other writer exists —
+// AppendPendingCodigo (singular) has zero callers, and ProductsCursor has no
+// pending field. Raw equality is therefore already the exact comparison, and
+// ltrim only bought collisions: 'ABC' and '00ABC' are two import rows, and the
+// single pending "ABC" counted both.
+//
+// The fixture holds all three cases at once: a padded codprod queued under its
+// own padded value ('00101'), the ltrim collision pair, and a pending entry
+// that belongs to no row of this import ("OUTSIDE").
+func TestGetImportChainQueueMatchesCodprodExactly(t *testing.T) {
+	ctx := context.Background()
+	repo, tenant := integrationRepo(t)
+	pool, _ := testpostgres.OpenPool(t, tenant)
+	importID := domain.ImportID("66000000-0000-0000-0000-000000000001")
+
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM sync_state WHERE tenant_id=$1`, tenant)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM product_links WHERE tenant_id=$1`, tenant)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM erp_import_products WHERE tenant_id=$1`, tenant)
+	})
+
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO erp_import_protocols
+			(id, tenant_id, file_sha256, protocol, source, imported_at, status, accepted_count, rejected_count, warning_count)
+		VALUES ($1, $2, 'chain-queue-exact-hash', '#660-E', 'xlsx', now(), 'COMPLETED', 3, 0, 0);
+	`, importID, tenant); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO erp_import_products (tenant_id, protocol_id, codprod, descrprod, custo, stock_physical)
+		VALUES
+			($2, $1, '00101', 'Product 00101', 1, 0),
+			($2, $1, 'ABC', 'Product ABC', 1, 0),
+			($2, $1, '00ABC', 'Product 00ABC', 1, 0);
+	`, importID, tenant); err != nil {
+		t.Fatal(err)
+	}
+	// '00101' is linked as internal product 101, which vinculados reaches by
+	// numeric comparison. 'ABC' and '00ABC' are non-numeric and can never be
+	// linked, which is correct: internal_product_id is an integer column.
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO product_links
+			(tenant_id, installation_id, provider_code, provider_item_id, state, internal_product_id)
+		VALUES ($1, 'installation-a', 'mercadolivre', 'item-00101', 'resolved', 101);
+	`, tenant); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO sync_state (tenant_id, installation_id, entity, cursor)
+		VALUES ($1, 'installation-a', 'market', '{"pending":["00101","ABC","OUTSIDE"]}'::jsonb);
+	`, tenant); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := repo.GetImportChain(ctx, tenant, importID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// enfileirados = 2: '00101' and 'ABC'. '00ABC' is a different row that was
+	// never queued (ltrim made it a third), "OUTSIDE" belongs to no row here.
+	if got.Protocol != "#660-E" || got.Importados != 3 || got.Vinculados != 1 || got.Enfileirados != 2 {
+		t.Fatalf("chain=%#v", got)
+	}
+}
+
+// TestGetImportChainNonArrayPendingCursorDoesNotFailQuery pins the
+// queued_products CASE guard: sync_state.cursor->'pending' is normally a
+// JSON array, but a malformed or partial cursor write can leave it as an
+// object or a scalar. Before the jsonb_typeof guard,
+// jsonb_array_elements_text raised at query time (not a valid JSON array)
+// and took the whole chain endpoint down for the tenant instead of reading
+// as an empty queue.
+func TestGetImportChainNonArrayPendingCursorDoesNotFailQuery(t *testing.T) {
+	ctx := context.Background()
+	repo, tenant := integrationRepo(t)
+	pool, _ := testpostgres.OpenPool(t, tenant)
+
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM sync_state WHERE tenant_id=$1`, tenant)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM erp_import_products WHERE tenant_id=$1`, tenant)
+	})
+
+	cases := []struct {
+		name           string
+		cursor         string
+		importID       domain.ImportID
+		protocol       string
+		installationID string
+	}{
+		{name: "pending as object", cursor: `{"pending":{"foo":"bar"}}`, importID: domain.ImportID("65000000-0000-0000-0000-000000000001"), protocol: "#651-E", installationID: "installation-non-array-object"},
+		{name: "pending as scalar", cursor: `{"pending":"501"}`, importID: domain.ImportID("65000000-0000-0000-0000-000000000002"), protocol: "#652-E", installationID: "installation-non-array-scalar"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			importID := tc.importID
+			if _, err := pool.Exec(ctx, `
+				INSERT INTO erp_import_protocols
+					(id, tenant_id, file_sha256, protocol, source, imported_at, status, accepted_count, rejected_count, warning_count)
+				VALUES ($1, $2, $3, $4, 'xlsx', now(), 'COMPLETED', 1, 0, 0);
+			`, importID, tenant, "chain-non-array-hash-"+tc.name, tc.protocol); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := pool.Exec(ctx, `
+				INSERT INTO erp_import_products (tenant_id, protocol_id, codprod, descrprod, custo, stock_physical)
+				VALUES ($2, $1, '501', 'Product 501', 1, 0);
+			`, importID, tenant); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := pool.Exec(ctx, `
+				INSERT INTO sync_state (tenant_id, installation_id, entity, cursor)
+				VALUES ($1, $3, 'market', $2::jsonb);
+			`, tenant, tc.cursor, tc.installationID); err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				_, _ = pool.Exec(context.Background(), `DELETE FROM erp_import_protocols WHERE id=$1 AND tenant_id=$2`, importID, tenant)
+			})
+
+			got, err := repo.GetImportChain(ctx, tenant, importID)
+			if err != nil {
+				t.Fatalf("expected a valid response, got query error: %v", err)
+			}
+			if got.Protocol != domain.Protocol(tc.protocol) || got.Importados != 1 || got.Enfileirados != 0 {
+				t.Fatalf("chain=%#v", got)
+			}
+		})
+	}
+}

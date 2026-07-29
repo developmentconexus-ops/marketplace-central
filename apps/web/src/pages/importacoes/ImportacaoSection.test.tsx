@@ -86,7 +86,7 @@ describe("ImportacaoSection", () => {
     expect(screen.getByText("Rejeitada")).toBeInTheDocument();
     expect(screen.getByText("42")).toBeInTheDocument();
     expect(screen.getByText("3")).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: "Ver cadeia" })[0]).toHaveAttribute("href", "/importacoes/imp_1");
+    expect(screen.getAllByRole("link", { name: "Ver estado" })[0]).toHaveAttribute("href", "/importacoes/imp_1");
   });
 
   // A fonte é o que explica por que um campo do espelho está "—": a exportação

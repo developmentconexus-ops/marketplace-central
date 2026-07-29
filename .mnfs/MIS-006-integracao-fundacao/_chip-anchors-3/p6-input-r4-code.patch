@@ -1,0 +1,77 @@
+diff --git a/apps/server_core/internal/modules/product_links/application/generation_service_test.go b/apps/server_core/internal/modules/product_links/application/generation_service_test.go
+index 62129675..b756d20b 100644
+--- a/apps/server_core/internal/modules/product_links/application/generation_service_test.go
++++ b/apps/server_core/internal/modules/product_links/application/generation_service_test.go
+@@ -398,9 +398,18 @@ func TestNamedMissingAnchorSitesAreIncomparableWithCorrectSide(t *testing.T) {
+ 		side     productlinksdomain.LinkCandidateReasonSide
+ 	}{
+ 		// Every product fixture below carries a canonical id, because
+-		// generation_service.go's findProducts drops candidates without one before
+-		// any candidate exists: a `ProductCandidate{}` is unreachable in
+-		// production, and an assertion over it pins nothing (B-01).
++		// findProducts drops matcher candidates without one before any candidate
++		// exists (generation_service.go:277-283): a product that reaches this
++		// comparison through the matcher always has a CODPROD, so asserting over
++		// a zeroed ProductCandidate{} here would pin a shape the matcher cannot
++		// produce (B-01).
++		//
++		// The zero value itself is NOT unreachable in production: newCandidate
++		// takes it literally on the unresolved, conflict and collision paths
++		// (generation_service.go:215, :340, :379). Those paths carry no product
++		// at all, and they are pinned by
++		// TestUnresolvedListingSellerSKUIsIncomparableOnTheERPSide and
++		// TestConcordantCandidateDoesNotDerefNilProduct, not here.
+ 		"exact SKU listing EAN empty": {
+ 			state:    productlinksdomain.LinkCandidateStateExactSKU,
+ 			snapshot: productlinksdomain.ListingSnapshot{SellerSKU: "SKU-1"},
+@@ -541,13 +550,25 @@ func TestSellerSKUAnchorReadsCanonicalCodprodNotSupplierReference(t *testing.T)
+ }
+ 
+ // TestConcordantCandidateDoesNotDerefNilProduct pins the guard, not a
+-// production path: the single call site (buildExactCandidates) always passes a
+-// non-nil pointer, so production reachability is NOT proven. What is proven is
+-// that this scorer nil-checks the product like both of its siblings, so it no
+-// longer panics. It does NOT degrade like them: the siblings degrade into
+-// ABSENCE reasons, while this scorer degrades into CORROBORATION over a
+-// zeroed ProductCandidate{} — seller_sku and ean FOR reasons at
+-// Confidence 95, band ALTA, status ACCEPT.
++// production path: the only PRODUCTION call site is buildExactCandidates
++// (generation_service.go:303), which passes &product — the address of a local,
++// never nil — so production reachability is NOT proven. This test is the other
++// call site, and it passes nil deliberately.
++//
++// What is proven is that this scorer no longer panics on a nil product. Two
++// things that are NOT proven, because they are not true:
++//
++//   - It does not nil-CHECK like both siblings. applySingleAnchorScore:522-524
++//     carries the same guard, but applyUnresolvedScore checks nothing — it
++//     hard-codes nil into missingMatchedAnchorReason (:635-636) and lets the
++//     `product == nil` arm absorb it.
++//   - It does not degrade like them. applyUnresolvedScore degrades into pure
++//     absence (confidence 0, NO_CANDIDATE). applySingleAnchorScore degrades
++//     only its product-READING reason into absence and still emits its own
++//     anchor FOR reason — e.g. seller_sku FOR at :544, at 70/MEDIA/CONFIRM.
++//     This scorer degrades into full CORROBORATION over a zeroed
++//     ProductCandidate{}: seller_sku and ean FOR at Confidence 95, band ALTA,
++//     status ACCEPT, asserted below.
+ func TestConcordantCandidateDoesNotDerefNilProduct(t *testing.T) {
+ 	t.Parallel()
+ 	now := time.Date(2026, 7, 28, 9, 30, 0, 0, time.UTC)
+@@ -639,8 +660,15 @@ func TestUnresolvedDeclaredAnchorReadsProviderValueWithoutERPProduct(t *testing.
+ // ERP product (generation_service.go: `applyUnresolvedScore(&unresolved,
+ // newProviderIdentityAnchorComparison(snapshot, identityAnchors, nil))`). A
+ // listing that carries a seller_sku matching no product has a provider value
+-// and no ERP counterpart at all, so the honest side is erp — the one direction
+-// no other seller_sku assertion in this file covers.
++// and no ERP counterpart at all, so the honest side is erp.
++//
++// That side is NOT uncovered elsewhere, and this test does not claim to
++// restore it: TestCase8NoAnchorResolvedYieldsZeroConfidenceNoCandidateWithReasons
++// already asserts seller_sku INCOMPARABLE with Side=erp through the same
++// production path, and it predates this chip. What this test adds over Case 8
++// is the Detail string — "seller_sku sem correspondência" — which Case 8 names
++// only inside its t.Fatalf message and never asserts. The rest is
++// corroboration.
+ //
+ // The provider here DOES declare seller_sku (mercadoLivreIdentityAnchorReader),
+ // so this also pins that the declared-anchor pass leaves the seeded side

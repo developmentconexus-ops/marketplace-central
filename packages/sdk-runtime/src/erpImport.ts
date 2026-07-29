@@ -45,10 +45,22 @@ export interface ErpImportDetail extends ErpImportSummary {
   warnings: ErpImportIssue[];
 }
 
+/**
+ * Three measures over one ERP import — not stages of a funnel and not one
+ * population decomposed. Two units: `importados` and `enfileirados` count import ROWS,
+ * `vinculados` counts internal PRODUCTS. `enfileirados > vinculados` is a normal state.
+ *
+ * The name "chain" — here, in `getErpImportChain` and in the `/chain` path — survives only
+ * because renaming it would break published consumers. It asserts no sequence: infer no
+ * ordering between the three measures from it.
+ */
 export interface ErpImportChain {
   protocol: string;
+  /** Rows of this import. A file naming the same product twice contributes two. */
   importados: number;
+  /** DISTINCT internal products with a resolved link — not a subset of `importados`. */
   vinculados: number;
+  /** Rows of this import in the market sync queue at `queue_read_at`; falls as it drains. */
   enfileirados: number;
   queue_read_at: string;
 }
@@ -64,7 +76,18 @@ export interface ErpImportCreated {
 }
 
 export interface ErpImportError {
-  error: "invalid_file" | "missing_required_column" | "import_not_found" | "internal_error";
+  /**
+   * "invalid_import_id" (400) is the malformed-`{id}` answer on both `{id}`
+   * routes: the path value is not a UUID, so it never reaches the query. It
+   * exists so a caller can tell a bad request from a server failure, which a
+   * blanket 500 hid.
+   */
+  error:
+    | "invalid_file"
+    | "missing_required_column"
+    | "invalid_import_id"
+    | "import_not_found"
+    | "internal_error";
   detail?: string;
   column?: string;
 }

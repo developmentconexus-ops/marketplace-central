@@ -83,23 +83,78 @@ func (r *Repository) GetImportChain(ctx context.Context, tenantID string, import
 			WHERE products.tenant_id = $1
 		),
 		resolved_products AS (
-			SELECT DISTINCT products.codprod AS codprod
+			-- The two sides reach this join through different pipelines:
+			-- erp_import_products.codprod keeps the raw spreadsheet string (TEXT,
+			-- 0046, and its primary key lets '101' and '00101' coexist as two
+			-- rows), while product_links.internal_product_id is a ParseInt'd
+			-- integer column (0025) — the only identity a link carries for an ERP
+			-- product, since internal_reference_code holds refforn and not codprod
+			-- (product_links/application.newCandidate). A raw '00101' therefore
+			-- linked as 101 and compared '101' = '00101' → false.
+			--
+			-- ltrim on BOTH sides fixed that by making '101' and '00101' one key,
+			-- which is a LOSING canonicalization: an import carrying both rows then
+			-- counted the single linked product TWICE. Exact numeric comparison
+			-- instead — a codprod names internal product N when, read as a number,
+			-- it IS N — with the counted key moved to links.internal_product_id,
+			-- because two import rows naming the same internal product are one
+			-- linked product, and DISTINCT on the codprod text would still yield 2.
+			--
+			-- CASE, not "codprod ~ '^[0-9]+$' AND codprod::bigint = id": a join
+			-- predicate carries no evaluation-order guarantee, so the planner is
+			-- free to cast a non-numeric codprod before the filter rejects it and
+			-- raise 22P02 at query time. CASE evaluates WHEN before THEN by
+			-- definition of the language. The digit bound keeps an oversized
+			-- codprod out of the cast (22003) and is measured after the padding is
+			-- stripped, so only significant digits count; 18 covers every value an
+			-- integer column can hold.
+			SELECT DISTINCT links.internal_product_id AS internal_product_id
 			FROM import_products AS products
 			JOIN product_links AS links
-			  ON links.internal_product_id::text = products.codprod
+			  ON links.internal_product_id = CASE
+			         WHEN products.codprod ~ '^[0-9]+$'
+			          AND length(ltrim(products.codprod, '0')) <= 18
+			         THEN products.codprod::bigint
+			     END
 			WHERE links.tenant_id = $1
 			  AND links.state = 'resolved'
 		),
 		queued_products AS (
+			-- Both sides of this join are the SAME raw string out of the same
+			-- slice, established by reading the producer chain: import_service
+			-- builds its codes slice from the accepted rows' Codprod and passes it to
+			-- MarketEnqueuer.EnqueueMarketProducts, which hands it unchanged to
+			-- AppendPendingCodigos → cursor->'pending'; those same accepted rows
+			-- are what CopyFrom writes as erp_import_products.codprod. No other
+			-- writer exists — AppendPendingCodigo (singular) has zero callers and
+			-- ProductsCursor has no pending field. Raw equality was therefore
+			-- already the EXACT comparison, and ltrim on both sides only bought
+			-- collisions: 'ABC' and '00ABC' are two import rows, and a single
+			-- pending "ABC" counted both. The counted key is the raw codprod,
+			-- which is the row identity importados counts.
+			--
+			-- COALESCE only defends against NULL. A cursor whose 'pending' is an
+			-- object or a scalar makes jsonb_array_elements_text raise at query
+			-- time and takes the whole endpoint down for the tenant, so the type
+			-- is checked before expansion. CASE (not AND) because a join/filter
+			-- predicate gives no evaluation-order guarantee.
 			SELECT DISTINCT products.codprod AS codprod
 			FROM sync_state AS state
 			CROSS JOIN LATERAL jsonb_array_elements_text(
-				COALESCE(state.cursor -> 'pending', '[]'::jsonb)
+				CASE
+					WHEN jsonb_typeof(state.cursor -> 'pending') = 'array'
+						THEN state.cursor -> 'pending'
+					ELSE '[]'::jsonb
+				END
 			) AS pending(codprod)
-			JOIN import_products AS products ON products.codprod = pending.codprod
+			JOIN import_products AS products
+			  ON products.codprod = pending.codprod
 			WHERE state.tenant_id = $1
 			  AND state.entity = 'market'
 		)
+		-- importados and enfileirados count import ROWS; vinculados counts linked
+		-- internal PRODUCTS. All three differ without any duplicate: a row may
+		-- resolve to no product, and only part of the import stays pending.
 		SELECT target.protocol AS protocol,
 		       (SELECT count(*) FROM import_products) AS importados,
 		       (SELECT count(*) FROM resolved_products) AS vinculados,

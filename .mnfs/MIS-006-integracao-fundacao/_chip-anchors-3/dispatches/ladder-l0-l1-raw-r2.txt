@@ -1,0 +1,549 @@
+### CHIP-ANCHORS-3 ladder L0/L1 — recaptured verbatim (round 2)
+### cwd=/c/Users/leandro.theodoro/Documents/marketplace-central/.claude/worktrees/happy-montalcini-b010c0/apps/server_core
+
+$ go build ./...
+EXIT=0
+
+$ go vet ./...
+EXIT=0
+
+$ go vet -tags=integration ./internal/modules/erp_import/...
+EXIT=0
+
+$ go test -count=10 -run 'TestProviderUnavailableReasonOrderingIsStable|TestHardNegativeDimensionStableEquivalentDisplay' -v ./internal/modules/product_links/...
+     10 --- PASS: TestHardNegativeDimensionStableEquivalentDisplay (0.00s)
+     10 --- PASS: TestProviderUnavailableReasonOrderingIsStable (0.00s)
+      1 ?   	marketplace-central/apps/server_core/internal/modules/product_links/adapters/postgres	[no test files]
+      1 ?   	marketplace-central/apps/server_core/internal/modules/product_links/ports	[no test files]
+      1 ok  	marketplace-central/apps/server_core/internal/modules/product_links/adapters/connectors	1.980s [no tests to run]
+      1 ok  	marketplace-central/apps/server_core/internal/modules/product_links/application	1.959s
+      1 ok  	marketplace-central/apps/server_core/internal/modules/product_links/composition	1.581s [no tests to run]
+      1 ok  	marketplace-central/apps/server_core/internal/modules/product_links/domain	1.586s [no tests to run]
+      1 ok  	marketplace-central/apps/server_core/internal/modules/product_links/transport	2.569s [no tests to run]
+
+$ go test -count=1 ./...
+?   	marketplace-central/apps/server_core/cmd/migrate	[no test files]
+?   	marketplace-central/apps/server_core/cmd/server	[no test files]
+?   	marketplace-central/apps/server_core/cmd/testdb	[no test files]
+# marketplace-central/apps/server_core/internal/modules/dashboard/transport.test
+fatal error: runtime: cannot allocate memory
+
+runtime stack:
+runtime.throw({0x7ff77e3a0f45?, 0x0?})
+	runtime/panic.go:1229 +0x4d fp=0x7b33bff5a8 sp=0x7b33bff578 pc=0x7ff77e09302d
+runtime.persistentalloc1(0x3fc0, 0x2509?, 0x7ff77e692968)
+	runtime/malloc.go:2379 +0x265 fp=0x7b33bff600 sp=0x7b33bff5a8 pc=0x7ff77e02ef05
+runtime.persistentalloc.func1()
+	runtime/malloc.go:2332 +0x28 fp=0x7b33bff630 sp=0x7b33bff600 pc=0x7ff77e02ec88
+runtime.persistentalloc(0x1421bfba4f00?, 0x7b33bff6c8?, 0xffffffffffe00000?)
+	runtime/malloc.go:2331 +0x45 fp=0x7b33bff678 sp=0x7b33bff630 pc=0x7ff77e02ec25
+runtime.(*fixalloc).alloc(0x7ff77e667f38)
+	runtime/mfixalloc.go:90 +0x77 fp=0x7b33bff6b0 sp=0x7b33bff678 pc=0x7ff77e037217
+runtime.(*mheap).allocMSpanLocked(0x7ff77e6514a0)
+	runtime/mheap.go:1172 +0x9a fp=0x7b33bff6d8 sp=0x7b33bff6b0 pc=0x7ff77e049cfa
+runtime.(*mheap).allocSpan(0x7ff77e6514a0, 0x1, 0x0, 0x6)
+	runtime/mheap.go:1313 +0x225 fp=0x7b33bff788 sp=0x7b33bff6d8 pc=0x7ff77e049f65
+runtime.(*mheap).alloc.func1()
+	runtime/mheap.go:1017 +0x5c fp=0x7b33bff7d0 sp=0x7b33bff788 pc=0x7ff77e04999c
+runtime.systemstack(0x1421bfba4f00)
+	runtime/asm_amd64.s:562 +0x49 fp=0x7b33bff7e0 sp=0x7b33bff7d0 pc=0x7ff77e098489
+
+goroutine 43 gp=0x1421bfc09a40 m=4 mp=0x1421bfbbe008 [running]:
+runtime.systemstack_switch()
+	runtime/asm_amd64.s:516 +0x8 fp=0x1421c8e47c08 sp=0x1421c8e47bf8 pc=0x7ff77e098428
+runtime.(*mheap).alloc(0x0?, 0x191b?, 0x0?)
+	runtime/mheap.go:1011 +0x57 fp=0x1421c8e47c50 sp=0x1421c8e47c08 pc=0x7ff77e0498f7
+runtime.(*mcentral).grow(0x2000?)
+	runtime/mcentral.go:253 +0x36 fp=0x1421c8e47c80 sp=0x1421c8e47c50 pc=0x7ff77e031c96
+runtime.(*mcentral).cacheSpan(0x7ff77e661db8)
+	runtime/mcentral.go:171 +0x454 fp=0x1421c8e47cf8 sp=0x1421c8e47c80 pc=0x7ff77e031b14
+runtime.(*mcache).refill(0x1a233933b60, 0x0?)
+	runtime/mcache.go:205 +0x16b fp=0x1421c8e47d38 sp=0x1421c8e47cf8 pc=0x7ff77e0310eb
+runtime.(*mcache).nextFree(0x1a233933b60, 0x6)
+	runtime/malloc.go:1006 +0x7e fp=0x1421c8e47d70 sp=0x1421c8e47d38 pc=0x7ff77e02d5fe
+runtime.mallocgcSmallScanNoHeader(0x18, 0x7ff77e32aaa0)
+	runtime/malloc.go:1529 +0x145 fp=0x1421c8e47dd0 sp=0x1421c8e47d70 pc=0x7ff77e02dea5
+runtime.mallocgc(0x18, 0x7ff77e32aaa0, 0x1)
+	runtime/malloc.go:1150 +0xa5 fp=0x1421c8e47e00 sp=0x1421c8e47dd0 pc=0x7ff77e091165
+runtime.convTslice({0x7ff77e68f4e0, 0x0, 0x0})
+	runtime/iface.go:443 +0x45 fp=0x1421c8e47e28 sp=0x1421c8e47e00 pc=0x7ff77e090f25
+cmd/link/internal/ld.(*dodataState).dodataSect(0x0?, 0x1421bfb26400, 0x9, {0x0, 0x0, 0x0})
+	cmd/link/internal/ld/data.go:2396 +0x5d4 fp=0x1421c8e47f80 sp=0x1421c8e47e28 pc=0x7ff77e1f2854
+cmd/link/internal/ld.(*Link).dodata.func1()
+	cmd/link/internal/ld/data.go:1729 +0x5d fp=0x1421c8e47fe0 sp=0x1421c8e47f80 pc=0x7ff77e1ec15d
+runtime.goexit({})
+	runtime/asm_amd64.s:1771 +0x1 fp=0x1421c8e47fe8 sp=0x1421c8e47fe0 pc=0x7ff77e09a0c1
+created by cmd/link/internal/ld.(*Link).dodata in goroutine 1
+	cmd/link/internal/ld/data.go:1728 +0x5b7
+
+goroutine 1 gp=0x1421bfba4000 m=nil [sync.WaitGroup.Wait]:
+runtime.gopark(0x1421c001b5a8?, 0x7ff77e02df74?, 0x10?, 0x83?, 0x1421c001b50a?)
+	runtime/proc.go:462 +0xce fp=0x1421c001b548 sp=0x1421c001b528 pc=0x7ff77e09314e
+runtime.goparkunlock(...)
+	runtime/proc.go:468
+runtime.semacquire1(0x1421c8dcb758, 0x0, 0x1, 0x0, 0x19)
+	runtime/sema.go:192 +0x245 fp=0x1421c001b5b0 sp=0x1421c001b548 pc=0x7ff77e0742c5
+sync.runtime_SemacquireWaitGroup(0x1421c8f600f0?, 0x0?)
+	runtime/sema.go:114 +0x2e fp=0x1421c001b5e8 sp=0x1421c001b5b0 pc=0x7ff77e09446e
+sync.(*WaitGroup).Wait(0x1421c8dcb750)
+	sync/waitgroup.go:206 +0x85 fp=0x1421c001b610 sp=0x1421c001b5e8 pc=0x7ff77e0a2b85
+cmd/link/internal/ld.(*Link).dodata(0x1421bfb26400, {0x1421c8c80000, 0x4b62b, 0x4b62b})
+	cmd/link/internal/ld/data.go:1733 +0x64a fp=0x1421c001b708 sp=0x1421c001b610 pc=0x7ff77e1eb5ca
+cmd/link/internal/ld.Main(_, {0x20, 0x20, 0x1, 0x7, 0x10, 0x0, {0x1421bfb306b9, 0x1, 0x1}, ...})
+	cmd/link/internal/ld/main.go:439 +0x1a7b fp=0x1421c001bac8 sp=0x1421c001b708 pc=0x7ff77e24b77b
+main.main()
+	cmd/link/main.go:72 +0x131e fp=0x1421c001bf48 sp=0x1421c001bac8 pc=0x7ff77e2f247e
+runtime.main()
+	runtime/proc.go:290 +0x2c7 fp=0x1421c001bfe0 sp=0x1421c001bf48 pc=0x7ff77e05ff67
+runtime.goexit({})
+	runtime/asm_amd64.s:1771 +0x1 fp=0x1421c001bfe8 sp=0x1421c001bfe0 pc=0x7ff77e09a0c1
+
+goroutine 2 gp=0x1421bfba4780 m=nil [force gc (idle)]:
+runtime.gopark(0x0?, 0x0?, 0x0?, 0x0?, 0x0?)
+	runtime/proc.go:462 +0xce fp=0x1421bfba7fa8 sp=0x1421bfba7f88 pc=0x7ff77e09314e
+runtime.goparkunlock(...)
+	runtime/proc.go:468
+runtime.forcegchelper()
+	runtime/proc.go:375 +0xb8 fp=0x1421bfba7fe0 sp=0x1421bfba7fa8 pc=0x7ff77e060258
+runtime.goexit({})
+	runtime/asm_amd64.s:1771 +0x1 fp=0x1421bfba7fe8 sp=0x1421bfba7fe0 pc=0x7ff77e09a0c1
+created by runtime.init.7 in goroutine 1
+	runtime/proc.go:363 +0x1a
+
+goroutine 3 gp=0x1421bfba4b40 m=nil [GC sweep wait]:
+runtime.gopark(0x1?, 0x0?, 0x0?, 0x0?, 0x0?)
+	runtime/proc.go:462 +0xce fp=0x1421bfba9f88 sp=0x1421bfba9f68 pc=0x7ff77e09314e
+runtime.goparkunlock(...)
+	runtime/proc.go:468
+runtime.bgsweep(0x1421bfb4a100)
+	runtime/mgcsweep.go:324 +0x151 fp=0x1421bfba9fc8 sp=0x1421bfba9f88 pc=0x7ff77e0461b1
+runtime.gcenable.gowrap1()
+	runtime/mgc.go:214 +0x17 fp=0x1421bfba9fe0 sp=0x1421bfba9fc8 pc=0x7ff77e0374b7
+runtime.goexit({})
+	runtime/asm_amd64.s:1771 +0x1 fp=0x1421bfba9fe8 sp=0x1421bfba9fe0 pc=0x7ff77e09a0c1
+created by runtime.gcenable in goroutine 1
+	runtime/mgc.go:214 +0x66
+
+goroutine 4 gp=0x1421bfba4d20 m=nil [GC scavenge wait]:
+runtime.gopark(0x10000?, 0x7ff77e3b2720?, 0x0?, 0x0?, 0x0?)
+	runtime/proc.go:462 +0xce fp=0x1421bfbb7f78 sp=0x1421bfbb7f58 pc=0x7ff77e09314e
+runtime.goparkunlock(...)
+	runtime/proc.go:468
+runtime.(*scavengerState).park(0x7ff77e647040)
+	runtime/mgcscavenge.go:425 +0x49 fp=0x1421bfbb7fa8 sp=0x1421bfbb7f78 pc=0x7ff77e043c29
+runtime.bgscavenge(0x1421bfb4a100)
+	runtime/mgcscavenge.go:658 +0x59 fp=0x1421bfbb7fc8 sp=0x1421bfbb7fa8 pc=0x7ff77e0441b9
+runtime.gcenable.gowrap2()
+	runtime/mgc.go:215 +0x17 fp=0x1421bfbb7fe0 sp=0x1421bfbb7fc8 pc=0x7ff77e037477
+runtime.goexit({})
+	runtime/asm_amd64.s:1771 +0x1 fp=0x1421bfbb7fe8 sp=0x1421bfbb7fe0 pc=0x7ff77e09a0c1
+created by runtime.gcenable in goroutine 1
+	runtime/mgc.go:215 +0xa5
+
+goroutine 5 gp=0x1421bfba50e0 m=nil [GOMAXPROCS updater (idle)]:
+runtime.gopark(0x0?, 0x0?, 0x0?, 0x0?, 0x0?)
+	runtime/proc.go:462 +0xce fp=0x1421bfbb9f88 sp=0x1421bfbb9f68 pc=0x7ff77e09314e
+runtime.goparkunlock(...)
+	runtime/proc.go:468
+runtime.updateMaxProcsGoroutine()
+	runtime/proc.go:7095 +0xe7 fp=0x1421bfbb9fe0 sp=0x1421bfbb9f88 pc=0x7ff77e06e807
+runtime.goexit({})
+	runtime/asm_amd64.s:1771 +0x1 fp=0x1421bfbb9fe8 sp=0x1421bfbb9fe0 pc=0x7ff77e09a0c1
+created by runtime.defaultGOMAXPROCSUpdateEnable in goroutine 1
+	runtime/proc.go:7083 +0x37
+
+goroutine 6 gp=0x1421bfba52c0 m=nil [finalizer wait]:
+runtime.gopark(0x0?, 0x0?, 0x0?, 0x0?, 0x0?)
+	runtime/proc.go:462 +0xce fp=0x1421bfbb3e20 sp=0x1421bfbb3e00 pc=0x7ff77e09314e
+runtime.runFinalizers()
+	runtime/mfinal.go:210 +0x107 fp=0x1421bfbb3fe0 sp=0x1421bfbb3e20 pc=0x7ff77e036447
+runtime.goexit({})
+	runtime/asm_amd64.s:1771 +0x1 fp=0x1421bfbb3fe8 sp=0x1421bfbb3fe0 pc=0x7ff77e09a0c1
+created by runtime.createfing in goroutine 1
+	runtime/mfinal.go:172 +0x3d
+
+goroutine 7 gp=0x1421bfba54a0 m=nil [cleanup wait]:
+runtime.gopark(0x101000000000000?, 0x3f?, 0x3?, 0x0?, 0x7ff77e5ff340?)
+	runtime/proc.go:462 +0xce fp=0x1421bfbabf68 sp=0x1421bfbabf48 pc=0x7ff77e09314e
+runtime.goparkunlock(...)
+	runtime/proc.go:468
+runtime.(*cleanupQueue).dequeue(0x7ff77e647300)
+	runtime/mcleanup.go:522 +0xd4 fp=0x1421bfbabfa0 sp=0x1421bfbabf68 pc=0x7ff77e0332d4
+runtime.runCleanups()
+	runtime/mcleanup.go:718 +0x45 fp=0x1421bfbabfe0 sp=0x1421bfbabfa0 pc=0x7ff77e033945
+runtime.goexit({})
+	runtime/asm_amd64.s:1771 +0x1 fp=0x1421bfbabfe8 sp=0x1421bfbabfe0 pc=0x7ff77e09a0c1
+created by runtime.(*cleanupQueue).createGs in goroutine 1
+	runtime/mcleanup.go:672 +0xa5
+
+goroutine 8 gp=0x1421bfba5680 m=nil [GC worker (idle)]:
+runtime.gopark(0x0?, 0x0?, 0x0?, 0x0?, 0x0?)
+	runtime/proc.go:462 +0xce fp=0x1421bfbb5f40 sp=0x1421bfbb5f20 pc=0x7ff77e09314e
+runtime.gcBgMarkWorker(0x1421bfb422a0)
+	runtime/mgc.go:1791 +0xeb fp=0x1421bfbb5fc8 sp=0x1421bfbb5f40 pc=0x7ff77e039feb
+runtime.gcBgMarkStartWorkers.gowrap1()
+	runtime/mgc.go:1695 +0x17 fp=0x1421bfbb5fe0 sp=0x1421bfbb5fc8 pc=0x7ff77e039ed7
+runtime.goexit({})
+	runtime/asm_amd64.s:1771 +0x1 fp=0x1421bfbb5fe8 sp=0x1421bfbb5fe0 pc=0x7ff77e09a0c1
+created by runtime.gcBgMarkStartWorkers in goroutine 1
+	runtime/mgc.go:1695 +0x105
+
+goroutine 9 gp=0x1421bfba5860 m=nil [GC worker (idle)]:
+runtime.gopark(0x0?, 0x0?, 0x0?, 0x0?, 0x0?)
+	runtime/proc.go:462 +0xce fp=0x1421bfcf9f40 sp=0x1421bfcf9f20 pc=0x7ff77e09314e
+runtime.gcBgMarkWorker(0x1421bfb422a0)
+	runtime/mgc.go:1791 +0xeb fp=0x1421bfcf9fc8 sp=0x1421bfcf9f40 pc=0x7ff77e039feb
+runtime.gcBgMarkStartWorkers.gowrap1()
+	runtime/mgc.go:1695 +0x17 fp=0x1421bfcf9fe0 sp=0x1421bfcf9fc8 pc=0x7ff77e039ed7
+runtime.goexit({})
+	runtime/asm_amd64.s:1771 +0x1 fp=0x1421bfcf9fe8 sp=0x1421bfcf9fe0 pc=0x7ff77e09a0c1
+created by runtime.gcBgMarkStartWorkers in goroutine 1
+	runtime/mgc.go:1695 +0x105
+
+goroutine 10 gp=0x1421bfba5a40 m=nil [GC worker (idle)]:
+runtime.gopark(0x0?, 0x0?, 0x0?, 0x0?, 0x0?)
+	runtime/proc.go:462 +0xce fp=0x1421bfcfbf40 sp=0x1421bfcfbf20 pc=0x7ff77e09314e
+runtime.gcBgMarkWorker(0x1421bfb422a0)
+	runtime/mgc.go:1791 +0xeb fp=0x1421bfcfbfc8 sp=0x1421bfcfbf40 pc=0x7ff77e039feb
+runtime.gcBgMarkStartWorkers.gowrap1()
+	runtime/mgc.go:1695 +0x17 fp=0x1421bfcfbfe0 sp=0x1421bfcfbfc8 pc=0x7ff77e039ed7
+runtime.goexit({})
+	runtime/asm_amd64.s:1771 +0x1 fp=0x1421bfcfbfe8 sp=0x1421bfcfbfe0 pc=0x7ff77e09a0c1
+created by runtime.gcBgMarkStartWorkers in goroutine 1
+	runtime/mgc.go:1695 +0x105
+
+goroutine 11 gp=0x1421bfba5c20 m=nil [GC worker (idle)]:
+runtime.gopark(0x0?, 0x0?, 0x0?, 0x0?, 0x0?)
+	runtime/proc.go:462 +0xce fp=0x1421bfcf5f40 sp=0x1421bfcf5f20 pc=0x7ff77e09314e
+runtime.gcBgMarkWorker(0x1421bfb422a0)
+	runtime/mgc.go:1791 +0xeb fp=0x1421bfcf5fc8 sp=0x1421bfcf5f40 pc=0x7ff77e039feb
+runtime.gcBgMarkStartWorkers.gowrap1()
+	runtime/mgc.go:1695 +0x17 fp=0x1421bfcf5fe0 sp=0x1421bfcf5fc8 pc=0x7ff77e039ed7
+runtime.goexit({})
+	runtime/asm_amd64.s:1771 +0x1 fp=0x1421bfcf5fe8 sp=0x1421bfcf5fe0 pc=0x7ff77e09a0c1
+created by runtime.gcBgMarkStartWorkers in goroutine 1
+	runtime/mgc.go:1695 +0x105
+
+goroutine 12 gp=0x1421bfcfc000 m=nil [GC worker (idle)]:
+runtime.gopark(0x0?, 0x0?, 0x0?, 0x0?, 0x0?)
+	runtime/proc.go:462 +0xce fp=0x1421bfcf7f40 sp=0x1421bfcf7f20 pc=0x7ff77e09314e
+runtime.gcBgMarkWorker(0x1421bfb422a0)
+	runtime/mgc.go:1791 +0xeb fp=0x1421bfcf7fc8 sp=0x1421bfcf7f40 pc=0x7ff77e039feb
+runtime.gcBgMarkStartWorkers.gowrap1()
+	runtime/mgc.go:1695 +0x17 fp=0x1421bfcf7fe0 sp=0x1421bfcf7fc8 pc=0x7ff77e039ed7
+runtime.goexit({})
+	runtime/asm_amd64.s:1771 +0x1 fp=0x1421bfcf7fe8 sp=0x1421bfcf7fe0 pc=0x7ff77e09a0c1
+created by runtime.gcBgMarkStartWorkers in goroutine 1
+	runtime/mgc.go:1695 +0x105
+
+goroutine 13 gp=0x1421bfcfc1e0 m=nil [GC worker (idle)]:
+runtime.gopark(0x0?, 0x0?, 0x0?, 0x0?, 0x0?)
+	runtime/proc.go:462 +0xce fp=0x1421bffadf40 sp=0x1421bffadf20 pc=0x7ff77e09314e
+runtime.gcBgMarkWorker(0x1421bfb422a0)
+	runtime/mgc.go:1791 +0xeb fp=0x1421bffadfc8 sp=0x1421bffadf40 pc=0x7ff77e039feb
+runtime.gcBgMarkStartWorkers.gowrap1()
+	runtime/mgc.go:1695 +0x17 fp=0x1421bffadfe0 sp=0x1421bffadfc8 pc=0x7ff77e039ed7
+runtime.goexit({})
+	runtime/asm_amd64.s:1771 +0x1 fp=0x1421bffadfe8 sp=0x1421bffadfe0 pc=0x7ff77e09a0c1
+created by runtime.gcBgMarkStartWorkers in goroutine 1
+	runtime/mgc.go:1695 +0x105
+
+goroutine 14 gp=0x1421bfcfc3c0 m=nil [GC worker (idle)]:
+runtime.gopark(0x0?, 0x0?, 0x0?, 0x0?, 0x0?)
+	runtime/proc.go:462 +0xce fp=0x1421bffaff40 sp=0x1421bffaff20 pc=0x7ff77e09314e
+runtime.gcBgMarkWorker(0x1421bfb422a0)
+	runtime/mgc.go:1791 +0xeb fp=0x1421bffaffc8 sp=0x1421bffaff40 pc=0x7ff77e039feb
+runtime.gcBgMarkStartWorkers.gowrap1()
+	runtime/mgc.go:1695 +0x17 fp=0x1421bffaffe0 sp=0x1421bffaffc8 pc=0x7ff77e039ed7
+runtime.goexit({})
+	runtime/asm_amd64.s:1771 +0x1 fp=0x1421bffaffe8 sp=0x1421bffaffe0 pc=0x7ff77e09a0c1
+created by runtime.gcBgMarkStartWorkers in goroutine 1
+	runtime/mgc.go:1695 +0x105
+
+goroutine 15 gp=0x1421bfcfc5a0 m=nil [GC worker (idle)]:
+runtime.gopark(0x0?, 0x0?, 0x0?, 0x0?, 0x0?)
+	runtime/proc.go:462 +0xce fp=0x1421bffa9f40 sp=0x1421bffa9f20 pc=0x7ff77e09314e
+runtime.gcBgMarkWorker(0x1421bfb422a0)
+	runtime/mgc.go:1791 +0xeb fp=0x1421bffa9fc8 sp=0x1421bffa9f40 pc=0x7ff77e039feb
+runtime.gcBgMarkStartWorkers.gowrap1()
+	runtime/mgc.go:1695 +0x17 fp=0x1421bffa9fe0 sp=0x1421bffa9fc8 pc=0x7ff77e039ed7
+runtime.goexit({})
+	runtime/asm_amd64.s:1771 +0x1 fp=0x1421bffa9fe8 sp=0x1421bffa9fe0 pc=0x7ff77e09a0c1
+created by runtime.gcBgMarkStartWorkers in goroutine 1
+	runtime/mgc.go:1695 +0x105
+
+goroutine 16 gp=0x1421bfcfc780 m=nil [GC worker (idle)]:
+runtime.gopark(0x0?, 0x0?, 0x0?, 0x0?, 0x0?)
+	runtime/proc.go:462 +0xce fp=0x1421bffabf40 sp=0x1421bffabf20 pc=0x7ff77e09314e
+runtime.gcBgMarkWorker(0x1421bfb422a0)
+	runtime/mgc.go:1791 +0xeb fp=0x1421bffabfc8 sp=0x1421bffabf40 pc=0x7ff77e039feb
+runtime.gcBgMarkStartWorkers.gowrap1()
+	runtime/mgc.go:1695 +0x17 fp=0x1421bffabfe0 sp=0x1421bffabfc8 pc=0x7ff77e039ed7
+runtime.goexit({})
+	runtime/asm_amd64.s:1771 +0x1 fp=0x1421bffabfe8 sp=0x1421bffabfe0 pc=0x7ff77e09a0c1
+created by runtime.gcBgMarkStartWorkers in goroutine 1
+	runtime/mgc.go:1695 +0x105
+
+goroutine 18 gp=0x1421bfcfc960 m=nil [GC worker (idle)]:
+runtime.gopark(0x7ff77e690420?, 0x1?, 0x14?, 0xf0?, 0x0?)
+	runtime/proc.go:462 +0xce fp=0x1421bffb5f40 sp=0x1421bffb5f20 pc=0x7ff77e09314e
+runtime.gcBgMarkWorker(0x1421bfb422a0)
+	runtime/mgc.go:1791 +0xeb fp=0x1421bffb5fc8 sp=0x1421bffb5f40 pc=0x7ff77e039feb
+runtime.gcBgMarkStartWorkers.gowrap1()
+	runtime/mgc.go:1695 +0x17 fp=0x1421bffb5fe0 sp=0x1421bffb5fc8 pc=0x7ff77e039ed7
+runtime.goexit({})
+	runtime/asm_amd64.s:1771 +0x1 fp=0x1421bffb5fe8 sp=0x1421bffb5fe0 pc=0x7ff77e09a0c1
+created by runtime.gcBgMarkStartWorkers in goroutine 1
+	runtime/mgc.go:1695 +0x105
+
+goroutine 19 gp=0x1421bfcfcb40 m=nil [GC worker (idle)]:
+runtime.gopark(0x50a9a33d2bb8?, 0x3?, 0x98?, 0xd8?, 0x0?)
+	runtime/proc.go:462 +0xce fp=0x1421bffb7f40 sp=0x1421bffb7f20 pc=0x7ff77e09314e
+runtime.gcBgMarkWorker(0x1421bfb422a0)
+	runtime/mgc.go:1791 +0xeb fp=0x1421bffb7fc8 sp=0x1421bffb7f40 pc=0x7ff77e039feb
+runtime.gcBgMarkStartWorkers.gowrap1()
+	runtime/mgc.go:1695 +0x17 fp=0x1421bffb7fe0 sp=0x1421bffb7fc8 pc=0x7ff77e039ed7
+runtime.goexit({})
+	runtime/asm_amd64.s:1771 +0x1 fp=0x1421bffb7fe8 sp=0x1421bffb7fe0 pc=0x7ff77e09a0c1
+created by runtime.gcBgMarkStartWorkers in goroutine 1
+	runtime/mgc.go:1695 +0x105
+
+goroutine 20 gp=0x1421bfcfcd20 m=nil [GC worker (idle)]:
+runtime.gopark(0x50a9a33d2bb8?, 0x1?, 0x2c?, 0x1c?, 0x0?)
+	runtime/proc.go:462 +0xce fp=0x1421bffb1f40 sp=0x1421bffb1f20 pc=0x7ff77e09314e
+runtime.gcBgMarkWorker(0x1421bfb422a0)
+	runtime/mgc.go:1791 +0xeb fp=0x1421bffb1fc8 sp=0x1421bffb1f40 pc=0x7ff77e039feb
+runtime.gcBgMarkStartWorkers.gowrap1()
+	runtime/mgc.go:1695 +0x17 fp=0x1421bffb1fe0 sp=0x1421bffb1fc8 pc=0x7ff77e039ed7
+runtime.goexit({})
+	runtime/asm_amd64.s:1771 +0x1 fp=0x1421bffb1fe8 sp=0x1421bffb1fe0 pc=0x7ff77e09a0c1
+created by runtime.gcBgMarkStartWorkers in goroutine 1
+	runtime/mgc.go:1695 +0x105
+
+goroutine 21 gp=0x1421bfcfcf00 m=nil [GC worker (idle)]:
+runtime.gopark(0x50a9a759e04c?, 0x3?, 0x0?, 0x0?, 0x0?)
+	runtime/proc.go:462 +0xce fp=0x1421bffb3f40 sp=0x1421bffb3f20 pc=0x7ff77e09314e
+runtime.gcBgMarkWorker(0x1421bfb422a0)
+	runtime/mgc.go:1791 +0xeb fp=0x1421bffb3fc8 sp=0x1421bffb3f40 pc=0x7ff77e039feb
+runtime.gcBgMarkStartWorkers.gowrap1()
+	runtime/mgc.go:1695 +0x17 fp=0x1421bffb3fe0 sp=0x1421bffb3fc8 pc=0x7ff77e039ed7
+runtime.goexit({})
+	runtime/asm_amd64.s:1771 +0x1 fp=0x1421bffb3fe8 sp=0x1421bffb3fe0 pc=0x7ff77e09a0c1
+created by runtime.gcBgMarkStartWorkers in goroutine 1
+	runtime/mgc.go:1695 +0x105
+
+goroutine 22 gp=0x1421bfcfd0e0 m=nil [GC worker (idle)]:
+runtime.gopark(0x7ff77e690420?, 0x1?, 0xc0?, 0xe2?, 0x0?)
+	runtime/proc.go:462 +0xce fp=0x1421bffbdf40 sp=0x1421bffbdf20 pc=0x7ff77e09314e
+runtime.gcBgMarkWorker(0x1421bfb422a0)
+	runtime/mgc.go:1791 +0xeb fp=0x1421bffbdfc8 sp=0x1421bffbdf40 pc=0x7ff77e039feb
+runtime.gcBgMarkStartWorkers.gowrap1()
+	runtime/mgc.go:1695 +0x17 fp=0x1421bffbdfe0 sp=0x1421bffbdfc8 pc=0x7ff77e039ed7
+runtime.goexit({})
+	runtime/asm_amd64.s:1771 +0x1 fp=0x1421bffbdfe8 sp=0x1421bffbdfe0 pc=0x7ff77e09a0c1
+created by runtime.gcBgMarkStartWorkers in goroutine 1
+	runtime/mgc.go:1695 +0x105
+
+goroutine 23 gp=0x1421bfcfd2c0 m=nil [GC worker (idle)]:
+runtime.gopark(0x50a9a751fd8c?, 0x1?, 0x0?, 0x0?, 0x0?)
+	runtime/proc.go:462 +0xce fp=0x1421bffbff40 sp=0x1421bffbff20 pc=0x7ff77e09314e
+runtime.gcBgMarkWorker(0x1421bfb422a0)
+	runtime/mgc.go:1791 +0xeb fp=0x1421bffbffc8 sp=0x1421bffbff40 pc=0x7ff77e039feb
+runtime.gcBgMarkStartWorkers.gowrap1()
+	runtime/mgc.go:1695 +0x17 fp=0x1421bffbffe0 sp=0x1421bffbffc8 pc=0x7ff77e039ed7
+runtime.goexit({})
+	runtime/asm_amd64.s:1771 +0x1 fp=0x1421bffbffe8 sp=0x1421bffbffe0 pc=0x7ff77e09a0c1
+created by runtime.gcBgMarkStartWorkers in goroutine 1
+	runtime/mgc.go:1695 +0x105
+
+goroutine 24 gp=0x1421bfcfd4a0 m=nil [GC worker (idle)]:
+runtime.gopark(0x50a9a759e04c?, 0x3?, 0x0?, 0x0?, 0x0?)
+	runtime/proc.go:462 +0xce fp=0x1421bffb9f40 sp=0x1421bffb9f20 pc=0x7ff77e09314e
+runtime.gcBgMarkWorker(0x1421bfb422a0)
+	runtime/mgc.go:1791 +0xeb fp=0x1421bffb9fc8 sp=0x1421bffb9f40 pc=0x7ff77e039feb
+runtime.gcBgMarkStartWorkers.gowrap1()
+	runtime/mgc.go:1695 +0x17 fp=0x1421bffb9fe0 sp=0x1421bffb9fc8 pc=0x7ff77e039ed7
+runtime.goexit({})
+	runtime/asm_amd64.s:1771 +0x1 fp=0x1421bffb9fe8 sp=0x1421bffb9fe0 pc=0x7ff77e09a0c1
+created by runtime.gcBgMarkStartWorkers in goroutine 1
+	runtime/mgc.go:1695 +0x105
+
+goroutine 44 gp=0x1421bfc09c20 m=10 mp=0x1421c3300008 [running]:
+	goroutine running on other thread; stack unavailable
+created by cmd/link/internal/ld.(*Link).dodata in goroutine 1
+	cmd/link/internal/ld/data.go:1728 +0x5b7
+
+goroutine 45 gp=0x1421c534a000 m=nil [runnable]:
+cmd/link/internal/ld.(*Link).dodata.func1()
+	cmd/link/internal/ld/data.go:1728 fp=0x1421c8e53fe0 sp=0x1421c8e53fd8 pc=0x7ff77e1ec100
+runtime.goexit({})
+	runtime/asm_amd64.s:1771 +0x1 fp=0x1421c8e53fe8 sp=0x1421c8e53fe0 pc=0x7ff77e09a0c1
+created by cmd/link/internal/ld.(*Link).dodata in goroutine 1
+	cmd/link/internal/ld/data.go:1728 +0x5b7
+
+goroutine 73 gp=0x1421c8e77860 m=0 mp=0x7ff77e648bc0 [running]:
+	goroutine running on other thread; stack unavailable
+created by cmd/link/internal/ld.(*Link).dodata in goroutine 1
+	cmd/link/internal/ld/data.go:1728 +0x5b7
+
+goroutine 75 gp=0x1421c8e77c20 m=7 mp=0x1421bfbbf008 [running]:
+	goroutine running on other thread; stack unavailable
+created by cmd/link/internal/ld.(*Link).dodata in goroutine 1
+	cmd/link/internal/ld/data.go:1728 +0x5b7
+ok  	marketplace-central/apps/server_core/internal/composition	20.404s
+ok  	marketplace-central/apps/server_core/internal/modules/catalog/adapters/internalread	2.720s
+ok  	marketplace-central/apps/server_core/internal/modules/catalog/adapters/postgres	3.366s
+ok  	marketplace-central/apps/server_core/internal/modules/catalog/application	3.031s
+ok  	marketplace-central/apps/server_core/internal/modules/catalog/domain	2.931s
+?   	marketplace-central/apps/server_core/internal/modules/catalog/events	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/catalog/ports	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/catalog/readmodel	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/catalog/transport	4.836s
+ok  	marketplace-central/apps/server_core/internal/modules/classifications/adapters/postgres	3.255s
+?   	marketplace-central/apps/server_core/internal/modules/classifications/application	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/classifications/domain	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/classifications/ports	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/classifications/transport	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/connectors/adapters/melhorenvio	7.092s
+ok  	marketplace-central/apps/server_core/internal/modules/connectors/adapters/mercado_livre	7.660s
+ok  	marketplace-central/apps/server_core/internal/modules/connectors/application	3.380s
+ok  	marketplace-central/apps/server_core/internal/modules/connectors/domain	2.504s
+?   	marketplace-central/apps/server_core/internal/modules/connectors/events	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/connectors/ports	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/connectors/readmodel	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/connectors/transport	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/dashboard/application	2.573s
+?   	marketplace-central/apps/server_core/internal/modules/dashboard/domain	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/dashboard/ports	[no test files]
+FAIL	marketplace-central/apps/server_core/internal/modules/dashboard/transport [build failed]
+ok  	marketplace-central/apps/server_core/internal/modules/erp_import/adapters/internalread	4.675s
+ok  	marketplace-central/apps/server_core/internal/modules/erp_import/adapters/postgres	2.995s
+ok  	marketplace-central/apps/server_core/internal/modules/erp_import/adapters/productlinks	2.575s
+ok  	marketplace-central/apps/server_core/internal/modules/erp_import/adapters/sync	2.536s
+ok  	marketplace-central/apps/server_core/internal/modules/erp_import/adapters/xlsx	5.629s
+ok  	marketplace-central/apps/server_core/internal/modules/erp_import/application	2.861s
+ok  	marketplace-central/apps/server_core/internal/modules/erp_import/domain	2.585s
+?   	marketplace-central/apps/server_core/internal/modules/erp_import/ports	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/erp_import/transport	4.600s
+ok  	marketplace-central/apps/server_core/internal/modules/integrations/adapters/crypto	2.900s
+ok  	marketplace-central/apps/server_core/internal/modules/integrations/adapters/feesync	3.460s
+ok  	marketplace-central/apps/server_core/internal/modules/integrations/adapters/mercadolivre	8.281s
+ok  	marketplace-central/apps/server_core/internal/modules/integrations/adapters/postgres	4.136s
+ok  	marketplace-central/apps/server_core/internal/modules/integrations/adapters/providers	3.858s
+ok  	marketplace-central/apps/server_core/internal/modules/integrations/application	4.336s
+ok  	marketplace-central/apps/server_core/internal/modules/integrations/background	4.177s
+ok  	marketplace-central/apps/server_core/internal/modules/integrations/domain	2.755s
+ok  	marketplace-central/apps/server_core/internal/modules/integrations/ports	3.020s
+ok  	marketplace-central/apps/server_core/internal/modules/integrations/transport	4.869s
+ok  	marketplace-central/apps/server_core/internal/modules/internal_read/adapters/cache	3.908s
+ok  	marketplace-central/apps/server_core/internal/modules/internal_read/adapters/fake	2.775s
+ok  	marketplace-central/apps/server_core/internal/modules/internal_read/adapters/mirror	4.109s
+ok  	marketplace-central/apps/server_core/internal/modules/internal_read/adapters/oracle	4.603s
+ok  	marketplace-central/apps/server_core/internal/modules/internal_read/adapters/oracle/oraclebatch	2.937s
+ok  	marketplace-central/apps/server_core/internal/modules/internal_read/adapters/routing	3.726s
+ok  	marketplace-central/apps/server_core/internal/modules/internal_read/application	2.910s
+ok  	marketplace-central/apps/server_core/internal/modules/internal_read/domain	2.909s
+ok  	marketplace-central/apps/server_core/internal/modules/internal_read/observability	4.417s
+ok  	marketplace-central/apps/server_core/internal/modules/internal_read/ports	2.777s
+?   	marketplace-central/apps/server_core/internal/modules/inventory/adapters/connectors	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/inventory/adapters/integrations	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/inventory/adapters/internalread	2.973s
+ok  	marketplace-central/apps/server_core/internal/modules/inventory/adapters/mutations	3.041s
+?   	marketplace-central/apps/server_core/internal/modules/inventory/adapters/postgres	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/inventory/adapters/productlinks	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/inventory/application	2.825s
+ok  	marketplace-central/apps/server_core/internal/modules/inventory/domain	2.799s
+?   	marketplace-central/apps/server_core/internal/modules/inventory/ports	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/inventory/transport	4.132s
+ok  	marketplace-central/apps/server_core/internal/modules/listings/adapters/connectors	3.546s
+ok  	marketplace-central/apps/server_core/internal/modules/listings/adapters/integrations	3.228s
+?   	marketplace-central/apps/server_core/internal/modules/listings/adapters/internalread	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/listings/adapters/marketplaces	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/listings/adapters/postgres	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/listings/application	3.057s
+ok  	marketplace-central/apps/server_core/internal/modules/listings/domain	5.944s
+ok  	marketplace-central/apps/server_core/internal/modules/listings/ports	5.603s
+ok  	marketplace-central/apps/server_core/internal/modules/listings/transport	9.196s
+?   	marketplace-central/apps/server_core/internal/modules/market/adapters/postgres	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/market/application	5.886s
+ok  	marketplace-central/apps/server_core/internal/modules/market/domain	5.773s
+?   	marketplace-central/apps/server_core/internal/modules/market/ports	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/market/transport	8.912s
+?   	marketplace-central/apps/server_core/internal/modules/marketplaces/adapters/postgres	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/marketplaces/application	7.385s
+?   	marketplace-central/apps/server_core/internal/modules/marketplaces/domain	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/marketplaces/events	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/marketplaces/ports	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/marketplaces/readmodel	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/marketplaces/registry	7.211s
+ok  	marketplace-central/apps/server_core/internal/modules/marketplaces/transport	9.775s
+ok  	marketplace-central/apps/server_core/internal/modules/mutations/adapters/connectors	8.237s
+ok  	marketplace-central/apps/server_core/internal/modules/mutations/adapters/listings	4.326s
+ok  	marketplace-central/apps/server_core/internal/modules/mutations/adapters/marketplaces	2.900s
+?   	marketplace-central/apps/server_core/internal/modules/mutations/adapters/postgres	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/mutations/adapters/productlinks	2.805s
+ok  	marketplace-central/apps/server_core/internal/modules/mutations/adapters/stub	2.646s
+ok  	marketplace-central/apps/server_core/internal/modules/mutations/application	3.404s
+ok  	marketplace-central/apps/server_core/internal/modules/mutations/background	3.090s
+ok  	marketplace-central/apps/server_core/internal/modules/mutations/domain	2.684s
+?   	marketplace-central/apps/server_core/internal/modules/mutations/ports	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/mutations/transport	9.453s
+ok  	marketplace-central/apps/server_core/internal/modules/orders/adapters/integrations	2.824s
+ok  	marketplace-central/apps/server_core/internal/modules/orders/adapters/internalread	2.861s
+ok  	marketplace-central/apps/server_core/internal/modules/orders/adapters/postgres	7.396s
+ok  	marketplace-central/apps/server_core/internal/modules/orders/adapters/pricingtax	2.865s
+ok  	marketplace-central/apps/server_core/internal/modules/orders/adapters/productlinks	5.396s
+ok  	marketplace-central/apps/server_core/internal/modules/orders/application	6.822s
+ok  	marketplace-central/apps/server_core/internal/modules/orders/domain	5.902s
+ok  	marketplace-central/apps/server_core/internal/modules/orders/ports	6.475s
+ok  	marketplace-central/apps/server_core/internal/modules/orders/transport	9.097s
+ok  	marketplace-central/apps/server_core/internal/modules/pricing/adapters/catalog	4.457s
+ok  	marketplace-central/apps/server_core/internal/modules/pricing/adapters/costread	4.310s
+ok  	marketplace-central/apps/server_core/internal/modules/pricing/adapters/marketplace	7.601s
+ok  	marketplace-central/apps/server_core/internal/modules/pricing/adapters/postgres	3.827s
+ok  	marketplace-central/apps/server_core/internal/modules/pricing/adapters/tariffcomposite	2.792s
+ok  	marketplace-central/apps/server_core/internal/modules/pricing/adapters/tariffdefaults	5.276s
+ok  	marketplace-central/apps/server_core/internal/modules/pricing/adapters/tarifflive	5.211s
+ok  	marketplace-central/apps/server_core/internal/modules/pricing/application	5.535s
+ok  	marketplace-central/apps/server_core/internal/modules/pricing/domain	43.307s
+?   	marketplace-central/apps/server_core/internal/modules/pricing/events	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/pricing/ports	4.322s
+?   	marketplace-central/apps/server_core/internal/modules/pricing/readmodel	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/pricing/transport	6.614s
+ok  	marketplace-central/apps/server_core/internal/modules/product_links/adapters/connectors	5.624s
+?   	marketplace-central/apps/server_core/internal/modules/product_links/adapters/postgres	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/product_links/application	5.185s
+ok  	marketplace-central/apps/server_core/internal/modules/product_links/composition	4.461s
+ok  	marketplace-central/apps/server_core/internal/modules/product_links/domain	4.424s
+?   	marketplace-central/apps/server_core/internal/modules/product_links/ports	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/product_links/transport	5.822s
+?   	marketplace-central/apps/server_core/internal/modules/profitability/adapters/internalread	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/profitability/adapters/orders	5.030s
+?   	marketplace-central/apps/server_core/internal/modules/profitability/adapters/postgres	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/profitability/application	5.206s
+?   	marketplace-central/apps/server_core/internal/modules/profitability/domain	[no test files]
+?   	marketplace-central/apps/server_core/internal/modules/profitability/ports	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/profitability/transport	4.693s
+ok  	marketplace-central/apps/server_core/internal/modules/sourcekind	3.950s
+?   	marketplace-central/apps/server_core/internal/modules/sync/adapters/postgres	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/sync/application	3.724s
+ok  	marketplace-central/apps/server_core/internal/modules/sync/composition	3.897s
+?   	marketplace-central/apps/server_core/internal/modules/sync/domain	[no test files]
+ok  	marketplace-central/apps/server_core/internal/modules/tenant_config	5.992s
+ok  	marketplace-central/apps/server_core/internal/modules/tenant_config/transport	4.425s
+?   	marketplace-central/apps/server_core/internal/platform/config	[no test files]
+ok  	marketplace-central/apps/server_core/internal/platform/httpx	4.241s
+?   	marketplace-central/apps/server_core/internal/platform/logging	[no test files]
+ok  	marketplace-central/apps/server_core/internal/platform/migrate	3.405s
+ok  	marketplace-central/apps/server_core/internal/platform/pgdb	1.730s
+ok  	marketplace-central/apps/server_core/internal/testsupport/postgres	2.430s
+ok  	marketplace-central/apps/server_core/migrations	2.233s
+ok  	marketplace-central/apps/server_core/tests/integration	2.895s
+ok  	marketplace-central/apps/server_core/tests/unit	4.821s
+FAIL
+EXIT=1
+
+### re-run of the one package that hit host OOM above (linker, not a code fault)
+$ go test -count=1 ./internal/modules/dashboard/transport/...
+ok  	marketplace-central/apps/server_core/internal/modules/dashboard/transport	1.969s
+EXIT=0

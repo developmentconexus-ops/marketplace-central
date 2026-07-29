@@ -148,7 +148,7 @@ function ImportRow({ item }: { item: ErpImportSummary }) {
             to={`/importacoes/${item.import_id}`}
             className="rounded-control border border-border px-2.5 py-1.5 text-xs font-medium text-muted hover:bg-surface-2 hover:text-ink"
           >
-            Ver cadeia
+            Ver estado
           </Link>
         </div>
       </div>

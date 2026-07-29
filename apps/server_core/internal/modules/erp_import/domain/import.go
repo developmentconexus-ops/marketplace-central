@@ -78,6 +78,35 @@ type Issue struct {
 }
 
 type ImportID string
+
+// IsValid reports whether the id is syntactically the UUID that
+// erp_import_protocols.id holds. Without this guard a malformed path value
+// binds straight into a `uuid` column, Postgres raises 22P02, and — because
+// that is not pgx.ErrNoRows — the caller receives internal_error and cannot
+// tell "you sent junk" from "we broke".
+func (id ImportID) IsValid() bool {
+	value := string(id)
+	if len(value) != 36 {
+		return false
+	}
+	for index, r := range value {
+		if index == 8 || index == 13 || index == 18 || index == 23 {
+			if r != '-' {
+				return false
+			}
+			continue
+		}
+		if !isHexDigit(r) {
+			return false
+		}
+	}
+	return true
+}
+
+func isHexDigit(r rune) bool {
+	return (r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')
+}
+
 type Protocol string
 type FileSHA256 string
 
