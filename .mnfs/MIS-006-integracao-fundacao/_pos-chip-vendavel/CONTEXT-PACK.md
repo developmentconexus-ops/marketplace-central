@@ -315,3 +315,33 @@ venceria antes de ser paga.
 **Disposição A-20 para F-2:** classe "valor mágico/dois mecanismos", segunda ocorrência —
 ramo (a) inline: o desenho por ponteiro remove o MECANISMO (não há mais valor válido dobrando
 de sentinela), não a instância.
+
+## EMENDA A-22 2026-07-29 — alegação falsa do A-17 corrigida (não há default de sortimento); tenant sem linha = 400 `unknown_erp_source`; grant de seam contrato+SDK ao S10
+
+**Correção de registro (a falsidade era do HUB):** o A-17 escreveu "o default (linha do tenant
+ausente) vive na seam de load do `tenant_config`". Refutado por medição do chip contra
+`595c15e3`: `tenant_config/repository.go:29-51` (Get → `ErrUnknownActiveSource` sem linha,
+"fail-closed — never a silent default") e `:91-104` (SetSellableAssortment = UPDATE, nunca
+cria linha). **Este sistema não tem default de sortimento — tem dois estados: configurado e
+não-configurado, fail-closed.** A frase do A-17 fica corrigida aqui; a frase do card do S10
+que a herdou se corrige no plano. Nota: o 404 deletado no A-19 continua deletado — a razão
+correta nunca foi "default existe", é a que segue.
+
+**Ruling — opção (b) do chip APROVADA:** tenant sem linha responde **400 `unknown_erp_source`**
+em GET e PUT de `/config/sellable-assortment` — a MESMA resposta que o vizinho
+`/config/active-source` do mesmo arquivo já dá para o MESMO estado. Um estado, um código, um
+módulo. (a) 500 rejeitada: "erro interno" para tenant novo é falso na tela — o estado é normal
+e a S11 renderiza ao lado do seletor de fonte. (c) 200-com-defaults PROIBIDA por nome: é o
+`DefaultSellableAssortment` do A-21 voltando pelo transporte.
+
+**Grant de seam (contrato+SDK, dono S8 → estendido ao S10, additive-only, mesmo commit do
+handler):** GET ganha `"400"` com `SellableAssortmentError`; enum ganha `unknown_erp_source`
+(vale para GET e PUT — `RowsAffected()==0` no PUT é o mesmo estado). Guards do sdk-runtime
+re-apontam POR VALOR com movimento declarado (janelas já são posição-independentes pela S8).
+A válvula do card ("código além dos dois só por medição") foi usada como desenhada: o chip
+MEDIU, pediu, o hub concedeu — a emenda nasce com a medição citada.
+
+**Must-fail:** GET sem linha → 400 corpo plano `unknown_erp_source`; PUT sem linha → idem;
+mutação que devolva o interino 500 (ou invente default) morre nomeando o valor. S11 recebe no
+brief: 400 `unknown_erp_source` nesta tela = estado "configure a fonte primeiro" (igual ao
+card vizinho), nunca tela de erro.
