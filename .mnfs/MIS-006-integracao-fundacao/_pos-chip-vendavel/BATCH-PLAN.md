@@ -1358,3 +1358,44 @@ Chip recommends (b) — coherent with A7 and the true statement — while naming
 pricing behaviour for products with no stock in the selling locations, which is a product
 decision, not an implementation one. If the hub rules (a), the screen divergence is recorded as
 named debt in the CLOSED event. **S6 does not ship until this is answered.**
+
+
+## A-15 — lane rules for every remaining brief (hub RATIFIED, main `@ca72344`)
+
+Ratified after S5B shipped a fully-skipped integration lane that looked green. Binding on every
+brief I write from here (S7 onward). Filed by the hub as `FINDING-slice-db-lane-rules.md`;
+the HARNESS-PROFILE entry awaits the operator.
+
+1. **A brief whose lane touches a database carries the env dot-source line.** Mine omitted it and
+   the worker's 26 DB tests reported `ok` by skipping. The line is not boilerplate — it is the
+   difference between a lane and a lane-shaped silence.
+2. **The brief requires RUN / PASS / SKIP / FAIL counted per line**, not read off the tail. This
+   half is what saved S5B: the worker reported SKIP 26 and declined to claim integration green.
+3. **A slice that adds a migration → the orchestrator migrates the slice database BEFORE
+   reviewing**, and checks `applied N` against the number of new migrations. `applied 1` for one
+   new migration both applied it and proved the base carried no other drift.
+4. **Corollary, same family:** a failure message must print the VALUE. `%v` on a `*string` prints
+   an address, so the test discriminates correctly and then refuses to say what it saw — the next
+   reader cannot tell a wrong value from a nil. Fix the message, then RE-INJECT to prove the new
+   message names it.
+
+Slices still to dispatch whose lane touches a DB: **S7** (mirror SQL + golden fixture) and any
+later slice that reaches Postgres. S6 is unit-only by design — SQL is asserted as generated text —
+so its brief correctly carries NO env, and instead carries the counting instrument plus an
+instruction to claim nothing about the `//go:build integration` files its commands never compile.
+
+## A-16 — `query_repository.go` keeps its 12 columns, with the condition written (hub ruling)
+
+The S5B review found a THIRD site dropping `usoprod`/`ad_ecommerce`:
+`query_repository.go:196`, backing `LatestCompletedSnapshot`. No production caller was found —
+only the interface and tests.
+
+Ruling: **comment with condition, no extension.** Widening a SELECT for a reader nobody reads is
+the imagined-problem class. Applied with the F-3 technique — the comment says the columns are
+deliberately absent because no consumer asks, and states that whoever wires a real consumer
+inherits BOTH halves: the two columns AND a test asserting they ARRIVE at that consumer, since
+the same fact was already lost twice upstream by testing departure instead of arrival.
+
+If S7's P4 finds a real caller the hub did not see, it becomes S7's work with this finding as the
+authority. Archive note carried from the hub: there is a D-113 memory of a blind
+`LatestCompletedSnapshot` displacing Sankhya — if S7 touches that path, measure before writing.

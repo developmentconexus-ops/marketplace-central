@@ -193,6 +193,13 @@ func (r *Repository) LatestCompletedSnapshot(ctx context.Context, tenantID strin
 	if err != nil {
 		return domain.ImportSnapshot{}, err
 	}
+	// usoprod / ad_ecommerce are DELIBERATELY absent from this list. The sync path
+	// (mirror_repository.go) reads them because the mirror consumes them; this reader
+	// has no measured consumer that asks for them, and widening a SELECT for a reader
+	// nobody reads is a problem nobody has. VALIDITY CONDITION: whoever wires a real
+	// consumer to LatestCompletedSnapshot inherits both halves — add the two columns
+	// here AND a test that asserts they ARRIVE at that consumer, not that they leave
+	// this query. The same fact was already lost twice upstream by the second mistake.
 	rows, err := r.pool.Query(ctx, `SELECT codprod,descrprod,custo::text,preco_venda::text,stock_physical,stock_reserved,ean,refforn,marca,ncm,grupo,descrgrupo FROM erp_import_products WHERE tenant_id=$1 AND protocol_id=$2 ORDER BY codprod`, tenantID, s.ID)
 	if err != nil {
 		return domain.ImportSnapshot{}, err
