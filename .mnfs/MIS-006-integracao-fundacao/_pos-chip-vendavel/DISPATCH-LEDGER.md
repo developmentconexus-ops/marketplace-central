@@ -699,3 +699,34 @@ The brief carries, as criteria rather than advice:
     query parameter already exist in the spec at `73190f23`. Measured divergence between what the
     handler emits and what the YAML declares is a REQUEST, never a silent adjustment of either
     side — with S8's defect named as the reason that sentence is in the brief.
+
+## RULING A-20 — STOP-THE-LINE by CLASS, and the error-surface disposition
+
+Two operator ratifications, registered by the hub in the profile @`1889d0dd`.
+
+**1. Profile rule — STOP-THE-LINE de classe.** A SECOND occurrence of the same defect PATTERN — a
+rule copied in dialects, a positional window, a vacuous lane, a guard living at the caller — stops
+the line before another point fix. The response is: name the class, root-cause it by measurement,
+and take an explicit disposition — (a) the general fix as its own immediate unit, or (b) a
+registered debt with an entry criterion. **My P6 gates now evaluate by CLASS, not by instance:**
+recurrence of a known class is a finding even when the instance in front of the gate is green. This
+travels in the gate briefs alongside the two-proof sweep rule.
+
+Measured against what this chip already shipped: the positional-window class hit TWICE in S8
+(`erpImport.test.ts` and `activeSource.test.ts`, both slicing to `indexOf("\ncomponents:")`). The
+treatment taken there was already branch (a) — both windows were made position-INDEPENDENT by a
+path-indent lookahead rather than re-anchored one at a time, and the new guard for the new surface
+was BORN with a value window, so the class cannot recur on the next appended path. That is the
+shape the rule now demands by name; §7 of `evidence/S8-orchestrator.txt` is where it is measured.
+
+**2. Error surface — DECIDED, single pattern.** The operator ordered unification ("tem que ser um
+padrão de Erro, não esse legacy"). Disposition under rule 1: branch (a) — a dedicated unification
+chip, NEXT in the queue, immediately after this chip's merge. Aborting this chip in flight was
+evaluated and rejected: it would collide with S8–S10.
+
+Practical consequence here: **nothing changes in A-19.** Flat `SellableAssortmentError` stands —
+aligning with the module's own neighbour is the correct move now. It is a TRANSITIONAL standard,
+and the one-line note is written in two places so a gate does not reprove a duality that already
+has a disposition, and so the unification chip finds the sites this chip added by the record:
+  - `BATCH-PLAN.md`, S10-CONFIG-HTTP card, under the error-surface criterion.
+  - `evidence/S8-orchestrator.txt` §9.8.

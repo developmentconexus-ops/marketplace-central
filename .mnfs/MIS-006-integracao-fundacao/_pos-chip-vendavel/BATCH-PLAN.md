@@ -730,6 +730,10 @@ go test ./internal/modules/internal_read/application ./internal/modules/internal
     S8 shipped the opposite on all three points and an alien contract guard caught it. If S10
     MEASURES a need for a code beyond the two, it amends the spec in the same commit and says
     what produced it — nothing speculative.
+  - **Flat family = TRANSITIONAL standard; unification decided, dedicated chip post-merge**
+    (operator ruling, profile @`1889d0dd`). Aligning with the module's neighbour is the right move
+    now, so A-19 stands unchanged — but the flat/nested duality already has a disposition, and a
+    gate must not reprove it as an open defect.
   - No browser-storage concept appears in server code.
   - `modules.json` adds `tenant_config`, root `apps/server_core/internal/modules/tenant_config`, OpenAPI prefix `/config`, dependency `erp_import`.
 - `validation_kind`: `unit`

@@ -228,3 +228,12 @@ the meantime and left S9 waiting on this surface.
   something other than its own subject — remains, and the next slice that appends a path or a
   schema should expect to meet it. What is fixed is the three windows this change actually moved
   through, plus one born correct.
+
+9.8 DISPOSITION OF THE FLAT/NESTED DUALITY (operator ruling, profile @1889d0dd)
+  The flat family is a TRANSITIONAL standard. The operator has ordered a single error pattern
+  across the API and the hub has scheduled a dedicated unification chip immediately after this
+  merge; aborting this chip in flight was considered and rejected because it would collide with
+  S8-S10. A-19 is unchanged — SellableAssortmentError stays flat, because aligning with the
+  module's own neighbour is the correct move now. This note exists so a gate does not reprove a
+  duality that already has a disposition, and so the unification chip can find the sites this
+  slice added by the record rather than by search.
