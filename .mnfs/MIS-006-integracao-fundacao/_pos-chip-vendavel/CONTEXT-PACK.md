@@ -41,6 +41,14 @@ filtro ou também para o número em tela: **os dois**.
 - O pin do Q4 do sync é COMPLETO (empresa **e** local); o must-fail falha se qualquer um dos dois sair.
 - `catalog_page.go` hoje usa `CODLOCAL = 10101` → passa a `IN (10101, 10102)` (outlet entra; o
   operador quer essa mudança de número).
+- **O recorte vive em DOIS sítios no live** (medido 2026-07-29, ruling #3): a CTE do
+  `catalog_page.go` E `domain/internal_stock.go` `DefaultSellableStockPolicy()` (`LocationIDs`),
+  da qual `reader.go` e `stock_batch_reader.go` constroem as queries. A policy passa a
+  `{10101, 10102}`; `ExcludedLocationIDs` default vira `nil` (blacklist vacuosa — o `NOT IN`
+  sobre linhas já restritas à whitelist nunca excluiu nada; whitelist nunca blacklist).
+  `domain/contract_test.go` assere os valores novos e é o pin da policy. Divergência de
+  quantidade entre `/catalogo` e `EstoqueTab` para produto só-outlet NÃO é intencional — "os
+  dois" do operador cobre todo número em tela.
 - Espelho, catálogo vivo e contador N/M usam a MESMA definição de disponível — divergência = VC-2 falha.
 - Lista de CODLOCAL é constante comentada no código; nada de UI de escolha de local (YAGNI).
 
