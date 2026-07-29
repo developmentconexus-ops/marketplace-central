@@ -103,8 +103,11 @@ O Q4 de estoque do sync soma TODAS as empresas — `WHERE CODPARC = 0` sem CODEM
    `REQUEST migration-number`).
 3. Sync Sankhya Q1 ([sync.go:101-110](../../../apps/server_core/internal/modules/internal_read/adapters/oracle/sync.go)) passa a ler `p.USOPROD, p.AD_ECOMMERCE`. Adapter xlsx: colunas
    OPCIONAIS no parser (planilha sem elas continua importando; ficam NULL).
-4. Filtro aplica em DOIS caminhos de leitura, cada um no seu lugar:
+4. Filtro aplica em TRÊS caminhos de leitura (**DR-1**, emendado 2026-07-29 — o pack original
+   listava dois e esquecia o catálogo servido pelo espelho):
    - catálogo live Sankhya: condições na query de página conforme a regra do tenant;
+   - catálogo servido pelo espelho (`routing.Reader` → leitor de upload → `MirrorCatalogPage`):
+     MESMO predicado, MESMA contagem viva. A regra não pode depender da fonte ativa;
    - geração de vínculos: `MirrorMatcher` ([root.go:490](../../../apps/server_core/internal/composition/root.go)) filtra `products_mirror` pela regra.
 5. Contador N/M: endpoint leve computado da fonte que a tela usa (não constante, não cache
    manual). M = população sem regra; N = com regra.
