@@ -245,22 +245,29 @@ func (h Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, newCatalogPageResponse(page, false))
 }
 
-func catalogPolicy(r *http.Request) (ports.SellableAssortmentPolicy, error) {
+// catalogPolicy answers with the only two things the wire can say. include_all
+// is a boolean and it stays a boolean up to here: absent or false is the request
+// "apply whatever rule this tenant configured", which crosses the port as nil
+// and is answered ONCE at the routing seam; true names a concrete policy — the
+// honest no-cut one — which the chain then applies verbatim. The transport never
+// invents a rule of its own, which is why no default lives in this file.
+func catalogPolicy(r *http.Request) (*ports.SellableAssortmentPolicy, error) {
 	raw, present := r.URL.Query()["include_all"]
 	if !present {
-		return ports.DefaultSellableAssortment(), nil
+		return nil, nil
 	}
 	if len(raw) != 1 {
-		return ports.SellableAssortmentPolicy{}, &catalogPageQueryError{code: "invalid_include_all"}
+		return nil, &catalogPageQueryError{code: "invalid_include_all"}
 	}
 	value := strings.TrimSpace(raw[0])
 	if value != "true" && value != "false" {
-		return ports.SellableAssortmentPolicy{}, &catalogPageQueryError{code: "invalid_include_all"}
+		return nil, &catalogPageQueryError{code: "invalid_include_all"}
 	}
-	if value == "true" {
-		return ports.AllProductsAssortment(), nil
+	if value == "false" {
+		return nil, nil
 	}
-	return ports.DefaultSellableAssortment(), nil
+	all := ports.AllProductsAssortment()
+	return &all, nil
 }
 
 func (h Handler) handleCounts(w http.ResponseWriter, r *http.Request) {
@@ -273,7 +280,9 @@ func (h Handler) handleCounts(w http.ResponseWriter, r *http.Request) {
 		writeCatalogPageError(w, err)
 		return
 	}
-	counts, err := h.PageReader.GetCatalogAssortmentCounts(ctx, ports.DefaultSellableAssortment())
+	// The counter reports the tenant's rule against the whole catalog, so it asks
+	// the routing seam for the stored policy rather than naming one here.
+	counts, err := h.PageReader.GetCatalogAssortmentCounts(ctx, nil)
 	if err != nil {
 		writeCatalogPageError(w, err)
 		return

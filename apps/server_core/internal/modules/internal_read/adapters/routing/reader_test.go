@@ -157,7 +157,7 @@ type fakePagerReader struct {
 	searchCalled bool
 	byIDsCalled  bool
 	pageCtx      context.Context
-	policies     []internalreadports.SellableAssortmentPolicy
+	policies     []*internalreadports.SellableAssortmentPolicy
 }
 
 func (f *fakePagerReader) ListCatalogProductFacts(ctx context.Context, _ internalreadports.Cursor, _ int) (internalreadports.CatalogFactPage, error) {
@@ -178,16 +178,16 @@ func (f *fakePagerReader) SearchCatalogProductFacts(ctx context.Context, _ strin
 	return internalreadports.CatalogFactPage{}, nil
 }
 
-func (f *fakePagerReader) ListCatalogProductFactsWithPolicy(ctx context.Context, cursor internalreadports.Cursor, limit int, policy internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
+func (f *fakePagerReader) ListCatalogProductFactsWithPolicy(ctx context.Context, cursor internalreadports.Cursor, limit int, policy *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
 	f.policies = append(f.policies, policy)
 	return f.ListCatalogProductFacts(ctx, cursor, limit)
 }
 
-func (f *fakePagerReader) SearchCatalogProductFactsWithPolicy(ctx context.Context, query string, cursor internalreadports.Cursor, limit int, _ internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
+func (f *fakePagerReader) SearchCatalogProductFactsWithPolicy(ctx context.Context, query string, cursor internalreadports.Cursor, limit int, _ *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
 	return f.SearchCatalogProductFacts(ctx, query, cursor, limit)
 }
 
-func (f *fakePagerReader) GetCatalogAssortmentCounts(_ context.Context, policy internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogAssortmentCounts, error) {
+func (f *fakePagerReader) GetCatalogAssortmentCounts(_ context.Context, policy *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogAssortmentCounts, error) {
 	f.policies = append(f.policies, policy)
 	return internalreadports.CatalogAssortmentCounts{}, nil
 }
@@ -234,12 +234,53 @@ func TestReaderUsesTheTenantPolicyForPageAndCounts(t *testing.T) {
 	if _, err := r.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 10); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := r.GetCatalogAssortmentCounts(context.Background(), internalreadports.DefaultSellableAssortment()); err != nil {
+	if _, err := r.GetCatalogAssortmentCounts(context.Background(), nil); err != nil {
 		t.Fatal(err)
 	}
 	want := internalreadports.SellableAssortmentPolicy{OnlyRevenda: true, OnlyEmEstoque: false, OnlyEcommerceEligible: true}
-	if len(upload.policies) != 2 || upload.policies[0] != want || upload.policies[1] != want {
-		t.Fatalf("page/count policies read = %+v, want [%+v %+v]", upload.policies, want, want)
+	if len(upload.policies) != 2 {
+		t.Fatalf("downstream calls = %d, want 2 (page and count)", len(upload.policies))
+	}
+	for i, got := range upload.policies {
+		// A nil below this seam is the invariant breaking, not a default being
+		// taken: the adapter would have to invent a rule to keep going.
+		if got == nil {
+			t.Fatalf("call %d: policy arrived nil below the routing seam, want %+v", i, want)
+		}
+		if *got != want {
+			t.Fatalf("call %d: policy read = %+v, want %+v", i, *got, want)
+		}
+	}
+}
+
+// A caller that names a policy is asking a different question from a caller that
+// names none, and routing must not confuse the two. The shape this guards against
+// shipped once: the parameter was compared for equality against a constant and
+// then thrown away, so the only value a caller could actually communicate was the
+// zero one, and every explicit policy was silently replaced by the stored rule.
+func TestReaderHonorsAnExplicitPolicyInsteadOfTheStoredOne(t *testing.T) {
+	upload := &fakePagerReader{}
+	stored := tenant_config.SellableAssortment{OnlyRevenda: true, OnlyEmEstoque: true, OnlyEcommerceEligible: true}
+	lookup := fakeLookup{cfg: tenant_config.Config{TenantID: "t1", Source: tenant_config.SourceXLSX, SellableAssortment: stored}}
+	r := NewReader(upload, nil, lookup, "t1")
+
+	asked := internalreadports.AllProductsAssortment()
+	if _, err := r.ListCatalogProductFactsWithPolicy(context.Background(), internalreadports.Cursor{}, 10, &asked); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.GetCatalogAssortmentCounts(context.Background(), &asked); err != nil {
+		t.Fatal(err)
+	}
+	if len(upload.policies) != 2 {
+		t.Fatalf("downstream calls = %d, want 2 (page and count)", len(upload.policies))
+	}
+	for i, got := range upload.policies {
+		if got == nil {
+			t.Fatalf("call %d: policy arrived nil below the routing seam, want %+v", i, asked)
+		}
+		if *got != asked {
+			t.Fatalf("call %d: policy read = %+v, want the requested %+v (tenant stores %+v)", i, *got, asked, stored)
+		}
 	}
 }
 

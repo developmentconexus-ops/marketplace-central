@@ -730,3 +730,37 @@ and the one-line note is written in two places so a gate does not reprove a dual
 has a disposition, and so the unification chip finds the sites this chip added by the record:
   - `BATCH-PLAN.md`, S10-CONFIG-HTTP card, under the error-surface criterion.
   - `evidence/S8-orchestrator.txt` §9.8.
+
+## RULING A-21 — the optional request, and the grant that let me apply it
+
+Hub ruling @`77d546d7`, on the S9 reprove in `evidence/S9-orchestrator.txt`. The reprove was
+endorsed and F-2's classification under A-20 rule 1 held: "dois mecanismos / valor mágico", second
+of its class in this chip. The hub's own measurement went further than the finding did — the
+semantics were INVERTED, not merely awkward: `requested == AllProducts()` produced include-all, and
+any explicit non-zero policy was discarded in silence, so the only value a caller could actually
+communicate was the zero one and the rest of the signature was theatre.
+
+**Ratified design.** `requested *SellableAssortmentPolicy` — nil is "the tenant's stored rule",
+non-nil is "exactly this rule", HONOURED. `AllProductsAssortment()` survives as the honest value
+constructor for "no cut". `DefaultSellableAssortment()` is DELETED, with the zero-reference grep
+counted in the evidence.
+
+**Invariant added by the hub, by construction.** The nil resolves ONCE, at the routing seam — the
+single producer of A-17. Below routing only a CONCRETE policy travels; a site that "would need a
+default" is a programming error, not a fallback. That is what `ErrUnresolvedAssortmentPolicy` and
+`RequireAssortmentPolicy()` encode, and it caught my own wiring bug on its first run (23 red tests
+naming the unresolved policy) before any of it reached a lane as a silent wrong answer.
+
+**GRANT (option (i)).** Explicit scope grant from the hub: port signature + transport + the eleven
+sites — larger than the orchestrator's ≤10-line glue ceiling, which is exceeded HERE and only here,
+by this grant. Own commit on top of `5adeeb56`; the worker's commit is left intact.
+
+**Four must-fails demanded, all discharged** — `evidence/S9-A21-fix.txt`:
+  1. M1 re-executed post-fix on BOTH lanes WITH the env (PASS=109 FAIL=2 SKIP=0). The reason it is
+     re-run with the env is the `ok` printed byte-identical under mutation by an env-less
+     composition run; the bare `return` that produced it is now a named `t.Skip`.
+  2. NEW must-fail: a non-nil policy named by the caller is honoured by the COMPOSED chain, at both
+     the routing and the composition level. M2 reproduces the shipped defect exactly and both go
+     red, naming which of the two questions the code answered.
+  3. `DefaultSellableAssortment` = 0 hits in code, counted; the 10 remaining are this pack's prose.
+  4. A-15 per-line accounting on every run above.

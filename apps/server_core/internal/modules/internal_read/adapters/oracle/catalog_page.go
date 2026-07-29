@@ -18,11 +18,16 @@ const (
 	catalogCurrency       = "BRL"
 )
 
+// ListCatalogProductFacts serves the port that names no assortment rule, so it
+// applies none — the whole catalog, which is what this method returned before a
+// sellable cut existed. The tenant's rule reaches the query only through
+// ListCatalogProductFactsWithPolicy, whose caller is the routing seam.
 func (r *Reader) ListCatalogProductFacts(ctx context.Context, cursor ports.Cursor, limit int) (ports.CatalogFactPage, error) {
-	return r.ListCatalogProductFactsWithPolicy(ctx, cursor, limit, ports.DefaultSellableAssortment())
+	noCut := ports.AllProductsAssortment()
+	return r.ListCatalogProductFactsWithPolicy(ctx, cursor, limit, &noCut)
 }
 
-func (r *Reader) ListCatalogProductFactsWithPolicy(ctx context.Context, cursor ports.Cursor, limit int, policy ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
+func (r *Reader) ListCatalogProductFactsWithPolicy(ctx context.Context, cursor ports.Cursor, limit int, policy *ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
 	if cursor.InternalProductID < 0 {
 		return ports.CatalogFactPage{}, ports.NewInvalidCursorError()
 	}
@@ -33,15 +38,20 @@ func (r *Reader) ListCatalogProductFactsWithPolicy(ctx context.Context, cursor p
 		return ports.CatalogFactPage{}, err
 	}
 
-	query, args := buildCatalogPageQueryWithPolicy(cursor, limit+1, "", policy)
+	resolved, err := ports.RequireAssortmentPolicy(policy)
+	if err != nil {
+		return ports.CatalogFactPage{}, err
+	}
+	query, args := buildCatalogPageQueryWithPolicy(cursor, limit+1, "", resolved)
 	return r.readCatalogPage(ctx, query, args, limit, true)
 }
 
 func (r *Reader) SearchCatalogProductFacts(ctx context.Context, q string, cursor ports.Cursor, limit int) (ports.CatalogFactPage, error) {
-	return r.SearchCatalogProductFactsWithPolicy(ctx, q, cursor, limit, ports.DefaultSellableAssortment())
+	noCut := ports.AllProductsAssortment()
+	return r.SearchCatalogProductFactsWithPolicy(ctx, q, cursor, limit, &noCut)
 }
 
-func (r *Reader) SearchCatalogProductFactsWithPolicy(ctx context.Context, q string, cursor ports.Cursor, limit int, policy ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
+func (r *Reader) SearchCatalogProductFactsWithPolicy(ctx context.Context, q string, cursor ports.Cursor, limit int, policy *ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
 	if cursor.InternalProductID < 0 {
 		return ports.CatalogFactPage{}, ports.NewInvalidCursorError()
 	}
@@ -55,7 +65,11 @@ func (r *Reader) SearchCatalogProductFactsWithPolicy(ctx context.Context, q stri
 	// limit+1 with paginate: the extra row is what proves there are more matches.
 	// Fetching exactly `limit` made a truncated result indistinguishable from a
 	// complete one.
-	query, args := buildCatalogPageQueryWithPolicy(cursor, limit+1, q, policy)
+	resolved, err := ports.RequireAssortmentPolicy(policy)
+	if err != nil {
+		return ports.CatalogFactPage{}, err
+	}
+	query, args := buildCatalogPageQueryWithPolicy(cursor, limit+1, q, resolved)
 	return r.readCatalogPage(ctx, query, args, limit, true)
 }
 
@@ -160,10 +174,6 @@ func catalogAssortmentPredicate(policy ports.SellableAssortmentPolicy) string {
 	return predicate
 }
 
-func buildCatalogPageQuery(cursor ports.Cursor, fetchLimit int, search string) (string, []any) {
-	return buildCatalogPageQueryWithPolicy(cursor, fetchLimit, search, ports.DefaultSellableAssortment())
-}
-
 func buildCatalogPageQueryWithPolicy(cursor ports.Cursor, fetchLimit int, search string, policy ports.SellableAssortmentPolicy) (string, []any) {
 	query := "\n" + catalogStockCTE() + `, price_candidates AS (
     SELECT e.CODPROD,
@@ -235,11 +245,15 @@ WHERE p.ATIVO = 'S'
 	return query, args
 }
 
-func (r *Reader) GetCatalogAssortmentCounts(ctx context.Context, policy ports.SellableAssortmentPolicy) (ports.CatalogAssortmentCounts, error) {
+func (r *Reader) GetCatalogAssortmentCounts(ctx context.Context, policy *ports.SellableAssortmentPolicy) (ports.CatalogAssortmentCounts, error) {
+	resolved, err := ports.RequireAssortmentPolicy(policy)
+	if err != nil {
+		return ports.CatalogAssortmentCounts{}, err
+	}
 	if err := r.ensureAvailable(ctx); err != nil {
 		return ports.CatalogAssortmentCounts{}, err
 	}
-	query, args := buildCatalogAssortmentCountQuery(policy)
+	query, args := buildCatalogAssortmentCountQuery(resolved)
 	var result ports.CatalogAssortmentCounts
 	if err := r.db.QueryRowContext(ctx, query, args...).Scan(&result.SellableCount, &result.TotalCount); err != nil {
 		return ports.CatalogAssortmentCounts{}, wrapOracleError("read catalog assortment counts", err)

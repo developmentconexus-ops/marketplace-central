@@ -92,10 +92,20 @@ func (r *TimingReader) GetTaxInputs(ctx context.Context, input ports.TaxInput) (
 }
 
 func (r *TimingReader) ListCatalogProductFacts(ctx context.Context, cursor ports.Cursor, limit int) (ports.CatalogFactPage, error) {
-	return r.ListCatalogProductFactsWithPolicy(ctx, cursor, limit, ports.DefaultSellableAssortment())
+	var result ports.CatalogFactPage
+	err := r.observe("ListCatalogProductFacts", func() error {
+		reader, ok := r.next.(ports.CatalogPageReader)
+		if !ok {
+			return domain.NewReadError(domain.ReadErrorSourceUnavailable, "oracle catalog page reader is unavailable", nil)
+		}
+		var err error
+		result, err = reader.ListCatalogProductFacts(ctx, cursor, limit)
+		return err
+	})
+	return result, err
 }
 
-func (r *TimingReader) ListCatalogProductFactsWithPolicy(ctx context.Context, cursor ports.Cursor, limit int, policy ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
+func (r *TimingReader) ListCatalogProductFactsWithPolicy(ctx context.Context, cursor ports.Cursor, limit int, policy *ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
 	var result ports.CatalogFactPage
 	err := r.observe("ListCatalogProductFacts", func() error {
 		reader := r.next.(ports.CatalogAssortmentReader)
@@ -107,10 +117,20 @@ func (r *TimingReader) ListCatalogProductFactsWithPolicy(ctx context.Context, cu
 }
 
 func (r *TimingReader) SearchCatalogProductFacts(ctx context.Context, q string, cursor ports.Cursor, limit int) (ports.CatalogFactPage, error) {
-	return r.SearchCatalogProductFactsWithPolicy(ctx, q, cursor, limit, ports.DefaultSellableAssortment())
+	var result ports.CatalogFactPage
+	err := r.observe("SearchCatalogProductFacts", func() error {
+		reader, ok := r.next.(ports.CatalogPageReader)
+		if !ok {
+			return domain.NewReadError(domain.ReadErrorSourceUnavailable, "oracle catalog page reader is unavailable", nil)
+		}
+		var err error
+		result, err = reader.SearchCatalogProductFacts(ctx, q, cursor, limit)
+		return err
+	})
+	return result, err
 }
 
-func (r *TimingReader) SearchCatalogProductFactsWithPolicy(ctx context.Context, q string, cursor ports.Cursor, limit int, policy ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
+func (r *TimingReader) SearchCatalogProductFactsWithPolicy(ctx context.Context, q string, cursor ports.Cursor, limit int, policy *ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
 	var result ports.CatalogFactPage
 	err := r.observe("SearchCatalogProductFacts", func() error {
 		reader := r.next.(ports.CatalogAssortmentReader)
@@ -121,7 +141,7 @@ func (r *TimingReader) SearchCatalogProductFactsWithPolicy(ctx context.Context, 
 	return result, err
 }
 
-func (r *TimingReader) GetCatalogAssortmentCounts(ctx context.Context, policy ports.SellableAssortmentPolicy) (ports.CatalogAssortmentCounts, error) {
+func (r *TimingReader) GetCatalogAssortmentCounts(ctx context.Context, policy *ports.SellableAssortmentPolicy) (ports.CatalogAssortmentCounts, error) {
 	var result ports.CatalogAssortmentCounts
 	err := r.observe("GetCatalogAssortmentCounts", func() error {
 		var err error

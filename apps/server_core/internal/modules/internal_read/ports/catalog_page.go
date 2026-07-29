@@ -93,12 +93,27 @@ type SellableAssortmentPolicy struct {
 	OnlyEcommerceEligible bool
 }
 
-func DefaultSellableAssortment() SellableAssortmentPolicy {
-	return SellableAssortmentPolicy{OnlyRevenda: true, OnlyEmEstoque: true, OnlyEcommerceEligible: true}
-}
-
+// AllProductsAssortment is the honest "no cut" policy: every toggle off, so the
+// caller sees the whole catalog. It is a real policy value, not a signal — a
+// caller asking for it gets exactly it, the same as any other explicit policy.
 func AllProductsAssortment() SellableAssortmentPolicy {
 	return SellableAssortmentPolicy{}
+}
+
+// ErrUnresolvedAssortmentPolicy reports a nil policy reaching a seat below the
+// routing reader. Nil means "resolve the tenant's stored policy", and routing is
+// the one seat that can do that; past it, the policy is always concrete. So this
+// is a wiring bug, and it is returned rather than papered over with a default —
+// a default here would be exactly the invented rule this port stopped carrying.
+var ErrUnresolvedAssortmentPolicy = errors.New("sellable assortment policy is unresolved below the routing seam")
+
+// RequireAssortmentPolicy dereferences a policy that the routing invariant says
+// is already concrete, and fails loudly when it is not.
+func RequireAssortmentPolicy(policy *SellableAssortmentPolicy) (SellableAssortmentPolicy, error) {
+	if policy == nil {
+		return SellableAssortmentPolicy{}, ErrUnresolvedAssortmentPolicy
+	}
+	return *policy, nil
 }
 
 type CatalogAssortmentCounts struct {
@@ -140,8 +155,27 @@ type CatalogPageReader interface {
 // A runtime `.(CatalogAssortmentReader)` with a fallback at the HTTP seam is the
 // shape this condition exists to forbid: it turns a missing seat into a quiet
 // wrong answer instead of a build error.
+//
+// THE POLICY IS OPTIONAL AT THE REQUEST, NEVER AT THE READ. The pointer says
+// which of two questions the caller is asking:
+//
+//	nil      -> "apply the tenant's stored assortment rule"
+//	non-nil  -> "apply exactly this rule", and it IS applied, not inspected
+//
+// Nil resolves in ONE place, routing.Reader.resolveCatalogAssortment, which is
+// the same seam that resolves the rule for linking (A-17: one producer, N
+// consumers). Below it every seat receives a concrete policy, so a nil there is
+// a wiring bug and returns ErrUnresolvedAssortmentPolicy.
+//
+// The shape this replaced is worth naming, because it reads as harmless: the
+// parameter was a plain value, and a caller asking for the tenant's rule sent a
+// hardcoded all-true constant that routing recognised by EQUALITY and threw
+// away. Only one value was actually communicable — the zero one — and any
+// explicit policy a caller passed was silently discarded. A wire boolean was
+// crossing the port dressed as a policy, which is the two-mechanisms shape this
+// port exists to keep out.
 type CatalogAssortmentReader interface {
-	ListCatalogProductFactsWithPolicy(context.Context, Cursor, int, SellableAssortmentPolicy) (CatalogFactPage, error)
-	SearchCatalogProductFactsWithPolicy(context.Context, string, Cursor, int, SellableAssortmentPolicy) (CatalogFactPage, error)
-	GetCatalogAssortmentCounts(context.Context, SellableAssortmentPolicy) (CatalogAssortmentCounts, error)
+	ListCatalogProductFactsWithPolicy(context.Context, Cursor, int, *SellableAssortmentPolicy) (CatalogFactPage, error)
+	SearchCatalogProductFactsWithPolicy(context.Context, string, Cursor, int, *SellableAssortmentPolicy) (CatalogFactPage, error)
+	GetCatalogAssortmentCounts(context.Context, *SellableAssortmentPolicy) (CatalogAssortmentCounts, error)
 }

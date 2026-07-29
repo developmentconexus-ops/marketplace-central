@@ -121,10 +121,10 @@ func (r *Reader) GetTaxInputs(ctx context.Context, input internalreadports.TaxIn
 // without it fails honest with source_unavailable rather than serving
 // another source's pages (ADR-17).
 func (r *Reader) ListCatalogProductFacts(ctx context.Context, cursor internalreadports.Cursor, limit int) (internalreadports.CatalogFactPage, error) {
-	return r.ListCatalogProductFactsWithPolicy(ctx, cursor, limit, internalreadports.DefaultSellableAssortment())
+	return r.ListCatalogProductFactsWithPolicy(ctx, cursor, limit, nil)
 }
 
-func (r *Reader) ListCatalogProductFactsWithPolicy(ctx context.Context, cursor internalreadports.Cursor, limit int, requested internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
+func (r *Reader) ListCatalogProductFactsWithPolicy(ctx context.Context, cursor internalreadports.Cursor, limit int, requested *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
 	pager, ctx, policy, err := r.resolveCatalogAssortment(ctx, requested)
 	if err != nil {
 		return internalreadports.CatalogFactPage{}, err
@@ -135,10 +135,10 @@ func (r *Reader) ListCatalogProductFactsWithPolicy(ctx context.Context, cursor i
 // SearchCatalogProductFacts routes catalog search to the resolved source's
 // reader, with the same honest-failure contract as ListCatalogProductFacts.
 func (r *Reader) SearchCatalogProductFacts(ctx context.Context, query string, cursor internalreadports.Cursor, limit int) (internalreadports.CatalogFactPage, error) {
-	return r.SearchCatalogProductFactsWithPolicy(ctx, query, cursor, limit, internalreadports.DefaultSellableAssortment())
+	return r.SearchCatalogProductFactsWithPolicy(ctx, query, cursor, limit, nil)
 }
 
-func (r *Reader) SearchCatalogProductFactsWithPolicy(ctx context.Context, query string, cursor internalreadports.Cursor, limit int, requested internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
+func (r *Reader) SearchCatalogProductFactsWithPolicy(ctx context.Context, query string, cursor internalreadports.Cursor, limit int, requested *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
 	pager, ctx, policy, err := r.resolveCatalogAssortment(ctx, requested)
 	if err != nil {
 		return internalreadports.CatalogFactPage{}, err
@@ -156,7 +156,7 @@ func (r *Reader) CatalogProductFactsByIDs(ctx context.Context, ids []int64) (int
 	return pager.CatalogProductFactsByIDs(ctx, ids)
 }
 
-func (r *Reader) GetCatalogAssortmentCounts(ctx context.Context, requested internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogAssortmentCounts, error) {
+func (r *Reader) GetCatalogAssortmentCounts(ctx context.Context, requested *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogAssortmentCounts, error) {
 	reader, ctx, policy, err := r.resolveCatalogAssortment(ctx, requested)
 	if err != nil {
 		return internalreadports.CatalogAssortmentCounts{}, err
@@ -164,24 +164,30 @@ func (r *Reader) GetCatalogAssortmentCounts(ctx context.Context, requested inter
 	return reader.GetCatalogAssortmentCounts(ctx, policy)
 }
 
-func (r *Reader) resolveCatalogAssortment(ctx context.Context, requested internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogAssortmentReader, context.Context, internalreadports.SellableAssortmentPolicy, error) {
+// resolveCatalogAssortment is the ONE seat that answers "which assortment rule
+// applies", for the page and the count alike. A caller that named a policy gets
+// that policy applied; a caller that named none (nil) is asking for the tenant's
+// stored rule, which is read here from the same active-source row the matcher
+// reads for linking. Past this function the policy is always concrete.
+func (r *Reader) resolveCatalogAssortment(ctx context.Context, requested *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogAssortmentReader, context.Context, *internalreadports.SellableAssortmentPolicy, error) {
 	rd, ctx, cfg, err := r.resolveWithConfig(ctx)
 	if err != nil {
-		return nil, ctx, internalreadports.SellableAssortmentPolicy{}, err
+		return nil, ctx, nil, err
 	}
 	reader, ok := rd.(internalreadports.CatalogAssortmentReader)
 	if !ok {
-		return nil, ctx, internalreadports.SellableAssortmentPolicy{}, internalreaddomain.NewReadError(internalreaddomain.ReadErrorSourceUnavailable, "active source's reader does not support catalog assortment", nil)
+		return nil, ctx, nil, internalreaddomain.NewReadError(internalreaddomain.ReadErrorSourceUnavailable, "active source's reader does not support catalog assortment", nil)
+	}
+	if requested != nil {
+		named := *requested
+		return reader, ctx, &named, nil
 	}
 	policy := internalreadports.SellableAssortmentPolicy{
 		OnlyRevenda:           cfg.SellableAssortment.OnlyRevenda,
 		OnlyEmEstoque:         cfg.SellableAssortment.OnlyEmEstoque,
 		OnlyEcommerceEligible: cfg.SellableAssortment.OnlyEcommerceEligible,
 	}
-	if requested == internalreadports.AllProductsAssortment() {
-		policy = internalreadports.AllProductsAssortment()
-	}
-	return reader, ctx, policy, nil
+	return reader, ctx, &policy, nil
 }
 
 func (r *Reader) resolveCatalogPager(ctx context.Context) (internalreadports.CatalogPageReader, context.Context, error) {

@@ -46,7 +46,7 @@ func TestRootRuntimeRegistersERPImportRoutes(t *testing.T) {
 
 func TestRootComposedCatalogReaderMovesPageAndCountWithStoredPolicy(t *testing.T) {
 	if os.Getenv("MPC_TEST_DATABASE_URL") == "" {
-		return
+		t.Skip("MPC_TEST_DATABASE_URL is unset; the composed catalog reader needs the integration database")
 	}
 	ctx := context.Background()
 	tenant := fmt.Sprintf("root-catalog-policy-%d", time.Now().UnixNano())
@@ -91,7 +91,7 @@ func TestRootComposedCatalogReaderMovesPageAndCountWithStoredPolicy(t *testing.T
 		if pageErr != nil {
 			t.Fatal(pageErr)
 		}
-		counts, countErr := runtime.CatalogReader.GetCatalogAssortmentCounts(ctx, internalreadports.DefaultSellableAssortment())
+		counts, countErr := runtime.CatalogReader.GetCatalogAssortmentCounts(ctx, nil)
 		if countErr != nil {
 			t.Fatal(countErr)
 		}
@@ -101,6 +101,28 @@ func TestRootComposedCatalogReaderMovesPageAndCountWithStoredPolicy(t *testing.T
 	}
 	assertCounts(tenant_config.SellableAssortment{OnlyRevenda: true, OnlyEmEstoque: true, OnlyEcommerceEligible: true}, 1)
 	assertCounts(tenant_config.SellableAssortment{}, 2)
+
+	// The other half of the contract: nil asks for the stored rule, and a policy
+	// the caller names is applied instead of it. With the strictest rule stored,
+	// "no cut" must still return the whole catalog through the SAME composed chain
+	// — service, routing, timing, cache and adapter. The shape this refuses is the
+	// one that shipped: the named policy compared against a constant and dropped,
+	// which reads as a working parameter and answers with the stored rule.
+	if err := configRepo.SetSellableAssortment(ctx, tenant, tenant_config.SellableAssortment{OnlyRevenda: true, OnlyEmEstoque: true, OnlyEcommerceEligible: true}); err != nil {
+		t.Fatal(err)
+	}
+	asked := internalreadports.AllProductsAssortment()
+	page, pageErr := runtime.CatalogReader.ListCatalogProductFactsWithPolicy(ctx, internalreadports.Cursor{}, 50, &asked)
+	if pageErr != nil {
+		t.Fatal(pageErr)
+	}
+	counts, countErr := runtime.CatalogReader.GetCatalogAssortmentCounts(ctx, &asked)
+	if countErr != nil {
+		t.Fatal(countErr)
+	}
+	if len(page.Items) != 2 || counts.SellableCount != 2 {
+		t.Fatalf("requested policy %+v honored? page/count = %d/%d, want 2/2 (stored rule would give 1/1)", asked, len(page.Items), counts.SellableCount)
+	}
 }
 
 func stringPointer(value string) *string { return &value }

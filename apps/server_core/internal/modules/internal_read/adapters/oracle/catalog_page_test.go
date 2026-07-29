@@ -80,9 +80,10 @@ func TestCatalogPageCursorChainIsGaplessAndNonOverlapping(t *testing.T) {
 	}
 }
 
-func TestCatalogPageSellableAssortmentDefaultsAndScreenEscape(t *testing.T) {
+func TestCatalogPageSellableAssortmentCutAndScreenEscape(t *testing.T) {
 	cursor := ports.Cursor{InternalProductID: 41}
-	filtered, filteredArgs := buildCatalogPageQueryWithPolicy(cursor, 51, " bolt ", ports.DefaultSellableAssortment())
+	allOn := ports.SellableAssortmentPolicy{OnlyRevenda: true, OnlyEmEstoque: true, OnlyEcommerceEligible: true}
+	filtered, filteredArgs := buildCatalogPageQueryWithPolicy(cursor, 51, " bolt ", allOn)
 	all, allArgs := buildCatalogPageQueryWithPolicy(cursor, 51, " bolt ", ports.AllProductsAssortment())
 
 	ruleClauses := []string{
@@ -120,8 +121,9 @@ func TestCatalogPageSellableAssortmentDefaultsAndScreenEscape(t *testing.T) {
 }
 
 func TestCatalogAssortmentCountUsesThePagePredicate(t *testing.T) {
-	page, _ := buildCatalogPageQueryWithPolicy(ports.Cursor{}, 51, "", ports.DefaultSellableAssortment())
-	count, args := buildCatalogAssortmentCountQuery(ports.DefaultSellableAssortment())
+	allOn := ports.SellableAssortmentPolicy{OnlyRevenda: true, OnlyEmEstoque: true, OnlyEcommerceEligible: true}
+	page, _ := buildCatalogPageQueryWithPolicy(ports.Cursor{}, 51, "", allOn)
+	count, args := buildCatalogAssortmentCountQuery(allOn)
 
 	for _, clause := range []string{
 		"FROM METALPRD.TGFEST est",
@@ -262,7 +264,7 @@ func TestCatalogPageIdentitySemantics(t *testing.T) {
 		}
 	})
 
-	query, _ := buildCatalogPageQuery(ports.Cursor{}, 2, "")
+	query, _ := buildCatalogPageQueryWithPolicy(ports.Cursor{}, 2, "", ports.AllProductsAssortment())
 	if strings.Contains(query, "p.REFERENCIA,\n    p.DESCRPROD") || !strings.Contains(query, "p.REFFORN") || !strings.Contains(query, "EAN_ACTIVE_COUNT") {
 		t.Fatalf("query does not isolate REFERENCIA as EAN and REFFORN as reference: %s", query)
 	}

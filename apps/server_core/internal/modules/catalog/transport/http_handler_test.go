@@ -31,7 +31,7 @@ type fakeCatalogPageReader struct {
 	idAsks          [][]int64
 	idPage          ports.CatalogFactPage
 	err             error
-	policies        []ports.SellableAssortmentPolicy
+	policies        []*ports.SellableAssortmentPolicy
 }
 
 func (f *fakeCatalogPageReader) captureSource(ctx context.Context) {
@@ -74,17 +74,17 @@ func (f *fakeCatalogPageReader) SearchCatalogProductFacts(ctx context.Context, q
 	return f.searchPage, nil
 }
 
-func (f *fakeCatalogPageReader) ListCatalogProductFactsWithPolicy(ctx context.Context, cursor ports.Cursor, limit int, policy ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
+func (f *fakeCatalogPageReader) ListCatalogProductFactsWithPolicy(ctx context.Context, cursor ports.Cursor, limit int, policy *ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
 	f.policies = append(f.policies, policy)
 	return f.ListCatalogProductFacts(ctx, cursor, limit)
 }
 
-func (f *fakeCatalogPageReader) SearchCatalogProductFactsWithPolicy(ctx context.Context, q string, cursor ports.Cursor, limit int, policy ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
+func (f *fakeCatalogPageReader) SearchCatalogProductFactsWithPolicy(ctx context.Context, q string, cursor ports.Cursor, limit int, policy *ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
 	f.policies = append(f.policies, policy)
 	return f.SearchCatalogProductFacts(ctx, q, cursor, limit)
 }
 
-func (f *fakeCatalogPageReader) GetCatalogAssortmentCounts(context.Context, ports.SellableAssortmentPolicy) (ports.CatalogAssortmentCounts, error) {
+func (f *fakeCatalogPageReader) GetCatalogAssortmentCounts(context.Context, *ports.SellableAssortmentPolicy) (ports.CatalogAssortmentCounts, error) {
 	return ports.CatalogAssortmentCounts{}, f.err
 }
 
@@ -102,11 +102,11 @@ func TestHandlerCatalogDefaultsFilteredAndIncludeAllIsRequestLocal(t *testing.T)
 			t.Fatalf("GET %s status = %d, body = %s", path, recorder.Code, recorder.Body.String())
 		}
 	}
-	want := []ports.SellableAssortmentPolicy{
-		ports.DefaultSellableAssortment(),
-		ports.AllProductsAssortment(),
-		ports.DefaultSellableAssortment(),
-	}
+	// nil is the request "apply whatever rule this tenant configured", which only
+	// the routing seam can answer; a named policy crosses as itself. The handler
+	// must never author a third thing.
+	all := ports.AllProductsAssortment()
+	want := []*ports.SellableAssortmentPolicy{nil, &all, nil}
 	if !reflect.DeepEqual(fake.policies, want) {
 		t.Fatalf("policies read = %+v, want %+v", fake.policies, want)
 	}
