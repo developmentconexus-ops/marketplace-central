@@ -3,7 +3,7 @@
 ```yaml
 id: MIS-006
 type: mission
-status: planned
+status: closed   # 2026-07-28. M-01..M-06 done/closed, M-07 out_of_scope (CORTE-YAGNI.md). Último merge: CHIP-FIM @312adc2d — os 4 defeitos observáveis do live drive. Ladder de encerramento na main integrada: go build+vet limpos, `go test ./...` do server_core EXIT=0, apps/web vitest 67 arquivos / 552 testes EXIT=0.
 owner: Mission Strategist
 parent: none
 created: 2026-07-20
