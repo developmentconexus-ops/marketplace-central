@@ -48,9 +48,43 @@ filtro ou também para o número em tela: **os dois**.
 viva voltar do especialista Oracle, o VC-2 se descarrega por concordância (tela == SQL da mesma regra
 no mesmo banco), nunca por constante.
 
-REQUEST db-consult em voo (hub → `local_ec787804`): `ESTOQUE - RESERVADO` vs `ESTOQUE`; `CODPARC = 0`
-como predicado de estoque próprio; contagem viva com e sem o recorte de CODLOCAL; lista de CODLOCAL
-com estoque nas empresas 1 e 2.
+### A7 fechada — db-consult respondido e medido ao vivo (METALPRD 2026-07-29, READ-ONLY)
+
+Predicado RATIFICADO, autoridade final do chip:
+
+```sql
+p.ATIVO='S' AND p.CODPROD>0 AND p.USOPROD='R'
+AND EXISTS (SELECT 1 FROM METALPRD.TGFEST e
+  WHERE e.CODPROD=p.CODPROD AND e.CODPARC=0
+    AND e.CODEMP IN (1,2) AND e.CODLOCAL IN (10101,10102)
+  GROUP BY e.CODPROD HAVING SUM(NVL(e.ESTOQUE,0)-NVL(e.RESERVADO,0))>0)
+```
+
+- **Subtrair RESERVADO: SIM.** 871 linhas reservadas / 37.428 un no escopo; **354 produtos zeram só por
+  reserva**. "Tem estoque pra vender" = disponível.
+- **`CODPARC = 0`: correto e defensivo.** No recorte é o único CODPARC com estoque (4.091 linhas,
+  109.494 un); em outras empresas/locais existe estoque de terceiro, então o predicado fica.
+- **Número de aceitação: 2.923 produtos vendáveis.** Sem o recorte de CODLOCAL seriam 3.508 — os
+  **585 de diferença** entram indevidos hoje (show room, almoxarifado, quebras…), que é exatamente o
+  defeito do sync. Decomposição: 10101 = 2.795 · 10102 = 187 (soma > total por sobreposição).
+- **Conciliação com o número morto**: 3.822 usava ESTOQUE bruto, sem reserva e sem local. Mesmo escopo
+  bruto com local = 3.277; a reserva tira 354 → 2.923.
+
+**CODLOCAL com disponível > 0 nas empresas 1|2 (para o comentário-constante não mentir):**
+
+| CODLOCAL | TGFLOC.DESCRLOCAL | produtos | vende |
+|---|---|---|---|
+| 10101 | 1_REVENDA | 8.310 | SIM |
+| 10102 | 2_OUTLET | 595 | SIM |
+| 10108 | 8_SHOW ROMM [sic no ERP] | 1.574 | não — mostruário |
+| 10106 | 6_PENDENCIA PRODUTO FORNECEDOR | 673 | não |
+| 10107 | 7_QUEBRAS EM PALETES | 553 | não |
+| 10105 | 5_ALMOXARIFADO | 273 | não |
+| 10103 | 3_AGUARDANDO CONSERTO | 113 | não |
+| 10109 | 9_USO E CONSUMO | 70 | não |
+
+**Whitelist, nunca blacklist** — local interno novo entraria vendendo sozinho se a regra fosse por
+exclusão. O código carrega a whitelist como constante comentada.
 
 ## Defeito incluído no escopo (achado na investigação)
 
@@ -88,4 +122,5 @@ O Q4 de estoque do sync soma TODAS as empresas — `WHERE CODPARC = 0` sem CODEM
 - ATIVO=S: 10.538 · ∧R: 10.007.
 - ∧estoque>0 em CODEMP (1,2) **sem recorte de CODLOCAL**: 3.822 (com EAN 3.154 = 82,5%) —
   número HISTÓRICO, superado pela EMENDA A7. Não usar como constante de aceitação.
-- ∧estoque>0 em CODEMP (1,2) **∧ CODLOCAL IN (10101,10102)**: pendente de medição viva (REQUEST em voo).
+- ∧disponível>0 em CODEMP (1,2) **∧ CODLOCAL IN (10101,10102)**, disponível = ESTOQUE − RESERVADO:
+  **2.923** ← número de aceitação vivo do VC-2 (tolerância = drift diário).
