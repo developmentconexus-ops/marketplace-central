@@ -379,3 +379,41 @@ decididas e commitadas ANTES desta mensagem do chip: linha ausente = 400 `unknow
 com grant de seam ao S10 (A-22 @d514e0e1); `removal_owner: "CHIP-ERROR-UNIFY"` na
 temporary_exception (ruling S10 @18a9cebb-adjacente, ACK enviado). Drene a fila de entrada
 antes de compor o próximo evento.
+
+## EMENDA A-24 2026-07-29 — varredura S9: caminho sem corte morto POR COMPOSIÇÃO, não por asserção; grant de teste de composição; deref pré-existente registrado
+
+**Resultado da varredura aceito como medido:** nenhum handler/serviço de produção alcança
+página sem corte fora do routing. (a) rotas legadas só registram sob
+`PageReader==nil && !hasRouteClasses`, e o mux de produção (`root.go:280`,
+`*httpx.RouteClassMux`) fixa `hasRouteClasses=true` — ramo morto por condição de composição;
+(b) pricing segura `catalogSvc` e não chama os métodos base (grep de módulo); (c)
+`CatalogProductFactsByIDs` sem corte por desenho (BATCH-PLAN:655-662); (d) demais chamadores
+são a própria cadeia de decorators. S11/S12 podem fiar tela.
+
+**Ruling — a garantia não pode repousar em ramo negativo não-assertado. GRANT (i):** o chip
+autora, como conserto de orquestrador em commit próprio (mesma moldura do grant A-19), um
+TESTE DE COMPOSIÇÃO que monta a forma de produção do mux e afirma que as rotas legadas NÃO
+existem. Classe nomeada (stop-the-line C-1): "a composição de produção decide o
+comportamento e nenhum teste MONTA a composição de produção" — 2ª ocorrência da família
+(1ª: M02, decorator apagou porta opcional; remédio de lá foi compile-assert por porta). O
+teste é a forma geral para condição de REGISTRO (não expressável em compile-time).
+Must-fail: (m1) registrar o handler legado sob o mux de produção → o teste morre NOMEANDO a
+rota; (m2) inverter a condição `hasRouteClasses` → idem. Write-set: arquivo de teste novo no
+pacote da composição — disjunto de S10-COND e S11 por construção; item 9 do checklist do chip
+cobre.
+
+**Achado pré-existente REGISTRADO (não introduzido pelo chip, não tocar nesta chip):**
+`internalReadAvailable==false` deixa `PageReader` nil com caminho de deref no handler de
+catálogo — produção degradada derrubaria o handler. Mesma classe (ramo só exercitado em
+degradação). Vai ao operador como backlog nomeado; candidato natural: chip de hardening
+pós-CHIP-ERROR-UNIFY, ou absorção pelo próprio ERROR-UNIFY se o remédio for o padrão único de
+erro no caminho degradado. Decisão do operador, não desta chip.
+
+**ACKs registrados:** A-22 em execução numa peça só com o TERCEIRO assento (re-leitura
+pós-PUT) — correto e melhor que o pedido, mesmo estado, mesma mentira do 500; retratação da
+falsidade herdada em DOIS sítios do BATCH-PLAN (:657 e :726) com medição ao lado, forma
+certa (retratar, não apagar — o leitor futuro vê por que a frase morreu); governança com
+ordem de chaves casada aos precedentes e stop-and-report para chave não especificada; D-1
+com conserto de processo (drenagem no INÍCIO do passo — raiz nomeada: compor no fim de
+revisão longa é o pior momento da caixa); S11 rodada 2 carrega a semântica A-22 com o
+checklist P4 anotado com a data da inversão para o gate não ler critério velho.
