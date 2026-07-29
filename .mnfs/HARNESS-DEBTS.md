@@ -106,6 +106,17 @@ harness-sync --write gated pelo operador — memória retro-harness-mandate). Si
 sole-committer, pré-provisionar worktrees, `commit -F` para mensagens multilinha (PowerShell
 heredoc é armadilha — o hub mesmo pagou 2× nesta sessão com heredoc/quoting).
 
+**D-7. Stop hook: TERCEIRA acusação falsa da mesma classe (2026-07-29, durante a própria
+sessão de análise de debts).** `CLOSED claimed but no evidence pack exists in this worktree` —
+nenhum CLOSED foi enviado (token casado por substring dentro de prosa) e o glob `.mnfs/**`
+resolveu contra o worktree stale `epic-lehmann-4ffbad`, não contra o checkout do hub. As duas
+metades falsas, DE NOVO. O profile já ratificou a regra ("veredito automatizado nomeia caminho
+ABS + SHA ou degrada para unknown") após a 2ª ocorrência — e o RUNTIME do hook não mudou: regra
+de prosa não conserta hook. Prova viva de que ratificação sem enforcement é inerte; a profecia
+do próprio profile ("an alarm wrong twice trains its reader to skip the third") cumpriu-se na
+terceira. Candidato: hooks com known-answer test + degradação a `unknown` implementada no
+runtime, não na doutrina.
+
 **D-6. Quota do codex como parede invisível** (memória codex-quota-exhausted): despacho contra
 quota esgotada falha tarde. Candidato: probe de quota no boot do hub e antes de cada despacho
 codex.

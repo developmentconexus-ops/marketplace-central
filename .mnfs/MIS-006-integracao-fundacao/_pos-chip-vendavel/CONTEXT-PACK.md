@@ -345,3 +345,37 @@ MEDIU, pediu, o hub concedeu — a emenda nasce com a medição citada.
 mutação que devolva o interino 500 (ou invente default) morre nomeando o valor. S11 recebe no
 brief: 400 `unknown_erp_source` nesta tela = estado "configure a fonte primeiro" (igual ao
 card vizinho), nunca tela de erro.
+
+## EMENDA A-23 2026-07-29 — S11: copy dos toggles `only_revenda`/`only_em_estoque` APROVADA COMO PROVISÓRIA; decisões de brief endossadas
+
+**Ruling de copy (R-24: string de tela é superfície do OPERADOR — ratificação final é dele):**
+o hub aprova a copy proposta pelo chip como PROVISÓRIA e ela pode ir a commit; o hub leva as
+strings ao operador no report do turno e uma discordância vira edit de uma linha, nunca rodada.
+
+- `only_revenda` → rótulo "Somente produtos de revenda"; apoio "Mantém no sortimento apenas o
+  que o ERP classifica como revenda."
+- `only_em_estoque` → rótulo "Somente com estoque disponível"; apoio "Considera o saldo
+  disponível no CD e na loja física. Com a regra desligada, produtos sem saldo continuam no
+  sortimento com o aviso Sem estoque."
+- `only_ecommerce_eligible` já era ratificado verbatim (BATCH-PLAN.md:1389) — inalterado.
+
+As duas razões do chip ficam ratificadas como FORMA para copy futura deste módulo: (1) rótulo
+não cita coluna de ERP (segue a forma do rótulo já ratificado); (2) apoio descreve o efeito do
+estado que produz a dúvida real na tela — para o toggle de estoque, o estado DESLIGADO, porque
+é onde o badge "Sem estoque" coexiste com o produto no sortimento e a copy tem que impedir a
+leitura "badge = segundo filtro".
+
+**Decisões de brief ENDOSSADAS (nenhuma é decisão retida do hub):** três checkboxes
+independentes; write sempre com a tripla completa (espelha o 400 `invalid_body` do servidor);
+sem otimismo, fieldset desabilitado durante write (paridade com card de fonte ativa);
+invalidação ALVO no namespace `catalog` com a razão registrada (sortimento não toca
+pedidos/anúncios/instalações — o `invalidateQueries()` cego do active-source NÃO é o padrão a
+copiar); chave de cache de counts carrega `erp_source` (classe já paga no CHIP-IMPORT-FIX:
+escopo resolvido no servidor TEM que entrar na chave do cache downstream); counts com falha
+nunca renderizam `0 de 0` (ADR-17).
+
+**Re-entrega (D-1, 3º caso):** as duas REQUESTs que o chip lista como abertas JÁ FORAM
+decididas e commitadas ANTES desta mensagem do chip: linha ausente = 400 `unknown_erp_source`
+com grant de seam ao S10 (A-22 @d514e0e1); `removal_owner: "CHIP-ERROR-UNIFY"` na
+temporary_exception (ruling S10 @18a9cebb-adjacente, ACK enviado). Drene a fila de entrada
+antes de compor o próximo evento.
