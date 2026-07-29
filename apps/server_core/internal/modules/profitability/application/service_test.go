@@ -775,7 +775,9 @@ func (failingInputStore) ListInputs(context.Context, string, int) ([]profitabili
 
 type recordingCacheInvalidator struct{ classes []string }
 
-func (r *recordingCacheInvalidator) InvalidateClass(class string) { r.classes = append(r.classes, class) }
+func (r *recordingCacheInvalidator) InvalidateClass(class string) {
+	r.classes = append(r.classes, class)
+}
 
 var _ internalreadports.CacheInvalidator = (*recordingCacheInvalidator)(nil)
 
@@ -1043,6 +1045,45 @@ func TestImportMarginInputsPropagatesTaxQualityIntoSnapshots(t *testing.T) {
 			}
 			if test.wantComplete && (!amountEquals(item.ContributionAmount, 72) || !amountEquals(item.MarginPercent, 72) || !amountEquals(order.ContributionAmount, 67) || !amountEquals(order.MarginPercent, 67)) {
 				t.Fatalf("complete control math = item(%v,%v) order(%v,%v), want item(72,72) order(67,67)", item.ContributionAmount, item.MarginPercent, order.ContributionAmount, order.MarginPercent)
+			}
+		})
+	}
+}
+
+func TestKnownZeroStockComputesWhileMissingStockStillBlocks(t *testing.T) {
+	zero := 0.0
+	tests := []struct {
+		name        string
+		quantity    *float64
+		flags       []internalreaddomain.QualityFlag
+		wantFlags   []internalreaddomain.QualityFlag
+		wantQuality profitabilitydomain.InputQuality
+	}{
+		{
+			name:        "outlet-only 10102 is known zero after the live cut",
+			quantity:    &zero,
+			flags:       []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete},
+			wantFlags:   []internalreaddomain.QualityFlag{internalreaddomain.QualityComplete},
+			wantQuality: profitabilitydomain.InputQualityComplete,
+		},
+		{
+			name:        "showroom-only 10108 remains genuinely unknown",
+			flags:       []internalreaddomain.QualityFlag{internalreaddomain.QualityMissingStock},
+			wantFlags:   []internalreaddomain.QualityFlag{internalreaddomain.QualityMissingStock},
+			wantQuality: profitabilitydomain.InputQualityMissing,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := mapInternalQuality(test.quantity, test.flags)
+			if test.quantity != nil && *test.quantity != 0 {
+				t.Fatalf("stock quantity = %v, want 0", *test.quantity)
+			}
+			if !reflect.DeepEqual(test.flags, test.wantFlags) {
+				t.Fatalf("stock quality flags = %v, want %v", test.flags, test.wantFlags)
+			}
+			if got != test.wantQuality {
+				t.Fatalf("profitability gate = %s, want %s for quantity=%v flags=%v", got, test.wantQuality, test.quantity, test.flags)
 			}
 		})
 	}

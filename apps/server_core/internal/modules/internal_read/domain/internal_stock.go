@@ -18,8 +18,8 @@ type SellableStockPolicy struct {
 func DefaultSellableStockPolicy() SellableStockPolicy {
 	return SellableStockPolicy{
 		CompanyIDs:          []int{1, 2},
-		LocationIDs:         []int{10101},
-		ExcludedLocationIDs: []int{10108},
+		LocationIDs:         []int{10101, 10102},
+		ExcludedLocationIDs: nil,
 		Formula:             "SUM(ESTOQUE - RESERVADO)",
 		Scope:               SellableStockScopeResale,
 	}

@@ -80,6 +80,97 @@ func TestCatalogPageCursorChainIsGaplessAndNonOverlapping(t *testing.T) {
 	}
 }
 
+func TestCatalogPageSellableAssortmentDefaultsAndScreenEscape(t *testing.T) {
+	cursor := ports.Cursor{InternalProductID: 41}
+	filtered, filteredArgs := buildCatalogPageQueryWithOptions(cursor, 51, " bolt ", ports.CatalogPageOptions{})
+	all, allArgs := buildCatalogPageQueryWithOptions(cursor, 51, " bolt ", ports.CatalogPageOptions{IncludeAll: true})
+
+	ruleClauses := []string{
+		"UPPER(TRIM(p.USOPROD)) = 'R'",
+		"NVL(stock.sellable_qty, 0) > 0",
+		"NVL(UPPER(TRIM(p.AD_ECOMMERCE)), 'X') <> 'N'",
+	}
+	for _, clause := range ruleClauses {
+		if !strings.Contains(filtered, clause) {
+			t.Fatalf("filtered catalog query missing %q:\n%s", clause, filtered)
+		}
+		if strings.Contains(all, clause) {
+			t.Fatalf("include_all catalog query retained %q:\n%s", clause, all)
+		}
+	}
+	for _, clause := range []string{
+		"est.CODEMP IN (1, 2)",
+		"est.CODLOCAL IN (10101, 10102)",
+		"p.ATIVO = 'S'",
+		"p.CODPROD > 0",
+		"p.CODPROD > :1",
+		"UPPER(p.DESCRPROD) LIKE :2",
+		"FETCH FIRST :3 ROWS ONLY",
+	} {
+		if !strings.Contains(filtered, clause) || !strings.Contains(all, clause) {
+			t.Fatalf("catalog query mode missing shared clause %q:\nFILTERED:\n%s\nINCLUDE_ALL:\n%s", clause, filtered, all)
+		}
+	}
+	wantArgs := []any{int64(41), "%BOLT%", 51}
+	if !equalCatalogArgs(filteredArgs, wantArgs) || !equalCatalogArgs(allArgs, wantArgs) {
+		t.Fatalf("catalog binds = filtered:%#v include_all:%#v, want %#v", filteredArgs, allArgs, wantArgs)
+	}
+	t.Logf("PAGE SQL:\n%s\nPAGE BINDS: %#v", filtered, filteredArgs)
+	t.Logf("INCLUDE_ALL SQL:\n%s\nINCLUDE_ALL BINDS: %#v", all, allArgs)
+}
+
+func TestCatalogAssortmentCountUsesThePagePredicate(t *testing.T) {
+	page, _ := buildCatalogPageQueryWithOptions(ports.Cursor{}, 51, "", ports.CatalogPageOptions{})
+	count, args := buildCatalogAssortmentCountQuery()
+
+	for _, clause := range []string{
+		"FROM METALPRD.TGFEST est",
+		"est.CODEMP IN (1, 2)",
+		"est.CODLOCAL IN (10101, 10102)",
+		"UPPER(TRIM(p.USOPROD)) = 'R'",
+		"NVL(stock.sellable_qty, 0) > 0",
+		"NVL(UPPER(TRIM(p.AD_ECOMMERCE)), 'X') <> 'N'",
+		"p.ATIVO = 'S'",
+		"p.CODPROD > 0",
+	} {
+		if !strings.Contains(page, clause) || !strings.Contains(count, clause) {
+			t.Fatalf("page/count predicate drift at %q:\nPAGE:\n%s\nCOUNT:\n%s", clause, page, count)
+		}
+	}
+	if !strings.Contains(count, "sellable_count") || !strings.Contains(count, "total_count") {
+		t.Fatalf("count query does not project both exact counts:\n%s", count)
+	}
+	if len(args) != 0 {
+		t.Fatalf("count binds = %#v, want []", args)
+	}
+	t.Logf("COUNT SQL:\n%s\nCOUNT BINDS: %#v", count, args)
+}
+
+func TestCatalogProductFactsByIDsRemainsUnfiltered(t *testing.T) {
+	queryer := &fakeCatalogQueryer{rows: [][]driver.Value{catalogDriverRow(7)}}
+	reader := NewReader(queryer)
+	page, err := reader.CatalogProductFactsByIDs(context.Background(), []int64{7})
+	if err != nil {
+		t.Fatalf("CatalogProductFactsByIDs() error = %v", err)
+	}
+	if len(page.Items) != 1 || page.Items[0].InternalProductID != 7 {
+		t.Fatalf("explicit-id page = %+v, want product 7", page.Items)
+	}
+	query := queryer.queries[0]
+	for _, clause := range []string{
+		"UPPER(TRIM(p.USOPROD)) = 'R'",
+		"NVL(stock.sellable_qty, 0) > 0",
+		"NVL(UPPER(TRIM(p.AD_ECOMMERCE)), 'X') <> 'N'",
+	} {
+		if strings.Contains(query, clause) {
+			t.Fatalf("explicit-id query retained assortment clause %q:\n%s", clause, query)
+		}
+	}
+	if !strings.Contains(query, "p.CODPROD IN (:2)") {
+		t.Fatalf("explicit-id query missing bound ID predicate:\n%s", query)
+	}
+}
+
 func TestCatalogPageMapsNullableFactsAndAmbiguousPrice(t *testing.T) {
 	row := catalogDriverRow(42664)
 	row[8] = nil
@@ -94,8 +185,8 @@ func TestCatalogPageMapsNullableFactsAndAmbiguousPrice(t *testing.T) {
 		t.Fatalf("ListCatalogProductFacts() error = %v", err)
 	}
 	item := page.Items[0]
-	if item.SellableStock.Quantity != nil || !hasCatalogQuality(item.SellableStock.Quality, domain.QualityMissingStock) {
-		t.Fatalf("stock = %+v, want nil + missing_stock", item.SellableStock)
+	if item.SellableStock.Quantity == nil || *item.SellableStock.Quantity != 0 || len(item.SellableStock.Quality) != 0 {
+		t.Fatalf("stock = %+v, want quantity 0 with no quality flag", item.SellableStock)
 	}
 	if item.CurrentPrice.Amount != nil || !hasCatalogQuality(item.CurrentPrice.Quality, domain.QualityAmbiguousPrice) {
 		t.Fatalf("price = %+v, want nil + ambiguous_price", item.CurrentPrice)
@@ -274,6 +365,18 @@ func equalInt64s(left, right []int64) bool {
 	}
 	for i := range left {
 		if left[i] != right[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func equalCatalogArgs(left, right []any) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for index := range left {
+		if left[index] != right[index] {
 			return false
 		}
 	}

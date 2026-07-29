@@ -22,8 +22,27 @@ func TestBuildSellableStockQueryUsesOracleFirstPolicy(t *testing.T) {
 	if !strings.Contains(query, "METALPRD.TGFEST") {
 		t.Fatalf("expected oracle stock query to stay inside TGFEST, got %q", query)
 	}
-	if len(args) != 5 {
-		t.Fatalf("expected bound args for product + companies + locations + exclusions, got %d", len(args))
+	wantArgs := []any{42664, 1, 2, 10101, 10102}
+	if !equalReaderArgs(args, wantArgs) {
+		t.Fatalf("sellable stock binds = %#v, want %#v", args, wantArgs)
+	}
+}
+
+func TestBuildNotIntListClauseOmitsEmptyExclusion(t *testing.T) {
+	args := []any{42664}
+	clause := buildNotIntListClause("est.CODLOCAL", nil, &args)
+	if clause != "" {
+		t.Fatalf("empty exclusion clause = %q, want absent", clause)
+	}
+	if !equalReaderArgs(args, []any{42664}) {
+		t.Fatalf("empty exclusion binds = %#v, want [42664]", args)
+	}
+}
+
+func TestReaderMapsNullSellableStockToKnownZero(t *testing.T) {
+	got := knownOracleStock(sql.NullFloat64{})
+	if got == nil || *got != 0 {
+		t.Fatalf("NULL Oracle sellable stock = %v, want quantity 0", got)
 	}
 }
 
@@ -174,6 +193,18 @@ type identityQueryer struct {
 	rows    [][]driver.Value
 	queries []string
 	dbs     []*sql.DB
+}
+
+func equalReaderArgs(left, right []any) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for index := range left {
+		if left[index] != right[index] {
+			return false
+		}
+	}
+	return true
 }
 
 func (q *identityQueryer) PingContext(context.Context) error { return nil }

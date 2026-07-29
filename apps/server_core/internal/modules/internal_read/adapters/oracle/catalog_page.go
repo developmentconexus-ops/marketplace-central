@@ -19,6 +19,10 @@ const (
 )
 
 func (r *Reader) ListCatalogProductFacts(ctx context.Context, cursor ports.Cursor, limit int) (ports.CatalogFactPage, error) {
+	return r.ListCatalogProductFactsWithOptions(ctx, cursor, limit, ports.CatalogPageOptions{})
+}
+
+func (r *Reader) ListCatalogProductFactsWithOptions(ctx context.Context, cursor ports.Cursor, limit int, options ports.CatalogPageOptions) (ports.CatalogFactPage, error) {
 	if cursor.InternalProductID < 0 {
 		return ports.CatalogFactPage{}, ports.NewInvalidCursorError()
 	}
@@ -29,11 +33,15 @@ func (r *Reader) ListCatalogProductFacts(ctx context.Context, cursor ports.Curso
 		return ports.CatalogFactPage{}, err
 	}
 
-	query, args := buildCatalogPageQuery(cursor, limit+1, "")
+	query, args := buildCatalogPageQueryWithOptions(cursor, limit+1, "", options)
 	return r.readCatalogPage(ctx, query, args, limit, true)
 }
 
 func (r *Reader) SearchCatalogProductFacts(ctx context.Context, q string, cursor ports.Cursor, limit int) (ports.CatalogFactPage, error) {
+	return r.SearchCatalogProductFactsWithOptions(ctx, q, cursor, limit, ports.CatalogPageOptions{})
+}
+
+func (r *Reader) SearchCatalogProductFactsWithOptions(ctx context.Context, q string, cursor ports.Cursor, limit int, options ports.CatalogPageOptions) (ports.CatalogFactPage, error) {
 	if cursor.InternalProductID < 0 {
 		return ports.CatalogFactPage{}, ports.NewInvalidCursorError()
 	}
@@ -47,7 +55,7 @@ func (r *Reader) SearchCatalogProductFacts(ctx context.Context, q string, cursor
 	// limit+1 with paginate: the extra row is what proves there are more matches.
 	// Fetching exactly `limit` made a truncated result indistinguishable from a
 	// complete one.
-	query, args := buildCatalogPageQuery(cursor, limit+1, q)
+	query, args := buildCatalogPageQueryWithOptions(cursor, limit+1, q, options)
 	return r.readCatalogPage(ctx, query, args, limit, true)
 }
 
@@ -62,7 +70,7 @@ func (r *Reader) CatalogProductFactsByIDs(ctx context.Context, ids []int64) (por
 		return ports.CatalogFactPage{}, err
 	}
 
-	query, args := buildCatalogPageQuery(ports.Cursor{}, len(ids), "")
+	query, args := buildCatalogPageQueryWithOptions(ports.Cursor{}, len(ids), "", ports.CatalogPageOptions{IncludeAll: true})
 	query, args = withCatalogIDFilter(query, args, ids)
 	return r.readCatalogPage(ctx, query, args, len(ids), false)
 }
@@ -126,16 +134,34 @@ func (r *Reader) readCatalogPage(ctx context.Context, query string, args []any, 
 	return page, nil
 }
 
-func buildCatalogPageQuery(cursor ports.Cursor, fetchLimit int, search string) (string, []any) {
-	query := `
-WITH stock AS (
+func catalogStockCTE() string {
+	return `WITH stock AS (
     SELECT est.CODPROD,
            SUM(CASE WHEN est.CODPARC = 0 THEN NVL(est.ESTOQUE, 0) - NVL(est.RESERVADO, 0) ELSE 0 END) AS sellable_qty
     FROM METALPRD.TGFEST est
     WHERE est.CODEMP IN (1, 2)
-      AND est.CODLOCAL = 10101
+      -- Selling-location whitelist: 10101 = 1_REVENDA; 10102 = 2_OUTLET.
+      AND est.CODLOCAL IN (10101, 10102)
     GROUP BY est.CODPROD
-), price_candidates AS (
+)`
+}
+
+func catalogAssortmentPredicate(includeAll bool) string {
+	if includeAll {
+		return ""
+	}
+	return `
+  AND UPPER(TRIM(p.USOPROD)) = 'R'
+  AND NVL(stock.sellable_qty, 0) > 0
+  AND NVL(UPPER(TRIM(p.AD_ECOMMERCE)), 'X') <> 'N'`
+}
+
+func buildCatalogPageQuery(cursor ports.Cursor, fetchLimit int, search string) (string, []any) {
+	return buildCatalogPageQueryWithOptions(cursor, fetchLimit, search, ports.CatalogPageOptions{})
+}
+
+func buildCatalogPageQueryWithOptions(cursor ports.Cursor, fetchLimit int, search string, options ports.CatalogPageOptions) (string, []any) {
+	query := "\n" + catalogStockCTE() + `, price_candidates AS (
     SELECT e.CODPROD,
            e.VLRVENDA,
            ROW_NUMBER() OVER (PARTITION BY e.CODPROD ORDER BY t.DTVIGOR DESC, e.NUTAB DESC) AS price_rank,
@@ -188,6 +214,7 @@ LEFT JOIN price ON price.CODPROD = p.CODPROD
 LEFT JOIN cost ON cost.CODPROD = p.CODPROD
 WHERE p.ATIVO = 'S'
   AND p.CODPROD > 0`
+	query += catalogAssortmentPredicate(options.IncludeAll)
 
 	args := make([]any, 0, 3)
 	if cursor.InternalProductID > 0 {
@@ -202,6 +229,36 @@ WHERE p.ATIVO = 'S'
 	args = append(args, fetchLimit)
 	query += fmt.Sprintf("\nFETCH FIRST :%d ROWS ONLY", len(args))
 	return query, args
+}
+
+func (r *Reader) GetCatalogAssortmentCounts(ctx context.Context) (ports.CatalogAssortmentCounts, error) {
+	if err := r.ensureAvailable(ctx); err != nil {
+		return ports.CatalogAssortmentCounts{}, err
+	}
+	query, args := buildCatalogAssortmentCountQuery()
+	var result ports.CatalogAssortmentCounts
+	if err := r.db.QueryRowContext(ctx, query, args...).Scan(&result.SellableCount, &result.TotalCount); err != nil {
+		return ports.CatalogAssortmentCounts{}, wrapOracleError("read catalog assortment counts", err)
+	}
+	return result, nil
+}
+
+func buildCatalogAssortmentCountQuery() (string, []any) {
+	query := "\n" + catalogStockCTE() + `
+SELECT
+    COUNT(*) AS sellable_count,
+    (
+        SELECT COUNT(*)
+        FROM METALPRD.TGFPRO total
+        WHERE total.ATIVO = 'S'
+          AND total.CODPROD > 0
+    ) AS total_count
+FROM METALPRD.TGFPRO p
+LEFT JOIN stock ON stock.CODPROD = p.CODPROD
+WHERE p.ATIVO = 'S'
+  AND p.CODPROD > 0`
+	query += catalogAssortmentPredicate(false)
+	return query, nil
 }
 
 func catalogProductFact(productID int64, eanValue, reference, description, brandName, ncmValue sql.NullString, activeEANCount sql.NullInt64, active sql.NullString, stock sql.NullFloat64, price sql.NullString, activePriceRows sql.NullInt64, cost sql.NullString) ports.CatalogProductFact {
@@ -231,7 +288,8 @@ func catalogProductFact(productID int64, eanValue, reference, description, brand
 		Cost:         ports.CatalogMoneyFact{Currency: catalogCurrency},
 	}
 	if result.SellableStock.Quantity == nil {
-		result.SellableStock.Quality = []string{string(domain.QualityMissingStock)}
+		zero := 0.0
+		result.SellableStock.Quantity = &zero
 	}
 	if activePriceRows.Valid && activePriceRows.Int64 > 1 {
 		result.CurrentPrice.Quality = []string{string(domain.QualityAmbiguousPrice)}
@@ -251,3 +309,4 @@ func catalogProductFact(productID int64, eanValue, reference, description, brand
 }
 
 var _ ports.CatalogPageReader = (*Reader)(nil)
+var _ ports.CatalogAssortmentReader = (*Reader)(nil)

@@ -1,0 +1,189 @@
+S6 GREEN — ran
+
+Focused S6 tests:
+RUN=12 PASS=12 SKIP=0 FAIL=0
+
+Exact requested lanes:
+go test ./internal/modules/internal_read/... -count=1 -v
+RUN=191 PASS=130 SKIP=1 FAIL=0 EXIT=0
+SKIP VERBATIM:
+reader_live_nocgo_test.go:12: set MPC_ORACLE_LIVE_TEST=1 to run live Oracle validation
+--- SKIP: TestOracleLiveBaseline (0.00s)
+
+go test ./internal/modules/pricing/... -count=1 -v
+RUN=158 PASS=116 SKIP=0 FAIL=0 EXIT=0
+
+go build ./...
+EXIT=1
+error obtaining VCS status: exit status 128
+	Use -buildvcs=false to disable VCS stamping.
+(repeated four times; known seat signature from the brief, no -buildvcs=false added)
+
+go vet ./...
+EXIT=0
+
+PAGE SQL:
+WITH stock AS (
+    SELECT est.CODPROD,
+           SUM(CASE WHEN est.CODPARC = 0 THEN NVL(est.ESTOQUE, 0) - NVL(est.RESERVADO, 0) ELSE 0 END) AS sellable_qty
+    FROM METALPRD.TGFEST est
+    WHERE est.CODEMP IN (1, 2)
+      -- Selling-location whitelist: 10101 = 1_REVENDA; 10102 = 2_OUTLET.
+      AND est.CODLOCAL IN (10101, 10102)
+    GROUP BY est.CODPROD
+), price_candidates AS (
+    SELECT e.CODPROD,
+           e.VLRVENDA,
+           ROW_NUMBER() OVER (PARTITION BY e.CODPROD ORDER BY t.DTVIGOR DESC, e.NUTAB DESC) AS price_rank,
+           COUNT(*) OVER (PARTITION BY e.CODPROD, e.NUTAB) AS active_price_rows
+    FROM METALPRD.TGFEXC e
+    JOIN METALPRD.TGFTAB t ON t.NUTAB = e.NUTAB
+    WHERE t.CODTAB = 0
+      AND e.CODLOCAL = 10101
+      AND t.DTVIGOR <= SYSDATE
+), price AS (
+    SELECT CODPROD,
+           MAX(CASE WHEN price_rank = 1 AND active_price_rows = 1 THEN VLRVENDA END) AS amount,
+           MAX(CASE WHEN price_rank = 1 THEN active_price_rows ELSE 0 END) AS active_price_rows
+    FROM price_candidates
+    GROUP BY CODPROD
+), cost_candidates AS (
+    SELECT c.CODPROD,
+           c.CUSSEMICM,
+           ROW_NUMBER() OVER (PARTITION BY c.CODPROD ORDER BY c.DTATUAL DESC, c.CODLOCAL DESC) AS cost_rank
+    FROM METALPRD.TGFCUS c
+    WHERE c.CODEMP = 1
+      AND c.DTATUAL <= SYSDATE
+), cost AS (
+    SELECT CODPROD,
+           MAX(CASE WHEN cost_rank = 1 THEN CUSSEMICM END) AS amount
+    FROM cost_candidates
+    GROUP BY CODPROD
+)
+SELECT
+    p.CODPROD,
+    p.REFERENCIA AS EAN,
+    p.REFFORN,
+    p.DESCRPROD,
+    p.MARCA,
+    p.NCM,
+    (
+        SELECT COUNT(DISTINCT collision.CODPROD)
+        FROM METALPRD.TGFPRO collision
+        WHERE collision.ATIVO = 'S'
+          AND TRIM(collision.REFERENCIA) = TRIM(p.REFERENCIA)
+    ) AS EAN_ACTIVE_COUNT,
+    p.ATIVO,
+    stock.sellable_qty,
+    price.amount,
+    price.active_price_rows,
+    cost.amount
+FROM METALPRD.TGFPRO p
+LEFT JOIN stock ON stock.CODPROD = p.CODPROD
+LEFT JOIN price ON price.CODPROD = p.CODPROD
+LEFT JOIN cost ON cost.CODPROD = p.CODPROD
+WHERE p.ATIVO = 'S'
+  AND p.CODPROD > 0
+  AND UPPER(TRIM(p.USOPROD)) = 'R'
+  AND NVL(stock.sellable_qty, 0) > 0
+  AND NVL(UPPER(TRIM(p.AD_ECOMMERCE)), 'X') <> 'N'
+  AND p.CODPROD > :1
+  AND UPPER(p.DESCRPROD) LIKE :2
+ORDER BY p.CODPROD
+FETCH FIRST :3 ROWS ONLY
+PAGE BINDS: []interface {}{41, "%BOLT%", 51}
+
+INCLUDE_ALL SQL:
+WITH stock AS (
+    SELECT est.CODPROD,
+           SUM(CASE WHEN est.CODPARC = 0 THEN NVL(est.ESTOQUE, 0) - NVL(est.RESERVADO, 0) ELSE 0 END) AS sellable_qty
+    FROM METALPRD.TGFEST est
+    WHERE est.CODEMP IN (1, 2)
+      -- Selling-location whitelist: 10101 = 1_REVENDA; 10102 = 2_OUTLET.
+      AND est.CODLOCAL IN (10101, 10102)
+    GROUP BY est.CODPROD
+), price_candidates AS (
+    SELECT e.CODPROD,
+           e.VLRVENDA,
+           ROW_NUMBER() OVER (PARTITION BY e.CODPROD ORDER BY t.DTVIGOR DESC, e.NUTAB DESC) AS price_rank,
+           COUNT(*) OVER (PARTITION BY e.CODPROD, e.NUTAB) AS active_price_rows
+    FROM METALPRD.TGFEXC e
+    JOIN METALPRD.TGFTAB t ON t.NUTAB = e.NUTAB
+    WHERE t.CODTAB = 0
+      AND e.CODLOCAL = 10101
+      AND t.DTVIGOR <= SYSDATE
+), price AS (
+    SELECT CODPROD,
+           MAX(CASE WHEN price_rank = 1 AND active_price_rows = 1 THEN VLRVENDA END) AS amount,
+           MAX(CASE WHEN price_rank = 1 THEN active_price_rows ELSE 0 END) AS active_price_rows
+    FROM price_candidates
+    GROUP BY CODPROD
+), cost_candidates AS (
+    SELECT c.CODPROD,
+           c.CUSSEMICM,
+           ROW_NUMBER() OVER (PARTITION BY c.CODPROD ORDER BY c.DTATUAL DESC, c.CODLOCAL DESC) AS cost_rank
+    FROM METALPRD.TGFCUS c
+    WHERE c.CODEMP = 1
+      AND c.DTATUAL <= SYSDATE
+), cost AS (
+    SELECT CODPROD,
+           MAX(CASE WHEN cost_rank = 1 THEN CUSSEMICM END) AS amount
+    FROM cost_candidates
+    GROUP BY CODPROD
+)
+SELECT
+    p.CODPROD,
+    p.REFERENCIA AS EAN,
+    p.REFFORN,
+    p.DESCRPROD,
+    p.MARCA,
+    p.NCM,
+    (
+        SELECT COUNT(DISTINCT collision.CODPROD)
+        FROM METALPRD.TGFPRO collision
+        WHERE collision.ATIVO = 'S'
+          AND TRIM(collision.REFERENCIA) = TRIM(p.REFERENCIA)
+    ) AS EAN_ACTIVE_COUNT,
+    p.ATIVO,
+    stock.sellable_qty,
+    price.amount,
+    price.active_price_rows,
+    cost.amount
+FROM METALPRD.TGFPRO p
+LEFT JOIN stock ON stock.CODPROD = p.CODPROD
+LEFT JOIN price ON price.CODPROD = p.CODPROD
+LEFT JOIN cost ON cost.CODPROD = p.CODPROD
+WHERE p.ATIVO = 'S'
+  AND p.CODPROD > 0
+  AND p.CODPROD > :1
+  AND UPPER(p.DESCRPROD) LIKE :2
+ORDER BY p.CODPROD
+FETCH FIRST :3 ROWS ONLY
+INCLUDE_ALL BINDS: []interface {}{41, "%BOLT%", 51}
+
+COUNT SQL:
+WITH stock AS (
+    SELECT est.CODPROD,
+           SUM(CASE WHEN est.CODPARC = 0 THEN NVL(est.ESTOQUE, 0) - NVL(est.RESERVADO, 0) ELSE 0 END) AS sellable_qty
+    FROM METALPRD.TGFEST est
+    WHERE est.CODEMP IN (1, 2)
+      -- Selling-location whitelist: 10101 = 1_REVENDA; 10102 = 2_OUTLET.
+      AND est.CODLOCAL IN (10101, 10102)
+    GROUP BY est.CODPROD
+)
+SELECT
+    COUNT(*) AS sellable_count,
+    (
+        SELECT COUNT(*)
+        FROM METALPRD.TGFPRO total
+        WHERE total.ATIVO = 'S'
+          AND total.CODPROD > 0
+    ) AS total_count
+FROM METALPRD.TGFPRO p
+LEFT JOIN stock ON stock.CODPROD = p.CODPROD
+WHERE p.ATIVO = 'S'
+  AND p.CODPROD > 0
+  AND UPPER(TRIM(p.USOPROD)) = 'R'
+  AND NVL(stock.sellable_qty, 0) > 0
+  AND NVL(UPPER(TRIM(p.AD_ECOMMERCE)), 'X') <> 'N'
+COUNT BINDS: []interface {}(nil)

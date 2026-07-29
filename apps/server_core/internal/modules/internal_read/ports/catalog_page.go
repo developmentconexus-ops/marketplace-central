@@ -87,6 +87,15 @@ type CatalogMoneyFact struct {
 	Quality  []string
 }
 
+type CatalogPageOptions struct {
+	IncludeAll bool
+}
+
+type CatalogAssortmentCounts struct {
+	SellableCount int
+	TotalCount    int
+}
+
 type CatalogPageReader interface {
 	ListCatalogProductFacts(context.Context, Cursor, int) (CatalogFactPage, error)
 	// SearchCatalogProductFacts pages the matches for a query the same way
@@ -103,4 +112,10 @@ type CatalogPageReader interface {
 	// learns which products the source does not know rather than being handed a
 	// fabricated blank.
 	CatalogProductFactsByIDs(context.Context, []int64) (CatalogFactPage, error)
+}
+
+type CatalogAssortmentReader interface {
+	ListCatalogProductFactsWithOptions(context.Context, Cursor, int, CatalogPageOptions) (CatalogFactPage, error)
+	SearchCatalogProductFactsWithOptions(context.Context, string, Cursor, int, CatalogPageOptions) (CatalogFactPage, error)
+	GetCatalogAssortmentCounts(context.Context) (CatalogAssortmentCounts, error)
 }
