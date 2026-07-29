@@ -764,3 +764,69 @@ by this grant. Own commit on top of `5adeeb56`; the worker's commit is left inta
      red, naming which of the two questions the code answered.
   3. `DefaultSellableAssortment` = 0 hits in code, counted; the 10 remaining are this pack's prose.
   4. A-15 per-line accounting on every run above.
+
+---
+
+## S10-CONFIG-HTTP — two rounds, and the swap the first round could not see
+
+**Worker:** gpt-5.6-luna high, OS process. Round 1 `agent__s10.log` / `.last.md`;
+round 2 `agent__s10r2.log` / `.last.md`. **Committed @`eb297b44`** on `595c15e3`.
+**Evidence:** `evidence/S10-orchestrator.txt`. Checklists written before each diff was read:
+`p4-checklist-s10.md`, `p4-checklist-s10-round2.md`.
+
+**Round 1: handler accepted on the first read, tests reproved.** All six hard kills passed —
+`*bool` presence per field so an absent boolean is a 400 and not a silent false, the 200 body as a
+re-read rather than an echo, `ErrUnknownActiveSource` to 500 with no invented all-false default,
+the flat two-code error surface with no 404, both routes registered interactive, and the write set
+exactly the three granted files.
+
+**F-1 — the symmetric fixture, ANCHORS-3's class, second occurrence in this chip.** Every fixture
+set `only_revenda` and `only_ecommerce_eligible` to the SAME value, and two booleans carrying the
+same value are indistinguishable under a transposition. With three booleans no single fixture can
+make all three pairwise distinct, so the fix is to pin them one at a time: three cases, one toggle
+true each, run through BOTH directions.
+
+**F-2 — self-referential expectation.** `want := newSellableAssortmentResponse(...)` built the
+expected value by calling the mapper under test. Same shape as measure-then-write from ANCHORS-3:
+both sides move together, so the assertion cannot fail for the reason it exists.
+
+**F-3 —** the trailing-garbage guard had no test.
+
+**The measurement, run at my seat and not taken on report.** Two independent tag swaps, copy-based
+backup/restore (never `git checkout --` — the files were uncommitted):
+  - M-A, request struct: PASS=20 FAIL=3 SKIP=0, exactly the two PUT cases whose value differs.
+  - M-B, response struct: PASS=18 FAIL=5 SKIP=0, four cases across both directions.
+  - **Round 1's test passes under BOTH.** That is what makes F-1 a defect and not a style note:
+    round 1 would have shipped a live JSON tag transposition under a green lane.
+  - `TestHandlerGetSellableAssortment` also passes under M-B, because it unmarshals into the
+    production struct whose matching tags cancel the swap. Left as-is (the map-based table covers
+    that ground) and named in the evidence so its green is never read as a wire-name proof.
+
+**Lesson to carry: compare the WIRE, not the struct.** A response test that unmarshals into the
+same struct the handler marshalled is blind to every tag defect by construction. `map[string]bool`
+sees the names; the struct sees only the shape.
+
+**A-15 again, and it paid again.** The worker's lane reported SKIP=3 with the three database tests
+never executed. Named, re-run with the env: RUN=39 PASS=39 FAIL=0 SKIP=0.
+
+**Glue I wrote myself (within the ceiling).** The package doc block. Round 2 widened its subject to
+"the tenant configuration" while its body still described active-source only — including
+"fail-closed 400 when unset", which is FALSE for the assortment routes. R-24's case: a total claim
+false over part of its scope is made to match, not softened. The block now names both surfaces and
+names the 500 asymmetry as an open question rather than letting a reader assume symmetry.
+
+**Governance — measured, not assumed.** The worker reported `status=failed` without attribution. I
+isolated the delta by removing only the `tenant_config` entry and running the lane both ways: 43
+violations either side, lane already red at base; the entry ADDS
+`GOV_MODULE_LAYER tenant_config-erp_import-adapters` and REMOVES
+`GOV_MODULE_COVERAGE tenant_config`. The edge is one symbol — `active_source.go:74` republishes
+the `erp_import` error sentinel. **OPEN:** a `temporary_exceptions` entry needs a `removal_owner`,
+which is an owner identifier and not mine to invent. REQUEST sent; no entry written.
+
+**Still parked:** the honest status for a tenant with no config row (500 interim), REQUEST open.
+
+**Process finding.** I dispatched round 2 without snapshotting the round-1 bytes of the accepted
+files, so afterwards I could not prove "only the test file changed" — the diff base is HEAD
+`595c15e3`, which predates both rounds. I re-reviewed the handler and `modules.json` diffs in full
+instead, which is weaker than a byte comparison and is named as such in the evidence. Snapshot the
+accepted files BEFORE dispatching a follow-up round.
