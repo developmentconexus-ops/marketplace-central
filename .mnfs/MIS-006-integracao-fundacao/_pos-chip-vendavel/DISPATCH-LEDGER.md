@@ -443,3 +443,56 @@ message helper. Declared in §4 of the review rather than folded silently into t
   reported explicitly.
 - Nothing migrates the slice database automatically; `OpenPool` validates and connects, it does
   not migrate. After a slice adds a migration, the orchestrator migrates before reviewing.
+
+## S6-ORACLE-CATALOG — the live query cuts, the counter counts, the outlet joins
+
+Worker gpt-5.6-luna / high, OS-process. Commit `8303f7c6`; orchestrator glue on top.
+Evidence: `evidence/S6-red.txt`, `evidence/S6-green.txt`, `evidence/S6-orchestrator.txt`.
+
+Five RED assertions, each naming its own miss: the missing live predicate, page/count drift,
+`missing_stock` on a fact the ERP answered, an empty `NOT IN ()`, and the location defaults.
+
+### P4 — counted at my seat, because the worker's own numbers were wrong
+
+internal_read RUN 191 · PASS 190 · SKIP 1 · FAIL 0. pricing RUN 158 · PASS 158 · SKIP 0 · FAIL 0.
+`vet` 0, `build` 0. The worker reported PASS=130 and PASS=116 — an undercount on green lanes.
+Harmless direction, still a number that did not come from counting. The lane is unit-only by
+design (SQL asserted as generated text), so the absent DB env is correct here; A-15's dot-source
+rule binds S7, whose lane reaches Postgres. The one SKIP is `TestOracleLiveBaseline`, pre-existing
+at `f51cabca`. The worker's `build EXIT=1 / error obtaining VCS status` did not reproduce at my
+seat and is recorded as a seat-local git quirk — it was right not to paper it over.
+
+### The predicate cuts before the page, and the count reads the same rule
+
+Appended ahead of cursor/search/`FETCH FIRST`, so the cut happens in SQL before pagination — a
+predicate applied after the fetch would have paged the whole catalog and thinned each page, and
+the count would have disagreed with the screen. Page and count share `catalogStockCTE()` and
+`catalogAssortmentPredicate()`; drift is prevented by there being one source, not by a comment.
+`CatalogProductFactsByIDs` passes `IncludeAll: true` — a caller naming ids is asking about THOSE
+products. Both tests pinning the old location defaults were re-pointed BY VALUE, not loosened.
+
+`missing_stock` is not retired: 8 non-test producers remain. S6 removed exactly one — the live
+catalog page, the path DR-2/A-14 ruled on, where the ERP was asked and answered, so absence is a
+known negative and `0` is the honest value. ADR-17's two sides, each on its own path.
+
+### Finding — the new optional port is asserted at 1 of 5 seats, and the other 4 fail silently
+
+`ports.CatalogAssortmentReader` has exactly one compile-time assert (`oracle/catalog_page.go:312`)
+and exactly one implementer. Its sibling `CatalogPageReader` has five
+(`oracle:311`, `routing:159`, `cache:312`, `timing:136`, `service:66`). The live chain composed at
+`composition/root.go:449→453→479` is oracle → cache → timing → routing, and every seat forwards by
+RUNTIME assertion: `routing/reader.go:151` fails into `ReadErrorSourceUnavailable`, which is a 503
+on the screen. A decorator missing the new port therefore does not fail to build — it deletes the
+capability and calls the source unavailable. That is the catalog-503 defect of CHIP-M02 rebuilt,
+whose lesson was compile-time asserts for EVERY optional port.
+
+Not S6's defect: the decorators are outside its write-set, and asserting a type that does not yet
+implement the interface is a build failure — it would drag S9's work into S6. What was owed was
+the condition written where the next writer stands. Applied as glue (F-3) on the interface
+declaration: it names the four seats, names the 503 mechanism, demands an arrival test that reads
+the count THROUGH the composed reader from `composition/root.go`, and forbids a runtime
+`.(CatalogAssortmentReader)` with a fallback at the HTTP seam — the shape that turns a missing seat
+into a quiet wrong answer instead of a build error.
+
+Same family as S5B's two hops and A-16's third site: a value that leaves its source and is never
+asserted to ARRIVE. Here the value is a capability, and the arrival test belongs to S9.

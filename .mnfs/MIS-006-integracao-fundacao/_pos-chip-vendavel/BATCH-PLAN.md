@@ -604,6 +604,10 @@ npx --no-install vitest run ../../packages/sdk-runtime/src/activeSource.test.ts 
   - `apps/server_core/internal/modules/internal_read/adapters/routing/reader_test.go`
   - `apps/server_core/internal/modules/internal_read/application/service.go`
   - `apps/server_core/internal/modules/internal_read/application/service_test.go`
+  - `apps/server_core/internal/modules/internal_read/adapters/cache/cache.go`
+  - `apps/server_core/internal/modules/internal_read/adapters/cache/cache_test.go`
+  - `apps/server_core/internal/modules/internal_read/observability/timing.go`
+  - `apps/server_core/internal/modules/internal_read/observability/timing_test.go`
   - `apps/server_core/internal/modules/catalog/transport/http_handler.go`
   - `apps/server_core/internal/modules/catalog/transport/http_handler_test.go`
   - `apps/server_core/internal/composition/root.go`
@@ -617,6 +621,19 @@ npx --no-install vitest run ../../packages/sdk-runtime/src/activeSource.test.ts 
   - `?ids=` remains all-products.
   - Root wires the same routed service into both page and count handler fields.
   - Root test asserts all literal paths and non-nil count wiring.
+  - EVERY seat in the live chain composed at `root.go:449→453→479` — `cache.CatalogPageReader`,
+    `observability.TimingReader`, `routing.Reader`, `application.Service` — implements
+    `ports.CatalogAssortmentReader` AND carries a compile-time
+    `var _ ports.CatalogAssortmentReader = ...`. Measured at S6 close: the port had 1 assert
+    against the sibling port's 5. A seat that skips it does not fail to build — `routing/reader.go:151`
+    turns the failed runtime assertion into `ReadErrorSourceUnavailable`, a 503 on the screen.
+    This is the CHIP-M02 catalog-503 defect, and the condition is written at
+    `internal_read/ports/catalog_page.go:117`.
+  - The arrival test reads the count THROUGH the reader composed in `composition/root.go`, not off
+    the Oracle reader directly. Asserting the value leaves its source has already lost the same
+    class of fact three times in this chip (S5B's two hops, A-16's third site).
+  - No runtime `.(ports.CatalogAssortmentReader)` with a fallback at the HTTP seam. A missing seat
+    must be a build error, never a quiet wrong answer.
 - `validation_kind`: `unit`
 - `commands`:
 
@@ -803,6 +820,8 @@ Shared-file ordering constraints:
 - `erp_import/adapters/internalread/reader.go`: S5 before S7.
 - `packages/web-query/src/index.ts`: S11 before S12.
 - `root.go`: only S9 owns it.
+- `cache/cache.go`, `observability/timing.go`: only S9 owns them. Added to its write-set at S6
+  close — they are two of the four decorator seats the new optional port must reach.
 - OpenAPI and SDK: only S8 owns them and they land together.
 - `runner_test.go`: only S1 owns both count edits.
 - No two slices execute concurrently; this chip has one writer.

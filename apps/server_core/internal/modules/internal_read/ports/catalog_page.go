@@ -114,6 +114,22 @@ type CatalogPageReader interface {
 	CatalogProductFactsByIDs(context.Context, []int64) (CatalogFactPage, error)
 }
 
+// CatalogAssortmentReader is OPTIONAL, and only the Oracle reader implements it
+// today. Every seat between that reader and a caller re-asserts the port it
+// forwards at RUNTIME — routing/reader.go resolveCatalogPager turns a failed
+// assertion into ReadErrorSourceUnavailable, which is a 503 on the screen. So a
+// decorator that does not implement this interface does not fail to compile; it
+// deletes the capability and reports the source as unavailable. That is how the
+// catalog-503 defect was built once already.
+//
+// VALIDITY CONDITION: whoever wires a consumer to this port owes a compile-time
+// `var _ ports.CatalogAssortmentReader = ...` on EVERY seat in the live chain —
+// cache.CatalogPageReader, observability.TimingReader, routing.Reader,
+// application.Service — and an arrival test that reads the count through the
+// composed reader from composition/root.go, not off the Oracle reader directly.
+// A runtime `.(CatalogAssortmentReader)` with a fallback at the HTTP seam is the
+// shape this condition exists to forbid: it turns a missing seat into a quiet
+// wrong answer instead of a build error.
 type CatalogAssortmentReader interface {
 	ListCatalogProductFactsWithOptions(context.Context, Cursor, int, CatalogPageOptions) (CatalogFactPage, error)
 	SearchCatalogProductFactsWithOptions(context.Context, string, Cursor, int, CatalogPageOptions) (CatalogFactPage, error)
