@@ -1,6 +1,6 @@
 # FINDING — lane de DB só prova com env carregado E base migrada; o brief é quem parte isso
 
-`status: profile-candidate · vinculante para CHIP-VENDAVEL desde já (autoridade do hub sobre protocolo de chip); entrada no HARNESS-PROFILE pende ratificação do operador`
+`status: RATIFICADO no profile @f1cba2a (operador 2026-07-29, "Coloca no profile") — entrada §11+§3 no amendment log`
 `provenance: 2026-07-29 · CHIP-VENDAVEL S5B · worker lane RUN 27 / PASS 1 / SKIP 26`
 
 ## O facto
