@@ -29,6 +29,12 @@ do amendment (hoje é disciplina, não mecanismo).
 DISPATCH-LEDGER com coluna modelo/esforço obrigatória + o gate de aceitação confere contra a
 matriz A-1.
 
+**A-5. Rodada de follow-up despachada sem snapshot dos bytes da rodada aceita.** S10: sem
+snapshot, o orquestrador não conseguia PROVAR "só o arquivo de teste mudou" (base do diff era o
+HEAD anterior às duas rodadas); re-revisão inteira no lugar = mais fraca que comparação de
+bytes, e nomeada assim. Candidato: regra — snapshot dos arquivos aceitos ANTES de despachar
+rodada de follow-up; o diff da rodada N é contra o snapshot da N-1, não contra o HEAD.
+
 ## B. Lanes e evidência
 
 **B-1. Lane vacuosa imprime `ok` byte-idêntico ao verde real.** Três formas já pagas: env
@@ -67,6 +73,13 @@ custou escalation + S9 estendida). Regra local nos briefs de gate do chip; candi
 engole todo caminho apendado — 2 guards quebraram na S8; um leria SEIS 500 onde exige 4).
 Conserto de referência: janelas posição-independentes por lookahead, guard novo nasce por
 valor. Candidato: doutrina de teste de contrato no core.
+
+**C-5. Teste de resposta que faz Unmarshal na MESMA struct do Marshal é cego a defeito de tag
+POR CONSTRUÇÃO** (as duas pontas usam as mesmas tags; o erro se cancela). S10 rodada 1: fixture
+simétrica + round-trip por struct teria mergeado transposição de tag JSON viva com lane verde;
+mutações M-A/M-B provaram (teste da rodada 1 PASSA nas duas). Candidato: doutrina de teste de
+transporte — compare o FIO (`map[string]bool`/JSON cru), fixtures fixam UM campo por vez nas
+duas direções; fixture simétrica é asserção morta (mesma classe ANCHORS-3, 2ª ocorrência).
 
 **C-4. Gate read-only não descarrega critério de execução** (finding antigo, ANCHORS-3):
 reviewer sem Bash deixa toda execução certificada pelo próprio chip. Ainda sem conserto
