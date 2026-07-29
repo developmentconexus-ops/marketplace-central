@@ -42,6 +42,11 @@ func (m *MirrorMatcher) FindProductsForLinking(ctx context.Context, input intern
 	}
 	ctx = tenant_config.WithActiveSource(ctx, cfg)
 	ctx = erpinternalread.WithActiveSource(ctx, erpdomain.ImportSource(cfg.Source))
+	ctx = erpinternalread.WithSellableAssortment(ctx,
+		cfg.SellableAssortment.OnlyRevenda,
+		cfg.SellableAssortment.OnlyEmEstoque,
+		cfg.SellableAssortment.OnlyEcommerceEligible,
+	)
 	candidates, err := m.mirror.FindProductsForLinking(ctx, input)
 	// A linking anchor that resolves to no product is "sem correspondência" for
 	// THAT listing, not a failed run: the reader reports an absent codprod as a

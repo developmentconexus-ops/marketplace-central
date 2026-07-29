@@ -10,7 +10,7 @@ import (
 	"marketplace-central/apps/server_core/internal/modules/erp_import/domain"
 )
 
-const mirrorProductColumns = `m.codigo_produto,m.descricao,m.referencia,m.ean,m.marca,m.grupo_codigo,m.grupo_descricao,m.ncm,m.custo::text,m.preco_venda::text,m.estoque_total::text,m.updated_at`
+const mirrorProductColumns = `m.codigo_produto,m.descricao,m.referencia,m.ean,m.marca,m.grupo_codigo,m.grupo_descricao,m.ncm,m.custo::text,m.preco_venda::text,m.usoprod,m.ad_ecommerce,m.estoque_total::text,m.updated_at`
 
 type rowScanner interface {
 	Scan(dest ...any) error
@@ -19,11 +19,11 @@ type rowScanner interface {
 func scanMirrorProduct(row rowScanner) (domain.MirrorProduct, error) {
 	var product domain.MirrorProduct
 	var descricao, referencia, ean, marca, grupoCodigo, grupoDescricao, ncm sql.NullString
-	var custo, precoVenda, estoqueTotal sql.NullString
+	var custo, precoVenda, usoprod, adEcommerce, estoqueTotal sql.NullString
 	var importedAt sql.NullTime
 	if err := row.Scan(
 		&product.CodigoProduto, &descricao, &referencia, &ean, &marca, &grupoCodigo,
-		&grupoDescricao, &ncm, &custo, &precoVenda, &estoqueTotal, &product.UpdatedAt, &importedAt,
+		&grupoDescricao, &ncm, &custo, &precoVenda, &usoprod, &adEcommerce, &estoqueTotal, &product.UpdatedAt, &importedAt,
 	); err != nil {
 		return domain.MirrorProduct{}, err
 	}
@@ -36,6 +36,8 @@ func scanMirrorProduct(row rowScanner) (domain.MirrorProduct, error) {
 	product.NCM = nullStringPointer(ncm)
 	product.Custo = nullStringPointer(custo)
 	product.PrecoVenda = nullStringPointer(precoVenda)
+	product.Usoprod = nullStringPointer(usoprod)
+	product.ADEcommerce = nullStringPointer(adEcommerce)
 	product.EstoqueTotal = nullStringPointer(estoqueTotal)
 	if importedAt.Valid {
 		product.ImportedAt = &importedAt.Time

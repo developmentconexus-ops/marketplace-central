@@ -169,6 +169,45 @@ func TestMirrorBackedReads(t *testing.T) {
 	}
 }
 
+func TestFindProductsForLinkingAppliesAssortmentAfterCachedIndexLoads(t *testing.T) {
+	rows := []erpdomain.MirrorProduct{
+		{CodigoProduto: "101", Usoprod: ptr("V"), EstoqueTotal: ptr("5"), ADEcommerce: ptr("S"), ImportedAt: timePtr(importedAt)},
+		{CodigoProduto: "102", Usoprod: ptr("R"), EstoqueTotal: ptr("0"), ADEcommerce: ptr("S"), ImportedAt: timePtr(importedAt)},
+		{CodigoProduto: "103", Usoprod: ptr("R"), EstoqueTotal: ptr("5"), ADEcommerce: ptr("N"), ImportedAt: timePtr(importedAt)},
+		{CodigoProduto: "104", ImportedAt: timePtr(importedAt)},
+		{CodigoProduto: "105", Usoprod: ptr("R"), EstoqueTotal: ptr("5"), ADEcommerce: ptr("S"), ImportedAt: timePtr(importedAt)},
+	}
+	r, repo, _ := readerWith(rows)
+	strict := WithSellableAssortment(WithActiveSource(context.Background(), erpdomain.SourceCatalogoCliente), true, true, true)
+	got, err := r.FindProductsForLinking(strict, readports.FindProductsInput{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ids := candidateIDsForReaderTest(got); !reflect.DeepEqual(ids, []int{104, 105}) {
+		t.Fatalf("strict candidate IDs = %v, want [104 105]", ids)
+	}
+
+	relaxed := WithSellableAssortment(WithActiveSource(context.Background(), erpdomain.SourceCatalogoCliente), false, false, false)
+	got, err = r.FindProductsForLinking(relaxed, readports.FindProductsInput{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ids := candidateIDsForReaderTest(got); !reflect.DeepEqual(ids, []int{101, 102, 103, 104, 105}) {
+		t.Fatalf("relaxed candidate IDs = %v, want [101 102 103 104 105]", ids)
+	}
+	if repo.mirrorRowsCalls != 1 {
+		t.Fatalf("cached index mirror row calls = %d, want 1", repo.mirrorRowsCalls)
+	}
+}
+
+func candidateIDsForReaderTest(candidates []readdomain.ProductCandidate) []int {
+	ids := make([]int, 0, len(candidates))
+	for _, candidate := range candidates {
+		ids = append(ids, candidate.ProductID)
+	}
+	return ids
+}
+
 func TestMirrorUnknownValuesRemainUnknown(t *testing.T) {
 	r, _, ctx := readerWith(mirrorRows())
 	stock, err := r.GetSellableStock(ctx, readports.SellableStockInput{ProductID: 10})
@@ -314,9 +353,9 @@ func TestUnpinnedReadsFailClosed(t *testing.T) {
 			_, err := r.GetSellableStock(ctx, readports.SellableStockInput{ProductID: 1})
 			return err
 		},
-		"cost":   func() error { _, err := r.GetCostAsOf(ctx, readports.CostAsOfInput{ProductID: 1}); return err },
-		"tax":    func() error { _, err := r.GetTaxInputs(ctx, readports.TaxInput{ProductID: 1}); return err },
-		"list":   func() error { _, err := r.ListCatalogProductFacts(ctx, readports.Cursor{}, 10); return err },
+		"cost": func() error { _, err := r.GetCostAsOf(ctx, readports.CostAsOfInput{ProductID: 1}); return err },
+		"tax":  func() error { _, err := r.GetTaxInputs(ctx, readports.TaxInput{ProductID: 1}); return err },
+		"list": func() error { _, err := r.ListCatalogProductFacts(ctx, readports.Cursor{}, 10); return err },
 		"search": func() error {
 			_, err := r.SearchCatalogProductFacts(ctx, "blue", readports.Cursor{}, 10)
 			return err

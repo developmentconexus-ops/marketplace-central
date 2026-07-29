@@ -1,0 +1,48 @@
+S5-MATCHER GREEN evidence
+
+Focused integration command (ran):
+go test -tags=integration ./internal/modules/internal_read/adapters/routing -run '^TestMirrorMatcher_ActiveRevendaRuleControlsCandidateBirth$' -count=1 -v
+
+Result: PASS
+Test: TestMirrorMatcher_ActiveRevendaRuleControlsCandidateBirth
+Focused integration counts: RUN=1 PASS=1 SKIP=0 FAIL=0
+Candidate IDs before toggle: [7002 7003]
+Candidate IDs after toggle: [7001 7002 7003]
+The before value excludes USOPROD='V' product 7001 while only_revenda=true.
+The before value includes known sellable product 7002 (USOPROD='R', stock > 0).
+The before value includes product 7003 with nil USOPROD (honest-unknown passes on mirror side).
+The after value includes 7001 immediately after the repository toggle; no cache wait occurred.
+
+Repository SQL used to flip the rule (called by SetSellableAssortment):
+UPDATE active_source
+SET only_revenda = $2,
+    only_em_estoque = $3,
+    only_ecommerce_eligible = $4
+WHERE tenant_id = $1
+
+Toggle parameters: tenant_id=<integration-test tenant>, only_revenda=false, only_em_estoque=false, only_ecommerce_eligible=false.
+
+SELECT-side assertion (ran): matcher_integration_test.go reads product 7001 back through
+MirrorProductByCode and asserts Usoprod == "V" and ADEcommerce == "S" with non-nil pointers.
+
+Package command (ran):
+go test ./internal/modules/erp_import/adapters/internalread ./internal/modules/internal_read/adapters/routing -count=1
+Result: PASS
+marketplace-central/apps/server_core/internal/modules/erp_import/adapters/internalread
+marketplace-central/apps/server_core/internal/modules/internal_read/adapters/routing
+Package test counts from go test -json: RUN=58 PASS=58 SKIP=0 FAIL=0
+
+Build command (ran):
+go build ./...
+Result: FAIL in the documented environment signature:
+error obtaining VCS status: exit status 128
+No -buildvcs=false workaround was added.
+
+Vet command (ran):
+go vet ./...
+Result: PASS
+
+Out-of-scope observation: SyncLatestCompletedSnapshot and LatestCompletedSnapshot
+select erp_import_products without usoprod/ad_ecommerce before the mirror write. The
+integration test seeds those mirror columns explicitly so this slice can verify the
+granted mirror SELECT/scanner path; those upstream selectors were not changed.

@@ -19,7 +19,16 @@ func TestMirrorMatcherPinsEveryActiveSourceIncludingTheLiveOne(t *testing.T) {
 		tenant_config.SourceCatalogoCliente,
 	} {
 		mirror := &fakeReader{}
-		lookup := fakeLookup{cfg: tenant_config.Config{TenantID: "t1", Source: source, SetAt: time.Now()}}
+		lookup := fakeLookup{cfg: tenant_config.Config{
+			TenantID: "t1",
+			Source:   source,
+			SetAt:    time.Now(),
+			SellableAssortment: tenant_config.SellableAssortment{
+				OnlyRevenda:           true,
+				OnlyEmEstoque:         false,
+				OnlyEcommerceEligible: true,
+			},
+		}}
 
 		if _, err := NewMirrorMatcher(mirror, lookup, "t1").FindProductsForLinking(context.Background(), internalreadports.FindProductsInput{}); err != nil {
 			t.Fatalf("source %q: FindProductsForLinking() error = %v", source, err)
@@ -33,6 +42,11 @@ func TestMirrorMatcherPinsEveryActiveSourceIncludingTheLiveOne(t *testing.T) {
 		}
 		if cfg, ok := tenant_config.FromContext(mirror.gotCtx); !ok || cfg.Source != source {
 			t.Fatalf("source %q: pinned tenant config = %+v ok=%v", source, cfg, ok)
+		}
+		policy, ok := erpinternalread.SellableAssortmentFromContext(mirror.gotCtx)
+		wantPolicy := erpinternalread.SellableAssortmentPolicy{OnlyRevenda: true, OnlyEcommerceEligible: true}
+		if !ok || policy != wantPolicy {
+			t.Fatalf("source %q: pinned assortment policy = %+v ok=%v, want %+v", source, policy, ok, wantPolicy)
 		}
 	}
 }

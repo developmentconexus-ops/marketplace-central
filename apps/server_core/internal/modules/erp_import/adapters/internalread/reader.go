@@ -52,6 +52,33 @@ func dataObservationTime(source erpdomain.ImportSource, row erpdomain.MirrorProd
 // catalog) is resolved here so every reader method observes the same dataset.
 type activeSourceKey struct{}
 
+// SellableAssortmentPolicy is the matcher policy pinned for one read. It is
+// kept in this adapter because tenant_config already depends on the reader's
+// source error sentinel.
+type SellableAssortmentPolicy struct {
+	OnlyRevenda           bool
+	OnlyEmEstoque         bool
+	OnlyEcommerceEligible bool
+}
+
+type sellableAssortmentKey struct{}
+
+// WithSellableAssortment pins the complete assortment policy for a reader
+// call. The matcher resolves the tenant policy once; the reader applies it
+// after loading its cached mirror index.
+func WithSellableAssortment(ctx context.Context, onlyRevenda, onlyEmEstoque, onlyEcommerceEligible bool) context.Context {
+	return context.WithValue(ctx, sellableAssortmentKey{}, SellableAssortmentPolicy{
+		OnlyRevenda:           onlyRevenda,
+		OnlyEmEstoque:         onlyEmEstoque,
+		OnlyEcommerceEligible: onlyEcommerceEligible,
+	})
+}
+
+func SellableAssortmentFromContext(ctx context.Context) (SellableAssortmentPolicy, bool) {
+	policy, ok := ctx.Value(sellableAssortmentKey{}).(SellableAssortmentPolicy)
+	return policy, ok
+}
+
 // WithActiveSource pins the source selected by M-02 routing from the tenant's
 // active_source config. Without a pin, the reader fails closed.
 func WithActiveSource(ctx context.Context, source erpdomain.ImportSource) context.Context {
@@ -153,9 +180,17 @@ func (r *Reader) FindProductsForLinking(ctx context.Context, input readports.Fin
 	if err != nil {
 		return nil, err
 	}
+	policy, _ := SellableAssortmentFromContext(ctx)
 	rows, collisions := index.candidateRows(input), index.collisions
 	results := make([]readdomain.ProductCandidate, 0)
 	for _, row := range rows {
+		eligible, err := matchesSellableAssortment(row, policy)
+		if err != nil {
+			return nil, err
+		}
+		if !eligible {
+			continue
+		}
 		if !matches(row, input) {
 			continue
 		}
@@ -189,6 +224,31 @@ func (r *Reader) FindProductsForLinking(ctx context.Context, input readports.Fin
 		}
 	}
 	return results, nil
+}
+
+func matchesSellableAssortment(row erpdomain.MirrorProduct, policy SellableAssortmentPolicy) (bool, error) {
+	if policy.OnlyRevenda && row.Usoprod != nil {
+		if value := strings.TrimSpace(*row.Usoprod); value != "" && value != "R" {
+			return false, nil
+		}
+	}
+	if policy.OnlyEmEstoque && row.EstoqueTotal != nil {
+		if value := strings.TrimSpace(*row.EstoqueTotal); value != "" {
+			quantity, err := parseNumber(*row.EstoqueTotal, "estoque_total")
+			if err != nil {
+				return false, err
+			}
+			if quantity <= 0 {
+				return false, nil
+			}
+		}
+	}
+	if policy.OnlyEcommerceEligible && row.ADEcommerce != nil {
+		if value := strings.TrimSpace(*row.ADEcommerce); value != "" && value == "N" {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 func (r *Reader) GetSellableStock(ctx context.Context, input readports.SellableStockInput) (readdomain.SellableStock, error) {
