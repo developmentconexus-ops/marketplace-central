@@ -13,6 +13,8 @@ type MirrorProduct struct {
 	NCM            *string
 	Custo          *string
 	PrecoVenda     *string
+	Usoprod        *string
+	ADEcommerce    *string
 	EstoqueTotal   *string
 	ImportedAt     *time.Time
 	UpdatedAt      time.Time

@@ -39,6 +39,8 @@ type Row struct {
 	NCM            *string
 	Custo          *float64
 	PrecoVenda     *float64
+	Usoprod        *string
+	ADEcommerce    *string
 	EstoqueTotal   *float64
 }
 

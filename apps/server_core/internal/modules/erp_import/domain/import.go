@@ -21,9 +21,9 @@ type Decimal string
 //
 // Missing values stay nil/empty (honest-unknown, ADR-17) — never coerced to 0.
 type NormalizedRow struct {
-	Codprod       string  `json:"codprod"`
-	Descrprod     string  `json:"descrprod"`
-	Custo         Decimal `json:"custo"`
+	Codprod   string  `json:"codprod"`
+	Descrprod string  `json:"descrprod"`
+	Custo     Decimal `json:"custo"`
 	// PrecoVenda is the ERP sale price (E2.1). Textual until validation accepts
 	// it; empty means absent, kept honest-unknown (never 0).
 	PrecoVenda    Decimal `json:"preco_venda,omitempty"`
@@ -40,7 +40,9 @@ type NormalizedRow struct {
 	// Local is the stock-location code the row's quantity belongs to (E2.1).
 	// Feeds products_mirror_stock_locations; nil when the source has no
 	// per-location breakdown.
-	Local *string `json:"local,omitempty"`
+	Local       *string `json:"local,omitempty"`
+	Usoprod     *string `json:"usoprod,omitempty"`
+	ADEcommerce *string `json:"ad_ecommerce,omitempty"`
 }
 
 type IssueKind string
