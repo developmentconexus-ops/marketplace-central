@@ -584,9 +584,23 @@ go test ./internal/modules/erp_import/adapters/internalread -run 'Catalog|Sellab
 - `commands`:
 
 ```powershell
-Set-Location 'C:\Users\leandro.theodoro\Documents\marketplace-central\.claude\worktrees\chip-vendavel\apps\web'
-npx --no-install vitest run ../../packages/sdk-runtime/src/activeSource.test.ts ../../packages/sdk-runtime/src/index.test.ts
+Set-Location 'C:\Users\leandro.theodoro\Documents\marketplace-central\.claude\worktrees\chip-vendavel\packages\sdk-runtime'
+npx --no-install vitest run
 ```
+
+Card command corrected before dispatch (measured, not guessed). The original ran from `apps/web`
+and passed the two sdk-runtime files as filters. `apps/web/vitest.config.ts` includes `src/**`,
+`feature-products/src/CatalogPage.test.tsx`, `web-query`, and `ui` — **not** `sdk-runtime`, so the
+command prints `No test files found, exiting with code 1`. The SDK owns its own
+`packages/sdk-runtime/vitest.config.ts` (`include: src/**/*.test.ts`) and its own `test` script;
+run from there it is 5 files / 77 tests green at the base. A filter that matches nothing is the
+FE twin of the fully-skipped Go lane: it exits non-zero here, but any worker tempted to "fix" it
+by dropping the filter would have silently run a different suite.
+
+Recorded for P5, not for S8: the root `package.json` `test` script is
+`npm run test --workspace @marketplace-central/web`, so the sdk-runtime suite is NOT part of the
+root ladder. VC-7 asks for vitest green at the worktree root; the ladder must therefore run the
+sdk-runtime suite explicitly or the contract slice's own tests never enter it.
 
 - `expected_artifacts`:
   - Contract/SDK commit SHA

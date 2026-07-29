@@ -562,3 +562,20 @@ a toggle on the real `tenant_config` row moves page AND count together.
 The acceptance error was mine and the hub's both: we each checked that `IncludeAll` ARRIVED at the
 SQL and stopped. Arrival has two halves — it reaches the consumer AND it comes from the right
 producer. Filed as a gate rule: a slice that plumbs an option or a config answers both.
+
+## S8-CONTRACT-SDK — dispatched
+
+gpt-5.6-luna / high (standard), OS-process, prompt over stdin.
+Log `scratchpad/agent__s8-contract-sdk.log`, last message `agent__s8-contract-sdk.last.md`.
+
+The card's lane was WRONG and I measured it before dispatching rather than shipping it. It ran
+from `apps/web` with two sdk-runtime files as filters; `apps/web/vitest.config.ts` does not include
+`sdk-runtime`, so the command prints `No test files found, exiting with code 1`. The SDK owns
+`packages/sdk-runtime/vitest.config.ts` and its own `test` script — from there the base is 5 files
+/ 77 tests green. Card corrected in the same commit as this row, with the reason written next to it.
+
+The brief carries: the repo rule that OpenAPI and `sdk-runtime` land in ONE commit; per-line
+counting of files/tests with every skip named; the instruction that `No test files found` is a
+filter that matched nothing, never a green, and that the fix is the directory rather than a looser
+filter; and the layer distinction A-17 created — `include_all` STAYS on the wire, because "ver
+todos" is a per-request screen choice, while the Go port's `IncludeAll` bool dies in S9.
