@@ -275,10 +275,17 @@ go test ./internal/modules/erp_import/adapters/internalread ./internal/modules/i
 - `failing_test_first`: `TestCatalogPageSellableAssortmentDefaultsAndScreenEscape` in `apps/server_core/internal/modules/internal_read/adapters/oracle/catalog_page_test.go`
 - `done_criteria`:
   - List and search use one shared predicate builder.
-  - Enabled clauses are:
-    - `(p.USOPROD IS NULL OR p.USOPROD = 'R')`
-    - `(stock.sellable_qty IS NULL OR stock.sellable_qty > 0)`
-    - `(p.AD_ECOMMERCE IS NULL OR p.AD_ECOMMERCE = 'S')`
+  - Enabled clauses are (LIVE side — see the A-14 asymmetry table below; the mirror side in S7
+    is deliberately DIFFERENT and a worker who "aligns" the two breaks one of them):
+    - `p.USOPROD = 'R'`
+    - `NVL(stock.sellable_qty, 0) > 0`
+    - `NVL(p.AD_ECOMMERCE, 'X') <> 'N'`
+
+    These three superseded the clauses this card carried until D-122. The dead forms were
+    `(p.USOPROD IS NULL OR ...)`, `(stock.sellable_qty IS NULL OR ...)` and
+    `(p.AD_ECOMMERCE ... = 'S')`. They are revoked by A-14 (DR-2: the live query read all of
+    TGFEST, so absence inside the cut is KNOWN ZERO, not unknown) and by the DR-3 revision
+    (only an explicit `'N'` is an assertion; strict `= 'S'` would cut 2.923 → 442).
   - `include_all` omits only those rule predicates; active/cursor/search constraints remain.
   - Count query uses the same stock CTE and predicate builder and returns exact N/M.
   - Pagination caller tests still prove a gapless limit+1 chain after filtering.
@@ -1081,9 +1088,12 @@ next to the 2.923 as the clause-on reference number.
 Drift observed by the specialist: 2.924 vs 2.923 — one product moving between two queries against
 the live database. That is what the VC-2 drift tolerance is for; it is not generosity.
 
-### Original reasoning (the principle, unchanged)
+### Original reasoning (the PRINCIPLE is unchanged; the FORMULA below is SUPERSEDED)
 
-`ad_ecommerce IS NULL OR ad_ecommerce = 'S'` — on the live Oracle path AND on the mirror.
+~~`ad_ecommerce IS NULL OR ad_ecommerce = 'S'` — on the live Oracle path AND on the mirror.~~
+REVOKED by the DR-3 revision: the binding forms are `NVL(AD_ECOMMERCE,'X') <> 'N'` (live) and
+`IS NULL OR <> 'N'` (mirror), per the A-14 table. The reasoning below is why blank must PASS,
+and that reasoning is what survived; the formula that expressed it did not.
 
 The deciding fact is not in the database; it is what the operator said when ratifying the rule,
 verbatim: *"Por agora não é muito confiável mas vai ser."* A field the client ADMITS not

@@ -204,3 +204,58 @@ hypothesis was tested and REFUTED (`rg` from inside the worktree finds them). Re
 instrument constraint, not a diagnosis. Operationally: rename sweeps in this chip use `git grep`
 from inside the worktree. A partial sweep is worse than none — it has the shape of a complete one,
 and a gate seat using the wrong tool would report "zero occurrences" with full confidence.
+
+---
+
+## S3-XLSX — optional `USOPROD` / `AD_ECOMMERCE` on the upload path
+
+| field | value |
+|---|---|
+| dispatched | worker `gpt-5.6-luna` / `high`, OS-process, `agent__s3-xlsx.log` + `.last.md` |
+| base | `a94694c2` |
+| commit | `8f825a7c` |
+| evidence | `evidence/S3-red.txt`, `evidence/S3-green.txt` (worker), `evidence/S3-orchestrator.txt` |
+
+Production diff is correct: both fields flow through `optionalCell`, the two required lists
+(`Parse`, `ParseLenient`) are untouched, and `usoprod`/`ad_ecommerce` reach the stage table, the
+`CopyFrom` column list, the insert and the `ON CONFLICT DO UPDATE SET`. `nullableStringValue` is a
+justified thin wrapper — the existing `nullableString` takes a value, not a pointer.
+
+### P4 — three mutations, three kills
+
+The slice is entirely honest-unknown, so presence assertions would be worthless. Injected and
+killed: (M1) parser emitting `""` for an absent column → caught at `parser_test.go:81`;
+(M2) `nullableStringValue` persisting `""` instead of SQL NULL → caught at
+`mirror_repository_integration_test.go:37`, which matters because the round-trip is what proves
+SQL NULL rather than a Go nil that a nil-preserving scan would yield anyway; (M3) adding
+`USOPROD` to the required list → four PRE-EXISTING tests fail with `MISSING_REQUIRED_COLUMN`, so
+"legacy workbooks keep importing" is guarded rather than merely true by inspection. All reverted,
+tree clean against `8f825a7c`, `erp_import/...` green.
+
+### Finding — a pre-existing clock-skew flake, NOT caused by S3
+
+The worker reported `TestGetImportChainCountsCurrentQueueAcrossInstallations` failing as
+"unrelated timing ... reproduced in isolation". The second half is FALSE and was refuted: it
+PASSES in isolation and PASSES the full 28-test package; it fails only in the `erp_import/...`
+tree run, and non-deterministically (run 1 FAIL, run 2 PASS at the same tip).
+
+Root cause: `query_repository.go` selects `statement_timestamp() AS queue_read_at` — the
+POSTGRES clock, inside the container — while the test brackets it with host-side `time.Now()`
+(`chain_query_repository_integration_test.go:74-85`). It asserts a container clock reading falls
+inside a host clock window of ~10ms. The observed miss was ~77µs, and the precision tell is in
+the output: 6 decimals (PG microsecond) against 7 (Windows 100ns).
+
+The test is NOT in `8f825a7c` — S3 neither wrote nor touched it. Latent defect, surfaced by added
+package load. Out of the S3 write-set, so reported to the hub and not fixed here. It will bite
+the P5 ladder and any gate seat that reads a single red tree run as attributable.
+
+### Plan rot corrected in the same commit (hub standing order)
+
+Formula revocation is a write-set change. Sweeping the pack for every predicate DR-2/DR-3/A-14
+touched found the S6 slice card still carrying ALL THREE dead clauses in its `done_criteria` —
+`(p.USOPROD IS NULL OR = 'R')`, `(stock.sellable_qty IS NULL OR > 0)` and
+`(p.AD_ECOMMERCE ... = 'S')` — superseded by amendments ~750 lines further down the same file.
+S6's worker reads the card, not the amendment. Corrected to the binding live forms with the
+supersession recorded inline and a pointer to the A-14 asymmetry table. `BATCH-PLAN:1086` also
+printed the revoked formula under the heading "Original reasoning (the principle, unchanged)" —
+the principle is unchanged, the formula is not; struck through and marked.
