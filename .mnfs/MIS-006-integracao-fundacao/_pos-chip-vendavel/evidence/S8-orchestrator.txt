@@ -1,0 +1,230 @@
+S8-CONTRACT-SDK — P4 adversarial review at the orchestrator's seat
+Worker: gpt-5.6-luna / high (standard), OS-process. Worker commit: 20dbc321.
+Reviewed at: worktree-chip-vendavel, tree at 20dbc321.
+VERDICT AT REVIEW: NOT ACCEPTED. The slice ships a red lane and three false statements in the
+contract. Escalated, not decided here — sections 1-8 are that review, written before any ruling.
+FINAL STATE: repaired at this seat under hub grant A-19, in an own commit on top of 20dbc321.
+Section 9 is the correction and its measurements. Lane green 5 files / 78 tests / 0 failed /
+0 skipped; five mutations, five kills.
+
+1. WRITE-SET
+   6 files: 4 code/contract + 2 evidence. All authorized. `index.test.ts` was granted but not
+   used — allowed, the worker put its assertions in `activeSource.test.ts` instead. OpenAPI and
+   `sdk-runtime` ARE in ONE commit, which is the repo rule from AGENTS.md, and it is satisfied.
+   No Go, no `apps/web`, no migration, no dep, no `contracts/governance/`.
+
+2. THE LANE NEVER RAN AT THE WORKER'S SEAT — AND THE WORKER SAID SO
+   Verbatim from `S8-red.txt`:
+     X [ERROR] Cannot read directory "../../../../../../..": Access is denied.
+     X [ERROR] Could not resolve "...\packages\sdk-runtime\vitest.config.ts"
+   esbuild walks upward to resolve the config and the worker's sandbox denies the traversal, so
+   vitest aborted BEFORE collection. Zero files, zero tests.
+
+   The worker's own words in `S8-green.txt`: "files passed 0 observed, failed 0 observed, tests
+   passed 0 observed, failed 0 observed, skipped 0 observed. No test was collected or skipped; no
+   skip name exists. A hub-side re-run outside this sandbox is REQUESTed before treating the
+   Vitest lane as green."
+
+   That is the correct behaviour for a blocked lane and it is worth naming plainly: the worker
+   counted its own ZERO and refused to call it green. It did not drop the filter, did not move to
+   `apps/web`, did not loosen the config path. The brief's rule held under a failure the brief did
+   not anticipate. Blind, not dishonest.
+
+   But blind still shipped. The lane it could not run is the lane that would have stopped it.
+
+3. THE LANE AT MY SEAT — RED
+   `cd packages/sdk-runtime && npx --no-install vitest run`
+     Test Files  2 failed | 3 passed (5)
+     Tests       2 failed | 76 passed (78)
+   Base before this commit: 5 files / 77 tests, all green. So the commit adds 1 test and breaks 2.
+
+   The slice's OWN test passes:
+     PASS active-source SDK contract > exposes the sellable-assortment paths, schemas, options,
+          and exact client URLs
+   Its URL assertions are exact strings, not presence — criterion 3 discharged by reading them:
+     "http://localhost:8080/config/sellable-assortment"
+     "http://localhost:8080/catalog/products/counts"
+     "http://localhost:8080/catalog/products?cursor=MTIz&limit=25&include_all=true"
+     "http://localhost:8080/catalog/products/search?q=PARAFUSO&cursor=NDU2&limit=50&include_all=true"
+   Method and body are pinned too (`PUT`, `toEqual(request)`). Nothing here asserts `toBeDefined()`.
+
+   The two failures are collateral, in tests belonging to OTHER slices:
+     FAIL src/erpImport.test.ts:104
+       > declares a flat 500 ErpImportError on every erp import operation
+       expected '  /erp/imports:\r\n    post:\r\n     …' not to contain 'ErrorResponse'
+     FAIL src/activeSource.test.ts:69
+       > declares /config/active-source GET and PUT with flat ActiveSourceError responses
+       expected [ '"400":', '"400":', '"400":' ] to have a length of 2 but got 3
+
+4. WHY BOTH FIRED — MEASURED, NOT INFERRED
+   Both guards slice the YAML from their own anchor TO THE END OF THE PATHS SECTION:
+     erpImport:     openapi.slice(indexOf("  /erp/imports:"),        indexOf("\ncomponents:"))
+     activeSource:  openapi.slice(indexOf("  /config/active-source:"), indexOf("\ncomponents:"))
+   Anchors measured in the file at 20dbc321:
+     3186  /erp/imports:
+     3338  /config/active-source:
+     3380  /config/sellable-assortment:   <-- the new path
+     3422  components:
+   The new path was appended at the tail of `paths:`, so it landed INSIDE both windows.
+
+   That much is a window collision. It is NOT the whole story, and the difference decides the fix.
+
+5. FINDING F-4 — THE CONTRACT DESCRIBES A BODY AND A STATUS THE SERVER CANNOT EMIT
+   The new endpoints declare their errors as `$ref: '#/components/schemas/ErrorResponse'`, which
+   is the nested shape `{"error": {"code": ..., "message": ...}}`.
+
+   S10 puts the sellable-assortment handler in
+   `apps/server_core/internal/modules/tenant_config/transport/http_handler.go` — the SAME file
+   that already serves `/config/active-source`. I read what that file actually writes:
+
+     func writeError(w http.ResponseWriter, status int, code, message string) {
+         payload := map[string]string{"error": code}
+         if message != "" { payload["detail"] = message }
+         httpx.WriteJSON(w, status, payload)
+     }
+
+   FLAT — `{"error":"invalid_body"}`. That is `ActiveSourceError`'s shape, and it is why the
+   neighbour twin `/config/active-source` refs `ActiveSourceError` and why its own test asserts so.
+
+   Three false statements in the published contract, then:
+     (a) GET declares `"404"` — the handler has NO not-found branch at all. Its error statuses are
+         400 (`unknown_erp_source`, `invalid_body`, `invalid_active_source`) and 500
+         (`internal_error`). Under A-17 the default for an absent tenant row is resolved at the
+         load seam, so GET returns defaults and can never 404.
+     (b) GET's 404 body is the nested shape. The handler cannot produce it.
+     (c) PUT's 400 body is the nested shape. The handler cannot produce it.
+   And one omission: no `"500"` is declared on either operation, though `store.Get` failing is a
+   certain path through the same handler.
+
+   `ErrorResponse` appears 109 times across this spec, so it is not deprecated in general. What is
+   true is narrower and measurable: the last `ErrorResponse` reference before `/erp/imports:` is at
+   line 3184, and the region 3186→3422 was deliberately free of it — both families living there
+   (`erp_import`, `tenant_config`) emit flat errors. The erpImport guard's over-broad window is
+   what made it the tripwire, but what it caught is TRUE. An alien test caught a real defect by
+   accident of file ordering, and the correct response is to fix the defect, not the window.
+
+6. PROBE — WHICH FAILURE IS WHICH, MEASURED
+   I replaced only the two `ErrorResponse` refs INSIDE the new path block with a flat-schema name
+   and re-ran, then reverted (`git checkout --`, tree confirmed clean):
+     Test Files  1 failed | 4 passed (5)
+     Tests       1 failed | 77 passed (78)
+   erpImport goes green with NO test change. The activeSource count failure survives.
+
+   So the two failures are different in kind and must be answered differently:
+     - erpImport  = REAL CONTRACT DEFECT. Fix the spec; touch no test.
+     - activeSource = WINDOW COLLISION. The third `"400":` exists no matter which schema it refs.
+       The honest fix is to re-point the window BY VALUE — end it at the next path anchor instead
+       of at `components:` — leaving both assertions exactly as they are (still 2, still
+       `ActiveSourceError` in each block). That is re-pointing, not loosening, and it must be said
+       out loud which test was moved and why.
+
+7. RESIDUAL FINDING — BOTH GUARDS ARE POSITION-DEPENDENT
+   `slice(anchor, indexOf("\ncomponents:"))` means every contract guard in this suite silently
+   grows to swallow any path appended after it. erpImport's `fiveHundreds).toHaveLength(4)` still
+   passes today only because the new path declares no 500 — and the fix in §5 ADDS one. Whoever
+   lands the correction owes that count a look. I am not re-pointing a guard that currently passes,
+   but the fragility is now written down rather than discovered again by the next slice.
+
+8. WHAT I AM NOT DECIDING AT THIS SEAT
+   The corrected error surface (flat schema name, its code enum, which statuses each operation
+   declares) is the contract S10's handler must satisfy. Naming it here would be a design decision
+   taken quietly inside a review, and the standing order sends real ambiguity to the hub. Escalated
+   with the measurement above and a recommendation; not applied.
+
+===============================================================================
+9. THE CORRECTION — APPLIED AT THIS SEAT UNDER HUB GRANT A-19 (option (i))
+===============================================================================
+Own commit on top of 20dbc321; the worker's commit stays as it is. Explicit grant to exceed the
+orchestrator's <=10-line glue ceiling. Redispatching S8 would have handed the repair to another
+worker blind in this same lane; deferring it to S10 would have left a false contract published in
+the meantime and left S9 waiting on this surface.
+
+9.1 CONTRACT — the three false statements deleted
+  GET /config/sellable-assortment:  "404" + nested ErrorResponse  ->  "500" + SellableAssortmentError
+  PUT /config/sellable-assortment:  "400" nested ErrorResponse    ->  "400" SellableAssortmentError
+                                    (no 500 declared)             ->  "500" SellableAssortmentError
+  New schema `SellableAssortmentError`: flat `{error, detail?}`, `required: [error]`,
+  `enum: [invalid_body, internal_error]` — the mirror of ActiveSourceError, which is the shape
+  `tenant_config/transport/http_handler.go`'s writeError actually emits. The 404 was deleted rather
+  than softened: the handler has no not-found branch, and under A-17 an absent tenant row resolves
+  to defaults at the load seam, so GET cannot 404. A false statement in a published contract is
+  deleted (R-25).
+
+  The enum is minimal by measurement, not by guess: those are the two codes this handler's shape
+  can produce for these two operations. If S10 measures a need for a third, it amends then.
+
+9.2 ALIEN TESTS — RE-POINTED BY VALUE, AND SAID OUT LOUD
+  Two guards sliced from their own anchor to `\ncomponents:`, i.e. to the END of the paths
+  section, so any path appended afterwards was swallowed into their counts:
+    packages/sdk-runtime/src/erpImport.test.ts     — "declares a flat 500 ErpImportError ..."
+    packages/sdk-runtime/src/activeSource.test.ts  — "declares /config/active-source GET and PUT ..."
+  Both now cut at the next path anchor OUTSIDE their own family, via a lookahead on the path
+  indent, so they are position-INDEPENDENT rather than merely re-anchored — the next slice that
+  appends a path cannot repeat this. NO assertion was changed: erpImport still demands exactly 4
+  flat 500s each resolving to ErpImportError; activeSource still demands exactly 2 400s each
+  resolving to ActiveSourceError.
+
+  The hub's warning was measured and confirmed before the re-point. After 9.1 the erpImport guard
+  read SIX 500s where it demands 4 — because the two 500s I had just added to a FOREIGN path were
+  inside its window. Inflating the expectation to 6 would have been the collision returning under
+  another name: the erp-import guard silently counting a tenant_config path. The window moved; the
+  number did not.
+
+  Also re-pointed for the same reason, inside the slice's own test: `requestSchema` ended at
+  `CatalogAssortmentCounts:` and would have swallowed the new error schema; it now ends at
+  `SellableAssortmentError:`, and `errorSchema` is its own slice.
+
+9.3 A GUARD FOR THE NEW SURFACE, BORN WITH A VALUE WINDOW
+  Added to the slice's own test: no `"404":`, no `ErrorResponse`, exactly two 500s, exactly one
+  400, every error block resolving to SellableAssortmentError, and the flat schema's required
+  field and code enum. `configPath` is bounded by the same lookahead — it is last in the file
+  today, and the guard does not depend on that staying true.
+
+9.4 LANE — COUNTED PER LINE, ALL THREE STATES
+  cd packages/sdk-runtime && npx --no-install vitest run
+    base (before 20dbc321):        Files 5 passed         Tests 77 passed | 0 failed | 0 skipped
+    at 20dbc321 (worker's tree):   Files 3 passed 2 failed  Tests 76 passed | 2 failed | 0 skipped
+    after 9.1 only:                Files 3 passed 2 failed  Tests 76 passed | 2 failed | 0 skipped
+      (erpImport's ErrorResponse assertion now passes; its 500 count fails at 6 vs 4)
+    after this commit:             Files 5 passed         Tests 78 passed | 0 failed | 0 SKIPPED
+  SKIP 0 in every state. No run printed `No test files found`.
+  `npm run build` (tsc --noEmit) exit 0.
+
+9.5 MUST-FAIL — FIVE MUTATIONS, FIVE KILLS, EACH NAMING THE VALUE
+  Applied against a scratchpad backup and restored from it, NOT via git checkout, because the fix
+  was still uncommitted at the time. `git diff --stat` after the sweep shows only the 5 intended
+  files.
+
+  N1 — the deleted 404 + nested ErrorResponse restored on GET:
+    FAIL OpenAPI /config/sellable-assortment declares a 404 the handler has no branch for:
+         expected '  /config/sellable-assortment:\r\n   ...' not to contain '"404":'
+  N2 — PUT's 400 pointed back at the nested ErrorResponse:
+    FAIL OpenAPI /config/sellable-assortment refs the nested ErrorResponse; this surface writes a
+         flat body: expected '  /config/sellable-assortment:\r\n   ...' not to contain 'ErrorResponse'
+  N3 — an unmeasured code smuggled into the enum (`not_found`):
+    FAIL OpenAPI SellableAssortmentError has the wrong code enum:
+         expected '    SellableAssortmentError:\r\n     ...' to contain 'enum: [invalid_body, internal_error]'
+
+  N4 and N5 are the load-bearing pair: they prove the RE-POINTED windows still bite INSIDE
+  themselves, which is the difference between re-pointing and loosening. A narrower window that had
+  gone vacuous would have stayed green here.
+
+  N4 — first erp-import error ref INSIDE the re-pointed window swapped to ErrorResponse:
+    FAIL expected '  /erp/imports:\r\n    post:\r\n     ...' not to contain 'ErrorResponse'
+  N5 — first active-source error ref INSIDE the re-pointed window swapped away:
+    FAIL expected '\r\n          description: Tenant has...' to contain 'ActiveSourceError'
+
+  Each run: Tests 1 failed | 77 passed (78). Each message prints what it read.
+
+9.6 WHAT REMAINS TRUE ABOUT THE WORKER'S COMMIT
+  The slice's own test passes and asserts exact URLs, method and body — not presence. OpenAPI and
+  sdk-runtime are in ONE commit. The six named symbols each have a YAML line and a TS line. The
+  defect was in the error surface, and the lane that would have shown it could not run at its seat.
+  The zero it counted instead of claiming is why this was caught at review rather than at the gate.
+
+9.7 RESIDUAL, WRITTEN DOWN RATHER THAN REDISCOVERED
+  Other guards in this suite still slice to `\ncomponents:` or to a named sibling anchor. I did not
+  re-point any guard that currently passes. The general shape — a contract window bounded by
+  something other than its own subject — remains, and the next slice that appends a path or a
+  schema should expect to meet it. What is fixed is the three windows this change actually moved
+  through, plus one born correct.

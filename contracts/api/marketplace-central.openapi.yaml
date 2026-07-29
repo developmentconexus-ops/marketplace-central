@@ -3389,12 +3389,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SellableAssortmentConfig'
-        "404":
-          description: Tenant configuration not found
+        "500":
+          description: Tenant sellable-assortment configuration could not be read
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/SellableAssortmentError'
     put:
       summary: Set the tenant's sellable-assortment filters
       operationId: setSellableAssortment
@@ -3417,7 +3417,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/SellableAssortmentError'
+        "500":
+          description: Tenant sellable-assortment configuration could not be stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SellableAssortmentError'
 
 components:
   parameters:
@@ -8309,6 +8315,21 @@ components:
           type: boolean
         only_ecommerce_eligible:
           type: boolean
+
+    SellableAssortmentError:
+      type: object
+      description: >-
+        Flat sellable-assortment error body, mirroring ActiveSourceError. The
+        tenant_config transport writes map[string]string{"error": code} plus an
+        optional "detail", so the nested ErrorResponse shape is not what this
+        surface emits.
+      required: [error]
+      properties:
+        error:
+          type: string
+          enum: [invalid_body, internal_error]
+        detail:
+          type: string
 
     CatalogAssortmentCounts:
       type: object

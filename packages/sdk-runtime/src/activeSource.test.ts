@@ -61,7 +61,12 @@ describe("active-source SDK contract", () => {
 
   it("declares /config/active-source GET and PUT with flat ActiveSourceError responses", () => {
     const openapi = readFileSync(resolve(process.cwd(), "../../contracts/api/marketplace-central.openapi.yaml"), "utf8");
-    const path = openapi.slice(openapi.indexOf("  /config/active-source:"), openapi.indexOf("\ncomponents:"));
+    // Window RE-POINTED BY VALUE (hub ruling A-19), assertions unchanged — still exactly
+    // two 400s, still ActiveSourceError in each. It used to run to `\ncomponents:`, so the
+    // sibling /config/sellable-assortment path appended after it was counted here.
+    const region = openapi.slice(openapi.indexOf("  /config/active-source:"), openapi.indexOf("\ncomponents:"));
+    const nextPath = region.search(/\n {2}\/(?!config\/active-source)\S*:/);
+    const path = nextPath === -1 ? region : region.slice(0, nextPath);
     expect(path).toContain("operationId: getActiveSource");
     expect(path).toContain("operationId: setActiveSource");
     expect(path).toContain("$ref: '#/components/schemas/ActiveSourceConfig'");
@@ -93,19 +98,43 @@ describe("active-source SDK contract", () => {
     expect(counts.total_count, "SDK symbol CatalogAssortmentCounts.total_count was not exposed").toBe(4);
 
     const apiPaths = openapi.slice(0, openapi.indexOf("\ncomponents:"));
-    const configPath = apiPaths.slice(apiPaths.indexOf("  /config/sellable-assortment:"));
+    // Bounded by VALUE at birth (hub ruling A-19): this guard is the one written while
+    // repairing the two windows that ran to the end of the paths section, so it does not
+    // repeat their shape. /config/sellable-assortment is last today; the moment it is not,
+    // this slice still describes only its own path.
+    const configRegion = apiPaths.slice(apiPaths.indexOf("  /config/sellable-assortment:"));
+    const afterConfig = configRegion.search(/\n {2}\/(?!config\/sellable-assortment)\S*:/);
+    const configPath = afterConfig === -1 ? configRegion : configRegion.slice(0, afterConfig);
     const countsPath = apiPaths.slice(apiPaths.indexOf("  /catalog/products/counts:"));
     const listPath = apiPaths.slice(apiPaths.indexOf("  /catalog/products:"), apiPaths.indexOf("  /catalog/products/{id}:"));
     const searchPath = apiPaths.slice(apiPaths.indexOf("  /catalog/products/search:"), apiPaths.indexOf("  /catalog/products/{id}/enrichment:"));
     const schemas = openapi.slice(openapi.indexOf("    SellableAssortmentConfig:"));
     const configSchema = schemas.slice(schemas.indexOf("    SellableAssortmentConfig:"), schemas.indexOf("    SetSellableAssortmentRequest:"));
-    const requestSchema = schemas.slice(schemas.indexOf("    SetSellableAssortmentRequest:"), schemas.indexOf("    CatalogAssortmentCounts:"));
+    const requestSchema = schemas.slice(schemas.indexOf("    SetSellableAssortmentRequest:"), schemas.indexOf("    SellableAssortmentError:"));
+    const errorSchema = schemas.slice(schemas.indexOf("    SellableAssortmentError:"), schemas.indexOf("    CatalogAssortmentCounts:"));
     const countsSchema = schemas.slice(schemas.indexOf("    CatalogAssortmentCounts:"));
     expect(apiPaths, "OpenAPI missing path /config/sellable-assortment").toContain("  /config/sellable-assortment:");
     expect(configPath, "OpenAPI missing GET operationId getSellableAssortment").toContain("operationId: getSellableAssortment");
     expect(configPath, "OpenAPI missing PUT operationId setSellableAssortment").toContain("operationId: setSellableAssortment");
     expect(configPath, "OpenAPI missing SellableAssortmentConfig response schema").toContain("$ref: '#/components/schemas/SellableAssortmentConfig'");
     expect(configPath, "OpenAPI missing SetSellableAssortmentRequest request schema").toContain("$ref: '#/components/schemas/SetSellableAssortmentRequest'");
+    // The error surface must be what the server can actually write. The handler that will
+    // serve these two operations is tenant_config/transport/http_handler.go, whose
+    // writeError emits map[string]string{"error": code} plus an optional "detail" — the
+    // FLAT shape, never the nested ErrorResponse. It has no not-found branch at all, and
+    // under A-17 an absent tenant row resolves to defaults at the load seam, so GET can
+    // never 404. The contract shipped 404 + nested ErrorResponse on both operations; those
+    // were three statements the server cannot honour, and a false statement in a published
+    // contract is deleted, not softened.
+    expect(configPath, "OpenAPI /config/sellable-assortment declares a 404 the handler has no branch for").not.toContain('"404":');
+    expect(configPath, "OpenAPI /config/sellable-assortment refs the nested ErrorResponse; this surface writes a flat body").not.toContain("ErrorResponse");
+    expect(configPath.match(/"500":/g) ?? [], "OpenAPI /config/sellable-assortment must declare 500 on BOTH operations").toHaveLength(2);
+    expect(configPath.match(/"400":/g) ?? [], "OpenAPI /config/sellable-assortment must declare 400 on PUT only").toHaveLength(1);
+    for (const block of configPath.split(/"(?:400|500)":/).slice(1)) {
+      expect(block.slice(0, 300), "every /config/sellable-assortment error resolves to SellableAssortmentError").toContain("SellableAssortmentError");
+    }
+    expect(errorSchema, "OpenAPI SellableAssortmentError must be the flat {error, detail?} body").toContain("required: [error]");
+    expect(errorSchema, "OpenAPI SellableAssortmentError has the wrong code enum").toContain("enum: [invalid_body, internal_error]");
     expect(apiPaths, "OpenAPI missing path /catalog/products/counts").toContain("  /catalog/products/counts:");
     expect(countsPath, "OpenAPI missing operationId getCatalogAssortmentCounts").toContain("operationId: getCatalogAssortmentCounts");
     expect(countsPath, "OpenAPI missing CatalogAssortmentCounts response schema").toContain("$ref: '#/components/schemas/CatalogAssortmentCounts'");

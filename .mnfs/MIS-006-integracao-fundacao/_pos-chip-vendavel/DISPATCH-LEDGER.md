@@ -579,3 +579,85 @@ counting of files/tests with every skip named; the instruction that `No test fil
 filter that matched nothing, never a green, and that the fix is the directory rather than a looser
 filter; and the layer distinction A-17 created — `include_all` STAYS on the wire, because "ver
 todos" is a per-request screen choice, while the Go port's `IncludeAll` bool dies in S9.
+
+## A-18 — HUB RULING: the ladder's second FE lane, and where `include_all` stops
+
+Escalated from the S8 dispatch note above. VC-7 amended on main @`ed1b4183`.
+
+**1. The P5 ladder runs the sdk-runtime suite EXPLICITLY, from the package directory.** VC-7 now
+names TWO vitest lanes, both counted per line: workspace `@marketplace-central/web` and
+`packages/sdk-runtime`. The hub's words: "green at the root" with the current script would have
+been vacuous by half — the contract slice's own suite could never enter it.
+
+**2. The root `package.json` enters NO write-set.** It is a shared seam with no owner among the
+slices, so it stays with the hub and the script fix is a POST-merge step: touching it now would
+drift this tree mid-flight, and the ladder must use the explicit commands either way. Recorded in
+the contract with the reason.
+
+**3. The lane rule from my S8 catch is now law in VC-7:** `No test files found` with exit 1 is a
+filter that matched nothing, never a green; the correction is the directory, never a looser filter.
+
+**4. `include_all` layering — endorsed with ONE condition.** The wire parameter stays in the HTTP
+contract (per-request screen choice, S8's to publish). The condition, pinned into S9's card: the
+parameter RESOLVES at the transport seam, through the named domain constructor, and only the
+POLICY crosses the port. `include_all` never travels ALONGSIDE the policy into the service or the
+reader — otherwise the two-mechanisms-that-must-agree shape A-17 killed at the port comes back
+through the back door one layer up. S9 builds that seam; S8 only writes the wire.
+
+## S8-CONTRACT-SDK — result: REPROVED at P4, repaired at this seat under grant A-19
+
+Worker `20dbc321` (gpt-5.6-luna / high, OS-process). Review + correction: this commit.
+Evidence: `evidence/S8-orchestrator.txt` (sections 1-8 the review as written before the ruling,
+section 9 the correction).
+
+**The lane never ran at the worker's seat.** esbuild walks upward to resolve
+`packages/sdk-runtime/vitest.config.ts` and the dispatch sandbox denies the traversal:
+`Cannot read directory "../../../../../../..": Access is denied.` Vitest aborted before
+collection — zero files, zero tests.
+
+The worker wrote its own zero rather than a green: "tests passed 0 observed... no skip name
+exists. A hub-side re-run outside this sandbox is REQUESTed before treating the Vitest lane as
+green." It did not drop the filter, did not move to `apps/web`, did not loosen the config path.
+The VC-7 lane rule held under a failure the brief had not anticipated. Blind, not dishonest —
+and blind still shipped, because the lane it could not run is the lane that would have stopped it.
+Filed by the hub as `FINDING-sandbox-blind-fe-lane.md` (A-19 (C)); chip-locally binding from now:
+a brief touching `packages/*` declares the blindness up front and names this seat as the one that
+measures, and a worker's zero-observed is BLIND, never green.
+
+**F-4 — the contract described a body and a status the server cannot emit.** Both new operations
+declared the nested `ErrorResponse`, and GET declared a 404. The handler that will serve them is
+`tenant_config/transport/http_handler.go`, whose `writeError` emits `map[string]string{"error":
+code}` plus optional `detail` — flat — and which has no not-found branch at all; under A-17 an
+absent tenant row resolves to defaults at the load seam, so GET cannot 404. Three false statements
+plus one omission (no 500 on either operation, though `store.Get` failing is a certain path).
+
+`ErrorResponse` appears 109 times in this spec, so it is not deprecated in general. The narrower
+truth is measurable: its last reference before `/erp/imports:` sits at line 3184, and the region
+3186→3422 was deliberately free of it, because both families living there emit flat errors. An
+alien guard caught a real defect by accident of file ordering.
+
+**A-19 rulings applied.** (A) `SellableAssortmentError`, flat `{error, detail?}`,
+`enum: [invalid_body, internal_error]`; GET 200+500, PUT 200+400+500; the 404 deleted, not
+softened (R-25). The surface becomes a criterion on S10's card — the handler now owes exactly
+this. (A2) Both guards that sliced to `\ncomponents:` re-pointed BY VALUE, assertions untouched,
+and the move said out loud. The hub's warning was confirmed by measurement first: after the
+contract fix the erpImport guard read SIX 500s against its four, because the two 500s added to a
+FOREIGN path sat inside its window. Inflating that count to six would have been the same collision
+under another name. The window moved; the number did not. (B) Option (i) — repaired here, own
+commit, glue ceiling exceeded by explicit grant.
+
+**Must-fail: five mutations, five kills, each naming the value.** N1 restores the deleted 404;
+N2 points PUT's 400 back at the nested shape; N3 smuggles an unmeasured code into the enum. N4 and
+N5 are the load-bearing pair — they break something INSIDE each re-pointed window, which is the
+only thing that distinguishes re-pointing from loosening; a window that had gone vacuous would
+have stayed green there. Applied against a scratchpad backup and restored from it, not via
+`git checkout`, because the fix was uncommitted at the time.
+
+**Lane, counted per line at every state:** base 5 files / 77 tests green; at `20dbc321` 76 passed
+2 failed; after the contract fix alone still 2 failed (the ErrorResponse assertion goes green, the
+500 count fails 6 vs 4); after this commit 5 files / 78 tests / 0 failed / **0 skipped**. No run
+printed `No test files found`. `tsc --noEmit` exit 0.
+
+**Residual, written down rather than rediscovered:** other guards in this suite still bound
+themselves by something other than their own subject. No currently-passing guard was re-pointed.
+The next slice that appends a path or a schema should expect to meet the same shape.

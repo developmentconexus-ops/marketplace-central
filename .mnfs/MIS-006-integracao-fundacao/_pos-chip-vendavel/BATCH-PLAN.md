@@ -599,8 +599,15 @@ by dropping the filter would have silently run a different suite.
 
 Recorded for P5, not for S8: the root `package.json` `test` script is
 `npm run test --workspace @marketplace-central/web`, so the sdk-runtime suite is NOT part of the
-root ladder. VC-7 asks for vitest green at the worktree root; the ladder must therefore run the
-sdk-runtime suite explicitly or the contract slice's own tests never enter it.
+root ladder. Escalated; **hub ruling, VC-7 amended @`ed1b4183`**: the P5 ladder runs the
+sdk-runtime suite EXPLICITLY from the package directory, and VC-7 now names TWO vitest lanes,
+each counted per line — workspace `@marketplace-central/web` AND `packages/sdk-runtime`. "Green at
+the root" under the current script would have been vacuous by half: the contract slice's own suite
+could never enter it. The root `package.json` belongs to NO slice's write-set — it is an ownerless
+shared seam, so the hub keeps it and fixes the script POST-merge; editing it mid-flight would drift
+this tree, and the ladder must use the explicit commands regardless. The lane rule is now law:
+`No test files found` with exit 1 is a filter that matched nothing, never a green, and the
+correction is the directory, never a looser filter.
 
 - `expected_artifacts`:
   - Contract/SDK commit SHA
@@ -651,6 +658,14 @@ sdk-runtime suite explicitly or the contract slice's own tests never enter it.
     load seam, one place; `defaultSellableAssortment()` dies. Page and count receive the same
     value. Plumbing shape (context pin like linking, or an options field) is S9's call, defended
     in its evidence — but ONE mechanism, resolved at the routing seam.
+  - **`include_all` stops at the transport seam (hub ruling on the A-17 layering).** The wire
+    parameter STAYS in the HTTP contract — "ver todos" is a per-request choice of the screen, and
+    S8 already published it. The condition: S9 builds that seam so the parameter RESOLVES there,
+    through the named domain constructor, into the all-inclusive policy — and only the POLICY
+    crosses the port. `include_all` never travels ALONGSIDE the policy into the service or the
+    reader. Otherwise the two mechanisms that must agree come back through the back door one layer
+    up, which is the exact shape criterion above kills at the port. Wire and port are different
+    layers; the transport seam is where the wire becomes a value.
   - **Must-fail at contract grade:** through the reader COMPOSED in `root.go`, flipping a toggle on
     the REAL `tenant_config` row moves page AND count together; reverting the threading makes the
     test fail naming the value. Mirror side on the integration lane; Oracle side by query-text
@@ -795,7 +810,9 @@ npx --no-install vitest run ../../packages/feature-products/src/CatalogPage.test
 - `failing_test_first`: `N/A — lane aggregation; all named RED tokens must already exist`
 - `done_criteria`:
   - Go build/test ladder green.
-  - Required FE Vitest lane green from `apps/web`.
+  - BOTH required FE Vitest lanes green and counted per line (VC-7 @`ed1b4183`): `apps/web`
+    (workspace `@marketplace-central/web`) AND `packages/sdk-runtime`. Neither may print
+    `No test files found` — that is a filter matching nothing, not a green.
   - Root typecheck green.
   - Governance green against the full base SHA.
   - Integration report proves named tests ran and did not skip.
@@ -814,6 +831,9 @@ Set-Location 'C:\Users\leandro.theodoro\Documents\marketplace-central\.claude\wo
 npx --no-install tsc --noEmit -p apps/web/tsconfig.json
 
 Set-Location 'C:\Users\leandro.theodoro\Documents\marketplace-central\.claude\worktrees\chip-vendavel\apps\web'
+npx --no-install vitest run
+
+Set-Location 'C:\Users\leandro.theodoro\Documents\marketplace-central\.claude\worktrees\chip-vendavel\packages\sdk-runtime'
 npx --no-install vitest run
 
 Set-Location 'C:\Users\leandro.theodoro\Documents\marketplace-central\.claude\worktrees\chip-vendavel'
@@ -901,7 +921,7 @@ Shared-file ordering constraints:
 | VC-4 | S5 | `TestMirrorMatcher_ActiveRevendaRuleControlsCandidateBirth`; `failure_token=test=...`; positive sellable and nil assertions | None beyond optional browser `/vinculos` smoke |
 | VC-5 | S4 | `TestSankhyaStockSQLPinsSellableCompanies`; `TestSankhyaSyncMapsSellableAssortmentFields`; mirror writer test | Live sync and post-sync mirror SQL are HUB-only |
 | VC-6 | S3 | `TestParserSellableColumnsAreOptionalAndHonestUnknown`; `TestMergeSnapshotPersistsOptionalSellableColumns` | None |
-| VC-7 | S13 | `go build ./...`; `go test ./...`; root TSC; required `cd apps/web && npx --no-install vitest run`; integration and governance lanes | Zero-console-error and zero-4xx/5xx browser/network drive on `/integracoes`, `/catalogo`, `/vinculos` |
+| VC-7 | S13 | `go build ./...`; `go test ./...`; root TSC; BOTH required vitest lanes, counted per line — `cd apps/web && npx --no-install vitest run` AND `cd packages/sdk-runtime && npx --no-install vitest run` (VC-7 amended @`ed1b4183`); integration and governance lanes | Zero-console-error and zero-4xx/5xx browser/network drive on `/integracoes`, `/catalogo`, `/vinculos` |
 | Day-1 golden | S7, S12 | `TestMirrorCatalogSellableAssortmentGoldenDefaults`; CatalogPage exact `Vendáveis 2 de 4` | Optional live screenshot, not needed for fixture discharge |
 
 HUB live SQL after sync:
