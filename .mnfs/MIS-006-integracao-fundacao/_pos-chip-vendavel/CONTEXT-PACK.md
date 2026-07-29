@@ -178,3 +178,53 @@ O Q4 de estoque do sync soma TODAS as empresas — `WHERE CODPARC = 0` sem CODEM
   número HISTÓRICO, superado pela EMENDA A7. Não usar como constante de aceitação.
 - ∧disponível>0 em CODEMP (1,2) **∧ CODLOCAL IN (10101,10102)**, disponível = ESTOQUE − RESERVADO:
   **2.923** ← número de aceitação vivo do VC-2 (tolerância = drift diário).
+
+## EMENDA 2026-07-29 — toggles do tenant não chegam ao catálogo: lacuna de PLANO; dono = S9 (ESCALATION do chip, ruling do hub)
+
+**Facto (verificado pelo hub no objeto @8303f7c6):** o caminho de catálogo — Oracle
+(`catalog_page.go:217`, `catalogAssortmentPredicate(options.IncludeAll)`; e
+`buildCatalogAssortmentCountQuery`, que hoje não recebe opção NENHUMA) e espelho (S7,
+`defaultSellableAssortment()` hardcode all-true em `erp_import/adapters/internalread/reader.go`)
+— nunca lê a linha do tenant. O único sítio que pina a política numa leitura é
+`routing/matcher.go:45-48` (caminho de linking). Contra VC-2/VC-3: virar toggle muda a geração
+de vínculo e não muda a tela. Nenhum card atribuía "ler `tenant_config` e pinar a política no
+caminho de leitura do catálogo". A lacuna atravessa S6 (aceito), S7 (em revisão) e S9 (fiação).
+
+**Ruling 1 — dono é o S9.** A costura é exatamente a que o S9 já possui (root.go, service.go,
+routing/reader.go): resolver a política do tenant UMA vez na seam de routing — onde
+`matcher.go` já a resolve para linking — e entregá-la aos leitores; um produtor, N
+consumidores. Fatia corretiva separada escreveria na mesma assinatura de port que o S9 vai
+reescrever na fiação: colisão de costura, um dono só. **Extensão explícita de write-set do
+S9:** `internal_read/ports/catalog_page.go`, `internal_read/adapters/oracle/catalog_page.go`
+(predicado E a query de contagem), o leitor de catálogo do espelho
+(`erp_import/adapters/internalread/reader.go`), além dos arquivos já concedidos.
+
+**Ruling 2 — `IncludeAll` morre do port.** Bool separado + política são dois mecanismos que
+têm de concordar — a classe do F-1. O port passa a receber o VALOR da política; "ver todos" e
+`CatalogProductFactsByIDs` passam a política all-inclusive (três toggles desligados ⇒ o
+predicado não emite nada) via construtor nomeado do domínio — caller nunca monta zero-value à
+mão. Página e contagem recebem o MESMO valor. O default (linha do tenant ausente) vive na seam
+de load do `tenant_config` — um lugar, com os defaults já ratificados do pack — e o leitor
+nunca decide default; `defaultSellableAssortment()` morre. A forma do plumbing (pin de contexto
+como o linking, ou campo de options) é escolha do S9, defendida na evidência — mas UM mecanismo
+só, resolvido na seam de routing.
+
+**Ruling 3 — lado Oracle entra no MESMO remendo (S9).** Mesmo defeito, mesma assinatura de
+port, um dono. S6 não reabre; nada de fatia corretiva. Mirror-first não desculpa shim: VC-2/
+VC-3 valem AGORA e o routing pode servir Oracle vivo — o predicado Oracle passa a ser
+construído da política (pin por asserção de texto da query na lane unit, forma do S6, já que
+Oracle vivo não entra na lane).
+
+**Must-fail do S9 (grau de contrato; soma ao teste de chegada do catalog-503):** pelo leitor
+COMPOSTO do root.go, virar um toggle na linha real de `tenant_config` muda página E contagem
+juntas; reverter o threading (hardcode all-true) faz o teste falhar NOMEANDO o valor. Os dois
+lados cobertos: espelho na lane de integração; Oracle por texto de query.
+
+**S7: ACEITO como está.** Critérios da fatia provados (quatro mutações com morte nomeando
+valor, SKIP 0 com env carregado, canonicalização segurando na linha suja, lado produtor da
+condição 1). A lacuna é de plano e agora tem dono. Residual do DISTINCT na contagem
+('007' vs '7') fica registrado, não-bloqueante.
+
+**Correção do hub em registo:** no P4 do S6 o hub verificou que `IncludeAll` CHEGAVA ao SQL e
+parou aí — meia-doutrina. Chegada tem duas metades: o valor chega ao consumidor E vem do
+PRODUTOR certo (a linha do tenant). Gate de fatia que plumba opção/config pergunta as duas.
