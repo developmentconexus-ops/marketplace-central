@@ -1006,3 +1006,27 @@ retroactive GPT-5.6 Sol medium review at mission closeout (operator's call).
 
 2026-07-29 · §12 (dispatch transport) · ratified by the operator · **CODEX BRIEF TRAVELS BY STDIN, NEVER ARGV; ENCODING IS PINNED ON BOTH SIDES; NON-ASCII BRIEFS GET AN ECHO PROBE.** Two transport defects, one loud and one silent, measured by CHIP-VENDAVEL (S5 dispatch). Loud: PowerShell 5.1 re-quotes native-command arguments without escaping inner double quotes, so any brief containing `"` splits into multiple argv — all six slice briefs contained quotes (S1=14 … S5=10); four were delivered intact by luck of where the quotes fell, S5 failed with `codex: error: unexpected argument`. Silent, and worse because it never errors: `Get-Content` on 5.1 reads a BOM-less file as ANSI, and re-writing as UTF-8 double-encodes — S1–S4 briefs arrived with every accent, dash and arrow corrupted (`vendÃ¡vel â€”`). No slice was invalidated because those briefs' semantic load (test names, SQL, predicates, paths) was ASCII and every result was measured by mutation at the chip — but the pt-BR screen-string slices would have had workers WRITE the corruption into code, and a diff-reading gate passes corrupted bytes it was never asked to look at. Binds: prompt via `codex exec … -` (stdin; EOF also closes the open-stdin hang), read side `-Encoding UTF8`, write side `$OutputEncoding` UTF-8, and when the brief carries non-ASCII, a transport probe first: ask the far side to echo the prompt back and byte-compare, with a tail marker proving the tail arrived — a transport that corrupts without failing is only ever caught by asking the other end to return what it received.
 2026-07-29 · §11 + §3 (new rule) · ratified by the operator · **A DB LANE ONLY PROVES WITH THE ENV LOADED AND THE BASE MIGRATED — AND THE BRIEF IS WHO BREAKS THAT.** Two halves, both measured on CHIP-VENDAVEL S5B. (1) A DB-touching brief CARRIES the env dot-source line (`. testdb-env.ps1` or the repo equivalent) AND demands the lane result as line-counted RUN/PASS/SKIP/FAIL: the S5B brief omitted the line S1..S5 all carried, `MPC_TEST_DATABASE_URL` stayed unset, every DB test hit `SkipWithoutTarget`, and the package printed `ok` exit 0 — §11 vacuous-green signature 3 verbatim, RUN 27 / PASS 1 / SKIP 26 with the slice's reason-to-exist among the skips. The vacuum was visible only because the worker counted SKIPs and disclaimed the green in its own evidence — the instrument is the profile's, the hand was the worker's, and it worked against the worker's own result; that behavior is what briefs must keep demanding. (2) After a slice ADDS a migration, the orchestrator MIGRATES the slice base (`go run ./cmd/migrate`) before reviewing: nothing migrates automatically (`OpenPool` validates and connects, it does not migrate), so a new migration is invisible until someone runs it — 13× SQLSTATE 42703 on a migration that sat unapplied in the tree — and the runner's `applied N` doubles as a no-drift proof when N equals exactly the slice's new migrations. Corollary of form: `%v` on `*string` prints the ADDRESS — an assertion that discriminates the value but reports a pointer (`got 0x…, want R`) refuses to say what it saw, so test messages deref before printing, and a MESSAGE fix is proven by reinjection like any test fix (one degree softer than kill-by-panic, same rule).
+
+### 2026-07-29 — STOP-THE-LINE de classe (ratificado pelo operador; verbatim no fim)
+
+Quando o MESMO padrão de defeito aparece pela SEGUNDA vez — na missão ou vindo de missão
+anterior (regra copiada divergindo em dialetos, janela posicional de teste, lane vacuosa,
+guard-no-chamador...) — o hub PARA a linha afetada antes de aceitar mais um conserto pontual:
+
+1. NOMEIA a classe e faz a root-cause por medição (não por memória);
+2. decide EXPLICITAMENTE entre (a) conserto GERAL agendado como unidade própria com prioridade
+   imediata na fila, ou (b) continuação com dívida REGISTRADA + critério escrito de quando o
+   geral entra;
+3. a decisão E a razão vão ao operador no report do turno — nunca silenciosas.
+
+Gate avalia por CLASSE, não por instância: reincidência de classe já conhecida é finding de
+gate mesmo com a instância consertada. Conserto pontual sem a classificação (a)/(b) registrada
+é o próprio defeito.
+
+Caso de origem: superfície de erro HTTP — 2 famílias de payload + 4 `writeError` copy-paste;
+mesma classe dos 4 defeitos do predicado vendável; causou a reprova do S8 do CHIP-VENDAVEL.
+Disposição: (a) — chip de unificação imediatamente após o merge do CHIP-VENDAVEL (abortar
+em voo colidiria com S8–S10, que tocam contrato e handler).
+
+Verbatim operador 2026-07-29: "ao invés de parar analisar tudo como quero e verificar a root
+cause fica tentando corrigir específico ao invés de ser geral, e por exemplo, para e unificar".
