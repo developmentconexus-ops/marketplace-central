@@ -254,12 +254,13 @@ elabora):
   cards; VinculosPage badge auto-aprovado. Owns: `apps/web` AppRouter/nav/ImportacaoSection/
   integracoes, `web-query` useActiveErpSource, `sdk-runtime`+OpenAPI (contract-lock, seção
   disjunta de M-02). Dep: M-01+M-02+M-05.
-- **M-07 — chicken-egg break + F3.7 discovery (CONDICIONAL).** Gate: rodada live T13-T16 (REQUEST
-  hub). Se PROVADO: CREATE `descobrir_produto_catalogo(ean)` (EAN→catalog_product_id, read-only)
-  + persist identidade + enqueue coleta p/ produto sem anúncio (o "caminho de mercado" que quebra
-  o chicken-egg). Se DISPROVADO: REMOVE F3.7, registra honest-unknown. NÃO executa coleta
-  (missão mercado). Owns: `market/application` (discovery/enqueue half), `cmd/mlprobe` (evidência).
-  Dep: M-02 + prova live. ∥ ondas 2-4.
+- ~~**M-07 — chicken-egg break + F3.7 discovery (CONDICIONAL).**~~ **FORA DE ESCOPO — decisão do
+  operador, 2026-07-28.** MIS-006 é integração ERP + planilha + vínculo, e só. Descoberta
+  EAN→catálogo é caminho de MERCADO, não de vínculo: vira missão própria, junto com a coleta
+  (MC-11) que já estava fora. Nada de M-07 é construído nesta missão e o gate live T13-T16 **não
+  roda** aqui — a pergunta "a API do ML resolve EAN→`catalog_product_id`?" continua aberta e é
+  pré-requisito da missão mercado, não desta. `cmd/mlprobe` segue untracked. Ver
+  `CORTE-YAGNI.md`.
 
 ## Parallel Execution Plan
 
@@ -278,8 +279,8 @@ M-01→M-06 · (live T13-T16)→M-07. M-01∥M-02 (additive-lock root.go). M-03�
 | Contrato/SDK | — | active-source (lock) | — | — | — | chain-read (lock, disjunto) | — |
 | FE surface | — | — | — | — | — | AppRouter/nav/pages | — |
 
-**Ondas:** (1) M-01∥M-02 · (2) M-03∥M-04 · (3) M-05 · (4) M-06 · M-07 paralelo pós-M-02+live.
-Caminho crítico: M-02→M-03→M-05→M-06.
+**Ondas:** (1) M-01∥M-02 · (2) M-03∥M-04 · (3) M-05 · (4) M-06. **M-07 removido do escopo**
+(2026-07-28). Caminho crítico: M-02→M-03→M-05→M-06, e M-06 é o último.
 
 ## Real-integration bindings (up-front, core §5 · no-stub)
 
@@ -295,7 +296,8 @@ Seams que EXIGEM prova contra dependência REAL (nunca stub sem autorização):
    hit-rate; T14 `/products/{id}/items` demanda; T15 fallback `/sites/MLB/search` (checar 403 PolicyAgent);
    T16 simulação margem produto B. EANs de `erp_import_products` protocolo **#004-E** (2012 prod).
    Credencial = da conta ativa no DB, **NUNCA exposta/impressa**. Evidência →
-   `docs/design/evidence/ml-api/`. **Gate de M-07.** REQUEST ao hub (decisão + env).
+   `docs/design/evidence/ml-api/`. **NÃO RODA NESTA MISSÃO** — era gate do M-07, que saiu do
+   escopo em 2026-07-28. Migra para a missão mercado como pré-requisito dela.
 3. **Dev stack (docker)** para L2 smoke (mirror end-to-end, toggle de source, cadeia pós-import) —
    hub-owned, chip manda `REQUEST dev-stack`.
 

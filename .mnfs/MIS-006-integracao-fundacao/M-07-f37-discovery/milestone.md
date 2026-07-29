@@ -4,7 +4,7 @@
 id: M-07
 type: milestone
 mission: MIS-006
-status: draft
+status: out_of_scope   # operador 2026-07-28: MIS-006 é ERP + planilha + vínculo; descoberta EAN→catálogo é caminho de MERCADO e migra para a missão mercado junto com MC-11. Nada aqui é construído; o gate live T13-T16 NÃO roda nesta missão. Ver ../CORTE-YAGNI.md
 depends_on: [M-02]
 gated_by: [live T13-T16 REQUEST hub]
 conditional: true

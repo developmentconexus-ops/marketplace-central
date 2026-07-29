@@ -64,6 +64,19 @@ subset of importados"; "never data loss"; o comentário `differ only when…` do
 não-confiável — `provider_code`, `match_status`, `direction`, `side` e `confidence_band` são
 todos constante de Go.
 
-## Ordem
+## Escopo da missão, redefinido pelo operador
 
-ANCHORS-3 (3 condições) → merge → VINC-NEUTRO → merge → fechar M-06 → M-07.
+**MIS-006 é integração ERP + planilha + vínculo. Só.**
+
+`M-07` (quebra do chicken-egg, descoberta EAN→`catalog_product_id`) **sai do escopo**. Descoberta
+de catálogo é caminho de MERCADO, não de vínculo — vai para a missão mercado junto com a coleta
+(MC-11), que já estava fora. O gate live T13-T16 **não roda nesta missão**; a pergunta "a API do
+ML resolve EAN→catálogo?" fica aberta e vira pré-requisito da missão mercado. `cmd/mlprobe` segue
+untracked.
+
+## Ordem até o fim
+
+ANCHORS-3 (3 condições) → merge → VINC-NEUTRO → merge → **fechar M-06** → um chip com os 4 bugs
+observáveis (deadline em `POST /erp/imports`; candidato STALE fora do cap; duplicado entre
+âncoras em `buildCollisionCandidates`; painel de cadeia travando em `Carregando…` no 5xx) →
+**encerrar MIS-006**.
