@@ -49,6 +49,13 @@ filtro ou também para o número em tela: **os dois**.
   `domain/contract_test.go` assere os valores novos e é o pin da policy. Divergência de
   quantidade entre `/catalogo` e `EstoqueTab` para produto só-outlet NÃO é intencional — "os
   dois" do operador cobre todo número em tela.
+- **Correção do chip ao ruling #3 (aceite, medida nos dois assentos):** `buildNotIntListClause`
+  com lista vazia gera ` AND ... NOT IN ()` = ORA-00936, e `stock_batch_reader.go:115` chama SEM
+  guarda (reader.go:503 tem). Esvaziar a policy sem conserto rebentaria só contra Oracle vivo.
+  Conserto no HELPER (lista vazia → `""`, "sem cláusula"), não no chamador — guarda-no-chamador
+  é o padrão que acabou de falhar (dois chamadores, um guardado). `buildIntListClause` NÃO muda
+  por simetria: lá, vazio é erro de política e a borda (:490) o exige não-vazio — a assimetria é
+  a semântica certa e vai comentada no helper.
 - Espelho, catálogo vivo e contador N/M usam a MESMA definição de disponível — divergência = VC-2 falha.
 - Lista de CODLOCAL é constante comentada no código; nada de UI de escolha de local (YAGNI).
 
