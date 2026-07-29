@@ -80,3 +80,18 @@ ANCHORS-3 (3 condições) → merge → VINC-NEUTRO → merge → **fechar M-06*
 observáveis (deadline em `POST /erp/imports`; candidato STALE fora do cap; duplicado entre
 âncoras em `buildCollisionCandidates`; painel de cadeia travando em `Carregando…` no 5xx) →
 **encerrar MIS-006**.
+
+**Executado.** VINC-NEUTRO `3847fb4f` · ANCHORS-3 `28ac8ac5` · M-06 fechado `9c828044` ·
+CHIP-FIM `312adc2d` · missão fechada `975ac82d`.
+
+## Últimos dois cortes (operador, 2026-07-28)
+
+`A2-R1` (forma do ramo AGAINST) e `G4` (índice para `(tenant_id, state,
+internal_product_id)`) **saem sem sucessor**. Mesmo critério que matou o gate de prosa: nenhum
+dos dois é defeito que o operador alcança. O `G4` não é sequer mensurável fora de produção — os
+dois assentos que o levantaram disseram isso na cara, que faltava `EXPLAIN (ANALYZE, BUFFERS)`
+em escala real. Registrar um item que ninguém pode medir é registrar trabalho para o gate, não
+para o software.
+
+Volta se e quando existir sintoma: fila lenta medida, ou um operador lendo um AGENTE errado na
+tela.
