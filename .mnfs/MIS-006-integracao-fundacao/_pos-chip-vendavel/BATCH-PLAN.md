@@ -654,9 +654,15 @@ correction is the directory, never a looser filter.
   - **`IncludeAll` is removed from the port.** A bool beside a policy is two mechanisms that must
     agree, which is F-1 applied to ourselves. "Ver todos" and `CatalogProductFactsByIDs` pass an
     all-inclusive policy built by a NAMED domain constructor — a caller never assembles a
-    zero-value by hand. The default for a tenant row that is absent lives at the `tenant_config`
-    load seam, one place; `defaultSellableAssortment()` dies. Page and count receive the same
-    value. Plumbing shape (context pin like linking, or an options field) is S9's call, defended
+    zero-value by hand. ~~The default for a tenant row that is absent lives at the `tenant_config`
+    load seam, one place~~ — **RETRACTED by the hub (A-22, `d514e0e1`): that sentence was false and
+    is measured false. `tenant_config.Repository.Get` fail-closes with `ErrUnknownActiveSource` when
+    there is no row and `SetSellableAssortment` returns the same sentinel on `RowsAffected()==0`;
+    neither creates a row, and there is no load-seam default to resolve. An absent row is answered,
+    not defaulted.** `defaultSellableAssortment()` dies regardless, and A-21 went further:
+    `DefaultSellableAssortment()` is deleted, every seat below routing is guarded by
+    `RequireAssortmentPolicy()`, and an unresolved policy is `ErrUnresolvedAssortmentPolicy` rather
+    than a silently-invented rule. Page and count receive the same value. Plumbing shape (context pin like linking, or an options field) is S9's call, defended
     in its evidence — but ONE mechanism, resolved at the routing seam.
   - **`include_all` stops at the transport seam (hub ruling on the A-17 layering).** The wire
     parameter STAYS in the HTTP contract — "ver todos" is a per-request choice of the screen, and
@@ -723,10 +729,16 @@ go test ./internal/modules/internal_read/application ./internal/modules/internal
   - PUT requires three booleans and returns stored exact values.
   - **The handler owes EXACTLY the error surface published at `73190f23` (ruling A-19).** GET
     answers 200 or 500; PUT answers 200, 400 or 500; there is NO 404 — the handler has no
-    not-found branch, and under A-17 an absent tenant row resolves to defaults at the
-    `tenant_config` load seam. Every error body is the FLAT `SellableAssortmentError`
-    (`{error, detail?}`, codes `invalid_body` / `internal_error`), which is what this file's
-    existing `writeError` already emits; the nested `ErrorResponse` is not this surface's shape.
+    not-found branch. ~~and under A-17 an absent tenant row resolves to defaults at the
+    `tenant_config` load seam~~ — **RETRACTED (A-22): false, and not the reason the 404 is absent.
+    The 404 is absent because there is no not-found branch to serve it; an absent row is a 400
+    `unknown_erp_source` on BOTH verbs, the same fail-closed answer active-source already gives.
+    S10 shipped the interim 500 against the contract published at `73190f23`; the A-22 follow-up
+    replaces it and amends the spec (GET gains `"400"`, the enum gains `unknown_erp_source`) in
+    one commit with the handler.** Every error body is the FLAT `SellableAssortmentError`
+    (`{error, detail?}`, codes `unknown_erp_source` / `invalid_body` / `internal_error`), which is
+    what this file's existing `writeError` already emits; the nested `ErrorResponse` is not this
+    surface's shape.
     S8 shipped the opposite on all three points and an alien contract guard caught it. If S10
     MEASURES a need for a code beyond the two, it amends the spec in the same commit and says
     what produced it — nothing speculative.

@@ -3389,6 +3389,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SellableAssortmentConfig'
+        "400":
+          description: Tenant has no active ERP source
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SellableAssortmentError'
         "500":
           description: Tenant sellable-assortment configuration could not be read
           content:
@@ -8327,7 +8333,7 @@ components:
       properties:
         error:
           type: string
-          enum: [invalid_body, internal_error]
+          enum: [unknown_erp_source, invalid_body, internal_error]
         detail:
           type: string
 

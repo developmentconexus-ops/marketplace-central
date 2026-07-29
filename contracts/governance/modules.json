@@ -65,6 +65,17 @@
       "import_path": "marketplace-central/apps/server_core/internal/modules/marketplaces/registry",
       "reason": "Current fee-sync adapter imports the marketplace registry implementation.",
       "removal_owner": "M-10"
+    },
+    {
+      "id": "module-edge-tenant-config-erp-import-adapter",
+      "rule_id": "module-target-layer",
+      "source_module": "tenant_config",
+      "target_module": "erp_import",
+      "target_layer": "adapters",
+      "path": "apps/server_core/internal/modules/tenant_config/active_source.go",
+      "import_path": "marketplace-central/apps/server_core/internal/modules/erp_import/adapters/internalread",
+      "reason": "active_source.go republishes exactly one symbol from erp_import's adapters layer: var ErrUnknownActiveSource = internalread.ErrUnknownActiveSource. Measured, not assumed — the entry trades GOV_MODULE_COVERAGE tenant_config for this one named edge, with the lane's violation count unchanged at 43 either way. The sentinel belongs in a shared errors seam; until the error surface is unified it lives where the reader can reach it.",
+      "removal_owner": "CHIP-ERROR-UNIFY"
     }
   ]
 }

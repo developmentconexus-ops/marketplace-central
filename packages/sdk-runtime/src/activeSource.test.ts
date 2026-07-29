@@ -122,19 +122,21 @@ describe("active-source SDK contract", () => {
     // serve these two operations is tenant_config/transport/http_handler.go, whose
     // writeError emits map[string]string{"error": code} plus an optional "detail" — the
     // FLAT shape, never the nested ErrorResponse. It has no not-found branch at all, and
-    // under A-17 an absent tenant row resolves to defaults at the load seam, so GET can
+    // under A-22 an absent tenant row fails closed with unknown_erp_source, so GET can
     // never 404. The contract shipped 404 + nested ErrorResponse on both operations; those
     // were three statements the server cannot honour, and a false statement in a published
     // contract is deleted, not softened.
     expect(configPath, "OpenAPI /config/sellable-assortment declares a 404 the handler has no branch for").not.toContain('"404":');
     expect(configPath, "OpenAPI /config/sellable-assortment refs the nested ErrorResponse; this surface writes a flat body").not.toContain("ErrorResponse");
     expect(configPath.match(/"500":/g) ?? [], "OpenAPI /config/sellable-assortment must declare 500 on BOTH operations").toHaveLength(2);
-    expect(configPath.match(/"400":/g) ?? [], "OpenAPI /config/sellable-assortment must declare 400 on PUT only").toHaveLength(1);
+    // A-22 moves the fail-closed unknown_erp_source response onto GET as well as PUT.
+    expect(configPath.match(/"400":/g) ?? [], "OpenAPI /config/sellable-assortment must declare 400 on GET and PUT").toHaveLength(2);
     for (const block of configPath.split(/"(?:400|500)":/).slice(1)) {
       expect(block.slice(0, 300), "every /config/sellable-assortment error resolves to SellableAssortmentError").toContain("SellableAssortmentError");
     }
     expect(errorSchema, "OpenAPI SellableAssortmentError must be the flat {error, detail?} body").toContain("required: [error]");
-    expect(errorSchema, "OpenAPI SellableAssortmentError has the wrong code enum").toContain("enum: [invalid_body, internal_error]");
+    // A-22 moves unknown_erp_source into SellableAssortmentError for both verbs.
+    expect(errorSchema, "OpenAPI SellableAssortmentError has the wrong code enum").toContain("enum: [unknown_erp_source, invalid_body, internal_error]");
     expect(apiPaths, "OpenAPI missing path /catalog/products/counts").toContain("  /catalog/products/counts:");
     expect(countsPath, "OpenAPI missing operationId getCatalogAssortmentCounts").toContain("operationId: getCatalogAssortmentCounts");
     expect(countsPath, "OpenAPI missing CatalogAssortmentCounts response schema").toContain("$ref: '#/components/schemas/CatalogAssortmentCounts'");

@@ -830,3 +830,91 @@ files, so afterwards I could not prove "only the test file changed" — the diff
 `595c15e3`, which predates both rounds. I re-reviewed the handler and `modules.json` diffs in full
 instead, which is weaker than a byte comparison and is named as such in the evidence. Snapshot the
 accepted files BEFORE dispatching a follow-up round.
+
+## S10-COND — the fail-closed 400 A-22 ordered, and the branches round 1 left unwatched
+
+Two rounds, both GPT-5.6 Luna high, OS-process path.
+Round 1 prompt `scratchpad/prompt-s10c-a22.md` → `agent__s10c.log` / `agent__s10c.last.md`.
+Round 2 prompt `scratchpad/prompt-s10c-r2.md` → `agent__s10cr2.log` / `agent__s10cr2.last.md`.
+
+### A-22 is transport-only, and the measurement is why
+
+The hub ruled that a tenant with no config row answers **400 `unknown_erp_source`** on BOTH verbs
+of `/config/sellable-assortment`, and in the same ruling RETRACTED its own A-17 sentence about a
+default resolved at the tenant_config load seam. Before dispatching I measured what the ruling
+actually costs: `repository.go:91` already returns the sentinel —
+
+```go
+if commandTag.RowsAffected() == 0 {
+	return ErrUnknownActiveSource
+}
+```
+
+— and `repository_test.go:189` already asserts it. So A-22 is a mapping change at three transport
+seats and nothing below. The brief said that, and the write set was five files, additive only.
+
+### Round 1 — accepted on the handler, reproved on the tests
+
+The handler was better than asked: the worker mapped the sentinel at THREE seats, not two — GET's
+`store.Get`, PUT's `SetSellableAssortment`, and PUT's post-write re-read. Measured at this seat with
+`grep -n "getErr\|setSellableAssortmentErr"`: three construction sites, lines 18/20/41/53/88/345/363,
+all passing `tenant_config.ErrUnknownActiveSource`. That grep is also what reproved the round:
+
+**R2-1 — the third seat had no test.** Delete that branch and every lane stayed green. It is the
+branch I asked for by name, because the row can vanish between the write and the read-back, and an
+untested branch is a branch the next reader deletes. Second time in this same file: S10 round 1
+shipped the trailing-garbage guard with no test (F-3).
+
+**R2-2 — the generic 500 lost its only coverage.** Renaming the two interim-500 tests into the new
+400 tests was correct — they asserted 500 for exactly the error A-22 calls a 400, so they were
+asserting a falsehood, and a false assertion is deleted, not softened (R-24/R-25). But nothing
+replaced them. After round 1 no test in the package drove a NON-sentinel store error, so every
+`writeError(500, "internal_error")` was invisible. A slice that makes one path fail closed must not
+leave "everything else" unwatched — that is how 500 becomes the accidental default nobody tests.
+
+### Round 2 — four tests, and both must-fails died naming the right code
+
+`postSetErr` added to the fake, one field, documented by the failure it catches. Then the read-back
+400 plus generic-500 coverage at all three seats. MF-6 (delete the sentinel branch at the read-back
+seat) and MF-7 (delete GET's 500 fallback, return 200 with the zero config so it still compiles):
+
+```
+--- FAIL: TestHandlerPutSellableAssortmentUnknownSourceOnReadBackReturnsBadRequest
+    http_handler_test.go:398: status = 500, want 400 for unknown_erp_source, body={"error":"internal_error"}
+--- FAIL: TestHandlerGetSellableAssortmentStoreFailureReturnsInternalError
+    http_handler_test.go:420: status = 200, want 500, body={"only_revenda":false,"only_em_estoque":false,"only_ecommerce_eligible":false}
+```
+
+Each mutation isolated one failure and three passes — the tests are not reaching each other's seats
+by accident. `RESTORE_HASH` matched after every mutation.
+
+### A-5 honoured, and the brief was wrong about its own arithmetic
+
+I snapshotted the five accepted round-1 files with sha256 BEFORE dispatching round 2
+(`scratchpad/snap-s10c-r1/`), so "only the test file changed" is a byte comparison this time rather
+than a re-read. That rule was born from my own round-1 failure on S10 and it paid immediately.
+
+The brief said "five new tests" and then specified four. The worker built four, said so plainly, and
+was right. Counting in prose is not a spec; the enumerated list is.
+
+### The lane — SKIP is 0 now, and that is how the dead endpoint became visible
+
+Counted at this seat, not taken on report:
+
+```
+ok   .../tenant_config/transport   RUN=18 PASS=18 SKIP=0 FAIL=0
+FAIL .../tenant_config             RUN=7  PASS=4  SKIP=0 FAIL=3
+```
+
+The three failures are the repository tests, all refused at `127.0.0.1:55864`. `docker ps` puts the
+dev-stack postgres on **5435**; 55864 is an ephemeral port of a container that no longer exists.
+`MPC_TEST_DATABASE_URL` is set (length 144, value never printed).
+
+**Finding, and it is a correction to my own rule.** A-15 makes a DB-touching brief carry the
+dot-source line. That line proves the VARIABLE, not the ENDPOINT. Round 1 skipped honestly; round 2
+set the variable and turned an honest skip into an environmental red. A brief that demands SKIP=0
+must demand a reachable endpoint, or it just trades a silent pass for a red that says nothing about
+the code. REQUEST R-1 open with the hub — the endpoint is a stack seam and I do not re-point it.
+
+Consequence stated as a gap, not as coverage: `repository_test.go:189` is the assertion that makes
+A-22 transport-only, and **it has never executed in this chip**.

@@ -7,9 +7,10 @@
 // /config/sellable-assortment: GET reads the three stored toggles, PUT writes
 // them. A body missing any of the three is a 400 — an absent boolean would
 // otherwise decode to false and be written as a rule no operator authored.
-// A tenant with no config row answers 500 here, unlike active-source's 400:
-// the published contract offers no other status on this surface, and the
-// honest status for that state is an open question with the hub.
+// A tenant with no config row is a 400 unknown_erp_source on both verbs, the
+// same fail-closed answer active-source gives: no row means no operator ever
+// chose a source, and a rule invented for that tenant would be a rule nobody
+// authored (hub ruling A-22).
 package transport
 
 import (
@@ -111,6 +112,10 @@ func (h Handler) handlePut(w http.ResponseWriter, r *http.Request) {
 func (h Handler) handleGetSellableAssortment(w http.ResponseWriter, r *http.Request) {
 	cfg, err := h.store.Get(r.Context(), h.tenantID)
 	if err != nil {
+		if errors.Is(err, tenant_config.ErrUnknownActiveSource) {
+			writeError(w, http.StatusBadRequest, "unknown_erp_source", "")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "internal_error", "")
 		return
 	}
@@ -138,11 +143,19 @@ func (h Handler) handlePutSellableAssortment(w http.ResponseWriter, r *http.Requ
 		OnlyEcommerceEligible: *body.OnlyEcommerceEligible,
 	}
 	if err := h.store.SetSellableAssortment(r.Context(), h.tenantID, assortment); err != nil {
+		if errors.Is(err, tenant_config.ErrUnknownActiveSource) {
+			writeError(w, http.StatusBadRequest, "unknown_erp_source", "")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "internal_error", "")
 		return
 	}
 	stored, err := h.store.Get(r.Context(), h.tenantID)
 	if err != nil {
+		if errors.Is(err, tenant_config.ErrUnknownActiveSource) {
+			writeError(w, http.StatusBadRequest, "unknown_erp_source", "")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "internal_error", "")
 		return
 	}
