@@ -267,3 +267,51 @@ que o VC-7 exige; o orquestrador é a única testemunha de execução. Vinculado
 já: brief de fatia que toca `packages/*` DECLARA a cegueira de antemão e nomeia o assento que
 mede (chip roda a lane a cada entrega); zero-observed do worker = BLIND, nunca verde.
 Candidatura a profile aguarda ratificação do operador.
+
+## EMENDA A-21 2026-07-29 — S9 reprovada no P4 do chip: F-1 (constante-default falsa) + F-2 (valor mágico no port); ruling do hub
+
+**Contexto (verificado pelo hub em `routing/reader.go` @5adeeb56):** a metade-do-produtor está
+CERTA (routing resolve a linha do tenant na mesma seam do matcher; página e contagem da mesma
+chamada). Mas: **F-1** — `defaultSellableAssortment()` não morreu; foi exportada como
+`ports.DefaultSellableAssortment()` (`{true,true,true}` fixo) e multiplicada para 11 sítios (7
+produção). O nome é falso por medição: `tenant_config/repository.go:31` é fail-closed — tenant
+sem linha recebe ERRO, nunca default; constante `Default...` que não é política de tenant
+nenhum é classe R-24/R-25 (deleta-se). **F-2** — `resolveCatalogAssortment` compara
+`requested == AllProductsAssortment()` (o ZERO VALUE): política explícita não-zero passada
+pelo chamador é DESCARTADA em silêncio e a do tenant entra no lugar. O booleano voltou vestido
+de struct — segunda instância da classe "dois mecanismos que têm de concordar" no chip
+(primeira: `IncludeAll` ao lado da política, A-17/A-18). Regra 1 do A-20 invocada pelo chip:
+reprova, não aceite-com-nota. Raiz única: o port não tem jeito honesto de dizer "usa a
+política armazenada do tenant".
+
+**Ruling — desenho ratificado (recomendação medida do chip):** o port passa a receber
+`requested *SellableAssortmentPolicy` — `nil` = política armazenada do tenant; não-nil =
+EXATAMENTE esta, honrada. Transporte mapeia na sua seam: `include_all` ausente/false → `nil`;
+`true` → `&AllProductsAssortment()`. `AllProductsAssortment()` sobrevive como construtor
+nomeado do VALOR honesto "sem corte" (é política real, não sentinela).
+`DefaultSellableAssortment()` DELETA — zero referências após o conserto, asserido na evidência
+por grep contado.
+
+**Invariante novo (por-construção):** o `nil` resolve UMA vez, na seam de routing — o único
+produtor que o A-17 estabeleceu. Abaixo do routing só viaja política CONCRETA; adapter/sítio
+que precisaria "decidir default" é erro de programação, não fallback. É isso que torna a
+constante desnecessária nos 7 sítios de produção.
+
+**Execução — opção (i) GRANTED:** o chip aplica como conserto de orquestrador sob grant
+explícito (escopo maior que glue: assinatura do port + transporte + deleção nos 11 sítios),
+commit PRÓPRIO sobre `5adeeb56`, worker commit intacto. Razão contra (ii): re-injetar arrisca
+regressão num diff de 13 arquivos que já passa a contraprova, e o assento que mede é o chip.
+(iii) rejeitada: S11/S12 são exatamente os chamadores expostos à armadilha — dívida aqui
+venceria antes de ser paga.
+
+**Must-fails do conserto (grau de contrato):**
+1. M1 re-executada pós-conserto (chegada da política armazenada pelo leitor composto, nas
+   DUAS lanes, com env — o `ok` sem env já provou mentir sob mutação);
+2. NOVA: política explícita não-nil passada pelo chamador é HONRADA pela cadeia composta
+   (mata F-2 para sempre; é a proteção de S11/S12);
+3. grep contado `DefaultSellableAssortment` = 0;
+4. contagens por linha antes/depois (A-15).
+
+**Disposição A-20 para F-2:** classe "valor mágico/dois mecanismos", segunda ocorrência —
+ramo (a) inline: o desenho por ponteiro remove o MECANISMO (não há mais valor válido dobrando
+de sentinela), não a instância.
