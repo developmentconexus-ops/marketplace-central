@@ -76,13 +76,13 @@ import type { ProductLinkCandidateItem, ProductLinkReason } from "@marketplace-c
  *
  *  - the `detail` wording of non-declared-absence reasons (they are built with
  *    runtime values — codprod ids, match counts — so there is no closed set);
- *  - the DIRECTION and `side` of an absence on a SUPPLIED anchor. Rule 6 pins
- *    which anchors carry signals; which of INCOMPARABLE/UNAVAILABLE the
- *    finalizer then picks for the rest, and with which side, depends on listing
- *    and product values no fixture here carries (:631-645, :702-729). Note in
- *    particular that UNAVAILABLE is NOT exclusive to the unsupplied-anchor
- *    branch: `missingMatchedAnchorReason:642` emits it for a supplied anchor on
- *    its `default:` arm;
+ *  - the DIRECTION of an absence on a SUPPLIED anchor. Rule 6 pins which anchors
+ *    carry signals; which of INCOMPARABLE/UNAVAILABLE the finalizer then picks
+ *    for the rest depends on listing and product values no fixture here carries
+ *    (:631-645, :702-729). Note in particular that UNAVAILABLE is NOT exclusive
+ *    to the unsupplied-anchor branch: `missingMatchedAnchorReason:642` emits it
+ *    for a supplied anchor on its `default:` arm. The `side` is NOT in this gap
+ *    — rule 3 checks it, and `MUST-FAIL 5` asserts the throw;
  *  - the `title` suppression condition (:719-721 needs listing and product values
  *    this side cannot see), so a MISSING `title` reason is accepted.
  *

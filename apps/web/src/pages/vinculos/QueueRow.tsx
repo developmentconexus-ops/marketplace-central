@@ -135,15 +135,26 @@ export const directionClasses: Record<ProductLinkReasonDirection, string> = {
  * `amazon` is inside the domain and paints `Amazon`; `Amazon` is outside it and
  * therefore paints `Amazon` VERBATIM. Same pixels, two wire codes — the exact
  * failure named at the top, relocated from inside the transform to the seam
- * between the transform and its own escape hatch. Narrowing the domain cannot
- * fix it: the fallback is identity, so every string a transform can produce is
- * also a string the fallback can produce. Only two shapes actually close it —
- * render every unmapped code verbatim (injective, uglier), or require a display
- * name in the registry beside the code (injective, and a contract change). Both
- * are outside this chip's write-set; it is an open REPORT with a trigger, and
- * the trigger is the second registered adapter. Until then `mercado_livre` is
- * mapped, it is the only declaration that exists, and no live row reaches
- * either branch.
+ * between the transform and its own escape hatch.
+ *
+ * Narrowing the domain cannot fix it, and the reason is about the CODOMAIN
+ * rather than about either branch. Every branch here PRODUCES a string; none of
+ * them RESERVES one. Narrowing only moves codes from the transform branch into
+ * the verbatim branch, and verbatim is the identity, so any code whose literal
+ * spelling equals another code's typeset output collides — `Amazon` against
+ * `amazon`, `Amazon Marketplace` against `amazon_marketplace`. Enumerating the
+ * pairs by hand under-reports; grouping the codes BY RENDERED OUTPUT is the
+ * instrument, and it also surfaces the pair neither the mapped table nor the
+ * transform is usually suspected of: `Mercado Livre` as a literal wire code
+ * renders verbatim and collides with `mercado_livre`, which the table maps.
+ *
+ * That last pair is also why the obvious escape hatch is not one: rendering
+ * every unmapped code verbatim leaves the mapped table colliding with it. The
+ * shape that does close it is a display name required in the registry beside
+ * the code, which is a contract change and outside this chip's write-set. It is
+ * an open REPORT with a trigger, and the trigger is the second registered
+ * adapter. Until then `mercado_livre` is mapped, it is the only declaration
+ * that exists, and no live row reaches either branch.
  */
 const providerDisplayNames: Record<string, string> = {
   mercado_livre: "Mercado Livre",
@@ -164,7 +175,13 @@ function typesetSlug(providerCode: string): string {
 }
 
 export function providerDisplayName(providerCode: string): string {
-  const mapped = providerDisplayNames[providerCode];
+  // `Object.hasOwn`, not a bare index: a plain object literal inherits from
+  // `Object.prototype`, so `providerDisplayNames["toString"]` is a FUNCTION that
+  // the declared `: string` return type does not catch — the index signature
+  // types the lookup as `string` and TypeScript never models the prototype
+  // chain here. Unreachable today (`provider_code` is a Go literal at
+  // `capability_adapter.go:81`), which is exactly why it would have survived.
+  const mapped = Object.hasOwn(providerDisplayNames, providerCode) ? providerDisplayNames[providerCode] : undefined;
   if (mapped) return mapped;
 
   // Reject BEFORE transforming. The old form typeset first and then asked

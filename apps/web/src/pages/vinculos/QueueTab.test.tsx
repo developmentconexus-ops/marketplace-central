@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QueueTab } from "./QueueTab";
+import { providerDisplayName } from "./QueueRow";
 import { MARCA_UNAVAILABLE_DETAIL, driftCandidate, wireCandidate } from "./wireFixtures";
 
 const listProductLinkCandidates = vi.fn();
@@ -586,7 +587,7 @@ describe("QueueTab", () => {
     expect(container.textContent).not.toContain("mercado_livre");
   });
 
-  it("typesets an unmapped provider without ever collapsing two distinct codes onto one name", async () => {
+  it("typesets an unmapped provider, and leaves codes outside the injective domain verbatim", async () => {
     listProductLinkCandidates.mockResolvedValue({
       items: [
         driftCandidate(NO_DECLARATION_HERE, {
@@ -1043,7 +1044,7 @@ describe("QueueTab", () => {
   // `buildDefinitions` dedupes provider codes by exact string equality, so
   // `amazon_marketplace` and `amazon__marketplace` are both registrable at the
   // same time. Two marketplaces wearing one name is wrong information.
-  it("does not let two provider codes collapse onto one name", async () => {
+  it("does not let two provider codes collapse onto one name through separators (case is NOT covered)", async () => {
     listProductLinkCandidates.mockResolvedValue({
       items: [
         driftCandidate(NO_DECLARATION_HERE, { candidate_id: "cand_a", provider_item_id: "MLB_A", provider_code: "amazon_marketplace" }),
@@ -1087,5 +1088,24 @@ describe("QueueTab", () => {
     // old round-trip produced and approved — must not be on screen at all.
     expect(screen.getByText("amazon-marketplace")).toBeInTheDocument();
     expect(screen.queryByText("Amazon-marketplace")).not.toBeInTheDocument();
+  });
+
+  // A plain object literal inherits from `Object.prototype`, so a bare index
+  // lookup answers for members nobody put in the table — and the index signature
+  // types the result as `string`, so `: string` was a lie the compiler helped
+  // tell. Not reachable today (`provider_code` is a Go literal at
+  // `capability_adapter.go:81`), which is precisely why it would have survived:
+  // the type says it cannot happen and the data says it does not happen, and
+  // neither of those is the code being right.
+  it("does not answer the provider table for inherited members", () => {
+    // Falls to verbatim: `toString` and `valueOf` carry an upper-case letter, so
+    // they are outside the injective domain.
+    expect(providerDisplayName("toString")).toBe("toString");
+    expect(typeof providerDisplayName("valueOf")).toBe("string");
+    // Falls to typeset: `constructor` IS a legal lower-case slug, so the correct
+    // answer is the typeset form — not the `Object` constructor.
+    expect(providerDisplayName("constructor")).toBe("Constructor");
+    // The real entry still resolves, so the fix did not empty the table.
+    expect(providerDisplayName("mercado_livre")).toBe("Mercado Livre");
   });
 });
