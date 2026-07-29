@@ -86,6 +86,31 @@ AND EXISTS (SELECT 1 FROM METALPRD.TGFEST e
 **Whitelist, nunca blacklist** — local interno novo entraria vendendo sozinho se a regra fosse por
 exclusão. O código carrega a whitelist como constante comentada.
 
+### DR-3 — `AD_ECOMMERCE` é TRI-ESTADO (medido 2026-07-29, db-consult)
+
+`VARCHAR2(10)`, nullable, **sem default e sem CHECK** — o domínio S/N/NULL é convenção, não garantia.
+Distribuição em ATIVO='S': NULL 6.939 · `'N'` 2.993 · `'S'` 606. Dentro dos 2.923 vendáveis:
+`'N'` 1.595 · NULL 887 · `'S'` 442.
+
+`= 'S'` estrito derrubaria **85% do sortimento vendável** (2.923 → 442). Os três estados carregam
+significados diferentes — publicado / recusado / **não-decidido** — e o operador já disse que a flag
+"por agora não é confiável mas vai ser": o NULL é o "vai ser".
+
+**Cláusula ratificada, live e espelho iguais (só o negativo explícito corta):**
+
+```sql
+AND NVL(AD_ECOMMERCE, 'X') <> 'N'      -- live
+AND (m.ad_ecommerce IS NULL OR m.ad_ecommerce <> 'N')   -- espelho
+```
+
+Supera a forma `IS NULL OR = 'S'` do ruling inicial: com o domínio não garantido pelo banco, valor
+novo que aparecer amanhã não é afirmação de "fora", e honest-unknown manda passar. Espelho guarda os
+três estados como texto — **nunca colapsar em booleano**. Resultado com a cláusula ligada: 442 + 887
+= ~1.329.
+
+**A opção passa a chamar-se `only_ecommerce_eligible`** ("Somente elegíveis ao e-commerce"): o nome
+`only_ecommerce` afirmaria "só os publicados", que é o que a cláusula deliberadamente NÃO faz.
+
 ## Defeito incluído no escopo (achado na investigação)
 
 O Q4 de estoque do sync soma TODAS as empresas — `WHERE CODPARC = 0` sem CODEMP em
