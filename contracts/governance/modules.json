@@ -18,7 +18,8 @@
     { "id": "pricing", "root": "apps/server_core/internal/modules/pricing", "code_owner_path": "apps/server_core/internal/modules/pricing", "composition_required": true, "openapi_prefixes": ["/pricing"], "dependencies": ["catalog", "internal_read", "marketplaces"] },
     { "id": "product_links", "root": "apps/server_core/internal/modules/product_links", "code_owner_path": "apps/server_core/internal/modules/product_links", "composition_required": true, "openapi_prefixes": ["/product-links"], "dependencies": ["connectors", "internal_read"] },
     { "id": "profitability", "root": "apps/server_core/internal/modules/profitability", "code_owner_path": "apps/server_core/internal/modules/profitability", "composition_required": true, "openapi_prefixes": ["/profitability"], "dependencies": ["internal_read", "orders"] },
-    { "id": "sync", "root": "apps/server_core/internal/modules/sync", "code_owner_path": "apps/server_core/internal/modules/sync", "composition_required": true, "openapi_prefixes": [], "dependencies": [] }
+    { "id": "sync", "root": "apps/server_core/internal/modules/sync", "code_owner_path": "apps/server_core/internal/modules/sync", "composition_required": true, "openapi_prefixes": [], "dependencies": [] },
+    { "id": "tenant_config", "root": "apps/server_core/internal/modules/tenant_config", "code_owner_path": "apps/server_core/internal/modules/tenant_config", "composition_required": true, "openapi_prefixes": ["/config"], "dependencies": ["erp_import"] }
   ],
   "temporary_exceptions": [
     {
