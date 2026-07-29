@@ -310,16 +310,13 @@ type CatalogPageReader struct {
 }
 
 var _ internalreadports.CatalogPageReader = CatalogPageReader{}
+var _ internalreadports.CatalogAssortmentReader = CatalogPageReader{}
 
 func NewCatalogPageReader(downstream internalreadports.CatalogPageReader, cache *Cache) CatalogPageReader {
 	return CatalogPageReader{downstream: downstream, cache: cache}
 }
 
 func (r CatalogPageReader) ListCatalogProductFacts(ctx context.Context, cursor internalreadports.Cursor, limit int) (internalreadports.CatalogFactPage, error) {
-	// The active dataset source travels in ctx (WithActiveSource) and picks a
-	// different snapshot downstream, so it MUST be part of the cache key — else a
-	// catalogo_cliente request within the catalog TTL would be served the cached
-	// xlsx page (cross-source pollution).
 	key := canonicalKey("ListCatalogProductFacts", activeSourceKey(ctx), strconv.FormatInt(cursor.InternalProductID, 10), strconv.Itoa(limit))
 	value, err := r.cache.load(ctx, ClassCatalog, key, func() (any, time.Time, error) {
 		page, err := r.downstream.ListCatalogProductFacts(ctx, cursor, limit)
@@ -331,10 +328,23 @@ func (r CatalogPageReader) ListCatalogProductFacts(ctx context.Context, cursor i
 	return cloneCatalogPage(value.(internalreadports.CatalogFactPage)), nil
 }
 
+func (r CatalogPageReader) ListCatalogProductFactsWithPolicy(ctx context.Context, cursor internalreadports.Cursor, limit int, policy internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
+	// The active dataset source travels in ctx (WithActiveSource) and picks a
+	// different snapshot downstream, so it MUST be part of the cache key — else a
+	// catalogo_cliente request within the catalog TTL would be served the cached
+	// xlsx page (cross-source pollution).
+	key := canonicalKey("ListCatalogProductFacts", activeSourceKey(ctx), assortmentKey(policy), strconv.FormatInt(cursor.InternalProductID, 10), strconv.Itoa(limit))
+	value, err := r.cache.load(ctx, ClassCatalog, key, func() (any, time.Time, error) {
+		page, err := r.downstream.(internalreadports.CatalogAssortmentReader).ListCatalogProductFactsWithPolicy(ctx, cursor, limit, policy)
+		return cloneCatalogPage(page), page.AsOf, err
+	})
+	if err != nil {
+		return internalreadports.CatalogFactPage{}, err
+	}
+	return cloneCatalogPage(value.(internalreadports.CatalogFactPage)), nil
+}
+
 func (r CatalogPageReader) SearchCatalogProductFacts(ctx context.Context, query string, cursor internalreadports.Cursor, limit int) (internalreadports.CatalogFactPage, error) {
-	// The cursor selects a different page of the same query, so it belongs in the
-	// key for the same reason it does on the list read — without it, page 2 of a
-	// search would be served page 1 from the cache.
 	key := canonicalKey("SearchCatalogProductFacts", activeSourceKey(ctx), query, strconv.FormatInt(cursor.InternalProductID, 10), strconv.Itoa(limit))
 	value, err := r.cache.load(ctx, ClassCatalog, key, func() (any, time.Time, error) {
 		page, err := r.downstream.SearchCatalogProductFacts(ctx, query, cursor, limit)
@@ -344,6 +354,29 @@ func (r CatalogPageReader) SearchCatalogProductFacts(ctx context.Context, query 
 		return internalreadports.CatalogFactPage{}, err
 	}
 	return cloneCatalogPage(value.(internalreadports.CatalogFactPage)), nil
+}
+
+func (r CatalogPageReader) SearchCatalogProductFactsWithPolicy(ctx context.Context, query string, cursor internalreadports.Cursor, limit int, policy internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
+	// The cursor selects a different page of the same query, so it belongs in the
+	// key for the same reason it does on the list read — without it, page 2 of a
+	// search would be served page 1 from the cache.
+	key := canonicalKey("SearchCatalogProductFacts", activeSourceKey(ctx), assortmentKey(policy), query, strconv.FormatInt(cursor.InternalProductID, 10), strconv.Itoa(limit))
+	value, err := r.cache.load(ctx, ClassCatalog, key, func() (any, time.Time, error) {
+		page, err := r.downstream.(internalreadports.CatalogAssortmentReader).SearchCatalogProductFactsWithPolicy(ctx, query, cursor, limit, policy)
+		return cloneCatalogPage(page), page.AsOf, err
+	})
+	if err != nil {
+		return internalreadports.CatalogFactPage{}, err
+	}
+	return cloneCatalogPage(value.(internalreadports.CatalogFactPage)), nil
+}
+
+func (r CatalogPageReader) GetCatalogAssortmentCounts(ctx context.Context, policy internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogAssortmentCounts, error) {
+	return r.downstream.(internalreadports.CatalogAssortmentReader).GetCatalogAssortmentCounts(ctx, policy)
+}
+
+func assortmentKey(policy internalreadports.SellableAssortmentPolicy) string {
+	return strconv.FormatBool(policy.OnlyRevenda) + ":" + strconv.FormatBool(policy.OnlyEmEstoque) + ":" + strconv.FormatBool(policy.OnlyEcommerceEligible)
 }
 
 func (r CatalogPageReader) CatalogProductFactsByIDs(ctx context.Context, ids []int64) (internalreadports.CatalogFactPage, error) {
@@ -370,6 +403,7 @@ type Reader struct {
 
 var _ internalreadports.Reader = Reader{}
 var _ internalreadports.CatalogPageReader = Reader{}
+var _ internalreadports.CatalogAssortmentReader = Reader{}
 
 func NewReader(downstream internalreadports.Reader, cache *Cache) Reader {
 	pages, _ := downstream.(internalreadports.CatalogPageReader)
@@ -386,6 +420,18 @@ func (r Reader) SearchCatalogProductFacts(ctx context.Context, query string, cur
 
 func (r Reader) CatalogProductFactsByIDs(ctx context.Context, ids []int64) (internalreadports.CatalogFactPage, error) {
 	return r.pages.CatalogProductFactsByIDs(ctx, ids)
+}
+
+func (r Reader) ListCatalogProductFactsWithPolicy(ctx context.Context, cursor internalreadports.Cursor, limit int, policy internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
+	return r.pages.(internalreadports.CatalogAssortmentReader).ListCatalogProductFactsWithPolicy(ctx, cursor, limit, policy)
+}
+
+func (r Reader) SearchCatalogProductFactsWithPolicy(ctx context.Context, query string, cursor internalreadports.Cursor, limit int, policy internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
+	return r.pages.(internalreadports.CatalogAssortmentReader).SearchCatalogProductFactsWithPolicy(ctx, query, cursor, limit, policy)
+}
+
+func (r Reader) GetCatalogAssortmentCounts(ctx context.Context, policy internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogAssortmentCounts, error) {
+	return r.pages.(internalreadports.CatalogAssortmentReader).GetCatalogAssortmentCounts(ctx, policy)
 }
 
 type BatchReader struct {

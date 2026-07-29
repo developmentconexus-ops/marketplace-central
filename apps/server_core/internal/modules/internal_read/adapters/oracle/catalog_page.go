@@ -19,10 +19,10 @@ const (
 )
 
 func (r *Reader) ListCatalogProductFacts(ctx context.Context, cursor ports.Cursor, limit int) (ports.CatalogFactPage, error) {
-	return r.ListCatalogProductFactsWithOptions(ctx, cursor, limit, ports.CatalogPageOptions{})
+	return r.ListCatalogProductFactsWithPolicy(ctx, cursor, limit, ports.DefaultSellableAssortment())
 }
 
-func (r *Reader) ListCatalogProductFactsWithOptions(ctx context.Context, cursor ports.Cursor, limit int, options ports.CatalogPageOptions) (ports.CatalogFactPage, error) {
+func (r *Reader) ListCatalogProductFactsWithPolicy(ctx context.Context, cursor ports.Cursor, limit int, policy ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
 	if cursor.InternalProductID < 0 {
 		return ports.CatalogFactPage{}, ports.NewInvalidCursorError()
 	}
@@ -33,15 +33,15 @@ func (r *Reader) ListCatalogProductFactsWithOptions(ctx context.Context, cursor 
 		return ports.CatalogFactPage{}, err
 	}
 
-	query, args := buildCatalogPageQueryWithOptions(cursor, limit+1, "", options)
+	query, args := buildCatalogPageQueryWithPolicy(cursor, limit+1, "", policy)
 	return r.readCatalogPage(ctx, query, args, limit, true)
 }
 
 func (r *Reader) SearchCatalogProductFacts(ctx context.Context, q string, cursor ports.Cursor, limit int) (ports.CatalogFactPage, error) {
-	return r.SearchCatalogProductFactsWithOptions(ctx, q, cursor, limit, ports.CatalogPageOptions{})
+	return r.SearchCatalogProductFactsWithPolicy(ctx, q, cursor, limit, ports.DefaultSellableAssortment())
 }
 
-func (r *Reader) SearchCatalogProductFactsWithOptions(ctx context.Context, q string, cursor ports.Cursor, limit int, options ports.CatalogPageOptions) (ports.CatalogFactPage, error) {
+func (r *Reader) SearchCatalogProductFactsWithPolicy(ctx context.Context, q string, cursor ports.Cursor, limit int, policy ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
 	if cursor.InternalProductID < 0 {
 		return ports.CatalogFactPage{}, ports.NewInvalidCursorError()
 	}
@@ -55,7 +55,7 @@ func (r *Reader) SearchCatalogProductFactsWithOptions(ctx context.Context, q str
 	// limit+1 with paginate: the extra row is what proves there are more matches.
 	// Fetching exactly `limit` made a truncated result indistinguishable from a
 	// complete one.
-	query, args := buildCatalogPageQueryWithOptions(cursor, limit+1, q, options)
+	query, args := buildCatalogPageQueryWithPolicy(cursor, limit+1, q, policy)
 	return r.readCatalogPage(ctx, query, args, limit, true)
 }
 
@@ -70,7 +70,7 @@ func (r *Reader) CatalogProductFactsByIDs(ctx context.Context, ids []int64) (por
 		return ports.CatalogFactPage{}, err
 	}
 
-	query, args := buildCatalogPageQueryWithOptions(ports.Cursor{}, len(ids), "", ports.CatalogPageOptions{IncludeAll: true})
+	query, args := buildCatalogPageQueryWithPolicy(ports.Cursor{}, len(ids), "", ports.AllProductsAssortment())
 	query, args = withCatalogIDFilter(query, args, ids)
 	return r.readCatalogPage(ctx, query, args, len(ids), false)
 }
@@ -146,21 +146,25 @@ func catalogStockCTE() string {
 )`
 }
 
-func catalogAssortmentPredicate(includeAll bool) string {
-	if includeAll {
-		return ""
+func catalogAssortmentPredicate(policy ports.SellableAssortmentPolicy) string {
+	var predicate string
+	if policy.OnlyRevenda {
+		predicate += "\n  AND UPPER(TRIM(p.USOPROD)) = 'R'"
 	}
-	return `
-  AND UPPER(TRIM(p.USOPROD)) = 'R'
-  AND NVL(stock.sellable_qty, 0) > 0
-  AND NVL(UPPER(TRIM(p.AD_ECOMMERCE)), 'X') <> 'N'`
+	if policy.OnlyEmEstoque {
+		predicate += "\n  AND NVL(stock.sellable_qty, 0) > 0"
+	}
+	if policy.OnlyEcommerceEligible {
+		predicate += "\n  AND NVL(UPPER(TRIM(p.AD_ECOMMERCE)), 'X') <> 'N'"
+	}
+	return predicate
 }
 
 func buildCatalogPageQuery(cursor ports.Cursor, fetchLimit int, search string) (string, []any) {
-	return buildCatalogPageQueryWithOptions(cursor, fetchLimit, search, ports.CatalogPageOptions{})
+	return buildCatalogPageQueryWithPolicy(cursor, fetchLimit, search, ports.DefaultSellableAssortment())
 }
 
-func buildCatalogPageQueryWithOptions(cursor ports.Cursor, fetchLimit int, search string, options ports.CatalogPageOptions) (string, []any) {
+func buildCatalogPageQueryWithPolicy(cursor ports.Cursor, fetchLimit int, search string, policy ports.SellableAssortmentPolicy) (string, []any) {
 	query := "\n" + catalogStockCTE() + `, price_candidates AS (
     SELECT e.CODPROD,
            e.VLRVENDA,
@@ -214,7 +218,7 @@ LEFT JOIN price ON price.CODPROD = p.CODPROD
 LEFT JOIN cost ON cost.CODPROD = p.CODPROD
 WHERE p.ATIVO = 'S'
   AND p.CODPROD > 0`
-	query += catalogAssortmentPredicate(options.IncludeAll)
+	query += catalogAssortmentPredicate(policy)
 
 	args := make([]any, 0, 3)
 	if cursor.InternalProductID > 0 {
@@ -231,11 +235,11 @@ WHERE p.ATIVO = 'S'
 	return query, args
 }
 
-func (r *Reader) GetCatalogAssortmentCounts(ctx context.Context) (ports.CatalogAssortmentCounts, error) {
+func (r *Reader) GetCatalogAssortmentCounts(ctx context.Context, policy ports.SellableAssortmentPolicy) (ports.CatalogAssortmentCounts, error) {
 	if err := r.ensureAvailable(ctx); err != nil {
 		return ports.CatalogAssortmentCounts{}, err
 	}
-	query, args := buildCatalogAssortmentCountQuery()
+	query, args := buildCatalogAssortmentCountQuery(policy)
 	var result ports.CatalogAssortmentCounts
 	if err := r.db.QueryRowContext(ctx, query, args...).Scan(&result.SellableCount, &result.TotalCount); err != nil {
 		return ports.CatalogAssortmentCounts{}, wrapOracleError("read catalog assortment counts", err)
@@ -243,7 +247,7 @@ func (r *Reader) GetCatalogAssortmentCounts(ctx context.Context) (ports.CatalogA
 	return result, nil
 }
 
-func buildCatalogAssortmentCountQuery() (string, []any) {
+func buildCatalogAssortmentCountQuery(policy ports.SellableAssortmentPolicy) (string, []any) {
 	query := "\n" + catalogStockCTE() + `
 SELECT
     COUNT(*) AS sellable_count,
@@ -257,7 +261,7 @@ FROM METALPRD.TGFPRO p
 LEFT JOIN stock ON stock.CODPROD = p.CODPROD
 WHERE p.ATIVO = 'S'
   AND p.CODPROD > 0`
-	query += catalogAssortmentPredicate(false)
+	query += catalogAssortmentPredicate(policy)
 	return query, nil
 }
 

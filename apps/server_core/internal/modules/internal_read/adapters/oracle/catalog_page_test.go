@@ -82,8 +82,8 @@ func TestCatalogPageCursorChainIsGaplessAndNonOverlapping(t *testing.T) {
 
 func TestCatalogPageSellableAssortmentDefaultsAndScreenEscape(t *testing.T) {
 	cursor := ports.Cursor{InternalProductID: 41}
-	filtered, filteredArgs := buildCatalogPageQueryWithOptions(cursor, 51, " bolt ", ports.CatalogPageOptions{})
-	all, allArgs := buildCatalogPageQueryWithOptions(cursor, 51, " bolt ", ports.CatalogPageOptions{IncludeAll: true})
+	filtered, filteredArgs := buildCatalogPageQueryWithPolicy(cursor, 51, " bolt ", ports.DefaultSellableAssortment())
+	all, allArgs := buildCatalogPageQueryWithPolicy(cursor, 51, " bolt ", ports.AllProductsAssortment())
 
 	ruleClauses := []string{
 		"UPPER(TRIM(p.USOPROD)) = 'R'",
@@ -120,8 +120,8 @@ func TestCatalogPageSellableAssortmentDefaultsAndScreenEscape(t *testing.T) {
 }
 
 func TestCatalogAssortmentCountUsesThePagePredicate(t *testing.T) {
-	page, _ := buildCatalogPageQueryWithOptions(ports.Cursor{}, 51, "", ports.CatalogPageOptions{})
-	count, args := buildCatalogAssortmentCountQuery()
+	page, _ := buildCatalogPageQueryWithPolicy(ports.Cursor{}, 51, "", ports.DefaultSellableAssortment())
+	count, args := buildCatalogAssortmentCountQuery(ports.DefaultSellableAssortment())
 
 	for _, clause := range []string{
 		"FROM METALPRD.TGFEST est",
@@ -144,6 +144,23 @@ func TestCatalogAssortmentCountUsesThePagePredicate(t *testing.T) {
 		t.Fatalf("count binds = %#v, want []", args)
 	}
 	t.Logf("COUNT SQL:\n%s\nCOUNT BINDS: %#v", count, args)
+}
+
+func TestCatalogPageAndCountUseTheExactPolicyValue(t *testing.T) {
+	policy := ports.SellableAssortmentPolicy{OnlyRevenda: true, OnlyEmEstoque: false, OnlyEcommerceEligible: true}
+	page, _ := buildCatalogPageQueryWithPolicy(ports.Cursor{}, 51, "", policy)
+	count, _ := buildCatalogAssortmentCountQuery(policy)
+	stockClause := "NVL(stock.sellable_qty, 0) > 0"
+	for name, query := range map[string]string{"page": page, "count": count} {
+		if strings.Contains(query, stockClause) {
+			t.Fatalf("%s query for policy read %+v retained disabled clause %q:\n%s", name, policy, stockClause, query)
+		}
+		for _, enabled := range []string{"UPPER(TRIM(p.USOPROD)) = 'R'", "NVL(UPPER(TRIM(p.AD_ECOMMERCE)), 'X') <> 'N'"} {
+			if !strings.Contains(query, enabled) {
+				t.Fatalf("%s query for policy read %+v lost enabled clause %q:\n%s", name, policy, enabled, query)
+			}
+		}
+	}
 }
 
 func TestCatalogProductFactsByIDsRemainsUnfiltered(t *testing.T) {

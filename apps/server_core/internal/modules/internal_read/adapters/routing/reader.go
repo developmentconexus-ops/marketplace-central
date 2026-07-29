@@ -43,22 +43,27 @@ func NewReader(upload, live internalreadports.Reader, lookup tenant_config.Activ
 // sources, the erp sub-source toggle) onto ctx, and returns the reader that
 // should serve this call.
 func (r *Reader) resolve(ctx context.Context) (internalreadports.Reader, context.Context, error) {
+	rd, ctx, _, err := r.resolveWithConfig(ctx)
+	return rd, ctx, err
+}
+
+func (r *Reader) resolveWithConfig(ctx context.Context) (internalreadports.Reader, context.Context, tenant_config.Config, error) {
 	cfg, err := r.lookup.Get(ctx, r.tenantID)
 	if err != nil {
-		return nil, ctx, err
+		return nil, ctx, tenant_config.Config{}, err
 	}
 	ctx = tenant_config.WithActiveSource(ctx, cfg)
 	switch cfg.Source {
 	case tenant_config.SourceXLSX, tenant_config.SourceCatalogoCliente:
 		ctx = erpinternalread.WithActiveSource(ctx, erpdomain.ImportSource(cfg.Source))
-		return r.upload, ctx, nil
+		return r.upload, ctx, cfg, nil
 	case tenant_config.SourceSankhya:
 		if r.live == nil {
-			return nil, ctx, ErrActiveSourceUnavailable
+			return nil, ctx, tenant_config.Config{}, ErrActiveSourceUnavailable
 		}
-		return r.live, ctx, nil
+		return r.live, ctx, cfg, nil
 	default:
-		return nil, ctx, tenant_config.ErrUnknownActiveSource
+		return nil, ctx, tenant_config.Config{}, tenant_config.ErrUnknownActiveSource
 	}
 }
 
@@ -116,21 +121,29 @@ func (r *Reader) GetTaxInputs(ctx context.Context, input internalreadports.TaxIn
 // without it fails honest with source_unavailable rather than serving
 // another source's pages (ADR-17).
 func (r *Reader) ListCatalogProductFacts(ctx context.Context, cursor internalreadports.Cursor, limit int) (internalreadports.CatalogFactPage, error) {
-	pager, ctx, err := r.resolveCatalogPager(ctx)
+	return r.ListCatalogProductFactsWithPolicy(ctx, cursor, limit, internalreadports.DefaultSellableAssortment())
+}
+
+func (r *Reader) ListCatalogProductFactsWithPolicy(ctx context.Context, cursor internalreadports.Cursor, limit int, requested internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
+	pager, ctx, policy, err := r.resolveCatalogAssortment(ctx, requested)
 	if err != nil {
 		return internalreadports.CatalogFactPage{}, err
 	}
-	return pager.ListCatalogProductFacts(ctx, cursor, limit)
+	return pager.ListCatalogProductFactsWithPolicy(ctx, cursor, limit, policy)
 }
 
 // SearchCatalogProductFacts routes catalog search to the resolved source's
 // reader, with the same honest-failure contract as ListCatalogProductFacts.
 func (r *Reader) SearchCatalogProductFacts(ctx context.Context, query string, cursor internalreadports.Cursor, limit int) (internalreadports.CatalogFactPage, error) {
-	pager, ctx, err := r.resolveCatalogPager(ctx)
+	return r.SearchCatalogProductFactsWithPolicy(ctx, query, cursor, limit, internalreadports.DefaultSellableAssortment())
+}
+
+func (r *Reader) SearchCatalogProductFactsWithPolicy(ctx context.Context, query string, cursor internalreadports.Cursor, limit int, requested internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
+	pager, ctx, policy, err := r.resolveCatalogAssortment(ctx, requested)
 	if err != nil {
 		return internalreadports.CatalogFactPage{}, err
 	}
-	return pager.SearchCatalogProductFacts(ctx, query, cursor, limit)
+	return pager.SearchCatalogProductFactsWithPolicy(ctx, query, cursor, limit, policy)
 }
 
 // CatalogProductFactsByIDs routes an explicit-id catalog read to the resolved
@@ -141,6 +154,34 @@ func (r *Reader) CatalogProductFactsByIDs(ctx context.Context, ids []int64) (int
 		return internalreadports.CatalogFactPage{}, err
 	}
 	return pager.CatalogProductFactsByIDs(ctx, ids)
+}
+
+func (r *Reader) GetCatalogAssortmentCounts(ctx context.Context, requested internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogAssortmentCounts, error) {
+	reader, ctx, policy, err := r.resolveCatalogAssortment(ctx, requested)
+	if err != nil {
+		return internalreadports.CatalogAssortmentCounts{}, err
+	}
+	return reader.GetCatalogAssortmentCounts(ctx, policy)
+}
+
+func (r *Reader) resolveCatalogAssortment(ctx context.Context, requested internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogAssortmentReader, context.Context, internalreadports.SellableAssortmentPolicy, error) {
+	rd, ctx, cfg, err := r.resolveWithConfig(ctx)
+	if err != nil {
+		return nil, ctx, internalreadports.SellableAssortmentPolicy{}, err
+	}
+	reader, ok := rd.(internalreadports.CatalogAssortmentReader)
+	if !ok {
+		return nil, ctx, internalreadports.SellableAssortmentPolicy{}, internalreaddomain.NewReadError(internalreaddomain.ReadErrorSourceUnavailable, "active source's reader does not support catalog assortment", nil)
+	}
+	policy := internalreadports.SellableAssortmentPolicy{
+		OnlyRevenda:           cfg.SellableAssortment.OnlyRevenda,
+		OnlyEmEstoque:         cfg.SellableAssortment.OnlyEmEstoque,
+		OnlyEcommerceEligible: cfg.SellableAssortment.OnlyEcommerceEligible,
+	}
+	if requested == internalreadports.AllProductsAssortment() {
+		policy = internalreadports.AllProductsAssortment()
+	}
+	return reader, ctx, policy, nil
 }
 
 func (r *Reader) resolveCatalogPager(ctx context.Context) (internalreadports.CatalogPageReader, context.Context, error) {
@@ -157,3 +198,4 @@ func (r *Reader) resolveCatalogPager(ctx context.Context) (internalreadports.Cat
 
 var _ internalreadports.Reader = (*Reader)(nil)
 var _ internalreadports.CatalogPageReader = (*Reader)(nil)
+var _ internalreadports.CatalogAssortmentReader = (*Reader)(nil)

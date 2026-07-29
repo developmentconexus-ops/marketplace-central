@@ -87,8 +87,18 @@ type CatalogMoneyFact struct {
 	Quality  []string
 }
 
-type CatalogPageOptions struct {
-	IncludeAll bool
+type SellableAssortmentPolicy struct {
+	OnlyRevenda           bool
+	OnlyEmEstoque         bool
+	OnlyEcommerceEligible bool
+}
+
+func DefaultSellableAssortment() SellableAssortmentPolicy {
+	return SellableAssortmentPolicy{OnlyRevenda: true, OnlyEmEstoque: true, OnlyEcommerceEligible: true}
+}
+
+func AllProductsAssortment() SellableAssortmentPolicy {
+	return SellableAssortmentPolicy{}
 }
 
 type CatalogAssortmentCounts struct {
@@ -131,7 +141,7 @@ type CatalogPageReader interface {
 // shape this condition exists to forbid: it turns a missing seat into a quiet
 // wrong answer instead of a build error.
 type CatalogAssortmentReader interface {
-	ListCatalogProductFactsWithOptions(context.Context, Cursor, int, CatalogPageOptions) (CatalogFactPage, error)
-	SearchCatalogProductFactsWithOptions(context.Context, string, Cursor, int, CatalogPageOptions) (CatalogFactPage, error)
-	GetCatalogAssortmentCounts(context.Context) (CatalogAssortmentCounts, error)
+	ListCatalogProductFactsWithPolicy(context.Context, Cursor, int, SellableAssortmentPolicy) (CatalogFactPage, error)
+	SearchCatalogProductFactsWithPolicy(context.Context, string, Cursor, int, SellableAssortmentPolicy) (CatalogFactPage, error)
+	GetCatalogAssortmentCounts(context.Context, SellableAssortmentPolicy) (CatalogAssortmentCounts, error)
 }

@@ -21,16 +21,22 @@ import (
 type Handler struct {
 	Service              application.CanonicalService
 	CompatibilityService application.Service
-	PageReader           ports.CatalogPageReader
+	PageReader           CatalogReader
 }
 
 const (
 	catalogListPath     = "/catalog/products"
 	catalogSearchPath   = "/catalog/products/search"
+	catalogCountsPath   = "/catalog/products/counts"
 	catalogDefaultLimit = 50
 	catalogMaxLimit     = 100
 	searchMaxLimit      = 50
 )
+
+type CatalogReader interface {
+	ports.CatalogPageReader
+	ports.CatalogAssortmentReader
+}
 
 // FreshnessPolicyFromContext exposes the transport-to-read freshness seam to
 // the composition-owned reader without coupling transport callers to the
@@ -83,6 +89,7 @@ func (h Handler) Register(mux httpx.RouteRegistrar) {
 	} else {
 		registerInteractiveRoute(mux, catalogListPath, h.handleProducts)
 		registerInteractiveRoute(mux, catalogSearchPath, h.handleSearch)
+		registerInteractiveRoute(mux, catalogCountsPath, h.handleCounts)
 	}
 	mux.HandleFunc("/catalog/taxonomy", h.handleTaxonomy)
 	mux.HandleFunc("GET /catalog/products/{id}", h.handleGetProduct)
@@ -121,7 +128,12 @@ func (h Handler) handleProducts(w http.ResponseWriter, r *http.Request) {
 		writeCatalogPageError(w, err)
 		return
 	}
-	page, err := h.PageReader.ListCatalogProductFacts(ctx, cursor, limit)
+	policy, err := catalogPolicy(r)
+	if err != nil {
+		writeCatalogPageError(w, err)
+		return
+	}
+	page, err := h.PageReader.ListCatalogProductFactsWithPolicy(ctx, cursor, limit, policy)
 	if err != nil {
 		writeCatalogPageError(w, err)
 		return
@@ -219,13 +231,54 @@ func (h Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
 		writeCatalogPageError(w, err)
 		return
 	}
-	page, err := h.PageReader.SearchCatalogProductFacts(ctx, q, cursor, limit)
+	policy, err := catalogPolicy(r)
+	if err != nil {
+		writeCatalogPageError(w, err)
+		return
+	}
+	page, err := h.PageReader.SearchCatalogProductFactsWithPolicy(ctx, q, cursor, limit, policy)
 	if err != nil {
 		writeCatalogPageError(w, err)
 		return
 	}
 	slog.Info("catalog.search", "action", "search", "result", "200", "items", len(page.Items), "has_more", page.NextCursor != nil, "duration_ms", time.Since(start).Milliseconds())
 	httpx.WriteJSON(w, http.StatusOK, newCatalogPageResponse(page, false))
+}
+
+func catalogPolicy(r *http.Request) (ports.SellableAssortmentPolicy, error) {
+	raw, present := r.URL.Query()["include_all"]
+	if !present {
+		return ports.DefaultSellableAssortment(), nil
+	}
+	if len(raw) != 1 {
+		return ports.SellableAssortmentPolicy{}, &catalogPageQueryError{code: "invalid_include_all"}
+	}
+	value := strings.TrimSpace(raw[0])
+	if value != "true" && value != "false" {
+		return ports.SellableAssortmentPolicy{}, &catalogPageQueryError{code: "invalid_include_all"}
+	}
+	if value == "true" {
+		return ports.AllProductsAssortment(), nil
+	}
+	return ports.DefaultSellableAssortment(), nil
+}
+
+func (h Handler) handleCounts(w http.ResponseWriter, r *http.Request) {
+	if h.PageReader == nil {
+		writeCatalogPageError(w, errors.New("source_unavailable"))
+		return
+	}
+	ctx, err := requestContext(r)
+	if err != nil {
+		writeCatalogPageError(w, err)
+		return
+	}
+	counts, err := h.PageReader.GetCatalogAssortmentCounts(ctx, ports.DefaultSellableAssortment())
+	if err != nil {
+		writeCatalogPageError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]int{"sellable_count": counts.SellableCount, "total_count": counts.TotalCount})
 }
 
 // handleLegacySearch remains only for direct legacy mux compatibility.

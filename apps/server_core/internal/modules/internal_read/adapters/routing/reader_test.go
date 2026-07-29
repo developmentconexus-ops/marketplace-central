@@ -157,6 +157,7 @@ type fakePagerReader struct {
 	searchCalled bool
 	byIDsCalled  bool
 	pageCtx      context.Context
+	policies     []internalreadports.SellableAssortmentPolicy
 }
 
 func (f *fakePagerReader) ListCatalogProductFacts(ctx context.Context, _ internalreadports.Cursor, _ int) (internalreadports.CatalogFactPage, error) {
@@ -177,7 +178,22 @@ func (f *fakePagerReader) SearchCatalogProductFacts(ctx context.Context, _ strin
 	return internalreadports.CatalogFactPage{}, nil
 }
 
+func (f *fakePagerReader) ListCatalogProductFactsWithPolicy(ctx context.Context, cursor internalreadports.Cursor, limit int, policy internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
+	f.policies = append(f.policies, policy)
+	return f.ListCatalogProductFacts(ctx, cursor, limit)
+}
+
+func (f *fakePagerReader) SearchCatalogProductFactsWithPolicy(ctx context.Context, query string, cursor internalreadports.Cursor, limit int, _ internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
+	return f.SearchCatalogProductFacts(ctx, query, cursor, limit)
+}
+
+func (f *fakePagerReader) GetCatalogAssortmentCounts(_ context.Context, policy internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogAssortmentCounts, error) {
+	f.policies = append(f.policies, policy)
+	return internalreadports.CatalogAssortmentCounts{}, nil
+}
+
 var _ internalreadports.CatalogPageReader = (*fakePagerReader)(nil)
+var _ internalreadports.CatalogAssortmentReader = (*fakePagerReader)(nil)
 
 // Regression guard for the /catalog 503: wrapping the upload reader in the
 // routing Reader must NOT hide its CatalogPageReader capability from
@@ -206,6 +222,24 @@ func TestReaderRoutesCatalogPageToUploadSource(t *testing.T) {
 	}
 	if !upload.searchCalled {
 		t.Fatal("expected upload search pager to be invoked")
+	}
+}
+
+func TestReaderUsesTheTenantPolicyForPageAndCounts(t *testing.T) {
+	upload := &fakePagerReader{}
+	readPolicy := tenant_config.SellableAssortment{OnlyRevenda: true, OnlyEmEstoque: false, OnlyEcommerceEligible: true}
+	lookup := fakeLookup{cfg: tenant_config.Config{TenantID: "t1", Source: tenant_config.SourceXLSX, SellableAssortment: readPolicy}}
+	r := NewReader(upload, nil, lookup, "t1")
+
+	if _, err := r.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 10); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.GetCatalogAssortmentCounts(context.Background(), internalreadports.DefaultSellableAssortment()); err != nil {
+		t.Fatal(err)
+	}
+	want := internalreadports.SellableAssortmentPolicy{OnlyRevenda: true, OnlyEmEstoque: false, OnlyEcommerceEligible: true}
+	if len(upload.policies) != 2 || upload.policies[0] != want || upload.policies[1] != want {
+		t.Fatalf("page/count policies read = %+v, want [%+v %+v]", upload.policies, want, want)
 	}
 }
 

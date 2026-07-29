@@ -199,6 +199,7 @@ func (f authFlowFacade) ProbeCatalogMatch(ctx context.Context, installationID st
 
 type RootRuntime struct {
 	Handler        http.Handler
+	CatalogReader  catalogtransport.CatalogReader
 	PoolStats      *internalreadobservability.PoolStatsLoop
 	MutationPoller *mutationsbg.Poller
 	mutationLane   mutationLane
@@ -523,7 +524,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	catalogEnrichments := catalogpostgres.NewEnrichmentRepository(pool, cfg.DefaultTenantID)
 	legacyReader := canonicalCatalogReader.(catalogports.ProductReader)
 	catalogSvc := catalogapp.NewServiceWithInvalidator(legacyReader, catalogEnrichments, cfg.DefaultTenantID, freshnessCache)
-	var catalogPageReader internalreadports.CatalogPageReader
+	var catalogPageReader catalogtransport.CatalogReader
 	if internalReadAvailable {
 		catalogPageReader = internalReadSvc
 	}
@@ -858,7 +859,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	// Connectors (Melhor Envio auth + fee seeding foundations)
 	connectorstransport.NewHandler(meOAuth).Register(mux)
 
-	return &RootRuntime{Handler: httpx.CORSMiddleware(mux), PoolStats: poolStats, MutationPoller: mutationRunner, mutationLane: mutationLane}, nil
+	return &RootRuntime{Handler: httpx.CORSMiddleware(mux), CatalogReader: catalogPageReader, PoolStats: poolStats, MutationPoller: mutationRunner, mutationLane: mutationLane}, nil
 }
 
 func providerWritesEnabled(getenv func(string) string) bool {

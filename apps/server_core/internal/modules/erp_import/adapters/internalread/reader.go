@@ -55,11 +55,7 @@ type activeSourceKey struct{}
 // SellableAssortmentPolicy is the matcher policy pinned for one read. It is
 // kept in this adapter because tenant_config already depends on the reader's
 // source error sentinel.
-type SellableAssortmentPolicy struct {
-	OnlyRevenda           bool
-	OnlyEmEstoque         bool
-	OnlyEcommerceEligible bool
-}
+type SellableAssortmentPolicy = readports.SellableAssortmentPolicy
 
 type sellableAssortmentKey struct{}
 
@@ -85,10 +81,6 @@ func mirrorAssortmentPolicy(policy SellableAssortmentPolicy) erpports.MirrorAsso
 		OnlyEmEstoque:         policy.OnlyEmEstoque,
 		OnlyEcommerceEligible: policy.OnlyEcommerceEligible,
 	}
-}
-
-func defaultSellableAssortment() SellableAssortmentPolicy {
-	return SellableAssortmentPolicy{OnlyRevenda: true, OnlyEmEstoque: true, OnlyEcommerceEligible: true}
 }
 
 // WithActiveSource pins the source selected by M-02 routing from the tenant's
@@ -380,25 +372,25 @@ func (r *Reader) GetTaxInputs(ctx context.Context, input readports.TaxInput) (re
 }
 
 func (r *Reader) ListCatalogProductFacts(ctx context.Context, cursor readports.Cursor, limit int) (readports.CatalogFactPage, error) {
-	return r.ListCatalogProductFactsWithOptions(ctx, cursor, limit, readports.CatalogPageOptions{})
+	return r.ListCatalogProductFactsWithPolicy(ctx, cursor, limit, readports.DefaultSellableAssortment())
 }
 
-func (r *Reader) ListCatalogProductFactsWithOptions(ctx context.Context, cursor readports.Cursor, limit int, options readports.CatalogPageOptions) (readports.CatalogFactPage, error) {
-	return r.catalogPage(ctx, cursor, "", limit, options)
+func (r *Reader) ListCatalogProductFactsWithPolicy(ctx context.Context, cursor readports.Cursor, limit int, policy readports.SellableAssortmentPolicy) (readports.CatalogFactPage, error) {
+	return r.catalogPage(ctx, cursor, "", limit, policy)
 }
 
 func (r *Reader) SearchCatalogProductFacts(ctx context.Context, query string, cursor readports.Cursor, limit int) (readports.CatalogFactPage, error) {
 	if cursor.InternalProductID < 0 {
 		return readports.CatalogFactPage{}, readports.NewInvalidCursorError()
 	}
-	return r.SearchCatalogProductFactsWithOptions(ctx, query, cursor, limit, readports.CatalogPageOptions{})
+	return r.SearchCatalogProductFactsWithPolicy(ctx, query, cursor, limit, readports.DefaultSellableAssortment())
 }
 
-func (r *Reader) SearchCatalogProductFactsWithOptions(ctx context.Context, query string, cursor readports.Cursor, limit int, options readports.CatalogPageOptions) (readports.CatalogFactPage, error) {
+func (r *Reader) SearchCatalogProductFactsWithPolicy(ctx context.Context, query string, cursor readports.Cursor, limit int, policy readports.SellableAssortmentPolicy) (readports.CatalogFactPage, error) {
 	if cursor.InternalProductID < 0 {
 		return readports.CatalogFactPage{}, readports.NewInvalidCursorError()
 	}
-	return r.catalogPage(ctx, cursor, query, limit, options)
+	return r.catalogPage(ctx, cursor, query, limit, policy)
 }
 
 // CatalogProductFactsByIDs answers for an explicit set of products. An id the
@@ -456,14 +448,10 @@ func (r *Reader) CatalogProductFactsByIDs(ctx context.Context, ids []int64) (rea
 	return readports.CatalogFactPage{Items: items, AsOf: asOf}, nil
 }
 
-func (r *Reader) catalogPage(ctx context.Context, cursor readports.Cursor, query string, limit int, options readports.CatalogPageOptions) (readports.CatalogFactPage, error) {
+func (r *Reader) catalogPage(ctx context.Context, cursor readports.Cursor, query string, limit int, policy readports.SellableAssortmentPolicy) (readports.CatalogFactPage, error) {
 	source, err := r.sourceFor(ctx, "active ERP source is unavailable")
 	if err != nil {
 		return readports.CatalogFactPage{}, err
-	}
-	policy := defaultSellableAssortment()
-	if options.IncludeAll {
-		policy = SellableAssortmentPolicy{}
 	}
 	repoPolicy := mirrorAssortmentPolicy(policy)
 	rows, err := r.repo.MirrorCatalogPage(ctx, r.tenantID, source, query, cursor.InternalProductID, limit, repoPolicy)
@@ -506,12 +494,12 @@ func (r *Reader) catalogPage(ctx context.Context, cursor readports.Cursor, query
 	return page, nil
 }
 
-func (r *Reader) GetCatalogAssortmentCounts(ctx context.Context) (readports.CatalogAssortmentCounts, error) {
+func (r *Reader) GetCatalogAssortmentCounts(ctx context.Context, policy readports.SellableAssortmentPolicy) (readports.CatalogAssortmentCounts, error) {
 	source, err := r.sourceFor(ctx, "active ERP source is unavailable")
 	if err != nil {
 		return readports.CatalogAssortmentCounts{}, err
 	}
-	sellable, total, err := r.repo.MirrorCatalogAssortmentCounts(ctx, r.tenantID, source, mirrorAssortmentPolicy(defaultSellableAssortment()))
+	sellable, total, err := r.repo.MirrorCatalogAssortmentCounts(ctx, r.tenantID, source, mirrorAssortmentPolicy(policy))
 	if err != nil {
 		return readports.CatalogAssortmentCounts{}, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, "catalog assortment counts are unavailable", err)
 	}

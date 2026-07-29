@@ -47,12 +47,24 @@ func (s Service) ListCatalogProductFacts(ctx context.Context, cursor ports.Curso
 	return reader.ListCatalogProductFacts(ctx, cursor, limit)
 }
 
+func (s Service) ListCatalogProductFactsWithPolicy(ctx context.Context, cursor ports.Cursor, limit int, policy ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
+	return s.reader.(ports.CatalogAssortmentReader).ListCatalogProductFactsWithPolicy(ctx, cursor, limit, policy)
+}
+
 func (s Service) SearchCatalogProductFacts(ctx context.Context, q string, cursor ports.Cursor, limit int) (ports.CatalogFactPage, error) {
 	reader, ok := s.reader.(ports.CatalogPageReader)
 	if !ok {
 		return ports.CatalogFactPage{}, domain.NewReadError(domain.ReadErrorSourceUnavailable, "oracle catalog page reader is unavailable", nil)
 	}
 	return reader.SearchCatalogProductFacts(ctx, q, cursor, limit)
+}
+
+func (s Service) SearchCatalogProductFactsWithPolicy(ctx context.Context, q string, cursor ports.Cursor, limit int, policy ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
+	return s.reader.(ports.CatalogAssortmentReader).SearchCatalogProductFactsWithPolicy(ctx, q, cursor, limit, policy)
+}
+
+func (s Service) GetCatalogAssortmentCounts(ctx context.Context, policy ports.SellableAssortmentPolicy) (ports.CatalogAssortmentCounts, error) {
+	return s.reader.(ports.CatalogAssortmentReader).GetCatalogAssortmentCounts(ctx, policy)
 }
 
 func (s Service) CatalogProductFactsByIDs(ctx context.Context, ids []int64) (ports.CatalogFactPage, error) {
@@ -64,3 +76,4 @@ func (s Service) CatalogProductFactsByIDs(ctx context.Context, ids []int64) (por
 }
 
 var _ ports.CatalogPageReader = Service{}
+var _ ports.CatalogAssortmentReader = Service{}
