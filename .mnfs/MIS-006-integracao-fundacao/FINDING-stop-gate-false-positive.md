@@ -107,8 +107,13 @@ Nos dois casos o hub não reivindicou fecho de coisa nenhuma — **o hub nunca e
 RECEBE** — e o cwd continua o worktree stale `epic-lehmann-4ffbad` (defeito 2), onde o hub nunca
 escreveu e nunca escreverá.
 
+A partir daqui o hub PARA de contar disparo a disparo: enquanto o hub estiver a arbitrar um chip
+vivo, a janela de 30 KB contém sempre o vocabulário de eventos — o guard passou de intermitente a
+**permanentemente armado**, e registar cada ocorrência seria ruído, não evidência. O disparo do
+turno do RULING DR-3 é o quinto e fica como o último contado.
+
 **Custo acumulado, que é o argumento upstream:** o guard já disparou em 2 sessões distintas em
-2026-07-28 e mais 2 vezes em 2026-07-29, **zero verdadeiros positivos**. Um gate cujo histórico
+2026-07-28 e mais 3 vezes em 2026-07-29, **zero verdadeiros positivos**. Um gate cujo histórico
 inteiro é falso-positivo não guarda o invariante que nomeia; ensina a passar por cima dele, e o dia
 em que alguém reivindicar `CLOSED` sem pack ele será ignorado como os outros quatro. A reincidência
 não muda o conserto proposto (casar EVENTO emitido; resolver raiz por `git rev-parse
