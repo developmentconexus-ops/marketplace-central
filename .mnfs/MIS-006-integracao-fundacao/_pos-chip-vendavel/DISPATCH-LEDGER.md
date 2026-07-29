@@ -496,3 +496,69 @@ into a quiet wrong answer instead of a build error.
 
 Same family as S5B's two hops and A-16's third site: a value that leaves its source and is never
 asserted to ARRIVE. Here the value is a capability, and the arrival test belongs to S9.
+
+## S7-MIRROR-CATALOG — dispatched
+
+gpt-5.6-sol / low (complex, per the card), OS-process, prompt over stdin.
+Log `scratchpad/agent__s7-mirror-catalog.log`, last message `agent__s7-mirror-catalog.last.md`.
+Row written at dispatch time; result rows follow after P4.
+
+Brief carries, beyond the card: A-15 in full — the `. testdb-env.ps1` dot-source line, per-line
+RUN/PASS/SKIP/FAIL counting with `PASS+SKIP==RUN` reconciled, the prohibition on claiming
+anything about `//go:build integration` files the commands never compiled, and the `%v`-on-a-
+pointer corollary with the required `%s` + nil-rendering helper. Also the A-14 asymmetry table,
+so the worker does not "fix" the mirror's NULL tolerance into the live predicate; the D-113
+archive note on `LatestCompletedSnapshot`; and the instruction to prove pagination with a
+fixture larger than one page rather than a sampled `Limit=N`.
+
+### A-15 ratified into the profile by the operator
+
+`@f1cba2a` on main, amendment log §11 + §3, `%v`/`*string` corollary included. What was chip-local
+law since the S5B acceptance is now law for every future chip. The S7 brief was written under it
+before the ratification arrived, so nothing in this chip changes.
+
+### P4 — the worker shipped one red, so I injected the other four
+
+Lanes at my seat with the env sourced: postgres integration RUN 32 · PASS 32 · **SKIP 0** · FAIL 0;
+`erp_import/...` unit RUN 142 · PASS 142 · SKIP 0 · FAIL 0; `vet` 0, `build` 0. SKIP 0 is the
+load-bearing number — this is the lane S5B faked by omission. The worker's `build EXIT=1 /
+error obtaining VCS status` did not reproduce here, second slice running; neither worker reached
+for `-buildvcs=false`.
+
+The worker delivered ONE red and said plainly the rest were written during implementation. Honest
+and insufficient: criterion 7 demanded both directions. Four mutations, four kills, each naming a
+value — M1 collisions before the cut (`strict survivor quality = [complete ean_collision]`), M2
+policy ignored (`relaxed twin 201 quality = [complete ambiguous_product]`), M3 stock clause
+neutralised (`[a c d], want [a d]`), M4 page stops cutting in SQL (`first filtered fetch =
+[301 302 303]` — the excluded 302 consumed a LIMIT slot). Criterion 8 closed by a seeded dirty
+`usoprod='r'` row being CUT; criterion 9 by an upload with physical stock and no reservation
+collapsing to a genuine unknown. No test deleted or loosened. S13-CLOCK flake fired 3× and passed
+on re-run; recorded, not dropped. Residual recorded: the count query lacks the page's
+`DISTINCT ON (codigo_produto::bigint)`, so a leading-zero code would over-report — narrow, and the
+worker wrote the collapse test, so it was not blind.
+
+## A-17 — the tenant's toggles never reached the catalog (hub RULING, pack `@67e1edc9`)
+
+Found at S7's P4, escalated rather than decided. `catalogPage` and `GetCatalogAssortmentCounts`
+took the rule from a hardcoded `defaultSellableAssortment()` instead of
+`SellableAssortmentFromContext(ctx)` — the mechanism S5 built and `FindProductsForLinking` uses
+eight lines above in the same file. The Oracle side (S6, accepted by me) had the same shape. Swept:
+the ONLY non-test consumer of the stored policy was `routing/matcher.go:45-48`. VC-3 (badge with
+`only_em_estoque` off) and VC-2 (counter matching the SAME rule) could not pass. The hub verified
+the sites itself and found my sweep right and incomplete in our favour — the Oracle COUNT query
+took no option at all.
+
+Ruling: **S9 owns it**, resolving the tenant policy ONCE at the routing seam where `matcher.go`
+already resolves it for linking — one producer, N consumers; a separate corrective slice would
+write the same port signature S9 rewrites. Write-set extended: `internal_read/ports/catalog_page.go`,
+`internal_read/adapters/oracle/catalog_page.go` (predicate AND count query),
+`erp_import/adapters/internalread/reader.go`. **`IncludeAll` dies from the port** — a bool beside a
+policy is two mechanisms that must agree, which is F-1 applied to ourselves; "ver todos" and
+`CatalogProductFactsByIDs` pass an all-inclusive policy from a named domain constructor, and the
+default for an absent row lives at the `tenant_config` load seam. **Oracle rides the same patch**;
+S6 does not reopen. Must-fail at contract grade: through the COMPOSED reader from root.go, flipping
+a toggle on the real `tenant_config` row moves page AND count together.
+
+The acceptance error was mine and the hub's both: we each checked that `IncludeAll` ARRIVED at the
+SQL and stopped. Arrival has two halves — it reaches the consumer AND it comes from the right
+producer. Filed as a gate rule: a slice that plumbs an option or a config answers both.

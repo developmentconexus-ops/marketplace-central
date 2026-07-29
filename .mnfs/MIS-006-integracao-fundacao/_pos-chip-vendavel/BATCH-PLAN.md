@@ -612,12 +612,35 @@ npx --no-install vitest run ../../packages/sdk-runtime/src/activeSource.test.ts 
   - `apps/server_core/internal/modules/catalog/transport/http_handler_test.go`
   - `apps/server_core/internal/composition/root.go`
   - `apps/server_core/internal/composition/root_test.go`
+  - `apps/server_core/internal/modules/internal_read/ports/catalog_page.go` (A-17 extension)
+  - `apps/server_core/internal/modules/internal_read/adapters/oracle/catalog_page.go` (A-17 extension: predicate AND count query)
+  - `apps/server_core/internal/modules/internal_read/adapters/oracle/catalog_page_test.go` (A-17 extension)
+  - `apps/server_core/internal/modules/erp_import/adapters/internalread/reader.go` (A-17 extension: the mirror `catalogPage`)
+  - `apps/server_core/internal/modules/erp_import/adapters/internalread/reader_test.go` (A-17 extension)
 - `failing_test_first`: `TestHandlerCatalogDefaultsFilteredAndIncludeAllIsRequestLocal` in `apps/server_core/internal/modules/catalog/transport/http_handler_test.go`
 - `done_criteria`:
   - `routing.Reader` resolves source once and delegates count to the same reader as the page.
   - Service forwards the count capability without fallback.
   - `GET /catalog/products/counts` is an interactive route.
   - Missing `include_all` pins filtered mode; exact `true` pins all; malformed values return 400.
+  - **A-17 — the tenant's three toggles reach the catalog, resolved ONCE at the routing seam.**
+    Today nothing does: the only non-test consumer of the stored policy is `routing/matcher.go:45-48`,
+    and both catalog readers hardcode the rule (`defaultSellableAssortment()` on the mirror,
+    `catalogAssortmentPredicate(includeAll bool)` on Oracle, whose COUNT query takes no option at
+    all). VC-3 (badge with `only_em_estoque` off) and VC-2 (counter running the SAME rule) cannot
+    pass until this lands. Resolve the policy where `matcher.go` already resolves it — one
+    producer, N consumers — and hand the VALUE to page and count alike.
+  - **`IncludeAll` is removed from the port.** A bool beside a policy is two mechanisms that must
+    agree, which is F-1 applied to ourselves. "Ver todos" and `CatalogProductFactsByIDs` pass an
+    all-inclusive policy built by a NAMED domain constructor — a caller never assembles a
+    zero-value by hand. The default for a tenant row that is absent lives at the `tenant_config`
+    load seam, one place; `defaultSellableAssortment()` dies. Page and count receive the same
+    value. Plumbing shape (context pin like linking, or an options field) is S9's call, defended
+    in its evidence — but ONE mechanism, resolved at the routing seam.
+  - **Must-fail at contract grade:** through the reader COMPOSED in `root.go`, flipping a toggle on
+    the REAL `tenant_config` row moves page AND count together; reverting the threading makes the
+    test fail naming the value. Mirror side on the integration lane; Oracle side by query-text
+    assertion on the unit lane (the S6 form).
   - `?ids=` remains all-products.
   - Root wires the same routed service into both page and count handler fields.
   - Root test asserts all literal paths and non-nil count wiring.
@@ -822,6 +845,9 @@ Shared-file ordering constraints:
 - `root.go`: only S9 owns it.
 - `cache/cache.go`, `observability/timing.go`: only S9 owns them. Added to its write-set at S6
   close — they are two of the four decorator seats the new optional port must reach.
+- `internal_read/ports/catalog_page.go`, `oracle/catalog_page.go`, `erp_import/adapters/internalread/reader.go`:
+  only S9 owns them from A-17 onward. S6 and S7 are closed and do not reopen — the hub ruled one
+  patch, one owner, because a corrective slice would write the same port signature S9 rewrites.
 - OpenAPI and SDK: only S8 owns them and they land together.
 - `runner_test.go`: only S1 owns both count edits.
 - No two slices execute concurrently; this chip has one writer.
@@ -1382,8 +1408,10 @@ named debt in the CLOSED event. **S6 does not ship until this is answered.**
 ## A-15 — lane rules for every remaining brief (hub RATIFIED, main `@ca72344`)
 
 Ratified after S5B shipped a fully-skipped integration lane that looked green. Binding on every
-brief I write from here (S7 onward). Filed by the hub as `FINDING-slice-db-lane-rules.md`;
-the HARNESS-PROFILE entry awaits the operator.
+brief I write from here (S7 onward). Filed by the hub as `FINDING-slice-db-lane-rules.md`
+`@ca72344`, then **ratified into `docs/HARNESS-PROFILE.md` by the operator `@f1cba2a`** on main
+(amendment log §11 + §3), the `%v`/`*string` corollary on the same line. Law for every future
+chip, not only this one. Nothing changes in this chip's flow — S7's brief already carries it.
 
 1. **A brief whose lane touches a database carries the env dot-source line.** Mine omitted it and
    the worker's 26 DB tests reported `ok` by skipping. The line is not boilerplate — it is the
