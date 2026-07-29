@@ -103,7 +103,8 @@ type snapshotRow struct {
 // (already a leaf); marca via canonical CODMARCA join, not the denormalized text.
 const sankhyaBaseSQL = `
 SELECT p.CODPROD, p.DESCRPROD, p.NCM, p.REFERENCIA, p.REFFORN,
-       p.CODGRUPOPROD, g.DESCRGRUPOPROD, m.DESCRICAO
+       p.CODGRUPOPROD, g.DESCRGRUPOPROD, m.DESCRICAO,
+       p.USOPROD, p.AD_ECOMMERCE
 FROM METALPRD.TGFPRO p
 LEFT JOIN METALPRD.TGFGRU g ON g.CODGRUPOPROD = p.CODGRUPOPROD
 LEFT JOIN METALPRD.TGFMAR m ON m.CODIGO       = p.CODMARCA
@@ -127,8 +128,10 @@ func (a *SankhyaAdapter) readBase(ctx context.Context) (map[int]*snapshotRow, er
 			grupoCod  sql.NullInt64
 			grupoDesc sql.NullString
 			marca     sql.NullString
+			usoprod   sql.NullString
+			adEcomm   sql.NullString
 		)
-		if err := dbrows.Scan(&codprod, &descr, &ncm, &reference, &refforn, &grupoCod, &grupoDesc, &marca); err != nil {
+		if err := dbrows.Scan(&codprod, &descr, &ncm, &reference, &refforn, &grupoCod, &grupoDesc, &marca, &usoprod, &adEcomm); err != nil {
 			return nil, wrapOracleError("scan sankhya base", err)
 		}
 
@@ -157,6 +160,8 @@ func (a *SankhyaAdapter) readBase(ctx context.Context) (map[int]*snapshotRow, er
 				GrupoCodigo:    nullIntStr(grupoCod),
 				GrupoDescricao: nullStr(grupoDesc),
 				NCM:            nullStr(ncm),
+				Usoprod:        nullStr(usoprod),
+				ADEcommerce:    nullStr(adEcomm),
 			},
 		}
 	}
@@ -244,15 +249,19 @@ func (a *SankhyaAdapter) applyPrice(ctx context.Context, dataRef time.Time, rows
 	return nil
 }
 
-// Q4 — ESTOQUE por local (próprio, CODPARC=0). F-01 decision (mapping doc leaves it
-// to F-01, default recomendado = disponível): estoque_total = SUM(ESTOQUE−RESERVADO)
-// and per-local quantidade = the same disponível, so total == sum of children. A
-// product absent from TGFEST keeps NULL estoque (a real 0 balance is distinct and
-// legitimate). Only products present in the base snapshot get stock.
+// Q4 — available sellable stock per whitelisted location: company-owned stock
+// net of reservations in companies 1/2 and locations 1_REVENDA/2_OUTLET. Every
+// Q1 product absent from this pinned result is known-zero; products absent from
+// Q1 are untouched by the snapshot merge. Before the sellable pin, F-01 treated
+// absence from the all-TGFEST query as NULL.
+const sankhyaSellableLocationCodes = "10101, 10102" // 10101=1_REVENDA; 10102=2_OUTLET
+
 const sankhyaStockSQL = `
-SELECT CODPROD, CODLOCAL, SUM(ESTOQUE - RESERVADO) AS DISPONIVEL
+SELECT CODPROD, CODLOCAL, SUM(NVL(ESTOQUE, 0) - NVL(RESERVADO, 0)) AS DISPONIVEL
 FROM METALPRD.TGFEST
 WHERE CODPARC = 0
+AND CODEMP IN (1, 2)
+AND CODLOCAL IN (` + sankhyaSellableLocationCodes + `)
 GROUP BY CODPROD, CODLOCAL`
 
 func (a *SankhyaAdapter) applyStock(ctx context.Context, rows map[int]*snapshotRow) ([]mirror.StockLocation, error) {
@@ -288,9 +297,9 @@ func (a *SankhyaAdapter) applyStock(ctx context.Context, rows map[int]*snapshotR
 	if err := dbrows.Err(); err != nil {
 		return nil, wrapOracleError("iterate sankhya stock", err)
 	}
-	for codprod, total := range totals {
-		v := total
-		rows[codprod].row.EstoqueTotal = &v
+	for codprod, snapshot := range rows {
+		total := totals[codprod]
+		snapshot.row.EstoqueTotal = &total
 	}
 	return locs, nil
 }
