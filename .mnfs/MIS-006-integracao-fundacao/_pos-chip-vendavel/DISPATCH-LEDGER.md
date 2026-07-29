@@ -661,3 +661,41 @@ printed `No test files found`. `tsc --noEmit` exit 0.
 **Residual, written down rather than rediscovered:** other guards in this suite still bound
 themselves by something other than their own subject. No currently-passing guard was re-pointed.
 The next slice that appends a path or a schema should expect to meet the same shape.
+
+## S9-CATALOG-HTTP — dispatched
+
+gpt-5.6-sol / low (complex), OS-process, prompt over stdin.
+Log `scratchpad/agent__s9-catalog-http.log`, last message `agent__s9-catalog-http.last.md`.
+Tail marker `9c41be` echoed by the worker — the brief arrived with its accents intact.
+
+**Reclassified standard -> complex, with the reason, not ad hoc at implement time.** The card was
+written `standard` for 12 files confined to routing, transport and composition. A-17 added five
+more across the port, both catalog adapters and their tests, and turned the slice into a
+policy-plumbing job spanning ports -> two adapters -> cache -> timing -> routing -> service ->
+transport -> composition, with a must-fail that has to hold through the composed reader on two
+lanes at once. S7 was dispatched complex on eight files; this is seventeen. The complexity flag is
+supposed to come from the plan rather than from the implement moment — so it is amended in the
+plan, in the same commit that dispatches.
+
+The brief carries, as criteria rather than advice:
+  - A-17: the tenant policy resolved ONCE at the routing seam where matcher.go already resolves it
+    for linking, handed as a VALUE to page and count alike; `IncludeAll` removed from the port; an
+    all-inclusive policy built by a NAMED domain constructor; the absent-row default at the
+    `tenant_config` load seam; `defaultSellableAssortment()` dead.
+  - A-18: `include_all` stops at the transport seam — it resolves there through the named
+    constructor and only the POLICY crosses the port, so the two-mechanisms-that-must-agree shape
+    cannot return one layer up.
+  - The CHIP-M02 503: every seat in the chain composed at root.go carries a compile-time
+    `var _ ports.CatalogAssortmentReader = ...`, and a runtime assertion with a fallback at the
+    HTTP seam is forbidden by name. A missing seat must be a build error, never a quiet wrong
+    answer.
+  - The contract-grade must-fail: through the reader COMPOSED in root.go, flipping a toggle on the
+    REAL tenant_config row moves page AND count together — mirror side on the integration lane,
+    Oracle side by query-text assertion on the unit lane. Both sides, not one.
+  - A-15: the env dot-source line for the integration lane, RUN/PASS/SKIP/FAIL counted per line,
+    and the `%v`-on-a-`*string` corollary (a must-fail that prints an address is re-injected after
+    the message is fixed, not accepted).
+  - The published contract as a thing to OBEY: `/catalog/products/counts` and the `include_all`
+    query parameter already exist in the spec at `73190f23`. Measured divergence between what the
+    handler emits and what the YAML declares is a REQUEST, never a silent adjustment of either
+    side — with S8's defect named as the reason that sentence is in the brief.

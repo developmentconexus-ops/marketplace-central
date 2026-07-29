@@ -700,7 +700,13 @@ go test ./internal/modules/internal_read/application ./internal/modules/internal
   - Handler RED/GREEN output
   - Router source-delegation output
   - Composition route inventory
-- `complexity`: `standard`
+- `complexity`: `complex` — reclassified with the A-17 write-set extension, not ad hoc at
+  implement time. The card was written `standard` for a slice of 12 files confined to routing,
+  transport and composition. A-17 added five more across the port, both catalog adapters and
+  their tests, and turned the slice into a policy-plumbing job spanning ports → two adapters →
+  cache → timing → routing → service → transport → composition, with a must-fail that has to
+  hold through the composed reader on two lanes at once. S7 was dispatched complex on eight
+  files; this is seventeen. Worker: `gpt-5.6-sol` / `low`.
 - `open_questions`: `[]`
 
 ### S10 — Configuration HTTP and governance registration
@@ -715,6 +721,15 @@ go test ./internal/modules/internal_read/application ./internal/modules/internal
 - `done_criteria`:
   - Handler registers GET/PUT `/config/sellable-assortment` as interactive.
   - PUT requires three booleans and returns stored exact values.
+  - **The handler owes EXACTLY the error surface published at `73190f23` (ruling A-19).** GET
+    answers 200 or 500; PUT answers 200, 400 or 500; there is NO 404 — the handler has no
+    not-found branch, and under A-17 an absent tenant row resolves to defaults at the
+    `tenant_config` load seam. Every error body is the FLAT `SellableAssortmentError`
+    (`{error, detail?}`, codes `invalid_body` / `internal_error`), which is what this file's
+    existing `writeError` already emits; the nested `ErrorResponse` is not this surface's shape.
+    S8 shipped the opposite on all three points and an alien contract guard caught it. If S10
+    MEASURES a need for a code beyond the two, it amends the spec in the same commit and says
+    what produced it — nothing speculative.
   - No browser-storage concept appears in server code.
   - `modules.json` adds `tenant_config`, root `apps/server_core/internal/modules/tenant_config`, OpenAPI prefix `/config`, dependency `erp_import`.
 - `validation_kind`: `unit`
