@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"marketplace-central/apps/server_core/internal/modules/erp_import/domain"
+	erpports "marketplace-central/apps/server_core/internal/modules/erp_import/ports"
 	testpostgres "marketplace-central/apps/server_core/internal/testsupport/postgres"
 )
 
@@ -343,11 +344,11 @@ func TestMirrorCurrentReadsAreTenantAndSourceScoped(t *testing.T) {
 	if _, found, err := repo.MirrorProductByCode(ctx, tenant, domain.SourceCatalogoCliente, "1"); err != nil || found {
 		t.Fatalf("cross-source found=%v err=%v", found, err)
 	}
-	page, err := repo.MirrorCatalogPage(ctx, tenant, domain.SourceXLSX, "xlsx", 0, 10)
+	page, err := repo.MirrorCatalogPage(ctx, tenant, domain.SourceXLSX, "xlsx", 0, 10, erpports.MirrorAssortmentPolicy{})
 	if err != nil || !reflect.DeepEqual(mirrorCodes(page), []string{"1", "2"}) {
 		t.Fatalf("page codes=%v err=%v", mirrorCodes(page), err)
 	}
-	counts, err := repo.MirrorEANCollisionCounts(ctx, tenant, domain.SourceXLSX)
+	counts, err := repo.MirrorEANCollisionCounts(ctx, tenant, domain.SourceXLSX, erpports.MirrorAssortmentPolicy{})
 	if err != nil || !reflect.DeepEqual(counts, map[string]int{"shared": 2}) {
 		t.Fatalf("counts=%v err=%v", counts, err)
 	}
@@ -371,11 +372,11 @@ func TestMirrorExcludesAbsentRows(t *testing.T) {
 	if _, found, err := repo.MirrorProductByCode(ctx, tenant, domain.SourceXLSX, "2"); err != nil || found {
 		t.Fatalf("absent product found=%v err=%v", found, err)
 	}
-	page, err := repo.MirrorCatalogPage(ctx, tenant, domain.SourceXLSX, "", 0, 10)
+	page, err := repo.MirrorCatalogPage(ctx, tenant, domain.SourceXLSX, "", 0, 10, erpports.MirrorAssortmentPolicy{})
 	if err != nil || !reflect.DeepEqual(mirrorCodes(page), []string{"1"}) {
 		t.Fatalf("page codes=%v err=%v", mirrorCodes(page), err)
 	}
-	counts, err := repo.MirrorEANCollisionCounts(ctx, tenant, domain.SourceXLSX)
+	counts, err := repo.MirrorEANCollisionCounts(ctx, tenant, domain.SourceXLSX, erpports.MirrorAssortmentPolicy{})
 	if err != nil || len(counts) != 0 {
 		t.Fatalf("counts=%v err=%v", counts, err)
 	}
@@ -395,11 +396,11 @@ func TestMirrorCatalogPagesDoNotDuplicateOrSkip(t *testing.T) {
 	seedMirrorProduct(t, pool, tenant, domain.SourceXLSX, "SKU", "non-int", nil, false, nil, nil)
 	seedMirrorProduct(t, pool, tenant, domain.SourceXLSX, "3", "absent", nil, true, nil, nil)
 
-	first, err := repo.MirrorCatalogPage(ctx, tenant, domain.SourceXLSX, "", 0, 2)
+	first, err := repo.MirrorCatalogPage(ctx, tenant, domain.SourceXLSX, "", 0, 2, erpports.MirrorAssortmentPolicy{})
 	if err != nil || !reflect.DeepEqual(mirrorCodes(first), []string{"1", "2", "10"}) {
 		t.Fatalf("first page codes=%v err=%v", mirrorCodes(first), err)
 	}
-	second, err := repo.MirrorCatalogPage(ctx, tenant, domain.SourceXLSX, "", 2, 2)
+	second, err := repo.MirrorCatalogPage(ctx, tenant, domain.SourceXLSX, "", 2, 2, erpports.MirrorAssortmentPolicy{})
 	if err != nil || !reflect.DeepEqual(mirrorCodes(second), []string{"10"}) {
 		t.Fatalf("second page codes=%v err=%v", mirrorCodes(second), err)
 	}
@@ -408,6 +409,95 @@ func TestMirrorCatalogPagesDoNotDuplicateOrSkip(t *testing.T) {
 	}
 	if first[1].Custo == nil || *first[1].Custo != "12.50" || first[1].EstoqueTotal == nil || *first[1].EstoqueTotal != "4" {
 		t.Fatalf("numeric text custo=%v estoque=%v", first[1].Custo, first[1].EstoqueTotal)
+	}
+}
+
+func TestMirrorCatalogSellableAssortmentGoldenDefaults(t *testing.T) {
+	ctx := context.Background()
+	repo, tenant := integrationRepo(t)
+	pool, _ := testpostgres.OpenPool(t, tenant)
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM products_mirror WHERE tenant_id=$1`, tenant)
+	})
+
+	_, err := pool.Exec(ctx, `INSERT INTO products_mirror
+		(tenant_id,source,codigo_produto,descricao,usoprod,estoque_total,ad_ecommerce,absent_in_last_snapshot)
+		VALUES ($1,$2,'101','a','R',5,'S',false),
+		       ($1,$2,'102','b','V',5,'S',false),
+		       ($1,$2,'103','c','R',0,'S',false),
+		       ($1,$2,'104','d',NULL,NULL,NULL,false)`, tenant, domain.SourceXLSX)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	page, err := repo.MirrorCatalogPage(ctx, tenant, domain.SourceXLSX, "", 0, 10, erpports.MirrorAssortmentPolicy{OnlyRevenda: true, OnlyEmEstoque: true, OnlyEcommerceEligible: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := mirrorDescriptions(page); !reflect.DeepEqual(got, []string{"a", "d"}) {
+		t.Fatalf("golden default descriptions = %v, want [a d]", got)
+	}
+	sellable, total, err := repo.MirrorCatalogAssortmentCounts(ctx, tenant, domain.SourceXLSX, erpports.MirrorAssortmentPolicy{OnlyRevenda: true, OnlyEmEstoque: true, OnlyEcommerceEligible: true})
+	if err != nil || sellable != 2 || total != 4 {
+		t.Fatalf("golden assortment counts = %d,%d err=%v, want 2,4", sellable, total, err)
+	}
+
+	stockDisabled := erpports.MirrorAssortmentPolicy{OnlyRevenda: true, OnlyEcommerceEligible: true}
+	page, err = repo.MirrorCatalogPage(ctx, tenant, domain.SourceXLSX, "", 0, 10, stockDisabled)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := mirrorDescriptions(page); !reflect.DeepEqual(got, []string{"a", "c", "d"}) {
+		t.Fatalf("stock-disabled descriptions = %v, want [a c d]", got)
+	}
+	if page[1].EstoqueTotal == nil || *page[1].EstoqueTotal != "0" {
+		t.Fatalf("known-zero stock = %s, want \"0\"", renderString(page[1].EstoqueTotal))
+	}
+	if page[2].Usoprod != nil {
+		t.Fatalf("null-usoprod survivor = %s, want <nil>", renderString(page[2].Usoprod))
+	}
+
+	page, err = repo.MirrorCatalogPage(ctx, tenant, domain.SourceXLSX, "", 0, 10, erpports.MirrorAssortmentPolicy{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := mirrorDescriptions(page); !reflect.DeepEqual(got, []string{"a", "b", "c", "d"}) {
+		t.Fatalf("include-all descriptions = %v, want [a b c d]", got)
+	}
+}
+
+func TestMirrorCatalogAssortmentCountsAreTenantSourceScopedUncachedAndCaseExact(t *testing.T) {
+	ctx := context.Background()
+	repo, tenant := integrationRepo(t)
+	otherTenant := tenant + "-other"
+	pool, _ := testpostgres.OpenPool(t, tenant)
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM products_mirror WHERE tenant_id IN ($1,$2)`, tenant, otherTenant)
+	})
+	_, err := pool.Exec(ctx, `INSERT INTO products_mirror
+		(tenant_id,source,codigo_produto,descricao,usoprod,estoque_total,ad_ecommerce,absent_in_last_snapshot)
+		VALUES ($1,$2,'401','canonical','R',1,'S',false),
+		       ($1,$2,'402','dirty lowercase','r',1,'S',false),
+		       ($1,$3,'403','other source','R',1,'S',false),
+		       ($4,$2,'404','other tenant','R',1,'S',false)`,
+		tenant, domain.SourceXLSX, domain.SourceCatalogoCliente, otherTenant)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy := erpports.MirrorAssortmentPolicy{OnlyRevenda: true, OnlyEmEstoque: true, OnlyEcommerceEligible: true}
+	sellable, total, err := repo.MirrorCatalogAssortmentCounts(ctx, tenant, domain.SourceXLSX, policy)
+	if err != nil || sellable != 1 || total != 2 {
+		t.Fatalf("scoped exact-case counts = %d,%d err=%v, want 1,2", sellable, total, err)
+	}
+	_, err = pool.Exec(ctx, `INSERT INTO products_mirror
+		(tenant_id,source,codigo_produto,descricao,usoprod,estoque_total,ad_ecommerce,absent_in_last_snapshot)
+		VALUES ($1,$2,'405','new canonical','R',1,'S',false)`, tenant, domain.SourceXLSX)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sellable, total, err = repo.MirrorCatalogAssortmentCounts(ctx, tenant, domain.SourceXLSX, policy)
+	if err != nil || sellable != 2 || total != 3 {
+		t.Fatalf("uncached counts after insert = %d,%d err=%v, want 2,3", sellable, total, err)
 	}
 }
 
@@ -428,7 +518,7 @@ func TestMirrorCatalogPagesCollapseNumericIdentityWithoutSkipping(t *testing.T) 
 		t.Fatal(err)
 	}
 
-	fetched, err := repo.MirrorCatalogPage(ctx, tenant, domain.SourceXLSX, "", 0, 1)
+	fetched, err := repo.MirrorCatalogPage(ctx, tenant, domain.SourceXLSX, "", 0, 1, erpports.MirrorAssortmentPolicy{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -440,7 +530,7 @@ func TestMirrorCatalogPagesCollapseNumericIdentityWithoutSkipping(t *testing.T) 
 		t.Fatalf("first page=%+v, want newer identity 1 row", firstPage[0])
 	}
 
-	secondFetched, err := repo.MirrorCatalogPage(ctx, tenant, domain.SourceXLSX, "", 1, 1)
+	secondFetched, err := repo.MirrorCatalogPage(ctx, tenant, domain.SourceXLSX, "", 1, 1, erpports.MirrorAssortmentPolicy{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -465,7 +555,7 @@ func TestMirrorEANCollisionCountsAreGlobalAndGReq2(t *testing.T) {
 	seedMirrorProduct(t, pool, tenant, domain.SourceXLSX, "2", "two", stringPtr("duplicate"), false, nil, nil)
 	seedMirrorProduct(t, pool, tenant, domain.SourceXLSX, "3", "three", stringPtr("unique"), false, nil, nil)
 
-	counts, err := repo.MirrorEANCollisionCounts(ctx, tenant, domain.SourceXLSX)
+	counts, err := repo.MirrorEANCollisionCounts(ctx, tenant, domain.SourceXLSX, erpports.MirrorAssortmentPolicy{})
 	if err != nil || !reflect.DeepEqual(counts, map[string]int{"duplicate": 2}) {
 		t.Fatalf("counts=%v err=%v", counts, err)
 	}
@@ -487,6 +577,25 @@ func mirrorCodes(rows []domain.MirrorProduct) []string {
 		codes[i] = rows[i].CodigoProduto
 	}
 	return codes
+}
+
+func mirrorDescriptions(rows []domain.MirrorProduct) []string {
+	descriptions := make([]string, len(rows))
+	for i := range rows {
+		if rows[i].Descricao == nil {
+			descriptions[i] = "<nil>"
+		} else {
+			descriptions[i] = *rows[i].Descricao
+		}
+	}
+	return descriptions
+}
+
+func renderString(value *string) string {
+	if value == nil {
+		return "<nil>"
+	}
+	return `"` + *value + `"`
 }
 
 func mirrorSnapshot(id, hash, protocol string, importedAt time.Time, rows []domain.NormalizedRow) domain.ImportSnapshot {

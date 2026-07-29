@@ -79,6 +79,18 @@ func SellableAssortmentFromContext(ctx context.Context) (SellableAssortmentPolic
 	return policy, ok
 }
 
+func mirrorAssortmentPolicy(policy SellableAssortmentPolicy) erpports.MirrorAssortmentPolicy {
+	return erpports.MirrorAssortmentPolicy{
+		OnlyRevenda:           policy.OnlyRevenda,
+		OnlyEmEstoque:         policy.OnlyEmEstoque,
+		OnlyEcommerceEligible: policy.OnlyEcommerceEligible,
+	}
+}
+
+func defaultSellableAssortment() SellableAssortmentPolicy {
+	return SellableAssortmentPolicy{OnlyRevenda: true, OnlyEmEstoque: true, OnlyEcommerceEligible: true}
+}
+
 // WithActiveSource pins the source selected by M-02 routing from the tenant's
 // active_source config. Without a pin, the reader fails closed.
 func WithActiveSource(ctx context.Context, source erpdomain.ImportSource) context.Context {
@@ -187,7 +199,17 @@ func (r *Reader) FindProductsForLinking(ctx context.Context, input readports.Fin
 	// reaching this reader MUST pin the policy — fail-open stops being right the moment
 	// an unpinned caller is asking "which products", not "this product".
 	policy, _ := SellableAssortmentFromContext(ctx)
-	rows, collisions := index.candidateRows(input), index.collisions
+	eligibleRows := make([]erpdomain.MirrorProduct, 0, len(index.rows))
+	for _, row := range index.rows {
+		eligible, matchErr := matchesSellableAssortment(row, policy)
+		if matchErr != nil {
+			return nil, matchErr
+		}
+		if eligible {
+			eligibleRows = append(eligibleRows, row)
+		}
+	}
+	rows, collisions := index.candidateRows(input), validEANCounts(eligibleRows)
 	results := make([]readdomain.ProductCandidate, 0)
 	for _, row := range rows {
 		eligible, err := matchesSellableAssortment(row, policy)
@@ -358,14 +380,25 @@ func (r *Reader) GetTaxInputs(ctx context.Context, input readports.TaxInput) (re
 }
 
 func (r *Reader) ListCatalogProductFacts(ctx context.Context, cursor readports.Cursor, limit int) (readports.CatalogFactPage, error) {
-	return r.catalogPage(ctx, cursor, "", limit)
+	return r.ListCatalogProductFactsWithOptions(ctx, cursor, limit, readports.CatalogPageOptions{})
+}
+
+func (r *Reader) ListCatalogProductFactsWithOptions(ctx context.Context, cursor readports.Cursor, limit int, options readports.CatalogPageOptions) (readports.CatalogFactPage, error) {
+	return r.catalogPage(ctx, cursor, "", limit, options)
 }
 
 func (r *Reader) SearchCatalogProductFacts(ctx context.Context, query string, cursor readports.Cursor, limit int) (readports.CatalogFactPage, error) {
 	if cursor.InternalProductID < 0 {
 		return readports.CatalogFactPage{}, readports.NewInvalidCursorError()
 	}
-	return r.catalogPage(ctx, cursor, query, limit)
+	return r.SearchCatalogProductFactsWithOptions(ctx, query, cursor, limit, readports.CatalogPageOptions{})
+}
+
+func (r *Reader) SearchCatalogProductFactsWithOptions(ctx context.Context, query string, cursor readports.Cursor, limit int, options readports.CatalogPageOptions) (readports.CatalogFactPage, error) {
+	if cursor.InternalProductID < 0 {
+		return readports.CatalogFactPage{}, readports.NewInvalidCursorError()
+	}
+	return r.catalogPage(ctx, cursor, query, limit, options)
 }
 
 // CatalogProductFactsByIDs answers for an explicit set of products. An id the
@@ -396,7 +429,7 @@ func (r *Reader) CatalogProductFactsByIDs(ctx context.Context, ids []int64) (rea
 	if err != nil {
 		return readports.CatalogFactPage{}, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, "product mirror is unavailable", err)
 	}
-	collisions, err := r.repo.MirrorEANCollisionCounts(ctx, r.tenantID, source)
+	collisions, err := r.repo.MirrorEANCollisionCounts(ctx, r.tenantID, source, erpports.MirrorAssortmentPolicy{})
 	if err != nil {
 		return readports.CatalogFactPage{}, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, "EAN collision data is unavailable", err)
 	}
@@ -423,12 +456,17 @@ func (r *Reader) CatalogProductFactsByIDs(ctx context.Context, ids []int64) (rea
 	return readports.CatalogFactPage{Items: items, AsOf: asOf}, nil
 }
 
-func (r *Reader) catalogPage(ctx context.Context, cursor readports.Cursor, query string, limit int) (readports.CatalogFactPage, error) {
+func (r *Reader) catalogPage(ctx context.Context, cursor readports.Cursor, query string, limit int, options readports.CatalogPageOptions) (readports.CatalogFactPage, error) {
 	source, err := r.sourceFor(ctx, "active ERP source is unavailable")
 	if err != nil {
 		return readports.CatalogFactPage{}, err
 	}
-	rows, err := r.repo.MirrorCatalogPage(ctx, r.tenantID, source, query, cursor.InternalProductID, limit)
+	policy := defaultSellableAssortment()
+	if options.IncludeAll {
+		policy = SellableAssortmentPolicy{}
+	}
+	repoPolicy := mirrorAssortmentPolicy(policy)
+	rows, err := r.repo.MirrorCatalogPage(ctx, r.tenantID, source, query, cursor.InternalProductID, limit, repoPolicy)
 	if err != nil {
 		return readports.CatalogFactPage{}, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, "product mirror is unavailable", err)
 	}
@@ -437,7 +475,7 @@ func (r *Reader) catalogPage(ctx context.Context, cursor readports.Cursor, query
 		rows = rows[:limit]
 	}
 	items := make([]readports.CatalogProductFact, 0, len(rows))
-	collisions, err := r.repo.MirrorEANCollisionCounts(ctx, r.tenantID, source)
+	collisions, err := r.repo.MirrorEANCollisionCounts(ctx, r.tenantID, source, repoPolicy)
 	if err != nil {
 		return readports.CatalogFactPage{}, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, "EAN collision data is unavailable", err)
 	}
@@ -466,6 +504,18 @@ func (r *Reader) catalogPage(ctx context.Context, cursor readports.Cursor, query
 		page.NextCursor = &readports.Cursor{InternalProductID: lastID}
 	}
 	return page, nil
+}
+
+func (r *Reader) GetCatalogAssortmentCounts(ctx context.Context) (readports.CatalogAssortmentCounts, error) {
+	source, err := r.sourceFor(ctx, "active ERP source is unavailable")
+	if err != nil {
+		return readports.CatalogAssortmentCounts{}, err
+	}
+	sellable, total, err := r.repo.MirrorCatalogAssortmentCounts(ctx, r.tenantID, source, mirrorAssortmentPolicy(defaultSellableAssortment()))
+	if err != nil {
+		return readports.CatalogAssortmentCounts{}, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, "catalog assortment counts are unavailable", err)
+	}
+	return readports.CatalogAssortmentCounts{SellableCount: sellable, TotalCount: total}, nil
 }
 
 func (r *Reader) candidate(id int, row erpdomain.MirrorProduct, collisions map[string]int, source erpdomain.ImportSource) (readdomain.ProductCandidate, error) {
@@ -613,3 +663,4 @@ func parseNumber(value, field string) (float64, error) {
 
 var _ readports.Reader = (*Reader)(nil)
 var _ readports.CatalogPageReader = (*Reader)(nil)
+var _ readports.CatalogAssortmentReader = (*Reader)(nil)

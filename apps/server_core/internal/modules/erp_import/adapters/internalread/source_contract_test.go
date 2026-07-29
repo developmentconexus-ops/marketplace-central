@@ -291,7 +291,7 @@ func (r *contractRepo) MirrorProductByCode(_ context.Context, _ string, _ erpdom
 	}
 	return erpdomain.MirrorProduct{}, false, nil
 }
-func (r *contractRepo) MirrorCatalogPage(_ context.Context, _ string, _ erpdomain.ImportSource, query string, after int64, limit int) ([]erpdomain.MirrorProduct, error) {
+func (r *contractRepo) MirrorCatalogPage(_ context.Context, _ string, _ erpdomain.ImportSource, query string, after int64, limit int, _ erpports.MirrorAssortmentPolicy) ([]erpdomain.MirrorProduct, error) {
 	rows := make([]erpdomain.MirrorProduct, 0)
 	for _, row := range mirrorProductsFromSnapshot(r.snapshot) {
 		id, err := strconv.ParseInt(row.CodigoProduto, 10, 64)
@@ -310,7 +310,11 @@ func (r *contractRepo) MirrorCatalogPage(_ context.Context, _ string, _ erpdomai
 	}
 	return rows, nil
 }
-func (r *contractRepo) MirrorEANCollisionCounts(context.Context, string, erpdomain.ImportSource) (map[string]int, error) {
+func (r *contractRepo) MirrorCatalogAssortmentCounts(context.Context, string, erpdomain.ImportSource, erpports.MirrorAssortmentPolicy) (int, int, error) {
+	rows := mirrorProductsFromSnapshot(r.snapshot)
+	return len(rows), len(rows), nil
+}
+func (r *contractRepo) MirrorEANCollisionCounts(context.Context, string, erpdomain.ImportSource, erpports.MirrorAssortmentPolicy) (map[string]int, error) {
 	return validEANCounts(mirrorProductsFromSnapshot(r.snapshot)), nil
 }
 
