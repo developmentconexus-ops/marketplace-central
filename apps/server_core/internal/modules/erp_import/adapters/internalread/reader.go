@@ -227,6 +227,7 @@ func (r *Reader) FindProductsForLinking(ctx context.Context, input readports.Fin
 }
 
 func matchesSellableAssortment(row erpdomain.MirrorProduct, policy SellableAssortmentPolicy) (bool, error) {
+	// Write seams canonicalize sellable values, so comparisons stay canonical.
 	if policy.OnlyRevenda && row.Usoprod != nil {
 		if value := strings.TrimSpace(*row.Usoprod); value != "" && value != "R" {
 			return false, nil

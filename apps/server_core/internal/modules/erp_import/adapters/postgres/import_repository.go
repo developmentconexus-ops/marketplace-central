@@ -64,7 +64,7 @@ func (r *Repository) PersistSnapshotAtomically(ctx context.Context, tenantID str
 		rows := snapshot.AcceptedRows
 		_, err = tx.CopyFrom(ctx,
 			pgx.Identifier{"erp_import_products"},
-			[]string{"tenant_id", "protocol_id", "codprod", "descrprod", "custo", "preco_venda", "stock_physical", "stock_reserved", "ean", "refforn", "marca", "ncm", "grupo", "descrgrupo"},
+			[]string{"tenant_id", "protocol_id", "codprod", "descrprod", "custo", "preco_venda", "stock_physical", "stock_reserved", "ean", "refforn", "marca", "ncm", "grupo", "descrgrupo", "usoprod", "ad_ecommerce"},
 			pgx.CopyFromSlice(len(rows), func(i int) ([]any, error) {
 				product := rows[i]
 				return []any{
@@ -74,6 +74,7 @@ func (r *Repository) PersistSnapshotAtomically(ctx context.Context, tenantID str
 					nullableString(product.StockPhysical),
 					product.StockReserved, product.EAN, product.Refforn,
 					product.Marca, product.NCM, product.Grupo, product.DescrGrupo,
+					nullableStringValue(product.Usoprod), nullableStringValue(product.ADEcommerce),
 				}, nil
 			}),
 		)

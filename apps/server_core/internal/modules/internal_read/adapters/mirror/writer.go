@@ -14,6 +14,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -147,7 +148,7 @@ func (w *PgWriter) ApplySnapshot(ctx context.Context, tenantID string, rows []Ro
 	for _, r := range rows {
 		batch.Queue(upsertSQL, tenantID, r.CodigoProduto, r.Descricao, r.Referencia,
 			r.EAN, r.Marca, r.GrupoCodigo, r.GrupoDescricao, r.NCM, r.Custo,
-			r.PrecoVenda, r.Usoprod, r.ADEcommerce, r.EstoqueTotal)
+			r.PrecoVenda, canonicalSellableValue(r.Usoprod), canonicalSellableValue(r.ADEcommerce), r.EstoqueTotal)
 	}
 	// Replace stock-location children only for products in this snapshot.
 	batch.Queue(deleteLocationsSQL, tenantID, codes)
@@ -174,4 +175,15 @@ func (w *PgWriter) ApplySnapshot(ctx context.Context, tenantID string, rows []Ro
 		return 0, fmt.Errorf("mirror: commit: %w", err)
 	}
 	return len(rows), nil
+}
+
+func canonicalSellableValue(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	canonical := strings.ToUpper(strings.TrimSpace(*value))
+	if canonical == "" {
+		return nil
+	}
+	return &canonical
 }

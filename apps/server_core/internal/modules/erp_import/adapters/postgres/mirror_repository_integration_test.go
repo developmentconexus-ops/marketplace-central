@@ -70,6 +70,57 @@ func TestMergeSnapshotKeepsAbsentStockNullAndKnownZeroZero(t *testing.T) {
 	}
 }
 
+func TestPersistAndSyncRoundTripsSellableFields(t *testing.T) {
+	ctx := context.Background()
+	repo, tenant := integrationRepo(t)
+	pool, _ := testpostgres.OpenPool(t, tenant)
+	t.Cleanup(func() {
+		_, _ = pool.Exec(ctx, `DELETE FROM products_mirror_stock_locations WHERE tenant_id=$1`, tenant)
+		_, _ = pool.Exec(ctx, `DELETE FROM products_mirror WHERE tenant_id=$1`, tenant)
+		_, _ = pool.Exec(ctx, `DELETE FROM erp_import_protocols WHERE tenant_id=$1`, tenant)
+	})
+
+	snapshot := mirrorSnapshot("60000000-0000-0000-0000-000000000003", "mirror-roundtrip", "#602-E", time.Now().UTC(), []domain.NormalizedRow{
+		{Codprod: "ROUNDTRIP", Descrprod: "Round trip", Custo: "1", StockPhysical: "5", Usoprod: stringPtr("R"), ADEcommerce: stringPtr("N")},
+		{Codprod: "OUTSIDE", Descrprod: "Out of domain", Custo: "1", StockPhysical: "5", Usoprod: stringPtr("SIM")},
+		{Codprod: "BLANK", Descrprod: "Blank values", Custo: "1", StockPhysical: "5"},
+	})
+	if err := repo.PersistSnapshotAtomically(ctx, tenant, snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.SyncLatestCompletedSnapshot(ctx, tenant, domain.SourceXLSX); err != nil {
+		t.Fatal(err)
+	}
+
+	readBack, found, err := repo.MirrorProductByCode(ctx, tenant, domain.SourceXLSX, "ROUNDTRIP")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !found {
+		t.Fatalf("round-trip mirror row found = false, want true")
+	}
+	if readBack.Usoprod == nil || *readBack.Usoprod != "R" {
+		t.Fatalf("round-trip usoprod: want %q, got %v", "R", readBack.Usoprod)
+	}
+	if readBack.ADEcommerce == nil || *readBack.ADEcommerce != "N" {
+		t.Fatalf("round-trip ad_ecommerce: want %q, got %v", "N", readBack.ADEcommerce)
+	}
+	outside, found, err := repo.MirrorProductByCode(ctx, tenant, domain.SourceXLSX, "OUTSIDE")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !found || outside.Usoprod == nil || *outside.Usoprod != "SIM" {
+		t.Fatalf("out-of-domain round-trip usoprod: want %q, got %v", "SIM", outside.Usoprod)
+	}
+	blank, found, err := repo.MirrorProductByCode(ctx, tenant, domain.SourceXLSX, "BLANK")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !found || blank.Usoprod != nil || blank.ADEcommerce != nil {
+		t.Fatalf("blank round-trip sellable fields: want <nil>/<nil>, got %v/%v", blank.Usoprod, blank.ADEcommerce)
+	}
+}
+
 func TestMirrorMergeKeepsAbsentIsTenantScopedAndResurrects(t *testing.T) {
 	ctx := context.Background()
 	repo, tenant := integrationRepo(t)

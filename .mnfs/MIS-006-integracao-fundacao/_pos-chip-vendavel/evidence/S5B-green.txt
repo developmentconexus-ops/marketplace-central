@@ -1,0 +1,41 @@
+S5B GREEN evidence
+
+Command:
+go test ./internal/modules/erp_import/... -count=1
+
+Result: RUN/PASS/SKIP = 8 test-bearing package runs PASS, 1 package reported [no test files], 0 SKIP; exit 0.
+Observed package output:
+ok   marketplace-central/apps/server_core/internal/modules/erp_import/adapters/internalread
+ok   marketplace-central/apps/server_core/internal/modules/erp_import/adapters/postgres
+ok   marketplace-central/apps/server_core/internal/modules/erp_import/adapters/productlinks
+ok   marketplace-central/apps/server_core/internal/modules/erp_import/adapters/sync
+ok   marketplace-central/apps/server_core/internal/modules/erp_import/adapters/xlsx
+ok   marketplace-central/apps/server_core/internal/modules/erp_import/application
+ok   marketplace-central/apps/server_core/internal/modules/erp_import/domain
+?    marketplace-central/apps/server_core/internal/modules/erp_import/ports [no test files]
+ok   marketplace-central/apps/server_core/internal/modules/erp_import/transport
+
+Command:
+go test -tags=integration ./internal/modules/erp_import/adapters/postgres -count=1 -v
+
+Result: RUN=27, PASS=1, SKIP=26, exit 0. All 26 skipped integration cases reported MPC_TEST_DATABASE_URL is unset. The new whole-chain test was one of those SKIPs, so this is not a claim of live integration GREEN.
+
+Command:
+go test -tags=integration ./internal/modules/internal_read/adapters/routing -run '^TestMirrorMatcher_ActiveRevendaRuleControlsCandidateBirth$' -count=1 -v
+
+Result: RUN=1, PASS=0, SKIP=1, exit 0. Exact skip reason: MPC_TEST_DATABASE_URL is unset. The raw UPDATE is deleted in the fixture, but this seat could not execute the test.
+
+Command:
+go build ./...
+
+Result: exit 1 in this seat with the measured environment observation:
+error obtaining VCS status: exit status 128
+Use -buildvcs=false to disable VCS stamping.
+The command was not changed to add -buildvcs=false.
+
+Command:
+go vet ./...
+
+Result: exit 0, no output.
+
+Cache check: WORKTREE_ROOT_GOMODCACHE_ABSENT. The expected apps/server_core/.gomodcache was used via absolute GOMODCACHE.

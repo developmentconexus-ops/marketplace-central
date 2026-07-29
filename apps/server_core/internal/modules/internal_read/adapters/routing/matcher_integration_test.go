@@ -53,18 +53,6 @@ func TestMirrorMatcher_ActiveRevendaRuleControlsCandidateBirth(t *testing.T) {
 	if _, err := importRepo.SyncLatestCompletedSnapshot(ctx, tenant, erpdomain.SourceXLSX); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pool.Exec(ctx, `
-		UPDATE products_mirror
-		SET usoprod = CASE codigo_produto
-			WHEN '7001' THEN 'V'
-			WHEN '7002' THEN 'R'
-			ELSE NULL
-		END,
-		ad_ecommerce = 'S'
-		WHERE tenant_id=$1 AND source=$2
-	`, tenant, erpdomain.SourceXLSX); err != nil {
-		t.Fatal(err)
-	}
 	readBack, found, err := importRepo.MirrorProductByCode(ctx, tenant, erpdomain.SourceXLSX, "7001")
 	if err != nil {
 		t.Fatal(err)

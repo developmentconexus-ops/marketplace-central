@@ -27,15 +27,15 @@ func (r *Repository) SyncLatestCompletedSnapshot(ctx context.Context, tenantID s
 		return 0, fmt.Errorf("load latest completed ERP protocol: %w", err)
 	}
 
-	productRows, err := tx.Query(ctx, `SELECT codprod,descrprod,custo::text,preco_venda::text,stock_physical,stock_reserved,ean,refforn,marca,ncm,grupo,descrgrupo FROM erp_import_products WHERE tenant_id=$1 AND protocol_id=$2 ORDER BY codprod`, tenantID, protocolID)
+	productRows, err := tx.Query(ctx, `SELECT codprod,descrprod,custo::text,preco_venda::text,stock_physical,stock_reserved,ean,refforn,marca,ncm,grupo,descrgrupo,usoprod,ad_ecommerce FROM erp_import_products WHERE tenant_id=$1 AND protocol_id=$2 ORDER BY codprod`, tenantID, protocolID)
 	if err != nil {
 		return 0, fmt.Errorf("load latest completed ERP products: %w", err)
 	}
 	rows := make([]domain.NormalizedRow, 0)
 	for productRows.Next() {
 		var row domain.NormalizedRow
-		var custo, precoVenda, stockPhysical sql.NullString
-		if err := productRows.Scan(&row.Codprod, &row.Descrprod, &custo, &precoVenda, &stockPhysical, &row.StockReserved, &row.EAN, &row.Refforn, &row.Marca, &row.NCM, &row.Grupo, &row.DescrGrupo); err != nil {
+		var custo, precoVenda, stockPhysical, usoprod, adEcommerce sql.NullString
+		if err := productRows.Scan(&row.Codprod, &row.Descrprod, &custo, &precoVenda, &stockPhysical, &row.StockReserved, &row.EAN, &row.Refforn, &row.Marca, &row.NCM, &row.Grupo, &row.DescrGrupo, &usoprod, &adEcommerce); err != nil {
 			productRows.Close()
 			return 0, fmt.Errorf("scan latest completed ERP product: %w", err)
 		}
@@ -48,6 +48,8 @@ func (r *Repository) SyncLatestCompletedSnapshot(ctx context.Context, tenantID s
 		if stockPhysical.Valid {
 			row.StockPhysical = stockPhysical.String
 		}
+		row.Usoprod = nullStringPointer(usoprod)
+		row.ADEcommerce = nullStringPointer(adEcommerce)
 		rows = append(rows, row)
 	}
 	if err := productRows.Err(); err != nil {

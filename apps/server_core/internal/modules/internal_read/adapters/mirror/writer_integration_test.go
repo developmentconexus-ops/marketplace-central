@@ -25,7 +25,7 @@ func TestPgWriterPersistsSellableAssortmentFields(t *testing.T) {
 
 	w := mirror.NewPgWriter(pool)
 	if _, err := w.ApplySnapshot(ctx, tenant, []mirror.Row{
-		{CodigoProduto: "A", Usoprod: ptrS("R"), ADEcommerce: ptrS("S")},
+		{CodigoProduto: "A", Usoprod: ptrS(" r "), ADEcommerce: ptrS(" n ")},
 		{CodigoProduto: "B"},
 	}, nil); err != nil {
 		t.Fatalf("ApplySnapshot: %v", err)
@@ -35,8 +35,8 @@ func TestPgWriterPersistsSellableAssortmentFields(t *testing.T) {
 	if err := pool.QueryRow(ctx, `SELECT usoprod, ad_ecommerce FROM products_mirror WHERE tenant_id=$1 AND codigo_produto='A'`, tenant).Scan(&usoprod, &adEcommerce); err != nil {
 		t.Fatalf("read A: %v", err)
 	}
-	if usoprod != "R" || adEcommerce != "S" {
-		t.Errorf("A assortment = %q/%q, want R/S", usoprod, adEcommerce)
+	if usoprod != "R" || adEcommerce != "N" {
+		t.Errorf("A assortment = %q/%q, want R/N", usoprod, adEcommerce)
 	}
 	var nullCount int
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM products_mirror WHERE tenant_id=$1 AND codigo_produto='B' AND usoprod IS NULL AND ad_ecommerce IS NULL`, tenant).Scan(&nullCount); err != nil {

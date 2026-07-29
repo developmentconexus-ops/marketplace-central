@@ -109,6 +109,34 @@ func TestParserSellableColumnsAreOptionalAndHonestUnknown(t *testing.T) {
 	}
 }
 
+func TestParserCanonicalizesSellableColumnsAndPreservesUnknownValues(t *testing.T) {
+	data := xlsxBytes(t, []testSheet{{
+		name: "ERP",
+		rows: [][]string{
+			{"CODPROD", "DESCRPROD", "CUSTO", "ESTOQUE_FISICO", "USOPROD", "AD_ECOMMERCE"},
+			{"P1", "Produto 1", "1", "5", " r ", " n "},
+			{"P2", "Produto 2", "1", "5", "SIM", " "},
+		},
+	}})
+
+	rows, _, err := NewParser().Parse(context.Background(), bytes.NewReader(data))
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	if rows[0].Usoprod == nil || *rows[0].Usoprod != "R" {
+		t.Fatalf("canonical USOPROD = %v, want R", rows[0].Usoprod)
+	}
+	if rows[0].ADEcommerce == nil || *rows[0].ADEcommerce != "N" {
+		t.Fatalf("canonical AD_ECOMMERCE = %v, want N", rows[0].ADEcommerce)
+	}
+	if rows[1].Usoprod == nil || *rows[1].Usoprod != "SIM" {
+		t.Fatalf("out-of-domain USOPROD = %v, want SIM", rows[1].Usoprod)
+	}
+	if rows[1].ADEcommerce != nil {
+		t.Fatalf("blank AD_ECOMMERCE = %v, want <nil>", rows[1].ADEcommerce)
+	}
+}
+
 func TestParserCapturesGrupoColumns(t *testing.T) {
 	data := xlsxBytes(t, []testSheet{{
 		name: "ERP",
