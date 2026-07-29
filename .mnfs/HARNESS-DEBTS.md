@@ -58,6 +58,13 @@ do repo para resolução de config.
 **B-4. Migração nova é invisível até rodar `cmd/migrate`** (13× 42703 na S5B). Já no profile
 (§11+§3 @f1cba2a); candidato a core.
 
+**B-5. "Variável setada" ≠ "banco alcançável".** S10-COND round 2: brief exigiu SKIP=0 e levou a
+linha de dot-source do A-15; o env estava SET (LEN=144) apontando para porta efêmera de contêiner
+de sessão morto → 3 FAIL por conexão recusada. A regra @f1cba2a prova o ENV; nada prova o
+ENDPOINT. Custo: rodada do worker provando o óbvio. Candidato: exigência de SKIP=0 vem acoplada a
+mecanismo de endpoint vivo — lane que boota a própria base (pg-session por checkout já existe no
+repo) ou probe TCP pré-lane com token distinto (`HPG_ENDPOINT_DEAD`), nunca "confie no env".
+
 ## C. Gates e revisão
 
 **C-1. Stop-the-line de CLASSE** — ratificado no profile @1889d0dd (2ª ocorrência do mesmo

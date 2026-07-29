@@ -417,3 +417,60 @@ ordem de chaves casada aos precedentes e stop-and-report para chave não especif
 com conserto de processo (drenagem no INÍCIO do passo — raiz nomeada: compor no fim de
 revisão longa é o pior momento da caixa); S11 rodada 2 carrega a semântica A-22 com o
 checklist P4 anotado com a data da inversão para o gate não ler critério velho.
+
+---
+
+## A-25 (2026-07-29) — R-1 endpoint de teste + R-2 `.js` emitidos em `src/`
+
+### R-1 — RULING: pg-session do PRÓPRIO worktree; endpoint morto não se re-aponta, se RE-CRIA
+
+Medido pelo hub: `scripts/harness.ps1` expõe `pg-session-up`/`pg-session-down`;
+`Get-HarnessPostgresSessionContainerName` deriva o nome do contêiner do HASH do repo root —
+desenho explícito no código: "hub and chip worktrees each own their session container".
+`Start-HarnessPostgresSession` detecta estado stale/contêiner morto e recria do zero
+(estado em `scripts/.runs/pg-session.json`). 55864 era porta efêmera de sessão morta.
+
+Autorizado ao chip (não é violação do "chip nunca sobe servidor" — essa regra é do DEV STACK;
+a sessão de pg de teste é por-checkout POR DESENHO):
+1. `pwsh scripts/harness.ps1 pg-session-up` no worktree do chip (emite `container=` e `port=`).
+2. Reconstruir a linha de env do A-15 a partir de `port` + password do `pg-session.json`
+   (password NUNCA impresso em evidência — LEN apenas, prática corrente).
+3. `go run ./cmd/migrate` de `apps/server_core` contra a base da sessão — `applied N` com N
+   conferido contra as migrações da árvore (regra @f1cba2a, metade 2).
+4. Re-rodar o pacote `tenant_config` com SKIP=0 contado por linha.
+5. `pg-session-down` no fechamento do chip.
+NÃO apontar para 5435: é o postgres do dev-stack (dados vivos de dev, seam do hub).
+Avisos herdados: `.gomodcache` frio → `HPG_MIGRATION_FAILED` falso (aquecer antes);
+primeiro boot → retry do CREATE DATABASE (pg_isready mente).
+
+ACHADO RATIFICADO (classe, entra no HARNESS-DEBTS como B-5): **"variável setada" ≠ "banco
+alcançável"** — a linha do A-15 prova o env, não o endpoint. Brief que exige SKIP=0 exige
+mecanismo de endpoint VIVO (lane que boota a própria base, ou probe pré-lane com token
+distinto), senão só troca pulo silencioso por vermelho ambiental e queima rodada.
+
+Registrado: asserção do sentinela em `repository_test.go:189` NUNCA executou nesta chip —
+lacuna declarada, não cobertura. O passo 4 acima a executa; o pacote de evidência do S10-COND
+só fecha com ela rodada.
+
+### R-2 — GRANT (a) + retenção (b)
+
+(a) AUTORIZADO: apagar, no worktree do chip, os `.js` (e `.js.map` se houver) UNTRACKED
+(`git status --porcelain`, linhas `??`) que tenham irmão `.ts`/`.tsx` de mesmo basename no
+mesmo diretório — inclui `apps/web/vite.config.js`. Verificação por arquivo (irmão existe),
+contagem reportada (esperado ~186). Tracked não se toca; `git add -A` segue proibido.
+
+(b) RETIDO NO HUB: regra de `.gitignore` e conserto do `tsconfig` (emissão dentro de `src/`)
+são seam compartilhado — hub decide PÓS-MERGE (backlog registrado abaixo). Chip não toca
+`tsconfig`/`.gitignore`. Root-cause aceito como reportado: `tsc -b` da revisão S11 do próprio
+chip emitiu; classe já nomeada no CHIP-IMPORT-CHAIN ("observável que passa nos dois mundos
+não é evidência") — agora com árvore fantasma EM DISCO com nome de fonte.
+
+BACKLOG HUB (pós-merge): (i) decidir emissão do `tsc -b` (noEmit na lane de tipos vs outDir
+fora de `src/` — atenção: projetos composite exigem emit p/ incremental; medir antes);
+(ii) `.gitignore` só DEPOIS do (i) para não mascarar a doença.
+
+### S14 — forma endossada
+
+Teste invisível na varredura `-run TestRootRuntime` (4 linhas `---`, a dele ausente) e visível
+nomeado exato: NÃO fechar S14 com a varredura em que ele não apareceu — correto. A varredura
+se valida no chamador (regra CHIP-FIM); resultado da re-run entra na evidência do S14.
