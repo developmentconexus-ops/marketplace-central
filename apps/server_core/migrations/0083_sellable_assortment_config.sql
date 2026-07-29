@@ -10,4 +10,4 @@ ALTER TABLE active_source
     ADD COLUMN only_em_estoque BOOLEAN NOT NULL DEFAULT true;
 
 ALTER TABLE active_source
-    ADD COLUMN only_ecommerce BOOLEAN NOT NULL DEFAULT false;
+    ADD COLUMN only_ecommerce_eligible BOOLEAN NOT NULL DEFAULT false;

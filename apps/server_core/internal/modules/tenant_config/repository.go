@@ -36,7 +36,7 @@ func (r *Repository) Get(ctx context.Context, tenantID string) (Config, error) {
 	cfg.TenantID = tenantID
 	err := r.pool.QueryRow(ctx, `
 		SELECT active_source, source_kind, set_at, set_by,
-			only_revenda, only_em_estoque, only_ecommerce
+			only_revenda, only_em_estoque, only_ecommerce_eligible
 		FROM active_source
 		WHERE tenant_id = $1
 	`, tenantID).Scan(
@@ -46,7 +46,7 @@ func (r *Repository) Get(ctx context.Context, tenantID string) (Config, error) {
 		&setBy,
 		&cfg.SellableAssortment.OnlyRevenda,
 		&cfg.SellableAssortment.OnlyEmEstoque,
-		&cfg.SellableAssortment.OnlyEcommerce,
+		&cfg.SellableAssortment.OnlyEcommerceEligible,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Config{}, ErrUnknownActiveSource
@@ -93,9 +93,9 @@ func (r *Repository) SetSellableAssortment(ctx context.Context, tenantID string,
 		UPDATE active_source
 		SET only_revenda = $2,
 			only_em_estoque = $3,
-			only_ecommerce = $4
+			only_ecommerce_eligible = $4
 		WHERE tenant_id = $1
-	`, tenantID, a.OnlyRevenda, a.OnlyEmEstoque, a.OnlyEcommerce)
+	`, tenantID, a.OnlyRevenda, a.OnlyEmEstoque, a.OnlyEcommerceEligible)
 	if err != nil {
 		return fmt.Errorf("set sellable assortment: %w", err)
 	}

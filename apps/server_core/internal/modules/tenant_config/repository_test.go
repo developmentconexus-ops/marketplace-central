@@ -96,14 +96,14 @@ func TestRepository_SetSellableAssortment_RoundTripPersistsPerTenant(t *testing.
 	if got.SellableAssortment.OnlyEmEstoque != true {
 		t.Errorf("first tenant OnlyEmEstoque = %v, want true", got.SellableAssortment.OnlyEmEstoque)
 	}
-	if got.SellableAssortment.OnlyEcommerce != false {
-		t.Errorf("first tenant OnlyEcommerce = %v, want false", got.SellableAssortment.OnlyEcommerce)
+	if got.SellableAssortment.OnlyEcommerceEligible != false {
+		t.Errorf("first tenant OnlyEcommerceEligible = %v, want false", got.SellableAssortment.OnlyEcommerceEligible)
 	}
 
 	firstRule := tenant_config.SellableAssortment{
-		OnlyRevenda:   false,
-		OnlyEmEstoque: false,
-		OnlyEcommerce: true,
+		OnlyRevenda:           false,
+		OnlyEmEstoque:         false,
+		OnlyEcommerceEligible: true,
 	}
 	if err := repo.SetSellableAssortment(ctx, firstTenantID, firstRule); err != nil {
 		t.Fatalf("SetSellableAssortment() first tenant error = %v", err)
@@ -119,8 +119,8 @@ func TestRepository_SetSellableAssortment_RoundTripPersistsPerTenant(t *testing.
 	if got.SellableAssortment.OnlyEmEstoque != firstRule.OnlyEmEstoque {
 		t.Errorf("first tenant OnlyEmEstoque = %v, want %v", got.SellableAssortment.OnlyEmEstoque, firstRule.OnlyEmEstoque)
 	}
-	if got.SellableAssortment.OnlyEcommerce != firstRule.OnlyEcommerce {
-		t.Errorf("first tenant OnlyEcommerce = %v, want %v", got.SellableAssortment.OnlyEcommerce, firstRule.OnlyEcommerce)
+	if got.SellableAssortment.OnlyEcommerceEligible != firstRule.OnlyEcommerceEligible {
+		t.Errorf("first tenant OnlyEcommerceEligible = %v, want %v", got.SellableAssortment.OnlyEcommerceEligible, firstRule.OnlyEcommerceEligible)
 	}
 
 	if err := repo.Set(ctx, tenant_config.Config{
@@ -130,9 +130,9 @@ func TestRepository_SetSellableAssortment_RoundTripPersistsPerTenant(t *testing.
 		t.Fatalf("Set() second tenant error = %v", err)
 	}
 	secondRule := tenant_config.SellableAssortment{
-		OnlyRevenda:   true,
-		OnlyEmEstoque: true,
-		OnlyEcommerce: true,
+		OnlyRevenda:           true,
+		OnlyEmEstoque:         true,
+		OnlyEcommerceEligible: true,
 	}
 	if err := repo.SetSellableAssortment(ctx, secondTenantID, secondRule); err != nil {
 		t.Fatalf("SetSellableAssortment() second tenant error = %v", err)
@@ -148,8 +148,8 @@ func TestRepository_SetSellableAssortment_RoundTripPersistsPerTenant(t *testing.
 	if got.SellableAssortment.OnlyEmEstoque != secondRule.OnlyEmEstoque {
 		t.Errorf("second tenant OnlyEmEstoque = %v, want %v", got.SellableAssortment.OnlyEmEstoque, secondRule.OnlyEmEstoque)
 	}
-	if got.SellableAssortment.OnlyEcommerce != secondRule.OnlyEcommerce {
-		t.Errorf("second tenant OnlyEcommerce = %v, want %v", got.SellableAssortment.OnlyEcommerce, secondRule.OnlyEcommerce)
+	if got.SellableAssortment.OnlyEcommerceEligible != secondRule.OnlyEcommerceEligible {
+		t.Errorf("second tenant OnlyEcommerceEligible = %v, want %v", got.SellableAssortment.OnlyEcommerceEligible, secondRule.OnlyEcommerceEligible)
 	}
 
 	got, err = repo.Get(ctx, firstTenantID)
@@ -162,8 +162,8 @@ func TestRepository_SetSellableAssortment_RoundTripPersistsPerTenant(t *testing.
 	if got.SellableAssortment.OnlyEmEstoque != firstRule.OnlyEmEstoque {
 		t.Errorf("first tenant after second write OnlyEmEstoque = %v, want %v", got.SellableAssortment.OnlyEmEstoque, firstRule.OnlyEmEstoque)
 	}
-	if got.SellableAssortment.OnlyEcommerce != firstRule.OnlyEcommerce {
-		t.Errorf("first tenant after second write OnlyEcommerce = %v, want %v", got.SellableAssortment.OnlyEcommerce, firstRule.OnlyEcommerce)
+	if got.SellableAssortment.OnlyEcommerceEligible != firstRule.OnlyEcommerceEligible {
+		t.Errorf("first tenant after second write OnlyEcommerceEligible = %v, want %v", got.SellableAssortment.OnlyEcommerceEligible, firstRule.OnlyEcommerceEligible)
 	}
 
 	if err := repo.Set(ctx, tenant_config.Config{
@@ -182,8 +182,8 @@ func TestRepository_SetSellableAssortment_RoundTripPersistsPerTenant(t *testing.
 	if got.SellableAssortment.OnlyEmEstoque != firstRule.OnlyEmEstoque {
 		t.Errorf("after source switch OnlyEmEstoque = %v, want %v", got.SellableAssortment.OnlyEmEstoque, firstRule.OnlyEmEstoque)
 	}
-	if got.SellableAssortment.OnlyEcommerce != firstRule.OnlyEcommerce {
-		t.Errorf("after source switch OnlyEcommerce = %v, want %v", got.SellableAssortment.OnlyEcommerce, firstRule.OnlyEcommerce)
+	if got.SellableAssortment.OnlyEcommerceEligible != firstRule.OnlyEcommerceEligible {
+		t.Errorf("after source switch OnlyEcommerceEligible = %v, want %v", got.SellableAssortment.OnlyEcommerceEligible, firstRule.OnlyEcommerceEligible)
 	}
 
 	if err := repo.SetSellableAssortment(ctx, missingTenantID, firstRule); !errors.Is(err, tenant_config.ErrUnknownActiveSource) {

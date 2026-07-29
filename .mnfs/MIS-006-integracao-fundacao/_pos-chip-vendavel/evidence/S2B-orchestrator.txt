@@ -1,0 +1,45 @@
+S2B-RENAME — orchestrator-measured evidence (P4)
+Written by the orchestrator, not the worker. Two claims in S2B-green.txt are refuted here.
+
+=== REFUTATION 1: go build ./... ===
+Worker reported: 'error obtaining VCS status: exit status 128' and refused to commit.
+Orchestrator measured, same worktree, cd apps/server_core, absolute GOCACHE/GOMODCACHE:
+$ go build ./...
+EXIT=0
+Verdict: EXIT=0. Environment false alarm AT THE WORKER'S SEAT (third occurrence: S1, S2, S2B).
+No -buildvcs=false was buried in the lane: that would trade an alarm for a blindness (hub, binding).
+
+=== REFUTATION 2: the DB-backed run the worker was told to skip ===
+The worker was instructed to skip ./internal/modules/tenant_config — it needs the slice
+database recreated AFTER the rename, and the orchestrator owns that step.
+Slice DB dropped and recreated, then migrated:
+  DROP DATABASE / CREATE DATABASE mpc_test_deadbeefdeadbeefdeadbeefdeadbeef -> EXIT=0
+  go run ./cmd/testdb migrate -> 'applied 71 migration(s)' EXIT=0
+71 = the same count as before the rename. Independent confirmation that no migration FILE
+was added: the rename landed inside 0083, so the count fixture is untouched by measurement,
+not by assertion.
+
+$ go test ./internal/modules/tenant_config/... ./migrations -count=1 -v
+RUN=33 PASS=33 SKIP=0 FAIL=0   EXIT=0
+SKIP=0 is the load-bearing number: these tests skip silently without MPC_TEST_DATABASE_URL,
+and a fully skipped run is byte-identical at the tail to a fully green one (profile SS11).
+The two slice-critical tests, named:
+--- PASS: TestRepository_SetSellableAssortment_RoundTripPersistsPerTenant (0.02s)
+--- PASS: TestSellableAssortmentMigrationsDeclareDefaultsAndNullableMirrorFields (0.00s)
+
+=== ANCHORED RENAME SWEEP (git grep, from inside the worktree) ===
+Instrument note: the Grep tool rooted at the worktree ABSOLUTE path returned 5 matches and
+missed all 19 code occurrences. git grep from inside the worktree returns all of them. Cause
+NOT established (the .gitignore '.claude/*' hypothesis was tested and REFUTED). Recorded as an
+instrument constraint, not as a diagnosis.
+
+$ git grep -nE 'only_ecommerce($|[^_])|OnlyEcommerce($|[^E])'
+  -> ZERO in apps/server_core, apps/web, packages/, contracts/
+  -> 5 survivors, all deliberate prose: BATCH-PLAN:1066 (the amendment that NAMES the rename,
+     so it must quote the dead name) and DISPATCH-LEDGER:70,71,103,106 (verbatim history of the
+     S1/S2 runs). Rewriting those would falsify the trail.
+$ git grep -n 'only_ecommerce_eligible_eligible|OnlyEcommerceEligibleEligible' -> ZERO
+  (the prefix trap: only_ecommerce is a prefix of only_ecommerce_eligible, so a raw replace
+   would have produced the doubled suffix. It did not.)
+New-name occurrences = 19, identical to the pre-image count of the old name measured from
+git HEAD before the worker ran. One-to-one: nothing lost, nothing doubled.

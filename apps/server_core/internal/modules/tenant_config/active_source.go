@@ -24,9 +24,9 @@ const (
 
 // SellableAssortment is the tenant's product-assortment policy.
 type SellableAssortment struct {
-	OnlyRevenda   bool
-	OnlyEmEstoque bool
-	OnlyEcommerce bool
+	OnlyRevenda           bool
+	OnlyEmEstoque         bool
+	OnlyEcommerceEligible bool
 }
 
 // Valid reports whether s is one of the three ratified sources. Anything else

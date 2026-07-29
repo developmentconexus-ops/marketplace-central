@@ -10,7 +10,7 @@ func TestSellableAssortmentMigrationsDeclareDefaultsAndNullableMirrorFields(t *t
 	for _, declaration := range []string{
 		"alter table active_source add column only_revenda boolean not null default true",
 		"alter table active_source add column only_em_estoque boolean not null default true",
-		"alter table active_source add column only_ecommerce boolean not null default false",
+		"alter table active_source add column only_ecommerce_eligible boolean not null default false",
 	} {
 		if !strings.Contains(configSQL, declaration) {
 			t.Errorf("active_source migration missing exact declaration %q", declaration)

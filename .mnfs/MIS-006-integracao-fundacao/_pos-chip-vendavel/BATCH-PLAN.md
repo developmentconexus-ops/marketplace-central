@@ -8,7 +8,7 @@ the chip amendments live in the section appended at the END of this file and WIN
 
 ### Storage choice
 
-Put `only_revenda`, `only_em_estoque`, and `only_ecommerce` directly on `active_source`.
+Put `only_revenda`, `only_em_estoque`, and `only_ecommerce_eligible` directly on `active_source`.
 
 Evidence:
 
@@ -57,7 +57,7 @@ Predicate:
 ```sql
 AND (NOT only_revenda OR m.usoprod IS NULL OR m.usoprod = 'R')
 AND (NOT only_em_estoque OR m.estoque_total IS NULL OR m.estoque_total > 0)
-AND (NOT only_ecommerce OR m.ad_ecommerce IS NULL OR m.ad_ecommerce = 'S')
+AND (NOT only_ecommerce_eligible OR m.ad_ecommerce IS NULL OR m.ad_ecommerce <> 'N')
 ```
 
 Estimated cost: four production files and four existing test files, about 95 production plus 120 test lines:
@@ -647,7 +647,7 @@ WHERE tenant_id = :tenant_id
 VC-1 SQL:
 
 ```sql
-SELECT tenant_id, only_revenda, only_em_estoque, only_ecommerce
+SELECT tenant_id, only_revenda, only_em_estoque, only_ecommerce_eligible
 FROM active_source
 WHERE tenant_id = :tenant_id;
 ```

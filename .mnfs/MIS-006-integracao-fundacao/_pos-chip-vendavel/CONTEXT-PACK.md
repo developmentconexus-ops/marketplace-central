@@ -20,7 +20,7 @@ O operador abre `/catalogo` e vê 10.538 produtos, a maioria morta para venda. A
 |---|---|---|---|
 | `only_revenda` | `TGFPRO.USOPROD = 'R'` | **true** | 10.538 → 10.007 |
 | `only_em_estoque` | estoque disponível > 0 (CODEMP IN (1,2): 1=CD, 2=loja física) | **true** | → **3.822** |
-| `only_ecommerce` | `TGFPRO.AD_ECOMMERCE = 'S'` | **false** | flag rala hoje (606); cliente vai passar a manter |
+| `only_ecommerce_eligible` | `NVL(AD_ECOMMERCE,'X') <> 'N'` (live) / `IS NULL OR <> 'N'` (espelho) | **false** | corta só o que o ERP marcou `'N'`; sortimento cai 2.923 → ~1.329 |
 
 Fatos que NÃO são graus de liberdade do chip:
 - "Tipo de estoque" (`TIPCONTEST`) é pista falsa — tipo de CONTROLE, não vendabilidade. Fora.
