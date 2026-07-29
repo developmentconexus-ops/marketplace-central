@@ -180,6 +180,12 @@ func (r *Reader) FindProductsForLinking(ctx context.Context, input readports.Fin
 	if err != nil {
 		return nil, err
 	}
+	// Unlike the source pin above, an absent policy fails OPEN, and deliberately: every
+	// caller that reaches here without pinning is a by-ID lookup, where cutting a product
+	// the caller named would answer a different question than the one asked. Only the
+	// matcher, which is a listing path, pins. VALIDITY CONDITION: a future LISTING path
+	// reaching this reader MUST pin the policy — fail-open stops being right the moment
+	// an unpinned caller is asking "which products", not "this product".
 	policy, _ := SellableAssortmentFromContext(ctx)
 	rows, collisions := index.candidateRows(input), index.collisions
 	results := make([]readdomain.ProductCandidate, 0)
@@ -245,7 +251,7 @@ func matchesSellableAssortment(row erpdomain.MirrorProduct, policy SellableAssor
 		}
 	}
 	if policy.OnlyEcommerceEligible && row.ADEcommerce != nil {
-		if value := strings.TrimSpace(*row.ADEcommerce); value != "" && value == "N" {
+		if value := strings.TrimSpace(*row.ADEcommerce); value == "N" {
 			return false, nil
 		}
 	}

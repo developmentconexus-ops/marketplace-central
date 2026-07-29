@@ -381,3 +381,65 @@ nothing normalizes case on this path. Sankhya returns `R`; the spreadsheet is op
 A lowercase `n` passes the e-commerce rule and a lowercase `r` is cut from resale — wrong in both
 directions, worse in the permissive one. Real ambiguity, so it went to the hub instead of being
 settled locally.
+
+## S5B-WRITE-CHAIN — gpt-5.6-luna / high — OS-process
+
+| field | value |
+|---|---|
+| dispatched | D-122, base `5bcf0bef` |
+| prompt | `scratchpad/prompt-s5b-write-chain.md` |
+| log | `scratchpad/agent__s5b-write-chain.log` |
+| last message | `scratchpad/agent__s5b-write-chain.last.md` |
+| tail marker | returned verbatim — `S5B-BRIEF-RECEIVED … TAIL-MARKER-4d90c2` |
+| commit | `fe0f14a1` |
+| review | `evidence/S5B-orchestrator.txt` |
+| lanes | `evidence/S5B-green.txt` (worker) + orchestrator correction (same file) |
+| verdict | ACCEPTED |
+
+### The lane the worker ran proved nothing, and the brief is why
+
+The commands block I wrote for this slice omitted the `. testdb-env.ps1` dot-source line that
+S1 through S5 all carried. Without it `MPC_TEST_DATABASE_URL` is unset, every DB test takes
+`SkipWithoutTarget`, and the package still prints `ok` with exit 0 — profile §11 signature 3,
+by the book. The worker's integration run was RUN 27 / PASS 1 / **SKIP 26**, and the whole-chain
+round-trip test, the entire reason the slice exists, was one of the skips.
+
+The worker reported the skip counts explicitly and wrote *"this is not a claim of live
+integration GREEN"* in its own evidence file. That sentence is the only reason the vacuum was
+visible instead of shipped. The instrument the profile mandates — count SKIP per line, never read
+the tail — worked, and it worked in the worker's hands, against the worker's own result.
+
+Re-measured at the orchestrator seat with the env sourced: **RUN 29 / PASS 29 / SKIP 0 / FAIL 0**
+(lane A) and **20 / 20 / 0 / 0** (lane B), after applying the granted migration 0085 to the slice
+database — the first run failed 13 tests with `column "usoprod" does not exist (SQLSTATE 42703)`,
+because a migration in the tree is not a migration in the database. `applied 1 migration(s)`,
+exactly one, which also proves the slice DB carried no other drift.
+
+### Must-fail, four times, because a skipped test has never failed either
+
+Each protection severed separately and reverted: hop 1 (`CopyFrom` value), hop 2 (`Scan`
+assignment), the xlsx fold, the Sankhya fold. Four value-naming REDs, quoted in
+`evidence/S5B-green.txt`. The two hops fail identically — `want "R", got <nil>` — which is the
+shape of a test that asserts ARRIVAL rather than departure, exactly as the D-122 ruling demanded.
+
+### A pointer where a value should have been
+
+The worker's own RED read `canonical USOPROD = 0x34f73c6925b0, want R`: correct assertion, `%v`
+on a `*string`. The test discriminated the value and then declined to say what it saw. Fixed with
+a `show()` helper and **re-injected** to confirm the new message names it (`= "r", want R`) —
+repairing the message without re-proving the RED would have been the same class of error.
+
+### Glue applied at this seat, all pre-approved
+
+F-3 (the fail-open comment carrying why + validity condition), F-4 (dead conjunct), and the
+message helper. Declared in §4 of the review rather than folded silently into the worker's diff.
+
+### Findings for the hub
+
+- `query_repository.go:196` still drops both columns from its 12-column SELECT over
+  `erp_import_products`. No production caller found. Reported, untouched — a third place the same
+  fact can be lost.
+- Slice briefs that touch a DB must carry the dot-source line, and must require SKIP to be
+  reported explicitly.
+- Nothing migrates the slice database automatically; `OpenPool` validates and connects, it does
+  not migrate. After a slice adds a migration, the orchestrator migrates before reviewing.

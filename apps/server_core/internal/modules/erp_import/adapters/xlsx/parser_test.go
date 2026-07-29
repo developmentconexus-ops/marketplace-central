@@ -7,6 +7,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"io"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -124,17 +125,26 @@ func TestParserCanonicalizesSellableColumnsAndPreservesUnknownValues(t *testing.
 		t.Fatalf("Parse() error = %v", err)
 	}
 	if rows[0].Usoprod == nil || *rows[0].Usoprod != "R" {
-		t.Fatalf("canonical USOPROD = %v, want R", rows[0].Usoprod)
+		t.Fatalf("canonical USOPROD = %s, want R", show(rows[0].Usoprod))
 	}
 	if rows[0].ADEcommerce == nil || *rows[0].ADEcommerce != "N" {
-		t.Fatalf("canonical AD_ECOMMERCE = %v, want N", rows[0].ADEcommerce)
+		t.Fatalf("canonical AD_ECOMMERCE = %s, want N", show(rows[0].ADEcommerce))
 	}
 	if rows[1].Usoprod == nil || *rows[1].Usoprod != "SIM" {
-		t.Fatalf("out-of-domain USOPROD = %v, want SIM", rows[1].Usoprod)
+		t.Fatalf("out-of-domain USOPROD = %s, want SIM", show(rows[1].Usoprod))
 	}
 	if rows[1].ADEcommerce != nil {
-		t.Fatalf("blank AD_ECOMMERCE = %v, want <nil>", rows[1].ADEcommerce)
+		t.Fatalf("blank AD_ECOMMERCE = %s, want <nil>", show(rows[1].ADEcommerce))
 	}
+}
+
+// show renders an optional cell as its VALUE, so a failing assertion names what was
+// read instead of where it was stored.
+func show(value *string) string {
+	if value == nil {
+		return "<nil>"
+	}
+	return strconv.Quote(*value)
 }
 
 func TestParserCapturesGrupoColumns(t *testing.T) {

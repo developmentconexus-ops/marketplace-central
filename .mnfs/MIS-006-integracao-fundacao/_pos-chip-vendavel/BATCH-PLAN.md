@@ -504,6 +504,24 @@ go test ./internal/modules/internal_read/adapters/oracle -run '^TestCatalogPageS
   - Disabling stock returns `a,c,d`; `c` retains numeric stock `0`.
   - Nil `usoprod` passes.
   - `include_all` returns all four.
+  - **EAN collisions are counted AFTER the cut (D-122, VC-4 amended @54ff204 on main).** A twin that
+    the rule excludes must not leave the survivor flagged ambiguous. Today the count comes from
+    `MirrorEANCollisionCounts` (`mirror_query_repository.go:166`), a SQL aggregate over the whole
+    mirror that knows nothing about the policy, and it is read at
+    `erp_import/adapters/internalread/reader.go:184` → `:203` → `:568`, all BEFORE the assortment
+    filter runs. **The two ambiguity mechanisms inside that one function must agree**: the other
+    one (`:219`, `len(results) > 1`) is already computed after the cut, so the function currently
+    contradicts itself.
+    Why it is contract and not a nit: under D-121 an ambiguous candidate goes to manual
+    confirmation instead of auto-approving, so cutting junk makes auto-linking WORSE for the
+    survivor — the inverse of this chip's purpose.
+    Must-fail in BOTH directions: rule active → the survivor auto-approves under D-121; rule
+    disabled → it returns to ambiguous.
+    Write-set check done at registration time, so it is not re-argued at dispatch: this criterion
+    needs `mirror_query_repository.go` (the `MirrorEANCollisionCounts` aggregate) and
+    `internalread/reader.go` (the three read sites), and **both are already in S7's write-set
+    above**. No extension is required — unlike the three D-122 rulings before it, this one landed
+    on a card that could already carry it.
   - **The mirror predicate does NOT fold case (D-122, case ruling).** S5B canonicalizes on write,
     so mirror storage is already `TrimSpace + ToUpper`; a fold here would be the second guard on a
     value that is canonical by construction, and it would hide a regression in S5B rather than

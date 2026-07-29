@@ -181,3 +181,41 @@ It does NOT deliver the chip's promise for the xlsx source, and that is not the
 slice's fault -- the gap is outside every write-set in the plan. The chip cannot
 close on the strength of this green alone: either S5B lands, or EVIDENCE.md and
 the /integracoes copy say plainly which source the rule governs.
+
+================================================================================
+7. DISPOSITIONS (hub, D-122) — filed after the review above was written
+================================================================================
+F-1  RATIFIED, and it rose to the CONTRACT. VC-4 amended @54ff204 on main: EAN
+     collisions count AFTER the cut; an excluded twin must not leave the survivor
+     flagged ambiguous; and the two ambiguity mechanisms inside that one function
+     must AGREE -- the internal contradiction noted above (one pre-cut at :184,
+     one post-cut at :219) is cited in the criterion itself.
+     Must-fail in both directions: rule active -> the survivor auto-approves under
+     D-121; rule disabled -> it returns to ambiguous.
+     Registered as a named criterion on S7's card. Write-set checked at
+     registration: mirror_query_repository.go and internalread/reader.go are
+     ALREADY in S7's write-set, so unlike the three D-122 rulings before it, this
+     one needed no extension.
+
+F-2  ACCEPTED as a report. No code in this chip. The collapse is reachable today
+     only through the matcher path, where nil,nil is the right translation. An
+     error taxonomy separating the two facts is a problem measured on no real
+     path, and the measured-problem rule says do not build it.
+     VALIDITY CONDITION, recorded here because whoever trips it inherits the debt:
+     the day a caller pins the assortment policy on a lookup for a NAMED product
+     id, the two facts MUST become distinguishable. "No such product" and "the
+     product exists and the rule excluded it" are different answers to that
+     caller, and only one of them is something the operator can act on.
+
+F-3  APPROVED as one comment, zero code. The comment carries BOTH halves:
+     - the why: this reader serves by-ID paths where filtering would silently drop
+       a product the caller named (the CatalogProductFactsByIDs principle), and
+       the matcher pins explicitly;
+     - the validity condition: any future LISTING path reaching here MUST pin.
+       Fail-open is deliberate only while the unpinned callers are by-ID.
+     Same technique as the helper-asymmetry nuance: the condition said out loud,
+     at the site, because the condition is the part that rots.
+
+F-4  Rides along in S5B's commit -- that function is already in the write-set for
+     F-3 and the case comment, so the dead conjunct comes out free. It would not
+     have justified a commit of its own.
