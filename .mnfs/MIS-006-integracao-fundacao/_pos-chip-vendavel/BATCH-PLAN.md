@@ -291,6 +291,71 @@ go test ./internal/modules/erp_import/adapters/internalread ./internal/modules/i
 - `complexity`: `standard`
 - `open_questions`: `[]`
 
+### S5B — The xlsx write chain, and canonical case at the write seam
+
+Added D-122 by hub ruling after S5's P4. Two rulings live here.
+
+**Why it exists.** S5 landed green and the rule was still inert for `source=xlsx`. Measured chain:
+`xlsx/parser.go:116` reads `USOPROD` off the sheet → `import_repository.go:67` copies 14 columns
+into `erp_import_products` and **neither of the two is among them**, because migration 0084 added
+them to `products_mirror` ONLY → `mirror_repository.go:30` syncs 12 columns. So mirror `usoprod`
+is NULL forever for xlsx, nil PASSES the ratified `IS NULL OR = 'R'`, and the rule cuts nothing.
+Sankhya is unaffected: `mirror/writer.go:150` writes straight to `products_mirror`.
+
+**Authority is VC-6, not preference.** The contract already says the xlsx path WITH the columns
+populates them — populates them in the MIRROR, or the sentence asserts nothing. The round-trip was
+always contracted; the plan simply never gave it an owner. Leaving it out of the chip would
+violate a ratified contract, so "accept out-of-chip" was never an option.
+
+**The lesson, registered because it is the reusable part.** S3 was marked `completed` having
+delivered a value that could not reach a consumer — a parser with no destination column is half a
+chain. **A write-slice is verified by asking "does the value ARRIVE at the reader?", never "does
+the value LEAVE the source?"** The same question kills the S5 blocker, this one, and the next.
+
+- `id`: `S5B-WRITE-CHAIN`
+- `goal`: Close the sheet→mirror round-trip for both sellable columns, and canonicalize their case
+  once at the write seam so no reader has to fold.
+- `migration_grant`: **0085 GRANTED** — the chip's block becomes 0083–0085. Adds `usoprod` and
+  `ad_ecommerce` to `erp_import_products`, nullable, no default (ADR-17: absent ≠ a value).
+- `write_set`:
+  - `apps/server_core/migrations/0085_erp_import_products_sellable_fields.sql`
+  - `apps/server_core/internal/modules/erp_import/adapters/postgres/import_repository.go` — the
+    `CopyFrom` column list at `:67` and its row builder.
+  - `apps/server_core/internal/modules/erp_import/adapters/postgres/mirror_repository.go` — the
+    sync `SELECT` at `:30` and the mirror upsert it feeds.
+  - `apps/server_core/internal/modules/erp_import/adapters/xlsx/parser.go` — normalization at the
+    point `NormalizedRow` is born.
+  - `apps/server_core/internal/modules/internal_read/adapters/mirror/writer.go` — the SAME
+    normalization on the Sankhya write at `:150`.
+  - `apps/server_core/internal/modules/erp_import/adapters/internalread/reader.go` — comment ONLY
+    (see the case criterion); no behaviour change.
+  - the corresponding `_test.go` files, plus
+    `internal_read/adapters/routing/matcher_integration_test.go` (drops its raw seeding `UPDATE`).
+- `failing_test_first`: a round-trip test that fails today because the value never arrives.
+- `done_criteria`:
+  - **The full round trip is proven by one must-fail:** a sheet carrying `USOPROD` → cell → row →
+    `erp_import_products` → sync → `products_mirror` → the value READ BACK equals what the sheet
+    said. Assert the VALUE. A test that stops at `erp_import_products` re-creates the defect one
+    hop later.
+  - **S5's raw seeding `UPDATE` is DELETED** from `matcher_integration_test.go`. It was the
+    symptom: the only way to reach the reader while the chain was broken. Once the chain exists,
+    seeding the mirror by hand is a fixture that lies — it would keep passing if S5B regressed.
+  - **The rule is CASE-INSENSITIVE, implemented by canonicalizing on WRITE.** `TrimSpace + ToUpper`
+    where `NormalizedRow` is born, and the same at the Sankhya writer, for BOTH columns. One slice
+    owns write-canonicalization for both sources.
+    - Rationale, so nobody re-litigates it: folding at each comparison is guard-at-the-caller, the
+      pattern that has already failed twice in this chip. Canonicalizing once at the write seam is
+      by-construction. And Oracle is not immune by nature — `AD_ECOMMERCE` is `VARCHAR2` with no
+      `CHECK` (measured in DR-3); "everything is uppercase today" is state, not a guarantee.
+  - **Canonicalizing case does NOT collapse the tri-state.** An out-of-domain value (`"SIM"`) still
+    flows through as honest-unknown. Upper-casing is about `r` vs `R`, never about what the value
+    means. Assert this explicitly — it is the criterion most likely to be quietly widened.
+  - `matchesSellableAssortment` keeps comparing against canonical values and does NOT fold; one
+    comment line says why (the write canonicalizes).
+- `validation_kind`: `integration`
+- `complexity`: `standard`
+- `open_questions`: `[]`
+
 ### S6 — Live Oracle catalog predicate and live count
 
 - `id`: `S6-ORACLE-CATALOG`
@@ -346,6 +411,14 @@ go test ./internal/modules/erp_import/adapters/internalread ./internal/modules/i
     (only an explicit `'N'` is an assertion; strict `= 'S'` would cut 2.923 → 442).
   - `include_all` omits only those rule predicates; active/cursor/search constraints remain.
   - Count query uses the same stock CTE and predicate builder and returns exact N/M.
+  - **The live predicate FOLDS CASE in SQL (D-122, case ruling).** Both comparisons wrap the column:
+    `UPPER(TRIM(p.USOPROD)) = 'R'` and `NVL(UPPER(TRIM(p.AD_ECOMMERCE)), 'X') <> 'N'`. This is the
+    ONE place a fold is correct, and the reason is that it is the one place we do not own the
+    write: S5B canonicalizes what WE store, and nothing canonicalizes what Oracle holds
+    (`AD_ECOMMERCE` is `VARCHAR2` with no `CHECK` — measured in DR-3, so uppercase today is state,
+    not a guarantee). Without the fold the live side would cut exactly what the mirror accepts, and
+    DR-1 forbids the rule depending on the active source. Index cost is irrelevant: these queries
+    scan ~10k rows either way.
   - **The outlet location is in the cut, in BOTH readers (D-122, hub ruling 2).** The page's stock
     CTE (`catalog_page.go:131-137`) goes from `est.CODLOCAL = 10101` to `IN (10101, 10102)`, and
     `DefaultSellableStockPolicy` moves with it. Comment both codes by NAME — 10101 = `1_REVENDA`,
@@ -431,6 +504,12 @@ go test ./internal/modules/internal_read/adapters/oracle -run '^TestCatalogPageS
   - Disabling stock returns `a,c,d`; `c` retains numeric stock `0`.
   - Nil `usoprod` passes.
   - `include_all` returns all four.
+  - **The mirror predicate does NOT fold case (D-122, case ruling).** S5B canonicalizes on write,
+    so mirror storage is already `TrimSpace + ToUpper`; a fold here would be the second guard on a
+    value that is canonical by construction, and it would hide a regression in S5B rather than
+    surface it. Rows written BEFORE S5B resolve themselves on the next import/sync (the live
+    Sankhya sync is a hub step post-merge). If this slice's P4 MEASURES a surviving dirty row,
+    cleanup gets decided then — on the measurement, not in advance.
   - Search and pagination apply the rule at SQL level before `LIMIT`, avoiding short or skipped pages.
   - Counts are tenant- and source-predicated and use no cache.
   - **Binding condition 1 of decision (b), PRODUCER side (D-122 hub ruling).** Prove by test that
