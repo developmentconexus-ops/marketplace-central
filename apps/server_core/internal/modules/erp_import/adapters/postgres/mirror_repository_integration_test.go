@@ -13,6 +13,63 @@ import (
 	testpostgres "marketplace-central/apps/server_core/internal/testsupport/postgres"
 )
 
+func TestMergeSnapshotKeepsAbsentStockNullAndKnownZeroZero(t *testing.T) {
+	ctx := context.Background()
+	repo, tenant := integrationRepo(t)
+	pool, _ := testpostgres.OpenPool(t, tenant)
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM products_mirror_stock_locations WHERE tenant_id=$1`, tenant)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM products_mirror WHERE tenant_id=$1`, tenant)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM erp_import_protocols WHERE tenant_id=$1`, tenant)
+	})
+
+	legacy := mirrorSnapshot("60000000-0000-0000-0000-000000000001", "mirror-legacy", "#600-E", time.Now().UTC(), []domain.NormalizedRow{{
+		Codprod: "LEGACY", Descrprod: "Legacy", StockPhysical: "1",
+	}})
+	if err := repo.PersistSnapshotAtomically(ctx, tenant, legacy); err != nil {
+		t.Fatal(err)
+	}
+	var legacyUsoprod, legacyADEcommerce *string
+	if err := pool.QueryRow(ctx, `SELECT usoprod,ad_ecommerce FROM products_mirror WHERE tenant_id=$1 AND codigo_produto='LEGACY'`, tenant).Scan(&legacyUsoprod, &legacyADEcommerce); err != nil {
+		t.Fatal(err)
+	}
+	if legacyUsoprod != nil || legacyADEcommerce != nil {
+		t.Fatalf("legacy sellable fields = usoprod=%#v ad_ecommerce=%#v, want NULL/NULL", legacyUsoprod, legacyADEcommerce)
+	}
+
+	knownZero := mirrorSnapshot("60000000-0000-0000-0000-000000000002", "mirror-known-zero", "#601-E", time.Now().UTC().Add(time.Second), []domain.NormalizedRow{
+		{Codprod: "ZERO", Descrprod: "Known zero", StockPhysical: "0", Usoprod: stringPtr("R"), ADEcommerce: stringPtr("S")},
+		{Codprod: "UNKNOWN", Descrprod: "Unknown stock", StockPhysical: ""},
+	})
+	if err := repo.PersistSnapshotAtomically(ctx, tenant, knownZero); err != nil {
+		t.Fatal(err)
+	}
+
+	var zeroIsNull bool
+	var zeroStock, zeroUsoprod, zeroADEcommerce *string
+	if err := pool.QueryRow(ctx, `SELECT estoque_total IS NULL,estoque_total::text,usoprod,ad_ecommerce FROM products_mirror WHERE tenant_id=$1 AND codigo_produto='ZERO'`, tenant).Scan(&zeroIsNull, &zeroStock, &zeroUsoprod, &zeroADEcommerce); err != nil {
+		t.Fatal(err)
+	}
+	if zeroIsNull || zeroStock == nil || *zeroStock != "0" {
+		t.Fatalf("known zero stock is_null=%v stock=%#v, want false/0", zeroIsNull, zeroStock)
+	}
+	if zeroUsoprod == nil || *zeroUsoprod != "R" || zeroADEcommerce == nil || *zeroADEcommerce != "S" {
+		t.Fatalf("known zero sellable fields = usoprod=%#v ad_ecommerce=%#v, want R/S", zeroUsoprod, zeroADEcommerce)
+	}
+
+	var unknownIsNull bool
+	var unknownStock, unknownUsoprod, unknownADEcommerce *string
+	if err := pool.QueryRow(ctx, `SELECT estoque_total IS NULL,estoque_total::text,usoprod,ad_ecommerce FROM products_mirror WHERE tenant_id=$1 AND codigo_produto='UNKNOWN'`, tenant).Scan(&unknownIsNull, &unknownStock, &unknownUsoprod, &unknownADEcommerce); err != nil {
+		t.Fatal(err)
+	}
+	if !unknownIsNull || unknownStock != nil {
+		t.Fatalf("absent stock is_null=%v stock=%#v, want true/NULL", unknownIsNull, unknownStock)
+	}
+	if unknownUsoprod != nil || unknownADEcommerce != nil {
+		t.Fatalf("absent sellable fields = usoprod=%#v ad_ecommerce=%#v, want NULL/NULL", unknownUsoprod, unknownADEcommerce)
+	}
+}
+
 func TestMirrorMergeKeepsAbsentIsTenantScopedAndResurrects(t *testing.T) {
 	ctx := context.Background()
 	repo, tenant := integrationRepo(t)

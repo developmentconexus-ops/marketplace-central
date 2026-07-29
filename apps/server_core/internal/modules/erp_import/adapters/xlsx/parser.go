@@ -113,6 +113,8 @@ func (p *Parser) parseWithRequired(ctx context.Context, source io.Reader, requir
 				NCM:           optionalCell(row, columns, "NCM"),
 				Grupo:         optionalCell(row, columns, "GRUPO"),
 				DescrGrupo:    optionalCell(row, columns, "DESCRGRUPO"),
+				Usoprod:       optionalCell(row, columns, "USOPROD"),
+				ADEcommerce:   optionalCell(row, columns, "AD_ECOMMERCE"),
 			}
 			// Category from sheet name (lenient path only): only when the sheet
 			// has no explicit group column, so files that DO carry group columns
@@ -191,6 +193,10 @@ func canonicalHeaderKey(raw string) string {
 		return "grupo"
 	case "descrgrupo":
 		return "descrgrupo"
+	case "usoprod":
+		return "usoprod"
+	case "ad_ecommerce":
+		return "ad_ecommerce"
 	default:
 		return ""
 	}
