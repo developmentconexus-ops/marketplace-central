@@ -1,7 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import type { ActiveSourceConfig, ActiveSourceError, ActiveSourceName, SetActiveSourceRequest, SourceKindName } from "./activeSource";
+import { createMarketplaceCentralClient } from "./index";
+import type {
+  ActiveSourceConfig,
+  ActiveSourceError,
+  ActiveSourceName,
+  CatalogAssortmentCounts,
+  SellableAssortmentConfig,
+  SetActiveSourceRequest,
+  SetSellableAssortmentRequest,
+  SourceKindName,
+} from "./activeSource";
 
 describe("active-source SDK contract", () => {
   it("constructs every exported active-source type", () => {
@@ -63,5 +73,85 @@ describe("active-source SDK contract", () => {
       // $ref were absent/wrong — the ref sits at ~char 209 after that description.
       expect(block.slice(0, 300)).toContain("ActiveSourceError");
     }
+  });
+
+  it("exposes the sellable-assortment paths, schemas, options, and exact client URLs", async () => {
+    const openapi = readFileSync(resolve(process.cwd(), "../../contracts/api/marketplace-central.openapi.yaml"), "utf8");
+    const config: SellableAssortmentConfig = {
+      only_revenda: true,
+      only_em_estoque: true,
+      only_ecommerce_eligible: false,
+    };
+    const request: SetSellableAssortmentRequest = {
+      only_revenda: false,
+      only_em_estoque: true,
+      only_ecommerce_eligible: true,
+    };
+    const counts: CatalogAssortmentCounts = { sellable_count: 2, total_count: 4 };
+    expect(config.only_revenda, "SDK symbol SellableAssortmentConfig.only_revenda was not exposed").toBe(true);
+    expect(request.only_ecommerce_eligible, "SDK symbol SetSellableAssortmentRequest.only_ecommerce_eligible was not exposed").toBe(true);
+    expect(counts.total_count, "SDK symbol CatalogAssortmentCounts.total_count was not exposed").toBe(4);
+
+    const apiPaths = openapi.slice(0, openapi.indexOf("\ncomponents:"));
+    const configPath = apiPaths.slice(apiPaths.indexOf("  /config/sellable-assortment:"));
+    const countsPath = apiPaths.slice(apiPaths.indexOf("  /catalog/products/counts:"));
+    const listPath = apiPaths.slice(apiPaths.indexOf("  /catalog/products:"), apiPaths.indexOf("  /catalog/products/{id}:"));
+    const searchPath = apiPaths.slice(apiPaths.indexOf("  /catalog/products/search:"), apiPaths.indexOf("  /catalog/products/{id}/enrichment:"));
+    const schemas = openapi.slice(openapi.indexOf("    SellableAssortmentConfig:"));
+    const configSchema = schemas.slice(schemas.indexOf("    SellableAssortmentConfig:"), schemas.indexOf("    SetSellableAssortmentRequest:"));
+    const requestSchema = schemas.slice(schemas.indexOf("    SetSellableAssortmentRequest:"), schemas.indexOf("    CatalogAssortmentCounts:"));
+    const countsSchema = schemas.slice(schemas.indexOf("    CatalogAssortmentCounts:"));
+    expect(apiPaths, "OpenAPI missing path /config/sellable-assortment").toContain("  /config/sellable-assortment:");
+    expect(configPath, "OpenAPI missing GET operationId getSellableAssortment").toContain("operationId: getSellableAssortment");
+    expect(configPath, "OpenAPI missing PUT operationId setSellableAssortment").toContain("operationId: setSellableAssortment");
+    expect(configPath, "OpenAPI missing SellableAssortmentConfig response schema").toContain("$ref: '#/components/schemas/SellableAssortmentConfig'");
+    expect(configPath, "OpenAPI missing SetSellableAssortmentRequest request schema").toContain("$ref: '#/components/schemas/SetSellableAssortmentRequest'");
+    expect(apiPaths, "OpenAPI missing path /catalog/products/counts").toContain("  /catalog/products/counts:");
+    expect(countsPath, "OpenAPI missing operationId getCatalogAssortmentCounts").toContain("operationId: getCatalogAssortmentCounts");
+    expect(countsPath, "OpenAPI missing CatalogAssortmentCounts response schema").toContain("$ref: '#/components/schemas/CatalogAssortmentCounts'");
+    expect(configSchema, "OpenAPI SellableAssortmentConfig has the wrong required fields").toContain("required: [only_revenda, only_em_estoque, only_ecommerce_eligible]");
+    expect(requestSchema, "OpenAPI SetSellableAssortmentRequest has the wrong required fields").toContain("required: [only_revenda, only_em_estoque, only_ecommerce_eligible]");
+    expect(countsSchema, "OpenAPI CatalogAssortmentCounts has the wrong required fields").toContain("required: [sellable_count, total_count]");
+    expect(countsSchema, "OpenAPI CatalogAssortmentCounts is missing non-negative count constraints").toMatch(/sellable_count:[\s\S]*?type: integer[\s\S]*?minimum: 0[\s\S]*?total_count:[\s\S]*?type: integer[\s\S]*?minimum: 0/);
+    expect(listPath, "OpenAPI missing include_all on GET /catalog/products").toMatch(/name: include_all[\s\S]*?in: query[\s\S]*?type: boolean[\s\S]*?default: false/);
+    expect(searchPath, "OpenAPI missing include_all on GET /catalog/products/search").toMatch(/name: include_all[\s\S]*?in: query[\s\S]*?type: boolean[\s\S]*?default: false/);
+
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init });
+        const body = String(input).endsWith("/catalog/products/counts") ? counts : config;
+        return new Response(JSON.stringify(body), { status: 200 });
+      },
+    });
+
+    expect(typeof client.getSellableAssortment, "SDK symbol getSellableAssortment was not exposed").toBe("function");
+    expect(typeof client.setSellableAssortment, "SDK symbol setSellableAssortment was not exposed").toBe("function");
+    expect(typeof client.getCatalogAssortmentCounts, "SDK symbol getCatalogAssortmentCounts was not exposed").toBe("function");
+    await client.getSellableAssortment();
+    await client.setSellableAssortment(request);
+    const receivedCounts = await client.getCatalogAssortmentCounts();
+    await client.listCatalogProductFacts({ cursor: "MTIz", limit: 25, include_all: true });
+    await client.searchCatalogProductFacts({ q: "PARAFUSO", cursor: "NDU2", limit: 50, include_all: true });
+
+    expect(String(requests[0].input), "SDK getSellableAssortment read the wrong URL").toBe(
+      "http://localhost:8080/config/sellable-assortment",
+    );
+    expect(String(requests[1].input), "SDK setSellableAssortment wrote the wrong URL").toBe(
+      "http://localhost:8080/config/sellable-assortment",
+    );
+    expect(String(requests[2].input), "SDK getCatalogAssortmentCounts read the wrong URL").toBe(
+      "http://localhost:8080/catalog/products/counts",
+    );
+    expect(String(requests[3].input), "SDK listCatalogProductFacts serialized the wrong include_all URL").toBe(
+      "http://localhost:8080/catalog/products?cursor=MTIz&limit=25&include_all=true",
+    );
+    expect(String(requests[4].input), "SDK searchCatalogProductFacts serialized the wrong include_all URL").toBe(
+      "http://localhost:8080/catalog/products/search?q=PARAFUSO&cursor=NDU2&limit=50&include_all=true",
+    );
+    expect(requests[1].init?.method, "SDK setSellableAssortment used the wrong HTTP method").toBe("PUT");
+    expect(JSON.parse(String(requests[1].init?.body)), "SDK setSellableAssortment sent the wrong request body").toEqual(request);
+    expect(receivedCounts.sellable_count, "SDK CatalogAssortmentCounts read the wrong sellable_count field").toBe(2);
   });
 });

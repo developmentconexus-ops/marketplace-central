@@ -378,6 +378,15 @@ paths:
             the default when omitted) or catalogo_cliente (client catalog import).
             An unknown value is rejected with 400; omitting it is byte-stable with
             pre-toggle clients.
+        - name: include_all
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: >-
+            When true, returns the complete catalog for this request, ignoring the
+            configured sellable-assortment filters. The configuration is unchanged.
         - name: Cache-Control
           in: header
           required: false
@@ -405,6 +414,24 @@ paths:
                 $ref: '#/components/schemas/CatalogPageErrorResponse'
         "504":
           description: Interactive deadline exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogPageErrorResponse'
+  /catalog/products/counts:
+    get:
+      summary: Count configured sellable and total catalog products
+      operationId: getCatalogAssortmentCounts
+      tags: [catalog]
+      responses:
+        "200":
+          description: Catalog assortment counts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogAssortmentCounts'
+        "503":
+          description: Catalog source unavailable
           content:
             application/json:
               schema:
@@ -472,6 +499,15 @@ paths:
             the default when omitted) or catalogo_cliente (client catalog import).
             An unknown value is rejected with 400; omitting it is byte-stable with
             pre-toggle clients.
+        - name: include_all
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: >-
+            When true, returns the complete catalog for this request, ignoring the
+            configured sellable-assortment filters. The configuration is unchanged.
         - name: Cache-Control
           in: header
           required: false
@@ -3340,6 +3376,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ActiveSourceError'
+
+  /config/sellable-assortment:
+    get:
+      summary: Get the tenant's sellable-assortment filters
+      operationId: getSellableAssortment
+      tags: [tenant-config]
+      responses:
+        "200":
+          description: Tenant sellable-assortment configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SellableAssortmentConfig'
+        "404":
+          description: Tenant configuration not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Set the tenant's sellable-assortment filters
+      operationId: setSellableAssortment
+      tags: [tenant-config]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetSellableAssortmentRequest'
+      responses:
+        "200":
+          description: Stored tenant sellable-assortment configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SellableAssortmentConfig'
+        "400":
+          description: Invalid sellable-assortment body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
 components:
   parameters:
@@ -8207,3 +8285,39 @@ components:
           enum: [unknown_erp_source, invalid_active_source, invalid_body, internal_error]
         detail:
           type: string
+
+    SellableAssortmentConfig:
+      type: object
+      description: Tenant's configured filters for the sellable catalog assortment.
+      required: [only_revenda, only_em_estoque, only_ecommerce_eligible]
+      properties:
+        only_revenda:
+          type: boolean
+        only_em_estoque:
+          type: boolean
+        only_ecommerce_eligible:
+          type: boolean
+
+    SetSellableAssortmentRequest:
+      type: object
+      description: Replacement values for the tenant's sellable-assortment filters.
+      required: [only_revenda, only_em_estoque, only_ecommerce_eligible]
+      properties:
+        only_revenda:
+          type: boolean
+        only_em_estoque:
+          type: boolean
+        only_ecommerce_eligible:
+          type: boolean
+
+    CatalogAssortmentCounts:
+      type: object
+      description: Counts for the configured sellable assortment and the full catalog.
+      required: [sellable_count, total_count]
+      properties:
+        sellable_count:
+          type: integer
+          minimum: 0
+        total_count:
+          type: integer
+          minimum: 0

@@ -1,0 +1,35 @@
+S8-CONTRACT-SDK GREEN evidence
+
+TypeScript build command:
+Set-Location 'C:\Users\leandro.theodoro\Documents\marketplace-central\.claude\worktrees\chip-vendavel\packages\sdk-runtime'
+npm run build
+
+Output (verbatim):
+> @marketplace-central/sdk-runtime@0.1.0 build
+> tsc --noEmit
+
+Build exit code: 0.
+
+Contract static checks:
+- `git diff --check` exit code: 0.
+- OpenAPI symbols, paths, schemas, and SDK symbols were reviewed at the checklist lines below.
+
+Vitest lane command required by S8:
+Set-Location 'C:\Users\leandro.theodoro\Documents\marketplace-central\.claude\worktrees\chip-vendavel\packages\sdk-runtime'
+npx --no-install vitest run
+
+Observed output is recorded verbatim in `S8-red.txt`: the sandbox denied esbuild access while
+resolving `vitest.config.ts`, before collection. Therefore the honest Vitest counts for this
+session are: files passed 0 observed, failed 0 observed, tests passed 0 observed, failed 0
+observed, skipped 0 observed. No test was collected or skipped; no skip name exists. A hub-side
+re-run outside this sandbox is REQUESTed before treating the Vitest lane as green.
+
+OpenAPI -> SDK checklist (criterion 5):
+- `SellableAssortmentConfig`: YAML `contracts/api/marketplace-central.openapi.yaml:8289`; TS `packages/sdk-runtime/src/activeSource.ts:22` and exported by `packages/sdk-runtime/src/index.ts:7`.
+- `SetSellableAssortmentRequest`: YAML `contracts/api/marketplace-central.openapi.yaml:8301`; TS `packages/sdk-runtime/src/activeSource.ts:28` and exported by `packages/sdk-runtime/src/index.ts:7`.
+- `CatalogAssortmentCounts`: YAML `contracts/api/marketplace-central.openapi.yaml:8313`; TS `packages/sdk-runtime/src/activeSource.ts:34` and exported by `packages/sdk-runtime/src/index.ts:7`.
+- `getSellableAssortment`: YAML `contracts/api/marketplace-central.openapi.yaml:3383`; TS `packages/sdk-runtime/src/index.ts:1909`.
+- `setSellableAssortment`: YAML `contracts/api/marketplace-central.openapi.yaml:3400`; TS `packages/sdk-runtime/src/index.ts:1911`.
+- `getCatalogAssortmentCounts`: YAML `contracts/api/marketplace-central.openapi.yaml:424`; TS `packages/sdk-runtime/src/index.ts:1871`.
+- `include_all` for catalog list: YAML `contracts/api/marketplace-central.openapi.yaml:381`; TS option `packages/sdk-runtime/src/index.ts:249`, forwarded at `packages/sdk-runtime/src/index.ts:1861`.
+- `include_all` for catalog search: YAML `contracts/api/marketplace-central.openapi.yaml:502`; TS option `packages/sdk-runtime/src/index.ts:264`, forwarded at `packages/sdk-runtime/src/index.ts:1869`.

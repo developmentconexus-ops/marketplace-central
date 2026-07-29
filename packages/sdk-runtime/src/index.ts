@@ -1,4 +1,10 @@
-import type { ActiveSourceConfig, SetActiveSourceRequest } from "./activeSource";
+import type {
+  ActiveSourceConfig,
+  CatalogAssortmentCounts,
+  SellableAssortmentConfig,
+  SetActiveSourceRequest,
+  SetSellableAssortmentRequest,
+} from "./activeSource";
 import type { ErpImportChain, ErpImportCreated, ErpImportDetail, ErpImportList, ErpImportSourceInput } from "./erpImport";
 
 export * from "./erpImport";
@@ -240,6 +246,7 @@ export interface CatalogPageOptions {
   cursor?: string;
   limit?: number;
   erp_source?: ErpImportSourceInput;
+  include_all?: boolean;
 }
 
 export interface CatalogProductFactsByIdsOptions {
@@ -254,6 +261,7 @@ export interface CatalogSearchPageOptions {
   cursor?: string;
   limit?: number;
   erp_source?: ErpImportSourceInput;
+  include_all?: boolean;
 }
 
 export type ListingStatus = "active" | "paused" | "closed" | "unknown" | "under_review" | "inactive" | "payment_required" | "not_yet_active";
@@ -1717,7 +1725,7 @@ export function createMarketplaceCentralClient(options: {
     return data as T;
   }
 
-  function catalogQuery(params: Record<string, string | number | undefined>): string {
+  function catalogQuery(params: Record<string, string | number | boolean | undefined>): string {
     const query = new URLSearchParams();
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined) {
@@ -1850,7 +1858,7 @@ export function createMarketplaceCentralClient(options: {
   return {
     listCatalogProductFacts: (options: CatalogPageOptions = {}) =>
       getJson<CatalogProductFactPage>(
-        `/catalog/products${catalogQuery({ cursor: options.cursor, limit: options.limit, erp_source: options.erp_source })}`,
+        `/catalog/products${catalogQuery({ cursor: options.cursor, limit: options.limit, erp_source: options.erp_source, include_all: options.include_all })}`,
       ),
     catalogProductFactsByIds: (options: CatalogProductFactsByIdsOptions) =>
       getJson<CatalogProductFactPage>(
@@ -1858,8 +1866,10 @@ export function createMarketplaceCentralClient(options: {
       ),
     searchCatalogProductFacts: (options: CatalogSearchPageOptions) =>
       getJson<CatalogProductFactPage>(
-        `/catalog/products/search${catalogQuery({ q: options.q, cursor: options.cursor, limit: options.limit, erp_source: options.erp_source })}`,
+        `/catalog/products/search${catalogQuery({ q: options.q, cursor: options.cursor, limit: options.limit, erp_source: options.erp_source, include_all: options.include_all })}`,
       ),
+    getCatalogAssortmentCounts: () =>
+      getJson<CatalogAssortmentCounts>("/catalog/products/counts"),
     listListings: (options: ListingListOptions) =>
       getJson<ListingPage>(`/listings${listingQuery(options)}`),
     listListingsByProduct: (options: ListingListOptions) =>
@@ -1896,6 +1906,10 @@ export function createMarketplaceCentralClient(options: {
     getActiveSource: () => getJson<ActiveSourceConfig>("/config/active-source"),
     setActiveSource: (req: SetActiveSourceRequest) =>
       putJson<ActiveSourceConfig>("/config/active-source", req),
+    getSellableAssortment: () =>
+      getJson<SellableAssortmentConfig>("/config/sellable-assortment"),
+    setSellableAssortment: (req: SetSellableAssortmentRequest) =>
+      putJson<SellableAssortmentConfig>("/config/sellable-assortment", req),
     listErpImports: () => getJson<ErpImportList>("/erp/imports"),
     getErpImport: (id: string) => getJson<ErpImportDetail>(`/erp/imports/${encodeURIComponent(id)}`),
     getErpImportChain: (id: string) => getJson<ErpImportChain>(`/erp/imports/${encodeURIComponent(id)}/chain`),
