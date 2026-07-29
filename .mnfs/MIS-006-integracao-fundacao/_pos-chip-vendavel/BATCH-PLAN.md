@@ -240,6 +240,20 @@ go test ./internal/modules/internal_read/adapters/mirror -run '^TestPgWriterPers
   - `apps/server_core/internal/modules/internal_read/adapters/routing/matcher_test.go`
   - `apps/server_core/internal/modules/internal_read/adapters/routing/matcher_integration_test.go`
 - `failing_test_first`: `TestMirrorMatcher_ActiveRevendaRuleControlsCandidateBirth` in `apps/server_core/internal/modules/internal_read/adapters/routing/matcher_integration_test.go`
+- `blocker` (D-122, REQUEST open with the hub): the mirror READ path never selected the two
+  columns. `mirror_query_repository.go:13` defines `mirrorProductColumns` without `usoprod` /
+  `ad_ecommerce`, and `scanMirrorProduct:19-44` does not read them — 0 occurrences in the file —
+  even though the WRITE path populates both (S3, S4) and `domain.MirrorProduct` carries them (S1).
+  Every mirror row therefore arrives `Usoprod=nil`, and the ratified mirror clause is
+  `IS NULL OR = 'R'`, where nil PASSES. Implementing the slice without that file would ship a rule
+  that compiles, has a green test, and cuts nothing: honest-unknown against a genuine gap (a
+  spreadsheet without the column) is byte-identical to honest-unknown against a gap we created by
+  not doing the SELECT. Requested extension is additive and bounded to two edits — the constant
+  gains `,m.usoprod,m.ad_ecommerce`, the scanner gains the two `sql.NullString` through the
+  existing `nullStringPointer`. No filtering there; mirror SQL filtering stays S7's. Blast radius
+  checked: all four read sites (`MirrorRows:54`, `MirrorProductByCode:79`, `MirrorProductsByCodes:100`,
+  `MirrorCatalogPage:131`) interpolate the SAME constant and go through the SAME scanner, so the
+  column list and the `Scan` order move together by construction.
 - `done_criteria`:
   - `MirrorMatcher` pins the fetched rule alongside the active source before calling the mirror reader.
   - Filtering happens in `FindProductsForLinking` after loading the cached index, not while building the TTL cache; a database toggle takes effect without waiting for cache expiry.
@@ -272,6 +286,19 @@ go test ./internal/modules/erp_import/adapters/internalread ./internal/modules/i
   - `apps/server_core/internal/modules/internal_read/ports/catalog_page.go`
   - `apps/server_core/internal/modules/internal_read/adapters/oracle/catalog_page.go`
   - `apps/server_core/internal/modules/internal_read/adapters/oracle/catalog_page_test.go`
+  - `apps/server_core/internal/modules/internal_read/adapters/oracle/reader.go` — **added D-122 by hub
+    ruling.** Decision (b) was ratified AFTER this card's write-set froze, so it created work with
+    no owner. `reader.go:156-158` raises `QualityMissingStock` from the same LEFT JOIN NULL that
+    `catalog_page.go:233-235` does. Shipping only the second makes `/catalogo` render `0` while
+    `EstoqueTab` renders `—` for the same product of the same ERP — the two-readers divergence
+    that decision (b) exists to kill (:997-999). A slice may not ship half a decision whose other
+    half creates the defect the decision names. Binding condition 4 (QA sees both screens) already
+    presupposed this file; now the write-set carries what the condition presupposes.
+  - `apps/server_core/internal/modules/internal_read/adapters/oracle/reader_test.go`
+  - ONE test file in the `profitability` package (new, or a table extension of an existing one) —
+    **added D-122 by hub ruling**, additive and TEST-ONLY. `profitability` PRODUCTION files stay
+    out of the write-set, which is what makes binding condition 3 (do not redesign the gate)
+    verifiable from the write-set itself rather than by promise.
 - `failing_test_first`: `TestCatalogPageSellableAssortmentDefaultsAndScreenEscape` in `apps/server_core/internal/modules/internal_read/adapters/oracle/catalog_page_test.go`
 - `done_criteria`:
   - List and search use one shared predicate builder.
@@ -289,6 +316,25 @@ go test ./internal/modules/erp_import/adapters/internalread ./internal/modules/i
   - `include_all` omits only those rule predicates; active/cursor/search constraints remain.
   - Count query uses the same stock CTE and predicate builder and returns exact N/M.
   - Pagination caller tests still prove a gapless limit+1 chain after filtering.
+  - **The emitted fact follows the predicate (decision (b), D-122).** Both Oracle sites stop
+    raising `QualityMissingStock` for a NULL that the pinned query PROVES is zero: after the pin
+    the query read all of TGFEST, so a LEFT JOIN NULL is known-zero, and the flag would be lying
+    about itself. `catalog_page.go:233-235` and `reader.go:156-158` emit quantity `0` with no
+    flag. `missing_stock` is NOT deleted — it stays reachable on the genuine-unknown path, which
+    is the producer side and belongs to S7 (see below).
+  - **Binding condition 2 — the must-fail lives in the `profitability` package** and proves BOTH
+    sides of the boundary, because the outcome decision (b) names is the GATE's behaviour, and
+    observable behaviour is read on the path that PRODUCES it (`service.go:456`). Proving only at
+    the fact level would leave the fact→gate link resting on code reading, not on a test:
+    - fact with quantity `0` and quality `Complete` → the service COMPUTES (today it blocks);
+    - fact with `missing_stock` → the service still BLOCKS. This is condition 1's reachability
+      seen from the CONSUMER, obtained free in the same test.
+    Assert the VALUES (`0`, `Complete`) and the gate's outcome, never presence. The must-fail
+    re-injects the old behaviour (NULL + `missing_stock` for the 10108-only product) and must die
+    NAMING the value — a mutation that kills by panicking has not proved the test discriminates
+    the value (S4 rule).
+  - Sweep the surrounding copy (condition 4): any screen string saying "sem dado" / "incompleto"
+    for this case is now false and goes with it.
 - `validation_kind`: `unit`
 - `commands`:
 
@@ -327,6 +373,14 @@ go test ./internal/modules/internal_read/adapters/oracle -run '^TestCatalogPageS
   - `include_all` returns all four.
   - Search and pagination apply the rule at SQL level before `LIMIT`, avoiding short or skipped pages.
   - Counts are tenant- and source-predicated and use no cache.
+  - **Binding condition 1 of decision (b), PRODUCER side (D-122 hub ruling).** Prove by test that
+    `missing_stock` stays reachable on the path with a genuine unknown — an upload whose
+    spreadsheet lacks the column (A-8) — at `erp_import/adapters/internalread/reader.go:211-214`.
+    If no path raises it, report that instead: it then becomes dead code, the next reviewer
+    deletes it with good reason, and the signal is lost for good. This site sits in S5's write-set
+    and was NOT pulled into S6, which would have manufactured the collision the matrix exists to
+    prevent. S6 proves reachability from the CONSUMER side; this proves it from the PRODUCER
+    side; neither half closes condition 1 alone.
 - `validation_kind`: `integration`
 - `commands`:
 
