@@ -364,6 +364,88 @@ func TestGenerateLinkCandidatesKeepsEveryDeclaredAnchorVisible(t *testing.T) {
 	}
 }
 
+// F-1, live drive 2026-07-28 on MLB4735378521: buildCollisionCandidates loops
+// once per anchor and uniqueProducts only dedupes WITHIN one, so the product
+// both anchors matched reached the fila twice for the same anúncio — with two
+// different confidences and two contradictory GTIN verdicts side by side. The
+// queue showed 9 rows for 7 distinct pairs. Both directions are exercised
+// because keeping "the first anchor's row" passes one and fails the other.
+func TestCollisionCandidatesEmitOneRowPerProductAcrossBothAnchors(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 7, 28, 9, 0, 0, 0, time.UTC)
+	shared := internalreaddomain.ProductCandidate{InternalProductID: canonicalIDPtr(22467), Name: "Produto compartilhado"}
+	other := internalreaddomain.ProductCandidate{InternalProductID: canonicalIDPtr(44975), Name: "Produto vizinho"}
+
+	for name, tc := range map[string]struct {
+		skuMatches      []internalreaddomain.ProductCandidate
+		eanMatches      []internalreaddomain.ProductCandidate
+		wantSharedInput productlinksdomain.LinkCandidateMatchInput
+	}{
+		"seller_sku resolves, ean collides": {
+			skuMatches:      []internalreaddomain.ProductCandidate{shared},
+			eanMatches:      []internalreaddomain.ProductCandidate{other, shared},
+			wantSharedInput: productlinksdomain.LinkCandidateMatchInputSellerSKU,
+		},
+		"ean resolves, seller_sku collides": {
+			skuMatches:      []internalreaddomain.ProductCandidate{other, shared},
+			eanMatches:      []internalreaddomain.ProductCandidate{shared},
+			wantSharedInput: productlinksdomain.LinkCandidateMatchInputEAN,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			snapshot := productlinksdomain.ListingSnapshot{
+				InstallationID: "inst-f1", ProviderCode: "mercado_livre", ProviderItemID: "MLB4735378521",
+				SellerSKU: "SKU-F1", EAN: "EAN-F1", Title: "Anúncio F1", FetchedAt: now,
+			}
+			svc := NewGenerationService(GenerationServiceConfig{
+				Snapshots: &stubSnapshotReader{snapshots: []productlinksdomain.ListingSnapshot{snapshot}},
+				Matcher: &stubProductMatcher{results: map[string][]internalreaddomain.ProductCandidate{
+					"sku:SKU-F1": tc.skuMatches,
+					"ean:EAN-F1": tc.eanMatches,
+				}},
+				Store:           &stubCandidateStore{},
+				IdentityAnchors: mercadoLivreIdentityAnchorReader(),
+				Now:             func() time.Time { return now },
+			})
+
+			result, err := svc.GenerateLinkCandidates(context.Background(), GenerateLinkCandidatesInput{InstallationID: snapshot.InstallationID})
+			if err != nil {
+				t.Fatalf("GenerateLinkCandidates() error = %v", err)
+			}
+
+			byProduct := map[int]productlinksdomain.LinkCandidate{}
+			for _, candidate := range result.Items {
+				if candidate.InternalProductID == nil {
+					t.Fatalf("candidate without a product: %#v", candidate)
+				}
+				if previous, duplicated := byProduct[*candidate.InternalProductID]; duplicated {
+					t.Fatalf("codprod %d emitted twice for %s: %s/%d%% and %s/%d%%",
+						*candidate.InternalProductID, snapshot.ProviderItemID,
+						previous.MatchInput, previous.Confidence, candidate.MatchInput, candidate.Confidence)
+				}
+				byProduct[*candidate.InternalProductID] = candidate
+			}
+			if len(byProduct) != 2 {
+				t.Fatalf("distinct products = %d, want 2 (%#v)", len(byProduct), result.Items)
+			}
+
+			// The surviving row is the one an anchor that RESOLVED produced, so the
+			// operator keeps the reason naming both anchors instead of the collision
+			// row that names only one.
+			sharedCandidate := byProduct[22467]
+			if sharedCandidate.MatchInput != tc.wantSharedInput {
+				t.Fatalf("shared product match_input = %q, want %q", sharedCandidate.MatchInput, tc.wantSharedInput)
+			}
+			if sharedCandidate.Confidence != 40 {
+				t.Fatalf("shared product confidence = %d, want the 40 the resolving anchor already assigns", sharedCandidate.Confidence)
+			}
+			if byProduct[44975].Confidence != 20 {
+				t.Fatalf("colliding product confidence = %d, want 20 unchanged", byProduct[44975].Confidence)
+			}
+		})
+	}
+}
+
 func TestExactSKUWithUnmatchedListingEANKeepsSeededEANReason(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 7, 27, 10, 0, 0, 0, time.UTC)
@@ -382,7 +464,7 @@ func TestExactSKUWithUnmatchedListingEANKeepsSeededEANReason(t *testing.T) {
 	if !ok {
 		t.Fatalf("reasons=%#v, want excluded ean UNAVAILABLE reason", candidate.Reasons)
 	}
-	if reason.Side != "" || reason.Detail != "sem EAN para corroborar o CODPROD: o EAN do anúncio não casa nenhum produto" {
+	if reason.Side != "" || reason.Detail != "o EAN do anúncio não casa nenhum produto, então não corrobora o CODPROD" {
 		t.Fatalf("ean reason=%#v, want excluded branch unchanged", reason)
 	}
 }
@@ -429,7 +511,7 @@ func TestNamedMissingAnchorSitesAreIncomparableWithCorrectSide(t *testing.T) {
 			state:    productlinksdomain.LinkCandidateStateExactSKU,
 			snapshot: productlinksdomain.ListingSnapshot{SellerSKU: "SKU-1", EAN: "EAN-1"},
 			product:  &internalreaddomain.ProductCandidate{InternalProductID: canonicalIDPtr(902)},
-			anchor:   "ean", detail: "sem EAN para corroborar o CODPROD: o EAN do anúncio não casa nenhum produto",
+			anchor:   "ean", detail: "o EAN do anúncio não casa nenhum produto, então não corrobora o CODPROD",
 			side: productlinksdomain.LinkCandidateReasonSideERP,
 		},
 		// The two seller_sku sides, kept as a pair: the listing carries no SKU

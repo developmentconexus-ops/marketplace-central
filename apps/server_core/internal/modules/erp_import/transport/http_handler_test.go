@@ -15,6 +15,7 @@ import (
 
 	"marketplace-central/apps/server_core/internal/modules/erp_import/domain"
 	"marketplace-central/apps/server_core/internal/modules/erp_import/ports"
+	"marketplace-central/apps/server_core/internal/platform/httpx"
 )
 
 // Both {id} routes validate the path value before the query, so request paths
@@ -96,6 +97,47 @@ func TestHandlerPostImport(t *testing.T) {
 				t.Fatalf("body = %+v, want import_id=%q protocol=%q status=%q", body, tc.report.ID, tc.report.Protocol, tc.report.Status)
 			}
 		})
+	}
+}
+
+// deadlineRecordingRunner reads the budget the upload actually got, from the
+// context the handler hands to the importer.
+type deadlineRecordingRunner struct {
+	report      domain.ImportReport
+	deadline    time.Time
+	hasDeadline bool
+}
+
+func (r *deadlineRecordingRunner) RunImport(ctx context.Context, _ io.Reader) (domain.ImportReport, error) {
+	r.deadline, r.hasDeadline = ctx.Deadline()
+	return r.report, nil
+}
+
+func (r *deadlineRecordingRunner) RunImportLenient(ctx context.Context, source io.Reader) (domain.ImportReport, error) {
+	return r.RunImport(ctx, source)
+}
+
+// B-08: Register declares /erp/imports as batch, so an xlsx upload has 120s.
+// The route class is only honoured if the declaration and the ServeMux pattern
+// agree on the key; when they did not, the upload ran on the 15s interactive
+// default and a large planilha was cut off mid-import with a 504.
+func TestHandlerPostImportRunsUnderTheDeclaredBatchDeadline(t *testing.T) {
+	runner := &deadlineRecordingRunner{report: importReport("imp-batch", "proto-batch", domain.ImportStatusCompleted)}
+	mux := httpx.NewRouteClassMux()
+	NewHandler(runner, &fakeImportQuerier{}).Register(mux)
+
+	response := httptest.NewRecorder()
+	mux.ServeHTTP(response, multipartRequest(t, "payload.xlsx"))
+
+	if response.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want %d; body=%q", response.Code, http.StatusCreated, response.Body.String())
+	}
+	if !runner.hasDeadline {
+		t.Fatal("importer ran without a context deadline")
+	}
+	budget := time.Until(runner.deadline)
+	if budget <= 15*time.Second {
+		t.Fatalf("upload budget = %s, want the 120s batch budget; 15s is the interactive default", budget)
 	}
 }
 

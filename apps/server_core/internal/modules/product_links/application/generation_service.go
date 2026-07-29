@@ -362,6 +362,15 @@ func buildCollisionCandidates(snapshot domain.ListingSnapshot, skuMatches, eanMa
 		{eanMatches, domain.LinkCandidateMatchInputEAN, domain.LinkCandidateStateExactEAN, "ean", "seller_sku"},
 	}
 	candidates := make([]domain.LinkCandidate, 0, len(skuMatches.Products)+len(eanMatches.Products))
+	// uniqueProducts dedupes WITHIN one anchor; the loop runs once per anchor, so
+	// a product both anchors matched used to reach the queue as two rows for the
+	// same (anúncio, produto) — and that intersection is the strongest signal on
+	// offer, the two anchors agreeing. The operator saw the same pair twice with
+	// two different confidences and two contradictory GTIN verdicts. One row per
+	// product: of the two the anchors produced, the higher-confidence one, which
+	// is a value an existing branch already assigned and not a merged score;
+	// ties keep the first anchor's row.
+	positionByProduct := make(map[int]int, len(skuMatches.Products)+len(eanMatches.Products))
 	for index, anchor := range anchors {
 		otherCount := len(anchors[1-index].result.Products)
 		for _, product := range uniqueProducts(anchor.result.Products) {
@@ -372,6 +381,13 @@ func buildCollisionCandidates(snapshot domain.ListingSnapshot, skuMatches, eanMa
 			} else {
 				applyAmbiguousCorroborationScore(&candidate, anchor.name, productID, anchor.other, otherCount, newProviderIdentityAnchorComparison(snapshot, identityAnchors, &product))
 			}
+			if position, seen := positionByProduct[productID]; seen {
+				if candidate.Confidence > candidates[position].Confidence {
+					candidates[position] = candidate
+				}
+				continue
+			}
+			positionByProduct[productID] = len(candidates)
 			candidates = append(candidates, candidate)
 		}
 	}
@@ -542,7 +558,10 @@ func applySingleAnchorScore(candidate *domain.LinkCandidate, state domain.LinkCa
 		confidence, band, status = 70, domain.LinkCandidateConfidenceBandMedia, domain.LinkCandidateMatchStatusConfirm
 		eanDetail := "sem EAN para corroborar o CODPROD"
 		if strings.TrimSpace(snapshot.EAN) != "" {
-			eanDetail = "sem EAN para corroborar o CODPROD: o EAN do anúncio não casa nenhum produto"
+			// The anúncio HAS an EAN here; what it does not have is a product the
+			// EAN resolved. Saying "sem EAN" of a listing that carries one sends
+			// the operator looking for a missing field instead of a mismatch.
+			eanDetail = "o EAN do anúncio não casa nenhum produto, então não corrobora o CODPROD"
 		}
 		reasons = []domain.LinkCandidateReason{
 			{Anchor: "seller_sku", Direction: domain.LinkCandidateReasonDirectionFor, Detail: "seller_sku resolve exato para codprod"},

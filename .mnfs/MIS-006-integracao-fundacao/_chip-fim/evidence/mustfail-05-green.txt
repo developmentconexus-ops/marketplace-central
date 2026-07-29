@@ -1,0 +1,31 @@
+=== RUN   TestOneProductAutoLinksToManyListings
+=== PAUSE TestOneProductAutoLinksToManyListings
+=== RUN   TestExactSKUWithUnmatchedListingEANKeepsSeededEANReason
+=== PAUSE TestExactSKUWithUnmatchedListingEANKeepsSeededEANReason
+=== RUN   TestNamedMissingAnchorSitesAreIncomparableWithCorrectSide
+=== PAUSE TestNamedMissingAnchorSitesAreIncomparableWithCorrectSide
+=== CONT  TestOneProductAutoLinksToManyListings
+=== CONT  TestNamedMissingAnchorSitesAreIncomparableWithCorrectSide
+=== CONT  TestExactSKUWithUnmatchedListingEANKeepsSeededEANReason
+=== RUN   TestNamedMissingAnchorSitesAreIncomparableWithCorrectSide/unresolved_listing_EAN_present
+=== RUN   TestNamedMissingAnchorSitesAreIncomparableWithCorrectSide/exact_SKU_listing_EAN_empty
+--- PASS: TestExactSKUWithUnmatchedListingEANKeepsSeededEANReason (0.00s)
+--- PASS: TestOneProductAutoLinksToManyListings (0.00s)
+=== RUN   TestNamedMissingAnchorSitesAreIncomparableWithCorrectSide/exact_SKU_ERP_EAN_empty
+=== RUN   TestNamedMissingAnchorSitesAreIncomparableWithCorrectSide/exact_EAN_listing_seller_SKU_empty
+=== RUN   TestNamedMissingAnchorSitesAreIncomparableWithCorrectSide/exact_EAN_ERP_seller_SKU_empty
+=== RUN   TestNamedMissingAnchorSitesAreIncomparableWithCorrectSide/title_match_listing_anchors_empty
+=== RUN   TestNamedMissingAnchorSitesAreIncomparableWithCorrectSide/title_match_ERP_EAN_empty
+=== RUN   TestNamedMissingAnchorSitesAreIncomparableWithCorrectSide/unresolved_listing_seller_SKU_empty
+--- PASS: TestNamedMissingAnchorSitesAreIncomparableWithCorrectSide (0.00s)
+    --- PASS: TestNamedMissingAnchorSitesAreIncomparableWithCorrectSide/unresolved_listing_EAN_present (0.00s)
+    --- PASS: TestNamedMissingAnchorSitesAreIncomparableWithCorrectSide/exact_SKU_listing_EAN_empty (0.00s)
+    --- PASS: TestNamedMissingAnchorSitesAreIncomparableWithCorrectSide/exact_SKU_ERP_EAN_empty (0.00s)
+    --- PASS: TestNamedMissingAnchorSitesAreIncomparableWithCorrectSide/exact_EAN_listing_seller_SKU_empty (0.00s)
+    --- PASS: TestNamedMissingAnchorSitesAreIncomparableWithCorrectSide/exact_EAN_ERP_seller_SKU_empty (0.00s)
+    --- PASS: TestNamedMissingAnchorSitesAreIncomparableWithCorrectSide/title_match_listing_anchors_empty (0.00s)
+    --- PASS: TestNamedMissingAnchorSitesAreIncomparableWithCorrectSide/title_match_ERP_EAN_empty (0.00s)
+    --- PASS: TestNamedMissingAnchorSitesAreIncomparableWithCorrectSide/unresolved_listing_seller_SKU_empty (0.00s)
+PASS
+ok  	marketplace-central/apps/server_core/internal/modules/product_links/application	1.143s
+EXIT=0

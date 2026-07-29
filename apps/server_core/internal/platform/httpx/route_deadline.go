@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -42,12 +43,36 @@ func NewRouteClassMux() *RouteClassMux {
 
 // RegisterRouteClass must be called before the matching transport route is
 // registered. Routes without an explicit class are interactive by default.
+//
+// Every caller in this repo declares the class under the bare path while the
+// transport registers the ServeMux pattern with its method ("POST /erp/imports"),
+// so the lookup below matches on the path and the exact pattern is only an
+// optional narrowing for a route that wants one method treated differently.
 func (m *RouteClassMux) RegisterRouteClass(pattern string, class RouteClass) {
 	m.classes[pattern] = class
 }
 
 func (m *RouteClassMux) Handle(pattern string, handler http.Handler) {
-	m.mux.Handle(pattern, deadlineMiddleware(m.classes[pattern], handler))
+	m.mux.Handle(pattern, deadlineMiddleware(m.routeClass(pattern), handler))
+}
+
+// routeClass resolves the class declared for a ServeMux pattern. The exact
+// pattern wins when one was declared; otherwise the method is stripped and the
+// path is looked up.
+func (m *RouteClassMux) routeClass(pattern string) RouteClass {
+	if class, ok := m.classes[pattern]; ok {
+		return class
+	}
+	return m.classes[routePatternPath(pattern)]
+}
+
+// routePatternPath drops the optional method from a ServeMux pattern
+// ("[METHOD ][HOST]/[PATH]"), leaving the part transports declare classes under.
+func routePatternPath(pattern string) string {
+	if index := strings.IndexByte(pattern, ' '); index >= 0 {
+		return strings.TrimLeft(pattern[index+1:], " ")
+	}
+	return pattern
 }
 
 func (m *RouteClassMux) HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request)) {

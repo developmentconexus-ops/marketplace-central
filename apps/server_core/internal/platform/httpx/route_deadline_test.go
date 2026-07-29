@@ -83,3 +83,32 @@ func TestRouteClassMuxDeclaresBatchBeforeTransportRegistration(t *testing.T) {
 		t.Fatalf("status = %d, want 200", recorder.Code)
 	}
 }
+
+// Transports declare the class under the bare path and register the ServeMux
+// pattern with its method, so a lookup keyed on the raw pattern misses every
+// time and the route silently falls back to the interactive default. Asserting
+// that a deadline EXISTS cannot see it — interactive has one too — so this
+// measures the budget the handler actually received.
+func TestRouteClassMuxAppliesDeclaredClassToMethodQualifiedPattern(t *testing.T) {
+	mux := NewRouteClassMux()
+	mux.RegisterRouteClass("/erp/imports", BatchRouteClass)
+
+	var budget time.Duration
+	mux.HandleFunc("POST /erp/imports", func(w http.ResponseWriter, r *http.Request) {
+		deadline, ok := r.Context().Deadline()
+		if !ok {
+			t.Error("batch route has no context deadline")
+		}
+		budget = time.Until(deadline)
+		WriteJSON(w, http.StatusOK, map[string]string{"status": "completed"})
+	})
+
+	recorder := httptest.NewRecorder()
+	mux.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/erp/imports", nil))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", recorder.Code)
+	}
+	if budget <= interactiveDeadline {
+		t.Fatalf("effective budget = %s, want the %s batch budget (interactive default is %s)", budget, batchDeadline, interactiveDeadline)
+	}
+}

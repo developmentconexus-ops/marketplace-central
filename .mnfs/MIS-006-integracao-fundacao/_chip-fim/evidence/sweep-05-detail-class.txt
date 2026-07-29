@@ -1,0 +1,44 @@
+=== POPULATION: every Detail-carrying site in internal/modules/product_links/application/generation_service.go ===
+-- predicate A: literal 'Detail' field/var assignment or arg --
+523:		{Anchor: "seller_sku", Direction: domain.LinkCandidateReasonDirectionFor, Detail: "seller_sku resolve exato para codprod"},
+524:		{Anchor: "ean", Direction: domain.LinkCandidateReasonDirectionFor, Detail: "ean corrobora o mesmo codprod (unproved)"},
+530:		reasons = append(reasons, domain.LinkCandidateReason{Anchor: "title", Direction: domain.LinkCandidateReasonDirectionAgainst, Detail: detail})
+559:		eanDetail := "sem EAN para corroborar o CODPROD"
+564:			eanDetail = "o EAN do anúncio não casa nenhum produto, então não corrobora o CODPROD"
+567:			{Anchor: "seller_sku", Direction: domain.LinkCandidateReasonDirectionFor, Detail: "seller_sku resolve exato para codprod"},
+568:			missingMatchedAnchorReason("ean", eanDetail, snapshot, &product),
+572:		skuDetail := "sem CODPROD para corroborar o EAN"
+574:			skuDetail = "o seller_sku do anúncio não casa este produto, então não corrobora o EAN"
+577:			{Anchor: "ean", Direction: domain.LinkCandidateReasonDirectionFor, Detail: "ean corrobora codprod (unproved)"},
+578:			missingMatchedAnchorReason("seller_sku", skuDetail, snapshot, &product),
+583:			{Anchor: "title", Direction: domain.LinkCandidateReasonDirectionFor, Detail: "match por título (ranking-only, nunca ACCEPT)"},
+594:		reasons = append(reasons, domain.LinkCandidateReason{Anchor: "title", Direction: domain.LinkCandidateReasonDirectionAgainst, Detail: detail})
+611:		{Anchor: ownAnchor, Direction: domain.LinkCandidateReasonDirectionFor, Detail: fmt.Sprintf("%s aponta codprod %d", ownAnchor, ownProductID)},
+612:		{Anchor: conflictAnchor, Direction: domain.LinkCandidateReasonDirectionAgainst, Detail: fmt.Sprintf("%s aponta codprod %s (conflito, nenhuma âncora vence)", conflictAnchor, formatProductIDs(conflictingIDs))},
+624:		{Anchor: anchor, Direction: domain.LinkCandidateReasonDirectionAgainst, Detail: fmt.Sprintf("%s casa %d produtos no ERP (colisão: também codprod %s) ⇒ âncora ambígua", anchor, matchCount, formatProductIDs(otherIDs))},
+638:		{Anchor: ownAnchor, Direction: domain.LinkCandidateReasonDirectionFor, Detail: fmt.Sprintf("%s aponta codprod %d", ownAnchor, ownProductID)},
+639:		{Anchor: otherAnchor, Direction: domain.LinkCandidateReasonDirectionAgainst, Detail: fmt.Sprintf("%s casa %d produtos no ERP ⇒ não corrobora", otherAnchor, otherCount)},
+665:	reason := domain.LinkCandidateReason{Anchor: anchor, Detail: detail}
+717:			Detail:    detail,
+723:				reason.Detail = finalized[index].Detail
+
+POPULATION_COUNT=21
+
+=== EXTRACTION: the operator-visible sentence at each site ===
+      3 "title"
+      3 "seller_sku"
+      3 "ean"
+      2 "seller_sku resolve exato para codprod"
+      2 "%s aponta codprod %d"
+      1 "sem EAN para corroborar o CODPROD"
+      1 "sem CODPROD para corroborar o EAN"
+      1 "o seller_sku do anúncio não casa este produto, então não corrobora o EAN"
+      1 "o EAN do anúncio não casa nenhum produto, então não corrobora o CODPROD"
+      1 "match por título (ranking-only, nunca ACCEPT)"
+      1 "ean corrobora o mesmo codprod (unproved)"
+      1 "ean corrobora codprod (unproved)"
+      1 "%s casa %d produtos no ERP ⇒ não corrobora"
+      1 "%s casa %d produtos no ERP (colisão: também codprod %s) ⇒ âncora ambígua"
+      1 "%s aponta codprod %s (conflito, nenhuma âncora vence)"
+
+EXTRACTION_COUNT=21
