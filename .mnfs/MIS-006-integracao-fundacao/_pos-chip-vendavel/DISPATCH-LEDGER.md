@@ -325,3 +325,59 @@ The worker then could not commit: `fatal: Unable to create
 S1 and S3 committed fine from the same seat, so it is non-deterministic and still unattributed.
 `84e87e63` was created by the orchestrator after P4 completed. Recorded rather than smoothed
 over: the authorship of that commit is not the authorship of the code in it.
+
+---
+
+## S5-MATCHER — round 2 (round 1 BLOCKED at the scope wall, correctly)
+
+| field | value |
+|---|---|
+| slice | `S5-MATCHER` |
+| worker | codex `gpt-5.6-luna` / `high` (implement, standard) |
+| dispatch | stdin (`codex exec … -`), UTF-8 pinned both sides — profile §12 |
+| brief | `scratchpad/prompt-s5-matcher.md` (round-2 RE-BRIEF appended) |
+| log | `scratchpad/agent__s5-matcher.log` |
+| final message | `scratchpad/agent__s5-matcher.last.md` |
+| commit | `a62c56d68362d92e32f6abc17d3ceee18ef2939d` (worker committed; no index.lock denial this time) |
+| evidence | `evidence/S5-red.txt`, `evidence/S5-green.txt`, `evidence/S5-orchestrator.txt` |
+| lane (orchestrator re-run) | RUN 58 · PASS 58 · SKIP 0 · FAIL 0, counted per line |
+| P4 | ACCEPTED as a slice; see §3 of the review — the chip's promise is NOT discharged for xlsx |
+
+Round 1 stopped at the scope wall instead of shipping a rule that cuts nothing, and the hub
+granted the two bounded edits in `mirror_query_repository.go`. The RED it left behind is what
+makes this round's green non-vacuous, so it was preserved rather than regenerated.
+
+### Grant honoured exactly
+
+Two edits, no filtering: the column constant (`:13`) and the scanner (`:22`, `:39-40`). All four
+mirror read sites share that constant and that scanner, so the SELECT list and the `Scan` order
+move together by construction — checked, not assumed.
+
+### The abstraction was measured before it was accepted
+
+The worker added a context-carried `SellableAssortmentPolicy` and justified it with an import
+cycle. Anti-slop §4 forbids speculative abstraction, so the cycle was measured:
+`tenant_config/active_source.go:11` imports the reader; the reader imports `tenant_config` zero
+times. Cycle real, two named consumers, carrier accepted.
+
+### REQUEST open — the rule is inert for one of the two sources
+
+The worker reported in two lines that the upstream selectors omit the columns. Measured here it
+is one hop earlier and it disables the deliverable for xlsx: `import_repository.go:67` copies 14
+columns into `erp_import_products` and neither of the two is among them, because migration 0084
+added them to `products_mirror` ONLY. So `xlsx/parser.go:116` reads `USOPROD` off the sheet and
+the value dies at the first write. Mirror `usoprod` stays NULL for xlsx, nil PASSES the ratified
+`IS NULL OR = 'R'`, and the rule cuts nothing — the round-1 blocker's own sentence, one hop up.
+Sankhya is unaffected (`mirror/writer.go:150` writes straight to `products_mirror`).
+
+The S5 test cannot catch it: it seeds the mirror with a raw `UPDATE`, which was the only way to
+reach the reader at all. That green proves the reader and the matcher, not the pipeline.
+
+Not fixed and not decided here — the repair needs migration 0085 (grant was 0083–0084) plus two
+files in no slice's write-set. REQUEST filed with three options; recommended a bounded S5B.
+
+Second REQUEST in the same message: the comparisons are case-sensitive (`:231`, `:247`) and
+nothing normalizes case on this path. Sankhya returns `R`; the spreadsheet is operator-authored.
+A lowercase `n` passes the e-commerce rule and a lowercase `r` is cut from resale — wrong in both
+directions, worse in the permissive one. Real ambiguity, so it went to the hub instead of being
+settled locally.
