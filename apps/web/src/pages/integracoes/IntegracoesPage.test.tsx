@@ -4,11 +4,50 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { IntegracoesPage } from "./IntegracoesPage";
 
+// jsdom in this workspace does not instantiate Web Storage under the worker's
+// Vitest runner. Keep the storage-shaped fixture here so the test can prove
+// that the assortment interaction never writes a browser preference.
+if (typeof globalThis.localStorage === "undefined") {
+  const stores = [new Map<string, string>(), new Map<string, string>()];
+  const define = (name: string, value: unknown) =>
+    Object.defineProperty(Storage.prototype, name, { configurable: true, writable: true, value });
+  define("getItem", function (this: Storage, key: string) {
+    const store = (this as Storage & { __store: Map<string, string> }).__store;
+    return store.has(key) ? store.get(key)! : null;
+  });
+  define("setItem", function (this: Storage, key: string, value: string) {
+    (this as Storage & { __store: Map<string, string> }).__store.set(key, String(value));
+  });
+  define("removeItem", function (this: Storage, key: string) {
+    (this as Storage & { __store: Map<string, string> }).__store.delete(key);
+  });
+  define("clear", function (this: Storage) {
+    (this as Storage & { __store: Map<string, string> }).__store.clear();
+  });
+  define("key", function (this: Storage, index: number) {
+    return Array.from((this as Storage & { __store: Map<string, string> }).__store.keys())[index] ?? null;
+  });
+  const storageEntries: Array<["localStorage" | "sessionStorage", Map<string, string>]> = [
+    ["localStorage", stores[0]],
+    ["sessionStorage", stores[1]],
+  ];
+  for (const [name, store] of storageEntries) {
+    const storage = Object.create(Storage.prototype) as Storage & { __store: Map<string, string> };
+    storage.__store = store;
+    Object.defineProperty(storage, "length", { configurable: true, get: () => store.size });
+    Object.defineProperty(globalThis, name, { configurable: true, value: storage });
+    Object.defineProperty(window, name, { configurable: true, value: storage });
+  }
+}
+
 const createErpImport = vi.fn();
 const getErpImport = vi.fn();
 const listErpImports = vi.fn();
 const getActiveSource = vi.fn();
 const setActiveSource = vi.fn();
+const getSellableAssortment = vi.fn();
+const setSellableAssortment = vi.fn();
+const getCatalogAssortmentCounts = vi.fn();
 const listIntegrationInstallations = vi.fn();
 
 vi.mock("../../app/ClientContext", () => ({
@@ -18,6 +57,9 @@ vi.mock("../../app/ClientContext", () => ({
     listErpImports: (...args: unknown[]) => listErpImports(...args),
     getActiveSource: (...args: unknown[]) => getActiveSource(...args),
     setActiveSource: (...args: unknown[]) => setActiveSource(...args),
+    getSellableAssortment: (...args: unknown[]) => getSellableAssortment(...args),
+    setSellableAssortment: (...args: unknown[]) => setSellableAssortment(...args),
+    getCatalogAssortmentCounts: (...args: unknown[]) => getCatalogAssortmentCounts(...args),
     listIntegrationInstallations: (...args: unknown[]) => listIntegrationInstallations(...args),
   }),
 }));
@@ -46,6 +88,12 @@ function selectFile(name = "catalogo.xlsx") {
   return file;
 }
 
+function assortmentToggle(label: string) {
+  const option = screen.getByText(label).closest("label");
+  if (!option) throw new Error(`Assortment option not found: ${label}`);
+  return within(option).getByRole("checkbox") as HTMLInputElement;
+}
+
 const detailFixture = {
   import_id: "imp_1",
   protocol: "#004-E",
@@ -68,6 +116,9 @@ describe("IntegracoesPage", () => {
     listErpImports.mockResolvedValue({ items: [] });
     getActiveSource.mockReset();
     setActiveSource.mockReset();
+    getSellableAssortment.mockReset();
+    setSellableAssortment.mockReset();
+    getCatalogAssortmentCounts.mockReset();
     listIntegrationInstallations.mockReset();
     // Stateful like the server: a successful PUT changes what the next GET
     // returns, so the blanket post-write invalidation re-reads the new source.
@@ -77,7 +128,190 @@ describe("IntegracoesPage", () => {
       stored = req.active_source;
       return Promise.resolve(activeSourceConfig(stored));
     });
+    let storedAssortment = {
+      only_revenda: true,
+      only_em_estoque: false,
+      only_ecommerce_eligible: false,
+    };
+    getSellableAssortment.mockImplementation(() => Promise.resolve(storedAssortment));
+    setSellableAssortment.mockImplementation((req: typeof storedAssortment) => {
+      storedAssortment = { ...req };
+      return Promise.resolve(storedAssortment);
+    });
+    // Stateful counts catch a missing catalog invalidation: without the refetch, the UI keeps showing the pre-toggle count.
+    getCatalogAssortmentCounts.mockImplementation(() =>
+      Promise.resolve({ sellable_count: storedAssortment.only_revenda ? 2 : 3, total_count: 4 }),
+    );
     listIntegrationInstallations.mockResolvedValue({ items: [] });
+  });
+
+  it("renders Sortimento vendável, persists all toggles, and shows the exact live count", async () => {
+    const setItem = vi.spyOn(Storage.prototype, "setItem");
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+    renderPage();
+
+    expect(await screen.findByRole("heading", { name: "Sortimento vendável" })).toBeInTheDocument();
+    expect(await screen.findByText("Resultado: 2 de 4 produtos")).toBeInTheDocument();
+
+    const revenda = assortmentToggle("Somente produtos de revenda");
+    const estoque = assortmentToggle("Somente com estoque disponível");
+    const ecommerce = assortmentToggle("Somente elegíveis ao e-commerce");
+    expect(revenda.checked, "Somente produtos de revenda must bind to only_revenda").toBe(true);
+    expect(estoque.checked, "Somente com estoque disponível must bind to only_em_estoque").toBe(false);
+    expect(ecommerce.checked, "Somente elegíveis ao e-commerce must bind to only_ecommerce_eligible").toBe(false);
+
+    fireEvent.click(revenda);
+    await waitFor(() =>
+      expect(setSellableAssortment).toHaveBeenLastCalledWith({
+        only_revenda: false,
+        only_em_estoque: false,
+        only_ecommerce_eligible: false,
+      }),
+    );
+    await waitFor(() =>
+      expect(revenda.checked, "Somente produtos de revenda must bind to only_revenda").toBe(false),
+    );
+
+    fireEvent.click(estoque);
+    await waitFor(() =>
+      expect(setSellableAssortment).toHaveBeenLastCalledWith({
+        only_revenda: false,
+        only_em_estoque: true,
+        only_ecommerce_eligible: false,
+      }),
+    );
+    await waitFor(() =>
+      expect(estoque.checked, "Somente com estoque disponível must bind to only_em_estoque").toBe(true),
+    );
+
+    fireEvent.click(estoque);
+    await waitFor(() =>
+      expect(setSellableAssortment).toHaveBeenLastCalledWith({
+        only_revenda: false,
+        only_em_estoque: false,
+        only_ecommerce_eligible: false,
+      }),
+    );
+    await waitFor(() =>
+      expect(estoque.checked, "Somente com estoque disponível must bind to only_em_estoque").toBe(false),
+    );
+
+    fireEvent.click(ecommerce);
+    await waitFor(() =>
+      expect(setSellableAssortment).toHaveBeenLastCalledWith({
+        only_revenda: false,
+        only_em_estoque: false,
+        only_ecommerce_eligible: true,
+      }),
+    );
+    await waitFor(() =>
+      expect(ecommerce.checked, "Somente elegíveis ao e-commerce must bind to only_ecommerce_eligible").toBe(true),
+    );
+
+    expect(window.localStorage.length).toBe(0);
+    expect(window.sessionStorage.length).toBe(0);
+    expect(setItem).not.toHaveBeenCalled();
+    setItem.mockRestore();
+  });
+
+  it("pins each assortment toggle to its own server field", async () => {
+    renderPage();
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole("checkbox"),
+        "Sortimento vendável must render toggles for only_revenda, only_em_estoque, and only_ecommerce_eligible",
+      ).toHaveLength(3),
+    );
+    const revenda = assortmentToggle("Somente produtos de revenda");
+    const estoque = assortmentToggle("Somente com estoque disponível");
+    const ecommerce = assortmentToggle("Somente elegíveis ao e-commerce");
+
+    expect(revenda.checked, "Somente produtos de revenda must bind to only_revenda").toBe(true);
+    fireEvent.click(revenda);
+    await waitFor(() =>
+      expect(revenda.checked, "Somente produtos de revenda must bind to only_revenda").toBe(false),
+    );
+
+    fireEvent.click(estoque);
+    await waitFor(() =>
+      expect(estoque.checked, "Somente com estoque disponível must bind to only_em_estoque").toBe(true),
+    );
+    expect(setSellableAssortment).toHaveBeenLastCalledWith({
+      only_revenda: false,
+      only_em_estoque: true,
+      only_ecommerce_eligible: false,
+    });
+    fireEvent.click(estoque);
+    await waitFor(() =>
+      expect(estoque.checked, "Somente com estoque disponível must bind to only_em_estoque").toBe(false),
+    );
+
+    fireEvent.click(ecommerce);
+    await waitFor(() =>
+      expect(ecommerce.checked, "Somente elegíveis ao e-commerce must bind to only_ecommerce_eligible").toBe(true),
+    );
+    expect(setSellableAssortment).toHaveBeenLastCalledWith({
+      only_revenda: false,
+      only_em_estoque: false,
+      only_ecommerce_eligible: true,
+    });
+  });
+
+  it("reports when assortment counts cannot be calculated instead of showing zero", async () => {
+    getCatalogAssortmentCounts.mockRejectedValueOnce(new Error("counts unavailable"));
+    renderPage();
+
+    expect(
+      await screen.findByText("Não foi possível calcular quantos produtos entram no sortimento."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Resultado: 0 de 0 produtos")).not.toBeInTheDocument();
+  });
+
+  it("recalculates the result line after a toggle instead of showing the pre-change count", async () => {
+    renderPage();
+
+    expect(await screen.findByText("Resultado: 2 de 4 produtos")).toBeInTheDocument();
+    fireEvent.click(assortmentToggle("Somente produtos de revenda"));
+
+    expect(await screen.findByText("Resultado: 3 de 4 produtos")).toBeInTheDocument();
+    expect(screen.queryByText("Resultado: 2 de 4 produtos")).not.toBeInTheDocument();
+  });
+
+  it("reports a failed assortment read without guessing toggle positions", async () => {
+    getSellableAssortment.mockRejectedValueOnce(new Error("assortment unavailable"));
+    renderPage();
+
+    expect(await screen.findByText("Não foi possível ler a regra de sortimento configurada.")).toBeInTheDocument();
+    expect(
+      screen.queryAllByRole("checkbox"),
+      "Failed assortment read must render no toggle for only_revenda, only_em_estoque, or only_ecommerce_eligible",
+    ).toHaveLength(0);
+  });
+
+  it("renders the configure-source state for an unknown assortment source without guessing toggles", async () => {
+    getSellableAssortment.mockRejectedValueOnce({ status: 400, error: "unknown_erp_source" });
+    renderPage();
+
+    expect(await screen.findByTestId("sellable-assortment-source-unset")).toHaveTextContent(
+      "Nenhuma fonte definida ainda — escolha a fonte que o app vai ler.",
+    );
+    expect(
+      screen.queryAllByRole("checkbox"),
+      "Unknown assortment source must render no toggle for only_revenda, only_em_estoque, or only_ecommerce_eligible",
+    ).toHaveLength(0);
+    expect(screen.queryByText("Não foi possível ler a regra de sortimento configurada.")).not.toBeInTheDocument();
+  });
+
+  it("renders the configure-source state when counts have no active source", async () => {
+    getActiveSource.mockRejectedValueOnce({ status: 400, error: "unknown_erp_source" });
+    renderPage();
+
+    expect(await screen.findByTestId("sellable-assortment-source-unset")).toHaveTextContent(
+      "Nenhuma fonte definida ainda — escolha a fonte que o app vai ler.",
+    );
+    expect(screen.queryByText(/Resultado:/)).not.toBeInTheDocument();
+    expect(getCatalogAssortmentCounts).not.toHaveBeenCalled();
   });
 
   it("renders the plataforma-config heading", () => {

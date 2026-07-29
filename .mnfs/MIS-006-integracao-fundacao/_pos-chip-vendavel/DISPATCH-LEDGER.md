@@ -918,3 +918,191 @@ the code. REQUEST R-1 open with the hub — the endpoint is a stack seam and I d
 
 Consequence stated as a gap, not as coverage: `repository_test.go:189` is the assertion that makes
 A-22 transport-only, and **it has never executed in this chip**.
+
+### R-1 discharged — the endpoint was re-created, and `repository_test.go:189` finally ran
+
+A-25 granted `pg-session-up` in this worktree, on the reasoning that a dead endpoint is RE-CREATED,
+not re-pointed, and that the prohibition on booting a server is about the DEV STACK, not this
+per-checkout facility. 5435 was never touched. Full measurement in
+`evidence/S10-COND-db-seat.txt`; the load-bearing lines:
+
+```
+container=mpc-pg-session-3eee515d port=55840 pw_len=48
+CREATE DATABASE      attempt=1 exit=0
+go run ./cmd/testdb migrate  ->  applied 72 migration(s)   (tree holds 72 *.sql — same inventory the lane computes)
+go run ./cmd/testdb migrate  ->  applied 0 migration(s)
+go test ./internal/modules/tenant_config/... -v   RUN=43 PASS=43 SKIP=0 FAIL=0
+--- PASS: TestRepository_SetSellableAssortment_RoundTripPersistsPerTenant (0.01s)
+```
+
+The database name is not free-form: `internal/testsupport/postgres/target.go:19` pins
+`^mpc_test_[0-9a-f]{32}$` and `LoadConfig` returns `HPG_TARGET_INVALID` for anything else. The
+placeholder the scratchpad env line carried had 36 hex characters, so it failed that regex as well
+as not existing.
+
+Then, beyond the grant, two must-fails on the sentinel, because PASS is not evidence that an
+assertion asserts. Dropping the `RowsAffected()==0` guard:
+
+```
+repository_test.go:190: SetSellableAssortment() missing tenant error = <nil>, want ErrUnknownActiveSource
+```
+
+Scanning the three assortment columns into throwaways so `Get` returns the zero policy — the one
+worth naming, because it fails on the READ side with the write path untouched, which is what
+separates "the columns round-trip through Postgres" from "the struct round-trips through Go":
+
+```
+repository_test.go:94:  first tenant OnlyRevenda = false, want true
+... 8 lines ...
+repository_test.go:186: after source switch OnlyEcommerceEligible = false, want true
+```
+
+Both reverted byte-for-byte; `git diff` on `repository.go` is empty and RESTORED-GREEN passes.
+
+### FINDING for the hub — the sentinel is in NO harness lane
+
+`harness.ps1 integration` was run FIRST and it passed: `status=passed`, `migrations_first=72`,
+`migrations_second=0`, `port=55840`. It ran **zero** tenant_config tests.
+
+`Get-HarnessIntegrationTestPackages` (`scripts/harness/Postgres.psm1:42-61`) discovers module
+packages by scanning the FIRST FIVE LINES of every `internal/modules/**/*_test.go` for
+`^//go:build\b.*\bintegration\b`. No file in `internal/modules/tenant_config` carries that tag.
+So the integration lane never compiles the package; the unit lane (`./tests/unit/...`) never reaches
+`internal/modules` at all; and a bare `go test ./...` without the env var reaches it and skips clean
+by design (`target.go:47-52`). Three lanes, three silences — a DB-touching test with no build tag is
+invisible to the lane that provisions a database and skip-clean everywhere else, so it can rot green
+indefinitely.
+
+Same shape as HARNESS-DEBTS B-5 one level up: there the variable was set and the database was
+absent; here the lane is green and the test was never compiled. Both make a green a statement about
+something other than what the reader thinks. Reported, not fixed — the lane's package list is a
+seam with an owner.
+
+Also measured: the lane DROPS its per-run database on the way out. After `status=passed` the session
+container held only `postgres/template1/template0`, which is why this seat had to create and migrate
+its own.
+
+### The same silence hid something bigger, in `internal/composition`
+
+`root_test.go:47` is `TestRootComposedCatalogReaderMovesPageAndCountWithStoredPolicy` — the test
+that proves the STORED assortment policy moves both the page and the count through the composed
+reader, which is the centre of this chip. It had been SKIPPING in every composition run of this
+chip:
+
+```
+root_test.go:49: MPC_TEST_DATABASE_URL is unset; the composed catalog reader needs the integration database
+--- SKIP: TestRootComposedCatalogReaderMovesPageAndCountWithStoredPolicy (0.00s)
+```
+
+`internal/composition` is in no lane's package list either — the integration lane adds
+`./tests/integration` plus tagged `internal/modules` packages, and composition is neither. Nobody
+had ever given it a database. Against the live target it is clean and the policy test EXECUTED for
+the first time:
+
+```
+go test ./internal/composition/ -v   RUN=72 PASS=72 SKIP=0 FAIL=0
+--- PASS: TestRootComposedCatalogReaderMovesPageAndCountWithStoredPolicy (0.09s)
+```
+
+Two packages, one cause. The finding above is not about tenant_config; it is about the seam.
+
+### Committed
+
+`ba91ad2` — handler (three seats), OpenAPI + SDK contract test in the same commit, the
+`module-edge-tenant-config-erp-import-adapter` registry entry with `removal_owner: CHIP-ERROR-UNIFY`,
+and the BATCH-PLAN retraction of the A-17 load-seam sentence in both places it appeared.
+
+FE lanes re-run at this seat after the commit: `@marketplace-central/sdk-runtime` 78 passed / 78,
+0 skipped — the contract test carrying the `enum: [unknown_erp_source, invalid_body, internal_error]`
+and the "400 on GET and PUT" assertion is green against the shipped spec.
+
+
+## S11-INTEGRACOES-FE — two rounds; round 1's green could not see its own missing refetch
+
+Dispatched to GPT-5.6 Luna high (standard implement), prompt at `scratchpad/prompt-s11-r2.md`,
+log/last-message at `scratchpad/agent__s11r2.*`. Owned files: `IntegracoesPage.tsx`,
+`IntegracoesPage.test.tsx`, `packages/web-query/src/activeSource.ts`, `packages/web-query/src/index.ts`.
+
+### Round 1 — REPROVED at this seat, three reasons
+
+R2-1: the counts fake was a CONSTANT. A card that never refetches after a toggle and a card that
+refetches correctly return the same constant, so the test could not tell them apart — the same
+both-worlds shape as CHIP-IMPORT-CHAIN. Round 2 makes the fake state-derived
+(`IntegracoesPage.test.tsx:142-144`):
+
+```ts
+getCatalogAssortmentCounts.mockImplementation(() =>
+  Promise.resolve({ sellable_count: storedAssortment.only_revenda ? 2 : 3, total_count: 4 }),
+);
+```
+
+R2-2: the two binding tests did not name which toggle bound to which field, so a swap of two
+booleans passed. Round 2 names them (`:160-162`), e.g.
+`expect(revenda.checked, "Somente produtos de revenda must bind to only_revenda").toBe(true)`.
+
+R2-3: the no-active-source state was unhandled — the card rendered as though the server had chosen
+an empty rule.
+
+### Round 2 must-fails, verbatim from the worker and re-run at this seat
+
+```
+FAIL ... recalculates the result line after a toggle instead of showing the pre-change count
+TestingLibraryElementError: Unable to find an element with the text: Resultado: 3 de 4 produtos.
+Tests 1 failed | 17 passed (18)
+```
+
+```
+AssertionError: Somente produtos de revenda must bind to only_revenda: expected false to be true
+```
+
+The first RED is the one that matters: it is the missing `invalidateQueries` that round 1's constant
+fake could not see.
+
+### Verified at this seat, not on report
+
+- The stateful fake is genuinely state-derived (read at `:131-144`), not a two-value script.
+- The no-source state is discriminated EXACTLY, not by a status class
+  (`IntegracoesPage.tsx:302-306`): `status === 400 && code === "unknown_erp_source"`.
+- **C-5 (compare the WIRE, not the struct):** the discriminator was checked against the SDK's real
+  producer rather than against the neighbouring mock. `getSellableAssortment` (`index.ts:1909`) and
+  `getCatalogAssortmentCounts` (`:1871`) both delegate to `getJson` (`:1719`), which throws the FLAT
+  object at `:1723`:
+  `throw { status: response.status, error: (data as ErrorResponse).error } satisfies MarketplaceCentralClientError`.
+  Not an `Error` subclass, not a nested body — exactly what the page destructures.
+- A-23 honoured on both counts: invalidation is the targeted `queryKeyNamespaces.catalog` prefix
+  (`activeSource.ts`), never active-source's blanket `invalidateQueries()`; and `erp_source` is in
+  the counts key (`index.ts` `catalogQueryKeys.counts`), so a source flip cannot reuse the previous
+  source's count under a new label.
+- Copy is the operator's pt-BR with no dev marker: `Nenhuma fonte definida ainda — escolha a fonte
+  que o app vai ler.` Provisional per A-23.
+
+### Lanes, counted at this seat
+
+```
+@marketplace-central/web  src/pages/integracoes   18 passed / 18   0 skipped
+@marketplace-central/sdk-runtime                  78 passed / 78   0 skipped
+```
+
+`@marketplace-central/web-query` has **no `test` script** (`npm error Missing script: "test"`), and
+my first reading of that was wrong: it is not a missing lane. The package has three test files of
+its own and `apps/web/vitest.config.ts` includes
+`"../../packages/web-query/src/**/*.test.{ts,tsx}"`, so they run in the
+`@marketplace-central/web` lane. Only the per-package script is absent. The filtered run above
+excluded them on purpose (`-- --run src/pages/integracoes`); they are counted in S13's full lane.
+
+Flag for S12 while I was in that config: `feature-products` is included by EXACT FILENAME
+(`../../packages/feature-products/src/CatalogPage.test.tsx`), not by a glob. A second test file
+added anywhere in that package would run in NO lane and report a silent zero. S12's write set
+touches only `CatalogPage.test.tsx`, so the slice is unaffected — but its brief must say so, because
+"add a test file" is the obvious thing a worker would reach for.
+
+### Contamination cleared under A-25 R-2(a) before any of the above was trusted
+
+The round-1 worker claimed the standard vitest lane was blocked and that no emitted `.js` remained.
+Both refuted by measurement here: the lane works, and **186** untracked `.js`/`.js.map` files with
+same-basename `.ts`/`.tsx` siblings were present, shadowing sources under extensionless resolution.
+Root cause was my own `tsc -b` during the S11 review. Deleted per-file under the grant
+(`DELETED_COUNT=186`, the single skip being my own untracked `catalog_routes_test.go`, which is not
+a `.js`), tracked files untouched, no `git add -A`. The S11 lane was then RE-RUN post-purge and
+reproduced 18/18 with 0 skipped — so the green is not read off shadow JS. `.gitignore`/`tsconfig`
+remain the hub's seam per R-2(b); not proposed here.
