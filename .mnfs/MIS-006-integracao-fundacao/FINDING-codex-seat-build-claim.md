@@ -46,3 +46,19 @@ Consequência operacional que fica: quem varre por string **dentro de um worktre
 dentro do worktree. Varredura parcial é pior que nenhuma, porque tem a forma de completa — um
 assento de gate a usar a ferramenta errada devolveria "zero ocorrências" com toda a confiança, e é
 por varredura de string que este repo verifica alegações totais (R-24/R-26).
+
+### Extensão medida (2026-07-29, varredura de mojibake do chip) — zero só afirma com DOIS controlos
+
+O chip correu a varredura de mojibake pós-transporte e a PRIMEIRA versão devolveu `0` com um padrão
+que também achava **0 das 934 linhas acentuadas legítimas** da árvore — instrumento cego, zero
+vacuoso, a mesma forma do skipped-vs-green. A segunda versão (`Ã|â€|Â` literal) devolveu 29 hits,
+todos `Ã` legítimo de `COTAÇÃO`/`NÃO` — falso-positivo estrutural sobre a língua protegida. Só a
+terceira, com controlos amarrados ao resultado, afirma:
+
+    controlo positivo  (mojibake conhecido) → o padrão DISPARA
+    controlo negativo  (pt-BR correto)      → o padrão NÃO dispara
+    varredura           → 0
+
+**Regra que fica (vincula chip no P5 e gates no P6):** varredura por string declara o instrumento
+E os dois controlos — que acha o que deve achar, e que não acha o que não deve. Zero sem controlo
+positivo não é evidência; é a assinatura de um instrumento que talvez não consiga achar nada.
