@@ -239,8 +239,16 @@ go test ./internal/modules/internal_read/adapters/mirror -run '^TestPgWriterPers
   - `apps/server_core/internal/modules/internal_read/adapters/routing/matcher.go`
   - `apps/server_core/internal/modules/internal_read/adapters/routing/matcher_test.go`
   - `apps/server_core/internal/modules/internal_read/adapters/routing/matcher_integration_test.go`
+  - `apps/server_core/internal/modules/erp_import/adapters/postgres/mirror_query_repository.go` —
+    **added D-122 by hub GRANT** (ruling 1 of 4), bounded to exactly two edits: (a)
+    `mirrorProductColumns:13` gains `,m.usoprod,m.ad_ecommerce`; (b) `scanMirrorProduct:19-44`
+    gains two `sql.NullString` read through the existing `nullStringPointer`. **Zero filtering in
+    this file** — mirror-side SQL filtering remains S7's seam. The hub accepted the ordering
+    argument: the first CONSUMER of a column brings it, rather than a preparatory slice landing a
+    column nobody reads yet.
 - `failing_test_first`: `TestMirrorMatcher_ActiveRevendaRuleControlsCandidateBirth` in `apps/server_core/internal/modules/internal_read/adapters/routing/matcher_integration_test.go`
-- `blocker` (D-122, REQUEST open with the hub): the mirror READ path never selected the two
+- `blocker` (D-122, **RESOLVED by the grant above** — kept in full because the RED it produced is
+  this slice's evidence that the green which follows is not vacuous): the mirror READ path never selected the two
   columns. `mirror_query_repository.go:13` defines `mirrorProductColumns` without `usoprod` /
   `ad_ecommerce`, and `scanMirrorProduct:19-44` does not read them — 0 occurrences in the file —
   even though the WRITE path populates both (S3, S4) and `domain.MirrorProduct` carries them (S1).
@@ -260,6 +268,11 @@ go test ./internal/modules/internal_read/adapters/mirror -run '^TestPgWriterPers
   - `USOPROD='V'` yields no candidate when enabled, then yields one after `only_revenda=false` is persisted.
   - A known sellable row is asserted born.
   - A nil `USOPROD` row is asserted born.
+  - **The columns are asserted to ARRIVE, not merely to be selectable (D-122).** A row written with
+    `USOPROD='V'` must be read back with `Usoprod` equal to `"V"`. Without this the three criteria
+    above all pass against `Usoprod=nil`: nil PASSES the ratified mirror clause `IS NULL OR = 'R'`,
+    so "cut" and "not cut" are indistinguishable when the SELECT is the thing that is broken. This
+    criterion is what the blocker below was blocking.
 - `validation_kind`: `integration`
 - `commands`:
 
@@ -295,6 +308,24 @@ go test ./internal/modules/erp_import/adapters/internalread ./internal/modules/i
     half creates the defect the decision names. Binding condition 4 (QA sees both screens) already
     presupposed this file; now the write-set carries what the condition presupposes.
   - `apps/server_core/internal/modules/internal_read/adapters/oracle/reader_test.go`
+  - `apps/server_core/internal/modules/internal_read/domain/internal_stock.go` — **added D-122 by
+    hub ruling 2 of 4. The default policy CHANGES.** Authority is the operator's ratified verbatim
+    in EMENDA A7: asked whether the outlet cut applied to the filter or also to the number on
+    screen, the answer was **"os dois"**. `DefaultSellableStockPolicy():18-26` becomes
+    `LocationIDs: []int{10101, 10102}` and `ExcludedLocationIDs: nil`. The `ExcludedLocationIDs`
+    FIELD stays (S7 and future policies use it); only this default's value goes, because 10108 was
+    already outside a whitelist of `{10101}` — excluding it was a dead predicate, and a dead
+    predicate reads as protection that is not there.
+  - `apps/server_core/internal/modules/internal_read/domain/contract_test.go` — **added D-122**,
+    the free must-fail for the line above: `:21-25` asserts `LocationIDs == []int{10101}` and
+    `ExcludedLocationIDs == []int{10108}` BY VALUE, so it goes RED naming both values the moment
+    the policy moves. Update the expectation; do not weaken the assertion into presence.
+  - `apps/server_core/internal/modules/internal_read/adapters/fake/reader_test.go` — **added
+    D-122**, one assertion re-pointed. `:38` loops `ExcludedLocationIDs` looking for 10108 and
+    fails with "expected showroom location 10108 to stay excluded"; against an empty list it
+    fails. The intent (10108 does not sell) survives the change and must keep a test: re-point it
+    at the WHITELIST — 10108 ∉ `LocationIDs` — which is the stronger statement anyway, since a
+    whitelist excludes 10108 and every location invented tomorrow. **Do not delete the loop.**
   - ONE test file in the `profitability` package (new, or a table extension of an existing one) —
     **added D-122 by hub ruling**, additive and TEST-ONLY. `profitability` PRODUCTION files stay
     out of the write-set, which is what makes binding condition 3 (do not redesign the gate)
@@ -315,6 +346,35 @@ go test ./internal/modules/erp_import/adapters/internalread ./internal/modules/i
     (only an explicit `'N'` is an assertion; strict `= 'S'` would cut 2.923 → 442).
   - `include_all` omits only those rule predicates; active/cursor/search constraints remain.
   - Count query uses the same stock CTE and predicate builder and returns exact N/M.
+  - **The outlet location is in the cut, in BOTH readers (D-122, hub ruling 2).** The page's stock
+    CTE (`catalog_page.go:131-137`) goes from `est.CODLOCAL = 10101` to `IN (10101, 10102)`, and
+    `DefaultSellableStockPolicy` moves with it. Comment both codes by NAME — 10101 = `1_REVENDA`,
+    10102 = `2_OUTLET`. It stays a WHITELIST: a location created tomorrow must not start selling by
+    itself. Measured cut `CODEMP(1,2) ∧ CODLOCAL(10101,10102)` = 2.923 products.
+    The price CTE (`:146`, `e.CODLOCAL = 10101`) and the cost CTE (`:159`, `c.CODEMP = 1`) are a
+    DIFFERENT fact with a different rule and are NOT touched — report only.
+  - **Binding condition 2 gains the outlet-only case (D-122):** a product whose stock lives only in
+    10102 was invisible before the pin and must now be born sellable. Assert it by value.
+  - **`buildNotIntListClause` returns `""` for an empty list (D-122, hub ruling 3 of 4).**
+    `ExcludedLocationIDs: nil` makes every caller pass an empty slice, and the helper currently
+    emits ` AND est.CODLOCAL NOT IN ()` — ORA-00936, invisible to every test at this seat because
+    no seat here reaches Oracle. Two callers exist: `reader.go:503` guards the call with
+    `if len(policy.ExcludedLocationIDs) > 0`, `stock_batch_reader.go:115` does NOT. The fix goes in
+    the HELPER, not the caller — guard-at-the-caller is exactly the pattern that just failed here,
+    two callers and one guard. By-construction beats by-vigilance. Consequence: `stock_batch_reader.go`
+    needs NO production edit and stays out of the write-set; the `reader.go:503` guard STAYS (a
+    redundant guard is not a defect); a test names empty-list → clause ABSENT, and if it is written
+    in the batch reader's `_test.go` that TEST file is an additive extension, production untouched.
+  - **Do NOT "fix" `buildIntListClause` for symmetry.** Measured at this seat, both of its callers
+    are non-empty by construction: `buildSellableStockQuery:489-491` returns
+    `ReadErrorUnsupportedQuery` for an empty company or location list, and
+    `buildStockBatchQuery:103` builds from `DefaultSellableStockPolicy()`, a constant that is never
+    empty. A silently-permitted `IN ()` there would HIDE an empty policy that should blow up — an
+    empty whitelist means "sell nothing", and an inclusion list that quietly disappears means "sell
+    everything". The asymmetry is the correct semantics and goes in the helper's comment, together
+    with what a future caller must preserve: the batch reader's protection is a property of a
+    VALUE, not a guard, so a `buildStockBatchQuery` that ever accepts a caller-supplied policy has
+    to acquire the edge check `buildSellableStockQuery` already has.
   - Pagination caller tests still prove a gapless limit+1 chain after filtering.
   - **The emitted fact follows the predicate (decision (b), D-122).** Both Oracle sites stop
     raising `QualityMissingStock` for a NULL that the pinned query PROVES is zero: after the pin
