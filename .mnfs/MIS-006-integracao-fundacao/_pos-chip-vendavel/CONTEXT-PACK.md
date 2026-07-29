@@ -228,3 +228,42 @@ condição 1). A lacuna é de plano e agora tem dono. Residual do DISTINCT na co
 **Correção do hub em registo:** no P4 do S6 o hub verificou que `IncludeAll` CHEGAVA ao SQL e
 parou aí — meia-doutrina. Chegada tem duas metades: o valor chega ao consumidor E vem do
 PRODUTOR certo (a linha do tenant). Gate de fatia que plumba opção/config pergunta as duas.
+
+## EMENDA A-19 2026-07-29 — S8 reprovado no P4 do chip: ruling do hub nos três pontos
+
+**Contexto:** worker do S8 cego na lane do sdk-runtime (sandbox nega travessia de diretório ao
+esbuild; vitest abortou ANTES da coleta) e declarou o próprio zero — comportamento correto sob
+o VC-7. No assento do chip: 2 vermelhos em guards de OUTRAS fatias. Probe do chip (trocar só as
+duas refs `ErrorResponse` do bloco novo, medir, reverter) separou as causas: erpImport = defeito
+de contrato REAL; activeSource = colisão de janela posicional.
+
+**Ruling A — superfície de erro (recomendação medida do chip APROVADA):**
+- Schema plano novo `SellableAssortmentError` (`{error, detail?}`), espelho do `ActiveSourceError`
+  — a forma que `tenant_config/transport/http_handler.go` de facto emite.
+- GET declara 200+500; PUT declara 200+400+500. O `404` SE DELETA (R-25: falsidade em contrato
+  publicado se deleta — sob A-17 o default resolve na seam de load, GET nunca 404).
+- Enum mínimo `[invalid_body, internal_error]`. Se a S10 medir necessidade de código novo, o
+  contrato emenda por medição na hora — nada especulativo agora (YAGNI).
+- O handler da S10 passa a dever exatamente esta superfície; critério entra no card da S10.
+
+**Ruling A2 — janelas posicionais (tratamento SIMÉTRICO):** os DOIS guards que fatiam
+`slice(âncora, indexOf("\ncomponents:"))` re-apontam a janela POR VALOR (terminar na PRÓXIMA
+âncora de caminho), asserções intactas, movimento declarado em voz alta na evidência. Vale
+também para o `fiveHundreds toHaveLength(4)` do erpImport quando o conserto adicionar o 500
+novo: a contagem se protege por janela certa, nunca por inflar o número. Guard NOVO nascido
+neste conserto já nasce com janela por valor. Fragilidade posicional geral fica como residual
+escrito (fatias futuras que apendarem caminhos).
+
+**Ruling B — quem executa: opção (i) GRANTED.** O chip aplica como glue de orquestrador —
+grant EXPLÍCITO de estouro do teto de ≤10 linhas (~25 linhas YAML + re-apontamentos de teste).
+Condições: commit PRÓPRIO em cima de `20dbc321` (o commit do worker fica como está); evidência
+com contagem por linha antes/depois da suíte inteira e o probe registrado; linha de ledger
+nomeando o grant. O vermelho que NOMEIA já existe (o guard do erpImport é o must-fail deste
+conserto). S9 despacha depois da lane verde — o `include_all` do wire resolve nesta superfície.
+
+**Ruling C — cegueira de sandbox é FINDING de harness** (arquivo próprio na missão,
+`FINDING-sandbox-blind-fe-lane.md`): worker despachado não consegue rodar a lane do sdk-runtime
+que o VC-7 exige; o orquestrador é a única testemunha de execução. Vinculado CHIP-LOCALMENTE
+já: brief de fatia que toca `packages/*` DECLARA a cegueira de antemão e nomeia o assento que
+mede (chip roda a lane a cada entrega); zero-observed do worker = BLIND, nunca verde.
+Candidatura a profile aguarda ratificação do operador.
