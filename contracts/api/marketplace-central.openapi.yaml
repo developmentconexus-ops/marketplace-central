@@ -3262,7 +3262,7 @@ paths:
 
   /erp/imports/{id}/chain:
     get:
-      summary: Get three independent measures for an ERP import
+      summary: Get three measures over an ERP import, in two units
       operationId: getErpImportChain
       tags: [erp-imports]
       parameters:
@@ -3275,7 +3275,7 @@ paths:
             format: uuid
       responses:
         "200":
-          description: Three independent measures over the import, read at queue_read_at
+          description: Three measures over the import, in two units, read at queue_read_at
           content:
             application/json:
               schema:
@@ -8090,7 +8090,7 @@ components:
     ErpImportChain:
       type: object
       description: >-
-        Three independent measures over one ERP import — not stages of a funnel and not one
+        Three measures over one ERP import — not stages of a funnel and not one
         population decomposed. They are read from different sources (import rows, resolved
         product links, the market sync queue) and in two different units: importados and
         enfileirados count import ROWS, vinculados counts internal PRODUCTS. A product can sit

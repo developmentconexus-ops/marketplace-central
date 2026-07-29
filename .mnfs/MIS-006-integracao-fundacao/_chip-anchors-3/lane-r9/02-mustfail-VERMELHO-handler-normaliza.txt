@@ -1,0 +1,5 @@
+--- FAIL: TestHandlerGetImportChainMapsServiceErrorsAndUTCResponse (0.00s)
+    http_handler_test.go:348: service id = "3a3a3a3a-bbbb-4ccc-8ddd-eeeeffff0000", want "3A3a3A3a-BBBB-4ccc-8DDD-eeeeFFFF0000" byte for byte
+FAIL
+FAIL	marketplace-central/apps/server_core/internal/modules/erp_import/transport	1.978s
+FAIL

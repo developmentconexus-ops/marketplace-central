@@ -552,7 +552,7 @@ func applySingleAnchorScore(candidate *domain.LinkCandidate, state domain.LinkCa
 		confidence, band, status = 60, domain.LinkCandidateConfidenceBandMedia, domain.LinkCandidateMatchStatusConfirm
 		skuDetail := "sem CODPROD para corroborar o EAN"
 		if strings.TrimSpace(snapshot.SellerSKU) != "" {
-			skuDetail = "sem CODPROD para corroborar o EAN: o seller_sku do anúncio não casa nenhum produto"
+			skuDetail = "o seller_sku do anúncio não casa este produto, então não corrobora o EAN"
 		}
 		reasons = []domain.LinkCandidateReason{
 			{Anchor: "ean", Direction: domain.LinkCandidateReasonDirectionFor, Detail: "ean corrobora codprod (unproved)"},

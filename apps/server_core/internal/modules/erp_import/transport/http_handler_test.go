@@ -22,6 +22,9 @@ import (
 const (
 	validImportID   = "11111111-1111-1111-1111-111111111111"
 	missingImportID = "22222222-2222-2222-2222-222222222222"
+	// Upper-case hex, accepted by ImportID.IsValid: a fixture whose bytes the
+	// handler cannot normalise without the assertion noticing.
+	mixedCaseImportID = "3A3a3A3a-BBBB-4ccc-8DDD-eeeeFFFF0000"
 )
 
 type fakeImportRunner struct {
@@ -333,12 +336,16 @@ func TestHandlerGetImportChainMapsServiceErrorsAndUTCResponse(t *testing.T) {
 		Enfileirados: 3,
 		QueueReadAt:  time.Date(2026, 7, 27, 12, 34, 56, 0, time.FixedZone("BRT", -3*60*60)),
 	}}
-	response := performRequest(t, &fakeImportRunner{}, querier, httptest.NewRequest(http.MethodGet, "/erp/imports/"+validImportID+"/chain", nil))
+	// mixedCaseImportID, not validImportID: the path value must reach the service
+	// RAW. IsValid accepts upper-case hex, so an id whose case survives the round
+	// trip is the only fixture where a normalising handler would be visible —
+	// validImportID is all ones and would read the same either way.
+	response := performRequest(t, &fakeImportRunner{}, querier, httptest.NewRequest(http.MethodGet, "/erp/imports/"+mixedCaseImportID+"/chain", nil))
 	if response.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200; body=%s", response.Code, response.Body.String())
 	}
-	if querier.chainID != domain.ImportID(validImportID) {
-		t.Fatalf("service id = %q, want %q", querier.chainID, validImportID)
+	if querier.chainID != domain.ImportID(mixedCaseImportID) {
+		t.Fatalf("service id = %q, want %q byte for byte", querier.chainID, mixedCaseImportID)
 	}
 	if got, want := response.Body.String(), "{\"protocol\":\"#001-E\",\"importados\":4,\"vinculados\":2,\"enfileirados\":3,\"queue_read_at\":\"2026-07-27T15:34:56Z\"}\n"; got != want {
 		t.Fatalf("body = %q, want %q", got, want)

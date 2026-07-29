@@ -37,6 +37,9 @@ ordem_f5_drive: DESCARREGADO. Hub dirigiu /importacoes/eac3ac9e-b87b-43be-959c-7
 gate_round_7: SEM AGREEMENT — Opus BLOCKED, Sol CLEAR. VERDICTS-round7.md (5236ca0d). 1 problema meu (o link Ver cadeia em ImportacaoSection.tsx:151, chamador que eu nao varri), 2 de redacao de criterio do hub (F5-3 nao dizia ONDE o residuo mora; F5-4 nao nomeava o par de revisoes) — e foram esses dois que fizeram os assentos divergirem.
 rodada_8: rotulo Ver cadeia -> Ver estado no chamador + asserção do nome acessivel; must-fail prova que o teste falha PELO NOME quando o defeito volta. Varredura de apps/web/src INTEIRO entregue verbatim: uma unica superficie leva a /importacoes/<id>, o resto de chain e identificador que nao renderiza, e o chain de precos/ e homonimo (resolver COTACAO->PADRAO). F5-3: divida declarada no OpenAPI (description do schema) E no TSDoc do SDK — pack nao conta. F5-4: delta vs main POR CLASSE, 4 sitios de TIPO todos de CORR-3 (invalid_import_id + 400 nas duas rotas), ZERO do F-5; ErpImportChain igual a main ignorando prosa.
 rodada_8_lane_crua: lane-r8/ com 6 runs, texto cru sem edicao, NO_COLOR=1, um arquivo por run. Manifesto de atribuicao (comando + cwd + exit + sha256) no corpo, porque o arquivo cru nao pode dizer com que comando nasceu sem deixar de ser cru. 05 = defeito reposto (EXIT 1, "Unable to find an accessible element ... name Ver estado" em 05:6 e 05:409), 06 = restaurado (EXIT 0, 5 passed). 03 tem ZERO bytes: e o sha256 da string vazia, entao esta vazio e nao truncado, mas vazio e o que "nao rodei" tambem produz — quem prova o SDK e 04, com 77 testes nomeados. 02 reexecutado e byte-identico (diff EXIT 0); os de vitest carregam duracao/hora e nao sao reproduziveis assim. Pos-captura: git diff --quiet HEAD EXIT 0 contra c3acf62b, unico nao-versionado era lane-r8/.
+corte_yagni: 3 condicoes atendidas (CORTE-YAGNI.md c8e8b238). (1) string falsa na tela trocada em generation_service.go:555 — a frase era da main (:542 la), o chip reparou o Side e manteve a frase; renderiza em QueueRow.tsx:59/:95 e VinculoDrawer.tsx:117. (2) "independentes" e falso — li o SQL: queued_products faz JOIN em import_products, entao enfileirados <= importados; caiu nos QUATRO sitios (tela + OpenAPI summary/200/schema + TSDoc do SDK) porque o R-24 novo cobre contrato publicado. (3) "exact EAN ERP seller SKU empty" RESTAURADO; id-with-path NAO restaurado e justificado por observavel — desde o CORR-3 recebe 400 e nunca chega ao servico, entao a propriedade foi repinada com mixedCaseImportID, e a CONTRAPROVA esta no pack (mesmo defeito: fixture antigo PASSA, novo FALHA). Comentario SQL query_repository.go:155 corrigido em uma frase.
+lane_r9: 10 runs crus em lane-r9/, NO_COLOR=1. 2 must-fail com contraprova, verde -count=1 sem cache, FE 29 passed, sdk 77 passed, build+vet EXIT 0. Mutacoes removidas e conferidas: http_handler.go voltou com ZERO linhas de diff, generation_service.go ficou 1+/1- (so a string). 08 tem zero bytes — quem prova o SDK e 09.
+nao_tocado_r9: generation_service.go:545 (espelho do ean) tem a MESMA falsidade e e igualmente da main — nomeado em uma linha, nao consertado, porque a ordem diz "fora desses tres, nada". A frase-base "sem CODPROD para corroborar o EAN" fica: esta fixada pelo M05-C2 (validation-contract.md) e por auto_link_policy_test.go:196. Cópia nova do painel NAO foi vista em tela nesta rodada.
 status: NAO FECHADO PELO CHIP. Sem AGREEMENT em 5 rounds; a linha P6-DUAL-GATE e o merge sao do hub. Todo achado dos dois lados verificado por STRING pelo chip, um recusado com motivo.
 authority: .mnfs/MIS-006-integracao-fundacao/_hub-gate-anchors-2/p6-reconciliation-r1.md
 contract: .mnfs/MIS-006-integracao-fundacao/_chip-anchors-3/validation-contract.md
@@ -1127,6 +1130,83 @@ Três coisas que os arquivos não dizem sozinhos e por isso vão ditas:
    (resumo) e `05:409` (stack). O par vermelho→verde percorre `:151`, e só `:151`.
 3. **A árvore voltou ao commit depois de `06`**: `git diff --quiet HEAD` EXIT 0 contra `c3acf62b`,
    e o único não-versionado era `lane-r8/` — o defeito de `05` não sobreviveu à captura.
+
+---
+
+## Corte YAGNI — as 3 condições (`CORTE-YAGNI.md`, `c8e8b238`)
+
+**1. String falsa na tela.** `generation_service.go:555` emitia `"sem CODPROD para corroborar o EAN:
+o seller_sku do anúncio não casa nenhum produto"` num caminho onde o produto ERP TEM CODPROD e o
+anúncio TEM seller_sku — os dois lados têm valor e apenas discordam. A frase é **da `main`** (`:542`
+lá), não deste chip; o que este chip fez foi reparar o `Side` (B-01) e manter a frase, e depois
+fixá-la num teste novo. Agora: `"o seller_sku do anúncio não casa este produto, então não corrobora
+o EAN"` — verdadeiro nas duas formas em que é emitida (produto com CODPROD, e o `ProductCandidate{}`
+do caminho não resolvido). Renderiza em `QueueRow.tsx:59`, `:95` e `VinculoDrawer.tsx:117`.
+
+**2. Cópia falsa na tela e no contrato publicado.** `independentes` era falso, e eu li o SQL em vez
+de aceitar a medição: `queued_products` faz `JOIN import_products ... ON products.codprod =
+pending.codprod` (`query_repository.go:150-151`), então `enfileirados <= importados`; `vinculados`
+sai de `resolved_products`, mesma origem. Tela: `Três medidas da mesma importação, em duas unidades —
+nenhuma é etapa da outra.` A mesma palavra estava em **quatro** sítios, e o R-24 novo cobre contrato
+publicado tanto quanto tela, então caiu nos quatro: OpenAPI `summary` (`:3265`), `description` do 200
+(`:3278`), `description` do schema `ErpImportChain` (`:8093`) e o TSDoc do SDK (`erpImport.ts:49`).
+Declarado, não escondido: o hub nomeou a tela; eu estendi para o contrato pela regra dele, não por
+conta própria — se for scope demais, é um revert.
+
+**3. Testes de terceiro apagados fora do grant.**
+
+- `"exact EAN ERP seller SKU empty"` **RESTAURADO** em `generation_service_test.go`, com o detalhe
+  novo. Não é redundante: é o único caso `seller_sku` + `side=erp` da tabela, e ele aparece **por
+  nome** no must-fail. O comentário que justificava a remoção era falso pela metade — o
+  `ProductCandidate{}` não vem do matcher, mas vem do caminho não resolvido (`:215`) — e foi
+  corrigido, não expandido.
+- `id-with-path` **NÃO restaurado, justificado por observável.** `id-with-path` não é UUID; desde o
+  CORR-3 (já julgado) ele recebe `400 invalid_import_id` e nunca chega ao serviço, então restaurar a
+  asserção antiga seria fixar 200 para um id que o handler rejeita — asseverar o contrário do que
+  está no ar. A propriedade que ela protegia (o handler encaminha o valor CRU do path) foi
+  **repinada com um fixture que a torna observável**: `mixedCaseImportID` em maiúsculas, aceito por
+  `ImportID.IsValid` (`import.go:106-108` aceita `A-F`). E a contraprova está no pack: com o mesmo
+  defeito injetado (`strings.ToLower` em `readImportID`), o fixture antigo `validImportID` **PASSA**
+  (`lane-r9/03`, EXIT 0) e o novo **FALHA** nomeando os bytes (`lane-r9/02`, EXIT 1). O que faltava
+  não era o teste — era um fixture capaz de distinguir.
+
+**Comentário SQL** (`query_repository.go:155-157`): `differ only when one import names the same
+product twice` era falso — a própria fixture #660-E asserta 3·1·2 sem duplicata. Uma frase trocada,
+sem tratado.
+
+### Lane da rodada 9 — `lane-r9/`, crua, `NO_COLOR=1`, um arquivo por run
+
+```
+01  go test product_links + erp_import (todos os pacotes)              EXIT 0
+02  MUST-FAIL  readImportID normaliza  -> 1 FAIL nomeando os bytes     EXIT 1
+03  CONTRAPROVA  mesmo defeito, fixture ANTIGO                         EXIT 0  (não pega)
+04  MUST-FAIL  side=erp -> provider     -> 4 FAIL, o restaurado entre  EXIT 1
+    eles por nome (exact_EAN_ERP_seller_SKU_empty)
+05  VERDE restaurado, -count=1 (sem cache)                             EXIT 0
+06  vitest importacoes+integracoes      5 files, 29 passed             EXIT 0
+07  apps/web tsc --noEmit               15 erros pré-existentes, 0 nos
+                                        dois diretórios                EXIT 2
+08  sdk tsc --noEmit                    vazio                          EXIT 0
+09  sdk vitest                          5 files, 77 passed             EXIT 0
+10  go build ./... && go vet (2 módulos)                               EXIT 0
+```
+
+`08` tem zero bytes, e vale o mesmo que na rodada 8: vazio é o que "não rodei" também produz, então
+quem prova o SDK é `09`. Depois de cada must-fail a mutação foi removida e conferida por `git diff`:
+`http_handler.go` voltou **sem nenhuma linha** de diferença, `generation_service.go` ficou com
+`1+/1-`, que é a troca da string da condição 1 e nada mais.
+
+### O que NÃO foi tocado, e por quê
+
+- `generation_service.go:545`, o espelho do `ean`: `"sem EAN para corroborar o CODPROD: o EAN do
+  anúncio não casa nenhum produto"` tem **a mesma forma de falsidade**, é igualmente da `main` e
+  renderiza nos mesmos três sítios. O hub nomeou o `seller_sku`; a ordem diz "fora desses três,
+  nada". Fica dito em uma linha, para o hub decidir em uma palavra.
+- A frase-base `"sem CODPROD para corroborar o EAN"` (sem sufixo, ramo em que o anúncio não tem SKU)
+  **não** mudou: está fixada pelo contrato de validação do M-05 (`validation-contract.md`, critério
+  M05-C2) e por `auto_link_policy_test.go:196`. Mudá-la quebraria um contrato de milestone fechado.
+- Nenhum drive de navegador nesta rodada: a cópia nova do painel foi verificada por string e pelo
+  vitest, **não em tela**. Nenhum teste asserta essa cópia — o pin do painel é por `data-testid`.
 
 ---
 

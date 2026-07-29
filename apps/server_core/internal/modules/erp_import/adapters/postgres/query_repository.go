@@ -153,8 +153,8 @@ func (r *Repository) GetImportChain(ctx context.Context, tenantID string, import
 			  AND state.entity = 'market'
 		)
 		-- importados and enfileirados count import ROWS; vinculados counts linked
-		-- internal PRODUCTS. They differ only when one import names the same
-		-- product twice ('101' and '00101'), and then they differ truthfully.
+		-- internal PRODUCTS. All three differ without any duplicate: a row may
+		-- resolve to no product, and only part of the import stays pending.
 		SELECT target.protocol AS protocol,
 		       (SELECT count(*) FROM import_products) AS importados,
 		       (SELECT count(*) FROM resolved_products) AS vinculados,

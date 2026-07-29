@@ -41,10 +41,10 @@ export function ImportChainPanel({ importId }: ImportChainPanelProps) {
   return (
     <section className="rounded-card border border-border bg-surface p-4">
       <h2 className="text-sm font-semibold text-ink">Estado da importação</h2>
-      {/* Sem seta entre os três: o servidor os apura de populações independentes e em duas
-          unidades (linhas do arquivo / produtos internos), então 55 · 0 · 55 é estado normal. */}
+      {/* Sem seta entre os três: são duas unidades (linhas do arquivo / produtos internos) e
+          nenhum é etapa do outro, então 55 · 0 · 55 é estado normal. */}
       <p className="mt-1 text-xs text-faint">
-        Três medidas independentes, lidas do servidor — não são etapas de um funil.
+        Três medidas da mesma importação, em duas unidades — nenhuma é etapa da outra.
       </p>
       <div className="mt-3">
         {chainQuery.isPending ? (

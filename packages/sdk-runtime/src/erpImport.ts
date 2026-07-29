@@ -46,7 +46,7 @@ export interface ErpImportDetail extends ErpImportSummary {
 }
 
 /**
- * Three independent measures over one ERP import — not stages of a funnel and not one
+ * Three measures over one ERP import — not stages of a funnel and not one
  * population decomposed. Two units: `importados` and `enfileirados` count import ROWS,
  * `vinculados` counts internal PRODUCTS. `enfileirados > vinculados` is a normal state.
  *
