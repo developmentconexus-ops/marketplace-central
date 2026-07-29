@@ -19,7 +19,7 @@ O operador abre `/catalogo` e vê 10.538 produtos, a maioria morta para venda. A
 | toggle | semântica | default | corte medido |
 |---|---|---|---|
 | `only_revenda` | `TGFPRO.USOPROD = 'R'` | **true** | 10.538 → 10.007 |
-| `only_em_estoque` | estoque disponível > 0 (CODEMP IN (1,2): 1=CD, 2=loja física) | **true** | → **3.822** |
+| `only_em_estoque` | estoque disponível > 0 (ver EMENDA A7 abaixo para o recorte) | **true** | ver A7 |
 | `only_ecommerce` | `TGFPRO.AD_ECOMMERCE = 'S'` | **false** | flag rala hoje (606); cliente vai passar a manter |
 
 Fatos que NÃO são graus de liberdade do chip:
@@ -29,6 +29,28 @@ Fatos que NÃO são graus de liberdade do chip:
   filtro de revenda. Ausência ≠ reprovação.
 - F-LINK-1 refutado: espelho Sankhya casa 31/31 EANs da conta ML (exato, sem normalizar);
   xlsx casa 0. Nada de normalização de EAN neste chip.
+
+## EMENDA A7 — recorte de localização de estoque (ratificada pelo operador 2026-07-29, pós-despacho)
+
+Verbatim do operador, dito na sessão do chip: *"CODLOCAL é legal: 10101 é estoque revenda, 10108 é
+show room não é pra contar, e 10102 é outlet — esses que vendem"*. Perguntado se valia só para o
+filtro ou também para o número em tela: **os dois**.
+
+**Disponível vendável = `CODEMP IN (1,2) AND CODLOCAL IN (10101, 10102) AND CODPARC = 0`.**
+10108 (show room) fora. Consequências fixadas:
+- O pin do Q4 do sync é COMPLETO (empresa **e** local); o must-fail falha se qualquer um dos dois sair.
+- `catalog_page.go` hoje usa `CODLOCAL = 10101` → passa a `IN (10101, 10102)` (outlet entra; o
+  operador quer essa mudança de número).
+- Espelho, catálogo vivo e contador N/M usam a MESMA definição de disponível — divergência = VC-2 falha.
+- Lista de CODLOCAL é constante comentada no código; nada de UI de escolha de local (YAGNI).
+
+**O número 3.822 do pack original está MORTO** — foi medido sem o recorte de CODLOCAL. Até a medição
+viva voltar do especialista Oracle, o VC-2 se descarrega por concordância (tela == SQL da mesma regra
+no mesmo banco), nunca por constante.
+
+REQUEST db-consult em voo (hub → `local_ec787804`): `ESTOQUE - RESERVADO` vs `ESTOQUE`; `CODPARC = 0`
+como predicado de estoque próprio; contagem viva com e sem o recorte de CODLOCAL; lista de CODLOCAL
+com estoque nas empresas 1 e 2.
 
 ## Defeito incluído no escopo (achado na investigação)
 
@@ -63,4 +85,7 @@ O Q4 de estoque do sync soma TODAS as empresas — `WHERE CODPARC = 0` sem CODEM
 
 ## Números de aceitação (base METALPRD 2026-07-29; tolerância = drift diário ~5 produtos)
 
-- ATIVO=S: 10.538 · ∧R: 10.007 · ∧estoque>0 (1,2): **3.822** · com EAN: 3.154 (82,5%).
+- ATIVO=S: 10.538 · ∧R: 10.007.
+- ∧estoque>0 em CODEMP (1,2) **sem recorte de CODLOCAL**: 3.822 (com EAN 3.154 = 82,5%) —
+  número HISTÓRICO, superado pela EMENDA A7. Não usar como constante de aceitação.
+- ∧estoque>0 em CODEMP (1,2) **∧ CODLOCAL IN (10101,10102)**: pendente de medição viva (REQUEST em voo).
