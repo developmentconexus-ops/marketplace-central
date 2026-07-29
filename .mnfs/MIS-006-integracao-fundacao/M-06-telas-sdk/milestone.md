@@ -4,7 +4,9 @@
 id: M-06
 type: milestone
 mission: MIS-006
-status: draft
+status: closed
+closed_at: 2026-07-28
+closed_by: hub D-122/D-123 — CHIP-IMPORT-CHAIN @45b887b3, CHIP-VINC-NEUTRO @3847fb4f, CHIP-ANCHORS-3 @28ac8ac5; live drive em _hub-live-drive/; os 4 achados observáveis do drive migram para CHIP-FIM (CORTE-YAGNI.md)
 depends_on: [M-01, M-02, M-05]
 base_sha: 138aac3d
 validation_level: QA-0
