@@ -47,6 +47,45 @@ func (r *LinkCandidateRepository) ReplaceLinkCandidates(ctx context.Context, ins
 		}
 	}
 
+	// The loop above only clears the identities this run processed. A capped run
+	// therefore left every anúncio beyond the cap holding the PREVIOUS run's
+	// candidate, which the fila renders as if it were current — the generator had
+	// never asked the matcher about that listing. A stale answer presented as
+	// fresh is worse than none (ADR-17), so the pendências outside the run go.
+	// "Pendente" is the same predicate the queue reads with: no decision recorded
+	// in product_links. An anúncio the operator already resolved keeps its row.
+	//
+	// A run that processed nothing asserts nothing about the installation, so an
+	// empty identity set clears nothing.
+	if len(identities) > 0 {
+		itemIDs := make([]string, 0, len(identities))
+		variationIDs := make([]string, 0, len(identities))
+		for _, identity := range identities {
+			itemIDs = append(itemIDs, identity.ProviderItemID)
+			variationIDs = append(variationIDs, identity.ProviderVariationID)
+		}
+		if _, err := tx.Exec(ctx, `
+			DELETE FROM product_link_candidates c
+			WHERE c.tenant_id = $1
+			  AND c.installation_id = $2
+			  AND NOT EXISTS (
+				SELECT 1
+				FROM unnest($3::text[], $4::text[]) AS run(provider_item_id, provider_variation_id)
+				WHERE run.provider_item_id = c.provider_item_id
+				  AND run.provider_variation_id = c.provider_variation_id
+			  )
+			  AND NOT EXISTS (
+				SELECT 1 FROM product_links l
+				WHERE l.tenant_id = c.tenant_id
+				  AND l.installation_id = c.installation_id
+				  AND l.provider_item_id = c.provider_item_id
+				  AND l.provider_variation_id = c.provider_variation_id
+			  )
+		`, r.tenantID, installationID, itemIDs, variationIDs); err != nil {
+			return err
+		}
+	}
+
 	for _, candidate := range candidates {
 		reasons, err := marshalReasons(candidate.Reasons)
 		if err != nil {

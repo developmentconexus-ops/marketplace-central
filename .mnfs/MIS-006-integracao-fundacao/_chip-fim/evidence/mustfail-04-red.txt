@@ -1,0 +1,17 @@
+
+> marketplace-central@0.1.0 harness:integration
+> pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command integration
+
+target=ephemeral-postgres
+key=MPC_TEST_DATABASE_URL
+migrations=embedded
+container=session-reuse
+migrations_first=69
+migrations_second=0
+resource_count=0
+port=52798
+failure_token=package=marketplace-central/apps/server_core/internal/modules/product_links/adapters/postgres
+failure_token=test=TestReplaceLinkCandidatesClearsPendingCandidatesLeftOutOfTheRun
+status=blocked
+postgres lifecycle failed reasons=HPG_TEST_FAILED exit_code=1
+EXIT=1
