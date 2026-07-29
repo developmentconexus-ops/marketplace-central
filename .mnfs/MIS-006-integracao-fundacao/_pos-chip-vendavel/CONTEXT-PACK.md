@@ -143,6 +143,17 @@ O Q4 de estoque do sync soma TODAS as empresas — `WHERE CODPARC = 0` sem CODEM
    `REQUEST migration-number`).
 3. Sync Sankhya Q1 ([sync.go:101-110](../../../apps/server_core/internal/modules/internal_read/adapters/oracle/sync.go)) passa a ler `p.USOPROD, p.AD_ECOMMERCE`. Adapter xlsx: colunas
    OPCIONAIS no parser (planilha sem elas continua importando; ficam NULL).
+   **S5B (ruling 2026-07-29):** a cadeia xlsx estava partida no PRIMEIRO salto — o parser lia
+   `USOPROD` da folha e o valor morria no `CopyFrom` (`erp_import_products` sem as colunas; VC-6
+   "xlsx COM as colunas as popula" já exigia o round-trip, o plano nunca deu dono). **Migração
+   0085 concedida** (bloco vira 0083–0085): colunas em `erp_import_products` + CopyFrom + SELECT
+   do sync + must-fail do round-trip folha→espelho.
+   **Case (ruling): a regra é CASE-INSENSITIVE, canonicalizada na ESCRITA** — `TrimSpace+ToUpper`
+   no parser xlsx E no writer Sankhya (S5B, um dono para as duas fontes); predicado live Oracle
+   dobra na query (`UPPER(TRIM(...))`, S6 — sem escrita nossa para canonicalizar, e sem a dobra o
+   live divergiria do espelho, proibido pelo DR-1); predicado do espelho fica SIMPLES, sem fold
+   (S7 — armazenamento já canónico). Canonicalizar caixa NÃO colapsa o tri-estado: valor fora do
+   domínio segue passando por honest-unknown.
 4. Filtro aplica em TRÊS caminhos de leitura (**DR-1**, emendado 2026-07-29 — o pack original
    listava dois e esquecia o catálogo servido pelo espelho):
    - catálogo live Sankhya: condições na query de página conforme a regra do tenant;
