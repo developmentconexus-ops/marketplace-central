@@ -92,6 +92,28 @@ declarado, nunca por forma de caminho nem por cwd do turno.
    cwd do registro do disparo é o diretório do pack. O chip estava certo no mecanismo e errado no
    contra-indício que ele mesmo levantou contra si.
 
+## Reincidência 2026-07-29 (D-123) — dois disparos no HUB, defeitos 1+2 confirmados sem medição nova
+
+O hub foi bloqueado duas vezes no dia do despacho do CHIP-VENDAVEL, e o mecanismo é exatamente o já
+diagnosticado — nada de novo a medir:
+
+1. **No turno de despacho.** O hub tinha acabado de emitir o prompt do chip, que ENUMERA
+   `CLOSED`/`BLOCKED`/`ESCALATION`/`REQUEST` na cláusula (e) do contrato de comunicação. Defeito 1:
+   o prompt de dispatch arma o guard contra quem o escreve, não só contra quem o recebe.
+2. **No turno do RULING DR-2.** A janela de 30 KB ainda continha `CLOSED` da doutrina de aceitação
+   que o hub cita ao chip ("`CLOSED` só com: branch + SHA, vereditos…").
+
+Nos dois casos o hub não reivindicou fecho de coisa nenhuma — **o hub nunca emite `CLOSED`, ele o
+RECEBE** — e o cwd continua o worktree stale `epic-lehmann-4ffbad` (defeito 2), onde o hub nunca
+escreveu e nunca escreverá.
+
+**Custo acumulado, que é o argumento upstream:** o guard já disparou em 2 sessões distintas em
+2026-07-28 e mais 2 vezes em 2026-07-29, **zero verdadeiros positivos**. Um gate cujo histórico
+inteiro é falso-positivo não guarda o invariante que nomeia; ensina a passar por cima dele, e o dia
+em que alguém reivindicar `CLOSED` sem pack ele será ignorado como os outros quatro. A reincidência
+não muda o conserto proposto (casar EVENTO emitido; resolver raiz por `git rev-parse
+--show-toplevel`; classificar por papel declarado) — muda a prioridade dele.
+
 ## Sobre a regra de não ler transcript
 
 O chip pediu liberação da regra para este campo, ou o finding ABERTO. **Nenhuma das duas.** A regra
