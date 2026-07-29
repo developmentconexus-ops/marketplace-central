@@ -1,6 +1,7 @@
 # HARNESS-DEBTS — dívidas de melhoria da harness (coletadas em campo)
 
 `status: ABERTO — insumo para a sessão de melhoria da harness ordenada pelo operador 2026-07-29`
+`ANÁLISE GLOBAL TRIPLA FECHADA 2026-07-29: .mnfs/HARNESS-DEBTS-GLOBAL/ (SYNTHESIS.md = reconciliação hub+MNOS+Sol-xhigh; vereditos verbatim ao lado) — a sessão de melhoria começa POR LÁ; este arquivo é o inventário de casos que a alimenta`
 `fonte da harness: Documents\mnfs-harness (fonte da verdade) · profile local: docs/HARNESS-PROFILE.md`
 `proveniência: MIS-006 CHIP-VENDAVEL (principal), M-06, retro 0.4.0 — cada item cita o caso que pagou o custo`
 
