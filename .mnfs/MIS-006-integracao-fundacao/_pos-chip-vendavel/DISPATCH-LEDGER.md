@@ -140,3 +140,67 @@ container or invents a DSN:
 
 `SkipWithoutTarget` makes a skipped run and a green run byte-identical at the tail (profile §11,
 vacuous green). Every DB slice brief therefore demands RUN/PASS/**SKIP** counts as a result.
+
+---
+
+## S2B-RENAME — `only_ecommerce` → `only_ecommerce_eligible`
+
+| field | value |
+|---|---|
+| dispatched | worker `gpt-5.6-luna` / `high`, OS-process, `agent__s2b-rename.log` + `.last.md` |
+| base | `2e943795` |
+| commit | `f76c1325` (orchestrator committed; see the build claim below) |
+| evidence | `evidence/S2B-red.txt`, `evidence/S2B-green.txt` (worker), `evidence/S2B-orchestrator.txt` |
+
+Hub ruling. The name asserted the opposite of the clause it controls: `only_ecommerce` reads as
+"only the published ones", while the ratified clause is `NVL(AD_ECOMMERCE,'X') <> 'N'`, which
+removes only what the ERP explicitly marked as outside e-commerce and keeps everything undecided.
+Measured live, the strict reading would cut 2.923 → 442. The rename lands INSIDE `0083`, which has
+not reached main — no `ALTER RENAME`, no new file.
+
+### P4 — what the orchestrator measured, not what the worker reported
+
+The RED discriminates: the migration test failed naming the OLD declaration string verbatim, so
+the assertion is bound to the exact declaration rather than to the column's existence.
+
+The slice database was dropped, recreated and re-migrated after the rename — mandatory, because a
+stale schema would make the worker's own package read as a code defect. `applied 71 migration(s)`,
+the SAME count as before the rename: independent confirmation, by measurement rather than by
+assertion, that the count fixture is untouched.
+
+`go test ./internal/modules/tenant_config/... ./migrations -count=1 -v` → **33 RUN / 33 PASS /
+0 SKIP / 0 FAIL**. `SKIP=0` carries the weight: without `MPC_TEST_DATABASE_URL` these tests skip
+silently, and a fully skipped run is byte-identical at the tail to a fully green one (profile §11).
+
+Sweep at the CALLER, anchored, asserting ABSENCE — `git grep -nE 'only_ecommerce($|[^_])|OnlyEcommerce($|[^E])'`:
+zero in `apps/server_core`, `apps/web`, `packages/`, `contracts/`; zero `_eligible_eligible` (the
+prefix trap did not fire); new-name count **19**, identical to the pre-image count of the old name
+taken from `git HEAD` BEFORE the worker ran — one-to-one, nothing lost or doubled. Five survivors
+are deliberate: `BATCH-PLAN:1066` names the rename and must quote the dead name, and
+`DISPATCH-LEDGER:70,71,103,106` are verbatim history of the S1/S2 runs. Rewriting those would
+falsify the trail.
+
+### The rename destapou prosa falsa, corrigida in the same commit
+
+`BATCH-PLAN:60` still carried `m.ad_ecommerce = 'S'` — the formula the DR-3 revision revoked — and
+`CONTEXT-PACK:23` carried both the dead name and the revoked semantics. A worker reads the plan,
+not the migration: that clause would have entered S7 as the strict reading and cut the assortment
+to 442. The S3 brief carried the same falsehood and was corrected BEFORE dispatch.
+
+### Finding — third false build claim from the same seat
+
+The worker reported `go build ./...` failing with `error obtaining VCS status: exit status 128`
+and **withheld its commit on that basis**. Measured in the same worktree, `cd apps/server_core`,
+absolute caches: `EXIT=0`. Third identical occurrence (S1, S2, S2B) — a signature of the codex
+seat, not a repo fact. No `-buildvcs=false` was buried in the lane: that trades an alarm for a
+blindness (hub, binding). The real cost this time was a green slice left uncommitted, so the S3
+brief now states that this observation must not withhold a commit.
+
+### Finding — the sweep instrument is partial, cause NOT established
+
+The Grep tool rooted at the worktree's ABSOLUTE path returned 5 matches and missed all 19 code
+occurrences; `git grep` from inside the worktree returns all 19. The `.gitignore '.claude/*'`
+hypothesis was tested and REFUTED (`rg` from inside the worktree finds them). Recorded as an
+instrument constraint, not a diagnosis. Operationally: rename sweeps in this chip use `git grep`
+from inside the worktree. A partial sweep is worse than none — it has the shape of a complete one,
+and a gate seat using the wrong tool would report "zero occurrences" with full confidence.
