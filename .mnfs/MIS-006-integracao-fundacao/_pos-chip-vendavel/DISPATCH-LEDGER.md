@@ -259,3 +259,69 @@ S6's worker reads the card, not the amendment. Corrected to the binding live for
 supersession recorded inline and a pointer to the A-14 asymmetry table. `BATCH-PLAN:1086` also
 printed the revoked formula under the heading "Original reasoning (the principle, unchanged)" —
 the principle is unchanged, the formula is not; struck through and marked.
+
+## S4-SANKHYA-SYNC — Q1 reads the two fields, Q4 is pinned to the sellable cut
+
+| field | value |
+|---|---|
+| dispatched | worker `gpt-5.6-luna` / `high`, OS-process, `agent__s4-sankhya-sync.log` + `.last.md` |
+| base | `4bd84e62` |
+| commit | `84e87e63` — **created by the orchestrator on the worker's behalf** (see below) |
+| evidence | `evidence/S4-red.txt`, `evidence/S4-green.txt` (worker), `evidence/S4-orchestrator.txt` |
+
+Production diff is correct. Q1 selects `p.USOPROD, p.AD_ECOMMERCE`, scans them as
+`sql.NullString` and maps them through the existing `nullStr`, so Oracle CHAR-padding and blank
+cells arrive as nil rather than `""`. Q4 carries `CODEMP IN (1, 2)` and
+`CODLOCAL IN (10101, 10102)` from one named constant that also carries both location names, and
+sums `NVL(ESTOQUE,0) - NVL(RESERVADO,0)` — the NVL pair is load-bearing, a NULL `RESERVADO`
+would otherwise null the row out of the SUM entirely. Whitelist, never blacklist: a location
+created tomorrow must not start selling by itself.
+
+The pin creates the defect it must not ship, and `applyStock` changes with it. It now iterates
+the **Q1** population and writes `totals[codprod]`, which is `0` for a product the pinned Q4 did
+not return. On this path stock is KNOWN — the sync read `TGFEST` — so absence inside the cut is
+zero available where we sell, not unknown. It stops exactly there: a product absent from Q1 is
+never in that map, so `absent_in_last_snapshot` keeps its last-known values (ADR-04). Both sides
+of ADR-17, each on its own side.
+
+### P4 — two mutations, two kills, plus one test-quality defect fixed
+
+| mutation | result |
+|---|---|
+| `applyStock` reverted to the old Q4-only loop (A-9) | KILLED — `sync_test.go:88: 100.EstoqueTotal = <nil>, want known zero 0` |
+| `AND CODEMP IN (1, 2)` deleted from `sankhyaStockSQL` | KILLED — `sync_test.go:25: sankhyaStockSQL missing sellable company predicate CODEMP IN (1, 2)` |
+
+Both reverted; `git diff --stat` on `sync.go` back to `20 insertions(+), 11 deletions(-)`.
+
+Lanes counted per-test, never tail-read (profile §11): untagged **RUN=186 PASS=185 SKIP=1
+FAIL=0 EXIT=0**; `-tags=integration` **RUN=188 PASS=187 SKIP=1 FAIL=0 EXIT=0**. The one SKIP is
+named — `TestOracleLiveBaseline`, which needs `MPC_ORACLE_CONNECT_STRING` this seat must not
+have — and is explicitly NOT evidence: the live half of VC-5 is the hub's post-merge step. All
+four S4 tests confirmed PASS **by name**, including `TestPgWriterPersistsSellableAssortmentFields`
+against the real database.
+
+**Defect found in the slice's own test, fixed by the orchestrator:** M1's first injection
+produced a nil-deref PANIC at `sync_test.go:88`, not a diagnostic. The two known-zero assertions
+used `t.Errorf` and then dereferenced `EstoqueTotal` unguarded, so the A-9 regression they exist
+to catch arrived as a stack trace. Made `t.Fatalf`, reason recorded next to them, M1 re-injected
+to get the clean line above. The teeth were always there; the failure MESSAGE was what got lost,
+exactly when it was needed. A mutation that "kills" by panicking has not shown that the test
+discriminates the VALUE.
+
+A-11 discharged by value across three populations: `100` stocked only outside the cut → known
+`0`; `200` sellable in 10101 → `7`; `300` absent from Q1 → `mw.absent["300"]` true AND the prior
+`*EstoqueTotal == 9` preserved. A-12 discharged: the F-01 comment recorded the opposite rule and
+was true only while Q4 read all of `TGFEST` — rewritten with the trail, not softened.
+
+### Finding — fourth identical false build claim, and a second index.lock denial
+
+`go build ./...` reported EXIT=1 with `error obtaining VCS status: exit status 128`, for the
+fourth time from the codex seat (S1, S2, S2B, S4). Measured here, same command, same worktree:
+EXIT=0. Under the ratified rule the worker filed it as an observation and did not withhold work;
+`-buildvcs=false` was not added anywhere.
+
+The worker then could not commit: `fatal: Unable to create
+'.git/worktrees/chip-vendavel/index.lock': Permission denied` — the same denial S2B hit, while
+S1 and S3 committed fine from the same seat, so it is non-deterministic and still unattributed.
+`84e87e63` was created by the orchestrator after P4 completed. Recorded rather than smoothed
+over: the authorship of that commit is not the authorship of the code in it.

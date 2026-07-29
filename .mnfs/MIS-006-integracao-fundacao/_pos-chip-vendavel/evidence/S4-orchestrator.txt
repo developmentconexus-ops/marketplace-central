@@ -1,0 +1,106 @@
+S4-SANKHYA-SYNC — orchestrator P4 adversarial review
+worktree: .claude/worktrees/chip-vendavel   branch: worktree-chip-vendavel
+base at review: 4bd84e62 (S3 ledger + S6 card fix)   commit produced: 84e87e63
+instrument declared: git from inside the worktree; go test from apps/server_core with
+absolute GOCACHE/GOMODCACHE; slice DB mpc_test_deadbeef... on session container
+mpc-pg-session-3eee515d (port 55864). No server, no :8080, no .env read, no push.
+
+--------------------------------------------------------------------------------
+0. WHY THIS REVIEW EXISTS
+--------------------------------------------------------------------------------
+The worker's report is an observation, never a gate (hub ruling, FINDING-codex-seat-build-
+claim.md @2afc6f79). Everything below was measured from this seat. The worker's own RED/GREEN
+lines are in S4-red.txt / S4-green.txt and are NOT counted as evidence here.
+
+--------------------------------------------------------------------------------
+1. MUTATION M1 — the A-9 known-zero rule (the whole point of the slice)
+--------------------------------------------------------------------------------
+Target: applyStock in internal_read/adapters/oracle/sync.go.
+Mutation: revert to the pre-S4 loop, i.e. write EstoqueTotal only for the products the pinned
+Q4 returned —
+
+    for codprod, total := range totals {
+        v := total
+        rows[codprod].row.EstoqueTotal = &v
+    }
+
+(instead of iterating the Q1 population and writing totals[codprod], which is 0 for a product
+Q4 did not return.)
+
+Result: KILLED.
+
+    --- FAIL: TestSankhyaSyncStoresKnownZeroForProductsOutsideTheSellableCut
+        sync_test.go:88: 100.EstoqueTotal = <nil>, want known zero 0
+
+This is the regression the slice exists to prevent: with the Q4 pin in place and nil left on
+products stocked only outside the cut, the sellable predicate reads NULL as "pass" and
+readmits the 585 products the pin removed.
+
+TEST-QUALITY DEFECT FOUND AND FIXED BY THE ORCHESTRATOR (inside the slice's write-set):
+on first injection M1 did not produce the line above — it produced a nil-deref PANIC at
+sync_test.go:88. The two known-zero assertions used t.Errorf and then dereferenced
+EstoqueTotal unguarded, so the exact regression they exist to catch arrived as a stack trace
+instead of a diagnostic. Changed both nil-guards to t.Fatalf with the reason recorded next to
+them, re-injected M1, and got the clean line quoted above. The test always had teeth; what was
+lost was the failure MESSAGE, precisely when it was needed.
+
+--------------------------------------------------------------------------------
+2. MUTATION M2 — the sellable-company half of the Q4 pin
+--------------------------------------------------------------------------------
+Target: sankhyaStockSQL.
+Mutation: delete "AND CODEMP IN (1, 2)".
+Result: KILLED.
+
+    --- FAIL: TestSankhyaStockSQLPinsSellableCompaniesAndLocations
+        sync_test.go:25: sankhyaStockSQL missing sellable company predicate CODEMP IN (1, 2)
+
+Both mutations reverted. Post-revert confirmation that the tree is back to the worker's
+pre-image: git diff --stat on sync.go reads 20 insertions(+), 11 deletions(-).
+
+--------------------------------------------------------------------------------
+3. FULL LANE — counted, not tail-read (profile §11)
+--------------------------------------------------------------------------------
+Counted per-test lines; a fully-skipped run and a fully-green run are byte-identical at the
+tail, so the load-bearing number is SKIP.
+
+    untagged    ./...                 RUN=186  PASS=185  SKIP=1  FAIL=0   EXIT=0
+    -tags=integration ./...           RUN=188  PASS=187  SKIP=1  FAIL=0   EXIT=0
+
+The single SKIP is named: TestOracleLiveBaseline. It skips without MPC_ORACLE_CONNECT_STRING,
+which this seat does not and must not have. It is NOT evidence for anything in this slice; the
+live half of VC-5 is the hub's post-merge step against the real Oracle, by design.
+
+All four S4 tests confirmed PASS BY NAME (presence of a green tail would not have shown this):
+
+    PASS  TestSankhyaStockSQLPinsSellableCompaniesAndLocations
+    PASS  TestSankhyaSyncMapsSellableAssortmentFields
+    PASS  TestSankhyaSyncStoresKnownZeroForProductsOutsideTheSellableCut
+    PASS  TestPgWriterPersistsSellableAssortmentFields   (-tags=integration, real DB round-trip)
+
+--------------------------------------------------------------------------------
+4. AMENDMENTS DISCHARGED
+--------------------------------------------------------------------------------
+A-9  known-zero -> 0 on the Sankhya path .... discharged by M1 (killed).
+A-11 three populations in the fixture ....... 100 = stocked only outside the cut -> known 0;
+                                              200 = sellable in 10101 -> 7;
+                                              300 = absent from Q1 -> mw.absent["300"] true AND
+                                              the prior *EstoqueTotal == 9 preserved (ADR-04).
+                                              Asserted by VALUE, all three.
+A-12 F-01 comment rewritten with the trail .. the comment recorded the opposite rule and was
+                                              true only while Q4 read all of TGFEST. Rewritten,
+                                              not softened; records that F-01 held until the pin
+                                              existed. False prose goes, trail stays.
+
+--------------------------------------------------------------------------------
+5. ENVIRONMENT OBSERVATIONS (classified, not gates)
+--------------------------------------------------------------------------------
+- The worker again reported `go build ./...` EXIT=1 with "error obtaining VCS status: exit
+  status 128". Fourth identical report from the codex seat (S1, S2, S2B, S4). Measured from
+  this seat, same command, same worktree: EXIT=0. Per the ratified rule the worker reported it
+  as an observation and did not withhold work over it; -buildvcs=false was NOT added anywhere.
+- The worker could NOT commit: "fatal: Unable to create
+  '.git/worktrees/chip-vendavel/index.lock': Permission denied". Same denial S2B hit; S1 and S3
+  committed fine from the same seat, so it is non-deterministic. Commit 84e87e63 was created by
+  the orchestrator on the worker's behalf, after P4 completed. Recorded rather than hidden: the
+  authorship of that commit is not the authorship of the code.
+- No .gomodcache at the repo root (checked pre-commit, = 0).
