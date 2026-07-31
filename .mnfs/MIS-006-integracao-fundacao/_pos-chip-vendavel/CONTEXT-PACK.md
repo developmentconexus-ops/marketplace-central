@@ -570,3 +570,48 @@ Condições (nada aceito antes delas):
 
 `STATE-SHELL-BLOCKED.md` (untracked no worktree do chip) aceito como custódia do estado;
 primeiro ato pós-restart = commitá-lo no branch do chip antes de retomar.
+
+---
+
+## A-28 (2026-07-31) — A-27-R2: âncoras reconciliadas; F6 alarga para declarar o contrato inteiro do handler
+
+### R1-a — as duas leituras estavam certas, em árvores diferentes
+
+Hub mediu na MAIN (`q` da busca em :440-442); chip mediu na árvore DELE (:467-469) — o OpenAPI
+andou no branch. Facto idêntico: `/catalog/products/search` → `q` `required: true`; get-by-id
+não tem `q`. Condição 3 RE-ANCORADA POR CONTEÚDO: o guard vale para a rota
+`/catalog/products/search` (operationId `searchCatalogProductFacts`), única com `q`
+`required: true`; rotas com `q` opcional (`/listings`, `/listings/by-product`, `/orders`) não
+ganham guard. REGRA DE FORMA (classe, entra no A-2 do HARNESS-DEBTS): âncora de ruling
+cross-árvore é CONTEÚDO (rota/operationId/schema name); linha só como cortesia COM a árvore
+nomeada. Mesma lição da autoridade content-addressed (P-C da análise global).
+
+### R1-b — condição 5 CORRIGIDA
+
+Família certa da página de catálogo = `CatalogPageErrorResponse` (enum FECHADO:
+`[invalid_cursor, invalid_limit, source_unavailable, deadline_exceeded]`). `invalid_body` e
+`unknown_erp_source` são de mutations/config — citação errada do hub, retirada. O `invalid_q`
+do chip já sai por `writeCatalogPageError` na forma dos irmãos → condição 5 SATISFEITA no
+código; o débito é de DECLARAÇÃO.
+
+### Pergunta 1 — SIM: F6 fecha OpenAPI + SDK no mesmo commit
+
+Regra do repo (AGENTS.md): mudança de API atualiza OpenAPI e `sdk-runtime` juntos. F6 inclui:
+`invalid_q` no enum de `CatalogPageErrorResponse` + descrição do 400 da rota de busca
+corrigida (hoje "Invalid cursor or limit" — prosa falsa desde o S9; passa a nomear as causas
+reais) + regen do SDK. Sem isso o F6 nasceria violando a regra que invoca.
+
+### Pergunta 2 — os 3 pré-existentes ENTRAM no mesmo enum, sob o mesmo F6
+
+`invalid_include_all`, `invalid_erp_source`, `invalid_ids` já são RESPONDIDOS pelo handler e
+mudos no contrato = o contrato MENTE sobre o módulo (classe R-25 — só que aqui a falsidade se
+conserta DECLARANDO, porque o comportamento é o ratificado; deletar seria quebrar S9/S10).
+Não é a doença do CHIP-ERROR-UNIFY (nenhuma família sendo unificada; só declaração do que o
+módulo já responde). Condição: cada código declarado prova o sítio EMISSOR (file:line na
+árvore do chip) na evidência — nenhum código especulativo entra no enum.
+
+### Pergunta 3 — reconhecido
+
+Regen do SDK exige shell; F6 (e tudo) travado até o restart. Escalação mantida.
+
+Condições 1, 2, 4, 6 aceitas pelo chip sem ressalva — mantidas.

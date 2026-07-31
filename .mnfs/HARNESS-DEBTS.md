@@ -20,6 +20,10 @@ lane quebrado (`No test files found`); card do S10 herdou a falsidade do A-17. C
 = rodada perdida ou escalation. Candidato: passo pré-despacho OBRIGATÓRIO do orquestrador —
 medir toda alegação executável do card (comandos de lane, símbolos assumidos, claims de
 comportamento) antes do worker partir; alegação sem proveniência de medição não entra em card.
+Caso adicional (A-27→A-28): âncora de LINHA em ruling cross-árvore apodrece — hub citou
+:440-442 medido na MAIN, chip mediu :467-469 na árvore dele; mesmo facto, âncoras
+incompatíveis. Ruling ancora por CONTEÚDO (rota/operationId/schema name); linha só com árvore
+nomeada.
 
 **A-3. Decisão fora do plano não existe para o worker — mas o registro é manual.** O hub tem
 que lembrar de amendar pack/plano ANTES do brief a cada ruling (A-17..A-22 foram 6 amendments
