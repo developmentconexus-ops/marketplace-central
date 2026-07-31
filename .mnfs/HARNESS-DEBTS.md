@@ -206,9 +206,16 @@ em repo CRLF, todo regex `\n` multi-linha é falso-negativo silencioso. Mesma fa
 (CHIP-ERROR-UNIFY 2026-07-31): recover central correto TEM que re-lançar
 `http.ErrAbortHandler` (contrato do net/http p/ abortar conexão em silêncio; convertê-lo em
 envelope 500 seria o defeito) e o checker acusa GOV_PRODUCTION_PANIC. Exceção
-`production-panic-apierror-recover-abort-handler` registrada com removal_owner=D-9: o
-conserto de classe é o CHECKER reconhecer o idioma `if rec == http.ErrAbortHandler {
-panic(rec) }` como sancionado; quando aprender, a exceção sai. Exceção "temporária até o
+`production-panic-apierror-recover-abort-handler` registrada com removal_owner=HARNESS-D-9: o
+conserto de classe é o CHECKER migrar de regex textual para **go/ast** e aí sancionar o idioma
+`if rec == http.ErrAbortHandler { panic(rec) }` por escopo real; quando isso pousar, a exceção
+sai. REESCRITA 2026-07-31 (achado do chip, ratificado pelo hub): "ensinar o idioma" ao checker
+atual é máximo local — Policy.psm1:363 é `[regex]::Matches($content, 'panic\s*\((?s:.*?)\)')`,
+texto cru sem AST/escopo; aproximar o guard por texto passa a desculpar panics reais parecidos,
+e afrouxamento de guard é PIOR que lista de exceção (a lista é visível, o afrouxamento não).
+A migração p/ AST de quebra mata defeito latente já presente: `.*?` preguiçoso trunca
+`panic(fmt.Sprintf("x %d", n))` no primeiro `)` e o fingerprint sai cortado (não mordeu ainda
+porque exceções atuais usam `panic(err)`/literal simples). Exceção "temporária até o
 instrumento consertar" é honesta; removal_owner de milestone inventado não seria.
 
 **D-10. Lane hermética NÃO é superconjunto da lane de unidade** (CHIP-ERROR-UNIFY
