@@ -705,3 +705,12 @@ Adições do main confirmadas vivas pós-merge (A-30, B-9/B-10, EMENDA A7).
 
 REPORT novo p/ CHIP-ERROR-UNIFY (achado Opus round 1, pré-existente): rota counts lê
 `erp_source` (`http_handler.go:53`) mas não declara o parâmetro no OpenAPI.
+
+### A-31 correção pós-merge — totais da governança
+
+Lane pós-merge em worktree limpo @3ef01f65 (BaseSha main tip 4ad36272): status=failed,
+**54 violações**; set-diff vs baseline = ONLY-BASELINE `GOV_MODULE_COVERAGE tenant_config`,
+ONLY-POSTMERGE vazio — **zero violação nova**, critério de aceite mantido. Os totais "51/50"
+registrados em A-30/A-31 eram soma errada do breakdown do próprio baseline (que sempre somou
+55); corrigidos p/ **55/54** no EVIDENCE.md e no reason do modules.json. O set-diff — o
+critério — nunca dependeu do total.

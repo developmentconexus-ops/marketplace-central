@@ -74,7 +74,7 @@
       "target_layer": "adapters",
       "path": "apps/server_core/internal/modules/tenant_config/active_source.go",
       "import_path": "marketplace-central/apps/server_core/internal/modules/erp_import/adapters/internalread",
-      "reason": "active_source.go republishes exactly one symbol from erp_import's adapters layer: var ErrUnknownActiveSource = internalread.ErrUnknownActiveSource. Measured, not assumed — the entry trades GOV_MODULE_COVERAGE tenant_config for this one named edge (main tip baseline 51 violations, this tree 50 — strict subset, zero new). The sentinel belongs in a shared errors seam; until the error surface is unified it lives where the reader can reach it. Unification work is queued as CHIP-ERROR-UNIFY.",
+      "reason": "active_source.go republishes exactly one symbol from erp_import's adapters layer: var ErrUnknownActiveSource = internalread.ErrUnknownActiveSource. Measured, not assumed — the entry trades GOV_MODULE_COVERAGE tenant_config for this one named edge (main tip baseline 55 violations, this tree 54 — strict subset, zero new). The sentinel belongs in a shared errors seam; until the error surface is unified it lives where the reader can reach it. Unification work is queued as CHIP-ERROR-UNIFY.",
       "removal_owner": "M-10"
     }
   ]

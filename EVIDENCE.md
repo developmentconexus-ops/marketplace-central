@@ -31,18 +31,20 @@ DB `mpc_test_d1856cbaa2f34800bdd3dee8065d9d59` (casa com `^mpc_test_[0-9a-f]{32}
 
 ## Governança — lane VERMELHA pré-existente no main (REPORT)
 
-Baseline medido em worktree LIMPO destacado no main tip `4ad36272`: **status=failed, 51
+Baseline medido em worktree LIMPO destacado no main tip `4ad36272`: **status=failed, 55
 violações** (19 RCFG_UNAPPROVED_READER, 13 GOV_MODULE_DEPENDENCY, 10 RCFG_READER_MISSING,
 6 GOV_MODULE_LAYER, 5 RCFG_UNDECLARED_READ, 2 GOV_MODULE_COVERAGE) — nada disso é do chip.
+[Correção pós-merge: o total antes registrado como "51" era soma errada do próprio
+breakdown acima (que sempre somou 55); o set-diff, que é o critério, nunca mudou.]
 
-Chip tree: **50 violações = subconjunto estrito do main**. Diff exato (parse por tripla
+Chip tree: **54 violações = subconjunto estrito do main**. Diff exato (parse por tripla
 code/id/path): ONLY-MAIN = `GOV_MODULE_COVERAGE tenant_config` (resolvida pela entry nova em
 modules.json); ONLY-CHIP = vazio. `GOV_API_SDK_SPLIT` não dispara — OpenAPI + sdk-runtime no
 mesmo commit (F6 @86fc6400). Dois consertos no caminho: `removal_owner` fora do pattern do
 schema (GOV_SCHEMA_INVALID, corrigido p/ M-10) e leitor não aprovado de MPC_TEST_DATABASE_URL
 em root_test.go (trocado pelo boundary testpostgres.SkipWithoutTarget) — ambos @a2f96fa1.
 
-REPORTs p/ o hub: (1) lane governance vermelha no main com 51 violações pré-existentes —
+REPORTs p/ o hub: (1) lane governance vermelha no main com 55 violações pré-existentes —
 verde absoluto é inalcançável p/ qualquer chip até saldar; critério usado = zero violação
 NOVA vs baseline do main tip, medido por diff de conjunto. (2) lane no checkout do hub
 trava >20min varrendo dumps untracked de `docs/design/evidence/ml-api/` (não excluídos
