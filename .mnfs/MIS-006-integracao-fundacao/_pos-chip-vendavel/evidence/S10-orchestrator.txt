@@ -88,6 +88,10 @@ Checklists written BEFORE each diff was read: p4-checklist-s10.md, p4-checklist-
    The worker reported status=failed without attribution. I isolated the delta by removing ONLY the
    tenant_config entry, running the lane, restoring it, and running again:
      without entry: 43 violations     with entry: 43 violations
+     [SUPERSEDED marker, gate P6 round 1: "43" was measured at slice time against dispatch
+      base 554788d5. Governing numbers for the merge are the clean-worktree runs against
+      main tip 4ad36272: main 51, chip tree 50, strict subset — see EVIDENCE.md. The
+      trade described below (coverage-for-edge) holds unchanged.]
      + ADDS    GOV_MODULE_LAYER  tenant_config-erp_import-adapters
      - REMOVES GOV_MODULE_COVERAGE tenant_config
      (GOV_MODULE_COVERAGE sourcekind is present on BOTH sides — pre-existing, not this slice)
