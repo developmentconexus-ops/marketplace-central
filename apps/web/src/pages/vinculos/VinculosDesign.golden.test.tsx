@@ -76,7 +76,7 @@ function base(overrides: Partial<ProductLinkCandidateItem>): ProductLinkCandidat
     confidence_band: "MEDIA",
     match_status: "CONFIRM",
     reasons: [
-      { anchor: "ean", direction: "FOR", detail: "ean corrobora codprod (unproved)" },
+      { anchor: "ean", direction: "FOR", detail: "ean corrobora codprod, unicidade não comprovada" },
       {
         anchor: "seller_sku",
         direction: "INCOMPARABLE",
@@ -165,7 +165,7 @@ describe("Vínculos design golden", () => {
     // expansão "+N" / no drawer.
     const motivoChip = cells.getByText("✓ EAN");
     expect(motivoChip).toBeInTheDocument();
-    expect(motivoChip).toHaveAttribute("title", "ean: ean corrobora codprod (unproved)");
+    expect(motivoChip).toHaveAttribute("title", "ean: ean corrobora codprod, unicidade não comprovada");
     // ...and the anchor that is MISSING rides beside it with the side that says
     // where to go fix it (D-122/D-B), in its own tokens.
     const incomparableChip = cells.getByText("? SKU (falta no anúncio)");
@@ -256,7 +256,7 @@ describe("Vínculos design golden", () => {
           confidence_band: "ALTA",
           reasons: [
             { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
-            { anchor: "ean", direction: "FOR", detail: "ean corrobora o mesmo codprod (unproved)" },
+            { anchor: "ean", direction: "FOR", detail: "ean corrobora o mesmo codprod, unicidade não comprovada" },
             // Same always-declared `marca` as in base(): `buildConcordantCandidate`
             // (generation_service.go:493-507) also finalizes through
             // `appendProviderDeclaredUnavailableReasons`.

@@ -82,7 +82,7 @@ describe("QueueTab", () => {
           // close that.
           reasons: [
             { anchor: "seller_sku", direction: "FOR", detail: "100%" },
-            { anchor: "ean", direction: "FOR", detail: "ean corrobora o mesmo codprod (unproved)" },
+            { anchor: "ean", direction: "FOR", detail: "ean corrobora o mesmo codprod, unicidade não comprovada" },
             { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
           ],
         }),
@@ -125,7 +125,7 @@ describe("QueueTab", () => {
           confidence: 25,
           confidence_band: "BAIXA",
           reasons: [
-            { anchor: "ean", direction: "FOR", detail: "ean corrobora codprod (unproved)" },
+            { anchor: "ean", direction: "FOR", detail: "ean corrobora codprod, unicidade não comprovada" },
             { anchor: "title", direction: "AGAINST", detail: "62%" },
             { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
           ],
@@ -719,7 +719,7 @@ describe("QueueTab", () => {
           // in a field the test never looked at.
           reasons: [
             { anchor: "seller_sku", direction: "FOR", detail: "100%" },
-            { anchor: "ean", direction: "FOR", detail: "ean corrobora o mesmo codprod (unproved)" },
+            { anchor: "ean", direction: "FOR", detail: "ean corrobora o mesmo codprod, unicidade não comprovada" },
             { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
           ],
         }),
@@ -830,7 +830,7 @@ describe("QueueTab", () => {
           confidence_band: "ALTA",
           reasons: [
             { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
-            { anchor: "ean", direction: "FOR", detail: "ean corrobora o mesmo codprod (unproved)" },
+            { anchor: "ean", direction: "FOR", detail: "ean corrobora o mesmo codprod, unicidade não comprovada" },
             { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
           ],
         }),

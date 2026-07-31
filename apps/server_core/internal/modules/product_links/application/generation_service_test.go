@@ -1675,8 +1675,14 @@ func TestCase1ConcordantSKUAndEANYieldsAltaAccept(t *testing.T) {
 	if _, ok := findReason(candidate.Reasons, "seller_sku", productlinksdomain.LinkCandidateReasonDirectionFor); !ok {
 		t.Fatalf("reasons=%#v, want seller_sku FOR", candidate.Reasons)
 	}
-	if _, ok := findReason(candidate.Reasons, "ean", productlinksdomain.LinkCandidateReasonDirectionFor); !ok {
+	eanReason, ok := findReason(candidate.Reasons, "ean", productlinksdomain.LinkCandidateReasonDirectionFor)
+	if !ok {
 		t.Fatalf("reasons=%#v, want ean FOR", candidate.Reasons)
+	}
+	// Presence of the reason does not catch a wrong Detail, and this string is not
+	// internal: /vinculos renders it verbatim in the motivo chip and its title.
+	if eanReason.Detail != "ean corrobora o mesmo codprod, unicidade não comprovada" {
+		t.Fatalf("ean reason detail=%q, want the uniqueness caveat spelled out for the operator", eanReason.Detail)
 	}
 	assertProviderDeclaredUnavailableReasons(t, candidate.Reasons)
 }
@@ -1719,8 +1725,8 @@ func TestCase2SellerSKUAloneWithoutEANYieldsMediaConfirm(t *testing.T) {
 	assertProviderDeclaredUnavailableReasons(t, candidate.Reasons)
 }
 
-// Case 3 — EAN-ALONE-MEDIA: seller_sku has no match, EAN corroborates
-// (unproved) a single codprod.
+// Case 3 — EAN-ALONE-MEDIA: seller_sku has no match, EAN corroborates a single
+// codprod without that codprod's uniqueness being proven.
 func TestCase3EANAloneYieldsMediaConfirm(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 7, 18, 9, 10, 0, 0, time.UTC)
@@ -1740,8 +1746,12 @@ func TestCase3EANAloneYieldsMediaConfirm(t *testing.T) {
 	if candidate.MatchStatus != productlinksdomain.LinkCandidateMatchStatusConfirm {
 		t.Fatalf("match_status=%s, want CONFIRM", candidate.MatchStatus)
 	}
-	if _, ok := findReason(candidate.Reasons, "ean", productlinksdomain.LinkCandidateReasonDirectionFor); !ok {
-		t.Fatalf("reasons=%#v, want ean FOR (unproved)", candidate.Reasons)
+	eanReason, ok := findReason(candidate.Reasons, "ean", productlinksdomain.LinkCandidateReasonDirectionFor)
+	if !ok {
+		t.Fatalf("reasons=%#v, want ean FOR", candidate.Reasons)
+	}
+	if eanReason.Detail != "ean corrobora codprod, unicidade não comprovada" {
+		t.Fatalf("ean reason detail=%q, want the uniqueness caveat spelled out for the operator", eanReason.Detail)
 	}
 	// UNAVAILABLE, not INCOMPARABLE: the ERP product resolved by the EAN always
 	// carries a CODPROD, so the seller_sku comparison has a value on BOTH sides
