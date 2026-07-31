@@ -1,0 +1,146 @@
+S5B GREEN evidence
+
+Command:
+go test ./internal/modules/erp_import/... -count=1
+
+Result: RUN/PASS/SKIP = 8 test-bearing package runs PASS, 1 package reported [no test files], 0 SKIP; exit 0.
+Observed package output:
+ok   marketplace-central/apps/server_core/internal/modules/erp_import/adapters/internalread
+ok   marketplace-central/apps/server_core/internal/modules/erp_import/adapters/postgres
+ok   marketplace-central/apps/server_core/internal/modules/erp_import/adapters/productlinks
+ok   marketplace-central/apps/server_core/internal/modules/erp_import/adapters/sync
+ok   marketplace-central/apps/server_core/internal/modules/erp_import/adapters/xlsx
+ok   marketplace-central/apps/server_core/internal/modules/erp_import/application
+ok   marketplace-central/apps/server_core/internal/modules/erp_import/domain
+?    marketplace-central/apps/server_core/internal/modules/erp_import/ports [no test files]
+ok   marketplace-central/apps/server_core/internal/modules/erp_import/transport
+
+Command:
+go test -tags=integration ./internal/modules/erp_import/adapters/postgres -count=1 -v
+
+Result: RUN=27, PASS=1, SKIP=26, exit 0. All 26 skipped integration cases reported MPC_TEST_DATABASE_URL is unset. The new whole-chain test was one of those SKIPs, so this is not a claim of live integration GREEN.
+
+Command:
+go test -tags=integration ./internal/modules/internal_read/adapters/routing -run '^TestMirrorMatcher_ActiveRevendaRuleControlsCandidateBirth$' -count=1 -v
+
+Result: RUN=1, PASS=0, SKIP=1, exit 0. Exact skip reason: MPC_TEST_DATABASE_URL is unset. The raw UPDATE is deleted in the fixture, but this seat could not execute the test.
+
+Command:
+go build ./...
+
+Result: exit 1 in this seat with the measured environment observation:
+error obtaining VCS status: exit status 128
+Use -buildvcs=false to disable VCS stamping.
+The command was not changed to add -buildvcs=false.
+
+Command:
+go vet ./...
+
+Result: exit 0, no output.
+
+Cache check: WORKTREE_ROOT_GOMODCACHE_ABSENT. The expected apps/server_core/.gomodcache was used via absolute GOMODCACHE.
+
+================================================================================
+ORCHESTRATOR CORRECTION — the lane above was fully skipped, and that is MY defect
+================================================================================
+The worker's commands block omitted the `. testdb-env.ps1` dot-source line that
+every prior slice brief (S1..S5) carried. Without it MPC_TEST_DATABASE_URL is
+unset and, per profile section 11 signature 3, every DB test reports
+SkipWithoutTarget while the package still prints `ok` with exit 0. The worker
+followed the brief exactly and said plainly that its run was not a claim of
+integration green. The brief was wrong, not the work.
+
+Re-measured at the orchestrator seat, with the env script sourced.
+
+FIRST RUN, and it failed honestly:
+
+  LANE A  erp_import/adapters/postgres    RUN 29  PASS 17  SKIP 0  FAIL 12
+  LANE B  internal_read/{routing,mirror}  RUN 20  PASS 19  SKIP 0  FAIL 1
+
+  All 13 failures, one cause:
+    ERROR: column "usoprod" does not exist (SQLSTATE 42703)
+
+  Migration 0085 existed in the tree and had never been applied to the slice
+  database. Applied with the repo's own runner (go run ./cmd/migrate, granted
+  block 0083-0085):
+
+    applied 1 migration(s)
+
+  Exactly one. 0083 and 0084 were already there; the slice DB carried no other
+  drift, which is itself worth recording.
+
+SECOND RUN, same commands:
+
+  LANE A  RUN 29  PASS 29  SKIP 0  FAIL 0
+  LANE B  RUN 20  PASS 20  SKIP 0  FAIL 0
+  LANE C  erp_import unit tree            exit 0
+
+  Counted per --- PASS / --- SKIP / --- FAIL line, not read off the tail.
+  SKIP=0 is the load-bearing number. (The RUN totals are 29/20 rather than the
+  28/19 a naive grep reports: the first "=== RUN" line of each file carries a
+  UTF-8 BOM.)
+
+  One intervening run showed LANE A FAIL 1:
+    chain_query_repository_integration_test.go:84: queue_read_at=...868804
+      outside [...8600282, ...8685331]
+  That is the documented statement_timestamp-vs-host-clock flake, 271us past the
+  upper bound, already granted as slice S13-CLOCK (G-1). Green on re-run. Not
+  S5B's, and not silently dropped either.
+
+go vet ./... exit 0. go build ./... exit 0 — the worker saw the VCS-status error
+again; this seat did not, for the fifth measured time.
+
+================================================================================
+MUST-FAIL — four mutations, four value-naming REDs
+================================================================================
+The worker's cited RED was a parser unit test. The round-trip test, the entire
+reason this slice exists, had never executed in either state. A test that has
+only ever been skipped is not evidence, so each protection was severed here and
+re-measured. Every mutation was reverted immediately after; git status was clean
+of code changes between them.
+
+1. HOP 2 severed (mirror_repository.go, row.Usoprod = nullStringPointer(...)
+   replaced by _ = usoprod):
+     mirror_repository_integration_test.go:103:
+       round-trip usoprod: want "R", got <nil>
+
+2. HOP 1 severed (import_repository.go, nullableStringValue(product.Usoprod)
+   replaced by nil in the CopyFrom row builder):
+     mirror_repository_integration_test.go:103:
+       round-trip usoprod: want "R", got <nil>
+
+   The two hops are proven INDEPENDENTLY. This matters more than it looks: the
+   defect S5B exists to repair was a chain with two breaks, and a test catching
+   only one of them would ship the other. The identical message from both is the
+   point — the test asserts ARRIVAL, and arrival fails the same way whichever hop
+   drops the value.
+
+3. XLSX FOLD removed (parser.go, strings.ToUpper(strings.TrimSpace(*value))
+   reduced to strings.TrimSpace(*value)):
+     parser_test.go:128: canonical USOPROD = "r", want R
+
+4. SANKHYA FOLD removed (writer.go, the same edit in canonicalSellableValue):
+     writer_integration_test.go:39: A assortment = "r"/"n", want R/N
+
+Mutations 3 and 4 are the D-122 case ruling proven on BOTH write seams, measured
+separately, because the ruling named both.
+
+================================================================================
+A TEST-MESSAGE DEFECT, FOUND BY READING THE RED THE WORKER REPORTED
+================================================================================
+The worker's own RED line read:
+
+  parser_test.go:127: canonical USOPROD = 0x34f73c6925b0, want R
+
+The assertions were correct — they deref and compare the VALUE. But %v on a
+*string prints an ADDRESS, so the failure named where the value was stored
+instead of what it was. The ratified rule is that a mutation which kills by
+panicking has not yet proved the test discriminates the value; a RED that prints
+a pointer is the same failure one step milder — it discriminates correctly and
+then refuses to say what it saw, and the next reader cannot tell a wrong value
+from a nil.
+
+Fixed at this seat: a show(*string) string helper rendering the value quoted, or
+<nil>. Then RE-INJECTED (mutation 3 above) to confirm the new message names it:
+canonical USOPROD = "r", want R. Fixing a message without re-proving the RED
+would have been the same error in a different coat.

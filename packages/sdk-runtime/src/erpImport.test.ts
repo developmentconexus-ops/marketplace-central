@@ -96,7 +96,16 @@ describe("ERP import SDK contract", () => {
 
   it("declares a flat 500 ErpImportError on every erp import operation", () => {
     const openapi = readFileSync(resolve(process.cwd(), "../../contracts/api/marketplace-central.openapi.yaml"), "utf8");
-    const paths = openapi.slice(openapi.indexOf("  /erp/imports:"), openapi.indexOf("\ncomponents:"));
+    // Window RE-POINTED BY VALUE (hub ruling A-19), assertions unchanged. It used to
+    // run from this anchor to `\ncomponents:` — the END of the paths section — so any
+    // path appended after /erp/imports was swallowed into this family's counts.
+    // /config/sellable-assortment landed there and made this read 6 "500"s. Cutting at
+    // the next path OUTSIDE the family is the fix; inflating the count to 6 would have
+    // been absorbing a foreign path into the erp-import guard, the same collision under
+    // another name.
+    const region = openapi.slice(openapi.indexOf("  /erp/imports:"), openapi.indexOf("\ncomponents:"));
+    const nextFamily = region.search(/\n {2}\/(?!erp\/imports)\S*:/);
+    const paths = nextFamily === -1 ? region : region.slice(0, nextFamily);
     // handler emits {"error":"internal_error"} (500) on POST, list, detail, and chain — spec must cover all four.
     const fiveHundreds = paths.match(/"500":/g) ?? [];
     expect(fiveHundreds).toHaveLength(4);

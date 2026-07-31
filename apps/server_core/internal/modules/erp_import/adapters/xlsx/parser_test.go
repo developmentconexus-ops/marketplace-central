@@ -7,6 +7,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"io"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -57,6 +58,93 @@ func TestParserValidAndInvalidRows(t *testing.T) {
 	if rows[0].Grupo != nil || rows[0].DescrGrupo != nil || rows[1].Grupo != nil || rows[1].DescrGrupo != nil {
 		t.Errorf("absent grupo columns must be nil: %#v / %#v", rows[0], rows[1])
 	}
+}
+
+func TestParserSellableColumnsAreOptionalAndHonestUnknown(t *testing.T) {
+	legacyData := xlsxBytes(t, []testSheet{{
+		name: "ERP",
+		rows: [][]string{
+			{"CODPROD", "DESCRPROD", "CUSTO", "ESTOQUE_FISICO"},
+			{"P1", "Produto 1", "12,34", "7"},
+			{"P2", "Produto 2", "0", ""},
+		},
+	}})
+
+	legacyRows, legacyIssues, err := NewParser().Parse(context.Background(), bytes.NewReader(legacyData))
+	if err != nil {
+		t.Fatalf("legacy Parse() error = %v", err)
+	}
+	if len(legacyRows) != 2 || len(legacyIssues) != 0 {
+		t.Fatalf("legacy Parse() rows=%d issues=%d, want rows=2 issues=0", len(legacyRows), len(legacyIssues))
+	}
+	for index, row := range legacyRows {
+		if row.Usoprod != nil || row.ADEcommerce != nil {
+			t.Fatalf("legacy row %d sellable fields = usoprod=%#v ad_ecommerce=%#v, want nil", index, row.Usoprod, row.ADEcommerce)
+		}
+	}
+
+	currentData := xlsxBytes(t, []testSheet{{
+		name: "ERP",
+		rows: [][]string{
+			{"CODPROD", "DESCRPROD", "CUSTO", "ESTOQUE_FISICO", "USOPROD", "AD_ECOMMERCE"},
+			{"P1", "Produto 1", "12,34", "7", "R", "S"},
+			{"P2", "Produto 2", "0", "", "", ""},
+		},
+	}})
+
+	currentRows, currentIssues, err := NewParser().Parse(context.Background(), bytes.NewReader(currentData))
+	if err != nil {
+		t.Fatalf("current Parse() error = %v", err)
+	}
+	if len(currentRows) != 2 || len(currentIssues) != 0 {
+		t.Fatalf("current Parse() rows=%d issues=%d, want rows=2 issues=0", len(currentRows), len(currentIssues))
+	}
+	if currentRows[0].Usoprod == nil || *currentRows[0].Usoprod != "R" {
+		t.Fatalf("current row 0 Usoprod = %#v, want R", currentRows[0].Usoprod)
+	}
+	if currentRows[0].ADEcommerce == nil || *currentRows[0].ADEcommerce != "S" {
+		t.Fatalf("current row 0 ADEcommerce = %#v, want S", currentRows[0].ADEcommerce)
+	}
+	if currentRows[1].Usoprod != nil || currentRows[1].ADEcommerce != nil {
+		t.Fatalf("blank current cells = usoprod=%#v ad_ecommerce=%#v, want nil", currentRows[1].Usoprod, currentRows[1].ADEcommerce)
+	}
+}
+
+func TestParserCanonicalizesSellableColumnsAndPreservesUnknownValues(t *testing.T) {
+	data := xlsxBytes(t, []testSheet{{
+		name: "ERP",
+		rows: [][]string{
+			{"CODPROD", "DESCRPROD", "CUSTO", "ESTOQUE_FISICO", "USOPROD", "AD_ECOMMERCE"},
+			{"P1", "Produto 1", "1", "5", " r ", " n "},
+			{"P2", "Produto 2", "1", "5", "SIM", " "},
+		},
+	}})
+
+	rows, _, err := NewParser().Parse(context.Background(), bytes.NewReader(data))
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	if rows[0].Usoprod == nil || *rows[0].Usoprod != "R" {
+		t.Fatalf("canonical USOPROD = %s, want R", show(rows[0].Usoprod))
+	}
+	if rows[0].ADEcommerce == nil || *rows[0].ADEcommerce != "N" {
+		t.Fatalf("canonical AD_ECOMMERCE = %s, want N", show(rows[0].ADEcommerce))
+	}
+	if rows[1].Usoprod == nil || *rows[1].Usoprod != "SIM" {
+		t.Fatalf("out-of-domain USOPROD = %s, want SIM", show(rows[1].Usoprod))
+	}
+	if rows[1].ADEcommerce != nil {
+		t.Fatalf("blank AD_ECOMMERCE = %s, want <nil>", show(rows[1].ADEcommerce))
+	}
+}
+
+// show renders an optional cell as its VALUE, so a failing assertion names what was
+// read instead of where it was stored.
+func show(value *string) string {
+	if value == nil {
+		return "<nil>"
+	}
+	return strconv.Quote(*value)
 }
 
 func TestParserCapturesGrupoColumns(t *testing.T) {

@@ -1,6 +1,8 @@
 package composition
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -8,11 +10,16 @@ import (
 	"testing"
 	"time"
 
+	erppostgres "marketplace-central/apps/server_core/internal/modules/erp_import/adapters/postgres"
+	erpdomain "marketplace-central/apps/server_core/internal/modules/erp_import/domain"
+	internalreadports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 	mutationsstub "marketplace-central/apps/server_core/internal/modules/mutations/adapters/stub"
 	mutationsapp "marketplace-central/apps/server_core/internal/modules/mutations/application"
 	mutationsbg "marketplace-central/apps/server_core/internal/modules/mutations/background"
+	"marketplace-central/apps/server_core/internal/modules/tenant_config"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 	"marketplace-central/apps/server_core/internal/platform/pgdb"
+	testpostgres "marketplace-central/apps/server_core/internal/testsupport/postgres"
 )
 
 func TestRootRuntimeRegistersERPImportRoutes(t *testing.T) {
@@ -37,6 +44,89 @@ func TestRootRuntimeRegistersERPImportRoutes(t *testing.T) {
 	}
 }
 
+func TestRootComposedCatalogReaderMovesPageAndCountWithStoredPolicy(t *testing.T) {
+	// The harness-owned target is only read through the testsupport boundary;
+	// a direct os.Getenv here would be an unapproved reader of a secret key.
+	testpostgres.SkipWithoutTarget(t)
+	ctx := context.Background()
+	tenant := fmt.Sprintf("root-catalog-policy-%d", time.Now().UnixNano())
+	pool, dbConfig := testpostgres.OpenPool(t, tenant)
+	dbConfig.DefaultTenantID = tenant
+	dbConfig.EncryptionKey = "0123456789abcdef0123456789abcdef"
+	importRepo := erppostgres.NewRepository(pool)
+	importedAt := time.Now().UTC().Add(-time.Minute).Truncate(time.Microsecond)
+	snapshot := erpdomain.ImportSnapshot{
+		ID:       erpdomain.ImportID(fmt.Sprintf("71000000-0000-0000-0000-%012d", time.Now().UnixNano()%1000000000000)),
+		Protocol: erpdomain.Protocol("#759-E"), FileSHA256: erpdomain.FileSHA256(fmt.Sprintf("s9-%d", time.Now().UnixNano())),
+		Source: erpdomain.SourceXLSX, ImportedAt: importedAt, Status: erpdomain.ImportStatusCompleted,
+		AcceptedRows: []erpdomain.NormalizedRow{
+			{Codprod: "7101", Descrprod: "Revenda", Custo: "1", StockPhysical: "5", Usoprod: stringPointer("R"), ADEcommerce: stringPointer("S")},
+			{Codprod: "7102", Descrprod: "Consumo", Custo: "1", StockPhysical: "5", Usoprod: stringPointer("V"), ADEcommerce: stringPointer("S")},
+		},
+	}
+	if err := importRepo.PersistSnapshotAtomically(ctx, tenant, snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := importRepo.SyncLatestCompletedSnapshot(ctx, tenant, erpdomain.SourceXLSX); err != nil {
+		t.Fatal(err)
+	}
+	configRepo := tenant_config.NewRepository(pool)
+	if err := configRepo.Set(ctx, tenant_config.Config{TenantID: tenant, Source: tenant_config.SourceXLSX}); err != nil {
+		t.Fatal(err)
+	}
+	runtime, err := NewRootRuntime(pool, dbConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if runtime.CatalogReader == nil {
+		t.Fatal("composed CatalogReader is nil")
+	}
+
+	assertCounts := func(policy tenant_config.SellableAssortment, want int) {
+		t.Helper()
+		if err := configRepo.SetSellableAssortment(ctx, tenant, policy); err != nil {
+			t.Fatal(err)
+		}
+		page, pageErr := runtime.CatalogReader.ListCatalogProductFacts(ctx, internalreadports.Cursor{}, 50, nil)
+		if pageErr != nil {
+			t.Fatal(pageErr)
+		}
+		counts, countErr := runtime.CatalogReader.GetCatalogAssortmentCounts(ctx, nil)
+		if countErr != nil {
+			t.Fatal(countErr)
+		}
+		if len(page.Items) != want || counts.SellableCount != want {
+			t.Fatalf("stored policy read = %+v; page/count = %d/%d, want %d/%d", policy, len(page.Items), counts.SellableCount, want, want)
+		}
+	}
+	assertCounts(tenant_config.SellableAssortment{OnlyRevenda: true, OnlyEmEstoque: true, OnlyEcommerceEligible: true}, 1)
+	assertCounts(tenant_config.SellableAssortment{}, 2)
+
+	// The other half of the contract: nil asks for the stored rule, and a policy
+	// the caller names is applied instead of it. With the strictest rule stored,
+	// "no cut" must still return the whole catalog through the SAME composed chain
+	// — service, routing, timing, cache and adapter. The shape this refuses is the
+	// one that shipped: the named policy compared against a constant and dropped,
+	// which reads as a working parameter and answers with the stored rule.
+	if err := configRepo.SetSellableAssortment(ctx, tenant, tenant_config.SellableAssortment{OnlyRevenda: true, OnlyEmEstoque: true, OnlyEcommerceEligible: true}); err != nil {
+		t.Fatal(err)
+	}
+	asked := internalreadports.AllProductsAssortment()
+	page, pageErr := runtime.CatalogReader.ListCatalogProductFacts(ctx, internalreadports.Cursor{}, 50, &asked)
+	if pageErr != nil {
+		t.Fatal(pageErr)
+	}
+	counts, countErr := runtime.CatalogReader.GetCatalogAssortmentCounts(ctx, &asked)
+	if countErr != nil {
+		t.Fatal(countErr)
+	}
+	if len(page.Items) != 2 || counts.SellableCount != 2 {
+		t.Fatalf("requested policy %+v honored? page/count = %d/%d, want 2/2 (stored rule would give 1/1)", asked, len(page.Items), counts.SellableCount)
+	}
+}
+
+func stringPointer(value string) *string { return &value }
+
 func TestRootWiresERPImportWithoutRepositoryTenant(t *testing.T) {
 	raw, err := os.ReadFile("root.go")
 	if err != nil {
@@ -55,6 +145,46 @@ func TestRootWiresERPImportWithoutRepositoryTenant(t *testing.T) {
 	}
 	if strings.Contains(source, "erppostgres.NewRepository(pool, cfg.DefaultTenantID)") {
 		t.Fatal("ERP repository must not receive a tenant at construction")
+	}
+}
+
+func TestRootWiresAllCatalogPathsAndAssortmentReader(t *testing.T) {
+	raw, err := os.ReadFile("root.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(raw)
+	for _, want := range []string{
+		`catalogListPath     = "/catalog/products"`,
+		`catalogSearchPath   = "/catalog/products/search"`,
+		`catalogCountsPath   = "/catalog/products/counts"`,
+		"var catalogPageReader catalogtransport.CatalogReader",
+		"catalogPageReader = internalReadSvc",
+		"PageReader: catalogPageReader",
+	} {
+		target := source
+		if strings.Contains(want, "catalog") && strings.Contains(want, "Path") {
+			handler, readErr := os.ReadFile("../modules/catalog/transport/http_handler.go")
+			if readErr != nil {
+				t.Fatal(readErr)
+			}
+			target = string(handler)
+		}
+		if !strings.Contains(target, want) {
+			t.Fatalf("catalog wiring missing literal %q", want)
+		}
+	}
+
+	runtime, err := NewRootRuntime(nil, pgdb.Config{DefaultTenantID: "tenant_default", EncryptionKey: "0123456789abcdef0123456789abcdef"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{"/catalog/products", "/catalog/products/search", "/catalog/products/counts"} {
+		recorder := httptest.NewRecorder()
+		runtime.Handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))
+		if recorder.Code == http.StatusNotFound || recorder.Code == http.StatusMethodNotAllowed {
+			t.Fatalf("catalog path %q is not mounted: status=%d", path, recorder.Code)
+		}
 	}
 }
 

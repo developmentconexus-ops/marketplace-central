@@ -22,6 +22,13 @@ const (
 	SourceCatalogoCliente ActiveSource = "catalogo_cliente"
 )
 
+// SellableAssortment is the tenant's product-assortment policy.
+type SellableAssortment struct {
+	OnlyRevenda           bool
+	OnlyEmEstoque         bool
+	OnlyEcommerceEligible bool
+}
+
 // Valid reports whether s is one of the three ratified sources. Anything else
 // (including the zero value) is invalid.
 func (s ActiveSource) Valid() bool {
@@ -51,11 +58,12 @@ func (s ActiveSource) DefaultKind() sourcekind.SourceKind {
 
 // Config is a tenant's active-source selection as stored/read.
 type Config struct {
-	TenantID string
-	Source   ActiveSource
-	Kind     sourcekind.SourceKind
-	SetAt    time.Time
-	SetBy    string
+	TenantID           string
+	Source             ActiveSource
+	Kind               sourcekind.SourceKind
+	SetAt              time.Time
+	SetBy              string
+	SellableAssortment SellableAssortment
 }
 
 // ErrUnknownActiveSource is returned when a tenant has no active-source row.

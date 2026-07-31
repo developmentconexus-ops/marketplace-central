@@ -1,0 +1,221 @@
+S5-MATCHER — P4 adversarial review (orchestrator seat)
+Commit under review: a62c56d68362d92e32f6abc17d3ceee18ef2939d
+Reviewer: chip orchestrator. Every claim below re-measured here; the worker's
+report was read as an observation, never as a gate.
+
+================================================================================
+0. LANE, COUNTED PER LINE
+================================================================================
+Re-run at this seat, GOCACHE/GOMODCACHE absolute under apps/server_core:
+
+  go test ./internal/modules/erp_import/adapters/internalread \
+          ./internal/modules/internal_read/adapters/routing -count=1 -v
+
+  === RUN     lines : 58
+  --- PASS    lines : 58
+  --- SKIP    lines : 0
+  --- FAIL    lines : 0
+
+Matches the worker's RUN 58 / PASS 58 / SKIP 0. SKIP=0 is the load-bearing
+number (profile §11: a fully skipped run and a fully green run are byte-identical
+at the tail), so it was counted, not read off the tail.
+
+Integration lane (`-tags=integration`, the RED/GREEN of record) was run by the
+worker against the shared container; the RED line names the values:
+
+  matcher_integration_test.go:71: candidate IDs before toggle = [7001 7002 7003], want [7002 7003]
+
+That is a value-naming RED, not a panic. The mutation discriminates the VALUE.
+
+================================================================================
+1. GRANT COMPLIANCE — verified, bounded exactly as written
+================================================================================
+mirror_query_repository.go, the granted file, changed in exactly the two ways the
+hub bounded it and in no other way:
+
+  :13  mirrorProductColumns gains `,m.usoprod,m.ad_ecommerce`
+  :22  scanner gains `usoprod, adEcommerce sql.NullString`
+  :39-40  product.Usoprod / product.ADEcommerce via the existing nullStringPointer
+
+Zero filtering in that file. Mirror-side SQL filtering remains S7's seam.
+
+Column-order safety re-checked rather than assumed: the two names were inserted
+in the constant at the same index as the two Scan dests, and all four read sites
+(:56, :81, :102, :134) interpolate the SAME constant and go through the SAME
+scanner, so list and Scan order move together by construction. No other code path
+scans products_mirror into a MirrorProduct (`git grep products_mirror` outside
+_test.go returns only :166, the EAN-collision aggregate, which selects two
+columns of its own and does not use the scanner).
+
+================================================================================
+2. THE ABSTRACTION — motivated, cycle claim verified
+================================================================================
+The worker introduced SellableAssortmentPolicy + a context key in
+erp_import/adapters/internalread/reader.go, justifying it by an import cycle.
+Anti-slop §4 forbids speculative abstraction, so the cycle was measured, not
+believed:
+
+  tenant_config/active_source.go:11 imports erp_import/adapters/internalread
+  erp_import/adapters/internalread/ imports tenant_config : 0 occurrences
+
+The cycle is real; the carrier cannot live in tenant_config. Two named consumers
+exist today (matcher writes it, reader reads it). Abstraction accepted.
+
+parseNumber's error propagation in the new code is NOT a new failure mode: the
+same call on the same field already exists at :275 and :491 with the same
+behaviour.
+
+================================================================================
+3. BLOCKING FINDING — the rule is INERT for the xlsx source
+================================================================================
+The worker reported, in two lines, that "upstream snapshot selectors omit
+usoprod/ad_ecommerce". Measured here, the break is one hop EARLIER than that,
+and it disables the chip's headline deliverable for one of the two sources.
+
+  xlsx/parser.go:116        parser fills NormalizedRow.Usoprod from the sheet   [S3]
+  import_repository.go:67   CopyFrom into erp_import_products lists 14 columns:
+                            tenant_id, protocol_id, codprod, descrprod, custo,
+                            preco_venda, stock_physical, stock_reserved, ean,
+                            refforn, marca, ncm, grupo, descrgrupo
+                            -- NEITHER usoprod NOR ad_ecommerce            <-- DIES HERE
+  0084_...sellable_fields.sql:6,9
+                            ADD COLUMN usoprod / ad_ecommerce on products_mirror
+                            ONLY. erp_import_products has nowhere to put them.
+  mirror_repository.go:30   sync SELECT reads 12 columns of erp_import_products.
+                            Neither of the two.
+
+Consequence: for source=xlsx, products_mirror.usoprod is NULL forever. The
+ratified mirror clause is `IS NULL OR = 'R'`, where nil PASSES. The rule
+compiles, has a green test, and cuts nothing.
+
+This is the S5 round-1 blocker's own sentence, one hop upstream. Closing the READ
+link left the WRITE link broken — for xlsx only. Sankhya is fine:
+internal_read/adapters/mirror/writer.go:150 writes both columns straight into
+products_mirror without passing through erp_import_products. One source carries
+the fact, the other discards it.
+
+The S5 integration test does not catch this because it seeds products_mirror with
+a raw UPDATE (matcher_integration_test.go, the UPDATE ... SET usoprod = CASE
+block). That was the only way to test the reader at all given the break, and the
+worker said so — but it means the green proves the reader and the matcher, NOT
+the pipeline. Recorded here so no later reader mistakes the scope of that green.
+
+NOT fixed at this seat and NOT decided at this seat. The fix needs migration 0085
+(the grant was 0083-0084), import_repository.go and mirror_repository.go — none
+of them in any slice's write-set. Filed as a REQUEST to the hub with three
+options (new slice S5B / fold into S7 / accept out-of-chip and say so on screen).
+Recommended: S5B.
+
+================================================================================
+4. DECISION NEEDED — case sensitivity (REQUEST filed, not decided here)
+================================================================================
+reader.go:231 `value != "R"` and reader.go:247 `value == "N"` compare
+case-sensitively, and nothing normalizes case anywhere on this path:
+
+  xlsx/parser.go:287-295  optionalCell returns the raw cell verbatim
+  ToUpper in erp_import/ or internal_read/ on these fields : 0 occurrences
+
+Sankhya returns uppercase `R` (measured). The spreadsheet is written by the
+operator. A lowercase `n` PASSES the e-commerce rule; a lowercase `r` is CUT from
+resale. It errs in both directions, and the direction that lets a product through
+is the worse one. Real ambiguity -> hub, per the dispatch contract. The same
+question returns in S7.
+
+================================================================================
+5. NON-BLOCKING FINDINGS
+================================================================================
+F-1  Collision flags are computed BEFORE the cut, so a false ambiguity survives it.
+     reader.go:184  rows, collisions := index.candidateRows(input), index.collisions
+     reader.go:203  r.candidate(int(id), row, collisions, source)
+     reader.go:568  collisions[*ean] >= 2  ->  ambiguity flag
+     The collision map comes from MirrorEANCollisionCounts, a SQL aggregate over
+     the whole mirror (mirror_query_repository.go:166) that knows nothing about
+     the policy. If two rows share an EAN and the rule cuts one, the SURVIVOR is
+     still flagged ambiguous. Under the D-121 policy ambiguous goes to manual
+     confirmation instead of auto-approving, so cutting junk makes auto-linking
+     WORSE for that product -- the opposite of the chip's purpose.
+     Note the inconsistency inside one function: the OTHER ambiguity mechanism
+     (reader.go:219, len(results) > 1) is computed correctly AFTER the cut.
+     Fixing it properly means making the collision count policy-aware, which is
+     mirror-side SQL filtering = S7's seam. Proposed: S7 carries it. Not fixed
+     here.
+
+F-2  A cut row now produces ERPProductNotFoundError, collapsing two facts.
+     reader.go:217 raises it when len(results)==0 and the caller named a
+     ProductID or a matchable seller_sku. Before this slice that meant "no such
+     product"; it now ALSO means "the product exists and the rule excluded it".
+     On the matcher path this is harmless and arguably right -- matcher.go:57-60
+     translates it to nil,nil ("sem correspondência" for that listing). The test
+     does not exercise it: it passes FindProductsInput{}, so both branches of the
+     condition are nil. The collapse is therefore unproven in either direction.
+     Report only.
+
+F-3  The policy fails OPEN while the source pin two lines up fails CLOSED.
+     reader.go:183  policy, _ := SellableAssortmentFromContext(ctx)
+     The `ok` is discarded, so an unpinned context yields the zero value = all
+     toggles false = no filtering. The neighbouring WithActiveSource carries the
+     comment "Without a pin, the reader fails closed" (:83) and does the
+     opposite. Measured reach: only MirrorMatcher pins the policy
+     (composition/root.go:490), while catalog/adapters/internalread/reader.go:200
+     and composition/market_adapters.go:130 reach the same reader through
+     routing.Reader:65-70, which does NOT pin.
+     Those two are lookup-by-ID paths, and leaving THEM unfiltered is almost
+     certainly correct -- it is the same principle the S6 brief already binds for
+     CatalogProductFactsByIDs ("filtering it would silently drop products the
+     caller explicitly named"). So the BEHAVIOUR is right and the SILENCE is the
+     defect: it reads as an oversight, sits beside a fail-closed pin doing the
+     reverse, and the `_` records no intent. Wants one comment naming the reason,
+     not a code change.
+
+F-4  Dead conjunct. reader.go:247 `value != "" && value == "N"` -- the first test
+     is unreachable-false only when the second is false; `value == "N"` already
+     implies non-empty. Cosmetic, no behaviour.
+
+================================================================================
+6. VERDICT
+================================================================================
+The slice does what its card says, within its write-set, with a value-naming RED
+and a counted green. ACCEPTED as S5.
+
+It does NOT deliver the chip's promise for the xlsx source, and that is not the
+slice's fault -- the gap is outside every write-set in the plan. The chip cannot
+close on the strength of this green alone: either S5B lands, or EVIDENCE.md and
+the /integracoes copy say plainly which source the rule governs.
+
+================================================================================
+7. DISPOSITIONS (hub, D-122) — filed after the review above was written
+================================================================================
+F-1  RATIFIED, and it rose to the CONTRACT. VC-4 amended @54ff204 on main: EAN
+     collisions count AFTER the cut; an excluded twin must not leave the survivor
+     flagged ambiguous; and the two ambiguity mechanisms inside that one function
+     must AGREE -- the internal contradiction noted above (one pre-cut at :184,
+     one post-cut at :219) is cited in the criterion itself.
+     Must-fail in both directions: rule active -> the survivor auto-approves under
+     D-121; rule disabled -> it returns to ambiguous.
+     Registered as a named criterion on S7's card. Write-set checked at
+     registration: mirror_query_repository.go and internalread/reader.go are
+     ALREADY in S7's write-set, so unlike the three D-122 rulings before it, this
+     one needed no extension.
+
+F-2  ACCEPTED as a report. No code in this chip. The collapse is reachable today
+     only through the matcher path, where nil,nil is the right translation. An
+     error taxonomy separating the two facts is a problem measured on no real
+     path, and the measured-problem rule says do not build it.
+     VALIDITY CONDITION, recorded here because whoever trips it inherits the debt:
+     the day a caller pins the assortment policy on a lookup for a NAMED product
+     id, the two facts MUST become distinguishable. "No such product" and "the
+     product exists and the rule excluded it" are different answers to that
+     caller, and only one of them is something the operator can act on.
+
+F-3  APPROVED as one comment, zero code. The comment carries BOTH halves:
+     - the why: this reader serves by-ID paths where filtering would silently drop
+       a product the caller named (the CatalogProductFactsByIDs principle), and
+       the matcher pins explicitly;
+     - the validity condition: any future LISTING path reaching here MUST pin.
+       Fail-open is deliberate only while the unpinned callers are by-ID.
+     Same technique as the helper-asymmetry nuance: the condition said out loud,
+     at the site, because the condition is the part that rots.
+
+F-4  Rides along in S5B's commit -- that function is already in the write-set for
+     F-3 and the case comment, so the dead conjunct comes out free. It would not
+     have justified a commit of its own.

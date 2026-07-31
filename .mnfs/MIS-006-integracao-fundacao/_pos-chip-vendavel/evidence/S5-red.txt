@@ -1,0 +1,28 @@
+S5-MATCHER RED evidence
+
+Command:
+go test -tags=integration ./internal/modules/internal_read/adapters/routing -run '^TestMirrorMatcher_ActiveRevendaRuleControlsCandidateBirth$' -count=1 -v
+
+Result: FAIL
+Test: TestMirrorMatcher_ActiveRevendaRuleControlsCandidateBirth
+Exact failure line:
+matcher_integration_test.go:71: candidate IDs before toggle = [7001 7002 7003], want [7002 7003]
+
+Candidate IDs before toggle: [7001 7002 7003]
+Expected candidate IDs before toggle: [7002 7003]
+The value 7001 is the row with USOPROD='V' and must be excluded while only_revenda=true.
+
+Repository SQL used to flip the rule (called by SetSellableAssortment with all three values false):
+UPDATE active_source
+SET only_revenda = $2,
+    only_em_estoque = $3,
+    only_ecommerce_eligible = $4
+WHERE tenant_id = $1
+
+Toggle parameters: tenant_id=<integration-test tenant>, only_revenda=false, only_em_estoque=false, only_ecommerce_eligible=false.
+
+Blocking scope observation: products_mirror is scanned by
+apps/server_core/internal/modules/erp_import/adapters/postgres/mirror_query_repository.go,
+but that scanner currently does not select or populate usoprod or ad_ecommerce. The S5
+brief's required three mirror predicates therefore cannot be applied through the exact
+write-set without changing that out-of-scope file.

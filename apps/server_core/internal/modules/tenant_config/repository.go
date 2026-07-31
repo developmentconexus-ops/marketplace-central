@@ -35,10 +35,19 @@ func (r *Repository) Get(ctx context.Context, tenantID string) (Config, error) {
 	)
 	cfg.TenantID = tenantID
 	err := r.pool.QueryRow(ctx, `
-		SELECT active_source, source_kind, set_at, set_by
+		SELECT active_source, source_kind, set_at, set_by,
+			only_revenda, only_em_estoque, only_ecommerce_eligible
 		FROM active_source
 		WHERE tenant_id = $1
-	`, tenantID).Scan(&cfg.Source, &cfg.Kind, &cfg.SetAt, &setBy)
+	`, tenantID).Scan(
+		&cfg.Source,
+		&cfg.Kind,
+		&cfg.SetAt,
+		&setBy,
+		&cfg.SellableAssortment.OnlyRevenda,
+		&cfg.SellableAssortment.OnlyEmEstoque,
+		&cfg.SellableAssortment.OnlyEcommerceEligible,
+	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Config{}, ErrUnknownActiveSource
 	}
@@ -73,6 +82,25 @@ func (r *Repository) Set(ctx context.Context, cfg Config) error {
 	`, cfg.TenantID, cfg.Source, kind, nullableString(cfg.SetBy))
 	if err != nil {
 		return fmt.Errorf("set active source: %w", err)
+	}
+	return nil
+}
+
+// SetSellableAssortment updates the existing active-source row's assortment
+// policy. It never creates a row for a tenant without an active source.
+func (r *Repository) SetSellableAssortment(ctx context.Context, tenantID string, a SellableAssortment) error {
+	commandTag, err := r.pool.Exec(ctx, `
+		UPDATE active_source
+		SET only_revenda = $2,
+			only_em_estoque = $3,
+			only_ecommerce_eligible = $4
+		WHERE tenant_id = $1
+	`, tenantID, a.OnlyRevenda, a.OnlyEmEstoque, a.OnlyEcommerceEligible)
+	if err != nil {
+		return fmt.Errorf("set sellable assortment: %w", err)
+	}
+	if commandTag.RowsAffected() == 0 {
+		return ErrUnknownActiveSource
 	}
 	return nil
 }

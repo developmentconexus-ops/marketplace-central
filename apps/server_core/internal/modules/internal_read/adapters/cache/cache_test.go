@@ -58,7 +58,7 @@ func (r *fakeReader) maybeBlock() {
 	}
 }
 
-func (r *fakeReader) ListCatalogProductFacts(context.Context, internalreadports.Cursor, int) (internalreadports.CatalogFactPage, error) {
+func (r *fakeReader) ListCatalogProductFacts(context.Context, internalreadports.Cursor, int, *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
 	r.listCalls.Add(1)
 	r.maybeBlock()
 	if r.err != nil {
@@ -75,7 +75,7 @@ func (r *fakeReader) CatalogProductFactsByIDs(context.Context, []int64) (interna
 	return internalreadports.CatalogFactPage{AsOf: r.clock.Now()}, nil
 }
 
-func (r *fakeReader) SearchCatalogProductFacts(context.Context, string, internalreadports.Cursor, int) (internalreadports.CatalogFactPage, error) {
+func (r *fakeReader) SearchCatalogProductFacts(context.Context, string, internalreadports.Cursor, int, *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
 	r.searchCalls.Add(1)
 	if r.err != nil {
 		return internalreadports.CatalogFactPage{}, r.err
@@ -147,7 +147,7 @@ type staticCatalogReader struct {
 	page internalreadports.CatalogFactPage
 }
 
-func (r *staticCatalogReader) ListCatalogProductFacts(context.Context, internalreadports.Cursor, int) (internalreadports.CatalogFactPage, error) {
+func (r *staticCatalogReader) ListCatalogProductFacts(context.Context, internalreadports.Cursor, int, *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
 	return r.page, nil
 }
 
@@ -155,11 +155,11 @@ func (r *staticCatalogReader) CatalogProductFactsByIDs(context.Context, []int64)
 	return r.page, nil
 }
 
-func (r *staticCatalogReader) SearchCatalogProductFacts(context.Context, string, internalreadports.Cursor, int) (internalreadports.CatalogFactPage, error) {
+func (r *staticCatalogReader) SearchCatalogProductFacts(context.Context, string, internalreadports.Cursor, int, *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
 	return r.page, nil
 }
 
-func (r *stagedCatalogReader) ListCatalogProductFacts(context.Context, internalreadports.Cursor, int) (internalreadports.CatalogFactPage, error) {
+func (r *stagedCatalogReader) ListCatalogProductFacts(context.Context, internalreadports.Cursor, int, *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
 	call := r.calls.Add(1)
 	if r.entered != nil {
 		r.entered <- call
@@ -175,7 +175,7 @@ func (r *stagedCatalogReader) CatalogProductFactsByIDs(context.Context, []int64)
 	return internalreadports.CatalogFactPage{AsOf: r.clock.Now()}, nil
 }
 
-func (r *stagedCatalogReader) SearchCatalogProductFacts(context.Context, string, internalreadports.Cursor, int) (internalreadports.CatalogFactPage, error) {
+func (r *stagedCatalogReader) SearchCatalogProductFacts(context.Context, string, internalreadports.Cursor, int, *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
 	return internalreadports.CatalogFactPage{AsOf: r.clock.Now()}, nil
 }
 
@@ -200,7 +200,7 @@ func (r *sourceCountingCatalogReader) record(ctx context.Context, search bool) {
 	r.mu.Unlock()
 }
 
-func (r *sourceCountingCatalogReader) ListCatalogProductFacts(ctx context.Context, _ internalreadports.Cursor, _ int) (internalreadports.CatalogFactPage, error) {
+func (r *sourceCountingCatalogReader) ListCatalogProductFacts(ctx context.Context, _ internalreadports.Cursor, _ int, _ *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
 	r.listCalls.Add(1)
 	r.record(ctx, false)
 	return internalreadports.CatalogFactPage{AsOf: r.clock.Now()}, nil
@@ -211,9 +211,36 @@ func (r *sourceCountingCatalogReader) CatalogProductFactsByIDs(ctx context.Conte
 	return internalreadports.CatalogFactPage{AsOf: r.clock.Now()}, nil
 }
 
-func (r *sourceCountingCatalogReader) SearchCatalogProductFacts(ctx context.Context, _ string, _ internalreadports.Cursor, _ int) (internalreadports.CatalogFactPage, error) {
+func (r *sourceCountingCatalogReader) SearchCatalogProductFacts(ctx context.Context, _ string, _ internalreadports.Cursor, _ int, _ *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
 	r.record(ctx, true)
 	return internalreadports.CatalogFactPage{AsOf: r.clock.Now()}, nil
+}
+
+// The four catalog fakes below answer counts from the same downstream they page
+// from. The counts read is part of the port now, not a capability a source may
+// or may not have, so a fake that omits it does not compile.
+func (r *fakeReader) GetCatalogAssortmentCounts(context.Context, *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogAssortmentCounts, error) {
+	return internalreadports.CatalogAssortmentCounts{}, r.err
+}
+
+func (r *staticCatalogReader) GetCatalogAssortmentCounts(context.Context, *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogAssortmentCounts, error) {
+	return internalreadports.CatalogAssortmentCounts{SellableCount: len(r.page.Items), TotalCount: len(r.page.Items)}, nil
+}
+
+func (r *stagedCatalogReader) GetCatalogAssortmentCounts(context.Context, *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogAssortmentCounts, error) {
+	return internalreadports.CatalogAssortmentCounts{}, nil
+}
+
+func (r *sourceCountingCatalogReader) GetCatalogAssortmentCounts(context.Context, *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogAssortmentCounts, error) {
+	return internalreadports.CatalogAssortmentCounts{}, nil
+}
+
+// noCutPolicy is the explicit whole-catalog policy. These tests are about cache
+// keys, TTLs and singleflight, so they all name the same cut; the one test that
+// varies the cut names two.
+func noCutPolicy() *internalreadports.SellableAssortmentPolicy {
+	policy := internalreadports.AllProductsAssortment()
+	return &policy
 }
 
 // TestCatalogCachePartitionsByActiveSource guards the cross-source pollution
@@ -224,21 +251,21 @@ func (r *sourceCountingCatalogReader) SearchCatalogProductFacts(ctx context.Cont
 func TestCatalogCachePartitionsByActiveSource(t *testing.T) {
 	clock := &fakeClock{now: time.Date(2026, 7, 20, 12, 0, 0, 0, time.UTC)}
 	downstream := &sourceCountingCatalogReader{clock: clock}
-	catalog := NewCatalogPageReader(downstream, testCache(clock, 20, nil))
+	catalog := newCatalogPageReader(downstream, testCache(clock, 20, nil))
 
 	base := context.Background()
 	xlsxCtx := erpinternalread.WithActiveSource(base, erpdomain.SourceXLSX)
 	prospectCtx := erpinternalread.WithActiveSource(base, erpdomain.SourceCatalogoCliente)
 
 	// Default (absent) then xlsx-explicit then catalogo_cliente — all list, same limit/cursor.
-	if _, err := catalog.ListCatalogProductFacts(base, internalreadports.Cursor{}, 50); err != nil {
+	if _, err := catalog.ListCatalogProductFacts(base, internalreadports.Cursor{}, 50, noCutPolicy()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := catalog.ListCatalogProductFacts(prospectCtx, internalreadports.Cursor{}, 50); err != nil {
+	if _, err := catalog.ListCatalogProductFacts(prospectCtx, internalreadports.Cursor{}, 50, noCutPolicy()); err != nil {
 		t.Fatal(err)
 	}
 	// Repeat catalogo_cliente — must be a cache hit, no new downstream call.
-	if _, err := catalog.ListCatalogProductFacts(prospectCtx, internalreadports.Cursor{}, 50); err != nil {
+	if _, err := catalog.ListCatalogProductFacts(prospectCtx, internalreadports.Cursor{}, 50, noCutPolicy()); err != nil {
 		t.Fatal(err)
 	}
 	if got := downstream.listCalls.Load(); got != 2 {
@@ -246,7 +273,7 @@ func TestCatalogCachePartitionsByActiveSource(t *testing.T) {
 	}
 
 	// Explicit xlsx must NOT be served the catalogo_cliente page: distinct key → downstream hit.
-	if _, err := catalog.ListCatalogProductFacts(xlsxCtx, internalreadports.Cursor{}, 50); err != nil {
+	if _, err := catalog.ListCatalogProductFacts(xlsxCtx, internalreadports.Cursor{}, 50, noCutPolicy()); err != nil {
 		t.Fatal(err)
 	}
 	if got := downstream.listCalls.Load(); got != 3 {
@@ -254,10 +281,10 @@ func TestCatalogCachePartitionsByActiveSource(t *testing.T) {
 	}
 
 	// Search partitions independently by source too.
-	if _, err := catalog.SearchCatalogProductFacts(xlsxCtx, "faca", internalreadports.Cursor{}, 50); err != nil {
+	if _, err := catalog.SearchCatalogProductFacts(xlsxCtx, "faca", internalreadports.Cursor{}, 50, noCutPolicy()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := catalog.SearchCatalogProductFacts(prospectCtx, "faca", internalreadports.Cursor{}, 50); err != nil {
+	if _, err := catalog.SearchCatalogProductFacts(prospectCtx, "faca", internalreadports.Cursor{}, 50, noCutPolicy()); err != nil {
 		t.Fatal(err)
 	}
 	downstream.mu.Lock()
@@ -265,6 +292,69 @@ func TestCatalogCachePartitionsByActiveSource(t *testing.T) {
 	downstream.mu.Unlock()
 	if len(searchSeen) != 2 || searchSeen[0] != erpdomain.SourceXLSX || searchSeen[1] != erpdomain.SourceCatalogoCliente {
 		t.Fatalf("search cache must partition by source; downstream saw %v", searchSeen)
+	}
+}
+
+// TestCatalogCachePartitionsByAssortmentPolicy is the cut's cache guard. Two
+// reads that differ ONLY in the assortment policy are asking two different
+// questions — "the sellable products" and "every product" — and one answer must
+// not be handed out for the other.
+//
+// It is load-bearing in the same way the source guard above is: delete
+// assortmentKey(resolved) from the canonicalKey composition in cache.go and this
+// test FAILS, because the no-cut read is served the cached filtered page and
+// listCalls stays 1. That is not hypothetical — before F4 the cache carried a
+// second, narrow pair of methods that keyed WITHOUT the policy, so the shared
+// entry this asserts against was one call away.
+func TestCatalogCachePartitionsByAssortmentPolicy(t *testing.T) {
+	clock := &fakeClock{now: time.Date(2026, 7, 30, 12, 0, 0, 0, time.UTC)}
+	downstream := &fakeReader{clock: clock}
+	catalog := newCatalogPageReader(downstream, testCache(clock, 20, nil))
+
+	ctx := context.Background()
+	sellable := internalreadports.SellableAssortmentPolicy{OnlyRevenda: true, OnlyEmEstoque: true, OnlyEcommerceEligible: true}
+	everything := internalreadports.AllProductsAssortment()
+
+	if _, err := catalog.ListCatalogProductFacts(ctx, internalreadports.Cursor{}, 50, &sellable); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := catalog.ListCatalogProductFacts(ctx, internalreadports.Cursor{}, 50, &everything); err != nil {
+		t.Fatal(err)
+	}
+	if got := downstream.listCalls.Load(); got != 2 {
+		t.Fatalf("the uncut read was served the cached sellable page: want 2 downstream list calls, got %d", got)
+	}
+	if _, err := catalog.ListCatalogProductFacts(ctx, internalreadports.Cursor{}, 50, &sellable); err != nil {
+		t.Fatal(err)
+	}
+	if got := downstream.listCalls.Load(); got != 2 {
+		t.Fatalf("repeat of the sellable read did not hit cache: want 2 downstream list calls, got %d", got)
+	}
+
+	// One toggle apart is still a different question, so the key has to carry all
+	// three and not a summary of them.
+	oneToggleOff := internalreadports.SellableAssortmentPolicy{OnlyRevenda: true, OnlyEmEstoque: true}
+	if _, err := catalog.ListCatalogProductFacts(ctx, internalreadports.Cursor{}, 50, &oneToggleOff); err != nil {
+		t.Fatal(err)
+	}
+	if got := downstream.listCalls.Load(); got != 3 {
+		t.Fatalf("a policy differing by one toggle shared a cache entry: want 3 downstream list calls, got %d", got)
+	}
+}
+
+// A nil policy reaching the cache is the routing invariant breaking. The cache
+// refuses it instead of caching under some default key, which would serve one
+// tenant's cut to a caller that never resolved one.
+func TestCatalogCacheRefusesUnresolvedPolicy(t *testing.T) {
+	clock := &fakeClock{now: time.Date(2026, 7, 30, 12, 0, 0, 0, time.UTC)}
+	downstream := &fakeReader{clock: clock}
+	catalog := newCatalogPageReader(downstream, testCache(clock, 20, nil))
+
+	if _, err := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50, nil); !errors.Is(err, internalreadports.ErrUnresolvedAssortmentPolicy) {
+		t.Fatalf("ListCatalogProductFacts(nil policy) error = %v, want ErrUnresolvedAssortmentPolicy", err)
+	}
+	if got := downstream.listCalls.Load(); got != 0 {
+		t.Fatalf("unresolved policy still reached downstream: %d calls", got)
 	}
 }
 
@@ -280,28 +370,28 @@ func TestCatalogCachePartitionsByActiveSource(t *testing.T) {
 func TestCatalogCachePartitionsSankhyaVsXlsx(t *testing.T) {
 	clock := &fakeClock{now: time.Date(2026, 7, 22, 12, 0, 0, 0, time.UTC)}
 	downstream := &sourceCountingCatalogReader{clock: clock}
-	catalog := NewCatalogPageReader(downstream, testCache(clock, 20, nil))
+	catalog := newCatalogPageReader(downstream, testCache(clock, 20, nil))
 
 	base := context.Background()
 	xlsxCtx := tenant_config.WithActiveSource(base, tenant_config.Config{TenantID: "tenant_default", Source: tenant_config.SourceXLSX})
 	sankhyaCtx := tenant_config.WithActiveSource(base, tenant_config.Config{TenantID: "tenant_default", Source: tenant_config.SourceSankhya})
 
-	if _, err := catalog.ListCatalogProductFacts(xlsxCtx, internalreadports.Cursor{}, 50); err != nil {
+	if _, err := catalog.ListCatalogProductFacts(xlsxCtx, internalreadports.Cursor{}, 50, noCutPolicy()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := catalog.ListCatalogProductFacts(sankhyaCtx, internalreadports.Cursor{}, 50); err != nil {
+	if _, err := catalog.ListCatalogProductFacts(sankhyaCtx, internalreadports.Cursor{}, 50, noCutPolicy()); err != nil {
 		t.Fatal(err)
 	}
 	if got := downstream.listCalls.Load(); got != 2 {
 		t.Fatalf("sankhya read was served the cached xlsx page (cross-source pollution): want 2 downstream list calls, got %d", got)
 	}
-	if _, err := catalog.ListCatalogProductFacts(sankhyaCtx, internalreadports.Cursor{}, 50); err != nil {
+	if _, err := catalog.ListCatalogProductFacts(sankhyaCtx, internalreadports.Cursor{}, 50, noCutPolicy()); err != nil {
 		t.Fatal(err)
 	}
 	if got := downstream.listCalls.Load(); got != 2 {
 		t.Fatalf("second sankhya read did not hit cache: want 2 downstream list calls, got %d", got)
 	}
-	if _, err := catalog.ListCatalogProductFacts(xlsxCtx, internalreadports.Cursor{}, 50); err != nil {
+	if _, err := catalog.ListCatalogProductFacts(xlsxCtx, internalreadports.Cursor{}, 50, noCutPolicy()); err != nil {
 		t.Fatal(err)
 	}
 	if got := downstream.listCalls.Load(); got != 2 {
@@ -345,18 +435,18 @@ func TestFreshnessCacheTTLPerClass(t *testing.T) {
 		ClassCatalog: {MaxAge: 5 * time.Second}, ClassInventory: {MaxAge: 2 * time.Second}, ClassPriceCost: {MaxAge: 3 * time.Second},
 	})
 	reader := &fakeReader{clock: clock}
-	catalog := NewCatalogPageReader(reader, c)
-	first, err := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50)
+	catalog := newCatalogPageReader(reader, c)
+	first, err := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50, noCutPolicy())
 	if err != nil {
 		t.Fatal(err)
 	}
 	clock.Advance(4 * time.Second)
-	second, err := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50)
+	second, err := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50, noCutPolicy())
 	if err != nil || !second.AsOf.Equal(first.AsOf) || reader.listCalls.Load() != 1 {
 		t.Fatalf("catalog hit: calls=%d first=%s second=%s err=%v", reader.listCalls.Load(), first.AsOf, second.AsOf, err)
 	}
 	clock.Advance(time.Second)
-	third, err := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50)
+	third, err := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50, noCutPolicy())
 	if err != nil || !third.AsOf.After(second.AsOf) || reader.listCalls.Load() != 2 {
 		t.Fatalf("catalog expiry: calls=%d second=%s third=%s err=%v", reader.listCalls.Load(), second.AsOf, third.AsOf, err)
 	}
@@ -416,7 +506,7 @@ func TestFreshnessCacheTTLPerClass(t *testing.T) {
 func TestFreshnessCacheSingleflight(t *testing.T) {
 	clock := &fakeClock{now: time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)}
 	downstream := &fakeReader{clock: clock, blockStart: make(chan struct{}, 1), blockRelease: make(chan struct{})}
-	catalog := NewCatalogPageReader(downstream, testCache(clock, 10, nil))
+	catalog := newCatalogPageReader(downstream, testCache(clock, 10, nil))
 	const waiters = 20
 	results := make([]internalreadports.CatalogFactPage, waiters)
 	errs := make([]error, waiters)
@@ -425,7 +515,7 @@ func TestFreshnessCacheSingleflight(t *testing.T) {
 		wg.Add(1)
 		go func(index int) {
 			defer wg.Done()
-			results[index], errs[index] = catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50)
+			results[index], errs[index] = catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50, noCutPolicy())
 		}(i)
 	}
 	select {
@@ -449,10 +539,10 @@ func TestFreshnessCacheFencesInFlightLoadAfterInvalidation(t *testing.T) {
 	clock := &fakeClock{now: time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)}
 	c := testCache(clock, 10, nil)
 	downstream := &fakeReader{clock: clock, blockStart: make(chan struct{}, 1), blockRelease: make(chan struct{})}
-	catalog := NewCatalogPageReader(downstream, c)
+	catalog := newCatalogPageReader(downstream, c)
 	firstResult := make(chan internalreadports.CatalogFactPage, 1)
 	go func() {
-		page, _ := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50)
+		page, _ := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50, noCutPolicy())
 		firstResult <- page
 	}()
 	select {
@@ -466,7 +556,7 @@ func TestFreshnessCacheFencesInFlightLoadAfterInvalidation(t *testing.T) {
 	close(downstream.blockRelease)
 	first := <-firstResult
 	clock.Advance(time.Second)
-	second, err := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50)
+	second, err := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50, noCutPolicy())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -479,10 +569,10 @@ func TestFreshnessCachePostInvalidationDoesNotJoinInFlightLoad(t *testing.T) {
 	clock := &fakeClock{now: time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)}
 	c := testCache(clock, 10, nil)
 	downstream := &stagedCatalogReader{clock: clock, entered: make(chan int64, 4), firstStart: make(chan struct{}), firstRelease: make(chan struct{})}
-	catalog := NewCatalogPageReader(downstream, c)
+	catalog := newCatalogPageReader(downstream, c)
 	firstResult := make(chan internalreadports.CatalogFactPage, 1)
 	go func() {
-		page, _ := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50)
+		page, _ := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50, noCutPolicy())
 		firstResult <- page
 	}()
 	if call := <-downstream.entered; call != 1 {
@@ -493,7 +583,7 @@ func TestFreshnessCachePostInvalidationDoesNotJoinInFlightLoad(t *testing.T) {
 	clock.Advance(time.Second)
 	secondResult := make(chan internalreadports.CatalogFactPage, 1)
 	go func() {
-		page, _ := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50)
+		page, _ := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50, noCutPolicy())
 		secondResult <- page
 	}()
 	select {
@@ -518,10 +608,10 @@ func TestFreshnessCachePostInvalidationDoesNotJoinInFlightLoad(t *testing.T) {
 func TestFreshnessCacheOlderLoadCannotOverwriteBypassRefresh(t *testing.T) {
 	clock := &fakeClock{now: time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)}
 	downstream := &stagedCatalogReader{clock: clock, firstStart: make(chan struct{}), firstRelease: make(chan struct{})}
-	catalog := NewCatalogPageReader(downstream, testCache(clock, 10, nil))
+	catalog := newCatalogPageReader(downstream, testCache(clock, 10, nil))
 	normalResult := make(chan internalreadports.CatalogFactPage, 1)
 	go func() {
-		page, _ := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50)
+		page, _ := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50, noCutPolicy())
 		normalResult <- page
 	}()
 	select {
@@ -532,7 +622,7 @@ func TestFreshnessCacheOlderLoadCannotOverwriteBypassRefresh(t *testing.T) {
 
 	clock.Advance(time.Second)
 	bypass := internalreaddomain.WithFreshnessPolicy(context.Background(), internalreaddomain.FreshnessPolicy{MaxAge: 0})
-	fresh, err := catalog.ListCatalogProductFacts(bypass, internalreadports.Cursor{}, 50)
+	fresh, err := catalog.ListCatalogProductFacts(bypass, internalreadports.Cursor{}, 50, noCutPolicy())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -545,7 +635,7 @@ func TestFreshnessCacheOlderLoadCannotOverwriteBypassRefresh(t *testing.T) {
 		t.Fatalf("bypass snapshot=%s, normal snapshot=%s; want bypass newer", fresh.AsOf, older.AsOf)
 	}
 
-	got, err := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50)
+	got, err := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50, noCutPolicy())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -557,10 +647,10 @@ func TestFreshnessCacheOlderLoadCannotOverwriteBypassRefresh(t *testing.T) {
 func TestFreshnessCacheBypassUsesSeparateSingleflightNamespace(t *testing.T) {
 	clock := &fakeClock{now: time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)}
 	downstream := &stagedCatalogReader{clock: clock, firstStart: make(chan struct{}), firstRelease: make(chan struct{})}
-	catalog := NewCatalogPageReader(downstream, testCache(clock, 10, nil))
+	catalog := newCatalogPageReader(downstream, testCache(clock, 10, nil))
 	normalResult := make(chan internalreadports.CatalogFactPage, 1)
 	go func() {
-		page, _ := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50)
+		page, _ := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50, noCutPolicy())
 		normalResult <- page
 	}()
 	select {
@@ -570,7 +660,7 @@ func TestFreshnessCacheBypassUsesSeparateSingleflightNamespace(t *testing.T) {
 	}
 
 	bypass := internalreaddomain.WithFreshnessPolicy(context.Background(), internalreaddomain.FreshnessPolicy{MaxAge: 0})
-	fresh, err := catalog.ListCatalogProductFacts(bypass, internalreadports.Cursor{}, 50)
+	fresh, err := catalog.ListCatalogProductFacts(bypass, internalreadports.Cursor{}, 50, noCutPolicy())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -584,10 +674,10 @@ func TestFreshnessCacheBypassUsesSeparateSingleflightNamespace(t *testing.T) {
 func TestFreshnessCacheWaiterContextCancellation(t *testing.T) {
 	clock := &fakeClock{now: time.Now().UTC()}
 	downstream := &fakeReader{clock: clock, blockStart: make(chan struct{}, 1), blockRelease: make(chan struct{})}
-	catalog := NewCatalogPageReader(downstream, testCache(clock, 10, nil))
+	catalog := newCatalogPageReader(downstream, testCache(clock, 10, nil))
 	leaderDone := make(chan struct{})
 	go func() {
-		_, _ = catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50)
+		_, _ = catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50, noCutPolicy())
 		close(leaderDone)
 	}()
 	select {
@@ -598,7 +688,7 @@ func TestFreshnessCacheWaiterContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	canceled := make(chan error, 1)
 	go func() {
-		_, err := catalog.ListCatalogProductFacts(ctx, internalreadports.Cursor{}, 50)
+		_, err := catalog.ListCatalogProductFacts(ctx, internalreadports.Cursor{}, 50, noCutPolicy())
 		canceled <- err
 	}()
 	cancel()
@@ -634,8 +724,8 @@ func TestFreshnessCacheDeepCopiesCachedFacts(t *testing.T) {
 	page.Items[0].SellableStock.Quality[0] = "known"
 	page.Items[0].CurrentPrice.Quality[0] = "known"
 	page.Items[0].Cost.Quality[0] = "known"
-	catalog := NewCatalogPageReader(&staticCatalogReader{page: page}, testCache(clock, 10, nil))
-	got, err := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50)
+	catalog := newCatalogPageReader(&staticCatalogReader{page: page}, testCache(clock, 10, nil))
+	got, err := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50, noCutPolicy())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -652,7 +742,7 @@ func TestFreshnessCacheDeepCopiesCachedFacts(t *testing.T) {
 	got.Items[0].Cost.Quality[0] = "mutated"
 	got.Items[0].Cost.Quality = append(got.Items[0].Cost.Quality, "mutated")
 	got.NextCursor.InternalProductID = 99
-	got, err = catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50)
+	got, err = catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50, noCutPolicy())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -691,7 +781,7 @@ func TestFreshnessCacheErrorNotCached(t *testing.T) {
 	boom := errors.New("downstream failure")
 	clock := &fakeClock{now: time.Now().UTC()}
 	downstream := &fakeReader{clock: clock, err: boom, blockStart: make(chan struct{}, 1), blockRelease: make(chan struct{})}
-	catalog := NewCatalogPageReader(downstream, testCache(clock, 10, nil))
+	catalog := newCatalogPageReader(downstream, testCache(clock, 10, nil))
 	var wg sync.WaitGroup
 	errs := make([]error, 20)
 	var ready atomic.Int64
@@ -700,7 +790,7 @@ func TestFreshnessCacheErrorNotCached(t *testing.T) {
 		go func(index int) {
 			defer wg.Done()
 			ready.Add(1)
-			_, errs[index] = catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50)
+			_, errs[index] = catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50, noCutPolicy())
 		}(i)
 	}
 	deadline := time.Now().Add(time.Second)
@@ -723,7 +813,7 @@ func TestFreshnessCacheErrorNotCached(t *testing.T) {
 			t.Fatalf("waiter %d error=%v", i, err)
 		}
 	}
-	if _, err := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50); !errors.Is(err, boom) || downstream.listCalls.Load() != 2 {
+	if _, err := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50, noCutPolicy()); !errors.Is(err, boom) || downstream.listCalls.Load() != 2 {
 		t.Fatalf("error was cached or retry missing: calls=%d err=%v", downstream.listCalls.Load(), err)
 	}
 }
@@ -732,14 +822,14 @@ func TestFreshnessCacheBypassAndLinkageExclusion(t *testing.T) {
 	clock := &fakeClock{now: time.Now().UTC()}
 	downstream := &fakeReader{clock: clock}
 	wrapped := NewReader(downstream, testCache(clock, 10, nil))
-	if _, err := wrapped.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50); err != nil {
+	if _, err := wrapped.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50, noCutPolicy()); err != nil {
 		t.Fatal(err)
 	}
 	noCache := internalreaddomain.WithFreshnessPolicy(context.Background(), internalreaddomain.FreshnessPolicy{MaxAge: 0})
-	if _, err := wrapped.ListCatalogProductFacts(noCache, internalreadports.Cursor{}, 50); err != nil {
+	if _, err := wrapped.ListCatalogProductFacts(noCache, internalreadports.Cursor{}, 50, noCutPolicy()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := wrapped.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50); err != nil {
+	if _, err := wrapped.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50, noCutPolicy()); err != nil {
 		t.Fatal(err)
 	}
 	if downstream.listCalls.Load() != 2 {
@@ -758,26 +848,26 @@ func TestFreshnessCacheBypassAndLinkageExclusion(t *testing.T) {
 func TestFreshnessCacheLRUAndLogs(t *testing.T) {
 	clock := &fakeClock{now: time.Now().UTC()}
 	downstream := &fakeReader{clock: clock}
-	wrapped := NewCatalogPageReader(downstream, testCache(clock, 2, nil))
+	wrapped := newCatalogPageReader(downstream, testCache(clock, 2, nil))
 	var logs bytes.Buffer
 	previous := slog.Default()
 	slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, nil)))
 	defer slog.SetDefault(previous)
 	for _, cursor := range []int64{1, 2} {
-		if _, err := wrapped.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{InternalProductID: cursor}, 50); err != nil {
+		if _, err := wrapped.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{InternalProductID: cursor}, 50, noCutPolicy()); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if _, err := wrapped.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{InternalProductID: 1}, 50); err != nil {
+	if _, err := wrapped.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{InternalProductID: 1}, 50, noCutPolicy()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := wrapped.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{InternalProductID: 3}, 50); err != nil {
+	if _, err := wrapped.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{InternalProductID: 3}, 50, noCutPolicy()); err != nil {
 		t.Fatal(err)
 	}
 	if wrapped.cache.Size() != 2 {
 		t.Fatalf("cache exceeded LRU cap: size=%d", wrapped.cache.Size())
 	}
-	if _, err := wrapped.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{InternalProductID: 2}, 50); err != nil {
+	if _, err := wrapped.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{InternalProductID: 2}, 50, noCutPolicy()); err != nil {
 		t.Fatal(err)
 	}
 	if downstream.listCalls.Load() != 4 {
@@ -821,9 +911,9 @@ func TestEvictOnMutation(t *testing.T) {
 	clock := &fakeClock{now: time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)}
 	c := testCache(clock, 10, nil)
 	reader := &fakeReader{clock: clock}
-	catalog := NewCatalogPageReader(reader, c)
+	catalog := newCatalogPageReader(reader, c)
 	pricecost := NewBatchReader(&fakeBatchReader{}, c)
-	first, err := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50)
+	first, err := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50, noCutPolicy())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -832,14 +922,14 @@ func TestEvictOnMutation(t *testing.T) {
 	}
 	clock.Advance(time.Second)
 	c.InvalidateClass(ClassCatalog)
-	second, err := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50)
+	second, err := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50, noCutPolicy())
 	if err != nil || !second.AsOf.After(first.AsOf) || reader.listCalls.Load() != 2 {
 		t.Fatalf("catalog mutation eviction failed: calls=%d first=%s second=%s err=%v", reader.listCalls.Load(), first.AsOf, second.AsOf, err)
 	}
 	if c.Size() != 2 {
 		t.Fatalf("unrelated pricecost entry did not remain warm: size=%d", c.Size())
 	}
-	if _, err := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50); err != nil {
+	if _, err := catalog.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 50, noCutPolicy()); err != nil {
 		t.Fatal(err)
 	}
 	if reader.listCalls.Load() != 2 {
@@ -849,8 +939,7 @@ func TestEvictOnMutation(t *testing.T) {
 
 func intPtr(value int) *int { return &value }
 
-var _ internalreadports.Reader = (*fakeReader)(nil)
-var _ internalreadports.CatalogPageReader = (*fakeReader)(nil)
+var _ internalreadports.Source = (*fakeReader)(nil)
 var _ internalreadports.BatchReader = (*fakeBatchReader)(nil)
 var _ inventoryports.InternalStockBatchReader = (*fakeStockReader)(nil)
 

@@ -27,15 +27,15 @@ func (r *Repository) SyncLatestCompletedSnapshot(ctx context.Context, tenantID s
 		return 0, fmt.Errorf("load latest completed ERP protocol: %w", err)
 	}
 
-	productRows, err := tx.Query(ctx, `SELECT codprod,descrprod,custo::text,preco_venda::text,stock_physical,stock_reserved,ean,refforn,marca,ncm,grupo,descrgrupo FROM erp_import_products WHERE tenant_id=$1 AND protocol_id=$2 ORDER BY codprod`, tenantID, protocolID)
+	productRows, err := tx.Query(ctx, `SELECT codprod,descrprod,custo::text,preco_venda::text,stock_physical,stock_reserved,ean,refforn,marca,ncm,grupo,descrgrupo,usoprod,ad_ecommerce FROM erp_import_products WHERE tenant_id=$1 AND protocol_id=$2 ORDER BY codprod`, tenantID, protocolID)
 	if err != nil {
 		return 0, fmt.Errorf("load latest completed ERP products: %w", err)
 	}
 	rows := make([]domain.NormalizedRow, 0)
 	for productRows.Next() {
 		var row domain.NormalizedRow
-		var custo, precoVenda, stockPhysical sql.NullString
-		if err := productRows.Scan(&row.Codprod, &row.Descrprod, &custo, &precoVenda, &stockPhysical, &row.StockReserved, &row.EAN, &row.Refforn, &row.Marca, &row.NCM, &row.Grupo, &row.DescrGrupo); err != nil {
+		var custo, precoVenda, stockPhysical, usoprod, adEcommerce sql.NullString
+		if err := productRows.Scan(&row.Codprod, &row.Descrprod, &custo, &precoVenda, &stockPhysical, &row.StockReserved, &row.EAN, &row.Refforn, &row.Marca, &row.NCM, &row.Grupo, &row.DescrGrupo, &usoprod, &adEcommerce); err != nil {
 			productRows.Close()
 			return 0, fmt.Errorf("scan latest completed ERP product: %w", err)
 		}
@@ -48,6 +48,8 @@ func (r *Repository) SyncLatestCompletedSnapshot(ctx context.Context, tenantID s
 		if stockPhysical.Valid {
 			row.StockPhysical = stockPhysical.String
 		}
+		row.Usoprod = nullStringPointer(usoprod)
+		row.ADEcommerce = nullStringPointer(adEcommerce)
 		rows = append(rows, row)
 	}
 	if err := productRows.Err(); err != nil {
@@ -80,6 +82,8 @@ func (r *Repository) mergeSnapshotTx(ctx context.Context, tx pgx.Tx, tenantID st
 		preco_venda text,
 		stock_physical text,
 		stock_reserved text,
+		usoprod text,
+		ad_ecommerce text,
 		local_codigo text
 	) ON COMMIT DROP`)
 	if err != nil {
@@ -92,13 +96,13 @@ func (r *Repository) mergeSnapshotTx(ctx context.Context, tx pgx.Tx, tenantID st
 			row.Codprod, row.Descrprod, row.Refforn, row.EAN, row.Marca, row.Grupo,
 			row.DescrGrupo, row.NCM, nullableString(string(row.Custo)),
 			nullableString(string(row.PrecoVenda)), nullableString(row.StockPhysical),
-			row.StockReserved, row.Local,
+			row.StockReserved, nullableStringValue(row.Usoprod), nullableStringValue(row.ADEcommerce), row.Local,
 		})
 	}
 	_, err = tx.CopyFrom(ctx, pgx.Identifier{"erp_import_mirror_stage"}, []string{
 		"codigo_produto", "descricao", "referencia", "ean", "marca", "grupo_codigo",
 		"grupo_descricao", "ncm", "custo", "preco_venda", "stock_physical",
-		"stock_reserved", "local_codigo",
+		"stock_reserved", "usoprod", "ad_ecommerce", "local_codigo",
 	}, pgx.CopyFromRows(copyRows))
 	if err != nil {
 		return 0, err
@@ -112,11 +116,12 @@ func (r *Repository) mergeSnapshotTx(ctx context.Context, tx pgx.Tx, tenantID st
 	// only the derived number.
 	_, err = tx.Exec(ctx, `INSERT INTO products_mirror (
 		tenant_id,source,codigo_produto,descricao,referencia,ean,marca,grupo_codigo,
-		grupo_descricao,ncm,custo,preco_venda,estoque_fisico,estoque_reservado,estoque_total,protocol_id
+		grupo_descricao,ncm,custo,preco_venda,estoque_fisico,estoque_reservado,usoprod,ad_ecommerce,estoque_total,protocol_id
 	)
 	SELECT $1,$2,codigo_produto,descricao,referencia,ean,marca,grupo_codigo,
 		grupo_descricao,ncm,custo::numeric,preco_venda::numeric,
 		stock_physical::numeric,stock_reserved::numeric,
+		usoprod,ad_ecommerce,
 		CASE WHEN stock_physical IS NOT NULL
 			THEN stock_physical::numeric-COALESCE(stock_reserved::numeric,0) END,$3
 	FROM erp_import_mirror_stage
@@ -126,6 +131,7 @@ func (r *Repository) mergeSnapshotTx(ctx context.Context, tx pgx.Tx, tenantID st
 		grupo_descricao=EXCLUDED.grupo_descricao,ncm=EXCLUDED.ncm,custo=EXCLUDED.custo,
 		preco_venda=EXCLUDED.preco_venda,estoque_fisico=EXCLUDED.estoque_fisico,
 		estoque_reservado=EXCLUDED.estoque_reservado,estoque_total=EXCLUDED.estoque_total,
+		usoprod=EXCLUDED.usoprod,ad_ecommerce=EXCLUDED.ad_ecommerce,
 		protocol_id=EXCLUDED.protocol_id,absent_in_last_snapshot=false,stale_since=NULL,
 		updated_at=now()`, tenantID, source, protocolID)
 	if err != nil {
@@ -163,4 +169,11 @@ func (r *Repository) mergeSnapshotTx(ctx context.Context, tx pgx.Tx, tenantID st
 		return 0, err
 	}
 	return len(rows), nil
+}
+
+func nullableStringValue(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	return nullableString(*value)
 }

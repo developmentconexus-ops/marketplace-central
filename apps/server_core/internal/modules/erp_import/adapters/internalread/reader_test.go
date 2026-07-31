@@ -99,7 +99,7 @@ func (f *fakeRepo) MirrorProductsByCodes(_ context.Context, tenant string, sourc
 	}
 	return rows, nil
 }
-func (f *fakeRepo) MirrorCatalogPage(_ context.Context, tenant string, source erpdomain.ImportSource, query string, after int64, limit int) ([]erpdomain.MirrorProduct, error) {
+func (f *fakeRepo) MirrorCatalogPage(_ context.Context, tenant string, source erpdomain.ImportSource, query string, after int64, limit int, policy erpports.MirrorAssortmentPolicy) ([]erpdomain.MirrorProduct, error) {
 	f.record(tenant, source)
 	if f.err != nil {
 		return nil, f.err
@@ -108,6 +108,10 @@ func (f *fakeRepo) MirrorCatalogPage(_ context.Context, tenant string, source er
 	for _, row := range f.rows {
 		id, err := strconv.ParseInt(strings.TrimSpace(row.CodigoProduto), 10, 64)
 		if err != nil || id <= after || id <= 0 || query != "" && (row.Descricao == nil || !strings.Contains(strings.ToLower(*row.Descricao), strings.ToLower(query))) {
+			continue
+		}
+		eligible, err := matchesSellableAssortment(row, SellableAssortmentPolicy(policy))
+		if err != nil || !eligible {
 			continue
 		}
 		rows = append(rows, row)
@@ -122,7 +126,18 @@ func (f *fakeRepo) MirrorCatalogPage(_ context.Context, tenant string, source er
 	}
 	return rows, nil
 }
-func (f *fakeRepo) MirrorEANCollisionCounts(_ context.Context, tenant string, source erpdomain.ImportSource) (map[string]int, error) {
+func (f *fakeRepo) MirrorCatalogAssortmentCounts(_ context.Context, tenant string, source erpdomain.ImportSource, policy erpports.MirrorAssortmentPolicy) (int, int, error) {
+	f.record(tenant, source)
+	sellable := 0
+	for _, row := range f.rows {
+		eligible, err := matchesSellableAssortment(row, SellableAssortmentPolicy(policy))
+		if err == nil && eligible {
+			sellable++
+		}
+	}
+	return sellable, len(f.rows), nil
+}
+func (f *fakeRepo) MirrorEANCollisionCounts(_ context.Context, tenant string, source erpdomain.ImportSource, _ erpports.MirrorAssortmentPolicy) (map[string]int, error) {
 	f.record(tenant, source)
 	if f.err != nil {
 		return nil, f.err
@@ -156,11 +171,11 @@ func TestMirrorBackedReads(t *testing.T) {
 	if err != nil || tax.NCM == nil || *tax.NCM != "12345678" || tax.Source.ObservedAt == nil || !tax.Source.ObservedAt.Equal(importedAt) {
 		t.Fatalf("tax=%+v err=%v", tax, err)
 	}
-	page, err := r.ListCatalogProductFacts(ctx, readports.Cursor{}, 2)
+	page, err := r.ListCatalogProductFacts(ctx, readports.Cursor{}, 2, noCutPolicy())
 	if err != nil || len(page.Items) != 2 || page.Items[0].InternalProductID != 1 || page.Items[1].InternalProductID != 2 || page.NextCursor == nil || page.NextCursor.InternalProductID != 2 || !page.AsOf.Equal(importedAt.Add(time.Minute)) {
 		t.Fatalf("page=%+v err=%v", page, err)
 	}
-	page2, err := r.ListCatalogProductFacts(ctx, *page.NextCursor, 2)
+	page2, err := r.ListCatalogProductFacts(ctx, *page.NextCursor, 2, noCutPolicy())
 	if err != nil || len(page2.Items) != 1 || page2.Items[0].InternalProductID != 10 || page2.NextCursor != nil {
 		t.Fatalf("page2=%+v err=%v", page2, err)
 	}
@@ -169,13 +184,80 @@ func TestMirrorBackedReads(t *testing.T) {
 	}
 }
 
+func TestFindProductsForLinkingAppliesAssortmentAfterCachedIndexLoads(t *testing.T) {
+	rows := []erpdomain.MirrorProduct{
+		{CodigoProduto: "101", Usoprod: ptr("V"), EstoqueTotal: ptr("5"), ADEcommerce: ptr("S"), ImportedAt: timePtr(importedAt)},
+		{CodigoProduto: "102", Usoprod: ptr("R"), EstoqueTotal: ptr("0"), ADEcommerce: ptr("S"), ImportedAt: timePtr(importedAt)},
+		{CodigoProduto: "103", Usoprod: ptr("R"), EstoqueTotal: ptr("5"), ADEcommerce: ptr("N"), ImportedAt: timePtr(importedAt)},
+		{CodigoProduto: "104", ImportedAt: timePtr(importedAt)},
+		{CodigoProduto: "105", Usoprod: ptr("R"), EstoqueTotal: ptr("5"), ADEcommerce: ptr("S"), ImportedAt: timePtr(importedAt)},
+	}
+	r, repo, _ := readerWith(rows)
+	strict := WithSellableAssortment(WithActiveSource(context.Background(), erpdomain.SourceCatalogoCliente), true, true, true)
+	got, err := r.FindProductsForLinking(strict, readports.FindProductsInput{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ids := candidateIDsForReaderTest(got); !reflect.DeepEqual(ids, []int{104, 105}) {
+		t.Fatalf("strict candidate IDs = %v, want [104 105]", ids)
+	}
+
+	relaxed := WithSellableAssortment(WithActiveSource(context.Background(), erpdomain.SourceCatalogoCliente), false, false, false)
+	got, err = r.FindProductsForLinking(relaxed, readports.FindProductsInput{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ids := candidateIDsForReaderTest(got); !reflect.DeepEqual(ids, []int{101, 102, 103, 104, 105}) {
+		t.Fatalf("relaxed candidate IDs = %v, want [101 102 103 104 105]", ids)
+	}
+	if repo.mirrorRowsCalls != 1 {
+		t.Fatalf("cached index mirror row calls = %d, want 1", repo.mirrorRowsCalls)
+	}
+}
+
+func TestFindProductsForLinkingComputesEANCollisionAfterAssortmentCut(t *testing.T) {
+	ean := ptr("7894900011517")
+	rows := []erpdomain.MirrorProduct{
+		{CodigoProduto: "201", EAN: ean, Usoprod: ptr("R"), EstoqueTotal: ptr("5"), ADEcommerce: ptr("S"), ImportedAt: timePtr(importedAt)},
+		{CodigoProduto: "202", EAN: ean, Usoprod: ptr("V"), EstoqueTotal: ptr("5"), ADEcommerce: ptr("S"), ImportedAt: timePtr(importedAt)},
+	}
+	r, _, _ := readerWith(rows)
+	strict := WithSellableAssortment(WithActiveSource(context.Background(), erpdomain.SourceCatalogoCliente), true, true, true)
+	got, err := r.FindProductsForLinking(strict, readports.FindProductsInput{EAN: ean})
+	if err != nil || len(got) != 1 {
+		t.Fatalf("strict collision candidates = %+v err=%v, want one survivor", got, err)
+	}
+	if readdomain.HasQualityFlag(got[0].QualityFlags, readdomain.QualityEANCollision) || readdomain.HasQualityFlag(got[0].QualityFlags, readdomain.QualityAmbiguousProduct) {
+		t.Fatalf("strict survivor quality = %v, want non-ambiguous auto-approval candidate", got[0].QualityFlags)
+	}
+
+	relaxed := WithSellableAssortment(WithActiveSource(context.Background(), erpdomain.SourceCatalogoCliente), false, false, false)
+	got, err = r.FindProductsForLinking(relaxed, readports.FindProductsInput{EAN: ean})
+	if err != nil || len(got) != 2 {
+		t.Fatalf("relaxed collision candidates = %+v err=%v, want two twins", got, err)
+	}
+	for _, candidate := range got {
+		if !readdomain.HasQualityFlag(candidate.QualityFlags, readdomain.QualityEANCollision) || !readdomain.HasQualityFlag(candidate.QualityFlags, readdomain.QualityAmbiguousProduct) {
+			t.Fatalf("relaxed twin %d quality = %v, want EAN collision and ambiguity", candidate.ProductID, candidate.QualityFlags)
+		}
+	}
+}
+
+func candidateIDsForReaderTest(candidates []readdomain.ProductCandidate) []int {
+	ids := make([]int, 0, len(candidates))
+	for _, candidate := range candidates {
+		ids = append(ids, candidate.ProductID)
+	}
+	return ids
+}
+
 func TestMirrorUnknownValuesRemainUnknown(t *testing.T) {
 	r, _, ctx := readerWith(mirrorRows())
 	stock, err := r.GetSellableStock(ctx, readports.SellableStockInput{ProductID: 10})
 	if err != nil || stock.Quantity != nil || !readdomain.HasQualityFlag(stock.QualityFlags, readdomain.QualityMissingStock) {
 		t.Fatalf("stock=%+v err=%v", stock, err)
 	}
-	page, err := r.ListCatalogProductFacts(ctx, readports.Cursor{InternalProductID: 2}, 10)
+	page, err := r.ListCatalogProductFacts(ctx, readports.Cursor{InternalProductID: 2}, 10, noCutPolicy())
 	if err != nil || page.Items[0].Cost.Amount == nil || *page.Items[0].Cost.Amount != "7" || page.Items[0].SellableStock.Quantity != nil {
 		t.Fatalf("page=%+v err=%v", page, err)
 	}
@@ -232,7 +314,7 @@ func TestLiveReadThroughUsesUpdatedAtAsObservationTime(t *testing.T) {
 	if err != nil || stock.Source.ObservedAt == nil || !stock.Source.ObservedAt.Equal(syncedAt) {
 		t.Fatalf("live stock=%+v err=%v", stock, err)
 	}
-	page, err := reader.ListCatalogProductFacts(ctx, readports.Cursor{}, 10)
+	page, err := reader.ListCatalogProductFacts(ctx, readports.Cursor{}, 10, noCutPolicy())
 	if err != nil || len(page.Items) != 1 || !page.AsOf.Equal(syncedAt) {
 		t.Fatalf("live page must set AsOf from updated_at: page=%+v err=%v", page, err)
 	}
@@ -276,7 +358,7 @@ func TestCatalogPageUnknownImportTimesFailHonestly(t *testing.T) {
 		rows[i].ImportedAt = nil
 	}
 	r, _, ctx := readerWith(rows)
-	_, err := r.ListCatalogProductFacts(ctx, readports.Cursor{}, 10)
+	_, err := r.ListCatalogProductFacts(ctx, readports.Cursor{}, 10, noCutPolicy())
 	if !errors.Is(err, ErrNoErpSnapshot) || !readdomain.IsReadErrorCode(err, readdomain.ReadErrorSourceUnavailable) {
 		t.Fatalf("err=%v", err)
 	}
@@ -314,11 +396,11 @@ func TestUnpinnedReadsFailClosed(t *testing.T) {
 			_, err := r.GetSellableStock(ctx, readports.SellableStockInput{ProductID: 1})
 			return err
 		},
-		"cost":   func() error { _, err := r.GetCostAsOf(ctx, readports.CostAsOfInput{ProductID: 1}); return err },
-		"tax":    func() error { _, err := r.GetTaxInputs(ctx, readports.TaxInput{ProductID: 1}); return err },
-		"list":   func() error { _, err := r.ListCatalogProductFacts(ctx, readports.Cursor{}, 10); return err },
+		"cost": func() error { _, err := r.GetCostAsOf(ctx, readports.CostAsOfInput{ProductID: 1}); return err },
+		"tax":  func() error { _, err := r.GetTaxInputs(ctx, readports.TaxInput{ProductID: 1}); return err },
+		"list": func() error { _, err := r.ListCatalogProductFacts(ctx, readports.Cursor{}, 10, noCutPolicy()); return err },
 		"search": func() error {
-			_, err := r.SearchCatalogProductFacts(ctx, "blue", readports.Cursor{}, 10)
+			_, err := r.SearchCatalogProductFacts(ctx, "blue", readports.Cursor{}, 10, noCutPolicy())
 			return err
 		},
 	}
@@ -409,7 +491,7 @@ func TestParseActiveSource(t *testing.T) {
 
 func TestCatalogFactQuality(t *testing.T) {
 	r, _, ctx := readerWith(mirrorRows())
-	page, err := r.ListCatalogProductFacts(ctx, readports.Cursor{}, 10)
+	page, err := r.ListCatalogProductFacts(ctx, readports.Cursor{}, 10, noCutPolicy())
 	if err != nil {
 		t.Fatal(err)
 	}

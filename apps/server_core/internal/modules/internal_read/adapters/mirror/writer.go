@@ -14,6 +14,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -39,6 +40,8 @@ type Row struct {
 	NCM            *string
 	Custo          *float64
 	PrecoVenda     *float64
+	Usoprod        *string
+	ADEcommerce    *string
 	EstoqueTotal   *float64
 }
 
@@ -71,9 +74,9 @@ var _ Writer = (*PgWriter)(nil)
 const upsertSQL = `
 INSERT INTO products_mirror
 	(tenant_id, source, codigo_produto, descricao, referencia, ean, marca,
-	 grupo_codigo, grupo_descricao, ncm, custo, preco_venda, estoque_total,
+	 grupo_codigo, grupo_descricao, ncm, custo, preco_venda, usoprod, ad_ecommerce, estoque_total,
 	 absent_in_last_snapshot, stale_since, updated_at)
-VALUES ($1, 'sankhya', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, false, NULL, now())
+VALUES ($1, 'sankhya', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, false, NULL, now())
 ON CONFLICT (tenant_id, source, codigo_produto) DO UPDATE SET
 	descricao = EXCLUDED.descricao,
 	referencia = EXCLUDED.referencia,
@@ -84,6 +87,8 @@ ON CONFLICT (tenant_id, source, codigo_produto) DO UPDATE SET
 	ncm = EXCLUDED.ncm,
 	custo = EXCLUDED.custo,
 	preco_venda = EXCLUDED.preco_venda,
+	usoprod = EXCLUDED.usoprod,
+	ad_ecommerce = EXCLUDED.ad_ecommerce,
 	estoque_total = EXCLUDED.estoque_total,
 	absent_in_last_snapshot = false,
 	stale_since = NULL,
@@ -143,7 +148,7 @@ func (w *PgWriter) ApplySnapshot(ctx context.Context, tenantID string, rows []Ro
 	for _, r := range rows {
 		batch.Queue(upsertSQL, tenantID, r.CodigoProduto, r.Descricao, r.Referencia,
 			r.EAN, r.Marca, r.GrupoCodigo, r.GrupoDescricao, r.NCM, r.Custo,
-			r.PrecoVenda, r.EstoqueTotal)
+			r.PrecoVenda, canonicalSellableValue(r.Usoprod), canonicalSellableValue(r.ADEcommerce), r.EstoqueTotal)
 	}
 	// Replace stock-location children only for products in this snapshot.
 	batch.Queue(deleteLocationsSQL, tenantID, codes)
@@ -170,4 +175,15 @@ func (w *PgWriter) ApplySnapshot(ctx context.Context, tenantID string, rows []Ro
 		return 0, fmt.Errorf("mirror: commit: %w", err)
 	}
 	return len(rows), nil
+}
+
+func canonicalSellableValue(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	canonical := strings.ToUpper(strings.TrimSpace(*value))
+	if canonical == "" {
+		return nil
+	}
+	return &canonical
 }

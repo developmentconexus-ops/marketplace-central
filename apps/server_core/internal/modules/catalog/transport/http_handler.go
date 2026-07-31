@@ -21,16 +21,21 @@ import (
 type Handler struct {
 	Service              application.CanonicalService
 	CompatibilityService application.Service
-	PageReader           ports.CatalogPageReader
+	PageReader           CatalogReader
 }
 
 const (
 	catalogListPath     = "/catalog/products"
 	catalogSearchPath   = "/catalog/products/search"
+	catalogCountsPath   = "/catalog/products/counts"
 	catalogDefaultLimit = 50
 	catalogMaxLimit     = 100
 	searchMaxLimit      = 50
 )
+
+type CatalogReader interface {
+	ports.CatalogPageReader
+}
 
 // FreshnessPolicyFromContext exposes the transport-to-read freshness seam to
 // the composition-owned reader without coupling transport callers to the
@@ -74,16 +79,16 @@ func writeError(w http.ResponseWriter, status int, code, message string) {
 }
 
 func (h Handler) Register(mux httpx.RouteRegistrar) {
-	_, hasRouteClasses := mux.(routeClassRegistrar)
-	if h.PageReader == nil && !hasRouteClasses {
-		// Deprecated compatibility registration for direct legacy test harnesses.
-		// The production RouteClassMux and every page-reader wiring use IC-01.
-		mux.HandleFunc(catalogListPath, h.handleLegacyProducts)
-		mux.HandleFunc("GET "+catalogSearchPath, h.handleLegacySearch)
-	} else {
-		registerInteractiveRoute(mux, catalogListPath, h.handleProducts)
-		registerInteractiveRoute(mux, catalogSearchPath, h.handleSearch)
-	}
+	// There is one catalog list route and one catalog search route, and both go
+	// through the page reader. The registration used to fork: a mux that was not
+	// a RouteClassMux, with no page reader, got a pair of legacy handlers that
+	// read the WHOLE catalog with no assortment policy at all. Production never
+	// took that fork, so the uncut read stayed alive on the strength of two unit
+	// tests — and any future wiring that forgot the page reader would have been
+	// served the uncut catalog silently instead of failing.
+	registerInteractiveRoute(mux, catalogListPath, h.handleProducts)
+	registerInteractiveRoute(mux, catalogSearchPath, h.handleSearch)
+	registerInteractiveRoute(mux, catalogCountsPath, h.handleCounts)
 	mux.HandleFunc("/catalog/taxonomy", h.handleTaxonomy)
 	mux.HandleFunc("GET /catalog/products/{id}", h.handleGetProduct)
 	mux.HandleFunc("GET /catalog/products/{id}/enrichment", h.handleGetEnrichment)
@@ -112,8 +117,7 @@ func (h Handler) handleProducts(w http.ResponseWriter, r *http.Request) {
 		writeCatalogPageError(w, err)
 		return
 	}
-	if h.PageReader == nil {
-		writeCatalogPageError(w, errors.New("source_unavailable"))
+	if !h.requirePageReader(w) {
 		return
 	}
 	ctx, err := requestContext(r)
@@ -121,7 +125,12 @@ func (h Handler) handleProducts(w http.ResponseWriter, r *http.Request) {
 		writeCatalogPageError(w, err)
 		return
 	}
-	page, err := h.PageReader.ListCatalogProductFacts(ctx, cursor, limit)
+	policy, err := catalogPolicy(r)
+	if err != nil {
+		writeCatalogPageError(w, err)
+		return
+	}
+	page, err := h.PageReader.ListCatalogProductFacts(ctx, cursor, limit, policy)
 	if err != nil {
 		writeCatalogPageError(w, err)
 		return
@@ -141,8 +150,7 @@ func (h Handler) handleProductsByIDs(w http.ResponseWriter, r *http.Request, sta
 		writeCatalogPageError(w, err)
 		return
 	}
-	if h.PageReader == nil {
-		writeCatalogPageError(w, errors.New("source_unavailable"))
+	if !h.requirePageReader(w) {
 		return
 	}
 	ctx, err := requestContext(r)
@@ -181,27 +189,17 @@ func parseCatalogIDs(raw []string) ([]int64, error) {
 	return ids, nil
 }
 
-// handleLegacyProducts remains only for direct legacy mux compatibility. The
-// production route is registered through RouteClassMux and uses handleProducts.
-func (h Handler) handleLegacyProducts(w http.ResponseWriter, r *http.Request) {
-	start := time.Now()
-	if r.Method != http.MethodGet {
-		w.Header().Set("Allow", "GET")
-		writeError(w, http.StatusMethodNotAllowed, "CATALOG_METHOD_NOT_ALLOWED", "method not allowed")
-		return
-	}
-	products, err := h.Service.ListProducts(r.Context())
-	if err != nil {
-		writeCatalogReadError(w, err)
-		return
-	}
-	slog.Info("catalog.products", "action", "legacy_list", "result", "200", "duration_ms", time.Since(start).Milliseconds())
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": products})
-}
-
 func (h Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	q := r.URL.Query().Get("q")
+	// q is required: true in contracts/api/marketplace-central.openapi.yaml. The
+	// paged handler never enforced it — the check lived in the legacy handler
+	// deleted with the uncut route — so a blank q reached the source as the empty
+	// pattern and came back as the whole catalog, dressed as search results.
+	if strings.TrimSpace(q) == "" {
+		writeCatalogPageError(w, &catalogPageQueryError{code: "invalid_q"})
+		return
+	}
 	// Search is a page of a longer sequence, exactly like the list read, so it
 	// accepts the same cursor. Without it the response could only ever be the
 	// first page and a caller had no way to reach the rest of the matches.
@@ -210,8 +208,7 @@ func (h Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
 		writeCatalogPageError(w, err)
 		return
 	}
-	if h.PageReader == nil {
-		writeCatalogPageError(w, errors.New("source_unavailable"))
+	if !h.requirePageReader(w) {
 		return
 	}
 	ctx, err := requestContext(r)
@@ -219,7 +216,12 @@ func (h Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
 		writeCatalogPageError(w, err)
 		return
 	}
-	page, err := h.PageReader.SearchCatalogProductFacts(ctx, q, cursor, limit)
+	policy, err := catalogPolicy(r)
+	if err != nil {
+		writeCatalogPageError(w, err)
+		return
+	}
+	page, err := h.PageReader.SearchCatalogProductFacts(ctx, q, cursor, limit, policy)
 	if err != nil {
 		writeCatalogPageError(w, err)
 		return
@@ -228,21 +230,48 @@ func (h Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, newCatalogPageResponse(page, false))
 }
 
-// handleLegacySearch remains only for direct legacy mux compatibility.
-func (h Handler) handleLegacySearch(w http.ResponseWriter, r *http.Request) {
-	start := time.Now()
-	q := r.URL.Query().Get("q")
-	if strings.TrimSpace(q) == "" {
-		writeError(w, http.StatusBadRequest, "CATALOG_SEARCH_QUERY_REQUIRED", "query parameter q is required")
+// catalogPolicy answers with the only two things the wire can say. include_all
+// is a boolean and it stays a boolean up to here: absent or false is the request
+// "apply whatever rule this tenant configured", which crosses the port as nil
+// and is answered ONCE at the routing seam; true names a concrete policy — the
+// honest no-cut one — which the chain then applies verbatim. The transport never
+// invents a rule of its own, which is why no default lives in this file.
+func catalogPolicy(r *http.Request) (*ports.SellableAssortmentPolicy, error) {
+	raw, present := r.URL.Query()["include_all"]
+	if !present {
+		return nil, nil
+	}
+	if len(raw) != 1 {
+		return nil, &catalogPageQueryError{code: "invalid_include_all"}
+	}
+	value := strings.TrimSpace(raw[0])
+	if value != "true" && value != "false" {
+		return nil, &catalogPageQueryError{code: "invalid_include_all"}
+	}
+	if value == "false" {
+		return nil, nil
+	}
+	all := ports.AllProductsAssortment()
+	return &all, nil
+}
+
+func (h Handler) handleCounts(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePageReader(w) {
 		return
 	}
-	products, err := h.Service.SearchProducts(r.Context(), q)
+	ctx, err := requestContext(r)
 	if err != nil {
-		writeCatalogReadError(w, err)
+		writeCatalogPageError(w, err)
 		return
 	}
-	slog.Info("catalog.search", "action", "legacy_search", "result", "200", "duration_ms", time.Since(start).Milliseconds())
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": products})
+	// The counter reports the tenant's rule against the whole catalog, so it asks
+	// the routing seam for the stored policy rather than naming one here.
+	counts, err := h.PageReader.GetCatalogAssortmentCounts(ctx, nil)
+	if err != nil {
+		writeCatalogPageError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]int{"sellable_count": counts.SellableCount, "total_count": counts.TotalCount})
 }
 
 type catalogPageQueryError struct {
@@ -368,7 +397,10 @@ func nonNilStrings(values []string) []string {
 
 func writeCatalogPageError(w http.ResponseWriter, err error) {
 	if queryErr, ok := err.(*catalogPageQueryError); ok {
-		if queryErr.code == "invalid_limit" {
+		// Every code that knows its accepted domain says it. Gating this on one
+		// hardcoded code made allowed_range dead data on the two other sites
+		// that fill it (invalid_erp_source, invalid_ids): built, then dropped.
+		if queryErr.allowedRange != "" {
 			httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{"error": queryErr.code, "allowed_range": queryErr.allowedRange})
 			return
 		}
@@ -379,11 +411,34 @@ func writeCatalogPageError(w http.ResponseWriter, err error) {
 		httpx.WriteJSON(w, http.StatusGatewayTimeout, map[string]string{"error": "deadline_exceeded"})
 		return
 	}
-	if internalreaddomain.IsReadErrorCode(err, internalreaddomain.ReadErrorSourceUnavailable) || strings.Contains(err.Error(), "source_unavailable") {
+	if internalreaddomain.IsReadErrorCode(err, internalreaddomain.ReadErrorSourceUnavailable) {
 		httpx.WriteJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "source_unavailable"})
 		return
 	}
+	// Anything else is a fault on our side, and it says so. The branch this
+	// replaced answered 503 source_unavailable to EVERY unclassified error —
+	// including a mis-wired reader and an unresolved assortment policy, both of
+	// which are bugs in this process. An operator reading source_unavailable goes
+	// and checks Oracle, which is working fine. A read error that genuinely means
+	// "the source is down" carries ReadErrorSourceUnavailable and is matched
+	// above; it does not need to be recognised a second time by sniffing the
+	// error's text, which is how an error merely CONTAINING that word — the bare
+	// errors.New the nil-reader guard used to raise — was getting classified as
+	// an outage.
+	slog.Error("catalog.page", "result", "500", "error", err.Error())
+	httpx.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
+}
+
+// requirePageReader answers the one question every paged catalog handler has to
+// ask first, in one place instead of four. A nil PageReader is composition
+// declining to wire a catalog source, which IS an unavailable source — unlike
+// the errors below it, which are faults in a source that is wired.
+func (h Handler) requirePageReader(w http.ResponseWriter) bool {
+	if h.PageReader != nil {
+		return true
+	}
 	httpx.WriteJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "source_unavailable"})
+	return false
 }
 
 func (h Handler) handleGetProduct(w http.ResponseWriter, r *http.Request) {

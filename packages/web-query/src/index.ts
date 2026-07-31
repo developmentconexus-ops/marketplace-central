@@ -1,4 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
+import type { ActiveSourceName } from "@marketplace-central/sdk-runtime";
 import { createElement, type ReactNode } from "react";
 
 export const QUERY_STALE_TIME = {
@@ -27,6 +28,8 @@ export const queryKeyNamespaces = {
 
 export const catalogQueryKeys = {
   facts: (params: Record<string, unknown> = {}) => ["catalog", "facts", { params }] as const,
+  counts: (erpSource: ActiveSourceName | undefined) =>
+    ["catalog", "counts", { erp_source: erpSource ?? null }] as const,
   // The trailing params object is appended only when a caller supplies params,
   // so the pre-toggle two-arg key shape (["catalog","search",q]) stays byte-stable.
   search: (q: string, params?: Record<string, unknown>) =>
@@ -173,4 +176,11 @@ export {
   activeSourceQueryKeys,
   useActiveSourceQuery,
   useSetActiveSourceMutation,
+} from "./activeSource";
+export {
+  type SellableAssortmentClient,
+  sellableAssortmentQueryKeys,
+  useCatalogAssortmentCountsQuery,
+  useSellableAssortmentQuery,
+  useSetSellableAssortmentMutation,
 } from "./activeSource";

@@ -37,6 +37,29 @@ func (r fakeReader) GetSalesHistory(context.Context, ports.SalesHistoryInput) (d
 func (r fakeReader) GetTaxInputs(context.Context, ports.TaxInput) (domain.TaxInputs, error) {
 	return domain.TaxInputs{}, r.result()
 }
+func (r fakeReader) ListCatalogProductFacts(_ context.Context, _ ports.Cursor, _ int, policy *ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
+	return ports.CatalogFactPage{}, r.pagedResult(policy)
+}
+func (r fakeReader) SearchCatalogProductFacts(_ context.Context, _ string, _ ports.Cursor, _ int, policy *ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
+	return ports.CatalogFactPage{}, r.pagedResult(policy)
+}
+func (r fakeReader) CatalogProductFactsByIDs(context.Context, []int64) (ports.CatalogFactPage, error) {
+	return ports.CatalogFactPage{}, r.result()
+}
+func (r fakeReader) GetCatalogAssortmentCounts(_ context.Context, policy *ports.SellableAssortmentPolicy) (ports.CatalogAssortmentCounts, error) {
+	return ports.CatalogAssortmentCounts{}, r.pagedResult(policy)
+}
+
+// pagedResult keeps the nil-policy check even in a fake whose subject is timing,
+// so a seat that stopped forwarding the policy fails here rather than reaching a
+// source with nothing to apply.
+func (r fakeReader) pagedResult(policy *ports.SellableAssortmentPolicy) error {
+	if _, err := ports.RequireAssortmentPolicy(policy); err != nil {
+		return err
+	}
+	return r.result()
+}
+
 func (r fakeReader) result() error {
 	if r.delay > 0 {
 		time.Sleep(r.delay)

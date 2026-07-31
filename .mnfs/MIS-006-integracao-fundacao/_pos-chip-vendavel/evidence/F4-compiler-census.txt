@@ -1,0 +1,48 @@
+F4 — the compiler names every dishonest seat
+============================================
+
+After folding the two ports, "go build ./..." is GREEN — the production wiring
+satisfies the whole port on its own, which is the first proof that the split was
+not carrying any real optionality.
+
+"go vet ./..." then fails in 10 packages. Every failure is a test double that
+claimed to be a catalog source while implementing part of one. Under the old
+split each of these compiled: the double satisfied the narrow port, the seat
+above it recovered the wide port with a type assertion, and the gap surfaced
+only as a runtime panic or a 503 on whichever path happened to reach the missing
+method.
+
+This is must-fail 2, restated by the type system — a build error with file:line
+instead of an incident.
+
+VET OUTPUT (verbatim):
+# marketplace-central/apps/server_core/internal/modules/catalog/transport
+# [marketplace-central/apps/server_core/internal/modules/catalog/transport]
+vet.exe: internal\modules\catalog\transport\http_handler_test.go:96:23: cannot use fake (variable of type *fakeCatalogPageReader) as CatalogReader value in struct literal: *fakeCatalogPageReader does not implement CatalogReader (wrong type for method ListCatalogProductFacts)
+# marketplace-central/apps/server_core/internal/modules/internal_read/adapters/routing
+# [marketplace-central/apps/server_core/internal/modules/internal_read/adapters/routing]
+vet.exe: internal\modules\internal_read\adapters\routing\reader_test.go:195:45: cannot use (*fakePagerReader)(nil) (value of type *fakePagerReader) as "marketplace-central/apps/server_core/internal/modules/internal_read/ports".CatalogPageReader value in variable declaration: *fakePagerReader does not implement "marketplace-central/apps/server_core/internal/modules/internal_read/ports".CatalogPageReader (wrong type for method ListCatalogProductFacts)
+# marketplace-central/apps/server_core/internal/modules/catalog/adapters/internalread
+# [marketplace-central/apps/server_core/internal/modules/catalog/adapters/internalread]
+vet.exe: internal\modules\catalog\adapters\internalread\reader_test.go:60:25: cannot use stubReadPortsReader{…} (value of struct type stubReadPortsReader) as "marketplace-central/apps/server_core/internal/modules/internal_read/ports".Source value in struct literal: stubReadPortsReader does not implement "marketplace-central/apps/server_core/internal/modules/internal_read/ports".Source (missing method CatalogProductFactsByIDs)
+# marketplace-central/apps/server_core/internal/modules/internal_read/application
+# [marketplace-central/apps/server_core/internal/modules/internal_read/application]
+vet.exe: internal\modules\internal_read\application\service_test.go:27:20: cannot use reader (variable of type *fake.Reader) as ports.Source value in argument to NewService: *fake.Reader does not implement ports.Source (missing method CatalogProductFactsByIDs)
+# marketplace-central/apps/server_core/internal/modules/erp_import/adapters/internalread
+# [marketplace-central/apps/server_core/internal/modules/erp_import/adapters/internalread]
+vet.exe: internal\modules\erp_import\adapters\internalread\source_contract_test.go:451:37: cannot use (*oracleShapedReader)(nil) (value of type *oracleShapedReader) as "marketplace-central/apps/server_core/internal/modules/internal_read/ports".CatalogPageReader value in variable declaration: *oracleShapedReader does not implement "marketplace-central/apps/server_core/internal/modules/internal_read/ports".CatalogPageReader (missing method GetCatalogAssortmentCounts)
+# marketplace-central/apps/server_core/internal/modules/internal_read/observability
+# [marketplace-central/apps/server_core/internal/modules/internal_read/observability]
+vet.exe: internal\modules\internal_read\observability\observability_test.go:65:26: cannot use fakeReader{} (value of struct type fakeReader) as ports.Source value in argument to NewTimingReader: fakeReader does not implement ports.Source (missing method CatalogProductFactsByIDs)
+# marketplace-central/apps/server_core/internal/modules/internal_read/adapters/cache
+# [marketplace-central/apps/server_core/internal/modules/internal_read/adapters/cache]
+vet.exe: internal\modules\internal_read\adapters\cache\cache_test.go:853:45: cannot use (*fakeReader)(nil) (value of type *fakeReader) as "marketplace-central/apps/server_core/internal/modules/internal_read/ports".CatalogPageReader value in variable declaration: *fakeReader does not implement "marketplace-central/apps/server_core/internal/modules/internal_read/ports".CatalogPageReader (missing method GetCatalogAssortmentCounts)
+# marketplace-central/apps/server_core/internal/modules/internal_read/adapters/oracle
+# [marketplace-central/apps/server_core/internal/modules/internal_read/adapters/oracle]
+vet.exe: internal\modules\internal_read\adapters\oracle\catalog_page_test.go:26:91: not enough arguments in call to reader.ListCatalogProductFacts
+# marketplace-central/apps/server_core/internal/composition
+# [marketplace-central/apps/server_core/internal/composition]
+vet.exe: internal\composition\market_adapters_test.go:62:36: cannot use stubInternalReader{…} (value of struct type stubInternalReader) as "marketplace-central/apps/server_core/internal/modules/internal_read/ports".Source value in argument to internalreadapp.NewService: stubInternalReader does not implement "marketplace-central/apps/server_core/internal/modules/internal_read/ports".Source (missing method CatalogProductFactsByIDs)
+# marketplace-central/apps/server_core/tests/unit
+# [marketplace-central/apps/server_core/tests/unit]
+vet.exe: tests\unit\cache_composed_test.go:109:39: cannot use oracle (variable of type *composedCatalogOracleReader) as "marketplace-central/apps/server_core/internal/modules/internal_read/ports".CatalogPageReader value in argument to newComposedCatalogHandler: *composedCatalogOracleReader does not implement "marketplace-central/apps/server_core/internal/modules/internal_read/ports".CatalogPageReader (missing method GetCatalogAssortmentCounts)

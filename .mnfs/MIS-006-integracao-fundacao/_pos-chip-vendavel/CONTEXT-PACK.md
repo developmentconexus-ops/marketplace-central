@@ -19,8 +19,8 @@ O operador abre `/catalogo` e vê 10.538 produtos, a maioria morta para venda. A
 | toggle | semântica | default | corte medido |
 |---|---|---|---|
 | `only_revenda` | `TGFPRO.USOPROD = 'R'` | **true** | 10.538 → 10.007 |
-| `only_em_estoque` | estoque disponível > 0 (ver EMENDA A7 abaixo para o recorte) | **true** | ver A7 |
-| `only_ecommerce` | `TGFPRO.AD_ECOMMERCE = 'S'` | **false** | flag rala hoje (606); cliente vai passar a manter |
+| `only_em_estoque` | estoque disponível > 0 em CODEMP IN (1,2); recorte de local = ver EMENDA A7 abaixo | **true** | ver A7 (2.923) |
+| `only_ecommerce_eligible` | `NVL(AD_ECOMMERCE,'X') <> 'N'` (live) / `IS NULL OR <> 'N'` (espelho) | **false** | corta só o que o ERP marcou `'N'` |
 
 Fatos que NÃO são graus de liberdade do chip:
 - "Tipo de estoque" (`TIPCONTEST`) é pista falsa — tipo de CONTROLE, não vendabilidade. Fora.

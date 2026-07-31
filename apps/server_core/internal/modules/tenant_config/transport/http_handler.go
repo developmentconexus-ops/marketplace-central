@@ -1,13 +1,23 @@
-// Package transport exposes the tenant active-source config over HTTP:
-// GET reads the tenant's current selection (fail-closed 400 when unset),
-// PUT sets it. source_kind is always server-derived (tenant_config.DefaultKind)
-// and never accepted from the request body (ADR-17).
+// Package transport exposes the tenant configuration over HTTP.
+//
+// /config/active-source: GET reads the tenant's current selection (fail-closed
+// 400 when unset), PUT sets it. source_kind is always server-derived
+// (tenant_config.DefaultKind) and never accepted from the request body (ADR-17).
+//
+// /config/sellable-assortment: GET reads the three stored toggles, PUT writes
+// them. A body missing any of the three is a 400 — an absent boolean would
+// otherwise decode to false and be written as a rule no operator authored.
+// A tenant with no config row is a 400 unknown_erp_source on both verbs, the
+// same fail-closed answer active-source gives: no row means no operator ever
+// chose a source, and a rule invented for that tenant would be a rule nobody
+// authored (hub ruling A-22).
 package transport
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"time"
 
@@ -21,6 +31,7 @@ import (
 type Store interface {
 	Get(ctx context.Context, tenantID string) (tenant_config.Config, error)
 	Set(ctx context.Context, cfg tenant_config.Config) error
+	SetSellableAssortment(ctx context.Context, tenantID string, a tenant_config.SellableAssortment) error
 }
 
 var _ Store = (*tenant_config.Repository)(nil)
@@ -41,9 +52,12 @@ type routeClassRegistrar interface {
 func (h Handler) Register(mux httpx.RouteRegistrar) {
 	if registrar, ok := mux.(routeClassRegistrar); ok {
 		registrar.RegisterRouteClass("/config/active-source", httpx.InteractiveRouteClass)
+		registrar.RegisterRouteClass("/config/sellable-assortment", httpx.InteractiveRouteClass)
 	}
 	mux.HandleFunc("GET /config/active-source", h.handleGet)
 	mux.HandleFunc("PUT /config/active-source", h.handlePut)
+	mux.HandleFunc("GET /config/sellable-assortment", h.handleGetSellableAssortment)
+	mux.HandleFunc("PUT /config/sellable-assortment", h.handlePutSellableAssortment)
 }
 
 func (h Handler) handleGet(w http.ResponseWriter, r *http.Request) {
@@ -95,6 +109,59 @@ func (h Handler) handlePut(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, newActiveSourceResponse(stored))
 }
 
+func (h Handler) handleGetSellableAssortment(w http.ResponseWriter, r *http.Request) {
+	cfg, err := h.store.Get(r.Context(), h.tenantID)
+	if err != nil {
+		if errors.Is(err, tenant_config.ErrUnknownActiveSource) {
+			writeError(w, http.StatusBadRequest, "unknown_erp_source", "")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "internal_error", "")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, newSellableAssortmentResponse(cfg.SellableAssortment))
+}
+
+type putSellableAssortmentRequest struct {
+	OnlyRevenda           *bool `json:"only_revenda"`
+	OnlyEmEstoque         *bool `json:"only_em_estoque"`
+	OnlyEcommerceEligible *bool `json:"only_ecommerce_eligible"`
+}
+
+func (h Handler) handlePutSellableAssortment(w http.ResponseWriter, r *http.Request) {
+	var body putSellableAssortmentRequest
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&body); err != nil ||
+		decoder.Decode(&struct{}{}) != io.EOF ||
+		body.OnlyRevenda == nil || body.OnlyEmEstoque == nil || body.OnlyEcommerceEligible == nil {
+		writeError(w, http.StatusBadRequest, "invalid_body", "")
+		return
+	}
+	assortment := tenant_config.SellableAssortment{
+		OnlyRevenda:           *body.OnlyRevenda,
+		OnlyEmEstoque:         *body.OnlyEmEstoque,
+		OnlyEcommerceEligible: *body.OnlyEcommerceEligible,
+	}
+	if err := h.store.SetSellableAssortment(r.Context(), h.tenantID, assortment); err != nil {
+		if errors.Is(err, tenant_config.ErrUnknownActiveSource) {
+			writeError(w, http.StatusBadRequest, "unknown_erp_source", "")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "internal_error", "")
+		return
+	}
+	stored, err := h.store.Get(r.Context(), h.tenantID)
+	if err != nil {
+		if errors.Is(err, tenant_config.ErrUnknownActiveSource) {
+			writeError(w, http.StatusBadRequest, "unknown_erp_source", "")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "internal_error", "")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, newSellableAssortmentResponse(stored.SellableAssortment))
+}
+
 func writeError(w http.ResponseWriter, status int, code, message string) {
 	payload := map[string]string{"error": code}
 	if message != "" {
@@ -116,5 +183,19 @@ func newActiveSourceResponse(cfg tenant_config.Config) activeSourceResponse {
 		SourceKind:   string(cfg.Kind),
 		SetAt:        cfg.SetAt.UTC().Format(time.RFC3339),
 		SetBy:        cfg.SetBy,
+	}
+}
+
+type sellableAssortmentResponse struct {
+	OnlyRevenda           bool `json:"only_revenda"`
+	OnlyEmEstoque         bool `json:"only_em_estoque"`
+	OnlyEcommerceEligible bool `json:"only_ecommerce_eligible"`
+}
+
+func newSellableAssortmentResponse(a tenant_config.SellableAssortment) sellableAssortmentResponse {
+	return sellableAssortmentResponse{
+		OnlyRevenda:           a.OnlyRevenda,
+		OnlyEmEstoque:         a.OnlyEmEstoque,
+		OnlyEcommerceEligible: a.OnlyEcommerceEligible,
 	}
 }

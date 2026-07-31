@@ -1,0 +1,8 @@
+=== RUN   TestParserSellableColumnsAreOptionalAndHonestUnknown
+--- PASS: TestParserSellableColumnsAreOptionalAndHonestUnknown (0.00s)
+PASS
+ok  	marketplace-central/apps/server_core/internal/modules/erp_import/adapters/xlsx	1.190s
+=== RUN   TestMergeSnapshotKeepsAbsentStockNullAndKnownZeroZero
+--- PASS: TestMergeSnapshotKeepsAbsentStockNullAndKnownZeroZero (0.04s)
+PASS
+ok  	marketplace-central/apps/server_core/internal/modules/erp_import/adapters/postgres	1.627s

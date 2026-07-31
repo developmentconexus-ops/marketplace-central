@@ -15,6 +15,38 @@ import (
 func ptrF(v float64) *float64 { return &v }
 func ptrS(v string) *string   { return &v }
 
+func TestPgWriterPersistsSellableAssortmentFields(t *testing.T) {
+	ctx := context.Background()
+	pool, _ := testpostgres.OpenPool(t, "tenant_harness_mirror_assortment")
+	tenant := "mirror-assortment-" + time.Now().UTC().Format("150405.000000000")
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), "DELETE FROM products_mirror WHERE tenant_id = $1", tenant)
+	})
+
+	w := mirror.NewPgWriter(pool)
+	if _, err := w.ApplySnapshot(ctx, tenant, []mirror.Row{
+		{CodigoProduto: "A", Usoprod: ptrS(" r "), ADEcommerce: ptrS(" n ")},
+		{CodigoProduto: "B"},
+	}, nil); err != nil {
+		t.Fatalf("ApplySnapshot: %v", err)
+	}
+
+	var usoprod, adEcommerce string
+	if err := pool.QueryRow(ctx, `SELECT usoprod, ad_ecommerce FROM products_mirror WHERE tenant_id=$1 AND codigo_produto='A'`, tenant).Scan(&usoprod, &adEcommerce); err != nil {
+		t.Fatalf("read A: %v", err)
+	}
+	if usoprod != "R" || adEcommerce != "N" {
+		t.Errorf("A assortment = %q/%q, want R/N", usoprod, adEcommerce)
+	}
+	var nullCount int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM products_mirror WHERE tenant_id=$1 AND codigo_produto='B' AND usoprod IS NULL AND ad_ecommerce IS NULL`, tenant).Scan(&nullCount); err != nil {
+		t.Fatalf("read B NULL predicates: %v", err)
+	}
+	if nullCount != 1 {
+		t.Errorf("B SQL NULL match count = %d, want 1", nullCount)
+	}
+}
+
 // TestApplySnapshotKeepAbsentRoundTrips proves the load-bearing merge semantics
 // against a real Postgres (M04-C5): honest-NULL round-trip, keep-absent flag on the
 // present→absent transition with last-known values preserved (never deleted),

@@ -16,12 +16,12 @@ import (
 var safeOracleCodePattern = regexp.MustCompile(`^oracle error code=(-?[0-9]+)$`)
 
 type TimingReader struct {
-	next          ports.Reader
+	next          ports.Source
 	logger        *slog.Logger
 	slowThreshold time.Duration
 }
 
-func NewTimingReader(next ports.Reader, logger *slog.Logger, slowThreshold time.Duration) *TimingReader {
+func NewTimingReader(next ports.Source, logger *slog.Logger, slowThreshold time.Duration) *TimingReader {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -91,29 +91,31 @@ func (r *TimingReader) GetTaxInputs(ctx context.Context, input ports.TaxInput) (
 	return result, err
 }
 
-func (r *TimingReader) ListCatalogProductFacts(ctx context.Context, cursor ports.Cursor, limit int) (ports.CatalogFactPage, error) {
+func (r *TimingReader) ListCatalogProductFacts(ctx context.Context, cursor ports.Cursor, limit int, policy *ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
 	var result ports.CatalogFactPage
 	err := r.observe("ListCatalogProductFacts", func() error {
-		reader, ok := r.next.(ports.CatalogPageReader)
-		if !ok {
-			return domain.NewReadError(domain.ReadErrorSourceUnavailable, "oracle catalog page reader is unavailable", nil)
-		}
 		var err error
-		result, err = reader.ListCatalogProductFacts(ctx, cursor, limit)
+		result, err = r.next.ListCatalogProductFacts(ctx, cursor, limit, policy)
 		return err
 	})
 	return result, err
 }
 
-func (r *TimingReader) SearchCatalogProductFacts(ctx context.Context, q string, cursor ports.Cursor, limit int) (ports.CatalogFactPage, error) {
+func (r *TimingReader) SearchCatalogProductFacts(ctx context.Context, q string, cursor ports.Cursor, limit int, policy *ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
 	var result ports.CatalogFactPage
 	err := r.observe("SearchCatalogProductFacts", func() error {
-		reader, ok := r.next.(ports.CatalogPageReader)
-		if !ok {
-			return domain.NewReadError(domain.ReadErrorSourceUnavailable, "oracle catalog page reader is unavailable", nil)
-		}
 		var err error
-		result, err = reader.SearchCatalogProductFacts(ctx, q, cursor, limit)
+		result, err = r.next.SearchCatalogProductFacts(ctx, q, cursor, limit, policy)
+		return err
+	})
+	return result, err
+}
+
+func (r *TimingReader) GetCatalogAssortmentCounts(ctx context.Context, policy *ports.SellableAssortmentPolicy) (ports.CatalogAssortmentCounts, error) {
+	var result ports.CatalogAssortmentCounts
+	err := r.observe("GetCatalogAssortmentCounts", func() error {
+		var err error
+		result, err = r.next.GetCatalogAssortmentCounts(ctx, policy)
 		return err
 	})
 	return result, err
@@ -122,18 +124,14 @@ func (r *TimingReader) SearchCatalogProductFacts(ctx context.Context, q string, 
 func (r *TimingReader) CatalogProductFactsByIDs(ctx context.Context, ids []int64) (ports.CatalogFactPage, error) {
 	var result ports.CatalogFactPage
 	err := r.observe("CatalogProductFactsByIDs", func() error {
-		reader, ok := r.next.(ports.CatalogPageReader)
-		if !ok {
-			return domain.NewReadError(domain.ReadErrorSourceUnavailable, "oracle catalog page reader is unavailable", nil)
-		}
 		var err error
-		result, err = reader.CatalogProductFactsByIDs(ctx, ids)
+		result, err = r.next.CatalogProductFactsByIDs(ctx, ids)
 		return err
 	})
 	return result, err
 }
 
-var _ ports.CatalogPageReader = (*TimingReader)(nil)
+var _ ports.Source = (*TimingReader)(nil)
 
 func (r *TimingReader) observe(method string, call func() error) error {
 	started := time.Now()

@@ -1,0 +1,133 @@
+S9-CATALOG-HTTP — P4 adversarial review at the orchestrator's seat
+Worker: gpt-5.6-sol / low (complex), OS-process. Worker commit: 5adeeb56.
+Reviewed at: worktree-chip-vendavel, tree at 5adeeb56, tree clean after review.
+VERDICT: NOT ACCEPTED. The behaviour is right and proven by mutation on both lanes, but the
+hub's explicit A-17 criterion is violated in the letter and in the reason, and the mechanism
+A-18 was written to kill came back wearing a struct. Escalated, not decided here.
+
+1. WHAT IS CORRECT, MEASURED
+   Every hard criterion but one is discharged, and the one that carried the S6 lesson is the one
+   the worker got RIGHT.
+
+   1.1 The policy comes from the RIGHT PRODUCER. `routing/reader.go:166-186`
+   `resolveCatalogAssortment` loads the tenant row through `resolveWithConfig` and builds the
+   policy from `cfg.SellableAssortment` — the same seam where `matcher.go:45-48` already resolves
+   it for linking. One producer. Page and count both take the value from that one call:
+   `ListCatalogProductFactsWithPolicy:128`, `SearchCatalogProductFactsWithPolicy:142`,
+   `GetCatalogAssortmentCounts:159`. This is the half that escaped me at S6 — I checked arrival
+   and never asked where the value came from. Here it arrives AND it comes from the tenant row.
+
+   1.2 `IncludeAll` is gone from the port. Zero hits in `apps/server_core` outside two test
+   FUNCTION NAMES (`http_handler_test.go:91,115`). The bool no longer travels beside the policy.
+
+   1.3 `include_all` stops at the transport seam. The literal appears only in
+   `catalog/transport/http_handler.go:249-263` (the wire parse) and in tests. Nothing in
+   `application/`, `routing/`, `cache/`, `oracle/`, `ports/`. A-18's form is satisfied.
+
+   1.4 All five seats carry the compile-time assertion. My first grep missed two and I nearly
+   wrote them up as absent — `cache` and `routing` alias the import as `internalreadports`, and my
+   pattern demanded the literal `ports.`. Measured again by alias:
+     cache/cache.go:313    var _ internalreadports.CatalogAssortmentReader = CatalogPageReader{}
+     cache/cache.go:406    var _ internalreadports.CatalogAssortmentReader = Reader{}
+     observability/timing.go:149   var _ ports.CatalogAssortmentReader = (*TimingReader)(nil)
+     routing/reader.go:201  var _ internalreadports.CatalogAssortmentReader = (*Reader)(nil)
+     application/service.go:79     var _ ports.CatalogAssortmentReader = Service{}
+     oracle/catalog_page.go:316    var _ ports.CatalogAssortmentReader = (*Reader)(nil)
+   The CHIP-M02 class is closed at the seats. Naming a defect I had not measured would have been
+   the same sin I am reviewing for; the alias is why the first number was wrong.
+
+2. THE MUST-FAIL IS REAL — AND THE LANE THAT PROVES IT LIES WHEN THE DB IS ABSENT
+   Mutation M1 at `routing/reader.go:181`: replace the tenant-sourced policy with the hardcoded
+   `internalreadports.DefaultSellableAssortment()` (plus `_ = cfg` so the mutation compiles — a
+   build break is not a red test).
+
+   First run, WITHOUT the DB env:
+     FAIL routing    reader_test.go:242 page/count policies read = [{true true true} {true true true}],
+                     want [{true false true} {true false true}]
+     ok   composition        <-- GREEN UNDER THE MUTATION
+     ok   catalog/transport
+
+   The composed arrival test did not defend. Re-run with the integration env dot-sourced (A-15):
+     composition: --- PASS 70, --- FAIL 1
+     --- FAIL: TestRootComposedCatalogReaderMovesPageAndCountWithStoredPolicy
+       root_test.go:103: stored policy read = {OnlyRevenda:false OnlyEmEstoque:false
+       OnlyEcommerceEligible:false}; page/count = 1/1, want 2/2
+
+   So the must-fail holds on BOTH sides, and it names the value read. But the `ok` printed by an
+   env-less composition run is byte-identical to a run that defended — profile §11 exactly. The
+   number that carries the proof is the per-line count with the env set, not the package `ok`.
+
+   Baseline after revert, env set, tree clean:
+     330 PASS / 1 SKIP / 0 FAIL across internal_read/... + catalog/transport + composition +
+     erp_import/adapters/internalread. The one skip is `TestOracleLiveBaseline` (live Oracle
+     config unavailable), which the worker named.
+
+3. FINDING F-1 — THE FUNCTION DID NOT DIE; IT WAS EXPORTED AND MULTIPLIED
+   Hub, verbatim: "nenhum caminho pode sobrar chamando `defaultSellableAssortment()` — a função
+   morrer é critério, não sugestão."
+
+   What shipped: the lowercase private helper is gone and `ports.DefaultSellableAssortment()` was
+   born at `ports/catalog_page.go:96`, returning a hardcoded
+   `{OnlyRevenda:true, OnlyEmEstoque:true, OnlyEcommerceEligible:true}`. Call sites went from one
+   to eleven — seven of them production:
+     catalog/transport/http_handler.go:251, :263, :276
+     internal_read/observability/timing.go:95, :110
+     internal_read/adapters/routing/reader.go:124, :138
+     internal_read/adapters/oracle/catalog_page.go:22, :41, :164
+     erp_import/adapters/internalread/reader.go:375, :386
+   That is a rename, not a death, and the REASON the hub wanted it dead — one place owns the
+   default — is more violated after the slice than before it.
+
+   And the name is false, which I can measure rather than argue. `tenant_config/repository.go:31`:
+     // Get returns the tenant's active-source Config, or ErrUnknownActiveSource if
+     // the tenant has no row (fail-closed — never a silent default).
+   A tenant with no row gets an ERROR, not a default. So this system has no default sellable
+   assortment. A constant named `DefaultSellableAssortment` that is never any tenant's policy, and
+   that routing discards on every composed call, is a total claim the code does not honour — the
+   R-24/R-25 class, where the fix is deletion rather than softening.
+
+   Live blast radius today: none. Below routing, `oracle/catalog_page.go:22,41,164` and
+   `internalread/reader.go:375,386` hand that hardcoded {true,true,true} STRAIGHT to the query
+   builder with no tenant override, but routing only ever calls the WithPolicy variants, so no
+   composed path reaches them. It is a loaded landmine, not a live wound: the next caller that
+   reaches an adapter's base-port method filters the catalog by a rule no tenant ever authored.
+
+4. FINDING F-2 — THE BOOLEAN CAME BACK WEARING A STRUCT (class-level, A-20)
+   `routing/reader.go:181-183`:
+     if requested == internalreadports.AllProductsAssortment() {
+         policy = internalreadports.AllProductsAssortment()
+     }
+   `AllProductsAssortment()` is the ZERO VALUE. So `requested` — a parameter typed as a policy and
+   named for one — is read exactly once, as a three-bit equality test against zero, and then
+   discarded. Transport encodes a wire boolean into a policy struct; routing decodes it back into a
+   boolean and throws the rest away.
+
+   A-18's condition is met in FORM: only a policy crosses the port. It is not met in SUBSTANCE:
+   the receiver still recovers `include_all` from it, so the two-mechanisms-that-must-agree shape
+   is intact, with the agreement now enforced by struct equality instead of a bool.
+
+   The concrete cost is a false affordance, and the next slices are the ones who pay it: the
+   signature invites a caller to pass a real policy through `...WithPolicy`, and routing will
+   silently ignore it unless it happens to equal the zero value. S11/S12 wire "ver todos"; that is
+   exactly the caller this trap is aimed at.
+
+   Under the new profile rule this is not one finding, it is the SECOND instance of a class already
+   paid for in this chip: `IncludeAll` travelling beside the policy was the first, and A-17/A-18
+   were written to kill it. The rule says the line stops here rather than taking another point fix.
+
+   Both findings share one root: there is no honest way at this port to say "use the tenant's
+   stored policy", so a magic value was invented to mean it.
+
+5. RECOMMENDATION (measured, minimal, not applied)
+   Make the request optional instead of magic — `requested *SellableAssortmentPolicy`, where nil
+   means "the tenant's stored policy" and non-nil means "exactly this". One mechanism; no coupling
+   to the zero value; no constant claiming to be a default that is not one; and a caller that
+   passes a real policy is honoured instead of silently dropped. Transport keeps `include_all` at
+   its seam: absent or `false` -> nil, `true` -> `&AllProductsAssortment()`. `DefaultSellableAssortment()`
+   is deleted, which is what the criterion asked for, and the adapters' base-port methods stop
+   fabricating a policy they have no authority to invent.
+
+6. WHAT I DID NOT DO
+   I did not apply the fix. F-2 is a design decision inside A-17/A-18, which are the hub's rulings,
+   and the chip contract says real ambiguity is a REQUEST rather than a silent local decision. The
+   S8 precedent is the shape: reprove at P4, escalate with the measurement, apply only under grant.

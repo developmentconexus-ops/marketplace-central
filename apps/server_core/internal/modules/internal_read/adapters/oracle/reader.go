@@ -146,17 +146,22 @@ func (r *Reader) GetSellableStock(ctx context.Context, input ports.SellableStock
 
 	result := domain.SellableStock{
 		ProductID: input.ProductID,
-		Quantity:  nullableFloat(quantity),
+		Quantity:  knownOracleStock(quantity),
 		Policy:    policy,
 		Source: domain.SourceMetadata{
 			System:    "oracle",
 			FetchedAt: r.now().UTC(),
 		},
 	}
-	if result.Quantity == nil {
-		result.QualityFlags = []domain.QualityFlag{domain.QualityMissingStock}
-	}
 	return result, nil
+}
+
+func knownOracleStock(quantity sql.NullFloat64) *float64 {
+	if value := nullableFloat(quantity); value != nil {
+		return value
+	}
+	zero := 0.0
+	return &zero
 }
 
 func (r *Reader) GetCurrentPrice(ctx context.Context, input ports.CurrentPriceInput) (domain.CurrentPrice, error) {
@@ -548,6 +553,12 @@ func buildIntListClause(column string, values []int, args *[]any) string {
 }
 
 func buildNotIntListClause(column string, values []int, args *[]any) string {
+	// Exclusions may be empty, so absence must emit no SQL. Inclusion lists are
+	// deliberately asymmetric: callers reject empty whitelists. A future
+	// caller-supplied batch policy must preserve that edge check.
+	if len(values) == 0 {
+		return ""
+	}
 	placeholders := make([]string, 0, len(values))
 	for _, value := range values {
 		*args = append(*args, value)

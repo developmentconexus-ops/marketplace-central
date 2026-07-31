@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"marketplace-central/apps/server_core/internal/modules/erp_import/application"
 	"marketplace-central/apps/server_core/internal/modules/erp_import/domain"
 	"marketplace-central/apps/server_core/internal/modules/erp_import/ports"
@@ -71,9 +73,13 @@ func TestGetImportChainCountsCurrentQueueAcrossInstallations(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	before := time.Now()
+	// queue_read_at is statement_timestamp() read inside PostgreSQL, so the
+	// bracket has to come from that same clock. Bracketing with time.Now()
+	// compared the container's clock against the host's; the two drift under
+	// Docker Desktop, which is what made this assertion flake.
+	before := databaseNow(ctx, t, pool)
 	got, err := repo.GetImportChain(ctx, tenant, importID)
-	after := time.Now()
+	after := databaseNow(ctx, t, pool)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -473,4 +479,17 @@ func TestGetImportChainNonArrayPendingCursorDoesNotFailQuery(t *testing.T) {
 			}
 		})
 	}
+}
+
+// databaseNow reads the same clock the queried value comes from, which is what
+// lets the bracket stay exact instead of needing a tolerance window. A window
+// wide enough to absorb host-to-container drift is also wide enough to accept a
+// frozen or hardcoded timestamp.
+func databaseNow(ctx context.Context, t *testing.T, pool *pgxpool.Pool) time.Time {
+	t.Helper()
+	var now time.Time
+	if err := pool.QueryRow(ctx, `SELECT statement_timestamp()`).Scan(&now); err != nil {
+		t.Fatalf("read database clock: %v", err)
+	}
+	return now
 }

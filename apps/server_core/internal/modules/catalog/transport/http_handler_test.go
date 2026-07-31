@@ -31,6 +31,7 @@ type fakeCatalogPageReader struct {
 	idAsks          [][]int64
 	idPage          ports.CatalogFactPage
 	err             error
+	policies        []*ports.SellableAssortmentPolicy
 }
 
 func (f *fakeCatalogPageReader) captureSource(ctx context.Context) {
@@ -39,8 +40,9 @@ func (f *fakeCatalogPageReader) captureSource(ctx context.Context) {
 	f.sourcePresent = append(f.sourcePresent, present)
 }
 
-func (f *fakeCatalogPageReader) ListCatalogProductFacts(ctx context.Context, cursor ports.Cursor, _ int) (ports.CatalogFactPage, error) {
+func (f *fakeCatalogPageReader) ListCatalogProductFacts(ctx context.Context, cursor ports.Cursor, _ int, policy *ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
 	f.listCursors = append(f.listCursors, cursor)
+	f.policies = append(f.policies, policy)
 	f.captureSource(ctx)
 	if policy, ok := FreshnessPolicyFromContext(ctx); ok {
 		f.freshnessPolicy = append(f.freshnessPolicy, policy)
@@ -59,8 +61,9 @@ func (f *fakeCatalogPageReader) CatalogProductFactsByIDs(ctx context.Context, id
 	}
 	return f.idPage, nil
 }
-func (f *fakeCatalogPageReader) SearchCatalogProductFacts(ctx context.Context, q string, cursor ports.Cursor, limit int) (ports.CatalogFactPage, error) {
+func (f *fakeCatalogPageReader) SearchCatalogProductFacts(ctx context.Context, q string, cursor ports.Cursor, limit int, policy *ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
 	f.searchQueries = append(f.searchQueries, q)
+	f.policies = append(f.policies, policy)
 	f.searchCursors = append(f.searchCursors, cursor)
 	f.searchLimits = append(f.searchLimits, limit)
 	f.captureSource(ctx)
@@ -71,6 +74,54 @@ func (f *fakeCatalogPageReader) SearchCatalogProductFacts(ctx context.Context, q
 		return ports.CatalogFactPage{}, f.err
 	}
 	return f.searchPage, nil
+}
+
+func (f *fakeCatalogPageReader) GetCatalogAssortmentCounts(_ context.Context, policy *ports.SellableAssortmentPolicy) (ports.CatalogAssortmentCounts, error) {
+	f.policies = append(f.policies, policy)
+	return ports.CatalogAssortmentCounts{}, f.err
+}
+
+func TestHandlerCatalogDefaultsFilteredAndIncludeAllIsRequestLocal(t *testing.T) {
+	fake := &fakeCatalogPageReader{listPages: map[int64]ports.CatalogFactPage{
+		0: {Items: []ports.CatalogProductFact{}, AsOf: time.Now().UTC()},
+	}}
+	mux := httpx.NewRouteClassMux()
+	(Handler{PageReader: fake}).Register(mux)
+
+	for _, path := range []string{"/catalog/products", "/catalog/products?include_all=true", "/catalog/products"} {
+		recorder := httptest.NewRecorder()
+		mux.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))
+		if recorder.Code != http.StatusOK {
+			t.Fatalf("GET %s status = %d, body = %s", path, recorder.Code, recorder.Body.String())
+		}
+	}
+	// nil is the request "apply whatever rule this tenant configured", which only
+	// the routing seam can answer; a named policy crosses as itself. The handler
+	// must never author a third thing.
+	all := ports.AllProductsAssortment()
+	want := []*ports.SellableAssortmentPolicy{nil, &all, nil}
+	if !reflect.DeepEqual(fake.policies, want) {
+		t.Fatalf("policies read = %+v, want %+v", fake.policies, want)
+	}
+}
+
+func TestHandlerCatalogCountsAndMalformedIncludeAll(t *testing.T) {
+	fake := &fakeCatalogPageReader{}
+	mux := httpx.NewRouteClassMux()
+	(Handler{PageReader: fake}).Register(mux)
+
+	counts := httptest.NewRecorder()
+	mux.ServeHTTP(counts, httptest.NewRequest(http.MethodGet, "/catalog/products/counts", nil))
+	if counts.Code != http.StatusOK || trimJSON(counts.Body.String()) != `{"sellable_count":0,"total_count":0}` {
+		t.Fatalf("counts status/body = %d/%s", counts.Code, trimJSON(counts.Body.String()))
+	}
+	for _, path := range []string{"/catalog/products?include_all=TRUE", "/catalog/products?include_all=1", "/catalog/products/search?include_all=yes"} {
+		recorder := httptest.NewRecorder()
+		mux.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))
+		if recorder.Code != http.StatusBadRequest {
+			t.Fatalf("GET %s status = %d, body = %s", path, recorder.Code, recorder.Body.String())
+		}
+	}
 }
 
 // A screen that already knows which products it needs asks for exactly those.
@@ -182,6 +233,9 @@ func TestCatalogPageRoutesValidateBeforePortCall(t *testing.T) {
 		{name: "zero limit", path: "/catalog/products?limit=0", body: `{"error":"invalid_limit","allowed_range":"1..100"}`},
 		{name: "over limit", path: "/catalog/products?limit=101", body: `{"error":"invalid_limit","allowed_range":"1..100"}`},
 		{name: "search over limit", path: "/catalog/products/search?q=PARAFUSO&limit=51", body: `{"error":"invalid_limit","allowed_range":"1..50"}`},
+		{name: "non-numeric ids", path: "/catalog/products?ids=abc", body: `{"error":"invalid_ids","allowed_range":"1..100 positive integers"}`},
+		{name: "bad include_all", path: "/catalog/products?include_all=maybe", body: `{"error":"invalid_include_all"}`},
+		{name: "blank search q", path: "/catalog/products/search?q=%20", body: `{"error":"invalid_q"}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fake := &fakeCatalogPageReader{}
@@ -386,8 +440,8 @@ func TestCatalogPageRejectsUnknownActiveSource(t *testing.T) {
 		if recorder.Code != http.StatusBadRequest {
 			t.Fatalf("GET %s status = %d, want 400 (body %s)", path, recorder.Code, recorder.Body.String())
 		}
-		if trimJSON(recorder.Body.String()) != trimJSON(`{"error":"invalid_erp_source"}`) {
-			t.Fatalf("GET %s body = %s, want invalid_erp_source", path, trimJSON(recorder.Body.String()))
+		if trimJSON(recorder.Body.String()) != trimJSON(`{"error":"invalid_erp_source","allowed_range":"xlsx|catalogo_cliente"}`) {
+			t.Fatalf("GET %s body = %s, want invalid_erp_source naming the accepted sources", path, trimJSON(recorder.Body.String()))
 		}
 		// Unknown value must never silently fall through to a dataset read.
 		if len(fake.listCursors) != 0 || len(fake.searchQueries) != 0 {

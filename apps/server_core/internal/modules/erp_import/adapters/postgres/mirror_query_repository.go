@@ -8,9 +8,10 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"marketplace-central/apps/server_core/internal/modules/erp_import/domain"
+	erpports "marketplace-central/apps/server_core/internal/modules/erp_import/ports"
 )
 
-const mirrorProductColumns = `m.codigo_produto,m.descricao,m.referencia,m.ean,m.marca,m.grupo_codigo,m.grupo_descricao,m.ncm,m.custo::text,m.preco_venda::text,m.estoque_total::text,m.updated_at`
+const mirrorProductColumns = `m.codigo_produto,m.descricao,m.referencia,m.ean,m.marca,m.grupo_codigo,m.grupo_descricao,m.ncm,m.custo::text,m.preco_venda::text,m.usoprod,m.ad_ecommerce,m.estoque_total::text,m.updated_at`
 
 type rowScanner interface {
 	Scan(dest ...any) error
@@ -19,11 +20,11 @@ type rowScanner interface {
 func scanMirrorProduct(row rowScanner) (domain.MirrorProduct, error) {
 	var product domain.MirrorProduct
 	var descricao, referencia, ean, marca, grupoCodigo, grupoDescricao, ncm sql.NullString
-	var custo, precoVenda, estoqueTotal sql.NullString
+	var custo, precoVenda, usoprod, adEcommerce, estoqueTotal sql.NullString
 	var importedAt sql.NullTime
 	if err := row.Scan(
 		&product.CodigoProduto, &descricao, &referencia, &ean, &marca, &grupoCodigo,
-		&grupoDescricao, &ncm, &custo, &precoVenda, &estoqueTotal, &product.UpdatedAt, &importedAt,
+		&grupoDescricao, &ncm, &custo, &precoVenda, &usoprod, &adEcommerce, &estoqueTotal, &product.UpdatedAt, &importedAt,
 	); err != nil {
 		return domain.MirrorProduct{}, err
 	}
@@ -36,6 +37,8 @@ func scanMirrorProduct(row rowScanner) (domain.MirrorProduct, error) {
 	product.NCM = nullStringPointer(ncm)
 	product.Custo = nullStringPointer(custo)
 	product.PrecoVenda = nullStringPointer(precoVenda)
+	product.Usoprod = nullStringPointer(usoprod)
+	product.ADEcommerce = nullStringPointer(adEcommerce)
 	product.EstoqueTotal = nullStringPointer(estoqueTotal)
 	if importedAt.Valid {
 		product.ImportedAt = &importedAt.Time
@@ -127,14 +130,28 @@ WHERE m.tenant_id=$1 AND m.source=$2 AND m.absent_in_last_snapshot=false
 // four identifiers an operator actually has at hand — and both sides of the
 // text comparison are unaccented (migration 0080), because the ERP stores
 // "VÁLVULA" while the operator types "valvula".
-func (r *Repository) MirrorCatalogPage(ctx context.Context, tenantID string, source domain.ImportSource, query string, afterInternalID int64, limit int) ([]domain.MirrorProduct, error) {
+func mirrorAssortmentPredicate(policy erpports.MirrorAssortmentPolicy) string {
+	predicate := ""
+	if policy.OnlyRevenda {
+		predicate += "\n  AND (m.usoprod IS NULL OR m.usoprod = 'R')"
+	}
+	if policy.OnlyEmEstoque {
+		predicate += "\n  AND (m.estoque_total IS NULL OR m.estoque_total > 0)"
+	}
+	if policy.OnlyEcommerceEligible {
+		predicate += "\n  AND (m.ad_ecommerce IS NULL OR m.ad_ecommerce <> 'N')"
+	}
+	return predicate
+}
+
+func (r *Repository) MirrorCatalogPage(ctx context.Context, tenantID string, source domain.ImportSource, query string, afterInternalID int64, limit int, policy erpports.MirrorAssortmentPolicy) ([]domain.MirrorProduct, error) {
 	rows, err := r.pool.Query(ctx, `SELECT DISTINCT ON (m.codigo_produto::bigint)
   `+mirrorProductColumns+`,p.imported_at
 FROM products_mirror m
 LEFT JOIN erp_import_protocols p ON p.tenant_id = m.tenant_id AND p.id = m.protocol_id
 WHERE m.tenant_id=$1 AND m.source=$2 AND m.absent_in_last_snapshot=false
   AND m.codigo_produto ~ '^[0-9]{1,18}$'
-  AND m.codigo_produto::bigint > $3
+  AND m.codigo_produto::bigint > $3`+mirrorAssortmentPredicate(policy)+`
   AND ($4='' OR unaccent(m.descricao) ILIKE '%'||unaccent($4)||'%'
        OR unaccent(coalesce(m.referencia,'')) ILIKE '%'||unaccent($4)||'%'
        OR m.codigo_produto ILIKE '%'||$4||'%'
@@ -160,8 +177,22 @@ LIMIT CASE WHEN $5 > 0 THEN $5 + 1 END`, tenantID, source, afterInternalID, quer
 	return products, nil
 }
 
-func (r *Repository) MirrorEANCollisionCounts(ctx context.Context, tenantID string, source domain.ImportSource) (map[string]int, error) {
-	rows, err := r.pool.Query(ctx, `SELECT ean,count(*) FROM products_mirror WHERE tenant_id=$1 AND source=$2 AND absent_in_last_snapshot=false AND ean IS NOT NULL GROUP BY ean HAVING count(*) >= 2`, tenantID, source)
+func (r *Repository) MirrorCatalogAssortmentCounts(ctx context.Context, tenantID string, source domain.ImportSource, policy erpports.MirrorAssortmentPolicy) (int, int, error) {
+	var sellable, total int
+	err := r.pool.QueryRow(ctx, `SELECT
+  count(*) FILTER (WHERE true`+mirrorAssortmentPredicate(policy)+`),
+  count(*)
+FROM products_mirror m
+WHERE m.tenant_id=$1 AND m.source=$2 AND m.absent_in_last_snapshot=false
+  AND m.codigo_produto ~ '^[0-9]{1,18}$'`, tenantID, source).Scan(&sellable, &total)
+	if err != nil {
+		return 0, 0, fmt.Errorf("query mirror catalog assortment counts: %w", err)
+	}
+	return sellable, total, nil
+}
+
+func (r *Repository) MirrorEANCollisionCounts(ctx context.Context, tenantID string, source domain.ImportSource, policy erpports.MirrorAssortmentPolicy) (map[string]int, error) {
+	rows, err := r.pool.Query(ctx, `SELECT m.ean,count(*) FROM products_mirror m WHERE m.tenant_id=$1 AND m.source=$2 AND m.absent_in_last_snapshot=false AND m.ean IS NOT NULL`+mirrorAssortmentPredicate(policy)+` GROUP BY m.ean HAVING count(*) >= 2`, tenantID, source)
 	if err != nil {
 		return nil, fmt.Errorf("query mirror EAN collision counts: %w", err)
 	}

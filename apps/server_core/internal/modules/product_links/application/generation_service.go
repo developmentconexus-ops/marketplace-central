@@ -521,7 +521,7 @@ func buildConcordantCandidate(snapshot domain.ListingSnapshot, skuMatches, eanMa
 
 	reasons := []domain.LinkCandidateReason{
 		{Anchor: "seller_sku", Direction: domain.LinkCandidateReasonDirectionFor, Detail: "seller_sku resolve exato para codprod"},
-		{Anchor: "ean", Direction: domain.LinkCandidateReasonDirectionFor, Detail: "ean corrobora o mesmo codprod (unproved)"},
+		{Anchor: "ean", Direction: domain.LinkCandidateReasonDirectionFor, Detail: "ean corrobora o mesmo codprod, unicidade não comprovada"},
 	}
 	if hardNeg, detail := detectHardNegative(snapshot.Title, product.Name); hardNeg {
 		candidate.Confidence = 25
@@ -574,7 +574,7 @@ func applySingleAnchorScore(candidate *domain.LinkCandidate, state domain.LinkCa
 			skuDetail = "o seller_sku do anúncio não casa este produto, então não corrobora o EAN"
 		}
 		reasons = []domain.LinkCandidateReason{
-			{Anchor: "ean", Direction: domain.LinkCandidateReasonDirectionFor, Detail: "ean corrobora codprod (unproved)"},
+			{Anchor: "ean", Direction: domain.LinkCandidateReasonDirectionFor, Detail: "ean corrobora codprod, unicidade não comprovada"},
 			missingMatchedAnchorReason("seller_sku", skuDetail, snapshot, &product),
 		}
 	case domain.LinkCandidateStateTitleMatch:

@@ -1,0 +1,108 @@
+S9-CATALOG-HTTP — the A-21 repair, applied by the orchestrator under explicit hub grant
+Grant: hub ruling A-21 @77d546d7, option (i) — "Grant explícito de escopo (assinatura de port +
+transporte + 11 sítios — maior que glue), commit próprio sobre 5adeeb56, worker commit intacto."
+Base: worker commit 5adeeb56. Worker's commit untouched; this is a separate commit on top.
+Reviewed reprove that produced it: evidence/S9-orchestrator.txt (F-1, F-2).
+
+1. WHAT THE RULING RATIFIED, AND WHAT THE CODE NOW SAYS
+   `requested *SellableAssortmentPolicy` at `ports/catalog_page.go:177-181`:
+     nil     -> "apply the tenant's stored rule"  (only routing can answer this)
+     non-nil -> "apply exactly this rule",        and it IS applied, not inspected
+   `AllProductsAssortment()` survives as the honest value constructor for "no cut"
+   (`ports/catalog_page.go:96-101`). `DefaultSellableAssortment()` is deleted.
+
+   The invariant the hub added, by construction: nil resolves ONCE, at
+   `routing/reader.go:172-190`. Below routing only a concrete policy travels, so a nil there is a
+   wiring bug and says so — `ErrUnresolvedAssortmentPolicy` + `RequireAssortmentPolicy()`
+   (`ports/catalog_page.go:103-117`), guarded at every seat that consumes the value:
+     cache/cache.go:331,362        (the CACHE KEY — a nil here would collapse two policies onto
+                                    one key, which is the worst place in the chain to be silent)
+     oracle/catalog_page.go:35,63,246
+     erp_import/adapters/internalread/reader.go:381,398,510
+
+2. THE SEAT-BY-SEAT SHAPE, MEASURED — WHO MAY NAME A POLICY
+   ABOVE routing: transport turns the wire into a question, never into a rule.
+     catalog/transport/http_handler.go:248-274 — `include_all` absent or `false` -> nil;
+     `true` -> `&AllProductsAssortment()`. `handleCounts` asks with nil (`:292`), because the
+     counter reports the TENANT's rule against the whole catalog.
+   AT routing: `resolveCatalogAssortment` honours a named policy and reads the tenant row only
+     when none was named.
+   BELOW routing: the base port `CatalogPageReader` names no assortment, so it applies none.
+     The decorators forward base-to-base (`observability/timing.go:94-121`); the adapters state
+     the no-cut value explicitly (`oracle/catalog_page.go:21-26,50-53`,
+     `internalread/reader.go:374-380,392-396`). That is the page these methods returned before a
+     sellable cut existed — a value the adapter states, not a tenant rule it invents.
+
+   This is the half that BROKE first when I applied the fix, and it is worth recording: my initial
+   sweep made those base methods delegate with nil, and 23 tests went red naming
+   "sellable assortment policy is unresolved below the routing seam". The guard caught my own
+   wiring bug on the first run, which is the behaviour it exists for.
+
+3. MUST-FAIL 1 — M1 RE-EXECUTED POST-FIX, BOTH LANES, WITH THE DB ENV
+   The reason this is re-run with the env is in the S9 review: under M1 the composition package
+   printed an `ok` byte-identical to a run that defended, because the arrival test returned early
+   on an unset MPC_TEST_DATABASE_URL. That bare `return` is now `t.Skip` with a reason
+   (`composition/root_test.go:48-50`), so the lane can no longer hide a non-run as a pass.
+
+   M1: `routing/reader.go` — the policy stops coming from the tenant row and becomes the constant
+   {true,true,true} (`_ = cfg` so the mutation compiles; a build break is not a red test).
+     routing + composition + catalog/transport, env set:
+       PASS=109  FAIL=2  SKIP=0
+       --- FAIL: TestReaderUsesTheTenantPolicyForPageAndCounts
+           reader_test.go:251: call 0: policy read = {OnlyRevenda:true OnlyEmEstoque:true
+           OnlyEcommerceEligible:true}, want {OnlyRevenda:true OnlyEmEstoque:false
+           OnlyEcommerceEligible:true}
+       --- FAIL: TestRootComposedCatalogReaderMovesPageAndCountWithStoredPolicy
+           root_test.go:103: stored policy read = {OnlyRevenda:false OnlyEmEstoque:false
+           OnlyEcommerceEligible:false}; page/count = 1/1, want 2/2
+   Both lanes red, both messages naming the value read. Restored, tree back to the fixed state.
+
+4. MUST-FAIL 2 (NEW) — A NAMED POLICY IS HONOURED BY THE COMPOSED CHAIN
+   This is the one that kills F-2 for good and protects S11/S12, whose "ver todos" is exactly the
+   caller the old shape would have silently ignored.
+     routing level:   TestReaderHonorsAnExplicitPolicyInsteadOfTheStoredOne (reader_test.go:258)
+     composed level:  the tail of TestRootComposedCatalogReaderMovesPageAndCountWithStoredPolicy
+                      (root_test.go:106-126) — strictest rule stored, "no cut" requested, and the
+                      whole catalog must come back through service→routing→timing→cache→adapter.
+
+   M2 reproduces the shipped defect exactly: delete the `requested != nil` branch, so a named
+   policy is dropped and the stored rule answers every call.
+     routing + composition + catalog/transport, env set:
+       PASS=109  FAIL=2  SKIP=0
+       --- FAIL: TestReaderHonorsAnExplicitPolicyInsteadOfTheStoredOne
+           reader_test.go:282: call 0: policy read = {OnlyRevenda:true OnlyEmEstoque:true
+           OnlyEcommerceEligible:true}, want the requested {OnlyRevenda:false OnlyEmEstoque:false
+           OnlyEcommerceEligible:false} (tenant stores {OnlyRevenda:true OnlyEmEstoque:true
+           OnlyEcommerceEligible:true})
+       --- FAIL: TestRootComposedCatalogReaderMovesPageAndCountWithStoredPolicy
+           root_test.go:124: requested policy {OnlyRevenda:false OnlyEmEstoque:false
+           OnlyEcommerceEligible:false} honored? page/count = 1/1, want 2/2 (stored rule would
+           give 1/1)
+   Note what the second message prints: "stored rule would give 1/1". The observed value under the
+   mutation IS the stored-rule answer, so the test does not merely fail — it names which of the
+   two questions the code answered.
+
+5. MUST-FAIL 3 — THE FUNCTION IS DEAD, COUNTED
+   `DefaultSellableAssortment` / `defaultSellableAssortment` across the worktree:
+     production + test code: 0 hits
+     10 hits total, all in the pack's own prose — S9-orchestrator.txt (5), S7-orchestrator.txt (1),
+     DISPATCH-LEDGER.md (2), BATCH-PLAN.md (2) — which is the record of the finding, not a caller.
+   The hub's criterion was "a função morrer é critério, não sugestão". It is dead at 0 callers,
+   not renamed: the eleven call sites the review counted are gone with it.
+
+6. LANE ACCOUNTING, GREEN, WITH THE ENV SET (profile §11 — per line, not per `ok`)
+   internal_read/... + catalog/... + composition/... + erp_import/... + tenant_config/...
+     RUN=498  PASS=497  FAIL=0  SKIP=1
+     The single skip is named: TestOracleLiveBaseline (live Oracle config unavailable —
+     MPC_ORACLE_LIVE_TEST unset). SKIP=0 everywhere else, which is the number that carries the
+     proof after the composition test stopped returning early.
+   `go vet ./...` clean. `go build -buildvcs=false ./...` exit 0 (the bare `go build` exit 128 in a
+   worktree is VCS stamping, reported by the worker and worked around with the flag).
+
+7. WHAT THIS COMMIT DOES NOT CLAIM
+   No live Oracle read was performed here; the live sync against the real database is the hub's
+   post-merge step. The proof carried by this commit is the mirror lane plus the query-text
+   assertions on the Oracle builder.
+   The `SellableAssortmentError` flat/nested duality is untouched and remains the transitional
+   standard with a disposition (operator ruling, profile @1889d0dd) — see the S10 card and §9.8 of
+   S8-orchestrator.txt.

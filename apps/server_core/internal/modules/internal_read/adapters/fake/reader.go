@@ -3,6 +3,7 @@ package fake
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"marketplace-central/apps/server_core/internal/modules/internal_read/domain"
@@ -16,6 +17,11 @@ type Fixtures struct {
 	Costs    map[string]domain.CostAsOf
 	Sales    map[string]domain.SalesHistory
 	Taxes    map[string]domain.TaxInputs
+	// Catalog is keyed by the assortment policy the caller asks for, so a caller
+	// that sends the wrong cut reads the wrong page instead of the same page. A
+	// fake that took the policy and returned one fixed list would let a seat drop
+	// the policy entirely and still pass.
+	Catalog map[ports.SellableAssortmentPolicy][]ports.CatalogProductFact
 }
 
 type Reader struct {
@@ -134,6 +140,94 @@ func (r *Reader) GetTaxInputs(_ context.Context, input ports.TaxInput) (domain.T
 		Source:         domain.SourceMetadata{System: "fake"},
 		QualityFlags:   []domain.QualityFlag{domain.QualityMissingTax},
 	}, nil
+}
+
+var _ ports.Source = (*Reader)(nil)
+
+func (r *Reader) ListCatalogProductFacts(_ context.Context, cursor ports.Cursor, limit int, policy *ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
+	facts, err := r.assortment(policy)
+	if err != nil {
+		return ports.CatalogFactPage{}, err
+	}
+	return page(facts, cursor, limit), nil
+}
+
+func (r *Reader) SearchCatalogProductFacts(_ context.Context, query string, cursor ports.Cursor, limit int, policy *ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
+	facts, err := r.assortment(policy)
+	if err != nil {
+		return ports.CatalogFactPage{}, err
+	}
+	needle := strings.ToLower(strings.TrimSpace(query))
+	matched := make([]ports.CatalogProductFact, 0, len(facts))
+	for _, fact := range facts {
+		if matchesQuery(fact, needle) {
+			matched = append(matched, fact)
+		}
+	}
+	return page(matched, cursor, limit), nil
+}
+
+// CatalogProductFactsByIDs carries no policy for the same reason the port does
+// not give it one: the caller already named the products, so there is nothing
+// left to cut. It reads the whole catalog, not the tenant's assortment.
+func (r *Reader) CatalogProductFactsByIDs(_ context.Context, ids []int64) (ports.CatalogFactPage, error) {
+	wanted := make(map[int64]struct{}, len(ids))
+	for _, id := range ids {
+		wanted[id] = struct{}{}
+	}
+	found := make([]ports.CatalogProductFact, 0, len(ids))
+	for _, fact := range r.fixtures.Catalog[ports.AllProductsAssortment()] {
+		if _, ok := wanted[fact.InternalProductID]; ok {
+			found = append(found, fact)
+		}
+	}
+	return ports.CatalogFactPage{Items: found}, nil
+}
+
+func (r *Reader) GetCatalogAssortmentCounts(_ context.Context, policy *ports.SellableAssortmentPolicy) (ports.CatalogAssortmentCounts, error) {
+	cut, err := r.assortment(policy)
+	if err != nil {
+		return ports.CatalogAssortmentCounts{}, err
+	}
+	return ports.CatalogAssortmentCounts{
+		SellableCount: len(cut),
+		TotalCount:    len(r.fixtures.Catalog[ports.AllProductsAssortment()]),
+	}, nil
+}
+
+func (r *Reader) assortment(policy *ports.SellableAssortmentPolicy) ([]ports.CatalogProductFact, error) {
+	resolved, err := ports.RequireAssortmentPolicy(policy)
+	if err != nil {
+		return nil, err
+	}
+	return r.fixtures.Catalog[resolved], nil
+}
+
+func matchesQuery(fact ports.CatalogProductFact, needle string) bool {
+	if needle == "" {
+		return true
+	}
+	for _, field := range []*string{fact.Description, fact.Reference, fact.EAN} {
+		if field != nil && strings.Contains(strings.ToLower(*field), needle) {
+			return true
+		}
+	}
+	return false
+}
+
+func page(facts []ports.CatalogProductFact, cursor ports.Cursor, limit int) ports.CatalogFactPage {
+	items := make([]ports.CatalogProductFact, 0, len(facts))
+	for _, fact := range facts {
+		if fact.InternalProductID > cursor.InternalProductID {
+			items = append(items, fact)
+		}
+	}
+	if limit > 0 && len(items) > limit {
+		items = items[:limit]
+		next := ports.Cursor{InternalProductID: items[len(items)-1].InternalProductID}
+		return ports.CatalogFactPage{Items: items, NextCursor: &next}
+	}
+	return ports.CatalogFactPage{Items: items}
 }
 
 func fallbackStockPolicy(policy domain.SellableStockPolicy) domain.SellableStockPolicy {

@@ -3,15 +3,23 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppRouter } from "./AppRouter";
 
-const { listIntegrationInstallations, getMutation, listMutationItems, getDashboardSummary, listOrders, listErpImports } =
-  vi.hoisted(() => ({
-    listIntegrationInstallations: vi.fn(),
-    getMutation: vi.fn(),
-    listMutationItems: vi.fn(),
-    getDashboardSummary: vi.fn(),
-    listOrders: vi.fn(),
-    listErpImports: vi.fn(),
-  }));
+const {
+  listIntegrationInstallations,
+  getMutation,
+  listMutationItems,
+  getDashboardSummary,
+  listOrders,
+  listErpImports,
+  getActiveSource,
+} = vi.hoisted(() => ({
+  listIntegrationInstallations: vi.fn(),
+  getMutation: vi.fn(),
+  listMutationItems: vi.fn(),
+  getDashboardSummary: vi.fn(),
+  listOrders: vi.fn(),
+  listErpImports: vi.fn(),
+  getActiveSource: vi.fn(),
+}));
 
 vi.mock("./ClientContext", () => ({
   useClient: () => ({
@@ -22,11 +30,22 @@ vi.mock("./ClientContext", () => ({
     getDashboardSummary,
     listOrders,
     listErpImports,
+    getActiveSource,
   }),
 }));
 
+// A cold mock (`() => <div>Catalog route</div>`) cannot see props, so it could
+// never prove the route wires the resolved erpSource and a real client
+// through. Rendering both keeps the router the thing under test — the
+// alternative is unmocking CatalogPage itself, which would drag the real
+// data-fetching page (and its network) into this lane while every other
+// route stays mocked.
 vi.mock("@marketplace-central/feature-products", () => ({
-  CatalogPage: () => <div>Catalog route</div>,
+  CatalogPage: ({ client, erpSource }: { client: unknown; erpSource?: string }) => (
+    <div>
+      Catalog route (erpSource: {erpSource ?? "none"}, client: {client ? "present" : "absent"})
+    </div>
+  ),
 }));
 
 vi.mock("@marketplace-central/feature-classifications", () => ({
@@ -72,6 +91,13 @@ describe("AppRouter", () => {
     listOrders.mockResolvedValue({ items: [], next_cursor: null });
     listErpImports.mockReset();
     listErpImports.mockResolvedValue({ items: [] });
+    getActiveSource.mockReset();
+    getActiveSource.mockResolvedValue({
+      active_source: "xlsx",
+      source_kind: "upload_snapshot",
+      set_at: "2026-07-14T10:00:00Z",
+      set_by: null,
+    });
     getMutation.mockResolvedValue({
       protocol_id: "MP-000042", installation_id: "inst_test", type: "listing_pause", state: "applied",
       actor: "operator_supplied_unverified", intent: {}, selection: {}, totals: {}, source_as_of: null,
@@ -135,7 +161,14 @@ describe("AppRouter", () => {
   it("renders the catalog route at its new path", async () => {
     window.history.pushState({}, "", "/catalogo");
     renderAppRouter();
-    expect(await screen.findByText("Catalog route")).toBeInTheDocument();
+    // Proves /catalogo mounts the real component (not a placeholder) with a
+    // client and the tenant's resolved active source, which is what
+    // partitions the catalog cache by source (CatalogPage never sends the
+    // source on the wire; only the cache key needs it).
+    expect(
+      await screen.findByText("Catalog route (erpSource: xlsx, client: present)"),
+    ).toBeInTheDocument();
+    expect(getActiveSource).toHaveBeenCalledTimes(1);
   });
 
   it("renders the pricing simulator route at its new path", async () => {

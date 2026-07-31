@@ -1,0 +1,115 @@
+S6-ORACLE-CATALOG — P4 adversarial review at the orchestrator's seat
+Worker: gpt-5.6-luna / high, OS-process. Worker commit: 8303f7c6.
+Reviewed at: worktree-chip-vendavel, tree at 8303f7c6 plus the glue in §5.
+
+1. WRITE-SET
+   11 files: 9 code/test + 2 evidence (S6-red.txt, S6-green.txt). All authorized.
+   stock_batch_reader_test.go untouched, as the brief required.
+   profitability/application/service_test.go touched — permitted by the card as the one
+   file outside internal_read, because the missing_stock change moves its boundary case.
+   No migration, no dev stack, no .env, no price/cost CTE, no batch production reader.
+
+2. LANES, COUNTED PER LINE AT MY SEAT (not read off the tail)
+   internal_read : RUN 191 (190 `=== RUN` + 1 eaten by the BOM) · PASS 190 · SKIP 1 · FAIL 0
+   pricing       : RUN 158 (157 + BOM) · PASS 158 · SKIP 0 · FAIL 0
+   PASS+SKIP=RUN reconciles on both. go vet ./... exit 0. go build ./... exit 0.
+
+   The worker under-reported its own GREEN: it wrote internal_read PASS=130 and pricing
+   PASS=116. The lanes were genuinely green; the worker's counts were wrong low. An
+   undercount is the harmless direction, but it is still a number that did not come from
+   counting, and it is why the brief demands per-line counting rather than a summary line.
+
+   The worker also reported `go build ./...` EXIT=1 with
+   `error obtaining VCS status: exit status 128`. At my seat, same tree, build exits 0.
+   Recorded as a seat-local git quirk, not a defect in the diff. The worker was right not
+   to paper over it with -buildvcs=false.
+
+   The single SKIP is `TestOracleLiveBaseline`, gated on MPC_ORACLE_LIVE_TEST. I traced it
+   to commit f51cabca — pre-existing, unrelated to this slice, and correctly not enabled
+   (live Oracle is forbidden to the chip).
+
+   This lane is unit-only BY DESIGN: the SQL is asserted as generated text, so no database
+   is reached and the absence of MPC_TEST_DATABASE_URL is correct here. A-15's dot-source
+   rule binds S7, whose lane does reach Postgres. The brief also forbade the worker from
+   claiming anything about the //go:build integration files its commands never compile,
+   and it claimed nothing about them.
+
+3. WHAT I VERIFIED BY MEASUREMENT, NOT BY READING THE REPORT
+   - Zero occurrences of the three revoked SQL forms anywhere in the diff.
+   - The predicate is appended BEFORE cursor/search/FETCH FIRST, so the cut happens in SQL
+     ahead of pagination. A predicate applied after the fetch would have paged the full
+     catalog and then thinned each page — the count and the page would have disagreed.
+   - The count query reuses catalogStockCTE() and catalogAssortmentPredicate() — the same
+     two helpers the page uses. Drift between the page rule and the counted rule is not
+     prevented by a comment here; it is prevented by there being one source for both.
+     TestCatalogAssortmentCountUsesThePagePredicate is the test that holds it.
+   - CatalogProductFactsByIDs passes IncludeAll: true. Correct: a caller naming ids is
+     asking about THOSE products, and cutting them would answer a different question.
+   - The policy defaults moved to LocationIDs {10101, 10102} with ExcludedLocationIDs nil,
+     and BOTH tests that pinned the old values were re-pointed BY VALUE
+     (contract_test.go, fake/reader_test.go) rather than deleted or loosened. The fake
+     test's loop moved from ExcludedLocationIDs to LocationIDs and gained an equality
+     assertion — a moved assertion, not a dropped one.
+   - buildNotIntListClause returns "" on an empty list, carrying both the A-14 asymmetry
+     and its validity condition at the site.
+   - missing_stock is NOT dead after this slice. I counted 8 non-test producers that still
+     set QualityMissingStock: catalog/adapters/internalread/reader.go:134,257;
+     erp_import/adapters/internalread/reader.go:279,496;
+     erp_import/.../stock_batch_reader.go:78; internal_read/adapters/fake/reader.go:63;
+     internal_read/adapters/oracle/stock_batch_reader.go:74. S6 removed exactly one
+     producer — the live catalog page — which is the one DR-2/A-14 ruled on: there the ERP
+     was asked and answered, so absence is a known negative and the honest value is 0.
+     The flag survives where the fact is genuinely unknown. That is ADR-17's two sides
+     landing on the correct side of each path, not the flag being retired.
+
+4. FINDING — the new optional port is asserted at 1 of 5 seats, and the 4 missing seats
+   fail SILENTLY (major; transferred to S9 as a named criterion, not a defect in S6)
+
+   S6 introduced ports.CatalogAssortmentReader (ports/catalog_page.go:117). Measured:
+
+     implementers, whole module, tests included ... exactly one: oracle.Reader
+     compile-time asserts for CatalogAssortmentReader ... exactly one:
+         oracle/catalog_page.go:312
+     compile-time asserts for the SIBLING port CatalogPageReader ... five:
+         oracle/catalog_page.go:311, routing/reader.go:159, cache/cache.go:312,
+         observability/timing.go:136, application/service.go:66
+
+   The live chain composed in composition/root.go:449→453→479 is
+   oracle.Reader → cache.NewReader → observability.NewTimingReader → routing.NewReader.
+   Each seat forwards the port it knows by a RUNTIME assertion, and routing's failure
+   branch is not a compile error but an error value:
+
+     routing/reader.go:151  pager, ok := rd.(internalreadports.CatalogPageReader)
+     routing/reader.go:153  ReadErrorSourceUnavailable, "active source's reader does not
+                            support catalog paging"
+
+   ReadErrorSourceUnavailable is a 503 on the screen. So a decorator that does not
+   implement the new port does not fail to build — it deletes the capability and reports
+   the source as unavailable. That is the exact mechanism of the catalog-503 defect built
+   once already in CHIP-M02, whose recorded lesson was compile-time asserts for EVERY
+   optional port.
+
+   S6 is not at fault for the four missing seats: the decorators are outside its write-set,
+   and an assert on a type that does not yet implement the interface is a build failure,
+   i.e. it would drag S9's work into S6. What S6 owed, and did not leave, was the condition
+   written where the next writer will stand.
+
+   Disposition — glue at my seat, F-3 technique, in a file already in the write-set: the
+   condition is now a comment on the interface declaration. It names the four seats by
+   name, names the 503 mechanism, requires an arrival test that reads the count THROUGH the
+   composed reader from composition/root.go rather than off the Oracle reader, and forbids
+   the shape that would hide the problem — a runtime `.(CatalogAssortmentReader)` with a
+   fallback at the HTTP seam, which converts a missing seat into a quiet wrong answer
+   instead of a build error.
+
+   This is the same failure family as the two hops S5B fixed and the third site A-16 ruled
+   on: a value that leaves its source and is never asserted to ARRIVE. Here the value is a
+   capability rather than a column, and the missing arrival test is S9's to write.
+
+5. GLUE APPLIED AT THIS SEAT
+   One comment block, ports/catalog_page.go:117 — §4's validity condition. No behaviour
+   change; lanes re-run after it, numbers in §2 are post-glue.
+
+6. VERDICT
+   S6-ORACLE-CATALOG ACCEPTED at 8303f7c6 + the §5 glue.
+   One criterion transferred to S9, written at the site rather than only in this file.

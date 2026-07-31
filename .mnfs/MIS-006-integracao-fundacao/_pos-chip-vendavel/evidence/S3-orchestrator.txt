@@ -1,0 +1,57 @@
+S3-XLSX — orchestrator-measured evidence (P4)
+Written by the orchestrator. The worker's report contained one false claim; the slice itself
+is accepted on measurement, not on the report.
+
+=== 1. MUTATION TESTING: do the assertions discriminate VALUES? ===
+The slice is entirely about honest-unknown (ADR-17), so a test that merely checks "not an error"
+or "field is present" would be worthless. Three mutations were injected and each was killed.
+
+M1 — parser returns "" instead of nil for an ABSENT column:
+    Usoprod: (if optionalCell()==nil { e:=""; return &e })
+  -> FAIL TestParserSellableColumnsAreOptionalAndHonestUnknown
+     parser_test.go:81: legacy row 0 sellable fields = usoprod=(*string)(0x...) ad_ecommerce=(*string)(nil), want nil
+  Kills the nil-vs-pointer-to-empty confusion at the PARSER.
+
+M2 — nullableStringValue persists "" instead of SQL NULL:
+    if value == nil { empty := ""; return &empty }
+  -> FAIL TestMergeSnapshotKeepsAbsentStockNullAndKnownZeroZero
+     mirror_repository_integration_test.go:37: legacy sellable fields = usoprod=(*string)(0x...) ad_ecommerce=(*string)(0x...), want NULL/NULL
+  Kills it at the PERSISTENCE boundary too — the round-trip proves SQL NULL, not a Go-side nil
+  that a nil-preserving scan would have produced either way. This is the one the later
+  only_em_estoque predicate depends on.
+
+M3 — the new columns become REQUIRED (regression that would break every existing customer file):
+    Parse required list += "USOPROD"
+  -> FAIL x4 in pre-existing tests, e.g.
+     parser_test.go:124: Parse() error = MISSING_REQUIRED_COLUMN: required column is missing (USOPROD)
+     parser_test.go:259: FileError.Code = "MISSING_REQUIRED_COLUMN", want "INVALID_FILE"
+  The "legacy workbooks keep importing" claim is GUARDED by tests that already existed, not
+  merely true by inspection of the two required lists.
+
+All three mutations reverted; `git status --porcelain` clean, matching 8f825a7c exactly.
+Post-revert: go test ./internal/modules/erp_import/... -count=1 -> 7 ok, 1 no-test-package, 0 FAIL.
+
+=== 2. REFUTED: the worker's "reproduced in isolation" ===
+The worker reported TestGetImportChainCountsCurrentQueueAcrossInstallations failing and
+classified it "unrelated timing ... reproduced in isolation". The second half is FALSE:
+  - in isolation (-run '^Test...$')            -> PASS
+  - full package (28 tests)                    -> 28 RUN / 28 PASS / 0 SKIP / 0 FAIL
+  - full erp_import tree, run 1                -> FAIL
+  - full erp_import tree, run 2 (same tip)     -> PASS
+Non-deterministic, and only under tree-level load.
+
+=== 3. ROOT CAUSE of that flake — pre-existing, NOT caused by S3 ===
+query_repository.go: `statement_timestamp() AS queue_read_at`  <- POSTGRES-side clock (container)
+chain_query_repository_integration_test.go:74-85:
+    before := time.Now()            <- Go HOST clock
+    got, err := repo.GetImportChain(...)
+    after := time.Now()             <- Go HOST clock
+    if got.QueueReadAt.Before(before) || got.QueueReadAt.After(after) { FAIL }
+The test asserts a CONTAINER clock reading falls inside a HOST clock window (~10ms here). Any
+skew beyond the window fails; package load widens the odds, which is why it only trips in the
+tree run. Observed failure: queue_read_at=...281566 vs upper bound ...2814888 — ~77us late.
+Note the precision tell: 6 decimals (Postgres microsecond) vs 7 (Windows 100ns host).
+
+Attribution: chain_query_repository_integration_test.go is NOT in 8f825a7c. S3 neither wrote nor
+modified this test. The defect is latent and pre-existing; S3 only added package load that makes
+it surface. Out of the S3 write-set -> reported to the hub, NOT fixed here.

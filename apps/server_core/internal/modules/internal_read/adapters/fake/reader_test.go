@@ -35,12 +35,14 @@ func TestFakeReaderSellableStockExcludesShowroomByDefault(t *testing.T) {
 	if got.Quantity == nil || *got.Quantity != 3 {
 		t.Fatalf("expected revenda stock only, got %v", got.Quantity)
 	}
-	for _, location := range got.Policy.ExcludedLocationIDs {
+	for _, location := range got.Policy.LocationIDs {
 		if location == 10108 {
-			return
+			t.Fatal("showroom location 10108 entered the selling whitelist")
 		}
 	}
-	t.Fatal("expected showroom location 10108 to stay excluded")
+	if !slices.Equal(got.Policy.LocationIDs, []int{10101, 10102}) {
+		t.Fatalf("selling location whitelist = %v, want [10101 10102]", got.Policy.LocationIDs)
+	}
 }
 
 func TestFakeReaderMissingProductReturnsUnresolvedCandidate(t *testing.T) {

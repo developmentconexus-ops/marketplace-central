@@ -20,20 +20,106 @@ func TestSankhyaAdapterKindIsLiveReadThrough(t *testing.T) {
 	}
 }
 
+func TestSankhyaStockSQLPinsSellableCompaniesAndLocations(t *testing.T) {
+	if !strings.Contains(sankhyaStockSQL, "CODEMP IN (1, 2)") {
+		t.Error("sankhyaStockSQL missing sellable company predicate CODEMP IN (1, 2)")
+	}
+	if !strings.Contains(sankhyaStockSQL, "CODLOCAL IN (10101, 10102)") {
+		t.Error("sankhyaStockSQL missing sellable location predicate CODLOCAL IN (10101, 10102)")
+	}
+}
+
+func TestSankhyaSyncMapsSellableAssortmentFields(t *testing.T) {
+	q := &dispatchQueryer{results: map[string]fakeResult{
+		"TGFPRO": {cols: 10, rows: [][]driver.Value{
+			{int64(100), "Produto R", nil, nil, nil, nil, nil, nil, "R", "S"},
+			{int64(200), "Produto blank", nil, nil, nil, nil, nil, nil, "   ", nil},
+		}},
+		"TGFCUS": {cols: 2},
+		"TGFEXC": {cols: 2},
+		"TGFEST": {cols: 3},
+	}}
+	mw := &fakeMirror{}
+
+	if _, err := NewSankhyaAdapter(q, mw, "tenant_x").Sync(context.Background()); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	rows := indexRows(mw.rows)
+	if got := strv(rows["100"].Usoprod); got != "R" {
+		t.Errorf("100.Usoprod = %q, want %q", got, "R")
+	}
+	if got := strv(rows["100"].ADEcommerce); got != "S" {
+		t.Errorf("100.ADEcommerce = %q, want %q", got, "S")
+	}
+	if rows["200"].Usoprod != nil {
+		t.Errorf("200.Usoprod = %q, want nil for Oracle whitespace", strv(rows["200"].Usoprod))
+	}
+	if rows["200"].ADEcommerce != nil {
+		t.Errorf("200.ADEcommerce = %q, want nil", strv(rows["200"].ADEcommerce))
+	}
+}
+
+func TestSankhyaSyncStoresKnownZeroForProductsOutsideTheSellableCut(t *testing.T) {
+	q := &dispatchQueryer{results: map[string]fakeResult{
+		"TGFPRO": {cols: 10, rows: [][]driver.Value{
+			{int64(100), "Showroom only", nil, nil, nil, nil, nil, nil, "R", "S"},
+			{int64(200), "Sellable", nil, nil, nil, nil, nil, nil, "R", "S"},
+		}},
+		"TGFCUS": {cols: 2},
+		"TGFEXC": {cols: 2},
+		"TGFEST": {cols: 3, rows: [][]driver.Value{
+			{int64(200), int64(10101), 7.0},
+		}},
+	}}
+	mw := &fakeMirror{
+		stored: map[string]mirror.Row{
+			"300": {CodigoProduto: "300", EstoqueTotal: ptrFloat(9)},
+		},
+		absent: map[string]bool{},
+	}
+	if _, err := NewSankhyaAdapter(q, mw, "tenant_x").Sync(context.Background()); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+
+	rows := indexRows(mw.rows)
+	// Fatal, not Error: the checks below dereference EstoqueTotal, and a nil here is
+	// exactly the A-9 regression. Continuing would replace the diagnostic with a panic.
+	if rows["100"].EstoqueTotal == nil || *rows["100"].EstoqueTotal != 0 {
+		t.Fatalf("100.EstoqueTotal = %v, want known zero 0", rows["100"].EstoqueTotal)
+	}
+	if *rows["100"].EstoqueTotal > 0 {
+		t.Errorf("100 unexpectedly entered sellable set with estoque_total=%v", *rows["100"].EstoqueTotal)
+	}
+	if rows["200"].EstoqueTotal == nil || *rows["200"].EstoqueTotal != 7 {
+		t.Fatalf("200.EstoqueTotal = %v, want 7", rows["200"].EstoqueTotal)
+	}
+	if *rows["200"].EstoqueTotal <= 0 {
+		t.Errorf("200 unexpectedly absent from sellable set with estoque_total=%v", *rows["200"].EstoqueTotal)
+	}
+	// Product 300 is absent from Q1, so the keep-absent merge preserves its prior
+	// facts and only flags it absent.
+	prior := mw.stored["300"]
+	if !mw.absent["300"] || prior.EstoqueTotal == nil || *prior.EstoqueTotal != 9 {
+		t.Errorf("300 absent state/value = %v/%v, want true/9 preserved", mw.absent["300"], prior.EstoqueTotal)
+	}
+}
+
+func ptrFloat(v float64) *float64 { return &v }
+
 // TestSankhyaSyncMapsSnapshotHonestNull drives Sync over canned Oracle results and
 // asserts the ratified Sankhya→E2.1 mapping: EAN from REFERENCIA only when
 // EAN-shaped, referencia from REFFORN, custo/preco/estoque as-of merged by CODPROD,
-// per-CODLOCAL stock summed into estoque_total, and honest-NULL (never 0) for every
-// fact a product lacks — distinct from a real 0 balance.
+// per-CODLOCAL stock summed into estoque_total, honest-NULL for unknown descriptive
+// facts, and known-zero stock for a Q1 product absent from pinned Q4.
 func TestSankhyaSyncMapsSnapshotHonestNull(t *testing.T) {
 	q := &dispatchQueryer{results: map[string]fakeResult{
-		"TGFPRO": {cols: 8, rows: [][]driver.Value{
-			// CODPROD, DESCRPROD, NCM, REFERENCIA(EAN), REFFORN, CODGRUPOPROD, DESCRGRUPOPROD, DESCRICAO(marca)
+		"TGFPRO": {cols: 10, rows: [][]driver.Value{
+			// CODPROD, DESCRPROD, NCM, REFERENCIA(EAN), REFFORN, CODGRUPOPROD, DESCRGRUPOPROD, DESCRICAO(marca), USOPROD, AD_ECOMMERCE
 			// 100's EAN is space-padded (Oracle CHAR) — must still resolve after trimming.
-			{int64(100), "Torneira", "84818090", "  7894900011517 ", "DOCOL-99", int64(5), "Metais", "Docol"},
-			{int64(200), "Parafuso", nil, "ABC123", nil, nil, nil, nil},
+			{int64(100), "Torneira", "84818090", "  7894900011517 ", "DOCOL-99", int64(5), "Metais", "Docol", "R", "S"},
+			{int64(200), "Parafuso", nil, "ABC123", nil, nil, nil, nil, nil, nil},
 			// 300's description is whitespace-only → honest-NULL, not "".
-			{int64(300), "   ", nil, nil, nil, nil, nil, nil},
+			{int64(300), "   ", nil, nil, nil, nil, nil, nil, nil, nil},
 		}},
 		"TGFCUS": {cols: 2, rows: [][]driver.Value{
 			{int64(100), 12.50},
@@ -130,10 +216,10 @@ func TestSankhyaSyncMapsSnapshotHonestNull(t *testing.T) {
 		t.Errorf("200.EstoqueTotal = %v, want 0 (real zero balance, NOT NULL)", p.EstoqueTotal)
 	}
 
-	// Product 300 — orphan: present in base, absent everywhere else → honest NULL.
+	// Product 300 — present in the ERP snapshot but absent from pinned Q4 → known zero stock.
 	p = rows["300"]
-	if p.Custo != nil || p.PrecoVenda != nil || p.EstoqueTotal != nil {
-		t.Errorf("300 should be honest-NULL, got custo=%v preco=%v estoque=%v", p.Custo, p.PrecoVenda, p.EstoqueTotal)
+	if p.Custo != nil || p.PrecoVenda != nil || p.EstoqueTotal == nil || *p.EstoqueTotal != 0 {
+		t.Errorf("300 should have NULL custo/preco and known-zero estoque, got custo=%v preco=%v estoque=%v", p.Custo, p.PrecoVenda, p.EstoqueTotal)
 	}
 	if p.Descricao != nil {
 		t.Errorf("300.Descricao = %q, want NULL (whitespace-only Oracle text is honest-unknown, not \"\")", strv(p.Descricao))
@@ -156,12 +242,23 @@ type fakeMirror struct {
 	tenantID string
 	rows     []mirror.Row
 	locs     []mirror.StockLocation
+	stored   map[string]mirror.Row
+	absent   map[string]bool
 }
 
 func (m *fakeMirror) ApplySnapshot(_ context.Context, tenantID string, rows []mirror.Row, locs []mirror.StockLocation) (int, error) {
 	m.tenantID = tenantID
 	m.rows = rows
 	m.locs = locs
+	if m.stored != nil {
+		for code := range m.stored {
+			m.absent[code] = true
+		}
+		for _, row := range rows {
+			m.stored[row.CodigoProduto] = row
+			m.absent[row.CodigoProduto] = false
+		}
+	}
 	return len(rows), nil
 }
 

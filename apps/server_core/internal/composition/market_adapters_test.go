@@ -53,6 +53,22 @@ func (stubInternalReader) GetTaxInputs(context.Context, internalreadports.TaxInp
 	panic("unused")
 }
 
+func (stubInternalReader) ListCatalogProductFacts(context.Context, internalreadports.Cursor, int, *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
+	panic("unused")
+}
+
+func (stubInternalReader) SearchCatalogProductFacts(context.Context, string, internalreadports.Cursor, int, *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
+	panic("unused")
+}
+
+func (stubInternalReader) CatalogProductFactsByIDs(context.Context, []int64) (internalreadports.CatalogFactPage, error) {
+	panic("unused")
+}
+
+func (stubInternalReader) GetCatalogAssortmentCounts(context.Context, *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogAssortmentCounts, error) {
+	panic("unused")
+}
+
 // TestGetLocalIdentityMapsReaderNotFoundToSentinel guards FINDING-M02-COLLECT-4XX
 // item 4 (D-86): a codprod absent from the ERP source makes the internal_read
 // reader return *erp_import.ERPProductNotFoundError. GetLocalIdentity MUST

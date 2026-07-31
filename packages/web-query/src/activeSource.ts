@@ -1,5 +1,13 @@
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
-import type { ActiveSourceConfig, ActiveSourceName, SetActiveSourceRequest } from "@marketplace-central/sdk-runtime";
+import type {
+  ActiveSourceConfig,
+  ActiveSourceName,
+  CatalogAssortmentCounts,
+  SellableAssortmentConfig,
+  SetActiveSourceRequest,
+  SetSellableAssortmentRequest,
+} from "@marketplace-central/sdk-runtime";
+import { catalogQueryKeys, queryKeyNamespaces } from "./index";
 
 // The active source is per-tenant state in the database, not a browser
 // preference. Every mirror-backed read resolves it server-side (routing.Reader
@@ -44,6 +52,65 @@ export function useSetActiveSourceMutation(client: ActiveSourceClient) {
     onSuccess: async (config) => {
       queryClient.setQueryData(activeSourceQueryKeys.config(), config);
       await queryClient.invalidateQueries();
+    },
+  });
+}
+
+export interface SellableAssortmentClient {
+  getSellableAssortment: () => Promise<SellableAssortmentConfig>;
+  setSellableAssortment: (req: SetSellableAssortmentRequest) => Promise<SellableAssortmentConfig>;
+  getCatalogAssortmentCounts: () => Promise<CatalogAssortmentCounts>;
+}
+
+export const sellableAssortmentQueryKeys = {
+  config: () => ["config", "sellable-assortment"] as const,
+};
+
+/**
+ * useSellableAssortmentQuery reads the tenant's stored assortment rule. There
+ * is no browser default: an absent or failed read must not make an unchecked
+ * box look like the server's persisted choice.
+ */
+export function useSellableAssortmentQuery(
+  client: SellableAssortmentClient,
+): UseQueryResult<SellableAssortmentConfig> {
+  return useQuery({
+    queryKey: sellableAssortmentQueryKeys.config(),
+    queryFn: () => client.getSellableAssortment(),
+    staleTime: 60_000,
+  });
+}
+
+/**
+ * The counts endpoint resolves the active source from request context rather
+ * than accepting it as a parameter. Keeping that source in the key prevents
+ * a source flip from reusing the previous source's count under a new label.
+ */
+export function useCatalogAssortmentCountsQuery(
+  client: SellableAssortmentClient,
+  erpSource: ActiveSourceName | undefined,
+): UseQueryResult<CatalogAssortmentCounts> {
+  return useQuery({
+    queryKey: catalogQueryKeys.counts(erpSource),
+    queryFn: () => client.getCatalogAssortmentCounts(),
+    staleTime: 300_000,
+    enabled: Boolean(erpSource),
+  });
+}
+
+/**
+ * useSetSellableAssortmentMutation sends the complete stored rule because the
+ * server rejects partial bodies. The response is authoritative; only the
+ * catalog namespace is invalidated because this rule does not affect other
+ * tenant screens.
+ */
+export function useSetSellableAssortmentMutation(client: SellableAssortmentClient) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (config: SetSellableAssortmentRequest) => client.setSellableAssortment(config),
+    onSuccess: async (config) => {
+      queryClient.setQueryData(sellableAssortmentQueryKeys.config(), config);
+      await queryClient.invalidateQueries({ queryKey: queryKeyNamespaces.catalog });
     },
   });
 }

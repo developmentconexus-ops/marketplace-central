@@ -1,0 +1,17 @@
+FAIL	marketplace-central/apps/server_core/internal/modules/tenant_config [build failed]
+testing: warning: no tests to run
+PASS
+ok  	marketplace-central/apps/server_core/internal/modules/tenant_config/transport	2.445s [no tests to run]
+FAIL
+# marketplace-central/apps/server_core/internal/modules/tenant_config_test [build failed]
+internal\modules\tenant_config\repository_test.go:79:9: got.SellableAssortment undefined (type tenant_config.Config has no field or method SellableAssortment)
+internal\modules\tenant_config\repository_test.go:80:60: got.SellableAssortment undefined (type tenant_config.Config has no field or method SellableAssortment)
+internal\modules\tenant_config\repository_test.go:82:9: got.SellableAssortment undefined (type tenant_config.Config has no field or method SellableAssortment)
+internal\modules\tenant_config\repository_test.go:83:62: got.SellableAssortment undefined (type tenant_config.Config has no field or method SellableAssortment)
+internal\modules\tenant_config\repository_test.go:85:9: got.SellableAssortment undefined (type tenant_config.Config has no field or method SellableAssortment)
+internal\modules\tenant_config\repository_test.go:86:63: got.SellableAssortment undefined (type tenant_config.Config has no field or method SellableAssortment)
+internal\modules\tenant_config\repository_test.go:89:29: undefined: tenant_config.SellableAssortment
+internal\modules\tenant_config\repository_test.go:94:17: repo.SetSellableAssortment undefined (type *tenant_config.Repository has no field or method SetSellableAssortment)
+internal\modules\tenant_config\repository_test.go:102:9: got.SellableAssortment undefined (type tenant_config.Config has no field or method SellableAssortment)
+internal\modules\tenant_config\repository_test.go:103:58: got.SellableAssortment undefined (type tenant_config.Config has no field or method SellableAssortment)
+internal\modules\tenant_config\repository_test.go:103:58: too many errors

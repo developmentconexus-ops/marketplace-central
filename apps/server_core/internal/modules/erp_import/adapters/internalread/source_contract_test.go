@@ -152,21 +152,21 @@ func TestXLSXReaderSubstitutabilityContract(t *testing.T) {
 		}
 	})
 
-	xlsxPage, err := xlsxReader.ListCatalogProductFacts(ctx, readports.Cursor{InternalProductID: 1000}, 1)
+	xlsxPage, err := xlsxReader.ListCatalogProductFacts(ctx, readports.Cursor{InternalProductID: 1000}, 1, noCutPolicy())
 	if err != nil {
 		t.Fatal(err)
 	}
-	oraclePage, err := oracleReader.ListCatalogProductFacts(ctx, readports.Cursor{InternalProductID: 1000}, 1)
+	oraclePage, err := oracleReader.ListCatalogProductFacts(ctx, readports.Cursor{InternalProductID: 1000}, 1, noCutPolicy())
 	if err != nil {
 		t.Fatal(err)
 	}
 	assertCatalogPageShapeParity(t, xlsxPage, oraclePage)
 
-	xlsxSearch, err := xlsxReader.SearchCatalogProductFacts(ctx, "Example Product 1001", readports.Cursor{}, 1)
+	xlsxSearch, err := xlsxReader.SearchCatalogProductFacts(ctx, "Example Product 1001", readports.Cursor{}, 1, noCutPolicy())
 	if err != nil {
 		t.Fatal(err)
 	}
-	oracleSearch, err := oracleReader.SearchCatalogProductFacts(ctx, "Example Product 1001", readports.Cursor{}, 1)
+	oracleSearch, err := oracleReader.SearchCatalogProductFacts(ctx, "Example Product 1001", readports.Cursor{}, 1, noCutPolicy())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -291,7 +291,7 @@ func (r *contractRepo) MirrorProductByCode(_ context.Context, _ string, _ erpdom
 	}
 	return erpdomain.MirrorProduct{}, false, nil
 }
-func (r *contractRepo) MirrorCatalogPage(_ context.Context, _ string, _ erpdomain.ImportSource, query string, after int64, limit int) ([]erpdomain.MirrorProduct, error) {
+func (r *contractRepo) MirrorCatalogPage(_ context.Context, _ string, _ erpdomain.ImportSource, query string, after int64, limit int, _ erpports.MirrorAssortmentPolicy) ([]erpdomain.MirrorProduct, error) {
 	rows := make([]erpdomain.MirrorProduct, 0)
 	for _, row := range mirrorProductsFromSnapshot(r.snapshot) {
 		id, err := strconv.ParseInt(row.CodigoProduto, 10, 64)
@@ -310,7 +310,11 @@ func (r *contractRepo) MirrorCatalogPage(_ context.Context, _ string, _ erpdomai
 	}
 	return rows, nil
 }
-func (r *contractRepo) MirrorEANCollisionCounts(context.Context, string, erpdomain.ImportSource) (map[string]int, error) {
+func (r *contractRepo) MirrorCatalogAssortmentCounts(context.Context, string, erpdomain.ImportSource, erpports.MirrorAssortmentPolicy) (int, int, error) {
+	rows := mirrorProductsFromSnapshot(r.snapshot)
+	return len(rows), len(rows), nil
+}
+func (r *contractRepo) MirrorEANCollisionCounts(context.Context, string, erpdomain.ImportSource, erpports.MirrorAssortmentPolicy) (map[string]int, error) {
 	return validEANCounts(mirrorProductsFromSnapshot(r.snapshot)), nil
 }
 
@@ -417,12 +421,16 @@ func (r *oracleShapedReader) GetTaxInputs(_ context.Context, input readports.Tax
 	result.SourceIdentity = input.Policy.Source
 	return result, nil
 }
-func (r *oracleShapedReader) ListCatalogProductFacts(_ context.Context, cursor readports.Cursor, limit int) (readports.CatalogFactPage, error) {
+func (r *oracleShapedReader) ListCatalogProductFacts(_ context.Context, cursor readports.Cursor, limit int, policy *readports.SellableAssortmentPolicy) (readports.CatalogFactPage, error) {
+	resolved, err := readports.RequireAssortmentPolicy(policy)
+	if err != nil {
+		return readports.CatalogFactPage{}, err
+	}
 	if cursor.InternalProductID >= 1001 || limit <= 0 {
 		return readports.CatalogFactPage{Items: []readports.CatalogProductFact{}}, nil
 	}
-	page := readports.CatalogFactPage{Items: []readports.CatalogProductFact{r.facts[1001]}, AsOf: contractClock}
-	if limit == 1 {
+	page := readports.CatalogFactPage{Items: r.cut(resolved, 1001), AsOf: contractClock}
+	if limit == 1 && len(page.Items) == 1 {
 		page.NextCursor = &readports.Cursor{InternalProductID: 1001}
 	}
 	return page, nil
@@ -436,11 +444,52 @@ func (r *oracleShapedReader) CatalogProductFactsByIDs(_ context.Context, ids []i
 	}
 	return readports.CatalogFactPage{Items: items, AsOf: contractClock}, nil
 }
-func (r *oracleShapedReader) SearchCatalogProductFacts(_ context.Context, query string, _ readports.Cursor, _ int) (readports.CatalogFactPage, error) {
+func (r *oracleShapedReader) SearchCatalogProductFacts(_ context.Context, query string, _ readports.Cursor, _ int, policy *readports.SellableAssortmentPolicy) (readports.CatalogFactPage, error) {
+	resolved, err := readports.RequireAssortmentPolicy(policy)
+	if err != nil {
+		return readports.CatalogFactPage{}, err
+	}
 	if !strings.Contains(strings.ToLower("Example Product 1001"), strings.ToLower(query)) {
 		return readports.CatalogFactPage{Items: []readports.CatalogProductFact{}, AsOf: contractClock}, nil
 	}
-	return readports.CatalogFactPage{Items: []readports.CatalogProductFact{r.facts[1001]}, AsOf: contractClock}, nil
+	return readports.CatalogFactPage{Items: r.cut(resolved, 1001), AsOf: contractClock}, nil
+}
+
+func (r *oracleShapedReader) GetCatalogAssortmentCounts(_ context.Context, policy *readports.SellableAssortmentPolicy) (readports.CatalogAssortmentCounts, error) {
+	resolved, err := readports.RequireAssortmentPolicy(policy)
+	if err != nil {
+		return readports.CatalogAssortmentCounts{}, err
+	}
+	return readports.CatalogAssortmentCounts{
+		SellableCount: len(r.cut(resolved, 1001, 1002)),
+		TotalCount:    len(r.facts),
+	}, nil
+}
+
+// cut applies the assortment policy the way a source does. Only OnlyEmEstoque is
+// decidable from a CatalogProductFact — the other two toggles live in columns the
+// projection drops — so this models the one cut the fixture can honestly make
+// rather than pretending to honour all three.
+func (r *oracleShapedReader) cut(policy readports.SellableAssortmentPolicy, ids ...int64) []readports.CatalogProductFact {
+	items := make([]readports.CatalogProductFact, 0, len(ids))
+	for _, id := range ids {
+		fact, ok := r.facts[id]
+		if !ok {
+			continue
+		}
+		if policy.OnlyEmEstoque && (fact.SellableStock.Quantity == nil || *fact.SellableStock.Quantity <= 0) {
+			continue
+		}
+		items = append(items, fact)
+	}
+	return items
+}
+
+// noCutPolicy names the whole catalog. The source contract test compares xlsx
+// against Oracle shape for shape, so both sides read the same uncut catalog.
+func noCutPolicy() *readports.SellableAssortmentPolicy {
+	policy := readports.AllProductsAssortment()
+	return &policy
 }
 
 var _ readports.Reader = (*oracleShapedReader)(nil)

@@ -18,11 +18,11 @@ func TestDefaultSellableStockPolicyPreservesMissionDefaults(t *testing.T) {
 	if !reflect.DeepEqual(policy.CompanyIDs, []int{1, 2}) {
 		t.Fatalf("expected default companies [1 2], got %v", policy.CompanyIDs)
 	}
-	if !reflect.DeepEqual(policy.LocationIDs, []int{10101}) {
-		t.Fatalf("expected default locations [10101], got %v", policy.LocationIDs)
+	if !reflect.DeepEqual(policy.LocationIDs, []int{10101, 10102}) {
+		t.Fatalf("expected default locations [10101 10102], got %v", policy.LocationIDs)
 	}
-	if !reflect.DeepEqual(policy.ExcludedLocationIDs, []int{10108}) {
-		t.Fatalf("expected excluded showroom location [10108], got %v", policy.ExcludedLocationIDs)
+	if !reflect.DeepEqual(policy.ExcludedLocationIDs, []int(nil)) {
+		t.Fatalf("expected no exclusions outside the whitelist, got %v", policy.ExcludedLocationIDs)
 	}
 }
 

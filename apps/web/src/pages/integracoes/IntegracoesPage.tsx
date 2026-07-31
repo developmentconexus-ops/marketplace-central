@@ -1,6 +1,17 @@
-import type { ActiveSourceName, ErpImportSourceInput } from "@marketplace-central/sdk-runtime";
+import type {
+  ActiveSourceName,
+  ErpImportSourceInput,
+  SellableAssortmentConfig,
+  SetSellableAssortmentRequest,
+} from "@marketplace-central/sdk-runtime";
 import { EmptyState, ErrorState, LoadingState } from "@marketplace-central/ui";
-import { useActiveSourceQuery, useSetActiveSourceMutation } from "@marketplace-central/web-query";
+import {
+  useActiveSourceQuery,
+  useCatalogAssortmentCountsQuery,
+  useSellableAssortmentQuery,
+  useSetActiveSourceMutation,
+  useSetSellableAssortmentMutation,
+} from "@marketplace-central/web-query";
 import { useId, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { useClient } from "../../app/ClientContext";
 import { ImportacaoSection } from "../importacoes/ImportacaoSection";
@@ -281,6 +292,8 @@ const ACTIVE_SOURCE_OPTIONS: { value: ActiveSourceName; label: string; hint: str
   { value: "catalogo_cliente", label: "Catálogo do cliente", hint: "Catálogo importado do cliente — custo e estoque aparecem como “—”." },
 ];
 
+const SOURCE_UNSET_COPY = "Nenhuma fonte definida ainda — escolha a fonte que o app vai ler.";
+
 // A workspace that never chose a source has no row at all, and the server fails
 // closed on the read (400 unknown_erp_source). That is not a broken platform,
 // it is the first state of every install — and this card is the only place the
@@ -348,7 +361,7 @@ function ActiveSourceCard() {
       ) : null}
       {sourceUnset ? (
         <p className="mt-2 text-xs text-faint" data-testid="active-source-unset">
-          Nenhuma fonte definida ainda — escolha a fonte que o app vai ler.
+          {SOURCE_UNSET_COPY}
         </p>
       ) : null}
       {readFailed ? (
@@ -359,6 +372,114 @@ function ActiveSourceCard() {
       {setActiveSource.isError ? (
         <p className="mt-2 text-xs text-warn" role="alert" data-testid="active-source-error">
           Não foi possível trocar a fonte ativa. A seleção continua a anterior.
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+const SELLABLE_ASSORTMENT_OPTIONS: {
+  key: keyof SellableAssortmentConfig;
+  label: string;
+  hint: string;
+}[] = [
+  {
+    key: "only_revenda",
+    label: "Somente produtos de revenda",
+    hint: "Mantém no sortimento apenas o que o ERP classifica como revenda.",
+  },
+  {
+    key: "only_em_estoque",
+    label: "Somente com estoque disponível",
+    hint: "Considera o saldo disponível no CD e na loja física. Com a regra desligada, produtos sem saldo continuam no sortimento com o aviso Sem estoque.",
+  },
+  {
+    key: "only_ecommerce_eligible",
+    label: "Somente elegíveis ao e-commerce",
+    hint: "Remove os produtos que o ERP marcou como fora do e-commerce. Produtos ainda sem definição continuam no sortimento.",
+  },
+];
+
+function SellableAssortmentCard() {
+  const client = useClient();
+  const activeSourceQuery = useActiveSourceQuery(client);
+  const assortmentQuery = useSellableAssortmentQuery(client);
+  const countsQuery = useCatalogAssortmentCountsQuery(client, activeSourceQuery.data?.active_source);
+  const setAssortment = useSetSellableAssortmentMutation(client);
+  const assortment = assortmentQuery.data;
+  const sourceUnset =
+    isSourceUnsetError(activeSourceQuery.error) ||
+    isSourceUnsetError(assortmentQuery.error) ||
+    isSourceUnsetError(countsQuery.error);
+  const fieldId = useId();
+
+  function setOption(key: keyof SetSellableAssortmentRequest) {
+    if (!assortment) return;
+    const next = {
+      ...assortment,
+      [key]: !assortment[key],
+    } as SetSellableAssortmentRequest;
+    setAssortment.mutate(next);
+  }
+
+  return (
+    <section aria-labelledby={`${fieldId}-assortment-title`} className="rounded-card border border-border bg-surface p-4">
+      <h2 id={`${fieldId}-assortment-title`} className="text-sm font-semibold text-ink">
+        Sortimento vendável
+      </h2>
+      <p className="mt-1 text-xs text-faint">
+        Define quais produtos entram no sortimento que o app considera vendável.
+      </p>
+      <fieldset className="mt-3" disabled={assortmentQuery.isFetching || setAssortment.isPending || !assortment}>
+        <legend className="sr-only">Regras do sortimento vendável</legend>
+        <div className="flex flex-col gap-2" data-testid="sellable-assortment-selector">
+          {SELLABLE_ASSORTMENT_OPTIONS.map((option) => (
+            <label
+              key={option.key}
+              className={`flex cursor-pointer flex-col gap-0.5 rounded-control border p-2.5 text-xs ${
+                assortment?.[option.key] ? "border-accent bg-accent-soft" : "border-border bg-surface-2"
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                {assortment ? (
+                  <input
+                    type="checkbox"
+                    name={`${fieldId}-${option.key}`}
+                    checked={assortment[option.key]}
+                    onChange={() => setOption(option.key)}
+                    data-testid={`sellable-assortment-${option.key.replaceAll("_", "-")}`}
+                  />
+                ) : null}
+                <span className="font-medium text-ink">{option.label}</span>
+              </span>
+              <span className="pl-6 text-faint">{option.hint}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      {sourceUnset ? (
+        <p className="mt-2 text-xs text-faint" data-testid="sellable-assortment-source-unset">
+          {SOURCE_UNSET_COPY}
+        </p>
+      ) : null}
+      {assortmentQuery.isError && !sourceUnset ? (
+        <p className="mt-2 text-xs text-warn" role="alert">
+          Não foi possível ler a regra de sortimento configurada.
+        </p>
+      ) : null}
+      {setAssortment.isError ? (
+        <p className="mt-2 text-xs text-warn" role="alert">
+          Não foi possível salvar a regra de sortimento. A configuração continua a anterior.
+        </p>
+      ) : null}
+      {countsQuery.data && !sourceUnset ? (
+        <p className="mt-2 text-xs text-faint">
+          Resultado: {countsQuery.data.sellable_count} de {countsQuery.data.total_count} produtos
+        </p>
+      ) : null}
+      {countsQuery.isError && !sourceUnset ? (
+        <p className="mt-2 text-xs text-warn" role="alert">
+          Não foi possível calcular quantos produtos entram no sortimento.
         </p>
       ) : null}
     </section>
@@ -444,6 +565,7 @@ export function IntegracoesPage() {
         <p className="mt-1 text-sm text-muted">Importe o catálogo de produtos e conecte marketplaces.</p>
       </header>
       <ActiveSourceCard />
+      <SellableAssortmentCard />
       <UploadCard />
       <ProviderConnectCard />
       <ImportacaoSection />

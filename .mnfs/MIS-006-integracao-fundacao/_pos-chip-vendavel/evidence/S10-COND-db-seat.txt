@@ -1,0 +1,173 @@
+S10-COND — DB SEAT (A-25 R-1 grant discharged)
+Orchestrator seat. Worktree: .claude/worktrees/chip-vendavel, branch worktree-chip-vendavel.
+Everything below was measured at this seat, not read off a worker report.
+
+Standing prohibition honoured: MPC_TEST_DATABASE_URL is never printed. Only a
+boolean and a length appear; the container password appears only as its length.
+
+
+== A-25 STEP 1 — session container ==
+
+  scripts/harness.ps1 pg-session-up
+  container=mpc-pg-session-3eee515d  port=55840  run_id=ac9b8d8c07714a17b9d4f7f7cb579ab6
+
+Port 55864 (the port the pre-existing scratchpad env line carried) was a DEAD
+session. Not re-pointed — re-created, per the hub's ruling. 5435 (dev stack, live
+data, hub seam) was never touched.
+
+
+== A-25 STEP 2 — the A-15 line rebuilt from live state ==
+
+  container=mpc-pg-session-3eee515d port=55840 db=mpc_test_ac9b8d8c07714a17b9d4f7f7cb579ab6 pw_len=48
+  DBURL_SET=True LEN=144
+
+The database name is not free-form. internal/testsupport/postgres/target.go:19
+pins it:
+
+    var generatedDatabase = regexp.MustCompile(`^mpc_test_[0-9a-f]{32}$`)
+
+and LoadConfig (:35) returns HPG_TARGET_INVALID for anything else. The name used
+here is the session run id, which satisfies the pattern.
+
+The pre-existing scratchpad env line carried mpc_test_deadbeefdeadbeefdeadbeefdeadbeef
+— 36 hex characters, so it fails that regex as well as not existing. That line
+produced, earlier in this chip:
+
+    FATAL: database "mpc_test_deadbeefdeadbeefdeadbeefdeadbeef" does not exist (SQLSTATE 3D000)
+
+CREATE DATABASE was issued with retry (A-25 warning: pg_isready lies on first
+boot). It succeeded on attempt 1 against the already-warm session container:
+
+    attempt=1 exit=0 out=CREATE DATABASE
+
+
+== A-25 STEP 3 — migrate, with `applied N` checked against the tree ==
+
+  go run ./cmd/testdb migrate    ->  applied 72 migration(s)   exit=0
+  go run ./cmd/testdb migrate    ->  applied 0 migration(s)    exit=0
+
+Tree check: apps/server_core/migrations holds 72 *.sql files. That is the same
+inventory scripts/harness/Postgres.psm1:24-39 computes as
+ExpectedMigrationCount, and 72/0 is the idempotence pair the lane demands at
+:406. Migrated count == tree count == lane expectation.
+
+.gomodcache was warm (147M) before the run, so HPG_MIGRATION_FAILED could not be
+the cold-cache false alarm A-25 warned about.
+
+
+== A-25 STEP 4 — the sentinel package, RUN ==
+
+  go test ./internal/modules/tenant_config/... -count=1 -v
+
+  RUN=43  PASS=43  SKIP=0  FAIL=0
+  (43 `=== RUN` lines, 43 `--- ` lines, counted per line per profile §11)
+
+  ok  marketplace-central/apps/server_core/internal/modules/tenant_config           1.716s
+  ok  marketplace-central/apps/server_core/internal/modules/tenant_config/transport 1.175s
+
+The three DB-touching tests EXECUTED — they did not skip clean:
+
+  --- PASS: TestRepository_Get_NoRow_ReturnsErrUnknownActiveSource (0.01s)
+  --- PASS: TestRepository_Set_Get_RoundTrip (0.01s)
+  --- PASS: TestRepository_SetSellableAssortment_RoundTripPersistsPerTenant (0.01s)
+
+repository_test.go:189 lives inside the third one (func opens at :59). The hub's
+condition — "o pacote do S10-COND só fecha com ela RODADA" — is discharged by
+SKIP=0 on that line, not by the package's `ok`.
+
+
+== BEYOND THE GRANT: the sentinel must-fails ==
+
+PASS is not evidence that an assertion asserts. Two mutations of
+tenant_config/repository.go, each run against the same live DB, each reverted
+byte-for-byte afterwards (git diff on repository.go is empty; no .mcbak left):
+
+MF-r1 — the missing-tenant guard removed (`if commandTag.RowsAffected() == 0 {
+return ErrUnknownActiveSource }` replaced by `return nil`), so a write against a
+tenant with no active_source row reports success:
+
+    repository_test.go:190: SetSellableAssortment() missing tenant error = <nil>, want ErrUnknownActiveSource
+    --- FAIL: TestRepository_SetSellableAssortment_RoundTripPersistsPerTenant (0.02s)
+
+MF-r2 — Get still SELECTs the three assortment columns but scans them into
+throwaways, so the policy comes back zero-valued:
+
+    repository_test.go:94:  first tenant OnlyRevenda = false, want true
+    repository_test.go:97:  first tenant OnlyEmEstoque = false, want true
+    repository_test.go:123: first tenant OnlyEcommerceEligible = false, want true
+    repository_test.go:146: second tenant OnlyRevenda = false, want true
+    repository_test.go:149: second tenant OnlyEmEstoque = false, want true
+    repository_test.go:152: second tenant OnlyEcommerceEligible = false, want true
+    repository_test.go:166: first tenant after second write OnlyEcommerceEligible = false, want true
+    repository_test.go:186: after source switch OnlyEcommerceEligible = false, want true
+    --- FAIL: TestRepository_SetSellableAssortment_RoundTripPersistsPerTenant (0.01s)
+
+RESTORED-GREEN after the second revert:
+
+    --- PASS: TestRepository_SetSellableAssortment_RoundTripPersistsPerTenant (0.02s)
+    ok  marketplace-central/apps/server_core/internal/modules/tenant_config 1.567s
+
+MF-r2 is the one worth naming: it fails on the READ side while the write path is
+untouched, which is what separates "the columns round-trip through Postgres" from
+"the struct round-trips through Go".
+
+
+== FINDING — the sentinel is in NO harness lane ==
+
+Reported, not fixed: the lane's package list is a seam, and this is a hub call.
+
+`harness.ps1 integration` was run first, and it passed:
+
+    target=ephemeral-postgres
+    migrations_first=72
+    migrations_second=0
+    port=55840
+    status=passed
+    run_id=4aa2c34444d649aca437f5bb543085cc
+
+It ran ZERO tenant_config tests. Get-HarnessIntegrationTestPackages
+(scripts/harness/Postgres.psm1:42-61) discovers module packages by scanning the
+FIRST FIVE LINES of every internal/modules/**/*_test.go for
+
+    ^//go:build\b.*\bintegration\b
+
+No file in internal/modules/tenant_config carries that tag — repository_test.go
+line 1 is `package tenant_config_test`. So:
+
+  - the integration lane never compiles the package, and says nothing about it;
+  - the unit lane (`go test ./tests/unit/...`, harness.ps1) does not reach
+    internal/modules at all;
+  - a bare `go test ./...` at a seat with no MPC_TEST_DATABASE_URL reaches it and
+    SKIPS clean, by design (testpostgres.SkipWithoutTarget, target.go:47-52).
+
+Three lanes, three silences. A DB-touching test with no build tag is invisible to
+the lane that provisions a database and skip-clean everywhere else, so it can rot
+green indefinitely. `status=passed` from that lane is not a statement about it.
+
+This is the same shape as HARNESS-DEBTS B-5 ("variável setada != banco
+alcançável") one level up: there the env var was set and the database was absent;
+here the lane is green and the test was never compiled. Both make a green a
+statement about something other than what the reader thinks.
+
+Also measured while confirming the above: the lane DROPS its per-run database at
+the end. After `status=passed`, the session container held only
+postgres/template1/template0 — which is why this seat had to create and migrate
+its own database rather than reuse the lane's.
+
+
+== C-5 WIRE CHECK (carried into S11, recorded here because it is the same seam) ==
+
+The FE discriminates the no-config-row state on the SDK's thrown shape, so the
+shape was read at the producer instead of trusted from the test's mock:
+
+  packages/sdk-runtime/src/index.ts:1871  getCatalogAssortmentCounts -> getJson("/catalog/products/counts")
+  packages/sdk-runtime/src/index.ts:1909  getSellableAssortment      -> getJson("/config/sellable-assortment")
+  packages/sdk-runtime/src/index.ts:1719  async function getJson<T>(path)
+  packages/sdk-runtime/src/index.ts:1723    throw { status: response.status, error: (data as ErrorResponse).error }
+                                              satisfies MarketplaceCentralClientError
+
+Both assortment reads go through getJson, and getJson throws the FLAT
+{status, error} object — not an Error subclass, not a nested body. That is
+exactly what IntegracoesPage.tsx:302-306 destructures and what the test's mock
+rejects with, so the discriminator is checked against the wire and not against a
+neighbouring mock.

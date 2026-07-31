@@ -85,10 +85,13 @@ func (r *fakeImportRepository) MirrorRows(context.Context, string, domain.Import
 func (r *fakeImportRepository) MirrorProductByCode(context.Context, string, domain.ImportSource, string) (domain.MirrorProduct, bool, error) {
 	return domain.MirrorProduct{}, false, nil
 }
-func (r *fakeImportRepository) MirrorCatalogPage(context.Context, string, domain.ImportSource, string, int64, int) ([]domain.MirrorProduct, error) {
+func (r *fakeImportRepository) MirrorCatalogPage(context.Context, string, domain.ImportSource, string, int64, int, ports.MirrorAssortmentPolicy) ([]domain.MirrorProduct, error) {
 	return nil, nil
 }
-func (r *fakeImportRepository) MirrorEANCollisionCounts(context.Context, string, domain.ImportSource) (map[string]int, error) {
+func (r *fakeImportRepository) MirrorCatalogAssortmentCounts(context.Context, string, domain.ImportSource, ports.MirrorAssortmentPolicy) (int, int, error) {
+	return 0, 0, nil
+}
+func (r *fakeImportRepository) MirrorEANCollisionCounts(context.Context, string, domain.ImportSource, ports.MirrorAssortmentPolicy) (map[string]int, error) {
 	return nil, nil
 }
 

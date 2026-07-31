@@ -1,0 +1,20 @@
+S7 RED — 2026-07-29
+
+Command:
+go test -tags=integration ./internal/modules/erp_import/adapters/postgres -run '^TestMirrorCatalogSellableAssortmentGoldenDefaults$' -count=1 -v
+
+Verbatim output:
+=== RUN   TestMirrorCatalogSellableAssortmentGoldenDefaults
+    mirror_repository_integration_test.go:437: golden default descriptions = [a b c d], want [a d]
+--- FAIL: TestMirrorCatalogSellableAssortmentGoldenDefaults (0.02s)
+FAIL
+FAIL	marketplace-central/apps/server_core/internal/modules/erp_import/adapters/postgres	1.648s
+FAIL
+
+Assertion:
+apps/server_core/internal/modules/erp_import/adapters/postgres/mirror_repository_integration_test.go:437
+golden default descriptions = [a b c d], want [a d]
+
+This was the first failing-test-first observation, before production changes. It proves the
+old repository fetched the excluded `b` and `c` rows. The later acceptance assertions were
+added while implementing the same cut; no additional pre-production RED output was fabricated.

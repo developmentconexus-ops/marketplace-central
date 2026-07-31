@@ -1,0 +1,104 @@
+F2 — `(unproved)` vazando para a tela (grant do hub, A-26 ponto 1)
+==================================================================
+
+Por que é escopo DESTE chip e não resíduo da MIS-006: `validation-contract.md` fecha com
+"nenhum marcador de dev tipo `(unproved)` em copy", e VC-7 varre `/vinculos`. Violação do
+nosso próprio contrato.
+
+Sítios produtores (application/generation_service.go):
+  :524  buildConcordantCandidate  — seller_sku E ean resolvem o MESMO codprod
+  :577  applySingleAnchorScore/ExactEAN — só o ean resolveu
+
+Texto novo (copy provisória, herda A-23):
+  :524  "ean corrobora o mesmo codprod, unicidade não comprovada"
+  :577  "ean corrobora codprod, unicidade não comprovada"
+
+
+ACHADO — a string não tinha asserção NENHUMA do lado Go
+--------------------------------------------------------
+A spec previa "fixture" no teste Go. Ao medir, o que existia era pior: `generation_service_test.go`
+assertava só a PRESENÇA do motivo (âncora + direção), nunca o `Detail`:
+
+  :1743 (antes)  if _, ok := findReason(candidate.Reasons, "ean", ...DirectionFor); !ok {
+                     t.Fatalf("reasons=%#v, want ean FOR (unproved)", candidate.Reasons)
+
+Classe conhecida: asserção de presença não pega valor errado. O marcador de dev podia mudar,
+sumir ou virar qualquer coisa e nenhum teste Go reprovaria. O irmão imediatamente acima
+(`:1716`) JÁ assertava a string do seu motivo — a lacuna era desses dois, não do arquivo.
+
+Conserto: asserção exata do `Detail` em Case 1 e Case 3, no mesmo formato do irmão.
+
+
+MUST-FAIL 1 (Go) — asserção nova contra produtor VELHO
+-------------------------------------------------------
+$ go test ./internal/modules/product_links/application/... \
+    -run 'TestCase1ConcordantSKUAndEANYieldsAltaAccept|TestCase3EANAloneYieldsMediaConfirm' -v -count=1
+
+=== NAME  TestCase1ConcordantSKUAndEANYieldsAltaAccept
+    generation_service_test.go:1685: ean reason detail="ean corrobora o mesmo codprod (unproved)", want the uniqueness caveat spelled out for the operator
+--- FAIL: TestCase1ConcordantSKUAndEANYieldsAltaAccept (0.00s)
+=== NAME  TestCase3EANAloneYieldsMediaConfirm
+    generation_service_test.go:1754: ean reason detail="ean corrobora codprod (unproved)", want the uniqueness caveat spelled out for the operator
+--- FAIL: TestCase3EANAloneYieldsMediaConfirm (0.00s)
+FAIL
+FAIL	marketplace-central/apps/server_core/internal/modules/product_links/application	1.155s
+
+Os dois vermelhos CITAM a string velha. É o vermelho que nomeia o defeito, não só o teste.
+
+Verde depois de trocar o produtor (pacote inteiro):
+  ok  .../product_links/adapters/connectors  1.709s
+  ok  .../product_links/application          1.763s
+  ok  .../product_links/composition          1.394s
+  ok  .../product_links/domain               1.007s
+  ok  .../product_links/transport            1.858s
+
+
+MUST-FAIL 2 (FE) — o golden tem dentes no `title`
+--------------------------------------------------
+As fixtures FE são literais escritos à mão; trocar o produtor Go NÃO as move. Então o
+vermelho aqui é outro: mudar SÓ a fixture (`VinculosDesign.golden.test.tsx:79`) e deixar a
+asserção de `title` (`:168`) intacta.
+
+FAIL src/pages/vinculos/VinculosDesign.golden.test.tsx > Vínculos design golden > renders the EXEMPLO-IO row in anúncio-cêntrica 9-col layout
+Error: expect(element).toHaveAttribute("title", "ean: ean corrobora codprod (unproved)")
+Expected the element to have attribute:
+  title="ean: ean corrobora codprod (unproved)"
+Received:
+  title="ean: ean corrobora codprod, unicidade não comprovada"
+ ❯ src/pages/vinculos/VinculosDesign.golden.test.tsx:168:24
+
+A asserção passa pelo componente real do chip e reprova nomeando os dois valores. Depois de
+alinhar `:168`, `:259` e os 4 sítios do `QueueTab.test.tsx`:
+
+ ✓ src/pages/vinculos/wireFixtures.guard.test.ts       (9 tests)
+ ✓ src/pages/vinculos/ResolvidosTab.test.tsx           (4 tests)
+ ✓ src/pages/vinculos/BatchPreviewModal.test.tsx       (2 tests)
+ ✓ src/pages/vinculos/VinculosDesign.golden.test.tsx   (3 tests)
+ ✓ src/pages/vinculos/VinculosPage.test.tsx            (4 tests)
+ ✓ src/pages/vinculos/QueueTab.test.tsx               (21 tests)
+ Test Files  6 passed (6)
+      Tests  43 passed (43)
+
+43 PASS, 0 skipped.
+
+
+GREP DE FECHAMENTO — com o excluído NOMEADO
+--------------------------------------------
+$ git grep -n "unproved" -- apps packages contracts
+
+apps/server_core/internal/modules/internal_read/adapters/oracle/sankhya_linkage_reader_test.go:145:		t.Fatalf("error = %v, want uniqueness_unproved", err)
+apps/server_core/internal/modules/internal_read/adapters/oracle/sankhya_linkage_reader_test.go:213:		t.Fatalf("error = %v, want uniqueness_unproved", err)
+apps/server_core/internal/modules/internal_read/domain/sankhya_linkage.go:12:	ReadErrorUniquenessUnproved   ReadErrorCode = "uniqueness_unproved"
+
+Três ocorrências, todas o MESMO símbolo: `ReadErrorUniquenessUnproved = "uniqueness_unproved"`.
+É código de erro no fio, consumido por comparação, nunca renderizado. **Deliberadamente não
+tocado** — trocá-lo quebraria contrato para consertar copy. Zero ocorrências em posição de
+texto de tela. A forma `(unproved)` (marcador entre parênteses) sumiu do repositório.
+
+
+RESSALVA DE DADO — para o QA
+-----------------------------
+Motivos já gravados no banco carregam o texto velho; conserto de código não reescreve linha
+velha. O hub decidiu (A-26 ponto 1): QA roda com o banco velho, linha antiga na tela é
+evidência "before" e não reprova; VC-7 avalia o PRODUTOR. Regeneração de candidatos PENDENTES
+é do hub, pós-merge e pós-QA; aprovados ficam intocados. O operador pode vetar no relatório.

@@ -10,6 +10,12 @@ type ImportChainRepository interface {
 	GetImportChain(ctx context.Context, tenantID string, importID domain.ImportID) (domain.ImportChain, error)
 }
 
+type MirrorAssortmentPolicy struct {
+	OnlyRevenda           bool
+	OnlyEmEstoque         bool
+	OnlyEcommerceEligible bool
+}
+
 type ImportRepository interface {
 	PersistSnapshotAtomically(ctx context.Context, tenantID string, snapshot domain.ImportSnapshot) error
 	FindByFileSHA256(ctx context.Context, tenantID string, fileSHA256 domain.FileSHA256) (*domain.ImportReport, error)
@@ -20,8 +26,9 @@ type ImportRepository interface {
 	MirrorRows(ctx context.Context, tenantID string, source domain.ImportSource) ([]domain.MirrorProduct, error)
 	MirrorProductByCode(ctx context.Context, tenantID string, source domain.ImportSource, codigo string) (domain.MirrorProduct, bool, error)
 	// MirrorCatalogPage returns up to limit+1 rows when limit is positive so callers can detect a following page.
-	MirrorCatalogPage(ctx context.Context, tenantID string, source domain.ImportSource, query string, afterInternalID int64, limit int) ([]domain.MirrorProduct, error)
-	MirrorEANCollisionCounts(ctx context.Context, tenantID string, source domain.ImportSource) (map[string]int, error)
+	MirrorCatalogPage(ctx context.Context, tenantID string, source domain.ImportSource, query string, afterInternalID int64, limit int, policy MirrorAssortmentPolicy) ([]domain.MirrorProduct, error)
+	MirrorCatalogAssortmentCounts(ctx context.Context, tenantID string, source domain.ImportSource, policy MirrorAssortmentPolicy) (sellable, total int, err error)
+	MirrorEANCollisionCounts(ctx context.Context, tenantID string, source domain.ImportSource, policy MirrorAssortmentPolicy) (map[string]int, error)
 	// MirrorProductsByCodes answers one batch stock/price question per page of
 	// listings; codes with no mirror row are simply absent from the result.
 	MirrorProductsByCodes(ctx context.Context, tenantID string, source domain.ImportSource, codigos []string) ([]domain.MirrorProduct, error)
