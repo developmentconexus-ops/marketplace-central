@@ -121,10 +121,17 @@ func deadlineMiddlewareWithTimeout(timeout time.Duration, next http.Handler) htt
 	})
 }
 
+// deadlineExceededBody is the fixed envelope answered when a route-class
+// deadline fires. It is a constant literal, not a call into apierror: the
+// dependency direction is apierror -> httpx, and httpx importing apierror
+// back would be an import cycle (same reasoning as json.go's
+// encodeFailureBody, which this mirrors).
+const deadlineExceededBody = `{"error":{"code":"deadline_exceeded","message":"tempo limite excedido","details":{}}}`
+
 func writeDeadlineExceeded(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusGatewayTimeout)
-	_, _ = io.WriteString(w, `{"error":"deadline_exceeded"}`)
+	_, _ = io.WriteString(w, deadlineExceededBody)
 }
 
 type deadlineResponseWriter struct {

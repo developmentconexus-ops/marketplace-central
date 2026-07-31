@@ -229,13 +229,13 @@ func TestCatalogPageRoutesValidateBeforePortCall(t *testing.T) {
 		path string
 		body string
 	}{
-		{name: "garbage cursor", path: "/catalog/products?cursor=%25%25%25garbage", body: `{"error":"invalid_cursor"}`},
-		{name: "zero limit", path: "/catalog/products?limit=0", body: `{"error":"invalid_limit","allowed_range":"1..100"}`},
-		{name: "over limit", path: "/catalog/products?limit=101", body: `{"error":"invalid_limit","allowed_range":"1..100"}`},
-		{name: "search over limit", path: "/catalog/products/search?q=PARAFUSO&limit=51", body: `{"error":"invalid_limit","allowed_range":"1..50"}`},
-		{name: "non-numeric ids", path: "/catalog/products?ids=abc", body: `{"error":"invalid_ids","allowed_range":"1..100 positive integers"}`},
-		{name: "bad include_all", path: "/catalog/products?include_all=maybe", body: `{"error":"invalid_include_all"}`},
-		{name: "blank search q", path: "/catalog/products/search?q=%20", body: `{"error":"invalid_q"}`},
+		{name: "garbage cursor", path: "/catalog/products?cursor=%25%25%25garbage", body: `{"error":{"code":"invalid_cursor","message":"cursor inválido","details":{}}}`},
+		{name: "zero limit", path: "/catalog/products?limit=0", body: `{"error":{"code":"invalid_limit","message":"limit inválido","details":{"allowed_range":"1..100"}}}`},
+		{name: "over limit", path: "/catalog/products?limit=101", body: `{"error":{"code":"invalid_limit","message":"limit inválido","details":{"allowed_range":"1..100"}}}`},
+		{name: "search over limit", path: "/catalog/products/search?q=PARAFUSO&limit=51", body: `{"error":{"code":"invalid_limit","message":"limit inválido","details":{"allowed_range":"1..50"}}}`},
+		{name: "non-numeric ids", path: "/catalog/products?ids=abc", body: `{"error":{"code":"invalid_ids","message":"lista de ids inválida","details":{"allowed_range":"1..100 positive integers"}}}`},
+		{name: "bad include_all", path: "/catalog/products?include_all=maybe", body: `{"error":{"code":"invalid_include_all","message":"include_all inválido","details":{}}}`},
+		{name: "blank search q", path: "/catalog/products/search?q=%20", body: `{"error":{"code":"invalid_q","message":"parâmetro de busca (q) é obrigatório","details":{}}}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fake := &fakeCatalogPageReader{}
@@ -348,8 +348,8 @@ func TestCatalogPageRoutesMapSourceAndDeadlineErrors(t *testing.T) {
 		wantStatus int
 		wantBody   string
 	}{
-		{name: "source unavailable", err: internalreaddomain.NewReadError(internalreaddomain.ReadErrorSourceUnavailable, "driver: password=secret", errors.New("driver detail")), wantStatus: http.StatusServiceUnavailable, wantBody: `{"error":"source_unavailable"}`},
-		{name: "deadline exceeded", err: context.DeadlineExceeded, wantStatus: http.StatusGatewayTimeout, wantBody: `{"error":"deadline_exceeded"}`},
+		{name: "source unavailable", err: internalreaddomain.NewReadError(internalreaddomain.ReadErrorSourceUnavailable, "driver: password=secret", errors.New("driver detail")), wantStatus: http.StatusServiceUnavailable, wantBody: `{"error":{"code":"source_unavailable","details":{},"message":"fonte de dados indisponível"}}`},
+		{name: "deadline exceeded", err: context.DeadlineExceeded, wantStatus: http.StatusGatewayTimeout, wantBody: `{"error":{"code":"deadline_exceeded","details":{},"message":"tempo limite excedido"}}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fake := &fakeCatalogPageReader{err: tc.err}
@@ -357,7 +357,7 @@ func TestCatalogPageRoutesMapSourceAndDeadlineErrors(t *testing.T) {
 			(Handler{PageReader: fake}).Register(mux)
 			recorder := httptest.NewRecorder()
 			mux.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/catalog/products", nil))
-			if recorder.Code != tc.wantStatus || trimJSON(recorder.Body.String()) != tc.wantBody {
+			if recorder.Code != tc.wantStatus || trimJSON(recorder.Body.String()) != trimJSON(tc.wantBody) {
 				t.Fatalf("status/body = %d/%q, want %d/%q", recorder.Code, trimJSON(recorder.Body.String()), tc.wantStatus, tc.wantBody)
 			}
 			t.Logf("GET /catalog/products -> %d %s", recorder.Code, trimJSON(recorder.Body.String()))
@@ -440,7 +440,7 @@ func TestCatalogPageRejectsUnknownActiveSource(t *testing.T) {
 		if recorder.Code != http.StatusBadRequest {
 			t.Fatalf("GET %s status = %d, want 400 (body %s)", path, recorder.Code, recorder.Body.String())
 		}
-		if trimJSON(recorder.Body.String()) != trimJSON(`{"error":"invalid_erp_source","allowed_range":"xlsx|catalogo_cliente"}`) {
+		if trimJSON(recorder.Body.String()) != trimJSON(`{"error":{"code":"invalid_erp_source","message":"erp_source inválido: use xlsx ou catalogo_cliente","details":{"allowed_range":"xlsx|catalogo_cliente"}}}`) {
 			t.Fatalf("GET %s body = %s, want invalid_erp_source naming the accepted sources", path, trimJSON(recorder.Body.String()))
 		}
 		// Unknown value must never silently fall through to a dataset read.

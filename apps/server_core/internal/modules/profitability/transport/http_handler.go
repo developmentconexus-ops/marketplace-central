@@ -11,6 +11,7 @@ import (
 
 	profitabilityapp "marketplace-central/apps/server_core/internal/modules/profitability/application"
 	profitabilitydomain "marketplace-central/apps/server_core/internal/modules/profitability/domain"
+	"marketplace-central/apps/server_core/internal/platform/apierror"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 )
 
@@ -173,12 +174,15 @@ func (h Handler) handleListSnapshots(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": items})
 }
 
+// writeError keeps its limit_exceeded branch: that call carries a real value
+// (the enforced snapshot-calculation limit) that must land in details, not be
+// dropped. Every other status/code pair passes through with empty details.
 func writeError(w http.ResponseWriter, status int, code, message string) {
+	var details map[string]any
 	if status == http.StatusUnprocessableEntity && code == "limit_exceeded" {
-		httpx.WriteJSON(w, status, map[string]any{"error": code, "limit": 200, "message": message})
-		return
+		details = map[string]any{"limit": 200}
 	}
-	httpx.WriteJSON(w, status, map[string]any{"error": map[string]any{"code": code, "message": message, "details": map[string]any{}}})
+	apierror.Write(w, status, code, message, details)
 }
 
 func mapError(err error) (int, string) {

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"marketplace-central/apps/server_core/internal/modules/dashboard/domain"
+	"marketplace-central/apps/server_core/internal/platform/apierror"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 )
 
@@ -55,18 +56,10 @@ func (h Handler) HandleSummary(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, summary)
 }
 
-type dashboardAPIError struct {
-	Code    string         `json:"code"`
-	Message string         `json:"message"`
-	Details map[string]any `json:"details"`
-}
-
 func writeDashboardError(w http.ResponseWriter, status int, code, message, key string) {
 	details := map[string]any{}
 	if key != "" {
 		details["key"] = key
 	}
-	httpx.WriteJSON(w, status, map[string]any{
-		"error": dashboardAPIError{Code: code, Message: message, Details: details},
-	})
+	apierror.Write(w, status, code, message, details)
 }

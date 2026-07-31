@@ -1,0 +1,315 @@
+VC-8 — ESCADA COMPLETA
+
+VEREDITO: **VC-8 CUMPRIDO** — escada verde, governanca em 54 com ZERO violacao nova.
+Resolvido em duas rodadas de ESCALATION, ambas registradas na secao 6 com o que foi
+medido em cada uma. A versao anterior deste arquivo dizia "VC-8 NAO CUMPRIDO"; ficou
+falsa quando o grant do hub entrou, e prosa falsa se CORRIGE em vez de virar nota de
+rodape (R-25). O historico das duas rodadas fica na secao 6 porque e evidencia, nao
+porque e desabafo.
+
+Medido pelo CHIP. Worktree chip-error-unify. Arvore medida: 86c830cc (VC-7), limpa.
+Base de despacho: 0007de8e. Tip do alvo no momento da medicao: df6a9e49.
+
+NOTA DE BASE — a main MOVEU durante o chip, e isso foi verificado em vez de suposto.
+  [ran] git log --oneline 0007de8e..df6a9e49
+        df6a9e49 debt(D-8) · 4f086d6c amend VC-8 (lane tsconfig.test.json) ·
+        d90f0c28 debt(D-7) · 8f2a98c7 amend VC-1 (populacao)
+  [ran] git diff --name-only 0007de8e df6a9e49  -> 2 arquivos, AMBOS markdown:
+        .mnfs/HARNESS-DEBTS.md
+        .mnfs/MIS-006-integracao-fundacao/_chip-error-unify/validation-contract.md
+  Zero .go / .ts / .tsx / .json de contrato. Logo a arvore-FONTE de df6a9e49 e identica
+  a de 0007de8e, e os baselines tomados no F0 continuam validos contra o TIP DO ALVO —
+  que e a base correta de um gate de merge, nao a base de despacho (licao registrada:
+  diff contra base de despacho esconde revert).
+  As duas emendas do contrato foram lidas e estao atendidas: VC-1 populacao medida pelo
+  chip (ja no EU-census-backend.txt) e VC-8 lane nova do sdk (abaixo).
+
+================================================================
+1. GO — build · vet · unidade
+================================================================
+  [ran] GOCACHE=<abs>/.gocache go build ./...          -> EXIT=0
+  [ran] GOCACHE=<abs>/.gocache go vet ./...            -> EXIT=0
+  [ran] GOCACHE=<abs>/.gocache go test -count=1 ./internal/... ./tests/unit/...
+        ok .................... 108
+        FAIL .................. 0
+        no test files ......... 41
+  Os 41 sem teste sao CONTADOS, nao rodape: um pacote sem teste e um resultado, e
+  somar 108+41 para dizer "149 pacotes verdes" seria a mesma soma errada de breakdown
+  que ja produziu numero falso nesta missao.
+  -count=1 obrigatorio: sem ele o cache devolve verde de execucao que nao houve.
+
+================================================================
+2. INTEGRACAO HERMETICA
+================================================================
+  [ran] pwsh ./scripts/harness.ps1 -Command integration
+        status=passed
+        run_id=f620b967a4c24a4e87d1de9edbb24ebd
+        migrations_first=72 · migrations_second=0   (idempotencia da migracao)
+
+  ARMADILHA DE SHELL, registrada porque custou uma rodada: sob powershell.exe (5.1) a
+  lane devolve status=blocked COM EXIT 0 —
+  [System.Security.Cryptography.RandomNumberGenerator] nao tem ::Fill em 5.1. Tem que
+  ser pwsh 7 (aqui 7.6.3). Um blocked com exit 0 e exatamente a forma de verde vacuo
+  que o profile manda nao aceitar.
+
+  O QUE ESTE status=passed NAO PROVA — e isto e o achado do chip, nao ressalva de estilo.
+  summary.txt tem 3 linhas (target/status/run_id) e e BYTE-IDENTICO entre uma corrida
+  verde e uma inteiramente pulada. Entao provei que a lane sabe ficar vermelha:
+  [ran] t.Fatal("MUSTFAIL-VC8-LANE") em TestListingsRefreshSeedsIC02RowsAndClosesMissing
+        -> LANE_EXIT=1 · status=blocked · HPG_TEST_FAILED
+           failure_token=test=TestListingsRefreshSeedsIC02RowsAndClosesMissing
+           failure_token=package=marketplace-central/apps/server_core/tests/integration
+  E ao tentar reinjetar o defeito de SHAPE sob a lane (fechar o desvio do VC-7a):
+        -> status=passed · LANE_EXIT=0        <- a lane nao enxerga
+  CAUSA lida em scripts/harness/Postgres.psm1:276 e 42-60: o conjunto de pacotes e
+  './tests/integration' MAIS so modulos cujos *_test.go tem '//go:build ... integration'
+  nas 5 primeiras linhas. catalog/transport nao tem nenhum -> nunca e compilado pela lane.
+  => A LANE HERMETICA NAO E SUPERCONJUNTO DA LANE DE UNIDADE. Este status=passed da
+  cobertura ZERO sobre os pins de envelope. Detalhe completo em EU-VC7-mustfail-duplo.txt.
+  Reportado ao hub como FINDING de harness (candidato a HARNESS-DEBTS.md, que e seam do
+  hub — o chip reporta, nao escreve la).
+
+  [ran] reversao das injecoes -> grep -rn MUSTFAIL apps packages = 0 ·
+        git status --porcelain = vazio
+
+================================================================
+3. apps/web — tsc (teto 12 EXATOS) + vitest
+================================================================
+  [ran] npx --no-install tsc --noEmit -p tsconfig.json   -> 12 erros
+  Comparado ao baseline do F0 por TUPLA (arquivo, coluna, codigo TS) — nao por contagem,
+  porque 12 iguais podem ser 12 defeitos DIFERENTES. Conjunto identico.
+
+  DUAS LINHAS DESLOCARAM, e nao normalizei o baseline para esconder isso — normalizar
+  apagaria justamente o canal que detecta erro NOVO no mesmo arquivo. Provei o
+  deslocamento por aritmetica:
+    MutationPreviewModal.tsx      197 -> 210   git diff --numstat 0007de8e: +6/-4  (+2)
+    ListingsRefreshControl.test.tsx 112 -> 114 git diff --numstat 0007de8e: +33/-20 (+13)
+  e o conteudo NAS LINHAS NOVAS e o proprio defeito pre-existente do baseline, lido.
+
+  [ran] npx --no-install vitest run
+        Test Files  67 passed (67)
+        Tests      566 passed (566)
+        EXIT=0 · FAILCOUNT=0 · nenhum skip
+
+================================================================
+4. packages/sdk-runtime — as DUAS lanes de tsc + vitest
+================================================================
+  [ran] npx --no-install tsc --noEmit                    -> EXIT=0 · 0 erros
+  [ran] npx --no-install vitest run
+        Test Files 7 passed (7) · Tests 85 passed (85) · EXIT=0 · FAIL=0
+
+  LANE NOVA (emenda 4f086d6c do contrato — antes NENHUM teste do SDK era type-checked,
+  ou seja o @ts-expect-error que "provava" a uniao era conferido por nada):
+  [ran] npx --no-install tsc --noEmit -p tsconfig.test.json  -> EXIT=2 · 7 erros
+        src/activeSource.test.ts(39,5):    TS2578
+        src/activeSource.test.ts(42,7):    TS2353
+        src/index.test.ts(1321,17):        TS2304
+        src/index.test.ts(1367,17):        TS2304
+        src/index.test.ts(2304,11):        TS2741
+        src/listings-signals.test.ts(43,11): TS2739
+        src/listings-signals.test.ts(78,7):  TS2739
+  Sao os 7 pre-existentes do baseline, ZERO novo. O contrato enumera 6 nomes para 7
+  erros; a diferenca foi RESOLVIDA POR LEITURA, nao arredondada: em activeSource.test.ts
+  o @ts-expect-error esta na linha 39 e cobre a 40 (`const withSourceKind:`), mas o erro
+  de propriedade excedente cai na 42 (`source_kind:`), FORA do alcance de uma diretiva de
+  uma linha. Por isso a diretiva aparece como nao-usada (TS2578) E o erro que ela deveria
+  suprimir aparece (TS2353): um unico defeito — diretiva mal posicionada — contado duas
+  vezes. Correcao dos 7 = fila do hub, fora do escopo deste chip (contrato).
+
+================================================================
+5. packages/feature-* — NENHUM
+================================================================
+  [ran] git diff --name-only 0007de8e HEAD | agregado por pacote:
+        apps/server_core 51 · apps/web 13 · packages/sdk-runtime 6
+  Zero packages/feature-*. O criterio pede "feature-* TOCADOS" e o conjunto e vazio.
+  Os 3 sitios fora de apps/web que aparecem no censo VC-6 (feature-inventory etc.) foram
+  LIDOS e classificados como dado de dominio em corpo 2xx — leitura, nao edicao. Nao ha
+  lane a rodar, e isto e fato medido, nao lane omitida.
+
+================================================================
+6. GOVERNANCA — set-diff vs o TIP DO ALVO
+================================================================
+  RESULTADO FINAL: **54 achados, ZERO violacao nova.** Criterio cumprido.
+  [ran] pwsh ./scripts/harness.ps1 -Command governance (worktree limpo, pos-grant)
+        status=failed (esperado: a lane sempre falha contra as excecoes de baseline)
+        achados=54 · GOV_PRODUCTION_PANIC=0 · GOV_SCHEMA_INVALID=0
+        apierror/recover.go acusado: 0 · excecao reconhecida: 1
+        baseline_exception: 16 (era 15 — a nova entrada aparece)
+        breakdown: 19 RCFG_UNAPPROVED_READER · 13 GOV_MODULE_DEPENDENCY ·
+                   10 RCFG_READER_MISSING · 6 GOV_MODULE_LAYER ·
+                   5 RCFG_UNDECLARED_READ · 1 GOV_MODULE_COVERAGE
+
+  Abaixo fica o caminho ate aqui, porque o numero sozinho nao mostra que os DOIS gates
+  acusaram no meio.
+
+  ------- rodada 1: a medicao que produziu a ESCALATION -------
+
+  [ran] pwsh ./scripts/harness.ps1 -Command governance -BaseSha df6a9e49...
+        status=failed (esperado — a lane sempre falha contra as excecoes de baseline)
+        55 achados, TODOS com path (55 error_code / 55 path pareados por awk)
+        breakdown: 19 RCFG_UNAPPROVED_READER · 13 GOV_MODULE_DEPENDENCY ·
+                   10 RCFG_READER_MISSING · 6 GOV_MODULE_LAYER ·
+                   5 RCFG_UNDECLARED_READ · 1 GOV_MODULE_COVERAGE ·
+                   1 GOV_PRODUCTION_PANIC
+
+  O SET-DIFF FOI FEITO POR CONSTRUCAO, NAO POR SUBTRACAO DE CONTAGEM. Isto e
+  deliberado: somar/subtrair breakdown ja produziu numero falso nesta missao ("51/50").
+  55 - 54 = 1 seria a mesma aritmetica cega. O argumento real:
+
+    (i) Um achado so pode ser MEU se citar arquivo do MEU diff.
+        [ran] comm -12 <(git diff --name-only 0007de8e HEAD) <(paths da governanca)
+              -> 4 arquivos, 6 tuplas. Os outros 49 citam caminhos que este chip
+              nunca tocou, logo nao podem ter nascido aqui.
+
+    (ii) Das 6 tuplas nos meus arquivos, 5 sao pre-existentes — verificado no conteudo,
+         nao presumido pelo nome do arquivo:
+         catalog/transport/http_handler.go      erp_import base=1 HEAD=1
+         market/transport/collection_handler.go erp_import base=1 HEAD=1
+         composition/root.go                    erp_import base=8 HEAD=8
+         (GOV_MODULE_DEPENDENCY + GOV_MODULE_LAYER catalog/market = as 4;
+          RCFG_READER_MISSING MC_ERP_SOURCE em root.go = a 5a)
+         [ran] git diff 0007de8e HEAD -- root.go -> 2 linhas: o import de apierror e
+               httpx.CORSMiddleware(mux) -> httpx.CORSMiddleware(apierror.Recover(mux)).
+               Nenhuma leitura de config tocada.
+
+    (iii) A 6a tupla e NOVA, e nova por definicao:
+         GOV_PRODUCTION_PANIC · panic · internal/platform/apierror/recover.go
+         [ran] git cat-file -e 0007de8e:.../apierror/recover.go -> NAO EXISTE NA BASE.
+         Arquivo criado por este chip no VC-3.
+
+  A VIOLACAO E ESTRUTURAL AO VC-3, NAO DESCUIDO:
+    recover.go:28-30
+      if err, ok := rec.(error); ok && errors.Is(err, http.ErrAbortHandler) {
+        panic(rec)
+      }
+    Re-panicar ErrAbortHandler e OBRIGATORIO: e a forma documentada do net/http abortar
+    a conexao em silencio. Engolir e converter para envelope 500 seria o defeito.
+    Nao existe versao correta do VC-3 sem esse panic. E rotear o panic por um helper
+    noutro pacote para escapar do grep seria LAVAR a regra, nao cumpri-la — o oposto do
+    que este chip inteiro fez com os produtores de erro.
+
+  POR QUE NAO CORRIGI: contracts/governance/invariants.json e seam do HUB. O pack e o
+  validation-contract deste chip nao concedem esse arquivo, e a doutrina registrada e que
+  entrada de governanca entra pelo MERGE do hub, nunca pre-merge. Escrever la seria pegar
+  seam alheio para transformar meu proprio vermelho em verde — exatamente o movimento que
+  invalida um gate.
+
+  PROPOSTA AO HUB — feita na rodada 1, CONCEDIDA na resposta do hub @df3acda7 e aplicada
+  na rodada 2 (formato de contracts/governance/invariants.json):
+    {
+      "id": "production-panic-apierror-recover-abort-handler",
+      "rule_id": "production-panic",
+      "paths": ["apps/server_core/internal/platform/apierror/recover.go"],
+      "occurrences": [{
+        "path": "apps/server_core/internal/platform/apierror/recover.go",
+        "symbol": "Recover",
+        "fingerprint": "panic(rec)",
+        "count": 1
+      }],
+      "reason": "Re-panic de http.ErrAbortHandler dentro do recover central. E o contrato
+                 documentado do net/http: ErrAbortHandler deve propagar para o servidor
+                 abortar a conexao sem body e sem log de stack. Converter para o envelope
+                 500 quebraria esse contrato."
+    }
+  RESSALVA HONESTA SOBRE A PROPOSTA (rodada 1): as tres excecoes existentes vivem em
+  "temporary_exceptions" e todas tem removal_owner (M-09/M-10). A minha NAO e temporaria
+  — nao ha nada a remover depois, o re-panic e permanente e correto. Encaixa-la ali com um
+  removal_owner inventado seria registrar divida que nao existe.
+  ACOLHIDA pelo hub: removal_owner passou a apontar o conserto REAL (HARNESS-D-9, o
+  checker aprender o idioma), em vez de um milestone que nao conserta o instrumento.
+  "Temporaria ate o instrumento consertar" e honesta; "temporaria ate M-nn" nao seria.
+
+  ------- rodada 2: o grant do hub NAO PASSOU, e o gate acusou -------
+  Aplicado o grant a letra (aditivo, 8+/0-, JSON valido) e a lane REPROVOU:
+  [ran] governance -> status=failed · 1 achado · error_code=GOV_SCHEMA_INVALID
+        id=invariants · path=contracts/governance/invariants.json
+        Nenhum dos 54 chegou a ser avaliado — schema invalido aborta antes.
+
+  CAUSA, lida em contracts/governance/schemas/invariants.schema.json:
+    "removal_owner": { "pattern": "^(?:M-[0-9]{2}|F-[0-9]{2}|M-[0-9]{2}/F-[0-9]{2})$" }
+  [ran] teste do regex: M-09 CASA · M-08/F-03 CASA · HARNESS-D-9 RECUSA ·
+        HARNESS-D-09 RECUSA · D-9 RECUSA
+  O schema so admitia dono de milestone/feature. Nao havia slot para divida de harness.
+
+  NAO INVENTEI UM M- PARA PASSAR. Seria a divida fabricada que a ressalva acima recusou e
+  o hub acolheu, e estaria fora do grant ("SO esta entrada, mais nada no arquivo").
+  Para responder as perguntas do hub sem commitar fabricacao, medi por SONDAGEM: troquei
+  o removal_owner por um valor schema-valido descartavel, rodei, e RESTAUREI o arquivo
+  (git status limpo, zero entradas na arvore depois).
+  [ran] sondagem -> 54 achados · recover.go acusado 0 · excecao reconhecida 1
+  Isso provou, antes de qualquer nova rodada, que a excecao faz exatamente o que devia
+  e que o +1 era so o panic — e FECHOU por medicao propria a lacuna que eu tinha
+  declarado no F-2 (o 54 do pack deixou de ser numero adotado e virou numero medido).
+
+  ------- rodada 3: grant estendido, aplicado e verificado -------
+  Hub decidiu alargar o schema (2 toques, 1 commit):
+    schemas/invariants.schema.json: pattern ganha a alternativa |HARNESS-D-[0-9]{1,3}
+    invariants.json: a entrada verbatim, removal_owner "HARNESS-D-9"
+
+  ALARGUEI SEM AFROUXAR, e provei os dois lados — porque um guard que so aceita mais e
+  indistinguivel de um guard quebrado:
+  [ran] NAO-REGRESSAO: os 6 removal_owner do arquivo casam no pattern novo
+        M-09 · HARNESS-D-9 · M-08/F-03 · M-10 · M-10 · F-01  -> 6/6 CASA
+  [ran] AINDA RECUSA lixo: 'HARNESS-D-' · 'HARNESS-D-1234' · 'HARNESS-D-9x' · 'HARNESS' ·
+        'M-9' · 'qualquer-coisa' · '' -> 7/7 RECUSA
+  [ran] diff: invariants.json 8+/0- · invariants.schema.json 1+/1- (uma linha, uma
+        alternativa). JSON valido nos dois.
+
+  OBSERVACAO DE CLASSE, reportada ao operador e ao hub (nao aplicada aqui): o conserto
+  D-9 como escrito — "o checker aprende o idioma do ErrAbortHandler" — e maximo local.
+  O checker e Policy.psm1:363, [regex]::Matches($content, 'panic\s*\((?s:.*?)\)'): texto
+  cru, sem AST, sem escopo. Ele NAO consegue saber que panic(rec) esta dentro de um guard
+  errors.Is(err, http.ErrAbortHandler); so pode aproximar por texto, e aproximar num guard
+  significa passar a desculpar panics reais parecidos. Guard que afrouxa e pior que lista
+  de excecao, porque a lista e visivel e o afrouxamento nao — mesma classe do "guard
+  parcial sob frase total". O maximo global e o check migrar para go/ast, o que tambem
+  mata um defeito latente do regex: `.*?` e preguicoso, entao panic(fmt.Sprintf("x %d", n))
+  casa so ate o primeiro ')' e o fingerprint sai truncado (ainda nao mordeu porque todas
+  as excecoes atuais usam panic(err) ou literal simples).
+
+================================================================
+7. HIGIENE FINAL
+================================================================
+  [ran] grep -rn MUSTFAIL apps packages (go/ts/tsx, sem node_modules) -> 0
+        Nenhuma das injecoes do VC-7 e do VC-8 ficou para tras. Ausencia MEDIDA, nao
+        lembranca de ter revertido.
+  [ran] git status --porcelain -> so os arquivos de evidencia, nenhum fonte sujo.
+
+  SESSAO PG DO CHIP DERRUBADA:
+  [ran] pwsh ./scripts/harness.ps1 -Command pg-session-down
+        target=pg-session · status=stopped · run_id=d92ea82a39844d6f8dcf8fb128a8bf4b
+        mpc-pg-session-3731837a (127.0.0.1:52662) removido.
+
+  CONTAINER ALHEIO DEIXADO DE PE, DE PROPOSITO: mpc-pg-session-1e6bac12, Up 7 horas,
+  bind 0.0.0.0:55841. NAO e do chip. Li Stop-HarnessPostgresSession (Postgres.psm1:172-185)
+  antes de rodar: ele faz `docker rm --force` de UM container cujo nome deriva do
+  RepositoryRoot — por isso ha dois, um por raiz. Rodar do meu worktree so podia atingir o
+  meu, e foi o que aconteceu. Derrubar o do checkout do hub seria matar processo de outro
+  dono a partir de uma suposicao. Reportado, nao tocado.
+
+  CHECKOUT DO HUB INTACTO: rodei a lane de governanca la (leitura de fontes) e verifiquei
+  antes e depois — git status --porcelain sem nenhum tracked modificado, HEAD inalterado
+  em df6a9e49.
+
+================================================================
+8. FINDINGS DE HARNESS REPORTADOS AO HUB (nao aplicados pelo chip)
+================================================================
+  F-1. A lane hermetica NAO e superconjunto da lane de unidade.
+       Postgres.psm1:276 + 42-60. Medido por injecao dupla (secao 2). Consequencia: nenhum
+       `status=passed` de integracao cobre transport unit tests.
+
+  F-2. A lane de governanca nao termina no checkout do hub.
+       Duas tentativas (uma delas com stdin fechado, que e a assinatura conhecida de hang
+       neste harness): >20 min sem escrever um byte e sem criar run dir, com o pwsh vivo e
+       crescendo em memoria (1.0 GB) — ou seja trabalhando, nao travado em I/O. A MESMA
+       lane termina em minutos no worktree do chip. Nao diagnostiquei a causa; reporto o
+       observavel.
+       ATUALIZADO: a segunda metade desta frase era verdadeira quando escrita e deixou de
+       ser. O set-diff da secao 6 foi fechado por CONSTRUCAO, mas o 54 NAO ficou mais sem
+       corroboracao empirica minha — as rodadas 2 e 3 mediram 54 no worktree limpo, com
+       breakdown e com GOV_PRODUCTION_PANIC=0. O numero do pack deixou de ser adotado e
+       passou a ser medido. A lane continua nao terminando no checkout do hub; e so isso
+       que este finding afirma agora.
+
+  F-3. As tres excecoes de production-panic existentes sao todas "temporary" com
+       removal_owner. Nao ha forma de registrar uma excecao PERMANENTE e correta (secao 6).

@@ -76,6 +76,41 @@ type ioNopCloser struct {
 
 func (ioNopCloser) Close() error { return nil }
 
+// trimJSON re-serializes body through encoding/json so a map-key-order
+// difference cannot fail an otherwise byte-identical comparison. Applied to
+// BOTH SIDES of a whole-body pin (see catalog/transport/http_handler_test.go
+// for the idiom this is copied from) — applying it to only one side would
+// force a hand-alphabetised expected literal and hide a stray top-level key.
+func trimJSON(body string) string {
+	var value any
+	if err := json.Unmarshal([]byte(body), &value); err != nil {
+		return body
+	}
+	encoded, _ := json.Marshal(value)
+	return string(encoded)
+}
+
+// TestMelhorEnvioOAuthErrorEnvelopeWholeBody pins the complete JSON body
+// written by the adapter's writeOAuthError call sites, now routed through
+// apierror.Write. This is an ADAPTER, not a transport, but it still answers
+// HTTP (an OAuth callback), so its wire shape is bound by the same envelope.
+func TestMelhorEnvioOAuthErrorEnvelopeWholeBody(t *testing.T) {
+	h := newOAuthHandlerForTest(&oauthTestStore{}, &http.Client{})
+
+	req := httptest.NewRequest(http.MethodPost, "/connectors/melhor-envio/auth/start", nil)
+	rec := httptest.NewRecorder()
+
+	h.HandleStart(rec, req)
+
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status=%d body=%s, want 405", rec.Code, rec.Body.String())
+	}
+	want := `{"error":{"code":"CONNECTORS_ME_METHOD_NOT_ALLOWED","message":"method not allowed","details":{}}}`
+	if got := trimJSON(rec.Body.String()); got != trimJSON(want) {
+		t.Fatalf("body = %s, want %s", got, want)
+	}
+}
+
 func TestOAuthHandlerHandleStartRejectsNonGET(t *testing.T) {
 	h := newOAuthHandlerForTest(&oauthTestStore{}, &http.Client{})
 

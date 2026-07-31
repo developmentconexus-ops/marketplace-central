@@ -15,6 +15,7 @@ import (
 	"marketplace-central/apps/server_core/internal/modules/orders/application"
 	"marketplace-central/apps/server_core/internal/modules/orders/domain"
 	"marketplace-central/apps/server_core/internal/modules/orders/ports"
+	"marketplace-central/apps/server_core/internal/platform/apierror"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 )
 
@@ -96,7 +97,7 @@ func (h Handler) handleImport(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
-		writeOrdersError(w, http.StatusMethodNotAllowed, "ORDERS_METHOD_NOT_ALLOWED", "method not allowed")
+		apierror.Write(w, http.StatusMethodNotAllowed, "ORDERS_METHOD_NOT_ALLOWED", "method not allowed", nil)
 		return
 	}
 	var req struct {
@@ -104,7 +105,7 @@ func (h Handler) handleImport(w http.ResponseWriter, r *http.Request) {
 		Limit          int    `json:"limit"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeOrdersError(w, http.StatusBadRequest, "ORDERS_INVALID_REQUEST", "malformed request body")
+		apierror.Write(w, http.StatusBadRequest, "ORDERS_INVALID_REQUEST", "malformed request body", nil)
 		return
 	}
 	result, err := h.importer.Import(r.Context(), application.ImportOrdersInput{
@@ -114,7 +115,7 @@ func (h Handler) handleImport(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		status, code := mapOrdersError(err)
 		slog.Error("orders.import", "action", "import", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
-		writeOrdersError(w, status, code, err.Error())
+		apierror.Write(w, status, code, err.Error(), nil)
 		return
 	}
 	slog.Info("orders.import", "action", "import", "result", "200", "count", result.ImportedCount, "duration_ms", time.Since(start).Milliseconds())
@@ -125,7 +126,7 @@ func (h Handler) handleList(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", http.MethodGet)
-		writeOrdersError(w, http.StatusMethodNotAllowed, "ORDERS_METHOD_NOT_ALLOWED", "method not allowed")
+		apierror.Write(w, http.StatusMethodNotAllowed, "ORDERS_METHOD_NOT_ALLOWED", "method not allowed", nil)
 		return
 	}
 	if h.readLister != nil {
@@ -133,7 +134,7 @@ func (h Handler) handleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if h.lister == nil {
-		writeOrdersError(w, http.StatusInternalServerError, "ORDERS_INTERNAL_ERROR", "orders list is not configured")
+		apierror.Write(w, http.StatusInternalServerError, "ORDERS_INTERNAL_ERROR", "orders list is not configured", nil)
 		return
 	}
 	items, err := h.lister.List(r.Context(), application.ListOrdersInput{
@@ -143,7 +144,7 @@ func (h Handler) handleList(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		status, code := mapOrdersError(err)
 		slog.Error("orders.list", "action", "list", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
-		writeOrdersError(w, status, code, err.Error())
+		apierror.Write(w, status, code, err.Error(), nil)
 		return
 	}
 	slog.Info("orders.list", "action", "list", "result", "200", "count", len(items), "duration_ms", time.Since(start).Milliseconds())
@@ -204,11 +205,11 @@ func (h Handler) handleReadList(w http.ResponseWriter, r *http.Request) {
 func (h Handler) handleGet(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", http.MethodGet)
-		writeOrdersError(w, http.StatusMethodNotAllowed, "ORDERS_METHOD_NOT_ALLOWED", "method not allowed")
+		apierror.Write(w, http.StatusMethodNotAllowed, "ORDERS_METHOD_NOT_ALLOWED", "method not allowed", nil)
 		return
 	}
 	if h.readLister == nil {
-		writeOrdersError(w, http.StatusInternalServerError, "ORDERS_INTERNAL_ERROR", "orders read is not configured")
+		apierror.Write(w, http.StatusInternalServerError, "ORDERS_INTERNAL_ERROR", "orders read is not configured", nil)
 		return
 	}
 	values := r.URL.Query()
@@ -249,7 +250,7 @@ func (h Handler) handleFaturado(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
-		writeOrdersError(w, http.StatusMethodNotAllowed, "ORDERS_METHOD_NOT_ALLOWED", "method not allowed")
+		apierror.Write(w, http.StatusMethodNotAllowed, "ORDERS_METHOD_NOT_ALLOWED", "method not allowed", nil)
 		return
 	}
 	providerOrderID := strings.TrimSpace(r.PathValue("provider_order_id"))
@@ -257,13 +258,13 @@ func (h Handler) handleFaturado(w http.ResponseWriter, r *http.Request) {
 		InstallationID string `json:"installation_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeOrdersError(w, http.StatusBadRequest, "ORDERS_INVALID_REQUEST", "malformed request body")
+		apierror.Write(w, http.StatusBadRequest, "ORDERS_INVALID_REQUEST", "malformed request body", nil)
 		return
 	}
 	if err := h.faturador.MarkFaturado(r.Context(), req.InstallationID, providerOrderID); err != nil {
 		status, code := mapFaturadoError(err)
 		slog.Error("orders.faturado", "action", "faturado", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
-		writeOrdersError(w, status, code, err.Error())
+		apierror.Write(w, status, code, err.Error(), nil)
 		return
 	}
 	slog.Info("orders.faturado", "action", "faturado", "result", "204", "provider_order_id", providerOrderID, "duration_ms", time.Since(start).Milliseconds())
@@ -318,7 +319,7 @@ type orderBucketCountsDTO struct {
 func (h Handler) handleSummary(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", http.MethodGet)
-		writeOrdersError(w, http.StatusMethodNotAllowed, "ORDERS_METHOD_NOT_ALLOWED", "method not allowed")
+		apierror.Write(w, http.StatusMethodNotAllowed, "ORDERS_METHOD_NOT_ALLOWED", "method not allowed", nil)
 		return
 	}
 	installationID, err := requiredInstallation(r.URL.Query())
@@ -332,7 +333,7 @@ func (h Handler) handleSummary(w http.ResponseWriter, r *http.Request) {
 	case "status":
 		h.handleSummaryByStatus(w, r, installationID)
 	default:
-		writeOrdersErrorDetails(w, http.StatusBadRequest, "unsupported_summary_dimension", "unsupported summary dimension", map[string]any{"by": by})
+		apierror.Write(w, http.StatusBadRequest, "unsupported_summary_dimension", "unsupported summary dimension", map[string]any{"by": by})
 	}
 }
 
@@ -359,11 +360,11 @@ func (h Handler) handleSummaryByStatus(w http.ResponseWriter, r *http.Request, i
 func writeSummaryError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, application.ErrSummaryInstallationRequired):
-		writeOrdersErrorDetails(w, http.StatusBadRequest, "installation_required", "installation_id é obrigatório", map[string]any{"key": "installation_id"})
+		apierror.Write(w, http.StatusBadRequest, "installation_required", "installation_id é obrigatório", map[string]any{"key": "installation_id"})
 	case errors.Is(err, application.ErrSummaryStoreNotConfigured):
-		writeOrdersError(w, http.StatusServiceUnavailable, "ORDERS_SUMMARY_STORE_NOT_CONFIGURED", "orders summary is not configured")
+		apierror.Write(w, http.StatusServiceUnavailable, "ORDERS_SUMMARY_STORE_NOT_CONFIGURED", "orders summary is not configured", nil)
 	default:
-		writeOrdersError(w, http.StatusInternalServerError, "ORDERS_INTERNAL_ERROR", "orders summary failed")
+		apierror.Write(w, http.StatusInternalServerError, "ORDERS_INTERNAL_ERROR", "orders summary failed", nil)
 	}
 }
 
@@ -685,35 +686,21 @@ func requiredInstallation(values url.Values) (string, error) {
 	return items[0], nil
 }
 
-func writeOrdersError(w http.ResponseWriter, status int, code, message string) {
-	writeOrdersErrorDetails(w, status, code, message, map[string]any{})
-}
-
 func writeOrderReadError(w http.ResponseWriter, err error) {
 	var invalidFilter *InvalidFilterError
 	var invalidCursor *InvalidCursorError
 	switch {
 	case errors.As(err, &invalidFilter):
-		writeOrdersErrorDetails(w, http.StatusBadRequest, invalidFilter.Code(), invalidFilter.Error(), invalidFilter.Details())
+		apierror.Write(w, http.StatusBadRequest, invalidFilter.Code(), invalidFilter.Error(), invalidFilter.Details())
 	case errors.As(err, &invalidCursor), errors.Is(err, ports.ErrInvalidCursor):
-		writeOrdersErrorDetails(w, http.StatusBadRequest, "invalid_cursor", "cursor inválido", map[string]any{})
+		apierror.Write(w, http.StatusBadRequest, "invalid_cursor", "cursor inválido", nil)
 	case errors.Is(err, ports.ErrOrderNotFound):
-		writeOrdersErrorDetails(w, http.StatusNotFound, "order_not_found", "order not found", map[string]any{})
+		apierror.Write(w, http.StatusNotFound, "order_not_found", "order not found", nil)
 	case errors.Is(err, ErrInstallationRequired):
-		writeOrdersErrorDetails(w, http.StatusBadRequest, "installation_required", "installation_id é obrigatório", map[string]any{"key": "installation_id"})
+		apierror.Write(w, http.StatusBadRequest, "installation_required", "installation_id é obrigatório", map[string]any{"key": "installation_id"})
 	default:
-		writeOrdersErrorDetails(w, http.StatusInternalServerError, "ORDERS_INTERNAL_ERROR", "orders read failed", map[string]any{})
+		apierror.Write(w, http.StatusInternalServerError, "ORDERS_INTERNAL_ERROR", "orders read failed", nil)
 	}
-}
-
-func writeOrdersErrorDetails(w http.ResponseWriter, status int, code, message string, details map[string]any) {
-	httpx.WriteJSON(w, status, map[string]any{
-		"error": map[string]any{
-			"code":    code,
-			"message": message,
-			"details": details,
-		},
-	})
 }
 
 func mapOrdersError(err error) (int, string) {

@@ -190,6 +190,33 @@ func multipartRequestWithFields(t *testing.T, filename string, fields map[string
 	return request
 }
 
+// trimJSON canonicalises JSON for whole-body comparisons (key order is
+// otherwise a false failure), from catalog/transport/http_handler_test.go:387.
+func trimJSON(body string) string {
+	var value any
+	if err := json.Unmarshal([]byte(body), &value); err != nil {
+		return body
+	}
+	encoded, _ := json.Marshal(value)
+	return string(encoded)
+}
+
+// TestErpImportErrorEnvelopeWholeBody pins the complete JSON body of the
+// missing_required_column case — it carries the migrated "column" field in
+// details — to prove it landed inside details and nowhere else, which the
+// field-by-field reads elsewhere in this file cannot prove.
+func TestErpImportErrorEnvelopeWholeBody(t *testing.T) {
+	err := &ports.FileError{Code: domain.CodeMissingRequiredColumn, Column: "codprod", Detail: "bad workbook"}
+	response := performRequest(t, &fakeImportRunner{err: err}, &fakeImportQuerier{}, multipartRequest(t, "payload.xlsx"))
+	if response.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422, body=%s", response.Code, response.Body.String())
+	}
+	want := `{"error":{"code":"missing_required_column","message":"coluna obrigatória ausente","details":{"column":"codprod"}}}`
+	if got := trimJSON(response.Body.String()); got != trimJSON(want) {
+		t.Fatalf("body = %s, want %s", got, want)
+	}
+}
+
 func TestHandlerPostImportErrors(t *testing.T) {
 	fileError := func(code domain.IssueCode) error {
 		return &ports.FileError{Code: code, Column: "codprod", Detail: "bad workbook"}
@@ -215,17 +242,22 @@ func TestHandlerPostImportErrors(t *testing.T) {
 			if response.Code != tc.wantStatus {
 				t.Fatalf("status = %d, want %d", response.Code, tc.wantStatus)
 			}
-			var body map[string]any
-			decodeJSON(t, response, &body)
-			if body["error"] != tc.wantError {
-				t.Fatalf("error = %v, want %q", body["error"], tc.wantError)
+			var body struct {
+				Error struct {
+					Code    string         `json:"code"`
+					Details map[string]any `json:"details"`
+				} `json:"error"`
 			}
-			if tc.wantColumn != "" && body["column"] != tc.wantColumn {
-				t.Fatalf("column = %v, want %q", body["column"], tc.wantColumn)
+			decodeJSON(t, response, &body)
+			if body.Error.Code != tc.wantError {
+				t.Fatalf("error.code = %v, want %q", body.Error.Code, tc.wantError)
+			}
+			if tc.wantColumn != "" && body.Error.Details["column"] != tc.wantColumn {
+				t.Fatalf("details.column = %v, want %q", body.Error.Details["column"], tc.wantColumn)
 			}
 			if tc.name == "duplicate" {
-				if body["import_id"] != string(duplicate.ExistingID) || body["protocol"] != string(duplicate.ExistingProtocol) {
-					t.Fatalf("duplicate body = %v, want original import", body)
+				if body.Error.Details["import_id"] != string(duplicate.ExistingID) || body.Error.Details["protocol"] != string(duplicate.ExistingProtocol) {
+					t.Fatalf("duplicate details = %v, want original import", body.Error.Details)
 				}
 			}
 		})
@@ -247,10 +279,14 @@ func TestHandlerPostImportMalformedRequests(t *testing.T) {
 			if response.Code != http.StatusBadRequest {
 				t.Fatalf("status = %d, want %d", response.Code, http.StatusBadRequest)
 			}
-			var body map[string]any
+			var body struct {
+				Error struct {
+					Code string `json:"code"`
+				} `json:"error"`
+			}
 			decodeJSON(t, response, &body)
-			if body["error"] != "invalid_file" {
-				t.Fatalf("error = %v, want invalid_file", body["error"])
+			if body.Error.Code != "invalid_file" {
+				t.Fatalf("error.code = %v, want invalid_file", body.Error.Code)
 			}
 		})
 	}
@@ -327,10 +363,14 @@ func TestHandlerGetImportDetailUnknownID(t *testing.T) {
 	if response.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", response.Code)
 	}
-	var body map[string]any
+	var body struct {
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
 	decodeJSON(t, response, &body)
-	if body["error"] != "import_not_found" {
-		t.Fatalf("error = %v, want import_not_found", body["error"])
+	if body.Error.Code != "import_not_found" {
+		t.Fatalf("error.code = %v, want import_not_found", body.Error.Code)
 	}
 }
 
@@ -347,10 +387,14 @@ func TestHandlerPostImportOversizeRejected(t *testing.T) {
 	if response.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400 for oversize upload", response.Code)
 	}
-	var decoded map[string]any
+	var decoded struct {
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
 	decodeJSON(t, response, &decoded)
-	if decoded["error"] != "invalid_file" {
-		t.Fatalf("error = %v, want invalid_file", decoded["error"])
+	if decoded.Error.Code != "invalid_file" {
+		t.Fatalf("error.code = %v, want invalid_file", decoded.Error.Code)
 	}
 }
 
@@ -399,8 +443,8 @@ func TestHandlerGetImportChainMapsServiceErrorsAndUTCResponse(t *testing.T) {
 		wantStatus int
 		wantBody   string
 	}{
-		{name: "not found", err: ports.ErrImportNotFound, wantStatus: http.StatusNotFound, wantBody: "{\"error\":\"import_not_found\"}\n"},
-		{name: "internal", err: errors.New("database details must not escape"), wantStatus: http.StatusInternalServerError, wantBody: "{\"error\":\"internal_error\"}\n"},
+		{name: "not found", err: ports.ErrImportNotFound, wantStatus: http.StatusNotFound, wantBody: "{\"error\":{\"code\":\"import_not_found\",\"message\":\"importação não encontrada\",\"details\":{}}}\n"},
+		{name: "internal", err: errors.New("database details must not escape"), wantStatus: http.StatusInternalServerError, wantBody: "{\"error\":{\"code\":\"internal_error\",\"message\":\"erro interno do servidor\",\"details\":{}}}\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := performRequest(t, &fakeImportRunner{}, &fakeImportQuerier{chainErr: tc.err}, httptest.NewRequest(http.MethodGet, "/erp/imports/"+missingImportID+"/chain", nil))
@@ -427,7 +471,7 @@ func TestHandlerMalformedImportIDRejectedOnBothRoutesBeforeQuery(t *testing.T) {
 			if response.Code != http.StatusBadRequest {
 				t.Fatalf("status = %d, want 400", response.Code)
 			}
-			if got, want := response.Body.String(), "{\"error\":\"invalid_import_id\"}\n"; got != want {
+			if got, want := response.Body.String(), "{\"error\":{\"code\":\"invalid_import_id\",\"message\":\"id de importação inválido\",\"details\":{}}}\n"; got != want {
 				t.Fatalf("body = %q, want %q", got, want)
 			}
 			if querier.getID != "" {

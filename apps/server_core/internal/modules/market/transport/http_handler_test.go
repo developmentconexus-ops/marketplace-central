@@ -2,6 +2,7 @@ package transport
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -12,6 +13,33 @@ import (
 	"marketplace-central/apps/server_core/internal/modules/market/application"
 	"marketplace-central/apps/server_core/internal/modules/market/domain"
 )
+
+func trimJSON(body string) string {
+	var value any
+	if err := json.Unmarshal([]byte(body), &value); err != nil {
+		return body
+	}
+	encoded, _ := json.Marshal(value)
+	return string(encoded)
+}
+
+func TestMarketErrorEnvelopeWholeBody(t *testing.T) {
+	t.Parallel()
+
+	h := NewHandler(&fakeReadService{})
+	req := httptest.NewRequest(http.MethodGet, "/market/observations", nil)
+	rr := httptest.NewRecorder()
+
+	h.handleObservations(rr, req)
+
+	if got, want := rr.Code, http.StatusBadRequest; got != want {
+		t.Fatalf("status = %d, want %d", got, want)
+	}
+	want := `{"error":{"code":"installation_required","message":"installation_id é obrigatório","details":{"key":"installation_id"}}}`
+	if trimJSON(rr.Body.String()) != trimJSON(want) {
+		t.Fatalf("body = %s, want %s", trimJSON(rr.Body.String()), trimJSON(want))
+	}
+}
 
 type fakeReadService struct {
 	observations    application.ObservationReadResult

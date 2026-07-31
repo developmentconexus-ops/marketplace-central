@@ -1,0 +1,75 @@
+VC-6 — CENSO FE, VARREDURA TOTAL (todos os pacotes, nao so arquivos tocados)
+Medido pelo CHIP. Worktree chip-error-unify. Narrativa em EU-VC6-fe-sweep.txt.
+
+POR QUE ESTE ARQUIVO EXISTE SEPARADO
+  O censo do slice rodou so em apps/web. O VC-6 exige "TODOS os pacotes FE ... varredura
+  total, nao so arquivos tocados (licao guard-parcial)". Censo parcial sob frase total e
+  exatamente o defeito que o criterio existe para impedir — entao foi refeito na arvore
+  inteira antes de declarar o criterio cumprido.
+
+ESCOPO VARRIDO (ls -d, nada escolhido a dedo)
+  apps/landing · apps/web · packages/feature-classifications · packages/feature-inventory
+  packages/feature-products · packages/feature-simulator · packages/sdk-runtime
+  packages/ui · packages/web-query
+  (apps/server_core e Go; fora do censo FE por construcao.)
+
+COMANDOS EXATOS (re-executaveis)
+  [ran] grep -rnE '\b(code|error|err|failure|reason|kind)\b[^=]{0,40}(===|!==)[[:space:]]*"' \
+          apps packages --include="*.ts" --include="*.tsx" \
+          | grep -v 'node_modules\|/dist/\|\.test\.'
+        -> 35 hits brutos
+  [ran] mesmo | grep -v typeof
+        -> 25
+
+NOTA DE INSTRUMENTO — o numero errado veio do regex, nao do repo
+  O primeiro censo do slice usou `\.code\s*===` e reportou populacao 2. Esse regex NAO
+  podia ver `errorCode === "preview_stale"` (sem ponto antes de `code`) — que era
+  precisamente o que faltava migrar. Um censo so vale se o instrumento conseguir enxergar
+  o que acabou de mudar. Regex largo + triagem por LEITURA, nao regex estreito + numero
+  bonito.
+
+  Segunda correcao de instrumento: `typeof x === "string"` casa o regex largo porque
+  `code` aparece antes do `===`, mas o literal a direita e "string" — e guard de typeof,
+  nao comparacao de codigo de erro. O relato do worker contou 3 desses como "populacao
+  VC-6 genuina". Nao sao. Excluidos com o filtro nomeado acima.
+
+ARITMETICA (25 apos typeof)
+   7  uniao tipada PreviewError — CONFORME, e o padrao que o VC-6 admite
+        apps/web/src/pages/mutations/MutationPreviewModal.tsx:27,72,154,156,163,169,186
+   1  definicao do proprio guard — CONFORME por construcao (um guard tem que comparar
+      em algum lugar; este e o ponto de EXTRACAO, nao um sitio de match espalhado)
+        packages/sdk-runtime/src/index.ts:1930  (isRefreshInProgressError)
+  17  dado de dominio em corpo 2xx — FORA DE ESCOPO, intocados
+        packages/feature-inventory/src/StockSeguroPage.tsx:164,166  blocking_reason.code
+            de InventoryStockRiskItem (200), usado para nomear a observacao julgada
+        apps/web/src/pages/precos/SolverPanel.tsx:85,87,96          PricingSolveResponse
+        apps/web/src/pages/vinculos/QueueRow.tsx:285,378            reason.direction
+        apps/web/src/pages/vinculos/wireFixtures.ts:281,294,308,344,367,460  reason.direction
+        apps/web/src/pages/ListingDetailPanel.tsx:89,90             kind de evento de timeline
+        apps/web/src/pages/mercado/MercadoPage.tsx:211              CODPROD, nem erro e
+        apps/web/src/pages/mercado/useMarketCollection.ts:86        CODPROD, nem erro e
+  ---
+   0  comparacao de literal de CODIGO DE ERRO HTTP fora de hasCode()/uniao tipada.
+
+  25 = 7 + 1 + 17. Fecha.
+
+EXTRACTION
+  [ran] grep -rn 'hasCode(\|isApiError(\|isRefreshInProgressError(' apps/web/src \
+          --include="*.ts" --include="*.tsx" | grep -v '\.test\.'   -> 14
+
+DELTA QUE SO A VARREDURA TOTAL REVELOU
+  Tres sitios fora de apps/web que o censo parcial nao teria visto:
+    StockSeguroPage.tsx:164,166  -> dominio, OUT (o card ja previa; agora esta MEDIDO)
+    sdk-runtime/index.ts:1930    -> definicao do guard, CONFORME
+  Nenhum deles muda o veredito. Isso e o ponto: a varredura total confirmou o numero em
+  vez de ser dispensada por ele "provavelmente" nao mudar.
+
+REPORT — nao sao violacao do VC-6, mas sao forma de erro reimplementada a mao
+  apps/web/src/pages/produto/ProdutoHeader.tsx:37
+      (error as { status?: unknown }).status === status
+  apps/web/src/pages/importacoes/useErpImportChain.ts:10
+      !("status" in error) -> error.status
+  Nenhum compara CODIGO com literal; ambos leem so `status`; ambos estao corretos hoje
+  contra a classe nova (status e propriedade propria do Error). Fora do write_set do
+  slice, nao migrados. Ficam nomeados porque "varredura total" so e frase verdadeira se
+  o que ficou de fora estiver dito.

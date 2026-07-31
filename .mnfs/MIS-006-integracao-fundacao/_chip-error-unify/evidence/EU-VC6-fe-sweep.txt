@@ -1,0 +1,179 @@
+VC-6 — FE: padrao unico de match, varredura TOTAL
+Medido pelo CHIP. Worktree chip-error-unify · apps/web
+
+ESTE SLICE CONSERTA UMA REGRESSAO QUE ESTE PROPRIO CHIP CAUSOU
+  Antes do F2/F5 o backend emitia forma plana e o FE casava contra ela. Depois do F5
+  a classe do SDK passou a expor {status, code, message, details} + .error aninhado.
+  TRES sitios do FE ficaram QUEBRADOS EM RUNTIME por causa disso, e nao por descuido
+  alheio — a mudanca foi minha:
+    ImportChainPanel.tsx:12    candidate.error === "import_not_found"
+        `.error` e OBJETO {code,message,details}. Objeto nunca e === string.
+        SEMPRE FALSO.
+    IntegracoesPage.tsx:304    const {status, error: code} = ...; code === "unknown_erp_source"
+        mesmo defeito via destructuring. SEMPRE FALSO.
+    useErpImportUpload.ts:42-44  le `maybe?.body`; a classe NAO tem `body`.
+        `code` sempre undefined, o switch sempre caia no default. O operador perdia o
+        nome da COLUNA no 422 e o PROTOCOLO no 409 — fato desconhecido virando default,
+        que e exatamente a violacao ADR-17 que este chip existe para impedir.
+
+  Estavam MASCARADOS por 7 mocks de teste que fingiam a forma plana pre-chip. O
+  IntegracoesPage.test.tsx se contradizia sozinho: linha 407 mocka a forma aninhada
+  CORRETA para unknown_erp_source enquanto 293/307/423 mockam a forma plana para o
+  MESMO codigo em chamadas irmas.
+
+ORDEM HONESTA DO MOCK (mock corrigido e como teste vira falso-verde; entao a ordem importa)
+  Para cada um dos tres sitios quebrados: primeiro corrigir o MOCK para a forma que o
+  SDK realmente joga e RODAR, mostrando VERMELHO contra a implementacao AINDA quebrada
+  — esse vermelho e a prova de que o sitio estava quebrado. So depois consertar a
+  implementacao e mostrar verde. Mock corrigido DEPOIS da implementacao nao prova nada.
+  [ran] os tres vermelhos foram capturados por nome antes do conserto.
+
+POPULACAO — classificada por LEITURA, nao por grep
+  EM ESCOPO (erro HTTP), 6 sitios, todos migrados:
+    AnunciosPage.tsx:136 ............... invalid_filter, cast inline -> hasCode
+    ListingsRefreshControl.tsx:47-48 ... mao-de-obra duplicada -> isRefreshInProgressError
+    mutationPresentation.ts + MutationPreviewModal.tsx . preview_stale/selection_too_large
+    useErpImportUpload.ts:41-70 ........ QUEBRADO -> hasCode lendo details.column/protocol
+    IntegracoesPage.tsx:302-305 ........ QUEBRADO -> hasCode
+    ImportChainPanel.tsx:9-13 .......... QUEBRADO -> hasCode
+
+  MORTO (1 sitio) — useVinculosQueue.ts:45-48 casava ALREADY_RESOLVED com status 409.
+    Tracado DUAS vezes de forma independente (chip + worker): essa string so e produzida
+    em product_links/application/batch_service.go:274, como `cause` de ITEM dentro de
+    resposta 200. As rotas de item unico que o hook observa (ApproveCandidate em
+    resolution_service.go) emitem SUPERSEDED / ALREADY_UNDONE nos seus 409, nunca
+    ALREADY_RESOLVED. A comparacao NUNCA pode ter sido verdadeira.
+    DELETADO, com comentario nomeando os codigos reais. Nao migrado para hasCode:
+    migrar codigo morto para um guard tipado vestiria uma falsidade de tipo, e por na
+    uniao ApiErrorCode um codigo que so existe como causa de item em 200 seria o
+    contrato afirmando o que o servidor nao faz.
+    Ruling 3 do hub mandava o oposto (migrar); foi REVOGADA pelo hub apos esta medicao,
+    porque a ruling herdou uma premissa minha nao-tracada. Produtor manda.
+
+  FORA DE ESCOPO, intocados — dado de dominio em corpo 2xx, nao erro HTTP:
+    StockSeguroPage.tsx:164,166 (blocking_reason.code) · MutationResultSummary.tsx:41-42
+    e ProtocoloPage.tsx:46,50 (item.failure.code, de listMutationItems) ·
+    SolverPanel.tsx:76+ (PricingSolveResponse) · failureCopy.ts (lookup de apresentacao
+    alimentado pelos DOIS caminhos; nao consegue narrowar e forcar seria errado) ·
+    apps/landing (medido: zero codigo de match de erro).
+
+O BLOQUEIO REAL, E POR QUE A SAIDA NAO FOI "DEIXAR POR STRING"
+  Tentativa direta: tipar o estado `errorCode` como MutationErrorCode | null. tsc
+  reprovou nos tres setters de fallback. Causa medida (nao suposta):
+  MarketplaceCentralClientError.code e `readonly code: string` (sdk index.ts:1809);
+  hasCode narrowa NO SITIO e nao muda o campo da classe; e mutationError() precisa
+  devolver codigo arbitrario — descartar o codigo real do servidor para caber numa
+  uniao seria fato desconhecido virando default, ADR-17 de novo, pior que o problema.
+
+  A conclusao "logo os ternarios ficam por string" NAO segue. O defeito nao era o tipo
+  do codigo: era o ESTADO guardar um CODIGO quando o que a UI decide e um RAMO. Tres
+  ramos, dois conhecidos e um generico = uniao discriminada.
+
+    type PreviewError =
+      | { kind: "preview_stale" }
+      | { kind: "selection_too_large" }
+      | { kind: "other"; code: string };
+
+  O ramo `other` PRESERVA o codigo cru para a copia (displayCode), entao nada desconhecido
+  e descartado. As comparacoes continuam contra literal — e continuam validas, porque
+  agora sao contra membro de UNIAO TIPADA, que e o que a regra do VC-6 sempre admitiu.
+  A substancia: um typo passa a reprovar no tsc em vez de sumir em runtime.
+
+  TRES ARMADILHAS DE COMPORTAMENTO, verificadas por leitura do resultado (nao pelo relato):
+   1. `created` gateia so o EFEITO COLATERAL (cancelar rascunho). O ramo de EXIBICAO e
+      por codigo. MutationPreviewModal.tsx:71-77 — `classified` computado incondicional,
+      `setPreviewError(classified)` FORA do if. Amarrar o kind ao `created` teria mudado
+      comportamento em silencio.
+   2. preview_stale no approve vai para step "preview-shown", NAO "error" (125-128).
+      Preservado.
+   3. Linha 169 renderiza o ramo generico tambem quando o estado e null.
+      `previewError?.kind !== "selection_too_large"` preserva; `previewError !== null &&`
+      teria quebrado.
+
+MUST-FAIL NOMEADOS (ordem D-8: injecao CONFIRMADA por observavel ANTES de ler veredito)
+  [ran] comportamento — trocado hasCode(error,"preview_stale") por "invalid_state";
+        grep confirmou a injecao em MutationPreviewModal.tsx:110 ANTES de rodar;
+        teste "MutationPreviewModal > volta a previa sem reaprova-la quando ela expira"
+        FALHOU (1 failed / 14 passed). Restaurado, grep confirmou -> 15/15.
+  [ran] tipo — injetado { kind: "preview_stail" }; grep confirmou o pouso na linha 127;
+        tsc nomeou:
+          MutationPreviewModal.tsx(127,25): error TS2345: Argument of type
+          '{ kind: "preview_stail"; }' is not assignable to parameter of type
+          'SetStateAction<PreviewError | null>'.
+        Restaurado, grep confirmou ausencia de "preview_stail" -> 12/12.
+        Esse e o must-fail que prova que o estado passou a ser type-checked; sem ele a
+        mudanca de uniao seria alegacao.
+  Nenhum arquivo de teste foi editado para acomodar a uniao. Se tivesse sido preciso,
+  seria eu trocando comportamento e chamando de refactor.
+
+CENSO VC-6 — instrumento primeiro, numero depois
+  O primeiro censo do worker deu POPULATION=2 com o regex `\.code\s*===`. Esse numero
+  saiu do INSTRUMENTO, nao do repo: o regex nao podia ver `errorCode === "preview_stale"`
+  (sem ponto antes de code), que era justamente o que faltava migrar. Mesma cegueira que
+  ele proprio ja tinha admitido sobre o `code` destructurado. Refeito com regex que
+  enxerga o que mudou.
+
+  [ran] grep -rnE '\b(code|error|err|failure|reason|kind)\b[^=]{0,40}(===|!==)[[:space:]]*"' \
+          src --include="*.ts" --include="*.tsx" | grep -v '\.test\.'
+        27 hits brutos.
+  [ran] mesmo comando | grep -v typeof -> 22.
+
+  ARITMETICA:
+     27 brutos
+    − 5 guards de typeof (`typeof x === "string"`; o literal a direita e "string", nao
+        e codigo de erro — MutationResultSummary.tsx:42, ProtocoloPage.tsx:46,50 e afins.
+        CORRECAO sobre o relato do worker, que os contou como populacao genuina.)
+    −15 dado de dominio em 200 (SolverPanel 85/87/96 · reason.direction em QueueRow 285,378
+        e wireFixtures 281,294,308,344,367,460 · ListingDetailPanel 89,90 = `kind` de
+        evento de timeline · MercadoPage 211 e useMarketCollection 86 = CODPROD, nem erro)
+    − 7 uniao tipada PreviewError (MutationPreviewModal 27,72,154,156,163,169,186)
+    = 0 comparacao com literal de codigo de erro HTTP fora de hasCode/uniao tipada.
+
+  EXTRACTION [ran] grep -rn 'hasCode(\|isApiError(\|isRefreshInProgressError(' src \
+        --include="*.ts" --include="*.tsx" | grep -v '\.test\.'  -> 14.
+
+REPORT — dois sitios que o card NAO listava, achados so por varrer cast inline
+  ProdutoHeader.tsx:37    (error as { status?: unknown }).status === status
+  useErpImportChain.ts:10 !("status" in error) -> error.status
+  Classificacao honesta: NAO sao violacao do VC-6 — nenhum compara CODIGO com literal,
+  ambos leem so `status`, e ambos estao CORRETOS contra a classe nova (status e
+  propriedade propria do Error). Sao conhecimento de forma de erro reimplementado a mao
+  onde isApiError daria o mesmo tipado. Fora do write_set do slice; nao migrados por
+  conta propria. Dizer "varredura total" sem nomea-los seria frase total sobre censo
+  parcial.
+
+REPORT — lacuna de feature viva, pre-existente, agora documentada em vez de mascarada
+  Conflito 409 e ALCANCAVEL nas rotas de vinculo (SUPERSEDED / ALREADY_UNDONE,
+  resolution_service.go:109,114 · transport/http_handler.go:112-114), mas a UI nao
+  consegue superficializa-lo — antes e depois deste chip. Antes: casava um codigo
+  inexistente, logo `conflict` era sempre false. Agora: `false` explicito e comentado.
+  Zero regressao deste chip. O operador que perde uma corrida de aprovacao concorrente
+  ve erro generico em vez de "vinculo ja resolvido por outro caminho". ACEITO na fila do
+  hub como candidato a chip. Nao expandido aqui: e completude de feature, nao shape de erro.
+
+LADDER (todas [ran] pelo CHIP, contagens, ANSI-stripped, nunca tail)
+  [ran] apps/web tsc --noEmit ....... 12 erros. Conjunto de defeitos IDENTICO ao baseline
+        por (arquivo, coluna, codigo TS), 12/12.
+        DOIS DESLOCAMENTOS DE LINHA, declarados em vez de normalizados:
+          ListingsRefreshControl.test.tsx  112 -> 114
+          MutationPreviewModal.tsx         197 -> 210
+        O criterio original do card era diff byte-a-byte contra EU-baseline-tsc.txt. Ele
+        NAO se aplica mais, e normalizar numero de linha para fazer casar apagaria
+        justamente o canal que detectaria erro NOVO no mesmo arquivo. Entao a comparacao
+        passa a ser por tupla (arquivo, coluna, codigo TS, mensagem), com o deslocamento
+        PROVADO por aritmetica de diff, nao por semelhanca:
+          [ran] git diff --numstat 0007de8e -- ListingsRefreshControl.test.tsx  6/4  = +2 ✓
+          [ran] git diff --numstat 0007de8e -- MutationPreviewModal.tsx        33/20 = +13 ✓
+        E o conteudo NAS LINHAS NOVAS e o proprio defeito do baseline:
+          114: <QueryClientProvider client={invalidateSpy.mock.instances[0] as QueryClient}>  (TS2352)
+          210: if (protocol.isError) return <ErrorState detail="..." />;                       (TS2741 onRetry)
+        Deslocamento, nao defeito novo.
+  [ran] apps/web vitest run ......... Test Files 67 passed (67)
+                                      Tests 566 passed (566), FAIL count 0, exit 0
+  [ran] censo VC-6 .................. populacao 0 / extraction 14 (aritmetica acima)
+
+NAO VERIFICADO / LIMITES HONESTOS
+  - Nada vivo. O chip nao sobe servidor (interditado). Todo o VC-6 e provado por unit +
+    tipo. O acerto fim-a-fim contra o backend real e do live-drive pos-merge do hub (VC-9).
+  - Os dois sitios de REPORT acima continuam lendo forma de erro a mao. Sao corretos hoje;
+    nao ha guard impedindo que divirjam amanha.

@@ -1,4 +1,4 @@
-import type { ListingSummary } from "@marketplace-central/sdk-runtime";
+import { MarketplaceCentralClientError, type ListingSummary } from "@marketplace-central/sdk-runtime";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
@@ -236,10 +236,9 @@ describe("AnunciosPage exception summary chips", () => {
 
 describe("AnunciosPage error recovery", () => {
   it("clears filter params on retry only for invalid_filter errors", async () => {
-    listListings.mockRejectedValueOnce({
-      status: 400,
-      error: { code: "invalid_filter", message: "invalid" },
-    });
+    listListings.mockRejectedValueOnce(
+      new MarketplaceCentralClientError(400, "invalid_filter", "invalid", {}),
+    );
     listListings.mockResolvedValue({ items: [] });
     renderPage("?installation=inst_1&filter.exception=sync_error&q=abc");
 
@@ -252,10 +251,9 @@ describe("AnunciosPage error recovery", () => {
   });
 
   it("retries with filters intact when the error is not invalid_filter", async () => {
-    listListings.mockRejectedValueOnce({
-      status: 500,
-      error: { code: "internal", message: "boom" },
-    });
+    listListings.mockRejectedValueOnce(
+      new MarketplaceCentralClientError(500, "internal_error", "boom", {}),
+    );
     listListings.mockResolvedValue({ items: [] });
     renderPage("?installation=inst_1&filter.exception=sync_error");
 

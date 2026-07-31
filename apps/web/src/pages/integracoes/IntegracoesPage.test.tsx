@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MarketplaceCentralClientError } from "@marketplace-central/sdk-runtime";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -290,7 +291,9 @@ describe("IntegracoesPage", () => {
   });
 
   it("renders the configure-source state for an unknown assortment source without guessing toggles", async () => {
-    getSellableAssortment.mockRejectedValueOnce({ status: 400, error: "unknown_erp_source" });
+    getSellableAssortment.mockRejectedValueOnce(
+      new MarketplaceCentralClientError(400, "unknown_erp_source", "fonte não configurada", {}),
+    );
     renderPage();
 
     expect(await screen.findByTestId("sellable-assortment-source-unset")).toHaveTextContent(
@@ -304,7 +307,9 @@ describe("IntegracoesPage", () => {
   });
 
   it("renders the configure-source state when counts have no active source", async () => {
-    getActiveSource.mockRejectedValueOnce({ status: 400, error: "unknown_erp_source" });
+    getActiveSource.mockRejectedValueOnce(
+      new MarketplaceCentralClientError(400, "unknown_erp_source", "fonte não configurada", {}),
+    );
     renderPage();
 
     expect(await screen.findByTestId("sellable-assortment-source-unset")).toHaveTextContent(
@@ -351,7 +356,12 @@ describe("IntegracoesPage", () => {
   });
 
   it("shows a duplicate message on a 409 duplicate_file and does not surface a result", async () => {
-    createErpImport.mockRejectedValue({ status: 409, body: { error: "duplicate_file", protocol: "#003-E" } });
+    createErpImport.mockRejectedValue(
+      new MarketplaceCentralClientError(409, "duplicate_file", "arquivo já importado", {
+        import_id: "imp_003",
+        protocol: "#003-E",
+      }),
+    );
     renderPage();
     selectFile();
     fireEvent.click(screen.getByTestId("erp-import-submit"));
@@ -362,7 +372,11 @@ describe("IntegracoesPage", () => {
   });
 
   it("shows the missing-column name on a 422 missing_required_column", async () => {
-    createErpImport.mockRejectedValue({ status: 422, body: { error: "missing_required_column", column: "CUSTO" } });
+    createErpImport.mockRejectedValue(
+      new MarketplaceCentralClientError(422, "missing_required_column", "coluna obrigatória ausente", {
+        column: "CUSTO",
+      }),
+    );
     renderPage();
     selectFile();
     fireEvent.click(screen.getByTestId("erp-import-submit"));
@@ -420,7 +434,9 @@ describe("IntegracoesPage", () => {
   // install, so this card has to stay usable: it is the only place the source
   // gets chosen, and a disabled selector leaves the whole platform unreadable.
   it("lets the operator choose the source when the tenant has none configured yet", async () => {
-    getActiveSource.mockRejectedValue({ status: 400, error: "unknown_erp_source" });
+    getActiveSource.mockRejectedValue(
+      new MarketplaceCentralClientError(400, "unknown_erp_source", "fonte não configurada", {}),
+    );
     setActiveSource.mockResolvedValue(activeSourceConfig("sankhya"));
     renderPage();
 

@@ -1,3 +1,4 @@
+import { hasCode, isApiError } from "@marketplace-central/sdk-runtime";
 import { ErrorState, LoadingState, UnknownValue } from "@marketplace-central/ui";
 import { formatDateTime } from "@marketplace-central/web-query";
 import { useErpImportChain } from "./useErpImportChain";
@@ -7,9 +8,7 @@ interface ImportChainPanelProps {
 }
 
 function isImportNotFoundError(error: unknown): boolean {
-  if (typeof error !== "object" || error === null) return false;
-  const candidate = error as { status?: unknown; error?: unknown };
-  return candidate.error === "import_not_found";
+  return isApiError(error) && hasCode(error, "import_not_found");
 }
 
 function renderCounter(value: unknown, hint: string) {

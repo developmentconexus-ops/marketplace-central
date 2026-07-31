@@ -10,6 +10,7 @@ import (
 
 	"marketplace-central/apps/server_core/internal/modules/pricing/application"
 	"marketplace-central/apps/server_core/internal/modules/pricing/domain"
+	"marketplace-central/apps/server_core/internal/platform/apierror"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 )
 
@@ -21,20 +22,6 @@ type Handler struct {
 
 func NewHandler(svc application.Service, batch *application.BatchOrchestrator) Handler {
 	return Handler{svc: svc, batch: batch}
-}
-
-type apiError struct {
-	Code    string         `json:"code"`
-	Message string         `json:"message"`
-	Details map[string]any `json:"details"`
-}
-
-type apiErrorResponse struct {
-	Error apiError `json:"error"`
-}
-
-func writePricingError(w http.ResponseWriter, status int, code, message string) {
-	httpx.WriteJSON(w, status, apiErrorResponse{Error: apiError{Code: code, Message: message, Details: map[string]any{}}})
 }
 
 func mapPricingError(msg string) (int, string) {
@@ -66,7 +53,7 @@ func (h Handler) handleSimulations(w http.ResponseWriter, r *http.Request) {
 		sims, err := h.svc.ListSimulations(r.Context())
 		if err != nil {
 			slog.Error("pricing.simulations", "action", "list", "result", "500", "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
-			writePricingError(w, http.StatusInternalServerError, "PRICING_INTERNAL_ERROR", "internal error")
+			apierror.Write(w, http.StatusInternalServerError, "PRICING_INTERNAL_ERROR", "internal error", nil)
 			return
 		}
 		slog.Info("pricing.simulations", "action", "list", "result", "200", "count", len(sims), "duration_ms", time.Since(start).Milliseconds())
@@ -87,7 +74,7 @@ func (h Handler) handleSimulations(w http.ResponseWriter, r *http.Request) {
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			slog.Info("pricing.simulations", "action", "create", "result", "400", "duration_ms", time.Since(start).Milliseconds())
-			writePricingError(w, http.StatusBadRequest, "PRICING_REQUEST_INVALID", "malformed request body")
+			apierror.Write(w, http.StatusBadRequest, "PRICING_REQUEST_INVALID", "malformed request body", nil)
 			return
 		}
 		sim, err := h.svc.RunSimulation(r.Context(), application.RunSimulationInput{
@@ -108,7 +95,7 @@ func (h Handler) handleSimulations(w http.ResponseWriter, r *http.Request) {
 			if status >= 500 {
 				message = "internal error"
 			}
-			writePricingError(w, status, code, message)
+			apierror.Write(w, status, code, message, nil)
 			return
 		}
 		slog.Info("pricing.simulations", "action", "create", "result", "201", "simulation_id", sim.SimulationID, "duration_ms", time.Since(start).Milliseconds())
@@ -118,7 +105,7 @@ func (h Handler) handleSimulations(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		w.Header().Set("Allow", "GET, POST")
 		slog.Info("pricing.simulations", "action", "reject_method", "result", "405", "duration_ms", time.Since(start).Milliseconds())
-		writePricingError(w, http.StatusMethodNotAllowed, "PRICING_METHOD_NOT_ALLOWED", "method not allowed")
+		apierror.Write(w, http.StatusMethodNotAllowed, "PRICING_METHOD_NOT_ALLOWED", "method not allowed", nil)
 	}
 }
 
@@ -127,12 +114,12 @@ func (h Handler) handleBatch(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", "POST")
 		slog.Info("pricing.batch", "action", "reject_method", "result", "405", "duration_ms", time.Since(start).Milliseconds())
-		writePricingError(w, http.StatusMethodNotAllowed, "PRICING_METHOD_NOT_ALLOWED", "method not allowed")
+		apierror.Write(w, http.StatusMethodNotAllowed, "PRICING_METHOD_NOT_ALLOWED", "method not allowed", nil)
 		return
 	}
 	if h.batch == nil {
 		slog.Error("pricing.batch", "action", "run", "result", "503", "error", "batch simulation not configured", "duration_ms", time.Since(start).Milliseconds())
-		writePricingError(w, http.StatusServiceUnavailable, "PRICING_BATCH_UNAVAILABLE", "batch simulation not configured")
+		apierror.Write(w, http.StatusServiceUnavailable, "PRICING_BATCH_UNAVAILABLE", "batch simulation not configured", nil)
 		return
 	}
 
@@ -146,12 +133,12 @@ func (h Handler) handleBatch(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		slog.Info("pricing.batch", "action", "decode", "result", "400", "duration_ms", time.Since(start).Milliseconds())
-		writePricingError(w, http.StatusBadRequest, "PRICING_REQUEST_INVALID", "malformed request body")
+		apierror.Write(w, http.StatusBadRequest, "PRICING_REQUEST_INVALID", "malformed request body", nil)
 		return
 	}
 	if len(req.ProductIDs) == 0 {
 		slog.Info("pricing.batch", "action", "validate", "result", "400", "duration_ms", time.Since(start).Milliseconds())
-		writePricingError(w, http.StatusBadRequest, "PRICING_REQUEST_INVALID", "product_ids must not be empty")
+		apierror.Write(w, http.StatusBadRequest, "PRICING_REQUEST_INVALID", "product_ids must not be empty", nil)
 		return
 	}
 	if req.PriceSource == "" {
@@ -170,7 +157,7 @@ func (h Handler) handleBatch(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		status, code := mapPricingError(err.Error())
 		slog.Error("pricing.batch", "action", "run", "result", strconv.Itoa(status), "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
-		writePricingError(w, status, code, "batch simulation failed")
+		apierror.Write(w, status, code, "batch simulation failed", nil)
 		return
 	}
 

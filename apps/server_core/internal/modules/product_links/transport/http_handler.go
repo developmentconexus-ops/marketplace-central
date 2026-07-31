@@ -13,6 +13,7 @@ import (
 
 	"marketplace-central/apps/server_core/internal/modules/product_links/application"
 	"marketplace-central/apps/server_core/internal/modules/product_links/domain"
+	"marketplace-central/apps/server_core/internal/platform/apierror"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 )
 
@@ -99,26 +100,6 @@ func (h Handler) Register(mux httpx.RouteRegistrar) {
 	mux.HandleFunc("/product-links/link-resolutions/batch/{batch_id}/undo", h.handleUndoBatch)
 }
 
-type apiError struct {
-	Code    string         `json:"code"`
-	Message string         `json:"message"`
-	Details map[string]any `json:"details"`
-}
-
-type apiErrorResponse struct {
-	Error apiError `json:"error"`
-}
-
-func writeProductLinksError(w http.ResponseWriter, status int, code, message string) {
-	httpx.WriteJSON(w, status, apiErrorResponse{
-		Error: apiError{
-			Code:    code,
-			Message: message,
-			Details: map[string]any{},
-		},
-	})
-}
-
 func mapProductLinksError(err error) (int, string, string) {
 	if err == nil {
 		return http.StatusInternalServerError, "PRODUCT_LINKS_INTERNAL_ERROR", "internal error"
@@ -146,7 +127,7 @@ func (h Handler) handleListingSnapshotImports(w http.ResponseWriter, r *http.Req
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
 		slog.Info("product_links.listing_snapshot_imports", "action", "reject_method", "result", "405", "duration_ms", time.Since(start).Milliseconds())
-		writeProductLinksError(w, http.StatusMethodNotAllowed, "PRODUCT_LINKS_METHOD_NOT_ALLOWED", "method not allowed")
+		apierror.Write(w, http.StatusMethodNotAllowed, "PRODUCT_LINKS_METHOD_NOT_ALLOWED", "method not allowed", nil)
 		return
 	}
 
@@ -156,7 +137,7 @@ func (h Handler) handleListingSnapshotImports(w http.ResponseWriter, r *http.Req
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		slog.Info("product_links.listing_snapshot_imports", "action", "decode", "result", "400", "duration_ms", time.Since(start).Milliseconds())
-		writeProductLinksError(w, http.StatusBadRequest, "PRODUCT_LINKS_INVALID_REQUEST", "malformed request body")
+		apierror.Write(w, http.StatusBadRequest, "PRODUCT_LINKS_INVALID_REQUEST", "malformed request body", nil)
 		return
 	}
 
@@ -172,7 +153,7 @@ func (h Handler) handleListingSnapshotImports(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		status, code, message := mapProductLinksError(err)
 		slog.Error("product_links.listing_snapshot_imports", "action", "import", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
-		writeProductLinksError(w, status, code, message)
+		apierror.Write(w, status, code, message, nil)
 		return
 	}
 
@@ -185,7 +166,7 @@ func (h Handler) handleLinkCandidateGenerations(w http.ResponseWriter, r *http.R
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
 		slog.Info("product_links.link_candidate_generations", "action", "reject_method", "result", "405", "duration_ms", time.Since(start).Milliseconds())
-		writeProductLinksError(w, http.StatusMethodNotAllowed, "PRODUCT_LINKS_METHOD_NOT_ALLOWED", "method not allowed")
+		apierror.Write(w, http.StatusMethodNotAllowed, "PRODUCT_LINKS_METHOD_NOT_ALLOWED", "method not allowed", nil)
 		return
 	}
 
@@ -195,7 +176,7 @@ func (h Handler) handleLinkCandidateGenerations(w http.ResponseWriter, r *http.R
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		slog.Info("product_links.link_candidate_generations", "action", "decode", "result", "400", "duration_ms", time.Since(start).Milliseconds())
-		writeProductLinksError(w, http.StatusBadRequest, "PRODUCT_LINKS_INVALID_REQUEST", "malformed request body")
+		apierror.Write(w, http.StatusBadRequest, "PRODUCT_LINKS_INVALID_REQUEST", "malformed request body", nil)
 		return
 	}
 
@@ -206,7 +187,7 @@ func (h Handler) handleLinkCandidateGenerations(w http.ResponseWriter, r *http.R
 	if err != nil {
 		status, code, message := mapProductLinksError(err)
 		slog.Error("product_links.link_candidate_generations", "action", "generate", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
-		writeProductLinksError(w, status, code, message)
+		apierror.Write(w, status, code, message, nil)
 		return
 	}
 
@@ -219,7 +200,7 @@ func (h Handler) handleLinkCandidates(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", http.MethodGet)
 		slog.Info("product_links.link_candidates", "action", "reject_method", "result", "405", "duration_ms", time.Since(start).Milliseconds())
-		writeProductLinksError(w, http.StatusMethodNotAllowed, "PRODUCT_LINKS_METHOD_NOT_ALLOWED", "method not allowed")
+		apierror.Write(w, http.StatusMethodNotAllowed, "PRODUCT_LINKS_METHOD_NOT_ALLOWED", "method not allowed", nil)
 		return
 	}
 
@@ -230,7 +211,7 @@ func (h Handler) handleLinkCandidates(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		status, code, message := mapProductLinksError(err)
 		slog.Error("product_links.link_candidates", "action", "list", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
-		writeProductLinksError(w, status, code, message)
+		apierror.Write(w, status, code, message, nil)
 		return
 	}
 
@@ -243,7 +224,7 @@ func (h Handler) handleLinkWorkflows(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", http.MethodGet)
 		slog.Info("product_links.link_workflows", "action", "reject_method", "result", "405", "duration_ms", time.Since(start).Milliseconds())
-		writeProductLinksError(w, http.StatusMethodNotAllowed, "PRODUCT_LINKS_METHOD_NOT_ALLOWED", "method not allowed")
+		apierror.Write(w, http.StatusMethodNotAllowed, "PRODUCT_LINKS_METHOD_NOT_ALLOWED", "method not allowed", nil)
 		return
 	}
 	items, err := h.workflowReader.ListLinkWorkflows(r.Context(), application.ListLinkWorkflowsInput{
@@ -253,7 +234,7 @@ func (h Handler) handleLinkWorkflows(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		status, code, message := mapProductLinksError(err)
 		slog.Error("product_links.link_workflows", "action", "list", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
-		writeProductLinksError(w, status, code, message)
+		apierror.Write(w, status, code, message, nil)
 		return
 	}
 	slog.Info("product_links.link_workflows", "action", "list", "result", "200", "count", len(items), "duration_ms", time.Since(start).Milliseconds())
@@ -265,7 +246,7 @@ func (h Handler) handleApproveCandidate(w http.ResponseWriter, r *http.Request) 
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
 		slog.Info("product_links.link_resolutions", "action", "reject_method", "result", "405", "duration_ms", time.Since(start).Milliseconds())
-		writeProductLinksError(w, http.StatusMethodNotAllowed, "PRODUCT_LINKS_METHOD_NOT_ALLOWED", "method not allowed")
+		apierror.Write(w, http.StatusMethodNotAllowed, "PRODUCT_LINKS_METHOD_NOT_ALLOWED", "method not allowed", nil)
 		return
 	}
 	var req struct {
@@ -274,7 +255,7 @@ func (h Handler) handleApproveCandidate(w http.ResponseWriter, r *http.Request) 
 		Actor       domain.ActorMetadata `json:"actor"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeProductLinksError(w, http.StatusBadRequest, "PRODUCT_LINKS_INVALID_REQUEST", "malformed request body")
+		apierror.Write(w, http.StatusBadRequest, "PRODUCT_LINKS_INVALID_REQUEST", "malformed request body", nil)
 		return
 	}
 	result, err := h.workflowResolver.ApproveCandidate(r.Context(), application.ApproveCandidateInput{
@@ -285,7 +266,7 @@ func (h Handler) handleApproveCandidate(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		status, code, message := mapProductLinksError(err)
 		slog.Error("product_links.link_resolutions", "action", "approve_candidate", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
-		writeProductLinksError(w, status, code, message)
+		apierror.Write(w, status, code, message, nil)
 		return
 	}
 	slog.Info("product_links.link_resolutions", "action", "approve_candidate", "result", "200", "candidate_id", req.CandidateID, "duration_ms", time.Since(start).Milliseconds())
@@ -296,7 +277,7 @@ func (h Handler) handleRejectListing(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
-		writeProductLinksError(w, http.StatusMethodNotAllowed, "PRODUCT_LINKS_METHOD_NOT_ALLOWED", "method not allowed")
+		apierror.Write(w, http.StatusMethodNotAllowed, "PRODUCT_LINKS_METHOD_NOT_ALLOWED", "method not allowed", nil)
 		return
 	}
 	var req struct {
@@ -308,7 +289,7 @@ func (h Handler) handleRejectListing(w http.ResponseWriter, r *http.Request) {
 		Actor               domain.ActorMetadata `json:"actor"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeProductLinksError(w, http.StatusBadRequest, "PRODUCT_LINKS_INVALID_REQUEST", "malformed request body")
+		apierror.Write(w, http.StatusBadRequest, "PRODUCT_LINKS_INVALID_REQUEST", "malformed request body", nil)
 		return
 	}
 	result, err := h.workflowResolver.RejectListing(r.Context(), application.RejectListingInput{
@@ -322,7 +303,7 @@ func (h Handler) handleRejectListing(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		status, code, message := mapProductLinksError(err)
 		slog.Error("product_links.link_resolutions", "action", "reject_listing", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
-		writeProductLinksError(w, status, code, message)
+		apierror.Write(w, status, code, message, nil)
 		return
 	}
 	slog.Info("product_links.link_resolutions", "action", "reject_listing", "result", "200", "installation_id", req.InstallationID, "duration_ms", time.Since(start).Milliseconds())
@@ -333,7 +314,7 @@ func (h Handler) handleManualResolve(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
-		writeProductLinksError(w, http.StatusMethodNotAllowed, "PRODUCT_LINKS_METHOD_NOT_ALLOWED", "method not allowed")
+		apierror.Write(w, http.StatusMethodNotAllowed, "PRODUCT_LINKS_METHOD_NOT_ALLOWED", "method not allowed", nil)
 		return
 	}
 	var req struct {
@@ -348,11 +329,11 @@ func (h Handler) handleManualResolve(w http.ResponseWriter, r *http.Request) {
 		Actor                 domain.ActorMetadata `json:"actor"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeProductLinksError(w, http.StatusBadRequest, "PRODUCT_LINKS_INVALID_REQUEST", "malformed request body")
+		apierror.Write(w, http.StatusBadRequest, "PRODUCT_LINKS_INVALID_REQUEST", "malformed request body", nil)
 		return
 	}
 	if err := domain.ValidateInternalProductID(req.InternalProductID); err != nil {
-		writeProductLinksError(w, http.StatusBadRequest, "invalid_identity", "internal_product_id must be a positive integer")
+		apierror.Write(w, http.StatusBadRequest, "invalid_identity", "internal_product_id must be a positive integer", nil)
 		return
 	}
 	result, err := h.workflowResolver.ManualResolve(r.Context(), application.ManualResolveInput{
@@ -369,7 +350,7 @@ func (h Handler) handleManualResolve(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		status, code, message := mapProductLinksError(err)
 		slog.Error("product_links.link_resolutions", "action", "manual_resolve", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
-		writeProductLinksError(w, status, code, message)
+		apierror.Write(w, status, code, message, nil)
 		return
 	}
 	slog.Info("product_links.link_resolutions", "action", "manual_resolve", "result", "200", "installation_id", req.InstallationID, "duration_ms", time.Since(start).Milliseconds())
@@ -381,12 +362,12 @@ func (h Handler) handleBatchPreview(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
 		slog.Info("product_links.link_resolutions", "action", "batch_preview_method", "result", "405", "duration_ms", time.Since(start).Milliseconds())
-		writeProductLinksError(w, http.StatusMethodNotAllowed, "PRODUCT_LINKS_METHOD_NOT_ALLOWED", "method not allowed")
+		apierror.Write(w, http.StatusMethodNotAllowed, "PRODUCT_LINKS_METHOD_NOT_ALLOWED", "method not allowed", nil)
 		return
 	}
 	if h.batchResolver == nil {
 		slog.Error("product_links.link_resolutions", "action", "batch_preview", "result", "500", "error", "batch resolver not configured", "duration_ms", time.Since(start).Milliseconds())
-		writeProductLinksError(w, http.StatusInternalServerError, "PRODUCT_LINKS_INTERNAL_ERROR", "internal error")
+		apierror.Write(w, http.StatusInternalServerError, "PRODUCT_LINKS_INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	var req struct {
@@ -396,7 +377,7 @@ func (h Handler) handleBatchPreview(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		slog.Info("product_links.link_resolutions", "action", "batch_preview_decode", "result", "400", "duration_ms", time.Since(start).Milliseconds())
-		writeProductLinksError(w, http.StatusBadRequest, "PRODUCT_LINKS_INVALID_REQUEST", "malformed request body")
+		apierror.Write(w, http.StatusBadRequest, "PRODUCT_LINKS_INVALID_REQUEST", "malformed request body", nil)
 		return
 	}
 	approvals := make([]application.BatchApprovalInput, 0, len(req.Approvals))
@@ -407,12 +388,12 @@ func (h Handler) handleBatchPreview(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, application.ErrBatchApprovalsRequired) {
 			slog.Info("product_links.link_resolutions", "action", "batch_preview", "result", "422", "duration_ms", time.Since(start).Milliseconds())
-			writeProductLinksError(w, http.StatusUnprocessableEntity, "PRODUCT_LINKS_BATCH_APPROVALS_REQUIRED", "at least one approval is required")
+			apierror.Write(w, http.StatusUnprocessableEntity, "PRODUCT_LINKS_BATCH_APPROVALS_REQUIRED", "at least one approval is required", nil)
 			return
 		}
 		status, code, message := mapProductLinksError(err)
 		slog.Error("product_links.link_resolutions", "action", "batch_preview", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
-		writeProductLinksError(w, status, code, message)
+		apierror.Write(w, status, code, message, nil)
 		return
 	}
 	slog.Info("product_links.link_resolutions", "action", "batch_preview", "result", "200", "count", len(result.Items), "duration_ms", time.Since(start).Milliseconds())
@@ -424,12 +405,12 @@ func (h Handler) handleBatchApply(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
 		slog.Info("product_links.link_resolutions", "action", "reject_method", "result", "405", "duration_ms", time.Since(start).Milliseconds())
-		writeProductLinksError(w, http.StatusMethodNotAllowed, "PRODUCT_LINKS_METHOD_NOT_ALLOWED", "method not allowed")
+		apierror.Write(w, http.StatusMethodNotAllowed, "PRODUCT_LINKS_METHOD_NOT_ALLOWED", "method not allowed", nil)
 		return
 	}
 	if h.batchResolver == nil {
 		slog.Error("product_links.link_resolutions", "action", "batch_apply", "result", "500", "error", "batch resolver not configured", "duration_ms", time.Since(start).Milliseconds())
-		writeProductLinksError(w, http.StatusInternalServerError, "PRODUCT_LINKS_INTERNAL_ERROR", "internal error")
+		apierror.Write(w, http.StatusInternalServerError, "PRODUCT_LINKS_INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	var req struct {
@@ -440,7 +421,7 @@ func (h Handler) handleBatchApply(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		slog.Info("product_links.link_resolutions", "action", "batch_apply_decode", "result", "400", "duration_ms", time.Since(start).Milliseconds())
-		writeProductLinksError(w, http.StatusBadRequest, "PRODUCT_LINKS_INVALID_REQUEST", "malformed request body")
+		apierror.Write(w, http.StatusBadRequest, "PRODUCT_LINKS_INVALID_REQUEST", "malformed request body", nil)
 		return
 	}
 	approvals := make([]application.ApplyApprovalInput, 0, len(req.Approvals))
@@ -451,12 +432,12 @@ func (h Handler) handleBatchApply(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, application.ErrBatchApprovalsRequired) {
 			slog.Info("product_links.link_resolutions", "action", "batch_apply", "result", "422", "duration_ms", time.Since(start).Milliseconds())
-			writeProductLinksError(w, http.StatusUnprocessableEntity, "PRODUCT_LINKS_BATCH_APPROVALS_REQUIRED", "at least one approval is required")
+			apierror.Write(w, http.StatusUnprocessableEntity, "PRODUCT_LINKS_BATCH_APPROVALS_REQUIRED", "at least one approval is required", nil)
 			return
 		}
 		status, code, message := mapProductLinksError(err)
 		slog.Error("product_links.link_resolutions", "action", "batch_apply", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
-		writeProductLinksError(w, status, code, message)
+		apierror.Write(w, status, code, message, nil)
 		return
 	}
 	slog.Info("product_links.link_resolutions", "action", "batch_apply", "result", "200", "batch_id", result.BatchID, "applied", len(result.Applied), "failed", len(result.Failed), "duration_ms", time.Since(start).Milliseconds())
@@ -468,12 +449,12 @@ func (h Handler) handleUndoResolution(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
 		slog.Info("product_links.link_resolutions", "action", "undo_method", "result", "405", "duration_ms", time.Since(start).Milliseconds())
-		writeProductLinksError(w, http.StatusMethodNotAllowed, "PRODUCT_LINKS_METHOD_NOT_ALLOWED", "method not allowed")
+		apierror.Write(w, http.StatusMethodNotAllowed, "PRODUCT_LINKS_METHOD_NOT_ALLOWED", "method not allowed", nil)
 		return
 	}
 	if h.workflowResolver == nil {
 		slog.Error("product_links.link_resolutions", "action", "undo", "result", "500", "error", "workflow resolver not configured", "duration_ms", time.Since(start).Milliseconds())
-		writeProductLinksError(w, http.StatusInternalServerError, "PRODUCT_LINKS_INTERNAL_ERROR", "internal error")
+		apierror.Write(w, http.StatusInternalServerError, "PRODUCT_LINKS_INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	auditID := r.PathValue("id")
@@ -486,7 +467,7 @@ func (h Handler) handleUndoResolution(w http.ResponseWriter, r *http.Request) {
 	if r.Body != nil {
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil && !errors.Is(err, io.EOF) {
 			slog.Info("product_links.link_resolutions", "action", "undo_decode", "result", "400", "duration_ms", time.Since(start).Milliseconds())
-			writeProductLinksError(w, http.StatusBadRequest, "PRODUCT_LINKS_INVALID_REQUEST", "malformed request body")
+			apierror.Write(w, http.StatusBadRequest, "PRODUCT_LINKS_INVALID_REQUEST", "malformed request body", nil)
 			return
 		}
 	}
@@ -498,7 +479,7 @@ func (h Handler) handleUndoResolution(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		status, code, message := mapProductLinksError(err)
 		slog.Error("product_links.link_resolutions", "action", "undo", "result", status, "error", err.Error(), "audit_id", auditID, "duration_ms", time.Since(start).Milliseconds())
-		writeProductLinksError(w, status, code, message)
+		apierror.Write(w, status, code, message, nil)
 		return
 	}
 	slog.Info("product_links.link_resolutions", "action", "undo", "result", "200", "audit_id", auditID, "duration_ms", time.Since(start).Milliseconds())
@@ -510,12 +491,12 @@ func (h Handler) handleUndoBatch(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
 		slog.Info("product_links.link_resolutions", "action", "undo_batch_method", "result", "405", "duration_ms", time.Since(start).Milliseconds())
-		writeProductLinksError(w, http.StatusMethodNotAllowed, "PRODUCT_LINKS_METHOD_NOT_ALLOWED", "method not allowed")
+		apierror.Write(w, http.StatusMethodNotAllowed, "PRODUCT_LINKS_METHOD_NOT_ALLOWED", "method not allowed", nil)
 		return
 	}
 	if h.workflowResolver == nil {
 		slog.Error("product_links.link_resolutions", "action", "undo_batch", "result", "500", "error", "workflow resolver not configured", "duration_ms", time.Since(start).Milliseconds())
-		writeProductLinksError(w, http.StatusInternalServerError, "PRODUCT_LINKS_INTERNAL_ERROR", "internal error")
+		apierror.Write(w, http.StatusInternalServerError, "PRODUCT_LINKS_INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	batchID := r.PathValue("batch_id")
@@ -523,7 +504,7 @@ func (h Handler) handleUndoBatch(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		status, code, message := mapProductLinksError(err)
 		slog.Error("product_links.link_resolutions", "action", "undo_batch", "result", status, "error", err.Error(), "batch_id", batchID, "duration_ms", time.Since(start).Milliseconds())
-		writeProductLinksError(w, status, code, message)
+		apierror.Write(w, status, code, message, nil)
 		return
 	}
 	slog.Info("product_links.link_resolutions", "action", "undo_batch", "result", "200", "batch_id", batchID, "reverted", len(result.Reverted), "failed", len(result.Failed), "duration_ms", time.Since(start).Milliseconds())

@@ -10,6 +10,7 @@ import (
 
 	"marketplace-central/apps/server_core/internal/modules/integrations/application"
 	"marketplace-central/apps/server_core/internal/modules/integrations/domain"
+	"marketplace-central/apps/server_core/internal/platform/apierror"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 )
 
@@ -35,24 +36,12 @@ func NewHandler(providerReader ProviderReader, installationReader InstallationRe
 	}
 }
 
-type apiError struct {
-	Code    string         `json:"code"`
-	Message string         `json:"message"`
-	Details map[string]any `json:"details"`
-}
-
-type apiErrorResponse struct {
-	Error apiError `json:"error"`
-}
-
+// writeIntegrationError forwards to apierror.Write. Kept (not inlined at
+// every call site) because auth_handler.go in this package calls it too and
+// is outside this slice's write_set — deleting it would break that file's
+// build. See slice report for the alternatives-considered note.
 func writeIntegrationError(w http.ResponseWriter, status int, code, message string) {
-	httpx.WriteJSON(w, status, apiErrorResponse{
-		Error: apiError{
-			Code:    code,
-			Message: message,
-			Details: map[string]any{},
-		},
-	})
+	apierror.Write(w, status, code, message, nil)
 }
 
 func mapIntegrationError(err error) (int, string, string) {
@@ -78,7 +67,7 @@ func (h Handler) handleProviders(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", http.MethodGet)
 		slog.Info("integrations.providers", "action", "reject_method", "result", "405", "duration_ms", time.Since(start).Milliseconds())
-		writeIntegrationError(w, http.StatusMethodNotAllowed, "INTEGRATIONS_PROVIDER_METHOD_NOT_ALLOWED", "method not allowed")
+		apierror.Write(w, http.StatusMethodNotAllowed, "INTEGRATIONS_PROVIDER_METHOD_NOT_ALLOWED", "method not allowed", nil)
 		return
 	}
 
@@ -86,7 +75,7 @@ func (h Handler) handleProviders(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		status, code, message := mapIntegrationError(err)
 		slog.Error("integrations.providers", "action", "list", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
-		writeIntegrationError(w, status, code, message)
+		apierror.Write(w, status, code, message, nil)
 		return
 	}
 
@@ -102,7 +91,7 @@ func (h Handler) handleInstallations(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			status, code, message := mapIntegrationError(err)
 			slog.Error("integrations.installations", "action", "list", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
-			writeIntegrationError(w, status, code, message)
+			apierror.Write(w, status, code, message, nil)
 			return
 		}
 
@@ -118,7 +107,7 @@ func (h Handler) handleInstallations(w http.ResponseWriter, r *http.Request) {
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			slog.Info("integrations.installations", "action", "decode", "result", "400", "duration_ms", time.Since(start).Milliseconds())
-			writeIntegrationError(w, http.StatusBadRequest, "INTEGRATIONS_INSTALLATION_INVALID", "malformed request body")
+			apierror.Write(w, http.StatusBadRequest, "INTEGRATIONS_INSTALLATION_INVALID", "malformed request body", nil)
 			return
 		}
 
@@ -131,7 +120,7 @@ func (h Handler) handleInstallations(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			status, code, message := mapIntegrationError(err)
 			slog.Error("integrations.installations", "action", "create_draft", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
-			writeIntegrationError(w, status, code, message)
+			apierror.Write(w, status, code, message, nil)
 			return
 		}
 
@@ -141,6 +130,6 @@ func (h Handler) handleInstallations(w http.ResponseWriter, r *http.Request) {
 	default:
 		w.Header().Set("Allow", "GET, POST")
 		slog.Info("integrations.installations", "action", "reject_method", "result", "405", "duration_ms", time.Since(start).Milliseconds())
-		writeIntegrationError(w, http.StatusMethodNotAllowed, "INTEGRATIONS_INSTALLATION_METHOD_NOT_ALLOWED", "method not allowed")
+		apierror.Write(w, http.StatusMethodNotAllowed, "INTEGRATIONS_INSTALLATION_METHOD_NOT_ALLOWED", "method not allowed", nil)
 	}
 }

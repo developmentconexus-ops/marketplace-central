@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	connectorports "marketplace-central/apps/server_core/internal/modules/connectors/ports"
+	"marketplace-central/apps/server_core/internal/platform/apierror"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 )
 
@@ -39,18 +40,9 @@ func (h *Handler) Register(mux httpx.RouteRegistrar) {
 	mux.HandleFunc("/connectors/melhor-envio/status", h.handleMEStatus)
 }
 
-func writeConnectorsError(w http.ResponseWriter, status int, code, message string) {
-	httpx.WriteJSON(w, status, map[string]any{
-		"error": map[string]string{
-			"code":    code,
-			"message": message,
-		},
-	})
-}
-
 func (h *Handler) handleMEAuthStart(w http.ResponseWriter, r *http.Request) {
 	if h.meAuth == nil {
-		writeConnectorsError(w, http.StatusServiceUnavailable, "CONNECTORS_ME_NOT_CONFIGURED", "Melhor Envio is not configured (ME_CLIENT_ID missing)")
+		apierror.Write(w, http.StatusServiceUnavailable, "CONNECTORS_ME_NOT_CONFIGURED", "Melhor Envio is not configured (ME_CLIENT_ID missing)", nil)
 		return
 	}
 	h.meAuth.HandleStart(w, r)
@@ -58,7 +50,7 @@ func (h *Handler) handleMEAuthStart(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleMEAuthCallback(w http.ResponseWriter, r *http.Request) {
 	if h.meAuth == nil {
-		writeConnectorsError(w, http.StatusServiceUnavailable, "CONNECTORS_ME_NOT_CONFIGURED", "Melhor Envio is not configured")
+		apierror.Write(w, http.StatusServiceUnavailable, "CONNECTORS_ME_NOT_CONFIGURED", "Melhor Envio is not configured", nil)
 		return
 	}
 	h.meAuth.HandleCallback(w, r)

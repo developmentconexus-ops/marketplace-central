@@ -1,0 +1,189 @@
+VC-1 / VC-2 — backend error surface, post-migration census
+Measured by the CHIP after slices S2..S7. Every number below was re-run here, not
+copied from a worker's report.
+Checkout: .claude/worktrees/chip-error-unify · apps/server_core
+GOCACHE/GOMODCACHE bound absolute.
+
+================================================================
+POPULATION vs EXTRACTION (both printed — profile §11)
+================================================================
+[ran] httpx.WriteJSON call sites, non-test, whole tree ......... 111
+[ran]   of those, error-shaped (any of: a literal "error" key,
+        a *ErrorEnvelope/*ErrorResponse type, a 4xx/5xx status
+        constant, or a bare 4xx/5xx literal) ................... 0
+[ran] apierror.Write call sites, non-test ...................... 190
+[ran] http.Error( , non-test ...................................  0
+[ran] raw w.WriteHeader(4xx|5xx), non-test .....................  2
+[ran] io.WriteString(w / w.Write([]byte ... , non-test .........  2
+
+The 111 and the 190 are DISJOINT populations: the 111 are 2xx bodies, which this chip
+does not touch. The number that carries the claim is the 0 on the second line.
+
+The two raw writers are the same two sites, and they are INTENTIONAL:
+  internal/platform/httpx/json.go:22-23          (encode-failure fallback)
+  internal/platform/httpx/route_deadline.go:133-134 (deadline exceeded)
+Both live in `httpx`, which CANNOT import `apierror` — the dependency direction is
+apierror -> httpx, and reversing it is an import cycle. Both therefore emit the envelope
+as a constant string literal instead of a call:
+  json.go:15          const encodeFailureBody   = `{"error":{"code":"internal_error","message":"failed to encode response","details":{}}}`
+  route_deadline.go:129 const deadlineExceededBody = `{"error":{"code":"deadline_exceeded","message":"tempo limite excedido","details":{}}}`
+[ran] grep for an apierror import inside internal/platform/httpx/ -> 0. No cycle.
+
+================================================================
+THE PACK'S "20 HELPERS" WAS A SUBSET, NOT THE POPULATION
+================================================================
+The context pack named 20 helpers in 12 transports. The measured population was larger,
+and three members were invisible to the grep shape the pack implied (`write*Error` inside
+a module directory):
+
+  (a) catalog/transport/http_handler.go:440 — an INLINE 503 inside requirePageReader,
+      written through no named helper at all.
+  (b) platform/httpx/json.go:12 — a plain-text `http.Error` fallback sitting INSIDE the
+      function every error writer already called. An escape hatch from the envelope,
+      built in by construction.
+  (c) platform/httpx/route_deadline.go:129 — `writeDeadlineExceeded`, emitting flat
+      `{"error":"deadline_exceeded"}` from the PLATFORM router. This is the
+      highest-reach flat producer in the tree: it fires on every deadline-bounded route
+      regardless of module, and no grep scoped to a module directory could ever see it.
+      Found by this chip during the S4..S7 batching sweep, not by the pack.
+
+(c) is the one worth carrying upstream: the pack's census was scoped to
+`internal/modules/*/transport`, so a producer in `internal/platform` was structurally
+out of frame. The population is set by the FACT (what writes an HTTP error body), never
+by the directory the edit was expected to land in.
+
+================================================================
+TWO SURVIVING DELEGATING WRAPPERS — RATIFIED, NOT OVERLOOKED
+================================================================
+  internal/modules/market/transport/http_handler.go:145      writeMarketError      (3 callers)
+  internal/modules/integrations/transport/http_handler.go:43 writeIntegrationError (31 callers)
+
+Both are one-line pass-throughs to apierror.Write. They survive because their callers
+live in files outside the slice that owned them (market/transport/verdict_handler.go,
+integrations/transport/auth_handler.go); inlining 34 call sites to append a `nil`
+argument is churn with zero behaviour change. They PRODUCE nothing — they delegate — so
+VC-1's substance ("every error site calls platform/apierror") holds. Recorded here so
+the gate reads a decision rather than discovering an unexplained survivor.
+
+Mappers that also survive by design (they map an error to a status/code, which is real
+logic; only what they WRITE changed): writeCatalogPageError, writeCatalogReadError,
+writeImportError, writeCalcError, writeRunQueryError, writeMarketQueryError,
+writeMarketServiceError, writeCollectionError, writeSummaryError, writeOrderReadError,
+writeSankhyaLinkageError, writeMutationError, and the two `key`-building helpers
+(writeListError, writeRunReadError, writeDashboardError) whose `if key != ""` conditional
+had to be preserved exactly — an absent key must not become `"key": ""`.
+
+================================================================
+VC-2 — one whole-body pin per module (17 + the catalog golden test)
+================================================================
+[ran] grep -rn 'func Test.*ErrorEnvelopeWholeBody' --include=*_test.go internal
+  classifications, connectors/transport, connectors/adapters/melhorenvio, dashboard,
+  erp_import, integrations, inventory, listings, market, marketplaces, mutations,
+  orders, pricing, product_links, profitability, tenant_config, platform/httpx
+plus catalog, covered by the day-1 golden test
+TestCatalogCountsInvalidErpSourceEmitsErrorEnvelope.
+
+Every pin compares the COMPLETE body with trimJSON applied to BOTH sides. Substring
+assertions on a body were forbidden in every slice card: a fragment cannot prove the
+ABSENCE of a stray top-level key, which is the entire claim.
+
+Ad hoc fields proven to land inside `details` and nowhere else, by a pin of a case that
+CARRIES the field: allowed_range (catalog), column + import_id + protocol (erp_import),
+limit (profitability), key (listings, integrations, dashboard), by (orders).
+
+================================================================
+LADDER
+================================================================
+[ran] go build ./...                       BUILD_EXIT=0
+[ran] go vet ./...                         VET_EXIT=0
+[ran] go test -count=1 ./internal/... ./tests/unit/...
+      EXIT=0   ok=108  FAIL=0  no test files=41
+      -count=1 forced: a "(cached)" line is not evidence that anything executed.
+
+One test outside every slice's write_set went red and was fixed by the chip, not by a
+worker: profitability/transport/limit_test.go:46 asserted the flat
+`"error":"limit_exceeded"` substring. Its intent (422 + the cap named) is intact; only
+the shape it reads moved to `"code":"limit_exceeded"`. The `"limit":200` half of the
+assertion was left untouched and still passes, which is what proves the cap value
+survived the migration into `details`.
+
+================================================================
+CARRIED FORWARD — a code-naming inconsistency this chip MEASURED but did not fix
+================================================================
+integrations/transport/auth_handler.go uses SCREAMING_SNAKE error codes
+(INTEGRATIONS_AUTH_METHOD_NOT_ALLOWED, INTEGRATIONS_AUTH_STATE_INVALID,
+INTEGRATIONS_APIKEY_MISSING_FIELDS, INTEGRATIONS_OPERATION_INVALID) while the whole rest
+of the tree uses snake_case. The mission sentence allows normalising codes "where
+inconsistent (safe rename: tsc catches it via the union)" — but the union does not exist
+yet. Renaming these BEFORE the SDK union exists would be a silent wire-contract change
+with no compiler catching the FE side. Deferred to the OpenAPI+SDK slice, where the typed
+union makes the rename checkable rather than hopeful. Not silently dropped: recorded here.
+
+================================================================================
+ADENDO — DELEGATE GUARD (exigido pela ruling (a) do hub)
+Medido pelo CHIP. apps/server_core, worktree chip-error-unify.
+
+O hub aceitou a sobrevivencia dos dois wrappers delegantes writeMarketError e
+writeIntegrationError sob UMA condicao: que o censo fique formulado de modo que
+um payload novo construido DENTRO deles seja visivel, contagem 0.
+
+Formulacao (nao e grep por nome — e grep pelo CORPO da funcao, extraido por awk
+entre a assinatura e o fecho, com assinatura e chave removidas):
+
+  body=$(awk '/^func write(Market|Integration)Error/,/^}/' "$f" | sed '1d;$d')
+  body_lines           = $(echo "$body" | grep -c .)
+  payload_construction = $(echo "$body" | grep -cE 'map\[string\]|struct\{|&[A-Za-z]+\{|= *\[\]')
+  delegation_calls     = $(echo "$body" | grep -c 'apierror\.Write(')
+
+[ran] resultado:
+
+  internal/modules/integrations/transport/http_handler.go
+      apierror.Write(w, status, code, message, nil)
+      body_lines=1  payload_construction=0  delegation_calls=1
+
+  internal/modules/market/transport/http_handler.go
+      apierror.Write(w, status, code, message, details)
+      body_lines=1  payload_construction=0  delegation_calls=1
+
+POR QUE ESTA FORMULACAO ACUSA O CASO FUTURO
+  Sao DOIS sinais independentes e qualquer payload novo dispara os dois:
+  construir um map/struct de erro casa payload_construction (>0), e adicionar
+  qualquer linha ao corpo tira body_lines de 1. Um grep so por 'apierror.Write'
+  NAO serviria — continuaria 1 mesmo com dez linhas de payload montadas acima da
+  chamada. E por isso que o guard mede o CORPO, e nao a presenca da chamada.
+
+  Limite honesto desta formulacao: ela prova que o corpo e uma unica linha de
+  delegacao pura. Ela nao prova nada sobre o que os 34 call-sites passam como
+  argumento — isso e coberto pelo censo de shape acima (produtor unico), nao
+  aqui.
+
+================================================================================
+ADENDO — FALLBACK DE ENCODE (exigido pela ruling (2) do hub)
+Medido pelo CHIP. internal/platform/httpx/json.go
+
+A ruling exigiu quatro coisas do fallback de falha de encode. Todas verificadas
+por leitura do arquivo, nao por alegacao:
+
+  1. bytes PRE-SERIALIZADOS constantes, nunca um segundo json.Encode em runtime
+     json.go:15  const encodeFailureBody = `{"error":{"code":"internal_error",
+                 "message":"failed to encode response","details":{}}}`
+     E uma const string literal. O caminho de falha nao chama o encoder de novo,
+     entao nao pode falhar de novo e voltar a plain-text pela porta dos fundos.
+  2. Content-Type application/json no fallback
+     json.go:21  w.Header().Set("Content-Type", "application/json")  <- ANTES do
+                 WriteHeader, no ramo de falha, nao so no ramo feliz.
+  3. teste pina o corpo COMPLETO (VC-2 vale para o fallback)
+     json_test.go:32  want := trimJSON(`{"error":{"code":"internal_error",
+                      "message":"failed to encode response","details":{}}}`)
+     O esperado e literal HARDCODED, NAO uma referencia a constante
+     encodeFailureBody. Referenciar a constante tornaria o pin tautologico —
+     passaria para qualquer valor, inclusive vazio.
+  4. sem ciclo de import
+     httpx nao importa apierror (direcao apierror -> httpx preservada). E
+     exatamente por isso que o corpo e literal aqui e em route_deadline.go:129
+     em vez de chamar apierror.Write.
+
+  Observacao adicional, nao exigida mas medida: o encode acontece em bytes.Buffer
+  ANTES de qualquer WriteHeader (json.go:18-19). Logo uma falha de encode ocorre
+  com a resposta ainda nao comitada, e o 500 do fallback e legitimo — nao ha
+  escrita parcial na frente dele.

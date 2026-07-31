@@ -1,0 +1,15 @@
+# tsc baseline @ 0007de8e5649db694690cc25df57428da62afdae
+# cmd: npx --no-install tsc --noEmit -p apps/web/tsconfig.json (worktree root, after npm ci exit 0)
+ apps/web/src/pages/anunciosQueries.ts(17,54): error TS2345: Argument of type 'ListingListOptions' is not assignable to parameter of type 'Record<string, unknown>'.
+ apps/web/src/pages/anunciosQueryState.test.ts(128,39): error TS2345: Argument of type '{ listListings: Mock<Procedure>; getListingsSummary: Mock<Procedure>; }' is not assignable to parameter of type 'AnunciosClient'.
+ apps/web/src/pages/anunciosQueryState.test.ts(153,42): error TS2345: Argument of type '{ listListings: Mock<Procedure>; getListingsSummary: Mock<Procedure>; }' is not assignable to parameter of type 'AnunciosClient'.
+ apps/web/src/pages/AnunciosTable.test.tsx(40,7): error TS2739: Type '{ status: "OK"; position: { rank: number; total: number; }; price_to_win: { amount: string; currency: string; }; delta_pct: string; match_status: "ACCEPT"; n_offers: number; n_sellers: number; evidence: { ...; }; }' is missing the following properties from type 'ListingMarketSignal': median, min_valid, max_valid
+ apps/web/src/pages/ListingsRefreshControl.test.tsx(112,36): error TS2352: Conversion of type 'Promise<void>' to type 'QueryClient' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+ apps/web/src/pages/mutations/MutationPreviewModal.tsx(197,33): error TS2741: Property 'onRetry' is missing in type '{ detail: string; }' but required in type 'ErrorStateProps'.
+ apps/web/src/pages/mutations/MutationResultSummary.tsx(22,25): error TS2741: Property 'onRetry' is missing in type '{ detail: string; }' but required in type 'ErrorStateProps'.
+ apps/web/src/pages/produto/ProdutoPage.partialFailure.test.tsx(39,44): error TS2322: Type '"complete"' is not assignable to type 'CanonicalSourceFactQuality'.
+ apps/web/src/pages/produto/ProdutoPage.partialFailure.test.tsx(40,45): error TS2322: Type '"complete"' is not assignable to type 'CanonicalSourceFactQuality'.
+ apps/web/src/pages/produto/ProdutoPage.partialFailure.test.tsx(41,46): error TS2322: Type '"complete"' is not assignable to type 'CanonicalSourceFactQuality'.
+ apps/web/src/pages/produto/ProdutoPage.partialFailure.test.tsx(45,3): error TS2322: Type '"MATCHED"' is not assignable to type 'MarketPriceIntelMatchStatus'.
+ apps/web/src/pages/produto/ProdutoPage.test.tsx(91,7): error TS2322: Type '"MATCHED"' is not assignable to type 'MarketPriceIntelMatchStatus'.
+# COUNT=12

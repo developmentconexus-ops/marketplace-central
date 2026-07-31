@@ -17,6 +17,40 @@ import (
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 )
 
+// errorEnvelopeShape decodes the apierror.Write envelope for assertions that
+// need the code/details fields (json.Unmarshal only needs field names to
+// match; no import of the unexported apierror types is required).
+type errorEnvelopeShape struct {
+	Error struct {
+		Code    string         `json:"code"`
+		Message string         `json:"message"`
+		Details map[string]any `json:"details"`
+	} `json:"error"`
+}
+
+func trimJSON(body string) string {
+	var value any
+	if err := json.Unmarshal([]byte(body), &value); err != nil {
+		return body
+	}
+	encoded, _ := json.Marshal(value)
+	return string(encoded)
+}
+
+func TestListingsErrorEnvelopeWholeBody(t *testing.T) {
+	h := NewReadHandler(&fakeListService{})
+	r := httptest.NewRequest(http.MethodGet, "/listings?installation_id=i&cursor=bad", nil)
+	w := httptest.NewRecorder()
+	h.HandleList(w, r)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+	}
+	want := `{"error":{"code":"invalid_cursor","message":"cursor inválido","details":{"key":"cursor"}}}`
+	if trimJSON(w.Body.String()) != trimJSON(want) {
+		t.Fatalf("body = %s, want %s", trimJSON(w.Body.String()), trimJSON(want))
+	}
+}
+
 type refreshServiceStub struct {
 	id  string
 	err error
@@ -161,7 +195,7 @@ func TestGetHandlerMalformedAndUnknownIDsReturnNested404(t *testing.T) {
 			if w.Code != http.StatusNotFound {
 				t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
 			}
-			var body listErrorEnvelope
+			var body errorEnvelopeShape
 			if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
 				t.Fatal(err)
 			}
@@ -270,7 +304,7 @@ func TestSummaryHandlerEnvelopeAndErrors(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
 			NewReadHandler(&fakeListService{summaryErr: tc.err}).HandleSummary(w, httptest.NewRequest(tc.method, tc.url, nil))
-			var got listErrorEnvelope
+			var got errorEnvelopeShape
 			if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
 				t.Fatal(err)
 			}

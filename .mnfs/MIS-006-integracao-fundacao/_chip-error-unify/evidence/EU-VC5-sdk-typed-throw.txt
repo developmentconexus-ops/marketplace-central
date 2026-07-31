@@ -1,0 +1,160 @@
+VC-5 — SDK: um unico caminho de throw TIPADO
+Medido pelo CHIP. Worktree chip-error-unify · packages/sdk-runtime
+
+ANTES (medido, nao alegado)
+  ErrorResponse e MarketplaceCentralClientError eram INTERFACES. Um erro capturado
+  era um objeto literal, nao um Error — `instanceof` era impossivel por construcao.
+  OITO sitios de throw, todos com cast cego e zero validacao:
+    index.ts  getJson / putJson / deleteJson / postJson / postVoid / postMultipart
+    market.ts getJson / postJson   (jogavam um SEGUNDO tipo, MarketPriceIntelApiError)
+  Todos faziam `(data as ErrorResponse).error`. Se o servidor respondesse qualquer
+  outra coisa, `.error` era undefined e todo consumidor lia undefined.code — tela
+  branca em vez de estado de erro.
+
+DEPOIS
+  MarketplaceCentralClientError e classe (extends Error): status, code, message,
+  details SEMPRE objeto. `.error` preservado com a forma antiga porque o censo
+  abaixo mostrou que todo consumidor FE le a forma aninhada.
+  UM parse path (parseApiError) para os OITO sitios. MarketPriceIntelApiError
+  deletado (0 consumidores fora dos proprios 2 throws — grepado).
+
+  [ran] grep -rn "as ErrorResponse" packages/sdk-runtime/src/*.ts | wc -lc
+        0 linhas, 0 bytes.
+
+CENSO DE CONSUMIDOR (grep, nao chute — decidiu manter `.error`)
+  apps/web/src, leituras do code do erro capturado: 5 sitios / 4 arquivos, TODOS
+  na forma aninhada `.error.code` / `.error?.code`:
+    AnunciosPage.tsx:136 · ListingsRefreshControl.tsx:46,48 ·
+    mutationPresentation.ts:20 · useVinculosQueue.ts:48
+  Zero sitio lendo `e.code` plano. Por isso `.error` sobrevive na classe: remove-lo
+  quebraria os 5 sem que nada os apontasse. A migracao deles e o VC-6.
+
+VALIDACAO RUNTIME — a substancia do VC-5 (ADR-17 dentro do SDK)
+  Envelope bem-formado (error e objeto com code string) -> usado, details default {}.
+  QUALQUER outra coisa -> code `internal_error` com o payload ORIGINAL preservado em
+  details.raw. Nunca undefined, nunca corpo descartado. Cobre: string nua, pagina
+  HTML de proxy, null, 502 sem corpo, e o legado plano {"error":"algum_code"}.
+
+  O caso legado e o que importa nomear: um {"error":"invalid_q"} NAO e reinterpretado
+  como code invalid_q. Adivinhar a forma velha ressuscitaria justamente a ambiguidade
+  que este chip deleta. Ele vira internal_error com o corpo intacto em details.raw —
+  o consumidor ve o que chegou de fato, sem o SDK fingir que entendeu.
+
+TIPAGEM DE details POR CODIGO — narrowing GANHO, nao asserido
+  Conflito que motivou: o EXEMPLO-IO exige `e.details.allowed_range` tipado string,
+  mas no contrato `allowed_range` NAO esta em nenhum `required` (schema flat nao
+  consegue dizer "obrigatorio so para 3 dos 9 codigos"). Tipar como string puro seria
+  o SDK afirmar garantia que o contrato nao faz. Ruling do hub @4f086d6c aprovou a
+  saida: mapa por codigo + hasCode VALIDANDO em runtime os campos mapeados.
+
+  ApiErrorDetailsByCode: invalid_erp_source/invalid_limit/invalid_ids -> allowed_range
+                         missing_required_column -> column
+                         duplicate_file -> import_id, protocol
+
+  CORRECAO DE MEDICAO sobre o rascunho do chip: `import_in_progress` foi REMOVIDO do
+  mapa. O rascunho o listava com {import_id, protocol}; a leitura de
+  erp_import/transport/http_handler.go:185-188 mostra `apierror.Write(..., nil)` —
+  details e nil. So duplicate_file (linhas 177-184) popula. O mapa segue o que o
+  handler EMITE, nao o que seria simetrico.
+
+  hasCode(e, C) retorna FALSE se o code casa mas o campo garantido falta ou nao e
+  string. Consequencia deliberada: o consumidor cai no ramo generico em vez de ler
+  undefined com o tipo dizendo string. E isso que torna o tipo honesto.
+
+GUARD DE DRIFT ENTRE O TIPO E O CHECK (correcao do chip sobre o worker)
+  O worker entregou REQUIRED_DETAIL_FIELDS como Partial<Record<string, ...>> e
+  SINALIZOU com honestidade o buraco: mapa e interface podiam divergir sem tsc
+  acusar. Isso e a classe "guard parcial sob frase total" — o tipo prometendo string
+  enquanto o runtime nao valida. Fechado com mapped type:
+
+    type RequiredDetailFields = {
+      [C in keyof ApiErrorDetailsByCode]: readonly (keyof ApiErrorDetailsByCode[C] & string)[];
+    };
+
+  [ran] MUST-FAIL A (codigo na interface, ausente no mapa): injetado
+        `invalid_q: { hint: string }` na interface ->
+        src/index.ts(1868,7): error TS2741: Property 'invalid_q' is missing in type
+        '{...}' but required in type 'RequiredDetailFields'.
+  [ran] MUST-FAIL B (nome de campo errado no mapa): "allowed_range" -> "allowed_rang" ->
+        src/index.ts(1868,24): error TS2322: Type '"allowed_rang"' is not assignable
+        to type '"allowed_range"'.
+  [ran] restaurado nos dois casos -> lane volta a 7. Ambos os eixos de drift pegos.
+
+  NOTA DE FALSO-VAZIO: a primeira tentativa do MUST-FAIL A produziu saida tsc VAZIA e
+  quase passou por aprovacao. Nao era: o regex perl nao casou porque o arquivo tem
+  2545 linhas CRLF, entao a injecao nunca aconteceu e o "sem erro" era NAO-RESULTADO.
+  Pego porque o grep de confirmacao da injecao veio vazio. Um must-fail so vale se a
+  injecao for confirmada ANTES de se ler o resultado.
+
+ACHADO DE INSTRUMENTO — a lane que nao existia (VC-8 emendado, hub @4f086d6c)
+  packages/sdk-runtime/tsconfig.json tem include ["src/index.ts","src/market.ts"].
+  NENHUM arquivo de teste do SDK jamais foi type-checked neste repo. Logo o
+  "tsc --noEmit = 0 erros" do pacote era verdadeiro e VACUO quanto a testes:
+    - o @ts-expect-error que prova a uniao rejeitar code typo era checado por NADA
+      (vitest apaga tipos via esbuild; tsc nao via o arquivo);
+    - `const allowed: string = e.details.allowed_range` do golden NAO compilava, e o
+      golden passava em verde sendo tipo-vacuo.
+  Mesma classe do pass vacuoso do `npx --no-install` documentado no M-02.
+
+  Criado packages/sdk-runtime/tsconfig.test.json (extends ./tsconfig.json,
+  include ["src"]) + script `typecheck:tests` no package.json para a lane ser
+  descobrivel, ja que o hub a tornou obrigatoria.
+
+  BASELINE DA LANE = 7 erros PRE-EXISTENTES, nomeados, NAO tocados por este chip
+  (correcao = fila do hub):
+    activeSource.test.ts(39,5)   TS2578 unused '@ts-expect-error'   <- diretiva MORTA:
+        o erro real esta 3 linhas abaixo, entao aquele teste afirma uma garantia de
+        tipo que nao vale. Achado, nao corrigido.
+    activeSource.test.ts(42,7)   TS2353 source_kind
+    index.test.ts(1321,17)       TS2304 OrderRead
+    index.test.ts(1367,17)       TS2304 OrderRead
+    index.test.ts(2304,11)       TS2741 frete_desconhecido
+    listings-signals.test.ts(43,11) TS2739 median/min_valid/max_valid
+    listings-signals.test.ts(78,7)  TS2739 median/min_valid/max_valid
+
+  Um erro do proprio chip foi exposto por ela: um comentario em PROSA continha o
+  literal `@ts-expect-error`, e o TS trata qualquer comentario com esse token como
+  diretiva de verdade -> "unused directive". Corrigido reescrevendo a prosa.
+
+PROVA DE QUE O GOLDEN DEIXOU DE SER TIPO-VACUO
+  [ran] golden `const allowed: string` -> `const allowed: number` ->
+        errorContract.golden.test.ts(46,15): error TS2322: Type 'string' is not
+        assignable to type 'number'.  Restaurado -> lane volta a 7.
+  Antes desta lane essa troca passaria despercebida. A asserção central do
+  EXEMPLO-IO agora e verificada por tsc em vez de apagada pelo esbuild.
+
+LADDER (todas [ran], contagens, ANSI-stripped, nunca tail)
+  [ran] tsc --noEmit -p tsconfig.test.json .... 7 erros = lista baseline NOMEADA,
+        zero de errorContract.test.ts ou errorContract.golden.test.ts
+  [ran] tsc --noEmit (lane original) .......... exit 0
+  [ran] vitest run ............................ Test Files 7 passed (7)
+                                                Tests 85 passed (85), 0 failed
+                                                errorContract.golden.test.ts VERDE
+  [ran] apps/web tsc --noEmit ................. 12 erros; conjunto IDENTICO ao baseline
+        comparado por TUPLA (arquivo, coluna, codigo TS), 12 vs 12. Zero erro novo no FE.
+        CORRECAO (R-25): esta linha dizia "IDENTICO byte-a-byte". Era verdade quando
+        escrita e deixou de ser — o VC-6 mexeu nos dois arquivos e DUAS linhas
+        deslocaram, o que o VC-8 mediu e nomeou (EU-VC8-ladder.txt secao 3):
+          MutationPreviewModal.tsx       197 -> 210   (git diff --numstat: +6/-4,  net +2)
+          ListingsRefreshControl.test.tsx 112 -> 114  (git diff --numstat: +33/-20, net +13)
+        Nao normalizei o baseline para "restaurar" a igualdade byte-a-byte: normalizar
+        apagaria justamente o canal que detecta erro NOVO no mesmo arquivo. O deslocamento
+        foi provado por aritmetica e o conteudo nas linhas novas e o proprio defeito
+        pre-existente. Frase falsa se CORRIGE, nao se data.
+  [ran] grep "as ErrorResponse" ............... 0 linhas / 0 bytes
+
+MUST-FAIL NOMEADO DA VALIDACAO RUNTIME
+  [ran] hasCode reduzido a `isApiError(value) && value.code === code` (validacao de
+        campo removida) -> teste "hasCode returns false when the code matches but the
+        spec-guaranteed field is missing" FALHA (expected true to be false),
+        1 failed / 6 passed no arquivo. Restaurado -> 6/6.
+
+NAO VERIFICADO / LIMITES HONESTOS
+  - Nenhum comportamento vivo: chip nao sobe servidor (interditado). Todo o VC-5 e
+    provado por unit + tipo. O acerto fim-a-fim contra o backend real e do live-drive
+    pos-merge do hub (VC-9).
+  - O FE AINDA NAO usa isApiError/hasCode. Os 5 sitios do censo continuam lendo
+    `.error.code` por string. Isso e o VC-6 e esta ABERTO — o SDK ganhou o caminho
+    unico, o FE ainda nao migrou para ele.
+  - Nomenclatura SCREAMING_SNAKE permanece por ruling do hub; ver
+    EU-REPORT-screaming-snake.txt.

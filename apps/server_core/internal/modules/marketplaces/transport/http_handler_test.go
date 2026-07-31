@@ -3,6 +3,7 @@ package transport_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -45,6 +46,18 @@ func (s *stubFeeScheduleRepo) HasSchedules(_ context.Context, _ string) (bool, e
 // compile-time interface check
 var _ ports.FeeScheduleRepository = (*stubFeeScheduleRepo)(nil)
 
+// failingFeeScheduleRepo returns errListDefinitions from ListDefinitions so
+// the /marketplaces/definitions handler's error path can be exercised.
+type failingFeeScheduleRepo struct {
+	stubFeeScheduleRepo
+}
+
+var errListDefinitions = errors.New("definitions store unavailable")
+
+func (s *failingFeeScheduleRepo) ListDefinitions(_ context.Context) ([]domain.MarketplaceDefinition, error) {
+	return nil, errListDefinitions
+}
+
 // stubFeeSyncSvc satisfies the transport.FeeSeedTrigger interface.
 type stubFeeSyncSvc struct{}
 
@@ -60,6 +73,40 @@ func newTestHandler(defs []domain.MarketplaceDefinition) transport.Handler {
 	// application.Service is a concrete struct; zero-value is safe for endpoints
 	// that only touch feeSvc (like /marketplaces/definitions).
 	return transport.NewHandler(application.Service{}, feeSvc, &stubFeeSyncSvc{})
+}
+
+// trimJSON canonicalises JSON for whole-body comparisons (key order is
+// otherwise a false failure), from catalog/transport/http_handler_test.go:387.
+func trimJSON(body string) string {
+	var value any
+	if err := json.Unmarshal([]byte(body), &value); err != nil {
+		return body
+	}
+	encoded, _ := json.Marshal(value)
+	return string(encoded)
+}
+
+// TestDefinitionsHandler_ErrorEnvelopeWholeBody pins the complete JSON body
+// of the definitions-fetch-failure case to prove the envelope has no stray
+// top-level key, not just that .error.code reads right.
+func TestDefinitionsHandler_ErrorEnvelopeWholeBody(t *testing.T) {
+	repo := &failingFeeScheduleRepo{}
+	feeSvc := application.NewFeeScheduleService(repo)
+	h := transport.NewHandler(application.Service{}, feeSvc, &stubFeeSyncSvc{})
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest(http.MethodGet, "/marketplaces/definitions", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500, body=%s", rec.Code, rec.Body.String())
+	}
+	want := `{"error":{"code":"MARKETPLACES_DEFINITIONS_FETCH_FAILED","message":"definitions store unavailable","details":{}}}`
+	if got := trimJSON(rec.Body.String()); got != trimJSON(want) {
+		t.Fatalf("body = %s, want %s", got, want)
+	}
 }
 
 func TestDefinitionsHandler_MethodNotAllowed(t *testing.T) {

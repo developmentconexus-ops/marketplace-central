@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"marketplace-central/apps/server_core/internal/platform/apierror"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 )
 
@@ -75,14 +76,14 @@ func (h *OAuthHandler) HandleStart(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", "GET")
-		writeOAuthError(w, http.StatusMethodNotAllowed, "CONNECTORS_ME_METHOD_NOT_ALLOWED", "method not allowed")
+		apierror.Write(w, http.StatusMethodNotAllowed, "CONNECTORS_ME_METHOD_NOT_ALLOWED", "method not allowed", nil)
 		slog.Info("connectors.me_auth", "action", "start", "result", "405", "duration_ms", time.Since(start).Milliseconds())
 		return
 	}
 
 	state, err := newOAuthState()
 	if err != nil {
-		writeOAuthError(w, http.StatusInternalServerError, "CONNECTORS_ME_STATE_GENERATION_FAILED", "failed to create oauth state")
+		apierror.Write(w, http.StatusInternalServerError, "CONNECTORS_ME_STATE_GENERATION_FAILED", "failed to create oauth state", nil)
 		slog.Error("connectors.me_auth", "action", "start", "result", "500", "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
 		return
 	}
@@ -114,21 +115,21 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", "GET")
-		writeOAuthError(w, http.StatusMethodNotAllowed, "CONNECTORS_ME_METHOD_NOT_ALLOWED", "method not allowed")
+		apierror.Write(w, http.StatusMethodNotAllowed, "CONNECTORS_ME_METHOD_NOT_ALLOWED", "method not allowed", nil)
 		slog.Info("connectors.me_auth", "action", "callback", "result", "405", "duration_ms", time.Since(start).Milliseconds())
 		return
 	}
 
 	stateQuery := r.URL.Query().Get("state")
 	if stateQuery == "" {
-		writeOAuthError(w, http.StatusBadRequest, "CONNECTORS_ME_STATE_MISSING", "missing oauth state")
+		apierror.Write(w, http.StatusBadRequest, "CONNECTORS_ME_STATE_MISSING", "missing oauth state", nil)
 		slog.Info("connectors.me_auth", "action", "callback", "result", "400", "duration_ms", time.Since(start).Milliseconds())
 		return
 	}
 
 	stateCookie, err := r.Cookie(meOAuthStateCookieName)
 	if err != nil || stateCookie.Value == "" {
-		writeOAuthError(w, http.StatusBadRequest, "CONNECTORS_ME_STATE_MISSING", "missing oauth state")
+		apierror.Write(w, http.StatusBadRequest, "CONNECTORS_ME_STATE_MISSING", "missing oauth state", nil)
 		slog.Info("connectors.me_auth", "action", "callback", "result", "400", "duration_ms", time.Since(start).Milliseconds())
 		return
 	}
@@ -143,14 +144,14 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if subtle.ConstantTimeCompare([]byte(stateCookie.Value), []byte(stateQuery)) != 1 {
-		writeOAuthError(w, http.StatusBadRequest, "CONNECTORS_ME_STATE_MISMATCH", "oauth state mismatch")
+		apierror.Write(w, http.StatusBadRequest, "CONNECTORS_ME_STATE_MISMATCH", "oauth state mismatch", nil)
 		slog.Info("connectors.me_auth", "action", "callback", "result", "400", "duration_ms", time.Since(start).Milliseconds())
 		return
 	}
 
 	code := r.URL.Query().Get("code")
 	if code == "" {
-		writeOAuthError(w, http.StatusBadRequest, "CONNECTORS_ME_CODE_MISSING", "missing authorization code")
+		apierror.Write(w, http.StatusBadRequest, "CONNECTORS_ME_CODE_MISSING", "missing authorization code", nil)
 		slog.Info("connectors.me_auth", "action", "callback", "result", "400", "duration_ms", time.Since(start).Milliseconds())
 		return
 	}
@@ -164,7 +165,7 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 
 	req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, meTokenURL, strings.NewReader(body.Encode()))
 	if err != nil {
-		writeOAuthError(w, http.StatusInternalServerError, "CONNECTORS_ME_TOKEN_EXCHANGE_FAILED", "failed to prepare token exchange")
+		apierror.Write(w, http.StatusInternalServerError, "CONNECTORS_ME_TOKEN_EXCHANGE_FAILED", "failed to prepare token exchange", nil)
 		slog.Error("connectors.me_auth", "action", "callback", "result", "500", "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
 		return
 	}
@@ -178,7 +179,7 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		writeOAuthError(w, http.StatusBadGateway, "CONNECTORS_ME_TOKEN_EXCHANGE_FAILED", "failed to exchange token")
+		apierror.Write(w, http.StatusBadGateway, "CONNECTORS_ME_TOKEN_EXCHANGE_FAILED", "failed to exchange token", nil)
 		slog.Error("connectors.me_auth", "action", "callback", "result", "502", "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
 		return
 	}
@@ -198,13 +199,13 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		if errMsg == "" {
 			errMsg = fmt.Sprintf("ME returned status %d", resp.StatusCode)
 		}
-		writeOAuthError(w, http.StatusBadGateway, "CONNECTORS_ME_TOKEN_EXCHANGE_FAILED", "failed to exchange token")
+		apierror.Write(w, http.StatusBadGateway, "CONNECTORS_ME_TOKEN_EXCHANGE_FAILED", "failed to exchange token", nil)
 		slog.Error("connectors.me_auth", "action", "callback", "result", "502", "me_error", errMsg, "duration_ms", time.Since(start).Milliseconds())
 		return
 	}
 
 	if err := h.store.SaveToken(r.Context(), data.AccessToken, data.RefreshToken); err != nil {
-		writeOAuthError(w, http.StatusInternalServerError, "CONNECTORS_ME_TOKEN_SAVE_FAILED", "failed to save token")
+		apierror.Write(w, http.StatusInternalServerError, "CONNECTORS_ME_TOKEN_SAVE_FAILED", "failed to save token", nil)
 		slog.Error("connectors.me_auth", "action", "save_token", "result", "500", "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
 		return
 	}
@@ -218,14 +219,14 @@ func (h *OAuthHandler) HandleStatus(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", "GET")
-		writeOAuthError(w, http.StatusMethodNotAllowed, "CONNECTORS_ME_METHOD_NOT_ALLOWED", "method not allowed")
+		apierror.Write(w, http.StatusMethodNotAllowed, "CONNECTORS_ME_METHOD_NOT_ALLOWED", "method not allowed", nil)
 		slog.Info("connectors.me_auth", "action", "status", "result", "405", "duration_ms", time.Since(start).Milliseconds())
 		return
 	}
 
 	token, err := h.store.GetToken(r.Context())
 	if err != nil {
-		writeOAuthError(w, http.StatusInternalServerError, "CONNECTORS_ME_STATUS_STORE_FAILED", "failed to load token state")
+		apierror.Write(w, http.StatusInternalServerError, "CONNECTORS_ME_STATUS_STORE_FAILED", "failed to load token state", nil)
 		slog.Error("connectors.me_auth", "action", "status", "result", "500", "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
 		return
 	}
@@ -244,16 +245,6 @@ func (h *OAuthHandler) HandleStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	slog.Info("connectors.me_auth", "action", "status", "result", "200", "connected", connected, "duration_ms", time.Since(start).Milliseconds())
 	httpx.WriteJSON(w, http.StatusOK, map[string]bool{"connected": connected})
-}
-
-func writeOAuthError(w http.ResponseWriter, status int, code, message string) {
-	httpx.WriteJSON(w, status, map[string]any{
-		"error": map[string]any{
-			"code":    code,
-			"message": message,
-			"details": map[string]any{},
-		},
-	})
 }
 
 func newOAuthState() (string, error) {

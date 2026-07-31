@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"marketplace-central/apps/server_core/internal/modules/classifications/application"
+	"marketplace-central/apps/server_core/internal/platform/apierror"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 )
 
@@ -18,20 +19,6 @@ type Handler struct {
 
 func NewHandler(svc application.Service) Handler {
 	return Handler{svc: svc}
-}
-
-type apiError struct {
-	Code    string         `json:"code"`
-	Message string         `json:"message"`
-	Details map[string]any `json:"details"`
-}
-
-type apiErrorResponse struct {
-	Error apiError `json:"error"`
-}
-
-func writeClassificationsError(w http.ResponseWriter, status int, code, message string) {
-	httpx.WriteJSON(w, status, apiErrorResponse{Error: apiError{Code: code, Message: message, Details: map[string]any{}}})
 }
 
 func mapClassificationsError(msg string) (int, string, string) {
@@ -59,7 +46,7 @@ func (h Handler) handleCollection(w http.ResponseWriter, r *http.Request) {
 		items, err := h.svc.List(r.Context())
 		if err != nil {
 			slog.Error("classifications.list", "action", "list", "result", "500", "duration_ms", time.Since(start).Milliseconds())
-			writeClassificationsError(w, http.StatusInternalServerError, "CLASSIFICATIONS_INTERNAL_ERROR", "internal error")
+			apierror.Write(w, http.StatusInternalServerError, "CLASSIFICATIONS_INTERNAL_ERROR", "internal error", nil)
 			return
 		}
 		slog.Info("classifications.list", "action", "list", "result", "200", "duration_ms", time.Since(start).Milliseconds())
@@ -73,7 +60,7 @@ func (h Handler) handleCollection(w http.ResponseWriter, r *http.Request) {
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			slog.Error("classifications.create", "action", "create", "result", "400", "duration_ms", time.Since(start).Milliseconds())
-			writeClassificationsError(w, http.StatusBadRequest, "CLASSIFICATIONS_CREATE_INVALID", "malformed request body")
+			apierror.Write(w, http.StatusBadRequest, "CLASSIFICATIONS_CREATE_INVALID", "malformed request body", nil)
 			return
 		}
 		c, err := h.svc.Create(r.Context(), application.CreateInput{
@@ -84,7 +71,7 @@ func (h Handler) handleCollection(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			status, code, message := mapClassificationsError(err.Error())
 			slog.Error("classifications.create", "action", "create", "result", fmt.Sprintf("%d", status), "duration_ms", time.Since(start).Milliseconds())
-			writeClassificationsError(w, status, code, message)
+			apierror.Write(w, status, code, message, nil)
 			return
 		}
 		slog.Info("classifications.create", "action", "create", "result", "201", "duration_ms", time.Since(start).Milliseconds())
@@ -93,7 +80,7 @@ func (h Handler) handleCollection(w http.ResponseWriter, r *http.Request) {
 	default:
 		w.Header().Set("Allow", "GET, POST")
 		slog.Error("classifications.collection", "action", "unknown", "result", "405", "duration_ms", time.Since(start).Milliseconds())
-		writeClassificationsError(w, http.StatusMethodNotAllowed, "CLASSIFICATIONS_METHOD_NOT_ALLOWED", "method not allowed")
+		apierror.Write(w, http.StatusMethodNotAllowed, "CLASSIFICATIONS_METHOD_NOT_ALLOWED", "method not allowed", nil)
 	}
 }
 
@@ -104,7 +91,7 @@ func (h Handler) handleGet(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		status, code, message := mapClassificationsError(err.Error())
 		slog.Error("classifications.get", "action", "get", "result", fmt.Sprintf("%d", status), "id", id, "duration_ms", time.Since(start).Milliseconds())
-		writeClassificationsError(w, status, code, message)
+		apierror.Write(w, status, code, message, nil)
 		return
 	}
 	slog.Info("classifications.get", "action", "get", "result", "200", "id", id, "duration_ms", time.Since(start).Milliseconds())
@@ -121,7 +108,7 @@ func (h Handler) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		slog.Error("classifications.update", "action", "update", "result", "400", "id", id, "duration_ms", time.Since(start).Milliseconds())
-		writeClassificationsError(w, http.StatusBadRequest, "CLASSIFICATIONS_CREATE_INVALID", "malformed request body")
+		apierror.Write(w, http.StatusBadRequest, "CLASSIFICATIONS_CREATE_INVALID", "malformed request body", nil)
 		return
 	}
 	c, err := h.svc.Update(r.Context(), id, application.UpdateInput{
@@ -132,7 +119,7 @@ func (h Handler) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		status, code, message := mapClassificationsError(err.Error())
 		slog.Error("classifications.update", "action", "update", "result", fmt.Sprintf("%d", status), "id", id, "duration_ms", time.Since(start).Milliseconds())
-		writeClassificationsError(w, status, code, message)
+		apierror.Write(w, status, code, message, nil)
 		return
 	}
 	slog.Info("classifications.update", "action", "update", "result", "200", "id", id, "duration_ms", time.Since(start).Milliseconds())
@@ -145,7 +132,7 @@ func (h Handler) handleDelete(w http.ResponseWriter, r *http.Request) {
 	if err := h.svc.Delete(r.Context(), id); err != nil {
 		status, code, message := mapClassificationsError(err.Error())
 		slog.Error("classifications.delete", "action", "delete", "result", fmt.Sprintf("%d", status), "id", id, "duration_ms", time.Since(start).Milliseconds())
-		writeClassificationsError(w, status, code, message)
+		apierror.Write(w, status, code, message, nil)
 		return
 	}
 	slog.Info("classifications.delete", "action", "delete", "result", "204", "id", id, "duration_ms", time.Since(start).Milliseconds())

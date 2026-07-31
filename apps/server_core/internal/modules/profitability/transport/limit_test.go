@@ -42,7 +42,7 @@ func TestHandleImportLimitExceededReturns422AndNamesCap(t *testing.T) {
 		t.Fatalf("status = %d, want 422", recorder.Code)
 	}
 	body := recorder.Body.String()
-	if !strings.Contains(body, `"error":"limit_exceeded"`) || !strings.Contains(body, `"limit":200`) {
+	if !strings.Contains(body, `"code":"limit_exceeded"`) || !strings.Contains(body, `"limit":200`) {
 		t.Fatalf("body = %s, want limit_exceeded and limit 200", body)
 	}
 }

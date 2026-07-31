@@ -1,0 +1,70 @@
+VC-3 — central panic recover
+Measured by the CHIP. Checkout: .claude/worktrees/chip-error-unify · apps/server_core
+
+BEFORE: no recover middleware existed anywhere in the tree. The root chain was exactly
+one layer (httpx.CORSMiddleware), so a panic in any handler closed the connection with no
+body at all.
+
+ATTACH POINT (internal/composition/root.go:863)
+  httpx.CORSMiddleware(apierror.Recover(mux))
+
+The nesting order is load-bearing, not stylistic. CORSMiddleware (httpx/router.go:18)
+sets its headers on the way IN, before calling next. With CORS OUTERMOST, a panicking
+request still carries the CORS headers, so a browser can READ the 500 — the difference
+between the operator seeing an error toast and seeing a blank screen. Recover inside CORS
+also cannot swallow the OPTIONS preflight short-circuit.
+
+WHY IT LIVES IN apierror AND NOT httpx
+It must ANSWER with the envelope, and httpx cannot import apierror (direction is
+apierror -> httpx; reversing it is a cycle — the same constraint that forced json.go and
+route_deadline.go to hardcode constant literals). Putting Recover in apierror lets it call
+Write, so the 500 body is defined in ONE place and no third literal copy exists.
+
+[ran] go build ./...  BUILD_EXIT=0
+[ran] go vet ./...    VET_EXIT=0
+[ran] go test -count=1 ./internal/platform/apierror/ -run TestRecover -v
+      === RUN / --- PASS for all five, ok 1.237s:
+        TestRecover_PanicBecomesEnvelope
+        TestRecover_SaneRouteUntouched                  <- negative control
+        TestRecover_AlreadyCommittedResponseIsLeftAlone
+        TestRecover_ErrAbortHandlerIsRepanicked
+        TestRecover_PanicDetailReachesLog
+
+WHAT THE FIVE ACTUALLY PROVE, AS A SET
+  1 pins the COMPLETE 500 body (trimJSON both sides) AND asserts the panic's sentinel
+    token is ABSENT from it. Asserting absence is the point: a body that merely looks
+    right could still carry the panic text appended somewhere.
+  5 asserts the SAME sentinel IS present in captured slog output. 1 and 5 together are the
+    real claim — the detail MOVED from the body to the log, rather than being destroyed.
+    Either test alone is compatible with the wrong outcome.
+  2 is the negative control. Without it, a Recover that answered 500 to everything would
+    pass test 1. VC-3 asks for this explicitly.
+  3 covers the panic AFTER the response is committed: status stays 200, partial body
+    unchanged, no envelope glued on. Answering 500 there is impossible (the status is
+    already on the wire) and attempting it produces Go's "superfluous WriteHeader" plus a
+    corrupt body. The middleware logs that the response was already committed and writes
+    nothing — it does not invent a body and does not pretend it succeeded.
+  4 covers http.ErrAbortHandler, which net/http uses as a deliberate abort signal.
+    Swallowing it would turn an intentional connection abort into a bogus 500.
+
+CHIP-SIDE CHECKS BEYOND THE WORKER'S REPORT
+  - The worker logs `debug.Stack()` from inside the deferred recover. I suspected that
+    captured only the recover frame, losing the panic site, which would make the "stack"
+    log key misleading. MEASURED it instead of arguing: a throwaway probe test asserted
+    the stack contains the panicking function's name -> true. The concern was wrong; the
+    logged stack genuinely names the panic site. Probe deleted after measuring.
+  - Fixed a stale comment: it named the constant `recoverBody` while the constant is
+    `recoverMessage`. Prose in the tree that names a thing that does not exist is a
+    falsity, and falsity gets deleted or corrected rather than left as decoration.
+  - The expected literal in test 1 is a hardcoded string, NOT a reference to the
+    recoverMessage constant. Referencing the constant would make the pin tautological —
+    it would pass for any message value, including an empty one. (This is the worker's
+    choice and it is the right one; recorded because it is exactly the kind of thing that
+    silently turns a pin into a no-op.)
+
+NOT VERIFIED
+  The wiring is proven by go build plus the unit tests, NOT by a live boot — booting a
+  server is interdicted for this chip. Whether a real panicking route answers the envelope
+  through the full stack is for the hub's post-merge QA live-drive (VC-9). VC-9's
+  "panic route de teste removida antes do merge" is therefore still open and belongs to
+  the hub, not here.

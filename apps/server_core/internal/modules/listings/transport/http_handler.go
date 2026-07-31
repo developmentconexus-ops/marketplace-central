@@ -11,6 +11,7 @@ import (
 	"marketplace-central/apps/server_core/internal/modules/listings/application"
 	"marketplace-central/apps/server_core/internal/modules/listings/domain"
 	"marketplace-central/apps/server_core/internal/modules/listings/ports"
+	"marketplace-central/apps/server_core/internal/platform/apierror"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 )
 
@@ -62,7 +63,7 @@ func (h RefreshHandler) HandleRefresh(w http.ResponseWriter, r *http.Request) {
 	}
 	var active *application.RefreshInProgressError
 	if errors.As(err, &active) {
-		writeListErrorDetails(w, 409, "refresh_in_progress", "atualização já está em andamento", map[string]any{"operation_run_id": active.OperationRunID})
+		apierror.Write(w, 409, "refresh_in_progress", "atualização já está em andamento", map[string]any{"operation_run_id": active.OperationRunID})
 		return
 	}
 	writeListError(w, 503, "source_unavailable", "fonte de dados indisponível", "")
@@ -146,14 +147,6 @@ func (h ReadHandler) Register(mux httpx.RouteRegistrar) {
 	mux.HandleFunc("GET /listings/{id}", h.HandleGet)
 }
 
-type listError struct {
-	Code    string         `json:"code"`
-	Message string         `json:"message"`
-	Details map[string]any `json:"details"`
-}
-type listErrorEnvelope struct {
-	Error listError `json:"error"`
-}
 type listingPageEnvelope struct {
 	Items      any     `json:"items"`
 	NextCursor *string `json:"next_cursor"`
@@ -335,8 +328,5 @@ func writeListError(w http.ResponseWriter, status int, code, message, key string
 	if key != "" {
 		details["key"] = key
 	}
-	writeListErrorDetails(w, status, code, message, details)
-}
-func writeListErrorDetails(w http.ResponseWriter, status int, code, message string, details map[string]any) {
-	httpx.WriteJSON(w, status, listErrorEnvelope{Error: listError{Code: code, Message: message, Details: details}})
+	apierror.Write(w, status, code, message, details)
 }

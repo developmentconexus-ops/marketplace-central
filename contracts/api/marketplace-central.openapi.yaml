@@ -431,6 +431,18 @@ paths:
       summary: Count configured sellable and total catalog products
       operationId: getCatalogAssortmentCounts
       tags: [catalog]
+      parameters:
+        - name: erp_source
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [xlsx, catalogo_cliente]
+          description: >-
+            Selects the imported dataset the reader serves — xlsx (Sankhya ERP,
+            the default when omitted) or catalogo_cliente (client catalog import).
+            An unknown value is rejected with 400; omitting it is byte-stable with
+            pre-toggle clients.
       responses:
         "200":
           description: Catalog assortment counts
@@ -440,7 +452,7 @@ paths:
                 $ref: '#/components/schemas/CatalogAssortmentCounts'
         "400":
           description: >-
-            Invalid query parameter; the error field names which one
+            Invalid query parameter; error.code names which one
             (erp_source).
           content:
             application/json:
@@ -2341,6 +2353,10 @@ paths:
                       $ref: '#/components/schemas/MarketplaceFeeSchedule'
         "400":
           description: marketplace_code query param missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /admin/fee-schedules/seed:
     post:
@@ -3986,16 +4002,26 @@ components:
       required: [error]
       properties:
         error:
-          type: string
-          enum: [invalid_cursor, invalid_limit, invalid_q, invalid_erp_source,
-                 invalid_ids, invalid_include_all, source_unavailable, deadline_exceeded,
-                 internal_error]
-        allowed_range:
-          type: string
-          description: >-
-            Present when the error has a bounded accepted domain and states it —
-            invalid_limit (the inclusive range), invalid_erp_source (the accepted
-            source values), invalid_ids (the accepted id count and shape).
+          type: object
+          required: [code, message, details]
+          properties:
+            code:
+              type: string
+              enum: [invalid_cursor, invalid_limit, invalid_q, invalid_erp_source,
+                     invalid_ids, invalid_include_all, source_unavailable, deadline_exceeded,
+                     internal_error]
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+              properties:
+                allowed_range:
+                  type: string
+                  description: >-
+                    Present when the error has a bounded accepted domain and states it —
+                    invalid_limit (the inclusive range), invalid_erp_source (the accepted
+                    source values), invalid_ids (the accepted id count and shape).
     CatalogProduct:
       type: object
       properties:
@@ -7560,26 +7586,25 @@ components:
           required:
             - code
             - message
+            - details
           properties:
             code:
               type: string
               description: >
-                Module-specific error code following the pattern MODULE_ENTITY_REASON.
-                Known codes include: CATALOG_PRODUCT_NOT_FOUND, CATALOG_ENRICHMENT_INVALID,
-                CLASSIFICATIONS_ENTITY_NOT_FOUND, CLASSIFICATIONS_DUPLICATE_NAME,
-                MARKETPLACES_ACCOUNT_INVALID, MARKETPLACES_POLICY_INVALID,
-                MARKETPLACES_METHOD_NOT_ALLOWED, MARKETPLACES_FEESCHEDULE_PARAM_MISSING,
-                MARKETPLACES_DEFINITIONS_FETCH_FAILED, MARKETPLACES_INTERNAL_ERROR,
-                PRICING_SIMULATION_INVALID, PRICING_SIMULATION_INVALID_IDENTITY,
-                PRICING_SIMULATION_INVALID_BASE_PRICE, PRICING_SIMULATION_INVALID_VALUES,
-                PRICING_SIMULATION_NOT_FOUND, PRICING_METHOD_NOT_ALLOWED,
-                CONNECTORS_BATCH_NOT_FOUND, CONNECTORS_RETRY_MISSING_PRODUCT,
-                INTERNAL_ERROR, INVALID_REQUEST, NOT_FOUND, CONFLICT.
+                Module-specific error code. The codebase carries two naming
+                conventions: most modules use snake_case (for example
+                invalid_erp_source, deadline_exceeded, internal_error), while
+                the integrations module still uses SCREAMING_SNAKE_CASE (for
+                example INTEGRATIONS_AUTH_METHOD_NOT_ALLOWED). snake_case is
+                the prevailing convention. The code enum declared on each
+                per-domain error schema in this document is the authoritative
+                list of valid codes for that domain.
             message:
               type: string
             details:
               type: object
               additionalProperties: true
+              description: Always present; an empty object when the error carries no extra fields.
 
     ConnectorErrorResponse:
       allOf:
@@ -8270,29 +8295,45 @@ components:
 
     ErpImportError:
       type: object
-      description: Flat ERP import error body.
       required: [error]
       properties:
         error:
-          type: string
-          enum: [invalid_file, missing_required_column, invalid_import_id, import_not_found, internal_error]
-        detail:
-          type: string
-        column:
-          type: string
+          type: object
+          required: [code, message, details]
+          properties:
+            code:
+              type: string
+              enum: [invalid_file, missing_required_column, invalid_import_id, import_not_found, internal_error]
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+              properties:
+                column:
+                  type: string
 
     ErpImportConflict:
       type: object
-      description: Flat ERP import conflict body.
       required: [error]
       properties:
         error:
-          type: string
-          enum: [duplicate_file, import_in_progress]
-        import_id:
-          type: string
-        protocol:
-          type: string
+          type: object
+          required: [code, message, details]
+          properties:
+            code:
+              type: string
+              enum: [duplicate_file, import_in_progress]
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+              properties:
+                import_id:
+                  type: string
+                protocol:
+                  type: string
 
     ActiveSourceConfig:
       type: object
@@ -8330,14 +8371,20 @@ components:
 
     ActiveSourceError:
       type: object
-      description: Flat active-source error body.
       required: [error]
       properties:
         error:
-          type: string
-          enum: [unknown_erp_source, invalid_active_source, invalid_body, internal_error]
-        detail:
-          type: string
+          type: object
+          required: [code, message, details]
+          properties:
+            code:
+              type: string
+              enum: [unknown_erp_source, invalid_active_source, invalid_body, internal_error]
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
 
     SellableAssortmentConfig:
       type: object
@@ -8365,18 +8412,20 @@ components:
 
     SellableAssortmentError:
       type: object
-      description: >-
-        Flat sellable-assortment error body, mirroring ActiveSourceError. The
-        tenant_config transport writes map[string]string{"error": code} plus an
-        optional "detail", so the nested ErrorResponse shape is not what this
-        surface emits.
       required: [error]
       properties:
         error:
-          type: string
-          enum: [unknown_erp_source, invalid_body, internal_error]
-        detail:
-          type: string
+          type: object
+          required: [code, message, details]
+          properties:
+            code:
+              type: string
+              enum: [unknown_erp_source, invalid_body, internal_error]
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
 
     CatalogAssortmentCounts:
       type: object

@@ -9,6 +9,7 @@ import (
 
 	"marketplace-central/apps/server_core/internal/modules/erp_import/domain"
 	"marketplace-central/apps/server_core/internal/modules/erp_import/ports"
+	"marketplace-central/apps/server_core/internal/platform/apierror"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 )
 
@@ -58,12 +59,12 @@ func registerInteractiveRoute(mux httpx.RouteRegistrar, pattern string, handler 
 func (h Handler) handlePostImport(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadBytes)
 	if err := r.ParseMultipartForm(maxUploadBytes); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_file", "")
+		apierror.Write(w, http.StatusBadRequest, "invalid_file", importErrorMessage("invalid_file", ""), nil)
 		return
 	}
 	file, _, err := r.FormFile("file")
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_file", "")
+		apierror.Write(w, http.StatusBadRequest, "invalid_file", importErrorMessage("invalid_file", ""), nil)
 		return
 	}
 	defer file.Close()
@@ -97,7 +98,7 @@ func isLenientImportRequest(r *http.Request) bool {
 func (h Handler) handleListImports(w http.ResponseWriter, r *http.Request) {
 	reports, err := h.queries.ListImports(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "")
+		apierror.Write(w, http.StatusInternalServerError, "internal_error", importErrorMessage("internal_error", ""), nil)
 		return
 	}
 	items := make([]importSummaryResponse, 0, len(reports))
@@ -113,7 +114,7 @@ func (h Handler) handleListImports(w http.ResponseWriter, r *http.Request) {
 func readImportID(w http.ResponseWriter, r *http.Request) (domain.ImportID, bool) {
 	importID := domain.ImportID(r.PathValue("id"))
 	if !importID.IsValid() {
-		writeError(w, http.StatusBadRequest, "invalid_import_id", "")
+		apierror.Write(w, http.StatusBadRequest, "invalid_import_id", importErrorMessage("invalid_import_id", ""), nil)
 		return "", false
 	}
 	return importID, true
@@ -127,10 +128,10 @@ func (h Handler) handleGetImport(w http.ResponseWriter, r *http.Request) {
 	report, err := h.queries.GetImport(r.Context(), importID)
 	if err != nil {
 		if errors.Is(err, ports.ErrImportNotFound) {
-			writeError(w, http.StatusNotFound, "import_not_found", "")
+			apierror.Write(w, http.StatusNotFound, "import_not_found", importErrorMessage("import_not_found", ""), nil)
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "internal_error", "")
+		apierror.Write(w, http.StatusInternalServerError, "internal_error", importErrorMessage("internal_error", ""), nil)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, newImportDetailResponse(report))
@@ -144,10 +145,10 @@ func (h Handler) handleGetImportChain(w http.ResponseWriter, r *http.Request) {
 	chain, err := h.queries.GetImportChain(r.Context(), importID)
 	if err != nil {
 		if errors.Is(err, ports.ErrImportNotFound) {
-			writeError(w, http.StatusNotFound, "import_not_found", "")
+			apierror.Write(w, http.StatusNotFound, "import_not_found", importErrorMessage("import_not_found", ""), nil)
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "internal_error", "")
+		apierror.Write(w, http.StatusInternalServerError, "internal_error", importErrorMessage("internal_error", ""), nil)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, importChainResponse{
@@ -164,40 +165,53 @@ func writeImportError(w http.ResponseWriter, err error) {
 	if errors.As(err, &fileErr) {
 		switch fileErr.Code {
 		case domain.CodeInvalidFile:
-			writeError(w, http.StatusBadRequest, "invalid_file", fileErr.Detail)
+			apierror.Write(w, http.StatusBadRequest, "invalid_file", importErrorMessage("invalid_file", fileErr.Detail), nil)
 		case domain.CodeMissingRequiredColumn:
-			httpx.WriteJSON(w, http.StatusUnprocessableEntity, map[string]string{
-				"error":  "missing_required_column",
-				"column": fileErr.Column,
-			})
+			apierror.Write(w, http.StatusUnprocessableEntity, "missing_required_column", "coluna obrigatória ausente", map[string]any{"column": fileErr.Column})
 		default:
-			writeError(w, http.StatusInternalServerError, "internal_error", "")
+			apierror.Write(w, http.StatusInternalServerError, "internal_error", importErrorMessage("internal_error", ""), nil)
 		}
 		return
 	}
 
 	var duplicateErr *ports.DuplicateFileError
 	if errors.As(err, &duplicateErr) {
-		httpx.WriteJSON(w, http.StatusConflict, map[string]string{
-			"error":     "duplicate_file",
+		apierror.Write(w, http.StatusConflict, "duplicate_file", "arquivo já importado", map[string]any{
 			"import_id": string(duplicateErr.ExistingID),
 			"protocol":  string(duplicateErr.ExistingProtocol),
 		})
 		return
 	}
 	if errors.Is(err, ports.ErrImportInProgress) {
-		writeError(w, http.StatusConflict, "import_in_progress", "")
+		apierror.Write(w, http.StatusConflict, "import_in_progress", importErrorMessage("import_in_progress", ""), nil)
 		return
 	}
-	writeError(w, http.StatusInternalServerError, "internal_error", "")
+	apierror.Write(w, http.StatusInternalServerError, "internal_error", importErrorMessage("internal_error", ""), nil)
 }
 
-func writeError(w http.ResponseWriter, status int, code, message string) {
-	payload := map[string]string{"error": code}
+// importErrorMessage answers the human-facing text for writeError's callers.
+// Most of them wrote no message at all under the flat body (writeError only
+// set "detail" when the caller passed one), so the code-keyed defaults below
+// are new operator-facing text, in pt-BR to match the module's existing
+// erp_source/duplicate-file strings. A caller that already had real text
+// (fileErr.Detail) keeps it verbatim.
+func importErrorMessage(code, message string) string {
 	if message != "" {
-		payload["detail"] = message
+		return message
 	}
-	httpx.WriteJSON(w, status, payload)
+	switch code {
+	case "invalid_file":
+		return "arquivo inválido"
+	case "internal_error":
+		return "erro interno do servidor"
+	case "invalid_import_id":
+		return "id de importação inválido"
+	case "import_not_found":
+		return "importação não encontrada"
+	case "import_in_progress":
+		return "importação em andamento"
+	}
+	return code
 }
 
 type importCreatedResponse struct {

@@ -12,6 +12,40 @@ import (
 	"marketplace-central/apps/server_core/internal/modules/integrations/ports"
 )
 
+// errorEnvelopeShape decodes the apierror.Write envelope for assertions that
+// need the code/details fields.
+type errorEnvelopeShape struct {
+	Error struct {
+		Code    string         `json:"code"`
+		Message string         `json:"message"`
+		Details map[string]any `json:"details"`
+	} `json:"error"`
+}
+
+func trimJSON(body string) string {
+	var value any
+	if err := json.Unmarshal([]byte(body), &value); err != nil {
+		return body
+	}
+	encoded, _ := json.Marshal(value)
+	return string(encoded)
+}
+
+func TestIntegrationsErrorEnvelopeWholeBody(t *testing.T) {
+	t.Parallel()
+
+	recorder := httptest.NewRecorder()
+	NewRunReadHandler(&stubRunReadService{}).HandleList(recorder, httptest.NewRequest(http.MethodGet, "/sync/runs?installation_id=inst_001&cursor=bad", nil))
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d: %s", recorder.Code, http.StatusBadRequest, recorder.Body.String())
+	}
+	want := `{"error":{"code":"invalid_cursor","message":"cursor inválido","details":{"key":"cursor"}}}`
+	if trimJSON(recorder.Body.String()) != trimJSON(want) {
+		t.Fatalf("body = %s, want %s", trimJSON(recorder.Body.String()), trimJSON(want))
+	}
+}
+
 type stubRunReadService struct {
 	page  ports.RunPage
 	query ports.RunListQuery

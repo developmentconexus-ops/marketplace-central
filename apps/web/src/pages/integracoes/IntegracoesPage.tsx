@@ -1,8 +1,10 @@
-import type {
-  ActiveSourceName,
-  ErpImportSourceInput,
-  SellableAssortmentConfig,
-  SetSellableAssortmentRequest,
+import {
+  hasCode,
+  isApiError,
+  type ActiveSourceName,
+  type ErpImportSourceInput,
+  type SellableAssortmentConfig,
+  type SetSellableAssortmentRequest,
 } from "@marketplace-central/sdk-runtime";
 import { EmptyState, ErrorState, LoadingState } from "@marketplace-central/ui";
 import {
@@ -300,9 +302,7 @@ const SOURCE_UNSET_COPY = "Nenhuma fonte definida ainda — escolha a fonte que 
 // source gets chosen, so it must stay usable and say what is missing instead of
 // reporting a read failure.
 function isSourceUnsetError(error: unknown): boolean {
-  if (!error || typeof error !== "object") return false;
-  const { status, error: code } = error as { status?: number; error?: unknown };
-  return status === 400 && code === "unknown_erp_source";
+  return isApiError(error) && error.status === 400 && hasCode(error, "unknown_erp_source");
 }
 
 function ActiveSourceCard() {
