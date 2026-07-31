@@ -255,6 +255,10 @@ export interface CatalogProductFactsByIdsOptions {
   erp_source?: ErpImportSourceInput;
 }
 
+export interface CatalogAssortmentCountsOptions {
+  erp_source?: ErpImportSourceInput;
+}
+
 export interface CatalogSearchPageOptions {
   q: string;
   /** Opaque cursor from the previous page of matches. Search pages like the list read. */
@@ -267,11 +271,11 @@ export interface CatalogSearchPageOptions {
 /**
  * Error code a catalog page read (list, by-ids, search, counts) answers with on
  * any non-2xx (400 for the invalid_* codes, 503 source_unavailable, 504
- * deadline_exceeded, 500 internal_error). The wire shape is the flat
- * CatalogPageErrorBody below, not ErrorResponse — catalog routes predate the
- * envelope and answer `{"error": "<code>"}` directly.
+ * deadline_exceeded, 500 internal_error). The wire shape is the nested
+ * ErrorResponse envelope (apierror.Write), like every other module — see
+ * CatalogPageErrorResponse in the OpenAPI spec.
  */
-export type CatalogPageErrorCode =
+export type CatalogErrorCode =
   | "invalid_cursor"
   | "invalid_limit"
   | "invalid_q"
@@ -281,16 +285,6 @@ export type CatalogPageErrorCode =
   | "source_unavailable"
   | "deadline_exceeded"
   | "internal_error";
-
-export interface CatalogPageErrorBody {
-  error: CatalogPageErrorCode;
-  /**
-   * Present when the error has a bounded accepted domain and states it —
-   * invalid_limit (the inclusive range), invalid_erp_source (the accepted
-   * source values), invalid_ids (the accepted id count and shape).
-   */
-  allowed_range?: string;
-}
 
 export type ListingStatus = "active" | "paused" | "closed" | "unknown" | "under_review" | "inactive" | "payment_required" | "not_yet_active";
 export type ListingSyncState = "synced" | "error" | "stale" | "queued" | "syncing" | "paused_sync";
@@ -1725,17 +1719,253 @@ export interface ErrorResponse {
   };
 }
 
-export interface MarketplaceCentralClientError {
-  status: number;
-  error: ErrorResponse["error"];
+// Per-domain error code unions, sourced verbatim from the `code` enum on each
+// per-domain error schema in contracts/api/marketplace-central.openapi.yaml.
+// ApiErrorCode is the union of all of them and is what hasCode() checks
+// against — a bogus code (typo, code from a domain not wired here) is a
+// compile error at the call site (see errorContract.test.ts).
+export type ConnectorErrorCode =
+  | "CONNECTORS_PUBLISH_MISSING_NAME"
+  | "CONNECTORS_PUBLISH_MISSING_SKU"
+  | "CONNECTORS_PUBLISH_MISSING_CATEGORY"
+  | "CONNECTORS_PUBLISH_MISSING_BRAND"
+  | "CONNECTORS_PUBLISH_MISSING_PRICE"
+  | "CONNECTORS_PUBLISH_MISSING_STOCK"
+  | "CONNECTORS_PUBLISH_ALREADY_IN_PROGRESS"
+  | "CONNECTORS_PUBLISH_DEPENDENCY_FAILED"
+  | "CONNECTORS_METHOD_NOT_ALLOWED"
+  | "CONNECTORS_ME_METHOD_NOT_ALLOWED"
+  | "CONNECTORS_ME_STATE_GENERATION_FAILED"
+  | "CONNECTORS_ME_STATE_MISSING"
+  | "CONNECTORS_ME_STATE_MISMATCH"
+  | "CONNECTORS_ME_CODE_MISSING"
+  | "CONNECTORS_ME_TOKEN_EXCHANGE_FAILED"
+  | "CONNECTORS_ME_TOKEN_SAVE_FAILED"
+  | "CONNECTORS_ME_STATUS_STORE_FAILED"
+  | "CONNECTORS_EXECUTOR_INTERNAL"
+  | "CONNECTORS_RETRY_MISSING_PRODUCT"
+  | "CONNECTORS_BATCH_NOT_FOUND";
+
+export type MutationErrorCode =
+  | "invalid_body"
+  | "invalid_intent"
+  | "installation_required"
+  | "invalid_filter"
+  | "invalid_cursor"
+  | "actor_required"
+  | "type_not_enabled"
+  | "empty_selection"
+  | "selection_too_large"
+  | "execute_required"
+  | "source_time_unavailable"
+  | "preview_stale"
+  | "invalid_state"
+  | "nothing_to_retry"
+  | "protocol_not_found"
+  | "method_not_allowed";
+
+// Merges ErpImportError (400/422/404/500) and ErpImportConflict (409) — both
+// answer the same /erp/imports* surface and are one domain from the client's
+// point of view.
+export type ErpImportErrorCode =
+  | "invalid_file"
+  | "missing_required_column"
+  | "invalid_import_id"
+  | "import_not_found"
+  | "internal_error"
+  | "duplicate_file"
+  | "import_in_progress";
+
+export type ActiveSourceErrorCode =
+  | "unknown_erp_source"
+  | "invalid_active_source"
+  | "invalid_body"
+  | "internal_error";
+
+export type SellableAssortmentErrorCode =
+  | "unknown_erp_source"
+  | "invalid_body"
+  | "internal_error";
+
+export type ApiErrorCode =
+  | CatalogErrorCode
+  | ConnectorErrorCode
+  | MutationErrorCode
+  | ErpImportErrorCode
+  | ActiveSourceErrorCode
+  | SellableAssortmentErrorCode;
+
+/**
+ * The one typed throw path for every SDK client (VC-5). A real `Error`
+ * subclass — `instanceof` works, a bare `console.error(e)` prints a human
+ * message, and `.error` stays available for call sites that already read
+ * `e.error.code`. `details` is always an object, never `undefined`: an
+ * unknown operational fact (a malformed body, a proxy's HTML error page)
+ * lands as code `internal_error` with the original payload preserved at
+ * `details.raw` (ADR-17) rather than being silently dropped.
+ */
+export class MarketplaceCentralClientError extends Error {
+  readonly status: number;
+  readonly code: string;
+  readonly details: Record<string, unknown>;
+  readonly error: { code: string; message: string; details: Record<string, unknown> };
+
+  constructor(status: number, code: string, message: string, details: Record<string, unknown>) {
+    super(message);
+    this.name = "MarketplaceCentralClientError";
+    this.status = status;
+    this.code = code;
+    this.details = details;
+    this.error = { code, message, details };
+  }
 }
 
-export interface ListingsRefreshConflictError extends MarketplaceCentralClientError {
+export function isApiError(value: unknown): value is MarketplaceCentralClientError {
+  return value instanceof MarketplaceCentralClientError;
+}
+
+/**
+ * `details` fields the spec actually guarantees, keyed by the code that
+ * guarantees them — sourced from CatalogPageErrorResponse (allowed_range,
+ * populated only for invalid_erp_source/invalid_limit/invalid_ids — see
+ * catalog/transport/http_handler.go:419-426, "gating this on one hardcoded
+ * code made allowed_range dead data on the two other sites"), ErpImportError
+ * (column, populated only for missing_required_column — erp_import's
+ * writeImportError, CodeMissingRequiredColumn branch) and ErpImportConflict
+ * (import_id + protocol, populated only for duplicate_file — the
+ * DuplicateFileError branch of the same function).
+ *
+ * import_in_progress is deliberately ABSENT: its branch in writeImportError
+ * passes `nil` for details, so there is nothing to guarantee there — adding
+ * it here would be the SDK asserting a field the server never sends.
+ *
+ * A flat schema (`details: { additionalProperties: true }`) cannot express
+ * "this field exists only for these 3 of 9 codes", so this map plus the
+ * runtime check in hasCode() below is what makes the per-code narrowing
+ * honest instead of asserted.
+ */
+export interface ApiErrorDetailsByCode {
+  invalid_erp_source: { allowed_range: string };
+  invalid_limit: { allowed_range: string };
+  invalid_ids: { allowed_range: string };
+  missing_required_column: { column: string };
+  duplicate_file: { import_id: string; protocol: string };
+}
+
+// Keyed off ApiErrorDetailsByCode rather than off `string`, so tsc enforces
+// that the runtime check and the type-level claim cannot drift apart. Both
+// directions are caught: a code added to the interface with no entry here is
+// a missing-property error, an entry here for a code not in the interface is
+// an excess-property error, and a misspelled field name is rejected because
+// the element type is `keyof` the mapped shape rather than plain `string`.
+// The drift this forbids is the whole defect class this chip exists to kill:
+// the type promising `string` while nothing actually validates it.
+type RequiredDetailFields = {
+  [C in keyof ApiErrorDetailsByCode]: readonly (keyof ApiErrorDetailsByCode[C] & string)[];
+};
+
+const REQUIRED_DETAIL_FIELDS: RequiredDetailFields = {
+  invalid_erp_source: ["allowed_range"],
+  invalid_limit: ["allowed_range"],
+  invalid_ids: ["allowed_range"],
+  missing_required_column: ["column"],
+  duplicate_file: ["import_id", "protocol"],
+};
+
+// details is narrowed to the mapped shape (intersected with the general
+// Record so callers can still read an unmapped field) when C is a code the
+// spec guarantees fields for; otherwise it stays the general shape.
+export type ApiErrorDetails<C extends ApiErrorCode> = C extends keyof ApiErrorDetailsByCode
+  ? ApiErrorDetailsByCode[C] & Record<string, unknown>
+  : Record<string, unknown>;
+
+// Shared "is this field present and a string" idiom — also used by
+// isRefreshInProgressError below, rather than growing a second copy of it.
+function hasStringField(details: Record<string, unknown>, field: string): boolean {
+  return typeof details[field] === "string";
+}
+
+/**
+ * The code check alone is not the contract: for codes the spec guarantees
+ * fields for (see ApiErrorDetailsByCode), hasCode also VALIDATES those
+ * fields are present and are strings before narrowing. A code match with a
+ * missing or wrong-typed field returns false, so a consumer falls through to
+ * its generic branch instead of reading `undefined` while the type claims
+ * `string` — the type-level narrowing above is only honest because this
+ * runtime check backs it.
+ */
+export function hasCode<C extends ApiErrorCode>(
+  value: unknown,
+  code: C,
+): value is MarketplaceCentralClientError & { code: C; details: ApiErrorDetails<C> } {
+  if (!isApiError(value) || value.code !== code) return false;
+  // Widening cast, not a narrowing one: most ApiErrorCode members are not keys
+  // of the map, so the lookup is legitimately a miss for them and `undefined`
+  // is the honest result. The cast only loosens the key type for the read; it
+  // cannot weaken the completeness the RequiredDetailFields literal enforces.
+  const requiredFields = (REQUIRED_DETAIL_FIELDS as Record<string, readonly string[] | undefined>)[code];
+  if (requiredFields === undefined) return true;
+  return requiredFields.every((field) => hasStringField(value.details, field));
+}
+
+/**
+ * POST /listings/refresh's 409 is not backed by a per-domain enum in the
+ * spec (it answers the generic ErrorResponse — see
+ * apps/server_core/internal/modules/listings/transport/http_handler.go:66),
+ * so "refresh_in_progress" is not a member of ApiErrorCode and hasCode()
+ * cannot narrow it. A dedicated type-level guard gets the same narrowing
+ * power hasCode gives ApiErrorCode members, without inventing a code that
+ * isn't in the spec's closed unions.
+ */
+export function isRefreshInProgressError(
+  value: unknown,
+): value is MarketplaceCentralClientError & {
   status: 409;
-  error: MarketplaceCentralClientError["error"] & {
-    code: "refresh_in_progress";
-    details: { operation_run_id: string } & Record<string, unknown>;
-  };
+  code: "refresh_in_progress";
+  details: { operation_run_id: string } & Record<string, unknown>;
+} {
+  return (
+    isApiError(value) &&
+    value.status === 409 &&
+    value.code === "refresh_in_progress" &&
+    hasStringField(value.details, "operation_run_id")
+  );
+}
+
+function isErrorEnvelope(
+  data: unknown,
+): data is { error: { code: string; message?: unknown; details?: unknown } } {
+  if (typeof data !== "object" || data === null) return false;
+  const error = (data as Record<string, unknown>).error;
+  if (typeof error !== "object" || error === null) return false;
+  return typeof (error as Record<string, unknown>).code === "string";
+}
+
+/**
+ * The one parse path every throw site funnels into (VC-5's core). Validates
+ * rather than casts: a well-formed envelope (`error` is an object with a
+ * string `code`) is used as-is, with `details` defaulting to `{}` when
+ * absent. Anything else — a bare string, an HTML proxy error page, `null`, a
+ * legacy flat `{"error":"some_code"}`, a body-less 502 — becomes
+ * `internal_error` with the ORIGINAL payload preserved at `details.raw`. It
+ * never returns `undefined` and never drops the body.
+ *
+ * Exported (not just used internally) so market.ts's client — which stays
+ * independent of the rest of this barrel per D-F4-o — can still funnel its
+ * two throw sites through the SAME parse path instead of growing a second
+ * one, per this slice's VC-5.
+ */
+export function parseApiError(status: number, data: unknown): MarketplaceCentralClientError {
+  if (isErrorEnvelope(data)) {
+    const { code, message, details } = data.error;
+    return new MarketplaceCentralClientError(
+      status,
+      code,
+      typeof message === "string" ? message : code,
+      details !== null && typeof details === "object" ? (details as Record<string, unknown>) : {},
+    );
+  }
+  return new MarketplaceCentralClientError(status, "internal_error", "erro inesperado do servidor", { raw: data });
 }
 
 export function createMarketplaceCentralClient(options: {
@@ -1748,7 +1978,7 @@ export function createMarketplaceCentralClient(options: {
     const response = await fetchImpl(`${options.baseUrl}${path}`, { method: "GET" });
     const data = await response.json();
     if (!response.ok) {
-      throw { status: response.status, error: (data as ErrorResponse).error } satisfies MarketplaceCentralClientError;
+      throw parseApiError(response.status, data);
     }
     return data as T;
   }
@@ -1823,7 +2053,7 @@ export function createMarketplaceCentralClient(options: {
     });
     const data = await response.json();
     if (!response.ok) {
-      throw { status: response.status, error: (data as ErrorResponse).error } satisfies MarketplaceCentralClientError;
+      throw parseApiError(response.status, data);
     }
     return data as T;
   }
@@ -1832,7 +2062,7 @@ export function createMarketplaceCentralClient(options: {
     const response = await fetchImpl(`${options.baseUrl}${path}`, { method: "DELETE" });
     if (!response.ok) {
       const data = await response.json();
-      throw { status: response.status, error: (data as ErrorResponse).error } satisfies MarketplaceCentralClientError;
+      throw parseApiError(response.status, data);
     }
   }
 
@@ -1844,7 +2074,7 @@ export function createMarketplaceCentralClient(options: {
     });
     const data = await response.json();
     if (!response.ok) {
-      throw { status: response.status, error: (data as ErrorResponse).error } satisfies MarketplaceCentralClientError;
+      throw parseApiError(response.status, data);
     }
     return data as T;
   }
@@ -1857,16 +2087,17 @@ export function createMarketplaceCentralClient(options: {
     });
     if (!response.ok) {
       const data = await response.json();
-      throw { status: response.status, error: (data as ErrorResponse).error } satisfies MarketplaceCentralClientError;
+      throw parseApiError(response.status, data);
     }
   }
 
   // postMultipart posts a FormData body. The Content-Type header is intentionally
   // NOT set so the runtime supplies the multipart boundary. Non-2xx bodies are
-  // the flat ERP error/conflict shape ({ error, detail?, column?, import_id?,
-  // protocol? }); the full object is surfaced on the thrown error so callers can
-  // branch on status (409 duplicate/in-progress, 422 missing column) and read
-  // the extra fields.
+  // the nested ErpImportError/ErpImportConflict envelope; callers branch on
+  // status (409 duplicate/in-progress, 422 missing column) and read the extra
+  // fields off `e.details` (`column`, `import_id`, `protocol`). The raw parsed
+  // body is available at `e.details.raw` only when the body did NOT parse as a
+  // well-formed envelope — there is no second `body` property to read.
   async function postMultipart<T>(path: string, body: FormData): Promise<T> {
     const response = await fetchImpl(`${options.baseUrl}${path}`, {
       method: "POST",
@@ -1874,11 +2105,7 @@ export function createMarketplaceCentralClient(options: {
     });
     const data = await response.json();
     if (!response.ok) {
-      throw {
-        status: response.status,
-        error: (data as ErrorResponse).error,
-        body: data,
-      } satisfies MarketplaceCentralClientError & { body: unknown };
+      throw parseApiError(response.status, data);
     }
     return data as T;
   }
@@ -1896,8 +2123,10 @@ export function createMarketplaceCentralClient(options: {
       getJson<CatalogProductFactPage>(
         `/catalog/products/search${catalogQuery({ q: options.q, cursor: options.cursor, limit: options.limit, erp_source: options.erp_source, include_all: options.include_all })}`,
       ),
-    getCatalogAssortmentCounts: () =>
-      getJson<CatalogAssortmentCounts>("/catalog/products/counts"),
+    getCatalogAssortmentCounts: (options: CatalogAssortmentCountsOptions = {}) =>
+      getJson<CatalogAssortmentCounts>(
+        `/catalog/products/counts${catalogQuery({ erp_source: options.erp_source })}`,
+      ),
     listListings: (options: ListingListOptions) =>
       getJson<ListingPage>(`/listings${listingQuery(options)}`),
     listListingsByProduct: (options: ListingListOptions) =>

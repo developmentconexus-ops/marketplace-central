@@ -1,0 +1,67 @@
+REPORT — codigos SCREAMING_SNAKE permanecem. Nomenclatura NAO unificada por este chip.
+Medido pelo CHIP. Worktree chip-error-unify. Classificacao: REPORT, nao BLOCKING.
+
+STATUS DA DECISAO
+  Hub ruling (b) @d90f0c28 ordenou o rename DENTRO do commit VC-4/VC-5.
+  Hub ruling (1) @4f086d6c REVERTEU para (A): o rename SAI deste chip.
+  A reversao veio da medicao abaixo, nao de conveniencia do chip. Registro os dois
+  estados de proposito: uma ordem que caiu contra o fato faz parte do registro.
+
+O QUE ESTE CHIP UNIFICOU E O QUE NAO UNIFICOU
+  UNIFICOU: o SHAPE. Todo erro HTTP responde
+      {"error":{"code":...,"message":...,"details":{...}}}
+    por um unico produtor (platform/apierror). Isso vale para os codigos
+    SCREAMING_SNAKE tambem — eles estao dentro do envelope correto.
+  NAO UNIFICOU: a NOMENCLATURA do campo `code`. Duas convencoes coexistem:
+    snake_case (prevalente: invalid_erp_source, deadline_exceeded, internal_error)
+    e SCREAMING_SNAKE (integrations/connectors: INTEGRATIONS_*, CONNECTORS_*).
+  Um consumidor NAO precisa saber qual convencao um codigo segue para tratar o
+  erro — le error.code como opaco. A inconsistencia e de leitura humana e de
+  estetica de contrato, nao de mecanismo de match.
+
+MEDICAO QUE DERRUBOU A ORDEM ORIGINAL
+  [ran] ripgrep, glob *.go, apps/server_core:
+    "(CONNECTORS|INTEGRATIONS)_[A-Z_]+"  = 190 ocorrencias / 41 arquivos
+  [ran] ripgrep, apps/web + packages/*:
+    (CONNECTORS|INTEGRATIONS)_[A-Z_]+    = 0 ocorrencias / 0 arquivos
+
+  Distribuicao por camada — NAO e so transport:
+    integrations/domain/errors.go                     28
+    integrations/transport/auth_handler.go            18
+    connectors/adapters/melhorenvio/oauth.go          13
+    integrations/application/fee_sync_service.go      12
+    + application/adapters/transport de 4 modulos (integrations, connectors,
+      listings, inventory)
+
+DOIS MOTIVOS, E O PRIMEIRO E O DECISIVO
+  1. A rede de seguranca citada na ordem NAO EXISTE. A ruling (b) justificou o
+     agrupamento com "mesmo commit onde a uniao nasce e o tsc passa a pegar".
+     Medido: o FE nao compara nenhum desses codigos em lugar nenhum (0/0). Logo a
+     uniao nasce sem consumidor e o tsc nao pega NADA neste rename. O instrumento
+     que tornaria o rename seguro so passa a existir depois do VC-6, e mesmo
+     entao so se o FE vier a consumir esses codigos.
+  2. Esses literais nao sao apenas codigo de wire. Em integrations/domain/errors.go
+     eles sao IDENTIDADE DE ERRO DE DOMINIO, comparada em application
+     (credential_resolver.go, fee_sync_service.go, operation_service.go,
+     installation_service.go). Renomear ali e mudanca de comportamento de dominio
+     — sem tsc, sem uniao, e sem teste que NOMEIE a troca. E a forma exata de
+     defeito que este chip existe para matar, cometida pelo proprio chip.
+
+ESCOPO FUTURO (nao e chip, por decisao do hub)
+  O rename volta a mesa SE um dia houver consumidor FE desses codigos, ou por
+  decisao de produto. Cosmetico sem consumidor nao paga chip (hub @4f086d6c).
+  Ate la os codigos ficam VERBATIM no OpenAPI e na uniao do SDK — o contrato
+  descreve o que o servidor emite HOJE, nao o que alguem gostaria que emitisse.
+
+O QUE FOI FEITO NO LUGAR
+  ErrorResponse.code teve a prosa FALSA corrigida no OpenAPI (VC-4): ela afirmava
+  MODULE_ENTITY_REASON como A convencao. Agora declara que as duas convivem, que
+  snake_case e a prevalente, e que os schemas por dominio sao a enumeracao
+  autoritativa. Prosa falsa em contrato publicado se corrige; nao se decora e nao
+  se troca por promessa de migracao que ninguem acordou.
+
+LIMITE HONESTO DESTE REPORT
+  Nao afirmo que o rename seja dificil ou impossivel — afirmo que ele nao tem
+  instrumento que o verifique hoje e que nao pertence a um commit de SHAPE. Se o
+  hub um dia o despachar, a medicao acima (190/41, camadas nomeadas) e o ponto de
+  partida do escopo, nao uma estimativa nova.

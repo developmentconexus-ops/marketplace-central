@@ -25,9 +25,17 @@ describe("unified SDK error contract (golden, RED before refactor)", () => {
     });
     const client = createMarketplaceCentralClient({ baseUrl: "http://localhost:8080", fetchImpl });
 
+    // "banana" is deliberately not a valid ErpImportSourceInput — it is what
+    // triggers the mocked 400. The @ts-expect-error directives below are
+    // themselves part of the pinned contract: they prove erp_source is typed
+    // as ErpImportSourceInput | undefined, not string. If that option ever
+    // loosens to `string`, these directives go unused and the tsc lane fails
+    // — which is the behaviour we want.
+    // @ts-expect-error erp_source: "banana" is deliberately invalid to trigger the mocked 400
     await expect(client.getCatalogAssortmentCounts({ erp_source: "banana" })).rejects.toBeDefined();
 
     try {
+      // @ts-expect-error erp_source: "banana" is deliberately invalid to trigger the mocked 400
       await client.getCatalogAssortmentCounts({ erp_source: "banana" });
       throw new Error("expected getCatalogAssortmentCounts to reject");
     } catch (e) {
@@ -37,9 +45,9 @@ describe("unified SDK error contract (golden, RED before refactor)", () => {
       if (hasCode(e, "invalid_erp_source")) {
         const allowed: string = e.details.allowed_range;
         expect(allowed).toBe("xlsx|catalogo_cliente");
+        expect(e.status).toBe(400);
+        expect(e.message).toBe("erp_source inválido: use xlsx ou catalogo_cliente");
       }
-      expect(e.status).toBe(400);
-      expect(e.message).toBe("erp_source inválido: use xlsx ou catalogo_cliente");
     }
   });
 });

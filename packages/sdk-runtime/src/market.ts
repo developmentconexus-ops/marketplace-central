@@ -1,10 +1,16 @@
 // F-04-S5: standalone price-intel collect/verdict SDK surface.
 //
 // Per D-F4-o this file stays independent of ./index.ts (the hub-owned
-// barrel). It defines its own client, error, and money/aggregate types
-// rather than importing from index.ts, so a later `export * from './market'`
-// in the barrel cannot collide on identifier names. All types here are
-// prefixed MarketPriceIntel* for that reason.
+// barrel) for its own domain types — it defines its own money/aggregate
+// types rather than importing them, so `export * from './market'` in the
+// barrel cannot collide on identifier names. All types here are prefixed
+// MarketPriceIntel* for that reason.
+//
+// The error path is the one exception (S10/VC-5): every SDK client throws
+// the SAME MarketplaceCentralClientError via the SAME parseApiError parse
+// path, so this file imports both from ./index instead of keeping a second
+// throw shape (MarketPriceIntelApiError, deleted by this slice).
+import { parseApiError } from "./index";
 
 export interface MarketPriceIntelMoney {
   amount: string;
@@ -14,15 +20,6 @@ export interface MarketPriceIntelMoney {
 export interface MarketPriceIntelPosition {
   rank: number;
   total: number;
-}
-
-export interface MarketPriceIntelApiError {
-  status: number;
-  error: {
-    code: string;
-    message: string;
-    details?: Record<string, unknown>;
-  };
 }
 
 // --- POST /market/collections (B.1) ---------------------------------------
@@ -146,7 +143,7 @@ export function createMarketPriceIntelClient(options: {
     const response = await fetchImpl(`${options.baseUrl}${path}`, { method: "GET" });
     const data = await response.json();
     if (!response.ok) {
-      throw { status: response.status, error: data.error } satisfies MarketPriceIntelApiError;
+      throw parseApiError(response.status, data);
     }
     return data as T;
   }
@@ -159,7 +156,7 @@ export function createMarketPriceIntelClient(options: {
     });
     const data = await response.json();
     if (!response.ok) {
-      throw { status: response.status, error: data.error } satisfies MarketPriceIntelApiError;
+      throw parseApiError(response.status, data);
     }
     return data as T;
   }

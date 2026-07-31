@@ -118,3 +118,72 @@ inconsistent (safe rename: tsc catches it via the union)" — but the union does
 yet. Renaming these BEFORE the SDK union exists would be a silent wire-contract change
 with no compiler catching the FE side. Deferred to the OpenAPI+SDK slice, where the typed
 union makes the rename checkable rather than hopeful. Not silently dropped: recorded here.
+
+================================================================================
+ADENDO — DELEGATE GUARD (exigido pela ruling (a) do hub)
+Medido pelo CHIP. apps/server_core, worktree chip-error-unify.
+
+O hub aceitou a sobrevivencia dos dois wrappers delegantes writeMarketError e
+writeIntegrationError sob UMA condicao: que o censo fique formulado de modo que
+um payload novo construido DENTRO deles seja visivel, contagem 0.
+
+Formulacao (nao e grep por nome — e grep pelo CORPO da funcao, extraido por awk
+entre a assinatura e o fecho, com assinatura e chave removidas):
+
+  body=$(awk '/^func write(Market|Integration)Error/,/^}/' "$f" | sed '1d;$d')
+  body_lines           = $(echo "$body" | grep -c .)
+  payload_construction = $(echo "$body" | grep -cE 'map\[string\]|struct\{|&[A-Za-z]+\{|= *\[\]')
+  delegation_calls     = $(echo "$body" | grep -c 'apierror\.Write(')
+
+[ran] resultado:
+
+  internal/modules/integrations/transport/http_handler.go
+      apierror.Write(w, status, code, message, nil)
+      body_lines=1  payload_construction=0  delegation_calls=1
+
+  internal/modules/market/transport/http_handler.go
+      apierror.Write(w, status, code, message, details)
+      body_lines=1  payload_construction=0  delegation_calls=1
+
+POR QUE ESTA FORMULACAO ACUSA O CASO FUTURO
+  Sao DOIS sinais independentes e qualquer payload novo dispara os dois:
+  construir um map/struct de erro casa payload_construction (>0), e adicionar
+  qualquer linha ao corpo tira body_lines de 1. Um grep so por 'apierror.Write'
+  NAO serviria — continuaria 1 mesmo com dez linhas de payload montadas acima da
+  chamada. E por isso que o guard mede o CORPO, e nao a presenca da chamada.
+
+  Limite honesto desta formulacao: ela prova que o corpo e uma unica linha de
+  delegacao pura. Ela nao prova nada sobre o que os 34 call-sites passam como
+  argumento — isso e coberto pelo censo de shape acima (produtor unico), nao
+  aqui.
+
+================================================================================
+ADENDO — FALLBACK DE ENCODE (exigido pela ruling (2) do hub)
+Medido pelo CHIP. internal/platform/httpx/json.go
+
+A ruling exigiu quatro coisas do fallback de falha de encode. Todas verificadas
+por leitura do arquivo, nao por alegacao:
+
+  1. bytes PRE-SERIALIZADOS constantes, nunca um segundo json.Encode em runtime
+     json.go:15  const encodeFailureBody = `{"error":{"code":"internal_error",
+                 "message":"failed to encode response","details":{}}}`
+     E uma const string literal. O caminho de falha nao chama o encoder de novo,
+     entao nao pode falhar de novo e voltar a plain-text pela porta dos fundos.
+  2. Content-Type application/json no fallback
+     json.go:21  w.Header().Set("Content-Type", "application/json")  <- ANTES do
+                 WriteHeader, no ramo de falha, nao so no ramo feliz.
+  3. teste pina o corpo COMPLETO (VC-2 vale para o fallback)
+     json_test.go:32  want := trimJSON(`{"error":{"code":"internal_error",
+                      "message":"failed to encode response","details":{}}}`)
+     O esperado e literal HARDCODED, NAO uma referencia a constante
+     encodeFailureBody. Referenciar a constante tornaria o pin tautologico —
+     passaria para qualquer valor, inclusive vazio.
+  4. sem ciclo de import
+     httpx nao importa apierror (direcao apierror -> httpx preservada). E
+     exatamente por isso que o corpo e literal aqui e em route_deadline.go:129
+     em vez de chamar apierror.Write.
+
+  Observacao adicional, nao exigida mas medida: o encode acontece em bytes.Buffer
+  ANTES de qualquer WriteHeader (json.go:18-19). Logo uma falha de encode ocorre
+  com a resposta ainda nao comitada, e o 500 do fallback e legitimo — nao ha
+  escrita parcial na frente dele.
