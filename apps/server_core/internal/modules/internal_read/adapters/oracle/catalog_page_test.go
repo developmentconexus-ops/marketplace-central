@@ -13,6 +13,15 @@ import (
 	"marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 )
 
+// noCutPolicy is the explicit "whole catalog" policy. These tests are about
+// paging, cursors and projection, so they name the cut they want instead of
+// leaving it to a seat below — this adapter is a source, and a source applies
+// whatever policy it is handed.
+func noCutPolicy() *ports.SellableAssortmentPolicy {
+	policy := ports.AllProductsAssortment()
+	return &policy
+}
+
 func TestCatalogPageUsesOneQueryForEveryListSize(t *testing.T) {
 	for _, limit := range []int{1, 50, 100} {
 		t.Run("limit-"+itoa(limit), func(t *testing.T) {
@@ -23,7 +32,7 @@ func TestCatalogPageUsesOneQueryForEveryListSize(t *testing.T) {
 			queryer := &fakeCatalogQueryer{rows: rows}
 			reader := NewReader(queryer)
 
-			page, err := reader.ListCatalogProductFacts(context.Background(), ports.Cursor{}, limit)
+			page, err := reader.ListCatalogProductFacts(context.Background(), ports.Cursor{}, limit, noCutPolicy())
 			if err != nil {
 				t.Fatalf("ListCatalogProductFacts() error = %v", err)
 			}
@@ -52,7 +61,7 @@ func TestCatalogPageCursorChainIsGaplessAndNonOverlapping(t *testing.T) {
 	for i, rows := range cases {
 		queryer := &fakeCatalogQueryer{rows: rows}
 		reader := NewReader(queryer)
-		page, err := reader.ListCatalogProductFacts(ctx, cursor, 3)
+		page, err := reader.ListCatalogProductFacts(ctx, cursor, 3, noCutPolicy())
 		if err != nil {
 			t.Fatalf("page %d error = %v", i+1, err)
 		}
@@ -83,8 +92,8 @@ func TestCatalogPageCursorChainIsGaplessAndNonOverlapping(t *testing.T) {
 func TestCatalogPageSellableAssortmentCutAndScreenEscape(t *testing.T) {
 	cursor := ports.Cursor{InternalProductID: 41}
 	allOn := ports.SellableAssortmentPolicy{OnlyRevenda: true, OnlyEmEstoque: true, OnlyEcommerceEligible: true}
-	filtered, filteredArgs := buildCatalogPageQueryWithPolicy(cursor, 51, " bolt ", allOn)
-	all, allArgs := buildCatalogPageQueryWithPolicy(cursor, 51, " bolt ", ports.AllProductsAssortment())
+	filtered, filteredArgs := buildCatalogPageQuery(cursor, 51, " bolt ", allOn)
+	all, allArgs := buildCatalogPageQuery(cursor, 51, " bolt ", ports.AllProductsAssortment())
 
 	ruleClauses := []string{
 		"UPPER(TRIM(p.USOPROD)) = 'R'",
@@ -122,7 +131,7 @@ func TestCatalogPageSellableAssortmentCutAndScreenEscape(t *testing.T) {
 
 func TestCatalogAssortmentCountUsesThePagePredicate(t *testing.T) {
 	allOn := ports.SellableAssortmentPolicy{OnlyRevenda: true, OnlyEmEstoque: true, OnlyEcommerceEligible: true}
-	page, _ := buildCatalogPageQueryWithPolicy(ports.Cursor{}, 51, "", allOn)
+	page, _ := buildCatalogPageQuery(ports.Cursor{}, 51, "", allOn)
 	count, args := buildCatalogAssortmentCountQuery(allOn)
 
 	for _, clause := range []string{
@@ -150,7 +159,7 @@ func TestCatalogAssortmentCountUsesThePagePredicate(t *testing.T) {
 
 func TestCatalogPageAndCountUseTheExactPolicyValue(t *testing.T) {
 	policy := ports.SellableAssortmentPolicy{OnlyRevenda: true, OnlyEmEstoque: false, OnlyEcommerceEligible: true}
-	page, _ := buildCatalogPageQueryWithPolicy(ports.Cursor{}, 51, "", policy)
+	page, _ := buildCatalogPageQuery(ports.Cursor{}, 51, "", policy)
 	count, _ := buildCatalogAssortmentCountQuery(policy)
 	stockClause := "NVL(stock.sellable_qty, 0) > 0"
 	for name, query := range map[string]string{"page": page, "count": count} {
@@ -199,7 +208,7 @@ func TestCatalogPageMapsNullableFactsAndAmbiguousPrice(t *testing.T) {
 	queryer := &fakeCatalogQueryer{rows: [][]driver.Value{row}}
 	reader := NewReader(queryer)
 
-	page, err := reader.ListCatalogProductFacts(context.Background(), ports.Cursor{}, 1)
+	page, err := reader.ListCatalogProductFacts(context.Background(), ports.Cursor{}, 1, noCutPolicy())
 	if err != nil {
 		t.Fatalf("ListCatalogProductFacts() error = %v", err)
 	}
@@ -233,7 +242,7 @@ func TestCatalogPageIdentitySemantics(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			reader := NewReader(&fakeCatalogQueryer{rows: [][]driver.Value{tt.row}})
-			page, err := reader.ListCatalogProductFacts(context.Background(), ports.Cursor{}, 1)
+			page, err := reader.ListCatalogProductFacts(context.Background(), ports.Cursor{}, 1, noCutPolicy())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -255,7 +264,7 @@ func TestCatalogPageIdentitySemantics(t *testing.T) {
 	t.Run("collision preserves both CODPRODs", func(t *testing.T) {
 		rows := [][]driver.Value{catalogIdentityDriverRow(201, validEAN, "A", "Marca", "12345678", 2), catalogIdentityDriverRow(202, validEAN, "B", "Marca", "12345678", 2)}
 		reader := NewReader(&fakeCatalogQueryer{rows: rows})
-		page, err := reader.ListCatalogProductFacts(context.Background(), ports.Cursor{}, 2)
+		page, err := reader.ListCatalogProductFacts(context.Background(), ports.Cursor{}, 2, noCutPolicy())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -264,7 +273,7 @@ func TestCatalogPageIdentitySemantics(t *testing.T) {
 		}
 	})
 
-	query, _ := buildCatalogPageQueryWithPolicy(ports.Cursor{}, 2, "", ports.AllProductsAssortment())
+	query, _ := buildCatalogPageQuery(ports.Cursor{}, 2, "", ports.AllProductsAssortment())
 	if strings.Contains(query, "p.REFERENCIA,\n    p.DESCRPROD") || !strings.Contains(query, "p.REFFORN") || !strings.Contains(query, "EAN_ACTIVE_COUNT") {
 		t.Fatalf("query does not isolate REFERENCIA as EAN and REFFORN as reference: %s", query)
 	}
@@ -282,7 +291,7 @@ func hasCatalogQuality(flags []string, target domain.QualityFlag) bool {
 func TestCatalogPageInvalidCursorDoesNotTouchOracle(t *testing.T) {
 	queryer := &fakeCatalogQueryer{}
 	reader := NewReader(queryer)
-	_, err := reader.ListCatalogProductFacts(context.Background(), ports.Cursor{InternalProductID: -1}, 50)
+	_, err := reader.ListCatalogProductFacts(context.Background(), ports.Cursor{InternalProductID: -1}, 50, noCutPolicy())
 	if !errors.Is(err, ports.ErrInvalidCursor) {
 		t.Fatalf("error = %v, want ErrInvalidCursor", err)
 	}
@@ -298,7 +307,7 @@ func TestCatalogPageInvalidCursorDoesNotTouchOracle(t *testing.T) {
 func TestCatalogSearchUsesOneBoundedQuery(t *testing.T) {
 	queryer := &fakeCatalogQueryer{rows: [][]driver.Value{catalogDriverRow(4)}}
 	reader := NewReader(queryer)
-	page, err := reader.SearchCatalogProductFacts(context.Background(), "bolt", ports.Cursor{}, 50)
+	page, err := reader.SearchCatalogProductFacts(context.Background(), "bolt", ports.Cursor{}, 50, noCutPolicy())
 	if err != nil {
 		t.Fatalf("SearchCatalogProductFacts() error = %v", err)
 	}
@@ -318,7 +327,7 @@ func TestCatalogSearchReportsMoreMatchesAndWalksThem(t *testing.T) {
 	queryer := &fakeCatalogQueryer{rows: [][]driver.Value{catalogDriverRow(4), catalogDriverRow(9)}}
 	reader := NewReader(queryer)
 
-	first, err := reader.SearchCatalogProductFacts(context.Background(), "bolt", ports.Cursor{}, 1)
+	first, err := reader.SearchCatalogProductFacts(context.Background(), "bolt", ports.Cursor{}, 1, noCutPolicy())
 	if err != nil {
 		t.Fatalf("SearchCatalogProductFacts() error = %v", err)
 	}
@@ -329,7 +338,7 @@ func TestCatalogSearchReportsMoreMatchesAndWalksThem(t *testing.T) {
 		t.Fatalf("next_cursor = %+v, want cursor at 4", first.NextCursor)
 	}
 
-	if _, err := reader.SearchCatalogProductFacts(context.Background(), "bolt", *first.NextCursor, 1); err != nil {
+	if _, err := reader.SearchCatalogProductFacts(context.Background(), "bolt", *first.NextCursor, 1, noCutPolicy()); err != nil {
 		t.Fatalf("second page error = %v", err)
 	}
 	second := queryer.queries[1]
@@ -341,7 +350,7 @@ func TestCatalogSearchReportsMoreMatchesAndWalksThem(t *testing.T) {
 func TestCatalogSearchRejectsNegativeCursorWithoutTouchingOracle(t *testing.T) {
 	queryer := &fakeCatalogQueryer{}
 	reader := NewReader(queryer)
-	_, err := reader.SearchCatalogProductFacts(context.Background(), "bolt", ports.Cursor{InternalProductID: -1}, 50)
+	_, err := reader.SearchCatalogProductFacts(context.Background(), "bolt", ports.Cursor{InternalProductID: -1}, 50, noCutPolicy())
 	if !errors.Is(err, ports.ErrInvalidCursor) {
 		t.Fatalf("error = %v, want ErrInvalidCursor", err)
 	}

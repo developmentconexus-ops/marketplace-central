@@ -121,40 +121,9 @@ type CatalogAssortmentCounts struct {
 	TotalCount    int
 }
 
-type CatalogPageReader interface {
-	ListCatalogProductFacts(context.Context, Cursor, int) (CatalogFactPage, error)
-	// SearchCatalogProductFacts pages the matches for a query the same way
-	// ListCatalogProductFacts pages the whole catalog. It takes a cursor because
-	// a search that only ever returned the first page could not distinguish
-	// "these are all the matches" from "these are the first 50 of many" — the
-	// caller got a full page with no next cursor and no way to ask for the rest.
-	SearchCatalogProductFacts(context.Context, string, Cursor, int) (CatalogFactPage, error)
-	// CatalogProductFactsByIDs answers "the facts for exactly these products".
-	// A screen that works on a known set — the products linked to listings, say —
-	// cannot express that as a keyset page: the ids are scattered across the whole
-	// catalog, so paging to them means reading everything in between. An id with
-	// no row in the active source is simply absent from the result; the caller
-	// learns which products the source does not know rather than being handed a
-	// fabricated blank.
-	CatalogProductFactsByIDs(context.Context, []int64) (CatalogFactPage, error)
-}
-
-// CatalogAssortmentReader is OPTIONAL, and only the Oracle reader implements it
-// today. Every seat between that reader and a caller re-asserts the port it
-// forwards at RUNTIME — routing/reader.go resolveCatalogPager turns a failed
-// assertion into ReadErrorSourceUnavailable, which is a 503 on the screen. So a
-// decorator that does not implement this interface does not fail to compile; it
-// deletes the capability and reports the source as unavailable. That is how the
-// catalog-503 defect was built once already.
-//
-// VALIDITY CONDITION: whoever wires a consumer to this port owes a compile-time
-// `var _ ports.CatalogAssortmentReader = ...` on EVERY seat in the live chain —
-// cache.CatalogPageReader, observability.TimingReader, routing.Reader,
-// application.Service — and an arrival test that reads the count through the
-// composed reader from composition/root.go, not off the Oracle reader directly.
-// A runtime `.(CatalogAssortmentReader)` with a fallback at the HTTP seam is the
-// shape this condition exists to forbid: it turns a missing seat into a quiet
-// wrong answer instead of a build error.
+// CatalogPageReader is the whole contract a catalog source owes. Every read that
+// pages the catalog carries the assortment policy, because every such read is
+// answering "which products" and the cut is part of that answer.
 //
 // THE POLICY IS OPTIONAL AT THE REQUEST, NEVER AT THE READ. The pointer says
 // which of two questions the caller is asking:
@@ -174,8 +143,34 @@ type CatalogPageReader interface {
 // explicit policy a caller passed was silently discarded. A wire boolean was
 // crossing the port dressed as a policy, which is the two-mechanisms shape this
 // port exists to keep out.
-type CatalogAssortmentReader interface {
-	ListCatalogProductFactsWithPolicy(context.Context, Cursor, int, *SellableAssortmentPolicy) (CatalogFactPage, error)
-	SearchCatalogProductFactsWithPolicy(context.Context, string, Cursor, int, *SellableAssortmentPolicy) (CatalogFactPage, error)
+//
+// The assortment methods were a separate, nominally optional port until F4. It
+// was not optional in fact — seven of the nine implementations had it — and the
+// optionality was maintained by hand, at the price of a runtime type assertion
+// at every seat that forwarded it. Those assertions turned a mis-wiring into a
+// 503 or a panic on a live request instead of a build error, which is how the
+// catalog-503 defect was built. Folding the two ports is what lets the compiler
+// certify the chain end to end; nothing here needs a hand-written
+// `var _ ports.CatalogPageReader = ...` to hold it up any more.
+type CatalogPageReader interface {
+	ListCatalogProductFacts(context.Context, Cursor, int, *SellableAssortmentPolicy) (CatalogFactPage, error)
+	// SearchCatalogProductFacts pages the matches for a query the same way
+	// ListCatalogProductFacts pages the whole catalog. It takes a cursor because
+	// a search that only ever returned the first page could not distinguish
+	// "these are all the matches" from "these are the first 50 of many" — the
+	// caller got a full page with no next cursor and no way to ask for the rest.
+	SearchCatalogProductFacts(context.Context, string, Cursor, int, *SellableAssortmentPolicy) (CatalogFactPage, error)
+	// CatalogProductFactsByIDs answers "the facts for exactly these products".
+	// A screen that works on a known set — the products linked to listings, say —
+	// cannot express that as a keyset page: the ids are scattered across the whole
+	// catalog, so paging to them means reading everything in between. An id with
+	// no row in the active source is simply absent from the result; the caller
+	// learns which products the source does not know rather than being handed a
+	// fabricated blank.
+	CatalogProductFactsByIDs(context.Context, []int64) (CatalogFactPage, error)
+	// GetCatalogAssortmentCounts reports the tenant's cut against the whole
+	// catalog — the N and the M behind "Vendáveis N de M". It is the same
+	// question the paged reads ask, asked once and without paging, so it takes
+	// the policy on the same terms they do.
 	GetCatalogAssortmentCounts(context.Context, *SellableAssortmentPolicy) (CatalogAssortmentCounts, error)
 }

@@ -87,7 +87,7 @@ func TestRootComposedCatalogReaderMovesPageAndCountWithStoredPolicy(t *testing.T
 		if err := configRepo.SetSellableAssortment(ctx, tenant, policy); err != nil {
 			t.Fatal(err)
 		}
-		page, pageErr := runtime.CatalogReader.ListCatalogProductFacts(ctx, internalreadports.Cursor{}, 50)
+		page, pageErr := runtime.CatalogReader.ListCatalogProductFacts(ctx, internalreadports.Cursor{}, 50, nil)
 		if pageErr != nil {
 			t.Fatal(pageErr)
 		}
@@ -112,7 +112,7 @@ func TestRootComposedCatalogReaderMovesPageAndCountWithStoredPolicy(t *testing.T
 		t.Fatal(err)
 	}
 	asked := internalreadports.AllProductsAssortment()
-	page, pageErr := runtime.CatalogReader.ListCatalogProductFactsWithPolicy(ctx, internalreadports.Cursor{}, 50, &asked)
+	page, pageErr := runtime.CatalogReader.ListCatalogProductFacts(ctx, internalreadports.Cursor{}, 50, &asked)
 	if pageErr != nil {
 		t.Fatal(pageErr)
 	}

@@ -13,13 +13,50 @@ import (
 	"marketplace-central/apps/server_core/internal/modules/tenant_config"
 )
 
-// fakeReader is a bare internalreadports.Reader that records the ctx it was
-// invoked with, for assertions on what the routing Reader threaded through.
+// fakeReader is an internalreadports.Source that records the ctx it was invoked
+// with, for assertions on what the routing Reader threaded through, and the
+// policy each paged read was asked for.
+//
+// There used to be a second fake here — a "pager" variant — because the paged
+// reads lived in a nominally optional port and a source could honestly implement
+// one half. It cannot any more: a source either is one or is not, and the
+// compiler decides which. One fake is what the port now describes.
 type fakeReader struct {
 	called  bool
 	gotCtx  context.Context
 	product internalreaddomain.ProductCandidate
 	err     error
+
+	pageCalled   bool
+	searchCalled bool
+	byIDsCalled  bool
+	pageCtx      context.Context
+	policies     []*internalreadports.SellableAssortmentPolicy
+}
+
+func (f *fakeReader) ListCatalogProductFacts(ctx context.Context, _ internalreadports.Cursor, _ int, policy *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
+	f.pageCalled = true
+	f.pageCtx = ctx
+	f.policies = append(f.policies, policy)
+	return internalreadports.CatalogFactPage{}, nil
+}
+
+func (f *fakeReader) SearchCatalogProductFacts(ctx context.Context, _ string, _ internalreadports.Cursor, _ int, policy *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
+	f.searchCalled = true
+	f.pageCtx = ctx
+	f.policies = append(f.policies, policy)
+	return internalreadports.CatalogFactPage{}, nil
+}
+
+func (f *fakeReader) CatalogProductFactsByIDs(ctx context.Context, _ []int64) (internalreadports.CatalogFactPage, error) {
+	f.byIDsCalled = true
+	f.pageCtx = ctx
+	return internalreadports.CatalogFactPage{}, nil
+}
+
+func (f *fakeReader) GetCatalogAssortmentCounts(_ context.Context, policy *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogAssortmentCounts, error) {
+	f.policies = append(f.policies, policy)
+	return internalreadports.CatalogAssortmentCounts{}, nil
 }
 
 func (f *fakeReader) FindProductsForLinking(ctx context.Context, _ internalreadports.FindProductsInput) ([]internalreaddomain.ProductCandidate, error) {
@@ -51,7 +88,7 @@ func (f *fakeReader) GetTaxInputs(context.Context, internalreadports.TaxInput) (
 	return internalreaddomain.TaxInputs{}, nil
 }
 
-var _ internalreadports.Reader = (*fakeReader)(nil)
+var _ internalreadports.Source = (*fakeReader)(nil)
 
 // fakeLookup is a scripted tenant_config.ActiveSourceLookup.
 type fakeLookup struct {
@@ -149,62 +186,16 @@ func TestReaderSankhyaWithNoLiveReaderFailsHonest(t *testing.T) {
 	}
 }
 
-// fakePagerReader is a fakeReader that also implements the optional
-// CatalogPageReader capability, mirroring the real upload/oracle chains.
-type fakePagerReader struct {
-	fakeReader
-	pageCalled   bool
-	searchCalled bool
-	byIDsCalled  bool
-	pageCtx      context.Context
-	policies     []*internalreadports.SellableAssortmentPolicy
-}
-
-func (f *fakePagerReader) ListCatalogProductFacts(ctx context.Context, _ internalreadports.Cursor, _ int) (internalreadports.CatalogFactPage, error) {
-	f.pageCalled = true
-	f.pageCtx = ctx
-	return internalreadports.CatalogFactPage{}, nil
-}
-
-func (f *fakePagerReader) CatalogProductFactsByIDs(ctx context.Context, _ []int64) (internalreadports.CatalogFactPage, error) {
-	f.byIDsCalled = true
-	f.pageCtx = ctx
-	return internalreadports.CatalogFactPage{}, nil
-}
-
-func (f *fakePagerReader) SearchCatalogProductFacts(ctx context.Context, _ string, _ internalreadports.Cursor, _ int) (internalreadports.CatalogFactPage, error) {
-	f.searchCalled = true
-	f.pageCtx = ctx
-	return internalreadports.CatalogFactPage{}, nil
-}
-
-func (f *fakePagerReader) ListCatalogProductFactsWithPolicy(ctx context.Context, cursor internalreadports.Cursor, limit int, policy *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
-	f.policies = append(f.policies, policy)
-	return f.ListCatalogProductFacts(ctx, cursor, limit)
-}
-
-func (f *fakePagerReader) SearchCatalogProductFactsWithPolicy(ctx context.Context, query string, cursor internalreadports.Cursor, limit int, _ *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
-	return f.SearchCatalogProductFacts(ctx, query, cursor, limit)
-}
-
-func (f *fakePagerReader) GetCatalogAssortmentCounts(_ context.Context, policy *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogAssortmentCounts, error) {
-	f.policies = append(f.policies, policy)
-	return internalreadports.CatalogAssortmentCounts{}, nil
-}
-
-var _ internalreadports.CatalogPageReader = (*fakePagerReader)(nil)
-var _ internalreadports.CatalogAssortmentReader = (*fakePagerReader)(nil)
-
-// Regression guard for the /catalog 503: wrapping the upload reader in the
-// routing Reader must NOT hide its CatalogPageReader capability from
-// internal_read/application.Service's type assertion.
+// Regression guard for the /catalog 503: the routing Reader must forward the
+// paged reads to the ACTIVE source and no other, with the same context the
+// unpaged reads get.
 func TestReaderRoutesCatalogPageToUploadSource(t *testing.T) {
-	upload := &fakePagerReader{}
-	live := &fakePagerReader{}
+	upload := &fakeReader{}
+	live := &fakeReader{}
 	lookup := fakeLookup{cfg: tenant_config.Config{TenantID: "t1", Source: tenant_config.SourceXLSX, SetAt: time.Now()}}
 	r := NewReader(upload, live, lookup, "t1")
 
-	if _, err := r.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 10); err != nil {
+	if _, err := r.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 10, nil); err != nil {
 		t.Fatalf("ListCatalogProductFacts() error = %v", err)
 	}
 	if !upload.pageCalled {
@@ -217,7 +208,7 @@ func TestReaderRoutesCatalogPageToUploadSource(t *testing.T) {
 	if !ok || source != erpdomain.SourceXLSX {
 		t.Fatalf("erp ActiveSourceFromContext() = (%v, %v), want (xlsx, true)", source, ok)
 	}
-	if _, err := r.SearchCatalogProductFacts(context.Background(), "q", internalreadports.Cursor{}, 10); err != nil {
+	if _, err := r.SearchCatalogProductFacts(context.Background(), "q", internalreadports.Cursor{}, 10, nil); err != nil {
 		t.Fatalf("SearchCatalogProductFacts() error = %v", err)
 	}
 	if !upload.searchCalled {
@@ -226,12 +217,12 @@ func TestReaderRoutesCatalogPageToUploadSource(t *testing.T) {
 }
 
 func TestReaderUsesTheTenantPolicyForPageAndCounts(t *testing.T) {
-	upload := &fakePagerReader{}
+	upload := &fakeReader{}
 	readPolicy := tenant_config.SellableAssortment{OnlyRevenda: true, OnlyEmEstoque: false, OnlyEcommerceEligible: true}
 	lookup := fakeLookup{cfg: tenant_config.Config{TenantID: "t1", Source: tenant_config.SourceXLSX, SellableAssortment: readPolicy}}
 	r := NewReader(upload, nil, lookup, "t1")
 
-	if _, err := r.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 10); err != nil {
+	if _, err := r.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 10, nil); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := r.GetCatalogAssortmentCounts(context.Background(), nil); err != nil {
@@ -259,13 +250,13 @@ func TestReaderUsesTheTenantPolicyForPageAndCounts(t *testing.T) {
 // then thrown away, so the only value a caller could actually communicate was the
 // zero one, and every explicit policy was silently replaced by the stored rule.
 func TestReaderHonorsAnExplicitPolicyInsteadOfTheStoredOne(t *testing.T) {
-	upload := &fakePagerReader{}
+	upload := &fakeReader{}
 	stored := tenant_config.SellableAssortment{OnlyRevenda: true, OnlyEmEstoque: true, OnlyEcommerceEligible: true}
 	lookup := fakeLookup{cfg: tenant_config.Config{TenantID: "t1", Source: tenant_config.SourceXLSX, SellableAssortment: stored}}
 	r := NewReader(upload, nil, lookup, "t1")
 
 	asked := internalreadports.AllProductsAssortment()
-	if _, err := r.ListCatalogProductFactsWithPolicy(context.Background(), internalreadports.Cursor{}, 10, &asked); err != nil {
+	if _, err := r.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 10, &asked); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := r.GetCatalogAssortmentCounts(context.Background(), &asked); err != nil {
@@ -285,11 +276,11 @@ func TestReaderHonorsAnExplicitPolicyInsteadOfTheStoredOne(t *testing.T) {
 }
 
 func TestReaderCatalogPageSankhyaNoLiveFailsHonest(t *testing.T) {
-	upload := &fakePagerReader{}
+	upload := &fakeReader{}
 	lookup := fakeLookup{cfg: tenant_config.Config{TenantID: "t1", Source: tenant_config.SourceSankhya, SetAt: time.Now()}}
 	r := NewReader(upload, nil, lookup, "t1")
 
-	_, err := r.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 10)
+	_, err := r.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 10, nil)
 	if !errors.Is(err, ErrActiveSourceUnavailable) {
 		t.Fatalf("ListCatalogProductFacts() error = %v, want ErrActiveSourceUnavailable", err)
 	}
@@ -298,16 +289,12 @@ func TestReaderCatalogPageSankhyaNoLiveFailsHonest(t *testing.T) {
 	}
 }
 
-func TestReaderCatalogPageNonPagerFailsHonest(t *testing.T) {
-	upload := &fakeReader{} // no CatalogPageReader capability
-	lookup := fakeLookup{cfg: tenant_config.Config{TenantID: "t1", Source: tenant_config.SourceXLSX, SetAt: time.Now()}}
-	r := NewReader(upload, nil, lookup, "t1")
-
-	_, err := r.ListCatalogProductFacts(context.Background(), internalreadports.Cursor{}, 10)
-	if !internalreaddomain.IsReadErrorCode(err, internalreaddomain.ReadErrorSourceUnavailable) {
-		t.Fatalf("ListCatalogProductFacts() error = %v, want ReadErrorSourceUnavailable", err)
-	}
-}
+// TestReaderCatalogPageNonPagerFailsHonest stood here. It wired a source that
+// implemented only the non-paged half and asserted the routing reader answered
+// source_unavailable rather than panicking. Folding the ports deleted the state
+// it described: NewReader takes an internalreadports.Source, so a half source is
+// not a value this package can be handed. The guarantee survives as a build
+// error at the wiring site, which is where it was always supposed to land.
 
 func TestReaderUnknownActiveSourceFailsClosed(t *testing.T) {
 	upload := &fakeReader{}

@@ -45,6 +45,22 @@ func (s stubCostReader) GetTaxInputs(context.Context, internalreadports.TaxInput
 	return internalreaddomain.TaxInputs{}, errors.New("not implemented")
 }
 
+func (s stubCostReader) ListCatalogProductFacts(context.Context, internalreadports.Cursor, int, *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
+	return internalreadports.CatalogFactPage{}, errors.New("not implemented")
+}
+
+func (s stubCostReader) SearchCatalogProductFacts(context.Context, string, internalreadports.Cursor, int, *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogFactPage, error) {
+	return internalreadports.CatalogFactPage{}, errors.New("not implemented")
+}
+
+func (s stubCostReader) CatalogProductFactsByIDs(context.Context, []int64) (internalreadports.CatalogFactPage, error) {
+	return internalreadports.CatalogFactPage{}, errors.New("not implemented")
+}
+
+func (s stubCostReader) GetCatalogAssortmentCounts(context.Context, *internalreadports.SellableAssortmentPolicy) (internalreadports.CatalogAssortmentCounts, error) {
+	return internalreadports.CatalogAssortmentCounts{}, errors.New("not implemented")
+}
+
 func TestOrdersCostReaderAdapter(t *testing.T) {
 	t.Run("unavailable source degrades to honest nil, no fabricated cost", func(t *testing.T) {
 		adapter := newOrdersCostReaderAdapter(internalreadapp.Service{}, false)

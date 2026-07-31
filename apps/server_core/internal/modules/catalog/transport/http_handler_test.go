@@ -40,8 +40,9 @@ func (f *fakeCatalogPageReader) captureSource(ctx context.Context) {
 	f.sourcePresent = append(f.sourcePresent, present)
 }
 
-func (f *fakeCatalogPageReader) ListCatalogProductFacts(ctx context.Context, cursor ports.Cursor, _ int) (ports.CatalogFactPage, error) {
+func (f *fakeCatalogPageReader) ListCatalogProductFacts(ctx context.Context, cursor ports.Cursor, _ int, policy *ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
 	f.listCursors = append(f.listCursors, cursor)
+	f.policies = append(f.policies, policy)
 	f.captureSource(ctx)
 	if policy, ok := FreshnessPolicyFromContext(ctx); ok {
 		f.freshnessPolicy = append(f.freshnessPolicy, policy)
@@ -60,8 +61,9 @@ func (f *fakeCatalogPageReader) CatalogProductFactsByIDs(ctx context.Context, id
 	}
 	return f.idPage, nil
 }
-func (f *fakeCatalogPageReader) SearchCatalogProductFacts(ctx context.Context, q string, cursor ports.Cursor, limit int) (ports.CatalogFactPage, error) {
+func (f *fakeCatalogPageReader) SearchCatalogProductFacts(ctx context.Context, q string, cursor ports.Cursor, limit int, policy *ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
 	f.searchQueries = append(f.searchQueries, q)
+	f.policies = append(f.policies, policy)
 	f.searchCursors = append(f.searchCursors, cursor)
 	f.searchLimits = append(f.searchLimits, limit)
 	f.captureSource(ctx)
@@ -74,17 +76,8 @@ func (f *fakeCatalogPageReader) SearchCatalogProductFacts(ctx context.Context, q
 	return f.searchPage, nil
 }
 
-func (f *fakeCatalogPageReader) ListCatalogProductFactsWithPolicy(ctx context.Context, cursor ports.Cursor, limit int, policy *ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
+func (f *fakeCatalogPageReader) GetCatalogAssortmentCounts(_ context.Context, policy *ports.SellableAssortmentPolicy) (ports.CatalogAssortmentCounts, error) {
 	f.policies = append(f.policies, policy)
-	return f.ListCatalogProductFacts(ctx, cursor, limit)
-}
-
-func (f *fakeCatalogPageReader) SearchCatalogProductFactsWithPolicy(ctx context.Context, q string, cursor ports.Cursor, limit int, policy *ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
-	f.policies = append(f.policies, policy)
-	return f.SearchCatalogProductFacts(ctx, q, cursor, limit)
-}
-
-func (f *fakeCatalogPageReader) GetCatalogAssortmentCounts(context.Context, *ports.SellableAssortmentPolicy) (ports.CatalogAssortmentCounts, error) {
 	return ports.CatalogAssortmentCounts{}, f.err
 }
 

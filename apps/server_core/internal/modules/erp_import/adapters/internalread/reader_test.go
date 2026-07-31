@@ -171,11 +171,11 @@ func TestMirrorBackedReads(t *testing.T) {
 	if err != nil || tax.NCM == nil || *tax.NCM != "12345678" || tax.Source.ObservedAt == nil || !tax.Source.ObservedAt.Equal(importedAt) {
 		t.Fatalf("tax=%+v err=%v", tax, err)
 	}
-	page, err := r.ListCatalogProductFacts(ctx, readports.Cursor{}, 2)
+	page, err := r.ListCatalogProductFacts(ctx, readports.Cursor{}, 2, noCutPolicy())
 	if err != nil || len(page.Items) != 2 || page.Items[0].InternalProductID != 1 || page.Items[1].InternalProductID != 2 || page.NextCursor == nil || page.NextCursor.InternalProductID != 2 || !page.AsOf.Equal(importedAt.Add(time.Minute)) {
 		t.Fatalf("page=%+v err=%v", page, err)
 	}
-	page2, err := r.ListCatalogProductFacts(ctx, *page.NextCursor, 2)
+	page2, err := r.ListCatalogProductFacts(ctx, *page.NextCursor, 2, noCutPolicy())
 	if err != nil || len(page2.Items) != 1 || page2.Items[0].InternalProductID != 10 || page2.NextCursor != nil {
 		t.Fatalf("page2=%+v err=%v", page2, err)
 	}
@@ -257,7 +257,7 @@ func TestMirrorUnknownValuesRemainUnknown(t *testing.T) {
 	if err != nil || stock.Quantity != nil || !readdomain.HasQualityFlag(stock.QualityFlags, readdomain.QualityMissingStock) {
 		t.Fatalf("stock=%+v err=%v", stock, err)
 	}
-	page, err := r.ListCatalogProductFacts(ctx, readports.Cursor{InternalProductID: 2}, 10)
+	page, err := r.ListCatalogProductFacts(ctx, readports.Cursor{InternalProductID: 2}, 10, noCutPolicy())
 	if err != nil || page.Items[0].Cost.Amount == nil || *page.Items[0].Cost.Amount != "7" || page.Items[0].SellableStock.Quantity != nil {
 		t.Fatalf("page=%+v err=%v", page, err)
 	}
@@ -314,7 +314,7 @@ func TestLiveReadThroughUsesUpdatedAtAsObservationTime(t *testing.T) {
 	if err != nil || stock.Source.ObservedAt == nil || !stock.Source.ObservedAt.Equal(syncedAt) {
 		t.Fatalf("live stock=%+v err=%v", stock, err)
 	}
-	page, err := reader.ListCatalogProductFacts(ctx, readports.Cursor{}, 10)
+	page, err := reader.ListCatalogProductFacts(ctx, readports.Cursor{}, 10, noCutPolicy())
 	if err != nil || len(page.Items) != 1 || !page.AsOf.Equal(syncedAt) {
 		t.Fatalf("live page must set AsOf from updated_at: page=%+v err=%v", page, err)
 	}
@@ -358,7 +358,7 @@ func TestCatalogPageUnknownImportTimesFailHonestly(t *testing.T) {
 		rows[i].ImportedAt = nil
 	}
 	r, _, ctx := readerWith(rows)
-	_, err := r.ListCatalogProductFacts(ctx, readports.Cursor{}, 10)
+	_, err := r.ListCatalogProductFacts(ctx, readports.Cursor{}, 10, noCutPolicy())
 	if !errors.Is(err, ErrNoErpSnapshot) || !readdomain.IsReadErrorCode(err, readdomain.ReadErrorSourceUnavailable) {
 		t.Fatalf("err=%v", err)
 	}
@@ -398,9 +398,9 @@ func TestUnpinnedReadsFailClosed(t *testing.T) {
 		},
 		"cost": func() error { _, err := r.GetCostAsOf(ctx, readports.CostAsOfInput{ProductID: 1}); return err },
 		"tax":  func() error { _, err := r.GetTaxInputs(ctx, readports.TaxInput{ProductID: 1}); return err },
-		"list": func() error { _, err := r.ListCatalogProductFacts(ctx, readports.Cursor{}, 10); return err },
+		"list": func() error { _, err := r.ListCatalogProductFacts(ctx, readports.Cursor{}, 10, noCutPolicy()); return err },
 		"search": func() error {
-			_, err := r.SearchCatalogProductFacts(ctx, "blue", readports.Cursor{}, 10)
+			_, err := r.SearchCatalogProductFacts(ctx, "blue", readports.Cursor{}, 10, noCutPolicy())
 			return err
 		},
 	}
@@ -491,7 +491,7 @@ func TestParseActiveSource(t *testing.T) {
 
 func TestCatalogFactQuality(t *testing.T) {
 	r, _, ctx := readerWith(mirrorRows())
-	page, err := r.ListCatalogProductFacts(ctx, readports.Cursor{}, 10)
+	page, err := r.ListCatalogProductFacts(ctx, readports.Cursor{}, 10, noCutPolicy())
 	if err != nil {
 		t.Fatal(err)
 	}

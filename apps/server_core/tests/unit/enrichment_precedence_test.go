@@ -23,7 +23,7 @@ func TestEnrichmentPrecedenceManualOverShopping(t *testing.T) {
 		},
 	}
 	svc := application.NewService(reader, store, "t1")
-	products, _ := svc.ListProducts(context.Background())
+	products, _ := svc.ListProductsByIDs(context.Background(), []string{"p1"})
 
 	if *products[0].SuggestedPrice != 75.0 {
 		t.Fatalf("manual enrichment should override shopping price: got %v", *products[0].SuggestedPrice)
@@ -40,7 +40,7 @@ func TestEnrichmentPrecedenceShoppingFallback(t *testing.T) {
 	}
 	store := &enrichmentStoreStub{enrichments: map[string]domain.ProductEnrichment{}}
 	svc := application.NewService(reader, store, "t1")
-	products, _ := svc.ListProducts(context.Background())
+	products, _ := svc.ListProductsByIDs(context.Background(), []string{"p1"})
 
 	if *products[0].SuggestedPrice != 80.0 {
 		t.Fatalf("shopping price should be used when no manual enrichment: got %v", *products[0].SuggestedPrice)
@@ -55,7 +55,7 @@ func TestEnrichmentPrecedenceNilWhenNeitherExists(t *testing.T) {
 	}
 	store := &enrichmentStoreStub{enrichments: map[string]domain.ProductEnrichment{}}
 	svc := application.NewService(reader, store, "t1")
-	products, _ := svc.ListProducts(context.Background())
+	products, _ := svc.ListProductsByIDs(context.Background(), []string{"p1"})
 
 	if products[0].SuggestedPrice != nil {
 		t.Fatalf("suggested price should be nil when neither source has data")

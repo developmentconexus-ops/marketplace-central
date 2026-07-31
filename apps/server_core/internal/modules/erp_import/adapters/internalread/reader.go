@@ -371,15 +371,7 @@ func (r *Reader) GetTaxInputs(ctx context.Context, input readports.TaxInput) (re
 	return result, nil
 }
 
-// ListCatalogProductFacts serves the port that names no assortment rule, so it
-// applies none — the mirror's whole catalog. The tenant's rule reaches the read
-// only through ListCatalogProductFactsWithPolicy, called by the routing seam.
-func (r *Reader) ListCatalogProductFacts(ctx context.Context, cursor readports.Cursor, limit int) (readports.CatalogFactPage, error) {
-	noCut := readports.AllProductsAssortment()
-	return r.ListCatalogProductFactsWithPolicy(ctx, cursor, limit, &noCut)
-}
-
-func (r *Reader) ListCatalogProductFactsWithPolicy(ctx context.Context, cursor readports.Cursor, limit int, policy *readports.SellableAssortmentPolicy) (readports.CatalogFactPage, error) {
+func (r *Reader) ListCatalogProductFacts(ctx context.Context, cursor readports.Cursor, limit int, policy *readports.SellableAssortmentPolicy) (readports.CatalogFactPage, error) {
 	resolved, err := readports.RequireAssortmentPolicy(policy)
 	if err != nil {
 		return readports.CatalogFactPage{}, err
@@ -387,15 +379,7 @@ func (r *Reader) ListCatalogProductFactsWithPolicy(ctx context.Context, cursor r
 	return r.catalogPage(ctx, cursor, "", limit, resolved)
 }
 
-func (r *Reader) SearchCatalogProductFacts(ctx context.Context, query string, cursor readports.Cursor, limit int) (readports.CatalogFactPage, error) {
-	if cursor.InternalProductID < 0 {
-		return readports.CatalogFactPage{}, readports.NewInvalidCursorError()
-	}
-	noCut := readports.AllProductsAssortment()
-	return r.SearchCatalogProductFactsWithPolicy(ctx, query, cursor, limit, &noCut)
-}
-
-func (r *Reader) SearchCatalogProductFactsWithPolicy(ctx context.Context, query string, cursor readports.Cursor, limit int, policy *readports.SellableAssortmentPolicy) (readports.CatalogFactPage, error) {
+func (r *Reader) SearchCatalogProductFacts(ctx context.Context, query string, cursor readports.Cursor, limit int, policy *readports.SellableAssortmentPolicy) (readports.CatalogFactPage, error) {
 	if cursor.InternalProductID < 0 {
 		return readports.CatalogFactPage{}, readports.NewInvalidCursorError()
 	}
@@ -668,4 +652,3 @@ func parseNumber(value, field string) (float64, error) {
 
 var _ readports.Reader = (*Reader)(nil)
 var _ readports.CatalogPageReader = (*Reader)(nil)
-var _ readports.CatalogAssortmentReader = (*Reader)(nil)

@@ -22,6 +22,34 @@ type stubReadPortsReader struct {
 	priceErr  error
 	cost      readdomain.CostAsOf
 	costErr   error
+	// catalog is what the paged reads return, and policies records what each of
+	// them was asked for. The stub stands where the routing reader stands in
+	// production, so a nil policy is the legitimate "resolve the tenant's rule"
+	// request rather than an error.
+	catalog  []readports.CatalogProductFact
+	policies *[]*readports.SellableAssortmentPolicy
+}
+
+func (s stubReadPortsReader) record(policy *readports.SellableAssortmentPolicy) {
+	if s.policies != nil {
+		*s.policies = append(*s.policies, policy)
+	}
+}
+
+func (s stubReadPortsReader) ListCatalogProductFacts(_ context.Context, _ readports.Cursor, _ int, policy *readports.SellableAssortmentPolicy) (readports.CatalogFactPage, error) {
+	s.record(policy)
+	return readports.CatalogFactPage{Items: s.catalog}, nil
+}
+func (s stubReadPortsReader) SearchCatalogProductFacts(_ context.Context, _ string, _ readports.Cursor, _ int, policy *readports.SellableAssortmentPolicy) (readports.CatalogFactPage, error) {
+	s.record(policy)
+	return readports.CatalogFactPage{Items: s.catalog}, nil
+}
+func (s stubReadPortsReader) CatalogProductFactsByIDs(context.Context, []int64) (readports.CatalogFactPage, error) {
+	return readports.CatalogFactPage{Items: s.catalog}, nil
+}
+func (s stubReadPortsReader) GetCatalogAssortmentCounts(_ context.Context, policy *readports.SellableAssortmentPolicy) (readports.CatalogAssortmentCounts, error) {
+	s.record(policy)
+	return readports.CatalogAssortmentCounts{SellableCount: len(s.catalog), TotalCount: len(s.catalog)}, nil
 }
 
 func (s stubReadPortsReader) FindProductsForLinking(context.Context, readports.FindProductsInput) ([]readdomain.ProductCandidate, error) {
@@ -142,6 +170,15 @@ func TestCanonicalProductPropagatesUnexpectedFactError(t *testing.T) {
 		})
 	}
 }
+
+// The canonical walks (ListCanonicalProducts / SearchCanonicalProducts) used to
+// be guarded here: they had to ask for the tenant's stored rule with a nil
+// policy rather than the hardcoded AllProductsAssortment they once sent. F5
+// deleted both walks instead — they read the whole catalog page by page and
+// their only caller was the legacy uncut HTTP route, which is also gone. The
+// question "which cut does this seat ask for" now lives at the seat that still
+// asks: the HTTP handler, guarded end-to-end in
+// tests/unit/cache_composed_test.go:TestComposedCatalogCutTravelsWireToSource.
 
 func TestFactProjectsQualityFlagsWithoutInventingCurrentData(t *testing.T) {
 	now := time.Date(2026, 7, 13, 12, 0, 0, 0, time.UTC)

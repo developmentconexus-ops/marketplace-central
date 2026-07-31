@@ -23,14 +23,6 @@ func NewServiceWithInvalidator(reader ports.ProductReader, enrichments ports.Enr
 	return Service{reader: reader, enrichments: enrichments, tenantID: tenantID, invalidator: invalidator}
 }
 
-func (s Service) ListProducts(ctx context.Context) ([]domain.Product, error) {
-	products, err := s.reader.ListProducts(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return s.applyEnrichments(ctx, products)
-}
-
 func (s Service) ListProductsByIDs(ctx context.Context, productIDs []string) ([]domain.Product, error) {
 	if len(productIDs) == 0 {
 		return []domain.Product{}, nil
@@ -52,14 +44,6 @@ func (s Service) GetProduct(ctx context.Context, productID string) (domain.Produ
 		return domain.Product{}, err
 	}
 	return enriched[0], nil
-}
-
-func (s Service) SearchProducts(ctx context.Context, query string) ([]domain.Product, error) {
-	products, err := s.reader.SearchProducts(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	return s.applyEnrichments(ctx, products)
 }
 
 func (s Service) ListTaxonomyNodes(ctx context.Context) ([]domain.TaxonomyNode, error) {

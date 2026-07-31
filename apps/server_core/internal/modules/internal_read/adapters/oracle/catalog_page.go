@@ -18,16 +18,7 @@ const (
 	catalogCurrency       = "BRL"
 )
 
-// ListCatalogProductFacts serves the port that names no assortment rule, so it
-// applies none — the whole catalog, which is what this method returned before a
-// sellable cut existed. The tenant's rule reaches the query only through
-// ListCatalogProductFactsWithPolicy, whose caller is the routing seam.
-func (r *Reader) ListCatalogProductFacts(ctx context.Context, cursor ports.Cursor, limit int) (ports.CatalogFactPage, error) {
-	noCut := ports.AllProductsAssortment()
-	return r.ListCatalogProductFactsWithPolicy(ctx, cursor, limit, &noCut)
-}
-
-func (r *Reader) ListCatalogProductFactsWithPolicy(ctx context.Context, cursor ports.Cursor, limit int, policy *ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
+func (r *Reader) ListCatalogProductFacts(ctx context.Context, cursor ports.Cursor, limit int, policy *ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
 	if cursor.InternalProductID < 0 {
 		return ports.CatalogFactPage{}, ports.NewInvalidCursorError()
 	}
@@ -42,16 +33,11 @@ func (r *Reader) ListCatalogProductFactsWithPolicy(ctx context.Context, cursor p
 	if err != nil {
 		return ports.CatalogFactPage{}, err
 	}
-	query, args := buildCatalogPageQueryWithPolicy(cursor, limit+1, "", resolved)
+	query, args := buildCatalogPageQuery(cursor, limit+1, "", resolved)
 	return r.readCatalogPage(ctx, query, args, limit, true)
 }
 
-func (r *Reader) SearchCatalogProductFacts(ctx context.Context, q string, cursor ports.Cursor, limit int) (ports.CatalogFactPage, error) {
-	noCut := ports.AllProductsAssortment()
-	return r.SearchCatalogProductFactsWithPolicy(ctx, q, cursor, limit, &noCut)
-}
-
-func (r *Reader) SearchCatalogProductFactsWithPolicy(ctx context.Context, q string, cursor ports.Cursor, limit int, policy *ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
+func (r *Reader) SearchCatalogProductFacts(ctx context.Context, q string, cursor ports.Cursor, limit int, policy *ports.SellableAssortmentPolicy) (ports.CatalogFactPage, error) {
 	if cursor.InternalProductID < 0 {
 		return ports.CatalogFactPage{}, ports.NewInvalidCursorError()
 	}
@@ -69,7 +55,7 @@ func (r *Reader) SearchCatalogProductFactsWithPolicy(ctx context.Context, q stri
 	if err != nil {
 		return ports.CatalogFactPage{}, err
 	}
-	query, args := buildCatalogPageQueryWithPolicy(cursor, limit+1, q, resolved)
+	query, args := buildCatalogPageQuery(cursor, limit+1, q, resolved)
 	return r.readCatalogPage(ctx, query, args, limit, true)
 }
 
@@ -84,7 +70,7 @@ func (r *Reader) CatalogProductFactsByIDs(ctx context.Context, ids []int64) (por
 		return ports.CatalogFactPage{}, err
 	}
 
-	query, args := buildCatalogPageQueryWithPolicy(ports.Cursor{}, len(ids), "", ports.AllProductsAssortment())
+	query, args := buildCatalogPageQuery(ports.Cursor{}, len(ids), "", ports.AllProductsAssortment())
 	query, args = withCatalogIDFilter(query, args, ids)
 	return r.readCatalogPage(ctx, query, args, len(ids), false)
 }
@@ -174,7 +160,7 @@ func catalogAssortmentPredicate(policy ports.SellableAssortmentPolicy) string {
 	return predicate
 }
 
-func buildCatalogPageQueryWithPolicy(cursor ports.Cursor, fetchLimit int, search string, policy ports.SellableAssortmentPolicy) (string, []any) {
+func buildCatalogPageQuery(cursor ports.Cursor, fetchLimit int, search string, policy ports.SellableAssortmentPolicy) (string, []any) {
 	query := "\n" + catalogStockCTE() + `, price_candidates AS (
     SELECT e.CODPROD,
            e.VLRVENDA,
@@ -327,4 +313,3 @@ func catalogProductFact(productID int64, eanValue, reference, description, brand
 }
 
 var _ ports.CatalogPageReader = (*Reader)(nil)
-var _ ports.CatalogAssortmentReader = (*Reader)(nil)

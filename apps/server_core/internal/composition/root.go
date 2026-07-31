@@ -437,7 +437,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	var internalReadAvailable bool
 	var oracleDB internalreadoracle.Database
 	var poolStats *internalreadobservability.PoolStatsLoop
-	var liveReader internalreadports.Reader
+	var liveReader internalreadports.Source
 	if oracleCfg, err := internalreadoracle.LoadConfigFromEnv(os.Getenv); err != nil {
 		slog.Warn("product links oracle reader unavailable", "err", err)
 	} else if db, err := internalreadoracle.OpenDB(context.Background(), oracleCfg); err != nil {

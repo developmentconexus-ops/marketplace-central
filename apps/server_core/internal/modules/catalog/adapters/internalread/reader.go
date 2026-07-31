@@ -12,21 +12,12 @@ import (
 	"time"
 )
 
-type Reader struct{ reader readports.Reader }
+type Reader struct{ reader readports.Source }
 
 type UnavailableReader struct{ Err error }
 
-func (r UnavailableReader) ListCanonicalProducts(context.Context) ([]catalogdomain.CanonicalProduct, error) {
-	return nil, r.Err
-}
 func (r UnavailableReader) GetCanonicalProduct(context.Context, catalogdomain.InternalProductID) (catalogdomain.CanonicalProduct, error) {
 	return catalogdomain.CanonicalProduct{}, r.Err
-}
-func (r UnavailableReader) SearchCanonicalProducts(context.Context, string) ([]catalogdomain.CanonicalProduct, error) {
-	return nil, r.Err
-}
-func (r UnavailableReader) ListProducts(context.Context) ([]catalogdomain.Product, error) {
-	return nil, r.Err
 }
 func (r UnavailableReader) ListProductsByIDs(context.Context, []string) ([]catalogdomain.Product, error) {
 	return nil, r.Err
@@ -34,98 +25,44 @@ func (r UnavailableReader) ListProductsByIDs(context.Context, []string) ([]catal
 func (r UnavailableReader) GetProduct(context.Context, string) (catalogdomain.Product, error) {
 	return catalogdomain.Product{}, r.Err
 }
-func (r UnavailableReader) SearchProducts(context.Context, string) ([]catalogdomain.Product, error) {
-	return nil, r.Err
-}
 func (r UnavailableReader) ListTaxonomyNodes(context.Context) ([]catalogdomain.TaxonomyNode, error) {
 	return nil, r.Err
 }
-func (r UnavailableReader) ListCatalogProductFacts(context.Context, readports.Cursor, int) (readports.CatalogFactPage, error) {
+func (r UnavailableReader) ListCatalogProductFacts(context.Context, readports.Cursor, int, *readports.SellableAssortmentPolicy) (readports.CatalogFactPage, error) {
 	return readports.CatalogFactPage{}, r.Err
 }
-func (r UnavailableReader) SearchCatalogProductFacts(context.Context, string, readports.Cursor, int) (readports.CatalogFactPage, error) {
+func (r UnavailableReader) SearchCatalogProductFacts(context.Context, string, readports.Cursor, int, *readports.SellableAssortmentPolicy) (readports.CatalogFactPage, error) {
 	return readports.CatalogFactPage{}, r.Err
 }
 func (r UnavailableReader) CatalogProductFactsByIDs(context.Context, []int64) (readports.CatalogFactPage, error) {
 	return readports.CatalogFactPage{}, r.Err
 }
+func (r UnavailableReader) GetCatalogAssortmentCounts(context.Context, *readports.SellableAssortmentPolicy) (readports.CatalogAssortmentCounts, error) {
+	return readports.CatalogAssortmentCounts{}, r.Err
+}
 
-func NewReader(reader readports.Reader) *Reader { return &Reader{reader: reader} }
+func NewReader(reader readports.Source) *Reader { return &Reader{reader: reader} }
 
 var _ catalogports.CanonicalProductReader = (*Reader)(nil)
 var _ catalogports.CanonicalProductReader = UnavailableReader{}
 var _ catalogports.ProductReader = UnavailableReader{}
 var _ readports.CatalogPageReader = UnavailableReader{}
 
-func (r *Reader) ListCanonicalProducts(ctx context.Context) ([]catalogdomain.CanonicalProduct, error) {
-	var (
-		cursor readports.Cursor
-		out    []catalogdomain.CanonicalProduct
-	)
-	for {
-		page, err := r.ListCatalogProductFacts(ctx, cursor, 100)
-		if err != nil {
-			return nil, err
-		}
-		products, err := canonicalProductsFromPage(page)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, products...)
-		if page.NextCursor == nil {
-			return out, nil
-		}
-		cursor = *page.NextCursor
-	}
-}
-// SearchCanonicalProducts answers "every product matching q", so it walks the
-// cursor to exhaustion like ListCanonicalProducts does. Reading a single page
-// silently dropped every match past the 50th and reported the remainder as if
-// it did not exist.
-func (r *Reader) SearchCanonicalProducts(ctx context.Context, q string) ([]catalogdomain.CanonicalProduct, error) {
-	var (
-		cursor readports.Cursor
-		out    []catalogdomain.CanonicalProduct
-	)
-	for {
-		page, err := r.SearchCatalogProductFacts(ctx, q, cursor, 50)
-		if err != nil {
-			return nil, err
-		}
-		products, err := canonicalProductsFromPage(page)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, products...)
-		if page.NextCursor == nil {
-			return out, nil
-		}
-		cursor = *page.NextCursor
-	}
+
+func (r *Reader) ListCatalogProductFacts(ctx context.Context, cursor readports.Cursor, limit int, policy *readports.SellableAssortmentPolicy) (readports.CatalogFactPage, error) {
+	return r.reader.ListCatalogProductFacts(ctx, cursor, limit, policy)
 }
 
-func (r *Reader) ListCatalogProductFacts(ctx context.Context, cursor readports.Cursor, limit int) (readports.CatalogFactPage, error) {
-	reader, ok := r.reader.(readports.CatalogPageReader)
-	if !ok {
-		return readports.CatalogFactPage{}, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, "oracle catalog page reader is unavailable", nil)
-	}
-	return reader.ListCatalogProductFacts(ctx, cursor, limit)
-}
-
-func (r *Reader) SearchCatalogProductFacts(ctx context.Context, q string, cursor readports.Cursor, limit int) (readports.CatalogFactPage, error) {
-	reader, ok := r.reader.(readports.CatalogPageReader)
-	if !ok {
-		return readports.CatalogFactPage{}, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, "oracle catalog page reader is unavailable", nil)
-	}
-	return reader.SearchCatalogProductFacts(ctx, q, cursor, limit)
+func (r *Reader) SearchCatalogProductFacts(ctx context.Context, q string, cursor readports.Cursor, limit int, policy *readports.SellableAssortmentPolicy) (readports.CatalogFactPage, error) {
+	return r.reader.SearchCatalogProductFacts(ctx, q, cursor, limit, policy)
 }
 
 func (r *Reader) CatalogProductFactsByIDs(ctx context.Context, ids []int64) (readports.CatalogFactPage, error) {
-	reader, ok := r.reader.(readports.CatalogPageReader)
-	if !ok {
-		return readports.CatalogFactPage{}, readdomain.NewReadError(readdomain.ReadErrorSourceUnavailable, "oracle catalog page reader is unavailable", nil)
-	}
-	return reader.CatalogProductFactsByIDs(ctx, ids)
+	return r.reader.CatalogProductFactsByIDs(ctx, ids)
+}
+
+func (r *Reader) GetCatalogAssortmentCounts(ctx context.Context, policy *readports.SellableAssortmentPolicy) (readports.CatalogAssortmentCounts, error) {
+	return r.reader.GetCatalogAssortmentCounts(ctx, policy)
 }
 
 func canonicalProductsFromPage(page readports.CatalogFactPage) ([]catalogdomain.CanonicalProduct, error) {
@@ -308,10 +245,6 @@ func containsFlag(flags []readdomain.QualityFlag, target readdomain.QualityFlag)
 	}
 	return false
 }
-func (r *Reader) ListProducts(ctx context.Context) ([]catalogdomain.Product, error) {
-	ps, e := r.ListCanonicalProducts(ctx)
-	return legacy(ps), e
-}
 func (r *Reader) ListProductsByIDs(ctx context.Context, ids []string) ([]catalogdomain.Product, error) {
 	out := make([]catalogdomain.Product, 0, len(ids))
 	for _, v := range ids {
@@ -337,10 +270,6 @@ func (r *Reader) GetProduct(ctx context.Context, id string) (catalogdomain.Produ
 		return catalogdomain.Product{}, e
 	}
 	return legacy([]catalogdomain.CanonicalProduct{p})[0], nil
-}
-func (r *Reader) SearchProducts(ctx context.Context, q string) ([]catalogdomain.Product, error) {
-	ps, e := r.SearchCanonicalProducts(ctx, q)
-	return legacy(ps), e
 }
 func (r *Reader) ListTaxonomyNodes(context.Context) ([]catalogdomain.TaxonomyNode, error) {
 	return []catalogdomain.TaxonomyNode{}, nil

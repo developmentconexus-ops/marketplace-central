@@ -16,16 +16,8 @@ type productReaderStub struct {
 	err      error
 }
 
-func (s *productReaderStub) ListProducts(context.Context) ([]domain.Product, error) {
-	return s.products, s.err
-}
-
 func (s *productReaderStub) GetProduct(_ context.Context, _ string) (domain.Product, error) {
 	return s.product, s.err
-}
-
-func (s *productReaderStub) SearchProducts(_ context.Context, _ string) ([]domain.Product, error) {
-	return s.products, s.err
 }
 
 func (s *productReaderStub) ListTaxonomyNodes(_ context.Context) ([]domain.TaxonomyNode, error) {
@@ -96,28 +88,6 @@ func (s *enrichmentStoreStub) ListEnrichments(_ context.Context, productIDs []st
 	return result, nil
 }
 
-func TestCatalogServiceListProducts(t *testing.T) {
-	reader := &productReaderStub{
-		products: []domain.Product{
-			{ProductID: "p-1", SKU: "SKU-001", Name: "Cuba Inox", Status: "active", CostAmount: 123.45},
-			{ProductID: "p-2", SKU: "SKU-002", Name: "Torneira Gourmet", Status: "active", CostAmount: 89.90},
-		},
-	}
-	enrichments := &enrichmentStoreStub{enrichments: map[string]domain.ProductEnrichment{}}
-	service := application.NewService(reader, enrichments, "tnt_test")
-
-	products, err := service.ListProducts(context.Background())
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(products) != 2 {
-		t.Fatalf("expected 2 products, got %d", len(products))
-	}
-	if products[0].SKU != "SKU-001" {
-		t.Fatalf("expected SKU-001, got %q", products[0].SKU)
-	}
-}
-
 func TestCatalogServiceAppliesEnrichmentOverlay(t *testing.T) {
 	shoppingPrice := 150.00
 	reader := &productReaderStub{
@@ -139,7 +109,7 @@ func TestCatalogServiceAppliesEnrichmentOverlay(t *testing.T) {
 	}
 	service := application.NewService(reader, enrichments, "tnt_test")
 
-	products, err := service.ListProducts(context.Background())
+	products, err := service.ListProductsByIDs(context.Background(), []string{"p-1"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -172,7 +142,7 @@ func TestApplyEnrichmentsSetsWeightG(t *testing.T) {
 	}
 	service := application.NewService(reader, enrichments, "tnt_test")
 
-	products, err := service.ListProducts(context.Background())
+	products, err := service.ListProductsByIDs(context.Background(), []string{"p-1"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -203,7 +173,7 @@ func TestCatalogServiceFallsBackToShoppingSuggestedPrice(t *testing.T) {
 	}
 	service := application.NewService(reader, enrichments, "tnt_test")
 
-	products, err := service.ListProducts(context.Background())
+	products, err := service.ListProductsByIDs(context.Background(), []string{"p-1"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -221,7 +191,7 @@ func TestCatalogServiceNilSuggestedPriceWhenNeitherExists(t *testing.T) {
 	enrichments := &enrichmentStoreStub{enrichments: map[string]domain.ProductEnrichment{}}
 	service := application.NewService(reader, enrichments, "tnt_test")
 
-	products, err := service.ListProducts(context.Background())
+	products, err := service.ListProductsByIDs(context.Background(), []string{"p-1"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -267,20 +237,6 @@ func TestCatalogServiceGetProduct(t *testing.T) {
 	}
 }
 
-func TestCatalogServiceSearchProducts(t *testing.T) {
-	reader := &productReaderStub{
-		products: []domain.Product{
-			{ProductID: "p-1", SKU: "SKU-001", Name: "Cuba Inox"},
-		},
-	}
-	enrichments := &enrichmentStoreStub{enrichments: map[string]domain.ProductEnrichment{}}
-	service := application.NewService(reader, enrichments, "tnt_test")
-
-	products, err := service.SearchProducts(context.Background(), "cuba")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(products) != 1 {
-		t.Fatalf("expected 1 product, got %d", len(products))
-	}
-}
+// Service.SearchProducts is gone with the legacy uncut route (F5). The catalog
+// search users reach is the paged one, guarded over HTTP in
+// tests/unit/catalog_handler_test.go and end-to-end in cache_composed_test.go.

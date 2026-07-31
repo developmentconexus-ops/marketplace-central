@@ -12,14 +12,11 @@ import (
 	catalogapp "marketplace-central/apps/server_core/internal/modules/catalog/application"
 	catalogdomain "marketplace-central/apps/server_core/internal/modules/catalog/domain"
 	catalogtransport "marketplace-central/apps/server_core/internal/modules/catalog/transport"
+	readports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 )
 
 type catalogHandlerReaderStub struct {
 	products []catalogdomain.Product
-}
-
-func (r *catalogHandlerReaderStub) ListProducts(_ context.Context) ([]catalogdomain.Product, error) {
-	return r.products, nil
 }
 
 func (r *catalogHandlerReaderStub) GetProduct(_ context.Context, id string) (catalogdomain.Product, error) {
@@ -29,16 +26,6 @@ func (r *catalogHandlerReaderStub) GetProduct(_ context.Context, id string) (cat
 		}
 	}
 	return catalogdomain.Product{}, nil
-}
-
-func (r *catalogHandlerReaderStub) SearchProducts(_ context.Context, q string) ([]catalogdomain.Product, error) {
-	var result []catalogdomain.Product
-	for _, p := range r.products {
-		if strings.Contains(strings.ToLower(p.Name), strings.ToLower(q)) {
-			result = append(result, p)
-		}
-	}
-	return result, nil
 }
 
 func (r *catalogHandlerReaderStub) ListTaxonomyNodes(_ context.Context) ([]catalogdomain.TaxonomyNode, error) {
@@ -63,18 +50,6 @@ func (r *catalogHandlerReaderStub) ListProductsByIDs(_ context.Context, productI
 	return result, nil
 }
 
-func (r *catalogHandlerReaderStub) ListCanonicalProducts(_ context.Context) ([]catalogdomain.CanonicalProduct, error) {
-	return canonicalCatalogProducts(r.products), nil
-}
-func (r *catalogHandlerReaderStub) SearchCanonicalProducts(_ context.Context, q string) ([]catalogdomain.CanonicalProduct, error) {
-	var products []catalogdomain.Product
-	for _, p := range r.products {
-		if strings.Contains(strings.ToLower(p.Name), strings.ToLower(q)) {
-			products = append(products, p)
-		}
-	}
-	return canonicalCatalogProducts(products), nil
-}
 func (r *catalogHandlerReaderStub) GetCanonicalProduct(_ context.Context, id catalogdomain.InternalProductID) (catalogdomain.CanonicalProduct, error) {
 	for _, p := range canonicalCatalogProducts(r.products) {
 		if p.InternalProductID == id {
@@ -108,10 +83,56 @@ func (s catalogHandlerEnrichmentStub) ListEnrichments(_ context.Context, _ []str
 	return make(map[string]catalogdomain.ProductEnrichment), nil
 }
 
+// catalogHandlerPageReader stands for everything below transport: the routing
+// seam that answers a nil policy with the tenant's stored rule, and the source
+// under it. The handler asks with nil on every read that is not include_all, so
+// a page reader that refused nil would be testing the wrong seat — resolving it
+// is what the layer below transport is for. The cut itself is proved end-to-end,
+// through the real chain, in cache_composed_test.go.
+type catalogHandlerPageReader struct {
+	products []catalogdomain.Product
+}
+
+func (r catalogHandlerPageReader) facts(match string) readports.CatalogFactPage {
+	items := make([]readports.CatalogProductFact, 0, len(r.products))
+	for i, p := range r.products {
+		if match != "" && !strings.Contains(strings.ToLower(p.Name), strings.ToLower(match)) {
+			continue
+		}
+		name := p.Name
+		items = append(items, readports.CatalogProductFact{
+			InternalProductID: int64(i + 1),
+			Description:       &name,
+			Active:            true,
+		})
+	}
+	return readports.CatalogFactPage{Items: items, AsOf: time.Now().UTC()}
+}
+
+func (r catalogHandlerPageReader) ListCatalogProductFacts(_ context.Context, _ readports.Cursor, _ int, _ *readports.SellableAssortmentPolicy) (readports.CatalogFactPage, error) {
+	return r.facts(""), nil
+}
+
+func (r catalogHandlerPageReader) SearchCatalogProductFacts(_ context.Context, q string, _ readports.Cursor, _ int, _ *readports.SellableAssortmentPolicy) (readports.CatalogFactPage, error) {
+	return r.facts(q), nil
+}
+
+func (r catalogHandlerPageReader) CatalogProductFactsByIDs(context.Context, []int64) (readports.CatalogFactPage, error) {
+	return readports.CatalogFactPage{AsOf: time.Now().UTC()}, nil
+}
+
+func (r catalogHandlerPageReader) GetCatalogAssortmentCounts(context.Context, *readports.SellableAssortmentPolicy) (readports.CatalogAssortmentCounts, error) {
+	return readports.CatalogAssortmentCounts{SellableCount: len(r.products), TotalCount: len(r.products)}, nil
+}
+
 func newCatalogHandler(products []catalogdomain.Product) catalogtransport.Handler {
 	reader := &catalogHandlerReaderStub{products: products}
 	svc := catalogapp.NewService(reader, catalogHandlerEnrichmentStub{}, "tnt_test")
-	return catalogtransport.Handler{Service: catalogapp.NewCanonicalService(reader), CompatibilityService: svc}
+	return catalogtransport.Handler{
+		Service:              catalogapp.NewCanonicalService(reader),
+		CompatibilityService: svc,
+		PageReader:           catalogHandlerPageReader{products: products},
+	}
 }
 
 func TestCatalogHandlerGetReturnsProducts(t *testing.T) {
@@ -146,15 +167,17 @@ func TestCatalogHandlerRejectsPost(t *testing.T) {
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
+	// The route is registered as "GET /catalog/products", so net/http rejects the
+	// verb before the handler runs and writes its own plain-text body. That is
+	// what production has always answered here: the JSON 405 this used to assert
+	// came from the legacy handler, which production never registered.
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("expected 405, got %d", rec.Code)
 	}
-	var body map[string]any
-	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
-		t.Fatalf("expected JSON error body on 405: %v", err)
-	}
-	if body["error"] == nil {
-		t.Fatal("expected error field in response")
+	// net/http serves HEAD automatically for a "GET /..." pattern, so the
+	// router's Allow header lists both verbs it actually answers.
+	if allow := rec.Header().Get("Allow"); allow != "GET, HEAD" {
+		t.Fatalf("expected Allow: GET, HEAD on the 405, got %q", allow)
 	}
 }
 
@@ -204,8 +227,18 @@ func TestCatalogSearchEndpointRequiresQuery(t *testing.T) {
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
+	// q is required by the OpenAPI contract. The guard used to live only in the
+	// deleted legacy handler, so the paged route accepted a blank q and answered
+	// with the whole catalog dressed as search results.
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d", rec.Code)
+		t.Fatalf("expected 400, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var body map[string]string
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatalf("decode 400 body: %v", err)
+	}
+	if body["error"] != "invalid_q" {
+		t.Fatalf("expected error=invalid_q, got %v", body)
 	}
 }
 
