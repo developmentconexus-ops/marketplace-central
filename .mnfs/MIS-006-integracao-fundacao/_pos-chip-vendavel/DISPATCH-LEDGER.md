@@ -1106,3 +1106,64 @@ Root cause was my own `tsc -b` during the S11 review. Deleted per-file under the
 a `.js`), tracked files untouched, no `git add -A`. The S11 lane was then RE-RUN post-purge and
 reproduced 18/18 with 0 skipped — so the green is not read off shadow JS. `.gitignore`/`tsconfig`
 remain the hub's seam per R-2(b); not proposed here.
+
+## S12-CATALOGO-FE — worker Claude sonnet, commit `0199c14`
+
+Model choice is an operator order, not a fallback taken silently: sonnet is the sanctioned Claude
+implementer under core §1 and the operator named it. Brief written first, by measuring the repo:
+`.mnfs/MIS-006-integracao-fundacao/_pos-chip-vendavel/S12-BRIEF.md`.
+
+**The slice card was stale in seven places** (BATCH-PLAN.md:801-830, written before S9 and S11
+existed). Three items were already done: `include_all` is on both SDK option types
+(`sdk-runtime/src/index.ts:245-250`, `:258-265`) and the handler already reads it
+(`catalog/transport/http_handler.go:254-271`, both seats `:131`/`:234`); `AppRouter.tsx:23-29`
+already mounts the real component with `client` + `erpSource`. So the card's write set was cut
+from 7 files to 4 — `packages/web-query/src/index.ts` came out because its key builders already
+accept arbitrary params, and touching a shared seam without a measured need is how seams rot.
+The card was also silent on the counts hook S11 shipped (`web-query/src/activeSource.ts:89-99`),
+which a worker following the card would have duplicated.
+
+**The card's own acceptance criterion could not have failed.** "`Ver todos` … never calls
+`setSellableAssortment`" was written against a `CatalogQueriesClient` (`catalogQueries.ts:9-16`)
+that does not declare that method — so no client the test could mount would have it, and the
+assertion passes in a world where the button writes the tenant rule on every click. This is the
+test-theater class, found by reading the card against the type rather than against the prose. The
+brief bound the fix (client carries the spy) and demanded a must-fail proving the red.
+
+**Two must-fails reproduced at THIS seat**, not accepted from the worker report:
+
+- MF-1: injected `client.setSellableAssortment({})` into the Ver-todos handler →
+  `FAIL … opens with Vendáveis 2 de 4 and ver todos never mutates tenant config`, caret on
+  `209| expect(setSellableAssortment).not.toHaveBeenCalled();`. The assertion has a world where
+  it reprova.
+- MF-2′: the worker EDITED a pre-existing test (`keeps one source rows out of the other source
+  cache entry`) because the new counts read consumes a fetch-queue slot the old ordered mock did
+  not budget. Rule is restore-or-prove-by-observable, so it was proven: dropping `erp_source`
+  from the facts key still takes that test red on the missing row. The edit kept its teeth.
+
+Both restored byte-exact (`git diff --stat` 295/30 before and after each).
+
+MF-3 (badge on `quantity == null`) and MF-4 (`refresh()` key missing `include_all`) ran at the
+worker seat, 1 named failure each. Not re-run here — MF-1 and MF-2′ cover the two classes this
+chip has actually been burned by.
+
+**Design decisions bound in the brief, derived from existing non-negotiables rather than invented:**
+no active source → counts disabled → **chip absent, never "Vendáveis 0 de 0"** (profile §7 /
+ADR-17: an unresolved read is not a zero); `Sem estoque` badge iff `quantity != null && quantity
+<= 0`, with null keeping its `— (motivo)` dash. The badge string matches
+`IntegracoesPage.tsx:394` byte-for-byte, where it was already promised to the operator.
+
+`include_all` is in both query keys but omitted from the wire when false — the key because
+filtered and all-products would otherwise share a cache entry, the wire because the handler treats
+absent and false identically and an extra param reorders the search URL (breaking the assertion at
+`CatalogPage.test.tsx:81`).
+
+Lane at this seat: **35 passed (35), 0 skipped** — CatalogPage 7→13, AppRouter 22. `apps/web` tsc
+is red with 12 errors, all pre-existing, all in unrelated files; grep for
+`catalogQueries|CatalogPage|AppRouter` over that output returns 0. Inherited red, not a regression.
+
+Copy provisional per A-23. `Ver sortimento filtrado` is new — the card named the way out, not the
+way back. The counter renders as a `text-xs text-faint` span, not a pill; the card fixed the text,
+not the treatment. Both for the operator/design gate.
+
+Evidence: `.mnfs/MIS-006-integracao-fundacao/_pos-chip-vendavel/evidence/S12-fe.txt`
