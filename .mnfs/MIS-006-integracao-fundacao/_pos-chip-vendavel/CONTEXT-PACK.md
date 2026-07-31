@@ -714,3 +714,22 @@ ONLY-POSTMERGE vazio — **zero violação nova**, critério de aceite mantido. 
 registrados em A-30/A-31 eram soma errada do breakdown do próprio baseline (que sempre somou
 55); corrigidos p/ **55/54** no EVIDENCE.md e no reason do modules.json. O set-diff — o
 critério — nunca dependeu do total.
+
+### A-32 QA live-drive PASS + encerramento (2026-07-31)
+
+QA browser pós-merge (persona fresca, banco velho per A-26) — **PASS VC-1..VC-7**, medições
+em `qa-validation-result.md`. Um defeito achado e consertado DURANTE o QA: counts 503 por
+ORA-00937 (COUNT(*) + subquery escalar sem GROUP BY; latente desde 5adeeb56 — substring-pin
+de teste não enxerga validade de statement, só o live drive). Fix @f9d6a91, after
+`200 {"sellable_count":2945,"total_count":10549}`.
+
+VC-5 LIVE-VERIFIED: primeiro tick do scheduler pós-rebuild (17:10 UTC) populou
+usoprod=10549 / ad_ecommerce=3604 no espelho sankhya; predicado no espelho
+(`usoprod='R' AND estoque_total>0`) = **2945**, idêntico ao Oracle live — o Q4 do sync
+reproduz o corte vendável exatamente.
+
+Encerramento: pg-session mpc-pg-session-3eee515d down; worktree chip-vendavel removido;
+branch `worktree-chip-vendavel` deletado com `-d` (mergeado); sessão do chip notificada.
+CHIP-VENDAVEL **CLOSED**. Fila herdada: CHIP-ERROR-UNIFY (+ gap `erp_source` no OpenAPI do
+counts), regeneração de candidates PENDING, root package.json test script, PII scrub ml-api,
+retro Sol pós-Aug-5.
