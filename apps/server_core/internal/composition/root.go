@@ -116,6 +116,7 @@ import (
 	synccomposition "marketplace-central/apps/server_core/internal/modules/sync/composition"
 	"marketplace-central/apps/server_core/internal/modules/tenant_config"
 	tenantconfigtransport "marketplace-central/apps/server_core/internal/modules/tenant_config/transport"
+	"marketplace-central/apps/server_core/internal/platform/apierror"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 	"marketplace-central/apps/server_core/internal/platform/pgdb"
 
@@ -859,7 +860,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	// Connectors (Melhor Envio auth + fee seeding foundations)
 	connectorstransport.NewHandler(meOAuth).Register(mux)
 
-	return &RootRuntime{Handler: httpx.CORSMiddleware(mux), CatalogReader: catalogPageReader, PoolStats: poolStats, MutationPoller: mutationRunner, mutationLane: mutationLane}, nil
+	return &RootRuntime{Handler: httpx.CORSMiddleware(apierror.Recover(mux)), CatalogReader: catalogPageReader, PoolStats: poolStats, MutationPoller: mutationRunner, mutationLane: mutationLane}, nil
 }
 
 func providerWritesEnabled(getenv func(string) string) bool {
