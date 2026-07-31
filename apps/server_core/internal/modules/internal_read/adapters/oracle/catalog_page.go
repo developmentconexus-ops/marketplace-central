@@ -248,21 +248,33 @@ func (r *Reader) GetCatalogAssortmentCounts(ctx context.Context, policy *ports.S
 }
 
 func buildCatalogAssortmentCountQuery(policy ports.SellableAssortmentPolicy) (string, []any) {
+	// Both counts are scalar subqueries selected FROM DUAL. The previous shape —
+	// COUNT(*) next to a scalar subquery in the same select list with no GROUP BY —
+	// is rejected by Oracle with ORA-00937 (surfaced on the first live drive of
+	// /catalog/products/counts; the substring tests can't see statement validity).
 	query := "\n" + catalogStockCTE() + `
 SELECT
-    COUNT(*) AS sellable_count,
+    (
+        SELECT COUNT(*)
+        FROM METALPRD.TGFPRO p
+        LEFT JOIN stock ON stock.CODPROD = p.CODPROD
+        WHERE p.ATIVO = 'S'
+          AND p.CODPROD > 0` + indentPredicate(catalogAssortmentPredicate(policy)) + `
+    ) AS sellable_count,
     (
         SELECT COUNT(*)
         FROM METALPRD.TGFPRO total
         WHERE total.ATIVO = 'S'
           AND total.CODPROD > 0
     ) AS total_count
-FROM METALPRD.TGFPRO p
-LEFT JOIN stock ON stock.CODPROD = p.CODPROD
-WHERE p.ATIVO = 'S'
-  AND p.CODPROD > 0`
-	query += catalogAssortmentPredicate(policy)
+FROM DUAL`
 	return query, nil
+}
+
+// indentPredicate re-indents catalogAssortmentPredicate's top-level AND clauses
+// to sit inside a scalar subquery without changing their text.
+func indentPredicate(predicate string) string {
+	return strings.ReplaceAll(predicate, "\n  AND ", "\n          AND ")
 }
 
 func catalogProductFact(productID int64, eanValue, reference, description, brandName, ncmValue sql.NullString, activeEANCount sql.NullInt64, active sql.NullString, stock sql.NullFloat64, price sql.NullString, activePriceRows sql.NullInt64, cost sql.NullString) ports.CatalogProductFact {
