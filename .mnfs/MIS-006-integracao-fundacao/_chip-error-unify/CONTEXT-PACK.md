@@ -130,3 +130,16 @@ P6 = dual gate do hub (waiver §12: Opus cold + sonnet adversarial; Sol retro p�
 Só QA (live-drive do hub pós-merge) passa o chip. Evento `CLOSED` com: SHA final, escada
 verde medida, censo pós (0 helpers locais, 0 match string FE), must-fail nomeado, diff do
 OpenAPI/SDK/FE coerente.
+
+## ENCERRAMENTO (hub, 2026-07-31)
+
+Chip MERGED @6bc30c4c; QA VC-9 PASS @9f0fad33. Gate P6: round 0 Opus REJECT (artefato
+VC-4) + sonnet APPROVE; remediação 42808712/bce555a8 (incluiu conserto de falso negativo
+do próprio gate: 400 sem `content:` no OpenAPI); round 1 Opus APPROVE. Escada pós-merge
+verde nas duas lanes; dev stack rebuildado; worktree/branch removidos.
+
+**FILA DE CHIPS AVULSOS ENCERRADA** (decisão do operador 2026-07-31, "finalizar tudo"):
+MIS-006 closed desde 28/07; VENDAVEL e ERROR-UNIFY foram os dois últimos chips avulsos.
+Trabalho restante (ProdutoPage 404, router fallback, união SDK completa, inline→allOf,
+7 tsc sdk test-lane, PII scrub ml-api, candidates, D-7..D-10) = insumo de MISSÃO NOVA
+com escopo e critério de encerramento próprios. Nenhum despacho novo deste hub.
