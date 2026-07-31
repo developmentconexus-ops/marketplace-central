@@ -401,7 +401,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/CatalogProductFactPage'
         "400":
-          description: Invalid cursor or limit
+          description: >-
+            Invalid query parameter; the error field names which one
+            (cursor, limit, erp_source, include_all, or ids).
           content:
             application/json:
               schema:
@@ -522,7 +524,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/CatalogProductFactPage'
         "400":
-          description: Invalid cursor or limit
+          description: >-
+            Invalid query parameter; the error field names which one. A blank or
+            missing q is invalid_q — q is required on this route.
           content:
             application/json:
               schema:
@@ -3951,10 +3955,14 @@ components:
       properties:
         error:
           type: string
-          enum: [invalid_cursor, invalid_limit, source_unavailable, deadline_exceeded]
+          enum: [invalid_cursor, invalid_limit, invalid_q, invalid_erp_source,
+                 invalid_ids, invalid_include_all, source_unavailable, deadline_exceeded]
         allowed_range:
           type: string
-          description: Present for invalid_limit and states the inclusive range.
+          description: >-
+            Present when the error has a bounded accepted domain and states it —
+            invalid_limit (the inclusive range), invalid_erp_source (the accepted
+            source values), invalid_ids (the accepted id count and shape).
     CatalogProduct:
       type: object
       properties:

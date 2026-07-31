@@ -1,0 +1,36 @@
+# F6 cond.4 — FE caller evidence: search never fires a blank q
+
+Measured on worktree-chip-vendavel (tree of this commit).
+
+## Single call path to searchCatalogProductFacts
+
+apps/web/src/AppRouter.tsx:23-28,70        -> route mounts CatalogPage
+apps/web/src/pages/CatalogPage.tsx:54      -> useCatalogSearchQuery(debouncedSearch)
+packages/feature-products/src/catalogQueries.ts:52
+                                           -> queryFn: client.searchCatalogProductFacts({ q: query, ... })
+
+No other consumer of searchCatalogProductFacts in apps/ or packages/ (grep sweep).
+Deprecated alias searchCatalogProducts (sdk-runtime index.ts ~:2165 after edit): zero consumers.
+
+## Double guard — blank q cannot reach the wire
+
+1. packages/feature-products/src/catalogQueries.ts:56
+   `enabled: Boolean(query)` — react-query never runs the queryFn for "" / undefined.
+2. apps/web/src/pages/CatalogPage.tsx:48-51 + :58
+   input is trimmed + debounced (`search.trim()`); `activeQuery = debouncedSearch ? searchQuery : factsQuery`
+   — blank input routes the page to the LIST query, not the search query.
+
+Verdict: the FE search surface never issues GET /catalog/products/search with blank/missing q.
+The new 400 invalid_q guard is therefore backend-hardening, not an FE behavior change.
+
+## Residual risk (recorded, not fixed — F6 scope frozen per A-29)
+
+- sdk-runtime searchCatalogProductFacts itself has no blank-q guard (builds `?q=` from whatever
+  it is given). Any FUTURE caller bypassing the react-query layer could send blank q and now
+  gets 400 invalid_q instead of the whole catalog dressed as search results — desired.
+- REPORT for CHIP-ERROR-UNIFY: sdk-runtime getJson types thrown errors as
+  ErrorResponse["error"] (object {code,message}), but catalog routes answer the flat
+  `{"error":"<code>"}` shape — at runtime the thrown `error` member is the bare code string
+  for this family. Pre-existing mistyping across the whole error surface; F6 adds the honest
+  CatalogPageErrorCode/CatalogPageErrorBody types declaring the real wire shape, and leaves
+  the unification of throw-path typing to CHIP-ERROR-UNIFY.

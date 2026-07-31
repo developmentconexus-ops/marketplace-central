@@ -233,6 +233,9 @@ func TestCatalogPageRoutesValidateBeforePortCall(t *testing.T) {
 		{name: "zero limit", path: "/catalog/products?limit=0", body: `{"error":"invalid_limit","allowed_range":"1..100"}`},
 		{name: "over limit", path: "/catalog/products?limit=101", body: `{"error":"invalid_limit","allowed_range":"1..100"}`},
 		{name: "search over limit", path: "/catalog/products/search?q=PARAFUSO&limit=51", body: `{"error":"invalid_limit","allowed_range":"1..50"}`},
+		{name: "non-numeric ids", path: "/catalog/products?ids=abc", body: `{"error":"invalid_ids","allowed_range":"1..100 positive integers"}`},
+		{name: "bad include_all", path: "/catalog/products?include_all=maybe", body: `{"error":"invalid_include_all"}`},
+		{name: "blank search q", path: "/catalog/products/search?q=%20", body: `{"error":"invalid_q"}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fake := &fakeCatalogPageReader{}
@@ -437,8 +440,8 @@ func TestCatalogPageRejectsUnknownActiveSource(t *testing.T) {
 		if recorder.Code != http.StatusBadRequest {
 			t.Fatalf("GET %s status = %d, want 400 (body %s)", path, recorder.Code, recorder.Body.String())
 		}
-		if trimJSON(recorder.Body.String()) != trimJSON(`{"error":"invalid_erp_source"}`) {
-			t.Fatalf("GET %s body = %s, want invalid_erp_source", path, trimJSON(recorder.Body.String()))
+		if trimJSON(recorder.Body.String()) != trimJSON(`{"error":"invalid_erp_source","allowed_range":"xlsx|catalogo_cliente"}`) {
+			t.Fatalf("GET %s body = %s, want invalid_erp_source naming the accepted sources", path, trimJSON(recorder.Body.String()))
 		}
 		// Unknown value must never silently fall through to a dataset read.
 		if len(fake.listCursors) != 0 || len(fake.searchQueries) != 0 {

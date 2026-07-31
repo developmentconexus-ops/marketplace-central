@@ -397,7 +397,10 @@ func nonNilStrings(values []string) []string {
 
 func writeCatalogPageError(w http.ResponseWriter, err error) {
 	if queryErr, ok := err.(*catalogPageQueryError); ok {
-		if queryErr.code == "invalid_limit" {
+		// Every code that knows its accepted domain says it. Gating this on one
+		// hardcoded code made allowed_range dead data on the two other sites
+		// that fill it (invalid_erp_source, invalid_ids): built, then dropped.
+		if queryErr.allowedRange != "" {
 			httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{"error": queryErr.code, "allowed_range": queryErr.allowedRange})
 			return
 		}

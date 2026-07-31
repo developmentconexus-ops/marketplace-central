@@ -1,0 +1,36 @@
+# F6 must-fail duplo — guard sustenta com nome (A-27 cond.2 + A-29 item 4)
+
+Tree: worktree-chip-vendavel, uncommitted F6 state (committed as the F6 commit this file rides in).
+Command per run:
+  cd apps/server_core && GOCACHE=$(pwd)/.gocache go test ./internal/modules/catalog/transport/... ./tests/unit/... -count=1 -run "TestCatalogPageRoutesValidateBeforePortCall|TestCatalogSearchEndpointRequiresQuery|TestCatalogPageRejectsUnknownActiveSource"
+
+## Must-fail 1 — invalid_q guard removed (handleSearch: `if false && strings.TrimSpace(q) == ""`)
+
+--- FAIL: TestCatalogPageRoutesValidateBeforePortCall (0.01s)
+    --- FAIL: TestCatalogPageRoutesValidateBeforePortCall/blank_search_q (0.01s)
+        http_handler_test.go:247: status/body = 200/"{\"as_of\":\"0001-01-01T00:00:00Z\",\"items\":[],\"next_cursor\":null,\"page_size\":0}", want 400/"{\"error\":\"invalid_q\"}"
+--- FAIL: TestCatalogSearchEndpointRequiresQuery (0.01s)
+FAIL	marketplace-central/apps/server_core/internal/modules/catalog/transport	1.869s
+FAIL	marketplace-central/apps/server_core/tests/unit	3.990s
+
+Red NAMES invalid_q in two independent test files; the 200 body is exactly the old defect
+(whole catalog dressed as an empty search page reaching the port).
+
+## Must-fail 2 — allowed_range re-gated to invalid_limit only
+(writeCatalogPageError: `if queryErr.code == "invalid_limit" && queryErr.allowedRange != ""`)
+
+--- FAIL: TestCatalogPageRoutesValidateBeforePortCall (0.00s)
+    --- FAIL: TestCatalogPageRoutesValidateBeforePortCall/non-numeric_ids (0.00s)
+        http_handler_test.go:247: status/body = 400/"{\"error\":\"invalid_ids\"}", want 400/"{\"error\":\"invalid_ids\",\"allowed_range\":\"1..100 positive integers\"}"
+--- FAIL: TestCatalogPageRejectsUnknownActiveSource (0.00s)
+FAIL	marketplace-central/apps/server_core/internal/modules/catalog/transport	1.634s
+
+Red NAMES the missing allowed_range on invalid_ids (table row) and fails the
+invalid_erp_source body check (TestCatalogPageRejectsUnknownActiveSource asserts
+`{"error":"invalid_erp_source","allowed_range":"xlsx|catalogo_cliente"}`).
+
+## Restore — green
+
+Both edits reverted; go build ./... clean;
+ok  marketplace-central/apps/server_core/internal/modules/catalog/transport 1.861s
+ok  marketplace-central/apps/server_core/tests/unit                          4.255s

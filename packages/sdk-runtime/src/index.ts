@@ -264,6 +264,31 @@ export interface CatalogSearchPageOptions {
   include_all?: boolean;
 }
 
+/**
+ * Error code a catalog page read (list, by-ids, search) answers with on a 400.
+ * The wire shape is the flat CatalogPageErrorBody below, not ErrorResponse —
+ * catalog routes predate the envelope and answer `{"error": "<code>"}` directly.
+ */
+export type CatalogPageErrorCode =
+  | "invalid_cursor"
+  | "invalid_limit"
+  | "invalid_q"
+  | "invalid_erp_source"
+  | "invalid_ids"
+  | "invalid_include_all"
+  | "source_unavailable"
+  | "deadline_exceeded";
+
+export interface CatalogPageErrorBody {
+  error: CatalogPageErrorCode;
+  /**
+   * Present when the error has a bounded accepted domain and states it —
+   * invalid_limit (the inclusive range), invalid_erp_source (the accepted
+   * source values), invalid_ids (the accepted id count and shape).
+   */
+  allowed_range?: string;
+}
+
 export type ListingStatus = "active" | "paused" | "closed" | "unknown" | "under_review" | "inactive" | "payment_required" | "not_yet_active";
 export type ListingSyncState = "synced" | "error" | "stale" | "queued" | "syncing" | "paused_sync";
 export type ListingLinkState = "unresolved" | "conflict" | "resolved" | "rejected";
