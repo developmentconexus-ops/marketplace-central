@@ -1,0 +1,191 @@
+VC-4 — OPENAPI COERENTE
+Medido pelo CHIP no worktree chip-error-unify, tip 4f1bf096. Base 0007de8e.
+Arquivo: contracts/api/marketplace-central.openapi.yaml
+
+POR QUE ESTE ARQUIVO EXISTE: o gate P6 round 0 reprovou por VC-4 SEM NENHUM arquivo de
+evidencia. A substancia passava, mas quem mediu foi o reviewer, e criterio descarregado
+pela medicao do proprio revisor nao esta descarregado — R-24, "unwritten = didn't happen".
+Tudo abaixo foi re-medido por mim agora. Nao copiei numero do reviewer, e onde o meu
+numero DIVERGE do dele isso esta dito em vez de alinhado (secao 2).
+
+================================================================
+1. DIFF DO YAML
+================================================================
+  [ran] git diff --stat 0007de8e..HEAD -- contracts/api/marketplace-central.openapi.yaml
+        1 file changed, 95 insertions(+), 50 deletions(-)
+
+  O QUE MUDOU, em substancia:
+
+  (a) Cinco schemas de erro deixaram de ter `error` como STRING e passaram a ter `error`
+      como OBJETO {code, message, details}. Os cinco, nomeados (linha na base):
+        CatalogPageErrorResponse   base:3988
+        ErpImportError             base:8276
+        ErpImportConflict          base:8289
+        ActiveSourceError          base:8336
+        SellableAssortmentError    base:8375
+
+      Exemplo verbatim do diff (CatalogPageErrorResponse):
+        -        error:
+        -          type: string
+        -          enum: [invalid_cursor, invalid_limit, ...]
+        -        allowed_range:
+        -          type: string
+        +        error:
+        +          type: object
+        +          required: [code, message, details]
+        +          properties:
+        +            code:
+        +              type: string
+        +              enum: [invalid_cursor, invalid_limit, ...]
+        +            message:
+        +              type: string
+        +            details:
+        +              type: object
+        +              additionalProperties: true
+        +              properties:
+        +                allowed_range:
+        +                  type: string
+      Note que `allowed_range` nao sumiu: DESCEU para dentro de details, que e onde o
+      envelope o coloca. O EXEMPLO-IO do chip depende disso.
+
+  (b) `details` virou OBRIGATORIO no envelope compartilhado (7582-7600):
+        required: [code, message]  ->  required: [code, message, details]
+      + "description: Always present; an empty object when the error carries no extra
+      fields." Isso e o que torna `e.details` seguro de ler no SDK sem guard.
+
+  (c) A descricao do 400 do counts parou de mentir:
+        -  Invalid query parameter; the error field names which one (erp_source).
+        +  Invalid query parameter; error.code names which one (erp_source).
+      Prosa que descreve o shape velho e falsidade depois da migracao, nao rodape.
+
+  (d) A lista de codigos no envelope compartilhado deixou de alegar ser exaustiva e passou
+      a declarar as DUAS convencoes que o servidor realmente emite (snake_case na maioria,
+      SCREAMING_SNAKE no modulo integrations), apontando o enum de cada schema por dominio
+      como a lista autoritativa daquele dominio. Antes ela listava ~22 codigos como
+      "known codes", o que era um universal falso.
+
+================================================================
+2. OS DOIS GREPS — COM CONTROLE POSITIVO, E COM UMA DIVERGENCIA DECLARADA
+================================================================
+REGRA APLICADA (D-8): um censo so vale se o instrumento PUDER ver o que se afirma nao
+existir. Um grep que devolve 0 porque nao sabe procurar e indistinguivel de um grep que
+devolve 0 porque nao ha nada. Aqui o controle positivo saiu de graca: a BASE tinha
+exatamente o defeito, entao rodei os mesmos greps nela.
+
+--- GREP 1: campo `error` cujo shape e `type: string` ---
+  awk: linha `error:` seguida imediatamente por `type: string`
+    /^[[:space:]]*error:[[:space:]]*$/            { pend=1; pl=NR; next }
+    pend==1 && /^[[:space:]]*type:[[:space:]]*string[[:space:]]*$/ { print; pend=0; next }
+    { pend=0 }
+
+  [ran] CONTROLE POSITIVO na base 0007de8e ...... 5 achados
+        base.yaml:3988 · 8276 · 8289 · 8336 · 8375   <- o instrumento ENXERGA
+  [ran] HEAD ..................................... 0 achados
+  => zero `error: type: string` no documento. CRITERIO CUMPRIDO.
+
+--- GREP 2: resposta 4xx/5xx sem $ref ---
+  awk: para cada chave `"4NN":`/`"5NN":`, varre ate a proxima linha de indentacao <= a
+  dela; acusa se nenhum `$ref` apareceu no bloco.
+
+  [ran] total de respostas 4xx/5xx no HEAD ....... 172
+  [ran] CONTROLE POSITIVO na base ................ 1 achado (base:2342)
+  [ran] HEAD ..................................... 1 achado (HEAD:2354)
+
+  ***** DIVERGENCIA DO GATE, DECLARADA EM VEZ DE ALINHADA *****
+  O assento reviewer registrou "respostas 4xx/5xx sem $ref = 0". Eu medi UM. Nao escrevo
+  0 num arquivo de evidencia porque o revisor chegou a 0 — o numero e meu ou nao e
+  evidencia.
+
+  O ACHADO, lido e nao presumido:
+    contracts/api/marketplace-central.openapi.yaml:2354
+      path /marketplaces/fee-schedules · operationId listMarketplaceFeeSchedules
+        "400":
+          description: marketplace_code query param missing
+      <- nenhum `content:`. A resposta nao declara CORPO NENHUM.
+
+  E NAO e cosmetico, porque o codigo desse mesmo 400 emite envelope:
+    apps/server_core/internal/modules/marketplaces/transport/http_handler.go:196
+      apierror.Write(w, http.StatusBadRequest,
+                     "MARKETPLACES_FEESCHEDULE_PARAM_MISSING",
+                     "marketplace_code query param required", nil)
+  Ou seja: o servidor responde `{"error":{"code","message","details"}}` e a spec diz que
+  esse 400 nao tem corpo. Isso e exatamente a INCOERENCIA que o VC-4 existe para proibir,
+  e esta num transport que ESTE chip migrou (marketplaces/transport/http_handler.go esta
+  no meu diff).
+
+  DUAS COISAS QUE ESTE ACHADO NAO E:
+   - nao e regressao minha: o bloco e byte-identico na base (2342) e no HEAD (2354); o
+     deslocamento de 12 linhas e o parametro erp_source que entrou acima dele;
+   - nao e "flat error shape": e ausencia de declaracao, nao shape errado. Por isso o
+     GREP 1 nao o pega e por isso ele precisa do GREP 2.
+
+  NAO CORRIGI, e a razao nao e escopo confortavel: o hub instruiu esta remediacao como
+  "evidencia-only, zero fonte tocada", e o yaml e seam de contrato com acoplamento de ADR
+  ao sdk-runtime ("API changes update OpenAPI and sdk-runtime together"). Emendar o yaml
+  aqui quebraria as duas coisas de uma vez e tornaria falsa a propria frase que o hub me
+  mandou declarar no commit. Escalado com patch proposto:
+
+      "400":
+        description: marketplace_code query param missing
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ErrorResponse'
+
+  O NOME DO SCHEMA NAO E ESCOLHA MINHA — E COPIA DO IRMAO. yaml:2378,
+  path /admin/fee-schedules/seed, que emite o MESMO codigo de erro pelo MESMO helper
+  (http_handler.go:215, MARKETPLACES_FEESCHEDULE_PARAM_MISSING), ja declara exatamente:
+        "400":
+          description: Unknown marketplace_code or missing param
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  Dois 400 com comportamento identico, um declarado e o outro nao. A ASSIMETRIA e o
+  sinal — nao ha decisao de design pendente aqui, so uma declaracao faltando. Nao existe
+  schema especifico de marketplaces no documento (procurei: os schemas de erro sao
+  ListingReadSyncError, CatalogPageErrorResponse, ErrorResponse, ConnectorErrorResponse,
+  MutationErrorResponse, ErpImportError, ActiveSourceError, SellableAssortmentError), e o
+  compartilhado ErrorResponse e o que o proprio dominio ja usa.
+
+================================================================
+3. erp_source DECLARADO NO COUNTS — a rota do EXEMPLO-IO
+================================================================
+  contracts/api/marketplace-central.openapi.yaml, operationId getCatalogAssortmentCounts,
+  bloco ADICIONADO por este chip:
+      parameters:
+        - name: erp_source
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [xlsx, catalogo_cliente]
+          description: >-
+            Selects the imported dataset the reader serves — xlsx (Sankhya ERP,
+            the default when omitted) or catalogo_cliente (client catalog import).
+            An unknown value is rejected with 400; omitting it is byte-stable with
+            pre-toggle clients.
+
+  O enum [xlsx, catalogo_cliente] e literalmente o `allowed_range` que o EXEMPLO-IO do
+  chip exige no corpo do erro:
+    GET /catalog/products/counts?erp_source=banana
+    -> 400 {"error":{"code":"invalid_erp_source","message":"...",
+            "details":{"allowed_range":"xlsx|catalogo_cliente"}}}
+  Spec e fio dizem a MESMA coisa, e o teste que pina esse corpo inteiro e
+  TestCatalogCountsInvalidErpSourceEmitsErrorEnvelope (re-provado no VC-7a).
+
+  `required: false` esta certo e nao e descuido: omitir tem que continuar byte-estavel
+  para cliente pre-toggle. Tornar obrigatorio quebraria todo consumidor existente.
+
+================================================================
+VEREDITO
+================================================================
+  Grep 1 (error como string) ...................... 0  CUMPRIDO
+  erp_source declarado com enum no counts ......... SIM CUMPRIDO
+  Diff do yaml registrado ......................... SIM CUMPRIDO
+  Grep 2 (4xx/5xx sem $ref) ....................... 1  NAO ZERO — escalado
+
+  Nao declaro VC-4 integralmente cumprido. Tres dos quatro observaveis passam; o quarto
+  mede 1 e o 1 e substantivo. Escrever "VC-4 OK" com isso dentro seria a alegacao total
+  sob cobertura parcial que este chip inteiro existe para matar — e seria pior aqui, num
+  arquivo escrito EXATAMENTE porque o gate cobrou registro proprio.

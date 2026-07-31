@@ -130,9 +130,17 @@ LADDER (todas [ran], contagens, ANSI-stripped, nunca tail)
   [ran] vitest run ............................ Test Files 7 passed (7)
                                                 Tests 85 passed (85), 0 failed
                                                 errorContract.golden.test.ts VERDE
-  [ran] apps/web tsc --noEmit ................. 12 erros; diff normalizado (espaco a
-        esquerda + prefixo apps/web/) contra EU-baseline-tsc.txt = IDENTICO
-        byte-a-byte, 12 vs 12. Zero erro novo no FE.
+  [ran] apps/web tsc --noEmit ................. 12 erros; conjunto IDENTICO ao baseline
+        comparado por TUPLA (arquivo, coluna, codigo TS), 12 vs 12. Zero erro novo no FE.
+        CORRECAO (R-25): esta linha dizia "IDENTICO byte-a-byte". Era verdade quando
+        escrita e deixou de ser — o VC-6 mexeu nos dois arquivos e DUAS linhas
+        deslocaram, o que o VC-8 mediu e nomeou (EU-VC8-ladder.txt secao 3):
+          MutationPreviewModal.tsx       197 -> 210   (git diff --numstat: +6/-4,  net +2)
+          ListingsRefreshControl.test.tsx 112 -> 114  (git diff --numstat: +33/-20, net +13)
+        Nao normalizei o baseline para "restaurar" a igualdade byte-a-byte: normalizar
+        apagaria justamente o canal que detecta erro NOVO no mesmo arquivo. O deslocamento
+        foi provado por aritmetica e o conteudo nas linhas novas e o proprio defeito
+        pre-existente. Frase falsa se CORRIGE, nao se data.
   [ran] grep "as ErrorResponse" ............... 0 linhas / 0 bytes
 
 MUST-FAIL NOMEADO DA VALIDACAO RUNTIME
