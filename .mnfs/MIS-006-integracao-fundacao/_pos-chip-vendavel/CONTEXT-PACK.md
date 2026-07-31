@@ -648,3 +648,39 @@ congela aqui; achado novo nessa superfície vira REPORT para o CHIP-ERROR-UNIFY,
 
 Tudo segue travado no shell; restart escalado ao operador segue pendente. Contenção do chip
 (zero edição não verificável) endossada de novo.
+
+---
+
+## A-30 (2026-07-31) — Takeover do hub executado; escada verde; Sol fora (quota) → waiver §12 re-invocado
+
+### Takeover (ordem do operador)
+
+Sessão do chip abandonada (shell wedge, B-8). Hub = único escritor do worktree
+`chip-vendavel` desde então. Trabalho recuperado por custódia @c8f7d90e; F4/F4b/F5
+@80f0319c; F6 @86fc6400 (contrato nos 3 lados no MESMO commit + must-fail duplo em
+`evidence/F6-must-fail.txt`); cond.6 @83c91556; governança @a2f96fa1; EVIDENCE.md @47dc7dd2
+(árvore congelada do gate).
+
+### Escada P5 — verde (EVIDENCE.md no worktree)
+
+migrate 72/0; no-lane (tenant_config+composition) PASS=115 SKIP=0 com banco da sessão;
+go vet limpo; go test 107 pacotes ok; tsc 12 pré-existentes (0 em tocado); vitest 67+5+1
+files verdes; integração status=passed (sessão `mpc-pg-session-3eee515d`:50265).
+
+### Governança — lane VERMELHA no main (finding novo, B-9)
+
+Baseline em worktree LIMPO no main tip `4ad36272`: status=failed, **51 violações
+pré-existentes**. Chip = 50 = subconjunto estrito (remove GOV_MODULE_COVERAGE
+tenant_config; adiciona zero). Critério de aceite aplicado: zero violação NOVA por diff de
+conjunto (code/id/path). Verde absoluto é inalcançável p/ qualquer chip até o hub saldar a
+lane. Registrado como B-9 no HARNESS-DEBTS; caso irmão B-10: lane no checkout do hub trava
+>20min varrendo dumps untracked `docs/design/evidence/ml-api/` (filtro da Policy não exclui).
+
+### Gate P6 — Sol MORTO (quota codex até Aug 5) → waiver §12
+
+Assento Sol morreu: `You've hit your usage limit ... try again at Aug 5th, 2026`.
+RULING: re-invocado o padrão ratificado do waiver 2026-07-18 (profile §12, contingency
+block) — dual gate = cold Opus (`harness:gate-reviewer`) + assento sonnet adversarial
+independente — sob a ordem vigente do operador ("use sonnet 5 subagent e orquestre para
+finalizarmos rapido"). Opção de review Sol retroativo pós-Aug-5 mantida, como no waiver
+original. Transporte: próximo dispatch codex usa stdin `-` (binding 2026-07-29), não argv.
