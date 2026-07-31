@@ -522,3 +522,51 @@ silencioso.
 3. Critério vácuo contra o TIPO ("nunca chama X" com X ausente do tipo do colaborador) —
    classe já nomeada no S12; ratificada para o profile: todo critério "nunca chama X" abre o
    tipo e confirma que X existe antes do despacho.
+
+---
+
+## A-27 (2026-07-31) — BLOCKED shell do chip + ratificação do alargamento F4/F4b/F5/F6
+
+### Shell
+
+Wedge é POR SESSÃO: shell do hub probado vivo (`true` + `git --version` OK) no mesmo minuto do
+BLOCKED. Conserto = restart da sessão do chip pelo operador (wrapper composto em runtime, sem
+arquivo em disco para editar — diagnóstico do chip aceito). Escalado ao operador. Dívida **B-8**
+registrada no HARNESS-DEBTS.md (shell morre para a sessão inteira, subagentes incluídos, sem
+degradação graciosa; candidato: probe de shell no bootstrap — converge com intervenção 2 da
+análise global, atestação no boot).
+
+### Alargamento RATIFICADO, com condições
+
+Cobertura: F4 (dobra da porta `Source = Reader + CatalogPageReader`, `CatalogAssortmentReader`
+deletado), F4b (decorator único no cache + asserção `timing.go`), F5 (deleção da rota legada
+não-cortada: fork do `Register`, handlers legados, métodos em 2 services + 2 portas + 4 walks +
+4 `UnavailableReader`), F6 (guard `q` obrigatório em `handleSearch` → 400 `invalid_q`).
+
+F6 em especial: **conformidade, não mudança de contrato** — hub verificou
+`contracts/api/marketplace-central.openapi.yaml:440-442` (`q` `required: true` na rota de
+busca). Comportamento atual (q em branco → catálogo inteiro vestido de busca) é a violação.
+
+Condições (nada aceito antes delas):
+1. NADA do F4–F6 é aceito até a escada P5 INTEIRA verde do zero — 4 arquivos de teste migrados
+   à mão nunca compilados; verde pré-wedge do F4 não vale para a árvore atual.
+2. Must-fail do F6 obrigatório (mesma régua do F1): guard removido → teste vermelho NOMEANDO
+   `invalid_q`. Escopo do guard = SÓ a rota onde o spec exige (`:442`); as rotas com `q`
+   `required: false` (`:573`, `:671`) não ganham guard.
+3. F6 evidencia o CHAMADOR FE: prova de que a tela de busca nunca dispara a rota com `q` vazio
+   (senão o conserto quebra a tela e o QA reprova o chip inteiro).
+4. Forma do erro 400 `invalid_q` = mesma família dos 400 existentes do módulo (`invalid_body`,
+   `unknown_erp_source`) — não nasce quinta família; a unificação global segue com o
+   CHIP-ERROR-UNIFY.
+5. `catalog_routes_test.go`: cabeçalho descreve fork que o F5 deletou = prosa falsa sobre o
+   repo (R-25, se DELETA) e a checagem `CATALOG_METHOD_NOT_ALLOWED` virou vácua (string só
+   sobrevive em `handleTaxonomy`). Consertar DENTRO do F5 — deletar a prosa e re-apontar ou
+   deletar a checagem com observável; contenção do chip (não empilhar mudança não verificável
+   com shell morto) foi correta, mas o F5 não fecha sem isso.
+6. Governança da escada: `-BaseSha` = tip da main RE-LIDO na execução (agora 774d75aa ou
+   posterior), regra A-26 mantida.
+
+### Estado congelado
+
+`STATE-SHELL-BLOCKED.md` (untracked no worktree do chip) aceito como custódia do estado;
+primeiro ato pós-restart = commitá-lo no branch do chip antes de retomar.

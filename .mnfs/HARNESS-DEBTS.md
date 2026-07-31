@@ -81,6 +81,18 @@ lane NENHUMA e reporta zero. Mesma família do B-1 (verde não-discriminante), n
 Candidato: include por glob de pacote + contagem de arquivos coletados conferida contra
 `git ls-files '*test*'` do escopo.
 
+**B-8. Shell do harness morre para a SESSÃO INTEIRA (subagentes incluídos) sem degradação
+graciosa.** CHIP-VENDAVEL 2026-07-31: toda invocação de Bash falhou com
+`syntax error: unexpected end of file from `{' command on line 70` ANTES de rodar o comando —
+inclusive `true`, inclusive dentro de subagente (processo novo, erro byte-idêntico). O script
+de 71 linhas é COMPOSTO em runtime (snapshot 44 linhas + wrapper gerado); o `{` órfão está na
+parte gerada, sem arquivo em disco para corrigir. Custo: escada inteira caiu; 6 fatias de
+trabalho (F4–F6) ficaram não-verificáveis; o chip "não consegue nem provar que não pode
+provar". Wedge é POR SESSÃO (shell do hub vivo no mesmo minuto); conserto = restart da sessão.
+Candidato: probe de shell (`true`) no bootstrap de toda sessão despachada — wedge aparece no
+minuto 0, não depois de 6 fatias; converge com a intervenção 2 da análise global (atestação
+no boot) e com o BOOT-ACK do MNOS.
+
 ## C. Gates e revisão
 
 **C-1. Stop-the-line de CLASSE** — ratificado no profile @1889d0dd (2ª ocorrência do mesmo
