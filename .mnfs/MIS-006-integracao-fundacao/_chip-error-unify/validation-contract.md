@@ -55,6 +55,12 @@ demonstrado sustentando (introduzir helper local temporário → gate acusa → 
 go build/vet/test (107+ packages) · integração hermética `status=passed` + run_id ·
 tsc = teto 12 pré-existentes EXATOS (lista comparada) · vitest lanes explícitas web +
 sdk-runtime + feature-* tocados · governança set-diff zero violação nova vs baseline 54.
+Emenda 2026-07-31 (achado do chip): lane nova `tsconfig.test.json` do sdk-runtime LIGADA
+(antes NENHUM teste do SDK era type-checked — `@ts-expect-error` provando união era
+checado por nada). Baseline da lane nova = os 7 erros pré-existentes NOMEADOS
+(activeSource.test.ts diretiva morta; index.test.ts OrderRead ×2 +
+frete_desconhecido; listings-signals.test.ts median/min_valid/max_valid ×2) — zero erro
+NOVO além deles; correção dos 7 = fila do hub, fora do escopo do chip.
 
 ## VC-9 — QA live-drive (HUB, pós-merge — só isto passa o chip)
 3 telas com erro REAL forçado (ex.: `erp_source` inválido via URL, panic route de teste
