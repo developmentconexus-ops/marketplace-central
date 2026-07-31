@@ -45,9 +45,9 @@ func TestRootRuntimeRegistersERPImportRoutes(t *testing.T) {
 }
 
 func TestRootComposedCatalogReaderMovesPageAndCountWithStoredPolicy(t *testing.T) {
-	if os.Getenv("MPC_TEST_DATABASE_URL") == "" {
-		t.Skip("MPC_TEST_DATABASE_URL is unset; the composed catalog reader needs the integration database")
-	}
+	// The harness-owned target is only read through the testsupport boundary;
+	// a direct os.Getenv here would be an unapproved reader of a secret key.
+	testpostgres.SkipWithoutTarget(t)
 	ctx := context.Background()
 	tenant := fmt.Sprintf("root-catalog-policy-%d", time.Now().UnixNano())
 	pool, dbConfig := testpostgres.OpenPool(t, tenant)
