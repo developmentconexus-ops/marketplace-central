@@ -4,14 +4,24 @@ import {
   catalogQueryKeys,
   QUERY_STALE_TIME,
   type RefreshableClient,
+  type SellableAssortmentClient,
 } from "@marketplace-central/web-query";
 
-export interface CatalogQueriesClient extends RefreshableClient {
-  listCatalogProductFacts: (options?: { cursor?: string; limit?: number }) => Promise<CatalogProductFactPage>;
+// SellableAssortmentClient is folded in (not just getCatalogAssortmentCounts)
+// because useCatalogAssortmentCountsQuery's parameter type is the full
+// interface: a client missing setSellableAssortment/getSellableAssortment
+// would fail to satisfy it structurally, not just be incomplete.
+export interface CatalogQueriesClient extends RefreshableClient, SellableAssortmentClient {
+  listCatalogProductFacts: (options?: {
+    cursor?: string;
+    limit?: number;
+    include_all?: boolean;
+  }) => Promise<CatalogProductFactPage>;
   searchCatalogProductFacts: (options: {
     q: string;
     cursor?: string;
     limit?: number;
+    include_all?: boolean;
   }) => Promise<CatalogProductFactPage>;
 }
 
@@ -26,10 +36,18 @@ export function useCatalogFactsQuery(
   client: CatalogQueriesClient,
   enabled: boolean,
   erpSource: ActiveSourceName | undefined,
+  includeAll: boolean,
 ) {
   return useInfiniteQuery({
-    queryKey: catalogQueryKeys.facts({ limit: 50, erp_source: erpSource ?? null }),
-    queryFn: ({ pageParam }) => client.listCatalogProductFacts({ cursor: pageParam, limit: 50 }),
+    queryKey: catalogQueryKeys.facts({ limit: 50, erp_source: erpSource ?? null, include_all: includeAll }),
+    queryFn: ({ pageParam }) =>
+      client.listCatalogProductFacts({
+        cursor: pageParam,
+        limit: 50,
+        // Absent, never `false`: the handler treats both as identical, and an
+        // explicit param would land ahead of `q` in the search URL below.
+        include_all: includeAll ? true : undefined,
+      }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
     staleTime: QUERY_STALE_TIME.catalog,
@@ -45,11 +63,17 @@ export function useCatalogSearchQuery(
   client: CatalogQueriesClient,
   query: string,
   erpSource: ActiveSourceName | undefined,
+  includeAll: boolean,
 ) {
   return useInfiniteQuery({
-    queryKey: catalogQueryKeys.search(query, { erp_source: erpSource ?? null }),
+    queryKey: catalogQueryKeys.search(query, { erp_source: erpSource ?? null, include_all: includeAll }),
     queryFn: ({ pageParam }) =>
-      client.searchCatalogProductFacts({ q: query, cursor: pageParam, limit: 50 }),
+      client.searchCatalogProductFacts({
+        q: query,
+        cursor: pageParam,
+        limit: 50,
+        include_all: includeAll ? true : undefined,
+      }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
     staleTime: QUERY_STALE_TIME.catalog,

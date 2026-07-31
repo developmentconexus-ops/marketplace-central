@@ -2,7 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button, formatMoneyOr, PaginatedTable, SurfaceCard } from "@marketplace-central/ui";
 import type { ActiveSourceName, CatalogProductFact } from "@marketplace-central/sdk-runtime";
-import { catalogQueryKeys, FreshnessIndicator } from "@marketplace-central/web-query";
+import {
+  catalogQueryKeys,
+  FreshnessIndicator,
+  useCatalogAssortmentCountsQuery,
+} from "@marketplace-central/web-query";
 import { useCatalogFactsQuery, useCatalogSearchQuery, type CatalogQueriesClient } from "./catalogQueries";
 
 export interface CatalogPageProps {
@@ -31,6 +35,20 @@ function factQuantity(quantity: number | null, quality: string[]): string {
   return quantity == null ? `— (${qualityText(quality)})` : String(quantity);
 }
 
+// A quantity of 0 is a real read (there is nothing to sell); a null quantity
+// is an unresolved read (ADR-17: unknown never becomes zero). Only the first
+// gets the badge — the second keeps its honest-unknown dash.
+function StockCell({ quantity, quality }: { quantity: number | null; quality: string[] }) {
+  if (quantity != null && quantity <= 0) {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-pill text-xs font-medium bg-warn-soft text-warn">
+        Sem estoque
+      </span>
+    );
+  }
+  return <>{factQuantity(quantity, quality)}</>;
+}
+
 function errorMessage(error: unknown): string {
   if (error && typeof error === "object") {
     const structured = error as { error?: { message?: string }; message?: string };
@@ -44,14 +62,18 @@ export function CatalogPage({ client, erpSource }: CatalogPageProps) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [includeAll, setIncludeAll] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
     return () => window.clearTimeout(timer);
   }, [search]);
 
-  const factsQuery = useCatalogFactsQuery(client, !debouncedSearch, erpSource);
-  const searchQuery = useCatalogSearchQuery(client, debouncedSearch, erpSource);
+  const factsQuery = useCatalogFactsQuery(client, !debouncedSearch, erpSource, includeAll);
+  const searchQuery = useCatalogSearchQuery(client, debouncedSearch, erpSource, includeAll);
+  // The chip is presentation only: read-only, the sellable rule itself is
+  // configured on /integracoes. Nothing on this screen writes it.
+  const countsQuery = useCatalogAssortmentCountsQuery(client, erpSource);
   // Both reads page the same way, so the screen drives whichever one is active
   // through one set of controls. Search used to be capped at its first page with
   // no "Carregar mais", which hid every match past the 50th.
@@ -68,11 +90,11 @@ export function CatalogPage({ client, erpSource }: CatalogPageProps) {
       const run = async () => {
         if (debouncedSearch) {
           await queryClient.refetchQueries({
-            queryKey: catalogQueryKeys.search(debouncedSearch, { erp_source: erpSource ?? null }),
+            queryKey: catalogQueryKeys.search(debouncedSearch, { erp_source: erpSource ?? null, include_all: includeAll }),
           });
         } else {
           await queryClient.refetchQueries({
-            queryKey: catalogQueryKeys.facts({ limit: 50, erp_source: erpSource ?? null }),
+            queryKey: catalogQueryKeys.facts({ limit: 50, erp_source: erpSource ?? null, include_all: includeAll }),
           });
         }
       };
@@ -92,9 +114,22 @@ export function CatalogPage({ client, erpSource }: CatalogPageProps) {
             <FreshnessIndicator asOf={asOf} />
           </p>
         </div>
-        <Button variant="secondary" disabled={refreshing || isLoading} loading={refreshing} onClick={() => void refresh()}>
-          Atualizar
-        </Button>
+        <div className="flex items-center gap-3">
+          {countsQuery.data ? (
+            <span className="text-xs text-faint">
+              Vendáveis {countsQuery.data.sellable_count} de {countsQuery.data.total_count}
+            </span>
+          ) : null}
+          <Button
+            variant="secondary"
+            onClick={() => setIncludeAll((current) => !current)}
+          >
+            {includeAll ? "Ver sortimento filtrado" : "Ver todos"}
+          </Button>
+          <Button variant="secondary" disabled={refreshing || isLoading} loading={refreshing} onClick={() => void refresh()}>
+            Atualizar
+          </Button>
+        </div>
       </div>
 
       <SurfaceCard className="rounded-card">
@@ -153,7 +188,7 @@ export function CatalogPage({ client, erpSource }: CatalogPageProps) {
               <td className="px-4 py-3 text-muted">{fact.ean ?? "—"}</td>
               <td className="px-4 py-3 text-muted">{fact.active ? "Sim" : "Não"}</td>
               <td className="px-4 py-3 text-right text-muted">
-                {factQuantity(fact.sellable_stock.quantity, fact.sellable_stock.quality)}
+                <StockCell quantity={fact.sellable_stock.quantity} quality={fact.sellable_stock.quality} />
               </td>
               <td className="px-4 py-3 text-right font-mono text-muted">
                 {factAmount(fact.current_price.amount, fact.current_price.quality)}
