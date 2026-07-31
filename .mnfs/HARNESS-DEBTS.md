@@ -97,6 +97,23 @@ Candidato: probe de shell (`true`) no bootstrap de toda sessão despachada — w
 minuto 0, não depois de 6 fatias; converge com a intervenção 2 da análise global (atestação
 no boot) e com o BOOT-ACK do MNOS.
 
+**B-9. Lane de governança VERMELHA no main — verde absoluto inalcançável para qualquer chip.**
+Medido 2026-07-31 em worktree LIMPO destacado no main tip `4ad36272`: status=failed, 51
+violações pré-existentes (19 RCFG_UNAPPROVED_READER, 13 GOV_MODULE_DEPENDENCY, 10
+RCFG_READER_MISSING, 6 GOV_MODULE_LAYER, 5 RCFG_UNDECLARED_READ, 2 GOV_MODULE_COVERAGE).
+Todo chip que rode a lane falha por herança; o critério real vira "zero violação NOVA por
+diff de conjunto (code/id/path) vs baseline do main tip" — que nenhum doc prescreve.
+Conserto: hub salda (ou baseline-a formalmente) as 51; até lá, o critério de diff de
+conjunto entra no profile como regra escrita. (CHIP-VENDAVEL A-30.)
+
+**B-10. Policy scan varre untracked pesado do checkout — lane trava >20min.** A enumeração
+de arquivos da `Policy.psm1` só exclui `.git|.mnfs|node_modules|.gomodcache|scripts/.runs|
+scripts/tests|contracts/governance`; dumps untracked (`docs/design/evidence/ml-api/`) entram
+no `Get-Content -Raw` e a lane no checkout do hub não termina. Caso novo da classe
+"governance lane clean worktree" — a causa raiz agora tem nome: o filtro é por diretório
+fixo, não por `git ls-files`. Conserto candidato: enumerar por índice do git + untracked
+não-ignorado pequeno, ou excluir por tamanho. (CHIP-VENDAVEL A-30.)
+
 ## C. Gates e revisão
 
 **C-1. Stop-the-line de CLASSE** — ratificado no profile @1889d0dd (2ª ocorrência do mesmo
