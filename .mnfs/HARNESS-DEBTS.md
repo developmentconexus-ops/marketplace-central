@@ -193,3 +193,11 @@ módulo nenhum). Generalização a ratificar: **população se define pelo FATO 
 corpo de erro HTTP), nunca pelo diretório onde se espera que a edição caia**. Candidato:
 regra de censo no profile — todo censo TOTAL declara o predicado do fato e varre a árvore
 inteira; escopo por diretório só com justificativa escrita.
+
+**D-8. Must-fail com injeção não confirmada = falso-vazio** (CHIP-ERROR-UNIFY 2026-07-31):
+regex perl multi-linha `\n` não casou em arquivo CRLF (2545 linhas) → injeção nunca aconteceu
+→ saída tsc VAZIA quase aprovada como "guard sustenta". Não-resultado é indistinguível de
+sucesso quando a mutação não é verificada. Regra a ratificar: **must-fail só vale se a
+INJEÇÃO for confirmada por observável (grep do artefato mutado) ANTES de se ler o veredito**;
+em repo CRLF, todo regex `\n` multi-linha é falso-negativo silencioso. Mesma família do D-7
+(instrumento que não mede o que afirma).
