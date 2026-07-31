@@ -87,9 +87,15 @@ exatamente o defeito, entao rodei os mesmos greps nela.
   awk: para cada chave `"4NN":`/`"5NN":`, varre ate a proxima linha de indentacao <= a
   dela; acusa se nenhum `$ref` apareceu no bloco.
 
-  [ran] total de respostas 4xx/5xx no HEAD ....... 172
-  [ran] CONTROLE POSITIVO na base ................ 1 achado (base:2342)
-  [ran] HEAD ..................................... 1 achado (HEAD:2354)
+  [ran] total de respostas 4xx/5xx ............... 172  (inalterado apos a correcao —
+        nenhuma resposta foi apagada para produzir o zero)
+  [ran] CONTROLE POSITIVO na base 0007de8e ....... 1 achado (base:2342)
+  [ran] CONTROLE POSITIVO no tip 4f1bf096 ........ 1 achado (prev:2354)
+  [ran] HEAD (pos-correcao) ...................... 0 achados
+
+  LEIA A ORDEM: o instrumento acusa 1 nos DOIS estados anteriores e 0 agora. O zero e
+  consequencia da correcao, nao de o awk ter parado de enxergar. Sem esses dois
+  controles positivos o 0 final seria indistinguivel de instrumento cego.
 
   ***** DIVERGENCIA DO GATE, DECLARADA EM VEZ DE ALINHADA *****
   O assento reviewer registrou "respostas 4xx/5xx sem $ref = 0". Eu medi UM. Nao escrevo
@@ -119,7 +125,15 @@ exatamente o defeito, entao rodei os mesmos greps nela.
    - nao e "flat error shape": e ausencia de declaracao, nao shape errado. Por isso o
      GREP 1 nao o pega e por isso ele precisa do GREP 2.
 
-  NAO CORRIGI, e a razao nao e escopo confortavel: o hub instruiu esta remediacao como
+  *** RESOLVIDO — ruling do hub concedeu grant de escopo, e a correcao esta aplicada ***
+  O paragrafo abaixo era verdadeiro no commit 42808712 e esta PRESERVADO porque o achado
+  e a divergencia com o assento reviewer sao parte da evidencia, nao ruido a limpar. O
+  que mudou: o hub concedeu grant de uma linha-de-escopo, o yaml foi emendado neste chip
+  (diff 4+/0-, puramente aditivo, verbatim do irmao :2378), e o grep 2 agora mede 0 com
+  os dois controles positivos acima. VC-4 passou de 3/4 para 4/4 POR CORRECAO, nao por
+  reinterpretacao do criterio.
+
+  NAO CORRIGI ANTES, e a razao nao era escopo confortavel: o hub instruiu a remediacao como
   "evidencia-only, zero fonte tocada", e o yaml e seam de contrato com acoplamento de ADR
   ao sdk-runtime ("API changes update OpenAPI and sdk-runtime together"). Emendar o yaml
   aqui quebraria as duas coisas de uma vez e tornaria falsa a propria frase que o hub me
@@ -183,9 +197,22 @@ VEREDITO
   Grep 1 (error como string) ...................... 0  CUMPRIDO
   erp_source declarado com enum no counts ......... SIM CUMPRIDO
   Diff do yaml registrado ......................... SIM CUMPRIDO
-  Grep 2 (4xx/5xx sem $ref) ....................... 1  NAO ZERO — escalado
+  Grep 2 (4xx/5xx sem $ref) ....................... 0  CUMPRIDO (era 1; corrigido)
 
-  Nao declaro VC-4 integralmente cumprido. Tres dos quatro observaveis passam; o quarto
-  mede 1 e o 1 e substantivo. Escrever "VC-4 OK" com isso dentro seria a alegacao total
-  sob cobertura parcial que este chip inteiro existe para matar — e seria pior aqui, num
-  arquivo escrito EXATAMENTE porque o gate cobrou registro proprio.
+  VC-4 CUMPRIDO, 4 de 4 observaveis.
+
+  A HISTORIA FICA REGISTRADA, e nao como formalidade: este arquivo declarou 3/4 e
+  escalou o quarto em vez de arredondar. O quarto virou CUMPRIDO porque o DEFEITO foi
+  consertado sob grant do hub — nao porque o criterio foi afrouxado nem porque eu
+  reli o numero de um jeito mais generoso. A diferenca entre esses dois caminhos e a
+  unica coisa que da valor a um pack de evidencia.
+
+  LANES DE CONTRATO apos a emenda (adicionar `content:` a uma resposta de erro nao muda
+  tipo gerado; o esperado era ZERO movimento, e foi):
+    [ran] sdk tsc prod ................. 0 erros                      = esperado
+    [ran] sdk tsc tsconfig.test.json ... 7 erros, tupla identica ao baseline nomeado
+                                         (activeSource 39,5/42,7 · index 1321,17/1367,17/
+                                          2304,11 · listings-signals 43,11/78,7)
+    [ran] apps/web tsc ................. 12 erros, tupla identica ao baseline
+    Go NAO foi tocado (diff do commit = 1 arquivo yaml + este arquivo), entao nao ha
+    rerun de Go a fazer: a arvore Go e identica a que produziu a escada do VC-8.

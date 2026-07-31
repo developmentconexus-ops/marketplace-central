@@ -2353,6 +2353,10 @@ paths:
                       $ref: '#/components/schemas/MarketplaceFeeSchedule'
         "400":
           description: marketplace_code query param missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /admin/fee-schedules/seed:
     post:
