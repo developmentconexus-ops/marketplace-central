@@ -65,6 +65,22 @@ ENDPOINT. Custo: rodada do worker provando o óbvio. Candidato: exigência de SK
 mecanismo de endpoint vivo — lane que boota a própria base (pg-session por checkout já existe no
 repo) ou probe TCP pré-lane com token distinto (`HPG_ENDPOINT_DEAD`), nunca "confie no env".
 
+**B-6. Descoberta de pacote da lane de integração é cega a metade da árvore.** A lane varre só
+as 5 primeiras linhas de `internal/modules/**/*_test.go` por `//go:build integration`
+(`scripts/harness/Postgres.psm1:42-61`): pacote sem a tag (`tenant_config`) e pacote fora de
+`internal/modules/` (`internal/composition`) caem FORA de toda lane. Custo pago (CHIP-VENDAVEL):
+o teste que prova que a política armazenada move página E contagem pelo reader composto pulou o
+chip inteiro sem ninguém notar; rodado explícito contra banco vivo: RUN=72 PASS=72 SKIP=0.
+Candidato: descoberta por população declarada (lista de pacotes de integração versionada e
+conferida contra a árvore — pacote novo com teste de DB fora da lista = lane vermelha), não por
+convenção de tag+caminho que falha em silêncio.
+
+**B-7. Include de teste por NOME DE ARQUIVO EXATO = zero silencioso.** `apps/web/vitest.config.ts`
+inclui `feature-products` por nome exato, não glob: segundo arquivo de teste no pacote roda em
+lane NENHUMA e reporta zero. Mesma família do B-1 (verde não-discriminante), no eixo de coleta.
+Candidato: include por glob de pacote + contagem de arquivos coletados conferida contra
+`git ls-files '*test*'` do escopo.
+
 ## C. Gates e revisão
 
 **C-1. Stop-the-line de CLASSE** — ratificado no profile @1889d0dd (2ª ocorrência do mesmo

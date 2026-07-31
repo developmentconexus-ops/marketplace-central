@@ -474,3 +474,51 @@ fora de `src/` — atenção: projetos composite exigem emit p/ incremental; med
 Teste invisível na varredura `-run TestRootRuntime` (4 linhas `---`, a dele ausente) e visível
 nomeado exato: NÃO fechar S14 com a varredura em que ele não apareceu — correto. A varredura
 se valida no chamador (regra CHIP-FIM); resultado da re-run entra na evidência do S14.
+
+---
+
+## A-26 (2026-07-31) — decisões da CLOSURE-SPEC (@0fe085c) — pontos 1–3 + ratificação de findings
+
+Spec lida na íntegra pelo hub via `git show 0fe085c`. Endossada como está, incluindo as três
+correções de lane (pacotes sem lane rodados explícitos; `-BaseSha` = tip da MAIN re-lido na
+execução, nunca base de despacho; forma workspace do vitest).
+
+### Ponto 1 — regeneração de candidatos: QA PRIMEIRO com o banco velho; regeneração DEPOIS, do hub
+
+Regra já ratificada na missão (QA final M-06): **o baseline do QA é o banco velho — não se
+limpa estado antes do QA**; o defeito aparecendo na tela é o before/after real. Aplicação:
+1. QA de browser roda COM as linhas antigas. Ressalva por escrito no pacote: motivos gravados
+   antes do F2 exibem `(unproved)`; motivos produzidos depois exibem a copy nova. VC-7 avalia
+   o PRODUTOR (linhas novas limpas = PASS); linha velha na tela não reprova o chip — ela é a
+   evidência "before".
+2. Regeneração de candidatos = passo do HUB, pós-merge e pós-QA. Escopo: candidatos PENDENTES
+   apenas; vínculos aprovados (os 31 do operador + auto-aprovados D-121) intocados. Vira o
+   "after" documentado. Operador pode vetar no relatório de QA.
+
+### Ponto 2 — F3 CONFIRMADO, chip executa sob grant
+
+`N≈3.822` medido sem corte de CODLOCAL e sem reserva = prosa falsa em contrato, e prosa falsa
+em contrato SE DELETA (R-25, CHIP-ANCHORS). Chip deleta a linha e aponta para
+`ADDENDUM-01-codlocal.md:53` + A-3 como fonte, PRESERVANDO a restrição do BATCH-PLAN:1188
+(2.923 = Oracle live apenas; espelho tem número próprio). Único toque em texto de critério;
+grant registrado no ledger do chip.
+
+### Ponto 3 — fronteira mantida; fila formal no CLOSED
+
+Scrub de PII (`docs/design/evidence/ml-api/`, seam do hub) e unificação da superfície de erro
+HTTP (chip próprio, já ratificado como próximo da fila) ficam FORA. "Finalização final" NÃO os
+inclui — escopo do chip não muda, nenhum grant novo. Os dois entram FORMALMENTE no payload do
+CLOSED como fila pós-merge. Se o operador quiser dentro, é ordem nova ao hub, não alargamento
+silencioso.
+
+### Findings ratificados (entram no CLOSED para o profile; 1 e 2 já viram dívida)
+
+1. Descoberta de pacote da lane de integração (5 primeiras linhas, só `internal/modules/**`)
+   deixa `tenant_config` e `internal/composition` FORA de toda lane → **B-6 no
+   HARNESS-DEBTS.md**. Caso pago: teste de política armazenada movendo página+contagem pulou o
+   chip inteiro; rodado vivo: composição RUN=72 PASS=72 SKIP=0.
+2. `vitest.config.ts` inclui `feature-products` por NOME EXATO, não glob → segundo arquivo de
+   teste roda em lane nenhuma, zero silencioso → **B-7 no HARNESS-DEBTS.md**.
+3. Critério vácuo contra o TIPO ("nunca chama X" com X ausente do tipo do colaborador) —
+   classe já nomeada no S12; ratificada para o profile: todo critério "nunca chama X" abre o
+   tipo e confirma que X existe antes do despacho.
