@@ -8,12 +8,17 @@ import (
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 )
 
-// TestCatalogCountsInvalidErpSourceEmitsErrorEnvelope pins the FUTURE unified
-// error contract: today handleCounts writes the flat legacy body
-// {"error":"invalid_erp_source","allowed_range":"xlsx|catalogo_cliente"} via
-// writeCatalogPageError; after the chip it must write the universal envelope
-// with a human message and a details object. This test is expected to be RED
-// until that migration lands — red is the deliverable for this slice.
+// TestCatalogCountsInvalidErpSourceEmitsErrorEnvelope pins the unified error
+// contract on the chip's EXEMPLO-IO route. It was written RED against the flat
+// legacy body {"error":"invalid_erp_source","allowed_range":"..."} that
+// handleCounts used to write, and went green when writeCatalogPageError moved
+// to platform/apierror.
+//
+// It pins the WHOLE body, not a substring: a substring assertion cannot tell a
+// correct envelope from one carrying leftover sibling fields. Re-proven in
+// VC-7(a) — reintroducing the flat body makes this test, plus
+// TestCatalogPageRoutesValidateBeforePortCall and
+// TestCatalogPageRejectsUnknownActiveSource, fail by name.
 func TestCatalogCountsInvalidErpSourceEmitsErrorEnvelope(t *testing.T) {
 	fake := &fakeCatalogPageReader{}
 	mux := httpx.NewRouteClassMux()

@@ -1,0 +1,124 @@
+VC-7 — MUST-FAIL DUPLO NOMEADO
+Medido pelo CHIP. Worktree chip-error-unify. Base: b4ab5b31 (pos VC-6).
+
+REGRA DE PROCEDIMENTO APLICADA (D-8, ratificada pelo hub nesta missao)
+  Um must-fail so vale se a INJECAO for confirmada por observavel ANTES de se ler o
+  veredito. Origem: no VC-5 um regex perl nao casou por causa de CRLF, a injecao nunca
+  aconteceu, e a saida VAZIA do tsc quase passou por "sem erro". Vazio e NAO-RESULTADO,
+  nao aprovacao. Todas as quatro injecoes abaixo seguem: injeta -> grep confirma o pouso
+  -> so entao roda o gate -> reverte -> grep/diff confirma a restauracao.
+
+================================================================
+(a) VERMELHO NOMEADO QUANDO UM TRANSPORT VOLTA AO SHAPE VELHO
+================================================================
+ALVO: catalog/transport, a rota do EXEMPLO-IO deste chip
+      GET /catalog/products/counts?erp_source=banana
+
+INJECAO (produtor, nao teste — o teste nao foi tocado):
+  internal/modules/catalog/transport/http_handler.go:423
+  - apierror.Write(w, 400, queryErr.code, message, map[string]any{"allowed_range": ...})
+  + httpx.WriteJSON(w, 400, map[string]any{"error": queryErr.code, "allowed_range": ...})
+  ou seja: exatamente o corpo plano legado que este chip deletou.
+
+  [ran] grep -n "MUSTFAIL-VC7A" internal/modules/catalog/transport/http_handler.go
+        423: ... // MUSTFAIL-VC7A          <- POUSO CONFIRMADO antes do veredito
+
+  [ran] GOCACHE=<abs> go test -count=1 ./internal/modules/catalog/transport/
+        --- FAIL: TestCatalogCountsInvalidErpSourceEmitsErrorEnvelope (0.00s)
+        --- FAIL: TestCatalogPageRoutesValidateBeforePortCall (0.00s)
+        --- FAIL: TestCatalogPageRejectsUnknownActiveSource (0.00s)
+        FAIL  marketplace-central/apps/server_core/internal/modules/catalog/transport
+
+  TRES testes nomeados, nao um. Isso importa: se so o golden caisse, o pin estaria
+  isolado e o resto do modulo seria indiferente ao shape. Caem tres porque o envelope e
+  observavel por mais de um caminho.
+
+  REVERSAO:
+  [ran] grep -c MUSTFAIL-VC7A ... -> 0
+  [ran] git diff --stat -- .../http_handler.go -> VAZIO (byte-identico ao commitado)
+  [ran] go test -count=1 ./internal/modules/catalog/transport/ -> ok (1.293s)
+
+  DESVIO DO TEXTO LITERAL DO CRITERIO, declarado em vez de escondido: o VC-7(a) pede
+  "capturar failure_token=test=", que e o formato de saida da lane de integracao
+  hermetica. O vermelho acima e de teste de UNIDADE, e a atribuicao vem do par
+  (pacote, nome do teste) impresso pelo proprio go test — que e atribuivel, ao contrario
+  de `failure_token=package=` sozinho (banco unico compartilhado, licao registrada).
+  A lane hermetica roda no VC-8; se o hub exigir o token literal, o mesmo defeito pode
+  ser reinjetado sob a lane. Nao afirmo ter produzido um token que nao produzi.
+
+================================================================
+(b) O GREP-GATE SUSTENTANDO — as duas metades, VC-1 e VC-6
+================================================================
+Um gate so e gate se ACUSAR. Provado nos dois casos que ele reconhece 0 na arvore limpa
+E acusa a regressao reintroduzida, nomeando arquivo:linha.
+
+--- VC-1 (backend: um unico produtor de erro) ---
+GATE (re-executavel):
+  grep -rn 'WriteJSON(' --include='*.go' internal | grep -v '_test\.go' \
+    | grep -E '"error"|http\.Status(BadRequest|Unauthorized|Forbidden|NotFound|Conflict|
+      UnprocessableEntity|TooManyRequests|InternalServerError|NotImplemented|BadGateway|
+      ServiceUnavailable|GatewayTimeout)|, [45][0-9][0-9],'
+
+  [ran] arvore limpa .............................. 0 achados
+
+  INJECAO: helper local de erro reintroduzido em catalog/transport/http_handler.go:416-419
+    func writeCatalogLegacyError(w http.ResponseWriter, code string) {
+      httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{"error": code})
+    }
+  [ran] grep -n MUSTFAIL-VC7B ... -> 416          <- POUSO CONFIRMADO
+  [ran] GATE -> 1 achado:
+        internal/modules/catalog/transport/http_handler.go:418:
+          httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{"error": code})
+
+  O QUE ISSO PROVA, e e o ponto inteiro do criterio:
+  [ran] GOCACHE=<abs> go build ./... -> BUILD_EXIT=0
+  O defeito COMPILA. go build, go vet e go test passam com ele dentro. Nenhuma lane da
+  escada do VC-8 o pegaria. So o gate pega. Um gate que nunca acusa e indistinguivel de
+  gate nenhum, e a unica forma de saber a diferenca e reintroduzir o defeito.
+
+  [ran] reversao -> grep MUSTFAIL 0 · git diff --stat VAZIO
+
+--- VC-6 (FE: padrao unico de match) ---
+GATE (re-executavel, o mesmo do EU-census-fe.txt):
+  grep -rnE '\b(code|error|err|failure|reason|kind)\b[^=]{0,40}(===|!==)[[:space:]]*"' \
+    src --include="*.ts" --include="*.tsx" | grep -v '\.test\.' | grep -v typeof
+  triado contra a allowlist dos sitios conhecidos (uniao tipada + dominio 2xx).
+
+  [ran] arvore limpa .............. total 22 · violacao 0
+
+  INJECAO: regressao ao padrao antigo em ImportChainPanel.tsx (arquivo JA migrado)
+    function isImportNotFoundLegacy(error: unknown): boolean {
+      return (error as { code?: string }).code === "import_not_found";
+    }
+  [ran] grep -n MUSTFAIL-VC7B-FE -> 14            <- POUSO CONFIRMADO
+  [ran] GATE -> total 23 · violacao 1:
+        src/pages/importacoes/ImportChainPanel.tsx:16:
+          return (error as { code?: string }).code === "import_not_found";
+
+  E de novo o que importa:
+  [ran] npx --no-install tsc --noEmit -p tsconfig.json -> 12 erros (o teto de sempre)
+  O tsc fica CEGO. O cast inline `as { code?: string }` e justamente o que desliga a
+  checagem de tipo, entao a regressao nao muda uma linha do tsc. O gate e o unico
+  instrumento que a enxerga.
+
+  [ran] reversao -> arvore limpa
+
+================================================================
+ESTADO FINAL DA ARVORE — quatro injecoes, zero residuo
+================================================================
+  [ran] grep -rn "MUSTFAIL-VC7" apps packages (go/ts/tsx, sem node_modules) -> 0
+  [ran] git status --porcelain -> so o arquivo de evidencia novo, nenhum fonte sujo.
+  Nenhum must-fail deste criterio ficou para tras. A verificacao e por AUSENCIA medida,
+  nao por lembranca de ter revertido.
+
+================================================================
+ACHADO COLATERAL — prosa que apodreceu e foi corrigida
+================================================================
+  error_envelope_golden_test.go carregava, em comentario:
+    "This test is expected to be RED until that migration lands — red is the
+     deliverable for this slice."
+  Era verdade quando o teste day-1 foi escrito; deixou de ser quando o F2 entrou. Prosa
+  falsa em teste nao se marca como obsoleta, se CORRIGE (R-25). Reescrito para dizer o
+  que e verdade agora — que nasceu vermelho, ficou verde com a migracao, pina o corpo
+  INTEIRO (nao substring, licao ORA-937) e foi re-provado aqui no VC-7(a) nomeando os
+  tres testes que caem.
