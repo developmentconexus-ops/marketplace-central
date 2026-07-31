@@ -14,6 +14,27 @@ import (
 	"marketplace-central/apps/server_core/internal/modules/tenant_config"
 )
 
+// errorEnvelope decodes the apierror.Write shape:
+// {"error":{"code":...,"message":...,"details":{...}}}.
+type errorEnvelope struct {
+	Error struct {
+		Code    string         `json:"code"`
+		Message string         `json:"message"`
+		Details map[string]any `json:"details"`
+	} `json:"error"`
+}
+
+// trimJSON canonicalises JSON for whole-body comparisons (key order is
+// otherwise a false failure), from catalog/transport/http_handler_test.go:387.
+func trimJSON(body string) string {
+	var value any
+	if err := json.Unmarshal([]byte(body), &value); err != nil {
+		return body
+	}
+	encoded, _ := json.Marshal(value)
+	return string(encoded)
+}
+
 type fakeStore struct {
 	getCfg                   tenant_config.Config
 	getErr                   error
@@ -96,12 +117,12 @@ func TestHandlerGetActiveSourceUnknown(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d, body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
-	var body map[string]string
+	var body errorEnvelope
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if body["error"] != "unknown_erp_source" {
-		t.Fatalf("error = %q, want unknown_erp_source", body["error"])
+	if body.Error.Code != "unknown_erp_source" {
+		t.Fatalf("error.code = %q, want unknown_erp_source", body.Error.Code)
 	}
 }
 
@@ -144,12 +165,12 @@ func TestHandlerPutActiveSourceInvalid(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d, body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
-	var body map[string]string
+	var body errorEnvelope
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if body["error"] != "invalid_active_source" {
-		t.Fatalf("error = %q, want invalid_active_source", body["error"])
+	if body.Error.Code != "invalid_active_source" {
+		t.Fatalf("error.code = %q, want invalid_active_source", body.Error.Code)
 	}
 }
 
@@ -162,12 +183,12 @@ func TestHandlerPutActiveSourceMalformedBody(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d, body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
-	var body map[string]string
+	var body errorEnvelope
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if body["error"] != "invalid_body" {
-		t.Fatalf("error = %q, want invalid_body", body["error"])
+	if body.Error.Code != "invalid_body" {
+		t.Fatalf("error.code = %q, want invalid_body", body.Error.Code)
 	}
 	if store.setCalled {
 		t.Fatalf("Set must not be called on a malformed body")
@@ -353,12 +374,12 @@ func TestHandlerGetSellableAssortmentUnknownSourceReturnsBadRequest(t *testing.T
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d, body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
-	var body map[string]string
+	var body errorEnvelope
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if !reflect.DeepEqual(body, map[string]string{"error": "unknown_erp_source"}) {
-		t.Fatalf("body = %#v, want %#v", body, map[string]string{"error": "unknown_erp_source"})
+	if body.Error.Code != "unknown_erp_source" {
+		t.Fatalf("error.code = %q, want unknown_erp_source", body.Error.Code)
 	}
 }
 
@@ -372,12 +393,12 @@ func TestHandlerPutSellableAssortmentUnknownSourceReturnsBadRequest(t *testing.T
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d, body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
-	var body map[string]string
+	var body errorEnvelope
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if !reflect.DeepEqual(body, map[string]string{"error": "unknown_erp_source"}) {
-		t.Fatalf("body = %#v, want %#v", body, map[string]string{"error": "unknown_erp_source"})
+	if body.Error.Code != "unknown_erp_source" {
+		t.Fatalf("error.code = %q, want unknown_erp_source", body.Error.Code)
 	}
 	if store.getCalls != 0 {
 		t.Fatalf("Get calls = %d, want 0 after SetSellableAssortment error", store.getCalls)
@@ -397,12 +418,12 @@ func TestHandlerPutSellableAssortmentUnknownSourceOnReadBackReturnsBadRequest(t 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d for unknown_erp_source, body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
-	var body map[string]string
+	var body errorEnvelope
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if !reflect.DeepEqual(body, map[string]string{"error": "unknown_erp_source"}) {
-		t.Fatalf("body = %#v, want %#v", body, map[string]string{"error": "unknown_erp_source"})
+	if body.Error.Code != "unknown_erp_source" {
+		t.Fatalf("error.code = %q, want unknown_erp_source", body.Error.Code)
 	}
 	if !store.setSellableAssortmentCalled {
 		t.Fatalf("SetSellableAssortment must be called before read-back")
@@ -419,12 +440,12 @@ func TestHandlerGetSellableAssortmentStoreFailureReturnsInternalError(t *testing
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want %d, body=%s", rec.Code, http.StatusInternalServerError, rec.Body.String())
 	}
-	var body map[string]string
+	var body errorEnvelope
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if !reflect.DeepEqual(body, map[string]string{"error": "internal_error"}) {
-		t.Fatalf("body = %#v, want %#v", body, map[string]string{"error": "internal_error"})
+	if body.Error.Code != "internal_error" {
+		t.Fatalf("error.code = %q, want internal_error", body.Error.Code)
 	}
 }
 
@@ -439,12 +460,12 @@ func TestHandlerPutSellableAssortmentStoreFailureReturnsInternalError(t *testing
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want %d, body=%s", rec.Code, http.StatusInternalServerError, rec.Body.String())
 	}
-	var body map[string]string
+	var body errorEnvelope
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if !reflect.DeepEqual(body, map[string]string{"error": "internal_error"}) {
-		t.Fatalf("body = %#v, want %#v", body, map[string]string{"error": "internal_error"})
+	if body.Error.Code != "internal_error" {
+		t.Fatalf("error.code = %q, want internal_error", body.Error.Code)
 	}
 }
 
@@ -459,12 +480,12 @@ func TestHandlerPutSellableAssortmentReadBackFailureReturnsInternalError(t *test
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want %d, body=%s", rec.Code, http.StatusInternalServerError, rec.Body.String())
 	}
-	var body map[string]string
+	var body errorEnvelope
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if !reflect.DeepEqual(body, map[string]string{"error": "internal_error"}) {
-		t.Fatalf("body = %#v, want %#v", body, map[string]string{"error": "internal_error"})
+	if body.Error.Code != "internal_error" {
+		t.Fatalf("error.code = %q, want internal_error", body.Error.Code)
 	}
 	if !store.setSellableAssortmentCalled {
 		t.Fatalf("SetSellableAssortment must be called before read-back")
@@ -490,12 +511,12 @@ func TestHandlerPutSellableAssortmentMissingBooleanReturnsInvalidBody(t *testing
 			if rec.Code != http.StatusBadRequest {
 				t.Fatalf("status = %d, want %d, body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
 			}
-			var body map[string]string
+			var body errorEnvelope
 			if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 				t.Fatalf("decode response: %v", err)
 			}
-			if body["error"] != "invalid_body" {
-				t.Fatalf("error = %q, want invalid_body", body["error"])
+			if body.Error.Code != "invalid_body" {
+				t.Fatalf("error.code = %q, want invalid_body", body.Error.Code)
 			}
 			if store.setSellableAssortmentCalled {
 				t.Fatalf("SetSellableAssortment must not be called for missing %s", tt.name)
@@ -513,12 +534,12 @@ func TestHandlerPutSellableAssortmentMalformedBody(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d, body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
-	var body map[string]string
+	var body errorEnvelope
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if body["error"] != "invalid_body" {
-		t.Fatalf("error = %q, want invalid_body", body["error"])
+	if body.Error.Code != "invalid_body" {
+		t.Fatalf("error.code = %q, want invalid_body", body.Error.Code)
 	}
 	if store.setSellableAssortmentCalled {
 		t.Fatalf("SetSellableAssortment must not be called on malformed body")
@@ -535,14 +556,33 @@ func TestHandlerPutSellableAssortmentTrailingGarbageReturnsInvalidBody(t *testin
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d, body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
-	var body map[string]string
+	var body errorEnvelope
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if body["error"] != "invalid_body" {
-		t.Fatalf("error = %q, want invalid_body", body["error"])
+	if body.Error.Code != "invalid_body" {
+		t.Fatalf("error.code = %q, want invalid_body", body.Error.Code)
 	}
 	if store.setSellableAssortmentCalled {
 		t.Fatalf("SetSellableAssortment must not be called on trailing garbage")
+	}
+}
+
+// TestTenantConfigErrorEnvelopeWholeBody pins the complete JSON body of a
+// representative error (unknown_erp_source, empty details — this module has
+// no ad hoc migrating field) to prove the shape has no stray top-level key,
+// not just that .error.code reads right.
+func TestTenantConfigErrorEnvelopeWholeBody(t *testing.T) {
+	store := &fakeStore{getErr: tenant_config.ErrUnknownActiveSource}
+	req := httptest.NewRequest(http.MethodGet, "/config/active-source", nil)
+	rec := httptest.NewRecorder()
+	newMux(store).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d, body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+	want := `{"error":{"code":"unknown_erp_source","message":"nenhuma fonte de dados foi configurada para este tenant","details":{}}}`
+	if got := trimJSON(rec.Body.String()); got != trimJSON(want) {
+		t.Fatalf("body = %s, want %s", got, want)
 	}
 }

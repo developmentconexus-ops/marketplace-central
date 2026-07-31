@@ -11,6 +11,7 @@ import (
 
 	"marketplace-central/apps/server_core/internal/modules/orders/application"
 	"marketplace-central/apps/server_core/internal/modules/orders/domain"
+	"marketplace-central/apps/server_core/internal/platform/apierror"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 )
 
@@ -168,7 +169,7 @@ func decodeStrictJSON(w http.ResponseWriter, r *http.Request, target any) error 
 }
 
 func writeSankhyaLinkageInvalid(w http.ResponseWriter) {
-	writeOrdersError(w, http.StatusBadRequest, "ORDERS_SANKHYA_LINKAGE_INVALID_REQUEST", "invalid assisted Sankhya linkage request")
+	apierror.Write(w, http.StatusBadRequest, "ORDERS_SANKHYA_LINKAGE_INVALID_REQUEST", "invalid assisted Sankhya linkage request", nil)
 }
 
 func writeSankhyaLinkageError(w http.ResponseWriter, err error) {
@@ -188,7 +189,7 @@ func writeSankhyaLinkageError(w http.ResponseWriter, err error) {
 	case errors.As(err, &readErr):
 		status, code, message = http.StatusServiceUnavailable, "ORDERS_SANKHYA_LINKAGE_UNAVAILABLE", "assisted Sankhya linkage unavailable"
 	}
-	writeOrdersError(w, status, code, message)
+	apierror.Write(w, status, code, message, nil)
 }
 
 type sankhyaConfirmRequest struct {

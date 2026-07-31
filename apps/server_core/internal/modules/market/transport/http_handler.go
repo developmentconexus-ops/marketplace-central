@@ -8,6 +8,7 @@ import (
 
 	"marketplace-central/apps/server_core/internal/modules/market/application"
 	"marketplace-central/apps/server_core/internal/modules/market/domain"
+	"marketplace-central/apps/server_core/internal/platform/apierror"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 )
 
@@ -71,20 +72,10 @@ type marketReferencesEnvelope struct {
 	AsOf  time.Time                `json:"as_of"`
 }
 
-type apiError struct {
-	Code    string         `json:"code"`
-	Message string         `json:"message"`
-	Details map[string]any `json:"details"`
-}
-
-type apiErrorResponse struct {
-	Error apiError `json:"error"`
-}
-
 func (h Handler) handleObservations(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", http.MethodGet)
-		writeMarketError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed", map[string]any{})
+		apierror.Write(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed", map[string]any{})
 		return
 	}
 	query, err := ParseObservationQuery(r.URL.Query())
@@ -106,7 +97,7 @@ func (h Handler) handleObservations(w http.ResponseWriter, r *http.Request) {
 func (h Handler) handleReferences(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", http.MethodGet)
-		writeMarketError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed", map[string]any{})
+		apierror.Write(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed", map[string]any{})
 		return
 	}
 	query, err := ParseReferenceQuery(r.URL.Query())
@@ -130,23 +121,27 @@ func writeMarketQueryError(w http.ResponseWriter, err error) {
 	var installationRequired *InstallationRequiredError
 	switch {
 	case errors.As(err, &invalidFilter):
-		writeMarketError(w, http.StatusBadRequest, invalidFilter.Code(), invalidFilter.Error(), invalidFilter.Details())
+		apierror.Write(w, http.StatusBadRequest, invalidFilter.Code(), invalidFilter.Error(), invalidFilter.Details())
 	case errors.As(err, &installationRequired):
-		writeMarketError(w, http.StatusBadRequest, installationRequired.Code(), "installation_id é obrigatório", installationRequired.Details())
+		apierror.Write(w, http.StatusBadRequest, installationRequired.Code(), "installation_id é obrigatório", installationRequired.Details())
 	default:
-		writeMarketError(w, http.StatusBadRequest, "invalid_filter", "filtro inválido", map[string]any{})
+		apierror.Write(w, http.StatusBadRequest, "invalid_filter", "filtro inválido", map[string]any{})
 	}
 }
 
 func writeMarketServiceError(w http.ResponseWriter, err error) {
 	var tooMany *application.TooManyIDsError
 	if errors.As(err, &tooMany) || errors.Is(err, application.ErrTooManyIDs) {
-		writeMarketError(w, http.StatusUnprocessableEntity, application.ErrTooManyIDs.Error(), "too many ids", map[string]any{})
+		apierror.Write(w, http.StatusUnprocessableEntity, application.ErrTooManyIDs.Error(), "too many ids", map[string]any{})
 		return
 	}
-	writeMarketError(w, http.StatusInternalServerError, "internal_error", "internal error", map[string]any{})
+	apierror.Write(w, http.StatusInternalServerError, "internal_error", "internal error", map[string]any{})
 }
 
+// writeMarketError forwards to apierror.Write. Kept (not inlined at every
+// call site) because verdict_handler.go in this package calls it too and is
+// outside this slice's write_set — deleting it would break that file's
+// build. See slice report for the alternatives-considered note.
 func writeMarketError(w http.ResponseWriter, status int, code, message string, details map[string]any) {
-	httpx.WriteJSON(w, status, apiErrorResponse{Error: apiError{Code: code, Message: message, Details: details}})
+	apierror.Write(w, status, code, message, details)
 }

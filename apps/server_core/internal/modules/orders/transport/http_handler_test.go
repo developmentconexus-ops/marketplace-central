@@ -833,6 +833,42 @@ func TestHandleSummaryStoreErrorReturns500NoFabricatedZeros(t *testing.T) {
 	}
 }
 
+// trimJSON re-serializes body through encoding/json so a map-key-order
+// difference cannot fail an otherwise byte-identical comparison. Applied to
+// BOTH SIDES of a whole-body pin (see catalog/transport/http_handler_test.go
+// for the idiom this is copied from) — applying it to only one side would
+// force a hand-alphabetised expected literal and hide a stray top-level key.
+func trimJSON(body string) string {
+	var value any
+	if err := json.Unmarshal([]byte(body), &value); err != nil {
+		return body
+	}
+	encoded, _ := json.Marshal(value)
+	return string(encoded)
+}
+
+// TestOrdersErrorEnvelopeWholeBody pins the complete JSON body of the
+// unsupported_summary_dimension error, the orders case that carries an ad
+// hoc top-level field (the historic "by" key) now migrated into details: it
+// proves the field landed INSIDE details and that no other top-level key
+// (the old flat "by") survived alongside the envelope.
+func TestOrdersErrorEnvelopeWholeBody(t *testing.T) {
+	summarySvc := application.NewSummaryService(&fakeSummaryStore{summary: ports.OrderSummary{Today: 1, SevenDays: 2}})
+	handler := NewHandlerWithSummary(stubOrderImporter{}, stubOrderReadService{}, nil, summarySvc)
+	req := httptest.NewRequest(http.MethodGet, "/orders/summary?installation_id=inst-1&by=weird", nil)
+	rr := httptest.NewRecorder()
+
+	handler.handleSummary(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d body=%s, want 400", rr.Code, rr.Body.String())
+	}
+	want := `{"error":{"code":"unsupported_summary_dimension","message":"unsupported summary dimension","details":{"by":"weird"}}}`
+	if got := trimJSON(rr.Body.String()); got != trimJSON(want) {
+		t.Fatalf("body = %s, want %s", got, want)
+	}
+}
+
 func TestHandleSummaryMissingInstallationReturns400(t *testing.T) {
 	summarySvc := application.NewSummaryService(&fakeSummaryStore{summary: ports.OrderSummary{Today: 1, SevenDays: 2}})
 	handler := NewHandlerWithSummary(stubOrderImporter{}, stubOrderReadService{}, nil, summarySvc)

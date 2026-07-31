@@ -349,6 +349,40 @@ func ptrInt(value int) *int {
 	return &value
 }
 
+// trimJSON normalises a JSON body for comparison (key order becomes
+// insensitive) — must be applied to BOTH sides of a comparison, never just
+// the actual body, or the expected literal has to be hand-alphabetised.
+func trimJSON(body string) string {
+	var value any
+	if err := json.Unmarshal([]byte(body), &value); err != nil {
+		return body
+	}
+	encoded, _ := json.Marshal(value)
+	return string(encoded)
+}
+
+// TestProductLinksErrorEnvelopeWholeBody pins the COMPLETE JSON body of a
+// representative product_links error through apierror.Write, proving no
+// stray top-level key survives the migration off the module-local envelope.
+func TestProductLinksErrorEnvelopeWholeBody(t *testing.T) {
+	t.Parallel()
+
+	engine := &stubCandidateEngine{}
+	handler := NewHandler(&stubImporter{}, engine, engine, engine, engine)
+	req := httptest.NewRequest(http.MethodPost, "/product-links/link-resolutions/manual-resolve", bytes.NewReader([]byte(`{"installation_id":"inst-1","provider_code":"mercado_livre","provider_item_id":"MLB1","internal_product_id":0,"actor":{"actor_type":"operator","actor_id":"u1"}}`)))
+	rr := httptest.NewRecorder()
+
+	handler.handleManualResolve(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400, body=%s", rr.Code, rr.Body.String())
+	}
+	want := `{"error":{"code":"invalid_identity","message":"internal_product_id must be a positive integer","details":{}}}`
+	if got := trimJSON(rr.Body.String()); got != trimJSON(want) {
+		t.Fatalf("body = %s, want %s", got, want)
+	}
+}
+
 func TestHandleLinkWorkflowsReturnsItems(t *testing.T) {
 	t.Parallel()
 

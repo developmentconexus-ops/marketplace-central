@@ -8,6 +8,7 @@ import (
 	"marketplace-central/apps/server_core/internal/modules/market/application"
 	"marketplace-central/apps/server_core/internal/modules/market/domain"
 	"marketplace-central/apps/server_core/internal/modules/market/ports"
+	"marketplace-central/apps/server_core/internal/platform/apierror"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 )
 
@@ -16,7 +17,7 @@ import (
 func (h Handler) handleCollect(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
-		writeMarketError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed", map[string]any{})
+		apierror.Write(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed", map[string]any{})
 		return
 	}
 	req, err := ParseCollectionRequest(r)
@@ -49,11 +50,11 @@ func (h Handler) handleCollect(w http.ResponseWriter, r *http.Request) {
 func writeCollectionError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, ports.ErrProductNotFound):
-		writeMarketError(w, http.StatusNotFound, ports.ErrProductNotFound.Error(), "produto não encontrado", map[string]any{})
+		apierror.Write(w, http.StatusNotFound, ports.ErrProductNotFound.Error(), "produto não encontrado", map[string]any{})
 	case errors.Is(err, application.ErrCollectionInProgress):
-		writeMarketError(w, http.StatusConflict, application.ErrCollectionInProgress.Error(), "coleta em andamento para este produto", map[string]any{})
+		apierror.Write(w, http.StatusConflict, application.ErrCollectionInProgress.Error(), "coleta em andamento para este produto", map[string]any{})
 	default:
-		writeMarketError(w, http.StatusInternalServerError, "internal_error", "internal error", map[string]any{})
+		apierror.Write(w, http.StatusInternalServerError, "internal_error", "internal error", map[string]any{})
 	}
 }
 

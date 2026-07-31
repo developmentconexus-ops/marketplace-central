@@ -10,6 +10,7 @@ import (
 
 	"marketplace-central/apps/server_core/internal/modules/marketplaces/application"
 	"marketplace-central/apps/server_core/internal/modules/marketplaces/domain"
+	"marketplace-central/apps/server_core/internal/platform/apierror"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 )
 
@@ -29,20 +30,6 @@ func NewHandler(svc application.Service, feeSvc *application.FeeScheduleService,
 	return Handler{svc: svc, feeSvc: feeSvc, feeSyncSvc: feeSyncSvc}
 }
 
-type apiError struct {
-	Code    string         `json:"code"`
-	Message string         `json:"message"`
-	Details map[string]any `json:"details"`
-}
-
-type apiErrorResponse struct {
-	Error apiError `json:"error"`
-}
-
-func writeMarketplacesError(w http.ResponseWriter, status int, code, message string) {
-	httpx.WriteJSON(w, status, apiErrorResponse{Error: apiError{Code: code, Message: message, Details: map[string]any{}}})
-}
-
 func mapMarketplacesError(msg string) (int, string) {
 	if strings.HasPrefix(msg, "MARKETPLACES_") {
 		return http.StatusBadRequest, msg
@@ -58,7 +45,7 @@ func (h Handler) Register(mux httpx.RouteRegistrar) {
 			accounts, err := h.svc.ListAccounts(r.Context())
 			if err != nil {
 				slog.Error("marketplaces.accounts", "action", "list", "result", "500", "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
-				writeMarketplacesError(w, http.StatusInternalServerError, "MARKETPLACES_INTERNAL_ERROR", err.Error())
+				apierror.Write(w, http.StatusInternalServerError, "MARKETPLACES_INTERNAL_ERROR", err.Error(), nil)
 				return
 			}
 			slog.Info("marketplaces.accounts", "action", "list", "result", "200", "count", len(accounts), "duration_ms", time.Since(start).Milliseconds())
@@ -75,7 +62,7 @@ func (h Handler) Register(mux httpx.RouteRegistrar) {
 			}
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 				slog.Info("marketplaces.accounts", "action", "decode", "result", "400", "duration_ms", time.Since(start).Milliseconds())
-				writeMarketplacesError(w, http.StatusBadRequest, "MARKETPLACES_ACCOUNT_INVALID", "malformed request body")
+				apierror.Write(w, http.StatusBadRequest, "MARKETPLACES_ACCOUNT_INVALID", "malformed request body", nil)
 				return
 			}
 			account, err := h.svc.CreateAccount(r.Context(), application.CreateAccountInput{
@@ -89,7 +76,7 @@ func (h Handler) Register(mux httpx.RouteRegistrar) {
 			if err != nil {
 				status, code := mapMarketplacesError(err.Error())
 				slog.Error("marketplaces.accounts", "action", "create", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
-				writeMarketplacesError(w, status, code, err.Error())
+				apierror.Write(w, status, code, err.Error(), nil)
 				return
 			}
 			slog.Info("marketplaces.accounts", "action", "create", "result", "201", "account_id", account.AccountID, "duration_ms", time.Since(start).Milliseconds())
@@ -98,7 +85,7 @@ func (h Handler) Register(mux httpx.RouteRegistrar) {
 		default:
 			w.Header().Set("Allow", "GET, POST")
 			slog.Info("marketplaces.accounts", "action", "reject_method", "result", "405", "duration_ms", time.Since(start).Milliseconds())
-			writeMarketplacesError(w, http.StatusMethodNotAllowed, "MARKETPLACES_METHOD_NOT_ALLOWED", "method not allowed")
+			apierror.Write(w, http.StatusMethodNotAllowed, "MARKETPLACES_METHOD_NOT_ALLOWED", "method not allowed", nil)
 		}
 	})
 
@@ -109,7 +96,7 @@ func (h Handler) Register(mux httpx.RouteRegistrar) {
 			policies, err := h.svc.ListPolicies(r.Context())
 			if err != nil {
 				slog.Error("marketplaces.policies", "action", "list", "result", "500", "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
-				writeMarketplacesError(w, http.StatusInternalServerError, "MARKETPLACES_INTERNAL_ERROR", err.Error())
+				apierror.Write(w, http.StatusInternalServerError, "MARKETPLACES_INTERNAL_ERROR", err.Error(), nil)
 				return
 			}
 			slog.Info("marketplaces.policies", "action", "list", "result", "200", "count", len(policies), "duration_ms", time.Since(start).Milliseconds())
@@ -130,7 +117,7 @@ func (h Handler) Register(mux httpx.RouteRegistrar) {
 			}
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 				slog.Info("marketplaces.policies", "action", "decode", "result", "400", "duration_ms", time.Since(start).Milliseconds())
-				writeMarketplacesError(w, http.StatusBadRequest, "MARKETPLACES_POLICY_INVALID", "malformed request body")
+				apierror.Write(w, http.StatusBadRequest, "MARKETPLACES_POLICY_INVALID", "malformed request body", nil)
 				return
 			}
 			policy, err := h.svc.CreatePolicy(r.Context(), application.CreatePolicyInput{
@@ -148,7 +135,7 @@ func (h Handler) Register(mux httpx.RouteRegistrar) {
 			if err != nil {
 				status, code := mapMarketplacesError(err.Error())
 				slog.Error("marketplaces.policies", "action", "create", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
-				writeMarketplacesError(w, status, code, err.Error())
+				apierror.Write(w, status, code, err.Error(), nil)
 				return
 			}
 			slog.Info("marketplaces.policies", "action", "create", "result", "201", "policy_id", policy.PolicyID, "duration_ms", time.Since(start).Milliseconds())
@@ -157,21 +144,21 @@ func (h Handler) Register(mux httpx.RouteRegistrar) {
 		default:
 			w.Header().Set("Allow", "GET, POST")
 			slog.Info("marketplaces.policies", "action", "reject_method", "result", "405", "duration_ms", time.Since(start).Milliseconds())
-			writeMarketplacesError(w, http.StatusMethodNotAllowed, "MARKETPLACES_METHOD_NOT_ALLOWED", "method not allowed")
+			apierror.Write(w, http.StatusMethodNotAllowed, "MARKETPLACES_METHOD_NOT_ALLOWED", "method not allowed", nil)
 		}
 	})
 
 	mux.HandleFunc("/marketplaces/definitions", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.Header().Set("Allow", "GET")
-			writeMarketplacesError(w, http.StatusMethodNotAllowed, "MARKETPLACES_METHOD_NOT_ALLOWED", "method not allowed")
+			apierror.Write(w, http.StatusMethodNotAllowed, "MARKETPLACES_METHOD_NOT_ALLOWED", "method not allowed", nil)
 			return
 		}
 		start := time.Now()
 		defs, err := h.feeSvc.ListDefinitions(r.Context())
 		if err != nil {
 			slog.Error("list definitions failed", "action", "list_definitions", "result", "error", "duration_ms", time.Since(start).Milliseconds(), "err", err)
-			writeMarketplacesError(w, http.StatusInternalServerError, "MARKETPLACES_DEFINITIONS_FETCH_FAILED", err.Error())
+			apierror.Write(w, http.StatusInternalServerError, "MARKETPLACES_DEFINITIONS_FETCH_FAILED", err.Error(), nil)
 			return
 		}
 		slog.Info("list definitions", "action", "list_definitions", "result", "ok", "duration_ms", time.Since(start).Milliseconds(), "count", len(defs))
@@ -201,17 +188,17 @@ func (h Handler) Register(mux httpx.RouteRegistrar) {
 	mux.HandleFunc("/marketplaces/fee-schedules", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.Header().Set("Allow", "GET")
-			writeMarketplacesError(w, http.StatusMethodNotAllowed, "MARKETPLACES_METHOD_NOT_ALLOWED", "method not allowed")
+			apierror.Write(w, http.StatusMethodNotAllowed, "MARKETPLACES_METHOD_NOT_ALLOWED", "method not allowed", nil)
 			return
 		}
 		code := r.URL.Query().Get("marketplace_code")
 		if code == "" {
-			writeMarketplacesError(w, http.StatusBadRequest, "MARKETPLACES_FEESCHEDULE_PARAM_MISSING", "marketplace_code query param required")
+			apierror.Write(w, http.StatusBadRequest, "MARKETPLACES_FEESCHEDULE_PARAM_MISSING", "marketplace_code query param required", nil)
 			return
 		}
 		schedules, err := h.feeSvc.ListFeeSchedules(r.Context(), code)
 		if err != nil {
-			writeMarketplacesError(w, http.StatusInternalServerError, "MARKETPLACES_INTERNAL_ERROR", err.Error())
+			apierror.Write(w, http.StatusInternalServerError, "MARKETPLACES_INTERNAL_ERROR", err.Error(), nil)
 			return
 		}
 		httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": schedules})
@@ -220,17 +207,17 @@ func (h Handler) Register(mux httpx.RouteRegistrar) {
 	mux.HandleFunc("/admin/fee-schedules/seed", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.Header().Set("Allow", "POST")
-			writeMarketplacesError(w, http.StatusMethodNotAllowed, "MARKETPLACES_METHOD_NOT_ALLOWED", "method not allowed")
+			apierror.Write(w, http.StatusMethodNotAllowed, "MARKETPLACES_METHOD_NOT_ALLOWED", "method not allowed", nil)
 			return
 		}
 		code := r.URL.Query().Get("marketplace_code")
 		if code == "" {
-			writeMarketplacesError(w, http.StatusBadRequest, "MARKETPLACES_FEESCHEDULE_PARAM_MISSING", "marketplace_code query param required")
+			apierror.Write(w, http.StatusBadRequest, "MARKETPLACES_FEESCHEDULE_PARAM_MISSING", "marketplace_code query param required", nil)
 			return
 		}
 		n, err := h.feeSyncSvc.SeedMarketplace(r.Context(), code, true)
 		if err != nil {
-			writeMarketplacesError(w, http.StatusBadRequest, "MARKETPLACES_FEESEED_UNKNOWN", err.Error())
+			apierror.Write(w, http.StatusBadRequest, "MARKETPLACES_FEESEED_UNKNOWN", err.Error(), nil)
 			return
 		}
 		httpx.WriteJSON(w, http.StatusOK, map[string]any{"seeded": n, "marketplace_code": code})
@@ -239,17 +226,17 @@ func (h Handler) Register(mux httpx.RouteRegistrar) {
 	mux.HandleFunc("/admin/fee-schedules/sync", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.Header().Set("Allow", "POST")
-			writeMarketplacesError(w, http.StatusMethodNotAllowed, "MARKETPLACES_METHOD_NOT_ALLOWED", "method not allowed")
+			apierror.Write(w, http.StatusMethodNotAllowed, "MARKETPLACES_METHOD_NOT_ALLOWED", "method not allowed", nil)
 			return
 		}
 		code := r.URL.Query().Get("marketplace_code")
 		if code == "" {
-			writeMarketplacesError(w, http.StatusBadRequest, "MARKETPLACES_FEESCHEDULE_PARAM_MISSING", "marketplace_code query param required")
+			apierror.Write(w, http.StatusBadRequest, "MARKETPLACES_FEESCHEDULE_PARAM_MISSING", "marketplace_code query param required", nil)
 			return
 		}
 		n, err := h.feeSyncSvc.SeedMarketplace(r.Context(), code, true)
 		if err != nil {
-			writeMarketplacesError(w, http.StatusBadRequest, "MARKETPLACES_FEESYNC_UNKNOWN", err.Error())
+			apierror.Write(w, http.StatusBadRequest, "MARKETPLACES_FEESYNC_UNKNOWN", err.Error(), nil)
 			return
 		}
 		httpx.WriteJSON(w, http.StatusOK, map[string]any{"synced": n, "marketplace_code": code})

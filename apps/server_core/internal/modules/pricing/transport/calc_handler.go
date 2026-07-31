@@ -9,6 +9,7 @@ import (
 	"marketplace-central/apps/server_core/internal/modules/pricing/application"
 	"marketplace-central/apps/server_core/internal/modules/pricing/domain"
 	"marketplace-central/apps/server_core/internal/modules/pricing/ports"
+	"marketplace-central/apps/server_core/internal/platform/apierror"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 )
 
@@ -65,7 +66,7 @@ func (h Handler) writeCalcError(w http.ResponseWriter, err error) {
 	if status >= 500 {
 		msg = "internal error"
 	}
-	writePricingError(w, status, code, msg)
+	apierror.Write(w, status, code, msg, nil)
 }
 
 // --- Profile ---
@@ -109,7 +110,7 @@ func (h Handler) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 func (h Handler) handlePutProfile(w http.ResponseWriter, r *http.Request) {
 	var req profileDTO
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writePricingError(w, http.StatusBadRequest, "PRICING_REQUEST_INVALID", "malformed request body")
+		apierror.Write(w, http.StatusBadRequest, "PRICING_REQUEST_INVALID", "malformed request body", nil)
 		return
 	}
 	profile, err := h.calc.PutProfile(r.Context(), application.ProfileUpdate{
@@ -184,7 +185,7 @@ func (h Handler) handlePutDifal(w http.ResponseWriter, r *http.Request) {
 		Actor      string `json:"actor"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writePricingError(w, http.StatusBadRequest, "PRICING_REQUEST_INVALID", "malformed request body")
+		apierror.Write(w, http.StatusBadRequest, "PRICING_REQUEST_INVALID", "malformed request body", nil)
 		return
 	}
 	res, err := h.calc.PutDifalOverride(r.Context(), uf, req.InternaPct, req.Actor, time.Now())
@@ -236,7 +237,7 @@ func (h Handler) handleCreateScenario(w http.ResponseWriter, r *http.Request) {
 		Payload json.RawMessage `json:"payload"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writePricingError(w, http.StatusBadRequest, "PRICING_REQUEST_INVALID", "malformed request body")
+		apierror.Write(w, http.StatusBadRequest, "PRICING_REQUEST_INVALID", "malformed request body", nil)
 		return
 	}
 	scenario := domain.Scenario{ID: req.ID, Name: req.Name, Payload: string(req.Payload)}
@@ -297,7 +298,7 @@ type calcInputDTO struct {
 func (h Handler) handleDecompose(w http.ResponseWriter, r *http.Request) {
 	var req calcInputDTO
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writePricingError(w, http.StatusBadRequest, "PRICING_REQUEST_INVALID", "malformed request body")
+		apierror.Write(w, http.StatusBadRequest, "PRICING_REQUEST_INVALID", "malformed request body", nil)
 		return
 	}
 	res, err := h.calc.Decompose(r.Context(), application.DecomposeRequest{
@@ -327,7 +328,7 @@ func (h Handler) handleDecompose(w http.ResponseWriter, r *http.Request) {
 func (h Handler) handleSolve(w http.ResponseWriter, r *http.Request) {
 	var req calcInputDTO
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writePricingError(w, http.StatusBadRequest, "PRICING_REQUEST_INVALID", "malformed request body")
+		apierror.Write(w, http.StatusBadRequest, "PRICING_REQUEST_INVALID", "malformed request body", nil)
 		return
 	}
 	out, err := h.calc.SolveTarget(r.Context(), application.SolveRequest{
@@ -460,7 +461,7 @@ func (h Handler) handleGetTariffDefaults(w http.ResponseWriter, r *http.Request)
 func (h Handler) handlePutTariffDefaults(w http.ResponseWriter, r *http.Request) {
 	var req tariffDefaultsDTO
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writePricingError(w, http.StatusBadRequest, "PRICING_REQUEST_INVALID", "malformed request body")
+		apierror.Write(w, http.StatusBadRequest, "PRICING_REQUEST_INVALID", "malformed request body", nil)
 		return
 	}
 	defaults, err := h.calc.PutTariffDefaults(r.Context(), tariffInstallationID(r), domain.TariffDefaults{

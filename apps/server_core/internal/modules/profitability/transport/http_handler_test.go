@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -74,4 +75,40 @@ func TestHandleListSnapshotsReturnsItems(t *testing.T) {
 	var payload struct{ Items []profitabilitydomain.ProfitSnapshot `json:"items"` }
 	_ = json.NewDecoder(rr.Body).Decode(&payload)
 	if len(payload.Items) != 1 { t.Fatalf("items=%d", len(payload.Items)) }
+}
+
+// trimJSON canonicalises JSON for whole-body comparisons (key order is
+// otherwise a false failure), from catalog/transport/http_handler_test.go:387.
+func trimJSON(body string) string {
+	var value any
+	if err := json.Unmarshal([]byte(body), &value); err != nil {
+		return body
+	}
+	encoded, _ := json.Marshal(value)
+	return string(encoded)
+}
+
+type limitExceededService struct{ stubService }
+
+func (limitExceededService) CalculateSnapshots(context.Context, string, int) (profitabilitydomain.CalculateSnapshotsResult, error) {
+	return profitabilitydomain.CalculateSnapshotsResult{}, errors.New("limit_exceeded: maximum limit is 200")
+}
+
+// TestProfitabilityErrorEnvelopeWholeBody pins the complete JSON body of the
+// limit_exceeded case — the migrating ad hoc field this module carries — to
+// prove "limit" landed inside details and the envelope has no stray top-level
+// key (a field-by-field read, like limit_test.go's, cannot prove that).
+func TestProfitabilityErrorEnvelopeWholeBody(t *testing.T) {
+	h := NewHandler(limitExceededService{})
+	req := httptest.NewRequest(http.MethodPost, "/profitability/profit-snapshots/calculate", bytes.NewBufferString(`{"installation_id":"inst-1","limit":1}`))
+	rr := httptest.NewRecorder()
+	h.handleCalculateSnapshots(rr, req)
+
+	if rr.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422, body=%s", rr.Code, rr.Body.String())
+	}
+	want := `{"error":{"code":"limit_exceeded","message":"limit_exceeded: maximum limit is 200","details":{"limit":200}}}`
+	if got := trimJSON(rr.Body.String()); got != trimJSON(want) {
+		t.Fatalf("body = %s, want %s", got, want)
+	}
 }

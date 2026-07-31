@@ -23,7 +23,7 @@ func TestRouteClassDeadlinesAndCancellation(t *testing.T) {
 		wantStatus int
 		wantBody   string
 	}{
-		{name: "interactive expires", class: InteractiveRouteClass, budget: 15 * time.Millisecond, wantStatus: http.StatusGatewayTimeout, wantBody: `{"error":"deadline_exceeded"}`},
+		{name: "interactive expires", class: InteractiveRouteClass, budget: 15 * time.Millisecond, wantStatus: http.StatusGatewayTimeout, wantBody: deadlineExceededBody},
 		{name: "batch keeps its longer budget", class: BatchRouteClass, budget: 120 * time.Millisecond, wantStatus: http.StatusOK, wantBody: `{"status":"completed"}`},
 	}
 
@@ -64,6 +64,30 @@ func TestRouteClassDeadlinesAndCancellation(t *testing.T) {
 				t.Fatalf("body = %q, want %q", recorder.Body.String(), tc.wantBody)
 			}
 		})
+	}
+}
+
+// TestHttpxErrorEnvelopeWholeBody pins the complete 504 body writeDeadlineExceeded
+// emits and asserts the Content-Type header, per this chip's migration of the
+// platform router's flat `{"error":"deadline_exceeded"}` producer (the
+// highest-reach flat producer in the tree — it fires on every deadline-bounded
+// route regardless of module) into the standard envelope. httpx cannot import
+// apierror (apierror -> httpx is the intended direction), so the body is a
+// constant string literal matching json.go's encodeFailureBody idiom, not a
+// call through apierror.Write.
+func TestHttpxErrorEnvelopeWholeBody(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	writeDeadlineExceeded(recorder)
+
+	if recorder.Code != http.StatusGatewayTimeout {
+		t.Fatalf("status = %d, want 504", recorder.Code)
+	}
+	if ct := recorder.Header().Get("Content-Type"); ct != "application/json" {
+		t.Fatalf("Content-Type = %q, want application/json", ct)
+	}
+	want := `{"error":{"code":"deadline_exceeded","message":"tempo limite excedido","details":{}}}`
+	if got := trimJSON(recorder.Body.String()); got != trimJSON(want) {
+		t.Fatalf("body = %s, want %s", got, want)
 	}
 }
 

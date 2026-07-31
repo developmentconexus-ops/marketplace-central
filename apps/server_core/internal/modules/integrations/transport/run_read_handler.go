@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"marketplace-central/apps/server_core/internal/modules/integrations/ports"
+	"marketplace-central/apps/server_core/internal/platform/apierror"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 )
 
@@ -125,5 +126,5 @@ func writeRunReadError(w http.ResponseWriter, status int, code, message, key str
 	if key != "" {
 		details["key"] = key
 	}
-	httpx.WriteJSON(w, status, apiErrorResponse{Error: apiError{Code: code, Message: message, Details: details}})
+	apierror.Write(w, status, code, message, details)
 }

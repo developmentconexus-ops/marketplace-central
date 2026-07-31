@@ -6,7 +6,7 @@ import (
 
 	"marketplace-central/apps/server_core/internal/modules/mutations/application"
 	"marketplace-central/apps/server_core/internal/modules/mutations/domain"
-	"marketplace-central/apps/server_core/internal/platform/httpx"
+	"marketplace-central/apps/server_core/internal/platform/apierror"
 )
 
 type requestError struct {
@@ -24,21 +24,9 @@ var (
 	errMethodNotAllowed     = &requestError{code: "method_not_allowed", message: "method not allowed"}
 )
 
-type mutationErrorEnvelope struct {
-	Error mutationError `json:"error"`
-}
-
-type mutationError struct {
-	Code    string         `json:"code"`
-	Message string         `json:"message"`
-	Details map[string]any `json:"details"`
-}
-
 func writeMutationError(w http.ResponseWriter, err error) {
 	status, code, message := mapMutationError(err)
-	httpx.WriteJSON(w, status, mutationErrorEnvelope{Error: mutationError{
-		Code: code, Message: message, Details: map[string]any{},
-	}})
+	apierror.Write(w, status, code, message, nil)
 }
 
 func writeMutationMethodError(w http.ResponseWriter) {

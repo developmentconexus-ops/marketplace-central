@@ -130,3 +130,34 @@ func TestHandleManualApplyReturnsActionResult(t *testing.T) {
 		t.Fatalf("risk=%+v", payload.Risk)
 	}
 }
+
+// trimJSON normalises a JSON body for comparison (key order becomes
+// insensitive) — must be applied to BOTH sides of a comparison, never just
+// the actual body, or the expected literal has to be hand-alphabetised.
+func trimJSON(body string) string {
+	var value any
+	if err := json.Unmarshal([]byte(body), &value); err != nil {
+		return body
+	}
+	encoded, _ := json.Marshal(value)
+	return string(encoded)
+}
+
+// TestInventoryErrorEnvelopeWholeBody pins the COMPLETE JSON body of a
+// representative inventory error through apierror.Write, proving no stray
+// top-level key survives the migration off the module-local envelope.
+func TestInventoryErrorEnvelopeWholeBody(t *testing.T) {
+	handler := NewHandler(stubRiskLister{}, stubManualActionApplier{})
+	req := httptest.NewRequest(http.MethodPost, "/inventory/stock-actions/manual-apply", bytes.NewBufferString("{not-json"))
+	rr := httptest.NewRecorder()
+
+	handler.handleManualApply(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400, body=%s", rr.Code, rr.Body.String())
+	}
+	want := `{"error":{"code":"INVENTORY_INVALID_REQUEST","message":"malformed request body","details":{}}}`
+	if got := trimJSON(rr.Body.String()); got != trimJSON(want) {
+		t.Fatalf("body = %s, want %s", got, want)
+	}
+}

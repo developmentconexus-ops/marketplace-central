@@ -11,6 +11,7 @@ import (
 
 	"marketplace-central/apps/server_core/internal/modules/inventory/application"
 	"marketplace-central/apps/server_core/internal/modules/inventory/domain"
+	"marketplace-central/apps/server_core/internal/platform/apierror"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 )
 
@@ -36,27 +37,11 @@ func (h Handler) Register(mux httpx.RouteRegistrar) {
 	mux.HandleFunc("/inventory/stock-actions/manual-apply", h.handleManualApply)
 }
 
-type apiError struct {
-	Code    string         `json:"code"`
-	Message string         `json:"message"`
-	Details map[string]any `json:"details"`
-}
-
-func writeInventoryError(w http.ResponseWriter, status int, code, message string) {
-	httpx.WriteJSON(w, status, map[string]any{
-		"error": apiError{
-			Code:    code,
-			Message: message,
-			Details: map[string]any{},
-		},
-	})
-}
-
 func (h Handler) handleStockRisks(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", http.MethodGet)
-		writeInventoryError(w, http.StatusMethodNotAllowed, "INVENTORY_METHOD_NOT_ALLOWED", "method not allowed")
+		apierror.Write(w, http.StatusMethodNotAllowed, "INVENTORY_METHOD_NOT_ALLOWED", "method not allowed", nil)
 		return
 	}
 	items, err := h.risks.List(r.Context(), application.ListStockRisksInput{
@@ -69,7 +54,7 @@ func (h Handler) handleStockRisks(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		status, code := mapInventoryError(err)
 		slog.Error("inventory.stock_risks", "action", "list", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
-		writeInventoryError(w, status, code, err.Error())
+		apierror.Write(w, status, code, err.Error(), nil)
 		return
 	}
 	slog.Info("inventory.stock_risks", "action", "list", "result", "200", "count", len(items), "duration_ms", time.Since(start).Milliseconds())
@@ -106,7 +91,7 @@ func (h Handler) handleManualApply(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
-		writeInventoryError(w, http.StatusMethodNotAllowed, "INVENTORY_METHOD_NOT_ALLOWED", "method not allowed")
+		apierror.Write(w, http.StatusMethodNotAllowed, "INVENTORY_METHOD_NOT_ALLOWED", "method not allowed", nil)
 		return
 	}
 	var req struct {
@@ -127,7 +112,7 @@ func (h Handler) handleManualApply(w http.ResponseWriter, r *http.Request) {
 		} `json:"approval"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeInventoryError(w, http.StatusBadRequest, "INVENTORY_INVALID_REQUEST", "malformed request body")
+		apierror.Write(w, http.StatusBadRequest, "INVENTORY_INVALID_REQUEST", "malformed request body", nil)
 		return
 	}
 	result, err := h.actions.Apply(r.Context(), application.ApplyManualActionInput{
@@ -150,7 +135,7 @@ func (h Handler) handleManualApply(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		status, code := mapInventoryError(err)
 		slog.Error("inventory.stock_actions.manual_apply", "action", "apply", "result", status, "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
-		writeInventoryError(w, status, code, err.Error())
+		apierror.Write(w, status, code, err.Error(), nil)
 		return
 	}
 	slog.Info("inventory.stock_actions.manual_apply", "action", "apply", "result", "200", "stock_action_id", result.Action.ActionID, "duration_ms", time.Since(start).Milliseconds())

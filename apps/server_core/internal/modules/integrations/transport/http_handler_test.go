@@ -67,7 +67,7 @@ func TestHandleProvidersRejectsWrongMethod(t *testing.T) {
 		t.Fatalf("Allow header = %q, want %q", got, want)
 	}
 
-	var payload apiErrorResponse
+	var payload errorEnvelopeShape
 	if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("decode error payload: %v", err)
 	}

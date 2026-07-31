@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"marketplace-central/apps/server_core/internal/modules/tenant_config"
+	"marketplace-central/apps/server_core/internal/platform/apierror"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 )
 
@@ -64,10 +65,10 @@ func (h Handler) handleGet(w http.ResponseWriter, r *http.Request) {
 	cfg, err := h.store.Get(r.Context(), h.tenantID)
 	if err != nil {
 		if errors.Is(err, tenant_config.ErrUnknownActiveSource) {
-			writeError(w, http.StatusBadRequest, "unknown_erp_source", "")
+			apierror.Write(w, http.StatusBadRequest, "unknown_erp_source", tenantConfigErrorMessage("unknown_erp_source"), nil)
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "internal_error", "")
+		apierror.Write(w, http.StatusInternalServerError, "internal_error", tenantConfigErrorMessage("internal_error"), nil)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, newActiveSourceResponse(cfg))
@@ -81,7 +82,7 @@ type putActiveSourceRequest struct {
 func (h Handler) handlePut(w http.ResponseWriter, r *http.Request) {
 	var body putActiveSourceRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", "")
+		apierror.Write(w, http.StatusBadRequest, "invalid_body", tenantConfigErrorMessage("invalid_body"), nil)
 		return
 	}
 	setBy := ""
@@ -95,15 +96,15 @@ func (h Handler) handlePut(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.store.Set(r.Context(), cfg); err != nil {
 		if errors.Is(err, tenant_config.ErrInvalidActiveSource) {
-			writeError(w, http.StatusBadRequest, "invalid_active_source", "")
+			apierror.Write(w, http.StatusBadRequest, "invalid_active_source", tenantConfigErrorMessage("invalid_active_source"), nil)
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "internal_error", "")
+		apierror.Write(w, http.StatusInternalServerError, "internal_error", tenantConfigErrorMessage("internal_error"), nil)
 		return
 	}
 	stored, err := h.store.Get(r.Context(), h.tenantID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "")
+		apierror.Write(w, http.StatusInternalServerError, "internal_error", tenantConfigErrorMessage("internal_error"), nil)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, newActiveSourceResponse(stored))
@@ -113,10 +114,10 @@ func (h Handler) handleGetSellableAssortment(w http.ResponseWriter, r *http.Requ
 	cfg, err := h.store.Get(r.Context(), h.tenantID)
 	if err != nil {
 		if errors.Is(err, tenant_config.ErrUnknownActiveSource) {
-			writeError(w, http.StatusBadRequest, "unknown_erp_source", "")
+			apierror.Write(w, http.StatusBadRequest, "unknown_erp_source", tenantConfigErrorMessage("unknown_erp_source"), nil)
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "internal_error", "")
+		apierror.Write(w, http.StatusInternalServerError, "internal_error", tenantConfigErrorMessage("internal_error"), nil)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, newSellableAssortmentResponse(cfg.SellableAssortment))
@@ -134,7 +135,7 @@ func (h Handler) handlePutSellableAssortment(w http.ResponseWriter, r *http.Requ
 	if err := decoder.Decode(&body); err != nil ||
 		decoder.Decode(&struct{}{}) != io.EOF ||
 		body.OnlyRevenda == nil || body.OnlyEmEstoque == nil || body.OnlyEcommerceEligible == nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", "")
+		apierror.Write(w, http.StatusBadRequest, "invalid_body", tenantConfigErrorMessage("invalid_body"), nil)
 		return
 	}
 	assortment := tenant_config.SellableAssortment{
@@ -144,30 +145,41 @@ func (h Handler) handlePutSellableAssortment(w http.ResponseWriter, r *http.Requ
 	}
 	if err := h.store.SetSellableAssortment(r.Context(), h.tenantID, assortment); err != nil {
 		if errors.Is(err, tenant_config.ErrUnknownActiveSource) {
-			writeError(w, http.StatusBadRequest, "unknown_erp_source", "")
+			apierror.Write(w, http.StatusBadRequest, "unknown_erp_source", tenantConfigErrorMessage("unknown_erp_source"), nil)
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "internal_error", "")
+		apierror.Write(w, http.StatusInternalServerError, "internal_error", tenantConfigErrorMessage("internal_error"), nil)
 		return
 	}
 	stored, err := h.store.Get(r.Context(), h.tenantID)
 	if err != nil {
 		if errors.Is(err, tenant_config.ErrUnknownActiveSource) {
-			writeError(w, http.StatusBadRequest, "unknown_erp_source", "")
+			apierror.Write(w, http.StatusBadRequest, "unknown_erp_source", tenantConfigErrorMessage("unknown_erp_source"), nil)
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "internal_error", "")
+		apierror.Write(w, http.StatusInternalServerError, "internal_error", tenantConfigErrorMessage("internal_error"), nil)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, newSellableAssortmentResponse(stored.SellableAssortment))
 }
 
-func writeError(w http.ResponseWriter, status int, code, message string) {
-	payload := map[string]string{"error": code}
-	if message != "" {
-		payload["detail"] = message
+// tenantConfigErrorMessage answers the human-facing text for this module's
+// error sites. Every call site under the old flat body passed no message (the
+// "detail" key was only ever set by a caller that had one, and none did), so
+// these are new operator-facing pt-BR text, matching the module's existing
+// erp_source doc comments and mutations/transport/errors.go's idiom.
+func tenantConfigErrorMessage(code string) string {
+	switch code {
+	case "unknown_erp_source":
+		return "nenhuma fonte de dados foi configurada para este tenant"
+	case "invalid_body":
+		return "corpo da requisição inválido"
+	case "invalid_active_source":
+		return "fonte ativa inválida"
+	case "internal_error":
+		return "erro interno do servidor"
 	}
-	httpx.WriteJSON(w, status, payload)
+	return code
 }
 
 type activeSourceResponse struct {

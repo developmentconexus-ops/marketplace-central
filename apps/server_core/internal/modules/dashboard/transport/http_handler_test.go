@@ -103,6 +103,38 @@ func TestDashboardSummaryEmitsExplicitNullKeys(t *testing.T) {
 	}
 }
 
+// trimJSON canonicalises JSON for whole-body comparisons (key order is
+// otherwise a false failure), from catalog/transport/http_handler_test.go:387.
+func trimJSON(body string) string {
+	var value any
+	if err := json.Unmarshal([]byte(body), &value); err != nil {
+		return body
+	}
+	encoded, _ := json.Marshal(value)
+	return string(encoded)
+}
+
+// TestDashboardErrorEnvelopeWholeBody pins the complete JSON body of the
+// installation_required case — the migrating ad hoc field this module
+// carries ("key") — to prove it landed inside details and nowhere else,
+// which a field-by-field .error.code read cannot prove.
+func TestDashboardErrorEnvelopeWholeBody(t *testing.T) {
+	t.Parallel()
+
+	service := &summaryServiceStub{}
+	recorder := httptest.NewRecorder()
+
+	NewHandler(service).HandleSummary(recorder, httptest.NewRequest(http.MethodGet, "/dashboard/summary", nil))
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400, body=%s", recorder.Code, recorder.Body.String())
+	}
+	want := `{"error":{"code":"installation_required","message":"installation_id é obrigatório","details":{"key":"installation_id"}}}`
+	if got := trimJSON(recorder.Body.String()); got != trimJSON(want) {
+		t.Fatalf("body = %s, want %s", got, want)
+	}
+}
+
 func assertDashboardError(t *testing.T, recorder *httptest.ResponseRecorder, status int, code string) {
 	t.Helper()
 	if recorder.Code != status {

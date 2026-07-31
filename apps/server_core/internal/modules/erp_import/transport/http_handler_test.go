@@ -190,6 +190,33 @@ func multipartRequestWithFields(t *testing.T, filename string, fields map[string
 	return request
 }
 
+// trimJSON canonicalises JSON for whole-body comparisons (key order is
+// otherwise a false failure), from catalog/transport/http_handler_test.go:387.
+func trimJSON(body string) string {
+	var value any
+	if err := json.Unmarshal([]byte(body), &value); err != nil {
+		return body
+	}
+	encoded, _ := json.Marshal(value)
+	return string(encoded)
+}
+
+// TestErpImportErrorEnvelopeWholeBody pins the complete JSON body of the
+// missing_required_column case — it carries the migrated "column" field in
+// details — to prove it landed inside details and nowhere else, which the
+// field-by-field reads elsewhere in this file cannot prove.
+func TestErpImportErrorEnvelopeWholeBody(t *testing.T) {
+	err := &ports.FileError{Code: domain.CodeMissingRequiredColumn, Column: "codprod", Detail: "bad workbook"}
+	response := performRequest(t, &fakeImportRunner{err: err}, &fakeImportQuerier{}, multipartRequest(t, "payload.xlsx"))
+	if response.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422, body=%s", response.Code, response.Body.String())
+	}
+	want := `{"error":{"code":"missing_required_column","message":"coluna obrigatória ausente","details":{"column":"codprod"}}}`
+	if got := trimJSON(response.Body.String()); got != trimJSON(want) {
+		t.Fatalf("body = %s, want %s", got, want)
+	}
+}
+
 func TestHandlerPostImportErrors(t *testing.T) {
 	fileError := func(code domain.IssueCode) error {
 		return &ports.FileError{Code: code, Column: "codprod", Detail: "bad workbook"}
