@@ -183,3 +183,13 @@ codex.
 - 2 famílias de erro HTTP + 4 `writeError` (→ `CHIP-ERROR-UNIFY`, decisão do operador).
 - Script `test` da raiz roda só workspace web (conserto = hub pós-merge, VC-7 @ed1b4183).
 - Guards posicionais remanescentes em outras suítes (residual da S8).
+
+**D-7. Censo de pack escopado por diretório, não por fato** (CHIP-ERROR-UNIFY 2026-07-31):
+censo do hub varreu `internal/modules/*/transport` e três produtores ficaram estruturalmente
+fora do quadro — inline sem helper (catalog http_handler.go:440), fallback plain-text DENTRO
+do `httpx.WriteJSON` (json.go:12) e `writeDeadlineExceeded` no ROUTER de plataforma
+(route_deadline.go:129, o flat de maior alcance da árvore: dispara em toda rota com deadline,
+módulo nenhum). Generalização a ratificar: **população se define pelo FATO (o que escreve
+corpo de erro HTTP), nunca pelo diretório onde se espera que a edição caia**. Candidato:
+regra de censo no profile — todo censo TOTAL declara o predicado do fato e varre a árvore
+inteira; escopo por diretório só com justificativa escrita.
