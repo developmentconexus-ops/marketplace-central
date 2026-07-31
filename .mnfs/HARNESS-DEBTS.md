@@ -201,3 +201,22 @@ sucesso quando a mutação não é verificada. Regra a ratificar: **must-fail s�
 INJEÇÃO for confirmada por observável (grep do artefato mutado) ANTES de se ler o veredito**;
 em repo CRLF, todo regex `\n` multi-linha é falso-negativo silencioso. Mesma família do D-7
 (instrumento que não mede o que afirma).
+
+**D-9. Checker production-panic não reconhece re-panic obrigatório de http.ErrAbortHandler**
+(CHIP-ERROR-UNIFY 2026-07-31): recover central correto TEM que re-lançar
+`http.ErrAbortHandler` (contrato do net/http p/ abortar conexão em silêncio; convertê-lo em
+envelope 500 seria o defeito) e o checker acusa GOV_PRODUCTION_PANIC. Exceção
+`production-panic-apierror-recover-abort-handler` registrada com removal_owner=D-9: o
+conserto de classe é o CHECKER reconhecer o idioma `if rec == http.ErrAbortHandler {
+panic(rec) }` como sancionado; quando aprender, a exceção sai. Exceção "temporária até o
+instrumento consertar" é honesta; removal_owner de milestone inventado não seria.
+
+**D-10. Lane hermética NÃO é superconjunto da lane de unidade** (CHIP-ERROR-UNIFY
+2026-07-31, medido): Postgres.psm1:276 monta o conjunto de testes como ./tests/integration +
+só módulos com `//go:build integration` nas 5 primeiras linhas — testes de unidade de
+transport (ex. catalog/transport) NUNCA são compilados pela lane. Prova: defeito de shape
+injetado → lane `status=passed`/EXIT=0, depois de provada capaz de vermelho
+(failure_token=test=). Consequência operante: `status=passed` da integração NÃO cobre pins
+de unidade; escada completa exige as DUAS lanes sempre. Candidato: lane hermética rodar
+também `go test ./...` do módulo tocado, ou o profile declarar explicitamente a
+não-cobertura.
