@@ -1,0 +1,6 @@
+=== RUN   TestCatalogCountsInvalidErpSourceEmitsErrorEnvelope
+    error_envelope_golden_test.go:30: body = {"allowed_range":"xlsx|catalogo_cliente","error":"invalid_erp_source"}, want {"error":{"code":"invalid_erp_source","details":{"allowed_range":"xlsx|catalogo_cliente"},"message":"erp_source inválido: use xlsx ou catalogo_cliente"}}
+--- FAIL: TestCatalogCountsInvalidErpSourceEmitsErrorEnvelope (0.00s)
+FAIL
+FAIL	marketplace-central/apps/server_core/internal/modules/catalog/transport	1.807s
+FAIL
