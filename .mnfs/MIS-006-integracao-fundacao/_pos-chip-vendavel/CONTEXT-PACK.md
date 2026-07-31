@@ -684,3 +684,24 @@ block) — dual gate = cold Opus (`harness:gate-reviewer`) + assento sonnet adve
 independente — sob a ordem vigente do operador ("use sonnet 5 subagent e orquestre para
 finalizarmos rapido"). Opção de review Sol retroativo pós-Aug-5 mantida, como no waiver
 original. Transporte: próximo dispatch codex usa stdin `-` (binding 2026-07-29), não argv.
+
+## A-31 (2026-07-31) — Gate P6 fechado (2x APPROVE) e MERGE executado @3ef01f65
+
+Round 0: Opus REJECT (1 BLOCKER + 2 MAJOR + 1 MINOR); sonnet adversarial APPROVE (2 MINOR).
+BLOCKER real: a reescrita do writer no F6 introduziu um 9º código (`internal_error`, 500,
+fall-through de `writeCatalogPageError` :429) alcançável na rede e não declarado — a mesma
+classe que o F6 existia p/ matar. Consertos @a0bdc271: declarado nos 3 lados (enum OpenAPI +
+resposta "500" em list/search/counts, counts ganhou "400"/"504" que já alcançava; SDK
+`CatalogPageErrorCode`); censo atualizado (9 códigos, todos com emissor); âncoras do
+FE-caller re-apontadas p/ os caminhos reais (feature-products, não apps/web/src/pages);
+razão do modules.json corrigida ("43" morto → main 51 / chip 50 subconjunto estrito); stubs
+mortos deletados dos 2 test files. Marker de supersessão no S10 @14c018c9.
+
+Round 1: Opus re-verify focado — 5/5 DISCHARGED, zero scope creep, APPROVE. Acordo dos dois
+assentos → MERGE `--no-ff` @3ef01f65. Conflitos (2, hub-owned): tabela de toggles resolvida
+pelo CÓDIGO (nomes/predicados do chip: `only_ecommerce_eligible` NVL, + ponteiro A7 do main);
+VC-2 resolvido pelo lado do chip (F3: número fora da linha do critério, nota preservada).
+Adições do main confirmadas vivas pós-merge (A-30, B-9/B-10, EMENDA A7).
+
+REPORT novo p/ CHIP-ERROR-UNIFY (achado Opus round 1, pré-existente): rota counts lê
+`erp_source` (`http_handler.go:53`) mas não declara o parâmetro no OpenAPI.
