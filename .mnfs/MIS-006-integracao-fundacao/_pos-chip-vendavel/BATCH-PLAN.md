@@ -947,7 +947,7 @@ Shared-file ordering constraints:
 | Criterion | Slice | Named evidence | HUB-only portion |
 |---|---|---|---|
 | VC-1 | S2, S10, S11, S13 | `TestRepository_SetSellableAssortment_RoundTripPersistsPerTenant`; `TestHandlerSellableAssortmentPutThenGetReturnsStoredValues`; Integracoes persistence test; SQL before/after | Browser clears both storages, reloads, captures DOM and `localStorage.length === 0` |
-| VC-2 | S6, S7, S9, S11, S12 | `TestCatalogAssortmentCountUsesThePagePredicate`; golden `2/4`; exact FE text assertions | Live Oracle SQL and DOM comparison, allowing source drift from approximately 3,822 |
+| VC-2 | S6, S7, S9, S11, S12 | `TestCatalogAssortmentCountUsesThePagePredicate`; golden `2/4`; exact FE text assertions | Live Oracle SQL and DOM comparison. Acceptance number per A-3 below (2.923, live Oracle path only) — the "approximately 3,822" this row used to carry was dead and is deleted, not softened |
 | VC-3 | S6, S7, S12 | `TestCatalogPageSellableAssortmentDefaultsAndScreenEscape`; golden fixture; CatalogPage filtered/all/zero-stock test | Browser DOM before/after `Ver todos` and after disabling stock rule |
 | VC-4 | S5 | `TestMirrorMatcher_ActiveRevendaRuleControlsCandidateBirth`; `failure_token=test=...`; positive sellable and nil assertions | None beyond optional browser `/vinculos` smoke |
 | VC-5 | S4 | `TestSankhyaStockSQLPinsSellableCompanies`; `TestSankhyaSyncMapsSellableAssortmentFields`; mirror writer test | Live sync and post-sync mirror SQL are HUB-only |
