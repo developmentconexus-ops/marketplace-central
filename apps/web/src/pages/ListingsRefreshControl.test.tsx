@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MarketplaceCentralClientError } from "@marketplace-central/sdk-runtime";
 import { queryKeyNamespaces } from "@marketplace-central/web-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ListingsRefreshControl } from "./ListingsRefreshControl";
@@ -66,10 +67,11 @@ describe("ListingsRefreshControl", () => {
   });
 
   it("attaches to a refresh_in_progress run without rendering an error", async () => {
-    refreshListings.mockRejectedValue({
-      status: 409,
-      error: { code: "refresh_in_progress", details: { operation_run_id: "run_active" } },
-    });
+    refreshListings.mockRejectedValue(
+      new MarketplaceCentralClientError(409, "refresh_in_progress", "refresh já em andamento", {
+        operation_run_id: "run_active",
+      }),
+    );
     listIntegrationOperationRuns
       .mockResolvedValueOnce(noRuns)
       .mockResolvedValue({ items: [run("run_active", "running")] });

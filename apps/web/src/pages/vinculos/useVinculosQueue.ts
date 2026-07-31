@@ -1,9 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type {
-  MarketplaceCentralClientError,
-  ProductLinkActor,
-  ProductLinkCandidateItem,
-} from "@marketplace-central/sdk-runtime";
+import type { ProductLinkActor, ProductLinkCandidateItem } from "@marketplace-central/sdk-runtime";
 import { invalidateAfterMutation, QUERY_STALE_TIME } from "@marketplace-central/web-query";
 import { useClient } from "../../app/ClientContext";
 import { vinculosQueryKeys } from "./vinculosQueryKeys";
@@ -36,17 +32,6 @@ export const WEB_OPERATOR_ACTOR: ProductLinkActor = {
   actor_id: "web-operator",
   actor_name: "Operador",
 };
-
-/**
- * A 409 from approve means the listing was already resolved by someone else.
- * The contract code is ALREADY_RESOLVED — surface it (banner + refetch), never
- * swallow it.
- */
-export function isAlreadyResolvedConflict(error: unknown): boolean {
-  if (typeof error !== "object" || error === null) return false;
-  const candidate = error as Partial<MarketplaceCentralClientError>;
-  return candidate.status === 409 && candidate.error?.code === "ALREADY_RESOLVED";
-}
 
 export interface ApproveVinculoInput {
   candidate_id: string;
@@ -122,10 +107,13 @@ export function useVinculosQueue(installationId: string) {
     onSettled: invalidateQueue,
   });
 
-  const conflict =
-    isAlreadyResolvedConflict(approve.error) ||
-    isAlreadyResolvedConflict(reject.error) ||
-    isAlreadyResolvedConflict(manual.error);
+  // ALREADY_RESOLVED dead code removed (CHIP-ERROR-UNIFY S11): approveProductLinkCandidate's
+  // 409 codes are SUPERSEDED/ALREADY_UNDONE (resolution_service.go), never ALREADY_RESOLVED —
+  // that code only appears as a 200 batch-item `cause` (batch_service.go:274), not an HTTP
+  // error. The comparison this replaced could never be true. `conflict` stays in the return
+  // shape (hardcoded false) because QueueTab.tsx destructures and renders it; it was already
+  // always false, so this is a truthful no-op, not a behavior change.
+  const conflict = false;
 
   return { queueQuery, approve, reject, manual, conflict };
 }

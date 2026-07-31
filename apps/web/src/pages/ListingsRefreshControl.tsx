@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { isRefreshInProgressError } from "@marketplace-central/sdk-runtime";
 import { queryKeyNamespaces, syncQueryKeys } from "@marketplace-central/web-query";
 import { useEffect, useRef, useState } from "react";
 import { useClient } from "../app/ClientContext";
@@ -38,17 +39,7 @@ function elapsedLabel(startedAt: string | undefined, now: number): string | null
 }
 
 function attachedRunId(error: unknown): string | null {
-  if (typeof error !== "object" || error === null) return null;
-  const candidate = error as {
-    status?: number;
-    error?: { code?: string; details?: { operation_run_id?: unknown } };
-  };
-  const operationRunId = candidate.error?.details?.operation_run_id;
-  return candidate.status === 409 &&
-    candidate.error?.code === "refresh_in_progress" &&
-    typeof operationRunId === "string"
-    ? operationRunId
-    : null;
+  return isRefreshInProgressError(error) ? error.details.operation_run_id : null;
 }
 
 export function ListingsRefreshControl({ installationId }: { installationId: string }) {

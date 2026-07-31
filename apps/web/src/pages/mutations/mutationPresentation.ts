@@ -1,4 +1,4 @@
-import type { MutationType } from "@marketplace-central/sdk-runtime";
+import { isApiError, type MutationType } from "@marketplace-central/sdk-runtime";
 
 export const mutationTypeLabels: Partial<Record<MutationType, string>> = {
   price_update: "Atualizar preço",
@@ -16,10 +16,6 @@ export function presentMutationValue(value: unknown): string {
 }
 
 export function mutationError(error: unknown): { code: string; message?: string } {
-  if (typeof error !== "object" || error === null) return { code: "internal" };
-  const body = (error as { error?: { code?: unknown; message?: unknown } }).error;
-  return {
-    code: typeof body?.code === "string" ? body.code : "internal",
-    message: typeof body?.message === "string" ? body.message : undefined,
-  };
+  if (!isApiError(error)) return { code: "internal" };
+  return { code: error.code, message: error.message };
 }

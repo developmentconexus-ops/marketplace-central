@@ -1,25 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { ErpImportCreated, ErpImportSourceInput } from "@marketplace-central/sdk-runtime";
+import { hasCode, isApiError, type ErpImportCreated, type ErpImportSourceInput } from "@marketplace-central/sdk-runtime";
 import { useClient } from "../../app/ClientContext";
 import { erpImportsQueryKeys } from "../vinculos/useErpImports";
 
 export interface ErpImportUploadInput {
   file: File;
   source: ErpImportSourceInput;
-}
-
-/**
- * The flat error shape the ERP import endpoint returns on non-2xx. The SDK's
- * multipart helper attaches the parsed body under `body`; we read it to
- * distinguish the operator-facing failure classes (duplicate/in-progress/
- * missing-column) rather than collapsing every failure into one message.
- */
-interface ErpImportErrorBody {
-  error?: string;
-  detail?: string;
-  column?: string;
-  import_id?: string;
-  protocol?: string;
 }
 
 export interface ErpImportUploadError {
@@ -39,35 +25,28 @@ export interface ErpImportUploadError {
 }
 
 function classifyUploadError(err: unknown): ErpImportUploadError {
-  const maybe = err as { status?: number; body?: ErpImportErrorBody } | undefined;
-  const body = maybe?.body;
-  const code = body?.error;
-  switch (code) {
-    case "invalid_file":
-      return { kind: "invalid_file" };
-    case "missing_required_column":
-      return { kind: "missing_required_column", column: body?.column };
-    case "duplicate_file":
-      return { kind: "duplicate_file", protocol: body?.protocol };
-    case "import_in_progress":
-      return { kind: "import_in_progress", protocol: body?.protocol };
-    case "internal_error":
-      return { kind: "internal_error" };
-    // The route deadline aborts the request at 120s and answers 504. That is not
-    // an internal error: the file was too large for the synchronous path, and the
-    // operator needs to be told that rather than "erro interno".
-    case "deadline_exceeded":
-      return { kind: "deadline_exceeded" };
-    default:
-      // A thrown Response-shaped error with a known status but unmapped body,
-      // or a genuine transport failure with no body at all.
-      if (maybe?.status === 422) return { kind: "missing_required_column", column: body?.column };
-      if (maybe?.status === 409) return { kind: "duplicate_file", protocol: body?.protocol };
-      if (maybe?.status === 400) return { kind: "invalid_file" };
-      if (maybe?.status === 504) return { kind: "deadline_exceeded" };
-      if (typeof maybe?.status === "number") return { kind: "internal_error" };
-      return { kind: "network_error" };
+  // A fetch-level failure (no response reached the client at all) never
+  // becomes a MarketplaceCentralClientError — that is the honest signal for
+  // "no network", distinct from every status-bearing server answer below.
+  if (!isApiError(err)) return { kind: "network_error" };
+  if (hasCode(err, "missing_required_column")) {
+    return { kind: "missing_required_column", column: err.details.column };
   }
+  if (hasCode(err, "duplicate_file")) {
+    return { kind: "duplicate_file", protocol: err.details.protocol };
+  }
+  if (hasCode(err, "invalid_file")) return { kind: "invalid_file" };
+  if (hasCode(err, "import_in_progress")) {
+    // The server's import_in_progress branch passes nil details (no
+    // guaranteed protocol) — leave it unknown rather than fabricate one.
+    return { kind: "import_in_progress" };
+  }
+  // The route deadline aborts the request at 120s and answers 504
+  // deadline_exceeded. That is not an internal error: the file was too large
+  // for the synchronous path, and the operator needs to be told that rather
+  // than "erro interno".
+  if (hasCode(err, "deadline_exceeded")) return { kind: "deadline_exceeded" };
+  return { kind: "internal_error" };
 }
 
 /**

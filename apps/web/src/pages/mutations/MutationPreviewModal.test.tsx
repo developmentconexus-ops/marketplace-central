@@ -1,6 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import type { MutationPreview, MutationProtocol, MutationType } from "@marketplace-central/sdk-runtime";
+import {
+  MarketplaceCentralClientError,
+  type MutationPreview,
+  type MutationProtocol,
+  type MutationType,
+} from "@marketplace-central/sdk-runtime";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MutationPreviewModal } from "./MutationPreviewModal";
 
@@ -195,10 +200,9 @@ describe("MutationPreviewModal", () => {
   });
 
   it("cancela e descarta o rascunho quando a seleção excede o limite", async () => {
-    previewMutation.mockRejectedValue({
-      status: 422,
-      error: { code: "selection_too_large", message: "too many" },
-    });
+    previewMutation.mockRejectedValue(
+      new MarketplaceCentralClientError(422, "selection_too_large", "too many", {}),
+    );
     renderModal("listing_pause");
     submit();
 
@@ -236,7 +240,7 @@ describe("MutationPreviewModal", () => {
   });
 
   it("volta à prévia sem reaprová-la quando ela expira", async () => {
-    approveMutation.mockRejectedValue({ status: 409, error: { code: "preview_stale", message: "stale" } });
+    approveMutation.mockRejectedValue(new MarketplaceCentralClientError(409, "preview_stale", "stale", {}));
     renderModal("listing_pause");
     submit();
     await screen.findByRole("button", { name: "Confirmar e aplicar" });

@@ -1,13 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
-import type {
-  ListingException,
-  ListingGroupPage,
-  ListingLinkState,
-  ListingPage,
-  ListingReadModel,
-  ListingSummaryExceptions,
-  ListingSyncState,
-  MutationType,
+import {
+  hasCode,
+  isApiError,
+  type ListingException,
+  type ListingGroupPage,
+  type ListingLinkState,
+  type ListingPage,
+  type ListingReadModel,
+  type ListingSummaryExceptions,
+  type ListingSyncState,
+  type MutationType,
 } from "@marketplace-central/sdk-runtime";
 import { EmptyState, ErrorState, LoadingState } from "@marketplace-central/ui";
 import { listingsQueryKeys, QUERY_STALE_TIME } from "@marketplace-central/web-query";
@@ -130,11 +132,7 @@ function ActiveFilterChip({ kind, value, onDismiss }: { kind: string; value: str
 }
 
 function isInvalidFilterError(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    (error as { error?: { code?: string } }).error?.code === "invalid_filter"
-  );
+  return isApiError(error) && hasCode(error, "invalid_filter");
 }
 
 export function AnunciosPage() {

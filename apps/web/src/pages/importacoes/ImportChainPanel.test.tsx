@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { ErpImportChain } from "@marketplace-central/sdk-runtime";
+import { MarketplaceCentralClientError, type ErpImportChain } from "@marketplace-central/sdk-runtime";
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ImportChainPanel } from "./ImportChainPanel";
@@ -156,7 +156,9 @@ describe("ImportChainPanel", () => {
   });
 
   it("renders a not-found error without a chain", async () => {
-    getErpImportChain.mockRejectedValue({ status: 404, error: "import_not_found" });
+    getErpImportChain.mockRejectedValue(
+      new MarketplaceCentralClientError(404, "import_not_found", "importação não encontrada", {}),
+    );
 
     renderPanel();
 
@@ -175,7 +177,9 @@ describe("ImportChainPanel", () => {
   });
 
   it("renders a generic error for server failures without a chain", async () => {
-    getErpImportChain.mockRejectedValue({ status: 500, error: "internal_error" });
+    getErpImportChain.mockRejectedValue(
+      new MarketplaceCentralClientError(500, "internal_error", "erro inesperado do servidor", {}),
+    );
 
     renderPanel();
 
