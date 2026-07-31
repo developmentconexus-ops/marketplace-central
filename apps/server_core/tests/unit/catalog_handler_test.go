@@ -233,12 +233,16 @@ func TestCatalogSearchEndpointRequiresQuery(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d: %s", rec.Code, rec.Body.String())
 	}
-	var body map[string]string
+	var body struct {
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
 	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
 		t.Fatalf("decode 400 body: %v", err)
 	}
-	if body["error"] != "invalid_q" {
-		t.Fatalf("expected error=invalid_q, got %v", body)
+	if body.Error.Code != "invalid_q" {
+		t.Fatalf("expected error.code=invalid_q, got %v", body.Error.Code)
 	}
 }
 

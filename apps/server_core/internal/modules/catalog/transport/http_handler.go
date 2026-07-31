@@ -15,6 +15,7 @@ import (
 	erpinternalread "marketplace-central/apps/server_core/internal/modules/erp_import/adapters/internalread"
 	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
 	"marketplace-central/apps/server_core/internal/modules/internal_read/ports"
+	"marketplace-central/apps/server_core/internal/platform/apierror"
 	"marketplace-central/apps/server_core/internal/platform/httpx"
 )
 
@@ -70,12 +71,6 @@ func hasNoCacheDirective(header string) bool {
 		}
 	}
 	return false
-}
-
-func writeError(w http.ResponseWriter, status int, code, message string) {
-	httpx.WriteJSON(w, status, map[string]any{
-		"error": map[string]any{"code": code, "message": message, "details": map[string]any{}},
-	})
 }
 
 func (h Handler) Register(mux httpx.RouteRegistrar) {
@@ -395,24 +390,48 @@ func nonNilStrings(values []string) []string {
 	return values
 }
 
+// catalogQueryErrorMessage answers the human-facing text for a
+// catalogPageQueryError code. None of these codes carried a message before
+// this migration — the flat body only ever said the code — so this is new
+// operator-facing text, and the module's neighbouring strings (the
+// invalid_erp_source message pinned by the golden test) are pt-BR.
+func catalogQueryErrorMessage(code string) string {
+	switch code {
+	case "invalid_cursor":
+		return "cursor inválido"
+	case "invalid_limit":
+		return "limit inválido"
+	case "invalid_ids":
+		return "lista de ids inválida"
+	case "invalid_include_all":
+		return "include_all inválido"
+	case "invalid_q":
+		return "parâmetro de busca (q) é obrigatório"
+	case "invalid_erp_source":
+		return "erp_source inválido: use xlsx ou catalogo_cliente"
+	}
+	return code
+}
+
 func writeCatalogPageError(w http.ResponseWriter, err error) {
 	if queryErr, ok := err.(*catalogPageQueryError); ok {
+		message := catalogQueryErrorMessage(queryErr.code)
 		// Every code that knows its accepted domain says it. Gating this on one
 		// hardcoded code made allowed_range dead data on the two other sites
 		// that fill it (invalid_erp_source, invalid_ids): built, then dropped.
 		if queryErr.allowedRange != "" {
-			httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{"error": queryErr.code, "allowed_range": queryErr.allowedRange})
+			apierror.Write(w, http.StatusBadRequest, queryErr.code, message, map[string]any{"allowed_range": queryErr.allowedRange})
 			return
 		}
-		httpx.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": queryErr.code})
+		apierror.Write(w, http.StatusBadRequest, queryErr.code, message, nil)
 		return
 	}
 	if errors.Is(err, context.DeadlineExceeded) {
-		httpx.WriteJSON(w, http.StatusGatewayTimeout, map[string]string{"error": "deadline_exceeded"})
+		apierror.Write(w, http.StatusGatewayTimeout, "deadline_exceeded", "tempo limite excedido", nil)
 		return
 	}
 	if internalreaddomain.IsReadErrorCode(err, internalreaddomain.ReadErrorSourceUnavailable) {
-		httpx.WriteJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "source_unavailable"})
+		apierror.Write(w, http.StatusServiceUnavailable, "source_unavailable", "fonte de dados indisponível", nil)
 		return
 	}
 	// Anything else is a fault on our side, and it says so. The branch this
@@ -426,7 +445,7 @@ func writeCatalogPageError(w http.ResponseWriter, err error) {
 	// errors.New the nil-reader guard used to raise — was getting classified as
 	// an outage.
 	slog.Error("catalog.page", "result", "500", "error", err.Error())
-	httpx.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
+	apierror.Write(w, http.StatusInternalServerError, "internal_error", "erro interno do servidor", nil)
 }
 
 // requirePageReader answers the one question every paged catalog handler has to
@@ -437,7 +456,7 @@ func (h Handler) requirePageReader(w http.ResponseWriter) bool {
 	if h.PageReader != nil {
 		return true
 	}
-	httpx.WriteJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "source_unavailable"})
+	apierror.Write(w, http.StatusServiceUnavailable, "source_unavailable", "fonte de dados indisponível", nil)
 	return false
 }
 
@@ -446,14 +465,14 @@ func (h Handler) handleGetProduct(w http.ResponseWriter, r *http.Request) {
 	productID := r.PathValue("id")
 	id, parseErr := strconv.Atoi(productID)
 	if parseErr != nil || id <= 0 {
-		writeError(w, http.StatusBadRequest, "invalid_identity", "productId must be a positive integer")
+		apierror.Write(w, http.StatusBadRequest, "invalid_identity", "productId must be a positive integer", nil)
 		return
 	}
 	product, err := h.Service.GetProduct(r.Context(), domain.InternalProductID(id))
 	if err != nil {
 		if strings.Contains(err.Error(), "NOT_FOUND") {
 			slog.Error("catalog.product", "action", "get", "result", "404", "product_id", productID, "duration_ms", time.Since(start).Milliseconds())
-			writeError(w, http.StatusNotFound, "CATALOG_PRODUCT_NOT_FOUND", "product not found")
+			apierror.Write(w, http.StatusNotFound, "CATALOG_PRODUCT_NOT_FOUND", "product not found", nil)
 			return
 		}
 		slog.Error("catalog.product", "action", "get", "result", "500", "product_id", productID, "duration_ms", time.Since(start).Milliseconds())
@@ -466,10 +485,10 @@ func (h Handler) handleGetProduct(w http.ResponseWriter, r *http.Request) {
 
 func writeCatalogReadError(w http.ResponseWriter, err error) {
 	if strings.Contains(err.Error(), "source_unavailable") {
-		writeError(w, http.StatusServiceUnavailable, "source_unavailable", "catalog source unavailable")
+		apierror.Write(w, http.StatusServiceUnavailable, "source_unavailable", "catalog source unavailable", nil)
 		return
 	}
-	writeError(w, http.StatusInternalServerError, "CATALOG_INTERNAL_ERROR", "internal error")
+	apierror.Write(w, http.StatusInternalServerError, "CATALOG_INTERNAL_ERROR", "internal error", nil)
 }
 
 func (h Handler) handleTaxonomy(w http.ResponseWriter, r *http.Request) {
@@ -477,13 +496,13 @@ func (h Handler) handleTaxonomy(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", "GET")
 		slog.Error("catalog.taxonomy", "action", "list", "result", "405", "duration_ms", time.Since(start).Milliseconds())
-		writeError(w, http.StatusMethodNotAllowed, "CATALOG_METHOD_NOT_ALLOWED", "method not allowed")
+		apierror.Write(w, http.StatusMethodNotAllowed, "CATALOG_METHOD_NOT_ALLOWED", "method not allowed", nil)
 		return
 	}
 	nodes, err := h.CompatibilityService.ListTaxonomyNodes(r.Context())
 	if err != nil {
 		slog.Error("catalog.taxonomy", "action", "list", "result", "500", "duration_ms", time.Since(start).Milliseconds())
-		writeError(w, http.StatusInternalServerError, "CATALOG_INTERNAL_ERROR", "internal error")
+		apierror.Write(w, http.StatusInternalServerError, "CATALOG_INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	slog.Info("catalog.taxonomy", "action", "list", "result", "200", "duration_ms", time.Since(start).Milliseconds())
@@ -496,7 +515,7 @@ func (h Handler) handleGetEnrichment(w http.ResponseWriter, r *http.Request) {
 	enrichment, err := h.CompatibilityService.GetEnrichment(r.Context(), productID)
 	if err != nil {
 		slog.Error("catalog.enrichment", "action", "get", "result", "500", "product_id", productID, "duration_ms", time.Since(start).Milliseconds())
-		writeError(w, http.StatusInternalServerError, "CATALOG_INTERNAL_ERROR", "internal error")
+		apierror.Write(w, http.StatusInternalServerError, "CATALOG_INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	slog.Info("catalog.enrichment", "action", "get", "result", "200", "product_id", productID, "duration_ms", time.Since(start).Milliseconds())
@@ -515,7 +534,7 @@ func (h Handler) handleUpsertEnrichment(w http.ResponseWriter, r *http.Request) 
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		slog.Error("catalog.enrichment", "action", "upsert", "result", "400", "product_id", productID, "duration_ms", time.Since(start).Milliseconds())
-		writeError(w, http.StatusBadRequest, "CATALOG_ENRICHMENT_INVALID", "malformed request body")
+		apierror.Write(w, http.StatusBadRequest, "CATALOG_ENRICHMENT_INVALID", "malformed request body", nil)
 		return
 	}
 	enrichment := domain.ProductEnrichment{
@@ -528,7 +547,7 @@ func (h Handler) handleUpsertEnrichment(w http.ResponseWriter, r *http.Request) 
 	}
 	if err := h.CompatibilityService.UpsertEnrichment(r.Context(), enrichment); err != nil {
 		slog.Error("catalog.enrichment", "action", "upsert", "result", "500", "product_id", productID, "duration_ms", time.Since(start).Milliseconds())
-		writeError(w, http.StatusInternalServerError, "CATALOG_INTERNAL_ERROR", "internal error")
+		apierror.Write(w, http.StatusInternalServerError, "CATALOG_INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	slog.Info("catalog.enrichment", "action", "upsert", "result", "200", "product_id", productID, "duration_ms", time.Since(start).Milliseconds())
