@@ -1,0 +1,57 @@
+F6 — censo dos códigos de erro da família CatalogPageErrorResponse
+Árvore: worktree chip-vendavel, branch worktree-chip-vendavel
+Condição A-28: cada código declarado prova seu sítio EMISSOR (file:line nesta árvore).
+Coletado por leitura estática (shell morto — sem execução). NENHUMA edição feita.
+
+Arquivo emissor: apps/server_core/internal/modules/catalog/transport/http_handler.go
+Escritor único da família: writeCatalogPageError, :398-427
+
+DECLARADOS HOJE no enum (contracts/api/marketplace-central.openapi.yaml:3954)
+------------------------------------------------------------------------------
+invalid_cursor        :288   len(raw) != 1 no parâmetro cursor
+                      :292   ports.DecodeCursor falhou
+invalid_limit         :307   len(raw) != 1 no parâmetro limit
+                      :311   Atoi falhou, ou limit < 1, ou limit > maxLimit
+source_unavailable    :412   internalreaddomain.IsReadErrorCode(err, ReadErrorSourceUnavailable)
+                      :437   requirePageReader — composição não fiou fonte de catálogo
+deadline_exceeded     :408   errors.Is(err, context.DeadlineExceeded)
+
+NÃO DECLARADOS — pré-existentes (S9/S10), entram no enum sob o F6 por A-28
+------------------------------------------------------------------------------
+invalid_erp_source    :55    erpinternalread.ParseActiveSource rejeitou o valor
+invalid_ids           :173   parseCatalogIDs — id não positivo ou fora de 1..catalogMaxLimit
+invalid_include_all   :245   len(raw) != 1 no parâmetro include_all
+                      :249   valor != "true" e != "false"
+
+NÃO DECLARADO — novo, do F6
+------------------------------------------------------------------------------
+invalid_q             :200   strings.TrimSpace(q) == "" na rota de busca
+                            Contrato: q required:true em :467-469, rota /catalog/products/search
+                            (:462), operationId searchCatalogProductFacts.
+
+Nenhum código especulativo: os 8 acima são TODOS os `catalogPageQueryError` do módulo,
+e todos alcançam a rede pelo mesmo escritor.
+
+ACHADO NOVO — allowed_range é dado morto em dois sítios
+------------------------------------------------------------------------------
+Schema (:3955-3957): "allowed_range — Present for invalid_limit and states the
+inclusive range."
+
+writeCatalogPageError só serializa allowed_range quando code == "invalid_limit" (:400-403).
+Mas o campo allowedRange é PREENCHIDO em outros dois sítios:
+
+  :55    invalid_erp_source  allowedRange: "xlsx|catalogo_cliente"
+  :173   invalid_ids         allowedRange: "1.." + catalogMaxLimit + " positive integers"
+
+Nos dois casos o valor é construído e descartado — nunca chega ao cliente. O chamador que
+mandou um erp_source inválido não recebe a lista de valores aceitos, embora o código a
+tenha em mãos.
+
+Duas saídas, e NENHUMA foi tomada (shell morto; e a primeira muda payload):
+  (a) serializar allowed_range para todo código que o tenha, e corrigir a descrição
+      do schema, que hoje afirma "Present for invalid_limit" — falso como intenção
+      do código, verdadeiro só por acidente do writer;
+  (b) parar de preencher allowedRange em :55 e :173, deixando a descrição verdadeira.
+
+(a) é mudança de contrato (payload novo em 2 códigos). (b) é deleção de dado morto.
+Decisão é do hub — REQUEST enviado.
