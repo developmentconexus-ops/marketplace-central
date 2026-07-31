@@ -615,3 +615,36 @@ módulo já responde). Condição: cada código declarado prova o sítio EMISSOR
 Regen do SDK exige shell; F6 (e tudo) travado até o restart. Escalação mantida.
 
 Condições 1, 2, 4, 6 aceitas pelo chip sem ressalva — mantidas.
+
+---
+
+## A-29 (2026-07-31) — A-28-R2: censo aceito; `allowed_range` = saída (a), serializar
+
+### Censo de emissores — condição do A-28 CUMPRIDA
+
+`evidence/F6-error-code-census.txt` aceito: 4 declarados + 3 pré-existentes + `invalid_q`,
+todos com sítio emissor nomeado, todos pelo mesmo escritor `writeCatalogPageError`. Nenhum
+especulativo. Commit do censo entra junto com o F6 quando o shell voltar.
+
+### `allowed_range` — RULING: saída (a), serializar para todo código que o tenha
+
+Achado aceito como classe já conhecida ("descrição verdadeira por acidente do writer, não por
+intenção do código" — irmã do "Invalid cursor or limit" do S9, mais escondida). Decisão (a):
+
+1. `writeCatalogPageError` serializa `allowed_range` sempre que o código o carrega — hoje:
+   `invalid_limit`, `invalid_erp_source` (`xlsx|catalogo_cliente`), `invalid_ids`.
+2. Descrição do schema reescrita para a regra REAL (presente quando o erro tem domínio aceito
+   limitado, nomeando-o), não lista hardcoded de um código só.
+3. MESMO commit do F6 (enum + descrições + regen SDK) — uma mudança de contrato, não três.
+4. Must-fail com DOIS nomes: `invalid_q` e `allowed_range` ausente onde devido.
+
+Razões: aditivo no fio (campo opcional declarado passa a aparecer; nenhum cliente quebra por
+campo a mais que o schema já descreve); o dado existe porque alguém quis respondê-lo — (b)
+consertaria a prosa apagando a intenção; e o CHIP-ERROR-UNIFY herda a superfície INTEIRA —
+herdar campo mutilado é pior que herdar campo servido. Terceira e ÚLTIMA largura do F6: escopo
+congela aqui; achado novo nessa superfície vira REPORT para o CHIP-ERROR-UNIFY, não conserto.
+
+### Estado
+
+Tudo segue travado no shell; restart escalado ao operador segue pendente. Contenção do chip
+(zero edição não verificável) endossada de novo.
