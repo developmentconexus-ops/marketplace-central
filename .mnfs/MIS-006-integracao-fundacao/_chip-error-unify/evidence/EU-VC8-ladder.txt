@@ -1,11 +1,11 @@
 VC-8 — ESCADA COMPLETA
 
-VEREDITO, na primeira linha em vez de enterrado na secao 6: a escada esta VERDE em tudo
-menos governanca. Governanca tem UMA violacao nova (GOV_PRODUCTION_PANIC em
-apierror/recover.go) e o criterio pede ZERO. Portanto **VC-8 NAO CUMPRIDO** e este chip
-NAO emite CLOSED — emite ESCALATION. O conserto vive em contracts/governance, seam do hub.
-Titular este arquivo de "verde" com um vermelho conhecido dentro seria a alegacao total
-sob cobertura parcial que este chip inteiro existe para matar.
+VEREDITO: **VC-8 CUMPRIDO** — escada verde, governanca em 54 com ZERO violacao nova.
+Resolvido em duas rodadas de ESCALATION, ambas registradas na secao 6 com o que foi
+medido em cada uma. A versao anterior deste arquivo dizia "VC-8 NAO CUMPRIDO"; ficou
+falsa quando o grant do hub entrou, e prosa falsa se CORRIGE em vez de virar nota de
+rodape (R-25). O historico das duas rodadas fica na secao 6 porque e evidencia, nao
+porque e desabafo.
 
 Medido pelo CHIP. Worktree chip-error-unify. Arvore medida: 86c830cc (VC-7), limpa.
 Base de despacho: 0007de8e. Tip do alvo no momento da medicao: df6a9e49.
@@ -129,7 +129,20 @@ NOTA DE BASE — a main MOVEU durante o chip, e isso foi verificado em vez de su
 ================================================================
 6. GOVERNANCA — set-diff vs o TIP DO ALVO
 ================================================================
-  RESULTADO: **UMA violacao nova.** O criterio VC-8 pede ZERO. NAO declaro verde.
+  RESULTADO FINAL: **54 achados, ZERO violacao nova.** Criterio cumprido.
+  [ran] pwsh ./scripts/harness.ps1 -Command governance (worktree limpo, pos-grant)
+        status=failed (esperado: a lane sempre falha contra as excecoes de baseline)
+        achados=54 · GOV_PRODUCTION_PANIC=0 · GOV_SCHEMA_INVALID=0
+        apierror/recover.go acusado: 0 · excecao reconhecida: 1
+        baseline_exception: 16 (era 15 — a nova entrada aparece)
+        breakdown: 19 RCFG_UNAPPROVED_READER · 13 GOV_MODULE_DEPENDENCY ·
+                   10 RCFG_READER_MISSING · 6 GOV_MODULE_LAYER ·
+                   5 RCFG_UNDECLARED_READ · 1 GOV_MODULE_COVERAGE
+
+  Abaixo fica o caminho ate aqui, porque o numero sozinho nao mostra que os DOIS gates
+  acusaram no meio.
+
+  ------- rodada 1: a medicao que produziu a ESCALATION -------
 
   [ran] pwsh ./scripts/harness.ps1 -Command governance -BaseSha df6a9e49...
         status=failed (esperado — a lane sempre falha contra as excecoes de baseline)
@@ -181,7 +194,8 @@ NOTA DE BASE — a main MOVEU durante o chip, e isso foi verificado em vez de su
   seam alheio para transformar meu proprio vermelho em verde — exatamente o movimento que
   invalida um gate.
 
-  PROPOSTA AO HUB (nao aplicada), no formato de contracts/governance/invariants.json:
+  PROPOSTA AO HUB — feita na rodada 1, CONCEDIDA na resposta do hub @df3acda7 e aplicada
+  na rodada 2 (formato de contracts/governance/invariants.json):
     {
       "id": "production-panic-apierror-recover-abort-handler",
       "rule_id": "production-panic",
@@ -197,12 +211,61 @@ NOTA DE BASE — a main MOVEU durante o chip, e isso foi verificado em vez de su
                  abortar a conexao sem body e sem log de stack. Converter para o envelope
                  500 quebraria esse contrato."
     }
-  RESSALVA HONESTA SOBRE A PROPOSTA: as tres excecoes existentes vivem em
+  RESSALVA HONESTA SOBRE A PROPOSTA (rodada 1): as tres excecoes existentes vivem em
   "temporary_exceptions" e todas tem removal_owner (M-09/M-10). A minha NAO e temporaria
   — nao ha nada a remover depois, o re-panic e permanente e correto. Encaixa-la ali com um
-  removal_owner inventado seria registrar divida que nao existe. O conserto de classe e a
-  REGRA passar a reconhecer re-panic de ErrAbortHandler, o que e mudanca no checker —
-  seam do hub. Escalado, nao decidido pelo chip.
+  removal_owner inventado seria registrar divida que nao existe.
+  ACOLHIDA pelo hub: removal_owner passou a apontar o conserto REAL (HARNESS-D-9, o
+  checker aprender o idioma), em vez de um milestone que nao conserta o instrumento.
+  "Temporaria ate o instrumento consertar" e honesta; "temporaria ate M-nn" nao seria.
+
+  ------- rodada 2: o grant do hub NAO PASSOU, e o gate acusou -------
+  Aplicado o grant a letra (aditivo, 8+/0-, JSON valido) e a lane REPROVOU:
+  [ran] governance -> status=failed · 1 achado · error_code=GOV_SCHEMA_INVALID
+        id=invariants · path=contracts/governance/invariants.json
+        Nenhum dos 54 chegou a ser avaliado — schema invalido aborta antes.
+
+  CAUSA, lida em contracts/governance/schemas/invariants.schema.json:
+    "removal_owner": { "pattern": "^(?:M-[0-9]{2}|F-[0-9]{2}|M-[0-9]{2}/F-[0-9]{2})$" }
+  [ran] teste do regex: M-09 CASA · M-08/F-03 CASA · HARNESS-D-9 RECUSA ·
+        HARNESS-D-09 RECUSA · D-9 RECUSA
+  O schema so admitia dono de milestone/feature. Nao havia slot para divida de harness.
+
+  NAO INVENTEI UM M- PARA PASSAR. Seria a divida fabricada que a ressalva acima recusou e
+  o hub acolheu, e estaria fora do grant ("SO esta entrada, mais nada no arquivo").
+  Para responder as perguntas do hub sem commitar fabricacao, medi por SONDAGEM: troquei
+  o removal_owner por um valor schema-valido descartavel, rodei, e RESTAUREI o arquivo
+  (git status limpo, zero entradas na arvore depois).
+  [ran] sondagem -> 54 achados · recover.go acusado 0 · excecao reconhecida 1
+  Isso provou, antes de qualquer nova rodada, que a excecao faz exatamente o que devia
+  e que o +1 era so o panic — e FECHOU por medicao propria a lacuna que eu tinha
+  declarado no F-2 (o 54 do pack deixou de ser numero adotado e virou numero medido).
+
+  ------- rodada 3: grant estendido, aplicado e verificado -------
+  Hub decidiu alargar o schema (2 toques, 1 commit):
+    schemas/invariants.schema.json: pattern ganha a alternativa |HARNESS-D-[0-9]{1,3}
+    invariants.json: a entrada verbatim, removal_owner "HARNESS-D-9"
+
+  ALARGUEI SEM AFROUXAR, e provei os dois lados — porque um guard que so aceita mais e
+  indistinguivel de um guard quebrado:
+  [ran] NAO-REGRESSAO: os 6 removal_owner do arquivo casam no pattern novo
+        M-09 · HARNESS-D-9 · M-08/F-03 · M-10 · M-10 · F-01  -> 6/6 CASA
+  [ran] AINDA RECUSA lixo: 'HARNESS-D-' · 'HARNESS-D-1234' · 'HARNESS-D-9x' · 'HARNESS' ·
+        'M-9' · 'qualquer-coisa' · '' -> 7/7 RECUSA
+  [ran] diff: invariants.json 8+/0- · invariants.schema.json 1+/1- (uma linha, uma
+        alternativa). JSON valido nos dois.
+
+  OBSERVACAO DE CLASSE, reportada ao operador e ao hub (nao aplicada aqui): o conserto
+  D-9 como escrito — "o checker aprende o idioma do ErrAbortHandler" — e maximo local.
+  O checker e Policy.psm1:363, [regex]::Matches($content, 'panic\s*\((?s:.*?)\)'): texto
+  cru, sem AST, sem escopo. Ele NAO consegue saber que panic(rec) esta dentro de um guard
+  errors.Is(err, http.ErrAbortHandler); so pode aproximar por texto, e aproximar num guard
+  significa passar a desculpar panics reais parecidos. Guard que afrouxa e pior que lista
+  de excecao, porque a lista e visivel e o afrouxamento nao — mesma classe do "guard
+  parcial sob frase total". O maximo global e o check migrar para go/ast, o que tambem
+  mata um defeito latente do regex: `.*?` e preguicoso, entao panic(fmt.Sprintf("x %d", n))
+  casa so ate o primeiro ')' e o fingerprint sai truncado (ainda nao mordeu porque todas
+  as excecoes atuais usam panic(err) ou literal simples).
 
 ================================================================
 7. HIGIENE FINAL
@@ -240,9 +303,13 @@ NOTA DE BASE — a main MOVEU durante o chip, e isso foi verificado em vez de su
        neste harness): >20 min sem escrever um byte e sem criar run dir, com o pwsh vivo e
        crescendo em memoria (1.0 GB) — ou seja trabalhando, nao travado em I/O. A MESMA
        lane termina em minutos no worktree do chip. Nao diagnostiquei a causa; reporto o
-       observavel. Por isso o set-diff da secao 6 foi fechado por CONSTRUCAO e o numero 54
-       do pack ficou sem corroboracao empirica minha — o que esta dito la, em vez de eu
-       imprimir um 54 que nao medi.
+       observavel.
+       ATUALIZADO: a segunda metade desta frase era verdadeira quando escrita e deixou de
+       ser. O set-diff da secao 6 foi fechado por CONSTRUCAO, mas o 54 NAO ficou mais sem
+       corroboracao empirica minha — as rodadas 2 e 3 mediram 54 no worktree limpo, com
+       breakdown e com GOV_PRODUCTION_PANIC=0. O numero do pack deixou de ser adotado e
+       passou a ser medido. A lane continua nao terminando no checkout do hub; e so isso
+       que este finding afirma agora.
 
   F-3. As tres excecoes de production-panic existentes sao todas "temporary" com
        removal_owner. Nao ha forma de registrar uma excecao PERMANENTE e correta (secao 6).

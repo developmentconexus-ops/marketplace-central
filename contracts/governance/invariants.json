@@ -23,6 +23,14 @@
       "removal_owner": "M-09"
     },
     {
+      "id": "production-panic-apierror-recover-abort-handler",
+      "rule_id": "production-panic",
+      "paths": ["apps/server_core/internal/platform/apierror/recover.go"],
+      "occurrences": [{ "path": "apps/server_core/internal/platform/apierror/recover.go", "symbol": "Recover", "fingerprint": "panic(rec)", "count": 1 }],
+      "reason": "Recover must re-raise http.ErrAbortHandler: it is the net/http contract for aborting the connection silently; converting it into a 500 envelope would be the defect. The panic is a deliberate pass-through of the sentinel, not a failure path. Removal = the production-panic checker learning to sanction the ErrAbortHandler re-raise idiom (HARNESS-DEBTS D-9), then this entry dies.",
+      "removal_owner": "HARNESS-D-9"
+    },
+    {
       "id": "migration-prefix-0021-duplicate",
       "rule_id": "migration-prefix",
       "paths": ["apps/server_core/migrations/0021_integration_operation_run_evidence.sql", "apps/server_core/migrations/0021_integrations_provider_auth_strategy_shopee_partner.sql"],
