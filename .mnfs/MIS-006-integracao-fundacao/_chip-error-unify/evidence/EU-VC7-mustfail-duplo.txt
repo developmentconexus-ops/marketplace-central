@@ -43,8 +43,42 @@ INJECAO (produtor, nao teste — o teste nao foi tocado):
   hermetica. O vermelho acima e de teste de UNIDADE, e a atribuicao vem do par
   (pacote, nome do teste) impresso pelo proprio go test — que e atribuivel, ao contrario
   de `failure_token=package=` sozinho (banco unico compartilhado, licao registrada).
-  A lane hermetica roda no VC-8; se o hub exigir o token literal, o mesmo defeito pode
-  ser reinjetado sob a lane. Nao afirmo ter produzido um token que nao produzi.
+  A lane hermetica roda no VC-8. Nao afirmo ter produzido um token que nao produzi.
+
+  DESVIO FECHADO POR MEDICAO NO VC-8 — e o resultado inverteu a hipotese acima.
+  Eu havia escrito que "o mesmo defeito pode ser reinjetado sob a lane". Tentei fazer
+  exatamente isso. NAO FUNCIONA, e o porque e um achado de harness:
+
+  [ran] injetado de novo o shape plano em http_handler.go (// MUSTFAIL-VC7A-LANE),
+        pouso confirmado por grep, e entao a lane hermetica:
+        -> status=passed · LANE_EXIT=0        <- a lane NAO viu o defeito
+
+  Antes de concluir qualquer coisa, provei que a lane SABE ficar vermelha (senao um
+  passed nao vale nada): injetado t.Fatal("MUSTFAIL-VC8-LANE") em
+  TestListingsRefreshSeedsIC02RowsAndClosesMissing ->
+        LANE_EXIT=1 · status=blocked · HPG_TEST_FAILED
+        failure_token=test=TestListingsRefreshSeedsIC02RowsAndClosesMissing
+        failure_token=package=marketplace-central/apps/server_core/tests/integration
+  Ou seja: a lane produz o token literal quando o alvo esta no escopo dela. O passed
+  do paragrafo anterior e escopo, nao insensibilidade.
+
+  CAUSA, lida no codigo e nao inferida — scripts/harness/Postgres.psm1:
+    linha 276  $TestArguments = @('test','-tags=integration')
+                 + @(Get-HarnessIntegrationTestPackages ...) + @('-count=1')
+    linhas 42-60  Get-HarnessIntegrationTestPackages devolve './tests/integration' MAIS
+                 apenas diretorios de modulo cujos *_test.go carregam
+                 '//go:build ... integration' nas 5 PRIMEIRAS linhas.
+  catalog/transport nao tem nenhum arquivo com essa tag, entao seus testes de unidade
+  NUNCA sao compilados pela lane.
+
+  CONSEQUENCIA, que vale alem deste chip: a lane hermetica NAO E SUPERCONJUNTO da lane
+  de unidade. O status=passed do VC-8 da cobertura ZERO sobre os pins de envelope. Ler
+  "integracao passou" como "o shape do fio esta protegido" e falso por construcao do
+  seletor de pacotes. O vermelho de unidade do VC-7(a) era, e segue sendo, o instrumento
+  correto — agora sustentado por medicao positiva, nao por alegacao minha.
+
+  [ran] reversao das duas injecoes -> grep -rn MUSTFAIL apps packages = 0
+        git status --porcelain = vazio (nenhum fonte sujo)
 
 ================================================================
 (b) O GREP-GATE SUSTENTANDO — as duas metades, VC-1 e VC-6
