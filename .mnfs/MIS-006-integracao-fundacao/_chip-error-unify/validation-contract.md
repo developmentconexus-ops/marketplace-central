@@ -4,10 +4,16 @@ Critérios estáveis. Todo criterio exige evidência medida (comando + saída) e
 `evidence/` — alegação sem observável = não cumprido (R-24).
 
 ## VC-1 — Um único produtor de erro no backend
-Grep-censo pós: zero helper local de erro em `internal/modules/*/transport` e adapters
-HTTP (lista dos 20 do pack = todos mortos); todo sítio de erro chama
-`platform/apierror`. Evidência: `evidence/EU-census-backend.txt` com grep exato
-(`writeError|write.*Error\(w`) e contagem 0 fora de `platform/apierror` + testes.
+Grep-censo pós: zero produtor local de erro em `internal/modules/*/transport` e adapters
+HTTP; todo sítio de erro chama `platform/apierror`. **A POPULAÇÃO é a medida do chip, não
+os 20 do pack** (emenda 2026-07-31 por ESCALATION do chip: censo real = 34 funções — 20
+terminais + 14 wrappers delegantes — + 1 sítio inline sem helper nomeado em
+catalog/transport/http_handler.go:440 + o fallback plain-text de
+platform/httpx/json.go:12). Evidência: `evidence/EU-census-backend.txt` reconciliando
+POPULAÇÃO vs EXTRAÇÃO com os DOIS números impressos (WriteJSON call-sites ≥400,
+`http.Error(`, `w.WriteHeader(4|5)`), e contagem 0 de produtor fora de
+`platform/apierror` + testes. O "20" do pack fica visivelmente como subconjunto
+histórico, nunca como o todo.
 
 ## VC-2 — Shape universal no fio
 Para CADA um dos 12 módulos transport: 1 teste de unidade pinando o JSON COMPLETO do
