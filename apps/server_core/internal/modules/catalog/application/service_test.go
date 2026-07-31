@@ -17,12 +17,8 @@ type fakeProductReader struct {
 	productsByID           map[string]domain.Product
 }
 
-func (f *fakeProductReader) ListProducts(context.Context) ([]domain.Product, error) { return nil, nil }
 func (f *fakeProductReader) GetProduct(context.Context, string) (domain.Product, error) {
 	return domain.Product{}, nil
-}
-func (f *fakeProductReader) SearchProducts(context.Context, string) ([]domain.Product, error) {
-	return nil, nil
 }
 func (f *fakeProductReader) ListTaxonomyNodes(context.Context) ([]domain.TaxonomyNode, error) {
 	return nil, nil

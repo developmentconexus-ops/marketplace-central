@@ -25,26 +25,12 @@ import (
 // stubCatalogReader satisfies catalog ports.ProductReader with in-memory no-ops.
 type stubCatalogReader struct{}
 
-func (r stubCatalogReader) ListCanonicalProducts(_ context.Context) ([]catalogdomain.CanonicalProduct, error) {
-	return []catalogdomain.CanonicalProduct{}, nil
-}
 func (r stubCatalogReader) GetCanonicalProduct(_ context.Context, _ catalogdomain.InternalProductID) (catalogdomain.CanonicalProduct, error) {
 	return catalogdomain.CanonicalProduct{}, nil
-}
-func (r stubCatalogReader) SearchCanonicalProducts(_ context.Context, _ string) ([]catalogdomain.CanonicalProduct, error) {
-	return []catalogdomain.CanonicalProduct{}, nil
-}
-
-func (r stubCatalogReader) ListProducts(_ context.Context) ([]catalogdomain.Product, error) {
-	return nil, nil
 }
 
 func (r stubCatalogReader) GetProduct(_ context.Context, _ string) (catalogdomain.Product, error) {
 	return catalogdomain.Product{}, nil
-}
-
-func (r stubCatalogReader) SearchProducts(_ context.Context, _ string) ([]catalogdomain.Product, error) {
-	return nil, nil
 }
 
 func (r stubCatalogReader) ListTaxonomyNodes(_ context.Context) ([]catalogdomain.TaxonomyNode, error) {

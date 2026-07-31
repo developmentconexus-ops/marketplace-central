@@ -265,9 +265,11 @@ export interface CatalogSearchPageOptions {
 }
 
 /**
- * Error code a catalog page read (list, by-ids, search) answers with on a 400.
- * The wire shape is the flat CatalogPageErrorBody below, not ErrorResponse —
- * catalog routes predate the envelope and answer `{"error": "<code>"}` directly.
+ * Error code a catalog page read (list, by-ids, search, counts) answers with on
+ * any non-2xx (400 for the invalid_* codes, 503 source_unavailable, 504
+ * deadline_exceeded, 500 internal_error). The wire shape is the flat
+ * CatalogPageErrorBody below, not ErrorResponse — catalog routes predate the
+ * envelope and answer `{"error": "<code>"}` directly.
  */
 export type CatalogPageErrorCode =
   | "invalid_cursor"
@@ -277,7 +279,8 @@ export type CatalogPageErrorCode =
   | "invalid_ids"
   | "invalid_include_all"
   | "source_unavailable"
-  | "deadline_exceeded";
+  | "deadline_exceeded"
+  | "internal_error";
 
 export interface CatalogPageErrorBody {
   error: CatalogPageErrorCode;

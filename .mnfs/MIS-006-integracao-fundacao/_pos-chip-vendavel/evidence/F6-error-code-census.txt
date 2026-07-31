@@ -30,7 +30,8 @@ invalid_q             :200   strings.TrimSpace(q) == "" na rota de busca
                             (:462), operationId searchCatalogProductFacts.
 
 Nenhum código especulativo: os 8 acima são TODOS os `catalogPageQueryError` do módulo,
-e todos alcançam a rede pelo mesmo escritor.
+e todos alcançam a rede pelo mesmo escritor. (Ver UPDATE no fim: a implementação do F6
+introduziu um 9º código, internal_error, fora da família catalogPageQueryError.)
 
 ACHADO NOVO — allowed_range é dado morto em dois sítios
 ------------------------------------------------------------------------------
@@ -55,3 +56,25 @@ Duas saídas, e NENHUMA foi tomada (shell morto; e a primeira muda payload):
 
 (a) é mudança de contrato (payload novo em 2 códigos). (b) é deleção de dado morto.
 Decisão é do hub — REQUEST enviado.
+
+==============================================================================
+UPDATE pós-implementação (hub takeover, gate P6 round 1)
+==============================================================================
+Ruling A-29: saída (a) tomada — writeCatalogPageError serializa allowed_range para TODO
+código que o carrega (:403-405); descrição do schema corrigida. O achado acima está
+RESOLVIDO nesta árvore.
+
+9º código — internal_error (novo, introduzido pela reescrita do writer no F6 @86fc6400):
+------------------------------------------------------------------------------
+internal_error        :429   fall-through de writeCatalogPageError — erro que não é
+                             catalogPageQueryError, nem DeadlineExceeded, nem
+                             ReadErrorSourceUnavailable. HTTP 500. Substitui o
+                             comportamento antigo de responder 503 source_unavailable
+                             a QUALQUER erro não classificado (falha nossa vestida de
+                             outage da fonte). Fora da família catalogPageQueryError —
+                             por isso não constava no censo estático acima.
+
+Declarado nos 3 lados no round 1 do gate: enum CatalogPageErrorResponse (OpenAPI),
+resposta "500" nas rotas list/search/counts (counts também ganhou "400" e "504" que já
+alcançava), e CatalogPageErrorCode no sdk-runtime. Censo fechado: 9 códigos, todos com
+sítio emissor nomeado, todos declarados.

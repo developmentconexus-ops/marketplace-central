@@ -420,6 +420,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CatalogPageErrorResponse'
+        "500":
+          description: Internal fault reading the catalog; not a source outage.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogPageErrorResponse'
   /catalog/products/counts:
     get:
       summary: Count configured sellable and total catalog products
@@ -432,8 +438,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CatalogAssortmentCounts'
+        "400":
+          description: >-
+            Invalid query parameter; the error field names which one
+            (erp_source).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogPageErrorResponse'
         "503":
           description: Catalog source unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogPageErrorResponse'
+        "504":
+          description: Interactive deadline exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogPageErrorResponse'
+        "500":
+          description: Internal fault reading the catalog; not a source outage.
           content:
             application/json:
               schema:
@@ -539,6 +565,12 @@ paths:
                 $ref: '#/components/schemas/CatalogPageErrorResponse'
         "504":
           description: Interactive deadline exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogPageErrorResponse'
+        "500":
+          description: Internal fault reading the catalog; not a source outage.
           content:
             application/json:
               schema:
@@ -3956,7 +3988,8 @@ components:
         error:
           type: string
           enum: [invalid_cursor, invalid_limit, invalid_q, invalid_erp_source,
-                 invalid_ids, invalid_include_all, source_unavailable, deadline_exceeded]
+                 invalid_ids, invalid_include_all, source_unavailable, deadline_exceeded,
+                 internal_error]
         allowed_range:
           type: string
           description: >-
