@@ -184,7 +184,7 @@ func NewListing(input ListingInput) (Listing, error) {
 	if title == "" {
 		return Listing{}, ErrTitleRequired
 	}
-	if !input.Status.IsValid() {
+	if !input.Status.isNonEmpty() {
 		return Listing{}, ErrListingStatusInvalid
 	}
 	if !input.SyncState.IsValid() {
@@ -222,6 +222,12 @@ func NewListing(input ListingInput) (Listing, error) {
 	}, nil
 }
 
+// IsValid is the CLOSED-vocabulary check: it stays a fixed switch over the
+// named constants because it also backs query-filter grammar validation
+// (IC-02, filter.go SetFilterValue / transport ParseListingQuery), a
+// SEPARATE contract that intentionally rejects unknown values like
+// "?status=banana" as a bad request. Loosening this method breaks IC-02
+// (TestParseListingQueryUsesIC02Grammar / TestSetFilterValueGrammar).
 func (s ListingStatus) IsValid() bool {
 	switch s {
 	case ListingStatusActive, ListingStatusPaused, ListingStatusClosed, ListingStatusUnknown,
@@ -230,6 +236,16 @@ func (s ListingStatus) IsValid() bool {
 	default:
 		return false
 	}
+}
+
+// isNonEmpty is the OPEN-vocabulary check used by NewListing: F-01/F-02
+// already dropped the DB CHECK and the writer persists provider status
+// verbatim (IC-07 — ML emits real statuses beyond the 8 named constants,
+// e.g. "suspended"). NewListing must not silently reject those; it only
+// requires a non-empty (trimmed) value, distinct from IsValid()'s closed
+// switch above.
+func (s ListingStatus) isNonEmpty() bool {
+	return strings.TrimSpace(string(s)) != ""
 }
 
 func (s ListingSyncState) IsValid() bool {
