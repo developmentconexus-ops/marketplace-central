@@ -267,3 +267,31 @@ junto do `HUB-SESSION:`, a linha de mecanismo (ferramenta + como chamar); (b) o
 `harness-worker` trazer o protocolo de retorno no próprio skill, para não depender de cada
 prompt repetir; (c) o hub nunca assumir silêncio = trabalho não terminado — silêncio é
 indistinguível de canal quebrado, exatamente como pulado-vs-verde na lane hermética (D-10).
+
+**D-14. Guard de arquitetura por NOME de símbolo tem porta dos fundos silenciosa**
+(MIS-007 M-03, 2026-08-01, achado do hub no gate de merge): o `archguard` do M-02 F-04
+prova que nenhum sítio interativo novo alcança o ML, e é honesto — `mlExcludedSymbols` é
+map de nomes EXATOS (sem wildcard), cada entrada carrega razão, e
+`TestRealRepoInteractiveMLSites_MatchesAllowlist` amarra `raw == len(mlAllowlist) +
+len(mlExcludedSymbols)` E exige que cada excluído ainda seja achado no scan cru, então nem
+entrada morta nem sítio novo escondido passam. O resíduo é outro: a chave da exclusão é o
+NOME do construtor, não a CLASSE DA ROTA. `newOrdersBuyerFiscalReaderAdapter` está excluído
+porque hoje só alimenta `ordersIngestSvc` (batch, `POST /orders/import`); se alguém amanhã
+religar o resultado desse MESMO construtor num caminho interativo, o guard cala — o símbolo
+continua na lista. Não é regressão (antes ele estava na allowlist, igualmente permitido),
+mas a promessa do guard ("nenhum sítio interativo não-allowlistado alcança o ML") é mais
+larga que o que ele mede. Classe: **guard que mede o PRODUTOR quando a alegação é sobre o
+CONSUMIDOR** — mesma família de `guard parcial sob frase total`. Conserto de classe: chavear
+a exclusão pelo par (símbolo, consumidor) — o teste segue o identificador até o campo da
+struct de serviço que o recebe e reprova se ele chegar num serviço registrado fora de
+`registerBatchRoutes`. Enquanto não existir, a doc do guard tem que dizer que a garantia é
+"nenhum sítio interativo NOVO", não "nenhum caminho interativo".
+
+**D-15. Porta implementada sem chamador de produção e sem guard estrutural**
+(MIS-007 M-03, 2026-08-01, C4): `OrderRepository.UpsertOrders` satisfaz `ports.OrderStore`
+e não tem nenhum chamador de produção depois que F-02 fez `IngestOrder` virar o writer
+único (ADR-04). Nada no repo impede um segundo caminho de escrita de orders renascer por
+esse método — a garantia "um writer só" hoje é convenção, não guard. Classe: **superfície
+morta que ainda satisfaz uma porta é um writer latente**. Conserto: ou apagar o método, ou
+um teste que amarre a lista de implementações de `ports.OrderStore` alcançáveis a partir da
+composição.
