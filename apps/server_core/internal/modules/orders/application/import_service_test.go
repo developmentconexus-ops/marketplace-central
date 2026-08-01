@@ -2,6 +2,8 @@ package application
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -10,161 +12,161 @@ import (
 
 type stubOrderSource struct {
 	items []ordersdomain.OrderIngestionSnapshot
+	err   error
 }
 
 func (s stubOrderSource) ListOrders(context.Context, string, int) ([]ordersdomain.OrderIngestionSnapshot, error) {
-	return s.items, nil
+	return s.items, s.err
 }
 
+// stubLinkReader is a package-wide test double for ports.LinkReader, kept in this file (as
+// before the F-02 rewrite) since ingest_service_test.go also needs it.
 type stubLinkReader struct {
 	links map[string]ordersdomain.ItemLink
+	err   error
 }
 
 func (s stubLinkReader) ResolveLinks(context.Context, string, []ordersdomain.ListingIdentity) (map[string]ordersdomain.ItemLink, error) {
-	return s.links, nil
+	return s.links, s.err
 }
 
-type stubOrderStore struct {
-	orders []ordersdomain.MarketplaceOrder
+// stubOrderIngestor fakes ports.OrderIngestor: errFor names which provider_order_id should fail
+// (and with what error), recording every call so tests can assert exactly which ids Import
+// enumerated and delegated.
+type stubOrderIngestor struct {
+	errFor map[string]error
+	calls  []string
 }
 
-func (s *stubOrderStore) UpsertOrders(_ context.Context, orders []ordersdomain.MarketplaceOrder) (int, int, error) {
-	s.orders = orders
-	return len(orders), 0, nil
+func (s *stubOrderIngestor) IngestOrder(_ context.Context, _ string, providerOrderID string) error {
+	s.calls = append(s.calls, providerOrderID)
+	if s.errFor != nil {
+		if err, ok := s.errFor[providerOrderID]; ok {
+			return err
+		}
+	}
+	return nil
 }
 
-func (s *stubOrderStore) ListOrders(context.Context, string, int) ([]ordersdomain.MarketplaceOrder, error) {
-	return s.orders, nil
+func snapshotWithID(providerOrderID string) ordersdomain.OrderIngestionSnapshot {
+	return ordersdomain.OrderIngestionSnapshot{
+		ProviderCode:    "mercado_livre",
+		ProviderOrderID: providerOrderID,
+		FetchedAt:       time.Date(2026, 7, 9, 12, 0, 0, 0, time.UTC),
+	}
 }
 
-func TestImportServiceNormalizesLinkQualityAndPayments(t *testing.T) {
-	now := time.Date(2026, 7, 9, 12, 0, 0, 0, time.UTC)
-	store := &stubOrderStore{}
-	service := NewImportService(ImportServiceConfig{
-		Source: stubOrderSource{items: []ordersdomain.OrderIngestionSnapshot{{
-			ProviderCode:         "mercado_livre",
-			ProviderOrderID:      "2001",
-			ProviderStatus:       "paid",
-			ProviderStatusDetail: "accredited",
-			ProviderCreatedAt:    &now,
-			ProviderUpdatedAt:    &now,
-			FetchedAt:            now,
-			ShippingID:           "ship-1",
-			Tags:                 []string{"paid"},
-			Items: []ordersdomain.OrderIngestionItem{{
-				ProviderItemID:      "MLB123",
-				ProviderVariationID: "VAR1",
-				SellerSKU:           "SKU-1",
-				Title:               "Produto",
-				Quantity:            2,
-				SaleFeeAmount:       floatPtr(11.07),
-			}},
-			Payments: []ordersdomain.OrderIngestionPayment{{
-				PaymentID:         "pay-1",
-				Status:            "approved",
-				TransactionAmount: floatPtr(125.92),
-				TotalPaidAmount:   floatPtr(125.92),
-			}},
-		}}},
-		Links: stubLinkReader{links: map[string]ordersdomain.ItemLink{
-			"inst-1|MLB123|VAR1": {
-				Quality:           ordersdomain.LinkQualityResolved,
-				InternalProductID: intPtr(321),
-			},
-		}},
-		Store: store,
-		Now:   func() time.Time { return now },
-	})
+// floatPtr is a package-wide test helper (also used by enrich_service_test.go /
+// enrich_link_refresh_test.go — F-03's fixtures) kept here since this file owned it before the
+// F-02 rewrite.
+func floatPtr(v float64) *float64 { return &v }
+func intPtr(v int) *int           { return &v }
 
-	result, err := service.Import(context.Background(), ImportOrdersInput{
-		InstallationID: "inst-1",
-		Limit:          1,
-	})
+func TestImportServiceIngestsEachEnumeratedOrder(t *testing.T) {
+	source := stubOrderSource{items: []ordersdomain.OrderIngestionSnapshot{
+		snapshotWithID("2001"), snapshotWithID("2002"), snapshotWithID("2003"),
+	}}
+	ingestor := &stubOrderIngestor{}
+	service := NewImportService(ImportServiceConfig{Source: source, Ingestor: ingestor})
+
+	result, err := service.Import(context.Background(), ImportOrdersInput{InstallationID: "inst-1", Limit: 3})
 	if err != nil {
 		t.Fatalf("Import() error = %v", err)
 	}
-	if result.ImportedCount != 1 {
-		t.Fatalf("imported count = %d", result.ImportedCount)
+	if result.ImportedCount != 3 || result.SkippedCount != 0 {
+		t.Fatalf("counts = imported %d skipped %d, want 3/0", result.ImportedCount, result.SkippedCount)
 	}
-	if len(store.orders) != 1 {
-		t.Fatalf("stored orders = %d", len(store.orders))
+	want := []string{"2001", "2002", "2003"}
+	if len(ingestor.calls) != len(want) {
+		t.Fatalf("ingestor calls = %v, want %v", ingestor.calls, want)
 	}
-	item := store.orders[0].Items[0]
-	if item.LinkQuality != ordersdomain.LinkQualityResolved {
-		t.Fatalf("link quality = %s", item.LinkQuality)
-	}
-	if item.InternalProductID == nil || *item.InternalProductID != 321 {
-		t.Fatalf("internal product id = %#v", item.InternalProductID)
-	}
-	payment := store.orders[0].Payments[0]
-	if payment.TotalPaidAmount == nil || *payment.TotalPaidAmount != 125.92 {
-		t.Fatalf("total paid amount = %#v", payment.TotalPaidAmount)
+	for i, id := range want {
+		if ingestor.calls[i] != id {
+			t.Fatalf("ingestor calls = %v, want %v", ingestor.calls, want)
+		}
 	}
 }
 
-func TestImportServiceDefaultsMissingLinkQuality(t *testing.T) {
-	now := time.Date(2026, 7, 9, 12, 0, 0, 0, time.UTC)
-	closedAt := now.Add(-time.Hour)
-	store := &stubOrderStore{}
-	service := NewImportService(ImportServiceConfig{
-		Source: stubOrderSource{items: []ordersdomain.OrderIngestionSnapshot{{
-			ProviderCode:         "mercado_livre",
-			ProviderOrderID:      "2002",
-			ProviderStatus:       "cancelled",
-			ProviderStatusDetail: "buyer_cancelled",
-			ProviderClosedAt:     &closedAt,
-			ProviderUpdatedAt:    &now,
-			FetchedAt:            now,
-			CancellationDetail:   "cancelled_by_buyer",
-			Items: []ordersdomain.OrderIngestionItem{{
-				ProviderItemID: "MLB999",
-				Quantity:       1,
-			}},
-		}}},
-		Links: stubLinkReader{links: map[string]ordersdomain.ItemLink{}},
-		Store: store,
-		Now:   func() time.Time { return now },
-	})
+// TestImportServiceCountsOrderUnavailableAsSkipWithoutFailingRun is the brief's named scenario
+// (e): a 403/404 third-party order classified by IngestOrder as domain.ErrOrderUnavailable must
+// be counted as a skip, and the run must still succeed and continue ingesting the rest.
+func TestImportServiceCountsOrderUnavailableAsSkipWithoutFailingRun(t *testing.T) {
+	source := stubOrderSource{items: []ordersdomain.OrderIngestionSnapshot{
+		snapshotWithID("2001"), snapshotWithID("2002"),
+	}}
+	ingestor := &stubOrderIngestor{errFor: map[string]error{
+		"2001": fmt.Errorf("%w: installation=inst-1 provider_order_id=2001: %w", ordersdomain.ErrOrderUnavailable, errors.New("provider unauthorized")),
+	}}
+	service := NewImportService(ImportServiceConfig{Source: source, Ingestor: ingestor})
 
-	if _, err := service.Import(context.Background(), ImportOrdersInput{InstallationID: "inst-1", Limit: 1}); err != nil {
+	result, err := service.Import(context.Background(), ImportOrdersInput{InstallationID: "inst-1", Limit: 2})
+	if err != nil {
+		t.Fatalf("Import() error = %v, want run to succeed despite one unavailable order", err)
+	}
+	if result.ImportedCount != 1 || result.SkippedCount != 1 {
+		t.Fatalf("counts = imported %d skipped %d, want 1/1", result.ImportedCount, result.SkippedCount)
+	}
+	if len(ingestor.calls) != 2 {
+		t.Fatalf("ingestor calls = %v, want both orders attempted", ingestor.calls)
+	}
+}
+
+// TestImportServiceCountsAnyIngestFailureAsSkip: IC-06 "erro por item no ingest: registra, segue
+// o batch" is not scoped to the 403/404 case alone — any per-order failure (a transient shipment
+// read, a DB blip) must not abort the whole run either.
+func TestImportServiceCountsAnyIngestFailureAsSkip(t *testing.T) {
+	source := stubOrderSource{items: []ordersdomain.OrderIngestionSnapshot{
+		snapshotWithID("3001"), snapshotWithID("3002"),
+	}}
+	ingestor := &stubOrderIngestor{errFor: map[string]error{
+		"3001": errors.New("provider temporarily unavailable"),
+	}}
+	service := NewImportService(ImportServiceConfig{Source: source, Ingestor: ingestor})
+
+	result, err := service.Import(context.Background(), ImportOrdersInput{InstallationID: "inst-1", Limit: 2})
+	if err != nil {
+		t.Fatalf("Import() error = %v, want run to succeed despite one transient failure", err)
+	}
+	if result.ImportedCount != 1 || result.SkippedCount != 1 {
+		t.Fatalf("counts = imported %d skipped %d, want 1/1", result.ImportedCount, result.SkippedCount)
+	}
+}
+
+func TestImportServiceSkipsBlankProviderOrderID(t *testing.T) {
+	source := stubOrderSource{items: []ordersdomain.OrderIngestionSnapshot{
+		snapshotWithID(""), snapshotWithID("4001"),
+	}}
+	ingestor := &stubOrderIngestor{}
+	service := NewImportService(ImportServiceConfig{Source: source, Ingestor: ingestor})
+
+	result, err := service.Import(context.Background(), ImportOrdersInput{InstallationID: "inst-1", Limit: 2})
+	if err != nil {
 		t.Fatalf("Import() error = %v", err)
 	}
-	if got := store.orders[0].Items[0].LinkQuality; got != ordersdomain.LinkQualityMissing {
-		t.Fatalf("link quality = %s", got)
+	if result.ImportedCount != 1 || result.SkippedCount != 0 {
+		t.Fatalf("counts = imported %d skipped %d, want 1/0 (blank id neither imported nor skipped)", result.ImportedCount, result.SkippedCount)
 	}
-	stored := store.orders[0]
-	if stored.ProviderStatus != "cancelled" || stored.ProviderStatusDetail != "buyer_cancelled" {
-		t.Fatalf("cancelled status = %q/%q", stored.ProviderStatus, stored.ProviderStatusDetail)
-	}
-	if stored.ProviderClosedAt == nil || !stored.ProviderClosedAt.Equal(closedAt) {
-		t.Fatalf("provider closed at = %v, want %v", stored.ProviderClosedAt, closedAt)
-	}
-	if stored.CancellationDetail != "cancelled_by_buyer" {
-		t.Fatalf("cancellation detail = %q", stored.CancellationDetail)
+	if len(ingestor.calls) != 1 || ingestor.calls[0] != "4001" {
+		t.Fatalf("ingestor calls = %v, want only the non-blank id", ingestor.calls)
 	}
 }
 
-func TestImportServiceDerivesSafeProviderReference(t *testing.T) {
-	now := time.Date(2026, 7, 9, 12, 0, 0, 0, time.UTC)
-	store := &stubOrderStore{}
-	service := NewImportService(ImportServiceConfig{
-		Source: stubOrderSource{items: []ordersdomain.OrderIngestionSnapshot{{
-			ProviderCode:    "mercado_livre",
-			ProviderOrderID: "2003",
-			FetchedAt:       now,
-		}}},
-		Links: stubLinkReader{links: map[string]ordersdomain.ItemLink{}},
-		Store: store,
-		Now:   func() time.Time { return now },
-	})
+func TestImportServiceFailsRunWhenSourceListOrdersErrors(t *testing.T) {
+	source := stubOrderSource{err: errors.New("provider list failed")}
+	ingestor := &stubOrderIngestor{}
+	service := NewImportService(ImportServiceConfig{Source: source, Ingestor: ingestor})
 
-	if _, err := service.Import(context.Background(), ImportOrdersInput{InstallationID: "inst-1", Limit: 1}); err != nil {
-		t.Fatalf("Import() error = %v", err)
+	if _, err := service.Import(context.Background(), ImportOrdersInput{InstallationID: "inst-1", Limit: 2}); err == nil {
+		t.Fatal("Import() error = nil, want enumeration failure to fail the run")
 	}
-	if got := store.orders[0].RawProviderRef; got != "/orders/2003" {
-		t.Fatalf("raw provider reference = %#v, want exact safe reference", got)
+	if len(ingestor.calls) != 0 {
+		t.Fatalf("ingestor calls = %v, want none when enumeration itself fails", ingestor.calls)
 	}
 }
 
-func floatPtr(v float64) *float64 { return &v }
-func intPtr(v int) *int           { return &v }
+func TestImportServiceRequiresInstallationID(t *testing.T) {
+	service := NewImportService(ImportServiceConfig{Source: stubOrderSource{}, Ingestor: &stubOrderIngestor{}})
+	if _, err := service.Import(context.Background(), ImportOrdersInput{}); err == nil {
+		t.Fatal("Import() error = nil, want missing installation id to fail")
+	}
+}

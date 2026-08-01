@@ -72,16 +72,26 @@ type Site struct {
 
 // mlAllowlist is the CURRENT, exhaustive list of interactive-request-time
 // code paths permitted to reach the Mercado Livre client. Verified
-// file:line facts (2026-08, MIS-007 F-04-read-guard-allowlist research):
+// file:line facts (2026-08, MIS-007 F-04-read-guard-allowlist research;
+// A/B retired 2026-08, MIS-007 M-03 F-03-read-path-switch):
 //
-//	A - GET /orders (list): orders/transport/http_handler.go handleReadList
-//	    -> orders/application/enrich_service.go Enrich -> fetchShipment ->
-//	    composition wiring (root.go, THIS site) ->
-//	    composition/orders_adapters.go GetShipment -> ML client.
-//	B - GET /orders/{id} (detail): http_handler.go detail handler ->
-//	    enrich_service.go EnrichOne -> resolveBuyerFiscal -> composition
-//	    wiring (root.go, THIS site) -> orders_adapters.go GetBuyerFiscal ->
-//	    ML client.
+//	A - RETIRED (F-03). GET /orders (list) shipment enrichment used to reach
+//	    ML live via composition/orders_adapters.go's ordersShipmentReaderAdapter
+//	    (newOrdersShipmentReaderAdapter). It now reads order_shipments
+//	    (migration 0088, populated by F-02's IngestOrder) through
+//	    orders/adapters/postgres.ShipmentReader -- no ML capability argument at
+//	    the wiring site, so the symbol no longer appears in root.go at all
+//	    (deleted, not merely excluded).
+//	B - RETIRED from this allowlist, RECLASSIFIED as batch-only (F-03).
+//	    GET /orders/{id} (detail) buyer-fiscal enrichment used to reach ML live
+//	    the same way (newOrdersBuyerFiscalReaderAdapter). The INTERACTIVE path
+//	    now reads the buyer_* columns on orders_marketplace_orders (migration
+//	    0089) through orders/adapters/postgres.BuyerFiscalReader. The
+//	    newOrdersBuyerFiscalReaderAdapter constructor itself is NOT deleted --
+//	    it still backs ordersIngestSvc.BuyerFiscal for POST /orders/import
+//	    batch ingest (root.go, F-02) -- so the raw detector still finds it; it
+//	    moves to mlExcludedSymbols below with that reason, replacing this
+//	    allowlist entry (not simply added alongside it).
 //	C - POST /pricing/decompose: pricing/transport/calc_handler.go
 //	    handleDecompose -> live tariff resolver -> composition wiring
 //	    (root.go, THIS site) -> ML catalog-match (category resolution).
@@ -93,12 +103,9 @@ type Site struct {
 // wired the same way, TestRealRepoInteractiveMLSites_MatchesAllowlist fails
 // and names the offending file:line:symbol (see
 // TestFixture_FifthSiteIsDetectedAndNamed for the proof this is not
-// vacuous). If A-D is later reduced (M-03/M-07 retire the mirror-read path),
-// shrinking this slice is all that is required -- see
-// TestFixture_ShrunkAllowlistStillPasses.
+// vacuous). If C-D is later reduced, shrinking this slice is all that is
+// required -- see TestFixture_ShrunkAllowlistStillPasses.
 var mlAllowlist = []Site{
-	{Name: "orders.list.shipment", File: "internal/composition/root.go", Symbol: "newOrdersShipmentReaderAdapter"},
-	{Name: "orders.detail.buyer_fiscal", File: "internal/composition/root.go", Symbol: "newOrdersBuyerFiscalReaderAdapter"},
 	{Name: "pricing.decompose.category_resolver", File: "internal/composition/root.go", Symbol: "newPricingCategoryResolverAdapter"},
 	{Name: "pricing.solve.commission_quoter", File: "internal/composition/root.go", Symbol: "newPricingCommissionQuoterAdapter"},
 }
@@ -113,6 +120,12 @@ var mlAllowlist = []Site{
 // really does find each excluded symbol (i.e. this list is not dead code).
 var mlExcludedSymbols = map[string]string{
 	"newMarketPriceIntelCollectorAdapter": "market/* competitor-price collection is MIS-008 scope, not MIS-007 F-04; tracked separately",
+	// The 3 entries below are F-02/F-03 (MIS-007 M-03) batch-only ingest wiring:
+	// POST /orders/import is httpx.BatchRouteClass (registerBatchRoutes), out of
+	// this guard's interactive-only scope per the package doc comment.
+	"newOrdersOrderDetailReaderAdapter":    "batch-only: feeds ordersIngestSvc.OrderDetail for POST /orders/import (F-02), not an interactive request-time path",
+	"newOrdersShipmentDetailReaderAdapter": "batch-only: feeds ordersIngestSvc.ShipmentDetail for POST /orders/import (F-02), not an interactive request-time path",
+	"newOrdersBuyerFiscalReaderAdapter":    "RECLASSIFIED by F-03 (was allowlist entry orders.detail.buyer_fiscal): the interactive GET /orders/{id} path no longer calls this constructor's result -- it now reads Postgres via orders/adapters/postgres.BuyerFiscalReader. The remaining root.go call site feeds ordersIngestSvc.BuyerFiscal for POST /orders/import batch ingest only (F-02), same batch-only reasoning as the two entries above",
 }
 
 // mlCapabilityVars are the local identifiers in root.go bound to a concrete

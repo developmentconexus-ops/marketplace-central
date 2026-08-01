@@ -59,6 +59,35 @@ type MarketplaceOrder struct {
 	Payments             []MarketplaceOrderPayment `json:"payments"`
 	CreatedAt            time.Time                 `json:"created_at"`
 	UpdatedAt            time.Time                 `json:"updated_at"`
+
+	// PackID/ProviderShipmentID/Bucket/DateLastUpdatedML/Buyer* below are the migration 0089
+	// extension (IC-03/F-02). ProviderShipmentID is a soft link to order_shipments (0088 carries
+	// no FK); nil when the order has no shipping.id. Bucket is domain.DeriveOrderBucket's OUTPUT,
+	// computed once at ingest time and persisted — never re-derived in SQL (order_repo.go
+	// GetOrderBucketCounts already documents why the derivation stays in Go). DateLastUpdatedML
+	// is the provider's own date_last_updated, verbatim — the IC-06 incremental-sync watermark,
+	// never defaulted from ProviderUpdatedAt's last_updated fallback.
+	//
+	// The 9 Buyer* fields are the flat buyer-fiscal columns 0089 adds (BuyerFiscalReader's
+	// nested BuyerFiscalInfo/BuyerFiscalAddress shape, flattened for storage). StateCode only —
+	// 0089 deliberately excludes state_name/uf_nome and fetched_at (see migration comment).
+	//
+	// net_amount/margin_pct/decomposition (0089) are M-06 scope — deliberately absent from this
+	// struct's write path; IngestOrder must never populate them.
+	PackID             *string     `json:"pack_id,omitempty"`
+	ProviderShipmentID *string     `json:"provider_shipment_id,omitempty"`
+	Bucket             OrderBucket `json:"bucket,omitempty"`
+	DateLastUpdatedML  *time.Time  `json:"date_last_updated_ml,omitempty"`
+
+	BuyerName             *string `json:"buyer_name,omitempty"`
+	BuyerDocType          *string `json:"buyer_doc_type,omitempty"`
+	BuyerDocNumber        *string `json:"buyer_doc_number,omitempty"`
+	BuyerAddressStreet    *string `json:"buyer_address_street,omitempty"`
+	BuyerAddressNumber    *string `json:"buyer_address_number,omitempty"`
+	BuyerAddressCity      *string `json:"buyer_address_city,omitempty"`
+	BuyerAddressStateCode *string `json:"buyer_address_state_code,omitempty"`
+	BuyerAddressZip       *string `json:"buyer_address_zip,omitempty"`
+	BuyerAddressCountry   *string `json:"buyer_address_country,omitempty"`
 }
 
 type MarketplaceOrderItem struct {
@@ -70,9 +99,12 @@ type MarketplaceOrderItem struct {
 	Title               string                  `json:"title,omitempty"`
 	Quantity            int                     `json:"quantity"`
 	UnitPrice           *float64                `json:"unit_price,omitempty"`
-	SaleFeeAmount       *float64                `json:"sale_fee_amount,omitempty"`
-	LinkQuality         LinkQuality             `json:"link_quality"`
-	InternalProductID   *int                    `json:"internal_product_id,omitempty"`
+	// SaleFeeAmount is PER-UNIT, verbatim from the provider's sale_fee (OrderDetailItem.SaleFeeUnit) —
+	// never multiplied by Quantity. A consumer needing a line/order total must multiply by
+	// Quantity itself.
+	SaleFeeAmount     *float64    `json:"sale_fee_amount,omitempty"`
+	LinkQuality       LinkQuality `json:"link_quality"`
+	InternalProductID *int        `json:"internal_product_id,omitempty"`
 }
 
 type MarketplaceOrderPayment struct {

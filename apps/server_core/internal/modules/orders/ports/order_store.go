@@ -63,3 +63,16 @@ type OrderBucketStore interface {
 type OrderFaturadoStore interface {
 	MarkOrderFaturado(ctx context.Context, installationID, providerOrderID string) error
 }
+
+// OrderIngestStore is IC-06's single-transaction write port (ADR-04): IngestOrder persists
+// exactly one order (header+items+payments+optional order_shipments row) atomically — shipment
+// is nil when the order carries no shipping.id, or the provider returned honest-absence for it.
+//
+// GetFaturadoAt reads the CURRENTLY persisted faturado_at (our-DB-only fact, MarkOrderFaturado's
+// column — ingest never writes it) so the caller can pass the right faturado bool into
+// domain.DeriveOrderBucket; nil means no order row exists yet (first ingest) or the operator
+// never marked it, never a fabricated zero time (ADR-17).
+type OrderIngestStore interface {
+	GetFaturadoAt(ctx context.Context, installationID, providerOrderID string) (*time.Time, error)
+	IngestOrder(ctx context.Context, order domain.MarketplaceOrder, shipment *domain.OrderShipment) error
+}

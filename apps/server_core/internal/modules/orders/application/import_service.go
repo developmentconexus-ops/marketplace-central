@@ -3,7 +3,7 @@ package application
 import (
 	"context"
 	"errors"
-	"net/url"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -16,18 +16,21 @@ type ImportOrdersInput struct {
 	Limit          int
 }
 
+// ImportService enumerates provider order ids for an installation and ingests each one through
+// the single write path (F-02, IC-06/ADR-04). It no longer builds domain.MarketplaceOrder
+// itself — that shape only exists inside IngestService now, built from the richer per-order
+// OrderDetail fetch, not from this list-endpoint snapshot. The snapshot's only remaining job is
+// discovery: which provider_order_ids exist for this installation.
 type ImportService struct {
-	source ports.OrderSource
-	links  ports.LinkReader
-	store  ports.OrderStore
-	now    func() time.Time
+	source   ports.OrderSource
+	ingestor ports.OrderIngestor
+	now      func() time.Time
 }
 
 type ImportServiceConfig struct {
-	Source ports.OrderSource
-	Links  ports.LinkReader
-	Store  ports.OrderStore
-	Now    func() time.Time
+	Source   ports.OrderSource
+	Ingestor ports.OrderIngestor
+	Now      func() time.Time
 }
 
 func NewImportService(cfg ImportServiceConfig) *ImportService {
@@ -36,15 +39,20 @@ func NewImportService(cfg ImportServiceConfig) *ImportService {
 		now = func() time.Time { return time.Now().UTC() }
 	}
 	return &ImportService{
-		source: cfg.Source,
-		links:  cfg.Links,
-		store:  cfg.Store,
-		now:    now,
+		source:   cfg.Source,
+		ingestor: cfg.Ingestor,
+		now:      now,
 	}
 }
 
+// Import enumerates ListOrders' snapshot for provider_order_ids, then calls IngestOrder once per
+// id. A per-order failure — whether the typed domain.ErrOrderUnavailable (403/404 on the order
+// fetch, no writes) or any other real error from a downstream fetch/write — is counted as a
+// skip and logged; the run itself never aborts because ONE order failed (IC-06: "erro por item
+// no ingest: registra, segue o batch"). Only a failure to enumerate at all (ListOrders itself)
+// or a misconfiguration fails Import outright.
 func (s *ImportService) Import(ctx context.Context, input ImportOrdersInput) (domain.ImportResult, error) {
-	if s.source == nil || s.links == nil || s.store == nil {
+	if s.source == nil || s.ingestor == nil {
 		return domain.ImportResult{}, errors.New("ORDERS_IMPORT_NOT_CONFIGURED")
 	}
 	installationID := strings.TrimSpace(input.InstallationID)
@@ -61,128 +69,18 @@ func (s *ImportService) Import(ctx context.Context, input ImportOrdersInput) (do
 		return domain.ImportResult{}, err
 	}
 
-	identities := collectIdentities(installationID, snapshots)
-	links, err := s.links.ResolveLinks(ctx, installationID, identities)
-	if err != nil {
-		return domain.ImportResult{}, err
-	}
-
-	orders := normalizeOrders(installationID, snapshots, links, s.now())
-	imported, skipped, err := s.store.UpsertOrders(ctx, orders)
-	if err != nil {
-		return domain.ImportResult{}, err
-	}
-
-	return domain.ImportResult{
-		InstallationID: installationID,
-		ImportedCount:  imported,
-		SkippedCount:   skipped,
-		Items:          orders,
-	}, nil
-}
-
-func collectIdentities(installationID string, snapshots []domain.OrderIngestionSnapshot) []domain.ListingIdentity {
-	seen := map[string]struct{}{}
-	identities := make([]domain.ListingIdentity, 0)
-	for _, order := range snapshots {
-		for _, item := range order.Items {
-			identity := domain.ListingIdentity{
-				InstallationID:      installationID,
-				ProviderItemID:      strings.TrimSpace(item.ProviderItemID),
-				ProviderVariationID: strings.TrimSpace(item.ProviderVariationID),
-			}
-			key := keyOf(identity)
-			if identity.ProviderItemID == "" {
-				continue
-			}
-			if _, ok := seen[key]; ok {
-				continue
-			}
-			seen[key] = struct{}{}
-			identities = append(identities, identity)
-		}
-	}
-	return identities
-}
-
-func normalizeOrders(installationID string, snapshots []domain.OrderIngestionSnapshot, links map[string]domain.ItemLink, now time.Time) []domain.MarketplaceOrder {
-	items := make([]domain.MarketplaceOrder, 0, len(snapshots))
+	result := domain.ImportResult{InstallationID: installationID}
 	for _, snapshot := range snapshots {
-		order := domain.MarketplaceOrder{
-			InstallationID:       installationID,
-			ProviderCode:         strings.TrimSpace(snapshot.ProviderCode),
-			ProviderOrderID:      strings.TrimSpace(snapshot.ProviderOrderID),
-			ProviderStatus:       strings.TrimSpace(snapshot.ProviderStatus),
-			ProviderStatusDetail: strings.TrimSpace(snapshot.ProviderStatusDetail),
-			ProviderCreatedAt:    snapshot.ProviderCreatedAt,
-			ProviderClosedAt:     snapshot.ProviderClosedAt,
-			ProviderUpdatedAt:    snapshot.ProviderUpdatedAt,
-			FetchedAt:            snapshot.FetchedAt.UTC(),
-			ShippingID:           strings.TrimSpace(snapshot.ShippingID),
-			BuyerNickname:        strings.TrimSpace(snapshot.BuyerNickname),
-			CancellationDetail:   strings.TrimSpace(snapshot.CancellationDetail),
-			Tags:                 trimNonEmpty(snapshot.Tags),
-			RawProviderRef:       safeOrderProviderReference(snapshot.ProviderCode, snapshot.ProviderOrderID),
-			CreatedAt:            now,
-			UpdatedAt:            now,
+		providerOrderID := strings.TrimSpace(snapshot.ProviderOrderID)
+		if providerOrderID == "" {
+			continue
 		}
-		for _, payment := range snapshot.Payments {
-			order.Payments = append(order.Payments, domain.MarketplaceOrderPayment{
-				ProviderPaymentID: strings.TrimSpace(payment.PaymentID),
-				ProviderStatus:    strings.TrimSpace(payment.Status),
-				TransactionAmount: payment.TransactionAmount,
-				TotalPaidAmount:   payment.TotalPaidAmount,
-			})
+		if err := s.ingestor.IngestOrder(ctx, installationID, providerOrderID); err != nil {
+			result.SkippedCount++
+			slog.Warn("orders.import.skip", "provider_order_id", providerOrderID, "unavailable", errors.Is(err, domain.ErrOrderUnavailable), "err", err)
+			continue
 		}
-		for _, item := range snapshot.Items {
-			identity := domain.ListingIdentity{
-				InstallationID:      installationID,
-				ProviderItemID:      strings.TrimSpace(item.ProviderItemID),
-				ProviderVariationID: strings.TrimSpace(item.ProviderVariationID),
-			}
-			link := links[keyOf(identity)]
-			if link.Quality == "" {
-				link.Quality = domain.LinkQualityMissing
-			}
-			order.Items = append(order.Items, domain.MarketplaceOrderItem{
-				ProviderItemID:      identity.ProviderItemID,
-				ProviderVariationID: identity.ProviderVariationID,
-				SellerSKU:           strings.TrimSpace(item.SellerSKU),
-				Title:               strings.TrimSpace(item.Title),
-				Quantity:            item.Quantity,
-				UnitPrice:           item.UnitPrice,
-				SaleFeeAmount:       item.SaleFeeAmount,
-				LinkQuality:         link.Quality,
-				InternalProductID:   link.InternalProductID,
-			})
-		}
-		items = append(items, order)
+		result.ImportedCount++
 	}
-	return items
-}
-
-func safeOrderProviderReference(providerCode, providerOrderID string) string {
-	if strings.TrimSpace(providerCode) != "mercado_livre" {
-		return ""
-	}
-	providerOrderID = strings.TrimSpace(providerOrderID)
-	if providerOrderID == "" {
-		return ""
-	}
-	return "/orders/" + url.PathEscape(providerOrderID)
-}
-
-func keyOf(identity domain.ListingIdentity) string {
-	return identity.InstallationID + "|" + identity.ProviderItemID + "|" + identity.ProviderVariationID
-}
-
-func trimNonEmpty(values []string) []string {
-	trimmed := make([]string, 0, len(values))
-	for _, value := range values {
-		value = strings.TrimSpace(value)
-		if value != "" {
-			trimmed = append(trimmed, value)
-		}
-	}
-	return trimmed
+	return result, nil
 }

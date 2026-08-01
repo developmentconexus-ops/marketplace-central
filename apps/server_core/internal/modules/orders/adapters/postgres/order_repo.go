@@ -16,12 +16,13 @@ import (
 )
 
 var (
-	_ ports.OrderStore        = (*OrderRepository)(nil)
-	_ ports.OrderSummaryStore = (*OrderRepository)(nil)
-	_ ports.OrderBucketStore  = (*OrderRepository)(nil)
+	_ ports.OrderStore         = (*OrderRepository)(nil)
+	_ ports.OrderSummaryStore  = (*OrderRepository)(nil)
+	_ ports.OrderBucketStore   = (*OrderRepository)(nil)
 	_ ports.OrderFaturadoStore = (*OrderRepository)(nil)
-	_ ports.OrderLookup       = (*OrderRepository)(nil)
-	_ ports.OrderReadStore    = (*OrderReadRepository)(nil)
+	_ ports.OrderLookup        = (*OrderRepository)(nil)
+	_ ports.OrderIngestStore   = (*OrderRepository)(nil)
+	_ ports.OrderReadStore     = (*OrderReadRepository)(nil)
 )
 
 type OrderReadRepository struct {
@@ -334,19 +335,33 @@ func (r *OrderRepository) GetOrderSummary(ctx context.Context, installationID st
 }
 
 // GetOrderBucketCounts implements ports.OrderBucketStore (F01-A). It selects
-// the minimal per-order fields DeriveOrderBucket needs (provider_status,
-// shipping_id presence) for the WHOLE installation — no pagination, since
-// the KPI/Lista/Kanban buckets must be server-accurate over all orders, not
-// one page — under the SAME tenancy predicate and provider_created_at guard
-// GetOrderSummary already uses. Bucket rules are NOT reimplemented in SQL:
-// domain.DeriveOrderBucket is the single authority, applied per row in Go.
+// the minimal per-order fields DeriveOrderBucket needs for the WHOLE
+// installation — no pagination, since the KPI/Lista/Kanban buckets must be
+// server-accurate over all orders, not one page — under the SAME tenancy
+// predicate and provider_created_at guard GetOrderSummary already uses.
+// Bucket rules are NOT reimplemented in SQL: domain.DeriveOrderBucket is the
+// single authority.
+//
+// Two-tier read (F-03): the `bucket` column (migration 0089) is F-02's
+// IngestOrder OUTPUT — domain.DeriveOrderBucket computed AT INGEST TIME, when
+// the live shipment status WAS available, and persisted. A row with a
+// populated bucket is cast straight from that column, never re-derived. A row
+// that predates F-02 (bucket still NULL — legacy/pre-ingest data) falls back
+// to the EXACT call this function always made — DeriveOrderBucket with
+// shipmentStatus="" — so pre-F-02 rows keep byte-identical behavior: this
+// query still has no shipment column and no per-order fan-out by design; the
+// only thing that changed is that a row F-02 has since ingested now reports
+// the bucket its REAL shipment status produced, instead of the tag-only
+// approximation. A persisted value outside the five known
+// domain.OrderBucket constants is treated as absent and falls back to
+// re-derivation, same as NULL/empty.
 func (r *OrderRepository) GetOrderBucketCounts(ctx context.Context, installationID string) (ports.OrderBucketCounts, error) {
 	if r.pool == nil {
 		return ports.OrderBucketCounts{}, errors.New("orders bucket counts repository: database is not configured")
 	}
 
 	rows, err := r.pool.Query(ctx, `
-		SELECT provider_status, shipping_id, tags_json, faturado_at
+		SELECT provider_status, shipping_id, tags_json, faturado_at, bucket
 		FROM orders_marketplace_orders
 		WHERE tenant_id = $1
 		  AND installation_id = $2
@@ -363,19 +378,22 @@ func (r *OrderRepository) GetOrderBucketCounts(ctx context.Context, installation
 		var shippingID pgtype.Text
 		var tagsJSON []byte
 		var faturadoAt pgtype.Timestamptz
-		if err := rows.Scan(&providerStatus, &shippingID, &tagsJSON, &faturadoAt); err != nil {
+		var persistedBucket pgtype.Text
+		if err := rows.Scan(&providerStatus, &shippingID, &tagsJSON, &faturadoAt, &persistedBucket); err != nil {
 			return ports.OrderBucketCounts{}, err
 		}
-		// The SQL summary carries no live shipment status (no shipment column;
-		// no per-order fan-out here by design). It reflects the delivered tag —
-		// ML's persisted delivered signal — so the summary agrees with the
-		// tag-driven per-order bucket; the shipment-status refinement lives on
-		// the enriched read path (transport), which the KPI cards derive from.
+
+		var bucket ordersdomain.OrderBucket
 		var tags []string
 		if len(tagsJSON) > 0 {
 			_ = json.Unmarshal(tagsJSON, &tags)
 		}
-		switch ordersdomain.DeriveOrderBucket(providerStatus, "", tags, faturadoAt.Valid) {
+		if persistedBucket.Valid && isValidOrderBucket(ordersdomain.OrderBucket(persistedBucket.String)) {
+			bucket = ordersdomain.OrderBucket(persistedBucket.String)
+		} else {
+			bucket = ordersdomain.DeriveOrderBucket(providerStatus, "", tags, faturadoAt.Valid)
+		}
+		switch bucket {
 		case ordersdomain.BucketNovo:
 			counts.Novo++
 		case ordersdomain.BucketFaturar:
@@ -393,6 +411,20 @@ func (r *OrderRepository) GetOrderBucketCounts(ctx context.Context, installation
 		return ports.OrderBucketCounts{}, err
 	}
 	return counts, nil
+}
+
+// isValidOrderBucket reports whether bucket is one of the five domain.OrderBucket
+// constants DeriveOrderBucket can ever emit. GetOrderBucketCounts uses this to guard
+// against a persisted bucket column (migration 0089, no CHECK constraint) holding a
+// stale/corrupt/unrecognized value, which would otherwise silently drop that order from
+// every count instead of falling back to re-derivation.
+func isValidOrderBucket(bucket ordersdomain.OrderBucket) bool {
+	switch bucket {
+	case ordersdomain.BucketNovo, ordersdomain.BucketFaturar, ordersdomain.BucketEnviar, ordersdomain.BucketEnviado, ordersdomain.BucketCancelado:
+		return true
+	default:
+		return false
+	}
 }
 
 // MarkOrderFaturado records that the operator invoiced (faturou) the order.
@@ -604,12 +636,20 @@ func (r *OrderRepository) upsertOrder(ctx context.Context, tx pgx.Tx, order orde
 			tenant_id, installation_id, provider_code, provider_order_id, provider_status, provider_status_detail,
 			provider_created_at, provider_closed_at, provider_updated_at, fetched_at,
 			shipping_id, cancellation_detail, tags_json, raw_provider_ref, created_at, updated_at,
-			buyer_nickname
+			buyer_nickname,
+			pack_id, provider_shipment_id, bucket, date_last_updated_ml,
+			buyer_name, buyer_doc_type, buyer_doc_number,
+			buyer_address_street, buyer_address_number, buyer_address_city,
+			buyer_address_state_code, buyer_address_zip, buyer_address_country
 		) VALUES (
 			$1, $2, $3, $4, $5, $6,
 			$7, $8, $9, $10,
 			$11, $12, $13, $14, $15, $16,
-			NULLIF($17, '')
+			NULLIF($17, ''),
+			$18, $19, $20, $21,
+			$22, $23, $24,
+			$25, $26, $27,
+			$28, $29, $30
 		)
 		ON CONFLICT (tenant_id, installation_id, provider_order_id) DO UPDATE SET
 			provider_code = EXCLUDED.provider_code,
@@ -626,6 +666,25 @@ func (r *OrderRepository) upsertOrder(ctx context.Context, tx pgx.Tx, order orde
 			-- A payload without a buyer block must not erase a nickname we
 			-- already learned.
 			buyer_nickname = COALESCE(EXCLUDED.buyer_nickname, orders_marketplace_orders.buyer_nickname),
+			-- pack_id/provider_shipment_id/date_last_updated_ml/buyer fiscal columns follow the
+			-- same never-erase-with-absent-value rule as buyer_nickname above: a winning
+			-- snapshot's own absence (nil) must not blank out a fact learned from a previous
+			-- fetch (e.g. buyer fiscal data ML only exposes once a shipping label exists).
+			pack_id = COALESCE(EXCLUDED.pack_id, orders_marketplace_orders.pack_id),
+			provider_shipment_id = COALESCE(EXCLUDED.provider_shipment_id, orders_marketplace_orders.provider_shipment_id),
+			-- bucket is always a fresh domain.DeriveOrderBucket output for a winning snapshot —
+			-- never merged with the stored value.
+			bucket = EXCLUDED.bucket,
+			date_last_updated_ml = COALESCE(EXCLUDED.date_last_updated_ml, orders_marketplace_orders.date_last_updated_ml),
+			buyer_name = COALESCE(EXCLUDED.buyer_name, orders_marketplace_orders.buyer_name),
+			buyer_doc_type = COALESCE(EXCLUDED.buyer_doc_type, orders_marketplace_orders.buyer_doc_type),
+			buyer_doc_number = COALESCE(EXCLUDED.buyer_doc_number, orders_marketplace_orders.buyer_doc_number),
+			buyer_address_street = COALESCE(EXCLUDED.buyer_address_street, orders_marketplace_orders.buyer_address_street),
+			buyer_address_number = COALESCE(EXCLUDED.buyer_address_number, orders_marketplace_orders.buyer_address_number),
+			buyer_address_city = COALESCE(EXCLUDED.buyer_address_city, orders_marketplace_orders.buyer_address_city),
+			buyer_address_state_code = COALESCE(EXCLUDED.buyer_address_state_code, orders_marketplace_orders.buyer_address_state_code),
+			buyer_address_zip = COALESCE(EXCLUDED.buyer_address_zip, orders_marketplace_orders.buyer_address_zip),
+			buyer_address_country = COALESCE(EXCLUDED.buyer_address_country, orders_marketplace_orders.buyer_address_country),
 			updated_at = EXCLUDED.updated_at
 		WHERE orders_marketplace_orders.provider_updated_at IS NULL
 		   OR (
@@ -635,11 +694,127 @@ func (r *OrderRepository) upsertOrder(ctx context.Context, tx pgx.Tx, order orde
 	`, r.tenantID, order.InstallationID, order.ProviderCode, order.ProviderOrderID, order.ProviderStatus, order.ProviderStatusDetail,
 		nullableTime(order.ProviderCreatedAt), nullableTime(order.ProviderClosedAt), nullableTime(order.ProviderUpdatedAt), order.FetchedAt,
 		order.ShippingID, order.CancellationDetail, tagsJSON, rawRefJSON, order.CreatedAt, order.UpdatedAt,
-		order.BuyerNickname)
+		order.BuyerNickname,
+		order.PackID, order.ProviderShipmentID, string(order.Bucket), nullableTime(order.DateLastUpdatedML),
+		order.BuyerName, order.BuyerDocType, order.BuyerDocNumber,
+		order.BuyerAddressStreet, order.BuyerAddressNumber, order.BuyerAddressCity,
+		order.BuyerAddressStateCode, order.BuyerAddressZip, order.BuyerAddressCountry)
 	if err != nil {
 		return false, err
 	}
 	return tag.RowsAffected() == 1, nil
+}
+
+// upsertOrderShipment persists ONE order_shipments row (migration 0088). Keyed by
+// (tenant_id, provider, provider_shipment_id) — its own PK, independent of the order header's
+// freshness gate above, because a shipment is a separate provider resource with its own fetch
+// cadence. The guard uses fetched_at (NOT NULL on 0088) rather than source_time (nullable,
+// domain.OrderShipment doc comment) so a replay with an identical fetch always re-applies
+// cleanly instead of silently no-op'ing when source_time is absent.
+func (r *OrderRepository) upsertOrderShipment(ctx context.Context, tx pgx.Tx, shipment ordersdomain.OrderShipment) error {
+	_, err := tx.Exec(ctx, `
+		INSERT INTO order_shipments (
+			tenant_id, provider, provider_shipment_id, provider_order_id,
+			status, substatus, logistic_type, tracking_number, tracking_method,
+			sla_status, sla_limit_at, cost_gross, cost_seller, currency,
+			receiver_name, dest_city, dest_state, dest_zip,
+			source_time, fetched_at, created_at, updated_at
+		) VALUES (
+			$1, $2, $3, $4,
+			$5, $6, $7, $8, $9,
+			$10, $11, $12, $13, $14,
+			$15, $16, $17, $18,
+			$19, $20, $21, $22
+		)
+		ON CONFLICT (tenant_id, provider, provider_shipment_id) DO UPDATE SET
+			provider_order_id = EXCLUDED.provider_order_id,
+			status = EXCLUDED.status,
+			substatus = EXCLUDED.substatus,
+			logistic_type = EXCLUDED.logistic_type,
+			tracking_number = EXCLUDED.tracking_number,
+			tracking_method = EXCLUDED.tracking_method,
+			sla_status = EXCLUDED.sla_status,
+			sla_limit_at = EXCLUDED.sla_limit_at,
+			cost_gross = EXCLUDED.cost_gross,
+			cost_seller = EXCLUDED.cost_seller,
+			currency = EXCLUDED.currency,
+			receiver_name = EXCLUDED.receiver_name,
+			dest_city = EXCLUDED.dest_city,
+			dest_state = EXCLUDED.dest_state,
+			dest_zip = EXCLUDED.dest_zip,
+			source_time = EXCLUDED.source_time,
+			fetched_at = EXCLUDED.fetched_at,
+			updated_at = EXCLUDED.updated_at
+		WHERE order_shipments.fetched_at IS NULL OR EXCLUDED.fetched_at >= order_shipments.fetched_at
+	`, r.tenantID, shipment.ProviderCode, shipment.ProviderShipmentID, shipment.ProviderOrderID,
+		shipment.Status, shipment.Substatus, shipment.LogisticType, shipment.TrackingNumber, shipment.TrackingMethod,
+		shipment.SLAStatus, nullableTime(shipment.SLALimitAt), nullableFloat8(shipment.CostGross), nullableFloat8(shipment.CostSeller), shipment.Currency,
+		shipment.ReceiverName, shipment.DestCity, shipment.DestState, shipment.DestZip,
+		nullableTime(shipment.SourceTime), shipment.FetchedAt, shipment.CreatedAt, shipment.UpdatedAt)
+	return err
+}
+
+// GetFaturadoAt implements ports.OrderIngestStore: reads the CURRENTLY persisted faturado_at so
+// IngestOrder can pass the right faturado bool into domain.DeriveOrderBucket without ever
+// writing this column itself (MarkOrderFaturado, our-DB-only, owns every write to it). No row
+// yet (first ingest) is honest-absence, not an error.
+func (r *OrderRepository) GetFaturadoAt(ctx context.Context, installationID, providerOrderID string) (*time.Time, error) {
+	if r.pool == nil {
+		return nil, errors.New("orders ingest repository: database is not configured")
+	}
+	var faturadoAt pgtype.Timestamptz
+	err := r.pool.QueryRow(ctx, `
+		SELECT faturado_at FROM orders_marketplace_orders
+		WHERE tenant_id = $1 AND installation_id = $2 AND provider_order_id = $3
+	`, r.tenantID, strings.TrimSpace(installationID), strings.TrimSpace(providerOrderID)).Scan(&faturadoAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return scanTime(faturadoAt), nil
+}
+
+// IngestOrder persists ONE order (header + items + payments + optional shipment) atomically —
+// IC-06's single write path (ADR-04): every ingest trigger (import enumeration today; backfill/
+// incremental sync/webhook worker later, per milestone.md) converges here. Reuses upsertOrder/
+// replaceItems/replacePayments/backfillMissingLines verbatim (same freshness-guard and
+// line-identity-reconciliation invariants as the batch UpsertOrders path above) so a concurrent
+// ingest of the same order from two triggers cannot regress a newer snapshot with an older one
+// — only the transaction boundary is new (one order, one tx, vs UpsertOrders' one-tx-per-batch).
+// shipment is upserted independently of the header's won/backfill branch: it is a distinct
+// provider resource (its own PK), never merged into the header's freshness decision.
+func (r *OrderRepository) IngestOrder(ctx context.Context, order ordersdomain.MarketplaceOrder, shipment *ordersdomain.OrderShipment) error {
+	if r.pool == nil {
+		return errors.New("orders ingest repository: database is not configured")
+	}
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	won, err := r.upsertOrder(ctx, tx, order)
+	if err != nil {
+		return err
+	}
+	if won {
+		if err := r.replaceItems(ctx, tx, order); err != nil {
+			return err
+		}
+		if err := r.replacePayments(ctx, tx, order); err != nil {
+			return err
+		}
+	} else if _, err := r.backfillMissingLines(ctx, tx, order); err != nil {
+		return err
+	}
+	if shipment != nil {
+		if err := r.upsertOrderShipment(ctx, tx, *shipment); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
 }
 
 func (r *OrderRepository) replaceItems(ctx context.Context, tx pgx.Tx, order ordersdomain.MarketplaceOrder) error {

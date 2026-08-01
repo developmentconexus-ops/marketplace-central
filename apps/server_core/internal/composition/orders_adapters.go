@@ -66,46 +66,14 @@ func (r *ordersCostReaderAdapter) GetCostAsOf(ctx context.Context, productID int
 }
 
 // --- ports.ShipmentReader ----------------------------------------------------
-
-// ordersShipmentReaderAdapter backs ports.ShipmentReader with the
-// mercado_livre connectors capability adapter, resolving installationID to a
-// connectorsdomain.ProviderAccountRef via the same accountRefForInstallation
-// helper used by marketPriceIntelCollectorAdapter (market_adapters.go:264).
-// The provider error is passed straight up unmapped: EnrichService already
-// degrades any ShipmentReader error to a nil ShipmentEnrichment plus a
-// structured warn (enrich_service.go:99-108), so no error-translation layer
-// is needed here.
-type ordersShipmentReaderAdapter struct {
-	capabilities  *mercadolivreconnector.CapabilityAdapter
-	installations *integrationsapp.InstallationService
-	tenantID      string
-}
-
-var _ ordersports.ShipmentReader = (*ordersShipmentReaderAdapter)(nil)
-
-func newOrdersShipmentReaderAdapter(
-	capabilities *mercadolivreconnector.CapabilityAdapter,
-	installations *integrationsapp.InstallationService,
-	tenantID string,
-) *ordersShipmentReaderAdapter {
-	return &ordersShipmentReaderAdapter{
-		capabilities:  capabilities,
-		installations: installations,
-		tenantID:      tenantID,
-	}
-}
-
-func (r *ordersShipmentReaderAdapter) GetShipment(ctx context.Context, installationID, shipmentID string) (connectorsdomain.ShipmentInfo, error) {
-	inst, found, err := r.installations.Get(ctx, installationID)
-	if err != nil {
-		return connectorsdomain.ShipmentInfo{}, err
-	}
-	if !found {
-		return connectorsdomain.ShipmentInfo{}, fmt.Errorf("orders: installation %q not found", installationID)
-	}
-	ref := accountRefForInstallation(r.tenantID, inst)
-	return r.capabilities.GetShipmentInfo(ctx, ref, shipmentID)
-}
+//
+// ordersShipmentReaderAdapter (the mercado_livre-backed ports.ShipmentReader
+// adapter, formerly here) was retired by F-03 (read-path switch): the
+// interactive GET /orders/{id} enrich path now reads order_shipments
+// (migration 0088, populated by F-02's IngestOrder) via
+// orders/adapters/postgres.ShipmentReader instead, wired directly in
+// root.go — no composition adapter needed since the Postgres reader already
+// implements ports.ShipmentReader.
 
 // --- ports.BuyerFiscalReader -------------------------------------------------
 

@@ -685,6 +685,99 @@ func TestMapEnrichedOrderSurfacesCompradorFiscal(t *testing.T) {
 	}
 }
 
+// TestMapCompradorFiscalGoldenOldAdapterShapeVsNewDBReaderShape is the F-03
+// read-path-switch golden test required by the feature brief: comprador_fiscal
+// must stay shape-identical across the switch -- only its DATA SOURCE changes
+// (live ML two-step billing-info call -> Postgres buyer_* columns, migration
+// 0089). It builds one BuyerFiscalInfo the way the OLD live adapter
+// (connectors/adapters/mercado_livre/buyer_fiscal_reader.go mapBuyerFiscalInfo
+// + mapBuyerFiscalAddress) would have produced it, and one the way the NEW
+// orders/adapters/postgres.BuyerFiscalReader (buildBuyerFiscalInfo) produces it
+// from equivalent seeded row data, then asserts mapCompradorFiscal(...) yields
+// byte-identical JSON for both.
+//
+// "Equivalent seeded row data" deliberately excludes StateName/uf_nome: 0089's
+// own migration comment (and the feature brief) documents that column as
+// intentionally excluded, VERIFIED safe because PedidoDrawer.tsx's
+// formatEndereco only reads uf_codigo, never uf_nome -- this is a ratified,
+// known shape difference the brief classifies as safe, NOT the accepted
+// shipment-side UX regression gap (CarrierName/TrackingURL/ReceiverCost, see
+// enrich_service.go's ShipmentEnrichment doc comment and validation.md), so it
+// is correctly absent from BOTH sides of this comparison rather than asserted
+// identical.
+func TestMapCompradorFiscalGoldenOldAdapterShapeVsNewDBReaderShape(t *testing.T) {
+	name := "Fulano de Tal"
+	docType := "CPF"
+	docNumber := "12345678900"
+	street := "Rua das Flores"
+	number := "100"
+	city := "Sao Paulo"
+	stateCode := "SP"
+	zip := "01000-000"
+	country := "BR"
+
+	// oldAdapterShape mirrors mapBuyerFiscalInfo/mapBuyerFiscalAddress's exact
+	// field-by-field mapping (mercado_livre/buyer_fiscal_reader.go) for a
+	// billing-info payload carrying these 8 fields and no state.name.
+	// FetchedAt is set (the old adapter always stamps a.now()) but is excluded
+	// from the comparison below -- mapCompradorFiscal/compradorFiscalDTO never
+	// reads it (confirmed: compradorFiscalDTO has no fetched_at field), so a
+	// resolution-time timestamp cannot affect DTO shape either way.
+	oldAdapterShape := connectorsdomain.BuyerFiscalInfo{
+		Name:      &name,
+		DocType:   &docType,
+		DocNumber: &docNumber,
+		Address: &connectorsdomain.BuyerFiscalAddress{
+			StreetName:   &street,
+			StreetNumber: &number,
+			City:         &city,
+			StateCode:    &stateCode,
+			StateName:    nil,
+			ZipCode:      &zip,
+			CountryID:    &country,
+		},
+		FetchedAt: time.Date(2026, 7, 20, 10, 0, 0, 0, time.UTC),
+	}
+
+	// newDBReaderShape mirrors buildBuyerFiscalInfo's exact mapping
+	// (orders/adapters/postgres/buyer_fiscal_reader.go) for a row with the
+	// same 8 columns populated: Address built only because at least one of its
+	// 6 fields is present, StateName always nil (no such column), FetchedAt
+	// never set (buildBuyerFiscalInfo does not populate it).
+	newDBReaderShape := connectorsdomain.BuyerFiscalInfo{
+		Name:      &name,
+		DocType:   &docType,
+		DocNumber: &docNumber,
+		Address: &connectorsdomain.BuyerFiscalAddress{
+			StreetName:   &street,
+			StreetNumber: &number,
+			City:         &city,
+			StateCode:    &stateCode,
+			StateName:    nil,
+			ZipCode:      &zip,
+			CountryID:    &country,
+		},
+	}
+
+	oldJSON, err := json.Marshal(mapCompradorFiscal(&oldAdapterShape))
+	if err != nil {
+		t.Fatalf("marshal old-adapter-shape DTO: %v", err)
+	}
+	newJSON, err := json.Marshal(mapCompradorFiscal(&newDBReaderShape))
+	if err != nil {
+		t.Fatalf("marshal new-db-reader-shape DTO: %v", err)
+	}
+
+	if string(oldJSON) != string(newJSON) {
+		t.Fatalf("comprador_fiscal JSON diverged across the read-path switch:\n  old (live ML adapter shape): %s\n  new (Postgres reader shape): %s", oldJSON, newJSON)
+	}
+
+	want := `{"nome":"Fulano de Tal","doc_tipo":"CPF","doc_numero":"12345678900","endereco":{"logradouro":"Rua das Flores","numero":"100","cidade":"Sao Paulo","uf_codigo":"SP","cep":"01000-000","pais":"BR"}}`
+	if string(newJSON) != want {
+		t.Fatalf("comprador_fiscal JSON = %s, want %s", newJSON, want)
+	}
+}
+
 // TestMapEnrichedOrderOmitsCompradorFiscalWhenAbsent asserts the honest-absence
 // contract: a nil BuyerFiscal enrichment omits comprador_fiscal entirely (never
 // a fabricated empty block — ADR-17).

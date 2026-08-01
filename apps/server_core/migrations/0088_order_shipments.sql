@@ -15,8 +15,10 @@
 -- unenforced on purpose (order_shipments and orders can each independently be
 -- populated first during backfill).
 --
--- SLA fields come from /shipments/{id}/sla; cost fields from /costs (header
--- X-Costs-New); destination fields are what the screen already shows today.
+-- sla_limit_at comes from GET /shipments/{id}'s lead_time.estimated_delivery_limit.date, NOT
+-- from the separate /shipments/{id}/sla sub-resource (deliberately never called — honest gap,
+-- see shipment_ingest_reader.go's GetShipmentDetail doc comment); cost fields from /costs
+-- (header X-Costs-New); destination fields are what the screen already shows today.
 CREATE TABLE IF NOT EXISTS order_shipments (
     tenant_id            text           NOT NULL,
     provider             text           NOT NULL,

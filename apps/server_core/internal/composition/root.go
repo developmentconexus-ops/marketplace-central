@@ -580,23 +580,41 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	// read path (refresh): an order imported before its anúncio was linked
 	// picks the link up on the next read instead of waiting for a re-import.
 	ordersLinkReader := ordersproductlinks.NewLinkReader(productLinkCandidateRepo, productLinkCandidateRepo)
+	ordersBuyerFiscalReader := newOrdersBuyerFiscalReaderAdapter(mercadoLivreCapabilities, installationSvc, cfg.DefaultTenantID)
+	// F-02: IngestOrder is the single write path (ADR-04) — Import now only enumerates
+	// provider_order_ids from ListOrders and delegates each one here.
+	ordersOrderDetailReader := newOrdersOrderDetailReaderAdapter(mercadoLivreCapabilities, installationSvc, cfg.DefaultTenantID)
+	ordersShipmentDetailReader := newOrdersShipmentDetailReaderAdapter(mercadoLivreCapabilities, installationSvc, cfg.DefaultTenantID)
+	ordersIngestSvc := ordersapp.NewIngestService(ordersapp.IngestServiceConfig{
+		OrderDetail:    ordersOrderDetailReader,
+		ShipmentDetail: ordersShipmentDetailReader,
+		BuyerFiscal:    ordersBuyerFiscalReader,
+		Links:          ordersLinkReader,
+		Store:          ordersRepo,
+	})
 	ordersImportSvc := ordersapp.NewImportService(ordersapp.ImportServiceConfig{
-		Source: ordersintegrations.NewOrderSource(providerOperationSvc),
-		Links:  ordersLinkReader,
-		Store:  ordersRepo,
+		Source:   ordersintegrations.NewOrderSource(providerOperationSvc),
+		Ingestor: ordersIngestSvc,
 	})
 	ordersListSvc := ordersapp.NewListService(ordersRepo)
 	ordersReadRepo := orderspostgres.NewOrderReadRepository(pool, cfg.DefaultTenantID)
 	ordersReadSvc := ordersapp.NewReadService(ordersReadRepo)
 	ordersSummarySvc := ordersapp.NewSummaryServiceWithBuckets(ordersRepo, ordersRepo)
 	ordersCostReader := newOrdersCostReaderAdapter(internalReadSvc, internalReadAvailable)
-	ordersShipmentReader := newOrdersShipmentReaderAdapter(mercadoLivreCapabilities, installationSvc, cfg.DefaultTenantID)
-	ordersBuyerFiscalReader := newOrdersBuyerFiscalReaderAdapter(mercadoLivreCapabilities, installationSvc, cfg.DefaultTenantID)
+	// F-03 (read-path switch): EnrichService's shipment/buyer-fiscal reads come
+	// from the Postgres readers below (order_shipments/0088,
+	// orders_marketplace_orders buyer_* columns/0089 — both populated by F-02's
+	// IngestOrder), not a live Mercado Livre call. ordersBuyerFiscalReader above
+	// stays live-ML-backed on purpose: it feeds ordersIngestSvc.BuyerFiscal for
+	// batch ingest (a distinct call path from the interactive GET /orders/{id}
+	// enrich path wired here).
+	ordersEnrichShipmentReader := orderspostgres.NewShipmentReader(pool, cfg.DefaultTenantID)
+	ordersEnrichBuyerFiscalReader := orderspostgres.NewBuyerFiscalReader(pool, cfg.DefaultTenantID)
 	// Imposto/DIFAL for a sold order come from the same tenant pricing profile
 	// the Simulador calculates with (pricingpostgres.NewCalcRepository), so the
 	// two screens can never quote different tax on the same money.
 	ordersTaxReader := orderspricingtax.NewReader(pricingpostgres.NewCalcRepository(pool), cfg.DefaultTenantID)
-	ordersEnrichSvc := ordersapp.NewEnrichServiceWithReaders(ordersCostReader, ordersShipmentReader, nil, ordersBuyerFiscalReader, slog.Default()).
+	ordersEnrichSvc := ordersapp.NewEnrichServiceWithReaders(ordersCostReader, ordersEnrichShipmentReader, nil, ordersEnrichBuyerFiscalReader, slog.Default()).
 		WithLinkRefresh(ordersLinkReader).
 		WithTaxes(ordersTaxReader)
 	ordersFaturadoSvc := ordersapp.NewFaturadoService(ordersRepo)

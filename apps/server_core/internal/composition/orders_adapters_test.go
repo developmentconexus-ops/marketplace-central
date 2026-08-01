@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	integrationsapp "marketplace-central/apps/server_core/internal/modules/integrations/application"
-	integrationsdomain "marketplace-central/apps/server_core/internal/modules/integrations/domain"
 	internalreadapp "marketplace-central/apps/server_core/internal/modules/internal_read/application"
 	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
 	internalreadports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
@@ -113,50 +111,10 @@ func TestOrdersCostReaderAdapter(t *testing.T) {
 	})
 }
 
-func TestOrdersShipmentReaderAdapter(t *testing.T) {
-	t.Run("installation not found returns honest error, never a zeroed ShipmentInfo", func(t *testing.T) {
-		installations := integrationsapp.NewInstallationService(fakeInstallationRepo{}, "tenant_default")
-		adapter := newOrdersShipmentReaderAdapter(nil, installations, "tenant_default")
-		_, err := adapter.GetShipment(context.Background(), "inst-missing", "ship-1")
-		if err == nil {
-			t.Fatal("expected an error for an unresolved installation, got nil")
-		}
-	})
-
-	t.Run("installation lookup error propagates", func(t *testing.T) {
-		wantErr := errors.New("repo down")
-		installations := integrationsapp.NewInstallationService(erroringInstallationRepo{err: wantErr}, "tenant_default")
-		adapter := newOrdersShipmentReaderAdapter(nil, installations, "tenant_default")
-		_, err := adapter.GetShipment(context.Background(), "inst-1", "ship-1")
-		if !errors.Is(err, wantErr) {
-			t.Fatalf("expected propagated error, got %v", err)
-		}
-	})
-}
-
-// erroringInstallationRepo drives InstallationService.Get's error path;
-// same-package fakeInstallationRepo (market_adapters_test.go:121) only
-// covers the not-found path since it never errors.
-type erroringInstallationRepo struct {
-	err error
-}
-
-func (e erroringInstallationRepo) CreateInstallation(context.Context, integrationsdomain.Installation) error {
-	return errors.New("not implemented")
-}
-
-func (e erroringInstallationRepo) GetInstallation(context.Context, string) (integrationsdomain.Installation, bool, error) {
-	return integrationsdomain.Installation{}, false, e.err
-}
-
-func (e erroringInstallationRepo) ListInstallations(context.Context) ([]integrationsdomain.Installation, error) {
-	return nil, e.err
-}
-
-func (e erroringInstallationRepo) UpdateInstallationStatus(context.Context, string, integrationsdomain.InstallationStatus, integrationsdomain.HealthStatus) error {
-	return errors.New("not implemented")
-}
-
-func (e erroringInstallationRepo) ApplyConnectionSnapshot(context.Context, string, integrationsdomain.ConnectionSnapshot, string) error {
-	return errors.New("not implemented")
-}
+// TestOrdersShipmentReaderAdapter and its erroringInstallationRepo fixture
+// were retired by F-03 (read-path switch): ordersShipmentReaderAdapter (the
+// mercado_livre-backed adapter this test drove) was deleted from
+// orders_adapters.go -- see the doc comment left in its place. Coverage for
+// the interactive shipment-read path now lives in
+// orders/adapters/postgres/shipment_reader_test.go against the Postgres
+// reader that replaced it.
