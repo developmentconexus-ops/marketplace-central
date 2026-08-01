@@ -227,3 +227,28 @@ injetado → lane `status=passed`/EXIT=0, depois de provada capaz de vermelho
 de unidade; escada completa exige as DUAS lanes sempre. Candidato: lane hermética rodar
 também `go test ./...` do módulo tocado, ou o profile declarar explicitamente a
 não-cobertura.
+
+**D-11. Teste de estado injetado não prova transição de estado** (MIS-007/M-09
+2026-08-01, medido duas vezes na mesma milestone): `SyncHealthCard.test.tsx` injetava
+`isError: true` direto no mock e passava verde; no dev stack real, com o endpoint
+inalcançável, a query parava em `status=pending`/`fetchStatus=paused` e o card renderizava
+SÓ o `<h2>` — `isLoading`, `isError` e `data` simultaneamente falsos, caindo em todos os
+`? … : null`. O teste exercitava o RAMO de erro sem nunca atravessar a máquina de
+retry/onlineManager que decide se aquele ramo é alcançado. Segunda rodada: o fix
+(`networkMode: "always"`) veio com teste novo em jsdom contra recusa TCP, ficou verde, e o
+live-drive do hub REFUTOU de novo com o mesmo HTML — jsdom + fetch de Node não reproduz o
+`onlineManager` do navegador. Classe: **um observável que só existe no browser não pode ser
+certificado fora dele**; e render com N ramos condicionais independentes e nenhum ramo total
+tem combinação de estado não enumerada por construção. Candidato de conserto de classe:
+(a) profile exigir, p/ critério de UI, que a prova seja live-drive do hub e não teste de
+componente; (b) lint/regra proibindo cadeia de ternários sem ramo final em card que
+consome query.
+
+**D-12. Worktrees pré-provisionados nascem stale** (MIS-007/M-02 2026-08-01, relato do
+chip): 3 dos 4 worktrees de feature do pool desta sessão bifurcaram de 20 a 480+ commits
+atrás da base pretendida — um deles anterior a TODO o planning da MIS-007, e esse
+corretamente respondeu BLOCKED em vez de chutar. Cada um se curou com `git merge --ff-only`
+verificado, mas custou tempo real em várias features. Já existe candidato de emenda upstream
+"pré-provisionar worktrees"; esta é a segunda evidência de campo. Conserto de classe: o
+provisionamento carimbar a base e o bootstrap do chip FALHAR ALTO quando
+`git merge-base` ≠ BASE-SHA do grant, em vez de deixar o chip descobrir por acidente.
