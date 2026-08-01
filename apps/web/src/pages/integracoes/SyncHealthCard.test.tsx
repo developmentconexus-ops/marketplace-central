@@ -153,6 +153,7 @@ describe("SyncHealthCard", () => {
     expect(within(row).getByTestId("sync-health-badge-products").className).toMatch(/text-accent-ink/);
     const timeEl = within(row).getByText("há 5 min");
     expect(timeEl).toHaveAttribute("title", "2026-08-01T11:55:00Z");
+    expect(within(row).getByText("(incremental)")).toBeInTheDocument();
   });
 
   it("renders a red badge with the failure count and the last_error message in a tooltip", async () => {
@@ -177,6 +178,8 @@ describe("SyncHealthCard", () => {
     expect(badge).toHaveTextContent("3 falhas");
     expect(badge.className).toMatch(/text-warn/);
     expect(badge).toHaveAttribute("title", "conexão recusada pelo provedor");
+    // phase: null on this fixture — the parenthetical phase suffix must not render at all.
+    expect(within(row).queryByText(/\(.*\)/)).not.toBeInTheDocument();
   });
 
   it("shows the literal 'nunca' in faint styling for an entity that never completed a sync, with no relative-time text", async () => {
@@ -231,6 +234,7 @@ describe("SyncHealthCard", () => {
     expect(within(row).getByText("há 2 min")).toBeInTheDocument();
     expect(row.textContent).not.toMatch(/há \d+ d/);
     expect(within(row).queryByTestId("sync-health-never-products")).not.toBeInTheDocument();
+    expect(within(row).getByText("(incremental)")).toBeInTheDocument();
   });
 
   it("states the fact 'nenhuma notificação recebida' for the webhook's initial state, never a configuration verdict", async () => {
