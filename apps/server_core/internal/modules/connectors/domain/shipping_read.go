@@ -29,12 +29,3 @@ type ShipmentCosts struct {
 	ReceiverCost *Money `json:"receiver_cost"`
 	SenderCost   *Money `json:"sender_cost"`
 }
-
-type FreeShippingQuery struct {
-	ItemID string `json:"item_id"`
-}
-
-type FreeShippingCost struct {
-	Cost      *Money    `json:"cost"`
-	FetchedAt time.Time `json:"fetched_at"`
-}
