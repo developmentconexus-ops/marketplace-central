@@ -380,28 +380,35 @@ func (r *Repository) ListListingTimeline(ctx context.Context, key domain.Listing
 	return events, nil
 }
 
-// ApplyCompletedPull upserts one run's worth of rows (never a blanket
+// UpsertPulledRows persists one TICK's worth of rows (never a blanket
 // close — ADR-06, audit D-120 F1, risk R-B: a run truncated by a 429/
 // deadline/kill must never wipe listings it simply never got to). status is
 // always written verbatim from row.Status; it is never inferred here.
 //
-// runStartedAt is the run's own reference time (see ports.CompletedPullStore
-// doc): it is stamped onto last_seen_at/updated_at for every row upserted in
-// this call, and it is the bound used by the keep-absent step below. complete
-// tells this method whether the caller's enumeration + hydration fully
-// drained (IC-06) — only then is any row eligible to be marked absent, and
-// even then only rows this run did not see (last_seen_at < runStartedAt).
-// len(rows) == 0 is an additional, unconditional safety pin: an empty batch
-// never marks anything absent, regardless of what complete claims — a
-// broken/empty enumerator must never be read as "everything is gone".
-func (r *Repository) ApplyCompletedPull(ctx context.Context, installationID string, rows []domain.Listing, runStartedAt time.Time, complete bool) error {
+// seenAt is the RUN's own reference time (not the tick's) — the same value
+// must be passed to every tick of a multi-tick resumable run and then to the
+// matching MarkRunComplete call. It is stamped onto last_seen_at/updated_at
+// for every row upserted here, which is what MarkRunComplete's run-scoped
+// touched-check and keep-absent bound rely on (a row upserted in any tick of
+// this run never satisfies last_seen_at < seenAt, so it's excluded from
+// being marked absent).
+//
+// F-03 split this out of the old single-call ApplyCompletedPull(rows,
+// runStartedAt, complete bool): that signature scoped the F-02 zero-row
+// safety pin to a single CALL, but a resumable multi-tick backfill's
+// legitimate empty terminal tick (scroll exhausted, no rows left to upsert)
+// would incorrectly look like "the caller claims complete over zero rows"
+// and silently disable keep-absent for the WHOLE run. Splitting the upsert
+// from the completion signal lets MarkRunComplete below scope its own pin to
+// the run (via a persisted touched-check) instead of to this one call.
+func (r *Repository) UpsertPulledRows(ctx context.Context, installationID string, rows []domain.Listing, seenAt time.Time) error {
 	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		return fmt.Errorf("begin listing completed pull: %w", err)
+		return fmt.Errorf("begin listing pulled rows upsert: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	runStartedAt = runStartedAt.UTC()
+	seenAt = seenAt.UTC()
 
 	for _, row := range rows {
 		if row.Key.TenantID != r.tenantID || row.Key.InstallationID != installationID {
@@ -442,14 +449,14 @@ func (r *Repository) ApplyCompletedPull(ctx context.Context, installationID stri
 			syncError, row.QualityScore, row.Sales30D, row.FetchedAt,
 			row.SoldQuantity, row.CategoryID, row.Condition, row.Permalink, row.Thumbnail, row.DateCreatedML, row.Tags,
 			row.CatalogProductID, row.ShippingMode, row.FreeShipping, row.LogisticType, row.AvailableQuantity,
-			runStartedAt, row.CreatedAt.UTC(), runStartedAt,
+			seenAt, row.CreatedAt.UTC(), seenAt,
 			r.tenantID, installationID)
 		if err != nil {
 			return fmt.Errorf("upsert listing %s/%s: %w", row.Key.ProviderListingID, row.Key.VariationID, err)
 		}
 
 		for _, v := range row.Variations {
-			if err := upsertListingVariation(ctx, tx, r.tenantID, installationID, row.Provider, row.Key.ProviderListingID, v, runStartedAt); err != nil {
+			if err := upsertListingVariation(ctx, tx, r.tenantID, installationID, row.Provider, row.Key.ProviderListingID, v, seenAt); err != nil {
 				return err
 			}
 		}
@@ -458,18 +465,52 @@ func (r *Repository) ApplyCompletedPull(ctx context.Context, installationID stri
 		if row.Status == domain.ListingStatusPaused {
 			kind, message = "paused", "Anúncio pausado no provedor"
 		}
-		if err := insertEvent(ctx, tx, row.Key, runStartedAt, kind, message); err != nil {
+		if err := insertEvent(ctx, tx, row.Key, seenAt, kind, message); err != nil {
 			return err
 		}
 	}
 
-	// Keep-absent (ADR-06/IC-06), gated on run completion, plus the
-	// zero-row safety pin from the feature's negative scenario: an
-	// enumeration that yielded nothing is treated as INCOMPLETE, never as
-	// "the whole catalog vanished". Rows already absent (absent_since not
-	// null) are left untouched — this only fires the first time a row goes
-	// unseen. status is never touched here.
-	if complete && len(rows) > 0 {
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit listing pulled rows upsert: %w", err)
+	}
+	return nil
+}
+
+// MarkRunComplete runs the keep-absent step (ADR-06/IC-06) for a run whose
+// enumeration + hydration fully drained. runStartedAt must be the exact same
+// timestamp passed as seenAt to every UpsertPulledRows call in this run.
+//
+// Run-scoped safety pin (replaces the old per-call len(rows)>0 pin — see
+// UpsertPulledRows doc): before marking anything absent, this checks whether
+// THIS RUN ever upserted a row at all (SELECT EXISTS ... last_seen_at =
+// runStartedAt). If nothing was ever upserted under this run's timestamp —
+// e.g. a run whose very first enumeration tick already came back empty and
+// terminal — MarkRunComplete is a no-op: an enumerator that produced nothing
+// across every tick of a run must never be read as "the whole catalog
+// vanished". This is a strictly weaker/later gate than the old one: it
+// tolerates a legitimate zero-row terminal TICK as long as some earlier tick
+// in the same run did upsert rows, which the old single-call pin could not
+// distinguish from "the whole run saw nothing".
+func (r *Repository) MarkRunComplete(ctx context.Context, installationID string, runStartedAt time.Time) error {
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return fmt.Errorf("begin listing run completion: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	runStartedAt = runStartedAt.UTC()
+
+	var touched bool
+	if err := tx.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM listings
+			WHERE tenant_id = $1 AND installation_id = $2 AND last_seen_at = $3
+		)
+	`, r.tenantID, installationID, runStartedAt).Scan(&touched); err != nil {
+		return fmt.Errorf("check listing run touched rows: %w", err)
+	}
+
+	if touched {
 		// Plain UPDATE, no RETURNING/event: listing_sync_events_kind_check
 		// (0036) only allows synced|sync_error|closed|paused|refreshed, and
 		// widening that vocabulary is a migration change — out of scope for
@@ -483,7 +524,7 @@ func (r *Repository) ApplyCompletedPull(ctx context.Context, installationID stri
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("commit listing completed pull: %w", err)
+		return fmt.Errorf("commit listing run completion: %w", err)
 	}
 	return nil
 }

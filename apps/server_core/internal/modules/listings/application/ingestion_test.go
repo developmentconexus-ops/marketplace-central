@@ -42,6 +42,9 @@ func TestIngestionWalksEveryConnectorPageBeforePersistence(t *testing.T) {
 	if store.calls != 1 {
 		t.Fatalf("store calls = %d, want 1", store.calls)
 	}
+	if store.completeCalls != 1 {
+		t.Fatalf("store completeCalls = %d, want 1 (single-shot Pull must call MarkRunComplete once)", store.completeCalls)
+	}
 	want := []string{"item-1/-", "item-2/v-1", "item-2/v-2", "item-3/-", "item-4/-", "item-5/-"}
 	if !reflect.DeepEqual(keys(store.rows), want) {
 		t.Fatalf("stored keys = %#v, want %#v", keys(store.rows), want)
@@ -124,17 +127,23 @@ func (s *stubPageSource) ReadPage(_ context.Context, _ ports.InstallationAccount
 }
 
 type stubCompletedStore struct {
-	calls       int
-	rows        []listingsdomain.Listing
-	beforeApply func()
+	calls         int
+	completeCalls int
+	rows          []listingsdomain.Listing
+	beforeApply   func()
 }
 
-func (s *stubCompletedStore) ApplyCompletedPull(_ context.Context, _ string, rows []listingsdomain.Listing, _ time.Time, _ bool) error {
+func (s *stubCompletedStore) UpsertPulledRows(_ context.Context, _ string, rows []listingsdomain.Listing, _ time.Time) error {
 	if s.beforeApply != nil {
 		s.beforeApply()
 	}
 	s.calls++
 	s.rows = append([]listingsdomain.Listing(nil), rows...)
+	return nil
+}
+
+func (s *stubCompletedStore) MarkRunComplete(_ context.Context, _ string, _ time.Time) error {
+	s.completeCalls++
 	return nil
 }
 func testAccount() ports.InstallationAccount {

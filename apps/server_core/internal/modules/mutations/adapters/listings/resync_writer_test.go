@@ -27,13 +27,19 @@ func (s *captureSource) ReadPage(_ context.Context, account listingsports.Instal
 }
 
 type captureStore struct {
-	installation string
-	rows         []listingsdomain.Listing
-	completed    time.Time
+	installation  string
+	rows          []listingsdomain.Listing
+	completed     time.Time
+	completeCalls int
 }
 
-func (s *captureStore) ApplyCompletedPull(_ context.Context, installation string, rows []listingsdomain.Listing, completed time.Time, _ bool) error {
-	s.installation, s.rows, s.completed = installation, rows, completed
+func (s *captureStore) UpsertPulledRows(_ context.Context, installation string, rows []listingsdomain.Listing, seenAt time.Time) error {
+	s.installation, s.rows, s.completed = installation, rows, seenAt
+	return nil
+}
+
+func (s *captureStore) MarkRunComplete(_ context.Context, _ string, _ time.Time) error {
+	s.completeCalls++
 	return nil
 }
 
@@ -55,6 +61,9 @@ func TestResyncWriterUsesExistingIngestionAndCanonicalUpsert(t *testing.T) {
 	}
 	if store.installation != "installation-1" || len(store.rows) != 1 || store.rows[0].Status != listingsdomain.ListingStatusClosed || store.rows[0].Key.TenantID != "tenant-1" {
 		t.Fatalf("persisted installation=%q rows=%+v", store.installation, store.rows)
+	}
+	if store.completeCalls != 1 {
+		t.Fatalf("store completeCalls = %d, want 1", store.completeCalls)
 	}
 }
 

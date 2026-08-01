@@ -38,10 +38,12 @@ func (i *Ingestion) Pull(ctx context.Context, account ports.InstallationAccount)
 
 	// Captured at the START of the pull, not at the end: it is this run's
 	// reference time (ports.CompletedPullStore), used to bound "not seen
-	// since" in the keep-absent step. Pull today only calls
-	// ApplyCompletedPull once, after its full page loop drains — i.e. every
-	// call this method makes already corresponds to a COMPLETE run (F-03
-	// will own the resumable/partial case via a different caller).
+	// since" in the keep-absent step. Pull is single-shot: it calls
+	// UpsertPulledRows once with the full drained page loop and then
+	// MarkRunComplete once, reproducing the old single-call
+	// ApplyCompletedPull(rows, runStartedAt, complete=true) behavior exactly
+	// (F-03's resumable/multi-tick backfill owns the partial case via a
+	// different caller — NewListingsJob).
 	runStarted := i.now().UTC()
 
 	var rows []domain.Listing
@@ -80,5 +82,8 @@ func (i *Ingestion) Pull(ctx context.Context, account ports.InstallationAccount)
 		}
 	}
 
-	return i.store.ApplyCompletedPull(ctx, account.InstallationID, rows, runStarted, true)
+	if err := i.store.UpsertPulledRows(ctx, account.InstallationID, rows, runStarted); err != nil {
+		return err
+	}
+	return i.store.MarkRunComplete(ctx, account.InstallationID, runStarted)
 }

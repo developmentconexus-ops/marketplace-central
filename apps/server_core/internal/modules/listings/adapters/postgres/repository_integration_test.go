@@ -50,8 +50,11 @@ func TestRepositoryCompletedPullIsAtomicAndTenantScoped(t *testing.T) {
 		listing(t, tenantA, installation, "same", "variation-2", domain.ListingStatusPaused, "variation", nil, nil, nil, fetched, 70),
 	}
 	repo := listingspostgres.NewRepository(pool, tenantA)
-	if err := repo.ApplyCompletedPull(ctx, installation, rows, runStarted, true); err != nil {
-		t.Fatalf("ApplyCompletedPull(): %v", err)
+	if err := repo.UpsertPulledRows(ctx, installation, rows, runStarted); err != nil {
+		t.Fatalf("UpsertPulledRows(): %v", err)
+	}
+	if err := repo.MarkRunComplete(ctx, installation, runStarted); err != nil {
+		t.Fatalf("MarkRunComplete(): %v", err)
 	}
 
 	assertListing(t, pool, tenantA, installation, "same", "-", "active", "updated", created, runStarted, fetched, "123.45", "BRL", 7)
@@ -69,8 +72,8 @@ func TestRepositoryCompletedPullIsAtomicAndTenantScoped(t *testing.T) {
 	beforeRollback := readRawListing(t, pool, tenantA, installation, "same", "-")
 	eventsBefore := eventCount(t, pool, tenantA, installation)
 	invalid := listing(t, tenantA, installation, "failure", "-", domain.ListingStatusActive, "invalid", nil, nil, nil, fetched.Add(time.Hour), 101)
-	if err := repo.ApplyCompletedPull(ctx, installation, []domain.Listing{rows[0], invalid}, runStarted.Add(time.Hour), true); err == nil {
-		t.Fatal("ApplyCompletedPull() error = nil, want check failure")
+	if err := repo.UpsertPulledRows(ctx, installation, []domain.Listing{rows[0], invalid}, runStarted.Add(time.Hour)); err == nil {
+		t.Fatal("UpsertPulledRows() error = nil, want check failure")
 	}
 	if got := readRawListing(t, pool, tenantA, installation, "same", "-"); !reflect.DeepEqual(beforeRollback, got) {
 		t.Fatalf("listing effects did not roll back: before=%#v after=%#v", beforeRollback, got)
@@ -79,10 +82,17 @@ func TestRepositoryCompletedPullIsAtomicAndTenantScoped(t *testing.T) {
 		t.Fatalf("event count after rollback = %d, want %d", got, eventsBefore)
 	}
 
-	// An empty-rows call with complete=true used to close the entire
-	// installation (MASS-CLOSURE); now it is a no-op (safety pin, F-02).
-	if err := repo.ApplyCompletedPull(ctx, installation, nil, runStarted.Add(2*time.Hour), true); err != nil {
-		t.Fatalf("empty ApplyCompletedPull(): %v", err)
+	// An empty-rows tick followed by MarkRunComplete used to close the
+	// entire installation (MASS-CLOSURE, F-02); now it is a no-op — the
+	// run-scoped touched-check (F-03) finds no row with
+	// last_seen_at = runStarted.Add(2h) (UpsertPulledRows was never called
+	// with that timestamp), so MarkRunComplete skips the keep-absent UPDATE
+	// entirely.
+	if err := repo.UpsertPulledRows(ctx, installation, nil, runStarted.Add(2*time.Hour)); err != nil {
+		t.Fatalf("empty UpsertPulledRows(): %v", err)
+	}
+	if err := repo.MarkRunComplete(ctx, installation, runStarted.Add(2*time.Hour)); err != nil {
+		t.Fatalf("MarkRunComplete() after empty tick: %v", err)
 	}
 	assertStatus(t, pool, tenantA, installation, "same", "-", "active")
 	assertStatus(t, pool, tenantA, installation, "same", "variation-2", "paused")
@@ -93,21 +103,23 @@ func TestRepositoryCompletedPullIsAtomicAndTenantScoped(t *testing.T) {
 }
 
 // TestApplyCompletedPull_AbortAfterPage1_NeverClosesUnseenRows is the must-fail
-// central to this feature (R-B / audit D-120 F1): a run that only ever saw
-// page 1 of a paginated scan, then aborted (429/deadline/kill) before paging
-// further, must never flip status on the rows it never got to — and must
-// never mark them absent either, since complete=false means "we don't know".
+// central to this feature (R-B / audit D-120 F1), now covering BOTH halves in
+// one run: (phase A) a run that only ever saw page 1 of a paginated scan,
+// then aborted (429/deadline/kill) before paging further, must never flip
+// status nor mark absent_since on any row — absence requires MarkRunComplete,
+// which an aborted run structurally never calls (F-03 split: no bool flag to
+// forget, the call itself is the signal). (phase B) the SAME run resumed —
+// same runStartedAt, remaining page ticked in via UpsertPulledRows, then
+// MarkRunComplete — marks absent_since ONLY for rows genuinely never seen in
+// ANY tick of the run; rows seen in either tick are exempt, and status is
+// never touched by absence either way.
 //
 // Verified against the pre-F-02 code: the old ApplyCompletedPull opened with
 // an unconditional `UPDATE listings SET status = 'closed' WHERE tenant_id =
-// $1 AND installation_id = $2` (repository.go:390-394 before this change) —
+// $1 AND installation_id = $2` (repository.go:390-394 before that change) —
 // it has no `rows`/`complete` awareness at all, so it would have closed all
-// 30 seeded rows (the 10 "seen" and the 20 "unseen" alike) before this test
-// ever got to its assertions. Every one of the 20 "not in this batch" checks
-// below would have failed against that statement — there is no scenario
-// under the old code where an unseen row keeps its original status, because
-// the UPDATE runs before the new rows are even considered. This test would
-// have failed 20/20 on the old code; it is the red half of this must-fail's
+// 30 seeded rows before this test ever got to its assertions. This test would
+// have failed on the old code; it is the red half of this must-fail's
 // red/green pair.
 func TestApplyCompletedPull_AbortAfterPage1_NeverClosesUnseenRows(t *testing.T) {
 	ctx := context.Background()
@@ -122,7 +134,8 @@ func TestApplyCompletedPull_AbortAfterPage1_NeverClosesUnseenRows(t *testing.T) 
 
 	priorSync := time.Date(2026, 7, 1, 9, 0, 0, 0, time.UTC)
 	const total = 30
-	const page1 = 10
+	const page1 = 10 // phase A: ids [0,10) — the only page an aborted run ever saw
+	const page2 = 20 // phase B resume: ids [10,20) additionally seen; [20,30) genuinely vanished
 	statusFor := func(i int) string {
 		if i%2 == 0 {
 			return "active"
@@ -133,22 +146,37 @@ func TestApplyCompletedPull_AbortAfterPage1_NeverClosesUnseenRows(t *testing.T) 
 		item := fmt.Sprintf("item-%02d", i)
 		seedListingWithLastSeen(t, pool, tenant, installation, item, "-", "title "+item, statusFor(i), priorSync, priorSync, &priorSync)
 	}
-
-	// Page 1 only — the run then aborts (rate-limit/deadline/kill) before
-	// paging further.
-	runStarted := priorSync.Add(time.Hour)
-	rows := make([]domain.Listing, 0, page1)
-	for i := 0; i < page1; i++ {
+	rowFor := func(runStarted time.Time, i int) domain.Listing {
 		item := fmt.Sprintf("item-%02d", i)
 		status := domain.ListingStatus(statusFor(i))
-		rows = append(rows, listing(t, tenant, installation, item, "-", status, "title "+item, nil, nil, nil, runStarted, 50))
+		return listing(t, tenant, installation, item, "-", status, "title "+item, nil, nil, nil, runStarted, 50)
+	}
+	countAbsent := func() int {
+		n := 0
+		for i := 0; i < total; i++ {
+			item := fmt.Sprintf("item-%02d", i)
+			if readAbsentSince(t, pool, tenant, installation, item, "-") != nil {
+				n++
+			}
+		}
+		return n
 	}
 
+	runStarted := priorSync.Add(time.Hour)
 	repo := listingspostgres.NewRepository(pool, tenant)
-	if err := repo.ApplyCompletedPull(ctx, installation, rows, runStarted, false); err != nil {
-		t.Fatalf("ApplyCompletedPull(): %v", err)
+
+	// --- Phase A: page 1 only, then the run aborts. No MarkRunComplete. ---
+	rowsPage1 := make([]domain.Listing, 0, page1)
+	for i := 0; i < page1; i++ {
+		rowsPage1 = append(rowsPage1, rowFor(runStarted, i))
+	}
+	if err := repo.UpsertPulledRows(ctx, installation, rowsPage1, runStarted); err != nil {
+		t.Fatalf("UpsertPulledRows() page 1: %v", err)
 	}
 
+	if got := countAbsent(); got != 0 {
+		t.Fatalf("absent_since count after aborted phase A = %d, want 0 (incomplete run must never mark absent)", got)
+	}
 	for i := page1; i < total; i++ {
 		item := fmt.Sprintf("item-%02d", i)
 		got := readRawListing(t, pool, tenant, installation, item, "-")
@@ -158,15 +186,48 @@ func TestApplyCompletedPull_AbortAfterPage1_NeverClosesUnseenRows(t *testing.T) 
 		if !got.Updated.Equal(priorSync) {
 			t.Fatalf("unseen row %s updated_at = %v, want untouched %v", item, got.Updated, priorSync)
 		}
-		if absent := readAbsentSince(t, pool, tenant, installation, item, "-"); absent != nil {
-			t.Fatalf("unseen row %s absent_since = %v, want nil (incomplete run must never mark absent)", item, *absent)
-		}
 	}
 	for i := 0; i < page1; i++ {
 		item := fmt.Sprintf("item-%02d", i)
-		got := readRawListing(t, pool, tenant, installation, item, "-")
-		if got.Status != statusFor(i) {
-			t.Fatalf("seen row %s status = %q, want %q", item, got.Status, statusFor(i))
+		if got := readRawListing(t, pool, tenant, installation, item, "-").Status; got != statusFor(i) {
+			t.Fatalf("seen row %s status = %q, want %q", item, got, statusFor(i))
+		}
+	}
+
+	// --- Phase B: full retomada. Same run (same runStarted) resumes,
+	// ticks in ids [10,20), then declares the run complete. ids [20,30)
+	// are never seen in any tick of this run — genuinely vanished. ---
+	rowsPage2 := make([]domain.Listing, 0, page2-page1)
+	for i := page1; i < page2; i++ {
+		rowsPage2 = append(rowsPage2, rowFor(runStarted, i))
+	}
+	if err := repo.UpsertPulledRows(ctx, installation, rowsPage2, runStarted); err != nil {
+		t.Fatalf("UpsertPulledRows() page 2 (resume): %v", err)
+	}
+	if err := repo.MarkRunComplete(ctx, installation, runStarted); err != nil {
+		t.Fatalf("MarkRunComplete() after full retomada: %v", err)
+	}
+
+	if got := countAbsent(); got != total-page2 {
+		t.Fatalf("absent_since count after completed retomada = %d, want %d (only genuinely unseen ids)", got, total-page2)
+	}
+	for i := 0; i < page2; i++ {
+		item := fmt.Sprintf("item-%02d", i)
+		if absent := readAbsentSince(t, pool, tenant, installation, item, "-"); absent != nil {
+			t.Fatalf("seen-in-run row %s absent_since = %v, want nil", item, *absent)
+		}
+	}
+	for i := page2; i < total; i++ {
+		item := fmt.Sprintf("item-%02d", i)
+		absent := readAbsentSince(t, pool, tenant, installation, item, "-")
+		if absent == nil {
+			t.Fatalf("genuinely vanished row %s absent_since = nil, want set", item)
+		}
+		if !absent.Equal(runStarted) {
+			t.Fatalf("vanished row %s absent_since = %v, want %v", item, *absent, runStarted)
+		}
+		if got := readRawListing(t, pool, tenant, installation, item, "-").Status; got != statusFor(i) {
+			t.Fatalf("vanished row %s status = %q, want unchanged %q (absence must never flip status)", item, got, statusFor(i))
 		}
 	}
 }
@@ -194,8 +255,11 @@ func TestApplyCompletedPull_CompleteRunMarksGenuinelyAbsentRowWithoutTouchingSta
 		listing(t, tenant, installation, "stays", "-", domain.ListingStatusActive, "stays", nil, nil, nil, runStarted, 50),
 	}
 	repo := listingspostgres.NewRepository(pool, tenant)
-	if err := repo.ApplyCompletedPull(ctx, installation, rows, runStarted, true); err != nil {
-		t.Fatalf("ApplyCompletedPull(): %v", err)
+	if err := repo.UpsertPulledRows(ctx, installation, rows, runStarted); err != nil {
+		t.Fatalf("UpsertPulledRows(): %v", err)
+	}
+	if err := repo.MarkRunComplete(ctx, installation, runStarted); err != nil {
+		t.Fatalf("MarkRunComplete(): %v", err)
 	}
 
 	if got := readRawListing(t, pool, tenant, installation, "vanished", "-").Status; got != "paused" {
@@ -235,8 +299,11 @@ func TestApplyCompletedPull_ReappearanceClearsAbsentSince(t *testing.T) {
 		listing(t, tenant, installation, "back", "-", domain.ListingStatusActive, "back", nil, nil, nil, runStarted, 50),
 	}
 	repo := listingspostgres.NewRepository(pool, tenant)
-	if err := repo.ApplyCompletedPull(ctx, installation, rows, runStarted, true); err != nil {
-		t.Fatalf("ApplyCompletedPull(): %v", err)
+	if err := repo.UpsertPulledRows(ctx, installation, rows, runStarted); err != nil {
+		t.Fatalf("UpsertPulledRows(): %v", err)
+	}
+	if err := repo.MarkRunComplete(ctx, installation, runStarted); err != nil {
+		t.Fatalf("MarkRunComplete(): %v", err)
 	}
 
 	if got := readAbsentSince(t, pool, tenant, installation, "back", "-"); got != nil {
@@ -251,11 +318,21 @@ func TestApplyCompletedPull_ReappearanceClearsAbsentSince(t *testing.T) {
 	}
 }
 
-// TestApplyCompletedPull_ZeroRowsNeverMarksAbsentEvenWhenCallerClaimsComplete
-// is the negative scenario's safety pin (feature.md): a broken/empty
-// enumerator reporting an empty batch must never be read as "the whole
-// catalog is gone", even if its caller (incorrectly) claims complete=true.
-func TestApplyCompletedPull_ZeroRowsNeverMarksAbsentEvenWhenCallerClaimsComplete(t *testing.T) {
+// TestMarkRunComplete_NeverUpsertedIsNoOp is the run-scoped safety pin
+// required test (4): a run that never called UpsertPulledRows at all (e.g. a
+// broken/empty enumerator whose every tick came back empty) must have
+// MarkRunComplete alone be a no-op — never read as "the whole catalog is
+// gone". This replaces the old per-CALL pin
+// (TestApplyCompletedPull_ZeroRowsNeverMarksAbsentEvenWhenCallerClaimsComplete):
+// that pin only guarded a single call's `len(rows) == 0`, which would have
+// wrongly disabled keep-absent for an entire multi-tick run just because its
+// LAST tick happened to be empty (see
+// TestApplyCompletedPull_AbortAfterPage1_NeverClosesUnseenRows phase B, where
+// a real terminal tick legitimately has zero NEW rows for ids already seen
+// in an earlier tick but must still complete the run). The new pin is
+// scoped to "did this run ever touch anything", checked directly against
+// last_seen_at = runStartedAt, not to any single call's row count.
+func TestMarkRunComplete_NeverUpsertedIsNoOp(t *testing.T) {
 	ctx := context.Background()
 	pool, _ := testpostgres.OpenPool(t, "tenant_harness_listings")
 	token := time.Now().UTC().Format("150405.000000000")
@@ -270,12 +347,14 @@ func TestApplyCompletedPull_ZeroRowsNeverMarksAbsentEvenWhenCallerClaimsComplete
 
 	runStarted := priorSync.Add(time.Hour)
 	repo := listingspostgres.NewRepository(pool, tenant)
-	if err := repo.ApplyCompletedPull(ctx, installation, nil, runStarted, true); err != nil {
-		t.Fatalf("ApplyCompletedPull(): %v", err)
+	// UpsertPulledRows is never called for this run at all — MarkRunComplete
+	// is the only call the run ever makes.
+	if err := repo.MarkRunComplete(ctx, installation, runStarted); err != nil {
+		t.Fatalf("MarkRunComplete(): %v", err)
 	}
 
 	if got := readAbsentSince(t, pool, tenant, installation, "solo", "-"); got != nil {
-		t.Fatalf("solo row absent_since = %v, want nil (zero-row safety pin)", *got)
+		t.Fatalf("solo row absent_since = %v, want nil (run-scoped safety pin: nothing was ever upserted this run)", *got)
 	}
 	if got := readRawListing(t, pool, tenant, installation, "solo", "-").Status; got != "active" {
 		t.Fatalf("solo row status = %q, want unchanged %q", got, "active")
@@ -315,18 +394,30 @@ func TestApplyCompletedPull_StatusPersistsVerbatimEvenForNovelProviderValues(t *
 		CreatedAt: runStarted,
 		UpdatedAt: runStarted,
 	}
+	// Second row built THROUGH domain.NewListing (the 0a fix path): proves a
+	// novel status doesn't just avoid a DB CHECK, it also clears domain
+	// construction and still comes out verbatim end to end (required test 7:
+	// "status verbatim survives domain->repository via the 0a fix").
+	throughDomain := listing(t, tenant, installation, "novel-item-domain", "-", domain.ListingStatus("suspended"), "novel via NewListing", nil, nil, nil, runStarted, 50)
+
 	repo := listingspostgres.NewRepository(pool, tenant)
-	if err := repo.ApplyCompletedPull(ctx, installation, []domain.Listing{novel}, runStarted, true); err != nil {
-		t.Fatalf("ApplyCompletedPull(): %v", err)
+	if err := repo.UpsertPulledRows(ctx, installation, []domain.Listing{novel, throughDomain}, runStarted); err != nil {
+		t.Fatalf("UpsertPulledRows(): %v", err)
 	}
 	if got := readRawListing(t, pool, tenant, installation, "novel-item", "-").Status; got != "under_review_custom" {
 		t.Fatalf("status = %q, want verbatim %q", got, "under_review_custom")
 	}
+	if got := readRawListing(t, pool, tenant, installation, "novel-item-domain", "-").Status; got != "suspended" {
+		t.Fatalf("status (via NewListing) = %q, want verbatim %q", got, "suspended")
+	}
 }
 
 // TestApplyCompletedPull_VariationsUpsertIdempotently proves listing_variations
-// rows land alongside the parent in the same transaction and that a second
-// call updates in place (no duplicate rows for the same PK tuple).
+// rows land alongside the parent in the same transaction, that a second call
+// updates in place (no duplicate rows for the same PK tuple), and — required
+// test (5), kill-and-resume — that reprocessing the IDENTICAL page a third
+// time (as a restarted run replaying the same scroll_id page would) is fully
+// idempotent: no duplicate rows, no overcounted quantities.
 func TestApplyCompletedPull_VariationsUpsertIdempotently(t *testing.T) {
 	ctx := context.Background()
 	pool, _ := testpostgres.OpenPool(t, "tenant_harness_listings")
@@ -349,8 +440,8 @@ func TestApplyCompletedPull_VariationsUpsertIdempotently(t *testing.T) {
 		{VariationID: "var-2", Price: &priceV2, AvailableQuantity: &qty, SellerSKU: &sku2},
 	}
 	repo := listingspostgres.NewRepository(pool, tenant)
-	if err := repo.ApplyCompletedPull(ctx, installation, []domain.Listing{row}, runStarted, true); err != nil {
-		t.Fatalf("ApplyCompletedPull(): %v", err)
+	if err := repo.UpsertPulledRows(ctx, installation, []domain.Listing{row}, runStarted); err != nil {
+		t.Fatalf("UpsertPulledRows(): %v", err)
 	}
 
 	got := readListingVariations(t, pool, tenant, installation, "parent-item")
@@ -372,12 +463,33 @@ func TestApplyCompletedPull_VariationsUpsertIdempotently(t *testing.T) {
 		{VariationID: "var-1", Price: &priceV1b, AvailableQuantity: &qty, SellerSKU: &sku1},
 		{VariationID: "var-2", Price: &priceV2, AvailableQuantity: &qty, SellerSKU: &sku2},
 	}
-	if err := repo.ApplyCompletedPull(ctx, installation, []domain.Listing{row2}, runStarted.Add(time.Hour), true); err != nil {
-		t.Fatalf("ApplyCompletedPull() second call: %v", err)
+	if err := repo.UpsertPulledRows(ctx, installation, []domain.Listing{row2}, runStarted.Add(time.Hour)); err != nil {
+		t.Fatalf("UpsertPulledRows() second call: %v", err)
 	}
 	got = readListingVariations(t, pool, tenant, installation, "parent-item")
 	if len(got) != 2 {
 		t.Fatalf("variations after second call = %d, want 2 (no duplicate insert): %#v", len(got), got)
+	}
+	if got["var-1"].price != "15.00" {
+		t.Fatalf("var-1 price after second call = %q, want 15.00", got["var-1"].price)
+	}
+
+	// Required test (5), kill-and-resume: reprocess the IDENTICAL page a
+	// third time (same rows, same content) with a distinct tick timestamp —
+	// the same scroll_id page delivered twice after a restart must be fully
+	// idempotent: no duplicate variation rows, no overcounted quantities.
+	if err := repo.UpsertPulledRows(ctx, installation, []domain.Listing{row2}, runStarted.Add(2*time.Hour)); err != nil {
+		t.Fatalf("UpsertPulledRows() reprocessed identical page: %v", err)
+	}
+	got = readListingVariations(t, pool, tenant, installation, "parent-item")
+	if len(got) != 2 {
+		t.Fatalf("variations after reprocessing identical page = %d, want 2 (no duplicates on kill-and-resume replay): %#v", len(got), got)
+	}
+	if got["var-1"].price != "15.00" || *got["var-1"].availableQuantity != qty {
+		t.Fatalf("var-1 after replay = %#v, want price 15.00 qty %d (no overcount)", got["var-1"], qty)
+	}
+	if got["var-2"].price != "20.00" || *got["var-2"].availableQuantity != qty {
+		t.Fatalf("var-2 after replay = %#v, want price 20.00 qty %d (no overcount)", got["var-2"], qty)
 	}
 	if got["var-1"].price != "15.00" {
 		t.Fatalf("var-1 price after update = %q, want 15.00", got["var-1"].price)
