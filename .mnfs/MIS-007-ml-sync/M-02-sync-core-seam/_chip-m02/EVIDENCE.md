@@ -2,7 +2,8 @@
 
 milestone: MIS-007/M-02-sync-core-seam · session `local_c0c3c6c4-9f68-4e6d-ade5-50d23046b13c` (hub) ·
 this orchestration session on `claude/gallant-banach-2f909b` · BASE-SHA `295e293fdc273ed0fad9c3eb2445b7f2152586ed`
-· HEAD `e51c09f6219a0b21d1d51633c6a781ebcdb95eb7`. Not pushed.
+· HEAD `7d02bc75ba2c0ec899927f2aa0164277fa9ab2ed` (post hub-directed fix, see addendum below;
+milestone-review tip was `e51c09f6219a0b21d1d51633c6a781ebcdb95eb7`). Not pushed.
 
 Process: operator override "review enxuto" — no dual gate. 1 adversarial sonnet reviewer per
 feature at feature-end, 1 cold adversarial reviewer on the full milestone diff at the end.
@@ -72,3 +73,38 @@ written by this session.
 - **Milestone-final cold review** (independent sonnet, full diff `295e293f..e51c09f6`, all 7 criteria re-run for real, cross-feature seams checked): **AGREE**. No blocking defects. Recommends proceeding to hub merge + M02-U1/U2 browser QA.
 
 **Verdict: milestone-level AGREE.** Lean review process complete (4× per-feature + 1× final cold pass, 2 real defects found and closed via fix-and-reverify, not waived). Ready for hub merge; M02-U1/U2 (browser QA) remain hub-driven per dev-stack ownership.
+
+## Addendum — hub-directed post-review fix (HOLD-MERGE)
+
+Hub reviewed the merged diff post-CLOSED and held the merge on one finding, `sync/application/scheduler.go`:
+
+> `inferIncremental`'s switch matched `case "incremental", "sweep": return true`. `"sweep"` is not a
+> ratified phase — ADR-07 (`mission.md:183-187`) defines only `backfill → incremental`. The function's
+> own doc comment already declared "unrecognized phase resolves to false", directly contradicted by the
+> `"sweep"` case. Live risk: M-09 (already merged) computes `last_success_at = GREATEST(last_full_sync_at,
+> last_incremental_at)`; a future milestone naming a repair pass `"sweep"` would silently record it as
+> incremental, `last_full_sync_at` would never advance, and the M-09 health card would show a stuck-old
+> full-sync timestamp — root cause here, symptom in another milestone months later.
+
+Verified independently before dispatching the fix: read `mission.md:183-187` directly, confirmed ADR-07
+ratifies only `backfill → incremental`, no sweep.
+
+Fix (sonnet subagent, orchestrator-verified, no scope beyond the 2 named files):
+- `scheduler.go`: `inferIncremental` now matches only `"incremental"` → `true`; every other value
+  (including `"sweep"`) falls to `false`. Doc comment corrected to cite ADR-07 and warn against
+  re-adding `sweep` as a special case.
+- `scheduler_test.go`: both table-driven tests' `sweep→true` rows renamed to
+  `"unrecognized phase sweep falls to tolerant default (ADR-07 has no sweep phase)"` → `false`.
+
+Verification (re-run independently by orchestrator, not just trusting the implementer):
+```
+--- PASS: TestInferIncrementalTolerates/unrecognized_phase_sweep_falls_to_tolerant_default_(ADR-07_has_no_sweep_phase)
+--- PASS: TestRunOnceDerivesIncrementalFromCursorPhase/unrecognized_phase_sweep_falls_to_tolerant_default_(ADR-07_has_no_sweep_phase)
+```
+`go build ./...` clean. `go vet ./internal/modules/sync/...` clean. `git diff --stat HEAD~1..HEAD` —
+only `scheduler.go` (+`scheduler_test.go`) touched, 9 insertions/6 deletions, nothing else.
+
+No REQUEST filed — hub's instruction was to remove the unratified case, not invent repair-phase
+semantics, so no new decision was made at this level.
+
+**Tip after fix: `7d02bc75ba2c0ec899927f2aa0164277fa9ab2ed`.** CLOSED reported to hub with this evidence.
