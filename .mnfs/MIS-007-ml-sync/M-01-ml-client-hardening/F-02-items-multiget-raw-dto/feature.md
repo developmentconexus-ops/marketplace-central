@@ -89,7 +89,21 @@ EARS:
 - 45 ids → exatamente 3 chamadas HTTP (20+20+5), ordem preservada — contagem no transport
   fake.
 - Item 404 dentro do batch → 44 DTOs válidos + 1 erro por item; batch NÃO falha.
-- Fixture >1MB → `RawTruncated=true` assertado.
+- Fixture >256KiB (por item) → `RawTruncated=true` assertado — ver amendment abaixo.
+
+**Amendment (2026-08-01, orchestrator M-01, self-classified spec conflict, achado por
+review adversarial de F-02):** este brief e ADR-03 citam "1MB" para o cap de Raw, mas a
+implementação usa `itemMultigetRawCap = 256KiB` POR ITEM, não 1MB. Razão: o cap de 1MB é do
+`doRawWithHeaders`/`io.LimitReader` (`capability_adapter.go:747`) sobre a RESPOSTA INTEIRA do
+multiget, compartilhada por até 20 itens do batch — um cap por-item de 1MB nunca seria
+alcançável nem testável nessa leitura (um item sozinho >1MB já estouraria o cap externo antes
+do array chegar parseável a este reader, virando falha de BATCH, não por-item). 256KiB por
+item é folga generosa sobre qualquer payload real de item ML (poucas KB) mantendo espaço para
+um batch de 20 itens caber no teto externo de 1MB. Comentário do código
+(`items_multiget_reader.go` doc de `capRawMessage`) e teste (`items_multiget_reader_test.go`)
+corrigidos para citar 256KiB explicitamente em vez de "(1MB)"/referência tautológica à
+constante. `capability_adapter.go`'s outer 1MB cap in itself is unaffected — compliant with
+ADR-03 as written for the whole-response case.
 
 ## Execution Artifact Rules
 

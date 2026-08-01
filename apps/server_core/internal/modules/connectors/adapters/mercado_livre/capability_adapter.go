@@ -32,6 +32,26 @@ type CapabilityAdapterConfig struct {
 	AccessTokenResolver  AccessTokenResolver
 	Now                  func() time.Time
 	CatalogOffersEnabled bool
+
+	// RateLimitPerMinute bounds the adapter's outbound provider request rate,
+	// per ProviderAccountRef.InstallationID (F-01-resilience-decorator,
+	// MIS-007/M-01). Zero/unset falls back to a conservative default
+	// (defaultRateLimitPerMinute) — never a compiled constant callers can't
+	// override.
+	RateLimitPerMinute int
+	// MaxRetryAttempts bounds how many times a retryable request (any GET —
+	// see doRawWithHeaders) is attempted before the resilience decorator gives
+	// up on HTTP 429 and returns RateLimitExhaustedError. Zero/unset falls back
+	// to defaultMaxRetryAttempts.
+	MaxRetryAttempts int
+	// MaxTotalRetryWait bounds the cumulative backoff/Retry-After wait across
+	// all attempts of a single retryable request. Zero/unset falls back to
+	// defaultMaxTotalRetryWait.
+	MaxTotalRetryWait time.Duration
+	// RetryBaseDelay is the exponential-backoff base used when a 429 response
+	// carries no usable Retry-After header. Zero/unset falls back to
+	// defaultRetryBaseDelay.
+	RetryBaseDelay time.Duration
 }
 
 type CapabilityAdapter struct {
@@ -41,6 +61,7 @@ type CapabilityAdapter struct {
 	accessTokenResolver  AccessTokenResolver
 	now                  func() time.Time
 	catalogOffersEnabled bool
+	resilience           *resilienceDecorator
 }
 
 var _ ports.MarketReader = (*CapabilityAdapter)(nil)
@@ -73,6 +94,7 @@ func NewCapabilityAdapter(cfg CapabilityAdapterConfig) *CapabilityAdapter {
 		accessTokenResolver:  cfg.AccessTokenResolver,
 		now:                  now,
 		catalogOffersEnabled: cfg.CatalogOffersEnabled,
+		resilience:           newResilienceDecorator(cfg.RateLimitPerMinute, cfg.MaxRetryAttempts, cfg.MaxTotalRetryWait, cfg.RetryBaseDelay),
 	}
 }
 
@@ -441,7 +463,7 @@ func (a *CapabilityAdapter) UpdateAvailableQuantity(ctx context.Context, request
 		return domain.StockWriteResult{}, domain.NewCapabilityError(domain.ErrCodeProviderPayloadInvalid, "failed to serialize stock write payload")
 	}
 
-	resp, respBody, err := a.doRaw(ctx, accountRef, token, http.MethodPut, "/items/"+url.PathEscape(item.ID), bytes.NewReader(payload))
+	resp, respBody, err := a.doRawWithHeadersNoRetry(ctx, accountRef, token, http.MethodPut, "/items/"+url.PathEscape(item.ID), bytes.NewReader(payload), "", nil)
 	if err != nil {
 		return domain.StockWriteResult{}, err
 	}
@@ -575,9 +597,11 @@ func (a *CapabilityAdapter) ReadFeeQuote(ctx context.Context, input domain.FeeQu
 	if resp.StatusCode == http.StatusNotFound {
 		return domain.FeeQuoteSnapshot{}, domain.NewCapabilityError(domain.ErrCodeProviderInvalidReference, "provider resource was not found")
 	}
-	if resp.StatusCode == http.StatusTooManyRequests {
-		return domain.FeeQuoteSnapshot{}, domain.NewCapabilityError(domain.ErrCodeProviderRateLimited, "provider rate limit reached")
-	}
+	// No StatusTooManyRequests branch here: this is a GET, so doRawWithHeaders
+	// already retried it to exhaustion inside doRaw above (returning a
+	// RateLimitExhaustedError-carrying CapabilityError via the err != nil
+	// branch) before resp is ever inspected. A 429 can no longer reach this
+	// point — F-01-resilience-decorator correction slice.
 	if resp.StatusCode >= 500 {
 		return domain.FeeQuoteSnapshot{}, domain.NewCapabilityError(domain.ErrCodeProviderTransient, "provider temporarily unavailable")
 	}
@@ -651,9 +675,13 @@ func (a *CapabilityAdapter) doJSONWithHeaders(ctx context.Context, accountRef do
 	if resp.StatusCode == http.StatusNotFound {
 		return domain.NewCapabilityError(domain.ErrCodeProviderInvalidReference, "provider resource was not found")
 	}
-	if resp.StatusCode == http.StatusTooManyRequests {
-		return domain.NewCapabilityError(domain.ErrCodeProviderRateLimited, "provider rate limit reached")
-	}
+	// No StatusTooManyRequests branch here: every doJSON/doJSONWithHeaders call
+	// site is a GET (doRawWithHeaders routes GETs through doRetryable), so a
+	// 429 is already retried to exhaustion — and turned into a
+	// RateLimitExhaustedError-carrying CapabilityError via the err != nil
+	// branch above — before resp is ever inspected here. If a non-GET caller
+	// is ever added to this function, this comment (and the missing branch)
+	// need revisiting. F-01-resilience-decorator correction slice.
 	if resp.StatusCode >= 500 {
 		return domain.NewCapabilityError(domain.ErrCodeProviderTransient, "provider temporarily unavailable")
 	}
@@ -709,7 +737,45 @@ func (a *CapabilityAdapter) doRawWithIdempotency(ctx context.Context, accountRef
 	return a.doRawWithHeaders(ctx, accountRef, token, method, path, body, idempotencyKey, nil)
 }
 
+// doRawWithHeaders is the shared choke-point entry point used by doJSON,
+// doJSONWithHeaders, doRaw and doRawWithIdempotency — i.e. every outbound
+// provider call in this adapter. Retry policy is method-based, not
+// call-site-based: GET requests retry on HTTP 429 (Retry-After honored, else
+// exponential backoff+jitter, budget-bounded via the resilience decorator);
+// non-GET requests (writes) never retry automatically, because idempotent
+// replay safety isn't assumed for them yet (ADR-02: "opt-out no-retry para
+// writes" — a future milestone may add idempotency-keyed write retry, this one
+// does not). There are currently no POST reads in this package, so the
+// GET/non-GET split is exact, not approximate; if that ever changes, this
+// comment and the branch below need revisiting.
 func (a *CapabilityAdapter) doRawWithHeaders(ctx context.Context, accountRef domain.ProviderAccountRef, token, method, path string, body io.Reader, idempotencyKey string, headers map[string]string) (*http.Response, []byte, error) {
+	if method != http.MethodGet {
+		return a.doRawWithHeadersNoRetry(ctx, accountRef, token, method, path, body, idempotencyKey, headers)
+	}
+	return a.resilience.doRetryable(ctx, accountRef.InstallationID, func(ctx context.Context) (*http.Response, []byte, error) {
+		return a.doRawOnce(ctx, accountRef, token, method, path, body, idempotencyKey, headers)
+	})
+}
+
+// doRawWithHeadersNoRetry performs exactly one attempt regardless of method:
+// it still consumes a rate-limit token from the shared per-installation
+// bucket, but never retries on 429. It is the non-GET path doRawWithHeaders
+// delegates to internally, and is also used explicitly (and unaffected by the
+// GET/non-GET branch above, since it's a PUT) by the stock-quantity write
+// path (UpdateAvailableQuantity), which lacks the idempotency binding needed
+// to make a retried PUT safe.
+func (a *CapabilityAdapter) doRawWithHeadersNoRetry(ctx context.Context, accountRef domain.ProviderAccountRef, token, method, path string, body io.Reader, idempotencyKey string, headers map[string]string) (*http.Response, []byte, error) {
+	if err := a.resilience.acquireToken(ctx, accountRef.InstallationID); err != nil {
+		return nil, nil, err
+	}
+	return a.doRawOnce(ctx, accountRef, token, method, path, body, idempotencyKey, headers)
+}
+
+// doRawOnce performs exactly one HTTP round trip against the provider. This is
+// the original, unmodified body of doRawWithHeaders prior to the resilience
+// decorator (F-01-resilience-decorator, MIS-007/M-01) — every entry point
+// above funnels through it so it remains the single actual choke point.
+func (a *CapabilityAdapter) doRawOnce(ctx context.Context, accountRef domain.ProviderAccountRef, token, method, path string, body io.Reader, idempotencyKey string, headers map[string]string) (*http.Response, []byte, error) {
 	req, err := http.NewRequestWithContext(ctx, method, a.baseURL+path, body)
 	if err != nil {
 		return nil, nil, domain.NewCapabilityError(domain.ErrCodeProviderTransient, "provider request build failed")
