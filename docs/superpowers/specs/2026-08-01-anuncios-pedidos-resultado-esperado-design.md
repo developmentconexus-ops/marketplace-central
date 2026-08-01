@@ -287,3 +287,55 @@ E o mesmo controle serviu para o caso oposto: `price_to_win` devolveu `item_not_
 falta um opt-in separado. Mesma técnica, dois vereditos opostos, ambos sustentados.
 
 Antes de declarar "a API não dá", confirmar o estado da conta no momento da medição.
+
+## 12. Máximo global, não máximo local
+
+Ordem do operador ao aprovar este design: **buscar sempre o máximo global, não o local —
+refatorar o que for preciso.** Isso autoriza (e obriga) tratar as causas em vez dos sintomas.
+Um patch por campo quebrado seria máximo local: os quatro preços voltariam, e a **classe** do
+defeito continuaria viva, esperando o quinto campo.
+
+O que a ordem torna obrigatório:
+
+**R-A — Conjunto de colunas declarado em TODOS os escritores, não só em `listings`.**
+`UpsertPulledRows` foi onde a bala saiu, mas `order_items` (`order_repo.go:856-878`) tem a
+mesma forma e ainda não disparou. Consertar só o primeiro seria consertar o sintoma. O
+mecanismo do ADR-C2 vale para pedidos, itens, pagamentos, envios e espelho.
+
+**R-B — Varredura de nulabilidade nos tipos de domínio.**
+`ProviderStatusDetail` e `CancellationDetail` são `string` onde `NULL` é legítimo — o próprio
+cabeçalho do arquivo (`order_detail.go:13-14`) promete o contrário. Não é para trocar esses
+dois: é para varrer todos os tipos de domínio e corrigir a classe. Um `string` onde o
+provider pode não ter valor torna `NULL` **inalcançável** — o defeito nasce no tipo, antes de
+qualquer linha rodar.
+
+**R-C — Reconciliação de raw como mecanismo compartilhado, não como código do ML.**
+ADR-C6 vale para todo adapter — Mercado Livre, Sankhya, xlsx. Implementar só no adapter do ML
+recria a assimetria que produziu o problema. O mecanismo é do seam de adapters.
+
+**R-D — Matar o mapper morto em vez de conviver com dois.**
+`MapListingSnapshotToCanonicalRows` (`mapper.go`) preenche corretamente `price_amount`,
+`price_currency`, `listing_type_code` e `published_quantity` — **e não tem nenhum chamador de
+produção**, só teste e um comentário. Enquanto isso o mapper vivo (`multiget_mapper.go`) não
+preenche nenhum dos quatro. Dois mappers para o mesmo destino, um certo e morto, outro vivo e
+incompleto: é exatamente essa duplicação que permite ligar o errado e ninguém notar. Um
+sobrevive.
+
+**R-E — KPI server-side é refatoração do read model, não conta na tela.**
+Trocar `bucketTabCount` por outra contagem no cliente seria máximo local. A agregação pertence
+ao backend, sobre o conjunto todo, com cobertura declarada — e isso vale para os buckets de
+`/pedidos` e para os KPIs de `/anuncios`.
+
+**R-F — Selo aplicado ao contrato inteiro, de uma vez.**
+Apertar só `price` deixaria o resto do `ListingReadModel` e do `OrderRead` na mesma forma que
+não recusa nada. O selo passa por todos os campos das duas telas; onde o dado ainda não
+existe, o campo sai do contrato (`PLANEJADO`) em vez de ficar nulável para sempre.
+
+**Limite da ordem.** Máximo global é sobre a **classe do defeito em curso**, não licença para
+refatoração livre. Nada de reescrever módulo que este design não toca. O critério: se o
+conserto pontual deixa a mesma classe viva em outro lugar do caminho de /anuncios e /pedidos,
+o conserto é geral. Se não deixa, é pontual mesmo.
+
+Isso alinha com o stop-the-line já vigente no perfil do harness: defeito reincidente para a
+linha, tem causa raiz achada, e o conserto é geral ou vira dívida registrada — nunca um
+remendo silencioso.
