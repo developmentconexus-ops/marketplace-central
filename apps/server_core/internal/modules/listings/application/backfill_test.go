@@ -77,6 +77,33 @@ func fixedClock(t time.Time) func() time.Time {
 	return func() time.Time { return t }
 }
 
+// TestListingIngestorUsesInjectedClockForSeenAt proves the resync-writer
+// fix's clock-injectability requirement: NewListingIngestor's now parameter
+// is a real constructor-level dependency, not time.Now hardcoded internally
+// — a fixed clock's exact value must reach UpsertPulledRows's seenAt
+// argument, the same way root.go's installationResyncWriter passes time.Now
+// through to it per Apply call.
+func TestListingIngestorUsesInjectedClockForSeenAt(t *testing.T) {
+	fixed := time.Date(2026, 8, 1, 12, 30, 0, 0, time.UTC)
+	hydrator := &fakeHydrator{byID: map[string]listingsdomain.Listing{"item-1": testListing(t, "item-1", "-")}}
+	store := &fakeRunStore{}
+
+	ingestor := NewListingIngestor(hydrator, store, testAccount(), fixedClock(fixed))
+	if err := ingestor.IngestListing(context.Background(), "item-1"); err != nil {
+		t.Fatalf("IngestListing() error = %v", err)
+	}
+
+	if len(store.upserts) != 1 {
+		t.Fatalf("upserts = %+v, want exactly 1", store.upserts)
+	}
+	if !store.upserts[0].seenAt.Equal(fixed) {
+		t.Fatalf("upserts[0].seenAt = %v, want the injected clock value %v", store.upserts[0].seenAt, fixed)
+	}
+	if len(store.completes) != 0 {
+		t.Fatalf("completes = %+v, want none: a single-item ingest must never call MarkRunComplete", store.completes)
+	}
+}
+
 func TestListingsJobIngestsPageAndAdvancesCursor(t *testing.T) {
 	t0 := time.Date(2026, 7, 31, 3, 0, 0, 0, time.UTC)
 	enumerator := &fakeEnumerator{pages: []ports.BatchIDPage{{IDs: []string{"item-1"}, NextCursor: "page-2"}}}

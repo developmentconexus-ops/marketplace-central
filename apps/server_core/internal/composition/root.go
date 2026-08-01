@@ -233,7 +233,8 @@ func (w installationStockWriter) Apply(ctx context.Context, item mutationsports.
 }
 
 type installationResyncWriter struct {
-	puller        mutationslistings.BackfillPuller
+	hydrator      listingsports.BatchHydrator
+	store         listingsports.CompletedPullStore
 	installations *integrationsapp.InstallationService
 	tenantID      string
 }
@@ -247,7 +248,8 @@ func (w installationResyncWriter) Apply(ctx context.Context, item mutationsports
 		return mutationsports.WriteOutcome{}, fmt.Errorf("mutation installation %q not found", item.InstallationID)
 	}
 	account := listingsports.InstallationAccount{TenantID: w.tenantID, InstallationID: installation.InstallationID, ProviderCode: installation.ProviderCode, ProviderAccountID: installation.ExternalAccountID}
-	return mutationslistings.NewResyncWriter(w.puller, account).Apply(ctx, item)
+	ingestor := listingsapp.NewListingIngestor(w.hydrator, w.store, account, time.Now)
+	return mutationslistings.NewResyncWriter(ingestor, account).Apply(ctx, item)
 }
 
 func NewRootRouter(pool *pgxpool.Pool, cfg pgdb.Config) (http.Handler, error) {
@@ -727,14 +729,18 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	// The listings sync is the ONLY path that walks the seller's whole catalog,
 	// so it is also where the link matcher gets its snapshots: the observer
 	// upserts the provider EAN/seller-SKU the canonical listing row cannot hold.
-	// One shared BackfillRunner backs BOTH producers that need a synchronous
-	// whole-catalog pull — the manual API refresh below and the admin resync
-	// writer (mutationslistings.ResyncWriter, wired further down) — so they
-	// share identical hydrate+persist behavior end to end (ADR-04: one writer,
-	// no coexisting path; F-04 retires the old page-based Source/Ingestion).
+	// listingBackfillHydrator and listingRepo (below) are shared by BOTH
+	// producers that need hydrate+persist — the manual API refresh's
+	// whole-catalog BackfillRunner right below, and the admin resync writer's
+	// per-item ListingIngestor (wired further down as installationResyncWriter)
+	// — so a per-item resync and a whole-catalog backfill agree on hydrate
+	// and persist behavior without a resync fanning out into N whole-catalog
+	// pulls (ADR-04: one writer per shared seam; F-04 retires the old
+	// page-based Source/Ingestion).
+	listingBackfillHydrator := listingsconnectors.NewMultigetHydrator(marketplaceCapabilities, productLinkImportSvc, time.Now)
 	listingBackfillRunner := listingsapp.NewBackfillRunner(
 		listingsconnectors.NewBackfillSource(marketplaceCapabilities),
-		listingsconnectors.NewMultigetHydrator(marketplaceCapabilities, productLinkImportSvc, time.Now),
+		listingBackfillHydrator,
 		listingRepo, time.Now,
 	)
 	listingRefreshGateway := listingsintegrations.NewGateway(installationSvc, operationSvc)
@@ -759,7 +765,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		stockWriter := installationStockWriter{capabilities: marketplaceCapabilities, installations: installationSvc, tenantID: cfg.DefaultTenantID}
 		listingWriter := mutationsconnectors.NewListingWriter(marketplaceCapabilities, cfg.DefaultTenantID, "mercado_livre")
 		linkageWriter := mutationsproductlinks.NewWriter(productLinkResolutionSvc)
-		resyncWriter := installationResyncWriter{puller: listingBackfillRunner, installations: installationSvc, tenantID: cfg.DefaultTenantID}
+		resyncWriter := installationResyncWriter{hydrator: listingBackfillHydrator, store: listingRepo, installations: installationSvc, tenantID: cfg.DefaultTenantID}
 		policyPresent := func(ctx context.Context, listingID string) (bool, error) {
 			parsed, err := listingsdomain.ParseListingID(listingID)
 			if err != nil {
