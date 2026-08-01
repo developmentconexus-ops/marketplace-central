@@ -580,10 +580,21 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	// read path (refresh): an order imported before its anúncio was linked
 	// picks the link up on the next read instead of waiting for a re-import.
 	ordersLinkReader := ordersproductlinks.NewLinkReader(productLinkCandidateRepo, productLinkCandidateRepo)
+	ordersBuyerFiscalReader := newOrdersBuyerFiscalReaderAdapter(mercadoLivreCapabilities, installationSvc, cfg.DefaultTenantID)
+	// F-02: IngestOrder is the single write path (ADR-04) — Import now only enumerates
+	// provider_order_ids from ListOrders and delegates each one here.
+	ordersOrderDetailReader := newOrdersOrderDetailReaderAdapter(mercadoLivreCapabilities, installationSvc, cfg.DefaultTenantID)
+	ordersShipmentDetailReader := newOrdersShipmentDetailReaderAdapter(mercadoLivreCapabilities, installationSvc, cfg.DefaultTenantID)
+	ordersIngestSvc := ordersapp.NewIngestService(ordersapp.IngestServiceConfig{
+		OrderDetail:    ordersOrderDetailReader,
+		ShipmentDetail: ordersShipmentDetailReader,
+		BuyerFiscal:    ordersBuyerFiscalReader,
+		Links:          ordersLinkReader,
+		Store:          ordersRepo,
+	})
 	ordersImportSvc := ordersapp.NewImportService(ordersapp.ImportServiceConfig{
-		Source: ordersintegrations.NewOrderSource(providerOperationSvc),
-		Links:  ordersLinkReader,
-		Store:  ordersRepo,
+		Source:   ordersintegrations.NewOrderSource(providerOperationSvc),
+		Ingestor: ordersIngestSvc,
 	})
 	ordersListSvc := ordersapp.NewListService(ordersRepo)
 	ordersReadRepo := orderspostgres.NewOrderReadRepository(pool, cfg.DefaultTenantID)
@@ -591,7 +602,6 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	ordersSummarySvc := ordersapp.NewSummaryServiceWithBuckets(ordersRepo, ordersRepo)
 	ordersCostReader := newOrdersCostReaderAdapter(internalReadSvc, internalReadAvailable)
 	ordersShipmentReader := newOrdersShipmentReaderAdapter(mercadoLivreCapabilities, installationSvc, cfg.DefaultTenantID)
-	ordersBuyerFiscalReader := newOrdersBuyerFiscalReaderAdapter(mercadoLivreCapabilities, installationSvc, cfg.DefaultTenantID)
 	// Imposto/DIFAL for a sold order come from the same tenant pricing profile
 	// the Simulador calculates with (pricingpostgres.NewCalcRepository), so the
 	// two screens can never quote different tax on the same money.
