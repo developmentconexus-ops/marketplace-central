@@ -185,6 +185,19 @@ ADR-lite — cada uma é escolha que 2 workers fariam incompatível:
   (`{"phase":"backfill",...}` → `{"phase":"incremental","watermark":...}`). Enum 0075 já tem
   `listings`/`orders` — registrar job NÃO precisa de migração. Nunca comparar JSONB
   round-trip byte-exact.
+  **EMENDA (hub, 2026-08-01, ao fechar M-02/M-09 — colisão detectada antes do despacho da
+  onda B):** o vocabulário de fases é fechado em TRÊS valores, não dois —
+  `backfill` (progresso parcial, não terminal), `incremental` (terminal, com watermark) e
+  `sweep` (terminal, VARREDURA TOTAL — a fase que o M-04 persiste no cursor de listings,
+  `M-04/milestone.md:73` e `M-04/validation-contract.md:47`). Consequência VINCULANTE em
+  `inferIncremental` (`sync/application/scheduler.go`): **só `incremental` resolve para
+  `true`**. `sweep` é passe TOTAL, logo `incremental=false`, logo avança
+  `last_full_sync_at` — que é exatamente o que o card de saúde do M-09 deve mostrar, já que
+  ele lê `last_success_at = GREATEST(last_full_sync_at, last_incremental_at)`. Mapear
+  `sweep → true` congelaria `last_full_sync_at` para sempre e o card mentiria: foi o
+  HOLD-MERGE do M-02 (ver `M-02/validation-result.md`). **M-04 e M-06 estão PROIBIDOS de
+  reabrir esse `switch` para adicionar a própria fase** — se um job precisar de semântica
+  incremental, ele emite `incremental`; qualquer outro nome é total por definição.
 - **ADR-08 Dois Schedulers, cadências fixas.** Instâncias separadas 5min (orders) / diário
   (listings), padrão `synccomposition.NewProductsScheduler` (`root.go:672-677`).
   `schedule jsonb` continua não-lido (fora de escopo). Fix único na fundação:

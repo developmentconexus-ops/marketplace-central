@@ -162,17 +162,19 @@ func (s *Scheduler) runJob(ctx context.Context, j registeredJob) {
 
 // inferIncremental peeks at the terminal cursor's "phase" field to decide
 // which success timestamp RecordSuccess should update (last_incremental_at
-// vs. last_full_sync_at). It is deliberately tolerant: an absent, empty,
-// unrecognized phase, or a cursor this doesn't even parse as a JSON object
-// with a "phase" key, all resolve to false — the existing full-sync
-// bookkeeping — with no error. Job authors are never required to emit a
-// phase; only phase-aware jobs (M-04/M-06) opt in by setting one of
-// backfill/incremental (ADR-07's only ratified progression). Any other
-// phase value — including a future "sweep"/repair pass — is unrecognized and
-// MUST fall through to false; naming it here as a special case would
-// silently freeze last_full_sync_at while such passes ran. The legacy
-// products job's ProductsCursor has no phase key at all and must keep
-// resolving to false with zero behavior change (F-03).
+// vs. last_full_sync_at). ADR-07 (amended 2026-08-01) ratifies the phase
+// vocabulary as backfill | incremental | sweep. Only "incremental" resolves
+// true; "sweep" is a full/terminal sweep of listings (M-04's backfill cursor
+// lands on {"phase":"sweep",...}), so it resolves false like backfill, which
+// is correct — it advances last_full_sync_at, not last_incremental_at.
+// Mapping sweep to true would freeze last_full_sync_at while a sweep ran and
+// make the M-09 health card lie, since that card reads
+// GREATEST(last_full_sync_at, last_incremental_at). Any other phase value,
+// an absent/empty phase, or a cursor that doesn't even parse as a JSON
+// object with a "phase" key, all resolve to false with no error — job
+// authors are never required to emit a phase. The legacy products job's
+// ProductsCursor has no phase key at all and must keep resolving to false
+// with zero behavior change (F-03).
 func inferIncremental(cursor json.RawMessage) bool {
 	if len(cursor) == 0 {
 		return false
