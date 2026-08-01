@@ -75,7 +75,7 @@ func TestSyncHealthHandlerGoldenFixture(t *testing.T) {
 	}
 	// 'orders' is intentionally absent from sync_state for this tenant.
 
-	reader := syncpostgres.NewHealthReader(pool, tenant)
+	reader := syncpostgres.NewHealthReader(pool)
 	svc := syncapp.NewHealthService(reader, tenant)
 	handler := synctransport.NewHealthHandler(svc)
 	mux := httpx.NewRouteClassMux()
@@ -137,7 +137,7 @@ func TestSyncHealthHandlerEmptyTenant(t *testing.T) {
 	pool, _ := testpostgres.OpenPool(t, "sync_health_empty")
 	tenant := "tenant-health-empty-" + newHealthTestToken(t)
 
-	reader := syncpostgres.NewHealthReader(pool, tenant)
+	reader := syncpostgres.NewHealthReader(pool)
 	svc := syncapp.NewHealthService(reader, tenant)
 	handler := synctransport.NewHealthHandler(svc)
 	mux := httpx.NewRouteClassMux()

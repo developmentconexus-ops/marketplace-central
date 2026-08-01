@@ -19,12 +19,11 @@ var _ application.HealthReader = (*HealthReader)(nil)
 // the whole tenant with no installation_id filter — the "erp" sentinel row
 // where the products entity lives must not be filtered out (F-01 spec).
 type HealthReader struct {
-	pool     *pgxpool.Pool
-	tenantID string
+	pool *pgxpool.Pool
 }
 
-func NewHealthReader(pool *pgxpool.Pool, tenantID string) *HealthReader {
-	return &HealthReader{pool: pool, tenantID: tenantID}
+func NewHealthReader(pool *pgxpool.Pool) *HealthReader {
+	return &HealthReader{pool: pool}
 }
 
 // ReadAll returns one HealthEntityRow per sync_state row for the tenant,

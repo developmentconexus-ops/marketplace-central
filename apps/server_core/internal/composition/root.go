@@ -869,7 +869,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	// calls syncHealthSvc.WithWebhookStatsReader from its own region — that
 	// call mutates syncHealthSvc in place, so it takes effect on this same
 	// already-registered route without touching this region.
-	syncHealthReader := syncpg.NewHealthReader(pool, cfg.DefaultTenantID)
+	syncHealthReader := syncpg.NewHealthReader(pool)
 	syncHealthSvc := syncapp.NewHealthService(syncHealthReader, cfg.DefaultTenantID)
 	synctransport.NewHealthHandler(syncHealthSvc).Register(mux)
 

@@ -35,7 +35,7 @@ func TestHealthReaderReadsAcrossEveryInstallation(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	reader := syncpostgres.NewHealthReader(pool, tenant)
+	reader := syncpostgres.NewHealthReader(pool)
 	rows, err := reader.ReadAll(ctx, tenant)
 	if err != nil {
 		t.Fatalf("ReadAll: %v", err)
@@ -77,7 +77,7 @@ func TestHealthReaderOrderingAndFieldMapping(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	reader := syncpostgres.NewHealthReader(pool, tenant)
+	reader := syncpostgres.NewHealthReader(pool)
 	rows, err := reader.ReadAll(ctx, tenant)
 	if err != nil {
 		t.Fatalf("ReadAll: %v", err)
@@ -124,7 +124,7 @@ func TestHealthReaderEmptyTenant(t *testing.T) {
 	pool, _ := testpostgres.OpenPool(t, "sync_health_reader_empty")
 	tenant := "tenant-health-empty-" + newToken(t)
 
-	reader := syncpostgres.NewHealthReader(pool, tenant)
+	reader := syncpostgres.NewHealthReader(pool)
 	rows, err := reader.ReadAll(ctx, tenant)
 	if err != nil {
 		t.Fatalf("ReadAll: %v", err)
