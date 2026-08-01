@@ -157,7 +157,35 @@ func (s *Scheduler) runJob(ctx context.Context, j registeredJob) {
 		})
 		return
 	}
-	_ = s.store.RecordSuccess(ctx, s.installationID, j.entity, next, s.now().UTC(), false)
+	_ = s.store.RecordSuccess(ctx, s.installationID, j.entity, next, s.now().UTC(), inferIncremental(next))
+}
+
+// inferIncremental peeks at the terminal cursor's "phase" field to decide
+// which success timestamp RecordSuccess should update (last_incremental_at
+// vs. last_full_sync_at). It is deliberately tolerant: an absent, empty,
+// unrecognized phase, or a cursor this doesn't even parse as a JSON object
+// with a "phase" key, all resolve to false — the existing full-sync
+// bookkeeping — with no error. Job authors are never required to emit a
+// phase; only phase-aware jobs (M-04/M-06) opt in by setting one of
+// backfill/incremental/sweep. The legacy products job's ProductsCursor has no
+// phase key at all and must keep resolving to false with zero behavior
+// change (F-03).
+func inferIncremental(cursor json.RawMessage) bool {
+	if len(cursor) == 0 {
+		return false
+	}
+	var peek struct {
+		Phase string `json:"phase"`
+	}
+	if err := json.Unmarshal(cursor, &peek); err != nil {
+		return false
+	}
+	switch peek.Phase {
+	case "incremental", "sweep":
+		return true
+	default:
+		return false
+	}
 }
 
 // safeInvoke runs a job body and converts a panic into a recorded failure at the
