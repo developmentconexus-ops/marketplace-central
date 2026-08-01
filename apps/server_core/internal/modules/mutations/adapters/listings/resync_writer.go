@@ -4,28 +4,39 @@ import (
 	"context"
 	"errors"
 	"strings"
-	"time"
 
-	listingsapp "marketplace-central/apps/server_core/internal/modules/listings/application"
 	listingsports "marketplace-central/apps/server_core/internal/modules/listings/ports"
 	mutationsdomain "marketplace-central/apps/server_core/internal/modules/mutations/domain"
 	mutationsports "marketplace-central/apps/server_core/internal/modules/mutations/ports"
 )
 
-type ResyncWriter struct {
-	source   listingsports.PageSource
-	store    listingsports.CompletedPullStore
-	account  listingsports.InstallationAccount
-	pageSize int
-	now      func() time.Time
+// BackfillPuller is the whole-catalog synchronous pull operation this writer
+// delegates to — the SAME shape as listings/application's unexported
+// refreshPuller interface RefreshService depends on. Root.go wires a single
+// shared listingsapp.BackfillRunner instance to BOTH producers (the manual
+// API refresh and this admin resync writer) through this interface, so they
+// share identical hydrate+persist behavior end to end (ADR-04: one writer,
+// no coexisting path — the old per-writer *listingsapp.Ingestion this writer
+// used to construct fresh per Apply call is gone; F-04).
+type BackfillPuller interface {
+	Pull(ctx context.Context, account listingsports.InstallationAccount) error
 }
 
-func NewResyncWriter(source listingsports.PageSource, store listingsports.CompletedPullStore, account listingsports.InstallationAccount, pageSize int, now func() time.Time) *ResyncWriter {
-	return &ResyncWriter{source: source, store: store, account: account, pageSize: pageSize, now: now}
+// ResyncWriter applies an admin-triggered listing resync by delegating to a
+// shared BackfillPuller, scoped to one installation account. It no longer
+// owns any hydrate/persist logic itself (that lives in the puller) — its own
+// job is strictly the guard clauses below plus the installation-scope check.
+type ResyncWriter struct {
+	puller  BackfillPuller
+	account listingsports.InstallationAccount
+}
+
+func NewResyncWriter(puller BackfillPuller, account listingsports.InstallationAccount) *ResyncWriter {
+	return &ResyncWriter{puller: puller, account: account}
 }
 
 func (w *ResyncWriter) Apply(ctx context.Context, item mutationsports.WriteItem) (mutationsports.WriteOutcome, error) {
-	if w == nil || w.source == nil || w.store == nil || w.now == nil || w.pageSize <= 0 {
+	if w == nil || w.puller == nil {
 		return mutationsports.WriteOutcome{}, errors.New("listing resync writer is not configured")
 	}
 	if item.ProtocolType != mutationsdomain.ProtocolTypeListingResync {
@@ -34,8 +45,7 @@ func (w *ResyncWriter) Apply(ctx context.Context, item mutationsports.WriteItem)
 	if strings.TrimSpace(w.account.TenantID) == "" || strings.TrimSpace(w.account.InstallationID) == "" || strings.TrimSpace(item.InstallationID) != strings.TrimSpace(w.account.InstallationID) {
 		return mutationsports.WriteOutcome{}, errors.New("listing resync installation scope is invalid")
 	}
-	ingestion := listingsapp.NewIngestion(w.source, w.store, w.pageSize, w.now)
-	if err := ingestion.Pull(ctx, w.account); err != nil {
+	if err := w.puller.Pull(ctx, w.account); err != nil {
 		return mutationsports.WriteOutcome{}, err
 	}
 	return mutationsports.WriteOutcome{}, nil
