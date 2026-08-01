@@ -2,7 +2,7 @@
 
 **Chip:** CHIP-FIX4-BATCH-COMMISSION · **Base SHA:** 97ef7b09e683d601fd74e02aa604d725378f44de
 **Contract:** docs/architecture/domain-model-marketplace.md §7 FIX-4
-**Status:** CLOSED — P6 dual gate AGREEMENT (see §5).
+**Status:** CLOSED — P6 dual gate AGREEMENT (see §5). **Commit:** ba8b25b7 (branch claude/brave-panini-30631c, not pushed).
 
 > WORKTREE FINDING (report to hub): the dispatched worktree
 > `.claude/worktrees/sleepy-wing-6d7500` is empty (0 files); its git-dir points at the
