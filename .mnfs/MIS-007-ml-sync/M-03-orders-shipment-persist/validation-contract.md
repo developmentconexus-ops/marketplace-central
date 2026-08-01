@@ -3,7 +3,7 @@
 ```yaml
 id: M-03-VC
 type: milestone-validation-contract
-status: planned
+status: passed
 owner: Mission Strategist
 parent: MIS-007
 created: 2026-08-01
