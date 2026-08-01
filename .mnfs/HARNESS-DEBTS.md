@@ -295,3 +295,17 @@ esse método — a garantia "um writer só" hoje é convenção, não guard. Cla
 morta que ainda satisfaz uma porta é um writer latente**. Conserto: ou apagar o método, ou
 um teste que amarre a lista de implementações de `ports.OrderStore` alcançáveis a partir da
 composição.
+
+**D-16. Ticker longo sem tick inicial e sem vencimento persistido = starvation silenciosa**
+(MIS-007 M-04, 2026-08-01, achado do hub no drive): `syncapp.Scheduler.Start`
+(`scheduler.go:105-118`) é `time.NewTicker(interval)` puro — nenhuma execução no boot e
+nenhum registro de "próximo vencimento" em lugar nenhum. Com `interval = 15min` (products)
+isso é inofensivo. Com `interval = 24h` (o scheduler de listings que o M-04 registra) vira
+starvation: qualquer reinício do processo em janela menor que 24h zera o ticker e a
+varredura **nunca roda**. Em dev, onde o stack sobe várias vezes por dia, `sync_state` de
+`listings` fica permanentemente vazio, e o card de saúde do M-09 vai reportar "nunca
+sincronizado" — dizendo a verdade sobre um agendamento que de fato nunca acontece. O
+mecanismo está provado por teste de integração; o defeito é de agendamento, não de job.
+Classe: **cadência guardada só na memória do processo**. Conserto: derivar o vencimento de
+`sync_state.last_full_sync_at` (rodar no boot se `now - last > interval`), em vez de confiar
+num ticker que morre com o processo.
