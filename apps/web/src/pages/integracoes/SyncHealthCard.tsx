@@ -1,6 +1,7 @@
-import { isApiError, type SyncHealthEntity, type SyncHealthWebhook } from "@marketplace-central/sdk-runtime";
+import { isApiError, type SyncHealth, type SyncHealthEntity, type SyncHealthWebhook } from "@marketplace-central/sdk-runtime";
 import { ErrorState, LoadingState } from "@marketplace-central/ui";
 import { useSyncHealthQuery } from "@marketplace-central/web-query";
+import type { UseQueryResult } from "@tanstack/react-query";
 import { useClient } from "../../app/ClientContext";
 
 // Three-state badge discriminator (validation contract M09-C2/M09-C4, audited
@@ -141,6 +142,75 @@ function syncHealthErrorDetail(error: unknown): string {
   return "Falha inesperada ao carregar a saúde do sync.";
 }
 
+// Regression guard for the blank-card defect (live-drive, hub-confirmed
+// twice): `isLoading ? … : isError ? … : data ? … : null` reads three
+// INDEPENDENTLY-readable fields off UseQueryResult and treats them as if
+// they always partition into exactly those three cases. They don't —
+// react-query v5's own QueryObserverPendingResult (status:"pending",
+// data:undefined, isError:false) covers both the ordinary "still fetching"
+// shape (fetchStatus:"fetching", isLoading:true) AND the paused/indeterminate
+// shape the hub reproduced live (fetchStatus:"paused" or "idle",
+// isLoading:false) — a real, typed, reachable combination that isn't any of
+// the three named branches, so it silently fell through to `null`.
+//
+// The fix below switches the discriminant to `query.status`, which
+// @tanstack/query-core types as `QueryStatus = 'pending' | 'error' |
+// 'success'` — a closed 3-member string-literal union, not three separate
+// booleans. An if/else-if/else chain over a closed union is exhaustive BY
+// CONSTRUCTION: once "error" and "success" are ruled out, TypeScript's
+// control-flow narrowing leaves only "pending" as the remaining possibility,
+// so the final `else` is not an untested guess about what's left over — it
+// is the only other value the type can hold. Within "pending", fetchStatus
+// (`'fetching' | 'paused' | 'idle'`) is used to tell an in-flight first
+// fetch from the paused/idle-with-no-data shape, and the latter renders a
+// named, honest "state unknown" ErrorState rather than nothing.
+//
+// ADR-17: an unreadable/indeterminate state must never render as blank,
+// zero, or a fabricated "ok" — it must say plainly that it is unknown. This
+// wording ("não foi possível carregar o status") is deliberately distinct
+// from WebhookSection's "Nenhuma notificação recebida." (M09-C4's honest
+// never-notified FACT) — this is a failed/indeterminate READ, not an
+// observed fact about the webhook inbox, and must not borrow that copy.
+function SyncHealthCardBody({ query }: { query: UseQueryResult<SyncHealth> }) {
+  if (query.status === "error") {
+    return (
+      <div className="mt-2">
+        <ErrorState onRetry={() => void query.refetch()} detail={syncHealthErrorDetail(query.error)} />
+      </div>
+    );
+  }
+  if (query.status === "success") {
+    return (
+      <>
+        <div className="mt-3 flex flex-col gap-2" data-testid="sync-health-entities">
+          {query.data.entities.map((entity) => (
+            <EntityRow key={entity.entity} entity={entity} />
+          ))}
+        </div>
+        <WebhookSection webhook={query.data.webhook} />
+      </>
+    );
+  }
+  // "error" and "success" have both been ruled out above, so TypeScript
+  // narrows query.status to its one remaining member: "pending".
+  // A first fetch actually in flight renders the ordinary loading state.
+  if (query.fetchStatus === "fetching") {
+    return <LoadingState />;
+  }
+  // fetchStatus is "paused" or "idle" with status still "pending": no data,
+  // no error, nothing fetching — this is the exact shape the hub captured
+  // live (isLoading:false, isError:false, data:undefined). Name it honestly
+  // instead of rendering nothing; retry lets the user re-attempt the read.
+  return (
+    <div className="mt-2" data-testid="sync-health-unknown">
+      <ErrorState
+        onRetry={() => void query.refetch()}
+        detail="Não foi possível carregar o status da sincronização. Estado desconhecido."
+      />
+    </div>
+  );
+}
+
 // SyncHealthCard is read-only (no mutating actions this milestone) and
 // isolates its own fetch: the query's loading/error/data states are all
 // handled locally, so a failure here renders a card-scoped ErrorState and
@@ -154,22 +224,7 @@ export function SyncHealthCard() {
       <h2 id="sync-health-title" className="text-sm font-semibold text-ink">
         Saúde do sync
       </h2>
-      {query.isLoading ? <LoadingState /> : null}
-      {query.isError ? (
-        <div className="mt-2">
-          <ErrorState onRetry={() => void query.refetch()} detail={syncHealthErrorDetail(query.error)} />
-        </div>
-      ) : null}
-      {query.data ? (
-        <>
-          <div className="mt-3 flex flex-col gap-2" data-testid="sync-health-entities">
-            {query.data.entities.map((entity) => (
-              <EntityRow key={entity.entity} entity={entity} />
-            ))}
-          </div>
-          <WebhookSection webhook={query.data.webhook} />
-        </>
-      ) : null}
+      <SyncHealthCardBody query={query} />
     </section>
   );
 }
