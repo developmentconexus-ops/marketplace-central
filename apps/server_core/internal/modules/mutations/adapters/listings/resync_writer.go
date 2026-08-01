@@ -50,6 +50,15 @@ func (w *ResyncWriter) Apply(ctx context.Context, item mutationsports.WriteItem)
 	if err != nil {
 		return mutationsports.WriteOutcome{}, err
 	}
+	// The installation id embedded in the canonical ListingID string (parsed
+	// above) is a distinct source of truth from item.InstallationID (the
+	// protocol envelope field checked earlier): they can diverge on a
+	// malformed queue row, an upstream bug, or a caller that doesn't keep
+	// the two fields in lockstep. Both must agree with the account before
+	// any ingest call, or this becomes a cross-installation write.
+	if strings.TrimSpace(parsed.InstallationID) != strings.TrimSpace(w.account.InstallationID) {
+		return mutationsports.WriteOutcome{}, errors.New("listing resync installation scope is invalid")
+	}
 	if err := w.ingestor.IngestListing(ctx, parsed.ProviderListingID); err != nil {
 		return mutationsports.WriteOutcome{}, err
 	}

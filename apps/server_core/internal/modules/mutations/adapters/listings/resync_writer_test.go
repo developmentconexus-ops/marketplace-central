@@ -58,6 +58,22 @@ func TestResyncWriterRejectsCrossInstallationBeforeIngest(t *testing.T) {
 	}
 }
 
+// TestResyncWriterRejectsListingIDEmbeddingForeignInstallation reproduces a
+// gap where item.InstallationID (the protocol envelope field) matches the
+// account, but item.ListingID (the canonical id string, parsed via
+// listingsdomain.ParseListingID) embeds a DIFFERENT installation id. A
+// malformed queue row, an upstream bug, or a future caller that doesn't keep
+// the two fields in lockstep must not let this writer silently ingest a
+// foreign installation's listing under the current account.
+func TestResyncWriterRejectsListingIDEmbeddingForeignInstallation(t *testing.T) {
+	ingestor := &ingestorStub{}
+	writer := NewResyncWriter(ingestor, listingsports.InstallationAccount{TenantID: "tenant-1", InstallationID: "installation-1", ProviderCode: "mercado_livre"})
+	_, err := writer.Apply(context.Background(), mutationsports.WriteItem{ProtocolType: mutationsdomain.ProtocolTypeListingResync, InstallationID: "installation-1", ListingID: "other-installation~MLB-9~0"})
+	if err == nil || len(ingestor.calls) != 0 {
+		t.Fatalf("err=%v calls=%+v, want a scope error and zero ingest calls", err, ingestor.calls)
+	}
+}
+
 func TestResyncWriterNotConfigured(t *testing.T) {
 	writer := NewResyncWriter(nil, listingsports.InstallationAccount{TenantID: "tenant-1", InstallationID: "installation-1"})
 	_, err := writer.Apply(context.Background(), mutationsports.WriteItem{ProtocolType: mutationsdomain.ProtocolTypeListingResync, InstallationID: "installation-1", ListingID: "installation-1~MLB-1~0"})
