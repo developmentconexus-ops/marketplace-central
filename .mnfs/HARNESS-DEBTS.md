@@ -252,3 +252,18 @@ verificado, mas custou tempo real em várias features. Já existe candidato de e
 "pré-provisionar worktrees"; esta é a segunda evidência de campo. Conserto de classe: o
 provisionamento carimbar a base e o bootstrap do chip FALHAR ALTO quando
 `git merge-base` ≠ BASE-SHA do grant, em vez de deixar o chip descobrir por acidente.
+
+**D-13. Prompt de chip manda "reporte por evento" sem dar o ENDEREÇO nem o MECANISMO**
+(MIS-007 onda B, 2026-08-01, achado do operador): os dois chips da onda B terminaram o
+trabalho e o hub não recebeu NADA — nem CLOSED, nem BLOCKED. O prompt de despacho dizia
+"só eventos ao hub: CLOSED / BLOCKED / ESCALATION / REQUEST" e carregava o marcador
+`HUB-SESSION: <local_id>` exigido pelo dispatch-lint, mas **nunca dizia por qual FERRAMENTA
+mandar** (`mcp__ccd_session_mgmt__send_message` com aquele `session_id`). O chip não tem
+como adivinhar, e o hub descobriu o estado só porque o operador avisou na mão — e porque
+foi ler os branches. O `HUB-SESSION` no pack vira decoração: satisfaz o lint e não entrega
+mensagem nenhuma. Classe: **marcador de contexto não é canal**; o lint verifica presença de
+string, não existência de caminho de retorno. Conserto de classe: (a) o dispatch-lint exigir,
+junto do `HUB-SESSION:`, a linha de mecanismo (ferramenta + como chamar); (b) o
+`harness-worker` trazer o protocolo de retorno no próprio skill, para não depender de cada
+prompt repetir; (c) o hub nunca assumir silêncio = trabalho não terminado — silêncio é
+indistinguível de canal quebrado, exatamente como pulado-vs-verde na lane hermética (D-10).
