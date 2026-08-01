@@ -124,9 +124,15 @@ func TestResolveListingFeesAbsentWhenNoLedgerRowExists(t *testing.T) {
 }
 
 // TestResolveListingFeesIgnoresLayer3 proves the ladder never falls through
-// to layer 3: a layer 3 row exists for this listing (written by another
-// producer per ADR-09) but ResolveListingFees must still report absent,
-// because layer 3 never participates in the pricing-read ladder.
+// to layer 3, and does so under a key the layer filter is actually forced to
+// discriminate on: a layer 2 row AND a layer 3 row are seeded under the
+// IDENTICAL (tenant_id, provider, installation_id, subject_type=listing,
+// subject_id, fee_kind) natural key — the natural key's UNIQUE constraint
+// allows this because `layer` is itself part of that key. If the reader's
+// `layer = ANY($7)` filter were ever deleted, `ORDER BY layer DESC LIMIT 1`
+// alone would return the layer 3 row (the higher layer) instead of layer 2 —
+// so this test can only stay green because the layer filter is doing real
+// work, not because the two rows happen to live under different keys.
 func TestResolveListingFeesIgnoresLayer3(t *testing.T) {
 	pool, _ := testpostgres.OpenPool(t, "tenant_f02_resolve_l3ignore")
 	ctx := context.Background()
@@ -139,37 +145,55 @@ func TestResolveListingFeesIgnoresLayer3(t *testing.T) {
 
 	writer := NewWriter(pool)
 	currency := "BRL"
-	fee := domain.Fee{
+	const (
+		sameProvider  = "mercado_livre"
+		sameInstall   = "inst1"
+		sameSubjectID = "MLB_L3IGNORE"
+	)
+
+	layer2 := domain.Fee{
 		TenantID:       "tenant_f02_resolve_l3ignore",
-		Provider:       "mercado_livre",
-		InstallationID: "inst1",
-		Layer:          domain.LayerOrder,
+		Provider:       sameProvider,
+		InstallationID: sameInstall,
+		Layer:          domain.LayerListing,
 		FeeKind:        domain.FeeKindCommission,
-		SubjectType:    domain.SubjectTypeOrderLine,
-		SubjectID:      "200012345:MLB_L3ONLY",
+		SubjectType:    domain.SubjectTypeListing,
+		SubjectID:      sameSubjectID,
 		ValueType:      domain.ValueTypeAmount,
-		Value:          "24.33",
+		Value:          "15.99",
 		Currency:       &currency,
-		Detail:         json.RawMessage(`{"sale_fee_unit":8.11,"quantity":3}`),
-		Origem:         domain.OrigemAPIOrder,
+		Detail:         json.RawMessage(`{"percentage_fee":12.5,"fixed_fee":6.0,"financing_add_on_fee":0,"price_used":79.90,"listing_type_id":"gold_special"}`),
+		Origem:         domain.OrigemAPIListingPrices,
 		ColetadoEm:     time.Date(2026, 7, 31, 9, 0, 0, 0, time.UTC),
 	}
-	if err := writer.UpsertFee(ctx, fee); err != nil {
-		t.Fatalf("seed layer 3 commission: %v", err)
+	if err := writer.UpsertFee(ctx, layer2); err != nil {
+		t.Fatalf("seed layer 2 commission: %v", err)
+	}
+
+	// Same tenant/provider/installation/subject_type/subject_id/fee_kind as
+	// layer2 above — only `layer` differs, which is exactly why the natural
+	// key UNIQUE constraint permits both rows to coexist.
+	layer3 := layer2
+	layer3.Layer = domain.LayerOrder
+	layer3.Value = "99.99" // deliberately far from 15.99 so a wrong pick is unmissable
+	layer3.Detail = json.RawMessage(`{"sale_fee_unit":8.11,"quantity":3}`)
+	layer3.Origem = domain.OrigemAPIOrder
+	if err := writer.UpsertFee(ctx, layer3); err != nil {
+		t.Fatalf("seed layer 3 commission (same natural key modulo layer): %v", err)
 	}
 
 	reader := NewReader(pool)
-	// Note: subject_id / subject_type differ intentionally (layer 3 here is
-	// keyed as order_line, not listing) — the point is that even querying
-	// the listing subject that layer 3 rows never use, the ladder logic
-	// itself would still exclude layer 3 if it existed under subject_type
-	// listing. This test pins that the WHERE clause's layer set never
-	// includes 3, regardless of what subject_type a layer 3 row uses.
-	resolved, err := reader.ResolveListingFees(ctx, "tenant_f02_resolve_l3ignore", "mercado_livre", "inst1", "MLB_L3ONLY")
+	resolved, err := reader.ResolveListingFees(ctx, "tenant_f02_resolve_l3ignore", sameProvider, sameInstall, sameSubjectID)
 	if err != nil {
 		t.Fatalf("ResolveListingFees: %v", err)
 	}
-	if resolved.Commission.Found {
-		t.Fatalf("expected commission absent (layer 3 must never satisfy the ladder), got %+v", resolved.Commission)
+	if !resolved.Commission.Found {
+		t.Fatal("expected commission found at layer 2, even with a layer-3 row present at the same key")
+	}
+	if resolved.Commission.Layer != domain.LayerListing {
+		t.Fatalf("expected layer 2 to win over layer 3 at the identical key, got layer %d", resolved.Commission.Layer)
+	}
+	if resolved.Commission.Value != "15.9900" {
+		t.Fatalf("expected the layer-2 value 15.9900 (not the layer-3 value 99.9900), got %q", resolved.Commission.Value)
 	}
 }
