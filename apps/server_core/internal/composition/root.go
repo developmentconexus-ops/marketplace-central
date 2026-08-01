@@ -66,6 +66,7 @@ import (
 	listingsmarketplaces "marketplace-central/apps/server_core/internal/modules/listings/adapters/marketplaces"
 	listingspostgres "marketplace-central/apps/server_core/internal/modules/listings/adapters/postgres"
 	listingsapp "marketplace-central/apps/server_core/internal/modules/listings/application"
+	listingscomposition "marketplace-central/apps/server_core/internal/modules/listings/composition"
 	listingsdomain "marketplace-central/apps/server_core/internal/modules/listings/domain"
 	listingsports "marketplace-central/apps/server_core/internal/modules/listings/ports"
 	listingstransport "marketplace-central/apps/server_core/internal/modules/listings/transport"
@@ -232,8 +233,7 @@ func (w installationStockWriter) Apply(ctx context.Context, item mutationsports.
 }
 
 type installationResyncWriter struct {
-	source        listingsports.PageSource
-	store         listingsports.CompletedPullStore
+	puller        mutationslistings.BackfillPuller
 	installations *integrationsapp.InstallationService
 	tenantID      string
 }
@@ -247,7 +247,7 @@ func (w installationResyncWriter) Apply(ctx context.Context, item mutationsports
 		return mutationsports.WriteOutcome{}, fmt.Errorf("mutation installation %q not found", item.InstallationID)
 	}
 	account := listingsports.InstallationAccount{TenantID: w.tenantID, InstallationID: installation.InstallationID, ProviderCode: installation.ProviderCode, ProviderAccountID: installation.ExternalAccountID}
-	return mutationslistings.NewResyncWriter(w.source, w.store, account, 100, time.Now).Apply(ctx, item)
+	return mutationslistings.NewResyncWriter(w.puller, account).Apply(ctx, item)
 }
 
 func NewRootRouter(pool *pgxpool.Pool, cfg pgdb.Config) (http.Handler, error) {
@@ -727,15 +727,30 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	// The listings sync is the ONLY path that walks the seller's whole catalog,
 	// so it is also where the link matcher gets its snapshots: the observer
 	// upserts the provider EAN/seller-SKU the canonical listing row cannot hold.
-	listingIngestionSource := listingsconnectors.NewSourceWithObserver(marketplaceCapabilities, productLinkImportSvc)
-	listingIngestion := listingsapp.NewIngestion(listingIngestionSource, listingRepo, 100, time.Now)
+	// One shared BackfillRunner backs BOTH producers that need a synchronous
+	// whole-catalog pull — the manual API refresh below and the admin resync
+	// writer (mutationslistings.ResyncWriter, wired further down) — so they
+	// share identical hydrate+persist behavior end to end (ADR-04: one writer,
+	// no coexisting path; F-04 retires the old page-based Source/Ingestion).
+	listingBackfillRunner := listingsapp.NewBackfillRunner(
+		listingsconnectors.NewBackfillSource(marketplaceCapabilities),
+		listingsconnectors.NewMultigetHydrator(marketplaceCapabilities, productLinkImportSvc, time.Now),
+		listingRepo, time.Now,
+	)
 	listingRefreshGateway := listingsintegrations.NewGateway(installationSvc, operationSvc)
 	listingRefreshSvc := listingsapp.NewRefreshService(
-		listingRefreshGateway, listingIngestion, func(task func()) { go task() }, time.Now,
+		listingRefreshGateway, listingBackfillRunner, func(task func()) { go task() }, time.Now,
 		func(err error) { slog.Error("listings refresh lifecycle persistence failed", "err", err) },
 		func(err error) string { return string(connectorsdomain.ErrorCodeOf(err)) },
 	)
 	listingstransport.NewRefreshHandler(listingRefreshSvc).Register(mux)
+	// Daily listings backfill/sweep scheduler (ADR-08 second Scheduler
+	// instance, mirroring synccomposition.NewProductsScheduler): one instance
+	// per active Mercado Livre installation, since (unlike products) a
+	// listings backfill run is scoped to one specific InstallationAccount.
+	listingscomposition.NewListingsSchedulers(
+		pool, 24*time.Hour, installationSvc, marketplaceCapabilities, productLinkImportSvc, listingRepo,
+	).StartAll(context.Background())
 
 	mutationLane := mutationLane{envelope: mutationEnvelope}
 	mutationWriter := mutationsports.WriterPort(mutationsstub.NewWriter(nil))
@@ -744,7 +759,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		stockWriter := installationStockWriter{capabilities: marketplaceCapabilities, installations: installationSvc, tenantID: cfg.DefaultTenantID}
 		listingWriter := mutationsconnectors.NewListingWriter(marketplaceCapabilities, cfg.DefaultTenantID, "mercado_livre")
 		linkageWriter := mutationsproductlinks.NewWriter(productLinkResolutionSvc)
-		resyncWriter := installationResyncWriter{source: listingIngestionSource, store: listingRepo, installations: installationSvc, tenantID: cfg.DefaultTenantID}
+		resyncWriter := installationResyncWriter{puller: listingBackfillRunner, installations: installationSvc, tenantID: cfg.DefaultTenantID}
 		policyPresent := func(ctx context.Context, listingID string) (bool, error) {
 			parsed, err := listingsdomain.ParseListingID(listingID)
 			if err != nil {
