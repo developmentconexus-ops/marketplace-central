@@ -3235,6 +3235,29 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /sync/health:
+    get:
+      summary: Per-entity sync health aggregate
+      description: >-
+        One entry per sync_state row found for the tenant, across every
+        installation_id (no installation_id filter — the "erp" sentinel
+        installation is where the products entity lives). A tenant with no
+        sync_state rows returns an empty entities array, not a 404.
+      operationId: getSyncHealth
+      responses:
+        "200":
+          description: Sync health aggregate
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncHealth'
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /erp/imports:
     post:
       summary: Import ERP product data from an XLSX file
@@ -7738,6 +7761,67 @@ components:
         as_of:
           type: string
           format: date-time
+
+    SyncHealthError:
+      type: object
+      required: [message, at]
+      properties:
+        message:
+          type: string
+        at:
+          type: string
+          format: date-time
+
+    SyncHealthEntity:
+      type: object
+      required: [entity, last_success_at, last_incremental_at, consecutive_failures, phase, last_error]
+      properties:
+        entity:
+          type: string
+        last_success_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_incremental_at:
+          type: string
+          format: date-time
+          nullable: true
+        consecutive_failures:
+          type: integer
+          minimum: 0
+        phase:
+          type: string
+          nullable: true
+        last_error:
+          allOf:
+            - $ref: '#/components/schemas/SyncHealthError'
+          nullable: true
+
+    SyncHealthWebhook:
+      type: object
+      required: [last_notification_at, pending, dropped_24h]
+      properties:
+        last_notification_at:
+          type: string
+          format: date-time
+          nullable: true
+        pending:
+          type: integer
+          minimum: 0
+        dropped_24h:
+          type: integer
+          minimum: 0
+
+    SyncHealth:
+      type: object
+      required: [entities, webhook]
+      properties:
+        entities:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncHealthEntity'
+        webhook:
+          $ref: '#/components/schemas/SyncHealthWebhook'
 
     MarketMoney:
       type: object
