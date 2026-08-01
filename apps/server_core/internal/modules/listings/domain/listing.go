@@ -101,6 +101,39 @@ type Listing struct {
 	FetchedAt         *time.Time
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
+
+	// E3 fields (0090, IC-07) — honest-unknown per ADR-17: nil means the
+	// caller never populated the field from provider data, never a fabricated
+	// zero/false/empty. Deliberately excludes commission_amount/commission_pct/
+	// free_shipping_cost — those live in channel_fees (IC-01), not here.
+	SoldQuantity      *int
+	CategoryID        *string
+	Condition         *string
+	Permalink         *string
+	Thumbnail         *string
+	DateCreatedML     *time.Time
+	Tags              []string
+	CatalogProductID  *string
+	ShippingMode      *string
+	FreeShipping      *bool
+	LogisticType      *string
+	AvailableQuantity *int
+
+	// Variations (0091) — optional child rows upserted alongside the parent
+	// row, in the same transaction, by ApplyCompletedPull.
+	Variations []ListingVariation
+}
+
+// ListingVariation is a child row of a listing (0091 listing_variations).
+// Fields are pointer/nullable-friendly for the same honest-unknown reason as
+// the Listing E3 fields above.
+type ListingVariation struct {
+	VariationID       string
+	Price             *PriceAmount
+	AvailableQuantity *int
+	SoldQuantity      *int
+	SellerSKU         *string
+	Attributes        map[string]any
 }
 
 type ListingInput struct {
@@ -122,6 +155,20 @@ type ListingInput struct {
 	FetchedAt         *time.Time
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
+
+	// E3 fields — see Listing above.
+	SoldQuantity      *int
+	CategoryID        *string
+	Condition         *string
+	Permalink         *string
+	Thumbnail         *string
+	DateCreatedML     *time.Time
+	Tags              []string
+	CatalogProductID  *string
+	ShippingMode      *string
+	FreeShipping      *bool
+	LogisticType      *string
+	AvailableQuantity *int
 }
 
 func NewListing(input ListingInput) (Listing, error) {
@@ -160,6 +207,18 @@ func NewListing(input ListingInput) (Listing, error) {
 		FetchedAt:         input.FetchedAt,
 		CreatedAt:         input.CreatedAt,
 		UpdatedAt:         input.UpdatedAt,
+		SoldQuantity:      input.SoldQuantity,
+		CategoryID:        input.CategoryID,
+		Condition:         input.Condition,
+		Permalink:         input.Permalink,
+		Thumbnail:         input.Thumbnail,
+		DateCreatedML:     input.DateCreatedML,
+		Tags:              input.Tags,
+		CatalogProductID:  input.CatalogProductID,
+		ShippingMode:      input.ShippingMode,
+		FreeShipping:      input.FreeShipping,
+		LogisticType:      input.LogisticType,
+		AvailableQuantity: input.AvailableQuantity,
 	}, nil
 }
 

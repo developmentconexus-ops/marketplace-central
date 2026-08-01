@@ -32,7 +32,7 @@ type captureStore struct {
 	completed    time.Time
 }
 
-func (s *captureStore) ApplyCompletedPull(_ context.Context, installation string, rows []listingsdomain.Listing, completed time.Time) error {
+func (s *captureStore) ApplyCompletedPull(_ context.Context, installation string, rows []listingsdomain.Listing, completed time.Time, _ bool) error {
 	s.installation, s.rows, s.completed = installation, rows, completed
 	return nil
 }

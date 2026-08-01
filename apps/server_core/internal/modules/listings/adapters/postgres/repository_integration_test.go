@@ -4,6 +4,7 @@ package postgres_test
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -14,6 +15,15 @@ import (
 	testpostgres "marketplace-central/apps/server_core/internal/testsupport/postgres"
 )
 
+// TestRepositoryCompletedPullIsAtomicAndTenantScoped covers what survives
+// from the pre-F-02 test of the same name: atomicity (a mid-batch CHECK
+// violation rolls back every effect of that call) and tenant scoping (a
+// sibling tenant's row is untouched). The MASS-CLOSURE assertions that used
+// to live here (every omitted/absent row flips to status='closed', an empty
+// pull closes the whole installation) asserted the exact defect F-02 kills
+// (ADR-06, audit D-120 F1) and are gone — see
+// TestApplyCompletedPull_AbortAfterPage1_NeverClosesUnseenRows and friends
+// below for the behavior that replaced them.
 func TestRepositoryCompletedPullIsAtomicAndTenantScoped(t *testing.T) {
 	ctx := context.Background()
 	pool, _ := testpostgres.OpenPool(t, "tenant_harness_listings")
@@ -30,8 +40,8 @@ func TestRepositoryCompletedPullIsAtomicAndTenantScoped(t *testing.T) {
 	seedListing(t, pool, tenantB, installation, "same", "-", "tenant b", "active", created, created)
 	beforeB := readRawListing(t, pool, tenantB, installation, "same", "-")
 
-	completed := created.Add(24 * time.Hour)
-	fetched := completed.Add(-time.Minute)
+	runStarted := created.Add(24 * time.Hour)
+	fetched := runStarted.Add(-time.Minute)
 	price := domain.PriceAmount("123.45")
 	currency := domain.PriceCurrency("BRL")
 	quantity := 7
@@ -40,47 +50,355 @@ func TestRepositoryCompletedPullIsAtomicAndTenantScoped(t *testing.T) {
 		listing(t, tenantA, installation, "same", "variation-2", domain.ListingStatusPaused, "variation", nil, nil, nil, fetched, 70),
 	}
 	repo := listingspostgres.NewRepository(pool, tenantA)
-	if err := repo.ApplyCompletedPull(ctx, installation, rows, completed); err != nil {
+	if err := repo.ApplyCompletedPull(ctx, installation, rows, runStarted, true); err != nil {
 		t.Fatalf("ApplyCompletedPull(): %v", err)
 	}
 
-	assertListing(t, pool, tenantA, installation, "same", "-", "active", "updated", created, completed, fetched, "123.45", "BRL", 7)
-	assertListing(t, pool, tenantA, installation, "same", "variation-2", "paused", "variation", fetched, completed, fetched, "", "", -1)
-	assertStatus(t, pool, tenantA, installation, "omitted", "-", "closed")
+	assertListing(t, pool, tenantA, installation, "same", "-", "active", "updated", created, runStarted, fetched, "123.45", "BRL", 7)
+	assertListing(t, pool, tenantA, installation, "same", "variation-2", "paused", "variation", fetched, runStarted, fetched, "", "", -1)
+	// "omitted" was never in rows and this run never advanced its
+	// last_seen_at (it has none — seedListing never set one), so it is
+	// untouched: still active, never closed, never even marked absent.
+	assertStatus(t, pool, tenantA, installation, "omitted", "-", "active")
 	afterB := readRawListing(t, pool, tenantB, installation, "same", "-")
 	if !reflect.DeepEqual(beforeB, afterB) {
 		t.Fatalf("tenant B changed: before=%#v after=%#v", beforeB, afterB)
 	}
-	assertEventKinds(t, pool, tenantA, installation, map[string]string{"same/-": "synced", "same/variation-2": "paused", "omitted/-": "closed"})
+	assertEventKinds(t, pool, tenantA, installation, map[string]string{"same/-": "synced", "same/variation-2": "paused"})
 
 	beforeRollback := readRawListing(t, pool, tenantA, installation, "same", "-")
 	eventsBefore := eventCount(t, pool, tenantA, installation)
 	invalid := listing(t, tenantA, installation, "failure", "-", domain.ListingStatusActive, "invalid", nil, nil, nil, fetched.Add(time.Hour), 101)
-	if err := repo.ApplyCompletedPull(ctx, installation, []domain.Listing{rows[0], invalid}, completed.Add(time.Hour)); err == nil {
+	if err := repo.ApplyCompletedPull(ctx, installation, []domain.Listing{rows[0], invalid}, runStarted.Add(time.Hour), true); err == nil {
 		t.Fatal("ApplyCompletedPull() error = nil, want check failure")
 	}
 	if got := readRawListing(t, pool, tenantA, installation, "same", "-"); !reflect.DeepEqual(beforeRollback, got) {
 		t.Fatalf("listing effects did not roll back: before=%#v after=%#v", beforeRollback, got)
 	}
-	assertStatus(t, pool, tenantA, installation, "omitted", "-", "closed")
 	if got := eventCount(t, pool, tenantA, installation); got != eventsBefore {
 		t.Fatalf("event count after rollback = %d, want %d", got, eventsBefore)
 	}
 
-	if err := repo.ApplyCompletedPull(ctx, installation, nil, completed.Add(2*time.Hour)); err != nil {
+	// An empty-rows call with complete=true used to close the entire
+	// installation (MASS-CLOSURE); now it is a no-op (safety pin, F-02).
+	if err := repo.ApplyCompletedPull(ctx, installation, nil, runStarted.Add(2*time.Hour), true); err != nil {
 		t.Fatalf("empty ApplyCompletedPull(): %v", err)
 	}
-	assertAllClosed(t, pool, tenantA, installation)
+	assertStatus(t, pool, tenantA, installation, "same", "-", "active")
+	assertStatus(t, pool, tenantA, installation, "same", "variation-2", "paused")
+	assertStatus(t, pool, tenantA, installation, "omitted", "-", "active")
 	if got := readRawListing(t, pool, tenantB, installation, "same", "-"); !reflect.DeepEqual(beforeB, got) {
 		t.Fatalf("empty pull changed tenant B: before=%#v after=%#v", beforeB, got)
 	}
 }
 
+// TestApplyCompletedPull_AbortAfterPage1_NeverClosesUnseenRows is the must-fail
+// central to this feature (R-B / audit D-120 F1): a run that only ever saw
+// page 1 of a paginated scan, then aborted (429/deadline/kill) before paging
+// further, must never flip status on the rows it never got to — and must
+// never mark them absent either, since complete=false means "we don't know".
+//
+// Verified against the pre-F-02 code: the old ApplyCompletedPull opened with
+// an unconditional `UPDATE listings SET status = 'closed' WHERE tenant_id =
+// $1 AND installation_id = $2` (repository.go:390-394 before this change) —
+// it has no `rows`/`complete` awareness at all, so it would have closed all
+// 30 seeded rows (the 10 "seen" and the 20 "unseen" alike) before this test
+// ever got to its assertions. Every one of the 20 "not in this batch" checks
+// below would have failed against that statement — there is no scenario
+// under the old code where an unseen row keeps its original status, because
+// the UPDATE runs before the new rows are even considered. This test would
+// have failed 20/20 on the old code; it is the red half of this must-fail's
+// red/green pair.
+func TestApplyCompletedPull_AbortAfterPage1_NeverClosesUnseenRows(t *testing.T) {
+	ctx := context.Background()
+	pool, _ := testpostgres.OpenPool(t, "tenant_harness_listings")
+	token := time.Now().UTC().Format("150405.000000000")
+	tenant, installation := "listing-abort-"+token, "installation-abort-"+token
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM listing_variations WHERE tenant_id=$1 AND installation_id=$2`, tenant, installation)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM listing_sync_events WHERE tenant_id=$1 AND installation_id=$2`, tenant, installation)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM listings WHERE tenant_id=$1 AND installation_id=$2`, tenant, installation)
+	})
+
+	priorSync := time.Date(2026, 7, 1, 9, 0, 0, 0, time.UTC)
+	const total = 30
+	const page1 = 10
+	statusFor := func(i int) string {
+		if i%2 == 0 {
+			return "active"
+		}
+		return "paused"
+	}
+	for i := 0; i < total; i++ {
+		item := fmt.Sprintf("item-%02d", i)
+		seedListingWithLastSeen(t, pool, tenant, installation, item, "-", "title "+item, statusFor(i), priorSync, priorSync, &priorSync)
+	}
+
+	// Page 1 only — the run then aborts (rate-limit/deadline/kill) before
+	// paging further.
+	runStarted := priorSync.Add(time.Hour)
+	rows := make([]domain.Listing, 0, page1)
+	for i := 0; i < page1; i++ {
+		item := fmt.Sprintf("item-%02d", i)
+		status := domain.ListingStatus(statusFor(i))
+		rows = append(rows, listing(t, tenant, installation, item, "-", status, "title "+item, nil, nil, nil, runStarted, 50))
+	}
+
+	repo := listingspostgres.NewRepository(pool, tenant)
+	if err := repo.ApplyCompletedPull(ctx, installation, rows, runStarted, false); err != nil {
+		t.Fatalf("ApplyCompletedPull(): %v", err)
+	}
+
+	for i := page1; i < total; i++ {
+		item := fmt.Sprintf("item-%02d", i)
+		got := readRawListing(t, pool, tenant, installation, item, "-")
+		if got.Status != statusFor(i) {
+			t.Fatalf("unseen row %s status = %q, want unchanged %q (mass-closure regression)", item, got.Status, statusFor(i))
+		}
+		if !got.Updated.Equal(priorSync) {
+			t.Fatalf("unseen row %s updated_at = %v, want untouched %v", item, got.Updated, priorSync)
+		}
+		if absent := readAbsentSince(t, pool, tenant, installation, item, "-"); absent != nil {
+			t.Fatalf("unseen row %s absent_since = %v, want nil (incomplete run must never mark absent)", item, *absent)
+		}
+	}
+	for i := 0; i < page1; i++ {
+		item := fmt.Sprintf("item-%02d", i)
+		got := readRawListing(t, pool, tenant, installation, item, "-")
+		if got.Status != statusFor(i) {
+			t.Fatalf("seen row %s status = %q, want %q", item, got.Status, statusFor(i))
+		}
+	}
+}
+
+// TestApplyCompletedPull_CompleteRunMarksGenuinelyAbsentRowWithoutTouchingStatus
+// is the IC-06 positive case: once a run is declared COMPLETE, a row this
+// run legitimately never saw again gets absent_since stamped — but status
+// stays exactly what it was; absence is never inferred as closed.
+func TestApplyCompletedPull_CompleteRunMarksGenuinelyAbsentRowWithoutTouchingStatus(t *testing.T) {
+	ctx := context.Background()
+	pool, _ := testpostgres.OpenPool(t, "tenant_harness_listings")
+	token := time.Now().UTC().Format("150405.000000000")
+	tenant, installation := "listing-absent-"+token, "installation-absent-"+token
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM listing_sync_events WHERE tenant_id=$1 AND installation_id=$2`, tenant, installation)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM listings WHERE tenant_id=$1 AND installation_id=$2`, tenant, installation)
+	})
+
+	priorSync := time.Date(2026, 7, 1, 9, 0, 0, 0, time.UTC)
+	seedListingWithLastSeen(t, pool, tenant, installation, "stays", "-", "stays", "active", priorSync, priorSync, &priorSync)
+	seedListingWithLastSeen(t, pool, tenant, installation, "vanished", "-", "vanished", "paused", priorSync, priorSync, &priorSync)
+
+	runStarted := priorSync.Add(time.Hour)
+	rows := []domain.Listing{
+		listing(t, tenant, installation, "stays", "-", domain.ListingStatusActive, "stays", nil, nil, nil, runStarted, 50),
+	}
+	repo := listingspostgres.NewRepository(pool, tenant)
+	if err := repo.ApplyCompletedPull(ctx, installation, rows, runStarted, true); err != nil {
+		t.Fatalf("ApplyCompletedPull(): %v", err)
+	}
+
+	if got := readRawListing(t, pool, tenant, installation, "vanished", "-").Status; got != "paused" {
+		t.Fatalf("vanished row status = %q, want unchanged %q (absence must never flip status)", got, "paused")
+	}
+	absent := readAbsentSince(t, pool, tenant, installation, "vanished", "-")
+	if absent == nil {
+		t.Fatal("vanished row absent_since = nil, want set")
+	}
+	if !absent.Equal(runStarted) {
+		t.Fatalf("vanished row absent_since = %v, want %v", *absent, runStarted)
+	}
+	if got := readAbsentSince(t, pool, tenant, installation, "stays", "-"); got != nil {
+		t.Fatalf("stays row absent_since = %v, want nil", *got)
+	}
+}
+
+// TestApplyCompletedPull_ReappearanceClearsAbsentSince proves a row marked
+// absent by an earlier complete run is un-marked the moment it is seen
+// again — absence is not sticky once the provider re-reports the item.
+func TestApplyCompletedPull_ReappearanceClearsAbsentSince(t *testing.T) {
+	ctx := context.Background()
+	pool, _ := testpostgres.OpenPool(t, "tenant_harness_listings")
+	token := time.Now().UTC().Format("150405.000000000")
+	tenant, installation := "listing-reappear-"+token, "installation-reappear-"+token
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM listing_sync_events WHERE tenant_id=$1 AND installation_id=$2`, tenant, installation)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM listings WHERE tenant_id=$1 AND installation_id=$2`, tenant, installation)
+	})
+
+	priorSync := time.Date(2026, 7, 1, 9, 0, 0, 0, time.UTC)
+	wentAbsent := priorSync.Add(time.Hour)
+	seedListingWithAbsentSince(t, pool, tenant, installation, "back", "-", "back", "active", priorSync, priorSync, &priorSync, &wentAbsent)
+
+	runStarted := wentAbsent.Add(time.Hour)
+	rows := []domain.Listing{
+		listing(t, tenant, installation, "back", "-", domain.ListingStatusActive, "back", nil, nil, nil, runStarted, 50),
+	}
+	repo := listingspostgres.NewRepository(pool, tenant)
+	if err := repo.ApplyCompletedPull(ctx, installation, rows, runStarted, true); err != nil {
+		t.Fatalf("ApplyCompletedPull(): %v", err)
+	}
+
+	if got := readAbsentSince(t, pool, tenant, installation, "back", "-"); got != nil {
+		t.Fatalf("reappeared row absent_since = %v, want nil", *got)
+	}
+	var lastSeen time.Time
+	if err := pool.QueryRow(ctx, `SELECT last_seen_at FROM listings WHERE tenant_id=$1 AND installation_id=$2 AND provider_listing_id=$3 AND variation_id=$4`, tenant, installation, "back", "-").Scan(&lastSeen); err != nil {
+		t.Fatal(err)
+	}
+	if !lastSeen.Equal(runStarted) {
+		t.Fatalf("last_seen_at = %v, want advanced to %v", lastSeen, runStarted)
+	}
+}
+
+// TestApplyCompletedPull_ZeroRowsNeverMarksAbsentEvenWhenCallerClaimsComplete
+// is the negative scenario's safety pin (feature.md): a broken/empty
+// enumerator reporting an empty batch must never be read as "the whole
+// catalog is gone", even if its caller (incorrectly) claims complete=true.
+func TestApplyCompletedPull_ZeroRowsNeverMarksAbsentEvenWhenCallerClaimsComplete(t *testing.T) {
+	ctx := context.Background()
+	pool, _ := testpostgres.OpenPool(t, "tenant_harness_listings")
+	token := time.Now().UTC().Format("150405.000000000")
+	tenant, installation := "listing-zero-"+token, "installation-zero-"+token
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM listing_sync_events WHERE tenant_id=$1 AND installation_id=$2`, tenant, installation)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM listings WHERE tenant_id=$1 AND installation_id=$2`, tenant, installation)
+	})
+
+	priorSync := time.Date(2026, 7, 1, 9, 0, 0, 0, time.UTC)
+	seedListingWithLastSeen(t, pool, tenant, installation, "solo", "-", "solo", "active", priorSync, priorSync, &priorSync)
+
+	runStarted := priorSync.Add(time.Hour)
+	repo := listingspostgres.NewRepository(pool, tenant)
+	if err := repo.ApplyCompletedPull(ctx, installation, nil, runStarted, true); err != nil {
+		t.Fatalf("ApplyCompletedPull(): %v", err)
+	}
+
+	if got := readAbsentSince(t, pool, tenant, installation, "solo", "-"); got != nil {
+		t.Fatalf("solo row absent_since = %v, want nil (zero-row safety pin)", *got)
+	}
+	if got := readRawListing(t, pool, tenant, installation, "solo", "-").Status; got != "active" {
+		t.Fatalf("solo row status = %q, want unchanged %q", got, "active")
+	}
+}
+
+// TestApplyCompletedPull_StatusPersistsVerbatimEvenForNovelProviderValues
+// proves the 0090 CHECK-drop and this writer cooperate: a status value that
+// never appeared in any CHECK constraint this repo ever wrote persists
+// exactly as given, with no app-level normalization or rejection.
+func TestApplyCompletedPull_StatusPersistsVerbatimEvenForNovelProviderValues(t *testing.T) {
+	ctx := context.Background()
+	pool, _ := testpostgres.OpenPool(t, "tenant_harness_listings")
+	token := time.Now().UTC().Format("150405.000000000")
+	tenant, installation := "listing-novel-"+token, "installation-novel-"+token
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM listing_sync_events WHERE tenant_id=$1 AND installation_id=$2`, tenant, installation)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM listings WHERE tenant_id=$1 AND installation_id=$2`, tenant, installation)
+	})
+
+	runStarted := time.Date(2026, 7, 1, 9, 0, 0, 0, time.UTC)
+	// Built directly (not via domain.NewListing/ListingInput), which is the
+	// point: this is the provider's own vocabulary passing straight through
+	// to the writer with zero app-level validation in its path, exactly as
+	// IC-07 ("status: verbatim do provider ... sem CHECK") requires.
+	key, err := domain.NewListingKey(tenant, installation, "novel-item", "-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	novel := domain.Listing{
+		Key:       key,
+		Provider:  "mercado_livre",
+		Title:     "novel status item",
+		Status:    domain.ListingStatus("under_review_custom"),
+		SyncState: domain.ListingSyncStateSynced,
+		FetchedAt: &runStarted,
+		CreatedAt: runStarted,
+		UpdatedAt: runStarted,
+	}
+	repo := listingspostgres.NewRepository(pool, tenant)
+	if err := repo.ApplyCompletedPull(ctx, installation, []domain.Listing{novel}, runStarted, true); err != nil {
+		t.Fatalf("ApplyCompletedPull(): %v", err)
+	}
+	if got := readRawListing(t, pool, tenant, installation, "novel-item", "-").Status; got != "under_review_custom" {
+		t.Fatalf("status = %q, want verbatim %q", got, "under_review_custom")
+	}
+}
+
+// TestApplyCompletedPull_VariationsUpsertIdempotently proves listing_variations
+// rows land alongside the parent in the same transaction and that a second
+// call updates in place (no duplicate rows for the same PK tuple).
+func TestApplyCompletedPull_VariationsUpsertIdempotently(t *testing.T) {
+	ctx := context.Background()
+	pool, _ := testpostgres.OpenPool(t, "tenant_harness_listings")
+	token := time.Now().UTC().Format("150405.000000000")
+	tenant, installation := "listing-var-"+token, "installation-var-"+token
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM listing_variations WHERE tenant_id=$1 AND installation_id=$2`, tenant, installation)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM listing_sync_events WHERE tenant_id=$1 AND installation_id=$2`, tenant, installation)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM listings WHERE tenant_id=$1 AND installation_id=$2`, tenant, installation)
+	})
+
+	runStarted := time.Date(2026, 7, 1, 9, 0, 0, 0, time.UTC)
+	priceV1 := domain.PriceAmount("10.00")
+	priceV2 := domain.PriceAmount("20.00")
+	sku1, sku2 := "SKU-1", "SKU-2"
+	qty := 5
+	row := listing(t, tenant, installation, "parent-item", "-", domain.ListingStatusActive, "parent", nil, nil, nil, runStarted, 50)
+	row.Variations = []domain.ListingVariation{
+		{VariationID: "var-1", Price: &priceV1, AvailableQuantity: &qty, SellerSKU: &sku1},
+		{VariationID: "var-2", Price: &priceV2, AvailableQuantity: &qty, SellerSKU: &sku2},
+	}
+	repo := listingspostgres.NewRepository(pool, tenant)
+	if err := repo.ApplyCompletedPull(ctx, installation, []domain.Listing{row}, runStarted, true); err != nil {
+		t.Fatalf("ApplyCompletedPull(): %v", err)
+	}
+
+	got := readListingVariations(t, pool, tenant, installation, "parent-item")
+	if len(got) != 2 {
+		t.Fatalf("variations = %d, want 2: %#v", len(got), got)
+	}
+	if got["var-1"].price != "10.00" || got["var-1"].sellerSKU != sku1 {
+		t.Fatalf("var-1 = %#v", got["var-1"])
+	}
+	if got["var-2"].price != "20.00" || got["var-2"].sellerSKU != sku2 {
+		t.Fatalf("var-2 = %#v", got["var-2"])
+	}
+
+	// Second run: var-1's price changes, var-2 repeated unchanged. Must
+	// update in place, never duplicate.
+	priceV1b := domain.PriceAmount("15.00")
+	row2 := listing(t, tenant, installation, "parent-item", "-", domain.ListingStatusActive, "parent", nil, nil, nil, runStarted.Add(time.Hour), 50)
+	row2.Variations = []domain.ListingVariation{
+		{VariationID: "var-1", Price: &priceV1b, AvailableQuantity: &qty, SellerSKU: &sku1},
+		{VariationID: "var-2", Price: &priceV2, AvailableQuantity: &qty, SellerSKU: &sku2},
+	}
+	if err := repo.ApplyCompletedPull(ctx, installation, []domain.Listing{row2}, runStarted.Add(time.Hour), true); err != nil {
+		t.Fatalf("ApplyCompletedPull() second call: %v", err)
+	}
+	got = readListingVariations(t, pool, tenant, installation, "parent-item")
+	if len(got) != 2 {
+		t.Fatalf("variations after second call = %d, want 2 (no duplicate insert): %#v", len(got), got)
+	}
+	if got["var-1"].price != "15.00" {
+		t.Fatalf("var-1 price after update = %q, want 15.00", got["var-1"].price)
+	}
+}
+
 func seedListing(t *testing.T, pool *pgxpool.Pool, tenant, installation, item, variation, title, status string, created, updated time.Time) {
 	t.Helper()
+	seedListingWithLastSeen(t, pool, tenant, installation, item, variation, title, status, created, updated, nil)
+}
+
+func seedListingWithLastSeen(t *testing.T, pool *pgxpool.Pool, tenant, installation, item, variation, title, status string, created, updated time.Time, lastSeen *time.Time) {
+	t.Helper()
+	seedListingWithAbsentSince(t, pool, tenant, installation, item, variation, title, status, created, updated, lastSeen, nil)
+}
+
+func seedListingWithAbsentSince(t *testing.T, pool *pgxpool.Pool, tenant, installation, item, variation, title, status string, created, updated time.Time, lastSeen, absentSince *time.Time) {
+	t.Helper()
 	_, err := pool.Exec(context.Background(), `INSERT INTO listings
-		(tenant_id,installation_id,provider,provider_listing_id,variation_id,title,status,sync_state,created_at,updated_at,fetched_at)
-		VALUES ($1,$2,'mercado_livre',$3,$4,$5,$6,'synced',$7,$8,$8)`, tenant, installation, item, variation, title, status, created, updated)
+		(tenant_id,installation_id,provider,provider_listing_id,variation_id,title,status,sync_state,created_at,updated_at,fetched_at,last_seen_at,absent_since)
+		VALUES ($1,$2,'mercado_livre',$3,$4,$5,$6,'synced',$7,$8,$8,$9,$10)`, tenant, installation, item, variation, title, status, created, updated, lastSeen, absentSince)
 	if err != nil {
 		t.Fatalf("seed listing: %v", err)
 	}
@@ -117,6 +435,51 @@ func readRawListing(t *testing.T, pool *pgxpool.Pool, tenant, installation, item
 	}
 	return got
 }
+
+func readAbsentSince(t *testing.T, pool *pgxpool.Pool, tenant, installation, item, variation string) *time.Time {
+	t.Helper()
+	var got *time.Time
+	if err := pool.QueryRow(context.Background(), `SELECT absent_since FROM listings WHERE tenant_id=$1 AND installation_id=$2 AND provider_listing_id=$3 AND variation_id=$4`, tenant, installation, item, variation).Scan(&got); err != nil {
+		t.Fatalf("read absent_since %s/%s: %v", item, variation, err)
+	}
+	return got
+}
+
+type rawVariation struct {
+	price             string
+	availableQuantity *int
+	sellerSKU         string
+}
+
+func readListingVariations(t *testing.T, pool *pgxpool.Pool, tenant, installation, item string) map[string]rawVariation {
+	t.Helper()
+	rows, err := pool.Query(context.Background(), `SELECT variation_id,price::text,available_quantity,seller_sku FROM listing_variations WHERE tenant_id=$1 AND installation_id=$2 AND provider_listing_id=$3`, tenant, installation, item)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	got := map[string]rawVariation{}
+	for rows.Next() {
+		var variationID string
+		var v rawVariation
+		var price, sku *string
+		if err := rows.Scan(&variationID, &price, &v.availableQuantity, &sku); err != nil {
+			t.Fatal(err)
+		}
+		if price != nil {
+			v.price = *price
+		}
+		if sku != nil {
+			v.sellerSKU = *sku
+		}
+		got[variationID] = v
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	return got
+}
+
 func assertListing(t *testing.T, pool *pgxpool.Pool, tenant, installation, item, variation, status, title string, created, updated, fetched time.Time, price, currency string, quantity int) {
 	t.Helper()
 	got := readRawListing(t, pool, tenant, installation, item, variation)
@@ -170,14 +533,4 @@ func eventCount(t *testing.T, pool *pgxpool.Pool, tenant, installation string) i
 		t.Fatal(err)
 	}
 	return n
-}
-func assertAllClosed(t *testing.T, pool *pgxpool.Pool, tenant, installation string) {
-	t.Helper()
-	var open int
-	if err := pool.QueryRow(context.Background(), `SELECT count(*) FROM listings WHERE tenant_id=$1 AND installation_id=$2 AND status <> 'closed'`, tenant, installation).Scan(&open); err != nil {
-		t.Fatal(err)
-	}
-	if open != 0 {
-		t.Fatalf("non-closed rows = %d", open)
-	}
 }

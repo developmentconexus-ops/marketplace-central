@@ -195,7 +195,11 @@ func TestListingsRefreshSeedsIC02RowsAndClosesMissing(t *testing.T) {
 	if got := waitTerminal(t, h.operations, h.installation, operationID(t, body)); got != "succeeded" {
 		t.Fatalf("terminal status = %s", got)
 	}
-	rows, err := h.pool.Query(context.Background(), `SELECT provider_listing_id,status,price_amount::text,published_quantity FROM listings WHERE tenant_id=$1 AND installation_id=$2 ORDER BY provider_listing_id`, h.tenant, h.installation)
+	// MASS-CLOSURE retired (F-02): a row the second page never mentions keeps its
+	// own status (keep-absent semantics) and instead gets absent_since stamped —
+	// it is no longer force-flipped to "closed". MLBTEST0006 ("Zeta") is dropped
+	// from the second page's items[:5] and must stay "paused" with absent_since set.
+	rows, err := h.pool.Query(context.Background(), `SELECT provider_listing_id,status,price_amount::text,published_quantity,absent_since FROM listings WHERE tenant_id=$1 AND installation_id=$2 ORDER BY provider_listing_id`, h.tenant, h.installation)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,13 +207,14 @@ func TestListingsRefreshSeedsIC02RowsAndClosesMissing(t *testing.T) {
 	seen := 0
 	wantStatus := map[string]string{
 		"MLBTEST0001": "active", "MLBTEST0002": "paused", "MLBTEST0003": "closed",
-		"MLBTEST0004": "unknown", "MLBTEST0005": "active", "MLBTEST0006": "closed",
+		"MLBTEST0004": "unknown", "MLBTEST0005": "active", "MLBTEST0006": "paused",
 	}
 	for rows.Next() {
 		var id, state string
 		var price *string
 		var qty *int
-		if err := rows.Scan(&id, &state, &price, &qty); err != nil {
+		var absentSince *time.Time
+		if err := rows.Scan(&id, &state, &price, &qty, &absentSince); err != nil {
 			t.Fatal(err)
 		}
 		seen++
@@ -221,6 +226,12 @@ func TestListingsRefreshSeedsIC02RowsAndClosesMissing(t *testing.T) {
 		}
 		if id != "MLBTEST0001" && id != "MLBTEST0003" && price != nil {
 			t.Fatalf("%s nullable price changed to %q", id, *price)
+		}
+		if id == "MLBTEST0006" && absentSince == nil {
+			t.Fatalf("MLBTEST0006 dropped from page but absent_since not stamped (mass-closure regression: status should stay, absent_since should mark it)")
+		}
+		if id != "MLBTEST0006" && absentSince != nil {
+			t.Fatalf("%s unexpectedly marked absent_since = %v", id, *absentSince)
 		}
 	}
 	if err := rows.Err(); err != nil {

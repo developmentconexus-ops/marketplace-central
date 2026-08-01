@@ -129,7 +129,7 @@ type stubCompletedStore struct {
 	beforeApply func()
 }
 
-func (s *stubCompletedStore) ApplyCompletedPull(_ context.Context, _ string, rows []listingsdomain.Listing, _ time.Time) error {
+func (s *stubCompletedStore) ApplyCompletedPull(_ context.Context, _ string, rows []listingsdomain.Listing, _ time.Time, _ bool) error {
 	if s.beforeApply != nil {
 		s.beforeApply()
 	}
