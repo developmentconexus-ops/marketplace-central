@@ -18,6 +18,7 @@ import { useId, useRef, useState, type ChangeEvent, type DragEvent } from "react
 import { useClient } from "../../app/ClientContext";
 import { ImportacaoSection } from "../importacoes/ImportacaoSection";
 import { useErpImportDetail } from "../vinculos/useErpImports";
+import { SyncHealthCard } from "./SyncHealthCard";
 import { useErpImportUpload, type ErpImportUploadError } from "./useErpImportUpload";
 
 type SourceOption = {
@@ -568,6 +569,7 @@ export function IntegracoesPage() {
       <SellableAssortmentCard />
       <UploadCard />
       <ProviderConnectCard />
+      <SyncHealthCard />
       <ImportacaoSection />
     </section>
   );

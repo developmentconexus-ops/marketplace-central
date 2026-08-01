@@ -184,3 +184,4 @@ export {
   useSellableAssortmentQuery,
   useSetSellableAssortmentMutation,
 } from "./activeSource";
+export { type SyncHealthClient, syncHealthQueryKeys, useSyncHealthQuery } from "./syncHealth";
