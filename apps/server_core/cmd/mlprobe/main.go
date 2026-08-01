@@ -41,6 +41,7 @@ var piiKeys = map[string]bool{
 	"doc_number": true, "receiver_name": true, "receiver_phone": true,
 	"street_name": true, "street_number": true, "address_line": true,
 	"comment": true, "zip_code": true, "business_name": true,
+	"identification": true, "state_tax_id": true,
 }
 
 type evidence struct {
@@ -112,6 +113,27 @@ func run() error {
 		// ids observed in round 1 evidence: competitor item (T8 403), shipment (T3/T6), category (T8a)
 		p.round2(sellerID, "MLB4638031549", "47564931010", "MLB420116")
 		fmt.Println("round2 done")
+		return nil
+	}
+
+	if len(os.Args) > 1 && os.Args[1] == "-round3" {
+		me, st, err := p.getJSON("/users/me", nil)
+		if err != nil || st != 200 {
+			return fmt.Errorf("token invalid? /users/me status=%d err=%v", st, err)
+		}
+		sellerID := fmt.Sprintf("%.0f", me["id"].(float64))
+		p.round3(ctx, pool, sellerID)
+		return nil
+	}
+
+	if len(os.Args) > 1 && os.Args[1] == "-round3-m9" {
+		p.m9(ctx, pool)
+		fmt.Println("m9 rerun done")
+		return nil
+	}
+
+	if len(os.Args) > 1 && os.Args[1] == "-round4" {
+		p.round4(ctx, pool)
 		return nil
 	}
 

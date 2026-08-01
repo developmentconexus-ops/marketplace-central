@@ -47,3 +47,28 @@ certificates/
 # Generated artifacts (session tooling)
 __pycache__/
 output/
+
+# tsc emit ao lado do fonte. apps/web/src e' 100% .ts/.tsx: qualquer .js ali e'
+# saida de compilador, nunca fonte. Nao e' so' sujeira — a ordem padrao de
+# resolucao do Vite poe .js ANTES de .tsx, entao um emit esquecido faz o dev
+# server servir build velho no lugar do arquivo que voce acabou de editar.
+apps/web/src/**/*.js
+apps/web/src/**/*.js.map
+apps/web/src/**/*.d.ts
+packages/*/src/**/*.js
+packages/*/src/**/*.js.map
+packages/*/src/**/*.d.ts
+# vite.config.js e' o pior caso do mesmo defeito: o Vite procura o config em
+# .js ANTES de .ts, entao um emit esquecido aqui faz o build inteiro rodar
+# sobre configuracao compilada velha. O fonte e' vite.config.ts.
+apps/web/vite.config.js
+
+# Binario compilado da sonda da API (go build ./cmd/mlprobe). O fonte fica
+# versionado; o executavel, nao.
+apps/server_core/mlprobe
+apps/server_core/mlprobe.exe
+
+# Dumps crus da API do provider. Carregam PII (documento e endereco de
+# comprador E do vendedor). ADR-C6: scrub na CAPTURA, nunca depois — payload
+# cru nao entra no repo em hipotese nenhuma.
+docs/design/evidence/ml-api/
