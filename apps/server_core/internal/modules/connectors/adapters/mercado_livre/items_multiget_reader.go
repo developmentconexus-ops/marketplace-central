@@ -54,9 +54,20 @@ var ErrItemsMultigetBatchDecode = errors.New("items multiget: batch response und
 // reflects the originally-requested id for that slot so a caller can always
 // tell WHICH id failed.
 type ItemMultigetDTO struct {
-	ProviderItemID    string
-	Title             string
-	Status            string
+	ProviderItemID string
+	Title          string
+	Status         string
+	// SellerSKU/SellerCustomField/Attributes are the item's OWN top-level
+	// fields (as opposed to per-variation ones on ItemMultigetVariationDTO) —
+	// the same wire fields mlItemResponse (capability_adapter.go, single-item
+	// ReadListing) already types, since ML's multiget `body` element is the
+	// same full item representation as the single-item GET. Needed so a
+	// no-variation item can still derive a listing-level SellerSKU/EAN
+	// (multiget_mapper.go's MapMultigetItemToListingSnapshot) instead of
+	// leaving that ADR-13 seam honest-empty for lack of a typed field.
+	SellerSKU         string
+	SellerCustomField string
+	Attributes        []ItemMultigetAttributeDTO
 	SoldQuantity      *int
 	CategoryID        string
 	Condition         string
@@ -123,8 +134,18 @@ type mlMultigetElement struct {
 // (IC-07). Unknown fields are ignored (Go's default json.Unmarshal
 // behavior) — Raw carries the rest.
 type mlMultigetItemBody struct {
-	ID                string                `json:"id"`
-	Title             string                `json:"title"`
+	ID    string `json:"id"`
+	Title string `json:"title"`
+	// SellerSKU/SellerCustomField/Attributes: the item's OWN top-level fields
+	// (distinct from mlMultigetVariation's per-variation fields of the same
+	// name below). mlItemResponse (capability_adapter.go) already types these
+	// three at top level for the single-item GET; this struct originally
+	// omitted them (json.Unmarshal silently drops undeclared fields), which
+	// left every no-variation item's listing-level SellerSKU/EAN honest-empty
+	// with no way to derive them even though the bytes are present in Raw.
+	SellerSKU         string                `json:"seller_sku"`
+	SellerCustomField string                `json:"seller_custom_field"`
+	Attributes        []mlAttribute         `json:"attributes"`
 	Status            string                `json:"status"`
 	SoldQuantity      *int                  `json:"sold_quantity"`
 	CategoryID        string                `json:"category_id"`
@@ -251,6 +272,9 @@ func mapMultigetElement(requestedID string, element mlMultigetElement) ItemMulti
 		ProviderItemID:    firstNonEmpty(strings.TrimSpace(body.ID), requestedID),
 		Title:             body.Title,
 		Status:            body.Status,
+		SellerSKU:         body.SellerSKU,
+		SellerCustomField: body.SellerCustomField,
+		Attributes:        mapMultigetAttributes(body.Attributes),
 		SoldQuantity:      body.SoldQuantity,
 		CategoryID:        body.CategoryID,
 		Condition:         body.Condition,

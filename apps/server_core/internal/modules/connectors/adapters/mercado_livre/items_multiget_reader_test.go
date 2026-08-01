@@ -437,6 +437,47 @@ func TestGetItemsMultigetMapsE3Fields(t *testing.T) {
 	}
 }
 
+// TestGetItemsMultigetMapsTopLevelSellerSKUAndAttributes covers the fix for
+// the F-03 ADR-13 gap: the multiget body element is the SAME full item
+// representation as the single-item GET (mlItemResponse), so it genuinely
+// carries top-level seller_sku/seller_custom_field/attributes on the wire —
+// this DTO must type them (previously silently dropped by json.Unmarshal
+// because mlMultigetItemBody declared no field for them), so a caller can
+// derive a listing-level SellerSKU/EAN for an item without variations.
+func TestGetItemsMultigetMapsTopLevelSellerSKUAndAttributes(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `[{"code":200,"body":{
+			"id":"MLB1",
+			"title":"Item sem variação",
+			"status":"active",
+			"seller_sku":"SKU-TOP",
+			"seller_custom_field":"CF-TOP",
+			"attributes":[{"id":"GTIN","value_name":"7891234567890"}]
+		}}]`)
+	}))
+	defer server.Close()
+
+	dtos, err := pricingTestAdapter(server.URL, fixedNow()).getItemsMultiget(context.Background(), pricingAccountRef(), "test-token", []string{"MLB1"})
+	if err != nil {
+		t.Fatalf("getItemsMultiget() error = %v", err)
+	}
+	if len(dtos) != 1 {
+		t.Fatalf("dto count = %d, want 1", len(dtos))
+	}
+	dto := dtos[0]
+	if dto.SellerSKU != "SKU-TOP" {
+		t.Fatalf("dto.SellerSKU = %q, want SKU-TOP", dto.SellerSKU)
+	}
+	if dto.SellerCustomField != "CF-TOP" {
+		t.Fatalf("dto.SellerCustomField = %q, want CF-TOP", dto.SellerCustomField)
+	}
+	if len(dto.Attributes) != 1 || dto.Attributes[0].ID != "GTIN" || dto.Attributes[0].ValueName != "7891234567890" {
+		t.Fatalf("dto.Attributes = %#v, want [{GTIN 7891234567890}]", dto.Attributes)
+	}
+}
+
 // TestGetItemsMultigetPublicEntryPointResolvesTokenAndAccount exercises the
 // exported GetItemsMultiget wrapper (account normalization + token
 // resolution), mirroring the Get*/normalizeAccountRef pattern of every other
