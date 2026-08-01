@@ -380,38 +380,36 @@ func (r *Repository) ListListingTimeline(ctx context.Context, key domain.Listing
 	return events, nil
 }
 
-func (r *Repository) ApplyCompletedPull(ctx context.Context, installationID string, rows []domain.Listing, completedAt time.Time) error {
+// UpsertPulledRows persists one TICK's worth of rows (never a blanket
+// close — ADR-06, audit D-120 F1, risk R-B: a run truncated by a 429/
+// deadline/kill must never wipe listings it simply never got to). status is
+// always written verbatim from row.Status; it is never inferred here.
+//
+// seenAt is the RUN's own reference time (not the tick's) — the same value
+// must be passed to every tick of a multi-tick resumable run and then to the
+// matching MarkRunComplete call. It is stamped onto last_seen_at/updated_at
+// for every row upserted here, which is what MarkRunComplete's run-scoped
+// touched-check and keep-absent bound rely on (a row upserted in any tick of
+// this run never satisfies last_seen_at < seenAt, so it's excluded from
+// being marked absent).
+//
+// F-03 split this out of the old single-call ApplyCompletedPull(rows,
+// runStartedAt, complete bool): that signature scoped the F-02 zero-row
+// safety pin to a single CALL, but a resumable multi-tick backfill's
+// legitimate empty terminal tick (scroll exhausted, no rows left to upsert)
+// would incorrectly look like "the caller claims complete over zero rows"
+// and silently disable keep-absent for the WHOLE run. Splitting the upsert
+// from the completion signal lets MarkRunComplete below scope its own pin to
+// the run (via a persisted touched-check) instead of to this one call.
+func (r *Repository) UpsertPulledRows(ctx context.Context, installationID string, rows []domain.Listing, seenAt time.Time) error {
 	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		return fmt.Errorf("begin listing completed pull: %w", err)
+		return fmt.Errorf("begin listing pulled rows upsert: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	closedRows, err := tx.Query(ctx, `
-		UPDATE listings SET status = 'closed', updated_at = $3
-		WHERE tenant_id = $1 AND installation_id = $2
-		RETURNING provider_listing_id, variation_id
-	`, r.tenantID, installationID, completedAt.UTC())
-	if err != nil {
-		return fmt.Errorf("close listings: %w", err)
-	}
-	previous := make([]domain.ListingKey, 0)
-	for closedRows.Next() {
-		var key domain.ListingKey
-		key.TenantID, key.InstallationID = r.tenantID, installationID
-		if err := closedRows.Scan(&key.ProviderListingID, &key.VariationID); err != nil {
-			closedRows.Close()
-			return fmt.Errorf("scan closed listing key: %w", err)
-		}
-		previous = append(previous, key)
-	}
-	if err := closedRows.Err(); err != nil {
-		closedRows.Close()
-		return fmt.Errorf("iterate closed listing keys: %w", err)
-	}
-	closedRows.Close()
+	seenAt = seenAt.UTC()
 
-	returned := make(map[domain.ListingKey]struct{}, len(rows))
 	for _, row := range rows {
 		if row.Key.TenantID != r.tenantID || row.Key.InstallationID != installationID {
 			return fmt.Errorf("listing key is outside repository tenant or installation")
@@ -426,40 +424,134 @@ func (r *Repository) ApplyCompletedPull(ctx context.Context, installationID stri
 		_, err = tx.Exec(ctx, `
 			INSERT INTO listings (tenant_id, installation_id, provider, provider_listing_id, variation_id, title,
 				listing_type_code, status, price_amount, price_currency, published_quantity, sync_state,
-				sync_error, quality_score, sales_30d, fetched_at, created_at, updated_at)
-			SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18
-			WHERE $1 = $19 AND $2 = $20
+				sync_error, quality_score, sales_30d, fetched_at,
+				sold_quantity, category_id, condition, permalink, thumbnail, date_created_ml, tags,
+				catalog_product_id, shipping_mode, free_shipping, logistic_type, available_quantity,
+				last_seen_at, absent_since, created_at, updated_at)
+			SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,
+				$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,
+				$29,NULL,$30,$31
+			WHERE $1 = $32 AND $2 = $33
 			ON CONFLICT (tenant_id, installation_id, provider_listing_id, variation_id) DO UPDATE SET
 				provider=EXCLUDED.provider, title=EXCLUDED.title, listing_type_code=EXCLUDED.listing_type_code,
 				status=EXCLUDED.status, price_amount=EXCLUDED.price_amount, price_currency=EXCLUDED.price_currency,
 				published_quantity=EXCLUDED.published_quantity, sync_state=EXCLUDED.sync_state,
 				sync_error=EXCLUDED.sync_error, quality_score=EXCLUDED.quality_score, sales_30d=EXCLUDED.sales_30d,
-				fetched_at=EXCLUDED.fetched_at, updated_at=EXCLUDED.updated_at
+				fetched_at=EXCLUDED.fetched_at,
+				sold_quantity=EXCLUDED.sold_quantity, category_id=EXCLUDED.category_id, condition=EXCLUDED.condition,
+				permalink=EXCLUDED.permalink, thumbnail=EXCLUDED.thumbnail, date_created_ml=EXCLUDED.date_created_ml,
+				tags=EXCLUDED.tags, catalog_product_id=EXCLUDED.catalog_product_id, shipping_mode=EXCLUDED.shipping_mode,
+				free_shipping=EXCLUDED.free_shipping, logistic_type=EXCLUDED.logistic_type,
+				available_quantity=EXCLUDED.available_quantity,
+				last_seen_at=EXCLUDED.last_seen_at, absent_since=NULL, updated_at=EXCLUDED.updated_at
 		`, r.tenantID, installationID, row.Provider, row.Key.ProviderListingID, row.Key.VariationID, row.Title,
 			row.ListingTypeCode, row.Status, row.PriceAmount, row.PriceCurrency, row.PublishedQuantity, row.SyncState,
-			syncError, row.QualityScore, row.Sales30D, row.FetchedAt, row.CreatedAt.UTC(), completedAt.UTC(), r.tenantID, installationID)
+			syncError, row.QualityScore, row.Sales30D, row.FetchedAt,
+			row.SoldQuantity, row.CategoryID, row.Condition, row.Permalink, row.Thumbnail, row.DateCreatedML, row.Tags,
+			row.CatalogProductID, row.ShippingMode, row.FreeShipping, row.LogisticType, row.AvailableQuantity,
+			seenAt, row.CreatedAt.UTC(), seenAt,
+			r.tenantID, installationID)
 		if err != nil {
 			return fmt.Errorf("upsert listing %s/%s: %w", row.Key.ProviderListingID, row.Key.VariationID, err)
 		}
-		returned[row.Key] = struct{}{}
+
+		for _, v := range row.Variations {
+			if err := upsertListingVariation(ctx, tx, r.tenantID, installationID, row.Provider, row.Key.ProviderListingID, v, seenAt); err != nil {
+				return err
+			}
+		}
+
 		kind, message := "synced", "Sincronizado"
 		if row.Status == domain.ListingStatusPaused {
 			kind, message = "paused", "Anúncio pausado no provedor"
 		}
-		if err := insertEvent(ctx, tx, row.Key, completedAt, kind, message); err != nil {
+		if err := insertEvent(ctx, tx, row.Key, seenAt, kind, message); err != nil {
 			return err
 		}
 	}
-	for _, key := range previous {
-		if _, ok := returned[key]; ok {
-			continue
-		}
-		if err := insertEvent(ctx, tx, key, completedAt, "closed", "Anúncio ausente no provedor — fechado"); err != nil {
-			return err
-		}
-	}
+
 	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("commit listing completed pull: %w", err)
+		return fmt.Errorf("commit listing pulled rows upsert: %w", err)
+	}
+	return nil
+}
+
+// MarkRunComplete runs the keep-absent step (ADR-06/IC-06) for a run whose
+// enumeration + hydration fully drained. runStartedAt must be the exact same
+// timestamp passed as seenAt to every UpsertPulledRows call in this run.
+//
+// Run-scoped safety pin (replaces the old per-call len(rows)>0 pin — see
+// UpsertPulledRows doc): before marking anything absent, this checks whether
+// THIS RUN ever upserted a row at all (SELECT EXISTS ... last_seen_at =
+// runStartedAt). If nothing was ever upserted under this run's timestamp —
+// e.g. a run whose very first enumeration tick already came back empty and
+// terminal — MarkRunComplete is a no-op: an enumerator that produced nothing
+// across every tick of a run must never be read as "the whole catalog
+// vanished". This is a strictly weaker/later gate than the old one: it
+// tolerates a legitimate zero-row terminal TICK as long as some earlier tick
+// in the same run did upsert rows, which the old single-call pin could not
+// distinguish from "the whole run saw nothing".
+func (r *Repository) MarkRunComplete(ctx context.Context, installationID string, runStartedAt time.Time) error {
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return fmt.Errorf("begin listing run completion: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	runStartedAt = runStartedAt.UTC()
+
+	var touched bool
+	if err := tx.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM listings
+			WHERE tenant_id = $1 AND installation_id = $2 AND last_seen_at = $3
+		)
+	`, r.tenantID, installationID, runStartedAt).Scan(&touched); err != nil {
+		return fmt.Errorf("check listing run touched rows: %w", err)
+	}
+
+	if touched {
+		// Plain UPDATE, no RETURNING/event: listing_sync_events_kind_check
+		// (0036) only allows synced|sync_error|closed|paused|refreshed, and
+		// widening that vocabulary is a migration change — out of scope for
+		// this feature (forbidden path) and not required by the contract.
+		if _, err := tx.Exec(ctx, `
+			UPDATE listings SET absent_since = $3
+			WHERE tenant_id = $1 AND installation_id = $2 AND last_seen_at < $3 AND absent_since IS NULL
+		`, r.tenantID, installationID, runStartedAt); err != nil {
+			return fmt.Errorf("mark absent listings: %w", err)
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit listing run completion: %w", err)
+	}
+	return nil
+}
+
+func upsertListingVariation(ctx context.Context, tx pgx.Tx, tenantID, installationID, provider, providerListingID string, v domain.ListingVariation, runStartedAt time.Time) error {
+	attributes, err := json.Marshal(v.Attributes)
+	if err != nil {
+		return fmt.Errorf("marshal listing variation attributes %s/%s: %w", providerListingID, v.VariationID, err)
+	}
+	if v.Attributes == nil {
+		attributes = nil
+	}
+	_, err = tx.Exec(ctx, `
+		INSERT INTO listing_variations (tenant_id, installation_id, provider, provider_listing_id, variation_id,
+			price, available_quantity, sold_quantity, seller_sku, attributes, last_seen_at, absent_since, updated_at)
+		SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NULL,$12
+		WHERE $1 = $13 AND $2 = $14
+		ON CONFLICT (tenant_id, installation_id, provider, provider_listing_id, variation_id) DO UPDATE SET
+			price=EXCLUDED.price, available_quantity=EXCLUDED.available_quantity,
+			sold_quantity=EXCLUDED.sold_quantity, seller_sku=EXCLUDED.seller_sku,
+			attributes=EXCLUDED.attributes, last_seen_at=EXCLUDED.last_seen_at,
+			absent_since=NULL, updated_at=EXCLUDED.updated_at
+	`, tenantID, installationID, provider, providerListingID, v.VariationID,
+		v.Price, v.AvailableQuantity, v.SoldQuantity, v.SellerSKU, attributes, runStartedAt, runStartedAt,
+		tenantID, installationID)
+	if err != nil {
+		return fmt.Errorf("upsert listing variation %s/%s: %w", providerListingID, v.VariationID, err)
 	}
 	return nil
 }

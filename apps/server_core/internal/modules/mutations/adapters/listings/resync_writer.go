@@ -4,28 +4,40 @@ import (
 	"context"
 	"errors"
 	"strings"
-	"time"
 
-	listingsapp "marketplace-central/apps/server_core/internal/modules/listings/application"
+	listingsdomain "marketplace-central/apps/server_core/internal/modules/listings/domain"
 	listingsports "marketplace-central/apps/server_core/internal/modules/listings/ports"
 	mutationsdomain "marketplace-central/apps/server_core/internal/modules/mutations/domain"
 	mutationsports "marketplace-central/apps/server_core/internal/modules/mutations/ports"
 )
 
-type ResyncWriter struct {
-	source   listingsports.PageSource
-	store    listingsports.CompletedPullStore
-	account  listingsports.InstallationAccount
-	pageSize int
-	now      func() time.Time
+// ListingIngestor is the per-item hydrate+persist operation
+// (listings/ports.ListingIngestor's method set, mirrored locally per this
+// package's existing idiom of package-local interfaces shaped after
+// listingsapp's real types). A resync WriteItem names exactly one listing;
+// this writer must call this exactly once per Apply, never fan out into a
+// whole-catalog pull (listingsapp.BackfillRunner) per queued item.
+type ListingIngestor interface {
+	IngestListing(ctx context.Context, providerListingID string) error
 }
 
-func NewResyncWriter(source listingsports.PageSource, store listingsports.CompletedPullStore, account listingsports.InstallationAccount, pageSize int, now func() time.Time) *ResyncWriter {
-	return &ResyncWriter{source: source, store: store, account: account, pageSize: pageSize, now: now}
+// ResyncWriter applies an admin-triggered listing resync by delegating to a
+// shared ListingIngestor, scoped to one installation account, for exactly
+// the one listing named by item.ListingID. It no longer owns any
+// hydrate/persist logic itself (that lives in the ingestor) — its own job is
+// strictly the guard clauses below, the installation-scope check, and
+// extracting the provider listing id from the canonical ListingID.
+type ResyncWriter struct {
+	ingestor ListingIngestor
+	account  listingsports.InstallationAccount
+}
+
+func NewResyncWriter(ingestor ListingIngestor, account listingsports.InstallationAccount) *ResyncWriter {
+	return &ResyncWriter{ingestor: ingestor, account: account}
 }
 
 func (w *ResyncWriter) Apply(ctx context.Context, item mutationsports.WriteItem) (mutationsports.WriteOutcome, error) {
-	if w == nil || w.source == nil || w.store == nil || w.now == nil || w.pageSize <= 0 {
+	if w == nil || w.ingestor == nil {
 		return mutationsports.WriteOutcome{}, errors.New("listing resync writer is not configured")
 	}
 	if item.ProtocolType != mutationsdomain.ProtocolTypeListingResync {
@@ -34,8 +46,20 @@ func (w *ResyncWriter) Apply(ctx context.Context, item mutationsports.WriteItem)
 	if strings.TrimSpace(w.account.TenantID) == "" || strings.TrimSpace(w.account.InstallationID) == "" || strings.TrimSpace(item.InstallationID) != strings.TrimSpace(w.account.InstallationID) {
 		return mutationsports.WriteOutcome{}, errors.New("listing resync installation scope is invalid")
 	}
-	ingestion := listingsapp.NewIngestion(w.source, w.store, w.pageSize, w.now)
-	if err := ingestion.Pull(ctx, w.account); err != nil {
+	parsed, err := listingsdomain.ParseListingID(item.ListingID)
+	if err != nil {
+		return mutationsports.WriteOutcome{}, err
+	}
+	// The installation id embedded in the canonical ListingID string (parsed
+	// above) is a distinct source of truth from item.InstallationID (the
+	// protocol envelope field checked earlier): they can diverge on a
+	// malformed queue row, an upstream bug, or a caller that doesn't keep
+	// the two fields in lockstep. Both must agree with the account before
+	// any ingest call, or this becomes a cross-installation write.
+	if strings.TrimSpace(parsed.InstallationID) != strings.TrimSpace(w.account.InstallationID) {
+		return mutationsports.WriteOutcome{}, errors.New("listing resync installation scope is invalid")
+	}
+	if err := w.ingestor.IngestListing(ctx, parsed.ProviderListingID); err != nil {
 		return mutationsports.WriteOutcome{}, err
 	}
 	return mutationsports.WriteOutcome{}, nil

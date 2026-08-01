@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	mercadolivre "marketplace-central/apps/server_core/internal/modules/connectors/adapters/mercado_livre"
 	connectorsapp "marketplace-central/apps/server_core/internal/modules/connectors/application"
 	connectorsdomain "marketplace-central/apps/server_core/internal/modules/connectors/domain"
 	integrationspostgres "marketplace-central/apps/server_core/internal/modules/integrations/adapters/postgres"
@@ -28,19 +29,39 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type stubListingPage struct {
-	items []connectorsdomain.ListingSnapshot
-	err   error
+// F-04 retires the old page-based stubListingReader{ListListings/ReadListing}
+// + listingsapp.NewIngestion(listingsconnectors.NewSource(caps), ...) wiring
+// this file used to exercise. The refresh HTTP path now runs through the
+// SAME BackfillRunner (ids-only enumeration + multiget hydration) F-03's
+// scheduled job uses (ADR-04: one writer, no coexisting path), so this stub
+// implements the two optional capabilities that path type-asserts for:
+// idScanReader (ListListingsScanIDs) and multigetReader (GetItemsMultiget).
+type stubScanPage struct {
+	ids  []string
+	next string
+	err  error
 }
 
 type stubListingReader struct {
 	mu       sync.Mutex
-	pages    map[string]stubListingPage
+	pages    map[string]stubScanPage
+	items    map[string]mercadolivre.ItemMultigetDTO
 	gate     <-chan struct{}
 	gateOnce sync.Once
 }
 
-func (s *stubListingReader) ListListings(_ context.Context, input connectorsdomain.ListListingsInput) ([]connectorsdomain.ListingSnapshot, error) {
+// ListListings/ReadListing satisfy the base connectorsports.ListingReader
+// capability this stub is registered under; neither is exercised by the
+// backfill/refresh path anymore, so both are harmless no-ops.
+func (*stubListingReader) ListListings(context.Context, connectorsdomain.ListListingsInput) ([]connectorsdomain.ListingSnapshot, error) {
+	return nil, nil
+}
+
+func (*stubListingReader) ReadListing(context.Context, connectorsdomain.ProviderListingRef) (connectorsdomain.ListingSnapshot, error) {
+	return connectorsdomain.ListingSnapshot{}, nil
+}
+
+func (s *stubListingReader) ListListingsScanIDs(_ context.Context, input connectorsdomain.ListListingsInput) ([]string, string, error) {
 	s.gateOnce.Do(func() {
 		if s.gate != nil {
 			<-s.gate
@@ -49,14 +70,24 @@ func (s *stubListingReader) ListListings(_ context.Context, input connectorsdoma
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	page := s.pages[input.Cursor]
-	return append([]connectorsdomain.ListingSnapshot(nil), page.items...), page.err
+	return append([]string(nil), page.ids...), page.next, page.err
 }
 
-func (*stubListingReader) ReadListing(context.Context, connectorsdomain.ProviderListingRef) (connectorsdomain.ListingSnapshot, error) {
-	return connectorsdomain.ListingSnapshot{}, nil
+func (s *stubListingReader) GetItemsMultiget(_ context.Context, _ connectorsdomain.ProviderAccountRef, ids []string) ([]mercadolivre.ItemMultigetDTO, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make([]mercadolivre.ItemMultigetDTO, 0, len(ids))
+	for _, id := range ids {
+		item, ok := s.items[id]
+		if !ok {
+			item = mercadolivre.ItemMultigetDTO{ProviderItemID: id, Err: fmt.Errorf("test fixture: unknown item %s", id)}
+		}
+		out = append(out, item)
+	}
+	return out, nil
 }
 
-func (s *stubListingReader) setPages(pages map[string]stubListingPage) {
+func (s *stubListingReader) setPages(pages map[string]stubScanPage) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.pages = pages
@@ -71,7 +102,7 @@ type refreshHarness struct {
 	reports      chan error
 }
 
-func newRefreshHarness(t *testing.T, tag string, pageSize int, stub *stubListingReader) refreshHarness {
+func newRefreshHarness(t *testing.T, tag string, stub *stubListingReader) refreshHarness {
 	t.Helper()
 	pool, cfg := testpostgres.OpenPool(t, tag)
 	token := fmt.Sprintf("%d", time.Now().UnixNano())
@@ -81,10 +112,14 @@ func newRefreshHarness(t *testing.T, tag string, pageSize int, stub *stubListing
 	operationSvc := integrationsapp.NewOperationService(integrationspostgres.NewOperationRunRepository(pool, tenant), tenant)
 	caps := connectorsapp.NewMarketplaceCapabilityService([]connectorsapp.ProviderCapabilitySet{{ProviderCode: "mercadolivre", Listings: stub}})
 	listingRepo := listingspostgres.NewRepository(pool, tenant)
-	ingestion := listingsapp.NewIngestion(listingsconnectors.NewSource(caps), listingRepo, pageSize, time.Now)
+	runner := listingsapp.NewBackfillRunner(
+		listingsconnectors.NewBackfillSource(caps),
+		listingsconnectors.NewMultigetHydrator(caps, nil, time.Now),
+		listingRepo, time.Now,
+	)
 	gateway := listingsintegrations.NewGateway(installationSvc, operationSvc)
 	reports := make(chan error, 1)
-	refreshSvc := listingsapp.NewRefreshService(gateway, ingestion, func(task func()) { go task() }, time.Now,
+	refreshSvc := listingsapp.NewRefreshService(gateway, runner, func(task func()) { go task() }, time.Now,
 		func(err error) { reports <- err },
 		func(err error) string { return string(connectorsdomain.ErrorCodeOf(err)) })
 	mux := httpx.NewRouteClassMux()
@@ -92,6 +127,7 @@ func newRefreshHarness(t *testing.T, tag string, pageSize int, stub *stubListing
 	t.Cleanup(func() {
 		ctx := context.Background()
 		_, _ = pool.Exec(ctx, `DELETE FROM listing_sync_events WHERE tenant_id=$1 AND installation_id=$2`, tenant, installation)
+		_, _ = pool.Exec(ctx, `DELETE FROM listing_variations WHERE tenant_id=$1 AND installation_id=$2`, tenant, installation)
 		_, _ = pool.Exec(ctx, `DELETE FROM listings WHERE tenant_id=$1 AND installation_id=$2`, tenant, installation)
 		_, _ = pool.Exec(ctx, `DELETE FROM integration_operation_runs WHERE tenant_id=$1 AND installation_id=$2`, tenant, installation)
 		_, _ = pool.Exec(ctx, `DELETE FROM integration_installations WHERE tenant_id=$1 AND installation_id=$2`, tenant, installation)
@@ -149,24 +185,41 @@ func waitTerminal(t *testing.T, svc *integrationsapp.OperationService, installat
 	return ""
 }
 
-func listingSnapshots() []connectorsdomain.ListingSnapshot {
-	now := time.Date(2026, 7, 15, 12, 0, 0, 0, time.UTC)
+// listingsFixtureIDs is the deterministic id order every test below scans in.
+var listingsFixtureIDs = []string{"MLBTEST0001", "MLBTEST0002", "MLBTEST0003", "MLBTEST0004", "MLBTEST0005", "MLBTEST0006"}
+
+// listingsFixtureItems is the multiget DTO fixture set. Status is kept
+// VERBATIM by the new mapper (MapMultigetItemToListing, multiget_mapper.go —
+// F-02/F-03, not something F-04 changes): MLBTEST0004's out-of-vocabulary
+// "provider-new-state" is persisted exactly as given, unlike the OLD
+// snapshot-based mapper this file used to exercise, which canonicalized any
+// unrecognized status to "unknown". MLBTEST0005 carries one variation
+// (V-5): the mapper emits ONE row per item regardless (VariationID
+// sentinel "-"), with variation facts (price/qty/seller_sku) attached as a
+// CHILD listing_variations row, not a second top-level listings row — a
+// real cardinality/shape difference from the old flattened-per-variation
+// mapper this file's assertions must respect.
+func listingsFixtureItems() map[string]mercadolivre.ItemMultigetDTO {
+	qty := 7
 	price := "129.90"
-	quantity := 7
-	return []connectorsdomain.ListingSnapshot{
-		{ProviderCode: "mercadolivre", ProviderItemID: "MLBTEST0001", ProviderStatus: "active", Title: "Alpha", PriceAmount: &price, PriceCurrency: "BRL", AvailableQuantity: &quantity, FetchedAt: now},
-		{ProviderCode: "mercadolivre", ProviderItemID: "MLBTEST0002", ProviderStatus: "paused", Title: "Beta", FetchedAt: now},
-		{ProviderCode: "mercadolivre", ProviderItemID: "MLBTEST0003", ProviderStatus: "closed", Title: "Gamma", PriceAmount: &price, PriceCurrency: "BRL", FetchedAt: now},
-		{ProviderCode: "mercadolivre", ProviderItemID: "MLBTEST0004", ProviderStatus: "provider-new-state", Title: "Delta", FetchedAt: now},
-		{ProviderCode: "mercadolivre", ProviderItemID: "MLBTEST0005", ProviderStatus: "active", Title: "Epsilon", FetchedAt: now, Variations: []connectorsdomain.ListingVariationSnapshot{{ProviderVariationID: "V-5", AvailableQuantity: &quantity}}},
-		{ProviderCode: "mercadolivre", ProviderItemID: "MLBTEST0006", ProviderStatus: "paused", Title: "Zeta", FetchedAt: now},
+	return map[string]mercadolivre.ItemMultigetDTO{
+		"MLBTEST0001": {ProviderItemID: "MLBTEST0001", Title: "Alpha", Status: "active", AvailableQuantity: &qty},
+		"MLBTEST0002": {ProviderItemID: "MLBTEST0002", Title: "Beta", Status: "paused"},
+		"MLBTEST0003": {ProviderItemID: "MLBTEST0003", Title: "Gamma", Status: "closed"},
+		"MLBTEST0004": {ProviderItemID: "MLBTEST0004", Title: "Delta", Status: "provider-new-state"},
+		"MLBTEST0005": {ProviderItemID: "MLBTEST0005", Title: "Epsilon", Status: "active", Variations: []mercadolivre.ItemMultigetVariationDTO{
+			{ProviderVariationID: "V-5", Price: &price, AvailableQuantity: &qty, SellerSKU: "SKU-5"},
+		}},
+		"MLBTEST0006": {ProviderItemID: "MLBTEST0006", Title: "Zeta", Status: "paused"},
 	}
 }
 
 func TestListingsRefreshSeedsIC02RowsAndClosesMissing(t *testing.T) {
-	items := listingSnapshots()
-	stub := &stubListingReader{pages: map[string]stubListingPage{"": {items: items}}}
-	h := newRefreshHarness(t, "f01-refresh-complete", 100, stub)
+	stub := &stubListingReader{
+		pages: map[string]stubScanPage{"": {ids: listingsFixtureIDs}},
+		items: listingsFixtureItems(),
+	}
+	h := newRefreshHarness(t, "f01-refresh-complete", stub)
 	status, body := postRefresh(t, h.mux, h.installation)
 	if status != http.StatusAccepted {
 		t.Fatalf("status = %d, body = %#v", status, body)
@@ -174,20 +227,35 @@ func TestListingsRefreshSeedsIC02RowsAndClosesMissing(t *testing.T) {
 	if got := waitTerminal(t, h.operations, h.installation, operationID(t, body)); got != "succeeded" {
 		t.Fatalf("terminal status = %s", got)
 	}
-	var count, nullSales, dashVariation, unknown int
-	err := h.pool.QueryRow(context.Background(), `SELECT count(*),count(*) FILTER (WHERE sales_30d IS NULL),count(*) FILTER (WHERE variation_id='-'),count(*) FILTER (WHERE status='unknown') FROM listings WHERE tenant_id=$1 AND installation_id=$2`, h.tenant, h.installation).Scan(&count, &nullSales, &dashVariation, &unknown)
+	var count, nullSales, dashVariation, newStateCount int
+	err := h.pool.QueryRow(context.Background(), `SELECT count(*),count(*) FILTER (WHERE sales_30d IS NULL),count(*) FILTER (WHERE variation_id='-'),count(*) FILTER (WHERE status='provider-new-state') FROM listings WHERE tenant_id=$1 AND installation_id=$2`, h.tenant, h.installation).Scan(&count, &nullSales, &dashVariation, &newStateCount)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if count != 6 || nullSales != 6 || dashVariation != 5 || unknown != 1 {
-		t.Fatalf("count/null/dash/unknown = %d/%d/%d/%d", count, nullSales, dashVariation, unknown)
+	// Every item maps to exactly ONE parent row (variation_id sentinel "-"),
+	// even MLBTEST0005 which carries a variation — that variation lives in
+	// listing_variations, not as a second top-level row.
+	if count != 6 || nullSales != 6 || dashVariation != 6 || newStateCount != 1 {
+		t.Fatalf("count/null/dash/newState = %d/%d/%d/%d", count, nullSales, dashVariation, newStateCount)
 	}
 	var distinct int
 	if err := h.pool.QueryRow(context.Background(), `SELECT count(DISTINCT (installation_id,provider_listing_id,variation_id)) FROM listings WHERE tenant_id=$1 AND installation_id=$2`, h.tenant, h.installation).Scan(&distinct); err != nil || distinct != 6 {
 		t.Fatalf("distinct composite keys = %d, err = %v", distinct, err)
 	}
+	var variationCount int
+	var variationPrice, variationSKU string
+	var variationQty int
+	if err := h.pool.QueryRow(context.Background(), `SELECT count(*) FROM listing_variations WHERE tenant_id=$1 AND installation_id=$2`, h.tenant, h.installation).Scan(&variationCount); err != nil || variationCount != 1 {
+		t.Fatalf("listing_variations rows = %d, err = %v", variationCount, err)
+	}
+	if err := h.pool.QueryRow(context.Background(), `SELECT price::text,seller_sku,available_quantity FROM listing_variations WHERE tenant_id=$1 AND installation_id=$2 AND provider_listing_id='MLBTEST0005' AND variation_id='V-5'`, h.tenant, h.installation).Scan(&variationPrice, &variationSKU, &variationQty); err != nil {
+		t.Fatal(err)
+	}
+	if variationPrice != "129.90" || variationSKU != "SKU-5" || variationQty != 7 {
+		t.Fatalf("MLBTEST0005/V-5 variation = price=%q sku=%q qty=%d", variationPrice, variationSKU, variationQty)
+	}
 
-	stub.setPages(map[string]stubListingPage{"": {items: items[:5]}})
+	stub.setPages(map[string]stubScanPage{"": {ids: listingsFixtureIDs[:5]}})
 	status, body = postRefresh(t, h.mux, h.installation)
 	if status != http.StatusAccepted {
 		t.Fatalf("second status = %d, body = %#v", status, body)
@@ -195,7 +263,11 @@ func TestListingsRefreshSeedsIC02RowsAndClosesMissing(t *testing.T) {
 	if got := waitTerminal(t, h.operations, h.installation, operationID(t, body)); got != "succeeded" {
 		t.Fatalf("terminal status = %s", got)
 	}
-	rows, err := h.pool.Query(context.Background(), `SELECT provider_listing_id,status,price_amount::text,published_quantity FROM listings WHERE tenant_id=$1 AND installation_id=$2 ORDER BY provider_listing_id`, h.tenant, h.installation)
+	// MASS-CLOSURE retired (F-02): a row the second page never mentions keeps its
+	// own status (keep-absent semantics) and instead gets absent_since stamped —
+	// it is no longer force-flipped to "closed". MLBTEST0006 ("Zeta") is dropped
+	// from the second page's ids[:5] and must stay "paused" with absent_since set.
+	rows, err := h.pool.Query(context.Background(), `SELECT provider_listing_id,status,absent_since FROM listings WHERE tenant_id=$1 AND installation_id=$2 ORDER BY provider_listing_id`, h.tenant, h.installation)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,24 +275,23 @@ func TestListingsRefreshSeedsIC02RowsAndClosesMissing(t *testing.T) {
 	seen := 0
 	wantStatus := map[string]string{
 		"MLBTEST0001": "active", "MLBTEST0002": "paused", "MLBTEST0003": "closed",
-		"MLBTEST0004": "unknown", "MLBTEST0005": "active", "MLBTEST0006": "closed",
+		"MLBTEST0004": "provider-new-state", "MLBTEST0005": "active", "MLBTEST0006": "paused",
 	}
 	for rows.Next() {
 		var id, state string
-		var price *string
-		var qty *int
-		if err := rows.Scan(&id, &state, &price, &qty); err != nil {
+		var absentSince *time.Time
+		if err := rows.Scan(&id, &state, &absentSince); err != nil {
 			t.Fatal(err)
 		}
 		seen++
 		if state != wantStatus[id] {
 			t.Fatalf("%s status = %s, want %s", id, state, wantStatus[id])
 		}
-		if id == "MLBTEST0001" && (state != "active" || price == nil || *price != "129.90" || qty == nil || *qty != 7) {
-			t.Fatalf("MLBTEST0001 facts changed: %s %#v %#v", state, price, qty)
+		if id == "MLBTEST0006" && absentSince == nil {
+			t.Fatalf("MLBTEST0006 dropped from page but absent_since not stamped (mass-closure regression: status should stay, absent_since should mark it)")
 		}
-		if id != "MLBTEST0001" && id != "MLBTEST0003" && price != nil {
-			t.Fatalf("%s nullable price changed to %q", id, *price)
+		if id != "MLBTEST0006" && absentSince != nil {
+			t.Fatalf("%s unexpectedly marked absent_since = %v", id, *absentSince)
 		}
 	}
 	if err := rows.Err(); err != nil {
@@ -233,8 +304,8 @@ func TestListingsRefreshSeedsIC02RowsAndClosesMissing(t *testing.T) {
 
 func TestListingsRefreshRejectsConcurrentRunWithActiveID(t *testing.T) {
 	gate := make(chan struct{})
-	stub := &stubListingReader{pages: map[string]stubListingPage{"": {items: listingSnapshots()}}, gate: gate}
-	h := newRefreshHarness(t, "f01-refresh-concurrent", 100, stub)
+	stub := &stubListingReader{pages: map[string]stubScanPage{"": {ids: listingsFixtureIDs}}, items: listingsFixtureItems(), gate: gate}
+	h := newRefreshHarness(t, "f01-refresh-concurrent", stub)
 	status, first := postRefresh(t, h.mux, h.installation)
 	if status != http.StatusAccepted {
 		t.Fatalf("first status = %d", status)
@@ -259,10 +330,24 @@ func TestListingsRefreshRejectsConcurrentRunWithActiveID(t *testing.T) {
 	}
 }
 
-func TestListingsRefreshCapabilityErrorMidPullLeavesRowsUnchanged(t *testing.T) {
-	items := listingSnapshots()
-	stub := &stubListingReader{pages: map[string]stubListingPage{"": {items: items}}}
-	h := newRefreshHarness(t, "f01-refresh-atomic", 100, stub)
+// TestListingsRefreshMidPullFailureLeavesEarlierPagesPersistedButLaterPagesUntouched
+// replaces the old TestListingsRefreshCapabilityErrorMidPullLeavesRowsUnchanged.
+//
+// OPEN RISK CALLED OUT (see F-04 final report): the old Ingestion
+// accumulated a whole run in memory and upserted once at the end, so a
+// mid-pull failure left EVERY row unchanged (before == after, byte for
+// byte). BackfillRunner instead persists per page via the SAME ingestBatch
+// helper NewListingsJob uses (F-03's already-landed CompletedPullStore split
+// into UpsertPulledRows + MarkRunComplete) — a page that succeeds before a
+// LATER page fails DOES get persisted. This test proves the new, honest
+// contract instead: rows from the successful first page are refreshed
+// (their fetched_at moves forward), rows from the page that was never
+// reached are byte-for-byte unchanged, nothing from the failing page's raw
+// error leaks into evidence, and the run is reported failed with the
+// correct translated_error_code.
+func TestListingsRefreshMidPullFailureLeavesEarlierPagesPersistedButLaterPagesUntouched(t *testing.T) {
+	stub := &stubListingReader{pages: map[string]stubScanPage{"": {ids: listingsFixtureIDs}}, items: listingsFixtureItems()}
+	h := newRefreshHarness(t, "f01-refresh-atomic", stub)
 	status, body := postRefresh(t, h.mux, h.installation)
 	if status != http.StatusAccepted {
 		t.Fatalf("seed status = %d", status)
@@ -270,21 +355,16 @@ func TestListingsRefreshCapabilityErrorMidPullLeavesRowsUnchanged(t *testing.T) 
 	if got := waitTerminal(t, h.operations, h.installation, operationID(t, body)); got != "succeeded" {
 		t.Fatalf("seed terminal = %s", got)
 	}
-	before := listingStateJSON(t, h.pool, h.tenant, h.installation)
-	stub.setPages(map[string]stubListingPage{
-		"":  {items: items[:3]},
-		"3": {err: connectorsdomain.NewCapabilityError(connectorsdomain.ErrCodeProviderAuth, "raw provider body must not persist")},
+	firstPageIDs, laterPageIDs := listingsFixtureIDs[:3], listingsFixtureIDs[3:]
+	beforeFirst := listingRowsState(t, h.pool, h.tenant, h.installation, firstPageIDs)
+	beforeLater := listingRowsState(t, h.pool, h.tenant, h.installation, laterPageIDs)
+
+	stub.setPages(map[string]stubScanPage{
+		"":      {ids: firstPageIDs, next: "page2"},
+		"page2": {err: connectorsdomain.NewCapabilityError(connectorsdomain.ErrCodeProviderAuth, "raw provider body must not persist")},
 	})
-	// Recompose with page size 3 while retaining the same persisted installation and stub.
-	installationSvc := integrationsapp.NewInstallationService(integrationspostgres.NewInstallationRepository(h.pool, h.tenant), h.tenant)
-	operationSvc := integrationsapp.NewOperationService(integrationspostgres.NewOperationRunRepository(h.pool, h.tenant), h.tenant)
-	caps := connectorsapp.NewMarketplaceCapabilityService([]connectorsapp.ProviderCapabilitySet{{ProviderCode: "mercadolivre", Listings: stub}})
-	ingestion := listingsapp.NewIngestion(listingsconnectors.NewSource(caps), listingspostgres.NewRepository(h.pool, h.tenant), 3, time.Now)
-	reports := make(chan error, 1)
-	svc := listingsapp.NewRefreshService(listingsintegrations.NewGateway(installationSvc, operationSvc), ingestion, func(task func()) { go task() }, time.Now, func(err error) { reports <- err }, func(err error) string { return string(connectorsdomain.ErrorCodeOf(err)) })
-	mux := httpx.NewRouteClassMux()
-	listingstransport.NewRefreshHandler(svc).Register(mux)
-	status, body = postRefresh(t, mux, h.installation)
+	operationSvc := h.operations
+	status, body = postRefresh(t, h.mux, h.installation)
 	if status != http.StatusAccepted {
 		t.Fatalf("failure status = %d", status)
 	}
@@ -292,10 +372,16 @@ func TestListingsRefreshCapabilityErrorMidPullLeavesRowsUnchanged(t *testing.T) 
 	if got := waitTerminal(t, operationSvc, h.installation, id); got != "failed" {
 		t.Fatalf("terminal = %s", got)
 	}
-	after := listingStateJSON(t, h.pool, h.tenant, h.installation)
-	if before != after {
-		t.Fatalf("listing rows changed across incomplete pull\nbefore=%s\nafter=%s", before, after)
+
+	afterFirst := listingRowsState(t, h.pool, h.tenant, h.installation, firstPageIDs)
+	afterLater := listingRowsState(t, h.pool, h.tenant, h.installation, laterPageIDs)
+	if afterFirst == beforeFirst {
+		t.Fatalf("expected the first (successful) page's rows to be refreshed (new fetched_at), got byte-identical state\n%s", afterFirst)
 	}
+	if afterLater != beforeLater {
+		t.Fatalf("expected the never-reached page's rows to stay byte-identical\nbefore=%s\nafter=%s", beforeLater, afterLater)
+	}
+
 	var translated string
 	var evidence []byte
 	if err := h.pool.QueryRow(context.Background(), `SELECT translated_error_code,provider_evidence_json FROM integration_operation_runs WHERE tenant_id=$1 AND installation_id=$2 AND operation_run_id=$3 AND status='failed'`, h.tenant, h.installation, id).Scan(&translated, &evidence); err != nil {
@@ -308,16 +394,19 @@ func TestListingsRefreshCapabilityErrorMidPullLeavesRowsUnchanged(t *testing.T) 
 		t.Fatalf("provider evidence leaked response: %s", evidence)
 	}
 	select {
-	case err := <-reports:
+	case err := <-h.reports:
 		t.Fatalf("report callback called for pull failure: %v", err)
 	default:
 	}
 }
 
-func listingStateJSON(t *testing.T, pool *pgxpool.Pool, tenant, installation string) string {
+// listingRowsState returns a stable JSON snapshot of exactly the given
+// provider_listing_ids' rows, ordered deterministically, for before/after
+// comparison.
+func listingRowsState(t *testing.T, pool *pgxpool.Pool, tenant, installation string, providerListingIDs []string) string {
 	t.Helper()
 	var state []byte
-	err := pool.QueryRow(context.Background(), `SELECT COALESCE(jsonb_agg(to_jsonb(x) ORDER BY provider_listing_id,variation_id),'[]'::jsonb) FROM (SELECT provider_listing_id,variation_id,title,status,price_amount::text,price_currency,published_quantity,sync_state,sales_30d,fetched_at FROM listings WHERE tenant_id=$1 AND installation_id=$2) x`, tenant, installation).Scan(&state)
+	err := pool.QueryRow(context.Background(), `SELECT COALESCE(jsonb_agg(to_jsonb(x) ORDER BY provider_listing_id,variation_id),'[]'::jsonb) FROM (SELECT provider_listing_id,variation_id,title,status,available_quantity,sync_state,sales_30d,fetched_at,absent_since FROM listings WHERE tenant_id=$1 AND installation_id=$2 AND provider_listing_id = ANY($3)) x`, tenant, installation, providerListingIDs).Scan(&state)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -325,9 +414,8 @@ func listingStateJSON(t *testing.T, pool *pgxpool.Pool, tenant, installation str
 }
 
 func TestListingsRefreshIsTenantIsolated(t *testing.T) {
-	items := listingSnapshots()
-	stub := &stubListingReader{pages: map[string]stubListingPage{"": {items: items}}}
-	h := newRefreshHarness(t, "f01-refresh-tenant", 100, stub)
+	stub := &stubListingReader{pages: map[string]stubScanPage{"": {ids: listingsFixtureIDs}}, items: listingsFixtureItems()}
+	h := newRefreshHarness(t, "f01-refresh-tenant", stub)
 	// integration_installations PK is (installation_id) — globally unique — so tenant B
 	// cannot reuse tenant A's installation_id. It gets its own; isolation is proven by
 	// tenant A's refresh/close leaving tenant B's tenant-scoped rows untouched.
@@ -337,15 +425,18 @@ func TestListingsRefreshIsTenantIsolated(t *testing.T) {
 	t.Cleanup(func() {
 		ctx := context.Background()
 		_, _ = h.pool.Exec(ctx, `DELETE FROM listing_sync_events WHERE tenant_id=$1 AND installation_id=$2`, other, otherInstall)
+		_, _ = h.pool.Exec(ctx, `DELETE FROM listing_variations WHERE tenant_id=$1 AND installation_id=$2`, other, otherInstall)
 		_, _ = h.pool.Exec(ctx, `DELETE FROM listings WHERE tenant_id=$1 AND installation_id=$2`, other, otherInstall)
 		_, _ = h.pool.Exec(ctx, `DELETE FROM integration_operation_runs WHERE tenant_id=$1 AND installation_id=$2`, other, otherInstall)
 		_, _ = h.pool.Exec(ctx, `DELETE FROM integration_installations WHERE tenant_id=$1 AND installation_id=$2`, other, otherInstall)
 	})
 	otherRepo := listingspostgres.NewRepository(h.pool, other)
-	otherCaps := connectorsapp.NewMarketplaceCapabilityService([]connectorsapp.ProviderCapabilitySet{{ProviderCode: "mercadolivre", Listings: &stubListingReader{pages: map[string]stubListingPage{"": {items: items}}}}})
+	otherStub := &stubListingReader{pages: map[string]stubScanPage{"": {ids: listingsFixtureIDs}}, items: listingsFixtureItems()}
+	otherCaps := connectorsapp.NewMarketplaceCapabilityService([]connectorsapp.ProviderCapabilitySet{{ProviderCode: "mercadolivre", Listings: otherStub}})
 	otherInstallationSvc := integrationsapp.NewInstallationService(integrationspostgres.NewInstallationRepository(h.pool, other), other)
 	otherOperationSvc := integrationsapp.NewOperationService(integrationspostgres.NewOperationRunRepository(h.pool, other), other)
-	otherSvc := listingsapp.NewRefreshService(listingsintegrations.NewGateway(otherInstallationSvc, otherOperationSvc), listingsapp.NewIngestion(listingsconnectors.NewSource(otherCaps), otherRepo, 100, time.Now), func(task func()) { go task() }, time.Now, nil, func(err error) string { return string(connectorsdomain.ErrorCodeOf(err)) })
+	otherRunner := listingsapp.NewBackfillRunner(listingsconnectors.NewBackfillSource(otherCaps), listingsconnectors.NewMultigetHydrator(otherCaps, nil, time.Now), otherRepo, time.Now)
+	otherSvc := listingsapp.NewRefreshService(listingsintegrations.NewGateway(otherInstallationSvc, otherOperationSvc), otherRunner, func(task func()) { go task() }, time.Now, nil, func(err error) string { return string(connectorsdomain.ErrorCodeOf(err)) })
 	otherMux := httpx.NewRouteClassMux()
 	listingstransport.NewRefreshHandler(otherSvc).Register(otherMux)
 	status, body := postRefresh(t, otherMux, otherInstall)
@@ -359,7 +450,7 @@ func TestListingsRefreshIsTenantIsolated(t *testing.T) {
 	if err := h.pool.QueryRow(context.Background(), `SELECT count(*) FROM integration_operation_runs WHERE tenant_id=$1 AND installation_id=$2`, other, otherInstall).Scan(&beforeRuns); err != nil {
 		t.Fatal(err)
 	}
-	stub.setPages(map[string]stubListingPage{"": {items: items[:5]}})
+	stub.setPages(map[string]stubScanPage{"": {ids: listingsFixtureIDs[:5]}})
 	status, body = postRefresh(t, h.mux, h.installation)
 	if status != http.StatusAccepted {
 		t.Fatalf("tenant A status = %d", status)
@@ -380,8 +471,8 @@ func TestListingsRefreshIsTenantIsolated(t *testing.T) {
 }
 
 func TestListingsRefreshUnknownInstallation(t *testing.T) {
-	stub := &stubListingReader{pages: map[string]stubListingPage{"": {items: listingSnapshots()}}}
-	h := newRefreshHarness(t, "f01-refresh-missing", 100, stub)
+	stub := &stubListingReader{pages: map[string]stubScanPage{"": {ids: listingsFixtureIDs}}, items: listingsFixtureItems()}
+	h := newRefreshHarness(t, "f01-refresh-missing", stub)
 	missing := h.installation + "-missing"
 	status, body := postRefresh(t, h.mux, missing)
 	if status != http.StatusNotFound {

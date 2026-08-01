@@ -101,6 +101,39 @@ type Listing struct {
 	FetchedAt         *time.Time
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
+
+	// E3 fields (0090, IC-07) — honest-unknown per ADR-17: nil means the
+	// caller never populated the field from provider data, never a fabricated
+	// zero/false/empty. Deliberately excludes commission_amount/commission_pct/
+	// free_shipping_cost — those live in channel_fees (IC-01), not here.
+	SoldQuantity      *int
+	CategoryID        *string
+	Condition         *string
+	Permalink         *string
+	Thumbnail         *string
+	DateCreatedML     *time.Time
+	Tags              []string
+	CatalogProductID  *string
+	ShippingMode      *string
+	FreeShipping      *bool
+	LogisticType      *string
+	AvailableQuantity *int
+
+	// Variations (0091) — optional child rows upserted alongside the parent
+	// row, in the same transaction, by ApplyCompletedPull.
+	Variations []ListingVariation
+}
+
+// ListingVariation is a child row of a listing (0091 listing_variations).
+// Fields are pointer/nullable-friendly for the same honest-unknown reason as
+// the Listing E3 fields above.
+type ListingVariation struct {
+	VariationID       string
+	Price             *PriceAmount
+	AvailableQuantity *int
+	SoldQuantity      *int
+	SellerSKU         *string
+	Attributes        map[string]any
 }
 
 type ListingInput struct {
@@ -122,6 +155,20 @@ type ListingInput struct {
 	FetchedAt         *time.Time
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
+
+	// E3 fields — see Listing above.
+	SoldQuantity      *int
+	CategoryID        *string
+	Condition         *string
+	Permalink         *string
+	Thumbnail         *string
+	DateCreatedML     *time.Time
+	Tags              []string
+	CatalogProductID  *string
+	ShippingMode      *string
+	FreeShipping      *bool
+	LogisticType      *string
+	AvailableQuantity *int
 }
 
 func NewListing(input ListingInput) (Listing, error) {
@@ -137,7 +184,7 @@ func NewListing(input ListingInput) (Listing, error) {
 	if title == "" {
 		return Listing{}, ErrTitleRequired
 	}
-	if !input.Status.IsValid() {
+	if !input.Status.isNonEmpty() {
 		return Listing{}, ErrListingStatusInvalid
 	}
 	if !input.SyncState.IsValid() {
@@ -160,9 +207,27 @@ func NewListing(input ListingInput) (Listing, error) {
 		FetchedAt:         input.FetchedAt,
 		CreatedAt:         input.CreatedAt,
 		UpdatedAt:         input.UpdatedAt,
+		SoldQuantity:      input.SoldQuantity,
+		CategoryID:        input.CategoryID,
+		Condition:         input.Condition,
+		Permalink:         input.Permalink,
+		Thumbnail:         input.Thumbnail,
+		DateCreatedML:     input.DateCreatedML,
+		Tags:              input.Tags,
+		CatalogProductID:  input.CatalogProductID,
+		ShippingMode:      input.ShippingMode,
+		FreeShipping:      input.FreeShipping,
+		LogisticType:      input.LogisticType,
+		AvailableQuantity: input.AvailableQuantity,
 	}, nil
 }
 
+// IsValid is the CLOSED-vocabulary check: it stays a fixed switch over the
+// named constants because it also backs query-filter grammar validation
+// (IC-02, filter.go SetFilterValue / transport ParseListingQuery), a
+// SEPARATE contract that intentionally rejects unknown values like
+// "?status=banana" as a bad request. Loosening this method breaks IC-02
+// (TestParseListingQueryUsesIC02Grammar / TestSetFilterValueGrammar).
 func (s ListingStatus) IsValid() bool {
 	switch s {
 	case ListingStatusActive, ListingStatusPaused, ListingStatusClosed, ListingStatusUnknown,
@@ -171,6 +236,16 @@ func (s ListingStatus) IsValid() bool {
 	default:
 		return false
 	}
+}
+
+// isNonEmpty is the OPEN-vocabulary check used by NewListing: F-01/F-02
+// already dropped the DB CHECK and the writer persists provider status
+// verbatim (IC-07 — ML emits real statuses beyond the 8 named constants,
+// e.g. "suspended"). NewListing must not silently reject those; it only
+// requires a non-empty (trimmed) value, distinct from IsValid()'s closed
+// switch above.
+func (s ListingStatus) isNonEmpty() bool {
+	return strings.TrimSpace(string(s)) != ""
 }
 
 func (s ListingSyncState) IsValid() bool {

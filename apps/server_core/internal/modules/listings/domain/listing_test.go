@@ -111,6 +111,29 @@ func TestNewListingRejectsEmptyRequiredFields(t *testing.T) {
 	}
 }
 
+func TestNewListingAcceptsUnlistedProviderStatusVerbatim(t *testing.T) {
+	// IC-07: status vocabulary is open (F-01/F-02 dropped the DB CHECK, the
+	// writer persists provider status verbatim). "suspended" isn't one of
+	// the named ListingStatus* constants, but a real ML item can report it.
+	// Domain validation must not be the last silent-rejection point.
+	const novel ListingStatus = "suspended"
+	listing, err := NewListing(ListingInput{
+		TenantID:          "tenant-1",
+		InstallationID:    "installation-1",
+		Provider:          "mercado_livre",
+		ProviderListingID: "item-1",
+		Title:             "A listing",
+		Status:            novel,
+		SyncState:         ListingSyncStateSynced,
+	})
+	if err != nil {
+		t.Fatalf("NewListing() error = %v, want nil for unlisted status %q", err, novel)
+	}
+	if listing.Status != novel {
+		t.Fatalf("listing.Status = %q, want verbatim %q", listing.Status, novel)
+	}
+}
+
 func TestNewListingPreservesNullableFacts(t *testing.T) {
 	listing, err := NewListing(ListingInput{
 		TenantID:          "tenant-1",
