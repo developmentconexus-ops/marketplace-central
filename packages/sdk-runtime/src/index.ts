@@ -2143,6 +2143,7 @@ export function createMarketplaceCentralClient(options: {
       getJson<DashboardSummary>(`/dashboard/summary?installation_id=${encodeURIComponent(installationId)}`),
     listSyncRuns: (options: SyncRunListOptions) =>
       getJson<SyncRunPage>(`/sync/runs${syncRunQuery(options)}`),
+    getSyncHealth: () => getJson<SyncHealth>("/sync/health"),
     refreshListings: (req: RefreshListingsRequest) =>
       postJson<RefreshListingsAccepted>("/listings/refresh", req),
     /** @deprecated Use listCatalogProductFacts; the endpoint is now paginated. */
@@ -2487,6 +2488,31 @@ export interface SyncRunListOptions {
   limit?: number;
   module?: string;
   status?: SyncRunStatus;
+}
+
+export interface SyncHealthError {
+  message: string;
+  at: string;
+}
+
+export interface SyncHealthEntity {
+  entity: string;
+  last_success_at: string | null;
+  last_incremental_at: string | null;
+  consecutive_failures: number;
+  phase: string | null;
+  last_error: SyncHealthError | null;
+}
+
+export interface SyncHealthWebhook {
+  last_notification_at: string | null;
+  pending: number;
+  dropped_24h: number;
+}
+
+export interface SyncHealth {
+  entities: SyncHealthEntity[];
+  webhook: SyncHealthWebhook;
 }
 
 export interface MarketMoney {

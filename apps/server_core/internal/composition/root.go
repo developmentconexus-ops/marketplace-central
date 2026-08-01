@@ -113,7 +113,9 @@ import (
 	profitabilityapp "marketplace-central/apps/server_core/internal/modules/profitability/application"
 	profitabilitytransport "marketplace-central/apps/server_core/internal/modules/profitability/transport"
 	syncpg "marketplace-central/apps/server_core/internal/modules/sync/adapters/postgres"
+	syncapp "marketplace-central/apps/server_core/internal/modules/sync/application"
 	synccomposition "marketplace-central/apps/server_core/internal/modules/sync/composition"
+	synctransport "marketplace-central/apps/server_core/internal/modules/sync/transport"
 	"marketplace-central/apps/server_core/internal/modules/tenant_config"
 	tenantconfigtransport "marketplace-central/apps/server_core/internal/modules/tenant_config/transport"
 	"marketplace-central/apps/server_core/internal/platform/apierror"
@@ -859,6 +861,17 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 
 	// Connectors (Melhor Envio auth + fee seeding foundations)
 	connectorstransport.NewHandler(meOAuth).Register(mux)
+
+	// M-09 F-01: GET /sync/health — per-entity sync_state aggregate (GREATEST
+	// of last_full_sync_at/last_incremental_at, tolerant cursor.phase read) +
+	// a webhook-stats block behind the WebhookStatsReader seam. The webhook
+	// reader stays the M-09 default (canonical zero) until a future milestone
+	// calls syncHealthSvc.WithWebhookStatsReader from its own region — that
+	// call mutates syncHealthSvc in place, so it takes effect on this same
+	// already-registered route without touching this region.
+	syncHealthReader := syncpg.NewHealthReader(pool)
+	syncHealthSvc := syncapp.NewHealthService(syncHealthReader, cfg.DefaultTenantID)
+	synctransport.NewHealthHandler(syncHealthSvc).Register(mux)
 
 	return &RootRuntime{Handler: httpx.CORSMiddleware(apierror.Recover(mux)), CatalogReader: catalogPageReader, PoolStats: poolStats, MutationPoller: mutationRunner, mutationLane: mutationLane}, nil
 }
