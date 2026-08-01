@@ -154,24 +154,34 @@ func MapMultigetItemToListing(tenantID, installationID, provider string, item me
 // seam the old single-item ReadListing path feeds (ADR-13, IC-07 "hidratação
 // nova CONTINUA alimentando AbsorbProviderSnapshots").
 //
-// KNOWN, DOCUMENTED GAP vs the old path: mlItemResponse (capability_adapter.go,
-// the single-item ReadListing shape) carries a top-level `attributes` array,
-// letting mapListing derive a listing-level EAN via attributeValue(item.
-// Attributes, "GTIN","EAN"); mlMultigetItemBody (items_multiget_reader.go,
-// M-01/F-02 — frozen, out of this feature's ownership) has NO top-level
-// attributes field, only per-variation ones. So for an item WITHOUT
-// variations, this snapshot's top-level SellerSKU/EAN stay "" (honest-empty,
-// the struct's own zero value for an unset string field — never fabricated).
-// For an item WITH variations, each ListingVariationSnapshot's SellerSKU/EAN
-// ARE populated from that variation's own fields, matching the old path
-// exactly. This does not starve the observer (every item and every
-// variation still produces a snapshot, preserving count) — see backfill.go's
-// non-regression note and the ADR-13 test for the file:line evidence.
+// Top-level SellerSKU/EAN are derived from the item's OWN seller_sku/
+// seller_custom_field/attributes — mirroring mapListing's oracle behavior
+// exactly (capability_adapter.go:832-846, the single-item ReadListing shape
+// this ADR-13 seam must match): those three fields are set UNCONDITIONALLY,
+// regardless of whether the item has variations, because mapListing does the
+// same (it never gates the top-level SellerSKU/EAN on len(item.Variations)).
+// This was previously a KNOWN GAP: items_multiget_reader.go's ItemMultigetDTO
+// carried no top-level SellerSKU/SellerCustomField/Attributes fields at all
+// (json.Unmarshal silently drops undeclared fields), even though ML's
+// multiget `body` element is the same full item representation as the
+// single-item GET and so genuinely carries those bytes on the wire (visible
+// in Raw). That reader now types them (same package, not a frozen file), so
+// this mapper can derive the same values mapListing would for equivalent
+// input instead of leaving them honest-empty for lack of a typed source.
+//
+// Per-variation SellerSKU/EAN come from that variation's own fields only —
+// deliberately NOT falling back to the parent item's SellerSKU/
+// SellerCustomField, because mapListing's own per-variation loop doesn't
+// either (capability_adapter.go:852-860; only ReadStock's single-variation
+// StockSnapshot path chains through the parent, and StockSnapshot is a
+// different shape/consumer than ListingSnapshot).
 func MapMultigetItemToListingSnapshot(providerCode string, item mercadolivre.ItemMultigetDTO, fetchedAt time.Time) connectorsdomain.ListingSnapshot {
 	snapshot := connectorsdomain.ListingSnapshot{
 		ProviderCode:   providerCode,
 		ProviderItemID: strings.TrimSpace(item.ProviderItemID),
 		ProviderStatus: strings.TrimSpace(item.Status),
+		SellerSKU:      firstNonEmpty(item.SellerSKU, item.SellerCustomField),
+		EAN:            multigetAttributeValue(item.Attributes, "GTIN", "EAN"),
 		Title:          strings.TrimSpace(item.Title),
 		FetchedAt:      fetchedAt,
 	}
@@ -210,6 +220,20 @@ func multigetAttributeValue(attributes []mercadolivre.ItemMultigetAttributeDTO, 
 		}
 		if value := strings.TrimSpace(attribute.ValueID); value != "" {
 			return value
+		}
+	}
+	return ""
+}
+
+// firstNonEmpty mirrors capability_adapter.go's unexported same-named helper
+// (first argument that is non-blank after trimming, "" if none) — duplicated
+// here rather than reached into directly because that helper is unexported
+// and capability_adapter.go is frozen for this feature; this package needs
+// its own copy for the same seller_sku-then-seller_custom_field fallback.
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			return trimmed
 		}
 	}
 	return ""

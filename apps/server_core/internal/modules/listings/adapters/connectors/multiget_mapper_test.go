@@ -198,31 +198,58 @@ func TestMapMultigetItemToListingRequiresVariationID(t *testing.T) {
 }
 
 // TestMapMultigetItemToListingSnapshotFeedsObserverHonestly proves the
-// ADR-13 observer-feed shape: SellerSKU/EAN come through per-variation
-// (attribute-derived) but stay honest-empty at the top level for a
-// no-variation item, because mlMultigetItemBody carries no top-level
-// attributes (see the doc comment on MapMultigetItemToListingSnapshot) —
-// this must never fabricate a value, and must never skip producing a
-// snapshot at all (that would starve the observer, the exact must-fail
+// ADR-13 observer-feed shape now has CONTENT parity with the old single-item
+// ReadListing path (capability_adapter.go's mapListing), not just count
+// parity: a no-variation item's OWN seller_sku/seller_custom_field/
+// attributes (typed on ItemMultigetDTO since the items_multiget_reader.go
+// fix) must produce a populated top-level SellerSKU/EAN — never honest-empty
+// when the source data is actually present — and must never skip producing
+// a snapshot at all (that would starve the observer, the exact must-fail
 // ADR-13 guards against).
 func TestMapMultigetItemToListingSnapshotFeedsObserverHonestly(t *testing.T) {
 	t.Parallel()
 
 	fetchedAt := time.Date(2026, 7, 31, 10, 0, 0, 0, time.UTC)
 
-	noVariation := mercadolivre.ItemMultigetDTO{ProviderItemID: "MLB1", Title: "Sem variação", Status: "active", AvailableQuantity: intPtr(4)}
+	// No variations, but the item itself carries seller_sku/seller_custom_field
+	// and a top-level GTIN attribute (exactly what mlItemResponse's single-item
+	// GET would also carry) — the snapshot must derive both, matching what
+	// mapListing would have produced for the equivalent single-item payload.
+	noVariation := mercadolivre.ItemMultigetDTO{
+		ProviderItemID:    "MLB1",
+		Title:             "Sem variação",
+		Status:            "active",
+		AvailableQuantity: intPtr(4),
+		SellerSKU:         "SKU-TOP",
+		SellerCustomField: "CF-TOP",
+		Attributes:        []mercadolivre.ItemMultigetAttributeDTO{{ID: "GTIN", ValueName: "7891234567890"}},
+	}
 	snap := MapMultigetItemToListingSnapshot("mercado_livre", noVariation, fetchedAt)
-	if snap.ProviderItemID != "MLB1" || snap.SellerSKU != "" || snap.EAN != "" {
-		t.Fatalf("no-variation snapshot = %#v, want empty top-level SellerSKU/EAN", snap)
+	if snap.ProviderItemID != "MLB1" || snap.SellerSKU != "SKU-TOP" || snap.EAN != "7891234567890" {
+		t.Fatalf("no-variation snapshot = %#v, want SellerSKU=SKU-TOP EAN=7891234567890", snap)
 	}
 	if snap.AvailableQuantity == nil || *snap.AvailableQuantity != 4 {
 		t.Fatalf("snapshot.AvailableQuantity = %v, want 4", snap.AvailableQuantity)
 	}
 
+	// Falls back to seller_custom_field when seller_sku itself is blank.
+	fallback := mercadolivre.ItemMultigetDTO{ProviderItemID: "MLB1B", Title: "Fallback", Status: "active", SellerCustomField: "CF-ONLY"}
+	snapFallback := MapMultigetItemToListingSnapshot("mercado_livre", fallback, fetchedAt)
+	if snapFallback.SellerSKU != "CF-ONLY" {
+		t.Fatalf("snapshot.SellerSKU = %q, want fallback CF-ONLY", snapFallback.SellerSKU)
+	}
+
+	// With variations, the top-level SellerSKU/EAN still come from the item's
+	// OWN fields (unconditional, matching mapListing — never gated on
+	// len(Variations)), while each per-variation entry keeps ITS OWN
+	// seller_sku/attributes, deliberately NOT falling back to the parent's
+	// (mapListing's per-variation loop doesn't chain through the item either).
 	withVariation := mercadolivre.ItemMultigetDTO{
 		ProviderItemID: "MLB2",
 		Title:          "Com variação",
 		Status:         "active",
+		SellerSKU:      "SKU-PARENT",
+		Attributes:     []mercadolivre.ItemMultigetAttributeDTO{{ID: "GTIN", ValueName: "9999999999999"}},
 		Variations: []mercadolivre.ItemMultigetVariationDTO{{
 			ProviderVariationID: "181",
 			SellerSKU:           "SKU-A",
@@ -231,11 +258,14 @@ func TestMapMultigetItemToListingSnapshotFeedsObserverHonestly(t *testing.T) {
 		}},
 	}
 	snap2 := MapMultigetItemToListingSnapshot("mercado_livre", withVariation, fetchedAt)
+	if snap2.SellerSKU != "SKU-PARENT" || snap2.EAN != "9999999999999" {
+		t.Fatalf("with-variation snapshot top-level = %#v, want SellerSKU=SKU-PARENT EAN=9999999999999", snap2)
+	}
 	if len(snap2.Variations) != 1 {
 		t.Fatalf("snapshot.Variations = %#v, want 1", snap2.Variations)
 	}
 	v := snap2.Variations[0]
 	if v.SellerSKU != "SKU-A" || v.EAN != "7891234567890" {
-		t.Fatalf("variation snapshot = %#v, want SellerSKU=SKU-A EAN=7891234567890", v)
+		t.Fatalf("variation snapshot = %#v, want SellerSKU=SKU-A EAN=7891234567890 (own fields, no parent fallback)", v)
 	}
 }
