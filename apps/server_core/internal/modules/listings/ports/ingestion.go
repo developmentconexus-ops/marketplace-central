@@ -55,3 +55,44 @@ type CompletedPullStore interface {
 	// timestamp is a no-op here, never a mass-closure.
 	MarkRunComplete(ctx context.Context, installationID string, runStartedAt time.Time) error
 }
+
+// BatchIDPage is one enumerator tick (F-03/IC-06): a page of provider item
+// ids plus the next enumeration cursor. NextCursor == "" means the scan is
+// exhausted, REGARDLESS of len(IDs) — a page can legitimately report zero
+// new ids and still be the terminal page (e.g. the catalog count is an exact
+// multiple of the page size), and a caller must still treat that as run
+// completion, not as "nothing happened this tick".
+type BatchIDPage struct {
+	IDs        []string
+	NextCursor string
+}
+
+// IDEnumerator produces ids ONLY — it never hydrates (IC-06 "enumerador
+// nunca hidrata"). Implemented by connectors.BackfillSource, wrapping the
+// mercado_livre ids-only scan (ListListingsScanIDs, Passo 1).
+type IDEnumerator interface {
+	ReadIDPage(ctx context.Context, account InstallationAccount, cursor string, limit int) (BatchIDPage, error)
+}
+
+// BatchHydrator hydrates one batch of ids into canonical rows — it never
+// enumerates (IC-06 "hidratação nunca enumera"). Implemented by
+// connectors.MultigetHydrator, wrapping GetItemsMultiget (M-01/F-02) + the
+// Passo 2 mapper, and feeding the product-links SnapshotObserver (ADR-13) so
+// the new path keeps the re-vínculo matcher fed the same way the old
+// single-item ReadListing path does. A batch-level error (e.g. a 429 series
+// exceeding M-01's retry budget) fails the whole call — a per-item error
+// (one bad id in the batch) never does; the implementation records those
+// internally and returns the rows that DID hydrate.
+type BatchHydrator interface {
+	HydrateBatch(ctx context.Context, account InstallationAccount, ids []string) ([]domain.Listing, error)
+}
+
+// ListingIngestor is IC-06's Ingest{Listing} operation: a resource-addressed,
+// idempotent, single-item upsert, callable by every producer (refresh,
+// webhook worker, ad-hoc resync) through the SAME path the backfill job
+// uses. Bound to one installation account at construction — same idiom as
+// mutations/adapters/listings.NewResyncWriter's account parameter — so the
+// method itself only needs the resource id.
+type ListingIngestor interface {
+	IngestListing(ctx context.Context, providerListingID string) error
+}
