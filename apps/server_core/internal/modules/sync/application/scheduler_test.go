@@ -248,3 +248,80 @@ func TestStartNoOpOnZeroInterval(t *testing.T) {
 	// Must return immediately without a ticker panic.
 	s.Start(context.Background())
 }
+
+// TestInferIncrementalTolerates pins inferIncremental's tolerant-parse
+// contract: an absent, empty, unrecognized, or unparseable phase all resolve
+// to false with no error — never a crash, never a spurious incremental flag.
+// The "legacy products shape" case is the load-bearing one: the real
+// products job's ProductsCursor has no phase key at all and must keep
+// recording incremental=false with zero behavior change (F-03).
+func TestInferIncrementalTolerates(t *testing.T) {
+	cases := []struct {
+		name   string
+		cursor json.RawMessage
+		want   bool
+	}{
+		{"nil cursor (state erased)", nil, false},
+		{"empty cursor", json.RawMessage(``), false},
+		{"malformed json", json.RawMessage(`{not json`), false},
+		{"json array, not an object", json.RawMessage(`[1,2,3]`), false},
+		{"phase incremental", json.RawMessage(`{"phase":"incremental"}`), true},
+		{"phase backfill", json.RawMessage(`{"phase":"backfill"}`), false},
+		{"unrecognized phase sweep falls to tolerant default (ADR-07 has no sweep phase)", json.RawMessage(`{"phase":"sweep"}`), false},
+		{"phase empty string", json.RawMessage(`{"phase":""}`), false},
+		{"phase unrecognized", json.RawMessage(`{"phase":"bogus"}`), false},
+		{
+			"legacy products shape (no phase key)",
+			json.RawMessage(`{"source":"xlsx","processed":1845,"completed_at":"2026-07-24T12:00:00Z"}`),
+			false,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := inferIncremental(tc.cursor); got != tc.want {
+				t.Errorf("inferIncremental(%s) = %v, want %v", tc.cursor, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestRunOnceDerivesIncrementalFromCursorPhase drives the derivation through
+// the real RunOnce/runJob path (not just the helper in isolation): whatever
+// phase the job's returned cursor carries must be what RecordSuccess is told.
+func TestRunOnceDerivesIncrementalFromCursorPhase(t *testing.T) {
+	cases := []struct {
+		name        string
+		nextCursor  json.RawMessage
+		incremental bool
+	}{
+		{"phase incremental", json.RawMessage(`{"phase":"incremental"}`), true},
+		{"phase backfill", json.RawMessage(`{"phase":"backfill"}`), false},
+		{"unrecognized phase sweep falls to tolerant default (ADR-07 has no sweep phase)", json.RawMessage(`{"phase":"sweep"}`), false},
+		{"legacy products shape (no phase key)", json.RawMessage(`{"source":"xlsx","processed":3}`), false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			store := newFakeStore()
+			store.readState[domain.EntityProducts] = domain.SyncState{Cursor: json.RawMessage(`{"phase":"backfill"}`)}
+			at := time.Date(2026, 7, 20, 12, 0, 0, 0, time.UTC)
+			s := NewScheduler(store, "erp", time.Minute, fixedClock(at))
+
+			if err := s.RegisterJob(domain.EntityProducts, func(context.Context, json.RawMessage) (json.RawMessage, error) {
+				return tc.nextCursor, nil
+			}); err != nil {
+				t.Fatal(err)
+			}
+
+			s.RunOnce(context.Background())
+
+			if len(store.successes) != 1 {
+				t.Fatalf("successes = %d, want 1", len(store.successes))
+			}
+			if got := store.successes[0].incremental; got != tc.incremental {
+				t.Errorf("incremental = %v, want %v (cursor %s)", got, tc.incremental, tc.nextCursor)
+			}
+		})
+	}
+}
