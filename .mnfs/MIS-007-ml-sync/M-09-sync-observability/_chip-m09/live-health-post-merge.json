@@ -1,0 +1,1 @@
+{"entities":[{"entity":"market","last_success_at":null,"last_incremental_at":null,"consecutive_failures":0,"phase":null,"last_error":null},{"entity":"products","last_success_at":"2026-08-01T13:39:32.324475Z","last_incremental_at":null,"consecutive_failures":0,"phase":null,"last_error":null}],"webhook":{"last_notification_at":null,"pending":0,"dropped_24h":0}}
