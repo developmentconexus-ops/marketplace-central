@@ -309,3 +309,46 @@ mecanismo está provado por teste de integração; o defeito é de agendamento, 
 Classe: **cadência guardada só na memória do processo**. Conserto: derivar o vencimento de
 `sync_state.last_full_sync_at` (rodar no boot se `now - last > interval`), em vez de confiar
 num ticker que morre com o processo.
+
+**D-17. Emit do `tsc` ao lado do fonte sequestra a resolução do Vite**
+(limpeza de repo, 2026-08-01, achado na varredura de untracked): 191 arquivos `.js` estavam
+soltos em `apps/web/src/`, `packages/*/src/` e — o pior — `apps/web/vite.config.js`. Todos
+com cabeçalho `import { jsx as _jsx } from "react/jsx-runtime"`, ou seja, saída de `tsc`
+rodado sem `--noEmit`. Nenhum era rastreado e o `.gitignore` não cobria nenhum, então
+sobreviveram a várias missões aparecendo como ruído no `git status`.
+
+Não é sujeira inerte. A ordem padrão de `resolve.extensions` do Vite é
+`['.mjs','.js','.mts','.ts','.jsx','.tsx','.json']` — `.js` **antes** de `.tsx` — e o config
+do repo não sobrescreve. Um `import "./AnunciosTable"` resolve para o emit velho, não para o
+fonte. E o Vite procura o próprio arquivo de configuração em `.js` antes de `.ts`, então o
+`vite.config.js` emitido ganhava do `vite.config.ts`: o build inteiro podia estar rodando
+sobre configuração compilada desatualizada.
+
+Classe: **artefato de build no diretório do fonte, com precedência sobre o fonte**. Sintoma
+que produz: "editei o arquivo e a tela não mudou" — indistinguível de cache, de HMR quebrado
+ou de container servindo checkout errado, que foi exatamente o tipo de tempo perdido que
+esta base já pagou mais de uma vez.
+
+Conserto aplicado: emit apagado e `.gitignore` fechado sobre os três padrões (`apps/web/src`,
+`packages/*/src`, `vite.config.js`). Conserto de classe que **falta**: nada impede o emit de
+voltar. Ou o `tsconfig` ganha `"noEmit": true` no lugar em que falta, ou um passo de lane
+reprova quando existe `.js` sob um diretório de fonte que é 100% `.ts`/`.tsx`.
+
+**D-18. Diretório de worktree sobrevive ao worktree, e o bind mount do Docker o tranca**
+(limpeza de repo, 2026-08-01): `.claude/worktrees/` tinha 46 diretórios enquanto o git
+conhecia 7. Os 39 restantes não tinham nem arquivo `.git` nem metadado em `.git/worktrees/`
+— resíduo puro de chips já fechados. `git worktree prune` não os vê, porque prune limpa
+metadado órfão, não diretório órfão.
+
+Agravante medido: `marketplace-central-frontend-1` e `-backend-1` fazem bind mount da **raiz
+do repo**, e a raiz contém `.claude/worktrees/`. Enquanto os containers estão de pé, todo
+`rm -rf` ali dentro devolve `Permission denied`. Limpar worktree exige parar o dev stack —
+acoplamento que ninguém declarou em lugar nenhum.
+
+Classe: **remoção parcial que deixa o caro para trás**. `git worktree remove` apaga o arquivo
+`.git` primeiro; se a remoção do diretório falha depois, o worktree some do `git worktree
+list` e o `node_modules` fica. O sucesso aparente do comando esconde o custo real.
+
+Conserto de classe: o hub verifica o diretório depois do `remove`, não o código de saída — e
+a criação de worktree passa a ficar fora da árvore montada pelo compose, para que limpeza não
+dependa de derrubar a stack.
