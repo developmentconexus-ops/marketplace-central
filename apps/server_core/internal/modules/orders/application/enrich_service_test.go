@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -11,6 +12,7 @@ import (
 	connectorsdomain "marketplace-central/apps/server_core/internal/modules/connectors/domain"
 	internalreaddomain "marketplace-central/apps/server_core/internal/modules/internal_read/domain"
 	"marketplace-central/apps/server_core/internal/modules/orders/domain"
+	"marketplace-central/apps/server_core/internal/modules/orders/ports"
 )
 
 func strPtr(s string) *string        { return &s }
@@ -897,4 +899,100 @@ func TestEnrichDecompositionFromRealData(t *testing.T) {
 	if result.Profitability.Decomposition.Frete == nil || *result.Profitability.Decomposition.Frete != 12.34 {
 		t.Fatalf("Decomposition.Frete = %v, want 12.34", result.Profitability.Decomposition.Frete)
 	}
+}
+
+// TestSumSaleFeeMultipliesByQuantity is the F-03 bugfix proof: SaleFeeAmount
+// is PER-UNIT (domain.MarketplaceOrderItem.SaleFeeAmount doc comment), so a
+// two-line order with quantities 2 and 3 must produce comissão =
+// (5.00*2)+(1.50*3) = 14.50, not the pre-fix 6.50 (sum of SaleFeeAmount alone,
+// ignoring Quantity) that under-counted commission for every multi-quantity
+// line.
+func TestSumSaleFeeMultipliesByQuantity(t *testing.T) {
+	costReader := newFakeCostReader()
+	shipmentReader := newFakeShipmentReader()
+	feeA, feeB := 5.00, 1.50
+	order := domain.OrderReadModel{
+		ProviderOrderID: "ord-qty-1",
+		Total:           floatPtr(100),
+		Items: []domain.MarketplaceOrderItem{
+			{SellerSKU: "sku-a", SaleFeeAmount: &feeA, Quantity: 2},
+			{SellerSKU: "sku-b", SaleFeeAmount: &feeB, Quantity: 3},
+		},
+	}
+	svc := NewEnrichService(costReader, shipmentReader, testLogger())
+	got := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})
+	result := got[0]
+
+	const want = 14.50
+	if result.Profitability.Decomposition.Comissao == nil || *result.Profitability.Decomposition.Comissao != want {
+		t.Fatalf("Decomposition.Comissao = %v, want %v", result.Profitability.Decomposition.Comissao, want)
+	}
+}
+
+// recordingHandler is a minimal slog.Handler that records every record's
+// level+message so a test can assert whether a warn was (or was not) logged,
+// without depending on slog's text/JSON output formatting.
+type recordingHandler struct {
+	records *[]slog.Record
+}
+
+func (h recordingHandler) Enabled(context.Context, slog.Level) bool { return true }
+func (h recordingHandler) Handle(_ context.Context, r slog.Record) error {
+	*h.records = append(*h.records, r)
+	return nil
+}
+func (h recordingHandler) WithAttrs([]slog.Attr) slog.Handler { return h }
+func (h recordingHandler) WithGroup(string) slog.Handler      { return h }
+
+func hasWarnContaining(records []slog.Record, substr string) bool {
+	for _, r := range records {
+		if r.Level == slog.LevelWarn && strings.Contains(r.Message, substr) {
+			return true
+		}
+	}
+	return false
+}
+
+// TestFetchShipmentNotFoundSentinelDegradesWithoutWarn is the F-03 ADR-17
+// proof for fetchShipment's ports.ErrShipmentNotFound branch: a not-yet-
+// ingested order (the Postgres reader's honest-absence sentinel) degrades to
+// a nil Shipment WITHOUT a warn log — it is an expected, common case — while a
+// real reader error still degrades to nil AND still warns, so the distinction
+// added in enrich_service.go is not accidentally silencing real failures too.
+func TestFetchShipmentNotFoundSentinelDegradesWithoutWarn(t *testing.T) {
+	costReader := newFakeCostReader()
+
+	t.Run("sentinel: no row yet, no warn", func(t *testing.T) {
+		var records []slog.Record
+		logger := slog.New(recordingHandler{records: &records})
+		shipmentReader := newFakeShipmentReader()
+		shipmentReader.errs["SHIP-ABSENT"] = ports.ErrShipmentNotFound
+		order := domain.OrderReadModel{ProviderOrderID: "ord-absent", ShippingID: "SHIP-ABSENT"}
+		svc := NewEnrichService(costReader, shipmentReader, logger)
+		got := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})
+
+		if got[0].Shipment != nil {
+			t.Fatalf("Shipment = %+v, want nil", got[0].Shipment)
+		}
+		if hasWarnContaining(records, "shipment lookup failed") {
+			t.Fatalf("expected NO warn log for ErrShipmentNotFound, got records: %+v", records)
+		}
+	})
+
+	t.Run("real error: still degrades, still warns", func(t *testing.T) {
+		var records []slog.Record
+		logger := slog.New(recordingHandler{records: &records})
+		shipmentReader := newFakeShipmentReader()
+		shipmentReader.errs["SHIP-BOOM"] = errors.New("connection reset")
+		order := domain.OrderReadModel{ProviderOrderID: "ord-boom", ShippingID: "SHIP-BOOM"}
+		svc := NewEnrichService(costReader, shipmentReader, logger)
+		got := svc.Enrich(context.Background(), "install-1", []domain.OrderReadModel{order})
+
+		if got[0].Shipment != nil {
+			t.Fatalf("Shipment = %+v, want nil", got[0].Shipment)
+		}
+		if !hasWarnContaining(records, "shipment lookup failed") {
+			t.Fatalf("expected a warn log for a real reader error, got records: %+v", records)
+		}
+	})
 }

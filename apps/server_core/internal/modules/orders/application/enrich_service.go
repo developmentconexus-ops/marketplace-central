@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"strconv"
 	"time"
@@ -284,11 +285,21 @@ func linkRefreshKey(identity domain.ListingIdentity) string {
 // exactly as an empty ShippingID would be, never a panic. It is pure: it never
 // mutates a buyer — see applyShipmentToBuyer — so it is safe to call
 // concurrently across orders as long as each call writes only its own result.
+//
+// ports.ErrShipmentNotFound (F-03: the Postgres-backed reader's honest-absence
+// sentinel for an order ingested before F-02, or with no persisted shipment
+// row yet) degrades the SAME way — nil ShipmentEnrichment — but WITHOUT the
+// warn log below: it is an expected, common case, not an operational fault,
+// and warning on every not-yet-ingested order would be noise, not signal. Any
+// other error (a real read failure) still warns.
 func (s EnrichService) fetchShipment(ctx context.Context, installationID string, order domain.OrderReadModel) *ShipmentEnrichment {
 	if s.shipment == nil || order.ShippingID == "" {
 		return nil
 	}
 	info, err := s.shipment.GetShipment(ctx, installationID, order.ShippingID)
+	if errors.Is(err, ports.ErrShipmentNotFound) {
+		return nil
+	}
 	if err != nil {
 		s.logger.Warn("orders: shipment lookup failed",
 			"installation_id", installationID,
@@ -411,10 +422,16 @@ func (s EnrichService) resolveTaxes(ctx context.Context, order domain.OrderReadM
 	return taxes
 }
 
-// sumSaleFee sums the order's per-line SaleFeeAmount (already the per-line
-// fee, not per-unit — the connector mapper stores it raw without ×qty) into
-// the order comissão. Any nil-fee line or an empty item list makes the whole
-// sum honest-unknown (ADR-17: never a partial fabricated total).
+// sumSaleFee sums the order's per-line SaleFeeAmount × Quantity into the order
+// comissão. SaleFeeAmount is PER-UNIT (domain.MarketplaceOrderItem.SaleFeeAmount
+// doc comment, corrected during F-02's review: verbatim from the provider's
+// OrderDetailItem.SaleFeeUnit, never pre-multiplied by quantity) — this sum is
+// exactly the "consumer needing a line/order total must multiply by Quantity
+// itself" case that doc comment calls out. Before this fix, sumSaleFee summed
+// SaleFeeAmount alone (no ×Quantity), under-counting commission — and
+// therefore retorno_liquido/margem_pct — for every multi-quantity line. Any
+// nil-fee line or an empty item list makes the whole sum honest-unknown
+// (ADR-17: never a partial fabricated total).
 func sumSaleFee(items []domain.MarketplaceOrderItem) *float64 {
 	if len(items) == 0 {
 		return nil
@@ -424,7 +441,7 @@ func sumSaleFee(items []domain.MarketplaceOrderItem) *float64 {
 		if item.SaleFeeAmount == nil {
 			return nil
 		}
-		sum += *item.SaleFeeAmount
+		sum += *item.SaleFeeAmount * float64(item.Quantity)
 	}
 	return &sum
 }

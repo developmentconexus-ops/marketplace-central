@@ -601,12 +601,20 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	ordersReadSvc := ordersapp.NewReadService(ordersReadRepo)
 	ordersSummarySvc := ordersapp.NewSummaryServiceWithBuckets(ordersRepo, ordersRepo)
 	ordersCostReader := newOrdersCostReaderAdapter(internalReadSvc, internalReadAvailable)
-	ordersShipmentReader := newOrdersShipmentReaderAdapter(mercadoLivreCapabilities, installationSvc, cfg.DefaultTenantID)
+	// F-03 (read-path switch): EnrichService's shipment/buyer-fiscal reads come
+	// from the Postgres readers below (order_shipments/0088,
+	// orders_marketplace_orders buyer_* columns/0089 — both populated by F-02's
+	// IngestOrder), not a live Mercado Livre call. ordersBuyerFiscalReader above
+	// stays live-ML-backed on purpose: it feeds ordersIngestSvc.BuyerFiscal for
+	// batch ingest (a distinct call path from the interactive GET /orders/{id}
+	// enrich path wired here).
+	ordersEnrichShipmentReader := orderspostgres.NewShipmentReader(pool, cfg.DefaultTenantID)
+	ordersEnrichBuyerFiscalReader := orderspostgres.NewBuyerFiscalReader(pool, cfg.DefaultTenantID)
 	// Imposto/DIFAL for a sold order come from the same tenant pricing profile
 	// the Simulador calculates with (pricingpostgres.NewCalcRepository), so the
 	// two screens can never quote different tax on the same money.
 	ordersTaxReader := orderspricingtax.NewReader(pricingpostgres.NewCalcRepository(pool), cfg.DefaultTenantID)
-	ordersEnrichSvc := ordersapp.NewEnrichServiceWithReaders(ordersCostReader, ordersShipmentReader, nil, ordersBuyerFiscalReader, slog.Default()).
+	ordersEnrichSvc := ordersapp.NewEnrichServiceWithReaders(ordersCostReader, ordersEnrichShipmentReader, nil, ordersEnrichBuyerFiscalReader, slog.Default()).
 		WithLinkRefresh(ordersLinkReader).
 		WithTaxes(ordersTaxReader)
 	ordersFaturadoSvc := ordersapp.NewFaturadoService(ordersRepo)

@@ -335,19 +335,33 @@ func (r *OrderRepository) GetOrderSummary(ctx context.Context, installationID st
 }
 
 // GetOrderBucketCounts implements ports.OrderBucketStore (F01-A). It selects
-// the minimal per-order fields DeriveOrderBucket needs (provider_status,
-// shipping_id presence) for the WHOLE installation — no pagination, since
-// the KPI/Lista/Kanban buckets must be server-accurate over all orders, not
-// one page — under the SAME tenancy predicate and provider_created_at guard
-// GetOrderSummary already uses. Bucket rules are NOT reimplemented in SQL:
-// domain.DeriveOrderBucket is the single authority, applied per row in Go.
+// the minimal per-order fields DeriveOrderBucket needs for the WHOLE
+// installation — no pagination, since the KPI/Lista/Kanban buckets must be
+// server-accurate over all orders, not one page — under the SAME tenancy
+// predicate and provider_created_at guard GetOrderSummary already uses.
+// Bucket rules are NOT reimplemented in SQL: domain.DeriveOrderBucket is the
+// single authority.
+//
+// Two-tier read (F-03): the `bucket` column (migration 0089) is F-02's
+// IngestOrder OUTPUT — domain.DeriveOrderBucket computed AT INGEST TIME, when
+// the live shipment status WAS available, and persisted. A row with a
+// populated bucket is cast straight from that column, never re-derived. A row
+// that predates F-02 (bucket still NULL — legacy/pre-ingest data) falls back
+// to the EXACT call this function always made — DeriveOrderBucket with
+// shipmentStatus="" — so pre-F-02 rows keep byte-identical behavior: this
+// query still has no shipment column and no per-order fan-out by design; the
+// only thing that changed is that a row F-02 has since ingested now reports
+// the bucket its REAL shipment status produced, instead of the tag-only
+// approximation. A persisted value outside the five known
+// domain.OrderBucket constants is treated as absent and falls back to
+// re-derivation, same as NULL/empty.
 func (r *OrderRepository) GetOrderBucketCounts(ctx context.Context, installationID string) (ports.OrderBucketCounts, error) {
 	if r.pool == nil {
 		return ports.OrderBucketCounts{}, errors.New("orders bucket counts repository: database is not configured")
 	}
 
 	rows, err := r.pool.Query(ctx, `
-		SELECT provider_status, shipping_id, tags_json, faturado_at
+		SELECT provider_status, shipping_id, tags_json, faturado_at, bucket
 		FROM orders_marketplace_orders
 		WHERE tenant_id = $1
 		  AND installation_id = $2
@@ -364,19 +378,22 @@ func (r *OrderRepository) GetOrderBucketCounts(ctx context.Context, installation
 		var shippingID pgtype.Text
 		var tagsJSON []byte
 		var faturadoAt pgtype.Timestamptz
-		if err := rows.Scan(&providerStatus, &shippingID, &tagsJSON, &faturadoAt); err != nil {
+		var persistedBucket pgtype.Text
+		if err := rows.Scan(&providerStatus, &shippingID, &tagsJSON, &faturadoAt, &persistedBucket); err != nil {
 			return ports.OrderBucketCounts{}, err
 		}
-		// The SQL summary carries no live shipment status (no shipment column;
-		// no per-order fan-out here by design). It reflects the delivered tag —
-		// ML's persisted delivered signal — so the summary agrees with the
-		// tag-driven per-order bucket; the shipment-status refinement lives on
-		// the enriched read path (transport), which the KPI cards derive from.
+
+		var bucket ordersdomain.OrderBucket
 		var tags []string
 		if len(tagsJSON) > 0 {
 			_ = json.Unmarshal(tagsJSON, &tags)
 		}
-		switch ordersdomain.DeriveOrderBucket(providerStatus, "", tags, faturadoAt.Valid) {
+		if persistedBucket.Valid && isValidOrderBucket(ordersdomain.OrderBucket(persistedBucket.String)) {
+			bucket = ordersdomain.OrderBucket(persistedBucket.String)
+		} else {
+			bucket = ordersdomain.DeriveOrderBucket(providerStatus, "", tags, faturadoAt.Valid)
+		}
+		switch bucket {
 		case ordersdomain.BucketNovo:
 			counts.Novo++
 		case ordersdomain.BucketFaturar:
@@ -394,6 +411,20 @@ func (r *OrderRepository) GetOrderBucketCounts(ctx context.Context, installation
 		return ports.OrderBucketCounts{}, err
 	}
 	return counts, nil
+}
+
+// isValidOrderBucket reports whether bucket is one of the five domain.OrderBucket
+// constants DeriveOrderBucket can ever emit. GetOrderBucketCounts uses this to guard
+// against a persisted bucket column (migration 0089, no CHECK constraint) holding a
+// stale/corrupt/unrecognized value, which would otherwise silently drop that order from
+// every count instead of falling back to re-derivation.
+func isValidOrderBucket(bucket ordersdomain.OrderBucket) bool {
+	switch bucket {
+	case ordersdomain.BucketNovo, ordersdomain.BucketFaturar, ordersdomain.BucketEnviar, ordersdomain.BucketEnviado, ordersdomain.BucketCancelado:
+		return true
+	default:
+		return false
+	}
 }
 
 // MarkOrderFaturado records that the operator invoiced (faturou) the order.
