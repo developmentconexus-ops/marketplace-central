@@ -3,7 +3,7 @@
 ```yaml
 id: M-01
 type: milestone
-status: planned
+status: passed
 owner: Mission Strategist
 parent: MIS-007
 created: 2026-07-31
@@ -79,7 +79,7 @@ Nenhuma (raiz do DAG, lane A — ∥ M-02 ∥ M-09).
 
 ## Handoff
 
-- Current status: planned.
+- Current status: passed (merged @e79c458e).
 - Next owner: Milestone Orchestrator (hub).
 - Next action: despachar F-01 ∥ F-02.
 - Required files/evidence: `validation-contract.md` (P6), `M-01/validation-result.md`.

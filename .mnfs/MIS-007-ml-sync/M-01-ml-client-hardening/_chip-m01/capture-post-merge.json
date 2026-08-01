@@ -1,0 +1,67 @@
+{
+  "captured_at": "2026-08-01T13:43:05Z",
+  "base_sha": "b35ff53624ff534fb695af9866ef4e039a745a5a",
+  "request": {
+    "method": "POST",
+    "path": "/pricing/decompose",
+    "body": {
+      "preco": "273.70",
+      "modalidade": "classico",
+      "product_id": 39563
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, Cache-Control, Pragma",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Origin": "*",
+      "Content-Type": "application/json",
+      "Date": "Sat, 01 Aug 2026 13:43:05 GMT",
+      "Content-Length": "472"
+    },
+    "body": {
+      "blocking_state": null,
+      "decomposition": {
+        "preco": "273.70",
+        "comissao": "28.74",
+        "taxa_fixa": "0.00",
+        "frete": null,
+        "imposto": "10.95",
+        "difal": "0.00",
+        "tarifa_full": "0.00",
+        "custo": "138.85",
+        "margem_valor": null,
+        "margem_pct": null,
+        "componentes_desconhecidos": ["frete"]
+      },
+      "tarifa": {
+        "comissao": {
+          "valor": "10.5",
+          "fonte": "COTACAO",
+          "degrau": 3,
+          "data": "2026-08-01T13:43:05Z",
+          "estimativa": false
+        },
+        "frete": {
+          "valor": null,
+          "fonte": "PADRAO",
+          "degrau": 4,
+          "data": null,
+          "estimativa": true,
+          "sem_dados": true
+        }
+      }
+    }
+  },
+  "notes": {
+    "internal_product_id": 39563,
+    "provider_item_id": "MLB6896039640",
+    "provider_code": "mercado_livre",
+    "installation_id": "inst-mercado_livre-7e0d2125-f525-4174-9ade-8c7dc496a0e0",
+    "tenant_id": "tenant_default",
+    "backend_container_started_at": "2026-08-01T13:41:37.192915358Z",
+    "backend_rebuilt_from_commit": "b35ff53624ff534fb695af9866ef4e039a745a5a",
+    "redaction_applied": "none required -- no Authorization/Bearer/token/cookie header present in request or response; no buyer PII in payload (pricing-only, no order/comprador fields)"
+  }
+}
