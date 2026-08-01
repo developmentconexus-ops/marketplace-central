@@ -167,9 +167,12 @@ func (s *Scheduler) runJob(ctx context.Context, j registeredJob) {
 // with a "phase" key, all resolve to false — the existing full-sync
 // bookkeeping — with no error. Job authors are never required to emit a
 // phase; only phase-aware jobs (M-04/M-06) opt in by setting one of
-// backfill/incremental/sweep. The legacy products job's ProductsCursor has no
-// phase key at all and must keep resolving to false with zero behavior
-// change (F-03).
+// backfill/incremental (ADR-07's only ratified progression). Any other
+// phase value — including a future "sweep"/repair pass — is unrecognized and
+// MUST fall through to false; naming it here as a special case would
+// silently freeze last_full_sync_at while such passes ran. The legacy
+// products job's ProductsCursor has no phase key at all and must keep
+// resolving to false with zero behavior change (F-03).
 func inferIncremental(cursor json.RawMessage) bool {
 	if len(cursor) == 0 {
 		return false
@@ -181,7 +184,7 @@ func inferIncremental(cursor json.RawMessage) bool {
 		return false
 	}
 	switch peek.Phase {
-	case "incremental", "sweep":
+	case "incremental":
 		return true
 	default:
 		return false
