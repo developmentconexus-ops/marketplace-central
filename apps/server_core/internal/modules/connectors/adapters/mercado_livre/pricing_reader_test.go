@@ -109,7 +109,6 @@ func TestPriceToWinErrorMappingWithoutRetry(t *testing.T) {
 		{name: "unauthorized", status: http.StatusUnauthorized, want: connectorsdomain.ErrUnauthorized},
 		{name: "forbidden", status: http.StatusForbidden, want: connectorsdomain.ErrUnauthorized},
 		{name: "not found", status: http.StatusNotFound, want: connectorsdomain.ErrNotFound},
-		{name: "rate limited", status: http.StatusTooManyRequests, want: connectorsdomain.ErrRateLimited},
 		{name: "provider unavailable", status: http.StatusBadGateway, want: connectorsdomain.ErrProviderUnavailable},
 	}
 	for _, test := range tests {
@@ -129,6 +128,50 @@ func TestPriceToWinErrorMappingWithoutRetry(t *testing.T) {
 				t.Fatalf("provider calls = %d, want 1", calls)
 			}
 		})
+	}
+}
+
+// TestPriceToWinRateLimitedRetriesThenExhausts asserts GetPriceToWin now
+// retries HTTP 429 through the method-based resilience decorator (any GET
+// call site retries, not just ReadFeeQuote — see the scope note atop
+// resilience_decorator.go) instead of surfacing on the first attempt. It
+// constructs the adapter directly with a tightened retry budget so the test
+// runs fast while still exercising a real retry-then-exhaust loop.
+func TestPriceToWinRateLimitedRetriesThenExhausts(t *testing.T) {
+	t.Parallel()
+
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer server.Close()
+
+	adapter := NewCapabilityAdapter(CapabilityAdapterConfig{
+		BaseURL:    server.URL,
+		HTTPClient: &http.Client{Timeout: time.Second},
+		AccessTokenResolver: func(context.Context, connectorsdomain.ProviderAccountRef) (string, error) {
+			return "test-token", nil
+		},
+		Now:                func() time.Time { return time.Now().UTC() },
+		MaxRetryAttempts:   2,
+		RetryBaseDelay:     1 * time.Millisecond,
+		MaxTotalRetryWait:  50 * time.Millisecond,
+	})
+
+	_, err := adapter.GetPriceToWin(context.Background(), pricingAccountRef(), "MLB-PRICE")
+	if !errors.Is(err, connectorsdomain.ErrRateLimited) {
+		t.Fatalf("error = %v, errors.Is(_, ErrRateLimited) = false", err)
+	}
+	if calls != 2 {
+		t.Fatalf("provider calls = %d, want 2 (MaxRetryAttempts)", calls)
+	}
+	var exhausted *RateLimitExhaustedError
+	if !errors.As(err, &exhausted) {
+		t.Fatalf("error = %v, want errors.As to RateLimitExhaustedError", err)
+	}
+	if exhausted.Attempts != 2 {
+		t.Fatalf("exhausted.Attempts = %d, want 2", exhausted.Attempts)
 	}
 }
 

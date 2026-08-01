@@ -324,7 +324,7 @@ func mapMultigetItemStatus(code int, body json.RawMessage) error {
 	return mapPricingReaderError(capErr)
 }
 
-// capRawMessage bounds a per-item raw body to itemMultigetRawCap (1MB),
+// capRawMessage bounds a per-item raw body to itemMultigetRawCap (256KiB),
 // mirroring the adapter's whole-response LimitReader convention
 // (capability_adapter.go:747) but applied per item rather than per response.
 // Returns a copy (never aliases the caller's backing array) and an explicit

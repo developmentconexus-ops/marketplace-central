@@ -233,8 +233,12 @@ func TestGetItemsMultigetBodyNotJSONIsPerItemError(t *testing.T) {
 func TestGetItemsMultigetOversizeItemBodyMarksRawTruncated(t *testing.T) {
 	t.Parallel()
 
+	if itemMultigetRawCap != 256*1024 {
+		t.Fatalf("itemMultigetRawCap = %d, want 256*1024 (documented per-item cap, see rationale comment on the const)", itemMultigetRawCap)
+	}
+
 	// Build a single-item body whose JSON encoding exceeds itemMultigetRawCap
-	// (1MB) via an oversized filler field alongside a normal id/title.
+	// (256KiB) via an oversized filler field alongside a normal id/title.
 	filler := strings.Repeat("x", itemMultigetRawCap+1024)
 	ids := []string{"MLB-BIG"}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -261,8 +265,13 @@ func TestGetItemsMultigetOversizeItemBodyMarksRawTruncated(t *testing.T) {
 }
 
 // TestGetItemsMultigetBatch429Propagates: a whole-batch 429 from the choke
-// point propagates as-is — F-02 does no retry of its own (that is F-01's
-// resilience decorator, wrapping doRawWithHeaders underneath).
+// point now retries (F-01's resilience decorator applies retry by HTTP
+// method, not by call site — GET /items?ids= retries the same as every other
+// GET reader; see the scope note atop resilience_decorator.go) and, once the
+// tightened retry budget below is exhausted, still surfaces as
+// ErrRateLimited. F-02 implements no retry of its own — the retry loop lives
+// entirely in the shared choke point this reader's doJSON call funnels
+// through.
 func TestGetItemsMultigetBatch429Propagates(t *testing.T) {
 	t.Parallel()
 
@@ -273,12 +282,24 @@ func TestGetItemsMultigetBatch429Propagates(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := pricingTestAdapter(server.URL, fixedNow()).getItemsMultiget(context.Background(), pricingAccountRef(), "test-token", []string{"MLB1"})
+	adapter := NewCapabilityAdapter(CapabilityAdapterConfig{
+		BaseURL:    server.URL,
+		HTTPClient: &http.Client{Timeout: time.Second},
+		AccessTokenResolver: func(context.Context, domain.ProviderAccountRef) (string, error) {
+			return "test-token", nil
+		},
+		Now:               fixedNow,
+		MaxRetryAttempts:  2,
+		RetryBaseDelay:    1 * time.Millisecond,
+		MaxTotalRetryWait: 50 * time.Millisecond,
+	})
+
+	_, err := adapter.getItemsMultiget(context.Background(), pricingAccountRef(), "test-token", []string{"MLB1"})
 	if !errors.Is(err, domain.ErrRateLimited) {
 		t.Fatalf("error = %v, want errors.Is(_, ErrRateLimited)", err)
 	}
-	if calls != 1 {
-		t.Fatalf("calls = %d, want 1 (no retry belongs to F-02)", calls)
+	if calls != 2 {
+		t.Fatalf("calls = %d, want 2 (MaxRetryAttempts, retry-then-exhaust)", calls)
 	}
 }
 
