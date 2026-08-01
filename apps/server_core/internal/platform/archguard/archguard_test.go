@@ -141,10 +141,80 @@ type callSite struct {
 	Line   int
 }
 
+// resolveCapabilityAliases scans f for simple local variable assignments --
+// `ident := capVar`, `ident = capVar`, and their element-wise multi-assign
+// form `a, b := x, y` -- and returns capabilityVars extended with the
+// transitive closure of every local alias that resolves back to a
+// capability identifier through a chain of such assignments.
+//
+// This closes an adversarial-review counterexample: scanWiringFile used to
+// match call arguments by literal identifier name only, so a one-line
+// "extract variable" refactor --
+//
+//	mlAlias := mercadoLivreCapabilities
+//	sneakyRefundReader := newSneakyRefundAdapter(mlAlias, installationSvc, tenantID)
+//
+// -- silently escaped detection: mlAlias is not itself the string
+// "mercadoLivreCapabilities", so the raw hit count never changed and
+// compareToAllowlist returned nil despite a brand-new interactive site
+// reaching the ML capability. See
+// TestFixture_AliasedSiteIsDetectedAndNamed / testdata/aliased_site/root.go
+// for the reproduction and must-fail proof.
+//
+// This is deliberately NOT full dataflow/SSA analysis: the capability
+// variables (mercadoLivreCapabilities, feeReader) are function-local to
+// root.go and cannot be re-exported or threaded through anything other than
+// a simple local assignment without going through composition's own
+// constructor calls (which is what the allowlist already governs). A
+// single-hop-per-edge fixpoint over plain-Ident-to-plain-Ident assignments
+// is exactly what's needed to close that one hole, and no more.
+func resolveCapabilityAliases(f *ast.File, capabilityVars map[string]bool) map[string]bool {
+	edges := map[string]string{} // lhs ident name -> rhs ident name (single hop)
+	ast.Inspect(f, func(n ast.Node) bool {
+		assign, ok := n.(*ast.AssignStmt)
+		if !ok || len(assign.Lhs) != len(assign.Rhs) {
+			return true
+		}
+		for i := range assign.Lhs {
+			lhs, ok := assign.Lhs[i].(*ast.Ident)
+			if !ok || lhs.Name == "_" {
+				continue
+			}
+			rhs, ok := assign.Rhs[i].(*ast.Ident)
+			if !ok {
+				continue
+			}
+			edges[lhs.Name] = rhs.Name
+		}
+		return true
+	})
+
+	resolved := make(map[string]bool, len(capabilityVars))
+	for k, v := range capabilityVars {
+		resolved[k] = v
+	}
+
+	// Fixpoint closure over the file-local edge set (small: composition
+	// wiring functions, not arbitrary programs): repeatedly promote any
+	// alias whose RHS is already known to be capability-bearing, so chains
+	// like `a := mercadoLivreCapabilities; b := a` resolve transitively too.
+	for changed := true; changed; {
+		changed = false
+		for lhs, rhs := range edges {
+			if resolved[rhs] && !resolved[lhs] {
+				resolved[lhs] = true
+				changed = true
+			}
+		}
+	}
+	return resolved
+}
+
 // scanWiringFile parses a single Go source file (syntax only -- no
 // type-checking, no go/packages, no module resolution) and returns every
 // bare, locally-defined function call whose argument list directly contains
-// one of capabilityVars.
+// one of capabilityVars, OR a local alias of one of capabilityVars per
+// resolveCapabilityAliases.
 //
 // It works identically on real repo files and on testdata/ fixtures, since
 // fixtures need not compile or type-check to be parsed.
@@ -177,6 +247,8 @@ func scanWiringFile(path string, capabilityVars map[string]bool) ([]callSite, er
 		return nil, fmt.Errorf("parse %s: %w", path, err)
 	}
 
+	resolvedVars := resolveCapabilityAliases(f, capabilityVars)
+
 	var sites []callSite
 	ast.Inspect(f, func(n ast.Node) bool {
 		call, ok := n.(*ast.CallExpr)
@@ -192,7 +264,7 @@ func scanWiringFile(path string, capabilityVars map[string]bool) ([]callSite, er
 			if !ok {
 				continue
 			}
-			if capabilityVars[id.Name] {
+			if resolvedVars[id.Name] {
 				sites = append(sites, callSite{
 					Symbol: fn.Name,
 					File:   path,
@@ -405,6 +477,46 @@ func TestFixture_FifthSiteIsDetectedAndNamed(t *testing.T) {
 	}
 
 	t.Logf("must-fail PASS (state 2): guard correctly rejected the injected 5th site and named it:\n%v", err)
+}
+
+// --- Must-fail proof, state 4: a locally-aliased capability var -------------
+
+// TestFixture_AliasedSiteIsDetectedAndNamed closes the adversarial-review
+// alias-bypass: testdata/aliased_site/root.go mirrors the 4 real wiring
+// calls plus one INJECTED unallowlisted site (newSneakyRefundAdapter)
+// reached via a local alias (`mlAlias := mercadoLivreCapabilities`) instead
+// of the capability identifier passed directly. Pre-hardening,
+// scanWiringFile matched call arguments by literal identifier name only, so
+// this exact one-line "extract variable" shape produced a raw hit count of
+// len(mlAllowlist) (the alias site was silently invisible) and
+// compareToAllowlist returned nil -- the guard passed green despite the new
+// site. resolveCapabilityAliases closes that hole by resolving simple local
+// `ident := capVar` / `ident = capVar` assignment chains back to the
+// capability identifier before matching, so the alias is treated exactly
+// like the direct identifier.
+func TestFixture_AliasedSiteIsDetectedAndNamed(t *testing.T) {
+	const fixture = "testdata/aliased_site/root.go"
+
+	raw, err := scanWiringFile(fixture, mlCapabilityVars)
+	if err != nil {
+		t.Fatalf("scan fixture %s: %v", fixture, err)
+	}
+	sites := filterExcluded(raw, mlExcludedSymbols)
+
+	err = compareToAllowlist(sites, mlAllowlist)
+	if err == nil {
+		t.Fatalf("expected the injected alias-reached site in %s to fail against mlAllowlist, but the guard passed -- the alias bypass is not caught", fixture)
+	}
+
+	const offendingSymbol = "newSneakyRefundAdapter"
+	if !strings.Contains(err.Error(), offendingSymbol) {
+		t.Fatalf("guard failed as expected, but the failure message does not NAME the offending symbol %q (a generic 'count mismatch' is exactly what the brief forbids); got:\n%v", offendingSymbol, err)
+	}
+	if !strings.Contains(err.Error(), fixture) {
+		t.Fatalf("guard failure message does not name the offending file %q; got:\n%v", fixture, err)
+	}
+
+	t.Logf("must-fail PASS (state 4): guard correctly resolved the local alias back to the ML capability, rejected the injected site, and named it:\n%v", err)
 }
 
 // --- Must-fail proof, state 3: an allowlist entry shrinks -------------------
