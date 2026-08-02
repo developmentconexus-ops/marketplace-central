@@ -302,9 +302,10 @@ describe("AnunciosTable", () => {
     });
 
     // Golden rows per dispatch EXEMPLO-IO (design-screens §Anúncios group-row
-    // spec: chevron + meta "ERP est. N · M anúncios" + pill ok/N erro).
-    // ERP est. is genuinely unavailable FE-only (ListingGroup carries no ERP
-    // stock field, seam FROZEN T-1) → honest "—" per ADR-17, never fabricated.
+    // spec: chevron + meta "M anúncios" + pill ok/N erro). The literal
+    // "ERP est. —" left the header in Task 9 (ADR-C1): it was a hardcoded
+    // dash, not absent data rendered honestly — ListingGroup has no ERP
+    // stock field and no producer, so the column doesn't exist at all.
     describe("enriched group header (chevron + meta + error pill)", () => {
       const grp = (overrides: Partial<import("@marketplace-central/sdk-runtime").ListingGroup> = {}) => ({
         product_id: "product_1",
@@ -319,7 +320,7 @@ describe("AnunciosTable", () => {
         ...overrides,
       });
 
-      it("GOLDEN: 3 listings, 1 sync error → 'ERP est. —', '3 anúncios', '1 erro'", () => {
+      it("GOLDEN: 3 listings, 1 sync error → no ERP est. literal, '3 anúncios', '1 erro'", () => {
         renderTable(
           <AnunciosTable
             groups={[grp({ listings: [
@@ -332,18 +333,16 @@ describe("AnunciosTable", () => {
         );
 
         const header = screen.getByText("Produto X").closest("tr")!;
-        expect(within(header).getByText(/ERP est\.\s*—/)).toBeInTheDocument();
+        expect(within(header).queryByText(/ERP est\./)).not.toBeInTheDocument();
         expect(within(header).getByText(/3\s+anúncios/)).toBeInTheDocument();
         expect(within(header).getByText("1 erro")).toBeInTheDocument();
-        // ADR-17: never a fabricated ERP stock 0.
-        expect(within(header).queryByText(/ERP est\.\s*0/)).not.toBeInTheDocument();
       });
 
-      it("GOLDEN: 3 listings, all synced → 'ERP est. —', '✓ ok' pill, no error count", () => {
+      it("GOLDEN: 3 listings, all synced → no ERP est. literal, '✓ ok' pill, no error count", () => {
         renderTable(<AnunciosTable groups={[grp()]} {...tableSelectionProps} />);
 
         const header = screen.getByText("Produto X").closest("tr")!;
-        expect(within(header).getByText(/ERP est\.\s*—/)).toBeInTheDocument();
+        expect(within(header).queryByText(/ERP est\./)).not.toBeInTheDocument();
         expect(within(header).getByText(/3\s+anúncios/)).toBeInTheDocument();
         expect(within(header).getByText("ok")).toBeInTheDocument();
         expect(within(header).queryByText(/erro/)).not.toBeInTheDocument();

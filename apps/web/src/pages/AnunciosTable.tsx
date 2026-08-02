@@ -233,10 +233,12 @@ export function AnunciosTable({ items, groups, asOf, selectedIds, onToggle, onTo
             </button>
             <span className="text-sm font-semibold">{title}</span>
             <span className="text-faint" aria-hidden="true">·</span>
-            {/* ERP stock per group is not available FE-only (ListingGroup carries
-                no ERP field, seam frozen) — honest "—", never a fabricated 0. */}
-            <span className="text-xs font-normal text-faint">ERP est. —</span>
-            <span className="text-faint" aria-hidden="true">·</span>
+            {/*
+              Estoque do ERP saiu do cabeçalho: era o literal "ERP est. —", texto escrito
+              no componente que mostraria o mesmo traço com o estoque cheio. ADR-C1 — sem
+              produtor, a coluna não existe; traço é reservado a desconhecido de verdade.
+              Volta quando o espelho do ERP expuser o saldo por anúncio vinculado.
+            */}
             <span className="text-xs font-normal text-faint">{listingsLabel}</span>
             <span className="text-faint" aria-hidden="true">·</span>
             {errorCount > 0 ? (
