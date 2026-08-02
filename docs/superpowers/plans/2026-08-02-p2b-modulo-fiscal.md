@@ -116,8 +116,9 @@ func TestICMSMatrixMirrorSchema(t *testing.T) {
 	}
 
 	wanted := []string{
-		"tenant_id", "uf_origem", "uf_destino", "grupo_icms", "codtrib",
-		"aliquota", "aliqintdest", "perc_fcp", "linhas_candidatas", "ambiguo",
+		"tenant_id", "uf_origem", "uf_destino", "grupo_icms", "codtrib", "zerar",
+		"aliquota", "redbase", "aliqintdest", "aliq_uf_dest", "perc_red_base_dest",
+		"perc_fcp", "linhas_candidatas", "ambiguo",
 		"vigente_desde", "vigente_ate", "synced_at",
 	}
 	for _, col := range wanted {
@@ -182,9 +183,26 @@ CREATE TABLE IF NOT EXISTS icms_matrix_mirror (
     uf_origem          TEXT        NOT NULL,
     uf_destino         TEXT        NOT NULL,
     grupo_icms         INTEGER     NOT NULL,
-    codtrib            SMALLINT    NOT NULL,
+    -- codtrib é NULLABLE: 22 linhas com origem MG têm CODTRIB NULL na TGFICM.
+    -- 0 significa "tributado" e gravar 0 no lugar de NULL seria uma afirmação.
+    codtrib            SMALLINT,
+    -- zerar vem de TGFICM.ZERAR: 'S' zera o imposto da célula.
+    zerar              BOOLEAN     NOT NULL DEFAULT false,
+    -- aliquota é TGFICM.ALIQUOTA, a alíquota da OPERAÇÃO (7 / 12 / 4 / 18).
     aliquota           NUMERIC(6,3),
+    -- redbase é TGFICM.REDBASE, redução da base da operação. Não-zero em 2.669
+    -- de 4.209 linhas MG — ignorá-la erra o ICMS na maioria das células.
+    redbase            NUMERIC(6,3),
+    -- aliqintdest é o que o motor do ERP lê e o que reconciliou o DIFAL das
+    -- notas reais. NULL em 82,6% das linhas MG.
     aliqintdest        NUMERIC(6,3),
+    -- aliq_uf_dest é TGFICM.ALIQUFDEST. Pertence ao bloco de ST e NUNCA entra
+    -- no cálculo. Espelhada porque tem 87,7% de cobertura e fica mais perto da
+    -- alíquota legal: é o sinal de divergência da fatia P5.
+    aliq_uf_dest       NUMERIC(6,3),
+    -- perc_red_base_dest é TGFICM.PERCREDBASEDEST. Papel NÃO VERIFICADO —
+    -- espelhada, nunca multiplicada.
+    perc_red_base_dest NUMERIC(6,3),
     perc_fcp           NUMERIC(6,3),
     linhas_candidatas  SMALLINT    NOT NULL,
     ambiguo            BOOLEAN     NOT NULL,
@@ -396,11 +414,14 @@ import (
 	"marketplace-central/apps/server_core/internal/modules/internal_read/domain"
 )
 
+func tributado() *int { z := 0; return &z }
+
 func linha(tipo1 string, cod1 int, tipo2 string, cod2 int) domain.MatrixLine {
 	return domain.MatrixLine{
 		Restricao1Tipo: tipo1, Restricao1Codigo: cod1,
 		Restricao2Tipo: tipo2, Restricao2Codigo: cod2,
-		CodTrib: 0, AliquotaPct: "7.0", AliqIntDestPct: "20.5",
+		Sequencia: 1, CodTrib: tributado(),
+		AliquotaPct: "7.0", RedBasePct: "0", AliqIntDestPct: "20.5",
 	}
 }
 
@@ -455,6 +476,16 @@ func TestResolveCellRecusaEscolherEntreDuas(t *testing.T) {
 		t.Fatalf("LinhasCandidatas = %d, queria 2", got.LinhasCandidatas)
 	}
 }
+
+func TestResolveCellAceitaIntraUFComSlotsInvertidos(t *testing.T) {
+	// Intra-MG a matriz inverte as posicoes: o grupo vai no slot 1.
+	// ResolveCell testa os dois slots do mesmo jeito, entao isso ja funciona —
+	// este teste existe para que nao pare de funcionar.
+	got := domain.ResolveCell([]domain.MatrixLine{linha("I", 122, "S", -1)}, 122)
+	if got.Line == nil {
+		t.Fatal("forma intra-UF (grupo no slot 1) foi rejeitada")
+	}
+}
 ```
 
 - [ ] **Step 2: Rode e confirme que falha**
@@ -471,17 +502,44 @@ Esperado: `FAIL` — não compila, `ResolveCell` não existe.
 package domain
 
 // MatrixLine é uma linha crua da matriz de ICMS do ERP, já lida do Oracle e
-// ainda não resolvida. Percentuais ficam como string: eles vêm de NUMERIC e
+// ainda não resolvida. Percentuais ficam como string: eles vêm de FLOAT e
 // viram big.Rat mais tarde, sem passar por float binário.
+//
+// Sequencia faz parte da chave primária da TGFICM (sete colunas). Hoje vale 1
+// em 4.601 de 4.601 linhas, mas a PK permite mais de uma — duas linhas que
+// difiram só por Sequencia sobrevivem juntas à lista branca e a célula sai
+// ambígua, que é o comportamento correto: a precedência entre elas não foi
+// medida.
 type MatrixLine struct {
-	Restricao1Tipo   string
-	Restricao1Codigo int
-	Restricao2Tipo   string
-	Restricao2Codigo int
-	CodTrib          int
-	AliquotaPct      string
-	AliqIntDestPct   string
-	PercFCPPct       string
+	Restricao1Tipo   string // TIPRESTRICAO
+	Restricao1Codigo int    // CODRESTRICAO
+	Restricao2Tipo   string // TIPRESTRICAO2
+	Restricao2Codigo int    // CODRESTRICAO2
+	Sequencia        int    // SEQUENCIA
+	// CodTrib é nullable na origem: 22 linhas com origem MG têm CODTRIB NULL.
+	// Nil não é 0 — 0 significa "tributado" e seria uma afirmação.
+	CodTrib *int
+	// Zerar vem de ZERAR VARCHAR2(1). 'S' zera o imposto. Hoje 'S' em 0 linhas
+	// MG, mas é NOT NULL na origem e barato de honrar.
+	Zerar bool
+	// AliquotaPct é ALIQUOTA — a alíquota da OPERAÇÃO origem→destino.
+	// NÃO é ALIQUFDEST, que pertence ao bloco de cálculo de ST (17,0 a 22,0) e
+	// daria um ICMS cerca de 2,5x maior.
+	AliquotaPct string
+	// RedBasePct é REDBASE, a redução da base da operação. Não-zero em 2.669 de
+	// 4.209 linhas MG. Ignorá-la erra o ICMS na maioria das células.
+	RedBasePct string
+	// AliqIntDestPct é ALIQINTDEST — a que o motor do ERP lê e a que reconciliou
+	// o DIFAL das notas reais. NULL em 82,6% das linhas MG.
+	AliqIntDestPct string
+	// AliqUFDestPct é ALIQUFDEST. Espelhada mas NÃO usada no cálculo: pertence ao
+	// bloco de ST. Fica aqui porque tem 87,7% de cobertura e está mais perto da
+	// alíquota legal, o que a torna o sinal de divergência da fatia P5.
+	AliqUFDestPct string
+	// PercRedBaseDestPct é PERCREDBASEDEST. Papel NÃO VERIFICADO — espelhada,
+	// nunca multiplicada. Ver a regra de REDBASE no cálculo.
+	PercRedBaseDestPct string
+	PercFCPPct         string // PERCICMSFCP
 }
 
 // ResolvedCell é o veredito para uma célula (origem, destino, grupo).
@@ -567,38 +625,155 @@ git commit -m "feat(fiscal): resolucao da celula da matriz por lista branca, amb
 
 ## Task 4: Extração da matriz do Oracle
 
-> ⛔ **Esta task está esperando a medição M19** (DDL exato do `TGFICM`: nomes das colunas de grupo, `CODTRIB`, alíquota da operação, `ALIQINTDEST`, FCP, e o par de restrição; mais a de-para de código numérico de UF para sigla). **Não invente nome de coluna.** Se você chegou aqui e o hub não preencheu o SQL abaixo, mande `BLOCKED` e siga para a Task 6 — ela não depende desta.
-
 **Files:**
 - Create: `apps/server_core/internal/modules/internal_read/adapters/oracle/icms_matrix.go`
 - Test: `apps/server_core/internal/modules/internal_read/adapters/oracle/icms_matrix_test.go`
 
-O que já se sabe do código existente (`icms_ceiling.go:56`): a tabela é `METALPRD.TGFICM`, as colunas de UF são `UFORIG` e `UFDEST` e são **códigos numéricos**, e existem `ALIQUFDEST` e `PERCICMSFCP`. O que falta é o resto, e a confirmação de que `ALIQUFDEST` é mesmo a alíquota da operação — em medição anterior ficou provado que `ALIQUFDEST ≠ ALIQINTDEST`.
+**⚠ Duas armadilhas medidas, leia antes de escrever:**
 
-**Forma da função, que independe dos nomes:**
+1. **A alíquota da operação é `ALIQUOTA`.** `ALIQUFDEST` **não é** — ela pertence ao bloco de cálculo de ST (anda com `MVASTUFDEST`, `BASESTUFDEST`, `CODTABSTUFDEST`) e seu domínio é 17,0 a 22,0, nunca 7 nem 12. Multiplicar a base por ela dá um ICMS ~2,5× maior. O código existente em `icms_ceiling.go:56` usa `ALIQUFDEST` legitimamente, mas como **teto**, não como alíquota de operação — não copie de lá.
+2. **`UFORIG`/`UFDEST` não são código IBGE nem ordem alfabética.** MG = **13** (IBGE seria 31). A de-para é `TSIUFS.CODUF → TSIUFS.UF`, e o join **exige `CODPAIS = 55`**: `CODUF = 0` é a sentinela `'SF'` e os códigos 29 e 30 são **ambos `'EX'`**. Sem o filtro o join deixa de ser single-valued e duplica linha.
+
+- [ ] **Step 1: Escreva o teste que falha**
+
+Use o mock de query já usado em `batch_reader_test.go` — o teste alimenta linhas cruas e afirma o agrupamento, sem tocar em Oracle.
 
 ```go
-// ReadICMSMatrix lê a matriz inteira com origem originUF e devolve as linhas
-// CRUAS, agrupadas por (uf_destino, grupo_icms). A resolução por lista branca é
-// de domain.ResolveCell — este adapter não decide nada, só lê.
-//
-// Somente leitura. Nada é escrito em METALPRD.
-func (r *SankhyaAdapter) ReadICMSMatrix(ctx context.Context, originUF string) (map[MatrixKey][]domain.MatrixLine, error)
+func TestReadICMSMatrixAgrupaPorDestinoEGrupo(t *testing.T) {
+	db := newFakeOracle(t, [][]any{
+		// UFDEST_SIGLA, TIPRESTRICAO, CODRESTRICAO, TIPRESTRICAO2, CODRESTRICAO2,
+		// SEQUENCIA, CODTRIB, ZERAR, ALIQUOTA, REDBASE, ALIQINTDEST, ALIQUFDEST,
+		// PERCREDBASEDEST, PERCICMSFCP
+		{"BA", "N", 0, "I", 122, 1, 0, "N", 7.0, 0.0, 20.5, 20.5, nil, nil},
+		{"BA", "N", 0, "I", 284, 1, 60, "N", 7.0, 0.0, nil, 20.5, nil, nil},
+		{"SP", "N", 0, "I", 122, 1, 0, "N", 12.0, 0.0, nil, 18.0, nil, nil},
+	})
+	r := oracle.NewSankhyaAdapter(db)
 
+	got, err := r.ReadICMSMatrix(context.Background(), 13)
+	if err != nil {
+		t.Fatalf("ReadICMSMatrix: %v", err)
+	}
+	if len(got) != 3 {
+		t.Fatalf("chaves = %d, queria 3", len(got))
+	}
+	ba122 := got[oracle.MatrixKey{UFDestino: "BA", GrupoICMS: 122}]
+	if len(ba122) != 1 {
+		t.Fatalf("BA/122 tem %d linhas, queria 1", len(ba122))
+	}
+	if ba122[0].AliquotaPct != "7" {
+		t.Fatalf("AliquotaPct = %q, queria 7 — ALIQUOTA, nao ALIQUFDEST", ba122[0].AliquotaPct)
+	}
+	// ALIQUFDEST e espelhada mas NUNCA vira aliquota de operacao.
+	if ba122[0].AliquotaPct == ba122[0].AliqUFDestPct && ba122[0].AliqUFDestPct != "20.5" {
+		t.Fatal("confusao entre ALIQUOTA e ALIQUFDEST")
+	}
+}
+
+func TestReadICMSMatrixCodTribNuloNaoViraZero(t *testing.T) {
+	db := newFakeOracle(t, [][]any{
+		{"BA", "N", 0, "I", 122, 1, nil, "N", 7.0, 0.0, 20.5, 20.5, nil, nil},
+	})
+	r := oracle.NewSankhyaAdapter(db)
+
+	got, err := r.ReadICMSMatrix(context.Background(), 13)
+	if err != nil {
+		t.Fatalf("ReadICMSMatrix: %v", err)
+	}
+	linha := got[oracle.MatrixKey{UFDestino: "BA", GrupoICMS: 122}][0]
+	if linha.CodTrib != nil {
+		t.Fatalf("CodTrib = %v; NULL na origem (22 linhas MG) nao pode virar 0, "+
+			"porque 0 significa 'tributado' e seria uma afirmacao", *linha.CodTrib)
+	}
+}
+
+func TestReadICMSMatrixIgnoraLinhaSemSlotDeGrupo(t *testing.T) {
+	// Slot de grupo ausente nos dois lados: a linha nao entra em nenhuma chave.
+	db := newFakeOracle(t, [][]any{
+		{"BA", "N", 0, "S", -1, 1, 0, "N", 7.0, 0.0, 20.5, 20.5, nil, nil},
+	})
+	r := oracle.NewSankhyaAdapter(db)
+
+	got, err := r.ReadICMSMatrix(context.Background(), 13)
+	if err != nil {
+		t.Fatalf("ReadICMSMatrix: %v", err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("chaves = %d, queria 0 — sem slot 'I' nao ha grupo a que ancorar", len(got))
+	}
+}
+```
+
+- [ ] **Step 2: Rode e confirme que falha**
+
+```bash
+cd apps/server_core && GOCACHE=$(pwd)/.gocache go test ./internal/modules/internal_read/adapters/oracle/ -run TestReadICMSMatrix -v
+```
+
+Esperado: `FAIL` — `ReadICMSMatrix` não existe.
+
+- [ ] **Step 3: Implemente**
+
+```go
+// MatrixKey é a célula (destino, grupo de ICMS) da matriz.
 type MatrixKey struct {
 	UFDestino string
 	GrupoICMS int
 }
+
+// icmsMatrixSQL lê a matriz de ICMS inteira com uma origem.
+//
+// São 4.209 linhas com origem MG. Tabela minúscula: copiamos inteira todo dia,
+// sem delta. Detecção de mudança é MAX(TGFHICM.DHALTER).
+//
+// TSIUFS traduz o código numérico de UF para sigla. CODPAIS = 55 é
+// OBRIGATÓRIO: CODUF = 0 é a sentinela 'SF' e os códigos 29 e 30 são ambos
+// 'EX'. Sem o filtro o join duplica linha.
+//
+// ALIQUOTA é a alíquota da OPERAÇÃO. ALIQUFDEST vem junto porque é o sinal de
+// divergência da fatia P5, e nunca entra no cálculo.
+//
+// Somente leitura. Nada é escrito em METALPRD.
+const icmsMatrixSQL = `
+SELECT ud.UF AS UFDEST_SIGLA,
+       i.TIPRESTRICAO, i.CODRESTRICAO, i.TIPRESTRICAO2, i.CODRESTRICAO2, i.SEQUENCIA,
+       i.CODTRIB, i.ZERAR,
+       i.ALIQUOTA, i.REDBASE,
+       i.ALIQINTDEST, i.ALIQUFDEST, i.PERCREDBASEDEST, i.PERCICMSFCP
+FROM METALPRD.TGFICM i
+JOIN METALPRD.TSIUFS ud ON ud.CODUF = i.UFDEST AND ud.CODPAIS = 55
+WHERE i.UFORIG = :uforig
+ORDER BY ud.UF, i.TIPRESTRICAO2, i.CODRESTRICAO2, i.TIPRESTRICAO, i.CODRESTRICAO, i.SEQUENCIA`
 ```
 
-- [ ] **Step 1: Aguarde o SQL do hub e cole-o aqui antes de codificar**
-- [ ] **Step 2: Escreva o teste com o mock de query já usado em `batch_reader_test.go`** — o teste alimenta linhas cruas e afirma o agrupamento por `MatrixKey`, sem tocar em Oracle
-- [ ] **Step 3: Rode e confirme que falha**
-- [ ] **Step 4: Implemente a leitura**
-- [ ] **Step 5: Rode e confirme que passa**
-- [ ] **Step 6: Commit** — `feat(fiscal): leitura da matriz TGFICM com origem MG`
+`ReadICMSMatrix(ctx, originUF int64)` escaneia, monta a `domain.MatrixLine` e agrupa. O grupo sai do slot que tiver tipo `"I"` — **slot 2 na forma normal (4.054 de 4.209 linhas), slot 1 na forma intra-UF**. Linha sem nenhum slot `"I"` não entra em chave nenhuma.
 
-**Dívida a registrar nesta task:** a origem é fixa em `MG` (empresa 1). É a mesma classe da dívida **D-17** (`CODEMP=1` fixo na leitura de custo). Deixe um comentário nomeando **D-29** no ponto onde `MG` é constante.
+Percentuais chegam como `FLOAT` do Oracle: escaneie para `sql.NullFloat64` e converta para string com `strconv.FormatFloat(v, 'f', -1, 64)`. `-1` de precisão preserva o valor sem inventar casas.
+
+> **Nome do schema:** o especialista mediu em `SANKHYA.TGFICM`; o código existente (`icms_ceiling.go:56`) usa `METALPRD.TGFICM` e funciona. São sinônimos. Use `METALPRD`, igual ao resto do módulo. Se der `ORA-00942`, mande `ESCALATION` — não troque de schema por conta própria.
+
+- [ ] **Step 4: Rode e confirme que passa**
+
+```bash
+cd apps/server_core && GOCACHE=$(pwd)/.gocache go test ./internal/modules/internal_read/adapters/oracle/ -run TestReadICMSMatrix -v
+```
+
+Esperado: `PASS` nos três.
+
+- [ ] **Step 5: Controle negativo — prove que o filtro de país morde**
+
+Remova `AND ud.CODPAIS = 55` e conte as linhas devolvidas por um destino qualquer.
+
+Esperado: contagem **maior**, porque `CODUF` 29 e 30 são ambos `'EX'`. Se não mudar nada, seu fake de Oracle não tem as linhas duplicadas — acrescente-as, senão o teste não cobre o motivo do filtro existir. Desfaça depois.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add apps/server_core/internal/modules/internal_read/adapters/oracle/
+git commit -m "feat(fiscal): leitura da matriz TGFICM com origem MG e de-para de UF por TSIUFS"
+```
+
+**Dívida a registrar nesta task:** a origem é fixa em `13` (MG, empresa 1). Mesma classe da **D-17** (`CODEMP=1` fixo na leitura de custo). Deixe o comentário nomeando **D-29** onde o `13` é constante.
 
 ---
 
@@ -624,8 +799,8 @@ func TestApplyMatrixAbreVersaoNova(t *testing.T) {
 
 	celula := func(aliqIntDest string) mirror.MatrixCell {
 		return mirror.MatrixCell{
-			UFOrigem: "MG", UFDestino: "BA", GrupoICMS: 122, CodTrib: 0,
-			AliquotaPct: ptr("7.000"), AliqIntDestPct: ptr(aliqIntDest),
+			UFOrigem: "MG", UFDestino: "BA", GrupoICMS: 122, CodTrib: ptrInt(0),
+			AliquotaPct: ptr("7.000"), RedBasePct: ptr("0.000"), AliqIntDestPct: ptr(aliqIntDest),
 			LinhasCandidatas: 1, Ambiguo: false,
 		}
 	}
@@ -665,8 +840,8 @@ func TestApplyMatrixNaoVersionaSemMudanca(t *testing.T) {
 	w := mirror.NewICMSMatrixWriter(pool)
 
 	c := mirror.MatrixCell{
-		UFOrigem: "MG", UFDestino: "SP", GrupoICMS: 122, CodTrib: 0,
-		AliquotaPct: ptr("7.000"), AliqIntDestPct: ptr("18.000"),
+		UFOrigem: "MG", UFDestino: "SP", GrupoICMS: 122, CodTrib: ptrInt(0),
+		AliquotaPct: ptr("7.000"), RedBasePct: ptr("0.000"), AliqIntDestPct: ptr("18.000"),
 		LinhasCandidatas: 1, Ambiguo: false,
 	}
 	for i := 0; i < 3; i++ {
@@ -697,7 +872,7 @@ Esperado: `FAIL` — `NewICMSMatrixWriter` não existe.
 
 1. Lê a versão aberta (`vigente_ate IS NULL`) daquela chave.
 2. Se não existe → `INSERT` com `vigente_desde = now()`.
-3. Se existe e **todos** os campos de valor batem (`codtrib`, `aliquota`, `aliqintdest`, `perc_fcp`, `ambiguo`, `linhas_candidatas`) → só atualiza `synced_at`. **Nenhuma versão nova.**
+3. Se existe e **todos** os campos de valor batem (`codtrib`, `zerar`, `aliquota`, `redbase`, `aliqintdest`, `aliq_uf_dest`, `perc_red_base_dest`, `perc_fcp`, `ambiguo`, `linhas_candidatas`) → só atualiza `synced_at`. **Nenhuma versão nova.**
 4. Se existe e algum mudou → `UPDATE ... SET vigente_ate = now()` na antiga, `INSERT` da nova com `vigente_desde = now()`.
 
 Comparação de `NUMERIC` nullable: compare em **texto** (`aliqintdest::text`) ou use `IS NOT DISTINCT FROM`, que trata `NULL` como igual a `NULL`. Comparar com `=` faz toda célula muda parecer mudada em todo sync e infla o histórico sem fim.
@@ -904,14 +1079,27 @@ func Desconhecido(motivo string) Componente { return Componente{Motivo: motivo} 
 // precisa dela. Percentuais como string: vêm de NUMERIC e viram big.Rat, sem
 // float binário no meio.
 type ICMSRule struct {
-	// CodTrib: 0 = tributado, 60 = substituição tributária.
-	CodTrib int
-	// AliquotaPct é a alíquota da OPERAÇÃO origem→destino (7% ou 12% saindo de MG).
+	// CodTrib: 0 = tributado, 60 = substituição tributária, 10 e 40 também
+	// ocorrem. Nil quando a origem tem NULL (22 linhas MG) — nil não é 0.
+	CodTrib *int
+	// Zerar vem de TGFICM.ZERAR = 'S': a célula zera o imposto.
+	Zerar bool
+	// AliquotaPct é a alíquota da OPERAÇÃO origem→destino (7% ou 12% saindo de
+	// MG). É TGFICM.ALIQUOTA. Nunca ALIQUFDEST, que é do bloco de ST.
 	AliquotaPct *string
+	// RedBasePct é a redução da base da OPERAÇÃO (TGFICM.REDBASE). Não-zero em
+	// 63% das linhas MG. Nil é tratado como zero: a célula existe e não
+	// declarou redução.
+	RedBasePct *string
 	// AliqIntDestPct é a alíquota INTERNA do estado de destino, a que fecha o
-	// DIFAL. Nil = célula muda: a matriz diz que o DIFAL incide mas não diz
-	// quanto. Medido em 20 células reais (PR, RS, SC).
+	// DIFAL, e é a que o motor do ERP lê. Nil = célula muda: a matriz diz que o
+	// DIFAL incide mas não diz quanto. NULL em 82,6% das linhas MG — AC, AL, AM,
+	// AP, PA, PB, PI, RO, RR, SE, RS e SC são 100% nulos.
 	AliqIntDestPct *string
+	// PercRedBaseDestPct é a redução de base do lado do destino
+	// (TGFICM.PERCREDBASEDEST). Papel NÃO VERIFICADO na origem. Este campo
+	// existe para o cálculo saber que ele é desconhecido, nunca para multiplicar.
+	PercRedBaseDestPct *string
 	// PercFCPPct nil com a célula presente significa FCP zero — a matriz
 	// respondeu. É diferente de célula ausente, em que nada é conhecido.
 	PercFCPPct *string
@@ -982,10 +1170,13 @@ import (
 
 func s(v string) *string { return &v }
 
+func i(v int) *int { return &v }
+
 func regraBahia() ICMSRule {
 	return ICMSRule{
-		CodTrib:        0,
+		CodTrib:        i(0),
 		AliquotaPct:    s("7.0"),
+		RedBasePct:     s("0"),
 		AliqIntDestPct: s("20.5"),
 		VigenteDesde:   time.Date(2026, 7, 20, 0, 0, 0, 0, time.UTC),
 	}
@@ -1059,9 +1250,79 @@ func TestTaxesForValueCelulaMudaSelaDifalEPisCofins(t *testing.T) {
 	}
 }
 
+func TestTaxesForValueReduzBaseDoICMS(t *testing.T) {
+	// REDBASE nao-zero em 2.669 de 4.209 linhas MG. Ignorar erra o ICMS na
+	// maioria das celulas.
+	regra := regraBahia()
+	regra.RedBasePct = s("33.33")
+
+	got := TaxesForValue(299.90, regra)
+
+	// 299,90 x (1 - 0,3333) x 7% = 299,90 x 0,6667 x 0,07 = 13,9958 -> 14,00
+	if v := valor(t, got.ICMS, "ICMS"); v != 14.00 {
+		t.Fatalf("ICMS = %v, queria 14.00 — base reduzida em 33,33%%", v)
+	}
+	// A base do DIFAL do lado do destino e PERCREDBASEDEST, cujo papel nao foi
+	// verificado. Com a base da operacao reduzida, o telescopio
+	// ICMS + DIFAL = V x ALIQINTDEST deixa de valer e nao pode ser afirmado.
+	if got.DIFAL.Valor != nil {
+		t.Fatalf("DIFAL = %v; com REDBASE != 0 a base do destino e desconhecida", *got.DIFAL.Valor)
+	}
+	if got.DIFAL.Motivo == "" {
+		t.Fatal("faltou motivo")
+	}
+}
+
+func TestTaxesForValueCodTribNuloNaoCalculaNada(t *testing.T) {
+	// 22 linhas MG com CODTRIB NULL. Tratar como 0 afirmaria "tributado".
+	regra := regraBahia()
+	regra.CodTrib = nil
+
+	got := TaxesForValue(299.90, regra)
+
+	if got.ICMS.Valor != nil {
+		t.Fatalf("ICMS = %v; sem CODTRIB nao se sabe nem se incide", *got.ICMS.Valor)
+	}
+	if got.ICMS.Motivo == "" {
+		t.Fatal("faltou motivo")
+	}
+}
+
+func TestTaxesForValueCodTribNaoMedidoNaoChuta(t *testing.T) {
+	// 10 (41 linhas) e 40 (2 linhas) ocorrem em MG e o comportamento deles NAO
+	// foi medido. Assumir "igual a 0" seria inventar.
+	for _, codigo := range []int{10, 40} {
+		regra := regraBahia()
+		regra.CodTrib = i(codigo)
+
+		got := TaxesForValue(299.90, regra)
+
+		if got.ICMS.Valor != nil {
+			t.Fatalf("CODTRIB %d calculou ICMS = %v; comportamento nao medido", codigo, *got.ICMS.Valor)
+		}
+	}
+}
+
+func TestTaxesForValueZerarAnulaFamiliaICMS(t *testing.T) {
+	regra := regraBahia()
+	regra.Zerar = true
+
+	got := TaxesForValue(299.90, regra)
+
+	for nome, c := range map[string]Componente{"ICMS": got.ICMS, "DIFAL": got.DIFAL, "FCP": got.FCP} {
+		if v := valor(t, c, nome); v != 0 {
+			t.Fatalf("%s = %v com ZERAR='S', queria 0", nome, v)
+		}
+	}
+	// Carga zero, base cheia: 299,90 x 9,25% = 27,74.
+	if v := valor(t, got.PisCofins, "PIS/COFINS"); v != 27.74 {
+		t.Fatalf("PIS/COFINS = %v, queria 27.74", v)
+	}
+}
+
 func TestTaxesForValueSTZeraFamiliaICMS(t *testing.T) {
 	regra := regraBahia()
-	regra.CodTrib = 60
+	regra.CodTrib = i(60)
 
 	got := TaxesForValue(299.90, regra)
 
@@ -1143,18 +1404,21 @@ var (
 // TaxesForValue calcula o imposto de UMA linha de pedido a partir da célula da
 // matriz do ERP.
 //
-//	ICMS       = V x aliquota
-//	DIFAL      = V x aliqintdest - ICMS
+//	base ICMS  = V x (1 - redbase)
+//	ICMS       = base ICMS x aliquota
+//	DIFAL      = V x aliqintdest - ICMS         (só quando redbase = 0)
 //	FCP        = V x perc_fcp
-//	i          = aliqintdest + perc_fcp          (carga total de ICMS)
-//	PIS/COFINS = V x (1 - i) x 9,25%
+//	PIS/COFINS = (V - ICMS - DIFAL - FCP) x 9,25%
 //	Total      = ICMS + DIFAL + FCP + PIS/COFINS
 //
-// A base de PIS/COFINS é V x (1 - i) e não V porque o ICMS é repasse ao estado,
-// não receita — STF, Tema 69 (RE 574.706). Não é interpretação nossa: o Sankhya
-// grava exatamente essa base em 1.434 de 1.434 linhas não-ST. Consequência
-// contraintuitiva: quanto maior o ICMS, menor o PIS/COFINS. Somar imposto por
-// cima de imposto superestima a carga.
+// A base de PIS/COFINS desconta a família do ICMS porque o ICMS é repasse ao
+// estado, não receita — STF, Tema 69 (RE 574.706). Não é interpretação nossa: o
+// Sankhya grava exatamente essa base em 1.434 de 1.434 linhas não-ST.
+// Consequência contraintuitiva: quanto maior o ICMS, menor o PIS/COFINS. Somar
+// imposto por cima de imposto superestima a carga.
+//
+// O desconto usa o DINHEIRO apurado, não a soma das alíquotas. As duas formas
+// coincidem quando redbase = 0, e só a primeira continua certa quando não.
 //
 // Nunca devolve zero para significar "não sei". Componente sem resposta carrega
 // Motivo em português, nomeando a lacuna do cadastro do ERP.
@@ -1170,26 +1434,58 @@ func TaxesForValue(valorLinha float64, regra ICMSRule) Resultado {
 			"A precedencia entre elas nao esta definida, entao nenhum valor pode ser afirmado.")
 	}
 
-	// Substituição tributária: o ICMS já foi recolhido na entrada pelo
-	// substituto e está dentro do CUSSEMICM. Zero aqui é fato medido
-	// (11.233/11.233 linhas), não ausência de resposta.
-	if regra.CodTrib == 60 {
-		out.ICMS, out.DIFAL, out.FCP = Conhecido(0), Conhecido(0), Conhecido(0)
-		out.CargaICMSPct = Conhecido(0)
-		return fechaComPisCofins(out, valorLinha, big.NewRat(0, 1))
+	// ZERAR = 'S' anula a família do ICMS por decisão da própria matriz.
+	if regra.Zerar {
+		return semICMS(out, valorLinha)
+	}
+
+	// CODTRIB é nullable na origem — 22 linhas com origem MG. Nil não é 0:
+	// 0 significa "tributado", e assumi-lo seria afirmar incidência.
+	if regra.CodTrib == nil {
+		return selaTudo(out, "Matriz de ICMS do ERP nao informa o codigo de tributacao (CODTRIB) "+
+			"para este produto e destino.")
+	}
+
+	switch *regra.CodTrib {
+	case 60:
+		// Substituição tributária: o ICMS já foi recolhido na entrada pelo
+		// substituto e está dentro do CUSSEMICM. Zero aqui é fato medido
+		// (11.233/11.233 linhas), não ausência de resposta.
+		return semICMS(out, valorLinha)
+	case 0:
+		// Tributado — segue.
+	default:
+		// 10 (41 linhas MG) e 40 (2 linhas). Comportamento NÃO medido.
+		return selaTudo(out, fmt.Sprintf(
+			"Matriz de ICMS do ERP usa CODTRIB %d para este produto e destino, "+
+				"cujo tratamento ainda nao foi apurado.", *regra.CodTrib))
 	}
 
 	if regra.AliquotaPct == nil {
 		return selaTudo(out, "Matriz de ICMS do ERP nao informa a aliquota da operacao para este produto e destino.")
 	}
-	icms, err := pctOf(valorLinha, *regra.AliquotaPct)
+
+	// Redução da base da operação. Nil é zero: a célula existe e não declarou
+	// redução. Não-zero em 63% das linhas MG.
+	redBase := big.NewRat(0, 1)
+	if regra.RedBasePct != nil {
+		r, ok := new(big.Rat).SetString(*regra.RedBasePct)
+		if !ok {
+			return selaTudo(out, "Reducao de base invalida na matriz de ICMS do ERP: "+*regra.RedBasePct)
+		}
+		redBase = r
+	}
+	baseICMS, err := aplicaReducao(valorLinha, redBase)
+	if err != nil {
+		return selaTudo(out, "Falha ao aplicar a reducao de base da matriz de ICMS do ERP.")
+	}
+	icms, err := pctOf(baseICMS, *regra.AliquotaPct)
 	if err != nil {
 		return selaTudo(out, "Aliquota da operacao invalida na matriz de ICMS do ERP: "+*regra.AliquotaPct)
 	}
 	out.ICMS = Conhecido(icms)
 
 	// FCP nulo com a célula presente é zero declarado: a matriz respondeu.
-	fcpRat := big.NewRat(0, 1)
 	out.FCP = Conhecido(0)
 	if regra.PercFCPPct != nil {
 		fcp, err := pctOf(valorLinha, *regra.PercFCPPct)
@@ -1197,14 +1493,21 @@ func TaxesForValue(valorLinha float64, regra ICMSRule) Resultado {
 			return selaRestante(out, "Percentual de FCP invalido na matriz de ICMS do ERP: "+*regra.PercFCPPct)
 		}
 		out.FCP = Conhecido(fcp)
-		if r, ok := new(big.Rat).SetString(*regra.PercFCPPct); ok {
-			fcpRat = r
-		}
 	}
 
 	if regra.AliqIntDestPct == nil {
 		return selaRestante(out, "Falta ALIQINTDEST na matriz de ICMS do ERP para este grupo com este destino. "+
 			"Sem ela o DIFAL nao pode ser calculado.")
+	}
+
+	// O DIFAL sai do telescópio ICMS + DIFAL = V x ALIQINTDEST, que pressupõe a
+	// MESMA base dos dois lados. Com a base da operação reduzida, a base do
+	// destino passa a depender de PERCREDBASEDEST, cujo papel não foi apurado
+	// na origem. Sem isso o telescópio não se sustenta e o DIFAL não pode ser
+	// afirmado — nem com a base cheia, nem com a reduzida.
+	if redBase.Sign() != 0 {
+		return selaRestante(out, "Matriz de ICMS do ERP reduz a base desta operacao, e a base equivalente "+
+			"no estado de destino (PERCREDBASEDEST) ainda nao foi apurada. Sem ela o DIFAL nao pode ser calculado.")
 	}
 
 	cargaTotal, err := pctOf(valorLinha, *regra.AliqIntDestPct)
@@ -1223,48 +1526,62 @@ func TaxesForValue(valorLinha float64, regra ICMSRule) Resultado {
 	}
 	out.DIFAL = Conhecido(difal)
 
-	aid, ok := new(big.Rat).SetString(*regra.AliqIntDestPct)
-	if !ok {
-		return selaRestante(out, "Aliquota interna do destino invalida na matriz de ICMS do ERP.")
-	}
-	i := new(big.Rat).Add(aid, fcpRat) // em pontos percentuais
-	cargaPct, err := strconv.ParseFloat(i.FloatString(3), 64)
-	if err != nil {
-		return selaRestante(out, "Falha ao compor a carga de ICMS.")
-	}
-	out.CargaICMSPct = Conhecido(cargaPct)
-
-	return fechaComPisCofins(out, valorLinha, i)
+	return fechaComPisCofins(out, valorLinha)
 }
 
-// fechaComPisCofins aplica PIS/COFINS sobre a base reduzida pela carga de ICMS
-// e soma o total. cargaPct vem em pontos percentuais (20.5 = 20,5%).
-func fechaComPisCofins(out Resultado, valorLinha float64, cargaPct *big.Rat) Resultado {
-	base := new(big.Rat).Quo(cargaPct, cem)
-	base.Sub(big.NewRat(1, 1), base)
-	base.Mul(base, new(big.Rat).SetFloat64(valorLinha))
-	baseFloat, err := strconv.ParseFloat(base.FloatString(4), 64)
+// semICMS trata os dois casos em que a matriz declara que a família do ICMS não
+// incide: ST (CODTRIB 60) e ZERAR = 'S'. Zero aqui é resposta, não lacuna.
+func semICMS(out Resultado, valorLinha float64) Resultado {
+	out.ICMS, out.DIFAL, out.FCP = Conhecido(0), Conhecido(0), Conhecido(0)
+	return fechaComPisCofins(out, valorLinha)
+}
+
+// aplicaReducao devolve valorLinha x (1 - reducao), com reducao em pontos
+// percentuais.
+func aplicaReducao(valorLinha float64, reducaoPct *big.Rat) (float64, error) {
+	v := new(big.Rat).SetFloat64(valorLinha)
+	if v == nil {
+		return 0, errValorNaoNumerico
+	}
+	fator := new(big.Rat).Quo(reducaoPct, cem)
+	fator.Sub(big.NewRat(1, 1), fator)
+	return strconv.ParseFloat(new(big.Rat).Mul(v, fator).FloatString(4), 64)
+}
+
+// fechaComPisCofins desconta do valor da linha a família do ICMS já apurada,
+// aplica 9,25% sobre o que sobrou, e soma o total. Também deriva a carga de
+// ICMS em pontos percentuais a partir do dinheiro.
+func fechaComPisCofins(out Resultado, valorLinha float64) Resultado {
+	carga := 0.0
+	for _, c := range []Componente{out.ICMS, out.DIFAL, out.FCP} {
+		if c.Valor == nil {
+			return out
+		}
+		carga += *c.Valor
+	}
+	base, err := somaCentavos(valorLinha, -carga)
 	if err != nil {
 		return selaRestante(out, "Falha ao compor a base de PIS/COFINS.")
 	}
-	pc, err := pctOf(baseFloat, pisCofinsPct)
+	pc, err := pctOf(base, pisCofinsPct)
 	if err != nil {
 		return selaRestante(out, "Falha ao calcular PIS/COFINS.")
 	}
 	out.PisCofins = Conhecido(pc)
 
-	total := 0.0
-	for _, c := range []Componente{out.ICMS, out.DIFAL, out.FCP, out.PisCofins} {
-		if c.Valor == nil {
-			return out
+	if valorLinha != 0 {
+		pct := new(big.Rat).Quo(new(big.Rat).SetFloat64(carga), new(big.Rat).SetFloat64(valorLinha))
+		pct.Mul(pct, cem)
+		if v, err := strconv.ParseFloat(pct.FloatString(3), 64); err == nil {
+			out.CargaICMSPct = Conhecido(v)
 		}
-		total += *c.Valor
 	}
-	arredondado, err := somaCentavos(total, 0)
+
+	total, err := somaCentavos(carga, pc)
 	if err != nil {
 		return out
 	}
-	out.Total = Conhecido(arredondado)
+	out.Total = Conhecido(total)
 	return out
 }
 
@@ -1307,7 +1624,7 @@ Esperado: `PASS` em todos.
 
 - [ ] **Step 5: Controle negativo — prove que a base reduzida é o que está sendo testado**
 
-Troque, em `fechaComPisCofins`, a base por `valorLinha` puro (ignorando `cargaPct`) e rode.
+Troque, em `fechaComPisCofins`, a base por `valorLinha` puro (sem descontar `carga`) e rode.
 
 Esperado: `TestTaxesForValueBahiaSegueMatrizVigente` **falha** com `PIS/COFINS = 27.74, queria 22.05`. Se ele passar, o teste não está provando o Tema 69 e o número de 22,05 veio de outro lugar. Desfaça depois.
 
@@ -1456,7 +1773,9 @@ Esperado: `FAIL` — `NewMatrixReader` não existe.
 `NewMatrixReader(pool *pgxpool.Pool, ufOrigem string)`. Uma consulta só, com join:
 
 ```sql
-SELECT m.codtrib, m.aliquota::text, m.aliqintdest::text, m.perc_fcp::text,
+SELECT m.codtrib, m.zerar,
+       m.aliquota::text, m.redbase::text,
+       m.aliqintdest::text, m.perc_red_base_dest::text, m.perc_fcp::text,
        m.ambiguo, m.vigente_desde
 FROM products_mirror p
 JOIN icms_matrix_mirror m
@@ -1519,13 +1838,13 @@ func TestSyncMatrixResolveCadaCelulaAntesDeGravar(t *testing.T) {
 	origem := &fakeMatrixSource{lines: map[oracle.MatrixKey][]domain.MatrixLine{
 		{UFDestino: "BA", GrupoICMS: 122}: {
 			{Restricao1Tipo: "N", Restricao1Codigo: 0, Restricao2Tipo: "I", Restricao2Codigo: 122,
-				CodTrib: 0, AliquotaPct: "7.0", AliqIntDestPct: "20.5"},
+				Sequencia: 1, CodTrib: ptrInt(0), AliquotaPct: "7.0", RedBasePct: "0", AliqIntDestPct: "20.5"},
 		},
 		{UFDestino: "SP", GrupoICMS: 122}: {
 			{Restricao1Tipo: "N", Restricao1Codigo: 0, Restricao2Tipo: "I", Restricao2Codigo: 122,
-				CodTrib: 0, AliquotaPct: "7.0", AliqIntDestPct: "18.0"},
+				Sequencia: 1, CodTrib: ptrInt(0), AliquotaPct: "7.0", RedBasePct: "0", AliqIntDestPct: "18.0"},
 			{Restricao1Tipo: "S", Restricao1Codigo: -1, Restricao2Tipo: "I", Restricao2Codigo: 122,
-				CodTrib: 0, AliquotaPct: "7.0", AliqIntDestPct: "19.0"},
+				Sequencia: 1, CodTrib: ptrInt(0), AliquotaPct: "7.0", RedBasePct: "0", AliqIntDestPct: "19.0"},
 		},
 	}}
 	destino := &fakeMatrixWriter{}
@@ -1665,7 +1984,7 @@ Apague `OrderTaxes` deste arquivo.
 ```go
 func TestTaxesForItemsUsaMatrizEDataDoPedido(t *testing.T) {
 	matriz := &fakeMatrix{rule: domain.ICMSRule{
-		CodTrib: 0, AliquotaPct: s("7.0"), AliqIntDestPct: s("20.5"),
+		CodTrib: i(0), AliquotaPct: s("7.0"), RedBasePct: s("0"), AliqIntDestPct: s("20.5"),
 		VigenteDesde: time.Date(2026, 7, 20, 0, 0, 0, 0, time.UTC),
 	}}
 	r := fiscaladapter.NewReader(matriz, "tenant-1")
@@ -2293,7 +2612,9 @@ Peça: subir o dev stack no commit desta fatia, rodar o sync da matriz uma vez, 
 
 - [ ] **Step 3: Mande `CLOSED` ao hub**
 
-Com o SHA final, o resultado de P-1 a P-6, e a lista de dívidas confirmadas: **D-17** (`CODEMP=1`), **D-21** (7 sítios do 4% vivos em `pricing` até o P4), **D-24** (DIFAL não precificável em PR/RS/SC), **D-25**, **D-26**, **D-27**, **D-28** (histórico começa no 1º sync), **D-29** (origem MG fixa), **D-30** (arredondamento duplicado entre `fiscal` e `pricing`).
+Com o SHA final, o resultado de P-1 a P-6, e a lista de dívidas confirmadas: **D-17** (`CODEMP=1`), **D-21** (7 sítios do 4% vivos em `pricing` até o P4), **D-24** (DIFAL não precificável em PR/RS/SC), **D-25**, **D-26**, **D-27**, **D-28** (histórico começa no 1º sync — a `TGFICM` não é versionada e a `TGFHICM` não guarda antes/depois), **D-29** a **D-34** (ver autorrevisão).
+
+Inclua a contagem medida ao vivo: quantas das 38 ordens saíram com imposto completo, quantas com pendência, e o motivo de cada classe. É o número que dimensiona o D-31.
 
 ---
 
@@ -2301,8 +2622,25 @@ Com o SHA final, o resultado de P-1 a P-6, e a lista de dívidas confirmadas: **
 
 **Cobertura da spec:** §4.1 → T1, T2 · §4.2 → T1, T5 · §4.3 → T3, T10 · §4.4 → T10, T15 · §5 → T6, T7, T9 · §6 → T8 · §7 → T13 · §8 → T14, T15 · §9 → T16 · §10 → controles negativos em T1, T3, T5, T6, T8, T9, T11, T12 · §11 → T17.
 
-**Lacuna conhecida e nomeada:** a Task 4 (extração Oracle) está bloqueada na medição M19 — os nomes reais das colunas do `TGFICM`. Está marcada com ⛔ e não bloqueia nenhuma outra task: T6 a T9 e T11 a T16 rodam sem ela, porque a resolução (T3) é domínio puro e o adapter (T9) lê Postgres. Só o sync ao vivo (T10, T17) depende.
+**M19 respondida — o DDL do `TGFICM` está na Task 4, medido, não inventado.** Três coisas que a resposta mudou no plano:
+
+1. A alíquota da operação é **`ALIQUOTA`**. `ALIQUFDEST` pertence ao bloco de ST (domínio 17,0–22,0) e daria um ICMS ~2,5× maior. Espelhamos `ALIQUFDEST` mesmo assim, sem usá-la: com 87,7% de cobertura e mais perto da alíquota legal, ela é o sinal de divergência da fatia **P5** — e sai de graça agora.
+2. **`REDBASE` é não-zero em 2.669 de 4.209 linhas MG.** A fórmula anterior ignorava redução de base. Agora o ICMS usa `V × (1 − redbase)`, e o DIFAL vira **pendência** quando `redbase ≠ 0`, porque o telescópio `ICMS + DIFAL = V × ALIQINTDEST` pressupõe a mesma base dos dois lados e a base do destino (`PERCREDBASEDEST`) não foi apurada.
+3. **`CODTRIB` é nullable** (22 linhas MG) e tem `10` e `40` além de `0`/`60`. Nil e os não medidos viram pendência, nunca `0`.
+
+A base de PIS/COFINS passou a descontar o **dinheiro** apurado em vez da soma das alíquotas. As duas formas dão o mesmo número quando `redbase = 0` — o pedido da Bahia continua em 22,05 — e só a primeira continua certa quando não.
+
+**Medição que falta e não bloqueia (M20, a pedir ao especialista):** entre as células que os nossos produtos e destinos reais atingem, quantas têm `REDBASE ≠ 0`? É o que dimensiona quantos pedidos perdem o DIFAL pela regra nova. O plano roda sem a resposta; ela só diz se a pendência atinge 3 pedidos ou 30.
 
 **Consistência de tipos:** `domain.MatrixLine` (T3) → `mirror.MatrixCell` (T5) → `domain.ICMSRule` (T7) → `ports.ItemTaxes` (T11) → `OrderFiscal` (T13) → `FiscalSection` (T14). `Componente` só existe em `fiscal/domain`; `orders` usa `TaxComponent` própria e o adapter (T11) faz a tradução. `pctOf` é definida em T6 e usada em T8.
 
-**Duas dívidas novas criadas por este plano:** **D-29** (origem MG fixa, mesma classe da D-17) e **D-30** (arredondamento duplicado entre `fiscal` e `pricing`, com teste de alarme em T6).
+**Dívidas novas criadas por este plano:**
+
+| id | o quê |
+|---|---|
+| D-29 | origem fixa em MG (`UFORIG = 13`), mesma classe da D-17 |
+| D-30 | arredondamento duplicado entre `fiscal` e `pricing`, com teste de alarme em T6 |
+| D-31 | `PERCREDBASEDEST` não apurado ⇒ toda célula com `REDBASE ≠ 0` perde o DIFAL |
+| D-32 | `ALIQINTDEST` (17,4% de cobertura, reproduz o ERP) contra `ALIQUFDEST` (87,7%, mais perto da lei) — espelhadas as duas, calculado só com a primeira; a escolha é decisão de produto da fatia P5 |
+| D-33 | `CODTRIB` 10 e 40 (43 linhas MG) com tratamento não apurado |
+| D-34 | `TIPCALCDIFAL`, `BASESTUFDEST` e `CODTABSTUFDEST` não espelhados nem apurados |
