@@ -45,13 +45,18 @@ type MarketplaceOrder struct {
 	ProviderCode         string                    `json:"provider_code"`
 	ProviderOrderID      string                    `json:"provider_order_id"`
 	ProviderStatus       string                    `json:"provider_status,omitempty"`
-	ProviderStatusDetail string                    `json:"provider_status_detail,omitempty"`
+	// ProviderStatusDetail e CancellationDetail são *string, não string: o
+	// provider distingue "não mandou o campo" de "mandou vazio", e string
+	// colapsa os dois em "". Foi esse colapso que fez cancellation_detail
+	// aparecer preenchido em 38/38 pedidos — inclusive nos 7 cancelados, onde
+	// o motivo real do cancelamento é justamente o que faltava.
+	ProviderStatusDetail *string                   `json:"provider_status_detail,omitempty"`
 	ProviderCreatedAt    *time.Time                `json:"provider_created_at,omitempty"`
 	ProviderClosedAt     *time.Time                `json:"provider_closed_at,omitempty"`
 	ProviderUpdatedAt    *time.Time                `json:"provider_updated_at,omitempty"`
 	FetchedAt            time.Time                 `json:"fetched_at"`
 	ShippingID           string                    `json:"shipping_id,omitempty"`
-	CancellationDetail   string                    `json:"cancellation_detail,omitempty"`
+	CancellationDetail   *string                   `json:"cancellation_detail,omitempty"`
 	Tags                 []string                  `json:"tags,omitempty"`
 	BuyerNickname        string                    `json:"buyer_nickname,omitempty"`
 	RawProviderRef       string                    `json:"raw_provider_ref,omitempty"`

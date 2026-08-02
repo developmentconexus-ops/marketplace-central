@@ -250,9 +250,21 @@ func scanReadModel(scanner interface{ Scan(...any) error }) (ordersdomain.OrderR
 	var tagsJSON []byte
 	var faturado pgtype.Timestamptz
 	var buyerNickname pgtype.Text
-	err := scanner.Scan(&model.ProviderOrderID, &model.ProviderCode, &model.Status, &model.ProviderStatusDetail, &created, &closed, &updated, &nf, &total, &shippingID, &tagsJSON, &faturado, &buyerNickname)
+	var providerStatusDetail pgtype.Text
+	err := scanner.Scan(&model.ProviderOrderID, &model.ProviderCode, &model.Status, &providerStatusDetail, &created, &closed, &updated, &nf, &total, &shippingID, &tagsJSON, &faturado, &buyerNickname)
 	if err != nil {
 		return model, err
+	}
+	// provider_status_detail (0027: text NOT NULL DEFAULT '') can now hold a
+	// genuine NULL — domain.MarketplaceOrder's write side stores nil for an
+	// absent value instead of '' (see order.go doc comment). Scanning
+	// straight into a Go string would error on that NULL, so this goes
+	// through pgtype.Text first, same as buyerNickname below. OrderReadModel
+	// keeps ProviderStatusDetail as a plain string for now (its own
+	// nullable-exposure is a separate, later slice) — NULL just falls back to
+	// the same "" this column always reported.
+	if providerStatusDetail.Valid {
+		model.ProviderStatusDetail = providerStatusDetail.String
 	}
 	if buyerNickname.Valid && strings.TrimSpace(buyerNickname.String) != "" {
 		value := buyerNickname.String
@@ -1038,6 +1050,8 @@ func (r *OrderRepository) listPayments(ctx context.Context, installationID, prov
 
 func scanOrder(scanner interface{ Scan(dest ...any) error }) (ordersdomain.MarketplaceOrder, error) {
 	var order ordersdomain.MarketplaceOrder
+	var providerStatusDetail pgtype.Text
+	var cancellationDetail pgtype.Text
 	var providerCreatedAt pgtype.Timestamptz
 	var providerClosedAt pgtype.Timestamptz
 	var providerUpdatedAt pgtype.Timestamptz
@@ -1051,13 +1065,13 @@ func scanOrder(scanner interface{ Scan(dest ...any) error }) (ordersdomain.Marke
 		&order.ProviderCode,
 		&order.ProviderOrderID,
 		&order.ProviderStatus,
-		&order.ProviderStatusDetail,
+		&providerStatusDetail,
 		&providerCreatedAt,
 		&providerClosedAt,
 		&providerUpdatedAt,
 		&fetchedAt,
 		&order.ShippingID,
-		&order.CancellationDetail,
+		&cancellationDetail,
 		&tagsJSON,
 		&rawRefJSON,
 		&createdAt,
@@ -1065,6 +1079,8 @@ func scanOrder(scanner interface{ Scan(dest ...any) error }) (ordersdomain.Marke
 	); err != nil {
 		return ordersdomain.MarketplaceOrder{}, err
 	}
+	order.ProviderStatusDetail = scanText(providerStatusDetail)
+	order.CancellationDetail = scanText(cancellationDetail)
 	order.ProviderCreatedAt = scanTime(providerCreatedAt)
 	order.ProviderClosedAt = scanTime(providerClosedAt)
 	order.ProviderUpdatedAt = scanTime(providerUpdatedAt)
@@ -1099,6 +1115,14 @@ func nullableInt4(value *int) pgtype.Int4 {
 		return pgtype.Int4{}
 	}
 	return pgtype.Int4{Int32: int32(*value), Valid: true}
+}
+
+func scanText(value pgtype.Text) *string {
+	if !value.Valid {
+		return nil
+	}
+	v := value.String
+	return &v
 }
 
 func scanTime(value pgtype.Timestamptz) *time.Time {
