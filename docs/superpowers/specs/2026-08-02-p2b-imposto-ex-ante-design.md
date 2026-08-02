@@ -1,6 +1,12 @@
 # P2.b — Imposto ex-ante do produto (escopo A)
 
-Data: 2026-08-02 · Missão MIS-007 · Fatia posterior ao P2 · Status: **desenho aprovado, com as emendas abaixo**
+Data: 2026-08-02 · Missão MIS-007 · Fatia posterior ao P2 · Status: **SUPERSEDIDA**
+
+> **Supersedida por [`2026-08-02-p2b-modulo-fiscal-design.md`](2026-08-02-p2b-modulo-fiscal-design.md).**
+> Este documento fica como **registro de medição**: reconciliação contra notas reais, refutações e
+> emendas 1–3. Nenhuma medição aqui foi descartada. O que mudou foi a arquitetura — módulo `fiscal`
+> próprio, espelho versionado da matriz e contrato novo. Para decisões de implementação, leia a
+> spec nova; para saber **como** cada número foi medido, leia esta.
 
 ---
 
