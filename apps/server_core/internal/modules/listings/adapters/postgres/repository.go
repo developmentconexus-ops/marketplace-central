@@ -32,7 +32,7 @@ const listingLinkState = "COALESCE(NULLIF(pl.state, 'none'), 'unresolved')"
 
 func listingProjectionSQL() string {
 	return fmt.Sprintf(`SELECT l.installation_id,l.provider,l.provider_listing_id,l.variation_id,l.title,l.listing_type_code,l.status,
-		l.price_amount::text,l.price_currency,l.published_quantity,l.sync_state,l.sync_error,l.quality_score,l.sales_30d,l.fetched_at,
+		l.price_amount::text,l.price_currency,l.published_quantity,l.sync_state,l.sync_error,l.fetched_at,
 		%s,CASE WHEN pl.state='resolved' THEN pl.internal_product_id::text END,NULLIF(pls.seller_sku,'')
 	FROM listings l
 	LEFT JOIN product_links pl ON pl.tenant_id=l.tenant_id AND pl.installation_id=l.installation_id AND pl.provider_item_id=l.provider_listing_id AND pl.provider_variation_id=CASE WHEN l.variation_id='-' THEN '' ELSE l.variation_id END
@@ -47,7 +47,7 @@ func scanListingReadModel(row listingRowScanner) (domain.ListingReadModel, error
 	var currency *domain.PriceCurrency
 	var syncJSON []byte
 	var linkState domain.LinkState
-	if err := row.Scan(&m.InstallationID, &m.Provider, &m.ProviderListingID, &variation, &m.Title, &typeCode, &m.Status, &priceAmount, &currency, &m.PublishedQuantity, &m.SyncState, &syncJSON, &m.QualityScore, &m.Sales30D, &m.FetchedAt, &linkState, &m.Link.ProductID, &m.Link.SellerSKU); err != nil {
+	if err := row.Scan(&m.InstallationID, &m.Provider, &m.ProviderListingID, &variation, &m.Title, &typeCode, &m.Status, &priceAmount, &currency, &m.PublishedQuantity, &m.SyncState, &syncJSON, &m.FetchedAt, &linkState, &m.Link.ProductID, &m.Link.SellerSKU); err != nil {
 		return domain.ListingReadModel{}, err
 	}
 	m.ListingID = domain.ListingID{InstallationID: m.InstallationID, ProviderListingID: m.ProviderListingID, VariationID: variation}.String()
@@ -57,9 +57,16 @@ func scanListingReadModel(row listingRowScanner) (domain.ListingReadModel, error
 	}
 	m.Link.State = linkState
 	if typeCode != nil {
-		if typ, ok := domain.ListingTypeForCode(*typeCode); ok {
-			m.ListingType = &typ
+		typ, ok := domain.ListingTypeForCode(*typeCode)
+		if !ok {
+			// Unrecognized modality code: still real data (the provider sent
+			// it), so it gets an honest fallback label instead of silently
+			// dropping to nil — listing_type is a required field on the API
+			// contract since Task 8, and there is no producer-side guarantee
+			// every future code is in the known set.
+			typ = domain.ListingType{Code: *typeCode, Label: string(*typeCode)}
 		}
+		m.ListingType = &typ
 	}
 	if priceAmount != nil && currency != nil {
 		m.Price = &domain.Money{Amount: *priceAmount, Currency: *currency}

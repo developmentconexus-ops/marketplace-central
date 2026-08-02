@@ -15,10 +15,16 @@ func TestListingReadModelNullableFieldsRemainNull(t *testing.T) {
 	if err := json.Unmarshal(encoded, &got); err != nil {
 		t.Fatal(err)
 	}
-	for _, key := range []string{"listing_type", "price", "published_quantity", "sync_error", "quality_score", "pending_issue", "sales_30d", "cost", "below_margin_worst_case", "icms_worst_case_by_uf", "fetched_at"} {
+	for _, key := range []string{"listing_type", "price", "published_quantity", "sync_error", "pending_issue", "cost", "below_margin_worst_case", "icms_worst_case_by_uf", "fetched_at"} {
 		value, exists := got[key]
 		if !exists || value != nil {
 			t.Errorf("%s = %#v, exists=%v; want explicit null", key, value, exists)
+		}
+	}
+	// quality_score/sales_30d left the HTTP read contract in Task 8 (ADR-C3).
+	for _, key := range []string{"quality_score", "sales_30d"} {
+		if _, exists := got[key]; exists {
+			t.Errorf("%s must not be on the wire (dropped, no producer)", key)
 		}
 	}
 }

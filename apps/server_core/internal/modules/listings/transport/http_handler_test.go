@@ -178,9 +178,16 @@ func TestListHandlerIC02Envelope(t *testing.T) {
 		t.Fatalf("body=%s", w.Body.String())
 	}
 	item := body["items"].([]any)[0].(map[string]any)
-	for _, key := range []string{"listing_type", "price", "published_quantity", "sync_error", "quality_score", "pending_issue", "sales_30d", "cost", "below_margin_worst_case", "icms_worst_case_by_uf", "fetched_at"} {
+	for _, key := range []string{"listing_type", "price", "published_quantity", "sync_error", "pending_issue", "cost", "below_margin_worst_case", "icms_worst_case_by_uf", "fetched_at"} {
 		if _, ok := item[key]; !ok {
 			t.Errorf("missing %s: %s", key, w.Body.String())
+		}
+	}
+	// quality_score/sales_30d left the HTTP read contract in Task 8 (ADR-C3):
+	// no producer wires them into the response anymore.
+	for _, key := range []string{"quality_score", "sales_30d"} {
+		if _, ok := item[key]; ok {
+			t.Errorf("stale %s still on the wire: %s", key, w.Body.String())
 		}
 	}
 }

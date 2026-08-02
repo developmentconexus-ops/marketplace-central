@@ -137,9 +137,12 @@ type ListingReadModel struct {
 	PublishedQuantity    *int                `json:"published_quantity"`
 	SyncState            ListingSyncState    `json:"sync_state"`
 	SyncError            *ReadSyncError      `json:"sync_error"`
-	QualityScore         *int                `json:"quality_score"`
+	// quality_score e sales_30d saíram do read model exposto na API (ADR-C3,
+	// Task 8): sem produtor hoje. quality_score continua escrito na tabela
+	// listings pelo leitor de saúde do anúncio (P4, dono via ON CONFLICT) e
+	// permanece em domain.Listing/ListingInput para esse escritor — só o
+	// contrato de LEITURA HTTP dropou o campo.
 	PendingIssue         *PendingIssue       `json:"pending_issue"`
-	Sales30D             *int                `json:"sales_30d"`
 	Cost                 *Money              `json:"cost"`
 	BelowMarginWorstCase *bool               `json:"below_margin_worst_case"`
 	ICMSWorstCaseByUF    *[]ICMWorstCaseByUF `json:"icms_worst_case_by_uf"`

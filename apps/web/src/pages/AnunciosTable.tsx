@@ -20,9 +20,10 @@ export interface AnunciosTableProps {
   onOpen?: (listingId: string) => void;
 }
 
-// Ratified 9-column set (design/handoff/Anuncios.dc.html): checkbox · MLB ·
-// TÍTULO · PRODUTO · PREÇO · EST. · SYNC · QUAL. · PENDÊNCIA.
-const TABLE_COLUMN_COUNT = 9;
+// Ratified column set (design/handoff/Anuncios.dc.html), minus QUAL. (dropped
+// in Task 8, no producer per ADR-C1): checkbox · MLB · TÍTULO · PRODUTO ·
+// PREÇO · EST. · SYNC · PENDÊNCIA.
+const TABLE_COLUMN_COUNT = 8;
 
 const syncLabels = {
   synced: "sincronizado",
@@ -179,8 +180,8 @@ export function AnunciosTable({ items, groups, asOf, selectedIds, onToggle, onTo
           />
         </td>
         {/* Variations share one MLB, so the id alone makes N rows look
-            identical. The variation goes under it instead of a 10th column
-            (the 9-column set is ratified). */}
+            identical. The variation goes under it instead of an extra
+            column (the column set is ratified). */}
         <td className="px-3 py-3 font-mono text-xs text-faint">
           <div>{item.provider_listing_id}</div>
           {item.variation_id ? <div className="text-[11px]">var. {item.variation_id}</div> : null}
