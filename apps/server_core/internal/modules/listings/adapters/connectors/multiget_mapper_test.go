@@ -269,3 +269,62 @@ func TestMapMultigetItemToListingSnapshotFeedsObserverHonestly(t *testing.T) {
 		t.Fatalf("variation snapshot = %#v, want SellerSKU=SKU-A EAN=7891234567890 (own fields, no parent fallback)", v)
 	}
 }
+
+func TestMapMultigetItemToListingCarriesPriceAndQuantities(t *testing.T) {
+	price := "729.90"
+	initial := 12
+	fetchedAt := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
+
+	row, err := MapMultigetItemToListing("t1", "inst-1", "mercado_livre", mercadolivre.ItemMultigetDTO{
+		ProviderItemID:  "MLB4834219830",
+		Title:           "Produto de exemplo",
+		Status:          "active",
+		Price:           &price,
+		CurrencyID:      "BRL",
+		ListingTypeID:   "gold_special",
+		InitialQuantity: &initial,
+	}, fetchedAt)
+	if err != nil {
+		t.Fatalf("MapMultigetItemToListing() error = %v", err)
+	}
+
+	if row.PriceAmount == nil || string(*row.PriceAmount) != "729.90" {
+		t.Fatalf("PriceAmount = %v, want 729.90", row.PriceAmount)
+	}
+	if row.PriceCurrency == nil || string(*row.PriceCurrency) != "BRL" {
+		t.Fatalf("PriceCurrency = %v, want BRL", row.PriceCurrency)
+	}
+	if row.ListingTypeCode == nil || string(*row.ListingTypeCode) != "gold_special" {
+		t.Fatalf("ListingTypeCode = %v, want gold_special", row.ListingTypeCode)
+	}
+	if row.PublishedQuantity == nil || *row.PublishedQuantity != 12 {
+		t.Fatalf("PublishedQuantity = %v, want 12", row.PublishedQuantity)
+	}
+}
+
+func TestMapMultigetItemToListingKeepsAbsentPriceNil(t *testing.T) {
+	fetchedAt := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
+
+	row, err := MapMultigetItemToListing("t1", "inst-1", "mercado_livre", mercadolivre.ItemMultigetDTO{
+		ProviderItemID: "MLB4834219830",
+		Title:          "Produto de exemplo",
+		Status:         "active",
+	}, fetchedAt)
+	if err != nil {
+		t.Fatalf("MapMultigetItemToListing() error = %v", err)
+	}
+
+	// ADR-17: desconhecido é nil, nunca zero nem string vazia.
+	if row.PriceAmount != nil {
+		t.Fatalf("PriceAmount = %v, want nil", row.PriceAmount)
+	}
+	if row.PriceCurrency != nil {
+		t.Fatalf("PriceCurrency = %v, want nil", row.PriceCurrency)
+	}
+	if row.ListingTypeCode != nil {
+		t.Fatalf("ListingTypeCode = %v, want nil", row.ListingTypeCode)
+	}
+	if row.PublishedQuantity != nil {
+		t.Fatalf("PublishedQuantity = %v, want nil", row.PublishedQuantity)
+	}
+}

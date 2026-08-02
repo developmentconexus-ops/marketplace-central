@@ -95,6 +95,20 @@ func MapMultigetItemToListing(tenantID, installationID, provider string, item me
 		availableQuantity = nil
 	}
 
+	// ADR-17: ausência do provider vira nil, nunca zero — quem não tem preço
+	// não tem preço zero. multigetPriceAmount (below) does the same nil/
+	// empty-safe conversion for item.Price, reused rather than duplicated.
+	var priceCurrency *listingsdomain.PriceCurrency
+	if currency := strings.TrimSpace(item.CurrencyID); currency != "" {
+		value := listingsdomain.PriceCurrency(currency)
+		priceCurrency = &value
+	}
+	var listingTypeCode *listingsdomain.ListingTypeCode
+	if code := strings.TrimSpace(item.ListingTypeID); code != "" {
+		value := listingsdomain.ListingTypeCode(code)
+		listingTypeCode = &value
+	}
+
 	fetchedAtValue := fetchedAt
 	row, err := listingsdomain.NewListing(listingsdomain.ListingInput{
 		TenantID:          tenantID,
@@ -103,7 +117,10 @@ func MapMultigetItemToListing(tenantID, installationID, provider string, item me
 		ProviderListingID: providerListingID,
 		VariationID:       listingsdomain.NoVariationID,
 		Title:             title,
+		ListingTypeCode:   listingTypeCode,
 		Status:            listingsdomain.ListingStatus(strings.TrimSpace(item.Status)),
+		PriceAmount:       multigetPriceAmount(item.Price),
+		PriceCurrency:     priceCurrency,
 		SyncState:         listingsdomain.ListingSyncStateSynced,
 		FetchedAt:         &fetchedAtValue,
 		CreatedAt:         fetchedAt,
@@ -120,6 +137,10 @@ func MapMultigetItemToListing(tenantID, installationID, provider string, item me
 		FreeShipping:      freeShipping,
 		LogisticType:      logisticType,
 		AvailableQuantity: availableQuantity,
+		// PublishedQuantity é a quantidade PUBLICADA (initial_quantity), que o
+		// ML mantém distinta de available_quantity: reposição sobe a
+		// disponível sem tocar a inicial.
+		PublishedQuantity: item.InitialQuantity,
 	})
 	if err != nil {
 		return listingsdomain.Listing{}, fmt.Errorf("item %s: %w", providerListingID, err)
