@@ -191,6 +191,7 @@ func mapMarketplaceOrder(
 		BuyerNickname:        derefString(detail.BuyerNickname),
 		CancellationDetail:   trimmedOrNil(detail.CancellationDetail),
 		Tags:                 detail.Tags,
+		Currency:             trimmedOrNil(detail.CurrencyID),
 		RawProviderRef:       safeOrderProviderReference(detail.ProviderCode, detail.ProviderOrderID),
 		CreatedAt:            now,
 		UpdatedAt:            now,

@@ -59,7 +59,11 @@ func (r *OrderReadRepository) ListOrders(ctx context.Context, query ports.OrderL
 		       (SELECT SUM(COALESCE(p.total_paid_amount, p.transaction_amount))
 		        FROM orders_marketplace_order_payments p
 		        WHERE p.tenant_id=$1 AND p.installation_id=$2 AND p.provider_order_id=o.provider_order_id),
-		       o.shipping_id, o.tags_json, o.faturado_at, o.buyer_nickname
+		       o.shipping_id, o.tags_json, o.faturado_at, o.buyer_nickname,
+		       o.currency,
+		       (SELECT s.logistic_type
+		          FROM order_shipments s
+		         WHERE s.tenant_id=$1 AND s.provider=o.provider_code AND s.provider_shipment_id=o.provider_shipment_id) AS fulfillment
 		FROM orders_marketplace_orders o
 		WHERE o.tenant_id=$1 AND o.installation_id=$2
 		  AND o.provider_created_at IS NOT NULL
@@ -222,7 +226,11 @@ func (r *OrderReadRepository) GetOrder(ctx context.Context, installationID, prov
 		       o.provider_created_at, o.provider_closed_at, o.provider_updated_at,
 		       CASE WHEN EXISTS (SELECT 1 FROM orders_sankhya_linkage_events e WHERE e.tenant_id=$1 AND e.installation_id=$2 AND e.provider_order_id=o.provider_order_id AND e.evidence_state = 'exact') THEN 'linked'::text ELSE NULL::text END,
 		       (SELECT SUM(COALESCE(p.total_paid_amount,p.transaction_amount)) FROM orders_marketplace_order_payments p WHERE p.tenant_id=$1 AND p.installation_id=$2 AND p.provider_order_id=o.provider_order_id),
-		       o.shipping_id, o.tags_json, o.faturado_at, o.buyer_nickname
+		       o.shipping_id, o.tags_json, o.faturado_at, o.buyer_nickname,
+		       o.currency,
+		       (SELECT s.logistic_type
+		          FROM order_shipments s
+		         WHERE s.tenant_id=$1 AND s.provider=o.provider_code AND s.provider_shipment_id=o.provider_shipment_id) AS fulfillment
 		FROM orders_marketplace_orders o
 		WHERE o.tenant_id=$1 AND o.installation_id=$2 AND o.provider_order_id=$3
 	`, r.tenantID, strings.TrimSpace(installationID), strings.TrimSpace(providerOrderID))
@@ -251,10 +259,14 @@ func scanReadModel(scanner interface{ Scan(...any) error }) (ordersdomain.OrderR
 	var faturado pgtype.Timestamptz
 	var buyerNickname pgtype.Text
 	var providerStatusDetail pgtype.Text
-	err := scanner.Scan(&model.ProviderOrderID, &model.ProviderCode, &model.Status, &providerStatusDetail, &created, &closed, &updated, &nf, &total, &shippingID, &tagsJSON, &faturado, &buyerNickname)
+	var currency pgtype.Text
+	var fulfillment pgtype.Text
+	err := scanner.Scan(&model.ProviderOrderID, &model.ProviderCode, &model.Status, &providerStatusDetail, &created, &closed, &updated, &nf, &total, &shippingID, &tagsJSON, &faturado, &buyerNickname, &currency, &fulfillment)
 	if err != nil {
 		return model, err
 	}
+	model.Currency = scanText(currency)
+	model.Fulfillment = scanText(fulfillment)
 	// provider_status_detail (0027: text NOT NULL DEFAULT '') can now hold a
 	// genuine NULL — domain.MarketplaceOrder's write side stores nil for an
 	// absent value instead of '' (see order.go doc comment). Scanning
@@ -652,7 +664,8 @@ func (r *OrderRepository) upsertOrder(ctx context.Context, tx pgx.Tx, order orde
 			pack_id, provider_shipment_id, bucket, date_last_updated_ml,
 			buyer_name, buyer_doc_type, buyer_doc_number,
 			buyer_address_street, buyer_address_number, buyer_address_city,
-			buyer_address_state_code, buyer_address_zip, buyer_address_country
+			buyer_address_state_code, buyer_address_zip, buyer_address_country,
+			currency
 		) VALUES (
 			$1, $2, $3, $4, $5, $6,
 			$7, $8, $9, $10,
@@ -661,7 +674,8 @@ func (r *OrderRepository) upsertOrder(ctx context.Context, tx pgx.Tx, order orde
 			$18, $19, $20, $21,
 			$22, $23, $24,
 			$25, $26, $27,
-			$28, $29, $30
+			$28, $29, $30,
+			$31
 		)
 		ON CONFLICT (tenant_id, installation_id, provider_order_id) DO UPDATE SET
 			provider_code = EXCLUDED.provider_code,
@@ -697,6 +711,9 @@ func (r *OrderRepository) upsertOrder(ctx context.Context, tx pgx.Tx, order orde
 			buyer_address_state_code = COALESCE(EXCLUDED.buyer_address_state_code, orders_marketplace_orders.buyer_address_state_code),
 			buyer_address_zip = COALESCE(EXCLUDED.buyer_address_zip, orders_marketplace_orders.buyer_address_zip),
 			buyer_address_country = COALESCE(EXCLUDED.buyer_address_country, orders_marketplace_orders.buyer_address_country),
+			-- currency follows the same never-erase-with-absent-value rule: a snapshot that
+			-- omits currency_id must not blank out a value learned from an earlier fetch.
+			currency = COALESCE(EXCLUDED.currency, orders_marketplace_orders.currency),
 			updated_at = EXCLUDED.updated_at
 		WHERE orders_marketplace_orders.provider_updated_at IS NULL
 		   OR (
@@ -710,7 +727,8 @@ func (r *OrderRepository) upsertOrder(ctx context.Context, tx pgx.Tx, order orde
 		order.PackID, order.ProviderShipmentID, string(order.Bucket), nullableTime(order.DateLastUpdatedML),
 		order.BuyerName, order.BuyerDocType, order.BuyerDocNumber,
 		order.BuyerAddressStreet, order.BuyerAddressNumber, order.BuyerAddressCity,
-		order.BuyerAddressStateCode, order.BuyerAddressZip, order.BuyerAddressCountry)
+		order.BuyerAddressStateCode, order.BuyerAddressZip, order.BuyerAddressCountry,
+		order.Currency)
 	if err != nil {
 		return false, err
 	}

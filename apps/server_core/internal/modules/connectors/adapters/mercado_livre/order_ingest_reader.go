@@ -42,8 +42,9 @@ type mlIngestOrderResponse struct {
 	// code are ever consumed (see cancellationDetail below); description is ML's own UI
 	// copy and changes without notice, so it is never read into our value (ADR-C4).
 	CancelDetail *mlIngestOrderCancelDetail `json:"cancel_detail"`
-	// CurrencyID feeds orders.currency (Task 5 connects the domain/repo column — this DTO
-	// change only stops the value from being silently discarded by encoding/json).
+	// CurrencyID feeds orders.currency, via domain.OrderDetail.CurrencyID (mapOrderDetail
+	// below) -> domain.MarketplaceOrder.Currency (ingest_service.go) -> the currency column
+	// (migration 0096).
 	CurrencyID string `json:"currency_id"`
 }
 
@@ -219,6 +220,7 @@ func mapOrderDetail(order mlIngestOrderResponse, rawOrder json.RawMessage, fetch
 		FetchedAt:            fetchedAt,
 		CancellationDetail:   cancellationDetail(order.CancelDetail),
 		Tags:                 trimStrings(order.Tags),
+		CurrencyID:           strings.TrimSpace(order.CurrencyID),
 		RawOrder:             rawOrder,
 	}
 	if packID := normalizeAnyID(order.PackID); packID != "" {

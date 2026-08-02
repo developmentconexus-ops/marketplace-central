@@ -93,6 +93,14 @@ type MarketplaceOrder struct {
 	BuyerAddressStateCode *string `json:"buyer_address_state_code,omitempty"`
 	BuyerAddressZip       *string `json:"buyer_address_zip,omitempty"`
 	BuyerAddressCountry   *string `json:"buyer_address_country,omitempty"`
+
+	// Currency is the provider's order-level currency (e.g. "BRL"), sourced from
+	// connectorsdomain.OrderDetail.CurrencyID (ingest_service.go's trimmedOrNil). nil means the
+	// provider omitted the field or this order predates the producer (migration 0096) — never
+	// defaulted to "BRL" by convenience (ADR-17). Fulfillment is NOT a column here: it is
+	// derived read-side from order_shipments.logistic_type, so storing a copy would create a
+	// second place for the same fact.
+	Currency *string `json:"currency,omitempty"`
 }
 
 type MarketplaceOrderItem struct {

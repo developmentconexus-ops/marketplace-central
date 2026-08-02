@@ -11,6 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	ordersdomain "marketplace-central/apps/server_core/internal/modules/orders/domain"
+	"marketplace-central/apps/server_core/internal/modules/orders/ports"
 	testpostgres "marketplace-central/apps/server_core/internal/testsupport/postgres"
 )
 
@@ -282,5 +283,103 @@ func TestOrderRepositoryIngestOrderRollsBackWholeTransactionWhenShipmentWriteFai
 	}
 	if got := countShipmentRows(t, ctx, repo, shipID); got != 0 {
 		t.Fatalf("order_shipments rows after failed ingest = %d, want 0 (nothing committed)", got)
+	}
+}
+
+// TestReadModelExposesCurrencyAndFulfillment is Task 5's red/green test (P2 slice):
+// currency and fulfillment were contract fields on ordersdomain.OrderReadModel with zero
+// producer — null on every order, not because storage was empty but because nothing ever
+// wrote them. currency now has a real column (migration 0096) fed by the order's own
+// provider currency_id. fulfillment has NO column of its own on orders_marketplace_orders —
+// it is derived read-side from order_shipments.logistic_type (Task 4's producer), so the
+// same fact is never stored twice. Both read-model projections (ListOrders and GetOrder)
+// must agree, since scanReadModel is shared between them — this test exercises both.
+func TestReadModelExposesCurrencyAndFulfillment(t *testing.T) {
+	ctx := context.Background()
+	repo, tenantID, installationID, cleanup := newIngestRepositoryForTest(t, ctx)
+	defer cleanup()
+	readRepo := NewOrderReadRepository(repo.pool, tenantID)
+
+	brl := "BRL"
+	fulfillmentType := "fulfillment"
+	dropOffType := "drop_off"
+	// ListOrders (unlike GetOrder) filters on provider_created_at IS NOT NULL —
+	// ingestFixtureOrder leaves it nil, so both fixtures set it explicitly here to stay
+	// visible to the ListOrders projection this test also exercises.
+	providerCreatedAt := time.Date(2026, 7, 30, 12, 0, 0, 0, time.UTC)
+
+	fullShipID := "ship-full-" + installationID
+	fullOrderID := installationID + "-full"
+	full := ingestFixtureOrder(installationID, fullOrderID, ordersdomain.BucketEnviado, &fullShipID)
+	full.Currency = &brl
+	full.ProviderCreatedAt = &providerCreatedAt
+	fullShipment := ingestFixtureShipment(fullOrderID, fullShipID, full.FetchedAt, "BRL")
+	fullShipment.LogisticType = &fulfillmentType
+	if err := repo.IngestOrder(ctx, full, &fullShipment); err != nil {
+		t.Fatalf("IngestOrder(full) error = %v", err)
+	}
+
+	dropShipID := "ship-drop-" + installationID
+	dropOrderID := installationID + "-drop"
+	drop := ingestFixtureOrder(installationID, dropOrderID, ordersdomain.BucketEnviado, &dropShipID)
+	drop.Currency = &brl
+	drop.ProviderCreatedAt = &providerCreatedAt
+	dropShipment := ingestFixtureShipment(dropOrderID, dropShipID, drop.FetchedAt, "BRL")
+	dropShipment.LogisticType = &dropOffType
+	if err := repo.IngestOrder(ctx, drop, &dropShipment); err != nil {
+		t.Fatalf("IngestOrder(drop) error = %v", err)
+	}
+
+	// GetOrder projection.
+	gotFull, err := readRepo.GetOrder(ctx, installationID, fullOrderID)
+	if err != nil {
+		t.Fatalf("GetOrder(full) error = %v", err)
+	}
+	if gotFull.Currency == nil || *gotFull.Currency != "BRL" {
+		t.Fatalf("GetOrder Currency = %v, want BRL — the field continues without a producer", gotFull.Currency)
+	}
+	if gotFull.Fulfillment == nil || *gotFull.Fulfillment != "fulfillment" {
+		t.Fatalf("GetOrder Fulfillment = %v, want fulfillment", gotFull.Fulfillment)
+	}
+
+	// A non-fulfillment shipment modality must not become "fulfillment" (lazy always-nil-
+	// unless-fulfillment implementation) and must not become nil either: drop_off is a known
+	// fact, not an absence of one.
+	gotDrop, err := readRepo.GetOrder(ctx, installationID, dropOrderID)
+	if err != nil {
+		t.Fatalf("GetOrder(drop) error = %v", err)
+	}
+	if gotDrop.Currency == nil || *gotDrop.Currency != "BRL" {
+		t.Fatalf("GetOrder(drop) Currency = %v, want BRL", gotDrop.Currency)
+	}
+	if gotDrop.Fulfillment == nil || *gotDrop.Fulfillment != "drop_off" {
+		t.Fatalf("GetOrder Fulfillment of drop_off order = %v, want drop_off", gotDrop.Fulfillment)
+	}
+
+	// ListOrders projection — same two facts, different query, same scanReadModel.
+	page, err := readRepo.ListOrders(ctx, ports.OrderListQuery{InstallationID: installationID, Limit: 10})
+	if err != nil {
+		t.Fatalf("ListOrders error = %v", err)
+	}
+	byOrderID := make(map[string]ordersdomain.OrderReadModel, len(page.Items))
+	for _, item := range page.Items {
+		byOrderID[item.ProviderOrderID] = item
+	}
+	listFull, ok := byOrderID[fullOrderID]
+	if !ok {
+		t.Fatalf("ListOrders did not return %q", fullOrderID)
+	}
+	if listFull.Currency == nil || *listFull.Currency != "BRL" {
+		t.Fatalf("ListOrders Currency = %v, want BRL", listFull.Currency)
+	}
+	if listFull.Fulfillment == nil || *listFull.Fulfillment != "fulfillment" {
+		t.Fatalf("ListOrders Fulfillment = %v, want fulfillment", listFull.Fulfillment)
+	}
+	listDrop, ok := byOrderID[dropOrderID]
+	if !ok {
+		t.Fatalf("ListOrders did not return %q", dropOrderID)
+	}
+	if listDrop.Fulfillment == nil || *listDrop.Fulfillment != "drop_off" {
+		t.Fatalf("ListOrders Fulfillment of drop_off order = %v, want drop_off", listDrop.Fulfillment)
 	}
 }
