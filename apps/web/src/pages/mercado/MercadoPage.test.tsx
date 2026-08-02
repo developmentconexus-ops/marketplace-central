@@ -28,16 +28,14 @@ const listing9001: ListingReadModel = {
   provider_listing_id: "MLB-9001",
   variation_id: null,
   title: "Kit Parafuso M8 Premium",
-  listing_type: null,
+  listing_type: { code: "gold_special", label: "Clássico" },
   status: "active",
   link: { state: "resolved", product_id: "90001", seller_sku: null },
   price: { amount: "54.90", currency: "BRL" },
   published_quantity: 10,
   sync_state: "synced",
   sync_error: null,
-  quality_score: null,
   pending_issue: null,
-  sales_30d: 63,
   cost: { amount: "40.00", currency: "BRL" },
   below_margin_worst_case: null,
   icms_worst_case_by_uf: null,
@@ -157,7 +155,9 @@ describe("MercadoPage", () => {
     expect(within(row).getByText("R$ 47,50")).toBeInTheDocument(); // MENOR CONC.
     expect(within(row).getByText("R$ 50,20")).toBeInTheDocument(); // MEDIANA
     expect(within(row).getByText("9º/14")).toBeInTheDocument(); // POSIÇÃO
-    expect(within(row).getByText("63")).toBeInTheDocument(); // VENDAS 30D
+    // VENDAS 30D column dropped: sales_30d has no producer and left the
+    // contract in Task 8 (ADR-C3) — ADR-C1 hides the column, not "—".
+    expect(within(row).queryByText("63")).not.toBeInTheDocument();
     // MARGEM ATUAL / SE IGUALAR MENOR / SUGESTÃO have no backing field → honest dash (ADR-17)
     expect(within(row).getAllByText("—").length).toBeGreaterThanOrEqual(3);
     // "Aplicar" writes to ML and stays inert (D-57); "Simular" only navigates,

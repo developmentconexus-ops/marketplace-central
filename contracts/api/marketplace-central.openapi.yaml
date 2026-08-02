@@ -3587,7 +3587,7 @@ components:
 
     ListingReadModel:
       type: object
-      required: [listing_id, installation_id, provider, provider_listing_id, variation_id, title, listing_type, status, link, price, published_quantity, sync_state, sync_error, quality_score, pending_issue, sales_30d, cost, below_margin_worst_case, icms_worst_case_by_uf, fetched_at]
+      required: [listing_id, installation_id, provider, provider_listing_id, variation_id, title, listing_type, status, link, price, published_quantity, sync_state, sync_error, pending_issue, cost, below_margin_worst_case, icms_worst_case_by_uf, fetched_at]
       properties:
         listing_id:
           type: string
@@ -3606,7 +3606,6 @@ components:
         listing_type:
           allOf:
             - $ref: '#/components/schemas/ListingReadType'
-          nullable: true
         status:
           type: string
           enum: [active, paused, closed, unknown, under_review, inactive, payment_required, not_yet_active]
@@ -3615,10 +3614,8 @@ components:
         price:
           allOf:
             - $ref: '#/components/schemas/ListingReadMoney'
-          nullable: true
         published_quantity:
           type: integer
-          nullable: true
         sync_state:
           type: string
           enum: [synced, error, stale, queued, syncing, paused_sync]
@@ -3626,15 +3623,14 @@ components:
           allOf:
             - $ref: '#/components/schemas/ListingReadSyncError'
           nullable: true
-        quality_score:
-          type: integer
-          nullable: true
+        # quality_score e sales_30d saíram do contrato: selo PLANEJADO (ADR-C3).
+        # quality_score tem fonte confirmada (GET /item/{id}/performance) e dono no
+        # plano P4. sales_30d é DERIVADO de pedidos por janela — a API do provider
+        # não tem endpoint de vendas por período. Campo não implementado não fica
+        # nulável para sempre: sai do contrato até ter produtor.
         pending_issue:
           allOf:
             - $ref: '#/components/schemas/ListingReadPendingIssue'
-          nullable: true
-        sales_30d:
-          type: integer
           nullable: true
         cost:
           allOf:

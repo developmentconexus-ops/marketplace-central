@@ -28,9 +28,7 @@ const listing: ListingReadModel = {
   published_quantity: 7,
   sync_state: "synced",
   sync_error: null,
-  quality_score: 92,
   pending_issue: { kind: "stale", message_pt: "Atualização pendente" },
-  sales_30d: 12,
   cost: { amount: "70.00", currency: "BRL" },
   below_margin_worst_case: true,
   icms_worst_case_by_uf: null,
@@ -74,11 +72,11 @@ describe("AnunciosTable", () => {
     expect(caption.textContent).toMatch(/^Anúncios, dados de \d{2}:\d{2}:\d{2}$/);
   });
 
-  it("renders the ratified 9-column header, no dropped columns", () => {
+  it("renders the ratified 8-column header (QUAL. dropped, no producer per ADR-C1/Task 8)", () => {
     renderTable(<AnunciosTable items={[listing]} {...tableSelectionProps} />);
 
     const headers = screen.getAllByRole("columnheader").map((th) => th.textContent);
-    expect(headers).toEqual(["", "MLB", "TÍTULO", "PRODUTO", "PREÇO", "EST.", "SYNC", "QUAL.", "PENDÊNCIA"]);
+    expect(headers).toEqual(["", "MLB", "TÍTULO", "PRODUTO", "PREÇO", "EST.", "SYNC", "PENDÊNCIA"]);
     expect(screen.queryByText("Vs. mercado")).not.toBeInTheDocument();
     expect(screen.queryByText("Modalidade")).not.toBeInTheDocument();
     expect(screen.queryByText("Vendas 30d")).not.toBeInTheDocument();
@@ -94,21 +92,18 @@ describe("AnunciosTable", () => {
     expect(screen.getByText("R$ 129,90")).toBeInTheDocument();
     expect(screen.getByText("7")).toBeInTheDocument();
     expect(screen.getByText("sincronizado")).toBeInTheDocument();
-    // quality_score is an int 0–100 — 92 must render "92%", never "9200%".
-    expect(screen.getByText("92%")).toBeInTheDocument();
-    expect(screen.queryByText("9200%")).not.toBeInTheDocument();
     expect(screen.getByTitle("Atualização pendente")).toHaveTextContent("Atualização pendente");
   });
 
-  it("renders honest unknowns for nullable values, never a fabricated 0", () => {
+  it("renders an honest empty pendência cell, never a fabricated 0", () => {
+    // price/published_quantity are non-nullable in the contract since Task 8
+    // (ADR-C3) — TS now rejects a null listing here at compile time. The one
+    // remaining optional field this row renders is pending_issue.
     renderTable(
       <AnunciosTable
         items={[
           {
             ...listing,
-            price: null,
-            published_quantity: null,
-            quality_score: null,
             pending_issue: null,
             link: { state: "unresolved", product_id: null, seller_sku: null },
           },
@@ -117,9 +112,6 @@ describe("AnunciosTable", () => {
       />,
     );
 
-    // price (—), EST (—), QUAL (—) = 3 honest unknowns. Pendência null is an
-    // honest EMPTY cell (no pending issue), not an UnknownValue "—".
-    expect(screen.getAllByText("—")).toHaveLength(3);
     expect(screen.queryByText("0")).not.toBeInTheDocument();
     expect(screen.queryByText("0%")).not.toBeInTheDocument();
     expect(screen.queryByText("R$ 0,00")).not.toBeInTheDocument();

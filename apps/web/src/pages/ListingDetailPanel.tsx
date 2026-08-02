@@ -286,7 +286,6 @@ function DetailBody({ detail }: { detail: ListingDetail }) {
           <InfoCard label="Preço">{formatMoney(detail.price)}</InfoCard>
           <InfoCard label="Est. publicado">{renderFactValue(detail.published_quantity)}</InfoCard>
           <InfoCard label="Margem est.">{renderMargin(detail)}</InfoCard>
-          <InfoCard label="Qualidade">{detail.quality_score === null ? <UnknownValue /> : `${detail.quality_score}%`}</InfoCard>
         </div>
       </section>
 

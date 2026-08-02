@@ -94,7 +94,7 @@ function csvEscape(value: string): string {
 // what the table already holds (no new fetch, no ML write). Columns mirror the
 // table's own columns; unknown values are left blank rather than fabricated.
 function buildListingsCsv(items: ListingReadModel[]): string {
-  const header = ["MLB", "Título", "Produto", "Preço", "Estoque", "Sync", "Qualidade", "Pendência"];
+  const header = ["MLB", "Título", "Produto", "Preço", "Estoque", "Sync", "Pendência"];
   const rows = items.map((item) => {
     const produto =
       item.link.product_id ??
@@ -106,7 +106,6 @@ function buildListingsCsv(items: ListingReadModel[]): string {
       item.price?.amount ?? "",
       item.published_quantity ?? "",
       syncLabels[item.sync_state] ?? item.sync_state,
-      item.quality_score ?? "",
       item.pending_issue?.message_pt ?? "",
     ]
       .map((cell) => csvEscape(String(cell)))

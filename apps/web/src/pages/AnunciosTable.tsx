@@ -87,8 +87,7 @@ function formatMarketDeltaPct(signal: ListingMarketSignal): string | null {
 // signal_status (optional field) is treated as the honest absent state.
 // NUNCA dupla sublinha na célula: exactly one of {chip, freshness link, plain value}.
 function renderPriceCell(item: ListingReadModel) {
-  const formattedPrice = item.price === null ? null : formatMoney(item.price.amount, item.price.currency);
-  const priceValue = formattedPrice === null ? <UnknownValue /> : formattedPrice;
+  const priceValue = formatMoney(item.price.amount, item.price.currency) ?? <UnknownValue />;
   const status = item.signal_status ?? "NO_PRICE_EVIDENCE";
 
   if (status === "SEM_VINCULO") {
@@ -129,13 +128,6 @@ function renderPriceCell(item: ListingReadModel) {
   // NO_PRICE_EVIDENCE (or OK/STALE without a usable delta): honest absent —
   // show the price value only, never 0 and never a fabricated %.
   return <span className="font-mono tabular-nums">{priceValue}</span>;
-}
-
-function formatQuality(qualityScore: number | null) {
-  // quality_score is an integer 0–100 at the source (0036_listings.sql CHECK
-  // BETWEEN 0 AND 100; Go QualityScore *int) — render it directly, never ×100.
-  if (qualityScore === null) return <UnknownValue />;
-  return `${qualityScore}%`;
 }
 
 // A group's stable key (matches the group-header row key). product_id is the
@@ -204,11 +196,8 @@ export function AnunciosTable({ items, groups, asOf, selectedIds, onToggle, onTo
         </td>
         <td className="px-3 py-3">{renderProductCell(item)}</td>
         <td className="px-3 py-3" data-testid="preco-cell">{renderPriceCell(item)}</td>
-        <td className="px-3 py-3 font-mono tabular-nums">
-          {item.published_quantity === null ? <UnknownValue /> : item.published_quantity}
-        </td>
+        <td className="px-3 py-3 font-mono tabular-nums">{item.published_quantity}</td>
         <td className="px-3 py-3">{renderSyncPill(item.sync_state)}</td>
-        <td className="px-3 py-3 font-mono tabular-nums text-xs">{formatQuality(item.quality_score)}</td>
         <td className="px-3 py-3 text-xs text-faint">
           {item.pending_issue ? (
             <span title={item.pending_issue.message_pt} className="truncate">
@@ -290,7 +279,6 @@ export function AnunciosTable({ items, groups, asOf, selectedIds, onToggle, onTo
             <th className="px-3 py-3" scope="col">PREÇO</th>
             <th className="px-3 py-3" scope="col">EST.</th>
             <th className="px-3 py-3" scope="col">SYNC</th>
-            <th className="px-3 py-3" scope="col">QUAL.</th>
             <th className="px-3 py-3" scope="col">PENDÊNCIA</th>
           </tr>
         </thead>

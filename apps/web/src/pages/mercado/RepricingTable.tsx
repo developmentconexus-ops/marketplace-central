@@ -4,11 +4,12 @@ import type { ListingReadModel } from "@marketplace-central/sdk-runtime";
 import { UnknownValue } from "@marketplace-central/ui";
 import { DASH, formatMoney, formatPosition } from "./mercadoFormatters";
 
-// Reprecificação grid — exact column track + min-width from Mercado.dc.html (min-w 1020):
-// ANÚNCIO | MEU PREÇO | MENOR CONC. | MEDIANA | POSIÇÃO | VENDAS 30D | MARGEM ATUAL |
-// SE IGUALAR MENOR | SUGESTÃO | (action)
+// Reprecificação grid — exact column track + min-width from Mercado.dc.html (min-w 1020),
+// minus VENDAS 30D: sales_30d has no producer (derived from orders-by-window,
+// no provider endpoint) and left the contract in Task 8 (ADR-C3) — ADR-C1
+// says an absent capability hides the column, it doesn't render "—".
 const GRID_COLS =
-  "minmax(170px,1.3fr) 84px 84px 84px 66px 76px 90px 110px minmax(150px,1fr) 120px";
+  "minmax(170px,1.3fr) 84px 84px 84px 66px 90px 110px minmax(150px,1fr) 120px";
 
 const HEAD = [
   "ANÚNCIO",
@@ -16,7 +17,6 @@ const HEAD = [
   "MENOR CONC.",
   "MEDIANA",
   "POSIÇÃO",
-  "VENDAS 30D",
   "MARGEM ATUAL",
   "SE IGUALAR MENOR",
   "SUGESTÃO",
@@ -38,8 +38,8 @@ function MoneyCell({ value, muted = false }: { value: string | null; muted?: boo
 /**
  * The radar's "Reprecificação" tab: one row per OUR listing. Every value is a
  * real ListingReadModel field or its market_signal — MEU PREÇO (price), MENOR
- * CONC. (signal.min_valid), MEDIANA (signal.median), POSIÇÃO (signal.position),
- * VENDAS 30D (sales_30d). MARGEM ATUAL / SE IGUALAR MENOR / SUGESTÃO have no
+ * CONC. (signal.min_valid), MEDIANA (signal.median), POSIÇÃO (signal.position).
+ * MARGEM ATUAL / SE IGUALAR MENOR / SUGESTÃO have no
  * backing field (the margin + repricing engine is M-07-owned), so they render
  * the honest UnknownValue, never a fabricated margin or suggestion (ADR-17).
  * "Aplicar" / "Simular" are inert demo affordances — no live ML write (D-57).
@@ -84,9 +84,6 @@ export function RepricingTable({ rows }: RepricingTableProps): JSX.Element {
                 <MoneyCell value={menor} muted />
                 <MoneyCell value={mediana} muted />
                 <span className={leader ? "font-bold" : ""}>{pos ?? <UnknownValue />}</span>
-                <span className="font-mono text-muted">
-                  {r.sales_30d == null ? <UnknownValue /> : r.sales_30d}
-                </span>
                 {/* MARGEM ATUAL — no field; margin engine is M-07-owned → honest dash (ADR-17). */}
                 <span className="justify-self-start rounded-pill bg-surface-2 px-[9px] py-px text-[11px] font-semibold text-faint">
                   <UnknownValue hint="margem — M-07" />

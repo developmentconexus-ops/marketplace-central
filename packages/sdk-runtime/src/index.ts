@@ -385,16 +385,17 @@ export interface ListingReadModel {
   /** Provider variation id; null when the listing has no variations. */
   variation_id: string | null;
   title: string;
-  listing_type: ListingType | null;
+  listing_type: ListingType;
   status: ListingStatus;
   link: ListingLink;
-  price: ListingMoney | null;
-  published_quantity: number | null;
+  price: ListingMoney;
+  published_quantity: number;
   sync_state: ListingSyncState;
   sync_error: ListingSyncError | null;
-  quality_score: number | null;
+  // quality_score e sales_30d removidos: selo PLANEJADO (ADR-C3). Voltam com
+  // o produtor — quality_score no P4, sales_30d quando houver agregador de
+  // pedidos por janela.
   pending_issue: ListingPendingIssue | null;
-  sales_30d: number | null;
   cost: ListingMoney | null;
   below_margin_worst_case: boolean | null;
   icms_worst_case_by_uf: ListingICMSWorstCase[] | null;

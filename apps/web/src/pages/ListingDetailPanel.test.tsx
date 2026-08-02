@@ -26,9 +26,7 @@ const detail: ListingDetail = {
     message_pt: "O anúncio foi rejeitado pelo provedor.",
     message_provider: "The provider rejected the listing.",
   },
-  quality_score: null,
   pending_issue: null,
-  sales_30d: null,
   cost: null,
   below_margin_worst_case: null,
   icms_worst_case_by_uf: null,
@@ -109,13 +107,13 @@ describe("ListingDetailPanel", () => {
     expect(screen.getByText(detail.sync_error!.message_provider!)).toBeInTheDocument();
   });
 
-  it("renders nullable price, quality, and sales as unknown", async () => {
+  it("renders honest unknowns for remaining nullable facts (price/quality/sales_30d left the contract in Task 8)", async () => {
     getListing.mockResolvedValueOnce(detail);
 
     renderPanel();
 
     await screen.findAllByText("Camiseta azul");
-    expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(3);
+    expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(1);
   });
 
   it("keeps future actions disabled and side-effect free", async () => {
@@ -242,7 +240,7 @@ describe("ListingDetailPanel", () => {
     expect(screen.getByText("Sem evidência de preço de mercado")).toBeInTheDocument();
   });
 
-  it("renders the 2x2 facts grid card labels from the ratified drawer (Preço/Est. publicado/Margem est./Qualidade)", async () => {
+  it("renders the facts grid card labels (Preço/Est. publicado/Margem est.); Qualidade dropped, no producer (ADR-C1/Task 8)", async () => {
     getListing.mockResolvedValueOnce(detail);
 
     renderPanel();
@@ -251,7 +249,7 @@ describe("ListingDetailPanel", () => {
     expect(screen.getByText("Preço")).toBeInTheDocument();
     expect(screen.getByText("Est. publicado")).toBeInTheDocument();
     expect(screen.getByText("Margem est.")).toBeInTheDocument();
-    expect(screen.getByText("Qualidade")).toBeInTheDocument();
+    expect(screen.queryByText("Qualidade")).not.toBeInTheDocument();
   });
 
   it("has no inline-edit affordance in the drawer body", async () => {
