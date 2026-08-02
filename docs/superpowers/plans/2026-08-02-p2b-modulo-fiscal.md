@@ -2630,7 +2630,14 @@ Inclua a contagem medida ao vivo: quantas das 38 ordens saíram com imposto comp
 
 A base de PIS/COFINS passou a descontar o **dinheiro** apurado em vez da soma das alíquotas. As duas formas dão o mesmo número quando `redbase = 0` — o pedido da Bahia continua em 22,05 — e só a primeira continua certa quando não.
 
-**Medição que falta e não bloqueia (M20, a pedir ao especialista):** entre as células que os nossos produtos e destinos reais atingem, quantas têm `REDBASE ≠ 0`? É o que dimensiona quantos pedidos perdem o DIFAL pela regra nova. O plano roda sem a resposta; ela só diz se a pendência atinge 3 pedidos ou 30.
+**M20 despachada — três medições, uma delas pode inverter uma escolha:**
+
+- **M20-A ⚠ decide qual coluna alimenta o DIFAL.** Há contradição nos dados: medimos que a linha da Bahia foi corrigida para **20,5** em 20/07 e que a nota-irmã 895436 reconcilia ao centavo com 20,5, mas o M19 reporta `ALIQINTDEST(BA) = 18` e `ALIQUFDEST(BA) = 20,5`. Ou a leitura de 18 é da linha genérica (outra população — já erramos assim uma vez), ou a coluna que o motor lê não é a que supusemos. O desempate é reconciliação contra o documento: calcular o DIFAL pelas duas colunas e contar qual reproduz o que a `TGFDIN` gravou.
+  **Se `ALIQUFDEST` vencer, a troca é de um campo** — `matrix_reader.go` passa a projetar `aliq_uf_dest` em `AliqIntDestPct`. Ambas já estão espelhadas (T1, T4, T5) exatamente para que isso não custe uma migração. Nenhuma outra task muda.
+- **M20-B dimensiona o D-31:** entre as células que os nossos produtos e destinos reais atingem, quantas têm `REDBASE ≠ 0`? 63% é da **tabela**, não das **vendas**. Diz se a pendência de DIFAL pega 3 pedidos ou 30.
+- **M20-C pode matar o D-31:** qual forma reproduz o DIFAL gravado nas linhas com `REDBASE ≠ 0` — base cheia no destino, mesma redução dos dois lados, ou `PERCREDBASEDEST`. Se uma vencer com folga, o DIFAL deixa de virar pendência nessas células.
+
+Nenhuma das três bloqueia T1–T3 e T5–T16. Só o **valor esperado do teste da Bahia** em T8 depende do A — e ele já é o único ponto do plano onde 20,5 aparece como número.
 
 **Consistência de tipos:** `domain.MatrixLine` (T3) → `mirror.MatrixCell` (T5) → `domain.ICMSRule` (T7) → `ports.ItemTaxes` (T11) → `OrderFiscal` (T13) → `FiscalSection` (T14). `Componente` só existe em `fiscal/domain`; `orders` usa `TaxComponent` própria e o adapter (T11) faz a tradução. `pctOf` é definida em T6 e usada em T8.
 
