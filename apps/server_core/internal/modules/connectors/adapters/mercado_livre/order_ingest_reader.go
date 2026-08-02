@@ -36,6 +36,22 @@ type mlIngestOrderResponse struct {
 	Shipping        mlIngestOrderShipping `json:"shipping"`
 	Tags            []string              `json:"tags"`
 	Buyer           *mlIngestOrderBuyer   `json:"buyer"`
+	// CancelDetail is the REAL source of the cancellation reason. status_detail came back
+	// null in 7/7 measured cancelled orders while cancel_detail was present — it is not
+	// duplicate data, it is the data that was missing (rawkeys/P2). Only requested_by and
+	// code are ever consumed (see cancellationDetail below); description is ML's own UI
+	// copy and changes without notice, so it is never read into our value (ADR-C4).
+	CancelDetail *mlIngestOrderCancelDetail `json:"cancel_detail"`
+	// CurrencyID feeds orders.currency (Task 5 connects the domain/repo column — this DTO
+	// change only stops the value from being silently discarded by encoding/json).
+	CurrencyID string `json:"currency_id"`
+}
+
+type mlIngestOrderCancelDetail struct {
+	Group       string `json:"group"`
+	Code        string `json:"code"`
+	Description string `json:"description"`
+	RequestedBy string `json:"requested_by"`
 }
 
 type mlIngestOrderShipping struct {
@@ -172,6 +188,24 @@ func redactBillingInfo(raw []byte) (json.RawMessage, error) {
 	return json.Marshal(top)
 }
 
+// cancellationDetail derives the canonical "<requested_by>:<code>" form from the order's
+// cancel_detail block (e.g. "buyer:cancel_purchase_by_buyer") — requested_by answers "who
+// cancelled" (buyer/meli/seller), which is the operational question. Returns "" when the
+// order carries no cancel_detail (the common case: cancel_detail only exists on cancelled
+// orders) or when both fields are blank; never falls back to status_detail — that fallback
+// was the P2 bug, not a legitimate substitute.
+func cancellationDetail(cancel *mlIngestOrderCancelDetail) string {
+	if cancel == nil {
+		return ""
+	}
+	requestedBy := strings.TrimSpace(cancel.RequestedBy)
+	code := strings.TrimSpace(cancel.Code)
+	if requestedBy == "" && code == "" {
+		return ""
+	}
+	return requestedBy + ":" + code
+}
+
 func mapOrderDetail(order mlIngestOrderResponse, rawOrder json.RawMessage, fetchedAt time.Time) domain.OrderDetail {
 	detail := domain.OrderDetail{
 		ProviderCode:         "mercado_livre",
@@ -183,7 +217,7 @@ func mapOrderDetail(order mlIngestOrderResponse, rawOrder json.RawMessage, fetch
 		ProviderUpdatedAt:    parseTimePtr(firstNonEmpty(order.LastUpdated, order.DateLastUpdated)),
 		DateLastUpdatedML:    parseTimePtr(order.DateLastUpdated),
 		FetchedAt:            fetchedAt,
-		CancellationDetail:   strings.TrimSpace(order.StatusDetail),
+		CancellationDetail:   cancellationDetail(order.CancelDetail),
 		Tags:                 trimStrings(order.Tags),
 		RawOrder:             rawOrder,
 	}

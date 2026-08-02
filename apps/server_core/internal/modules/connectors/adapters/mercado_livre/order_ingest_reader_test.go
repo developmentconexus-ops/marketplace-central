@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -94,8 +95,12 @@ func TestGetOrderDetailDecodesAllTargetFields(t *testing.T) {
 	if detail.ProviderStatus != "paid" || detail.ProviderStatusDetail != "not_specified" {
 		t.Fatalf("status/detail = %q/%q", detail.ProviderStatus, detail.ProviderStatusDetail)
 	}
-	if detail.CancellationDetail != "not_specified" {
-		t.Fatalf("CancellationDetail = %q, want not_specified (mirrors status_detail)", detail.CancellationDetail)
+	// This fixture's order is "paid", not cancelled, so the payload carries no
+	// cancel_detail block. CancellationDetail must stay empty here — mirroring
+	// status_detail ("not_specified") was the P2 bug this DTO change fixes (rawkeys:
+	// cancel_detail is the real source; status_detail is an unrelated field).
+	if detail.CancellationDetail != "" {
+		t.Fatalf("CancellationDetail = %q, want empty (no cancel_detail in a non-cancelled order)", detail.CancellationDetail)
 	}
 	wantCreated := time.Date(2026, 7, 18, 14, 0, 0, 0, time.UTC)
 	if detail.ProviderCreatedAt == nil || !detail.ProviderCreatedAt.Equal(wantCreated) {
@@ -186,6 +191,33 @@ func TestGetOrderDetailDecodesAllTargetFields(t *testing.T) {
 	// round-trip precision loss) — spot check a decimal sale_fee value.
 	if !strings.Contains(string(detail.RawOrder), "6.25") {
 		t.Fatalf("RawOrder lost order_items content during redaction: %s", detail.RawOrder)
+	}
+}
+
+// TestGetOrderDetailCancelledOrderUsesCancelDetail is the P2 regression: a cancelled order's
+// cancel_detail (never status_detail, which the provider sent null on 7/7 measured cancelled
+// orders) is the source of CancellationDetail, in canonical "<requested_by>:<code>" form.
+// testdata/order_body.json is the real cancelled-order shape (PII redacted) this bug was
+// measured against.
+func TestGetOrderDetailCancelledOrderUsesCancelDetail(t *testing.T) {
+	t.Parallel()
+
+	fixture, err := os.ReadFile("testdata/order_body.json")
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(fixture)
+	}))
+	defer server.Close()
+
+	detail, err := pricingTestAdapter(server.URL, time.Now().UTC()).GetOrderDetail(context.Background(), pricingAccountRef(), "2000012659424976")
+	if err != nil {
+		t.Fatalf("GetOrderDetail() error = %v", err)
+	}
+	if detail.CancellationDetail != "buyer:cancel_purchase_by_buyer" {
+		t.Fatalf("CancellationDetail = %q, want buyer:cancel_purchase_by_buyer", detail.CancellationDetail)
 	}
 }
 
