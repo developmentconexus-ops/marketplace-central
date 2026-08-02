@@ -36,6 +36,15 @@ Leia, nesta ordem:
 | `TGFICM.UFORIG`/`UFDEST` | **NUMBER** (MG=13, BA=5, RJ=19, SP=25) | `internal_read/domain/icms_ceiling.go:4` + medição do especialista |
 | conversão sigla↔número no repo | **não existe** | grep repo-wide |
 | `pricing_calc_profiles` | **0 linhas** | Postgres |
+| tabela de UF do ERP | `TSIUFS`, **30 linhas**, `'EX'` duplicado, sentinela `CODUF=0/'SF'`; 0 órfãos contra `TGFICM` | especialista Sankhya |
+| `GRUPOICMS` nulo, cadastro inteiro | 21.673 de 40.439 (**54%**) — cadastro morto | idem |
+| `GRUPOICMS` nulo, **vendável** (`USOPROD='R' AND ATIVO='S'`, n=10.041) | **65 (0,65%)**; 99 com zero-ou-nulo | idem |
+| `GRUPOICMS` nulo, **caminho e-commerce** (TOP 306/313, 12 meses, 16 produtos) | **0** — cobertura 100% onde precificamos | idem |
+| vendáveis sem linha nenhuma na matriz | **28 de 9.976 (0,28%)**, em 7 grupos: 303, 269, 519, 537, 6, 153, 544 | idem |
+
+> Os 0,28% sem linha vão a desconhecido explícito. Não vale engenharia — vale selo.
+
+**⚠ Uma medição citada na spec §5 NÃO se aplica ao caminho que este plano consulta.** A spec diz que só 3 pares têm `ALIQINTDEST` vazio. Esse número, e o retrato muito pior que veio depois (12 UFs com **zero** `ALIQINTDEST`), foram medidos na linha **genérica** (`TIPRESTRICAO='N', CODRESTRICAO=0`). Este plano consulta a linha **do grupo** (`TIPRESTRICAO2='I', CODRESTRICAO2=GRUPOICMS`), que é outra população. A cobertura real do nosso caminho está sendo re-medida (M3-bis). **Ver §5 — Risco aberto R7.**
 
 **A consequência de "1 item em 100% dos pedidos":** a porta por item **não pode ser provada por dado de produção**. O pedido misto ST/não-ST só existe em fixture. A Tarefa 7 tem um teste obrigatório de pedido com 2 itens de CODTRIB diferentes — sem ele, o redesenho da porta passa vazio e ninguém percebe.
 
@@ -133,26 +142,140 @@ T6 (cálculo puro, não depende de I/O) ─────────────�
                                                        T13 (listings) ─ T14 (detector) ─ T15 (QA)
 ```
 
-T6 é puro e não depende de nada — pode ser feito primeiro se você quiser ver valor cedo. T1 está bloqueada; T2–T6 não dependem dela.
+T6 é puro e não depende de nada — pode ser feito primeiro se você quiser ver valor cedo.
+
+## ⚠ 2.1 Risco aberto R7 — o DIFAL pode não ser calculável a partir do ERP
+
+**Não comece T6 nem T8 sem ler isto.**
+
+O especialista Sankhya mediu, na linha **genérica** de `TGFICM`, que `ALIQINTDEST` está **vazio em 21 das 26 UFs** — doze delas com zero linhas preenchidas. Só DF, ES, GO, SP e TO estão íntegros. Isso **não é a população que este plano consulta** (nós lemos a linha do grupo), e a re-medição no caminho certo está pendente.
+
+Mas ele mediu duas coisas que valem independentemente da população:
+
+1. **Onde as duas colunas existem, elas divergem materialmente:** MA 23×22, MS 18×17, MT 12×17, PR 17×19, ES 17×19,5, RJ 18×20, TO 17×20. Só SP concorda. Trocar `ALIQINTDEST` por `ALIQUFDEST` erra o DIFAL em quase toda UF — o teste de query da T4 existe por isso.
+2. **Nenhuma coluna do banco reproduz a alíquota interna legal.** As notas mostram GO subindo 17→19 em 2024; `TGFICM.ALIQINTDEST` não acompanha, `ALIQUFDEST` diz outra coisa (MA 22 contra nota 23), e o campo customizado `TSIUFS.AD_ALIQINT` está congelado em 17 desde antes da mudança. O ERP acerta a nota por um caminho que **não foi localizado na base**.
+
+**A conclusão do especialista** — *"para piso de preço, use tabela de alíquota interna legal por UF, mantida por você, fora do Sankhya"* — **colide de frente com a spec §2**, que exclui "ERP contra a lei" justamente por ser `pricing_difal_rates` reencarnada. A decisão é do operador e está pendente. **Não resolva por conta própria em nenhuma direção.**
+
+**Se M3-bis mostrar `ALIQINTDEST` povoado nas linhas de grupo:** o plano segue como está.
+**Se mostrar vazio como a genérica:** T6 e T8 continuam válidos para **ICMS e CODTRIB** (que a matriz responde bem), o DIFAL sai selado como desconhecido na maioria das UFs, e a fatia entrega menos do que promete. Isso é mudança de escopo, não detalhe de implementação: mande `ESCALATION`.
+
+**A separação que fica de pé nos dois cenários** — e que o código deve refletir desde já:
+
+> `TGFICM` decide **se incide** (`CODTRIB` 60 vs 0) e nisso é confiável.
+> **Quanto incide** no DIFAL, ela não sabe responder na maioria das UFs.
+
+Hoje as duas perguntas estão coladas na mesma leitura. `ICMSRule` (T2) já as separa por construção — `ChainClosed()` responde a primeira, `DifalKnown()` a segunda. Mantenha essa separação mesmo que M3-bis venha boa.
 
 ---
 
-## ⛔ Task 1: De-para de UF (sigla ↔ código do ERP) — **BLOQUEADA, NÃO EXECUTE**
+## Task 1: De-para de UF (sigla ↔ código do ERP) — **DESBLOQUEADA** (medida 2026-08-02)
 
-**Estado:** aguardando medição no ERP. **Não invente a tabela nem digite os 27 códigos.**
+**Files:**
+- Create: `apps/server_core/internal/modules/internal_read/adapters/oracle/uf_code.go`
+- Test: `apps/server_core/internal/modules/internal_read/adapters/oracle/uf_code_test.go`
 
-**O problema:** `TGFICM.UFDEST` é numérico (BA=5, MG=13, RJ=19, SP=25). `order_shipments.dest_state` é sigla (`"BA"`). Nada no repositório converte. O operador decidiu: **JOIN no SQL, o ERP é dono do de-para** — não digitamos uma tabela de 27 linhas no nosso código, porque dado do ERP digitado por nós é a classe de erro que matou `pricing_difal_rates`.
+**O problema:** `TGFICM.UFDEST` é numérico (BA=5, MG=13, RJ=19, SP=25). `order_shipments.dest_state` é sigla (`"BA"`). Nada no repositório converte. Decisão do operador: **JOIN no SQL, o ERP é dono do de-para** — não digitamos a tabela de UFs no nosso código, porque dado do ERP digitado por nós é a classe de erro que matou `pricing_difal_rates`.
 
-**O que falta:** nome da tabela do Sankhya que guarda o de-para, nome exato da coluna do código e da sigla, e a confirmação por join de que ela cobre 100% dos `UFDEST` distintos que existem em `TGFICM`. Pedido enviado ao especialista Sankhya (sessão `local_1b13789e-9ec5-46fd-ac6f-1630e74564c4`) em 2026-08-02.
+**Medição do especialista Sankhya, 2026-08-02 — leia antes de escrever a query:**
 
-**Critério de aceite, já fechado** (só faltam os literais):
+Tabela: `METALPRD.TSIUFS`. Colunas: `CODUF` NUMBER NOT NULL · `UF` VARCHAR2(2) NOT NULL · `DESCRICAO` VARCHAR2(40) · `CODPAIS` NUMBER. **Não existe coluna de "ativo".**
 
-- `UFCodeResolver.CodeForSigla(ctx, "BA")` devolve `5`; `"MG"` → `13`; `"RJ"` → `19`; `"SP"` → `25`.
-- Sigla desconhecida devolve erro tipado `ErrUFUnknown`, **nunca** um código default. Uma UF que não sabemos traduzir é imposto desconhecido, não imposto zero.
-- O de-para é lido do ERP, não declarado em Go. Se a implementação contiver um `map[string]int64` literal com as siglas, a tarefa está errada.
-- Teste com driver SQL falso (padrão de `batch_reader_test.go:20-26`), incluindo o caso de sigla ausente.
+Integridade referencial contra `TGFICM`: 27 `UFDEST` distintos e 17 `UFORIG` distintos, **zero sem match**. O JOIN é seguro sem defesa.
 
-**Se você chegou aqui e a medição não voltou:** mande `BLOCKED` ao hub e siga para a Tarefa 2. T2–T6 não dependem de T1. Só T8 em diante precisa dela.
+**⚠ A tabela tem 30 linhas, não 27, e a sigla NÃO é única:**
+
+| CODUF | UF | o que é |
+|---|---|---|
+| 0 | `SF` | sentinela `<sem UF>`, `CODPAIS=0` |
+| 1–27 | — | as UFs brasileiras (não existe `CODUF=28`) |
+| 29 | `EX` | CHINA, `CODPAIS=86` |
+| 30 | `EX` | COLON, `CODPAIS=507` |
+
+30 linhas, **29 siglas distintas** — `'EX'` aparece duas vezes. Zero siglas nulas.
+
+**A armadilha:** `WHERE UF = 'EX'` devolve **2 linhas**. Um lookup sigla→código sem filtro faz fanout em silêncio — não estoura, escolhe. Filtre por `CODPAIS = 55`; aí são 27 linhas, 27 siglas, bijeção.
+
+- [ ] **Step 1: Escreva o teste que falha**
+
+```go
+func TestUFCodeResolverTranslatesMeasuredSiglas(t *testing.T) {
+	r := newUFResolverWithRows(t, tsiufsFixture)
+	for sigla, want := range map[string]int64{"BA": 5, "MG": 13, "RJ": 19, "SP": 25} {
+		got, err := r.CodeForSigla(context.Background(), sigla)
+		if err != nil {
+			t.Fatalf("%s: erro inesperado: %v", sigla, err)
+		}
+		if got != want {
+			t.Fatalf("%s deveria ser %d, veio %d", sigla, want, got)
+		}
+	}
+}
+
+func TestUFCodeResolverRejectsUnknownSiglaInsteadOfDefaulting(t *testing.T) {
+	r := newUFResolverWithRows(t, tsiufsFixture)
+	if _, err := r.CodeForSigla(context.Background(), "XX"); !errors.Is(err, ErrUFUnknown) {
+		t.Fatalf("sigla desconhecida tem que dar ErrUFUnknown, nunca um codigo default: %v", err)
+	}
+}
+
+// TSIUFS tem 'EX' DUAS vezes (29=CHINA, 30=COLON) e a sentinela CODUF=0/'SF'.
+// Sem o filtro CODPAIS=55 o lookup por sigla escolhe uma das duas em silencio.
+func TestUFCodeResolverFiltersToBrazilSoSiglaIsUnique(t *testing.T) {
+	q := buildUFCodeQuery()
+	if !strings.Contains(q, "CODPAIS") {
+		t.Fatalf("sem filtro de pais, 'EX' casa 2 linhas e o lookup faz fanout:\n%s", q)
+	}
+	r := newUFResolverWithRows(t, tsiufsFixtureIncludingEXAndSF)
+	if _, err := r.CodeForSigla(context.Background(), "EX"); !errors.Is(err, ErrUFUnknown) {
+		t.Fatalf("'EX' e pais estrangeiro, nao UF brasileira — nao pode resolver")
+	}
+	if _, err := r.CodeForSigla(context.Background(), "SF"); !errors.Is(err, ErrUFUnknown) {
+		t.Fatalf("'SF' e sentinela <sem UF>, nao pode resolver para 0")
+	}
+}
+```
+
+> **Controle negativo obrigatório:** remova o `WHERE CODPAIS = 55` da query e rode. `TestUFCodeResolverFiltersToBrazilSoSiglaIsUnique` **tem que** ficar vermelho nas três asserções. Se ficar verde sem o filtro, o fixture não tem as linhas `EX`/`SF` e o teste não está medindo nada — conserte o fixture antes de seguir.
+
+- [ ] **Step 2: Rode e confirme o vermelho**
+
+```bash
+cd apps/server_core && GOCACHE=/c/Users/leandro.theodoro/Documents/marketplace-central/apps/server_core/.gocache go test ./internal/modules/internal_read/adapters/oracle/ -run TestUFCodeResolver -v
+```
+Esperado: `undefined: ErrUFUnknown`.
+
+- [ ] **Step 3: Implemente**
+
+```go
+package oracle
+
+// ErrUFUnknown e a sigla que nao traduz para codigo do ERP. Uma UF que nao
+// sabemos traduzir e imposto DESCONHECIDO, nunca imposto zero e nunca um
+// codigo default (ADR-17).
+var ErrUFUnknown = errors.New("internal_read: sigla de UF desconhecida")
+
+// buildUFCodeQuery le o de-para do proprio ERP. Nao existe map literal de UFs
+// neste repositorio: dado do ERP digitado por nos e a classe de erro que matou
+// pricing_difal_rates.
+//
+// CODPAIS = 55 nao e detalhe: TSIUFS tem 30 linhas, e a sigla 'EX' aparece
+// DUAS vezes (CODUF 29 = CHINA, 30 = COLON) alem da sentinela CODUF 0 / 'SF'
+// (<sem UF>). Sem o filtro, um lookup por sigla casa 2 linhas e escolhe uma
+// sem avisar. Com ele: 27 linhas, 27 siglas, bijecao.
+func buildUFCodeQuery() string {
+	return `SELECT UF, CODUF FROM METALPRD.TSIUFS WHERE CODPAIS = 55`
+}
+```
+
+O resolver carrega o mapa inteiro numa leitura (27 linhas) e serve de memória, com a mesma invalidação por revisão da Tarefa 5 — o de-para muda com frequência ainda menor que a matriz.
+
+- [ ] **Step 4: verde** · **Step 5: commit**
+
+```bash
+git add apps/server_core/internal/modules/internal_read/adapters/oracle/uf_code.go apps/server_core/internal/modules/internal_read/adapters/oracle/uf_code_test.go
+git commit -m "feat(internal_read): de-para de UF lido de TSIUFS, filtrado a CODPAIS=55"
+```
 
 ---
 
