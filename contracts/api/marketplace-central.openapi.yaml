@@ -5603,11 +5603,9 @@ components:
         - provider_order_id
         - provider_code
         - status
-        - provider_status_detail
         - buyer_nickname
         - total
         - currency
-        - fulfillment
         - nf_state
         - created_at
         - provider_created_at
@@ -5627,6 +5625,7 @@ components:
           type: string
         provider_status_detail:
           type: string
+          nullable: true
         buyer_nickname:
           type: string
           nullable: true
@@ -5636,10 +5635,17 @@ components:
           nullable: true
         currency:
           type: string
-          nullable: true
         fulfillment:
           type: string
           nullable: true
+        cancellation_detail:
+          type: string
+          nullable: true
+          description: >-
+            Cancellation reason code as `<requested_by>:<code>` (e.g.
+            `buyer:buyer_cancel_express`). Present only on cancelled orders;
+            null otherwise. Stable domain code — translate to a human label
+            at the presentation layer only.
         nf_state:
           type: string
           nullable: true
