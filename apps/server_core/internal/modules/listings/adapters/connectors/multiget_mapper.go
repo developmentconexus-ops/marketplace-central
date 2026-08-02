@@ -141,6 +141,8 @@ func MapMultigetItemToListing(tenantID, installationID, provider string, item me
 		// ML mantém distinta de available_quantity: reposição sobe a
 		// disponível sem tocar a inicial.
 		PublishedQuantity: item.InitialQuantity,
+		Raw:               item.Raw,
+		RawTruncated:      item.RawTruncated,
 	})
 	if err != nil {
 		return listingsdomain.Listing{}, fmt.Errorf("item %s: %w", providerListingID, err)

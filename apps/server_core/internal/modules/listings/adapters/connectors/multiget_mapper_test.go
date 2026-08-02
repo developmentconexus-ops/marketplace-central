@@ -1,6 +1,7 @@
 package connectors
 
 import (
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -326,5 +327,28 @@ func TestMapMultigetItemToListingKeepsAbsentPriceNil(t *testing.T) {
 	}
 	if row.PublishedQuantity != nil {
 		t.Fatalf("PublishedQuantity = %v, want nil", row.PublishedQuantity)
+	}
+}
+
+func TestMapMultigetItemToListingCarriesRaw(t *testing.T) {
+	fetchedAt := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
+	raw := json.RawMessage(`{"id":"MLB4834219830","price":729.9}`)
+
+	row, err := MapMultigetItemToListing("t1", "inst-1", "mercado_livre", mercadolivre.ItemMultigetDTO{
+		ProviderItemID: "MLB4834219830",
+		Title:          "Produto de exemplo",
+		Status:         "active",
+		Raw:            raw,
+		RawTruncated:   true,
+	}, fetchedAt)
+	if err != nil {
+		t.Fatalf("MapMultigetItemToListing() error = %v", err)
+	}
+
+	if string(row.Raw) != string(raw) {
+		t.Fatalf("Raw = %s, want %s", row.Raw, raw)
+	}
+	if !row.RawTruncated {
+		t.Fatal("RawTruncated = false, want true")
 	}
 }

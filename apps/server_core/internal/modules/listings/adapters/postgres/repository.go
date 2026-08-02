@@ -427,11 +427,11 @@ func (r *Repository) UpsertPulledRows(ctx context.Context, installationID string
 				sync_error, quality_score, sales_30d, fetched_at,
 				sold_quantity, category_id, condition, permalink, thumbnail, date_created_ml, tags,
 				catalog_product_id, shipping_mode, free_shipping, logistic_type, available_quantity,
-				last_seen_at, absent_since, created_at, updated_at)
+				last_seen_at, absent_since, raw, raw_truncated, created_at, updated_at)
 			SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,
 				$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,
-				$29,NULL,$30,$31
-			WHERE $1 = $32 AND $2 = $33
+				$29,NULL,$30,$31,$32,$33
+			WHERE $1 = $34 AND $2 = $35
 			ON CONFLICT (tenant_id, installation_id, provider_listing_id, variation_id) DO UPDATE SET
 				provider=EXCLUDED.provider, title=EXCLUDED.title, listing_type_code=EXCLUDED.listing_type_code,
 				status=EXCLUDED.status, price_amount=EXCLUDED.price_amount, price_currency=EXCLUDED.price_currency,
@@ -449,7 +449,7 @@ func (r *Repository) UpsertPulledRows(ctx context.Context, installationID string
 			syncError, row.QualityScore, row.Sales30D, row.FetchedAt,
 			row.SoldQuantity, row.CategoryID, row.Condition, row.Permalink, row.Thumbnail, row.DateCreatedML, row.Tags,
 			row.CatalogProductID, row.ShippingMode, row.FreeShipping, row.LogisticType, row.AvailableQuantity,
-			seenAt, row.CreatedAt.UTC(), seenAt,
+			seenAt, rawOrNil(row.Raw), row.RawTruncated, row.CreatedAt.UTC(), seenAt,
 			r.tenantID, installationID)
 		if err != nil {
 			return fmt.Errorf("upsert listing %s/%s: %w", row.Key.ProviderListingID, row.Key.VariationID, err)
@@ -554,6 +554,16 @@ func upsertListingVariation(ctx context.Context, tx pgx.Tx, tenantID, installati
 		return fmt.Errorf("upsert listing variation %s/%s: %w", providerListingID, v.VariationID, err)
 	}
 	return nil
+}
+
+// rawOrNil evita gravar o literal JSON "null" em vez de SQL NULL quando o
+// adapter não capturou payload. Os dois se parecem numa consulta e significam
+// coisas diferentes: "o provider mandou null" e "não temos payload".
+func rawOrNil(raw json.RawMessage) any {
+	if len(raw) == 0 {
+		return nil
+	}
+	return []byte(raw)
 }
 
 func insertEvent(ctx context.Context, tx pgx.Tx, key domain.ListingKey, at time.Time, kind, message string) error {

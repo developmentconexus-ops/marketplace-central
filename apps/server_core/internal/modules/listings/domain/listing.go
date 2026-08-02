@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"encoding/json"
 	"errors"
 	"strings"
 	"time"
@@ -122,6 +123,15 @@ type Listing struct {
 	// Variations (0091) — optional child rows upserted alongside the parent
 	// row, in the same transaction, by ApplyCompletedPull.
 	Variations []ListingVariation
+
+	// Raw é o payload cru do provider, já com PII redigida na CAPTURA
+	// (ADR-C6). Existe para que a reconciliação de chaves detecte campo que o
+	// provider manda e nenhum DTO declara. RawTruncated marca que o payload
+	// excedeu o teto de captura do adapter e NÃO é a resposta inteira — sem
+	// esse marcador, uma chave ausente por truncamento seria indistinguível
+	// de uma chave que o provider não mandou.
+	Raw          json.RawMessage
+	RawTruncated bool
 }
 
 // ListingVariation is a child row of a listing (0091 listing_variations).
@@ -169,6 +179,15 @@ type ListingInput struct {
 	FreeShipping      *bool
 	LogisticType      *string
 	AvailableQuantity *int
+
+	// Raw é o payload cru do provider, já com PII redigida na CAPTURA
+	// (ADR-C6). Existe para que a reconciliação de chaves detecte campo que o
+	// provider manda e nenhum DTO declara. RawTruncated marca que o payload
+	// excedeu o teto de captura do adapter e NÃO é a resposta inteira — sem
+	// esse marcador, uma chave ausente por truncamento seria indistinguível
+	// de uma chave que o provider não mandou.
+	Raw          json.RawMessage
+	RawTruncated bool
 }
 
 func NewListing(input ListingInput) (Listing, error) {
@@ -219,6 +238,8 @@ func NewListing(input ListingInput) (Listing, error) {
 		FreeShipping:      input.FreeShipping,
 		LogisticType:      input.LogisticType,
 		AvailableQuantity: input.AvailableQuantity,
+		Raw:               input.Raw,
+		RawTruncated:      input.RawTruncated,
 	}, nil
 }
 
