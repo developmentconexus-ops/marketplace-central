@@ -23,30 +23,20 @@ func (e MultigetItemError) Error() string {
 	return fmt.Sprintf("item %s: %v", e.ProviderItemID, e.Err)
 }
 
-// MapMultigetItemsToListings is Passo 2 of F-03 (backfill-cursor-ingest): it
-// converts a hydrated batch of mercadolivre.ItemMultigetDTO (Passo 1's
-// GetItemsMultiget, M-01/F-02) into canonical domain.Listing rows.
+// MapMultigetItemsToListings é o Passo 2 do F-03 (backfill-cursor-ingest):
+// converte um lote hidratado de mercadolivre.ItemMultigetDTO (Passo 1,
+// GetItemsMultiget) em linhas canônicas domain.Listing.
 //
-// Unlike MapListingSnapshotToCanonicalRows (mapper.go, used by the existing
-// single-item ReadListing/refresh path), this mapper:
-//   - keeps status VERBATIM (no canonicalListingStatus remap) — F-01/F-02 of
-//     THIS milestone already dropped the listings.status CHECK so the writer
-//     persists whatever the provider says (IC-07); a closed remap here would
-//     silently discard provider statuses beyond the 8 named constants (e.g.
-//     "suspended") that domain.NewListing's isNonEmpty (0a) now accepts.
-//   - emits ONE row per item (VariationID = NoVariationID sentinel, ADR-13),
-//     with per-variation data attached as child ListingVariation entries on
-//     that single row's Variations slice — matching IC-07's canonical
-//     example ("dois níveis, mesma transação") and the shape F-02's own
-//     repository test already exercises (repository_integration_test.go:
-//     TestApplyCompletedPull_VariationsUpsertIdempotently), NOT the
-//     per-variation-flattened-row shape mapper.go uses for xlsx/Sankhya
-//     snapshots (those providers hand back per-variation snapshots already;
-//     multiget hands back one item with a nested variations array).
+// Duas regras deste mapper, ambas exigidas pelo IC-07:
+//   - status VERBATIM, sem remapeamento para um conjunto fechado — o
+//     vocabulário é do provider, e um remap silenciosamente descartaria
+//     status legítimos que a tabela já aceita.
+//   - UMA linha por item (VariationID = NoVariationID, ADR-13), com os dados
+//     de variação como filhos em Variations, e não uma linha achatada por
+//     variação.
 //
-// A per-item error (item.Err != nil, set by GetItemsMultiget for a 404/429/
-// decode failure on that slot) is recorded and skipped, never aborts the
-// batch — same IC-06 guarantee.
+// Erro em um item (item.Err != nil) é registrado e pulado, nunca aborta o
+// lote — mesma garantia do IC-06.
 func MapMultigetItemsToListings(tenantID, installationID, provider string, items []mercadolivre.ItemMultigetDTO, fetchedAt time.Time) ([]listingsdomain.Listing, []MultigetItemError) {
 	rows := make([]listingsdomain.Listing, 0, len(items))
 	var itemErrs []MultigetItemError
