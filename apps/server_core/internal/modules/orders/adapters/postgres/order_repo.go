@@ -63,7 +63,8 @@ func (r *OrderReadRepository) ListOrders(ctx context.Context, query ports.OrderL
 		       o.currency,
 		       (SELECT s.logistic_type
 		          FROM order_shipments s
-		         WHERE s.tenant_id=$1 AND s.provider=o.provider_code AND s.provider_shipment_id=o.provider_shipment_id) AS fulfillment
+		         WHERE s.tenant_id=$1 AND s.provider=o.provider_code AND s.provider_shipment_id=o.provider_shipment_id) AS fulfillment,
+		       o.cancellation_detail
 		FROM orders_marketplace_orders o
 		WHERE o.tenant_id=$1 AND o.installation_id=$2
 		  AND o.provider_created_at IS NOT NULL
@@ -230,7 +231,8 @@ func (r *OrderReadRepository) GetOrder(ctx context.Context, installationID, prov
 		       o.currency,
 		       (SELECT s.logistic_type
 		          FROM order_shipments s
-		         WHERE s.tenant_id=$1 AND s.provider=o.provider_code AND s.provider_shipment_id=o.provider_shipment_id) AS fulfillment
+		         WHERE s.tenant_id=$1 AND s.provider=o.provider_code AND s.provider_shipment_id=o.provider_shipment_id) AS fulfillment,
+		       o.cancellation_detail
 		FROM orders_marketplace_orders o
 		WHERE o.tenant_id=$1 AND o.installation_id=$2 AND o.provider_order_id=$3
 	`, r.tenantID, strings.TrimSpace(installationID), strings.TrimSpace(providerOrderID))
@@ -261,23 +263,21 @@ func scanReadModel(scanner interface{ Scan(...any) error }) (ordersdomain.OrderR
 	var providerStatusDetail pgtype.Text
 	var currency pgtype.Text
 	var fulfillment pgtype.Text
-	err := scanner.Scan(&model.ProviderOrderID, &model.ProviderCode, &model.Status, &providerStatusDetail, &created, &closed, &updated, &nf, &total, &shippingID, &tagsJSON, &faturado, &buyerNickname, &currency, &fulfillment)
+	var cancellationDetail pgtype.Text
+	err := scanner.Scan(&model.ProviderOrderID, &model.ProviderCode, &model.Status, &providerStatusDetail, &created, &closed, &updated, &nf, &total, &shippingID, &tagsJSON, &faturado, &buyerNickname, &currency, &fulfillment, &cancellationDetail)
 	if err != nil {
 		return model, err
 	}
 	model.Currency = scanText(currency)
 	model.Fulfillment = scanText(fulfillment)
+	model.CancellationDetail = scanText(cancellationDetail)
 	// provider_status_detail (0027: text NOT NULL DEFAULT '') can now hold a
 	// genuine NULL — domain.MarketplaceOrder's write side stores nil for an
 	// absent value instead of '' (see order.go doc comment). Scanning
 	// straight into a Go string would error on that NULL, so this goes
-	// through pgtype.Text first, same as buyerNickname below. OrderReadModel
-	// keeps ProviderStatusDetail as a plain string for now (its own
-	// nullable-exposure is a separate, later slice) — NULL just falls back to
-	// the same "" this column always reported.
-	if providerStatusDetail.Valid {
-		model.ProviderStatusDetail = providerStatusDetail.String
-	}
+	// through pgtype.Text first, same as buyerNickname below. NULL and "" are
+	// now distinguishable on the wire, same as currency/fulfillment above.
+	model.ProviderStatusDetail = scanText(providerStatusDetail)
 	if buyerNickname.Valid && strings.TrimSpace(buyerNickname.String) != "" {
 		value := buyerNickname.String
 		model.BuyerNickname = &value

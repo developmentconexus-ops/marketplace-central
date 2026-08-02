@@ -84,18 +84,18 @@ func TestScanReadModel_ShippingID(t *testing.T) {
 		if err != nil {
 			t.Fatalf("scanReadModel returned error: %v", err)
 		}
-		if model.ProviderStatusDetail != "accredited" {
-			t.Fatalf("ProviderStatusDetail = %q, want %q", model.ProviderStatusDetail, "accredited")
+		if model.ProviderStatusDetail == nil || *model.ProviderStatusDetail != "accredited" {
+			t.Fatalf("ProviderStatusDetail = %v, want %q", model.ProviderStatusDetail, "accredited")
 		}
 	})
 
-	t.Run("provider_status_detail absent (NULL) does not error and stays empty", func(t *testing.T) {
+	t.Run("provider_status_detail absent (NULL) does not error and stays nil", func(t *testing.T) {
 		model, err := scanReadModel(fakeRow{providerStatusDetail: pgtype.Text{}})
 		if err != nil {
 			t.Fatalf("scanReadModel returned error: %v", err)
 		}
-		if model.ProviderStatusDetail != "" {
-			t.Fatalf("ProviderStatusDetail = %q, want empty", model.ProviderStatusDetail)
+		if model.ProviderStatusDetail != nil {
+			t.Fatalf("ProviderStatusDetail = %v, want nil", model.ProviderStatusDetail)
 		}
 	})
 }

@@ -383,3 +383,77 @@ func TestReadModelExposesCurrencyAndFulfillment(t *testing.T) {
 		t.Fatalf("ListOrders Fulfillment of drop_off order = %v, want drop_off", listDrop.Fulfillment)
 	}
 }
+
+// TestReadModelExposesCancellationDetail is Task 6's red/green test (P2 slice): cancellation_detail
+// was a real, already-nullable column on orders_marketplace_orders (migration 0093) that the read
+// model never selected or scanned, so it never appeared in the /orders JSON at all — not even as
+// null — for the cancelled orders that do carry it. This proves cancellation_detail now round-trips
+// through both read-model projections (GetOrder and ListOrders share scanReadModel), and that an
+// order written with no cancellation_detail comes back nil, never fabricated as "".
+func TestReadModelExposesCancellationDetail(t *testing.T) {
+	ctx := context.Background()
+	repo, tenantID, installationID, cleanup := newIngestRepositoryForTest(t, ctx)
+	defer cleanup()
+	readRepo := NewOrderReadRepository(repo.pool, tenantID)
+
+	providerCreatedAt := time.Date(2026, 7, 30, 12, 0, 0, 0, time.UTC)
+	detail := "buyer_cancelled: comprador desistiu da compra"
+
+	cancelledOrderID := installationID + "-cancelled"
+	cancelled := ingestFixtureOrder(installationID, cancelledOrderID, ordersdomain.BucketCancelado, nil)
+	cancelled.ProviderCreatedAt = &providerCreatedAt
+	cancelled.CancellationDetail = &detail
+	if err := repo.IngestOrder(ctx, cancelled, nil); err != nil {
+		t.Fatalf("IngestOrder(cancelled) error = %v", err)
+	}
+
+	activeOrderID := installationID + "-active"
+	active := ingestFixtureOrder(installationID, activeOrderID, ordersdomain.BucketNovo, nil)
+	active.ProviderCreatedAt = &providerCreatedAt
+	// CancellationDetail intentionally left nil — an order that was never cancelled must not
+	// come back with a fabricated "" or a fabricated cancellation reason.
+	if err := repo.IngestOrder(ctx, active, nil); err != nil {
+		t.Fatalf("IngestOrder(active) error = %v", err)
+	}
+
+	// GetOrder projection.
+	gotCancelled, err := readRepo.GetOrder(ctx, installationID, cancelledOrderID)
+	if err != nil {
+		t.Fatalf("GetOrder(cancelled) error = %v", err)
+	}
+	if gotCancelled.CancellationDetail == nil || *gotCancelled.CancellationDetail != detail {
+		t.Fatalf("GetOrder(cancelled) CancellationDetail = %v, want %q", gotCancelled.CancellationDetail, detail)
+	}
+
+	gotActive, err := readRepo.GetOrder(ctx, installationID, activeOrderID)
+	if err != nil {
+		t.Fatalf("GetOrder(active) error = %v", err)
+	}
+	if gotActive.CancellationDetail != nil {
+		t.Fatalf("GetOrder(active) CancellationDetail = %v, want nil (never cancelled)", gotActive.CancellationDetail)
+	}
+
+	// ListOrders projection — same two facts, different query, same scanReadModel.
+	page, err := readRepo.ListOrders(ctx, ports.OrderListQuery{InstallationID: installationID, Limit: 10})
+	if err != nil {
+		t.Fatalf("ListOrders error = %v", err)
+	}
+	byOrderID := make(map[string]ordersdomain.OrderReadModel, len(page.Items))
+	for _, item := range page.Items {
+		byOrderID[item.ProviderOrderID] = item
+	}
+	listCancelled, ok := byOrderID[cancelledOrderID]
+	if !ok {
+		t.Fatalf("ListOrders did not return %q", cancelledOrderID)
+	}
+	if listCancelled.CancellationDetail == nil || *listCancelled.CancellationDetail != detail {
+		t.Fatalf("ListOrders CancellationDetail = %v, want %q", listCancelled.CancellationDetail, detail)
+	}
+	listActive, ok := byOrderID[activeOrderID]
+	if !ok {
+		t.Fatalf("ListOrders did not return %q", activeOrderID)
+	}
+	if listActive.CancellationDetail != nil {
+		t.Fatalf("ListOrders CancellationDetail = %v, want nil (never cancelled)", listActive.CancellationDetail)
+	}
+}
