@@ -25,6 +25,8 @@ Leia, nesta ordem:
 | E-1 | §2 e §11: `GetICMSCeiling` do `/anuncios` **fora** de escopo, vira dívida D-19 | **Dentro do escopo.** O teto worst-case dirige selo, dois filtros e o contador do dashboard, todos alimentados pela coluna errada. Tarefa 13. **D-19 deixa de existir como dívida** — é resolvida aqui |
 | E-2 | §6: cinco detectores de conflito | **Três.** Os detectores "previsto ≠ realizado" e "alíquota mudou sem log" comparam a matriz contra a **nota emitida**, que é o subsistema B (imposto ex-post). Não são calculáveis nesta fatia. Movidos para B, registrados como **D-23** |
 | E-3 | §8: "componentes de ICMS, DIFAL, FCP, PIS/COFINS com selo", sem dizer o que acontece com o campo `imposto` já publicado | `imposto` = **ICMS + FCP + PIS/COFINS** (exclui DIFAL); `difal` permanece campo próprio; os quatro componentes são detalhe novo. Isto é forçado pela aritmética que já existe em `BuildProfitability` (`margem = total − comissão − frete − imposto − difal − custo`) — qualquer outra leitura duplicaria valor na tela |
+| **E-4** | §1 e §9: a `pricing_difal_rates` "erra +35%" porque daria 40,49 contra a nota de 29,99 | **A refutação era inválida e está retirada.** 40,49 é o resultado da **matriz atual** (`299,90 × 20,5% − 299,90 × 7%`), que é também a alíquota legal da BA desde fev/2024. Quem estava defasada era a **nota** 895507 (usou 17,0); a nota-irmã 895436 do dia anterior usou 20,5. **A fonte é a MATRIZ `TGFICM` vigente** — nunca o documento emitido (não existe ex-ante), nunca uma tabela legal mantida por nós. A `pricing_difal_rates` morre mesmo assim, por ser cópia à mão de dado que o ERP já tem. Detalhe na spec, "EMENDA 1" |
+| **E-5** | §5: implícito que `ALIQINTDEST` está lá quando `CODTRIB=0` | **Falso em cerca de metade do recorte.** Medido no recorte real (8 grupos × 10 UFs): **21 células calculáveis** (BA/ES/MA/SP/RJ/PE) · **20 mudas** (`CODTRIB=0` sem `ALIQINTDEST`, concentradas em **PR, RS, SC**) · **6 sem linha** (grupo 311). Decisão do operador: PR/RS/SC saem **desconhecido com motivo legível** e o par (produto, UF) vira **pendência apontando a lacuna da matriz**. Zero dado fiscal digitado por nós. Tarefa 14 detecta a célula muda; Tarefa 6 sela |
 
 ### 0.2 Medições que fundamentam este plano (todas feitas em 2026-08-02, não re-medir)
 
@@ -44,7 +46,17 @@ Leia, nesta ordem:
 
 > Os 0,28% sem linha vão a desconhecido explícito. Não vale engenharia — vale selo.
 
-**⚠ Uma medição citada na spec §5 NÃO se aplica ao caminho que este plano consulta.** A spec diz que só 3 pares têm `ALIQINTDEST` vazio. Esse número, e o retrato muito pior que veio depois (12 UFs com **zero** `ALIQINTDEST`), foram medidos na linha **genérica** (`TIPRESTRICAO='N', CODRESTRICAO=0`). Este plano consulta a linha **do grupo** (`TIPRESTRICAO2='I', CODRESTRICAO2=GRUPOICMS`), que é outra população. A cobertura real do nosso caminho está sendo re-medida (M3-bis). **Ver §5 — Risco aberto R7.**
+**⚠ A medição de cobertura da spec §5 não vale — a correta está aqui.** A spec mediu a linha **genérica** (`TIPRESTRICAO='N', CODRESTRICAO=0`); este plano consulta a linha **do grupo** (`TIPRESTRICAO2='I', CODRESTRICAO2=GRUPOICMS`), outra população. Re-medido no recorte real (8 grupos que os pedidos tocaram × 10 UFs de destino), contando só células com `CODTRIB=0`:
+
+| célula | n | UFs |
+|---|---|---|
+| calculável (`ALIQINTDEST` presente) | **21** | BA, ES, MA, SP, RJ, PE |
+| **muda** (`CODTRIB=0`, sem `ALIQINTDEST`) | **20** | **PR, RS, SC** |
+| sem linha na matriz | 6 | grupo 311 |
+
+Célula muda **não** é bug nosso: é lacuna de cadastro no Sankhya. Sai como desconhecido + pendência (E-5). Custo medido de não precificar PR/RS/SC: **7 notas em 12 meses**, de 74. **R7 está fechado — ver §2.1.**
+
+**Separe "se incide" de "quanto incide".** `CODTRIB` responde **se** (60 = não deve, 0 = deve) com cobertura quase total. `ALIQINTDEST` responde **quanto** em ~metade das UFs. São dois fatos com confiabilidade diferente e o código nunca pode tratá-los como uma leitura só.
 
 **A consequência de "1 item em 100% dos pedidos":** a porta por item **não pode ser provada por dado de produção**. O pedido misto ST/não-ST só existe em fixture. A Tarefa 7 tem um teste obrigatório de pedido com 2 itens de CODTRIB diferentes — sem ele, o redesenho da porta passa vazio e ninguém percebe.
 
@@ -144,28 +156,38 @@ T6 (cálculo puro, não depende de I/O) ─────────────�
 
 T6 é puro e não depende de nada — pode ser feito primeiro se você quiser ver valor cedo.
 
-## ⚠ 2.1 Risco aberto R7 — o DIFAL pode não ser calculável a partir do ERP
+## 2.1 R7 — **FECHADO** em 2026-08-02. O DIFAL é calculável em ~metade das UFs, e isso está decidido
 
-**Não comece T6 nem T8 sem ler isto.**
+**Não comece T6 nem T8 sem ler isto.** R7 estava aberto quando este plano foi escrito; a medição chegou e o operador decidiu. O que segue é decisão, não risco.
 
-O especialista Sankhya mediu, na linha **genérica** de `TGFICM`, que `ALIQINTDEST` está **vazio em 21 das 26 UFs** — doze delas com zero linhas preenchidas. Só DF, ES, GO, SP e TO estão íntegros. Isso **não é a população que este plano consulta** (nós lemos a linha do grupo), e a re-medição no caminho certo está pendente.
+### O que se mediu
 
-Mas ele mediu duas coisas que valem independentemente da população:
+Na linha **do grupo** (que é a que este plano consulta), no recorte real de 8 grupos × 10 UFs de destino, contando só células com `CODTRIB=0`:
 
-1. **Onde as duas colunas existem, elas divergem materialmente:** MA 23×22, MS 18×17, MT 12×17, PR 17×19, ES 17×19,5, RJ 18×20, TO 17×20. Só SP concorda. Trocar `ALIQINTDEST` por `ALIQUFDEST` erra o DIFAL em quase toda UF — o teste de query da T4 existe por isso.
-2. **Nenhuma coluna do banco reproduz a alíquota interna legal.** As notas mostram GO subindo 17→19 em 2024; `TGFICM.ALIQINTDEST` não acompanha, `ALIQUFDEST` diz outra coisa (MA 22 contra nota 23), e o campo customizado `TSIUFS.AD_ALIQINT` está congelado em 17 desde antes da mudança. O ERP acerta a nota por um caminho que **não foi localizado na base**.
+**21 calculáveis** (BA, ES, MA, SP, RJ, PE) · **20 mudas** (`CODTRIB=0` sem `ALIQINTDEST`, em **PR, RS, SC**) · **6 sem linha** (grupo 311).
 
-**A conclusão do especialista** — *"para piso de preço, use tabela de alíquota interna legal por UF, mantida por você, fora do Sankhya"* — **colide de frente com a spec §2**, que exclui "ERP contra a lei" justamente por ser `pricing_difal_rates` reencarnada. A decisão é do operador e está pendente. **Não resolva por conta própria em nenhuma direção.**
+O ERP **cobra** DIFAL do PR — 11 notas com `ALIQINTDEST` 18,0 — tirando o número de um lugar que não está em `TGFICM`, `TSIUFS` nem `TGFPAR`, e que **não foi localizado**. Não procure; não é seu trabalho nesta fatia.
 
-**Se M3-bis mostrar `ALIQINTDEST` povoado nas linhas de grupo:** o plano segue como está.
-**Se mostrar vazio como a genérica:** T6 e T8 continuam válidos para **ICMS e CODTRIB** (que a matriz responde bem), o DIFAL sai selado como desconhecido na maioria das UFs, e a fatia entrega menos do que promete. Isso é mudança de escopo, não detalhe de implementação: mande `ESCALATION`.
+Duas medições anteriores continuam valendo e são o motivo de dois testes existirem:
 
-**A separação que fica de pé nos dois cenários** — e que o código deve refletir desde já:
+1. **`ALIQUFDEST` ≠ `ALIQINTDEST` onde as duas existem:** MA 23×22, MS 18×17, MT 12×17, PR 17×19, ES 17×19,5, RJ 18×20, TO 17×20. Só SP concorda. Trocar uma pela outra erra o DIFAL em quase toda UF — é por isso que a T4 tem teste de query.
+2. **`TSIUFS.AD_ALIQINT` é cadastro morto** (congelado em 17 enquanto GO foi a 19 em 2024). Não leia essa coluna em lugar nenhum.
 
-> `TGFICM` decide **se incide** (`CODTRIB` 60 vs 0) e nisso é confiável.
-> **Quanto incide** no DIFAL, ela não sabe responder na maioria das UFs.
+### A decisão do operador
 
-Hoje as duas perguntas estão coladas na mesma leitura. `ICMSRule` (T2) já as separa por construção — `ChainClosed()` responde a primeira, `DifalKnown()` a segunda. Mantenha essa separação mesmo que M3-bis venha boa.
+O especialista recomendou manter tabela de alíquota legal própria, fora do Sankhya. **Recusado**, e o motivo é o mesmo da spec §2: é a `pricing_difal_rates` voltando com boa intenção. Vale:
+
+> **PR, RS, SC → DIFAL desconhecido, selado, com motivo legível na tela, e o par (produto, UF) vira pendência dizendo que falta `ALIQINTDEST` na matriz do ERP.**
+> Zero dado fiscal digitado por nós. O conserto acontece no Sankhya, que é o dono.
+
+Custo aceito e medido: 7 notas em 12 meses (de 74) ficam sem preço confiável até alguém preencher a matriz. A Tarefa 14 é o mecanismo pelo qual essa lacuna aparece para quem pode consertá-la.
+
+### A separação que o código tem que refletir
+
+> `TGFICM` decide **se incide** (`CODTRIB` 60 vs 0) e nisso é confiável — só o grupo 311 tem buraco.
+> **Quanto incide** no DIFAL, ela não responde em PR, RS e SC.
+
+Hoje as duas perguntas estão coladas na mesma leitura. `ICMSRule` (T2) já as separa por construção — `ChainClosed()` responde a primeira, `DifalKnown()` a segunda. A separação é obrigatória: colapsar as duas transforma "não sei quanto" em "não deve", que é exatamente o defeito que esta fatia existe para matar.
 
 ---
 
@@ -795,21 +817,32 @@ import "testing"
 
 func f(v float64) *float64 { return &v }
 
-// O caso que define a fatia: pedido BA real de R$ 299,90, reconciliado contra
-// a nota fiscal NUNOTA 895507 (ICMS 20,99 + DIFAL 29,99).
-func TestTaxesForValueBahiaMatchesIssuedInvoice(t *testing.T) {
-	rule := ICMSRuleInput{CodTrib: 0, Aliquota: f(7.0), AliqIntDest: f(17.0)}
+// O caso que define a fatia: pedido BA real de R$ 299,90, grupo 122.
+//
+// A AUTORIDADE AQUI E A MATRIZ VIGENTE, NAO A NOTA EMITIDA. A linha
+// UFORIG=13/UFDEST=5/grupo 122 diz CODTRIB=0, ALIQUOTA=7, ALIQINTDEST=20,5,
+// FCP=0. Isso da DIFAL 40,49, que e tambem a aliquota legal da BA desde
+// fev/2024.
+//
+// A nota 895507 gravou 29,99 porque foi emitida com 17,0 — aliquota que a
+// matriz ja superou (a linha foi corrigida em 2026-07-20). A nota-irma 895436
+// do dia anterior usou 20,5. Nao "conserte" este teste para 29,99: fazer isso
+// petrifica a nota defasada como verdade, que e exatamente a doenca que esta
+// fatia existe para curar.
+func TestTaxesForValueBahiaFollowsCurrentMatrix(t *testing.T) {
+	rule := ICMSRuleInput{CodTrib: 0, Aliquota: f(7.0), AliqIntDest: f(20.5)}
 	got := TaxesForValue(299.90, rule)
 
 	if got.ICMS == nil || *got.ICMS != 20.99 {
-		t.Fatalf("ICMS deveria bater a nota: 20.99, veio %v", got.ICMS)
+		t.Fatalf("ICMS = V x 7%%: esperado 20.99, veio %v", got.ICMS)
 	}
-	if got.Difal == nil || *got.Difal != 29.99 {
-		t.Fatalf("DIFAL deveria bater a nota: 29.99, veio %v", got.Difal)
+	if got.Difal == nil || *got.Difal != 40.49 {
+		t.Fatalf("DIFAL = V x 20,5%% - ICMS: esperado 40.49, veio %v", got.Difal)
 	}
-	// Regressao para a tabela morta: pricing_difal_rates daria 13,5% = 40,49.
-	if got.Difal != nil && *got.Difal == 40.49 {
-		t.Fatalf("40.49 e o valor da pricing_difal_rates refutada — alguem religou a tabela")
+	// Contra-controle: 29,99 e o valor da nota defasada. Se aparecer, alguem
+	// trocou a fonte da matriz pelo documento emitido.
+	if got.Difal != nil && *got.Difal == 29.99 {
+		t.Fatalf("29.99 e a nota 895507, emitida a 17,0 — a matriz diz 20,5")
 	}
 }
 
@@ -825,6 +858,10 @@ func TestTaxesForValueChainClosedIsKnownZero(t *testing.T) {
 	}
 }
 
+// A "celula muda": o ERP diz que o DIFAL INCIDE (CODTRIB=0) mas nao diz
+// QUANTO. Medido: 20 celulas assim no recorte real, concentradas em PR, RS e
+// SC. Nao e caso hipotetico — e ~metade das UFs que vendemos. Selar o DIFAL e
+// manter o ICMS e a propriedade central desta fatia.
 func TestTaxesForValueMissingAliqIntDestSealsOnlyDifal(t *testing.T) {
 	rule := ICMSRuleInput{CodTrib: 0, Aliquota: f(12.0), AliqIntDest: nil}
 	got := TaxesForValue(100.00, rule)
@@ -868,7 +905,7 @@ func TestTaxesForValueAlwaysChargesOutboundPisCofins(t *testing.T) {
 ```
 
 > **Controles negativos, execute todos antes de implementar:**
-> - Troque `17.0` por `13.5` no teste da Bahia → ele tem que dar 40,49 e falhar. É a prova de que o teste pega a volta da `pricing_difal_rates`.
+> - Troque `20.5` por `17.0` no teste da Bahia → ele tem que dar 29,99 e falhar. É a prova de que o teste está ancorado na **matriz vigente**, e não na nota defasada que a sessão anterior tomou por autoridade.
 > - Faça `CODTRIB=60` cair no ramo do `CODTRIB=0` → `TestTaxesForValueChainClosedIsKnownZero` tem que falhar.
 > - Faça `AliqIntDest == nil` selar o ICMS junto com o DIFAL → `TestTaxesForValueMissingAliqIntDestSealsOnlyDifal` tem que falhar. **Este é o controle que prova que o selo é por componente**, que é a propriedade central da fatia.
 > - Remova o PIS/COFINS → o último teste falha e a margem sobe ~8,6%.
@@ -1014,7 +1051,7 @@ func round2(v float64) float64 {
 }
 ```
 
-> **Atenção ao arredondamento do DIFAL:** `V × ALIQINTDEST − ICMS` arredonda **o resultado**, não as parcelas separadamente. No caso BA: `299,90 × 17% = 50,983 → 50,98`, menos `20,99` = `29,99`. Se você arredondar antes de subtrair de outro jeito, dá `29,98` e o teste da nota falha. Se ele falhar por 1 centavo, **não relaxe a tolerância** — a nota fiscal é a autoridade; mande `ESCALATION` ao hub com o valor obtido.
+> **Atenção ao arredondamento do DIFAL:** `V × ALIQINTDEST − ICMS` arredonda **o resultado**, não as parcelas separadamente. No caso BA: `299,90 × 20,5% = 61,4795`, menos o ICMS `20,99` = `40,4895 → 40,49`. Se ele falhar por 1 centavo, **não relaxe a tolerância** — mande `ESCALATION` ao hub com o valor obtido, porque um centavo aqui significa que a ordem das operações está diferente da do ERP e isso vira erro grande em outro valor.
 
 - [ ] **Step 4: verde** · **Step 5: commit**
 
@@ -1159,17 +1196,61 @@ func TestTaxReaderUnknownUFSealsInsteadOfDefaulting(t *testing.T) {
 	}
 }
 
-func TestTaxReaderNeverProducesTheDeadTableValue(t *testing.T) {
-	// pricing_difal_rates dava 13,5% para a BA = 40,49 sobre 299,90.
-	got, _ := reader.TaxesForItems(ctx, []ports.TaxableItem{{ItemIdentifier: "A", InternalProductID: intp(39563), Value: 299.90}}, "BA")
-	if got.Difal != nil && *got.Difal == 40.49 {
-		t.Fatalf("40.49 e o valor da tabela morta — alguem religou pricing_difal_rates")
+// Ponta a ponta pela matriz: produto 39563 (grupo 122), destino BA.
+// O fixture tem que carregar a linha REAL — CODTRIB=0, ALIQUOTA=7,
+// ALIQINTDEST=20,5 — e o resultado tem que ser identico ao da T6. Se este
+// teste e o de T6 discordarem, o adapter esta calculando por conta propria em
+// vez de delegar para TaxesForValue.
+func TestTaxReaderBahiaMatchesPureCalculation(t *testing.T) {
+	reader := newTaxReaderWithMatrix(t, matrixFixture)
+	items := []ports.TaxableItem{{ItemIdentifier: "A", InternalProductID: intp(39563), Value: 299.90}}
+	got, err := reader.TaxesForItems(context.Background(), items, "BA")
+	if err != nil {
+		t.Fatalf("leitura da matriz: %v", err)
 	}
-	if got.Difal == nil || *got.Difal != 29.99 {
-		t.Fatalf("DIFAL da BA tem que bater a nota fiscal: 29.99, veio %v", got.Difal)
+	if got.ICMS == nil || *got.ICMS != 20.99 {
+		t.Fatalf("ICMS: esperado 20.99, veio %v", got.ICMS)
+	}
+	if got.Difal == nil || *got.Difal != 40.49 {
+		t.Fatalf("DIFAL: esperado 40.49, veio %v", got.Difal)
+	}
+	// imposto publicado = ICMS + FCP + PIS/COFINS, sem DIFAL (emenda E-3).
+	if got.Imposto == nil || *got.Imposto != 46.84 {
+		t.Fatalf("imposto = 20.99 + 0 + 25.85 = 46.84, veio %v", got.Imposto)
+	}
+}
+
+// Celula muda ponta a ponta: produto do grupo 122 vendido para o PR, onde a
+// matriz diz CODTRIB=0 sem ALIQINTDEST. O DIFAL sai desconhecido COM motivo, o
+// ICMS sai calculado, e o componente entra em ComponentesDesconhecidos para a
+// Tarefa 14 conseguir virar pendencia. Nada de 0, nada de branco mudo.
+func TestTaxReaderMuteCellSurfacesPendency(t *testing.T) {
+	reader := newTaxReaderWithMatrix(t, matrixFixture)
+	items := []ports.TaxableItem{{ItemIdentifier: "A", InternalProductID: intp(39563), Value: 299.90}}
+	got, err := reader.TaxesForItems(context.Background(), items, "PR")
+	if err != nil {
+		t.Fatalf("celula muda nao e erro de leitura: %v", err)
+	}
+	if got.ICMS == nil {
+		t.Fatal("ICMS continua calculavel sem ALIQINTDEST")
+	}
+	if got.Difal != nil {
+		t.Fatalf("PR nao tem ALIQINTDEST na matriz — DIFAL tem que ser desconhecido, veio %v", *got.Difal)
+	}
+	if !contains(got.ComponentesDesconhecidos, "difal") {
+		t.Fatalf("desconhecido invisivel nao vira pendencia: %v", got.ComponentesDesconhecidos)
+	}
+	if got.Motivos["difal"] == "" {
+		t.Fatal("motivo obrigatorio — a tela tem que dizer que falta ALIQINTDEST na matriz do ERP")
+	}
+	// O imposto publicado NAO carrega DIFAL, entao continua conhecido aqui.
+	if got.Imposto == nil {
+		t.Fatal("imposto = ICMS+FCP+PIS/COFINS nao depende do DIFAL")
 	}
 }
 ```
+
+> **Controle negativo obrigatório:** faça o adapter cair num `0.0` quando `ALIQINTDEST` for nulo → `TestTaxReaderMuteCellSurfacesPendency` tem que falhar em `got.Difal != nil`. Este é o defeito histórico desta base (`pricingtax/reader.go:68-72` escreve `zero := 0.0` quando o DIFAL está desligado); se o controle não reprovar, o selo não existe.
 
 - [ ] **Step 2: vermelho** · **Step 3: implemente**
 
@@ -1304,30 +1385,35 @@ func (s EnrichService) resolveItemTaxes(ctx context.Context, order domain.OrderR
 - [ ] **Step 1: Teste que falha**
 
 ```go
+// ATENCAO: neste pedido a Comissao e o Difal valem O MESMO NUMERO (40.49) por
+// coincidencia. Nao troque um pelo outro ao ler; e o unico lugar do plano onde
+// isso acontece e uma asserção que confunda os dois passa por acidente.
 func TestBuildProfitabilityKeepsImpostoExcludingDifal(t *testing.T) {
 	in := ProfitabilityInput{
 		Total: f(299.90), Comissao: f(40.49), Frete: f(23.65), Custo: f(154.53),
-		ICMS: f(20.99), FCP: f(0), PisCofins: f(25.85), Difal: f(29.99),
+		ICMS: f(20.99), FCP: f(0), PisCofins: f(25.85), Difal: f(40.49),
 	}
 	got := BuildProfitability(in)
 	// imposto = 20.99 + 0 + 25.85 = 46.84 ; difal entra separado
 	if got.Imposto == nil || *got.Imposto != 46.84 {
 		t.Fatalf("imposto = ICMS+FCP+PIS/COFINS, sem DIFAL: %v", got.Imposto)
 	}
-	// margem = 299.90 - 40.49 - 23.65 - 46.84 - 29.99 - 154.53 = 4.40
-	if got.MargemValor == nil || *got.MargemValor != 4.40 {
-		t.Fatalf("margem real do pedido BA: esperado 4.40, veio %v", got.MargemValor)
+	// margem = 299.90 - 40.49 - 23.65 - 46.84 - 40.49 - 154.53 = -6.10
+	if got.MargemValor == nil || *got.MargemValor != -6.10 {
+		t.Fatalf("margem real do pedido BA: esperado -6.10, veio %v", got.MargemValor)
 	}
 	// MargemPct e FRACAO — o FE multiplica por 100. Nao multiplique aqui.
-	if got.MargemPct == nil || round4(*got.MargemPct) != 0.0147 {
-		t.Fatalf("margem pct e fracao (~0.0147), nao 1.47: %v", got.MargemPct)
+	if got.MargemPct == nil || round4(*got.MargemPct) != -0.0203 {
+		t.Fatalf("margem pct e fracao (~-0.0203), nao -2.03: %v", got.MargemPct)
 	}
 }
 ```
 
-> Este teste é o retrato do defeito inteiro: hoje a tela mostra **69,23 (23%)**; depois desta fatia mostra **4,40 (1,5%)**. Se ele passar com o número velho, nada foi consertado.
+> Este teste é o retrato do defeito inteiro: hoje a tela mostra **69,23 (23%)**; depois desta fatia mostra **−6,10 (−2,03%)**. **O pedido dá prejuízo.** Se ele passar com o número velho, nada foi consertado.
 >
-> **Controle negativo:** some o DIFAL dentro do `imposto` e veja a margem virar `-25,59`. Prova que o teste pega dupla contagem.
+> **Controle negativo:** some o DIFAL dentro do `imposto` e veja a margem virar `−46,59`. Prova que o teste pega dupla contagem.
+>
+> **Cuidado com a margem negativa:** confira que nada no caminho (`BuildProfitability`, DTO, FE) clampeia margem em zero ou trata negativo como erro. Um clamp aqui reintroduz a mentira por outra porta. Se encontrar clamp, é achado de legacy → `ESCALATION`, não conserte de lado.
 
 - [ ] **Step 2: vermelho** · **Step 3: estenda o struct e `BuildProfitability`** · **Step 4: verde** · **Step 5: commit**
 
@@ -1571,11 +1657,17 @@ Requisito do operador: *"pegar erros e conflitos, ERP não é 100% verdade"*.
 
 | detector | como | caso real |
 |---|---|---|
-| matriz sem linha | `GetICMSRulesByGroups` não devolve o par (grupo, UF) | 15956/RJ — grupo 311 sem RJ |
-| coluna vazia | `ALIQINTDEST` nulo com `CODTRIB=0` | 39563/PR, 39587/PR, 39587/RS |
+| matriz sem linha | `GetICMSRulesByGroups` não devolve o par (grupo, UF) | 15956/RJ — grupo 311 sem RJ. **6 células medidas**, todas do grupo 311 |
+| **célula muda** | `ALIQINTDEST` nulo com `CODTRIB=0` | 39563/PR, 39587/PR, 39587/RS. **20 células medidas**, em PR, RS e SC |
 | TOP ganhou linha | `TGFICM` passa a ter linha para TOP 306 ou 313 | quebra a premissa da spec §3 |
 
 Os dois primeiros **já são** os motivos de selo de T6 — não escreva um segundo produtor deles. O detector é a **superfície**: o motivo que já existe aparece como pendência, não só como traço na tela.
+
+> **A célula muda é a mais importante das três, e não é caso de borda.** São 20 das 47 células do recorte real — PR, RS e SC inteiros. Decisão do operador (emenda E-5): **não digitamos alíquota nenhuma para tapar isso.** O DIFAL sai desconhecido, o par (produto, UF) vira pendência, e o texto da pendência tem que dizer **o que falta e onde**, porque quem vai consertar abre o Sankhya, não este código. Redação obrigatória, sem eufemismo:
+>
+> `Falta ALIQINTDEST na matriz de ICMS do ERP para o grupo <G> com destino <UF>. Sem ela o DIFAL não pode ser calculado.`
+>
+> O ERP **cobra** DIFAL do PR em nota (11 notas a 18,0) por um caminho que não está em `TGFICM`, `TSIUFS` nem `TGFPAR` e que não foi localizado. **Não saia procurando esse caminho** — não é escopo, e adivinhar o número é exatamente o defeito que esta fatia mata.
 
 O terceiro é diferente: é um guard sobre uma premissa. A spec §3 assume que TOPs 306/313 não têm linha em `TGFICM`, e é isso que faz a linha genérica ser unívoca. Se um dia tiverem, a premissa **quebra em silêncio**.
 
@@ -1610,9 +1702,10 @@ git commit -m "feat(orders): detector dos conflitos de ERP calculaveis ex-ante"
 
 O chip **não sobe servidor**. Peça o dev stack ao hub via `REQUEST`.
 
-- [ ] **P-1** — `/pedidos`, achar o pedido BA de R$ 299,90. Imposto **não** é 12,00. DIFAL **não** é 0,00 e **não** é 40,49. Screenshot.
-- [ ] **P-2** — mesmo pedido: margem caiu de ~69,23 (23%) para ~4,40 (1,5%). Screenshot lado a lado com o valor anterior.
-- [ ] **P-3** — um dos 5 pares selados (15956/RJ ou 42194/SP) mostra **motivo legível**, não número, não traço mudo.
+- [ ] **P-1** — `/pedidos`, achar o pedido BA de R$ 299,90. Imposto = **46,84** (não 12,00). DIFAL = **40,49** (não 0,00, não 29,99 — 29,99 é a nota defasada). Screenshot.
+- [ ] **P-2** — mesmo pedido: margem caiu de ~69,23 (23%) para **−6,10 (−2,03%)**. O pedido dá **prejuízo** e a tela tem que dizer isso, com sinal, sem clamp em zero. Screenshot lado a lado com o valor anterior.
+- [ ] **P-3** — um dos pares selados (15956/RJ, sem linha) mostra **motivo legível**, não número, não traço mudo.
+- [ ] **P-3b** — **célula muda**: um pedido com destino **PR** mostra ICMS calculado, DIFAL selado com motivo, e a pendência nomeando `ALIQINTDEST` e o grupo. Este é o retrato de 20 das 47 células do recorte — se ele sair branco ou 0,00, a fatia falhou no caso mais comum, não no raro.
 - [ ] **P-4** — um pedido com item `link_quality='conflict'` (5 existem): componentes fiscais selados, margem vazia, item nomeado.
 - [ ] **P-5** — `/anuncios`: contar anúncios marcados "abaixo da margem" **antes** (main) e **depois**. Confirmar que algum produto ST deixou de ser marcado. Registrar os dois números.
 - [ ] **P-6** — dashboard: o contador `below_margin` acompanha a queda de P-5. Se não acompanhar, os dois caminhos divergiram.
@@ -1635,6 +1728,8 @@ O chip **não sobe servidor**. Peça o dev stack ao hub via `REQUEST`.
 | §5 selo por componente | T2, T6, T7, T10, T11 |
 | §5 motivo legível | T2, T6, T11 |
 | §6 detectores | T14 — **3 dos 5**, emenda E-2 |
+| §5/§9 números da Bahia | **CORRIGIDOS pela emenda E-4** — a spec cita 29,99 como autoridade; vale **40,49** (matriz vigente). T6, T8, T10 e P-1 já estão no número certo |
+| cobertura de `ALIQINTDEST` | **CORRIGIDA pela emenda E-5** — 21 calculáveis, 20 mudas, 6 sem linha. D-24 |
 | §7 congelar no momento da venda | **LACUNA — ver abaixo** |
 | §7 cache por `TGFHICM` | T5 |
 | §8 onde encaixa | T8, T9, T12 |
@@ -1668,3 +1763,6 @@ Não é esquecimento, é dependência. Congelar exige **persistir** os component
 | D-21 | `NewDefaultCalcProfile()` SIMPLES 4% sobrevive em `pricing`; `/precos` continua fabricando em 7 sítios (`calc_service.go:72-73,166,189,256,329,449`) | mantida, **e é a próxima fatia candidata** |
 | D-22 | imposto **não congela** no momento da venda — margem histórica se move quando o ERP muda alíquota | **NOVA**, ver auto-revisão |
 | D-23 | detectores "previsto ≠ realizado" e "alíquota mudou sem log" movidos para o subsistema B | **NOVA**, emenda E-2 |
+| D-24 | **DIFAL não precificável em PR, RS e SC** — 20 células com `CODTRIB=0` e sem `ALIQINTDEST`. Custo medido: 7 notas em 12 meses, de 74. Sai selado + pendência (E-5); o conserto é cadastro no Sankhya, não código | **NOVA**, decisão do operador |
+| D-25 | **a matriz do ERP e os documentos do ERP discordam entre si** — pedido 895422 diz `CODTRIB=60, 17,0`, a NF-e do mesmo pedido diz `CODTRIB=0, 20,5`. Não se sabe se é regra (recálculo no faturamento) ou artefato das 6 edições de 2026-07-20. Só o subsistema B (ex-post) pode medir isso | **NOVA** |
+| D-26 | **o ERP cobra DIFAL do PR** (11 notas a 18,0) de uma fonte que não está em `TGFICM`, `TSIUFS` nem `TGFPAR` e **não foi localizada**. Enquanto não for, PR fica em D-24 | **NOVA** |

@@ -1,6 +1,82 @@
 # P2.b — Imposto ex-ante do produto (escopo A)
 
-Data: 2026-08-02 · Missão MIS-007 · Fatia posterior ao P2 · Status: **desenho aprovado, pendente revisão do operador**
+Data: 2026-08-02 · Missão MIS-007 · Fatia posterior ao P2 · Status: **desenho aprovado, com as emendas abaixo**
+
+---
+
+## ⚠ EMENDA 1 (2026-08-02, posterior ao commit desta spec) — a refutação da §1 era inválida
+
+**Leia isto antes de qualquer coisa nas §1, §4 e §9.** Três afirmações desta spec são falsas e estão corrigidas aqui. O texto original fica abaixo como registro do que se acreditava, **não como instrução**.
+
+### O que estava errado
+
+A §1 e a §9 tratam `299,90 × 13,5% = 40,49` como prova de que a `pricing_difal_rates` errava +35% contra a nota fiscal de 29,99. A conta que produz 40,49 não é a da tabela morta — é a da **matriz atual do ERP**:
+
+```
+299,90 × 20,5% − 299,90 × 7% = 61,4795 − 20,993 = 40,4865 ≈ 40,49
+```
+
+`ALIQINTDEST` da BA no grupo 122 é **20,5**, que é também a alíquota legal da Bahia desde fev/2024. **Quem estava defasada era a nota 895507**, que usou 17,0. A nota-irmã do dia anterior (895436), mesmo grupo, mesma UF, mesma TOP, mesmo comprador PF, usou **20,5** e reconcilia ao centavo:
+
+```
+895436:  189,90 × 20,5% − 189,90 × 7% = 25,64   ✓ (VLRICMS 13,29 ✓)
+895507:  299,90 × 17,0% − 299,90 × 7% = 29,99   ✓ (VLRICMS 20,99 ✓)
+```
+
+A refutação foi feita contra a única nota errada do par. Não foi erro de método — a nota certa está a um dia de distância e não havia como saber que existia.
+
+### Por que a nota estava errada
+
+`TGFHICM` registra que a linha `UFORIG=13, UFDEST=5, TIPRESTRICAO2='I'/122` foi editada **6 vezes na tarde de 2026-07-20**, entre 14:02:32 e 14:42:15, por `LEANDROTH` e `SUP`, alternando `CODTRIB` entre 60 e 0 e preenchendo `ALIQINTDEST=20,5` e `ALIQSUBTRIB=18`. São as 6 alterações mais recentes da base inteira antes de 31/07. A BA foi a 20,5% em fev/2024 e a matriz só acompanhou em jul/2026 — **29 meses de atraso**. Atraso de cadastro fiscal é crônico nesta base, não excepcional.
+
+Descartadas por medição: redução de base (`BASEDIFAL` = 100% do `VLRNOTA` nas duas notas, `REDBASE` vazio) e erro de leitura da fórmula (ela reconcilia ao centavo nos dois documentos).
+
+### O que isso muda no desenho
+
+**A pergunta não é "lei contra ERP". É matriz do ERP contra documentos do ERP**, que discordam entre si — o pedido 895422 diz `CODTRIB=60, 17,0`; a NF-e do mesmo pedido diz `CODTRIB=0, 20,5`.
+
+**Decisão: a fonte é a MATRIZ.** Satisfaz a diretriz de espelhar o ERP (é dado do ERP, não tabela legal externa), é determinística e auditável, e é a única que existe **ex-ante** — quando precificamos, o documento ainda não foi emitido. Isto não é escolha de gosto: espelhar o documento é logicamente impossível nesta fatia.
+
+**A `pricing_difal_rates` continua morrendo**, mas por outro motivo: não porque errava, e sim porque era uma segunda cópia mantida à mão de um dado que o ERP já tem. O veredito "erra +35%" está **retirado**.
+
+### Números corrigidos do pedido BA de R$ 299,90 (grupo 122, `CODTRIB=0`, `ALIQUOTA=7`, `ALIQINTDEST=20,5`, `FCP=0`)
+
+| componente | valor |
+|---|---|
+| ICMS | 20,99 |
+| DIFAL | **40,49** |
+| FCP | 0 |
+| PIS/COFINS | 25,85 |
+| `imposto` (ICMS+FCP+PIS/COFINS) | 46,84 |
+| **margem** | **−6,10 (−2,03%)** |
+
+O pedido **dá prejuízo**. A §1 dizia "margem cai de 69,23 (23%) para ~4,4 (1,5%)" — o número certo é **negativo**. A tela mostra 69,23 hoje.
+
+> ⚠ **Armadilha para quem for escrever teste:** a comissão deste pedido também é **40,49**. Dois componentes diferentes com o mesmo valor. Uma asserção que confunda os dois passa por acidente.
+
+---
+
+## ⚠ EMENDA 2 — DIFAL não é calculável em PR, RS e SC
+
+Medido na matriz do recorte real (8 grupos × 10 UFs que os pedidos reais tocaram), contando só células com `CODTRIB=0` (DIFAL devido):
+
+- **21 células calculáveis** — BA, ES, MA, SP, RJ, PE
+- **20 células mudas** — `CODTRIB=0` sem `ALIQINTDEST`, concentradas em **PR, RS e SC**
+- **6 sem linha** — grupo 311 em BA, MA, PR, RJ, RS, SC
+
+O ERP **cobra** DIFAL do PR (11 notas com 18,0) tirando o número de um lugar que não está em `TGFICM`, `TSIUFS` nem `TGFPAR`, e que não foi localizado.
+
+**Decisão do operador:** PR/RS/SC saem como **desconhecido explícito com motivo legível**, e o par (produto, UF) vira **pendência apontando a lacuna na matriz do ERP**. Nenhuma tabela fiscal é mantida por nós. O conserto pertence ao Sankhya. Custo aceito: 7 notas em 12 meses (de 74) não precificáveis até alguém preencher a matriz.
+
+Isto **reforça** a §2 (nada de tabela legal própria) em vez de contradizê-la.
+
+## ⚠ EMENDA 3 — separar "se incide" de "quanto incide"
+
+`TGFICM.CODTRIB` responde **se** o DIFAL incide (60 = não, 0 = sim) com cobertura total no recorte real — só o grupo 311 tem 6 buracos. `ALIQINTDEST` responde **quanto** em cerca de metade das UFs. As duas perguntas têm confiabilidade diferente e o código deve tratá-las como fatos separados, nunca como uma leitura só.
+
+---
+
+*(texto original abaixo — histórico, com as correções acima prevalecendo)*
 
 ## 1. O problema, medido
 
