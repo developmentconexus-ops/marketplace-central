@@ -1109,6 +1109,11 @@ type ICMSRule struct {
 	// PercFCPPct nil com a célula presente significa FCP zero — a matriz
 	// respondeu. É diferente de célula ausente, em que nada é conhecido.
 	PercFCPPct *string
+	// IntraUF é true quando a UF de destino é a mesma da origem. Operação
+	// interna NÃO tem DIFAL — o diferencial só existe entre alíquota
+	// interestadual e interna, em operação interestadual para não-contribuinte
+	// (LC 87/96 art. 4º §2º). O adapter preenche; o domínio não sabe de UF.
+	IntraUF bool
 	// Ambiguo: mais de uma linha sobreviveu à lista branca e o sync se recusou
 	// a escolher.
 	Ambiguo bool
@@ -1281,6 +1286,72 @@ func TestTaxesForValueReduzBaseDoICMS(t *testing.T) {
 	}
 	if got.DIFAL.Motivo == "" {
 		t.Fatal("faltou motivo")
+	}
+}
+
+func TestTaxesForValueIntraUFNaoTemDifal(t *testing.T) {
+	// Operacao dentro do estado nao tem DIFAL: o diferencial so existe entre
+	// aliquota interestadual e interna. Zero aqui e fato de direito, nao lacuna
+	// — e a tela tem que mostrar R$ 0,00, nao pendencia.
+	regra := regraBahia()
+	regra.IntraUF = true
+	regra.AliquotaPct = s("18.0")
+	regra.AliqIntDestPct = nil // a celula intra-UF e muda, e nao faz falta
+
+	got := TaxesForValue(299.90, regra)
+
+	if v := valor(t, got.DIFAL, "DIFAL"); v != 0 {
+		t.Fatalf("DIFAL = %v numa operacao interna, queria 0", v)
+	}
+	if got.DIFAL.Motivo != "" {
+		t.Fatalf("DIFAL veio com motivo %q; ausencia de DIFAL intra-UF e resposta, nao pendencia", got.DIFAL.Motivo)
+	}
+	if v := valor(t, got.ICMS, "ICMS"); v != 53.98 {
+		t.Fatalf("ICMS = %v, queria 53.98 (299,90 x 18%%)", v)
+	}
+	// Base 299,90 - 53,98 = 245,92 ; x 9,25% = 22,7476 -> 22,75.
+	if v := valor(t, got.PisCofins, "PIS/COFINS"); v != 22.75 {
+		t.Fatalf("PIS/COFINS = %v, queria 22.75", v)
+	}
+}
+
+func TestTaxesForValueIntraUFComAliquotaZeroNaoFabricaIsencao(t *testing.T) {
+	// 56 linhas intra-MG do recorte real: a celula traz ALIQUOTA = 0, e as
+	// notas cobraram 19%. Calcular 0 seria zero fabricado — a celula lida nao
+	// e a que o ERP aplica nessa operacao. Divida D-35.
+	regra := regraBahia()
+	regra.IntraUF = true
+	regra.AliquotaPct = s("0")
+	regra.AliqIntDestPct = nil
+
+	got := TaxesForValue(299.90, regra)
+
+	if got.ICMS.Valor != nil {
+		t.Fatalf("ICMS = %v; aliquota zero numa venda interna contradiz as notas emitidas", *got.ICMS.Valor)
+	}
+	if got.ICMS.Motivo == "" {
+		t.Fatal("faltou motivo")
+	}
+	if got.Total.Valor != nil {
+		t.Fatalf("Total = %v sem ICMS conhecido", *got.Total.Valor)
+	}
+}
+
+func TestTaxesForValueInterestadualComAliquotaZeroCalculaZero(t *testing.T) {
+	// A regra acima e ESTREITA de proposito. Numa interestadual, ALIQUOTA = 0
+	// nao foi confrontada com nota nenhuma — nao ha medicao que autorize
+	// transformar em pendencia.
+	regra := regraBahia()
+	regra.AliquotaPct = s("0")
+	regra.AliqIntDestPct = s("20.5")
+
+	got := TaxesForValue(299.90, regra)
+
+	if v := valor(t, got.ICMS, "ICMS"); v != 0 {
+		t.Fatalf("ICMS = %v, queria 0", v)
+	}
+	if v := valor(t, got.DIFAL, "DIFAL"); v != 61.48 {
+		t.Fatalf("DIFAL = %v, queria 61.48 (299,90 x 20,5%%)", v)
 	}
 }
 
@@ -1507,6 +1578,21 @@ func TaxesForValue(valorLinha float64, regra ICMSRule) Resultado {
 		}
 		redBase = r
 	}
+	// Operação interna com alíquota zerada na célula é contradição medida, não
+	// isenção: as 56 linhas intra-MG do recorte real gravaram carga de 19% na
+	// nota enquanto a célula intra-UF traz ALIQUOTA = 0 e ALIQINTDEST NULL. A
+	// célula que o ERP usa nessa operação não é esta. Zero aqui seria zero
+	// fabricado — exatamente o defeito que esta fatia existe para curar.
+	//
+	// A regra é estreita de propósito: só vale para operação interna. Numa
+	// interestadual, ALIQUOTA = 0 não foi confrontada com nenhuma nota e fica
+	// como está.
+	if regra.IntraUF && ehZero(*regra.AliquotaPct) {
+		return selaTudo(out, "Matriz de ICMS do ERP traz aliquota zero para a operacao dentro do estado, "+
+			"mas as notas emitidas cobram ICMS interno. A regra que o ERP aplica nessa operacao "+
+			"nao esta na celula lida.")
+	}
+
 	baseICMS, err := aplicaReducao(valorLinha, redBase)
 	if err != nil {
 		return selaTudo(out, "Falha ao aplicar a reducao de base da matriz de ICMS do ERP.")
@@ -1525,6 +1611,18 @@ func TaxesForValue(valorLinha float64, regra ICMSRule) Resultado {
 			return selaRestante(out, "Percentual de FCP invalido na matriz de ICMS do ERP: "+*regra.PercFCPPct)
 		}
 		out.FCP = Conhecido(fcp)
+	}
+
+	// Operação dentro do estado não tem DIFAL. Zero aqui é fato de direito
+	// (LC 87/96 art. 4º §2º), não ausência de resposta — o diferencial só
+	// existe entre alíquota interestadual e interna.
+	//
+	// O ERP grava valor no campo de DIFAL nessas notas, mas isso é o ICMS
+	// interno alojado no campo errado, consequência de a célula intra-UF ter
+	// ALIQUOTA = 0. Não é um DIFAL a reproduzir.
+	if regra.IntraUF {
+		out.DIFAL = Conhecido(0)
+		return fechaComPisCofins(out, valorLinha)
 	}
 
 	if regra.AliqIntDestPct == nil {
@@ -1582,6 +1680,12 @@ func TaxesForValue(valorLinha float64, regra ICMSRule) Resultado {
 func semICMS(out Resultado, valorLinha float64) Resultado {
 	out.ICMS, out.DIFAL, out.FCP = Conhecido(0), Conhecido(0), Conhecido(0)
 	return fechaComPisCofins(out, valorLinha)
+}
+
+// ehZero diz se o percentual é zero, sem passar por float.
+func ehZero(pct string) bool {
+	r, ok := new(big.Rat).SetString(pct)
+	return ok && r.Sign() == 0
 }
 
 // aplicaReducao devolve valorLinha x (1 - reducao), com reducao em pontos
@@ -1766,6 +1870,39 @@ func TestRuleForLeVersaoVigenteNaData(t *testing.T) {
 	}
 }
 
+func TestRuleForMarcaOperacaoInterna(t *testing.T) {
+	// Quem sabe a UF de origem e o adapter — o dominio nao pode adivinhar.
+	// Sem esta marca, o calculo cobra DIFAL numa venda dentro de MG.
+	ctx := context.Background()
+	pool := openTestPool(t)
+	defer pool.Close()
+	tenantID := newTestTenant(t, pool)
+
+	inserirProduto(t, pool, tenantID, "15956", 122)
+	inserirCelula(t, pool, tenantID, "MG", "MG", 122, "0.000", "0.000",
+		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil)
+	inserirCelula(t, pool, tenantID, "MG", "BA", 122, "7.000", "20.500",
+		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil)
+
+	r := postgres.NewMatrixReader(pool, "MG")
+
+	dentro, ok, err := r.RuleFor(ctx, tenantID, "15956", "MG", time.Now())
+	if err != nil || !ok {
+		t.Fatalf("MG->MG: ok=%v err=%v", ok, err)
+	}
+	if !dentro.IntraUF {
+		t.Fatal("MG->MG nao foi marcada como interna; o calculo vai cobrar DIFAL onde a lei nao preve")
+	}
+
+	fora, ok, err := r.RuleFor(ctx, tenantID, "15956", "BA", time.Now())
+	if err != nil || !ok {
+		t.Fatalf("MG->BA: ok=%v err=%v", ok, err)
+	}
+	if fora.IntraUF {
+		t.Fatal("MG->BA marcada como interna; a marca esta constante, nao esta comparando UF")
+	}
+}
+
 func TestRuleForProdutoSemGrupoNaoTemRegra(t *testing.T) {
 	ctx := context.Background()
 	pool := openTestPool(t)
@@ -1843,6 +1980,8 @@ LIMIT 1
 
 Zero linhas → `ok = false`, sem erro.
 
+Ao montar a `ICMSRule`, preencha `IntraUF: strings.EqualFold(ufDestino, r.ufOrigem)`. A UF de origem é do adapter; o domínio não tem como saber, e sem essa marca ele cobra DIFAL numa venda dentro de MG — imposto que a lei não prevê (LC 87/96 art. 4º §2º).
+
 - [ ] **Step 5: Rode e confirme que passa**
 
 ```bash
@@ -1863,7 +2002,13 @@ Remova `AND p.tenant_id = $1` e rode.
 
 Esperado: `TestRuleForOutroTenantNaoVaza` **falha**. Desfaça depois.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 8: Terceiro controle negativo — prove que a marca de operação interna compara UF**
+
+Troque `IntraUF: strings.EqualFold(ufDestino, r.ufOrigem)` por `IntraUF: false` e rode.
+
+Esperado: `TestRuleForMarcaOperacaoInterna` **falha** na primeira asserção. Desfaça depois.
+
+- [ ] **Step 9: Commit**
 
 ```bash
 git add apps/server_core/internal/modules/fiscal/ports apps/server_core/internal/modules/fiscal/adapters
@@ -2654,7 +2799,7 @@ Peça: subir o dev stack no commit desta fatia, rodar o sync da matriz uma vez, 
 | P-1 | Pedido da Bahia de R$ 299,90: ICMS 20,99 · DIFAL 40,49 · PIS/COFINS 22,05 · total 83,53 |
 | P-2 | Margem **−2,30 (−0,77%)**, negativa na tela, sem clamp em zero |
 | P-3 | Pedido com destino PR: ICMS preenchido, DIFAL e PIS/COFINS com pendência nomeando `ALIQINTDEST`, margem em branco com motivo |
-| P-3b | Pedido **intra-MG**: mesma pendência. A matriz é muda para MG→MG (`ALIQINTDEST` NULL, `ALIQUOTA` 0) e o 19 que a nota grava não sai dela — dívida **D-35**. São 15 das 74 notas de e-commerce; se a tela mostrar número aqui, ele foi inventado |
+| P-3b | Pedido **intra-MG**: **DIFAL = R$ 0,00**, sem pendência — venda dentro do estado não tem DIFAL (LC 87/96 art. 4º §2º), e zero aqui é resposta, não lacuna. A pendência é no **ICMS**: a célula MG→MG traz `ALIQUOTA` 0 e as notas cobraram 19% — dívida **D-35**. São 15 das 74 notas de e-commerce; se a tela mostrar ICMS aqui, ele foi inventado |
 | P-4 | Rodapé do drawer com *"estimativa pela matriz do ERP"* e a vigência |
 | P-5 | `/integracoes` mostra o card da matriz com contagem e data de sync |
 | P-6 | Nenhum `R$ 0,00` onde a resposta é desconhecida |
@@ -2696,7 +2841,7 @@ A base de PIS/COFINS passou a descontar o **dinheiro** apurado em vez da soma da
 
 **⛔ Lacuna nova, aberta, e é a única que importa (D-35):** existe uma fonte de alíquota interna de destino **fora da `TGFICM`**. Prova em dois lugares — a nota 895507 gravou 17,0 **no dia seguinte** às correções, na mesma célula já em 20,5 (não é defasagem de cadastro, é a nota ignorando o cadastro); e as **56 linhas intra-MG** gravaram 19 enquanto a matriz tem `ALIQINTDEST` NULL e `ALIQUOTA` 0. Hipótese mais barata, não testada: herança do pedido 313 para a nota 306.
 **Consequência aceita:** o espelho reproduz o **cadastro**, não o documento. Para *simular preço* é o que se quer — o devido, não o errado. Para *conferir nota emitida* não serve, e isso é a fatia P6, que lê `TGFDIN` direto. Escrito no plano para ninguém confundir os dois usos.
-**Consequência prática:** pedidos intra-MG saem com DIFAL em pendência. São 15 das 74 notas de e-commerce.
+**Consequência prática:** pedidos intra-MG saem com **DIFAL zero** (fato de direito — operação interna não tem diferencial) e **ICMS em pendência** (a célula diz 0, as notas dizem 19%). São 15 das 74 notas de e-commerce. A pendência é no componente errado se a gente inverter isso: DIFAL em branco assusta sem motivo, e ICMS zero mente.
 
 **Achado que barateia o P5/histórico:** `TGFHICM` guarda **before-image de linha inteira**, uma por edição — não é só carimbo de auditoria. 99 linhas, 61 com origem MG, desde 2024-07-31. Dá para reconstruir parte do histórico em vez de partir do zero absoluto no primeiro sync. **Não entra nesta fatia** (a D-28 continua valendo para o que ela não cobre), mas deixa de ser impossível.
 
@@ -2712,5 +2857,5 @@ A base de PIS/COFINS passou a descontar o **dinheiro** apurado em vez da soma da
 | ~~D-32~~ | **FECHADA.** `ALIQINTDEST` alimenta o cálculo (274 acertos contra 18); `ALIQUFDEST` fica espelhada e nunca é usada, nem como fallback |
 | D-33 | `CODTRIB` 10 e 40 (43 linhas MG) com tratamento não apurado |
 | D-34 | `TIPCALCDIFAL` (=0 em 100% das linhas vistas), `BASESTUFDEST` e `CODTABSTUFDEST` não espelhados nem apurados |
-| **D-35** | ⛔ **existe fonte de alíquota interna de destino fora da `TGFICM`** — a nota 895507 gravou 17,0 com a célula em 20,5, e as 56 linhas intra-MG gravaram 19 com a célula muda. Hipótese não testada: herança do pedido 313 para a nota 306. Enquanto aberta, pedidos intra-MG saem com DIFAL em pendência (15 de 74 notas) |
+| **D-35** | ⛔ **existe fonte de alíquota interna de destino fora da `TGFICM`** — a nota 895507 gravou 17,0 com a célula em 20,5, e as 56 linhas intra-MG gravaram 19 com a célula muda. Hipótese não testada: herança do pedido 313 para a nota 306. Enquanto aberta, pedidos intra-MG saem com **ICMS** em pendência — o DIFAL deles é zero por lei, não por lacuna (15 de 74 notas) |
 | D-36 | `REDBASE ≠ 0` com `CODTRIB ≠ 60` nunca foi observado ⇒ DIFAL vira pendência nessa combinação. Custo medido: 2 pedidos em 74, e os 2 são ST |
