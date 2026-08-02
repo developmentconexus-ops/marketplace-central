@@ -478,12 +478,12 @@ func TestResolveCellRecusaEscolherEntreDuas(t *testing.T) {
 }
 
 func TestResolveCellAceitaIntraUFComSlotsInvertidos(t *testing.T) {
-	// Intra-MG a matriz inverte as posicoes: o grupo vai no slot 1.
-	// ResolveCell testa os dois slots do mesmo jeito, entao isso ja funciona —
-	// este teste existe para que nao pare de funcionar.
-	got := domain.ResolveCell([]domain.MatrixLine{linha("I", 122, "S", -1)}, 122)
+	// Forma intra-UF medida: grupo no slot 1, sentinela "S" com codigo 1 (nao
+	// -1) no slot 2. Sao 56 linhas do recorte real. Exigir codigo do sentinela
+	// as rejeitaria todas.
+	got := domain.ResolveCell([]domain.MatrixLine{linha("I", 122, "S", 1)}, 122)
 	if got.Line == nil {
-		t.Fatal("forma intra-UF (grupo no slot 1) foi rejeitada")
+		t.Fatal("forma intra-UF (grupo no slot 1, sentinela S/1) foi rejeitada")
 	}
 }
 ```
@@ -551,10 +551,15 @@ type ResolvedCell struct {
 
 // ResolveCell aplica a LISTA BRANCA de restrição e devolve a linha vencedora.
 //
-// Aceita exatamente três formas, que foram as medidas:
-//   - "N" com código 0   → sem restrição
-//   - "S" com código -1  → curinga
-//   - "I" com código G   → vale para o grupo de ICMS G
+// Aceita exatamente três tipos, que foram os medidos:
+//   - "N" → sem restrição (sentinela; o código não significa nada)
+//   - "S" → curinga (sentinela; o código não significa nada)
+//   - "I" → vale para o grupo de ICMS informado no código
+//
+// O código dos sentinelas NÃO é constante e não pode ser testado: a forma
+// interestadual é "N"/0 + "I"/<grupo>, e a forma intra-UF inverte os papéis dos
+// slots para "I"/<grupo> + "S"/1. Exigir -1 no "S" rejeitaria as 56 linhas
+// intra-MG do recorte real.
 //
 // Descarta todo o resto — "O" (TOP), "P" (produto), "H" (NCM) e as cinco letras
 // não decodificadas ("K","G","L","X","T"). Lista BRANCA e não lista negra: tipo
@@ -588,10 +593,11 @@ func ResolveCell(lines []MatrixLine, grupoICMS int) ResolvedCell {
 
 func slotAceito(tipo string, codigo, grupoICMS int) bool {
 	switch tipo {
-	case "N":
-		return codigo == 0
-	case "S":
-		return codigo == -1
+	case "N", "S":
+		// Sentinelas. O código varia com a forma da linha ("N"/0 interestadual,
+		// "S"/1 intra-UF) e não carrega significado — testá-lo rejeita linhas
+		// válidas. A guarda contra excesso de casamento é a ambiguidade.
+		return true
 	case "I":
 		return codigo == grupoICMS
 	default:
@@ -1213,9 +1219,14 @@ func TestTaxesForValueBahiaSegueMatrizVigente(t *testing.T) {
 		t.Fatalf("Total = %v, queria 83.53", v)
 	}
 
-	// Contra-controle: 29,99 e o DIFAL da nota 895507, emitida a 17,0%.
+	// Contra-controle: 29,99 e o DIFAL que a nota 895507 gravou, com
+	// TGFDIN.ALIQINTDEST = 17,0. A celula da TGFICM (grupo 122, destino BA)
+	// vale 20,5 nas duas colunas, e ja valia no dia anterior — a nota-irma
+	// 895436 usou 20,5 e reconcilia ao centavo. O 17,0 NAO sai da matriz;
+	// vem de uma fonte ainda nao localizada (divida D-35). Espelhamos o
+	// cadastro, e o cadastro diz 20,5.
 	if got.DIFAL.Valor != nil && *got.DIFAL.Valor == 29.99 {
-		t.Fatal("29,99 e a nota defasada 895507 — a matriz vigente diz 20,5%")
+		t.Fatal("29,99 e o que a nota 895507 gravou — a celula da matriz diz 20,5%")
 	}
 	if got.Origem != OrigemMatriz {
 		t.Fatalf("Origem = %q, queria %q", got.Origem, OrigemMatriz)
@@ -1262,14 +1273,35 @@ func TestTaxesForValueReduzBaseDoICMS(t *testing.T) {
 	if v := valor(t, got.ICMS, "ICMS"); v != 14.00 {
 		t.Fatalf("ICMS = %v, queria 14.00 — base reduzida em 33,33%%", v)
 	}
-	// A base do DIFAL do lado do destino e PERCREDBASEDEST, cujo papel nao foi
-	// verificado. Com a base da operacao reduzida, o telescopio
-	// ICMS + DIFAL = V x ALIQINTDEST deixa de valer e nao pode ser afirmado.
+	// REDBASE != 0 junto de CODTRIB = 0 tem ZERO observacoes no recorte real: a
+	// unica ocorrencia de REDBASE != 0 e REDBASE = 100 com CODTRIB = 60, que e
+	// marcacao de ST. Sem observacao, o DIFAL nao se afirma.
 	if got.DIFAL.Valor != nil {
-		t.Fatalf("DIFAL = %v; com REDBASE != 0 a base do destino e desconhecida", *got.DIFAL.Valor)
+		t.Fatalf("DIFAL = %v; REDBASE != 0 sem ST nunca foi observado", *got.DIFAL.Valor)
 	}
 	if got.DIFAL.Motivo == "" {
 		t.Fatal("faltou motivo")
+	}
+}
+
+func TestTaxesForValueRedBase100ComSTEhST(t *testing.T) {
+	// REDBASE = 100 nao e "base reduzida a 100%": e como o ERP marca ST, e vem
+	// sempre com CODTRIB = 60. Tratar como reducao zeraria a base de uma venda.
+	regra := regraBahia()
+	regra.RedBasePct = s("100")
+	regra.CodTrib = i(60)
+
+	got := TaxesForValue(299.90, regra)
+
+	for nome, c := range map[string]Componente{"ICMS": got.ICMS, "DIFAL": got.DIFAL, "FCP": got.FCP} {
+		if v := valor(t, c, nome); v != 0 {
+			t.Fatalf("%s = %v, queria 0", nome, v)
+		}
+	}
+	// Base cheia: 299,90 x 9,25% = 27,74. Se REDBASE tivesse zerado a base, o
+	// PIS/COFINS sairia 0 e o pedido pareceria isento.
+	if v := valor(t, got.PisCofins, "PIS/COFINS"); v != 27.74 {
+		t.Fatalf("PIS/COFINS = %v, queria 27.74 — REDBASE nao pode zerar a base de PIS/COFINS", v)
 	}
 }
 
@@ -1500,21 +1532,37 @@ func TaxesForValue(valorLinha float64, regra ICMSRule) Resultado {
 			"Sem ela o DIFAL nao pode ser calculado.")
 	}
 
-	// O DIFAL sai do telescópio ICMS + DIFAL = V x ALIQINTDEST, que pressupõe a
-	// MESMA base dos dois lados. Com a base da operação reduzida, a base do
-	// destino passa a depender de PERCREDBASEDEST, cujo papel não foi apurado
-	// na origem. Sem isso o telescópio não se sustenta e o DIFAL não pode ser
-	// afirmado — nem com a base cheia, nem com a reduzida.
+	// A base do DIFAL é CHEIA dos dois lados. Medido: BASEDIFAL = BASE em
+	// 347/347 linhas de venda não-ST com DIFAL, e PERCREDBASE = 0 em 347/347.
+	// PERCREDBASEDEST é coluna morta — 0 em 4.601 de 4.601 linhas da TGFICM,
+	// todas as origens.
+	//
+	// Fórmula do ERP, reconciliada contra o documento:
+	//   VLRDIFALDEST = ROUND(BASEDIFAL x (ALIQINTDEST - ALIQUOTA) / 100, 2)
+	// 312/347 ao centavo, 347/347 dentro de 5 centavos, erro agregado 0,00003%
+	// sobre R$ 93.120 de DIFAL.
+	//
+	// Note que o crédito descontado é V x ALIQUOTA sobre a base CHEIA, não o
+	// ICMS efetivamente apurado — os dois só coincidem quando REDBASE = 0. A
+	// combinação REDBASE != 0 com CODTRIB = 0 tem ZERO observações no recorte
+	// real (REDBASE != 0 aparece só como REDBASE = 100 junto de CODTRIB = 60,
+	// que é a marcação de ST e já saiu no ramo acima). Sem observação, não se
+	// afirma: vira pendência.
 	if redBase.Sign() != 0 {
-		return selaRestante(out, "Matriz de ICMS do ERP reduz a base desta operacao, e a base equivalente "+
-			"no estado de destino (PERCREDBASEDEST) ainda nao foi apurada. Sem ela o DIFAL nao pode ser calculado.")
+		return selaRestante(out, "Matriz de ICMS do ERP reduz a base desta operacao sem marca-la como "+
+			"substituicao tributaria. Essa combinacao nao ocorreu em nenhuma venda apurada, "+
+			"entao o DIFAL nao pode ser calculado.")
 	}
 
-	cargaTotal, err := pctOf(valorLinha, *regra.AliqIntDestPct)
-	if err != nil {
+	aid, ok := new(big.Rat).SetString(*regra.AliqIntDestPct)
+	if !ok {
 		return selaRestante(out, "Aliquota interna do destino invalida na matriz de ICMS do ERP: "+*regra.AliqIntDestPct)
 	}
-	difal, err := somaCentavos(cargaTotal, -icms)
+	aliq, ok := new(big.Rat).SetString(*regra.AliquotaPct)
+	if !ok {
+		return selaRestante(out, "Aliquota da operacao invalida na matriz de ICMS do ERP: "+*regra.AliquotaPct)
+	}
+	difal, err := pctOf(valorLinha, new(big.Rat).Sub(aid, aliq).FloatString(4))
 	if err != nil {
 		return selaRestante(out, "Falha ao compor o DIFAL.")
 	}
@@ -2606,6 +2654,7 @@ Peça: subir o dev stack no commit desta fatia, rodar o sync da matriz uma vez, 
 | P-1 | Pedido da Bahia de R$ 299,90: ICMS 20,99 · DIFAL 40,49 · PIS/COFINS 22,05 · total 83,53 |
 | P-2 | Margem **−2,30 (−0,77%)**, negativa na tela, sem clamp em zero |
 | P-3 | Pedido com destino PR: ICMS preenchido, DIFAL e PIS/COFINS com pendência nomeando `ALIQINTDEST`, margem em branco com motivo |
+| P-3b | Pedido **intra-MG**: mesma pendência. A matriz é muda para MG→MG (`ALIQINTDEST` NULL, `ALIQUOTA` 0) e o 19 que a nota grava não sai dela — dívida **D-35**. São 15 das 74 notas de e-commerce; se a tela mostrar número aqui, ele foi inventado |
 | P-4 | Rodapé do drawer com *"estimativa pela matriz do ERP"* e a vigência |
 | P-5 | `/integracoes` mostra o card da matriz com contagem e data de sync |
 | P-6 | Nenhum `R$ 0,00` onde a resposta é desconhecida |
@@ -2630,14 +2679,26 @@ Inclua a contagem medida ao vivo: quantas das 38 ordens saíram com imposto comp
 
 A base de PIS/COFINS passou a descontar o **dinheiro** apurado em vez da soma das alíquotas. As duas formas dão o mesmo número quando `redbase = 0` — o pedido da Bahia continua em 22,05 — e só a primeira continua certa quando não.
 
-**M20 despachada — três medições, uma delas pode inverter uma escolha:**
+**M20 respondida. Reconciliação contra 347 linhas de nota real, 147 notas, 11 UFs, R$ 93.120 de DIFAL.**
 
-- **M20-A ⚠ decide qual coluna alimenta o DIFAL.** Há contradição nos dados: medimos que a linha da Bahia foi corrigida para **20,5** em 20/07 e que a nota-irmã 895436 reconcilia ao centavo com 20,5, mas o M19 reporta `ALIQINTDEST(BA) = 18` e `ALIQUFDEST(BA) = 20,5`. Ou a leitura de 18 é da linha genérica (outra população — já erramos assim uma vez), ou a coluna que o motor lê não é a que supusemos. O desempate é reconciliação contra o documento: calcular o DIFAL pelas duas colunas e contar qual reproduz o que a `TGFDIN` gravou.
-  **Se `ALIQUFDEST` vencer, a troca é de um campo** — `matrix_reader.go` passa a projetar `aliq_uf_dest` em `AliqIntDestPct`. Ambas já estão espelhadas (T1, T4, T5) exatamente para que isso não custe uma migração. Nenhuma outra task muda.
-- **M20-B dimensiona o D-31:** entre as células que os nossos produtos e destinos reais atingem, quantas têm `REDBASE ≠ 0`? 63% é da **tabela**, não das **vendas**. Diz se a pendência de DIFAL pega 3 pedidos ou 30.
-- **M20-C pode matar o D-31:** qual forma reproduz o DIFAL gravado nas linhas com `REDBASE ≠ 0` — base cheia no destino, mesma redução dos dois lados, ou `PERCREDBASEDEST`. Se uma vencer com folga, o DIFAL deixa de virar pendência nessas células.
+| pergunta | veredito |
+|---|---|
+| qual coluna alimenta o DIFAL | **`ALIQINTDEST`.** 274 acertos contra 18 de `ALIQUFDEST` — e 16 dos 18 são empate em SP, onde as duas valem 18 |
+| fórmula do DIFAL | `ROUND(BASE × (ALIQINTDEST − ALIQUOTA)/100, 2)` — 312/347 ao centavo, 347/347 a 5 centavos, agregado 0,00003% |
+| base do DIFAL | **cheia dos dois lados**: `BASEDIFAL = BASE` em 347/347 |
+| `PERCREDBASEDEST` | **coluna morta** — 0 em 4.601 de 4.601 linhas, todas as origens. **D-31 morre** |
+| `REDBASE` no recorte real | pega **2 de 74** pedidos, e a única ocorrência é `REDBASE=100 ∧ CODTRIB=60`, que é marcação de **ST** |
+| forma intra-UF | slots invertem: `I/<grupo>` + **`S/1`** — não `S/−1` |
 
-Nenhuma das três bloqueia T1–T3 e T5–T16. Só o **valor esperado do teste da Bahia** em T8 depende do A — e ele já é o único ponto do plano onde 20,5 aparece como número.
+**Uma correção do especialista que ele mesmo emitiu:** o `ALIQINTDEST(BA) = 18` da rodada 11 era **mediana da UF sobre população mista**, não célula. A célula real do grupo 122 vale **20,5**, batendo com o que já tínhamos medido. A tabela de medianas por UF daquela rodada não descreve célula nenhuma e foi descartada.
+
+**Uma recomendação dele que eu recuso, com a tabela dele:** ele sugeriu usar `ALIQUFDEST` como fallback quando `ALIQINTDEST` for NULL, alegando ganho de 2 linhas (1 PE, 1 RS). Mas no **PR**, onde `ALIQINTDEST` também é NULL, `ALIQUFDEST` vale 19 e a nota gravou **18** — o fallback erraria as **11 linhas** do PR. Ganha 2, perde 11. **Célula muda continua pendência.** `ALIQUFDEST` fica espelhada e nunca entra no cálculo.
+
+**⛔ Lacuna nova, aberta, e é a única que importa (D-35):** existe uma fonte de alíquota interna de destino **fora da `TGFICM`**. Prova em dois lugares — a nota 895507 gravou 17,0 **no dia seguinte** às correções, na mesma célula já em 20,5 (não é defasagem de cadastro, é a nota ignorando o cadastro); e as **56 linhas intra-MG** gravaram 19 enquanto a matriz tem `ALIQINTDEST` NULL e `ALIQUOTA` 0. Hipótese mais barata, não testada: herança do pedido 313 para a nota 306.
+**Consequência aceita:** o espelho reproduz o **cadastro**, não o documento. Para *simular preço* é o que se quer — o devido, não o errado. Para *conferir nota emitida* não serve, e isso é a fatia P6, que lê `TGFDIN` direto. Escrito no plano para ninguém confundir os dois usos.
+**Consequência prática:** pedidos intra-MG saem com DIFAL em pendência. São 15 das 74 notas de e-commerce.
+
+**Achado que barateia o P5/histórico:** `TGFHICM` guarda **before-image de linha inteira**, uma por edição — não é só carimbo de auditoria. 99 linhas, 61 com origem MG, desde 2024-07-31. Dá para reconstruir parte do histórico em vez de partir do zero absoluto no primeiro sync. **Não entra nesta fatia** (a D-28 continua valendo para o que ela não cobre), mas deixa de ser impossível.
 
 **Consistência de tipos:** `domain.MatrixLine` (T3) → `mirror.MatrixCell` (T5) → `domain.ICMSRule` (T7) → `ports.ItemTaxes` (T11) → `OrderFiscal` (T13) → `FiscalSection` (T14). `Componente` só existe em `fiscal/domain`; `orders` usa `TaxComponent` própria e o adapter (T11) faz a tradução. `pctOf` é definida em T6 e usada em T8.
 
@@ -2647,7 +2708,9 @@ Nenhuma das três bloqueia T1–T3 e T5–T16. Só o **valor esperado do teste d
 |---|---|
 | D-29 | origem fixa em MG (`UFORIG = 13`), mesma classe da D-17 |
 | D-30 | arredondamento duplicado entre `fiscal` e `pricing`, com teste de alarme em T6 |
-| D-31 | `PERCREDBASEDEST` não apurado ⇒ toda célula com `REDBASE ≠ 0` perde o DIFAL |
-| D-32 | `ALIQINTDEST` (17,4% de cobertura, reproduz o ERP) contra `ALIQUFDEST` (87,7%, mais perto da lei) — espelhadas as duas, calculado só com a primeira; a escolha é decisão de produto da fatia P5 |
+| ~~D-31~~ | **MORTA.** `PERCREDBASEDEST` é 0 em 4.601/4.601 e `BASEDIFAL = BASE` em 347/347 — não há redução de base do lado do destino a apurar |
+| ~~D-32~~ | **FECHADA.** `ALIQINTDEST` alimenta o cálculo (274 acertos contra 18); `ALIQUFDEST` fica espelhada e nunca é usada, nem como fallback |
 | D-33 | `CODTRIB` 10 e 40 (43 linhas MG) com tratamento não apurado |
-| D-34 | `TIPCALCDIFAL`, `BASESTUFDEST` e `CODTABSTUFDEST` não espelhados nem apurados |
+| D-34 | `TIPCALCDIFAL` (=0 em 100% das linhas vistas), `BASESTUFDEST` e `CODTABSTUFDEST` não espelhados nem apurados |
+| **D-35** | ⛔ **existe fonte de alíquota interna de destino fora da `TGFICM`** — a nota 895507 gravou 17,0 com a célula em 20,5, e as 56 linhas intra-MG gravaram 19 com a célula muda. Hipótese não testada: herança do pedido 313 para a nota 306. Enquanto aberta, pedidos intra-MG saem com DIFAL em pendência (15 de 74 notas) |
+| D-36 | `REDBASE ≠ 0` com `CODTRIB ≠ 60` nunca foi observado ⇒ DIFAL vira pendência nessa combinação. Custo medido: 2 pedidos em 74, e os 2 são ST |
