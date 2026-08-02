@@ -421,6 +421,22 @@ func (r *Repository) UpsertPulledRows(ctx context.Context, installationID string
 		if row.SyncError == nil {
 			syncError = nil
 		}
+		// ADR-C2 — conjunto de colunas deste escritor.
+		//
+		// Este escritor é o backfill/sweep do catálogo do provider. Ele possui
+		// tudo que vem do payload do item, e SÓ isso. As colunas de fora ficam
+		// intocadas mesmo quando a linha é reescrita:
+		//
+		//   quality_score — dono é o leitor de saúde do anúncio (P4). Este
+		//                   escritor nunca teve o valor; escrevê-lo aqui apagaria
+		//                   o do dono a cada sweep.
+		//   sales_30d     — campo DERIVADO de pedidos por janela, não lido do
+		//                   provider (a API não tem endpoint de vendas por
+		//                   janela). Dono é o agregador de pedidos.
+		//
+		// Não use COALESCE para "proteger" coluna alheia: COALESCE também impede
+		// o DONO de apagar quando o provider REMOVE o valor, trocando perda de
+		// dado por dado zumbi.
 		_, err = tx.Exec(ctx, `
 			INSERT INTO listings (tenant_id, installation_id, provider, provider_listing_id, variation_id, title,
 				listing_type_code, status, price_amount, price_currency, published_quantity, sync_state,
@@ -436,13 +452,14 @@ func (r *Repository) UpsertPulledRows(ctx context.Context, installationID string
 				provider=EXCLUDED.provider, title=EXCLUDED.title, listing_type_code=EXCLUDED.listing_type_code,
 				status=EXCLUDED.status, price_amount=EXCLUDED.price_amount, price_currency=EXCLUDED.price_currency,
 				published_quantity=EXCLUDED.published_quantity, sync_state=EXCLUDED.sync_state,
-				sync_error=EXCLUDED.sync_error, quality_score=EXCLUDED.quality_score, sales_30d=EXCLUDED.sales_30d,
+				sync_error=EXCLUDED.sync_error,
 				fetched_at=EXCLUDED.fetched_at,
 				sold_quantity=EXCLUDED.sold_quantity, category_id=EXCLUDED.category_id, condition=EXCLUDED.condition,
 				permalink=EXCLUDED.permalink, thumbnail=EXCLUDED.thumbnail, date_created_ml=EXCLUDED.date_created_ml,
 				tags=EXCLUDED.tags, catalog_product_id=EXCLUDED.catalog_product_id, shipping_mode=EXCLUDED.shipping_mode,
 				free_shipping=EXCLUDED.free_shipping, logistic_type=EXCLUDED.logistic_type,
 				available_quantity=EXCLUDED.available_quantity,
+				raw=EXCLUDED.raw, raw_truncated=EXCLUDED.raw_truncated,
 				last_seen_at=EXCLUDED.last_seen_at, absent_since=NULL, updated_at=EXCLUDED.updated_at
 		`, r.tenantID, installationID, row.Provider, row.Key.ProviderListingID, row.Key.VariationID, row.Title,
 			row.ListingTypeCode, row.Status, row.PriceAmount, row.PriceCurrency, row.PublishedQuantity, row.SyncState,

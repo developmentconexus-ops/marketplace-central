@@ -496,6 +496,68 @@ func TestApplyCompletedPull_VariationsUpsertIdempotently(t *testing.T) {
 	}
 }
 
+// TestUpsertPulledRowsDoesNotEraseColumnsOfAnotherWriter is the ADR-C2
+// must-fail. quality_score/sales_30d are NOT owned by this writer (the ML
+// multiget sweep never populates them from the item payload — their owners
+// are the anúncio-health reader (P4) and the orders aggregator,
+// respectively). Before the ON CONFLICT rewrite,
+// `quality_score=EXCLUDED.quality_score, sales_30d=EXCLUDED.sales_30d` meant
+// every sweep tick — which always sends nil for both — blanked out whatever
+// the real owner had written. price_amount/price_currency are deliberately
+// NOT asserted here: those ARE owned by this writer and correctly stay
+// EXCLUDED-driven; their nil-on-resync defect was the DTO gap fixed by
+// Tasks 3-5, not a column-ownership problem.
+func TestUpsertPulledRowsDoesNotEraseColumnsOfAnotherWriter(t *testing.T) {
+	ctx := context.Background()
+	pool, _ := testpostgres.OpenPool(t, "tenant_harness_listings")
+	token := time.Now().UTC().Format("150405.000000000")
+	tenant, installation := "listing-c2-"+token, "installation-c2-"+token
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM listing_sync_events WHERE tenant_id=$1 AND installation_id=$2`, tenant, installation)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM listings WHERE tenant_id=$1 AND installation_id=$2`, tenant, installation)
+	})
+
+	runStarted := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
+	repo := listingspostgres.NewRepository(pool, tenant)
+
+	first := listing(t, tenant, installation, "MLB1", "-", domain.ListingStatusActive, "produto", nil, nil, nil, runStarted, 50)
+	if err := repo.UpsertPulledRows(ctx, installation, []domain.Listing{first}, runStarted); err != nil {
+		t.Fatalf("primeira escrita: %v", err)
+	}
+
+	// Simula o DONO real de quality_score/sales_30d escrevendo por fora deste
+	// writer — exatamente como P4 (saúde do anúncio) e o agregador de
+	// pedidos farão quando existirem.
+	if _, err := pool.Exec(ctx, `UPDATE listings SET quality_score=$1, sales_30d=$2 WHERE tenant_id=$3 AND installation_id=$4 AND provider_listing_id=$5 AND variation_id=$6`,
+		99, 42, tenant, installation, "MLB1", "-"); err != nil {
+		t.Fatalf("simular escritor dono de quality_score/sales_30d: %v", err)
+	}
+
+	// O sweep roda de novo (este writer nunca populou QualityScore/Sales30D —
+	// veja MapMultigetItemToListing). Antes do ADR-C2 isso gravava NULL por
+	// cima dos valores do dono real.
+	// quality is 0 here only because listing() requires an int argument; the
+	// nil override below is what actually matters (Sales30D was already nil —
+	// listing() never sets it).
+	second := listing(t, tenant, installation, "MLB1", "-", domain.ListingStatusActive, "produto", nil, nil, nil, runStarted.Add(time.Minute), 0)
+	second.QualityScore = nil
+	if err := repo.UpsertPulledRows(ctx, installation, []domain.Listing{second}, runStarted.Add(time.Minute)); err != nil {
+		t.Fatalf("segunda escrita (sweep): %v", err)
+	}
+
+	var gotQuality, gotSales *int
+	if err := pool.QueryRow(ctx, `SELECT quality_score, sales_30d FROM listings WHERE tenant_id=$1 AND installation_id=$2 AND provider_listing_id=$3 AND variation_id=$4`,
+		tenant, installation, "MLB1", "-").Scan(&gotQuality, &gotSales); err != nil {
+		t.Fatalf("leitura: %v", err)
+	}
+	if gotQuality == nil || *gotQuality != 99 {
+		t.Fatalf("quality_score = %v, want 99 preservado (dono de outro escritor)", gotQuality)
+	}
+	if gotSales == nil || *gotSales != 42 {
+		t.Fatalf("sales_30d = %v, want 42 preservado (dono de outro escritor)", gotSales)
+	}
+}
+
 func seedListing(t *testing.T, pool *pgxpool.Pool, tenant, installation, item, variation, title, status string, created, updated time.Time) {
 	t.Helper()
 	seedListingWithLastSeen(t, pool, tenant, installation, item, variation, title, status, created, updated, nil)
