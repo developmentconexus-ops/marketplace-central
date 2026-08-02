@@ -352,3 +352,15 @@ list` e o `node_modules` fica. O sucesso aparente do comando esconde o custo rea
 Conserto de classe: o hub verifica o diretório depois do `remove`, não o código de saída — e
 a criação de worktree passa a ficar fora da árvore montada pelo compose, para que limpeza não
 dependa de derrubar a stack.
+
+**D-19. `CODEMP` fixo em 1 no leitor de custo de pedidos** (P2/M-06, 2026-08-02; plano
+propunha "D-17", já ocupado pelo emit do `tsc` — renumerado):
+
+`internal/composition/orders_adapters.go:53` fixa `CompanyID: 1` na consulta `TGFCUS`. O
+predicado de vendável ratificado cobre `CODEMP(1,2)`. Produto cujo custo só exista na
+empresa 2 devolve linha nenhuma → custo desconhecido → margem some, sem nada na tela
+explicando por quê.
+
+Nenhum dos 38 pedidos medidos em 2026-08-02 caiu nisso (evidência em
+`.mnfs/MIS-007-ml-sync/M-06-orders-backfill-decomposition/evidence/p2-premise-check.md`).
+Bomba armada, não disparada. Dono: M-06. Registrada por decisão do operador em 2026-08-02.
