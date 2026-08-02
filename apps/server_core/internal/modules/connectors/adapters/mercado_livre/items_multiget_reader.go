@@ -68,6 +68,15 @@ type ItemMultigetDTO struct {
 	SellerSKU         string
 	SellerCustomField string
 	Attributes        []ItemMultigetAttributeDTO
+	// Price é a forma decimal em string (mesma convenção de
+	// ItemMultigetVariationDTO.Price) — nunca float.
+	Price         *string
+	CurrencyID    string
+	ListingTypeID string
+	// InitialQuantity é a quantidade PUBLICADA. Não é
+	// AvailableQuantity + SoldQuantity: reposição de estoque incrementa a
+	// disponível sem tocar a inicial. São dois números distintos.
+	InitialQuantity   *int
 	SoldQuantity      *int
 	CategoryID        string
 	Condition         string
@@ -143,10 +152,20 @@ type mlMultigetItemBody struct {
 	// omitted them (json.Unmarshal silently drops undeclared fields), which
 	// left every no-variation item's listing-level SellerSKU/EAN honest-empty
 	// with no way to derive them even though the bytes are present in Raw.
-	SellerSKU         string                `json:"seller_sku"`
-	SellerCustomField string                `json:"seller_custom_field"`
-	Attributes        []mlAttribute         `json:"attributes"`
-	Status            string                `json:"status"`
+	SellerSKU         string        `json:"seller_sku"`
+	SellerCustomField string        `json:"seller_custom_field"`
+	Attributes        []mlAttribute `json:"attributes"`
+	Status            string        `json:"status"`
+	// Price/CurrencyID/ListingTypeID/InitialQuantity: o ML manda os quatro em
+	// TODO item, e este struct não os declarava — encoding/json os descartava
+	// em silêncio, deixando price_amount/price_currency/listing_type_code/
+	// published_quantity NULL em 34 de 34 anúncios. Price é json.Number (e não
+	// float64) pela mesma convenção de dinheiro do resto do pacote: evita
+	// deriva de precisão binária em valor monetário.
+	Price             *json.Number          `json:"price"`
+	CurrencyID        string                `json:"currency_id"`
+	ListingTypeID     string                `json:"listing_type_id"`
+	InitialQuantity   *int                  `json:"initial_quantity"`
 	SoldQuantity      *int                  `json:"sold_quantity"`
 	CategoryID        string                `json:"category_id"`
 	Condition         string                `json:"condition"`
@@ -272,6 +291,10 @@ func mapMultigetElement(requestedID string, element mlMultigetElement) ItemMulti
 		ProviderItemID:    firstNonEmpty(strings.TrimSpace(body.ID), requestedID),
 		Title:             body.Title,
 		Status:            body.Status,
+		Price:             multigetPriceString(body.Price),
+		CurrencyID:        strings.TrimSpace(body.CurrencyID),
+		ListingTypeID:     strings.TrimSpace(body.ListingTypeID),
+		InitialQuantity:   body.InitialQuantity,
 		SellerSKU:         body.SellerSKU,
 		SellerCustomField: body.SellerCustomField,
 		Attributes:        mapMultigetAttributes(body.Attributes),
@@ -363,4 +386,19 @@ func capRawMessage(raw json.RawMessage) (json.RawMessage, bool) {
 	out := make(json.RawMessage, itemMultigetRawCap)
 	copy(out, raw[:itemMultigetRawCap])
 	return out, true
+}
+
+// multigetPriceString converte o número de fio para a forma decimal em string.
+// json.Number já preserva os dígitos exatos recebidos; converter para float
+// aqui reintroduziria a deriva binária que a convenção de dinheiro do pacote
+// existe para evitar.
+func multigetPriceString(n *json.Number) *string {
+	if n == nil {
+		return nil
+	}
+	s := strings.TrimSpace(n.String())
+	if s == "" {
+		return nil
+	}
+	return &s
 }
