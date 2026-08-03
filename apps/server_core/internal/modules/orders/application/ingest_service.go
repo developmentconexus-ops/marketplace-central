@@ -182,15 +182,16 @@ func mapMarketplaceOrder(
 		ProviderCode:         strings.TrimSpace(detail.ProviderCode),
 		ProviderOrderID:      strings.TrimSpace(detail.ProviderOrderID),
 		ProviderStatus:       strings.TrimSpace(detail.ProviderStatus),
-		ProviderStatusDetail: strings.TrimSpace(detail.ProviderStatusDetail),
+		ProviderStatusDetail: trimmedOrNil(detail.ProviderStatusDetail),
 		ProviderCreatedAt:    detail.ProviderCreatedAt,
 		ProviderClosedAt:     detail.ProviderClosedAt,
 		ProviderUpdatedAt:    detail.ProviderUpdatedAt,
 		FetchedAt:            detail.FetchedAt,
 		ShippingID:           derefString(detail.ShippingID),
 		BuyerNickname:        derefString(detail.BuyerNickname),
-		CancellationDetail:   strings.TrimSpace(detail.CancellationDetail),
+		CancellationDetail:   trimmedOrNil(detail.CancellationDetail),
 		Tags:                 detail.Tags,
+		Currency:             trimmedOrNil(detail.CurrencyID),
 		RawProviderRef:       safeOrderProviderReference(detail.ProviderCode, detail.ProviderOrderID),
 		CreatedAt:            now,
 		UpdatedAt:            now,
@@ -309,6 +310,22 @@ func derefString(value *string) string {
 		return ""
 	}
 	return *value
+}
+
+// trimmedOrNil converts a connectorsdomain string field (ProviderStatusDetail/
+// CancellationDetail on OrderDetail — still plain string, unchanged by this
+// slice) into domain.MarketplaceOrder's *string. The connectors layer already
+// collapses "provider omitted the field" and "provider sent empty" into ""
+// upstream, so both cases land here as an empty trimmed string; treating that
+// as nil is the honest choice available at this boundary (never fabricate a
+// pointer to ""), and it is what lets a genuinely-present, non-empty value
+// stored later actually round-trip as NULL-distinct in Postgres.
+func trimmedOrNil(value string) *string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
 }
 
 // safeOrderProviderReference is the retired normalizeOrders' helper (import_service.go,

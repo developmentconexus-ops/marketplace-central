@@ -749,11 +749,12 @@ export interface OrderRead {
   provider_order_id: string;
   provider_code: string;
   status: string;
-  provider_status_detail: string;
+  provider_status_detail: string | null;
   buyer_nickname: string | null;
   total: number | null;
-  currency: string | null;
+  currency: string;
   fulfillment: string | null;
+  cancellation_detail: string | null;
   nf_state: string | null;
   created_at: string | null;
   provider_created_at: string | null;

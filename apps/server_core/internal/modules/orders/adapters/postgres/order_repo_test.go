@@ -217,6 +217,48 @@ func TestOrderRepositoryRefreshKeepsMigratedLegacyIdentityUnresolved(t *testing.
 	}
 }
 
+// TestOrderRepositoryUpsertOrderDistinguishesAbsentDetailFromEmptyDetail proves
+// cancellation_detail (0027: text NOT NULL DEFAULT '') genuinely reaches NULL
+// for an absent value now that domain.MarketplaceOrder.CancellationDetail is
+// *string. Before this fix, "provider didn't send this field" and "provider
+// sent an empty string" collapsed into the same stored value — this test
+// fails on either collapse, not just the absent-into-non-NULL direction.
+func TestOrderRepositoryUpsertOrderDistinguishesAbsentDetailFromEmptyDetail(t *testing.T) {
+	ctx := context.Background()
+	repo, _, installationID, cleanup := newIngestRepositoryForTest(t, ctx)
+	defer cleanup()
+
+	base := time.Date(2026, 7, 9, 10, 0, 0, 0, time.UTC)
+	empty := ""
+
+	absent := testOrderForIdentity(installationID, repo.tenantID+"-detail-absent", "cancelled", &base, "absent-item", "absent-payment")
+	absent.CancellationDetail = nil
+
+	present := testOrderForIdentity(installationID, repo.tenantID+"-detail-empty", "cancelled", &base, "empty-item", "empty-payment")
+	present.CancellationDetail = &empty
+
+	for _, order := range []ordersdomain.MarketplaceOrder{absent, present} {
+		if _, _, err := repo.UpsertOrders(ctx, []ordersdomain.MarketplaceOrder{order}); err != nil {
+			t.Fatalf("UpsertOrders(%s): %v", order.ProviderOrderID, err)
+		}
+	}
+
+	var absentIsNull, presentIsNull bool
+	if err := repo.pool.QueryRow(ctx, `
+		SELECT
+		  (SELECT cancellation_detail IS NULL FROM orders_marketplace_orders WHERE tenant_id=$1 AND provider_order_id=$2),
+		  (SELECT cancellation_detail IS NULL FROM orders_marketplace_orders WHERE tenant_id=$1 AND provider_order_id=$3)
+	`, repo.tenantID, absent.ProviderOrderID, present.ProviderOrderID).Scan(&absentIsNull, &presentIsNull); err != nil {
+		t.Fatalf("leitura: %v", err)
+	}
+	if !absentIsNull {
+		t.Fatal("ausente gravou não-NULL: o tipo string tornou NULL inalcançável")
+	}
+	if presentIsNull {
+		t.Fatal("string vazia virou NULL: perdemos a distinção no outro sentido")
+	}
+}
+
 func newOrderRepositoryForTest(t *testing.T, ctx context.Context) (*OrderRepository, func()) {
 	t.Helper()
 	pool, _ := testpostgres.OpenPool(t, "tenant_harness_orders")

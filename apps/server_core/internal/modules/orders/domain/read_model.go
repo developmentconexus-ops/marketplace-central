@@ -9,11 +9,12 @@ type OrderReadModel struct {
 	ProviderOrderID      string                    `json:"provider_order_id"`
 	ProviderCode         string                    `json:"provider_code"`
 	Status               string                    `json:"status"`
-	ProviderStatusDetail string                    `json:"provider_status_detail"`
+	ProviderStatusDetail *string                   `json:"provider_status_detail"`
 	BuyerNickname        *string                   `json:"buyer_nickname"`
 	Total                *float64                  `json:"total"`
 	Currency             *string                   `json:"currency"`
 	Fulfillment          *string                   `json:"fulfillment"`
+	CancellationDetail   *string                   `json:"cancellation_detail"`
 	NFState              *string                   `json:"nf_state"`
 	ShippingID           string                    `json:"shipping_id,omitempty"`
 	CreatedAt            *time.Time                `json:"created_at"`

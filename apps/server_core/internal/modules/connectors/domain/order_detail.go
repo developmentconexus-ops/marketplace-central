@@ -38,6 +38,11 @@ type OrderDetail struct {
 	CancellationDetail string
 	Tags               []string
 
+	// CurrencyID is the provider's order-level currency_id (e.g. "BRL"), verbatim — never
+	// defaulted. Feeds orders.currency (Task 5 of this slice); "" means the provider omitted
+	// the field, same convention as ProviderStatusDetail/CancellationDetail above.
+	CurrencyID string
+
 	// PackID groups orders placed together in one cart. Verified live (fact T2/#17,
 	// research/external-ml-api-facts.md — "pack_id agrupa pedidos (carrinho)"); nil when the
 	// order was not part of a pack.

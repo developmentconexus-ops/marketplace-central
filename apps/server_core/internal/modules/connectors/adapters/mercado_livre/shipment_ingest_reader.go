@@ -38,6 +38,27 @@ type mlIngestShipmentResponse struct {
 	// this exact field with (shipping_reader.go:19,236-237) and docs/design/handoff-2026-07/
 	// API-MAP.md:18 documents as coming from GET /shipments/$ID's estimated_delivery_* data.
 	LeadTime *mlShipmentLeadTime `json:"lead_time"`
+	// Logistic.Type/TrackingMethod feed domain.ShipmentDetail.LogisticType/TrackingMethod
+	// (order_shipments.logistic_type/tracking_method, migration 0088). Both were previously
+	// undeclared on this DTO: encoding/json silently drops undeclared keys, so every ingested
+	// shipment persisted logistic_type/tracking_method as NULL despite the ML payload sending
+	// them (0/38 rows) — same class of defect as ProviderStatusDetail/CancellationDetail on the
+	// order DTO, caught here by the same rawkeys.Undeclared detector
+	// (shipment_ingest_rawkeys_test.go). logistic.type is the modal (self_service, drop_off,
+	// xd_drop_off, fulfillment…) and governs who holds stock/pays what — it will also feed
+	// `fulfillment` (a later, not-yet-dispatched task); tracking_method is the carrier method
+	// name (e.g. "Normal").
+	Logistic       *mlIngestShipmentLogistic `json:"logistic"`
+	TrackingMethod *string                   `json:"tracking_method"`
+}
+
+// mlIngestShipmentLogistic is the `logistic` sub-object on GET /shipments/{id}. Only Type is
+// consumed today (domain.ShipmentDetail.LogisticType); Mode/Direction are present on the wire
+// (verified against testdata/shipment_body.json) but have no consumer yet, so they are
+// deliberately left undeclared here — rawkeys.Undeclared only checks TOP-LEVEL keys of the
+// payload it is called against, so a nested struct's own unconsumed sub-keys do not trip it.
+type mlIngestShipmentLogistic struct {
+	Type string `json:"type"`
 }
 
 // GetShipmentDetail resolves the full order_shipments persistence fact for one shipment
@@ -143,8 +164,16 @@ func mapShipmentDetail(shipment mlIngestShipmentResponse, fetchedAt time.Time) d
 		Status:             strings.TrimSpace(shipment.Status),
 		Substatus:          trimmedPtr(shipment.Substatus),
 		TrackingNumber:     trimmedPtr(shipment.TrackingNumber),
+		TrackingMethod:     trimmedPtr(shipment.TrackingMethod),
 		SourceTime:         parseTimePtr(shipment.DateCreated),
 		FetchedAt:          fetchedAt,
+	}
+	// LogisticType: absent `logistic` block, or a blank `type` inside it, both stay nil
+	// (ADR-17) — never a fabricated empty string.
+	if shipment.Logistic != nil {
+		if value := strings.TrimSpace(shipment.Logistic.Type); value != "" {
+			detail.LogisticType = &value
+		}
 	}
 	// SLALimitAt: lead_time.estimated_delivery_limit.date on this SAME primary payload —
 	// same field, same nil-guarded traversal, as the existing mapShipmentInfo

@@ -121,19 +121,51 @@ func TestGetShipmentDetailDecodesAllTargetFields(t *testing.T) {
 		t.Fatalf("SLALimitAt = %#v, want %v", detail.SLALimitAt, wantSLALimit)
 	}
 
-	// Honest-unknown gaps documented in domain/shipment_detail.go — must stay nil, this
-	// reader never guesses these.
+	// scrubbedShipmentFixture above carries neither `logistic` nor `tracking_method` — both
+	// are now decoded (mlIngestShipmentResponse), but absence on THIS fixture must still
+	// degrade to nil (ADR-17), never fabricated. See TestGetShipmentDetailDecodesLogisticAndTrackingMethod
+	// for the positive-value assertion.
 	if detail.LogisticType != nil {
-		t.Fatalf("LogisticType = %#v, want nil (unconfirmed JSON key, tracked gap)", detail.LogisticType)
+		t.Fatalf("LogisticType = %#v, want nil (not present on this fixture)", detail.LogisticType)
 	}
 	if detail.TrackingMethod != nil {
-		t.Fatalf("TrackingMethod = %#v, want nil (unconfirmed JSON key, tracked gap)", detail.TrackingMethod)
+		t.Fatalf("TrackingMethod = %#v, want nil (not present on this fixture)", detail.TrackingMethod)
 	}
 	// SLAStatus stays nil: the separate GET /shipments/{id}/sla endpoint is deliberately
 	// not called (unconfirmed response shape, tracked honest gap) — unlike SLALimitAt, it
 	// has no source on the primary payload.
 	if detail.SLAStatus != nil {
 		t.Fatalf("SLAStatus = %#v, want nil (sla sub-resource not called, tracked gap)", detail.SLAStatus)
+	}
+}
+
+func TestGetShipmentDetailDecodesLogisticAndTrackingMethod(t *testing.T) {
+	t.Parallel()
+
+	// logistic.type/tracking_method were previously undeclared on mlIngestShipmentResponse
+	// (encoding/json silently dropped both — 0/38 rows in order_shipments). This proves the
+	// end-to-end wire-to-domain path, not just DTO declaration (rawkeys only proves the
+	// latter).
+	const fixtureWithLogistic = `{
+	  "id": 44556677,
+	  "site_id": "MLB",
+	  "status": "delivered",
+	  "tracking_number": "BR123456789",
+	  "tracking_method": "Normal",
+	  "logistic": {"type": "drop_off", "mode": "me2", "direction": "forward"}
+	}`
+	server := newShipmentTestServer(t, http.StatusOK, fixtureWithLogistic, http.StatusOK, scrubbedShipmentCostsFixture)
+	defer server.Close()
+
+	detail, err := pricingTestAdapter(server.URL, time.Now().UTC()).GetShipmentDetail(context.Background(), pricingAccountRef(), "44556677")
+	if err != nil {
+		t.Fatalf("GetShipmentDetail() error = %v", err)
+	}
+	if detail.LogisticType == nil || *detail.LogisticType != "drop_off" {
+		t.Fatalf("LogisticType = %#v, want \"drop_off\"", detail.LogisticType)
+	}
+	if detail.TrackingMethod == nil || *detail.TrackingMethod != "Normal" {
+		t.Fatalf("TrackingMethod = %#v, want \"Normal\"", detail.TrackingMethod)
 	}
 }
 

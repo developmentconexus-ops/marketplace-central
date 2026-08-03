@@ -45,13 +45,18 @@ type MarketplaceOrder struct {
 	ProviderCode         string                    `json:"provider_code"`
 	ProviderOrderID      string                    `json:"provider_order_id"`
 	ProviderStatus       string                    `json:"provider_status,omitempty"`
-	ProviderStatusDetail string                    `json:"provider_status_detail,omitempty"`
+	// ProviderStatusDetail e CancellationDetail são *string, não string: o
+	// provider distingue "não mandou o campo" de "mandou vazio", e string
+	// colapsa os dois em "". Foi esse colapso que fez cancellation_detail
+	// aparecer preenchido em 38/38 pedidos — inclusive nos 7 cancelados, onde
+	// o motivo real do cancelamento é justamente o que faltava.
+	ProviderStatusDetail *string                   `json:"provider_status_detail,omitempty"`
 	ProviderCreatedAt    *time.Time                `json:"provider_created_at,omitempty"`
 	ProviderClosedAt     *time.Time                `json:"provider_closed_at,omitempty"`
 	ProviderUpdatedAt    *time.Time                `json:"provider_updated_at,omitempty"`
 	FetchedAt            time.Time                 `json:"fetched_at"`
 	ShippingID           string                    `json:"shipping_id,omitempty"`
-	CancellationDetail   string                    `json:"cancellation_detail,omitempty"`
+	CancellationDetail   *string                   `json:"cancellation_detail,omitempty"`
 	Tags                 []string                  `json:"tags,omitempty"`
 	BuyerNickname        string                    `json:"buyer_nickname,omitempty"`
 	RawProviderRef       string                    `json:"raw_provider_ref,omitempty"`
@@ -88,6 +93,14 @@ type MarketplaceOrder struct {
 	BuyerAddressStateCode *string `json:"buyer_address_state_code,omitempty"`
 	BuyerAddressZip       *string `json:"buyer_address_zip,omitempty"`
 	BuyerAddressCountry   *string `json:"buyer_address_country,omitempty"`
+
+	// Currency is the provider's order-level currency (e.g. "BRL"), sourced from
+	// connectorsdomain.OrderDetail.CurrencyID (ingest_service.go's trimmedOrNil). nil means the
+	// provider omitted the field or this order predates the producer (migration 0096) — never
+	// defaulted to "BRL" by convenience (ADR-17). Fulfillment is NOT a column here: it is
+	// derived read-side from order_shipments.logistic_type, so storing a copy would create a
+	// second place for the same fact.
+	Currency *string `json:"currency,omitempty"`
 }
 
 type MarketplaceOrderItem struct {

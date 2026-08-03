@@ -508,3 +508,15 @@ scheduler faltante sem esperar o boot.
 só o job de pedidos (Task 5/7) usa a janela de fato — `listings` e `market` continuam
 enumerando do zero a cada corrida. O caminho está alargado; a migração de cada consumidor
 para o cursor incremental é fatia separada, ainda não despachada.
+
+**D-22. `CODEMP` fixo em 1 no leitor de custo de pedidos** (P2/M-06, 2026-08-02; plano
+propunha "D-17", já ocupado pelo emit do `tsc` — renumerado):
+
+`internal/composition/orders_adapters.go:53` fixa `CompanyID: 1` na consulta `TGFCUS`. O
+predicado de vendável ratificado cobre `CODEMP(1,2)`. Produto cujo custo só exista na
+empresa 2 devolve linha nenhuma → custo desconhecido → margem some, sem nada na tela
+explicando por quê.
+
+Nenhum dos 38 pedidos medidos em 2026-08-02 caiu nisso (evidência em
+`.mnfs/MIS-007-ml-sync/M-06-orders-backfill-decomposition/evidence/p2-premise-check.md`).
+Bomba armada, não disparada. Dono: M-06. Registrada por decisão do operador em 2026-08-02.

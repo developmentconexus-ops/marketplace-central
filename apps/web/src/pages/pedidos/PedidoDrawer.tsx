@@ -50,6 +50,48 @@ const linkQualityClasses: Record<OrderLinkQuality, string> = {
   missing: "bg-slate-100 text-slate-500",
 };
 
+// order.fulfillment is a stable provider code (domain layer, untouched). This map is a
+// presentation-only PT-BR label for the codes we've actually seen; a code not yet mapped
+// falls back to the raw code itself — it's a known fact, just not yet given a pretty label
+// (only a genuinely absent value renders UnknownValue, ADR-17).
+const fulfillmentLabels: Record<string, string> = {
+  fulfillment: "Fulfillment (FBA-like)",
+  drop_off: "Coleta no ponto (drop-off)",
+  xd_drop_off: "Cross-docking (drop-off)",
+  self_service: "Envio próprio (flex)",
+};
+
+function formatFulfillment(code: string | null): string | null {
+  if (!code) return null;
+  return fulfillmentLabels[code] ?? code;
+}
+
+// order.cancellation_detail is stored as "<requested_by>:<code>" (domain layer, untouched).
+// These maps are presentation-only PT-BR labels for the values we've actually seen; anything
+// unmapped falls back to the raw token rather than hiding a real fact (ADR-17).
+const cancellationRequesterLabels: Record<string, string> = {
+  buyer: "comprador",
+  seller: "vendedor",
+  meli: "Mercado Livre",
+};
+
+const cancellationCodeLabels: Record<string, string> = {
+  feedback_unavailable_product: "produto indisponível",
+  mediations: "mediação",
+  buyer_cancel_express: "cancelamento expresso",
+};
+
+function formatCancellationDetail(detail: string | null): string | null {
+  if (!detail) return null;
+  const sep = detail.indexOf(":");
+  if (sep === -1) return detail;
+  const requestedBy = detail.slice(0, sep);
+  const code = detail.slice(sep + 1);
+  const requesterLabel = cancellationRequesterLabels[requestedBy] ?? requestedBy;
+  const codeLabel = cancellationCodeLabels[code] ?? code;
+  return `${requesterLabel} · ${codeLabel}`;
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="flex flex-col gap-2">
@@ -277,6 +319,11 @@ function FactsSection({ order }: { order: OrderRead }) {
         }
       />
       <FactRow
+        label="Modalidade de envio"
+        value={formatFulfillment(order.fulfillment)}
+        hint="modalidade de envio ainda não disponível"
+      />
+      <FactRow
         label="Transportadora"
         value={
           carrier ? (
@@ -299,6 +346,11 @@ function FactsSection({ order }: { order: OrderRead }) {
           ) : null
         }
         hint="transportadora ainda não atribuída"
+      />
+      <FactRow
+        label="Motivo do cancelamento"
+        value={formatCancellationDetail(order.cancellation_detail)}
+        hint="sem cancelamento"
       />
       <FactRow label="Destino" value={destino || null} />
       <FactRow label="Destinatário" value={order.destinatario ?? null} hint="destinatário ainda não disponível" />

@@ -18,16 +18,18 @@ type ShipmentDetail struct {
 	Status             string
 	Substatus          *string
 
-	// LogisticType/TrackingMethod are documented ML shipment concepts but their exact
-	// top-level JSON key inside GET /shipments/{id} could NOT be confirmed against a real
-	// captured fixture in this worktree (research/external-ml-api-facts.md references
-	// F3/F5/T5 evidence files that are not present here — PII-scrub debt, see repo memory).
-	// A legacy `mode` field (values like "me2") IS present in an in-repo captured fixture
-	// (shipping_reader_test.go TestGetShipmentInfoDecodesNewFormatNumericID) but that is a
-	// DIFFERENT, older ML concept (shipping method version, not the v2 logistic_type
-	// vocabulary of fulfillment/cross_docking/self_service/drop_off) — aliasing it would be
-	// a guess, not a verified fact, so it is deliberately NOT wired here. Left nil per
-	// ADR-17; see validation.md for this feature's honest-gap note.
+	// LogisticType is `logistic.type` on GET /shipments/{id} (self_service, drop_off,
+	// xd_drop_off, fulfillment…) — confirmed against a captured fixture (mercado_livre
+	// package's testdata/shipment_body.json) and now decoded by
+	// mlIngestShipmentResponse/mapShipmentDetail (shipment_ingest_reader.go). Previously
+	// undeclared on the wire DTO, so encoding/json silently dropped it (0/38 rows) — same
+	// class of defect fixed twice before in this slice for the order DTO. A legacy `mode`
+	// field (values like "me2") is a DIFFERENT, older ML concept (shipping method version,
+	// not this v2 logistic_type vocabulary) and stays unaliased. Nil only when the provider
+	// payload omits `logistic` or sends a blank `type` (ADR-17).
+	//
+	// TrackingMethod is the top-level `tracking_method` field on the same payload — also
+	// confirmed against the fixture above and now decoded. Nil only when absent/blank.
 	LogisticType   *string
 	TrackingMethod *string
 
