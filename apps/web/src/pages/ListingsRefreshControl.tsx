@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { isRefreshInProgressError } from "@marketplace-central/sdk-runtime";
-import { queryKeyNamespaces, syncQueryKeys } from "@marketplace-central/web-query";
+import { formatRelativeAge, queryKeyNamespaces, syncQueryKeys } from "@marketplace-central/web-query";
 import { useEffect, useRef, useState } from "react";
 import { useClient } from "../app/ClientContext";
 
@@ -24,19 +24,6 @@ function isActive(status: string | undefined): boolean {
   return status === "queued" || status === "running";
 }
 
-/**
- * "em andamento" alone reads as stuck on an account whose full pull takes
- * minutes. Elapsed time is derived from the run's own started_at — a fact the
- * server reported — and is omitted entirely when the run has no start stamp.
- */
-function elapsedLabel(startedAt: string | undefined, now: number): string | null {
-  if (startedAt === undefined) return null;
-  const started = Date.parse(startedAt);
-  if (!Number.isFinite(started)) return null;
-  const seconds = Math.max(0, Math.floor((now - started) / 1000));
-  if (seconds < 60) return `há ${seconds}s`;
-  return `há ${Math.floor(seconds / 60)} min`;
-}
 
 function attachedRunId(error: unknown): string | null {
   return isRefreshInProgressError(error) ? error.details.operation_run_id : null;
@@ -137,7 +124,7 @@ export function ListingsRefreshControl({ installationId }: { installationId: str
     const timer = setInterval(() => setNow(Date.now()), 1_000);
     return () => clearInterval(timer);
   }, [runIsActive]);
-  const elapsed = runIsActive ? elapsedLabel(observedRun?.started_at, now) : null;
+  const elapsed = runIsActive && observedRun?.started_at ? formatRelativeAge(observedRun.started_at, now) : null;
 
   const terminalError = status === "failed"
     ? "Atualização falhou."

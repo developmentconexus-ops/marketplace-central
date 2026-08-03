@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { DashboardDegradedSource, DashboardOverview } from "@marketplace-central/sdk-runtime";
 import { EmptyState, ErrorState, LoadingState, StatCard } from "@marketplace-central/ui";
+import { formatRelativeAge } from "@marketplace-central/web-query";
 import { useClient } from "../../app/ClientContext";
 import { useInstallation } from "../../app/InstallationContext";
 import { Atalhos } from "./Atalhos";
@@ -44,15 +45,6 @@ function KpiCard({ config, degraded, onRetry }: {
   return <StatCard label={config.label} value={formatKpi(config.value)} sub={config.sub} />;
 }
 
-function formatLastImportAge(ageSeconds: number): string {
-  if (ageSeconds < 60) return "há menos de 1 min";
-  const minutes = Math.floor(ageSeconds / 60);
-  if (minutes < 60) return `há ${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `há ${hours} h`;
-  const days = Math.floor(hours / 24);
-  return `há ${days} d`;
-}
 
 function UltimoImportCard({ summary, onRetry }: { summary: DashboardOverview; onRetry: () => void }) {
   if (summary.last_import) {
@@ -61,7 +53,7 @@ function UltimoImportCard({ summary, onRetry }: { summary: DashboardOverview; on
       <StatCard
         label="Último import ERP"
         value={at.toLocaleString("pt-BR")}
-        sub={formatLastImportAge(summary.last_import.age_seconds)}
+        sub={formatRelativeAge(summary.last_import.at)}
       />
     );
   }
