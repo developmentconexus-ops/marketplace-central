@@ -74,10 +74,10 @@ function activeSourceConfig(source: string) {
   return { active_source: source, source_kind: source === "sankhya" ? "live_read_through" : "upload_snapshot", set_at: "2026-07-24T10:00:00Z", set_by: null };
 }
 
-function renderPage() {
+function renderPage(initialEntry = "/integracoes") {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <QueryClientProvider client={queryClient}>
         {/* IntegracoesPage now mounts ConnectionHealthCard, which reads
             useInstallation() (InstallationContext.tsx). In the real app
@@ -90,6 +90,7 @@ function renderPage() {
     </MemoryRouter>,
   );
 }
+const renderPageAt = (url: string) => renderPage(url);
 
 function selectFile(name = "catalogo.xlsx") {
   const input = screen.getByTestId("erp-import-file-input") as HTMLInputElement;
@@ -485,5 +486,21 @@ describe("IntegracoesPage", () => {
     await waitFor(() => expect(listIntegrationInstallations).toHaveBeenCalled());
     expect(createIntegrationInstallation).not.toHaveBeenCalled();
     expect(startIntegrationAuthorization).not.toHaveBeenCalled();
+  });
+
+  it("mostra o motivo quando o callback do OAuth falhou", async () => {
+    renderPageAt("/integracoes?auth=failed&reason=INTEGRATIONS_PROVIDER_ACCOUNT_ALREADY_LINKED");
+
+    expect(await screen.findByTestId("oauth-callback-error")).toHaveTextContent(
+      "INTEGRATIONS_PROVIDER_ACCOUNT_ALREADY_LINKED",
+    );
+  });
+
+  // Controle negativo: sem falha na URL nao pode aparecer aviso nenhum.
+  it("nao mostra aviso de callback quando a URL nao traz falha", async () => {
+    renderPageAt("/integracoes");
+
+    expect(await screen.findByTestId("provider-connect-ml")).toBeInTheDocument();
+    expect(screen.queryByTestId("oauth-callback-error")).not.toBeInTheDocument();
   });
 });
