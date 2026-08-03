@@ -2,7 +2,9 @@ import type { IntegrationConnectionSnapshot, IntegrationInstallation } from "@ma
 import { ErrorState, LoadingState } from "@marketplace-central/ui";
 import { installationsQueryKeys } from "@marketplace-central/web-query";
 import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { useInstallation } from "../../app/InstallationContext";
+import { useClient } from "../../app/ClientContext";
 
 // Tom lido do ESTADO do payload, nunca de um corte de tempo — mesmo critério do
 // SyncHealthCard (entityTone, SyncHealthCard.tsx:13). Uma conta que precisa de
@@ -48,10 +50,31 @@ const toneBadgeClassName: Record<ConnectionTone, string> = {
 };
 
 function InstallationRow({ installation }: { installation: IntegrationInstallation }) {
+  const client = useClient();
   const connection = installation.connection;
   const tone = stateTone[connection.state];
   const action = nextActionLabel[connection.next_action];
   const reason = connection.reauth_reason?.trim() ?? "";
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // O backend inteiro do reauth já existe e está contratado
+  // (transport/auth_handler.go:180, OpenAPI:1283, sdk-runtime/src/index.ts:2184).
+  // O único elo que faltava era este clique. Reautorizar pina a MESMA
+  // installation, então o callback atualiza a linha existente em vez de tentar
+  // inserir uma segunda para o mesmo seller — que é o 23505 que este plano
+  // nasceu para matar.
+  async function reauth() {
+    setBusy(true);
+    setError(null);
+    try {
+      const start = await client.startIntegrationReauthorization(installation.installation_id);
+      window.location.href = start.auth_url;
+    } catch {
+      setError("Não foi possível iniciar a reautorização.");
+      setBusy(false);
+    }
+  }
 
   return (
     <div
@@ -67,7 +90,24 @@ function InstallationRow({ installation }: { installation: IntegrationInstallati
           {stateLabel[connection.state]}
         </span>
       </div>
-      {action ? <span className="text-faint">Ação: {action}</span> : null}
+      {connection.next_action === "reauth" ? (
+        <button
+          type="button"
+          onClick={() => void reauth()}
+          disabled={busy}
+          data-testid={`connection-reauth-${installation.installation_id}`}
+          className="mt-1 self-start rounded-control border border-border px-2 py-1 font-medium text-ink disabled:opacity-60"
+        >
+          {busy ? "Abrindo…" : nextActionLabel.reauth}
+        </button>
+      ) : action ? (
+        <span className="text-faint">Ação: {action}</span>
+      ) : null}
+      {error ? (
+        <span className="text-warn" data-testid={`connection-reauth-error-${installation.installation_id}`}>
+          {error}
+        </span>
+      ) : null}
       {/* O motivo é o erro cru do provider. Mostrar cru é deliberado: é o único
           diagnóstico que existe e traduzi-lo apagaria o código que o operador
           precisa citar num chamado. */}
