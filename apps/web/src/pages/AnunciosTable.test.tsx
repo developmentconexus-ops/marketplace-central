@@ -69,7 +69,10 @@ describe("AnunciosTable", () => {
 
     const caption = screen.getByText(/^Anúncios,/);
     expect(caption.textContent).not.toContain("2026-07-25T02:06:53.030122091Z");
-    expect(caption.textContent).toMatch(/^Anúncios, dados de \d{2}:\d{2}:\d{2}$/);
+    // Antes: /^Anúncios, dados de \d{2}:\d{2}:\d{2}$/ — hora do dia, que não
+    // distinguia 15 min de 15 dias (D-48). A intenção (o caption datar a
+    // tabela) é a mesma; a asserção agora exige idade, que é o que o operador lê.
+    expect(caption.textContent).toMatch(/^Anúncios, (agora|há .+)$/);
   });
 
   it("renders the ratified 8-column header (QUAL. dropped, no producer per ADR-C1/Task 8)", () => {

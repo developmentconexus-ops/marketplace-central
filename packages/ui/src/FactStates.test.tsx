@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { formatRelativeAge } from "@marketplace-central/web-query";
 import { ConflictTag } from "./ConflictTag";
 import { FreshnessIndicator } from "./FreshnessIndicator";
 import { UnknownValue } from "./UnknownValue";
@@ -39,17 +40,13 @@ describe("fact state components", () => {
 
   it("formats freshness through the pt-BR time representation", () => {
     const asOf = "2024-01-02T03:04:05-03:00";
-    const expectedTime = new Date(asOf).toLocaleTimeString("pt-BR", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
-    });
+    const now = new Date().getTime();
+    const expectedAge = formatRelativeAge(asOf, now);
 
     render(<FreshnessIndicator asOf={asOf} />);
 
     expect(screen.getByLabelText("Atualização dos dados")).toHaveTextContent(
-      `dados de ${expectedTime}`,
+      expectedAge,
     );
     expect(screen.getByLabelText("Atualização dos dados")).toHaveClass("text-muted");
   });
@@ -58,7 +55,7 @@ describe("fact state components", () => {
     render(<FreshnessIndicator asOf={asOf} />);
 
     expect(screen.getByLabelText("Atualização dos dados")).toHaveTextContent(
-      "dados de desconhecido",
+      "idade desconhecida",
     );
   });
 });

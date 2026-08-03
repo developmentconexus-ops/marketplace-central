@@ -181,12 +181,12 @@ describe("CatalogPage", () => {
     renderPage({ ...sdk, withNoCache: transport.withNoCache });
 
     const indicator = await screen.findByLabelText("Data freshness");
-    await waitFor(() => expect(indicator.textContent).toMatch(/^dados de \d{2}:\d{2}:\d{2}$/));
+    await waitFor(() => expect(indicator.textContent).toMatch(/^(agora|há .+)$/));
     fireEvent.click(screen.getByRole("button", { name: "Atualizar" }));
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
     const headers = new Headers(fetch.mock.calls[1][1]?.headers);
     expect(headers.get("Cache-Control")).toBe("no-cache");
-    await waitFor(() => expect(indicator.textContent).toMatch(/dados de \d{2}:\d{2}:\d{2}/));
+    await waitFor(() => expect(indicator.textContent).toMatch(/^(agora|há .+)$/));
   });
 
   it("opens with Vendáveis 2 de 4 and ver todos never mutates tenant config", async () => {
