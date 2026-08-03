@@ -25,8 +25,8 @@ import (
 	listingsconnectors "marketplace-central/apps/server_core/internal/modules/listings/adapters/connectors"
 	listingsapp "marketplace-central/apps/server_core/internal/modules/listings/application"
 	listingsports "marketplace-central/apps/server_core/internal/modules/listings/ports"
-	syncpg "marketplace-central/apps/server_core/internal/modules/sync/adapters/postgres"
 	syncapp "marketplace-central/apps/server_core/internal/modules/sync/application"
+	synccomposition "marketplace-central/apps/server_core/internal/modules/sync/composition"
 	"marketplace-central/apps/server_core/internal/modules/sync/domain"
 )
 
@@ -155,8 +155,7 @@ func resolveListingsSchedulers(ctx context.Context, g Group) Schedulers {
 			ProviderCode:      installation.ProviderCode,
 			ProviderAccountID: installation.ExternalAccountID,
 		}
-		repo := syncpg.NewSyncStateRepository(g.pool, installation.TenantID)
-		scheduler := syncapp.NewScheduler(repo, installation.InstallationID, g.interval, time.Now)
+		scheduler := synccomposition.NewInstallationScheduler(g.pool, installation.TenantID, installation.InstallationID, g.interval)
 		// installation.InstallationID is unique per scheduler instance and
 		// EntityListings is the only (first) registration on it, so this
 		// cannot fail — the failure modes RegisterJob has (unknown entity,
