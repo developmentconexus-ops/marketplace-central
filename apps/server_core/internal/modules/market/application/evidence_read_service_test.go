@@ -64,6 +64,10 @@ func (f *fakeEvidenceAggregateStore) LatestMarketAggregatesBySource(_ context.Co
 	return f.bySource, nil
 }
 
+func (f *fakeEvidenceAggregateStore) StaleAggregateProductIDs(_ context.Context, _ time.Duration, _ int) ([]string, error) {
+	return nil, nil
+}
+
 type fakeEvidenceCostReader struct {
 	byProductID map[int]*domain.Money
 	asOf        time.Time
