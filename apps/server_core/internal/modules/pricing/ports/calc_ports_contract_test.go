@@ -29,6 +29,9 @@ var _ CalcEngine = engineAdapter{}
 // TestDecompositionShapeFrozen pins the exact output fields M-08 reads. The
 // nullable components (unknown ≠ zero) MUST stay *string, the always-known
 // ones plain string, and margem both nullable.
+//
+// P2.b Task 4 amendment: ICMSSaida, PisCofins, RestituicaoST added (D-41 ex
+// ante tax components) — deliberate, coordinated per the plan's Task 4 scope.
 func TestDecompositionShapeFrozen(t *testing.T) {
 	want := map[string]string{
 		"Preco":                    "string",
@@ -39,6 +42,9 @@ func TestDecompositionShapeFrozen(t *testing.T) {
 		"Difal":                    "*string",
 		"TarifaFull":               "*string",
 		"Custo":                    "*string",
+		"ICMSSaida":                "*string",
+		"PisCofins":                "*string",
+		"RestituicaoST":            "*string",
 		"MargemValor":              "*string",
 		"MargemPct":                "*string",
 		"ComponentesDesconhecidos": "[]string",
@@ -56,6 +62,9 @@ func TestDifalForUFResultShapeFrozen(t *testing.T) {
 }
 
 // TestDecomposeInputShapeFrozen pins the resolved-input contract adapters fill.
+//
+// P2.b Task 4 amendment: ICMSCell added (D-41 pre-resolved tax-matrix cell +
+// product fiscal facts) — deliberate, coordinated per the plan's Task 4 scope.
 func TestDecomposeInputShapeFrozen(t *testing.T) {
 	want := map[string]string{
 		"Preco":        "string",
@@ -68,6 +77,7 @@ func TestDecomposeInputShapeFrozen(t *testing.T) {
 		"DifalEnabled": "bool",
 		"DestinoUF":    "string",
 		"EfetivoPct":   "string",
+		"ICMSCell":     "*domain.ICMSCell",
 	}
 	assertFields(t, reflect.TypeOf(domain.DecomposeInput{}), want)
 }

@@ -14,6 +14,43 @@ import (
 
 func ptrF(v float64) *float64 { return &v }
 func ptrS(v string) *string   { return &v }
+func ptrI(v int) *int         { return &v }
+
+// TestPgWriterPersistsGrupoICMS proves grupo_icms (P2.b Task 2) round-trips through
+// the writer with honest-NULL discipline (ADR-17): a set value lands verbatim, an
+// unset one stays SQL NULL — never a fabricated 0 for "fiscal group unknown".
+func TestPgWriterPersistsGrupoICMS(t *testing.T) {
+	ctx := context.Background()
+	pool, _ := testpostgres.OpenPool(t, "tenant_harness_mirror_grupo_icms")
+	tenant := "mirror-grupo-icms-" + time.Now().UTC().Format("150405.000000000")
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), "DELETE FROM products_mirror WHERE tenant_id = $1", tenant)
+	})
+
+	w := mirror.NewPgWriter(pool)
+	if _, err := w.ApplySnapshot(ctx, tenant, []mirror.Row{
+		{CodigoProduto: "A", GrupoICMS: ptrI(7)},
+		{CodigoProduto: "B"},
+	}, nil); err != nil {
+		t.Fatalf("ApplySnapshot: %v", err)
+	}
+
+	var grupoICMS *int
+	if err := pool.QueryRow(ctx, `SELECT grupo_icms FROM products_mirror WHERE tenant_id=$1 AND codigo_produto='A'`, tenant).Scan(&grupoICMS); err != nil {
+		t.Fatalf("read A: %v", err)
+	}
+	if grupoICMS == nil || *grupoICMS != 7 {
+		t.Errorf("A grupo_icms = %v, want 7", grupoICMS)
+	}
+
+	var nullCount int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM products_mirror WHERE tenant_id=$1 AND codigo_produto='B' AND grupo_icms IS NULL`, tenant).Scan(&nullCount); err != nil {
+		t.Fatalf("read B NULL grupo_icms: %v", err)
+	}
+	if nullCount != 1 {
+		t.Errorf("B grupo_icms NULL count = %d, want 1 (unknown fiscal group must stay NULL, never 0)", nullCount)
+	}
+}
 
 func TestPgWriterPersistsSellableAssortmentFields(t *testing.T) {
 	ctx := context.Background()

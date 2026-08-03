@@ -53,11 +53,24 @@ const nullDecomposicao = {
   frete: null,
   imposto: null,
   difal: null,
+  icms_saida: null,
+  pis_cofins: null,
   tarifa_full: null,
   custo: null,
+  restituicao_st: null,
   margem_valor: null,
   margem_pct: null,
-  componentes_desconhecidos: ["comissao", "taxa_fixa", "frete", "imposto", "difal", "tarifa_full", "custo"],
+  componentes_desconhecidos: [
+    "comissao",
+    "taxa_fixa",
+    "frete",
+    "icms_saida",
+    "difal",
+    "pis_cofins",
+    "tarifa_full",
+    "custo",
+    "restituicao_st",
+  ],
 };
 
 const nullDifal = {
@@ -698,10 +711,13 @@ describe("PedidosPage", () => {
         comissao: 12.5,
         taxa_fixa: 6.5,
         frete: 18.3,
-        imposto: 9.4,
+        imposto: null,
         difal: 4.12,
+        icms_saida: 9.4,
+        pis_cofins: 2.31,
         tarifa_full: null,
         custo: 42.2,
+        restituicao_st: 3.05,
         margem_valor: 154.2,
         margem_pct: 0.234,
         componentes_desconhecidos: ["tarifa_full"],
@@ -731,8 +747,58 @@ describe("PedidosPage", () => {
     expect(drawer.getByText("R$ 4,12")).toBeInTheDocument(); // decomposicao.difal (cost component)
     expect(drawer.getByText("SC → SP")).toBeInTheDocument(); // difal.uf_route
     expect(drawer.getByText("não")).toBeInTheDocument(); // difal.paid === false
+    // D-41 per-item tax fields (P2.b T6): ICMS saída/PIS-COFINS are plain deductions like every
+    // other row; Restituição ST is the one CREDIT row and renders with a "+ " prefix, distinct
+    // from a bare formatMoney (which would render it identically to a cost line).
+    expect(drawer.getByText("R$ 9,40")).toBeInTheDocument(); // decomposicao.icms_saida
+    expect(drawer.getByText("R$ 2,31")).toBeInTheDocument(); // decomposicao.pis_cofins
+    expect(drawer.getByText("+ R$ 3,05")).toBeInTheDocument(); // decomposicao.restituicao_st (credit)
     // tarifa_full stays null (componentes_desconhecidos) — still honest "—", not fabricated.
     expect(drawer.getAllByText("—").length).toBeGreaterThan(0);
+  });
+
+  it("renders Restituição ST as a plain amount (no '+') when the backend sends an explicit 0 (intra-MG)", async () => {
+    // Intra-MG destination: restituição de ICMS-ST só sai de operação interestadual, so the
+    // backend sends an explicit 0.00 (icms.go TaxesForItem, UFDestino === ufOrigemMG), never
+    // null. This is a real fact, not a credit that fired — it must render "R$ 0,00" plain, no "+".
+    const intraMG = {
+      ...detailOrder,
+      decomposicao: {
+        ...nullDecomposicao,
+        restituicao_st: 0,
+        componentes_desconhecidos: [],
+      },
+    };
+    listOrders.mockResolvedValue({ items: [intraMG], next_cursor: null });
+    getOrder.mockResolvedValue(intraMG);
+
+    renderPage("?order=PO1");
+
+    await screen.findByText("Parafuso M8x40 cx100");
+    const drawer = within(screen.getByRole("complementary"));
+    expect(drawer.getByText("R$ 0,00")).toBeInTheDocument();
+    expect(drawer.queryByText("+ R$ 0,00")).not.toBeInTheDocument();
+  });
+
+  it("names the real gap when ICMS saída is unresolved (not a generic/stale hint)", async () => {
+    // F01-C1 honest-empty: a null icms_saida must be explained by a hint naming the ACTUAL cause
+    // (pricing/domain.TaxesForItem: product without vínculo interno / fiscal snapshot, or an
+    // unresolved/ambiguous ICMS matrix cell) — never the retired generic "(hub C2)" placeholder,
+    // which stopped being true once P2.b T5 wired this field.
+    listOrders.mockResolvedValue({ items: [detailOrder], next_cursor: null });
+    getOrder.mockResolvedValue(detailOrder);
+
+    renderPage("?order=PO1");
+
+    await screen.findByText("Parafuso M8x40 cx100");
+    const drawer = within(screen.getByRole("complementary"));
+    // Scope to the ICMS saída row specifically — DIFAL shares the same underlying cause/hint
+    // text, so a page-wide getByTitle would be ambiguous between the two rows.
+    const icmsRow = drawer.getByText("ICMS saída").closest("div");
+    expect(icmsRow).not.toBeNull();
+    expect(
+      within(icmsRow as HTMLElement).getByTitle(/célula ICMS ausente\/ambígua para este destino\/grupo/),
+    ).toBeInTheDocument();
   });
 
   it("Atualizar re-runs the orders import then refetches the list", async () => {

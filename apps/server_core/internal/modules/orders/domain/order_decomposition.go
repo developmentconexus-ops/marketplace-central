@@ -8,13 +8,29 @@ import "time"
 // never a fabricated 0). ComponentesDesconhecidos names every source
 // component that is unknown, so a "—" in the UI is always explained.
 type OrderDecomposition struct {
-	Comissao                 *float64
-	TaxaFixa                 *float64
-	Frete                    *float64
-	Imposto                  *float64
-	Difal                    *float64
-	TarifaFull               *float64
-	Custo                    *float64
+	Comissao *float64
+	TaxaFixa *float64
+	Frete    *float64
+	// Imposto is the D-38 legacy regime-aliquota field, kept for the
+	// simulator surfaces that still read it. T5 (P2.b) replaces it end to
+	// end with the per-item D-41 path (ICMSSaida/Difal/PisCofins/
+	// RestituicaoST below) — this field is never populated by
+	// BuildProfitability anymore; it survives only as inert pass-through.
+	Imposto *float64
+	Difal   *float64
+	// ICMSSaida is the D-41 per-item ICMS de saída, summed across the
+	// order's items (orders/adapters/pricingtax, T5). nil is honest-unknown
+	// (ADR-17), a real amount is a real amount — including an explicit 0.
+	ICMSSaida *float64
+	// PisCofins is the D-41 PIS/COFINS débito, summed across items. Same nil
+	// rule as ICMSSaida.
+	PisCofins  *float64
+	TarifaFull *float64
+	Custo      *float64
+	// RestituicaoST is the ICMS-ST restituição credit, summed across items —
+	// the one component that ADDS to margem instead of subtracting
+	// (BuildProfitability below). nil is honest-unknown.
+	RestituicaoST            *float64
 	MargemValor              *float64
 	MargemPct                *float64
 	ComponentesDesconhecidos []string
@@ -47,15 +63,17 @@ var unknownDecompositionComponents = []string{
 	"comissao",
 	"taxa_fixa",
 	"frete",
-	"imposto",
+	"icms_saida",
 	"difal",
+	"pis_cofins",
 	"tarifa_full",
 	"custo",
+	"restituicao_st",
 }
 
 // UnknownOrderProfitability is the honest-empty value emitted whenever no
 // Decomposer is wired (C1): every pointer is nil so the UI renders "—",
-// explained by ComponentesDesconhecidos naming all 7 unknown source
+// explained by ComponentesDesconhecidos naming all 9 unknown source
 // components (ADR-17: unknown != zero, never fabricated).
 func UnknownOrderProfitability() OrderProfitability {
 	components := make([]string, len(unknownDecompositionComponents))
@@ -75,28 +93,37 @@ type ProfitabilityInputs struct {
 	Comissao *float64
 	Custo    *float64
 	Frete    *float64
-	Imposto  *float64
 	// Difal is the destination-state tax differential. A pointer to 0 is an
 	// explicit zero (the tenant has DIFAL switched off), which is a different
 	// fact from nil (no honest way to work it out) — only nil blocks the margin.
 	Difal *float64
+	// ICMSSaida, PisCofins and RestituicaoST are the D-41 per-item ICMS
+	// components (T5), already summed across the order's items by the tax
+	// reader. RestituicaoST is a CREDIT: it adds to margem instead of
+	// subtracting, same sign convention as pricing/domain/decompose.go.
+	ICMSSaida     *float64
+	PisCofins     *float64
+	RestituicaoST *float64
 }
 
 // BuildProfitability assembles an OrderProfitability from real facts in hand.
-// Comissao/Custo/Frete/Imposto/Difal are surfaced verbatim when known. TaxaFixa
-// and TarifaFull are already inside the marketplace's own sale fee for a sold
-// order, so breaking them back out needs a pricing engine that is not wired;
-// they stay honest-unknown (nil) and named in ComponentesDesconhecidos. Margem
-// (valor + pct) and RetornoLiquido derive ONLY when Total, Comissao, Frete,
-// Imposto, Difal and Custo are ALL known; any unknown input yields nil margins —
-// never a partial fabricated margin (ADR-17).
+// Comissao/Custo/Frete/ICMSSaida/Difal/PisCofins/RestituicaoST are surfaced
+// verbatim when known. TaxaFixa and TarifaFull are already inside the
+// marketplace's own sale fee for a sold order, so breaking them back out
+// needs a pricing engine that is not wired; they stay honest-unknown (nil)
+// and named in ComponentesDesconhecidos. Margem (valor + pct) and
+// RetornoLiquido derive ONLY when Total, Comissao, Frete, ICMSSaida, Difal,
+// PisCofins, Custo and RestituicaoST are ALL known; any unknown input yields
+// nil margins — never a partial fabricated margin (ADR-17).
 func BuildProfitability(in ProfitabilityInputs) OrderProfitability {
 	dec := OrderDecomposition{
-		Comissao: in.Comissao,
-		Frete:    in.Frete,
-		Imposto:  in.Imposto,
-		Difal:    in.Difal,
-		Custo:    in.Custo,
+		Comissao:      in.Comissao,
+		Frete:         in.Frete,
+		Difal:         in.Difal,
+		ICMSSaida:     in.ICMSSaida,
+		PisCofins:     in.PisCofins,
+		Custo:         in.Custo,
+		RestituicaoST: in.RestituicaoST,
 	}
 	var unknown []string
 	if in.Comissao == nil {
@@ -106,20 +133,26 @@ func BuildProfitability(in ProfitabilityInputs) OrderProfitability {
 	if in.Frete == nil {
 		unknown = append(unknown, "frete")
 	}
-	if in.Imposto == nil {
-		unknown = append(unknown, "imposto")
+	if in.ICMSSaida == nil {
+		unknown = append(unknown, "icms_saida")
 	}
 	if in.Difal == nil {
 		unknown = append(unknown, "difal")
+	}
+	if in.PisCofins == nil {
+		unknown = append(unknown, "pis_cofins")
 	}
 	unknown = append(unknown, "tarifa_full")
 	if in.Custo == nil {
 		unknown = append(unknown, "custo")
 	}
+	if in.RestituicaoST == nil {
+		unknown = append(unknown, "restituicao_st")
+	}
 	dec.ComponentesDesconhecidos = unknown
 
-	if in.Total != nil && in.Comissao != nil && in.Frete != nil && in.Imposto != nil && in.Difal != nil && in.Custo != nil {
-		margem := *in.Total - *in.Comissao - *in.Frete - *in.Imposto - *in.Difal - *in.Custo
+	if in.Total != nil && in.Comissao != nil && in.Frete != nil && in.ICMSSaida != nil && in.Difal != nil && in.PisCofins != nil && in.Custo != nil && in.RestituicaoST != nil {
+		margem := *in.Total - *in.Comissao - *in.Frete - *in.ICMSSaida - *in.Difal - *in.PisCofins - *in.Custo + *in.RestituicaoST
 		dec.MargemValor = &margem
 		var pctPtr *float64
 		if *in.Total != 0 {

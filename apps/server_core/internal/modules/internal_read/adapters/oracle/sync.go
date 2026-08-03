@@ -74,6 +74,9 @@ func (a *SankhyaAdapter) Sync(ctx context.Context) (ports.SyncResult, error) {
 	if err := a.applyPrice(ctx, dataRef, rows); err != nil {
 		return ports.SyncResult{}, err
 	}
+	if err := a.applyFiscalST(ctx, dataRef, rows); err != nil {
+		return ports.SyncResult{}, err
+	}
 	locs, err := a.applyStock(ctx, rows)
 	if err != nil {
 		return ports.SyncResult{}, err
@@ -104,7 +107,7 @@ type snapshotRow struct {
 const sankhyaBaseSQL = `
 SELECT p.CODPROD, p.DESCRPROD, p.NCM, p.REFERENCIA, p.REFFORN,
        p.CODGRUPOPROD, g.DESCRGRUPOPROD, m.DESCRICAO,
-       p.USOPROD, p.AD_ECOMMERCE
+       p.USOPROD, p.AD_ECOMMERCE, p.GRUPOICMS, p.ORIGPROD
 FROM METALPRD.TGFPRO p
 LEFT JOIN METALPRD.TGFGRU g ON g.CODGRUPOPROD = p.CODGRUPOPROD
 LEFT JOIN METALPRD.TGFMAR m ON m.CODIGO       = p.CODMARCA
@@ -130,8 +133,10 @@ func (a *SankhyaAdapter) readBase(ctx context.Context) (map[int]*snapshotRow, er
 			marca     sql.NullString
 			usoprod   sql.NullString
 			adEcomm   sql.NullString
+			grupoICMS sql.NullInt64
+			origprod  sql.NullInt64
 		)
-		if err := dbrows.Scan(&codprod, &descr, &ncm, &reference, &refforn, &grupoCod, &grupoDesc, &marca, &usoprod, &adEcomm); err != nil {
+		if err := dbrows.Scan(&codprod, &descr, &ncm, &reference, &refforn, &grupoCod, &grupoDesc, &marca, &usoprod, &adEcomm, &grupoICMS, &origprod); err != nil {
 			return nil, wrapOracleError("scan sankhya base", err)
 		}
 
@@ -159,9 +164,11 @@ func (a *SankhyaAdapter) readBase(ctx context.Context) (map[int]*snapshotRow, er
 				Marca:          nullStr(marca),
 				GrupoCodigo:    nullIntStr(grupoCod),
 				GrupoDescricao: nullStr(grupoDesc),
+				GrupoICMS:      nullInt(grupoICMS),
 				NCM:            nullStr(ncm),
 				Usoprod:        nullStr(usoprod),
 				ADEcommerce:    nullStr(adEcomm),
+				Origprod:       nullInt(origprod),
 			},
 		}
 	}
@@ -249,6 +256,79 @@ func (a *SankhyaAdapter) applyPrice(ctx context.Context, dataRef time.Time, rows
 	return nil
 }
 
+// sankhyaFiscalSTSQL — ST retido na entrada (S) and restituição (S+I) as-of,
+// CODEMP=1 (D-17, same fixed company as everywhere else in this file). This is
+// the exact query measured live against Oracle during the P2.b dry-run
+// (.mnfs/MIS-007-ml-sync/M-06-orders-backfill-decomposition/_evidence/p2b-dryrun/q13_st_restituicao.sql),
+// adapted only to drop that dry-run's CODPROD IN (...) sample filter and to
+// bind :2 (dataRef) instead of SYSDATE — this file's other as-of queries
+// (Q2/Q3) all bind the same dataRef rather than reading Oracle's own clock, so
+// a single Sync() call reads one consistent point in time everywhere.
+//
+// NVL(VLRUNITMED,0)<>0 is applied INSIDE the CTE, before ROW_NUMBER: without
+// it, the most recent row for a (CODPROD,TIPIMPOSTO) pair can be a zero that
+// buries the real last value underneath it (measured, not theoretical).
+//
+// S_ST (TIPIMPOSTO='S' only) and R_TOTAL (SUM over 'S'+'I') are DIFFERENT
+// quantities — S_ST maps to st_retido_entrada, R_TOTAL maps to
+// restituicao_unit. A product with no row in this block at all gets no row
+// back from this query, so both mirror columns stay NULL (ADR-17), never 0.
+const sankhyaFiscalSTSQL = `
+WITH v AS (
+  SELECT d.CODPROD, d.TIPIMPOSTO, d.VLRUNITMED, d.DTMOV,
+         ROW_NUMBER() OVER (PARTITION BY d.CODPROD, d.TIPIMPOSTO
+                            ORDER BY d.DTMOV DESC) AS RN
+  FROM METALPRD.TGFEFDVMRSTDIA d
+  WHERE d.CODEMP = :1
+    AND d.TIPIMPOSTO IN ('S', 'I')
+    AND d.DTMOV <= :2
+    AND NVL(d.VLRUNITMED, 0) <> 0
+)
+SELECT CODPROD,
+       MAX(CASE WHEN TIPIMPOSTO = 'S' THEN VLRUNITMED END) AS S_ST,
+       SUM(VLRUNITMED) AS R_TOTAL,
+       MAX(DTMOV) AS DT_REF
+FROM v WHERE RN = 1 GROUP BY CODPROD`
+
+func (a *SankhyaAdapter) applyFiscalST(ctx context.Context, dataRef time.Time, rows map[int]*snapshotRow) error {
+	dbrows, err := a.db.QueryContext(ctx, sankhyaFiscalSTSQL, sankhyaCompany, dataRef)
+	if err != nil {
+		return wrapOracleError("sankhya fiscal st", err)
+	}
+	defer dbrows.Close()
+	for dbrows.Next() {
+		var (
+			codprod int
+			sST     sql.NullFloat64
+			rTotal  sql.NullFloat64
+			dtRef   sql.NullTime
+		)
+		if err := dbrows.Scan(&codprod, &sST, &rTotal, &dtRef); err != nil {
+			return wrapOracleError("scan sankhya fiscal st", err)
+		}
+		r, ok := rows[codprod]
+		if !ok {
+			continue
+		}
+		if sST.Valid {
+			v := sST.Float64
+			r.row.StRetidoEntrada = &v
+		}
+		if rTotal.Valid {
+			v := rTotal.Float64
+			r.row.RestituicaoUnit = &v
+		}
+		if dtRef.Valid {
+			v := dtRef.Time
+			r.row.FiscalDtRef = &v
+		}
+	}
+	if err := dbrows.Err(); err != nil {
+		return wrapOracleError("iterate sankhya fiscal st", err)
+	}
+	return nil
+}
+
 // Q4 — available sellable stock per whitelisted location: company-owned stock
 // net of reservations in companies 1/2 and locations 1_REVENDA/2_OUTLET. Every
 // Q1 product absent from this pinned result is known-zero; products absent from
@@ -317,6 +397,17 @@ func nullStr(v sql.NullString) *string {
 		return nil
 	}
 	return &s
+}
+
+// nullInt maps an Oracle NUMBER column to *int with honest-NULL discipline
+// (ADR-17): an unclassified fiscal group (GRUPOICMS NULL) stays nil, never a
+// fabricated 0 — 0 is itself a valid, distinct grupo_icms value in Sankhya.
+func nullInt(v sql.NullInt64) *int {
+	if !v.Valid {
+		return nil
+	}
+	i := int(v.Int64)
+	return &i
 }
 
 func nullIntStr(v sql.NullInt64) *string {

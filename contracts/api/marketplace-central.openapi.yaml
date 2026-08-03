@@ -5876,10 +5876,32 @@ components:
           type: number
           format: double
           nullable: true
+          description: >-
+            Legacy D-38 regime-aliquota field. Retired by P2.b T5: superseded
+            end to end by icms_saida + difal (D-41 per-item path) and never
+            populated by this endpoint anymore — always null, kept only for
+            old consumers still reading this key.
         difal:
           type: number
           format: double
           nullable: true
+        icms_saida:
+          type: number
+          format: double
+          nullable: true
+          description: >-
+            D-41 per-item ICMS de saída, summed across the order's items.
+            null means the tax picture could not be honestly resolved for at
+            least one item (unlinked product, no fiscal snapshot, or an
+            unresolved/ambiguous ICMS matrix cell) — never a fabricated 0
+            (ADR-17).
+        pis_cofins:
+          type: number
+          format: double
+          nullable: true
+          description: >-
+            D-41 PIS/COFINS débito, summed across the order's items. Same
+            resolution/unknown rule as icms_saida (ADR-17).
         tarifa_full:
           type: number
           format: double
@@ -5888,6 +5910,16 @@ components:
           type: number
           format: double
           nullable: true
+        restituicao_st:
+          type: number
+          format: double
+          nullable: true
+          description: >-
+            ICMS-ST restituição credit, summed across the order's items — the
+            one component that ADDS to margem_valor instead of subtracting.
+            An explicit 0 (e.g. intra-MG destination, where restituição never
+            applies) is a real fact, distinct from null (unresolved product
+            link/fiscal snapshot for at least one item).
         margem_valor:
           type: number
           format: double

@@ -15,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -37,12 +38,22 @@ type Row struct {
 	Marca          *string
 	GrupoCodigo    *string
 	GrupoDescricao *string
+	GrupoICMS      *int
 	NCM            *string
 	Custo          *float64
 	PrecoVenda     *float64
 	Usoprod        *string
 	ADEcommerce    *string
 	EstoqueTotal   *float64
+	// Origprod, StRetidoEntrada, RestituicaoUnit and FiscalDtRef are the P2.b
+	// Task 3 fiscal fields (migration 0093): TGFPRO.ORIGPROD, and the
+	// TGFEFDVMRSTDIA ST/restituicao block (S vs S+I are different quantities —
+	// never conflate them). A product absent from that block stays NULL/NULL/
+	// NULL (ADR-17, honest-unknown), never 0.
+	Origprod        *int
+	StRetidoEntrada *float64
+	RestituicaoUnit *float64
+	FiscalDtRef     *time.Time
 }
 
 // StockLocation is one products_mirror_stock_locations row (per-CODLOCAL stock).
@@ -74,9 +85,10 @@ var _ Writer = (*PgWriter)(nil)
 const upsertSQL = `
 INSERT INTO products_mirror
 	(tenant_id, source, codigo_produto, descricao, referencia, ean, marca,
-	 grupo_codigo, grupo_descricao, ncm, custo, preco_venda, usoprod, ad_ecommerce, estoque_total,
+	 grupo_codigo, grupo_descricao, grupo_icms, ncm, custo, preco_venda, usoprod, ad_ecommerce, estoque_total,
+	 origprod, st_retido_entrada, restituicao_unit, fiscal_dt_ref,
 	 absent_in_last_snapshot, stale_since, updated_at)
-VALUES ($1, 'sankhya', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, false, NULL, now())
+VALUES ($1, 'sankhya', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, false, NULL, now())
 ON CONFLICT (tenant_id, source, codigo_produto) DO UPDATE SET
 	descricao = EXCLUDED.descricao,
 	referencia = EXCLUDED.referencia,
@@ -84,12 +96,17 @@ ON CONFLICT (tenant_id, source, codigo_produto) DO UPDATE SET
 	marca = EXCLUDED.marca,
 	grupo_codigo = EXCLUDED.grupo_codigo,
 	grupo_descricao = EXCLUDED.grupo_descricao,
+	grupo_icms = EXCLUDED.grupo_icms,
 	ncm = EXCLUDED.ncm,
 	custo = EXCLUDED.custo,
 	preco_venda = EXCLUDED.preco_venda,
 	usoprod = EXCLUDED.usoprod,
 	ad_ecommerce = EXCLUDED.ad_ecommerce,
 	estoque_total = EXCLUDED.estoque_total,
+	origprod = EXCLUDED.origprod,
+	st_retido_entrada = EXCLUDED.st_retido_entrada,
+	restituicao_unit = EXCLUDED.restituicao_unit,
+	fiscal_dt_ref = EXCLUDED.fiscal_dt_ref,
 	absent_in_last_snapshot = false,
 	stale_since = NULL,
 	updated_at = now()`
@@ -147,8 +164,9 @@ func (w *PgWriter) ApplySnapshot(ctx context.Context, tenantID string, rows []Ro
 	batch := &pgx.Batch{}
 	for _, r := range rows {
 		batch.Queue(upsertSQL, tenantID, r.CodigoProduto, r.Descricao, r.Referencia,
-			r.EAN, r.Marca, r.GrupoCodigo, r.GrupoDescricao, r.NCM, r.Custo,
-			r.PrecoVenda, canonicalSellableValue(r.Usoprod), canonicalSellableValue(r.ADEcommerce), r.EstoqueTotal)
+			r.EAN, r.Marca, r.GrupoCodigo, r.GrupoDescricao, r.GrupoICMS, r.NCM, r.Custo,
+			r.PrecoVenda, canonicalSellableValue(r.Usoprod), canonicalSellableValue(r.ADEcommerce), r.EstoqueTotal,
+			r.Origprod, r.StRetidoEntrada, r.RestituicaoUnit, r.FiscalDtRef)
 	}
 	// Replace stock-location children only for products in this snapshot.
 	batch.Queue(deleteLocationsSQL, tenantID, codes)

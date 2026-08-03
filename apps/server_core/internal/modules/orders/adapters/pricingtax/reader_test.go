@@ -2,122 +2,251 @@ package pricingtax
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
-	pricingdomain "marketplace-central/apps/server_core/internal/modules/pricing/domain"
+	ordersports "marketplace-central/apps/server_core/internal/modules/orders/ports"
 	pricingports "marketplace-central/apps/server_core/internal/modules/pricing/ports"
 )
 
-type fakeSource struct {
-	profile   pricingdomain.CalcProfile
-	profErr   error
-	rate      pricingdomain.DifalRate
-	rateErr   error
-	askedUF   string
-	askedTnt  string
-	rateCalls int
+func intp(i int) *int           { return &i }
+func strp(s string) *string     { return &s }
+func floatp(f float64) *float64 { return &f }
+
+// fakeMatrix is a hand-rolled pricingports.TaxMatrixReader keyed by
+// (ufOrigem, ufDestino, grupoICMS) for CellFor and by uf for
+// AliquotaInternaFor — enough surface for this adapter's tests without
+// pulling in the Postgres-backed MatrixReader (Task 4, a different layer).
+type fakeMatrix struct {
+	cells     map[string]pricingports.MatrixCell
+	aliquotas map[string]string
 }
 
-func (f *fakeSource) GetProfile(_ context.Context, tenantID string) (pricingdomain.CalcProfile, error) {
-	f.askedTnt = tenantID
-	return f.profile, f.profErr
+func (f *fakeMatrix) CellFor(_ context.Context, _tenantID, ufOrigem, ufDestino string, grupoICMS int) (pricingports.MatrixCell, error) {
+	key := fmt.Sprintf("%s|%s|%d", ufOrigem, ufDestino, grupoICMS)
+	cell, ok := f.cells[key]
+	if !ok {
+		return pricingports.MatrixCell{Found: false}, nil
+	}
+	return cell, nil
 }
 
-func (f *fakeSource) RateForUF(_ context.Context, tenantID, uf string) (pricingdomain.DifalRate, error) {
-	f.rateCalls++
-	f.askedTnt = tenantID
-	f.askedUF = uf
-	return f.rate, f.rateErr
+func (f *fakeMatrix) AliquotaInternaFor(_ context.Context, uf string) (*string, error) {
+	a, ok := f.aliquotas[uf]
+	if !ok {
+		return nil, nil
+	}
+	return &a, nil
 }
 
-// TestImpostoUsesProfileAliquotaAndRoundsToCentavos pins the default SIMPLES
-// profile applied to a real order total: 4% of 129,90 is 5,196, which must
-// reach the operator as 5,20 — the same centavo the Simulador shows.
-func TestImpostoUsesProfileAliquotaAndRoundsToCentavos(t *testing.T) {
-	source := &fakeSource{profile: pricingdomain.NewDefaultCalcProfile()}
-	taxes, err := NewReader(source, "tenant-x").TaxesForOrder(context.Background(), 129.90, "SP")
-	if err != nil {
-		t.Fatalf("TaxesForOrder: %v", err)
-	}
-	if taxes.Imposto == nil || *taxes.Imposto != 5.20 {
-		t.Fatalf("Imposto = %v, want 5.20", taxes.Imposto)
-	}
-	if source.askedTnt != "tenant-x" {
-		t.Fatalf("tenant = %q, want tenant-x", source.askedTnt)
-	}
+// fakeProducts is a hand-rolled pricingports.ProductFiscalReader keyed by
+// codigo_produto (already-resolved active source — that resolution is this
+// task's ProductFiscalReader adapter's own job, a different layer from this
+// one).
+type fakeProducts struct {
+	facts map[string]pricingports.ProductFiscalFacts
 }
 
-// TestDifalOffIsExplicitZeroNotUnknown: a tenant with DIFAL switched off owes
-// nothing, and that zero must be reported so the margem can close.
-func TestDifalOffIsExplicitZeroNotUnknown(t *testing.T) {
-	source := &fakeSource{profile: pricingdomain.NewDefaultCalcProfile()}
-	taxes, err := NewReader(source, "tenant-x").TaxesForOrder(context.Background(), 100, "SP")
-	if err != nil {
-		t.Fatalf("TaxesForOrder: %v", err)
+func (f *fakeProducts) FactsFor(_ context.Context, _tenantID, codigoProduto string) (pricingports.ProductFiscalFacts, error) {
+	facts, ok := f.facts[codigoProduto]
+	if !ok {
+		return pricingports.ProductFiscalFacts{Found: false}, nil
 	}
-	if taxes.Difal == nil || *taxes.Difal != 0 {
-		t.Fatalf("Difal = %v, want explicit 0", taxes.Difal)
-	}
-	if source.rateCalls != 0 {
-		t.Fatalf("rate lookups = %d, want 0 when DIFAL is off", source.rateCalls)
-	}
+	return facts, nil
 }
 
-// TestDifalOnUsesDestinoEfetivo checks the enabled path takes the shipment's
-// destination state through the pricing DIFAL table: efetivo 18−12 = 6% of 200.
-func TestDifalOnUsesDestinoEfetivo(t *testing.T) {
-	profile := pricingdomain.NewDefaultCalcProfile()
-	profile.DifalEnabled = true
-	source := &fakeSource{
-		profile: profile,
-		rate: pricingdomain.DifalRate{
-			UF:               "SP",
-			InternaPct:       "18",
-			InterestadualPct: "12",
-			EfetivoPct:       "6",
+func floatEq(got *float64, want string) bool {
+	if got == nil {
+		return false
+	}
+	return fmt.Sprintf("%.2f", *got) == want
+}
+
+func dumpTaxes(t ordersports.OrderTaxes) string {
+	deref := func(f *float64) string {
+		if f == nil {
+			return "<nil>"
+		}
+		return fmt.Sprintf("%.2f", *f)
+	}
+	return fmt.Sprintf("ICMSSaida=%s Difal=%s PisCofins=%s RestituicaoST=%s",
+		deref(t.ICMSSaida), deref(t.Difal), deref(t.PisCofins), deref(t.RestituicaoST))
+}
+
+// TestTaxesForItemsSumsPerItemAcrossICMSGroups is the CRITICAL test (T5
+// brief): two items in different ICMS grupos under the same order/destino —
+// item A resolves as ST (codtrib=60, contributes an explicit "0.00"), item B
+// resolves normally. The order's ICMSSaida must equal ONLY item B's
+// contribution, proving the sum is built per-item, never a single rate
+// applied to the order total. Fixtures mirror pricing/domain/icms_test.go
+// cases C (ST, RJ) and F (origprod-importado, RJ) exactly, so the expected
+// numbers are independently pinned there too.
+func TestTaxesForItemsSumsPerItemAcrossICMSGroups(t *testing.T) {
+	matrix := &fakeMatrix{
+		cells: map[string]pricingports.MatrixCell{
+			"MG|RJ|10": {Found: true, CodTrib: intp(60), Ambiguo: false}, // ST
+			"MG|RJ|20": {Found: true, CodTrib: intp(0), Ambiguo: false},  // normal
+		},
+		aliquotas: map[string]string{"RJ": "22"},
+	}
+	products := &fakeProducts{
+		facts: map[string]pricingports.ProductFiscalFacts{
+			"101": { // ST item — icms_test.go case C
+				Found: true, GrupoICMS: intp(10), Origprod: nil,
+				StRetidoEntrada: strp("40.00"), RestituicaoUnit: strp("15.00"),
+			},
+			"102": { // normal item — icms_test.go case F
+				Found: true, GrupoICMS: intp(20), Origprod: intp(1),
+			},
 		},
 	}
-	taxes, err := NewReader(source, "tenant-x").TaxesForOrder(context.Background(), 200, "SP")
+	r := NewReader(matrix, products, "tenant-1")
+
+	items := []ordersports.TaxItem{
+		{InternalProductID: intp(101), UnitPrice: floatp(800.00), Quantity: 1},
+		{InternalProductID: intp(102), UnitPrice: floatp(1000.00), Quantity: 1},
+	}
+
+	got, err := r.TaxesForItems(context.Background(), items, "RJ")
 	if err != nil {
-		t.Fatalf("TaxesForOrder: %v", err)
+		t.Fatalf("TaxesForItems error: %v", err)
 	}
-	if taxes.Difal == nil || *taxes.Difal != 12 {
-		t.Fatalf("Difal = %v, want 12", taxes.Difal)
+
+	// item A (ST) contributes an explicit "0.00"; item B contributes 40.00.
+	// The order-level ICMSSaida must be exactly item B's value — proving the
+	// zero from the ST item was summed in, not skipped, and the 40.00 was
+	// never diluted or rated across both items.
+	if !floatEq(got.ICMSSaida, "40.00") {
+		t.Fatalf("ICMSSaida = %s, want 40.00 (only item B — item A's ST contribution is an explicit 0.00)", dumpTaxes(got))
 	}
-	if source.askedUF != "SP" {
-		t.Fatalf("asked UF = %q, want SP", source.askedUF)
+	if !floatEq(got.Difal, "230.77") {
+		t.Fatalf("Difal = %s, want 230.77 (0.00 + 230.77)", dumpTaxes(got))
+	}
+	if !floatEq(got.PisCofins, "137.75") {
+		t.Fatalf("PisCofins = %s, want 137.75 (70.30 + 67.45)", dumpTaxes(got))
+	}
+	if !floatEq(got.RestituicaoST, "15.00") {
+		t.Fatalf("RestituicaoST = %s, want 15.00 (15.00 + 0.00)", dumpTaxes(got))
 	}
 }
 
-// TestDifalOnWithoutDestinoStaysUnknown: DIFAL is owed but we cannot say how
-// much, so it must stay nil — never a convenient 0 that inflates the margem.
-func TestDifalOnWithoutDestinoStaysUnknown(t *testing.T) {
-	profile := pricingdomain.NewDefaultCalcProfile()
-	profile.DifalEnabled = true
-	source := &fakeSource{profile: profile}
-	taxes, err := NewReader(source, "tenant-x").TaxesForOrder(context.Background(), 200, "")
+// TestTaxesForItemsRejectsRateOnTotalBug is the mandated negative control:
+// it hand-computes the exact bug this task exists to prevent — applying the
+// FIRST item's effective rate to the ORDER TOTAL instead of computing each
+// item's own ICMS and summing — and proves that naive number is observably
+// different from (and NOT what the Reader returns for) the same fixtures as
+// the critical test above. If a future change collapsed TaxesForItems back
+// onto a single rate-on-total calculation, this test would catch it because
+// the two numbers are provably different, not because of an incidental
+// assertion.
+func TestTaxesForItemsRejectsRateOnTotalBug(t *testing.T) {
+	matrix := &fakeMatrix{
+		cells: map[string]pricingports.MatrixCell{
+			"MG|RJ|20": {Found: true, CodTrib: intp(0), Ambiguo: false},  // normal, first in this order
+			"MG|RJ|10": {Found: true, CodTrib: intp(60), Ambiguo: false}, // ST, second
+		},
+		aliquotas: map[string]string{"RJ": "22"},
+	}
+	products := &fakeProducts{
+		facts: map[string]pricingports.ProductFiscalFacts{
+			"102": {Found: true, GrupoICMS: intp(20), Origprod: intp(1)}, // a_inter=4% (origprod importado)
+			"101": {
+				Found: true, GrupoICMS: intp(10), Origprod: nil,
+				StRetidoEntrada: strp("40.00"), RestituicaoUnit: strp("15.00"),
+			},
+		},
+	}
+	r := NewReader(matrix, products, "tenant-1")
+
+	// item[0] is the NORMAL item (effective ICMS rate a_inter=4%), item[1] is
+	// the ST item — the naive bug would take item[0]'s 4% and apply it to the
+	// (800+1000=1800) order total.
+	items := []ordersports.TaxItem{
+		{InternalProductID: intp(102), UnitPrice: floatp(1000.00), Quantity: 1},
+		{InternalProductID: intp(101), UnitPrice: floatp(800.00), Quantity: 1},
+	}
+
+	got, err := r.TaxesForItems(context.Background(), items, "RJ")
 	if err != nil {
-		t.Fatalf("TaxesForOrder: %v", err)
+		t.Fatalf("TaxesForItems error: %v", err)
 	}
-	if taxes.Difal != nil {
-		t.Fatalf("Difal = %v, want nil", *taxes.Difal)
+
+	const correct = "40.00" // per-item: 40.00 (item B) + 0.00 (item A, ST)
+	const naive = "72.00"   // BUG: 0.04 x (800.00+1000.00) = 72.00
+
+	if naive == correct {
+		t.Fatalf("negative control is degenerate: naive %s == correct %s, proves nothing", naive, correct)
 	}
-	if taxes.Imposto == nil {
-		t.Fatal("Imposto = nil, want the aliquota to still resolve")
+	if !floatEq(got.ICMSSaida, correct) {
+		t.Fatalf("ICMSSaida = %s, want %s (correct per-item sum)", dumpTaxes(got), correct)
+	}
+	if floatEq(got.ICMSSaida, naive) {
+		t.Fatalf("Reader collapsed onto the rate-on-total bug: ICMSSaida = %s (== naive %s)", dumpTaxes(got), naive)
 	}
 }
 
-// TestDifalUFWithoutRateRowStaysUnknown: a state absent from the rate table is
-// an honest gap, not a zero.
-func TestDifalUFWithoutRateRowStaysUnknown(t *testing.T) {
-	profile := pricingdomain.NewDefaultCalcProfile()
-	profile.DifalEnabled = true
-	source := &fakeSource{profile: profile, rateErr: pricingports.ErrDifalUFNotFound}
-	taxes, err := NewReader(source, "tenant-x").TaxesForOrder(context.Background(), 200, "ZZ")
-	if err != nil {
-		t.Fatalf("TaxesForOrder: %v", err)
+// TestTaxesForItemsUnlinkedItemNilsWholeOrder proves the all-or-nothing
+// aggregation across items (never a partial sum over only the linked ones):
+// one item is fully resolvable (MG interno, icms_test.go case A), the other
+// has no InternalProductID at all. The whole order's four new components must
+// come back nil — not the known item's contribution alone.
+func TestTaxesForItemsUnlinkedItemNilsWholeOrder(t *testing.T) {
+	matrix := &fakeMatrix{
+		cells: map[string]pricingports.MatrixCell{
+			"MG|MG|1": {Found: true, CodTrib: intp(0), Ambiguo: false},
+		},
 	}
-	if taxes.Difal != nil {
-		t.Fatalf("Difal = %v, want nil", *taxes.Difal)
+	products := &fakeProducts{
+		facts: map[string]pricingports.ProductFiscalFacts{
+			"201": {
+				Found: true, GrupoICMS: intp(1), Origprod: intp(0),
+				RestituicaoUnit: strp("50.00"),
+			},
+		},
+	}
+	r := NewReader(matrix, products, "tenant-1")
+
+	items := []ordersports.TaxItem{
+		{InternalProductID: intp(201), UnitPrice: floatp(1000.00), Quantity: 1},
+		{InternalProductID: nil, UnitPrice: floatp(200.00), Quantity: 1}, // never linked
+	}
+
+	got, err := r.TaxesForItems(context.Background(), items, "MG")
+	if err != nil {
+		t.Fatalf("TaxesForItems error: %v", err)
+	}
+
+	if got.ICMSSaida != nil || got.Difal != nil || got.PisCofins != nil || got.RestituicaoST != nil {
+		t.Fatalf("got %s, want all four nil — one unlinked item must nil the WHOLE order, not just its own contribution", dumpTaxes(got))
+	}
+}
+
+// TestTaxesForItemsScalesRestituicaoByQuantity proves S/R are per-unit
+// products_mirror facts, scaled by Quantity before entering the ICMSCell:
+// restituicao_unit="10.00" x Quantity=3 must yield RestituicaoST=30.00.
+// GrupoICMS is left nil so ICMSSaida/Difal/PisCofins stay unknown (matrix
+// cell never resolved) — isolating the assertion to the scaling behavior
+// alone, since RestituicaoST is independent of the matrix cell resolution
+// (pricing/domain/icms.go).
+func TestTaxesForItemsScalesRestituicaoByQuantity(t *testing.T) {
+	matrix := &fakeMatrix{}
+	products := &fakeProducts{
+		facts: map[string]pricingports.ProductFiscalFacts{
+			"301": {Found: true, GrupoICMS: nil, RestituicaoUnit: strp("10.00")},
+		},
+	}
+	r := NewReader(matrix, products, "tenant-1")
+
+	items := []ordersports.TaxItem{
+		{InternalProductID: intp(301), UnitPrice: floatp(100.00), Quantity: 3},
+	}
+
+	got, err := r.TaxesForItems(context.Background(), items, "SP")
+	if err != nil {
+		t.Fatalf("TaxesForItems error: %v", err)
+	}
+
+	if !floatEq(got.RestituicaoST, "30.00") {
+		t.Fatalf("RestituicaoST = %s, want 30.00 (10.00 unit x Quantity=3)", dumpTaxes(got))
 	}
 }

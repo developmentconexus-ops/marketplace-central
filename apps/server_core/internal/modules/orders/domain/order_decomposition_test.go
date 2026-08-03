@@ -14,22 +14,25 @@ func TestUnknownOrderProfitability(t *testing.T) {
 
 	d := got.Decomposition
 	for name, ptr := range map[string]*float64{
-		"Comissao":    d.Comissao,
-		"TaxaFixa":    d.TaxaFixa,
-		"Frete":       d.Frete,
-		"Imposto":     d.Imposto,
-		"Difal":       d.Difal,
-		"TarifaFull":  d.TarifaFull,
-		"Custo":       d.Custo,
-		"MargemValor": d.MargemValor,
-		"MargemPct":   d.MargemPct,
+		"Comissao":      d.Comissao,
+		"TaxaFixa":      d.TaxaFixa,
+		"Frete":         d.Frete,
+		"Imposto":       d.Imposto,
+		"Difal":         d.Difal,
+		"ICMSSaida":     d.ICMSSaida,
+		"PisCofins":     d.PisCofins,
+		"RestituicaoST": d.RestituicaoST,
+		"TarifaFull":    d.TarifaFull,
+		"Custo":         d.Custo,
+		"MargemValor":   d.MargemValor,
+		"MargemPct":     d.MargemPct,
 	} {
 		if ptr != nil {
 			t.Fatalf("Decomposition.%s = %v, want nil", name, *ptr)
 		}
 	}
 
-	wantComponents := []string{"comissao", "taxa_fixa", "frete", "imposto", "difal", "tarifa_full", "custo"}
+	wantComponents := []string{"comissao", "taxa_fixa", "frete", "icms_saida", "difal", "pis_cofins", "tarifa_full", "custo", "restituicao_st"}
 	if len(d.ComponentesDesconhecidos) != len(wantComponents) {
 		t.Fatalf("ComponentesDesconhecidos = %v, want %v", d.ComponentesDesconhecidos, wantComponents)
 	}
@@ -94,16 +97,20 @@ func TestBuildProfitabilityGoldenOrder2000017276984774(t *testing.T) {
 // derive when every source input is known, and MargemPct is a fraction (not
 // pre-multiplied by 100 — the FE formatPercent does that).
 func TestBuildProfitabilityAllKnownDerivesMargem(t *testing.T) {
-	total, comissao, custo, frete, imposto := 100.0, 10.0, 40.0, 5.0, 3.0
+	total, comissao, custo, frete, icmsSaida := 100.0, 10.0, 40.0, 5.0, 3.0
 	// DIFAL switched off on the tenant profile is an explicit 0, not an unknown.
 	difal := 0.0
+	pisCofins := 0.0
+	restituicaoST := 0.0
 	got := BuildProfitability(ProfitabilityInputs{
-		Total:    &total,
-		Comissao: &comissao,
-		Custo:    &custo,
-		Frete:    &frete,
-		Imposto:  &imposto,
-		Difal:    &difal,
+		Total:         &total,
+		Comissao:      &comissao,
+		Custo:         &custo,
+		Frete:         &frete,
+		ICMSSaida:     &icmsSaida,
+		Difal:         &difal,
+		PisCofins:     &pisCofins,
+		RestituicaoST: &restituicaoST,
 	})
 	if got.Decomposition.MargemValor == nil || *got.Decomposition.MargemValor != 42 {
 		t.Fatalf("MargemValor = %v, want 42", got.Decomposition.MargemValor)
@@ -129,16 +136,20 @@ func TestBuildProfitabilityAllKnownDerivesMargem(t *testing.T) {
 }
 
 // TestBuildProfitabilityAnyUnknownInputSuppressesMargem asserts a single
-// unknown input (Imposto here) suppresses margem/retorno entirely — never a
+// unknown input (ICMSSaida here) suppresses margem/retorno entirely — never a
 // partial/fabricated margin (ADR-17).
 func TestBuildProfitabilityAnyUnknownInputSuppressesMargem(t *testing.T) {
 	total, comissao, custo, frete := 100.0, 10.0, 40.0, 5.0
+	difal, pisCofins, restituicaoST := 0.0, 0.0, 0.0
 	got := BuildProfitability(ProfitabilityInputs{
-		Total:    &total,
-		Comissao: &comissao,
-		Custo:    &custo,
-		Frete:    &frete,
-		Imposto:  nil,
+		Total:         &total,
+		Comissao:      &comissao,
+		Custo:         &custo,
+		Frete:         &frete,
+		ICMSSaida:     nil,
+		Difal:         &difal,
+		PisCofins:     &pisCofins,
+		RestituicaoST: &restituicaoST,
 	})
 	if got.Decomposition.MargemValor != nil {
 		t.Fatalf("MargemValor = %v, want nil", *got.Decomposition.MargemValor)
@@ -154,26 +165,30 @@ func TestBuildProfitabilityAnyUnknownInputSuppressesMargem(t *testing.T) {
 	}
 	found := false
 	for _, name := range got.Decomposition.ComponentesDesconhecidos {
-		if name == "imposto" {
+		if name == "icms_saida" {
 			found = true
 		}
 	}
 	if !found {
-		t.Fatalf("ComponentesDesconhecidos = %v, want to contain imposto", got.Decomposition.ComponentesDesconhecidos)
+		t.Fatalf("ComponentesDesconhecidos = %v, want to contain icms_saida", got.Decomposition.ComponentesDesconhecidos)
 	}
 }
 
 // TestBuildProfitabilityUnknownDifalSuppressesMargem pins that a DIFAL we could
 // not source (destino state unknown while the tenant HAS DIFAL switched on) is
-// not quietly treated as zero: the whole margem stays "—" (ADR-17).
+// not quietly treated as zero: the whole margem stays "—" (ADR-17). Every
+// other component is known so the test isolates the Difal gate specifically.
 func TestBuildProfitabilityUnknownDifalSuppressesMargem(t *testing.T) {
-	total, comissao, custo, frete, imposto := 100.0, 10.0, 40.0, 5.0, 3.0
+	total, comissao, custo, frete, icmsSaida := 100.0, 10.0, 40.0, 5.0, 3.0
+	pisCofins, restituicaoST := 0.0, 0.0
 	got := BuildProfitability(ProfitabilityInputs{
-		Total:    &total,
-		Comissao: &comissao,
-		Custo:    &custo,
-		Frete:    &frete,
-		Imposto:  &imposto,
+		Total:         &total,
+		Comissao:      &comissao,
+		Custo:         &custo,
+		Frete:         &frete,
+		ICMSSaida:     &icmsSaida,
+		PisCofins:     &pisCofins,
+		RestituicaoST: &restituicaoST,
 	})
 	if got.RetornoLiquido != nil {
 		t.Fatalf("RetornoLiquido = %v, want nil when difal is unknown", *got.RetornoLiquido)

@@ -389,28 +389,39 @@ func (s EnrichService) resolveProfitability(ctx context.Context, order domain.Or
 	}
 	taxes := s.resolveTaxes(ctx, order, shipment)
 	return domain.BuildProfitability(domain.ProfitabilityInputs{
-		Total:    order.Total,
-		Comissao: sumSaleFee(order.Items),
-		Custo:    sumItemCosts(itemCosts, order.Items),
-		Frete:    senderFreight(shipment),
-		Imposto:  taxes.Imposto,
-		Difal:    taxes.Difal,
+		Total:         order.Total,
+		Comissao:      sumSaleFee(order.Items),
+		Custo:         sumItemCosts(itemCosts, order.Items),
+		Frete:         senderFreight(shipment),
+		ICMSSaida:     taxes.ICMSSaida,
+		Difal:         taxes.Difal,
+		PisCofins:     taxes.PisCofins,
+		RestituicaoST: taxes.RestituicaoST,
 	})
 }
 
-// resolveTaxes asks the tenant tax reader for the order's imposto/DIFAL,
-// applied to the order's own revenue and shipped-to state. No reader, no
-// revenue, or a reader error all degrade to both components unknown (ADR-17) —
-// a tax we could not source is never reported as zero.
+// resolveTaxes asks the tenant tax reader for the order's per-item D-41 ICMS
+// components, built from order.Items (InternalProductID/UnitPrice/Quantity)
+// and the shipment's destination state. No reader, no items, or a reader
+// error all degrade to every component unknown (ADR-17) — a tax we could not
+// source is never reported as zero.
 func (s EnrichService) resolveTaxes(ctx context.Context, order domain.OrderReadModel, shipment *ShipmentEnrichment) ports.OrderTaxes {
-	if s.taxes == nil || order.Total == nil {
+	if s.taxes == nil || len(order.Items) == 0 {
 		return ports.OrderTaxes{}
 	}
 	var destinoUF string
 	if shipment != nil && shipment.DestinationUF != nil {
 		destinoUF = *shipment.DestinationUF
 	}
-	taxes, err := s.taxes.TaxesForOrder(ctx, *order.Total, destinoUF)
+	items := make([]ports.TaxItem, len(order.Items))
+	for i, item := range order.Items {
+		items[i] = ports.TaxItem{
+			InternalProductID: item.InternalProductID,
+			UnitPrice:         item.UnitPrice,
+			Quantity:          item.Quantity,
+		}
+	}
+	taxes, err := s.taxes.TaxesForItems(ctx, items, destinoUF)
 	if err != nil {
 		s.logger.Warn("orders: tax lookup failed",
 			"provider_order_id", order.ProviderOrderID,
