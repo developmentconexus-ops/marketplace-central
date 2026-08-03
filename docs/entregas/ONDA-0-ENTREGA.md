@@ -257,16 +257,109 @@ que ela sabe dizer é "não sei medir erro".
 
 ---
 
-## Fase 2 — o que falta medir
+## Fase 2 — medição no banco real
 
-1. Contagem no banco real dos 39 pedidos: quantos têm UF de destino, quantos têm **todos**
-   os itens com vínculo interno e snapshot fiscal, quantos produzem margem não-nula.
-   Separa VIVO de MUDO em toda a seção 1.
+Ambiente medido: `marketplace-central-postgres-1`, banco `marketplace_central`, em
+2026-08-03. Toda contagem abaixo é `select` executado, não estimativa.
+
+### 5.0 O binário que estava rodando era mais velho que o merge
+
+Primeira medição da fase, antes de qualquer tela: a imagem `marketplace-central-backend`
+foi construída em `2026-08-03T20:00:19Z`; os merges terminaram às `22:29Z`
+(`e66ce013`). **A stack de pé estava 2h29 atrás do código.** A prova independente está no
+banco: `schema_migrations` tem 82 linhas contra 83 arquivos no repo, e a única faltante é
+exatamente `0093_icms_matrix.sql` — a migração que veio no merge de `p2b-imposto-ex-ante`.
+
+Sem esse passo, o live drive teria medido a onda anterior e chamado de onda 0. A stack foi
+reconstruída antes de qualquer captura de tela.
+
+### 5.1 Insumos de `/pedidos` (39 pedidos reais)
+
+| Insumo | Medido | Consequência |
+|---|---|---|
+| pedidos | 39 | — |
+| itens | 39 (1 por pedido) | — |
+| itens com `internal_product_id` | **34 / 39** | 5 pedidos sem vínculo → todo componente fiscal nil |
+| itens com `unit_price` | 39 / 39 | ok |
+| itens com `sale_fee_amount` | 39 / 39 | Comissão resolve para todos |
+| remessas com `cost_seller` | 39 / 39 | Frete resolve para todos |
+| remessas com `dest_state` | 39 / 39, em 9 UFs (SP 15, RJ 11, MG 3, PR 3, BA 2, ES 2, RS 1, PE 1, MA 1) | `destinoUF` nunca é vazio |
+| `icms_matrix_mirror` | **tabela inexistente** (migração não aplicada; após o rebuild, existente e vazia) | ver F-8 |
+| `products_mirror` | 10.632 linhas; colunas fiscais só passam a existir após a migração | ver F-8 |
+| `orders_marketplace_orders.decomposition` / `net_amount` / `margin_pct` | 0 não-nulos em 39 | ver F-9 |
+
+Os 5 pedidos sem vínculo batem exatamente com a previsão do plano do P2.b ("5 pedidos sem
+vínculo de produto", Task 7). A previsão estava certa; o que não aconteceu foi a Task 7.
+
+### 5.2 `/anuncios` — F-7 confirmado no dado
+
+```
+select sync_state, count(*) from listings group by 1;
+ sync_state | count
+------------+-------
+ synced     |    34
+```
+
+Uma única linha. Zero variância na coluna que a tela transforma em pill, em contador de
+resumo e em dois filtros de exceção. O F-7 sai de "por construção" para **medido**.
+
+### 5.3 `/mercado` — F-6 dimensionado
+
+`market_aggregates` tem **4 linhas**. O teto aritmético do F-6 (100 renovações/hora contra
+validade de 1 h) portanto **não está apertando hoje** — com 4 produtos, o ciclo de 30 min
+renova tudo com folga. O achado continua válido como propriedade do sistema, não como
+sintoma atual: ele passa a morder quando o operador coletar mais de ~100 produtos, o que o
+uso normal de "Atualizar agora" produz sozinho. Registrar agora é mais barato que descobrir
+depois olhando uma tela cheia de "desatualizado" sem explicação.
+
+### 5.4 Achados novos da fase 2
+
+**F-8 — a matriz de ICMS tem leitor, escritor, testes e nenhum chamador.**
+`internal_read/adapters/oracle/icms_matrix.go` (`ICMSMatrixReader`) e
+`internal_read/adapters/mirror/icms_matrix_writer.go` (`ICMSMatrixWriter`) existem, estão
+cobertos por teste de integração, e são construídos em **exatamente dois lugares no repo**,
+ambos arquivos `_test.go`. Nenhuma composição, nenhum job de sync, nenhum endpoint, nenhum
+binário em `cmd/` os invoca. O plano do P2.b previa isso: rodar o sync da matriz era o
+primeiro passo da **Task 7**, que nunca foi executada.
+
+Consequência em cadeia, e é a mais cara desta onda:
+
+```
+icms_matrix_mirror vazia
+  -> MatrixCellFor não acha célula para nenhum (UF, grupo)
+  -> pricing/domain devolve componente desconhecido por item
+  -> reader.go all-or-nothing: ICMS saída, DIFAL, PIS/COFINS e restituição ST = nil p/ o pedido inteiro
+  -> BuildProfitability não fecha os sete componentes
+  -> Margem e Retorno líquido = nil em 39 de 39 pedidos
+```
+
+Ou seja: **a funcionalidade central do P2.b está construída e desligada.** O comportamento
+é honesto (a tela mostra "—", não um número inventado — ADR-17 preservado), mas a promessa
+da onda não está entregue. E a diferença entre "construído" e "entregue" é invisível a
+todas as lanes: `go build` passa, 120 pacotes de teste passam, o front compila, e nenhuma
+tela fica vermelha.
+
+Isto é a mesma classe que a MIS-006 já pagou uma vez ("scheduler construído mas nunca
+ligado", `composition/root.go:730-737` documenta a lição no próprio código). Reincidência de
+classe: cabe **stop-the-line** — o conserto não é só ligar esta matriz, é ter um observável
+que reprove porta de produção sem chamador de produção.
+
+**F-9 — três colunas de pedido sem leitor e sem escritor.**
+`orders_marketplace_orders.decomposition`, `net_amount` e `margin_pct` (migração 0089) têm
+0 não-nulos em 39 linhas. Uma varredura por escritores e leitores em Go encontra **zero** de
+cada: `orders/domain/order.go:80` diz em comentário que os três são "escopo do M-06,
+deliberadamente ausentes" — e o M-06 fechou sem preenchê-los. O caminho vivo calcula a
+decomposição em tempo de leitura (`enrich_service.go:390`), que é a decisão certa. As três
+colunas são resíduo de um desenho abandonado. Não mentem para o operador (nada as lê), mas
+são exatamente a redundância que a revisão de código deve remover: ou nascem um consumidor,
+ou saem do esquema.
+
+---
+
+## Fase 2 — o que ainda falta
+
+1. Live drive das quatro telas com a stack reconstruída, com container id e `Created` no
+   veredito (a reconstrução está em curso).
 2. Linha `orders` no `/sync/health` visível na tela.
-3. `select sync_state, count(*) from listings group by 1` — confirma o F-7 no dado real
-   (esperado: uma única linha, `synced`).
-4. Contagem de produtos com agregado de mercado e distribuição de idade — dimensiona o F-6
-   (acima de ~100, a cauda permanentemente STALE existe hoje, não no futuro).
-5. Live drive das quatro telas, com container id e `Created` no veredito.
-6. Lane de governança por diff de conjunto contra `main`, medida fora da árvore montada
+3. Lane de governança por diff de conjunto contra `main`, medida fora da árvore montada
    (decide o F-4).
