@@ -456,3 +456,32 @@ list` e o `node_modules` fica. O sucesso aparente do comando esconde o custo rea
 Conserto de classe: o hub verifica o diretório depois do `remove`, não o código de saída — e
 a criação de worktree passa a ficar fora da árvore montada pelo compose, para que limpeza não
 dependa de derrubar a stack.
+
+**D-19. O dev stack não tem dono declarado, e tomar a janela alheia é indistinguível de
+defeito da vítima** (2026-08-03, colisão F-00 × F-A1b, medida em container ids):
+
+```
+20:53:29Z  backend recriado no worktree do F-00 (janela anunciada pelo hub às 3 sessões)
+21:04:35Z  backend recriado montando a main   <- F-A1b, sem avisar
+21:28:26Z  hub detecta; sync_state ainda sem linha `orders`
+21:28:40Z  backend devolvido ao worktree do F-00
+```
+
+Janela real do F-00: **11 minutos, contra um ticker de 15**. O primeiro ciclo do scheduler de
+pedidos nunca disparou. O sintoma do lado da vítima — log sem ciclo, `sync_state` sem linha,
+tela sem novidade — é **byte-idêntico ao defeito que ela está tentando provar que não existe**.
+Se o hub não tivesse comparado o `Created` do container, a conclusão natural do F-00 seria
+"meu scheduler não dispara", e ela seria falsa.
+
+O detalhe que faz isso ser classe e não acidente: a sessão que tomou a janela **fez a checagem
+certa** (detectou que o stack servia outra árvore, exatamente a verificação anti-binário-velho
+que a doutrina exige) e mesmo assim errou o passo seguinte. Observar "o stack serve código de
+outra fatia" é a prova de que existe janela em curso de alguém — é motivo para PEDIR a janela,
+nunca para tomá-la. Não havia nada no ambiente que dissesse de quem era.
+
+Conserto candidato, na ordem do mais barato: (1) o próprio compose grava o dono da janela num
+lugar legível — label no container ou arquivo `.mnfs/STACK-OWNER` com sessão, branch e SHA — e
+o `docker inspect` responde "de quem é isto" sem perguntar a ninguém; (2) recriar o backend
+passa por comando único do hub que recusa se houver dono diferente registrado; (3) o veredito
+de qualquer live drive cita o container id e o `Created`, para que a janela seja reconstituível
+depois. Enquanto (1) não existir, o custo cai sempre na vítima, que é quem menos pode detectá-lo.
