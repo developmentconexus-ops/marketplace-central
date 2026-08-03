@@ -696,14 +696,25 @@ export type OrderBucket = "novo" | "faturar" | "enviar" | "enviado" | "cancelado
 // Every amount is number|null: null means the component could not be
 // honestly sourced (ADR-17). componentes_desconhecidos names every unknown
 // source component so a null amount is always explained.
+// imposto is the retired D-38 legacy field (P2.b T5) — superseded end to end
+// by icms_saida + difal (D-41 per-item path) and always null from this
+// endpoint now; kept only for old consumers still reading the key.
+// icms_saida/pis_cofins/restituicao_st are the D-41 per-item tax components
+// (P2.b T5/T6), summed across the order's items. restituicao_st is the one
+// component that ADDS to margem_valor instead of subtracting — an explicit 0
+// (e.g. intra-MG destination) is a real fact, distinct from null (unresolved
+// product link/fiscal snapshot for at least one item).
 export interface OrderDecomposicao {
   comissao: number | null;
   taxa_fixa: number | null;
   frete: number | null;
   imposto: number | null;
   difal: number | null;
+  icms_saida: number | null;
+  pis_cofins: number | null;
   tarifa_full: number | null;
   custo: number | null;
+  restituicao_st: number | null;
   margem_valor: number | null;
   margem_pct: number | null;
   componentes_desconhecidos: string[];
