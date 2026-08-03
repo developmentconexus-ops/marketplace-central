@@ -7,8 +7,8 @@ import type {
   ListingReadModel,
   ListingSyncState,
 } from "@marketplace-central/sdk-runtime";
-import { ConflictTag, formatMoney, formatSignedPercent, UnknownValue } from "@marketplace-central/ui";
-import { formatAsOf, FreshnessIndicator } from "@marketplace-central/web-query";
+import { ConflictTag, formatMoney, formatSignedPercent, FreshnessIndicator, UnknownValue } from "@marketplace-central/ui";
+import { formatAsOf } from "@marketplace-central/web-query";
 
 export interface AnunciosTableProps {
   items?: ListingReadModel[];

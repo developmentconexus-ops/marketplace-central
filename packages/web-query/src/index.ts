@@ -1,6 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
 import type { ActiveSourceName } from "@marketplace-central/sdk-runtime";
-import { createElement, type ReactNode } from "react";
 
 export const QUERY_STALE_TIME = {
   catalog: 300_000,
@@ -195,10 +194,6 @@ export function createRefreshableFetch(baseFetch: typeof fetch = fetch): {
   };
 
   return { fetchImpl, withNoCache };
-}
-
-export function FreshnessIndicator({ asOf }: { asOf: string | null | undefined }): ReactNode {
-  return createElement("span", { "aria-label": "Data freshness" }, formatAsOf(asOf));
 }
 
 export { invalidateAfterMutation, UnknownMutationInvalidationTypeError, type MutationInvalidationType } from "./invalidation";

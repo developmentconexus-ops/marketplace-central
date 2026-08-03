@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, SurfaceCard } from "@marketplace-central/ui";
+import { Button, FreshnessIndicator, SurfaceCard } from "@marketplace-central/ui";
 import type {
   ApplyInventoryStockActionResponse,
   IntegrationInstallation,
@@ -9,7 +9,6 @@ import type {
 } from "@marketplace-central/sdk-runtime";
 import {
   formatDateTime,
-  FreshnessIndicator,
   inventoryQueryKeys,
   queryKeyNamespaces,
   QUERY_STALE_TIME,

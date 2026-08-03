@@ -180,7 +180,7 @@ describe("CatalogPage", () => {
     const sdk = createMarketplaceCentralClient({ baseUrl: "", fetchImpl: transport.fetchImpl });
     renderPage({ ...sdk, withNoCache: transport.withNoCache });
 
-    const indicator = await screen.findByLabelText("Data freshness");
+    const indicator = await screen.findByLabelText("Atualização dos dados");
     await waitFor(() => expect(indicator.textContent).toMatch(/^(agora|há .+)$/));
     fireEvent.click(screen.getByRole("button", { name: "Atualizar" }));
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));

@@ -189,7 +189,9 @@ describe("AnunciosTable", () => {
 
       expect(screen.getByText("R$ 129,90")).toBeInTheDocument();
       expect(screen.getByText("+8,34%")).toBeInTheDocument();
-      expect(screen.getByLabelText("Data freshness")).toBeInTheDocument();
+      // Presença sozinha passava mesmo com o formato defeituoso (D-48). O teste
+      // se chama "freshness age marker", então ele tem que assertar a IDADE.
+      expect(screen.getByLabelText("Atualização dos dados")).toHaveTextContent(/^(agora|há .+)$/);
     });
 
     it("NO_PRICE_EVIDENCE: renders the price value only, no %chip, no fabricated number", () => {
