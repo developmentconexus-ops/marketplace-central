@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"marketplace-central/apps/server_core/internal/modules/market/domain"
@@ -74,6 +75,44 @@ func (r *Repository) LatestMarketAggregates(ctx context.Context, productIDs []st
 		}
 	}
 	return result, nil
+}
+
+// StaleAggregateProductIDs enumerates which products' latest market_aggregates
+// row has fallen behind olderThan, oldest first, capped at limit. market_aggregates
+// is append-only (PK tenant_id, product_id, source, computed_at; migrations/0053:23-42),
+// so DISTINCT ON picks the latest row per product exactly like LatestMarketAggregates
+// above, and the age filter is applied AFTER that pick, on computed_at (when this
+// aggregate was computed) rather than fetched_at (when the underlying evidence was
+// first observed). Filtering age before picking latest-per-product would wrongly
+// exclude a product that has a recent row buried under an older one for the same
+// product/source pair.
+func (r *Repository) StaleAggregateProductIDs(ctx context.Context, olderThan time.Duration, limit int) ([]string, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT product_id
+		  FROM (
+		       SELECT DISTINCT ON (product_id) product_id, computed_at
+		         FROM market_aggregates
+		        WHERE tenant_id = $1
+		        ORDER BY product_id, computed_at DESC, source
+		       ) latest
+		 WHERE latest.computed_at < now() - $2::interval
+		 ORDER BY latest.computed_at ASC
+		 LIMIT $3
+	`, r.tenantID, olderThan.String(), limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	ids := make([]string, 0, limit)
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
 }
 
 func (r *Repository) LatestMarketAggregatesBySource(ctx context.Context, productIDs []string, source domain.MarketPriceSource) ([]domain.MarketAggregate, error) {
