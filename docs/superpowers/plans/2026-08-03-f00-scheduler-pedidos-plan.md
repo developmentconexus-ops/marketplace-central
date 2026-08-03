@@ -88,15 +88,13 @@ Quebrado hoje: `SELECT entity FROM sync_state WHERE installation_id = 'inst-merc
 
 ### 9. Governança
 
-Réplica local do checker (`Test-GovernanceDrift` em `scripts/harness/Policy.psm1`) mediu, na main: **11 `GOV_MODULE_DEPENDENCY` + 9 `GOV_MODULE_LAYER`**. A main é **baseline vermelha conhecida** — a nota de `temporary_exceptions` em `contracts/governance/modules.json` (`module-edge-tenant-config-erp-import-adapter`) fala de "main tip baseline 55 violations… strict subset, zero new". O gate compara com o baseline; ele não exige zero.
+Baseline real da lane de governança (`npm run harness:governance -BaseSha 6bd22c29`) mediu na main: **17 `GOV_MODULE_DEPENDENCY` + 9 `GOV_MODULE_LAYER`**. A main é **baseline vermelha conhecida** — a nota de `temporary_exceptions` em `contracts/governance/modules.json` (`module-edge-tenant-config-erp-import-adapter`) fala de "main tip baseline 55 violations… strict subset, zero new". O gate compara com o baseline; ele não exige zero.
 
 Dois desses achados são de `listings`:
 - `listings/application/backfill.go` importa `sync/application` — `listings.dependencies` não declara `sync` → `GOV_MODULE_DEPENDENCY`.
 - `listings/composition/scheduler.go` importa `sync/adapters/postgres` → `GOV_MODULE_DEPENDENCY` + `GOV_MODULE_LAYER` (camada `adapters` é alvo proibido).
 
 **Consequência direta para F-00:** copiar o padrão de `listings` verbatim adiciona as mesmas duas violações em `orders`. O plano evita isso expondo um construtor em `sync/composition` (camada permitida) e declarando a aresta `orders → sync` em `modules.json` — e de quebra fecha as de `listings`, entregando **subconjunto estrito**, não só "zero novas".
-
-> ⚠️ Este veredito é da réplica, não da lane real (a execução de `Test-GovernanceDrift` estourou timeout nesta sessão). **Task 0 roda a lane real e registra a contagem antes de qualquer edição.** Se a contagem real divergir da réplica, o número do baseline neste documento está errado e deve ser corrigido no plano antes de seguir.
 
 ---
 
@@ -182,8 +180,14 @@ Regras que não podem ser negociadas na implementação:
 
 - [ ] **Step 1: Rodar a lane de governança na main limpa**
 
+> ⚠️ **`npm run harness:governance` sozinho SEMPRE reprova.** Medido nesta sessão: ele devolve
+> `status=failed / error_code=GOV_SEMANTIC_DRIFT / id=base-sha-invalid`, porque o script exige
+> `-BaseSha` com 40 hex e o atalho do npm não repassa argumento
+> (`scripts/harness.ps1:113`). O `BaseSha` alimenta o teste de atomicidade OpenAPI↔SDK —
+> ele é o **tip do alvo do merge**, não a base de despacho da fatia.
+
 ```bash
-npm run harness:governance
+cd "$(git rev-parse --show-toplevel)" && pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command governance -BaseSha "$(git rev-parse main)"
 ```
 
 Esperado: a lane termina e imprime a lista de violações. Anote a contagem por regra (`GOV_MODULE_DEPENDENCY`, `GOV_MODULE_LAYER`) e o SHA medido.
@@ -1091,7 +1095,7 @@ Adicionar `"sync"` às `dependencies` de `listings` e de `orders`. `listings` j�
 - [ ] **Step 4: Rodar a lane de governança**
 
 ```bash
-npm run harness:governance
+cd "$(git rev-parse --show-toplevel)" && pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command governance -BaseSha "$(git rev-parse main)"
 ```
 
 Esperado: contagem **menor** que o baseline da Task 0 — as duas de `listings` (dependency + layer) saem, nenhuma nova entra. Se a contagem subir ou aparecer regra nova, pare e reporte antes de seguir; a Task 7 depende deste terreno estar limpo.
@@ -1256,7 +1260,7 @@ Esperado: PASS nos dois.
 - [ ] **Step 5: Governança**
 
 ```bash
-npm run harness:governance
+cd "$(git rev-parse --show-toplevel)" && pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command governance -BaseSha "$(git rev-parse main)"
 ```
 
 Esperado: mesma contagem da Task 6 — `orders → sync` já foi declarada, e nada aqui importa `adapters` de outro módulo.
