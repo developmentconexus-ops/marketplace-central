@@ -114,6 +114,64 @@ no `Get-Content -Raw` e a lane no checkout do hub não termina. Caso novo da cla
 fixo, não por `git ls-files`. Conserto candidato: enumerar por índice do git + untracked
 não-ignorado pequeno, ou excluir por tamanho. (CHIP-VENDAVEL A-30.)
 
+**B-10b. Mesma causa raiz do B-10, sintoma pior: a lane varre `.claude/worktrees/` e emite
+veredito sobre a ÁRVORE ERRADA.** Medido 2026-08-03 na main tip `b759e2d7`, com o worktree
+`.claude/worktrees/f00-scheduler-pedidos` vivo e com trabalho não-commitado de outra sessão:
+
+```
+status=blocked
+Cannot find path '...\.claude\worktrees\f00-scheduler-pedidos\...\sync\composition\installation_scheduler.go'
+```
+
+`Get-SourceFiles` não exclui `.claude/worktrees/`, então a varredura entrou no checkout de
+outro branch e tropeçou num arquivo que a sessão dona estava criando naquele instante. Dois
+custos distintos, e o segundo é o caro:
+
+1. **Corrida** — arquivo enumerado e lido em momentos diferentes; a lane aborta por motivo que
+   não é o código de ninguém.
+2. **Contaminação silenciosa** — quando NÃO há corrida, a lane termina normalmente e a contagem
+   de violações mistura arquivos de N branches. O número parece medido e não é atribuível a
+   árvore nenhuma. Isso envenena exatamente o critério que o B-9 estabelece ("zero violação NOVA
+   vs baseline do main tip"): baseline sujo faz a comparação mentir nas DUAS direções — esconde
+   violação nova do chip e inventa violação que não é dele. Caso concreto no mesmo dia: o
+   baseline `17 GOV_MODULE_DEPENDENCY + 9 GOV_MODULE_LAYER` anotado pela sessão do F-00 foi
+   medido da main com o worktree dela já populado, e precisou ser remedido.
+
+É a mesma família do "veredito que não nomeia a árvore": alarme errado duas vezes treina o
+leitor a pular a terceira. Conserto candidato: o mesmo do B-10 (enumerar por índice do git em
+vez de filtro de diretório fixo — `git ls-files` já é naturalmente escopado ao checkout) **e**
+o veredito imprimir sempre caminho absoluto + SHA da árvore que mediu. Paliativo até lá: rodar
+a lane de dentro do próprio worktree, nunca da main enquanto houver worktree com trabalho não
+commitado. (Plano F-00, Task 0.)
+
+**B-11. `npm run harness:governance` SEMPRE reprova — o atalho não repassa `-BaseSha`.**
+Medido 2026-08-03:
+
+```
+status=failed
+error_code=GOV_SEMANTIC_DRIFT
+id=base-sha-invalid
+```
+
+`scripts/harness.ps1:113` exige `-BaseSha` casando `^[0-9a-f]{40}$` e sai 1 sem ele; o script
+de npm invoca `harness.ps1 -Command governance` sem argumento e não há forma de passá-lo pelo
+atalho. Custo pago: duas rodadas perdidas nesta sessão, e três comandos errados escritos num
+plano de implementação (F-00 Tasks 0/6/7) que teriam reprovado todo worker no primeiro passo,
+contra um erro que não fala nada sobre o trabalho dele. Agravante: o erro se chama
+`GOV_SEMANTIC_DRIFT`, que **soa como achado de governança** — quem não abre o `.ps1` conclui
+que o repo está quebrado.
+
+Forma que de fato roda:
+
+```bash
+cd "$(git rev-parse --show-toplevel)" && pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command governance -BaseSha "$(git rev-parse main)"
+```
+
+Conserto candidato: ou o script de npm resolve o BaseSha sozinho (`git rev-parse main`, com o
+valor impresso na saída para o veredito ser atribuível), ou o atalho sai do `package.json` para
+não existir caminho que reprova por construção. Um comando publicado que nunca passa é pior que
+comando nenhum — ele é copiado para cards e planos. (Plano F-00, Task 0.)
+
 ## C. Gates e revisão
 
 **C-1. Stop-the-line de CLASSE** — ratificado no profile @1889d0dd (2ª ocorrência do mesmo
