@@ -3,8 +3,6 @@ package ports
 import (
 	"context"
 	"time"
-
-	"marketplace-central/apps/server_core/internal/modules/orders/domain"
 )
 
 // ListOrdersInput é a janela de enumeração. Ela existe como struct — e não como
@@ -21,6 +19,17 @@ type ListOrdersInput struct {
 	UpdatedAfter *time.Time
 }
 
+// OrderRef é o resultado da enumeração no vocabulário de orders (F-00 Task 3).
+// O que ImportService sempre consumiu do snapshot cheio era o id e, quando
+// presente, a data de última atualização — o resto (itens, pagamentos) nunca
+// tinha consumidor aqui; IngestOrder refaz a leitura completa pelo caminho de
+// escrita único. ProviderUpdatedAt fica ponteiro pelo mesmo motivo do
+// domain.OrderSearchHit de onde vem: ausente e "zero" são fatos diferentes.
+type OrderRef struct {
+	ProviderOrderID   string
+	ProviderUpdatedAt *time.Time
+}
+
 type OrderSource interface {
-	ListOrders(ctx context.Context, input ListOrdersInput) ([]domain.OrderIngestionSnapshot, error)
+	ListOrders(ctx context.Context, input ListOrdersInput) ([]OrderRef, error)
 }

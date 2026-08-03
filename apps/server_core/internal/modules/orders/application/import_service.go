@@ -66,7 +66,7 @@ func (s *ImportService) Import(ctx context.Context, input ImportOrdersInput) (do
 		limit = 20
 	}
 
-	snapshots, err := s.source.ListOrders(ctx, ports.ListOrdersInput{
+	refs, err := s.source.ListOrders(ctx, ports.ListOrdersInput{
 		InstallationID: installationID,
 		Limit:          limit,
 		Offset:         input.Offset,
@@ -77,15 +77,15 @@ func (s *ImportService) Import(ctx context.Context, input ImportOrdersInput) (do
 	}
 
 	result := domain.ImportResult{InstallationID: installationID}
-	for _, snapshot := range snapshots {
+	for _, ref := range refs {
 		result.EnumeratedCount++
-		if snapshot.ProviderUpdatedAt != nil && !snapshot.ProviderUpdatedAt.IsZero() {
-			if result.MaxProviderUpdatedAt == nil || snapshot.ProviderUpdatedAt.After(*result.MaxProviderUpdatedAt) {
-				updatedAt := *snapshot.ProviderUpdatedAt
+		if ref.ProviderUpdatedAt != nil && !ref.ProviderUpdatedAt.IsZero() {
+			if result.MaxProviderUpdatedAt == nil || ref.ProviderUpdatedAt.After(*result.MaxProviderUpdatedAt) {
+				updatedAt := *ref.ProviderUpdatedAt
 				result.MaxProviderUpdatedAt = &updatedAt
 			}
 		}
-		providerOrderID := strings.TrimSpace(snapshot.ProviderOrderID)
+		providerOrderID := strings.TrimSpace(ref.ProviderOrderID)
 		if providerOrderID == "" {
 			continue
 		}

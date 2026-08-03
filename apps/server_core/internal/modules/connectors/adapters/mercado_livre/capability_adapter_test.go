@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -683,6 +684,107 @@ func orderRef(orderID string) domain.ProviderOrderRef {
 			ProviderAccountID: "seller-1",
 		},
 		ProviderOrderID: orderID,
+	}
+}
+
+var testAccountRef = domain.ProviderAccountRef{
+	TenantID:          "tenant-1",
+	InstallationID:    "inst-1",
+	ProviderCode:      "mercado_livre",
+	ProviderAccountID: "seller-1",
+}
+
+func newTestAdapter(t *testing.T, baseURL string) *CapabilityAdapter {
+	t.Helper()
+	return NewCapabilityAdapter(CapabilityAdapterConfig{
+		BaseURL:    baseURL,
+		HTTPClient: http.DefaultClient,
+		AccessTokenResolver: func(context.Context, domain.ProviderAccountRef) (string, error) {
+			return "token-test", nil
+		},
+	})
+}
+
+// TestListOrderRefsDoesNotHydrateEachOrder is the negative control for F-00 Task 3: before this
+// change, ListOrders (the only enumeration path) called ReadOrder — one /orders/{id} request —
+// per hit off /orders/search. The batch consumer (orders.ImportService) only ever used the id, so
+// that hydration was a wasted provider call per order per cycle. ListOrderRefs must enumerate
+// without ever reaching /orders/{id}.
+func TestListOrderRefsDoesNotHydrateEachOrder(t *testing.T) {
+	t.Parallel()
+
+	var readOrderCalls int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasPrefix(r.URL.Path, "/orders/search"):
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = io.WriteString(w, `{"results":[
+				{"id":2000000000001,"date_last_updated":"2026-08-02T10:00:00.000-03:00"},
+				{"id":2000000000002,"date_last_updated":"2026-08-02T11:00:00.000-03:00"}]}`)
+		default:
+			atomic.AddInt32(&readOrderCalls, 1)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}))
+	defer srv.Close()
+
+	adapter := newTestAdapter(t, srv.URL)
+	refs, err := adapter.ListOrderRefs(context.Background(), domain.ListOrdersInput{
+		AccountRef: testAccountRef, Limit: 50,
+	})
+	if err != nil {
+		t.Fatalf("list order refs: %v", err)
+	}
+	if got := atomic.LoadInt32(&readOrderCalls); got != 0 {
+		t.Fatalf("enumeracao id-only chamou /orders/{id} %d vez(es); quero 0", got)
+	}
+	if len(refs) != 2 {
+		t.Fatalf("refs: quero 2, recebi %d", len(refs))
+	}
+	if refs[0].ProviderOrderID != "2000000000001" {
+		t.Fatalf("id: quero \"2000000000001\", recebi %q", refs[0].ProviderOrderID)
+	}
+	if refs[0].ProviderUpdatedAt == nil {
+		t.Fatalf("date_last_updated presente no payload tem que chegar no ref")
+	}
+	if !refs[0].ProviderUpdatedAt.Equal(time.Date(2026, 8, 2, 13, 0, 0, 0, time.UTC)) {
+		t.Fatalf("date_last_updated: quero 13:00Z (10:00-03:00), recebi %s", refs[0].ProviderUpdatedAt)
+	}
+}
+
+// TestListOrderRefsLeavesUpdatedAtNilWhenProviderOmitsIt is the unknown/absent guard (ADR-17):
+// absence of date_last_updated in the payload is a DIFFERENT state from "very old" or "zero time".
+// A zero time.Time would read as January 1st, year 1, entering a cursor watermark as a fabricated
+// fact instead of an honest unknown.
+func TestListOrderRefsLeavesUpdatedAtNilWhenProviderOmitsIt(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasPrefix(r.URL.Path, "/orders/search"):
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = io.WriteString(w, `{"results":[{"id":2000000000003}]}`)
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}))
+	defer srv.Close()
+
+	adapter := newTestAdapter(t, srv.URL)
+	refs, err := adapter.ListOrderRefs(context.Background(), domain.ListOrdersInput{
+		AccountRef: testAccountRef, Limit: 50,
+	})
+	if err != nil {
+		t.Fatalf("list order refs: %v", err)
+	}
+	if len(refs) != 1 {
+		t.Fatalf("refs: quero 1, recebi %d", len(refs))
+	}
+	if refs[0].ProviderOrderID != "2000000000003" {
+		t.Fatalf("id: quero \"2000000000003\", recebi %q", refs[0].ProviderOrderID)
+	}
+	if refs[0].ProviderUpdatedAt != nil {
+		t.Fatalf("date_last_updated ausente no payload; ProviderUpdatedAt tinha que ser nil, veio %v", refs[0].ProviderUpdatedAt)
 	}
 }
 

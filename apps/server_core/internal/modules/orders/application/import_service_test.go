@@ -12,11 +12,11 @@ import (
 )
 
 type stubOrderSource struct {
-	items []ordersdomain.OrderIngestionSnapshot
+	items []ports.OrderRef
 	err   error
 }
 
-func (s stubOrderSource) ListOrders(context.Context, ports.ListOrdersInput) ([]ordersdomain.OrderIngestionSnapshot, error) {
+func (s stubOrderSource) ListOrders(context.Context, ports.ListOrdersInput) ([]ports.OrderRef, error) {
 	return s.items, s.err
 }
 
@@ -26,7 +26,7 @@ func (s stubOrderSource) ListOrders(context.Context, ports.ListOrdersInput) ([]o
 // integration.
 type recordingSource struct{ got ports.ListOrdersInput }
 
-func (s *recordingSource) ListOrders(_ context.Context, in ports.ListOrdersInput) ([]ordersdomain.OrderIngestionSnapshot, error) {
+func (s *recordingSource) ListOrders(_ context.Context, in ports.ListOrdersInput) ([]ports.OrderRef, error) {
 	s.got = in
 	return nil, nil
 }
@@ -60,12 +60,8 @@ func (s *stubOrderIngestor) IngestOrder(_ context.Context, _ string, providerOrd
 	return nil
 }
 
-func snapshotWithID(providerOrderID string) ordersdomain.OrderIngestionSnapshot {
-	return ordersdomain.OrderIngestionSnapshot{
-		ProviderCode:    "mercado_livre",
-		ProviderOrderID: providerOrderID,
-		FetchedAt:       time.Date(2026, 7, 9, 12, 0, 0, 0, time.UTC),
-	}
+func refWithID(providerOrderID string) ports.OrderRef {
+	return ports.OrderRef{ProviderOrderID: providerOrderID}
 }
 
 // floatPtr is a package-wide test helper (also used by enrich_service_test.go /
@@ -75,8 +71,8 @@ func floatPtr(v float64) *float64 { return &v }
 func intPtr(v int) *int           { return &v }
 
 func TestImportServiceIngestsEachEnumeratedOrder(t *testing.T) {
-	source := stubOrderSource{items: []ordersdomain.OrderIngestionSnapshot{
-		snapshotWithID("2001"), snapshotWithID("2002"), snapshotWithID("2003"),
+	source := stubOrderSource{items: []ports.OrderRef{
+		refWithID("2001"), refWithID("2002"), refWithID("2003"),
 	}}
 	ingestor := &stubOrderIngestor{}
 	service := NewImportService(ImportServiceConfig{Source: source, Ingestor: ingestor})
@@ -103,8 +99,8 @@ func TestImportServiceIngestsEachEnumeratedOrder(t *testing.T) {
 // (e): a 403/404 third-party order classified by IngestOrder as domain.ErrOrderUnavailable must
 // be counted as a skip, and the run must still succeed and continue ingesting the rest.
 func TestImportServiceCountsOrderUnavailableAsSkipWithoutFailingRun(t *testing.T) {
-	source := stubOrderSource{items: []ordersdomain.OrderIngestionSnapshot{
-		snapshotWithID("2001"), snapshotWithID("2002"),
+	source := stubOrderSource{items: []ports.OrderRef{
+		refWithID("2001"), refWithID("2002"),
 	}}
 	ingestor := &stubOrderIngestor{errFor: map[string]error{
 		"2001": fmt.Errorf("%w: installation=inst-1 provider_order_id=2001: %w", ordersdomain.ErrOrderUnavailable, errors.New("provider unauthorized")),
@@ -127,8 +123,8 @@ func TestImportServiceCountsOrderUnavailableAsSkipWithoutFailingRun(t *testing.T
 // o batch" is not scoped to the 403/404 case alone — any per-order failure (a transient shipment
 // read, a DB blip) must not abort the whole run either.
 func TestImportServiceCountsAnyIngestFailureAsSkip(t *testing.T) {
-	source := stubOrderSource{items: []ordersdomain.OrderIngestionSnapshot{
-		snapshotWithID("3001"), snapshotWithID("3002"),
+	source := stubOrderSource{items: []ports.OrderRef{
+		refWithID("3001"), refWithID("3002"),
 	}}
 	ingestor := &stubOrderIngestor{errFor: map[string]error{
 		"3001": errors.New("provider temporarily unavailable"),
@@ -145,8 +141,8 @@ func TestImportServiceCountsAnyIngestFailureAsSkip(t *testing.T) {
 }
 
 func TestImportServiceSkipsBlankProviderOrderID(t *testing.T) {
-	source := stubOrderSource{items: []ordersdomain.OrderIngestionSnapshot{
-		snapshotWithID(""), snapshotWithID("4001"),
+	source := stubOrderSource{items: []ports.OrderRef{
+		refWithID(""), refWithID("4001"),
 	}}
 	ingestor := &stubOrderIngestor{}
 	service := NewImportService(ImportServiceConfig{Source: source, Ingestor: ingestor})

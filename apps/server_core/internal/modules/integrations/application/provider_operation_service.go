@@ -152,6 +152,36 @@ func (s *ProviderOperationService) ListOrders(ctx context.Context, input connect
 	return result, nil
 }
 
+// ListOrderRefs enumera identidades de pedidos sem hidratar cada um (F-00 Task 3). Existe ao lado
+// de ListOrders pelo mesmo motivo que o OrderReader do connectors expõe os dois: orders'
+// OrderSource (o único chamador em lote) só consumia o id e o ProviderUpdatedAt do snapshot cheio,
+// então ListOrders pagava uma hidratação por hit — uma chamada de provider por pedido, por ciclo —
+// que ninguém lia.
+func (s *ProviderOperationService) ListOrderRefs(ctx context.Context, input connectorsdomain.ListOrdersInput, installationID string) ([]connectorsdomain.OrderSearchHit, error) {
+	inst, err := s.loadExecutableInstallation(ctx, installationID, domain.RuntimeCapabilityOrderRead)
+	if err != nil {
+		return nil, err
+	}
+	reader, err := s.capabilities.OrderReader(inst.ProviderCode)
+	if err != nil {
+		return nil, err
+	}
+	input.AccountRef = s.accountRef(inst)
+	startedAt := s.now()
+	result, execErr := reader.ListOrderRefs(ctx, input)
+	recordErr := s.recordOperation(ctx, inst.InstallationID, providerOperationTypeOrderRead, startedAt, execErr, map[string]any{
+		"order_ref_count": len(result),
+		"limit":           input.Limit,
+	})
+	if execErr != nil {
+		return nil, execErr
+	}
+	if recordErr != nil {
+		return nil, recordErr
+	}
+	return result, nil
+}
+
 func (s *ProviderOperationService) ReadFeeQuote(ctx context.Context, installationID string, input connectorsdomain.FeeQuoteInput) (connectorsdomain.FeeQuoteSnapshot, error) {
 	inst, err := s.loadExecutableInstallation(ctx, installationID, domain.RuntimeCapabilityFeeQuoteRead)
 	if err != nil {

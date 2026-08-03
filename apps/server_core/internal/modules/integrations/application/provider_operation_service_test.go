@@ -57,6 +57,13 @@ func (r *capturingReader) ListOrders(_ context.Context, input connectorsdomain.L
 	return nil, nil
 }
 
+// ListOrderRefs is not exercised by this test file (it only asserts ListOrders' window
+// pass-through), but the connectorsports.OrderReader interface widened to include it (F-00 Task
+// 3), so this fake needs a body to keep satisfying the interface assertion below.
+func (r *capturingReader) ListOrderRefs(context.Context, connectorsdomain.ListOrdersInput) ([]connectorsdomain.OrderSearchHit, error) {
+	return nil, nil
+}
+
 func (r *capturingReader) ReadOrder(context.Context, connectorsdomain.ProviderOrderRef) (connectorsdomain.OrderSnapshot, error) {
 	return connectorsdomain.OrderSnapshot{}, nil
 }

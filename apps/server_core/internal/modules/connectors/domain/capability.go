@@ -240,6 +240,15 @@ type ListingWriteResult struct {
 	Message        string             `json:"message,omitempty"`
 }
 
+// OrderSearchHit é o que /orders/search devolve por resultado antes de qualquer
+// hidratação: a identidade e, quando o provider informa, quando o pedido mudou
+// pela última vez. ProviderUpdatedAt é ponteiro porque ausente e "muito antigo"
+// são estados diferentes, e um cursor que confunde os dois pula pedidos.
+type OrderSearchHit struct {
+	ProviderOrderID   string
+	ProviderUpdatedAt *time.Time
+}
+
 type OrderSnapshot struct {
 	ProviderCode         string                 `json:"provider_code"`
 	ProviderOrderID      string                 `json:"provider_order_id"`
