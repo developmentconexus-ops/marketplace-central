@@ -144,6 +144,7 @@ type flowAdapter struct {
 	callback      CredentialPayload
 	apiKey        CredentialPayload
 	refresh       CredentialPayload
+	refreshErr    error
 	refreshCalls  int
 }
 
@@ -166,6 +167,9 @@ func (s *flowAdapter) VerifyAPIKey(ctx context.Context, input SubmitAPIKeyAdapte
 func (s *flowAdapter) Refresh(ctx context.Context, input RefreshCredentialAdapterInput) (CredentialPayload, error) {
 	s.refreshInput = input
 	s.refreshCalls++
+	if s.refreshErr != nil {
+		return CredentialPayload{}, s.refreshErr
+	}
 	return s.refresh, nil
 }
 
@@ -739,6 +743,156 @@ func TestRefreshCredentialRotatesAndResetsFailures(t *testing.T) {
 	}
 	if got := installations.installations["inst-ml"]; got.Status != domain.InstallationStatusConnected || got.HealthStatus != domain.HealthStatusHealthy {
 		t.Fatalf("installation = %#v, want connected healthy", got)
+	}
+}
+
+type refreshFixture struct {
+	svc           *AuthFlowService
+	installations *flowInstallationStore
+	authSessions  *flowAuthWriter
+	adapter       *flowAdapter
+	now           time.Time
+}
+
+// newRefreshFixture monta o mesmo cenário de
+// TestRefreshCredentialRotatesAndResetsFailures (auth_flow_service_test.go:638):
+// uma installation ML conectada com credencial ativa, sessão de auth encontrada
+// e encryptor devolvendo um refresh token. priorFailures é o número de falhas
+// consecutivas JÁ registradas na sessão; refreshErr, quando não-nil, faz o
+// adapter falhar em vez de rotacionar.
+func newRefreshFixture(t *testing.T, priorFailures int, refreshErr error) refreshFixture {
+	t.Helper()
+
+	now := time.Unix(1700, 0).UTC()
+	expiresAt := time.Unix(2600, 0).UTC()
+	installations := &flowInstallationStore{installations: map[string]domain.Installation{
+		"inst-ml": {
+			InstallationID:     "inst-ml",
+			ProviderCode:       "mercado_livre",
+			Status:             domain.InstallationStatusConnected,
+			HealthStatus:       domain.HealthStatusHealthy,
+			ExternalAccountID:  "seller-1",
+			ActiveCredentialID: "cred-active",
+		},
+	}}
+	credentials := &flowCredentialRotator{
+		activeFound: true,
+		activeCredential: domain.Credential{
+			CredentialID:     "cred-active",
+			InstallationID:   "inst-ml",
+			SecretType:       "oauth2",
+			EncryptedPayload: []byte("active-ciphertext"),
+			EncryptionKeyID:  "key-1",
+			IsActive:         true,
+		},
+	}
+	authSessions := &flowAuthWriter{
+		sessionFound: true,
+		session: domain.AuthSession{
+			AuthSessionID:        "auth_inst-ml",
+			InstallationID:       "inst-ml",
+			ProviderAccountID:    "seller-1",
+			State:                domain.AuthStateValid,
+			ConsecutiveFailures:  priorFailures,
+			AccessTokenExpiresAt: ptrTime(now.Add(time.Minute)),
+		},
+	}
+	encryptor := &flowEncryptor{
+		decryptedPayload: map[string]any{
+			"type":                "oauth2",
+			"access_token":        "old-access",
+			"refresh_token":       "old-refresh",
+			"provider_account_id": "seller-1",
+		},
+		decryptKeyID: "key-1",
+	}
+	adapter := &flowAdapter{
+		providerCode: "mercado_livre",
+		refreshErr:   refreshErr,
+		refresh: CredentialPayload{
+			SecretType:        "oauth2",
+			AccessToken:       "new-access",
+			RefreshToken:      "new-refresh",
+			ProviderAccountID: "seller-1",
+			ExpiresAt:         &expiresAt,
+		},
+	}
+	svc := mustNewAuthFlowService(t, AuthFlowConfig{
+		TenantID:        "tenant_default",
+		Installations:   installations,
+		Credentials:     credentials,
+		AuthSessions:    authSessions,
+		OAuthStates:     &securityOAuthStateStore{},
+		OAuthStateCodec: roundTripSecurityStateCodec{payloadsByState: map[string]OAuthStatePayload{}},
+		Encryptor:       encryptor,
+		Clock:           fixedAuthFlowClock{now: now},
+		Adapters:        []MarketplaceAuthAdapter{adapter},
+	})
+
+	return refreshFixture{
+		svc:           svc,
+		installations: installations,
+		authSessions:  authSessions,
+		adapter:       adapter,
+		now:           now,
+	}
+}
+
+func TestRefreshCredentialPersistsTerminalFailure(t *testing.T) {
+	t.Parallel()
+
+	fx := newRefreshFixture(t, 0, domain.ErrRefreshTokenInvalid)
+
+	_, err := fx.svc.RefreshCredential(context.Background(), RefreshCredentialInput{InstallationID: "inst-ml"})
+	if !errors.Is(err, domain.ErrRefreshTokenInvalid) {
+		t.Fatalf("RefreshCredential err = %v, want ErrRefreshTokenInvalid", err)
+	}
+
+	if len(fx.authSessions.sessions) != 1 {
+		t.Fatalf("upserts = %d, want 1: a falha de refresh continua invisível", len(fx.authSessions.sessions))
+	}
+	got := fx.authSessions.sessions[0]
+	if got.State != domain.AuthStateRefreshFailed {
+		t.Fatalf("State = %q, want %q", got.State, domain.AuthStateRefreshFailed)
+	}
+	if got.RefreshFailureCode != domain.ErrRefreshTokenInvalid.Error() {
+		t.Fatalf("RefreshFailureCode = %q, want %q", got.RefreshFailureCode, domain.ErrRefreshTokenInvalid.Error())
+	}
+	if got.ConsecutiveFailures != 1 {
+		t.Fatalf("ConsecutiveFailures = %d, want 1", got.ConsecutiveFailures)
+	}
+	if got.NextRetryAt == nil {
+		t.Fatal("NextRetryAt = nil: sem next_retry_at o ticker retenta em todo tick")
+	}
+	// Terminal usa o cooldown inteiro da política, não o backoff curto.
+	wantAt := fx.now.Add(domain.DefaultRefreshPolicy().CooldownAfterTerminal)
+	if !got.NextRetryAt.Equal(wantAt) {
+		t.Fatalf("NextRetryAt = %v, want %v", got.NextRetryAt, wantAt)
+	}
+}
+
+func TestRefreshCredentialBacksOffTransientFailure(t *testing.T) {
+	t.Parallel()
+
+	// Controle: erro transitório NÃO usa o cooldown terminal; usa o backoff
+	// exponencial a partir do número de falhas já registrado na sessão.
+	fx := newRefreshFixture(t, 2, domain.ErrRefreshProviderError)
+
+	_, err := fx.svc.RefreshCredential(context.Background(), RefreshCredentialInput{InstallationID: "inst-ml"})
+	if !errors.Is(err, domain.ErrRefreshProviderError) {
+		t.Fatalf("RefreshCredential err = %v, want ErrRefreshProviderError", err)
+	}
+
+	if len(fx.authSessions.sessions) != 1 {
+		t.Fatalf("upserts = %d, want 1", len(fx.authSessions.sessions))
+	}
+	got := fx.authSessions.sessions[0]
+	if got.ConsecutiveFailures != 3 {
+		t.Fatalf("ConsecutiveFailures = %d, want 3 (2 anteriores + 1)", got.ConsecutiveFailures)
+	}
+	wantAt := fx.now.Add(domain.DefaultRefreshPolicy().BackoffDuration(2))
+	if got.NextRetryAt == nil || !got.NextRetryAt.Equal(wantAt) {
+		t.Fatalf("NextRetryAt = %v, want %v", got.NextRetryAt, wantAt)
 	}
 }
 

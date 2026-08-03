@@ -438,6 +438,14 @@ func (s *AuthFlowService) RefreshCredential(ctx context.Context, input RefreshCr
 		ProviderAccountID: firstNonEmpty(session.ProviderAccountID, inst.ExternalAccountID),
 	})
 	if err != nil {
+		// Sem esta escrita a falha some: o ticker descarta o erro, a sessão
+		// continua marcada como válida e /integracoes segue verde com o token
+		// morto. ListExpiringSessions (adapters/postgres/auth_session_repo.go:87)
+		// já filtra por next_retry_at, então gravar aqui é o que ativa o backoff
+		// que a política sempre soube calcular e nunca teve quem chamasse.
+		if recordErr := s.recordRefreshFailure(ctx, inst, session, err); recordErr != nil {
+			return AuthStatus{}, recordErr
+		}
 		return AuthStatus{}, err
 	}
 	if strings.TrimSpace(payload.RefreshToken) == "" {
@@ -468,6 +476,44 @@ func (s *AuthFlowService) RefreshCredential(ctx context.Context, input RefreshCr
 	}
 
 	return s.applyAuthResult(ctx, inst, payload, credential, domain.InstallationStatusConnected, domain.HealthStatusHealthy)
+}
+
+// recordRefreshFailure persiste a falha de refresh na sessão de auth. O erro
+// original é devolvido ao chamador intacto — esta função não o substitui, só o
+// torna observável.
+func (s *AuthFlowService) recordRefreshFailure(
+	ctx context.Context,
+	inst domain.Installation,
+	session domain.AuthSession,
+	cause error,
+) error {
+	policy := domain.DefaultRefreshPolicy()
+	failures := session.ConsecutiveFailures + 1
+
+	// A classe decide o intervalo: erro terminal (refresh token revogado) não
+	// tem retry útil, então espera o cooldown inteiro; transitório sobe pelo
+	// backoff exponencial a partir das falhas JÁ registradas — passar `failures`
+	// aqui puliria o primeiro degrau da escada.
+	var retryIn time.Duration
+	if domain.ClassifyRefreshError(cause) == domain.ErrorClassTerminal {
+		retryIn = policy.CooldownAfterTerminal
+	} else {
+		retryIn = policy.BackoffDuration(session.ConsecutiveFailures)
+	}
+
+	nextRetryAt := s.clock.Now().UTC().Add(retryIn)
+	_, err := s.authSessions.Upsert(ctx, UpsertAuthSessionInput{
+		AuthSessionID:        firstNonEmpty(session.AuthSessionID, fmt.Sprintf("auth_%s", inst.InstallationID)),
+		InstallationID:       inst.InstallationID,
+		ProviderAccountID:    firstNonEmpty(session.ProviderAccountID, inst.ExternalAccountID),
+		State:                domain.AuthStateRefreshFailed,
+		AccessTokenExpiresAt: session.AccessTokenExpiresAt,
+		LastVerifiedAt:       session.LastVerifiedAt,
+		RefreshFailureCode:   cause.Error(),
+		ConsecutiveFailures:  failures,
+		NextRetryAt:          &nextRetryAt,
+	})
+	return err
 }
 
 func (s *AuthFlowService) Disconnect(ctx context.Context, input DisconnectInput) (AuthStatus, error) {
