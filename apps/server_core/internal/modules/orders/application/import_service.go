@@ -14,6 +14,8 @@ import (
 type ImportOrdersInput struct {
 	InstallationID string
 	Limit          int
+	Offset         int
+	UpdatedAfter   *time.Time
 }
 
 // ImportService enumerates provider order ids for an installation and ingests each one through
@@ -64,13 +66,25 @@ func (s *ImportService) Import(ctx context.Context, input ImportOrdersInput) (do
 		limit = 20
 	}
 
-	snapshots, err := s.source.ListOrders(ctx, installationID, limit)
+	snapshots, err := s.source.ListOrders(ctx, ports.ListOrdersInput{
+		InstallationID: installationID,
+		Limit:          limit,
+		Offset:         input.Offset,
+		UpdatedAfter:   input.UpdatedAfter,
+	})
 	if err != nil {
 		return domain.ImportResult{}, err
 	}
 
 	result := domain.ImportResult{InstallationID: installationID}
 	for _, snapshot := range snapshots {
+		result.EnumeratedCount++
+		if snapshot.ProviderUpdatedAt != nil && !snapshot.ProviderUpdatedAt.IsZero() {
+			if result.MaxProviderUpdatedAt == nil || snapshot.ProviderUpdatedAt.After(*result.MaxProviderUpdatedAt) {
+				updatedAt := *snapshot.ProviderUpdatedAt
+				result.MaxProviderUpdatedAt = &updatedAt
+			}
+		}
 		providerOrderID := strings.TrimSpace(snapshot.ProviderOrderID)
 		if providerOrderID == "" {
 			continue

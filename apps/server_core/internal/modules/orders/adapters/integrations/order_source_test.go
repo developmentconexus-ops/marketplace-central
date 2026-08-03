@@ -8,13 +8,16 @@ import (
 
 	connectorsdomain "marketplace-central/apps/server_core/internal/modules/connectors/domain"
 	ordersdomain "marketplace-central/apps/server_core/internal/modules/orders/domain"
+	ordersports "marketplace-central/apps/server_core/internal/modules/orders/ports"
 )
 
 type stubProviderOrderReader struct {
 	items []connectorsdomain.OrderSnapshot
+	got   connectorsdomain.ListOrdersInput
 }
 
-func (s stubProviderOrderReader) ListOrders(context.Context, string, int) ([]connectorsdomain.OrderSnapshot, error) {
+func (s *stubProviderOrderReader) ListOrders(_ context.Context, input connectorsdomain.ListOrdersInput, _ string) ([]connectorsdomain.OrderSnapshot, error) {
+	s.got = input
 	return s.items, nil
 }
 
@@ -26,7 +29,7 @@ func TestOrderSourceTranslatesConnectorSnapshot(t *testing.T) {
 	amount := 130.0
 	transactionAmount := 125.92
 	totalPaidAmount := 125.92
-	source := NewOrderSource(stubProviderOrderReader{items: []connectorsdomain.OrderSnapshot{{
+	source := NewOrderSource(&stubProviderOrderReader{items: []connectorsdomain.OrderSnapshot{{
 		ProviderCode:         "mercado_livre",
 		ProviderOrderID:      "2001",
 		ProviderStatus:       "paid",
@@ -59,7 +62,7 @@ func TestOrderSourceTranslatesConnectorSnapshot(t *testing.T) {
 		}},
 	}}})
 
-	snapshots, err := source.ListOrders(context.Background(), "inst-1", 1)
+	snapshots, err := source.ListOrders(context.Background(), ordersports.ListOrdersInput{InstallationID: "inst-1", Limit: 1})
 	if err != nil {
 		t.Fatalf("ListOrders() error = %v", err)
 	}

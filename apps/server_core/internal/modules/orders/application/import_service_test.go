@@ -8,6 +8,7 @@ import (
 	"time"
 
 	ordersdomain "marketplace-central/apps/server_core/internal/modules/orders/domain"
+	"marketplace-central/apps/server_core/internal/modules/orders/ports"
 )
 
 type stubOrderSource struct {
@@ -15,8 +16,19 @@ type stubOrderSource struct {
 	err   error
 }
 
-func (s stubOrderSource) ListOrders(context.Context, string, int) ([]ordersdomain.OrderIngestionSnapshot, error) {
+func (s stubOrderSource) ListOrders(context.Context, ports.ListOrdersInput) ([]ordersdomain.OrderIngestionSnapshot, error) {
 	return s.items, s.err
+}
+
+// recordingSource is a package-local ports.OrderSource fake used to assert that Import passes
+// Offset/UpdatedAfter through to the enumeration port unchanged — legitimate because OrderSource
+// is an application-domain port and what's under test is parameter pass-through, not provider
+// integration.
+type recordingSource struct{ got ports.ListOrdersInput }
+
+func (s *recordingSource) ListOrders(_ context.Context, in ports.ListOrdersInput) ([]ordersdomain.OrderIngestionSnapshot, error) {
+	s.got = in
+	return nil, nil
 }
 
 // stubLinkReader is a package-wide test double for ports.LinkReader, kept in this file (as
@@ -168,5 +180,34 @@ func TestImportServiceRequiresInstallationID(t *testing.T) {
 	service := NewImportService(ImportServiceConfig{Source: stubOrderSource{}, Ingestor: &stubOrderIngestor{}})
 	if _, err := service.Import(context.Background(), ImportOrdersInput{}); err == nil {
 		t.Fatal("Import() error = nil, want missing installation id to fail")
+	}
+}
+
+// TestImportPassesWindowAndOffsetToSource is F-00 Task 1's pass-through criterion: the narrow
+// (installationID, limit) signature already cost a feature once (three intermediate layers threw
+// UpdatedAfter away before it reached the Mercado Livre adapter, which has always known how to
+// translate it). Import must forward Offset and UpdatedAfter to ports.OrderSource unchanged.
+func TestImportPassesWindowAndOffsetToSource(t *testing.T) {
+	updatedAfter := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
+	src := &recordingSource{}
+	service := NewImportService(ImportServiceConfig{Source: src, Ingestor: &stubOrderIngestor{}})
+
+	_, err := service.Import(context.Background(), ImportOrdersInput{
+		InstallationID: "inst-1",
+		Limit:          50,
+		Offset:         100,
+		UpdatedAfter:   &updatedAfter,
+	})
+	if err != nil {
+		t.Fatalf("Import() error = %v", err)
+	}
+	if src.got.InstallationID != "inst-1" || src.got.Limit != 50 {
+		t.Fatalf("installation_id/limit not passed through: %+v", src.got)
+	}
+	if src.got.Offset != 100 {
+		t.Fatalf("offset: quero 100, recebi %d", src.got.Offset)
+	}
+	if src.got.UpdatedAfter == nil || !src.got.UpdatedAfter.Equal(updatedAfter) {
+		t.Fatalf("updated_after: quero %s, recebi %v", updatedAfter, src.got.UpdatedAfter)
 	}
 }
