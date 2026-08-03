@@ -680,7 +680,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	profitabilitySvc := profitabilityapp.NewService(profitabilityCfg)
 	profitabilitytransport.NewHandler(profitabilitySvc).Register(mux)
 
-	go integrationsbg.NewRefreshTicker(authSessionRepo, authFlowSvc, 5*time.Minute).Start(context.Background())
+	go integrationsbg.NewRefreshTicker(authSessionRepo, authFlowSvc, 5*time.Minute, slog.Default()).Start(context.Background())
 	go integrationsbg.NewStateCleanup(oauthStateRepo, time.Hour).Start(context.Background())
 	go integrationsbg.NewFeeSyncScheduler(installationSvc, providerSvc, feeSyncSvc, 15*time.Minute).Start(context.Background())
 	// MIS-006: products sync. M-01 built the scheduler seam and M-03/M-04 built the
