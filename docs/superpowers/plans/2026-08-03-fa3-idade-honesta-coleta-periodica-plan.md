@@ -92,9 +92,9 @@ Ordem do operador: *"não quero mock, fallback, validação sempre real para rea
 |---|---|---|
 | `apps/server_core/internal/modules/market/ports/evidence_reader.go` | Modificar | Porta `StaleAggregateProductIDs` |
 | `apps/server_core/internal/modules/market/adapters/postgres/aggregate_repository.go` | Modificar | SQL que enumera o que envelheceu |
-| `apps/server_core/internal/modules/market/application/collection_scheduler.go` | Criar | Job periódico com teto |
-| `apps/server_core/internal/modules/market/application/collection_scheduler_test.go` | Criar | Teto, cadência, erro não para o lote |
-| `apps/server_core/internal/composition/root.go` | Modificar | Ligar o scheduler |
+| `apps/server_core/internal/modules/market/application/collection_job.go` | Criar | `JobFunc` de coleta, com teto — **não** um scheduler novo |
+| `apps/server_core/internal/modules/market/application/collection_job_test.go` | Criar | Teto, erro não para o lote, toda falha logada |
+| `apps/server_core/internal/composition/root.go` | Modificar | Registrar o job no `syncapp.Scheduler` |
 | `apps/server_core/tests/integration/market_stale_aggregates_test.go` | Criar | Prova do SQL contra Postgres real |
 
 ## Comandos
@@ -810,42 +810,64 @@ git commit -m "feat(market): enumerate the aggregates that went stale"
 
 ---
 
-### Task 7: O scheduler
+### Task 7: O job de coleta — registrado, não construído do zero
 
-**Orçamento medido, e ele manda no desenho.** `Collect` faz até 6 chamadas ML por produto (`collection_pipeline_service.go:163,194,204,230,280,301`). O bucket é 900/min **compartilhado com todo o resto** (`resilience_decorator.go:48`). O catálogo vendável tem 2.923 produtos — varrer tudo custaria ~17.500 chamadas e saturaria o bucket por ~20 minutos, matando o sync de anúncios e de pedidos.
+> **Esta task foi corrigida em 2026-08-03, depois da medição do F-00.** A versão anterior mandava escrever um `CollectionScheduler` com `time.NewTicker` próprio. Isso era um segundo motor ao lado do que já existe. **Não faça isso.**
+
+**O seam já existe e `market` já é entidade de primeira classe nele.** `syncapp.Scheduler` (`sync/application/scheduler.go`) aceita `JobFunc func(ctx, cursor json.RawMessage) (json.RawMessage, error)` (`:46`), e `domain.EntityMarket` já é uma entidade válida (`sync/domain/entity.go:21,33`). A tabela `sync_state` **já tem uma linha `market`, com `last_full_sync_at` NULL** — medido no banco de dev em 2026-08-03. O seam foi desenhado para isto e nunca foi ligado.
+
+Registrar em vez de construir dá de graça, tudo já testado:
+
+- reconciliação de `sync_state` — `RecordSuccess`/`RecordFailure` (`scheduler.go:152,158`)
+- **falha visível na tela** — `RecordFailure` → `GET /sync/health` → `SyncHealthCard.tsx` (`design:§5.3`)
+- isolamento de falha por entidade — `RunOnce` (`scheduler.go:124-139`) não aborta as outras
+- cursor persistido, com a leitura honesta de `runJob` (`:142-148`): erro de leitura **não** é tratado como primeira execução
+
+Escrever um ticker próprio jogaria os quatro fora e deixaria a falha da coleta invisível — a classe exata que a F-A1 acabou de fechar em `integrations/`.
+
+**Orçamento medido, e ele manda no teto.** `Collect` faz até 6 chamadas ML por produto (`collection_pipeline_service.go:163,194,204,230,280,301`). O bucket é 900/min **compartilhado com todo o resto** (`resilience_decorator.go:48`). O catálogo vendável tem 2.923 produtos — varrer tudo custaria ~17.500 chamadas e saturaria o bucket por ~20 minutos, matando o sync de anúncios e de pedidos.
 
 Por isso o job colhe **só o que já foi colhido e envelheceu**, com teto por ciclo. Ele renova; não descobre. Descoberta continua sendo o clique do operador, que é o comportamento ratificado (D-F4-p, `useMarketCollection.ts:9-10`).
 
+> **Dependência: `D-16`.** `syncapp.Scheduler.Start` (`scheduler.go:105-118`) é `time.NewTicker` puro — sem execução no boot e sem vencimento persistido. Com o intervalo curto desta fatia (30min) isso é inofensivo, **pela letra da própria dívida** (`.mnfs/HARNESS-DEBTS.md:301-303`): o pior caso é um ciclo perdido por reinício. Registre agora; não espere o conserto de `D-16`. Anote a dependência no pack.
+
 **Files:**
-- Create: `apps/server_core/internal/modules/market/application/collection_scheduler.go`
-- Test: `apps/server_core/internal/modules/market/application/collection_scheduler_test.go`
+- Create: `apps/server_core/internal/modules/market/application/collection_job.go`
+- Test: `apps/server_core/internal/modules/market/application/collection_job_test.go`
 
 - [ ] **Step 1: Escreva os testes que falham**
 
 ```go
 package application
 
-// O job renova evidência que envelheceu; ele NÃO varre o catálogo. Os testes
-// abaixo fixam as três propriedades que separam as duas coisas.
+// NewCollectionJob devolve uma sync JobFunc. O job renova evidência que
+// envelheceu; ele NÃO varre o catálogo. Os testes abaixo fixam as quatro
+// propriedades que separam as duas coisas.
 
 // 1. O teto por ciclo é respeitado — é o que impede o job de estourar o bucket
 //    de 900/min que o sync de anúncios e pedidos também usa.
-func TestCollectionSchedulerRespectsThePerCycleCeiling(t *testing.T) {}
+func TestCollectionJobRespectsThePerCycleCeiling(t *testing.T) {}
 
 // 2. Um produto que falha NÃO aborta o lote. Mesma classe que a F-A2 fechou em
 //    integrations/background/refresh_ticker.go:37-51, onde RunOnce retornava no
 //    primeiro erro e as sessões restantes do lote nunca eram tentadas.
-func TestCollectionSchedulerContinuesAfterOneProductFails(t *testing.T) {}
+func TestCollectionJobContinuesAfterOneProductFails(t *testing.T) {}
 
 // 3. Toda falha é LOGADA. Controle negativo do defeito exato da F-A1:
 //    `case <-ticker.C: _ = t.RunOnce(ctx)` descartava o erro sem log e a falha
 //    ficava invisível em todas as camadas.
-func TestCollectionSchedulerLogsEveryFailure(t *testing.T) {}
+func TestCollectionJobLogsEveryFailure(t *testing.T) {}
+
+// 4. Falha de ENUMERAÇÃO devolve erro, e devolver erro é o que faz o Scheduler
+//    chamar RecordFailure (scheduler.go:152) e a falha aparecer no
+//    SyncHealthCard. Engolir o erro e devolver nil deixaria a coleta quebrada
+//    com a tela verde — exatamente o que a F-A1 acabou de consertar.
+func TestCollectionJobReturnsTheEnumerationErrorSoSyncStateRecordsIt(t *testing.T) {}
 ```
 
-Escreva os três corpos completos. Para o (3), capture com `slog.New(slog.NewJSONHandler(&buf, nil))` e assere sobre `buf.String()` — o mesmo padrão que `apps/server_core/internal/modules/integrations/background/refresh_ticker_test.go` usa; **leia esse arquivo e copie a montagem** em vez de inventar outra.
+Escreva os quatro corpos completos. Para o (3), capture com `slog.New(slog.NewJSONHandler(&buf, nil))` e assere sobre `buf.String()` — o mesmo padrão que `apps/server_core/internal/modules/integrations/background/refresh_ticker_test.go` usa; **leia esse arquivo e copie a montagem** em vez de inventar outra.
 
-Injete o relógio e o intervalo por parâmetro. **Não** use `time.Sleep` para esperar tick: o teste chama `RunOnce` direto, e o `Start` é uma casca fina sobre o ticker.
+O job é uma função pura de `(ctx, cursor)`; **não** há ticker para esperar e nenhum teste precisa de `time.Sleep`.
 
 - [ ] **Step 2: Rode e veja falhar**
 
@@ -858,73 +880,71 @@ cd apps/server_core && GOCACHE=$(pwd)/.gocache go test ./internal/modules/market
 ```go
 package application
 
-// CollectionScheduler renova periodicamente a evidência de mercado que passou
-// do TTL.
+// NewCollectionJob devolve a sync.JobFunc que renova a evidência de mercado que
+// passou do TTL. É uma JobFunc, não um scheduler: quem tica, lê o cursor e
+// reconcilia sync_state é o syncapp.Scheduler que já existe
+// (sync/application/scheduler.go), e é registrando nele que a falha desta
+// coleta chega ao SyncHealthCard via RecordFailure (scheduler.go:152).
 //
-// Ele NÃO varre o catálogo. Collect custa até 6 chamadas ML por produto
+// O job NÃO varre o catálogo. Collect custa até 6 chamadas ML por produto
 // (collection_pipeline_service.go:163,194,204,230,280,301) e o bucket é de
 // 900/min COMPARTILHADO com o sync de anúncios e de pedidos
 // (connectors/adapters/mercado_livre/resilience_decorator.go:48); os 2.923
 // produtos vendáveis custariam ~17.500 chamadas e travariam todo o resto.
 // Descobrir mercado novo continua sendo o clique do operador (D-F4-p).
-type CollectionScheduler struct {
-	reader   staleAggregateReader
-	collect  productCollector
-	ttl      time.Duration
-	ceiling  int
-	interval time.Duration
-	logger   *slog.Logger
-}
-
-// RunOnce colhe um ciclo. Erro por produto é logado e o lote CONTINUA — parar
-// no primeiro erro foi o defeito que a F-A2 consertou no ticker de refresh
-// (integrations/background/refresh_ticker.go:37-51).
-func (s *CollectionScheduler) RunOnce(ctx context.Context) error {
-	ids, err := s.reader.StaleAggregateProductIDs(ctx, s.ttl, s.ceiling)
-	if err != nil {
-		s.logger.Error("market collection scheduler: enumeração falhou", "err", err)
-		return err
-	}
-	if len(ids) == 0 {
-		return nil
-	}
-
-	var failures int
-	for _, id := range ids {
-		if ctx.Err() != nil {
-			return ctx.Err()
+func NewCollectionJob(
+	reader staleAggregateReader,
+	collector productCollector,
+	ttl time.Duration,
+	ceiling int,
+	logger *slog.Logger,
+) syncapp.JobFunc {
+	return func(ctx context.Context, cursor json.RawMessage) (json.RawMessage, error) {
+		ids, err := reader.StaleAggregateProductIDs(ctx, ttl, ceiling)
+		if err != nil {
+			// Devolver o erro é o que faz o Scheduler chamar RecordFailure e a
+			// falha aparecer na tela. Engolir e devolver nil deixaria a coleta
+			// quebrada com o card verde.
+			logger.Error("market collection job: enumeração falhou", "err", err)
+			return cursor, err
 		}
-		if _, err := s.collect.Collect(ctx, id); err != nil {
-			failures++
-			// Logar SEMPRE. O defeito da F-A1 era exatamente isto descartado:
-			// `case <-ticker.C: _ = t.RunOnce(ctx)`, erro sem log, falha
-			// invisível em todas as camadas e a tela verde.
-			s.logger.Error("market collection scheduler: produto falhou",
-				"codprod", id, "err", err)
+		if len(ids) == 0 {
+			return cursor, nil
 		}
-	}
-	s.logger.Info("market collection scheduler: ciclo concluído",
-		"colhidos", len(ids)-failures, "falhas", failures, "teto", s.ceiling)
-	return nil
-}
 
-func (s *CollectionScheduler) Start(ctx context.Context) {
-	ticker := time.NewTicker(s.interval)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			if err := s.RunOnce(ctx); err != nil {
-				s.logger.Error("market collection scheduler: ciclo falhou", "err", err)
+		var failures int
+		for _, id := range ids {
+			if ctx.Err() != nil {
+				return cursor, ctx.Err()
+			}
+			if _, err := collector.Collect(ctx, id); err != nil {
+				failures++
+				// Logar SEMPRE. O defeito da F-A1 era exatamente isto
+				// descartado: `case <-ticker.C: _ = t.RunOnce(ctx)`, erro sem
+				// log, falha invisível em todas as camadas e a tela verde.
+				logger.Error("market collection job: produto falhou",
+					"codprod", id, "err", err)
 			}
 		}
+		logger.Info("market collection job: ciclo concluído",
+			"colhidos", len(ids)-failures, "falhas", failures, "teto", ceiling)
+
+		// Falha por produto NÃO derruba o ciclo: o lote seguiu, e um erro aqui
+		// marcaria a entidade inteira como quebrada por um único codprod. O que
+		// falhou continua velho e volta na próxima enumeração por si só.
+		//
+		// Cursor inalterado de propósito: a posição deste job é derivada de
+		// fetched_at no banco, não de um marcador carregado entre ciclos —
+		// gravar um cursor aqui seria um segundo estado para discordar do
+		// primeiro.
+		return cursor, nil
 	}
 }
 ```
 
-Escreva `staleAggregateReader` e `productCollector` como interfaces locais do pacote (porta do lado do consumidor), e o construtor `NewCollectionScheduler` com todos os campos por parâmetro. `productCollector` casa com `CollectionPipelineService.Collect(ctx, codprod) (CollectionSummary, error)` (`collection_pipeline_service.go:134`).
+Escreva `staleAggregateReader` e `productCollector` como interfaces locais do pacote (porta do lado do consumidor). `productCollector` casa com `CollectionPipelineService.Collect(ctx, codprod) (CollectionSummary, error)` (`collection_pipeline_service.go:134`).
+
+**Confirme o nome do pacote e o caminho de import de `JobFunc`** lendo o topo de `sync/application/scheduler.go` — se importar `market/application` de dentro de `sync/application` criar ciclo, declare o tipo de retorno como a assinatura crua `func(context.Context, json.RawMessage) (json.RawMessage, error)` em vez do alias. **Não** resolva um ciclo movendo código entre módulos sem escalar.
 
 - [ ] **Step 4: Verde e must-fail**
 
@@ -932,30 +952,31 @@ Escreva `staleAggregateReader` e `productCollector` como interfaces locais do pa
 cd apps/server_core && GOCACHE=$(pwd)/.gocache go test ./internal/modules/market/... -count=1
 ```
 
-Depois injete os dois defeitos, um de cada vez:
+Depois injete os três defeitos, um de cada vez:
 
-- Troque o `s.logger.Error` de dentro do laço por `_ = err`. Esperado: `TestCollectionSchedulerLogsEveryFailure` FALHA.
-- Troque o corpo do `if err != nil` do laço por `return err`. Esperado: `TestCollectionSchedulerContinuesAfterOneProductFails` FALHA.
+- Troque o `logger.Error` de dentro do laço por `_ = err`. Esperado: `TestCollectionJobLogsEveryFailure` FALHA.
+- Troque o corpo do `if err != nil` do laço por `return cursor, err`. Esperado: `TestCollectionJobContinuesAfterOneProductFails` FALHA.
+- Troque o `return cursor, err` da enumeração por `return cursor, nil`. Esperado: `TestCollectionJobReturnsTheEnumerationErrorSoSyncStateRecordsIt` FALHA.
 
-Restaure os dois e confirme verde. **Sem os dois must-fail, os testes não distinguem "o job roda" de "o job avisa quando quebra".**
+Restaure os três e confirme verde. **Sem os três must-fail, os testes não distinguem "o job roda" de "o job avisa quando quebra".**
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add apps/server_core/internal/modules/market/application/collection_scheduler.go apps/server_core/internal/modules/market/application/collection_scheduler_test.go
-git commit -m "feat(market): periodic scheduler that renews stale market evidence"
+git add apps/server_core/internal/modules/market/application/collection_job.go apps/server_core/internal/modules/market/application/collection_job_test.go
+git commit -m "feat(market): sync job that renews stale market evidence"
 ```
 
 ---
 
-### Task 8: Ligar o scheduler
+### Task 8: Registrar o job
 
 **Files:**
 - Modify: `apps/server_core/internal/composition/root.go`
 
-- [ ] **Step 1: Ligue**
+- [ ] **Step 1: Registre**
 
-Logo depois de `markettransport.NewHandlerWithCollections(...).Register(mux)` (`root.go:718`):
+Logo depois de `markettransport.NewHandlerWithCollections(...).Register(mux)` (`root.go:718`), monte um `syncapp.Scheduler` para `EntityMarket` e registre o job. **Leia primeiro `synccomposition.NewProductsScheduler`** (`sync/composition/`, usado em `root.go:694`) e copie a montagem dele — construtor, `StateStore`, `installationID` e ordem dos parâmetros saem de lá, não deste plano.
 
 ```go
 	// MIS-006 ensinou que um scheduler construído e não ligado tica um NO-OP e o
@@ -963,16 +984,30 @@ Logo depois de `markettransport.NewHandlerWithCollections(...).Register(mux)` (`
 	// products scheduler). Este fica ligado aqui, ao lado do handler que usa o
 	// MESMO serviço de coleta.
 	//
+	// Registrado no syncapp.Scheduler, não num ticker próprio: é o que faz a
+	// falha da coleta chegar ao SyncHealthCard via RecordFailure
+	// (sync/application/scheduler.go:152). A linha `market` já existe em
+	// sync_state com last_full_sync_at NULL — o seam foi desenhado para isto.
+	//
 	// TTL de 1h espelha o signalStaleTTL do domínio de listings
 	// (listings/domain/signal.go:26): é o mesmo limiar que já marca o sinal como
 	// STALE na tela, então o job renova exatamente o que a tela chama de velho.
 	// Teto de 50 por ciclo a cada 30min = no máximo ~300 chamadas ML por ciclo
 	// (6 por produto), folgado dentro do bucket de 900/min compartilhado.
-	go marketapp.NewCollectionScheduler(
-		marketModuleRepo, marketCollectionSvc,
-		time.Hour, 50, 30*time.Minute, slog.Default(),
-	).Start(context.Background())
+	marketSyncScheduler := syncapp.NewScheduler(/* ...conforme NewProductsScheduler... */)
+	if err := marketSyncScheduler.RegisterJob(
+		syncdomain.EntityMarket,
+		marketapp.NewCollectionJob(marketModuleRepo, marketCollectionSvc, time.Hour, 50, slog.Default()),
+	); err != nil {
+		// RegisterJob só erra com entidade inválida ou fn nil — as duas são bug
+		// de composição, não condição de runtime. Falhar alto aqui é melhor que
+		// subir com o job silenciosamente ausente.
+		return nil, fmt.Errorf("registrar job de coleta de mercado: %w", err)
+	}
+	go marketSyncScheduler.Start(context.Background())
 ```
+
+Ajuste o tratamento de erro para a forma que `NewRootRouter` já usa nesse ponto do arquivo — se a função não devolve `error`, use o mesmo mecanismo dos vizinhos, **nunca** um `panic` novo nem um `_ =`.
 
 - [ ] **Step 2: Compile e suba**
 
@@ -994,7 +1029,7 @@ git log -1 --format='%H %ci'
 ```
 
 ```bash
-MSYS_NO_PATHCONV=1 docker exec marketplace-central-backend-1 sh -c 'grep -c NewCollectionScheduler /workspace/apps/server_core/internal/composition/root.go'
+MSYS_NO_PATHCONV=1 docker exec marketplace-central-backend-1 sh -c 'grep -c NewCollectionJob /workspace/apps/server_core/internal/composition/root.go'
 ```
 
 Esperado: `1`.
@@ -1003,7 +1038,7 @@ Esperado: `1`.
 
 ```bash
 git add apps/server_core/internal/composition/root.go
-git commit -m "feat(market): start the collection scheduler alongside its handler"
+git commit -m "feat(market): register the collection job on the sync scheduler"
 ```
 
 ---
@@ -1030,10 +1065,18 @@ UPDATE market_price_intel_aggregates
 - [ ] **Step 2: Confirme o ciclo no log**
 
 ```bash
-docker compose logs -f backend | grep "market collection scheduler"
+docker compose logs -f backend | grep "market collection job"
 ```
 
 Esperado, em até 30 minutos: `ciclo concluído colhidos=N falhas=M teto=50`.
+
+E o observável que o registro no seam comprou — a linha `market` de `sync_state`, que estava NULL desde sempre:
+
+```sql
+SELECT entity, last_full_sync_at, consecutive_failures FROM sync_state ORDER BY entity;
+```
+
+Esperado: `market.last_full_sync_at` **deixa de ser NULL**. Confirme também em `/integracoes`, no `SyncHealthCard`: `market` passa a aparecer com sincronização recente. Antes desta fatia o card não tinha o que dizer sobre mercado.
 
 - [ ] **Step 3: Confirme que a evidência de fato renovou**
 
@@ -1056,11 +1099,15 @@ Screenshot dos dois estados.
 O job não pode faminto o resto. Durante um ciclo, confirme que o sync de anúncios continuou:
 
 ```sql
-SELECT entity, last_success_at, now() - last_success_at AS idade
-  FROM sync_state ORDER BY last_success_at DESC;
+SELECT entity,
+       GREATEST(last_full_sync_at, last_incremental_at) AS ultimo,
+       consecutive_failures
+  FROM sync_state ORDER BY entity;
 ```
 
-Esperado: `last_success_at` de listings **avançando** durante e depois do ciclo. Se estagnar, o teto de 50 está alto demais para este tenant — baixe e registre o número medido, não o palpite.
+As colunas são `last_full_sync_at` e `last_incremental_at` — **não existe `last_success_at`**; o `GREATEST` das duas é a mesma expressão que o card de saúde do M-09 usa (`sync/application/scheduler.go:165-175`).
+
+Esperado: `consecutive_failures` de `products` e `listings` em **0**, e o `ultimo` de `products` avançando (ticker de 15min) durante e depois do ciclo de mercado. Se `products` estagnar ou acumular falha, o teto de 50 está alto demais para este tenant — baixe e registre o número medido, não o palpite.
 
 - [ ] **Step 6: Grave a evidência**
 
@@ -1079,6 +1126,7 @@ No pack de evidência e no ledger da missão:
 > **D-50 — RESOLVIDA** nesta fatia (idade nas abas de `/mercado`).
 > **D-51 — RESOLVIDA** nesta fatia (scheduler de coleta).
 > **D-52 — asserção de presença em rede de teste de tela.** `AnunciosTable.test.tsx:190` assertava `toBeInTheDocument()` sobre o marcador de frescor e por isso não pegou D-48 por toda a vida do defeito. Corrigida aqui pontualmente. **A classe não foi varrida:** ninguém mediu quantas outras asserções `toBeInTheDocument()` sobre células de valor existem no repo. Varredura é fatia própria.
+> **D-16 — continua ABERTA e esta fatia não a fecha.** `syncapp.Scheduler.Start` (`sync/application/scheduler.go:105-118`) segue sem execução no boot e sem vencimento persistido. O job de mercado registrado aqui herda o defeito, mas com intervalo de 30min o pior caso é um ciclo perdido por reinício — inofensivo pela letra da própria dívida (`.mnfs/HARNESS-DEBTS.md:301-303`). **A vítima real é `listings` a 24h**, que em dev nunca roda. Fatia própria.
 > **D-53 — o job renova, não descobre.** Produto sem agregado nunca entra no ciclo periódico; só o clique do operador cria a primeira evidência. Consequência aceita e medida (orçamento de 6 chamadas ML × 2.923 produtos contra bucket de 900/min), não esquecida.
 
 - [ ] **Step 2: Atualize o spec**
