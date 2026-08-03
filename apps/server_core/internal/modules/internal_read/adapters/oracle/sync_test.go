@@ -32,9 +32,9 @@ func TestSankhyaStockSQLPinsSellableCompaniesAndLocations(t *testing.T) {
 
 func TestSankhyaSyncMapsSellableAssortmentFields(t *testing.T) {
 	q := &dispatchQueryer{results: map[string]fakeResult{
-		"TGFPRO": {cols: 11, rows: [][]driver.Value{
-			{int64(100), "Produto R", nil, nil, nil, nil, nil, nil, "R", "S", nil},
-			{int64(200), "Produto blank", nil, nil, nil, nil, nil, nil, "   ", nil, nil},
+		"TGFPRO": {cols: 12, rows: [][]driver.Value{
+			{int64(100), "Produto R", nil, nil, nil, nil, nil, nil, "R", "S", nil, nil},
+			{int64(200), "Produto blank", nil, nil, nil, nil, nil, nil, "   ", nil, nil, nil},
 		}},
 		"TGFCUS": {cols: 2},
 		"TGFEXC": {cols: 2},
@@ -62,9 +62,9 @@ func TestSankhyaSyncMapsSellableAssortmentFields(t *testing.T) {
 
 func TestSankhyaSyncStoresKnownZeroForProductsOutsideTheSellableCut(t *testing.T) {
 	q := &dispatchQueryer{results: map[string]fakeResult{
-		"TGFPRO": {cols: 11, rows: [][]driver.Value{
-			{int64(100), "Showroom only", nil, nil, nil, nil, nil, nil, "R", "S", nil},
-			{int64(200), "Sellable", nil, nil, nil, nil, nil, nil, "R", "S", nil},
+		"TGFPRO": {cols: 12, rows: [][]driver.Value{
+			{int64(100), "Showroom only", nil, nil, nil, nil, nil, nil, "R", "S", nil, nil},
+			{int64(200), "Sellable", nil, nil, nil, nil, nil, nil, "R", "S", nil, nil},
 		}},
 		"TGFCUS": {cols: 2},
 		"TGFEXC": {cols: 2},
@@ -113,17 +113,19 @@ func ptrFloat(v float64) *float64 { return &v }
 // per-CODLOCAL stock summed into estoque_total, honest-NULL for unknown descriptive
 // facts, and known-zero stock for a Q1 product absent from pinned Q4.
 func TestSankhyaSyncMapsSnapshotHonestNull(t *testing.T) {
+	fiscalDtRef := time.Date(2026, 7, 20, 0, 0, 0, 0, time.UTC)
 	q := &dispatchQueryer{results: map[string]fakeResult{
-		"TGFPRO": {cols: 11, rows: [][]driver.Value{
-			// CODPROD, DESCRPROD, NCM, REFERENCIA(EAN), REFFORN, CODGRUPOPROD, DESCRGRUPOPROD, DESCRICAO(marca), USOPROD, AD_ECOMMERCE, GRUPOICMS
+		"TGFPRO": {cols: 12, rows: [][]driver.Value{
+			// CODPROD, DESCRPROD, NCM, REFERENCIA(EAN), REFFORN, CODGRUPOPROD, DESCRGRUPOPROD, DESCRICAO(marca), USOPROD, AD_ECOMMERCE, GRUPOICMS, ORIGPROD
 			// 100's EAN is space-padded (Oracle CHAR) — must still resolve after trimming.
-			// 100 also carries a classified fiscal group (GRUPOICMS=7, distinct from CODGRUPOPROD=5).
-			{int64(100), "Torneira", "84818090", "  7894900011517 ", "DOCOL-99", int64(5), "Metais", "Docol", "R", "S", int64(7)},
-			// 200's GRUPOICMS is Oracle NULL — the ADR-17 negative control: an unclassified
-			// fiscal group must stay Go nil, never fall back to 0.
-			{int64(200), "Parafuso", nil, "ABC123", nil, nil, nil, nil, nil, nil, nil},
+			// 100 also carries a classified fiscal group (GRUPOICMS=7, distinct from CODGRUPOPROD=5)
+			// and a classified ORIGPROD=1 (P2.b Task 3).
+			{int64(100), "Torneira", "84818090", "  7894900011517 ", "DOCOL-99", int64(5), "Metais", "Docol", "R", "S", int64(7), int64(1)},
+			// 200's GRUPOICMS/ORIGPROD are Oracle NULL — the ADR-17 negative control: an
+			// unclassified fiscal fact must stay Go nil, never fall back to 0.
+			{int64(200), "Parafuso", nil, "ABC123", nil, nil, nil, nil, nil, nil, nil, nil},
 			// 300's description is whitespace-only → honest-NULL, not "".
-			{int64(300), "   ", nil, nil, nil, nil, nil, nil, nil, nil, nil},
+			{int64(300), "   ", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil},
 		}},
 		"TGFCUS": {cols: 2, rows: [][]driver.Value{
 			{int64(100), 12.50},
@@ -133,6 +135,13 @@ func TestSankhyaSyncMapsSnapshotHonestNull(t *testing.T) {
 		"TGFEXC": {cols: 2, rows: [][]driver.Value{
 			{int64(100), 169.90},
 			// 200, 300 absent → preco NULL
+		}},
+		// S_ST (TIPIMPOSTO='S' only) vs R_TOTAL (SUM of 'S'+'I') are DIFFERENT
+		// quantities — 100 proves they must not be conflated (2.50 vs 3.60).
+		"TGFEFDVMRSTDIA": {cols: 4, rows: [][]driver.Value{
+			{int64(100), 2.50, 3.60, fiscalDtRef},
+			// 200 absent from the ST block entirely → all three stay NULL.
+			{int64(300), nil, 1.10, fiscalDtRef}, // only 'I' present, no 'S' row → S_ST NULL
 		}},
 		"TGFEST": {cols: 3, rows: [][]driver.Value{
 			// CODPROD, CODLOCAL, DISPONIVEL
@@ -178,6 +187,12 @@ func TestSankhyaSyncMapsSnapshotHonestNull(t *testing.T) {
 	if s, ok := q.queryFor("TGFEXC"); !ok || !strings.Contains(s, "DTVIGOR <= :1") {
 		t.Errorf("price SQL placeholder binding wrong; want DTVIGOR<=:1\n%s", s)
 	}
+	if a, ok := q.argsFor("TGFEFDVMRSTDIA"); !ok || len(a) != 2 || a[0] != sankhyaCompany || a[1] != fixed {
+		t.Errorf("fiscal ST binds = %v, want [%d %v] (CODEMP then data_ref)", a, sankhyaCompany, fixed)
+	}
+	if s, ok := q.queryFor("TGFEFDVMRSTDIA"); !ok || !strings.Contains(s, "CODEMP = :1") || !strings.Contains(s, "DTMOV <= :2") {
+		t.Errorf("fiscal ST SQL placeholder binding wrong; want CODEMP=:1 and DTMOV<=:2\n%s", s)
+	}
 
 	rows := indexRows(mw.rows)
 	if len(rows) != 3 {
@@ -204,6 +219,18 @@ func TestSankhyaSyncMapsSnapshotHonestNull(t *testing.T) {
 	if fv(p.EstoqueTotal) != 15.0 {
 		t.Errorf("100.EstoqueTotal = %v, want 15 (10+5)", fv(p.EstoqueTotal))
 	}
+	if p.Origprod == nil || *p.Origprod != 1 {
+		t.Errorf("100.Origprod = %v, want 1", intv(p.Origprod))
+	}
+	if p.StRetidoEntrada == nil || *p.StRetidoEntrada != 2.50 {
+		t.Errorf("100.StRetidoEntrada = %v, want 2.50", p.StRetidoEntrada)
+	}
+	if p.RestituicaoUnit == nil || *p.RestituicaoUnit != 3.60 {
+		t.Errorf("100.RestituicaoUnit = %v, want 3.60 (S+I, distinct from S alone)", p.RestituicaoUnit)
+	}
+	if p.FiscalDtRef == nil || !p.FiscalDtRef.Equal(fiscalDtRef) {
+		t.Errorf("100.FiscalDtRef = %v, want %v", p.FiscalDtRef, fiscalDtRef)
+	}
 
 	// Product 200 — non-EAN REFERENCIA → NULL; no price → NULL; real 0 stock (not NULL).
 	p = rows["200"]
@@ -225,6 +252,12 @@ func TestSankhyaSyncMapsSnapshotHonestNull(t *testing.T) {
 	if p.EstoqueTotal == nil || fv(p.EstoqueTotal) != 0.0 {
 		t.Errorf("200.EstoqueTotal = %v, want 0 (real zero balance, NOT NULL)", p.EstoqueTotal)
 	}
+	if p.Origprod != nil {
+		t.Errorf("200.Origprod = %v, want NULL", intv(p.Origprod))
+	}
+	if p.StRetidoEntrada != nil || p.RestituicaoUnit != nil || p.FiscalDtRef != nil {
+		t.Errorf("200 fiscal ST = st=%v r=%v dt=%v, want all NULL (absent from the ST block entirely)", p.StRetidoEntrada, p.RestituicaoUnit, p.FiscalDtRef)
+	}
 
 	// Product 300 — present in the ERP snapshot but absent from pinned Q4 → known zero stock.
 	p = rows["300"]
@@ -236,6 +269,18 @@ func TestSankhyaSyncMapsSnapshotHonestNull(t *testing.T) {
 	}
 	if p.Descricao != nil {
 		t.Errorf("300.Descricao = %q, want NULL (whitespace-only Oracle text is honest-unknown, not \"\")", strv(p.Descricao))
+	}
+	// 300 has an 'I' row but no 'S' row in the ST block: S_ST must stay NULL
+	// while R_TOTAL (S+I, here just I) is a real value — proves the two
+	// aggregates are computed independently, not one derived from the other.
+	if p.StRetidoEntrada != nil {
+		t.Errorf("300.StRetidoEntrada = %v, want NULL (no 'S' row for this product)", p.StRetidoEntrada)
+	}
+	if p.RestituicaoUnit == nil || *p.RestituicaoUnit != 1.10 {
+		t.Errorf("300.RestituicaoUnit = %v, want 1.10 ('I' only)", p.RestituicaoUnit)
+	}
+	if p.FiscalDtRef == nil || !p.FiscalDtRef.Equal(fiscalDtRef) {
+		t.Errorf("300.FiscalDtRef = %v, want %v", p.FiscalDtRef, fiscalDtRef)
 	}
 
 	// Stock locations: 100×2 + 200×1 = 3; codprod 999 (not in base) excluded.
