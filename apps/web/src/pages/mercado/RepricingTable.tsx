@@ -1,15 +1,16 @@
 import type { JSX } from "react";
 import { Link } from "react-router-dom";
 import type { ListingReadModel } from "@marketplace-central/sdk-runtime";
-import { UnknownValue } from "@marketplace-central/ui";
+import { FreshnessIndicator, UnknownValue } from "@marketplace-central/ui";
 import { DASH, formatMoney, formatPosition } from "./mercadoFormatters";
 
 // Reprecificação grid — exact column track + min-width from Mercado.dc.html (min-w 1020),
 // minus VENDAS 30D: sales_30d has no producer (derived from orders-by-window,
 // no provider endpoint) and left the contract in Task 8 (ADR-C3) — ADR-C1
-// says an absent capability hides the column, it doesn't render "—".
+// says an absent capability hides the column, it doesn't render "—". ATUALIZADO
+// (F-A3/D-50) added: age of the market_signal.evidence used for this row.
 const GRID_COLS =
-  "minmax(170px,1.3fr) 84px 84px 84px 66px 90px 110px minmax(150px,1fr) 120px";
+  "minmax(170px,1.3fr) 84px 84px 84px 66px 90px 110px minmax(150px,1fr) 110px 120px";
 
 const HEAD = [
   "ANÚNCIO",
@@ -20,6 +21,7 @@ const HEAD = [
   "MARGEM ATUAL",
   "SE IGUALAR MENOR",
   "SUGESTÃO",
+  "ATUALIZADO",
   "",
 ];
 
@@ -96,6 +98,7 @@ export function RepricingTable({ rows }: RepricingTableProps): JSX.Element {
                 <span className="pr-2 text-[12px]">
                   <UnknownValue hint="sugestão de preço — M-07" />
                 </span>
+                <FreshnessIndicator asOf={r.market_signal?.evidence?.fetched_at ?? null} />
                 <span className="flex gap-[5px]">
                   <button
                     type="button"

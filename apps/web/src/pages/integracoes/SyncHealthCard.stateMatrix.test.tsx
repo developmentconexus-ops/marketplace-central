@@ -23,9 +23,13 @@ import { SyncHealthCard } from "./SyncHealthCard";
 // run.
 const mockUseSyncHealthQuery = vi.fn();
 
-vi.mock("@marketplace-central/web-query", () => ({
-  useSyncHealthQuery: (...args: unknown[]) => mockUseSyncHealthQuery(...args),
-}));
+vi.mock("@marketplace-central/web-query", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@marketplace-central/web-query")>();
+  return {
+    ...actual,
+    useSyncHealthQuery: (...args: unknown[]) => mockUseSyncHealthQuery(...args),
+  };
+});
 
 vi.mock("../../app/ClientContext", () => ({
   // useSyncHealthQuery is mocked wholesale below, so the client itself is

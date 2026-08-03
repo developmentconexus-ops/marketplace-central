@@ -69,7 +69,10 @@ describe("AnunciosTable", () => {
 
     const caption = screen.getByText(/^Anúncios,/);
     expect(caption.textContent).not.toContain("2026-07-25T02:06:53.030122091Z");
-    expect(caption.textContent).toMatch(/^Anúncios, dados de \d{2}:\d{2}:\d{2}$/);
+    // Antes: /^Anúncios, dados de \d{2}:\d{2}:\d{2}$/ — hora do dia, que não
+    // distinguia 15 min de 15 dias (D-48). A intenção (o caption datar a
+    // tabela) é a mesma; a asserção agora exige idade, que é o que o operador lê.
+    expect(caption.textContent).toMatch(/^Anúncios, (agora|há .+)$/);
   });
 
   it("renders the ratified 8-column header (QUAL. dropped, no producer per ADR-C1/Task 8)", () => {
@@ -186,7 +189,9 @@ describe("AnunciosTable", () => {
 
       expect(screen.getByText("R$ 129,90")).toBeInTheDocument();
       expect(screen.getByText("+8,34%")).toBeInTheDocument();
-      expect(screen.getByLabelText("Data freshness")).toBeInTheDocument();
+      // Presença sozinha passava mesmo com o formato defeituoso (D-48). O teste
+      // se chama "freshness age marker", então ele tem que assertar a IDADE.
+      expect(screen.getByLabelText("Atualização dos dados")).toHaveTextContent(/^(agora|há .+)$/);
     });
 
     it("NO_PRICE_EVIDENCE: renders the price value only, no %chip, no fabricated number", () => {

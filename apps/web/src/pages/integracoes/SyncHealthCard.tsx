@@ -1,6 +1,6 @@
 import { isApiError, type SyncHealth, type SyncHealthEntity, type SyncHealthWebhook } from "@marketplace-central/sdk-runtime";
 import { ErrorState, LoadingState } from "@marketplace-central/ui";
-import { useSyncHealthQuery } from "@marketplace-central/web-query";
+import { formatRelativeAge, useSyncHealthQuery } from "@marketplace-central/web-query";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { useClient } from "../../app/ClientContext";
 
@@ -32,24 +32,6 @@ function entityLabel(entity: string): string {
     .join(" ");
 }
 
-// Relative pt-BR timestamp, same register as DashboardPage.tsx's
-// formatLastImportAge / ListingsRefreshControl.tsx's age label (that helper
-// is local to its own module, so this mirrors the idiom rather than importing
-// a private function). Callers only invoke this for a NON-NULL timestamp — a
-// null last_success_at renders "nunca" instead of ever reaching here, so a
-// null timestamp can never be humanized into a fake recency.
-function formatRelative(iso: string, now: number = Date.now()): string {
-  const at = new Date(iso).getTime();
-  if (Number.isNaN(at)) return iso;
-  const seconds = Math.max(0, Math.floor((now - at) / 1000));
-  if (seconds < 60) return "há menos de 1 min";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `há ${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `há ${hours} h`;
-  const days = Math.floor(hours / 24);
-  return `há ${days} d`;
-}
 
 function entityBadgeLabel(entity: SyncHealthEntity, tone: EntityTone): string {
   if (tone === "red") {
@@ -73,7 +55,7 @@ function EntityRow({ entity }: { entity: SyncHealthEntity }) {
         </span>
         {entity.last_success_at !== null ? (
           <span className="text-faint" title={entity.last_success_at}>
-            {formatRelative(entity.last_success_at)}
+            {formatRelativeAge(entity.last_success_at)}
           </span>
         ) : (
           <span className="text-faint" data-testid={`sync-health-never-${entity.entity}`}>
@@ -115,7 +97,7 @@ function WebhookSection({ webhook }: { webhook: SyncHealthWebhook }) {
         <div>
           <dt className="inline text-faint">última notificação: </dt>
           <dd className="inline text-ink" title={webhook.last_notification_at}>
-            {formatRelative(webhook.last_notification_at)}
+            {formatRelativeAge(webhook.last_notification_at)}
           </dd>
         </div>
         <div>

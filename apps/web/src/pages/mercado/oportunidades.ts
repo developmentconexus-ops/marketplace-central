@@ -18,6 +18,13 @@ export interface OppRow {
   nSellers: number | null;
   /** Drives the honest evidence note; the recommendation label itself is M-07-owned. */
   evidenceState: MarketPriceIntelPriceEvidenceStatus | null;
+  /**
+   * Quando a evidência de mercado desta linha foi colhida. Não-nulo no contrato
+   * (sdk-runtime/src/market.ts:104) e já entregue ao FE desde sempre — a linha é
+   * que o descartava (D-50). Sem ele o operador não distingue mediana de hoje de
+   * mediana de três semanas atrás.
+   */
+  fetchedAt: string;
 }
 
 function codprod(fact: CatalogProductFact): string {
@@ -77,6 +84,7 @@ export function buildOppRows(
       nSellers: agg.n_sellers,
       evidenceState:
         verdict?.price_evidence_status ?? (agg.status as MarketPriceIntelPriceEvidenceStatus),
+      fetchedAt: agg.fetched_at,
     });
   }
 

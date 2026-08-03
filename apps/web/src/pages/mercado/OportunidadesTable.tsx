@@ -1,14 +1,14 @@
 import type { JSX } from "react";
-import { UnknownValue } from "@marketplace-central/ui";
+import { FreshnessIndicator, UnknownValue } from "@marketplace-central/ui";
 import type { OppRow } from "./oportunidades";
 import { formatMoney } from "./mercadoFormatters";
 
 // Oportunidades grid — column track from Mercado.dc.html (min-w 960) + MENOR CONC.
 // added per operator D-120: SKU | PRODUTO (ERP) | NOSSO PREÇO (= custo ERP; produto não
 // vendido, sem preço de anúncio — label per operator) | MENOR CONC. | MEDIANA ML |
-// CONCORRENTES | VENDAS LÍDER 30D | MARGEM EST. | VEREDICTO | (action)
+// CONCORRENTES | VENDAS LÍDER 30D | MARGEM EST. | VEREDICTO | ATUALIZADO (F-A3/D-50) | (action)
 const GRID_COLS =
-  "84px minmax(170px,1.3fr) 76px 90px 90px 110px 120px 110px minmax(150px,1fr) 120px";
+  "84px minmax(170px,1.3fr) 76px 90px 90px 110px 120px 110px minmax(150px,1fr) 110px 120px";
 
 const HEAD = [
   "SKU",
@@ -20,6 +20,7 @@ const HEAD = [
   "VENDAS LÍDER 30D",
   "MARGEM EST.",
   "VEREDICTO",
+  "ATUALIZADO",
   "",
 ];
 
@@ -91,6 +92,7 @@ export function OportunidadesTable({ rows }: OportunidadesTableProps): JSX.Eleme
                     {o.evidenceState ? EVIDENCE_NOTE[o.evidenceState] ?? "" : ""}
                   </span>
                 </span>
+                <FreshnessIndicator asOf={o.fetchedAt} />
                 <button
                   type="button"
                   disabled

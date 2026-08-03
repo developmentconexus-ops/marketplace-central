@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Button, formatMoneyOr, PaginatedTable, SurfaceCard } from "@marketplace-central/ui";
+import { Button, formatMoneyOr, FreshnessIndicator, PaginatedTable, SurfaceCard } from "@marketplace-central/ui";
 import type { ActiveSourceName, CatalogProductFact } from "@marketplace-central/sdk-runtime";
 import {
   catalogQueryKeys,
-  FreshnessIndicator,
   useCatalogAssortmentCountsQuery,
 } from "@marketplace-central/web-query";
 import { useCatalogFactsQuery, useCatalogSearchQuery, type CatalogQueriesClient } from "./catalogQueries";
