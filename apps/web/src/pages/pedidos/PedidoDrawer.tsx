@@ -130,16 +130,44 @@ function DecompRow({
   );
 }
 
+// Restituição ST is the one row in Decomposição that ADDS to margem instead of subtracting
+// (BuildProfitability, D-41) — every other row here is a deduction. A bare formatMoney would
+// render a positive restituição identically to a cost line, so a "+ " prefix marks a REALIZED
+// credit visibly. An explicit 0 (e.g. intra-MG, where restituição never applies) is a real fact,
+// not a credit that fired, so it stays a plain "R$ 0,00" — no "+".
+function formatCredit(value: number | null | undefined): string | null {
+  const formatted = formatMoney(value);
+  if (formatted === null || value === null || value === undefined || value <= 0) return formatted;
+  return `+ ${formatted}`;
+}
+
 // Real-ready wiring (F02-S6): every value here is read FROM order.decomposicao/difal/
-// retorno_liquido/margem_pct (F01-C1, additive on OrderRead). Today the decomposer isn't wired
-// (hub C2), so every component is honestly null and renders UnknownValue via DecompRow/formatMoney
-// — never a hardcoded "—" string. When C2 lands, these same formatters render the real numbers
-// with no further UI change.
+// retorno_liquido/margem_pct (F01-C1, additive on OrderRead). Comissão/Taxa fixa/Frete/Tarifa
+// Full/Custo/Margem are still honestly null (the cost decomposer isn't wired, hub C2) and render
+// UnknownValue via DecompRow/formatMoney — never a hardcoded "—" string. ICMS de saída, DIFAL,
+// PIS/COFINS and Restituição ST ARE fed now, by the D-41 per-item tax engine (P2.b T5) —
+// Imposto (the old D-38 field) is permanently retired by that same change: it stays in the
+// payload for old consumers but this UI never reads it as a live number again.
 function DecomposicaoSection({ order }: { order: OrderRead }) {
   const { decomposicao, difal } = order;
   const pending = decomposicao.componentes_desconhecidos.length > 0;
   const difalHint = "DIFAL ainda não decomposto (hub C2)";
   const custoHint = "decomposição de custos ainda não disponível (hub C2)";
+  const impostoHint =
+    "substituído por ICMS de saída + DIFAL (D-41) — este campo não é mais calculado por esta via";
+  // ICMS saída/DIFAL share one resolution path (pricing/domain.TaxesForItem): both go unknown
+  // together when a product has no vínculo interno / fiscal ERP snapshot, when the ICMS matrix
+  // cell for (destino, grupo_icms) is ausente/ambígua, or when the destino UF has no linha na
+  // tabela de alíquota interna (D-37).
+  const icmsCellHint =
+    "produto sem vínculo interno, ou célula ICMS ausente/ambígua para este destino/grupo, ou UF sem alíquota interna cadastrada (matriz D-37)";
+  const pisCofinsHint =
+    "mesma lacuna do ICMS de saída — produto sem vínculo interno, célula ICMS não resolvida, ou UF sem alíquota interna (matriz D-37)";
+  // Restituição ST only depends on UF destino + o fato do produto (não passa pela célula
+  // codtrib/ambígua) — a lacuna aqui é sempre o item sem vínculo interno ou sem snapshot
+  // fiscal ERP (products_mirror), nunca a matriz.
+  const restituicaoHint =
+    "produto sem vínculo interno, ou sem snapshot fiscal ERP (products_mirror), para algum item do pedido";
 
   return (
     <Section title="Decomposição + DIFAL">
@@ -154,8 +182,15 @@ function DecomposicaoSection({ order }: { order: OrderRead }) {
           <DecompRow label="Comissão" value={formatMoney(decomposicao.comissao)} hint={custoHint} />
           <DecompRow label="Taxa fixa" value={formatMoney(decomposicao.taxa_fixa)} hint={custoHint} />
           <DecompRow label="Frete" value={formatMoney(decomposicao.frete)} hint={custoHint} />
-          <DecompRow label="Imposto" value={formatMoney(decomposicao.imposto)} hint={custoHint} />
-          <DecompRow label="DIFAL" value={formatMoney(decomposicao.difal)} hint={difalHint} />
+          <DecompRow label="Imposto" value={formatMoney(decomposicao.imposto)} hint={impostoHint} />
+          <DecompRow label="ICMS saída" value={formatMoney(decomposicao.icms_saida)} hint={icmsCellHint} />
+          <DecompRow label="DIFAL" value={formatMoney(decomposicao.difal)} hint={icmsCellHint} />
+          <DecompRow label="PIS/COFINS" value={formatMoney(decomposicao.pis_cofins)} hint={pisCofinsHint} />
+          <DecompRow
+            label="Restituição ST"
+            value={formatCredit(decomposicao.restituicao_st)}
+            hint={restituicaoHint}
+          />
           <DecompRow label="Tarifa Full" value={formatMoney(decomposicao.tarifa_full)} hint={custoHint} />
           <DecompRow label="Custo" value={formatMoney(decomposicao.custo)} hint={custoHint} />
           <div className="my-1 border-t border-border-2" />
