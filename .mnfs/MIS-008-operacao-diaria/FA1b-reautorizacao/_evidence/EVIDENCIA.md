@@ -77,15 +77,19 @@ registrado como dívida de harness, não de produto.
 - **D-47** — `fee_sync_scheduler.go:74` descarta erro do scheduler de fee sync
   com `_, _ =` — falha de sync fica silenciosa, sem log nem métrica.
 
-## Task 5 — live drive: NÃO EXECUTADO, ação do operador pendente
+## Task 5 — live drive: EXECUTADO contra a conta real
 
-Task 5 do plano é explicitamente a ação do PRÓPRIO operador, na conta real
-dele (revogar o token ML de fato e observar o fluxo de reautorização ao
-vivo). Constraint do plano: "Esta ação é do operador, na conta real dele.
-Não a execute e não a peça sem confirmar que ele já leu o custo." — não
-executada, não solicitada nesta sessão. **F-A1b pronto (merged, testado,
-revisado) não significa Task 5 validada** — a prova ao vivo contra revogação
-real ainda não aconteceu.
+Executado em 2026-08-03, com o operador revogando a autorização na própria
+conta ML real (ação dele, confirmada explicitamente antes de qualquer SQL
+rodar). Pré-condição corrigida antes de começar: a stack de dev estava
+servindo o worktree da F-00, não a `main` com F-A1b — reconstruída e
+recriada primeiro. Todos os 7 steps do plano executados e conferidos:
+revogação → refresh forçado → falha do ticker persistida e visível →
+tela mostra badge+motivo+botão → reautorização devolve a conta sem duplicar
+instalação → controle positivo confirma recusa de vínculo duplicado →
+rascunho de teste apagado. Detalhe completo, com todo log/SQL/dump de tela,
+em [`TASK5-LIVE-DRIVE.md`](TASK5-LIVE-DRIVE.md). F-A1b fecha sem pendência
+de validação.
 
 ## Task 7 do plano F-A1/F-A2 — desbloqueio parcial
 
