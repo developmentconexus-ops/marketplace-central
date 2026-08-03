@@ -117,6 +117,7 @@ import (
 	syncpg "marketplace-central/apps/server_core/internal/modules/sync/adapters/postgres"
 	syncapp "marketplace-central/apps/server_core/internal/modules/sync/application"
 	synccomposition "marketplace-central/apps/server_core/internal/modules/sync/composition"
+	syncdomain "marketplace-central/apps/server_core/internal/modules/sync/domain"
 	synctransport "marketplace-central/apps/server_core/internal/modules/sync/transport"
 	"marketplace-central/apps/server_core/internal/modules/tenant_config"
 	tenantconfigtransport "marketplace-central/apps/server_core/internal/modules/tenant_config/transport"
@@ -720,6 +721,25 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	)
 	marketEvidenceSvc := marketapp.NewEvidenceReadService(marketModuleRepo, marketModuleRepo, marketModuleRepo, marketCostReader, time.Now)
 	markettransport.NewHandlerWithCollections(marketReadSvc, marketCollectionSvc, marketEvidenceSvc).Register(mux)
+
+	// MIS-006 already taught this lesson once for products (see the comment at
+	// this file's products scheduler, above): a scheduler that is built but never
+	// linked just ticks a no-op forever, and the data it was supposed to refresh
+	// never does. Registering the job here — on its own scheduler instance,
+	// tenant-scoped like products rather than per-installation like listings — is
+	// what makes a collection failure surface on SyncHealthCard via RecordFailure
+	// instead of staying invisible.
+	marketSyncScheduler := syncapp.NewScheduler(
+		syncpg.NewSyncStateRepository(pool, cfg.DefaultTenantID),
+		synccomposition.InstallationScopeMarket, 30*time.Minute, time.Now,
+	)
+	if err := marketSyncScheduler.RegisterJob(
+		syncdomain.EntityMarket,
+		marketapp.NewCollectionJob(marketModuleRepo, marketCollectionSvc, time.Hour, 50, slog.Default()),
+	); err != nil {
+		return nil, fmt.Errorf("market collection job registration: %w", err)
+	}
+	go marketSyncScheduler.Start(context.Background())
 
 	marketRepo := marketplacespostgres.NewRepository(pool, cfg.DefaultTenantID)
 	marketSvc := marketplacesapp.NewService(marketRepo, cfg.DefaultTenantID)

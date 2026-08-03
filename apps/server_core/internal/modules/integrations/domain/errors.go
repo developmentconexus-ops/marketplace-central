@@ -23,6 +23,11 @@ var (
 var (
 	ErrReauthAccountMismatch = errors.New("INTEGRATIONS_REAUTH_ACCOUNT_MISMATCH")
 	ErrReauthCooldownActive  = errors.New("INTEGRATIONS_REAUTH_COOLDOWN_ACTIVE")
+
+	// A conta do provider bate com a que o operador autorizou, mas OUTRA
+	// installation ativa já a detém. Distinto de ErrReauthAccountMismatch, onde
+	// quem não bate é a conta desta installation.
+	ErrProviderAccountAlreadyLinked = errors.New("INTEGRATIONS_PROVIDER_ACCOUNT_ALREADY_LINKED")
 )
 
 var (

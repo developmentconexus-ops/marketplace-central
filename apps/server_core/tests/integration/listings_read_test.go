@@ -217,9 +217,16 @@ func TestListingsReadContractEndToEnd(t *testing.T) {
 				t.Fatalf("duplicate %s", id)
 			}
 			seen[id] = true
-			for _, k := range []string{"published_quantity", "quality_score", "sales_30d", "sync_error", "cost", "below_margin_worst_case", "fetched_at"} {
+			for _, k := range []string{"published_quantity", "sync_error", "cost", "below_margin_worst_case", "fetched_at"} {
 				if _, ok := row[k]; !ok {
 					t.Fatalf("%s missing %s", id, k)
+				}
+			}
+			// quality_score/sales_30d left the HTTP read contract in Task 8 (ADR-C3):
+			// no producer wires them into the response anymore.
+			for _, k := range []string{"quality_score", "sales_30d"} {
+				if _, ok := row[k]; ok {
+					t.Fatalf("%s stale %s still on the wire", id, k)
 				}
 			}
 		}

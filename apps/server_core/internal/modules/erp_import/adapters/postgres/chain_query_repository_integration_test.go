@@ -67,8 +67,8 @@ func TestGetImportChainCountsCurrentQueueAcrossInstallations(t *testing.T) {
 	if _, err := pool.Exec(ctx, `
 		INSERT INTO sync_state (tenant_id, installation_id, entity, cursor)
 		VALUES
-			($1, 'installation-a', 'market', '{"pending":["101","102","OUTSIDE"]}'::jsonb),
-			($1, 'installation-b', 'market', '{"pending":["101","103"]}'::jsonb)
+			($1, 'installation-a', 'market_queue', '{"pending":["101","102","OUTSIDE"]}'::jsonb),
+			($1, 'installation-b', 'market_queue', '{"pending":["101","103"]}'::jsonb)
 	`, tenant); err != nil {
 		t.Fatal(err)
 	}
@@ -136,8 +136,8 @@ func TestGetImportChainHTTPIntegration(t *testing.T) {
 	if _, err := pool.Exec(ctx, `
 		INSERT INTO sync_state (tenant_id, installation_id, entity, cursor)
 		VALUES
-			($1, 'installation-a', 'market', '{"pending":["301","302"]}'::jsonb),
-			($1, 'installation-b', 'market', '{"pending":["301","303"]}'::jsonb);
+			($1, 'installation-a', 'market_queue', '{"pending":["301","302"]}'::jsonb),
+			($1, 'installation-b', 'market_queue', '{"pending":["301","303"]}'::jsonb);
 	`, tenant); err != nil {
 		t.Fatal(err)
 	}
@@ -228,7 +228,7 @@ func TestGetImportChainMissingAndProtocolWithoutSyncState(t *testing.T) {
 	}
 	if _, err := pool.Exec(ctx, `
 		INSERT INTO sync_state (tenant_id, installation_id, entity, cursor)
-		VALUES ($1, 'installation-other', 'market', '{"pending":["201"]}'::jsonb)
+		VALUES ($1, 'installation-other', 'market_queue', '{"pending":["201"]}'::jsonb)
 	`, otherTenant); err != nil {
 		t.Fatal(err)
 	}
@@ -400,7 +400,7 @@ func TestGetImportChainQueueMatchesCodprodExactly(t *testing.T) {
 	}
 	if _, err := pool.Exec(ctx, `
 		INSERT INTO sync_state (tenant_id, installation_id, entity, cursor)
-		VALUES ($1, 'installation-a', 'market', '{"pending":["00101","ABC","OUTSIDE"]}'::jsonb);
+		VALUES ($1, 'installation-a', 'market_queue', '{"pending":["00101","ABC","OUTSIDE"]}'::jsonb);
 	`, tenant); err != nil {
 		t.Fatal(err)
 	}
@@ -462,7 +462,7 @@ func TestGetImportChainNonArrayPendingCursorDoesNotFailQuery(t *testing.T) {
 			}
 			if _, err := pool.Exec(ctx, `
 				INSERT INTO sync_state (tenant_id, installation_id, entity, cursor)
-				VALUES ($1, $3, 'market', $2::jsonb);
+				VALUES ($1, $3, 'market_queue', $2::jsonb);
 			`, tenant, tc.cursor, tc.installationID); err != nil {
 				t.Fatal(err)
 			}

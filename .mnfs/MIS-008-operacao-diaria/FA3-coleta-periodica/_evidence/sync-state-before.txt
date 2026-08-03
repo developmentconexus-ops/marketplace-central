@@ -1,0 +1,7 @@
+   tenant_id    |                     installation_id                     |  entity  |       last_full_sync_at       | last_incremental_at | consecutive_failures 
+----------------+---------------------------------------------------------+----------+-------------------------------+---------------------+----------------------
+ tenant_default | inst-mercado_livre-7e0d2125-f525-4174-9ade-8c7dc496a0e0 | listings | 2026-08-03 13:24:05.282956+00 |                     |                    0
+ tenant_default | inst-mercado_livre-7e0d2125-f525-4174-9ade-8c7dc496a0e0 | market   |                               |                     |                    0
+ tenant_default | erp                                                     | products | 2026-08-03 18:59:31.773962+00 |                     |                    0
+(3 rows)
+

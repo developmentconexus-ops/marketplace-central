@@ -41,7 +41,7 @@ func (e *MarketEnqueuer) EnqueueMarketProducts(ctx context.Context, productCodes
 	for _, installation := range installations {
 		// One statement per installation, not one per code: an ERP import carries a
 		// couple of thousand codes and the per-code round trips dominated the upload.
-		if err := e.cursor.AppendPendingCodigos(ctx, installation.InstallationID, syncdomain.EntityMarket, productCodes); err != nil {
+		if err := e.cursor.AppendPendingCodigos(ctx, installation.InstallationID, syncdomain.EntityMarketQueue, productCodes); err != nil {
 			return nil, fmt.Errorf("append %d market products for installation %q: %w", len(productCodes), installation.InstallationID, err)
 		}
 		if _, ok := seen[installation.InstallationID]; !ok {

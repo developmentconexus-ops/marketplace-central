@@ -19,7 +19,13 @@ const (
 	EntityListings Entity = "listings"
 	EntityOrders   Entity = "orders"
 	EntityMarket   Entity = "market"
-	EntityTariffs  Entity = "tariffs"
+	// EntityMarketQueue is the ERP-import pending-codigos queue (erp_import's
+	// MarketEnqueuer). It is a queue, not a sync stream — it never records a
+	// success — and shares no state with EntityMarket's periodic collection job.
+	// Kept as its own entity so two unrelated producers never collide on the
+	// same (tenant, installation, entity) sync_state row (migration 0093).
+	EntityMarketQueue Entity = "market_queue"
+	EntityTariffs     Entity = "tariffs"
 )
 
 // ErrUnknownEntity is returned when a caller registers or persists an entity
@@ -30,7 +36,7 @@ var ErrUnknownEntity = errors.New("sync: unknown entity")
 // Valid reports whether e is one of the documented sync entities.
 func (e Entity) Valid() bool {
 	switch e {
-	case EntityProducts, EntityListings, EntityOrders, EntityMarket, EntityTariffs:
+	case EntityProducts, EntityListings, EntityOrders, EntityMarket, EntityMarketQueue, EntityTariffs:
 		return true
 	default:
 		return false

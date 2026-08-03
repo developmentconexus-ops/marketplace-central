@@ -180,6 +180,10 @@ func (f *fakeAggregateStore) LatestMarketAggregatesBySource(_ context.Context, _
 	return f.appended, nil
 }
 
+func (f *fakeAggregateStore) StaleAggregateProductIDs(_ context.Context, _ time.Duration, _ int) ([]string, error) {
+	return nil, nil
+}
+
 type fakeCompetitiveSignalStore struct {
 	appended []domain.CompetitiveSignal
 }

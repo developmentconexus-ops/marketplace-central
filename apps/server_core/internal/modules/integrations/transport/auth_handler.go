@@ -3,6 +3,7 @@ package transport
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -72,8 +73,12 @@ func (h AuthHandler) handleCallback(w http.ResponseWriter, r *http.Request) {
 		ProviderAccountID: firstNonEmptyQuery(r.URL.Query(), "shop_id", "merchant_id", "selling_partner_id"),
 	})
 	if err != nil {
+		// O código do erro vai na URL; o texto cru NÃO. Um erro embrulhado com
+		// %w carrega installation_id e mensagem de driver, e URL vira log,
+		// histórico e print de tela. O operador precisa do código para citar
+		// num chamado — o resto está no log do servidor.
 		slog.Warn("integrations.auth.callback", "action", "handle_callback", "result", "302", "error", err.Error(), "duration_ms", time.Since(start).Milliseconds())
-		http.Redirect(w, r, buildOAuthCallbackRedirectURL(buildIntegrationsRedirectPath("failed", "")), http.StatusFound)
+		http.Redirect(w, r, buildOAuthCallbackRedirectURL(buildIntegrationsFailedRedirectPath(err)), http.StatusFound)
 		return
 	}
 	slog.Info("integrations.auth.callback", "action", "handle_callback", "result", "302", "duration_ms", time.Since(start).Milliseconds())
@@ -419,6 +424,28 @@ func buildIntegrationsRedirectPath(authStatus, installationID string) string {
 	if strings.TrimSpace(installationID) != "" {
 		query.Set("installation", strings.TrimSpace(installationID))
 	}
+	return "/integrations?" + query.Encode()
+}
+
+// callbackFailureCodes lista as sentinelas cujo código pode ir para a URL.
+// Lista fechada de propósito: erro não previsto vira "unknown" em vez de
+// vazar texto de driver na barra de endereço.
+var callbackFailureCodes = []error{
+	domain.ErrProviderAccountAlreadyLinked,
+	domain.ErrReauthAccountMismatch,
+}
+
+func buildIntegrationsFailedRedirectPath(err error) string {
+	reason := "unknown"
+	for _, candidate := range callbackFailureCodes {
+		if errors.Is(err, candidate) {
+			reason = candidate.Error()
+			break
+		}
+	}
+	query := url.Values{}
+	query.Set("auth", "failed")
+	query.Set("reason", reason)
 	return "/integrations?" + query.Encode()
 }
 
