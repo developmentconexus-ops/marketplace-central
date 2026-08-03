@@ -426,13 +426,21 @@ type enrichedItemDTO struct {
 // key) means the component could not be honestly sourced (ADR-17).
 // ComponentesDesconhecidos is never omitted — it is what explains the "—"s.
 type decomposicaoDTO struct {
-	Comissao                 *float64 `json:"comissao,omitempty"`
-	TaxaFixa                 *float64 `json:"taxa_fixa,omitempty"`
-	Frete                    *float64 `json:"frete,omitempty"`
-	Imposto                  *float64 `json:"imposto,omitempty"`
-	Difal                    *float64 `json:"difal,omitempty"`
+	Comissao *float64 `json:"comissao,omitempty"`
+	TaxaFixa *float64 `json:"taxa_fixa,omitempty"`
+	Frete    *float64 `json:"frete,omitempty"`
+	Imposto  *float64 `json:"imposto,omitempty"`
+	Difal    *float64 `json:"difal,omitempty"`
+	// ICMSSaida/PisCofins/RestituicaoST are the P2.b T5 per-item D-41 tax
+	// components, replacing Imposto's contribution to the sum end to end
+	// (Imposto above stays in the payload — always omitted now, since
+	// BuildProfitability no longer populates it — for any consumer still
+	// reading the old key; contract-level docs land in Task 6).
+	ICMSSaida                *float64 `json:"icms_saida,omitempty"`
+	PisCofins                *float64 `json:"pis_cofins,omitempty"`
 	TarifaFull               *float64 `json:"tarifa_full,omitempty"`
 	Custo                    *float64 `json:"custo,omitempty"`
+	RestituicaoST            *float64 `json:"restituicao_st,omitempty"`
 	MargemValor              *float64 `json:"margem_valor,omitempty"`
 	MargemPct                *float64 `json:"margem_pct,omitempty"`
 	ComponentesDesconhecidos []string `json:"componentes_desconhecidos"`
@@ -667,8 +675,11 @@ func mapDecomposicao(d domain.OrderDecomposition) decomposicaoDTO {
 		Frete:                    d.Frete,
 		Imposto:                  d.Imposto,
 		Difal:                    d.Difal,
+		ICMSSaida:                d.ICMSSaida,
+		PisCofins:                d.PisCofins,
 		TarifaFull:               d.TarifaFull,
 		Custo:                    d.Custo,
+		RestituicaoST:            d.RestituicaoST,
 		MargemValor:              d.MargemValor,
 		MargemPct:                d.MargemPct,
 		ComponentesDesconhecidos: d.ComponentesDesconhecidos,

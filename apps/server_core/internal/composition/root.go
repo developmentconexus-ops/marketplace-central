@@ -612,10 +612,16 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	// enrich path wired here).
 	ordersEnrichShipmentReader := orderspostgres.NewShipmentReader(pool, cfg.DefaultTenantID)
 	ordersEnrichBuyerFiscalReader := orderspostgres.NewBuyerFiscalReader(pool, cfg.DefaultTenantID)
-	// Imposto/DIFAL for a sold order come from the same tenant pricing profile
-	// the Simulador calculates with (pricingpostgres.NewCalcRepository), so the
-	// two screens can never quote different tax on the same money.
-	ordersTaxReader := orderspricingtax.NewReader(pricingpostgres.NewCalcRepository(pool), cfg.DefaultTenantID)
+	// ICMSSaida/Difal/PisCofins/RestituicaoST for a sold order come from the
+	// same D-41 per-item matrix calculation the Simulador prices with
+	// (pricingpostgres.MatrixReader + ProductFiscalReader), so the two
+	// screens can never quote different tax on the same money. T5 (P2.b):
+	// replaces the ProfileSource-based imposto/DIFAL calculation end to end.
+	ordersTaxReader := orderspricingtax.NewReader(
+		pricingpostgres.NewMatrixReader(pool),
+		pricingpostgres.NewProductFiscalReader(pool, activeSourceLookup),
+		cfg.DefaultTenantID,
+	)
 	ordersEnrichSvc := ordersapp.NewEnrichServiceWithReaders(ordersCostReader, ordersEnrichShipmentReader, nil, ordersEnrichBuyerFiscalReader, slog.Default()).
 		WithLinkRefresh(ordersLinkReader).
 		WithTaxes(ordersTaxReader)

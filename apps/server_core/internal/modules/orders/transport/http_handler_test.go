@@ -331,7 +331,7 @@ func TestHandleReadListWithEnricherEmitsHonestNullEnrichment(t *testing.T) {
 	if !ok {
 		t.Fatalf("decomposicao missing or wrong type: %#v; body=%s", item["decomposicao"], body)
 	}
-	for _, field := range []string{"comissao", "taxa_fixa", "frete", "imposto", "difal", "tarifa_full", "custo", "margem_valor", "margem_pct"} {
+	for _, field := range []string{"comissao", "taxa_fixa", "frete", "icms_saida", "difal", "pis_cofins", "tarifa_full", "custo", "restituicao_st", "margem_valor", "margem_pct"} {
 		if _, present := decomposicao[field]; present {
 			t.Fatalf("decomposicao.%s must be omitted when unknown; body=%s", field, body)
 		}
@@ -340,7 +340,7 @@ func TestHandleReadListWithEnricherEmitsHonestNullEnrichment(t *testing.T) {
 	if !ok {
 		t.Fatalf("decomposicao.componentes_desconhecidos missing or wrong type: %#v; body=%s", decomposicao["componentes_desconhecidos"], body)
 	}
-	wantComponents := []string{"comissao", "taxa_fixa", "frete", "imposto", "difal", "tarifa_full", "custo"}
+	wantComponents := []string{"comissao", "taxa_fixa", "frete", "icms_saida", "difal", "pis_cofins", "tarifa_full", "custo", "restituicao_st"}
 	if len(componentesDesconhecidos) != len(wantComponents) {
 		t.Fatalf("decomposicao.componentes_desconhecidos = %#v, want %v; body=%s", componentesDesconhecidos, wantComponents, body)
 	}

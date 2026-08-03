@@ -1,12 +1,12 @@
-// Package pricingtax adapts the pricing module's tenant calculation profile to
-// the orders module's TaxReader port, so a sold order's imposto and DIFAL come
-// from exactly the same configuration the Simulador prices with — one tax
-// truth, not a second copy that can drift.
+// Package pricingtax adapts the pricing module's D-41 per-item ICMS matrix
+// calculation (pricing/domain.TaxesForItem, Task 4) to the orders module's
+// TaxReader port, so a sold order's ICMSSaida/Difal/PisCofins/RestituicaoST
+// come from exactly the matrix cell + product fiscal facts the Simulador
+// prices with — one tax truth, not a second copy that can drift.
 package pricingtax
 
 import (
 	"context"
-	"errors"
 	"math/big"
 	"strconv"
 
@@ -15,92 +15,230 @@ import (
 	pricingports "marketplace-central/apps/server_core/internal/modules/pricing/ports"
 )
 
-// cem is the percent divisor. Kept as an exact rational so a 4% aliquota on a
-// R$ 129,90 order is 5,196 → 5,20, never a binary-float 5,1959999.
-var cem = big.NewRat(100, 1)
+// ufOrigemMG is the company's fixed origin UF (D-17 debt: CODEMP=1 fixo,
+// origin is not resolved per tenant/company today). Deliberately NOT shared
+// with pricing/domain's own unexported ufOrigemMG — same rationale as that
+// package's comment: two different packages, duplicating a stable literal
+// beats an import coupling two modules just to share one constant.
+const ufOrigemMG = "MG"
 
-// ProfileSource is the slice of the pricing CalcRepository this adapter needs:
-// the tenant profile (regime aliquota, DIFAL toggle) and the per-UF DIFAL rate.
-type ProfileSource interface {
-	GetProfile(ctx context.Context, tenantID string) (pricingdomain.CalcProfile, error)
-	RateForUF(ctx context.Context, tenantID, uf string) (pricingdomain.DifalRate, error)
-}
-
+// Reader implements ordersports.TaxReader over the D-41 per-item path: for
+// each order item it resolves the product's fiscal facts (grupo_icms,
+// origprod, st_retido_entrada, restituicao_unit) and the ICMS matrix cell for
+// (ufOrigem, destinoUF, grupo_icms), builds a pricing/domain.ICMSCell, and
+// calls TaxesForItem once per item — never once for the whole order total
+// (D-41's non-linear MAX(0,...) and gross-up formulas do not commute with
+// rateio-after-the-fact).
 type Reader struct {
-	source   ProfileSource
+	matrix   pricingports.TaxMatrixReader
+	products pricingports.ProductFiscalReader
 	tenantID string
 }
 
-func NewReader(source ProfileSource, tenantID string) *Reader {
-	return &Reader{source: source, tenantID: tenantID}
+// NewReader builds a Reader over matrix (Task 4's TaxMatrixReader) and
+// products (this task's ProductFiscalReader).
+func NewReader(matrix pricingports.TaxMatrixReader, products pricingports.ProductFiscalReader, tenantID string) *Reader {
+	return &Reader{matrix: matrix, products: products, tenantID: tenantID}
 }
 
 var _ ordersports.TaxReader = (*Reader)(nil)
 
-// TaxesForOrder applies the tenant profile to the order's revenue.
+// TaxesForItems resolves and sums ICMSSaida/Difal/PisCofins/RestituicaoST
+// across items, per-component all-or-nothing (ADR-17): if ANY item's
+// TaxesForItem call comes back unknown for a component, that component is
+// nil for the WHOLE ORDER, never a partial sum over only the resolved items.
+// An item with no product link, or whose product has no fiscal snapshot,
+// resolves to a nil ICMSCell for that item — which pricing/domain.TaxesForItem
+// already treats as "every component unknown", so the all-or-nothing rule
+// above naturally makes the whole order's aggregate honest without a second,
+// separate branch for the "unlinked item" case.
 //
-// Imposto is the regime aliquota on the order total — always resolvable, since
-// an unset profile still answers with its explicit defaults (SIMPLES 4%,
-// origem "default"), which is a real configured rate rather than a guess.
-//
-// DIFAL follows the same three-way rule the pricing engine uses: switched off
-// is an explicit 0; switched on with a known destino state is efetivo × total;
-// switched on with no destino (or no rate row for that state) is honest-unknown
-// (nil), never 0 — an order we cannot place is not an order that owes nothing.
-func (r *Reader) TaxesForOrder(ctx context.Context, total float64, destinoUF string) (ordersports.OrderTaxes, error) {
-	profile, err := r.source.GetProfile(ctx, r.tenantID)
-	if err != nil {
-		return ordersports.OrderTaxes{}, err
-	}
-
-	revenue := new(big.Rat).SetFloat64(total)
-	if revenue == nil { // total was NaN or ±Inf — no honest tax on a non-amount
+// destinoUF == "" means the order has no known destination — there is no
+// honest cell to resolve for any item, so every component comes back nil.
+func (r *Reader) TaxesForItems(ctx context.Context, items []ordersports.TaxItem, destinoUF string) (ordersports.OrderTaxes, error) {
+	if destinoUF == "" {
 		return ordersports.OrderTaxes{}, nil
 	}
 
-	var taxes ordersports.OrderTaxes
-	imposto, err := pctOf(profile.AliquotaPct, revenue)
+	// aliquota interna depends only on destinoUF, not on the item — resolve
+	// it once for the whole order instead of once per item.
+	aliquotaInterna, err := r.matrix.AliquotaInternaFor(ctx, destinoUF)
 	if err != nil {
 		return ordersports.OrderTaxes{}, err
 	}
-	taxes.Imposto = &imposto
 
-	if !profile.DifalEnabled {
-		zero := 0.0
-		taxes.Difal = &zero
-		return taxes, nil
-	}
+	icmsKnown, difalKnown, pisKnown, restKnown := true, true, true, true
+	icmsSum := new(big.Rat)
+	difalSum := new(big.Rat)
+	pisSum := new(big.Rat)
+	restSum := new(big.Rat)
 
-	uf := destinoUF
-	if uf == "" && profile.DifalDestinoUF != nil {
-		uf = *profile.DifalDestinoUF
-	}
-	if uf == "" {
-		return taxes, nil
-	}
-	rate, err := r.source.RateForUF(ctx, r.tenantID, uf)
-	if err != nil {
-		if errors.Is(err, pricingports.ErrDifalUFNotFound) {
-			return taxes, nil
+	for _, item := range items {
+		cell, preco, err := r.resolveItem(ctx, destinoUF, aliquotaInterna, item)
+		if err != nil {
+			return ordersports.OrderTaxes{}, err
 		}
-		return ordersports.OrderTaxes{}, err
+
+		tax := pricingdomain.TaxesForItem(preco, cell)
+
+		if tax.ICMSSaida == nil {
+			icmsKnown = false
+		} else if icmsKnown {
+			icmsSum.Add(icmsSum, mustRat(*tax.ICMSSaida))
+		}
+		if tax.Difal == nil {
+			difalKnown = false
+		} else if difalKnown {
+			difalSum.Add(difalSum, mustRat(*tax.Difal))
+		}
+		if tax.PisCofins == nil {
+			pisKnown = false
+		} else if pisKnown {
+			pisSum.Add(pisSum, mustRat(*tax.PisCofins))
+		}
+		if tax.RestituicaoST == nil {
+			restKnown = false
+		} else if restKnown {
+			restSum.Add(restSum, mustRat(*tax.RestituicaoST))
+		}
 	}
-	difal, err := pctOf(pricingdomain.DifalForUF(rate).EfetivoPct, revenue)
-	if err != nil {
-		return ordersports.OrderTaxes{}, err
+
+	var out ordersports.OrderTaxes
+	if icmsKnown {
+		v, err := ratToFloat(icmsSum)
+		if err != nil {
+			return ordersports.OrderTaxes{}, err
+		}
+		out.ICMSSaida = &v
 	}
-	taxes.Difal = &difal
-	return taxes, nil
+	if difalKnown {
+		v, err := ratToFloat(difalSum)
+		if err != nil {
+			return ordersports.OrderTaxes{}, err
+		}
+		out.Difal = &v
+	}
+	if pisKnown {
+		v, err := ratToFloat(pisSum)
+		if err != nil {
+			return ordersports.OrderTaxes{}, err
+		}
+		out.PisCofins = &v
+	}
+	if restKnown {
+		v, err := ratToFloat(restSum)
+		if err != nil {
+			return ordersports.OrderTaxes{}, err
+		}
+		out.RestituicaoST = &v
+	}
+	return out, nil
 }
 
-// pctOf returns pct% of amount, rounded to centavos through the pricing
-// module's single rounding routine so orders and Simulador round identically.
-func pctOf(pct string, amount *big.Rat) (float64, error) {
-	parsed, err := pricingdomain.ParseRat(pct)
-	if err != nil {
-		return 0, err
+// resolveItem builds the ICMSCell + preço (line total, UnitPrice × Quantity)
+// for one order item. A nil *ICMSCell — no product link, no UnitPrice, or no
+// products_mirror fiscal snapshot for the linked product — is the single,
+// uniform "this item's tax picture is unknown" signal that TaxesForItem
+// already understands; the caller (TaxesForItems) never special-cases the
+// unlinked case separately from a linked-but-factless one.
+func (r *Reader) resolveItem(ctx context.Context, destinoUF string, aliquotaInterna *string, item ordersports.TaxItem) (*pricingdomain.ICMSCell, string, error) {
+	if item.InternalProductID == nil || item.UnitPrice == nil {
+		return nil, "0.00", nil
 	}
-	value := new(big.Rat).Quo(parsed, cem)
-	value.Mul(value, amount)
-	return strconv.ParseFloat(pricingdomain.FormatRatHalfUp(value, 2), 64)
+
+	codigoProduto := strconv.Itoa(*item.InternalProductID)
+	facts, err := r.products.FactsFor(ctx, r.tenantID, codigoProduto)
+	if err != nil {
+		return nil, "", err
+	}
+	if !facts.Found {
+		return nil, "0.00", nil
+	}
+
+	// S/R are per-unit product facts (products_mirror.st_retido_entrada /
+	// restituicao_unit) — scale by Quantity BEFORE building the ICMSCell, so
+	// TaxesForItem's formula (which expects the line's own S/R, not a
+	// per-unit fact) sees the right magnitude.
+	stScaled, err := scaleMoney(facts.StRetidoEntrada, item.Quantity)
+	if err != nil {
+		return nil, "", err
+	}
+	restScaled, err := scaleMoney(facts.RestituicaoUnit, item.Quantity)
+	if err != nil {
+		return nil, "", err
+	}
+
+	var codTrib *int
+	var ambiguo bool
+	if facts.GrupoICMS != nil {
+		mc, err := r.matrix.CellFor(ctx, r.tenantID, ufOrigemMG, destinoUF, *facts.GrupoICMS)
+		if err != nil {
+			return nil, "", err
+		}
+		if mc.Found {
+			codTrib = mc.CodTrib
+			ambiguo = mc.Ambiguo
+		}
+	}
+
+	cell := &pricingdomain.ICMSCell{
+		UFDestino:       destinoUF,
+		CodTrib:         codTrib,
+		Ambiguo:         ambiguo,
+		Origprod:        facts.Origprod,
+		AliquotaInterna: aliquotaInterna,
+		StRetidoEntrada: stScaled,
+		RestituicaoUnit: restScaled,
+		FiscalDtRef:     facts.FiscalDtRef,
+	}
+
+	preco := lineTotal(*item.UnitPrice, item.Quantity)
+	return cell, preco, nil
+}
+
+// lineTotal converts an order item's UnitPrice (float64, the orders domain's
+// money representation) × Quantity into the 2dp decimal string TaxesForItem
+// expects — the one float64→decimal crossing in this adapter, same idiom the
+// pre-T5 reader used for order.Total.
+func lineTotal(unitPrice float64, quantity int) string {
+	v := new(big.Rat).SetFloat64(unitPrice)
+	if v == nil { // unitPrice was NaN or ±Inf — not a real amount
+		v = new(big.Rat)
+	}
+	v.Mul(v, big.NewRat(int64(quantity), 1))
+	return pricingdomain.FormatRatHalfUp(v, 2)
+}
+
+// scaleMoney multiplies a decimal money string by qty, or passes nil through
+// unscaled — nil already means "not registered" (zeroIfNil's job downstream,
+// pricing/domain), scaling nil would still be nil, no need to touch it.
+func scaleMoney(s *string, qty int) (*string, error) {
+	if s == nil {
+		return nil, nil
+	}
+	v, err := pricingdomain.ParseRat(*s)
+	if err != nil {
+		return nil, err
+	}
+	v.Mul(v, big.NewRat(int64(qty), 1))
+	out := pricingdomain.FormatRatHalfUp(v, 2)
+	return &out, nil
+}
+
+// ratToFloat renders r at 2dp through the pricing module's single rounding
+// routine (so orders and Simulador round identically) and parses it back to
+// float64 for the OrderTaxes wire shape.
+func ratToFloat(r *big.Rat) (float64, error) {
+	return strconv.ParseFloat(pricingdomain.FormatRatHalfUp(r, 2), 64)
+}
+
+// mustRat parses a TaxesForItem output string — these are always
+// FormatRatHalfUp's own output, so a parse failure here is a programmer
+// error in pricing/domain, not a runtime data problem.
+func mustRat(s string) *big.Rat {
+	r, err := pricingdomain.ParseRat(s)
+	if err != nil {
+		panic(err)
+	}
+	return r
 }
