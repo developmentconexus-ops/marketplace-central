@@ -299,7 +299,7 @@ Regra herdada e medida nesta casa: verde de integração só é evidência **dep
 
 ## 10. Ritual de execução
 
-Por fatia:
+Por fatia. A metodologia de onda que governa quando cada fatia é planejada está na §12.
 
 1. **Plano profundo** (Opus) — lê o código, os contratos, o SDK, o OpenAPI e os legados antes de decidir. Aproveita o que existe; move para o máximo global mesmo que exija refactor
 2. **Implementação**
@@ -327,3 +327,65 @@ Nomeada porque cada item já mordeu esta casa pelo menos uma vez:
 - **`F-04` como conserto de classe pode virar refactor de paginação no SDK.** Se virar, é refactor aceito — a alternativa é o mesmo defeito voltar pela quarta vez
 - **`F-06` toca produção compartilhada** (`http_handler.go` divide struct com `WithCalc`). Não é deleção limpa; a fatia começa medindo, não apagando
 - **`F-08` pode revelar que uma das 11 operações é necessária.** Nesse caso ela sai da poda e vira `F` com tela — o critério é a linha de chegada, não a contagem
+
+## 12. Metodologia de execução
+
+### 12.1 Uma onda por vez, porque medição decai
+
+Ondas não são detalhadas de uma vez. **Onda N vira tasks; ondas N+1 em diante ficam no nível da linha do `BACKLOG.md`** — id, enunciado, medida, critério, sem decomposição.
+
+O motivo é medido, não estilístico. A Onda 0 altera o código que a Onda 1 mediria; o `F-06` apaga código que o `F-01` e o `F-02` senão tocariam. Plano escrito contra estado que vai mudar é plano podre. Precedente registrado: o brief do M-06 continha três alegações falsas sobre o repo poucos dias depois de escrito, e a verificação feita para este design encontrou mais uma (a coluna `raw_provider_ref` existe; a suposição era de ausência).
+
+**Re-medição na fronteira de cada onda** é passo obrigatório, não zelo. A Task 0 já é um caso disso.
+
+Dentro da onda, paralelo × serial decide a matriz de colisão do harness. `F-06`, `F-07` e `F-08` tocam `pricing` — dono único, serial.
+
+### 12.2 Alinhamento na fronteira, não no meio do código
+
+Cada onda abre com uma sessão curta de decisão, sobre uma lista conhecida **antes** de começar. Decisões já identificadas:
+
+| onda | decisão | quem decide |
+|---|---|---|
+| 0 | `F-A3`: coleta de mercado vira job periódico ou permanece manual | operador |
+| 1 | `F-08`: das 11 operações, quais morrem e quais ganham tela — 11 decisões independentes | operador |
+| 1 | `F-06`: `decompose` e `BuildProfitability` permanecem separados (simulação × realizado) ou convergem | operador, com medição de paridade na mesa |
+| 2 | `F-03`: escopo real após a re-medição pós-merge | derivado da medição |
+
+Descoberta imprevista durante a implementação continua existindo — é o que os eventos `ESCALATION`/`REQUEST` do harness carregam. A regra é que **decisão previsível não vire interrupção**.
+
+### 12.3 Ficha de medição — gate de entrada no plano
+
+Nenhuma fatia entra no plano da onda sem oito respostas, **cada uma com `file:line`**:
+
+| # | pergunta | defeito que essa pergunta teria pego |
+|---|---|---|
+| 1 | Quem **já faz isso**? Busca por conceito, não por nome | 4 fórmulas de margem divergentes |
+| 2 | Quem **consome**? Zero call-sites de produção = candidato a morte, não a conserto | `batch_orchestrator`, 11 operações do contrato, `ClassifyRefreshError` |
+| 3 | Qual **contrato** muda? OpenAPI e `sdk-runtime` no mesmo commit; qual selo ADR-C3 | os 120 campos `required`+`nullable` |
+| 4 | Quem é o **produtor real** do valor? | `OrderRead.currency` sem produtor; `nf_state` com produtor errado |
+| 5 | Que **teste** pega regressão — e ele é forte ou vacuoso? | `pedidosFormatters.ts` sem teste; dois fracos em `pricing` |
+| 6 | Que **dívida registrada** toca isso? | `D-16` bloqueando `F-00`; `D-21`/`D-38` bloqueando `F-06` |
+| 7 | O que o **ML realmente entrega**? Payload lido, não documentação | `sale_fee` por unidade; multiget de shipments inexistente |
+| 8 | Qual é o **local maximum**? O que já existe se chama como? | `MarginChip` com limiar configurável, ao lado do hardcode |
+
+A ficha é verificável sem julgamento de mérito: basta conferir que as oito respostas existem e carregam `file:line`. Por isso a revisão de spec pode ser barata.
+
+### 12.4 Regra anti-redundância
+
+> Nenhuma fatia cria cálculo, helper ou endpoint novo sem citar o `file:line` do que já existe e **por que não serve**.
+
+Verificável por grep no próprio plano. As quatro fórmulas de margem e os três donos da faixa nasceram exatamente pela ausência dessa linha — cada autor escreveu de boa-fé o que já existia ao lado.
+
+### 12.5 Divisão de trabalho
+
+| papel | quem | por quê |
+|---|---|---|
+| medir | subagentes sonnet, read-only, em paralelo | barato; preserva o contexto de quem decide |
+| sintetizar e decidir | Opus | a decisão precisa segurar as medições juntas — foi o cruzamento entre duas varreduras discordantes sobre `batch_orchestrator` que virou risco declarado em vez de premissa errada |
+| conferir a ficha | haiku | critério mecânico (§12.3) |
+| revisar o diff | sonnet | escopo da fatia |
+| dirigir o browser | operador | §9, lane `browser` |
+
+### 12.6 Custo assumido
+
+Medição é barata porque é subagente. O custo está no plano da onda, e é deliberado: **cada onda começa mais devagar e não volta atrás**. O contra-exemplo está registrado — o plano anterior do P2.b tinha 17 tasks construindo um segundo motor fiscal ao lado do `pricing/domain` que já funcionava; uma rodada de medição derrubou 10 delas.
