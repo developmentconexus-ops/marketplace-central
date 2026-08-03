@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"io"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -31,9 +32,9 @@ func TestSankhyaStockSQLPinsSellableCompaniesAndLocations(t *testing.T) {
 
 func TestSankhyaSyncMapsSellableAssortmentFields(t *testing.T) {
 	q := &dispatchQueryer{results: map[string]fakeResult{
-		"TGFPRO": {cols: 10, rows: [][]driver.Value{
-			{int64(100), "Produto R", nil, nil, nil, nil, nil, nil, "R", "S"},
-			{int64(200), "Produto blank", nil, nil, nil, nil, nil, nil, "   ", nil},
+		"TGFPRO": {cols: 11, rows: [][]driver.Value{
+			{int64(100), "Produto R", nil, nil, nil, nil, nil, nil, "R", "S", nil},
+			{int64(200), "Produto blank", nil, nil, nil, nil, nil, nil, "   ", nil, nil},
 		}},
 		"TGFCUS": {cols: 2},
 		"TGFEXC": {cols: 2},
@@ -61,9 +62,9 @@ func TestSankhyaSyncMapsSellableAssortmentFields(t *testing.T) {
 
 func TestSankhyaSyncStoresKnownZeroForProductsOutsideTheSellableCut(t *testing.T) {
 	q := &dispatchQueryer{results: map[string]fakeResult{
-		"TGFPRO": {cols: 10, rows: [][]driver.Value{
-			{int64(100), "Showroom only", nil, nil, nil, nil, nil, nil, "R", "S"},
-			{int64(200), "Sellable", nil, nil, nil, nil, nil, nil, "R", "S"},
+		"TGFPRO": {cols: 11, rows: [][]driver.Value{
+			{int64(100), "Showroom only", nil, nil, nil, nil, nil, nil, "R", "S", nil},
+			{int64(200), "Sellable", nil, nil, nil, nil, nil, nil, "R", "S", nil},
 		}},
 		"TGFCUS": {cols: 2},
 		"TGFEXC": {cols: 2},
@@ -113,13 +114,16 @@ func ptrFloat(v float64) *float64 { return &v }
 // facts, and known-zero stock for a Q1 product absent from pinned Q4.
 func TestSankhyaSyncMapsSnapshotHonestNull(t *testing.T) {
 	q := &dispatchQueryer{results: map[string]fakeResult{
-		"TGFPRO": {cols: 10, rows: [][]driver.Value{
-			// CODPROD, DESCRPROD, NCM, REFERENCIA(EAN), REFFORN, CODGRUPOPROD, DESCRGRUPOPROD, DESCRICAO(marca), USOPROD, AD_ECOMMERCE
+		"TGFPRO": {cols: 11, rows: [][]driver.Value{
+			// CODPROD, DESCRPROD, NCM, REFERENCIA(EAN), REFFORN, CODGRUPOPROD, DESCRGRUPOPROD, DESCRICAO(marca), USOPROD, AD_ECOMMERCE, GRUPOICMS
 			// 100's EAN is space-padded (Oracle CHAR) — must still resolve after trimming.
-			{int64(100), "Torneira", "84818090", "  7894900011517 ", "DOCOL-99", int64(5), "Metais", "Docol", "R", "S"},
-			{int64(200), "Parafuso", nil, "ABC123", nil, nil, nil, nil, nil, nil},
+			// 100 also carries a classified fiscal group (GRUPOICMS=7, distinct from CODGRUPOPROD=5).
+			{int64(100), "Torneira", "84818090", "  7894900011517 ", "DOCOL-99", int64(5), "Metais", "Docol", "R", "S", int64(7)},
+			// 200's GRUPOICMS is Oracle NULL — the ADR-17 negative control: an unclassified
+			// fiscal group must stay Go nil, never fall back to 0.
+			{int64(200), "Parafuso", nil, "ABC123", nil, nil, nil, nil, nil, nil, nil},
 			// 300's description is whitespace-only → honest-NULL, not "".
-			{int64(300), "   ", nil, nil, nil, nil, nil, nil, nil, nil},
+			{int64(300), "   ", nil, nil, nil, nil, nil, nil, nil, nil, nil},
 		}},
 		"TGFCUS": {cols: 2, rows: [][]driver.Value{
 			{int64(100), 12.50},
@@ -194,6 +198,9 @@ func TestSankhyaSyncMapsSnapshotHonestNull(t *testing.T) {
 	if fv(p.Custo) != 12.50 || fv(p.PrecoVenda) != 169.90 {
 		t.Errorf("100 custo/preco = %v/%v, want 12.5/169.9", fv(p.Custo), fv(p.PrecoVenda))
 	}
+	if p.GrupoICMS == nil || *p.GrupoICMS != 7 {
+		t.Errorf("100.GrupoICMS = %v, want 7", intv(p.GrupoICMS))
+	}
 	if fv(p.EstoqueTotal) != 15.0 {
 		t.Errorf("100.EstoqueTotal = %v, want 15 (10+5)", fv(p.EstoqueTotal))
 	}
@@ -212,6 +219,9 @@ func TestSankhyaSyncMapsSnapshotHonestNull(t *testing.T) {
 	if p.PrecoVenda != nil {
 		t.Errorf("200.PrecoVenda = %v, want NULL (no CODTAB=0 row)", fv(p.PrecoVenda))
 	}
+	if p.GrupoICMS != nil {
+		t.Errorf("200.GrupoICMS = %v, want NULL (Oracle NULL must never scan as 0 — ADR-17)", intv(p.GrupoICMS))
+	}
 	if p.EstoqueTotal == nil || fv(p.EstoqueTotal) != 0.0 {
 		t.Errorf("200.EstoqueTotal = %v, want 0 (real zero balance, NOT NULL)", p.EstoqueTotal)
 	}
@@ -220,6 +230,9 @@ func TestSankhyaSyncMapsSnapshotHonestNull(t *testing.T) {
 	p = rows["300"]
 	if p.Custo != nil || p.PrecoVenda != nil || p.EstoqueTotal == nil || *p.EstoqueTotal != 0 {
 		t.Errorf("300 should have NULL custo/preco and known-zero estoque, got custo=%v preco=%v estoque=%v", p.Custo, p.PrecoVenda, p.EstoqueTotal)
+	}
+	if p.GrupoICMS != nil {
+		t.Errorf("300.GrupoICMS = %v, want NULL", intv(p.GrupoICMS))
 	}
 	if p.Descricao != nil {
 		t.Errorf("300.Descricao = %q, want NULL (whitespace-only Oracle text is honest-unknown, not \"\")", strv(p.Descricao))
@@ -282,6 +295,13 @@ func fv(p *float64) float64 {
 		return -1
 	}
 	return *p
+}
+
+func intv(p *int) string {
+	if p == nil {
+		return "<nil>"
+	}
+	return strconv.Itoa(*p)
 }
 
 // --- query-dispatching fake driver -----------------------------------------

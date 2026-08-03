@@ -104,7 +104,7 @@ type snapshotRow struct {
 const sankhyaBaseSQL = `
 SELECT p.CODPROD, p.DESCRPROD, p.NCM, p.REFERENCIA, p.REFFORN,
        p.CODGRUPOPROD, g.DESCRGRUPOPROD, m.DESCRICAO,
-       p.USOPROD, p.AD_ECOMMERCE
+       p.USOPROD, p.AD_ECOMMERCE, p.GRUPOICMS
 FROM METALPRD.TGFPRO p
 LEFT JOIN METALPRD.TGFGRU g ON g.CODGRUPOPROD = p.CODGRUPOPROD
 LEFT JOIN METALPRD.TGFMAR m ON m.CODIGO       = p.CODMARCA
@@ -130,8 +130,9 @@ func (a *SankhyaAdapter) readBase(ctx context.Context) (map[int]*snapshotRow, er
 			marca     sql.NullString
 			usoprod   sql.NullString
 			adEcomm   sql.NullString
+			grupoICMS sql.NullInt64
 		)
-		if err := dbrows.Scan(&codprod, &descr, &ncm, &reference, &refforn, &grupoCod, &grupoDesc, &marca, &usoprod, &adEcomm); err != nil {
+		if err := dbrows.Scan(&codprod, &descr, &ncm, &reference, &refforn, &grupoCod, &grupoDesc, &marca, &usoprod, &adEcomm, &grupoICMS); err != nil {
 			return nil, wrapOracleError("scan sankhya base", err)
 		}
 
@@ -159,6 +160,7 @@ func (a *SankhyaAdapter) readBase(ctx context.Context) (map[int]*snapshotRow, er
 				Marca:          nullStr(marca),
 				GrupoCodigo:    nullIntStr(grupoCod),
 				GrupoDescricao: nullStr(grupoDesc),
+				GrupoICMS:      nullInt(grupoICMS),
 				NCM:            nullStr(ncm),
 				Usoprod:        nullStr(usoprod),
 				ADEcommerce:    nullStr(adEcomm),
@@ -317,6 +319,17 @@ func nullStr(v sql.NullString) *string {
 		return nil
 	}
 	return &s
+}
+
+// nullInt maps an Oracle NUMBER column to *int with honest-NULL discipline
+// (ADR-17): an unclassified fiscal group (GRUPOICMS NULL) stays nil, never a
+// fabricated 0 — 0 is itself a valid, distinct grupo_icms value in Sankhya.
+func nullInt(v sql.NullInt64) *int {
+	if !v.Valid {
+		return nil
+	}
+	i := int(v.Int64)
+	return &i
 }
 
 func nullIntStr(v sql.NullInt64) *string {

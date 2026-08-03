@@ -37,6 +37,7 @@ type Row struct {
 	Marca          *string
 	GrupoCodigo    *string
 	GrupoDescricao *string
+	GrupoICMS      *int
 	NCM            *string
 	Custo          *float64
 	PrecoVenda     *float64
@@ -74,9 +75,9 @@ var _ Writer = (*PgWriter)(nil)
 const upsertSQL = `
 INSERT INTO products_mirror
 	(tenant_id, source, codigo_produto, descricao, referencia, ean, marca,
-	 grupo_codigo, grupo_descricao, ncm, custo, preco_venda, usoprod, ad_ecommerce, estoque_total,
+	 grupo_codigo, grupo_descricao, grupo_icms, ncm, custo, preco_venda, usoprod, ad_ecommerce, estoque_total,
 	 absent_in_last_snapshot, stale_since, updated_at)
-VALUES ($1, 'sankhya', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, false, NULL, now())
+VALUES ($1, 'sankhya', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, false, NULL, now())
 ON CONFLICT (tenant_id, source, codigo_produto) DO UPDATE SET
 	descricao = EXCLUDED.descricao,
 	referencia = EXCLUDED.referencia,
@@ -84,6 +85,7 @@ ON CONFLICT (tenant_id, source, codigo_produto) DO UPDATE SET
 	marca = EXCLUDED.marca,
 	grupo_codigo = EXCLUDED.grupo_codigo,
 	grupo_descricao = EXCLUDED.grupo_descricao,
+	grupo_icms = EXCLUDED.grupo_icms,
 	ncm = EXCLUDED.ncm,
 	custo = EXCLUDED.custo,
 	preco_venda = EXCLUDED.preco_venda,
@@ -147,7 +149,7 @@ func (w *PgWriter) ApplySnapshot(ctx context.Context, tenantID string, rows []Ro
 	batch := &pgx.Batch{}
 	for _, r := range rows {
 		batch.Queue(upsertSQL, tenantID, r.CodigoProduto, r.Descricao, r.Referencia,
-			r.EAN, r.Marca, r.GrupoCodigo, r.GrupoDescricao, r.NCM, r.Custo,
+			r.EAN, r.Marca, r.GrupoCodigo, r.GrupoDescricao, r.GrupoICMS, r.NCM, r.Custo,
 			r.PrecoVenda, canonicalSellableValue(r.Usoprod), canonicalSellableValue(r.ADEcommerce), r.EstoqueTotal)
 	}
 	// Replace stock-location children only for products in this snapshot.
