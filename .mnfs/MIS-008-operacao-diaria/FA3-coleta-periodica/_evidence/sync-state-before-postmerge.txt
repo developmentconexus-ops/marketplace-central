@@ -1,0 +1,17 @@
+Snapshot pos-merge/pos-rebuild, antes do 1o ciclo do market job.
+Container backend StartedAt=2026-08-03T20:18:08Z, "server starting" log=20:18:24Z.
+Proximo ciclo esperado ~20:48:24Z (interval=30min, sem run imediato no boot - D-16).
+
+market_aggregates (produto 26909, envelhecido para o teste):
+ product_id | source            | status               | computed_at              | age
+ 26909      | ml_catalog_offers | INSUFFICIENT_MARKET  | 2026-08-03 16:13:38 UTC  | 4h06m
+
+sync_state (antes do ciclo):
+ installation_id                                          | entity       | last_full_sync_at        | consecutive_failures
+ inst-mercado_livre-...a0e0                                | listings     | 2026-08-03 13:24:05 UTC  | 0
+ inst-mercado_livre-...a0e0                                | market_queue | NULL (queue, nunca RecordSuccess) | 0
+ erp                                                       | products     | 2026-08-03 19:40:32 UTC  | 0
+
+Nota: entity="market" (job periodico, sentinel installation_id="market") ainda nao
+aparece - scheduler so acabou de subir, ainda nao completou o 1o ciclo. Migracao 0093
+ja confirmada aplicada (linha "market_queue" acima prova - era "market" antes).

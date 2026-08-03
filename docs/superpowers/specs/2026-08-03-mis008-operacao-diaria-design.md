@@ -233,7 +233,7 @@ Sem isso a operação diária não existe.
 | `F-A1` | Falha de refresh vira fato: grava `RefreshFailureCode`/`ConsecutiveFailures`, `ClassifyRefreshError` ganha chamador, `HealthStatus` sai de `Healthy`, `/integracoes` mostra | §5.1 |
 | `F-A2` | `RunOnce` para de abortar o lote no primeiro erro | `refresh_ticker.go:37-51,64` |
 | `F-00` | Scheduler periódico de pedidos — **bloqueado por `D-16`** | `root.go:597-600` |
-| `F-A3` | Coleta de mercado ganha job periódico **e** idade visível em toda linha de `/mercado`. Decisão do operador em 2026-08-03: as duas coisas, não uma ou outra — job resolve o dado velho, idade visível resolve a confiança quando o job falha | §5.2 |
+| `F-A3` | **FECHADA 2026-08-03 (`afb6b54a`)**. Coleta de mercado ganha job periódico **e** idade visível em toda linha de `/mercado`. Decisão do operador em 2026-08-03: as duas coisas, não uma ou outra — job resolve o dado velho, idade visível resolve a confiança quando o job falha | §5.2 |
 
 ### Onda 1 — remoção
 
@@ -364,7 +364,7 @@ O branch do P2.b reescreve exatamente os arquivos da Onda 1:
 
 Além de colidir, o P2.b pode **encerrar sozinho** o `D-21` (SIMPLES 4% fabricado) e o `D-38` (campo `Imposto`), os dois bloqueios do `F-06`.
 
-A Onda 0 é disjunta: `F-A1` e `F-A2` vivem em `integrations/`, `F-A3` em `market/`, `F-00` em `sync/`+`orders/`. Zero arquivos em comum com o branch.
+~~A Onda 0 é disjunta: `F-A1` e `F-A2` vivem em `integrations/`, `F-A3` em `market/`, `F-00` em `sync/`+`orders/`. Zero arquivos em comum com o branch.~~ **CORRIGIDA 2026-08-03**: a medição de `F-A3` mostrou que a causa raiz da idade invisível vive em `packages/web-query` (compartilhado por toda a Onda 0, não confinado a `market/`) — a Fatia A tocou `formatRelativeAge`/`FreshnessIndicator` ali, não só em `market/`. Operador aprovou alargar o escopo declarado em 2026-08-03; a disjunção de arquivos com o branch do P2.b permanece válida (`packages/web-query` não aparece no diff do P2.b), só a alegação "confinado a `market/`" era falsa.
 
 **Regra de sequenciamento:** a Onda 0 é planejada e executada imediatamente. A Onda 1 só é planejada depois de o P2.b aterrissar na `main`, e o primeiro passo do seu plano é **re-medir `decompose.go`** — a medição da §4 classe 6 e da §6 vale para o estado de 2026-08-03 e expira no merge.
 
