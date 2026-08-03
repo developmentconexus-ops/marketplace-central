@@ -356,6 +356,10 @@ func (s *AuthFlowService) HandleCallback(ctx context.Context, input HandleCallba
 		return AuthStatus{}, domain.ErrReauthAccountMismatch
 	}
 
+	if err := s.ensureProviderAccountUnlinked(ctx, inst, payload.ProviderAccountID); err != nil {
+		return AuthStatus{}, err
+	}
+
 	credential, err := s.saveCredential(ctx, statePayload.InstallationID, payload)
 	if err != nil {
 		return AuthStatus{}, err
@@ -373,6 +377,55 @@ func (s *AuthFlowService) HandleCallback(ctx context.Context, input HandleCallba
 	}
 
 	return s.applyAuthResult(ctx, inst, payload, credential, domain.InstallationStatusConnected, domain.HealthStatusHealthy)
+}
+
+// ensureProviderAccountUnlinked recusa o callback quando outra installation
+// ativa já detém a conta do provider, ANTES de qualquer escrita.
+//
+// Sem isso a violação só aparecia em applyAuthResult (:775), depois de
+// saveCredential e do upsert da sessão — e como as três escritas não
+// compartilham transação, a falha deixava credencial ativa e sessão válida
+// penduradas numa installation que nunca ficou conectada.
+//
+// O predicado é o do índice parcial uq_integration_installations_active_provider_account
+// (migrations/0017_oauth_credential_lifecycle.sql:29-32) e tem que continuar
+// igual a ele: se divergir, recusamos o que o banco aceitaria, ou pior,
+// deixamos passar o que ele recusa.
+func (s *AuthFlowService) ensureProviderAccountUnlinked(
+	ctx context.Context,
+	inst domain.Installation,
+	providerAccountID string,
+) error {
+	accountID := strings.TrimSpace(providerAccountID)
+	if accountID == "" {
+		// Índice parcial não cobre external_account_id vazio; não inventamos
+		// regra que o banco não tem.
+		return nil
+	}
+
+	installations, err := s.installations.List(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, other := range installations {
+		if other.InstallationID == inst.InstallationID {
+			continue
+		}
+		if other.ProviderCode != inst.ProviderCode {
+			continue
+		}
+		if strings.TrimSpace(other.ExternalAccountID) != accountID {
+			continue
+		}
+		if other.Status == domain.InstallationStatusDisconnected ||
+			other.Status == domain.InstallationStatusFailed {
+			continue
+		}
+		return fmt.Errorf("%w: installation_id=%s", domain.ErrProviderAccountAlreadyLinked, other.InstallationID)
+	}
+
+	return nil
 }
 
 func (s *AuthFlowService) SubmitAPIKey(ctx context.Context, input SubmitAPIKeyInput) (AuthStatus, error) {
