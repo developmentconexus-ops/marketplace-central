@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	connectorsdomain "marketplace-central/apps/server_core/internal/modules/connectors/domain"
@@ -32,6 +34,7 @@ type stubAuthFlow struct {
 	stockInput    connectorsdomain.ProviderListingRef
 	catalogMatch  application.CatalogMatchProbeResult
 	catalogInput  application.CatalogMatchProbeInput
+	callbackErr   error
 }
 
 var _ AuthFlowReader = (*stubAuthFlow)(nil)
@@ -43,6 +46,9 @@ func (s *stubAuthFlow) StartAuthorize(ctx context.Context, input application.Sta
 
 func (s *stubAuthFlow) HandleCallback(ctx context.Context, input application.HandleCallbackInput) (application.AuthStatus, error) {
 	s.callbackInput = input
+	if s.callbackErr != nil {
+		return application.AuthStatus{}, s.callbackErr
+	}
 	return application.AuthStatus{InstallationID: "inst-from-state", Status: domain.InstallationStatusConnected}, nil
 }
 
@@ -423,6 +429,54 @@ func TestAuthHandlerCallbackPrefersCallbackOriginOverWebOrigin(t *testing.T) {
 	}
 	if location := rr.Header().Get("Location"); location != "https://public.example/integrations?auth=connected&installation=inst-from-state" {
 		t.Fatalf("Location = %q, want callback origin to win over localhost web origin", location)
+	}
+}
+
+func TestAuthHandlerCallbackCarriesTheFailureCodeInTheRedirect(t *testing.T) {
+	t.Setenv("MPC_WEB_ORIGIN", "")
+	t.Setenv("MPC_OAUTH_REDIRECT_URI", "")
+
+	flow := &stubAuthFlow{callbackErr: fmt.Errorf("%w: installation_id=inst-old", domain.ErrProviderAccountAlreadyLinked)}
+	handler := NewAuthHandler(flow)
+	req := httptest.NewRequest(http.MethodGet, "/integrations/auth/callback?code=c&state=s", nil)
+	rec := httptest.NewRecorder()
+
+	handler.handleCallback(rec, req)
+
+	if rec.Code != http.StatusFound {
+		t.Fatalf("status = %d, want 302", rec.Code)
+	}
+	location, err := url.Parse(rec.Header().Get("Location"))
+	if err != nil {
+		t.Fatalf("Location invalido: %v", err)
+	}
+	if got := location.Query().Get("auth"); got != "failed" {
+		t.Fatalf("auth = %q, want failed", got)
+	}
+	if got := location.Query().Get("reason"); got != "INTEGRATIONS_PROVIDER_ACCOUNT_ALREADY_LINKED" {
+		t.Fatalf("reason = %q, want INTEGRATIONS_PROVIDER_ACCOUNT_ALREADY_LINKED", got)
+	}
+}
+
+// Controle negativo: sucesso nao pode carregar reason. Sem ele, gravar reason
+// sempre passaria no teste acima.
+func TestAuthHandlerCallbackSuccessCarriesNoReason(t *testing.T) {
+	t.Setenv("MPC_WEB_ORIGIN", "")
+	t.Setenv("MPC_OAUTH_REDIRECT_URI", "")
+
+	flow := &stubAuthFlow{}
+	handler := NewAuthHandler(flow)
+	req := httptest.NewRequest(http.MethodGet, "/integrations/auth/callback?code=c&state=s", nil)
+	rec := httptest.NewRecorder()
+
+	handler.handleCallback(rec, req)
+
+	location, err := url.Parse(rec.Header().Get("Location"))
+	if err != nil {
+		t.Fatalf("Location invalido: %v", err)
+	}
+	if got := location.Query().Get("reason"); got != "" {
+		t.Fatalf("reason = %q, want vazio", got)
 	}
 }
 

@@ -1227,3 +1227,163 @@ func installationStatusForTest(state domain.ConnectionState) domain.Installation
 		return domain.InstallationStatusDisconnected
 	}
 }
+
+// callbackHarnessInstallationID is the "current" installation the callback in
+// newCallbackHarness targets. Its ExternalAccountID starts EMPTY (not merely
+// "some other seller"): hasReauthAccountMismatch treats an empty existing
+// account as "first connection, nothing to mismatch" and returns false, so an
+// empty account is what lets a call reach ensureProviderAccountUnlinked at
+// all. Seeding it with a non-empty different seller would make the OLDER
+// guard (hasReauthAccountMismatch) fire first and mask the one under test.
+const callbackHarnessInstallationID = "inst-ml"
+
+type callbackHarness struct {
+	svc           *AuthFlowService
+	installations *flowInstallationStore
+	credentials   *flowCredentialRotator
+	sessions      *flowAuthWriter
+	input         HandleCallbackInput
+}
+
+// newCallbackHarness wires the existing auth-flow fakes (flowInstallationStore,
+// flowCredentialRotator, flowAuthWriter) into a service and drives StartAuthorize
+// once to obtain a valid signed state, mirroring
+// TestStartAuthorizeHandleCallbackAcceptsPersistedSignedState in
+// auth_flow_service_security_test.go. providerAccountID is what the OAuth
+// adapter reports back on ExchangeCallback.
+func newCallbackHarness(t *testing.T, providerAccountID string) *callbackHarness {
+	t.Helper()
+
+	now := time.Unix(1000, 0).UTC()
+	installations := &flowInstallationStore{installations: map[string]domain.Installation{
+		callbackHarnessInstallationID: {
+			InstallationID: callbackHarnessInstallationID,
+			ProviderCode:   "mercado_livre",
+			Status:         domain.InstallationStatusDraft,
+			HealthStatus:   domain.HealthStatusHealthy,
+		},
+	}}
+	oauthStates := &securityOAuthStateStore{consumedByState: map[string]bool{}}
+	codec := roundTripSecurityStateCodec{payloadsByState: map[string]OAuthStatePayload{}}
+	credentials := &flowCredentialRotator{}
+	sessions := &flowAuthWriter{}
+	adapter := &flowAdapter{
+		providerCode: "mercado_livre",
+		callback: CredentialPayload{
+			SecretType:        "oauth2",
+			AccessToken:       "access",
+			RefreshToken:      "refresh",
+			ProviderAccountID: providerAccountID,
+		},
+	}
+	svc := mustNewAuthFlowService(t, AuthFlowConfig{
+		TenantID:        "tenant_default",
+		Installations:   installations,
+		Credentials:     credentials,
+		AuthSessions:    sessions,
+		OAuthStates:     oauthStates,
+		OAuthStateCodec: codec,
+		Encryptor:       &flowEncryptor{},
+		Clock:           fixedAuthFlowClock{now: now},
+		Adapters:        []MarketplaceAuthAdapter{adapter},
+	})
+
+	start, err := svc.StartAuthorize(context.Background(), StartAuthorizeInput{
+		InstallationID: callbackHarnessInstallationID,
+		RedirectURI:    "https://app.test/callback",
+		Scopes:         []string{"read"},
+	})
+	if err != nil {
+		t.Fatalf("StartAuthorize() error = %v", err)
+	}
+
+	// StartAuthorize already applied one connection snapshot (pending_connection)
+	// just to obtain a validly signed state — that is fixture plumbing, not
+	// something the tests below measure. Reset the recorders so the baseline
+	// after harness construction is "nothing written yet", matching the real
+	// callback scenario.
+	installations.connectionSnapshots = nil
+	installations.statuses = nil
+	installations.healths = nil
+	installations.activeCredentialIDs = nil
+	installations.providerAccountIDs = nil
+	installations.providerAccountNames = nil
+
+	return &callbackHarness{
+		svc:           svc,
+		installations: installations,
+		credentials:   credentials,
+		sessions:      sessions,
+		input: HandleCallbackInput{
+			InstallationID:    callbackHarnessInstallationID,
+			Code:              "code-1",
+			State:             start.State,
+			RedirectURI:       "https://app.test/callback",
+			ProviderAccountID: providerAccountID,
+		},
+	}
+}
+
+// Duas installations do mesmo provider, uma delas já vinculada ao seller que o
+// callback acabou de devolver. Antes desta task o serviço gravava credencial e
+// sessão e só então batia no índice único, deixando as duas órfãs.
+func TestHandleCallbackRefusesAccountLinkedToAnotherInstallationBeforeWriting(t *testing.T) {
+	h := newCallbackHarness(t, "seller-1")
+	h.installations.installations["inst-old"] = domain.Installation{
+		InstallationID:    "inst-old",
+		ProviderCode:      "mercado_livre",
+		ExternalAccountID: "seller-1",
+		Status:            domain.InstallationStatusConnected,
+	}
+
+	_, err := h.svc.HandleCallback(context.Background(), h.input)
+
+	if !errors.Is(err, domain.ErrProviderAccountAlreadyLinked) {
+		t.Fatalf("err = %v, want ErrProviderAccountAlreadyLinked", err)
+	}
+	if got := len(h.credentials.inputs); got != 0 {
+		t.Fatalf("credenciais gravadas = %d, want 0 (a recusa tem que vir antes da escrita)", got)
+	}
+	if got := len(h.sessions.sessions); got != 0 {
+		t.Fatalf("sessoes gravadas = %d, want 0 (a recusa tem que vir antes da escrita)", got)
+	}
+	if got := len(h.installations.connectionSnapshots); got != 0 {
+		t.Fatalf("snapshots aplicados = %d, want 0", got)
+	}
+}
+
+// Controle negativo: reautorizar a MESMA installation com a MESMA conta é o
+// caminho feliz desta fatia inteira. Se a checagem recusar isso, ela quebrou o
+// que veio consertar.
+func TestHandleCallbackAllowsReauthOfTheSameInstallation(t *testing.T) {
+	h := newCallbackHarness(t, "seller-1")
+	inst := h.installations.installations[callbackHarnessInstallationID]
+	inst.ExternalAccountID = "seller-1"
+	inst.Status = domain.InstallationStatusRequiresReauth
+	h.installations.installations[callbackHarnessInstallationID] = inst
+
+	if _, err := h.svc.HandleCallback(context.Background(), h.input); err != nil {
+		t.Fatalf("HandleCallback err = %v, want nil", err)
+	}
+	if got := len(h.installations.connectionSnapshots); got != 1 {
+		t.Fatalf("snapshots aplicados = %d, want 1", got)
+	}
+}
+
+// Uma installation desconectada NÃO segura a conta: o índice único de
+// 0017_oauth_credential_lifecycle.sql:31 exclui 'disconnected' e 'failed', e a
+// checagem tem que usar exatamente o mesmo predicado, senão ela recusa o que o
+// banco aceitaria.
+func TestHandleCallbackIgnoresDisconnectedInstallationHoldingTheAccount(t *testing.T) {
+	h := newCallbackHarness(t, "seller-1")
+	h.installations.installations["inst-old"] = domain.Installation{
+		InstallationID:    "inst-old",
+		ProviderCode:      "mercado_livre",
+		ExternalAccountID: "seller-1",
+		Status:            domain.InstallationStatusDisconnected,
+	}
+
+	if _, err := h.svc.HandleCallback(context.Background(), h.input); err != nil {
+		t.Fatalf("HandleCallback err = %v, want nil", err)
+	}
+}

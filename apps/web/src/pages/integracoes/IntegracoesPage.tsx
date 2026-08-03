@@ -15,6 +15,7 @@ import {
   useSetSellableAssortmentMutation,
 } from "@marketplace-central/web-query";
 import { useId, useRef, useState, type ChangeEvent, type DragEvent } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useClient } from "../../app/ClientContext";
 import { ImportacaoSection } from "../importacoes/ImportacaoSection";
 import { useErpImportDetail } from "../vinculos/useErpImports";
@@ -558,6 +559,10 @@ function ProviderConnectCard() {
 }
 
 export function IntegracoesPage() {
+  const [searchParams] = useSearchParams();
+  const callbackFailureReason =
+    searchParams.get("auth") === "failed" ? (searchParams.get("reason") ?? "unknown") : null;
+
   return (
     <section aria-labelledby="integracoes-title" className="mx-auto flex max-w-5xl flex-col gap-[14px]">
       <header>
@@ -566,6 +571,17 @@ export function IntegracoesPage() {
         </h1>
         <p className="mt-1 text-sm text-muted">Importe o catálogo de produtos e conecte marketplaces.</p>
       </header>
+      {/* O código cru é deliberado, mesma decisão do reauth_reason no
+          ConnectionHealthCard: é o único diagnóstico que existe e traduzi-lo
+          apagaria o código que o operador precisa citar num chamado. */}
+      {callbackFailureReason ? (
+        <div
+          data-testid="oauth-callback-error"
+          className="rounded-control border border-border bg-warn-soft px-3 py-2 text-xs text-warn"
+        >
+          A autorização não foi concluída: {callbackFailureReason}
+        </div>
+      ) : null}
       <ActiveSourceCard />
       <SellableAssortmentCard />
       <UploadCard />
