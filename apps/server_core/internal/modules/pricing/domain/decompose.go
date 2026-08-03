@@ -51,9 +51,27 @@ type DecomposeInput struct {
 	// DifalEnabled false ⇒ difal is 0 explicit (feature off, legit zero).
 	// true with a known DestinoUF + EfetivoPct ⇒ difal = efetivo × preço.
 	// true with an unknown destino ⇒ difal UNKNOWN.
+	//
+	// Consulted ONLY when ICMSCell is nil. When ICMSCell is present, Difal
+	// (and ICMSSaida/PisCofins/RestituicaoST) come exclusively from
+	// TaxesForItem (D-41) — these three fields are not read at all in that
+	// case.
 	DifalEnabled bool
 	DestinoUF    string // "" = destino unknown
 	EfetivoPct   string // DifalForUF efetivo for DestinoUF; "" when not applied
+
+	// ICMSCell is the P2.b Task 4 tax-matrix cell + product fiscal facts,
+	// already resolved by the port (S6-style) before Decompose runs — nil
+	// means the caller has no ICMS matrix data for this item (today's
+	// behavior: Decompose falls back to the DifalEnabled/DestinoUF/EfetivoPct
+	// path above and AliquotaPct stays summed as Imposto, byte-for-byte
+	// identical to pre-P2.b output). Non-nil switches Decompose onto the D-41
+	// formula: ICMSSaida/Difal/PisCofins/RestituicaoST are computed via
+	// TaxesForItem and enter the sum in ICMSSaida/Difal/PisCofins/
+	// RestituicaoST's place — Imposto is still computed and shown (D-38: the
+	// field survives for the 7 simulator sites) but stops being summed, so it
+	// is never double-counted alongside ICMSSaida.
+	ICMSCell *ICMSCell
 }
 
 // Decomposition is the frozen IC-04 output shape (line 85). Always-known
@@ -63,16 +81,35 @@ type DecomposeInput struct {
 // ComponentesDesconhecidos names the missing (ADR-17: unknown ≠ zero). When
 // every component is known, preço = Σ(componentes) + margem_valor EXACTLY.
 type Decomposition struct {
-	Preco       string
-	Comissao    string
-	TaxaFixa    string
-	Frete       *string
-	Imposto     string
-	Difal       *string
-	TarifaFull  *string
-	Custo       *string
-	MargemValor *string
-	MargemPct   *string
+	Preco    string
+	Comissao string
+	TaxaFixa string
+	Frete    *string
+	// Imposto is the CalcProfile regime aliquota × preço (SIMPLES/PRESUMIDO
+	// placeholder, D-38). Always computed and shown for the simulator sites
+	// that still read it. Summed into MargemValor ONLY when ICMSCell is nil
+	// (today's behavior); when ICMSCell is present, ICMSSaida replaces it in
+	// the sum — Imposto keeps rendering but a silently-double-counted
+	// component is exactly how the fabricated 4% survived this long.
+	Imposto    string
+	Difal      *string
+	TarifaFull *string
+	Custo      *string
+	// ICMSSaida is P × a_inter (D-41) — nil only when ICMSCell is nil OR the
+	// matrix cell/alíquota interna could not be resolved (ADR-17).
+	ICMSSaida *string
+	// PisCofins is 0,0925 × MAX(0, P×(1−a) − S) (STF Tema 69 + STJ Tema
+	// 1125). Same nil rule as ICMSSaida — both come from the same resolved
+	// `a`.
+	PisCofins *string
+	// RestituicaoST is the ICMS-ST restituição credit — the ONE component
+	// that ADDS to margem instead of subtracting (Task 6: "a única linha
+	// positiva da seção"). 0 explicit for UF=MG (intra-empresa, not
+	// unknown); the resolved value otherwise. nil only when ICMSCell itself
+	// is nil.
+	RestituicaoST *string
+	MargemValor   *string
+	MargemPct     *string
 
 	ComponentesDesconhecidos []string
 }
@@ -114,8 +151,13 @@ func decomposeWithLimiar(in DecomposeInput, limiar *big.Rat) Decomposition {
 	}
 
 	// running sum of the KNOWN component rats (for the exact soma-fecha).
-	sum := new(big.Rat).Add(comissaoRat, impostoRat)
-	sum.Add(sum, taxaFixaRat)
+	// impostoRat joins the sum only when ICMSCell is nil (D-38/D-41): when
+	// the matrix cell is present, ICMSSaida takes Imposto's place below —
+	// summing both would double-count the same tax.
+	sum := new(big.Rat).Add(comissaoRat, taxaFixaRat)
+	if in.ICMSCell == nil {
+		sum.Add(sum, impostoRat)
+	}
 	var unknown []string
 
 	// frete: applied only when preço ≥ limiar.
@@ -131,18 +173,52 @@ func decomposeWithLimiar(in DecomposeInput, limiar *big.Rat) Decomposition {
 		sum.Add(sum, r)
 	}
 
-	// difal: off ⇒ 0 explicit; on+destino known ⇒ efetivo × preço; on+destino
-	// unknown ⇒ UNKNOWN.
-	if !in.DifalEnabled {
-		s, r := round2(new(big.Rat))
-		out.Difal = &s
-		sum.Add(sum, r)
-	} else if in.DestinoUF == "" || in.EfetivoPct == "" {
-		unknown = append(unknown, "difal")
+	if in.ICMSCell == nil {
+		// difal (old path): off ⇒ 0 explicit; on+destino known ⇒ efetivo ×
+		// preço; on+destino unknown ⇒ UNKNOWN.
+		if !in.DifalEnabled {
+			s, r := round2(new(big.Rat))
+			out.Difal = &s
+			sum.Add(sum, r)
+		} else if in.DestinoUF == "" || in.EfetivoPct == "" {
+			unknown = append(unknown, "difal")
+		} else {
+			s, r := pctOfPrice(in.EfetivoPct, preco)
+			out.Difal = &s
+			sum.Add(sum, r)
+		}
 	} else {
-		s, r := pctOfPrice(in.EfetivoPct, preco)
-		out.Difal = &s
-		sum.Add(sum, r)
+		// D-41: ICMSSaida/Difal/PisCofins/RestituicaoST all come from the
+		// single collapsed rate `a` — "uma fonte, duas linhas" for
+		// ICMSSaida/Difal, plus PisCofins and the RestituicaoST credit.
+		// RestituicaoST is the one component that SUBTRACTS from sum
+		// (ADDS to margem) — it is a credit back to the seller, not a cost.
+		tax := TaxesForItem(in.Preco, in.ICMSCell)
+		out.ICMSSaida = tax.ICMSSaida
+		out.Difal = tax.Difal
+		out.PisCofins = tax.PisCofins
+		out.RestituicaoST = tax.RestituicaoST
+
+		if tax.ICMSSaida == nil {
+			unknown = append(unknown, "icms_saida")
+		} else {
+			sum.Add(sum, mustRat(*tax.ICMSSaida))
+		}
+		if tax.Difal == nil {
+			unknown = append(unknown, "difal")
+		} else {
+			sum.Add(sum, mustRat(*tax.Difal))
+		}
+		if tax.PisCofins == nil {
+			unknown = append(unknown, "pis_cofins")
+		} else {
+			sum.Add(sum, mustRat(*tax.PisCofins))
+		}
+		if tax.RestituicaoST == nil {
+			unknown = append(unknown, "restituicao_st")
+		} else {
+			sum.Sub(sum, mustRat(*tax.RestituicaoST))
+		}
 	}
 
 	// tarifa_full: full ⇒ CalcProfile.tarifa_full (nil ⇒ UNKNOWN); other
