@@ -106,6 +106,29 @@ diff de conjunto (code/id/path) vs baseline do main tip" — que nenhum doc pres
 Conserto: hub salda (ou baseline-a formalmente) as 51; até lá, o critério de diff de
 conjunto entra no profile como regra escrita. (CHIP-VENDAVEL A-30.)
 
+**B-9b. O critério de diff de conjunto foi executado pela primeira vez em 2026-08-03 — e o
+método é a parte que importa.** A sessão F-A1b mediu o base `b759e2d7` e o merge `6147c0d1`
+**cada um em seu próprio worktree destacado fora da árvore do repo**, com o gomodcache
+espelhado nos dois (go.sum idêntico conferido antes). Diff de `(error_code, id)`: **vazio nos
+dois sentidos, 46 chaves únicas idênticas**. Baseline canônico atual, portanto: **46 chaves no
+tip pré-merge `b759e2d7`**, e é este número — não os 17/18/51/68 que circularam — que serve de
+referência, porque é o único medido em ambiente equivalente dos dois lados.
+
+O achado do caminho vale mais que o veredito: a primeira tentativa, medindo o merge **direto no
+checkout main**, acusou 2 violações NOVAS que não existem — `GOV_MODULE_DEPENDENCY market-sync`
+e `RCFG_DYNAMIC_READER_UNBOUNDED dynamic-reader`. Não era o merge e não era o gomodcache
+(descartado copiando-o para o worktree base: resultado não mudou). Era o ambiente: o checkout
+main tinha `.gocache` aquecido de builds anteriores **e trabalho não-commitado de outra sessão
+na árvore de trabalho** no instante da medição.
+
+Isso é uma terceira consequência da mesma raiz do B-10/B-10b, e a pior das três: B-10 custa
+tempo, B-10b enterra o sinal em ruído, **B-9b fabrica violação que não existe e a atribui ao
+diff em julgamento**. Um chip que confie nesse número é reprovado por trabalho alheio, ou —
+pior no sentido inverso — um chip cuja violação real seja mascarada por ruído passa. Regra que
+sai daqui: **medição de governança comparativa nunca acontece no checkout main.** Os dois lados
+vão para worktrees destacados fora da árvore do repo, com cache equivalente, e o veredito só
+vale se disser de qual árvore e de qual SHA cada lado veio. (Medição F-A1b, Task 6.)
+
 **B-10. Policy scan varre untracked pesado do checkout — lane trava >20min.** A enumeração
 de arquivos da `Policy.psm1` só exclui `.git|.mnfs|node_modules|.gomodcache|scripts/.runs|
 scripts/tests|contracts/governance`; dumps untracked (`docs/design/evidence/ml-api/`) entram
