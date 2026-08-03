@@ -143,9 +143,9 @@ func TestReadServiceSummaryExceptionCounters(t *testing.T) {
 	}}
 	f := &fakeFacts{costs: map[int64]*ports.CostFact{10: {Amount: ptr(50)}, 30: {Amount: ptr(250)}, 40: {Amount: ptr(300)}}, ceilings: map[int64]*ports.ICMSCeiling{8: {Percent: ptr(22)}}}
 	ev := &fakeEvidence{signals: []ports.EvidenceSignal{
-		{ListingID: "i~L1~-", TargetPrice: money("80")},
-		{ListingID: "i~L2~-", TargetPrice: money("10")},
-		{ListingID: "i~L4~-", TargetPrice: money("150")},
+		{ListingID: "i~L1~-", TargetPrice: money("80"), FetchedAt: time.Now()},
+		{ListingID: "i~L2~-", TargetPrice: money("10"), FetchedAt: time.Now()},
+		{ListingID: "i~L4~-", TargetPrice: money("150"), FetchedAt: time.Now()},
 	}}
 	got, err := NewReadServiceWithEvidence(&fakeRows{summary: base}, f, fakePolicy{found: true}, fakeInstallation(true), time.Now, ev).Summary(context.Background(), ports.SummaryQuery{InstallationID: "i"})
 	if err != nil {
@@ -984,6 +984,33 @@ func TestReadServiceEnrichSignalsStaleAgeRetainsEvidence(t *testing.T) {
 	}
 }
 
+// TestReadServiceEnrichSignalsSynthesizedEmptySignalDegradesNoPriceEvidence
+// reproduces the F-A3 live-drive defect: market's EvidenceReadService.Signals
+// honest-empty synthesis (ADR-17) returns AN entry for every requested
+// listing even when no real CompetitiveSignal was ever collected — so
+// map-presence alone can no longer mean "found". Before the fix, a
+// zero-value FetchedAt entry still built a MarketSignal, and the FE rendered
+// its fabricated 0001-01-01 evidence as a multi-century-old timestamp
+// (fetched_at "0001-01-01T00:00:00Z"). A synthesized placeholder must
+// degrade to NO_PRICE_EVIDENCE with a nil MarketSignal, exactly like a true
+// map-miss.
+func TestReadServiceEnrichSignalsSynthesizedEmptySignalDegradesNoPriceEvidence(t *testing.T) {
+	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
+	items := []domain.ListingReadModel{linkedItem("L1", "100")}
+	r := &fakeRows{pages: []ports.ListingRowPage{{Items: items}}}
+	f := &fakeFacts{costs: map[int64]*ports.CostFact{}, ceilings: map[int64]*ports.ICMSCeiling{}}
+	ev := &fakeEvidence{signals: []ports.EvidenceSignal{{ListingID: "L1"}}, verdicts: []ports.EvidenceVerdict{{ProductID: "100", MatchStatus: "NO_CANDIDATE"}}}
+	s := NewReadServiceWithEvidence(r, f, fakePolicy{found: true}, fakeInstallation(true), func() time.Time { return now }, ev)
+	p, err := s.List(context.Background(), ports.ListingQuery{InstallationID: "i", Limit: 50})
+	if err != nil {
+		t.Fatal(err)
+	}
+	item := p.Items[0]
+	if item.SignalStatus != domain.SignalStatusNoPriceEvidence || item.MarketSignal != nil {
+		t.Fatalf("synthesized empty signal (zero FetchedAt) must degrade to NO_PRICE_EVIDENCE with nil signal, got status=%s signal=%+v", item.SignalStatus, item.MarketSignal)
+	}
+}
+
 func TestReadServiceWithoutEvidenceSkipsEnrichmentUnchanged(t *testing.T) {
 	items := []domain.ListingReadModel{linkedItem("L1", "100"), unlinkedItem("L2")}
 	r := &fakeRows{pages: []ports.ListingRowPage{{Items: items}}}
@@ -1030,8 +1057,8 @@ func TestReadServiceAbaixoCustoAndSemEvidenciaFiltersScanAndMatch(t *testing.T) 
 	items := []domain.ListingReadModel{linkedItem("L1", "100"), linkedItem("L2", "200"), linkedItem("L3", "300")}
 	f := &fakeFacts{costs: map[int64]*ports.CostFact{100: {Amount: ptr(300)}, 200: {Amount: ptr(50)}}, ceilings: map[int64]*ports.ICMSCeiling{}}
 	ev := &fakeEvidence{signals: []ports.EvidenceSignal{
-		{ListingID: "L1", TargetPrice: money("150")}, // 150 < cost 300: below cost
-		{ListingID: "L2", TargetPrice: money("90")},  // 90 > cost 50: not below cost
+		{ListingID: "L1", TargetPrice: money("150"), FetchedAt: time.Now()}, // 150 < cost 300: below cost
+		{ListingID: "L2", TargetPrice: money("90"), FetchedAt: time.Now()},  // 90 > cost 50: not below cost
 	}}
 
 	t.Run("abaixo_custo", func(t *testing.T) {

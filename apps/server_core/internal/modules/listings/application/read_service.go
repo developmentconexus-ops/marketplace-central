@@ -150,9 +150,14 @@ func (s ReadService) Summary(ctx context.Context, query ports.SummaryQuery) (por
 			continue
 		}
 		sig, hasSignal := signals[linked.ListingID]
-		if !hasSignal {
+		if !hasSignal || sig.FetchedAt.IsZero() {
 			// No per-listing signal for an already-linked row is exactly
-			// NO_PRICE_EVIDENCE (ADR-17): linked but no market evidence.
+			// NO_PRICE_EVIDENCE (ADR-17): linked but no market evidence. The
+			// market module's honest-empty synthesis (D-F4-adjacent) means
+			// the port always returns AN entry per requested listing —
+			// map-miss alone can't tell "no evidence" apart from "found";
+			// a synthesized placeholder never carries a real FetchedAt, so
+			// zero is the only reliable signal that nothing was collected.
 			semEvidencia++
 			continue
 		}
@@ -633,6 +638,12 @@ func (s ReadService) enrichSignals(ctx context.Context, items []domain.ListingRe
 		}
 		codprod := *item.Link.ProductID
 		sig, hasSignal := bySignal[item.ListingID]
+		// Same honest-empty caveat as summarySignals above: a synthesized
+		// placeholder (no real competitive signal ever collected) always
+		// has a zero FetchedAt, never a valid one (domain.NewCompetitiveSignal
+		// rejects zero FetchedAt) — so it must not build a MarketSignal with
+		// a fabricated evidence timestamp (ADR-17).
+		hasSignal = hasSignal && !sig.FetchedAt.IsZero()
 		var signal *domain.MarketSignal
 		if hasSignal {
 			agg := byAggregate[codprod]
