@@ -87,9 +87,14 @@ IngestOrder estendido daqui.
 
 ## Handoff
 
-- Current status: planned.
-- Next owner: Milestone Orchestrator (hub) — lane C após M-03.
-- Next action: F-01 spec.
+- Current status: planned. Prep CLOSED: P2 "fios cortados em /pedidos" —
+  [_evidence/p2-fios-cortados-CLOSED.md](_evidence/p2-fios-cortados-CLOSED.md), branch
+  `worktree-p2-dinheiro-real-pedidos` (7 commits, base `70523e92`, tip `e338b279`), merge
+  pendente. Corrige currency/fulfillment/logistic_type/tracking_method/cancellation_detail
+  no read model de `/pedidos` — NÃO toca M06-C1..C6 (backfill/decomposição/margem seguem
+  Pending; margem já media 33/38 antes deste prep, fato re-medido não construído).
+- Next owner: Milestone Orchestrator (hub) — decidir merge do prep, depois lane C após M-03.
+- Next action: hub aprova/mergeia o prep; então F-01 spec.
 - Required files/evidence: `validation-contract.md` (P6), `validation-result.md`.
 - Blockers or open decisions: none.
 
