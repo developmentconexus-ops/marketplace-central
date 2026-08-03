@@ -9,3 +9,12 @@ package composition
 // It keeps sync_state's (tenant, installation, entity) key well-formed without
 // fabricating an ML installation id.
 const InstallationScopeERP = "erp"
+
+// InstallationScopeMarket is the installation_id used for the tenant-wide
+// market-evidence collection job (F-A3). market_aggregates is keyed by
+// (tenant_id, product_id, source) — not per marketplace installation — so this
+// mirrors InstallationScopeERP's sentinel rather than a real installation id.
+// Named (not inlined) so a future producer keying sync_state.entity="market"
+// under a different installation_id shows up in a grep for this constant
+// instead of colliding invisibly (see migration 0093).
+const InstallationScopeMarket = "market"

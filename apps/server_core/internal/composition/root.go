@@ -727,7 +727,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	// instead of staying invisible.
 	marketSyncScheduler := syncapp.NewScheduler(
 		syncpg.NewSyncStateRepository(pool, cfg.DefaultTenantID),
-		"market", 30*time.Minute, time.Now,
+		synccomposition.InstallationScopeMarket, 30*time.Minute, time.Now,
 	)
 	if err := marketSyncScheduler.RegisterJob(
 		syncdomain.EntityMarket,

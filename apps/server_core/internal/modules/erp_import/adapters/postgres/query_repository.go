@@ -150,7 +150,7 @@ func (r *Repository) GetImportChain(ctx context.Context, tenantID string, import
 			JOIN import_products AS products
 			  ON products.codprod = pending.codprod
 			WHERE state.tenant_id = $1
-			  AND state.entity = 'market'
+			  AND state.entity = 'market_queue'
 		)
 		-- importados and enfileirados count import ROWS; vinculados counts linked
 		-- internal PRODUCTS. All three differ without any duplicate: a row may

@@ -58,8 +58,8 @@ func TestMarketEnqueuerEnqueuesEveryCodeForEveryInstallation(t *testing.T) {
 
 	// One batched append per installation carrying every code, in order.
 	wantCalls := []appendCall{
-		{installationID: "inst-a", entity: syncdomain.EntityMarket, codigos: []string{"100", "200", "300"}},
-		{installationID: "inst-b", entity: syncdomain.EntityMarket, codigos: []string{"100", "200", "300"}},
+		{installationID: "inst-a", entity: syncdomain.EntityMarketQueue, codigos: []string{"100", "200", "300"}},
+		{installationID: "inst-b", entity: syncdomain.EntityMarketQueue, codigos: []string{"100", "200", "300"}},
 	}
 	if !reflect.DeepEqual(appender.calls, wantCalls) {
 		t.Fatalf("append calls = %#v, want %#v", appender.calls, wantCalls)
