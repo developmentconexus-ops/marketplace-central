@@ -896,6 +896,63 @@ func TestRefreshCredentialBacksOffTransientFailure(t *testing.T) {
 	}
 }
 
+func TestRefreshCredentialTerminalFailureRequiresReauth(t *testing.T) {
+	t.Parallel()
+
+	fx := newRefreshFixture(t, 0, domain.ErrRefreshTokenInvalid)
+
+	_, _ = fx.svc.RefreshCredential(context.Background(), RefreshCredentialInput{InstallationID: "inst-ml"})
+
+	if len(fx.installations.connectionSnapshots) != 1 {
+		t.Fatalf("snapshots aplicados = %d, want 1: a tela continua verde com token morto", len(fx.installations.connectionSnapshots))
+	}
+	snap := fx.installations.connectionSnapshots[0]
+	if snap.State != domain.ConnectionStateNeedsReauth {
+		t.Fatalf("State = %q, want %q", snap.State, domain.ConnectionStateNeedsReauth)
+	}
+	if snap.Health != domain.HealthStatusCritical {
+		t.Fatalf("Health = %q, want %q", snap.Health, domain.HealthStatusCritical)
+	}
+	if snap.NextAction != domain.ConnectionNextActionReauth {
+		t.Fatalf("NextAction = %q, want %q", snap.NextAction, domain.ConnectionNextActionReauth)
+	}
+	if snap.ReauthReason == "" {
+		t.Fatal("ReauthReason vazio: a tela não teria o que dizer ao operador")
+	}
+}
+
+func TestRefreshCredentialSingleTransientFailureDoesNotDegrade(t *testing.T) {
+	t.Parallel()
+
+	// Controle negativo: uma falha transitória isolada não pode pintar a conta.
+	fx := newRefreshFixture(t, 0, domain.ErrRefreshProviderError)
+
+	_, _ = fx.svc.RefreshCredential(context.Background(), RefreshCredentialInput{InstallationID: "inst-ml"})
+
+	if len(fx.installations.connectionSnapshots) != 0 {
+		t.Fatalf("snapshots aplicados = %d, want 0 numa única falha transitória", len(fx.installations.connectionSnapshots))
+	}
+}
+
+func TestRefreshCredentialTransientFailuresOverThresholdDegrade(t *testing.T) {
+	t.Parallel()
+
+	fx := newRefreshFixture(t, domain.DefaultRefreshPolicy().MaxConsecutiveFailures, domain.ErrRefreshProviderError)
+
+	_, _ = fx.svc.RefreshCredential(context.Background(), RefreshCredentialInput{InstallationID: "inst-ml"})
+
+	if len(fx.installations.connectionSnapshots) != 1 {
+		t.Fatalf("snapshots aplicados = %d, want 1 acima do limite de falhas", len(fx.installations.connectionSnapshots))
+	}
+	snap := fx.installations.connectionSnapshots[0]
+	if snap.State != domain.ConnectionStateDegraded {
+		t.Fatalf("State = %q, want %q", snap.State, domain.ConnectionStateDegraded)
+	}
+	if snap.NextAction != domain.ConnectionNextActionRetry {
+		t.Fatalf("NextAction = %q, want %q", snap.NextAction, domain.ConnectionNextActionRetry)
+	}
+}
+
 func TestRefreshCredentialPassesShopeeProviderAccountContextAndPreservesLinkage(t *testing.T) {
 	t.Parallel()
 

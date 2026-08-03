@@ -513,7 +513,59 @@ func (s *AuthFlowService) recordRefreshFailure(
 		ConsecutiveFailures:  failures,
 		NextRetryAt:          &nextRetryAt,
 	})
-	return err
+	if err != nil {
+		return err
+	}
+
+	return s.degradeAfterRefreshFailure(ctx, inst, cause, failures, policy)
+}
+
+// degradeAfterRefreshFailure move a instalação para o estado que a tela sabe
+// mostrar. Nada aqui projeta snapshot na mão: ProjectConnectionSnapshot
+// (domain/connection_snapshot.go:102-127) já mapeia RequiresReauth -> needs_reauth
+// + next_action reauth e Degraded -> degraded + next_action retry. O idiom de
+// montar uma Installation com o novo status e aplicá-la é o mesmo de Disconnect
+// (auth_flow_service.go:492-514).
+func (s *AuthFlowService) degradeAfterRefreshFailure(
+	ctx context.Context,
+	inst domain.Installation,
+	cause error,
+	failures int,
+	policy domain.RefreshPolicy,
+) error {
+	var status domain.InstallationStatus
+	var health domain.HealthStatus
+
+	switch {
+	case domain.ClassifyRefreshError(cause) == domain.ErrorClassTerminal:
+		// Refresh token revogado: nenhum retry conserta, só reautorização.
+		status = domain.InstallationStatusRequiresReauth
+		health = domain.HealthStatusCritical
+	case failures > policy.MaxConsecutiveFailures:
+		// Transitório persistente. Ainda pode voltar sozinho, então degraded
+		// (next_action retry) e não requires_reauth.
+		status = domain.InstallationStatusDegraded
+		health = domain.HealthStatusWarning
+	default:
+		// Falha transitória isolada não muda o estado da conta. Ela já está
+		// registrada na sessão (consecutive_failures) e já tem next_retry_at;
+		// pintar a tela de amarelo a cada soluço de rede treinaria o operador
+		// a ignorar o aviso justamente quando ele for verdadeiro.
+		return nil
+	}
+
+	degraded := inst
+	degraded.Status = status
+	degraded.HealthStatus = health
+	degraded.UpdatedAt = s.clock.Now().UTC()
+
+	snapshot := domain.ProjectConnectionSnapshot(
+		degraded,
+		inferConnectionAuthStrategy(inst.ConnectionSnapshot),
+		inst.ConnectionSnapshot.ExpiresAt,
+		cause.Error(),
+	)
+	return s.installations.ApplyConnectionSnapshot(ctx, inst.InstallationID, snapshot, "")
 }
 
 func (s *AuthFlowService) Disconnect(ctx context.Context, input DisconnectInput) (AuthStatus, error) {
