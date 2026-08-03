@@ -233,7 +233,7 @@ Sem isso a operação diária não existe.
 | `F-A1` | Falha de refresh vira fato: grava `RefreshFailureCode`/`ConsecutiveFailures`, `ClassifyRefreshError` ganha chamador, `HealthStatus` sai de `Healthy`, `/integracoes` mostra | §5.1 |
 | `F-A2` | `RunOnce` para de abortar o lote no primeiro erro | `refresh_ticker.go:37-51,64` |
 | `F-00` | Scheduler periódico de pedidos — **bloqueado por `D-16`** | `root.go:597-600` |
-| `F-A3` | Coleta de mercado passa a ter job periódico. Se o operador decidir que permanece manual, a fatia vira idade visível em toda linha de `/mercado` — mas a decisão é tomada **antes** de a fatia começar, não durante | §5.2 |
+| `F-A3` | Coleta de mercado ganha job periódico **e** idade visível em toda linha de `/mercado`. Decisão do operador em 2026-08-03: as duas coisas, não uma ou outra — job resolve o dado velho, idade visível resolve a confiança quando o job falha | §5.2 |
 
 ### Onda 1 — remoção
 
@@ -346,10 +346,27 @@ Cada onda abre com uma sessão curta de decisão, sobre uma lista conhecida **an
 
 | onda | decisão | quem decide |
 |---|---|---|
-| 0 | `F-A3`: coleta de mercado vira job periódico ou permanece manual | operador |
+| 0 | ~~`F-A3`: job periódico ou manual~~ — **RESOLVIDA 2026-08-03: job periódico e idade visível, as duas** | operador |
 | 1 | `F-08`: das 11 operações, quais morrem e quais ganham tela — 11 decisões independentes | operador |
 | 1 | `F-06`: `decompose` e `BuildProfitability` permanecem separados (simulação × realizado) ou convergem | operador, com medição de paridade na mesa |
 | 2 | `F-03`: escopo real após a re-medição pós-merge | derivado da medição |
+
+### 12.2.1 Sequenciamento contra o P2.b em voo
+
+Decisão do operador em 2026-08-03, medida contra `git diff main...p2b-imposto-ex-ante` (`be8fc56c`, 21 arquivos, +2611 linhas).
+
+O branch do P2.b reescreve exatamente os arquivos da Onda 1:
+
+- `pricing/domain/decompose.go` (+122) — arquivo central do `F-06`
+- `internal_read/adapters/oracle/sync.go` (+95) — arquivo do `D-17` fiscal, bloqueio de `F-06` e `F-09`
+- `pricing/ports/tax_matrix.go`, `pricing/adapters/postgres/matrix_reader.go` — portas e adapters novos no mesmo módulo
+- `migrations/0093_icms_matrix.sql` — a colisão que a Task 0 renumera para `0097`
+
+Além de colidir, o P2.b pode **encerrar sozinho** o `D-21` (SIMPLES 4% fabricado) e o `D-38` (campo `Imposto`), os dois bloqueios do `F-06`.
+
+A Onda 0 é disjunta: `F-A1` e `F-A2` vivem em `integrations/`, `F-A3` em `market/`, `F-00` em `sync/`+`orders/`. Zero arquivos em comum com o branch.
+
+**Regra de sequenciamento:** a Onda 0 é planejada e executada imediatamente. A Onda 1 só é planejada depois de o P2.b aterrissar na `main`, e o primeiro passo do seu plano é **re-medir `decompose.go`** — a medição da §4 classe 6 e da §6 vale para o estado de 2026-08-03 e expira no merge.
 
 Descoberta imprevista durante a implementação continua existindo — é o que os eventos `ESCALATION`/`REQUEST` do harness carregam. A regra é que **decisão previsível não vire interrupção**.
 
