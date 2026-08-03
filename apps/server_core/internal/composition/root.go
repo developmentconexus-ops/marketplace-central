@@ -92,6 +92,7 @@ import (
 	orderspricingtax "marketplace-central/apps/server_core/internal/modules/orders/adapters/pricingtax"
 	ordersproductlinks "marketplace-central/apps/server_core/internal/modules/orders/adapters/productlinks"
 	ordersapp "marketplace-central/apps/server_core/internal/modules/orders/application"
+	orderscomposition "marketplace-central/apps/server_core/internal/modules/orders/composition"
 	orderstransport "marketplace-central/apps/server_core/internal/modules/orders/transport"
 	pricingcatalog "marketplace-central/apps/server_core/internal/modules/pricing/adapters/catalog"
 	pricingcostread "marketplace-central/apps/server_core/internal/modules/pricing/adapters/costread"
@@ -777,6 +778,19 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	// listings backfill run is scoped to one specific InstallationAccount.
 	listingscomposition.NewListingsSchedulers(
 		pool, 24*time.Hour, installationSvc, marketplaceCapabilities, productLinkImportSvc, listingRepo,
+	).StartAll(context.Background())
+	// Pedidos entram sozinhos a cada 15 minutos, em janela incremental. O
+	// intervalo é curto (contra as 24h de listings) porque pedido é o dado
+	// operacional do dia: o custo de um ciclo quieto é UMA chamada ao provider
+	// (a busca com order.date_last_updated.from), contra 900/min de bucket
+	// compartilhado.
+	orderscomposition.NewOrdersSchedulers(
+		pool,
+		15*time.Minute,
+		50,            // pageSize: mesmo default do adapter ML
+		5*time.Minute, // sobreposição contra skew de relógio; ingest é upsert
+		installationSvc,
+		ordersImportSvc,
 	).StartAll(context.Background())
 
 	mutationLane := mutationLane{envelope: mutationEnvelope}
