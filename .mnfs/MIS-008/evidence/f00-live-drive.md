@@ -1,9 +1,29 @@
 # F-00 — Task 9 live drive: `/integracoes`
 
-Status: **DESBLOQUEADO via hub** (`local_002d928a-48e6-4f41-b5e8-86bc00e01cb6`), coordenado
-por REQUEST em fila com a sessão FA3. Ver "Continuação pós-desbloqueio" no fim deste arquivo
-para o andamento atual. A seção abaixo é o registro original do bloqueio (preservado como
-histórico — o diagnóstico dela é o que motivou o REQUEST ao hub).
+Status: **FECHADO** (Steps 1-8 completos, SHA `7137cee4`). Coordenado com o hub
+(`local_002d928a-48e6-4f41-b5e8-86bc00e01cb6`) via REQUEST em fila com a sessão FA3. Ver
+"Continuação pós-desbloqueio" no fim deste arquivo para o andamento. A seção logo abaixo é
+o registro original do bloqueio (preservado como histórico — o diagnóstico dela é o que
+motivou o REQUEST ao hub).
+
+### Identidade do container por medição (backend trocou de dono 3x em ~90min)
+
+Postgres (`marketplace-central-postgres-1`, `Created=2026-07-20T19:46:22-03:00`) **nunca
+trocou** durante toda a sessão — toda leitura SQL direta abaixo (dumps de `sync_state`,
+contagens de `orders_marketplace_orders`) é verdade de banco independente de qual backend
+estava montado no momento. O que depende da identidade do backend é só se um CICLO NOVO do
+scheduler rodou ou não entre duas leituras.
+
+| Janela (UTC)         | Backend `Created`                  | `.git` aponta para              | Serviu qual medição |
+|----------------------|-------------------------------------|----------------------------------|----------------------|
+| até 20:53:29Z         | `2026-08-03T19:51:45.8846834Z`      | main, tip `62b5d5d4`             | Registro original do bloqueio (Step 2 original) — prova de que o binário era o ERRADO |
+| 20:53:29Z–21:04:35Z   | (recriado, worktree f00)            | `f00-scheduler-pedidos`, tip `83c3ee40` | Janela 1, 11 min — ticker de 15min nunca disparou aqui; nenhuma medição de sucesso usada desta janela |
+| 21:04:35Z–21:28:26Z   | (recriado pela sessão F-A1b)        | `main`                           | Nenhuma medição usada — descartado explicitamente (ver "Interrupção de janela") |
+| 21:28:40Z–22:14:01Z+  | `2026-08-03T21:28:40.706782975Z`    | `f00-scheduler-pedidos`, tip `83c3ee40` (confirmado via `cat /workspace/.git`) | Step 3 "antes" (leitura SQL, independe do backend), Step 4/5 (1º ciclo verde, `run_started_at=21:43:54Z`), Step 6 (mutação, vermelho `21:58:55Z`, restauração `22:00:10Z`, verde de volta `22:13:56Z`), Step 7 (comparação com baseline). Confirmado sem troca no intervalo inteiro — mesmo `Created` antes e depois do Step 6. |
+
+Toda medição citada como prova de sucesso/falha do scheduler desta fatia (Steps 3-7) vem
+exclusivamente da janela `21:28:40Z+`, a única onde `.git` do container confere com este
+worktree do início ao fim sem interrupção.
 
 ## Registro original (BLOQUEADO no Step 2, antes da coordenação com o hub)
 
