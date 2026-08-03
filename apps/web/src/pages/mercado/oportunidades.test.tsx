@@ -96,6 +96,20 @@ describe("buildOppRows", () => {
   });
 });
 
+describe("buildOppRows — fetchedAt", () => {
+  it("carrega a idade do agregado para a linha", () => {
+    const rows = buildOppRows([fact90008()], [agg90008()], [verdict90008()]);
+    expect(rows[0].fetchedAt).toBe("2026-07-19T06:00:00Z");
+  });
+
+  it("renderiza a idade na linha de Oportunidades", () => {
+    const rows = buildOppRows([fact90008()], [agg90008()], [verdict90008()]);
+    render(<OportunidadesTable rows={rows} />);
+    // O agregado é de 2026-07-19; qualquer "agora" seria idade fabricada.
+    expect(screen.getAllByLabelText("Atualização dos dados")[0]).toHaveTextContent(/^há \d+ d$/);
+  });
+});
+
 describe("chunk", () => {
   it("splits into ordered batches no larger than the /market MaxReadIDs cap, preserving order", () => {
     // 5 ids at size 2 → [[a,b],[c,d],[e]] — order preserved so the concatenated per-chunk
