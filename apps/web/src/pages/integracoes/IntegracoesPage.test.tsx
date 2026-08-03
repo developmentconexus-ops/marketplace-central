@@ -51,6 +51,8 @@ const getSellableAssortment = vi.fn();
 const setSellableAssortment = vi.fn();
 const getCatalogAssortmentCounts = vi.fn();
 const listIntegrationInstallations = vi.fn();
+const createIntegrationInstallation = vi.fn();
+const startIntegrationAuthorization = vi.fn();
 
 vi.mock("../../app/ClientContext", () => ({
   useClient: () => ({
@@ -63,6 +65,8 @@ vi.mock("../../app/ClientContext", () => ({
     setSellableAssortment: (...args: unknown[]) => setSellableAssortment(...args),
     getCatalogAssortmentCounts: (...args: unknown[]) => getCatalogAssortmentCounts(...args),
     listIntegrationInstallations: (...args: unknown[]) => listIntegrationInstallations(...args),
+    createIntegrationInstallation: (...args: unknown[]) => createIntegrationInstallation(...args),
+    startIntegrationAuthorization: (...args: unknown[]) => startIntegrationAuthorization(...args),
   }),
 }));
 
@@ -128,6 +132,8 @@ describe("IntegracoesPage", () => {
     setSellableAssortment.mockReset();
     getCatalogAssortmentCounts.mockReset();
     listIntegrationInstallations.mockReset();
+    createIntegrationInstallation.mockReset();
+    startIntegrationAuthorization.mockReset();
     // Stateful like the server: a successful PUT changes what the next GET
     // returns, so the blanket post-write invalidation re-reads the new source.
     let stored = "xlsx";
@@ -457,18 +463,27 @@ describe("IntegracoesPage", () => {
     await waitFor(() => expect(setActiveSource).toHaveBeenCalledWith({ active_source: "sankhya" }));
   });
 
-  it("offers the Mercado Livre connect button and starts no flow until it is clicked", () => {
+  it("offers the Mercado Livre connect button and starts no flow until it is clicked", async () => {
     renderPage();
     const connect = screen.getByTestId("provider-connect-ml");
     expect(connect).toBeEnabled();
     expect(connect).toHaveTextContent("Conectar");
-    // listIntegrationInstallations is no longer a signal exclusive to the
+    // listIntegrationInstallations stopped being a signal exclusive to the
     // connect click: ConnectionHealthCard (Task 6, F-A1/F-A2) reads
     // useInstallation(), whose InstallationProvider fetches the list eagerly
-    // on mount to render connection health for every installation, connect
-    // flow or not. The invariant this test actually cares about — clicking
-    // is required before anything starts — is covered by "busy" staying
-    // false and the label staying "Conectar" (ProviderConnectCard.connect()
-    // flips both synchronously on click, before any await).
+    // on mount, connect flow or not. The invariant is unchanged, so it moves
+    // to the two calls connect() (IntegracoesPage.tsx:503) makes that nothing
+    // else in the tree makes: createIntegrationInstallation (:522) and
+    // startIntegrationAuthorization (:529). The latter is unconditional on
+    // that path — it is the redirect to the ML consent screen — so it cannot
+    // be reached without a click.
+    //
+    // connect() only reaches those two after awaiting the list call, so a
+    // synchronous assertion here would pass even with a flow already running.
+    // Wait for the provider's own list fetch to settle first: that flushes the
+    // microtask queue a leaked connect() would also have been sitting in.
+    await waitFor(() => expect(listIntegrationInstallations).toHaveBeenCalled());
+    expect(createIntegrationInstallation).not.toHaveBeenCalled();
+    expect(startIntegrationAuthorization).not.toHaveBeenCalled();
   });
 });
