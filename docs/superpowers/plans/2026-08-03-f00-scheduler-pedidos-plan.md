@@ -88,7 +88,7 @@ Quebrado hoje: `SELECT entity FROM sync_state WHERE installation_id = 'inst-merc
 
 ### 9. Governança
 
-Réplica local do checker (`Test-GovernanceDrift` em `scripts/harness/Policy.psm1`) mediu, na main: **11 `GOV_MODULE_DEPENDENCY` + 9 `GOV_MODULE_LAYER`**. A main é **baseline vermelha conhecida** — a nota de `temporary_exceptions` em `contracts/governance/modules.json` (`module-edge-tenant-config-erp-import-adapter`) fala de "main tip baseline 55 violations… strict subset, zero new". O gate compara com o baseline; ele não exige zero.
+Baseline real da lane de governança (`npm run harness:governance -BaseSha 6bd22c29`) mediu, na main: **17 `GOV_MODULE_DEPENDENCY` + 9 `GOV_MODULE_LAYER`**. A main é **baseline vermelha conhecida** — a nota de `temporary_exceptions` em `contracts/governance/modules.json` (`module-edge-tenant-config-erp-import-adapter`) fala de "main tip baseline 55 violations… strict subset, zero new". O gate compara com o baseline; ele não exige zero.
 
 Dois desses achados são de `listings`:
 - `listings/application/backfill.go` importa `sync/application` — `listings.dependencies` não declara `sync` → `GOV_MODULE_DEPENDENCY`.
@@ -96,7 +96,6 @@ Dois desses achados são de `listings`:
 
 **Consequência direta para F-00:** copiar o padrão de `listings` verbatim adiciona as mesmas duas violações em `orders`. O plano evita isso expondo um construtor em `sync/composition` (camada permitida) e declarando a aresta `orders → sync` em `modules.json` — e de quebra fecha as de `listings`, entregando **subconjunto estrito**, não só "zero novas".
 
-> ⚠️ Este veredito é da réplica, não da lane real (a execução de `Test-GovernanceDrift` estourou timeout nesta sessão). **Task 0 roda a lane real e registra a contagem antes de qualquer edição.** Se a contagem real divergir da réplica, o número do baseline neste documento está errado e deve ser corrigido no plano antes de seguir.
 
 ---
 
