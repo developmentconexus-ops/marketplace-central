@@ -110,9 +110,19 @@ conjunto entra no profile como regra escrita. (CHIP-VENDAVEL A-30.)
 método é a parte que importa.** A sessão F-A1b mediu o base `b759e2d7` e o merge `6147c0d1`
 **cada um em seu próprio worktree destacado fora da árvore do repo**, com o gomodcache
 espelhado nos dois (go.sum idêntico conferido antes). Diff de `(error_code, id)`: **vazio nos
-dois sentidos, 46 chaves únicas idênticas**. Baseline canônico atual, portanto: **46 chaves no
+dois sentidos, 45 chaves únicas idênticas**. Baseline canônico atual, portanto: **45 chaves no
 tip pré-merge `b759e2d7`**, e é este número — não os 17/18/51/68 que circularam — que serve de
 referência, porque é o único medido em ambiente equivalente dos dois lados.
+
+**A lista está versionada, e é isso que impede o quinto número:**
+`.mnfs/MIS-008-operacao-diaria/FA1b-reautorizacao/_evidence/governance-baseline-b759e2d7.md`
+(commit `b7047dd1`) traz as 45 chaves `(error_code, id)` com o SHA e o método no cabeçalho.
+Quem precisar do baseline lê esse arquivo em vez de remedir. Nota de método: o número foi
+reportado primeiro como 46 e corrigido para 45 pela própria sessão — o parser contava o
+`status=failed` como bloco sem `error_code`, gerando uma chave fantasma `(None,'')`. O diff
+vazio não muda (o artefato fantasma era simétrico nos dois lados), só o total inflava em 1.
+Vale como lembrete de que **contagem agregada tem bug próprio**: a alegação que sobrevive é o
+diff de conjuntos, não o número.
 
 O achado do caminho vale mais que o veredito: a primeira tentativa, medindo o merge **direto no
 checkout main**, acusou 2 violações NOVAS que não existem — `GOV_MODULE_DEPENDENCY market-sync`
