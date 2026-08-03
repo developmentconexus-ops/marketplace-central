@@ -1106,11 +1106,13 @@ func sweepContains(t *testing.T, repo *integrationspostgres.AuthSessionRepositor
 
 - [ ] **Step 2: Rode contra o Postgres real**
 
-O `MPC_TEST_DATABASE_URL` e o Postgres efêmero são responsabilidade do hub: chips não sobem serviço. Mande `REQUEST` pedindo a lane de integração e rode:
+A lane se auto-provisiona: `Invoke-Integration` (`scripts/harness.ps1:68-88`) cria ou reusa o container Postgres, aplica as migrations embutidas e injeta `MPC_TEST_DATABASE_URL` no processo filho. **Não** exporte DSN à mão — passar `-DatabaseUrl` lança `HPG_EXTERNAL_TARGET_FORBIDDEN` de propósito. Nenhum `REQUEST` ao hub é necessário.
 
 ```bash
-scripts/harness.ps1 -Command integration
+pwsh scripts/harness.ps1 -Command integration
 ```
+
+Saída esperada no cabeçalho: `target=ephemeral-postgres`, `key=MPC_TEST_DATABASE_URL`, `migrations=embedded`, depois `migrations_second=0` (idempotência) e `status=passed`.
 
 Esperado, **antes** das Tasks 2–4 estarem aplicadas: este teste não depende delas — ele exercita repositório, não serviço. Ele tem que passar assim que for escrito. Se falhar no passo 1 com erro de CHECK constraint, o valor `refresh_failed` ou `critical` não é aceito pelo schema e a Task 3 estava errada; pare e reporte.
 
@@ -1413,7 +1415,7 @@ unreadable state instead of rendering blank (ADR-17)."
 
 Nada acima prova que o operador vê a falha. Unidade prova ramo, integração prova SQL; só esta task prova o caminho inteiro contra a conta ML real. **A fatia não fecha sem ela.**
 
-Chip não sobe servidor: peça o dev stack ao hub via `REQUEST` (doutrina, `chip-never-boots-server`). O que segue é o roteiro a executar quando o stack estiver de pé.
+Stack já de pé (verificado 2026-08-03): `marketplace-central-backend-1` healthy em `:8080`, `marketplace-central-frontend-1` em `:5174`, `marketplace-central-postgres-1` healthy em `:5435`. Chip não sobe nem derruba serviço — se o stack cair, é `REQUEST` ao hub, nunca `docker compose up` daqui.
 
 - [ ] **Step 1: Controle positivo — corrompa o refresh token da conta ML**
 
