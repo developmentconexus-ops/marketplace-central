@@ -1417,13 +1417,11 @@ Nada acima prova que o operador vê a falha. Unidade prova ramo, integração pr
 
 Stack já de pé (verificado 2026-08-03): `marketplace-central-backend-1` healthy em `:8080`, `marketplace-central-frontend-1` em `:5174`, `marketplace-central-postgres-1` healthy em `:5435`. Chip não sobe nem derruba serviço — se o stack cair, é `REQUEST` ao hub, nunca `docker compose up` daqui.
 
-> **BLOQUEADA em 2026-08-03 por duas decisões do operador, ambas medidas, não supostas.**
+> **BLOQUEADA em 2026-08-03. Uma decisão do operador ainda pendente (medida, não suposta); a segunda foi desbloqueada pela F-A1b.**
 >
-> **(1) O binário em execução é anterior à fatia.** `marketplace-central-backend-1` foi criado em `2026-08-02 10:23:30`; o primeiro commit da fatia é `8864a37a`, de `2026-08-03 12:44:25`. O container não tem a classificação `invalid_grant` (Task 1), a escrita da falha (Task 2), a degradação (Task 3) nem o log do ticker (Task 4). Contra ele, **todo observável do Step 2 ao Step 5 é impossível por construção** — e um live drive que "não mostrou nada" leria como ausência de defeito. Rebuild do backend é ação de stack: `REQUEST` ao hub, nunca daqui.
+> **(1) O binário em execução é anterior à fatia — ainda vale, re-medir no dia.** `marketplace-central-backend-1` foi criado em `2026-08-02 10:23:30`; o primeiro commit da fatia é `8864a37a`, de `2026-08-03 12:44:25`. O container não tem a classificação `invalid_grant` (Task 1), a escrita da falha (Task 2), a degradação (Task 3) nem o log do ticker (Task 4). Contra ele, **todo observável do Step 2 ao Step 5 é impossível por construção** — e um live drive que "não mostrou nada" leria como ausência de defeito. Rebuild do backend é ação de stack: `REQUEST` ao hub, nunca daqui. Este bloqueio é independente da F-A1b e continua de pé até o container ser reconstruído contra o tip atual da `main`.
 >
-> **(2) Como induzir o `invalid_grant` real.** A conta ML no dev stack está `connected`/`healthy`, sessão `valid`, access token expirando em `2026-08-03 21:48:54Z`, `consecutive_failures = 0`. Forçar `access_token_expires_at` para o passado só exercita o caminho de **sucesso** (o refresh token continua bom) — prova o ticker, não a falha. Para o vermelho existem duas rotas e as duas são do operador:
-> - **revogar a autorização do app na conta ML real** — devolve `invalid_grant` de verdade, é a prova mais forte, e custa ao operador reautorizar depois (Step 6 já cobre);
-> - **apontar `TokenURL` para um endpoint que devolve `invalid_grant`** no dev stack — mais barato e reversível, mas é mudança de env + restart, também `REQUEST` ao hub.
+> **(2) Como induzir o `invalid_grant` real — DESBLOQUEADO pela F-A1b (`6147c0d1`, commits `b6b5e329..2b47ca08`).** A rota era ambígua entre "revogar na conta real" e "apontar `TokenURL` pra um endpoint fake". A F-A1b fecha essa ambiguidade: seu Task 5 já é o mesmo live drive (revogação real + Steps 2-6 desta task, mais o botão "Reautorizar" da Task 1 substituindo o "Conectar" perigoso do Step 6 acima) — rodar o live drive da F-A1b **é** induzir o `invalid_grant` real e prova as duas fatias no mesmo evento. Não sobra "como"; sobra só "quando o operador revoga" — mesma pendência do bloqueio (1), não mais uma incógnita de método.
 
 - [ ] **Step 1: Controle positivo — corrompa o refresh token da conta ML**
 
