@@ -137,6 +137,19 @@ custos distintos, e o segundo é o caro:
    baseline `17 GOV_MODULE_DEPENDENCY + 9 GOV_MODULE_LAYER` anotado pela sessão do F-00 foi
    medido da main com o worktree dela já populado, e precisou ser remedido.
 
+**Magnitude medida depois, e é pior do que a estimativa.** A sessão F-A1b rodou a lane da main
+com BaseSha válido no mesmo dia, com 5 worktrees vivos: **589 blocos de erro, dos quais 520
+(88%) vinham de `.claude/worktrees/*` e `.worktrees/*`**. Sobraram 68 violações reais do repo.
+Ou seja, no caso silencioso a lane não degrada — ela inverte: a maior parte do que ela reporta
+é de árvore que ninguém pediu para medir, e as 68 que importam ficam enterradas. Ninguém lê 589
+blocos; lê-se o `status=failed` e conclui-se o que já se esperava. Corolário medido: os
+baselines de `GOV_MODULE_DEPENDENCY` anotados no mesmo dia por duas sessões (17 e 18) são o
+mesmo repo com contaminação diferente — nenhum dos dois serve como baseline.
+
+Paliativo que funciona e resolve o ruído para todo mundo: checar o base num worktree **fora da
+árvore do repo** (`git worktree add "$TMPDIR/gov-base-<sha>" <sha>`), nunca em
+`.claude/worktrees/`, que só acrescenta uma árvore ao ruído da própria medição.
+
 É a mesma família do "veredito que não nomeia a árvore": alarme errado duas vezes treina o
 leitor a pular a terceira. Conserto candidato: o mesmo do B-10 (enumerar por índice do git em
 vez de filtro de diretório fixo — `git ls-files` já é naturalmente escopado ao checkout) **e**
