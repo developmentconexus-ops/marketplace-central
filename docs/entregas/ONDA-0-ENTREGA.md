@@ -1,6 +1,6 @@
 # Onda 0 — Ficha de Entrega
 
-`status: FASE 1 (cadeia no código) EM CURSO — fase 2 (banco real + live drive) pendente`
+`status: FASE 1 (cadeia no código) COMPLETA — fase 2 (banco real + live drive) pendente`
 `método: docs/METODO-DE-REVISAO.md`
 `base medida: main @e66ce013 (merge de f00-scheduler-pedidos + worktree-p2-dinheiro-real-pedidos + p2b-imposto-ex-ante + fa3-idade-honesta)`
 
@@ -176,7 +176,84 @@ operador decide reprecificar olhando uma idade que não é a da evidência.
 
 ## Tela `/anuncios`
 
-*Cadeia ainda não percorrida — próximo passo da fase 1.*
+### 4.1 Colunas da linha (`AnunciosTable.tsx:180-210`)
+
+| Campo na tela | Componente:linha | Coluna Postgres / origem | Origem externa | Veredito |
+|---|---|---|---|---|
+| `provider_listing_id` | `:185` | `listings.provider_listing_id` | ML `/items` multiget | VIVO |
+| id da variação | `:186-188` | `listings.variation_id` | ML `/items` → `variations[].id` | VIVO |
+| Título (botão) | `:189-197` | `listings.title` | ML `/items` → `title` | VIVO |
+| Produto (vínculo) | `renderProductCell:65-78` | `product_links.state` / `product_id` | interno (M-05), não é ML | VIVO |
+| Preço + chip de delta | `renderPriceCell:90-132` | `listings.price_amount` + `market_signal` | ML `/items` + evidência de mercado | VIVO (condicional — ver 4.2) |
+| Qtd. publicada | `:200` | `listings.published_quantity` | ML `/items` → **`initial_quantity`** | VIVO |
+| Pill `sync_state` | `:201` | `listings.sync_state` | — (escrito pelo mapper) | **MUDO por construção — F-7** |
+| `pending_issue.message_pt` | `:202-208` | derivado (`read_service.go:769-783`) | — | VIVO parcial — F-7 mata 2 dos 4 ramos |
+| Cabeçalho: `listing_count` | `renderGroupHeader:217` | `len(group.listings)` (`read_service.go:330`, `:370`) | — | VIVO |
+| Cabeçalho: pill de erros | `renderGroupHeader` (`errorCount`) | `sync_state === "error"` | — | **FANTASMA — F-7** |
+| Estoque do ERP | *removido* | sem produtor (ADR-C1) | — | removido de propósito, documentado no componente |
+
+Uma precisão que evita um falso achado: o pill de erros do cabeçalho é calculado no FE
+sobre `group.listings`, enquanto o número do cabeçalho vem de `listing_count`. Parece
+assimétrico, mas não é — `read_service.go:330` e `:370` atribuem
+`ListingCount = len(...)` da própria fatia carregada. Contagem e pill enxergam sempre o
+mesmo conjunto. **Não é defeito.**
+
+### 4.2 A regra que decide o chip de preço
+
+`DeriveSignalStatus` (`listings/domain/signal.go:65-76`) é pura e tem quatro saídas:
+
+```
+sem product_id                      -> SEM_VINCULO        (célula vira link "sem vínculo")
+com vínculo, sem sinal              -> NO_PRICE_EVIDENCE  (preço puro, sem chip)
+sinal com fetched_at > 1h           -> STALE
+caso contrário                      -> OK
+```
+
+O horizonte de 1 h é `signalStaleTTL` (`signal.go:26`), espelhando o `snapshotTTL` do
+módulo market (`collection_pipeline_service.go:19`). Isso liga o chip desta tela a uma
+aritmética que vive em outro arquivo — ver F-6.
+
+### 4.3 Achados desta tela
+
+**F-6 — o teto de renovação é menor que a validade da evidência.** Três constantes,
+escritas em três arquivos, formam um sistema:
+
+| Constante | Valor | Onde |
+|---|---|---|
+| validade do snapshot / horizonte STALE | 1 h | `collection_pipeline_service.go:19`, `signal.go:26` |
+| cadência do scheduler de mercado | 30 min | `composition/root.go:740` |
+| teto de produtos por ciclo | 50 | `composition/root.go:745` |
+
+Renovação máxima sustentada = 50 produtos a cada 30 min = **100 produtos/hora**. A
+evidência vence em 1 h. Logo, se o operador tiver mais de ~100 produtos com evidência
+coletada, uma parte deles fica **permanentemente STALE**, e nenhuma tela explica por quê —
+o chip diz "desatualizado" e some a razão. O catálogo vendável ratificado tem 2.923
+produtos; a coleta é manual por aba em `/mercado` ("Atualizar agora"), então o conjunto
+coletado cresce conforme o operador usa a ferramenta, e o teto é atingido pelo uso normal,
+não por um caso extremo. Também vale registrar que `Start` só dispara no primeiro tick
+(`sync/application/scheduler.go:109`): depois de um restart, a primeira renovação de
+mercado é 30 min depois. Quantos produtos têm agregado hoje é medição da fase 2.
+
+**F-7 — `sync_state` de anúncio nunca sai de `synced`.** O único produtor de
+`sync_state` no caminho de sincronia é `multiget_mapper.go:114`, que escreve a constante
+`ListingSyncStateSynced`. Uma varredura por escritores de `listings` encontra exatamente
+dois em produção: o upsert (`postgres/repository.go:448`, que recebe o valor do mapper) e
+`UPDATE listings SET absent_since` (`:543`). Nenhum escreve `'error'`, `'stale'` ou um
+`sync_error` não-nulo — só os testes escrevem. Consequência em cascata, toda invisível às
+lanes porque os testes fabricam o estado que a produção não produz:
+
+- o pill de erros do cabeçalho é sempre `0`;
+- `pending_issue` perde 2 dos seus 4 ramos (`sync_error`, `stale`) —
+  `read_service.go:770-775` é código inalcançável em produção;
+- os contadores `sync_error` e `stale` de `/listings/summary`
+  (`postgres/repository.go:320-321`) são sempre `0`;
+- os filtros de exceção `sync_error` e `stale` (`repository.go:112`, `:114`) sempre
+  retornam vazio.
+
+Isto não é um bug de uma linha: é uma **promessa de superfície sem produtor**. Ou o sync de
+anúncios passa a marcar falha por item, ou os quatro consumidores acima são retirados da
+tela. A escolha é do operador; o que não pode continuar é a tela afirmar "0 erros" quando o
+que ela sabe dizer é "não sei medir erro".
 
 ---
 
@@ -186,6 +263,10 @@ operador decide reprecificar olhando uma idade que não é a da evidência.
    os itens com vínculo interno e snapshot fiscal, quantos produzem margem não-nula.
    Separa VIVO de MUDO em toda a seção 1.
 2. Linha `orders` no `/sync/health` visível na tela.
-3. Live drive das quatro telas, com container id e `Created` no veredito.
-4. Lane de governança por diff de conjunto contra `main`, medida fora da árvore montada
+3. `select sync_state, count(*) from listings group by 1` — confirma o F-7 no dado real
+   (esperado: uma única linha, `synced`).
+4. Contagem de produtos com agregado de mercado e distribuição de idade — dimensiona o F-6
+   (acima de ~100, a cauda permanentemente STALE existe hoje, não no futuro).
+5. Live drive das quatro telas, com container id e `Created` no veredito.
+6. Lane de governança por diff de conjunto contra `main`, medida fora da árvore montada
    (decide o F-4).
