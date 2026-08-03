@@ -414,6 +414,10 @@ Classe: **cadência guardada só na memória do processo**. Conserto: derivar o 
 `sync_state.last_full_sync_at` (rodar no boot se `now - last > interval`), em vez de confiar
 num ticker que morre com o processo.
 
+*Addendum (Plano F-00, Task 10, 2026-08-03): o scheduler de pedidos (`NewOrdersSchedulers`)
+usa o mesmo `syncapp.Scheduler.Start` com `interval = 15min` — o caso já avaliado aqui como
+"inofensivo". Sem debt nova; mesma classe, mesmo veredito.*
+
 **D-17. Emit do `tsc` ao lado do fonte sequestra a resolução do Vite**
 (limpeza de repo, 2026-08-01, achado na varredura de untracked): 191 arquivos `.js` estavam
 soltos em `apps/web/src/`, `packages/*/src/` e — o pior — `apps/web/vite.config.js`. Todos
@@ -485,3 +489,22 @@ o `docker inspect` responde "de quem é isto" sem perguntar a ninguém; (2) recr
 passa por comando único do hub que recusa se houver dono diferente registrado; (3) o veredito
 de qualquer live drive cita o container id e o `Created`, para que a janela seja reconstituível
 depois. Enquanto (1) não existir, o custo cai sempre na vítima, que é quem menos pode detectá-lo.
+
+**D-20. Instalação conectada após o boot não ganha scheduler** (Plano F-00, Task 10,
+2026-08-03): `resolveOrdersSchedulers` (mesmo padrão de `resolveListingsSchedulers`) tira um
+retrato ÚNICO das instalações no boot do processo e monta um scheduler por instalação
+encontrada naquele instante. Uma instalação ML conectada depois — via fluxo de reautorização,
+ou primeira conexão de um tenant novo — não ganha scheduler de pedidos até o próximo restart
+do processo; em dev, onde o stack sobe várias vezes por dia, o sintoma se mascara sozinho,
+mas em produção (restart raro) o atraso é real e silencioso — nenhuma tela avisa "esta
+instalação ainda não tem scheduler". Classe: **fan-out por retrato único, não por população
+viva**. Conserto: re-listar periodicamente as instalações (mesmo intervalo do scheduler mais
+curto) ou emitir um sinal na conclusão do fluxo de conexão/reautorização que registre o
+scheduler faltante sem esperar o boot.
+
+**D-21. `listings` e `market` ainda não usam janela incremental** (Plano F-00, Task 10,
+2026-08-03): as Tasks 1–3 do plano F-00 alargaram `ports.ListOrdersInput`/`OrderSource` e o
+`ProviderOperationService` para aceitar `UpdatedAfter`/`Limit`/`Offset` de ponta a ponta, mas
+só o job de pedidos (Task 5/7) usa a janela de fato — `listings` e `market` continuam
+enumerando do zero a cada corrida. O caminho está alargado; a migração de cada consumidor
+para o cursor incremental é fatia separada, ainda não despachada.

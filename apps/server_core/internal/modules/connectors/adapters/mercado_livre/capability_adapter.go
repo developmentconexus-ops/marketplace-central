@@ -470,7 +470,12 @@ func (a *CapabilityAdapter) UpdateAvailableQuantity(ctx context.Context, request
 	}
 }
 
-func (a *CapabilityAdapter) ListOrders(ctx context.Context, input domain.ListOrdersInput) ([]domain.OrderSnapshot, error) {
+// ListOrderRefs enumera identidades via /orders/search sem hidratar cada pedido
+// (F-00 Task 3). ListOrders compõe sobre ela; o consumidor em lote
+// (orders.ImportService) descarta tudo do snapshot além do id, então a
+// hidratação por hit era uma chamada de provider por pedido, por ciclo, jogada
+// fora — este método é o caminho barato equivalente.
+func (a *CapabilityAdapter) ListOrderRefs(ctx context.Context, input domain.ListOrdersInput) ([]domain.OrderSearchHit, error) {
 	accountRef, err := normalizeAccountRef(input.AccountRef)
 	if err != nil {
 		return nil, err
@@ -493,22 +498,44 @@ func (a *CapabilityAdapter) ListOrders(ctx context.Context, input domain.ListOrd
 
 	var response struct {
 		Results []struct {
-			ID any `json:"id"`
+			ID              any    `json:"id"`
+			DateLastUpdated string `json:"date_last_updated"`
 		} `json:"results"`
 	}
 	if err := a.doJSON(ctx, accountRef, token, http.MethodGet, "/orders/search?"+query.Encode(), nil, &response); err != nil {
 		return nil, err
 	}
 
-	snapshots := make([]domain.OrderSnapshot, 0, len(response.Results))
+	hits := make([]domain.OrderSearchHit, 0, len(response.Results))
 	for _, result := range response.Results {
 		orderID := normalizeAnyID(result.ID)
 		if orderID == "" {
 			continue
 		}
+		hits = append(hits, domain.OrderSearchHit{
+			ProviderOrderID:   orderID,
+			ProviderUpdatedAt: parseTimePtr(result.DateLastUpdated),
+		})
+	}
+
+	return hits, nil
+}
+
+func (a *CapabilityAdapter) ListOrders(ctx context.Context, input domain.ListOrdersInput) ([]domain.OrderSnapshot, error) {
+	hits, err := a.ListOrderRefs(ctx, input)
+	if err != nil {
+		return nil, err
+	}
+	accountRef, err := normalizeAccountRef(input.AccountRef)
+	if err != nil {
+		return nil, err
+	}
+
+	snapshots := make([]domain.OrderSnapshot, 0, len(hits))
+	for _, hit := range hits {
 		snapshot, err := a.ReadOrder(ctx, domain.ProviderOrderRef{
 			AccountRef:      accountRef,
-			ProviderOrderID: orderID,
+			ProviderOrderID: hit.ProviderOrderID,
 		})
 		if err != nil {
 			return nil, err

@@ -119,6 +119,15 @@ type ImportResult struct {
 	ImportedCount  int                `json:"imported_count"`
 	SkippedCount   int                `json:"skipped_count"`
 	Items          []MarketplaceOrder `json:"items"`
+	// EnumeratedCount é quantos ids a enumeração devolveu — distinto de
+	// ImportedCount+SkippedCount porque ids vazios são descartados antes do
+	// ingest. É EnumeratedCount que diz se a página veio cheia, e portanto se a
+	// janela foi drenada.
+	EnumeratedCount int `json:"enumerated_count"`
+	// MaxProviderUpdatedAt é o maior date_last_updated visto na enumeração, ou
+	// nil se nenhum hit trouxe o campo. nil significa desconhecido — nunca a
+	// época zero, nunca now() (ADR-17).
+	MaxProviderUpdatedAt *time.Time `json:"max_provider_updated_at,omitempty"`
 }
 
 type ItemLink struct {

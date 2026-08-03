@@ -10,7 +10,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	readports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
-	syncpg "marketplace-central/apps/server_core/internal/modules/sync/adapters/postgres"
 	syncapp "marketplace-central/apps/server_core/internal/modules/sync/application"
 	"marketplace-central/apps/server_core/internal/modules/sync/domain"
 	"marketplace-central/apps/server_core/internal/modules/tenant_config"
@@ -46,8 +45,7 @@ func NewProductsScheduler(
 	adapters map[tenant_config.ActiveSource]readports.ProductSourceAdapter,
 	opts ...ProductsJobOption,
 ) *syncapp.Scheduler {
-	repo := syncpg.NewSyncStateRepository(pool, tenantID)
-	scheduler := syncapp.NewScheduler(repo, InstallationScopeERP, interval, time.Now)
+	scheduler := NewInstallationScheduler(pool, tenantID, InstallationScopeERP, interval)
 
 	// products is a valid entity and the first registration, so RegisterJob
 	// cannot fail here; the error is intentionally not surfaced from wiring.

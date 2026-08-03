@@ -8,15 +8,27 @@ import (
 	"time"
 
 	ordersdomain "marketplace-central/apps/server_core/internal/modules/orders/domain"
+	"marketplace-central/apps/server_core/internal/modules/orders/ports"
 )
 
 type stubOrderSource struct {
-	items []ordersdomain.OrderIngestionSnapshot
+	items []ports.OrderRef
 	err   error
 }
 
-func (s stubOrderSource) ListOrders(context.Context, string, int) ([]ordersdomain.OrderIngestionSnapshot, error) {
+func (s stubOrderSource) ListOrders(context.Context, ports.ListOrdersInput) ([]ports.OrderRef, error) {
 	return s.items, s.err
+}
+
+// recordingSource is a package-local ports.OrderSource fake used to assert that Import passes
+// Offset/UpdatedAfter through to the enumeration port unchanged — legitimate because OrderSource
+// is an application-domain port and what's under test is parameter pass-through, not provider
+// integration.
+type recordingSource struct{ got ports.ListOrdersInput }
+
+func (s *recordingSource) ListOrders(_ context.Context, in ports.ListOrdersInput) ([]ports.OrderRef, error) {
+	s.got = in
+	return nil, nil
 }
 
 // stubLinkReader is a package-wide test double for ports.LinkReader, kept in this file (as
@@ -48,12 +60,8 @@ func (s *stubOrderIngestor) IngestOrder(_ context.Context, _ string, providerOrd
 	return nil
 }
 
-func snapshotWithID(providerOrderID string) ordersdomain.OrderIngestionSnapshot {
-	return ordersdomain.OrderIngestionSnapshot{
-		ProviderCode:    "mercado_livre",
-		ProviderOrderID: providerOrderID,
-		FetchedAt:       time.Date(2026, 7, 9, 12, 0, 0, 0, time.UTC),
-	}
+func refWithID(providerOrderID string) ports.OrderRef {
+	return ports.OrderRef{ProviderOrderID: providerOrderID}
 }
 
 // floatPtr is a package-wide test helper (also used by enrich_service_test.go /
@@ -63,8 +71,8 @@ func floatPtr(v float64) *float64 { return &v }
 func intPtr(v int) *int           { return &v }
 
 func TestImportServiceIngestsEachEnumeratedOrder(t *testing.T) {
-	source := stubOrderSource{items: []ordersdomain.OrderIngestionSnapshot{
-		snapshotWithID("2001"), snapshotWithID("2002"), snapshotWithID("2003"),
+	source := stubOrderSource{items: []ports.OrderRef{
+		refWithID("2001"), refWithID("2002"), refWithID("2003"),
 	}}
 	ingestor := &stubOrderIngestor{}
 	service := NewImportService(ImportServiceConfig{Source: source, Ingestor: ingestor})
@@ -91,8 +99,8 @@ func TestImportServiceIngestsEachEnumeratedOrder(t *testing.T) {
 // (e): a 403/404 third-party order classified by IngestOrder as domain.ErrOrderUnavailable must
 // be counted as a skip, and the run must still succeed and continue ingesting the rest.
 func TestImportServiceCountsOrderUnavailableAsSkipWithoutFailingRun(t *testing.T) {
-	source := stubOrderSource{items: []ordersdomain.OrderIngestionSnapshot{
-		snapshotWithID("2001"), snapshotWithID("2002"),
+	source := stubOrderSource{items: []ports.OrderRef{
+		refWithID("2001"), refWithID("2002"),
 	}}
 	ingestor := &stubOrderIngestor{errFor: map[string]error{
 		"2001": fmt.Errorf("%w: installation=inst-1 provider_order_id=2001: %w", ordersdomain.ErrOrderUnavailable, errors.New("provider unauthorized")),
@@ -115,8 +123,8 @@ func TestImportServiceCountsOrderUnavailableAsSkipWithoutFailingRun(t *testing.T
 // o batch" is not scoped to the 403/404 case alone — any per-order failure (a transient shipment
 // read, a DB blip) must not abort the whole run either.
 func TestImportServiceCountsAnyIngestFailureAsSkip(t *testing.T) {
-	source := stubOrderSource{items: []ordersdomain.OrderIngestionSnapshot{
-		snapshotWithID("3001"), snapshotWithID("3002"),
+	source := stubOrderSource{items: []ports.OrderRef{
+		refWithID("3001"), refWithID("3002"),
 	}}
 	ingestor := &stubOrderIngestor{errFor: map[string]error{
 		"3001": errors.New("provider temporarily unavailable"),
@@ -133,8 +141,8 @@ func TestImportServiceCountsAnyIngestFailureAsSkip(t *testing.T) {
 }
 
 func TestImportServiceSkipsBlankProviderOrderID(t *testing.T) {
-	source := stubOrderSource{items: []ordersdomain.OrderIngestionSnapshot{
-		snapshotWithID(""), snapshotWithID("4001"),
+	source := stubOrderSource{items: []ports.OrderRef{
+		refWithID(""), refWithID("4001"),
 	}}
 	ingestor := &stubOrderIngestor{}
 	service := NewImportService(ImportServiceConfig{Source: source, Ingestor: ingestor})
@@ -168,5 +176,34 @@ func TestImportServiceRequiresInstallationID(t *testing.T) {
 	service := NewImportService(ImportServiceConfig{Source: stubOrderSource{}, Ingestor: &stubOrderIngestor{}})
 	if _, err := service.Import(context.Background(), ImportOrdersInput{}); err == nil {
 		t.Fatal("Import() error = nil, want missing installation id to fail")
+	}
+}
+
+// TestImportPassesWindowAndOffsetToSource is F-00 Task 1's pass-through criterion: the narrow
+// (installationID, limit) signature already cost a feature once (three intermediate layers threw
+// UpdatedAfter away before it reached the Mercado Livre adapter, which has always known how to
+// translate it). Import must forward Offset and UpdatedAfter to ports.OrderSource unchanged.
+func TestImportPassesWindowAndOffsetToSource(t *testing.T) {
+	updatedAfter := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
+	src := &recordingSource{}
+	service := NewImportService(ImportServiceConfig{Source: src, Ingestor: &stubOrderIngestor{}})
+
+	_, err := service.Import(context.Background(), ImportOrdersInput{
+		InstallationID: "inst-1",
+		Limit:          50,
+		Offset:         100,
+		UpdatedAfter:   &updatedAfter,
+	})
+	if err != nil {
+		t.Fatalf("Import() error = %v", err)
+	}
+	if src.got.InstallationID != "inst-1" || src.got.Limit != 50 {
+		t.Fatalf("installation_id/limit not passed through: %+v", src.got)
+	}
+	if src.got.Offset != 100 {
+		t.Fatalf("offset: quero 100, recebi %d", src.got.Offset)
+	}
+	if src.got.UpdatedAfter == nil || !src.got.UpdatedAfter.Equal(updatedAfter) {
+		t.Fatalf("updated_after: quero %s, recebi %v", updatedAfter, src.got.UpdatedAfter)
 	}
 }

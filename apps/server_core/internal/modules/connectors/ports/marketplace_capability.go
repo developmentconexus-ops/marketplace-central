@@ -82,6 +82,12 @@ type ListingWriter interface {
 }
 
 type OrderReader interface {
+	// ListOrderRefs enumera identidades sem hidratar cada pedido. Existe
+	// separado de ListOrders porque o consumidor em lote (orders.ImportService)
+	// descarta tudo do snapshot exceto o id e chama o caminho de escrita único
+	// (IngestOrder), que refaz a leitura completa — ou seja, a hidratação da
+	// enumeração era uma chamada de provider por pedido, por ciclo, jogada fora.
+	ListOrderRefs(ctx context.Context, input domain.ListOrdersInput) ([]domain.OrderSearchHit, error)
 	ListOrders(ctx context.Context, input domain.ListOrdersInput) ([]domain.OrderSnapshot, error)
 	ReadOrder(ctx context.Context, ref domain.ProviderOrderRef) (domain.OrderSnapshot, error)
 }

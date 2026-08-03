@@ -119,7 +119,29 @@ func (h Handler) handleImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	slog.Info("orders.import", "action", "import", "result", "200", "count", result.ImportedCount, "duration_ms", time.Since(start).Milliseconds())
-	httpx.WriteJSON(w, http.StatusOK, result)
+	httpx.WriteJSON(w, http.StatusOK, mapImportResult(result))
+}
+
+// importResultDTO is the response shape for POST /orders/import, locked byte-identical to the
+// OpenAPI ImportMarketplaceOrdersResponse schema (installation_id/imported_count/skipped_count/
+// items — no more, no less). domain.ImportResult gained EnumeratedCount/MaxProviderUpdatedAt
+// (F-00 Task 1, for the scheduler's cursor) that must NOT leak onto this wire response without a
+// governance registry change (GOV_API_SDK_SPLIT), so this handler maps field-by-field instead of
+// serializing domain.ImportResult directly.
+type importResultDTO struct {
+	InstallationID string                    `json:"installation_id"`
+	ImportedCount  int                       `json:"imported_count"`
+	SkippedCount   int                       `json:"skipped_count"`
+	Items          []domain.MarketplaceOrder `json:"items"`
+}
+
+func mapImportResult(result domain.ImportResult) importResultDTO {
+	return importResultDTO{
+		InstallationID: result.InstallationID,
+		ImportedCount:  result.ImportedCount,
+		SkippedCount:   result.SkippedCount,
+		Items:          result.Items,
+	}
 }
 
 func (h Handler) handleList(w http.ResponseWriter, r *http.Request) {
