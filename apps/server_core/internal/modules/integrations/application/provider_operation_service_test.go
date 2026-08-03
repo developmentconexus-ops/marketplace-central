@@ -7,6 +7,7 @@ import (
 
 	connectorsapp "marketplace-central/apps/server_core/internal/modules/connectors/application"
 	connectorsdomain "marketplace-central/apps/server_core/internal/modules/connectors/domain"
+	connectorsports "marketplace-central/apps/server_core/internal/modules/connectors/ports"
 	"marketplace-central/apps/server_core/internal/modules/integrations/domain"
 )
 
@@ -41,6 +42,51 @@ type fakeProviderOperationStockReader struct {
 
 func (f fakeProviderOperationStockReader) ReadStock(context.Context, connectorsdomain.ProviderListingRef) (connectorsdomain.StockSnapshot, error) {
 	return f.snapshot, nil
+}
+
+// capturingReader is a connectorsports.OrderReader fake that records exactly the
+// connectorsdomain.ListOrdersInput it received, so the test can assert the service
+// forwarded the window (cursor/updated_after) instead of narrowing it back down to
+// a limit, and that it resolved AccountRef itself rather than leaving that to the caller.
+type capturingReader struct {
+	got connectorsdomain.ListOrdersInput
+}
+
+func (r *capturingReader) ListOrders(_ context.Context, input connectorsdomain.ListOrdersInput) ([]connectorsdomain.OrderSnapshot, error) {
+	r.got = input
+	return nil, nil
+}
+
+func (r *capturingReader) ReadOrder(context.Context, connectorsdomain.ProviderOrderRef) (connectorsdomain.OrderSnapshot, error) {
+	return connectorsdomain.OrderSnapshot{}, nil
+}
+
+var _ connectorsports.OrderReader = (*capturingReader)(nil)
+
+func newServiceWithReader(t *testing.T, reader connectorsports.OrderReader) *ProviderOperationService {
+	t.Helper()
+	return NewProviderOperationService(ProviderOperationServiceConfig{
+		TenantID: "tenant_default",
+		Installations: fakeProviderOperationInstallations{
+			inst: domain.Installation{
+				InstallationID:    "inst-1",
+				ProviderCode:      "mercado_livre",
+				Status:            domain.InstallationStatusConnected,
+				HealthStatus:      domain.HealthStatusHealthy,
+				ExternalAccountID: "691607102",
+				RuntimeCapabilities: []domain.RuntimeCapability{
+					{Code: domain.RuntimeCapabilityOrderRead, State: domain.RuntimeCapabilityStateAvailable, Executable: true},
+				},
+			},
+			found: true,
+		},
+		Capabilities: connectorsapp.NewMarketplaceCapabilityService([]connectorsapp.ProviderCapabilitySet{{
+			ProviderCode: "mercado_livre",
+			Orders:       reader,
+		}}),
+		CapabilityStates: &providerOperationCapabilityStore{},
+		Operations:       NewOperationService(&providerOperationRunStore{}, "tenant_default"),
+	})
 }
 
 type providerOperationRunStore struct {
@@ -290,6 +336,32 @@ func TestProviderOperationServiceDefaultClockAdvancesOperationIDs(t *testing.T) 
 	}
 	if store.runs[0].StartedAt == nil || store.runs[1].StartedAt == nil || !store.runs[1].StartedAt.After(*store.runs[0].StartedAt) {
 		t.Fatalf("started_at did not advance: first=%v second=%v", store.runs[0].StartedAt, store.runs[1].StartedAt)
+	}
+}
+
+func TestListOrdersForwardsWindowToCapability(t *testing.T) {
+	t.Parallel()
+
+	updatedAfter := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
+	reader := &capturingReader{}
+	svc := newServiceWithReader(t, reader)
+
+	_, err := svc.ListOrders(context.Background(), connectorsdomain.ListOrdersInput{
+		Limit:        50,
+		Cursor:       "100",
+		UpdatedAfter: &updatedAfter,
+	}, "inst-1")
+	if err != nil {
+		t.Fatalf("list orders: %v", err)
+	}
+	if reader.got.Cursor != "100" {
+		t.Fatalf("cursor: quero \"100\", recebi %q", reader.got.Cursor)
+	}
+	if reader.got.UpdatedAfter == nil || !reader.got.UpdatedAfter.Equal(updatedAfter) {
+		t.Fatalf("updated_after: quero %s, recebi %v", updatedAfter, reader.got.UpdatedAfter)
+	}
+	if reader.got.AccountRef.ProviderAccountID == "" {
+		t.Fatalf("account ref: o service ainda tem que resolver a conta a partir da instalacao")
 	}
 }
 

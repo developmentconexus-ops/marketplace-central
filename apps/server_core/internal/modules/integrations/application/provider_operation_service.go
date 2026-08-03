@@ -123,7 +123,11 @@ func (s *ProviderOperationService) ListListings(ctx context.Context, installatio
 	return result, nil
 }
 
-func (s *ProviderOperationService) ListOrders(ctx context.Context, installationID string, limit int) ([]connectorsdomain.OrderSnapshot, error) {
+// ListOrders enumera pedidos da instalação. O input do provider chega inteiro:
+// o service resolve a conta (AccountRef) e não toca em mais nada, para que uma
+// capacidade nova do provider (janela, status, ordenação) não exija outra
+// mudança de assinatura aqui.
+func (s *ProviderOperationService) ListOrders(ctx context.Context, input connectorsdomain.ListOrdersInput, installationID string) ([]connectorsdomain.OrderSnapshot, error) {
 	inst, err := s.loadExecutableInstallation(ctx, installationID, domain.RuntimeCapabilityOrderRead)
 	if err != nil {
 		return nil, err
@@ -132,14 +136,12 @@ func (s *ProviderOperationService) ListOrders(ctx context.Context, installationI
 	if err != nil {
 		return nil, err
 	}
+	input.AccountRef = s.accountRef(inst)
 	startedAt := s.now()
-	result, execErr := reader.ListOrders(ctx, connectorsdomain.ListOrdersInput{
-		AccountRef: s.accountRef(inst),
-		Limit:      limit,
-	})
+	result, execErr := reader.ListOrders(ctx, input)
 	recordErr := s.recordOperation(ctx, inst.InstallationID, providerOperationTypeOrderRead, startedAt, execErr, map[string]any{
 		"order_count": len(result),
-		"limit":       limit,
+		"limit":       input.Limit,
 	})
 	if execErr != nil {
 		return nil, execErr

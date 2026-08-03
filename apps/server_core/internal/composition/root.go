@@ -186,7 +186,10 @@ func (f authFlowFacade) ListListings(ctx context.Context, installationID string,
 }
 
 func (f authFlowFacade) ListOrders(ctx context.Context, installationID string, limit int) ([]connectorsdomain.OrderSnapshot, error) {
-	return f.providerOps.ListOrders(ctx, installationID, limit)
+	// This facade method only ever needs a limit (the HTTP handler behind it takes no
+	// window params today), so UpdatedAfter stays nil — nil means "no window", exactly
+	// today's behavior, explicitly preserved.
+	return f.providerOps.ListOrders(ctx, connectorsdomain.ListOrdersInput{Limit: limit}, installationID)
 }
 
 func (f authFlowFacade) ReadFeeQuote(ctx context.Context, installationID string, input connectorsdomain.FeeQuoteInput) (connectorsdomain.FeeQuoteSnapshot, error) {
