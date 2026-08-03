@@ -1459,7 +1459,7 @@ SELECT state, refresh_failure_code, consecutive_failures, next_retry_at
 Esperado: `state = 'refresh_failed'`, código preenchido, `consecutive_failures = 1`, `next_retry_at` uma hora à frente (cooldown terminal).
 
 ```sql
-SELECT status, health_status, connection_snapshot->>'next_action', connection_snapshot->>'reauth_reason'
+SELECT status, health_status, connection_snapshot_json->>'next_action', connection_snapshot_json->>'reauth_reason'
   FROM integration_installations WHERE installation_id = '<inst-id-ml>';
 ```
 
