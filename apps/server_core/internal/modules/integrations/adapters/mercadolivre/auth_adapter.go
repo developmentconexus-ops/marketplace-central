@@ -240,7 +240,8 @@ func (a *Adapter) RefreshToken(ctx context.Context, refreshToken string) (*domai
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("%w: status=%d body=%s", domain.ErrRefreshProviderError, resp.StatusCode, readProviderErrorBody(resp))
+		body := readProviderErrorBody(resp)
+		return nil, fmt.Errorf("%w: status=%d body=%s", classifyRefreshHTTPError(resp.StatusCode, body), resp.StatusCode, body)
 	}
 
 	var payload struct {
@@ -304,6 +305,27 @@ func readProviderErrorBody(resp *http.Response) string {
 		return "empty"
 	}
 	return text
+}
+
+// classifyRefreshHTTPError traduz a resposta de erro do endpoint de token do ML
+// para a sentinela de domínio correspondente. O vocabulário do provider
+// ("invalid_grant") vive aqui e só aqui: o domínio não conhece nome de erro de
+// marketplace nenhum (ADR-C4).
+//
+// Sem essa tradução todo erro >= 400 virava ErrRefreshProviderError, que
+// ClassifyRefreshError (domain/refresh_policy.go:52) considera TRANSITÓRIO —
+// um refresh token revogado seria retentado para sempre e a conta nunca
+// chegaria a requires_reauth.
+func classifyRefreshHTTPError(status int, body string) error {
+	// O ML responde 400 com {"error":"invalid_grant"} para refresh token
+	// inválido, revogado ou já usado. Nenhum retry conserta: só reautorização.
+	if strings.Contains(body, "invalid_grant") {
+		return domain.ErrRefreshTokenInvalid
+	}
+	if status == http.StatusTooManyRequests {
+		return domain.ErrRefreshRateLimited
+	}
+	return domain.ErrRefreshProviderError
 }
 
 type accountProfile struct {

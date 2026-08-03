@@ -3,6 +3,7 @@ package mercadolivre
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,7 @@ import (
 	"testing"
 
 	"marketplace-central/apps/server_core/internal/modules/integrations/application"
+	"marketplace-central/apps/server_core/internal/modules/integrations/domain"
 )
 
 func TestAdapterBuildsAuthorizeURLAndExchangesCallback(t *testing.T) {
@@ -93,4 +95,61 @@ func mustReadBody(t *testing.T, r *http.Request) string {
 		t.Fatalf("read body: %v", err)
 	}
 	return string(buf)
+}
+
+type refreshRoundTripper struct {
+	status int
+	body   string
+}
+
+func (r refreshRoundTripper) RoundTrip(*http.Request) (*http.Response, error) {
+	return &http.Response{
+		StatusCode: r.status,
+		Body:       io.NopCloser(strings.NewReader(r.body)),
+		Header:     make(http.Header),
+	}, nil
+}
+
+func TestRefreshTokenClassifiesProviderErrors(t *testing.T) {
+	cases := []struct {
+		name   string
+		status int
+		body   string
+		want   error
+	}{
+		{
+			name:   "invalid_grant is terminal",
+			status: http.StatusBadRequest,
+			body:   `{"error":"invalid_grant","message":"invalid refresh token"}`,
+			want:   domain.ErrRefreshTokenInvalid,
+		},
+		{
+			name:   "rate limit is its own sentinel",
+			status: http.StatusTooManyRequests,
+			body:   `{"error":"too_many_requests"}`,
+			want:   domain.ErrRefreshRateLimited,
+		},
+		{
+			name:   "anything else stays provider error",
+			status: http.StatusInternalServerError,
+			body:   `{"error":"internal_error"}`,
+			want:   domain.ErrRefreshProviderError,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			adapter := &Adapter{cfg: Config{
+				ClientID:     "cid",
+				ClientSecret: "secret",
+				TokenURL:     "https://example.invalid/oauth/token",
+				HTTPClient:   &http.Client{Transport: refreshRoundTripper{status: tc.status, body: tc.body}},
+			}}
+
+			_, err := adapter.RefreshToken(context.Background(), "rt-1")
+			if !errors.Is(err, tc.want) {
+				t.Fatalf("RefreshToken err = %v, want errors.Is(_, %v)", err, tc.want)
+			}
+		})
+	}
 }
