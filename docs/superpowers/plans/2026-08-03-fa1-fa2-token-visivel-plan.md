@@ -964,7 +964,7 @@ func TestRefreshFailurePersistsAndSuppressesTheSweep(t *testing.T) {
 	now := time.Now().UTC()
 
 	t.Cleanup(func() {
-		_, _ = pool.Exec(ctx, `DELETE FROM auth_sessions WHERE installation_id = $1`, installationID)
+		_, _ = pool.Exec(ctx, `DELETE FROM integration_auth_sessions WHERE installation_id = $1`, installationID)
 		_, _ = pool.Exec(ctx, `DELETE FROM integration_installations WHERE installation_id = $1`, installationID)
 	})
 
@@ -1417,12 +1417,20 @@ Nada acima prova que o operador vê a falha. Unidade prova ramo, integração pr
 
 Stack já de pé (verificado 2026-08-03): `marketplace-central-backend-1` healthy em `:8080`, `marketplace-central-frontend-1` em `:5174`, `marketplace-central-postgres-1` healthy em `:5435`. Chip não sobe nem derruba serviço — se o stack cair, é `REQUEST` ao hub, nunca `docker compose up` daqui.
 
+> **BLOQUEADA em 2026-08-03 por duas decisões do operador, ambas medidas, não supostas.**
+>
+> **(1) O binário em execução é anterior à fatia.** `marketplace-central-backend-1` foi criado em `2026-08-02 10:23:30`; o primeiro commit da fatia é `8864a37a`, de `2026-08-03 12:44:25`. O container não tem a classificação `invalid_grant` (Task 1), a escrita da falha (Task 2), a degradação (Task 3) nem o log do ticker (Task 4). Contra ele, **todo observável do Step 2 ao Step 5 é impossível por construção** — e um live drive que "não mostrou nada" leria como ausência de defeito. Rebuild do backend é ação de stack: `REQUEST` ao hub, nunca daqui.
+>
+> **(2) Como induzir o `invalid_grant` real.** A conta ML no dev stack está `connected`/`healthy`, sessão `valid`, access token expirando em `2026-08-03 21:48:54Z`, `consecutive_failures = 0`. Forçar `access_token_expires_at` para o passado só exercita o caminho de **sucesso** (o refresh token continua bom) — prova o ticker, não a falha. Para o vermelho existem duas rotas e as duas são do operador:
+> - **revogar a autorização do app na conta ML real** — devolve `invalid_grant` de verdade, é a prova mais forte, e custa ao operador reautorizar depois (Step 6 já cobre);
+> - **apontar `TokenURL` para um endpoint que devolve `invalid_grant`** no dev stack — mais barato e reversível, mas é mudança de env + restart, também `REQUEST` ao hub.
+
 - [ ] **Step 1: Controle positivo — corrompa o refresh token da conta ML**
 
 Numa sessão psql do dev stack, invalide o refresh token guardado da installation ML. O payload é criptografado, então o caminho barato é forçar a expiração do access token para que o ticker tente refrescar já:
 
 ```sql
-UPDATE auth_sessions
+UPDATE integration_auth_sessions
    SET access_token_expires_at = now() - interval '1 minute',
        state = 'expiring',
        next_retry_at = NULL
@@ -1445,7 +1453,7 @@ Antes desta Onda esse log **não existia** — a ausência dele é o before, a p
 
 ```sql
 SELECT state, refresh_failure_code, consecutive_failures, next_retry_at
-  FROM auth_sessions WHERE installation_id = '<inst-id-ml>';
+  FROM integration_auth_sessions WHERE installation_id = '<inst-id-ml>';
 ```
 
 Esperado: `state = 'refresh_failed'`, código preenchido, `consecutive_failures = 1`, `next_retry_at` uma hora à frente (cooldown terminal).
