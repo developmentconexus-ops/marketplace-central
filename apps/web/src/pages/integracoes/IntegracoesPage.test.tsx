@@ -3,6 +3,7 @@ import { MarketplaceCentralClientError } from "@marketplace-central/sdk-runtime"
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { InstallationProvider } from "../../app/InstallationContext";
 import { IntegracoesPage } from "./IntegracoesPage";
 
 // jsdom in this workspace does not instantiate Web Storage under the worker's
@@ -74,7 +75,13 @@ function renderPage() {
   return render(
     <MemoryRouter>
       <QueryClientProvider client={queryClient}>
-        <IntegracoesPage />
+        {/* IntegracoesPage now mounts ConnectionHealthCard, which reads
+            useInstallation() (InstallationContext.tsx). In the real app
+            AppRouter.tsx:60 wraps every route in InstallationProvider; this
+            test rendered the page standalone before that dependency existed. */}
+        <InstallationProvider>
+          <IntegracoesPage />
+        </InstallationProvider>
       </QueryClientProvider>
     </MemoryRouter>,
   );
@@ -455,6 +462,13 @@ describe("IntegracoesPage", () => {
     const connect = screen.getByTestId("provider-connect-ml");
     expect(connect).toBeEnabled();
     expect(connect).toHaveTextContent("Conectar");
-    expect(listIntegrationInstallations).not.toHaveBeenCalled();
+    // listIntegrationInstallations is no longer a signal exclusive to the
+    // connect click: ConnectionHealthCard (Task 6, F-A1/F-A2) reads
+    // useInstallation(), whose InstallationProvider fetches the list eagerly
+    // on mount to render connection health for every installation, connect
+    // flow or not. The invariant this test actually cares about — clicking
+    // is required before anything starts — is covered by "busy" staying
+    // false and the label staying "Conectar" (ProviderConnectCard.connect()
+    // flips both synchronously on click, before any await).
   });
 });

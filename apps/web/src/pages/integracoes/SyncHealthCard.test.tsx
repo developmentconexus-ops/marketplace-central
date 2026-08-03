@@ -3,6 +3,7 @@ import { MarketplaceCentralClientError, type SyncHealth } from "@marketplace-cen
 import { render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { InstallationProvider } from "../../app/InstallationContext";
 import { IntegracoesPage } from "./IntegracoesPage";
 import { SyncHealthCard } from "./SyncHealthCard";
 
@@ -97,7 +98,13 @@ function renderPage() {
   return render(
     <MemoryRouter>
       <QueryClientProvider client={queryClient}>
-        <IntegracoesPage />
+        {/* IntegracoesPage now mounts ConnectionHealthCard, which reads
+            useInstallation() (InstallationContext.tsx). In the real app
+            AppRouter.tsx:60 wraps every route in InstallationProvider; this
+            test rendered the page standalone before that dependency existed. */}
+        <InstallationProvider>
+          <IntegracoesPage />
+        </InstallationProvider>
       </QueryClientProvider>
     </MemoryRouter>,
   );
