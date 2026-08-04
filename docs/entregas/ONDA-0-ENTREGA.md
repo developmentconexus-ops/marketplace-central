@@ -538,6 +538,10 @@ tabela em que quase nada foi coletado. A idade do cabeçalho e a idade da linha 
 diferentes, e a do cabeçalho é a que o olho lê primeiro. No banco: `market_aggregates` 4
 linhas, **1 produto distinto**; `market_price_snapshots` 8 linhas — para 34 anúncios.
 
+O 1-de-34 **não é defeito**: é D-53, declarado no plano F-A3 (`:1130`) — o job periódico
+renova o que já tem agregado e nunca descobre produto novo; a primeira evidência só nasce do
+clique do operador. Ver F-15 em 7.4, onde eu tinha atribuído isso à causa errada.
+
 ### 7.4 `/integracoes` — Saúde do sync
 
 Lido após reload, com `now=2026-08-04T00:52:43Z`:
@@ -554,17 +558,41 @@ Lido após reload, com `now=2026-08-04T00:52:43Z`:
 `Created` do container (`00:35:23Z`): quem escreveu aquela linha foi o binário pós-merge, e
 a linha aparece na tela. Era o último item aberto da fase 2.
 
-**F-15 — `market_queue` nunca rodou, e a fila que ela deveria drenar tem duplicata.** Os dois
-timestamps são NULL desde sempre. O `cursor` guarda:
+**F-15 — a fila `market_queue` acumula duplicata e ninguém a consome.** O `cursor` guarda:
 
 ```json
 {"pending": ["1001", ..., "1055", "1001", ..., "1055"]}
 ```
 
-**110 ids, que são os mesmos 55 enfileirados duas vezes.** Ninguém deduplica na entrada e
-ninguém consome na saída. Esta é a explicação mais provável do 7.3: 1 produto com evidência
-de concorrente contra 34 anúncios não é amostragem, é uma fila parada. A tela mostra o
-sintoma honestamente ("nunca") — o que falta é o consumidor, não o observável.
+**110 ids, que são os mesmos 55 enfileirados duas vezes.** `AppendPendingCodigos`
+(`sync_state_repo.go:138-160`) concatena com `||` sem deduplicar, então cada re-importação
+do ERP soma tudo de novo. Hoje o efeito é contido: o único leitor
+(`erp_import/adapters/postgres/query_repository.go:118-164`) conta `enfileirados` com
+`DISTINCT` para a tela de protocolo. É dívida, não defeito visível.
+
+**Correção de um erro meu.** Na primeira redação eu li o "nunca · nunca" da linha Market
+Queue como job que falhou em rodar, e apontei isso como causa do 7.3. Está errado nas duas
+metades:
+
+- `sync/domain/sync_state.go:22-27` declara que `EntityMarketQueue` **é fila, não stream de
+  sync — nunca registra sucesso**, e existe como entidade própria só para dois produtores
+  não colidirem na mesma linha `(tenant, installation, entity)`. "Nunca" ali é o projeto,
+  não o sintoma.
+- A coleta de mercado de verdade é a linha `Market`, e ela **rodou**
+  (`last_full_sync_at=2026-08-03 23:47:16Z`).
+
+A causa real do 7.3 é outra e está declarada: **D-53 do plano F-A3**
+(`2026-08-03-fa3-idade-honesta-coleta-periodica-plan.md:1130`) — *"o job renova, não
+descobre. Produto sem agregado nunca entra no ciclo periódico; só o clique do operador cria
+a primeira evidência."* Foi decisão medida (6 chamadas ML por produto × 2.923 produtos
+contra bucket de 900/min), não esquecimento. 1 de 34 é o comportamento contratado.
+
+Fica aberto contra a tela um ponto menor e legítimo: a Saúde do sync põe fila e stream na
+mesma tabela, com as mesmas colunas, e o operador lê "nunca" como avaria. Ou a fila sai da
+tabela, ou ganha rótulo próprio.
+
+Método: eu tinha o observável certo ("nunca") e inventei o mecanismo. **Observável não
+nomeia causa.** A causa estava a um `grep` de distância, no comentário da constante.
 
 Observação de método, sem número: antes do reload a linha de Orders dizia "há 2 h" enquanto
 o `/sync/health` consultado direto no mesmo minuto já devolvia `00:52:05Z`. A tela não

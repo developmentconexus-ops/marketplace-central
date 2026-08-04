@@ -322,7 +322,7 @@ registrada em D-23/D-24.
 | F-12 | 7 pedidos cancelados na fila de trabalho, sem contador, com aba placeholder vazia | defeito | aberto |
 | F-13 | Coluna PREÇO muda em 29/34 | dívida (MUDO) | nomeada |
 | F-14 | 7 anúncios `under_review` fora de todo contador | dívida (MUDO) | nomeada |
-| F-15 | `market_queue` nunca rodou; cursor com 110 ids que são 55 duplicados | defeito | aberto — explica 1 produto com evidência contra 34 anúncios |
+| F-15 | `AppendPendingCodigos` concatena sem dedup (110 ids = 55 duas vezes) e nada drena `pending`; a Saúde do sync mostra fila e stream na mesma tabela | dívida | nomeada — **corrigido**: ver 7.4 da Ficha. Não explica o 1-de-34, que é D-53 |
 
 Dívidas de harness abertas nesta auditoria: **D-23** (`.dockerignore`, resolvida), **D-24**
 (varredura cross-branch, resolvida), **D-25** (`governance-drift` sem diff, aberta),
@@ -338,12 +338,16 @@ Dívidas de harness abertas nesta auditoria: **D-23** (`.dockerignore`, resolvid
 - **`/pedidos`** — vê os 39 pedidos e sabe em que etapa cada um está. **Não** vê retorno
   líquido nem margem em nenhum, e trabalha 7 cancelados como se fossem vivos.
 - **`/mercado`** — vê a lista. **Não** tem com o que decidir: margem atual `—` em 34 de 34 e
-  `Aplicar` desabilitado em 34 de 34.
-- **`/integracoes`** — **esta funciona.** Diz honestamente quando cada job rodou, inclusive
-  dizendo "nunca" para o que nunca rodou. É a única tela da onda cujo veredito é VIVO em
-  todos os campos conferidos.
+  `Aplicar` desabilitado em 34 de 34. O 1-de-34 com evidência é D-53, não avaria.
+- **`/integracoes`** — **esta funciona.** Diz honestamente quando cada job rodou. Única
+  ressalva: põe a fila `market_queue` na mesma tabela dos streams, e o "nunca" dela — que é
+  de projeto — se lê como avaria.
 
-O caminho mais curto para o operador sentir a onda é ligar duas coisas que já existem e
-estão desligadas: a **Task 7 do P2.b** (F-8, destrava margem em 34 pedidos) e o **consumidor
-da `market_queue`** (F-15, destrava competitividade em 34 anúncios). Nenhuma das duas é
-código novo de regra — é composição.
+O caminho mais curto para o operador sentir a onda é **uma** coisa que já existe e está
+desligada: a **Task 7 do P2.b** (F-8, destrava margem em 34 pedidos). Não é código novo de
+regra — é composição, e é escopo declarado da própria fatia que entrou nesta onda.
+
+Competitividade em escala **não** é dívida da Onda 0. É D-53, decisão medida e ratificada:
+o job periódico renova, não descobre; a primeira evidência de cada produto nasce do clique
+do operador. Descoberta periódica precisa de orçamento de rate limit que o bucket
+compartilhado não tem hoje, e entra numa onda futura com fila priorizada.
