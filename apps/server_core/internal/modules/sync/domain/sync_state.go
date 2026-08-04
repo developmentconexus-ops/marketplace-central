@@ -26,6 +26,12 @@ const (
 	// same (tenant, installation, entity) sync_state row (migration 0093).
 	EntityMarketQueue Entity = "market_queue"
 	EntityTariffs     Entity = "tariffs"
+	// EntityICMSMatrix é o espelho de (uf_origem, uf_destino, grupo_icms) lido
+	// do TGFICM (icms_matrix_mirror). Entidade própria, e não um estágio do
+	// stream de produtos, porque a matriz é fiscal e muda por vigência de
+	// legislação — a cadência dela não é a do catálogo, e a falha de uma não
+	// pode se esconder no sucesso da outra.
+	EntityICMSMatrix Entity = "icms_matrix"
 )
 
 // ErrUnknownEntity is returned when a caller registers or persists an entity
@@ -36,7 +42,7 @@ var ErrUnknownEntity = errors.New("sync: unknown entity")
 // Valid reports whether e is one of the documented sync entities.
 func (e Entity) Valid() bool {
 	switch e {
-	case EntityProducts, EntityListings, EntityOrders, EntityMarket, EntityMarketQueue, EntityTariffs:
+	case EntityProducts, EntityListings, EntityOrders, EntityMarket, EntityMarketQueue, EntityTariffs, EntityICMSMatrix:
 		return true
 	default:
 		return false
