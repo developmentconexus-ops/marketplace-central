@@ -76,6 +76,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS icms_matrix_mirror_vigente
 -- vigente_desde because these are exactly the four UFs where the ERP's own
 -- TGFICM rate is stale or wrong (D-42/D-43) — fonte/lei are columns, not a
 -- comment, so a reconciliation can cite the law, not prose.
+-- ON CONFLICT DO NOTHING porque schema_migrations é chaveado por NOME DE
+-- ARQUIVO (platform/migrate/runner.go): esta migração já rodou como
+-- 0093_icms_matrix.sql em ambientes vivos, e o renome para 0094 (colisão de
+-- prefixo entre três fatias paralelas) faz o runner reaplicá-la. DO NOTHING
+-- mantém o seed já semeado intacto — nunca sobrescreve uma alíquota que uma
+-- migração posterior tenha corrigido.
 INSERT INTO icms_aliquota_interna (uf, aliquota, fcp_embutido, fonte, lei, vigente_desde) VALUES
     ('AC', 19.0, 0,   'legislação estadual vigente, sem alteração recente conhecida', 'legislação estadual vigente', '2000-01-01'),
     ('AL', 21.5, 1.0, 'Lei 9.776/2025 (20,5% ICMS + 1% FECOEP = 21,5%)', 'Lei 9.776/2025', '2026-04-01'),
@@ -103,4 +109,5 @@ INSERT INTO icms_aliquota_interna (uf, aliquota, fcp_embutido, fonte, lei, vigen
     ('SC', 17.0, 0,   'legislação estadual vigente, sem alteração recente conhecida', 'legislação estadual vigente', '2000-01-01'),
     ('SP', 18.0, 0,   'legislação estadual vigente, sem alteração recente conhecida', 'legislação estadual vigente', '2000-01-01'),
     ('SE', 20.0, 1.0, 'legislação estadual vigente, sem alteração recente conhecida', 'legislação estadual vigente', '2000-01-01'),
-    ('TO', 20.0, 0,   'legislação estadual vigente, sem alteração recente conhecida', 'legislação estadual vigente', '2000-01-01');
+    ('TO', 20.0, 0,   'legislação estadual vigente, sem alteração recente conhecida', 'legislação estadual vigente', '2000-01-01')
+ON CONFLICT (uf, vigente_desde) DO NOTHING;
