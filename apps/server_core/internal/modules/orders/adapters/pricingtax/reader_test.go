@@ -250,3 +250,17 @@ func TestTaxesForItemsScalesRestituicaoByQuantity(t *testing.T) {
 		t.Fatalf("RestituicaoST = %s, want 30.00 (10.00 unit x Quantity=3)", dumpTaxes(got))
 	}
 }
+
+func TestParseTaxComponentRejectsGarbageWithoutPanic(t *testing.T) {
+	// Uma string de imposto que não parseia é erro de programação em
+	// pricing/domain, mas em produção ela não pode derrubar o processo do
+	// servidor inteiro: o pedido que não calcula é UM pedido, não o serviço.
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("panic em vez de erro: %v", r)
+		}
+	}()
+	if _, err := parseTaxComponent("não é número", "ICMS saída"); err == nil {
+		t.Fatal("err = nil, quero erro nomeando o componente")
+	}
+}

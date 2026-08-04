@@ -7,6 +7,7 @@ package pricingtax
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"strconv"
 
@@ -84,22 +85,38 @@ func (r *Reader) TaxesForItems(ctx context.Context, items []ordersports.TaxItem,
 		if tax.ICMSSaida == nil {
 			icmsKnown = false
 		} else if icmsKnown {
-			icmsSum.Add(icmsSum, mustRat(*tax.ICMSSaida))
+			v, err := parseTaxComponent(*tax.ICMSSaida, "ICMS saída")
+			if err != nil {
+				return ordersports.OrderTaxes{}, err
+			}
+			icmsSum.Add(icmsSum, v)
 		}
 		if tax.Difal == nil {
 			difalKnown = false
 		} else if difalKnown {
-			difalSum.Add(difalSum, mustRat(*tax.Difal))
+			v, err := parseTaxComponent(*tax.Difal, "DIFAL")
+			if err != nil {
+				return ordersports.OrderTaxes{}, err
+			}
+			difalSum.Add(difalSum, v)
 		}
 		if tax.PisCofins == nil {
 			pisKnown = false
 		} else if pisKnown {
-			pisSum.Add(pisSum, mustRat(*tax.PisCofins))
+			v, err := parseTaxComponent(*tax.PisCofins, "PIS/COFINS")
+			if err != nil {
+				return ordersports.OrderTaxes{}, err
+			}
+			pisSum.Add(pisSum, v)
 		}
 		if tax.RestituicaoST == nil {
 			restKnown = false
 		} else if restKnown {
-			restSum.Add(restSum, mustRat(*tax.RestituicaoST))
+			v, err := parseTaxComponent(*tax.RestituicaoST, "restituição de ST")
+			if err != nil {
+				return ordersports.OrderTaxes{}, err
+			}
+			restSum.Add(restSum, v)
 		}
 	}
 
@@ -232,13 +249,17 @@ func ratToFloat(r *big.Rat) (float64, error) {
 	return strconv.ParseFloat(pricingdomain.FormatRatHalfUp(r, 2), 64)
 }
 
-// mustRat parses a TaxesForItem output string — these are always
-// FormatRatHalfUp's own output, so a parse failure here is a programmer
-// error in pricing/domain, not a runtime data problem.
-func mustRat(s string) *big.Rat {
+// parseTaxComponent lê uma saída de TaxesForItem de volta para big.Rat. Essas
+// strings são sempre produto do próprio FormatRatHalfUp, então uma falha aqui é
+// erro de programação em pricing/domain, não dado ruim do operador — mas ela
+// vira erro, não panic: o que não calcula é UM pedido, e derrubar o processo do
+// servidor por isso troca um número faltando por um serviço fora do ar. O nome
+// do componente entra na mensagem porque um erro que diz apenas "parse falhou"
+// não diz qual dos quatro impostos quebrou.
+func parseTaxComponent(s, componente string) (*big.Rat, error) {
 	r, err := pricingdomain.ParseRat(s)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("orders pricingtax: %s inválido (%q): %w", componente, s, err)
 	}
-	return r
+	return r, nil
 }
