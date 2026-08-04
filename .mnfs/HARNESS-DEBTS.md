@@ -278,6 +278,29 @@ do próprio profile ("an alarm wrong twice trains its reader to skip the third")
 terceira. Candidato: hooks com known-answer test + degradação a `unknown` implementada no
 runtime, não na doutrina.
 
+**D-8. Lane Oracle sancionada bloqueada pelo próprio `.env`, e o fallback do host é verde-vazio
+(2026-08-04).** `scripts/run-live-oracle-docker.ps1` só aceita chaves `MPC_SANKHYA_ORACLE_*` e
+rejeita por design tudo com prefixo `MPC_ORACLE_`; o `.env` do repo usa `MPC_ORACLE_*`, então a
+lane responde `status=blocked reason=live Oracle .env unsupported_key=MPC_ORACLE_CONNECT_STRING`
+e nunca chega a rodar. As duas grafias são legítimas — o script traduz uma na outra ao montar o
+`ContainerEnvironment` — mas o `.env` vivo ficou do lado que o preflight recusa.
+
+A metade cara é o fallback. Ao ser recusado pela lane, o caminho "natural" é rodar `go test` no
+host, e no host `CGO_ENABLED=0`: o arquivo com `//go:build cgo` sai da compilação e o comando
+imprime `testing: warning: no tests to run` + `PASS`, **exit 0**. Um teste live contra Oracle que
+não executou nada é indistinguível de um que passou — mesma classe do
+`integration-lane-failure-token` (pulado e verde são byte-idênticos). Forçar `CGO_ENABLED=1`
+falha honestamente (`cgo: C compiler "gcc" not found`), mas só se alguém pensar em forçar.
+
+Custo medido: conclui em voz alta que o ambiente não conseguia falar com Oracle — depois de ter
+rodado dezenas de queries live na mesma sessão. O operador refutou (*"Como não tem Gcc se o tempo
+inteiro voce compilou chamou banco e fez tudo?"*) e a medição achou o runner do repo em
+`scripts/`. Capacidade ausente no host ≠ capacidade ausente.
+
+Conserto: (a) preflight aceita as duas grafias ou o `.env` ganha as chaves `MPC_SANKHYA_*`;
+(b) todo alvo de teste live com tag de build falha fechado quando a tag não é satisfeita —
+`-run` que casa zero testes numa lane live é erro, não sucesso.
+
 **D-6. Quota do codex como parede invisível** (memória codex-quota-exhausted): despacho contra
 quota esgotada falha tarde. Candidato: probe de quota no boot do hub e antes de cada despacho
 codex.
