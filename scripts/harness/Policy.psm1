@@ -195,7 +195,13 @@ function Get-SourceFiles {
   $extensions = @('.go', '.ps1', '.psm1', '.sh', '.ts', '.tsx', '.js', '.mjs', '.yml', '.yaml')
   @(Get-ChildItem -LiteralPath $RepositoryRoot -Recurse -File -Force | Where-Object {
     $relative = ConvertTo-NormalizedPath $RepositoryRoot $_.FullName
-    $relative -notmatch '^(?:\.git|\.mnfs|node_modules|apps/server_core/\.gomodcache|scripts/\.runs|scripts/tests|contracts/governance)/' -and
+    # Derived or foreign trees are excluded at ANY depth. Anchoring these to the root let
+    # whole checkouts of OTHER branches into the scan: .worktrees/<branch>/ and
+    # .claude/worktrees/<branch>/ together contributed 264 of 266 apparent new violations
+    # in the Onda 0 set diff, plus a 25-minute stall. A gate may only ever read the
+    # checkout under test — anything else is a cross-branch measurement.
+    $relative -notmatch '(?:^|/)(?:\.git|\.claude|node_modules|\.gocache|\.gomodcache|\.worktrees)/' -and
+      $relative -notmatch '^(?:\.mnfs|scripts/\.runs|scripts/tests|contracts/governance)/' -and
       ($_.Extension -in $extensions -or $relative -eq 'docker-compose.yml')
   })
 }

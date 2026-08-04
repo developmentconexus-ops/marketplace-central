@@ -552,3 +552,61 @@ Duas lições, ambas de classe:
    sobre o bind mount `.:/workspace`. Para tirar binário velho basta
    `docker compose up -d --force-recreate --no-build backend`. Rodar `--build` para "pegar o
    código novo" é uma hora jogada fora contra um layer que não carrega código nenhum.
+
+**D-24. O gate de governança lia checkouts de OUTROS branches** (revisão da Onda 0,
+2026-08-03) — RESOLVIDA no mesmo dia, registrada pela classe:
+
+`Get-SourceFiles` (`scripts/harness/Policy.psm1:196`) excluía por regex **ancorada na raiz**:
+
+```
+'^(?:\.git|\.mnfs|node_modules|apps/server_core/\.gomodcache|scripts/\.runs|scripts/tests|contracts/governance)/'
+```
+
+Âncora `^` significa "só no topo do contexto". Worktree nenhum fica no topo, então
+`.worktrees/<branch>/` e `.claude/worktrees/<branch>/` — checkouts inteiros de outros
+branches, com `node_modules` junto — entravam na varredura e eram lidos com
+`Get-Content -Raw` e casados contra os regexes de leitura de env.
+
+Medido no diff de conjunto da Onda 0, com o mesmo instrumento nos dois lados:
+
+```
+antes da correção   HEAD: 319 issues únicos   BASE: 56    "novos": 266
+depois              HEAD:  55 issues únicos   BASE: 56    novos:     2
+                    264 dos 266 vinham de .claude/worktrees/f00-scheduler-pedidos/
+```
+
+O gate reprovava — mas por 264 achados de um branch que não estava sob teste, e as duas
+violações verdadeiras ficavam enterradas no meio. Custo secundário: 8102 arquivos-fonte a
+mais lidos por corrida, o que levou o `governance-drift` de poucos minutos para mais de 25.
+
+Duas lições, ambas de classe:
+
+1. **Exclusão de instrumento não se ancora na raiz.** O que se exclui de uma varredura é
+   *tipo de diretório* (derivado, vendorizado, checkout alheio), e tipo de diretório aparece
+   em qualquer profundidade. `^dir/` só está certo para caminho único e fixo do repo
+   (`scripts/.runs`, `contracts/governance`); para o resto a forma é `(?:^|/)dir/`.
+2. **Verde e vermelho mentem igual quando a população está errada.** Este gate estava
+   VERMELHO, o que parece o lado seguro do erro — e ainda assim era inútil, porque ninguém
+   ia caçar 2 achados reais dentro de 266. Instrumento com população errada não erra só de
+   um lado.
+
+Correção: `(?:^|/)(?:\.git|\.claude|node_modules|\.gocache|\.gomodcache|\.worktrees)/`, mais
+a lista ancorada preservada para os caminhos que são de fato únicos no repo.
+
+**D-25. `governance-drift` não calcula diff de conjunto — o `-BaseSha` só serve para uma
+checagem** (revisão da Onda 0, 2026-08-03) — ABERTA:
+
+O nome sugere que o comando compare o estado de governança do HEAD contra a base. Não
+compara. `Test-GovernanceDrift` usa `$BaseSha` num único ponto (`Policy.psm1:446-461`), e
+só para o `GOV_API_SDK_SPLIT` (o OpenAPI e o `sdk-runtime` mudaram no mesmo diff?). Todo o
+resto é a lista **absoluta** de violações do HEAD.
+
+Consequência prática: o comando saía `status=failed` com 55 achados no HEAD e 56 na base —
+ou seja, a onda MELHOROU o número, e mesmo assim o gate dizia "failed" com a mesma cara de
+sempre. Quem lê o exit code aprende a ignorá-lo. O diff de conjunto teve que ser feito à
+mão nesta revisão: worktree na base, mesmo instrumento copiado nos dois lados, e diff de
+`(error_code, id, path)` — foi só assim que os 2 achados reais apareceram.
+
+Conserto: ou o comando passa a rodar os dois lados e emitir só `HEAD \ BASE`, ou é
+renomeado para `governance-snapshot` e o diff vira comando próprio. O nome atual é uma
+promessa que o código não cumpre.
