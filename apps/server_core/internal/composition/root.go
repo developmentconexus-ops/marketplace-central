@@ -710,6 +710,42 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		).Start(context.Background())
 	}
 
+	// P2.b, fecho: a matriz de ICMS tinha leitor (Oracle) e escritor (espelho) e
+	// nenhum relógio. icms_matrix_mirror ficou com 0 linhas, o consumidor abaixo
+	// (ordersTaxReader, :625) leu tabela vazia, devolveu Found:false, e todo
+	// pedido saiu com margem NULL — ADR-17 correto escondendo dado inexistente.
+	// Este é o produtor que faltava.
+	//
+	// Scheduler próprio, e não uma segunda entrada no de produtos: a matriz muda
+	// por vigência de legislação, não por movimento de catálogo, e a falha de uma
+	// não pode se esconder no sucesso da outra. Escopo ERP porque a matriz é fato
+	// do ERP, não de uma instalação de marketplace.
+	if oracleDB != nil {
+		icmsMatrixScheduler := syncapp.NewScheduler(
+			syncpg.NewSyncStateRepository(pool, cfg.DefaultTenantID),
+			synccomposition.InstallationScopeERP, 24*time.Hour, time.Now,
+		)
+		if err := icmsMatrixScheduler.RegisterJob(
+			syncdomain.EntityICMSMatrix,
+			internalreadapp.NewICMSMatrixJob(
+				cfg.DefaultTenantID,
+				internalreadoracle.NewICMSMatrixReader(oracleDB),
+				mirror.NewICMSMatrixWriter(pool),
+				time.Now,
+			),
+		); err != nil {
+			return nil, fmt.Errorf("icms matrix job registration: %w", err)
+		}
+		// Start é ticker puro (D-16): sem esta primeira volta a matriz ficaria 24h
+		// vazia depois de cada deploy e a margem de todo pedido sairia NULL nesse
+		// intervalo. RunOnce isola falha por entidade, então uma matriz
+		// inalcançável no boot vira sync_state.last_error, não um boot travado.
+		go func() {
+			icmsMatrixScheduler.RunOnce(context.Background())
+			icmsMatrixScheduler.Start(context.Background())
+		}()
+	}
+
 	marketModuleRepo := marketpostgres.NewRepository(pool, cfg.DefaultTenantID)
 	marketReadSvc := marketapp.NewReadService(marketModuleRepo, marketModuleRepo, time.Now)
 	marketCostReader := newMarketCostReaderAdapter(internalReadSvc, internalReadAvailable)
