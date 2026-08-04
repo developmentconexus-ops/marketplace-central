@@ -23,11 +23,11 @@ func (f *fakeResolver) ResolveCells(ctx context.Context) ([]domain.ICMSMatrixCel
 }
 
 type fakeApplier struct {
-	written  int
-	err      error
-	gotCells []domain.ICMSMatrixCell
+	written   int
+	err       error
+	gotCells  []domain.ICMSMatrixCell
 	gotTenant string
-	calls    int
+	calls     int
 }
 
 func (f *fakeApplier) ApplyCells(ctx context.Context, tenantID string, cells []domain.ICMSMatrixCell) (int, error) {
