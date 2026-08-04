@@ -591,10 +591,13 @@ compartilhado e precisa de dono único.
 
 ---
 
-## Fase 2 — o que ainda falta
+## O que ainda falta
 
-1. Lanes de front e de integração: `npm run test --workspace @marketplace-central/web` e
-   `npm run harness:integration`. As lanes Go já rodaram (§ Laudo).
-2. Destino dos worktrees remanescentes (`f00-scheduler-pedidos`, `fa3-idade-honesta`,
-   `p2-dinheiro-real-pedidos`, `.worktrees/p2b-imposto-ex-ante`), sob a D-18 — bind mount
-   ativo bloqueia `rm -rf` e o exit code mente; conferir o diretório, não o código de saída.
+As quatro lanes do §6 rodaram e estão no [Laudo](ONDA-0-LAUDO.md). Restam duas coisas, e
+nenhuma delas é medição desta onda:
+
+1. **Ficha prospectiva da Onda 1** (F-06 / F-07 / F-08), com a coluna *Prometido* por tela e
+   por campo, antes do despacho — §1.4 e §9 do método.
+2. **Destino dos worktrees remanescentes** (`f00-scheduler-pedidos`, `fa3-idade-honesta`,
+   `p2-dinheiro-real-pedidos`, `.worktrees/p2b-imposto-ex-ante`), sob a D-18: bind mount
+   ativo bloqueia `rm -rf` e o exit code mente — conferir o diretório, não o código de saída.

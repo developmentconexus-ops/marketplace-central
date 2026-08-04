@@ -610,3 +610,42 @@ mão nesta revisão: worktree na base, mesmo instrumento copiado nos dois lados,
 Conserto: ou o comando passa a rodar os dois lados e emitir só `HEAD \ BASE`, ou é
 renomeado para `governance-snapshot` e o diff vira comando próprio. O nome atual é uma
 promessa que o código não cumpre.
+
+**D-26. As duas lanes de teste não produzem contagem por linha** (revisão da Onda 0,
+2026-08-03) — ABERTA. Dois sintomas, uma causa: a lane reporta veredito e joga fora a
+evidência que sustenta o veredito.
+
+*Lane de integração — `status=passed` é byte-idêntico a "tudo pulado".* A lane roda
+`go test -tags=integration ... -count=1` sem `-v` (`Postgres.psm1:276`), guarda a saída
+**só quando o teste falha** (`Postgres.psm1:418-423`), e o objeto de retorno não expõe
+`Stdout`. O `summary.txt` do run tem três linhas: `target`, `status`, `run_id`. Não há
+RUN/PASS/SKIP/FAIL, e `failure_token=test=` só aparece na falha. Uma corrida em que todos os
+testes fossem pulados imprimiria exatamente o mesmo texto de uma corrida verde.
+
+Para obter a contagem desta onda foi preciso replicar o ciclo à mão: sessão do harness de
+pé, `CREATE DATABASE mpc_test_<32 hex>` (qualquer outro nome devolve `HPG_TARGET_INVALID` —
+`testsupport/postgres/target.go:19`), `go run ./cmd/testdb migrate`, e então
+`go test -tags=integration -v`. Resultado real: **55 RUN / 55 PASS / 0 SKIP / 0 FAIL**, 83
+migrações na primeira passada e 0 na segunda. O número é bom; o problema é que a lane não o
+conta.
+
+Conserto: acrescentar `-v` aos `$TestArguments` padrão e emitir
+`run=/pass=/skip=/fail=` no `summary.txt`, junto com `failure_token=` em qualquer resultado,
+não só na falha.
+
+*Lane de front — reprova por contenção de máquina.* A suíte do `apps/web` roda em 24,6 s
+sozinha e em 54,4 s concorrendo com a lane de integração. Sob carga, **3 de 601 testes
+reprovaram por timeout de 5000 ms**: `ListingDetailPanel > loads one detail without
+refetching the listing page`, `ImportChainPanel > renders a known protocol verbatim` e
+`SyncHealthCard.realNetwork > reaches the named ErrorState ...` (esta com
+`expected 0 to be greater than or equal to 1` — o fetch ainda não havia falhado dentro do
+`waitFor`). Os mesmos três arquivos, sozinhos: **26/26 em 5,07 s**, com o `SyncHealthCard`
+em 1114 ms — margem de 4× contra o timeout.
+
+A lição não é "são flakes". É que **um vermelho de lane não é atribuível até você separar
+carga de defeito**, e o caminho para separar é medir isolado, nunca supor. Supor flake é o
+mesmo erro de supor defeito, só na direção confortável.
+
+Conserto: subir `testTimeout` para 15000 na `vitest.config.ts` do `apps/web`, ou serializar
+as lanes no runner do harness. A primeira é mais barata e não esconde nada — os testes que
+importam levam ~1 s; 15 s continua reprovando pendura de verdade.
