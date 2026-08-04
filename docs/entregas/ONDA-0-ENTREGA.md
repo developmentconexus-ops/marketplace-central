@@ -356,10 +356,90 @@ ou saem do esquema.
 
 ---
 
+## §6 — As cinco buscas de máximo local (método §4)
+
+Todas com número medido, não impressão.
+
+### 6.1 Fórmula sem consumidor (busca 2)
+
+Varredura de todo `apps/server_core/internal/modules/*/domain/`, contando usos de cada
+função exportada **fora do arquivo que a declara** (testes incluídos como consumidor
+legítimo):
+
+```
+funções exportadas em */domain/: 98
+sem nenhum uso fora do arquivo de declaração: 3
+  - IsAutomatic            product_links/domain/product_link_decision.go
+  - IsSankhyaLinkageError  internal_read/domain/sankhya_linkage.go
+  - ValidateRowLenient     erp_import/domain/validation.go
+```
+
+**3 em 98.** A suspeita de "fórmula morta em massa" no domínio está refutada por medição.
+As três são dívida pequena e nomeada, não um sintoma estrutural.
+
+### 6.2 Operação de contrato sem consumidor (busca 3)
+
+Três contagens, porque a pergunta tem três lados:
+
+| Medida | Número |
+|---|---|
+| `operationId` no OpenAPI | 111 |
+| símbolos expostos pelo `sdk-runtime` | 114 |
+| `operationId` sem símbolo homônimo no SDK (nem a string aparece lá) | **13** |
+| `operationId` sem nenhum consumidor de produção no monorepo FE | **50 / 111** |
+
+O segundo número é o achado; o terceiro é contexto (metade das operações não tem tela, o
+que para uma plataforma em construção é esperado, não defeito).
+
+**F-10 — o contrato e o SDK divergem em nome, e o gate mede a coisa errada.**
+Dos 13, seis são renomeações silenciosas — o contrato publica um nome, o cliente expõe
+outro:
+
+| OpenAPI | `sdk-runtime` |
+|---|---|
+| `getOrdersSummary` | `getOrderSummary` |
+| `getMarketplaceOrder` | `getOrder` |
+| `upsertProductEnrichment` | `updateProductEnrichment` |
+| `runPricingBatchSimulation` | `runBatchSimulation` |
+| `createPricingSimulation` | `runPricingSimulation` |
+| `getMelhorEnvioOAuthStatus` | `getMelhorEnvioStatus` |
+
+Os outros sete não têm par nenhum. Caso verificado ponta a ponta:
+`pricingGetTariffDefaults` / `pricingPutTariffDefaults` existem no contrato
+(`marketplace-central.openapi.yaml:2773`, `:2795`) **e** no servidor
+(`pricing/transport/calc_handler.go:37-38`), e não existem no SDK nem no front. Backend
+serve, contrato publica, ninguém consome.
+
+O que torna isto uma classe, e não seis erros de digitação: o invariante que deveria pegar
+mede outra coisa. `GOV_API_SDK_SPLIT` (`scripts/harness/Policy.psm1:452-454`) verifica
+apenas se `contracts/api/…yaml` e `packages/sdk-runtime/` **mudaram no mesmo diff** —
+atomicidade de commit, nunca correspondência de nomes. Renomear no SDK sem tocar no
+contrato passa; publicar operação no contrato sem gerar método passa. O gate está verde
+porque pergunta "mexeram nos dois?", não "os dois dizem a mesma coisa?".
+
+### 6.3 Motor duplicado, campo sem produtor, abstração vazia (buscas 1, 4 e 5)
+
+- **Busca 1 (motor duplicado):** nenhum encontrado nesta onda. O risco histórico
+  (segundo motor de preço ao lado de `pricing/domain`) foi eliminado no re-escopo do
+  P2.b — os 17 tasks viraram 7 exatamente por isso.
+- **Busca 4 (campo sem produtor):** é o veredito ÓRFÃO/FANTASMA da §1.2, já contabilizado
+  nas seções por tela — F-2, F-3, F-7 e F-9.
+- **Busca 5 (abstração que não abstrai):** as portas desta onda protegem o domínio de
+  dependências que mudam de verdade (Oracle, ML, Postgres) e têm implementação real mais
+  implementação de teste. Não é cerimônia. Uma exceção a observar, não a cortar: o par
+  `ICMSMatrixReader`/`ICMSMatrixWriter` do F-8 tem porta, implementação e teste — e nenhum
+  chamador de produção. Não é abstração vazia; é abstração **desligada**.
+
+---
+
 ## Fase 2 — o que ainda falta
 
 1. Live drive das quatro telas com a stack reconstruída, com container id e `Created` no
    veredito (a reconstrução está em curso).
 2. Linha `orders` no `/sync/health` visível na tela.
 3. Lane de governança por diff de conjunto contra `main`, medida fora da árvore montada
-   (decide o F-4).
+   (decide o F-4). Medido até aqui: `governance-validate` passa, mas **não é ele que checa
+   `panic`** — o check de `production-panic` vive em `Test-GovernanceDrift`
+   (`Policy.psm1:360-373`), que exige `-BaseSha`. Não há exceção registrada para
+   `orders/adapters/pricingtax/reader.go` em `invariants.json` (as quatro existentes são
+   para outros arquivos), então a expectativa é reprovação.
