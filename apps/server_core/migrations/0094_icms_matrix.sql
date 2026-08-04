@@ -1,4 +1,4 @@
--- 0093: ICMS matrix schema (P2.b, Task 1) — imposto ex-ante no motor de preco.
+-- 0094: ICMS matrix schema (P2.b, Task 1) — imposto ex-ante no motor de preco.
 --
 -- Adds the fiscal fields the pricing engine needs to read ICMS ex-ante instead
 -- of fabricating it. These five columns land on products_mirror because ICMS
@@ -78,7 +78,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS icms_matrix_mirror_vigente
 -- comment, so a reconciliation can cite the law, not prose.
 -- ON CONFLICT DO NOTHING porque schema_migrations é chaveado por NOME DE
 -- ARQUIVO (platform/migrate/runner.go): esta migração já rodou como
--- 0093_icms_matrix.sql em ambientes vivos, e o renome para 0094 (colisão de
+-- 0094_icms_matrix.sql em ambientes vivos, e o renome para 0094 (colisão de
 -- prefixo entre três fatias paralelas) faz o runner reaplicá-la. DO NOTHING
 -- mantém o seed já semeado intacto — nunca sobrescreve uma alíquota que uma
 -- migração posterior tenha corrigido.

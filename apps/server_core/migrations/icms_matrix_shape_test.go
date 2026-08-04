@@ -5,10 +5,10 @@ import (
 	"testing"
 )
 
-const icmsMatrixMigration = "0093_icms_matrix.sql"
+const icmsMatrixMigration = "0094_icms_matrix.sql"
 
 // TestICMSMatrixMigrationAddsProductsMirrorFiscalColumns proves the five
-// ADR-17 honest-unknown columns 0093 adds to products_mirror arrive bare
+// ADR-17 honest-unknown columns 0094 adds to products_mirror arrive bare
 // nullable (no DEFAULT), additive-only (ADD COLUMN IF NOT EXISTS).
 func TestICMSMatrixMigrationAddsProductsMirrorFiscalColumns(t *testing.T) {
 	sql := normalizeMigrationSQL(readMigration(t, icmsMatrixMigration))
@@ -157,7 +157,7 @@ func TestICMSAliquotaInternaSeedHasAll27UFsExactlyOnce(t *testing.T) {
 	}
 }
 
-// TestICMSMatrixMigrationIsAdditiveOnly proves 0093 never touches an
+// TestICMSMatrixMigrationIsAdditiveOnly proves 0094 never touches an
 // existing table's data or an unrelated table's shape — additive columns and
 // brand-new tables only.
 func TestICMSMatrixMigrationIsAdditiveOnly(t *testing.T) {

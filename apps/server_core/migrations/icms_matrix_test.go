@@ -2,7 +2,7 @@
 
 package migrations
 
-// Task 1 (P2.b): live-DB proof that 0093_icms_matrix.sql's partial unique
+// Task 1 (P2.b): live-DB proof that 0094_icms_matrix.sql's partial unique
 // indexes are the actual guarantee against two open versions of the same
 // cell — not writer discipline. Every other *_test.go in this package
 // asserts on the migration's SQL TEXT; this file is deliberately different
