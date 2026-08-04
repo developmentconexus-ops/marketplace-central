@@ -19,6 +19,19 @@ const icmsMatrixOriginUF = 13
 // always carries, given icmsMatrixOriginUF.
 const icmsMatrixOriginUFSigla = "MG"
 
+// icmsMatrixTOPs are the Sankhya CODTIPOPER values the marketplace operation
+// runs under: 313 is the pedido, 306 ("NFE ENTREGA E-COMMERCE") is the nota it
+// becomes when invoiced. TGFICM rows whose operation axis (TIPRESTRICAO='O')
+// names any other CODTIPOPER belong to a different operation and must not
+// resolve this operation's cells — that is the correction measured in the
+// P2.b Task 7 follow-up, where 240 rows restricted to unrelated TOPs (several
+// of them with zero documents in 2026) were resolving as candidates and
+// turning 881 of 2700 cells ambiguous.
+//
+// Same D-17 territory as icmsMatrixOriginUF: fixed for the client's single
+// empresa, not a per-tenant choice.
+var icmsMatrixTOPs = map[int]bool{306: true, 313: true}
+
 // icmsMatrixCandidatesSQL reads every METALPRD.TGFICM row for the fixed
 // origin (UFORIG=:1) with NO grupo/uf_destino filter — architecture decision
 // (a) from the P2.b Task 3 dispatch: the whitelist predicate
@@ -87,7 +100,7 @@ func (r *ICMSMatrixReader) ResolveCells(ctx context.Context) ([]domain.ICMSMatri
 	for _, uf := range ufs {
 		rows := candidatesByUF[uf]
 		for _, grupo := range grupos {
-			resolved := domain.ResolveCell(rows, grupo)
+			resolved := domain.ResolveCell(rows, grupo, icmsMatrixTOPs)
 			if !resolved.Found {
 				continue
 			}

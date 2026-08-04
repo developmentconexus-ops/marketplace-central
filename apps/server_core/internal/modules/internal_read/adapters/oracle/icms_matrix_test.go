@@ -25,7 +25,7 @@ func TestICMSMatrixCandidatesSQLJoinsTSIUFSWithCodPais55AndFixedOrigin(t *testin
 		t.Errorf("icmsMatrixCandidatesSQL must not select ALIQUFDEST (wrong rate, ST block, not the operation)\n%s", icmsMatrixCandidatesSQL)
 	}
 	// No grupo/uf_destino filter in SQL — architecture decision (a): the
-	// whitelist is applied per-cell in Go via domain.ResolveCell.
+	// predicate is applied per-cell in Go via domain.ResolveCell.
 	if strings.Contains(upper, "GRUPOICMS") {
 		t.Errorf("icmsMatrixCandidatesSQL must not filter by grupo in SQL (decision (a))\n%s", icmsMatrixCandidatesSQL)
 	}
@@ -40,29 +40,50 @@ func TestICMSKnownGruposSQLFiltersNotNull(t *testing.T) {
 	}
 }
 
-// TestICMSMatrixReaderResolveCellsAppliesWhitelistPerUFAndGrupo drives
-// ResolveCells over a canned Oracle snapshot spanning two destinations and
-// proves: an unrestricted (N/0) row alone resolves cleanly; the SAME
-// unrestricted row alongside a grupo-restricted (I) row for the same grupo is
-// ambiguous (CodTrib withheld); a destination whose only row is outside the
-// whitelist ("O") produces no cell for any grupo; a row whose TSIUFS join
-// could not resolve a sigla (UF NULL) is dropped rather than panicking.
-func TestICMSMatrixReaderResolveCellsAppliesWhitelistPerUFAndGrupo(t *testing.T) {
+// TestICMSMatrixTOPsAreTheMarketplaceOperation pins the operation the mirror
+// resolves for: 313 (pedido) and 306 (NFE ENTREGA E-COMMERCE, the nota it
+// becomes). A row restricted to any other CODTIPOPER belongs to a different
+// operation and must never resolve this operation's cells.
+func TestICMSMatrixTOPsAreTheMarketplaceOperation(t *testing.T) {
+	if len(icmsMatrixTOPs) != 2 || !icmsMatrixTOPs[306] || !icmsMatrixTOPs[313] {
+		t.Fatalf("icmsMatrixTOPs = %v, want exactly {306, 313}", icmsMatrixTOPs)
+	}
+}
+
+// TestICMSMatrixReaderResolveCellsAppliesPredicatePerUFAndGrupo drives
+// ResolveCells over a canned snapshot built from row shapes actually measured
+// in METALPRD.TGFICM, and proves the wiring end to end:
+//
+//   - a rule restricted to another operation (O/103 + I/122) does not resolve
+//     grupo 122 — the defect that turned 881 of 2700 live cells ambiguous;
+//   - a rule for grupo 504 carrying the "S" sentinel does not leak into other
+//     grupos — "S" is "axis unused", not a wildcard;
+//   - the matrix-wide default (S/-1 + S/-1) resolves grupos that have no rule
+//     of their own, and loses to a specific rule where one exists;
+//   - a destination whose only row belongs to another operation produces no
+//     cell at any grupo (ADR-17: no placeholder row);
+//   - a row whose TSIUFS join produced no sigla is dropped rather than panicking.
+func TestICMSMatrixReaderResolveCellsAppliesPredicatePerUFAndGrupo(t *testing.T) {
 	q := &dispatchQueryer{results: map[string]fakeResult{
 		"TGFICM": {cols: 9, rows: [][]driver.Value{
-			// SP: N/0 unrestricted, codtrib=0.
-			{"SP", "N", nil, "N", nil, int64(0), 12.0, 0.0, 0.0},
-			// SP: I/7 restricted to grupo 7, codtrib=10 — collides with the N/0
-			// row above for grupo=7 only.
-			{"SP", "I", int64(7), nil, nil, int64(10), 18.0, 0.0, 0.0},
-			// RJ: outside the whitelist entirely.
-			{"RJ", "O", nil, "P", nil, int64(99), 20.0, 0.0, 0.0},
-			// UFDEST whose TSIUFS join produced no sigla — must be dropped, not panic.
-			{nil, "N", nil, "N", nil, int64(1), 10.0, 0.0, 0.0},
+			// SP: our operation's rule for grupo 122, codtrib=0.
+			{"SP", "N", int64(0), "I", int64(122), int64(0), 12.0, 0.0, 0.0},
+			// SP: same grupo 122, but restricted to CODTIPOPER 103 — a different
+			// operation, with a reduced base that must not reach our cell.
+			{"SP", "O", int64(103), "I", int64(122), int64(60), 7.0, 100.0, 0.0},
+			// SP: rule for grupo 504, product axis switched off.
+			{"SP", "I", int64(504), "S", int64(-1), int64(10), 18.0, 0.0, 0.0},
+			// SP: the matrix-wide default for this destination.
+			{"SP", "S", int64(-1), "S", int64(-1), int64(20), 4.0, 0.0, 0.0},
+			// RJ: only a rule for another operation — no cell may be written.
+			{"RJ", "O", int64(103), "I", int64(122), int64(99), 20.0, 0.0, 0.0},
+			// UFDEST whose TSIUFS join produced no sigla — dropped, not a panic.
+			{nil, "N", int64(0), "I", int64(122), int64(1), 10.0, 0.0, 0.0},
 		}},
 		"TGFPRO": {cols: 1, rows: [][]driver.Value{
 			{int64(3)},
-			{int64(7)},
+			{int64(122)},
+			{int64(504)},
 		}},
 	}}
 
@@ -74,35 +95,52 @@ func TestICMSMatrixReaderResolveCellsAppliesWhitelistPerUFAndGrupo(t *testing.T)
 	byKey := make(map[[2]any]icmsMatrixCellTestView, len(cells))
 	for _, c := range cells {
 		byKey[[2]any{c.UFDestino, c.GrupoICMS}] = icmsMatrixCellTestView{
-			UFOrigem: c.UFOrigem, Ambiguo: c.Ambiguo, Linhas: c.LinhasCandidatas, CodTrib: c.CodTrib,
+			UFOrigem: c.UFOrigem, Ambiguo: c.Ambiguo, Linhas: c.LinhasCandidatas,
+			CodTrib: c.CodTrib, RedBase: c.RedBase,
 		}
 	}
 
-	// SP/grupo=3: only the unrestricted N/0 row applies (I/7 does not match
-	// grupo 3) → single survivor, codtrib=0.
-	spThree, ok := byKey[[2]any{"SP", 3}]
+	// SP/122: only our operation's N/0 + I/122 rule applies. The O/103 row is
+	// another operation's and must not make the cell ambiguous nor contribute
+	// its RedBase=100.
+	spCentoEVinteDois, ok := byKey[[2]any{"SP", 122}]
+	if !ok {
+		t.Fatalf("missing cell SP/122, cells=%+v", cells)
+	}
+	if spCentoEVinteDois.UFOrigem != "MG" || spCentoEVinteDois.Ambiguo || spCentoEVinteDois.Linhas != 1 {
+		t.Errorf("SP/122 = %+v, want UFOrigem=MG Ambiguo=false Linhas=1", spCentoEVinteDois)
+	}
+	if spCentoEVinteDois.CodTrib == nil || *spCentoEVinteDois.CodTrib != 0 {
+		t.Errorf("SP/122 CodTrib = %v, want 0 — 60 belongs to CODTIPOPER 103", spCentoEVinteDois.CodTrib)
+	}
+	if spCentoEVinteDois.RedBase == nil || *spCentoEVinteDois.RedBase != 0 {
+		t.Errorf("SP/122 RedBase = %v, want 0 — 100 belongs to CODTIPOPER 103", spCentoEVinteDois.RedBase)
+	}
+
+	// SP/504: resolved by its own rule, not by the default.
+	spQuinhentosEQuatro, ok := byKey[[2]any{"SP", 504}]
+	if !ok {
+		t.Fatalf("missing cell SP/504, cells=%+v", cells)
+	}
+	if spQuinhentosEQuatro.Ambiguo || spQuinhentosEQuatro.CodTrib == nil || *spQuinhentosEQuatro.CodTrib != 10 {
+		t.Errorf("SP/504 = %+v, want Ambiguo=false CodTrib=10", spQuinhentosEQuatro)
+	}
+
+	// SP/3 has no rule of its own — the matrix-wide default resolves it, and
+	// the grupo-504 rule must not have leaked in via its "S" sentinel.
+	spTres, ok := byKey[[2]any{"SP", 3}]
 	if !ok {
 		t.Fatalf("missing cell SP/3, cells=%+v", cells)
 	}
-	if spThree.UFOrigem != "MG" || spThree.Ambiguo || spThree.Linhas != 1 || spThree.CodTrib == nil || *spThree.CodTrib != 0 {
-		t.Errorf("SP/3 = %+v, want UFOrigem=MG Ambiguo=false Linhas=1 CodTrib=0", spThree)
+	if spTres.Ambiguo || spTres.Linhas != 1 || spTres.CodTrib == nil || *spTres.CodTrib != 20 {
+		t.Errorf("SP/3 = %+v, want Ambiguo=false Linhas=1 CodTrib=20 (the default rule)", spTres)
 	}
 
-	// SP/grupo=7: both N/0 and I/7 apply → ambiguous, CodTrib withheld.
-	spSeven, ok := byKey[[2]any{"SP", 7}]
-	if !ok {
-		t.Fatalf("missing cell SP/7, cells=%+v", cells)
-	}
-	if !spSeven.Ambiguo || spSeven.Linhas != 2 || spSeven.CodTrib != nil {
-		t.Errorf("SP/7 = %+v, want Ambiguo=true Linhas=2 CodTrib=nil", spSeven)
-	}
-
-	// RJ: the only row is "O" (not whitelisted) — no cell for RJ at any grupo.
-	if _, ok := byKey[[2]any{"RJ", 3}]; ok {
-		t.Errorf("RJ/3 unexpectedly resolved, cells=%+v", cells)
-	}
-	if _, ok := byKey[[2]any{"RJ", 7}]; ok {
-		t.Errorf("RJ/7 unexpectedly resolved, cells=%+v", cells)
+	// RJ: the only row belongs to CODTIPOPER 103 — no cell at any grupo.
+	for _, grupo := range []int{3, 122, 504} {
+		if _, ok := byKey[[2]any{"RJ", grupo}]; ok {
+			t.Errorf("RJ/%d unexpectedly resolved from another operation's rule, cells=%+v", grupo, cells)
+		}
 	}
 
 	// The UF-NULL row must not have manufactured a destination.
@@ -118,4 +156,5 @@ type icmsMatrixCellTestView struct {
 	Ambiguo  bool
 	Linhas   int
 	CodTrib  *int
+	RedBase  *float64
 }
