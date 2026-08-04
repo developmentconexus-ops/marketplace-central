@@ -649,3 +649,34 @@ mesmo erro de supor defeito, só na direção confortável.
 Conserto: subir `testTimeout` para 15000 na `vitest.config.ts` do `apps/web`, ou serializar
 as lanes no runner do harness. A primeira é mais barata e não esconde nada — os testes que
 importam levam ~1 s; 15 s continua reprovando pendura de verdade.
+
+---
+
+**D-27. A checagem de dependência de módulo é cega a import da RAIZ de um módulo**
+(auditoria de arquitetura do P2.b, 2026-08-04) — ABERTA.
+
+`Policy.psm1:322` procura as arestas com
+
+```
+["']marketplace-central/apps/server_core/internal/modules/(?<target>[a-z_]+)/(?<layer>[a-z_]+)[^"']*["']
+```
+
+O regex **exige um segundo segmento** depois do nome do módulo. Um módulo que expõe pacote na
+própria raiz — `tenant_config` é o caso vivo — é importado como
+`".../internal/modules/tenant_config"`, sem camada. O regex não casa, o `foreach` não roda, e
+a aresta nunca é confrontada com `dependencies` em `modules.json`.
+
+Medido: `pricing/adapters/postgres/product_fiscal_reader.go:10` importa `tenant_config`, e
+`tenant_config` **não** está em `dependencies` de `pricing` (`modules.json:20`). A lane passa.
+Outros 15 arquivos fazem o mesmo (`internal_read/adapters/routing/*`,
+`internal_read/adapters/cache/cache.go`, `sync/composition/products_job.go`), então o padrão é
+da casa, não do P2.b — o que torna a cegueira mais cara, não menos.
+
+Consequência de classe: **qualquer módulo que ganhe um pacote na raiz vira porta aberta**. A
+checagem de camada (`GOV_MODULE_LAYER`, mesma linha) herda o mesmo ponto cego.
+
+Conserto: tornar o segundo segmento opcional — `/(?<target>[a-z_]+)(?:/(?<layer>[a-z_]+))?` —
+tratando camada vazia como `root`, e decidir explicitamente se `root` entra na lista
+`adapters|transport|registry` da checagem de camada. Antes de ligar, medir quantas arestas
+novas aparecem: são 16 arquivos, e algumas provavelmente viram exceção declarada em vez de
+conserto.
