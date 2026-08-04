@@ -1,0 +1,71 @@
+=== RUN   TestDiagLive
+godror WARNING: discrepancy between SESSIONTIMEZONE ("+00:00"=0) and SYSTIMESTAMP ("-03:00"=-300) - set connection timezone, see https://github.com/godror/godror/blob/master/doc/timezone.md
+
+===== M1 codigos de UF do Sankhya =====
+CODUF | UF
+1 | AM
+2 | AP
+3 | AL
+4 | AC
+5 | BA
+6 | CE
+7 | DF
+8 | ES
+9 | GO
+10 | MA
+11 | MS
+12 | MT
+13 | MG
+14 | PA
+15 | PR
+16 | PB
+17 | PE
+18 | PI
+19 | RJ
+20 | RN
+21 | RS
+22 | RO
+23 | RR
+24 | SC
+25 | SP
+26 | SE
+27 | TO
+(27 linhas)
+
+===== M2 cobertura de TGFAID =====
+LINHAS | PRODUTOS | UFS | COM_FCP | COM_REDBASE
+1051700 | 40450 | 26 | 2 | 0
+(1 linhas)
+
+===== M3 TGFAID reproduz a ALIQINTDEST cobrada? (TOP 305/306 desde 2025) =====
+VEREDITO | ITENS
+A bate | 784
+(1 linhas)
+
+===== M4 as divergencias, uma a uma =====
+NUNOTA | DTNEG | UF | CODPROD | COBRADA | TGFAID
+(0 linhas)
+
+===== M5 o FCP cobrado sai de onde? TGFAID.PERCICMSFCP x TGFDIN.PERCFCP =====
+UF | COBRADO | TGFAID | ITENS
+BA | 0 | -1 | 2
+DF | 0 | -1 | 2
+ES | 0 | -1 | 2
+GO | 0 | -1 | 1011
+MA | 0 | -1 | 1
+MG | 0 | -1 | 22124
+PE | 0 | -1 | 2
+PR | 0 | -1 | 12
+RJ | 0 | -1 | 1
+RJ | 2 | -1 | 8
+RS | 0 | -1 | 1
+SC | 0 | -1 | 1
+SP | 0 | -1 | 56
+(13 linhas)
+
+===== M6 TGFAID cobre o catalogo vendavel? (USOPROD=R e ATIVO=S) =====
+COBERTURA | PRODUTOS
+parcial | 10051
+(1 linhas)
+--- PASS: TestDiagLive (8.74s)
+PASS

@@ -1,0 +1,40 @@
+=== RUN   TestDiagLive
+godror WARNING: discrepancy between SESSIONTIMEZONE ("+00:00"=0) and SYSTIMESTAMP ("-03:00"=-300) - set connection timezone, see https://github.com/godror/godror/blob/master/doc/timezone.md
+
+===== Q1 TGFAID por UF no catalogo vendavel (USOPROD=R, ATIVO=S) =====
+UF | ALIQINTDEST | PRODUTOS
+AC | 17 | 10051
+AL | 17 | 10051
+AM | 17 | 10051
+AP | 17 | 10051
+BA | 17 | 10049
+BA | 18 | 1
+BA | 20.5 | 1
+CE | 17 | 10051
+DF | 18 | 9413
+DF | 17 | 638
+ES | 17 | 10051
+GO | 19 | 10051
+MA | 17 | 10050
+MA | 23 | 1
+MS | 17 | 10051
+MT | 17 | 10051
+PA | 17 | 10051
+PB | 17 | 10051
+PE | 17 | 10050
+PE | 20.5 | 1
+PI | 17 | 10051
+PR | 18 | 10051
+RJ | 19 | 10048
+RJ | 18 | 3
+RN | 17 | 10051
+RO | 17 | 10051
+RR | 17 | 10051
+RS | 17 | 10051
+SC | 17 | 10051
+SE | 17 | 10051
+SP | 18 | 10051
+TO | 17 | 10051
+(32 linhas)
+--- PASS: TestDiagLive (3.94s)
+PASS

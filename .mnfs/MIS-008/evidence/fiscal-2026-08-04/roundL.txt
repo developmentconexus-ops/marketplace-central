@@ -1,0 +1,90 @@
+=== RUN   TestDiagLive
+godror WARNING: discrepancy between SESSIONTIMEZONE ("+00:00"=0) and SYSTIMESTAMP ("-03:00"=-300) - set connection timezone, see https://github.com/godror/godror/blob/master/doc/timezone.md
+
+===== L1 BASERED do PIS == BASE - ICMS - DIFAL - FCP ? TOP 306 todo o historico =====
+REGRA | ITENS
+A exato | 25
+B reduzida a mais (ST?) | 6
+C maior | 11
+(3 linhas)
+
+===== L2 mesma pergunta no TOP 305 de 2026 (populacao grande) =====
+REGRA | ITENS
+A exato | 755
+B reduzida a mais (ST?) | 108
+C maior | 5333
+(3 linhas)
+
+===== L3 PIS e COFINS conferem contra o proprio BASERED? TOP 305/306 de 2026 =====
+CODIMP | ALIQUOTA | ITENS | BATEM
+6 | 0 | 10 | 10
+6 | 1.65 | 7617 | 7617
+7 | 7.6 | 7627 | 7627
+(3 linhas)
+
+===== L4 os dois produtos da BA no TGFAID =====
+CODUF | CODPROD | ALIQINTDEST | PERCICMSFCP | PERCREDBASEDEST
+1 | 39563 | 17 | <nil> | 0
+2 | 39563 | 17 | <nil> | 0
+3 | 39563 | 17 | <nil> | 0
+4 | 39563 | 17 | <nil> | 0
+5 | 39563 | 20.5 | <nil> | 0
+6 | 39563 | 17 | <nil> | 0
+7 | 39563 | 18 | <nil> | 0
+8 | 39563 | 17 | <nil> | 0
+9 | 39563 | 19 | <nil> | 0
+10 | 39563 | 17 | <nil> | 0
+11 | 39563 | 17 | <nil> | 0
+12 | 39563 | 17 | <nil> | 0
+14 | 39563 | 17 | <nil> | 0
+15 | 39563 | 18 | <nil> | 0
+16 | 39563 | 17 | <nil> | 0
+17 | 39563 | 17 | <nil> | 0
+18 | 39563 | 17 | <nil> | 0
+19 | 39563 | 19 | <nil> | 0
+20 | 39563 | 17 | <nil> | 0
+21 | 39563 | 17 | <nil> | 0
+22 | 39563 | 17 | <nil> | 0
+23 | 39563 | 17 | <nil> | 0
+24 | 39563 | 17 | <nil> | 0
+25 | 39563 | 18 | <nil> | 0
+26 | 39563 | 17 | <nil> | 0
+27 | 39563 | 17 | <nil> | 0
+1 | 41912 | 17 | <nil> | 0
+2 | 41912 | 17 | <nil> | 0
+3 | 41912 | 17 | <nil> | 0
+4 | 41912 | 17 | <nil> | 0
+5 | 41912 | 17 | <nil> | 0
+6 | 41912 | 17 | <nil> | 0
+7 | 41912 | 17 | <nil> | 0
+8 | 41912 | 17 | <nil> | 0
+9 | 41912 | 19 | <nil> | 0
+10 | 41912 | 17 | <nil> | 0
+11 | 41912 | 17 | <nil> | 0
+12 | 41912 | 17 | <nil> | 0
+14 | 41912 | 17 | <nil> | 0
+15 | 41912 | 18 | <nil> | 0
+16 | 41912 | 17 | <nil> | 0
+17 | 41912 | 17 | <nil> | 0
+18 | 41912 | 17 | <nil> | 0
+19 | 41912 | 19 | <nil> | 0
+20 | 41912 | 17 | <nil> | 0
+21 | 41912 | 17 | <nil> | 0
+22 | 41912 | 17 | <nil> | 0
+23 | 41912 | 17 | <nil> | 0
+24 | 41912 | 17 | <nil> | 0
+25 | 41912 | 18 | <nil> | 0
+26 | 41912 | 17 | <nil> | 0
+27 | 41912 | 17 | <nil> | 0
+(52 linhas)
+
+===== L5 colunas de TGFAID =====
+COLUMN_NAME | DATA_TYPE
+CODUF | NUMBER
+CODPROD | NUMBER
+ALIQINTDEST | FLOAT
+PERCICMSFCP | FLOAT
+PERCREDBASEDEST | FLOAT
+(5 linhas)
+--- PASS: TestDiagLive (1.55s)
+PASS
