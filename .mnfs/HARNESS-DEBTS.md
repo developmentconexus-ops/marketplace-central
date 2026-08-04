@@ -520,3 +520,35 @@ explicando por quê.
 Nenhum dos 38 pedidos medidos em 2026-08-02 caiu nisso (evidência em
 `.mnfs/MIS-007-ml-sync/M-06-orders-backfill-decomposition/evidence/p2-premise-check.md`).
 Bomba armada, não disparada. Dono: M-06. Registrada por decisão do operador em 2026-08-02.
+
+**D-23. `.dockerignore` deixava 940 MB de cache Go entrar no contexto de build** (revisão da
+Onda 0, 2026-08-03) — RESOLVIDA no mesmo dia, registrada pela classe:
+
+`.dockerignore:2` era `.gocache`, padrão sem `**/`, que casa só na raiz do contexto. O
+`AGENTS.md` manda usar `GOCACHE` de dentro de `apps/server_core`, então a própria doutrina
+garante um segundo diretório de cache que o ignore não pegava. Medido:
+
+```
+apps/server_core/.gocache      15511 arquivos   939,9 MB   <- ia no contexto
+apps/server_core/.gomodcache   11129 arquivos   220,6 MB   <- excluido por **/.gomodcache
+.gocache                       10773 arquivos   560,4 MB   <- excluido por .gocache
+```
+
+Sintoma: `docker compose build backend` transferiu 185 MB em 3,5 min (320–900 KB/s no
+filesystem do Windows) e uma corrida anterior passou de uma hora sem terminar, com saída
+zerada porque estava atrás de `| tail`. Diagnóstico errado óbvio: "docker travado".
+
+Duas lições, ambas de classe:
+
+1. **Padrão de ignore sem `**/` mente por vizinhança.** Na mesma lista, `**/.gomodcache` e
+   `**/node_modules` estavam certos e `.gocache` estava errado — a forma correta ao lado da
+   errada faz a errada parecer intencional. Toda entrada nova de `.dockerignore` que nomeie
+   diretório de cache ou artefato deve nascer com `**/`.
+
+2. **A stack de dev NÃO precisa de rebuild para pegar código novo.**
+   `docker/dev/backend.Dockerfile` não compila o servidor: instala toolchain e Oracle Instant
+   Client. O binário nasce em runtime — `backend-entrypoint.sh:39,44` roda
+   `go run ./apps/server_core/cmd/migrate` e `exec go run ./apps/server_core/cmd/server`
+   sobre o bind mount `.:/workspace`. Para tirar binário velho basta
+   `docker compose up -d --force-recreate --no-build backend`. Rodar `--build` para "pegar o
+   código novo" é uma hora jogada fora contra um layer que não carrega código nenhum.
