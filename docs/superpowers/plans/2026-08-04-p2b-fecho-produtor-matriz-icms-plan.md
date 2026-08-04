@@ -838,3 +838,4 @@ Os **7 não-calculáveis** são 5 pedidos sem vínculo de produto e 2 porque o g
 | D-44 | bloco de ST envelhece sem sinal na origem (produto `15956`, `DTMOV = 2022-02-04`) | esta fatia expõe a idade; política de expiração é outra decisão |
 | D-45 | `icms_aliquota_interna` é semeada à mão, sem fonte automática | nenhum órgão publica tabela consultável |
 | D-46 | `a_inter` derivado de `ORIGPROD ∈ {1,2,3,8}` → 4%, sem FCI | correto para o catálogo medido |
+| D-47 | scheduler da matriz de ICMS não tem retry/backoff: se o `RunOnce` de boot falhar (Oracle indisponível no exato momento do deploy), a matriz fica vazia por 24h até o próximo tick — a mesma classe de janela que o `RunOnce` de boot fecha para "todo deploy", mas não para "boot com falha transitória" | achado do review final da fatia (2026-08-04); o intervalo de 24h é decisão do plano (vigência fiscal não muda por hora) e mudar exige decisão do operador, não conserto silencioso |
