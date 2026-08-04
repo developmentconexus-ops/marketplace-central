@@ -432,14 +432,169 @@ porque pergunta "mexeram nos dois?", não "os dois dizem a mesma coisa?".
 
 ---
 
+## §7 — Live drive das quatro telas
+
+### 7.0 Sob qual binário este drive rodou
+
+Isto vem antes de qualquer número porque sem isso os números não valem nada (memória
+`stale-binary-makes-live-drive-lie`):
+
+```
+container   0dc9cb1f1db2   marketplace-central-backend-1
+Created     2026-08-03 21:35:23 -03   (= 2026-08-04T00:35:23Z)
+último commit que toca apps/server_core   e66ce013   2026-08-03 19:29:22 -03
+último commit que toca apps/web           e66ce013   2026-08-03 19:29:22 -03
+```
+
+O container é **2h06 mais novo** que o último commit de código. `schema_migrations` passou
+de 82 para 83 linhas no start (`0093_icms_matrix.sql` aplicada às `00:28:38Z`), e o
+`/healthz` responde. O drive mediu a onda 0.
+
+Nota de operação que virou dívida D-23: **este stack não precisa de `docker compose build`
+para pegar código novo.** O `backend.Dockerfile` não compila binário de servidor — o
+entrypoint faz `go run ./apps/server_core/cmd/server` em cima do bind mount `.:/workspace`.
+`--force-recreate --no-build` basta. A tentativa de rebuild custou mais de uma hora porque
+o `.dockerignore` ignorava `.gocache` ancorado na raiz e mandava os 939,9 MB de
+`apps/server_core/.gocache` para o daemon.
+
+### 7.1 `/anuncios` — 34 linhas
+
+Coluna **PREÇO**, contada linha a linha nas 34:
+
+| O que a célula mostra | Linhas | O que isso significa |
+|---|---|---|
+| preço e mais nada | **29** | ver F-13 |
+| preço + `+150,99% há 1 h` | 1 | único anúncio com evidência de concorrente |
+| `sem vínculo` | 4 | link não resolvido, correto |
+
+Resumo (`ListingsSummary.tsx:39-46`): **Com erro de sync 0**, **Desatualizados 0** — F-7
+confirmado na tela, não só no banco. **Margem desconhecida 30**, contra 30 anúncios
+vinculados: nenhum anúncio tem margem.
+
+No banco, `select status, count(*) from listings group by 1`: **9 `active` + 18 `paused` +
+7 `under_review`**, todos com `sync_state='synced'`.
+
+**F-13 — a coluna de preço é MUDA em 29 de 34 linhas.** `SignalStatusNoPriceEvidence`
+("nunca coletei concorrente para este anúncio") e `SignalStatusStale` ("coletei, mas está
+velho") renderizam **literalmente nada**. As duas são indistinguíveis entre si e
+indistinguíveis de "está tudo bem". A tela que existe para dizer se o preço está competitivo
+não diz, em 85% das linhas, nem que não sabe.
+
+**F-14 — 7 anúncios não entram em contador nenhum.** `repository.go:317-319`:
+
+```sql
+SELECT count(*)::int,
+    count(*) FILTER (WHERE l.status='active')::int,
+    count(*) FILTER (WHERE l.status='paused')::int,
+```
+
+`Total` conta todos; `Ativos` e `Pausados` filtram dois status. `under_review` cai no
+`Total` e em nenhum dos dois. Na tela: 34 = 9 + 18 + **7 invisíveis**. Não há aba, filtro
+nem contador que os alcance. O operador que quiser saber quais anúncios o ML está revisando
+— exatamente o estado que trava venda — não tem por onde.
+
+### 7.2 `/pedidos` — 39 linhas
+
+RETORNO `—` em **39 de 39**. F-9 confirmado na tela.
+
+Os KPIs do topo somam **32**, contra **39** linhas na lista. A diferença são os **7 pedidos
+cancelados**, que estão na fila de trabalho junto com os vivos (conferido no
+`2000017258505630`).
+
+**F-12 — pedido cancelado fica na fila de trabalho, sem contador e com aba morta.**
+`pedidosTabs.ts`:
+
+```ts
+{ value: "cancelado", label: "Cancelados", placeholder: true },
+const liveBucketTabs = new Set<PedidosTab>(["novo", "faturar", "enviar", "enviado"]);
+export function filterOrdersByTab(items, tab) {
+  if (!isLiveBucketTab(tab)) return [];      // aba "Cancelados" renderiza vazio
+}
+export function bucketTabCount(items, tab): number | null {
+  if (!isLiveBucketTab(tab)) return null;    // e não tem contador
+}
+```
+
+`FilaView.tsx:72` usa `item.bucket` só para escolher o rótulo do botão de ação — a Fila não
+tira cancelado de lugar nenhum. Então o cancelado aparece na lista com botão de ação, não é
+contado em KPI nenhum, e a aba que deveria isolá-lo abre vazia.
+
+O comentário que justifica o `placeholder` (`pedidosTabs.ts:17-19`) diz que o dataset de
+demo é limitado a REVIEW e por isso não há cancelados. **O dado ao vivo tem 7.** A premissa
+que sustentava a decisão é falsa hoje; a decisão continua no código.
+
+Rede: nenhuma requisição a `/orders/summary` em toda a sessão. Corrobora o F-10 — os KPIs
+saem de `bucketTabCount` sobre a lista já carregada (`PedidosPage.tsx:169-177`), e a
+operação de contrato existe sem consumidor.
+
+### 7.3 `/mercado` — 34 linhas
+
+Cabeçalho: **"coletado 03/08, 21:50"**. Nas linhas: **33 de 34 dizem "idade desconhecida"**,
+1 diz "há 1 h". MARGEM ATUAL `—` em 34 de 34. `Aplicar` desabilitado em 34; `Simular` é link
+em 30 e desabilitado em 4.
+
+Isto agrava o F-5 em vez de só confirmá-lo: o cabeçalho afirma uma coleta recente para uma
+tabela em que quase nada foi coletado. A idade do cabeçalho e a idade da linha vêm de fontes
+diferentes, e a do cabeçalho é a que o olho lê primeiro. No banco: `market_aggregates` 4
+linhas, **1 produto distinto**; `market_price_snapshots` 8 linhas — para 34 anúncios.
+
+### 7.4 `/integracoes` — Saúde do sync
+
+Lido após reload, com `now=2026-08-04T00:52:43Z`:
+
+| Linha | Tela | `sync_state` |
+|---|---|---|
+| Listings (backfill) | há 11 h · ok | `last_full_sync_at=2026-08-03 13:24:05Z` |
+| Market | há 1 h · ok | `last_full_sync_at=2026-08-03 23:47:16Z` |
+| **Market Queue** | **nunca · nunca** | ambos NULL, `cursor` com 893 chars |
+| **Orders (incremental)** | **há menos de 1 min · ok** | `last_incremental_at=2026-08-04 00:52:05Z` |
+| Products | há 49 min · ok | `last_full_sync_at=2026-08-04 00:52:40Z` |
+
+**F-00 está provado vivo.** O tick de `orders` às `00:52:05Z` é 17 minutos depois do
+`Created` do container (`00:35:23Z`): quem escreveu aquela linha foi o binário pós-merge, e
+a linha aparece na tela. Era o último item aberto da fase 2.
+
+**F-15 — `market_queue` nunca rodou, e a fila que ela deveria drenar tem duplicata.** Os dois
+timestamps são NULL desde sempre. O `cursor` guarda:
+
+```json
+{"pending": ["1001", ..., "1055", "1001", ..., "1055"]}
+```
+
+**110 ids, que são os mesmos 55 enfileirados duas vezes.** Ninguém deduplica na entrada e
+ninguém consome na saída. Esta é a explicação mais provável do 7.3: 1 produto com evidência
+de concorrente contra 34 anúncios não é amostragem, é uma fila parada. A tela mostra o
+sintoma honestamente ("nunca") — o que falta é o consumidor, não o observável.
+
+Observação de método, sem número: antes do reload a linha de Orders dizia "há 2 h" enquanto
+o `/sync/health` consultado direto no mesmo minuto já devolvia `00:52:05Z`. A tela não
+estava errada — estava mostrando a idade do momento do fetch, e o react-query não havia
+refeito a consulta. Quase virou defeito relatado. A regra que salvou: **antes de acusar a
+tela, pergunte à API que a alimenta.**
+
+### 7.5 F-11 — três migrações disputam o prefixo 0093
+
+Saiu do diff de conjunto da governança, não da tela, mas pertence ao mesmo inventário:
+
+```
+0093_icms_matrix.sql                          aplicada 2026-08-04 00:28:38Z
+0093_orders_status_details_nullable.sql       aplicada 2026-08-02 12:45:11Z
+0093_sync_state_market_queue_entity_split.sql aplicada 2026-08-03 20:03:04Z
+```
+
+Três chips paralelos pegaram o mesmo número livre. Não há `0094` nem `0095`; a numeração
+salta para `0096`. Hoje funciona porque o runner ordena por nome de arquivo e as três são
+independentes entre si — mas a ordem entre elas é alfabética por acaso, não por dependência
+declarada, e a próxima colisão que tiver dependência vai aplicar na ordem errada em um
+banco novo e na ordem certa no banco que já existe. Sequência de migração é seam
+compartilhado e precisa de dono único.
+
+---
+
 ## Fase 2 — o que ainda falta
 
-1. Live drive das quatro telas com a stack reconstruída, com container id e `Created` no
-   veredito (a reconstrução está em curso).
-2. Linha `orders` no `/sync/health` visível na tela.
-3. Lane de governança por diff de conjunto contra `main`, medida fora da árvore montada
-   (decide o F-4). Medido até aqui: `governance-validate` passa, mas **não é ele que checa
-   `panic`** — o check de `production-panic` vive em `Test-GovernanceDrift`
-   (`Policy.psm1:360-373`), que exige `-BaseSha`. Não há exceção registrada para
-   `orders/adapters/pricingtax/reader.go` em `invariants.json` (as quatro existentes são
-   para outros arquivos), então a expectativa é reprovação.
+1. Lanes de front e de integração: `npm run test --workspace @marketplace-central/web` e
+   `npm run harness:integration`. As lanes Go já rodaram (§ Laudo).
+2. Destino dos worktrees remanescentes (`f00-scheduler-pedidos`, `fa3-idade-honesta`,
+   `p2-dinheiro-real-pedidos`, `.worktrees/p2b-imposto-ex-ante`), sob a D-18 — bind mount
+   ativo bloqueia `rm -rf` e o exit code mente; conferir o diretório, não o código de saída.
