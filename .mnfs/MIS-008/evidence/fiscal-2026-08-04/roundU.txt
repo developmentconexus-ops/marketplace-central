@@ -1,0 +1,58 @@
+=== RUN   TestDiagLive
+godror WARNING: discrepancy between SESSIONTIMEZONE ("+00:00"=0) and SYSTIMESTAMP ("-03:00"=-300) - set connection timezone, see https://github.com/godror/godror/blob/master/doc/timezone.md
+
+===== U1 interestadual COM ST anterior: base do PIS abate os tres? =====
+UF | NUNOTA | SEQUENCIA | ICMS | DIFAL | FCP | STANT | BASE | BASERED | ABATIDO | RESIDUO
+GO | 896890 | 1 | 197.9 | 0 | 0 | 810.54 | 4947.42 | 3938.98 | 1008.44 | 0
+GO | 896890 | 2 | 62.99 | 0 | 0 | 86.36 | 899.9 | 750.55 | 149.35 | 0
+GO | 896886 | 1 | 10.02 | 17.17 | 0 | 11.93 | 143.1 | 103.98 | 39.12 | 0
+GO | 896886 | 1 | 10.02 | 0.45 | 0 | 11.93 | 3.76 | 3.05 | 0.71 | -21.69
+GO | 896886 | 1 | 10.02 | 17.17 | 0 | 11.93 | 3.76 | 3.05 | 0.71 | -38.41
+GO | 896886 | 1 | 10.02 | 0.45 | 0 | 11.93 | 143.1 | 103.98 | 39.12 | 16.72
+GO | 896880 | 1 | 45.24 | 77.56 | 0 | 21.97 | 17.42 | 14.11 | 3.31 | -141.46
+GO | 896880 | 16 | 20.42 | 35.01 | 0 | 37.5 | 7.87 | 6.37 | 1.5 | -91.43
+GO | 896880 | 15 | 110.06 | 5.09 | 0 | 138.21 | 42.39 | 34.34 | 8.05 | -245.31
+GO | 896880 | 15 | 110.06 | 188.67 | 0 | 138.21 | 42.39 | 34.34 | 8.05 | -428.89
+GO | 896880 | 14 | 46.63 | 2.16 | 0 | 52.37 | 17.96 | 14.55 | 3.41 | -97.75
+GO | 896880 | 14 | 46.63 | 79.93 | 0 | 52.37 | 17.96 | 14.55 | 3.41 | -175.52
+GO | 896880 | 13 | 50.09 | 2.31 | 0 | 47.72 | 19.29 | 15.62 | 3.67 | -96.45
+GO | 896880 | 13 | 50.09 | 85.86 | 0 | 47.72 | 19.29 | 15.62 | 3.67 | -180
+GO | 896880 | 12 | 45.17 | 2.09 | 0 | 62.2 | 17.4 | 14.09 | 3.31 | -106.15
+GO | 896880 | 12 | 45.17 | 77.43 | 0 | 62.2 | 17.4 | 14.09 | 3.31 | -181.49
+GO | 896880 | 11 | 77.99 | 3.6 | 0 | 121.52 | 30.04 | 24.33 | 5.71 | -197.4
+GO | 896880 | 11 | 77.99 | 133.71 | 0 | 121.52 | 30.04 | 24.33 | 5.71 | -327.51
+GO | 896880 | 10 | 82.91 | 3.83 | 0 | 142.23 | 31.93 | 25.86 | 6.07 | -222.9
+GO | 896880 | 10 | 82.91 | 142.13 | 0 | 142.23 | 31.93 | 25.86 | 6.07 | -361.2
+GO | 896880 | 6 | 4.82 | 0.22 | 0 | 6.85 | 1.86 | 1.51 | 0.35 | -11.54
+GO | 896880 | 6 | 4.82 | 8.27 | 0 | 6.85 | 1.86 | 1.51 | 0.35 | -19.59
+GO | 896880 | 3 | 61.61 | 2.85 | 0 | 48.94 | 23.73 | 19.22 | 4.51 | -108.89
+GO | 896880 | 3 | 61.61 | 105.61 | 0 | 48.94 | 23.73 | 19.22 | 4.51 | -211.65
+GO | 896880 | 1 | 45.24 | 2.09 | 0 | 21.97 | 17.42 | 14.11 | 3.31 | -65.99
+-- 25 linhas
+
+===== U2 residuo agregado: quantos itens fecham a formula unica =====
+DESTINO | VEREDITO | N
+fora de MG | NAO FECHA | 342
+fora de MG | FECHA (<=0,02) | 273
+MG (interna) | FECHA (<=0,02) | 8249
+MG (interna) | NAO FECHA | 1587
+-- 4 linhas
+
+===== U3 nome da coluna de CST/situacao tributaria em TGFITE =====
+COLUMN_NAME | DATA_TYPE
+BASECALCSTEXTRANOTA | FLOAT
+CODESPECST | NUMBER
+CODTRIB | NUMBER
+CODTRIBISS | NUMBER
+CSTIPI | NUMBER
+GTINTRIBNFE | VARCHAR2
+PERCSTFCPINTANT | FLOAT
+QTDTRIBEXPORT | FLOAT
+-- 8 linhas
+
+===== U4 ST anterior no catalogo vendavel: que fracao dos produtos tem =====
+PRODUTOS_COM_STANT
+1453
+-- 1 linhas
+--- PASS: TestDiagLive (2.43s)
+PASS

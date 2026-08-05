@@ -1,0 +1,112 @@
+=== RUN   TestDiagLive
+godror WARNING: discrepancy between SESSIONTIMEZONE ("+00:00"=0) and SYSTIMESTAMP ("-03:00"=-300) - set connection timezone, see https://github.com/godror/godror/blob/master/doc/timezone.md
+
+===== T1 ST nos itens: dentro x fora de MG =====
+DESTINO | N_ITENS | N_VLRSUBST | N_BASESUBST | N_SUBSTANT | N_BASESUBSTANT | N_REPREDST | N_ICMSUFDEST
+fora de MG | 792 | 0 | 0 | 437 | 437 | 0 | 0
+MG (interna) | 18396 | 0 | 0 | 11062 | 11062 | 0 | 0
+-- 2 linhas
+
+===== T2 nota 892522 (MG interna): ITE completo do que importa =====
+ERRO: dpiStmt_execute: ORA-00904: "I"."CODTRIBOPER": identificador inválido
+Help: https://docs.oracle.com/error-help/db/ora-00904/
+
+===== T3 ICMS zerado dentro de MG: correlacao com ST =====
+ERRO: dpiStmt_execute: ORA-00904: "I"."CODTRIBOPER": identificador inválido
+Help: https://docs.oracle.com/error-help/db/ora-00904/
+
+===== T4 CODTRIBOPER (CST) praticado: dentro x fora de MG =====
+ERRO: dpiStmt_execute: ORA-00904: "I"."CODTRIBOPER": identificador inválido
+Help: https://docs.oracle.com/error-help/db/ora-00904/
+
+===== T5 TGFEFDVMRSTDIA: o que sao os TIPIMPOSTO =====
+TIPIMPOSTO | TIPMEDIA | N | N_COM_VALOR | PRIMEIRA | ULTIMA
+F | D | 4781004 | 0 | 2020-01-01 | 2026-07-01
+I | D | 4781004 | 1917494 | 2020-01-01 | 2026-07-01
+S | D | 4781004 | 1917046 | 2020-01-01 | 2026-07-01
+B | D | 4781004 | 1898773 | 2020-01-01 | 2026-07-01
+F | I | 120031 | 0 | 2020-01-01 | 2026-07-01
+B | I | 120031 | 61794 | 2020-01-01 | 2026-07-01
+S | I | 120031 | 62426 | 2020-01-01 | 2026-07-01
+I | I | 120031 | 62422 | 2020-01-01 | 2026-07-01
+-- 8 linhas
+
+===== T6 tabelas de ressarcimento/restituicao de ST no schema =====
+TABLE_NAME
+TGFC185F
+TGFEFDCC185
+TGFEFDFC185
+TGFEFDVMRST
+TGFEFDVMRSTDIA
+-- 5 linhas
+
+===== T7 como TGFPRO liga em TGFICM: eixos de restricao =====
+TIPRESTRICAO | TIPRESTRICAO2 | N
+N | I | 3813
+O | I | 524
+I | S | 199
+O | P | 14
+S | S | 13
+L | I | 11
+X | I | 10
+I | K | 4
+N | S | 3
+O | S | 2
+L | S | 2
+G | I | 2
+O | G | 1
+P | S | 1
+T | S | 1
+O | H | 1
+-- 16 linhas
+
+===== T8 os 12 itens com PIS aliquota zero: quem sao =====
+NUNOTA | SEQUENCIA | CODTIPOPER | DTNEG | UF | BASE | BASERED | ALIQUOTA | VALOR
+841382 | 1 | 306 | 2025-03-11 | MG | 17.5 | 17.5 | 0 | 0
+841382 | 1 | 306 | 2025-03-11 | MG | 12.44 | 12.44 | 0 | 0
+895434 | 1 | 306 | 2026-07-20 | MG | 169.99 | 169.99 | 0 | 0
+896976 | 1 | 306 | 2026-08-03 | PR | 209.7 | 171.96 | 0 | 0
+895096 | 1 | 306 | 2026-07-16 | RJ | 169.99 | 169.99 | 0 | 0
+894164 | 1 | 306 | 2026-07-07 | RJ | 169.99 | 134.29 | 0 | 0
+896977 | 1 | 306 | 2026-08-03 | SP | 339.98 | 278.78 | 0 | 0
+894549 | 1 | 306 | 2026-07-10 | SP | 339.98 | 278.78 | 0 | 0
+894733 | 1 | 306 | 2026-07-13 | SP | 169.99 | 139.39 | 0 | 0
+893184 | 1 | 306 | 2026-06-25 | SP | 169.9 | 139.32 | 0 | 0
+893459 | 1 | 306 | 2026-06-29 | SP | 169.9 | 139.32 | 0 | 0
+894077 | 1 | 306 | 2026-07-06 | SP | 169.99 | 139.39 | 0 | 0
+-- 12 linhas
+
+===== T9 TOP 313 (entrega futura): tem imposto ou so pedido? =====
+CODIMP | N | N_COM_VALOR
+1 | 43 | 28
+2 | 2 | 0
+6 | 52 | 32
+7 | 43 | 43
+9 | 43 | 0
+-- 5 linhas
+
+===== T10 base do PIS quando ICMS=0 dentro de MG: o que foi abatido =====
+NUNOTA | SEQUENCIA | VLRTOT | DESC_ | ICMS | SUBSTANT | REPREDST | BASE | BASERED | ABATIDO
+897156 | 1 | 110 | 0 | 0 | 8.13 | 0 | 110 | 101.87 | 8.13
+897156 | 3 | 32.3 | 0.4 | 0 | 2.91 | 0 | 31.9 | 28.99 | 2.91
+897154 | 1 | 8188.92 | 409.45 | 0 | 593.5 | 0 | 7779.47 | 7185.97 | 593.5
+897151 | 1 | 1438 | 143.8 | 0 | 131.88 | 0 | 1294.2 | 1162.32 | 131.88
+897149 | 4 | 1251 | 125.1 | 0 | 94.95 | 0 | 146.42 | 146.41 | 0.01
+897149 | 6 | 1078.8 | 24.8 | 0 | 83.35 | 0 | 1054 | 970.65 | 83.35
+897149 | 5 | 57.4 | 0 | 0 | 3.93 | 0 | 57.4 | 53.47 | 3.93
+897149 | 4 | 1251 | 125.1 | 0 | 94.95 | 0 | 1125.9 | 1030.95 | 94.95
+897149 | 2 | 82 | 0 | 0 | 4.92 | 0 | 82 | 77.08 | 4.92
+897145 | 1 | 215.76 | 32.28 | 0 | 16.67 | 0 | 183.48 | 166.81 | 16.67
+897144 | 1 | 5891.69 | 942.67 | 0 | 479.1 | 0 | 4949.02 | 4469.92 | 479.1
+897144 | 3 | 29701.41 | 5940.29 | 0 | 2206.11 | 0 | 23761.12 | 21555.01 | 2206.11
+897144 | 2 | 9310.03 | 1867.59 | 0 | 547 | 0 | 7442.44 | 6895.44 | 547
+897128 | 1 | 1038 | 0 | 0 | 122.21 | 0 | 1038 | 915.79 | 122.21
+897112 | 1 | 1329 | 315.77 | 0 | 88.04 | 0 | 1013.23 | 925.19 | 88.04
+897110 | 1 | 42.23 | 4.22 | 0 | 2.46 | 0 | 38.01 | 35.55 | 2.46
+897110 | 5 | 1003.64 | 100.36 | 0 | 77.09 | 0 | 903.28 | 826.19 | 77.09
+897110 | 4 | 60.76 | 6.08 | 0 | 3.93 | 0 | 54.68 | 50.75 | 3.93
+897108 | 2 | 379 | 37.9 | 0 | 50.18 | 0 | 341.1 | 290.92 | 50.18
+897080 | 1 | 10863.74 | 3555.98 | 0 | 758.93 | 0 | 7307.76 | 6548.83 | 758.93
+-- 20 linhas
+--- PASS: TestDiagLive (7.06s)
+PASS

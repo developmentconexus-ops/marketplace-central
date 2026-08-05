@@ -1,12 +1,15 @@
 # Verdade fiscal ex-ante — método do ERP, dado nosso, divergência registrada
 
 **Data:** 2026-08-04 · **Missão:** MIS-008 · **Metodologia:** `/mc-planning` (fases 0–6)
-**Evidência bruta:** `.mnfs/MIS-008/evidence/fiscal-2026-08-04/` (rodadas B, C, F, I–R, contra o
+**Evidência bruta:** `.mnfs/MIS-008/evidence/fiscal-2026-08-04/` (rodadas B, C, F, I–V, contra o
 Oracle vivo `METALPRD`, somente leitura, via lane Docker)
+**Regras da simulação:** [`docs/superpowers/specs/2026-08-04-regras-fiscais-simulacao.md`](../specs/2026-08-04-regras-fiscais-simulacao.md)
 
-> **Revisão 2** (após correção do operador). A revisão 1 elegeu o `TGFAID` como fonte de cálculo e
-> rebaixou nossa tabela legal a mero alerta. Estava invertido. A rodada R mediu o que faltava e
-> confirma o modelo do operador: **o método do ERP está certo, os dados dele estão velhos.**
+> **Revisão 3.** A revisão 1 elegeu o `TGFAID` como fonte de cálculo e rebaixou nossa tabela legal a
+> mero alerta — estava invertido; a rodada R refutou. A revisão 2 corrigiu o desenho (**método do ERP,
+> dado nosso, divergência registrada**). Esta revisão fecha as **regras completas antes de planejar**,
+> a pedido do operador: rodadas S–V mediram a matriz de regras (spec acima) e uma pesquisa fechou as
+> duas disputas do §1.6 **a favor da nossa tabela**.
 
 ---
 
@@ -126,19 +129,68 @@ BA 20,5, MA 23 e PE 20,5 são três dessas 23 — e ganharam confirmação indep
 corrigido (§1.3). As outras 20 continuam sem nada. **Isso vira a task de maior valor do plano**, não
 uma nota de rodapé: sem fonte, a pendência que a tela mostrar não sustenta uma conversa com o fiscal.
 
-### 1.6 Duas UFs onde nós é que podemos estar errados
+### 1.6 As duas UFs em disputa — resolvidas pela pesquisa, a nosso favor
 
-Onde o ERP **foi corrigido** e ainda assim discorda de nós, a hipótese "ERP velho" não explica:
+A revisão 2 dizia "não dá para decidir isso medindo". Estava errado: dava para **pesquisar**. Feito
+em 2026-08-04:
 
-| UF | ERP corrigido para | nossa tabela | Δ |
-|---|---|---|---|
-| **DF** | 18 | 20,0 | 2,0 |
-| **RJ** | 19 (+ 2 FCP = 21) | 22,0 (20 + 2 FCP) | 1,0 |
+| UF | ERP corrigido para | nossa tabela | veredito | fonte |
+|---|---|---|---|---|
+| **DF** | 18 | **20,0** | **nós** | Lei 7.326/2023, vigente 21/01/2024. O 18 é o valor **pré-2024** |
+| **RJ** | 19 (+2 FCP) | **20,0 + 2 FCP = 22** | **nós** | LC 210/2023, vigente 20/03/2024 — página oficial SEFAZ-RJ, atualizada 23/06/2026. O RJ era 18+2 antes disso; **"19" não corresponde a nenhum valor histórico** |
 
-Alguém mexeu nessas duas e parou num número diferente do nosso. Ou nossa tabela está errada, ou a
-correção deles foi parcial. **Não dá para decidir isso medindo** — vai para o fiscal com nome e
-número. As duas têm lei citada do nosso lado (DF 7.326/2023, RJ 10.253/2023 + LC 210/2023), então o
-confronto é citável.
+Ou seja: as duas também eram cadastro parcialmente atualizado, não disputa legítima. **Nossa tabela
+ganha as quatro** (BA, MA, DF, RJ).
+
+**Ressalva honesta:** BA, MA e DF vieram de fonte secundária (legisweb); só o RJ veio do portal da
+própria SEFAZ. Antes de gravar `lei` no banco, o número precisa ser conferido no diário oficial ou no
+site da SEFAZ. **Pesquisa não é procedência.**
+
+### 1.6.1 Não existe fonte única — e isso é estrutural
+
+O operador pediu para procurar uma base aberta/online com todas as alíquotas atualizadas. **Não
+existe**, e a razão é jurídica: alíquota interna é prerrogativa de cada estado; o CONFAZ só
+centraliza o que exige convênio. Medido:
+
+| candidato | veredito |
+|---|---|
+| `github.com/brasil-js/icms` | **morto** — 5 commits, todos de 2016 |
+| IBPT / De Olho no Imposto | resolve outro problema — carga **total aproximada por NCM** (Lei 12.741/2012), não isola ICMS |
+| BrasilAPI | sem endpoint fiscal |
+| agregadores comerciais | matriz completa, **sem lei e sem data de atualização** — checagem cruzada, nunca fonte |
+| CONFAZ | repositório de atos, não tabela |
+| **SEFAZ estaduais** | **a fonte** — uma a uma; RJ mantém página oficial de verdade |
+
+Uma exceção boa: a **interestadual** (4/7/12) tem base federal única e estável — **Resolução do
+Senado nº 22/1989, alterada pela nº 13/2012**. Essa parte da conta pode ficar em código com a
+citação no comentário. É a única.
+
+Consequência para o plano: a Task 3 continua sendo curadoria humana por UF. Nenhuma fonte automática
+a dispensa.
+
+### 1.6.2 As regras completas, definidas antes de planejar
+
+O operador pediu para fechar **todas** as regras da simulação antes de terminar o plano. Estão em
+[`specs/2026-08-04-regras-fiscais-simulacao.md`](../specs/2026-08-04-regras-fiscais-simulacao.md),
+medidas nas rodadas S–V. Resumo do que muda o plano:
+
+- **Uma fórmula só:** `base PIS/COFINS = base − ICMS − DIFAL − ST_anterior`, fechando em
+  **6.258 de 6.274 itens de 2026 (99,7%)** (`roundV.txt` V1). É a forma que `icms.go:177` já tem.
+- **O FCP NÃO sai da base.** Seis dos 16 que não fecham são RJ com resíduo = exatamente −FCP. Regra
+  medida, não suposição — e o nosso código precisa fazer igual.
+- **Dentro de MG, 88% é CST 60**: ICMS já retido por ST, **zero ICMS na venda**; só o ST anterior sai
+  da base. **Fora de MG, 98% é CST 00**: ICMS + DIFAL, e 422 de 765 **também** com ST anterior.
+  A intuição do operador confirmada com número (`roundV.txt` V3).
+- **Consequência de desenho:** a simulação precisa do **CST** como entrada, não só da UF. Fonte: a
+  matriz que já espelhamos (`icms_matrix_mirror.codtrib`).
+- **Crédito/ressarcimento de ST não existe na nota:** `VLRSUBST`, `VLRREPREDST` e `VLRICMSUFDEST` são
+  **zero em 100%** das notas (`roundT.txt` T1). O ressarcimento é apuração **mensal** do SPED
+  (`TGFC185F`/`TGFEFDCC185`/`TGFEFDFC185` sobre a média móvel `TGFEFDVMRSTDIA`). Ex-ante só cabe
+  faixa, nunca valor. Lacuna estrutural, registrada.
+- **IBS/CBS já estão nas notas** desde 2025-12-10 (0,1 / 0 / 0,9), ~1% do preço e subindo pela
+  transição. Entram na simulação com alíquota em configuração.
+- **TOP 313 (entrega futura e-commerce) carrega imposto** — 28/43 itens com ICMS valorado
+  (`roundT.txt` T9). Eu tinha assumido que era só pedido. **Entra no escopo.**
 
 ### 1.7 Como o sistema vai funcionar
 
@@ -303,17 +355,34 @@ certo. **Recomendo adotar** e registrar que o método também é parâmetro de c
 disser que cabe base dupla (LC 190/2022) para consumidor final, entra pelo gate, não por hardcode.
 
 **Decisão 2 — as 20 UFs sem fonte: quem cita a lei?**
-Eu não invento citação. Preciso de ti, do contador, ou de autorização para pesquisar fonte oficial
-por UF. **Sem isso a Task 3 não fecha** e o gate compara número com número.
+Pesquisado (§1.6.1): **não existe fonte consolidada**. O caminho é percorrer as 26 SEFAZ, uma a uma,
+anexando lei + vigência. Não é trabalho de agente sozinho — o número da lei precisa de conferência no
+diário oficial. **Recomendo:** eu faço o levantamento por UF e entrego a lista para tu ou o contador
+ratificar antes de virar `UPDATE`. **Sem ratificação a Task 3 não fecha.**
 
 **Decisão 3 — DF (18 vs 20) e RJ (19 vs 20+2): quem está certo?**
-As duas foram corrigidas no ERP para um valor diferente do nosso, e as duas têm lei citada do nosso
-lado. **É a única divergência que a medição não resolve.** Vai para o fiscal.
+**Resolvida a nosso favor** (§1.6): DF 20 (Lei 7.326/2023) e RJ 20+2 (LC 210/2023, fonte oficial
+SEFAZ-RJ). Os valores do ERP são pré-2024. Falta só tu ratificares — e conferir BA/MA/DF, que vieram
+de fonte secundária.
 
-**Decisão 4 — `pricing_difal_rates` (IC-04) morre nesta fatia ou vira dívida com fatia própria?**
-Tem 27 linhas, override do operador e a fórmula certa. Se o gate absorver o override, é redundância
-pura. **Recomendo:** absorver e registrar a remoção como fatia própria — "depois" nunca aconteceu
-nesta casa.
+**Decisão 4 — `pricing_difal_rates` (IC-04): o que é, e o que faço com ela.**
+
+*O que é:* uma **segunda tabela de alíquotas**, com 27 linhas (uma por UF), criada antes da
+`icms_aliquota_interna`. Guarda a interna do destino e um campo de **override do operador** — um
+valor que tu podes fixar à mão para uma UF, sobrepondo o calculado. Quem lê é
+`pricing/domain/difal.go DifalForUF`, e **essa função já faz a conta certa** (diferença simples,
+`max(interna − interestadual, 0)`) — é o único lugar do repo que sempre esteve certo.
+
+*O problema:* são duas tabelas dizendo a mesma coisa. Duas alíquotas internas para a mesma UF, sem
+regra de qual vence. O código de pedidos lê uma; o de DIFAL lê a outra. Divergirem é questão de
+tempo, e quando divergirem ninguém vai saber qual estava certa.
+
+*Recomendo:* **absorver o override na tabela legal e apagar a `pricing_difal_rates`, em fatia
+própria, logo depois desta.** Razões: (a) o override é útil e não pode sumir — vira coluna em
+`icms_aliquota_interna`, com quem alterou e quando; (b) a fórmula de `DifalForUF` fica, é a certa;
+(c) apagar na mesma fatia mistura conserto de cálculo com remoção de tabela, e se algo quebrar não
+se sabe qual dos dois foi. Fatia própria com aceite por `count(*)`. **Nesta casa "depois" nunca
+aconteceu**, então entra como task numerada, não como dívida.
 
 ---
 
@@ -344,15 +413,22 @@ Casos transcritos de nota emitida, com o **dado devido**, não o cobrado:
 | nota 895507 (BA), reproduzir o ERP | mesma coisa com interna=17 | ICMS 20,99 · DIFAL 29,99 · base PC **248,92** · PIS/COFINS 23,03 — **bate com `TGFDIN` linha a linha** |
 | GO típico | P=299,90, a_inter=7, interna=19 | DIFAL 35,99 · base PC 242,92 |
 | RJ com FCP | P=299,90, a_inter=12, interna=19, FCP=2 | DIFAL 20,99 · FCP 6,00 (`roundI.txt` I2: 893649 → `VLRDIFALDEST` 20,99) |
-| intra-MG | P=136,66, interna=18 | ICMS 24,59 · DIFAL **0** · base PC 112,07 (`roundJ.txt` I4: 882236/2) |
+| intra-MG CST 00 | P=136,66, interna=18 | ICMS 24,59 · DIFAL **0** · base PC 112,07 (`roundJ.txt` I4: 882236/2) |
+| **intra-MG CST 60** (o caso de 88%) | P=110,00, CST=60, ST_ant=8,13 | ICMS **0** · DIFAL **0** · base PC **101,87** (`roundT.txt` T10: 897156/1) |
+| **interestadual com ST anterior** | P=143,10, ICMS=10,02, DIFAL=17,17, ST_ant=11,93 | base PC **103,98**, resíduo **zero** (`roundU.txt` U1: 896886/1) |
+| **RJ — FCP NÃO abate a base** | P=1.896,00 − 36,60, ICMS=223,13, DIFAL=111,56, FCP=37,19 | abatido = **334,69** (só ICMS+DIFAL); incluir o FCP erra por 37,19 (`roundV.txt` V2: 892328/1) |
 
 O segundo caso fecha o argumento: **com o dado do ERP, o nosso motor tem que reproduzir o `TGFDIN` do
 ERP ao centavo.** Se reproduz, o método está provado idêntico, e toda diferença restante é dado.
 
+Os três últimos vêm das rodadas S–V e cobrem os dois cenários que o operador nomeou (dentro de MG só
+ST; fora de MG ICMS + DIFAL) mais a exceção do FCP. **CST é entrada do cálculo** — sem ele o mesmo
+produto no mesmo preço dá imposto errado por 88% dos itens.
+
 **Controle negativo nomeado:** rodar contra o código de hoje. O caso BA-devido deve falhar com
 `DIFAL = 50.93, want 40.49`. Outra mensagem ⇒ o teste está errado, não o código.
 
-- [ ] Escrever os cinco goldens.
+- [ ] Escrever os oito goldens.
 - [ ] Rodar a lane de unidade e **colar a falha exata** no commit.
 
 ---
@@ -504,9 +580,27 @@ previsão existe: `TGFAID`; a fonte legal continua sendo pesquisa humana) · `D-
 | **nova** | `TGFAID` sem trilha de alteração (5 colunas, R4) — passado anterior ao 1º sync é perdido. Mesma classe da `D-28`. |
 | **nova** | ex-ante ≠ ex-post no ST: `TGFEFDVMRSTDIA` (média diária) vs `TGFC185F` (real da nota). Estrutural. |
 | **nova** | `TIPCALCDIFAL` é parâmetro de cadastro; base dupla (LC 190/2022) não foi avaliada. Pergunta ao contador. |
+| **nova** | 7 itens de 6.274 com resíduo positivo na fórmula única, sem causa identificada (`roundV.txt` V2: PE 880915, SP 882116, SC 884972…). Observável que resolve: dump de todos os componentes de uma nota inteira. |
+| **nova** | 12 itens com PIS alíquota **0** e COFINS 7,60 normal (`roundT.txt` T8) — não é monofásico (zeraria os dois). Provável erro de cadastro do produto. |
+| **nova** | significado de `TIPIMPOSTO` I/S/B/F em `TGFEFDVMRSTDIA` não medido; `F` nunca tem valor em 4,9 milhões de linhas. |
 | `D-54` | ES ambíguo de verdade; venda para ES sai não-calculável. |
 | `D-55` | MG interna por produto; `TGFAID` não cobre MG. |
 | `D-17` | `CODEMP = 1` fixo — inalterado por esta fatia. |
+
+---
+
+### Task 8 — Colapsar `pricing_difal_rates` (fatia própria, **logo após** esta)
+
+**Depende da decisão 4.** Não entra na mesma fatia das tasks 1–6 de propósito: misturar conserto de
+cálculo com remoção de tabela torna impossível saber qual dos dois quebrou.
+
+- [ ] Migrar o override do operador de `pricing_difal_rates` para colunas em `icms_aliquota_interna`
+      (valor, quem alterou, quando). **O override não pode sumir** — é o instrumento manual que existe.
+- [ ] `DifalForUF` (`pricing/domain/difal.go`) **fica** — a fórmula é a certa. Só troca a fonte de
+      leitura.
+- [ ] `DROP TABLE pricing_difal_rates` em migração própria.
+- [ ] **Aceite por observável:** `count(*)` — zero tabelas com alíquota interna além de
+      `icms_aliquota_interna`; e o mesmo produto/UF devolve o mesmo DIFAL antes e depois.
 
 ---
 
