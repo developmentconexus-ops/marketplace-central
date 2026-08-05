@@ -130,8 +130,23 @@ Afirmação sem fonte com cara de fonte. Só **4** linhas citam lei de verdade: 
 `:104`).
 
 BA 20,5, MA 23 e PE 20,5 são três dessas 23 — e ganharam confirmação independente pelo próprio ERP
-corrigido (§1.3). As outras 20 continuam sem nada. **Isso vira a task de maior valor do plano**, não
-uma nota de rodapé: sem fonte, a pendência que a tela mostrar não sustenta uma conversa com o fiscal.
+corrigido (§1.3).
+
+**Ratificado pelo operador em 2026-08-04:** os 27 valores vieram da tabela que **ele forneceu e
+validou**. Ou seja, o defeito nunca foi "número sem origem" — foi **origem real trocada por uma
+citação legislativa falsa**. A correção não é conseguir 20 leis antes de calcular; é o campo `fonte`
+**dizer a verdade sobre de onde o número veio**:
+
+| tier | UFs | `fonte` | `lei` |
+|---|---|---|---|
+| lei citada | AL, DF, PR, RJ | a lei | preenchida |
+| lei + confirmação independente do ERP corrigido | BA, MA, PE | a lei + a nota de confirmação (R6) | preenchida |
+| **validado pelo operador** | as outras 20 | `'tabela validada pelo operador em 2026-08-04'` | **NULL** |
+
+`lei` **NULL** é informação honesta ("não temos a citação"), não um desconhecido virando default — o
+número existe, é validado, e calcula. O que **some** é a frase que fingia ser legislação. Quando o
+contador trouxer o número da lei de uma UF, ela sobe de tier com um `UPDATE`, sem migração de desenho.
+A tela nomeia o tier, para a pendência nunca alegar mais procedência do que tem.
 
 ### 1.6 As duas UFs em disputa — resolvidas pela pesquisa, a nosso favor
 
@@ -422,16 +437,38 @@ gate por produto, e o contrato publicando o que o domínio calcula.
 | # | decisão | estado |
 |---|---|---|
 | 1 | **Método = diferença simples** (`a = a_interna`), como o ERP | **RATIFICADA.** Registrado que o método também é parâmetro de cadastro: se o contador disser que cabe base dupla (LC 190/2022), entra pelo gate, nunca por hardcode |
-| 2 | **Alíquotas conferidas** — BA 20,5 · MA 23 · PE 20,5 · DF 20 · RJ 20+2 | **RATIFICADA.** Continua pendente **só** a procedência documental (número de lei no diário oficial) para as 20 UFs sem fonte — Task B1, com ratificação tua ou do contador antes do `UPDATE` |
+| 2 | **Alíquotas conferidas** — BA 20,5 · MA 23 · PE 20,5 · DF 20 · RJ 20+2 | **RATIFICADA.** E a procedência das 27 linhas também: a tabela foi **fornecida e validada pelo operador**. Logo B1 **não bloqueia cálculo** — troca a citação falsa pela origem real, com `lei` NULL onde não temos o número. Subir de tier (validado → lei citada) é `UPDATE`, tarefa contínua do contador |
 | 3 | **DF e RJ resolvidas a nosso favor** | **RATIFICADA.** Deixam de ser "disputa" e viram linha normal da tabela, com lei citada |
 | 4 | **`pricing_difal_rates` morre** | **RATIFICADA.** Fatia C, com substituto — ver decisão 5 |
 
-**Decisão 5 — onde mora o override, agora que a tabela morre (minha, declarada, não bloqueante).**
-`icms_aliquota_interna` é **global e legal** (sem `tenant_id`); o override do operador é **por tenant e
-não é lei**. Gravar override na mesma linha da lei destrói a propriedade que faz a tabela valer como
-julgamento. **Decido:** tabela separada `icms_aliquota_interna_override (tenant_id, uf, aliquota,
-actor, updated_at)`, e o leitor resolve **override → legal**, sempre nomeando qual venceu. Se
-preferires override na mesma linha, é uma troca de uma coluna e meia migração — diz antes da fatia C.
+**Decisão 5 — o override mora em tabela separada (RATIFICADA).** Quatro razões medidas, em ordem de
+força:
+
+1. **Escopo diferente, e é incompatível na mesma chave.** `icms_aliquota_interna` **não tem
+   `tenant_id`** (`0094:26-35`) porque a lei não é por tenant: 27 linhas, uma por UF, para todo mundo.
+   O override é por tenant por definição. Fundir obriga a escolher um dos dois erros: dar `tenant_id`
+   à lei (e então corrigir uma alíquota vira `UPDATE` em N linhas, uma por tenant, com a garantia de
+   que alguma fica para trás), ou tirar `tenant_id` do override (e então o override de um tenant muda
+   o número do outro).
+2. **Ciclo de vida diferente.** A tabela legal é **bitemporal** — `vigente_desde`/`vigente_ate`, o
+   histórico da lei fica. O override é "último vence", com `actor` e `updated_at`. Na mesma tabela, um
+   operador digitando um número churna a versão histórica da legislação.
+3. **É a propriedade que a missão inteira existe para restaurar.** O bug de origem foi um número que
+   perdeu a procedência. Com as duas coisas na mesma célula, "esse 20,5 é a lei ou alguém digitou?" só
+   se responde por uma coluna-flag — e coluna-flag é exatamente o que se esquece de setar. Separadas,
+   **de qual tabela o valor veio já é a resposta**. Procedência estrutural, não convencionada.
+4. **O desenho fundido é literalmente o que estamos removendo.** `pricing_difal_rates` (`0056`) já é
+   lei-e-override na mesma linha, e precisa de um `CONSTRAINT
+   pricing_difal_rates_override_paired` para o trio de override não ficar meio preenchido. Fundir é
+   reconstruir a tabela que a decisão 4 mata.
+
+Custo da separação: **um `LEFT JOIN`** no leitor, que resolve **override → legal** e devolve qual
+venceu. `AliquotaInternaFor` já é uma consulta por UF, resolvida uma vez por pedido.
+
+**Decisão 6 — o drawer substituto (RATIFICADA).** `DifalDrawer` mostra hoje interna/interestadual/
+efetivo por UF. O substituto mostra **alíquota interna, FCP embutido, procedência (tier), lei,
+vigência, fonte, override, quem alterou e quando** — a mesma função manual, mais a procedência que o
+fiscal precisa ver.
 
 **Decisão 6 — o drawer que substitui o de DIFAL (minha, declarada).** O `DifalDrawer` mostra hoje
 interna/interestadual/efetivo por UF. O substituto mostra **alíquota interna, FCP embutido, lei,
@@ -733,23 +770,40 @@ refuta**, não apagado.
 
 ### Fatia B — o dado (procedência, gate e contrato)
 
-#### B1 — Procedência da tabela legal (a task de maior valor)
+#### B1 — Procedência da tabela legal
 
-**Depende da decisão 2** (ratificação humana das leis). **Sem fonte, o gate não sustenta conversa com
-o fiscal.**
+**Decisão 2 ratificada:** os 27 valores são a tabela que o operador forneceu e validou. Esta task
+**não bloqueia cálculo nenhum** — ela troca a citação legislativa falsa pela origem real e torna o
+tier legível na tela (§1.5).
 
 **Migração:** `apps/server_core/migrations/0097_icms_interna_procedencia.sql`
 
-- [ ] Para cada uma das 20 UFs sem fonte (`0094:86,88,89,90,91,93,94,95,96,97,98,99,100,102,103,105,
-      106,107,108,109,110,111,112`): `UPDATE` com `fonte`, `lei` e `vigente_desde` reais, **ou** marcar
-      explicitamente como **não verificada**. Nunca deixar o placeholder passando por citação.
+```sql
+ALTER TABLE icms_aliquota_interna
+  ADD COLUMN IF NOT EXISTS procedencia text NOT NULL DEFAULT 'operador-validado'
+    CHECK (procedencia IN ('lei-citada', 'lei-citada-confirmada-erp', 'operador-validado'));
+```
+
+- [ ] As 20 linhas com o placeholder (`0094:86,88,89,90,91,93,94,95,96,97,98,99,100,102,103,105,106,
+      107,108,109,110,111,112`): `fonte` = `'tabela validada pelo operador em 2026-08-04'`, `lei` =
+      **NULL**, `procedencia` = `'operador-validado'`.
+- [ ] AL/DF/PR/RJ → `'lei-citada'`. BA/MA/PE → `'lei-citada-confirmada-erp'`, com a nota da rodada R6
+      (o ERP corrigido à mão convergiu para o nosso número) somada à lei.
 - [ ] `CHECK` que impeça o texto `'legislação estadual vigente, sem alteração recente conhecida'` de
-      voltar.
-- [ ] BA 20,5 / MA 23 / PE 20,5 ganham a nota de confirmação independente pelo ERP corrigido
-      (`roundR.txt` R6) além da lei.
-- [ ] UF marcada não-verificada **não calcula silenciosamente**: sai como pendência (ADR-17).
+      voltar. Placeholder que finge ser lei é a falsidade que esta task existe para apagar.
+- [ ] **`vigente_desde` das 20 NÃO é atualizada.** Ela faz parte da PK `(uf, vigente_desde)`
+      (`0094:38`), então mexer nela é `DELETE`+`INSERT`, não `UPDATE` — e não temos data legislativa
+      medida para pôr no lugar. Fica `2000-01-01`, e é `procedencia` que diz que essa data não é uma
+      vigência apurada. **A tela nunca renderiza "vigente desde 2000" para tier
+      `operador-validado`** — renderiza "vigência não informada".
+- [ ] O tier viaja até a tela: o drawer (C2) e a pendência do gate (B3) nomeiam a procedência, para a
+      pendência nunca alegar mais do que tem.
+- [ ] Subir de tier é `UPDATE` de `lei` + `procedencia`, sem migração de desenho — é a tarefa contínua
+      do contador, fora do caminho crítico deste plano.
 - [ ] `TestICMSAliquotaInternaSeedHasAll27UFsExactlyOnce`
       (`migrations/icms_matrix_shape_test.go`) ganha asserção de procedência. **Restado, não apagado.**
+- [ ] **Vermelho primeiro:** teste que assere `procedencia` das 27 linhas e **zero** ocorrências do
+      texto placeholder — hoje falha com 23 ocorrências.
 - [ ] **Bumpar `runner_test.go:25` e `:64` de 83 para 84.**
 
 #### B2 — Espelho da previsão do ERP
@@ -902,8 +956,9 @@ CREATE TABLE IF NOT EXISTS icms_aliquota_interna_override (
       apagado — cada asserção que existia ganha equivalente na tabela nova.
 - [ ] `PricingPage.tsx:129-133` e `:149-156` acompanham.
 - [ ] O disclaimer `"seed padrão 2026 — não é orientação fiscal"` (`difal.go:6`,
-      `DifalDrawer.tsx:8`) dá lugar ao texto que a tabela nova sustenta: **a lei e a data de cada
-      linha**. Onde a UF ainda estiver não-verificada (B1), o disclaimer fica — nomeando **aquela** UF.
+      `DifalDrawer.tsx:8`) dá lugar ao que a tabela nova sustenta **por linha**: a lei e a data onde
+      existem; `'validado pelo operador em 2026-08-04'` + "vigência não informada" no tier
+      `operador-validado` (B1). Disclaimer global vira procedência por UF.
 
 #### C3 — Remover a tabela e a fórmula duplicada
 
@@ -1019,8 +1074,10 @@ depois que a nota sai errada.** A Onda 0.5 é a primeira vez que esse processo g
 - [x] **Nenhuma constante de negócio hardcoded sobrevive:** o `18` de MG sai (A2-d); a alíquota vem da
       tabela com lei; o `a_inter` é regra da origem com a Res. Senado citada; o método é medido.
       O `4%` de `calcprofile.go:19` deixa de alcançar o caminho fiscal (B4).
-- [x] Nenhum desconhecido vira `0`/default: UF sem procedência, célula ausente, célula ambígua e
-      destino não resolvido saem como pendência nomeada (A1 casos 9–10, B4, B5).
+- [x] Nenhum desconhecido vira `0`/default: UF **sem linha na tabela**, célula ausente, célula ambígua
+      e destino não resolvido saem como pendência nomeada (A1 casos 9–10, B4, B5). UF **com** linha
+      calcula, e a tela diz de que tier veio o número — procedência fraca é informação publicada,
+      nunca ausência disfarçada.
 - [x] Nenhum mock em seam de integração; aceite é `count(*)` no banco, nota emitida e live drive.
 - [x] Toda asserção do plano **reprova no código de hoje** — A1 traz as três mensagens exatas; A3, B4
       e B5 trazem o vermelho nomeado.
@@ -1042,10 +1099,11 @@ depois que a nota sai errada.** A Onda 0.5 é a primeira vez que esse processo g
 
 **Pendências honestas deste plano:**
 
-1. **B1 depende de ratificação humana** (tu ou o contador) das leis das 20 UFs. Não é bloqueio do
-   plano — é bloqueio daquela task, e ela está isolada por isso.
-2. **A decisão 5** (onde mora o override) e a **decisão 6** (o drawer substituto) são minhas,
-   declaradas, e reversíveis com pouco custo se discordares. Diz antes da fatia C.
+1. **20 UFs calculam com procedência `operador-validado`, não com lei citada.** Ratificado, e visível
+   na tela por tier (B1). O que continua aberto é a curadoria incremental do contador — que **não
+   bloqueia nada** e não tem data.
+2. **Decisões 5 e 6 ratificadas** (*"pode seguir com suas recomendação"*). Registradas aqui como
+   decididas, não como pendentes.
 3. **`red_base` (D3) é medição, não implementação** — deliberadamente.
 4. **A interseção de seam com a Onda 1 não é vazia** (Parte 8). Isso precisa de adjudicação do hub
    antes de qualquer despacho paralelo.
