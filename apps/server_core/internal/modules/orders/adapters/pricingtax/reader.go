@@ -8,6 +8,7 @@ package pricingtax
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/big"
 	"strconv"
 
@@ -153,13 +154,21 @@ func (r *Reader) TaxesForItems(ctx context.Context, items []ordersports.TaxItem,
 }
 
 // resolveItem builds the ICMSCell + preço (line total, UnitPrice × Quantity)
-// for one order item. A nil *ICMSCell — no product link, no UnitPrice, or no
-// products_mirror fiscal snapshot for the linked product — is the single,
-// uniform "this item's tax picture is unknown" signal that TaxesForItem
-// already understands; the caller (TaxesForItems) never special-cases the
-// unlinked case separately from a linked-but-factless one.
+// for one order item. A nil *ICMSCell — no product link, no UnitPrice, no
+// readable price, or no products_mirror fiscal snapshot for the linked product
+// — is the single, uniform "this item's tax picture is unknown" signal that
+// TaxesForItem already understands; the caller (TaxesForItems) never
+// special-cases the unlinked case separately from a linked-but-factless one.
 func (r *Reader) resolveItem(ctx context.Context, destinoUF string, aliquotaInterna *pricingports.AliquotaInterna, item ordersports.TaxItem) (*pricingdomain.ICMSCell, string, error) {
 	if item.InternalProductID == nil || item.UnitPrice == nil {
+		return nil, "0.00", nil
+	}
+
+	// A price we cannot read faithfully is not a price: it takes the same
+	// named-unknown channel as an unlinked item, never a silently rounded
+	// number. Checked before any read, so an unusable price costs nothing.
+	preco, priceReadable := lineTotal(*item.UnitPrice, item.Quantity)
+	if !priceReadable {
 		return nil, "0.00", nil
 	}
 
@@ -219,7 +228,6 @@ func (r *Reader) resolveItem(ctx context.Context, destinoUF string, aliquotaInte
 		FiscalDtRef:     facts.FiscalDtRef,
 	}
 
-	preco := lineTotal(*item.UnitPrice, item.Quantity)
 	return cell, preco, nil
 }
 
@@ -227,13 +235,45 @@ func (r *Reader) resolveItem(ctx context.Context, destinoUF string, aliquotaInte
 // money representation) × Quantity into the 2dp decimal string TaxesForItem
 // expects — the one float64→decimal crossing in this adapter, same idiom the
 // pre-T5 reader used for order.Total.
-func lineTotal(unitPrice float64, quantity int) string {
-	v := new(big.Rat).SetFloat64(unitPrice)
-	if v == nil { // unitPrice was NaN or ±Inf — not a real amount
-		v = new(big.Rat)
+//
+// It reports ok=false when unitPrice is not a readable amount, so the caller
+// can route it to the named-unknown channel instead of a number. Before this
+// guard the conversion rounded to 2dp in SILENCE: lineTotal(1.005, 1) produced
+// "1.00" where the decimal-exact answer is "1.01", and NaN/±Inf produced
+// "0.00" — a fabricated zero, the ADR-17 failure mode. That was only ever safe
+// by accident of schema (unit_price is numeric(14,2), migrations/0027:31), a
+// premise no code asserted; ingest_service.go:241 fills UnitPrice straight from
+// the provider payload, in memory, before that column ever rounds it.
+//
+// The predicate is NOT "exactly representable as n/100" — that would reject
+// almost every real price, since float64's nearest value to 0.10 is
+// 0.1000000000000000055…, so 0.10 × 100 is not an integer. The question is the
+// other direction: is this float the faithful IMAGE of some 2dp decimal? Round
+// it, take the decimal back to float64, compare. 0.10 survives (it IS the
+// nearest double to "0.10"); 1.005 does not (its nearest double rounds to
+// "1.00", a different double). The line total is then derived from that
+// DECIMAL, never from the binary value it came in as.
+func lineTotal(unitPrice float64, quantity int) (string, bool) {
+	if math.IsNaN(unitPrice) || math.IsInf(unitPrice, 0) {
+		return "", false
 	}
-	v.Mul(v, big.NewRat(int64(quantity), 1))
-	return pricingdomain.FormatRatHalfUp(v, 2)
+	v := new(big.Rat).SetFloat64(unitPrice)
+	if v == nil {
+		return "", false
+	}
+
+	unit := pricingdomain.FormatRatHalfUp(v, 2)
+	back, err := strconv.ParseFloat(unit, 64)
+	if err != nil || back != unitPrice {
+		return "", false
+	}
+
+	total, ok := new(big.Rat).SetString(unit)
+	if !ok {
+		return "", false
+	}
+	total.Mul(total, big.NewRat(int64(quantity), 1))
+	return pricingdomain.FormatRatHalfUp(total, 2), true
 }
 
 // scaleMoney multiplies a decimal money string by qty, or passes nil through
