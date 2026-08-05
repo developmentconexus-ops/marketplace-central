@@ -1,24 +1,33 @@
-# Verdade fiscal ex-ante — a fonte é o ERP, não uma tabela nossa
+# Verdade fiscal ex-ante — método do ERP, dado nosso, divergência registrada
 
-**Data:** 2026-08-04 · **Missão:** MIS-008 · **Metodologia:** `/mc-planning` (fases 0–6 percorridas)
-**Evidência bruta:** `.mnfs/MIS-008/evidence/fiscal-2026-08-04/` (rodadas B, C, F, I, J, K, L, M, N, O, P, Q
-contra o Oracle vivo `METALPRD`, somente leitura, via lane Docker)
+**Data:** 2026-08-04 · **Missão:** MIS-008 · **Metodologia:** `/mc-planning` (fases 0–6)
+**Evidência bruta:** `.mnfs/MIS-008/evidence/fiscal-2026-08-04/` (rodadas B, C, F, I–R, contra o
+Oracle vivo `METALPRD`, somente leitura, via lane Docker)
 
-> Este documento é **relatório + plano**. A parte 1 responde o que o operador pediu: como o sistema
-> vai funcionar e por que o erro para de acontecer. As partes 2–7 são o plano no formato da casa.
+> **Revisão 2** (após correção do operador). A revisão 1 elegeu o `TGFAID` como fonte de cálculo e
+> rebaixou nossa tabela legal a mero alerta. Estava invertido. A rodada R mediu o que faltava e
+> confirma o modelo do operador: **o método do ERP está certo, os dados dele estão velhos.**
 
 ---
 
 ## Parte 1 — Relatório ao operador
 
-### 1.1 A regra que você me deu está confirmada, ao centavo, na sua própria nota
+### 1.1 O que estava em disputa
 
-Você disse: *"a base é menos icms e difal se tiver"* — porque *"ambos são ICMS, o que muda é que o
-DIFAL é ICMS recolhido para o lugar de destino"*.
+Duas coisas diferentes que eu tinha colapsado numa só:
 
-Medi na nota **212253 / NUNOTA 895507** (BA, 2026-07-21, produto 41912). O Sankhya guarda a base já
-reduzida na coluna `BASERED` do `TGFDIN` — não é cálculo meu, é o número que o ERP gravou
-(`roundK.txt`, bloco K6):
+| | quem está certo | evidência |
+|---|---|---|
+| **método** de cálculo (diferença simples vs gross-up) | **o ERP** | 316/316 itens com `TIPCALCDIFAL = 0`, `BASEDIFAL = BASE`, `ALIQPARADIFAL = ALIQINTDEST − ALIQUOTA`, `PERCPARTDIFAL = 100` em 783/783 (`roundR.txt` R5) |
+| **dado** (qual é a alíquota interna do destino) | **nossa tabela** | rodada R, abaixo |
+
+O nosso código erra o **método**. O ERP erra o **dado**. Nenhum dos dois, sozinho, produz o número
+certo.
+
+### 1.2 A regra da base, confirmada ao centavo
+
+Nota **212253 / NUNOTA 895507**, BA, 2026-07-21, produto 41912, base 299,90. O Sankhya grava a base
+já reduzida em `TGFDIN.BASERED` (`roundK.txt`, K6):
 
 | CODIMP | imposto | BASE | **BASERED** | alíquota | VALOR |
 |---|---|---|---|---|---|
@@ -28,272 +37,283 @@ reduzida na coluna `BASERED` do `TGFDIN` — não é cálculo meu, é o número 
 | 7 | COFINS | 299,90 | **248,92** | 7,60 | **18,92** |
 | 12/14 | IBS/CBS | 299,90 | 225,89 | 0,1 / 0,9 | 0,23 / 2,03 |
 
-`299,90 − 20,99 − 29,99 = 248,92`. **Exatamente a sua regra.** E o encadeamento continua: a base de
-IBS/CBS é `248,92 − 4,11 − 18,92 = 225,89`.
+`299,90 − 20,99 − 29,99 = 248,92`. **Base menos ICMS e menos DIFAL — exatamente a tua regra.** E
+encadeia: base de IBS/CBS = `248,92 − 4,11 − 18,92 = 225,89`.
 
-Isso não é uma nota só. Em 2026, contra o próprio `BASERED`, **PIS bate em 7.617/7.617 itens e COFINS
-em 7.627/7.627** (`roundL.txt`, L3). E a fórmula completa, com todos os abatimentos:
+Não é uma nota só: contra `BASERED`, em 2026, PIS bate **7.617/7.617** e COFINS **7.627/7.627**
+(`roundL.txt` L3). A **forma** dessa regra já está no nosso código
+(`pricing/domain/icms.go:177`: `P × (1 − a) − S`). O errado é só o `a`.
 
-```
-base do item          = VLRTOT − VLRDESC                     (6.218/6.220 itens de 2026; 40/40 no TOP 306)
-ICMS próprio          = base × a_inter                        a_inter ∈ {4 importado, 7, 12}
-DIFAL                 = base × (interna_destino − a_inter)    DIFERENÇA SIMPLES — 316/316 itens
-FCP                   = base × perc_fcp                       só RJ, 2%
-base PIS/COFINS       = base − ICMS − DIFAL − FCP − ST_retido
-PIS 1,65% + COFINS 7,60% sobre essa base
-base IBS/CBS          = base PIS/COFINS − PIS − COFINS
-```
+### 1.3 A prova de que o cadastro do ERP é que está velho
 
-**A forma da sua regra já está no nosso código** (`pricing/domain/icms.go:177-178`): a base do
-PIS/COFINS é `P × (1 − a) − S`, que é literalmente `P − ICMS − DIFAL − S`. Não é aí que erramos.
+Eu suspeitava que a variação por produto no `TGFAID` pudesse ser redução legítima (produto com base
+reduzida por lei). Medi. **Não é.**
 
-### 1.2 Onde erramos — dois defeitos, e o segundo é maior do que eu pensava
+**`PERCREDBASEDEST > 0` em ZERO produtos, nas 26 UFs** (`roundR.txt` R3, coluna `N_COM_RED`). Não
+existe redução por produto no catálogo. Logo a variação de alíquota dentro da mesma UF não tem
+justificativa fiscal — é cadastro em estados diferentes de atualização.
 
-**Defeito A — gross-up.** `icms.go:154-158` calcula a alíquota total como
-`a = a_int × (1 − a_inter) / (1 − a_int)` (imposto "por dentro"). O ERP usa **diferença simples**:
-`DIFAL = base × (ALIQINTDEST − ALIQUOTA)`, com `TIPCALCDIFAL = 0` e `BASEDIFAL = BASE` em
-**316/316** itens medidos. Foi uma decisão registrada (D-41, "DIFAL pela lei, não pelo ERP") com
-consequência aceita de 2% a 10% de divergência. A medição de hoje mostra que a consequência é maior
-e cai toda para o lado errado: **nós superestimamos o imposto, logo subestimamos a margem**.
+E a distribuição prova isso de forma gritante. Bahia, catálogo vendável (`roundR.txt` R1):
 
-**Defeito B — a tabela de alíquota interna é estruturalmente incapaz de acertar.** Nós semeamos
-27 linhas à mão em `icms_aliquota_interna` (`migrations/0094_icms_matrix.sql:85`), uma por UF. Medi
-de onde o ERP tira esse número: **`METALPRD.TGFAID`**, chaveada por **(CODUF, CODPROD)** — alíquota
-interna **por produto e por UF**, não por UF.
-
-E ela explica tudo:
-
-| medição | resultado |
+| ALIQINTDEST | produtos |
 |---|---|
-| TGFAID reproduz a `ALIQINTDEST` cobrada nas notas (TOP 305/306 desde 2025) | **784 de 784. Zero divergências, zero linhas faltando** (`roundM.txt`, M3/M4) |
-| tamanho | 1.051.700 linhas · 40.450 produtos · 26 UFs (`roundM.txt`, M2) |
-| cobertura do nosso catálogo vendável (10.051 produtos `USOPROD='R'`, `ATIVO='S'`) | **10.051 de 10.051, com as 26 UFs cada** — mín. = máx. = 26 (`roundN.txt`, N1) |
-| a BA da sua nota | produto 41912 → **17**; produto 39563 → **20,5**. Mesma UF, mesmo grupo fiscal, dois dias seguidos (`roundL.txt` L4, `roundI.txt` I3) |
+| **17** | **10.049** |
+| 18 | 1 |
+| **20,5** | **1** |
 
-Ou seja: o que eu tinha classificado como "3 UFs divergentes" e "a BA varia por produto" era o mesmo
-fato o tempo todo — **a alíquota interna do destino é um dado por produto, e o ERP tem esse dado
-completo para todo o nosso catálogo.**
+Não é "a BA varia por produto". É **10.049 linhas velhas e 2 corrigidas à mão.** Mesmo grupo fiscal
+(122) nos dois produtos que eu tinha comparado, sem redução em nenhum (`roundR.txt` R2).
 
-Comparando nossa tabela semeada com o que o ERP vai cobrar (moda do TGFAID no catálogo vendável,
-`roundQ.txt` Q1):
+O mesmo padrão em todo o resto (`roundR.txt` R3): **1 alíquota distinta** em 21 das 26 UFs, e 2 ou 3
+exatamente onde alguém corrigiu alguma coisa — BA, DF, MA, PE, RJ.
 
-| UF | nossa tabela | TGFAID | Δ | | UF | nossa tabela | TGFAID | Δ |
-|---|---|---|---|---|---|---|---|---|
-| AC | 19,0 | 17 | **+2,0** | | PB | 20,0 | 17 | **+3,0** |
-| AL | 21,5 | 17 | **+4,5** | | PE | 20,5 | 17 | **+3,5** |
-| AM | 20,0 | 17 | **+3,0** | | PI | 22,5 | 17 | **+5,5** |
-| AP | 18,0 | 17 | **+1,0** | | PR | 19,5 | 18 | **+1,5** |
-| BA | 20,5 | 17 | **+3,5** | | RJ | 22,0 | 19 (+2 FCP) | **+1,0** |
-| CE | 20,0 | 17 | **+3,0** | | RN | 20,0 | 17 | **+3,0** |
-| DF | 20,0 | 18 | **+2,0** | | RO | 19,5 | 17 | **+2,5** |
-| ES | 17,0 | 17 | 0 | | RR | 20,0 | 17 | **+3,0** |
-| GO | 19,0 | 19 | 0 | | RS | 17,0 | 17 | 0 |
-| MA | 23,0 | 17 | **+6,0** | | SC | 17,0 | 17 | 0 |
-| MS | 17,0 | 17 | 0 | | SE | 20,0 | 17 | **+3,0** |
-| MT | 17,0 | 17 | 0 | | SP | 18,0 | 18 | 0 |
-| PA | 19,0 | 17 | **+2,0** | | TO | 20,0 | 17 | **+3,0** |
+**E o valor corrigido bate com a nossa tabela.** Onde o ERP foi consertado, ele foi consertado
+**para o nosso número**:
 
-**19 das 26 UFs divergem.** MG não está no TGFAID (é a UF de origem; a interna de MG é caso à parte).
+| UF | valor velho no ERP | valor corrigido no ERP | nossa tabela |
+|---|---|---|---|
+| BA | 17 | **20,5** | **20,5** ✓ |
+| MA | 17 | **23** | **23** ✓ |
+| PE | 17 | **20,5** | **20,5** ✓ |
 
-### 1.3 Quanto custa, na sua nota
+Confirmação independente: nossa tabela não é chute. Quando o pessoal do fiscal descobre o problema
+numa nota e vai arrumar o cadastro, o número que eles põem é o nosso.
 
-Preço 299,90, MG → BA, produto 41912, origem nacional:
+**O caso mais eloquente é a tua própria nota** (`roundR.txt` R6, alíquotas efetivamente cobradas):
 
-| cenário | ICMS próprio | DIFAL | PIS/COFINS | **total de tributos** | Δ |
-|---|---|---|---|---|---|
-| **ERP (o que foi realmente cobrado)** | 20,99 | 29,99 | 23,03 | **74,01** | — |
-| só o gross-up errado (com interna 17 correta) | 20,99 | 36,14 | 22,46 | 79,59 | +5,58 |
-| só a tabela errada (20,5, com diferença simples) | 20,99 | 40,49 | 22,05 | 83,53 | +9,52 |
-| **nosso código hoje (os dois juntos)** | 20,99 | 50,93 | 21,09 | **93,01** | **+19,00** |
+```
+BA | 20,5 | 1 nota | 2026-07-20
+BA | 17   | 1 nota | 2026-07-21   <-- a tua, NUNOTA 895507
+```
 
-**19,00 em 299,90 = 6,34% do preço, inteiramente contra a margem.** Os dois erros se compõem: juntos
-custam mais que a soma deles.
+Dois dias seguidos, mesmo estado, alíquotas diferentes. No dia 20 saiu certa; no dia 21 saiu com 17
+porque **aquele produto** ainda não tinha sido corrigido. É a correção manual, produto a produto,
+acontecendo hoje sem sistema nenhum — exatamente o buraco que tu queres fechar.
 
-Em GO — 725 dos 784 itens medidos, o destino real do negócio — nossa tabela **acerta** (19) e sobra
-só o gross-up: ERP `7% + 12% + 9,25%×(1−0,19) = 26,49%` do preço contra os nossos `29,05%`.
-**2,56 pontos de preço** em toda venda interestadual para GO.
+### 1.4 Quanto isso custou na tua nota — e para os dois lados
 
-Numa operação onde *"margem marketplace é muito apertada"*, 2,5 a 6 pontos de preço é a diferença
-entre recusar um pedido bom e aceitar um ruim.
+Preço 299,90, MG → BA, produto nacional, alíquota interna correta **20,5**:
 
-### 1.4 Como o sistema vai funcionar
+| cenário | ICMS | DIFAL | base PIS/COF | PIS/COFINS | **total** | erro |
+|---|---|---|---|---|---|---|
+| **correto** (método ERP + dado nosso) | 20,99 | **40,49** | 238,42 | 22,05 | **83,53** | — |
+| **ERP real** (método certo, dado 17 velho) | 20,99 | 29,99 | 248,92 | 23,03 | **74,01** | **−9,52 recolhido a MENOS** |
+| **nosso código** (dado 20,5 certo, gross-up) | 20,99 | 50,93 | 227,98 | 21,09 | **93,01** | **+9,48 superestimado** |
 
-Cinco fontes, cada uma com dono único e nenhuma inventada:
+Os dois erram quase a mesma coisa, em direções opostas, e **nenhum dos dois é a verdade**:
 
-| grandeza | fonte | estado |
+- **O ERP subrecolheu 9,52 nessa nota.** Isso não é margem a mais — é passivo fiscal.
+- **Nós superestimamos 9,48**, o que empurra a margem para baixo e faz recusar venda boa.
+
+Em **GO** — 725 dos 784 itens medidos, o destino real do negócio — o cadastro do ERP está **certo**
+(19, bate com a nossa tabela). Lá só sobra o nosso gross-up: ERP 26,49% do preço contra os nossos
+29,05%. **2,56 pontos de preço** em toda venda para GO.
+
+### 1.5 O buraco do nosso lado: a tabela "legal" não tem lei
+
+Se o desenho é "julgar o dado do ERP pela lei", a tabela que julga precisa ser lei. Ela não é ainda.
+`migrations/0094_icms_matrix.sql:85` — **23 das 27 linhas** trazem:
+
+```
+fonte = 'legislação estadual vigente, sem alteração recente conhecida'
+vigente_desde = '2000-01-01'
+```
+
+Afirmação sem fonte com cara de fonte. Só **4** linhas citam lei de verdade: AL (Lei 9.776/2025),
+DF (Lei 7.326/2023), PR (Lei 21.850/2023), RJ (Lei 10.253/2023 + LC 210/2023).
+
+BA 20,5, MA 23 e PE 20,5 são três dessas 23 — e ganharam confirmação independente pelo próprio ERP
+corrigido (§1.3). As outras 20 continuam sem nada. **Isso vira a task de maior valor do plano**, não
+uma nota de rodapé: sem fonte, a pendência que a tela mostrar não sustenta uma conversa com o fiscal.
+
+### 1.6 Duas UFs onde nós é que podemos estar errados
+
+Onde o ERP **foi corrigido** e ainda assim discorda de nós, a hipótese "ERP velho" não explica:
+
+| UF | ERP corrigido para | nossa tabela | Δ |
+|---|---|---|---|
+| **DF** | 18 | 20,0 | 2,0 |
+| **RJ** | 19 (+ 2 FCP = 21) | 22,0 (20 + 2 FCP) | 1,0 |
+
+Alguém mexeu nessas duas e parou num número diferente do nosso. Ou nossa tabela está errada, ou a
+correção deles foi parcial. **Não dá para decidir isso medindo** — vai para o fiscal com nome e
+número. As duas têm lei citada do nosso lado (DF 7.326/2023, RJ 10.253/2023 + LC 210/2023), então o
+confronto é citável.
+
+### 1.7 Como o sistema vai funcionar
+
+**Calcular como o ERP calcula, com o dado que a lei manda, e registrar a diferença.**
+
+| grandeza | fonte | papel |
 |---|---|---|
-| `a_inter` (interestadual) | regra da origem MG: 4% importado (`ORIGPROD ∈ {1,2,3,8}`), 12% para SP/RJ/PR/SC/RS, 7% no resto | **já existe e está certo** — `icms.go:186`, backtest 184/184 interestadual |
-| interna do destino | **`TGFAID(CODUF, CODPROD)` espelhada** | **a construir** — hoje é tabela semeada à mão |
-| FCP | `TGFICM.PERCICMSFCP`, **já espelhado** | RJ 142/142 células com FCP, todas as outras UFs zero — bate com as notas |
-| ST / `CODTRIB` | `icms_matrix_mirror` | já existe, 2.498 células vigentes, 2 ambíguas (D-54) |
-| ST retido / restituição | `TGFEFDVMRSTDIA` espelhada | já existe; `TGFC185F` é a verdade ex-post (ver §1.5) |
+| método (diferença simples, partilha 100%) | medido no ERP, 783/783 | **como** se calcula |
+| `a_inter` (interestadual) | regra da origem MG: 4% importado (`ORIGPROD ∈ {1,2,3,8}`), 12% SP/RJ/PR/SC/RS, 7% resto | já existe e está certo (`icms.go:186`, 184/184) |
+| interna do destino — **devido** | **nossa `icms_aliquota_interna`, com lei e data** | **o dado do cálculo** |
+| interna do destino — **previsto** | **`TGFAID` espelhado (uf, codprod)** | **só para o gate**, nunca para a margem |
+| FCP | `TGFICM.PERCICMSFCP`, já espelhado (RJ 142/142, resto 0) | componente |
+| ST | `icms_matrix_mirror` + `TGFEFDVMRSTDIA`, já existem | componente |
 
-Com isso o fluxo fica:
+Fluxo:
 
-1. **Simulação de preço.** Você escolhe o produto e a UF de destino. O sistema resolve
-   `a_inter` + interna(produto, UF) + FCP + ST e devolve **o mesmo número que a nota vai cobrar**.
-   Margem verdadeira, não estimativa.
-2. **Pedido entra.** A UF do comprador vira a célula fiscal do pedido; o custo do pedido usa a mesma
-   conta. Nada de alíquota de regime genérica.
-3. **Antes de faturar.** O sistema compara **previsto (TGFAID espelhado)** × **devido (tabela legal
-   nossa)**. Divergiu → pendência nomeada na tela, com produto, UF, as duas alíquotas e a diferença
-   em reais. É aqui que *"garantir que o ERP não vai gerar coisa errada"* acontece: você corrige o
-   cadastro no Sankhya **antes** da nota sair.
-4. **Depois de faturar.** Reconciliação contra o `TGFDIN` real da nota. Divergência vira registro,
-   não some.
+1. **Simulação / pedido.** Calcula com o método do ERP e a alíquota **devida**. É a margem
+   verdadeira — a que vale para decidir preço, porque é o que a empresa deve pagar.
+2. **Antes de faturar.** Compara `TGFAID(produto, UF)` com o devido. Divergiu → pendência nomeada com
+   **CODPROD, UF, valor no cadastro, valor devido, diferença em reais e a lei**. É a linha exata que
+   alguém vai corrigir no Sankhya. Hoje isso acontece à mão, uma nota por vez, depois do erro.
+3. **Depois de faturar.** Reconcilia contra o `TGFDIN` real. Se saiu com o valor velho, fica
+   registrado quanto se recolheu a menos.
 
-### 1.5 Por que o erro para de acontecer — e onde ele **não** para
+### 1.8 Por que o erro para — e onde não para
 
-Para de acontecer porque:
+Para porque:
 
-- **A fonte deixa de ser uma alegação nossa e passa a ser o cadastro que o ERP obedece.** 784/784 não
-  é "quase sempre"; é a definição operacional de "certo". Uma tabela semeada à mão envelhece em
-  silêncio (D-45: nenhum órgão publica tabela consultável); um espelho envelhece **com data e com
-  contador de falha no `sync_state`**, igual aos outros seis espelhos.
-- **A dimensão passa a ser a certa.** Nenhuma quantidade de manutenção manual faz 27 linhas
-  representarem 261.326 pares (produto, UF). A BA da sua nota já provava isso.
-- **O gross-up morre e vira uma conta só, com dois nomes na tela.** ICMS e DIFAL passam a ser duas
-  linhas derivadas do mesmo `a`, nunca dois cálculos.
-- **Divergência vira pendência, não vira número.** ADR-17: célula ausente, ambígua, ou cadastro
-  contraditório sai como desconhecido nomeado. Nunca como zero, nunca como aproximação.
+- **Método e dado deixam de ser a mesma decisão.** Hoje "DIFAL pela lei" virou gross-up no código,
+  que não era o que tu pediste. Separados, cada um tem dono: método = medido no ERP; dado = a lei,
+  citada.
+- **A pendência é acionável.** Não é "algo está errado no fiscal" — é `CODPROD 41912, BA, cadastro
+  17, devido 20,5, Lei X, R$ 10,50 nesta nota`. Sem isso a tela vira ruído.
+- **A varredura é do catálogo inteiro, não da nota.** 10.049 produtos da BA estão com o valor velho
+  agora. O gate mostra isso antes de virar 10.049 notas erradas — hoje só aparece uma por vez,
+  depois de emitida.
+- **Divergência nunca vira número.** ADR-17: célula ausente ou ambígua sai como desconhecido nomeado.
 
-**Não para de acontecer, e é honesto dizer:**
+**Não para, e é honesto dizer:**
 
-- **Ex-ante ≠ ex-post no ST.** Antes da nota, o ST retido só é conhecível pela média diária
-  (`TGFEFDVMRSTDIA`). Na hora de faturar, o ERP prefere o valor real da nota (`TGFC185F`). São
-  grandezas diferentes por natureza — a simulação carrega faixa, não certeza. Isso vira dívida
-  registrada, não é apagável.
-- **Se o cadastro do Sankhya estiver errado, nós vamos acertar o número errado.** É exatamente por
-  isso que o gate pré-nota compara com a tabela legal em vez de jogá-la fora. As 19 UFs divergentes
-  da §1.2 são **duas hipóteses ainda não separadas**: ou nossa semeadura está errada, ou o cadastro
-  do ERP está defasado e a empresa está recolhendo DIFAL a menos. **Só você pode decidir qual
-  investigar primeiro** — é decisão fiscal, não técnica (§5, decisão 2).
-- **De onde sai o FCP do RJ eu medi; qual regra o ERP usa para aplicá-lo, não.** O valor bate
-  (`TGFICM.PERCICMSFCP`, RJ 2%, já espelhado), mas `TGFAID.PERCICMSFCP` está nulo nesses produtos e
-  o `TGFICM_INT_TRIB` está vazio (`roundP.txt`). Registro como desconhecido nomeado, com o
-  observável que o resolveria: uma nota nova para AL, PB ou SE (as outras UFs com FCP geral).
-- **ES continua não-calculável** enquanto D-54 viver: cadastro contraditório de verdade
-  (`I/199+S/-1` diz CODTRIB 10 / 12%, `N/0+I/199` diz CODTRIB 0 / 7%), pesando 683 + 2.592 produtos.
-- **MG interna** tem alíquotas por produto que a matriz não resolve (D-55, 57 de 705 itens). O TGFAID
-  não cobre MG. Fica em aberto.
+- **20 das 27 linhas legais ainda não têm fonte.** Enquanto não tiverem, o gate compara um número
+  nosso com um número deles. Task 3 existe por isso, e ela precisa de ti ou do contador — eu não
+  invento citação de lei.
+- **DF e RJ estão em disputa real** (§1.6), não em "ERP velho".
+- **O `TGFAID` não tem trilha de alteração** — 5 colunas, sem data (`roundR.txt` R4). Só dá para
+  detectar mudança comparando espelho contra espelho ao longo do tempo. É o que o espelho versionado
+  faz, mas o passado anterior ao primeiro sync é perdido (mesma classe da D-28).
+- **Ex-ante ≠ ex-post no ST.** Antes da nota só existe a média diária (`TGFEFDVMRSTDIA`); o ERP usa o
+  real (`TGFC185F`) na emissão. Estrutural, vira dívida, não se apaga.
+- **`TIPCALCDIFAL = 0` também é parâmetro de cadastro.** O ERP tem campo para outros métodos; está
+  configurado em base única. Se o contador disser que para consumidor final não-contribuinte cabe
+  base dupla (LC 190/2022), o método muda — e aí entra pelo gate, não por hardcode. **Pergunta para o
+  fiscal, não para mim.**
+- **ES** segue não-calculável (D-54, cadastro contraditório de verdade). **MG interna** por produto
+  segue aberta (D-55); o `TGFAID` não cobre MG (é a origem).
 
 ---
 
 ## Parte 2 — Medição (as 8 perguntas, com `file:line`)
 
 **1. O que já existe que faz parte disto?**
-`pricing/domain/icms.go:101 TaxesForItem` já monta a cadeia inteira (a_inter → a → ICMS → DIFAL →
-base PIS/COFINS → ST). `pricing/domain/difal.go:DifalForUF` já implementa **a diferença simples**
-(`computeEfetivoPct = max(interna − interestadual, 0)`) sobre `pricing_difal_rates` (27 linhas, com
-override do operador). `internal_read/adapters/oracle/icms_matrix.go:53` já é o molde exato de
-extração TGFICM → espelho versionado. `internal_read/adapters/oracle/sync.go:~276
-sankhyaFiscalSTSQL` já traz `S` e `R` do `TGFEFDVMRSTDIA` e **bate com o ERP** — nada a mudar lá.
+`pricing/domain/icms.go:101 TaxesForItem` monta a cadeia inteira (a_inter → a → ICMS → DIFAL → base
+PIS/COFINS → ST). `pricing/domain/difal.go:DifalForUF` **já implementa a diferença simples correta**
+(`computeEfetivoPct = max(interna − interestadual, 0)`) sobre `pricing_difal_rates`, com override do
+operador. `internal_read/adapters/oracle/icms_matrix.go:53` é o molde exato de extração Oracle →
+espelho versionado. `internal_read/adapters/oracle/sync.go` (`sankhyaFiscalSTSQL`) já traz o ST e
+bate com o ERP — nada a mudar lá.
 
 **2. Onde o defeito realmente mora?**
-Dois sítios, ambos em `pricing/domain/icms.go`: (a) linha **154-158**, o `Quo(num, den)` do gross-up;
-(b) a dependência de `ICMSCell.AliquotaInterna` (`icms.go:67`), alimentada por
-`pricing/adapters/postgres/matrix_reader.go:53 AliquotaInternaFor(ctx, uf)` — assinatura **só com
-UF**, que é a dimensão errada. O defeito visível (margem errada na tela) não mora na tela.
+`pricing/domain/icms.go:154-158`: o `Quo(num, den)` do gross-up. **Um sítio.** A revisão 1 apontava
+um segundo defeito na dimensão da porta; a rodada R desmente — com `N_COM_RED = 0` em 26/26 UFs, não
+existe variação legítima por produto, então **a dimensão (UF) da tabela legal está certa** e a porta
+não muda.
 
 **3. Quem mais consome esse caminho?**
 `TaxesForItem` tem **um** chamador de produção: `orders/adapters/pricingtax/reader.go:83`.
 `ICMSCell` é construído em **um** sítio de produção: `reader.go:201`. Porta:
-`orders/ports/tax_reader.go:44 TaxesForItems`, chamada de
-`orders/application/enrich_service.go:424`. `AliquotaInternaFor` é declarada em
-`pricing/ports/tax_matrix.go:36`, implementada em `matrix_reader.go:53`, mais um fake em
-`orders/adapters/pricingtax/reader_test.go:34`. **O simulador de preço não passa por nada disso.**
+`orders/ports/tax_reader.go:44 TaxesForItems`, chamada de `orders/application/enrich_service.go:424`.
+`AliquotaInternaFor` é declarada em `pricing/ports/tax_matrix.go:36` e implementada em
+`pricing/adapters/postgres/matrix_reader.go:53`. **O simulador de preço não passa por nada disso.**
 
 **4. O que o contrato já diz?**
-`AliquotaInternaFor(ctx, uf string) (*string, error)` — `pricing/ports/tax_matrix.go:36`. Trocar a
-dimensão para (uf, codprod) **muda a porta**, e a porta tem teste de integração próprio
-(`matrix_reader_integration_test.go:124` e `:159`) que precisa ser reescrito, não apagado.
+`AliquotaInternaFor(ctx context.Context, uf string) (*string, error)` —
+`pricing/ports/tax_matrix.go:36`. **Fica como está** (resposta 2). A porta **nova** é a do gate, que é
+per-produto por natureza: o cadastro errado do ERP é por produto. Nenhuma operação OpenAPI existente
+muda nesta fatia.
 
 **5. Qual é o estado vivo real?**
-`icms_aliquota_interna`: 27 linhas vigentes (medido em Postgres hoje; colunas reais são
-`uf, aliquota, fcp_embutido, fonte, lei, vigente_desde, vigente_ate` — **não** `interna_pct`, que eu
-errei ao recordar e o `psql` reprovou). `icms_matrix_mirror`: 2.498 vigentes não-ambíguas + 2
-ambíguas; RJ com `perc_fcp > 0` em 142/142 células, todas as demais UFs zero. `pricing_difal_rates`:
-27. `pricing_calc_profiles`: **0 linhas**. `products_mirror`: 10.638. `TGFAID` no Oracle:
-1.051.700 linhas / 40.450 produtos / 26 UFs.
+`icms_aliquota_interna`: 27 linhas vigentes, colunas `uf, aliquota, fcp_embutido, fonte, lei,
+vigente_desde, vigente_ate`; **23 com `fonte` placeholder e `vigente_desde = 2000-01-01`**.
+`icms_matrix_mirror`: 2.498 vigentes + 2 ambíguas; RJ `perc_fcp > 0` em 142/142, resto 0.
+`pricing_difal_rates`: 27. `pricing_calc_profiles`: **0 linhas**. `products_mirror`: 10.638.
+`METALPRD.TGFAID`: 1.051.700 linhas / 40.450 produtos / 26 UFs, **5 colunas, sem trilha de
+alteração**; no catálogo vendável, 10.051 produtos × 26 UFs, `PERCREDBASEDEST > 0` em **zero**.
 
 **6. O que prova que está quebrado hoje e o que provará consertado?**
-Quebrado: para o produto 41912 e UF `BA`, o nosso caminho devolve DIFAL 50,93 e o `TGFDIN` da nota
-895507 registra **29,99** (`roundK.txt` K6). Consertado: o mesmo par devolve 29,99, e um backtest
-sobre os 784 itens interestaduais de 2025-2026 bate `ALIQINTDEST` em 784/784. **Contagem no banco e
-comparação contra nota emitida — nunca lane verde.**
+Quebrado: produto 41912, UF `BA`, preço 299,90 → nosso caminho devolve DIFAL **50,93**; o devido é
+**40,49**; o `TGFDIN` da nota 895507 registra **29,99**. Os três números são diferentes e nenhum
+software mostra isso hoje. Consertado: o cálculo devolve 40,49 **e** o gate lista o produto 41912/BA
+como pendência de cadastro com Δ 10,50. **Aceite = contagem no banco e confronto com nota emitida,
+nunca lane verde.**
 
 **7. Orçamento de custo?**
-Zero chamada a provider. Um `SELECT` a mais no Oracle por sync (o TGFAID restrito aos `CODPROD` que
-existem em `products_mirror` — ~261 mil linhas, contra as ~10 mil da matriz atual). Nenhuma consulta
-extra por render de tela: a leitura é por (uf, codprod) em índice.
+Zero chamada a provider. Um `SELECT` a mais no Oracle por sync do espelho de previsão (`TGFAID`
+restrito aos `CODPROD` de `products_mirror` ≈ 261 mil linhas, contra 1,05 milhão da tabela cheia).
+Nenhuma consulta extra por render: o cálculo lê 27 linhas; o gate lê por índice (uf, codprod).
 
 **8. O que quebra em silêncio às 3 da manhã?**
-Se o sync do TGFAID falhar, a alíquota interna congela na última versão vigente e **a tela continua
-verde** — mesma classe do §5.1 do design da MIS-008 (falha de token invisível). Por isso o espelho
-entra no `sync_state` com `entity = 'icms_aliquota_interna'` e a idade aparece na tela junto do
-componente, igual ao que a Onda 0 fez com `/mercado`. Sem isso a fatia está incompleta.
+Se o sync do `TGFAID` falhar, o gate para de acusar divergência e **a tela fica verde** — o mesmo
+modo de falha do §5.1 do design da MIS-008. Por isso o espelho entra no `sync_state` com entidade
+própria e a idade aparece junto da pendência. Um gate silencioso é pior que gate nenhum: ele afirma
+"nada divergente" sem ter olhado.
 
 ---
 
 ## Parte 3 — O que já existe (varredura anti-redundância)
 
-Rodado: `grep -rn "aliquota_interna\|AliquotaInterna\|ICMSCell\|DifalForUF" apps/server_core`.
+`grep -rn "aliquota_interna\|AliquotaInterna\|ICMSCell\|DifalForUF" apps/server_core`.
 
 | existe hoje | `file:line` | por que não serve como está |
 |---|---|---|
-| `DifalForUF` — diferença simples correta | `pricing/domain/difal.go` | Serve a fórmula, **não** a fonte: lê `pricing_difal_rates`, outra tabela, também por UF só. É a **segunda** implementação de DIFAL do repo, e a que está certa na conta. Colapsar as duas é o trabalho, não criar uma terceira. |
-| `TaxesForItem` | `pricing/domain/icms.go:101` | Estrutura certa, um parâmetro errado (`a`). **Editar**, nunca duplicar. |
-| `ICMSMatrixReader` | `internal_read/adapters/oracle/icms_matrix.go` | É o **molde** do adapter novo: extração crua + resolução pura + espelho versionado. Copiar a forma, não o conteúdo. |
-| `sankhyaFiscalSTSQL` | `internal_read/adapters/oracle/sync.go` | Já correto e medido contra o ERP. **Nenhuma mudança.** |
-| `icms_aliquota_interna` (27 linhas) | `migrations/0094_icms_matrix.sql:26` | **Não morre.** Vira a tabela *legal* do gate pré-nota (previsto × devido). Deixa de ser a fonte do cálculo. |
-| `syncapp.Scheduler` | seam de sync existente | O job novo registra nele. Segundo ticker seria a redundância. |
+| `DifalForUF` — diferença simples correta | `pricing/domain/difal.go` | Fórmula certa sobre a tabela errada (`pricing_difal_rates`, paralela à `icms_aliquota_interna`). **Segunda** implementação de DIFAL do repo. Colapsar as duas é o trabalho; criar uma terceira seria a redundância. |
+| `TaxesForItem` | `pricing/domain/icms.go:101` | Estrutura certa, um parâmetro errado. **Editar**, nunca duplicar. |
+| `icms_aliquota_interna` (27 linhas) | `migrations/0094_icms_matrix.sql:26` | **Continua sendo a fonte do cálculo** — a dimensão (UF) está certa (R3). Falta procedência em 23 linhas (Task 3). |
+| `ICMSMatrixReader` | `internal_read/adapters/oracle/icms_matrix.go` | **Molde** do adapter de previsão: extração crua + espelho versionado + entidade no `sync_state`. Copiar a forma. |
+| `sankhyaFiscalSTSQL` | `internal_read/adapters/oracle/sync.go` | Já correto e medido. **Nenhuma mudança.** |
+| `syncapp.Scheduler` | seam de sync existente | O job novo registra nele. Segundo ticker seria redundância (erro já cometido em F-A3 Slice B). |
 
-**Nenhum artefato novo sem citação:** o único artefato realmente novo é a tabela espelho
-`icms_aliquota_interna_erp` (nome a fixar na task) + seu adapter. Justificativa: nenhuma tabela
-existente tem a chave (uf, codprod) — `icms_matrix_mirror` é (uf, grupo) e `icms_aliquota_interna` é
-(uf).
+**Único artefato novo:** a tabela de previsão do ERP + seu adapter. Justificativa medida: nenhuma
+tabela existente tem a chave (uf, codprod) — `icms_matrix_mirror` é (uf, grupo) e
+`icms_aliquota_interna` é (uf), e a divergência de cadastro **é** por produto (BA: 10.049 numa
+alíquota, 2 noutras).
 
 ---
 
 ## Parte 4 — Máximo local vs global
 
 1. **Quantas cópias do conceito existem?** DIFAL: **duas** (`icms.go` gross-up, `difal.go` diferença
-   simples), sobre **duas** tabelas. Alíquota interna: **duas** (`icms_aliquota_interna`,
-   `pricing_difal_rates`). ≥2 ⇒ o conserto pertence onde elas convergem.
-2. **A causa está uma camada abaixo do sintoma?** Sim. A margem errada na tela é a alíquota errada no
-   domínio, que é a **dimensão** errada na porta. Consertar as 19 linhas da tabela semeada seria o
-   máximo local — e continuaria errado na BA, no RJ e em todo produto com exceção.
-3. **Já existe seam?** Sim, três: `syncapp.Scheduler`, o padrão de espelho versionado do
+   simples) sobre **duas** tabelas. Alíquota interna: **duas** (`icms_aliquota_interna`,
+   `pricing_difal_rates`). ≥2 ⇒ o conserto pertence onde convergem.
+2. **A causa está uma camada abaixo do sintoma?** Sim, mas menos fundo do que a revisão 1 dizia. A
+   margem errada na tela é o `a` errado no domínio. **Não** é a porta — R3 refutou isso.
+3. **Já existe seam?** Sim: `syncapp.Scheduler`, o padrão de espelho versionado do
    `icms_matrix_mirror`, e `TaxesForItem`. Todos reusados.
-4. **Estou estendendo legado?** Não. `pricing_difal_rates` é IC-04 e **não cresce**: ou vira o
-   override do gate legal, ou é inventariado e removido em fatia própria. Decisão do operador (§5).
+4. **Estou estendendo legado?** Não. `pricing_difal_rates` (IC-04) não cresce: absorve-se o override
+   no gate ou remove-se em fatia própria (decisão 4).
 
-**O conserto global é maior e eu o tomo assim mesmo**, com raio declarado: 1 porta, 1 adapter,
-1 domínio, 1 migração, 1 job de sync, 2 testes de integração reescritos. Nenhuma tela muda de forma
-nesta fatia — muda o número que ela mostra.
+**O máximo local seria consertar as 19 linhas da tabela** — e continuaria sem detectar que 10.049
+produtos da BA vão sair com 17 no cadastro do ERP. O global é: método certo + dado citado + gate por
+produto. Raio declarado: 1 domínio, 1 migração de dados, 1 adapter, 1 job, 1 tela de pendência, 2
+testes de integração reescritos. **A porta pública não muda.**
 
 ---
 
 ## Parte 5 — Decisões que só o operador toma
 
-Nenhuma task abaixo começa sem estas três respostas.
+Nenhuma task começa sem estas.
 
-**Decisão 1 — o gross-up (D-41) cede?**
-Você decidiu em 2026-08-02 calcular DIFAL "pela lei", por dentro, aceitando divergir do Sankhya.
-A medição mostra o preço: +5,58 em 299,90 só por isso, sempre contra a margem, e a divergência não é
-teórica — o ERP é quem paga. **Recomendo diferença simples** (o que o ERP faz, 316/316), com a
-fórmula legal preservada no gate como "devido" se você quiser vigiar a diferença.
+**Decisão 1 — método: diferença simples, confirmado?**
+Medido: `TIPCALCDIFAL = 0`, `PERCPARTDIFAL = 100`, 783/783. Tu disseste que o método do ERP está
+certo. **Recomendo adotar** e registrar que o método também é parâmetro de cadastro — se o contador
+disser que cabe base dupla (LC 190/2022) para consumidor final, entra pelo gate, não por hardcode.
 
-**Decisão 2 — as 19 UFs divergentes: quem está errado?**
-Ou a semeadura legal está errada, ou o cadastro do ERP está defasado (e a empresa recolhe DIFAL a
-menos, exposta a autuação). Não dá para decidir isso medindo — nenhuma nota foi emitida para 17
-dessas UFs. **Recomendo:** espelhar o TGFAID para o cálculo (é o que vai acontecer de fato) **e**
-subir o gate legal marcando as 19 como divergência conhecida, para você levar ao contador.
+**Decisão 2 — as 20 UFs sem fonte: quem cita a lei?**
+Eu não invento citação. Preciso de ti, do contador, ou de autorização para pesquisar fonte oficial
+por UF. **Sem isso a Task 3 não fecha** e o gate compara número com número.
 
-**Decisão 3 — `pricing_difal_rates` (IC-04) morre nesta fatia ou vira dívida?**
-Ela tem 27 linhas, override do operador e a fórmula certa. Se o gate legal absorver o override, ela
-é redundância pura. **Recomendo:** absorver o override no gate e registrar a remoção como fatia
-própria — nunca "depois", que nesta casa nunca aconteceu.
+**Decisão 3 — DF (18 vs 20) e RJ (19 vs 20+2): quem está certo?**
+As duas foram corrigidas no ERP para um valor diferente do nosso, e as duas têm lei citada do nosso
+lado. **É a única divergência que a medição não resolve.** Vai para o fiscal.
+
+**Decisão 4 — `pricing_difal_rates` (IC-04) morre nesta fatia ou vira dívida com fatia própria?**
+Tem 27 linhas, override do operador e a fórmula certa. Se o gate absorver o override, é redundância
+pura. **Recomendo:** absorver e registrar a remoção como fatia própria — "depois" nunca aconteceu
+nesta casa.
 
 ---
 
@@ -301,8 +321,6 @@ própria — nunca "depois", que nesta casa nunca aconteceu.
 
 Ordem obrigatória. Cada task commita. Vermelho antes de verde, com o texto da falha esperada escrito
 **antes** de rodar.
-
-Lanes (medidas, com diretório):
 
 ```bash
 cd apps/server_core && GOCACHE="$PWD/.gocache" go test ./internal/modules/pricing/...
@@ -314,23 +332,27 @@ cd apps/server_core && GOCACHE="$PWD/.gocache" go test -tags=integration ./tests
 
 ---
 
-### Task 1 — Golden do domínio: a conta do ERP, escrita antes do código
+### Task 1 — Golden do domínio: método do ERP com dado devido
 
 **Arquivo:** `apps/server_core/internal/modules/pricing/domain/icms_erp_golden_test.go` (novo)
 
-Quatro casos **transcritos de nota emitida**, não inventados:
+Casos transcritos de nota emitida, com o **dado devido**, não o cobrado:
 
 | caso | entrada | esperado |
 |---|---|---|
-| nota 895507 (BA) | P=299,90, a_inter=7, interna=17, FCP=0, S=0 | ICMS 20,99 · DIFAL 29,99 · base PC 248,92 · PIS/COFINS 23,03 |
+| nota 895507 (BA), devido | P=299,90, a_inter=7, interna=**20,5**, FCP=0, S=0 | ICMS 20,99 · DIFAL **40,49** · base PC 238,42 · PIS/COFINS 22,05 |
+| nota 895507 (BA), reproduzir o ERP | mesma coisa com interna=17 | ICMS 20,99 · DIFAL 29,99 · base PC **248,92** · PIS/COFINS 23,03 — **bate com `TGFDIN` linha a linha** |
 | GO típico | P=299,90, a_inter=7, interna=19 | DIFAL 35,99 · base PC 242,92 |
-| RJ com FCP | P=299,90, a_inter=12, interna=19, FCP=2 | DIFAL 20,99 · FCP 6,00 (`roundI.txt` I2: 893649 → VLRDIFALDEST 20,99) |
+| RJ com FCP | P=299,90, a_inter=12, interna=19, FCP=2 | DIFAL 20,99 · FCP 6,00 (`roundI.txt` I2: 893649 → `VLRDIFALDEST` 20,99) |
 | intra-MG | P=136,66, interna=18 | ICMS 24,59 · DIFAL **0** · base PC 112,07 (`roundJ.txt` I4: 882236/2) |
 
-**Controle negativo nomeado:** rodar contra o código de hoje. O caso BA deve falhar com
-`DIFAL = 50.93, want 29.99`. Se falhar com outra mensagem, o teste está errado, não o código.
+O segundo caso fecha o argumento: **com o dado do ERP, o nosso motor tem que reproduzir o `TGFDIN` do
+ERP ao centavo.** Se reproduz, o método está provado idêntico, e toda diferença restante é dado.
 
-- [ ] Escrever os quatro goldens.
+**Controle negativo nomeado:** rodar contra o código de hoje. O caso BA-devido deve falhar com
+`DIFAL = 50.93, want 40.49`. Outra mensagem ⇒ o teste está errado, não o código.
+
+- [ ] Escrever os cinco goldens.
 - [ ] Rodar a lane de unidade e **colar a falha exata** no commit.
 
 ---
@@ -339,37 +361,57 @@ Quatro casos **transcritos de nota emitida**, não inventados:
 
 **Arquivo:** `apps/server_core/internal/modules/pricing/domain/icms.go:144-178`
 
-Trocar o ramo não-MG por diferença simples:
-
 ```go
 // a é a carga total do destino: própria + DIFAL. O ERP calcula o DIFAL por
-// DIFERENÇA SIMPLES (TGFDIN.ALIQPARADIFAL = ALIQINTDEST − ALIQUOTA, com
-// TIPCALCDIFAL = 0 e BASEDIFAL = BASE em 316/316 itens medidos em 2026).
-// Gross-up por dentro (D-41) foi medido em +5,58 numa nota de 299,90, sempre
-// contra a margem. Evidência: .mnfs/MIS-008/evidence/fiscal-2026-08-04/roundC.txt (B6).
+// DIFERENÇA SIMPLES: TGFDIN.ALIQPARADIFAL = ALIQINTDEST − ALIQUOTA, com
+// TIPCALCDIFAL = 0, BASEDIFAL = BASE e PERCPARTDIFAL = 100 em 783/783 itens
+// de notas TOP 305/306 desde 2025.
+//
+// D-41 ("DIFAL pela lei") era sobre o DADO, não sobre o método: o método do
+// ERP está certo, o cadastro dele é que está velho. Ver
+// .mnfs/MIS-008/evidence/fiscal-2026-08-04/roundR.txt (R5) e o plano
+// docs/superpowers/plans/2026-08-04-fiscal-verdade-tgfaid-plan.md §1.1.
 a = aInt
 ```
 
-`ICMS_oper = P × a_inter` e `DIFAL = P × a − ICMS_oper` continuam derivados do mesmo `a` — uma fonte,
+`ICMS_oper = P × a_inter` e `DIFAL = P × a − ICMS_oper` seguem derivados do mesmo `a` — uma fonte,
 duas linhas. A base do PIS/COFINS (`icms.go:175-178`) **não muda**: `P × (1 − a) − S` já é
 `P − ICMS − DIFAL − S`.
 
 - [ ] Aplicar.
-- [ ] Task 1 passa. Comentar no commit qual golden virou verde.
-- [ ] `decompose_icms_golden_test.go` e `icms_test.go` vão quebrar: os valores esperados foram
-      escritos contra o gross-up. **Recalcular e reescrever, nunca apagar** — cada valor novo com a
-      conta ao lado no comentário.
+- [ ] Task 1 passa. Nomear no commit qual golden virou verde.
+- [ ] `decompose_icms_golden_test.go` e `icms_test.go` quebram — os esperados foram escritos contra o
+      gross-up. **Recalcular e reescrever, nunca apagar**; cada valor novo com a conta no comentário.
 
 ---
 
-### Task 3 — Espelho do `TGFAID` (a fatia grande)
+### Task 3 — Procedência da tabela legal (a task de maior valor)
 
-**Migração:** `apps/server_core/migrations/0095_icms_aliquota_interna_erp.sql`
-(prefixo a confirmar contra o maior existente **no momento de escrever** + o fixture de contagem
+**Bloqueada pela decisão 2.** Sem fonte, o gate não sustenta conversa com o fiscal.
+
+**Migração:** `apps/server_core/migrations/00NN_icms_interna_procedencia.sql` (prefixo medido contra o
+maior existente no momento de escrever + o fixture de contagem em
 `internal/platform/migrate/runner_test.go`).
 
+- [ ] Para cada uma das 20 UFs sem fonte: `UPDATE` com `fonte`, `lei` e `vigente_desde` reais, **ou**
+      marcar explicitamente como não verificada. Nunca deixar o placeholder passando por citação.
+- [ ] `CHECK` que impeça o texto placeholder de voltar.
+- [ ] BA 20,5 / MA 23 / PE 20,5 ganham a nota de confirmação independente pelo ERP corrigido
+      (`roundR.txt` R6) além da lei.
+- [ ] DF e RJ ficam marcadas **em disputa** (decisão 3) — e uma UF em disputa **não calcula
+      silenciosamente**: sai como pendência (ADR-17).
+- [ ] `TestICMSAliquotaInternaSeedHasAll27UFsExactlyOnce`
+      (`migrations/icms_matrix_shape_test.go:105`) ganha asserção de procedência. **Restado, não
+      apagado.**
+
+---
+
+### Task 4 — Espelho da previsão do ERP
+
+**Migração:** `apps/server_core/migrations/00NN_erp_aliquota_interna_prevista.sql`
+
 ```sql
-CREATE TABLE IF NOT EXISTS icms_aliquota_interna_erp (
+CREATE TABLE IF NOT EXISTS erp_aliquota_interna_prevista (
     tenant_id     text        NOT NULL,
     uf_destino    text        NOT NULL,
     codprod       integer     NOT NULL,
@@ -381,103 +423,90 @@ CREATE TABLE IF NOT EXISTS icms_aliquota_interna_erp (
     synced_at     timestamptz NOT NULL,
     PRIMARY KEY (tenant_id, uf_destino, codprod, vigente_desde)
 );
-CREATE UNIQUE INDEX IF NOT EXISTS icms_aliquota_interna_erp_vigente
-    ON icms_aliquota_interna_erp (tenant_id, uf_destino, codprod)
+CREATE UNIQUE INDEX IF NOT EXISTS erp_aliq_interna_prevista_vigente
+    ON erp_aliquota_interna_prevista (tenant_id, uf_destino, codprod)
     WHERE vigente_ate IS NULL;
 ```
 
-**Adapter:** `internal_read/adapters/oracle/icms_interna.go`, no molde de `icms_matrix.go`:
+O nome carrega o papel: **previsão do que o ERP vai fazer**, nunca fonte de cálculo. Quem ler isto
+daqui a seis meses não pode confundir de novo — foi o erro da revisão 1 deste plano.
+
+**Adapter:** `internal_read/adapters/oracle/erp_aliquota_interna.go`, no molde de `icms_matrix.go`:
 
 ```sql
 SELECT u.UF, a.CODPROD, a.ALIQINTDEST, a.PERCICMSFCP, a.PERCREDBASEDEST
 FROM METALPRD.TGFAID a
 JOIN METALPRD.TSIUFS u ON u.CODUF = a.CODUF AND u.CODPAIS = 55
-WHERE a.CODPROD IN (<os CODPROD que existem no products_mirror>)
+WHERE a.CODPROD IN (<CODPROD presentes em products_mirror>)
 ```
 
-Restrição pelo catálogo espelhado: 10.051 × 26 ≈ 261 mil linhas, não 1,05 milhão. `PERCICMSFCP` é
-lido mas **medido nulo** em todos os produtos do catálogo — entra como coluna, nunca como fonte do
-FCP (que sai de `icms_matrix_mirror.perc_fcp`, RJ 142/142).
+≈261 mil linhas em vez de 1,05 milhão. `PERCREDBASEDEST` é lido e **medido zero em 100% do catálogo**
+(R3) — se algum dia deixar de ser zero, é sinal de mudança de regime e o gate tem que acusar, não
+ignorar.
 
-**Job:** registrar em `syncapp.Scheduler` com `entity = 'icms_aliquota_interna_erp'` no `sync_state`.
+**Job:** registrar em `syncapp.Scheduler` com entidade própria no `sync_state`.
 
-- [ ] Teste de integração hermético: insere duas versões (uma fechada, uma vigente) e prova que o
-      reader devolve a vigente. **Controle negativo:** UF/produto sem linha devolve `nil`, nunca
-      um default.
+- [ ] Teste de integração hermético: duas versões (uma fechada, uma vigente) → reader devolve a
+      vigente. **Controle negativo:** (uf, produto) sem linha devolve `nil`, nunca default.
 - [ ] Rodar e ver falhar antes do adapter existir.
 
 ---
 
-### Task 4 — A porta muda de dimensão (contrato)
+### Task 5 — Gate previsto × devido
 
-**Arquivos:** `pricing/ports/tax_matrix.go:36`, `pricing/adapters/postgres/matrix_reader.go:53`,
-`orders/adapters/pricingtax/reader.go:201`, `orders/adapters/pricingtax/reader_test.go:34`.
-
-```go
-// AliquotaInternaFor devolve a alíquota interna do destino PARA O PRODUTO,
-// espelhada de METALPRD.TGFAID (chave real: CODUF + CODPROD). Medido:
-// reproduz 784/784 das ALIQINTDEST cobradas em notas de 2025-2026.
-// nil = sem linha vigente → pendência nomeada (ADR-17), nunca aproximação.
-AliquotaInternaFor(ctx context.Context, uf string, codprod int) (*string, error)
-```
-
-- [ ] Reescrever `matrix_reader_integration_test.go:124` e `:159` contra a tabela nova —
-      **restaurados, não apagados** (o `:159` é o teste de nil, e ele fica).
-- [ ] `reader.go:201` passa o `codprod` que já tem em mãos.
-- [ ] Backtest ao vivo: script que compara a alíquota resolvida contra `TGFDIN.ALIQINTDEST` nos 784
-      itens. **Aceite = 784/784.** Menos que isso, a task não fecha.
+- [ ] Para cada (produto vendável, UF), comparar `erp_aliquota_interna_prevista` com
+      `icms_aliquota_interna`.
+- [ ] Pendência traz **CODPROD, UF, cadastro, devido, Δ em reais no preço corrente, e a lei**. Sem
+      esses cinco campos ela não é acionável e a task não fecha.
+- [ ] Agregar por UF **e** listar produto — 10.049 pendências na BA precisam virar uma linha
+      navegável, não 10.049 alertas.
+- [ ] **Aceite por observável:** a tela lista BA com 10.049 produtos divergentes (cadastro 17,
+      devido 20,5) e nomeia o produto 41912.
+- [ ] Falha ou atraso do sync do espelho aparece **na mesma linha**. Gate silencioso afirma "nada
+      divergente" sem ter olhado — pior que gate nenhum.
 
 ---
 
-### Task 5 — O simulador entra no mesmo seam
+### Task 6 — O simulador entra no mesmo seam
 
 **Medido:** `ICMSCell` é construído em **um** sítio de produção — `reader.go:201`, do módulo de
 pedidos. O simulador (`pricing/transport/calc_handler.go`) nunca recebe célula; cai em
 `decompose.go:136 pctOfPrice(in.AliquotaPct, preco)`, e `AliquotaPct` vem do perfil de regime, cujo
 default é `calcprofile.go:19 defaultSimplesAliquotaPct = "4"` — com `pricing_calc_profiles` em
-**0 linhas**. **Uma empresa de regime normal simulando com SIMPLES 4%.**
+**0 linhas**. **Empresa de regime normal simulando com SIMPLES 4%.**
 
-Este é o gate de sítio de composição da §4.3 do handoff: sem esta task, as 1–4 entregam um motor
-correto sem consumidor na tela que você mais usa.
+Gate de sítio de composição: sem esta task, as tasks 1–5 entregam motor correto sem consumidor na
+tela que mais se usa.
 
-- [ ] `DecomposeInput` do simulador recebe `ICMSCell` resolvida por (uf, codprod).
+- [ ] `DecomposeInput` do simulador recebe `ICMSCell` resolvida pela alíquota **devida**.
 - [ ] Sem UF escolhida: componente **desconhecido nomeado**, não 4%.
 - [ ] **Aceite por observável:** simular o produto 41912 para BA em `/precos` e ler na tela
-      ICMS 20,99 / DIFAL 29,99 sobre 299,90.
+      ICMS 20,99 / DIFAL 40,49 sobre 299,90.
 - [ ] **Precondição do live drive:** container do backend construído de um commit **≥** o desta
       fatia. Comparar `CreatedAt` do container com o commit — binário velho faz o live drive mentir.
 
 ---
 
-### Task 6 — Gate pré-nota: previsto × devido
+### Task 7 — Dívidas
 
-- [ ] `icms_aliquota_interna` (27 linhas legais) **permanece** e passa a ser o lado "devido".
-- [ ] Divergência entre espelho e legal vira pendência com produto, UF, as duas alíquotas e a
-      diferença em reais.
-- [ ] As 19 UFs da §1.2 aparecem imediatamente. **Isso é o gate funcionando, não um bug.**
-- [ ] Falha do sync do espelho vira idade visível na linha — sem isso a fatia não fecha (§2 pergunta 8).
+**Fechadas:** `D-41` (era sobre o dado, não o método — reescrita, não removida) · `D-45` (a fonte da
+previsão existe: `TGFAID`; a fonte legal continua sendo pesquisa humana) · `D-46` (a_inter por
+`ORIGPROD` confirmado, 784/784) · fila item 4 · fila item 5.
 
----
-
-### Task 7 — Dívidas: fechar e abrir, com a medição de cada uma
-
-**Fechadas por esta fatia:**
-`D-41` (gross-up cede — se decisão 1 for a recomendada) · `D-45` (tabela sem fonte automática: a
-fonte existe e é o TGFAID) · `D-46` (a_inter por ORIGPROD confirmado, 784/784) · fila item 4
-(espelhar TGFAID) · fila item 5 (as 27 linhas legais viram gate).
-
-**Abertas / reafirmadas:**
+**Abertas / novas:**
 
 | id | fato medido |
 |---|---|
-| `D-56` | reescrita: o ERP usa diferença simples (316/316). Deixa de ser "divergência intencional" e vira "defeito quantificado em 6,34% do preço numa nota real". |
-| **novo** | ex-ante ≠ ex-post no ST: `TGFEFDVMRSTDIA` (média diária) contra `TGFC185F` (real da nota). Estrutural, não apagável. |
-| **novo** | fonte da **regra** de FCP desconhecida. Valor bate por `TGFICM.PERCICMSFCP` (RJ 2%); `TGFAID.PERCICMSFCP` nulo; `TGFICM_INT_TRIB` vazio. Observável que resolve: nota nova para AL, PB ou SE. |
-| **novo** | as 19 UFs onde a semeadura legal diverge do cadastro do ERP — risco fiscal a levar ao contador. |
+| `D-56` reescrita | nosso gross-up diverge do método do ERP; +9,48 numa nota real de 299,90. |
+| **nova** | 20 das 27 linhas legais sem procedência (`0094_icms_matrix.sql:85`). |
+| **nova** | DF (18 vs 20) e RJ (19 vs 20+2) — corrigidas no ERP para valor ≠ do nosso. Disputa real. |
+| **nova** | ERP subrecolhe DIFAL onde o cadastro está velho: −9,52 na nota 895507; 10.049 produtos da BA na mesma situação hoje. **Exposição fiscal, não margem.** |
+| **nova** | `TGFAID` sem trilha de alteração (5 colunas, R4) — passado anterior ao 1º sync é perdido. Mesma classe da `D-28`. |
+| **nova** | ex-ante ≠ ex-post no ST: `TGFEFDVMRSTDIA` (média diária) vs `TGFC185F` (real da nota). Estrutural. |
+| **nova** | `TIPCALCDIFAL` é parâmetro de cadastro; base dupla (LC 190/2022) não foi avaliada. Pergunta ao contador. |
 | `D-54` | ES ambíguo de verdade; venda para ES sai não-calculável. |
-| `D-55` | MG interna por produto; TGFAID não cobre MG. |
+| `D-55` | MG interna por produto; `TGFAID` não cobre MG. |
 | `D-17` | `CODEMP = 1` fixo — inalterado por esta fatia. |
-| `D-28` | histórico da matriz começa no primeiro sync; `TGFHICM` guarda o passado. Vale igual para o espelho novo. |
 
 ---
 
@@ -486,34 +515,28 @@ fonte existe e é o TGFAID) · `D-46` (a_inter por ORIGPROD confirmado, 784/784)
 **Estado medido:** Onda 0 fechada como código (`F-A1`/`F-A2` @`be8fc56c`, `F-A3` @`afb6b54a`);
 `F-00` bloqueada por D-16; P2.b na `main` @`65aacc7`. **Onda 1 não começou.**
 
-O design da MIS-008 (§7) trazia Onda 1 = remoção, com `F-06` (consolidar margem) e `F-09` (API entrega
-a linha pronta) **explicitamente bloqueadas por `D-17`(fiscal)**. Esta medição mostra que o bloqueio
-era mais fundo do que o registro dizia: não era só `CODEMP` fixo, era **a alíquota estar na dimensão
-errada**.
+O design da MIS-008 (§7) trava `F-06` (consolidar margem) e `F-09` (API entrega a linha pronta) em
+`D-17`(fiscal). A medição mostra que o travamento não era `CODEMP`: era método errado no nosso código
+e dado velho no do ERP, e **nenhum dos dois estava visível em lugar nenhum**.
 
-**Proposta: uma Onda 0.5 — "verdade fiscal" — entre a Onda 0 e a Onda 1**, com as tasks da Parte 6.
+**Proposta: Onda 0.5 — "verdade fiscal" — entre a Onda 0 e a Onda 1**, com as tasks da Parte 6.
 
-Por quê, e não simplesmente empurrar para dentro da Onda 1:
-
-- **`F-06` consolida três motores de margem em um.** Consolidar enquanto a entrada está errada
-  produz **um** número errado no lugar de três — e some com a evidência de que estava errado. A
-  ordem "remoção antes de conserto" do design vale para código que vai morrer; aqui o que está
-  errado é o dado que sobrevive à consolidação.
-- **`F-09` entrega a linha pronta para `/precos`.** Entregar a linha com SIMPLES 4% fabricado é
-  publicar a mentira num contrato, e contrato publicado é caro de mudar.
-- **A Onda 0.5 é disjunta da Onda 1 por arquivo.** Ela toca `pricing/domain`, `pricing/ports`,
-  `pricing/adapters`, `internal_read/adapters/oracle` e uma migração. A Onda 1 toca
+- **`F-06` consolida três motores de margem em um.** Consolidar sobre entrada errada produz **um**
+  número errado no lugar de três, e apaga a evidência de que estava errado.
+- **`F-09` publica a linha pronta.** Publicar SIMPLES 4% fabricado num contrato é caro de desfazer.
+- **Disjunção com a Onda 1 por arquivo:** esta onda toca `pricing/domain`, `pricing/adapters`,
+  `internal_read/adapters/oracle`, duas migrações e uma tela de pendência. A Onda 1 toca
   `orders/application/service.go`, `batch_orchestrator.go`, `pedidosFormatters.ts`,
-  `mercadoFormatters.ts`, OpenAPI + SDK. **Interseção vazia** — mas isso é alegação até rodar
-  `git worktree list` e `git diff --name-only main...<branch>` para cada branch em voo. Fazer antes
-  de despachar em paralelo.
-- **Ondas 2 e 3 não mudam.** `F-01`, `F-02`, `F-03`, `F-04`, `F-10`, `F-A4`, `F-A5` são
-  independentes do fiscal.
+  `mercadoFormatters.ts`, OpenAPI + SDK. **Interseção esperada vazia — mas isso é alegação até rodar
+  `git worktree list` e `git diff --name-only main...<branch>` por branch em voo.** Medir antes de
+  despachar em paralelo.
+- **Ondas 2 e 3 inalteradas.** `F-01`–`F-04`, `F-10`, `F-A4`, `F-A5` são independentes do fiscal.
 
-**O que eu recomendo repensar, não só evoluir:** o design tratava o fiscal como *bloqueio* de outras
-fatias. Ele é, na verdade, a **linha de chegada** de metade delas — a margem verdadeira é o produto.
-Sugiro promover a verdade fiscal de "dívida que bloqueia" para **onda própria com critério de aceite
-em nota emitida** (784/784), e manter a Onda 1 como está, atrás dela.
+**O que repensar, não só evoluir:** o design tratava o fiscal como bloqueio de outras fatias. Ele é a
+**linha de chegada** de metade delas — margem verdadeira é o produto. E a rodada R mostrou uma coisa
+que o design não previa: **existe hoje um processo manual, produto a produto, corrigindo o cadastro
+do ERP depois que a nota sai errada.** A Onda 0.5 não é só conserto de cálculo; é a primeira vez que
+esse processo ganha instrumento. Sugiro promovê-la a onda própria com aceite em nota emitida.
 
 ---
 
@@ -521,24 +544,25 @@ em nota emitida** (784/784), e manter a Onda 1 como está, atrás dela.
 
 - [x] Todo `file:line` citado foi aberto nesta sessão.
 - [x] Nenhum artefato novo sem citação do que existe e por que não serve (Parte 3).
-- [x] Local vs global respondido por escrito (Parte 4).
-- [x] Nenhuma constante de negócio nova hardcoded — alíquota vem do espelho; `a_inter` continua regra
-      da origem, com D-46 medido.
-- [x] Nenhum desconhecido vira `0`/default: sem linha vigente → `nil` + motivo (ADR-17).
-- [x] Nenhum mock em seam de integração; o aceite é contagem no banco e nota emitida.
+- [x] Local vs global respondido por escrito (Parte 4) — **e a revisão 1 foi refutada por medição,
+      não por opinião** (R3: `N_COM_RED = 0` mata a mudança de dimensão da porta).
+- [x] Nenhuma constante de negócio nova hardcoded. Alíquota devida vem da tabela com lei; `a_inter` é
+      regra da origem com D-46 medido; o método é medido, não literal.
+- [x] Nenhum desconhecido vira `0`/default: UF sem procedência ou em disputa sai como pendência.
+- [x] Nenhum mock em seam de integração; aceite é contagem no banco e nota emitida.
 - [x] Toda asserção do plano reprova no código de hoje (Task 1 traz a mensagem exata).
-- [x] Teste alheio alterado é **reescrito**, nunca apagado (Task 2 e Task 4).
-- [ ] OpenAPI + SDK: **esta fatia não muda contrato HTTP.** Se a Task 5 expuser UF no request do
+- [x] Teste alheio alterado é **reescrito**, nunca apagado (Tasks 2 e 3).
+- [x] OpenAPI + SDK: **esta fatia não muda contrato HTTP.** Se a Task 6 expuser UF no request do
       simulador, OpenAPI e `sdk-runtime` entram **no mesmo commit**.
 - [x] `tenant_id` presente na tabela nova e no índice vigente.
-- [x] Falha do sync novo é visível na tela (Task 6), com o caminho falha → pixel nomeado.
-- [x] Sem chamada a provider; orçamento declarado na Parte 2 pergunta 7.
+- [x] Falha do sync novo é visível na tela junto da pendência (Task 5), com o caminho falha → pixel.
+- [x] Sem chamada a provider; orçamento na Parte 2 pergunta 7.
 - [x] Lanes copiam-e-colam, com diretório.
-- [x] Governança: migração nova → prefixo único **e** o fixture de contagem em
-      `internal/platform/migrate/runner_test.go`. Módulo novo: nenhum.
+- [x] Governança: duas migrações novas → prefixos únicos **e** o fixture de contagem em
+      `internal/platform/migrate/runner_test.go`. Nenhum módulo novo.
 - [x] Nada aqui dá push, reset, revert, stash, clean, instala dependência, despeja ambiente, escreve
       no Oracle, nem faz escrita viva em provider.
 
-**Pendência honesta deste plano:** o prefixo `0095` e os números de linha de `icms.go` foram medidos
-na árvore de hoje (`main` @`b86e912c`). Confirmar ambos no momento de escrever o código — números de
-linha apodrecem entre branches.
+**Pendências honestas deste plano:** os prefixos de migração e os números de linha de `icms.go` foram
+medidos na árvore de hoje (`main` @`90c9396e`) — confirmar ambos na hora de escrever o código. E as
+Tasks 3 e 5 dependem das decisões 2 e 3, que são do operador e do contador, não minhas.
