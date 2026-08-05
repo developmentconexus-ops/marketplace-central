@@ -43,8 +43,14 @@ func unitPriceTaxes(t *testing.T, price float64, qty int) ordersports.OrderTaxes
 // UnitPrice crosses into the money path as float64 (ports/tax_reader.go:13).
 // lineTotal used to round it to 2dp SILENTLY, so a value that is not the
 // faithful image of any 2-decimal amount became a number nobody could tell
-// apart from a real one: measured, lineTotal(1.005, 1) == "1.00" where the
-// decimal-exact answer is "1.01".
+// apart from a real one: measured, lineTotal(1.005, 1) == "1.00".
+//
+// NOT because "1.00" is the wrong rounding — float64(1.005) is exactly
+// 1.00499999999999989341858963598497211933 (measured, zz_probe_1005_test.go),
+// below the half-up boundary, so "1.00" is the faithful answer for that
+// double. The defect is that the literal carried a third decimal the money
+// path does not have, and the conversion dropped it without saying so. Which
+// 2dp amount was meant is unknowable, and unknown takes the unknown channel.
 //
 // That was only ever safe by accident of schema — unit_price is
 // numeric(14,2) (pinned by TestUnitPriceColumnIsTwoDecimalNumeric below), so

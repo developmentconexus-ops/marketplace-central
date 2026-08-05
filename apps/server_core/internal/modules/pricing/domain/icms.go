@@ -58,9 +58,17 @@ type ICMSCell struct {
 	// nil: nunca escolhe uma candidata às cegas.
 	Ambiguo bool
 
-	// Origprod is products_mirror.origprod (TGFPRO.ORIGPROD). nil is treated
-	// the same as any value outside {1,2,3,8} — origprod nunca é ele próprio
-	// o gatilho de desconhecido; a_inter só cai para o ramo por UF.
+	// Origprod is products_mirror.origprod (TGFPRO.ORIGPROD). Um valor fora
+	// de {1,2,3,8} é nacional CONHECIDO e a_inter cai para o ramo por UF.
+	// nil NÃO é a mesma coisa: origem desconhecida é desconhecida, e desde o
+	// gate D5 (Task A4, linhas 248-250) ela É gatilho de desconhecido — mas
+	// só no ramo interestadual, o único que consulta aInterFor. O ramo
+	// intra-UF nunca lê este campo e não se importa se ele é nil.
+	//
+	// Este comentário dizia o contrário ("origprod nunca é ele próprio o
+	// gatilho de desconhecido") e ficou falso no MESMO diff que introduziu o
+	// gate; corrigido em vez de mantido, porque uma auditoria de ADR-17
+	// lendo a doc do campo receberia o oposto do que o código faz.
 	Origprod *int
 	// AliquotaInterna is icms_aliquota_interna.aliquota — a_custo, a carga
 	// interna cheia do destino COM o FCP embutido onde ele é geral (D-43),

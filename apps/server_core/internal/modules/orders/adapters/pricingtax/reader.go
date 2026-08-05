@@ -239,11 +239,21 @@ func (r *Reader) resolveItem(ctx context.Context, destinoUF string, aliquotaInte
 // It reports ok=false when unitPrice is not a readable amount, so the caller
 // can route it to the named-unknown channel instead of a number. Before this
 // guard the conversion rounded to 2dp in SILENCE: lineTotal(1.005, 1) produced
-// "1.00" where the decimal-exact answer is "1.01", and NaN/±Inf produced
-// "0.00" — a fabricated zero, the ADR-17 failure mode. That was only ever safe
-// by accident of schema (unit_price is numeric(14,2), migrations/0027:31), a
-// premise no code asserted; ingest_service.go:241 fills UnitPrice straight from
-// the provider payload, in memory, before that column ever rounds it.
+// "1.00", and NaN/±Inf produced "0.00" — a fabricated zero, the ADR-17 failure
+// mode.
+//
+// Careful about WHY 1.005 is rejected, because the obvious story is wrong.
+// float64(1.005) is exactly 1.00499999999999989341858963598497211933 (measured,
+// zz_probe_1005_test.go), i.e. BELOW the half-up boundary — so "1.00" is the
+// faithful answer for that double, not a rounding error. The defect is one
+// level up: the literal carries a third decimal, the money path has two, and
+// the conversion threw the third away without saying so. We cannot know which
+// 2dp amount was meant, and a price we cannot read is not a price.
+//
+// That input was unreachable only by accident of schema (unit_price is
+// numeric(14,2), migrations/0027:31), a premise no code asserted;
+// ingest_service.go:241 fills UnitPrice straight from the provider payload, in
+// memory, before that column ever rounds it.
 //
 // The predicate is NOT "exactly representable as n/100" — that would reject
 // almost every real price, since float64's nearest value to 0.10 is
