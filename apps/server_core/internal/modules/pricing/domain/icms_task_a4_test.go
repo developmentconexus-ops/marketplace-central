@@ -9,7 +9,7 @@ import "testing"
 // desconhecido NOMEADO exato aparece em Unknown — nunca só "não vazio".
 
 // TestTaxesForItemD1_AmbiguousST60NeverZero is D1: uma célula AMBÍGUA com
-// CST 60 caía direto no ramo ST (icms.go:155, antes do portão de
+// CST 60 caía direto no ramo ST (icms.go, antes do portão de
 // desconhecido) e devolvia ICMS/DIFAL "0.00" explícito com Unknown vazio —
 // indistinguível do zero LEGÍTIMO do ramo ST resolvido. Medido:
 // TaxesForItem(P=100, UFDestino="SP", CodTrib=60, Ambiguo=true) devolvia
@@ -58,7 +58,7 @@ func TestTaxesForItemD1_AmbiguousST60NeverZero(t *testing.T) {
 // FCP real "2" da mesma linha ⇒ FCP="2.00" PisCofins="7.40" — duas saídas
 // diferentes, nenhuma com desconhecido). A porta devolve alíquota+FCP da
 // MESMA linha vigente e os dois nil JUNTOS (pricing/ports/tax_matrix.go,
-// orders/adapters/pricingtax/reader.go:201-208) — presente+nil é um estado
+// orders/adapters/pricingtax/reader.go) — presente+nil é um estado
 // que a fonte real nunca produz.
 //
 // Escopo do conserto: só o componente que DEPENDE do FCP (PIS/COFINS, via

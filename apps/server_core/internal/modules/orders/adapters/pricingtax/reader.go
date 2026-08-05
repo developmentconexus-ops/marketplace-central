@@ -252,7 +252,7 @@ func (r *Reader) resolveItem(ctx context.Context, destinoUF string, aliquotaInte
 //
 // That input was unreachable only by accident of schema (unit_price is
 // numeric(14,2), migrations/0027:31), a premise no code asserted;
-// ingest_service.go:241 fills UnitPrice straight from the provider payload, in
+// ingest_service.go fills UnitPrice straight from the provider payload, in
 // memory, before that column ever rounds it.
 //
 // The predicate is NOT "exactly representable as n/100" — that would reject

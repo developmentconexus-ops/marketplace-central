@@ -24,8 +24,7 @@ type SolveInput struct {
 	DestinoUF    string
 	EfetivoPct   string
 
-	// ICMSCell is DecomposeInput's field of the same name (decompose.go:63-
-	// 75) — forwarded to Decompose via margemDecompose (Task A3) so the
+	// ICMSCell is DecomposeInput's field of the same name (decompose.go) — forwarded to Decompose via margemDecompose (Task A3) so the
 	// solver's margem search runs the exact D-41 formula the decompose
 	// direction already uses, never a second tax computation. nil ⇒ legacy
 	// AliquotaPct/DifalEnabled/EfetivoPct path (unchanged; Fatia C removes
@@ -86,7 +85,7 @@ func SolveTargetPrice(in SolveInput) SolveResult {
 	// upper bound. That holds for the legacy path (fixed = taxa_fixa/frete +
 	// tarifa_full + custo, all ≥0, no credit term — Fnet = −fixed ≤ 0
 	// always). It does NOT hold once ICMSCell is set: RestituicaoST is
-	// SUBTRACTED from the summed tax load (decompose.go ~line 233, "a única
+	// SUBTRACTED from the summed tax load (decompose.go, "a única
 	// linha positiva da seção"), so a credit large enough (RestituicaoUnit,
 	// or StRetidoEntrada once it clamps PisCofins to 0 — see
 	// searchSegmentICMSCellBracket) can push margem_pct ABOVE this asymptote
@@ -135,10 +134,32 @@ func SolveTargetPrice(in SolveInput) SolveResult {
 	//   - R > 0 ∨ S > 0 ⇒ whether fnet ends up positive or negative genuinely
 	//     depends on the real (unknown) frete ⇒ FreteDesconhecido, without
 	//     guessing a value.
+	//
+	// DUAL GATE (Fatia A close, Opus + GPT-5.6 Sol independently, blocking):
+	// the R≤0 ∧ S≤0 branch above proves only that the asymptote is an HONEST
+	// ceiling — it does NOT prove the target sits above it. The legacy path
+	// gets that comparison for free in the ceilingPct short-circuit above;
+	// ICMSCell skips that short-circuit (C1),
+	// so nothing made it, and returning CeilingPct with !Reached is mapped by
+	// transport (calc_handler.go) to UNREACHABLE_TARGET: "no such preço
+	// exists". Measured on the credit-free BA fixture, ceiling 60.15:
+	//
+	//	alvo   frete desconhecido        frete real 15.00
+	//	40.00  UNREACHABLE, teto 60.15   alcançado a 124.03
+	//	50.00  UNREACHABLE, teto 60.15   alcançado a 246.18
+	//	55.00  UNREACHABLE, teto 60.15   alcançado a 485.17
+	//
+	// Three targets strictly BELOW the ceiling were told the price does not
+	// exist while it does — a fabricated verdict of non-existence built on an
+	// unread fact, the very class the deleted frete=0 probe was removed for.
+	// Below the ceiling the high segment decides, and the high segment needs
+	// the frete: the honest answer there is FreteDesconhecido.
+	// Pinned by TestSolveTargetPriceICMSCellNoCreditFreteUnknownBelowCeiling-
+	// IsNotUnreachable (both halves of the gate, side by side).
 	if in.FreteProduto == nil {
 		if in.ICMSCell != nil {
 			r, s, _ := in.icmsCellCreditsAndFixed()
-			if r.Sign() <= 0 && s.Sign() <= 0 {
+			if r.Sign() <= 0 && s.Sign() <= 0 && cmpPct(in.TargetMargemPct, ceiling) >= 0 {
 				return SolveResult{CeilingPct: ceiling}
 			}
 		}
@@ -176,15 +197,15 @@ func (in SolveInput) ceilingPct() string {
 // from the SAME formula TaxesForItem (icms.go) uses:
 //
 //   - icms_saida + difal telescope to aCusto regardless of branch: MG-interno
-//     sets icms_saida=P×aCusto, difal=0 (icms.go:196-204); interestadual sets
+//     sets icms_saida=P×aCusto, difal=0 (icms.go); interestadual sets
 //     icms_saida=P×aInter, difal=P×aCusto−P×aInter, so the sum is P×aCusto
-//     either way (icms.go:205-212) — a_inter cancels out, so UFDestino never
+//     either way (icms.go) — a_inter cancels out, so UFDestino never
 //     needs consulting here, only aCusto.
 //   - pis_cofins's base has a flat subtrahend (StRetidoEntrada) that washes
 //     out as preço→∞, leaving pisCofinsRate×(1−aBase) — the same aBase
 //     (aCusto minus FCP, D-43) TaxesForItem derives from the cell.
 //   - isST (codTribST) never consults AliquotaInterna/FcpEmbutido at all
-//     (icms.go:145-156: icms_saida=difal=0, base=P−S) — folding aCusto=aBase=0
+//     (icms.go: icms_saida=difal=0, base=P−S) — folding aCusto=aBase=0
 //     into the general formula reproduces that exactly (0 + pisCofinsRate×1).
 //   - restituicao_st is a flat credit like custo/tarifa_full/taxa_fixa and is
 //     never added here — it washes out the same way those do.
@@ -203,7 +224,7 @@ func (in SolveInput) ceilingPct() string {
 // exactMargemPctRat above). A second finite evaluation of TaxesForItem was
 // deliberately rejected as the derivation strategy for that reason; this
 // closed-form re-encoding is the only exact option that does not touch
-// icms.go. TaxesForItem (icms.go:124-234) is the single source of truth this
+// icms.go. TaxesForItem (icms.go) is the single source of truth this
 // function tracks: whenever aCusto, aBase/FCP folding, isST's zeroing, or the
 // PIS/COFINS RATES OR FORMULA change there, re-derive this function's four
 // bullets above against the new formula before merging — a drift here
@@ -470,15 +491,15 @@ func ceilRatToCents(x *big.Rat) int64 {
 // "ICMS (aCusto)" slot, and treated PIS/COFINS as a placeholder in the
 // clamped regime instead of recognizing it is exactly, not approximately,
 // absent there) and asserted a false claim about how Decompose rounds the
-// D-41 tax load. Re-derived directly against decompose.go:216-233, which
+// D-41 tax load. Re-derived directly against decompose.go, which
 // sums four ALREADY-ROUNDED-INSIDE-TaxesForItem components separately —
 // mustRat(*tax.ICMSSaida), mustRat(*tax.Difal), mustRat(*tax.PisCofins) (each
 // added), mustRat(*tax.RestituicaoST) (subtracted) — never "the exact tax
 // load summed once then rounded":
-//   - ICMSSaida = round2(P×aInter or P×aCusto) (icms.go:261, zero-exact in
-//     the isST branch, icms.go:198-202) — genuinely rounded from a
+//   - ICMSSaida = round2(P×aInter or P×aCusto) (icms.go, zero-exact in
+//     the isST branch, icms.go) — genuinely rounded from a
 //     price-proportional computation.
-//   - Difal = round2(icmsTotal−icmsOper) (icms.go:262, zero-exact in the
+//   - Difal = round2(icmsTotal−icmsOper) (icms.go, zero-exact in the
 //     isST branch) — rounded SEPARATELY from ICMSSaida even though the two
 //     telescope to P×aCusto exactly in the unrounded/exact model this
 //     file's kPct uses (icmsCellAsymptoticRatePct's doc comment) — each
@@ -495,19 +516,18 @@ func ceilRatToCents(x *big.Rat) int64 {
 //     roundedTermsClamped. In the unclamped sub-region the base is positive
 //     and BOTH round2 calls are real, independent up-to-half-cent error
 //     sources — two terms, not one.
-//   - Comissão = round2(comissãoPct×preço) (decompose.go:144) — rounded in
+//   - Comissão = round2(comissãoPct×preço) (decompose.go) — rounded in
 //     BOTH regimes, present in every count below.
-//   - RestituicaoST = round2(cell.RestituicaoUnit) (icms.go:171) is
+//   - RestituicaoST = round2(cell.RestituicaoUnit) (icms.go) is
 //     EXCLUDED from every count: RestituicaoUnit is already a decimal-money
-//     string from its source (products_mirror.restituicao_unit, icms.go:100-
-//     103), not derived from a price-proportional formula, so round2 here
+//     string from its source (products_mirror.restituicao_unit, ICMSCell.RestituicaoUnit), not derived from a price-proportional formula, so round2 here
 //     is a no-op with no real information loss — a flat credit, never a
-//     rounded proportional term (decompose.go:230-233, the credit is
+//     rounded proportional term (decompose.go, the credit is
 //     SUBTRACTED from sum, the one non-cost line in the section).
 //
 // So per regime:
 //   - roundedTermsLegacy = 3: comissão + imposto (AliquotaPct) + difal (the
-//     OLD, non-ICMSCell path — decompose.go:144/165/196-201 — unaffected by
+//     OLD, non-ICMSCell path — decompose.go/165/196-201 — unaffected by
 //     Task A8, unchanged).
 //   - roundedTermsClamped = 3: comissão + ICMSSaida + Difal (PIS and COFINS
 //     are exactly, not approximately, zero here — see above; the split into
@@ -528,7 +548,12 @@ const roundedTermsLegacy = 3
 // of worst-case rounding slack per proportional/rounded term, summed across
 // termCount terms. Replaces the legacy bracket's former bare `150` literal
 // (now windowNumeratorCents(roundedTermsLegacy), same value, same math, just
-// no longer hardcoded) and supplies the ICMSCell regimes' 150/200.
+// no longer hardcoded) and supplies the ICMSCell regimes' windows —
+// windowNumeratorCents(roundedTermsClamped) and
+// windowNumeratorCents(roundedTermsUnclamped). Written as symbols on
+// purpose: this line read "150/200" until the dual gate caught it, A8 having
+// moved roundedTermsUnclamped 4→5 (so the second number is now 250) without
+// the prose following.
 func windowNumeratorCents(termCount int) int64 {
 	return 50 * int64(termCount)
 }

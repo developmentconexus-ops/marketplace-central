@@ -4702,6 +4702,7 @@ components:
         - preco
         - comissao
         - taxa_fixa
+        - imposto
         - componentes_desconhecidos
       properties:
         preco:
@@ -4717,12 +4718,16 @@ components:
           type: string
           nullable: true
           description: >-
-            Legacy D-38 regime-aliquota field, in retirement (ADR-17 style,
-            see OrderDecomposicao.imposto): superseded by icms_saida + difal
-            + pis_cofins (D-41 per-item path). null means the per-cell fiscal
-            path is active for this item — use icms_saida/difal/pis_cofins
-            instead; a non-null value is the legacy SIMPLES/PRESUMIDO
-            placeholder rate for items not yet resolved onto the D-41 path.
+            Legacy D-38 regime-aliquota field, in retirement (Task A7). The
+            key is ALWAYS present (nullable, never optional — the server
+            emits it unconditionally). null means this item's tax was
+            apportioned per fiscal cell rather than by a single flat rate, so
+            no aggregate legacy figure exists for it; it is a structural
+            absence, NOT an unknown fact, and must never be rendered with the
+            affordance used for componentes_desconhecidos. A non-null value
+            is the legacy flat placeholder rate. The per-component successor
+            fields are not published by this schema yet — do not code against
+            them until they appear here.
         difal:
           type: string
           nullable: true

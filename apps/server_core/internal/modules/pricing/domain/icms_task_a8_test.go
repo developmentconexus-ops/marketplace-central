@@ -14,7 +14,7 @@ import (
 // real passou a usar `pisRate` e `cofinsRate` separados. Isso continua exato —
 // mas SÓ enquanto pisRate + cofinsRate for exatamente pisCofinsRate.
 //
-// O contrato de acoplamento em solve.go:197-211 manda re-derivar "whenever
+// O contrato de acoplamento em solve.go manda re-derivar "whenever
 // aCusto, aBase/FCP folding, isST's zeroing, or pisCofinsRate change". Repare
 // no buraco: mexer só em `pisRate` ou só em `cofinsRate` NÃO muda
 // `pisCofinsRate` e portanto não dispara aquele gatilho — a assíntota
@@ -24,7 +24,7 @@ import (
 func TestPisCofinsRatesSumToTheSolverAsymptoteRate(t *testing.T) {
 	sum := new(big.Rat).Add(pisRate, cofinsRate)
 	if sum.Cmp(pisCofinsRate) != 0 {
-		t.Fatalf("pisRate + cofinsRate = %s, mas pisCofinsRate = %s — a assíntota do solver (solve.go:215) usa a combinada e passa a divergir da fórmula real; ou corrija as alíquotas ou re-derive icmsCellAsymptoticRatePct",
+		t.Fatalf("pisRate + cofinsRate = %s, mas pisCofinsRate = %s — a assíntota do solver (solve.go) usa a combinada e passa a divergir da fórmula real; ou corrija as alíquotas ou re-derive icmsCellAsymptoticRatePct",
 			sum.RatString(), pisCofinsRate.RatString())
 	}
 
@@ -41,7 +41,7 @@ func TestPisCofinsRatesSumToTheSolverAsymptoteRate(t *testing.T) {
 // Task A8 — PIS e COFINS são DOIS tributos, arredondados SEPARADAMENTE.
 //
 // RED escrito ANTES da implementação e contra a árvore pristina, por quem não
-// vai implementar (mandato do operador). Hoje `pisCofinsFrom` (icms.go:332-342)
+// vai implementar (mandato do operador). Hoje `pisCofinsFrom` (icms.go)
 // aplica uma alíquota combinada 9,25% e arredonda UMA vez. O ERP não faz isso:
 // PIS 1,65% e COFINS 7,60% são apurados e arredondados cada um, e só depois
 // somados.
@@ -63,7 +63,7 @@ func TestPisCofinsRatesSumToTheSolverAsymptoteRate(t *testing.T) {
 // fechada.
 //
 // O ramo ST é o sítio mais direto: lá a base é literalmente P − S
-// (icms.go:204), sem alíquota efetiva no meio, então o número abaixo é
+// (icms.go), sem alíquota efetiva no meio, então o número abaixo é
 // atribuível só ao arredondamento de PIS/COFINS.
 func TestTaxesForItemPisCofinsRoundedSeparately(t *testing.T) {
 	cell := &ICMSCell{
@@ -76,7 +76,7 @@ func TestTaxesForItemPisCofinsRoundedSeparately(t *testing.T) {
 	if got.PisCofins == nil {
 		t.Fatalf("PisCofins = nil, want 23.03 — Unknown=%v", got.Unknown)
 	}
-	// PIS    = round2(248.917 x 0.0165) = round2(4.10713205)  = 4.11
+	// PIS    = round2(248.917 x 0.0165) = round2(4.1071305)   = 4.11
 	// COFINS = round2(248.917 x 0.0760) = round2(18.9176920)  = 18.92
 	// soma   = 23.03      (combinado hoje: round2(23.0248225) = 23.02)
 	if *got.PisCofins != "23.03" {
@@ -91,9 +91,9 @@ func TestTaxesForItemPisCofinsRoundedSeparately(t *testing.T) {
 // é um defeito diferente do que A8 conserta.
 func TestTaxesForItemPisCofinsSeparateRoundingAgreesWhereItShould(t *testing.T) {
 	for _, tc := range []struct{ preco, want string }{
-		{"100.00", "9.25"},  // 1.65 + 7.60 exatos
-		{"10.00", "0.93"},   // 0.17 + 0.76 ; combinado round2(0.925) = 0.93
-		{"30.00", "2.78"},   // 0.50 + 2.28 ; combinado round2(2.775) = 2.78
+		{"100.00", "9.25"},   // 1.65 + 7.60 exatos
+		{"10.00", "0.93"},    // 0.17 + 0.76 ; combinado round2(0.925) = 0.93
+		{"30.00", "2.78"},    // 0.50 + 2.28 ; combinado round2(2.775) = 2.78
 		{"1000.00", "92.50"}, // 16.50 + 76.00 exatos
 	} {
 		cell := &ICMSCell{UFDestino: "BA", CodTrib: intptr(codTribST)}
@@ -109,7 +109,7 @@ func TestTaxesForItemPisCofinsSeparateRoundingAgreesWhereItShould(t *testing.T) 
 }
 
 // TestTaxesForItemPisCofinsClampSurvivesSeparateRounding fixa o MAX(0, base)
-// (icms.go:336-338): S retido pode exceder o líquido, e sem o clamp sai base
+// (icms.go): S retido pode exceder o líquido, e sem o clamp sai base
 // negativa e crédito fantasma. A separação em dois tributos não pode
 // ressuscitar isso por um dos lados — o clamp é sobre a BASE, uma vez, antes
 // de qualquer alíquota, não duas vezes depois.

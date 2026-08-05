@@ -403,7 +403,7 @@ func TestDecomposeImpostoLegacyPresentNoCell(t *testing.T) {
 }
 
 // TestDecompositionDTOImpostoNullWithICMSCell proves the transport DTO/JSON
-// contract site (calc_handler.go:266,282): when domain.Decompose runs the
+// contract site (calc_handler.go,282): when domain.Decompose runs the
 // D-41 ICMSCell path, Imposto is the named-absent nil (Task A6), and
 // toDecompositionDTO/json.Marshal must carry that through as JSON null —
 // never "0.00" and never "". application.CalcService does not resolve/pass
@@ -480,9 +480,9 @@ func TestSolveDadosIncompletos200Code(t *testing.T) {
 		t.Fatalf("status = %d, want 200, body=%s", w.Code, w.Body.String())
 	}
 	var body struct {
-		Code             string   `json:"code"`
-		Desconhecidos    []string `json:"desconhecidos"`
-		FreteDesconhecido bool    `json:"frete_desconhecido"`
+		Code              string   `json:"code"`
+		Desconhecidos     []string `json:"desconhecidos"`
+		FreteDesconhecido bool     `json:"frete_desconhecido"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)

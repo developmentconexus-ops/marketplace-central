@@ -40,7 +40,7 @@ func unitPriceTaxes(t *testing.T, price float64, qty int) ordersports.OrderTaxes
 
 // TestTaxesForItemsRejectsUnreadableUnitPrice is the contract this slice adds.
 //
-// UnitPrice crosses into the money path as float64 (ports/tax_reader.go:13).
+// UnitPrice crosses into the money path as float64 (ports/tax_reader.go).
 // lineTotal used to round it to 2dp SILENTLY, so a value that is not the
 // faithful image of any 2-decimal amount became a number nobody could tell
 // apart from a real one: measured, lineTotal(1.005, 1) == "1.00".
@@ -55,7 +55,7 @@ func unitPriceTaxes(t *testing.T, price float64, qty int) ordersports.OrderTaxes
 // That was only ever safe by accident of schema — unit_price is
 // numeric(14,2) (pinned by TestUnitPriceColumnIsTwoDecimalNumeric below), so
 // the DB read path cannot produce a third decimal. But nothing in the code
-// SAID so, and application/ingest_service.go:241 populates UnitPrice straight
+// SAID so, and application/ingest_service.go populates UnitPrice straight
 // from the provider payload in memory, before that column ever rounds it.
 //
 // A price we cannot read faithfully is not a price. It takes the SAME

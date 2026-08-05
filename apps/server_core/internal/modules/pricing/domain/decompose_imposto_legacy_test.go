@@ -77,10 +77,17 @@ func derefOrNil(s *string) any {
 // (AliquotaPct="" vs AliquotaPct="4") is the control that proves the legacy
 // field is genuinely OUT of the path, not just suppressed in the output —
 // both inputs must produce byte-identical fiscal components.
+//
+// Dual gate (Opus side): the fixture used to omit FcpEmbutido, so A4's D2
+// gate fired on BOTH sides and PisCofins came back nil in each — the
+// comparison then held over two decompositions whose fiscal arithmetic never
+// ran. A vacuous pass, and precisely on the component A8 changed. The pair is
+// now D2-clean, so the equality is over computed numbers.
 func TestDecomposeICMSCellPresentEmptyAliquotaPctDoesNotPanic(t *testing.T) {
 	cell := &ICMSCell{
 		UFDestino: "BA", CodTrib: intp(0), Ambiguo: false,
 		Origprod: intp(0), AliquotaInterna: strptr("20.5"),
+		FcpEmbutido: strptr("0"),
 	}
 	base := DecomposeInput{
 		Preco: "100.00", ComissaoPct: "0",
@@ -112,6 +119,12 @@ func TestDecomposeICMSCellPresentEmptyAliquotaPctDoesNotPanic(t *testing.T) {
 	if !decompositionEqualIgnoringImposto(gotEmpty, gotFour) {
 		t.Fatalf("AliquotaPct=\"\" and AliquotaPct=\"4\" must yield identical fiscal components under ICMSCell:\n empty=%+v\n four =%+v", gotEmpty, gotFour)
 	}
+	// Guard against the vacuous version of this test coming back: if the
+	// fixture ever trips a gate again, PisCofins goes nil on both sides and
+	// the equality above holds without the arithmetic running.
+	if gotEmpty.PisCofins == nil {
+		t.Fatalf("PisCofins = nil — o fixture voltou a ser bloqueado por um gate, e a igualdade acima passa por vacuidade; desconhecidos=%v", gotEmpty.ComponentesDesconhecidos)
+	}
 }
 
 // TestDecomposeICMSCellAbsentLegacyUnchanged is Task A6's mandatory NEGATIVE
@@ -140,12 +153,24 @@ func TestDecomposeICMSCellAbsentLegacyUnchanged(t *testing.T) {
 // (already asserted nil==nil by the caller) field by field — avoids
 // reflect.DeepEqual pulling in Imposto's pointer identity, which is
 // irrelevant here (both are nil anyway; this guards the OTHER fields).
+//
+// ComponentesDesconhecidos is compared too (dual gate, Opus side): omitting
+// it let the two sides disagree about WHICH facts are unknown while every
+// value matched — the one divergence this pair exists to catch.
 func decompositionEqualIgnoringImposto(a, b Decomposition) bool {
 	eqStrPtr := func(x, y *string) bool {
 		if x == nil || y == nil {
 			return x == y
 		}
 		return *x == *y
+	}
+	if len(a.ComponentesDesconhecidos) != len(b.ComponentesDesconhecidos) {
+		return false
+	}
+	for i := range a.ComponentesDesconhecidos {
+		if a.ComponentesDesconhecidos[i] != b.ComponentesDesconhecidos[i] {
+			return false
+		}
 	}
 	return a.Preco == b.Preco &&
 		a.Comissao == b.Comissao &&

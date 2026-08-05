@@ -10,7 +10,7 @@ import (
 // transcribed from REAL issued invoices (NUNOTA cited per case, raw evidence
 // in .mnfs/MIS-008/evidence/fiscal-2026-08-04/ roundJ/roundT/roundU/roundV),
 // measured against the live Oracle, that pin the ERP's actual DIFAL method
-// against icms.go:101 TaxesForItem.
+// against icms.go TaxesForItem.
 //
 // The ERP uses SIMPLE DIFFERENCE, not the gross-up icms.go used to compute:
 // DIFAL = P × (a_interna − a_inter). And the FCP does NOT abate the
@@ -34,7 +34,7 @@ func TestICMSERPGolden(t *testing.T) {
 		// base PC = P − ICMS − DIFAL − ST_ant(0) = 299.90−20.99−40.49 = 238.42.
 		// PIS/COFINS = 0.0925×238.42 = 22.05385 -> 22.05.
 		//
-		// CONTROLE NEGATIVO: icms.go:154-158 fazia gross-up em vez de diferenca
+		// CONTROLE NEGATIVO: icms.go fazia gross-up em vez de diferenca
 		// simples (A1 falhou aqui). a_grossup = 0.205×0.93/0.795 = 0.239811... ; ICMS_total =
 		// 299.90×a_grossup = 71.919... -> 71.92 (nao exposto diretamente);
 		// DIFAL_antes = 71.919... − 20.993 = 50.926... -> 50.93. Mensagem
@@ -80,8 +80,8 @@ func TestICMSERPGolden(t *testing.T) {
 		// A8 aplica PIS e COFINS SEPARADOS sobre a base EXATA (nao arredondada —
 		// esse eixo continua em aberto, ver icms_task_a8_test.go), cada um
 		// arredondado por si (icms.go pisCofinsFrom):
-		//   PIS    = round2(248.917 × 0.0165) = round2(4.1071320...)  = 4.11
-		//   COFINS = round2(248.917 × 0.0760) = round2(18.9176920...) = 18.92
+		//   PIS    = round2(248.917 × 0.0165) = round2(4.1071305)    = 4.11
+		//   COFINS = round2(248.917 × 0.0760) = round2(18.917692)    = 18.92
 		//   soma   = 4.11 + 18.92 = 23.03 — bate a linha "separado sobre base
 		//   exata" da matriz acima, fecha o centavo que faltava.
 		cell := &ICMSCell{
@@ -196,7 +196,7 @@ func TestICMSERPGolden(t *testing.T) {
 		// icms.go: ICMS=0.00, DIFAL=0.00 explicito (o proprio ja esta no
 		// custo). ST_ant=8.13 (StRetidoEntrada). base PC = P−S = 110.00−8.13
 		//   = 101.87.
-		// Este ramo (linha 122-133 de icms.go) ja faz base=P−S diretamente,
+		// Este ramo (o ramo ST de TaxesForItem, em icms.go) ja faz base=P−S diretamente,
 		// sem gross-up e sem a distincao FCP/base — espera-se PASSAR hoje.
 		cell := &ICMSCell{
 			UFDestino: "MG", CodTrib: intp(codTribST), Ambiguo: false,

@@ -1585,10 +1585,12 @@ export interface PricingDecomposition {
   taxa_fixa: string;
   frete: string | null;
   /**
-   * Legacy D-38 regime-aliquota field, in retirement (Task A7). null means
-   * the D-41 per-cell fiscal path is active for this item — read
-   * icms_saida/difal/pis_cofins instead (ADR-17); never a fabricated
-   * "0.00"/"".
+   * Legacy D-38 regime-aliquota field, in retirement (Task A7). Always
+   * present, never optional. null means this item's tax was apportioned per
+   * fiscal cell, so no aggregate legacy figure exists for it — a STRUCTURAL
+   * absence, not an unknown fact (do not render it with the affordance used
+   * for componentes_desconhecidos). Never a fabricated "0.00"/"". The
+   * per-component successor fields are not on this interface yet.
    */
   imposto: string | null;
   difal: string | null;

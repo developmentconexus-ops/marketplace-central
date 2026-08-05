@@ -82,7 +82,27 @@ export function DecompositionPanel({
           {d.frete !== null ? <TariffCarimbo comp={tarifa?.frete} testId="decomp-tarifa-frete" /> : null}
         </span>
       </Row>
-      <Row label="(−) Imposto"><Value amount={d.imposto} /></Row>
+      {/* imposto=null is STRUCTURAL ABSENCE (A7), not an unknown fact. <Value>
+          would turn it into <UnknownValue/> — this panel's affordance for "a
+          fact is MISSING" (see the doc comment above: componentes_desconhecidos
+          render as "—"). When the D-41 per-cell path is active the tax WAS
+          computed; only this legacy aggregate field does not carry it. Saying
+          "missing" there is the same known/unknown conflation the slice exists
+          to remove, moved into the UI — and asymmetric with the frete row
+          above, which already guards the distinction. Dual gate, blocking. */}
+      <Row label="(−) Imposto">
+        {d.imposto === null ? (
+          <span
+            data-testid="imposto-por-celula"
+            className="text-faint"
+            title="apurado por célula fiscal do item; os componentes ainda não são publicados por esta API"
+          >
+            por célula fiscal
+          </span>
+        ) : (
+          <Value amount={d.imposto} />
+        )}
+      </Row>
       <Row label={`(−) DIFAL${difalUf ? ` ${difalUf}` : ""}`}>
         <Value amount={d.difal} hint="diferencial de alíquota da UF de destino" />
       </Row>

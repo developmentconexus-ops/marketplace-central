@@ -300,13 +300,21 @@ func icmsCellBA() *ICMSCell {
 }
 
 // baseSolveICMSCell is a SolveInput exercising the D-41 path. AliquotaPct
-// stays populated ("4") because Decompose ALWAYS computes the Imposto field
-// (D-38, decompose.go:150) even when ICMSCell is present — but it is
-// functionally dead for the margin once ICMSCell is set: ICMSSaida/Difal/
-// PisCofins/RestituicaoST from TaxesForItem take its place in the sum
-// (decompose.go:190-222). DifalEnabled/DestinoUF/EfetivoPct are left at
-// their zero value for the same reason — the legacy difal branch is not
-// consulted at all once ICMSCell is non-nil.
+// stays populated ("4") only so the fixture keeps a realistic legacy value
+// around; it is NOT read on this path. Task A6 made that explicit —
+// decomposeWithLimiar parses AliquotaPct and sets Imposto ONLY when
+// ICMSCell == nil (decompose.go, the `if in.ICMSCell == nil` branch), so
+// with a cell present Imposto stays nil (named-absent) and the fiscal load
+// comes from ICMSSaida/Difal/PisCofins/RestituicaoST via TaxesForItem.
+//
+// This comment used to claim the opposite ("Decompose ALWAYS computes the
+// Imposto field, decompose.go") — true before A6, false after it, in the
+// same commit range, about the exact field the range changed. Caught by the
+// dual gate (Opus side). Symbol names, not line numbers, from here on.
+//
+// DifalEnabled/DestinoUF/EfetivoPct are left at their zero value for the
+// same reason — the legacy difal branch is not consulted once ICMSCell is
+// non-nil.
 func baseSolveICMSCell() SolveInput {
 	return SolveInput{
 		ComissaoPct: "12", AliquotaPct: "4", Modalidade: ModalidadeClassico,
@@ -389,7 +397,7 @@ func TestSolveTargetPriceICMSCellBAHighSegment(t *testing.T) {
 // literal value for the BA fixture so a badly-wrong or zeroed
 // icmsCellAsymptoticRatePct cannot pass the suite silently — the mandated
 // golden's targets never approach this value. Verified by hand against D-41
-// (icms.go:184-231, non-ST branch): aCusto = 20.5/100 = 0.205 (AliquotaInterna
+// (icms.go, non-ST branch): aCusto = 20.5/100 = 0.205 (AliquotaInterna
 // "20.5", D-43 FCP already embedded); fcp = 0 (FcpEmbutido nil ⇒ 0, D-43);
 // aBase = aCusto − fcp = 0.205; rate = pisCofinsRate×(1−aBase) + aCusto =
 // 0.0925×0.795 + 0.205 = 0.0735375 + 0.205 = 0.2785375, i.e. 27.85375 in
@@ -424,14 +432,14 @@ func TestSolveTargetPriceICMSCellBABetweenCeilings(t *testing.T) {
 }
 
 // wantICMSCellUnknown is the Unknown list Decompose/TaxesForItem produce for
-// an unresolved OR ambíguo cell (icms.go:158-162, decompose.go:202-216) — the
+// an unresolved OR ambíguo cell (icms.go, decompose.go) — the
 // same three components icms_erp_golden_test.go's assertUnknown pins for
 // TaxesForItem directly.
 var wantICMSCellUnknown = []string{"icms_saida", "difal", "pis_cofins"}
 
 // TestSolveTargetPriceICMSCellAusenteBlocks is the brief's first blocking
 // control: célula AUSENTE (CodTrib nil — "célula não resolvida (ausente OU
-// nunca lida)", icms.go:52-54). The solver must block with the desconhecido
+// nunca lida)", icms.go). The solver must block with the desconhecido
 // nomeado Decompose/TaxesForItem already produce — never a preço, never a
 // ceiling, and never falling back to the 4% fabricated aliquota.
 func TestSolveTargetPriceICMSCellAusenteBlocks(t *testing.T) {
@@ -450,7 +458,7 @@ func TestSolveTargetPriceICMSCellAusenteBlocks(t *testing.T) {
 
 // TestSolveTargetPriceICMSCellAmbiguaBlocks is the brief's second blocking
 // control: célula AMBÍGUA (Ambiguo=true), even with CodTrib/AliquotaInterna
-// both present and resolved — icms.go:158-162 treats Ambiguo the same as
+// both present and resolved — icms.go treats Ambiguo the same as
 // CodTrib nil, never choosing a candidate blindly. Same blocking shape as
 // the ausente control.
 func TestSolveTargetPriceICMSCellAmbiguaBlocks(t *testing.T) {
@@ -474,7 +482,7 @@ func TestSolveTargetPriceICMSCellAmbiguaBlocks(t *testing.T) {
 // C1 (solve.go): ceilingPct/exactCeilingRat treat "100 − carga proporcional"
 // as an upper bound on margem_pct. That only holds while every summed term
 // is a COST. With ICMSCell, RestituicaoST is the one component that
-// SUBTRACTS from the sum (decompose.go:233) — a large enough credit pushes
+// SUBTRACTS from the sum (decompose.go) — a large enough credit pushes
 // margem_pct ABOVE the asymptote at a finite preço; the curve approaches the
 // asymptote from ABOVE instead of from below. C2: the old high-segment
 // bracket (exactMargemPctRat) never accounted for RestituicaoST, nor for
@@ -575,7 +583,7 @@ func TestSolveTargetPriceLegacyCeilingUnchanged(t *testing.T) {
 // throughout — same fixture as the mandated golden above), StRetidoEntrada
 // large enough to clamp PIS/COFINS to zero over part of the high segment
 // (C1+C2, increasing-then-decreasing across the clamp transition), and the
-// ST branch (isST — a_custo/a_base fold to 0 per icms.go:184-194, a
+// ST branch (isST — a_custo/a_base fold to 0 per icms.go, a
 // completely different rate but the SAME two-regime shape). capCents is
 // chosen per regime to comfortably straddle its PIS/COFINS clamp transition
 // (Pclamp = S/(1−aBase) dollars) where one exists, so the sample below
@@ -752,5 +760,72 @@ func TestSolveTargetPriceICMSCellNoCreditFreteUnknownStillCeilings(t *testing.T)
 	}
 	if res.Reached || res.Preco != nil {
 		t.Fatalf("target 70.00 acima da assíntota real 60.15 não deveria ser Reached; got %+v", res)
+	}
+}
+
+// TestSolveTargetPriceICMSCellNoCreditFreteUnknownBelowCeilingIsNotUnreachable
+// é a OUTRA metade do gate acima, e ela estava descoberta — o dual gate (lado
+// Opus) achou, e a medição confirmou com margem maior que a relatada.
+//
+// solve.go pula a comparação alvo-vs-teto quando ICMSCell != nil (o teto
+// não é limite superior verdadeiro na presença de crédito — C1). O atalho de
+// frete desconhecido em solve.go então devolvia CeilingPct sempre que
+// R≤0 ∧ S≤0, SEM NUNCA comparar o alvo com esse teto. Ninguém rio acima faz
+// essa comparação, e o transporte (calc_handler.go) mapeia
+// `!Reached && CeilingPct != ""` para UNREACHABLE_TARGET.
+//
+// Resultado medido nesta MESMA fixture (sem crédito, frete desconhecido):
+//
+//	alvo   frete=nil                       frete=15.00 (real)
+//	40.00  UNREACHABLE, teto 60.15         Reached, preço 124.03
+//	50.00  UNREACHABLE, teto 60.15         Reached, preço 246.18
+//	55.00  UNREACHABLE, teto 60.15         Reached, preço 485.17
+//	70.00  UNREACHABLE, teto 60.15         UNREACHABLE, teto 60.15  <- correto
+//
+// Três alvos ESTRITAMENTE ABAIXO do teto recebiam "não existe preço" enquanto
+// o preço existe — a tela diria "inalcançável, teto 60,15%" para um alvo de
+// 50%. É a mesma classe que A5 dizia consertar (veredito de inexistência
+// fabricado a partir de um fato não lido), só que mudou de sítio: saiu da
+// sonda com frete=0 sintético e entrou no atalho que a substituiu.
+//
+// O que R≤0 ∧ S≤0 realmente prova é só que o teto é HONESTO — não que o alvo
+// esteja acima dele. Quando o alvo fica abaixo, o segmento alto é quem
+// decidiria, e ele precisa do frete: a resposta é FreteDesconhecido.
+//
+// O teste acima (alvo 70.00) só exercitava a metade que por acaso acertava.
+func TestSolveTargetPriceICMSCellNoCreditFreteUnknownBelowCeilingIsNotUnreachable(t *testing.T) {
+	for _, target := range []string{"40.00", "50.00", "55.00"} {
+		in := baseSolveICMSCell()
+		in.TargetMargemPct = target
+
+		res := SolveTargetPrice(in)
+
+		if !res.FreteDesconhecido {
+			t.Errorf("alvo %s (abaixo do teto 60.15) com frete desconhecido: esperava FreteDesconhecido=true — "+
+				"o segmento alto é quem decide e ele precisa do frete; got %+v", target, res)
+		}
+		if res.CeilingPct != "" {
+			t.Errorf("alvo %s: CeilingPct=%q com o alvo ABAIXO dele — o transporte mapeia isso para "+
+				"UNREACHABLE_TARGET (calc_handler.go) e afirma que o preço não existe quando existe",
+				target, res.CeilingPct)
+		}
+	}
+
+	// Controle positivo: o preço que o veredito nega. Com um frete real, os
+	// mesmos três alvos são alcançáveis — então "inalcançável" era falso, não
+	// conservador.
+	for _, tc := range []struct{ target, preco string }{
+		{"40.00", "124.03"}, {"50.00", "246.18"}, {"55.00", "485.17"},
+	} {
+		in := baseSolveICMSCell()
+		in.FreteProduto = money("15.00")
+		in.TargetMargemPct = tc.target
+
+		res := SolveTargetPrice(in)
+
+		if !res.Reached || res.Preco == nil || *res.Preco != tc.preco {
+			t.Errorf("controle positivo, alvo %s com frete 15.00: esperava Reached preço %s; got %+v",
+				tc.target, tc.preco, res)
+		}
 	}
 }

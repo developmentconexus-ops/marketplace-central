@@ -78,24 +78,52 @@ describe("DecompositionPanel", () => {
     expect(within(panel).queryByText("0%")).toBeNull();
   });
 
-  // Task A7: imposto is now nullable (null ⇒ the D-41 per-cell fiscal path
-  // is active for this item; the legacy flat rate is never shown alongside
-  // icms_saida/difal/pis_cofins). This asserts the RENDERED STATE of the
-  // imposto row specifically (its own placeholder span, not merely "a dash
-  // exists somewhere on the panel" — difal/tarifa_full are also null by
-  // default in the `decomposition()` fixture, so a panel-wide dash count
-  // would pass even if imposto itself fell back to a fabricated value).
-  it("renders imposto as the unknown-value placeholder (not a fabricated 0) when null", () => {
+  // Task A7 + dual-gate finding (GPT side, blocking 2): imposto=null is
+  // STRUCTURAL ABSENCE, not an unknown fact. A7's first version rendered it
+  // through <Value>, which turns null into <UnknownValue/> ("—", text-faint)
+  // — the panel's own affordance for "this fact is MISSING" (ADR-17, see the
+  // panel's doc comment: componentes_desconhecidos render as "—"). But when
+  // the D-41 per-cell path is active the tax was computed; it is only this
+  // legacy aggregate field that does not carry it. Telling the operator a
+  // number is missing when it is not is the same conflation this whole slice
+  // exists to remove, just moved into the UI. It is also asymmetric with the
+  // frete row three lines above, which already guards exactly this
+  // distinction.
+  //
+  // Note the state is unreachable in production TODAY (calc_service.go
+  // :271-279 does not wire ICMSCell — Fatia B), so no operator has seen it.
+  // What the first version did was lock in the wrong semantics ahead of the
+  // path going live.
+  //
+  // Asserts the imposto row SPECIFICALLY, not "a dash exists somewhere":
+  // difal/tarifa_full are also null in the default fixture, so a panel-wide
+  // count would pass even if imposto fell back to a fabricated value.
+  it("renders imposto as structurally-absent (not the unknown placeholder) when null", () => {
     const d = decomposition({ imposto: null, difal: "3.50", tarifa_full: "0.00" });
     render(<DecompositionPanel decomposition={d} profile={profile} blockingState={null} />);
 
     const label = screen.getByText("(−) Imposto");
     const row = label.parentElement as HTMLElement;
-    const placeholder = within(row).getByText("—");
-    expect(placeholder).toHaveClass("text-faint");
-    // No numeric value (fabricated or otherwise) renders in the imposto row.
+
+    // NOT the unknown affordance — that one means "fact missing".
+    expect(within(row).queryByText("—")).toBeNull();
+    expect(within(row).getByTestId("imposto-por-celula")).toBeInTheDocument();
+    // And no fabricated number either.
     expect(row).not.toHaveTextContent("4.00");
     expect(row).not.toHaveTextContent("0.00");
+  });
+
+  // Control: the row that IS an unknown still renders the unknown affordance,
+  // so the assertion above is distinguishing two states rather than just
+  // asserting the absence of a dash everywhere.
+  it("still renders a genuinely unknown component as the unknown placeholder", () => {
+    const d = decomposition({ imposto: null, custo: null });
+    render(<DecompositionPanel decomposition={d} profile={profile} blockingState={null} />);
+
+    const label = screen.getByText("(−) Custo ERP");
+    const row = label.parentElement as HTMLElement;
+    const placeholder = within(row).getByText("—");
+    expect(placeholder).toHaveClass("text-faint");
   });
 
   it("renders imposto as the legacy known value (unchanged) when non-null — negative control for the null case above", () => {

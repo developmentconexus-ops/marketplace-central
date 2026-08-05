@@ -691,7 +691,34 @@ Ordem obrigatória entre fatias: **A → B → C → D**. Dentro da fatia, a ord
 
 ---
 
-### Fatia A — o motor (domínio puro, zero mudança de contrato)
+### Fatia A — o motor (domínio; e UMA mudança de contrato, ver emenda)
+
+> **EMENDA (fechamento da Fatia A, achado do dual gate — lado GPT-5.6 Sol,
+> `important`).** Este título dizia "domínio puro, **zero mudança de
+> contrato**" e ficou falso: a Task A7 mudou `PricingDecomposition.imposto`
+> para nulável no OpenAPI, no `sdk-runtime` e na tela (`DecompositionPanel`).
+> Registrando a decisão em vez de deixar a prosa mentir:
+>
+> - **O que forçou.** A6 tirou o `Imposto` fabricado do caminho D-41 no
+>   domínio. O campo é publicado; ou o transporte continuava emitindo um
+>   número que o domínio não calcula mais (o defeito que a fatia existe para
+>   remover, só que uma camada acima), ou o contrato passava a admitir a
+>   ausência. Não havia terceira opção dentro da fatia.
+> - **Alternativas consideradas.** (a) Segurar A6 até a B4, mantendo a
+>   alíquota fabricada viva mais uma fatia — rejeitada: é o defeito central da
+>   missão. (b) Emitir `""` ou `"0.00"` — rejeitada: viola a ADR-17 na cara.
+>   (c) Publicar a nulabilidade agora, sem os campos sucessores — escolhida,
+>   com o custo abaixo.
+> - **Custo aceito.** Entre A7 e a B4 o contrato tem um estado de transição em
+>   que o campo legado pode ser nulo e os componentes que o substituem
+>   (`icms_saida`/`difal`/`pis_cofins` por item) ainda não são publicados. O
+>   mesmo gate reprovou (`blocking`) a primeira versão dessa mudança por
+>   **descrever** os sucessores como se já existissem e por remover `imposto`
+>   de `required` (o servidor sempre emite a chave). Ambos corrigidos: chave
+>   obrigatória e nulável, e a descrição fala só do que existe hoje.
+> - **Alcance real hoje.** `calc_service.go` ainda não liga `ICMSCell`, então
+>   nenhum item chega com `imposto` nulo em produção. O estado de transição é
+>   publicado, não exercitado — e é B4 que o fecha.
 
 #### A1 — Goldens do domínio: método do ERP com dado devido
 

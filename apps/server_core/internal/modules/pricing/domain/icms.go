@@ -48,7 +48,7 @@ var cofinsRate = big.NewRat(760, 10000)
 // pisCofinsRate é a SOMA pisRate+cofinsRate (9,25%, mesma proveniência D-39
 // acima) — sobrevive só para o bracket assintótico do solver (solve.go), que
 // aproxima o D-41 sobre a base EXATA (não arredondada) para achar a região
-// de busca; a folga de janela (roundedTermsUnclamped, solve.go:448+) já
+// de busca; a folga de janela (roundedTermsUnclamped em solve.go) já
 // absorve a diferença entre "somar dois arredondados" e "arredondar a soma
 // uma vez". O caminho de dinheiro real (pisCofinsFrom, abaixo) NUNCA usa esta
 // constante combinada desde a A8 — só pisRate e cofinsRate, cada um
@@ -78,7 +78,7 @@ type ICMSCell struct {
 	// Origprod is products_mirror.origprod (TGFPRO.ORIGPROD). Um valor fora
 	// de {1,2,3,8} é nacional CONHECIDO e a_inter cai para o ramo por UF.
 	// nil NÃO é a mesma coisa: origem desconhecida é desconhecida, e desde o
-	// gate D5 (Task A4, linhas 248-250) ela É gatilho de desconhecido — mas
+	// gate D5 (Task A4, no ramo interestadual de TaxesForItem) ela É gatilho de desconhecido — mas
 	// só no ramo interestadual, o único que consulta aInterFor. O ramo
 	// intra-UF nunca lê este campo e não se importa se ele é nil.
 	//
@@ -101,20 +101,21 @@ type ICMSCell struct {
 	// PIS/COFINS mas DEIXA o FCP dentro dela: 6 itens do RJ com resíduo
 	// exatamente igual a −FCP (roundV.txt V2) — uma fonte (a mesma linha
 	// vigente de AliquotaInterna), duas alíquotas derivadas, nunca dois
-	// cálculos independentes. nil é tratado como 0 (zero legítimo: a maioria
-	// das UFs não tem FCP geral e a coluna vem 0, não ausente — só é
-	// consultado quando AliquotaInterna também é, mesma linha vigente).
+	// cálculos independentes. nil NÃO é 0: desde a Task A4 (gate D2 em TaxesForItem)
+	// nil aqui é DESCONHECIDO NOMEADO ("fcp", "pis_cofins"), porque a coluna
+	// vem 0 e não ausente para UF sem FCP geral — ausência significa que o
+	// fato não foi lido, não que ele vale zero. Ver o bloco logo abaixo.
 	FcpEmbutido *string
 	// Task A4 (D2): nil aqui so e legitimo quando AliquotaInterna tambem e
 	// nil (D-37, "UF sem linha" -- os dois viajam juntos, ver
-	// pricing/ports/tax_matrix.go:18-22 e
-	// orders/adapters/pricingtax/reader.go:201-208: AliquotaInternaFor
+	// pricing/ports/tax_matrix.go e
+	// orders/adapters/pricingtax/reader.go: AliquotaInternaFor
 	// devolve o par da MESMA linha vigente; FcpEmbutidoPct e uma STRING
 	// nao-ponteiro dentro do struct nao-nil -- "0" para UF sem FCP geral,
 	// nunca ausente). AliquotaInterna presente com FcpEmbutido nil e um
 	// estado que a fonte real nunca produz; so existe porque este campo e
 	// *string e nao acompanha AliquotaInterna num tipo unico (mudanca de
-	// forma adiada -- exigiria mexer em reader.go:201, fora do escopo desta
+	// forma adiada -- exigiria mexer em reader.go, fora do escopo desta
 	// task). TaxesForItem trata essa combinacao como desconhecido nomeado
 	// (fcp e pis_cofins), nunca como zero.
 
@@ -291,7 +292,7 @@ func TaxesForItem(preco string, cell *ICMSCell) TaxComponents {
 	// D2 (Task A4): AliquotaInterna presente com FcpEmbutido nil é um
 	// estado que a fonte real nunca produz — a porta devolve os dois da
 	// MESMA linha vigente, sempre juntos (pricing/ports/tax_matrix.go,
-	// orders/adapters/pricingtax/reader.go:201-208: FcpEmbutidoPct é uma
+	// orders/adapters/pricingtax/reader.go: FcpEmbutidoPct é uma
 	// STRING não-ponteiro dentro do struct não-nil, "0" para UF sem FCP
 	// geral, nunca ausente). Antes deste gate, zeroIfNil tratava nil como 0
 	// legítimo e fabricava FCP="0.00"/PisCofins a partir de um fato que não
