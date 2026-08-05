@@ -25,7 +25,7 @@ func TestDecomposeICMSGolden(t *testing.T) {
 	}{
 		{
 			// MG intra-UF: Task A2 rule (c)+(d) — MG lê a tabela (18%,
-			// fcp_embutido nil ⇒ 0) e ICMS usa a alíquota interna INTEIRA;
+			// fcp_embutido = "0" explicito ⇒ fcp = 0) e ICMS usa a alíquota interna INTEIRA;
 			// DIFAL é 0,00 explícito (destino=origem). ICMS+DIFAL total
 			// (180,00) é o MESMO valor de antes (70+110=180) — a correção
 			// só redistribui entre os dois campos, então Sum/Margem/Pct NÃO
@@ -60,7 +60,7 @@ func TestDecomposeICMSGolden(t *testing.T) {
 		},
 		{
 			// Interestadual SP, diferença simples pela tabela legal (Task A2 rule (a):
-			// a_int=18%, fcp_embutido nil ⇒ 0, a_inter=12% pq SP no conjunto dos 12%).
+			// a_int=18%, fcp_embutido = "0" explicito ⇒ fcp = 0, a_inter=12% pq SP no conjunto dos 12%).
 			// ICMS_oper=500x0.12=60.00. ICMS_total=500x0.18=90.00. DIFAL=90-60=30.00.
 			// Comissao=500x0.10=50.00. Frete=20.00. Imposto: legacy
 			// AliquotaPct=4 never parsed/shown (ICMSCell present, Task A6).
@@ -144,7 +144,7 @@ func TestDecomposeICMSGolden(t *testing.T) {
 		},
 		{
 			// MAX(0,...) nao e cosmetico: S=500 excede o liquido em MG intra-UF
-			// (P=200, alíquota interna 18%, fcp_embutido nil ⇒ 0). aBase=0.18.
+			// (P=200, alíquota interna 18%, fcp_embutido = "0" explicito ⇒ fcp = 0). aBase=0.18.
 			// P*(1-aBase)=164, 164-500=-336 -> clamp a 0 -> PisCofins=0.00 CONHECIDO
 			// (zero legitimo por clamp, nao desconhecido). ICMSSaida=200x0.18=36.00
 			// (intra-MG, alíquota inteira). Difal=0.00 explícito (intra-MG).
@@ -217,7 +217,7 @@ func assertSomaFechaICMS(t *testing.T, d Decomposition) {
 // flipped, margem_R40 would be LOWER than margem_R0, not higher.
 //
 // Task A2 recompute (rule a, diferença simples — BA não está no conjunto dos
-// 12%, a_inter=7%; fcp_embutido nil ⇒ 0, aBase=aCusto=0.205):
+// 12%, a_inter=7%; fcp_embutido = "0" explicito ⇒ fcp = 0, aBase=aCusto=0.205):
 // ICMS_oper=400x0.07=28.00. ICMS_total=400x0.205=82.00. DIFAL=82-28=54.00.
 // BASE_PC=400x(1-0.205)=318.00. PIS/COFINS=0.0925x318.00=29.415 -> 29.42
 // (meio exato, half-up sobe). Sum(sem restituição) = 40(comissao)+0(taxa)+

@@ -31,7 +31,7 @@ func TestTaxesForItemPureFormula(t *testing.T) {
 			// nil ⇒ 0).
 			// aCusto = 18/100 = 0,18. ICMS_oper = 1000×0,18 = 180,00.
 			// DIFAL = 0,00 (UFDestino==UFOrigem=MG, ramo explícito).
-			// FCP = 1000×0 = 0,00 (fcp_embutido nil ⇒ zeroIfNil=0).
+			// FCP = 1000×0 = 0,00 (fcp_embutido = "0" explicito).
 			// aBase = aCusto−fcp = 0,18−0 = 0,18. BASE_PC = 1000×0,82−0 = 820,00.
 			// PIS/COFINS = 0,0925×820,00 = 75,85 (inalterado — a_base não mudou).
 			// UF=MG ⇒ restituição 0,00 explícito mesmo com restituicao_unit=
@@ -60,13 +60,13 @@ func TestTaxesForItemPureFormula(t *testing.T) {
 		{
 			// P=500, SP (não-MG, não-ST): origprod=0 não cai em {1,2,3,8}, e SP
 			// está no conjunto dos 12% ⇒ a_inter=0,12. a_int=18% (tabela legal
-			// SP, fcp_embutido nil ⇒ 0). Task A2 rule (a): DIFAL é a diferença
+			// SP, fcp_embutido = "0" explicito). Task A2 rule (a): DIFAL é a diferença
 			// simples ICMS_total−ICMS_oper (o jeito que o ERP calcula,
 			// TGFDIN.BASERED), não mais gross-up.
 			// ICMS_oper = 500×0,12 = 60,00 exato.
 			// ICMS_total = 500×0,18 = 90,00 exato.
 			// DIFAL = 90,00−60,00 = 30,00.
-			// FCP = 500×0 = 0,00 (fcp_embutido nil ⇒ zeroIfNil=0).
+			// FCP = 500×0 = 0,00 (fcp_embutido = "0" explicito).
 			// aBase = 0,18−0 = 0,18. BASE_PC = 500×0,82−50 = 360,00.
 			// PIS/COFINS = 0,0925×360,00 = 33,30.
 			// UF≠MG ⇒ restituição = restituicao_unit = 25,00.
@@ -228,7 +228,7 @@ func strJoin(ss []string) string {
 
 // TestTaxesForItemMaxZeroClampsBase proves MAX(0,…) is not cosmetic: S retido
 // maior que o líquido não pode virar base negativa / crédito fantasma.
-// P=200, MG intra-UF (rule d: MG lê a tabela, 18%, fcp_embutido nil ⇒ 0).
+// P=200, MG intra-UF (rule d: MG lê a tabela, 18%, fcp_embutido = "0" explicito).
 // ICMS_oper = 200×0,18 = 36,00. DIFAL = 0,00 explícito (intra-MG, rule c).
 // aBase = 0,18−0 = 0,18. P×(1−aBase) = 200×0,82 = 164,00. S=500,00 (muito
 // maior) ⇒ BASE_PC = MAX(0,−336) = 0.

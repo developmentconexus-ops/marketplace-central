@@ -124,16 +124,11 @@ func SolveTargetPrice(in SolveInput) SolveResult {
 	//
 	// Fix: decide from the credit terms directly, which are known WITHOUT
 	// frete (icmsCellCreditsAndFixed reads R/S from the cell, not from
-	// FreteProduto). fnet = R + pisCofinsRate·S − fixed0, and frete only ADDS
-	// to fixed0 (Money ≥ 0) — so its sign only matters when R and S could
-	// make fnet positive in the first place:
-	//   - R == 0 ∧ S == 0 ⇒ fnet = −fixed0 ≤ 0 for EVERY real frete ≥ 0 ⇒ the
-	//     asymptote is a true ceiling regardless of the unknown frete's
-	//     actual value ⇒ CeilingPct is honest (same conclusion the legacy
-	//     path already reaches for its own Fnet ≤ 0 always).
-	//   - R > 0 ∨ S > 0 ⇒ whether fnet ends up positive or negative genuinely
-	//     depends on the real (unknown) frete ⇒ FreteDesconhecido, without
-	//     guessing a value.
+	// FreteProduto). fnet is monotonically DECREASING in frete — frete only
+	// ADDS to fixed0 (Money ≥ 0) — so evaluating fnet at frete=0 gives its
+	// SUPREMUM over the whole domain of the unknown. That supremum, not a
+	// guessed value, is what decides whether the asymptote can be trusted:
+	// icmsCellCeilingHoldsForEveryFrete.
 	//
 	// DUAL GATE (Fatia A close, Opus + GPT-5.6 Sol independently, blocking):
 	// the R≤0 ∧ S≤0 branch above proves only that the asymptote is an HONEST
@@ -156,10 +151,26 @@ func SolveTargetPrice(in SolveInput) SolveResult {
 	// the frete: the honest answer there is FreteDesconhecido.
 	// Pinned by TestSolveTargetPriceICMSCellNoCreditFreteUnknownBelowCeiling-
 	// IsNotUnreachable (both halves of the gate, side by side).
+	//
+	// RE-GATE (GPT-5.6 Sol, blocking): the repaired predicate was still
+	// R ≤ 0 ∧ S ≤ 0, which is SUFFICIENT for "the asymptote holds for every
+	// frete" but not NECESSARY — a credit dominated by a KNOWN custo or
+	// tarifa_full falls in the gap and got FreteDesconhecido even though the
+	// verdict does not depend on the frete at all. Measured, BA fixture with
+	// RestituicaoUnit=1.00 and custo=100.00 (ceiling 60.15), alvo 70.00:
+	// frete 0.00 / 0.01 / 15.00 / 1000.00 all return UNREACHABLE teto 60.15,
+	// while frete unknown returned FreteDesconhecido. Invariant across the
+	// unknown's entire domain ⇒ the frete was never needed. A guard wider
+	// than the fact is the same defect as one narrower, pointing the other
+	// way (HARNESS-PROFILE, ratified 2026-07-28), and no must-fail arm can
+	// catch over-strictness — only a MUST-PASS, which the new test carries
+	// (alvo 55.00, where the price genuinely moves with the frete:
+	// 1921.77 at 0.00 vs 21334.61 at 1000.00, so FreteDesconhecido stays).
+	// Pinned by TestSolveTargetPriceICMSCellDominatedCreditFreteUnknown-
+	// StillCeilings.
 	if in.FreteProduto == nil {
 		if in.ICMSCell != nil {
-			r, s, _ := in.icmsCellCreditsAndFixed()
-			if r.Sign() <= 0 && s.Sign() <= 0 && cmpPct(in.TargetMargemPct, ceiling) >= 0 {
+			if in.icmsCellCeilingHoldsForEveryFrete() && cmpPct(in.TargetMargemPct, ceiling) >= 0 {
 				return SolveResult{CeilingPct: ceiling}
 			}
 		}
@@ -326,7 +337,7 @@ func (in SolveInput) searchSegment(loCents, hiCents int64) (string, bool) {
 		// derives its own window from the ICMSCell term count, not this
 		// branch's legacy 150).
 		if in.ICMSCell != nil {
-			return in.searchSegmentICMSCellBracket(loCents, hiCents, limiar)
+			return in.searchSegmentICMSCellBracket(loCents, hiCents)
 		}
 		// High segment: bracket the round2(exact.pct)=target crossing by bisection
 		// (exact margem_pct is strictly increasing), then scan a window around it
@@ -585,6 +596,38 @@ func (in SolveInput) icmsCellCreditsAndFixed() (r, s, fixed0 *big.Rat) {
 	return r, s, fixed0
 }
 
+// icmsCellCeilingHoldsForEveryFrete answers, WITHOUT reading FreteProduto,
+// whether the ICMSCell asymptote is a true upper bound for every frete the
+// unknown could turn out to be.
+//
+// fnet = R − fixed0 in the clamped sub-region (PIS/COFINS pinned at 0) and
+// R + pisCofinsRate·S − fixed0 in the unclamped one — the two values
+// searchSegmentICMSCellBracket derives. fixed0 = frete + tarifa_full + custo,
+// every term Money ≥ 0, so a real frete only moves fnet DOWN. Evaluating both
+// at frete=0 (the caller reaches here only with FreteProduto == nil, so
+// icmsCellCreditsAndFixed already omits it) therefore yields the SUPREMUM of
+// fnet over the unknown's whole domain. Both suprema ≤ 0 ⇒ fnet ≤ 0 for every
+// admissible frete ⇒ exact(P) approaches the asymptote from below in both
+// sub-regions ⇒ the asymptote is a genuine ceiling and CeilingPct is honest.
+//
+// This is a BOUND on an unknown, not a substituted value: nothing downstream
+// consumes a frete of 0, and the branch is only ever used to decide that the
+// answer does not depend on the frete. That distinction is what separates it
+// from the deleted icmsCellPossiblyReachableAboveCeiling probe, which computed
+// a whole solve against a fabricated frete=0.
+func (in SolveInput) icmsCellCeilingHoldsForEveryFrete() bool {
+	r, s, fixed0 := in.icmsCellCreditsAndFixed()
+	// Clamped sub-region: PIS/COFINS = 0, so S contributes nothing.
+	if new(big.Rat).Sub(r, fixed0).Sign() > 0 {
+		return false
+	}
+	// Unclamped sub-region.
+	unclamped := new(big.Rat).Mul(pisCofinsRate, s)
+	unclamped.Add(unclamped, r)
+	unclamped.Sub(unclamped, fixed0)
+	return unclamped.Sign() <= 0
+}
+
 // icmsCellClampBoundaryCents is the preço (in cents, ceil-rounded) at which
 // the PIS/COFINS base P×(1−aBase) − S crosses 0 — Task A5 (C2)'s second
 // discontinuity, independent of and additional to the existing taxa_fixa/
@@ -690,7 +733,12 @@ func (in SolveInput) scanWindow(lo, hi, center, win int64) (string, bool) {
 // Each sub-region gets its own kPct/fnet pair and is searched independently
 // via searchMonotoneRegime; the clamped sub-region is tried first (cheaper
 // prices).
-func (in SolveInput) searchSegmentICMSCellBracket(loCents, hiCents, limiar int64) (string, bool) {
+//
+// It takes no limiar: the taxa_fixa/frete step is already resolved by the
+// caller into loCents/hiCents, and each sub-region's fnet is built from
+// icmsCellCreditsAndFixed (which folds frete in), so nothing here needs to
+// re-test which side of the step a price falls on.
+func (in SolveInput) searchSegmentICMSCellBracket(loCents, hiCents int64) (string, bool) {
 	r, s, fixed0 := in.icmsCellCreditsAndFixed()
 	aCusto, aBase := in.icmsCellRates()
 	boundary, alwaysClamped := icmsCellClampBoundaryCents(aBase, s)

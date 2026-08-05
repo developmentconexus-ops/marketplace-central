@@ -11,7 +11,7 @@ import "testing"
 // leaked out.
 //
 // P=100, BA (AliquotaInterna=aCusto=20.5%, not in aInterUF12 ⇒ a_inter=7%
-// default, FcpEmbutido nil ⇒ 0 so aBase=aCusto=0.205). ICMS_oper (ICMSSaida)
+// default, FcpEmbutido = "0" explicito so aBase=aCusto=0.205). ICMS_oper (ICMSSaida)
 // = 100×0.07 = 7.00. ICMS_total = 100×0.205 = 20.50. DIFAL = 20.50−7.00 =
 // 13.50 — matches the brief's measured D1 numbers exactly. Comissao=100×0=
 // 0.00 (isolate the ICMS/DIFAL pair). Custo=0.00 known so margem is

@@ -23,6 +23,19 @@ function Value({ amount, hint }: { amount: string | null; hint?: string }): JSX.
   return <span className="font-mono text-ink">{amount}</span>;
 }
 
+/**
+ * Fiscal components of the D-41 per-cell path. When any of these is listed in
+ * componentes_desconhecidos, TaxesForItem did not resolve the item's cell, so
+ * imposto=null means "unknown", not "apurado elsewhere". Kept as a literal
+ * list rather than "any unknown at all": custo or frete being unknown says
+ * nothing about whether the tax was apportioned.
+ */
+const FISCAL_COMPONENTS = ["icms_saida", "difal", "pis_cofins", "fcp", "restituicao_st"];
+
+function fiscalUnresolved(d: PricingDecomposition): boolean {
+  return d.componentes_desconhecidos.some((c) => FISCAL_COMPONENTS.includes(c));
+}
+
 function parsePct(value: string | null): number | null {
   if (value === null) return null;
   const n = Number(value);
@@ -82,23 +95,37 @@ export function DecompositionPanel({
           {d.frete !== null ? <TariffCarimbo comp={tarifa?.frete} testId="decomp-tarifa-frete" /> : null}
         </span>
       </Row>
-      {/* imposto=null is STRUCTURAL ABSENCE (A7), not an unknown fact. <Value>
-          would turn it into <UnknownValue/> — this panel's affordance for "a
-          fact is MISSING" (see the doc comment above: componentes_desconhecidos
-          render as "—"). When the D-41 per-cell path is active the tax WAS
-          computed; only this legacy aggregate field does not carry it. Saying
-          "missing" there is the same known/unknown conflation the slice exists
-          to remove, moved into the UI — and asymmetric with the frete row
-          above, which already guards the distinction. Dual gate, blocking. */}
+      {/* imposto=null carries TWO different states and they need two different
+          affordances (dual gate, then re-gate — both blocking, in opposite
+          directions).
+
+          Decompose sets Imposto=nil purely on ICMSCell != nil, independent of
+          whether TaxesForItem resolved anything. So:
+
+          - cell resolved  ⇒ the tax WAS apurado, per fiscal cell; only this
+            legacy aggregate field does not carry it. Rendering <UnknownValue/>
+            there says "a fact is MISSING" (this panel's affordance for
+            componentes_desconhecidos) about a fact that is not missing.
+          - cell NOT resolved (ambíguo, CodTrib/AliquotaInterna/UFDestino
+            absent) ⇒ icms_saida/difal/pis_cofins land in
+            componentes_desconhecidos and margem comes back nil. Saying "por
+            célula fiscal" there declares an apportionment that never happened.
+
+          componentes_desconhecidos is the discriminator, and it is the same
+          field the rest of the panel already trusts. */}
       <Row label="(−) Imposto">
         {d.imposto === null ? (
-          <span
-            data-testid="imposto-por-celula"
-            className="text-faint"
-            title="apurado por célula fiscal do item; os componentes ainda não são publicados por esta API"
-          >
-            por célula fiscal
-          </span>
+          fiscalUnresolved(d) ? (
+            <UnknownValue hint="a apuração por célula fiscal deste item não pôde ser resolvida" />
+          ) : (
+            <span
+              data-testid="imposto-por-celula"
+              className="text-faint"
+              title="apurado por célula fiscal do item; os componentes ainda não são publicados por esta API"
+            >
+              por célula fiscal
+            </span>
+          )
         ) : (
           <Value amount={d.imposto} />
         )}

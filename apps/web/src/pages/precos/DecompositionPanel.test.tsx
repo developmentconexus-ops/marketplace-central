@@ -83,8 +83,11 @@ describe("DecompositionPanel", () => {
   // through <Value>, which turns null into <UnknownValue/> ("—", text-faint)
   // — the panel's own affordance for "this fact is MISSING" (ADR-17, see the
   // panel's doc comment: componentes_desconhecidos render as "—"). But when
-  // the D-41 per-cell path is active the tax was computed; it is only this
-  // legacy aggregate field that does not carry it. Telling the operator a
+  // the D-41 per-cell path is active AND the cell resolved — which is what
+  // the empty componentes_desconhecidos below pins — the tax was computed;
+  // it is only this legacy aggregate field that does not carry it. (The
+  // unresolved case is the test after the next one; the re-gate found that
+  // this comment's first version claimed it for EVERY null.) Telling the operator a
   // number is missing when it is not is the same conflation this whole slice
   // exists to remove, just moved into the UI. It is also asymmetric with the
   // frete row three lines above, which already guards exactly this
@@ -99,7 +102,15 @@ describe("DecompositionPanel", () => {
   // difal/tarifa_full are also null in the default fixture, so a panel-wide
   // count would pass even if imposto fell back to a fabricated value.
   it("renders imposto as structurally-absent (not the unknown placeholder) when null", () => {
-    const d = decomposition({ imposto: null, difal: "3.50", tarifa_full: "0.00" });
+    // componentes_desconhecidos EMPTY is what makes this the structural arm:
+    // the cell resolved, every fiscal component came back, and only the legacy
+    // aggregate does not apply. The unresolved arm is the test below.
+    const d = decomposition({
+      imposto: null,
+      difal: "3.50",
+      tarifa_full: "0.00",
+      componentes_desconhecidos: [],
+    });
     render(<DecompositionPanel decomposition={d} profile={profile} blockingState={null} />);
 
     const label = screen.getByText("(−) Imposto");
@@ -122,6 +133,40 @@ describe("DecompositionPanel", () => {
 
     const label = screen.getByText("(−) Custo ERP");
     const row = label.parentElement as HTMLElement;
+    const placeholder = within(row).getByText("—");
+    expect(placeholder).toHaveClass("text-faint");
+  });
+
+  // RE-GATE (GPT side, blocking): imposto=null does NOT mean the per-cell tax
+  // was computed. Decompose keys Imposto=nil purely on ICMSCell != nil
+  // (decompose.go), independent of whether TaxesForItem resolved anything — so
+  // an ambiguous cell, an absent CodTrib, an absent AliquotaInterna or an empty
+  // UFDestino all produce imposto=null WITH icms_saida/difal/pis_cofins sitting
+  // in componentes_desconhecidos and margem nil (icms.go's early returns).
+  //
+  // The first version of this row said "por célula fiscal" for every null,
+  // which asserts an apportionment happened. In the unresolved case nothing was
+  // apportioned: that is a declared success over an unknown fact, the exact
+  // inversion of the previous finding and the same ADR-17 conflation.
+  //
+  // Two states, two affordances: structural absence (cell resolved, only the
+  // legacy aggregate does not apply) vs unknown (cell did not resolve).
+  it("renders imposto as UNKNOWN when the per-cell tax itself did not resolve", () => {
+    const d = decomposition({
+      imposto: null,
+      difal: null,
+      componentes_desconhecidos: ["icms_saida", "difal", "pis_cofins"],
+      margem_valor: null,
+      margem_pct: null,
+    });
+    render(<DecompositionPanel decomposition={d} profile={profile} blockingState={null} />);
+
+    const label = screen.getByText("(−) Imposto");
+    const row = label.parentElement as HTMLElement;
+
+    // Must NOT claim the tax was apportioned per cell — it was not computed.
+    expect(within(row).queryByTestId("imposto-por-celula")).toBeNull();
+    // The unknown affordance, same as any other unresolved fact.
     const placeholder = within(row).getByText("—");
     expect(placeholder).toHaveClass("text-faint");
   });

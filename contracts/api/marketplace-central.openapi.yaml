@@ -4719,15 +4719,19 @@ components:
           nullable: true
           description: >-
             Legacy D-38 regime-aliquota field, in retirement (Task A7). The
-            key is ALWAYS present (nullable, never optional — the server
-            emits it unconditionally). null means this item's tax was
-            apportioned per fiscal cell rather than by a single flat rate, so
-            no aggregate legacy figure exists for it; it is a structural
-            absence, NOT an unknown fact, and must never be rendered with the
-            affordance used for componentes_desconhecidos. A non-null value
-            is the legacy flat placeholder rate. The per-component successor
-            fields are not published by this schema yet — do not code against
-            them until they appear here.
+            key is ALWAYS present (required and nullable, never optional —
+            the server emits it unconditionally). null means this item is on
+            the per-fiscal-cell tax path, where no single aggregate legacy
+            figure applies. null does NOT assert that the per-cell tax was
+            successfully computed: consult componentes_desconhecidos, which
+            names every fiscal component (icms_saida, difal, pis_cofins, fcp,
+            restituicao_st) that could not be resolved. null with no fiscal
+            component listed is a structural absence and must not be rendered
+            with the unknown-fact affordance; null WITH one listed is an
+            unknown and must be. A non-null value is the legacy flat
+            placeholder rate. The per-component successor fields are not
+            published by this schema yet — do not code against them until
+            they appear here.
         difal:
           type: string
           nullable: true

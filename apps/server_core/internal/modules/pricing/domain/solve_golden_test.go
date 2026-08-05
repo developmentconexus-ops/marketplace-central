@@ -284,7 +284,7 @@ func TestSolveHighSegmentNearCeilingCheapest(t *testing.T) {
 // icmsCellBA is a RESOLVED, unambiguous cell for a BA destino (a_interna
 // 20,5%, matching icms_erp_golden_test.go's case1/TestDecomposeICMSRestitui-
 // caoIncreasesMargem fixture) — BA is outside the 12% a_inter set, so
-// a_inter=7% default; fcp_embutido nil ⇒ 0 (BA has no general FCP in this
+// a_inter=7% default; fcp_embutido = "0" explícito ⇒ fcp = 0 (BA has no general FCP in this
 // fixture).
 func icmsCellBA() *ICMSCell {
 	return &ICMSCell{
@@ -398,7 +398,7 @@ func TestSolveTargetPriceICMSCellBAHighSegment(t *testing.T) {
 // icmsCellAsymptoticRatePct cannot pass the suite silently — the mandated
 // golden's targets never approach this value. Verified by hand against D-41
 // (icms.go, non-ST branch): aCusto = 20.5/100 = 0.205 (AliquotaInterna
-// "20.5", D-43 FCP already embedded); fcp = 0 (FcpEmbutido nil ⇒ 0, D-43);
+// "20.5", D-43 FCP already embedded); fcp = 0 (FcpEmbutido = "0" explicito, D-43);
 // aBase = aCusto − fcp = 0.205; rate = pisCofinsRate×(1−aBase) + aCusto =
 // 0.0925×0.795 + 0.205 = 0.0735375 + 0.205 = 0.2785375, i.e. 27.85375 in
 // percent units; ceiling = 100 − comissão(12) − 27.85375 = 60.14625, which
@@ -827,5 +827,80 @@ func TestSolveTargetPriceICMSCellNoCreditFreteUnknownBelowCeilingIsNotUnreachabl
 			t.Errorf("controle positivo, alvo %s com frete 15.00: esperava Reached preço %s; got %+v",
 				tc.target, tc.preco, res)
 		}
+	}
+}
+
+// TestSolveTargetPriceICMSCellDominatedCreditFreteUnknownStillCeilings is the
+// THIRD state of the same gate, and the one the previous two both missed.
+//
+// The frete-unknown shortcut in solve.go tests `r <= 0 && s <= 0`. That is
+// SUFFICIENT for "the asymptote is a true ceiling no matter what the unknown
+// frete turns out to be", but it is not NECESSARY, and the gap is not
+// hypothetical. fnet is r - fixed0 in the clamped region and
+// r + pisCofinsRate*s - fixed0 in the unclamped one, with
+// fixed0 = frete + tarifa_full + custo (icmsCellCreditsAndFixed). Every term
+// of fixed0 is Money >= 0, so a real frete only pushes fnet DOWN. The exact
+// test is therefore fnet at frete=0 — the supremum over the unknown's whole
+// domain — not the sign of r and s taken alone.
+//
+// A credit that exists but is dominated by a KNOWN custo lands in the gap:
+// r > 0 makes the guard bail out to FreteDesconhecido, while r - fixed0 is
+// already negative and no frete >= 0 can rescue it. Measured on the BA
+// fixture with RestituicaoUnit=1.00 and custo=100.00 (ceiling 60.15):
+//
+//	alvo 70.00  frete=nil       -> FreteDesconhecido        <- over-strict
+//	alvo 70.00  frete=0.00      -> UNREACHABLE, teto 60.15
+//	alvo 70.00  frete=0.01      -> UNREACHABLE, teto 60.15
+//	alvo 70.00  frete=15.00     -> UNREACHABLE, teto 60.15
+//	alvo 70.00  frete=1000.00   -> UNREACHABLE, teto 60.15
+//
+// The verdict is invariant across the entire domain of the unknown, so the
+// frete was never needed to reach it. Answering "I cannot tell you without the
+// frete" is false in the same way the previous round's "no such price exists"
+// was false — a guard wider than the fact is the same defect as one narrower,
+// pointing the other way (HARNESS-PROFILE, ratified 2026-07-28).
+//
+// Second loop (alvo 55.00) is the MUST-PASS that keeps the fix from swinging
+// back: below the ceiling the reachable PRICE moves with the frete
+// (1921.77 at frete=0.00, 21334.61 at frete=1000.00), so FreteDesconhecido is
+// the honest answer there and must survive.
+func TestSolveTargetPriceICMSCellDominatedCreditFreteUnknownStillCeilings(t *testing.T) {
+	dominated := func() SolveInput {
+		in := baseSolveICMSCell()
+		in.ICMSCell.RestituicaoUnit = strptr("1.00")
+		in.Custo = money("100.00")
+		return in
+	}
+
+	in := dominated()
+	in.TargetMargemPct = "70.00"
+	res := SolveTargetPrice(in)
+
+	if res.FreteDesconhecido {
+		t.Errorf("alvo 70.00, crédito 1.00 dominado por custo 100.00: FreteDesconhecido=true, mas o "+
+			"veredito é o MESMO para todo frete de 0.00 a 1000.00 (inalcançável, teto 60.15) — "+
+			"o frete nunca foi necessário para responder; got %+v", res)
+	}
+	if res.CeilingPct != "60.15" {
+		t.Errorf("alvo 70.00 acima do teto: CeilingPct=%q, want 60.15 — o teto é honesto aqui porque "+
+			"fnet(frete=0) = r - fixed0 = 1.00 - 100.00 < 0 e o frete só o diminui; got %+v",
+			res.CeilingPct, res)
+	}
+	if res.Reached {
+		t.Errorf("alvo 70.00 acima do teto 60.15 não pode ser alcançado; got %+v", res)
+	}
+
+	// MUST-PASS: abaixo do teto o preço depende do frete, então a resposta
+	// honesta continua sendo FreteDesconhecido. Sem este arco, apertar o gate
+	// na direção oposta passaria despercebido.
+	below := dominated()
+	below.TargetMargemPct = "55.00"
+	resBelow := SolveTargetPrice(below)
+	if !resBelow.FreteDesconhecido {
+		t.Errorf("alvo 55.00 (abaixo do teto): esperava FreteDesconhecido=true — o preço alcançável "+
+			"varia com o frete (1921.77 em 0.00, 21334.61 em 1000.00); got %+v", resBelow)
+	}
+	if resBelow.CeilingPct != "" {
+		t.Errorf("alvo 55.00: CeilingPct=%q com o alvo abaixo dele — UNREACHABLE_TARGET falso", resBelow.CeilingPct)
 	}
 }

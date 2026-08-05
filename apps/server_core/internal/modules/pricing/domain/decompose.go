@@ -100,6 +100,15 @@ type Decomposition struct {
 	// real ICMSSaida/Difal/PisCofins/RestituicaoST. nil here is a structural
 	// "does not apply on this path", NOT an ADR-17 unknown — it never enters
 	// ComponentesDesconhecidos and never blocks MargemValor.
+	//
+	// Scope of that claim (re-gate, blocking): it is about THIS field only.
+	// The nil is keyed on ICMSCell != nil alone — it says nothing about
+	// whether TaxesForItem then resolved the cell. When it did not (ambíguo,
+	// CodTrib/AliquotaInterna/UFDestino absent), Imposto is still this same
+	// structural nil while ICMSSaida/Difal/PisCofins ARE ADR-17 unknowns and
+	// MargemValor IS blocked. A consumer reading imposto==nil as "the tax was
+	// apportioned" would be declaring success over an unresolved fact;
+	// ComponentesDesconhecidos is the discriminator.
 	Imposto    *string
 	Difal      *string
 	TarifaFull *string

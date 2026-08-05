@@ -264,13 +264,21 @@ type decompositionDTO struct {
 	TaxaFixa string  `json:"taxa_fixa"`
 	Frete    *string `json:"frete"`
 	// Imposto is the legacy D-38 regime-aliquota field, in retirement (Task
-	// A7): nullable and no longer required. nil means the D-41 per-cell tax
-	// path is active for this item (ICMSCell present), where tax is apurado
-	// per fiscal cell instead of by a single regime rate — never a fabricated
-	// "0.00"/"" (ADR-17). This DTO does NOT yet publish the per-component
-	// successors (domain.Decomposition has ICMSSaida and PisCofins; only
-	// Difal is mapped below). Publishing them is task B4; until then nil is
-	// all a consumer gets, and it means "apurado por celula", not "unknown".
+	// A7): REQUIRED and nullable. There is no omitempty, so the key is always
+	// emitted, and the published OpenAPI keeps imposto in `required` to match.
+	//
+	// nil means this item is on the D-41 per-cell tax path (ICMSCell present)
+	// -- never a fabricated "0.00"/"" (ADR-17). It does NOT assert the
+	// per-cell tax was computed: domain.Decompose keys Imposto=nil purely on
+	// ICMSCell != nil, while TaxesForItem may still have failed to resolve the
+	// cell (ambiguo, CodTrib/AliquotaInterna/UFDestino absent), in which case
+	// the fiscal components land in ComponentesDesconhecidos and margem comes
+	// back nil. Consumers discriminate the two states with that list, not with
+	// imposto alone (re-gate finding, blocking).
+	//
+	// This DTO does NOT yet publish the per-component successors
+	// (domain.Decomposition has ICMSSaida and PisCofins; only Difal is mapped
+	// below). Publishing them is task B4.
 	Imposto                  *string  `json:"imposto"`
 	Difal                    *string  `json:"difal"`
 	TarifaFull               *string  `json:"tarifa_full"`
