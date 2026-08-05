@@ -34,11 +34,11 @@ func TestICMSERPGolden(t *testing.T) {
 		// base PC = P − ICMS − DIFAL − ST_ant(0) = 299.90−20.99−40.49 = 238.42.
 		// PIS/COFINS = 0.0925×238.42 = 22.05385 -> 22.05.
 		//
-		// CONTROLE NEGATIVO: icms.go:154-158 faz gross-up em vez de diferenca
-		// simples. a_grossup = 0.205×0.93/0.795 = 0.239811... ; ICMS_total =
+		// CONTROLE NEGATIVO: icms.go:154-158 fazia gross-up em vez de diferenca
+		// simples (A1 falhou aqui). a_grossup = 0.205×0.93/0.795 = 0.239811... ; ICMS_total =
 		// 299.90×a_grossup = 71.919... -> 71.92 (nao exposto diretamente);
-		// DIFAL_hoje = 71.919... − 20.993 = 50.926... -> 50.93. Mensagem
-		// esperada hoje: "DIFAL = 50.93, want 40.49".
+		// DIFAL_antes = 71.919... − 20.993 = 50.926... -> 50.93. Mensagem
+		// que aparecia: "DIFAL = 50.93, want 40.49" (A1 falhou ao tentar diferenca simples; A2 aplicou).
 		cell := &ICMSCell{
 			UFDestino: "BA", CodTrib: intp(0), Ambiguo: false,
 			Origprod: intp(0), AliquotaInterna: strptr("20.5"),
@@ -53,23 +53,19 @@ func TestICMSERPGolden(t *testing.T) {
 
 	t.Run("case2: nota 895507 (BA) reproduzido com dado do ERP (interna=17)", func(t *testing.T) {
 		// Mesma nota 895507, mas com o dado que o ERP de fato usou (interna=17,
-		// nao 20.5). Se o motor reproduz TGFDIN ao centavo aqui, o METODO esta
-		// provado identico ao do ERP — esse e o caso que fecha o argumento.
+		// nao 20.5). ICMS/DIFAL/base reproduzem TGFDIN ao centavo aqui; o METODO
+		// de diferenca simples esta provado correto para ICMS e DIFAL. A divergencia
+		// entra em PIS/COFINS por ROUNDING-ORDER: o ERP redonda a base antes de
+		// aplicar PIS e COFINS separadamente, enquanto TaxesForItem aplica a taxa
+		// combinada (9.25%) a uma base nao-arredondada.
 		// ICMS = 299.90×0.07 = 20.993 -> 20.99.
 		// DIFAL (diferenca simples) = 299.90×(0.17−0.07) = 29.99.
 		// base PC (soma dos componentes JA arredondados, para bater com
 		// TGFDIN.BASERED) = 299.90−20.99−29.99 = 248.92.
 		//
-		// PIS/COFINS usa a base EXATA (nao a soma de componentes arredondados
-		// acima) — mesmo racional de icms.go:223-227 ("aBase exato, nunca um
-		// valor re-arredondado alimentando outro calculo"): base_exata =
-		// 299.90×(1−0.17) = 248.917 (fecha 2dp em 248.92, mas o valor que
-		// entra na multiplicacao e 248.917, nao 248.92).
-		// PIS/COFINS = 0.0925×248.917 = 23.0248225 -> 23.02 (NAO 23.03: usar
-		// 248.92 arredondado no lugar de 248.917 exato foi um erro de conta
-		// da primeira versao deste golden — 0.0925×248.92 = 23.0251 -> 23.03
-		// so aparece se voce re-arredonda a base antes de multiplicar, o que
-		// TaxesForItem nao faz).
+		// PIS/COFINS (racional de icms.go:223-227): base_exata = 299.90×(1−0.17) = 248.917.
+		// ERP: redonda base para 248.92, depois PIS=248.92×1.65%=4.11 e COFINS=248.92×7.60%=18.92, total 23.03.
+		// TaxesForItem: 0.0925×248.917 = 23.0248225 -> 23.02. Delta = R$0.01 (rounding-order).
 		cell := &ICMSCell{
 			UFDestino: "BA", CodTrib: intp(0), Ambiguo: false,
 			Origprod: intp(0), AliquotaInterna: strptr("17"),
@@ -131,12 +127,12 @@ func TestICMSERPGolden(t *testing.T) {
 		assertMoney(t, "DIFAL", got.Difal, "29.99")
 		assertMoney(t, "FCP", got.FCP, "6.00")
 		bp := basePCFromComponents(t, "299.90", got.ICMSSaida, got.Difal, "0.00")
-		assertMoneyStr(t, "base PC", bp, "233.92")
-		// basePCFromComponents faz P−ICMS−DIFAL−S (a formula de margem, que
-		// exclui FCP porque ICMS/DIFAL ja carregam o FCP embutido). A base do
-		// PIS/COFINS de verdade e a_base×P = 239.92, que soma o FCP de volta:
-		// 233.92 (P−ICMS−DIFAL) + 6.00 (FCP) = 239.92 — bate com o PisCofins
-		// vindo de TaxesForItem, calculado direto de a_base, nao desta soma.
+		// Label clearly: this is the margin (P−ICMS−DIFAL), not the PIS/COFINS base when FCP≠0.
+		assertMoneyStr(t, "P−ICMS−DIFAL (margem, exclui FCP)", bp, "233.92")
+		// Real PIS/COFINS base = margin + FCP = a_base×P = 299.90×(1−0.20) = 239.92.
+		realBase := new(big.Rat).Add(ratOf(t, bp), ratOf(t, *got.FCP))
+		realBaseStr, _ := round2(realBase)
+		assertMoneyStr(t, "base PIS/COFINS", realBaseStr, "239.92")
 		if got.PisCofins == nil || *got.PisCofins != "22.19" {
 			t.Fatalf("PisCofins = %v, want \"22.19\" (0.0925×239.92)", got.PisCofins)
 		}
@@ -148,16 +144,14 @@ func TestICMSERPGolden(t *testing.T) {
 		// EXPLICITO (zero legitimo, nao ha diferencial em operacao interna).
 		// base PC = 136.66−24.60−0.00 = 112.06.
 		//
-		// CONTROLE NEGATIVO: icms.go SEMPRE faz a quebra ICMS_oper=P×a_inter /
-		// DIFAL=icms_total−icms_oper, mesmo intra-UF (onde a_inter nao deveria
-		// nem entrar na conta) — so o a=0.18 fixo esta certo, a QUEBRA esta
-		// errada:
-		//   ICMS_hoje = 136.66×0.07 (MG fora do conjunto dos 12%) = 9.5662
-		//     -> 9.57.
+		// CONTROLE NEGATIVO: icms.go fazia a quebra errada em intra-UF (A5 falhou aqui).
+		// Mesmo intra-UF, fazia ICMS_oper=P×a_inter / DIFAL=icms_total−icms_oper,
+		// onde a_inter nao deveria entrar — so o a=0.18 fixo estava certo, a QUEBRA estava errada:
+		//   ICMS_antes = 136.66×0.07 (MG fora do conjunto dos 12%) = 9.5662 -> 9.57.
 		//   ICMS_total = 136.66×0.18 = 24.5988.
-		//   DIFAL_hoje = 24.5988−9.5662 = 15.0326 -> 15.03.
-		// Mensagens esperadas hoje: "ICMS = 9.57, want 24.60" E
-		// "DIFAL = 15.03, want 0.00".
+		//   DIFAL_antes = 24.5988−9.5662 = 15.0326 -> 15.03.
+		// Mensagens que apareciam: "ICMS = 9.57, want 24.60" E
+		// "DIFAL = 15.03, want 0.00" (A5 falhou aqui; A1/A2 aplicou o metodo correto).
 		cell := &ICMSCell{
 			UFDestino: "MG", CodTrib: intp(0), Ambiguo: false,
 			Origprod: intp(0), AliquotaInterna: strptr("18"),
@@ -276,13 +270,14 @@ func assertMoneyStr(t *testing.T, label, got, want string) {
 	}
 }
 
-// basePCFromComponents implements literally the rule this task's brief
-// states: "base PIS/COFINS = P − ICMS − DIFAL − ST_anterior" — applied to the
-// ALREADY-ROUNDED (2dp) ICMS/DIFAL strings TaxesForItem actually returns
-// (never a re-derivation of the internal unrounded `a`, which the struct
+// basePCFromComponents computes the margin rule "P − ICMS − DIFAL − ST_anterior",
+// NOT the PIS/COFINS base when FCP is embedded in the ICMS/DIFAL aliquotas.
+// Applied to the ALREADY-ROUNDED (2dp) ICMS/DIFAL strings TaxesForItem actually
+// returns (never a re-derivation of the internal unrounded `a`, which the struct
 // does not expose), exactly how an issued invoice books it line by line.
-// stAnterior is a plain decimal string, "0.00" when the case has no ST_ant
-// fact.
+// When FCP > 0, the real PIS/COFINS base is margin + FCP; the FCP must be
+// added back because (AliquotaInterna − FCP) is the base-rate, not the cost-rate.
+// stAnterior is a plain decimal string, "0.00" when the case has no ST_ant fact.
 func basePCFromComponents(t *testing.T, preco string, icms, difal *string, stAnterior string) string {
 	t.Helper()
 	if icms == nil || difal == nil {
