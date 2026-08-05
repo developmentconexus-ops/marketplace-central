@@ -24,6 +24,16 @@ type SolveInput struct {
 	DestinoUF    string
 	EfetivoPct   string
 
+	// ICMSCell is DecomposeInput's field of the same name (decompose.go:63-
+	// 75) — forwarded to Decompose via margemDecompose (Task A3) so the
+	// solver's margem search runs the exact D-41 formula the decompose
+	// direction already uses, never a second tax computation. nil ⇒ legacy
+	// AliquotaPct/DifalEnabled/EfetivoPct path (unchanged; Fatia C removes
+	// that path once every caller has migrated). Non-nil switches BOTH
+	// margemDecompose's tax AND ceilingPct's asymptote onto the cell — never
+	// a mix of the two sources within the same solve.
+	ICMSCell *ICMSCell
+
 	// TaxaFixaLimiarCents overrides the taxa_fixa/frete step (in cents) for
 	// this solve. 0 ⇒ default defaultTaxaFixaLimiarCents (79,00).
 	TaxaFixaLimiarCents int64
@@ -97,16 +107,68 @@ func SolveTargetPrice(in SolveInput) SolveResult {
 }
 
 // ceilingPct is the margem_pct asymptote: fixed costs (taxa_fixa/frete/
-// tarifa_full/custo) wash out as preço→∞, leaving 100 − comissão − aliquota −
-// difal (difal only when applied).
+// tarifa_full/custo/restituição) wash out as preço→∞, leaving 100 − comissão
+// − carga fiscal. The fiscal load comes from ICMSCell when present (D-41
+// asymptote, icmsCellAsymptoticRatePct — Task A3); otherwise from the legacy
+// AliquotaPct + applied difal (Fatia C removes this branch once the legacy
+// path itself is retired). Never mixes the two sources for the same solve.
 func (in SolveInput) ceilingPct() string {
 	ceil := big.NewRat(100, 1)
 	ceil.Sub(ceil, mustRat(in.ComissaoPct))
-	ceil.Sub(ceil, mustRat(in.AliquotaPct))
-	if in.difalApplied() {
-		ceil.Sub(ceil, mustRat(in.EfetivoPct))
+	if in.ICMSCell != nil {
+		ceil.Sub(ceil, in.icmsCellAsymptoticRatePct())
+	} else {
+		ceil.Sub(ceil, mustRat(in.AliquotaPct))
+		if in.difalApplied() {
+			ceil.Sub(ceil, mustRat(in.EfetivoPct))
+		}
 	}
 	return FormatRatHalfUp(ceil, 2)
+}
+
+// icmsCellAsymptoticRatePct is the D-41 tax load's margem_pct asymptote, in
+// percent units (0-100 scale, matching AliquotaPct's convention) — the exact
+// analogue of the legacy branch's AliquotaPct+EfetivoPct sum, but derived
+// from the SAME formula TaxesForItem (icms.go) uses:
+//
+//   - icms_saida + difal telescope to aCusto regardless of branch: MG-interno
+//     sets icms_saida=P×aCusto, difal=0 (icms.go:196-204); interestadual sets
+//     icms_saida=P×aInter, difal=P×aCusto−P×aInter, so the sum is P×aCusto
+//     either way (icms.go:205-212) — a_inter cancels out, so UFDestino never
+//     needs consulting here, only aCusto.
+//   - pis_cofins's base has a flat subtrahend (StRetidoEntrada) that washes
+//     out as preço→∞, leaving pisCofinsRate×(1−aBase) — the same aBase
+//     (aCusto minus FCP, D-43) TaxesForItem derives from the cell.
+//   - isST (codTribST) never consults AliquotaInterna/FcpEmbutido at all
+//     (icms.go:145-156: icms_saida=difal=0, base=P−S) — folding aCusto=aBase=0
+//     into the general formula reproduces that exactly (0 + pisCofinsRate×1).
+//   - restituicao_st is a flat credit like custo/tarifa_full/taxa_fixa and is
+//     never added here — it washes out the same way those do.
+//
+// Callers only reach this with a RESOLVED, unambiguous cell: structural-
+// Unknowns already blocks the unresolved/ambíguo case before
+// SolveTargetPrice calls ceilingPct (Unknown-ness is price-independent, so a
+// probe at one preço decides it for every preço).
+func (in SolveInput) icmsCellAsymptoticRatePct() *big.Rat {
+	cell := in.ICMSCell
+	isST := cell.CodTrib != nil && *cell.CodTrib == codTribST
+
+	aCusto := new(big.Rat)
+	aBase := new(big.Rat)
+	if !isST {
+		aCusto.Quo(mustRat(*cell.AliquotaInterna), cem)
+		fcp := new(big.Rat)
+		if cell.FcpEmbutido != nil {
+			fcp.Quo(mustRat(*cell.FcpEmbutido), cem)
+		}
+		aBase.Sub(aCusto, fcp)
+	}
+
+	oneMinusABase := new(big.Rat).Sub(big.NewRat(1, 1), aBase)
+	rate := new(big.Rat).Mul(pisCofinsRate, oneMinusABase)
+	rate.Add(rate, aCusto)
+	rate.Mul(rate, cem)
+	return rate
 }
 
 func (in SolveInput) difalApplied() bool {
@@ -292,6 +354,7 @@ func (in SolveInput) margemDecompose(cents int64) Decomposition {
 		Modalidade: in.Modalidade, TarifaFull: in.TarifaFull,
 		FreteProduto: in.FreteProduto, Custo: in.Custo,
 		DifalEnabled: in.DifalEnabled, DestinoUF: in.DestinoUF, EfetivoPct: in.EfetivoPct,
+		ICMSCell: in.ICMSCell,
 	}, big.NewRat(in.limiarCents(), 100))
 }
 
