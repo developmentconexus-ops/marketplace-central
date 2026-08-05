@@ -393,7 +393,7 @@ distinguível de um que sincronizou. **A idade do espelho aparece na mesma linha
 | novo | por que nenhum existente serve |
 |---|---|
 | tabela `erp_aliquota_interna_prevista` | Nenhuma tabela tem a chave `(uf, codprod)`: `icms_matrix_mirror` é `(uf, grupo)` e `icms_aliquota_interna` é `(uf)`. A divergência de cadastro **é** por produto (BA: 10.049 numa alíquota, 2 noutras). |
-| tabela `icms_aliquota_interna_override` | `icms_aliquota_interna` é **global e legal** (`0094:26-35`, sem `tenant_id`); o override é **por tenant e não é lei**. Misturar os dois na mesma linha é repetir o erro que estamos desfazendo. |
+| ~~tabela `icms_aliquota_interna_override`~~ **CORTADA** | Medido em 2026-08-04: `pricing_difal_rates` tem **27 linhas e 0 overrides**. O caminho existe inteiro (OpenAPI, SDK, drawer, colunas, `CHECK`) e **nunca foi usado**. Além disso, o tier `operador-validado` da tabela legal (B1) **já é** o override, versionado e com procedência — a tabela nova seria o segundo mecanismo para a mesma coisa. Ver decisão 5. |
 | campo `uf_destino` em `PricingCalcInput` | Não existe campo de destino em `calcInputDTO` (`calc_handler.go:287-296`); o destino atual é uma UF fixa por tenant no perfil (F-8), o que torna a simulação por UF impossível. |
 
 ---
@@ -424,7 +424,7 @@ gate por produto, e o contrato publicando o que o domínio calcula.
 `pricing/adapters/postgres/{matrix_reader,calc_repository}.go`,
 `pricing/application/calc_service.go`, `pricing/transport/calc_handler.go`,
 `internal_read/{domain,adapters/oracle,adapters/mirror,application}` (arquivos novos),
-`sync/domain/sync_state.go`, `composition/root.go`, **4 migrações**, OpenAPI + SDK (mesmo commit),
+`sync/domain/sync_state.go`, `composition/root.go`, **3 migrações**, OpenAPI + SDK (mesmo commit),
 `apps/web/src/pages/precos/{PricingPage,DecompositionPanel,DifalDrawer}.tsx` + testes ao lado,
 `contracts/governance/invariants.json`.
 
@@ -441,39 +441,56 @@ gate por produto, e o contrato publicando o que o domínio calcula.
 | 3 | **DF e RJ resolvidas a nosso favor** | **RATIFICADA.** Deixam de ser "disputa" e viram linha normal da tabela, com lei citada |
 | 4 | **`pricing_difal_rates` morre** | **RATIFICADA.** Fatia C, com substituto — ver decisão 5 |
 
-**Decisão 5 — o override mora em tabela separada (RATIFICADA).** Quatro razões medidas, em ordem de
-força:
+**Decisão 5 — NÃO existe tabela de override. Uma tabela só (REVISADA por medição).**
 
-1. **Escopo diferente, e é incompatível na mesma chave.** `icms_aliquota_interna` **não tem
-   `tenant_id`** (`0094:26-35`) porque a lei não é por tenant: 27 linhas, uma por UF, para todo mundo.
-   O override é por tenant por definição. Fundir obriga a escolher um dos dois erros: dar `tenant_id`
-   à lei (e então corrigir uma alíquota vira `UPDATE` em N linhas, uma por tenant, com a garantia de
-   que alguma fica para trás), ou tirar `tenant_id` do override (e então o override de um tenant muda
-   o número do outro).
-2. **Ciclo de vida diferente.** A tabela legal é **bitemporal** — `vigente_desde`/`vigente_ate`, o
-   histórico da lei fica. O override é "último vence", com `actor` e `updated_at`. Na mesma tabela, um
-   operador digitando um número churna a versão histórica da legislação.
-3. **É a propriedade que a missão inteira existe para restaurar.** O bug de origem foi um número que
-   perdeu a procedência. Com as duas coisas na mesma célula, "esse 20,5 é a lei ou alguém digitou?" só
-   se responde por uma coluna-flag — e coluna-flag é exatamente o que se esquece de setar. Separadas,
-   **de qual tabela o valor veio já é a resposta**. Procedência estrutural, não convencionada.
-4. **O desenho fundido é literalmente o que estamos removendo.** `pricing_difal_rates` (`0056`) já é
-   lei-e-override na mesma linha, e precisa de um `CONSTRAINT
-   pricing_difal_rates_override_paired` para o trio de override não ficar meio preenchido. Fundir é
-   reconstruir a tabela que a decisão 4 mata.
+A revisão anterior defendia duas tabelas com quatro razões. O operador perguntou se isso não era
+máximo local. Era — e a resposta certa estava uma pergunta acima, numa medição que eu não tinha feito.
+Feita agora, no Postgres de dev:
 
-Custo da separação: **um `LEFT JOIN`** no leitor, que resolve **override → legal** e devolve qual
-venceu. `AliquotaInternaFor` já é uma consulta por UF, resolvida uma vez por pedido.
+```
+SELECT count(*) AS total, count(override_interna_pct) AS com_override FROM pricing_difal_rates;
+ total | com_override
+-------+--------------
+    27 |            0
+```
 
-**Decisão 6 — o drawer substituto (RATIFICADA).** `DifalDrawer` mostra hoje interna/interestadual/
-efetivo por UF. O substituto mostra **alíquota interna, FCP embutido, procedência (tier), lei,
-vigência, fonte, override, quem alterou e quando** — a mesma função manual, mais a procedência que o
-fiscal precisa ver.
+**O override tem zero uso.** O caminho existe inteiro — `putPricingDifalOverride` no OpenAPI, método
+no SDK, `input` por UF no `DifalDrawer`, colunas e `CHECK` no banco — e **nunca foi usado uma vez**.
+Construir `icms_aliquota_interna_override` seria **portar uma feature sem usuário**, e a discussão
+"uma tabela ou duas" seria uma discussão sobre um artefato que não devia existir.
 
-**Decisão 6 — o drawer que substitui o de DIFAL (minha, declarada).** O `DifalDrawer` mostra hoje
-interna/interestadual/efetivo por UF. O substituto mostra **alíquota interna, FCP embutido, lei,
-vigência, fonte, override** — a mesma função manual, mais a procedência que o fiscal precisa ver. É
-estritamente mais útil e usa a tabela que já existe.
+**E há uma redundância pior por baixo:** depois do B1, a tabela legal tem o tier
+`operador-validado` — 20 das 27 linhas são, literalmente, *o número que o operador pôs*. **Isso já é
+o override**, permanente, versionado e visível na tela. Uma tabela de override em cima de um valor
+já marcado como operador-validado é o **segundo mecanismo para a mesma coisa** — exatamente a classe
+que a varredura anti-redundância (fase 2) existe para pegar, e que eu deixei passar porque estava
+copiando a *forma* da `pricing_difal_rates` em vez de perguntar se a forma era necessária.
+
+**Desenho final: uma tabela.** `icms_aliquota_interna`, global, bitemporal, com `procedencia`,
+`fonte`, `lei` e **`actor`**. Corrigir uma alíquota fecha a linha vigente e abre outra — o mesmo
+padrão de escrita versionada do resto do repo, com histórico de auditoria de graça. O que era
+"override" vira **caminho de edição da própria tabela**, com quem editou e quando.
+
+Ganhos sobre o desenho de duas tabelas, todos concretos: −1 tabela, −1 migração, sem `LEFT JOIN` de
+resolução, sem regra de precedência para escrever e testar, e o override passa a **ter histórico** —
+que a tabela separada, do jeito que eu tinha desenhado (PK `(tenant_id, uf)`, último vence), **não
+teria**. Num sistema fiscal, "quem mudou a alíquota, para quanto e quando" é material de auditoria.
+Meu desenho anterior perdia isso; este ganha.
+
+**O que se perde, dito na cara:** a tabela é global, então editar uma alíquota edita para todos os
+tenants. Hoje é um tenant, e **não existe alíquota interna de ICMS legítima por tenant** — a lei é a
+mesma para quem vende de MG para a BA. O controle certo é **quem pode editar**, não uma cópia por
+tenant. Vira dívida nomeada (D2): quando multi-tenant for real, a edição da tabela legal exige papel
+de administrador.
+
+**Ressalva honesta da medição:** `0` é o estado **agora**. Não existe histórico que prove que nunca
+houve um override — a tabela não guarda. O que se afirma é o medido: nenhum override vivo.
+
+**Decisão 6 — o drawer (RATIFICADA, ajustada à decisão 5).** `DifalDrawer` mostra hoje
+interna/interestadual/efetivo por UF, com um `input` de override que ninguém usou. O substituto
+mostra **alíquota interna, FCP embutido, procedência (tier), lei, vigência, fonte, quem editou e
+quando**, e o campo de edição escreve **na tabela legal**, subindo o tier para `operador-validado`
+com `actor` registrado. Mesma função manual, um mecanismo só, com procedência.
 
 ---
 
@@ -781,8 +798,12 @@ tier legível na tela (§1.5).
 ```sql
 ALTER TABLE icms_aliquota_interna
   ADD COLUMN IF NOT EXISTS procedencia text NOT NULL DEFAULT 'operador-validado'
-    CHECK (procedencia IN ('lei-citada', 'lei-citada-confirmada-erp', 'operador-validado'));
+    CHECK (procedencia IN ('lei-citada', 'lei-citada-confirmada-erp', 'operador-validado')),
+  ADD COLUMN IF NOT EXISTS actor text;   -- quem editou; NULL nas linhas que vieram do seed
 ```
+
+`actor` entra aqui, e não numa migração da fatia C, porque é a **mesma** tabela: decisão 5 mata a
+tabela de override e o que era "override" vira edição versionada desta linha (C1).
 
 - [ ] As 20 linhas com o placeholder (`0094:86,88,89,90,91,93,94,95,96,97,98,99,100,102,103,105,106,
       107,108,109,110,111,112`): `fonte` = `'tabela validada pelo operador em 2026-08-04'`, `lei` =
@@ -865,7 +886,7 @@ algum dia deixar de ser zero, é sinal de mudança de regime e o gate tem que ac
 #### B3 — Gate previsto × devido
 
 - [ ] Para cada (produto vendável, UF), comparar `erp_aliquota_interna_prevista` com
-      `icms_aliquota_interna` (com override, §Decisão 5).
+      `icms_aliquota_interna` (única fonte da alíquota devida, §Decisão 5).
 - [ ] Pendência traz **CODPROD, UF, cadastro, devido, Δ em reais no preço corrente, e a lei**. Sem
       esses cinco campos ela não é acionável e a task não fecha.
 - [ ] Agregar por UF **e** listar produto — 10.049 pendências na BA precisam virar uma linha
@@ -923,33 +944,38 @@ schema de pedidos (`openapi:5860-5934`).
 Fatia separada de propósito: misturar conserto de cálculo com remoção de tabela torna impossível saber
 qual dos dois quebrou. **Substituto primeiro, remoção depois** — nesta ordem, dentro da fatia.
 
-#### C1 — O override muda de casa
+#### C1 — Caminho de edição da tabela legal (substitui o override, decisão 5)
 
-**Migração:** `apps/server_core/migrations/0099_icms_aliquota_interna_override.sql`
+**Sem migração** — as colunas `procedencia` e `actor` já entraram no `0097` (B1). Esta task é escrita
+versionada, não schema.
 
-```sql
-CREATE TABLE IF NOT EXISTS icms_aliquota_interna_override (
-    tenant_id  text         NOT NULL,
-    uf         text         NOT NULL CHECK (char_length(uf) = 2),
-    aliquota   numeric(6,3) NOT NULL,
-    actor      text         NOT NULL,
-    updated_at timestamptz  NOT NULL,
-    PRIMARY KEY (tenant_id, uf)
-);
-```
-
-- [ ] Copiar os overrides ativos de `pricing_difal_rates` (colunas `override_*`, garantidas coerentes
-      pelo `CONSTRAINT pricing_difal_rates_override_paired` de `0056`) para a tabela nova. **O override
-      não pode sumir — é o instrumento manual que existe hoje.**
-- [ ] `AliquotaInternaFor` resolve **override → legal**, e o resultado **diz qual venceu** (campo
-      `Origem`), porque um número sem procedência é o problema que este plano existe para resolver.
-- [ ] **Bumpar `runner_test.go` de 85 para 86.**
+- [ ] **Precondição medida, reconferir antes de começar:**
+      `SELECT count(override_interna_pct) FROM pricing_difal_rates` deve continuar **0**. Se alguém
+      tiver usado o override entre o plano e a execução, **para** — a premissa da decisão 5 caiu e a
+      task muda. Medido em 2026-08-04: `27 total / 0 com override`.
+- [ ] `UpdateAliquotaInterna(ctx, uf, aliquota, actor, now)` na `application`: **fecha** a linha
+      vigente (`vigente_ate = now`) e **insere** a nova com `procedencia = 'operador-validado'`,
+      `fonte = 'editado por <actor> em <data>'`, `lei = NULL`, `actor`. Mesmo padrão de escrita
+      versionada de `adapters/mirror/icms_matrix_writer.go:110-160` — histórico de auditoria de graça,
+      que a tabela de override descartada não teria.
+- [ ] `AliquotaInternaFor` continua lendo **uma** linha (`vigente_ate IS NULL`) e passa a devolver
+      `Procedencia` e `Actor` junto — um número sem procedência é o problema que este plano existe para
+      resolver.
+- [ ] **Vermelho primeiro:** teste de integração que edita a alíquota da BA de 20,5 para 21, lê a
+      vigente (21, `operador-validado`, actor) **e** conta **2** linhas para a BA — a fechada e a
+      vigente. Um `UPDATE` no lugar do fecha-e-insere passa na primeira asserção e **falha na
+      contagem**; é essa segunda que prova o histórico.
+- [ ] Registrar em `.mnfs/HARNESS-DEBTS.md`: a tabela legal é **global**, então a edição vale para
+      todos os tenants. Correto enquanto a alíquota interna for objetiva (é a lei, não preferência) e
+      houver um tenant. Multi-tenant real ⇒ a edição exige papel de administrador, **não** uma cópia
+      da lei por tenant.
 
 #### C2 — Trocar as operações HTTP (OpenAPI + SDK + handler + FE, **um commit**)
 
 - [ ] `/pricing/difal` e `/pricing/difal/{uf}` (`openapi:2626-2660`) dão lugar a
       `/pricing/aliquotas-internas` e `/pricing/aliquotas-internas/{uf}`, devolvendo **alíquota, FCP
-      embutido, lei, vigência, fonte, override, quem alterou e quando** (decisão 6).
+      embutido, procedência (tier), lei, vigência, fonte, quem editou e quando** (decisão 6). O campo
+      de edição escreve na **tabela legal** via C1 — não existe tabela de override.
 - [ ] Os 5 schemas `PricingDifal*` (`openapi:4566-4633`) e os 3 tipos + 2 métodos do SDK
       (`index.ts:1524-1552`, `:2380-2382`) saem no **mesmo commit**.
 - [ ] `DifalDrawer.tsx` vira `AliquotaInternaDrawer.tsx`; `DifalDrawer.test.tsx` é **reescrito**, não
@@ -962,7 +988,7 @@ CREATE TABLE IF NOT EXISTS icms_aliquota_interna_override (
 
 #### C3 — Remover a tabela e a fórmula duplicada
 
-**Migração:** `apps/server_core/migrations/0100_drop_pricing_difal_rates.sql`
+**Migração:** `apps/server_core/migrations/0099_drop_pricing_difal_rates.sql`
 
 - [ ] `DROP TABLE pricing_difal_rates`.
 - [ ] `pricing/domain/difal.go`: `DifalRate`, `DifalOverride`, `DifalForUF`, `DifalForUFResult`,
@@ -981,9 +1007,9 @@ CREATE TABLE IF NOT EXISTS icms_aliquota_interna_override (
 - [ ] **Remover a exceção `production-panic-pricing-difal-efetivo`** de
       `contracts/governance/invariants.json:49-56` **no mesmo commit** — ela aponta para
       `computeEfetivoPct`, que deixa de existir (§6.3).
-- [ ] **Bumpar `runner_test.go` de 86 para 87.**
+- [ ] **Bumpar `runner_test.go` de 85 para 86.**
 - [ ] **Aceite por observável:** `count(*)` — **zero** tabelas com alíquota interna além de
-      `icms_aliquota_interna` (+ a de override); e o mesmo produto/UF devolve o mesmo DIFAL antes e
+      **`icms_aliquota_interna`** — uma só; e o mesmo produto/UF devolve o mesmo DIFAL antes e
       depois da fatia, medido nos dois lados.
 
 ---
@@ -1048,7 +1074,7 @@ código, dado velho no do ERP, e nenhum dos dois visível em lugar nenhum**.
   número errado no lugar de três, e apaga a evidência de que estava errado.
 - **`F-09` publica a linha pronta.** Publicar SIMPLES 4% fabricado num contrato é caro de desfazer.
 - **Disjunção com a Onda 1 por arquivo:** esta onda toca `pricing/*`, `internal_read/*`,
-  `sync/domain/sync_state.go`, `composition/root.go`, 4 migrações, OpenAPI + SDK e
+  `sync/domain/sync_state.go`, `composition/root.go`, 3 migrações, OpenAPI + SDK e
   `apps/web/src/pages/precos/*`. A Onda 1 toca `orders/application/service.go`,
   `batch_orchestrator.go`, `pedidosFormatters.ts`, `mercadoFormatters.ts`, **OpenAPI + SDK** e
   **`composition/root.go`**. **Interseção NÃO é vazia**: os dois seams exclusivos (o par api-sdk e o
@@ -1090,8 +1116,8 @@ depois que a nota sai errada.** A Onda 0.5 é a primeira vez que esse processo g
 - [x] Falha do sync novo é visível na tela, com o caminho **falha → pixel** nomeado (B3).
 - [x] Sem chamada a provider; o balde de 900/min fica intacto; orçamento na Parte 2 pergunta 7.
 - [x] Lanes copiam-e-colam, com diretório (§6.8), e o `BaseSha` de 40 dígitos está escrito.
-- [x] Governança planejada: **4 migrações → 4 prefixos únicos a partir de `0097`**, e o fixture de
-      contagem em `runner_test.go:25` **e** `:64` bumpado **em cada uma** (83 → 87). Nenhum módulo
+- [x] Governança planejada: **3 migrações → 3 prefixos únicos a partir de `0097`**, e o fixture de
+      contagem em `runner_test.go:25` **e** `:64` bumpado **em cada uma** (83 → 86). Nenhum módulo
       novo. A exceção `production-panic-pricing-difal-efetivo` sai no commit que a torna obsoleta.
       Nenhuma ocorrência nova da aresta `pricing -> tenant_config`.
 - [x] Nada aqui dá push, reset, revert, stash, clean, instala dependência, despeja ambiente, escreve
@@ -1102,8 +1128,12 @@ depois que a nota sai errada.** A Onda 0.5 é a primeira vez que esse processo g
 1. **20 UFs calculam com procedência `operador-validado`, não com lei citada.** Ratificado, e visível
    na tela por tier (B1). O que continua aberto é a curadoria incremental do contador — que **não
    bloqueia nada** e não tem data.
-2. **Decisões 5 e 6 ratificadas** (*"pode seguir com suas recomendação"*). Registradas aqui como
-   decididas, não como pendentes.
+2. **Decisão 5 foi REVISADA por medição depois de ratificada.** O operador perguntou se duas tabelas
+   não eram máximo local. Eram: `pricing_difal_rates` tem **0 overrides em 27 linhas**, então a tabela
+   de override some e o desenho fica com **uma** tabela — menos uma migração, menos um join, e com
+   histórico de auditoria que o desenho de duas não teria. **A pergunta do operador encolheu o plano;
+   as minhas quatro razões defendiam o artefato errado.** Precondição a reconferir na execução: o
+   contador de overrides continua `0`.
 3. **`red_base` (D3) é medição, não implementação** — deliberadamente.
 4. **A interseção de seam com a Onda 1 não é vazia** (Parte 8). Isso precisa de adjudicação do hub
    antes de qualquer despacho paralelo.
