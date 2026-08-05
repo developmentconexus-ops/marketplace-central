@@ -442,7 +442,7 @@ func TestDecompositionDTOImpostoNullWithICMSCell(t *testing.T) {
 		t.Fatalf("imposto key absent from JSON, want present with null value")
 	}
 	if val != nil {
-		t.Fatalf("imposto = %v (%T), want JSON null (ICMSCell path, D-41 — use icms_saida/difal/pis_cofins)", val, val)
+		t.Fatalf("imposto = %v (%T), want JSON null (ICMSCell path, D-41: tax is apurado per fiscal cell; this DTO publishes only difal of the successors, B4 adds the rest)", val, val)
 	}
 }
 

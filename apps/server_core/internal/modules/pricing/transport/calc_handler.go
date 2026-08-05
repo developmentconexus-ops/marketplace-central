@@ -259,14 +259,18 @@ func (h Handler) handleDeleteScenario(w http.ResponseWriter, r *http.Request) {
 // --- Decompose / Solve ---
 
 type decompositionDTO struct {
-	Preco                    string   `json:"preco"`
-	Comissao                 string   `json:"comissao"`
-	TaxaFixa                 string   `json:"taxa_fixa"`
-	Frete                    *string  `json:"frete"`
+	Preco    string  `json:"preco"`
+	Comissao string  `json:"comissao"`
+	TaxaFixa string  `json:"taxa_fixa"`
+	Frete    *string `json:"frete"`
 	// Imposto is the legacy D-38 regime-aliquota field, in retirement (Task
 	// A7): nullable and no longer required. nil means the D-41 per-cell tax
-	// path is active for this item (ICMSCell present) — never a fabricated
-	// "0.00"/"" ; read icms_saida/difal/pis_cofins instead (ADR-17).
+	// path is active for this item (ICMSCell present), where tax is apurado
+	// per fiscal cell instead of by a single regime rate — never a fabricated
+	// "0.00"/"" (ADR-17). This DTO does NOT yet publish the per-component
+	// successors (domain.Decomposition has ICMSSaida and PisCofins; only
+	// Difal is mapped below). Publishing them is task B4; until then nil is
+	// all a consumer gets, and it means "apurado por celula", not "unknown".
 	Imposto                  *string  `json:"imposto"`
 	Difal                    *string  `json:"difal"`
 	TarifaFull               *string  `json:"tarifa_full"`
