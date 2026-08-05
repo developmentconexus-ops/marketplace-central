@@ -279,6 +279,45 @@ O operador mandou medir tudo antes de planejar. Nove achados; três mudam o tama
 **Leitura conjunta:** o trabalho de domínio é **menor** do que a revisão 3 supunha (F-1), e o de
 contrato/FE é **maior** (F-2, F-7, F-8, F-9). É exatamente o tipo de troca que só aparece medindo.
 
+### 1.10 Varredura de máximo global e de código morto (2026-08-05)
+
+Pedido do operador antes de executar: *a arquitetura está certa, ou vai precisar de refactor? o que dá
+para **apagar**, não só somar?* Medido no tree e no Postgres de dev.
+
+**O que está saudável — e é a maior parte:**
+
+| verificação | resultado |
+|---|---|
+| legado VTEX em código vivo | **zero**. Só migração histórica (`0005`), a de remoção (`0081`) e docs. O reset da MIS-001 realmente terminou |
+| tabelas órfãs (migração sem nenhuma referência em Go) | **1 em 62** — `pricing_manual_overrides` |
+| tabelas cujo único chamador é `_test.go` | **nenhuma** — a classe do P2.b (`icms_matrix_mirror` com 0 linhas) não se repetiu |
+| portas suspeitas de estarem mortas | `ports/degrau3.go` (102 linhas) **está viva**: wired em `root.go:966-968` e implementada em `adapters/tarifflive/resolver.go:35`. Falso positivo meu, verificado e descartado |
+| anatomia de módulo | consistente nos 20 módulos; o molde de adapter/porta é o mesmo em todo lado |
+
+**Veredito: não há refactor arquitetural pendente.** O problema não é a arquitetura — é **duplicação
+concentrada na área fiscal**, que é exatamente o que este plano desfaz.
+
+**O que a varredura achou de novo, e que muda tasks:**
+
+| # | achado | evidência | efeito |
+|---|---|---|---|
+| **F-10** | **Terceira cópia da tabela de 27 UFs**, hardcoded em Go — `domain/difal_seed.go`, 64 linhas — com **zero consumidor de produção** (só `_test.go`). Já era código morto antes deste plano, e é constante de negócio em código, que o gate de auto-revisão proíbe | `difal_seed.go:12-45`; `grep DifalSeed` fora de testes = nada | C3 passa a nomeá-lo. **−64 linhas** que ninguém tinha visto |
+| **F-11** | As duas tabelas de alíquota divergem **exatamente pelo FCP**, em três UFs e só nelas: AL 21,5 vs 20,5 (fcp 1,0) · RJ 22,0 vs 20,0 (fcp 2,0) · SE 20,0 vs 19,0 (fcp 1,0) | `SELECT … FROM icms_aliquota_interna l JOIN pricing_difal_rates d ON d.uf = l.uf WHERE l.aliquota <> d.interna_pct` | **Prova aritmética de F-3**: `pricing_difal_rates.interna_pct` **é** o `a_base` (sem FCP) e `icms_aliquota_interna.aliquota` é o `a_custo` (com FCP). `a_base = aliquota − fcp_embutido` **reproduz a tabela que morre linha a linha** — dropar não perde informação nenhuma. Vira caso de teste em A1 |
+| **F-12** | `pricing_manual_overrides` (`0004:11`) é a única tabela órfã do banco: 0 linhas, **0 referências em Go**, e a wiki já a documenta como morta (`wiki/modules/pricing.md:214`) | grep de 26 nomes de tabela sobre `internal/`: 25 aparecem, essa não | Task nova (C4). É o **quarto** mecanismo de override do módulo |
+| **F-13** | **42 de 104 métodos do `sdk-runtime` não têm nenhum chamador** em `apps/web/src`, `packages/feature-*` ou `packages/web-query` — 40% da superfície de contrato | lista dos 42 medida em 2026-08-05 | **Fora do escopo deste plano.** Vira dívida com o instrumento certo registrado, não task |
+
+**Contagem que fecha o argumento da decisão 5:** o módulo `pricing` tem **quatro** mecanismos de
+override — `pricing_manual_overrides` (morto), `pricing_difal_rates.override_*` (0 usos),
+o estado inline do FE (`wiki/modules/pricing.md:262`) e o `icms_aliquota_interna_override` que eu ia
+criar. Nenhum deles em uso. Não era uma escolha de modelagem: era um **padrão de acumulação**.
+
+**Armadilha de medição desta varredura, registrada para não se repetir:** `pg_stat_user_tables.
+n_live_tup` reportou `listings = 0`; a contagem real é **34**. É estimativa de autovacuum, não fato.
+Toda contagem aqui é `count(*)` via `query_to_xml`. E a primeira tentativa de achar operação de
+contrato órfã comparou `operationId` do OpenAPI com o FE — mas o SDK é escrito à mão e os nomes
+divergem (`listMarketplaceOrders` no OpenAPI, `listOrders` no SDK), então aquela lista era ruído. O
+instrumento correto é **método do SDK → chamador**, que é o que produziu os 42.
+
 ---
 
 ## Parte 2 — Medição (as 8 perguntas, com `file:line`)
@@ -986,11 +1025,24 @@ versionada, não schema.
       existem; `'validado pelo operador em 2026-08-04'` + "vigência não informada" no tier
       `operador-validado` (B1). Disclaimer global vira procedência por UF.
 
-#### C3 — Remover a tabela e a fórmula duplicada
+#### C3 — Remover as tabelas e a fórmula duplicada
 
-**Migração:** `apps/server_core/migrations/0099_drop_pricing_difal_rates.sql`
+**Migração:** `apps/server_core/migrations/0099_drop_dead_pricing_tables.sql` — **as duas quedas na
+mesma migração**, porque são o mesmo fato (tabela de pricing sem consumidor) e assim a contagem de
+migrações fecha em 86, não 87.
 
 - [ ] `DROP TABLE pricing_difal_rates`.
+- [ ] `DROP TABLE pricing_manual_overrides` (F-12). **Zero código a remover** — a tabela nunca teve
+      referência em Go; existe só como `CREATE` no `0004:11` desde a fundação. A wiki já a descreve
+      como não sendo fonte de verdade (`wiki/modules/pricing.md:214`) e o parágrafo `:262` — que
+      explica que os overrides inline vivem no estado do request do FE — **fica**, porque continua
+      verdadeiro; o que sai é a menção à tabela. Precondição a reconferir: `count(*) = 0` (medido
+      2026-08-05).
+- [ ] `pricing/domain/difal_seed.go` **inteiro** (64 linhas) — terceira cópia da tabela de 27 UFs,
+      hardcoded em Go, **sem nenhum consumidor de produção** (F-10). Sai junto com `difal.go` porque
+      depende de `InterestadualPct` e `computeEfetivoPct`. É também a constante de negócio em código
+      que o gate de auto-revisão proíbe (§9). O comentário do `0057_pricing_difal_seed.sql` que diz
+      espelhar `domain.buildDifalSeed` morre com a tabela que ele semeava.
 - [ ] `pricing/domain/difal.go`: `DifalRate`, `DifalOverride`, `DifalForUF`, `DifalForUFResult`,
       `computeEfetivoPct`, `interestadual12`, `InterestadualPct` saem. **`aInterUF12`
       (`icms.go:12-14`) fica como conjunto único**, com o comentário reescrito para citar a
@@ -1011,6 +1063,11 @@ versionada, não schema.
 - [ ] **Aceite por observável:** `count(*)` — **zero** tabelas com alíquota interna além de
       **`icms_aliquota_interna`** — uma só; e o mesmo produto/UF devolve o mesmo DIFAL antes e
       depois da fatia, medido nos dois lados.
+- [ ] **Aceite de não-perda de informação (F-11), medido antes de dropar:** para as **27** UFs,
+      `icms_aliquota_interna.aliquota − fcp_embutido` reproduz `pricing_difal_rates.interna_pct`
+      **linha a linha**. Já medido em 2026-08-05: divergem só AL (Δ1,0), RJ (Δ2,0) e SE (Δ1,0), e o Δ
+      **é exatamente o FCP** nas três. Reconferir na execução; se alguma linha divergir por outro
+      valor, **para** — a tabela que morre carregaria informação que a que fica não tem.
 
 ---
 
@@ -1039,6 +1096,8 @@ nomeada) · fila itens 4 e 5.
 | **nova (harness)** | `0093` duplicado em `apps/server_core/migrations` **sem** entrada em `invariants.json`, ao contrário do `0021` que tem. `0095` ausente |
 | **nova (harness)** | `pricing -> tenant_config` (`product_fiscal_reader.go:10`) não está em `modules.json:20` nem nas exceções — aresta viva não registrada |
 | **nova** | IBS/CBS já valorados nas notas desde 2025-12-10 e **ausentes de todo o nosso cálculo** (`TaxComponents`, `Decomposition`, DTO, OpenAPI, SDK). ~1% do preço hoje, subindo pela transição |
+| **nova (F-13)** | **42 dos 104 métodos do `sdk-runtime` não têm chamador** em `apps/web/src`, `packages/feature-*` nem `packages/web-query` — 40% da superfície de contrato. **Fora do escopo desta missão**; é varredura própria. Instrumento que produziu o número (o único válido — comparar `operationId` do OpenAPI com o FE dá ruído, porque o SDK é escrito à mão e renomeia): para cada `async <nome>(` exportado de `packages/sdk-runtime/src/index.ts`, procurar o nome nos três pacotes acima. Antes de apagar qualquer um, separar **"nunca teve tela"** de **"tela foi removida"** — os dois casos se parecem e só o segundo é lixo puro |
+| **nova (F-12)** | `pricing_manual_overrides` (`0004:11`) é a **única** tabela órfã do schema. Fechada por C3 nesta missão; a dívida fica registrada porque o padrão — quatro mecanismos de override no mesmo módulo, nenhum em uso — é o que precisa não se repetir |
 | `D-54` | ES ambíguo de verdade; venda para ES sai não-calculável |
 | `D-55` | MG interna por produto; `TGFAID` não cobre MG (é a origem) |
 | `D-17` | `CODEMP = 1` fixo — inalterado por esta fatia |
@@ -1055,6 +1114,37 @@ uma nota, e uma nota já fabricou veredito errado nesta missão.
       cálculo e vira task própria.
 - [ ] **Não escrever código de `red_base` antes desta medição.** Implementar 63% das células com uma
       regra suposta é exatamente a classe de erro que esta missão está desfazendo.
+
+---
+
+### Balanço de linhas — honesto, não otimista
+
+O pedido era *diminuir linha, não só somar*. Onde o plano diminui, medido com `wc -l`:
+
+| sai | linhas | tipo |
+|---|---|---|
+| `pricing/domain/difal.go` | 90 | **apagado** |
+| `pricing/domain/difal_seed.go` | 64 | **apagado** (F-10, já era morto) |
+| `pricing/domain/difal_test.go` | 201 | **apagado** com o que ele testava |
+| `adapters/postgres/calc_repository.go:100-176` | ~77 | apagado |
+| `application/calc_service.go:443-456` + `ports/calc_ports.go:39` + `domain/solve.go:112-114` | ~25 | apagado |
+| blocos DIFAL do OpenAPI (`:2626-2660`, `:4566-4633`) e do SDK (`:1524-1552`, `:2380-2382`) | ~110 | apagado |
+| `DifalDrawer.tsx` + `.test.tsx` | 170 | **reescrito, não apagado** — não conta como redução |
+| `ports/calc_ports_contract_test.go:55-120` | 66 | **reescrito, não apagado** |
+
+**~570 linhas saem de vez** do módulo `pricing`, mais duas tabelas do schema. O que entra em `pricing`
+é pequeno: a correção da F-3 troca uma divisão por uma atribuição, e a F-4 substitui um split errado.
+
+**A parte que aumenta, dita sem maquiar:** a Fatia B constrói um pipeline de sync novo em
+`internal_read` (`TGFAID` → `erp_aliquota_interna_prevista` → gate de pendência). Isso é **capacidade
+que não existe hoje**, não duplicação — sem ela o operador continua descobrindo a divergência de
+cadastro depois da nota emitida, que é o motivo da missão. Somando tudo, a contagem total de linhas do
+repo provavelmente **sobe um pouco**.
+
+O número que importa não é esse. É este: **cópias do conceito "alíquota interna por UF" vão de 3 para
+1** (`pricing_difal_rates` + `difal_seed.go` + `icms_aliquota_interna` → só a última), e **mecanismos
+de override vão de 4 para 0**, substituídos por escrita versionada na própria tabela legal. Duplicação
+conceitual é o que fez esta missão existir; contagem bruta de linhas é o sintoma, não a doença.
 
 ---
 
