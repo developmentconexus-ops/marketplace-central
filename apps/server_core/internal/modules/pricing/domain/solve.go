@@ -149,6 +149,22 @@ func (in SolveInput) ceilingPct() string {
 // Unknowns already blocks the unresolved/ambíguo case before
 // SolveTargetPrice calls ceilingPct (Unknown-ness is price-independent, so a
 // probe at one preço decides it for every preço).
+//
+// COUPLING CONTRACT (Task A3 review Finding 3): this is a hand-re-derivation
+// of TaxesForItem's limit as preço→∞, not a call into TaxesForItem itself —
+// TaxesForItem only evaluates at a finite, already-2dp-rounded preço, and its
+// MAX(0, …) clamp on the pis_cofins base and its round2 calls make any
+// finite-sample slope inexact (off by cents), which the solve bracket cannot
+// tolerate (it needs the EXACT asymptote, see exactCeilingRat/
+// exactMargemPctRat above). A second finite evaluation of TaxesForItem was
+// deliberately rejected as the derivation strategy for that reason; this
+// closed-form re-encoding is the only exact option that does not touch
+// icms.go. TaxesForItem (icms.go:124-234) is the single source of truth this
+// function tracks: whenever aCusto, aBase/FCP folding, isST's zeroing, or
+// pisCofinsRate change there, re-derive this function's four bullets above
+// against the new formula before merging — a drift here reproduces exactly
+// the Finding-1 class of bug (asymptote silently diverges from the real
+// D-41 formula).
 func (in SolveInput) icmsCellAsymptoticRatePct() *big.Rat {
 	cell := in.ICMSCell
 	isST := cell.CodTrib != nil && *cell.CodTrib == codTribST
@@ -282,17 +298,29 @@ func (in SolveInput) firstCentExactAtLeast(lo, hi, limiar int64, bound *big.Rat)
 
 // exactMargemPctRat is the UNROUNDED margem_pct at preço=cents for the segment
 // selected by limiar: 100·k − 100·F/preço, where k = 1 − Σpct/100 (comissão +
-// aliquota + applied difal) and F is the fixed-cost sum (taxa_fixa below limiar
-// / produto frete at-or-above, plus tarifa_full when full and custo). Strictly
+// fiscal load) and F is the fixed-cost sum (taxa_fixa below limiar / produto
+// frete at-or-above, plus tarifa_full when full and custo). Strictly
 // increasing in preço because F ≥ 0 — unlike Decompose's rounded margem_pct, so
 // it is safe to bisect. Used ONLY to bracket the search window.
+//
+// The fiscal load is the SAME source ceilingPct uses (Task A3 review Finding
+// 1): icmsCellAsymptoticRatePct when ICMSCell is set, otherwise the legacy
+// AliquotaPct + applied difal. Before this fix this always used the legacy
+// path even with ICMSCell set, so the bracket was built around the fabricated
+// asymptote — the high-segment scan converged on the wrong crossing and
+// wrongly reported UNREACHABLE_TARGET for targets only reachable via the real
+// cell ceiling (see TestSolveTargetPriceICMSCellBAHighSegment).
 func (in SolveInput) exactMargemPctRat(cents, limiar int64) *big.Rat {
 	preco := big.NewRat(cents, 100)
 	pct := new(big.Rat).Set(cem)
 	pct.Sub(pct, mustRat(in.ComissaoPct))
-	pct.Sub(pct, mustRat(in.AliquotaPct))
-	if in.difalApplied() {
-		pct.Sub(pct, mustRat(in.EfetivoPct))
+	if in.ICMSCell != nil {
+		pct.Sub(pct, in.icmsCellAsymptoticRatePct())
+	} else {
+		pct.Sub(pct, mustRat(in.AliquotaPct))
+		if in.difalApplied() {
+			pct.Sub(pct, mustRat(in.EfetivoPct))
+		}
 	}
 	fixed := new(big.Rat)
 	if cents < limiar {
@@ -312,16 +340,24 @@ func (in SolveInput) exactMargemPctRat(cents, limiar int64) *big.Rat {
 }
 
 // exactCeilingRat is the UNROUNDED margem_pct asymptote (100 − comissão −
-// aliquota − applied difal) as preço→∞ — the exact analogue of ceilingPct,
-// which rounds to 2dp. The window derivation needs the unrounded value: the 2dp
-// ceiling gate can admit a target only ~0.005 below the true asymptote when a
-// >2dp comissão is supplied, so a rounded gap would understate the window.
+// fiscal load) as preço→∞ — the exact analogue of ceilingPct, which rounds to
+// 2dp. The window derivation needs the unrounded value: the 2dp ceiling gate
+// can admit a target only ~0.005 below the true asymptote when a >2dp
+// comissão is supplied, so a rounded gap would understate the window.
+//
+// The fiscal load branches on ICMSCell exactly like ceilingPct (Task A3
+// review Finding 1) — icmsCellAsymptoticRatePct when set, otherwise the
+// legacy AliquotaPct + applied difal. Never mixes the two sources.
 func (in SolveInput) exactCeilingRat() *big.Rat {
 	ceil := new(big.Rat).Set(cem)
 	ceil.Sub(ceil, mustRat(in.ComissaoPct))
-	ceil.Sub(ceil, mustRat(in.AliquotaPct))
-	if in.difalApplied() {
-		ceil.Sub(ceil, mustRat(in.EfetivoPct))
+	if in.ICMSCell != nil {
+		ceil.Sub(ceil, in.icmsCellAsymptoticRatePct())
+	} else {
+		ceil.Sub(ceil, mustRat(in.AliquotaPct))
+		if in.difalApplied() {
+			ceil.Sub(ceil, mustRat(in.EfetivoPct))
+		}
 	}
 	return ceil
 }
