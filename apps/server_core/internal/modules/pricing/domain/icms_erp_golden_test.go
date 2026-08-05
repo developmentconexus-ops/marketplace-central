@@ -159,9 +159,9 @@ func TestICMSERPGolden(t *testing.T) {
 		got := TaxesForItem("136.66", cell)
 		assertMoney(t, "ICMS", got.ICMSSaida, "24.60")
 		assertMoney(t, "DIFAL", got.Difal, "0.00")
-		// base PC fecha em 112.06 mesmo com a quebra ICMS/DIFAL errada de hoje
-		// (ICMS_hoje+DIFAL_hoje = 9.57+15.03 = 24.60 = mesmo total) — prova
-		// que o bug de quebra e invisivel na base, so nas duas linhas
+		// Antes do conserto, base PC fechava em 112.06 mesmo com a quebra ICMS/DIFAL errada
+		// (ICMS_bugado+DIFAL_bugado = 9.57+15.03 = 24.60 = mesmo total) — prova
+		// que o bug era invisível na base, só visível nas duas linhas
 		// exibidas separadamente.
 		bp := basePCFromComponents(t, "136.66", got.ICMSSaida, got.Difal, "0.00")
 		assertMoneyStr(t, "base PC", bp, "112.06")
