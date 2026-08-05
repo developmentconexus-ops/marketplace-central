@@ -347,6 +347,75 @@ func TestSolveTargetPriceICMSCellBA(t *testing.T) {
 	}
 }
 
+// TestSolveTargetPriceICMSCellBAHighSegment is the A3 review's Finding-1
+// reproduction. exactCeilingRat/exactMargemPctRat (the high-segment bracket
+// math) were NOT updated to branch on ICMSCell when ceilingPct itself was —
+// they kept deriving the asymptote from the legacy fabricated AliquotaPct=4
+// (ceiling 100−12−4=84) instead of the real cell ceiling (60.15, see
+// TestCeilingPctICMSCellBALiteral). Target 59.00 sits below the REAL ceiling
+// (60.15) but only in the high segment (FreteProduto must be set — the low
+// segment tops out at margem ≈19% for this fixture's small custo). Before the
+// fix, gStar/cStar bracket around the WRONG (84) asymptote, so the bisection
+// converges near preço≈79 instead of the true crossing near R$1302, the
+// window scan never reaches it, and the solver wrongly reports
+// UNREACHABLE_TARGET citing CeilingPct="60.15" — the right ceiling with the
+// wrong reachability verdict underneath it.
+func TestSolveTargetPriceICMSCellBAHighSegment(t *testing.T) {
+	in := baseSolveICMSCell()
+	in.FreteProduto = money("15.00")
+	in.TargetMargemPct = "59.00" // < real ceiling 60.15, < legacy fabricated ceiling 84
+
+	res := SolveTargetPrice(in)
+	if !res.Reached || res.Preco == nil {
+		t.Fatalf("target 59.00 (BA real ceiling 60.15) must be reachable in the high segment; got %+v", res)
+	}
+	// must be a REAL price in the high segment (≥79), not merely Reached=true.
+	if p := ratOf(t, *res.Preco); p.Cmp(taxaFixaLimiar) < 0 {
+		t.Fatalf("solved preço %q is below 79 — expected high segment for this fixture", *res.Preco)
+	}
+	if got := resim(in, *res.Preco); got != "59.00" {
+		t.Fatalf("re-sim (real ICMSCell decompose) margem_pct = %q at preço %q, want 59.00 EXACT", got, *res.Preco)
+	}
+}
+
+// TestCeilingPctICMSCellBALiteral (Finding 2, A3 review) pins ceilingPct()'s
+// literal value for the BA fixture so a badly-wrong or zeroed
+// icmsCellAsymptoticRatePct cannot pass the suite silently — the mandated
+// golden's targets never approach this value. Verified by hand against D-41
+// (icms.go:184-231, non-ST branch): aCusto = 20.5/100 = 0.205 (AliquotaInterna
+// "20.5", D-43 FCP already embedded); fcp = 0 (FcpEmbutido nil ⇒ 0, D-43);
+// aBase = aCusto − fcp = 0.205; rate = pisCofinsRate×(1−aBase) + aCusto =
+// 0.0925×0.795 + 0.205 = 0.0735375 + 0.205 = 0.2785375, i.e. 27.85375 in
+// percent units; ceiling = 100 − comissão(12) − 27.85375 = 60.14625, which
+// FormatRatHalfUp rounds to 60.15 (2dp).
+func TestCeilingPctICMSCellBALiteral(t *testing.T) {
+	in := baseSolveICMSCell()
+	if got := in.ceilingPct(); got != "60.15" {
+		t.Fatalf("ceilingPct() for BA cell = %q, want 60.15", got)
+	}
+}
+
+// TestSolveTargetPriceICMSCellBABetweenCeilings (Finding 2, A3 review) targets
+// 70.00 — strictly between the REAL cell ceiling (60.15) and the LEGACY
+// fabricated ceiling (100 − comissão(12) − AliquotaPct(4) = 84). If
+// ceilingPct/icmsCellAsymptoticRatePct silently fell back to the legacy
+// AliquotaPct path (or returned 0), this target would wrongly report
+// Reached=true (70 < 84) instead of UNREACHABLE_TARGET citing 60.15 — the
+// exact discrimination the mandated golden's targets (which never sit in this
+// band) cannot make.
+func TestSolveTargetPriceICMSCellBABetweenCeilings(t *testing.T) {
+	in := baseSolveICMSCell()
+	in.TargetMargemPct = "70.00"
+
+	res := SolveTargetPrice(in)
+	if res.Reached || res.Preco != nil {
+		t.Fatalf("target 70.00 (between cell ceiling 60.15 and legacy fabricated 84) must be UNREACHABLE; got %+v", res)
+	}
+	if res.CeilingPct != "60.15" {
+		t.Fatalf("CeilingPct = %q, want 60.15 (cell ceiling, never the legacy fabricated 84)", res.CeilingPct)
+	}
+}
+
 // wantICMSCellUnknown is the Unknown list Decompose/TaxesForItem produce for
 // an unresolved OR ambíguo cell (icms.go:158-162, decompose.go:202-216) — the
 // same three components icms_erp_golden_test.go's assertUnknown pins for
